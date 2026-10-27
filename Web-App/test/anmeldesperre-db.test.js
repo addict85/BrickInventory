@@ -8,6 +8,9 @@
  *   B  server.ts wieder mit `trust proxy` 1 statt proxyVertrauen() → rot:
  *      „TRUST_PROXY=false wird nicht beachtet"
  *   C  proxyVertrauen('') liefert true → rot: „öffentliche Adresse vertraut"
+ *   D  (27.10.) Standard wieder mit uniquelocal → rot: „Heimnetz-Rechner vertraut"
+ *   E  (27.10.) Ausnahme für bekannte Adressen entfernt → rot: „der Inhaber
+ *      kommt von seiner bekannten Adresse weiter herein"
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -59,10 +62,14 @@ test('proxyVertrauen: wem X-Forwarded-For geglaubt wird', () => {
     app.set('trust proxy', proxyVertrauen(einstellung));
     return app.get('trust proxy fn')(adresse, 0);
   };
-  for (const eigen of ['127.0.0.1', '::1', '172.18.0.2', '10.1.2.3', '192.168.1.10', 'fd00::5'])
+  for (const eigen of ['127.0.0.1', '::1', '172.18.0.2', '172.31.255.1', 'fd00::5'])
     assert.equal(vertraut(undefined, eigen), true, `${eigen} ist der eigene Proxy`);
   for (const fremd of ['203.0.113.5', '8.8.8.8', '2001:db8::1'])
     assert.equal(vertraut(undefined, fremd), false, `öffentliche Adresse vertraut: ${fremd}`);
+  // Rechner im Heimnetz geben ihre Adresse nicht selbst an.
+  for (const lan of ['192.168.1.10', '10.1.2.3', '169.254.1.1'])
+    assert.equal(vertraut(undefined, lan), false, `Heimnetz-Rechner vertraut: ${lan}`);
+  assert.equal(vertraut('192.168.1.5', '192.168.1.5'), true, 'ein Proxy im Heimnetz lässt sich nennen');
   assert.equal(vertraut('false', '127.0.0.1'), false);
   assert.equal(vertraut('203.0.113.5', '203.0.113.5'), true);
   assert.equal(vertraut('203.0.113.5', '127.0.0.1'), false);
@@ -99,6 +106,30 @@ test('Sperre je Benutzername gilt über alle Adressen', { concurrency: 1 }, asyn
   assert.equal(await anmelden(PASS, '198.51.100.251'), 200);
   const rest = await db.get('SELECT count FROM rate_limit_attempts WHERE key = $1', [`login-name|${NAME}`]);
   assert.equal(rest, undefined, 'erfolgreiche Anmeldung leert den Zähler je Name nicht');
+});
+
+test('die Sperre je Name sperrt den Inhaber nicht aus', { concurrency: 1 }, async (t) => {
+  if (!await vorbereiten(t)) return;
+  await db.run('DELETE FROM rate_limit_attempts WHERE key LIKE $1', [`%${NAME}%`]);
+  const app = express();
+  app.set('trust proxy', proxyVertrauen(undefined));
+  app.use(express.json());
+  app.use(AUTH, _req('routes/auth.js'));
+  const srv = app.listen(0);
+  t.after(() => new Promise(r => srv.close(r)));
+  const anmelden = async (password, ip) => (await fetch(`http://127.0.0.1:${srv.address().port}${AUTH}/login`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-forwarded-for': ip },
+    body: JSON.stringify({ username: NAME, password }),
+  })).status;
+
+  assert.equal(await anmelden(PASS, '198.51.100.7'), 200, 'Vorbedingung: der Inhaber war schon einmal da');
+  // Ein Angreifer verteilt seine Fehlversuche, bis der Name gesperrt ist.
+  for (let i = 0; i < MAX_JE_NAME; i++)
+    assert.equal(await anmelden('falsch', `203.0.113.${i + 1}`), 401, `Versuch ${i + 1}`);
+  assert.equal(await anmelden(PASS, '203.0.113.200'), 429, 'eine unbekannte Adresse bleibt gesperrt');
+  assert.equal(await anmelden(PASS, '198.51.100.7'), 200,
+    'der Inhaber kommt von seiner bekannten Adresse weiter herein');
 });
 
 test('server.ts: TRUST_PROXY=false — X-Forwarded-For wird ignoriert', { concurrency: 1, timeout: 120_000 }, async (t) => {

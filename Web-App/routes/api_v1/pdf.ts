@@ -3,7 +3,7 @@
  * Ausführlich: docs/begruendungen/routes/api_v1/pdf.ts.md#abschnitt
  */
 import express from 'express';
-import { APP_ROOT, DATA_DIR, resolveWebPath } from '../../utils/appPaths';
+import { DATA_DIR, IMAGES_DIR, resolveWebPath } from '../../utils/appPaths';
 import * as db from '../../db/database';
 import {  streamFileToResponse, meldeUndWeiter, fehlertext, pfadParam } from '../../utils/httpError';
 import { requireToken } from './middleware';
@@ -26,6 +26,21 @@ const router = express.Router();
 router.use(express.json({ limit: '10mb' }));
 
 export const PDF_JOB_DIR = _pdfPath.join(DATA_DIR, 'pdf-jobs');
+
+/**
+ * Die Bilddatei eines Teils auf der Platte, nur innerhalb des Bildordners.
+ * Die Teileliste kommt vom Client; ein `image_local` wie `/data/uploads/7/…`
+ * oder `/images/../../…` lese sonst fremde Dateien ins PDF.
+ */
+export function pdfBildPfad(p: PdfTeil): string | null {
+  let src = p.image_local || p.image_url || '';
+  const m = src.match(/\/api\/img-proxy\?url=(.+)/);
+  if (m) { try { src = decodeURIComponent(m[1] ?? ''); } catch { return null; } }
+  const roh = resolveWebPath(src);
+  if (!roh) return null;
+  const voll = _pdfPath.resolve(roh);
+  return voll.startsWith(_pdfPath.resolve(IMAGES_DIR) + _pdfPath.sep) ? voll : null;
+}
 const PDF_JOB_TTL = 10 * 60 * 1000;
 /** Gleichzeitig laufende PDF-Aufträge je Benutzer. */
 const MAX_JOBS_PRO_BENUTZER = 2;
@@ -450,7 +465,6 @@ router.get('/sets/partslist-pdf/download/:jobId', requireToken, async (req: Auth
 
 async function buildPdf(sets: any, parts: any[]) {
   const PDFDocument = require('pdfkit');
-  const path2 = require('path');
   const chunks: any[] = [];
   const doc = new PDFDocument({ margin: 40, size: 'A4' });
   doc.on('data', (chunk: Buffer) => chunks.push(chunk));
@@ -503,17 +517,7 @@ async function buildPdf(sets: any, parts: any[]) {
   // Bild-Puffer VORAB asynchron (gebündelt) laden, statt synchron pro Zeile im
   // Zeichnen-Loop — so bleibt der Event-Loop frei, während die Bilddateien von
   // der Platte gelesen werden. pdfkit zeichnet danach synchron aus der Map.
-  const _imgFp = (p: PdfTeil) => {
-    const imgSrc = p.image_local || p.image_url || null;
-    if (!imgSrc) return null;
-    let src = imgSrc;
-    const m = imgSrc.match(/\/api\/img-proxy\?url=(.+)/);
-    if (m) src = decodeURIComponent((m[1] ?? ''));
-    if (src.startsWith('/data/') || src.startsWith('/images/')) {
-      return resolveWebPath(src) || path2.join(APP_ROOT, src.replace(/^\//, ''));
-    }
-    return null;
-  };
+  const _imgFp = pdfBildPfad;
   const imgBufMap = new Map();
   {
     const uniqueFps = [...new Set(parts.map(_imgFp).filter((fp): fp is string => !!fp))];

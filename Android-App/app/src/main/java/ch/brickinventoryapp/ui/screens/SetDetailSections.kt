@@ -49,7 +49,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.compose.ui.unit.sp
 import coil3.ImageLoader
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
@@ -413,7 +412,7 @@ fun LazyListScope.setDetailDetailsSection(set: SetItem, setNumber: String, vm: M
     item {
         SectionCard(title = stringResource(R.string.detail_section_details)) {
             DetailRow2(stringResource(R.string.detail_set_number), setNumber)
-            DetailRow2(stringResource(R.string.detail_added), "📅 ${fmtDate(set.addedAt)}")
+            DetailRow2(stringResource(R.string.detail_added), fmtDate(set.addedAt))
             // ── Lagerort ────────────────────────────────────────────────────
             //
             // Marcos Vorgabe: „Der Lagerort soll ein Auswahlfeld mit einem

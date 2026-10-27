@@ -111,7 +111,7 @@ class SelbstUpdateTest {
 
     @Test
     fun `die Signatur wird geprueft, bevor der Nutzer gefragt wird`() {
-        val feature = quelle("ui/UpdateFeature.kt")
+        val feature = quelle("ui/viewmodel/UpdateViewModel.kt")
         assert(feature.contains("signaturPasst(ctx, ziel)")) {
             "Das geladene APK wird nicht gegen die Signatur der installierten App geprueft. " +
                 "Android lehnt es zwar ohnehin ab — aber dann steht der Nutzer vor einer " +
@@ -123,7 +123,7 @@ class SelbstUpdateTest {
         // Auch der zweite Weg (Erlaubnis nachtraeglich erteilt) prueft erneut:
         // Zwischen Download und zweitem Anlauf liegt ein Ausflug in die
         // Systemeinstellungen, und die Datei liegt so lange auf der Platte.
-        val starte = feature.substringAfter("fun MainViewModel.starteInstallation()")
+        val starte = feature.substringAfter("fun starteInstallation()")
         assert(starte.contains("signaturPasst(ctx, datei)")) {
             "Der zweite Installationsweg prueft die Signatur nicht"
         }
@@ -150,7 +150,7 @@ class SelbstUpdateTest {
         assert(nav.contains("pruefeAufUpdate(still = true)")) {
             "Beim Start wird nicht (mehr) still nach einem Update gesehen"
         }
-        val feature = quelle("ui/UpdateFeature.kt")
+        val feature = quelle("ui/viewmodel/UpdateViewModel.kt")
         assert(feature.contains("if (still) null")) {
             "Die stille Pruefung hinterlaesst eine Fehlermeldung — wer ohne Netz " +
                 "startet, saehe bei jedem Start eine rote Zeile"
@@ -239,7 +239,7 @@ class SelbstUpdateTest {
                hilfe.contains("const val UPDATE_JSON_MAX_BYTES")) {
             "Die Obergrenzen sind nicht mehr benannt"
         }
-        val feature = quelle("ui/UpdateFeature.kt")
+        val feature = quelle("ui/viewmodel/UpdateViewModel.kt")
         // version.json: peekBody liest HOECHSTENS so viele Bytes.
         assert(feature.contains("peekBody(UPDATE_JSON_MAX_BYTES)")) {
             "version.json wird wieder unbegrenzt gelesen — dann bringt eine manipulierte " +
@@ -352,7 +352,7 @@ class SelbstUpdateTest {
     @Test
     fun `der Dialog haengt ueber der ganzen App, nicht an einem Bildschirm`() {
         val nav = Quellen.ohneKommentare(Quellen.lies("AppNavigation.kt"))
-        assert(nav.contains("dialogs.UpdateDialog(vm)")) {
+        assert(nav.contains("dialogs.UpdateDialog(selbstUpdate)")) {
             "Der Update-Hinweis wird nirgends gezeigt. In einem einzelnen Bildschirm " +
                 "aufgerufen bekaeme ihn nur, wer ohnehin dort sitzt — genau der Fehler, " +
                 "den der Punkt in den Einstellungen schon einmal hatte."
@@ -371,7 +371,7 @@ class SelbstUpdateTest {
     @Test
     fun `nur ein Klick loest das Laden aus`() {
         val dialog = Quellen.ohneKommentare(Quellen.lies("ui/dialogs/UpdateDialog.kt"))
-        assert(dialog.contains("onClick = { vm.ladeUpdate() }")) {
+        assert(dialog.contains("onClick = { selbstUpdate.ladeUpdate() }")) {
             "Der Dialog bietet das Laden nicht als Klick an"
         }
         assert(!dialog.contains("LaunchedEffect")) {
@@ -380,7 +380,7 @@ class SelbstUpdateTest {
         }
         // Und der Start stoesst weiterhin nur die PRUEFUNG an.
         val nav = Quellen.ohneKommentare(Quellen.lies("AppNavigation.kt"))
-        assert(nav.contains("vm.pruefeAufUpdate(still = true)")) {
+        assert(nav.contains("selbstUpdate.pruefeAufUpdate(still = true)")) {
             "Die stille Pruefung beim Start ist weg"
         }
         assert(!nav.contains("ladeUpdate")) {
@@ -409,7 +409,7 @@ class SelbstUpdateTest {
         // Nicht auf die Platte: Der Merker gehoert in den Zustand, nicht in die
         // Einstellungen. Ein dauerhaftes „nein" waere nicht mehr rueckgaengig
         // zu machen, ohne die App neu einzurichten.
-        val feature = Quellen.ohneKommentare(Quellen.lies("ui/UpdateFeature.kt"))
+        val feature = Quellen.ohneKommentare(Quellen.lies("ui/viewmodel/UpdateViewModel.kt"))
         assert(!feature.contains("prefs.save")) {
             "Das Wegklicken wird dauerhaft gespeichert — dann fragt die App nie wieder"
         }

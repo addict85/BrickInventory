@@ -82,10 +82,7 @@ class GalerieAbfrageTest {
         cacheDir.mkdirs()
         val client = OkHttpClient.Builder()
             .readTimeout(1, TimeUnit.SECONDS).connectTimeout(1, TimeUnit.SECONDS).build()
-        val json = Json {
-            ignoreUnknownKeys = true; isLenient = true
-            encodeDefaults = true; coerceInputValues = true
-        }
+        val json = ch.brickinventoryapp.data.api.ApiJson
         val api = Retrofit.Builder()
             .baseUrl(server.url("/")).client(client)
             .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))

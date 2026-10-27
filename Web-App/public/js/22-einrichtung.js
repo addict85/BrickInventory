@@ -1,6 +1,6 @@
 import { registerActions } from './00-registry.js';
 import { t, tRaw } from '../i18n.js';
-import { G, api, toast, passwortZuKurz, passwortZuKurzText } from './01-core.js';
+import { ico, G, api, toast, passwortZuKurz, passwortZuKurzText } from './01-core.js';
 import { oeffneErfassen } from './02-gallery.js';
 
 // ═══ Einrichtung beim ersten Start (Server: routes/settings.ts /einrichtung) ═
@@ -29,7 +29,7 @@ function zeige() {
 
 function setzeStand(quelle, ok) {
   const el = G(`ew-stand-${quelle}`);
-  if (el) el.textContent = ok ? '✅' : '';
+  if (el) el.innerHTML = ok ? ico('ok') : '';
 }
 
 export async function pruefeEinrichtung() {

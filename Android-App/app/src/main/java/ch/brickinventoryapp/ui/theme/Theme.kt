@@ -3,8 +3,10 @@ package ch.brickinventoryapp.ui.theme
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -62,6 +64,7 @@ private val LightColors = lightColorScheme(
     tertiary            = BrandRed,
     onTertiary          = Color.White,
     tertiaryContainer   = Color(0xFFFFDAD6),
+    onTertiaryContainer = BrandRedDark,
     // --s100 der Webapp, NICHT --s50 (dort steht der Seitenhintergrund --bg).
     // Hier stand jahrelang "// --s50 equivalent", waehrend der Wert --s100 war —
     // ein Kommentar, der seinem eigenen Wert widersprach.
@@ -197,6 +200,8 @@ private val FarbfaecherColors = lightColorScheme(
     onSecondaryContainer = Color(0xFF2B2B2B),
     tertiary             = Color(0xFF5A5A5A),
     onTertiary           = Color.White,
+    tertiaryContainer    = Color(0xFFE8E8E8),
+    onTertiaryContainer  = Color(0xFF2B2B2B),
     background           = Color(0xFFFAFAFA),
     surface              = Color.White,
     surfaceVariant       = Color(0xFFF4F4F4),
@@ -226,6 +231,8 @@ private val NoppeColors = lightColorScheme(
     onSecondaryContainer = NoppeTinte,
     tertiary             = NoppeTinte,
     onTertiary           = Color.White,
+    tertiaryContainer    = NoppeRotHell,
+    onTertiaryContainer  = NoppeTinte,
     background           = Color(0xFFEEF1F6),
     surface              = Color.White,
     surfaceVariant       = Color(0xFFF7F9FC),
@@ -319,21 +326,56 @@ val LocalChartColors = staticCompositionLocalOf {
 fun wirksamesDesign(design: String, dunkelNachSystem: Boolean, systemDunkel: Boolean): String =
     if (dunkelNachSystem && systemDunkel) "werkbank" else design
 
+/**
+ * Das vollständige Farbschema eines Designs.
+ *
+ * Vier Designs, eine Stelle. `when` statt geschachtelter Bedingungen: Ein
+ * fünftes Design soll hier eine Zeile kosten, keine Umstrukturierung.
+ */
+internal fun farbschema(theme: String): ColorScheme = when (theme) {
+    "brick" -> BrickBlueColors
+    "werkbank" -> WerkbankColors
+    "farbfaecher" -> FarbfaecherColors
+    // Dieselbe Palette: "hochglanz" ist "noppe" in einem anderen
+    // Material, nicht in anderen Farben. Dieselbe Regel wie `erbt` in
+    // shared/design-tokens.json.
+    "noppe", "hochglanz" -> NoppeColors
+    else -> LightColors
+}.let { ergaenzeRollen(it, dunkel = theme == "werkbank") }
+
+/**
+ * Belegt die Rollen, die die Paletten oben nicht nennen, aus deren eigenen Farben.
+ *
+ * Material3 füllt fehlende Rollen mit seiner lila Grundpalette. Dialoge, Menüs,
+ * Snackbar, Schalter und Textfelder lesen genau diese Rollen und waren deshalb
+ * in jedem Design violett getönt. Die Stufen liegen zwischen surface und
+ * onSurface: im Hellen dunkler, im Dunklen heller — wie Material sie meint.
+ */
+internal fun ergaenzeRollen(s: ColorScheme, dunkel: Boolean): ColorScheme {
+    fun stufe(anteil: Float) = lerp(s.surface, s.onSurface, anteil)
+    return s.copy(
+        onBackground = s.onSurface,
+        surfaceTint = s.primary,
+        surfaceContainerLowest = if (dunkel) s.background else s.surface,
+        surfaceContainerLow = stufe(0.025f),
+        surfaceContainer = stufe(0.05f),
+        surfaceContainerHigh = stufe(0.075f),
+        surfaceContainerHighest = stufe(0.10f),
+        surfaceDim = if (dunkel) s.background else stufe(0.08f),
+        surfaceBright = if (dunkel) stufe(0.12f) else s.surface,
+        outlineVariant = stufe(0.15f),
+        inverseSurface = s.onSurface,
+        inverseOnSurface = s.surface,
+        inversePrimary = lerp(s.primary, if (dunkel) Color.Black else Color.White, 0.45f),
+        errorContainer = lerp(s.error, s.surface, 0.85f),
+        onErrorContainer = lerp(s.error, s.onSurface, 0.5f),
+    )
+}
+
 @Composable
 fun BrickInventoryManagerTheme(theme: String = "classic", content: @Composable () -> Unit) {
     val isBrick = theme == "brick"
-    // Vier Designs, eine Stelle. `when` statt geschachtelter Bedingungen: Ein
-    // fuenftes Design soll hier eine Zeile kosten, keine Umstrukturierung.
-    val colors = when (theme) {
-        "brick" -> BrickBlueColors
-        "werkbank" -> WerkbankColors
-        "farbfaecher" -> FarbfaecherColors
-        // Dieselbe Palette: "hochglanz" ist "noppe" in einem anderen
-        // Material, nicht in anderen Farben. Dieselbe Regel wie `erbt` in
-        // shared/design-tokens.json.
-        "noppe", "hochglanz" -> NoppeColors
-        else -> LightColors
-    }
+    val colors = remember(theme) { farbschema(theme) }
     val chartColors = when (theme) {
         "brick" -> ChartColors(ChartNewBrick, ChartUsedBrick,
             linie = ChartNewBrick, raster = Color(0xFFE0DACE), gedaempft = Color(0xFF8C8577))

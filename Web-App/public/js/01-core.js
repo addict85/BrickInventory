@@ -129,6 +129,17 @@ export const escHtml = escJs;
 // Todeszone und wirft "G is not a function". Funktionsdeklarationen sind
 // dagegen schon beim Instanziieren initialisiert und sofort erreichbar.
 export function G(id) { return document.getElementById(id); }
+/** Ein Symbol aus der Symbolfamilie (Sprite in index.html) als HTML. */
+export function ico(name) { return `<svg class="ico" aria-hidden="true"><use href="#i-${esc(name)}"/></svg>`; }
+/**
+ * Ein leerer Zustand: Symbol, ein Satz, und wenn es einen gibt, der nächste
+ * Schritt als Knopf. Texte kommen fertig übersetzt; maskiert wird hier.
+ * @param {{ ico: string, titel: string, text?: string, knopf?: { text: string, click: string, arg?: string } }} o
+ */
+export function leerZustand(o) {
+  const knopf = o.knopf ? `<button type="button" class="btn bp" data-click="${esc(o.knopf.click)}"${o.knopf.arg ? ` data-arg="${esc(o.knopf.arg)}"` : ''}>${ico('plus')}<span>${esc(o.knopf.text)}</span></button>` : '';
+  return `<div class="empty leer"><div class="leer-ico">${ico(o.ico)}</div><h3>${esc(o.titel)}</h3>${o.text ? `<p>${esc(o.text)}</p>` : ''}${knopf}</div>`;
+}
 
 /**
  * Einen Knopf für die Dauer eines Aufrufs sperren.
@@ -464,7 +475,8 @@ export function toast(msg, type='info', aktion) {
   // textContent statt innerHTML: msg enthält regelmässig Server-Fehlermeldungen
   // und Set-/Teilenummern aus Nutzereingaben.
   const icon = document.createElement('span');
-  icon.textContent = {success:'✅',error:'❌',info:'ℹ️'}[type] || 'ℹ️';
+  icon.className = 'toast-ico';
+  icon.innerHTML = ico({ success: 'ok', error: 'fehler' }[type] || 'info');
   const text = document.createElement('span');
   text.textContent = String(msg ?? '');
   el.append(icon, text);
@@ -992,7 +1004,7 @@ G('btn-login').onclick=doLogin;
 async function doLogin(){
   const b=G('btn-login'); const frei=knopfBesetzt(b);
   const code=G('lc').value.trim();
-  const d=await api('POST','/v1/auth/login',{username:G('lu').value,password:G('lp').value,...(code?{code}:{})});
+  const d=await api('POST','/v1/auth/login',{username:G('lu').value,password:G('lp').value,ohne_token:true,...(code?{code}:{})});
   frei();
   // Zweiter Faktor verlangt: Codefeld zeigen und dort weitermachen.
   if(d.zweiter_faktor){
@@ -1001,21 +1013,14 @@ async function doLogin(){
     return;
   }
   G('lc-zeile').style.display='none'; G('lc').value='';
-  if(d.success){ ME = { ...d, ...(d.user||{}), isAdmin: d.user?.is_admin === true }; if(d.token) sessionStorage.setItem('webToken',d.token);
+  if(d.success){ ME = { ...d, ...(d.user||{}), isAdmin: d.user?.is_admin === true };
     // Jede Anmeldung beginnt mit „Alle Konten" (Nachtrag 46) — VOR showApp(),
     // damit die Auswahlfelder gleich mit dem zurückgesetzten Wert entstehen.
     resetScopeModes();
     showApp(); } else { const err=d.error||t('settings.error'); G('lerr').textContent=err; G('lerr').style.display='block'; if(d.unverified){ G('lerr').innerHTML=err+' <a href="#" data-click="showPanel" data-arg="login" style="color:var(--b600)">E-Mail erneut senden?</a>'; } }
 }
 G('btn-logout').onclick=async()=>{
-  // Den webToken MITSCHICKEN, sonst kann der Server ihn nicht entwerten.
-  //
-  // POST /api/v1/auth/logout beendet die Sitzung UND löscht den Bearer-Token —
-  // aber nur, wenn er im Authorization-Header steht. api() setzt den Header
-  // nicht (die Webapp arbeitet sonst per Session-Cookie), die Löschung lief
-  // deshalb ins Leere: Der Token blieb nach dem Abmelden volle sieben Tage
-  // gültig. Da er im sessionStorage liegt und damit per XSS auslesbar ist, ist
-  // genau das der Fall, den ein bewusstes Abmelden ausschliessen soll.
+  // Ein Token aus einer älteren Anmeldung wird mit entwertet.
   const _wt = sessionStorage.getItem('webToken');
   await fetch('/api/v1/auth/logout', {
     method: 'POST',

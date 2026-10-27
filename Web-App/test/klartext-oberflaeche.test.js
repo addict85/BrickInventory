@@ -84,11 +84,14 @@ test('kein fester Text in textContent, placeholder, title, toast, confirm oder a
         fest.push(`${rel}:${zeile}  „${m[1].slice(0, 50)}"`);
       }
   // Selbstbeweis: Greift kein Muster mehr, wäre die Liste leer und der Test
-  // grün, ohne etwas geprüft zu haben. GEMESSEN sind es 18 Zuweisungen an
-  // diesen Stellen — die Schranke liegt bewusst darunter, sie soll „findet
-  // gar nichts mehr" fangen.
-  assert.ok(geprueft >= 8,
-    `Nur ${geprueft} Zuweisungen an sichtbare Stellen gefunden — Muster veraltet?`);
+  // grün, ohne etwas geprüft zu haben.
+  // Seit dem 27.10. sind es 0: Die Literale waren Emoji („✅", „⏳") und sind
+  // der Symbolfamilie gewichen. Der Selbstbeweis prüft deshalb die Muster an
+  // einer Probe — jedes muss dort genau einmal greifen.
+  const probe = `a.textContent = 'Hallo'; b.title = "Welt"; toast('Text'); toast("Text"); confirm('Ja?'); alert('Nein');`;
+  for (const muster of SENKEN)
+    assert.equal([...probe.matchAll(muster)].length, 1, `Das Muster ${muster} greift nicht mehr`);
+  void geprueft;
 
   assert.deepEqual(fest.sort(), [],
     'Diese Texte stehen fest im Quelltext statt im Wörterbuch:\n  ' + fest.join('\n  ') +

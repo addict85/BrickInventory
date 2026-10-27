@@ -22,12 +22,7 @@ import org.junit.Test
 class CatalogSerializationTest {
 
     // Gleiche Konfiguration wie AppModule.provideJson()
-    private val json = Json {
-        ignoreUnknownKeys = true
-        isLenient = true
-        encodeDefaults = true
-        coerceInputValues = true
-    }
+    private val json = ch.brickinventoryapp.data.api.ApiJson
 
     @Test
     fun `meta-Antwort wird geparst`() {

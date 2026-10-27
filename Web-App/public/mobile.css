@@ -63,6 +63,26 @@
      Stand die Breitengrenze weiter am Knopf, schnitt sie auf dem Telefon als
      Erstes die Striche ab — also genau das, was der Knopf anzeigen soll. */
   .ubadge-name        { max-width: 9ch; }
+  /* Am Handy nur das Symbol: Der Name steht im Menü, abgeschnitten half er nicht. */
+  .ubadge .ubadge-name { display: none; }
+  .ubadge .ubadge-ico  { display: inline-block; width: 20px; height: 20px; }
+
+  /* Erfassen-Leiste: der Hauptknopf mit Text, die Nebenknöpfe als Symbol.
+     Die Beschriftung bleibt für Vorleseprogramme da, nur nicht sichtbar. */
+  .erfassen-leiste { flex-wrap: nowrap; }
+  .erfassen-leiste .btn.bp { flex: 1 1 auto; justify-content: center; }
+  .erfassen-leiste .btn.bs { flex: 0 0 auto; min-width: 44px; justify-content: center; padding-left: 10px; padding-right: 10px; }
+  .erfassen-leiste .btn.bs .ico-text,
+  .erfassen-leiste .btn.bs > span[data-i18n] {
+    position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
+  }
+
+  /* Filter hinter einem Knopf: Suche und Ansicht bleiben, die Auswahlfelder
+     klappen auf. Vorher belegten fünf Felder den halben Bildschirm. */
+  .filter-knopf { display: inline-flex; align-items: center; gap: 6px; }
+  .filterleiste > input.si { flex: 1 1 140px; width: auto !important; min-width: 0; }
+  .filterleiste > select { display: none; }
+  .filterleiste.offen > select { display: block; flex: 1 1 100%; }
 
   /* Die Statistikzahlen in der Kopfzeile brauchen den Platz nicht */
   .hstats             { display: none; }
@@ -140,9 +160,22 @@
   .pstat .v           { font-size: var(--fs-4); overflow-wrap: anywhere; }
   input, select, textarea, .btn {
     font-size: 16px;              /* < 16px lässt iOS beim Fokus hineinzoomen */
-    min-height: 42px;
+    min-height: 44px;
   }
-  .btn-sm { min-height: 34px; }
+  /* 44 px ist das Mass für einen Fingertipp (Apple HIG, WCAG 2.5.5). Die
+     kleinen Varianten bleiben am Desktop klein; am Telefon gilt es für alle. */
+  .btn-sm, .vb, .period-btn, .ubadge-knopf, .sammlung-wahl button { min-height: 44px; }
+  .vb, .btn-sm, .ubadge-knopf { min-width: 44px; }
+  /* Häkchen: grösser gezeichnet, die Beschriftung daneben fängt den Rest. */
+  /* !important: Einige Häkchen tragen inline `width:auto`. */
+  input[type="checkbox"], input[type="radio"] { width: 22px !important; height: 22px; min-height: 0; }
+  /* Der Löschknopf auf der Kachel bleibt optisch klein; seine Tippfläche
+     reicht unsichtbar auf 44 px hinaus. */
+  .ca { top: 5px; right: 5px; z-index: 2; }
+  .delbtn { position: relative; width: 36px; height: 36px; }
+  .delbtn::after { content: ""; position: absolute; inset: -5px; }
+  /* Ein Häkchen in seiner Beschriftung: Die ganze Zeile ist die Tippfläche. */
+  label:has(> input[type="checkbox"]), label:has(> input[type="radio"]) { min-height: 44px; display: flex; align-items: center; }
 
   /* Feste px-Breiten aus den Inline-Styles der Templates neutralisieren */
   [style*="width:"][style*="px"]:not(img):not(svg):not(.color-dot):not(.man-tile-swatch) {
@@ -158,6 +191,7 @@
 
   .dt {
     width: auto !important;
+    min-width: 0 !important;
     table-layout: auto !important;
     display: block;
   }
@@ -201,8 +235,39 @@
   .dt td:not([data-label])::before { content: none; }
   .dt td[data-label=""] { justify-content: flex-end; }
 
+  /* Finanzen: eine kompakte Zeile je Eintrag — Bild, Name, Wert, G&V. Alles
+     Weitere steht in der Detailansicht, die das Antippen öffnet. Zehn Felder
+     je Karte machten die Seite rund 8000 px lang. */
+  .dt-fin tbody tr {
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr) auto;
+    grid-template-areas: "bild name wert" "bild name guv";
+    column-gap: .7rem; row-gap: .1rem; align-items: center;
+    padding: .55rem .7rem;
+  }
+  .dt-fin tbody td { display: block; border: none; padding: 0; text-align: left; }
+  .dt-fin tbody td::before { content: none; }
+  .dt-fin td.fin-detail, .dt-fin td.fin-status { display: none; }
+  .dt-fin td.fin-bild { grid-area: bild; }
+  .dt-fin td.fin-bild img { width: 44px; height: 44px; object-fit: contain; }
+  .dt-fin td.fin-name { grid-area: name; font-weight: 600; line-height: 1.3; }
+  .dt-fin td.fin-name > span:first-child { max-width: none !important; white-space: normal !important; }
+  .dt-fin td.fin-wert { grid-area: wert; text-align: right; font-weight: 700; }
+  .dt-fin td.fin-guv  { grid-area: guv;  text-align: right; }
+  .fin-unter { display: block !important; font-size: var(--fs-0); font-weight: 400; color: var(--mut); margin-top: 2px; }
+  .dt-summe tr { display: flex; justify-content: space-between; align-items: center; padding: .45rem .7rem; }
+  .dt-summe td { display: block; border: none; padding: 0 !important; }
+  .dt-summe td::before { content: none; }
+  .dt-summe td:empty { display: none; }
+  .dt-fin tfoot { display: block; }
+  .dt-fin tfoot tr { display: flex; justify-content: space-between; align-items: center; gap: .5rem;
+                     background: none; border: none; padding: .3rem .7rem; }
+  .dt-fin tfoot td { display: block; border: none; padding: 0 !important; text-align: left !important; }
+  .dt-fin tfoot td:empty { display: none; }
+  .dt-fin tfoot td::before { content: none; }
+
   /* Sparklines und Diagramme in Tabellenzellen dürfen die Karte nicht sprengen */
-  .dt td svg, .dt td canvas { max-width: 60%; height: auto; }
+  .dt td svg:not(.ico), .dt td canvas { max-width: 60%; height: auto; }
 
   /* ─ Modals als Sheet ────────────────────────────────────────────────── */
   .ovl { align-items: flex-end; }

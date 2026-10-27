@@ -180,10 +180,12 @@ function emojiInDerOberflaeche() {
 
 test('Emoji in der Oberfläche werden weniger, nie mehr', () => {
   // GEMESSEN am 25.10.2026: 275, nachdem Leiste und Benutzermenü auf die
-  // Symbolfamilie umgestellt waren; 274 nach den Erfassen-Dialogen.
-  const SCHRANKE = 274;
+  // Symbolfamilie umgestellt waren; 274 nach den Erfassen-Dialogen; 0 am 27.10.
+  // Am 27.10. auf 0: Alle Stellen nutzen die Symbolfamilie oder kommen ohne aus.
+  const SCHRANKE = 0;
   const ist = emojiInDerOberflaeche();
-  assert.ok(ist > 50, `Nur ${ist} Emoji gefunden — greift die Suche noch?`);
+  // Selbstbeweis an einer Probe statt an der Zahl — die ist jetzt 0.
+  assert.equal(('<b>📦 x</b> ⚠️').match(/\p{Extended_Pictographic}/gu)?.length, 2, 'Die Suche greift nicht mehr');
   assert.ok(ist <= SCHRANKE,
     `${ist} Emoji in der Oberfläche, erlaubt sind ${SCHRANKE}. Für Symbole gibt es ` +
     'die Symbolfamilie: <svg class="ico" aria-hidden="true"><use href="#i-…"/></svg>.');

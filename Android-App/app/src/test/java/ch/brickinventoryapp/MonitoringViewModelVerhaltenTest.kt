@@ -74,10 +74,7 @@ class MonitoringViewModelVerhaltenTest {
             .readTimeout(2, TimeUnit.SECONDS).connectTimeout(2, TimeUnit.SECONDS).build()
         // Dieselbe Json-Konfiguration wie in di/AppModule — sonst prüfte der
         // Test eine Nachsicht, die es in der App nicht gibt.
-        val json = Json {
-            ignoreUnknownKeys = true; isLenient = true
-            encodeDefaults = true; coerceInputValues = true
-        }
+        val json = ch.brickinventoryapp.data.api.ApiJson
         val api = Retrofit.Builder()
             .baseUrl(server.url("/"))
             .client(client)
@@ -104,7 +101,7 @@ class MonitoringViewModelVerhaltenTest {
             admin = AdminRepository(api, cache),
             gutscheine = GutscheineRepository(api, cache),
             cache = cache,
-        ))
+        ), NummernTexte)
     }
 
     @After
@@ -238,5 +235,29 @@ class MonitoringViewModelVerhaltenTest {
         assert(server.requestCount == 4) {
             "Erwartet waren vier Abrufe, es waren ${server.requestCount}"
         }
+    }
+
+    // ── Das Server-Protokoll (aus MainViewModel hierher gezogen) ────────────
+    //
+    // Gegenprobe: in ladeProtokoll() den Fehlerzweig ohne `protokollLaden =
+    // false` → „ein Fehler beim Protokoll beendet das Laden" rot.
+
+    @Test
+    fun `das Protokoll kommt mit dem gewaehlten Zeitraum`() = runTest {
+        server.enqueue(antwort("""{"success":true,"logs":[{"id":1,"level":"warn","message":"Probe","logged_at":"2026-10-27T10:00:00Z"}]}"""))
+        vm.ladeProtokoll(30)
+        val v = vm.verwaltungState.value
+        assert(v.protokoll.size == 1 && v.protokoll[0].message == "Probe") { "Protokoll: ${v.protokoll}" }
+        assert(v.protokollMinuten == 30 && !v.protokollLaden)
+        assert(server.takeRequest().path?.contains("30") == true) { "Der Zeitraum ging nicht mit" }
+    }
+
+    @Test
+    fun `ein Fehler beim Protokoll beendet das Laden`() = runTest {
+        server.enqueue(antwort("""{"error":"kaputt"}""", 500))
+        vm.ladeProtokoll()
+        val v = vm.verwaltungState.value
+        assert(!v.protokollLaden) { "Der Kreisel bleibt nach einem Fehler stehen" }
+        assert(v.fehler != null) { "Der Fehler wird nicht gezeigt" }
     }
 }

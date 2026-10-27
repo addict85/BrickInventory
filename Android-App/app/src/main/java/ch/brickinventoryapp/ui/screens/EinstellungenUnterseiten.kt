@@ -36,6 +36,7 @@ import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.Schrift
 import kotlinx.coroutines.launch
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 
 /**
  * Die Unterseiten der Einstellungen.
@@ -129,7 +130,7 @@ private fun Unterseite(
  */
 @Composable
 fun GutscheineUnterseite(
-    vm: MainViewModel,
+    gvm: ch.brickinventoryapp.ui.viewmodel.GutscheinViewModel,
     snackbarHostState: SnackbarHostState,
     onZurueck: () -> Unit,
 ) {
@@ -140,7 +141,7 @@ fun GutscheineUnterseite(
     // GutscheinUiState und meldete fuenf Felder, die es „nicht gibt".
     // GEMESSEN, nicht vermutet: genau daran war der erste CI-Lauf dieses
     // Umbaus rot (534 Tests, einer rot).
-    val gutscheinZustand by vm.gutscheinState.collectAsStateWithLifecycle()
+    val gutscheinZustand by gvm.state.collectAsStateWithLifecycle()
     // Die Zwischenablage kommt aus Compose und nicht aus dem ViewModel: Sie
     // ist an die Komposition gebunden. Die Rueckmeldung laeuft ueber den
     // Snackbar des ViewModels, damit sie dort steht, wo alle anderen Meldungen
@@ -148,25 +149,25 @@ fun GutscheineUnterseite(
     val zwischenablage = androidx.compose.ui.platform.LocalClipboardManager.current
     // Beim Oeffnen DIESER Seite laden und nicht mehr beim Oeffnen der
     // Einstellungen: Wer die Sprache umstellt, braucht keine Gutscheinliste.
-    LaunchedEffect(Unit) { vm.ladeGutscheine() }
+    LaunchedEffect(Unit) { gvm.ladeGutscheine() }
     Unterseite(stringResource(R.string.vouchers_title), snackbarHostState, onZurueck) {
         GutscheineCard(
             zustand = gutscheinZustand,
-            onFeld = { n, p, b, w -> vm.setzeGutscheinFeld(n, p, b, w) },
-            onPinSchalten = { vm.schalteGutscheinPin(it) },
-            onBearbeiten = { vm.bearbeiteGutschein(it) },
-            onAbbrechen = { vm.leereGutscheinFormular() },
-            onSpeichern = { vm.speichereGutschein(it) },
-            onLoeschen = { vm.loescheGutschein(it) },
-            onPdfOeffnen = { vm.oeffneGutscheinPdf(it) },
+            onFeld = { n, p, b, w -> gvm.setzeGutscheinFeld(n, p, b, w) },
+            onPinSchalten = { gvm.schalteGutscheinPin(it) },
+            onBearbeiten = { gvm.bearbeiteGutschein(it) },
+            onAbbrechen = { gvm.leereGutscheinFormular() },
+            onSpeichern = { gvm.speichereGutschein(it) },
+            onLoeschen = { gvm.loescheGutschein(it) },
+            onPdfOeffnen = { gvm.oeffneGutscheinPdf(it) },
             onKopieren = { wert, istNummer ->
                 zwischenablage.setText(androidx.compose.ui.text.AnnotatedString(wert))
-                vm.meldeGutscheinKopiert(istNummer)
+                gvm.meldeGutscheinKopiert(istNummer)
             },
-            onGuthaben = { vm.frageGuthabenAb(it) },
-            onExportieren = { vm.oeffneGutscheinExport() },
-            onGuthabenAlle = { vm.frageAlleGuthabenAb() },
-            onGuthabenAbbrechen = { vm.guthabenLaufAbbrechen() },
+            onGuthaben = { gvm.frageGuthabenAb(it) },
+            onExportieren = { gvm.oeffneGutscheinExport() },
+            onGuthabenAlle = { gvm.frageAlleGuthabenAb() },
+            onGuthabenAbbrechen = { gvm.guthabenLaufAbbrechen() },
         )
     }
 }
@@ -230,34 +231,37 @@ fun HaushaltUnterseite(
 fun KontoUnterseite(
     vm: MainViewModel,
     snackbarHostState: SnackbarHostState,
+    // An das Ziel gebunden: Profil, Geräte und ein halb eingerichteter
+    // zweiter Faktor leben nur, solange die Seite offen ist.
+    konto: ch.brickinventoryapp.ui.viewmodel.KontoViewModel = hiltViewModel(),
     onZurueck: () -> Unit,
 ) {
-    val kontoZustand by vm.kontoState.collectAsStateWithLifecycle()
-    val geraeteZustand by vm.geraeteState.collectAsStateWithLifecycle()
-    val zfZustand by vm.zweiterFaktorState.collectAsStateWithLifecycle()
-    LaunchedEffect(Unit) { vm.ladeProfil() }
-    LaunchedEffect(Unit) { vm.ladeGeraete() }
-    LaunchedEffect(Unit) { vm.ladeZweitenFaktor() }
+    val kontoZustand by konto.kontoState.collectAsStateWithLifecycle()
+    val geraeteZustand by konto.geraeteState.collectAsStateWithLifecycle()
+    val zfZustand by konto.zweiterFaktorState.collectAsStateWithLifecycle()
+    LaunchedEffect(Unit) { konto.ladeProfil() }
+    LaunchedEffect(Unit) { konto.ladeGeraete() }
+    LaunchedEffect(Unit) { konto.ladeZweitenFaktor() }
     Unterseite(stringResource(R.string.konto_title), snackbarHostState, onZurueck) {
         KontoCard(
             kontoZustand = kontoZustand,
-            onSpeichern = { b, e, v, n -> vm.speichereProfil(b, e, v, n) },
-            onPasswort = { alt, neu -> vm.aenderePasswort(alt, neu) },
-            onMeldungWeg = { vm.kontoMeldungWeg() },
+            onSpeichern = { b, e, v, n, p -> konto.speichereProfil(b, e, v, n, p) },
+            onPasswort = { alt, neu -> konto.aenderePasswort(alt, neu) { vm.logout() } },
+            onMeldungWeg = { konto.kontoMeldungWeg() },
         )
         ZweiterFaktorCard(
             zfZustand = zfZustand,
-            onEinrichten = { vm.richteZweitenFaktorEin(it) },
-            onBestaetigen = { vm.bestaetigeZweitenFaktor(it) },
-            onNeueCodes = { vm.erneuereZweiterFaktorCodes(it) },
-            onAbschalten = { pw, code -> vm.schalteZweitenFaktorAb(pw, code) },
-            onZurueck = { vm.zweiterFaktorZurueck() },
+            onEinrichten = { konto.richteZweitenFaktorEin(it) },
+            onBestaetigen = { konto.bestaetigeZweitenFaktor(it) },
+            onNeueCodes = { konto.erneuereZweiterFaktorCodes(it) },
+            onAbschalten = { pw, code -> konto.schalteZweitenFaktorAb(pw, code) },
+            onZurueck = { konto.zweiterFaktorZurueck() },
         )
         GeraeteCard(
             zustand = geraeteZustand,
-            onReload = { vm.ladeGeraete() },
-            onRevoke = { vm.entwerteGeraet(it) },
-            onRevokeOthers = { vm.entwerteAndereGeraete() },
+            onReload = { konto.ladeGeraete() },
+            onRevoke = { konto.entwerteGeraet(it) },
+            onRevokeOthers = { konto.entwerteAndereGeraete() },
         )
     }
 }
@@ -1078,7 +1082,7 @@ private fun KontoCard(
     // Dieselbe Falle steht zweimal im Kopf dieser Datei beschrieben — und ich
     // bin trotzdem hineingelaufen.
     kontoZustand: ch.brickinventoryapp.ui.KontoUiState,
-    onSpeichern: (String, String, String, String) -> Unit,
+    onSpeichern: (String, String, String, String, String?) -> Unit,
     onPasswort: (String, String) -> Unit,
     onMeldungWeg: () -> Unit,
 ) {
@@ -1092,8 +1096,10 @@ private fun KontoCard(
     var vorname      by remember(profil) { mutableStateOf(profil?.firstName.orEmpty()) }
     var nachname     by remember(profil) { mutableStateOf(profil?.lastName.orEmpty()) }
     var pwAktuell    by rememberSaveable { mutableStateOf("") }
+    var pwFuerEmail  by remember(profil) { mutableStateOf("") }
     var pwNeu        by rememberSaveable { mutableStateOf("") }
 
+    val emailNeu = profil != null && !email.trim().equals(profil.email.orEmpty(), ignoreCase = true)
     val geaendert = profil != null && (
         benutzername != profil.username.orEmpty() || email != profil.email.orEmpty() ||
         vorname != profil.firstName.orEmpty() || nachname != profil.lastName.orEmpty())
@@ -1142,9 +1148,19 @@ private fun KontoCard(
                     label = { Text(stringResource(R.string.register_last_name)) },
                     modifier = Modifier.weight(1f), singleLine = true, shape = Formen.knopf)
             }
+            // Über eine neue Adresse liesse sich das Passwort zurücksetzen —
+            // darum fragt der Server dann nach dem aktuellen.
+            if (emailNeu) {
+                OutlinedTextField(
+                    value = pwFuerEmail, onValueChange = { pwFuerEmail = it; tippen(it) },
+                    label = { Text(stringResource(R.string.konto_email_password)) },
+                    visualTransformation = PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                    modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.knopf)
+            }
             Button(
-                onClick = { onSpeichern(benutzername, email, vorname, nachname) },
-                enabled = geaendert && !kontoZustand.speichert,
+                onClick = { onSpeichern(benutzername, email, vorname, nachname, pwFuerEmail.takeIf { emailNeu }) },
+                enabled = geaendert && !kontoZustand.speichert && (!emailNeu || pwFuerEmail.isNotEmpty()),
                 modifier = Modifier.fillMaxWidth().height(44.dp), shape = Formen.knopf
             ) { Text(stringResource(R.string.konto_save), fontWeight = FontWeight.SemiBold) }
 

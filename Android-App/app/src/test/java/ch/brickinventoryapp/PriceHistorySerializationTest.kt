@@ -28,12 +28,7 @@ import org.junit.Test
 class PriceHistorySerializationTest {
 
     // Gleiche Konfiguration wie AppModule.provideJson()
-    private val json = Json {
-        ignoreUnknownKeys = true
-        isLenient = true
-        encodeDefaults = true
-        coerceInputValues = true
-    }
+    private val json = ch.brickinventoryapp.data.api.ApiJson
 
     private val payload = """{
         "success": true,

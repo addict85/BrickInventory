@@ -41,16 +41,16 @@ jeweils als `<name>_thumb.jpg` daneben. Ein Backup von `data/` erfasst damit
 alles.
 
 ### Datenbankpasswort ändern
-In `compose.yaml` und im `Dockerfile` (oder als `environment`-Override):
-```yaml
-# postgres-Service
-environment:
-  POSTGRES_PASSWORD: mein-sicheres-passwort
-
-# app-Service
-environment:
-  PGPASSWORD: mein-sicheres-passwort
+Für eine **neue** Installation vor dem ersten Start eine Datei `.env` neben
+`compose.yaml` anlegen:
 ```
+DB_PASSWORD=mein-sicheres-passwort
+```
+`compose.yaml` gibt es an die Datenbank, die App und pgweb weiter. Eine
+**bestehende** Datenbank behält ihr Passwort aus dem ersten Start; dort
+`DB_PASSWORD` weglassen oder auf das bisherige setzen. Die Datenbank ist nicht
+nach aussen veröffentlicht — das Standardpasswort ist deshalb kein offener
+Zugang, aber ein eigenes ist besser.
 
 ### DB-Pool-Größe anpassen
 Normalerweise **nicht nötig**: Die App rechnet `min(15, 80 / Anzahl Worker)`
@@ -87,7 +87,25 @@ Nach Änderungen an `public/js/*` oder `public/i18n.js` muss
 ./scripts/backup.sh            # pg_dump + data/ nach ./backups
 ```
 Ein Dateikopie-Backup von `pgdata/` bei laufendem PostgreSQL ist **wertlos**.
-Den Restore-Weg einmal ausprobieren: `./scripts/restore.sh`.
+
+**Regelmässig sichern** — der Server tut es nicht von selbst. Ein Eintrag in
+der crontab des Rechners (`crontab -e`), täglich um 3:10 Uhr:
+```
+10 3 * * * cd /opt/brickinventory && ./scripts/backup.sh >> backups/backup.log 2>&1
+```
+Ältere Sicherungen als `BACKUP_KEEP_DAYS` (Standard 30) räumt das Skript selbst weg.
+
+**Das Wiederherstellen einmal ausprobieren**, solange nichts passiert ist —
+eine Sicherung, die sich nicht einspielen lässt, merkt man sonst erst im
+Ernstfall: `./scripts/restore.sh <db_….sql.gz> <data_….tar.gz>` auf einer
+Testinstallation (eigenes Verzeichnis, eigene `compose.yaml`), danach
+anmelden und eine Sammlung durchsehen.
+
+Dump und `data/`-Archiv entstehen nacheinander, nicht im selben Augenblick.
+Wer während der Sicherung ein Bild oder eine Anleitung hochlädt, findet nach
+dem Wiederherstellen schlimmstenfalls eine Datei ohne Eintrag oder einen
+Eintrag ohne Datei; die Sammlung selbst ist davon nicht betroffen. Nachts
+gesichert, kommt das praktisch nicht vor.
 
 **Sicherungen sind Geheimnisse.** Der Dump enthält die API-Schlüssel
 (Bricklink, Brickset, Rebrickable) und das SMTP-Passwort im Klartext sowie
@@ -165,7 +183,7 @@ neu starten.
 | Variable | Wirkung |
 |---|---|
 | `APP_BASE_URL` | Die Adresse, unter der der Server von **aussen** erreichbar ist (z. B. `https://lego.example.org`). Sie steckt in den Links der E-Mails und im **QR-Code zur Verknüpfung der App**. Ohne sie übernehmen die Bestätigungs-Links den Host aus dem Request-Header, und **Passwort-vergessen-Mails werden im Betrieb gar nicht versendet** (ein gefälschter Host-Header bekäme sonst den Reset-Link); der QR-Code wird **gar nicht erst erzeugt** — er trüge sonst die Adresse aus der Browserzeile, und die App fände den Server ausserhalb des Heimnetzes nie wieder. |
-| `TRUST_PROXY` | Wem der Server `X-Forwarded-For`/`-Proto` glaubt. Ohne Angabe nur einem Proxy im eigenen Netz (Loopback, private Adressen) — das passt für nginx/Caddy/Traefik im selben Docker-Netz. `false`, wenn kein Proxy davorsteht; sonst die Adresse oder das Netz des Proxys (z. B. `203.0.113.7`). Sonst könnte ein Client seine Absenderadresse selbst angeben und die Anmeldesperre umgehen. |
+| `TRUST_PROXY` | Wem der Server `X-Forwarded-For`/`-Proto` glaubt. Ohne Angabe nur Loopback und den Docker-Netzen (`172.16.0.0/12`) — das passt für nginx/Caddy/Traefik im selben Docker-Netz. Steht der Proxy auf einem anderen Rechner im Heimnetz, seine Adresse angeben (z. B. `192.168.1.5`). `false`, wenn kein Proxy davorsteht; sonst die Adresse oder das Netz des Proxys (z. B. `203.0.113.7`). Sonst könnte ein Client seine Absenderadresse selbst angeben und die Anmeldesperre umgehen. |
 | `ADMIN_PASSWORD` | Passwort des beim ersten Start angelegten Admins. Sonst wird ein Zufallspasswort erzeugt und **einmalig** ins Log geschrieben. |
 | `SESSION_SECRET` | Pflicht in Produktion (der Start bricht sonst ab). |
 | `TOKEN_IDLE_DAYS` | Tage ohne Nutzung, nach denen ein App-Token verfällt (Vorgabe `90`, `0` schaltet die Regel ab). Betrifft nur Tokens ohne Ablaufdatum — Android-App und QR-Login. Ein Telefon, das die App regelmässig öffnet, ist nie betroffen; ausgesperrt wird nur, was ohnehin niemand mehr benutzt. |

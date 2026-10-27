@@ -24,6 +24,8 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.ui.res.stringResource
+import ch.brickinventoryapp.ui.viewmodel.aktivitaetsViewModel
+import ch.brickinventoryapp.ui.viewmodel.UpdateViewModel
 
 // Die Navigationsziele liegen seit der Aufteilung in nav/ (eigenes Paket).
 
@@ -41,12 +43,14 @@ fun BrickInventoryManagerApp(
     // Der Katalog haelt seinen Zustand selbst; die Activity haelt beide, damit
     // Liste und Detail dieselbe Instanz sehen (siehe CatalogViewModel).
     katalog: CatalogViewModel,
+    gutscheine: ch.brickinventoryapp.ui.viewmodel.GutscheinViewModel,
     imageLoader: coil3.ImageLoader,
 ) {
     // collectAsStateWithLifecycle: Collection stoppt, wenn die App im
     // Hintergrund ist — kein unnötiges Recomposition-/State-Processing mehr.
     val state by vm.state.collectAsStateWithLifecycle()
     val barcodeState by vm.barcodeState.collectAsStateWithLifecycle()
+    val selbstUpdate: UpdateViewModel = aktivitaetsViewModel()
     val navController = rememberNavController()
     val snackbarHostState = remember { SnackbarHostState() }
     // ── Scroll-Zustände oberhalb des NavHost ────────────────────────────────
@@ -98,12 +102,12 @@ fun BrickInventoryManagerApp(
             // Genau das tut `still = true` — ein kleiner HTTPS-Abruf ohne
             // Ladebalken, und im Fehlerfall ohne Meldung. Wer ohne Netz
             // startet, soll keine rote Zeile sehen; wer den Knopf in den
-            // Einstellungen drueckt, sehr wohl (ui/UpdateFeature.kt).
+            // Einstellungen drueckt, sehr wohl (UpdateViewModel).
             //
             // Hier und nicht im Einstellungs-Bildschirm: Die Frage „gibt es
             // etwas Neueres?" gilt der ganzen App. Im Bildschirm gestellt,
             // bekaeme sie nur, wer ohnehin schon in den Einstellungen sitzt.
-            vm.pruefeAufUpdate(still = true)
+            selbstUpdate.pruefeAufUpdate(still = true)
         }
     }
 
@@ -140,18 +144,19 @@ fun BrickInventoryManagerApp(
     val labelComparison = stringResource(R.string.nav_comparison)
 
     // Die fünf Ziele der Webapp und der Vergleich, den es nur in der App gibt —
-    // unten, damit er schnell erreichbar ist. Teile und Minifiguren erreicht man
-    // über den Umschalter der Sammlung (MainScaffold).
+    // unten, damit er schnell erreichbar ist. Teile und Minifiguren erreicht
+    // man über den Umschalter der Sammlung (MainScaffold). Symbole ohne
+    // Beschreibung: Die Beschriftung steht daneben, sonst liest TalkBack doppelt.
     val bottomNavItems = remember(labelCollection, labelCatalog, labelPartslist, labelFinance, labelWanted, labelComparison) {
         buildList<Triple<Screen, @Composable () -> Unit, String>> {
-            add(Triple(Screen.Gallery,   { Icon(Icons.Default.ViewInAr, labelCollection) },               labelCollection))
-            add(Triple(Screen.PartsList, { Icon(Icons.AutoMirrored.Filled.ListAlt, labelPartslist) },     labelPartslist))
-            add(Triple(Screen.Finance,   { Icon(Icons.AutoMirrored.Filled.ShowChart, labelFinance) },     labelFinance))
+            add(Triple(Screen.Gallery,   { Icon(Icons.Default.ViewInAr, null) },               labelCollection))
+            add(Triple(Screen.PartsList, { Icon(Icons.AutoMirrored.Filled.ListAlt, null) },     labelPartslist))
+            add(Triple(Screen.Finance,   { Icon(Icons.AutoMirrored.Filled.ShowChart, null) },     labelFinance))
             // Merkliste VOR dem Katalog (Marcos Vorgabe), wie in der Webapp.
-            add(Triple(Screen.Wanted,    { Icon(Icons.Default.StarBorder, labelWanted) },                 labelWanted))
-            add(Triple(Screen.Catalog,   { Icon(Icons.AutoMirrored.Filled.MenuBook, labelCatalog) },      labelCatalog))
+            add(Triple(Screen.Wanted,    { Icon(Icons.Default.StarBorder, null) },                 labelWanted))
+            add(Triple(Screen.Catalog,   { Icon(Icons.AutoMirrored.Filled.MenuBook, null) },      labelCatalog))
             // Vergleich rechts vom Katalog (Marcos Vorgabe).
-            add(Triple(Screen.Comparison, { Icon(Icons.AutoMirrored.Filled.CompareArrows, labelComparison) }, labelComparison))
+            add(Triple(Screen.Comparison, { Icon(Icons.AutoMirrored.Filled.CompareArrows, null) }, labelComparison))
         }
     }
 
@@ -179,7 +184,7 @@ fun BrickInventoryManagerApp(
     // Hier und nicht in einem Bildschirm, aus demselben Grund wie bei den
     // beiden darueber: Die Frage gilt der ganzen App. Die Pruefung, die ihn
     // ausloest, steht ein paar Zeilen weiter oben.
-    ch.brickinventoryapp.ui.dialogs.UpdateDialog(vm)
+    ch.brickinventoryapp.ui.dialogs.UpdateDialog(selbstUpdate)
 
 
     // ── Eine angetippte Preisalarm-Meldung oeffnet ihr Set ─────────────────
@@ -221,7 +226,7 @@ fun BrickInventoryManagerApp(
         collectionGraph(vm, navController, imageLoader, bottomNavItems, snackbarHostState,
             galleryGridState, partsGridState, minifigsGridState)
         catalogGraph(vm, katalog, navController, imageLoader, bottomNavItems, snackbarHostState)
-        toolsGraph(vm, navController, imageLoader, bottomNavItems, snackbarHostState, activity,
+        toolsGraph(vm, gutscheine, navController, imageLoader, bottomNavItems, snackbarHostState, activity,
             financeListState, partsListState, settingsScrollState)
     }
 }

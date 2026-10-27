@@ -68,7 +68,8 @@ const path = require('node:path');
 const { JSDOM } = require('jsdom');
 
 const ROOT = path.join(__dirname, '..');
-const STRICHE = '☰';
+/** Die Striche sind seit dem 27.10. ein Symbol der Symbolfamilie statt „☰“. */
+const striche = (knopf) => knopf.querySelector('.ubadge-striche use[href="#i-menue"]');
 
 function kopfleiste() {
   const html = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
@@ -102,8 +103,8 @@ test('die Striche stecken im Knopf, nicht daneben', () => {
   const { document } = kopfleiste().window;
   const knopf = menueKnopf(document);
 
-  assert.ok(knopf.textContent.includes(STRICHE),
-    `Die drei Striche (${STRICHE}) stehen nicht im Menüknopf — sind sie wieder ein eigenes Element daneben?`);
+  assert.ok(striche(knopf),
+    'Die drei Striche stehen nicht im Menüknopf — sind sie wieder ein eigenes Element daneben?');
 
   // Und der Name steht im SELBEN Knopf. Genau das ist „integrieren": nicht
   // zwei Elemente, die nebeneinander liegen, sondern eines.
@@ -122,7 +123,7 @@ test('die Striche überleben den Benutzernamen', () => {
   // Genau was 01-core.js in showApp() tut.
   name.textContent = 'marco';
 
-  assert.ok(knopf.textContent.includes(STRICHE),
+  assert.ok(striche(knopf),
     'Die drei Striche sind nach dem Setzen des Namens verschwunden — ' +
     'liegt `id="ubadge"` am Knopf statt am inneren Feld?');
   assert.ok(knopf.textContent.includes('marco'),

@@ -22,6 +22,8 @@ import ch.brickinventoryapp.R
 import ch.brickinventoryapp.ui.*
 import ch.brickinventoryapp.ui.screens.*
 import ch.brickinventoryapp.ui.theme.LocalIsBrickTheme
+import ch.brickinventoryapp.ui.viewmodel.aktivitaetsViewModel
+import ch.brickinventoryapp.ui.viewmodel.UpdateViewModel
 
 /**
  * Gemeinsames Gerüst aller eingeloggten Screens: obere Leiste mit Titel und
@@ -380,7 +382,8 @@ fun ReiterGeruest(
     content: @Composable () -> Unit
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
-    val updateZustand by vm.updateState.collectAsStateWithLifecycle()
+    val selbstUpdate: UpdateViewModel = aktivitaetsViewModel()
+    val updateZustand by selbstUpdate.updateState.collectAsStateWithLifecycle()
     MainScaffold(
         title = titel,
         navController = navController,

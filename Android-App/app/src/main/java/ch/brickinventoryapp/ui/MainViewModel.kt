@@ -67,24 +67,7 @@ class MainViewModel @Inject constructor(
     // Nur fürs Abmelden: Der Bild-Cache enthält Thumbnails des angemeldeten
     // Kontos und wird zusammen mit dem API-Cache geleert (SessionFeature.kt).
     internal val imageLoader: coil3.ImageLoader,
-    /**
-     * Selbstaktualisierung — ein EIGENER, blanker Client (siehe AppModule).
-     * Nicht der api-Client: Der kennt Server, Token und Anzeigesprache, und
-     * nichts davon geht GitHub etwas an.
-     */
-    @param:javax.inject.Named("update") internal val updateHttpClient: okhttp3.OkHttpClient
 ) : ViewModel() {
-
-    /**
-     * Zustand der Selbstaktualisierung — siehe UpdateUiState und
-     * ui/UpdateFeature.kt.
-     *
-     * Eigener Fluss aus demselben Grund wie beim Barcode: Ein Download
-     * erzeugt viele Zwischenstaende (Fortschritt im Prozentschritt), und die
-     * gingen als Teil von AppUiState jeden Reiter an.
-     */
-    internal val _updateState = MutableStateFlow(UpdateUiState())
-    val updateState = _updateState.asStateFlow()
 
     /**
      * Gemerkte Rollpositionen der Reiter (siehe ScrollMemory.kt). Kein
@@ -227,20 +210,6 @@ class MainViewModel @Inject constructor(
     internal val _merklisteState = MutableStateFlow(MerklisteUiState())
     val merklisteState = _merklisteState.asStateFlow()
 
-    /** Gutscheine im eigenen Profil — siehe GutscheinFeature.kt. */
-    internal val _gutscheinState = MutableStateFlow(GutscheinUiState())
-    val gutscheinState = _gutscheinState.asStateFlow()
-
-    /**
-     * Der laufende Durchgang „Guthaben aller Karten abfragen".
-     *
-     * Hier und nicht in GutscheinFeature.kt, weil eine Erweiterungsfunktion
-     * nichts halten kann. Er wird gebraucht, um den Lauf ABZUBRECHEN: Bei
-     * einer Abfrage je 30 Sekunden dauert ein Durchgang Minuten, und so lange
-     * nur zusehen zu duerfen waere unhoeflich.
-     */
-    internal var guthabenJob: kotlinx.coroutines.Job? = null
-
     // Ziel einer angetippten Preisalarm-Meldung. Begruendung an
     // MeldungsZielUiState (UiState.kt).
     internal val _meldungsZiel = MutableStateFlow(MeldungsZielUiState())
@@ -312,21 +281,11 @@ class MainViewModel @Inject constructor(
     internal val _householdState = MutableStateFlow(HouseholdUiState())
     val householdState = _householdState.asStateFlow()
 
-    internal val _geraeteState = MutableStateFlow(GeraeteUiState())
-    val geraeteState = _geraeteState.asStateFlow()
-
-    internal val _zweiterFaktorState = MutableStateFlow(ZweiterFaktorUiState())
-    val zweiterFaktorState = _zweiterFaktorState.asStateFlow()
-
-    // Konto anlegen und „Passwort vergessen" — eigener Fluss aus demselben
-    // Grund wie die Geraeteliste darueber: Nur EIN Bildschirm liest ihn, und
-    // in AppUiState laege er sechzehn Dateien im Weg (ZustandsflussBreiteTest).
+    // Konto anlegen und „Passwort vergessen" — eigener Fluss: Nur EIN
+    // Bildschirm liest ihn, und in AppUiState laege er sechzehn Dateien im
+    // Weg (ZustandsflussBreiteTest).
     internal val _anmeldeState = MutableStateFlow(AnmeldeUiState())
     val anmeldeState = _anmeldeState.asStateFlow()
-
-    // Das eigene Konto (Profil, Passwort) — eigener Fluss, siehe KontoUiState.
-    internal val _kontoState = MutableStateFlow(KontoUiState())
-    val kontoState = _kontoState.asStateFlow()
 
     // Das HOCHLADEN einer CSV-Datei — nicht zu verwechseln mit
     // _csvImportState, das den Fortschritt des Imports auf dem Server zeigt.
@@ -334,9 +293,6 @@ class MainViewModel @Inject constructor(
     internal val _csvHochladenState = MutableStateFlow(CsvHochladenUiState())
     val csvHochladenState = _csvHochladenState.asStateFlow()
 
-    // Nutzerverwaltung und Server-Protokoll — siehe VerwaltungUiState.
-    internal val _verwaltungState = MutableStateFlow(VerwaltungUiState())
-    val verwaltungState = _verwaltungState.asStateFlow()
 
     /**
      * Nur das App-Design, entkoppelt vom übrigen Zustand.

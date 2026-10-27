@@ -27,7 +27,9 @@ const path   = require('node:path');
 
 const ROOT  = path.join(__dirname, '..');
 const read  = f => fs.readFileSync(path.join(ROOT, f), 'utf8');
-const strip = s => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g, '$1');
+// Der Helfer statt eines naiven /\*…\*\/: `'/images/*pfad'` in server.ts
+// eröffnete für diesen sonst einen Kommentar bis zum nächsten Kommentarende.
+const strip = s => require('./helpers/sources').ohneKommentare(s).replace(/(^|[^:])\/\/[^\n]*/g, '$1');
 
 /** Alle Quelldateien, die Pfade schreiben könnten. */
 const SOURCES = ['server.ts', 'routes/parts.ts', 'routes/sets.ts', 'utils/thumbs.ts',
@@ -71,7 +73,7 @@ test('Teile- und Figurenbilder landen in getrennten Ordnern', async (t) => {
   assert.equal(await downloadImage(cdn, NUM, 0, 'part'), `/images/parts/${NUM}_0.png`);
   assert.ok(fs.existsSync(path.join(PART_IMAGES_DIR, `${NUM}_0.png`)), 'Teilebild nicht im Teileordner');
   // Der einzige Aufruf für Figuren sitzt im Bild-Hintergrundlauf.
-  assert.match(read('server.ts'), /downloadImage\(f\.image_url, f\.fig_number, 0, 'minifig'\)/,
+  assert.match(read('startup/bildNachlauf.ts'), /downloadImage\(f\.image_url, f\.fig_number, 0, 'minifig'\)/,
     'Der Figuren-Download muss die Art mitgeben — sonst landen Figuren wieder bei den Teilen');
 });
 

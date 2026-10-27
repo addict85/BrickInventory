@@ -1,6 +1,6 @@
 import { registerActions } from './00-registry.js';
 import { colorName, locale, t, tRaw} from '../i18n.js';
-import { escHex, hexZiffern, CURRENCY, G, TRASH_ICON_SVG, api, esc, escJs, escUrl, fmtN, fullUrl, imgUrl, thumbUrl, toast } from './01-core.js';
+import { leerZustand, ico, escHex, hexZiffern, CURRENCY, G, TRASH_ICON_SVG, api, esc, escJs, escUrl, fmtN, fullUrl, imgUrl, thumbUrl, toast } from './01-core.js';
 import { addLagerParam, addScopeParam, scopeQuery } from './14-scope.js';
 import { condBadges, leereLagerortFeld, ownerBadges, schliesseErfassen, selectedOwner, selectedStorage, PARTS_ICON_SVG } from './02-gallery.js';
 import { loadFinance } from './04-finance.js';
@@ -178,7 +178,7 @@ export function renderFigs(list, target) {
   const el = target || G('figs-list');
   if (!list.length) {
     el.innerHTML = `<div class="empty" style="padding:3rem;text-align:center">
-      <div style="font-size:var(--fs-8);margin-bottom:.5rem">👷</div>
+      <div class="leer-ico">${ico('figur')}</div>
       <div style="font-weight:600">${t('figs.none')}</div>
       <div style="color:var(--mut);font-size:var(--fs-3)">${t('figs.auto_hint')}</div>
     </div>`;
@@ -272,7 +272,7 @@ export function renderFigs(list, target) {
           return `<div class="part-card" style="position:relative;cursor:pointer" data-click="${f.source==='manual'?'openManDetail':'openSetItemDetail'}" data-arg="fig" data-arg2="${escJs(f.fig_number)}" data-arg3="0">
             ${delBtn}
             ${imgSrc ? `<img src="${escUrl(imgSrc)}" class="part-img" loading="lazy" decoding="async" data-fade="1" data-orig="${escUrl(fullUrl(imgSrc))}" />` : ''}
-            <div class="part-img-ph" style="display:${imgSrc?'none':'flex'}">👷</div>
+            <div class="part-img-ph" style="display:${imgSrc?'none':'flex'}">${ico('figur')}</div>
             <div class="part-num">${esc(f.fig_number)}</div>
             <div class="part-name">${esc(f.fig_name)||'—'}</div>
             <div class="part-qty">${f.total_quantity||f.quantity}×</div>
@@ -287,7 +287,7 @@ export function renderFigs(list, target) {
 
 /** @param {string} figNumber @param {number|string} [owner] siehe deleteManualPart */
 export async function deleteManualFig(figNumber, owner) {
-  if (!await confirmDelete(tRaw('figs.delete.title'), t('gallery.delete.text',{name:figNumber}), '👷')) return false;
+  if (!await confirmDelete(tRaw('figs.delete.title'), t('gallery.delete.text',{name:figNumber}), 'figur')) return false;
   const d = await api('DELETE', `/v1/minifigs/${encodeURIComponent(figNumber)}${owner ? `?owner=${encodeURIComponent(owner)}` : ''}`);
   if (d.success) { geloeschtMitRueckgaengig(tRaw('figs.deleted'), d); loadMinifigs(); loadManualFigsTable(); return true; }
   else { toast(d.error || t('settings.error'), 'error'); return false; }
@@ -305,11 +305,8 @@ export function renderManualFigsTable() {
   const el = G('manual-figs-list');
   if (!el) return;
   if (!manualFigsCache.length) {
-    el.innerHTML = `<div class="empty" style="padding:2rem;text-align:center">
-      <div style="font-size:var(--fs-7);margin-bottom:.4rem">👷</div>
-      <div style="font-weight:600">${t('figs.none_manual')}</div>
-      <div style="color:var(--mut);font-size:var(--fs-3)">${t('figs.from_csv_hint')}</div>
-    </div>`;
+    el.innerHTML = leerZustand({ ico: 'figur', titel: tRaw('figs.none_manual'), text: tRaw('figs.from_csv_hint'),
+      knopf: { text: tRaw('figs.add_title'), click: 'oeffneErfassen', arg: 'fig' } });
     return;
   }
   if (tabellenAnsicht('figs-view')) {
@@ -323,7 +320,7 @@ export function renderManualFigsTable() {
       const imgSrc = imgUrl(thumbUrl(f.image_local || f.image_url) || f.image_local || f.image_url || '', true);
       const img = imgSrc
         ? `<img class="man-tile-img" src="${escUrl(imgSrc)}" loading="lazy" decoding="async" data-onerror="hide" />`
-        : `<div class="man-tile-img-ph">👷</div>`;
+        : `<div class="man-tile-img-ph">${ico('figur')}</div>`;
       // Mengengewichteter Kaufpreis über die Erfassungen (Server rechnet ihn).
       // unit_price ist der zuletzt geschriebene Einzelwert der Stammzeile —
       // bei zwei Erfassungen zu verschiedenen Preisen stimmte er nicht.
@@ -395,7 +392,7 @@ G('btn-add-fig')?.addEventListener('click', async () => {
   if(d.success){
     const hinweisF = preisHerkunftHinweis(d.price_from_condition);
     res.style.color='var(--g700)';
-    res.textContent=`✅ ${esc(d.fig_number)} ${d.action==='added'?t('common.added'):t('common.updated')}`
+    res.textContent=`${d.fig_number} ${d.action==='added'?t('common.added'):t('common.updated')}`
       + (hinweisF ? ` — ${hinweisF}` : '');
     // Der Dialog schliesst; das Ergebnis samt Preishinweis kommt als Meldung.
     schliesseErfassen('fig'); toast(res.textContent.replace(/^\u2705\s*/, ''), 'success');
@@ -626,11 +623,8 @@ export async function loadManualParts() {
 export function renderManualParts() {
   const el = G('manual-parts-list');
   if (!manualPartsCache.length) {
-    el.innerHTML = `<div class="empty" style="padding:3rem;text-align:center">
-      <div style="font-size:var(--fs-8);margin-bottom:.5rem;display:flex;justify-content:center">${PARTS_ICON_SVG.replace('style="width:1em;height:1em;vertical-align:middle"','style="width:1.2em;height:1.2em"')}</div>
-      <div style="font-weight:600">${t('parts.none_manual')}</div>
-      <div style="color:var(--mut);font-size:var(--fs-3)">${t('parts.none_manual_hint')}</div>
-    </div>`;
+    el.innerHTML = leerZustand({ ico: 'teil', titel: tRaw('parts.none_manual'), text: tRaw('parts.none_manual_hint'),
+      knopf: { text: tRaw('parts.add_title'), click: 'oeffneErfassen', arg: 'part' } });
     return;
   }
   if (tabellenAnsicht('parts-view')) {
@@ -688,7 +682,7 @@ export async function updateManualPart(partNumber, colorId, body, owner) {
  *   „success". Begründung und Messung in utils/household.ts.
  */
 export async function deleteManualPart(partNumber, colorId, owner) {
-  if (!await confirmDelete(tRaw('parts.delete.title'), t('gallery.delete.text',{name:partNumber}), '🔩')) return false;
+  if (!await confirmDelete(tRaw('parts.delete.title'), t('gallery.delete.text',{name:partNumber}), 'teil')) return false;
   const d = await api('DELETE', `/v1/parts/${encodeURIComponent(partNumber)}/${colorId}${owner ? `?owner=${encodeURIComponent(owner)}` : ''}`);
   if (d.success) { geloeschtMitRueckgaengig(tRaw('parts.deleted'), d); loadManualParts(); return true; }
   else { toast(d.error || t('settings.error'), 'error'); return false; }
@@ -757,7 +751,7 @@ G('btn-add-part')?.addEventListener('click', async () => {
   if(d.success){
     const hinweisT = preisHerkunftHinweis(d.price_from_condition);
     res.style.color='var(--g700)';
-    res.textContent=`✅ ${esc(d.part_number)} ${d.action==='added'?t('common.added'):t('common.updated')}`
+    res.textContent=`${d.part_number} ${d.action==='added'?t('common.added'):t('common.updated')}`
       + (hinweisT ? ` — ${hinweisT}` : '');
     schliesseErfassen('part'); toast(res.textContent.replace(/^\u2705\s*/, ''), 'success');
     G('ap-num-inline').value=''; G('ap-qty-inline').value='1'; G('ap-price-inline').value='';

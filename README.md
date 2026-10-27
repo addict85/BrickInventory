@@ -159,6 +159,13 @@ Beide Bäume tragen eine ausführliche Änderungshistorie mit Begründungen:
 Invarianten der App stehen in
 [`Android-App/INVARIANTEN.md`](Android-App/INVARIANTEN.md).
 
+Das vollständige Datenbankschema steht in
+[`Web-App/db/schema-stand.sql`](Web-App/db/schema-stand.sql) — erzeugt aus
+einer frischen Datenbank, zum Lesen. Es entsteht aus `db/schema.sql`,
+`db/database.ts` und `db/migrations/`; nach einer Migration mit
+`npm run build && npm run schema:stand` neu schreiben (der Schema-Test meldet
+es sonst).
+
 ---
 
 ## Entwickeln

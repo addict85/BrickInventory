@@ -9,7 +9,7 @@ import { hashToken, pruefeAnmeldedaten, createToken, validateToken, assertLoginA
 import { ipThrottle } from '../utils/loginLimiter';
 import crypto from 'crypto';
 import { strictBool } from '../utils/validate';
-import { sendPasswordResetMail, sendVerificationMail } from '../utils/mailer';
+import { sendEmailGeaendertMail, sendPasswordResetMail, sendVerificationMail } from '../utils/mailer';
 import type { Request } from 'express';
 import { getGlobalSetting, getSetting } from '../utils/settings';
 import { requireApiAdmin } from './api_v1/middleware';
@@ -30,7 +30,7 @@ const requireAdmin = requireApiAdmin;
  * Ausführlich: docs/begruendungen/routes/auth.ts.md#post-login
  */
 router.post('/login', async (req, res) => {
-  const { username, password, label, never_expires, code: zweiterCode } = req.body;
+  const { username, password, label, never_expires, code: zweiterCode, ohne_token } = req.body;
   try {
     // Form des Namens, Brute-Force-Sperre, Passwortvergleich, die
     // Konto-Vorbedingungen und der zweite Faktor stehen in utils/auth.ts.
@@ -73,7 +73,9 @@ router.post('/login', async (req, res) => {
     // Erfolgs.
     const dauerhaft = never_expires === true;
     let token: string | null = null;
-    try {
+    // Die Webapp arbeitet nur mit dem httpOnly-Cookie: Ein Token im Browser
+    // wäre per eingeschleustem Skript auslesbar und gälte über die Sitzung hinaus.
+    if (ohne_token !== true) try {
       token = await createToken(user.id, label || 'webapp-session', dauerhaft);
     } catch (e) {
       console.warn('[login] Token konnte nicht gespeichert werden:', fehlertext(e));
@@ -182,12 +184,9 @@ router.put('/profile', requireLogin, async (req, res) => {
     const user = await db.get('SELECT * FROM users WHERE id=$1', [nutzerId(req)]);
     if (!user) return res.status(404).json({ success: false });
 
-    // If changing password, verify current password
-    if (password) {
-      if (!password_current) return sendeFehler(req, res, 400, 'aktuelles_passwort_erforderlich');
-      const valid = await bcrypt.compare(password_current, user.password_hash);
-      if (!valid) return sendeFehler(req, res, 400, 'aktuelles_passwort_falsch');
-    }
+    // Das Passwort nur über /change-password: Nur dort werden danach alle
+    // übrigen Sitzungen und Token verworfen.
+    if (password) return sendeFehler(req, res, 400, 'passwort_ueber_change_password');
 
     // Benutzername: dieselbe Regex wie Login/Register — das Profil-Update hat
     // sie vorher NICHT erzwungen. Ohne sie konnte man Leerzeichen setzen oder
@@ -216,6 +215,11 @@ router.put('/profile', requireLogin, async (req, res) => {
         'SELECT id FROM users WHERE (LOWER(email) = LOWER($1) OR LOWER(username) = LOWER($1)) AND id != $2',
         [email, user.id]);
       if (existing) return sendeFehler(req, res, 400, 'email_vergeben');
+      // Über die neue Adresse liesse sich danach das Passwort zurücksetzen —
+      // wer kurz eine fremde Sitzung hat, übernähme so das Konto.
+      if (!password_current) return sendeFehler(req, res, 400, 'aktuelles_passwort_erforderlich');
+      if (!(await bcrypt.compare(String(password_current), user.password_hash)))
+        return sendeFehler(req, res, 400, 'aktuelles_passwort_falsch');
     }
 
     // Build update
@@ -225,14 +229,6 @@ router.put('/profile', requireLogin, async (req, res) => {
     if (username)    { updates.push(`username=$${pi++}`);   params.push(username); }
     if (first_name !== undefined) { updates.push(`first_name=$${pi++}`); params.push(first_name || null); }
     if (last_name  !== undefined) { updates.push(`last_name=$${pi++}`);  params.push(last_name  || null); }
-    if (password) {
-      // Hier fehlte die Laengenpruefung. Register, Reset und die beiden
-      // Verwalter-Routen verlangten acht Zeichen, dieser Weg nicht — und damit
-      // war die Regel wirkungslos: acht Zeichen bei der Anmeldung, danach eines.
-      if (passwortZuKurz(password)) return sendeFehler(req, res, 400, 'passwort_zu_kurz');
-      const hash = await bcrypt.hash(password, BCRYPT_ROUNDS);
-      updates.push(`password_hash=$${pi++}`); params.push(hash);
-    }
     if (emailChanged) {
       const token   = crypto.randomBytes(32).toString('hex');
       const expires = new Date(Date.now() + 24*60*60*1000);
@@ -248,11 +244,14 @@ router.put('/profile', requireLogin, async (req, res) => {
       // Send verification mail to new email
       // Ausführlich: docs/begruendungen/routes/auth.ts.md#put-profile-emailsent
       let emailSent = false;
+      const lang = String(await getSetting(user.id, 'language', 'de').catch(() => 'de'));
       try {
-        const lang = await getSetting(user.id, 'language', 'de').catch(() => 'de');
         emailSent = (await sendVerificationMail(email, first_name || username || user.username,
-                                                token, getBaseUrl(req), String(lang))).success;
+                                                token, getBaseUrl(req), lang)).success;
       } catch (e) { meldeUndWeiter('anmeldung:bestaetigungsmail', e); }
+      // Die alte Adresse erfährt davon — war es nicht der Inhaber, merkt er es so.
+      if (user.email) await sendEmailGeaendertMail(user.email, user.username, email, lang)
+        .catch((e: unknown) => meldeUndWeiter('anmeldung:hinweis-alte-adresse', e));
       return res.json({ success: true, emailChanged: true, emailSent });
     }
 

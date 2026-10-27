@@ -1,6 +1,6 @@
 import { registerActions } from './00-registry.js';
 import { locale, t, tRaw } from '../i18n.js';
-import { G, TRASH_ICON_SVG, api, esc, fmtN, toast } from './01-core.js';
+import { ico, G, TRASH_ICON_SVG, api, esc, fmtN, toast } from './01-core.js';
 import { openPdfViewer } from './12-pdfviewer.js';
 
 // ═══ Gutscheine (LEGO-Geschenkkarten) ══════════════════════════════════════
@@ -93,7 +93,7 @@ function zeile(g) {
         ${g.pin ? `<button class="v-btn" data-click="gutscheinPinUmschalten" data-arg="${g.id}"
                      title="${tRaw(pinOffen ? 'vouchers.pin_hide' : 'vouchers.pin_show')}"
                      aria-label="${tRaw(pinOffen ? 'vouchers.pin_hide' : 'vouchers.pin_show')}">
-                     ${pinOffen ? '🙈' : '👁'}</button>
+                     ${ico(pinOffen ? 'auge-zu' : 'auge')}</button>
                    <button class="v-btn" data-click="gutscheinKopieren" data-arg="${g.id}" data-arg2="pin"
                      title="${tRaw('vouchers.copy_pin')}"
                      aria-label="${tRaw('vouchers.copy_pin')}">${KOPIE_ICON_SVG}</button>` : ''}
@@ -105,14 +105,14 @@ function zeile(g) {
         ${g.pin ? `
           <button class="v-btn" data-click="guthabenAbfragen" data-arg="${g.id}"
                   title="${tRaw('vouchers.balance_one')}"
-                  aria-label="${tRaw('vouchers.balance_one')}">🔄</button>` : ''}
+                  aria-label="${tRaw('vouchers.balance_one')}">${ico('aktualisieren')}</button>` : ''}
         ${g.hat_pdf ? `
           <button class="v-btn" data-click="gutscheinPdfOeffnen" data-arg="${g.id}"
                   title="${tRaw('vouchers.pdf_open')}"
-                  aria-label="${tRaw('vouchers.pdf_open')}">📄</button>`
+                  aria-label="${tRaw('vouchers.pdf_open')}">${ico('datei')}</button>`
         : `<span class="voucher-nopdf" title="${tRaw('vouchers.no_pdf')}">—</span>`}
         <button class="v-btn" data-click="gutscheinBearbeiten" data-arg="${g.id}"
-                title="${tRaw('vouchers.edit_title')}">✎</button>
+                title="${tRaw('vouchers.edit_title')}">${ico('bearbeiten')}</button>
         <button class="delbtn" data-click="gutscheinLoeschen" data-arg="${g.id}"
                 title="${tRaw('vouchers.delete_title')}">${TRASH_ICON_SVG}</button>
       </div>

@@ -253,11 +253,8 @@ data class ProfilResponse(
 /**
  * Profil aendern — PUT /api/v1/auth/profile.
  *
- * Das Passwort kann hier MITGEAENDERT werden, dann verlangt der Server
- * `passwordCurrent`. Die App benutzt dafuer trotzdem /change-password: Nur
- * dieser Weg verwirft anschliessend alle offenen Zugaenge, und genau das will,
- * wer sein Passwort aendert. Die beiden Felder stehen hier, weil die
- * Schnittstelle sie kennt — belegt werden sie nicht.
+ * Das Passwort aendert nur /change-password. Eine neue E-Mail-Adresse
+ * verlangt `passwordCurrent`.
  */
 @Serializable
 data class ProfilAenderung(
@@ -265,6 +262,8 @@ data class ProfilAenderung(
     val email: String,
     @SerialName("first_name") val firstName: String? = null,
     @SerialName("last_name") val lastName: String? = null,
+    /** Nur bei neuer E-Mail-Adresse: Der Server verlangt dann das Passwort. */
+    @SerialName("password_current") val passwordCurrent: String? = null,
 )
 
 /**

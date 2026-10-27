@@ -191,7 +191,9 @@ function sammleAlle(verz, raus) {
   for (const eintrag of fs.readdirSync(verz, { withFileTypes: true })) {
     const p = path.join(verz, eintrag.name);
     if (eintrag.isDirectory()) sammleAlle(p, raus);
-    else if (/\.(ts|js|sql)$/.test(eintrag.name)) raus.push(p);
+    // schema-stand.sql ist das erzeugte Abbild zum Lesen, keine Quelle —
+    // es nennt jede Tabelle ein zweites Mal, und zwar mit Absicht.
+    else if (/\.(ts|js|sql)$/.test(eintrag.name) && eintrag.name !== 'schema-stand.sql') raus.push(p);
   }
   return raus;
 }

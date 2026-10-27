@@ -28,12 +28,13 @@ import org.junit.Test
  * Sieben Fundstellen in sechs Dateien. Sechs trugen ihre Aussage schon
  * doppelt:
  *
- *   MonitoringScreen      Job-Status  → Symbol (⏳ ✅ ❌ ⏸) und Statuswort
+ *   MonitoringScreen      Job-Status  → Symbol (Sanduhr, Haken, Fehler, Pause) und Statuswort
  *   SetupScreen           Scanner     → der Hinweistext wechselt mit
  *   BarcodeScannerScreen  Scanner     → derselbe Wechsel
  *   BarcodeScannerScreen  Taschenlampe→ die Knopfbeschriftung wechselt
  *   PortfolioChart        Entwicklung → Vorzeichen und Zahl
  *   SetDetailComponents   PnlBadge    → Vorzeichen und Zahl
+ *   CsvImportBanner       Zählung     → Symbolform und Beschriftung darunter
  *
  * Die siebte nicht: RateLimitRow hatte drei Stufen (blau, gelb, rot), und nur
  * die Farbe sagte, in welcher man steckt — gelb gegen rot ist genau das Paar,
@@ -55,7 +56,7 @@ import org.junit.Test
  *   a) MerklisteScreen faerbt neuerdings mit LocalStatusFarben — eine
  *      SIEBTE Datei, ohne dass jemand gefragt haette, was die Stelle sagt
  *        → „wer Statusfarben benutzt, steht auf der geprueften Liste" rot
- *   b) das ⚠ aus RateLimitRow entfernt, `val eng` aber stehen gelassen
+ *   b) das Warnsymbol aus RateLimitRow entfernt, `val eng` aber stehen gelassen
  *        → „die Kontingent-Zeile warnt nicht nur mit Farbe" rot
  *
  * Ergebnis: 503 Tests, GENAU 2 rot. Der Basislauf 295 auf demselben Stand
@@ -76,6 +77,7 @@ class FarbeAlleinTest {
         "BarcodeScannerScreen.kt",
         "PortfolioChart.kt",
         "SetDetailComponents.kt",
+        "CsvImportBanner.kt",
     )
 
     @Test
@@ -118,13 +120,11 @@ class FarbeAlleinTest {
         val s = Quellen.ohneKommentare(Quellen.lies("ui/screens/MonitoringSections.kt"))
         val i = s.indexOf("private fun RateLimitRow(")
         assert(i > 0) { "RateLimitRow fehlt — Muster veraltet?" }
-        val rumpf = s.substring(i, minOf(i + 1800, s.length))
+        val rumpf = s.substring(i, minOf(i + 2400, s.length))
         assert(rumpf.contains("val eng = pct >")) {
             "Die Zeile kennt die Schwelle nicht mehr als eigenen Wert."
         }
-        // ⚠ ist das Warnzeichen. Als Escape geschrieben, damit die
-        // Suche nicht daran scheitert, wie die Datei kodiert ist.
-        assert(rumpf.contains("⚠") || rumpf.contains("\\u26A0")) {
+        assert(Regex("""if \(eng\) Icon\(Icons\.Default\.Warning""").containsMatchIn(rumpf)) {
             "Ohne Zeichen bleibt nur die Farbe — und gelb gegen rot ist genau " +
                 "das Paar, das bei einer Rot-Gruen-Schwaeche zusammenfaellt."
         }

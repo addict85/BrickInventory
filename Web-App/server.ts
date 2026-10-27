@@ -90,8 +90,6 @@ import { fehlertext, logAndContinue, meldeUndWeiter } from './utils/httpError';
 import cluster from 'cluster';
 import os from 'os';
 import { starteHintergrundlaeufe } from './startup/backgroundJobs';
-import { generateThumb } from './utils/thumbs';
-import { setzeTeilBildLokal, setzeFigurBildLokal } from './utils/katalogPflege';
 import { getGlobalSetting, deleteGlobalSetting } from './utils/settings';
 import { HAUSHALT_KANAL, leereHaushaltCache } from './utils/household';
 import { drossleBeruehren } from './utils/sitzungsBeruehrung';
@@ -262,6 +260,16 @@ app.use((req, _res, next) => {
   next();
 });
 
+app.use((require('./utils/herkunft') as typeof import('./utils/herkunft')).nurEigeneHerkunft);
+{
+  const { API_VERSION, API_MIN_APP } = require('./utils/apiVersion') as typeof import('./utils/apiVersion');
+  app.use('/api', (_req, res, next) => {
+    res.setHeader('X-Api-Version', String(API_VERSION));
+    res.setHeader('X-Api-Min-App', String(API_MIN_APP));
+    next();
+  });
+}
+
 // Jede Anfrage bekommt eine kurze Kennung, die in allen Logzeilen dieser
 // Anfrage erscheint (siehe _intercept oben). Ein vom Reverse-Proxy gesetzter
 // X-Request-Id-Header wird übernommen, damit sich Proxy- und App-Log
@@ -350,71 +358,18 @@ app.use(session({
   }
 }));
 
-// Helper: serve a file under /data/... with session auth
 // resolveUserId kommt aus utils/auth.js — nutzt den Token-Cache, statt pro
 // Request die api_tokens-Tabelle zu befragen.
-const { resolveUserId } = require('./utils/auth') as typeof import('./utils/auth');
+const { resolveUserId, istVerwalter } = require('./utils/auth') as typeof import('./utils/auth');
 // Pfade zentral — NICHT aus __dirname ableiten, siehe utils/appPaths.ts.
-const {  DATA_DIR, PUBLIC_DIR } = require('./utils/appPaths') as typeof import('./utils/appPaths');
+const { PUBLIC_DIR } = require('./utils/appPaths') as typeof import('./utils/appPaths');
 // Die Adresse des Bild-Proxys steht in utils/images.ts — EINMAL, samt der
 // Begruendung, warum es die alte Schreibweise weiterhin gibt.
 const { IMG_PROXY_PFAD } = require('./utils/images') as typeof import('./utils/images');
 
-// Path-Traversal-Schutz: Segmente wie ".." oder absolute Pfade könnten sonst
-// aus dem data/-Verzeichnis ausbrechen (z.B. /data/uploads/..%2f..%2fserver.js).
-// Wir prüfen deshalb, dass der aufgelöste Pfad innerhalb des Basis-Verzeichnisses bleibt.
-// segments: string[] — der Typ ist hier kein Beiwerk. Diese Funktion IST der
-// Path-Traversal-Schutz; wer ihr etwas anderes als Zeichenketten reicht, laesst
-// `s === '..'` ins Leere laufen und die Wache mit.
-function safeDataPath(subDir: string, segments: string[]): string | null {
-  if (segments.some((s: string) => s === '..' || s === '.' || s.includes('\0'))) return null;
-  const baseDir  = path.resolve(DATA_DIR, subDir);
-  const filePath = path.resolve(baseDir, ...segments);
-  if (filePath !== baseDir && !filePath.startsWith(baseDir + path.sep)) return null;
-  return filePath;
-}
-
-/**
- * Ausliefern einer Datei unter data/<subDir>/<benutzer-id>/…
- *  Wer darf das lesen?
- * Hier stand `parseInt(segments[0]) !== userId` — also „nur deine eigene ID".
- * Das war richtig, solange ein Konto für sich allein stand, und passte nach dem …
- * Ausführlich: docs/begruendungen/server.ts.md#servedatafile
- */
-function serveDataFile(subDir: string) {
-  return async (req: WildcardRequest, res: Response) => {
-    const userId = await resolveUserId(req);
-    if (!userId) return res.status(401).send('Nicht angemeldet');
-    const segments = req.params.pfad.filter(Boolean);
-    const besitzer = segments[0] ? parseInt(segments[0]) : NaN;
-    if (Number.isFinite(besitzer) && besitzer !== userId && !req.session?.isAdmin) {
-      const { scopeIds } = require('./utils/household') as typeof import('./utils/household');
-      const erlaubt = await scopeIds(userId).catch(() => [userId]);
-      if (!erlaubt.includes(besitzer)) return res.status(403).send('Kein Zugriff');
-    }
-    const filePath = safeDataPath(subDir, segments);
-    if (!filePath) return res.status(404).send('Datei nicht gefunden');
-    // Kein fs.existsSync mehr (blockiert den Event-Loop) — sendFile prüft
-    // die Existenz selbst. Die Antwort auf einen Fehler steht in
-    // utils/dateiAusliefern.ts: Nicht jeder Fehler ist ein „nicht gefunden".
-    liefereDatei(res, filePath);
-  };
-}
-
-// Geteilte Bauanleitungen.
-//
-// data/instructions/ enthält ausschliesslich benutzerübergreifende PDFs —
-// benutzereigene Anleitungen liegen unter data/uploads/<benutzer-id>/. Deshalb
-// KEIN serveDataFile(): dessen Prüfung des ersten Pfadsegments gegen die
-// Benutzer-ID kann hier nie passen.
-app.get('/data/instructions/*pfad', async (req: WildcardRequest, res: Response) => {
-  const userId = await resolveUserId(req);
-  if (!userId) return res.status(401).send('Nicht angemeldet');
-  const segments = req.params.pfad.filter(Boolean);
-  const filePath = safeDataPath('instructions', segments);
-  if (!filePath) return res.status(404).send('Datei nicht gefunden');
-  liefereDatei(res, filePath);
-});
+// Eigene und geteilte Anleitungen unter /data/ — samt Pfad- und Besitzerprüfung.
+app.use(require('./routes/datenDateien') as typeof import('./routes/datenDateien'));
+const { safeDataPath } = require('./utils/datenPfad') as typeof import('./utils/datenPfad');
 // Bild-Proxy: eigene Datei (routes/imgProxy.ts).
 //
 // Der Block stand hier als ~440 Zeilen zwischen Session-Aufbau und
@@ -525,7 +480,6 @@ app.get('/images/*pfad', async (req: WildcardRequest, res: Response) => {
   });
 });
 
-app.get('/data/uploads/*pfad',      serveDataFile('uploads'));
 
 // Kein express.static für /images mehr.
 // Ausführlich: docs/begruendungen/server.ts.md#abschnitt-5
@@ -578,15 +532,18 @@ app.get('/api/v1/startup-status', async (_req, res) => {
 });
 
 // Gesundheitscheck samt Verbindungspool — ohne Anmeldung (compose.yaml).
-app.get('/api/v1/health', (_req, res) => {
-  const db = require('./db/database') as typeof import('./db/database');
-  const { getPoolStats } = db;
-  const pool = getPoolStats ? getPoolStats() : {};
+// Der Startzustand ist öffentlich (der Ladebildschirm vor der Anmeldung
+// braucht ihn); Pool und Laufzeit verraten Last und Neustarts — nur für den
+// Verwalter.
+app.get('/api/v1/health', async (req, res) => {
+  // Klemmt die Datenbank, bleibt der Bericht trotzdem erreichbar — nur ohne Details.
+  const verwalter = !!(await resolveUserId(req).catch(logAndContinue('health:anmeldung'))) && istVerwalter(req);
+  const { getPoolStats } = require('./db/database') as typeof import('./db/database');
   res.json({
     status: global.startupStatus?.ready ? 'ok' : 'starting',
     startup: global.startupStatus,
-    db_pool: pool,
-    uptime_seconds: Math.floor(process.uptime()),
+    ...(verwalter ? { db_pool: getPoolStats ? getPoolStats() : {},
+                      uptime_seconds: Math.floor(process.uptime()) } : {}),
   });
 });
 
@@ -689,6 +646,45 @@ const { renderIndexHtml } = require('./utils/indexHtml') as typeof import('./uti
 let isPrimaryWorker = false;
 let _primaryLockClient: any = null; // dedizierte Verbindung, die den Advisory-Lock hält
 
+/**
+ * Die Verbindung mit der Primär-Sperre offen halten. Reisst sie ab (Neustart
+ * der Datenbank, Netz), ist die Sperre frei; die Jobs dieses Prozesses laufen
+ * weiter. Darum holt er sie sich auf einer neuen Verbindung zurück, statt
+ * ohne Sperre Primär zu spielen.
+ */
+const SPERRE_NEU_MS = 2000;
+function haltePrimaerSperre(db: typeof import('./db/database'), client: import('pg').PoolClient) {
+  _primaryLockClient = client;
+  let weg = false;
+  const verloren = () => {
+    if (weg) return;
+    weg = true;
+    _primaryLockClient = null;
+    try { client.release(new Error('Primär-Sperre verloren')); } catch (e) { meldeUndWeiter('cluster:sperre-verbindung', e); }
+    console.warn(`[cluster] Worker ${process.pid}: Verbindung mit der Primär-Sperre verloren — neuer Versuch`);
+    setTimeout(() => sperreNeuHolen(db), SPERRE_NEU_MS).unref();
+  };
+  client.on('error', verloren);
+  client.on('end', verloren);
+}
+
+async function sperreNeuHolen(db: typeof import('./db/database')) {
+  let client: import('pg').PoolClient | null = null;
+  try {
+    client = await db.pool.connect();
+    const { rows } = await client.query('SELECT pg_try_advisory_lock($1) AS ok',
+      [(require('./utils/lockNamespaces') as typeof import('./utils/lockNamespaces')).LOCKS.PRIMARY_WORKER]);
+    if (rows[0]?.ok) { haltePrimaerSperre(db, client); return; }
+    client.release();
+    // Ein anderer Worker hält sie jetzt; dann laufen die Jobs dort.
+    isPrimaryWorker = false;
+    console.warn(`[cluster] Worker ${process.pid}: Primär-Sperre hält jetzt ein anderer Worker`);
+  } catch (e) {
+    try { client?.release(e instanceof Error ? e : true); } catch (f) { meldeUndWeiter('cluster:sperre-verbindung', f); }
+    setTimeout(() => sperreNeuHolen(db), SPERRE_NEU_MS).unref();
+  }
+}
+
 async function electPrimaryWorker(db: typeof import('./db/database')) {
   try {
     // Den Advisory-Lock auf einer DEDIZIERTEN Verbindung halten, die NICHT in
@@ -701,8 +697,7 @@ async function electPrimaryWorker(db: typeof import('./db/database')) {
       [(require('./utils/lockNamespaces') as typeof import('./utils/lockNamespaces')).LOCKS.PRIMARY_WORKER]);
     isPrimaryWorker = !!rows[0]?.ok;
     if (isPrimaryWorker) {
-      _primaryLockClient = client;                 // offen halten → Lock bleibt bestehen
-      client.on('error', () => { isPrimaryWorker = false; _primaryLockClient = null; });
+      haltePrimaerSperre(db, client);
     } else {
       client.release();                            // Lock nicht bekommen → Verbindung zurückgeben
     }
@@ -875,98 +870,7 @@ db.initSchemaOnce().then(async () => {
     finally { _csvSyncRunning = false; }
   });
 
-  // Background image download: 30s after startup, then every hour
-  (function scheduleImageDownloads() {
-    const run = async () => {
-      try {
-        const enrich  = require('./jobs/partsCatalogEnrich') as typeof import('./jobs/partsCatalogEnrich');
-        const monitor = require('./utils/jobMonitor') as typeof import('./utils/jobMonitor');
-        const sets = await db.all(
-          `SELECT DISTINCT set_number FROM set_parts_catalog
-           WHERE image_url IS NOT NULL AND image_local IS NULL
-           UNION
-           SELECT DISTINCT set_number FROM set_minifigs_catalog
-           WHERE image_url IS NOT NULL AND image_local IS NULL`
-        ).catch(() => []);
-        // Manuell erfasste Teile mit fehlendem lokalen Bild — im selben Job
-        // dauerhaft in den lokalen Cache laden (statt nur über den Proxy).
-        // Ausführlich: docs/begruendungen/server.ts.md#electprimaryworker-manualparts
-        const manualParts = await db.all(
-          `SELECT DISTINCT pcc.part_number, pcc.color_id, pcc.image_url
-             FROM part_color_catalog pcc
-             JOIN parts p ON p.part_number = pcc.part_number
-                         AND p.color_id    = pcc.color_id
-                         AND p.source      = 'manual'
-            WHERE pcc.image_url IS NOT NULL AND pcc.image_local IS NULL`
-        ).catch(() => []);
-        // Minifiguren — ALLE, nicht nur manuell erfasste.
-        // Ausführlich: docs/begruendungen/server.ts.md#electprimaryworker-figstofetch
-        const figsToFetch = await db.all(
-          `SELECT mc.fig_number, mc.image_url FROM minifigs_catalog mc
-            WHERE mc.image_url IS NOT NULL AND mc.image_local IS NULL
-              AND EXISTS (SELECT 1 FROM minifigs m WHERE m.fig_number = mc.fig_number)
-            ORDER BY mc.fig_number`
-        ).catch(() => []);
-        if (!sets.length && !manualParts.length && !figsToFetch.length) {
-          await monitor.update('imgDl', { status: 'idle', sub: 'Alle Bilder gecacht', label: '📥 Bild-Download (CDN)' }).catch(() => {});
-          return;
-        }
-        console.log(`[img-dl-bg] fehlende Bilder: ${sets.length} Set(s), ${manualParts.length} Teil(e), ${figsToFetch.length} Minifig(s)`);
-        await monitor.update('imgDl', { status: 'running', progress: 0,
-          total: sets.length + manualParts.length + figsToFetch.length,
-          sub: `${sets.length} Set(s), ${manualParts.length} Teil(e), ${figsToFetch.length} Minifig(s)`,
-          label: '📥 Bild-Download (CDN)' }).catch(() => {});
-        let done = 0;
-        const total = sets.length + manualParts.length + figsToFetch.length;
-        const tick = async () => {
-          done++;
-          if (done % 10 === 0 || done === total) {
-            await monitor.update('imgDl', { status: 'running', progress: done, total,
-              sub: `${done} / ${total} geladen`, label: '📥 Bild-Download (CDN)' }).catch(() => {});
-          }
-        };
-        for (const { set_number } of sets) {
-          await enrich.downloadSetImages(set_number).catch(e => console.warn(`[img-dl-bg] ${set_number}: ${e.message}`));
-          await tick();
-        }
-        for (const p of manualParts) {
-          const local = await enrich.downloadImage(p.image_url, p.part_number, p.color_id || 0, 'part').catch(() => null);
-          if (local) {
-            // In den Katalog (utils/katalogPflege.ts) — einmal fuer alle
-            // Konten. Mit Protokoll, falls es scheitert: Das Bild liegt dann
-            // auf der Platte, der Katalog zeigt aber nicht darauf. In der
-            // Oberflaeche fehlt es weiterhin, und der naechste Start laedt es
-            // erneut herunter.
-            await setzeTeilBildLokal(p.part_number, p.color_id || 0, local)
-              .catch(logAndContinue(`bilder:teil ${p.part_number}`));
-            // Fehlte bisher: Ohne diesen Aufruf blieb es bei der Originalgrösse,
-            // dauerhaft — anders als bei Sets (downloadSetImages() oben), wo
-            // die Vorschau schon immer angestossen wurde. Der einmalige
-            // Startup-Job weiter unten ("Generate missing thumbnails") hätte
-            // das irgendwann nachgeholt, aber erst beim NÄCHSTEN
-            // Server-Neustart — nicht wenn das Bild gerade frisch da ist.
-            generateThumb(local).catch(() => {});
-          }
-          await tick();
-        }
-        for (const f of figsToFetch) {
-          const local = await enrich.downloadImage(f.image_url, f.fig_number, 0, 'minifig').catch(() => null);
-          if (local) {
-            // Eine Zeile, nicht mehr alle Zeilen dieser Figur ueber Nutzer
-            // und Quellen hinweg: Die Datei heisst nach der Nummer, und der
-            // Katalog fuehrt sie seit Migration 0034 genau einmal.
-            await setzeFigurBildLokal(f.fig_number, local)
-              .catch(logAndContinue(`bilder:minifigur ${f.fig_number}`));
-            // Dieselbe fehlende Vorschau-Erzeugung wie bei den Teilen oben.
-            generateThumb(local).catch(() => {});
-          }
-          await tick();
-        }
-        await monitor.update('imgDl', { status: 'idle', sub: 'Alle Bilder gecacht', label: '📥 Bild-Download (CDN)' }).catch(() => {});
-      } catch(e) { console.error('[img-dl-bg] error:', fehlertext(e)); }
-    };
-    setTimeout(() => run().finally(() => setInterval(run, 60 * 60 * 1000)), 30_000);
-  })();
+  (require('./startup/bildNachlauf') as typeof import('./startup/bildNachlauf')).starteBildNachlauf();
 
 }).catch(err => {
   console.error('❌ Database initialisation failed:', err.message);

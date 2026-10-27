@@ -61,6 +61,7 @@ import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.util.NumericInput
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.Schrift
+import ch.brickinventoryapp.ui.components.LeerSymbol
 
 @OptIn(ExperimentalMaterial3Api::class, FlowPreview::class)
 @Composable
@@ -277,7 +278,7 @@ fun GalleryScreen(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 Button(onClick = onRefresh, shape = Formen.knopf) { Text(stringResource(R.string.gallery_refresh)) }
                             } else {
-                                Text("🔍", fontSize = 40.sp)
+                                LeerSymbol(Icons.Default.SearchOff)
                                 Text(stringResource(R.string.gallery_no_results, searchInput), fontWeight = FontWeight.SemiBold)
                             }
                         }

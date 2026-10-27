@@ -7,6 +7,7 @@ import ch.brickinventoryapp.data.model.CacheStatsResponse
 import ch.brickinventoryapp.data.model.JobStatus
 import ch.brickinventoryapp.data.repository.BrickRepository
 import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.ui.VerwaltungUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -87,10 +88,26 @@ data class MonitoringUiState(
 @HiltViewModel
 class MonitoringViewModel @Inject constructor(
     private val repo: BrickRepository,
+    private val texte: Texte,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(MonitoringUiState())
     val state = _state.asStateFlow()
+
+    /** Das Server-Protokoll — eigener Fluss, es lädt nur auf Wunsch. */
+    private val _verwaltungState = MutableStateFlow(VerwaltungUiState())
+    val verwaltungState = _verwaltungState.asStateFlow()
+
+    suspend fun ladeProtokoll(minuten: Int = _verwaltungState.value.protokollMinuten) {
+        _verwaltungState.update { it.copy(protokollLaden = true, protokollMinuten = minuten, fehler = null) }
+        when (val r = repo.admin.getProtokoll(minuten)) {
+            is Result.Success -> _verwaltungState.update {
+                it.copy(protokollLaden = false, protokoll = r.data.logs,
+                        fehler = if (r.data.success) null else r.data.error)
+            }
+            is Result.Error -> _verwaltungState.update { it.copy(protokollLaden = false, fehler = texte.meldung(r)) }
+        }
+    }
 
     suspend fun ladeJobs() {
         _state.update { it.copy(aktualisiert = true) }

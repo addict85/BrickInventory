@@ -80,14 +80,22 @@ test('Auffrischen nach Masseneinfuegen', { concurrency: 1 }, async (t) => {
   }
   const client = await db.pool.connect();
   try { await _req('db/migrate.js').runMigrations(client); } finally { client.release(); }
-  t.after(async () => { await db.pool.end().catch(() => {}); });
+
+  // Ein echtes Konto: parts_summary hat seit Migration 0043 einen Schlüssel auf users.
+  const NAME = `pflege_${process.pid}`;
+  await db.run('DELETE FROM users WHERE username = $1', [NAME]);
+  const uid = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1, 'x') RETURNING id`, [NAME])).id;
+  t.after(async () => {
+    await db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {});
+    await db.pool.end().catch(() => {});
+  });
 
   await t.test('pflegeTabelle raeumt auf UND vermisst neu', async () => {
     // Erst etwas einfuegen, damit es auch etwas zu tun gibt.
     await db.run(`INSERT INTO parts_summary (user_id, part_key, color_id, part_number,
         part_name, total_quantity, in_sets)
-      SELECT 90001, 'pflege'||g, 0, 'p'||g, 'Brick '||g, 1, 'x'
-      FROM generate_series(1, 200) g ON CONFLICT DO NOTHING`);
+      SELECT $1, 'pflege'||g, 0, 'p'||g, 'Brick '||g, 1, 'x'
+      FROM generate_series(1, 200) g ON CONFLICT DO NOTHING`, [uid]);
     const vorher = await stand('parts_summary');
     await new Promise(r => setTimeout(r, 1100));   // Zeitstempel haben Sekunden-Auflösung in der Anzeige
 

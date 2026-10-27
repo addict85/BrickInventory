@@ -1,6 +1,6 @@
 import { registerActions } from './00-registry.js';
 import { t, tRaw } from '../i18n.js';
-import { G, api, esc, toast } from './01-core.js';
+import { ico, G, api, esc, toast } from './01-core.js';
 import { confirmDelete } from './07-admin.js';
 import { loadUsers } from './05-settings.js';
 
@@ -32,7 +32,7 @@ export async function ladeZweitenFaktor() {
     </form>`);
     return;
   }
-  zeichne(`<p style="font-size:var(--fs-3);margin:0 0 .75rem 0">✅ ${esc(tRaw('zf.active', { n: d.codes_uebrig }))}</p>
+  zeichne(`<p style="font-size:var(--fs-3);margin:0 0 .75rem 0">${ico('ok')} ${esc(tRaw('zf.active', { n: d.codes_uebrig }))}</p>
     <form class="sform" style="max-width:420px">
       ${PASSWORTFELD()}
       ${CODEFELD(t('login.code'))}
@@ -91,7 +91,7 @@ export async function zfNeueCodes() {
 
 export async function zfAbschalten() {
   const password = G('zf-pw')?.value || '', code = G('zf-code')?.value || '';
-  if (!await confirmDelete(tRaw('zf.disable'), t('zf.disable_confirm'), '🔐')) return;
+  if (!await confirmDelete(tRaw('zf.disable'), t('zf.disable_confirm'), 'schloss')) return;
   const d = await api('POST', '/v1/auth/zweiter-faktor/abschalten', { password, code });
   if (!d?.success) { toast(d?.error || tRaw('settings.error'), 'error'); return; }
   toast(tRaw('zf.disabled'), 'success');
@@ -106,7 +106,7 @@ export async function zfCodesKopieren() {
 
 /** Verwalter: den zweiten Faktor eines Kontos entfernen (Telefon und Codes verloren). */
 export async function zfZuruecksetzen(uid, name) {
-  if (!await confirmDelete(tRaw('zf.reset_title'), tRaw('zf.reset_text', { name }), '🔐')) return;
+  if (!await confirmDelete(tRaw('zf.reset_title'), tRaw('zf.reset_text', { name }), 'schloss')) return;
   const d = await api('DELETE', `/v1/auth/users/${uid}/zweiter-faktor`);
   if (!d?.success) { toast(d?.error || tRaw('settings.error'), 'error'); return; }
   toast(tRaw('zf.disabled'), 'success');

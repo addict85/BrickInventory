@@ -235,32 +235,17 @@ class PdfZoomTest {
     }
 
     @Test
-    fun `der Zoom haelt die Stelle fest`() {
-        // Ohne Anker waechst die Seite aus der oberen linken Ecke heraus: Wer in
-        // eine Teilenummer hineinzoomt, sieht danach einen anderen Ausschnitt.
-        assert(Regex("""senkrecht\.scrollToItem\(""").containsMatchIn(quelle)) {
-            "Senkrecht wird nicht nachgefuehrt — beim Zoomen verliert man die Stelle."
+    fun `der Zoom rechnet beim Messen mit dem Fingerpunkt`() {
+        // Die Rechnung selbst prueft PdfZoomAnkerTest. Hier nur, dass sie dort
+        // aufgerufen wird, wo altes Layout und neuer Zoom zugleich vorliegen.
+        val messen = Regex("""\.layout \{ messbar, grenzen ->(.*?)\n {16}\}""", RegexOption.DOT_MATCHES_ALL)
+            .find(quelle)?.groupValues?.get(1)
+        assert(messen != null) { "Kein .layout { messbar, grenzen -> ... } vor dem Rollen mehr." }
+        for (teil in listOf("zoomZielY(", "requestScrollToItem(", "zoomZielX(", "dispatchRawDelta(")) {
+            assert(messen!!.contains(teil)) { "Beim Messen fehlt $teil:\n$messen" }
         }
-        assert(Regex("""firstVisibleItemScrollOffset \* f""").containsMatchIn(quelle)) {
-            "Der Versatz wird nicht mit dem Zoomfaktor mitgerechnet. Ohne das bleibt " +
-                "die Zahl stehen, waehrend die Seite waechst — die Anzeige wandert."
-        }
-        assert(Regex("""waagrecht\.scrollTo\(""").containsMatchIn(quelle)) {
-            "Waagerecht wird nicht nachgefuehrt. Beim Hineinzoomen aus 1x waechst die " +
-                "Seite sonst nach rechts aus dem Bild."
-        }
-        // scrollToItem und NICHT scrollBy: Ein Delta waere je nach Zeitpunkt
-        // gegen die alte oder die neue Groesse gerechnet.
-        assert(!Regex("""senkrecht\.scrollBy\(""").containsMatchIn(quelle)) {
-            "Senkrecht wird mit einem Delta nachgefuehrt. Das ist je nach Zeitpunkt " +
-                "gegen die alte oder die neue Seitengroesse gerechnet; scrollToItem " +
-                "(Index + Versatz) ist davon unabhaengig."
-        }
-        // EIN langlebiger Effekt, nicht einer je Zoomwert.
-        assert(Regex("""snapshotFlow \{ zoomJetzt \}""").containsMatchIn(quelle)) {
-            "Die Nachfuehrung haengt nicht mehr an einem snapshotFlow. Mit dem Zoom als " +
-                "Effekt-Schluessel wird sie bei jedem Bild der Geste abgebrochen und neu " +
-                "gestartet — und jede abgebrochene Nachfuehrung ist ein Stueck Abdrift."
+        assert(quelle.indexOf(".layout {") < quelle.indexOf(".horizontalScroll(")) {
+            "Die Messung steht nicht vor horizontalScroll — dann kappt es das Ziel an der alten Breite."
         }
     }
 

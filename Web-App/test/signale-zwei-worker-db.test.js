@@ -11,6 +11,14 @@
  *      → rot: nach dem Widerruf „200,401,200,401,…" und Haushalt halb veraltet
  *   B  ohne `agent: false` (Keep-Alive) → alles beim selben Worker; das fängt
  *      der erste Teiltest („Anfragen erreichen beide Worker") ab
+ *   C  (27.10.) die Zeile app.use(nurEigeneHerkunft) in server.ts entfernt →
+ *      rot: „weist schreibende Anfragen fremder Seiten ab" (200)
+ *   D  (27.10.) /health liefert db_pool wieder immer → rot: „verrät ohne
+ *      Verwalter nur den Startzustand"
+ *   F  (27.10.) die /api-Middleware für X-Api-Version in server.ts entfernt →
+ *      rot: „jede API-Antwort nennt die Schnittstellenfassung"
+ *   E  (27.10.) in haltePrimaerSperre das setTimeout(sperreNeuHolen) entfernt →
+ *      rot: „die Primär-Sperre kommt nach einem Verbindungsabbruch zurück"
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -155,6 +163,61 @@ test('Cache-Signale erreichen jeden Worker', { concurrency: 1, timeout: 180_000 
       const nachher = await runde('/api/v1/settings/raw');
       assert.deepEqual(nachher.map(r => r.status), Array(RUNDE).fill(401),
         'Ein Worker bedient den widerrufenen Token weiter — er lauscht nicht auf dem Kanal');
+    });
+
+    await t.test('die Primär-Sperre kommt nach einem Verbindungsabbruch zurück', async () => {
+      // pg_locks gilt für den ganzen Cluster: Ohne die Datenbank fände die
+      // Abfrage auch die Sperre eines anderen Servers auf derselben Instanz.
+      const halter = () => db.get(`SELECT pid FROM pg_locks WHERE locktype = 'advisory' AND classid = 0
+                                     AND objid = 99999999 AND granted
+                                     AND database = (SELECT oid FROM pg_database WHERE datname = current_database())`);
+      const vorher = await halter();
+      assert.ok(vorher, 'Vorbedingung: ein Worker hält die Primär-Sperre');
+      await db.run('SELECT pg_terminate_backend($1)', [vorher.pid]);
+      let nachher;
+      // Auf beides warten: Die Warnung kommt über die Pipe des Kindprozesses.
+      for (let i = 0; i < 40; i++) {
+        await warte(250);
+        nachher = await halter();
+        if (nachher && nachher.pid !== vorher.pid && /Primär-Sperre verloren/.test(log)) break;
+      }
+      assert.ok(nachher && nachher.pid !== vorher.pid,
+        'Nach dem Abbruch hält niemand mehr die Sperre — die Jobs liefen ohne Primär weiter');
+      assert.match(log, /Primär-Sperre verloren/);
+    });
+
+    await t.test('jede API-Antwort nennt die Schnittstellenfassung', async () => {
+      const r = await new Promise((auf, ab) => {
+        const q = http.request({ host: '127.0.0.1', port, path: '/api/v1/health', agent: false },
+          res => { res.resume(); auf(res.headers); });
+        q.on('error', ab); q.end();
+      });
+      const { API_VERSION, API_MIN_APP } = _req('utils/apiVersion.js');
+      assert.equal(r['x-api-version'], String(API_VERSION), 'Ohne die Kopfzeile kann die App nicht sagen, wer zu alt ist');
+      assert.equal(r['x-api-min-app'], String(API_MIN_APP));
+    });
+
+    await t.test('/health verrät ohne Verwalter nur den Startzustand', async () => {
+      const offen = await hole(port, '/api/v1/health');
+      assert.equal(offen.status, 200);
+      assert.ok(offen.body.status && offen.body.startup, 'Der Ladebildschirm braucht den Startzustand');
+      assert.equal(offen.body.db_pool, undefined, 'Pool-Zahlen ohne Anmeldung');
+      const frisch = (await hole(port, '/api/v1/auth/login', { methode: 'POST', body: { username: HAUPT, password: PASS } })).body.token;
+      assert.equal((await hole(port, '/api/v1/settings/raw', { token: frisch })).status, 200, 'Vorbedingung: ein gültiger Token');
+      assert.equal((await hole(port, '/api/v1/health', { token: frisch })).body.db_pool, undefined, 'Pool-Zahlen für jedes Konto');
+      await db.run('UPDATE users SET is_admin = 1 WHERE id = $1', [ids[HAUPT]]);
+      await db.run(`SELECT pg_notify('tokens_geaendert', '')`);
+      await warte(300);
+      assert.ok((await hole(port, '/api/v1/health', { token: frisch })).body.db_pool, 'Der Verwalter sieht den Pool');
+    });
+
+    await t.test('server.ts weist schreibende Anfragen fremder Seiten ab', async () => {
+      const r = await new Promise((auf, ab) => {
+        const q = http.request({ host: '127.0.0.1', port, path: '/api/v1/auth/logout', method: 'POST',
+          agent: false, headers: { 'sec-fetch-site': 'cross-site' } }, res => { res.resume(); auf(res.statusCode); });
+        q.on('error', ab); q.end();
+      });
+      assert.equal(r, 403, 'utils/herkunft.ts hängt nicht in server.ts');
     });
 
   } finally {

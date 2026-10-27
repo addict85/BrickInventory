@@ -78,7 +78,7 @@
     .hright{display:flex;align-items:center;gap:16px}
     .hstats{display:flex;gap:14px}
     .hs{display:flex;flex-direction:column;align-items:center;line-height:1.2}
-    .hs .v{font-family:var(--mono);font-size:var(--fs-3);font-weight:500;color:var(--b600)}
+    .hs .v{font-variant-numeric:tabular-nums;font-size:var(--fs-3);font-weight:500;color:var(--b600)}
     .hs .l{font-size:var(--fs-0);color:var(--mut);text-transform:uppercase;letter-spacing:.4px}
     /* ── Die Bedienelemente der Kopfleiste sind gleich hoch ──────────────
 
@@ -198,7 +198,7 @@
 
     nav{background:var(--sur);border-bottom:1px solid var(--bdr);display:flex;padding:0 1rem;overflow-x:auto;position:sticky;top:58px;z-index:99;scrollbar-width:none;-ms-overflow-style:none}
     nav::-webkit-scrollbar{display:none}
-    .ntab{padding:12px 13px;cursor:pointer;font-size:var(--fs-3);font-weight:600;color:var(--mut);border-bottom:2px solid transparent;transition:all .15s;display:flex;align-items:center;gap:6px;white-space:nowrap;margin-bottom:-1px}
+    .ntab{background:none;border:0;border-bottom:2px solid transparent;font-family:inherit;padding:12px 13px;cursor:pointer;font-size:var(--fs-3);font-weight:600;color:var(--mut);border-bottom:2px solid transparent;transition:all .15s;display:flex;align-items:center;gap:6px;white-space:nowrap;margin-bottom:-1px}
     .ntab:hover{color:var(--txt)}
     .ntab.active,.ntab.gruppe-aktiv{color:var(--b600);border-bottom-color:var(--b600)}
     /* Teile, Minifiguren und die Verwalterseiten haben einen Reiter, aber keinen
@@ -246,7 +246,7 @@
 
     /* CARDS & FORMS */
     .card{background:var(--sur);border:1px solid var(--bdr);border-radius:var(--rad);padding:var(--sp-5);box-shadow:var(--sh0)}
-    .ctitle{font-size:var(--fs-1);font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--mut);margin-bottom:1rem}
+    .ctitle{font-size:var(--fs-3);font-weight:700;color:var(--txt);margin-bottom:1rem}
     .frow{display:flex;gap:var(--sp-3);align-items:flex-end;flex-wrap:wrap}
     .fg{display:flex;flex-direction:column;gap:var(--sp-1);flex:1;min-width:145px}
     .fg input,.fg select,.fg textarea{box-sizing:border-box;height:38px;padding:.5rem .75rem;border:1px solid var(--bdr);border-radius:var(--rad);background:var(--sur);color:var(--txt);font-size:var(--fs-3);font-family:inherit;width:100%}
@@ -411,8 +411,8 @@
     .fgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1rem;margin-bottom:1.5rem}
     .fstat{background:var(--sur);border:1.5px solid var(--bdr);border-radius:var(--rad);padding:1.1rem 1.35rem;box-shadow:var(--sh0)}
     .fstat.hi{border-color:var(--b300);background:var(--b50)}
-    .flbl{font-size:var(--fs-0);font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--mut);margin-bottom:5px}
-    .fval{font-family:var(--mono);font-size:var(--fs-6);font-weight:500;color:var(--b700)}
+    .flbl{font-size:var(--fs-2);font-weight:600;color:var(--mut);margin-bottom:5px}
+    .fval{font-variant-numeric:tabular-nums;font-size:var(--fs-6);font-weight:600;color:var(--b700)}
     .fstat.hi .fval{color:var(--b600)}
     .fcur{font-size:var(--fs-1);color:var(--mut);margin-left:3px}
 
@@ -421,7 +421,7 @@
     @media(max-width:900px){.parts-layout{grid-template-columns:1fr}}
     .parts-sidebar{background:var(--sur);border:1px solid var(--bdr);border-radius:var(--rad);padding:1rem;box-shadow:var(--sh0);position:sticky;top:74px}
     .sidebar-section{margin-bottom:1.25rem}
-    .sidebar-title{font-size:var(--fs-0);font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--mut);margin-bottom:.6rem}
+    .sidebar-title{font-size:var(--fs-2);font-weight:700;color:var(--txt);margin-bottom:.6rem}
     .filter-list{display:flex;flex-direction:column;gap:2px;max-height:220px;overflow-y:auto}
     .filter-item{display:flex;align-items:center;justify-content:space-between;padding:5px 8px;border-radius:6px;cursor:pointer;font-size:var(--fs-2);transition:background .12s}
     .filter-item:hover{background:var(--s100)}
@@ -431,7 +431,7 @@
     .color-dot{width:14px;height:14px;border-radius:50%;border:1px solid rgba(0,0,0,.12);flex-shrink:0}
     .parts-stats-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:.75rem;margin-bottom:1.25rem}
     .pstat{background:var(--sur);border:1px solid var(--bdr);border-radius:8px;padding:.85rem 1rem;text-align:center;box-shadow:var(--sh0)}
-    .pstat .v{font-family:var(--mono);font-size:var(--fs-5);font-weight:500;color:var(--b600)}
+    .pstat .v{font-variant-numeric:tabular-nums;font-size:var(--fs-5);font-weight:600;color:var(--b600)}
     .pstat .l{font-size:var(--fs-0);color:var(--mut);text-transform:uppercase;letter-spacing:.4px;margin-top:2px}
     .parts-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:.85rem}
     .part-card{background:var(--sur);border:1.5px solid var(--bdr);border-radius:8px;padding:.85rem;text-align:center;box-shadow:var(--sh0);transition:border-color .15s}
@@ -447,7 +447,7 @@
     .part-num{font-family:var(--mono);font-size:var(--fs-0);color:var(--b600);margin-bottom:3px}
     .part-name{font-size:var(--fs-1);font-weight:600;line-height:1.3;margin-bottom:6px;color:var(--txt)}
     .part-color{display:flex;align-items:center;justify-content:center;gap:5px;font-size:var(--fs-0);color:var(--mut)}
-    .part-qty{font-family:var(--mono);font-weight:700;font-size:var(--fs-3);color:var(--b700);margin-top:5px}
+    .part-qty{font-variant-numeric:tabular-nums;font-weight:700;font-size:var(--fs-3);color:var(--b700);margin-top:5px}
     .spare-tag{font-size:var(--fs-0);background:var(--a100);color:var(--a-schrift);padding:1px 5px;border-radius:4px;margin-top:3px;display:inline-block}
     .parts-group{margin-bottom:1.75rem}
     /* Manuell erfasste Teile/Minifiguren — einheitliche editierbare Tiles */
@@ -477,7 +477,7 @@
     .ssec{background:var(--sur);border:1.5px solid var(--bdr);border-radius:var(--rad);padding:var(--sp-5);box-shadow:var(--sh0)}
     .sgroup-label{font-size:var(--fs-0);font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--mut);padding:.5rem 0 .75rem;margin-top:1.5rem;border-bottom:2px solid var(--bdr);margin-bottom:1rem}
     .ssec.full{grid-column:1/-1}
-    .stit{font-size:var(--fs-1);font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--mut);margin-bottom:1rem;padding-bottom:.75rem;border-bottom:1px solid var(--bdr)}
+    .stit{font-size:var(--fs-3);font-weight:700;color:var(--txt);display:flex;align-items:center;gap:6px;margin-bottom:1rem;padding-bottom:.75rem;border-bottom:1px solid var(--bdr)}
     .sform{display:flex;flex-direction:column;gap:13px}
     .ibox{background:var(--b50);border:1px solid var(--b200);border-radius:8px;padding:11px 13px;font-size:var(--fs-2);color:var(--b700);line-height:1.7}
     .ibox a{color:var(--b600);font-weight:600}
@@ -568,8 +568,8 @@
     .empty .icon{font-size:var(--fs-8);margin-bottom:.75rem}
     .empty h3{font-size:var(--fs-4);font-weight:700;color:var(--txt);margin-bottom:.3rem}
     tfoot td{background:var(--b50)!important;font-weight:600}
-    .price-cell{font-family:var(--mono);color:var(--g500);font-size:var(--fs-2)}
-    .price-total{font-family:var(--mono);color:var(--b700);font-weight:600}
+    .price-cell{font-variant-numeric:tabular-nums;color:var(--g500);font-size:var(--fs-2)}
+    .price-total{font-variant-numeric:tabular-nums;color:var(--b700);font-weight:600}
     .lv{display:inline-flex;align-items:center;background:var(--g100);color:#15803d;font-size:var(--fs-0);font-weight:600;padding:2px 6px;border-radius:999px}
     .lc{display:inline-flex;align-items:center;background:var(--b100);color:var(--b700);font-size:var(--fs-0);font-weight:600;padding:2px 6px;border-radius:999px}
     /* Preisstatus in der Finanztabelle: Haken = Preis da, Warndreieck = keiner.
@@ -756,3 +756,28 @@ html::-webkit-scrollbar{width:0;height:0}
 
     /* Nummer und Kopieren-Knopf in einer Zeile. */
     .voucher-num-row{display:flex;align-items:center;gap:.35rem}
+
+    /* ── Symbole an ihren Plätzen (Emoji abgelöst am 27.10.) ─────────────── */
+    .empty .icon .ico,.no-parts .icon .ico,.leer-ico .ico{width:44px;height:44px;color:var(--s400);stroke-width:1.6}
+    .leer-ico{margin-bottom:.5rem}
+    #cd-icon .ico{width:44px;height:44px;color:var(--r500);stroke-width:1.6}
+    .part-img-ph .ico,.man-tile-img-ph .ico{width:32px;height:32px;stroke-width:1.6}
+    .step-icon .ico{width:18px;height:18px}
+    .toast-ico{display:inline-flex}
+    .toast.success .toast-ico{color:var(--g500)} .toast.error .toast-ico{color:var(--r500)} .toast.info .toast-ico{color:var(--b600)}
+    .pst .ico{width:12px;height:12px;stroke-width:3}
+    .fin-unter{display:none}
+    .fin-ph{display:inline-flex;width:40px;height:40px;align-items:center;justify-content:center;background:var(--s50);border-radius:6px;color:var(--s400)}
+    .ibadge .ico,.lc .ico,.lv .ico{width:14px;height:14px}
+    .btn .ico{width:16px;height:16px}
+    /* Knöpfe in der Textschrift — ohne das erben sie die Systemschrift (Arial). */
+    button,input,select,textarea{font-family:inherit}
+    a.btn,a.btn:hover{text-decoration:none}
+    .period-btn{min-height:32px;padding:5px 14px}
+
+    /* Nur am Handy sichtbar (mobile.css) */
+    .filter-knopf,.ubadge-ico{display:none}
+    .empty.leer{text-align:center;padding:2.5rem 1rem}
+    .empty.leer h3{margin:.25rem 0 .35rem}
+    .empty.leer p{color:var(--mut);margin:0 auto 1rem;max-width:42ch}
+    .empty.leer .btn{display:inline-flex;align-items:center;gap:6px}

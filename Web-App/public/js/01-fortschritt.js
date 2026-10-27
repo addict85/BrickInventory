@@ -21,7 +21,7 @@
 // längst denselben); kritisch wäre nur ein const-Zugriff während der
 // Auswertung, und den gibt es hier nicht.
 import { registerActions } from './00-registry.js';
-import { G, ME, api } from './01-core.js';
+import { ico, G, ME, api } from './01-core.js';
 import { _csvPollActive, hideProgress, loadGallery, loadStats, showProgress } from './02-gallery.js';
 import { t, tRaw } from '../i18n.js';
 
@@ -47,7 +47,7 @@ function gibApplyStatus(s) {
     G('gib-fill').style.width = pct + '%';
     G('gib-text').textContent = running
       ? `${done}/${total} (${pct}%)`
-      : `✅ ${s.ok} ok${s.warn ? ', '+s.warn+' ⚠️' : ''}${s.err ? ', '+s.err+' ❌' : ''}`;
+      : `${s.ok} ok${s.warn ? ', '+s.warn+' '+t('csv.warnings') : ''}${s.err ? ', '+s.err+' '+t('csv.errors') : ''}`;
   }
 
   // Update overlay whenever it's open (both browser 1 minimized+reopened, and browser 2)
@@ -56,7 +56,7 @@ function gibApplyStatus(s) {
     G('prog-title-txt').textContent = tRaw('csv.import_title');
     G('prog-bar').style.width = pct + '%';
     if (running) {
-      G('prog-footer').textContent = `${t('csv.items_progress',{done,total})} (${s.ok} ok${s.warn ? ', '+s.warn+' ⚠️' : ''}${s.err ? ', '+s.err+' ❌' : ''})`;
+      G('prog-footer').textContent = `${t('csv.items_progress',{done,total})} (${s.ok} ok${s.warn ? ', '+s.warn+' '+t('csv.warnings') : ''}${s.err ? ', '+s.err+' '+t('csv.errors') : ''})`;
       if (s.current) G('prog-set-name').textContent = `Verarbeite: ${s.current} (${done}/${total})`;
     } else {
       G('prog-footer').textContent = `${t('csv.finished')} ${s.ok} ok${s.warn ? ', '+s.warn+' '+t('csv.warnings') : ''}${s.err ? ', '+s.err+' '+t('csv.errors') : ''}`;
@@ -65,7 +65,7 @@ function gibApplyStatus(s) {
   }
 
   // Update detail panel
-  G('gib-stats').textContent = `${s.ok||0} ✅ · ${s.warn||0} ⚠️ · ${s.err||0} ❌`;
+  G('gib-stats').innerHTML = `${Number(s.ok)||0} ${ico('ok')} · ${Number(s.warn)||0} ${ico('warnung')} · ${Number(s.err)||0} ${ico('fehler')}`;
   const gpw = G('gib-prog-wrap');
   if (gpw && running) {
     gpw.style.display = 'block';
@@ -104,9 +104,7 @@ function gibApplyStatus(s) {
 // Polling-Fallback: einmalig den Status holen und rendern.
 async function gibPoll() {
   try {
-    const wt = sessionStorage.getItem('webToken');
-    const headers = wt ? { 'Authorization': 'Bearer ' + wt } : {};
-    const s = await fetch('/api/v1/sets/import/csv/status', { headers, credentials: 'include' }).then(r=>r.json());
+    const s = await fetch('/api/v1/sets/import/csv/status', { credentials: 'include' }).then(r=>r.json());
     gibApplyStatus(s);
   } catch(_) {}
 }
@@ -163,7 +161,7 @@ function gibToggle() {
 export function protokollZeile(r, warnZusatz = '') {
   if (!r?.set_number) return null;
   if (r.success) {
-    return { ok: true, text: '✅ ' + r.set_number + ' – '
+    return { ok: true, text: r.set_number + ' – '
       + (r.action === 'added' ? t('common.added') : t('common.updated')) };
   }
   // `warnZusatz` nur fuer den CSV-Import: Dort heisst eine Anmerkung
@@ -171,10 +169,10 @@ export function protokollZeile(r, warnZusatz = '') {
   // heisst sie „offen, keine Rebrickable-Nummer" — derselbe Satz waere dort
   // schlicht falsch. Der Zusatz kommt deshalb vom Aufrufer und nicht von hier.
   if (r.isWarning) {
-    return { ok: false, text: '⚠️ ' + r.set_number + ': ' + (r.error || '')
+    return { ok: false, text: r.set_number + ': ' + (r.error || '')
       + (warnZusatz ? ' (' + warnZusatz + ')' : '') };
   }
-  return { ok: false, text: '❌ ' + r.set_number + ': ' + (r.error || t('settings.error')) };
+  return { ok: false, text: r.set_number + ': ' + (r.error || t('settings.error')) };
 }
 
 function gibAddLog(text, ok) {
@@ -247,9 +245,7 @@ export async function gibCheckOnLoad() {
     // auf dem Login-Screen im Drei-Sekunden-Takt weiter.
     if (!ME) return;
     try {
-      const wt = sessionStorage.getItem('webToken');
-      const headers = wt ? { 'Authorization': 'Bearer ' + wt } : {};
-      const r = await fetch('/api/v1/sets/import/csv/status', { headers, credentials: 'include' });
+      const r = await fetch('/api/v1/sets/import/csv/status', { credentials: 'include' });
 
       // Antwort erst prüfen, dann parsen. Steht ein Reverse-Proxy oder Tunnel
       // davor, liefert der bei Neustart oder Aussetzer eine HTML-Fehlerseite —

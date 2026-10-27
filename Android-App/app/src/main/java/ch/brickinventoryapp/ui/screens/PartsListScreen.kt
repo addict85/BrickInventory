@@ -26,7 +26,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import coil3.ImageLoader
 import coil3.request.ImageRequest
@@ -44,7 +43,8 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.core.graphics.toColorInt
 import ch.brickinventoryapp.util.NumericInput
 import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.ui.theme.Schrift
+import ch.brickinventoryapp.ui.components.LeerSymbol
+import androidx.compose.material.icons.automirrored.filled.ListAlt
 
 data class PlSet(val setNumber: String, var name: String = "")
 
@@ -522,7 +522,7 @@ fun PartsListScreen(
         if (!generated || parts.isEmpty()) {
             if (!isLoading) Box(Modifier.fillMaxSize(), Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("📋", fontSize = 48.sp)
+                    LeerSymbol(Icons.AutoMirrored.Filled.ListAlt, 48.dp)
                     Spacer(Modifier.height(Abstaende.klein))
                     Text(stringResource(R.string.partslist_empty_hint),
                         style = MaterialTheme.typography.bodySmall,
@@ -618,9 +618,9 @@ fun PartListRow(
                 Surface(color = MaterialTheme.colorScheme.surfaceVariant,
                     shape = MaterialTheme.shapes.small, modifier = Modifier.fillMaxSize()) {
                     Box(Modifier.fillMaxSize(), Alignment.Center) {
-                        // Figur weiter als Emoji, Teile mit dem gemeinsamen
-                        // Teile-Symbol (wie Reiter und Webapp).
-                        if (part.isFig) Text("🧍", fontSize = Schrift.sehrGross)
+                        // Teile mit dem gemeinsamen Teile-Symbol (wie Reiter
+                        // und Webapp), Figuren mit dem Personensymbol.
+                        if (part.isFig) LeerSymbol(Icons.Default.Person, 22.dp)
                         else Icon(
                             ImageVector.vectorResource(R.drawable.ic_parts_bricks),
                             contentDescription = null,

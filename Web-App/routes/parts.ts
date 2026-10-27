@@ -72,7 +72,7 @@ router.get('/categories', async (req, res) => {
       -- vorher stand sie je Konto in parts.
       SELECT COALESCE(rc.id::text, rp_cat.id::text, pc.category_name) AS category_name,
              COALESCE(rc.name, rp_cat.name, 'Unbekannt')              AS label,
-             COUNT(DISTINCT p.part_number) AS unique_parts,
+             COUNT(DISTINCT p.part_number)::int AS unique_parts,
              -- Der zweite Faktor ist die Zahl der Exemplare DES SETS. Er stand
              -- als COALESCE(s.quantity,1) hier; die Spalte ist mit Migration
              -- 0036 weg, die Menge kommt aus set_acquisitions. Die 1 bleibt
@@ -83,7 +83,7 @@ router.get('/categories', async (req, res) => {
              -- geloescht. Fuer ein Set-Teil ist es die Katalogzahl, fuer
              -- ein manuelles die Summe der Erfassungen — die
              -- Fallunterscheidung steht in utils/bestandsmenge.ts.
-             SUM(${teilmengeAus('p', 'part')} * ${mengeAus('sm', 1)}) AS total_quantity
+             SUM(${teilmengeAus('p', 'part')} * ${mengeAus('sm', 1)})::int AS total_quantity
       FROM parts p
       ${mengeJoin('p')}
       ${teilmengeJoin('p', 'part')}
@@ -380,14 +380,18 @@ async function updateManualPart(uid: number, partNumber: string, colorId: number
         await recordAcquisitionForDay('part', uid, [partNumber, colorId],
           { quantity: delta, price: mp, condition: cond });
       } else if (delta < 0) {
-        let rem = -delta;
-        for (const a of acqs) {
-          if (rem<=0) break;
-          const take = Math.min(a.quantity, rem);
-          if (take>=a.quantity) await db.run('DELETE FROM part_acquisitions WHERE id=$1', [a.id]);
-          else await db.run('UPDATE part_acquisitions SET quantity=quantity-$1 WHERE id=$2', [take, a.id]);
-          rem -= take;
-        }
+        // Eine Transaktion: Scheitert ein Schritt, wären sonst nur einige
+        // Erfassungen gekürzt und die Menge stimmte nicht mehr.
+        await db.transaction(async (tx) => {
+          let rem = -delta;
+          for (const a of acqs) {
+            if (rem<=0) break;
+            const take = Math.min(a.quantity, rem);
+            if (take>=a.quantity) await tx.run('DELETE FROM part_acquisitions WHERE id=$1', [a.id]);
+            else await tx.run('UPDATE part_acquisitions SET quantity=quantity-$1 WHERE id=$2', [take, a.id]);
+            rem -= take;
+          }
+        });
       }
     }
   }
@@ -406,7 +410,7 @@ async function updateManualPart(uid: number, partNumber: string, colorId: number
     // Leseabfrage mit COALESCE(..., 0). In der Erfassung bedeutet 0 „fuer …
     // Ausführlich: docs/begruendungen/routes/parts.ts.md#updatemanualpart-3
     await db.run(
-      `UPDATE part_acquisitions SET unit_price = NULLIF($1, 0)
+      `UPDATE part_acquisitions SET unit_price = NULLIF($1::numeric, 0)
         WHERE id = (SELECT a.id FROM part_acquisitions a
                      WHERE a.user_id=$2 AND a.part_number=$3
                        AND COALESCE(a.color_id, 0) = COALESCE($4, 0)

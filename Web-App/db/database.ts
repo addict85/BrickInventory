@@ -6,7 +6,7 @@
  */
 
 import { Pool, types as pgTypes } from 'pg';
-import { runMigrations } from './migrate';
+import { runMigrations, abgeloestesEntfernen } from './migrate';
 import { logAndContinue } from '../utils/httpError';
 import { APP_ROOT } from '../utils/appPaths';
 import fs from 'fs';
@@ -50,15 +50,7 @@ const POOL_CONFIG = {
   keepAliveInitialDelayMillis: 10000,
 };
 
-const baseConfig = process.env.DATABASE_URL
-  ? { connectionString: process.env.DATABASE_URL }
-  : {
-      host:     process.env.PGHOST     || 'postgres',
-      port:     parseInt(process.env.PGPORT || '5432'),
-      user:     process.env.PGUSER     || 'brickinventory',
-      password: process.env.PGPASSWORD || 'brickinventory_secret',
-      database: process.env.PGDATABASE || 'brickinventory',
-    };
+const baseConfig = (require('../utils/konfig') as typeof import('../utils/konfig')).datenbankVerbindung();
 
 const pool = new Pool({ ...baseConfig, ...POOL_CONFIG });
 
@@ -88,9 +80,20 @@ const RETRYABLE_CODES = new Set([
   '40001', // serialization_failure
   '40P01', // deadlock_detected
   '57P03', // cannot_connect_now (PG starting up)
-  '08006', // connection_failure
   '08001', // sqlclient_unable_to_establish_sqlconnection
 ]);
+/**
+ * Bricht die Verbindung MITTEN in der Anfrage ab, ist offen, ob sie schon
+ * festgeschrieben war. Ein Lesezugriff darf noch einmal, ein Schreibzugriff
+ * nicht — sonst steht die Zeile doppelt da.
+ */
+const NUR_LESEND_WIEDERHOLBAR = new Set(['08006']);
+
+/** Nur ein reines SELECT gilt als lesend; INSERT … RETURNING über get() nicht. */
+export function istLesend(sql: string): boolean {
+  const s = sql.replace(/--[^\n]*/g, '').trim();
+  return /^(SELECT|WITH)\b/i.test(s) && !/\b(INSERT|UPDATE|DELETE|MERGE)\b|\bFOR\s+(UPDATE|SHARE)\b/i.test(s);
+}
 
 /**
  * Eine Abfrage mit Wiederholung bei transienten Fehlern ausführen.
@@ -100,7 +103,7 @@ const RETRYABLE_CODES = new Set([
  * @param {number} maxRetries
  * @returns {Promise<T>}
  */
-async function queryWithRetry<T>(queryFn: () => Promise<T>, maxRetries = 2): Promise<T> {
+export async function queryWithRetry<T>(queryFn: () => Promise<T>, lesend: boolean, maxRetries = 2): Promise<T> {
   let lastErr: any;
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
@@ -110,7 +113,9 @@ async function queryWithRetry<T>(queryFn: () => Promise<T>, maxRetries = 2): Pro
       // `?? ''` statt eines Nicht-Null-Ausrufezeichens: Ein Fehler ohne Code
       // ist eben nicht wiederholbar, und der leere String faellt sauber
       // durch die Menge — genau das Verhalten von vorher, nur ohne `any`.
-      if (!RETRYABLE_CODES.has(fehlerCode(err) ?? '') || attempt === maxRetries) throw err;
+      const code = fehlerCode(err) ?? '';
+      const wiederholbar = RETRYABLE_CODES.has(code) || (lesend && NUR_LESEND_WIEDERHOLBAR.has(code));
+      if (!wiederholbar || attempt === maxRetries) throw err;
       const wait = 50 * Math.pow(2, attempt); // 50 ms, 100 ms
       await new Promise(r => setTimeout(r, wait));
     }
@@ -157,7 +162,7 @@ async function all(sql: string, params: any[] = []): Promise<any[]> {
   return queryWithRetry(async () => {
     const { rows } = await pool.query(sql, params);
     return rows;
-  });
+  }, istLesend(sql));
 }
 
 /**
@@ -169,7 +174,7 @@ async function get(sql: string, params: any[] = []): Promise<any> {
   return queryWithRetry(async () => {
     const { rows } = await pool.query(sql, params);
     return rows[0];
-  });
+  }, istLesend(sql));
 }
 
 /**
@@ -184,7 +189,7 @@ async function run(sql: string, params: any[] = []): Promise<{ changes: number; 
       changes: result.rowCount || 0,
       lastID:  (result.rows?.[0] as any)?.id ?? null,
     };
-  });
+  }, false);
 }
 
 /**
@@ -737,6 +742,7 @@ async function initSchemaOnce() {
 
     const applied = await runMigrations(client);
     if (applied.length) console.log(`✅ ${applied.length} Migration(en) angewandt`);
+    if (erzwungen && schonAngelegt) await abgeloestesEntfernen(client);
 
     // ── Bild-Hilfsdienste: NACH den Migrationen, in JEDEM Arbeitsprozess ────
     //

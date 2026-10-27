@@ -21,7 +21,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import ch.brickinventoryapp.R
 import ch.brickinventoryapp.util.NumericInput
 import ch.brickinventoryapp.data.model.CatalogSetDetail
@@ -40,6 +39,8 @@ import coil3.request.ImageRequest
 import coil3.request.crossfade
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.Schrift
+import ch.brickinventoryapp.ui.components.LeerSymbol
+import androidx.compose.material.icons.filled.ViewInAr
 
 /**
  * Katalog-Detail: Bild, Metadaten (Jahr, Thema, Teile, Minifiguren) und
@@ -138,7 +139,7 @@ fun CatalogDetailScreen(
                                 contentScale = androidx.compose.ui.layout.ContentScale.Fit
                             )
                         } else {
-                            Text("🧱", fontSize = 56.sp)
+                            LeerSymbol(Icons.Default.ViewInAr, 56.dp)
                         }
                     }
                 }

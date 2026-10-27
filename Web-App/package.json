@@ -18,7 +18,8 @@
     "test": "node --test --test-concurrency=1 --test-timeout=60000 \"test/*.test.js\"",
     "test:api": "node --test --test-concurrency=1 test/catalog-api.test.js test/api-parity.test.js",
     "build:frontend": "node scripts/build-frontend.js",
-    "design:tokens": "node scripts/generate-design-tokens.js"
+    "design:tokens": "node scripts/generate-design-tokens.js",
+    "schema:stand": "node scripts/schema-stand.js"
   },
   "dependencies": {
     "@cantoo/pdf-lib": "^2.11.1",

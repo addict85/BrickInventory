@@ -82,7 +82,7 @@ if (!fs.existsSync(SET_IMAGES_DIR)) fs.mkdirSync(SET_IMAGES_DIR, { recursive: tr
 //  Zugang zum Fortschrittskanal des CSV-Imports
 // Ausführlich: docs/begruendungen/routes/sets.ts.md#abschnitt-3
 import { findSetInScope } from '../utils/setAdd';
-import { loginOrTokenGuard, angemeldeteNutzerId } from '../utils/auth';
+import { loginOrTokenGuard, angemeldeteNutzerId, istVerwalter } from '../utils/auth';
 import { csvEinlesen, entschaerfungRueckgaengig, parseCsvDate, sendCsv, uebersprungenHinweis } from '../utils/csvExport';
 import { ausTabelle } from '../utils/validate';
 import { mitVersion } from '../utils/setNummer';
@@ -361,58 +361,65 @@ router.post('/import/csv', csvEmpfang.single('file'), async (req, res) => {
   (async () => {
     const results: any[] = [];
     let cancelled = false;
-    global._csvImportRunning = true; // signal to background jobs to back off
+    // Ein Zähler statt eines Schalters: Zwei Importe nebeneinander setzten ihn
+    // sonst beim ersten Ende zurück, während der zweite noch läuft.
+    global._csvImportLaeufe = (global._csvImportLaeufe ?? 0) + 1;
+    try {
+      for (const { sn, qty, purchasePrice, condition, acquiredAt } of rows) {
+        if (cancelled) break;
 
-    for (const { sn, qty, purchasePrice, condition, acquiredAt } of rows) {
-      if (cancelled) break;
-
-      // Check cancelled every 10 sets to reduce DB load
-      if (results.length % 10 === 0) {
-        const cur = await jobGet(userId).catch(() => null);
-        if (!cur || cur.status === 'cancelled') { cancelled = true; break; }
-      }
-
-      await jobUpdate(userId, { current: sn }).catch(logAndContinue('csv-import:fortschritt'));
-      emitJobStatus(userId);
-
-      let attempt = 0;
-      while (attempt < 2) {
-        try {
-          const r = await Promise.race([
-            addSetWithDate(sn, qty, userId, purchasePrice, condition, acquiredAt),
-            new Promise<never>((_,rej) => setTimeout(() => rej(new Error('Timeout')), 120000))
-          ]);
-          results.push({ set_number:sn, success:true, action:r.action });
-          break;
-        } catch(e) {
-          attempt++;
-          const msg = fehlertext(e) || 'Unbekannter Fehler';
-          const isTimeout   = msg.includes('Timeout');
-          const isRateLimit = msg.includes('429') || msg.includes('rate limit') || msg.includes('Daily limit');
-          if ((isTimeout || isRateLimit) && attempt < 2) {
-            console.warn(`CSV: ${sn} retry after ${msg}...`);
-            await new Promise(r => setTimeout(r, 5000));
-            continue; // retry — don't push error or update job yet
-          }
-          const isWarning = isTimeout || isRateLimit;
-          results.push({ set_number:sn, success:false, error:msg, isWarning });
-          console[isWarning?'warn':'error'](`CSV: ${sn} ${isWarning?'WARNING':'FAILED'}: ${msg}`);
+        // Check cancelled every 10 sets to reduce DB load
+        if (results.length % 10 === 0) {
+          const cur = await jobGet(userId).catch(() => null);
+          if (!cur || cur.status === 'cancelled') { cancelled = true; break; }
         }
+
+        await jobUpdate(userId, { current: sn }).catch(logAndContinue('csv-import:fortschritt'));
+        emitJobStatus(userId);
+
+        let attempt = 0;
+        while (attempt < 2) {
+          try {
+            // Der Wecker wird weggeräumt, sobald das Set da ist — sonst hielte
+            // jede Zeile zwei Minuten lang einen Zeitgeber am Leben.
+            let wecker: NodeJS.Timeout | undefined;
+            const r = await Promise.race([
+              addSetWithDate(sn, qty, userId, purchasePrice, condition, acquiredAt),
+              new Promise<never>((_,rej) => { wecker = setTimeout(() => rej(new Error('Timeout')), 120000); })
+            ]).finally(() => clearTimeout(wecker));
+            results.push({ set_number:sn, success:true, action:r.action });
+            break;
+          } catch(e) {
+            attempt++;
+            const msg = fehlertext(e) || 'Unbekannter Fehler';
+            const isTimeout   = msg.includes('Timeout');
+            const isRateLimit = msg.includes('429') || msg.includes('rate limit') || msg.includes('Daily limit');
+            if ((isTimeout || isRateLimit) && attempt < 2) {
+              console.warn(`CSV: ${sn} retry after ${msg}...`);
+              await new Promise(r => setTimeout(r, 5000));
+              continue; // retry — don't push error or update job yet
+            }
+            const isWarning = isTimeout || isRateLimit;
+            results.push({ set_number:sn, success:false, error:msg, isWarning });
+            console[isWarning?'warn':'error'](`CSV: ${sn} ${isWarning?'WARNING':'FAILED'}: ${msg}`);
+          }
+        }
+        // Update job after set is fully processed (success or final failure)
+        await jobUpdate(userId, { done: results.length, results: JSON.stringify(results) }).catch(e => {
+          console.error(`CSV: jobUpdate failed for ${sn}: ${e.message}`);
+        });
+        emitJobStatus(userId);
       }
-      // Update job after set is fully processed (success or final failure)
-      await jobUpdate(userId, { done: results.length, results: JSON.stringify(results) }).catch(e => {
-        console.error(`CSV: jobUpdate failed for ${sn}: ${e.message}`);
+
+      const finalStatus = cancelled ? 'cancelled' : 'done';
+      await jobUpdate(userId, { status: finalStatus, current: null }).catch(e => {
+        console.error(`CSV: final jobUpdate failed: ${e.message}`);
       });
       emitJobStatus(userId);
+      console.log(`CSV import ${finalStatus}: ${results.filter(r=>r.success).length} ok, ${results.filter(r=>!r.success).length} errors`);
+    } finally {
+      global._csvImportLaeufe = Math.max(0, (global._csvImportLaeufe ?? 1) - 1);
     }
-
-    const finalStatus = cancelled ? 'cancelled' : 'done';
-    await jobUpdate(userId, { status: finalStatus, current: null }).catch(e => {
-      console.error(`CSV: final jobUpdate failed: ${e.message}`);
-    });
-    emitJobStatus(userId);
-    console.log(`CSV import ${finalStatus}: ${results.filter(r=>r.success).length} ok, ${results.filter(r=>!r.success).length} errors`);
-    global._csvImportRunning = false;
 
     // Now trigger background enrichment for all successfully imported sets
     // (deferred during import to avoid DB pool exhaustion)
@@ -515,9 +522,14 @@ router.post('/import/csv/cancel', requireLogin, async (req, res) => {
 
 
 
+// Die Anleitungen sind geteilt: Neu laden darf, wer das Set im Haushalt hat
+// (oder der Verwalter) — sonst leerte jeder fremde Sets und verbrauchte das
+// Kontingent der Quellen.
 router.post('/:setNumber/instructions', async (req, res) => {
   try {
     const sn = req.params.setNumber;
+    if (!istVerwalter(req) && !(await findSetInScope(angemeldeteNutzerId(req), sn)))
+      return sendeFehler(req, res, 404, 'set_nicht_gefunden');
     await loescheAnleitungen(sn);
     // Download synchronously so we can return the actual results
     await downloadSetInstructions(sn).catch(() => {});
@@ -547,7 +559,8 @@ const uploadInstr = multer({
       // "function Object() { [native code] }". Siehe utils/validate.ausTabelle.
       const ext  = ausTabelle(INSTR_EXT_BY_MIME, file.mimetype);
       if (!ext) return cb(new Error('Nur PDF, JPG oder PNG'), '');
-      cb(null, `${safe}_${Date.now()}${ext}`);
+      // Zufällig statt Zeitstempel: Der Name soll sich nicht erraten lassen.
+      cb(null, `${safe}_${(require('crypto') as typeof import('crypto')).randomBytes(12).toString('hex')}${ext}`);
     }
   }),
   limits: { fileSize: 50*1024*1024 },

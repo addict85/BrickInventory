@@ -139,6 +139,10 @@ function distIsFresh() {
   for (const d of ['db', 'utils', 'routes', 'jobs']) {
     srcAt = Math.max(srcAt, newestMtime(path.join(ROOT, d), /\.ts$/));
   }
+  // Migrationen sind .sql und werden mitkopiert: Eine neue zählt wie eine
+  // geänderte Quelle, eine gelöschte über die Zeit des Verzeichnisses.
+  const mig = path.join(ROOT, 'db', 'migrations');
+  srcAt = Math.max(srcAt, newestMtime(mig, /\.sql$/), fs.existsSync(mig) ? fs.statSync(mig).mtimeMs : 0);
   return distAt >= srcAt;
 }
 

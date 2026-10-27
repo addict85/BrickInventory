@@ -1,7 +1,7 @@
 import { ladeAnzeige } from './01-bausteine.js';
 import { registerActions } from './00-registry.js';
 import { locale, t, tRaw} from '../i18n.js';
-import { CURRENCY, G, ME, TRASH_ICON_SVG, api, esc, escJs, escUrl, fmtBig, fmtN, imgUrl, observeLazyImages, thumbUrl, toast } from './01-core.js';
+import { leerZustand, ico, CURRENCY, G, ME, TRASH_ICON_SVG, api, esc, escJs, escUrl, fmtBig, fmtN, imgUrl, observeLazyImages, thumbUrl, toast } from './01-core.js';
 import { _gibSse, _gibTimer, gibStart, protokollZeile } from './01-fortschritt.js';
 import { _monitorTimer, loadMonitor, set_monitorTimer } from './01-monitor.js';
 import { SCOPE_VIEWS, addScopeParam, scopeMode, scopeQuery, setScopeMode,
@@ -56,6 +56,19 @@ function markiereGruppe(tab){
   document.querySelector('.ntab[data-tab="gallery"]')?.classList.toggle('gruppe-aktiv', SAMMLUNG.includes(tab));
   document.querySelectorAll('.sammlung-wahl [data-arg]').forEach(b =>
     b.setAttribute('aria-selected', String(b.dataset.arg === tab)));
+  // Vorleseprogramme erfahren so, welcher Reiter offen ist.
+  document.querySelectorAll('.ntab').forEach(x => {
+    if (x.classList.contains('active') || x.classList.contains('gruppe-aktiv')) x.setAttribute('aria-current', 'page');
+    else x.removeAttribute('aria-current');
+  });
+}
+
+/** Am Handy: die Filter hinter einem Knopf, damit die Liste oben beginnt. */
+export function filterUmschalten(){
+  const leiste = this?.closest?.('.filterleiste');
+  if (!leiste) return;
+  const offen = leiste.classList.toggle('offen');
+  this.setAttribute('aria-expanded', String(offen));
 }
 
 /** Einen Reiter öffnen — aus dem Umschalter der Sammlung oder dem Menü. */
@@ -298,8 +311,8 @@ export function handleSseEvent(ev, singleSetName){
     case 'meta':      setStep('meta','active'); setProgBar(10); G('prog-set-name').textContent=ev.set||singleSetName||''; break;
     case 'image':     setStep('meta','done'); setStep('image','active'); setProgBar(35); break;
     case 'done_meta': setStep('image','done'); setProgBar(90); break;
-    case 'done':      setProgBar(100); G('prog-footer').textContent=`✅ ${ev.action==='added'?t('common.added_cap'):t('common.updated_cap')}: ${esc(ev.set_number)}`; break;
-    case 'error':     G('prog-footer').textContent=`❌ ${esc(ev.error)}`; break;
+    case 'done':      setProgBar(100); G('prog-footer').textContent=`${ev.action==='added'?tRaw('common.added_cap'):tRaw('common.updated_cap')}: ${ev.set_number ?? ''}`; break;
+    case 'error':     G('prog-footer').textContent=String(ev.error ?? ''); break;
   }
 }
 
@@ -827,7 +840,13 @@ export function renderGallery(){
   const q=G('gs')?.value?.toLowerCase()||'';
   const list=allSets;
   const c=G('gallery');
-  if(!list.length){c.innerHTML=`<div class="empty"><img src="/assets/set-placeholder.svg" style="width:64px;height:64px;opacity:.4;margin:0 auto 12px;display:block" /><h3>${t('gallery.no_results',{query:q})}</h3><p>${q?t('gallery.no_results',{query:q}):t('gallery.empty')}</p></div>`;return;}
+  if(!list.length){
+    c.innerHTML = q
+      ? leerZustand({ ico: 'suche', titel: tRaw('gallery.no_results', { query: q }) })
+      : leerZustand({ ico: 'set', titel: tRaw('gallery.empty'),
+                      knopf: { text: tRaw('gallery.add.title'), click: 'oeffneErfassen', arg: 'set' } });
+    return;
+  }
   if(curView==='grid'){
     c.innerHTML=`<div class="sgrid">${list.map(gridCard).join('')}</div>`;
     observeLazyImages(c);
@@ -939,14 +958,14 @@ function gridCard(s){
       <div class="smeta">
         <span style="font-size:var(--fs-0)">${s.year||'—'}${s.theme?' · '+esc(s.theme.substring(0,12)):''}</span>
         <div style="display:flex;gap:3px;align-items:center;flex-wrap:wrap">
-          ${s.instructions?.length?`<span class="ibadge">📋${s.instructions.length}</span>`:''}
+          ${s.instructions?.length?`<span class="ibadge">${ico('liste')}${s.instructions.length}</span>`:''}
           ${s.quantity>1?`<span class="qbadge">×${s.quantity}</span>`:''}
           ${condBadge}
           ${ownerBadges(s)}
         </div>
       </div>
       <div class="price-badge" data-price-for="${esc(s.set_number)}"${priceStr||pnl ? '' : ' hidden'}><span style="font-weight:600;color:var(--b600)">${priceStr}</span>${pnl}</div>
-      ${addedFmt ? `<div style="font-size:var(--fs-0);color:var(--mut);margin-top:.2rem">📅 ${addedFmt}</div>` : ''}
+      ${addedFmt ? `<div style="font-size:var(--fs-0);color:var(--mut);margin-top:.2rem">${ico('kalender')} ${addedFmt}</div>` : ''}
     </div>
   </div>`;
 }
@@ -960,7 +979,7 @@ function tableRow(s){
     <td>${s.pieces?s.pieces.toLocaleString(locale()):'—'}</td><td>${s.minifigs||'—'}</td>
     <td><span class="qbadge">×${s.quantity}</span></td>
     <td style="font-size:var(--fs-1);color:var(--mut)">${addedFmt}</td>
-    <td>${s.instructions?.length?`<span class="ibadge">📋${s.instructions.length}</span>`:'—'}</td>
+    <td>${s.instructions?.length?`<span class="ibadge">${ico('liste')}${s.instructions.length}</span>`:'—'}</td>
     <td data-click="stopEvent"><button class="btn bs btn-sm" data-click="reimportParts" data-arg="${escJs(s.set_number)}">${PARTS_ICON_SVG}</button></td>
     <td data-click="stopEvent"><button class="btn bd btn-sm" data-click="delSet" data-arg="${escJs(s.set_number)}" title="${esc(t('detail.delete'))}" aria-label="${esc(t('detail.delete'))}">${TRASH_ICON_SVG}</button></td>
   </tr>`;
@@ -1138,7 +1157,7 @@ function csvApplyOverlayStatus(s, ctx, fi){
       }
       const warnTxt = s.warn ? `, ${s.warn} ${t('csv.timeout_warn')}` : '';
       const errTxt  = s.err  ? `, ${s.err} ${t('csv.errors')}` : '';
-      G('prog-footer').textContent=`✅ Import: ${s.ok} ok${warnTxt}${errTxt}`;
+      G('prog-footer').textContent=`Import: ${s.ok} ok${warnTxt}${errTxt}`;
       const btnClose = G('btn-close-import');
       if (btnClose) btnClose.style.display = '';
       loadGallery();
@@ -1308,8 +1327,8 @@ export function renderInstructions(instr, sn) {
       : `<a href="${escUrl(href)}" target="_blank" rel="noopener">${label}</a>`;
     return `<div class="ii" id="instr-${i.id}">
       ${link}
-      ${isUpload ? `<span class="lv" style="background:var(--p100);color:var(--p600)">${t('instr.badge_manual')}</span>` : isLocal ? '<span class="lc">💾</span>' : '<span class="lv">🌐</span>'}
-      ${isUpload ? `<button data-click="delInstr" data-arg="${esc(sn)}" data-arg2="${i.id}" title="${t('instr.delete_tooltip')}" style="background:none;border:none;cursor:pointer;color:var(--s400);font-size:var(--fs-3);padding:0 2px">✕</button>` : ''}
+      ${isUpload ? `<span class="lv" style="background:var(--p100);color:var(--p600)">${t('instr.badge_manual')}</span>` : isLocal ? `<span class="lc">${ico('speichern')}</span>` : `<span class="lv">${ico('globus')}</span>`}
+      ${isUpload ? `<button data-click="delInstr" data-arg="${esc(sn)}" data-arg2="${i.id}" title="${t('instr.delete_tooltip')}" style="background:none;border:none;cursor:pointer;color:var(--s400);font-size:var(--fs-3);padding:0 2px" aria-label="${t('instr.delete_tooltip')}">${ico('schliessen')}</button>` : ''}
     </div>`;
   }).join('');
 
@@ -1338,7 +1357,7 @@ export function renderInstructions(instr, sn) {
 }
 
 async function delInstr(sn, instrId) {
-  if (!await confirmDelete(tRaw('instr.delete_title'),t('instr.delete_text'),'📄')) return;
+  if (!await confirmDelete(tRaw('instr.delete_title'),t('instr.delete_text'),'datei')) return;
   const d = await api('DELETE', `/v1/sets/${sn}/instructions/${instrId}`);
   if (d.success) { toast(tRaw('instr.deleted'), 'success'); openModal(sn); }
   else toast(d.error || t('settings.error'), 'error');
@@ -1357,8 +1376,8 @@ async function uploadInstr(sn) {
     const r = await fetch(`/api/v1/sets/${sn}/instructions/upload`, { method: 'POST', body: fd });
     const d = await r.json();
     if (d.success) { toast(tRaw('instr.uploaded'), 'success'); openModal(sn); }
-    else { status.textContent = '❌ ' + (d.error || t('settings.error')); status.style.color = 'var(--r500)'; }
-  } catch (e) { status.textContent = '❌ ' + t('common.network_error'); }
+    else { status.textContent = d.error || tRaw('settings.error'); status.style.color = 'var(--r500)'; }
+  } catch (e) { status.textContent = tRaw('common.network_error'); }
 }
 
 // export, weil 07-admin.js die Funktion nach einem Eigentümerwechsel aufruft.
@@ -1410,7 +1429,7 @@ export function autosaveSet(){
           if (!ad?.success) return;
           const sumEl = G('m-acq-summary');
           if (sumEl) sumEl.innerHTML = renderAcquisitionSummary(ad.acquisitions, curSet.set_number) +
-            `<button class="btn bs btn-sm" data-click="openAcqModal" data-arg="${escJs(curSet.set_number)}" style="margin-top:4px;font-size:var(--fs-1);padding:2px 10px">✏️ ${t('detail.edit_prices')}</button>`;
+            `<button class="btn bs btn-sm" data-click="openAcqModal" data-arg="${escJs(curSet.set_number)}" style="margin-top:4px;font-size:var(--fs-1);padding:2px 10px">${ico('bearbeiten')} ${t('detail.edit_prices')}</button>`;
           if (G('acq-modal').classList.contains('open') && typeof renderAcqModalBody === 'function') {
             renderAcqModalBody(curSet.set_number, ad.acquisitions);
           }
@@ -1439,6 +1458,7 @@ async function redownloadInstr(sn){ toast(tRaw('instr.loading'),'info'); const d
 // Namen, und der Handler gilt als nicht angemeldet. GEMESSEN: genau so ist
 // der erste Lauf dieses Umbaus rot geworden.
 registerActions({
+  filterUmschalten,
   benutzerMenue,
   oeffneSicht,
   oeffneReiter,

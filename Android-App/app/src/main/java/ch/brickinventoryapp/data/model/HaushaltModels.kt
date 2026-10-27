@@ -80,7 +80,7 @@ data class HouseholdInviteResponse(
 data class MoveSetRequest(
     @SerialName("from_user_id") val fromUserId: Int? = null,
     @SerialName("to_user_id")   val toUserId: Int,
-    /** Leer = das ganze Set; sonst nur diese Kaufpreis-Zeilen. */
+    /** Die Kaufpreis-Zeilen, die wandern — der Server verlangt mindestens eine. */
     @SerialName("acquisition_ids") val acquisitionIds: List<Int>? = null,
 )
 

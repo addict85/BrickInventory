@@ -91,7 +91,7 @@ async function getMinifigs(userId: number | number[], { search, source, set_numb
            -- Die Stückzahl der Bestandszeile (Migration 0038): manuell die
            -- Summe der Erfassungen, aus einem Set die Katalogzahl. Hier
            -- stand m.quantity.
-           SUM(${teilmengeAus('m', 'fig')}) AS quantity,
+           SUM(${teilmengeAus('m', 'fig')})::int AS quantity,
            MAX(mc.image_url) AS image_url,
            MAX(mc.image_local) AS image_local,
            m.source,
@@ -109,7 +109,7 @@ async function getMinifigs(userId: number | number[], { search, source, set_numb
            -- hat sets.quantity geloescht). Der zweite Parameter 1 steht fuer
            -- „keine Erfassung", weil der Wert in einer
            -- MULTIPLIKATION steht: eine manuell erfasste Figur zaehlt einfach.
-           SUM(${teilmengeAus('m', 'fig')} * ${mengeAus('sm', 1)}) AS total_quantity,
+           SUM(${teilmengeAus('m', 'fig')} * ${mengeAus('sm', 1)})::int AS total_quantity,
            STRING_AGG(DISTINCT m.set_number, ',') FILTER (WHERE m.set_number IS NOT NULL) AS in_sets,
            -- Lagerort der GRUPPE, wortgleich zu handlers/parts.ts: Dieselbe
            -- Figur steckt in mehreren Sets und damit in mehreren Zeilen. Liegen

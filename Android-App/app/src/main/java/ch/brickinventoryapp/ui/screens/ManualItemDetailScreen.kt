@@ -27,7 +27,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.R
 import ch.brickinventoryapp.ui.setzeManuellenLagerort
@@ -51,6 +50,9 @@ import coil3.ImageLoader
 import coil3.compose.AsyncImage
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.Schrift
+import ch.brickinventoryapp.ui.components.LeerSymbol
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.ViewInAr
 
 /**
  * Detailansicht eines manuell erfassten Teils / einer manuell erfassten
@@ -207,7 +209,8 @@ fun ManualItemDetailScreen(
                                     MaterialTheme.colorScheme.secondaryContainer))),
                             Alignment.Center
                         ) {
-                            Text(if (isFig) "👷" else "🧱", fontSize = 42.sp)
+                            LeerSymbol(if (isFig) Icons.Default.Person else Icons.Default.ViewInAr, 42.dp,
+                                MaterialTheme.colorScheme.onPrimaryContainer)
                         }
                     }
                 }

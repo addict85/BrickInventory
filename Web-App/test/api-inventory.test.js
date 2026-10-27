@@ -151,6 +151,7 @@ const C = {
   // waren fuer die App also gar nicht erreichbar.
   'GET /api/v1/settings/tokens': 'nur-v1',
   'DELETE /api/v1/settings/tokens/:tokenId': 'nur-v1',
+  'POST /api/v1/settings/sessions/andere-beenden': 'nur-v1',
   'GET /api/v1/catalog/meta': 'nur-v1',
   'GET /api/v1/catalog/sets': 'nur-v1',
   'GET /api/v1/catalog/sets/:setNumber': 'nur-v1',

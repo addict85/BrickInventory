@@ -202,6 +202,9 @@ const NUR_WEB = new Map([
    'Was bleibt: Die Befunde in der Kopfzeile (welcher Betrag ersetzt wurde ' +
    'und welcher nicht) liest nur die Webapp; im Betrachter steht das PDF, ' +
    'nicht die Auskunft darueber.'],
+  ['/api/v1/settings/sessions/andere-beenden',
+    'Beendet die übrigen BROWSER-Sitzungen. Die App hat keine Sitzung; ihre ' +
+    'Gegenstücke sind die Token, die beide über /settings/tokens verwalten.'],
   ['/api/v1/settings/import',
    'Spielt eine gesicherte Verwaltungs-Konfiguration aus einer JSON-Datei ' +
    'zurück. Dasselbe Urteil wie bei der Nutzerverwaltung: eine Aufgabe für ' +

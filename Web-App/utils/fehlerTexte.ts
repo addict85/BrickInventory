@@ -52,6 +52,12 @@ export const FEHLER = {
                                  en: 'The password must be at least 8 characters long.' },
   aktuelles_passwort_erforderlich: { de: 'Aktuelles Passwort erforderlich',
                                  en: 'Current password required' },
+  passwort_ueber_change_password: { de: 'Das Passwort wird über „Passwort ändern" geändert.',
+                                 en: 'Change the password via "Change password".' },
+  fremde_herkunft:             { de: 'Diese Anfrage kam nicht von dieser Seite.',
+                                 en: 'This request did not come from this site.' },
+  import_unterbrochen:         { de: 'Der Import wurde unterbrochen — der Server wurde neu gestartet oder der Import hing. Bitte erneut starten.',
+                                 en: 'The import was interrupted — the server restarted or the import stalled. Please start it again.' },
   aktuelles_passwort_falsch:   { de: 'Aktuelles Passwort falsch', en: 'Current password is wrong' },
   alle_felder_erforderlich:    { de: 'Alle Felder erforderlich', en: 'All fields are required' },
   passwort_reset_nicht_eingerichtet: {
