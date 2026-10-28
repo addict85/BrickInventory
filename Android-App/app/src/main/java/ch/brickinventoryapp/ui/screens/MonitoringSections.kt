@@ -105,7 +105,7 @@ internal fun BricksetQueueRow(
                 TextButton(
                     onClick = { showError = !showError },
                     contentPadding = PaddingValues(0.dp),
-                    modifier = Modifier.height(24.dp)
+                    modifier = Modifier.heightIn(min = 24.dp)
                 ) {
                     Text(if (showError) stringResource(R.string.monitoring_hide_error) else stringResource(R.string.monitoring_show_error),
                         style = MaterialTheme.typography.labelSmall,

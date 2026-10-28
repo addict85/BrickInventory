@@ -341,7 +341,7 @@ fun ConditionToggle(
                 onClick = { onSelect(value) },
                 shape = MaterialTheme.shapes.small,
                 color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
-                modifier = Modifier.height(34.dp)
+                modifier = Modifier.heightIn(min = 34.dp)
             ) {
                 Box(Modifier.padding(horizontal = 14.dp), contentAlignment = Alignment.Center) {
                     Text(

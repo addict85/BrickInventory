@@ -78,7 +78,7 @@ fun PortfolioChart(
                 isLoading -> Box(Modifier.fillMaxWidth().height(160.dp), Alignment.Center) {
                     CircularProgressIndicator(Modifier.size(24.dp))
                 }
-                points.size < 2 -> Box(Modifier.fillMaxWidth().height(80.dp), Alignment.Center) {
+                points.size < 2 -> Box(Modifier.fillMaxWidth().heightIn(min = 80.dp), Alignment.Center) {
                     Text(stringResource(R.string.chart_no_history),
                         style = MaterialTheme.typography.bodySmall, color = mutedColor)
                 }
@@ -183,7 +183,7 @@ fun PortfolioChart(
                         selected  = selectedPeriod == p,
                         onClick   = { onPeriodChange(p) },
                         label     = { Text(label, style = MaterialTheme.typography.labelSmall) },
-                        modifier  = Modifier.height(28.dp)
+                        modifier  = Modifier.heightIn(min = 28.dp)
                     )
                 }
             }
