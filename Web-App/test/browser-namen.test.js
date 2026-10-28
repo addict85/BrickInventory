@@ -53,3 +53,30 @@ test('public/js: jeder verwendete Name ist deklariert oder importiert', () => {
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test('public/js: die Typprüfung (checkJs) meldet weniger, nie mehr', () => {
+  // Die Oberfläche hat keinen eigenen Übersetzer; diese Prüfung ist ihre
+  // Typprüfung. GEMESSEN am 28.10.2026: 492 Meldungen, nach dem Typ für G()
+  // und den window-Feldern (test/helpers/fenster.d.ts) 184.
+  // Gegenprobe: `@returns {HTMLInputElement}` an G() entfernt → rot (459).
+  const SCHRANKE = 184;
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'browser-typen-'));
+  try {
+    fs.writeFileSync(path.join(dir, 'tsconfig.json'), JSON.stringify({
+      compilerOptions: {
+        allowJs: true, checkJs: true, noEmit: true, target: 'es2022', module: 'es2022',
+        moduleResolution: 'bundler', lib: ['es2022', 'dom', 'dom.iterable'], skipLibCheck: true, types: [],
+        strict: false,   // erst die Felder, dann die impliziten any — eine Stufe nach der anderen
+      },
+      files: [...quellen(), path.join(__dirname, 'helpers', 'fenster.d.ts')],
+    }));
+    const r = spawnSync(path.join(ROOT, 'node_modules', '.bin', 'tsc'), ['-p', path.join(dir, 'tsconfig.json')], { encoding: 'utf8' });
+    const meldungen = (r.stdout + r.stderr).split('\n').filter(z => /error TS\d+:/.test(z));
+    assert.ok(r.status !== null, `tsc lief nicht: ${r.error?.message}`);
+    assert.ok(meldungen.length <= SCHRANKE,
+      `${meldungen.length} Meldungen, erlaubt sind ${SCHRANKE}. Neue zuerst:\n${meldungen.slice(0, 15).join('\n')}`);
+    if (meldungen.length < SCHRANKE) console.log(`  ℹ checkJs: ${meldungen.length} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});

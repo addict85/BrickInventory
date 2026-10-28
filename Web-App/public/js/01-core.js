@@ -128,7 +128,14 @@ export const escHtml = escJs;
 // eine `const`-Pfeilfunktion aus 01-core.js liegt dann noch in der temporalen
 // Todeszone und wirft "G is not a function". Funktionsdeklarationen sind
 // dagegen schon beim Instanziieren initialisiert und sofort erreichbar.
-export function G(id) { return document.getElementById(id); }
+/**
+ * Als Formularelement typisiert: Die meisten Aufrufe lesen .value, .checked
+ * oder .disabled. Für ein anderes Element sind diese Felder schlicht leer —
+ * die Typprüfung soll an den echten Fehlern hängen, nicht an jedem Feldzugriff.
+ * @param {string} id
+ * @returns {HTMLInputElement}
+ */
+export function G(id) { return /** @type {HTMLInputElement} */ (document.getElementById(id)); }
 /** Ein Symbol aus der Symbolfamilie (Sprite in index.html) als HTML. */
 export function ico(name) { return `<svg class="ico" aria-hidden="true"><use href="#i-${esc(name)}"/></svg>`; }
 /**
