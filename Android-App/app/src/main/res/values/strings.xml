@@ -57,6 +57,8 @@
     <!-- ══════════════ Portfolio chart ══════════════ -->
     <string name="chart_portfolio_value">Portfolio value trend</string>
     <string name="chart_no_history">No history data yet</string>
+    <string name="chart_summary">Portfolio value, %1$s to %2$s: from %3$s to %4$s, change %5$s</string>
+    <string name="chart_summary_no_change">Portfolio value, %1$s to %2$s: from %3$s to %4$s</string>
     <string name="chart_period_week">Week</string>
     <string name="chart_period_month">Month</string>
     <string name="chart_period_year">Year</string>
