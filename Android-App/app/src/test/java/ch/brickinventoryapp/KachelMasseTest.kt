@@ -80,6 +80,38 @@ class KachelMasseTest {
         }
     }
 
+    /**
+     * Eine Karte mit Text hat eine Mindest-, keine feste Höhe: Bei grosser
+     * Systemschrift wächst der Text, und eine feste Höhe schneidet ihn ab.
+     * Bildflächen IN der Karte dürfen fest sein.
+     *
+     * Gegenprobe (am 28.10.2026 gemessen, kotlinc): die Set-Karte wieder mit
+     * `Modifier.height(272.dp)` → rot mit „GalleryScreen.kt …“.
+     */
+    @Test
+    fun `Karten haben keine feste Hoehe`() {
+        val karte = Regex("""\b(Card|AppKarte|OutlinedCard|ElevatedCard)\(""")
+        val festeHoehe = Regex("""modifier\s*=\s*Modifier[^\n]*?\.height\(""")
+        val verstoesse = mutableListOf<String>()
+        var karten = 0
+        for (datei in Quellen.unter("ui")) {
+            val zeilen = Quellen.ohneKommentare(datei.readText()).lines()
+            for ((nr, zeile) in zeilen.withIndex()) {
+                if (!karte.containsMatchIn(zeile)) continue
+                karten++
+                // Der Modifier der Karte steht in ihren ersten Argumentzeilen.
+                val kopf = zeilen.subList(nr, minOf(nr + 6, zeilen.size))
+                // Ohne Inhalt (`) {}`) ist es ein Platzhalter: Dessen feste Höhe
+                // hält die Liste ruhig, bis die Seite kommt (CatalogScrubberTest).
+                if (kopf.any { it.trim() == ") {}" }) continue
+                val treffer = kopf.indexOfFirst { festeHoehe.containsMatchIn(it) }
+                if (treffer >= 0) verstoesse += "${datei.name}:${nr + treffer + 1}"
+            }
+        }
+        org.junit.Assert.assertTrue("Keine Karte gefunden — Muster veraltet?", karten >= 10)
+        org.junit.Assert.assertTrue("Feste Kartenhöhe statt heightIn(min = …): $verstoesse", verstoesse.isEmpty())
+    }
+
     @Test
     fun `Bildecke und Kartenform teilen sich den Radius`() {
         // Nicht der Wortlaut, sondern die Ableitung: Beide muessen aus

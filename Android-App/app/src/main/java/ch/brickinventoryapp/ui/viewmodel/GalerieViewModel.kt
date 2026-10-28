@@ -11,9 +11,13 @@ import ch.brickinventoryapp.data.repository.SetsRepository
 import ch.brickinventoryapp.ui.Aenderung
 import ch.brickinventoryapp.ui.Galerie
 import ch.brickinventoryapp.ui.GalleryUiState
+import ch.brickinventoryapp.ui.KachelPreis
+import ch.brickinventoryapp.ui.kachelPreise
 import ch.brickinventoryapp.ui.retryOnNetwork
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -48,6 +52,10 @@ class GalerieViewModel @Inject constructor(
     )
     val galleryState: StateFlow<GalleryUiState> = galerie.state
 
+    private val _preise = MutableStateFlow<Map<String, KachelPreis>>(emptyMap())
+    /** Marktpreis und G&V je Set; eigener Fluss, weil er nach der Liste kommt. */
+    val preise: StateFlow<Map<String, KachelPreis>> = _preise.asStateFlow()
+
     init {
         galerie.stelleFilterWieder(
             suche = gemerkt[SUCHE] ?: "",
@@ -58,7 +66,22 @@ class GalerieViewModel @Inject constructor(
 
     fun loadSets() = galerie.laden()
     fun loadMoreSets() = galerie.mehrLaden()
-    fun loadStats() = galerie.ladeKennzahlen()
+    fun loadStats() {
+        galerie.ladeKennzahlen()
+        ladePreise()
+    }
+
+    /**
+     * Preis und G&V für die Kacheln. Scheitert der Abruf, bleiben die alten
+     * Werte stehen und die Kachel fällt auf den Kaufpreis zurück; der Fehler
+     * des Reiters kommt aus der Liste, nicht aus dieser Zugabe.
+     */
+    private fun ladePreise() {
+        viewModelScope.launch {
+            val r = finanzen.getPnl(scopeFor(ScopeFilter.View.GALLERY))
+            if (r is Result.Success) _preise.value = kachelPreise(r.data.sets)
+        }
+    }
 
     fun setGalleryQuery(q: String) {
         gemerkt[SUCHE] = q
@@ -129,6 +152,7 @@ class GalerieViewModel @Inject constructor(
 
     override fun zuruecksetzen() {
         galerie.zuruecksetzen()
+        _preise.value = emptyMap()
         gemerkt[SUCHE] = ""
         gemerkt[THEMA] = ""
         gemerkt[SORTIERUNG] = GALLERY_DEFAULT_SORT

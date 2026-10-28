@@ -592,7 +592,7 @@ fun CatalogSetCard(
     // im CSS, nur mit den Mitteln von Compose.
     Box {
         AppKarte(
-            modifier = Modifier.height(212.dp)
+            modifier = Modifier.heightIn(min = 212.dp)
                 .then(if (isBrick) Modifier.padding(top = NoppenMass.Stein.hoehe) else Modifier),
             onClick = { onClick(set.setNumber) }
         ) {

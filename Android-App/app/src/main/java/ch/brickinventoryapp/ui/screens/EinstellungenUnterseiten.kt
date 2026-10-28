@@ -1194,7 +1194,7 @@ private fun KontoCard(
             Button(
                 onClick = { onSpeichern(benutzername, email, vorname, nachname, pwFuerEmail.takeIf { emailNeu }) },
                 enabled = geaendert && !kontoZustand.speichert && (!emailNeu || pwFuerEmail.isNotEmpty()),
-                modifier = Modifier.fillMaxWidth().height(44.dp), shape = Formen.knopf
+                modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp), shape = Formen.knopf
             ) { Text(stringResource(R.string.konto_save), fontWeight = FontWeight.SemiBold) }
 
             HorizontalDivider(Modifier.padding(vertical = Abstaende.mittel),
@@ -1232,7 +1232,7 @@ private fun KontoCard(
             OutlinedButton(
                 onClick = { onPasswort(pwAktuell, pwNeu) },
                 enabled = !kontoZustand.speichert && pwAktuell.isNotBlank() && !passwortZuKurz(pwNeu),
-                modifier = Modifier.fillMaxWidth().height(44.dp), shape = Formen.knopf
+                modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp), shape = Formen.knopf
             ) { Text(stringResource(R.string.konto_password_button), fontWeight = FontWeight.SemiBold) }
         }
     }
@@ -1353,7 +1353,7 @@ private fun ZweiterFaktorCard(
             zfZustand.aktiv == false -> {
                 passwortFeld()
                 Button(onClick = { onEinrichten(zfPasswort) }, enabled = zfPasswort.isNotBlank() && !zfZustand.laedt,
-                    modifier = Modifier.fillMaxWidth().height(44.dp), shape = Formen.knopf
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp), shape = Formen.knopf
                 ) { Text(stringResource(R.string.zf_setup), fontWeight = FontWeight.SemiBold) }
             }
         }

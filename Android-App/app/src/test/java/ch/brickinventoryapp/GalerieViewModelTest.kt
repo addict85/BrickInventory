@@ -38,6 +38,8 @@ import org.junit.Test
  *      die Liste → je rot „erfasste Teile laden die Kennzahlen …“
  *   F  vergissScroll auf "parts" statt "gallery" → rot „ein Filterwechsel
  *      vergisst die Rollposition der Galerie und nur sie“
+ *   G  in loadStats() ladePreise() entfernt → rot „die Kennzahlen bringen
+ *      Preis und G&V …“
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class GalerieViewModelTest {
@@ -58,6 +60,8 @@ class GalerieViewModelTest {
             "/api/v1/sets" to """{"success":true,"total":2,"sets":[
                 {"set_number":"75192-1","name":"Falke","used_count":0},{"set_number":"10294-1","name":"Titanic"}]}""",
             "/api/v1/stats" to """{"success":true,"stats":{"total_sets":2}}""",
+            "/api/v1/finance/pnl" to """{"success":true,"currency":"CHF","totals":{},"sets":[
+                {"set_number":"75192-1","quantity":1,"current_price":800,"baseline_price":700,"pnl_pct":"14.3","baseline_pnl_pct":"14.3"}]}""",
             "/api/v1/sets/10294-1" to """{"success":true}""",
         )
         t = TestDienste(pfade.server)
@@ -68,6 +72,15 @@ class GalerieViewModelTest {
         t.aufraeumen()
         Dispatchers.resetMain()
         pfade.server.shutdown()
+    }
+
+    @Test
+    fun `die Kennzahlen bringen Preis und G&V fuer die Kacheln mit`() {
+        val vm = vm()
+        vm.loadStats()
+        TestApi.warteBis("Preise da") { vm.preise.value.containsKey("75192-1") }
+        assertEquals(800.0, vm.preise.value["75192-1"]?.marktpreis ?: -1.0, 1e-9)
+        assertEquals(14.3, vm.preise.value["75192-1"]?.pnlPct ?: -1.0, 1e-9)
     }
 
     @Test

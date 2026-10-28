@@ -356,7 +356,7 @@ fun MinifigCard(fig: Minifig, serverUrl: String, imageLoader: ImageLoader,
 
     Card(
         // Antippen oeffnet den Detail-Dialog — wie bei den Teilen daneben.
-        modifier = Modifier.fillMaxWidth().height(196.dp)
+        modifier = Modifier.fillMaxWidth().heightIn(min = 196.dp)
             .let { if (onClick != null) it.clickable(role = Role.Button, onClick = onClick) else it },
         shape = Formen.leiste,
         elevation = CardDefaults.cardElevation(defaultElevation = Formen.karteErhebung),

@@ -331,11 +331,23 @@ data class PnlTotals(
     @SerialName("grand_total") val grandTotal: String? = null
 )
 
+/** Eine Zeile je Set und Zustand aus /finance/pnl — die Galerie liest daraus Preis und G&V. */
+@Serializable
+data class PnlSetZeile(
+    @SerialName("set_number") val setNumber: String,
+    val quantity: Int = 1,
+    @SerialName("current_price") val currentPrice: Double? = null,
+    @SerialName("baseline_price") val baselinePrice: Double? = null,
+    @SerialName("pnl_pct") val pnlPct: String? = null,
+    @SerialName("baseline_pnl_pct") val baselinePnlPct: String? = null,
+)
+
 @Serializable
 data class PnlResponse(
     val success: Boolean,
     val currency: String = "EUR",
     val totals: PnlTotals = PnlTotals(),
+    val sets: List<PnlSetZeile> = emptyList(),
     val error: String? = null
 )
 

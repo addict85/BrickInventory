@@ -394,7 +394,7 @@ fun PartCard(part: Part, serverUrl: String, imageLoader: ImageLoader,
         // Antippen oeffnet den Detail-Dialog (Marcos Wunsch). Bis dahin war
         // die Kachel eines Teils aus einem Set tot — anders als bei manuell
         // erfassten Teilen gab es dazu nichts zu sehen.
-        modifier = Modifier.fillMaxWidth().height(164.dp)
+        modifier = Modifier.fillMaxWidth().heightIn(min = 164.dp)
             .let { if (onClick != null) it.clickable(role = Role.Button, onClick = onClick) else it },
         shape = Formen.leiste,
         elevation = CardDefaults.cardElevation(defaultElevation = Formen.karteErhebung),

@@ -190,7 +190,7 @@ private fun FormularMeldung(text: String, fehler: Boolean) {
 private fun LadeKnopf(text: String, laeuft: Boolean, aktiv: Boolean, onClick: () -> Unit) {
     Button(
         onClick = onClick,
-        modifier = Modifier.fillMaxWidth().height(48.dp),
+        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
         enabled = !laeuft && aktiv,
         shape = Formen.knopf
     ) {

@@ -263,7 +263,7 @@ fun SettingsScreen(
                     vm.saveUserDefaultCondition(selectedUserDefault ?: "")
                 },
                 enabled = hasChanges,
-                modifier = Modifier.fillMaxWidth().height(48.dp),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
                 shape = Formen.knopf
             ) {
                 Icon(Icons.Default.Save, null, Modifier.size(18.dp))
@@ -294,7 +294,7 @@ fun SettingsScreen(
 
         OutlinedButton(
             onClick = onLogout,
-            modifier = Modifier.fillMaxWidth().height(48.dp),
+            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
             shape = Formen.knopf,
             colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f))

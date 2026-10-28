@@ -371,7 +371,7 @@ fun ManuelleKachel(
     val ctx = LocalContext.current
     Card(
         onClick = onEdit,  // ganze Karte klickbar — öffnet den Kaufpreis/Anzahl-Dialog, analog Sets
-        modifier = Modifier.width(Formen.kachelBreite).height(Formen.kachelHoehe),
+        modifier = Modifier.width(Formen.kachelBreite).heightIn(min = Formen.kachelHoehe),
         shape = Formen.leiste,
         elevation = CardDefaults.cardElevation(defaultElevation = Formen.karteErhebung),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),

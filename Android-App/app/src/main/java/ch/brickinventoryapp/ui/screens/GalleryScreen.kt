@@ -50,6 +50,9 @@ import ch.brickinventoryapp.ui.theme.SteinKantenVerlauf
 import ch.brickinventoryapp.ui.theme.SlateBlueNoppe
 import ch.brickinventoryapp.ui.theme.NoppenMass
 import ch.brickinventoryapp.util.fmtInt
+import ch.brickinventoryapp.util.fmtAmount
+import ch.brickinventoryapp.util.fmtMoney
+import ch.brickinventoryapp.ui.theme.LocalStatusFarben
 import ch.brickinventoryapp.util.rememberTileImageWithFallback
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -88,6 +91,7 @@ fun GalleryScreen(
     // nur noch DIESEN Zustand — die uebrigen Bildschirme, die `vm.state`
     // sammeln, werden dadurch nicht mehr mit rekomponiert (siehe GalleryUiState).
     val galerie by vm.galleryState.collectAsStateWithLifecycle()
+    val preise by vm.preise.collectAsStateWithLifecycle()
     val barcodeState by erfassung.barcodeState.collectAsStateWithLifecycle()
     // Eigener Fluss: Der Lagerortfilter gehoert nicht in AppUiState, das
     // sechzehn Dateien sammeln (siehe LagerUiState).
@@ -317,7 +321,8 @@ fun GalleryScreen(
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         itemsIndexed(sets, key = { _, s -> s.setNumber }) { index, set ->
-                            SetCard(set, serverUrl, imageLoader, onSetClick, onDeleteSet, index)
+                            SetCard(set, serverUrl, imageLoader, onSetClick, onDeleteSet, index,
+                                preis = preise[set.setNumber], waehrung = currency)
                         }
                         if (loadingMore) {
                             // ── Eigener Schlüssel für den Lade-Eintrag (Nachtrag 108) ──
@@ -422,7 +427,10 @@ fun SetCard(
     onClick: (String) -> Unit,
     onDelete: (String) -> Unit,
     /** Position in der Kachelwand — nur fuer die Deckelfarbe des Designs "noppe". */
-    position: Int = 0
+    position: Int = 0,
+    /** Marktpreis und G&V; fehlt beides, steht der Kaufpreis da (wie im Web). */
+    preis: KachelPreis? = null,
+    waehrung: String = "EUR",
 ) {
     var showMenu by rememberSaveable { mutableStateOf(false) }
     var deleting by rememberSaveable { mutableStateOf(false) }
@@ -496,7 +504,7 @@ fun SetCard(
             // Etiketten sollen das Vorschaubild nicht mehr überdecken. Die zusätzliche
             // Höhe geht vollständig an den Bildbereich; die Textzeilen darunter
             // bleiben unverändert.
-            modifier = Modifier.height(272.dp)
+            modifier = Modifier.heightIn(min = 272.dp)
                 .then(if (isBrick) Modifier.padding(top = NoppenMass.Stein.hoehe) else Modifier),
             onClick = { onClick(set.setNumber) }
         ) {
@@ -615,6 +623,16 @@ fun SetCard(
                     if (set.pieces != null) Text(fmtInt(set.pieces) + stringResource(R.string.gallery_pieces_suffix),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    val betrag = kachelBetrag(set, preis)
+                    if (betrag != null) Row(verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
+                        Text(fmtMoney(betrag, waehrung), style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
+                        val pct = preis?.pnlPct
+                        if (pct != null) Text((if (pct >= 0) "+" else "") + fmtAmount(pct, 1, 1) + " %",
+                            style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold,
+                            color = if (pct >= 0) LocalStatusFarben.current.erfolg else MaterialTheme.colorScheme.error)
+                    }
                 }
             }
         }
