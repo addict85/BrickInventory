@@ -15,7 +15,7 @@ import org.junit.Test
  *
  * Dieser Test verlangt für jeden Bildschirm mit einem Bild, dass die Adresse
  * durch resolveThumbUrl()/resolveFullUrl() (oder eine gleichwertige, bereits
- * server-aufgelöste Quelle wie PartsListFeature.kt) läuft — nie direkt aus
+ * server-aufgelöste Quelle wie ui/Teileliste.kt) läuft — nie direkt aus
  * einem `.imageUrl`-Feld ohne Auflösung.
  */
 class NoDirectCdnAccessTest {
@@ -89,16 +89,9 @@ class NoDirectCdnAccessTest {
 
     @Test
     fun `PartsListScreen wickelt eine bereits aufgelöste Adresse nicht doppelt ein`() {
-        // PartsListFeature.kt löst part.imageUrl BEREITS auf (image_local
-        // bevorzugt, sonst Server-Proxy), bevor ein PlPart entsteht. Ein
-        // erneutes resolveThumbUrl() in PartsListScreen.kt würde eine bereits
-        // proxy-gewickelte Adresse ein zweites Mal einwickeln — das war ein
-        // Fehler, der beim ersten Anlauf dieser Änderung entstand und wieder
-        // rückgängig gemacht wurde.
-        val feature = code(read("ui/PartsListFeature.kt"))
-        assert(feature.contains("${'$'}IMG_PROXY?url=")) {
-            "PartsListFeature.kt muss die Auflösung weiterhin selbst übernehmen"
-        }
+        // ui/Teileliste.kt löst part.imageUrl bereits auf (das prüft
+        // TeilelisteTest am Ergebnis); ein zweites resolveThumbUrl() hier
+        // wickelte die Proxy-Adresse doppelt ein.
         val screen = code(read("ui/screens/PartsListScreen.kt"))
         assert(!screen.contains("resolveThumbUrl(") && !screen.contains("resolveFullUrl(")) {
             "PartsListScreen.kt darf part.imageUrl NICHT durch resolveThumbUrl() schicken — " +

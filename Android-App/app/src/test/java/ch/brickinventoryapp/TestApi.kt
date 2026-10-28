@@ -77,6 +77,8 @@ class PfadServer(vararg regeln: Pair<String, String>) {
     val server = MockWebServer()
     val antworten: MutableMap<String, String> = Collections.synchronizedMap(linkedMapOf(*regeln))
     val anfragen: MutableList<String> = Collections.synchronizedList(mutableListOf())
+    /** Die Rümpfe in derselben Reihenfolge wie [anfragen]. */
+    val koerper: MutableList<String> = Collections.synchronizedList(mutableListOf())
     /** Abweichender Statuscode je Pfad, z. B. 401 für „Sitzung abgelaufen“. */
     val codes: MutableMap<String, Int> = Collections.synchronizedMap(mutableMapOf())
 
@@ -85,6 +87,7 @@ class PfadServer(vararg regeln: Pair<String, String>) {
             override fun dispatch(request: RecordedRequest): MockResponse {
                 val pfad = request.path.orEmpty()
                 anfragen += "${request.method} $pfad"
+                koerper += request.body.readUtf8()
                 val ohneAbfrage = pfad.substringBefore('?')
                 val rumpf = antworten[ohneAbfrage]
                 return if (rumpf == null) TestApi.antwort("""{"success":false}""", codes[ohneAbfrage] ?: 404)

@@ -11,9 +11,6 @@ import ch.brickinventoryapp.data.repository.BrickRepository
 import ch.brickinventoryapp.data.repository.Fehlerart
 import ch.brickinventoryapp.data.repository.Result
 import ch.brickinventoryapp.service.CsvImportService
-import ch.brickinventoryapp.service.PdfExportManager
-import ch.brickinventoryapp.service.PdfExportService
-import ch.brickinventoryapp.service.PdfExportState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.*
@@ -53,7 +50,6 @@ class MainViewModel @Inject constructor(
      */
     internal val vorwaermer: ch.brickinventoryapp.data.cache.VorschauVorwaermer,
     internal val sseClient: CsvImportSseClient,
-    internal val pdfExport: PdfExportManager,
     internal val sessionExpired: ch.brickinventoryapp.data.SessionExpiredSignal,
     // Der eine Weg zur Snackbar — geteilt mit den uebrigen ViewModels.
     meldungen: ch.brickinventoryapp.data.MeldungsKanal,
@@ -161,13 +157,6 @@ class MainViewModel @Inject constructor(
         sitzung.aendere { it.copy(appTheme = prefs.gemerktesDesign()) }
     }
     val state = sitzung.state
-
-    // Live-Status des laufenden PDF-Exports (z. B. Countdown-Text „…noch ~Xs"),
-    // null wenn kein Export läuft. Wird im PartsListScreen angezeigt.
-    val pdfExportStatus: StateFlow<String?> =
-        pdfExport.state
-            .map { (it as? PdfExportState.Running)?.statusText }
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
     // Snackbar getrennt vom Haupt-State: Meldungen sind der häufigste
     // querschneidende Update — als Feld in AppUiState hat jede Snackbar

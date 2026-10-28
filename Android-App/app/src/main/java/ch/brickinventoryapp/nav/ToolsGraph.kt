@@ -171,21 +171,22 @@ fun NavGraphBuilder.toolsGraph(
             val state by vm.state.collectAsStateWithLifecycle()
             val blick by vm.blickfeld.collectAsStateWithLifecycle()
             val erfassung = ch.brickinventoryapp.ui.viewmodel.aktivitaetsViewModel<ch.brickinventoryapp.ui.viewmodel.ErfassungViewModel>()
+            val teileliste = hiltViewModel<ch.brickinventoryapp.ui.viewmodel.TeilelisteViewModel>()
             val barcodeState by erfassung.barcodeState.collectAsStateWithLifecycle()
             ReiterGeruest(stringResource(R.string.nav_partslist), vm, navController, bottomNavItems, snackbarHostState) {
                 PartsListScreen(
                     serverUrl = state.serverUrl,
                     authToken = state.authToken,
-                    onExportPdf = { sets, parts -> vm.exportPartsPdf(activity, sets, parts) },
-                    pdfStatus = vm.pdfExportStatus,
+                    onExportPdf = { sets, parts -> teileliste.exportPartsPdf(activity, sets, parts) },
+                    pdfStatus = teileliste.pdfExportStatus,
                     imageLoader = imageLoader,
                     onScanBarcode = { erfassung.setScannerSource("partslist"); navController.navigate(Screen.BarcodeScanner.route) },
                     // Erfolgloser Scan → Cursor ins Set-Feld (Nachtrag 113).
                     manuelleErfassungAnfordern = barcodeState.manuelleErfassungAnfordern,
                     onManuelleErfassungQuittiert = { erfassung.manuelleErfassungQuittieren() },
-                    onResolveSet = { setNumber -> vm.resolveSetForPartsList(setNumber) },
+                    onResolveSet = { setNumber -> teileliste.resolveSetForPartsList(setNumber) },
                     onLadeBestand = { teile, nurLose, mitUnterkonten ->
-                        vm.ladeTeilelisteBestand(teile, nurLose, mitUnterkonten) },
+                        teileliste.ladeTeilelisteBestand(teile, nurLose, mitUnterkonten) },
                     // Dieselbe Regel wie in der Webapp (02-gallery.js): Mehr als
                     // ein Mitglied im Haushalt heisst „es gibt Unterkonten".
                     hatUnterkonten = blick.householdMembers.size > 1,
