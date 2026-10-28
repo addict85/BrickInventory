@@ -54,6 +54,9 @@ import org.junit.Test
  *      und „das Abmelden …“
  *   L  in zuruecksetzen() die Prüfung nicht abgebrochen → rot „das Abmelden
  *      räumt die Prüfanzeige mit“
+ *   M  im Fehlerzweig von resolveBarcode() wieder immer „nicht gefunden“ →
+ *      rot „ein Serverfehler beim Scan heisst nicht …“; den Code nicht
+ *      abgefragt (immer die Meldung) → rot „ein erfolgloser Scan …“
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class ErfassungViewModelTest {
@@ -116,11 +119,23 @@ class ErfassungViewModelTest {
 
     @Test
     fun `ein erfolgloser Scan oeffnet die manuelle Erfassung und raeumt die Pruefanzeige`() {
+        pfade.antworten["/api/v1/sets/barcode/0000"] = """{"success":false,"code":"barcode_kein_set","error":"Kein Set"}"""
+        pfade.codes["/api/v1/sets/barcode/0000"] = 404
         val vm = vm()
         vm.resolveBarcode("0000")
         TestApi.warteBis("manuell") { vm.barcodeState.value.manuelleErfassungAnfordern }
         assertEquals("t${R.string.vm_barcode_not_found}|0000", t.meldungen.meldung.value)
         TestApi.warteBis("Prüfanzeige weg") { vm.erfassungState.value.pruefung == null }
+    }
+
+    @Test
+    fun `ein Serverfehler beim Scan heisst nicht, das Set gebe es nicht`() {
+        pfade.antworten["/api/v1/sets/barcode/0001"] = """{"success":false,"code":"interner_fehler"}"""
+        pfade.codes["/api/v1/sets/barcode/0001"] = 500
+        val vm = vm()
+        vm.resolveBarcode("0001")
+        TestApi.warteBis("manuell") { vm.barcodeState.value.manuelleErfassungAnfordern }
+        assertEquals("fehler", t.meldungen.meldung.value)
     }
 
     @Test

@@ -3,7 +3,9 @@ package ch.brickinventoryapp.data.repository
 import ch.brickinventoryapp.data.api.BrickApiService
 import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.model.*
+import ch.brickinventoryapp.data.api.Fehlerrumpf
 import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.ResponseBody.Companion.toResponseBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -49,35 +51,26 @@ class GutscheineRepository @Inject constructor(
     /**
      * Das Guthaben bei LEGO abfragen.
      *
-     * ── Warum 429 hier umgebogen wird ──────────────────────────────────────
-     *
-     * Der Server laesst eine Abfrage je 30 Sekunden zu (ueber alle Benutzer)
-     * und antwortet sonst mit 429 — samt `grund` („abstand" oder
-     * „botschutz") und `wartenSek`. safeCall holt aus einem Fehlerrumpf nur
-     * `error`, also den Satz; die beiden Felder gingen verloren.
-     *
-     * Fuer den EINZELNEN Knopf waere das egal — dort wird der Satz gezeigt und
-     * fertig. Der Durchgang ueber ALLE Karten braucht aber die Zahl: Er wartet
-     * genau so lange, wie der Server sagt, und fragt dieselbe Karte dann noch
-     * einmal. Ohne `wartenSek` muesste er raten.
-     *
-     * Dieselbe Umbiegung wie bei `ausPdf` unten und aus demselben Grund: Der
-     * Transport hat geklappt, `success:false` im Rumpf sagt der Oberflaeche,
-     * woran sie ist — und die Transportbehandlung von safeCall (Zeitlimit,
-     * Abriss, 401) bleibt, wo sie ist.
-     *
-     * 502 (die Gegenseite antwortete nicht) bleibt ein Fehler: Daran ist
-     * nichts zu warten.
+     * Ist die Abfrage gesperrt (Code `guthaben_abstand` oder
+     * `guthaben_botschutz`), braucht der Durchgang über alle Karten `grund`
+     * und `wartenSek` aus dem Rumpf; safeCall behielte nur Satz und Code.
+     * Deshalb wird diese Antwort zu einer gewöhnlichen mit success=false.
+     * Andere Fehler (502: die Gegenseite schwieg) bleiben Fehler.
      */
     suspend fun guthaben(id: Int): Result<GuthabenAntwort> = safeCall {
         val antwort = api.frageGuthabenAb(id)
-        if (antwort.code() == 429) {
-            val roh = antwort.errorBody()?.string()
-            val geparst = roh?.let {
-                runCatching { nachsichtigesJson.decodeFromString<GuthabenAntwort>(it) }.getOrNull()
-            }
-            if (geparst != null) retrofit2.Response.success(geparst) else antwort
-        } else antwort
+        if (antwort.isSuccessful) return@safeCall antwort
+        val roh = antwort.errorBody()?.string()
+        if (Fehlerrumpf.lies(roh).code !in GUTHABEN_GESPERRT) {
+            // Der Rumpf ist gelesen; safeCall bekommt ihn neu, sonst fehlte ihm der Satz.
+            return@safeCall retrofit2.Response.error(antwort.code(),
+                (roh ?: "").toResponseBody("application/json".toMediaType()))
+        }
+        val geparst = roh?.let {
+            runCatching { nachsichtigesJson.decodeFromString<GuthabenAntwort>(it) }.getOrNull()
+        }
+        if (geparst != null) retrofit2.Response.success(geparst)
+        else retrofit2.Response.error(antwort.code(), (roh ?: "").toResponseBody("application/json".toMediaType()))
     }
 
     /**
@@ -148,6 +141,11 @@ class GutscheineRepository @Inject constructor(
      * der Serverseite darf eine aeltere App nicht zum Absturz bringen.
      */
     private val nachsichtigesJson = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+
+    private companion object {
+        /** Die Codes, unter denen der Server eine Guthabenabfrage zurückstellt. */
+        val GUTHABEN_GESPERRT = setOf("guthaben_abstand", "guthaben_botschutz")
+    }
 
     /** Leer heisst „nicht mitschicken" — siehe die Begruendung bei ausPdf(). */
     private fun alsTeil(wert: String?): okhttp3.RequestBody? =

@@ -65,6 +65,12 @@ sealed class Result<out T> {
         /** HTTP-Code, falls es einen gab — für die Meldung bei [Fehlerart.SERVER]. */
         val httpCode: Int? = null,
         /**
+         * Der Fehlercode des Servers (`code` im Rumpf, utils/fehlerTexte.ts).
+         * Nach ihm wird verzweigt, nicht nach [message] oder [httpCode]: Der
+         * Satz wechselt mit der Sprache, der Status ist für viele Fälle derselbe.
+         */
+        val code: String? = null,
+        /**
          * Technischer Text der Ursache, NUR fürs Log. Bewusst getrennt von
          * [message]: Bibliothekstexte wie „unexpected end of stream" sind
          * englisch, wechseln mit der Bibliotheksversion und gehören nicht in

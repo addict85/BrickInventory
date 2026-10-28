@@ -197,7 +197,9 @@ object AppModule {
                         beweise.merke(schluessel)
                         return
                     }
-                    if (code == 404 && text.contains("\"token_ungueltig\"")) sessionExpired.notifyExpired()
+                    if (code != 200 && ch.brickinventoryapp.data.api.Fehlerrumpf.lies(text).code == "token_ungueltig") {
+                        sessionExpired.notifyExpired()
+                    }
                     throw IOException(
                         "Der Server unter ${anfrage.url.host} hat sich in diesem Netz nicht ausgewiesen — " +
                         "die Anmeldung wurde nicht unverschlüsselt gesendet."
