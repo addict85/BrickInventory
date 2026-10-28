@@ -376,7 +376,7 @@
        Markup (stabiler Anker für updateGalleryPrices) und nur leer ausgeblendet. */
     .price-badge[hidden]{display:none}
     .price-badge{display:flex;align-items:center;justify-content:space-between;margin-top:.35rem;padding:.2rem .4rem;background:var(--s50);border-radius:5px;font-size:var(--fs-1)}
-    .pnl-pos{color:#16a34a;font-weight:700}.pnl-neg{color:var(--r700);font-weight:700}.pnl-neu{color:var(--mut)}
+    .pnl-pos{color:var(--gewinn,var(--g700));font-weight:700}.pnl-neg{color:var(--r700);font-weight:700}.pnl-neu{color:var(--mut)}
     .sparkline-wrap{width:100%;overflow:hidden;margin:.5rem 0}
     .chart-wrap{width:100%;overflow-x:auto}
     .period-btn{padding:4px 14px;font-size:var(--fs-1);font-weight:600;border:1.5px solid var(--bdr);border-radius:999px;background:var(--sur);color:var(--mut);cursor:pointer;transition:all .15s}
@@ -627,7 +627,7 @@
     .cond-new{background:var(--g100);color:var(--g700)}
     .besitzer-badge{background:var(--b100);color:var(--b700)}
     .admin-hinweis{font-size:var(--fs-1);color:var(--a-schrift);font-weight:400}
-    .cond-used{background:var(--s100);color:var(--s600)}
+    .cond-used{background:#fef3c7;color:#92400e}
     /* Ersatzteil: dieselbe Form wie die Zustands-Plakette, aber ruhiger —
        ein Ersatzteil ist eine Nebeninformation, kein Zustand. Gegenstueck zu
        ErsatzteilPlakette() in ManualItemComposables.kt der App. */
