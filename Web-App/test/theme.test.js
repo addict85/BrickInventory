@@ -203,7 +203,7 @@ test('das Boot-Skript vertraut einem servergesetzten Wert', () => {
 
 test('die Diagrammfarben stimmen mit den Zustands-Plaketten überein', () => {
   // ── Warum das festgehalten wird ──────────────────────────────────────────
-  // Salbeigrün steht im Stein-Design überall für „Neu", Sand für „Gebraucht"
+  // Schieferblau steht im Stein-Design für „Neu", Sand für „Gebraucht"
   // (.cond-new / .cond-used). Tragen die Diagrammlinien dieselben Farben, muss
   // niemand die Legende lesen — die Zuordnung ist schon gelernt.
   //

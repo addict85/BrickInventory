@@ -100,5 +100,5 @@
    Dieselbe Bedeutung wie ueberall: Neu gegen Gebraucht. Die Werte sind die
    gedaempften Varianten der Diagrammfarben, damit Plakette und Linie
    zusammengehoeren — dieselbe Ueberlegung wie in themes/brick.css. */
-[data-theme="werkbank"] .cond-new{background:#12301f;color:#86efac}
+[data-theme="werkbank"] .cond-new{background:#16243a;color:#8cc2ff}
 [data-theme="werkbank"] .cond-used{background:#2a2418;color:#d9a84e}

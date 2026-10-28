@@ -77,7 +77,7 @@ val Petrol = Color(0xFF3D7A8C)
  * Stein-Look stach das Bernstein der Gebraucht-Linie aus der ansonsten
  * blauen Palette heraus.
  */
-val ChartNewBrick = Color(0xFF5F8468)
+val ChartNewBrick = Color(0xFF3D6A8F)
 
 /**
  * --chart-used im Design "brick".

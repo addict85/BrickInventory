@@ -624,7 +624,7 @@
     .rb{display:inline-flex;padding:2px 8px;border-radius:999px;font-size:var(--fs-0);font-weight:600}
     .ra{background:var(--a100);color:var(--a-schrift)}.ru{background:var(--s100);color:var(--s600)}
     .cond-badge{font-size:var(--fs-0);padding:1px 5px;border-radius:10px;font-weight:600;display:inline-block}
-    .cond-new{background:var(--g100);color:var(--g700)}
+    .cond-new{background:var(--b100);color:var(--b700)}
     .besitzer-badge{background:var(--b100);color:var(--b700)}
     .admin-hinweis{font-size:var(--fs-1);color:var(--a-schrift);font-weight:400}
     .cond-used{background:#fef3c7;color:#92400e}

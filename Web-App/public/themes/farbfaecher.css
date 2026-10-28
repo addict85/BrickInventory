@@ -57,5 +57,5 @@
 [data-theme="farbfaecher"] nav .ntab.active{color:var(--b600)}
 
 /* Und die Zustandsfarben bleiben, was sie ueberall sind. */
-[data-theme="farbfaecher"] .cond-new{background:#dcfce7;color:#15803d}
+[data-theme="farbfaecher"] .cond-new{background:#dbeafe;color:#1d4ed8}
 [data-theme="farbfaecher"] .cond-used{background:#fef3c7;color:#a16207}

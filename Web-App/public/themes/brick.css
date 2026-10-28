@@ -228,7 +228,7 @@
 }
 [data-theme="brick"] .qbadge{background:var(--b600);color:#fff;border-radius:7px}
 /* Zustands-Plaketten: Neu = Salbeigrün, Gebraucht = Sand (wie im Mockup) */
-[data-theme="brick"] .cond-new{background:#e7efe8;color:#5f8468}
+[data-theme="brick"] .cond-new{background:#e2eaf3;color:#3d6a8f}
 [data-theme="brick"] .cond-used{background:#eee7db;color:#9a7a45}
 
 /* ── Große Stat-Kacheln in der Galerie (nur im Stein-Design sichtbar) ─────── */

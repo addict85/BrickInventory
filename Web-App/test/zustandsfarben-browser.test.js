@@ -1,12 +1,13 @@
 /**
- * „Neu“ ist in jedem Design grün, „Gebraucht“ bernstein — Plakette und
+ * „Neu“ ist in jedem Design blau, „Gebraucht“ bernstein — Plakette und
  * Diagrammlinie gleich. Vorher war „Neu“ je nach Design grün oder blau, und
- * die Linie im Diagramm blau neben einer grünen Plakette.
+ * die Linie im Diagramm blau neben einer grünen Plakette. Blau/Bernstein,
+ * weil das Paar auch bei Rot-Grün-Sehschwäche unterscheidbar bleibt.
  *
  * Gemessen im Browser mit allen Designs; ohne Chrome übersprungen.
  *
- * Gegenprobe (am 28.10.2026 gemessen): werkbank .cond-new wieder
- * #16243a/#8cc2ff → rot: „werkbank: Neu ist nicht grün (Farbton 212)“.
+ * Gegenprobe (am 28.10.2026 gemessen): farbfaecher .cond-new wieder grün
+ * (#dcfce7/#15803d) → rot: „farbfaecher: Neu ist nicht blau (Farbton 142)“.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -67,10 +68,10 @@ test('Zustandsfarben in allen Designs', (t) => {
   assert.ok(m, 'Die Testseite hat kein Ergebnis geschrieben');
   const e = JSON.parse((m[1] ?? '').replace(/&quot;/g, '"'));
   assert.equal(e.length, DESIGNS.length);
-  const gruen = h => h >= 85 && h <= 165, bernstein = h => h >= 20 && h <= 55;
+  const blau = h => h >= 190 && h <= 250, bernstein = h => h >= 20 && h <= 55;
   for (const d of e) {
-    assert.ok(gruen(d.neu), `${d.design}: Neu ist nicht grün (Farbton ${d.neu})`);
-    assert.ok(gruen(d.linieNeu), `${d.design}: Diagrammlinie Neu ist nicht grün (Farbton ${d.linieNeu})`);
+    assert.ok(blau(d.neu), `${d.design}: Neu ist nicht blau (Farbton ${d.neu})`);
+    assert.ok(blau(d.linieNeu), `${d.design}: Diagrammlinie Neu ist nicht blau (Farbton ${d.linieNeu})`);
     assert.ok(bernstein(d.gebr), `${d.design}: Gebraucht ist nicht bernstein (Farbton ${d.gebr})`);
     assert.ok(bernstein(d.linieGebr), `${d.design}: Diagrammlinie Gebraucht ist nicht bernstein (Farbton ${d.linieGebr})`);
   }
