@@ -6,7 +6,7 @@ import { withInventoryLock } from './txLock';
 import { downloadSetImage } from './setImages';
 import { getCurrentMarketPrice } from './marketPrice';
 import { downloadSetInstructions } from './instructions';
-import { zustandFuerPreis } from './settings';
+import { zustandFuerPreis, getSetting } from './settings';
 import { deleteSetRows } from '../utils/handlers/sets';
 import { legeInPapierkorb } from './papierkorb';
 import { toCsv } from './csvExport';
@@ -55,8 +55,10 @@ async function priceForNewAcquisition(userId: number, setNumber: string, dbh: an
   // Ausführlich: docs/begruendungen/utils/setService.ts.md#pricefornewacquisition-blickfeld
   const blickfeld = await scopeIds(userId).catch(() => [userId]);
   const cond = await resolveSetCondition(blickfeld, setNumber, dbh);
-  const currRow = await dbh.get("SELECT value FROM global_settings WHERE key='currency'").catch(()=>null);
-  const currency = currRow?.value || 'EUR';
+  // Die Währung DES KONTOS: Der Preis wird in ihr gesucht und mit ihr
+  // gespeichert. Hier stand ein globaler Schlüssel, den es nie gibt — also
+  // immer EUR, und ein EUR-Betrag landete als CHF-Kaufpreis.
+  const currency = String(await getSetting(userId, 'currency', 'EUR'));
   const cached = await dbh.get(
     // Fallback zwischen den Zuständen, aber mit der richtigen Priorität:
     // Der angefragte Zustand gewinnt IMMER, wenn er einen Preis hat. Der
@@ -84,14 +86,15 @@ async function priceForNewAcquisition(userId: number, setNumber: string, dbh: an
     ).catch(() => null);
     pp = parseFloat(hist?.avg_price || 0) || null;
   }
-  return { price: pp, condition: cond, geschaetzt: pp != null };
+  return { price: pp, condition: cond, geschaetzt: pp != null, currency };
 }
 
 // ── Kaufpreis-Historie ────────────────────────────────────────────────────────
 // Jede Erfassung (auch Re-Add desselben Sets) erzeugt eine Zeile in
 // set_acquisitions. Das ist seit Migration 0032 der einzige Ort für Kaufpreis
 // und Zustand — die Spiegelung nach sets.purchase_price/condition ist weg.
-async function recordAcquisition(userId: number, setNumber: string, quantity: number, purchasePrice: number | null, condition: string | null = null, dbh: any = db, geschaetzt = false) {
+async function recordAcquisition(userId: number, setNumber: string, quantity: number, purchasePrice: number | null, condition: string | null = null, dbh: any = db, geschaetzt = false,
+                                 currency: string | null = null, createdAt: string | null = null) {
   // Der Zustand wurde von allen Aufrufern schon immer als 5. Argument
   // übergeben, aber bisher hier ignoriert (Signatur hatte nur 4 Parameter) —
   // neue Erfassungen bekamen dadurch nie den Set-Zustand, sondern den
@@ -101,7 +104,7 @@ async function recordAcquisition(userId: number, setNumber: string, quantity: nu
   // Kein Rückfall ohne condition mehr.
   // Ausführlich: docs/begruendungen/utils/setService.ts.md#recordacquisition
   await recordAcquisitionForDay('set', userId, [setNumber],
-    { quantity, price: pp, condition: cond || 'N', geschaetzt }, dbh);
+    { quantity, price: pp, condition: cond || 'N', geschaetzt, currency, createdAt }, dbh);
 }
 
 /**
@@ -110,7 +113,7 @@ async function recordAcquisition(userId: number, setNumber: string, quantity: nu
  *        dbh KEINE Transaktion sein, weil ein Netzaufruf darin steckt.
  */
 async function adjustAcquisitionsToQuantity(userId: number, setNumber: string, newTotalQty: number, dbh: any = db,
-                                            pricePlan: { price: number | null; condition: string; geschaetzt?: boolean } | null = null) {
+                                            pricePlan: { price: number | null; condition: string; geschaetzt?: boolean; currency?: string } | null = null) {
   const rows = await dbh.all(
     'SELECT id, quantity, created_at FROM set_acquisitions WHERE user_id=$1 AND set_number=$2 ORDER BY created_at DESC, id DESC',
     [userId, setNumber]).catch(() => []);
@@ -124,14 +127,14 @@ async function adjustAcquisitionsToQuantity(userId: number, setNumber: string, n
         // recordAcquisitionForDay() (über recordAcquisition unten).
         // Ausführlich: docs/begruendungen/utils/setService.ts.md#adjustacquisitionstoquantity-plan
         const plan = pricePlan ?? await priceForNewAcquisition(userId, setNumber, dbh);
-        await recordAcquisition(userId, setNumber, delta, plan.price, plan.condition, dbh, !!plan.geschaetzt);
+        await recordAcquisition(userId, setNumber, delta, plan.price, plan.condition, dbh, !!plan.geschaetzt, plan.currency ?? null);
       }
     } else {
       // ERSTE Erfassung dieses Kontos für das Set.
       // Ausführlich: docs/begruendungen/utils/setService.ts.md#adjustacquisitionstoquantity-plan-2
       const plan = pricePlan ?? await priceForNewAcquisition(userId, setNumber, dbh);
       await recordAcquisition(userId, setNumber, newTotalQty,
-        plan.price, plan.condition || 'N', dbh, !!plan.geschaetzt);
+        plan.price, plan.condition || 'N', dbh, !!plan.geschaetzt, plan.currency ?? null);
     }
     return;
   }
@@ -149,21 +152,12 @@ async function adjustAcquisitionsToQuantity(userId: number, setNumber: string, n
   // mehr — die verbleibenden Erfassungen SIND der Zustand.
 }
 
-// CSV import helper: add set with specific acquisition date (avoids duplicate acquisitions)
+// CSV-Import: Das Datum geht in DIESELBE Erfassung, die angelegt wird. Hier
+// stand ein nachträgliches UPDATE auf „die Erfassung mit der höchsten id“ —
+// legte die Tagesregel keine neue an, wurde ein fremder Kauf umdatiert.
 async function addSetWithDate(setNumber: string, quantity: number, userId: number, purchasePrice: number | null,
                               condition: string | null, acquiredAt: string | null) {
-  // Always use addSet for the set metadata; then fix the acquisition date if provided
-  const result = await addSet(setNumber, quantity, userId, null, purchasePrice, condition);
-  if (acquiredAt && result) {
-    // Update the most recently created acquisition to use the CSV date
-    await db.run(
-      `UPDATE set_acquisitions SET created_at=$1
-       WHERE id=(SELECT id FROM set_acquisitions WHERE user_id=$2 AND set_number=$3
-                 ORDER BY id DESC LIMIT 1)`,
-      [acquiredAt, userId, result.set_number || setNumber]
-    ).catch(logAndContinue(`sets:csv-datum ${setNumber}`));
-  }
-  return result;
+  return addSet(setNumber, quantity, userId, null, purchasePrice, condition, null, acquiredAt);
 }
 
 /**
@@ -173,12 +167,12 @@ async function addSetWithDate(setNumber: string, quantity: number, userId: numbe
 async function addSet(setNumber: string, quantity: number, userId: number,
                       sendProgress: ((n: { step: string; set: string }) => void) | null,
                       purchasePrice: number | null, condition: string | null = null,
-                      storage: string | null = null) {
+                      storage: string | null = null, erfasstAm: string | null = null) {
   // Siehe addManualPart in routes/parts.ts: ohne mitgegebenen Ort gilt
   // Marcos Stern. Betrifft hier vor allem den CSV-Import und den
   // Wanted-Listen-Import, die beide kein Lagerortfeld haben.
   const ort = await ortFuerNeuerfassung(userId, storage);
-  const ergebnis = await addSetIntern(setNumber, quantity, userId, sendProgress, purchasePrice, condition);
+  const ergebnis = await addSetIntern(setNumber, quantity, userId, sendProgress, purchasePrice, condition, erfasstAm);
   if (ort && ergebnis?.set_number) {
     await setzeLagerort('set', [userId], [ergebnis.set_number], ort);
   }
@@ -187,7 +181,8 @@ async function addSet(setNumber: string, quantity: number, userId: number,
 
 async function addSetIntern(setNumber: string, quantity: number, userId: number,
                       sendProgress: ((n: { step: string; set: string }) => void) | null,
-                      purchasePrice: number | null, condition: string | null = null) {
+                      purchasePrice: number | null, condition: string | null = null,
+                      erfasstAm: string | null = null) {
   const normalized = sanitizeSetNumber(setNumber);
   if (!moeglicheSetNummer(normalized)) fehlerWerfen('setnummer_ungueltig', 400);
   if (sendProgress) sendProgress({ step:'meta', set:normalized });
@@ -216,7 +211,7 @@ async function addSetIntern(setNumber: string, quantity: number, userId: number,
       // 0036 keine Spalte mehr — sie wird beim LESEN aus den Erfassungen
       // gerechnet (utils/bestandsmenge.ts).
       // Ausführlich: docs/begruendungen/utils/setService.ts.md#addsetintern-2
-      await recordAcquisition(userId, normalized, quantity, reAddPrice, zustand, tx, reAddGeschaetzt);
+      await recordAcquisition(userId, normalized, quantity, reAddPrice, zustand, tx, reAddGeschaetzt, null, erfasstAm);
     });
     // During bulk CSV import, skip immediate background jobs to avoid DB pool exhaustion.
     // The import loop triggers enrichment after all sets are imported.
@@ -304,7 +299,7 @@ async function addSetIntern(setNumber: string, quantity: number, userId: number,
     // Ausführlich: docs/begruendungen/utils/setService.ts.md#addsetintern-4
     await tx.run('INSERT INTO sets (user_id,set_number) VALUES ($1,$2) ON CONFLICT (user_id,set_number) DO NOTHING',
       [userId, normalized]);
-    await recordAcquisition(userId, normalized, quantity, effectivePurchasePrice, effectiveCondition, tx, preisGeschaetzt);
+    await recordAcquisition(userId, normalized, quantity, effectivePurchasePrice, effectiveCondition, tx, preisGeschaetzt, null, erfasstAm);
   });
 
   // In den Katalog, nicht an die Bestandszeile (Migration 0033). Und ohne
