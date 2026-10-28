@@ -327,6 +327,8 @@ androidComponents {
 
 dependencies {
     implementation(libs.androidx.core.ktx)
+    // Startbild statt weissem Fenster beim Kaltstart (MainActivity.installSplashScreen).
+    implementation(libs.androidx.core.splashscreen)
     testImplementation(libs.junit)
     // Nachtrag 117: Damit Verhalten prüfbar wird statt nur Quelltext.
     //  - coroutines-test: runTest für suspend-Funktionen, ohne Thread.sleep
