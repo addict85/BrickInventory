@@ -41,8 +41,6 @@ type AcqConfig = {
   existsWithKeys: boolean;
   /** Der GRUND als Code, nicht als Satz — siehe utils/fehlerTexte.ts. */
   notFound: FehlerCode;
-  /** 404 beim DELETE (Sets) oder stilles Löschen (Teile/Figuren, wie bisher). */
-  deleteChecksExistence: boolean;
   /**
    * Marktpreis-Fallback, wenn der Preis geleert wird (null/'').
    * Sets haben keinen Fallback — leerer Preis bleibt leer.
@@ -287,10 +285,10 @@ async function withSetAggregate(uid: number, cfgTable: string, keys: any[], payl
         // noch löschen — es bekam 404.
         const wids = await writableIds(uid);
         const acq = await tx.get(cfg.existsSql, cfg.existsWithKeys ? [id, wids, ...keys] : [id, wids]);
-        if (cfg.deleteChecksExistence && !acq) {
-          fehlerWerfen(cfg.notFound, 404);
-        }
-        const ownerId = acq ? parseInt(String(acq.user_id)) : uid;
+        // Auch für Teile und Figuren: Ein „Erfolg“ für eine fremde oder
+        // gelöschte ID sagte etwas, das nicht geschehen ist.
+        if (!acq) fehlerWerfen(cfg.notFound, 404);
+        const ownerId = parseInt(String(acq.user_id));
 
         await tx.run(`DELETE FROM ${cfg.table} WHERE id=$1 AND user_id=$2`, [id, ownerId]);
 
@@ -353,7 +351,6 @@ registerAcquisitionRoutes({
   existsSql: 'SELECT id, user_id, condition, purchase_price AS preis, price_estimated, currency, ((created_at AT TIME ZONE \'UTC\')::date)::text AS tag FROM set_acquisitions WHERE id=$1 AND user_id = ANY($2) AND set_number=$3',
   existsWithKeys: true,
   notFound:  'erfassung_nicht_gefunden',
-  deleteChecksExistence: true,
   // Marktpreis nachfüllen, wenn das Feld geleert wird (Nachtrag 68, Marcos Fund:
   // „Kaufpreis löschen → wird nicht von BrickLink abgefüllt").
   //
@@ -397,7 +394,6 @@ registerAcquisitionRoutes({
   existsSql: 'SELECT id, user_id, condition, unit_price AS preis, price_estimated, currency, ((created_at AT TIME ZONE \'UTC\')::date)::text AS tag FROM part_acquisitions WHERE id=$1 AND user_id = ANY($2)',
   existsWithKeys: false,
   notFound:  'nicht_gefunden',
-  deleteChecksExistence: false,
   // cond MITGEBEN
   // Der Aufrufer reicht den Zustand DIESER Zeile durch (siehe oben, Nachtrag
   // 68). Die Sets-Fassung nimmt ihn seit jeher; Teile und Minifiguren liessen
@@ -439,7 +435,6 @@ registerAcquisitionRoutes({
   existsSql: 'SELECT id, user_id, condition, unit_price AS preis, price_estimated, currency, ((created_at AT TIME ZONE \'UTC\')::date)::text AS tag FROM minifig_acquisitions WHERE id=$1 AND user_id = ANY($2)',
   existsWithKeys: false,
   notFound:  'nicht_gefunden',
-  deleteChecksExistence: false,
   // cond mitgeben — siehe die Begründung bei den Teilen.
   // Die BL-Nummer-Abfrage steht in utils/blZuordnung.ts — sie wird auch vom
   // Kaufpreis-Nachtrag gebraucht (jobs/purchasePriceBackfill.ts).
