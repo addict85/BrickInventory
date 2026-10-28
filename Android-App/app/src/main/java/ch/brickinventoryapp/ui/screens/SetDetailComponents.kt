@@ -63,8 +63,8 @@ import ch.brickinventoryapp.ui.theme.Petrol
 import ch.brickinventoryapp.ui.theme.SlateBlue
 import coil3.compose.AsyncImage
 import coil3.ImageLoader
-import java.util.Locale
 import ch.brickinventoryapp.util.NumericInput
+import ch.brickinventoryapp.util.fmtProzent
 import ch.brickinventoryapp.ui.theme.Abstaende
 
 // Aus SetDetailScreen.kt ausgelagert (Lesbarkeit): geteilte Detail-Composables,
@@ -364,10 +364,9 @@ fun PnlBadge(pct: Double) {
         pct < 0 -> MaterialTheme.colorScheme.error
         else    -> MaterialTheme.colorScheme.onSurfaceVariant
     }
-    val sign = if (pct > 0) "+" else ""
     Surface(shape = Formen.chip, color = color.copy(alpha = 0.12f)) {
         Text(
-            "$sign${String.format(Locale.US, "%.1f", pct)} %",
+            fmtProzent(pct),
             color = color, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium,
             modifier = Modifier.padding(horizontal = 9.dp, vertical = 3.dp)
         )

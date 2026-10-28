@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ch.brickinventoryapp.R
 import ch.brickinventoryapp.ui.*
+import ch.brickinventoryapp.util.fmtProzent
 import ch.brickinventoryapp.util.resolveThumbUrl
 import coil3.compose.AsyncImage
 import androidx.compose.material.icons.filled.*
@@ -404,13 +405,12 @@ fun LazyListScope.financeSummaryCards(valuation: ValuationResponse, partsValuati
                     )
                     val pnlPct = pnl?.totals?.pnlPct?.toDoubleOrNull()
                     if (pnlPct != null) {
-                        val sign = if (pnlPct > 0) "+" else ""
                         Surface(
                             shape = Formen.chip,
                             color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.18f)
                         ) {
                             Text(
-                                stringResource(R.string.finance_total_pnl, sign, pnlPct),
+                                stringResource(R.string.finance_total_pnl, fmtProzent(pnlPct)),
                                 color = MaterialTheme.colorScheme.onPrimary,
                                 fontWeight = FontWeight.Bold,
                                 style = MaterialTheme.typography.bodyMedium,

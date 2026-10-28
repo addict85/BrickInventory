@@ -23,8 +23,8 @@ import ch.brickinventoryapp.data.model.ChartPoint
 import ch.brickinventoryapp.data.model.ChartYAxis
 import ch.brickinventoryapp.R
 import ch.brickinventoryapp.ui.diagrammZusammenfassung
-import ch.brickinventoryapp.util.fmtAmount
 import ch.brickinventoryapp.util.fmtMoney
+import ch.brickinventoryapp.util.fmtProzent
 import ch.brickinventoryapp.ui.theme.Abstaende
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -64,7 +64,7 @@ fun PortfolioChart(
                 if (periodChangePct != null) {
                     val pos = periodChangePct >= 0
                     val bg  = if (pos) LocalStatusFarben.current.erfolg else LocalStatusFarben.current.fehler
-                    val lbl = if (pos) "+%.1f%%".format(periodChangePct) else "%.1f%%".format(periodChangePct)
+                    val lbl = fmtProzent(periodChangePct)
                     Surface(shape = Formen.chip, color = bg.copy(alpha = 0.12f)) {
                         Text(lbl, Modifier.padding(horizontal = Abstaende.klein, vertical = 3.dp),
                             color = bg, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
@@ -92,7 +92,7 @@ fun PortfolioChart(
                         val prozent = z.veraenderungProzent
                         if (prozent == null) stringResource(R.string.chart_summary_no_change, z.von, z.bis, von, bis)
                         else stringResource(R.string.chart_summary, z.von, z.bis, von, bis,
-                            (if (prozent >= 0) "+" else "") + fmtAmount(prozent, 1, 1) + " %")
+                            fmtProzent(prozent))
                     }.orEmpty()
 
                     Canvas(Modifier.fillMaxWidth().height(160.dp).semantics { contentDescription = beschreibung }) {

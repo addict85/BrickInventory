@@ -91,3 +91,20 @@ fun fmtInt(v: Int): String {
     nf.maximumFractionDigits = 0
     return nf.format(v)
 }
+
+/**
+ * Prozentzahl mit einer Nachkommastelle und Vorzeichen, sobald sie nicht null
+ * ist — eine Fassung für Plaketten, Diagramm und Kacheln. [prozent] ist der
+ * Wert in Prozent (12.5 heisst 12,5 %). Wo das Zeichen steht und ob mit
+ * Abstand, entscheidet die Plattform für die App-Sprache.
+ */
+fun fmtProzent(prozent: Double): String {
+    val nf = NumberFormat.getPercentInstance(appNumberLocale())
+    nf.minimumFractionDigits = 1
+    nf.maximumFractionDigits = 1
+    // Erst runden: -0.04 hiesse sonst „-0.0 %“, ein Minus vor einer Null.
+    val gerundet = Math.round(prozent * 10) / 10.0
+    if (gerundet == 0.0) return nf.format(0.0)
+    val text = nf.format(gerundet / 100.0)
+    return if (gerundet > 0) "+$text" else text
+}

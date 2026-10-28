@@ -214,7 +214,7 @@
     <string name="finance_price_error">Preisfehler</string>
     <string name="finance_no_sets">Keine Sets</string>
     <string name="finance_load_prompt">→ Preise laden</string>
-    <string name="finance_total_pnl">Gesamt G&amp;V  %1$s%2$.1f%%</string>
+    <string name="finance_total_pnl">Gesamt G&amp;V  %1$s</string>
     <string name="finance_parts_extra">davon Teile &amp; Minifiguren: %1$s</string>
     <string name="finance_avg_label">Ø Durchschnitt</string>
     <string name="finance_filter_all">Alle</string>

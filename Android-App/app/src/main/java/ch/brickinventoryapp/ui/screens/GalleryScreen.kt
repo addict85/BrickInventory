@@ -50,8 +50,8 @@ import ch.brickinventoryapp.ui.theme.SteinKantenVerlauf
 import ch.brickinventoryapp.ui.theme.SlateBlueNoppe
 import ch.brickinventoryapp.ui.theme.NoppenMass
 import ch.brickinventoryapp.util.fmtInt
-import ch.brickinventoryapp.util.fmtAmount
 import ch.brickinventoryapp.util.fmtMoney
+import ch.brickinventoryapp.util.fmtProzent
 import ch.brickinventoryapp.ui.theme.LocalStatusFarben
 import ch.brickinventoryapp.util.rememberTileImageWithFallback
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -629,7 +629,7 @@ fun SetCard(
                         Text(fmtMoney(betrag, waehrung), style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
                         val pct = preis?.pnlPct
-                        if (pct != null) Text((if (pct >= 0) "+" else "") + fmtAmount(pct, 1, 1) + " %",
+                        if (pct != null) Text(fmtProzent(pct),
                             style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold,
                             color = if (pct >= 0) LocalStatusFarben.current.erfolg else MaterialTheme.colorScheme.error)
                     }
