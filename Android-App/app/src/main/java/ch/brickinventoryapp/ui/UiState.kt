@@ -214,67 +214,22 @@ data class AnmeldeUiState(
     val laeuft: Boolean = false,
     /** Der Server verlangt beim Anmelden den Code des zweiten Faktors. */
     val codeNoetig: Boolean = false,
-)
-
-data class AppUiState(
-    /**
-     * Läuft gerade eine ANMELDUNG? Und nur das.
-     *
-     * ── Warum das Feld umbenannt wurde ──────────────────────────────────────
-     * Es hiess `isLoading` und war das letzte querschneidende Feld des
-     * gemeinsamen Zustands — StateDomainBoundaryTest führte es ausdrücklich als
-     * den Grund, warum es AppUiState als geteiltes Objekt überhaupt noch gibt.
-     *
-     * NACHGEMESSEN: Geschrieben wurde es von vier Feature-Dateien an
-     * dreiundzwanzig Stellen (Sitzung 8, Teile 8, Galerie 4, Finanzen 3),
-     * GELESEN an fünf — und die fünf meinten vier verschiedene Dinge:
-     *   • AuthGraph        → „die Anmeldung läuft" (Knopf sperren)
-     *   • GalleryScreen    → „die Galerie lädt" (Aktualisieren-Kringel)
-     *   • CollectionGraph  → „die Galerie lädt" (Nachlade-Wächter)
-     *   • FinanceScreen    → „die Bewertung lädt"
-     *   • loadMoreSets()   → „die Galerie lädt" (Wächter gegen Doppelabruf)
-     *
-     * Ein Feld, vier Bedeutungen — das hatte Folgen, die über Rekomposition
-     * hinausgehen:
-     *   • Die Teileliste schrieb es, obwohl KEIN Teile-Bildschirm es liest
-     *     (dort gibt es partsLoading/minifigsLoading). Wirkung hatte es nur
-     *     woanders: `addPart()` liess die Galerie beschäftigt aussehen und
-     *     blockierte über den Wächter in loadMoreSets() das Nachladen.
-     *   • Wer schneller fertig war, gewann. `loadValuation()` setzte am Ende
-     *     `false` — mitten in einen noch laufenden Galerie-Abruf hinein. Der
-     *     Wächter gab damit einen zweiten Abruf frei, der Kringel verschwand
-     *     zu früh.
-     *
-     * Jede der vier Bedeutungen hat jetzt ihr eigenes Feld in ihrer eigenen
-     * Domäne: `galleryLoading`, `valuationLoading`, `partsLoading` (bestand
-     * schon) — und dieses hier für die Anmeldung.
-     */
+    /** Läuft die ANMELDUNG (nicht Registrieren oder „Passwort vergessen")? */
     val loginLaeuft: Boolean = false,
     /**
-     * Fehler des ANMELDEFORMULARS — und nur der.
-     *
-     * ── Warum der Name so eng ist (Nachtrag 118) ────────────────────────────
-     * Das Feld hiess `error` und wurde von vier Feature-Dateien beschrieben:
-     * Anmeldung, Galerie, Teile, Finanzen — vierundzwanzig Stellen. GELESEN
-     * wurde es an genau EINER: dem Anmeldebildschirm. Achtzehn Fehlerpfade
-     * schrieben also in ein Feld, das niemand anzeigt. Ein fehlgeschlagenes
-     * Löschen einer Minifigur, ein misslungener Bewertungsabruf, eine leer
-     * gebliebene Galerie — der Nutzer sah nichts. `clearError()` hatte dazu
-     * passend null Aufrufer.
-     *
-     * Der Grund war ein zweiter, unfertiger Meldungsweg neben `_snackbar`:
-     * Beide gab es, eine Regel welcher wofür gilt gab es nicht, und einer war
-     * nirgends verdrahtet. Der Name sagt jetzt, wofür das Feld da ist —
-     * flüchtige Meldungen gehen in den Snackbar, DIESES bleibt stehen, weil
-     * der Anmeldefehler im Formular sichtbar bleiben muss, während der Nutzer
-     * das Passwort korrigiert.
-     *
-     * CatalogUiState hat weiterhin ein eigenes `error`: Der Katalog ZEIGT es
-     * (ganzseitige Fehlerfläche mit Erneut-Knopf), es ist also verdrahtet.
-     *
-     * Gesichert durch ErrorChannelTest.
+     * Fehler des Anmeldeformulars. Bleibt stehen, solange man das Passwort
+     * korrigiert — flüchtige Meldungen gehen in den Meldungskanal.
      */
     val loginError: String? = null,
+)
+
+/**
+ * Was die ganze App über die Sitzung weiss — gehalten von [Sitzung], gelesen
+ * von jedem Bildschirm. Anmeldeformular, Kontofilter und Haushaltskonten stehen
+ * nicht mehr hier, sondern bei dem, der sie verantwortet (AnmeldeUiState,
+ * BlickfeldUiState).
+ */
+data class AppUiState(
     val serverUrl: String = "",
     val isLoggedIn: Boolean = false,
     val isAdmin: Boolean = false,
@@ -285,20 +240,6 @@ data class AppUiState(
     // (UiStateFieldsTest).
     val authToken: String = "",
     val currency: String = "EUR",
-    /**
-     * Kontofilter JE ANSICHT (Schlüssel aus ScopeFilter.View).
-     *
-     * Der Wert reist als `accounts=` mit und wird ausschliesslich auf dem
-     * Server in Konto-IDs übersetzt — dadurch kennt ihn jede Zahl derselben
-     * Antwort: Liste, Gesamtzahl, Kennzahlen und Summen.
-     */
-    val scopeModes: Map<String, String> = emptyMap(),
-    /**
-     * Konten des Haushalts, eigenes zuerst. Mehr als einer heisst: Hauptkonto
-     * mit Unterkonten — erst dann erscheinen Kontofilter, Kontoauswahl beim
-     * Erfassen und der Verschieben-Weg.
-     */
-    val householdMembers: List<ch.brickinventoryapp.data.model.HouseholdMember> = emptyList(),
     val priceCondition: String = "N",
     val defaultPriceCondition: String = "N", // server-side default condition for new items (N=New, U=Used)
     val userDefaultCondition: String? = null, // null = use global default
@@ -321,6 +262,24 @@ data class AppUiState(
      */
     val startupStatus: ch.brickinventoryapp.data.model.StartupStatus? = null,
     val language: String = "system",
+)
+
+/** Kontofilter und Haushaltskonten — gehalten von [Blickfeld]. */
+data class BlickfeldUiState(
+    /**
+     * Kontofilter JE ANSICHT (Schlüssel aus ScopeFilter.View).
+     *
+     * Der Wert reist als `accounts=` mit und wird ausschliesslich auf dem
+     * Server in Konto-IDs übersetzt — dadurch kennt ihn jede Zahl derselben
+     * Antwort: Liste, Gesamtzahl, Kennzahlen und Summen.
+     */
+    val scopeModes: Map<String, String> = emptyMap(),
+    /**
+     * Konten des Haushalts, eigenes zuerst. Mehr als einer heisst: Hauptkonto
+     * mit Unterkonten — erst dann erscheinen Kontofilter, Kontoauswahl beim
+     * Erfassen und der Verschieben-Weg.
+     */
+    val householdMembers: List<ch.brickinventoryapp.data.model.HouseholdMember> = emptyList(),
 )
 
 /**

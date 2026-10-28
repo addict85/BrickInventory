@@ -66,6 +66,7 @@ fun AcquisitionManagementScreen(
     onBack: () -> Unit
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
+    val blick by vm.blickfeld.collectAsStateWithLifecycle()
     val currency = state.currency
 
     // Unified acquisition state — sets use setDetailState, parts/figs use manDetailState
@@ -198,10 +199,10 @@ fun AcquisitionManagementScreen(
                 // Für ALLE drei Arten: Sets, manuelle Teile, manuelle
                 // Minifiguren. Das ist der einzige Weg, Bestand zwischen
                 // Konten zu verschieben — die Detailansichten haben keinen.
-                if (state.householdMembers.size > 1) {
+                if (blick.householdMembers.size > 1) {
                     OwnerPicker(
-                        members = state.householdMembers,
-                        selected = acq.ownerUserId ?: state.householdMembers.firstOrNull { it.isSelf }?.id,
+                        members = blick.householdMembers,
+                        selected = acq.ownerUserId ?: blick.householdMembers.firstOrNull { it.isSelf }?.id,
                         onSelect = { target ->
                             // acq.ownerUserId nur für den Vergleich — der
                             // Server ermittelt den Absender aus der Zeile.

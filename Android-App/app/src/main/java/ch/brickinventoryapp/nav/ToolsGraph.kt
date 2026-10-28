@@ -165,6 +165,7 @@ fun NavGraphBuilder.toolsGraph(
             // Zustand INNERHALB des Ziels lesen — als Parameter wäre es eine
             // Momentaufnahme vom Aufbau des Graphen (der NavHost-Builder läuft nur einmal).
             val state by vm.state.collectAsStateWithLifecycle()
+            val blick by vm.blickfeld.collectAsStateWithLifecycle()
             val barcodeState by vm.barcodeState.collectAsStateWithLifecycle()
             ReiterGeruest(stringResource(R.string.nav_partslist), vm, navController, bottomNavItems, snackbarHostState) {
                 PartsListScreen(
@@ -182,7 +183,7 @@ fun NavGraphBuilder.toolsGraph(
                         vm.ladeTeilelisteBestand(teile, nurLose, mitUnterkonten) },
                     // Dieselbe Regel wie in der Webapp (02-gallery.js): Mehr als
                     // ein Mitglied im Haushalt heisst „es gibt Unterkonten".
-                    hatUnterkonten = state.householdMembers.size > 1,
+                    hatUnterkonten = blick.householdMembers.size > 1,
                     barcodeSetNumber = barcodeState.fuerTeileliste,
                     onBarcodeConsumed = { vm.clearBarcodeForPartsList() },
                     listState = partsListState

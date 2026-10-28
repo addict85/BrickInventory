@@ -54,6 +54,7 @@ fun MinifigsScreen(
     // Begründung steht bei PartsScreen (Nachtrag 96). Die Namen bleiben
     // absichtlich dieselben, damit der Rumpf darunter unverändert bleibt.
     val state by vm.state.collectAsStateWithLifecycle()
+    val blick by vm.blickfeld.collectAsStateWithLifecycle()
     val partsState by vm.partsState.collectAsStateWithLifecycle()
 
     val figs = partsState.minifigs
@@ -62,8 +63,8 @@ fun MinifigsScreen(
     val serverUrl = state.serverUrl
     val waehrung = state.currency
     val defaultCondition = state.userDefaultCondition ?: "N"
-    val householdMembers = state.householdMembers
-    val scopeMode = state.scopeModes[ch.brickinventoryapp.data.ScopeFilter.View.MINIFIGS.key]
+    val householdMembers = blick.householdMembers
+    val scopeMode = blick.scopeModes[ch.brickinventoryapp.data.ScopeFilter.View.MINIFIGS.key]
         ?: ch.brickinventoryapp.data.ScopeFilter.ALL
     val manualFigs = partsState.manualFigs ?: emptyList()
     val lagerState by vm.lagerState.collectAsStateWithLifecycle()

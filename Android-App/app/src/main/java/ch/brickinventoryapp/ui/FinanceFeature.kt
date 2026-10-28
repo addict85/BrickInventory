@@ -32,7 +32,7 @@ internal fun MainViewModel.loadValuation() {
             is Result.Success -> {
                 prefs.saveCurrency(r.data.currency)
                 _financeState.update { it.copy(valuation = r.data, valuationLoading = false) }
-                _state.update { it.copy(currency = r.data.currency) }
+                sitzung.aendere { it.copy(currency = r.data.currency) }
             }
             is Result.Error -> {
                 _financeState.update { it.copy(valuationLoading = false) }

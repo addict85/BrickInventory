@@ -81,6 +81,7 @@ import ch.brickinventoryapp.ui.theme.Abstaende
 @Composable
 fun BarcodeResultDialog(vm: MainViewModel, imageLoader: ImageLoader) {
     val state by vm.state.collectAsStateWithLifecycle()
+    val blick by vm.blickfeld.collectAsStateWithLifecycle()
     val barcodeState by vm.barcodeState.collectAsStateWithLifecycle()
     if (barcodeState.result == null) return
 
@@ -91,8 +92,8 @@ var barcodeCondition by remember(barcodeState.result) { mutableStateOf(state.use
 // (Nachtrag 44, Marcos Bericht — beim Barcode-Erfassen liess sich der
 // Eigentümer gar nicht wählen, obwohl Repository, API und Server ihn
 // seit jeher entgegennehmen; nur dieser Dialog fragte ihn nie ab).
-var barcodeOwner by remember(barcodeState.result, state.householdMembers) {
-    mutableStateOf(state.householdMembers.firstOrNull { it.isSelf }?.id)
+var barcodeOwner by remember(barcodeState.result, blick.householdMembers) {
+    mutableStateOf(blick.householdMembers.firstOrNull { it.isSelf }?.id)
 }
 // Lagerort, ebenfalls je gescanntem Barcode zurueckgesetzt.
 //
@@ -224,7 +225,7 @@ AlertDialog(
                 // OwnerPicker blendet sich ohne Haushalt selbst aus
                 // (members.size < 2 → return), deshalb keine Bedingung hier.
                 ch.brickinventoryapp.ui.screens.OwnerPicker(
-                    state.householdMembers, barcodeOwner, { barcodeOwner = it }
+                    blick.householdMembers, barcodeOwner, { barcodeOwner = it }
                 )
                 OutlinedTextField(
                     value = barcodePriceText,
@@ -272,7 +273,7 @@ AlertDialog(
                         // Ohne Haushalt gar nichts mitschicken — der Server
                         // bleibt dann beim eigenen Konto (gleiche Regel wie
                         // im Galerie-Dialog).
-                        if (state.householdMembers.size > 1) barcodeOwner else null,
+                        if (blick.householdMembers.size > 1) barcodeOwner else null,
                         barcodeLagerort.trim().takeIf { it.isNotEmpty() }
                     )
                 }

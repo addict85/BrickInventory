@@ -30,14 +30,13 @@ internal fun MainViewModel.saveServerUrl(url: String, klartextBestaetigt: Boolea
 // ── Auth ─────────────────────────────────────────────────────────────────
 internal fun MainViewModel.login(username: String, password: String, code: String? = null) {
     viewModelScope.launch {
-        _state.update { it.copy(loginLaeuft = true, loginError = null) }
+        _anmeldeState.update { it.copy(loginLaeuft = true, loginError = null) }
         val url = prefs.serverUrlJetzt()
         when (val r = repo.admin.login(url, username, password, code?.trim()?.takeIf { it.isNotEmpty() })) {
             is Result.Success -> {
                 if (r.data.zweiterFaktor) {
                     // Erstes Mal: nur das Codefeld zeigen. Mit Code: der Satz des Servers.
-                    _anmeldeState.update { it.copy(codeNoetig = true) }
-                    _state.update { it.copy(loginLaeuft = false,
+                    _anmeldeState.update { it.copy(codeNoetig = true, loginLaeuft = false,
                         loginError = if (code.isNullOrBlank()) null else r.data.error) }
                 } else if (r.data.success && r.data.token != null) {
                     prefs.saveAuthToken(r.data.token)
@@ -47,22 +46,22 @@ internal fun MainViewModel.login(username: String, password: String, code: Strin
                     // Sammlung sah beim nächsten Login halbiert aus, ohne dass
                     // etwas auf den Filter hinwies. Dieselbe Regel wie in der
                     // Webapp.
-                    ch.brickinventoryapp.data.ScopeFilter.resetAll(ctx)
-                    _anmeldeState.update { it.copy(codeNoetig = false) }
-                    _state.update { it.copy(loginLaeuft = false, isLoggedIn = true, isAdmin = r.data.user?.isAdmin == true) }
+                    blickfeldDienst.anmeldungBeginnt()
+                    _anmeldeState.update { it.copy(codeNoetig = false, loginLaeuft = false) }
+                    sitzung.aendere { it.copy(isLoggedIn = true, isAdmin = r.data.user?.isAdmin == true) }
                     loadDashboard()
                 } else {
-                    _state.update { it.copy(loginLaeuft = false, loginError = r.data.error ?: text(R.string.err_login_failed)) }
+                    _anmeldeState.update { it.copy(loginLaeuft = false, loginError = r.data.error ?: text(R.string.err_login_failed)) }
                 }
             }
-            is Result.Error -> _state.update { it.copy(loginLaeuft = false, loginError = meldung(r)) }
+            is Result.Error -> _anmeldeState.update { it.copy(loginLaeuft = false, loginError = meldung(r)) }
         }
     }
 }
 
 internal fun MainViewModel.loginWithQrToken(serverUrl: String, token: String) {
     viewModelScope.launch {
-        _state.update { it.copy(loginLaeuft = true, loginError = null) }
+        _anmeldeState.update { it.copy(loginLaeuft = true, loginError = null) }
         // Save server URL first so Retrofit uses it for this call
         prefs.saveServerUrl(serverUrl.trim().trimEnd('/'))
         when (val r = repo.admin.qrLogin(token)) {
@@ -71,14 +70,19 @@ internal fun MainViewModel.loginWithQrToken(serverUrl: String, token: String) {
                     prefs.saveAuthToken(r.data.token)
                     prefs.saveUsername(r.data.user?.username ?: "")
                     // Auch der QR-Login ist eine Anmeldung (Nachtrag 46).
-                    ch.brickinventoryapp.data.ScopeFilter.resetAll(ctx)
-                    _state.update { it.copy(loginLaeuft = false, isLoggedIn = true, isAdmin = r.data.user?.isAdmin == true) }
+                    blickfeldDienst.anmeldungBeginnt()
+                    _anmeldeState.update { it.copy(loginLaeuft = false) }
+                    sitzung.aendere { it.copy(isLoggedIn = true, isAdmin = r.data.user?.isAdmin == true) }
                     loadDashboard()
                 } else {
-                    _state.update { it.copy(loginLaeuft = false, loginError = qrFehler(it.isLoggedIn, r.data.error ?: text(R.string.err_qr_login_failed))) }
+                    val angemeldet = sitzung.state.value.isLoggedIn
+                    _anmeldeState.update { it.copy(loginLaeuft = false, loginError = qrFehler(angemeldet, r.data.error ?: text(R.string.err_qr_login_failed))) }
                 }
             }
-            is Result.Error -> _state.update { it.copy(loginLaeuft = false, loginError = qrFehler(it.isLoggedIn, meldung(r))) }
+            is Result.Error -> {
+                val angemeldet = sitzung.state.value.isLoggedIn
+                _anmeldeState.update { it.copy(loginLaeuft = false, loginError = qrFehler(angemeldet, meldung(r))) }
+            }
         }
     }
 }
@@ -231,7 +235,8 @@ internal fun MainViewModel.logout() {
             imageLoader.memoryCache?.clear()
             imageLoader.diskCache?.clear()
         } catch (_: Exception) { /* Best effort — darf das Abmelden nie verhindern */ }
-        _state.update { AppUiState(serverUrl = _state.value.serverUrl) }
+        sitzung.abgemeldet()
+        blickfeldDienst.zuruecksetzen()
         // Die herausgelösten Flows gehören zum selben Konto und müssen
         // mit zurückgesetzt werden — sonst zeigt der nächste Nutzer auf
         // demselben Gerät noch fremde Teile und Bewertungen.

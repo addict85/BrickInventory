@@ -70,6 +70,7 @@ fun MerkpostenDetailScreen(
     onBack: () -> Unit,
 ) {
     val appState by vm.state.collectAsStateWithLifecycle()
+    val blick by vm.blickfeld.collectAsStateWithLifecycle()
     // Der VORRAT an Lagerorten fuer den Uebernahme-Dialog.
     val lagerZustand by vm.lagerState.collectAsStateWithLifecycle()
     val liste    by vm.merklisteState.collectAsStateWithLifecycle()
@@ -211,10 +212,10 @@ fun MerkpostenDetailScreen(
                         // Derselbe Waehler wie in den Erfassungsmasken; bei
                         // einem Einzelkonto blendet er sich selbst aus
                         // (OwnerPicker: `if (members.size < 2) return`).
-                        if (appState.householdMembers.size > 1) {
+                        if (blick.householdMembers.size > 1) {
                             Spacer(Modifier.height(Abstaende.klein))
                             OwnerPicker(
-                                members = appState.householdMembers,
+                                members = blick.householdMembers,
                                 selected = merkposten.userId,
                                 onSelect = { vm.verschiebeMerkposten(
                                     merkposten.setNumber, merkposten.condition, merkposten.userId, it) },

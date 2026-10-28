@@ -20,8 +20,7 @@ import kotlinx.coroutines.launch
  */
 
 /** Filterwert einer Ansicht — für die Anfrage aufbereitet (null = alle). */
-internal fun MainViewModel.scopeFor(view: ScopeFilter.View): String? =
-    ScopeFilter.asQuery(_state.value.scopeModes[view.key])
+internal fun MainViewModel.scopeFor(view: ScopeFilter.View): String? = blickfeldDienst.kontoFuer(view)
 
 /**
  * Filter setzen und NUR die betroffene Ansicht neu laden.
@@ -31,30 +30,22 @@ internal fun MainViewModel.scopeFor(view: ScopeFilter.View): String? =
  */
 internal fun MainViewModel.setScope(view: ScopeFilter.View, value: String) {
     viewModelScope.launch {
-        ScopeFilter.set(ctx, view, value)
-        _state.update { it.copy(scopeModes = it.scopeModes + (view.key to value)) }
+        blickfeldDienst.setzeKonto(view, value)
         when (view) {
             ScopeFilter.View.GALLERY  -> { loadSets(); loadStats() }
-            // Die Reiter Teile und Minifiguren haben je ZWEI Listen: die aus
-            // Sets und die manuell erfassten. Letztere kommen aus der
-            // Bewertung — ohne sie bliebe der manuelle Bereich ungefiltert
-            // stehen, genau der Fehler, der in der Webapp gemeldet wurde.
             ScopeFilter.View.PARTS    -> { loadParts(); loadPartsValuationOnly() }
             ScopeFilter.View.MINIFIGS -> { loadMinifigs(); loadFigsValuationOnly() }
             ScopeFilter.View.FINANCE  -> {
                 loadValuation()
                 loadPortfolioHistory(_financeState.value.historyPeriod)
             }
-            // Die Merkliste laedt EINE Liste und hat keine Kennzahlen
-            // darueber — anders als die Galerie, wo loadStats() mitmuss.
             ScopeFilter.View.MERKLISTE -> ladeMerkliste()
         }
     }
 }
 
 /** Der gewaehlte Lagerort als Anfrageparameter — null, solange nicht gefiltert wird. */
-internal fun MainViewModel.lagerFor(view: ScopeFilter.View): String? =
-    ScopeFilter.lagerAsQuery(_lagerState.value.modi[view.key])
+internal fun MainViewModel.lagerFor(view: ScopeFilter.View): String? = blickfeldDienst.lagerFuer(view)
 
 /**
  * Lagerortfilter setzen und NUR die betroffene Ansicht neu laden.
@@ -64,8 +55,7 @@ internal fun MainViewModel.lagerFor(view: ScopeFilter.View): String? =
  */
 internal fun MainViewModel.setLagerFilter(view: ScopeFilter.View, value: String) {
     viewModelScope.launch {
-        ScopeFilter.setLager(ctx, view, value)
-        _lagerState.update { it.copy(modi = it.modi + (view.key to value)) }
+        blickfeldDienst.setzeLager(view, value)
         when (view) {
             ScopeFilter.View.GALLERY -> loadSets()
             ScopeFilter.View.PARTS   -> loadParts()
@@ -82,11 +72,7 @@ internal fun MainViewModel.setLagerFilter(view: ScopeFilter.View, value: String)
  * kurzzeitig zwei Staende zeigen.
  */
 internal fun MainViewModel.loadLagerorte() {
-    viewModelScope.launch {
-        val r = repo.teile.getLagerorte(scopeFor(ScopeFilter.View.GALLERY))
-        val orte = (r as? Result.Success)?.data?.takeIf { it.success }?.orte ?: return@launch
-        _lagerState.update { it.copy(orte = orte) }
-    }
+    viewModelScope.launch { blickfeldDienst.ladeLagerorte() }
 }
 
 /**
@@ -105,11 +91,7 @@ internal fun MainViewModel.loadLagerorte() {
  * antwortet mit der eigenen Liste. Genau das ist dann auch richtig.
  */
 internal fun MainViewModel.loadLagerortVorrat(besitzer: List<Int>) {
-    viewModelScope.launch {
-        val r = repo.teile.getLagerortVorrat(besitzer.takeIf { it.isNotEmpty() }?.joinToString(","))
-        val orte = (r as? Result.Success)?.data?.takeIf { it.success }?.orte ?: return@launch
-        _lagerState.update { it.copy(vorrat = orte) }
-    }
+    viewModelScope.launch { blickfeldDienst.ladeVorrat(besitzer) }
 }
 
 /**
@@ -120,11 +102,7 @@ internal fun MainViewModel.loadLagerortVorrat(besitzer: List<Int>) {
  * der Stern einen Moment am falschen Eintrag.
  */
 internal fun MainViewModel.ladeEigeneLagerorte() {
-    viewModelScope.launch {
-        val r = repo.teile.getLagerortVorrat(null)
-        val antwort = (r as? Result.Success)?.data?.takeIf { it.success } ?: return@launch
-        _lagerState.update { it.copy(eigene = antwort.orte, vorgabe = antwort.vorgabe) }
-    }
+    viewModelScope.launch { blickfeldDienst.ladeEigeneLagerorte() }
 }
 
 /**
@@ -207,24 +185,7 @@ internal fun MainViewModel.loescheLagerort(id: Int) =
 
 /** Gespeicherte Filterwerte beim Start einlesen. */
 internal fun MainViewModel.loadScopeModes() {
-    viewModelScope.launch {
-        val modes = ScopeFilter.View.entries.associate { v ->
-            v.key to (ScopeFilter.flow(ctx, v).let { f ->
-                var value = ScopeFilter.ALL
-                f.collect { value = it; return@collect }
-                value
-            })
-        }
-        val lager = ScopeFilter.View.entries.associate { v ->
-            v.key to (ScopeFilter.lagerFlow(ctx, v).let { f ->
-                var value = ""
-                f.collect { value = it; return@collect }
-                value
-            })
-        }
-        _state.update { it.copy(scopeModes = modes) }
-        _lagerState.update { it.copy(modi = lager) }
-    }
+    viewModelScope.launch { blickfeldDienst.ladeFilter() }
 }
 
 /**
@@ -236,26 +197,7 @@ internal fun MainViewModel.loadScopeModes() {
  * Unterkonten.
  */
 internal fun MainViewModel.loadHouseholdMembers() {
-    viewModelScope.launch {
-        when (val r = repo.haushalt.getHouseholdMembers()) {
-            is Result.Success -> {
-                val members = r.data.members
-                _state.update { st ->
-                    // Zeigt eine gespeicherte Wahl auf ein inzwischen
-                    // entkoppeltes Konto, fällt sie auf „Alle" zurück — sonst
-                    // bliebe die Liste unerklärlich gefiltert.
-                    val opts = ScopeFilter.options(members, "", "").map { it.first }
-                    st.copy(
-                        householdMembers = members,
-                        scopeModes = st.scopeModes.mapValues { (_, v) ->
-                            if (opts.isEmpty() || opts.contains(v)) v else ScopeFilter.ALL
-                        }
-                    )
-                }
-            }
-            is Result.Error -> { /* ohne Haushalt bleibt die Liste leer — kein Fehlerfall */ }
-        }
-    }
+    viewModelScope.launch { blickfeldDienst.ladeMitglieder() }
 }
 
 /** Zustand der Verknüpfung für die Einstellungen. */

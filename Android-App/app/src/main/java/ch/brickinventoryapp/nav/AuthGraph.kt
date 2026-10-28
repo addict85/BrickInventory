@@ -116,8 +116,8 @@ fun NavGraphBuilder.authGraph(
                 ch.brickinventoryapp.ui.screens.ServerStartAnzeige(serverStart)
             } else LoginScreen(
                 serverUrl = state.serverUrl,
-                isLoading = state.loginLaeuft,
-                error = state.loginError,
+                isLoading = anmeldung.loginLaeuft,
+                error = anmeldung.loginError,
                 codeNoetig = anmeldung.codeNoetig,
                 formular = anmeldung.formular,
                 registrierungOffen = anmeldung.registrierungOffen,

@@ -67,14 +67,14 @@ class MainViewModel @Inject constructor(
     // Nur fürs Abmelden: Der Bild-Cache enthält Thumbnails des angemeldeten
     // Kontos und wird zusammen mit dem API-Cache geleert (SessionFeature.kt).
     internal val imageLoader: coil3.ImageLoader,
+    // Sitzung, Blickfeld und Bestandssignal teilt dieses ViewModel mit den
+    // Bereichs-ViewModels — siehe Sitzung.kt, Blickfeld.kt, Bestandssignal.kt.
+    internal val sitzung: Sitzung,
+    internal val blickfeldDienst: Blickfeld,
+    internal val bestand: Bestandssignal,
+    val scrollMemory: ScrollMemory,
 ) : ViewModel() {
 
-    /**
-     * Gemerkte Rollpositionen der Reiter (siehe ScrollMemory.kt). Kein
-     * StateFlow: Die Position ändert sich bei jeder Rollbewegung, gelesen wird
-     * sie nur beim Betreten eines Reiters.
-     */
-    val scrollMemory = ScrollMemory()
 
     /**
      * Ein Text aus den Ressourcen — in der SPRACHE DER APP, nicht des Systems.
@@ -145,7 +145,7 @@ class MainViewModel @Inject constructor(
     // ── Der Zustand wird MIT dem gemerkten Design geboren ───────────────────
     //
     // Nicht `AppUiState()` und dann nachtraeglich korrigieren: `appTheme` wird
-    // weiter unten als `stateIn(..., _state.value.appTheme)` abgeleitet, und
+    // weiter unten als `stateIn(..., sitzung.state.value.appTheme)` abgeleitet, und
     // Kotlin wertet diese Eigenschaft VOR dem init-Block aus. Ein Startwert,
     // der erst dort gesetzt wird, kaeme also zu spaet — MainActivity haette
     // schon mit "classic" komponiert.
@@ -159,8 +159,10 @@ class MainViewModel @Inject constructor(
     // Verhalten, das Marco wollte: „wenn sich das Design geaendert hat ist es
     // in Ordnung wenn beim ersten Starten kurz das alte Design noch sichtbar
     // ist."
-    internal val _state = MutableStateFlow(AppUiState(appTheme = prefs.gemerktesDesign()))
-    val state = _state.asStateFlow()
+    init {
+        sitzung.aendere { it.copy(appTheme = prefs.gemerktesDesign()) }
+    }
+    val state = sitzung.state
 
     // Live-Status des laufenden PDF-Exports (z. B. Countdown-Text „…noch ~Xs"),
     // null wenn kein Export läuft. Wird im PartsListScreen angezeigt.
@@ -200,10 +202,9 @@ class MainViewModel @Inject constructor(
     internal val _setItemState = MutableStateFlow(SetItemUiState())
     val setItemState = _setItemState.asStateFlow()
 
-    // Lagerortfilter — eigener Fluss statt zweier Felder in AppUiState; die
-    // Begruendung steht an LagerUiState (UiState.kt).
-    internal val _lagerState = MutableStateFlow(LagerUiState())
-    val lagerState = _lagerState.asStateFlow()
+    // Kontofilter, Haushaltskonten und Lagerorte — gehalten vom Blickfeld.
+    val blickfeld = blickfeldDienst.konten
+    val lagerState = blickfeldDienst.lager
     internal val _alarmUebersicht = MutableStateFlow(AlarmUebersichtUiState())
     val alarmUebersicht = _alarmUebersicht.asStateFlow()
 
@@ -336,10 +337,10 @@ class MainViewModel @Inject constructor(
      * der Composition und darüber die ganze App. distinctUntilChanged() sorgt
      * dafür, dass nur eine echte Designänderung durchkommt.
      */
-    val appTheme = _state
+    val appTheme = sitzung.state
         .map { it.appTheme }
         .distinctUntilChanged()
-        .stateIn(viewModelScope, SharingStarted.Eagerly, _state.value.appTheme)
+        .stateIn(viewModelScope, SharingStarted.Eagerly, sitzung.state.value.appTheme)
 
     /** Je Gerät: Werkbank, solange das System dunkel ist (siehe wirksamesDesign). */
     private val _dunkelNachSystem = MutableStateFlow(prefs.dunkelNachSystem())
@@ -393,7 +394,7 @@ class MainViewModel @Inject constructor(
             // bleibt als zweite Quelle: Bei einer App, die schon vor dem
             // Spiegel installiert war, steht der Wert nur im DataStore.
             val gemerkt = prefs.appTheme.first()
-            _state.update { it.copy(appTheme = gemerkt) }
+            sitzung.aendere { it.copy(appTheme = gemerkt) }
             loadAppTheme()
             // Und ob der Server ueberhaupt schon so weit ist (Nachtrag 136).
             // Beim ersten Start einer Neuinstallation holt er den Katalog, was
@@ -410,7 +411,7 @@ class MainViewModel @Inject constructor(
             combine(prefs.serverUrl, prefs.authToken) { url, token -> url to token }
                 .distinctUntilChanged()
                 .collect { (url, token) ->
-                    _state.update {
+                    sitzung.aendere {
                         it.copy(
                             serverUrl  = url,
                             isLoggedIn = token.isNotBlank(),
@@ -422,7 +423,7 @@ class MainViewModel @Inject constructor(
                             try {
                                 val me = repo.admin.getMe()
                                 if (me is Result.Success) {
-                                    _state.update { it.copy(isAdmin = me.data.user?.isAdmin == true) }
+                                    sitzung.aendere { it.copy(isAdmin = me.data.user?.isAdmin == true) }
                                 }
                             } catch (_: Exception) {}
                         }
@@ -437,10 +438,10 @@ class MainViewModel @Inject constructor(
         // AppUiState). PreferencesManager.username und saveUsername() gibt es
         // noch — sie haben damit allerdings auch keinen Leser mehr.
         viewModelScope.launch {
-            prefs.currency.collect { cur -> _state.update { it.copy(currency = cur) } }
+            prefs.currency.collect { cur -> sitzung.aendere { it.copy(currency = cur) } }
         }
         viewModelScope.launch {
-            prefs.language.collect { lang -> _state.update { it.copy(language = lang) } }
+            prefs.language.collect { lang -> sitzung.aendere { it.copy(language = lang) } }
         }
         // Der OkHttp-Interceptor (AppModule) meldet hier jeden 401 von unserem
         // eigenen Server, bei dem ein Token mitgeschickt wurde. Reagiert wird
@@ -450,7 +451,7 @@ class MainViewModel @Inject constructor(
         // kein Token gesetzt, siehe Guard im Interceptor).
         viewModelScope.launch {
             sessionExpired.events.collect {
-                if (_state.value.isLoggedIn) {
+                if (sitzung.state.value.isLoggedIn) {
                     _snackbar.value = text(R.string.vm_session_expired)
                     logout()
                 }

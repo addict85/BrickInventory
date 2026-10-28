@@ -137,6 +137,7 @@ fun NavGraphBuilder.catalogGraph(
             // Zustand INNERHALB des Ziels lesen — als Parameter wäre es eine
             // Momentaufnahme vom Aufbau des Graphen (der NavHost-Builder läuft nur einmal).
             val state by vm.state.collectAsStateWithLifecycle()
+            val blick by vm.blickfeld.collectAsStateWithLifecycle()
             val catSetNumber = backStack.arguments?.getString("setNumber") ?: ""
             val catalogState by katalog.state.collectAsStateWithLifecycle()
             val lagerZustand by vm.lagerState.collectAsStateWithLifecycle()
@@ -151,7 +152,7 @@ fun NavGraphBuilder.catalogGraph(
                 serverUrl = state.serverUrl,
                 defaultCondition = state.userDefaultCondition ?: "N",
                 onLoad = katalog::loadCatalogDetail,
-                householdMembers = state.householdMembers,
+                householdMembers = blick.householdMembers,
                 // Der VORRAT an Lagerorten, nicht die belegten Orte: Beim
                 // Erfassen soll auch ein leeres Regal zur Wahl stehen.
                 lagerorte = lagerZustand.eigene.map { it.name },

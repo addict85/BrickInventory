@@ -81,6 +81,7 @@ fun GalleryScreen(
     // die Begründung steht bei PartsScreen (Nachtrag 96). Die Namen bleiben
     // absichtlich dieselben, damit der Rumpf darunter unverändert bleibt.
     val state by vm.state.collectAsStateWithLifecycle()
+    val blick by vm.blickfeld.collectAsStateWithLifecycle()
     // Eigener Fluss fuer die Galerie: Blaettern, Suchen und Nachladen aendern
     // nur noch DIESEN Zustand — die uebrigen Bildschirme, die `vm.state`
     // sammeln, werden dadurch nicht mehr mit rekomponiert (siehe GalleryUiState).
@@ -102,8 +103,8 @@ fun GalleryScreen(
     val serverUrl = state.serverUrl
     val defaultCondition = state.userDefaultCondition ?: "N"
     val currency = state.currency
-    val householdMembers = state.householdMembers
-    val scopeMode = state.scopeModes[ch.brickinventoryapp.data.ScopeFilter.View.GALLERY.key]
+    val householdMembers = blick.householdMembers
+    val scopeMode = blick.scopeModes[ch.brickinventoryapp.data.ScopeFilter.View.GALLERY.key]
         ?: ch.brickinventoryapp.data.ScopeFilter.ALL
 
     val onQueryChange: (String) -> Unit = vm::setGalleryQuery

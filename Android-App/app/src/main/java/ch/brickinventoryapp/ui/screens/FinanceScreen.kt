@@ -47,6 +47,7 @@ fun FinanceScreen(
     // die Begründung steht bei PartsScreen (Nachtrag 96). Die Namen bleiben
     // absichtlich dieselben, damit der Rumpf darunter unverändert bleibt.
     val state by vm.state.collectAsStateWithLifecycle()
+    val blick by vm.blickfeld.collectAsStateWithLifecycle()
     val financeState by vm.financeState.collectAsStateWithLifecycle()
 
     val valuation = financeState.valuation
@@ -61,8 +62,8 @@ fun FinanceScreen(
     val partsValuation = financeState.partsValuation
     val figsValuation = financeState.figsValuation
     val pnl = financeState.pnl
-    val householdMembers = state.householdMembers
-    val scopeMode = state.scopeModes[ch.brickinventoryapp.data.ScopeFilter.View.FINANCE.key]
+    val householdMembers = blick.householdMembers
+    val scopeMode = blick.scopeModes[ch.brickinventoryapp.data.ScopeFilter.View.FINANCE.key]
         ?: ch.brickinventoryapp.data.ScopeFilter.ALL
 
     val onScopeChange: (String) -> Unit = { vm.setScope(ch.brickinventoryapp.data.ScopeFilter.View.FINANCE, it) }

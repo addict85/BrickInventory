@@ -63,7 +63,7 @@ internal suspend fun MainViewModel.resolveSetForPartsList(setNumber: String): Pa
         // ohnehin selbst noch einmal zusammen.
         val deduped = mutableMapOf<String, ch.brickinventoryapp.ui.screens.PlPart>()
         if (partsResult is Result.Success) {
-            val serverBase = _state.value.serverUrl.trimEnd('/')
+            val serverBase = sitzung.state.value.serverUrl.trimEnd('/')
             for (p in partsResult.data.parts) {
                 val blNum = p.blPartNumber ?: p.partNumber
                 val key   = "${p.partNumber}|${p.colorId}"
@@ -124,7 +124,7 @@ internal suspend fun MainViewModel.resolveSetForPartsList(setNumber: String): Pa
                         colorHex     = "f5a800",
                         quantity     = figQty,
                         imageUrl     = f.imageUrl?.let {
-                            if (it.startsWith("/")) "${_state.value.serverUrl}$it" else it
+                            if (it.startsWith("/")) "${sitzung.state.value.serverUrl}$it" else it
                         },
                         isFig        = true
                     )
@@ -147,7 +147,7 @@ internal suspend fun MainViewModel.exportPartsPdf(
     sets: List<ch.brickinventoryapp.ui.screens.PlSet>,
     parts: List<ch.brickinventoryapp.ui.screens.PlPart>
 ): String? {
-    val serverUrl = _state.value.serverUrl.trimEnd('/')
+    val serverUrl = sitzung.state.value.serverUrl.trimEnd('/')
 
     val setsArr = org.json.JSONArray()
     sets.forEach { s -> setsArr.put(org.json.JSONObject().put("set_number", s.setNumber).put("name", s.name)) }

@@ -82,6 +82,7 @@ fun PartsScreen(
     // diesen Kopf, und ein Tippfehler kann sich nicht durch fünfhundert Zeilen
     // ziehen.
     val state by vm.state.collectAsStateWithLifecycle()
+    val blick by vm.blickfeld.collectAsStateWithLifecycle()
     val partsState by vm.partsState.collectAsStateWithLifecycle()
     // Eigener Fluss: Der Lagerortfilter gehoert nicht in AppUiState, das
     // sechzehn Dateien sammeln (siehe LagerUiState).
@@ -96,8 +97,8 @@ fun PartsScreen(
     val serverUrl = state.serverUrl
     val waehrung = state.currency
     val defaultCondition = state.userDefaultCondition ?: "N"
-    val householdMembers = state.householdMembers
-    val scopeMode = state.scopeModes[ch.brickinventoryapp.data.ScopeFilter.View.PARTS.key]
+    val householdMembers = blick.householdMembers
+    val scopeMode = blick.scopeModes[ch.brickinventoryapp.data.ScopeFilter.View.PARTS.key]
         ?: ch.brickinventoryapp.data.ScopeFilter.ALL
     val manualParts = partsState.manualParts ?: emptyList()
 

@@ -20,7 +20,7 @@ internal fun MainViewModel.loadSettings() {
     viewModelScope.launch {
         when (val r = repo.admin.getSettings()) {
             is Result.Success -> {
-                _state.update { it.copy(
+                sitzung.aendere { it.copy(
                     currency = r.data.settings.currency,
                     priceCondition = r.data.settings.priceCondition,
                     defaultPriceCondition = r.data.settings.defaultPriceCondition,
@@ -91,16 +91,16 @@ internal fun MainViewModel.verfolgeServerstart() {
                     if (r.data.ready) {
                         // Fertig: Feld leeren, damit die Anmeldung wieder das
                         // Formular zeigt, und aufhoeren.
-                        _state.update { it.copy(startupStatus = null) }
+                        sitzung.aendere { it.copy(startupStatus = null) }
                         return@launch
                     }
-                    _state.update { it.copy(startupStatus = r.data) }
+                    sitzung.aendere { it.copy(startupStatus = r.data) }
                 }
                 // Keine Antwort heisst NICHT „startet gerade": Dann ist der
                 // Server nicht erreichbar, und die gewoehnliche Meldung ist die
                 // richtige. Feld leeren und aufhoeren.
                 is Result.Error -> {
-                    _state.update { it.copy(startupStatus = null) }
+                    sitzung.aendere { it.copy(startupStatus = null) }
                     return@launch
                 }
             }
@@ -114,7 +114,7 @@ internal fun MainViewModel.loadAppTheme() {
         if (prefs.serverUrlJetzt().isBlank()) return@launch
         when (val r = repo.admin.getAppTheme()) {
             is Result.Success -> if (r.data.success) {
-                _state.update { it.copy(appTheme = r.data.theme) }
+                sitzung.aendere { it.copy(appTheme = r.data.theme) }
                 prefs.saveAppTheme(r.data.theme)
             }
             is Result.Error -> {}
@@ -134,7 +134,7 @@ internal fun MainViewModel.saveSettings(currency: String, condition: String) {
         when (val r = repo.admin.updateSettings(currency, condition)) {
             is Result.Success -> {
                 _snackbar.value = text(ch.brickinventoryapp.R.string.vm_settings_saved)
-                _state.update { it.copy(currency = currency, priceCondition = condition) }
+                sitzung.aendere { it.copy(currency = currency, priceCondition = condition) }
                 // Währung und Preiszustand bestimmen, welche Preise der Server
                 // liefert. Ohne Nachladen zeigte die App die alten Werte mit dem
                 // NEUEN Währungszeichen — also schlicht falsche Beträge, bis der
