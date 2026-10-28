@@ -747,7 +747,7 @@ router.post('/register', ipThrottle('register', 5, 60 * 60 * 1000), async (req, 
       message: result.mode === 'ohne_basis'
         ? 'Konto erstellt. Eine Bestätigung per E-Mail ist auf diesem Server nicht eingerichtet (APP_BASE_URL fehlt) — bitte den Verwalter fragen.'
         : result.mode === 'console'
-        ? 'Konto erstellt. Da SMTP nicht konfiguriert ist, steht der Bestätigungslink in der Server-Konsole.'
+        ? 'Konto erstellt. Der Server verschickt keine E-Mails (SMTP nicht eingerichtet) – bitte den Verwalter fragen.'
         : 'Konto erstellt. Bitte bestätige deine E-Mail-Adresse.',
       email_sent: result.success,
       console_mode: result.mode === 'console',

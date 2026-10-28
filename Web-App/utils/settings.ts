@@ -200,6 +200,13 @@ const SECRET_KEYS = new Set([
   'smtp_pass',
 ]);
 
+/**
+ * Kein Geheimnis, aber Sache des Verwalters: Mailserver, Konto und Absender
+ * verraten, wohin die Rücksetz-Mails gehen und mit welchem Konto.
+ * Nicht-Verwalter brauchen davon nichts für ihre Einstellungsseite.
+ */
+const NUR_VERWALTER = /^smtp_/;
+
 /** Erkennungszeichen der Maske — kommt in echten Schlüsseln nicht vor. */
 const MASK_CHAR = '\u2022';
 
@@ -242,6 +249,7 @@ function sanitizeGlobal(global: any, isAdmin: boolean) {
       if (isAdmin) out[k] = maskSecret(v as string | null | undefined);
       continue;
     }
+    if (!isAdmin && NUR_VERWALTER.test(k)) continue;
     out[k] = v;
   }
   return out;

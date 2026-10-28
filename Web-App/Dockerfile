@@ -207,7 +207,8 @@ ENV WEB_WORKERS=0
 ENV PGHOST=postgres
 ENV PGPORT=5432
 ENV PGUSER=brickinventory
-ENV PGPASSWORD=brickinventory_secret
+# Kein PGPASSWORD: Ein ENV steht in jeder Kopie des Images (docker inspect).
+# compose.yaml reicht es aus DB_PASSWORD herein.
 ENV PGDATABASE=brickinventory
 
 # ── DB-Verbindungspool ────────────────────────────────────────────────────────
