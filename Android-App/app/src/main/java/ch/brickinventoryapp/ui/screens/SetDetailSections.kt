@@ -464,7 +464,7 @@ fun LazyListScope.setDetailDetailsSection(set: SetItem, setNumber: String, vm: S
                     horizontalArrangement = Arrangement.spacedBy(Abstaende.mittel)
                 ) {
                     FilledTonalIconButton(
-                        onClick = { if (qty > 1) { qty--; vm.updateQuantity(set.setNumber, qty) } },
+                        onClick = { if (qty > 1) { qty--; vm.aendereMengeUm(set.setNumber, -1) } },
                         shape = Formen.etikett
                     ) {
                         Icon(Icons.Default.Remove, stringResource(R.string.cd_qty_decrease), Modifier.size(14.dp))
@@ -477,7 +477,7 @@ fun LazyListScope.setDetailDetailsSection(set: SetItem, setNumber: String, vm: S
                         textAlign = TextAlign.Center
                     )
                     FilledTonalIconButton(
-                        onClick = { qty++; vm.updateQuantity(set.setNumber, qty) },
+                        onClick = { qty++; vm.aendereMengeUm(set.setNumber, 1) },
                         shape = Formen.etikett
                     ) {
                         Icon(Icons.Default.Add, stringResource(R.string.cd_qty_increase), Modifier.size(14.dp))

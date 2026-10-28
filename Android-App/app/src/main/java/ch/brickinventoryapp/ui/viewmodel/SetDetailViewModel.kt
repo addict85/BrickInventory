@@ -5,6 +5,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.R
 import ch.brickinventoryapp.alarm.Alarmeingabe
+import ch.brickinventoryapp.data.model.GenericResponse
 import ch.brickinventoryapp.data.repository.FinanzenRepository
 import ch.brickinventoryapp.data.repository.HaushaltRepository
 import ch.brickinventoryapp.data.repository.Result
@@ -138,9 +139,16 @@ class SetDetailViewModel @Inject constructor(
      * Die Menge ändern. Die neue Zahl steht sofort in der Ansicht, die übrigen
      * Bestandsansichten erfahren es über das Signal.
      */
-    fun updateQuantity(setNumber: String, quantity: Int, purchasePrice: Double? = null, condition: String? = null) {
+    fun updateQuantity(setNumber: String, quantity: Int, purchasePrice: Double? = null, condition: String? = null) =
+        mengeAendern(setNumber) { sets.updateQuantity(setNumber, quantity, purchasePrice, condition) }
+
+    /** Der Regler: ein Schritt, damit gleichzeitige Klicks auf zwei Geräten zusammenzählen. */
+    fun aendereMengeUm(setNumber: String, schritt: Int) =
+        mengeAendern(setNumber) { sets.aendereMengeUm(setNumber, schritt) }
+
+    private fun mengeAendern(setNumber: String, aufruf: suspend () -> Result<GenericResponse>) {
         viewModelScope.launch {
-            when (val r = sets.updateQuantity(setNumber, quantity, purchasePrice, condition)) {
+            when (val r = aufruf()) {
                 is Result.Success -> {
                     r.data.quantity?.let { echt ->
                         _setDetailState.update { st ->

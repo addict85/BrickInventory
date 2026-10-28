@@ -32,6 +32,8 @@ import org.junit.Test
  *      geänderter Kauf eines anderen Sets lädt hier nichts“
  *   D  den Alarme-Zweig in beiAenderung() entfernt → rot „ein gespeicherter
  *      Preisalarm wird gemeldet und neu geladen“
+ *   E  in aendereMengeUm() wieder UpdateQuantityRequest(quantity = schritt)
+ *      → rot „der Regler schickt einen Schritt …“
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class SetDetailViewModelTest {
@@ -97,6 +99,20 @@ class SetDetailViewModelTest {
         }
         assertEquals(listOf(Aenderung.Sets), liste)
         assertTrue(pfade.anfragenAn("PUT /api/v1/sets/75192-1").isNotEmpty())
+    }
+
+    @Test
+    fun `der Regler schickt einen Schritt, keine Zielzahl`() {
+        val vm = vm()
+        vm.ladeAlles()
+        geladen(vm)
+        vm.aendereMengeUm("75192-1", -1)
+        TestApi.warteBis("PUT gesendet") { pfade.anfragenAn("PUT /api/v1/sets/75192-1").isNotEmpty() }
+        val i = pfade.anfragen.indexOfFirst { "PUT /api/v1/sets/75192-1" in it }
+        val rumpf = pfade.koerper[i]
+        assertTrue(rumpf, "\"quantity_delta\":-1" in rumpf)
+        assertTrue(rumpf, "\"quantity\":" !in rumpf)
+        TestApi.warteBis("Menge vom Server") { vm.setDetailState.value.setDetail?.quantity == 3 }
     }
 
     @Test

@@ -273,7 +273,14 @@ data class UpdateManualItemRequest(
 // sie tatsächlich gesetzt sind.
 @OptIn(ExperimentalSerializationApi::class)
 data class UpdateQuantityRequest(
-    val quantity: Int,
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val quantity: Int? = null,
+    /**
+     * Schritt statt Zielzahl: Zwei Geräte, die gleichzeitig „+1“ drücken,
+     * ergeben +2. Mit der absoluten Zahl rechneten beide vom selben Stand aus.
+     */
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    @SerialName("quantity_delta") val quantityDelta: Int? = null,
     @EncodeDefault(EncodeDefault.Mode.NEVER)
     @SerialName("purchase_price") val purchasePrice: Double? = null,
     @EncodeDefault(EncodeDefault.Mode.NEVER)
