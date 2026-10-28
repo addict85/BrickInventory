@@ -3,7 +3,7 @@
  * Ausführlich: docs/begruendungen/utils/household.ts.md#abschnitt
  */
 import * as db from '../db/database';
-import { getSetting } from './settings';
+import { HAUSHALT_WAEHRUNG_SPERRE, getSetting } from './settings';
 import { fehlerWerfen } from './fehlerTexte';
 
 /** Wie lange ein Einladungscode gilt. Lang genug für „später am Abend“,
@@ -199,23 +199,28 @@ export async function redeemInvite(uid: number, code: string) {
   }
 
   // Die Haushaltssicht summiert Beträge; zwei Währungen ergäben eine Summe,
-  // der man den Fehler nicht ansieht.
-  const [curMain, curSub] = await Promise.all([
-    getSetting(mainId, 'currency', 'EUR'),
-    getSetting(subId, 'currency', 'EUR'),
-  ]);
-  if (String(curMain) !== String(curSub)) {
+  // der man den Fehler nicht ansieht. Unter derselben Sperre wie ein
+  // Währungswechsel (setUserSetting), damit keiner zwischen Prüfung und
+  // Verknüpfung durchrutscht.
+  const ungleich = await db.transaction(async (tx) => {
+    await tx.run(HAUSHALT_WAEHRUNG_SPERRE);
+    const [curMain, curSub] = await Promise.all([
+      getSetting(mainId, 'currency', 'EUR'),
+      getSetting(subId, 'currency', 'EUR'),
+    ]);
+    if (String(curMain) !== String(curSub))
+      return { haupt: String(curMain), unter: String(curSub) };
+    await tx.run(
+      'INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1,$2) ON CONFLICT DO NOTHING',
+      [mainId, subId]);
+    await tx.run('DELETE FROM household_former_links WHERE main_user_id = $1 AND sub_user_id = $2',
+      [mainId, subId]);
+    return null;
+  });
+  if (ungleich) {
     await release();
-    return { fehler: 'waehrung_ungleich' as const,
-             vars: { haupt: String(curMain), unter: String(curSub) } };
+    return { fehler: 'waehrung_ungleich' as const, vars: ungleich };
   }
-
-  await db.run(
-    'INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1,$2) ON CONFLICT DO NOTHING',
-    [mainId, subId]
-  );
-  await db.run('DELETE FROM household_former_links WHERE main_user_id = $1 AND sub_user_id = $2',
-    [mainId, subId]);
   meldeHaushaltsaenderung();
   const main = await db.get('SELECT username FROM users WHERE id = $1', [mainId]).catch(() => null);
   return { linked_to: { id: mainId, username: main?.username || String(mainId) } };

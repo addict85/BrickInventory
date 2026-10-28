@@ -1,5 +1,5 @@
 import * as db from '../db/database';
-import { logAndContinue, meldeUndWeiter, fehlertext } from './httpError';
+import { meldeUndWeiter, fehlertext } from './httpError';
 import { scopeIds, writableIds } from './household';
 import { recordAcquisitionForDay } from './acquisitions';
 import { withInventoryLock } from './txLock';
@@ -380,69 +380,58 @@ async function updateSet(uid: number, sn: string, body: any) {
   // Erfassungen im falschen Konto an.
   const ownerId = parseInt(String(existing.user_id));
 
-  const hasQuantity = body.quantity !== undefined && body.quantity !== null;
+  const hatDelta = body.quantity_delta !== undefined && body.quantity_delta !== null;
+  const hasQuantity = hatDelta || (body.quantity !== undefined && body.quantity !== null);
   let papierkorb: number | null = null;
 
   if (hasQuantity) {
-    // Menge und Erfassungen gehören zusammen
-    // Der Marktpreis wird VOR der Sperre geholt (Netzaufruf, siehe
-    // priceForNewAcquisition); innerhalb läuft nur noch Datenbankarbeit.
+    // quantity_delta ändert relativ: Zwei Geräte, die gleichzeitig „+1"
+    // tippen, ergeben +2. Eine absolute Menge (quantity) aus einem veralteten
+    // Stand überschriebe den anderen Zugang.
+    const delta = hatDelta ? Number(body.quantity_delta) : null;
+    if (delta !== null && (!Number.isInteger(delta) || Math.abs(delta) > 9999)) fehlerWerfen('wert_ungueltig', 400);
+    const gewuenschtGesamt = delta === null ? bestandsMenge(body.quantity) : null;
+    const leseFeld = await scopeIds(uid);
     //  Angezeigt wird der HAUSHALT, geändert wird das EIGENE Konto
     // Ausführlich: docs/begruendungen/utils/setService.ts.md#updateset-gewuenschtgesamt
-    const gewuenschtGesamt = bestandsMenge(body.quantity);
-    const leseFeld = await scopeIds(uid);
-    const gesamtVorher = (await db.get(
-      // Aus den Erfassungen, nicht aus sets.quantity — die Spalte ist mit
-      // Migration 0036 weg. Die Abfrage steht in utils/bestandsmenge.ts;
-      // derselbe Satz stand hier dreimal, und dreimal derselbe Satz heisst
-      // dreimal Gelegenheit, dass er beim naechsten Mal anders aussieht.
-      mengeSummeSql('blickfeld'),
-      [leseFeld, sn]))?.q ?? 0;
-    const eigenVorher = (await db.get(
-      mengeSummeSql('eines'),
-      [uid, sn]))?.q ?? 0;
-    // Nach unten bei 0 gedeckelt: Die Exemplare eines anderen Kontos sind
-    // nicht meine, ich kann sie nicht wegnehmen. Die Antwort trägt die
-    // tatsächliche Gesamtmenge zurück, damit die Oberfläche nicht eine Zahl
-    // stehen lässt, die es nicht gibt.
-    const eigenZiel = Math.max(0, eigenVorher + (gewuenschtGesamt - gesamtVorher));
-
-    if (eigenZiel !== eigenVorher) {
+    const eigenesZiel = async (dbh: any) => {
+      const gesamtVorher = (await dbh.get(mengeSummeSql('blickfeld'), [leseFeld, sn]))?.q ?? 0;
+      const eigenVorher = (await dbh.get(mengeSummeSql('eines'), [uid, sn]))?.q ?? 0;
+      // Nach unten bei 0 gedeckelt: Die Exemplare eines anderen Kontos sind
+      // nicht meine, ich kann sie nicht wegnehmen.
+      const aenderung = delta ?? (Number(gewuenschtGesamt) - gesamtVorher);
+      return { eigenVorher, eigenZiel: Math.max(0, eigenVorher + aenderung) };
+    };
+    // Der Marktpreis wird VOR der Sperre geholt (Netzaufruf). Ob er gebraucht
+    // wird, sagt ein Blick vorab; massgeblich ist die Rechnung in der Sperre.
+    const vorab = await eigenesZiel(db);
+    const plan = vorab.eigenZiel > vorab.eigenVorher
+      ? await priceForNewAcquisition(uid, sn).catch(() => ({ price: null, condition: 'N' }))
+      : { price: null, condition: 'N' };
+    await withInventoryLock(uid, sn, async (tx) => {
+      const { eigenVorher, eigenZiel } = await eigenesZiel(tx);
+      if (eigenZiel === eigenVorher) return;
       // Eigene Zeile anlegen, falls das Set bisher nur einem anderen Konto
       // gehörte — sonst liefe die Mengenanpassung ins Leere.
-      if (eigenVorher === 0 && eigenZiel > 0) {
-        // Nur noch Menge und Besitzer — und damit keine Abschrift mehr.
-        // Ausführlich: docs/begruendungen/utils/setService.ts.md#updateset
-        await db.run(
+      // Ausführlich: docs/begruendungen/utils/setService.ts.md#updateset
+      if (eigenVorher === 0 && eigenZiel > 0)
+        await tx.run(
           `INSERT INTO sets (user_id, set_number)
            SELECT $1, set_number
              FROM sets WHERE user_id = ANY($2) AND set_number = $3
             ORDER BY id ASC LIMIT 1
-           ON CONFLICT DO NOTHING`, [uid, leseFeld, sn])
-          // Scheitert dieses INSERT, gibt es keine Bestandszeile — das Set
-          // erscheint in keiner Liste, waehrend adjustAcquisitionsToQuantity()
-          // trotzdem Erfassungen schreibt. Der Kommentar oben nennt genau
-          // diese Gefahr; still verschluckt werden darf sie deshalb nicht.
-          .catch(logAndContinue(`sets:eigene Zeile anlegen ${sn}`));
+           ON CONFLICT DO NOTHING`, [uid, leseFeld, sn]);
+      // Menge 0 ist ein Löschen und geht deshalb durch den Papierkorb wie
+      // der Löschknopf — ein Tippfehler im Mengenfeld soll sich
+      // zurückholen lassen.
+      if (eigenZiel === 0) {
+        papierkorb = await legeInPapierkorb(tx, 'set', uid, sn);
+        await deleteSetRows(tx, [uid], sn);
+      } else {
+        // Die Erfassungen SIND die Menge (utils/bestandsmenge.ts).
+        await adjustAcquisitionsToQuantity(uid, sn, eigenZiel, tx, plan);
       }
-      // Der Marktpreis wird VOR der Sperre geholt (Netzaufruf); innerhalb
-      // läuft nur noch Datenbankarbeit.
-      const plan = eigenZiel > eigenVorher
-        ? await priceForNewAcquisition(uid, sn).catch(() => ({ price: null, condition: 'N' }))
-        : { price: null, condition: 'N' };
-      await withInventoryLock(uid, sn, async (tx) => {
-        // Menge 0 ist ein Löschen und geht deshalb durch den Papierkorb wie
-        // der Löschknopf — ein Tippfehler im Mengenfeld soll sich
-        // zurückholen lassen.
-        if (eigenZiel === 0) {
-          papierkorb = await legeInPapierkorb(tx, 'set', uid, sn);
-          await deleteSetRows(tx, [uid], sn);
-        } else {
-          // Die Erfassungen SIND die Menge (utils/bestandsmenge.ts).
-          await adjustAcquisitionsToQuantity(uid, sn, eigenZiel, tx, plan);
-        }
-      });
-    }
+    });
   }
   // Eine Mengenänderung ist quantity-ONLY: adjustAcquisitionsToQuantity() legt
   // bereits eine neue Erfassung mit dem korrekten Marktpreis (und dem bisherigen

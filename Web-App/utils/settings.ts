@@ -57,18 +57,45 @@ async function setUserSetting(userId: number, key: string, value: any) {
   const v = String(value).trim();
   const regel = NUTZER_REGELN[key];
   if (regel && !regel(v)) fehlerWerfen('wert_ungueltig', 400);
-  let vorher = null;
-  if (key === 'currency') {
-    vorher = (await db.get(
-      'SELECT value FROM user_settings WHERE user_id = $1 AND key = $2', [userId, key]
-    ).catch(() => null))?.value ?? null;
-  }
+  if (key === 'currency') return setzeHaushaltswaehrung(userId, v);
   await db.run(
     'INSERT INTO user_settings (user_id, key, value, updated_at) VALUES ($1, $2, $3, NOW()) ON CONFLICT (user_id, key) DO UPDATE SET value = $3, updated_at = NOW()',
     [userId, key, v]
   );
-  if (key === 'currency' && vorher !== v) {
-    console.log(`[settings] Währung für Benutzer ${userId} geändert (${vorher ?? '—'} → ${v}) — Preis-Job wird angestossen`);
+}
+
+/** Alle Konten, die über Verknüpfungen zusammenhängen, in beide Richtungen. */
+const VERBUND_SQL = `
+  WITH RECURSIVE verbund(id) AS (
+    SELECT $1::int
+    UNION
+    SELECT CASE WHEN l.main_user_id = v.id THEN l.sub_user_id ELSE l.main_user_id END
+      FROM account_links l JOIN verbund v ON v.id IN (l.main_user_id, l.sub_user_id))
+  SELECT id FROM verbund`;
+
+/** Sperre für Währung und Verknüpfung: Beide prüfen bzw. ändern dieselbe Regel. */
+const HAUSHALT_WAEHRUNG_SPERRE = "SELECT pg_advisory_xact_lock(hashtext('haushalt-waehrung'))";
+
+/**
+ * Die Währung gilt für den ganzen Haushalt: Die Haushaltssicht summiert
+ * Beträge, und zwei Währungen ergäben eine Summe, der man den Fehler nicht
+ * ansieht. redeemInvite() prüft die Gleichheit unter derselben Sperre.
+ */
+async function setzeHaushaltswaehrung(userId: number, waehrung: string) {
+  const vorher = await db.transaction(async (tx) => {
+    await tx.run(HAUSHALT_WAEHRUNG_SPERRE);
+    const alt = (await tx.get('SELECT value FROM user_settings WHERE user_id = $1 AND key = $2',
+      [userId, 'currency']))?.value ?? null;
+    const ids = (await tx.all(VERBUND_SQL, [userId])).map((r: { id: number }) => r.id);
+    await tx.run(
+      `INSERT INTO user_settings (user_id, key, value, updated_at)
+       SELECT id, 'currency', $2, NOW() FROM unnest($1::int[]) AS id
+       ON CONFLICT (user_id, key) DO UPDATE SET value = $2, updated_at = NOW()`,
+      [ids, waehrung]);
+    return alt;
+  });
+  if (vorher !== waehrung) {
+    console.log(`[settings] Währung für Benutzer ${userId} und seinen Haushalt geändert (${vorher ?? '—'} → ${waehrung}) — Preis-Job wird angestossen`);
     setImmediate(() => nacharbeit().preisJobAnstossen());
   }
 }
@@ -155,7 +182,7 @@ async function deleteGlobalSetting(...keys: string[]) {
   await db.run(`DELETE FROM global_settings WHERE key = ANY($1)`, [keys]);
 }
 
-export { WAEHRUNGEN, getSetting, getGlobalSetting, setGlobalSetting, setGlobalTrigger, deleteGlobalSetting, setUserSetting, nutzerStandardZustand, globalDefaultCondition, zustandFuerPreis };
+export { WAEHRUNGEN, HAUSHALT_WAEHRUNG_SPERRE, getSetting, getGlobalSetting, setGlobalSetting, setGlobalTrigger, deleteGlobalSetting, setUserSetting, nutzerStandardZustand, globalDefaultCondition, zustandFuerPreis };
 
 // Einstellungen LESEN — eine Fassung fuer beide Oberflaechen
 //  Warum das hierher gehoert (Marcos Vorgabe: „die beiden Apps sollen gleich

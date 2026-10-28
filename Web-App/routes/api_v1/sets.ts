@@ -884,7 +884,8 @@ router.post('/sets', requireToken, async (req: AuthedRequest, res) => {
 });
 
 router.put('/sets/:setNumber', requireToken, async (req: AuthedRequest, res) => {
-  if (req.body.quantity === undefined && req.body.purchase_price === undefined && req.body.condition === undefined) {
+  if (req.body.quantity === undefined && req.body.quantity_delta === undefined
+      && req.body.purchase_price === undefined && req.body.condition === undefined) {
     return sendeFehler(req, res, 400, 'erfassung_felder');
   }
   try {
