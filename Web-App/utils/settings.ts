@@ -7,6 +7,7 @@
 
 import * as db from '../db/database';
 import { meldeUndWeiter } from './httpError';
+import { fehlerWerfen } from './fehlerTexte';
 
 /** User-Einstellung mit Fallback auf globale Einstellung, dann Default. */
 /**
@@ -33,6 +34,17 @@ async function getGlobalSetting(key: string, fallback: any = null) {
   return g?.value ?? fallback;
 }
 
+// Was ein Konto selbst setzen darf. Die Werte landen ungeprüft in Seiten,
+// PDFs und Preisabfragen; eine Währung wie "<img …>" oder "XYZ" hätte sonst
+// jede Bewertung des Kontos stillschweigend auf null gesetzt.
+const WAEHRUNGEN = new Set(['CHF', 'EUR', 'USD', 'GBP', 'SEK', 'NOK', 'AUD', 'CAD', 'DKK']);
+const NUTZER_REGELN: Record<string, (v: string) => boolean> = {
+  currency: v => WAEHRUNGEN.has(v),
+  language: v => v === 'de' || v === 'en',
+  user_default_condition: v => v === 'N' || v === 'U' || v === '',
+  price_cache_ttl: v => /^\d{1,4}$/.test(v) && +v >= 1 && +v <= 8760,
+};
+
 /**
  * User-Einstellung schreiben — die EINE Stelle für alle drei Schreibwege
  * (Webapp-Formular, Einstellungs-Import, /api/v1).
@@ -42,7 +54,9 @@ async function getGlobalSetting(key: string, fallback: any = null) {
  * @param {string} value
  */
 async function setUserSetting(userId: number, key: string, value: any) {
-  const v = String(value);
+  const v = String(value).trim();
+  const regel = NUTZER_REGELN[key];
+  if (regel && !regel(v)) fehlerWerfen('wert_ungueltig', 400);
   let vorher = null;
   if (key === 'currency') {
     vorher = (await db.get(
@@ -143,7 +157,7 @@ async function deleteGlobalSetting(...keys: string[]) {
   await db.run(`DELETE FROM global_settings WHERE key = ANY($1)`, [keys]);
 }
 
-export { getSetting, getGlobalSetting, setGlobalSetting, setGlobalTrigger, deleteGlobalSetting, setUserSetting, nutzerStandardZustand, globalDefaultCondition, zustandFuerPreis };
+export { WAEHRUNGEN, getSetting, getGlobalSetting, setGlobalSetting, setGlobalTrigger, deleteGlobalSetting, setUserSetting, nutzerStandardZustand, globalDefaultCondition, zustandFuerPreis };
 
 // Einstellungen LESEN — eine Fassung fuer beide Oberflaechen
 //  Warum das hierher gehoert (Marcos Vorgabe: „die beiden Apps sollen gleich

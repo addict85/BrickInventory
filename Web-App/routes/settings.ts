@@ -191,7 +191,10 @@ const EXPORT_EXCLUDE_KEYS = new Set([
 router.get('/export', async (req, res) => {
   try {
     const global: any = {};
-    (await db.all('SELECT key, value FROM global_settings'))
+    // Nur Verwalter bekommen die Installation mit: Der Import nimmt globale
+    // Werte ohnehin nur von ihnen an, und SMTP-Host, -Konto und Absender
+    // gehen ein Unterkonto nichts an.
+    if (istVerwalter(req)) (await db.all('SELECT key, value FROM global_settings'))
       // Transiente Laufzeit-Zustände nicht mit exportieren: feste Ausschlussliste
       // plus alle Job-Monitor-Status (job_monitor_*), die nur den momentanen
       // Fortschritt der Hintergrund-Jobs abbilden und beim Import nichts verloren
