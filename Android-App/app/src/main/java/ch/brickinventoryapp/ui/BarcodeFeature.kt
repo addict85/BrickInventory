@@ -6,6 +6,9 @@ import ch.brickinventoryapp.data.model.*
 import ch.brickinventoryapp.data.repository.Result
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import ch.brickinventoryapp.data.repository.Fehlerart
+import ch.brickinventoryapp.data.SetAnlegenSseClient
+import kotlinx.coroutines.delay
 
 
 /**
@@ -81,7 +84,7 @@ internal fun MainViewModel.resolveBarcode(value: String) {
                         when (val vorhanden = repo.sets.getSetExists(setNum)) {
                             is Result.Success -> if (vorhanden.data.exists) {
                                 _snackbar.value = null
-                                galerie.zeigeDetail(vorhanden.data.setNumber)
+                                _barcodeState.update { it.copy(gefundenesSet = vorhanden.data.setNumber) }
                                 return@launch
                             }
                             is Result.Error -> {
@@ -204,7 +207,7 @@ internal fun MainViewModel.useScannedSetNumber(raw: String) {
             when (val vorhanden = repo.sets.getSetExists(setNum)) {
                 is Result.Success -> if (vorhanden.data.exists) {
                     _snackbar.value = null
-                    galerie.zeigeDetail(vorhanden.data.setNumber)
+                    _barcodeState.update { it.copy(gefundenesSet = vorhanden.data.setNumber) }
                     return@launch
                 }
                 is Result.Error -> {
@@ -259,7 +262,7 @@ internal fun MainViewModel.useScannedSetNumber(raw: String) {
 }
 
 internal fun MainViewModel.gallerySearchFoundConsumed() {
-    galerie.zeigeDetail(null)
+    _barcodeState.update { it.copy(gefundenesSet = null) }
 }
 
 /**
@@ -351,8 +354,6 @@ internal fun MainViewModel.confirmAddBarcode(setNum: String, purchasePrice: Doub
                 //
                 // Kennzahlen und Bewertung ändern sich beim Erfassen ebenso —
                 // sie blieben früher stehen, bis der Reiter neu geöffnet wurde.
-                loadSets()
-                loadStats()
                 bestand.melde(Aenderung.Sets)
             }
             is Result.Error -> {
@@ -377,4 +378,176 @@ internal fun MainViewModel.cancelBarcode() { _barcodeState.update { it.copy(resu
  */
 internal fun MainViewModel.manuelleErfassungQuittieren() {
     _barcodeState.update { it.copy(manuelleErfassungAnfordern = false) }
+}
+
+internal fun MainViewModel.addSet(setNumber: String, quantity: Int = 1, purchasePrice: Double? = null,
+                                  condition: String? = null, ownerUserId: Int? = null,
+                                  storage: String? = null) {
+    viewModelScope.launch {
+        // Auf die Grundvariante normalisieren (Nachtrag 63) — DAS war der
+        // Grund, warum ein vorhandenes Set trotzdem angelegt wurde: Der Nutzer
+        // tippt „42200", gespeichert ist aber „42200-1". Die Prüfung fragte
+        // nach der nackten Nummer, bekam 404 und hielt das Set für neu.
+        // useScannedSetNumber() macht es seit Nachtrag 60 richtig — hier fehlte
+        // es. Wieder „dieselbe Regel fehlt am zweiten Weg", diesmal von mir
+        // selbst eingebaut.
+        //
+        // Nur für die PRÜFUNG normalisieren; angelegt wird weiterhin mit der
+        // Eingabe, damit der Server wie bisher entscheidet.
+        val eingabe = setNumber.trim()
+        val sn = if (eingabe.contains("-")) eingabe else "$eingabe-1"
+
+        // KEINE Vorabprüfung mehr hier: Ob das Set schon im Blickfeld steht,
+        // entscheidet der Server beim Erfassen selbst (utils/setAdd.ts) und
+        // antwortet dann mit `action = "exists"`, ohne etwas zu schreiben.
+        //
+        // Vorher stand hier ein eigener getSetDetail()-Aufruf mit einer
+        // Auswertung von Netzfehler gegen „nicht gefunden". Das war eine
+        // zweite Fassung derselben Regel — die Webapp hatte sie gar nicht und
+        // erhöhte deshalb still die Menge. Ein Aufruf weniger ist es
+        // nebenbei auch.
+        //
+        // Der Scanner und die Texterkennung fragen weiterhin VORHER
+        // (GET /sets/exists/:nummer), weil dort die Antwort über den
+        // Zwischendialog entscheidet, bevor überhaupt etwas erfasst wird.
+        // ── Kein isLoading für das Erfassen selbst (Nachtrag 87) ────────────
+        //
+        // Marcos Wunsch: „Wenn ein Set hinzugefügt wird, soll der Dialog direkt
+        // geschlossen werden, damit das nächste Set direkt erfasst werden kann.
+        // Die Erfassung soll dann im Hintergrund erfolgen."
+        //
+        // Der Dialog schloss schon vorher sofort — was blieb, war das
+        // Ladehäkchen: Der Aktualisieren-Kringel der Galerie hing daran (damals
+        // an `isLoading`, heute an `galleryLoading`), die Oberfläche sah also
+        // beschäftigt aus, während man schon die nächste Nummer tippen wollte.
+        // Das Nachladen unten setzt sein eigenes Flag; für den Abruf hier
+        // braucht es keines.
+        //
+        // ── Die Prüfung dagegen SCHON, und nur sie ──────────────────────────
+        //
+        // Marcos zweiter Befund: „man sieht nicht, dass die App am Prüfen ist,
+        // ob man das Set bereits besitzt." Das ist kein Widerspruch zu
+        // Nachtrag 87, sondern dessen Ergänzung — dort ging es um das
+        // Nachladen der Galerie, hier um die Frage davor.
+        //
+        // Anders als beim Scanner gibt es hier keine eigene Vorabfrage: Der
+        // Server beantwortet die Bestandsfrage IM Erfassungsaufruf und meldet
+        // `action = "exists"`, ohne etwas zu schreiben. Eine zweite Abfrage
+        // davorzusetzen hiesse, seine Regel im Client nachzubauen — genau das,
+        // was zwanzig Zeilen weiter oben als Fehler beschrieben ist. Die
+        // Wartezeit auf DIESE Antwort ist die Prüfung.
+        //
+        // Das `finally` umschliesst deshalb NUR den Abruf, nicht die
+        // Auswertung: Stünde die Anzeige noch während loadSets()/loadStats()/
+        // loadValuation(), wartete man wieder auf das Nachladen — und Nachtrag
+        // 87 wäre zurückgenommen.
+        //
+        // ABBRECHBAR IST DAS HIER NICHT, und das ist Absicht: Der Aufruf
+        // SCHREIBT bereits. Ihn abzubrechen liesse offen, ob der Server das Set
+        // angelegt hat. Deshalb wird `erfassungsJob` hier auch nicht gesetzt —
+        // der Abbrechen-Knopf räumt dann nur die Anzeige, und die Erfassung
+        // läuft im Hintergrund zu Ende. Genau das ist Marcos Vorgabe.
+        //
+        // ── Und der Weg fuehrt jetzt ueber den Ereignisstrom (Nachtrag 131) ──
+        //
+        // Die Webapp legt seit jeher ueber /sets/add-stream an und zeigt dabei,
+        // WAS gerade passiert. Die App schickte ein gewoehnliches POST und
+        // zeigte einen Kringel, bis alles vorbei war — gleiches Ergebnis,
+        // andere Rueckmeldung. Bei einem grossen Set dauert der Unterschied
+        // lange genug, um aufzufallen.
+        //
+        // Der letzte Schritt ist die Antwort, die vorher das POST lieferte —
+        // die Auswertung darunter bleibt deshalb unveraendert.
+        val r = try {
+            zeigePruefung(sn, Pruefphase.BESTAND)
+            var letzte: Result<AddSetResponse> =
+                Result.Error("", art = Fehlerart.LEERE_ANTWORT)
+            setAnlegenSse.anlegen(eingabe, quantity, purchasePrice, condition, ownerUserId,
+                                  storage?.trim()?.takeIf { it.isNotEmpty() })
+                .collect { schritt ->
+                    when (schritt) {
+                        is SetAnlegenSseClient.Schritt.Stammdaten ->
+                            zeigePruefung(schritt.name ?: sn, Pruefphase.ANLEGEN_STAMMDATEN)
+                        SetAnlegenSseClient.Schritt.Bild ->
+                            zeigePruefung(sn, Pruefphase.ANLEGEN_BILD)
+                        SetAnlegenSseClient.Schritt.FastFertig ->
+                            zeigePruefung(sn, Pruefphase.ANLEGEN_ABSCHLUSS)
+                        is SetAnlegenSseClient.Schritt.Fertig ->
+                            letzte = Result.Success(schritt.ergebnis)
+                        is SetAnlegenSseClient.Schritt.Fehler ->
+                            // Der Satz kommt schon uebersetzt vom Server
+                            // (utils/fehlerTexte.ts). Leer heisst: Die
+                            // Verbindung kam nicht zustande — dann sagt
+                            // meldung() weiter unten, was los ist.
+                            letzte = if (schritt.meldung.isBlank()) {
+                                Result.Error("", art = Fehlerart.NETZ)
+                            } else {
+                                Result.Success(AddSetResponse(success = false, error = schritt.meldung))
+                            }
+                    }
+                }
+            letzte
+        } finally {
+            pruefungFertig()
+        }
+        when (r) {
+            is Result.Success -> {
+                if (r.data.success && r.data.action == "exists") {
+                    // Schon im Blickfeld — der Server hat nichts geschrieben.
+                    // Detailansicht öffnen, wie beim Scanner.
+                    //
+                    // Das frühere `isLoading = false` hier ist ersatzlos weg: Der
+                    // Erfassungsweg setzt es nirgends auf `true` (Nachtrag 87,
+                    // gleich darüber), es räumte also nur eine Anzeige ab, die
+                    // einer ANDEREN Domäne gehörte — im Zweifel dem laufenden
+                    // Galerie-Abruf.
+                    _barcodeState.update { it.copy(gefundenesSet = r.data.setNumber ?: sn) }
+                } else if (r.data.success) {
+                    _snackbar.value = text(if (r.data.action == "added") R.string.vm_added else R.string.vm_updated, r.data.setNumber)
+                    // Alles nachladen, was sich mitverändert hat.
+                    //
+                    // Vorher nur loadSets(): Die Kennzahlen im Kopf blieben auf
+                    // dem alten Stand (deleteSet lädt sie schon immer nach), und
+                    // beim Hinzufügen eines BEREITS vorhandenen Sets — der Server
+                    // legt dann eine weitere Erfassung an — blieb eine offene
+                    // Detailansicht samt Erfassungsliste unverändert.
+                    bestand.melde(Aenderung.Sets)
+                    if (_setDetailState.value.setDetail?.setNumber == sn) {
+                        loadSetDetail(sn)
+                        loadAcquisitions(sn)
+                    }
+                } else {
+                    meldeFehlgeschlageneErfassung(sn, r.data.error)
+                }
+            }
+            is Result.Error -> meldeFehlgeschlageneErfassung(sn, meldung(r))
+        }
+    }
+}
+
+/**
+ * Eine gescheiterte Erfassung SICHTBAR machen.
+ *
+ * ── Warum das nötig war ─────────────────────────────────────────────────────
+ * Marcos Wunsch: „Sollte es beim Hinzufügen ein Problem geben, soll eine
+ * Meldung angezeigt werden, dass das Set nicht hinzugefügt werden konnte."
+ *
+ * Vorher legte der Fehler sich in `state.error` — einem Feld, das nur der
+ * Anmeldebildschirm auswertete. Ein Fehlschlag verschwand also spurlos; man
+ * tippte die nächste Nummer und merkte erst viel später, dass ein Set fehlt.
+ * Genau der Fall, der durch das sofortige Schliessen des Dialogs häufiger wird.
+ *
+ * Diese Stelle war die erste, an der das auffiel. Erst in Nachtrag 118 kam
+ * heraus, dass es die anderen siebzehn Fehlerpfade genauso traf — das Feld
+ * heisst seither `loginError` und wird nur noch dort beschrieben, wo es auch
+ * gelesen wird.
+ *
+ * Die Meldung nennt die Setnummer: Wer mehrere hintereinander erfasst, muss
+ * wissen, WELCHES nicht durchkam.
+ */
+internal fun MainViewModel.meldeFehlgeschlageneErfassung(setNumber: String, grund: String?) {
+    _snackbar.value = text(
+        R.string.vm_add_failed, setNumber,
+        grund ?: text(R.string.pdfexp_unknown_error)
+    )
 }

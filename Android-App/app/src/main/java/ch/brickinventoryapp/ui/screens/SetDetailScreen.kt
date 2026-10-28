@@ -32,6 +32,8 @@ import ch.brickinventoryapp.ui.theme.Abstaende
 fun SetDetailScreen(
     setNumber: String,
     vm: MainViewModel,
+    /** Das Set aus der geladenen Galerie — sofort sichtbar, bis das Detail da ist. */
+    vorschau: ch.brickinventoryapp.data.model.SetItem? = null,
     serverUrl: String,
     // Wird tatsächlich benutzt — siehe unten.
     //
@@ -56,9 +58,8 @@ fun SetDetailScreen(
     val detailState by vm.setDetailState.collectAsStateWithLifecycle()
     // Die Galerie-Liste dient hier nur als Rueckfall, solange das Detail noch
     // laedt — deshalb der eigene Fluss statt des ganzen App-Zustands.
-    val galerie by vm.galleryState.collectAsStateWithLifecycle()
     val set       = detailState.setDetail?.takeIf { it.setNumber == setNumber }
-                 ?: galerie.sets.find { it.setNumber == setNumber }
+                 ?: vorschau?.takeIf { it.setNumber == setNumber }
     val price     = detailState.setPrice?.takeIf { it.setNumber == setNumber }
     val history   = detailState.priceHistory
     val pnlPct    = history?.pnlPct

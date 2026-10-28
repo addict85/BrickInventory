@@ -136,9 +136,9 @@ internal class Galerie(
     fun aendereSet(setNumber: String, aenderung: (SetItem) -> SetItem) =
         _state.update { st -> st.copy(sets = st.sets.map { if (it.setNumber == setNumber) aenderung(it) else it }) }
 
-    /** Auslöser „Detail dieses Sets öffnen" (Scanner, Erfassen eines vorhandenen Sets); null quittiert. */
-    fun zeigeDetail(setNumber: String?) =
-        _state.update { it.copy(gallerySearchFoundSetNumber = setNumber) }
+    /** Gemerkte Filter übernehmen, ohne zu laden — das tut der Bildschirm beim Betreten. */
+    fun stelleFilterWieder(suche: String, thema: String, sortierung: String) =
+        _state.update { it.copy(galleryQuery = suche, galleryTheme = thema, gallerySort = sortierung) }
 
     /** Abmelden: nichts vom vorigen Konto stehen lassen, laufende Abrufe verwerfen. */
     fun zuruecksetzen() {

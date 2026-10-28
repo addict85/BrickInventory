@@ -37,6 +37,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import ch.brickinventoryapp.R
 import ch.brickinventoryapp.ui.MainViewModel
+import ch.brickinventoryapp.ui.viewmodel.GalerieViewModel
 import ch.brickinventoryapp.ui.*  // Feature-Extensions (loadSets, setScope, …)
 import ch.brickinventoryapp.data.model.SetItem
 import ch.brickinventoryapp.ui.theme.LocalIsBrickTheme
@@ -68,7 +69,9 @@ import ch.brickinventoryapp.ui.components.LeerSymbol
 @OptIn(ExperimentalMaterial3Api::class, FlowPreview::class)
 @Composable
 fun GalleryScreen(
-    vm: MainViewModel,
+    vm: GalerieViewModel,
+    /** Erfassen und Scannen gehören der ganzen App, nicht der Galerie. */
+    erfassung: MainViewModel,
     imageLoader: ImageLoader,
     /** Barcode-Scanner öffnen — nur der Graph kennt den NavController. */
     onScanBarcode: () -> Unit,
@@ -86,7 +89,7 @@ fun GalleryScreen(
     // nur noch DIESEN Zustand — die uebrigen Bildschirme, die `vm.state`
     // sammeln, werden dadurch nicht mehr mit rekomponiert (siehe GalleryUiState).
     val galerie by vm.galleryState.collectAsStateWithLifecycle()
-    val barcodeState by vm.barcodeState.collectAsStateWithLifecycle()
+    val barcodeState by erfassung.barcodeState.collectAsStateWithLifecycle()
     // Eigener Fluss: Der Lagerortfilter gehoert nicht in AppUiState, das
     // sechzehn Dateien sammeln (siehe LagerUiState).
     val lagerState by vm.lagerState.collectAsStateWithLifecycle()
@@ -119,9 +122,9 @@ fun GalleryScreen(
     // Auch die Filterlisten: Sie werden sonst nur beim Start geladen, und eine
     // dort gescheiterte Anfrage liesse Konto- und Lagerortfilter bis zum
     // naechsten Start verschwinden.
-    val onRefresh: () -> Unit = { vm.loadSets(); vm.loadStats(); vm.loadHouseholdMembers(); vm.loadLagerorte() }
+    val onRefresh: () -> Unit = vm::aktualisieren
     val onAddSet: (String, Int, Double?, String?, Int?, String?) -> Unit =
-        { sn, qty, price, cond, owner, ort -> vm.addSet(sn, qty, price, cond, owner, ort) }
+        { sn, qty, price, cond, owner, ort -> erfassung.addSet(sn, qty, price, cond, owner, ort) }
     // Der VORRAT, nicht die belegten Orte: `lagerorte` eine Zeile weiter oben
     // speist den FILTER und enthaelt nur, worin schon etwas liegt. Beim
     // Erfassen soll auch ein leeres Regal zur Wahl stehen.
@@ -138,7 +141,7 @@ fun GalleryScreen(
     LaunchedEffect(barcodeState.manuelleErfassungAnfordern) {
         if (barcodeState.manuelleErfassungAnfordern) {
             showAddDialog = true
-            vm.manuelleErfassungQuittieren()
+            erfassung.manuelleErfassungQuittieren()
         }
     }
     // Das Eingabefeld hält seinen Text selbst (Tippen bleibt flüssig); die

@@ -53,6 +53,8 @@ import androidx.navigation.NavType
 import androidx.navigation.navArgument
 import ch.brickinventoryapp.*
 import ch.brickinventoryapp.ui.MainViewModel
+import ch.brickinventoryapp.ui.viewmodel.GalerieViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import ch.brickinventoryapp.ui.ManualItemDetailUiState
 
 /**
@@ -85,12 +87,14 @@ fun NavGraphBuilder.collectionGraph(
         composable(Screen.Gallery.route) {
             // Zustand INNERHALB des Ziels lesen — als Parameter wäre es eine
             // Momentaufnahme vom Aufbau des Graphen (der NavHost-Builder läuft nur einmal).
-            val state by vm.state.collectAsStateWithLifecycle()
-            val galerie by vm.galleryState.collectAsStateWithLifecycle()
+            val galerieVm: GalerieViewModel = hiltViewModel()
+            val state by galerieVm.state.collectAsStateWithLifecycle()
+            val galerie by galerieVm.galleryState.collectAsStateWithLifecycle()
+            val barcode by vm.barcodeState.collectAsStateWithLifecycle()
             // Retry loading if sets are empty and server URL is available
             LaunchedEffect(state.serverUrl) {
                 if (state.serverUrl.isNotBlank() && galerie.sets.isEmpty() && !galerie.galleryLoading) {
-                    vm.loadSets(); vm.loadStats()
+                    galerieVm.loadSets(); galerieVm.loadStats()
                 }
             }
             // Rollposition ausdrücklich wiederherstellen — der hochgezogene
@@ -99,8 +103,8 @@ fun NavGraphBuilder.collectionGraph(
                 "gallery", galleryGridState, galerie.sets.isNotEmpty(), vm.scrollMemory)
 
             // Gallery-Search: set found → navigate to detail
-            LaunchedEffect(galerie.gallerySearchFoundSetNumber) {
-                val found = galerie.gallerySearchFoundSetNumber
+            LaunchedEffect(barcode.gefundenesSet) {
+                val found = barcode.gefundenesSet
                 if (found != null) {
                     vm.gallerySearchFoundConsumed()
                     navController.navigate(Screen.SetDetail.createRoute(found))
@@ -108,7 +112,8 @@ fun NavGraphBuilder.collectionGraph(
             }
             ReiterGeruest(stringResource(R.string.nav_gallery), vm, navController, bottomNavItems, snackbarHostState) {
                 GalleryScreen(
-                    vm = vm,
+                    vm = galerieVm,
+                    erfassung = vm,
                     imageLoader = imageLoader,
                     onScanBarcode = { vm.setScannerSource("gallery_search"); navController.navigate(Screen.BarcodeScanner.route) },
                     onSetClick = { navController.navigate(Screen.SetDetail.createRoute(it)) },
@@ -126,9 +131,19 @@ fun NavGraphBuilder.collectionGraph(
             // Momentaufnahme vom Aufbau des Graphen (der NavHost-Builder läuft nur einmal).
             val state by vm.state.collectAsStateWithLifecycle()
             val setNumber = backStack.arguments?.getString("setNumber") ?: ""
+            // Die Galerie liegt als Startziel immer darunter; ihre geladene
+            // Kachel zeigt das Set sofort, bis das Detail da ist.
+            val galerieEintrag = remember(backStack) {
+                runCatching { navController.getBackStackEntry(Screen.Gallery.route) }.getOrNull()
+            }
+            val vorschau = galerieEintrag?.let { eintrag ->
+                val galerie by hiltViewModel<GalerieViewModel>(eintrag).galleryState.collectAsStateWithLifecycle()
+                galerie.sets.find { it.setNumber == setNumber }
+            }
             SetDetailScreen(
                 setNumber = setNumber,
                 vm = vm,
+                vorschau = vorschau,
                 serverUrl = state.serverUrl,
                 imageLoader = imageLoader,
                 onBack = { navController.popBackStack() },

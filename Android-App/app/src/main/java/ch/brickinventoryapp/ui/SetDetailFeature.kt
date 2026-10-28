@@ -85,19 +85,7 @@ internal fun MainViewModel.applySetAggregate(agg: SetAggregate?) {
     if (agg == null || agg.setNumber.isBlank()) return
     // Die Liste liegt seit der Aufteilung im Galerie-Fluss, nicht mehr in
     // AppUiState — der Kommentar oben nennt sie noch `_state.sets`.
-    galerie.aendereSet(agg.setNumber) { s ->
-        s.copy(
-            condition        = agg.condition ?: s.condition,
-            // Ohne diese Zeile behielte die Kachel nach einer
-            // Zustandsänderung die alten Plaketten, bis die Liste neu
-            // geladen wird — derselbe Fehler, für den das Aggregat
-            // ursprünglich eingeführt wurde, nur eine Ebene tiefer.
-            conditions       = agg.conditions.ifEmpty { s.conditions },
-            usedCount        = agg.usedCount ?: s.usedCount,
-            maxPurchasePrice = agg.maxPurchasePrice ?: s.maxPurchasePrice,
-            avgPurchasePrice = agg.avgPurchasePrice ?: s.avgPurchasePrice
-        )
-    }
+    bestand.melde(Aenderung.SetZusammenfassung(agg))
 }
 
 internal fun MainViewModel.updateAcquisition(setNumber: String, acqId: Int, purchasePrice: Double? = null, condition: String? = null, quantity: Int? = null, date: String? = null) {
@@ -127,7 +115,6 @@ internal fun MainViewModel.updateAcquisition(setNumber: String, acqId: Int, purc
                     // updateQuantity() und in der Webapp bei manQtySave().
                     loadSetDetail(setNumber)
                     // Kennzahlen und Portfolio-Wert hängen an Preis und Menge.
-                    loadStats()
                     bestand.melde(Aenderung.Sets)
                 }
             }
@@ -148,7 +135,6 @@ internal fun MainViewModel.deleteAcquisition(setNumber: String, acqId: Int) {
                     loadAcquisitions(setNumber)
                     loadSetDetail(setNumber)
                     // Kennzahlen und Portfolio-Wert hängen an Preis und Menge.
-                    loadStats()
                     bestand.melde(Aenderung.Sets)
                 }
             }
@@ -321,6 +307,117 @@ internal fun MainViewModel.setzePreisalarm(
                 if (offen) loadPreisalarme(setNumber)
             }
             is Result.Error -> _snackbar.emit(meldungFuerSnackbar(r))
+        }
+    }
+}
+
+internal fun MainViewModel.updateQuantity(setNumber: String, quantity: Int, purchasePrice: Double? = null, condition: String? = null) {
+    viewModelScope.launch {
+        when (val r = repo.sets.updateQuantity(setNumber, quantity, purchasePrice, condition)) {
+            is Result.Success -> {
+                // Die WIRKLICHE Gesamtmenge kommt vom Server (Nachtrag 87).
+                //
+                // Angezeigt wird die Menge aller Konten, geschrieben wird die
+                // Differenz auf das eigene. Beim Verringern deckelt der Server
+                // bei den eigenen Exemplaren — fremde lassen sich nicht
+                // wegnehmen —, und dann steht in der Antwort eine andere Zahl
+                // als die gesendete. Ohne diese Übernahme zeigte der Regler bis
+                // zum nächsten vollständigen Laden seine eigene Annahme.
+                //
+                // Sofort in den Zustand, nicht erst über loadSetDetail(): Der
+                // Abruf läuft ohnehin gleich, aber er braucht eine Rundreise,
+                // und genau in der Zeit sieht man die falsche Zahl.
+                r.data.quantity?.let { echt ->
+                    _setDetailState.update { st ->
+                        if (st.setDetail?.setNumber == setNumber)
+                            st.copy(setDetail = st.setDetail.copy(quantity = echt)) else st
+                    }
+                }
+                // setDetail hat im Detail-Screen Vorrang vor state.sets — ohne
+                // Refresh bliebe dort der alte Kaufpreis stehen ("wird nicht
+                // gespeichert"-Symptom, obwohl der Server längst gespeichert hat).
+                if (_setDetailState.value.setDetail?.setNumber == setNumber) {
+                    loadSetDetail(setNumber)
+                    // Auch die Erfassungsliste nachladen.
+                    //
+                    // Eine Mengenänderung verändert IMMER die Erfassungen: Der
+                    // Server (adjustAcquisitionsToQuantity in routes/sets.ts)
+                    // erhöht die heutige Erfassung — oder legt eine NEUE an,
+                    // wenn die neueste nicht von heute ist. Beim Verringern baut
+                    // er nach LIFO ab und löscht die heutige gegebenenfalls ganz.
+                    //
+                    // loadSetDetail() holt aber nur die Set-Stammdaten;
+                    // acquisitions kommen aus loadAcquisitions() und blieben
+                    // deshalb auf dem Stand von vor der Änderung. Der zweite
+                    // Eintrag existierte in der Datenbank und war im Dialog
+                    // trotzdem nicht zu sehen.
+                    //
+                    // Dieselbe Ursache wie in der Webapp, wo manQtySave() die
+                    // Liste nur beim Erhöhen nachlud.
+                    loadAcquisitions(setNumber)
+                }
+                    // Menge und Preis wirken auf Kennzahlen und Portfolio-Wert.
+                    // Beide blieben sonst stehen, bis der jeweilige Reiter neu
+                    // geöffnet wurde.
+                bestand.melde(Aenderung.Sets)
+            }
+            is Result.Error ->
+                // Fehler nicht mehr verschlucken — sonst ist ein fehlgeschlagener
+                // Save für den Nutzer unsichtbar.
+                _snackbar.value = meldungFuerSnackbar(r)?.let { text(R.string.vm_error, it) }
+        }
+    }
+}
+
+/**
+ * Lagerort eines Sets setzen.
+ *
+ * ── Warum die Liste danach neu geladen wird ─────────────────────────────────
+ *
+ * Der Detailbildschirm liest sein `SetItem` aus derselben Liste wie die
+ * Galerie. Ohne Neuladen zeigte er nach dem Speichern weiter den alten Ort —
+ * der Server hat ihn zwar, aber niemand fragt danach.
+ *
+ * Genau wie in der Webapp (public/js/07-admin.js, speichereSetLagerort) wird
+ * dabei der NORMALISIERTE Ort aus der Antwort massgeblich: getrimmt, leer wird
+ * null. Sonst zeigte die Ansicht „ Kiste 3 " mit Leerzeichen, waehrend in der
+ * Datenbank „Kiste 3" steht, und beim naechsten Oeffnen spraenge der Wert.
+ */
+internal fun MainViewModel.setzeSetLagerort(setNumber: String, ort: String) {
+    // ── Entprellt, und die Ruhezeit liegt im ViewModel ───────────────────────
+    //
+    // Bis hierher speicherte der Bildschirm beim Verlassen des Feldes. Genau
+    // das war Marcos Befund beim Preisalarm: Am Telefon tippt man, schliesst
+    // die Tastatur und geht zurueck — dieser Fokuswechsel kommt nie. Fuer den
+    // Lagerort galt dasselbe, es hat nur noch niemand gemeldet.
+    //
+    // Dieselbe Ruhezeit wie dort (Alarmeingabe.RUHE_MS): Ein Speichern je
+    // Zeichen erzeugte sechs Anfragen fuer „Kiste 3" und legte dabei fuenf
+    // Orte im Vorrat an, die niemand wollte — „K", „Ki", „Kis" …
+    //
+    // Im viewModelScope und nicht in einem LaunchedEffect, damit die Ruhezeit
+    // das Verlassen des Bildschirms ueberlebt.
+    lagerJob?.cancel()
+    lagerJob = viewModelScope.launch {
+        kotlinx.coroutines.delay(ch.brickinventoryapp.alarm.Alarmeingabe.RUHE_MS)
+        when (val r = repo.sets.setSetStorage(setNumber, ort)) {
+            is Result.Success -> {
+                if (!r.data.success) { _snackbar.emit(r.data.error ?: ""); return@launch }
+                bestand.melde(Aenderung.Sets)
+            }
+            is Result.Error -> _snackbar.emit(meldungFuerSnackbar(r))
+        }
+    }
+}
+
+internal fun MainViewModel.deleteSet(setNumber: String) {
+    viewModelScope.launch {
+        when (val r = repo.sets.deleteSet(setNumber)) {
+            is Result.Success -> {
+                _snackbar.value = text(R.string.vm_set_deleted, setNumber)
+                bestand.melde(Aenderung.Sets, Aenderung.Teile, Aenderung.Figuren)
+            }
+            is Result.Error -> _snackbar.value = meldungFuerSnackbar(r)
         }
     }
 }

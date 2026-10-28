@@ -139,9 +139,7 @@ internal fun MainViewModel.saveSettings(currency: String, condition: String) {
                 // liefert. Ohne Nachladen zeigte die App die alten Werte mit dem
                 // NEUEN Währungszeichen — also schlicht falsche Beträge, bis der
                 // jeweilige Reiter neu geöffnet wurde.
-                loadSets()
                 bestand.melde(Aenderung.Sets)
-                loadStats()
             }
             is Result.Error -> _snackbar.value = meldungFuerSnackbar(r)
         }
@@ -218,7 +216,7 @@ internal fun MainViewModel.ladeCsvHoch(art: ch.brickinventoryapp.data.model.CsvA
                     when (art) {
                         ch.brickinventoryapp.data.model.CsvArt.MERKLISTE -> bestand.melde(Aenderung.Merkliste)
                         ch.brickinventoryapp.data.model.CsvArt.PREISALARME -> ladeAlarmUebersicht()
-                        else -> { loadSets(); loadStats() }
+                        else -> bestand.melde(Aenderung.Sets)
                     }
                 } else {
                     _csvHochladenState.value = CsvHochladenUiState(

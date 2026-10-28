@@ -231,28 +231,6 @@ class MainViewModel @Inject constructor(
     }
 
 
-    /**
-     * Galerie — eigener Fluss (Nachtrag: AppUiState-Aufteilung).
-     *
-     * Sechzehn Dateien sammeln `state`; die Galerie-Felder lesen davon drei.
-     * Als Teil von AppUiState loeste jedes Blaettern und jede Suche eine
-     * Rekomposition in allen sechzehn aus. Siehe GalleryUiState.
-     */
-    internal val galerie = Galerie(
-        scope = viewModelScope,
-        holeSeite = { g, seite ->
-            retryOnNetwork {
-                repo.sets.getSets(scopeFor(ch.brickinventoryapp.data.ScopeFilter.View.GALLERY),
-                    search = g.galleryQuery, theme = g.galleryTheme, sort = g.gallerySort, page = seite,
-                    storage = lagerFor(ch.brickinventoryapp.data.ScopeFilter.View.GALLERY))
-            }
-        },
-        holeKennzahlen = { repo.finanzen.getStats(scopeFor(ch.brickinventoryapp.data.ScopeFilter.View.GALLERY)) },
-        meldeFehler = { _snackbar.value = meldungFuerSnackbar(it) },
-        beschreibeFehler = { meldung(it) },
-        vergissScroll = { scrollMemory.vergiss("gallery") },
-    )
-    val galleryState: kotlinx.coroutines.flow.StateFlow<GalleryUiState> = galerie.state
 
     /**
      * Läuft gerade eine Prüfung vor dem Erfassen? Siehe ErfassungUiState.
@@ -593,8 +571,6 @@ class MainViewModel @Inject constructor(
             CsvFolge.DIENST_STARTEN, CsvFolge.NICHTS -> {}
         }
 
-        // Sets nachlagen falls Erstladung beim App-Start scheiterte
-        if (galerie.state.value.sets.isEmpty() && !galerie.state.value.galleryLoading) loadDashboard()
     }
 
     /** Import abgeschlossen: Daten neu laden, Banner kurz sichtbar lassen, dann ausblenden. */
@@ -603,7 +579,7 @@ class MainViewModel @Inject constructor(
         if (csvFinishing) return
         csvFinishing = true
         try {
-            loadSets(); loadStats()
+            bestand.melde(Aenderung.Sets)
             kotlinx.coroutines.delay(5000)
             _csvImportState.value = CsvImportUiState()
             CsvImportService.stop(ctx)

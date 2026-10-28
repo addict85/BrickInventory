@@ -334,13 +334,6 @@ data class GalleryUiState(
     /** Liste aus dem Plattenspeicher statt vom Server: Zeitpunkt der Ablage, sonst null. */
     val offlineStand: Long? = null,
     val stats: DashboardStats? = null,
-
-    // Gallery "Search by barcode" flow
-    // Auslöser für „öffne die Detailansicht dieses Sets". Gesetzt vom
-    // Barcode-Scanner im Modus "gallery_search" UND seit Nachtrag 57 auch beim
-    // Erfassen über die Setnummer, wenn das Set bereits vorhanden ist. Der Name
-    // stammt aus der ersten Verwendung; gemeint ist beides.
-    val gallerySearchFoundSetNumber: String? = null,   // → navigate to SetDetail
 )
 
 
@@ -643,6 +636,11 @@ data class ManualItemDetailUiState(
  */
 data class BarcodeUiState(
     val result: String? = null,
+    /**
+     * „Öffne die Detailansicht dieses Sets“: Der Scan oder das Erfassen fand ein
+     * Set, das schon in der Sammlung steht. Die Galerie navigiert und quittiert.
+     */
+    val gefundenesSet: String? = null,
     /** "gallery", "gallery_search", "partslist" oder "wanted". */
     val source: String = "gallery",
     /**

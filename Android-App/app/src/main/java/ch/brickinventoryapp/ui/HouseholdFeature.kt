@@ -32,7 +32,7 @@ internal fun MainViewModel.setScope(view: ScopeFilter.View, value: String) {
     viewModelScope.launch {
         blickfeldDienst.setzeKonto(view, value)
         when (view) {
-            ScopeFilter.View.GALLERY  -> { loadSets(); loadStats() }
+            ScopeFilter.View.GALLERY  -> Unit
             ScopeFilter.View.PARTS    -> loadParts()
             ScopeFilter.View.MINIFIGS -> loadMinifigs()
             ScopeFilter.View.FINANCE  -> Unit
@@ -54,7 +54,6 @@ internal fun MainViewModel.setLagerFilter(view: ScopeFilter.View, value: String)
     viewModelScope.launch {
         blickfeldDienst.setzeLager(view, value)
         when (view) {
-            ScopeFilter.View.GALLERY -> loadSets()
             ScopeFilter.View.PARTS   -> loadParts()
             else -> {}
         }
@@ -129,7 +128,7 @@ private fun MainViewModel.lagerortSchleuse(
         val (gelungen, fehler) = tun()
         if (!gelungen) { _snackbar.emit(fehler ?: ""); return@launch }
         ladeEigeneLagerorte()
-        if (galerieNeu) loadSets()
+        if (galerieNeu) bestand.melde(Aenderung.Sets)
     }
 }
 
@@ -242,7 +241,7 @@ internal fun MainViewModel.redeemHouseholdInvite(code: String) {
 internal fun MainViewModel.unlinkHousehold(subUserId: Int? = null, mainUserId: Int? = null) {
     viewModelScope.launch {
         when (val r = repo.haushalt.unlinkHousehold(subUserId, mainUserId)) {
-            is Result.Success -> { loadHouseholdStatus(); loadHouseholdMembers(); loadSets() }
+            is Result.Success -> { loadHouseholdStatus(); loadHouseholdMembers(); bestand.melde(Aenderung.Sets) }
             // Ohne Meldung tippt der Nutzer auf „Verknüpfung lösen", und es
             // passiert sichtbar nichts — weder Erfolg noch Grund.
             //
@@ -315,7 +314,7 @@ internal fun MainViewModel.changeAcquisitionOwner(
                     // Menge, Summen und Besitzer-Plaketten stimmen danach an
                     // mehreren Stellen nicht mehr — neu laden statt vier Orte
                     // einzeln nachzuführen.
-                    loadSets(); bestand.melde(Aenderung.Sets)
+                    bestand.melde(Aenderung.Sets)
                     onDone(null, r.data.parts ?: 0, r.data.minifigs ?: 0)
                 } else onDone(r.data.error ?: "", 0, 0)
             }
@@ -331,7 +330,7 @@ internal fun MainViewModel.moveSet(
     viewModelScope.launch {
         when (val r = repo.sets.moveSet(setNumber, fromUserId, toUserId, acquisitionIds)) {
             is Result.Success -> {
-                if (r.data.success) { loadSets(); bestand.melde(Aenderung.Sets); onDone(null) }
+                if (r.data.success) { bestand.melde(Aenderung.Sets); onDone(null) }
                 else onDone(r.data.error ?: "")
             }
             is Result.Error -> onDone(meldung(r))

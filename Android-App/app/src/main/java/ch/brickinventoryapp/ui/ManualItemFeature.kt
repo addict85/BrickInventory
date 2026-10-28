@@ -159,7 +159,6 @@ internal fun MainViewModel.reloadItemList(type: String) {
     viewModelScope.launch {
         if (type == "fig") loadMinifigs() else loadParts()
         bestand.melde(if (type == "fig") Aenderung.Figuren else Aenderung.Teile)
-        loadStats()
     }
 }
 

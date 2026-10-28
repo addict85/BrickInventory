@@ -259,7 +259,6 @@ internal fun MainViewModel.logout() {
         // Er galt nur fuer die Haelfte. Gefunden beim Entfernen der
         // Nutzerverwaltung, nicht von einer Pruefung — deshalb prueft
         // felder.py das jetzt: Jeder Fluss des MainViewModel muss hier stehen.
-        galerie.zuruecksetzen()
         teile.zuruecksetzen()
         _csvImportState.value = CsvImportUiState()
         _setDetailState.value = SetDetailUiState()
@@ -281,4 +280,14 @@ internal fun MainViewModel.logout() {
         // abgebrochen, nicht nur ausgeblendet.
         brichPruefungAb()
     }
+}
+
+/** Nach dem Anmelden: Filter, Konten und Orte; die Bereiche laden ihre Listen selbst. */
+internal fun MainViewModel.loadDashboard() {
+    _csvImportState.value = CsvImportUiState()
+    loadScopeModes()
+    loadHouseholdMembers()
+    loadLagerorte()
+    ladeEigeneLagerorte()
+    bestand.melde(Aenderung.Sets)
 }
