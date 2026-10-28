@@ -479,7 +479,7 @@ async function resolveUserId(req: Request): Promise<number | null> {
  */
 function loginOrTokenGuard(opts: { timeoutMs?: number } = {}) {
   return async function requireLoginOrToken(req: Request, res: Response, next: NextFunction) {
-    if (req.session?.userId) return next();
+    if (req.session?.userId || req.tokenUserId) return next();
     const timer = opts.timeoutMs
       ? setTimeout(() => {
           if (!res.headersSent) sendeFehler(req, res, 503, 'server_ausgelastet');

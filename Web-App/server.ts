@@ -552,11 +552,11 @@ app.get('/api/v1/health', async (req, res) => {
   });
 });
 
-// EINE Adressraum: alles unter /api/v1
-//  Warum das ohne Umbau der Anmeldung geht
-// requireToken in routes/api_v1/middleware.ts nimmt beide Ausweise. Die hier
-// umgehaengten Router bringen ihre eigene Absicherung mit (requireLogin, …
+// EIN Adressraum mit EINEM Eingang: anmeldungAmEingang verlangt Sitzung oder
+// Token für alles unter /api/v1 ausser den ausdrücklich öffentlichen Pfaden.
+// Der Schutz je Route bleibt als zweite Linie und kostet keinen zweiten Abruf.
 // Ausführlich: docs/begruendungen/server.ts.md#abschnitt-7
+app.use('/api/v1',          (require('./routes/api_v1/middleware') as typeof import('./routes/api_v1/middleware')).anmeldungAmEingang);
 app.use('/api/v1',          require('./routes/api_v1/index') as typeof import('./routes/api_v1/index'));
 app.use('/api/v1/sets',     require('./routes/sets') as typeof import('./routes/sets'));
 app.use('/api/v1/parts',    require('./routes/parts') as typeof import('./routes/parts'));
