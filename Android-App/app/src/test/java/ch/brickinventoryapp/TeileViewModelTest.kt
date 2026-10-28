@@ -34,6 +34,10 @@ import org.junit.Test
  *   E  getManualParts ohne Lagerort, oder getManualMinifigs ohne Suchtext →
  *      je rot „Suchtext und Lagerort erreichen auch die manuell erfassten …“
  *   F  getMinifigStats ohne Blickfeld → rot „der Kontofilter der Figuren …“
+ *   G  in BrickApiService bei getManualParts bzw. getManualMinifigs
+ *      `@Query("search")` zu `@Query("suche")` → je rot „Suchtext und
+ *      Lagerort erreichen auch die manuell erfassten …“ (Zeitüberschreitung
+ *      „manuelle Teile“ bzw. „manuelle Figuren“)
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class TeileViewModelTest {

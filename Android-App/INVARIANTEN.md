@@ -645,7 +645,7 @@ statt an dem Ereignis, das sie auslösen soll.
 
 ## Erfassungen: zwei Preisfelder, ein Erzeuger je Art
 
-**Datei:** `data/model/Models.kt` · **Test:** `AcquisitionPriceFieldTest`
+**Datei:** `data/model/HaushaltModels.kt` · **Test:** `KaeufeViewModelTest` („ein Set schickt purchase_price, Teile und Figuren unit_price“)
 
 Der Server liest das Preisfeld unter dem Namen der jeweiligen SPALTE:
 

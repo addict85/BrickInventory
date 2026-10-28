@@ -153,8 +153,8 @@ data class UpdateAcquisitionRequest(
      *
      * Bei einem Set ist es der Preis des Sets, bei Teilen und Figuren der Preis je
      * Stück. Unter dem falschen Namen lässt der Server den Preis still unverändert.
-     * Beide Felder sind nullbar und werden bei `null` nicht mitgeschickt, also ist
-     * immer genau eines gesetzt — siehe `fuerSet()` und `fuerStueck()` unten.
+     * Beide Felder sind nullbar; `fuerSet()` und `fuerStueck()` unten setzen immer
+     * genau eines, das andere geht als null mit (ApiJson schreibt Vorgabewerte).
      */
     @SerialName("purchase_price") val purchasePrice: Double? = null,
     /** Der Kaufpreis je Stück — bei TEILEN und MINIFIGUREN. Siehe oben. */

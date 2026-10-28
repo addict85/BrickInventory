@@ -31,6 +31,14 @@ import org.junit.Test
  *      Besitzerwechsel meldet die mitgewanderten Teile …“
  *   D  in lade() den Verlauf eines anderen Eintrags stehen gelassen → rot
  *      „der Preisverlauf eines anderen Eintrags bleibt nicht stehen“
+ *   E  in UpdateAcquisitionRequest.fuerStueck() `purchasePrice = preis` statt
+ *      `unitPrice = preis` → rot „ein Set schickt purchase_price, Teile und
+ *      Figuren unit_price“ (Teil)
+ *   F  in HaushaltRepository.updateAcquisition() fuerStueck statt fuerSet →
+ *      rot an derselben Stelle (Set)
+ *   G  in updateManualAcquisition() den Rumpf von Hand gebaut,
+ *      `UpdateAcquisitionRequest(purchasePrice = unitPrice, …)` → rot an
+ *      derselben Stelle (Teil)
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class KaeufeViewModelTest {
@@ -107,6 +115,38 @@ class KaeufeViewModelTest {
         assertEquals(Triple(null, 12, 2), ergebnis)
         assertEquals(listOf(Aenderung.Sets, Aenderung.Teile, Aenderung.Figuren), liste)
         assertTrue(pfade.anfragenAn("PUT /api/v1/sets/75192-1/acquisitions/7").isNotEmpty())
+    }
+
+    /** Der Rumpf der ersten Anfrage, deren Zeile [anfrage] enthält. */
+    private fun rumpf(anfrage: String): String {
+        TestApi.warteBis(anfrage) {
+            synchronized(pfade.anfragen) {
+                val i = pfade.anfragen.indexOfFirst { anfrage in it }
+                i >= 0 && pfade.koerper.size > i
+            }
+        }
+        return synchronized(pfade.anfragen) { pfade.koerper[pfade.anfragen.indexOfFirst { anfrage in it }] }
+    }
+
+    /** ApiJson schreibt null mit; „gesetzt“ heisst: das Feld trägt eine Zahl. */
+    private fun gesetzt(feld: String, json: String) = Regex("\"$feld\":[0-9]").containsMatchIn(json)
+
+    @Test
+    fun `ein Set schickt purchase_price, Teile und Figuren unit_price`() {
+        // Der Server liest das Preisfeld unter dem Namen seiner Spalte; unter
+        // dem falschen Namen lässt er den Preis still stehen.
+        val vm = vm()
+        vm.updateAcquisition("75192-1", 7, purchasePrice = 499.0)
+        val set = rumpf("PUT /api/v1/sets/75192-1/acquisitions/7")
+        assertTrue("Set: $set", "\"purchase_price\":499.0" in set && !gesetzt("unit_price", set))
+
+        vm.updateManualAcquisition("part", "3001", 5, 9, unitPrice = 0.25)
+        val teil = rumpf("PUT /api/v1/parts/3001/5/acquisitions/9")
+        assertTrue("Teil: $teil", "\"unit_price\":0.25" in teil && !gesetzt("purchase_price", teil))
+
+        vm.updateManualAcquisition("fig", "sw0001", 0, 3, unitPrice = 12.0)
+        val figur = rumpf("PUT /api/v1/minifigs/sw0001/acquisitions/3")
+        assertTrue("Figur: $figur", "\"unit_price\":12.0" in figur && !gesetzt("purchase_price", figur))
     }
 
     @Test
