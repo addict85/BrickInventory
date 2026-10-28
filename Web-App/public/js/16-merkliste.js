@@ -73,8 +73,9 @@ function zeile(w) {
   // dass hier keine zweite Kopie der Stammdaten liegt (siehe 0021) — sichtbar
   // und harmlos, statt eines Namens aus einer Quelle, die niemand nachführt.
   const titel = w.name ? esc(w.name) : esc(w.set_number);
+  // Ohne Namen steht die Nummer schon als Titel — nicht noch einmal darunter.
   const unter = [
-    esc(w.set_number),
+    w.name ? esc(w.set_number) : null,
     w.year ? String(w.year) : null,
     zustandText(w.condition),
   ].filter(Boolean).join(' · ');
@@ -129,9 +130,9 @@ function zeile(w) {
          erste Entwurf gescheitert — dieselbe Falle wie in
          utils/handlers/parts.ts, wo derselbe Hinweis steht. -->
     <div class="mk-zeile" tabindex="0" role="button" data-click="oeffneMerkpostenDetail" data-arg="${arg}"
-         style="position:relative;display:flex;gap:12px;align-items:center;padding:10px;border:1px solid var(--bdr);
+         style="position:relative;display:flex;gap:12px;align-items:center;padding:10px 44px 10px 10px;border:1px solid var(--bdr);
                 border-radius:var(--rad);background:var(--sur);margin-bottom:8px;cursor:pointer">
-      <div class="ca"><button class="delbtn" data-click="merkpostenLoeschenStop" data-arg="${arg}"
+      <div class="ca"><button class="delbtn" data-click="merkpostenLoeschenStop" tabindex="-1" aria-hidden="true" data-arg="${arg}"
            title="${esc(tRaw('wanted.remove'))}" aria-label="${esc(tRaw('wanted.remove'))}">${TRASH_ICON_SVG}</button></div>
       ${bild}
       <div style="flex:1;min-width:0">

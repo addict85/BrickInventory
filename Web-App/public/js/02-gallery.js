@@ -953,7 +953,7 @@ function gridCard(s){
   // eine Plakette je Zustand, siehe condBadges().
   const condBadge = condBadges(s);
   return `<div class="sc" tabindex="0" role="button" aria-label="${esc((s.name||'')+' '+s.set_number)}" data-click="openModal" data-arg="${escJs(s.set_number)}">
-    <div class="ca"><button class="delbtn" data-click="delSetStop" data-arg="${esc(s.set_number)}" title="${esc(t('detail.delete'))}" aria-label="${esc(t('detail.delete'))}">${TRASH_ICON_SVG}</button></div>
+    <div class="ca"><button class="delbtn" data-click="delSetStop" tabindex="-1" aria-hidden="true" data-arg="${esc(s.set_number)}" title="${esc(t('detail.delete'))}" aria-label="${esc(t('detail.delete'))}">${TRASH_ICON_SVG}</button></div>
     <div class="sci">${img}</div>
     <div class="scb">
       <div class="snum">${esc(s.set_number)}</div>
