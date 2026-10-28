@@ -398,7 +398,7 @@ class SelbstUpdateTest {
      */
     @Test
     fun `Spaeter wird gemerkt, aber nicht dauerhaft`() {
-        val zustand = Quellen.ohneKommentare(Quellen.lies("ui/UiState.kt"))
+        val zustand = Quellen.ohneKommentare(Quellen.lies("ui/ZustandKonto.kt"))
         assert(zustand.contains("val dialogAbgelehnt: Boolean = false")) {
             "UpdateUiState merkt sich das Wegklicken nicht"
         }

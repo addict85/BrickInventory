@@ -175,7 +175,7 @@ class SessionAndLifecycleTest {
             "barcodeResolvedSetNumber", "barcodeResolvedSet",
         )
         val feature = read("ui/viewmodel/ErfassungViewModel.kt")
-        val state = read("ui/UiState.kt")
+        val state = Quellen.zustaende()
         for (name in dead) {
             assert(!feature.contains(name)) { "$name ist in ErfassungViewModel.kt zurück" }
             assert(!state.contains(name)) { "$name ist in AppUiState zurück" }

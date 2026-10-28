@@ -21,7 +21,7 @@ import org.junit.Test
  * ausschliesslich der KOPF getauscht: Die Werte behalten ihre alten Namen, der
  * Rumpf darunter blieb Zeile für Zeile unverändert. Ein Tippfehler kann sich so
  * nicht durch fünfhundert Zeilen ziehen, und die Prüfung unten kann jeden
- * Zustandszugriff gegen die Datenklassen in UiState.kt halten.
+ * Zustandszugriff gegen die Datenklassen in ui/Zustand*.kt halten.
  */
 class ScreenViewModelWiringTest {
 
@@ -113,7 +113,7 @@ class ScreenViewModelWiringTest {
         //
         // `state.gibtEsNicht` wäre ein Übersetzungsfehler, den ich hier nicht
         // sehe. Diese Prüfung hält jeden Zugriff gegen die Datenklassen in
-        // UiState.kt — genau die Fehlerart, die der Umbau hätte einschleppen
+        // ui/Zustand*.kt — genau die Fehlerart, die der Umbau hätte einschleppen
         // können.
         // Die Erfassung stand hier ausformuliert und las NUR den Konstruktor.
         // Eine abgeleitete Eigenschaft oder eine Methode der Zustandsklasse —
@@ -123,7 +123,7 @@ class ScreenViewModelWiringTest {
         val mitglieder = Quellen.mitgliederJeUiState()
 
         fun felder(klasse: String): Set<String> =
-            mitglieder[klasse] ?: error("$klasse nicht in UiState.kt")
+            mitglieder[klasse] ?: error("$klasse nicht in ui/Zustand*.kt")
 
         // Die Zuordnung Name -> Zustandstyp wird JE DATEI abgeleitet, nicht
         // hier aufgezählt: In CatalogScreen heisst der Katalogzustand schlicht

@@ -40,7 +40,7 @@ import org.junit.Test
  */
 class ZustandsflussBreiteTest {
 
-    private val uiState = Quellen.lies("ui/UiState.kt")
+    private val uiState = Quellen.zustaende()
 
     /** Feldnamen einer Zustands-Datenklasse. */
     private fun felder(klasse: String): List<String> {

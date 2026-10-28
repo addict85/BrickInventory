@@ -63,6 +63,17 @@ object Quellen {
     fun lies(rel: String): String = File(wurzel, rel).readText()
 
     /**
+     * Alle Zustandsklassen: Sie liegen je Bereich in ui/Zustand*.kt. Mit
+     * Untergrenze, sonst prüfte ein umbenannter Ordner nichts und wäre grün.
+     */
+    fun zustaende(): String {
+        val dateien = File(wurzel, "ui").listFiles { f -> f.name.startsWith("Zustand") && f.name.endsWith(".kt") }
+            .orEmpty().sortedBy { it.name }
+        check(dateien.size >= 5) { "Nur ${dateien.size} Zustandsdateien unter ui/ gefunden" }
+        return dateien.joinToString("\n") { it.readText() }
+    }
+
+    /**
      * Alle Kotlin-Quelldateien des Hauptbaums.
      *
      * ── Mit Untergrenze, und das ist der Punkt (Nachtrag 118) ───────────────
@@ -238,7 +249,7 @@ object Quellen {
      * so kann die Erfassung nicht in die naechste Klasse hineinlaufen.
      */
     fun mitgliederJeUiState(): Map<String, Set<String>> {
-        val quelle = java.io.File(wurzel, "ui/UiState.kt").readText()
+        val quelle = zustaende()
         val namen = Regex("""val\s+(\w+)\s*[:=]""")
         val methoden = Regex("""fun\s+(\w+)\s*\(""")
         return Regex("""data class (\w+UiState)\((.*?)\n\)(?: \{(.*?)\n\})?""",

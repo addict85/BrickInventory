@@ -40,7 +40,7 @@ class BarcodeDoubleAddGuardTest {
 
     @Test
     fun `BarcodeUiState kennt das adding-Flag`() {
-        val src = code(read("ui/UiState.kt"))
+        val src = code(read("ui/ZustandErfassung.kt"))
         assert(Regex("""val\s+adding\s*:\s*Boolean""").containsMatchIn(src)) {
             "BarcodeUiState.adding fehlt — ohne das Flag gibt es keine Sperre " +
                 "gegen den zweiten Klick im Barcode-Dialog"

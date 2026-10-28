@@ -25,7 +25,7 @@ wiederholt die Regel dort, wo sie gebraucht wird.
 
 ## Doppelklick-Sperre im Barcode-Dialog
 
-**Dateien:** `ui/BarcodeFeature.kt`, `ui/UiState.kt`, `AppNavigation.kt`
+**Dateien:** `ui/BarcodeFeature.kt`, `ui/Zustand*.kt`, `AppNavigation.kt`
 **Test:** `BarcodeDoubleAddGuardTest`
 
 Der Zwischendialog nach dem Barcode-Scan reagiert träge; Nutzer tippen deshalb
@@ -87,7 +87,7 @@ solange die App auf dem Screen liegt. Jede solche Schleife gehört in
 
 ## Kein zweiter Barcode-Pfad
 
-**Dateien:** `ui/BarcodeFeature.kt`, `ui/UiState.kt`
+**Dateien:** `ui/BarcodeFeature.kt`, `ui/Zustand*.kt`
 **Test:** `SessionAndLifecycleTest`
 
 Es gab lange eine komplette, nie aufgerufene Zweitimplementierung des Scanners
@@ -217,7 +217,7 @@ Error-Zweig des äusseren durchgeht.
 
 ## Zustand ist nach Domänen getrennt
 
-**Dateien:** `ui/UiState.kt`, `ui/MainViewModel.kt`, `MainActivity.kt`
+**Dateien:** `ui/Zustand*.kt`, `ui/MainViewModel.kt`, `MainActivity.kt`
 **Test:** `ResultAndStateSplitTest`
 
 `AppUiState` hält nur noch, was App-weit gilt: Sitzung, Einstellungen, Sets,
@@ -480,7 +480,7 @@ wäre an seinen Platz im Graphen gebunden.
 **Beim Umbauen:** Nur den KOPF tauschen und die Werte unter ihren alten Namen
 neu binden. Dann bleibt der Rumpf Zeile für Zeile unverändert — wichtig, solange
 Kotlin nicht kompiliert werden kann. `ScreenViewModelWiringTest` hält jeden
-`state.X`-Zugriff gegen die Datenklassen in `UiState.kt`; das ist der Ersatz für
+`state.X`-Zugriff gegen die Datenklassen in `ui/Zustand*.kt`; das ist der Ersatz für
 den fehlenden Compiler.
 
 ## Der Navigationsaufbau baut Navigation
