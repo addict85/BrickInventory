@@ -910,7 +910,9 @@ CREATE TABLE public.rate_limit_attempts (
     key text NOT NULL,
     count integer DEFAULT 1 NOT NULL,
     first_at timestamp with time zone DEFAULT now() NOT NULL,
-    last_at timestamp with time zone
+    last_at timestamp with time zone,
+    laufend integer DEFAULT 0 NOT NULL,
+    laufend_seit timestamp with time zone
 );
 
 --
@@ -3043,6 +3045,7 @@ INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0055-api-takt.s
 INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0056-preisverlauf-je-tag.sql', '2026-10-28 17:50:29.005121+00');
 INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0057-figurenpreis-geschaetzt.sql', '2026-10-28 17:50:29.010176+00');
 INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0058-fremdschluessel-und-pruefungen.sql', '2026-10-28 17:59:06.918264+00');
+INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0059-anmeldung-laufend.sql', '2026-10-28 20:00:29.834455+00');
 
 --
 -- PostgreSQL database dump complete

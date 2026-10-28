@@ -111,15 +111,76 @@ async function _bump(key: string, windowMin: number): Promise<void> {
          count    = CASE WHEN rate_limit_attempts.first_at < NOW() - make_interval(mins => $2)
                          THEN 1 ELSE rate_limit_attempts.count + 1 END,
          first_at = CASE WHEN rate_limit_attempts.first_at < NOW() - make_interval(mins => $2)
-                         THEN NOW() ELSE rate_limit_attempts.first_at END`,
+                         THEN NOW() ELSE rate_limit_attempts.first_at END,
+         laufend  = GREATEST(rate_limit_attempts.laufend - 1, 0)`,
       [key, windowMin]);
   } catch (_) {
     const now = Date.now();
     const e = _attempts.get(key);
-    if (!e || now - e.firstAt > windowMin * 60000) _attempts.set(key, { count: 1, firstAt: now, lastAt: now });
-    else { e.count++; e.lastAt = now; }
+    if (!e || now - e.firstAt > windowMin * 60000) _attempts.set(key, { count: 1, firstAt: now, lastAt: now, laufend: 0 });
+    else { e.count++; e.lastAt = now; e.laufend = Math.max(0, (e.laufend || 0) - 1); }
     _prune();
   }
+}
+
+/** Ein reservierter Platz, dessen Prüfung nie gemeldet wurde, verfällt danach. */
+const LAUFEND_VERFALL_S = 60;
+
+type Stand = Zaehlerstand & { laufend: number };
+
+/**
+ * Einen Platz für einen Versuch belegen, BEVOR geprüft wird — unter einer
+ * Zeilensperre, damit gleichzeitige Versuche einander sehen. `erlaubt` sieht
+ * Fehlversuche und laufende Versuche; sagt es nein, wird nichts belegt.
+ * Freigegeben wird der Platz durch _bump (Fehlschlag), _clear (Erfolg) oder
+ * _freigeben.
+ */
+async function _reserviere(key: string, windowMin: number, erlaubt: (s: Stand) => boolean): Promise<{ ok: boolean; stand: Stand }> {
+  try {
+    return await db.transaction(async (tx) => {
+      await tx.run(`INSERT INTO rate_limit_attempts (key, count, first_at, last_at, laufend)
+                    VALUES ($1, 0, NOW(), NULL, 0) ON CONFLICT (key) DO NOTHING`, [key]);
+      const r = await tx.get(
+        `SELECT count, laufend,
+                first_at < NOW() - make_interval(mins => $2) AS abgelaufen,
+                COALESCE(laufend_seit < NOW() - make_interval(secs => $3), TRUE) AS laufend_alt,
+                EXTRACT(EPOCH FROM (first_at + make_interval(mins => $2) - NOW()))/60 AS wait_min,
+                EXTRACT(EPOCH FROM (NOW() - COALESCE(last_at, first_at))) AS seit
+           FROM rate_limit_attempts WHERE key = $1 FOR UPDATE`, [key, windowMin, LAUFEND_VERFALL_S]);
+      const neu = !!r.abgelaufen;
+      const stand: Stand = {
+        count: neu ? 0 : parseInt(r.count) || 0,
+        laufend: r.laufend_alt ? 0 : parseInt(r.laufend) || 0,
+        waitMin: neu ? windowMin : Math.max(1, Math.ceil(parseFloat(r.wait_min) || 1)),
+        seitLetztem: Math.max(0, parseFloat(r.seit) || 0),
+      };
+      if (!erlaubt(stand)) return { ok: false, stand };
+      await tx.run(
+        `UPDATE rate_limit_attempts
+            SET laufend = $2, laufend_seit = NOW(),
+                count = CASE WHEN $3 THEN 0 ELSE count END,
+                first_at = CASE WHEN $3 THEN NOW() ELSE first_at END
+          WHERE key = $1`, [key, stand.laufend + 1, neu]);
+      return { ok: true, stand };
+    });
+  } catch (_) {
+    // Rückfall im Prozessspeicher: Dort ist dieser Block ohne await atomar.
+    const now = Date.now();
+    let e = _attempts.get(key);
+    if (!e || now - e.firstAt > windowMin * 60000) { e = { count: 0, firstAt: now, lastAt: null, laufend: 0 }; _attempts.set(key, e); }
+    const stand: Stand = { count: e.count, laufend: e.laufend || 0,
+      waitMin: Math.max(1, Math.ceil((e.firstAt + windowMin * 60000 - now) / 60000)),
+      seitLetztem: (now - (e.lastAt ?? e.firstAt)) / 1000 };
+    if (!erlaubt(stand)) return { ok: false, stand };
+    e.laufend = stand.laufend + 1;
+    _prune();
+    return { ok: true, stand };
+  }
+}
+
+async function _freigeben(key: string): Promise<void> {
+  try { await db.run('UPDATE rate_limit_attempts SET laufend = GREATEST(laufend - 1, 0) WHERE key = $1', [key]); }
+  catch (_) { const e = _attempts.get(key); if (e) e.laufend = Math.max(0, (e.laufend || 0) - 1); }
 }
 
 async function _clear(key: string): Promise<void> {
@@ -146,18 +207,34 @@ async function kontoKennung(username: unknown): Promise<string> {
 async function checkLoginAllowed(
   req: Request, username: unknown,
 ): Promise<{ code: FehlerCode; vars: { minuten: number } } | null> {
+  // Belegt den Versuch schon jetzt (siehe _reserviere); recordLoginFailure,
+  // recordLoginSuccess oder gibAnmeldeplatzFrei geben ihn wieder frei.
   const kennung = await kontoKennung(username);
-  const st = await _read(_key(req, kennung), WINDOW_MIN);
-  if (st && st.count >= MAX_ATTEMPTS)
-    return { code: 'zu_viele_fehlversuche', vars: { minuten: st.waitMin } };
+  const adresse = await _reserviere(_key(req, kennung), WINDOW_MIN,
+    s => s.count + s.laufend < MAX_ATTEMPTS);
+  if (!adresse.ok)
+    return { code: 'zu_viele_fehlversuche', vars: { minuten: adresse.stand.waitMin } };
   // Von einer Adresse, an der sich der Inhaber schon angemeldet hat, gilt nur
   // die Sperre je Adresse — sonst liesse sich die Wartezeit gegen ihn richten.
-  const jeKonto = await _read(_nameKey(kennung), WINDOW_MIN);
-  if (jeKonto && !(await _read(_bekanntKey(req, kennung), BEKANNT_MIN))) {
-    const rest = wartezeitSekunden(jeKonto.count) - jeKonto.seitLetztem;
-    if (rest > 0) return { code: 'zu_viele_fehlversuche', vars: { minuten: Math.max(1, Math.ceil(rest / 60)) } };
+  if (await _read(_bekanntKey(req, kennung), BEKANNT_MIN)) return null;
+  let rest = 0;
+  const konto = await _reserviere(_nameKey(kennung), WINDOW_MIN, s => {
+    rest = wartezeitSekunden(s.count) - s.seitLetztem;
+    // In der Wartezeit-Phase höchstens ein Versuch zugleich je Konto.
+    return rest <= 0 && (s.count < MAX_ATTEMPTS || s.laufend === 0);
+  });
+  if (!konto.ok) {
+    await _freigeben(_key(req, kennung));
+    return { code: 'zu_viele_fehlversuche', vars: { minuten: Math.max(1, Math.ceil(Math.max(rest, 1) / 60)) } };
   }
   return null;
+}
+
+/** Den belegten Versuch freigeben, ohne ihn zu zählen (etwa: Code fehlt noch). */
+async function gibAnmeldeplatzFrei(req: Request, username: unknown): Promise<void> {
+  const kennung = await kontoKennung(username);
+  await _freigeben(_key(req, kennung));
+  await _freigeben(_nameKey(kennung));
 }
 
 /** Nach einem fehlgeschlagenen Login aufrufen. */
@@ -200,11 +277,12 @@ function ipThrottle(bucket: string, max: number, windowMs: number) {
  */
 const _bestaetigungKey = (uid: number) => `passwort-bestaetigen|${uid}`;
 async function bestaetigungGesperrt(uid: number): Promise<{ code: FehlerCode; vars: { minuten: number } } | null> {
-  const st = await _read(_bestaetigungKey(uid), WINDOW_MIN);
-  return st && st.count >= MAX_ATTEMPTS ? { code: 'zu_viele_fehlversuche', vars: { minuten: st.waitMin } } : null;
+  // Belegt den Versuch wie checkLoginAllowed; Fehlgeschlagen/Gelungen geben ihn frei.
+  const r = await _reserviere(_bestaetigungKey(uid), WINDOW_MIN, s => s.count + s.laufend < MAX_ATTEMPTS);
+  return r.ok ? null : { code: 'zu_viele_fehlversuche', vars: { minuten: r.stand.waitMin } };
 }
 async function bestaetigungFehlgeschlagen(uid: number): Promise<void> { await _bump(_bestaetigungKey(uid), WINDOW_MIN); }
 async function bestaetigungGelungen(uid: number): Promise<void> { await _clear(_bestaetigungKey(uid)); }
 
-export { checkLoginAllowed, recordLoginFailure, recordLoginSuccess, ipThrottle, MAX_ATTEMPTS, wartezeitSekunden,
+export { checkLoginAllowed, gibAnmeldeplatzFrei, recordLoginFailure, recordLoginSuccess, ipThrottle, MAX_ATTEMPTS, wartezeitSekunden,
          bestaetigungGesperrt, bestaetigungFehlgeschlagen, bestaetigungGelungen };

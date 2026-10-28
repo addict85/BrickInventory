@@ -504,6 +504,8 @@ CREATE TABLE rate_limit_attempts (
   count integer NOT NULL DEFAULT 1,
   first_at timestamp with time zone NOT NULL DEFAULT now(),
   last_at timestamp with time zone,
+  laufend integer NOT NULL DEFAULT 0,
+  laufend_seit timestamp with time zone,
   CONSTRAINT rate_limit_attempts_pkey PRIMARY KEY (key)
 );
 CREATE INDEX idx_rate_limit_first_at ON rate_limit_attempts USING btree (first_at);
