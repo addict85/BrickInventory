@@ -28,13 +28,20 @@ const _req = buildAndRequire();
 const db = _req('db/database.js');
 const warte = (ms) => new Promise(r => setTimeout(r, ms));
 
-const ERWARTET_OFFEN = [
-  'GET /api/v1/auth/me', 'GET /api/v1/auth/registration-status', 'GET /api/v1/health',
-  'GET /api/v1/settings/theme', 'GET /api/v1/startup-status',
-  'POST /api/v1/auth/forgot-password', 'POST /api/v1/auth/login', 'POST /api/v1/auth/logout',
-  'POST /api/v1/auth/qr-login', 'POST /api/v1/auth/reset-password',
-  'POST /api/v1/auth/serverbeweis',
-];
+/** Absichtlich ohne Anmeldung erreichbar — mit Grund. Wächst die Liste, muss jemand sie begründen. */
+const ERWARTET_OFFEN = new Map([
+  ['POST /api/v1/auth/login',            'Die Anmeldung selbst'],
+  ['POST /api/v1/auth/logout',           'Muss auch ohne gültige Sitzung gehen'],
+  ['GET /api/v1/auth/me',                'Antwortet „nicht angemeldet" — der Startpunkt der Oberfläche'],
+  ['POST /api/v1/auth/qr-login',         'Anmeldung per QR-Code'],
+  ['POST /api/v1/auth/serverbeweis',     'Die App prüft den Server, BEVOR sie ihren Token sendet'],
+  ['GET /api/v1/auth/registration-status', 'Ob Registrierung offen ist — vor dem Konto'],
+  ['POST /api/v1/auth/forgot-password',  'Wer sein Passwort vergisst, kann sich nicht anmelden'],
+  ['POST /api/v1/auth/reset-password',   'Dasselbe, zweiter Schritt'],
+  ['GET /api/v1/settings/theme',         'Das Design des Login-Bildschirms, vor jeder Anmeldung'],
+  ['GET /api/v1/startup-status',         'Der Ladebildschirm vor der Anmeldung'],
+  ['GET /api/v1/health',                 'Gesundheitsprüfung von compose.yaml'],
+]);
 
 const freierPort = () => new Promise(r => { const s = net.createServer().listen(0, () => { const p = s.address().port; s.close(() => r(p)); }); });
 
@@ -82,7 +89,7 @@ test('Eingang zu /api/v1', { concurrency: 1, timeout: 180_000 }, async (t) => {
   }
 
   await t.test('nur die öffentlichen Pfade antworten ohne Anmeldung', () =>
-    assert.deepEqual([...offen].sort(), [...ERWARTET_OFFEN].sort()));
+    assert.deepEqual([...offen].sort(), [...ERWARTET_OFFEN.keys()].sort()));
 
   await t.test('ein falsches Token kommt nicht hinein', async () => {
     const r = await fetch(`http://127.0.0.1:${port}/api/v1/stats`, { headers: { authorization: 'Bearer falsch' } });
