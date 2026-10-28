@@ -187,6 +187,17 @@
     <string name="detail_storage_ph">z. B. Kiste 3</string>
     <string name="filter_condition_all">Alle Zustände</string>
     <string name="filter_storage_all">Alle Lagerorte</string>
+    <string name="filter_button">Filter</string>
+    <string name="filter_title">Filter</string>
+    <string name="filter_reset">Zurücksetzen</string>
+    <string name="filter_section_sort">Sortierung</string>
+    <string name="filter_section_spare">Ersatzteile</string>
+    <string name="filter_section_color_category">Farbe und Kategorie</string>
+    <string name="filter_section_view">Ansicht</string>
+    <plurals name="filter_active">
+        <item quantity="one">%d Filter aktiv</item>
+        <item quantity="other">%d Filter aktiv</item>
+    </plurals>
     <string name="partslist_only_loose">nur manuell erfasste Teile berücksichtigen</string>
     <string name="partslist_include_subs">Unterkonten mit einbeziehen</string>
     <string name="partslist_owned_complete">Alles vorhanden — das lässt sich bauen.</string>

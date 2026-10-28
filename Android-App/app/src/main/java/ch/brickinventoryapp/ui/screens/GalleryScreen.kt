@@ -67,6 +67,9 @@ import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.util.NumericInput
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.components.LeerSymbol
+import ch.brickinventoryapp.ui.components.Bewegt
+import ch.brickinventoryapp.ui.components.SkelettRaster
+import ch.brickinventoryapp.data.model.DashboardStats
 
 @OptIn(ExperimentalMaterial3Api::class, FlowPreview::class)
 @Composable
@@ -152,7 +155,7 @@ fun GalleryScreen(
     // Filter-Generation hängt. Wechselt der Wert von aussen (Anmeldung,
     // Zurücksetzen), zieht das Feld nach.
     var searchInput by remember(query) { mutableStateOf(query) }
-    var showSortMenu by rememberSaveable { mutableStateOf(false) }
+    var zeigeFilter by rememberSaveable { mutableStateOf(false) }
 
     // KEIN lokales Filtern und keine Themenliste aus `sets` mehr: Beides war
     // eine zweite Fassung der Suche neben der des Servers — ohne Jahr im
@@ -171,113 +174,20 @@ fun GalleryScreen(
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
 
-            // Stats bar — directly under TopBar, no gap
-            if (stats != null) {
-                Surface(
-                    color = MaterialTheme.colorScheme.surface,
-                    tonalElevation = 2.dp
-                ) {
-                    LazyRow(
-                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp),
-                        horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        // fmtInt() statt "%,d" mit anschliessendem Ersetzen des
-                        // Kommas: Das war eine vierte, handgeschriebene
-                        // Zahlenfassung neben den drei Beträgen — und sie
-                        // erzwang den Apostroph auch dann, wenn die App auf
-                        // Englisch läuft. Die Webapp formatiert dieselben
-                        // Kennzahlen mit toLocaleString(locale()).
-                        item { GalleryStatChip(fmtInt(stats.totalSets), stringResource(R.string.gallery_stat_sets)) }
-                        item { GalleryStatChip(fmtInt(stats.totalQuantity), stringResource(R.string.gallery_stat_units)) }
-                        item { GalleryStatChip(fmtInt(stats.totalParts), stringResource(R.string.gallery_stat_parts)) }
-                        if (stats.totalMinifigs > 0)
-                            item { GalleryStatChip(fmtInt(stats.totalMinifigs), stringResource(R.string.gallery_stat_minifigs)) }
-                        // Anleitungen — die vierte Zahl, die die Webapp im
-                        // Kopf der Galerie zeigt (02-gallery.js, `hs-instr`).
-                        // `total_instructions` kam seit jeher mit und wurde
-                        // nirgends gelesen; gefunden beim Zaehlen der
-                        // Modellfelder, die niemand liest.
-                        //
-                        // Wie bei den Minifiguren nur, wenn es welche gibt: Ein
-                        // Chip mit einer Null ist eine Zahl ohne Aussage.
-                        if (stats.totalInstructions > 0)
-                            item { GalleryStatChip(fmtInt(stats.totalInstructions), stringResource(R.string.gallery_stat_instructions)) }
-                    }
-                }
-            }
-
-            ScopeFilterZeile(householdMembers, scopeMode, onScopeChange,
-            lagerorte = lagerorte, lagerAktuell = lagerModus, onLagerSelect = onLagerChange)
-
-            // Suchfeld — gemeinsamer Baustein (Nachtrag 132).
-            Suchfeld(
+            // Suche und ein Knopf für alles andere: Konto, Lagerort, Thema und
+            // Sortierung stehen im Blatt; die Kennzahlen rollen mit dem Raster.
+            SucheMitFilter(
                 wert = searchInput,
                 onWert = { searchInput = it; onQueryChange(it) },
                 platzhalter = stringResource(R.string.gallery_search_placeholder),
+                aktiveFilter = Filterzahl.galerie(householdMembers, scopeMode, lagerorte, lagerModus, theme, sort),
+                onFilter = { zeigeFilter = true },
             )
-
-            // Sortierung und Themen — beides wird auf dem SERVER angewandt.
-            // Die Zeile erscheint auch ohne Themen, weil die Sortierung darin
-            // steht; vorher gab es am Telefon gar keine Sortierung, während die
-            // Webapp neun Möglichkeiten bot.
-            LazyRow(
-                contentPadding = PaddingValues(horizontal = 14.dp),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                modifier = Modifier.padding(bottom = 6.dp)
-            ) {
-                    item {
-                        Box {
-                            FilterChip(
-                                selected = sort != ch.brickinventoryapp.data.repository.GALLERY_DEFAULT_SORT,
-                                onClick = { showSortMenu = true },
-                                label = { Text(gallerySortLabel(sort), style = MaterialTheme.typography.labelMedium) },
-                                leadingIcon = { Icon(Icons.AutoMirrored.Filled.Sort, null, Modifier.size(16.dp)) },
-                                shape = Formen.chip
-                            )
-                            DropdownMenu(showSortMenu, { showSortMenu = false }) {
-                                // Dieselben Werte wie SET_SORTS auf dem Server
-                                // (utils/handlers.ts) und dieselbe Auswahl wie in
-                                // der Webapp — ein unbekannter Wert fiele dort auf
-                                // die Vorgabe zurück, wäre hier also eine stille
-                                // Wirkungslosigkeit.
-                                listOf("added_desc", "added_asc", "name_asc", "num_asc",
-                                       "year_desc", "price_desc", "price_asc",
-                                       "qty_desc", "qty_asc").forEach { w ->
-                                    DropdownMenuItem(
-                                        text = { Text(gallerySortLabel(w)) },
-                                        onClick = { showSortMenu = false; onSortChange(w) },
-                                        trailingIcon = { if (sort == w) Icon(Icons.Default.Check, null, Modifier.size(16.dp)) }
-                                    )
-                                }
-                            }
-                        }
-                    }
-                    item {
-                        FilterChip(
-                            selected = theme.isEmpty(),
-                            onClick = { onThemeChange("") },
-                            label = { Text(stringResource(R.string.gallery_all), style = MaterialTheme.typography.labelMedium) },
-                            shape = Formen.chip
-                        )
-                    }
-                    items(themes, key = { it }) { t ->
-                        FilterChip(
-                            selected = theme == t,
-                            onClick = { onThemeChange(if (theme == t) "" else t) },
-                            label = { Text(t, style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                            modifier = Modifier.widthIn(max = 140.dp),
-                            shape = Formen.chip
-                        )
-                    }
-            }
 
             ch.brickinventoryapp.ui.components.OfflineHinweis(galerie.offlineStand)
             PullToRefreshBox(isRefreshing = isLoading, onRefresh = onRefresh, modifier = Modifier.fillMaxSize()) {
                 when (galerieAnzeige(galerie, gefiltert = searchInput.isNotBlank() || theme.isNotEmpty())) {
-                    GalerieAnzeige.LAEDT -> Box(Modifier.fillMaxSize(), Alignment.Center) {
-                        CircularProgressIndicator()
-                    }
+                    GalerieAnzeige.LAEDT -> SkelettRaster(GridCells.Adaptive(160.dp), kachelHoehe = 272.dp)
                     // Fehler und leere Sammlung sehen verschieden aus und bieten
                     // Verschiedenes an: hier den Grund und einen neuen Versuch.
                     GalerieAnzeige.FEHLER -> GalerieHinweis {
@@ -310,6 +220,8 @@ fun GalleryScreen(
                         }
                     }
                     GalerieAnzeige.KEINE_TREFFER -> GalerieHinweis {
+                        // Die Kennzahlen meinen die ganze Sammlung — auch ohne Treffer.
+                        if (stats != null) GalerieKennzahlen(stats)
                         LeerSymbol(Icons.Default.SearchOff)
                         Text(stringResource(R.string.gallery_no_results, searchInput), fontWeight = FontWeight.SemiBold)
                     }
@@ -320,9 +232,16 @@ fun GalleryScreen(
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
+                        if (stats != null) {
+                            item(key = "gallery-stats", span = { GridItemSpan(maxLineSpan) }) {
+                                GalerieKennzahlen(stats)
+                            }
+                        }
                         itemsIndexed(sets, key = { _, s -> s.setNumber }) { index, set ->
-                            SetCard(set, serverUrl, imageLoader, onSetClick, onDeleteSet, index,
-                                preis = preise[set.setNumber], waehrung = currency)
+                            Bewegt {
+                                SetCard(set, serverUrl, imageLoader, onSetClick, onDeleteSet, index,
+                                    preis = preise[set.setNumber], waehrung = currency)
+                            }
                         }
                         if (loadingMore) {
                             // ── Eigener Schlüssel für den Lade-Eintrag (Nachtrag 108) ──
@@ -371,6 +290,16 @@ fun GalleryScreen(
         }
     }
 
+    if (zeigeFilter) {
+        GalerieFilterBlatt(
+            members = householdMembers, konto = scopeMode, onKonto = onScopeChange,
+            orte = lagerorte, lager = lagerModus, onLager = onLagerChange,
+            themen = themes, thema = theme, onThema = onThemeChange,
+            sortierung = sort, onSortierung = onSortChange,
+            onSchliessen = { zeigeFilter = false },
+        )
+    }
+
     if (showAddDialog) {
         AddSetDialog(
             onDismiss = { showAddDialog = false },
@@ -381,6 +310,69 @@ fun GalleryScreen(
             lagerorte = lagerortVorrat,
             vorgabe = lagerState.vorgabe?.name ?: "",
         )
+    }
+}
+
+/** Die Kennzahlen der Sammlung — erste Zeile des Rasters, sie rollt mit. */
+@Composable
+private fun GalerieKennzahlen(stats: DashboardStats) {
+    LazyRow(
+        horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        // fmtInt() statt "%,d" mit anschliessendem Ersetzen des Kommas: Die
+        // Webapp formatiert dieselben Kennzahlen mit toLocaleString(locale()).
+        item { GalleryStatChip(fmtInt(stats.totalSets), stringResource(R.string.gallery_stat_sets)) }
+        item { GalleryStatChip(fmtInt(stats.totalQuantity), stringResource(R.string.gallery_stat_units)) }
+        item { GalleryStatChip(fmtInt(stats.totalParts), stringResource(R.string.gallery_stat_parts)) }
+        // Minifiguren und Anleitungen nur, wenn es welche gibt: Ein Chip mit
+        // einer Null ist eine Zahl ohne Aussage.
+        if (stats.totalMinifigs > 0)
+            item { GalleryStatChip(fmtInt(stats.totalMinifigs), stringResource(R.string.gallery_stat_minifigs)) }
+        if (stats.totalInstructions > 0)
+            item { GalleryStatChip(fmtInt(stats.totalInstructions), stringResource(R.string.gallery_stat_instructions)) }
+    }
+}
+
+/**
+ * Konto, Lagerort, Sortierung und Thema der Galerie. Angewandt wird jede Wahl
+ * sofort auf dem Server; das Blatt bleibt offen, damit man mehrere setzen kann.
+ */
+@Composable
+private fun GalerieFilterBlatt(
+    members: List<ch.brickinventoryapp.data.model.HouseholdMember>, konto: String, onKonto: (String) -> Unit,
+    orte: List<ch.brickinventoryapp.data.model.Lagerort>, lager: String, onLager: (String) -> Unit,
+    themen: List<String>, thema: String, onThema: (String) -> Unit,
+    sortierung: String, onSortierung: (String) -> Unit,
+    onSchliessen: () -> Unit,
+) {
+    val vorgabe = ch.brickinventoryapp.data.repository.GALLERY_DEFAULT_SORT
+    // Nur zurücksetzen, was abweicht: Jede Änderung lädt die Liste neu.
+    val zuruecksetzen: () -> Unit = {
+        if (Filterzahl.konto(members, konto) > 0) onKonto(ch.brickinventoryapp.data.ScopeFilter.ALL)
+        if (Filterzahl.lager(orte, lager) > 0) onLager("")
+        if (thema.isNotBlank()) onThema("")
+        if (sortierung != vorgabe) onSortierung(vorgabe)
+    }
+    val aktiv = Filterzahl.galerie(members, konto, orte, lager, thema, sortierung)
+    FilterBlattRahmen(onSchliessen = onSchliessen, onZuruecksetzen = zuruecksetzen.takeIf { aktiv > 0 }) {
+        KontoFilterAbschnitt(members, konto, onKonto)
+        LagerortFilterAbschnitt(orte, lager, onLager)
+        FilterAbschnitt(stringResource(R.string.filter_section_sort)) {
+            // Dieselben Werte wie SET_SORTS auf dem Server (utils/handlers.ts):
+            // Einen unbekannten Wert setzte er still auf die Vorgabe zurück.
+            listOf("added_desc", "added_asc", "name_asc", "num_asc",
+                   "year_desc", "price_desc", "price_asc",
+                   "qty_desc", "qty_asc").forEach { w ->
+                FilterWahl(gallerySortLabel(w), sortierung == w) { if (sortierung != w) onSortierung(w) }
+            }
+        }
+        if (themen.isNotEmpty()) {
+            FilterAbschnitt(stringResource(R.string.catalog_filter_theme)) {
+                FilterWahl(stringResource(R.string.gallery_all), thema.isEmpty()) { if (thema.isNotEmpty()) onThema("") }
+                themen.forEach { t -> FilterWahl(t, thema == t) { onThema(if (thema == t) "" else t) } }
+            }
+        }
     }
 }
 

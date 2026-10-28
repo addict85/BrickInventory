@@ -203,6 +203,17 @@
     <string name="detail_storage_ph">e.g. box 3</string>
     <string name="filter_condition_all">All conditions</string>
     <string name="filter_storage_all">All locations</string>
+    <string name="filter_button">Filter</string>
+    <string name="filter_title">Filter</string>
+    <string name="filter_reset">Reset</string>
+    <string name="filter_section_sort">Sort</string>
+    <string name="filter_section_spare">Spare parts</string>
+    <string name="filter_section_color_category">Color and category</string>
+    <string name="filter_section_view">View</string>
+    <plurals name="filter_active">
+        <item quantity="one">%d filter active</item>
+        <item quantity="other">%d filters active</item>
+    </plurals>
     <string name="partslist_only_loose">count only manually added parts</string>
     <string name="partslist_include_subs">include sub-accounts</string>
     <string name="partslist_owned_complete">All parts present — this can be built.</string>

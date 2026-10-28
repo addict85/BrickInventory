@@ -39,6 +39,8 @@ import ch.brickinventoryapp.ui.*
 import ch.brickinventoryapp.util.NumericInput
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.components.LeerSymbol
+import ch.brickinventoryapp.ui.components.Bewegt
+import ch.brickinventoryapp.ui.components.SkelettRaster
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -92,65 +94,28 @@ fun MinifigsScreen(
     val ansicht = partsState.minifigsView
     var showAddDialog by rememberSaveable { mutableStateOf(false) }
 
+    var zeigeFilter by rememberSaveable { mutableStateOf(false) }
+
     Box(Modifier.fillMaxSize()) {
     Column(Modifier.fillMaxSize()) {
-        ScopeFilterZeile(householdMembers, scopeMode, onScopeChange)
-        // ── Warum die Bedingung nicht mehr `figs.isNotEmpty()` ist ──────────────
-        //
-        // Hier stand `if (figs.isNotEmpty())`: Die Leiste erschien nur, wenn die
-        // GELADENE Seite Figuren enthielt. Eine Suche ohne Treffer liess sie
-        // also verschwinden — obwohl die drei Zahlen die ganze Sammlung meinen
-        // und weiter stimmen. Genau das sagt der Kommentar darunter seit jeher:
-        // „vom Server, nicht aus der (gefilterten) Liste".
-        //
-        // Die Teile-Ansicht daneben — derselbe Aufbau, dieselbe Leiste — prueft
-        // `stats != null` und laesst sie stehen. Die Webapp auch: Dort ist die
-        // Leiste fester Bestandteil der Seite und wird nur gefuellt
-        // (06-minifigs.js, loadMinifigStats).
-        //
-        // `partsStats` ist im Zustand nullbar, `minifigStats` nicht — deshalb
-        // hier die Frage nach dem Inhalt statt nach null. Wirkung ist dieselbe:
-        // verborgen bleibt die Leiste nur vor dem ersten Laden und bei einer
-        // wirklich leeren Sammlung.
-        if (minifigStats.types > 0 || minifigStats.totalQuantity > 0) {
-            Surface(color = MaterialTheme.colorScheme.surface, tonalElevation = 2.dp) {
-                Row(
-                    Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
-                    horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)
-                ) {
-                    // Zahlen vom Server (utils/handlers.ts, getMinifigStats) — aus der
-                    // Liste gerechnet zählten sie die manuell erfassten Figuren nicht
-                    // mit, weil die hier ausgefiltert sind; die Kachel „manuell" stand
-                    // dadurch zwangsläufig immer auf 0.
-                    GalleryStatChip(fmtInt(minifigStats.types), stringResource(R.string.minifigs_stat_types))
-                    GalleryStatChip(fmtInt(minifigStats.totalQuantity), stringResource(R.string.minifigs_stat_total))
-                    GalleryStatChip(fmtInt(minifigStats.manual), stringResource(R.string.minifigs_stat_manual))
-                }
-            }
-        }
-
-        // Suchfeld — gemeinsamer Baustein. Der Leeren-Knopf sagte hier
-        // „Löschen" (minifigs_delete, derselbe Text wie am Loeschknopf der
-        // Minifigur); jetzt „Suche leeren" (Nachtrag 132).
-        Suchfeld(
+        // Suche und „Filter“: Konto und Ansicht stehen im Blatt, die
+        // Kennzahlen rollen mit dem Raster.
+        SucheMitFilter(
             wert = search,
             onWert = { search = it; vm.setMinifigsQuery(it) },
             platzhalter = stringResource(R.string.minifigs_search_placeholder),
-        )
-
-        // Karten oder Tabelle — wie das Auswahlfeld figs-view der Webapp.
-        AnsichtUmschalter(
-            aktuell = ansicht,
-            onWechsel = { vm.setMinifigsView(it) },
-            modifier = Modifier.padding(horizontal = 14.dp).padding(bottom = Abstaende.klein),
+            aktiveFilter = Filterzahl.konto(householdMembers, scopeMode),
+            onFilter = { zeigeFilter = true },
         )
 
         ch.brickinventoryapp.ui.components.OfflineHinweis(partsState.figurenOfflineStand)
         when {
-            isLoading && figs.isEmpty() && manualFigs.isEmpty() -> Box(Modifier.fillMaxSize(), Alignment.Center) {
-                CircularProgressIndicator()
-            }
+            isLoading && figs.isEmpty() && manualFigs.isEmpty() ->
+                SkelettRaster(GridCells.Adaptive(140.dp), kachelHoehe = 196.dp)
             figs.isEmpty() && manualFigs.isEmpty() -> Box(Modifier.fillMaxSize(), Alignment.Center) {
+                if (minifigStats.types > 0 || minifigStats.totalQuantity > 0) {
+                    Box(Modifier.align(Alignment.TopStart).padding(Abstaende.mittel)) { FigurenKennzahlen(minifigStats) }
+                }
                 Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                     LeerSymbol(Icons.Default.Person)
                     Text(stringResource(R.string.minifigs_none), fontWeight = FontWeight.SemiBold)
@@ -173,6 +138,11 @@ fun MinifigsScreen(
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
+                    // Nach dem Inhalt gefragt, nicht nach der geladenen Seite: Die
+                    // Zahlen meinen die ganze Sammlung, auch während einer Suche.
+                    if (minifigStats.types > 0 || minifigStats.totalQuantity > 0) {
+                        item(span = { GridItemSpan(maxLineSpan) }, key = "figs-stats") { FigurenKennzahlen(minifigStats) }
+                    }
                     // Manuelle Figuren als Grid-Sektion — eine durchgehende
                     // Scroll-Liste statt fixem Block über dem Grid (s. PartsScreen).
                     if (manualFigs.isNotEmpty()) {
@@ -180,13 +150,15 @@ fun MinifigsScreen(
                             SectionHeader(stringResource(R.string.minifigs_manual_section))
                         }
                         items(manualFigs, key = { "manual-${it.id ?: it.figNumber}" }) { fig ->
-                            ManualFigTile(
-                                fig = fig,
-                                serverUrl = serverUrl,
-                                imageLoader = imageLoader,
-                                waehrung = waehrung,
-                                onEdit = { onOpenDetail(fig.figNumber) },
-                            )
+                            Bewegt {
+                                ManualFigTile(
+                                    fig = fig,
+                                    serverUrl = serverUrl,
+                                    imageLoader = imageLoader,
+                                    waehrung = waehrung,
+                                    onEdit = { onOpenDetail(fig.figNumber) },
+                                )
+                            }
                         }
                         if (figs.isNotEmpty()) {
                             item(span = { GridItemSpan(maxLineSpan) }, key = "sets-header") {
@@ -206,8 +178,10 @@ fun MinifigsScreen(
                     ) { _, fig ->
                         // BEIDE Ansichten oeffnen denselben Dialog.
                         val oeffne = { vm.oeffneSetItem("fig", fig.figNumber) }
-                        if (ansicht == "table") MinifigTableRow(fig, serverUrl, imageLoader, oeffne)
-                        else MinifigCard(fig, serverUrl, imageLoader, oeffne)
+                        Bewegt {
+                            if (ansicht == "table") MinifigTableRow(fig, serverUrl, imageLoader, oeffne)
+                            else MinifigCard(fig, serverUrl, imageLoader, oeffne)
+                        }
                     }
                 }
             }
@@ -221,6 +195,17 @@ fun MinifigsScreen(
             shape = Formen.fab,
             modifier = Modifier.align(Alignment.BottomEnd).padding(20.dp)
         ) { Icon(Icons.Default.Add, stringResource(R.string.minifigs_add)) }
+    }
+
+    if (zeigeFilter) {
+        val zuruecksetzen: () -> Unit = { onScopeChange(ch.brickinventoryapp.data.ScopeFilter.ALL) }
+        FilterBlattRahmen(
+            onSchliessen = { zeigeFilter = false },
+            onZuruecksetzen = zuruecksetzen.takeIf { Filterzahl.konto(householdMembers, scopeMode) > 0 },
+        ) {
+            KontoFilterAbschnitt(householdMembers, scopeMode, onScopeChange)
+            AnsichtAbschnitt(ansicht) { vm.setMinifigsView(it) }
+        }
     }
 
     if (showAddDialog) {
@@ -242,6 +227,18 @@ fun MinifigsScreen(
     // aufgegangen. Geloescht wird im Detail, und die Abfrage steht dort
     // (ManualItemDetailScreen, showDeleteConfirm) — an derselben Stelle wie
     // beim Set.
+}
+
+/** Die Kennzahlen der Minifiguren — erste Zeile des Rasters, sie rollt mit. */
+@Composable
+private fun FigurenKennzahlen(minifigStats: ch.brickinventoryapp.data.model.MinifigStats) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
+        // Zahlen vom Server (getMinifigStats): Aus der Liste gerechnet fehlten
+        // die manuell erfassten Figuren, die hier ausgefiltert sind.
+        GalleryStatChip(fmtInt(minifigStats.types), stringResource(R.string.minifigs_stat_types))
+        GalleryStatChip(fmtInt(minifigStats.totalQuantity), stringResource(R.string.minifigs_stat_total))
+        GalleryStatChip(fmtInt(minifigStats.manual), stringResource(R.string.minifigs_stat_manual))
+    }
 }
 
 @Composable
