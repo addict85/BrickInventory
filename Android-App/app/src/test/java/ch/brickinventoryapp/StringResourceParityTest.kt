@@ -184,9 +184,9 @@ class StringResourceParityTest {
             "csv_upload_sets", "detail_section_item", "finance_filter_sets",
             "finance_grand_total", "finance_section_sets", "finance_total_sets",
             "gallery_quantity_badge", "gallery_sort_name", "gallery_stat_sets",
-            "main_menu_monitoring", "monitoring_cache_subsets", "monitoring_theme",
-            "monitoring_theme_noppe", "monitoring_title", "monitoring_vorwaermen_roaming",
-            "nav_minifigs_short", "nav_monitoring", "partslist_ok", "partslist_rb_prefix",
+            "monitoring_theme",
+            "monitoring_theme_noppe", "monitoring_vorwaermen_roaming",
+            "nav_minifigs_short", "partslist_ok", "partslist_rb_prefix",
             "partslist_scan", "setup_build",
             "setup_url_placeholder",
             // PIN ist in beiden Sprachen PIN — ein Begriff, kein Satz.
