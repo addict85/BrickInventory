@@ -351,6 +351,8 @@ window.I18N_DE = {
   'history.none_hint': 'Preisverlauf wird ab dem ersten Laden der Preise aufgezeichnet.',
   'finance.fetch_prices': 'Preise abrufen…',
   'smtp.ok': 'Verbindung erfolgreich',
+  'smtp.confirm_title': 'Mailserver ändern',
+  'smtp.confirm_text': 'Über diesen Server gehen die Links zum Passwort-Zurücksetzen. Bitte bestätige mit deinem Passwort.',
   'smtp.console': 'SMTP nicht konfiguriert — es werden keine E-Mails verschickt',
   'qr.valid_for': 'Gültig noch {t} min',
   'qr.generate': 'QR-Code generieren',

@@ -26,19 +26,45 @@ async function loadSmtpSettings(settings){
   if(G('smtp-secure')) G('smtp-secure').checked = s.smtp_secure==='1';
   if(G('smtp-insecure')) G('smtp-insecure').checked = s.smtp_insecure_tls==='1';
   if(G('reg-enabled')) G('reg-enabled').checked = s.registration_enabled!=='0';
+  geladeneSmtp = JSON.stringify(smtpFormular());
+}
+
+// Der Server verlangt das Verwalterpasswort, sobald sich ein SMTP-Wert ändert;
+// gefragt wird deshalb nur dann, nicht bei jedem Speichern oder Testen.
+let geladeneSmtp = '';
+function smtpFormular() {
+  return {
+    smtp_host:   G('smtp-host')?.value.trim() || '',
+    smtp_port:   G('smtp-port')?.value || '587',
+    smtp_user:   G('smtp-user')?.value.trim() || '',
+    smtp_pass:   G('smtp-pass')?.value || '',
+    smtp_from:   G('smtp-from')?.value.trim() || '',
+    smtp_secure: G('smtp-secure')?.checked ? '1' : '0',
+    smtp_insecure_tls: G('smtp-insecure')?.checked ? '1' : '0',
+  };
+}
+/** SMTP speichern; null, wenn die Passwortabfrage abgebrochen wurde. */
+async function speichereSmtp() {
+  const werte = smtpFormular();
+  if (JSON.stringify(werte) === geladeneSmtp) return { success: true };
+  const admin_password = await bestaetigeMitPasswort(tRaw('smtp.confirm_title'), tRaw('smtp.confirm_text'), 'schloss');
+  if (admin_password === null) return null;
+  const d = await api('POST','/v1/settings', { ...werte, admin_password });
+  if (d.success) geladeneSmtp = JSON.stringify(werte);
+  return d;
 }
 
 G('btn-test-smtp')?.addEventListener('click', async()=>{
   const btn = G('btn-test-smtp');
   const res = G('smtp-test-result');
   const frei = knopfBesetzt(btn);
-  // Save first
-  await api('POST','/v1/settings',{
-    smtp_host: G('smtp-host').value.trim(), smtp_port: G('smtp-port').value||'587',
-    smtp_user: G('smtp-user').value.trim(), smtp_pass: G('smtp-pass').value,
-    smtp_from: G('smtp-from').value.trim(), smtp_secure: G('smtp-secure').checked?'1':'0',
-    smtp_insecure_tls: G('smtp-insecure')?.checked?'1':'0',
-  });
+  // Erst speichern, damit der Test mit genau diesen Werten läuft.
+  const gespeichert = await speichereSmtp();
+  if (!gespeichert?.success) {
+    frei();
+    if (gespeichert) toast(gespeichert.error || t('settings.error'), 'error');
+    return;
+  }
   const d = await api('POST','/v1/settings/smtp-test', { to: G('smtp-test-email')?.value?.trim() || ME?.email || '' });
   frei();
   res.style.display = 'block';
@@ -52,16 +78,9 @@ G('btn-test-smtp')?.addEventListener('click', async()=>{
 });
 
 G('btn-sav-smtp')?.addEventListener('click', async()=>{
-  const d=await api('POST','/v1/settings',{
-    smtp_host:   G('smtp-host').value.trim(),
-    smtp_port:   G('smtp-port').value||'587',
-    smtp_user:   G('smtp-user').value.trim(),
-    smtp_pass:   G('smtp-pass').value,
-    smtp_from:   G('smtp-from').value.trim(),
-    smtp_secure: G('smtp-secure').checked?'1':'0',
-    smtp_insecure_tls: G('smtp-insecure')?.checked?'1':'0',
-  });
-  toast(d.success?t('smtp.saved'):t('settings.error'),d.success?'success':'error');
+  const d = await speichereSmtp();
+  if (!d) return;
+  toast(d.success ? t('smtp.saved') : (d.error || t('settings.error')), d.success ? 'success' : 'error');
 });
 
 async function saveRegEnabled(){

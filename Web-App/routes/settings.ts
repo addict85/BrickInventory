@@ -1,4 +1,5 @@
 
+import { bestaetigePasswort } from '../utils/passwortBestaetigung';
 import express from 'express';
 const router  = express.Router();
 import multer from 'multer';
@@ -126,6 +127,17 @@ router.post('/', async (req: LoggedInRequest, res) => {
 
   try {
     if (istVerwalter(req)) {
+      // Mailserver nur mit Passwort umstellen: Wer eine Verwaltersitzung
+      // erbeutet, läse sonst alle künftigen Rücksetz-Mails mit. Gefragt wird
+      // nur bei einer echten Änderung, nicht beim Speichern der ganzen Seite.
+      const smtpGeaendert: string[] = [];
+      for (const key of globalKeys.filter(k => k.startsWith('smtp_'))) {
+        const neu = req.body[key];
+        if (neu === undefined || (SECRET_KEYS.has(key) && isMaskedValue(neu))) continue;
+        if (String(neu) !== String(await getGlobalSetting(key) ?? '')) smtpGeaendert.push(key);
+      }
+      if (smtpGeaendert.length && !await bestaetigePasswort(req, res, uid, req.body.admin_password)) return;
+
       // Check if brickset limit is being increased before saving
       const oldBricksetLimit = req.body.api_limit_brickset !== undefined
         ? parseInt(await getGlobalSetting('api_limit_brickset') || '100')

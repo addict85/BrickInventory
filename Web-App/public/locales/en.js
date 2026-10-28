@@ -350,6 +350,8 @@ window.I18N_EN = {
   'history.none_hint': 'Price history is recorded from the first price load.',
   'finance.fetch_prices': 'Fetching prices…',
   'smtp.ok': 'Connection successful',
+  'smtp.confirm_title': 'Change mail server',
+  'smtp.confirm_text': 'Password reset links are sent through this server. Please confirm with your password.',
   'smtp.console': 'SMTP not configured — no e-mails are sent',
   'qr.valid_for': 'Valid for {t} min',
   'qr.generate': 'Generate QR code',
