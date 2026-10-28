@@ -10,31 +10,13 @@ import { fehlerWerfen } from './fehlerTexte';
  *  kurz genug, dass ein liegen gebliebener Code nicht dauerhaft öffnet. */
 export const INVITE_TTL_MS = 24 * 60 * 60 * 1000;
 
-/**
- * Wie viele Stufen tief aufgelöst wird.
- *
- * Kein fachliches Limit, sondern eine Reissleine: Der Pfadvergleich in der
- * rekursiven Abfrage fängt jeden Kreis schon ab, aber eine Abfrage, die durch
- * einen Datenfehler doch läuft, soll nicht den Server blockieren. Zehn Stufen
- * sind für eine Familie unerreichbar viel.
- */
-export const MAX_STUFEN = 10;
-
 export interface Household {
-  /** Alle IDs des Blickfelds: eigene zuerst, dann alle Nachfahren. */
+  /** Alle IDs des Blickfelds: eigene zuerst, dann die direkten Unterkonten. */
   memberIds: number[];
-  /** true, wenn dieses Konto mindestens ein direktes Unterkonto hat. */
+  /** true, wenn dieses Konto mindestens ein Unterkonto hat. */
   isMain: boolean;
-  /** Das DIREKTE Elternkonto — nicht die Wurzel des Baums. */
-  linkedToMainId: number | null;
-  /**
-   * Nachfahre → Stufe (1 = direktes Unterkonto, 2 = dessen Unterkonto, …).
-   *
-   * Nur für die Anzeige: Der Kontofilter rückt die Einträge damit ein, sonst
-   * stünden Kind und Enkel gleichrangig nebeneinander. Für die Berechtigung
-   * spielt die Stufe keine Rolle — wer im Blickfeld steht, steht drin.
-   */
-  tiefen: Record<number, number>;
+  /** Alle Elternkonten — ein Konto kann mehreren Haushalten angehören. */
+  elternIds: number[];
 }
 
 /**
@@ -44,13 +26,8 @@ export interface Household {
  * Geschwister geht es nichts an, und der Hauptaccount ist kein gemeinsamer
  * Topf, sondern eine Sicht.
  */
-// Was gemessen wurde
-// resolveHousehold() steht am Anfang praktisch jedes Lese-Endpunkts und macht
-// zwei Abfragen. Ueber die echten Routen gezaehlt:
-// Ausführlich: docs/begruendungen/utils/household.ts.md#haushalt-kanal
 export const HAUSHALT_KANAL = 'haushalt_geaendert';
 const HAUSHALT_TTL_MS = 5 * 60 * 1000;
-// Deckel wie bei _tokenCache in utils/auth.ts, aus demselben Grund.
 const HAUSHALT_MAX = 500;
 const _haushalte = new Map<number, { wert: Household; zeit: number }>();
 
@@ -68,98 +45,74 @@ export function meldeHaushaltsaenderung(): void {
 }
 
 /**
- * Alle Nachfahren eines Kontos, mit ihrer Stufe — die eine rekursive Abfrage.
- * Ausführlich: docs/begruendungen/utils/household.ts.md#nachfahren
+ * Die direkten Unterkonten. Rechte und Sicht gehen bewusst nicht weiter:
+ * Jedes Konto im Blickfeld hat selbst einer Einladung DIESES Kontos zugestimmt.
  */
-async function nachfahren(id: number): Promise<Array<{ id: number; tiefe: number }>> {
+async function kinder(id: number): Promise<number[]> {
   const rows = await db.all(
-    `WITH RECURSIVE baum(id, tiefe, pfad) AS (
-         SELECT sub_user_id, 1, ARRAY[main_user_id, sub_user_id]
-           FROM account_links WHERE main_user_id = $1
-       UNION ALL
-         SELECT l.sub_user_id, b.tiefe + 1, b.pfad || l.sub_user_id
-           FROM account_links l
-           JOIN baum b ON l.main_user_id = b.id
-          WHERE NOT (l.sub_user_id = ANY(b.pfad)) AND b.tiefe < $2
-     )
-     SELECT id, tiefe FROM baum ORDER BY tiefe, id`,
-    [id, MAX_STUFEN]
-  ).catch(() => []);
-  return (rows || []).map((r: any) => ({ id: parseInt(r.id), tiefe: parseInt(r.tiefe) }));
+    'SELECT sub_user_id FROM account_links WHERE main_user_id = $1 ORDER BY sub_user_id', [id]);
+  return rows.map((r: any) => parseInt(r.sub_user_id));
 }
 
 export async function resolveHousehold(uid: number): Promise<Household> {
   const id = parseInt(String(uid));
   const treffer = _haushalte.get(id);
-  // Die Listen werden bei JEDER Rueckgabe frisch gebaut. scopeIds() gibt
-  // memberIds teilweise unveraendert weiter; wuerde ein Aufrufer die Liste
-  // anfassen, veraenderte er sonst den gemerkten Stand fuer alle folgenden
-  // Anfragen — ein Fehler, den man an der Fundstelle nie sehen wuerde.
+  // Kopien zurückgeben: Ein Aufrufer, der die Liste verändert, veränderte
+  // sonst den gemerkten Stand aller folgenden Anfragen.
   if (treffer && Date.now() - treffer.zeit < HAUSHALT_TTL_MS)
-    return { ...treffer.wert, memberIds: [...treffer.wert.memberIds] };
+    return { ...treffer.wert, memberIds: [...treffer.wert.memberIds], elternIds: [...treffer.wert.elternIds] };
 
-  const [unten, parent] = await Promise.all([
-    nachfahren(id),
-    db.get('SELECT main_user_id FROM account_links WHERE sub_user_id = $1', [id])
-      .catch(() => null),
+  const [unten, eltern] = await Promise.all([
+    kinder(id),
+    db.all('SELECT main_user_id FROM account_links WHERE sub_user_id = $1 ORDER BY main_user_id', [id]),
   ]);
-  const tiefen: Record<number, number> = {};
-  for (const n of unten) tiefen[n.id] = n.tiefe;
   const haushalt: Household = {
-    memberIds: [id, ...unten.map(n => n.id)],
-    // „Hat Unterkonten" heisst DIREKTE Unterkonten. Ein Konto, das nur über
-    // eine tiefere Stufe erreichbare Nachfahren hätte, kann es nicht geben —
-    // jede Stufe hängt an der darüber.
-    isMain: unten.some(n => n.tiefe === 1),
-    linkedToMainId: parent ? parseInt(parent.main_user_id) : null,
-    tiefen,
+    memberIds: [id, ...unten],
+    isMain: unten.length > 0,
+    elternIds: eltern.map((r: any) => parseInt(r.main_user_id)),
   };
   if (_haushalte.size >= HAUSHALT_MAX) _haushalte.clear();
   _haushalte.set(id, { wert: haushalt, zeit: Date.now() });
-  return { ...haushalt, memberIds: [...haushalt.memberIds] };
+  return { ...haushalt, memberIds: [...haushalt.memberIds], elternIds: [...haushalt.elternIds] };
 }
 
 /**
- * Darf `actorId` Daten von `ownerId` ändern?
- * Ausführlich: docs/begruendungen/utils/household.ts.md#canwritefor
+ * Darf `actorId` Daten von `ownerId` ändern? Eigene immer, sonst nur die eines
+ * direkten Unterkontos. Frisch abgefragt, nicht aus dem Gedächtnis: Nach dem
+ * Lösen darf kein früheres Elternkonto noch minutenlang schreiben.
  */
 export async function canWriteFor(actorId: number, ownerId: number): Promise<boolean> {
   const actor = parseInt(String(actorId));
   const owner = parseInt(String(ownerId));
   if (actor === owner) return true;
-  return (await nachfahren(actor)).some(n => n.id === owner);
+  return !!(await db.get(
+    'SELECT 1 FROM account_links WHERE main_user_id = $1 AND sub_user_id = $2', [actor, owner]));
 }
 
-/**
- * IDs, für die `uid` SCHREIBEN darf — eigene plus ALLE Nachfahren.
- * Ausführlich: docs/begruendungen/utils/household.ts.md#writableids
- */
+/** IDs, für die `uid` SCHREIBEN darf — eigene plus direkte Unterkonten, frisch. */
 export async function writableIds(uid: number): Promise<number[]> {
   const id = parseInt(String(uid));
-  // Frisch abgefragt, nicht aus resolveHousehold() — dieselbe Begründung wie
-  // bei canWriteFor(): Diese Liste entscheidet über Schreibzugriffe.
-  return [id, ...(await nachfahren(id)).map(n => n.id)];
+  return [id, ...(await kinder(id))];
 }
 
 /**
  * Mitglieder mit Namen — für die Kontoauswahl und die Besitzer-Plaketten.
- * Ausführlich: docs/begruendungen/utils/household.ts.md#householdmembers
+ * `tiefe` bleibt für ältere App-Fassungen im Feld (0 = eigenes, 1 = Unterkonto).
  */
 export async function householdMembers(uid: number) {
   const h = await resolveHousehold(uid);
+  const self = parseInt(String(uid));
   const rows = await db.all(
     'SELECT id, username FROM users WHERE id = ANY($1) ORDER BY id', [h.memberIds]
   ).catch(() => []);
-  // Reihenfolge des Blickfelds beibehalten: eigenes Konto zuerst, dann nach
-  // Stufe — genau die Reihenfolge, in der der Filter sie anzeigt.
   return h.memberIds
     .map(id => rows.find((r: any) => parseInt(r.id) === id))
     .filter(Boolean)
     .map((r: any) => ({
       id: parseInt(r.id),
       username: r.username,
-      is_self: parseInt(r.id) === parseInt(String(uid)),
-      tiefe: h.tiefen[parseInt(r.id)] ?? 0,
+      is_self: parseInt(r.id) === self,
+      tiefe: parseInt(r.id) === self ? 0 : 1,
     }));
 }
 
@@ -230,51 +183,39 @@ export async function redeemInvite(uid: number, code: string) {
   // entschieden, und ein fuenf Minuten alter Stand koennte einen Kreis
   // durchlassen, den eine gleichzeitige Einloesung gerade erst moeglich
   // gemacht hat.
-  const [subParent, subBaum] = await Promise.all([
-    db.get('SELECT main_user_id FROM account_links WHERE sub_user_id = $1', [subId])
-      .catch(() => null),
-    nachfahren(subId),
+  const [schonDa, umgekehrt] = await Promise.all([
+    db.get('SELECT 1 FROM account_links WHERE main_user_id = $1 AND sub_user_id = $2', [mainId, subId]),
+    db.get('SELECT 1 FROM account_links WHERE main_user_id = $1 AND sub_user_id = $2', [subId, mainId]),
   ]);
-
-  // Hoechstens ein Elternkonto — das steht auch als UNIQUE im Schema; hier
-  // steht es, um eine verstaendliche Absage statt eines Datenbankfehlers zu
-  // geben.
-  if (subParent) {
+  if (schonDa) {
     await release();
     return { fehler: 'konto_bereits_verknuepft' as const };
   }
-
-  // Kein Kreis
-  // Die einzige Grenze, die von „nur eine Stufe" uebrig ist.
-  // Wuerde ein Konto seinen eigenen Nachfahren als Elternkonto annehmen,
-  // entstuende A→B→…→A. `UNIQUE (sub_user_id)` faengt das NICHT: In einem …
-  // Ausführlich: docs/begruendungen/utils/household.ts.md#redeeminvite-2
-  if (subBaum.some(n => n.id === mainId)) {
+  // Gegenseitig verknüpft sähe jedes Konto das andere — dann gäbe es kein
+  // Unterkonto mehr, nur zwei Hauptkonten, die einander schreiben dürfen.
+  if (umgekehrt) {
     await release();
     return { fehler: 'verknuepfung_erzeugt_kreis' as const };
   }
 
-  // Währung muss übereinstimmen — im GANZEN einziehenden Teilbaum
-  // Die Haushaltssicht summiert Beträge. Zwei Konten mit CHF und EUR ergäben
-  // eine Summe aus zwei Währungen — kommentarlos falsch, und niemand sähe es
-  // der Zahl an. Lieber hier ablehnen als später falsch rechnen.
-  // Ausführlich: docs/begruendungen/utils/household.ts.md#redeeminvite-einziehend
-  const einziehend = [subId, ...subBaum.map(n => n.id)];
-  const [curMain, ...curSubs] = await Promise.all([
+  // Die Haushaltssicht summiert Beträge; zwei Währungen ergäben eine Summe,
+  // der man den Fehler nicht ansieht.
+  const [curMain, curSub] = await Promise.all([
     getSetting(mainId, 'currency', 'EUR'),
-    ...einziehend.map(i => getSetting(i, 'currency', 'EUR')),
+    getSetting(subId, 'currency', 'EUR'),
   ]);
-  const abweichend = curSubs.findIndex(c => String(c) !== String(curMain));
-  if (abweichend >= 0) {
+  if (String(curMain) !== String(curSub)) {
     await release();
     return { fehler: 'waehrung_ungleich' as const,
-             vars: { haupt: String(curMain), unter: String(curSubs[abweichend]) } };
+             vars: { haupt: String(curMain), unter: String(curSub) } };
   }
 
   await db.run(
     'INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1,$2) ON CONFLICT DO NOTHING',
     [mainId, subId]
   );
+  await db.run('DELETE FROM household_former_links WHERE main_user_id = $1 AND sub_user_id = $2',
+    [mainId, subId]);
   meldeHaushaltsaenderung();
   const main = await db.get('SELECT username FROM users WHERE id = $1', [mainId]).catch(() => null);
   return { linked_to: { id: mainId, username: main?.username || String(mainId) } };
@@ -282,51 +223,66 @@ export async function redeemInvite(uid: number, code: string) {
 
 /**
  * Verknüpfung lösen — von BEIDEN Seiten erlaubt.
- * Ausführlich: docs/begruendungen/utils/household.ts.md#unlink
+ *
+ * `subUserId`: das Elternkonto löst ein Unterkonto. `mainUserId`: das
+ * Unterkonto löst sich von diesem einen Elternkonto. Ohne beides löst es sich
+ * von allen — so verhält sich eine ältere App, die nur ein Elternkonto kannte.
  */
-export async function unlink(uid: number, subUserId?: number | null) {
+export async function unlink(uid: number, subUserId?: number | null, mainUserId?: number | null) {
   const id = parseInt(String(uid));
-  if (subUserId != null && String(subUserId) !== '') {
-    const sub = parseInt(String(subUserId));
-    const r = await db.run(
-      'DELETE FROM account_links WHERE main_user_id = $1 AND sub_user_id = $2', [id, sub]);
-    meldeHaushaltsaenderung();
-    return { removed: (r as any)?.changes ?? 1 };
+  const gesetzt = (v: unknown) => v != null && String(v) !== '';
+  let r;
+  if (gesetzt(subUserId)) {
+    r = await db.run('DELETE FROM account_links WHERE main_user_id = $1 AND sub_user_id = $2',
+      [id, parseInt(String(subUserId))]);
+  } else if (gesetzt(mainUserId)) {
+    r = await db.run('DELETE FROM account_links WHERE main_user_id = $1 AND sub_user_id = $2',
+      [parseInt(String(mainUserId)), id]);
+  } else {
+    r = await db.run('DELETE FROM account_links WHERE sub_user_id = $1', [id]);
   }
-  const r = await db.run('DELETE FROM account_links WHERE sub_user_id = $1', [id]);
   meldeHaushaltsaenderung();
-  return { removed: (r as any)?.changes ?? 1 };
+  return { removed: (r as any)?.changes ?? 0 };
 }
 
-/** Zustand für die Einstellungen: eigene Rolle, Mitglieder, offene Einladungen. */
+/** Den Hinweis auf eine getrennte Kette verwerfen (nur der eigene). */
+export async function verwerfeGetrennt(uid: number, subUserId: number) {
+  const r = await db.run('DELETE FROM household_former_links WHERE main_user_id = $1 AND sub_user_id = $2',
+    [parseInt(String(uid)), parseInt(String(subUserId))]);
+  return { removed: (r as any)?.changes ?? 0 };
+}
+
+/** Zustand für die Einstellungen: Elternkonten, Unterkonten, offene Einladungen, Hinweise. */
 export async function householdStatus(uid: number) {
   const id = parseInt(String(uid));
   const h = await resolveHousehold(id);
   const members = await householdMembers(id);
-  const mainUser = h.linkedToMainId
-    ? await db.get('SELECT id, username FROM users WHERE id = $1', [h.linkedToMainId]).catch(() => null)
-    : null;
-  const openInvites = await db.get(
-    `SELECT COUNT(*)::int AS n FROM account_link_invites
-      WHERE main_user_id = $1 AND used_at IS NULL AND expires_at > NOW()`, [id]
-  ).catch(() => ({ n: 0 }));
-  const currency = await getSetting(id, 'currency', 'EUR');
+  const [eltern, openInvites, currency, getrennt] = await Promise.all([
+    db.all('SELECT id, username FROM users WHERE id = ANY($1) ORDER BY username', [h.elternIds]),
+    db.get(
+      `SELECT COUNT(*)::int AS n FROM account_link_invites
+        WHERE main_user_id = $1 AND used_at IS NULL AND expires_at > NOW()`, [id]
+    ).catch(() => ({ n: 0 })),
+    getSetting(id, 'currency', 'EUR'),
+    db.all(
+      `SELECT f.sub_user_id AS id, u.username, v.username AS via
+         FROM household_former_links f
+         JOIN users u ON u.id = f.sub_user_id
+         LEFT JOIN users v ON v.id = f.via_user_id
+        WHERE f.main_user_id = $1 ORDER BY u.username`, [id]),
+  ]);
+  const elternListe = eltern.map((e: any) => ({ id: parseInt(e.id), username: e.username }));
   return {
     is_main: h.isMain,
-    is_sub: !!h.linkedToMainId,
+    is_sub: elternListe.length > 0,
     currency,
-    linked_to: mainUser ? { id: parseInt(mainUser.id), username: mainUser.username } : null,
-    // NUR die direkten Unterkonten — die Liste ist zum Entfernen da, und
-    // entfernen kann jedes Konto ausschliesslich die Verknüpfungen, die an ihm
-    // selbst hängen (siehe unlink()). Ein Enkel stünde hier mit einem Knopf,
-    // der nichts löschte.
-    sub_accounts: members.filter(m => m.tiefe === 1),
-    // Das ganze Blickfeld — für den Kontofilter, der jedes Konto einzeln
-    // anbietet. Getrennt von sub_accounts, weil die beiden Listen zwei
-    // verschiedene Fragen beantworten: „was kann ich lösen" und „was kann ich
-    // ansehen".
+    parents: elternListe,
+    // Ältere App-Fassungen kennen nur ein Elternkonto.
+    linked_to: elternListe[0] ?? null,
+    sub_accounts: members.filter(m => !m.is_self),
     blickfeld: members,
     open_invites: openInvites?.n ?? 0,
+    former_links: getrennt.map((g: any) => ({ id: parseInt(g.id), username: g.username, via: g.via ?? null })),
   };
 }
 
@@ -338,10 +294,9 @@ export async function householdStatus(uid: number) {
 /**
  * 'all' | 'own' | 'subs' — oder die ID EINES Kontos des Haushalts.
  *
- * Der Filter zeigt „Alle Konten", „Eigene" und dann JEDEN Nachfahren
- * namentlich — auch Enkel, eingerückt nach Stufe; für die einzelnen Konten
- * reist deren ID mit, und sie meint immer nur dieses eine Konto. 'subs' bleibt
- * als Sammelposten erhalten (alle Nachfahren zusammen, ohne das eigene).
+ * Der Filter zeigt „Alle Konten", „Eigene" und dann jedes Unterkonto
+ * namentlich; für die einzelnen Konten reist deren ID mit, und sie meint immer
+ * nur dieses eine Konto. 'subs' bleibt als Sammelposten (alle Unterkonten).
  */
 export type ScopeMode = 'all' | 'own' | 'subs' | number;
 
@@ -361,7 +316,7 @@ export function parseScopeMode(v: any): ScopeMode {
 export async function scopeIds(uid: number, mode: ScopeMode = 'all'): Promise<number[]> {
   const h = await resolveHousehold(uid);
   const id = parseInt(String(uid));
-  // Ein Konto ohne Nachfahren sieht nur sich selbst — der Filter kann daran
+  // Ein Konto ohne Unterkonten sieht nur sich selbst — der Filter kann daran
   // nichts ändern, und 'subs' wäre dort eine leere Liste, also eine leere
   // Ansicht ohne erkennbaren Grund.
   if (!h.isMain) return h.memberIds;

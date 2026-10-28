@@ -283,6 +283,10 @@ test('die Schreibantworten passen zu den Kotlin-Modellen', { concurrency: 1, tim
     { m: 'POST', p: '/api/v1/settings/household/redeem', als: { id: neu, name: `${NAME}_neu`, admin: false },
       body: () => ({ code: w.code }) },
     { m: 'POST', p: '/api/v1/settings/household/unlink', body: () => ({ sub_user_id: neu }) },
+    { m: 'POST', p: '/api/v1/settings/household/former/dismiss', davor: async () => {
+        await erst(`INSERT INTO household_former_links (main_user_id, sub_user_id) VALUES ($1, $2)
+                    ON CONFLICT DO NOTHING`, [uid, neu]);
+      }, body: () => ({ sub_user_id: neu }) },
 
     // ── CSV-Importe: nur die Kopfzeile, damit kein Auftrag ins Netz geht ──
     { m: 'POST', p: '/api/v1/sets/import/csv', form: () => formular(`set_number,quantity\n${SET},1\n`, 'text/csv', 'sets.csv') },

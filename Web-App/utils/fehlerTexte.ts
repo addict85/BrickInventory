@@ -87,14 +87,12 @@ export const FEHLER = {
                                  en: 'Invalid or expired invitation code.' },
   konto_mit_sich_selbst:       { de: 'Ein Konto kann sich nicht mit sich selbst verknüpfen.',
                                  en: 'An account cannot be linked to itself.' },
-  konto_bereits_verknuepft:    { de: 'Dieses Konto ist bereits mit einem Hauptkonto verknüpft.',
-                                 en: 'This account is already linked to a main account.' },
-  // Die drei Absagen „nur eine Stufe" sind mit Nachtrag 173 entfallen —
-  // Konten lassen sich jetzt über mehrere Stufen verknüpfen. Geblieben ist
-  // die eine Grenze, die bleiben MUSS:
+  konto_bereits_verknuepft:    { de: 'Dieses Konto ist mit dem einladenden Konto bereits verknüpft.',
+                                 en: 'This account is already linked to the inviting account.' },
   verknuepfung_erzeugt_kreis:  {
-    de: 'Dieses Konto ist bereits ein Unterkonto des einladenden Kontos — die Verknüpfung liefe im Kreis.',
-    en: 'This account is already a sub-account of the inviting account — the link would form a cycle.' },
+    de: 'Das einladende Konto ist bereits ein Unterkonto dieses Kontos — gegenseitig lassen sich Konten nicht verknüpfen.',
+    en: 'The inviting account is already a sub-account of this account — accounts cannot be linked both ways.' },
+  konto_id_ungueltig:          { de: 'Ungültige Konto-ID.', en: 'Invalid account ID.' },
   waehrung_ungleich:           {
     de: 'Beide Konten müssen dieselbe Währung verwenden (Hauptkonto: {haupt}, dieses Konto: {unter}).',
     en: 'Both accounts must use the same currency (main account: {haupt}, this account: {unter}).' },

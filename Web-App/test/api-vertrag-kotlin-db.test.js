@@ -79,13 +79,21 @@ test('die Antworten passen zu den Kotlin-Modellen', { concurrency: 1, timeout: 1
   await db.run('DELETE FROM users WHERE username = $1', [`${NAME}_sub`]);
   const sub = (await db.get(`INSERT INTO users (username, password_hash, is_active, email_verified)
                              VALUES ($1, 'x', 1, 1) RETURNING id`, [`${NAME}_sub`])).id;
+  // Ein Elternkonto und ein getrenntes Konto, damit `parents` und
+  // `former_links` der Haushaltsantwort nicht leer ankommen.
+  const nebenkonto = async (zusatz) => {
+    await db.run('DELETE FROM users WHERE username = $1', [`${NAME}_${zusatz}`]);
+    return (await db.get(`INSERT INTO users (username, password_hash, is_active, email_verified)
+                          VALUES ($1, 'x', 1, 1) RETURNING id`, [`${NAME}_${zusatz}`])).id;
+  };
+  const oben = await nebenkonto('oben'), getrennt = await nebenkonto('getrennt');
   // Globale Kataloge: nur entfernen, was dieser Test selbst angelegt hat.
   const aufraeumen = [];
   const katalog = async (sql, werte, weg, wegWerte) => {
     if ((await db.run(sql + ' ON CONFLICT DO NOTHING', werte)).changes) aufraeumen.push([weg, wegWerte]);
   };
   t.after(async () => {
-    await db.run('DELETE FROM users WHERE id = ANY($1)', [[uid, sub]]).catch(() => {});
+    await db.run('DELETE FROM users WHERE id = ANY($1)', [[uid, sub, oben, getrennt]]).catch(() => {});
     for (const tab of ['set_parts_catalog', 'set_minifigs_catalog', 'price_cache', 'price_history', 'set_catalog'])
       await db.run(`DELETE FROM ${tab} WHERE set_number = $1`, [SET]).catch(() => {});
     for (const tab of ['part_price_cache', 'part_price_history', 'part_catalog', 'part_color_catalog'])
@@ -138,6 +146,9 @@ test('die Antworten passen zu den Kotlin-Modellen', { concurrency: 1, timeout: 1
                   VALUES ($1, $2, 'EUR', 4.4, NOW() - INTERVAL '2 days')`, [FIGUR, zustand]);
   }
   await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1, $2)', [uid, sub]);
+  await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1, $2)', [oben, uid]);
+  await db.run('INSERT INTO household_former_links (main_user_id, sub_user_id, via_user_id) VALUES ($1, $2, $3)',
+    [uid, getrennt, sub]);
   await _req('utils/auth.js').createToken(uid, 'Vertragsprobe');
   await haeltSet(db, uid, SET, 2, { preis: 49.9 });
   await haeltTeil(db, uid, TEIL, { setNumber: SET, colorId: FARBE, menge: 4 });

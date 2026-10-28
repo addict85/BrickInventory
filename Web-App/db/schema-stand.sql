@@ -26,10 +26,10 @@ CREATE TABLE account_links (
   CONSTRAINT account_links_main_user_id_fkey FOREIGN KEY (main_user_id) REFERENCES users(id) ON DELETE CASCADE,
   CONSTRAINT account_links_no_self CHECK ((main_user_id <> sub_user_id)),
   CONSTRAINT account_links_pkey PRIMARY KEY (main_user_id, sub_user_id),
-  CONSTRAINT account_links_sub_unique UNIQUE (sub_user_id),
   CONSTRAINT account_links_sub_user_id_fkey FOREIGN KEY (sub_user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 CREATE INDEX idx_account_links_main ON account_links USING btree (main_user_id);
+CREATE INDEX idx_account_links_sub ON account_links USING btree (sub_user_id);
 
 CREATE TABLE api_tokens (
   token text NOT NULL,
@@ -118,6 +118,19 @@ CREATE TABLE gutschein_guthaben_schranke (
   CONSTRAINT gutschein_guthaben_schranke_id_check CHECK ((id = 1)),
   CONSTRAINT gutschein_guthaben_schranke_pkey PRIMARY KEY (id)
 );
+
+CREATE TABLE household_former_links (
+  main_user_id integer NOT NULL,
+  sub_user_id integer NOT NULL,
+  via_user_id integer,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT household_former_links_main_user_id_fkey FOREIGN KEY (main_user_id) REFERENCES users(id) ON DELETE CASCADE,
+  CONSTRAINT household_former_links_pkey PRIMARY KEY (main_user_id, sub_user_id),
+  CONSTRAINT household_former_links_sub_user_id_fkey FOREIGN KEY (sub_user_id) REFERENCES users(id) ON DELETE CASCADE,
+  CONSTRAINT household_former_links_via_user_id_fkey FOREIGN KEY (via_user_id) REFERENCES users(id) ON DELETE SET NULL
+);
+CREATE INDEX idx_household_former_sub ON household_former_links USING btree (sub_user_id);
+CREATE INDEX idx_household_former_via ON household_former_links USING btree (via_user_id);
 
 CREATE TABLE image_misses (
   cache_key text NOT NULL,

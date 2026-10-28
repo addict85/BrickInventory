@@ -811,6 +811,11 @@ interface BrickApiService {
         @Body body: Map<String, Int>
     ): Response<GenericResponse>
 
+    @POST("api/v1/settings/household/former/dismiss")
+    suspend fun verwerfeGetrenntesKonto(
+        @Body body: Map<String, Int>
+    ): Response<GenericResponse>
+
     /** Konten des Haushalts — für Kontofilter, Kontoauswahl und Verschieben. */
     @GET("api/v1/sets/household-members")
     suspend fun getHouseholdMembers(): Response<HouseholdMembersResponse>

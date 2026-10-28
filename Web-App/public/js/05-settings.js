@@ -458,15 +458,9 @@ export async function loadHousehold(){
 }
 
 /**
- * Die Haushaltskarte.
- *
- * ── Warum das kein if/else-if mehr ist (Nachtrag 173) ───────────────────────
- *
- * Vorher schlossen sich die drei Zustaende aus: entweder Unterkonto ODER
- * Hauptkonto ODER unverknuepft. Seit Konten ueber mehrere Stufen verknuepfbar
- * sind, ist ein Zwischenkonto BEIDES — Kind seines Elternkontos und Elternteil
- * seiner eigenen Unterkonten. Die alte Kette zeigte ihm nur die obere Haelfte
- * und verschwieg ihm seine eigenen Unterkonten samt Loesen-Knopf.
+ * Die Haushaltskarte: Elternkonten und Unterkonten sind zwei unabhängige
+ * Abschnitte, weil ein Konto beides zugleich sein kann. Darunter der Hinweis
+ * auf Konten, die nur über eine Kette sichtbar waren und es nicht mehr sind.
  */
 function renderHousehold(d){
   const stateEl  = G('household-state');
@@ -474,45 +468,40 @@ function renderHousehold(d){
   const redeemEl = G('household-redeem-box');
   if(!stateEl) return;
 
+  // Ein Raster auf der Liste, die Zeilen als display:contents: So stehen alle
+  // Namen und alle Knöpfe in denselben zwei Spalten.
+  const liste = (eintraege, aktion) => `<ul style="list-style:none;padding:0;margin:.4rem 0 0;display:grid;grid-template-columns:max-content max-content;align-items:center;column-gap:.6rem">${
+    eintraege.map(a => `<li style="display:contents">
+      <span style="font-weight:600;padding:.3rem 0">${esc(a.username)}</span>
+      <span style="padding:.3rem 0">${aktion(a)}</span>
+    </li>`).join('')}</ul>`;
+
   const teile = [];
-  if(d.is_sub){
-    teile.push(`<div style="padding:.55rem .8rem;border-radius:8px;background:var(--b100);color:var(--b600)">
-      ${t('household.state_sub', { name: esc(d.linked_to?.username || '') })}
-      <button class="btn" style="margin-left:.6rem" data-click="unlinkHousehold">${t('household.unlink_self')}</button>
-    </div>`);
+  const eltern = d.parents || (d.linked_to ? [d.linked_to] : []);
+  if(eltern.length){
+    teile.push(`<div>${t('household.state_parents', { n: eltern.length })}${liste(eltern,
+      a => `<button class="btn" data-click="unlinkFromParent" data-arg="${a.id}">${t('household.unlink_self')}</button>`)}</div>`);
   }
   if(d.sub_accounts?.length){
-    // Nur die DIREKTEN Unterkonten stehen hier — nur deren Verknuepfung haengt
-    // am eigenen Konto und laesst sich von hier loesen (utils/household.ts,
-    // unlink()). Wer den ganzen Blick sehen will, hat dafuer den Kontofilter.
-    // ── Zwei Spalten, nicht drei Flex-Zeilen ──────────────────────────────
-    //
-    // Marcos Befund: „alle Entfernen Buttons schön in einer Spalte" — vorher
-    // war jede Zeile ein eigenes Flexfeld, und der Knopf begann dort, wo der
-    // Benutzername aufhoerte. Bei „emily.bigolin" und „alessio.bigolin" sind
-    // das verschiedene Stellen.
-    //
-    // Das Raster steht auf der LISTE, die Zeilen sind display:contents: Nur so
-    // liegen alle Namen und alle Knoepfe in DENSELBEN zwei Spalten. Waere
-    // jedes <li> ein eigenes Raster, haette jede Zeile wieder ihre eigene
-    // Spaltenbreite — also genau den Zustand von vorher.
-    const rows = d.sub_accounts.map(a => `<li style="display:contents">
-      <span style="font-weight:600;padding:.3rem 0">${esc(a.username)}</span>
-      <span style="padding:.3rem 0"><button class="btn" data-click="unlinkHousehold" data-arg="${a.id}">${t('household.unlink_sub')}</button></span>
-    </li>`).join('');
-    teile.push(`<div style="margin-top:${d.is_sub ? '.6rem' : '0'}">${t('household.state_main', { n: d.sub_accounts.length })}
-      <ul style="list-style:none;padding:0;margin:.4rem 0 0;display:grid;grid-template-columns:max-content max-content;align-items:center;column-gap:.6rem">${rows}</ul></div>`);
+    teile.push(`<div style="margin-top:${eltern.length ? '.6rem' : '0'}">${t('household.state_main', { n: d.sub_accounts.length })}${liste(d.sub_accounts,
+      a => `<button class="btn" data-click="unlinkHousehold" data-arg="${a.id}">${t('household.unlink_sub')}</button>`)}</div>`);
   }
   if(!teile.length){
     teile.push(`<div style="color:var(--mut)">${t('household.state_none', { cur: esc(d.currency||'') })}</div>`);
   }
+  if(d.former_links?.length){
+    teile.push(`<div role="note" style="margin-top:.8rem;padding:.6rem .8rem;border-radius:8px;background:var(--b100);color:var(--b600)">
+      ${t('household.former_intro')}${liste(d.former_links,
+        a => `<span style="color:var(--mut)">${a.via ? t('household.former_via', { via: esc(a.via) }) : ''}</span>
+              <button class="btn" style="margin-left:.4rem" data-click="dismissFormerLink" data-arg="${a.id}">${t('household.former_dismiss')}</button>`)}
+    </div>`);
+  }
   stateEl.innerHTML = teile.join('');
 
-  // Einladen darf JEDES Konto — auch eines, das selbst Unterkonto ist
-  // (Nachtrag 173). Einloesen kann nur, wer noch kein Elternkonto hat: Das
-  // Schema laesst hoechstens eines zu (UNIQUE auf sub_user_id).
+  // Einladen und Einlösen darf jedes Konto: Ein Konto kann mehrere
+  // Elternkonten haben, und jedes braucht seine eigene Einladung.
   if(inviteEl) inviteEl.style.display = '';
-  if(redeemEl) redeemEl.style.display = d.is_sub ? 'none' : '';
+  if(redeemEl) redeemEl.style.display = '';
 }
 
 export async function createHouseholdInvite(){
@@ -547,6 +536,20 @@ export async function redeemHouseholdInvite(){
   // tRaw + roher Name: Der Toast setzt Text, keine HTML — mit esc() stünde
   // dort "Marco &amp; Co" statt "Marco & Co".
   toast(tRaw('household.redeem_ok', { name: d.linked_to?.username || '' }),'success');
+  loadHousehold();
+}
+
+export async function unlinkFromParent(mainUserId){
+  if(!await confirmDelete(tRaw('household.unlink_confirm_title'), t('household.unlink_confirm_text'), 'link')) return;
+  const d = await api('POST','/v1/settings/household/unlink', { main_user_id: parseInt(mainUserId) });
+  if(!d.success){ toast(d.error || t('settings.error'),'error'); return; }
+  toast(tRaw('household.unlink_ok'),'success');
+  loadHousehold();
+}
+
+export async function dismissFormerLink(subUserId){
+  const d = await api('POST','/v1/settings/household/former/dismiss', { sub_user_id: parseInt(subUserId) });
+  if(!d.success){ toast(d.error || t('settings.error'),'error'); return; }
   loadHousehold();
 }
 
@@ -966,4 +969,6 @@ registerActions({
   saveRegEnabled,
   toggleAdmin,
   unlinkHousehold,
+  unlinkFromParent,
+  dismissFormerLink,
 });

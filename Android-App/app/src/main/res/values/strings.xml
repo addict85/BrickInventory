@@ -477,10 +477,13 @@
     <string name="household_for_account">For account</string>
     <string name="household_self">(me)</string>
     <string name="household_title">Household</string>
-    <string name="household_intro">Link accounts into a household: the main account sees all sets, parts and minifigures combined. Both accounts must use the same currency.</string>
+    <string name="household_intro">Link accounts into a household: a main account sees the sets, parts and minifigures of its direct sub-accounts combined. An account can belong to several main accounts if it accepts each invitation itself. Both accounts must use the same currency.</string>
     <string name="household_state_none">This account is not linked to any other.</string>
-    <string name="household_state_main">Linked accounts</string>
-    <string name="household_state_sub">Linked to main account %1$s</string>
+    <string name="household_state_main">Sub-accounts</string>
+    <string name="household_state_parents">Belongs to these main accounts</string>
+    <string name="household_former_intro">These accounts were only linked through another account and are no longer visible. To see them again, the account has to accept an invitation from you.</string>
+    <string name="household_former_via">previously via %1$s</string>
+    <string name="household_former_dismiss">Dismiss</string>
     <string name="household_invite_create">Create invitation code</string>
     <string name="household_invite_hint">Enter the code in the other account under Settings. Valid for 24 hours, usable once.</string>
     <string name="household_invite_copy">Copy</string>

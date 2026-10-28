@@ -14,74 +14,11 @@ const { pruefeParameter } = require('./helpers/sources');
 const ROOT = path.join(__dirname, '..');
 const read = f => fs.readFileSync(path.join(ROOT, f), 'utf8');
 
-test('ein Konto gehört zu höchstens einem Haushalt', () => {
-  // Ohne diese Grenze stünde ein Set in zwei Haushaltssichten gleichzeitig,
-  // und beim Verschieben wäre nicht mehr eindeutig, wer es darf.
+test('ein Konto verknüpft sich nicht mit sich selbst', () => {
+  // Mehrere Elternkonten sind erlaubt (Migration 0046, Verhalten in
+  // household-db.test.js); die Verknüpfung mit sich selbst bleibt im Schema verboten.
   const mig = read('db/migrations/0005-haushalt-kontoverknuepfung.sql');
-  assert.match(mig, /CONSTRAINT account_links_sub_unique UNIQUE \(sub_user_id\)/);
-  assert.match(mig, /CHECK \(main_user_id <> sub_user_id\)/,
-    'Ein Konto darf sich nicht mit sich selbst verknüpfen');
-});
-
-test('die Verknüpfung darf keinen Kreis erzeugen', () => {
-  // ── Was von „nur eine Stufe" übrig ist (Nachtrag 173) ────────────────────
-  //
-  // Bis dahin galt: Ein Hauptkonto darf nirgends Unterkonto sein und
-  // umgekehrt. Drei Absagen setzten das durch. Sie sind weg — Konten lassen
-  // sich jetzt über mehrere Stufen verknüpfen.
-  //
-  // Geblieben ist die eine Grenze, die bleiben MUSS: Nähme ein Konto seinen
-  // eigenen Nachfahren als Elternkonto an, entstünde A→B→…→A. Das Schema
-  // fängt das NICHT — `UNIQUE (sub_user_id)` ist in einem Kreis erfüllt, dort
-  // steht jede ID genau einmal als Unterkonto. Die Auflösung liefe bis zur
-  // Tiefengrenze und gäbe eine Liste, in der jedes Konto jedes andere sieht:
-  // das Gegenteil von „ein Enkel sieht seinen Grossvater nicht".
-  //
-  // Geprüft wird, DASS gegen den eigenen Teilbaum geprüft wird — nicht, wie
-  // die Variablen heissen (siehe die frühere Fassung dieses Tests: exakte
-  // Muster auf Variablennamen machten ihn bei folgenlosen Umbenennungen rot).
-  // Ob die Regel WIRKT, beantwortet household-db.test.js gegen echte Daten.
-  const h = read('utils/household.ts');
-  assert.match(h, /verknuepfung_erzeugt_kreis/,
-    'Ohne diese Absage kann eine Verknüpfung im Kreis laufen');
-  assert.match(h, /nachfahren\(subId\)/,
-    'Der Kreis lässt sich nur am Teilbaum des EINLÖSENDEN erkennen');
-
-  // Und die alten Absagen dürfen nicht zurückkommen: Jede von ihnen würde
-  // wieder ausschliessen, wofür der Baum gebaut wurde.
-  for (const weg of ['konto_bereits_verknuepft_eine_stufe',
-                     'konto_hat_unterkonten', 'einladender_ist_unterkonto']) {
-    assert.doesNotMatch(h, new RegExp(weg + "' as const"),
-      `${weg} ist zurück — damit sind Konten wieder auf eine Stufe begrenzt`);
-  }
-});
-
-test('die Währung muss übereinstimmen', () => {
-  // Die Haushaltssicht summiert Beträge. CHF und EUR ergäben eine Summe aus
-  // zwei Währungen — kommentarlos falsch, und niemand sähe es der Zahl an.
-  //
-  // Auch hier ohne die Namen der Zwischenvariablen: `String(curMain) !==
-  // String(curSub)` als exaktes Muster brach bei jeder Umbenennung. Wichtiger
-  // ist, dass beide Währungen überhaupt geholt und verglichen werden.
-  //
-  // Und der Vergleich muss WIRKEN — das prüft household-db.test.js
-  // („Verknüpfen braucht beide Seiten und dieselbe Währung") gegen echte
-  // Daten. Nachgestellt: Hängt man an die Bedingung ein `&& false`, bleiben
-  // die Prüfungen hier grün und nur der Datenbanktest wird rot. Genau dafür
-  // gibt es ihn.
-  //
-  // Seit Nachtrag 173 zieht ein Konto seine eigenen Unterkonten MIT ein. Nur
-  // die beiden unmittelbar Beteiligten zu vergleichen, reicht deshalb nicht
-  // mehr — ein Enkel mit CHF wäre über einen Vater mit EUR unbemerkt in die
-  // Summe des Grossvaters gewandert.
-  const h = read('utils/household.ts');
-  assert.match(h, /getSetting\(mainId, 'currency'/);
-  assert.match(h, /einziehend\.map\(i => getSetting\(i, 'currency'/,
-    'Die Währung muss gegen den GANZEN einziehenden Teilbaum geprüft werden');
-  assert.match(h, /\[subId, \.\.\.subBaum\.map\(n => n\.id\)\]/,
-    'Der einziehende Teilbaum ist das einlösende Konto samt seinen Nachfahren');
-  assert.match(h, /String\([A-Za-zäöü]+\) !== String\([A-Za-zäöü]+\)/,
-    'Die Währungen müssen verglichen werden');
+  assert.match(mig, /CHECK \(main_user_id <> sub_user_id\)/);
 });
 
 test('der Einladungscode steht nur als Hash in der Datenbank', () => {
@@ -148,46 +85,11 @@ test('Schreibrechte kommen nie aus dem Gedächtnis', () => {
     assert.doesNotMatch(rumpf, /resolveHousehold\(/,
       `${fn}() liest aus resolveHousehold() — dessen Antwort ist bis zu fünf ` +
       'Minuten alt und darf über keinen Schreibzugriff entscheiden');
-    assert.match(rumpf, /nachfahren\(/,
-      `${fn}() muss den Teilbaum frisch abfragen`);
+    assert.match(rumpf, /account_links|kinder\(/,
+      `${fn}() muss die Verknüpfungen frisch abfragen`);
   }
   assert.match(h, /if \(actor === owner\) return true;/,
     'Eigene Daten immer — ohne Abfrage');
-});
-
-test('das Blickfeld geht nur nach unten', () => {
-  // Ein Konto sieht sich selbst und ALLE Nachfahren — nie sein Elternkonto und
-  // nie seine Geschwister. Ein Enkel sieht seinen Grossvater also nicht, der
-  // Grossvater aber den Enkel (Marcos Festlegung, Nachtrag 173).
-  const h = read('utils/household.ts');
-  assert.match(h, /memberIds: \[id, \.\.\.unten\.map\(n => n\.id\)\]/,
-    'Das Blickfeld ist das eigene Konto plus der Teilbaum darunter');
-  assert.doesNotMatch(h, /memberIds:[^\n]*(parent|linkedToMainId|mainId)/,
-    'Das Elternkonto darf nicht im Blickfeld seines Unterkontos stehen');
-
-  // Die rekursive Abfrage sucht ausschliesslich abwärts: Der Startpunkt ist
-  // `main_user_id = $1`, der Schritt hängt Kinder an. Ein `sub_user_id = $1`
-  // im rekursiven Teil würde nach OBEN laufen.
-  const cte = h.slice(h.indexOf('WITH RECURSIVE baum'), h.indexOf('ORDER BY tiefe, id'));
-  assert.match(cte, /FROM account_links WHERE main_user_id = \$1/,
-    'Der Startpunkt der Rekursion sind die eigenen direkten Unterkonten');
-  assert.match(cte, /JOIN baum b ON l\.main_user_id = b\.id/,
-    'Der rekursive Schritt hängt die Kinder der bisherigen Ebene an');
-  assert.doesNotMatch(cte, /l\.main_user_id = b\.sub|ON l\.sub_user_id = b\.id/,
-    'Ein Schritt über sub_user_id liefe nach oben — dann sähe ein Enkel seinen Grossvater');
-});
-
-test('die Auflösung kommt aus jedem Kreis wieder heraus', () => {
-  // Zwei Bremsen, und beide werden gebraucht: Der Pfadvergleich bricht einen
-  // Kreis ab, die Tiefengrenze ist die Reissleine dahinter. Fehlte der
-  // Pfadvergleich, liefe eine Abfrage im Kreis bis zur Grenze und lieferte
-  // dabei ein falsches Blickfeld statt gar keines.
-  const h = read('utils/household.ts');
-  const cte = h.slice(h.indexOf('WITH RECURSIVE baum'), h.indexOf('ORDER BY tiefe, id'));
-  assert.match(cte, /NOT \(l\.sub_user_id = ANY\(b\.pfad\)\)/,
-    'Ohne Pfadvergleich läuft die Rekursion in einem Kreis weiter');
-  assert.match(cte, /b\.tiefe < \$2/, 'Die Tiefengrenze fehlt');
-  assert.match(h, /export const MAX_STUFEN = \d+;/, 'MAX_STUFEN muss benannt sein');
 });
 
 test('beide Seiten dürfen die Verknüpfung lösen', () => {
@@ -217,31 +119,16 @@ test('Webapp und App bekommen dieselben Endpunkte', () => {
   }
 });
 
-test('die Oberfläche zeigt nur den passenden Kasten', () => {
-  // Ein Knopf, der immer eine Fehlermeldung erzeugt, ist schlimmer als keiner.
-  // Seit Nachtrag 173 darf JEDES Konto einladen — auch eines, das selbst
-  // Unterkonto ist. Einlösen kann nur, wer noch kein Elternkonto hat; das
-  // Schema lässt höchstens eines zu.
+test('die Oberfläche bietet Einladen und Einlösen jedem Konto an', () => {
+  // Ein Konto kann mehreren Hauptkonten angehören; jedes braucht seine eigene
+  // Einladung. Ein ausgeblendetes Eingabefeld verhinderte genau das.
   const js = read('public/js/05-settings.js');
-  assert.match(js, /inviteEl\.style\.display = ''/,
-    'Auch ein Zwischenkonto muss einladen können');
-  assert.match(js, /redeemEl\.style\.display = d\.is_sub \? 'none' : ''/,
-    'Wer schon ein Elternkonto hat, braucht kein Eingabefeld');
-
-  // Und beide Oberflächen müssen dasselbe tun (Marcos stehende Regel).
-  // Die Einstellungen der App liegen seit dem 16.10. in ZWEI Dateien: Der
-  // Bildschirm selbst traegt nur noch die Liste, jede Rubrik hat ihre eigene
-  // Seite (EinstellungenUnterseiten.kt). Gelesen werden deshalb beide — die
-  // Zusicherung lautet „die App tut das in ihren Einstellungen" und nicht
-  // „in dieser Datei".
+  assert.match(js, /inviteEl\.style\.display = ''/);
+  assert.match(js, /redeemEl\.style\.display = ''/);
   const kt = read('../Android-App/app/src/main/java/ch/brickinventoryapp/ui/screens/SettingsScreen.kt')
            + read('../Android-App/app/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenUnterseiten.kt');
-  assert.match(kt, /Einladen darf JEDES Konto/,
-    'Die App begründet die Regel nicht — steht dort noch die alte?');
-  assert.match(kt, /if \(st != null && !st\.isSub\) \{/,
-    'Einlösen hängt auch in der App nur noch am Elternkonto');
-  assert.doesNotMatch(kt, /!st\.isSub && st\.subAccounts\.isEmpty\(\)\) \{\n\s*HorizontalDivider/,
-    'Die App sperrt das Einlösen noch für Konten mit eigenen Unterkonten');
+  assert.doesNotMatch(kt, /!st\.isSub\b/,
+    'Die App blendet das Einlösen für Unterkonten aus — dann bleibt es bei einem Elternkonto');
 });
 
 // ═══════════════════════════════════════════════════════════════════════════

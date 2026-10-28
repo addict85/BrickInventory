@@ -38,15 +38,7 @@ data class HouseholdMember(
     val id: Int = 0,
     val username: String = "",
     @SerialName("is_self") val isSelf: Boolean = false,
-    /**
-     * Stufe im Kontenbaum: 0 = eigenes Konto, 1 = direktes Unterkonto,
-     * 2 = dessen Unterkonto, …
-     *
-     * Nur fuer die Einrueckung im Kontofilter. Fuer die Berechtigung spielt
-     * sie keine Rolle — wer im Blickfeld steht, steht drin. Vorgabe 1, damit
-     * eine aeltere Serverfassung ohne dieses Feld die Liste flach, aber
-     * vollstaendig anzeigt.
-     */
+    /** 0 = eigenes Konto, 1 = Unterkonto. Ältere Server schickten tiefere Stufen. */
     val tiefe: Int = 1,
 )
 
@@ -63,9 +55,24 @@ data class HouseholdStatusResponse(
     @SerialName("is_sub")  val isSub: Boolean = false,
     val currency: String = "",
     @SerialName("linked_to") val linkedTo: HouseholdMember? = null,
+    /** Alle Elternkonten; ein älterer Server schickt nur [linkedTo]. */
+    val parents: List<HouseholdMember> = emptyList(),
     @SerialName("sub_accounts") val subAccounts: List<HouseholdMember> = emptyList(),
     @SerialName("open_invites") val openInvites: Int = 0,
+    /** Konten, die nur über eine Kette sichtbar waren und es nicht mehr sind. */
+    @SerialName("former_links") val formerLinks: List<GetrenntesKonto> = emptyList(),
     val error: String? = null,
+) {
+    val elternkonten: List<HouseholdMember>
+        get() = parents.ifEmpty { listOfNotNull(linkedTo) }
+}
+
+@Serializable
+data class GetrenntesKonto(
+    val id: Int,
+    val username: String = "",
+    /** Das Unterkonto, über das die Sicht bisher lief. */
+    val via: String? = null,
 )
 
 @Serializable

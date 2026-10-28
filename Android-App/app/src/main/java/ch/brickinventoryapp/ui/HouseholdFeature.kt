@@ -288,9 +288,8 @@ internal fun MainViewModel.redeemHouseholdInvite(code: String) {
         _householdState.update { it.copy(isLoading = true, message = null) }
         when (val r = repo.haushalt.redeemHouseholdInvite(code.trim())) {
             is Result.Success -> {
-                // Der Server lehnt ab, wenn die Währung abweicht, das Konto
-                // schon verknüpft ist oder die Verknüpfung eine zweite Stufe
-                // wäre. Seine Meldung ist genauer als alles, was die App
+                // Der Server lehnt ab, wenn die Währung abweicht, die Konten
+                // schon oder umgekehrt verknüpft sind. Seine Meldung ist genauer als alles, was die App
                 // daraus ableiten könnte — deshalb wird sie durchgereicht.
                 _householdState.update { it.copy(isLoading = false, message = r.data.error) }
                 if (r.data.success) { loadHouseholdStatus(); loadHouseholdMembers() }
@@ -300,10 +299,10 @@ internal fun MainViewModel.redeemHouseholdInvite(code: String) {
     }
 }
 
-/** subUserId leer = die eigene Verknüpfung lösen (als Unterkonto). */
-internal fun MainViewModel.unlinkHousehold(subUserId: Int? = null) {
+/** [subUserId]: Unterkonto lösen; [mainUserId]: sich von diesem Elternkonto lösen. */
+internal fun MainViewModel.unlinkHousehold(subUserId: Int? = null, mainUserId: Int? = null) {
     viewModelScope.launch {
-        when (val r = repo.haushalt.unlinkHousehold(subUserId)) {
+        when (val r = repo.haushalt.unlinkHousehold(subUserId, mainUserId)) {
             is Result.Success -> { loadHouseholdStatus(); loadHouseholdMembers(); loadSets() }
             // Ohne Meldung tippt der Nutzer auf „Verknüpfung lösen", und es
             // passiert sichtbar nichts — weder Erfolg noch Grund.
@@ -313,6 +312,16 @@ internal fun MainViewModel.unlinkHousehold(subUserId: Int? = null) {
             // Haushaltskarte zeigt das Feld an (SettingsScreen.kt). Ein zweiter
             // Meldeweg für dieselbe Karte wäre die dritte Fassung derselben
             // Sache.
+            is Result.Error -> _householdState.update { it.copy(message = meldung(r)) }
+        }
+    }
+}
+
+/** Den Hinweis auf ein nicht mehr sichtbares Konto ausblenden. */
+internal fun MainViewModel.verwerfeGetrenntesKonto(subUserId: Int) {
+    viewModelScope.launch {
+        when (val r = repo.haushalt.verwerfeGetrenntesKonto(subUserId)) {
+            is Result.Success -> loadHouseholdStatus()
             is Result.Error -> _householdState.update { it.copy(message = meldung(r)) }
         }
     }

@@ -43,9 +43,20 @@ class HaushaltRepository @Inject constructor(
     suspend fun redeemHouseholdInvite(code: String): Result<GenericResponse> =
         safeCall { api.redeemHouseholdInvite(mapOf("code" to code)) }
 
-    /** subUserId leer = die eigene Verknüpfung lösen (als Unterkonto). */
-    suspend fun unlinkHousehold(subUserId: Int? = null): Result<GenericResponse> =
-        safeCall { api.unlinkHousehold(subUserId?.let { mapOf("sub_user_id" to it) } ?: emptyMap()) }
+    /**
+     * [subUserId]: ein Unterkonto lösen. [mainUserId]: sich von diesem einen
+     * Elternkonto lösen. Ohne beides löst der Server alle eigenen Elternkonten.
+     */
+    suspend fun unlinkHousehold(subUserId: Int? = null, mainUserId: Int? = null): Result<GenericResponse> =
+        safeCall {
+            api.unlinkHousehold(buildMap {
+                subUserId?.let { put("sub_user_id", it) }
+                mainUserId?.let { put("main_user_id", it) }
+            })
+        }
+
+    suspend fun verwerfeGetrenntesKonto(subUserId: Int): Result<GenericResponse> =
+        safeCall { api.verwerfeGetrenntesKonto(mapOf("sub_user_id" to subUserId)) }
 
     suspend fun getAcquisitions(setNumber: String): Result<AcquisitionsResponse> =
         safeCall { api.getAcquisitions(setNumber) }

@@ -215,6 +215,7 @@ const C = {
   'POST /api/v1/settings/household/invite': 'nur-v1',
   'POST /api/v1/settings/household/redeem': 'nur-v1',
   'POST /api/v1/settings/household/unlink': 'nur-v1',
+  'POST /api/v1/settings/household/former/dismiss': 'nur-v1',
   'POST /api/v1/admin/redownload-missing-images': 'nur-v1',
   'POST /api/v1/admin/reimport-instructions': 'nur-v1',
   'POST /api/v1/admin/trigger-csv-sync': 'nur-v1',

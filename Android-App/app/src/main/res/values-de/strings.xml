@@ -468,10 +468,13 @@
     <string name="household_for_account">Für Konto</string>
     <string name="household_self">(ich)</string>
     <string name="household_title">Haushalt</string>
-    <string name="household_intro">Verknüpfe Konten zu einem Haushalt: Das Hauptkonto sieht alle Sets, Teile und Minifiguren zusammengefasst. Beide Konten müssen dieselbe Währung verwenden.</string>
+    <string name="household_intro">Verknüpfe Konten zu einem Haushalt: Ein Hauptkonto sieht die Sets, Teile und Minifiguren seiner direkten Unterkonten zusammengefasst. Ein Konto kann zu mehreren Hauptkonten gehören, wenn es jede Einladung selbst annimmt. Beide Konten müssen dieselbe Währung verwenden.</string>
     <string name="household_state_none">Dieses Konto ist mit keinem anderen verknüpft.</string>
-    <string name="household_state_main">Verknüpfte Konten</string>
-    <string name="household_state_sub">Verknüpft mit dem Hauptkonto %1$s</string>
+    <string name="household_state_main">Unterkonten</string>
+    <string name="household_state_parents">Gehört zu diesen Hauptkonten</string>
+    <string name="household_former_intro">Diese Konten waren bisher nur über ein anderes Konto verknüpft und sind deshalb nicht mehr sichtbar. Damit du sie wieder siehst, muss das jeweilige Konto eine Einladung von dir annehmen.</string>
+    <string name="household_former_via">bisher über %1$s</string>
+    <string name="household_former_dismiss">Ausblenden</string>
     <string name="household_invite_create">Einladungscode erzeugen</string>
     <string name="household_invite_hint">Gib den Code im anderen Konto unter Einstellungen ein. 24 Stunden gültig, einmal verwendbar.</string>
     <string name="household_invite_copy">Kopieren</string>
