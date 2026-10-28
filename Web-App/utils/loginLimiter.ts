@@ -20,17 +20,24 @@ import type { FehlerCode } from './fehlerTexte';
 interface Zaehlerstand {
   count: number;
   waitMin: number;
+  /** Sekunden seit dem letzten Fehlversuch. */
+  seitLetztem: number;
 }
 
 
 const MAX_ATTEMPTS = 5;
-/**
- * Fehlversuche je Benutzername über ALLE Adressen. Wer viele IPs hat, kommt am
- * Zähler je IP vorbei, an diesem nicht. Höher als MAX_ATTEMPTS, weil ein
- * Angreifer damit auch den echten Nutzer für das Fenster aussperren kann.
- */
-const MAX_JE_NAME  = 20;
 const WINDOW_MS    = 15 * 60 * 1000;
+
+/**
+ * Wartezeit je KONTO über alle Adressen: ab dem fünften Fehlversuch 1 s, dann
+ * jedes Mal doppelt so lang, höchstens das Fenster. Wer viele Adressen hat,
+ * rät so nur noch rund 15 Mal je Viertelstunde; der Inhaber wartet bei ein,
+ * zwei Vertippern dagegen Sekunden statt einer festen Sperre.
+ */
+function wartezeitSekunden(fehlversuche: number): number {
+  if (fehlversuche < MAX_ATTEMPTS) return 0;
+  return Math.min(2 ** (fehlversuche - MAX_ATTEMPTS), WINDOW_MS / 1000);
+}
 /** So lange gilt eine Adresse nach einer erfolgreichen Anmeldung als bekannt. */
 const BEKANNT_MIN  = 30 * 24 * 60;
 const WINDOW_MIN   = WINDOW_MS / 60000;
@@ -75,16 +82,19 @@ function _prune() {
 async function _read(key: string, windowMin: number): Promise<Zaehlerstand | null> {
   try {
     const row = await db.get(
-      `SELECT count, EXTRACT(EPOCH FROM (first_at + make_interval(mins => $2) - NOW()))/60 AS wait_min
+      `SELECT count, EXTRACT(EPOCH FROM (first_at + make_interval(mins => $2) - NOW()))/60 AS wait_min,
+              EXTRACT(EPOCH FROM (NOW() - COALESCE(last_at, first_at))) AS seit
          FROM rate_limit_attempts
         WHERE key = $1 AND first_at > NOW() - make_interval(mins => $2)`,
       [key, windowMin]);
     if (!row) return null;
-    return { count: parseInt(row.count) || 0, waitMin: Math.max(1, Math.ceil(parseFloat(row.wait_min) || 1)) };
+    return { count: parseInt(row.count) || 0, waitMin: Math.max(1, Math.ceil(parseFloat(row.wait_min) || 1)),
+             seitLetztem: Math.max(0, parseFloat(row.seit) || 0) };
   } catch (_) {
     const e = _attempts.get(key);
     if (!e || Date.now() - e.firstAt > windowMin * 60000) return null;
-    return { count: e.count, waitMin: Math.max(1, Math.ceil((e.firstAt + windowMin * 60000 - Date.now()) / 60000)) };
+    return { count: e.count, waitMin: Math.max(1, Math.ceil((e.firstAt + windowMin * 60000 - Date.now()) / 60000)),
+             seitLetztem: (Date.now() - (e.lastAt ?? e.firstAt)) / 1000 };
   }
 }
 
@@ -95,8 +105,9 @@ async function _read(key: string, windowMin: number): Promise<Zaehlerstand | nul
 async function _bump(key: string, windowMin: number): Promise<void> {
   try {
     await db.run(
-      `INSERT INTO rate_limit_attempts (key, count, first_at) VALUES ($1, 1, NOW())
+      `INSERT INTO rate_limit_attempts (key, count, first_at, last_at) VALUES ($1, 1, NOW(), NOW())
        ON CONFLICT (key) DO UPDATE SET
+         last_at  = NOW(),
          count    = CASE WHEN rate_limit_attempts.first_at < NOW() - make_interval(mins => $2)
                          THEN 1 ELSE rate_limit_attempts.count + 1 END,
          first_at = CASE WHEN rate_limit_attempts.first_at < NOW() - make_interval(mins => $2)
@@ -105,8 +116,8 @@ async function _bump(key: string, windowMin: number): Promise<void> {
   } catch (_) {
     const now = Date.now();
     const e = _attempts.get(key);
-    if (!e || now - e.firstAt > windowMin * 60000) _attempts.set(key, { count: 1, firstAt: now });
-    else e.count++;
+    if (!e || now - e.firstAt > windowMin * 60000) _attempts.set(key, { count: 1, firstAt: now, lastAt: now });
+    else { e.count++; e.lastAt = now; }
     _prune();
   }
 }
@@ -120,34 +131,48 @@ async function _clear(key: string): Promise<void> {
  * Vor der Passwortprüfung aufrufen.
  * @returns {Promise<string|null>} Sperr-Meldung oder null
  */
+/**
+ * Name und E-Mail desselben Kontos zählen gemeinsam — sonst gälte jede Grenze
+ * doppelt. Unbekannte Namen zählen unter sich selbst.
+ */
+async function kontoKennung(username: unknown): Promise<string> {
+  const roh = einzelwert(username).toLowerCase();
+  const u = await db.get(
+    'SELECT id FROM users WHERE lower(username) = $1 OR lower(email) = $1 ORDER BY id LIMIT 1', [roh]
+  ).catch(() => null);
+  return u ? `konto:${u.id}` : roh;
+}
+
 async function checkLoginAllowed(
   req: Request, username: unknown,
 ): Promise<{ code: FehlerCode; vars: { minuten: number } } | null> {
-  // Code statt Satz (Nachtrag 130): Dieser Helfer weiss nicht, welche Sprache
-  // der Anfragende sieht — die Route weiss es.
-  const st = await _read(_key(req, username), WINDOW_MIN);
+  const kennung = await kontoKennung(username);
+  const st = await _read(_key(req, kennung), WINDOW_MIN);
   if (st && st.count >= MAX_ATTEMPTS)
     return { code: 'zu_viele_fehlversuche', vars: { minuten: st.waitMin } };
-  // Die Sperre je Name liesse sich von aussen gegen den Inhaber richten. Von
-  // einer Adresse, an der er sich schon angemeldet hat, gilt deshalb nur die
-  // Sperre je Adresse.
-  const jeName = await _read(_nameKey(username), WINDOW_MIN);
-  if (jeName && jeName.count >= MAX_JE_NAME && !(await _read(_bekanntKey(req, username), BEKANNT_MIN)))
-    return { code: 'zu_viele_fehlversuche', vars: { minuten: jeName.waitMin } };
+  // Von einer Adresse, an der sich der Inhaber schon angemeldet hat, gilt nur
+  // die Sperre je Adresse — sonst liesse sich die Wartezeit gegen ihn richten.
+  const jeKonto = await _read(_nameKey(kennung), WINDOW_MIN);
+  if (jeKonto && !(await _read(_bekanntKey(req, kennung), BEKANNT_MIN))) {
+    const rest = wartezeitSekunden(jeKonto.count) - jeKonto.seitLetztem;
+    if (rest > 0) return { code: 'zu_viele_fehlversuche', vars: { minuten: Math.max(1, Math.ceil(rest / 60)) } };
+  }
   return null;
 }
 
 /** Nach einem fehlgeschlagenen Login aufrufen. */
 async function recordLoginFailure(req: Request, username: unknown): Promise<void> {
-  await _bump(_key(req, username), WINDOW_MIN);
-  await _bump(_nameKey(username), WINDOW_MIN);
+  const kennung = await kontoKennung(username);
+  await _bump(_key(req, kennung), WINDOW_MIN);
+  await _bump(_nameKey(kennung), WINDOW_MIN);
 }
 
 /** Nach einem erfolgreichen Login aufrufen. */
 async function recordLoginSuccess(req: Request, username: unknown): Promise<void> {
-  await _clear(_key(req, username));
-  await _clear(_nameKey(username));
-  await _bump(_bekanntKey(req, username), BEKANNT_MIN);
+  const kennung = await kontoKennung(username);
+  await _clear(_key(req, kennung));
+  await _clear(_nameKey(kennung));
+  await _bump(_bekanntKey(req, kennung), BEKANNT_MIN);
 }
 
 /**
@@ -181,5 +206,5 @@ async function bestaetigungGesperrt(uid: number): Promise<{ code: FehlerCode; va
 async function bestaetigungFehlgeschlagen(uid: number): Promise<void> { await _bump(_bestaetigungKey(uid), WINDOW_MIN); }
 async function bestaetigungGelungen(uid: number): Promise<void> { await _clear(_bestaetigungKey(uid)); }
 
-export { checkLoginAllowed, recordLoginFailure, recordLoginSuccess, ipThrottle, MAX_ATTEMPTS, MAX_JE_NAME,
+export { checkLoginAllowed, recordLoginFailure, recordLoginSuccess, ipThrottle, MAX_ATTEMPTS, wartezeitSekunden,
          bestaetigungGesperrt, bestaetigungFehlgeschlagen, bestaetigungGelungen };
