@@ -189,7 +189,8 @@ class ErfassungViewModel @Inject constructor(
             when (val r = sets.addSet(setNum, 1, purchasePrice, condition, ownerUserId,
                                       storage?.trim()?.takeIf { it.isNotEmpty() })) {
                 is Result.Success -> {
-                    _snackbar.value = text(R.string.vm_set_added, setNum)
+                    _snackbar.value = text(
+                        if (r.data.katalogOffen) R.string.vm_set_added_no_catalog else R.string.vm_set_added, setNum)
                     dienste.bestand.melde(Aenderung.Sets)
                 }
                 is Result.Error -> meldeFehlgeschlageneErfassung(setNum, meldung(r))
@@ -254,8 +255,11 @@ class ErfassungViewModel @Inject constructor(
                     r.data.success && r.data.action == "exists" ->
                         _barcodeState.update { it.copy(gefundenesSet = r.data.setNumber ?: sn) }
                     r.data.success -> {
-                        _snackbar.value = text(
-                            if (r.data.action == "added") R.string.vm_added else R.string.vm_updated, r.data.setNumber)
+                        _snackbar.value = text(when {
+                            r.data.katalogOffen -> R.string.vm_set_added_no_catalog
+                            r.data.action == "added" -> R.string.vm_added
+                            else -> R.string.vm_updated
+                        }, r.data.setNumber)
                         dienste.bestand.melde(Aenderung.Sets)
                     }
                     else -> meldeFehlgeschlageneErfassung(sn, r.data.error)

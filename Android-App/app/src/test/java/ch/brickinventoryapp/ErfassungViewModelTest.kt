@@ -140,6 +140,19 @@ class ErfassungViewModelTest {
         assertEquals(listOf(Aenderung.Sets), liste)
     }
 
+    /**
+     * Gegenprobe (am 28.10.2026 gemessen, kotlinc): den Zweig `katalogOffen`
+     * entfernt → rot, gemeldet wird „hinzugefügt“ (vm_added).
+     */
+    @Test
+    fun `ohne Katalog meldet das Anlegen gespeichert, nicht hinzugefuegt`() {
+        val vm = vm(Anleger(listOf(SetAnlegenSchritt.Fertig(
+            AddSetResponse(action = "added", setNumber = "99999-1", katalogOffen = true)))))
+        vm.addSet("99999")
+        TestApi.warteBis("Meldung") { t.meldungen.meldung.value != null }
+        assertEquals("t${R.string.vm_set_added_no_catalog}|99999-1", t.meldungen.meldung.value)
+    }
+
     @Test
     fun `ein vorhandenes Set beim Anlegen oeffnet die Detailansicht und meldet nichts`() {
         val vm = vm(Anleger(listOf(SetAnlegenSchritt.Fertig(AddSetResponse(action = "exists", setNumber = "75192-1")))))

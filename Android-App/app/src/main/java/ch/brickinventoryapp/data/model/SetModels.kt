@@ -252,6 +252,8 @@ data class AddSetResponse(
     val action: String? = null,
     @SerialName("set_number") val setNumber: String? = null,
     val name: String? = null,
+    /** Weder Rebrickable noch Brickset haben geantwortet: gespeichert, Name und Bild fehlen noch. */
+    @SerialName("katalog_offen") val katalogOffen: Boolean = false,
     val error: String? = null
 )
 

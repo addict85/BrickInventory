@@ -369,6 +369,7 @@
     <string name="pruef_hinweis">Das Hinzufügen läuft danach im Hintergrund — kurz warten vor dem nächsten Scan.</string>
     <string name="vm_barcode_no_set">Kein Set gefunden für: %1$s</string>
     <string name="vm_set_added">%1$s hinzugefügt!</string>
+    <string name="vm_set_added_no_catalog">Set %1$s gespeichert — Name und Bild kommen nach, sobald der Katalog erreichbar ist.</string>
     <string name="vm_error">Fehler: %1$s</string>
     <string name="vm_session_expired">Sitzung abgelaufen — bitte erneut anmelden</string>
 
