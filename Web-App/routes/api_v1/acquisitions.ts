@@ -8,7 +8,7 @@ import * as db from '../../db/database';
 import { writableIds } from '../../utils/household';
 import { findSameDayAcquisition, acquisitionTotals } from '../../utils/acquisitions';
 import { handleRouteError, fehlertext, pfadParam } from '../../utils/httpError';
-import { withInventoryLock } from '../../utils/txLock';
+import { withInventoryLock, bestandsSchluessel } from '../../utils/txLock';
 import { requireToken } from './middleware';
 import { acquisitionMoveSource, resolveWriteTarget, scopeIds, parseScopeMode } from '../../utils/household';
 import { moveSetBetweenAccounts, moveManualAcquisition } from '../../utils/setMove';
@@ -67,6 +67,12 @@ type AcqConfig = {
    */
   cleanupWhenEmpty: ((tx: any, ownerId: number, keys: any[]) => Promise<void>) | null;
 };
+
+/** Besitzer einer Erfassung für den Sperrschlüssel; die Rechte prüft danach die Route. */
+async function besitzerDerZeile(table: string, id: number, fallback: number): Promise<number> {
+  const r = await db.get(`SELECT user_id FROM ${table} WHERE id = $1`, [id]);
+  return r ? parseInt(String(r.user_id)) : fallback;
+}
 
 function registerAcquisitionRoutes(cfg: AcqConfig) {
   const put = `${cfg.routeBase}/:${cfg.idParam}`;
@@ -137,14 +143,10 @@ async function withSetAggregate(uid: number, cfgTable: string, keys: any[], payl
         if (from === to) return res.json({ success: true, unchanged: true });
         // Sperrschlüssel wie in der jeweiligen Session-Route, damit Webapp-
         // und App-Verschiebungen desselben Bestands aufeinander warten.
-        const moved = kind === 'set'
-          ? await withInventoryLock(from, keys[0], (tx) =>
-              moveSetBetweenAccounts(tx, keys[0], from, to, [id]))
-          : kind === 'part'
-            ? await withInventoryLock(from, `${keys[0]}:${keys[1]}`, (tx) =>
-                moveManualAcquisition(tx, 'part', keys, id, from, to))
-            : await db.transaction(async (tx: any) =>
-                moveManualAcquisition(tx, 'fig', keys, id, from, to));
+        const moved = await withInventoryLock(from, bestandsSchluessel(kind, keys), (tx) =>
+          kind === 'set'
+            ? moveSetBetweenAccounts(tx, keys[0], from, to, [id])
+            : moveManualAcquisition(tx, kind, keys, id, from, to));
         return res.json({ success: true, from_user_id: from, to_user_id: to, ...moved });
       }
 
@@ -152,9 +154,12 @@ async function withSetAggregate(uid: number, cfgTable: string, keys: any[], payl
       // API auf. Das MUSS vor der Transaktion passieren — ein Netzaufruf mit
       // offener Transaktion hielte Sperre und Verbindung sekundenlang.
       let priceVal: any;
+      // Ein geleerter Preis wird durch den Marktpreis ersetzt — dann ist er geschätzt.
+      let preisGeschaetzt = false;
       if (rawPrice !== undefined) {
         let p = (rawPrice === null || rawPrice === '') ? null : parseFloat(rawPrice);
         if ((p === null || isNaN(p)) && cfg.resolvePrice) {
+          preisGeschaetzt = true;
           // Zustand der ZEILE mitgeben (Nachtrag 68): Ein „Neu"-Eintrag muss den
           // Neu-Preis bekommen, nicht den der Gebraucht-Erfassung daneben.
           // Steht im Rumpf ein neuer Zustand, gilt dieser; sonst der bisherige.
@@ -170,7 +175,8 @@ async function withSetAggregate(uid: number, cfgTable: string, keys: any[], payl
       // Transaktion, serialisiert auf dem Bestandsschlüssel — siehe
       // utils/txLock.ts. Identisch zur Session-Variante in routes/sets.ts und
       // routes/parts.ts, damit Webapp und Android nicht auseinanderlaufen.
-      await withInventoryLock(uid, `${cfg.table}:${keys.join(':')}`, async (tx) => {
+      const besitzer = await besitzerDerZeile(cfg.table, id, uid);
+      await withInventoryLock(besitzer, bestandsSchluessel(cfg.kind, keys), async (tx) => {
         // SCHREIB-Blickfeld statt eigener ID (Nachtrag 45): Im Haushalt gehört
         // die Erfassung oft einem Unterkonto. Vorher lief die Suche stur gegen
         // user_id = eigene ID und lieferte 404 „Not found" — der Kaufpreis
@@ -183,27 +189,26 @@ async function withSetAggregate(uid: number, cfgTable: string, keys: any[], payl
         // schriebe die Aktualisierung in die Daten des falschen Kontos.
         const ownerId = parseInt(String(acq.user_id));
 
-        // Kaufdatum ändern — pro Tag, Element und Konto genau EIN Eintrag
-        // .
-        // Ausführlich: docs/begruendungen/routes/api_v1/acquisitions.ts.md#withsetaggregate-newdate
         let _newDate: any = null;
         if (date !== undefined && date !== null && date !== '') {
           if (!/^\d{4}-\d{2}-\d{2}$/.test(String(date))) {
             fehlerWerfen('datum_ungueltig', 400);
           }
-          // Gegen den Zustand, den die Zeile NACHHER hat: Kommt in derselben
-          // Anfrage ein neuer mit, gilt der — die Zustandsänderung steht
-          // weiter unten und wäre sonst noch nicht angewandt. Seit Migration
-          // 0040 belegt ein Tag nicht mehr für alle Zustände.
-          const zielZustand = (condition !== undefined && condition !== null)
-            ? (['N', 'U'].includes(condition) ? condition : 'N')
-            : (acq.condition || 'N');
+          _newDate = date;
+        }
+        // Eine Zeile je Tag, Zustand, Preis, Herkunft und Währung: Geprüft
+        // wird gegen die Werte, die die Zeile NACH dieser Änderung hat.
+        const zielZustand = (condition !== undefined && condition !== null)
+          ? (['N', 'U'].includes(condition) ? condition : 'N')
+          : (acq.condition || 'N');
+        const zielGeschaetzt = rawPrice !== undefined ? (preisGeschaetzt && priceVal != null) : !!acq.price_estimated;
+        if (_newDate || rawPrice !== undefined || (condition !== undefined && condition !== null)) {
           const clash = await findSameDayAcquisition(
-            cfg.kind, ownerId, keys, date, id, zielZustand, tx);
+            cfg.kind, ownerId, keys, _newDate || acq.tag, id, zielZustand, tx,
+            { preis: rawPrice !== undefined ? priceVal : acq.preis, geschaetzt: zielGeschaetzt, waehrung: acq.currency });
           if (clash) {
             fehlerWerfen('datum_belegt', 409);
           }
-          _newDate = date;
         }
 
         if (quantity !== undefined && quantity !== null) {
@@ -217,7 +222,8 @@ async function withSetAggregate(uid: number, cfgTable: string, keys: any[], payl
         }
 
         if (rawPrice !== undefined) {
-          await tx.run(`UPDATE ${cfg.table} SET ${cfg.priceCol}=$1 WHERE id=$2`, [priceVal, id]);
+          await tx.run(`UPDATE ${cfg.table} SET ${cfg.priceCol}=$1, price_estimated=$2 WHERE id=$3`,
+            [priceVal, zielGeschaetzt, id]);
           if (cfg.parentPriceSql) {
             // Der Parent zeigt definitionsgemäss den Preis der NEUESTEN Erfassung
             const latest = await tx.get(cfg.latestSql, [ownerId, ...keys]);
@@ -272,7 +278,8 @@ async function withSetAggregate(uid: number, cfgTable: string, keys: any[], payl
       const id   = parseInt(String(req.params[cfg.idParam]));
       const keys = cfg.keyVals(req);
 
-      const row = await withInventoryLock(uid, `${cfg.table}:${keys.join(':')}`, async (tx) => {
+      const besitzer = await besitzerDerZeile(cfg.table, id, uid);
+      const row = await withInventoryLock(besitzer, bestandsSchluessel(cfg.kind, keys), async (tx) => {
         // Wie beim Aktualisieren (Nachtrag 45): über das SCHREIB-Blickfeld
         // suchen, danach mit dem BESITZER der Zeile weiterarbeiten. Vorher
         // konnte das Hauptkonto eine Erfassung des Unterkontos weder ändern
@@ -342,7 +349,7 @@ registerAcquisitionRoutes({
   kind:      'set',
   priceCol:  'purchase_price',
   keyVals:   req => [req.params.setNumber],
-  existsSql: 'SELECT id, user_id, condition FROM set_acquisitions WHERE id=$1 AND user_id = ANY($2) AND set_number=$3',
+  existsSql: 'SELECT id, user_id, condition, purchase_price AS preis, price_estimated, currency, ((created_at AT TIME ZONE \'UTC\')::date)::text AS tag FROM set_acquisitions WHERE id=$1 AND user_id = ANY($2) AND set_number=$3',
   existsWithKeys: true,
   notFound:  'erfassung_nicht_gefunden',
   deleteChecksExistence: true,
@@ -386,7 +393,7 @@ registerAcquisitionRoutes({
   kind:      'part',
   priceCol:  'unit_price',
   keyVals:   req => [req.params.partNumber, parseInt(req.params.colorId) || 0],
-  existsSql: 'SELECT id, user_id, condition FROM part_acquisitions WHERE id=$1 AND user_id = ANY($2)',
+  existsSql: 'SELECT id, user_id, condition, unit_price AS preis, price_estimated, currency, ((created_at AT TIME ZONE \'UTC\')::date)::text AS tag FROM part_acquisitions WHERE id=$1 AND user_id = ANY($2)',
   existsWithKeys: false,
   notFound:  'nicht_gefunden',
   deleteChecksExistence: false,
@@ -428,7 +435,7 @@ registerAcquisitionRoutes({
   kind:      'fig',
   priceCol:  'unit_price',
   keyVals:   req => [req.params.figNumber],
-  existsSql: 'SELECT id, user_id, condition FROM minifig_acquisitions WHERE id=$1 AND user_id = ANY($2)',
+  existsSql: 'SELECT id, user_id, condition, unit_price AS preis, price_estimated, currency, ((created_at AT TIME ZONE \'UTC\')::date)::text AS tag FROM minifig_acquisitions WHERE id=$1 AND user_id = ANY($2)',
   existsWithKeys: false,
   notFound:  'nicht_gefunden',
   deleteChecksExistence: false,

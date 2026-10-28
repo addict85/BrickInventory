@@ -81,14 +81,14 @@ async function priceForNewAcquisition(userId: number, setNumber: string, dbh: an
     ).catch(() => null);
     pp = parseFloat(hist?.avg_price || 0) || null;
   }
-  return { price: pp, condition: cond };
+  return { price: pp, condition: cond, geschaetzt: pp != null };
 }
 
 // ── Kaufpreis-Historie ────────────────────────────────────────────────────────
 // Jede Erfassung (auch Re-Add desselben Sets) erzeugt eine Zeile in
 // set_acquisitions. Das ist seit Migration 0032 der einzige Ort für Kaufpreis
 // und Zustand — die Spiegelung nach sets.purchase_price/condition ist weg.
-async function recordAcquisition(userId: number, setNumber: string, quantity: number, purchasePrice: number | null, condition: string | null = null, dbh: any = db) {
+async function recordAcquisition(userId: number, setNumber: string, quantity: number, purchasePrice: number | null, condition: string | null = null, dbh: any = db, geschaetzt = false) {
   // Der Zustand wurde von allen Aufrufern schon immer als 5. Argument
   // übergeben, aber bisher hier ignoriert (Signatur hatte nur 4 Parameter) —
   // neue Erfassungen bekamen dadurch nie den Set-Zustand, sondern den
@@ -98,7 +98,7 @@ async function recordAcquisition(userId: number, setNumber: string, quantity: nu
   // Kein Rückfall ohne condition mehr.
   // Ausführlich: docs/begruendungen/utils/setService.ts.md#recordacquisition
   await recordAcquisitionForDay('set', userId, [setNumber],
-    { quantity, price: pp, condition: cond || 'N' }, dbh);
+    { quantity, price: pp, condition: cond || 'N', geschaetzt }, dbh);
 }
 
 /**
@@ -107,7 +107,7 @@ async function recordAcquisition(userId: number, setNumber: string, quantity: nu
  *        dbh KEINE Transaktion sein, weil ein Netzaufruf darin steckt.
  */
 async function adjustAcquisitionsToQuantity(userId: number, setNumber: string, newTotalQty: number, dbh: any = db,
-                                            pricePlan: { price: number | null; condition: string } | null = null) {
+                                            pricePlan: { price: number | null; condition: string; geschaetzt?: boolean } | null = null) {
   const rows = await dbh.all(
     'SELECT id, quantity, created_at FROM set_acquisitions WHERE user_id=$1 AND set_number=$2 ORDER BY created_at DESC, id DESC',
     [userId, setNumber]).catch(() => []);
@@ -121,14 +121,14 @@ async function adjustAcquisitionsToQuantity(userId: number, setNumber: string, n
         // recordAcquisitionForDay() (über recordAcquisition unten).
         // Ausführlich: docs/begruendungen/utils/setService.ts.md#adjustacquisitionstoquantity-plan
         const plan = pricePlan ?? await priceForNewAcquisition(userId, setNumber, dbh);
-        await recordAcquisition(userId, setNumber, delta, plan.price, plan.condition, dbh);
+        await recordAcquisition(userId, setNumber, delta, plan.price, plan.condition, dbh, !!plan.geschaetzt);
       }
     } else {
       // ERSTE Erfassung dieses Kontos für das Set.
       // Ausführlich: docs/begruendungen/utils/setService.ts.md#adjustacquisitionstoquantity-plan-2
       const plan = pricePlan ?? await priceForNewAcquisition(userId, setNumber, dbh);
       await recordAcquisition(userId, setNumber, newTotalQty,
-        plan.price, plan.condition || 'N', dbh);
+        plan.price, plan.condition || 'N', dbh, !!plan.geschaetzt);
     }
     return;
   }
@@ -199,7 +199,8 @@ async function addSetIntern(setNumber: string, quantity: number, userId: number,
     // Auch hier den gewählten Zustand mitgeben, sonst kommt der Neupreis.
     // Ausführlich: docs/begruendungen/utils/setService.ts.md#addsetintern-readdprice
     let reAddPrice: number | null = purchasePrice;
-    if (reAddPrice === null || isNaN(reAddPrice)) {
+    const reAddGeschaetzt = reAddPrice === null || isNaN(reAddPrice);
+    if (reAddGeschaetzt) {
       reAddPrice = await getCurrentMarketPrice(normalized, userId, zustand).catch(() => null);
     }
 
@@ -211,7 +212,7 @@ async function addSetIntern(setNumber: string, quantity: number, userId: number,
       // 0036 keine Spalte mehr — sie wird beim LESEN aus den Erfassungen
       // gerechnet (utils/bestandsmenge.ts).
       // Ausführlich: docs/begruendungen/utils/setService.ts.md#addsetintern-2
-      await recordAcquisition(userId, normalized, quantity, reAddPrice, zustand, tx);
+      await recordAcquisition(userId, normalized, quantity, reAddPrice, zustand, tx, reAddGeschaetzt);
     });
     // During bulk CSV import, skip immediate background jobs to avoid DB pool exhaustion.
     // The import loop triggers enrichment after all sets are imported.
@@ -279,7 +280,8 @@ async function addSetIntern(setNumber: string, quantity: number, userId: number,
   // eingetragen — im gemeldeten Fall 55 statt 33 CHF.
   // wie oben: purchasePrice kommt normalisiert als number|null herein
   let effectivePurchasePrice: number | null = purchasePrice;
-  if (effectivePurchasePrice === null || isNaN(effectivePurchasePrice)) {
+  const preisGeschaetzt = effectivePurchasePrice === null || isNaN(effectivePurchasePrice);
+  if (preisGeschaetzt) {
     effectivePurchasePrice = await getCurrentMarketPrice(normalized, userId, effectiveCondition);
   }
   // Wie oben gesperrt: Zwei gleichzeitige Erst-Erfassungen desselben Sets
@@ -290,7 +292,7 @@ async function addSetIntern(setNumber: string, quantity: number, userId: number,
     // Ausführlich: docs/begruendungen/utils/setService.ts.md#addsetintern-4
     await tx.run('INSERT INTO sets (user_id,set_number) VALUES ($1,$2) ON CONFLICT (user_id,set_number) DO NOTHING',
       [userId, normalized]);
-    await recordAcquisition(userId, normalized, quantity, effectivePurchasePrice, effectiveCondition, tx);
+    await recordAcquisition(userId, normalized, quantity, effectivePurchasePrice, effectiveCondition, tx, preisGeschaetzt);
   });
 
   // In den Katalog, nicht an die Bestandszeile (Migration 0033). Und ohne

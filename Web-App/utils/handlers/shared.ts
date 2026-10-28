@@ -1,4 +1,5 @@
 import * as db from '../../db/database';
+import { inKontowaehrung } from '../acquisitions';
 import { istErsatzteil } from '../validate';
 import { asIds } from '../household';
 import { teilmengeJoin, teilmengeAus } from '../bestandsmenge';
@@ -105,15 +106,15 @@ async function applyManualCondition(userId: unknown, rows: any[], kind: 'part' |
       ? `SELECT part_number, color_id,
                 COUNT(*) AS acq_count,
                 COUNT(*) FILTER (WHERE condition = 'U') AS used_count,
-                SUM(unit_price * quantity) FILTER (WHERE unit_price IS NOT NULL)::numeric
-                  / NULLIF(SUM(quantity) FILTER (WHERE unit_price IS NOT NULL), 0) AS avg_purchase_price
+                SUM(unit_price * quantity) FILTER (WHERE unit_price IS NOT NULL AND ${inKontowaehrung('part_acquisitions')})::numeric
+                  / NULLIF(SUM(quantity) FILTER (WHERE unit_price IS NOT NULL AND ${inKontowaehrung('part_acquisitions')}), 0) AS avg_purchase_price
            FROM part_acquisitions WHERE user_id = ANY($1)
           GROUP BY part_number, color_id`
       : `SELECT fig_number,
                 COUNT(*) AS acq_count,
                 COUNT(*) FILTER (WHERE condition = 'U') AS used_count,
-                SUM(unit_price * quantity) FILTER (WHERE unit_price IS NOT NULL)::numeric
-                  / NULLIF(SUM(quantity) FILTER (WHERE unit_price IS NOT NULL), 0) AS avg_purchase_price
+                SUM(unit_price * quantity) FILTER (WHERE unit_price IS NOT NULL AND ${inKontowaehrung('minifig_acquisitions')})::numeric
+                  / NULLIF(SUM(quantity) FILTER (WHERE unit_price IS NOT NULL AND ${inKontowaehrung('minifig_acquisitions')}), 0) AS avg_purchase_price
            FROM minifig_acquisitions WHERE user_id = ANY($1)
           GROUP BY fig_number`,
     [uids]

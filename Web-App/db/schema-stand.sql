@@ -176,13 +176,18 @@ CREATE TABLE minifig_acquisitions (
   fig_number text NOT NULL,
   quantity integer NOT NULL DEFAULT 1,
   unit_price numeric(12,4),
-  condition text DEFAULT 'N'::text,
-  created_at timestamp with time zone DEFAULT now(),
+  condition text NOT NULL DEFAULT 'N'::text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  currency text NOT NULL,
+  price_estimated boolean NOT NULL DEFAULT false,
+  CONSTRAINT minifig_acquisitions_menge_positiv CHECK ((quantity > 0)),
   CONSTRAINT minifig_acquisitions_pkey PRIMARY KEY (id),
-  CONSTRAINT minifig_acquisitions_user_fk FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  CONSTRAINT minifig_acquisitions_user_fk FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  CONSTRAINT minifig_acquisitions_zustand CHECK ((condition = ANY (ARRAY['N'::text, 'U'::text])))
 );
 CREATE INDEX idx_minifig_acq_gruppe ON minifig_acquisitions USING btree (user_id, fig_number);
-CREATE UNIQUE INDEX idx_minifig_acq_tag_zustand ON minifig_acquisitions USING btree (user_id, fig_number, (((created_at AT TIME ZONE 'UTC'::text))::date), COALESCE(condition, 'N'::text));
+CREATE UNIQUE INDEX idx_minifig_acq_tag_zustand ON minifig_acquisitions USING btree (user_id, fig_number, (((created_at AT TIME ZONE 'UTC'::text))::date), condition, COALESCE(unit_price, ('-1'::integer)::numeric), price_estimated, currency);
+CREATE TRIGGER minifig_acquisitions_waehrung BEFORE INSERT OR UPDATE ON minifig_acquisitions FOR EACH ROW EXECUTE FUNCTION erfassung_waehrung();
 
 CREATE TABLE minifig_parts_cache (
   fig_number text NOT NULL,
@@ -224,7 +229,7 @@ CREATE TABLE minifigs (
   source text DEFAULT 'set'::text,
   storage_id integer,
   CONSTRAINT minifigs_pkey PRIMARY KEY (id),
-  CONSTRAINT minifigs_storage_id_fkey FOREIGN KEY (storage_id) REFERENCES storage_locations(id) ON DELETE SET NULL,
+  CONSTRAINT minifigs_storage_id_fkey FOREIGN KEY (user_id, storage_id) REFERENCES storage_locations(user_id, id) ON DELETE SET NULL (storage_id),
   CONSTRAINT minifigs_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 CREATE UNIQUE INDEX idx_minifigs_eindeutig ON minifigs USING btree (user_id, COALESCE(set_number, ''::text), fig_number);
@@ -264,13 +269,18 @@ CREATE TABLE part_acquisitions (
   color_id integer NOT NULL DEFAULT 0,
   quantity integer NOT NULL DEFAULT 1,
   unit_price numeric(12,4),
-  condition text DEFAULT 'N'::text,
-  created_at timestamp with time zone DEFAULT now(),
+  condition text NOT NULL DEFAULT 'N'::text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  currency text NOT NULL,
+  price_estimated boolean NOT NULL DEFAULT false,
+  CONSTRAINT part_acquisitions_menge_positiv CHECK ((quantity > 0)),
   CONSTRAINT part_acquisitions_pkey PRIMARY KEY (id),
-  CONSTRAINT part_acquisitions_user_fk FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  CONSTRAINT part_acquisitions_user_fk FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  CONSTRAINT part_acquisitions_zustand CHECK ((condition = ANY (ARRAY['N'::text, 'U'::text])))
 );
 CREATE INDEX idx_part_acq_gruppe ON part_acquisitions USING btree (user_id, part_number, color_id);
-CREATE UNIQUE INDEX idx_part_acq_tag_zustand ON part_acquisitions USING btree (user_id, part_number, color_id, (((created_at AT TIME ZONE 'UTC'::text))::date), COALESCE(condition, 'N'::text));
+CREATE UNIQUE INDEX idx_part_acq_tag_zustand ON part_acquisitions USING btree (user_id, part_number, color_id, (((created_at AT TIME ZONE 'UTC'::text))::date), condition, COALESCE(unit_price, ('-1'::integer)::numeric), price_estimated, currency);
+CREATE TRIGGER part_acquisitions_waehrung BEFORE INSERT OR UPDATE ON part_acquisitions FOR EACH ROW EXECUTE FUNCTION erfassung_waehrung();
 
 CREATE TABLE part_catalog (
   part_number text NOT NULL,
@@ -330,7 +340,7 @@ CREATE TABLE parts (
   storage_id integer,
   added_at timestamp with time zone DEFAULT now(),
   CONSTRAINT parts_pkey PRIMARY KEY (id),
-  CONSTRAINT parts_storage_id_fkey FOREIGN KEY (storage_id) REFERENCES storage_locations(id) ON DELETE SET NULL,
+  CONSTRAINT parts_storage_id_fkey FOREIGN KEY (user_id, storage_id) REFERENCES storage_locations(user_id, id) ON DELETE SET NULL (storage_id),
   CONSTRAINT parts_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 CREATE INDEX idx_parts_color_id ON parts USING btree (user_id, color_id);
@@ -382,7 +392,8 @@ CREATE TABLE parts_summary_state (
 CREATE TABLE parts_version_user (
   user_id integer NOT NULL,
   v bigint NOT NULL DEFAULT 0,
-  CONSTRAINT parts_version_user_pkey PRIMARY KEY (user_id)
+  CONSTRAINT parts_version_user_pkey PRIMARY KEY (user_id),
+  CONSTRAINT parts_version_user_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
 CREATE TABLE price_alerts (
@@ -562,6 +573,8 @@ CREATE TABLE set_acquisitions (
   purchase_price numeric(12,4),
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   condition text NOT NULL DEFAULT 'N'::text,
+  currency text NOT NULL,
+  price_estimated boolean NOT NULL DEFAULT false,
   CONSTRAINT set_acquisitions_bestand_fkey FOREIGN KEY (user_id, set_number) REFERENCES sets(user_id, set_number) DEFERRABLE INITIALLY DEFERRED,
   CONSTRAINT set_acquisitions_menge_positiv CHECK ((quantity > 0)),
   CONSTRAINT set_acquisitions_pkey PRIMARY KEY (id),
@@ -569,7 +582,8 @@ CREATE TABLE set_acquisitions (
   CONSTRAINT set_acquisitions_zustand CHECK ((condition = ANY (ARRAY['N'::text, 'U'::text])))
 );
 CREATE INDEX idx_acq_user_set ON set_acquisitions USING btree (user_id, set_number);
-CREATE UNIQUE INDEX idx_set_acq_tag_zustand ON set_acquisitions USING btree (user_id, set_number, (((created_at AT TIME ZONE 'UTC'::text))::date), COALESCE(condition, 'N'::text));
+CREATE UNIQUE INDEX idx_set_acq_tag_zustand ON set_acquisitions USING btree (user_id, set_number, (((created_at AT TIME ZONE 'UTC'::text))::date), condition, COALESCE(purchase_price, ('-1'::integer)::numeric), price_estimated, currency);
+CREATE TRIGGER set_acquisitions_waehrung BEFORE INSERT OR UPDATE ON set_acquisitions FOR EACH ROW EXECUTE FUNCTION erfassung_waehrung();
 CREATE TRIGGER trg_bump_parts_version_del AFTER DELETE ON set_acquisitions REFERENCING OLD TABLE AS alt FOR EACH STATEMENT EXECUTE FUNCTION bump_parts_version_del();
 CREATE TRIGGER trg_bump_parts_version_ins AFTER INSERT ON set_acquisitions REFERENCING NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION bump_parts_version_ins();
 CREATE TRIGGER trg_bump_parts_version_upd AFTER UPDATE ON set_acquisitions REFERENCING OLD TABLE AS alt NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION bump_parts_version_upd();
@@ -626,7 +640,7 @@ CREATE TABLE sets (
   updated_at timestamp with time zone DEFAULT now(),
   storage_id integer,
   CONSTRAINT sets_pkey PRIMARY KEY (id),
-  CONSTRAINT sets_storage_id_fkey FOREIGN KEY (storage_id) REFERENCES storage_locations(id) ON DELETE SET NULL,
+  CONSTRAINT sets_storage_id_fkey FOREIGN KEY (user_id, storage_id) REFERENCES storage_locations(user_id, id) ON DELETE SET NULL (storage_id),
   CONSTRAINT sets_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
   CONSTRAINT sets_user_id_set_number_key UNIQUE (user_id, set_number)
 );
@@ -655,6 +669,7 @@ CREATE TABLE storage_locations (
   user_id integer NOT NULL,
   name text NOT NULL,
   created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT storage_locations_konto_id UNIQUE (user_id, id),
   CONSTRAINT storage_locations_pkey PRIMARY KEY (id),
   CONSTRAINT storage_locations_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
@@ -761,7 +776,7 @@ CREATE OR REPLACE FUNCTION bump_parts_version_del()
 AS $function$
     BEGIN
       INSERT INTO parts_version_user (user_id, v)
-      SELECT DISTINCT user_id, 1 FROM alt WHERE user_id IS NOT NULL
+      SELECT DISTINCT user_id, 1 FROM alt WHERE user_id IS NOT NULL AND user_id IN (SELECT id FROM users)
       ON CONFLICT (user_id) DO UPDATE SET v = parts_version_user.v + 1;
       RETURN NULL;
     END $function$;
@@ -772,7 +787,7 @@ CREATE OR REPLACE FUNCTION bump_parts_version_ins()
 AS $function$
     BEGIN
       INSERT INTO parts_version_user (user_id, v)
-      SELECT DISTINCT user_id, 1 FROM neu WHERE user_id IS NOT NULL
+      SELECT DISTINCT user_id, 1 FROM neu WHERE user_id IS NOT NULL AND user_id IN (SELECT id FROM users)
       ON CONFLICT (user_id) DO UPDATE SET v = parts_version_user.v + 1;
       RETURN NULL;
     END $function$;
@@ -785,7 +800,19 @@ AS $function$
       INSERT INTO parts_version_user (user_id, v)
       SELECT DISTINCT user_id, 1 FROM (
         SELECT user_id FROM alt UNION SELECT user_id FROM neu
-      ) x WHERE user_id IS NOT NULL
+      ) x WHERE user_id IS NOT NULL AND user_id IN (SELECT id FROM users)
       ON CONFLICT (user_id) DO UPDATE SET v = parts_version_user.v + 1;
       RETURN NULL;
     END $function$;
+
+CREATE OR REPLACE FUNCTION erfassung_waehrung()
+ RETURNS trigger
+ LANGUAGE plpgsql
+AS $function$
+BEGIN
+  IF NEW.currency IS NULL THEN
+    NEW.currency := COALESCE(
+      (SELECT value FROM user_settings WHERE user_id = NEW.user_id AND key = 'currency'), 'EUR');
+  END IF;
+  RETURN NEW;
+END $function$;

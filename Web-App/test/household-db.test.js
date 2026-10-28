@@ -359,14 +359,13 @@ test('Haushalt gegen echte Datenbank', async (t) => {
       `SELECT COUNT(*)::int AS n FROM parts WHERE user_id=$1 AND source='manual'`, [U.kindA]);
     assert.equal(manual.n, 1, 'ein manuell erfasstes Teil wurde mitverschoben');
 
-    // Pro Tag, Element und Benutzer EIN Kaufpreis: aus zwei Zeilen wird eine.
+    // Seit Migration 0047 bleiben verschiedene Preise eigene Zeilen: 2×160
+    // von kindB und 1×100 von kindA — kein Mischpreis 140.
     const rows = await db.all(
       `SELECT quantity, purchase_price FROM set_acquisitions
-        WHERE user_id=$1 AND set_number='75192-1'`, [U.kindB]);
-    assert.equal(rows.length, 1, 'zwei Erfassungen desselben Tages nicht verschmolzen');
-    assert.equal(parseInt(rows[0].quantity), 3);
-    // Mengengewichtet: (2x160 + 1x100)/3 = 140
-    assert.equal(Math.round(parseFloat(rows[0].purchase_price)), 140);
+        WHERE user_id=$1 AND set_number='75192-1' ORDER BY purchase_price`, [U.kindB]);
+    assert.deepEqual(rows.map(r => [parseInt(r.quantity), Math.round(parseFloat(r.purchase_price))]),
+      [[1, 100], [2, 160]], 'Die Einzelkäufe müssen beim Verschieben erhalten bleiben');
 
     // Im Haushalt steht das Set weiterhin einmal, jetzt mit einem Besitzer.
     const list = await handlers.getSets(await household.scopeIds(U.eltern, 'all'), {});

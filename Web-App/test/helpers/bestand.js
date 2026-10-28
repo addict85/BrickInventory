@@ -160,13 +160,17 @@ async function haeltTeil(db, userId, partNumber, opt = {}) {
     // ZUSTAND. Zweimal mit verschiedenem `opt.zustand` am selben Tag ergibt
     // zwei Zeilen — was der Sache entspricht, seit zwei Zustaende zwei
     // Kaeufe sind.
+    // Erst die Zeile desselben Tages und Zustands entfernen, dann neu: Der
+    // eindeutige Index enthält seit Migration 0047 auch Preis und Währung, ein
+    // ON CONFLICT auf Tag und Zustand allein träfe ihn nicht mehr.
+    await db.run(
+      `DELETE FROM part_acquisitions
+        WHERE user_id = $1 AND part_number = $2 AND color_id = $3 AND condition = $4
+          AND (created_at AT TIME ZONE 'UTC')::date = (COALESCE($5::timestamptz, NOW()) AT TIME ZONE 'UTC')::date`,
+      [userId, partNumber, colorId, opt.zustand ?? 'N', opt.am ?? null]);
     await db.run(
       `INSERT INTO part_acquisitions (user_id, part_number, color_id, quantity, unit_price, condition, created_at)
-       VALUES ($1,$2,$3,$4,$5,$6, COALESCE($7::timestamptz, NOW()))
-       ON CONFLICT (user_id, part_number, color_id, ((created_at AT TIME ZONE 'UTC')::date), (COALESCE(condition, 'N')))
-       DO UPDATE SET quantity = EXCLUDED.quantity,
-                     unit_price = COALESCE(EXCLUDED.unit_price, part_acquisitions.unit_price),
-                     condition = EXCLUDED.condition`,
+       VALUES ($1,$2,$3,$4,$5,$6, COALESCE($7::timestamptz, NOW()))`,
       [userId, partNumber, colorId, menge,
        opt.preis ?? null, opt.zustand ?? 'N', opt.am ?? null]);
   }
@@ -191,12 +195,13 @@ async function haeltFigur(db, userId, figNumber, opt = {}) {
   } else if (menge > 0) {
     // ON CONFLICT auf die Tagesregel — siehe haeltTeil().
     await db.run(
+      `DELETE FROM minifig_acquisitions
+        WHERE user_id = $1 AND fig_number = $2 AND condition = $3
+          AND (created_at AT TIME ZONE 'UTC')::date = (COALESCE($4::timestamptz, NOW()) AT TIME ZONE 'UTC')::date`,
+      [userId, figNumber, opt.zustand ?? 'N', opt.am ?? null]);
+    await db.run(
       `INSERT INTO minifig_acquisitions (user_id, fig_number, quantity, unit_price, condition, created_at)
-       VALUES ($1,$2,$3,$4,$5, COALESCE($6::timestamptz, NOW()))
-       ON CONFLICT (user_id, fig_number, ((created_at AT TIME ZONE 'UTC')::date), (COALESCE(condition, 'N')))
-       DO UPDATE SET quantity = EXCLUDED.quantity,
-                     unit_price = COALESCE(EXCLUDED.unit_price, minifig_acquisitions.unit_price),
-                     condition = EXCLUDED.condition`,
+       VALUES ($1,$2,$3,$4,$5, COALESCE($6::timestamptz, NOW()))`,
       [userId, figNumber, menge, opt.preis ?? null, opt.zustand ?? 'N', opt.am ?? null]);
   }
 }

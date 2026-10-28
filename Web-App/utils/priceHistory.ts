@@ -2,6 +2,7 @@
  * Preisverlauf eines Sets — die EINE Umsetzung für Webapp und Android-API.
  * Ausführlich: docs/begruendungen/utils/priceHistory.ts.md#abschnitt
  */
+import { inKontowaehrung } from './acquisitions';
 import * as db from '../db/database';
 import { resolveSetCondition, resolveBlColorId, resolveBlPartNumber } from './financeCalc';
 import { asIds } from './household';
@@ -149,8 +150,8 @@ export async function getSetPriceHistory(uid: number | number[], setNumber: stri
   // Ausführlich: docs/begruendungen/utils/priceHistory.ts.md#getsetpricehistory-acqbycond
   const acqByCond = await db.all(
     `SELECT condition,
-            SUM(purchase_price * quantity) FILTER (WHERE purchase_price IS NOT NULL)::numeric
-              / NULLIF(SUM(quantity) FILTER (WHERE purchase_price IS NOT NULL), 0) AS avg_purchase,
+            SUM(purchase_price * quantity) FILTER (WHERE purchase_price IS NOT NULL AND ${inKontowaehrung('set_acquisitions')})::numeric
+              / NULLIF(SUM(quantity) FILTER (WHERE purchase_price IS NOT NULL AND ${inKontowaehrung('set_acquisitions')}), 0) AS avg_purchase,
             SUM(quantity) AS qty
        FROM set_acquisitions
       -- Über ALLE Haushalts-Besitzer verdichtet — dieselbe Mengengewichtung,
@@ -248,8 +249,8 @@ export async function conditionRows(
   // oben die BrickLink-Nummer (Nachtrag 143).
   const acqRows = await db.all(
     `SELECT condition,
-            SUM(unit_price * quantity) FILTER (WHERE unit_price IS NOT NULL)::numeric
-              / NULLIF(SUM(quantity) FILTER (WHERE unit_price IS NOT NULL), 0) AS avg_purchase
+            SUM(unit_price * quantity) FILTER (WHERE unit_price IS NOT NULL AND ${inKontowaehrung(acqTable)})::numeric
+              / NULLIF(SUM(quantity) FILTER (WHERE unit_price IS NOT NULL AND ${inKontowaehrung(acqTable)}), 0) AS avg_purchase
        FROM ${acqTable}
       WHERE ${acqKeySql} AND user_id = ANY($${acqKeyVals.length + 1})
       GROUP BY condition`,

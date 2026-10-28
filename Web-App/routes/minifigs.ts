@@ -20,6 +20,7 @@ const router  = express.Router();
 import * as db from '../db/database';
 import { handleRouteError, logAndContinue, fehlertext } from '../utils/httpError';
 import { recordAcquisitionForDay } from '../utils/acquisitions';
+import { withInventoryLock, bestandsSchluessel } from '../utils/txLock';
 import {  getMinifigInfo } from '../clients/rebrickable';
 import { importMinifigsForSet } from '../utils/minifigsImport';
 import { requireLogin } from './auth';
@@ -140,6 +141,7 @@ async function resolveManualFigPurchase(uid: number, { figNumber, blFigNumber = 
     effectiveCondition: r.zustand,
     // Aus welchem Zustand der uebernommene Marktpreis stammt (Nachtrag 167).
     preisAusZustand: r.preisAusZustand,
+    geschaetzt: r.geschaetzt,
   };
 }
 
@@ -224,9 +226,9 @@ async function addManualFigIntern(uid: number, body: any) {
       quantity,
       // erfassungsPreis statt der Umrechnung von Hand: In der Stammzeile ist
       // die 0 ein Anzeigewert, in der Erfassung hiesse sie „fuer null gekauft".
-      price: re.erfassungsPreis,
+      price: re.erfassungsPreis, geschaetzt: re.geschaetzt,
       condition: re.effectiveCondition, createdAt: acquiredAt,
-    }).catch(e => console.error('[addManualFig] Zweiterfassung:', e.message));
+    });
     // Kein Nachrechnen mehr: Die Stückzahl steht seit Migration 0038
     // nicht an der Zeile. Hier stand mengeNeuRechnen(), das sie aus den
     // Erfassungen ableitete und SCHRIEB — jetzt rechnet sie das Lesen
@@ -238,7 +240,7 @@ async function addManualFigIntern(uid: number, body: any) {
   // Ohne effectiveUnitPrice/effectivePurchasePrice: Sie waren fuer die
   // Bestandszeile, und die traegt seit Migration 0035 keinen Preis. Dieselbe
   // Stelle wie in routes/parts.ts, vom Compiler gemeldet.
-  const { erfassungsPreis, effectiveCondition, preisAusZustand } =
+  const { erfassungsPreis, effectiveCondition, preisAusZustand, geschaetzt } =
     await resolveManualFigPurchase(uid, { figNumber: num, blFigNumber: blNum, unitPrice: unit_price, condition });
   // Beschreibung in den Katalog, Bestand in minifigs (Migration 0034). Der
   // Katalog zuerst: Faellt die Anfrage dazwischen aus, steht lieber eine
@@ -262,9 +264,9 @@ async function addManualFigIntern(uid: number, body: any) {
   await recordAcquisitionForDay('fig', uid, [num], {
     // erfassungsPreis, nicht effectivePurchasePrice — siehe oben bei der
     // Zweiterfassung. Hier stand bis Nachtrag 139 der Stammzeilen-Wert.
-    quantity, price: erfassungsPreis,
+    quantity, price: erfassungsPreis, geschaetzt,
     condition: effectiveCondition, createdAt: acquiredAt,
-  }).catch(logAndContinue(`minifiguren:anlegen ${num}`));
+  });
 
   // Zwilling zu addManualPart — siehe die Begruendung dort (Nachtrag 167).
   return { action: 'added', fig_number: num, fig_name, price_from_condition: preisAusZustand };
@@ -293,40 +295,32 @@ async function updateManualFig(uid: number, figNumber: string, body: any) {
 
   if (body.quantity !== undefined) {
     const newQty = parseInt(body.quantity) || 1;
-    // Erst die Erfassungen, dann die Menge daraus — und ohne das try/catch,
-    // das seinen Fehler verschluckte. Die Begruendung steht ausgeschrieben
-    // bei updateManualPart in routes/parts.ts; es ist dieselbe Stelle.
-    {
-      const acqs = await db.all('SELECT id, quantity, created_at FROM minifig_acquisitions WHERE user_id=$1 AND fig_number=$2 ORDER BY created_at DESC, id DESC',
+    // Marktpreis vor der Sperre und nur bei steigender Menge — wie bei den Teilen.
+    const cond = await zustandFuerPreis(undefined, existing.condition, uid);
+    const bisher = (await db.get(
+      'SELECT COALESCE(SUM(quantity), 0)::int AS q FROM minifig_acquisitions WHERE user_id=$1 AND fig_number=$2',
+      [uid, figNumber]))?.q ?? 0;
+    const mp = newQty > bisher
+      ? await getCurrentFigMarketPrice(figNumber, uid, existing.bl_fig_number, cond).catch(() => null) : null;
+    await withInventoryLock(uid, bestandsSchluessel('fig', [figNumber]), async (tx: any) => {
+      const acqs = await tx.all('SELECT id, quantity, created_at FROM minifig_acquisitions WHERE user_id=$1 AND fig_number=$2 ORDER BY created_at DESC, id DESC',
         [uid, figNumber]);
-      const currentTotal = acqs.reduce((s,r)=>s+r.quantity,0);
+      const currentTotal = acqs.reduce((s: number, r: any) => s + r.quantity, 0);
       const delta = newQty - currentTotal;
-      // acqs.length === 0 wird MIT abgedeckt.
-      // Ausführlich: docs/begruendungen/routes/minifigs.ts.md#updatemanualfig
       if (delta > 0) {
-        // Aufstocken der heutigen Zeile ODER eine neue anlegen — beides
-        // erledigt recordAcquisitionForDay (utils/acquisitions.ts). Die
-        // Tagesprüfung stand hier von Hand und galt nur an dieser Stelle.
-        // Ausführlich: docs/begruendungen/routes/minifigs.ts.md#updatemanualfig-cond
-        const cond = await zustandFuerPreis(undefined, existing.condition, uid);
-        const mp = await getCurrentFigMarketPrice(figNumber, uid, existing.bl_fig_number, cond).catch(()=>null);
         await recordAcquisitionForDay('fig', uid, [figNumber],
-          { quantity: delta, price: mp, condition: cond });
+          { quantity: delta, price: mp, condition: cond, geschaetzt: true }, tx);
       } else if (delta < 0) {
-        // Eine Transaktion: Scheitert ein Schritt, wären sonst nur einige
-        // Erfassungen gekürzt und die Menge stimmte nicht mehr.
-        await db.transaction(async (tx) => {
-          let rem = -delta;
-          for (const a of acqs) {
-            if (rem<=0) break;
-            const take = Math.min(a.quantity, rem);
-            if (take>=a.quantity) await tx.run('DELETE FROM minifig_acquisitions WHERE id=$1', [a.id]);
-            else await tx.run('UPDATE minifig_acquisitions SET quantity=quantity-$1 WHERE id=$2', [take, a.id]);
-            rem -= take;
-          }
-        });
+        let rem = -delta;
+        for (const a of acqs) {
+          if (rem <= 0) break;
+          const take = Math.min(a.quantity, rem);
+          if (take >= a.quantity) await tx.run('DELETE FROM minifig_acquisitions WHERE id=$1', [a.id]);
+          else await tx.run('UPDATE minifig_acquisitions SET quantity=quantity-$1 WHERE id=$2', [take, a.id]);
+          rem -= take;
+        }
       }
-    }
+    });
   }
   let newBlNum = existing.bl_fig_number;
   if (body.bl_fig_number !== undefined) {
@@ -418,7 +412,7 @@ router.post('/import/csv', csvEmpfang.single('file'), async (req: LoggedInReques
         // Gleiche Preis-/Zustandslogik wie beim Einzel-Hinzufügen (inkl.
         // Teile-Schätzung, wenn die Figur bei BrickLink nicht gefunden wird).
         // Ohne die beiden Stammzeilen-Werte — siehe addManualFig.
-        const { erfassungsPreis, effectiveCondition } =
+        const { erfassungsPreis, effectiveCondition, geschaetzt } =
           await resolveManualFigPurchase(uid, { figNumber, blFigNumber, unitPrice, condition: rawCondition });
         const acqDate = acquiredAt || new Date().toISOString().slice(0,10);
 
@@ -431,8 +425,7 @@ router.post('/import/csv', csvEmpfang.single('file'), async (req: LoggedInReques
           // (utils/bestandsmenge.ts).
           // Erfassung auch beim Aufstocken anlegen (Zustand/Preis/Datum erhalten).
           await recordAcquisitionForDay('fig', uid, [figNumber],
-            { quantity: qty, price: erfassungsPreis, condition: effectiveCondition||'N', createdAt: acqDate }
-          ).catch(logAndContinue(`minifigs:import ${figNumber} (aufgestockt)`));
+            { quantity: qty, price: erfassungsPreis, geschaetzt, condition: effectiveCondition||'N', createdAt: acqDate });
           updated++;
           results.push({ fig_number: figNumber, action: 'updated' });
         } else {
@@ -449,8 +442,7 @@ router.post('/import/csv', csvEmpfang.single('file'), async (req: LoggedInReques
           if (blFigNumber) await merkeBlNummer('fig', figNumber, blFigNumber)
             .catch(logAndContinue(`minifigs:import ${figNumber} (bl-nummer)`));
           await recordAcquisitionForDay('fig', uid, [figNumber],
-            { quantity: qty, price: erfassungsPreis, condition: effectiveCondition||'N', createdAt: acqDate }
-          ).catch(logAndContinue(`minifigs:import ${figNumber} (neu)`));
+            { quantity: qty, price: erfassungsPreis, geschaetzt, condition: effectiveCondition||'N', createdAt: acqDate });
           added++;
           results.push({ fig_number: figNumber, action: 'added', fig_name: figName });
         }

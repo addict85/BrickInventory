@@ -71,15 +71,17 @@ export async function initPartsSummary(pool: any) {
     CREATE OR REPLACE FUNCTION bump_parts_version_ins() RETURNS trigger AS $$
     BEGIN
       INSERT INTO parts_version_user (user_id, v)
-      SELECT DISTINCT user_id, 1 FROM neu WHERE user_id IS NOT NULL
+      SELECT DISTINCT user_id, 1 FROM neu WHERE user_id IS NOT NULL AND user_id IN (SELECT id FROM users)
       ON CONFLICT (user_id) DO UPDATE SET v = parts_version_user.v + 1;
       RETURN NULL;
     END $$ LANGUAGE plpgsql`);
+  // Nur für bestehende Konten: Beim Löschen eines Kontos laufen diese Trigger
+  // im Cascade, und der Fremdschlüssel auf users würde den Zähler ablehnen.
   await pool.query(`
     CREATE OR REPLACE FUNCTION bump_parts_version_del() RETURNS trigger AS $$
     BEGIN
       INSERT INTO parts_version_user (user_id, v)
-      SELECT DISTINCT user_id, 1 FROM alt WHERE user_id IS NOT NULL
+      SELECT DISTINCT user_id, 1 FROM alt WHERE user_id IS NOT NULL AND user_id IN (SELECT id FROM users)
       ON CONFLICT (user_id) DO UPDATE SET v = parts_version_user.v + 1;
       RETURN NULL;
     END $$ LANGUAGE plpgsql`);
@@ -91,7 +93,7 @@ export async function initPartsSummary(pool: any) {
       INSERT INTO parts_version_user (user_id, v)
       SELECT DISTINCT user_id, 1 FROM (
         SELECT user_id FROM alt UNION SELECT user_id FROM neu
-      ) x WHERE user_id IS NOT NULL
+      ) x WHERE user_id IS NOT NULL AND user_id IN (SELECT id FROM users)
       ON CONFLICT (user_id) DO UPDATE SET v = parts_version_user.v + 1;
       RETURN NULL;
     END $$ LANGUAGE plpgsql`);

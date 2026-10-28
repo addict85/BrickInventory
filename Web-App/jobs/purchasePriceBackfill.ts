@@ -1,4 +1,5 @@
 import { getCurrentMarketPrice } from '../utils/marketPrice';
+import { setzeGeschaetztenPreis } from '../utils/acquisitions';
 // Die Marktpreise stehen seit dem Schichtumbau in utils/marketPrice.ts, bei
 // dem fuer Sets. Vorher musste dieser Job aus zwei ROUTEN importieren, um an
 // zwei Zahlen zu kommen.
@@ -49,8 +50,7 @@ async function backfillAcquisitions() {
         // überschriebe der Nachtrag einen bewusst gepflegten Wert") — die
         // Spalte ist mit Migration 0032 weg, und mit ihr die Frage, welcher der
         // zwei Werte der richtige ist.
-        await db.run('UPDATE set_acquisitions SET purchase_price=$1 WHERE id=$2', [price, row.id]);
-        done++;
+        if (await setzeGeschaetztenPreis('set', row.id, price)) done++;
       }
     } catch (e) {
       // Eine Zeile darf den Nachtrag nicht abbrechen — aber schweigend
@@ -90,8 +90,7 @@ async function backfillTeileErfassungen() {
       const price = await getCurrentPartMarketPrice(
         row.part_number, row.color_id, row.user_id, row.condition || null);
       if (price) {
-        await db.run('UPDATE part_acquisitions SET unit_price=$1 WHERE id=$2', [price, row.id]);
-        done++;
+        if (await setzeGeschaetztenPreis('part', row.id, price)) done++;
       }
     } catch (e) { meldeUndWeiter('kaufpreis-nachtrag:teil-erfassung', e); }
     await sleep(1500);
@@ -120,8 +119,7 @@ async function backfillFigurenErfassungen() {
         row.fig_number, row.user_id,
         await blAbrufNummer('fig', row.fig_number), row.condition || null);
       if (price) {
-        await db.run('UPDATE minifig_acquisitions SET unit_price=$1 WHERE id=$2', [price, row.id]);
-        done++;
+        if (await setzeGeschaetztenPreis('fig', row.id, price)) done++;
       }
     } catch (e) { meldeUndWeiter('kaufpreis-nachtrag:figur-erfassung', e); }
     await sleep(1500);

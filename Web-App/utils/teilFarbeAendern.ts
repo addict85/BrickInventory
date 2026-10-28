@@ -124,7 +124,7 @@ export async function aendereTeilFarbe(
           AND source = 'manual'`,
       [uid, partNumber, neu]);
 
-    // ── Erfassungen: erst addieren, was auf denselben Tag fällt ────────────
+    // ── Erfassungen: erst addieren, was den gleichen Indexschlüssel hätte ──
     //
     // Die Reihenfolge ist zwingend. Zöge das UPDATE unten zuerst um, liefe es
     // in `idx_part_acq_tag_zustand` — und zwar nur manchmal, nämlich wenn beide Farben
@@ -136,7 +136,9 @@ export async function aendereTeilFarbe(
         WHERE a.user_id = $1 AND a.part_number = $2 AND a.color_id = $3
           AND z.user_id = $1 AND z.part_number = $2 AND z.color_id = $4
           AND (z.created_at AT TIME ZONE 'UTC')::date
-            = (a.created_at AT TIME ZONE 'UTC')::date`,
+            = (a.created_at AT TIME ZONE 'UTC')::date
+          AND z.condition = a.condition AND z.price_estimated = a.price_estimated
+          AND z.currency = a.currency AND COALESCE(z.unit_price, -1) = COALESCE(a.unit_price, -1)`,
       [uid, partNumber, alt, neu]);
     // Die eben addierten Quellzeilen müssen weg, sonst zöge das UPDATE sie
     // gleich darunter um und die Stückzahl stünde doppelt da.
@@ -146,7 +148,9 @@ export async function aendereTeilFarbe(
           AND EXISTS (SELECT 1 FROM part_acquisitions z
                        WHERE z.user_id = $1 AND z.part_number = $2 AND z.color_id = $4
                          AND (z.created_at AT TIME ZONE 'UTC')::date
-                           = (a.created_at AT TIME ZONE 'UTC')::date)`,
+                           = (a.created_at AT TIME ZONE 'UTC')::date
+                         AND z.condition = a.condition AND z.price_estimated = a.price_estimated
+                         AND z.currency = a.currency AND COALESCE(z.unit_price, -1) = COALESCE(a.unit_price, -1))`,
       [uid, partNumber, alt, neu]);
     const verschoben = await tx.run(
       `UPDATE part_acquisitions SET color_id = $4

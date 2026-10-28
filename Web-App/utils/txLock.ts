@@ -29,4 +29,13 @@ async function withInventoryLock(userId: number, scopeKey: string | number, fn: 
   });
 }
 
-export { withInventoryLock };
+/**
+ * Der Sperrschlüssel eines Bestands — für alle Wege derselbe, sonst warten
+ * zwei Änderungen am selben Teil nicht aufeinander. Gesperrt wird immer auf
+ * dem BESITZER, nicht auf dem Handelnden.
+ */
+function bestandsSchluessel(kind: 'set' | 'part' | 'fig', keys: unknown[]): string {
+  return kind === 'set' ? String(keys[0]) : `${kind}:${keys.join(':')}`;
+}
+
+export { withInventoryLock, bestandsSchluessel };

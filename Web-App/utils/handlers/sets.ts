@@ -1,4 +1,5 @@
 import { resolveOne } from '../bricklinkLink';
+import { inKontowaehrung } from '../acquisitions';
 import { meldeUndWeiter } from '../httpError';
 import { fuerSet } from '../preisvergleich';
 import * as db from '../../db/database';
@@ -194,12 +195,12 @@ async function getSets(userId: Blickfeld, query: any = {}) {
       FROM ${setsFrom}
       LEFT JOIN (
         SELECT set_number,
-               MAX(purchase_price)                     AS max_purchase_price,
+               MAX(purchase_price) FILTER (WHERE ${inKontowaehrung('set_acquisitions')}) AS max_purchase_price,
                -- Mengengewichteter Kaufpreis: 2x100 und 1x160 ergibt 120, nicht
                -- 130 — und nicht 160, was MAX() liefert. Die Kachel zeigt ihn,
                -- solange noch kein Marktpreis geladen ist.
-               SUM(purchase_price * quantity) FILTER (WHERE purchase_price IS NOT NULL)::numeric
-                 / NULLIF(SUM(quantity) FILTER (WHERE purchase_price IS NOT NULL), 0)
+               SUM(purchase_price * quantity) FILTER (WHERE purchase_price IS NOT NULL AND ${inKontowaehrung('set_acquisitions')})::numeric
+                 / NULLIF(SUM(quantity) FILTER (WHERE purchase_price IS NOT NULL AND ${inKontowaehrung('set_acquisitions')}), 0)
                                                        AS avg_purchase_price,
                COUNT(*)                                AS acq_count,
                COUNT(*) FILTER (WHERE condition = 'U') AS used_count
