@@ -251,12 +251,20 @@
   .dt-fin td.fin-wert { grid-area: wert; text-align: right; font-weight: 700; }
   .dt-fin td.fin-guv  { grid-area: guv;  text-align: right; }
   .fin-unter { display: block !important; font-size: var(--fs-0); font-weight: 400; color: var(--mut); margin-top: 2px; }
-  .dt-summe tr { display: flex; justify-content: space-between; align-items: center; padding: .45rem .7rem; }
-  .dt-summe td { display: block; border: none; padding: 0 !important; }
+  /* Summen: Name oben, darunter Einstand und Marktwert mit eigener Beschriftung. */
+  .dt-summe tfoot { display: block; }
+  .dt-summe tr { display: grid; grid-template-columns: 1fr 1fr; gap: .2rem .75rem; padding: .55rem .7rem; }
+  .dt-summe td { display: block; border: none; padding: 0 !important; text-align: left !important; width: auto !important; }
+  .dt-summe td.fin-fuss-name { grid-column: 1 / -1; }
   .dt-summe td::before { content: none; }
   .dt-summe td:empty { display: none; }
+  .dt-fin td[data-kurz]::before, .dt-summe td[data-kurz]::before {
+    content: attr(data-kurz); display: block; font-size: var(--fs-0); font-weight: 700;
+    text-transform: uppercase; letter-spacing: .4px; color: var(--mut);
+  }
+  .fin-fuss-wert { font-size: var(--fs-3); }
   .dt-fin tfoot { display: block; }
-  .dt-fin tfoot tr { display: flex; justify-content: space-between; align-items: center; gap: .5rem;
+  .dt-fin tfoot tr { display: flex; justify-content: space-between; align-items: flex-end; gap: .75rem;
                      background: none; border: none; padding: .3rem .7rem; }
   .dt-fin tfoot td { display: block; border: none; padding: 0 !important; text-align: left !important; }
   .dt-fin tfoot td:empty { display: none; }

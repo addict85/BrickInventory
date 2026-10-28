@@ -426,6 +426,17 @@
     .fval{font-variant-numeric:tabular-nums;font-size:var(--fs-6);font-weight:600;color:var(--b700)}
     .fstat.hi .fval{color:var(--b600)}
     .fcur{font-size:var(--fs-1);color:var(--mut);margin-left:3px}
+    .fsub{font-size:var(--fs-1);color:var(--mut);margin-top:4px}
+    .fsub:empty{display:none}
+    .fval-hinweis{display:block;font-size:var(--fs-4);font-weight:600;color:var(--a-schrift);line-height:1.35}
+    /* Summenzeilen der Finanztabellen: Einstand und Marktwert. */
+    .fin-fuss-l{text-align:right;padding:11px 13px;font-weight:600}
+    .fin-fuss-wert{font-size:var(--fs-4);padding:11px 13px}
+    .fin-fehlt-kurz{font-size:var(--fs-2);font-weight:600;color:var(--mut)}
+    .dt-summe{width:100%}
+    .dt-summe th:not(:first-child),.dt-summe td:not(:first-child){width:160px;text-align:right}
+    .dt-summe .fin-fuss-name{color:var(--mut)}
+    .dt-summe tfoot .fin-fuss-name{color:var(--txt);font-weight:700}
 
     /* PARTS */
     /* Ein Bereich mit eigener Überschrift, z. B. die manuell erfassten Teile. */

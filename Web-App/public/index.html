@@ -715,11 +715,11 @@
         <span style="font-size:var(--fs-3);color:var(--mut)" data-i18n="parts.single_parts" data-ico="teil">Einzel-Teile</span>
         <span id="fin-parts-val" style="font-weight:700;color:var(--b600)">—</span>
       </div>
-      <div class="fgrid" id="fin-sum" style="display:none">
-        <div class="fstat"><div class="flbl" data-i18n="finance.stat.min">Mindest-Wert</div><div><span class="fval" id="fmin">—</span><span class="fcur" id="fc1">EUR</span></div></div>
-        <div class="fstat hi"><div class="flbl" data-i18n="finance.stat.avg">Ø Durchschnitt</div><div><span class="fval" id="favg">—</span><span class="fcur" id="fc2">EUR</span></div></div>
-        <div class="fstat"><div class="flbl" data-i18n="finance.stat.max">Maximalwert</div><div><span class="fval" id="fmax">—</span><span class="fcur" id="fc4">EUR</span></div></div>
-        <div class="fstat" id="fin-stat-pnl" style="display:none"><div class="flbl" data-i18n="finance.stat.pnl">Gesamt G&amp;V</div><div><span class="fval" id="fin-total-pnl">—</span></div></div>
+      <!-- Kennzahlen: der Einstand steht immer da, Gesamtwert und G&V nur mit Marktpreisen. -->
+      <div class="fgrid" id="fin-sum">
+        <div class="fstat"><div class="flbl" data-i18n="finance.stat.purchase">Einstand</div><div class="fval" id="fin-einstand">—</div><div class="fsub" data-i18n="finance.stat.purchase_hint">Summe der Kaufpreise</div></div>
+        <div class="fstat hi"><div class="flbl" data-i18n="finance.stat.value">Gesamtwert (Ø Marktpreis)</div><div class="fval" id="fin-wert">—</div><div class="fsub" id="fin-wert-sub"></div></div>
+        <div class="fstat" id="fin-stat-pnl" style="display:none"><div class="flbl" data-i18n="finance.stat.pnl">Gesamt G&amp;V</div><div class="fval" id="fin-total-pnl">—</div><div class="fsub" id="fin-pnl-sub"></div></div>
       </div>
       <!-- Kategoriefilter — dieselben vier Chips wie im Finanzen-Reiter der
            Android-App (FinanceSections.financeCategoryFilter). Additiv, und

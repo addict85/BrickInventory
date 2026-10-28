@@ -107,7 +107,6 @@ function priceStatusBadge(s){
 
 export async function loadFinance(){
   G('fin-tbl').innerHTML = ladeAnzeige(t('finance.fetch_prices'));
-  G('fin-sum').style.display='none';
   // Fetch all finance data in parallel
   const [d, partsVal, figsVal, pnlData] = await Promise.all([
     // Alle vier mit demselben Kontofilter — sonst stünde eine Summe aus
@@ -130,25 +129,8 @@ export async function loadFinance(){
   // Statt zwei Mittelwerte nebeneinander zu zeigen, deren Unterschied niemand
   // erklärt, bleibt der einfache Schnitt (avg): derselbe Wert, auf dem auch die
   // Bewertung und die Entwicklung beruhen.
-  [['fmin','min','fc1'],['favg','avg','fc2'],['fmax','max','fc4']].forEach(([vid,key,cid])=>{
-    const wert = parseFloat(d.totals[key]||0) + extra;
-    // Ohne einen einzigen Marktpreis ist „0.00" eine falsche Aussage — „—" sagt „unbekannt".
-    G(vid).textContent = wert > 0 ? wert.toLocaleString(locale(),{minimumFractionDigits:2}) : '—';
-    G(cid).textContent = wert > 0 ? cur : '';
-  });
-  // G&V total (Sets + manuell erfasste Teile & Minifiguren zusammen)
-  // totals.avg statt totals.qty_avg: Die Beschriftung lautet „Ø Marktpreis",
-  // und Marktpreis ist seit der Preisumstellung avg_price. qty_avg ist der
-  // mengengewichtete Schnitt und liegt systematisch darunter.
-  const currentTotal = parseFloat(d.totals.avg||0) + extra;
-  // Ohne vergleichbaren Posten keine Kachel — auch nicht die vom letzten Filter.
+  // Ohne vergleichbaren Posten keine G&V — auch nicht die vom letzten Filter.
   const gesamtGuv = pnlData.success ? pnlData.totals?.pnl_pct : null;
-  G('fin-stat-pnl').style.display = gesamtGuv != null ? '' : 'none';
-  // Kennzahlen nur mit mindestens einem Wert: vier Kacheln mit „—" füllten am
-  // Telefon den ganzen ersten Bildschirm.
-  const mitWert = gesamtGuv != null || ['min','avg','max'].some(k => parseFloat(d.totals[k]||0) + extra > 0);
-  G('fin-sum').style.display = mitWert ? 'grid' : 'none';
-  if(gesamtGuv != null) G('fin-total-pnl').innerHTML = pnlBadge(gesamtGuv);
 
   // ── Teile & Minifiguren: einzeln auflisten, analog zur Sets-Tabelle ─────────
   // (fliesst bereits in "extra"/Gesamtsumme oben ein — hier zusätzlich transparent
@@ -209,6 +191,16 @@ export async function loadFinance(){
   }
   const partsItems = partsVal.success ? partsVal.parts : [];
   const figsItems  = figsVal.success  ? figsVal.figs   : [];
+  // Einstand je Abschnitt: vom Server (pnl), sonst aus den Zeilen gerechnet.
+  const pt = pnlData.success ? (pnlData.totals || {}) : {};
+  const einstand = {
+    sets:  zahlOder(pt.sets_purchase,  einstandAus(d.sets)),
+    parts: zahlOder(pt.parts_purchase, einstandAus(partsItems)),
+    figs:  zahlOder(pt.figs_purchase,  einstandAus(figsItems)),
+  };
+  einstand.alle = zahlOder(pt.purchase, einstand.sets + einstand.parts + einstand.figs);
+  const ohnePreis = d.sets.filter(s => s.error || !(parseFloat(s.avg_price) > 0)).length
+    + [...partsItems, ...figsItems].filter(it => !(parseFloat(it.avg_price ?? it.qty_avg_price) > 0)).length;
   const partsRows = partsItems.map(p => pmRows(p, `${esc(p.part_name||p.part_number)}${p.color_name?` <span style="color:var(--mut);font-size:var(--fs-1)">(${esc(colorName(p.color_name))})</span>`:''}`)).join('');
   const figsRows  = figsItems.map(f => pmRows(f, esc(f.fig_name||f.fig_number))).join('');
   // Die vierte Spalte war ein reiner Platzhalter, damit die Preisspalten an
@@ -221,16 +213,16 @@ export async function loadFinance(){
   // zeigen die beiden Clients verschiedene Zahlen (Nachtrag 145).
   const partsTotal = parseFloat(partsVal?.total_value || 0);
   const figsTotal  = parseFloat(figsVal?.total_value || 0);
-  const pmFoot = total => `<tfoot><tr><td colspan="6" style="text-align:right;padding:11px 13px;font-weight:600">Total:</td><td class="price-total" style="font-size:var(--fs-4);padding:11px 13px">${fmtN(total,cur)}</td><td colspan="2"></td></tr></tfoot>`;
+  const pmFoot = (kauf, total) => `<tfoot><tr><td colspan="4" class="fin-fuss-l">${t('finance.sum')}</td>${summenZellen(kauf, total, cur, 1)}<td colspan="2"></td></tr></tfoot>`;
   const partsSectionHtml = partsItems.length ? `
     <div class="tw" data-fin-art="parts" style="margin-top:1.25rem">
       <div class="ctitle" style="margin:0 0 6px;display:flex;align-items:center;gap:6px">${PARTS_ICON_SVG} ${t('parts.manual_section')}</div>
-      <table class="dt dt-fin" style="table-layout:fixed;width:100%;min-width:1065px">${pmColgroup}${pmTableHead}<tbody>${partsRows}</tbody>${pmFoot(partsTotal)}</table>
+      <table class="dt dt-fin" style="table-layout:fixed;width:100%;min-width:1065px">${pmColgroup}${pmTableHead}<tbody>${partsRows}</tbody>${pmFoot(einstand.parts, partsTotal)}</table>
     </div>` : '';
   const figsSectionHtml = figsItems.length ? `
     <div class="tw" data-fin-art="figs" style="margin-top:1.25rem">
       <div class="ctitle" style="margin:0 0 6px">${t('finance.figs_section')}</div>
-      <table class="dt dt-fin" style="table-layout:fixed;width:100%;min-width:1065px">${pmColgroup}${pmTableHead}<tbody>${figsRows}</tbody>${pmFoot(figsTotal)}</table>
+      <table class="dt dt-fin" style="table-layout:fixed;width:100%;min-width:1065px">${pmColgroup}${pmTableHead}<tbody>${figsRows}</tbody>${pmFoot(einstand.figs, figsTotal)}</table>
     </div>` : '';
 
   // ── Eine Zeile JE KAUFPREIS-ERFASSUNG ───────────────────────────────────────
@@ -304,24 +296,77 @@ export async function loadFinance(){
   window._finGrandTotal  = grandTotal; // used by chart to scale last point
   if(G('portfolio-current')) G('portfolio-current').textContent = fmtN(grandTotal, cur);
   loadPortfolioChart();
+  zeigeKennzahlen({ einstand: einstand.alle, wert: grandTotal, guv: gesamtGuv, ohnePreis, cur,
+                    min: parseFloat(d.totals.min||0) + extra, max: parseFloat(d.totals.max||0) + extra });
+  const summenZeile = (name, kauf, wert) => `<tr><td class="fin-fuss-name">${name}</td>${summenZellen(kauf, wert, cur, 0)}</tr>`;
   const grandTotalHtml = `
     <div class="tw" style="margin-top:1.25rem">
-      <table class="dt dt-summe" style="table-layout:fixed;width:100%;min-width:1065px">
-        <colgroup><col style="width:835px"><col style="width:110px"><col style="width:120px"></colgroup>
+      <table class="dt dt-summe">
+        <thead><tr><th></th><th>${t('finance.stat.purchase')}</th><th>${t('finance.grand.value')}</th></tr></thead>
         <tbody>
-          <tr><td style="color:var(--mut)">Sets</td><td class="price-total">${fmtN(setsQtyAvg,cur)}</td><td></td></tr>
-          <tr><td style="color:var(--mut)">${t('finance.grand.parts')}</td><td class="price-total">${fmtN(partsTotal,cur)}</td><td></td></tr>
-          <tr><td style="color:var(--mut)">${t('finance.figs_section')}</td><td class="price-total">${fmtN(figsTotal,cur)}</td><td></td></tr>
+          ${summenZeile('Sets', einstand.sets, setsQtyAvg)}
+          ${summenZeile(t('finance.grand.parts'), einstand.parts, partsTotal)}
+          ${summenZeile(t('finance.figs_section'), einstand.figs, figsTotal)}
         </tbody>
-        <tfoot><tr><td style="font-weight:700;padding:11px 13px">Total</td><td class="price-total" style="font-size:var(--fs-4);padding:11px 13px">${fmtN(grandTotal,cur)}</td><td></td></tr></tfoot>
+        <tfoot>${summenZeile(t('finance.grand.total'), einstand.alle, grandTotal)}</tfoot>
       </table>
     </div>`;
-  G('fin-tbl').innerHTML=`<div class="tw" data-fin-art="sets"><table class="dt dt-fin" style="table-layout:fixed;width:100%;min-width:1065px"><colgroup><col style="width:60px"><col style="width:90px"><col style="width:250px"><col style="width:55px"><col style="width:70px"><col style="width:90px"><col style="width:110px"><col style="width:110px"><col style="width:110px"><col style="width:80px"><col style="width:40px"></colgroup><thead><tr><th></th><th>Nr.</th><th>${t('col.name')}</th><th>${t('detail.year')}</th><th>${t('detail.qty')}</th><th>${t('detail.added')}</th><th>${t('detail.purchase_price')}</th><th>${t('detail.market_price')}</th><th>${t('finance.grand.total')}</th><th>${t('finance.total_pnl')}</th><th title="${esc(t('finance.price_status'))}"><span class="vh">${esc(t('finance.price_status'))}</span></th></tr></thead><tbody>${rows}</tbody><tfoot><tr><td colspan="8" style="text-align:right;padding:11px 13px;font-weight:600">${t('finance.total_sets_avg')}</td><td class="price-total" style="font-size:var(--fs-4);padding:11px 13px">${fmtN(setsQtyAvg,cur)}</td><td colspan="2"></td></tr></tfoot></table></div>${partsSectionHtml}${figsSectionHtml}${grandTotalHtml}`;
+  G('fin-tbl').innerHTML=`<div class="tw" data-fin-art="sets"><table class="dt dt-fin" style="table-layout:fixed;width:100%;min-width:1065px"><colgroup><col style="width:60px"><col style="width:90px"><col style="width:250px"><col style="width:55px"><col style="width:70px"><col style="width:90px"><col style="width:110px"><col style="width:110px"><col style="width:110px"><col style="width:80px"><col style="width:40px"></colgroup><thead><tr><th></th><th>Nr.</th><th>${t('col.name')}</th><th>${t('detail.year')}</th><th>${t('detail.qty')}</th><th>${t('detail.added')}</th><th>${t('detail.purchase_price')}</th><th>${t('detail.market_price')}</th><th>${t('finance.grand.total')}</th><th>${t('finance.total_pnl')}</th><th title="${esc(t('finance.price_status'))}"><span class="vh">${esc(t('finance.price_status'))}</span></th></tr></thead><tbody>${rows}</tbody><tfoot><tr><td colspan="6" class="fin-fuss-l">${t('finance.sum')}</td>${summenZellen(einstand.sets, setsQtyAvg, cur, 1)}<td colspan="2"></td></tr></tfoot></table></div>${partsSectionHtml}${figsSectionHtml}${grandTotalHtml}`;
   // Der Filter ueberlebt das Neuzeichnen. Ohne diesen Aufruf stuenden nach
   // jedem „Preise laden" wieder alle drei Abschnitte da, waehrend die Chips
   // daneben weiter eine Auswahl anzeigen — die Anzeige waere dann eine
   // Behauptung.
   finFilterAnwenden();
+}
+
+/** Zahl aus der Serverantwort, sonst der Ersatzwert. */
+function zahlOder(v, ersatz) { const n = parseFloat(v); return Number.isFinite(n) ? n : ersatz; }
+
+/** Summe der Kaufpreise mal Menge — je Erfassung, sonst je Eintrag. */
+function einstandAus(liste) {
+  let s = 0;
+  for (const it of liste || []) {
+    const acqs = it.acquisitions?.length ? it.acquisitions : [it];
+    for (const a of acqs) {
+      const p = parseFloat(a.purchase_price);
+      if (Number.isFinite(p)) s += p * (parseInt(a.quantity) || 1);
+    }
+  }
+  return s;
+}
+
+/**
+ * Die Zellen einer Summenzeile: Einstand und Marktwert. `luecke` Zellen
+ * dazwischen halten die Spalten der Tabelle darüber (Kaufpreis | Marktpreis |
+ * Total). Am Telefon tragen beide ihre Beschriftung selbst (data-kurz).
+ */
+function summenZellen(kauf, wert, cur, luecke) {
+  const k = `<td class="price-total fin-fuss-wert" data-kurz="${esc(t('finance.stat.purchase'))}">${kauf > 0 ? fmtN(kauf, cur) : '—'}</td>`;
+  const w = `<td class="price-total fin-fuss-wert" data-kurz="${esc(t('finance.grand.value'))}">${wert > 0 ? fmtN(wert, cur) : `<span class="fin-fehlt-kurz">${t('finance.price_missing_short')}</span>`}</td>`;
+  return k + '<td></td>'.repeat(luecke) + w;
+}
+
+/**
+ * Die Kacheln über der Tabelle. Der Einstand ist immer bekannt; Gesamtwert
+ * und G&V nur, wenn es Marktpreise gibt — sonst sagt die Kachel, für wie
+ * viele Positionen der Preis fehlt, statt „—“ zu zeigen.
+ */
+function zeigeKennzahlen({ einstand, wert, guv, ohnePreis, cur, min, max }) {
+  G('fin-einstand').textContent = einstand > 0 ? fmtN(einstand, cur) : '—';
+  const fehlt = ohnePreis > 0 ? tRaw('finance.price_missing_n', { n: ohnePreis }) : '';
+  if (wert > 0) {
+    G('fin-wert').textContent = fmtN(wert, cur);
+    const spanne = min > 0 && max > min ? tRaw('finance.range', { min: fmtN(min, cur), max: fmtN(max, cur) }) : '';
+    G('fin-wert-sub').textContent = [spanne, fehlt].filter(Boolean).join(' · ');
+  } else {
+    G('fin-wert').innerHTML = `<span class="fval-hinweis">${esc(fehlt || tRaw('finance.price_missing_short'))}</span>`;
+    G('fin-wert-sub').textContent = '';
+  }
+  G('fin-stat-pnl').style.display = guv != null && wert > 0 ? '' : 'none';
+  if (guv != null) {
+    G('fin-total-pnl').innerHTML = pnlBadge(guv);
+    G('fin-pnl-sub').textContent = einstand > 0 && wert > 0 ? `${wert >= einstand ? '+' : '−'}${fmtN(Math.abs(wert - einstand), cur)}` : '';
+  }
 }
 
 // ── Kategoriefilter: dieselbe Regel wie in der Android-App ──────────────────
