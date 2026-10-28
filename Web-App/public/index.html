@@ -427,9 +427,9 @@
                verborgen, solange nirgends ein Ort erfasst ist — ein Feld
                mit genau einem Eintrag („Alle“) ist nur Rauschen. -->
           <select id="storage-gallery" class="scope-select" aria-label="Lagerort" data-i18n="detail.storage" data-i18n-attr="aria-label" data-change="onStorageChange" data-arg="gallery" style="display:none"></select>
-          <div class="vtgl">
-            <button class="vb active" id="vg" aria-label="Karten" data-i18n="parts.view.grid" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-raster"/></svg></button>
-            <button class="vb" id="vl" aria-label="Tabelle" data-i18n="parts.view.table" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-menue"/></svg></button>
+          <div class="vtgl" role="group" aria-label="Ansicht" data-i18n="parts.view_label" data-i18n-attr="aria-label">
+            <button type="button" class="vb active" aria-pressed="true" id="vg" aria-label="Karten" data-i18n="parts.view.grid" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-raster"/></svg></button>
+            <button type="button" class="vb" aria-pressed="false" id="vl" aria-label="Tabelle" data-i18n="parts.view.table" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-menue"/></svg></button>
           </div>
         </div>
 
@@ -596,10 +596,15 @@
           <select id="storage-parts" class="scope-select" aria-label="Lagerort" data-i18n="detail.storage" data-i18n-attr="aria-label" data-change="onStorageChange" data-arg="parts" style="display:none"></select>
           <select class="w-auto max-240" id="parts-color" aria-label="Nach Farbe filtern" data-i18n="parts.filter.color" data-i18n-attr="aria-label" data-change="setColorFilter" style="display:none"></select>
           <select class="w-auto max-240" id="parts-cat" aria-label="Nach Kategorie filtern" data-i18n="parts.filter.category" data-i18n-attr="aria-label" data-change="setCatFilter" style="display:none"></select>
-          <select class="w-auto" id="parts-view" aria-label="Ansicht" data-i18n="parts.view_label" data-i18n-attr="aria-label">
+          <!-- Wertträger für die Knöpfe daneben: Dieselbe Ansichtswahl wie bei den Sets. -->
+          <select class="vh" tabindex="-1" aria-hidden="true" id="parts-view" aria-label="Ansicht" data-i18n="parts.view_label" data-i18n-attr="aria-label">
             <option value="grid" data-i18n="parts.view.grid">Karten</option>
             <option value="table" data-i18n="parts.view.table">Tabelle</option>
           </select>
+          <div class="vtgl" role="group" aria-label="Ansicht" data-i18n="parts.view_label" data-i18n-attr="aria-label">
+            <button type="button" class="vb active" aria-pressed="true" data-click="ansichtWaehlen" data-arg="parts-view" data-arg2="grid" aria-label="Karten" data-i18n="parts.view.grid" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-raster"/></svg></button>
+            <button type="button" class="vb" aria-pressed="false" data-click="ansichtWaehlen" data-arg="parts-view" data-arg2="table" aria-label="Tabelle" data-i18n="parts.view.table" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-menue"/></svg></button>
+          </div>
       </div>
 
       <!-- Die manuell erfassten Teile stehen UNTER der Filterleiste
@@ -654,10 +659,15 @@
       <div class="filterzeile">
           <input class="suchfeld" type="text" id="fig-search" placeholder="Minifiguren suchen…" data-i18n="figs.search" data-i18n-attr="placeholder" data-input="filterFigs" / aria-label="Minifiguren suchen">
           <select id="scope-minifigs" class="scope-select" aria-label="Konten" data-i18n="household.scope_label" data-i18n-attr="aria-label" data-change="onScopeChange" data-arg="minifigs" style="display:none"></select>
-          <select class="w-auto" id="figs-view" aria-label="Ansicht" data-i18n="parts.view_label" data-i18n-attr="aria-label" data-change="renderFigsAll">
+          <!-- Wertträger für die Knöpfe daneben: Dieselbe Ansichtswahl wie bei den Sets. -->
+          <select class="vh" tabindex="-1" aria-hidden="true" id="figs-view" aria-label="Ansicht" data-i18n="parts.view_label" data-i18n-attr="aria-label" data-change="renderFigsAll">
             <option value="grid" data-i18n="parts.view.grid">Karten</option>
             <option value="table" data-i18n="parts.view.table">Tabelle</option>
           </select>
+          <div class="vtgl" role="group" aria-label="Ansicht" data-i18n="parts.view_label" data-i18n-attr="aria-label">
+            <button type="button" class="vb active" aria-pressed="true" data-click="ansichtWaehlen" data-arg="figs-view" data-arg2="grid" aria-label="Karten" data-i18n="parts.view.grid" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-raster"/></svg></button>
+            <button type="button" class="vb" aria-pressed="false" data-click="ansichtWaehlen" data-arg="figs-view" data-arg2="table" aria-label="Tabelle" data-i18n="parts.view.table" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-menue"/></svg></button>
+          </div>
       </div>
 
       <!-- Wie bei den Teilen: Die manuell erfassten Minifiguren stehen UNTER

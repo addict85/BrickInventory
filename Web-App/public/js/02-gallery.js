@@ -1260,8 +1260,8 @@ async function readSSE(res, onEvent, signal){
   }
 }
 
-G('vg').onclick=()=>{ curView='grid'; G('vg').classList.add('active'); G('vl').classList.remove('active'); renderGallery(); };
-G('vl').onclick=()=>{ curView='list'; G('vl').classList.add('active'); G('vg').classList.remove('active'); renderGallery(); };
+G('vg').onclick=()=>{ curView='grid'; G('vg').classList.add('active'); G('vl').classList.remove('active'); G('vg').setAttribute('aria-pressed','true'); G('vl').setAttribute('aria-pressed','false'); renderGallery(); };
+G('vl').onclick=()=>{ curView='list'; G('vl').classList.add('active'); G('vg').classList.remove('active'); G('vl').setAttribute('aria-pressed','true'); G('vg').setAttribute('aria-pressed','false'); renderGallery(); };
 // Suche entprellt: renderGallery baut das komplette Grid per innerHTML neu auf
 // (inkl. Lazy-Image-Observer) — bei jedem Tastendruck wäre das bei grossen
 // Sammlungen spürbar ruckelig. 250ms Debounce, wie bei der Parts-Suche.
