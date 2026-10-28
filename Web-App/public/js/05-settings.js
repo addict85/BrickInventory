@@ -532,7 +532,10 @@ export async function copyHouseholdInvite(){
 export async function redeemHouseholdInvite(){
   const code = (G('household-redeem-code')?.value || '').trim();
   if(!code){ toast(tRaw('household.redeem_empty'),'error'); return; }
-  const d = await api('POST','/v1/settings/household/redeem',{ code });
+  // Das Hauptkonto sieht und ändert danach die eigene Sammlung — deshalb mit Passwort.
+  const password = await bestaetigeMitPasswort(tRaw('household.redeem_title'), tRaw('household.redeem_confirm_text'), 'link');
+  if(password === null) return;
+  const d = await api('POST','/v1/settings/household/redeem',{ code, password });
   if(!d.success){ toast(d.error || t('settings.error'),'error'); return; }
   G('household-redeem-code').value = '';
   // tRaw + roher Name: Der Toast setzt Text, keine HTML — mit esc() stünde

@@ -744,6 +744,7 @@ window.I18N_DE = {
   'household.redeem_title': 'Einladung annehmen',
   'household.redeem_hint': 'Gib den Code aus dem Hauptkonto ein. Dieses Konto wird danach im Hauptkonto mit angezeigt; deine Daten bleiben deine.',
   'household.redeem_submit': 'Verknüpfen',
+  'household.redeem_confirm_text': 'Das Hauptkonto sieht und ändert danach deine Sammlung. Bitte bestätige mit deinem Passwort.',
   'household.redeem_empty': 'Bitte Einladungscode eingeben.',
   'household.redeem_ok': 'Mit {name} verknüpft.',
   'household.unlink_self': 'Verknüpfung lösen',

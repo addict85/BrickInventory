@@ -281,7 +281,7 @@ test('die Schreibantworten passen zu den Kotlin-Modellen', { concurrency: 1, tim
     // ── Haushalt: einladen, als drittes Konto beitreten, lösen ────────────
     { m: 'POST', p: '/api/v1/settings/household/invite', danach: (j) => { w.code = j.code; } },
     { m: 'POST', p: '/api/v1/settings/household/redeem', als: { id: neu, name: `${NAME}_neu`, admin: false },
-      body: () => ({ code: w.code }) },
+      body: () => ({ code: w.code, password: PASS }) },
     { m: 'POST', p: '/api/v1/settings/household/unlink', body: () => ({ sub_user_id: neu }) },
     { m: 'POST', p: '/api/v1/settings/household/former/dismiss', davor: async () => {
         await erst(`INSERT INTO household_former_links (main_user_id, sub_user_id) VALUES ($1, $2)

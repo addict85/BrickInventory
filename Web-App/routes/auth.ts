@@ -8,6 +8,7 @@ import { meldeHaushaltsaenderung } from '../utils/household';
 import { handleRouteError, logAndContinue, meldeUndWeiter, fehlerCode, fehlertext, pfadParam } from '../utils/httpError';
 import { hashToken, pruefeAnmeldedaten, createToken, validateToken, assertLoginAllowed, establishSession, revokeAllTokens, revokeAllSessions, beendeAndereZugaenge, deleteToken, BCRYPT_ROUNDS, USERNAME_RE, EMAIL_RE, requireLoginOrToken, nutzerId, angemeldeteNutzerId, appTokenOhneAblauf, passwortZuKurz, flaggeGesetzt, leereTokenCache, laufzeitTage } from '../utils/auth';
 import { ipThrottle, bestaetigungGesperrt, bestaetigungFehlgeschlagen, bestaetigungGelungen } from '../utils/loginLimiter';
+import { bestaetigePasswort } from '../utils/passwortBestaetigung';
 import crypto from 'crypto';
 import { strictBool } from '../utils/validate';
 import { sendEmailGeaendertMail, sendPasswordResetMail, sendVerificationMail } from '../utils/mailer';
@@ -487,32 +488,6 @@ const QR_TTL_MS = 5 * 60 * 1000;
 //
 // Einrichten und Abschalten verlangen das Passwort: Wer nur eine offene
 // Sitzung erbeutet, soll das Konto weder aussperren noch den Schutz abbauen.
-/**
- * Das aktuelle Passwort eines angemeldeten Kontos prüfen — die eine Stelle für
- * Passwortwechsel, E-Mail-Wechsel und zweiten Faktor, mit Bremse je Konto
- * (utils/loginLimiter.ts). Antwortet selbst, wenn es nicht stimmt.
- */
-async function bestaetigePasswort(req: Request, res: Response, uid: number, passwort: unknown,
-                                 zusatz: { zweiterFaktor?: unknown } = {}): Promise<boolean> {
-  const gesperrt = await bestaetigungGesperrt(uid);
-  if (gesperrt) { sendeFehler(req, res, 429, gesperrt.code, gesperrt.vars); return false; }
-  const u = await db.get('SELECT password_hash FROM users WHERE id = $1', [uid]);
-  const ok = !!u && typeof passwort === 'string' && passwort !== '' && await bcrypt.compare(passwort, u.password_hash);
-  if (!ok) {
-    await bestaetigungFehlgeschlagen(uid);
-    sendeFehler(req, res, 400, 'aktuelles_passwort_falsch');
-    return false;
-  }
-  // Ein falscher Code zählt wie ein falsches Passwort — sonst liesse er sich
-  // mit bekanntem Passwort beliebig oft raten.
-  if ('zweiterFaktor' in zusatz && !await zf.pruefeCode(uid, zusatz.zweiterFaktor)) {
-    await bestaetigungFehlgeschlagen(uid);
-    sendeFehler(req, res, 400, 'zweiter_faktor_falsch');
-    return false;
-  }
-  await bestaetigungGelungen(uid);
-  return true;
-}
 
 /** Nur der Code des zweiten Faktors — mit derselben Bremse wie das Passwort. */
 async function bestaetigeCode(req: Request, res: Response, uid: number, code: unknown): Promise<boolean> {

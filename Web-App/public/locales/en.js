@@ -731,6 +731,7 @@ window.I18N_EN = {
   'household.redeem_title': 'Accept an invitation',
   'household.redeem_hint': 'Enter the code from the main account. This account will then be shown in the main account; your data stays yours.',
   'household.redeem_submit': 'Link',
+  'household.redeem_confirm_text': 'The main account will then see and change your collection. Please confirm with your password.',
   'household.redeem_empty': 'Please enter an invitation code.',
   'household.redeem_ok': 'Linked with {name}.',
   'household.unlink_self': 'Unlink',

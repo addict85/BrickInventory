@@ -7,11 +7,13 @@
  */
 import express from 'express';
 import * as db from '../../db/database';
-import { handleRouteError } from '../../utils/httpError';
+import { handleRouteError, logAndContinue } from '../../utils/httpError';
 import { requireToken } from './middleware';
 import { householdStatus, createInvite, redeemInvite, unlink, verwerfeGetrennt } from '../../utils/household';
 import { setUserSetting, nutzerStandardZustand, globalDefaultCondition } from '../../utils/settings';
-import { getGlobalSetting, readSettings } from '../../utils/settings';
+import { getGlobalSetting, readSettings, getSetting } from '../../utils/settings';
+import { bestaetigePasswort } from '../../utils/passwortBestaetigung';
+import { sendHaushaltVerknuepftMail } from '../../utils/mailer';
 import { sendeFehler } from '../../utils/fehlerTexte';
 const router = express.Router();
 
@@ -125,10 +127,21 @@ router.post('/settings/household/invite', requireToken, async (req: AuthedReques
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
+// Mit Passwort: Das Hauptkonto liest und schreibt danach den Bestand dieses
+// Kontos, und das übersteht auch einen Passwortwechsel. Ein erbeutetes Token
+// allein soll das nicht einrichten können.
 router.post('/settings/household/redeem', requireToken, async (req: AuthedRequest, res) => {
   try {
-    const r = await redeemInvite(req.apiUser.user_id, String(req.body?.code || ''));
+    const uid = req.apiUser.user_id;
+    if (!await bestaetigePasswort(req, res, uid, req.body?.password)) return;
+    const r = await redeemInvite(uid, String(req.body?.code || ''));
     if ((r as any).fehler) return sendeFehler(req, res, 409, (r as any).fehler, (r as any).vars);
+    const ich = await db.get('SELECT username, email FROM users WHERE id = $1', [uid]);
+    if (ich?.email) {
+      const sprache = await getSetting(uid, 'language', 'de').catch(() => 'de');
+      sendHaushaltVerknuepftMail(ich.email, ich.username, (r as any).linked_to?.username || '', String(sprache ?? 'de'))
+        .catch(logAndContinue('haushalt:hinweismail'));
+    }
     res.json({ success: true, ...r });
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
