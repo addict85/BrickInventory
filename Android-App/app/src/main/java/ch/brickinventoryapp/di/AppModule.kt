@@ -20,6 +20,9 @@ import okhttp3.Dispatcher
 import okhttp3.ResponseBody.Companion.toResponseBody
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.OkHttpClient
+import okhttp3.RequestBody.Companion.toRequestBody
+import ch.brickinventoryapp.util.BeweisSpeicher
+import ch.brickinventoryapp.util.ServerBeweis
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import java.io.IOException
@@ -49,6 +52,15 @@ object AppModule {
     @Provides
     @Singleton
     fun provideJson(): Json = ch.brickinventoryapp.data.api.ApiJson
+
+    /** Gemeinsam für API- und Bild-Client: ein Beweis je Server, Netz und Token. */
+    private val beweise = BeweisSpeicher()
+
+    /** Kennung des aktiven Netzes; ein WLAN-Wechsel ergibt eine neue. */
+    private fun netzKennung(ctx: android.content.Context): String = runCatching {
+        (ctx.getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as? android.net.ConnectivityManager)
+            ?.activeNetwork?.toString()
+    }.getOrNull() ?: "?"
 
     /**
      * Shared interceptor logic:
@@ -163,6 +175,36 @@ object AppModule {
                     )
                 }
 
+                // Klartext mit Token: Erst muss sich der Server in diesem Netz
+                // ausweisen (util/ServerBeweis.kt). Antwortet er, er kenne den
+                // Token nicht, ist die Sitzung abgelaufen — oder es ist nicht
+                // unser Server; in beiden Fällen geht der Token nicht hinaus.
+                fun pruefeServer(anfrage: okhttp3.Request) {
+                    val kopf = anfrage.header("Authorization") ?: return
+                    if (anfrage.url.isHttps || !isOurServer) return
+                    val mitToken = kopf.removePrefix("Bearer ").trim()
+                    val schluessel = beweise.schluessel(anfrage.url.host, anfrage.url.port, netzKennung(ctx), mitToken)
+                    if (beweise.bekannt(schluessel)) return
+                    val nonce = ServerBeweis.neueNonce()
+                    val frage = okhttp3.Request.Builder()
+                        .url("$serverUrl/api/v1/auth/serverbeweis")
+                        .header("X-App-Api", ch.brickinventoryapp.util.APP_API_VERSION.toString())
+                        .post("""{"kennung":"${ServerBeweis.kennung(mitToken)}","nonce":"$nonce"}"""
+                            .toRequestBody("application/json".toMediaType()))
+                        .build()
+                    val (code, text) = chain.proceed(frage).use { it.code to it.body.string() }
+                    if (code == 200 && ServerBeweis.stimmt(mitToken, nonce, ServerBeweis.ausAntwort(text))) {
+                        beweise.merke(schluessel)
+                        return
+                    }
+                    if (code == 404 && text.contains("\"token_ungueltig\"")) sessionExpired.notifyExpired()
+                    throw IOException(
+                        "Der Server unter ${anfrage.url.host} hat sich in diesem Netz nicht ausgewiesen — " +
+                        "die Anmeldung wurde nicht unverschlüsselt gesendet."
+                    )
+                }
+
+                pruefeServer(outgoing)
                 var response = chain.proceed(outgoing)
                 var tokenMitgeschickt = token.isNotBlank()
 
@@ -184,9 +226,9 @@ object AppModule {
                     val jetzt = prefs.authTokenState.value.orEmpty()
                     if (jetzt.isNotBlank()) {
                         response.close()
-                        response = chain.proceed(
-                            outgoing.newBuilder().header("Authorization", "Bearer $jetzt").build()
-                        )
+                        val nachfass = outgoing.newBuilder().header("Authorization", "Bearer $jetzt").build()
+                        pruefeServer(nachfass)
+                        response = chain.proceed(nachfass)
                         tokenMitgeschickt = true
                     }
                 }

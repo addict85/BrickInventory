@@ -829,6 +829,29 @@ router.post('/reset-password', ipThrottle('reset-password', 10, 60 * 60 * 1000),
 // weder Webapp noch Android nennen sie.
 
 
+// Die App fragt das vor jedem Klartext-Zugang in einem neuen Netz: Im fremden
+// WLAN kann "http://nas:3000" auf einen anderen Rechner zeigen, und der
+// bekäme sonst den Token. Nur der echte Server kennt den Hash des Tokens und
+// kann die Zufallszahl damit unterschreiben; die Kennung (16 Stellen des
+// Hashs) verrät über den Token nichts.
+router.post('/serverbeweis', ipThrottle('serverbeweis', 120, 60 * 60 * 1000), async (req, res) => {
+  const { kennung, nonce } = req.body ?? {};
+  if (typeof kennung !== 'string' || !/^[0-9a-f]{16}$/.test(kennung)
+      || typeof nonce !== 'string' || !/^[0-9a-f]{32,128}$/.test(nonce))
+    return sendeFehler(req, res, 400, 'wert_ungueltig');
+  try {
+    const zeile = await db.get(
+      `SELECT token FROM api_tokens
+        WHERE left(token, 16) = $1
+          AND (expires_at IS NULL OR expires_at > NOW())
+          AND (hard_expires_at IS NULL OR hard_expires_at > NOW())
+        LIMIT 1`, [kennung]);
+    if (!zeile) return sendeFehler(req, res, 404, 'token_ungueltig');
+    res.json({ success: true,
+      beweis: crypto.createHmac('sha256', zeile.token).update(nonce).digest('hex') });
+  } catch (e) { handleRouteError(res, e, undefined, req); }
+});
+
 // CJS-kompatibler Export: module.exports bleibt der Router selbst,
 // mit den intern/von jobs/ genutzten Funktionen als Properties (wie zuvor).
 export = Object.assign(router, { requireLogin, requireAdmin });
