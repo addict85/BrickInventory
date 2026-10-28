@@ -2,8 +2,8 @@
 /**
  * Das vollständige Schema an einer Stelle: db/schema-stand.sql.
  *
- * Das Schema entsteht aus schema.sql, den Schritten in db/database.ts und den
- * Migrationen — keine der drei Quellen zeigt das Ergebnis. Dieses Skript baut
+ * Das Schema entsteht aus db/basis.sql und den Migrationen; keine der
+ * beiden Quellen zeigt das Ergebnis lesbar. Dieses Skript baut
  * eine frische Datenbank wie beim ersten Start und schreibt aus dem Katalog,
  * was dabei herauskommt: Tabellen mit Spalten, Schranken, Indizes, Trigger,
  * Funktionen. Die Datei ist zum Lesen da, nicht zum Einspielen.
@@ -58,7 +58,7 @@ async function schemaText(db) {
   const teile = [
     '-- Erzeugt von scripts/schema-stand.js aus einer frischen Datenbank.',
     '-- Nicht von Hand ändern und nicht einspielen: Das Schema entsteht aus',
-    '-- db/schema.sql, db/database.ts und db/migrations/. Neu erzeugen mit',
+    '-- db/basis.sql und db/migrations/. Neu erzeugen mit',
     '-- `npm run build && npm run schema:stand`.',
     '',
     ...erweiterungen.map(e => `CREATE EXTENSION ${e.extname};`),
@@ -73,6 +73,39 @@ async function schemaText(db) {
   }
   for (const f of funktionen) teile.push('', `${f.def.trim()};`);
   return teile.join('\n').replace(/public\./g, '') + '\n';
+}
+
+const BASIS = path.join(__dirname, '..', 'db', 'basis.sql');
+/** Startdaten, die eine neue Installation braucht; alles andere bleibt leer. */
+const BASIS_DATEN = ['global_settings', 'gutschein_guthaben_schranke', 'parts_katalog_stand', 'schema_migrations'];
+
+/**
+ * db/basis.sql aus einer fertig migrierten Datenbank schreiben: Schema und
+ * Startdaten als ausführbares SQL. Braucht pg_dump im Pfad.
+ * @param {string} url
+ */
+function schreibeBasis(url) {
+  const { execFileSync } = require('child_process');
+  /** @param {string[]} args */
+  const dump = (args) => execFileSync('pg_dump', [...args, '--no-owner', '--no-privileges', '--no-comments', url],
+    { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+  const roh = dump(['--schema-only']) + '\n' +
+    dump(['--data-only', '--column-inserts', ...BASIS_DATEN.flatMap(t => ['-t', `public.${t}`])]);
+  // Weg damit: psql-Befehle (\restrict), die Leerung des Suchpfads (die
+  // Funktionen der Trigger suchen ihre Tabellen ohne Schemaangabe) und die
+  // Versionszeilen, die bei jedem pg_dump anders aussehen.
+  const sauber = roh.split('\n').filter(z =>
+    !/^\\(un)?restrict\b/.test(z) &&
+    !/^SELECT pg_catalog\.set_config\('search_path'/.test(z) &&
+    !/^-- Dumped (from|by)/.test(z)).join('\n').replace(/\n{3,}/g, '\n\n');
+  fs.writeFileSync(BASIS, [
+    '-- Schema einer NEUEN Installation: Abbild aller Migrationen, die es bei',
+    '-- seiner Erzeugung gab. db/database.ts spielt es in eine leere Datenbank,',
+    '-- danach laufen nur die jüngeren Migrationen. Nicht von Hand ändern —',
+    '-- neu erzeugen mit `npm run build && npm run schema:stand`.',
+    '',
+  ].join('\n') + sauber);
+  console.log(`geschrieben: ${path.relative(process.cwd(), BASIS)}`);
 }
 
 /** Eine frische Datenbank anlegen, aufbauen, beschreiben, wieder löschen. */
@@ -93,6 +126,9 @@ async function main() {
     await db.initSchemaOnce();
     fs.writeFileSync(DATEI, await schemaText(db));
     console.log(`geschrieben: ${path.relative(process.cwd(), DATEI)}`);
+    // Das erste Konto legt der Server an, es gehört nicht in die Basis.
+    await db.run('DELETE FROM users');
+    schreibeBasis(ziel.toString());
   } finally {
     await db.pool.end().catch(() => {});
     await admin.query(`DROP DATABASE IF EXISTS ${name}`).catch(() => {});
@@ -102,4 +138,4 @@ async function main() {
 
 if (require.main === module) main().catch(e => { console.error(e.message); process.exit(1); });
 
-module.exports = { schemaText, DATEI };
+module.exports = { schemaText, schreibeBasis, DATEI, BASIS };

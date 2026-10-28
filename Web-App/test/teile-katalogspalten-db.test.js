@@ -1,4 +1,8 @@
 /**
+ * Seit db/basis.sql gibt es den Stand VOR dieser Migration nicht mehr: Die
+ * Fälle zu Riegel, Nachtrag und Zwischenstand sind entfallen. Geprüft werden
+ * der Endstand und die Lesewege.
+ *
  * Teile und Minifiguren: Bestand und Beschreibung sind getrennt.
  *
  * ── Marcos Vorgabe ──────────────────────────────────────────────────────────
@@ -88,38 +92,8 @@ test('nach der ganzen Kette tragen parts und minifigs nur noch den Bestand',
   await db.run('CREATE SCHEMA public');
   await db.initSchema();
 
-  // ── Zwischenstand: VORHER muessen alle Spalten da sein ────────────────────
-  //
-  // Keine Zierde, sondern zweierlei auf einmal: der Selbstnachweis fuer die
-  // Pruefung darunter (ohne ihn saehe auch eine leere Tabelle gruen aus) und
-  // die Zusage, dass die Migrationskette ueberhaupt durchlaeuft.
-  //
-  // Drei Migrationen fassen diese Spalten an und brechen auf einer fehlenden
-  // hart ab:
-  //
-  //   0007-geld-als-numeric.sql        ALTER COLUMN unit_price/purchase_price TYPE
-  //   0014-img-proxy-nach-v1.sql       UPDATE parts SET image_url = ...
-  //   0029-trigramm-bestandssuche.sql  CREATE INDEX ... (lower(part_name))
-  //
-  // Die uebrigen braucht der Nachtrag in Schritt 1c von 0034: Er liest die
-  // Beschreibung manuell erfasster Positionen aus dem Bestand und nennt sie
-  // alle in EINER Anweisung. GEMESSEN, als category_name in schema.sql fehlte:
-  // „Migration 0034 … fehlgeschlagen: column p.category_name does not exist".
-  const vorher = await spaltenVon('parts');
-  for (const sp of ['part_name', 'color_name', 'color_hex', 'category_name',
-                    'image_url', 'image_local', 'is_spare', 'created_at',
-                    'unit_price', 'purchase_price']) {
-    assert.ok(vorher.includes(sp),
-      `parts.${sp} fehlt schon vor den Migrationen — dann bricht Migration ` +
-      '0007, 0014, 0029 oder 0034 beim ersten Start einer frischen ' +
-      'Installation ab. db/schema.sql muss die Spalte anlegen.');
-  }
-  const vorherFigs = await spaltenVon('minifigs');
-  for (const sp of ['fig_name', 'image_url', 'image_local']) {
-    assert.ok(vorherFigs.includes(sp),
-      `minifigs.${sp} fehlt vor den Migrationen — siehe die Begruendung bei parts`);
-  }
-
+  // Den Vorstand vor den Migrationen gibt es nicht mehr: Eine leere
+  // Datenbank bekommt db/basis.sql. Geprüft wird der Endstand.
   const client = await db.pool.connect();
   try { await _req('db/migrate.js').runMigrations(client); } finally { client.release(); }
 
@@ -168,127 +142,6 @@ test('nach der ganzen Kette tragen parts und minifigs nur noch den Bestand',
   // TEILELISTE eines Sets und steht dort seit jeher.
   assert.ok((await spaltenVon('set_parts_catalog')).includes('is_spare'),
     'set_parts_catalog.is_spare fehlt — dann gibt es das Ersatzteilkennzeichen nirgends');
-});
-
-test('Migration 0034 löscht nur, wenn kein Name verloren geht',
-  { concurrency: 1 }, async (t) => {
-  if (!(await dbDa(t))) return;
-
-  // ── Warum dieser Test der wichtigere ist ─────────────────────────────────
-  //
-  // Schritt 1b fuellt die Kataloge aus set_parts_catalog, Schritt 1c aus dem
-  // Bestand (fuer manuell erfasste Positionen, die in keinem Set-Katalog
-  // stehen), Schritt 2 zaehlt nach und bricht ab, Schritt 3 loescht.
-  //
-  // Ohne Schritt 2 waere das Loeschen ein Datenverlust mit Ansage: Ein manuell
-  // erfasstes Teil haette danach keinen Namen mehr, und er liesse sich aus
-  // nichts herleiten.
-  //
-  // Drei Laeufe auf derselben Lage (ein manuell erfasstes Teil, dessen Name
-  // NUR im Bestand steht):
-  //
-  //   1. ganze Datei            → traegt nach, loescht, der Name ist im Katalog
-  //   2. ohne Schritt 1c        → Schritt 2 bricht ab, die Spalten bleiben
-  //   3. ohne Schritt 1c und 2  → laeuft durch, die Spalten sind weg, Name weg
-  //
-  // Lauf 2 ist die Zusage, Lauf 3 die GEGENPROBE: Er zeigt, dass Schritt 2
-  // tatsaechlich das ist, was den Verlust verhindert.
-  const skript = fs.readFileSync(DATEI, 'utf8');
-
-  // Die Abschnitte woertlich aus der Datei schneiden — nicht nachgebaut.
-  const nachtrag = skript.slice(skript.indexOf('DO $nachtrag$'),
-                               skript.indexOf('END $nachtrag$;') + 15);
-  const riegel   = skript.slice(skript.indexOf('DO $pruefung$'),
-                               skript.indexOf('END $pruefung$;') + 15);
-  assert.match(nachtrag, /INSERT INTO part_catalog/,
-    'Schritt 1c (der Nachtrag aus dem Bestand) steht nicht mehr als DO $nachtrag$-Block');
-  assert.match(riegel, /RAISE EXCEPTION '% Teilenummern wuerden ihren Namen verlieren/,
-    'Schritt 2 (der Riegel) steht nicht mehr in der Migration');
-  assert.match(riegel, /RAISE EXCEPTION '% Figurennummern wuerden ihren Namen verlieren/,
-    'Der Riegel prüft die Figuren nicht mehr');
-  assert.ok(skript.indexOf('DO $nachtrag$') < skript.indexOf('DO $pruefung$'),
-    'Der Riegel muss NACH dem Nachtrag stehen, sonst prüft er die alte Lage');
-
-  /**
-   * Frische Datenbank, alle Migrationen VOR 0034, ein manuell erfasstes Teil
-   * und eine manuell erfasste Figur mit Namen nur im Bestand — dann das
-   * uebergebene Skript.
-   * @returns {Promise<string|null>} Fehlermeldung von Postgres, sonst null
-   */
-  const lauf = async (sql) => {
-    await db.run('DROP SCHEMA public CASCADE');
-    await db.run('CREATE SCHEMA public');
-    await db.initSchema();
-    const c = await db.pool.connect();
-    try {
-      await c.query(`CREATE TABLE IF NOT EXISTS schema_migrations (
-        name TEXT PRIMARY KEY, applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`);
-      for (const f of fs.readdirSync(MIG_DIR).filter(x => x.endsWith('.sql')).sort()) {
-        if (f.startsWith('0034')) break;
-        await c.query(fs.readFileSync(path.join(MIG_DIR, f), 'utf8'));
-        await c.query('INSERT INTO schema_migrations (name) VALUES ($1)', [f]);
-      }
-      await c.query(`INSERT INTO users (username,password_hash) VALUES ('katalog','x')`);
-      await c.query(`INSERT INTO parts (user_id,part_number,part_name,color_id,color_name,
-                                        color_hex,category_name,quantity,source)
-                     SELECT id,'98138','Tile Round 1x1',14,'Yellow','F2CD37','Tiles',7,'manual'
-                       FROM users WHERE username='katalog'`);
-      await c.query(`INSERT INTO minifigs (user_id,fig_number,fig_name,quantity,source)
-                     SELECT id,'fig-999999','Eigenbau-Figur',2,'manual'
-                       FROM users WHERE username='katalog'`);
-      // Wie die echte Migration: eine Transaktion je Datei (db/migrate.ts).
-      await c.query('BEGIN');
-      try { await c.query(sql); await c.query('COMMIT'); return null; }
-      catch (e) { await c.query('ROLLBACK').catch(() => {}); return e.message; }
-    } finally { c.release(); }
-  };
-
-  // ── Lauf 1: die ganze Datei ──────────────────────────────────────────────
-  assert.equal(await lauf(skript), null,
-    'Die Migration muss auf dieser Lage durchlaufen — Schritt 1c trägt den ' +
-    'Namen des manuell erfassten Teils ja gerade nach');
-  const imKatalog = await db.get(
-    `SELECT part_name, category_name FROM part_catalog WHERE part_number='98138'`);
-  assert.ok(imKatalog, 'Schritt 1c hat für das manuell erfasste Teil keine Katalogzeile angelegt');
-  assert.equal(imKatalog.part_name, 'Tile Round 1x1',
-    'Der Name des manuell erfassten Teils ist beim Umzug verloren gegangen');
-  assert.equal(imKatalog.category_name, 'Tiles', 'Die Kategorie ist verloren gegangen');
-  const farbe = await db.get(
-    `SELECT color_name, color_hex FROM part_color_catalog WHERE part_number='98138' AND color_id=14`);
-  assert.equal(farbe?.color_name, 'Yellow', 'Die Farbbezeichnung ist verloren gegangen');
-  assert.equal(farbe?.color_hex, 'F2CD37', 'Der Farbcode ist verloren gegangen');
-  const figur = await db.get(
-    `SELECT fig_name FROM minifigs_catalog WHERE fig_number='fig-999999'`);
-  assert.equal(figur?.fig_name, 'Eigenbau-Figur', 'Der Figurenname ist verloren gegangen');
-
-  // ── Lauf 2: ohne Schritt 1c — der Riegel muss greifen ────────────────────
-  const ohneNachtrag = skript.replace(nachtrag, '');
-  assert.notEqual(ohneNachtrag, skript, 'Schritt 1c wurde nicht herausgeschnitten');
-  const meldung = await lauf(ohneNachtrag);
-  assert.match(String(meldung), /1 Teilenummern wuerden ihren Namen verlieren/,
-    `Der Riegel hat nicht gegriffen. Postgres sagte: ${meldung}`);
-  // Und nichts ist gelöscht: Die Datei lief in EINER Transaktion.
-  const nachAbbruch = await spaltenVon('parts');
-  for (const sp of ['part_name', 'color_name', 'is_spare']) {
-    assert.ok(nachAbbruch.includes(sp),
-      `parts.${sp} ist trotz Abbruch weg — dann rollt die Transaktion nicht zurück`);
-  }
-  const nameDa = await db.get(`SELECT part_name FROM parts WHERE part_number='98138'`);
-  assert.equal(nameDa?.part_name, 'Tile Round 1x1', 'Der Name ist trotz Abbruch verschwunden');
-
-  // ── Lauf 3: GEGENPROBE, ohne Schritt 1c UND ohne Schritt 2 ───────────────
-  const ohneBeides = ohneNachtrag.replace(riegel, '');
-  assert.notEqual(ohneBeides, ohneNachtrag, 'Schritt 2 wurde nicht herausgeschnitten');
-  assert.equal(await lauf(ohneBeides), null,
-    'Ohne den Riegel muss die Datei durchlaufen — sonst beweist Lauf 2 nichts');
-  assert.deepEqual(
-    (await spaltenVon('parts')).filter(c => ['part_name', 'color_name'].includes(c)), [],
-    'Ohne Riegel müssen die Spalten gelöscht sein — sonst beweist Lauf 2 nichts');
-  const verloren = await db.get(
-    `SELECT part_name FROM part_catalog WHERE part_number='98138'`);
-  assert.equal(verloren, undefined,
-    'Ohne Schritt 1c darf der Name NICHT im Katalog stehen — er war nur im Bestand. ' +
-    'Steht er da, trägt ihn etwas anderes nach und Lauf 2 beweist nichts.');
 });
 
 test('die Teileliste liefert Beschreibung und Lagerort aus den Katalogen',

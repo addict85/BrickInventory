@@ -223,7 +223,7 @@ test('die Mengenerhöhung mittelt den Kaufpreis, statt ihn stehen zu lassen', ()
                        src.indexOf('async function addSet'));
   assert.doesNotMatch(fn, /UPDATE set_acquisitions SET quantity = quantity \+ \$1/,
     'Kein direktes Aufstocken mehr — das entscheidet recordAcquisitionForDay');
-  assert.match(fn, /await recordAcquisition\(userId, setNumber, delta, plan\.price, plan\.condition, dbh, !!plan\.geschaetzt\);/,
+  assert.match(fn, /await recordAcquisition\(userId, setNumber, delta, plan\.price, plan\.condition, dbh, !!plan\.geschaetzt, plan\.currency \?\? null\);/,
     'Auch die Erhöhung läuft über den gemeinsamen Schreibweg');
   // Der Preis kommt aus priceForNewAcquisition() — ausgelagert, weil der
   // BrickLink-Abruf darin VOR dem Advisory-Lock laufen muss (ein Netzaufruf

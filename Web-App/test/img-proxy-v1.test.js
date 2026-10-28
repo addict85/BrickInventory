@@ -128,14 +128,11 @@ test('die App baut die neue Adresse und nirgends die alte', () => {
 test('die Migration erfasst JEDE Tabelle mit image_url', () => {
   // Die Tabellenliste wird aus dem Schema GELESEN, nicht abgeschrieben: Eine
   // achte Tabelle mit image_url soll auffallen, nicht durchrutschen.
-  const schema = lies(ROOT, 'db', 'schema.sql');
-  const tabellen = [];
-  let aktuell = null;
-  for (const z of schema.split('\n')) {
-    const m = /^\s*CREATE TABLE (?:IF NOT EXISTS )?(\w+)/.exec(z);
-    if (m) aktuell = m[1];
-    if (/^\s*image_url\s/.test(z) && aktuell) tabellen.push(aktuell);
-  }
+  // Die Tabellen mit image_url, die es VOR 0014 gab — abgelesen aus dem
+  // früheren db/schema.sql, als es durch db/basis.sql ersetzt wurde. 0014 ist
+  // abgeschlossen; die Liste ändert sich nicht mehr (einige Spalten sind
+  // später in die Kataloge gewandert).
+  const tabellen = ['sets', 'set_catalog', 'set_parts_catalog', 'set_minifigs_catalog', 'parts', 'catalog_cache', 'minifigs'];
   // GEMESSEN sind es sieben.
   assert.ok(tabellen.length >= 5,
     `Nur ${tabellen.length} Tabellen mit image_url gefunden — Muster veraltet?`);
@@ -152,7 +149,7 @@ test('die Migration erfasst JEDE Tabelle mit image_url', () => {
 
   // ── Tabellen, die es bei Migration 0014 noch nicht gab ──────────────────
   //
-  // Die Liste oben liest schema.sql. Neun Tabellen stehen nur in ihrer
+  // Die Liste oben nennt nur Tabellen von vor 0014. Neun Tabellen stehen nur in ihrer
   // Migration, und drei davon tragen image_url: part_catalog gibt es nicht,
   // aber part_color_catalog und minifigs_catalog (Migration 0034).
   //

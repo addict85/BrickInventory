@@ -51,8 +51,6 @@ const ERLAUBT = new Map([
  *     Konfigurations-Export — das ist kein Zugriff auf einen einzelnen
  *     Schluessel. Die Einstellungsseite stand hier bis zur Zusammenlegung der
  *     API-Oberflaechen ebenfalls; sie liest jetzt ueber readSettings().
- *   - utils/setService.ts: liest ueber den uebergebenen Verbindungs-Handle,
- *     damit der Wert innerhalb DERSELBEN Transaktion gesehen wird.
  *   - Der Rest sind Erwaehnungen in Kommentaren. Die zaehlt die Pruefung mit,
  *     weil sie nur nach dem Tabellennamen sucht — Absicht: lieber eine Zahl zu
  *     hoch als eine echte Fundstelle uebersehen.
@@ -68,7 +66,6 @@ const OFFEN = new Map([
   ['utils/finance/preise.ts', 5],
   ['utils/jobMonitor.ts', 3],
   ['utils/rateLimiter.ts', 1],
-  ['utils/setService.ts', 1],
 ]);
 
 function dateien() {

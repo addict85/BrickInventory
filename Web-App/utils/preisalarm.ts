@@ -333,18 +333,13 @@ async function verschicke(versende: Versender, a: AlarmZeile, preis: number, sch
  */
 export async function buildPreisalarmeCsv(uid: number): Promise<string> {
   const { toCsv } = require('./csvExport');
-  const { meldeUndWeiter } = require('./httpError');
   const rows = await db.all(
     `SELECT set_number, condition, richtung, schwelle, currency_code
        FROM price_alerts
       WHERE user_id = $1
       ORDER BY set_number, condition`,
-    [uid])
-    // price_alerts steht nur in db/migrations/0019-preisalarm.sql — ein Aufbau,
-    // der bloss initSchema() gelaufen ist, hat die Tabelle nicht (die
-    // Begruendung steht in db/schema.sql). Eine leere Datei im Archiv ist dort
-    // die richtige Antwort; ein Fehler riss sonst den GANZEN ZIP-Export mit.
-    .catch((e: unknown) => { meldeUndWeiter('preisalarm:export', e); return []; });
+    [uid]);
+
 
   return toCsv(['set_number', 'condition', 'richtung', 'schwelle', 'currency_code'],
     // schwelle kommt als NUMERIC, also als Zeichenkette aus dem Treiber. Ohne

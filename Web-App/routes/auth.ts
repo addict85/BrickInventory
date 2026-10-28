@@ -369,7 +369,7 @@ router.delete('/users/:id', requireAdmin, async (req, res) => {
       [targetId, nutzerId(req)]);
     if (r.changes === 0) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden_oder_eigenes');
     // Die Zeile ist weg, der Zugang war es nicht
-    // Die Bearer-Tokens gehen per ON DELETE CASCADE mit (siehe db/schema.sql).
+    // Die Bearer-Tokens gehen per ON DELETE CASCADE mit (Fremdschlüssel in db/basis.sql).
     // user_sessions dagegen ist der Tabellenraum des Session-Stores und hat
     // KEINEN Fremdschluessel auf users — die offene Sitzung des geloeschten …
     // Ausführlich: docs/begruendungen/routes/auth.ts.md#delete-users-id

@@ -190,10 +190,10 @@ Invarianten der App stehen in
 
 Das vollständige Datenbankschema steht in
 [`Web-App/db/schema-stand.sql`](Web-App/db/schema-stand.sql) — erzeugt aus
-einer frischen Datenbank, zum Lesen. Es entsteht aus `db/schema.sql`,
-`db/database.ts` und `db/migrations/`; nach einer Migration mit
-`npm run build && npm run schema:stand` neu schreiben (der Schema-Test meldet
-es sonst).
+einer frischen Datenbank, zum Lesen. Eine neue Installation bekommt ihr
+Schema aus `db/basis.sql` und danach die jüngeren `db/migrations/`; nach einer
+Migration beide Dateien mit `npm run build && npm run schema:stand` neu
+schreiben (braucht `pg_dump`; der Schema-Test meldet einen veralteten Stand).
 
 ---
 

@@ -99,15 +99,8 @@ test('die Mengen-Multiplikation steht an allen Stellen', () => {
     'Zu wenige JOIN-Quellen: mengeAus() liest `sm.menge`, und den Alias hängt ' +
     'erst mengeJoin() an');
 
-  // Die Zusammenfassung hält vorberechnete Mengen. Ihre Zähler müssen bei
-  // einer Änderung an `sets` hochgehen — UND an `set_acquisitions`: Dort
-  // steht die Setmenge seit Migration 0036, und total_quantity rechnet mit
-  // ihr. Ohne den zweiten Trigger bliebe die Teilezahl nach einem Zukauf
-  // stehen, ohne dass etwas falsch aussähe.
-  const ps = ohneKommentare(fs.readFileSync(path.join(ROOT, 'utils/partsSummary.ts'), 'utf8'));
-  assert.match(ps, /for \(const tbl of \['parts', 'sets', 'set_acquisitions'\]\)/,
-    'Die Versionszähler hängen nicht an `sets` UND `set_acquisitions` — nach ' +
-    'einer Mengenänderung bliebe die vorberechnete Teilezahl stehen');
+  // Dass die Zusammenfassung einer Mengenänderung folgt, prüft
+  // parts-summary.test.js am laufenden Trigger (Migration 0052).
 });
 
 test('Löschen und Mengenänderung gegen die Datenbank', { concurrency: 1 }, async (t) => {

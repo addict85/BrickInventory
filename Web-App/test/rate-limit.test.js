@@ -88,19 +88,6 @@ test('das Tageskontingent zählt für die Installation, nicht je Worker', () => 
     'Ein In-Memory-Limit muss nicht mehr geladen werden');
 });
 
-test('Seed und Migration setzen denselben Wert', () => {
-  const dbts = fs.readFileSync(path.join(ROOT, 'db', 'database.ts'), 'utf8');
-  assert.match(dbts, new RegExp(`'api_limit_rebrickable',\\s*'${EXPECTED}'`),
-    `Der Seed für Neuinstallationen muss auf ${EXPECTED} stehen`);
-  assert.match(dbts, new RegExp(`UPDATE global_settings SET value = '${EXPECTED}'[\\s\\S]*?api_limit_rebrickable`),
-    'Bestandsinstallationen brauchen die Migration — ON CONFLICT DO NOTHING lässt den alten Seed sonst stehen');
-  // Jeder frühere Standard muss in der Migration stehen, sonst bleibt eine
-  // Installation je nach zuletzt gelaufener Version auf einem Zwischenwert hängen.
-  for (const old of ['4000', '10000'])
-    assert.match(dbts, new RegExp(`IN \\([^)]*'${old}'`),
-      `Früherer Standard ${old} fehlt in der Migration`);
-});
-
 test('ein geändertes Limit gilt sofort in ALLEN Workern', () => {
   // Vorher: PUT /api/v1/admin/api-limits rief setMax() auf — das galt nur im
   // Worker, der die Anfrage bearbeitet hat. Die übrigen liefen bis zum
@@ -195,12 +182,6 @@ test('bei DB-Ausfall greift die Rückfallebene', () => {
       `${fn}: ohne Rückfall wäre der Login bei DB-Problemen komplett blockiert`);
   }
   assert.match(src, /const _attempts = new Map/, 'In-Memory-Rückfall fehlt');
-});
-
-test('die Tabelle wird beim Schema-Aufbau angelegt', () => {
-  const dbts = fs.readFileSync(path.join(ROOT, 'db', 'database.ts'), 'utf8');
-  assert.match(dbts, /CREATE TABLE IF NOT EXISTS rate_limit_attempts/, 'Tabelle fehlt im Schema');
-  assert.match(dbts, /key      TEXT PRIMARY KEY/, 'der Schlüssel muss Primärschlüssel sein');
 });
 
 test('die Aufrufstellen warten auf das Ergebnis', () => {

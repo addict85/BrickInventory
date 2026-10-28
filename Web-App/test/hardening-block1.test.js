@@ -55,9 +55,8 @@ test('Rate-Limits zählen worker-übergreifend', () => {
   assert.match(lim, /Rückfallebene, falls die DB klemmt/,
     'Ein Datenbankfehler darf den Login nicht blockieren');
 
-  const db = read('db/database.ts');
-  assert.match(db, /CREATE TABLE IF NOT EXISTS rate_limit_attempts/, 'Die Tabelle wird nicht angelegt');
-  assert.doesNotMatch(db, /CREATE TABLE IF NOT EXISTS rate_counters/,
+  // Dass die Tabelle angelegt wird, prüft schema-basis-db.test.js am Schema.
+  assert.doesNotMatch(read('db/basis.sql'), /rate_counters/,
     'rate_counters ist tot und darf nicht neu angelegt werden');
 });
 

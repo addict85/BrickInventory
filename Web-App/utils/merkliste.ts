@@ -228,11 +228,8 @@ export async function merkpostenVon(
                                AND pc.currency_code = ${pWaehrung}
       WHERE w.user_id = ANY($1)${wo}
       ORDER BY ${ordnung}, w.set_number, w.condition`,
-    params)
-    // Wie beim Preisalarm: Ein Aufbau, der nur initSchema() gelaufen ist, hat
-    // die Tabelle nicht (siehe die Begruendung in db/schema.sql). Eine leere
-    // Liste ist dort die richtige Antwort, kein Fehler.
-    .catch((e: unknown) => { meldeUndWeiter('merkliste:lesen', e); return []; });
+    params);
+
   // Die Zahlenspalten kommen als Zeichenkette aus dem Treiber — dieselbe
   // Stelle, an der in diesem Baum schon einmal ein Vergleich still falsch
   // wurde (siehe utils/preisalarm.ts).
@@ -337,12 +334,8 @@ export async function buildMerklisteCsv(uid: number): Promise<string> {
        FROM wanted w
       WHERE w.user_id = $1
       ORDER BY w.created_at DESC, w.set_number, w.condition`,
-    [uid])
-    // Wie beim Lesen oben: Ein Aufbau, der nur initSchema() gelaufen ist, hat
-    // die Tabelle nicht (die Begruendung steht in db/schema.sql). Eine leere
-    // Datei im Archiv ist dort die richtige Antwort — ein Fehler riss sonst
-    // den GANZEN ZIP-Export mit, samt Sets, Teilen und Minifiguren.
-    .catch((e: unknown) => { meldeUndWeiter('merkliste:export', e); return []; });
+    [uid]);
+
 
   return toCsv(['set_number', 'condition', 'created_at'], rows);
 }
