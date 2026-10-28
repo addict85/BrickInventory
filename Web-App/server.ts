@@ -230,6 +230,8 @@ app.use((req, res, next) => {
 // Jetzt: 256 KB überall (grosszügig für JSON-Nutzlasten dieser App), und die
 // PDF-Routen setzen ihr eigenes Limit per Router-Middleware (routes/api_v1/pdf.ts).
 app.use(express.json({ limit: '256kb' }));
+// Das Konto der Anfrage für Zähler tief unten (utils/apiKontingent.ts).
+app.use((require('./utils/anfrageKonto') as typeof import('./utils/anfrageKonto')).merkeAnfrage);
 app.use(express.urlencoded({ extended: true, limit: '256kb' }));
 
 /**

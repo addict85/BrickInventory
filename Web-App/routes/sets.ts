@@ -571,21 +571,38 @@ const uploadInstr = multer({
   // beliebigen Inhalt an der Zusage "nur PDF, JPG oder PNG" vorbei.
   fileFilter: (_req, file, cb) => { if (ausTabelle(INSTR_EXT_BY_MIME, file.mimetype)) cb(null,true); else cb(new Error('Nur PDF, JPG oder PNG')); }
 });
-router.post('/:setNumber/instructions/upload', uploadInstr.single('file'), async (req, res) => {
+/**
+ * Besitz und Kontingent VOR dem Schreiben: Sonst landen bis zu 50 MB auf der
+ * Platte, bevor feststeht, dass die Datei gar nicht bleiben darf. Content-Length
+ * schliesst die Formularhülle ein, ist also nie kleiner als die Datei.
+ */
+async function vorDemUpload(req: express.Request, res: express.Response, next: express.NextFunction) {
+  try {
+    const uid = angemeldeteNutzerId(req);
+    // Eine Anleitung gehört zu einem Set des Kontos (Fremdschlüssel, Migration 0058).
+    if (!await db.get('SELECT 1 AS ok FROM sets WHERE user_id = $1 AND set_number = $2', [uid, String(req.params.setNumber)]))
+      return sendeFehler(req, res, 404, 'nicht_gefunden');
+    const ordner = path.join(DATA_DIR, 'uploads', String(uid));
+    const belegt = fs.existsSync(ordner) ? belegterPlatz(ordner) : 0;
+    const kontingent = uploadKontingentBytes();
+    if (belegt + (Number(req.headers['content-length']) || 0) > kontingent)
+      return sendeFehler(req, res, 413, 'upload_kontingent_voll', { mb: Math.round(kontingent / 1024 / 1024) });
+    next();
+  } catch (e) { handleRouteError(res, e, undefined, req); }
+}
+
+router.post('/:setNumber/instructions/upload', vorDemUpload, uploadInstr.single('file'), async (req, res) => {
   if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
   const verwerfen = () => fs.rmSync(req.file!.path, { force: true });
   if (!inhaltPasstZuTyp(req.file.path, req.file.mimetype)) { verwerfen(); return sendeFehler(req, res, 400, 'datei_inhalt_falsch'); }
+  // Noch einmal nach dem Schreiben: Ohne Content-Length (chunked) greift die
+  // Vorabprüfung nicht.
   const kontingent = uploadKontingentBytes();
   if (belegterPlatz(path.dirname(req.file.path)) > kontingent) {
     verwerfen();
     return sendeFehler(req, res, 413, 'upload_kontingent_voll', { mb: Math.round(kontingent / 1024 / 1024) });
   }
   const uid=angemeldeteNutzerId(req), sn=req.params.setNumber;
-  // Eine Anleitung gehört zu einem Set des Kontos (Fremdschlüssel, Migration 0058).
-  if (!await db.get('SELECT 1 AS ok FROM sets WHERE user_id = $1 AND set_number = $2', [uid, sn])) {
-    verwerfen();
-    return sendeFehler(req, res, 404, 'nicht_gefunden');
-  }
   const desc=(req.body.description||req.file.originalname).substring(0,200);
   const relPath=`/data/uploads/${uid}/${req.file.filename}`;
   await db.run('INSERT INTO instructions (user_id,set_number,url,description,local_path) VALUES ($1,$2,$3,$4,$5) ON CONFLICT DO NOTHING', [uid,sn,relPath,desc,relPath]);

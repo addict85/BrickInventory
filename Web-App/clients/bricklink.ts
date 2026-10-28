@@ -12,6 +12,7 @@ import https from 'https';
 import * as db from '../db/database';
 import { alsAbrufFehler } from './abrufFehler';
 import { mitVersion, katalogEintrag, ohneBricklinkPreis, ohneVersion } from '../utils/setNummer';
+import { checkAndIncrementRateLimit } from '../utils/apiKontingent';
 
 const BASE = 'https://api.bricklink.com/api/store/v1';
 
@@ -101,7 +102,6 @@ async function bricklinkRequest(method: string, path: string,
   // Gezählt wird hier, am einzigen Ausgang zu BrickLink: Rückfälle (sold →
   // stock, set → gear → book) sind eigene Aufrufe und kosten eigenes Kontingent.
   // Lazy require wie in utils/rateLimiter.ts — preise.ts importiert diese Datei.
-  const { checkAndIncrementRateLimit } = require('../utils/financeCalc');
   const rl = await checkAndIncrementRateLimit('bricklink');
   if (!rl.allowed) throw new Error(`BrickLink Tageslimit erreicht (${rl.limit} Aufrufe/Tag)`);
   const { status, body } = await httpsGet(baseUrl + qs, buildAuthHeader(method, baseUrl, queryParams, creds));

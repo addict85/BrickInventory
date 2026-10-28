@@ -25,7 +25,7 @@ const ROOT = path.join(__dirname, '..');
 // Nach dist/ bauen statt in-place — siehe helpers/sources.js.
 const _req = require('./helpers/sources').buildAndRequire();
 const { ohneKommentare } = require('./helpers/sources');
-const { REBRICKABLE_DEFAULT_DAILY, DailyLimiter } = _req('utils/rateLimiter.js');
+const { REBRICKABLE_DEFAULT_DAILY } = _req('utils/rateLimiter.js');
 
 const EXPECTED = 25000;
 
@@ -36,9 +36,10 @@ test('Standard-Tageslimit ist 25000 — an EINER Stelle', () => {
   // beide über checkAndIncrementRateLimit laufen, wäre es eine stille Kürzung
   // auf ein Sechstel gewesen. Zwei Konstanten mit derselben Bedeutung driften
   // auseinander; hier wird festgehalten, dass es nur noch eine gibt.
-  const fc = require('./helpers/sources').finanzQuelle();
+  // Seit die Zähler in utils/apiKontingent.ts stehen, steht dort auch die Konstante.
+  const fc = fs.readFileSync(path.join(ROOT, 'utils', 'apiKontingent.ts'), 'utf8');
   assert.match(fc, /rebrickable: REBRICKABLE_DEFAULT_DAILY/,
-    'Der Rückfallwert muss aus rateLimiter kommen, nicht als eigene Zahl danebenstehen');
+    'Der Rückfallwert muss die gemeinsame Konstante sein, nicht eine eigene Zahl danebenstehen');
   assert.doesNotMatch(fc, /rebrickable: \d+/, 'Keine zweite Zahl für dasselbe Limit');
 });
 
@@ -104,12 +105,10 @@ test('ein geändertes Limit gilt sofort in ALLEN Workern', () => {
   // Kommentare raus, bevor die Spanne gemessen wird: Der Erklärblock in
   // getLimitForApi ist länger als jedes vernünftige Zeichenfenster, und ein
   // Test, der an einem wachsenden Kommentar scheitert, prüft die falsche Sache.
-  const fc = require('./helpers/sources').finanzQuelle()
+  const fc = fs.readFileSync(path.join(ROOT, 'utils', 'apiKontingent.ts'), 'utf8')
     .replace(/\/\/[^\n]*/g, '');
   const fn = fc.slice(fc.indexOf('async function getLimitForApi'),
-                      fc.indexOf('async function getRateLimitStatus'));
-  // Der Zugriff läuft inzwischen über utils/settings.ts statt über eine eigene
-  // SQL-Anweisung. Die Aussage bleibt: Die Grenze wird IM AUFRUF geholt.
+                      fc.indexOf('const grenzeJeKonto'));
   assert.match(fn, /await getGlobalSetting\(`api_limit_\$\{apiName\}`\)/,
     'Die Grenze muss bei jedem Aufruf gelesen werden, nicht aus dem Prozessspeicher kommen');
 });
@@ -139,27 +138,6 @@ test('das Eingabefeld zeigt denselben Standard an', () => {
   const field = html.slice(html.indexOf('id="lim-rb"') - 400, html.indexOf('id="lim-rb"') + 200);
   assert.match(field, new RegExp(`value="${EXPECTED}"`), 'value des Felds #lim-rb passt nicht zum Standard');
   assert.match(field, new RegExp(`"n":"${EXPECTED}"`), 'Der Hinweis "(Standard: …)" passt nicht zum Standard');
-});
-
-test('DailyLimiter zählt und sperrt korrekt', () => {
-  const l = new DailyLimiter(3);
-  assert.equal(l.status.remaining, 3);
-  assert.ok(l.tryConsume() && l.tryConsume() && l.tryConsume());
-  assert.equal(l.tryConsume(), false, 'über dem Limit muss tryConsume false liefern');
-  assert.equal(l.status.count, 3);
-  assert.equal(l.status.remaining, 0);
-  // Tageswechsel setzt zurück
-  l.date = '2000-01-01';
-  assert.equal(l.status.remaining, 3);
-  assert.ok(l.tryConsume());
-});
-
-test('setMax wirkt sofort auf laufende Zählung', () => {
-  const l = new DailyLimiter(1);
-  assert.ok(l.tryConsume());
-  assert.equal(l.tryConsume(), false);
-  l.setMax(5);
-  assert.ok(l.tryConsume(), 'nach Anhebung muss der Rest des Tages wieder verfügbar sein');
 });
 
 // ── Punkt 3: Zähler in der Datenbank ───────────────────────────────────────

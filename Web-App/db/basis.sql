@@ -157,6 +157,19 @@ CREATE TABLE public.account_links (
 );
 
 --
+-- Name: api_aufrufe; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.api_aufrufe (
+    tag date NOT NULL,
+    api text NOT NULL,
+    konto integer DEFAULT 0 NOT NULL,
+    anzahl integer DEFAULT 0 NOT NULL,
+    CONSTRAINT api_aufrufe_anzahl_check CHECK ((anzahl >= 0)),
+    CONSTRAINT api_aufrufe_api_check CHECK ((api = ANY (ARRAY['bricklink'::text, 'rebrickable'::text, 'brickset'::text])))
+);
+
+--
 -- Name: api_takt; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1607,6 +1620,13 @@ ALTER TABLE ONLY public.account_links
     ADD CONSTRAINT account_links_pkey PRIMARY KEY (main_user_id, sub_user_id);
 
 --
+-- Name: api_aufrufe api_aufrufe_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.api_aufrufe
+    ADD CONSTRAINT api_aufrufe_pkey PRIMARY KEY (tag, api, konto);
+
+--
 -- Name: api_takt api_takt_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3054,6 +3074,7 @@ INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0057-figurenpre
 INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0058-fremdschluessel-und-pruefungen.sql', '2026-10-28 17:59:06.918264+00');
 INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0059-anmeldung-laufend.sql', '2026-10-28 20:00:29.834455+00');
 INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0060-katalog-herkunft.sql', '2026-10-28 20:09:04.452918+00');
+INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0061-api-aufrufe.sql', '2026-10-28 22:10:50.251504+00');
 
 --
 -- PostgreSQL database dump complete

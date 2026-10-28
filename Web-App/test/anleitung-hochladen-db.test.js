@@ -8,6 +8,9 @@
  *   B  die Kontingentprüfung entfernt → rot: „über dem Kontingent"
  *   C  die Besitzprüfung entfernt → rot: „für ein Set, das das Konto nicht
  *      hat" (500 aus dem Fremdschlüssel, die Datei lag im Ordner; 28.10.2026)
+ *   D  vorDemUpload aus der Route entfernt → rot: „abgewiesen, bevor der
+ *      Inhalt ankommt“ (keine Antwort, solange der Inhalt fehlt) und „für ein
+ *      Set, das das Konto nicht hat“ — die Besitzprüfung steht jetzt dort (28.10.2026)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -88,6 +91,22 @@ test('Anleitung hochladen', { concurrency: 1 }, async (t) => {
     assert.equal(r.status, 413, JSON.stringify(r.body));
     assert.equal(r.body.code, 'upload_kontingent_voll');
     assert.equal(dateien().length, vorher, 'die Datei über dem Kontingent liegt noch im Ordner');
+  });
+
+  await t.test('abgewiesen, bevor der Inhalt ankommt', async () => {
+    // Nur der Kopf mit 10 MB Content-Length, der Inhalt bleibt aus: Antwortet
+    // der Server trotzdem, hat er vor dem Lesen entschieden.
+    process.env.UPLOAD_KONTINGENT_MB = '1';
+    const http = require('node:http');
+    const status = await new Promise((fertig, fehl) => {
+      const anfrage = http.request(`${base}/api/v1/sets/${SET}/instructions/upload`, { method: 'POST',
+        headers: { 'content-type': 'multipart/form-data; boundary=x', 'content-length': String(10 * 1024 * 1024) } },
+        (antwort) => { antwort.resume(); fertig(antwort.statusCode); anfrage.destroy(); });
+      anfrage.on('error', () => {});
+      anfrage.write('--x\r\n');
+      setTimeout(() => { anfrage.destroy(); fehl(new Error('keine Antwort, solange der Inhalt fehlt')); }, 3000);
+    });
+    assert.equal(status, 413);
   });
 
   await t.test('für ein Set, das das Konto nicht hat', async () => {

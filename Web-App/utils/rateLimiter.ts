@@ -66,48 +66,9 @@ class RateLimiter {
   }
 }
 
-class DailyLimiter {
-  max: number;
-  dbKey: string | null;
-  date: string;
-  count: number;
-
-  constructor(maxPerDay: number, dbKey?: string) {
-    this.max   = maxPerDay;
-    this.dbKey = dbKey || null;
-    this.date  = '';
-    this.count = 0;
-  }
-
-  setMax(newMax: number) { this.max = newMax; }
-
-  tryConsume() {
-    const today = new Date().toISOString().slice(0, 10);
-    if (this.date !== today) { this.date = today; this.count = 0; }
-    if (this.count >= this.max) return false;
-    this.count++;
-    // Persist to DB so UI can display counts.
-    // Das frühere `const db = require(...)` ist weg: Seit der Schreibweg über
-    // setGlobalSetting() läuft, greift hier keine SQL-Anweisung mehr direkt zu.
-    if (this.dbKey) {
-      try {
-        setGlobalSetting(`api_calls_${this.dbKey}`, String(this.count)).catch(()=>{});
-        setGlobalSetting(`api_calls_date_${this.dbKey}`, new Date().toISOString().slice(0, 10)).catch(()=>{});
-      } catch (e) { meldeUndWeiter('kontingent:zaehler-schreiben', e); }
-    }
-    return true;
-  }
-
-  get status() {
-    const today = new Date().toISOString().slice(0, 10);
-    if (this.date !== today) return { count: 0, max: this.max, remaining: this.max };
-    return { count: this.count, max: this.max, remaining: this.max - this.count };
-  }
-}
-
 // Primary limiter: CSV import, set info, image downloads (foreground)
 import { meldeUndWeiter } from './httpError';
-import { setGlobalSetting } from '../utils/settings';
+import { checkAndIncrementRateLimit, getRateLimitStatus, REBRICKABLE_DEFAULT_DAILY } from './apiKontingent';
 import * as db from '../db/database';
 
 // Nach einem Datenbankfehler eine Minute lang ohne gemeinsamen Takt: Jeder
@@ -152,10 +113,6 @@ const REBRICKABLE_TAKT = { api: 'rebrickable', abstandMs: 1000 };
 const rebrickableLimiter = new RateLimiter(1, 1500, REBRICKABLE_TAKT);
 // Secondary limiter: background enrichment jobs (parts catalog, BL IDs)
 const rebrickableBackgroundLimiter = new RateLimiter(1, 1500, REBRICKABLE_TAKT);
-// Tageskontingent Rebrickable. Nur der Rückfallwert, falls global_settings
-// nichts sagt — die wirksame Grenze steht in api_limit_rebrickable und wird bei
-// JEDEM Aufruf gelesen (getLimitForApi).
-const REBRICKABLE_DEFAULT_DAILY = 25000;
 
 /**
  * Einen Rebrickable-Aufruf vom Tageskontingent abziehen.
@@ -163,9 +120,6 @@ const REBRICKABLE_DEFAULT_DAILY = 25000;
  * @returns true, wenn der Aufruf erlaubt ist (und gezählt wurde)
  */
 async function consumeRebrickableDaily(): Promise<boolean> {
-  // Lazy require: utils/financeCalc zieht viel nach sich, ein Import auf
-  // Modulebene ergäbe einen Zyklus.
-  const { checkAndIncrementRateLimit } = require('./financeCalc');
   const rl = await checkAndIncrementRateLimit('rebrickable').catch(() => null);
   // Im Zweifel durchlassen: Ein Datenbankproblem darf nicht dazu führen, dass
   // gar nichts mehr geladen wird. Umgekehrte Abwägung als beim Login-Zähler —
@@ -176,7 +130,6 @@ async function consumeRebrickableDaily(): Promise<boolean> {
 
 /** Stand des Rebrickable-Tageskontingents — für Meldungen und Anzeige. */
 async function rebrickableDailyStatus(): Promise<{ count: number; limit: number; remaining: number }> {
-  const { getRateLimitStatus } = require('./financeCalc');
   return getRateLimitStatus('rebrickable')
     .catch(() => ({ count: 0, limit: REBRICKABLE_DEFAULT_DAILY, remaining: 0 }));
 }
@@ -258,4 +211,4 @@ function parseThrottleWait(body: string) {
   return 5000; // default 5s
 }
 
-export { warteAufTakt, rebrickableLimiter, rebrickableBackgroundLimiter, consumeRebrickableDaily, rebrickableDailyStatus, cdnImageLimiter, RateLimiter, DailyLimiter, ConcurrentRateLimiter, parseThrottleWait, REBRICKABLE_DEFAULT_DAILY };
+export { warteAufTakt, rebrickableLimiter, rebrickableBackgroundLimiter, consumeRebrickableDaily, rebrickableDailyStatus, cdnImageLimiter, RateLimiter, ConcurrentRateLimiter, parseThrottleWait, REBRICKABLE_DEFAULT_DAILY };

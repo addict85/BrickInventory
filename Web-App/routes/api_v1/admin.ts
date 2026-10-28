@@ -6,10 +6,11 @@
 import express from 'express';
 import {  DATA_DIR } from '../../utils/appPaths';
 import * as db from '../../db/database';
-import { fehlertext, handleRouteError, meldeUndWeiter } from '../../utils/httpError';
+import { fehlertext, handleRouteError, meldeUndWeiter, logAndContinue } from '../../utils/httpError';
 import { requireApiAdmin } from './middleware';
 import { PDF_JOB_DIR } from '../../utils/appPaths';
-import { fetchPrice, getLimitForApi, getRateLimitStatus } from '../../utils/financeCalc';
+import { fetchPrice } from '../../utils/financeCalc';
+import { getLimitForApi, getRateLimitStatus, setzeKontingentZurueck } from '../../utils/apiKontingent';
 import { katalogEintrag, ohneBricklinkPreis } from '../../utils/setNummer';
 import { scrapeInstructionsFromFallback, loescheAnleitungen } from '../../utils/instructions';
 import { imgProxyFailures } from '../../utils/imgProxyStats';
@@ -23,7 +24,7 @@ import { getJobStatus, triggerNow } from '../../jobs/priceJob';
 import { SET_IMAGES_DIR } from '../../utils/appPaths';
 import { anfragenJeMinute } from '../../jobs/imageQueue';
 import { DAILY_JOBS } from '../../jobs/dailyScheduler';
-import { getGlobalSetting, getSetting, setGlobalSetting, setGlobalTrigger, deleteGlobalSetting } from '../../utils/settings';
+import { getGlobalSetting, getSetting, setGlobalSetting, setGlobalTrigger } from '../../utils/settings';
 import { ausRetryWarteschlange } from '../../clients/brickset';
 import { sendeFehler } from '../../utils/fehlerTexte';
 import { mengeSkalar } from '../../utils/bestandsmenge';
@@ -475,8 +476,7 @@ router.post('/admin/brickset-queue/:setNumber/retry', requireApiAdmin, async (re
     `UPDATE brickset_retry_queue SET retry_after = CURRENT_DATE WHERE set_number = $1`, [sn]
   ).catch(() => {});
   // Temporarily reset today's rate limit counter so the retry goes through even if limit reached
-  await deleteGlobalSetting('api_calls_brickset', 'api_calls_date_brickset')
-    .catch(() => {});
+  await setzeKontingentZurueck('brickset').catch(logAndContinue('brickset:kontingent zurücksetzen'));
   // Trigger queue processing immediately
   setImmediate(() => require('../../jobs/bricksetRetry').processRetryQueue(true).catch(() => {}));
   res.json({ success: true, set_number: sn });

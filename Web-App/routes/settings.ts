@@ -195,9 +195,6 @@ const EXPORT_EXCLUDE_KEYS = new Set([
   'rb_part_categories_last_sync',   // täglicher Sync-Marker (Laufzeit-Zustand)
   'job_reschedule_trigger',         // transientes Reschedule-Signal
   'instr_queue_trigger',            // transientes Queue-Signal
-  'api_calls_brickset',    'api_calls_date_brickset',
-  'api_calls_rebrickable', 'api_calls_date_rebrickable',
-  'api_calls_bricklink',   'api_calls_date_bricklink',
 ]);
 
 router.get('/export', async (req, res) => {

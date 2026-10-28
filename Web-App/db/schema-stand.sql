@@ -31,6 +31,16 @@ CREATE TABLE account_links (
 CREATE INDEX idx_account_links_main ON account_links USING btree (main_user_id);
 CREATE INDEX idx_account_links_sub ON account_links USING btree (sub_user_id);
 
+CREATE TABLE api_aufrufe (
+  tag date NOT NULL,
+  api text NOT NULL,
+  konto integer NOT NULL DEFAULT 0,
+  anzahl integer NOT NULL DEFAULT 0,
+  CONSTRAINT api_aufrufe_anzahl_check CHECK ((anzahl >= 0)),
+  CONSTRAINT api_aufrufe_api_check CHECK ((api = ANY (ARRAY['bricklink'::text, 'rebrickable'::text, 'brickset'::text]))),
+  CONSTRAINT api_aufrufe_pkey PRIMARY KEY (tag, api, konto)
+);
+
 CREATE TABLE api_takt (
   api text NOT NULL,
   naechster timestamp with time zone NOT NULL DEFAULT now(),

@@ -7,9 +7,8 @@
 
 import * as db from '../../db/database';
 import { hatPreis } from '../preisRegel';
-import { getGlobalSetting } from '../settings';
 import { asIds } from '../household';
-import { REBRICKABLE_DEFAULT_DAILY } from '../rateLimiter';
+import { checkAndIncrementRateLimit, kontingentFrei, getLimitForApi, getRateLimitStatus } from '../apiKontingent';
 import { bricklinkRequest, getPriceGuide } from '../../clients/bricklink';
 import { fehlertext } from '../httpError';
 import { mitVersion, katalogEintrag, ohneBricklinkPreis } from '../setNummer';
@@ -22,7 +21,6 @@ import { blAbrufNummer, blAbrufNummern } from '../blZuordnung';
  * Die drei Fremd-Schnittstellen, deren Tagesbudget hier gezaehlt wird.
  * Ausführlich: docs/begruendungen/utils/finance/preise.ts.md#apiname
  */
-type ApiName = 'bricklink' | 'rebrickable' | 'brickset';
 
 /**
  * Blickfeld: wessen DATEN gerechnet werden. Getrennt von `viewerId`, wessen
@@ -68,77 +66,6 @@ async function resolveSetCondition(
   return effectiveCondition(row);
 }
 
-
-// Nenner-Untergrenze für die %-Wertsteigerung: Bei einem erfassten Kaufpreis
-// von 0 (z. B. Geschenk/Gratisteil) wäre die prozentuale Steigerung sonst
-// unendlich bzw. nicht berechenbar. Statt den Marktpreis zu unterstellen,
-// rechnen wir die % gegen diese sehr kleine Zahl — der Kaufpreis bleibt 0.
-// Ausführlich: docs/begruendungen/utils/finance/preise.ts.md#checkandincrementratelimit
-
-async function checkAndIncrementRateLimit(apiName: ApiName, _defaultLimit = 4000) {
-  const key  = `api_calls_${apiName}`;
-  const dateKey = `api_calls_date_${apiName}`;
-  const today = new Date().toISOString().slice(0, 10);
-  const limit = await getLimitForApi(apiName);
-
-  return db.transaction(async (tx) => {
-    // Zeilen anlegen, falls sie noch nicht existieren (erster Aufruf überhaupt)
-    await tx.run(
-      `INSERT INTO global_settings (key, value) VALUES ($1, '0'), ($2, $3)
-       ON CONFLICT (key) DO NOTHING`,
-      [key, dateKey, today]);
-    // ORDER BY key → deterministische Lock-Reihenfolge, verhindert Deadlocks
-    // zwischen konkurrierenden Transaktionen auf denselben zwei Zeilen.
-    const rows = await tx.all(
-      `SELECT key, value FROM global_settings WHERE key IN ($1, $2) ORDER BY key FOR UPDATE`,
-      [key, dateKey]);
-    const byKey = Object.fromEntries(rows.map(r => [r.key, r.value]));
-    const count = (byKey[dateKey] === today) ? parseInt(byKey[key] || '0') : 0;
-    if (count >= limit) return { allowed: false, count, limit, remaining: 0 };
-    const newCount = count + 1;
-    await tx.run('UPDATE global_settings SET value = $1 WHERE key = $2', [String(newCount), key]);
-    await tx.run('UPDATE global_settings SET value = $1 WHERE key = $2', [today, dateKey]);
-    return { allowed: true, count: newCount, limit, remaining: limit - newCount };
-  });
-}
-
-/**
- * Ist vom Tageskontingent noch etwas übrig? Zählt NICHT — das tut
- * bricklinkRequest() je HTTP-Aufruf. Die Aufrufer fragen vorher, damit ein
- * erschöpftes Kontingent als solches gemeldet wird statt als Abruffehler.
- */
-async function kontingentFrei(apiName: ApiName) {
-  const s = await getRateLimitStatus(apiName);
-  return { allowed: s.remaining > 0, limit: s.limit };
-}
-
-async function getLimitForApi(apiName: ApiName) {
-  // Rückfallwerte, falls global_settings nichts sagt.
-  //
-  // rebrickable stand hier auf 4000, während utils/rateLimiter.ts 25'000 als
-  // Standard führt (REBRICKABLE_DEFAULT_DAILY, auch der Seed in db/database.ts).
-  // Das fiel nicht auf, solange Rebrickable seinen eigenen Zähler hatte und
-  // diese Tabelle nie sah — seit beide über checkAndIncrementRateLimit laufen,
-  // wäre es eine stille Kürzung auf ein Sechstel gewesen. Der Wert kommt
-  // deshalb aus derselben Quelle wie dort.
-  const defaults = { bricklink: 4000, rebrickable: REBRICKABLE_DEFAULT_DAILY, brickset: 100 };
-  const grenze = await getGlobalSetting(`api_limit_${apiName}`);
-  return parseInt(grenze) || defaults[apiName] || 4000;
-}
-
-async function getRateLimitStatus(apiName: ApiName) {
-  const key = `api_calls_${apiName}`;
-  const dateKey = `api_calls_date_${apiName}`;
-  const today = new Date().toISOString().slice(0, 10);
-  const [storedDate, rohCount, limit] = await Promise.all([
-    getGlobalSetting(dateKey),
-    getGlobalSetting(key),
-    getLimitForApi(apiName),
-  ]);
-  const storedCount = parseInt(rohCount || '0');
-  const count = (storedDate === today) ? storedCount : 0;
-  return { count, limit, remaining: Math.max(0, limit - count), date: today };
-}
 
 // ── Price fetch with fallback ─────────────────────────────────────────────────
 // Optionales `pre` erlaubt Batch-Aufrufern (computeSetsValuation), Katalog- und
