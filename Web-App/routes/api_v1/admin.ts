@@ -5,7 +5,7 @@
  */
 import express from 'express';
 import {  DATA_DIR } from '../../utils/appPaths';
-import * as db from '../../db/database';
+import * as verwaltung from '../../utils/verwaltung';
 import { fehlertext, handleRouteError, meldeUndWeiter, logAndContinue } from '../../utils/httpError';
 import { requireApiAdmin } from './middleware';
 import { PDF_JOB_DIR } from '../../utils/appPaths';
@@ -14,7 +14,6 @@ import { getLimitForApi, getRateLimitStatus, setzeKontingentZurueck } from '../.
 import { katalogEintrag, ohneBricklinkPreis } from '../../utils/setNummer';
 import { scrapeInstructionsFromFallback, loescheAnleitungen } from '../../utils/instructions';
 import { imgProxyFailures } from '../../utils/imgProxyStats';
-import { getPoolStats } from '../../db/database';
 import { proxyCachePathFor } from '../../utils/images';
 import { ERLAUBTE_BILD_HOSTS, hostErlaubt } from '../../utils/fremdeAdressen';
 import { vergissFehlend } from '../../utils/imageMisses';
@@ -27,7 +26,6 @@ import { DAILY_JOBS } from '../../jobs/dailyScheduler';
 import { getGlobalSetting, getSetting, setGlobalSetting } from '../../utils/settings';
 import { ausRetryWarteschlange } from '../../clients/brickset';
 import { sendeFehler } from '../../utils/fehlerTexte';
-import { mengeSkalar } from '../../utils/bestandsmenge';
 import { liesZustand, setzeAusloeser } from '../../utils/laufzustand';
 const router = express.Router();
 
@@ -62,7 +60,7 @@ router.get('/admin/cache-stats', requireApiAdmin, async (_req: AuthedRequest, re
     const { getCacheStats }      = require('../../clients/bricklink');
     const [stats, stale, rlBL, rlRB, rlBS] = await Promise.all([
       getCacheStats().catch(() => ({})),
-      db.get("SELECT COUNT(*) as c FROM price_cache WHERE fetched_at <= NOW() - INTERVAL '24 hours'").catch(() => null),
+      verwaltung.veraltetePreise().catch(() => null),
       getRateLimitStatus('bricklink').catch(() => ({ count:0, limit:0 })),
       getRateLimitStatus('rebrickable').catch(() => ({ count:0, limit:0 })),
       getRateLimitStatus('brickset').catch(() => ({ count:0, limit:0 })),
@@ -71,7 +69,7 @@ router.get('/admin/cache-stats', requireApiAdmin, async (_req: AuthedRequest, re
     // Ohne das Feld verlöre die Überwachungsseite die Pool-Anzeige.
     res.json({ success:true, ...stats, price_stale: parseInt(stale?.c||0),
       rate_limits: { bricklink: rlBL, rebrickable: rlRB, brickset: rlBS },
-      db_pool: getPoolStats() });
+      db_pool: verwaltung.getPoolStats() });
   } catch (e) { handleRouteError(res, e, undefined, _req); }
 });
 
@@ -88,18 +86,10 @@ router.get('/admin/image-diag/:setNumber', requireApiAdmin, async (req: AuthedRe
     const sn = String(req.params.setNumber);
 
     // 1. Was weiss die Datenbank — eigene Zeile UND gemeinsamer Katalog?
-    // `image_local` und `image_url` stehen seit Migration 0033 im Katalog, und
-    // damit tragen alle Zeilen denselben Wert. Die Liste beantwortet weiter
-    // „welche Konten fuehren dieses Set?" — genau das braucht die
-    // Einschaetzung unten.
-    const zeilen = await db.all(
-      `SELECT s.user_id, c.image_local, c.image_url
-         FROM sets s LEFT JOIN set_catalog c ON c.set_number = s.set_number
-        WHERE s.set_number = $1 ORDER BY s.user_id`, [sn]
-    ).catch(() => []);
-    const katalog = await db.get(
-      `SELECT image_url, image_local FROM set_catalog WHERE set_number = $1`, [sn]
-    ).catch(() => null);
+    // Die Liste beantwortet „welche Konten fuehren dieses Set?" — genau das
+    // braucht die Einschaetzung unten.
+    const zeilen: verwaltung.KontoBildzeile[] = await verwaltung.bildZeilenDerKonten(sn).catch(() => []);
+    const katalog = await verwaltung.katalogBild(sn).catch(() => null);
 
     // 2. Was liegt auf der Platte?
     const safe = sn.replace(/[^a-z0-9-]/gi, '_');
@@ -128,12 +118,8 @@ router.get('/admin/image-diag/:setNumber', requireApiAdmin, async (req: AuthedRe
     // beantworten. Ausgerechnet die Tabelle, die den Abruf VERHINDERT, sah er
     // nicht an. Steht dort ein Eintrag, ist jede andere Auskunft hier
     // gegenstandslos: Es wird gar nicht erst versucht.
-    const merker = await db.get(
-      `SELECT checked_at, reason FROM image_misses WHERE cache_key = $1`,
-      ['set:' + sn]).catch(() => null);
-    const vorschauMerker = await db.get(
-      `SELECT checked_at, reason FROM image_misses WHERE cache_key LIKE $1`,
-      ['thumb:%' + safe + '_thumb.jpg']).catch(() => null);
+    const merker = await verwaltung.fehlanzeigeDesSets(sn).catch(() => null);
+    const vorschauMerker = await verwaltung.fehlanzeigeDerVorschau(safe).catch(() => null);
 
     // 4. Eine Einschätzung im Klartext — das, was man sonst aus den Zahlen
     //    selbst ableiten müsste.
@@ -177,14 +163,12 @@ router.post('/admin/forget-image-misses', requireApiAdmin, async (req: AuthedReq
       // Nicht die ganze Tabelle: Die Vorschau-Vermerke haben einen anderen
       // Zweck (eine Verkleinerung, die nie gelingen kann) und sollen nicht
       // nebenbei mitverschwinden.
-      const rows = await db.all(
-        `SELECT cache_key FROM image_misses WHERE cache_key LIKE 'set:%'`).catch(() => []);
-      if (rows.length) entfernt = await vergissFehlend(rows.map((r: any) => r.cache_key));
+      const rows = await verwaltung.setFehlanzeigen().catch(() => []);
+      if (rows.length) entfernt = await vergissFehlend(rows.map(r => r.cache_key));
     }
     if (req.body?.thumbs === true) {
-      const rows = await db.all(
-        `SELECT cache_key FROM image_misses WHERE cache_key LIKE 'thumb:%'`).catch(() => []);
-      if (rows.length) entfernt += await vergissFehlend(rows.map((r: any) => r.cache_key));
+      const rows = await verwaltung.vorschauFehlanzeigen().catch(() => []);
+      if (rows.length) entfernt += await vergissFehlend(rows.map(r => r.cache_key));
     }
     // Die anderen Arbeitsprozesse halten den Merker im Speicher und frischen
     // ihn im Fünf-Minuten-Takt vollständig aus der Tabelle auf — länger dauert
@@ -199,7 +183,7 @@ router.post('/admin/forget-image-misses', requireApiAdmin, async (req: AuthedReq
  */
 router.post('/admin/cache-clear', requireApiAdmin, async (req: AuthedRequest, res) => {
   try {
-    await db.run('DELETE FROM price_cache');
+    await verwaltung.leerePreisCache();
     if (req.body?.all) {
       await clearSubsetsCache(); await clearCatalogCache();
     }
@@ -286,14 +270,7 @@ router.put('/admin/api-limits', requireApiAdmin, async (req: AuthedRequest, res)
 router.post('/admin/reimport-instructions', requireApiAdmin, async (_req: AuthedRequest, res) => {
   try {
     // Find all sets across all users that have no instruction
-    const missing = await db.all(`
-      SELECT DISTINCT s.set_number
-      FROM sets s
-      WHERE NOT EXISTS (
-        SELECT 1 FROM shared_instructions si WHERE si.set_number = s.set_number
-      )
-      ORDER BY s.set_number
-    `);
+    const missing = await verwaltung.setsOhneAnleitung();
     if (!missing.length) return res.json({ success: true, enqueued: 0, message: 'Alle Sets haben bereits Anleitungen' });
 
     // Delete existing queue entries for these sets so they get re-tried fresh
@@ -341,15 +318,12 @@ router.post('/admin/trigger-price-job', requireApiAdmin, async (_req: AuthedRequ
 router.post('/admin/catalog-images', requireApiAdmin, async (req: AuthedRequest, res) => {
   try {
     const alleErneut = req.body?.alle_erneut === true;
-    const zuVergessen = await db.all(
-      alleErneut
-        ? `SELECT cache_key FROM image_misses WHERE cache_key LIKE 'set:%'`
-        : `SELECT cache_key FROM image_misses
-            WHERE cache_key LIKE 'set:%'
-              AND (reason IS NULL OR reason NOT LIKE '%404%')`
+    const zuVergessen = await (alleErneut
+      ? verwaltung.setFehlanzeigen()
+      : verwaltung.setFehlanzeigenOhne404()
     ).catch(() => []);
     const verworfen = zuVergessen.length
-      ? await vergissFehlend(zuVergessen.map((r: any) => r.cache_key))
+      ? await vergissFehlend(zuVergessen.map(r => r.cache_key))
       : 0;
     // Was schon fertig ist, wird nicht wieder eingereiht
     // Er hatte recht, und die Begründung, die ich früher dafür notiert
@@ -370,11 +344,7 @@ router.post('/admin/catalog-images', requireApiAdmin, async (req: AuthedRequest,
       }
     } catch (_) { /* Ordner noch leer — dann ist nichts fertig */ }
 
-    const kandidaten = await db.all(
-      `SELECT rb.set_num, rb.set_img_url FROM rb_sets rb
-        WHERE rb.set_img_url IS NOT NULL AND rb.set_img_url <> ''
-          AND NOT EXISTS (SELECT 1 FROM image_misses m
-                           WHERE m.cache_key = 'set:' || rb.set_num)`);
+    const kandidaten = await verwaltung.katalogBildKandidaten();
 
     // Dieselbe Namensregel wie in downloadSetImage() — sonst verglichen wir
     // Setnummern mit Dateinamen und fänden nie eine Übereinstimmung.
@@ -389,17 +359,10 @@ router.post('/admin/catalog-images', requireApiAdmin, async (req: AuthedRequest,
 
     let neuEingereiht = 0;
     if (offenUrls.length) {
-      const r = await db.get(
-        `WITH neu AS (
-           INSERT INTO image_wanted (url, set_number)
-             SELECT * FROM unnest($1::text[], $2::text[])
-             ON CONFLICT (url) DO NOTHING
-           RETURNING 1
-         )
-         SELECT COUNT(*)::int AS n FROM neu`, [offenUrls, offenSets]);
+      const r = await verwaltung.reiheKatalogBilderEin(offenUrls, offenSets);
       neuEingereiht = r?.n ?? 0;
     }
-    const offen = await db.get(`SELECT COUNT(*)::int AS n FROM image_wanted`);
+    const offen = await verwaltung.offeneBildauftraege();
     // Wie lange das dauert — die Zahl der Aufträge allein sagt es nicht, und
     // „Stunden oder Tage?" ist die erste Frage, die sich stellt. Die Rate kommt
     // aus dem Job selbst, damit sie nicht an zwei Stellen gepflegt wird.
@@ -441,31 +404,13 @@ router.post('/admin/redownload-missing-images', requireApiAdmin, async (_req: Au
 router.get('/admin/logs', requireApiAdmin, async (req: AuthedRequest, res) => {
   const minutes = Math.min(2880, Math.max(1, parseInt(String(req.query.minutes || '15'))));
   try {
-    const rows = await db.all(
-      `SELECT id, level, message, logged_at
-       FROM app_logs
-       WHERE logged_at >= NOW() - ($1 || ' minutes')::INTERVAL
-       ORDER BY logged_at ASC
-       LIMIT 5000`,
-      [minutes]
-    );
+    const rows = await verwaltung.protokollSeit(minutes);
     res.json({ success: true, minutes, count: rows.length, logs: rows });
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 router.get('/admin/brickset-queue', requireApiAdmin, async (_req: AuthedRequest, res) => {
-  const rows = await db.all(
-    `SELECT q.set_number, q.retry_after, q.attempts, q.last_error, q.created_at,
-            c.name
-     -- Der KATALOG, nicht die sets-Tabelle: Die Warteschlange ist
-     -- kontouebergreifend, und ein LEFT JOIN auf sets traf im Haushalt je
-     -- Konto eine Zeile — derselbe Eintrag erschien dann mehrfach. Mit
-     -- set_catalog ist es genau eine.
-     -- (Keine Gegenstriche: Der Kommentar steht in einem Template-Literal.)
-     FROM brickset_retry_queue q
-     LEFT JOIN set_catalog c ON c.set_number = q.set_number
-     ORDER BY q.retry_after ASC, q.set_number ASC`
-  ).catch(() => []);
+  const rows = await verwaltung.bricksetWarteschlange().catch(() => []);
   res.json({ success: true, count: rows.length, entries: rows });
 });
 
@@ -473,9 +418,7 @@ router.get('/admin/brickset-queue', requireApiAdmin, async (_req: AuthedRequest,
 router.post('/admin/brickset-queue/:setNumber/retry', requireApiAdmin, async (req: AuthedRequest, res) => {
   const sn = req.params.setNumber;
   // Reset retry_after to today so processRetryQueue picks it up immediately
-  await db.run(
-    `UPDATE brickset_retry_queue SET retry_after = CURRENT_DATE WHERE set_number = $1`, [sn]
-  ).catch(() => {});
+  await verwaltung.bricksetHeuteWiederholen(String(sn)).catch(() => {});
   // Temporarily reset today's rate limit counter so the retry goes through even if limit reached
   await setzeKontingentZurueck('brickset').catch(logAndContinue('brickset:kontingent zurücksetzen'));
   // Trigger queue processing immediately
@@ -503,18 +446,13 @@ router.get('/admin/jobs', requireApiAdmin, async (_req: AuthedRequest, res) => {
   // Enrich with live DB counts
   const [pending, done, failed] = await Promise.all([
     offeneAuftraege().catch(() => 0),
-    db.get(`SELECT COUNT(*) as c FROM instruction_queue WHERE status='done'`).catch(()=>null),
-    db.get(`SELECT COUNT(*) as c FROM instruction_queue WHERE status='failed'`).catch(()=>null),
+    verwaltung.anleitungenErledigt().catch(()=>null),
+    verwaltung.anleitungenGescheitert().catch(()=>null),
   ]);
-  // Art 'part': Die Zuordnung traegt seit Migration 0037 auch Figuren, und
-  // diese Kennzahl stellt „nachgesehene Teile" der Zahl der Teile gegenueber
-  // (blTotal darunter). Ohne die Einschraenkung waere der Zaehler groesser
-  // als der Nenner.
-  const blMapped = await db.get(
-    `SELECT COUNT(*) as c FROM bl_zuordnung WHERE art='part'`).catch(()=>null);
-  const blTotal  = await db.get(`SELECT COUNT(DISTINCT part_number) as c FROM parts WHERE source!='manual'`).catch(()=>null);
-  const rbParts  = await db.get(`SELECT COUNT(*) as c FROM rb_parts`).catch(()=>null);
-  const rbInvParts = await db.get(`SELECT COUNT(*) as c FROM rb_inventory_parts`).catch(()=>null);
+  const blMapped = await verwaltung.zugeordneteTeile().catch(()=>null);
+  const blTotal  = await verwaltung.bricklinkTeile().catch(()=>null);
+  const rbParts  = await verwaltung.rbTeile().catch(()=>null);
+  const rbInvParts = await verwaltung.rbInventarTeile().catch(()=>null);
   const lastSync = await liesZustand('rb_csv_last_sync');
 
   // Enrich blIds job with live DB counts
@@ -547,13 +485,9 @@ router.get('/admin/jobs', requireApiAdmin, async (_req: AuthedRequest, res) => {
   }
 
   // Brickset retry queue
-  const bsRetry = await db.get(
-    `SELECT COUNT(*) as c FROM brickset_retry_queue`
-  ).catch(() => null);
+  const bsRetry = await verwaltung.bricksetWartend().catch(() => null);
   const bsRetryC = parseInt(bsRetry?.c || 0);
-  const bsRetryDue = await db.get(
-    `SELECT COUNT(*) as c FROM brickset_retry_queue WHERE retry_after <= CURRENT_DATE`
-  ).catch(() => null);
+  const bsRetryDue = await verwaltung.bricksetFaellig().catch(() => null);
   const bsRetryDueC = parseInt(bsRetryDue?.c || 0);
   jobs.bricksetRetry = {
     label:    'Brickset Retry Queue',
@@ -570,19 +504,12 @@ router.get('/admin/jobs', requireApiAdmin, async (_req: AuthedRequest, res) => {
 
   // img-dl: active download locks and pending images count
   const [imgDlPending, imgDlDone, imgDlPendingFigs, imgDlPendingOwnFigs] = await Promise.all([
-    db.get(`SELECT COUNT(*) as c FROM set_parts_catalog WHERE image_url IS NOT NULL AND image_local IS NULL`).catch(()=>null),
-    db.get(`SELECT COUNT(*) as c FROM set_parts_catalog WHERE image_local IS NOT NULL`).catch(()=>null),
-    db.get(`SELECT COUNT(*) as c FROM set_minifigs_catalog WHERE image_url IS NOT NULL AND image_local IS NULL`).catch(()=>null),
-    // Minifiguren des Bestands: Sie werden seit der Erweiterung des
-    // img-dl-Hintergrundlaufs ebenfalls lokal abgelegt und gehören damit in
-    // die offene Menge. Das DISTINCT stand hier, weil die Abfrage auf
-    // minifigs lief und dieselbe Figur je Konto eine Zeile hatte; seit
-    // Migration 0034 ist fig_number der Primaerschluessel des Katalogs.
-    // Das EXISTS haelt die Menge bei dem, was der Hintergrundlauf wirklich
-    // holt: Figuren, die jemand besitzt (siehe server.ts).
-    db.get(`SELECT COUNT(*) as c FROM minifigs_catalog mc
-             WHERE mc.image_url IS NOT NULL AND mc.image_local IS NULL
-               AND EXISTS (SELECT 1 FROM minifigs m WHERE m.fig_number = mc.fig_number)`).catch(()=>null),
+    verwaltung.teilbilderOffen().catch(()=>null),
+    verwaltung.teilbilderFertig().catch(()=>null),
+    verwaltung.setFigurenbilderOffen().catch(()=>null),
+    // Minifiguren des Bestands legt der img-dl-Hintergrundlauf ebenfalls lokal
+    // ab; sie gehören deshalb in die offene Menge.
+    verwaltung.bestandsFigurenbilderOffen().catch(()=>null),
   ]);
   const imgPending = parseInt(imgDlPending?.c||0) + parseInt(imgDlPendingFigs?.c||0)
                    + parseInt(imgDlPendingOwnFigs?.c||0);
@@ -622,8 +549,7 @@ router.get('/admin/jobs', requireApiAdmin, async (_req: AuthedRequest, res) => {
   // BESTANDES und meldete „Alle 62 170 Bilder gecacht", während der
   // Hintergrund-Job gerade hunderte Katalogbilder nachlud. Der Titel verspricht …
   // Ausführlich: docs/begruendungen/routes/api_v1/admin.ts.md#get-admin-jobs-katalogoffen
-  const katalogOffen = (await db.get(
-    `SELECT COUNT(*)::int AS c FROM image_wanted`).catch(() => null))?.c ?? 0;
+  const katalogOffen = (await verwaltung.katalogBilderOffen().catch(() => null))?.c ?? 0;
   // „läuft" heisst: hat kürzlich etwas getan
   // Die Kachel meldete „läuft", sobald die Warteschlange nicht leer war
   // . Das ist keine Aussage über TÄTIGKEIT: Eine
@@ -865,20 +791,11 @@ router.get('/admin/price-probe', requireApiAdmin, async (req: AuthedRequest, res
   const uid = req.apiUser.user_id;
 
   const [setRow, acqs, cacheRows, histRows, currRow, ttlRow] = await Promise.all([
-    // Die Menge aus den Erfassungen (Migration 0036 hat sets.quantity
-    // geloescht). Die Probe soll zeigen, was die Bewertung sieht — und die
-    // sieht seitdem genau diese Summe.
-    db.get(`SELECT s.set_number, ${mengeSkalar('s')} AS quantity
-              FROM sets s WHERE s.user_id=$1 AND s.set_number=$2`, [uid, setNumber]),
-    // Spalte heisst created_at, nicht added_at — daran scheiterte die Probe
-    // zuvor mit einem 500er.
-    db.all('SELECT quantity, condition, purchase_price, created_at FROM set_acquisitions WHERE user_id=$1 AND set_number=$2 ORDER BY created_at', [uid, setNumber]),
-    db.all(`SELECT condition, currency_code, avg_price, qty_avg_price, min_price, max_price, fetched_at,
-                   EXTRACT(EPOCH FROM (NOW() - fetched_at))/3600 AS age_hours
-              FROM price_cache WHERE set_number=$1 ORDER BY condition, currency_code`, [setNumber]),
-    db.all(`SELECT condition, avg_price, qty_avg_price, recorded_at FROM price_history
-             WHERE set_number=$1 ORDER BY recorded_at DESC LIMIT 5`, [setNumber]),
-    db.get("SELECT value FROM user_settings WHERE user_id=$1 AND key='currency'", [uid]).catch(() => null),
+    verwaltung.probeSet(uid, setNumber),
+    verwaltung.probeErfassungen(uid, setNumber),
+    verwaltung.probePreisCache(setNumber),
+    verwaltung.probePreisVerlauf(setNumber),
+    verwaltung.probeWaehrung(uid).catch(() => null),
     getGlobalSetting('price_cache_ttl'),
   ]);
 
@@ -886,7 +803,7 @@ router.get('/admin/price-probe', requireApiAdmin, async (req: AuthedRequest, res
   // conditionFromAcquisitions() in utils/handlers/shared.ts: Eine gebrauchte
   // Erfassung genügt, sonst Neu.
   // Ausführlich: docs/begruendungen/routes/api_v1/admin.ts.md#get-admin-price-probe-anyused
-  const anyUsed = acqs.some((a: any) => a.condition === 'U');
+  const anyUsed = acqs.some(a => a.condition === 'U');
   const chosen = anyUsed ? 'U' : 'N';
 
   const out: any = {

@@ -171,6 +171,19 @@ test('db/ importiert nichts aus jobs/', () => {
   assert.deepEqual(treffer, []);
 });
 
+test('routes/auth.ts und routes/api_v1/admin.ts führen kein SQL aus', () => {
+  // Ihr Datenzugriff steht in utils/konten.ts und utils/verwaltung.ts; die
+  // Routen prüfen Eingaben und Rechte und schreiben die Antwort.
+  // Gegenprobe (28.10.2026): eine db.get-Zeile samt Import zurück in
+  // admin.ts → rot (beide Treffer gemeldet).
+  const treffer = [];
+  for (const d of ['routes/auth.ts', 'routes/api_v1/admin.ts']) {
+    for (const m of quelltext(d).matchAll(/\bdb\.\w+\s*\(/g)) treffer.push(`${d}: ${m[0]}`);
+    for (const ziel of importe(d).filter(z => /db\/database/.test(z))) treffer.push(`${d} -> ${ziel}`);
+  }
+  assert.deepEqual(treffer, []);
+});
+
 test('keine Importzyklen in den inneren Schichten', () => {
   // Ein Zyklus zwingt zu verzögertem require() und macht die Ladereihenfolge
   // zum Glücksspiel. `import type` zählt nicht, es verschwindet beim Übersetzen.

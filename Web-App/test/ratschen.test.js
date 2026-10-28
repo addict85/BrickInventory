@@ -122,8 +122,8 @@ test('stille Faenge werden weniger, nie mehr', () => {
 
 test('any wird weniger, nie mehr', () => {
   // GEMESSEN am 19.09.2026 nach Nachtrag 175: 398 Stellen. Es waren 402,
-  // solange der Zaehler auch Kommentare las.
-  const SCHRANKE = 390;
+  // solange der Zaehler auch Kommentare las. 386 am 28.10.2026.
+  const SCHRANKE = 386;
   const ist = zaehle([/\bas any\b/g, /:\s*any\b/g]);
   assert.ok(ist <= SCHRANKE,
     `${ist}-mal \`any\`, erlaubt sind ${SCHRANKE}. Jedes davon schaltet den ` +

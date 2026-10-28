@@ -246,8 +246,12 @@ test('Minifiguren-Bilder werden lokal abgelegt wie Set-Bilder', () => {
   const figJobs = (mon.match(/^\s{2}\w+:\s*\{/gm) || []).filter(l => /fig|minifig/i.test(l));
   assert.deepEqual(figJobs, [], 'Es darf kein eigener Job dafür entstehen — imgDl deckt es ab');
 
-  // Und die offene Menge im Monitoring muss sie mitzählen
-  const admin = fs.readFileSync(path.join(ROOT, 'routes', 'api_v1', 'admin.ts'), 'utf8');
+  // Und die offene Menge im Monitoring muss sie mitzählen. Die Abfrage steht
+  // im Dienst der Verwaltungsrouten; die Route ruft sie für die Kachel auf.
+  const route = fs.readFileSync(path.join(ROOT, 'routes', 'api_v1', 'admin.ts'), 'utf8');
+  assert.match(route, /verwaltung\.bestandsFigurenbilderOffen\(\)/,
+    'Die Job-Übersicht muss die Figurenbilder des Bestands abfragen');
+  const admin = fs.readFileSync(path.join(ROOT, 'utils', 'verwaltung.ts'), 'utf8');
   assert.match(admin, /COUNT\(\*\) as c FROM minifigs_catalog mc/,
     'Die Minifiguren des Bestands fehlen in der offenen Menge');
   // Dieselbe Menge wie der Hintergrundlauf — sonst zeigt das Monitoring eine
