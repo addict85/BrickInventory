@@ -145,6 +145,8 @@ const C = {
   'POST /api/v1/auth/logout': 'nur-v1',
   'POST /api/v1/auth/token-create': 'nur-v1',
   'POST /api/v1/auth/qr-login': 'nur-v1',
+  // Die App fragt vor einem Klartext-Zugang, ob der Server ihren Token kennt.
+  'POST /api/v1/auth/serverbeweis': 'nur-v1',
   // Angemeldete Geraete: seit der Token-Verwaltung von BEIDEN Apps gerufen.
   // Standen als 'nur-web' da und waren es nie — es gab ueberhaupt keinen
   // Aufrufer, und die Routen hingen hinter requireLogin (sitzungsgebunden),
@@ -376,6 +378,7 @@ const C = {
   'POST /api/v1/auth/users': 'nur-web',
   'DELETE /api/v1/auth/users/:id': 'nur-web',
   'PUT /api/v1/auth/users/:id/admin': 'nur-web',
+  'GET /api/v1/admin/protokoll': 'nur-web',
   'GET /api/v1/sets/export/rebrickable': 'nur-web',
   // Nachtrag 159: Beide waren „nur-web", weil die App sie nicht kannte — und
   // das war eine Luecke, keine Entscheidung. Die Webapp bot „Anleitungen neu

@@ -36,7 +36,7 @@ function dialogOeffnen(title, msg, icon, mitPasswort) {
   return new Promise(resolve => {
     const modal = G('confirm-modal');
     const pwWrap = G('cd-pw-wrap'), pw = G('cd-pw');
-    if (pwWrap) pwWrap.style.display = mitPasswort ? '' : 'none';
+    if (pwWrap) pwWrap.hidden = !mitPasswort;
     if (pw) pw.value = '';
     G('cd-title').textContent = title || t('common.delete_title');
     G('cd-msg').textContent   = msg   || t('common.delete_text');

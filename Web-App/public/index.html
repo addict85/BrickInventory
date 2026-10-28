@@ -1457,11 +1457,13 @@
               <option value="unbegrenzt" data-i18n="qr.validity_unlimited">Unbegrenzt</option>
             </select>
           </div>
+          <form data-submit="btn-gen-qr" style="display:contents">
           <div style="display:flex;align-items:center;gap:.5rem;font-size:var(--fs-2)">
             <label for="qr-password" data-i18n="qr.password_label">Dein Passwort</label>
             <input type="password" id="qr-password" autocomplete="current-password" style="font-size:var(--fs-2);padding:4px 8px">
           </div>
-          <button class="btn bp" id="btn-gen-qr" data-i18n="settings.qr.generate" data-ico="aktualisieren">QR-Code generieren</button>
+          <button type="button" class="btn bp" id="btn-gen-qr" data-i18n="settings.qr.generate" data-ico="aktualisieren">QR-Code generieren</button>
+          </form>
           <div id="qr-code" style="background:#fff;padding:12px;border-radius:8px;border:1px solid var(--bdr);display:inline-block"></div>
           <div id="qr-hint" style="font-size:var(--fs-1);color:var(--mut)"></div>
           <!-- Was der Server tatsaechlich vermerkt hat — nicht, was oben
@@ -1557,14 +1559,16 @@
     <div style="font-size:var(--fs-7);margin-bottom:.75rem" id="cd-icon"><svg class="ico" aria-hidden="true"><use href="#i-loeschen"/></svg></div>
     <h3 style="margin:0 0 .5rem;font-size:var(--fs-4);font-weight:700" id="cd-title" data-i18n="common.delete_title">Löschen?</h3>
     <p style="margin:0 0 1.5rem;font-size:var(--fs-3);color:var(--mut);line-height:1.55" id="cd-msg"></p>
-    <div id="cd-pw-wrap" style="display:none;margin:0 0 1.25rem;text-align:left">
+    <form data-submit="cd-confirm" style="margin:0">
+    <div id="cd-pw-wrap" hidden style="margin:0 0 1.25rem;text-align:left">
       <label for="cd-pw" style="font-size:var(--fs-2)" data-i18n="confirm.admin_password">Dein Passwort zur Bestätigung</label>
       <input type="password" id="cd-pw" autocomplete="current-password" style="width:100%;margin-top:.35rem">
     </div>
     <div style="display:flex;gap:.75rem;justify-content:center">
-      <button class="btn bs" id="cd-cancel" data-dialog-zu data-erstfokus style="min-width:100px" data-i18n="common.cancel">Abbrechen</button>
-      <button class="btn bd" id="cd-confirm" style="min-width:100px" data-i18n="confirm.delete_btn">Löschen</button>
+      <button type="button" class="btn bs" id="cd-cancel" data-dialog-zu data-erstfokus style="min-width:100px" data-i18n="common.cancel">Abbrechen</button>
+      <button type="button" class="btn bd" id="cd-confirm" style="min-width:100px" data-i18n="confirm.delete_btn">Löschen</button>
     </div>
+    </form>
   </div>
 </div>
 

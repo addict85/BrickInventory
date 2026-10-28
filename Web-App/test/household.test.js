@@ -576,12 +576,13 @@ test('auch manuelle Teile und Minifiguren wandern über den Kaufpreis', () => {
   // Nachtrag 70: Die Erfassungs-Routen stehen nur noch in der v1-Fabrik, die
   // jetzt Webapp UND App bedient. Die Regel gilt unverändert — sie wird nur an
   // EINER Stelle geprüft statt an dreien, weil es nur noch eine gibt.
-  for (const [f, kind] of [['routes/api_v1/acquisitions.ts', 'part'], ['routes/api_v1/acquisitions.ts', 'fig']]) {
-    const src = read(f);
-    assert.ok(src.includes(`moveManualAcquisition(tx, '${kind}'`), `${f}: Wechsel fehlt`);
-    assert.match(src, /if \(to === null\)\s*\n\s*return sendeFehler\(req, res, 403/,
-      `${f}: ohne Schreibrecht muss 403 kommen`);
-  }
+  // Teile und Figuren gehen über denselben Aufruf; die Art kommt aus der Tabelle.
+  const f = 'routes/api_v1/acquisitions.ts';
+  const src = read(f);
+  assert.ok(src.includes('moveManualAcquisition(tx, kind, keys, id, from, to)'), `${f}: Wechsel fehlt`);
+  assert.match(src, /'part_acquisitions' \? 'part' : 'fig'/, `${f}: Teile und Figuren fehlen in der Zuordnung`);
+  assert.match(src, /if \(to === null\)\s*\n\s*return sendeFehler\(req, res, 403/,
+    `${f}: ohne Schreibrecht muss 403 kommen`);
 });
 
 test('der Absender eines Eigentümerwechsels kommt aus der ZEILE, nicht aus dem Request', () => {
@@ -639,6 +640,5 @@ test('die App-Routen kennen den Eigentümerwechsel', () => {
     'Die v1-Fabrik muss owner_user_id auswerten');
   assert.match(v1, /moveSetBetweenAccounts\(tx, keys\[0\], from, to, \[id\]\)/,
     'Sets wandern über dieselbe Umsetzung wie in der Session-Route');
-  assert.match(v1, /moveManualAcquisition\(tx, 'part', keys, id, from, to\)/);
-  assert.match(v1, /moveManualAcquisition\(tx, 'fig', keys, id, from, to\)/);
+  assert.match(v1, /moveManualAcquisition\(tx, kind, keys, id, from, to\)/);
 });
