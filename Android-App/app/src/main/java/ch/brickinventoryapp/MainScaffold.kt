@@ -30,18 +30,9 @@ import ch.brickinventoryapp.ui.viewmodel.UpdateViewModel
 
 /**
  * Gemeinsames Gerüst aller eingeloggten Screens: obere Leiste mit Titel und
- * Reiter-Icon, untere Navigationsleiste, Snackbar und der CSV-Import-Balken.
- *
- * Aus AppNavigation.kt herausgelöst (Punkt 9 der Optimierungsliste). Der
- * Schnitt ist bewusst hier gesetzt: MainScaffold bekommt alles über seine
- * Parameterliste und greift auf nichts aus dem umgebenden Composable zu — die
- * Verschiebung kann daher nichts kaputtmachen.
- *
- * Der grössere Teil, die Aufteilung des NavHost in Teilgraphen, steht noch aus.
- * Dort schliesst jeder composable-Block über zahlreiche lokale Werte
- * (state, vm, navController, imageLoader, activity …); jeder herausgelöste
- * Teilgraph braucht sie als Parameter, und ein vergessener ist ein
- * Compilerfehler. Das gehört in eine Runde mit laufendem Gradle-Build.
+ * Reiter-Icon, untere Navigation, Snackbar und der CSV-Import-Balken. Es bekommt
+ * alles über seine Parameter und greift auf nichts aus dem umgebenden Composable
+ * zu.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -52,80 +43,26 @@ fun MainScaffold(
     snackbarHostState: SnackbarHostState,
     csvImportState: kotlinx.coroutines.flow.StateFlow<CsvImportUiState>,
     /**
-     * Laufenden CSV-Import abbrechen — der Knopf im Fortschrittsbalken.
-     *
-     * Als Rueckruf und nicht ueber ein ViewModel: Dieses Geruest bekommt
-     * Zustand und Rueckrufe, sonst nichts. Mein erster Entwurf schrieb
-     * `vm.cancelCsvImport()` direkt in den Rumpf — die Datei hat gar kein `vm`,
-     * und der Uebersetzer hat es sofort gesagt (Lauf 108).
+     * Laufenden CSV-Import abbrechen — der Knopf im Fortschrittsbalken. Als Rückruf,
+     * weil dieses Gerüst nur Zustand und Rückrufe bekommt, kein ViewModel.
      */
     onCsvAbbrechen: () -> Unit,
     onLogout: () -> Unit,
     @Suppress("UNUSED_PARAMETER") serverUrl: String,
     isAdmin: Boolean = false,
     /**
-     * Liegt eine neuere Fassung bereit?
-     *
-     * ── Warum es diesen Parameter braucht ────────────────────────────────────
-     *
-     * Marcos Befund: „obwohl der Bau durch ist erhalte ich beim Starten der
-     * Android-App keine Update-Meldung."
-     *
-     * Die Pruefung LIEF — AppNavigation.kt stoesst sie beim Start an
-     * (`pruefeAufUpdate(still = true)`), und der Kommentar dort sagt sogar
-     * ausdruecklich: „Hier und nicht im Einstellungs-Bildschirm: Die Frage
-     * ‚gibt es etwas Neueres?' gilt der ganzen App."
-     *
-     * Die ANTWORT gilt seither aber nur dem Einstellungs-Bildschirm: `updateState`
-     * wurde im ganzen Hauptbaum an genau einer Stelle gelesen, in
-     * SettingsScreen.kt. Die Pruefung fand also etwas, legte es ins ViewModel —
-     * und niemand zeichnete es. Der Weg wurde app-weit gemacht, die Anzeige
-     * nicht mitgenommen.
-     *
-     * Ein Punkt am Konto-Symbol und am Menuepunkt. Er stand hier zuerst
-     * ALLEIN, mit der Begruendung, ein Dialog beim Start waere das Gegenteil
-     * von „beim Start still pruefen, nie von allein laden".
-     *
-     * Diese Begruendung war zur Haelfte falsch, und Marco hat es gemeldet:
-     * „Aktuell wird nur eine Kugel in den Einstellungen angezeigt was oft
-     * übersehen wird." Der Punkt erfuellte das Nicht-Draengen und verfehlte
-     * das Bemerktwerden — und bemerkt zu werden war der ganze Zweck.
-     *
-     * Seither fragt zusaetzlich ein Dialog beim Start
-     * (ui/dialogs/UpdateDialog.kt). Die alte Vorgabe gilt weiter, wo sie
-     * gemeint war: GELADEN wird nach wie vor nie von allein, sondern erst auf
-     * „Jetzt aktualisieren".
-     *
-     * Der Punkt bleibt trotzdem, und zwar nicht aus Gewohnheit: Wer im Dialog
-     * „Spaeter" waehlt, soll den Befund weiterhin sehen koennen — und den Weg
-     * dorthin, wo der Knopf steht.
+     * Liegt eine neuere Fassung bereit? Die Prüfung läuft app-weit beim Start, deshalb
+     * zeigt das Gerüst den Befund: als Punkt am Konto-Symbol und am Menüpunkt. Der
+     * Dialog beim Start (UpdateDialog) macht ihn bemerkbar; der Punkt bleibt für den,
+     * der „Später“ gewählt hat. Geladen wird nie von allein.
      */
     updateVerfuegbar: Boolean = false,
     /**
-     * Ein Reiter wurde unten angetippt — seine gemerkte Rollposition verwerfen.
-     *
-     * ── Marcos Vorgabe (Nachtrag 114) ────────────────────────────────────────
-     * „Im Reiter Teile muss ich beim Öffnen nach oben scrollen, damit die
-     * manuell erfassten Teile angezeigt werden. Wenn der Reiter geöffnet wird,
-     * soll die Seite direkt die manuell erfassten Teile anzeigen."
-     *
-     * Der Scroll-Merker (Nachträge 92 bis 95) ist dafür da, dass die Liste beim
-     * ZURÜCKKEHREN aus einer Detailansicht wieder an derselben Stelle steht. Er
-     * griff bisher auch, wenn der Reiter unten neu angetippt wurde — dann
-     * öffnete sich der Reiter irgendwo in der Mitte, und die manuell erfassten
-     * Einträge ganz oben waren nicht zu sehen.
-     *
-     * Das sind zwei verschiedene Absichten: „ich komme zurück" behält die
-     * Stelle, „ich gehe auf diesen Reiter" fängt oben an. Unterschieden wird
-     * genau hier, wo der Unterschied bekannt ist — im Bildschirm selbst ist
-     * beides nicht auseinanderzuhalten.
-     *
-     * OHNE Vorgabewert, und das ist der Punkt: Vergisst eine künftige
-     * Einbindung den Rückruf, hinge es davon ab, über welchen Reiter man kommt
-     * — von der Galerie aus oben, vom Katalog aus in der Mitte. Mit `= {}` hätte
-     * das nur der Regex-Test in TabOpensAtTopTest gemeldet; ohne meldet es der
-     * Compiler. Dieselbe Überlegung wie beim Server: die Regel gehört an die
-     * Stelle, die sie erzwingen kann, nicht an die, die sie beobachtet.
+     * Ein Reiter wurde unten angetippt — seine gemerkte Rollposition verwerfen. „Ich
+     * komme zurück“ behält die Stelle, „ich gehe auf diesen Reiter“ fängt oben an
+     * (dort stehen die manuell erfassten Einträge); unterscheiden lässt sich das nur
+     * hier. Ohne Vorgabewert, damit eine Einbindung, die ihn vergisst, nicht
+     * übersetzt.
      */
     onTabAngetippt: (Screen) -> Unit,
     content: @Composable () -> Unit
@@ -139,7 +76,7 @@ fun MainScaffold(
         currentDest?.hierarchy?.any { d -> d.route?.let { it in zieleVon(screen) } == true } == true
 
     // Leiste unten und Seitenleiste teilen sich diesen Weg, damit beide die
-    // Rollposition gleich behandeln (Nachtrag 114).
+    // Rollposition gleich behandeln.
     fun reiterWaehlen(screen: Screen) {
         onTabAngetippt(screen)
         if (navController.currentBackStackEntry?.destination?.route == Screen.Monitoring.route) {
@@ -157,7 +94,8 @@ fun MainScaffold(
               Column {
                 TopAppBar(
                     title = {
-                        // Der Seitentitel ist die Überschrift der Ansicht — Vorleseprogramme springen dorthin.
+                        // Der Seitentitel ist die Überschrift der Ansicht — Vorleseprogramme
+                        // springen dorthin.
                         Row(Modifier.semantics(mergeDescendants = true) { heading() },
                             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             // Icon des aktuell gewählten Tabs links vom Namen anzeigen —
@@ -187,58 +125,12 @@ fun MainScaffold(
                             }
                         }
                         DropdownMenu(showLogoutMenu, { showLogoutMenu = false }) {
-                            // ── Der Weg zu den Einstellungen ──────────────────────
+                            // ── Die Seiten des Kontos und der Weg zu den Einstellungen ──
                             //
-                            // Marcos Befund: „wo finde ich die Einstellungen in der
-                            // Android-App?" — Antwort war: nirgends. Der Bildschirm
-                            // stand seit dem ersten Commit im Navigationsgraphen
-                            // (nav/ToolsGraph.kt), aber NIEMAND navigierte dorthin:
-                            // `Screen.Settings` kam im ganzen Hauptbaum genau einmal
-                            // vor, naemlich in seiner eigenen Registrierung.
-                            //
-                            // Unerreichbar waren damit Waehrung, Standard-Zustand,
-                            // Preis-Zustand, Sprache, Haushalt, Konto, CSV-Import,
-                            // angemeldete Geraete UND die Update-Pruefung.
-                            //
-                            // HIER und nicht als Reiter unten: Die Reiter zeigen
-                            // BESTAENDE. Einstellungen sind
-                            // keine Bestandsansicht, und die Webapp fuehrt sie
-                            // ebenfalls nicht in der Hauptnavigation. Das
-                            // Konto-Menue ist der Ort fuer alles, was kein Reiter
-                            // ist — die Ueberwachung steht schon hier.
-                            //
-                            // Der Text ist R.string.nav_settings, derselbe wie die
-                            // Ueberschrift des Bildschirms: Ein zweiter Schluessel
-                            // mit demselben Wort waere eine Stelle, an der Menue
-                            // und Ziel auseinanderlaufen koennen.
-                            // ── Die sechs Rubriken stehen HIER, nicht eine Ebene tiefer ──
-                            //
-                            // Marcos Vorgabe vom 17.10.: „in der Android-App sollten
-                            // die Punkte unter Einstellungen eine ebene nach aussen
-                            // wandern wo heute Einstellungen und Abmelden und
-                            // Monitoring zu finden sind."
-                            //
-                            // Bis dahin lagen sie als Liste IM Einstellungs-
-                            // bildschirm: Konto-Menue, Einstellungen, Liste,
-                            // Unterseite — drei Tipper bis zu den Gutscheinen.
-                            // Jetzt sind es zwei, und die Klappe liest sich wie das
-                            // Menue der Webapp hinter dem Benutzernamen: erst die
-                            // Seiten, dann die Einstellungen, dann die Handlung.
-                            //
-                            // Die Reihenfolge ist NICHT alphabetisch, sondern nach
-                            // Haeufigkeit — sie kommt unveraendert aus der Liste
-                            // mit: Gutscheine werden im Laden gebraucht (Marcos
-                            // „moeglichst einfach erreichbar"), Preisalarme beim
-                            // Stoebern, der Rest selten. GutscheineContractTest
-                            // haelt fest, dass die Gutscheine erster Eintrag
-                            // bleiben.
-                            //
-                            // Jede Route steht AUSGESCHRIEBEN da und wird nicht
-                            // zusammengesetzt: ErreichbareRoutenTest sucht nach
-                            // `navigate(Screen.X.route)`, und ein Bildschirm, zu
-                            // dem nur ein gebauter String fuehrt, waere fuer die
-                            // Pruefung unerreichbar — also genau das, was sie
-                            // finden soll.
+                            // Hier und nicht als Reiter: Die Reiter zeigen Bestände. Die
+                            // Reihenfolge folgt der Häufigkeit — Gutscheine braucht man im Laden.
+                            // Jede Route steht ausgeschrieben da, weil ErreichbareRoutenTest nach
+                            // `navigate(Screen.X.route)` sucht.
                             MenuZiel(R.string.vouchers_title, Icons.Default.Redeem) {
                                 showLogoutMenu = false
                                 navController.navigate(Screen.Gutscheine.route)
@@ -388,29 +280,10 @@ fun MainScaffold(
 }
 
 /**
- * Das Gerüst für ein Reiter-Ziel — mit allem, was in JEDEM Ziel gleich ist.
- *
- * ── Warum es das gibt (Nachtrag 120) ─────────────────────────────────────────
- *
- * Die neun `MainScaffold`-Einbindungen in CollectionGraph, ToolsGraph und
- * CatalogGraph waren Zeichen für Zeichen identisch, bis auf den Titel:
- * derselbe Abmelde-Rückruf, dasselbe Verwerfen der Rollposition, dieselbe
- * Weitergabe von `serverUrl` und `isAdmin`.
- *
- * Das ist genau die Form, aus der der Fehler in Nachtrag 114 entstand: Eine
- * Einbindung vergass `onTabAngetippt`, und es hing davon ab, über welchen
- * Reiter man kam — von der Galerie aus fing die Liste oben an, vom Katalog aus
- * in der Mitte. Damals habe ich den Vorgabewert entfernt, damit der Compiler es
- * meldet. Das war die richtige Sofortmassnahme, aber nicht die Ursache: Die
- * fünf Zeilen standen neunmal da, und eine zehnte Einbindung hätte sie wieder
- * abschreiben müssen.
- *
- * Jetzt gibt es sie einmal. Ein neues Reiter-Ziel kann nichts mehr vergessen,
- * weil es nichts mehr weiterzureichen gibt.
- *
- * NICHT hierher gewandert ist `MainScaffold` selbst: Es bleibt für den Fall
- * offen, dass ein Ziel doch einmal abweichen muss — dann nimmt es wieder den
- * langen Weg, und das fällt beim Lesen auf.
+ * Das Gerüst für ein Reiter-Ziel mit allem, was in jedem Ziel gleich ist
+ * (Abmelden, Verwerfen der Rollposition, `serverUrl`, `isAdmin`). Ein neues Ziel
+ * kann so nichts vergessen, weil es nichts weiterzureichen gibt. MainScaffold
+ * selbst bleibt für Ziele, die abweichen müssen.
  */
 @Composable
 fun ReiterGeruest(
@@ -431,7 +304,7 @@ fun ReiterGeruest(
         snackbarHostState = snackbarHostState,
         csvImportState = vm.csvImportState,
         onCsvAbbrechen = { vm.cancelCsvImport() },
-        // Reiter angetippt → oben anfangen (Nachtrag 114).
+        // Reiter angetippt → oben anfangen.
         onTabAngetippt = { ziel -> vm.scrollMemory.vergissReiter(ziel.route) },
         onLogout = {
             vm.logout()
@@ -446,16 +319,9 @@ fun ReiterGeruest(
 }
 
 /**
- * Ein Eintrag der Konto-Klappe, der auf eine Seite fuehrt.
- *
- * Sechsmal dasselbe Geruest auszuschreiben hiesse, dass der siebte Eintrag
- * irgendwann anders aussieht — und zwar erst dann, wenn jemand an einem der
- * sechs etwas aendert.
- *
- * Das Zuklappen steht ABSICHTLICH im Aufrufer und nicht hier drin: Die beiden
- * Eintraege darunter (Einstellungen, Monitoring) machen es genauso, und ein
- * Helfer, der es heimlich mit erledigt, waere der Grund dafuer, dass der
- * naechste Eintrag es vergisst.
+ * Ein Eintrag der Konto-Klappe, der auf eine Seite führt — ein Gerüst, damit kein
+ * Eintrag anders aussieht. Das Zuklappen steht im Aufrufer, wie bei den Einträgen
+ * darunter.
  */
 @Composable
 private fun MenuZiel(

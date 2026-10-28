@@ -3,23 +3,9 @@ package ch.brickinventoryapp.ui
 import ch.brickinventoryapp.data.model.*
 
 /**
- * Galerie: Liste, Filter, Blaetterstand und Kennzahlen.
- *
- * ── Warum diese zehn Felder aus AppUiState heraus mussten ───────────────────
- * NACHGEMESSEN, nicht vermutet: SECHZEHN Dateien sammeln `vm.state`. Gelesen
- * werden die Galerie-Felder aber nur von dreien (GalleryScreen,
- * CollectionGraph, SetDetailScreen). Die uebrigen dreizehn wurden bei jedem
- * Blaettern, jeder Suche und jedem Nachladen neu zusammengesetzt, ohne ein
- * einziges dieser Felder zu lesen — Minifiguren, Finanzen, Einstellungen, die
- * Navigationsleiste.
- *
- * Und gerade die Galerie ist der Zustand, der sich am haeufigsten aendert:
- * `galleryLoadingMore` allein wird an fuenf Stellen geschrieben, `sets` an
- * sechs.
- *
- * Es ist dasselbe Muster, das fuer Teile, Finanzen, Katalog und den Barcode
- * schon vollzogen wurde (Nachtraege 117 ff.) — bei der Galerie war es
- * steckengeblieben, ausgerechnet beim groessten und lautesten Block.
+ * Galerie: Liste, Filter, Blätterstand und Kennzahlen. Eigener Fluss, weil sich
+ * die Galerie am häufigsten ändert und nur wenige Bildschirme sie lesen; in
+ * AppUiState zeichneten bei jedem Blättern alle anderen mit.
  */
 data class GalleryUiState(
     val sets: List<SetItem> = emptyList(),
@@ -36,13 +22,9 @@ data class GalleryUiState(
     val galleryTotal: Int = 0,
     val galleryPage: Int = 1,
     /**
-     * Erste Seite / Neuladen. `galleryLoadingMore` ist das Gegenstück fürs
-     * Anhängen — getrennt, weil die Oberfläche beide unterschiedlich zeigt
-     * (Kringel oben gegen Fussleiste unten) und der Wächter in loadMoreSets()
-     * beide braucht.
-     *
-     * Kam aus AppUiState.isLoading hierher: Dort teilte sich die Galerie das
-     * Feld mit Anmeldung, Teileliste und Bewertung. Siehe AppUiState.loginLaeuft.
+     * Erste Seite oder Neuladen. `galleryLoadingMore` ist das Gegenstück fürs Anhängen
+     * — getrennt, weil die Oberfläche beide verschieden zeigt und der Wächter in
+     * loadMoreSets() beide braucht.
      */
     val galleryLoading: Boolean = false,
     val galleryLoadingMore: Boolean = false,
@@ -57,97 +39,49 @@ data class GalleryUiState(
 )
 
 /**
- * Teile & Minifiguren — eigener Flow (gleiches Muster wie CatalogUiState).
- *
- * Diese Felder lagen bis zuletzt in AppUiState. Folge: Jedes `partsLoading`
- * beim Blättern durch die Teileliste rekomponierte auch die Galerie, die
- * Navigationsleiste und alles andere, was AppUiState liest — obwohl nur zwei
- * Screens diese Daten überhaupt brauchen.
+ * Teile und Minifiguren — eigener Fluss: Nur zwei Bildschirme brauchen die Felder,
+ * und jedes `partsLoading` beim Blättern zeichnete sonst alles neu, was AppUiState
+ * liest.
  */
 data class PartsUiState(
     val parts: List<Part> = emptyList(),
     /**
-     * Die manuell erfassten Teile — aus /api/v1/parts/manual, derselben
-     * Quelle wie die Webapp.
-     *
-     * Sie kamen bisher aus der BEWERTUNG (FinanceUiState.partsValuation).
-     * Zwei Quellen fuer dieselbe Liste, und die App lud dafuer jedes Mal die
-     * ganze Bewertung samt Marktpreis-Abfragen — obwohl die Kachel nur
-     * Nummer, Name, Farbe, Zustand, Bild, Menge und Besitzer zeigt.
-     *
-     * NULL heisst „noch nicht geladen", eine leere Liste „keine vorhanden".
-     * Der Unterschied traegt: Die Wiederherstellung der Rollposition wartet
-     * darauf, dass die Liste DA ist — auf `isNotEmpty()` zu warten hiesse,
-     * dass sie bei jemandem ohne eigene Teile nie wiederhergestellt wuerde
-     * (so stand es schon einmal da, siehe CollectionGraph).
+     * Die manuell erfassten Teile aus /api/v1/parts/manual, derselben Quelle wie die
+     * Webapp — nicht aus der Bewertung, die dafür samt Marktpreisen geladen werden
+     * müsste. null heisst „noch nicht geladen“, leer „keine vorhanden“: Die
+     * Wiederherstellung der Rollposition wartet auf die Liste, auch wenn sie leer ist.
      */
     val manualParts: List<ch.brickinventoryapp.data.model.PartValuationItem>? = null,
     val partsTotal: Int = 0,
     val partsPage: Int = 1,
     /**
-     * Der Suchtext der Teileliste — im ZUSTAND, nicht im Bildschirm.
-     *
-     * Er stand als `var searchQuery by rememberSaveable` in PartsScreen und
-     * wurde jedem Ladeaufruf als Argument mitgegeben. Jeder Weg, der die Liste
-     * NICHT aus dem Suchfeld heraus nachlud, kannte ihn damit nicht:
-     * `onLoadMore` holte Seite 2 ungefiltert und haengte sie an eine
-     * gefilterte Seite 1, und `partsTotal` kam aus der ungefilterten Abfrage.
-     * Ebenso nach dem Loeschen eines manuellen Teils, nach einem Wechsel des
-     * Kontofilters und beim Betreten des Reiters.
-     *
-     * Die Galerie macht es seit jeher so (galleryQuery daneben) — dort liest
-     * JEDER Lader den Filter aus dem Zustand, und genau deshalb gab es das
-     * Problem dort nicht.
+     * Der Suchtext der Teileliste im Zustand, nicht im Bildschirm: Jeder Lader
+     * (Nachladen, Löschen, Kontofilter, Betreten) liest den Filter von hier; sonst
+     * hängte `onLoadMore` eine ungefilterte Seite 2 an eine gefilterte Seite 1.
      */
     val partsQuery: String = "",
     /**
-     * Ersatzteil-Filter: "" alle, "0" ohne Ersatzteile, "1" nur Ersatzteile.
-     *
-     * Dieselben drei Werte wie das Auswahlfeld der Webapp (parts-spare in
-     * index.html). Die App las `is_spare` bisher zwar aus der Antwort und hatte
-     * sogar einen Helfer dafuer (Part.isSpareFlag) — benutzt hat sie beides
-     * nirgends. Wer am Telefon nachsah, wie viele Teile er wirklich hat, bekam
-     * die Ersatzteile immer mitgezaehlt; am Rechner konnte er sie ausblenden.
-     *
-     * Aus demselben Grund wie partsQuery im Zustand und nicht im Bildschirm:
-     * Sonst kennt ihn nur, wer aus dem Filter heraus laedt, und `onLoadMore`
-     * haengt eine ungefilterte Seite 2 an eine gefilterte Seite 1.
+     * Ersatzteil-Filter: "" alle, "0" ohne, "1" nur Ersatzteile — die Werte der Webapp
+     * (parts-spare). Im Zustand aus demselben Grund wie partsQuery.
      */
     val partsSpare: String = "",
     /**
-     * Darstellung der Teileliste: "grid" (Karten) oder "table" (Zeilen).
-     *
-     * Wie in der Webapp (Auswahlfeld parts-view). Im Zustand und nicht im
-     * Bildschirm, weil der Ladeweg ihn braucht: Die Spalte „In Sets" kostet
-     * den Server eine eigene Abfrage, deshalb holt die Webapp `with_sets=1`
-     * NUR in der Tabellenansicht — und die App tut es genauso.
+     * Darstellung der Teileliste: "grid" oder "table", wie parts-view in der Webapp.
+     * Im Zustand, weil der Ladeweg ihn braucht: `with_sets=1` kostet den Server eine
+     * eigene Abfrage und wird nur für die Tabelle geholt.
      */
     val partsView: String = "grid",
     /**
-     * Die beiden Filterlisten des Reiters — Farbe und Kategorie, mit Anzahl.
-     *
-     * ── Warum sie fehlten (Nachtrag 134) ────────────────────────────────────
-     *
-     * Gemessen, nicht gelesen: Ein Vergleich der Server-Adressen beider
-     * Clients zeigte 21 Adressen, die nur die Webapp ruft — darunter
-     * /parts/colors und /parts/categories. Die App bot im Teile-Reiter
-     * ausschliesslich die Suche.
-     *
-     * Bemerkenswert war der Zustand der Leitung: `BrickApiService.getParts`
-     * deklariert `@Query("color")` und `@Query("category")` seit jeher, und
-     * `TeileRepository.getParts` reicht beide durch. Nur gesetzt hat sie nie
-     * jemand — eine halbfertige Funktion, die in keiner Pruefung auffiel, weil
-     * Vorgabewerte kein toter Code sind.
+     * Die beiden Filterlisten des Reiters — Farbe und Kategorie, mit Anzahl
+     * (/parts/colors und /parts/categories, wie in der Webapp).
      */
     val partsFilterColors: List<ch.brickinventoryapp.data.model.PartsFilterColor> = emptyList(),
     val partsCategories: List<ch.brickinventoryapp.data.model.PartsCategory> = emptyList(),
     /** Gewaehlte Farbe; "" = alle. Der Wert reist als `color=` mit. */
     val partsColorFilter: String = "",
     /**
-     * Gewaehlte Kategorie; "" = alle.
-     *
-     * Gespeichert wird der WERT (`category_name`, meist eine Katalog-ID als
-     * Text), nicht die Beschriftung — der Server filtert danach.
+     * Gewählte Kategorie; "" = alle. Gespeichert wird der Wert (`category_name`, meist
+     * eine Katalog-ID als Text), nicht die Beschriftung — der Server filtert danach.
      */
     val partsCategoryFilter: String = "",
     val partsLoading: Boolean = false,
@@ -163,21 +97,14 @@ data class PartsUiState(
     /** Figurenliste aus dem Plattenspeicher: Zeitpunkt der Ablage, sonst null. */
     val figurenOfflineStand: Long? = null,
     /**
-     * Suchtext der Figurenliste — im Zustand, nicht im Composable.
-     *
-     * Er stand als `var search by rememberSaveable` in MinifigsScreen und
-     * filterte die schon geladene Liste. Damit gab es dieselbe Suchregel
-     * zweimal (hier und im Server-Handler), und sie waren nicht deckungsgleich:
-     * Der Server sucht vor der Gruppierung ueber jede fig_name-Zeile, das
-     * Composable danach ueber die eine, die uebrig bleibt. Aus demselben Grund
-     * steht partsQuery oben im Zustand.
+     * Suchtext der Figurenliste im Zustand: Gesucht wird auf dem Server, vor der
+     * Gruppierung über jede fig_name-Zeile; eine zweite Suche im Composable träfe
+     * anderes. Wie partsQuery.
      */
     val minifigsQuery: String = "",
     /**
-     * Darstellung der Figurenliste: "grid" oder "table" — wie figs-view in der
-     * Webapp. Anders als bei den Teilen braucht der Ladeweg ihn nicht (es gibt
-     * keine zusaetzliche Spalte vom Server), er steht aber aus demselben Grund
-     * hier: Beim Zuruecknavigieren soll die Ansicht dieselbe sein.
+     * Darstellung der Figurenliste: "grid" oder "table", wie figs-view in der Webapp.
+     * Im Zustand, damit die Ansicht beim Zurücknavigieren dieselbe ist.
      */
     val minifigsView: String = "grid",
     val partsStats: PartsStats? = null,
@@ -185,10 +112,8 @@ data class PartsUiState(
 )
 
 /**
- * Set-Detail-Zustand — getrennt vom Haupt-State (gleiches Muster wie
- * CsvImportUiState): Preis- und History-Loads im Detail-Screen haben sonst
- * bei jedem Update alle Composables rekomponiert, die AppUiState lesen,
- * obwohl nur der SetDetailScreen diese Felder braucht.
+ * Set-Detail — eigener Fluss: Preis- und Verlaufsabrufe zeichneten sonst alles
+ * neu, was AppUiState liest, obwohl nur SetDetailScreen sie braucht.
  */
 data class SetDetailUiState(
     val setDetail: SetItem? = null,
@@ -203,10 +128,8 @@ data class SetDetailUiState(
     val priceHistory: PriceHistoryResponse? = null,
     val priceHistoryLoading: Boolean = false,
     /**
-     * Preisalarme dieses Sets — hoechstens zwei (neu und gebraucht).
-     *
-     * Getrennt vom setDetail geladen, weil sie NICHT zum Set gehoeren,
-     * sondern zum Konto: Zwei Personen mit demselben Set haben
+     * Preisalarme dieses Sets, höchstens zwei (neu und gebraucht). Getrennt vom Set
+     * geladen, weil sie zum Konto gehören: Zwei Personen mit demselben Set haben
      * verschiedene Alarme.
      */
     val preisalarme: List<ch.brickinventoryapp.data.model.Preisalarm> = emptyList(),
@@ -240,34 +163,16 @@ data class ManualItemDetailUiState(
     // angezeigte Menge folgt der SUMME der Erfassungen
     // (ManualItemDetailScreen), und die laedt deleteManualAcquisition()
     // unmittelbar danach neu.
-    /**
-     * Marktpreis je Zustand und Verlauf — dieselbe Antwortform wie beim Set.
-     *
-     * Bis hardened-96 gab es die beiden Endpunkte nur für die Webapp; der
-     * Dialog hier zeigte deshalb Kaufpreise, aber keinen Marktpreis.
-     */
+    /** Marktpreis je Zustand und Verlauf — dieselbe Antwortform wie beim Set. */
     val priceHistory: PriceHistoryResponse? = null,
     val priceHistoryLoading: Boolean = false,
 )
 
 /**
- * Der Detail-Dialog fuer ein Teil / eine Figur AUS EINEM SET.
- *
- * ── Marcos Wunsch ──────────────────────────────────────────────────────────
- * „Auch die automatisch erfassten Teile und Minifiguren sollen einen
- * Detail-Dialog inkl. Zoom haben. Der Marktpreis kann weggelassen werden, die
- * Anzahl soll nicht geaendert werden koennen. Dafuer soll angezeigt werden,
- * welche Sets dieses Teil und Minifigur verwenden — inkl. Link, um den
- * Detail-Dialog des Sets oeffnen zu koennen."
- *
- * ── Warum ein eigener Fluss ────────────────────────────────────────────────
- * Dieselbe Ueberlegung wie bei BarcodeUiState: Ein geoeffneter Dialog erzeugt
- * Zwischenstaende (laedt, da, Fehler), und die gingen als Felder in AppUiState
- * jeden Reiter an. `offen == null` heisst: kein Dialog.
- *
- * EIN Zustand fuer Teile UND Figuren — der Server beantwortet beide Faelle mit
- * derselben Funktion und liefert dieselbe Form. Zwei Zustaende waeren zwei
- * Stellen, an denen dasselbe steht.
+ * Der Detail-Dialog für ein Teil oder eine Figur aus einem Set: Zoom, Menge nur
+ * zum Lesen, und in welchen Sets es steckt. Eigener Fluss, weil der Dialog
+ * Zwischenstände erzeugt, die jeden Reiter angingen; `offen == null` heisst: kein
+ * Dialog. Ein Zustand für beides, weil der Server dieselbe Form liefert.
  */
 data class SetItemUiState(
     /** "part" oder "fig"; null heisst: der Dialog ist zu. */

@@ -9,46 +9,12 @@ import javax.inject.Singleton
 
 /**
  * Dauerhafte Ablage der Vorschaubilder — damit die Tabellen ohne Netz stehen.
- *
- * ── Marcos Anforderung ──────────────────────────────────────────────────────
- * „Die Android-App soll auch ohne Internet funktionieren." Und zum Umfang:
- * „nur fuer Vorschau Bilder."
- *
- * ── Warum ein Speicher und nicht noch ein Cache ─────────────────────────────
- *
- * Die App hatte schon zwei Zwischenspeicher fuer Bilder: Coils Plattencache und
- * den HTTP-Cache von OkHttp, beide 50 MB, beide unter `cacheDir`. Das Wort
- * steht dort nicht zufaellig: Was unter `cacheDir` liegt, darf Android
- * jederzeit loeschen, wenn der Speicher knapp wird — ohne Rueckfrage, ohne
- * Reihenfolge, auch genau das, was man morgen offline braucht. Und beide sind
- * LRU: Wer durch den Katalog blaettert, verdraengt damit die Bilder der eigenen
- * Sammlung.
- *
- * Diese Ablage liegt unter `filesDir`. Das ist der ganze Unterschied zwischen
- * „meistens noch da" und „da". Android raeumt dort nichts weg; geloescht wird
- * nur, was diese Klasse selbst loescht.
- *
- * ── Warum KEINE Datenbank ───────────────────────────────────────────────────
- *
- * Naheliegend waere Room gewesen. Der Nutzen einer Datenbank ist ein
- * durchsuchbarer Index — und bei einem Bild IST der Index schon der
- * Dateiname: Der Schluessel ist die Adresse, und mehr wird nie gefragt als
- * „habe ich die?". Groesse und Alter stehen im Dateisystem.
- *
- * Room haette dafuer eine neue Abhaengigkeit samt Annotationsverarbeitung
- * gebracht, und es gibt in diesem Projekt keine zweite Stelle, die davon
- * profitierte. Diese Klasse laesst sich spaeter hinter derselben Schnittstelle
- * auf eine Datenbank umstellen, falls je etwas dazukommt, das man WIRKLICH
- * abfragen muss.
- *
- * ── Kein Zusammenfuehren noetig ─────────────────────────────────────────────
- *
- * Eine lokale Ablage wirft sonst die Frage auf, was gilt, wenn sich beide
- * Seiten geaendert haben. Hier nicht: Die App LIEST Bilder nur. Es gibt genau
- * eine Stelle, die sie aendern kann — den Server —, also ist nichts
- * zusammenzufuehren. Ob die eigene Kopie noch stimmt, beantwortet der ETag —
- * und zwar im HTTP-Zwischenspeicher von OkHttp, der die bedingte Anfrage
- * ohnehin fuehrt. Diese Ablage muss ihn deshalb gar nicht kennen.
+ * Coils Plattencache und der HTTP-Cache liegen unter `cacheDir`, den Android
+ * jederzeit leeren darf, und beide sind LRU: Wer durch den Katalog blättert,
+ * verdrängt die eigene Sammlung. Diese Ablage liegt unter `filesDir` und räumt nur
+ * selbst. Keine Datenbank: Der Schlüssel ist die Adresse, gefragt wird nur „habe
+ * ich die?“. Zusammenzuführen gibt es nichts — die App liest Bilder nur, und ob
+ * die Kopie stimmt, klärt der ETag im HTTP-Cache.
  */
 @Singleton
 class VorschauSpeicher @Inject constructor(
@@ -56,60 +22,31 @@ class VorschauSpeicher @Inject constructor(
 ) {
     companion object {
         /**
-         * Obergrenze der Ablage.
-         *
-         * Sie muss sein: `filesDir` raeumt niemand ausser uns, und ein
-         * Katalog mit 25'000 Sets liesse sie sonst unbegrenzt wachsen. 150 MB
-         * fassen bei rund 15 kB je Vorschau ueber zehntausend Bilder — weit
-         * mehr als eine Sammlung braucht, und wenig gegenueber dem, was eine
-         * einzige Filmdatei belegt.
+         * Obergrenze der Ablage: `filesDir` räumt niemand ausser uns. 150 MB fassen bei
+         * rund 15 kB je Vorschau über zehntausend Bilder.
          */
         const val MAX_BYTES = 150L * 1024 * 1024
 
-        /** Beim Aufraeumen auf vier Fuenftel hinunter, statt jedes Mal knapp an der Grenze zu arbeiten. */
+        /**
+         * Beim Aufraeumen auf vier Fuenftel hinunter, statt jedes Mal knapp an der Grenze
+         * zu arbeiten.
+         */
         private const val ZIEL_ANTEIL = 0.8
 
         /**
-         * So weit darf das VORWAERMEN die Ablage fuellen — Marcos Vorgabe:
-         * „Dabei soll nicht mehr als 80% des Speichercaches genutzt werden."
-         *
-         * Dieselbe Zahl wie [ZIEL_ANTEIL], aber eine ANDERE Sache, und sie
-         * darf nicht dafuer gehalten werden: [ZIEL_ANTEIL] sagt, wie tief das
-         * Aufraeumen hinunter geht, wenn die Ablage voll ist. Diese Grenze
-         * hier sagt, ab wann das Vorwaermen aufhoert, Neues zu holen.
-         *
-         * Das letzte Fuenftel bleibt dem vorbehalten, was jemand WIRKLICH
-         * ansieht. Ohne diese Grenze fuellte die Spekulation die Ablage bis an
-         * den Rand, und der naechste echte Aufruf loeste sofort ein Aufraeumen
-         * aus — die Vorwaermung haette sich gegenseitig und die Sammlung
-         * gleich mit weggeworfen.
+         * So weit darf das Vorwärmen die Ablage füllen: 80 %. Nicht dasselbe wie
+         * [ZIEL_ANTEIL] (wie tief das Aufräumen geht): Das letzte Fünftel bleibt dem, was
+         * jemand wirklich ansieht, sonst löste jeder echte Aufruf ein Aufräumen aus.
          */
         const val GRENZE_VORWAERMEN = MAX_BYTES / 5 * 4
 
         /**
-         * Zeitstempel fuer spekulativ geholte Bilder: der 1. Januar 1970.
-         *
-         * ── Warum ueberhaupt gemogelt wird ──────────────────────────────────
-         *
-         * [aufraeumenFallsNoetig] wirft die AELTESTEN zuerst weg. Ohne diesen
-         * Kniff waere ein soeben vorgewaermtes Bild das JUENGSTE und damit
-         * sicherer als ein Bild, das jemand vor zwei Wochen wirklich
-         * angesehen hat. Die Spekulation verdraengte also die Sammlung —
-         * genau verkehrt herum.
-         *
-         * Mit dem Zeitstempel ganz unten steht jede Vorwaermung am Anfang der
-         * Schlange und fliegt zuerst. Wird so ein Bild spaeter TATSAECHLICH
-         * angesehen, schreibt der Abgriff in NetzModule es mit `spekulativ =
-         * false` neu — und damit rueckt es mit einem echten Zeitstempel ans
-         * Ende der Schlange. Der Uebergang „geraten" -> „gebraucht" passiert
-         * also von selbst, ohne eigene Buchfuehrung.
-         *
-         * Nicht 0: Manche Dateisysteme nehmen die Null nicht an. Eine Sekunde
-         * nach der Epoche ist ebenso alt und unverfaenglich.
-         *
-         * Ganzzahlig gerechnet (`/ 5 * 4`) und nicht `* 0.8`: `const val`
-         * vertraegt in Kotlin nur Konstantenausdruecke, und `.toLong()` auf
-         * einem Fliesskommawert ist keiner.
+         * Zeitstempel für spekulativ geholte Bilder, kurz nach der Epoche: Aufgeräumt wird
+         * das Älteste zuerst, und ein vorgewärmtes Bild soll vor einem wirklich
+         * angesehenen fliegen. Wird es später angesehen, schreibt der Abgriff in
+         * NetzModule es mit `spekulativ = false` neu und gibt ihm einen echten Stempel.
+         * Nicht 0, weil manche Dateisysteme die Null nicht annehmen. Die Grenze oben
+         * ganzzahlig, weil `const val` nur Konstantenausdrücke verträgt.
          */
         private const val SPEKULATIV_ZEIT = 1000L
 
@@ -122,26 +59,20 @@ class VorschauSpeicher @Inject constructor(
     }
 
     /**
-     * Gehoert diese Adresse zu einem Vorschaubild?
+     * Gehört diese Adresse zu einem Vorschaubild? Zwei Formen aus util/ImageUrls.kt:
      *
-     * Zwei Formen, beide aus util/ImageUrls.kt:
-     *   • der Proxy mit `&thumb=1`
-     *   • eine lokal abgelegte Datei, die der Server als `_thumb` benannt hat
+     * - der Proxy mit `&thumb=1`
+     * - eine lokal abgelegte Datei, die der Server `_thumb` benannt hat
      *
-     * Die volle Aufloesung bleibt draussen: Sie wird einzeln im Detaildialog
-     * angesehen, nicht in Tabellen, und ein paar hundert davon fuellten die
-     * Ablage mit etwas, das offline niemand vermisst.
+     * Die volle Auflösung bleibt draussen: Sie wird einzeln im Detail angesehen, nicht
+     * in Tabellen.
      */
     fun istVorschau(adresse: String): Boolean =
         adresse.contains("${VORSCHAU_MERKMAL}=1") || adresse.contains("_$VORSCHAU_MERKMAL.")
 
     /**
-     * Der Dateiname zu einer Adresse.
-     *
-     * SHA-256 statt der Adresse selbst: Die Adresse enthaelt einen
-     * URL-kodierten Fremdlink mit Schraegstrichen und Prozentzeichen und taugt
-     * nicht als Dateiname. Ein Hash ist ausserdem gleich lang, was die
-     * Pfadlaenge berechenbar macht.
+     * Der Dateiname zu einer Adresse — SHA-256, weil die Adresse einen kodierten
+     * Fremdlink mit Schrägstrichen enthält; ein Hash hat ausserdem eine feste Länge.
      */
     private fun schluessel(adresse: String): String =
         MessageDigest.getInstance("SHA-256").digest(adresse.toByteArray())
@@ -150,11 +81,8 @@ class VorschauSpeicher @Inject constructor(
     private fun datei(adresse: String) = File(ordner, schluessel(adresse))
 
     /**
-     * Liegt diese Adresse schon hier?
-     *
-     * Fuer das Vorwaermen, das sonst Zehntausende bereits vorhandener Bilder
-     * neu holte. Bewusst OHNE die Bytes zu lesen: Es geht um die Frage
-     * „brauche ich das Netz?", nicht um den Inhalt.
+     * Liegt diese Adresse schon hier? Für das Vorwärmen, ohne die Bytes zu lesen —
+     * gefragt ist nur, ob es das Netz braucht.
      */
     fun hat(adresse: String): Boolean = datei(adresse).let { it.isFile && it.length() > 0 }
 
@@ -165,11 +93,8 @@ class VorschauSpeicher @Inject constructor(
     }
 
     /**
-     * Bytes ablegen. Erst in eine Nebendatei, dann umbenennen — sonst liegt
-     * nach einem Abbruch eine halbe Datei da, und die sieht aus wie ein Bild.
-     *
-     * Dieselbe Vorsicht wie im Bild-Proxy des Servers, wo genau das schon
-     * einmal passiert ist.
+     * Bytes ablegen: erst in eine Nebendatei, dann umbenennen — sonst läge nach einem
+     * Abbruch eine halbe Datei da, die wie ein Bild aussieht.
      */
     fun schreibe(adresse: String, bytes: ByteArray, spekulativ: Boolean = false) {
         if (bytes.isEmpty()) return
@@ -194,12 +119,9 @@ class VorschauSpeicher @Inject constructor(
     }
 
     /**
-     * Ueber der Grenze? Dann die aeltesten wegwerfen.
-     *
-     * Nach der letzten AENDERUNG, nicht nach dem letzten Lesen: Android fuehrt
-     * die Lesezeit auf vielen Dateisystemen gar nicht mehr nach. Das ist
-     * gutmuetig genug — was regelmaessig gebraucht wird, wird auch
-     * regelmaessig neu geholt und damit neu geschrieben.
+     * Über der Grenze? Dann die ältesten wegwerfen — nach der letzten Änderung, weil
+     * viele Dateisysteme die Lesezeit nicht mehr führen. Was regelmässig gebraucht
+     * wird, wird ohnehin neu geschrieben.
      */
     private fun aufraeumenFallsNoetig() {
         runCatching {

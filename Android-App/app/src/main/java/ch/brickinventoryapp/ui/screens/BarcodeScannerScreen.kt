@@ -1,29 +1,17 @@
 package ch.brickinventoryapp.ui.screens
 
 /*
- * ═══════════════════════════════════════════════════════════════════════════
- *  NICHT ÄNDERN OHNE ZU LESEN: Autofokus
- * ═══════════════════════════════════════════════════════════════════════════
+ * ═══ NICHT ÄNDERN OHNE ZU LESEN: Autofokus ═══
  *
- *  Der Scanner stellte in dieser Datei schon MEHRFACH nicht mehr scharf. Es
- *  waren jedes Mal dieselben zwei Fehler:
+ * 1. CONTROL_AF_MODE_CONTINUOUS_PICTURE an beiden Use Cases, Preview und
+ * ImageAnalysis: CameraX führt sie zu einem Repeating-Request zusammen, und steht
+ * der Modus nur an einem, bleibt das Bild je nach Gerät unscharf.
  *
- *  1. CONTROL_AF_MODE_CONTINUOUS_PICTURE muss an BEIDEN Use Cases stehen —
- *     am Preview UND an der ImageAnalysis. CameraX führt die Konfigurationen
- *     aller gebundenen Use Cases zu EINEM Repeating-Request zusammen; steht
- *     der Modus nur an einem, entscheidet je nach Gerät die andere
- *     Konfiguration mit, und das Bild bleibt unscharf. Der Code sieht dabei
- *     völlig richtig aus — das ist die Tücke.
+ * 2. Kein periodisches startFocusAndMetering: Ein Takt zwingt die Kamera dauernd
+ * in eine neue Messung. Tippen zum Scharfstellen ist in Ordnung.
  *
- *  2. KEIN periodisches startFocusAndMetering ("Fokus-Pump"). Ein im Takt
- *     laufender Aufruf zwingt die Kamera immer wieder in eine neue Messung,
- *     der Fokus wandert dauernd. Tap-to-Focus im Touch-Listener ist in
- *     Ordnung — eine Schleife, ein Timer oder ein delay() davor nicht.
- *
- *  Beides prüft CameraFocusConfigTest in app/src/test/. Schlägt der Test
- *  fehl, ist eine dieser Regeln verletzt — nicht den Test anpassen, sondern
- *  den Code.
- * ═══════════════════════════════════════════════════════════════════════════
+ * Beides prüft CameraFocusConfigTest — schlägt er fehl, ist der Code falsch, nicht
+ * der Test.
  */
 
 import ch.brickinventoryapp.ui.theme.Formen
@@ -62,15 +50,9 @@ import ch.brickinventoryapp.ui.theme.Abstaende
 fun BarcodeScannerScreen(
     onResult: (String) -> Unit,
     /**
-     * Texterkennung zusätzlich zum Barcode (Nachtrag 61, Marcos Vorgabe:
-     * „nur bei Set hinzufügen und Teileliste hinzufügen").
-     *
-     * Standard AUS. Der Preisvergleich sucht mit dem gescannten Wert direkt
-     * beim Händler — dort ist eine gelesene Zahl kein Gewinn, sondern ein
-     * Risiko: Sie sieht aus wie ein Suchbegriff, ist aber nur wahrscheinlich
-     * richtig. Ein Schalter mit Standard AUS heisst ausserdem, dass jeder
-     * KÜNFTIGE Aufrufer die Texterkennung bewusst einschalten muss, statt sie
-     * versehentlich zu erben.
+     * Texterkennung zusätzlich zum Barcode, nur beim Erfassen von Sets und in der
+     * Teileliste. Vorgabe aus: Im Preisvergleich ist eine nur wahrscheinlich richtige
+     * Zahl ein Risiko, und jeder künftige Aufrufer soll sie bewusst einschalten.
      */
     ocrEnabled: Boolean = false,
     /** Per Texterkennung gelesene SETNUMMER — nur relevant, wenn ocrEnabled. */
@@ -95,13 +77,9 @@ fun BarcodeScannerScreen(
     // Toggle torch when state changes
     LaunchedEffect(torchOn) { cameraCtrl?.enableTorch(torchOn) }
 
-    // WICHTIG (bitte nicht wieder einen periodischen Fokus-Trigger einbauen!):
-    // Der Autofokus läuft ausschliesslich über den CONTINUOUS_PICTURE-Modus der
-    // Kamera (autofokusDauerhaft() in KameraAufbau.kt). Ein zusätzlicher, im
-    // Takt laufender startFocusAndMetering-Aufruf ("Pump") zwingt die Kamera immer wieder in
-    // einen Einzelfokus und lässt sie dadurch dauernd nachpumpen statt scharf zu
-    // bleiben — das war die Ursache des wiederkehrenden Fokus-Problems. Manuelles
-    // Fokussieren gibt es NUR noch beim Antippen (Tap-to-Focus, mit Auto-Cancel).
+    // Kein periodischer Fokus-Trigger: Der Autofokus läuft über CONTINUOUS_PICTURE
+    // (autofokusDauerhaft() in KameraAufbau.kt); ein Takt liesse die Kamera dauernd
+    // nachpumpen. Manuell fokussiert wird nur beim Antippen.
 
     val borderColor by animateColorAsState(
         if (frozen) LocalStatusFarben.current.erfolg else MaterialTheme.colorScheme.primary,
@@ -121,11 +99,9 @@ fun BarcodeScannerScreen(
                             onResult(value)
                         }
                     },
-                    // Getrennter Rückweg (Nachtrag 60): Was hier ankommt, IST
-                    // bereits die Setnummer. Sie darf nicht wie eine EAN durch
-                    // die Rebrickable-Auflösung laufen — das kostete Kontingent
-                    // und schlüge fehl, weil es zu einer Setnummer keinen
-                    // Barcode-Eintrag gibt.
+                    // Getrennter Rückweg: Was hier ankommt, ist schon die Setnummer und darf nicht
+                    // wie eine EAN durch die Auflösung laufen — die schlüge fehl und kostete
+                    // Kontingent.
                     onSetNumberFound = { value ->
                         if (!frozen) {
                             frozen = true
@@ -196,70 +172,25 @@ fun BarcodeScannerScreen(
 }
 
 /**
- * Kandidaten fuer eine Setnummer aus erkanntem Text — in absteigender Guete.
+ * Kandidaten für eine Setnummer aus erkanntem Text, in absteigender Güte. Auf
+ * einer Anleitung stehen viele Zahlen (Alter, Teilezahl, Seite, Jahr, Heft- und
+ * Elementnummern); die längste ist selten die Setnummer.
  *
- * Auf der ANLEITUNG steht kein Barcode; die Setnummer ist dort nur gedruckt.
- * Genau dafuer ist die Texterkennung da. Der Filter ist der eigentliche Kern:
- * Die Kamera sieht auf so einer Seite viele Zahlen (Altersangabe, Teilezahl,
- * Seitenzahl, Jahr). Ohne Einschraenkung kaeme staendig Unsinn heraus.
+ * 1. Eine Zahl vor einem Mengenwort fällt weg („1215 Teile“). 2. Mit
+ * Variantensuffix (`60445-1`) zuerst — die einzige eindeutige Form. 3. Direkt
+ * hinter `#` bevorzugt. 4. Vierstellig zwischen 1949 und nächstem Jahr wird
+ * zurückgestuft (wahrscheinlich ein Jahr), nicht verworfen. 5. Dann nach
+ * Stellenzahl 5, 4, 6, 7, 3 — der Häufigkeit echter Setnummern; dreistellige alte
+ * Sets ganz hinten. 6. Bei Gleichstand die Reihenfolge im Text.
  *
- * ── Warum nicht mehr „die laengste gewinnt" (Marcos Meldung) ────────────────
- *
- * Hier stand `sortedByDescending { length }`, und der Test daneben schrieb die
- * Annahme hin: „Die Setnummer ist auf der Seite fast immer die laengste Zahl."
- *
- * Auf einer Anleitung stimmt das nicht. Dort stehen sechs- und siebenstellige
- * Zahlen, die KEINE Setnummern sind — die Bestellnummer des Hefts auf dem
- * Umschlag, die Elementnummern in der Teileliste. Die Setnummer selbst hat
- * vier oder fuenf Stellen.
- *
- * ── Warum dreistellige Zahlen jetzt zaehlen ─────────────────────────────────
- *
- * NACHGEMESSEN an zehn Kartonaufdrucken: acht richtig an erster Stelle, und
- * beide Fehlschlaege waren alte Sets mit dreistelliger Nummer —
- *
- *     „375 YELLOW CASTLE 1978"  → ['1978']   (das JAHR gewann)
- *     „928 GALAXY EXPLORER"     → []         (gar kein Kandidat)
- *
- * `\d{4,7}` sah die 375 und die 928 nie. Wer ein altes Set vor die Kamera
- * haelt, bekam entweder nichts oder die Jahreszahl angeboten.
- *
- * Dreistellige Zahlen sind dafuer haeufiger Rauschen. Deshalb stehen sie in
- * der Guete GANZ HINTEN: Solange irgendeine vier- bis siebenstellige Zahl
- * uebrig ist, aendert sich an der Antwort nichts. Das ist hier wichtiger als
- * auf dem Server, denn BarcodeAnalyzer.kt nimmt `firstOrNull()` OHNE
- * Katalogabgleich — die Reihenfolge entscheidet direkt, was der Nutzer sieht.
- *
- * ── Die Reihenfolge, und warum ──────────────────────────────────────────────
- *
- *  1. Eine Zahl, auf die ein MENGENWORT folgt, ist eine Teilezahl und faellt
- *     ganz weg („1215 Teile").
- *  2. Mit Variantensuffix (`60445-1`) zuerst. So schreibt sich eine Setnummer
- *     und sonst nichts auf der Seite — das ist die einzige EINDEUTIGE Form.
- *  3. Eine Zahl direkt hinter `#` ist bevorzugt.
- *  4. Eine vierstellige Zahl zwischen 1949 und dem naechsten Jahr ist
- *     wahrscheinlich ein Jahr und wird ZURUECKGESTUFT — nicht verworfen.
- *     Vierstellige Setnummern in diesem Bereich gibt es wirklich.
- *  5. Danach nach Stellenzahl in der Reihenfolge 5, 4, 6, 7, 3. Das ist die
- *     Haeufigkeit echter Setnummern, nicht ihre Groesse.
- *  6. Bei Gleichstand die Reihenfolge im Text.
- *
- * Geraten bleibt es trotzdem — deshalb markiert die App jeden so gelesenen
- * Treffer als unsicher (BarcodeUiState.unsicher), und der Dialog sagt es.
- *
- * ── Dieselbe Frage steht in TypeScript ──────────────────────────────────────
- * Web-App/utils/produkttitel.ts beantwortet sie fuer Haendlertitel. Diese
- * Fassung laeuft offline in der Kameraschleife und kann sie nicht aufrufen —
- * damit die beiden nicht auseinanderlaufen, pruefen BEIDE Seiten denselben
- * Korpus: shared/setnummer-korpus.json (siehe SetnummerKorpusTest).
+ * BarcodeAnalyzer nimmt firstOrNull() ohne Katalogabgleich, deshalb gilt jeder
+ * Treffer als unsicher. Dieselbe Frage beantwortet Web-App/utils/produkttitel.ts;
+ * beide prüfen shared/setnummer-korpus.json (SetnummerKorpusTest).
  */
 
 /**
- * Woerter, die eine Zahl als Mengenangabe ausweisen.
- *
- * Wortgleich mit MENGENWORT in Web-App/utils/produkttitel.ts. `(?iu)` statt
- * RegexOption.IGNORE_CASE: Javas Ignorieren der Gross-/Kleinschreibung ist
- * ohne `u` auf ASCII beschraenkt, „STUECKE" mit Umlaut faellt sonst durch.
+ * Wörter, die eine Zahl als Mengenangabe ausweisen — wortgleich mit MENGENWORT in
+ * produkttitel.ts. `(?iu)`, weil IGNORE_CASE ohne `u` nur ASCII kennt.
  */
 private val MENGENWORT = Regex(
     "(?iu)^\\s*(?:x\\s*)?(?:pcs?|pieces?|piece|teil(?:e|en)?|stück(?:e|en)?|" +
@@ -273,11 +204,9 @@ private val MENGENWORT = Regex(
 internal val GUETE = listOf(5, 4, 6, 7, 3)
 
 /**
- * Drei bis sieben Ziffern, optional mit `#` davor und Variantenzusatz dahinter.
- *
- * Steht hier oben und nicht in der Funktion: Sie laeuft in der Kameraschleife
- * (alle 700 ms, siehe BarcodeAnalyzer.kt), und ein Regex wird sonst bei jedem
- * Bild neu uebersetzt. Wortgleich mit `muster` in produkttitel.ts.
+ * Drei bis sieben Ziffern, optional mit `#` davor und Variantenzusatz. Oben statt
+ * in der Funktion, weil sie alle 700 ms in der Kameraschleife läuft. Wortgleich
+ * mit `muster` in produkttitel.ts.
  */
 private val SETNUMMER_MUSTER = Regex("(#\\s*)?\\b(\\d{3,7})(-\\d{1,2})?\\b")
 
@@ -334,14 +263,12 @@ fun CameraPreviewBarcode(
     errorHint: String
 ) {
     val lifecycleOwner = LocalLifecycleOwner.current
-    // Der Tipp-zum-Scharfstellen-Listener wird im factory-Block gesetzt, die
-    // Kamerasteuerung existiert aber erst nach dem Binden — deshalb über eine
-    // Referenz, die beim Binden gefüllt wird. Sie gehört zur VORSCHAU und nicht
-    // zur Analyse; beim Herauslösen war sie zuerst mitgewandert (Nachtrag 99).
+    // Der Tipp-Listener wird im factory-Block gesetzt, die Kamerasteuerung gibt es
+    // erst nach dem Binden — deshalb eine Referenz, die beim Binden gefüllt wird.
     val _kameraCtrl = remember { java.util.concurrent.atomic.AtomicReference<CameraControl?>(null) }
 
-    // Die Analyse-Schleife (Barcode, Texterkennung, Bestätigungszählung,
-    // Drosselung, Aufräumen) steht seit Nachtrag 99 in BarcodeAnalyzer.kt.
+    // Die Analyse-Schleife (Barcode, Texterkennung, Bestätigung, Drosselung) steht in
+    // BarcodeAnalyzer.kt.
     val imageAnalyzer = rememberBarcodeAnalyzer(
         frozen, ocrEnabled, onBarcodeFound, onSetNumberFound, onStatus,
         confirmingHint, aimHint, errorHint,
@@ -356,17 +283,10 @@ fun CameraPreviewBarcode(
                 implementationMode = PreviewView.ImplementationMode.PERFORMANCE
             }
 
-            // Tippen zum Scharfstellen (Nachtrag 71).
-            //
-            // Der kontinuierliche Autofokus entscheidet selbst, worauf er
-            // scharfstellt — bei einer Anleitung dicht vor der Linse liegt er
-            // gern daneben und braucht lange, bis er umschwenkt. Ein Tipper auf
-            // die Stelle gibt der Kamera einen ausdrücklichen Messpunkt und
-            // löst sofort aus, statt zu warten.
-            //
-            // Bewusst mit disableAutoCancel(): Ohne das fällt die Kamera nach
-            // fünf Sekunden auf ihre eigene Wahl zurück — der Nutzer hätte
-            // gezielt scharfgestellt und es wäre kurz darauf wieder weg.
+            // Tippen zum Scharfstellen: Bei einer Anleitung dicht vor der Linse liegt der
+            // kontinuierliche Autofokus gern daneben; ein Tipp gibt einen ausdrücklichen
+            // Messpunkt. disableAutoCancel(), sonst fiele die Kamera nach fünf Sekunden auf
+            // ihre eigene Wahl zurück.
             previewView.setOnTouchListener { v, ev ->
                 if (ev.action == android.view.MotionEvent.ACTION_UP) {
                     val punkt = previewView.meteringPointFactory.createPoint(ev.x, ev.y)
@@ -395,15 +315,8 @@ fun CameraPreviewBarcode(
                 },
             ) { camera ->
                 onCamera(camera.cameraControl)
-                // Auch für das Tippen zum Scharfstellen bereitstellen
-                // (Nachtrag 71) — ohne diese Zeile bliebe der Listener wirkungslos.
-                //
-                // Hier stand ein ZWEITER Tap-to-Focus (Nachtrag 112). Marcos
-                // Befund: „Die Kamera im Barcodescanner stellt wieder nicht
-                // scharf." `setOnTouchListener` FÜGT NICHT HINZU, es ersetzt —
-                // der Listener oben in der factory wurde von diesem hier
-                // stillschweigend überschrieben. Der Listener oben braucht nur
-                // die Kamerasteuerung, und die bekommt er über _kameraCtrl.
+                // Die Kamerasteuerung für das Tippen bereitstellen. Nur ein Listener:
+                // setOnTouchListener ersetzt, ein zweiter überschriebe den oben in der factory.
                 _kameraCtrl.set(camera.cameraControl)
             }
             previewView

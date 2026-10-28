@@ -10,10 +10,9 @@ import ch.brickinventoryapp.data.model.*
  */
 
 /**
- * Was die ganze App über die Sitzung weiss — gehalten von [Sitzung], gelesen
- * von jedem Bildschirm. Anmeldeformular, Kontofilter und Haushaltskonten stehen
- * nicht mehr hier, sondern bei dem, der sie verantwortet (AnmeldeUiState,
- * BlickfeldUiState).
+ * Was die ganze App über die Sitzung weiss — gehalten von [Sitzung], gelesen von
+ * jedem Bildschirm. Anmeldeformular, Kontofilter und Haushaltskonten stehen bei
+ * dem, der sie verantwortet (AnmeldeUiState, BlickfeldUiState).
  */
 data class AppUiState(
     val serverUrl: String = "",
@@ -31,20 +30,10 @@ data class AppUiState(
     val userDefaultCondition: String? = null, // null = use global default
     val appTheme: String = "classic", // global vom Admin gewähltes App-Design
     /**
-     * Startzustand des Servers, solange er nicht `ready` meldet; sonst null.
-     *
-     * ── Warum das im Zustand steht (Nachtrag 136) ───────────────────────────
-     *
-     * Der erste Start einer Neuinstallation dauert viele Minuten — der Server
-     * holt den Katalog. Die App zeigte in dieser Zeit ihre allgemeine
-     * Netzmeldung; wer seinen Server frisch aufsetzt, haelt dann App oder
-     * Server fuer kaputt. Die Webapp zeigt seit jeher einen Fortschrittsbalken
-     * (public/js/01-core.js).
-     *
-     * `null` heisst „nichts Besonderes" — entweder ist der Server durch, oder
-     * er ist gar nicht erreichbar. Nur wenn er ANTWORTET und `ready` falsch
-     * meldet, steht hier etwas, und nur dann zeigt die Anmeldung den Balken
-     * statt des Formulars.
+     * Startzustand des Servers, solange er nicht `ready` meldet; sonst null. Der erste
+     * Start einer Neuinstallation dauert Minuten, und statt einer Netzmeldung zeigt
+     * die Anmeldung dann einen Fortschrittsbalken wie die Webapp. null heisst: durch
+     * oder gar nicht erreichbar.
      */
     val startupStatus: ch.brickinventoryapp.data.model.StartupStatus? = null,
     val language: String = "system",
@@ -53,11 +42,9 @@ data class AppUiState(
 /** Kontofilter und Haushaltskonten — gehalten von [Blickfeld]. */
 data class BlickfeldUiState(
     /**
-     * Kontofilter JE ANSICHT (Schlüssel aus ScopeFilter.View).
-     *
-     * Der Wert reist als `accounts=` mit und wird ausschliesslich auf dem
-     * Server in Konto-IDs übersetzt — dadurch kennt ihn jede Zahl derselben
-     * Antwort: Liste, Gesamtzahl, Kennzahlen und Summen.
+     * Kontofilter je Ansicht (Schlüssel aus ScopeFilter.View). Er reist als
+     * `accounts=` mit und wird nur auf dem Server übersetzt, damit Liste, Gesamtzahl,
+     * Kennzahlen und Summen zusammenpassen.
      */
     val scopeModes: Map<String, String> = emptyMap(),
     /**
@@ -69,25 +56,10 @@ data class BlickfeldUiState(
 )
 
 /**
- * Lagerortfilter — eigener Fluss, nicht Teil von AppUiState.
- *
- * ── Warum nicht neben scopeModes (Nachtrag 176) ─────────────────────────────
- *
- * Der erste Entwurf legte beide Felder in AppUiState, direkt neben
- * `scopeModes`. ZustandsflussBreiteTest hat das abgelehnt, und zwar mit der
- * richtigen Frage: „Gehoert es wirklich allen — oder ist es der Anfang der
- * naechsten Domaene?"
- *
- * Die Antwort ist: der naechsten Domaene. AppUiState wird von SECHZEHN
- * Dateien gesammelt, und in Compose rekomponiert ein Sammler bei JEDER
- * Aenderung seines Flusses — egal welches Feld sich geaendert hat. Die Liste
- * der Lagerorte laedt bei jeder Anmeldung und nach jedem Eintragen neu; sie
- * wird von ZWEIEN gelesen (Galerie und Teile). Vierzehn Bildschirme
- * mitzuziehen, die den Lagerort nie anfassen, waere genau der Fehler, gegen
- * den jene Pruefung gebaut ist.
- *
- * `scopeModes` steht weiterhin in AppUiState — der Kontofilter wird von vier
- * Ansichten gelesen UND beim Erfassen gebraucht. Das ist der Unterschied.
+ * Lagerortfilter — eigener Fluss: AppUiState sammeln viele Bildschirme, und jede
+ * Änderung zöge sie mit; die Lagerorte lesen nur Galerie und Teile. Der
+ * Kontofilter bleibt in AppUiState, weil ihn mehr Ansichten und das Erfassen
+ * brauchen.
  */
 data class LagerUiState(
     /** Gewaehlter Lagerort JE ANSICHT — leer heisst „nicht gefiltert". */
@@ -95,100 +67,58 @@ data class LagerUiState(
     /** Die belegten Lagerorte im Blickfeld — speist den FILTER. */
     val orte: List<ch.brickinventoryapp.data.model.Lagerort> = emptyList(),
     /**
-     * Der VORRAT fuer das gerade offene Detail — was zur WAHL steht.
-     *
-     * Nicht dasselbe wie [orte]: Dort stehen die belegten Orte des Blickfelds,
-     * hier die waehlbaren Orte des BESITZERS. Ein frisch angelegter Ort ist
-     * waehlbar und leer, und beim Set des Enkels gehoeren die Regale des
-     * Enkels zur Wahl (Marcos Festlegung).
+     * Der Vorrat für das gerade offene Detail — was zur Wahl steht. Nicht [orte]
+     * (belegte Orte des Blickfelds), sondern die wählbaren Orte des Besitzers; beim
+     * Set des Enkels die seinen.
      */
     val vorrat: List<ch.brickinventoryapp.data.model.LagerortEintrag> = emptyList(),
     /** Die EIGENEN Orte — fuer die Verwaltung in den Einstellungen. */
     val eigene: List<ch.brickinventoryapp.data.model.LagerortEintrag> = emptyList(),
     /**
-     * Der Ort, der beim Erfassen schon dasteht — Marcos Stern.
-     *
-     * „Weiter moechte ich ein Lagerort in den Einstellungen als Default setzen
-     *  koennen. Der soll dann bei einer Neuerfassung bereits vorausgewaehlt
-     *  sein."
-     *
-     * `null` heisst: keine Vorgabe, die Erfassungsfelder bleiben leer wie
-     * bisher. Er kommt mit [eigene] aus derselben Antwort — der Vorrat und
-     * sein Stern sind eine Auskunft, nicht zwei.
+     * Der Ort, der beim Erfassen schon dasteht (der Stern); null heisst keine Vorgabe.
+     * Kommt mit [eigene] aus derselben Antwort — Vorrat und Stern sind eine Auskunft.
      */
     val vorgabe: ch.brickinventoryapp.data.model.LagerortEintrag? = null,
 )
 
 /**
- * Welches Set eine angetippte Preisalarm-Meldung oeffnen soll.
- *
- * Eigener Fluss und nicht ein Feld in AppUiState: Er wird genau zweimal
- * angefasst — von der Activity beim Eintreffen des Intents und vom NavHost
- * beim Quittieren. Ein Feld im Haupt-Zustand rekomponierte dafuer den ganzen
- * Baum, und zwar bei JEDER anderen Aenderung gleich mit.
- *
- * `null` heisst „nichts offen". Quittiert wird SOFORT nach dem Navigieren,
- * sonst spraenge die App bei der naechsten Rekomposition erneut ins Detail —
- * dieselbe Regel wie bei manuelleErfassungAnfordern (BarcodeFeature).
+ * Welches Set eine angetippte Preisalarm-Meldung öffnen soll. Eigener Fluss, weil
+ * ihn nur Activity und NavHost anfassen. null heisst „nichts offen“; quittiert
+ * wird sofort nach dem Navigieren, sonst spränge die App bei der nächsten
+ * Rekomposition erneut ins Detail.
  */
 data class MeldungsZielUiState(
     val setNummer: String? = null,
 )
 
 /**
- * Welches der drei Formulare der Anmeldebildschirm gerade zeigt.
- *
- * Dieselben drei wie in der Webapp (`showPanel` in public/js/01-core.js):
- * anmelden, ein Konto anlegen, einen Link zum Zuruecksetzen anfordern.
+ * Welches der drei Formulare der Anmeldebildschirm zeigt — dieselben wie in der
+ * Webapp (`showPanel`).
  */
 enum class AnmeldeFormular { ANMELDEN, REGISTRIEREN, PASSWORT_VERGESSEN }
 
 /**
- * Konto anlegen und „Passwort vergessen" — ein eigener Zustand.
- *
- * ── Warum nicht in AppUiState (Nachtrag 126) ────────────────────────────────
- *
- * Dort standen diese fuenf Felder zuerst, und ZustandsflussBreiteTest hat es
- * gemeldet: „AppUiState hat 20 Felder (erlaubt: 15). Gehoert es wirklich allen
- * — oder ist es der Anfang der naechsten Domaene?" Es ist der Anfang der
- * naechsten Domaene. Sechzehn Dateien sammeln AppUiState ein; keine davon
- * ausser dem Anmeldebildschirm liest je, welches Formular gerade offen ist.
- *
- * Die Anmeldung SELBST bleibt drueben (`loginLaeuft`, `loginError`,
- * `isLoggedIn`): An ihr haengt, ob die App ueberhaupt etwas zeigt. Was hier
- * steht, sind die beiden Wege DANEBEN — ein Konto anlegen und einen Link
- * anfordern. Beide enden nicht in einer Anmeldung, sondern in einem Satz des
- * Servers.
+ * Anmelden, Konto anlegen und „Passwort vergessen“ — eigener Zustand, weil nur der
+ * Anmeldebildschirm ihn liest. Ob man angemeldet ist (`isLoggedIn`), bleibt in
+ * AppUiState: Daran hängt, ob die App überhaupt etwas zeigt.
  */
 data class AnmeldeUiState(
     /**
-     * Welches der drei Formulare der Anmeldebildschirm gerade zeigt.
-     *
-     * Genau wie in der Webapp, wo `showPanel('login'|'register'|'forgot')`
-     * zwischen denselben drei umschaltet. Ein eigener Navigationseintrag waere
-     * die zweite Wahrheit: Der Zurueck-Knopf des Geraets muesste dann etwas
-     * anderes bedeuten als das „Zurueck zur Anmeldung" im Formular.
+     * Welches Formular offen ist — wie `showPanel` in der Webapp. Kein eigener
+     * Navigationseintrag: Sonst bedeutete der Zurück-Knopf des Geräts etwas anderes
+     * als „Zurück zur Anmeldung“.
      */
     val formular: AnmeldeFormular = AnmeldeFormular.ANMELDEN,
     /**
-     * Steht die Registrierung offen? `null` = noch nicht gefragt.
-     *
-     * Der Unterschied traegt: Bei `null` zeigt der Bildschirm den Link NICHT —
-     * und bei `false` auch nicht. Ein Knopf, der erst erscheint und beim
-     * Antippen an einem 403 scheitert, ist schlechter als keiner. Der Server
-     * kann Registrierungen global abschalten (registration_enabled), und die
-     * Webapp blendet den Link genau so aus.
+     * Steht die Registrierung offen? `null` = noch nicht gefragt; bei `null` und bei
+     * `false` fehlt der Link — ein Knopf, der an einem 403 scheitert, ist schlechter
+     * als keiner.
      */
     val registrierungOffen: Boolean? = null,
     /**
-     * Die Antwort auf Registrieren oder „Passwort vergessen" — der SATZ DES
-     * SERVERS, nicht ein eigener.
-     *
-     * Bei „Passwort vergessen" ist das wesentlich: Der Server antwortet
-     * absichtlich immer gleich („Falls die E-Mail existiert …"), damit das
-     * Formular nicht verraet, wer hier ein Konto hat. Wuerde die App daraus
-     * eine eigene Erfolgsmeldung machen, waere die Vorsicht des Servers
-     * umsonst.
+     * Die Antwort auf Registrieren oder „Passwort vergessen“ — der Satz des Servers.
+     * Er antwortet absichtlich immer gleich, damit niemand erfährt, wer ein Konto hat;
+     * eine eigene Erfolgsmeldung verriete es.
      */
     val meldung: String? = null,
     val fehler: String? = null,

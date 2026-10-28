@@ -30,48 +30,12 @@ import ch.brickinventoryapp.ui.theme.Abstaende
 import kotlinx.coroutines.launch
 
 /**
- * Alle Preisalarme — aendern und loeschen.
- *
- * ── Marcos Frage vom 25.09. ──────────────────────────────────────
- *
- *   „Wie finde ich alle Preisalarme?"
- *
- * Gar nicht, war die Antwort: Ein Alarm war nur im Detail SEINES Sets zu
- * sehen. Wer fuenfzig setzt, hatte keinen Ort, an dem sie zusammen stehen, und
- * keinen, an dem er sieht, welche noch scharf sind.
- *
- * ── Dieselbe Rubrik wie in der Webapp ──────────────────────────────
- *
- * Gleiche Reihenfolge (vor den Lagerorten), gleiche Zeile: Setnummer und Name,
- * Zustand daneben — derselbe Set kann zwei Alarme haben, und die Zeilen
- * unterschieden sich sonst nur an einem Buchstaben. Der letzte Preis steht
- * dabei, weil eine Schwelle ohne ihn nicht zu beurteilen ist: „unter 30"
- * heisst etwas anderes bei einem Set, das bei 28 steht, als bei einem, das bei
- * 300 steht.
- *
- * Gespeichert wird beim Knopf und nicht beim Tippen — anders als das
- * Wunsch-Detail (Nachtrag 133), weil hier jeder Tastendruck sonst eine
- * Schreibanfrage ausloeste, waehrend man die Zahl noch eintippt.
- *
- * ── Marcos Nachtrag vom 26.09. ─────────────────────────────────────
- *
- * Vier Dinge, alle aus einer Sitzung vor der App:
- *
- *  1. „Beim Loeschen soll noch nachgefragt werden." Die Webapp fragt seit
- *     jeher (`confirm`), die App loeschte sofort. Ein Alarm ist schnell
- *     angetippt und nicht wiederherstellbar.
- *  2. Ein Vorschaubild je Zeile, wie in den Finanzen — deshalb auch
- *     dasselbe [FinanzBild] und nicht ein zweites, das anders beschnitten
- *     ist.
- *  3. Die Zeile oeffnet die Detailansicht des Sets. Anklickbar ist sie nur,
- *     wenn das Set in der Sammlung liegt: Ein Alarm ueberlebt das Entfernen
- *     des Sets, und der Klick landete sonst auf einer Adresse, die es nicht
- *     gibt.
- *  4. „Das ‚scharf' analog der Webapp mit einem Label anzeigen." Der gruene
- *     Haken, den Marco dafuer hielt, war der SPEICHERN-Knopf — er stand
- *     dauerhaft gruen neben dem Zahlenfeld und sah aus wie eine Zusage. Er
- *     wird jetzt erst sichtbar, wenn der Wert wirklich geaendert wurde, und
- *     der Zustand steht als Plakette da, wie in der Webapp.
+ * Alle Preisalarme an einem Ort — ändern und löschen, wie die Rubrik der Webapp.
+ * Der Zustand steht in der Zeile, weil ein Set zwei Alarme haben kann; der letzte
+ * Preis steht dabei, weil eine Schwelle ohne ihn nicht zu beurteilen ist.
+ * Gespeichert wird beim Knopf, nicht beim Tippen. Löschen fragt nach; die Zeile
+ * öffnet das Set nur, wenn es in der Sammlung liegt (ein Alarm überlebt das
+ * Entfernen des Sets).
  */
 @Composable
 internal fun PreisalarmeCard(
@@ -121,22 +85,9 @@ internal fun PreisalarmeCard(
             val zeile = if (a.besitzt)
                 Modifier.fillMaxWidth().clickable(role = Role.Button) { onSetClick(a.setNumber) }
             else Modifier.fillMaxWidth()
-            // ── Der Abstand INNERHALB eines Alarms (Marcos Befund vom 16.10.) ──
-            //
-            //   „Bei den Preisalarm kommt das label scharf noch immer direkt
-            //    am Feld an."
-            //
-            // Stimmt, und der Abstand, den SettingsCard seit dem Umbau
-            // zwischen seinen Kindern legt, kann hier nichts ausrichten: Ein
-            // Alarm ist EIN Kind — eine Spalte aus Kopfzeile und Zeile mit der
-            // Schwelle. Innerhalb davon stand gar nichts, und so klebte die
-            // Plakette „scharf" (letztes Stueck der Kopfzeile) unmittelbar auf
-            // dem Eingabefeld darunter.
-            //
-            // Der Abstand gehoert deshalb an BEIDE Spalten: an die aeussere
-            // zwischen Kopf und Schwelle, an die innere zwischen Nummer, Name
-            // und Plakette. Letzterer ist haarfein — die drei gehoeren
-            // zusammen und sollen eine Einheit bleiben, nur keine Masse.
+            // Abstand innerhalb eines Alarms: Er ist ein Kind der Karte, deren Abstände hier
+            // nicht greifen. Aussen zwischen Kopf und Schwelle, innen haarfein zwischen
+            // Nummer, Name und Plakette, damit die drei eine Einheit bleiben.
             Column(zeile.padding(vertical = Abstaende.winzig),
                    verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                 Row(verticalAlignment = Alignment.CenterVertically,
@@ -191,18 +142,10 @@ internal fun PreisalarmeCard(
                         keyboardOptions = NumericInput.preisTastatur(),
                         modifier = Modifier.weight(1f),
                     )
-                    // Der Knopf erscheint erst, wenn wirklich etwas anderes im
-                    // Feld steht — vorher stand hier ein dauerhaft gruener Haken,
-                    // und der las sich wie eine Zustandsanzeige („scharf") statt
-                    // wie ein Knopf. Verglichen wird die ZAHL und nicht der Text:
-                    // „30" und „30.0" sind dasselbe.
-                    //
-                    // Steht KEINE Zahl im Feld, erscheint der Knopf gar nicht
-                    // mehr. Vorher hiess „nicht lesbar" hier `?: true`, also
-                    // Knopf da — und ein Druck darauf schrieb ueber `?: 0.0`
-                    // eine Schwelle von 0. Die ist keine Schwelle: „unter 0"
-                    // meldet nie, „ueber 0" meldet immer. Beides faellt erst
-                    // Wochen spaeter auf.
+                    // Der Knopf erscheint nur, wenn eine andere Zahl im Feld steht — ein dauerhaft
+                    // sichtbarer Haken las sich wie „scharf“. Verglichen wird die Zahl, nicht der
+                    // Text. Ohne lesbare Zahl gibt es keinen Knopf: Eine Schwelle von 0 meldet nie
+                    // oder immer.
                     val zahl = wert.replace(',', '.').toDoubleOrNull()
                     if (zahl != null && zahl != a.schwelle) {
                         IconButton(onClick = {
@@ -243,34 +186,10 @@ internal fun PreisalarmeCard(
 }
 
 /**
- * „scharf" oder „unscharf" — ein Label, das ohne Farbe auskommt.
- *
- * ── Marcos Befund vom 26.09. ───────────────────────────────────────────────
- *
- *   „Ok entschuldige ich habe eine rot grün schwäche. Deshalb sind labels mit
- *    scharf / unscharf für mich einfacher."
- *
- * Bis hierher trugen BEIDE Oberflaechen die Aussage in der Farbe: gruen heisst
- * scharf, grau heisst nicht mehr scharf. Fuer rund acht Prozent der Maenner
- * ist das keine Aussage, sondern zweimal dasselbe. Und der Entschuldigung
- * widerspricht die Sache: Nicht das Auge ist der Fehler, sondern eine
- * Oberflaeche, die eine Information NUR in die Farbe legt.
- *
- * Drei Unterschiede tragen sie jetzt, von denen jeder EINZELN reicht:
- *
- *   1. Das WORT. „scharf" und „unscharf" sind ein Paar — vorher stand dort
- *      „scharf" gegen „hat gemeldet", zwei Saetze ueber verschiedene Dinge.
- *      Was „unscharf" bedeutet, sagt der Einleitungstext der Rubrik, und die
- *      Zeile „zuletzt CHF 28.50" daneben steht ohnehin nur bei einem Alarm,
- *      der gemeldet hat (preisalarm.ts setzt beides in derselben Anweisung).
- *   2. Die FORM: gefuellt gegen umrandet.
- *   3. Das ZEICHEN davor: ● gegen ○, gefuellt gegen hohl.
- *
- * Farbe bleibt, aber nur noch als Zugabe — und ausdruecklich NICHT gruen
- * gegen rot. Das Label nimmt `secondaryContainer`, also die Farbfamilie, die
- * jedes der fuenf Designs fuer „hervorgehoben, aber nicht dringend" mitbringt.
- * Ein gruenes Label waere derselbe Fehler noch einmal, nur freundlicher
- * gemeint.
+ * „scharf“ oder „unscharf“ ohne Farbe lesbar: Wort, Form (gefüllt/umrandet) und
+ * Zeichen (● / ○) tragen es je einzeln. Farbe nur als Zugabe und nicht grün gegen
+ * rot — bei Rot-Grün-Schwäche wäre das zweimal dasselbe. `secondaryContainer`
+ * bringt jedes Design als „hervorgehoben, nicht dringend“ mit.
  */
 @Composable
 private fun AlarmZustandPlakette(ausgeloest: Boolean) {
@@ -299,29 +218,11 @@ private fun AlarmZustandPlakette(ausgeloest: Boolean) {
 }
 
 /**
- * Der Schalter fuer die Preisalarm-Meldungen auf DIESEM Geraet.
- *
- * ── Warum er nicht im Konto steht ───────────────────────────────────────────
- *
- * Der Server verschickt bei jedem gerissenen Alarm eine E-Mail — das ist die
- * kontobezogene Haelfte. Diese hier ist die geraetebezogene: Wer dasselbe
- * Konto am Telefon und am Tablet benutzt, will die Meldung in aller Regel nur
- * an einem der beiden. Genau dieselbe Ueberlegung wie beim Vorwaermen und beim
- * Kontofilter.
- *
- * ── Warum die Berechtigung erst hier erfragt wird ───────────────────────────
- *
- * Ab Android 13 ist POST_NOTIFICATIONS eine Laufzeitberechtigung. Sie gleich
- * beim ersten Start zu erfragen waere die uebliche und die schlechtere
- * Loesung: Die Frage kaeme, bevor irgendetwas sie erklaert, und ein Nein ist
- * danach nur noch ueber die Systemeinstellungen zu widerrufen. Hier steht
- * unmittelbar daneben, wofuer sie ist.
- *
- * Der Schalter wird auch dann umgelegt, wenn die Erlaubnis verweigert wird.
- * Das ist Absicht: Die Einstellung sagt „ich will das", die Berechtigung sagt
- * „das System laesst es zu" — zwei verschiedene Dinge. Wer die Erlaubnis
- * spaeter in den Systemeinstellungen nachreicht, bekommt seine Meldungen, ohne
- * hier noch einmal etwas tun zu muessen.
+ * Der Schalter für die Preisalarm-Meldungen auf diesem Gerät; die E-Mail des
+ * Servers ist die kontobezogene Hälfte. Die Berechtigung (ab Android 13) wird erst
+ * hier erfragt, wo daneben steht, wofür sie ist. Der Schalter bleibt an, auch wenn
+ * sie verweigert wird: Er sagt „ich will das“, die Berechtigung „das System lässt
+ * es zu“ — wer sie später erteilt, bekommt die Meldungen ohne weiteres Zutun.
  */
 @Composable
 internal fun PreisalarmCard(vm: AppViewModel) {
@@ -367,38 +268,19 @@ internal fun PreisalarmCard(vm: AppViewModel) {
                     }
                     bereich.launch {
                         vm.prefs.setzeAlarmMeldungen(neu)
-                        // ── Nicht auf dem Hauptthread ────────────────────────
+                        // ── Nicht auf dem Hauptthread ──
                         //
-                        // Der Auftrag folgt dem Schalter sofort und nicht erst
-                        // beim naechsten App-Start: Sonst waere „eingeschaltet"
-                        // eine Stunde lang eine Behauptung ohne Wirkung.
-                        //
-                        // Aber nicht hier vorne: Beim ERSTEN Zugriff faehrt
-                        // WorkManager hoch und liest dabei von der Platte
-                        // (der Manifest-Eintrag erklaert, warum das nicht mehr
-                        // beim App-Start geschieht). Auf dem Hauptthread einer
-                        // sichtbaren Oberflaeche ist das im besten Fall ein
-                        // Ruckeln.
-                        //
-                        // Marcos Befund vom 25.09.: „Sobald ich den Schalter
-                        // Preisalarm in der App aktivieren will, wird die App
-                        // geschlossen." Dieser Aufruf stand hier ungesichert,
-                        // waehrend derselbe Aufruf beim App-Start seit jeher in
-                        // einem runCatching steckt. einplanen() faengt jetzt
-                        // selbst und GIBT DEN FEHLER ZURUECK — verschluckt wird
-                        // er nicht: Ein Schalter auf „an", von dem nie eine
-                        // Meldung kommt, ist die zweite Haelfte desselben
-                        // Fehlers.
+                        // Der Auftrag folgt dem Schalter sofort, sonst wäre „eingeschaltet“ eine
+                        // Stunde lang ohne Wirkung. Beim ersten Zugriff liest WorkManager von der
+                        // Platte; auf dem Hauptthread brachte genau das die App zum Absturz.
+                        // einplanen() fängt selbst und gibt den Fehler zurück, damit ein Schalter
+                        // auf „an“ ohne Wirkung nicht unbemerkt bleibt.
                         val fehler = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                             ch.brickinventoryapp.alarm.PreisalarmWorker.einplanen(context, neu)
                         }
                         if (fehler != null) {
-                            // Klasse UND Meldung: Am 25.09. reichte die
-                            // Meldung allein („WorkDatabase_Impl.<init> []"),
-                            // aber erst der Klassenname sagt, dass es eine
-                            // NoSuchMethodException ist — und damit, ob etwas
-                            // fehlt oder etwas schiefging. Die naechste
-                            // Ursache ist vielleicht weniger gespraechig.
+                            // Klasse und Meldung: Erst der Klassenname sagt, ob etwas fehlt oder
+                            // etwas schiefging.
                             vm.showSnackbar(resn.getString(
                                 R.string.alert_schedule_failed,
                                 "${fehler::class.java.simpleName}: ${fehler.message ?: "—"}"))

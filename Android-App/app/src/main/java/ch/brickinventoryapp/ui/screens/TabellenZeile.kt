@@ -29,41 +29,24 @@ import androidx.compose.material.icons.filled.Clear
 import ch.brickinventoryapp.ui.theme.Abstaende
 
 /**
- * Eine Zeile der Tabellenansicht — fuer Teile UND Figuren.
- *
- * ── Warum eine gemeinsame Fassung ───────────────────────────────────────────
- * Die Webapp hat zwei Tabellen (parts-view und figs-view) mit demselben
- * Aufbau: kleines Bild, Nummer in Schreibmaschinenschrift, Name, rechts die
- * Menge. Zweimal getrennt aufgeschrieben waeren es zwei Stellen, die sich
- * unterschiedlich entwickeln — und „einheitliche Ansichten" war der ganze
- * Grund fuer diese Ansicht.
- *
- * Was sich unterscheidet, kommt als Inhalt herein: bei den Teilen ein
- * Farbpunkt und eine zweite Zeile mit Kategorie und Sets, bei den Figuren das
- * Erfassungsdatum.
- *
- * ── Warum keine echte Tabelle mit Spalten ───────────────────────────────────
- * Die Webapp hat sieben Spalten und dafuer einen breiten Bildschirm. Auf dem
- * Telefon waere das eine Tabelle, die seitwaerts geschoben werden muss —
- * dieselben Daten, aber unbenutzbar. Die Zeile hier zeigt alles, was die
- * Tabelle dort zeigt; die zwei breiten Spalten stehen als zweite Zeile
- * darunter statt daneben.
+ * Eine Zeile der Tabellenansicht — für Teile und Figuren, wie die beiden gleich
+ * gebauten Tabellen der Webapp; eine Fassung, damit sie sich nicht
+ * auseinanderentwickeln. Keine echten Spalten: Sieben Spalten müsste man am
+ * Telefon seitwärts schieben, die breiten stehen deshalb als zweite Zeile
+ * darunter.
  *
  * @param bildUrl     Vorschaubild, oder null
  * @param nummer      Teile- bzw. Figurennummer (Schreibmaschinenschrift)
  * @param name        Bezeichnung
- * @param menge       Rechts stehende Menge
+ * @param menge       rechts stehende Menge
  * @param farbe       Farbpunkt vor dem Namen (nur Teile)
  * @param zweiteZeile Kategorie/Sets bzw. Erfassungsdatum, oder null
- * @param onBildFehler Rueckfall auf die volle Auflösung, siehe
- *        rememberTileImageWithFallback
- * @param onClick Antippen der ganzen Zeile, oder null fuer „nicht anklickbar"
- * @param onClickLabel Was das Antippen TUT — fuer die Sprachausgabe. Ohne das
- *        liest sie nur den Inhalt der Zeile vor und sagt „Doppeltippen zum
- *        Aktivieren", ohne zu verraten, was dann geschieht. Vorbelegt mit
- *        null, weil die Tabellenansichten der Teile und Figuren denselben
- *        Detail-Dialog oeffnen wie ihre Kacheln und dort bisher keinen Text
- *        haben; der Dialog fuer Set-Teile bringt einen mit.
+ * @param onBildFehler Rückfall auf die volle Auflösung
+ *         (rememberTileImageWithFallback)
+ * @param onClick Antippen der ganzen Zeile, oder null für „nicht anklickbar“
+ * @param onClickLabel Was das Antippen tut, für die Sprachausgabe — sonst sagt sie
+ *         nur „Doppeltippen zum Aktivieren“. Vorbelegt mit null für Aufrufer ohne
+ *         eigenen Text.
  */
 @Composable
 fun TabellenZeile(
@@ -80,19 +63,8 @@ fun TabellenZeile(
     onClickLabel: String? = null,
 ) {
     val ctx = LocalContext.current
-    // ── Warum es onClick jetzt GIBT ─────────────────────────────────────────
-    //
-    // Hier stand: „Kein onClick: Auch in der Webapp ist die Tabellenzeile
-    // nicht anklickbar — angetippt wird in der Kachelansicht."
-    //
-    // Das stimmt seit dem Detail-Dialog fuer Teile und Figuren aus Sets nicht
-    // mehr: Dort oeffnen BEIDE Ansichten denselben Dialog (03-parts.js und
-    // 06-minifigs.js, je Kachel und Tabellenzeile). Eine Ansicht, die weniger
-    // kann als die andere, ist genau das, wogegen diese gemeinsame Zeile
-    // gebaut wurde.
-    //
-    // `null` heisst weiterhin „nicht anklickbar" — die Begruendung von damals
-    // gilt fuer jeden Aufrufer, der keinen Dialog dahinter hat.
+    // onClick: Beide Ansichten öffnen denselben Dialog wie in der Webapp; eine Ansicht
+    // soll nicht weniger können als die andere. `null` heisst nicht anklickbar.
     Surface(
         modifier = modifier.fillMaxWidth()
             .let {
@@ -171,12 +143,8 @@ fun TabellenZeile(
 }
 
 /**
- * Umschalter Karten/Tabelle.
- *
- * Zwei Chips statt eines Auswahlfelds: Bei genau zwei Moeglichkeiten ist ein
- * Aufklappmenue ein Klick zu viel, und die Wahl ist so auch ohne Oeffnen zu
- * sehen. Die Webapp nimmt dort ein <select>, weil sie es neben vier weiteren
- * Auswahlfeldern in einer Zeile hat.
+ * Umschalter Karten/Tabelle als zwei Chips: Bei zwei Möglichkeiten wäre ein
+ * Aufklappmenü ein Klick zu viel, und die Wahl ist ohne Öffnen sichtbar.
  */
 @Composable
 fun AnsichtUmschalter(
@@ -196,32 +164,10 @@ fun AnsichtUmschalter(
 }
 
 /**
- * Das Suchfeld — eines für Galerie, Teile, Minifiguren und Katalog.
- *
- * ── Warum es das jetzt gibt (Nachtrag 132) ──────────────────────────────────
- *
- * Es stand VIERMAL da, siebzehn Zeilen lang und bis auf drei Stellen
- * zeichengleich: Platzhalter, Wert und — hier wird es unangenehm — die
- * Beschriftung des Leeren-Knopfes. Die vier waren:
- *
- *     CatalogSections   cd_search_clear    „Suche leeren"  / „Clear search"
- *     GalleryScreen     gallery_clear      „Löschen"       / „Clear"
- *     MinifigsScreen    minifigs_delete    „Löschen"       / „Delete"
- *     PartsScreen       parts_delete       „Löschen"       / „Delete"
- *
- * `minifigs_delete` und `parts_delete` sind die Beschriftung der LÖSCHEN-Knöpfe
- * — desselben Textes bedient sich der Knopf, der eine Minifigur endgültig
- * entfernt, und der Bestätigungsknopf im Löschdialog. Mit TalkBack sagte der
- * Knopf, der nur das Suchfeld leert, in zwei von vier Ansichten also
- * „Löschen"; auf Englisch sogar „Delete". Wer nicht sieht, was er antippt,
- * hört dort das Wort für „Bestand vernichten".
- *
- * Gefunden nicht durch Nachdenken, sondern durch Messen: Eine Suche nach
- * gleichen Achtzeilern über den ganzen App-Baum meldete 49 Treffer, und dieser
- * stand in vier Dateien.
- *
- * Die Beschriftung ist jetzt EINE (`cd_search_clear`) und beschreibt die
- * Wirkung des Tippens — genau das, was ein Bildschirmleser braucht.
+ * Das Suchfeld für Galerie, Teile, Minifiguren und Katalog. Eine Fassung, damit
+ * auch der Leeren-Knopf überall gleich heisst: `cd_search_clear` beschreibt die
+ * Wirkung — „Löschen“ hätte TalkBack-Nutzern das Wort für „Bestand vernichten“
+ * vorgelesen.
  */
 @Composable
 fun Suchfeld(
@@ -249,35 +195,11 @@ fun Suchfeld(
 }
 
 /**
- * Die Zustands-Zeile: Beschriftung „Zustand" und daneben die Wahl Neu/Gebraucht.
+ * Die Zustands-Zeile: Beschriftung „Zustand“ und daneben Neu/Gebraucht. Eine
+ * Fassung für alle Erfassungsdialoge, damit dieselbe Entscheidung überall gleich
+ * aussieht und die Beschriftung mit ihrer festen Breite bündig steht.
  *
- * ── Warum es das jetzt gibt (Nachtrag 133) ──────────────────────────────────
- *
- * Dieselbe Messung wie beim Suchfeld darueber — gleiche Achtzeiler ueber den
- * ganzen App-Baum, Importe und Kommentare abgezogen — meldete diesen Block in
- * DREI Dateien; die vierte Stelle kam beim Nachsehen dazu, weil sie
- * `androidx.compose.ui.Alignment` ausgeschrieben hatte und der Textvergleich
- * sie deshalb nicht als gleich erkannte:
- *
- *     BarcodeResultDialog   Zustand nach dem Scannen
- *     GalleryScreen         Set von Hand anlegen
- *     MinifigsScreen        Minifigur von Hand anlegen
- *     PartsDialogs          Teil von Hand anlegen
- *
- * Diese vier waren untereinander gleich. Die FUENFTE Stelle war es nicht:
- *
- *     CatalogDetailScreen   aus dem Katalog uebernehmen
- *
- * Dort standen statt des Umschalters zwei `FilterChip` — dieselbe Wahl,
- * dieselben Werte „N"/„U", aber ein anderes Aussehen: Material-Chips mit
- * Haekchen statt der gefuellten Flaeche, und die Beschriftung ohne die feste
- * Spaltenbreite von 90.dp, also links nicht buendig mit den anderen Zeilen des
- * Dialogs. Dieselbe Entscheidung sah in der App an zwei Orten verschieden aus.
- *
- * Auch hier gilt: gefunden durch Messen, nicht durch Lesen. Die Doppelung war
- * der Anlass; der Unterschied war der Fund.
- *
- * @param zustand  „N" oder „U" — dieselben Werte, die der Server kennt
+ * @param zustand „N“ oder „U“ — die Werte des Servers
  */
 @Composable
 fun Zustandszeile(
@@ -302,14 +224,9 @@ fun Zustandszeile(
 }
 
 /**
- * Neu/Gebraucht als zwei Flaechen.
- *
- * Stand bis Nachtrag 133 in GalleryScreen.kt und wurde von dort aus in drei
- * weiteren Dateien aufgerufen — eine Ansicht als Wohnort fuer ein Bedienelement,
- * das vier Ansichten benutzen. Jetzt liegt es neben der Zeile, die es einbaut.
- *
- * Die Werte „N" und „U" sind die des Servers (utils/validate.ts); uebersetzt
- * wird nur die Beschriftung.
+ * Neu/Gebraucht als zwei Flächen, neben der Zeile, die es einbaut. Die Werte „N“
+ * und „U“ sind die des Servers (utils/validate.ts); übersetzt wird nur die
+ * Beschriftung.
  */
 /**
  * Die Vorbelegung von [ConditionToggle] und [Zustandszeile] — an einer Stelle,
@@ -323,14 +240,9 @@ fun ConditionToggle(
     selected: String,
     onSelect: (String) -> Unit,
     /**
-     * Wert → Beschriftung. Vorbelegt mit „neu / gebraucht", weil das an fast
-     * jeder Stelle gemeint ist.
-     *
-     * Als Parameter und nicht als zweite, eigene Umschaltleiste: Die
-     * BrickLink-Wunschliste kennt einen dritten Wert („egal"), sieht sonst
-     * aber genauso aus. Eine zweite Bauform daneben waere derselbe Knopf in
-     * zwei Gestalten — genau das, was in dieser Reihe schon bei Suchfeld und
-     * Zustandszeile zusammengefuehrt wurde.
+     * Wert → Beschriftung, vorbelegt mit „neu / gebraucht“. Als Parameter, weil die
+     * BrickLink-Wunschliste einen dritten Wert („egal“) kennt und sonst gleich
+     * aussieht.
      */
     optionen: List<Pair<String, Int>> = ZUSTAND_NEU_GEBRAUCHT,
 ) {

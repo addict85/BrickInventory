@@ -46,13 +46,11 @@ import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.components.LeerSymbol
 import androidx.compose.material.icons.automirrored.filled.ListAlt
 
-// ── Sortierung: exakt wie Webapp & PDF ──────────────────────────────────────
-// Webapp (app.js) und PDF (api_v1.js) sortieren mit JS localeCompare:
-//   Farben:       localeCompare('de')                → ICU-Collation, de
-//   Teilenummern: localeCompare(undefined,{numeric}) → ICU + numerische Segmente
-// Der ICU-RuleBasedCollator ist die 1:1-Entsprechung auf Android. Die frühere
-// Eigenbau-Sortierung (lowercase-Binärvergleich + eigener Alphanumerik-Comparator
-// + "Minifiguren immer zuerst") wich davon sichtbar ab.
+// ── Sortierung wie Webapp und PDF ──
+//
+// Beide sortieren mit localeCompare: Farben nach ICU-Collation (de), Teilenummern
+// ICU mit numerischen Segmenten. Der ICU-RuleBasedCollator ist die Entsprechung
+// auf Android; eine eigene Sortierung wich sichtbar ab.
 private val plColorCollator: android.icu.text.Collator =
     android.icu.text.Collator.getInstance(java.util.Locale.GERMAN)
 
@@ -63,12 +61,9 @@ private val plPartCollator: android.icu.text.Collator =
 private fun comparePartNumbers(a: String, b: String): Int = plPartCollator.compare(a, b)
 
 
-// ExperimentalLayoutApi kam dazu: Die FlowRow der Set-Chips trug das @OptIn
-// bisher IM RUMPF und mit vollem Paketnamen. Beides zusammen liess sie an der
-// Pruefung vorbei (SplitFileImportsTest sucht die Annotation ueber der
-// Funktion und den Namen ohne Punkt davor) — und es ist genau die Form, die in
-// HouseholdComposables.kt schon einmal „Unresolved reference 'invoke'" ergeben
-// hat.
+// ExperimentalLayoutApi für die FlowRow der Set-Chips — über der Funktion und mit
+// kurzem Namen, so wie SplitFileImportsTest sie sucht; ein @OptIn im Rumpf
+// übersetzt nicht.
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun PartsListScreen(
@@ -80,60 +75,37 @@ fun PartsListScreen(
     onScanBarcode: () -> Unit,
     onResolveSet: suspend (String) -> Pair<String, List<PlPart>>,
     /**
-     * „Kann ich das bauen?" — den eigenen Bestand zu dieser Liste holen.
-     *
-     * Gibt die Liste mit gesetztem `vorhanden` zurueck, oder null bei einem
-     * Fehler. Die Vorgabe reicht die Liste unveraendert durch, damit der
-     * Bildschirm auch in einer Vorschau ohne ViewModel baut.
+     * „Kann ich das bauen?“ — den eigenen Bestand zu dieser Liste holen. Gibt die
+     * Liste mit gesetztem `vorhanden` zurück, oder null bei einem Fehler. Die Vorgabe
+     * reicht sie unverändert durch, damit der Bildschirm in einer Vorschau ohne
+     * ViewModel baut.
      */
     onLadeBestand: suspend (List<PlPart>, Boolean, Boolean) -> List<PlPart>? = { p, _, _ -> p },
     /**
-     * Hat dieses Konto ueberhaupt Unterkonten? Nur dann wird die Wahl
-     * „Unterkonten mit einbeziehen" gezeigt — dieselbe Regel wie bei den
-     * Kontofiltern der anderen Reiter: Ein Schalter ohne Wirkung ist
-     * schlechter als keiner.
+     * Hat dieses Konto Unterkonten? Nur dann steht die Wahl „Unterkonten mit
+     * einbeziehen“ da — ein Schalter ohne Wirkung ist schlechter als keiner.
      */
     hatUnterkonten: Boolean = false,
     barcodeSetNumber: String? = null,
     onBarcodeConsumed: () -> Unit = {},
     /**
-     * Scroll-Zustand der Liste. Kommt von aussen, weil dieser Bildschirm beim
-     * Weg zum Barcode-Scanner verlassen und danach neu zusammengesetzt wird —
-     * ein `rememberLazyListState()` hier drin wäre bei der Rückkehr
-     * zurückgesetzt und die Liste spränge nach oben.
-     *
-     * Dass dieser Bildschirm beim Scannen verlassen wird, ist hier bekannt:
-     * Genau daran hingen schon die verschwundenen Sets aus Nachtrag 64. Nur
-     * die Rollposition hatte niemand nachgezogen (Nachtrag 94).
+     * Scroll-Zustand von aussen: Der Bildschirm wird beim Weg zum Barcode-Scanner
+     * verlassen; ein eigener State wäre bei der Rückkehr zurückgesetzt.
      */
     listState: LazyListState = rememberLazyListState(),
     /**
-     * Der Scan blieb ohne Setnummer → Cursor ins Set-Feld (Nachtrag 113).
-     *
-     * Marcos Vorgabe war „die manuelle Erfassung soll erscheinen". Dieser
-     * Bildschirm hat dafür KEINEN Dialog — er erfasst über das Feld gleich hier
-     * auf der Seite. Das Gegenstück zum aufgehenden Dialog ist deshalb: Cursor
-     * hinein, Tastatur offen, sofort tippbereit.
-     *
-     * Als Parameter und nicht über `vm`: Dieser Bildschirm nimmt bewusst kein
-     * ViewModel entgegen (siehe die übrigen Parameter oben).
+     * Der Scan blieb ohne Setnummer → Cursor ins Set-Feld, Tastatur offen. Die
+     * Teileliste erfasst über das Feld auf der Seite, nicht über einen Dialog. Als
+     * Parameter, weil dieser Bildschirm kein ViewModel bekommt.
      */
     manuelleErfassungAnfordern: Boolean = false,
     onManuelleErfassungQuittiert: () -> Unit = {},
 ) {
     var setInput  by rememberSaveable { mutableStateOf("") }
     val setFeldFokus = remember { FocusRequester() }
-    // rememberSaveable statt remember (Nachtrag 64): Der Weg zum Barcode-Scanner
-    // führt aus diesem Bildschirm HERAUS. Compose verwirft dabei den Inhalt von
-    // remember{} — die gesammelten Sets waren nach jedem Scan weg, und weil
-    // direkt danach das gescannte Set eingefügt wurde, sah es aus, als hätte
-    // der zweite Scan den ersten Eintrag GELÖSCHT. Genau so hat Marco es
-    // gemeldet.
-    //
-    // Ein eigener Saver ist nötig, weil PlSet keine von Compose bekannte Form
-    // hat. Gespeichert werden nur die Setnummern — der Name wird beim Erfassen
-    // ohnehin auf die Nummer gesetzt (siehe addSet unten) und beim Erstellen
-    // der Liste vom Server geholt.
+    // rememberSaveable: Der Weg zum Barcode-Scanner führt aus dem Bildschirm heraus,
+    // und mit remember wären die gesammelten Sets nach jedem Scan weg. Gespeichert
+    // werden nur die Setnummern (eigener Saver); Namen holt das Erstellen vom Server.
     var sets      by rememberSaveable(
         stateSaver = listSaver(
             save    = { liste -> liste.map { it.setNumber } },
@@ -186,17 +158,9 @@ fun PartsListScreen(
     }
 
 
-    // ── Nach einer Drehung passen `generated` und `parts` nicht mehr zusammen ─
-    //
-    // `parts` ist bewusst nur `remember`: Eine Teileliste aus mehreren Sets
-    // hat leicht tausend Eintraege und gehoert nicht ins Bundle (dort endet
-    // sie in einer TransactionTooLargeException). `generated` dagegen ist
-    // gespeichert — nach einer Drehung stand also „erzeugt" da, waehrend die
-    // Liste leer war, und der Bildschirm zeigte den Hinweis fuer den leeren
-    // Zustand UNTER den Knoepfen fuer eine fertige Liste.
-    //
-    // Die Sets bleiben erhalten (die sind gespeichert), ein Druck auf
-    // „Erzeugen" stellt alles wieder her.
+    // Nach einer Drehung passt `generated` nicht mehr zu `parts`: Die Teileliste ist
+    // nur `remember` (tausend Einträge sprengten das Bundle), `generated` ist
+    // gespeichert. Die Sets bleiben, „Erzeugen“ stellt alles wieder her.
     LaunchedEffect(Unit) { if (parts.isEmpty()) generated = false }
 
     fun reset() {
@@ -204,12 +168,9 @@ fun PartsListScreen(
     }
 
     Column(Modifier.fillMaxSize()) {
-        // ── Erfolgloser Scan setzt den Cursor ins Set-Feld (Nachtrag 113) ─────
+        // ── Erfolgloser Scan setzt den Cursor ins Set-Feld ──
         //
-        // Marcos Vorgabe, dass die manuelle Erfassung aufgehen soll. Die
-        // Teileliste hat dafür KEINEN Dialog — sie erfasst über das Feld
-        // gleich hier auf der Seite. Das Gegenstück zum aufgehenden Dialog ist
-        // deshalb: Cursor hinein, Tastatur offen, sofort tippbereit.
+        // Das Gegenstück zum Erfassungsdialog der anderen Bildschirme.
         LaunchedEffect(manuelleErfassungAnfordern) {
             if (manuelleErfassungAnfordern) {
                 kotlinx.coroutines.delay(120)
@@ -224,17 +185,8 @@ fun PartsListScreen(
                 Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein), verticalAlignment = Alignment.CenterVertically) {
                     OutlinedTextField(
                         value = setInput,
-                        // Dasselbe Paar wie bei jedem anderen Setnummernfeld
-                        // (util/NumericInput.kt): Filter UND Tastaturwahl.
-                        // Ohne die Wahl geht hier die Buchstabentastatur auf,
-                        // obwohl nur Ziffern und der Varianten-Bindestrich
-                        // hineingehoeren — dieses Feld war als einziges der
-                        // drei uebersehen worden.
-                        //
-                        // Done statt Next, weil rechts daneben kein Feld mehr
-                        // kommt, sondern der Knopf „+“: Die Tastatur soll sich
-                        // schliessen, nicht ins Leere weiterspringen. Denselben
-                        // Weg geht das letzte Feld in AcquisitionManagementScreen.
+                        // Filter und Tastaturwahl wie jedes Setnummernfeld (util/NumericInput.kt).
+                        // Done statt Next, weil rechts der Knopf „+“ kommt, kein Feld.
                         onValueChange = { setInput = NumericInput.setNumber(it) },
                         keyboardOptions = NumericInput.ganzzahlTastatur(ImeAction.Done),
                         placeholder = { Text(stringResource(R.string.partslist_set_number_placeholder)) },
@@ -318,14 +270,9 @@ fun PartsListScreen(
                         enabled = sets.isNotEmpty() && !isLoading,
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                     ) {
-                        // Nur das SYMBOL wird zum Kreisel, die Beschriftung
-                        // bleibt stehen. Tauschte der ganze Inhalt, schrumpfte
-                        // der Knopf auf Kreiselbreite und alles rechts daneben
-                        // spraenge mit — dasselbe Flackern, das Marcos Video
-                        // vom 22.09. in der Webapp zeigt (dort haelt jetzt
-                        // knopfBesetzt die Breite fest, 01-core.js). Kreisel
-                        // und Symbol sind beide 16.dp breit, die Zeile steht
-                        // also still.
+                        // Nur das Symbol wird zum Kreisel, die Beschriftung bleibt: Sonst
+                        // schrumpfte der Knopf, und die Zeile spränge. Kreisel und Symbol sind
+                        // beide 16 dp breit.
                         if (isLoading) CircularProgressIndicator(Modifier.size(16.dp),
                             color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
                         else Icon(Icons.Default.Build, null, Modifier.size(16.dp))
@@ -361,14 +308,9 @@ fun PartsListScreen(
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = MaterialTheme.colorScheme.tertiary)
                         ) {
-                            // Nur das SYMBOL wird zum Kreisel, die Beschriftung
-                            // bleibt stehen. Tauschte der ganze Inhalt, schrumpfte
-                            // der Knopf auf Kreiselbreite und alles rechts daneben
-                            // spraenge mit — dasselbe Flackern, das Marcos Video
-                            // vom 22.09. in der Webapp zeigt (dort haelt jetzt
-                            // knopfBesetzt die Breite fest, 01-core.js). Kreisel
-                            // und Symbol sind beide 16.dp breit, die Zeile steht
-                            // also still.
+                            // Nur das Symbol wird zum Kreisel, die Beschriftung bleibt: Sonst
+                            // schrumpfte der Knopf, und die Zeile spränge. Kreisel und Symbol sind
+                            // beide 16 dp breit.
                             if (isExporting) CircularProgressIndicator(Modifier.size(16.dp),
                                 color = MaterialTheme.colorScheme.onTertiary, strokeWidth = 2.dp)
                             else Icon(Icons.Default.PictureAsPdf, null, Modifier.size(16.dp))
@@ -382,33 +324,18 @@ fun PartsListScreen(
                     ) { Text(stringResource(R.string.partslist_reset)) }
                 }
 
-                // ── Eigener Bestand: eine Zeile fuer sich ───────────────────
+                // ── Eigener Bestand: eine Zeile für sich ──
                 //
-                // Marcos Vorgabe zur Webapp: „Bitte die rot umkreisten Buttons
-                // auf eine neue Zeile verschieben. Diese gehoeren thematisch
-                // nicht zum Rest." Hier gilt dasselbe, und die Zeile darueber
-                // sagt jetzt auch, warum: Dort steht das ZUSAMMENSTELLEN der
-                // Liste (Set-Nr., Hinzufuegen, Erstellen) und das WEITERGEBEN
-                // (PDF, Reset). Der eigene Bestand ist keines von beidem — er
-                // traegt Zahlen IN die fertige Liste ein.
-                //
-                // „nur lose Teile" steht neben dem Knopf und nicht in den
-                // Einstellungen: Die Wahl wechselt von Frage zu Frage.
+                // Die Zeile darüber stellt die Liste zusammen und gibt sie weiter; der Bestand
+                // trägt Zahlen in die fertige Liste ein. „nur lose Teile“ steht neben dem Knopf,
+                // weil die Wahl von Frage zu Frage wechselt.
                 if (generated && parts.isNotEmpty()) {
-                    // remember, NICHT rememberSaveable — dieselbe
-                    // Begruendung wie beim PDF-Export darueber.
-                    // `…Laeuft`, nicht `laedt…`: BildschirmZustandTest
-                    // ordnet Zustaende nach dem NAMEN ein, und nur die
-                    // erste Form sagt ihm „laufender Vorgang, darf eine
-                    // Drehung nicht ueberleben".
+                    // remember, nicht rememberSaveable, wie beim PDF-Export. Der Name auf `…Laeuft`
+                    // sagt BildschirmZustandTest: laufender Vorgang, darf eine Drehung nicht
+                    // überleben.
                     var bestandLaeuft by remember { mutableStateOf(false) }
-                    // Untereinander, nicht nebeneinander: Die Beschriftung der
-                    // Wahl ist seit Marcos Umbenennung „nur manuell erfasste
-                    // Teile beruecksichtigen" — 43 Zeichen. Neben einem Knopf
-                    // passt das auf einem 360dp-Telefon nicht, und messen kann
-                    // ich es hier nicht (kein Android-SDK in dieser Umgebung).
-                    // Beides steht trotzdem zusammen und ausserhalb der
-                    // Werkzeugzeile, und genau darum ging es.
+                    // Untereinander: Die Beschriftung der Wahl ist lang und passt auf einem
+                    // 360-dp-Telefon nicht neben den Knopf.
                     Column(verticalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
                         Button(
                             onClick = {
@@ -437,14 +364,9 @@ fun PartsListScreen(
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = MaterialTheme.colorScheme.secondary)
                         ) {
-                            // Nur das SYMBOL wird zum Kreisel, die Beschriftung
-                            // bleibt stehen. Tauschte der ganze Inhalt, schrumpfte
-                            // der Knopf auf Kreiselbreite und alles rechts daneben
-                            // spraenge mit — dasselbe Flackern, das Marcos Video
-                            // vom 22.09. in der Webapp zeigt (dort haelt jetzt
-                            // knopfBesetzt die Breite fest, 01-core.js). Kreisel
-                            // und Symbol sind beide 16.dp breit, die Zeile steht
-                            // also still.
+                            // Nur das Symbol wird zum Kreisel, die Beschriftung bleibt: Sonst
+                            // schrumpfte der Knopf, und die Zeile spränge. Kreisel und Symbol sind
+                            // beide 16 dp breit.
                             if (bestandLaeuft) CircularProgressIndicator(Modifier.size(16.dp),
                                 color = MaterialTheme.colorScheme.onSecondary, strokeWidth = 2.dp)
                             else Icon(Icons.Default.Inventory2, null, Modifier.size(16.dp))
@@ -563,12 +485,9 @@ fun PartListRow(
 ) {
     val ctx = LocalContext.current
     val rbPrefixFmt = stringResource(R.string.partslist_rb_prefix)
-    // WICHTIG: part.imageUrl ist hier bereits vollständig aufgelöst —
-    // ui/Teileliste.kt bereitet ihn beim Laden auf (image_local bevorzugt,
-    // sonst über den Server-Proxy). Ein erneutes resolveThumbUrl() hier würde
-    // eine bereits proxy-gewickelte Adresse ein zweites Mal einwickeln
-    // (doppelter /api/img-proxy?url=…). Nur noch den lokalen Server-Präfix
-    // ergänzen, falls der Wert ein relativer Pfad ist.
+    // part.imageUrl ist schon aufgelöst (ui/Teileliste.kt); ein zweites
+    // resolveThumbUrl() wickelte die Proxy-Adresse doppelt ein. Nur ein relativer Pfad
+    // bekommt den Server davor.
     val imgUrl = remember(part.imageUrl, serverUrl) {
         part.imageUrl?.let { url ->
             if (url.startsWith("/")) "$serverUrl$url" else url
@@ -628,16 +547,11 @@ fun PartListRow(
                 color = if (part.isFig) MaterialTheme.colorScheme.onTertiaryContainer
                         else MaterialTheme.colorScheme.onPrimaryContainer)
         }
-        // ── „habe ich" neben „brauche ich" (Nachtrag 174) ──────────────────
+        // ── „habe ich“ neben „brauche ich“ ──
         //
-        // Hier stand einmal ein EINGABEFELD „vorhanden". Es hatte genau einen
-        // Leser, den BrickLink-Export, und fiel mit ihm weg — ein Feld,
-        // dessen Wert nirgendwohin geht, ist schlechter als keines.
-        //
-        // Jetzt steht hier eine ANZEIGE: Der Server sagt, wie viele Stueck im
-        // Blickfeld liegen. Gruen, wenn es reicht, sonst der Fehlbetrag in
-        // Rot — die Farbe beantwortet „kann ich das bauen?" schon beim
-        // Ueberfliegen, ohne dass man je Zeile zwei Zahlen vergleicht.
+        // Wie viele Stück im Blickfeld liegen, sagt der Server. Grün, wenn es reicht,
+        // sonst der Fehlbetrag in Rot — „kann ich das bauen?“ ist so schon beim
+        // Überfliegen beantwortet.
         part.vorhanden?.let { habe ->
             val reicht = habe >= part.quantity
             Surface(

@@ -79,75 +79,45 @@ import kotlin.math.roundToInt
 import kotlin.math.sqrt
 
 /**
- * In-App PDF-Viewer.
- *
- * Große PDFs (>300MB) werden speicherschonend behandelt:
- *  - Download läuft streamend auf Platte (kein Voll-Puffer im RAM), mit Fortschritt.
- *  - Anzeige über den systemeigenen PdfRenderer, der Seiten EINZELN rendert; es
- *    ist immer nur die gerade sichtbare Seite als Bitmap im Speicher.
- * Der Download-Button KOPIERT die bereits geladene Datei über den MediaStore
- * in den öffentlichen Downloads-Ordner — er lädt sie nicht erneut. Ein zweiter
- * Abruf über den DownloadManager hätte keinen Bearer-Token dabei, und
- * Anleitungen verlangen auf dem Server eine Anmeldung.
+ * In-App PDF-Viewer für grosse Anleitungen: Der Download läuft streamend auf die
+ * Platte, PdfRenderer rendert die Seiten einzeln, es liegt nur das Sichtbare als
+ * Bitmap im Speicher. „Herunterladen“ kopiert die geladene Datei, statt sie über
+ * den DownloadManager neu zu holen — der kennt den Bearer-Token nicht.
  */
-// ── Zoom ─────────────────────────────────────────────────────────────────────
+// ── Zoom ──
 //
-// Der Faktor gilt auf die Grundgroesse, und die Grundgroesse ist „Seite fuellt
-// die Breite". 1 ist deshalb der untere Anschlag: darunter gibt es nichts zu
-// sehen, die Breite ist schon ganz da. Dieselbe Untergrenze hat der Bildzoom
-// (ui/components/ZoomableImageDialog.kt) und der PDF-Betrachter der Weboberflaeche.
+// Der Faktor gilt auf „Seite füllt die Breite“; 1 ist deshalb der untere Anschlag,
+// wie im Bildzoom und in der Weboberfläche.
 private const val PDF_ZOOM_MIN = 1f
 private const val PDF_ZOOM_MAX = 5f
 private const val PDF_ZOOM_SCHRITT = 1.25f      // ein Druck auf + bzw. −
 private const val PDF_ZOOM_DOPPELTIPP = 2.5f    // Doppeltipp aus 1x heraus
 
 /**
- * Obergrenze fuer eine Seiten-Bitmap, in Pixeln der Flaeche.
- *
- * ARGB_8888 heisst 4 Byte je Pixel, 8 Millionen Pixel sind also rund 32 MB.
- * Zum Vergleich: Die feste Breite von 1080 px, mit der dieser Betrachter bisher
- * gerendert hat, ergibt bei A4-Verhaeltnis rund 6,6 MB. Die LazyColumn haelt
- * die sichtbaren Seiten; bei starkem Zoom ist das eine bis zwei.
- *
- * Der Riegel wirkt auf die FLAECHE und nicht auf eine Seitenlaenge: Eine
- * querformatige Anleitungsseite hat dieselbe Pixelzahl wie eine hochformatige,
- * nur anders verteilt.
- *
- * Wird er erreicht, bleibt die Anzeige richtig und wird nur weicher — die
- * Bitmap ist dann kleiner als der Kasten und wird hochskaliert.
+ * Obergrenze einer Seiten-Bitmap in Pixeln der Fläche: 8 Millionen ARGB-Pixel sind
+ * rund 32 MB. Begrenzt wird die Fläche, weil sie den Speicher bestimmt; wird sie
+ * erreicht, wird die Seite nur weicher, nicht falsch.
  */
 internal const val PDF_BITMAP_MAX_PX = 8_000_000
 
 /**
- * In welcher Aufloesung wird beim Faktor [zoom] gerendert — 1-, 2- oder 3-mal
- * die Behaelterbreite?
- *
- * STUFEN und nicht stufenlos, und das ist der Kern dieser Funktion: Beim Zoomen
- * aendert sich der Faktor mit jedem Bild der Geste. Haenge man die
- * Renderaufloesung unmittelbar daran, liefe waehrend einer einzigen
- * Zwei-Finger-Bewegung ein Dutzend PdfRenderer-Durchlaeufe an — auf einem
- * Mutex serialisiert, jeder einige zehn Millisekunden. Mit Stufen sind es
- * hoechstens zwei Wechsel auf dem ganzen Weg von 1x nach 5x.
- *
- * Dass es zwischen den Stufen weicher aussieht, ist gewollt: Dafuer ist die
- * Geste fluessig, und die scharfe Fassung kommt, sobald die Stufe wechselt.
+ * In welcher Stufe gerendert wird — 1-, 2- oder 3-mal die Behälterbreite. Stufen
+ * statt stufenlos: Der Faktor ändert sich mit jedem Bild der Geste, und jeder
+ * Wechsel kostet einen PdfRenderer-Durchlauf; so sind es auf dem Weg von 1x nach
+ * 5x höchstens zwei.
  */
 internal fun renderStufe(zoom: Float): Int = ceil(zoom).toInt().coerceIn(1, 3)
 
 /**
- * Masse der Seiten-Bitmap: die gewuenschte Breite, auf [PDF_BITMAP_MAX_PX]
+ * Masse der Seiten-Bitmap: die gewünschte Breite, auf [PDF_BITMAP_MAX_PX]
  * begrenzt.
  *
- * @param breitePx gewuenschte Breite in Pixeln
- * @param ratio Hoehe geteilt durch Breite der PDF-Seite
- * @return (Breite, Hoehe) in Pixeln, beide mindestens 1
+ * @param breitePx gewünschte Breite in Pixeln
+ * @param ratio Höhe geteilt durch Breite der PDF-Seite
+ * @return (Breite, Höhe) in Pixeln, beide mindestens 1
  *
- * Begrenzt wird die FLAECHE, weil sie den Speicher bestimmt, und mit der WURZEL,
- * weil beide Seitenlaengen gleichmaessig schrumpfen muessen — nur die Breite zu
- * kappen wuerde das Seitenverhaeltnis verlieren und die Seite verzerren.
- *
- * Eigene Funktion statt drei Zeilen in renderPdfPage(): So ist die Rechnung
- * pruefbar, ohne einen PdfRenderer und damit ein Geraet zu brauchen
+ * Gekappt wird mit der Wurzel, damit beide Seiten gleich schrumpfen und das
+ * Verhältnis bleibt. Eigene Funktion, damit die Rechnung ohne Gerät prüfbar ist
  * (PdfZoomTest).
  */
 internal fun bitmapMasse(breitePx: Int, ratio: Float): Pair<Int, Int> {
@@ -178,12 +148,9 @@ fun PdfViewerScreen(
     onBack: () -> Unit
 ) {
     val ctx = LocalContext.current
-    // `stringResource` statt `ctx.getString` im Rueckruf: Lint meldet
-    // LocalContextGetResourceValueCall (Stufe ERROR), weil ein aus
-    // LocalContext.current gegriffener Context nach einem Wechsel der
-    // Konfiguration — Sprache, Dunkelmodus, Drehung — veraltete Werte liefern
-    // kann. Hier geholt, in der Komposition, wo Compose bei einer Aenderung neu
-    // auswertet.
+    // stringResource statt ctx.getString im Rückruf: Ein aus LocalContext gegriffener
+    // Context liefert nach einem Konfigurationswechsel veraltete Werte (Lint
+    // LocalContextGetResourceValueCall).
     val ladefehlerText = stringResource(R.string.pdfview_download_failed)
     val unbekannterFehlerText = stringResource(R.string.pdfview_unknown_error)
     var state by remember(pdfUrl) { mutableStateOf<PdfLoadState>(PdfLoadState.Downloading(0, 0, 0)) }
@@ -329,30 +296,11 @@ private fun CenteredLoading(text: String) {
 }
 
 /**
- * Minus, Faktor, Plus — unten in der Mitte.
- *
- * ── Warum unten und nicht in der Kopfzeile ──────────────────────────────────
- *
- * Dort waere es der naheliegende Platz, aber die Kopfzeile traegt schon Zurueck,
- * Drucken und Herunterladen. Mit zwei weiteren Knoepfen blieben auf einem
- * Telefon rund 120 dp fuer den Titel, und der Titel ist der Name der Anleitung
- * — genau das, was man beim Blaettern durch mehrere Anleitungen lesen will.
- *
- * Unten kommt dazu, dass der Daumen dort ist, und dass der Faktor beim
- * Bedienelement steht, das ihn aendert, statt am anderen Ende des Bildschirms.
- *
- * ── Warum immer sichtbar und nicht erst ab 1x ───────────────────────────────
- *
- * Der Bildzoom (ZoomableImageDialog.kt) blendet seinen Faktor erst ein, wenn er
- * ueber 1 liegt — dort ist das richtig, denn die Zwei-Finger-Geste ist der
- * einzige Weg und jeder kennt sie. Hier ist die Leiste AUCH der Weg, auf dem
- * gezoomt wird, und zwar der verlaessliche: Die Geste kann im Streit mit dem
- * Rollen der Liste unterliegen (siehe PdfPages). Ein Bedienelement, das erst
- * erscheint, nachdem man das getan hat, wofuer man es braucht, ist keines.
- *
- * Der Faktor ist eine ZAHL, kein Balken und keine Farbe: Man muss ablesen
- * koennen, wo man ist, und zwar unabhaengig davon, welche Farben man
- * unterscheidet.
+ * Minus, Faktor, Plus — unten in der Mitte: Die Kopfzeile trägt schon Zurück,
+ * Drucken und Herunterladen, und mehr Knöpfe liessen dem Titel kaum Platz; unten
+ * ist der Daumen. Immer sichtbar, weil die Leiste hier der verlässliche Weg zum
+ * Zoomen ist — die Geste kann gegen das Rollen verlieren. Der Faktor steht als
+ * Zahl da, nicht als Farbe.
  */
 @Composable
 private fun ZoomLeiste(zoom: Float, setzeZoom: (Float) -> Unit, modifier: Modifier = Modifier) {
@@ -376,14 +324,8 @@ private fun ZoomLeiste(zoom: Float, setzeZoom: (Float) -> Unit, modifier: Modifi
         ) {
             Icon(Icons.Default.ZoomOut, contentDescription = stringResource(R.string.pdfview_zoom_out))
         }
-        // Der Faktor ist zugleich der Knopf „zurueck auf 100 %".
-        //
-        // defaultMinSize, weil der Text allein nur rund 24 dp hoch waere. Die
-        // Materialvorgabe fuer ein Beruehrungsziel sind 48 dp, und das ist keine
-        // Geschmacksfrage: Die beiden Symbolknoepfe daneben sind 48 dp, ein
-        // 24-dp-Ziel dazwischen trifft man mit dem Daumen nur knapp daneben.
-        // Sichtbar aendert sich nichts — die Reihe ist durch die Knoepfe ohnehin
-        // 48 dp hoch.
+        // Der Faktor ist zugleich der Knopf „zurück auf 100 %“. defaultMinSize, damit er
+        // ein 48-dp-Berührungsziel ist wie die Knöpfe daneben.
         Box(
             modifier = Modifier
                 // onClickLabel statt nur clickable: Vorgelesen wuerde sonst
@@ -413,55 +355,12 @@ private fun ZoomLeiste(zoom: Float, setzeZoom: (Float) -> Unit, modifier: Modifi
 }
 
 /**
- * Die Seiten, zoombar.
- *
- * ── Warum der Zoom die BREITE aendert und nicht einen graphicsLayer ─────────
- *
- * Der naheliegende Weg waere der aus ZoomableImageDialog.kt: scaleX/scaleY in
- * einem graphicsLayer, dazu ein Verschiebe-Offset. Fuer ein einzelnes Bild ohne
- * Rollbalken ist das richtig. Hier nicht, aus drei Gruenden:
- *
- *  1. Die Bitmaps sind in einer festen Aufloesung gerendert. Ein graphicsLayer
- *     streckt sie nur — bei 4x waere eine Teilenummer unleserlich. Die
- *     Seitenbreite als Mass zu nehmen heisst dagegen, dass PdfPage genau in der
- *     Groesse rendert, in der die Seite steht.
- *  2. Ein graphicsLayer auf der LazyColumn skaliert auch deren Sichtfeld: Ein
- *     Zug von 100 px rollt dann 100 * Faktor Pixel weit. Das fuehlt sich bei 4x
- *     wie ein Rutsch an.
- *  3. Der Verschiebe-Offset muesste gegen die Inhaltsgroesse begrenzt werden,
- *     und die kennt niemand, solange die Liste faul laedt. ZoomableImageDialog
- *     begrenzt ihn NICHT — dort kann man das Bild bei 6x aus dem Sichtfeld
- *     ziehen. Bei einer 80-seitigen Anleitung waere das kein Schoenheitsfehler.
- *
- * Mit der Breite als Mass macht ein echtes horizontalScroll das Verschieben:
- * mit Schwung, mit Anschlag, nicht verlierbar.
- *
- * ── Warum sich die Geste nicht mit dem Rollen schlaegt ──────────────────────
- *
- * GELESEN in der Quelle von foundation (gestures/Transformable.kt,
- * gestures/DragGestureDetector.kt), nicht vermutet:
- *
- *  - `transformable(state, canPan = { false })`: In detectZoom() kommt der
- *    Schwellwert nur ueber zoomMotion, rotationMotion oder
- *    `panMotion > touchSlop && canPan(...)`. Mit canPan = false faellt der
- *    dritte Weg weg, und mit EINEM Finger sind zoomChange 1 und rotationChange
- *    0 — ein Einfinger-Zug wird also nie beansprucht. Genau fuer diesen Zweck
- *    gibt es die Ueberladung; ihr eigener Kommentar nennt als Beispiel
- *    „TransformableSampleInsideScroll".
- *  - detectZoom() bricht ausserdem von selbst ab, sobald ein anderer die
- *    Bewegung beansprucht (`event.changes.fastAny { it.isConsumed }` →
- *    TransformStopped). Unterliegt die Geste also doch, rollt die Liste — und
- *    es passiert nicht beides.
- *  - Senkrecht und waagerecht vertragen sich: TouchSlopDetector rechnet bei
- *    gesetzter Orientierung nur `finalChange.mainAxis().absoluteValue`. Ein
- *    waagerechter Zug ueberschreitet den senkrechten Schwellwert nie, also
- *    beansprucht die LazyColumn ihn nicht, und das horizontalScroll bekommt ihn.
- *
- * NICHT geprueft, weil es dafuer ein Geraet braucht: Bei einer Zwei-Finger-Geste,
- * deren Finger sich fast senkrecht voneinander entfernen, kann die LazyColumn
- * schneller am Schwellwert sein und die Geste gewinnen. Dann rollt die Liste
- * statt zu zoomen — unschoen, aber nichts geht kaputt. Dagegen stehen der
- * Doppeltipp und die beiden Knoepfe in der Kopfzeile.
+ * Die Seiten, zoombar. Gezoomt wird über die Breite statt mit einem graphicsLayer:
+ * So rendert PdfPage in der Grösse, in der die Seite steht (scharf statt
+ * gestreckt), das Rollen bleibt im richtigen Mass, und ein echtes horizontalScroll
+ * verschiebt mit Anschlag. transformable(canPan = { false }) beansprucht keinen
+ * Einfinger-Zug, deshalb rollt die Liste weiter; wo die Geste doch verliert,
+ * bleiben Doppeltipp und Knöpfe.
  */
 /**
  * Was ein Zoomschritt von der Geste bis zur naechsten Messung braucht. Kein
@@ -487,31 +386,15 @@ private fun PdfPages(
     val senkrecht = rememberLazyListState()
     val geste = rememberTransformableState { zoomChange, _, _ -> setzeZoom(zoom * zoomChange, anker.finger) }
 
-    // ── Solange zwei Finger aufliegen, rollt die Liste nicht ─────────────────
-    //
-    // Das war die eine Schwaeche, die beim Bauen schon benannt war: Die
-    // LazyColumn ist das TIEFERE Glied und sieht die Bewegung vor dem
-    // transformable. Geht eine Zwei-Finger-Geste auch nur ein wenig senkrecht
-    // auseinander, beansprucht sie die Liste — und gezoomt wird nicht.
-    //
-    // Hier wird deshalb mitgezaehlt, wie viele Finger aufliegen, und ab zwei
-    // bekommt die Liste `userScrollEnabled = false`.
-    //
-    // Gezaehlt wird im INITIAL-Durchgang und es wird NICHTS beansprucht: Der
-    // Initial-Durchgang laeuft von aussen nach innen, der Zaehler sieht die
-    // Finger also vor der Liste, nimmt ihr aber nichts weg. Ein Beobachter, der
-    // beansprucht, waere derselbe Streit mit vertauschten Rollen.
+    // Solange zwei Finger aufliegen, rollt die Liste nicht: Die LazyColumn sieht die
+    // Bewegung vor dem transformable und gewönne eine leicht senkrechte
+    // Zwei-Finger-Geste. Gezählt wird im Initial-Durchgang, ohne etwas zu
+    // beanspruchen.
     var zweiFinger by remember { mutableStateOf(false) }
 
-    // `pointerInput(Unit)` wird NICHT neu aufgesetzt, wenn sich etwas aendert —
-    // das ist der Sinn des Schluessels Unit, sonst riss jede Neuberechnung eine
-    // laufende Geste ab. Der Preis: Der Block haelt die Huelle der ERSTEN
-    // Komposition fest. Ohne rememberUpdatedState saehe der Doppeltipp `zoom`
-    // fuer immer als 1 und zoomte nur noch hinein, nie zurueck.
-    //
-    // Fuer `geste` braucht es das nicht: rememberTransformableState legt den
-    // Rueckruf selbst in ein rememberUpdatedState (gelesen in
-    // foundation/gestures/TransformableState.kt).
+    // pointerInput(Unit) wird nicht neu aufgesetzt, damit eine laufende Geste nicht
+    // abreisst; ohne rememberUpdatedState sähe der Doppeltipp für immer den ersten
+    // `zoom`.
     val zoomJetzt by rememberUpdatedState(zoom)
     val setzeZoomJetzt by rememberUpdatedState(setzeZoom)
 
@@ -611,13 +494,9 @@ private fun PdfPages(
 private fun PdfPage(file: File, index: Int, renderBreitePx: Int) {
     var bitmap by remember(file, index) { mutableStateOf<Bitmap?>(null) }
 
-    // `remember(file, index)` ohne renderBreitePx, LaunchedEffect MIT: Beim
-    // Wechsel der Renderstufe bleibt die alte Bitmap stehen, bis die neue da
-    // ist. Wuerde der Zustand mit zurueckgesetzt, blitzte bei jedem
-    // Stufenwechsel auf allen sichtbaren Seiten der Ladekreis auf — und das
-    // waere nicht nur haesslich, sondern bei einem Zoom mitten in einer langen
-    // Anleitung der Verlust der Stelle, weil leere Seiten eine andere Hoehe
-    // haben als gerenderte.
+    // remember ohne, LaunchedEffect mit renderBreitePx: Beim Stufenwechsel bleibt die
+    // alte Bitmap stehen, bis die neue da ist. Ein Ladekreis hätte eine andere Höhe
+    // und verlöre beim Zoomen die Stelle in der Anleitung.
     LaunchedEffect(file, index, renderBreitePx) {
         val neu = withContext(Dispatchers.IO) { renderPdfPage(file, index, renderBreitePx) }
         if (neu != null) bitmap = neu
@@ -672,33 +551,17 @@ private suspend fun renderPdfPage(file: File, index: Int, targetWidthPx: Int): B
     }
 
 /**
- * Robuster Download großer PDFs mit OkHttp:
- *  - callTimeout(0): kein Gesamt-Timeout (300MB dürfen lange laden),
- *  - retryOnConnectionFailure,
- *  - RESUME: bricht die Verbindung ab ("Software caused connection abort" o.ä.),
- *    wird der Download per Range-Request an der Abbruchstelle fortgesetzt statt
- *    von vorne — bis zu maxAttempts Versuche.
+ * Robuster Download grosser PDFs mit OkHttp: - callTimeout(0): kein
+ * Gesamt-Timeout, 300 MB dürfen lange laden - retryOnConnectionFailure -
+ * Range-Request: Ein abgebrochener Download wird an der Abbruchstelle fortgesetzt,
+ * bis zu maxAttempts Versuche
  */
 /**
- * Laden und Seiten zaehlen — mit EINEM Selbstheilungsversuch.
- *
- * ── Warum der zweite Versuch ────────────────────────────────────────────────
- *
- * Seit der Download in `<name>.part` schreibt (util/PdfCache.kt), heisst eine
- * Datei ohne Endung `.part` „vollstaendig". Auf Geraeten, die die App vorher
- * schon hatten, stimmt das nicht unbedingt: Die alte Fassung schrieb direkt in
- * `<name>`, und ein dort abgebrochener Download hinterliess eine abgeschnittene
- * Datei unter dem fertigen Namen. Die wuerde jetzt als fertig gelten und beim
- * Oeffnen an PdfRenderer scheitern — mit einer Meldung, die nach einem
- * kaputten Server aussieht und keiner ist.
- *
- * Deshalb: Scheitert das Aufbereiten, wird der Zwischenspeicher fuer genau
- * diese Anleitung weggeworfen und EINMAL frisch geladen. Klappt es dann wieder
- * nicht, liegt es nicht am Zwischenspeicher, und der Fehler geht durch.
- *
- * Genau einmal, nicht in einer Schleife: Eine Anleitung, die der Renderer
- * nicht lesen kann, wird das auch beim dritten Mal nicht — dann waere es eine
- * Endlosschleife ueber 300 MB.
+ * Laden und Seiten zählen — mit einem Selbstheilungsversuch: Ältere Fassungen
+ * schrieben direkt unter den fertigen Namen und konnten dort eine abgeschnittene
+ * Datei hinterlassen. Scheitert das Öffnen, wird der Zwischenspeicher dieser
+ * Anleitung verworfen und einmal neu geladen; ein zweiter Fehlschlag geht durch,
+ * sonst liefe eine Schleife über 300 MB.
  */
 private suspend fun ladeUndZaehle(
     url: String,
@@ -741,16 +604,10 @@ private suspend fun ladeUndZaehle(
 }
 
 /**
- * Hält den PDF-Ansichts-Cache unter [PDF_CACHE_BUDGET_BYTES].
- *
- * Angesehene Anleitungen bleiben absichtlich liegen (erneutes Öffnen ohne
- * Neudownload, und der Resume-Mechanismus setzt auf einer Teildatei auf) —
- * nur gab es dafür bisher keine Obergrenze. Bei Anleitungen von bis zu
- * 300 MB liegen nach ein paar Sets mehrere GB im Cache, bis Android bei
- * Speichernot selbst räumt.
- *
- * Älteste zuerst, und [keep] wird nie gelöscht: Das ist die gerade
- * angeforderte Datei, deren Teil-Download sonst verloren ginge.
+ * Hält den PDF-Ansichts-Cache unter [PDF_CACHE_BUDGET_BYTES]. Angesehene
+ * Anleitungen bleiben liegen (erneutes Öffnen, Fortsetzen eines Teil-Downloads),
+ * brauchen aber eine Obergrenze. Älteste zuerst; [keep] — die gerade angeforderte
+ * Datei — wird nie gelöscht.
  */
 private fun prunePdfCache(cacheDir: File, keep: File) {
     try {
@@ -784,21 +641,15 @@ private suspend fun downloadPdfWithResume(
     dest: File,
     baseClient: OkHttpClient,
     /**
-     * Meldung, wenn alle Versuche gescheitert sind und die Ursache selbst
-     * keine trägt. Kommt als Parameter herein, damit diese Funktion ohne
-     * Context und ohne Ressourcenzugriff bleibt — sie läuft auf dem
-     * IO-Dispatcher und ist die einzige hier, die reine Netzarbeit macht.
+     * Meldung, wenn alle Versuche gescheitert sind und die Ursache keine trägt. Als
+     * Parameter, damit diese Funktion auf dem IO-Dispatcher ohne Context auskommt.
      */
     fehlerText: String,
     onProgress: (downloaded: Long, total: Long) -> Unit
 ) {
-    // Vom geteilten api-Client ABGELEITET statt eigenständig gebaut:
-    // newBuilder() übernimmt Interceptors, Thread- und Connection-Pool.
-    // Damit gelten Bearer-Token, Klartext-Verbot und die 401-Meldung
-    // (SessionExpiredSignal) automatisch — die frühere, handgepflegte
-    // NetworkPolicy-Prüfung an dieser Stelle entfällt, weil der
-    // Interceptor sie bereits durchsetzt. Nur die Timeouts weichen ab:
-    // callTimeout(0), weil 300-MB-Anleitungen lange laden dürfen.
+    // Vom geteilten api-Client abgeleitet: newBuilder() übernimmt die Interceptors
+    // (Bearer-Token, Klartext-Verbot, 401-Meldung) und die Pools; nur die Zeitgrenzen
+    // weichen ab.
     val client = baseClient.newBuilder()
         .connectTimeout(30, TimeUnit.SECONDS)
         .readTimeout(120, TimeUnit.SECONDS)
@@ -944,27 +795,10 @@ private fun printPdf(ctx: Context, file: File, title: String) {
 }
 
 /**
- * Die bereits geladene PDF-Datei in den Download-Ordner kopieren.
- *
- * ── Warum nicht mehr über den DownloadManager ───────────────────────────────
- * Vorher lief das über `DownloadManager.Request(Uri.parse(url))` — also ein
- * ZWEITER Download derselben Datei, ausgeführt vom System-Dienst statt von
- * unserem OkHttp-Client. Der Dienst kennt unseren Bearer-Token nicht, und
- * Anleitungen verlangen auf dem Server eine Anmeldung (/data/instructions/…).
- * Ergebnis: eine 401-Antwort, die als "anleitung.pdf" im Download-Ordner
- * landete — eine Datei, die aussieht wie ein PDF und keines ist. Der Fehler
- * fiel nicht auf, weil der DownloadManager den Statuscode nicht prüft und die
- * Erfolgsmeldung trotzdem erscheint.
- *
- * Die Datei liegt zu diesem Zeitpunkt ohnehin schon vollständig im Cache — sie
- * wurde für die Anzeige geladen, über den authentifizierten Client. Kopieren
- * statt neu laden löst damit gleich drei Dinge: keine Anmeldefrage, kein
- * zweiter Download, und es funktioniert auch ohne Netz.
- *
- * MediaStore statt setDestinationInExternalPublicDir: Ab Android 10 ist der
- * direkte Schreibzugriff auf das öffentliche Download-Verzeichnis nicht mehr
- * erlaubt (Scoped Storage); der MediaStore ist der vorgesehene Weg und braucht
- * keine Berechtigung.
+ * Die geladene PDF-Datei in den Download-Ordner kopieren — ohne zweiten Download:
+ * Der DownloadManager kennt unseren Bearer-Token nicht und legte die 401-Antwort
+ * als „anleitung.pdf“ ab. Kopieren geht auch offline. Ab Android 10 über den
+ * MediaStore, der keine Berechtigung braucht.
  */
 private fun savePdfToDownloads(ctx: Context, file: File, title: String) {
     try {
@@ -990,26 +824,11 @@ private fun savePdfToDownloads(ctx: Context, file: File, title: String) {
             resolver.update(uri, values, null, null)
             Toast.makeText(ctx, ctx.getString(R.string.pdfview_saved, name), Toast.LENGTH_SHORT).show()
         } else {
-            // Android 8 und 9 (minSdk ist 26): MediaStore.Downloads gibt es hier
-            // noch nicht, und in den öffentlichen Downloads-Ordner zu schreiben
-            // verlangt WRITE_EXTERNAL_STORAGE — eine Laufzeitberechtigung, die
-            // die App sonst nirgends braucht.
-            //
-            // Der DownloadManager umging das früher, weil der System-Dienst mit
-            // eigenen Rechten schreibt. Genau dieser Dienst war aber das
-            // Problem: Er kennt unseren Bearer-Token nicht (siehe oben).
-            //
-            // Deshalb hier das app-eigene Verzeichnis — es braucht keine
-            // Berechtigung, ist über die Dateien-App erreichbar, und der
-            // Teilen-Dialog macht die Datei sofort weiterverwendbar. Für eine
-            // Berechtigungsabfrage nur für zwei alte Android-Versionen ist der
-            // Nutzen zu klein.
-            // Genau das Verzeichnis, das der FileProvider freigibt: res/xml/file_paths.xml
-            // exportiert bewusst NUR <external-files>/pdf/ und <files>/pdf/ — die
-            // Freigabe wurde einmal gezielt darauf verengt, damit nicht der ganze
-            // Cache (API-Antworten im Klartext, Bilder) über die Authority
-            // erreichbar ist. Ein anderer Ordner hier würde den Teilen-Dialog mit
-            // "Failed to find configured root" abbrechen lassen.
+            // Android 8 und 9 kennen MediaStore.Downloads nicht, und der öffentliche Ordner
+            // bräuchte WRITE_EXTERNAL_STORAGE. Deshalb das app-eigene Verzeichnis, erreichbar
+            // über die Dateien-App und den Teilen-Dialog. Genau das Verzeichnis, das
+            // res/xml/file_paths.xml freigibt — ein anderes liesse den Teilen-Dialog an
+            // „Failed to find configured root“ scheitern.
             val base = ctx.getExternalFilesDir(null) ?: ctx.filesDir
             val dir = java.io.File(base, "pdf")
             dir.mkdirs()

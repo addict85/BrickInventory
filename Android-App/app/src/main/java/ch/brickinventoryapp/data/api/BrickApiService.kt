@@ -16,12 +16,9 @@ interface BrickApiService {
     suspend fun getCsvImportStatus(): Response<ch.brickinventoryapp.data.model.CsvImportStatus>
 
     /**
-     * Einen laufenden CSV-Import abbrechen.
-     *
-     * Der Server vermerkt nur `status: 'cancelled'` (routes/sets.ts); die
-     * Schleife im Import sieht das beim naechsten Satz und hoert auf. Schon
-     * angelegte Sets bleiben — abgebrochen heisst „ab hier nicht weiter", nicht
-     * „rueckgaengig". Genauso in der Webapp.
+     * Einen laufenden CSV-Import abbrechen. Der Server vermerkt nur `cancelled`; schon
+     * angelegte Sets bleiben — abgebrochen heisst „ab hier nicht weiter“, nicht
+     * „rückgängig“, wie in der Webapp.
      */
     @POST("api/v1/sets/import/csv/cancel")
     suspend fun cancelCsvImport(): Response<GenericAdminResponse>
@@ -38,12 +35,10 @@ interface BrickApiService {
     @POST("api/v1/auth/logout")
     suspend fun logout(): Response<GenericResponse>
 
-    // ── Konto anlegen und Passwort vergessen ────────────────────────────────
+    // ── Konto anlegen und Passwort vergessen ──
     //
-    // Die drei stehen ABSICHTLICH ohne Anmeldung: Sie werden gebraucht, BEVOR
-    // es einen Token gibt. Der Server laesst sie deshalb vor requireLogin
-    // stehen (routes/auth.ts), und der Interceptor der App haengt bei fehlendem
-    // Token einfach keinen Kopf an.
+    // Ohne Anmeldung, weil sie gebraucht werden, bevor es einen Token gibt; der Server
+    // lässt sie vor requireLogin stehen (routes/auth.ts).
     @GET("api/v1/auth/registration-status")
     suspend fun getRegistrationStatus(): Response<RegistrationStatusResponse>
 
@@ -80,20 +75,11 @@ interface BrickApiService {
     @POST("api/v1/auth/zweiter-faktor/codes")
     suspend fun zweiterFaktorNeueCodes(@Body request: ZweiterFaktorAnfrage): Response<ZweiterFaktorCodes>
 
-    // ── CSV-Import: dieselben drei Adressen wie in der Webapp ───────────────
+    // ── CSV-Import: dieselben Adressen wie in der Webapp ──
     //
-    // `@retrofit2.http.Part` ausgeschrieben, nicht `@Part`: Diese Datei oeffnet
-    // ZWEI Sternpakete, die beide ein `Part` enthalten —
-    // `ch.brickinventoryapp.data.model.Part` (die Datenklasse eines Teils) und
-    // `retrofit2.http.Part` (die Annotation). Kotlin meldet dafuer
-    // „Overload resolution ambiguity" und uebersetzt nicht. Den Sternimport der
-    // Modelle einzuengen waere die andere Loesung — sie kostete hier
-    // vierzig Einzelimporte fuer einen Namen.
-    //
-    // Das Feld heisst ueberall `file` und die Grenze liegt ueberall bei 15 MB
-    // (utils/dateiEmpfang.ts). Drei Aufrufe statt eines mit Pfadparameter, weil
-    // es drei verschiedene Router sind — ein `@Url` waere hier nur eine
-    // Verschleierung dessen, was ohnehin dasteht.
+    // `@retrofit2.http.Part` ausgeschrieben: Die beiden Sternimporte bringen je ein
+    // `Part` (Datenklasse und Annotation), und Kotlin übersetzt die Mehrdeutigkeit
+    // nicht. Drei Aufrufe statt eines mit Pfadparameter, weil es drei Router sind.
     @Multipart
     @POST("api/v1/sets/import/csv")
     suspend fun importSetsCsv(@retrofit2.http.Part datei: okhttp3.MultipartBody.Part): Response<CsvImportErgebnis>
@@ -120,15 +106,11 @@ interface BrickApiService {
     @POST("api/v1/alerts/import/csv")
     suspend fun importAlarmeCsv(@retrofit2.http.Part datei: okhttp3.MultipartBody.Part): Response<CsvImportErgebnis>
 
-    // ── Anleitungen: hinzufuegen und entfernen ──────────────────────────────
+    // ── Anleitungen: hinzufügen und entfernen ──
     //
-    // Die App konnte Anleitungen bisher nur ANSEHEN. Beide Routen gab es
-    // laengst; sie lagen hinter dem sitzungsgebundenen Waechter (Nachtrag 127).
-    //
-    // Der Server nimmt NUR PDF, JPG und PNG an und leitet die Dateiendung aus
-    // dem gemeldeten Typ ab (feste Liste in routes/sets.ts). Was die App als
-    // Typ schickt, entscheidet also mit, unter welchem Namen die Datei landet —
-    // deshalb wird er aus der Dateiauswahl uebernommen und nicht geraten.
+    // Der Server nimmt nur PDF, JPG und PNG an und leitet die Dateiendung aus dem
+    // gemeldeten Typ ab — deshalb kommt der Typ aus der Dateiauswahl und wird nicht
+    // geraten.
     @Multipart
     @POST("api/v1/sets/{setNumber}/instructions/upload")
     suspend fun uploadAnleitung(
@@ -143,20 +125,16 @@ interface BrickApiService {
         @Path("instrId") instrId: Int,
     ): Response<GenericResponse>
 
-    // ── Server-Protokoll (nur fuer Verwalter) ───────────────────────────────
+    // ── Server-Protokoll (nur für Verwalter) ──
     //
-    // Die Nutzerverwaltung des Servers (/auth/users) ist hier ABSICHTLICH nicht
-    // vertreten: Sie gehoert an den Rechner, nicht auf ein Telefon
-    // (Nachtrag 129). Die Webapp bietet sie an.
+    // Die Nutzerverwaltung (/auth/users) fehlt hier mit Absicht: Sie gehört an den
+    // Rechner, nicht aufs Telefon.
     @GET("api/v1/admin/logs")
     suspend fun getProtokoll(@Query("minutes") minuten: Int): Response<ProtokollResponse>
 
     /**
-     * Nur der Name, aus dem gemeinsamen Katalog — siehe SetInfoResponse.
-     *
-     * Getrennt von getSetDetail darunter, weil die beiden verschiedene Fragen
-     * beantworten: „wie heisst dieses Set?" gegen „was habe ICH von diesem
-     * Set?". Die zweite gibt es fuer ein fremdes Set nicht, die erste schon.
+     * Nur der Name, aus dem gemeinsamen Katalog. Getrennt von getSetDetail: „Wie
+     * heisst dieses Set?“ gibt es auch für fremde Sets, „was habe ich davon?“ nicht.
      */
     @GET("api/v1/sets/info/{setNumber}")
     suspend fun getSetInfo(
@@ -168,13 +146,10 @@ interface BrickApiService {
         @Path("setNumber") setNumber: String
     ): Response<SetDetailResponse>
 
-    // KEIN currency-Parameter mehr: Die Währung bestimmt der Server aus der
-    // Nutzereinstellung (seit Manager-Nachtrag 31 ignoriert er den Parameter
-    // ohnehin). Der hiesige Startwert "EUR" wurde erst beim ersten Laden der
-    // Finanzübersicht vom Server übernommen — bis dahin fragte die
-    // Detailansicht EUR an, traf den Cache der eingestellten Währung nie und
-    // zeigte teilweise keinen Marktpreis, während Finanzübersicht und
-    // Galerie-Kachel (beide ohne Parameter) denselben Preis zeigten.
+    // Kein currency-Parameter: Die Währung bestimmt der Server aus der
+    // Nutzereinstellung. Ein eigener Startwert traf den Cache der eingestellten
+    // Währung nicht, und die Detailansicht zeigte keinen Marktpreis, wo Finanzen und
+    // Kachel einen hatten.
     @GET("api/v1/sets/{setNumber}/price")
     suspend fun getSetPrice(
         @Path("setNumber") setNumber: String
@@ -189,27 +164,17 @@ interface BrickApiService {
     ): Response<PriceHistoryResponse>
 
 
-    // ── Kontofilter (Haushalt) ────────────────────────────────────────────────
+    // ── Kontofilter (Haushalt) ──
     //
-    // `accounts` reist als Anfrageparameter mit: "all" (Vorgabe), "own",
-    // "subs" oder die ID EINES Kontos des Haushalts. Der Server übersetzt ihn
-    // in Konto-IDs — dadurch kennt ihn jede Zahl derselben Antwort: Liste,
-    // Gesamtzahl, Kennzahlen und Summen entstehen aus derselben ID-Liste.
-    //
-    // Clientseitig zu filtern wäre keine Alternative: Eine Kachelwand liesse
-    // sich aussieben, die Gesamtzahl darunter und die Bewertung nicht.
-    //
-    // null = weglassen; für ein Konto ohne Unterkonten ist der Parameter
-    // ohnehin wirkungslos.
+    // `accounts`: "all" (Vorgabe), "own", "subs" oder die ID eines Kontos. Der Server
+    // übersetzt ihn in Konto-IDs, damit Liste, Gesamtzahl, Kennzahlen und Summen aus
+    // derselben Menge entstehen — im Gerät gefiltert stimmten die Zahlen nicht. null =
+    // weglassen.
     @GET("api/v1/sets")
     /**
-     * Galerie — SERVERSEITIG gefiltert, sortiert und seitenweise.
-     *
-     * Vorher holte die App alles und filterte im Gerät. Das war eine zweite
-     * Fassung der Suche: ohne Jahr, ohne Sortierung, und die Themenliste
-     * entstand aus der geladenen Liste statt aus dem Bestand. Jetzt gilt
-     * dieselbe Regel wie in der Webapp, weil es dieselbe Abfrage ist
-     * (utils/handlers.ts, getSets).
+     * Galerie — auf dem Server gefiltert, sortiert und seitenweise, mit derselben
+     * Regel wie die Webapp (utils/handlers.ts, getSets); eine eigene Suche im Gerät
+     * kannte weder Jahr noch Sortierung.
      */
     suspend fun getSets(
         @Query("accounts") accounts: String? = null,
@@ -263,12 +228,8 @@ interface BrickApiService {
     ): Response<GenericResponse>
 
     /**
-     * Preisverlauf eines manuell erfassten Teils, je Zustand getrennt.
-     *
-     * Dieselbe Antwortform wie beim Set-Verlauf — deshalb dasselbe Modell.
-     * `set_number`, `condition`, `pnl_pct` und `purchase_price` bleiben dabei
-     * auf ihren Vorgaben: Sie gehören zum Set-Envelope und liefert diese Route
-     * nicht. Was der Dialog braucht — `by_condition` und `chart` — ist gleich.
+     * Preisverlauf eines manuell erfassten Teils, je Zustand. Dieselbe Antwortform wie
+     * beim Set, deshalb dasselbe Modell; die Set-Felder bleiben auf ihren Vorgaben.
      */
     @GET("api/v1/parts/{partNumber}/{colorId}/price-history")
     suspend fun getPartPriceHistory(
@@ -281,16 +242,11 @@ interface BrickApiService {
         @Path("figNumber") figNumber: String
     ): Response<PriceHistoryResponse>
 
-    // ── In welchen Sets steckt dieses Teil / diese Figur? ────────────────────
+    // ── In welchen Sets steckt dieses Teil / diese Figur? ──
     //
-    // Fuer den Detail-Dialog automatisch erfasster Teile und Figuren (Marcos
-    // Merkposten). Beide Adressen beantwortet auf dem Server DIESELBE Funktion
-    // (verwendendeSets in utils/handlers/shared.ts) — deshalb dieselbe
-    // Antwortform und dasselbe Modell hier.
-    //
-    // `accounts` ist das Blickfeld wie ueberall sonst: Im Haushalt gehoert
-    // auch das Set des Geschwisterkontos dazu, sonst sagte der Dialog etwas
-    // anderes als die Liste, aus der man kommt.
+    // Beide Adressen beantwortet dieselbe Funktion (verwendendeSets), deshalb ein
+    // Modell. `accounts` ist das Blickfeld wie sonst, damit der Dialog dasselbe sagt
+    // wie die Liste, aus der man kommt.
     @GET("api/v1/parts/{partNumber}/{colorId}/sets")
     suspend fun getSetsMitTeil(
         @Path("partNumber") partNumber: String,
@@ -373,23 +329,15 @@ interface BrickApiService {
     ): Response<PartsStatsResponse>
 
     /**
-     * Startzustand des Servers — ohne Anmeldung.
-     *
-     * Steht in server.ts absichtlich vor allen Waechtern: Er wird gebraucht,
-     * BEVOR sich jemand anmelden kann. Die Webapp fragt ihn im Sekundentakt ab,
-     * solange `ready` falsch ist.
+     * Startzustand des Servers — ohne Anmeldung, weil er gebraucht wird, bevor sich
+     * jemand anmelden kann.
      */
     @GET("api/v1/startup-status")
     suspend fun getStartupStatus(): Response<ch.brickinventoryapp.data.model.StartupStatus>
 
     /**
-     * Das globale Design des Servers — OHNE Anmeldung.
-     *
-     * Eine von ZWEI Adressen, die die App vor der Anmeldung braucht (die andere
-     * ist der Startzustand darueber): Anmelde- und Einrichtungsbildschirm
-     * sollen schon im richtigen Design erscheinen. Der Server laesst sie
-     * deshalb vor `requireLogin` stehen (routes/settings.ts), und die Webapp
-     * holt sie aus demselben Grund (00-theme-boot.js).
+     * Das globale Design des Servers — ohne Anmeldung: Anmelde- und
+     * Einrichtungsbildschirm sollen schon im richtigen Design erscheinen.
      */
     @GET("api/v1/settings/theme")
     suspend fun getAppTheme(): Response<ch.brickinventoryapp.data.model.AppThemeResponse>
@@ -398,13 +346,8 @@ interface BrickApiService {
     suspend fun getBrickColors(): Response<BrickColorsResponse>
 
     /**
-     * Die FILTERliste Farbe — welche Farben im Bestand vorkommen, mit Anzahl.
-     *
-     * Eine andere Adresse als `brick-colors` darueber, und das ist Absicht:
-     * Dort steht der ganze Farbkatalog fuer die Auswahl beim Erfassen, hier
-     * nur, was der Nutzer wirklich hat. Die Webapp benutzt beide genauso
-     * (03-parts.js: loadPartsFilters gegen /parts/colors, der Erfassungsdialog
-     * gegen /parts/brick-colors).
+     * Die Filterliste Farbe — welche Farben im Bestand vorkommen, mit Anzahl. Nicht
+     * `brick-colors`: Das ist der ganze Farbkatalog für die Auswahl beim Erfassen.
      */
     @GET("api/v1/parts/colors")
     suspend fun getPartsFilterColors(
@@ -436,10 +379,8 @@ interface BrickApiService {
     ): Response<PendingAlertsResponse>
 
     /**
-     * ALLE Alarme des Kontos — fuer die Uebersicht in den Einstellungen.
-     *
-     * Dieselbe Antwortform wie die Einzelroute: eine Liste von Preisalarm.
-     * Ein eigenes Antwortmodell waere ein zweites, das dasselbe bedeutet.
+     * Alle Alarme des Kontos für die Übersicht — dieselbe Antwortform wie die
+     * Einzelroute, damit es ein Modell bleibt.
      */
     @GET("api/v1/alerts")
     suspend fun getAlleAlarme(): Response<PreisalarmeResponse>
@@ -462,15 +403,9 @@ interface BrickApiService {
     ): Response<PreisalarmResponse>
 
     /**
-     * Die Farbe eines manuell erfassten Teils nachtraeglich aendern.
-     *
-     * Die ALTE Farbe steht im Pfad, die NEUE im Koerper. Beide gehoeren dazu:
-     * Der Pfad sagt, welche Zeile gemeint ist (die Farbe ist Teil ihrer
-     * Kennung), der Koerper, wohin sie soll.
-     *
-     * `owner` ist der Besitzer der KARTE, nicht der Betrachter — im Haushalt
-     * zeigt der manuelle Bereich die Eintraege aller Konten. Ohne die Angabe
-     * schreibt der Server in die Zeile des Aufrufers (siehe setPartStorage).
+     * Die Farbe eines manuell erfassten Teils ändern: alte Farbe im Pfad (sie ist Teil
+     * der Kennung der Zeile), neue im Rumpf. `owner` ist der Besitzer der Karte, nicht
+     * der Betrachter — ohne ihn schriebe der Server in die Zeile des Aufrufers.
      */
     @PUT("api/v1/parts/{partNumber}/{colorId}/color")
     suspend fun setPartColor(
@@ -508,15 +443,11 @@ interface BrickApiService {
         @Body request: LagerortRequest,
     ): Response<LagerortResponse>
 
-    // ── Der VORRAT an Lagerorten (Marcos Auswahlfeld) ────────────────────────
+    // ── Der Vorrat an Lagerorten ──
     //
-    // Getrennt von getLagerorte(): Das eine sagt, was BELEGT ist (fuer den
-    // Filter), das andere, was zur WAHL steht (fuer das Auswahlfeld). Das ist
-    // nicht dasselbe — ein frisch angelegter Ort ist waehlbar und leer.
-    //
-    // `owner` sagt, WESSEN Liste. Beim Set des Enkels gehoeren die Regale des
-    // Enkels zur Wahl; ohne den Parameter antwortet der Server mit der
-    // eigenen Liste. Begruendung im Server (routes/api_v1/sets.ts).
+    // Getrennt von getLagerorte(): Dort steht, was belegt ist (Filter), hier, was zur
+    // Wahl steht — ein neuer Ort ist wählbar und leer. `owner`: wessen Liste, beim Set
+    // des Enkels die seine.
 
     @GET("api/v1/storage/locations")
     suspend fun getLagerortVorrat(
@@ -548,23 +479,15 @@ interface BrickApiService {
         @Body request: LagerortVorgabeRequest,
     ): Response<LagerortVorgabeResponse>
 
-    // ── Merkliste ─────────────────────────────────────────────────────────
+    // ── Merkliste ──
     //
-    // Vier Adressen, dieselben wie in der Webapp. Der Zustand steht im PFAD
-    // und nicht im Rumpf, weil er zum Schluessel gehoert: Wer sich dasselbe
-    // Set neu UND gebraucht wuenscht, hat zwei Eintraege, und „loesch den
-    // Merkposten auf 75192" waere mehrdeutig.
+    // Der Zustand steht im Pfad, weil er zum Schlüssel gehört: Dasselbe Set neu und
+    // gebraucht sind zwei Einträge.
 
     /**
-     * Die Liste — mit Suche, Zustand, Sortierung und Inhaber.
-     *
-     * Dieselben Parameternamen wie bei getSets(); der Server liest sie in
-     * routes/api_v1/wanted.ts. `accounts` ist der INHABER: Er war dort schon
-     * immer vorgesehen, nur schickte ihn keine der beiden Oberflaechen.
-     *
-     * Alle vier sind optional (null = weglassen), damit ein Aufruf ohne Filter
-     * dieselbe Adresse ergibt wie bisher — und damit der Antwort-Cache sie
-     * nicht als vier verschiedene Anfragen fuehrt.
+     * Die Merkliste mit Suche, Zustand, Sortierung und Inhaber (`accounts`), dieselben
+     * Namen wie bei getSets(). Alle optional, damit ein Aufruf ohne Filter dieselbe
+     * Adresse ergibt.
      */
     @GET("api/v1/wanted")
     suspend fun getMerkliste(
@@ -580,11 +503,8 @@ interface BrickApiService {
     ): Response<MerkpostenAntwort>
 
     /**
-     * Den Inhaber eines Merkpostens wechseln.
-     *
-     * PUT und nicht POST: Es entsteht nichts Neues, ein vorhandener Eintrag
-     * bekommt ein anderes Konto. Die Regel dahinter (Aufnahmedatum bleibt,
-     * Preisalarm zieht mit) steht in utils/merkliste.ts.
+     * Den Inhaber eines Merkpostens wechseln. PUT, weil nichts Neues entsteht; die
+     * Regel (Aufnahmedatum bleibt, Alarm zieht mit) steht in utils/merkliste.ts.
      */
     @PUT("api/v1/wanted/{setNumber}/{condition}/inhaber")
     suspend fun verschiebeMerkposten(
@@ -601,11 +521,9 @@ interface BrickApiService {
     ): Response<GenericResponse>
 
     /**
-     * Marktpreise eines Merkpostens, frisch geholt.
-     *
-     * NICHT /sets/{sn}/price: Die antwortet mit 404, wenn einem das Set nicht
-     * gehoert — fuer einen Merkposten also ausgeschlossen. Die Begruendung steht
-     * ausfuehrlich an der Route (routes/api_v1/wanted.ts).
+     * Marktpreise eines Merkpostens, frisch geholt. Nicht /sets/{sn}/price: Die
+     * antwortet 404, wenn einem das Set nicht gehört — bei einem Merkposten der
+     * Regelfall.
      */
     @GET("api/v1/wanted/{setNumber}/preise")
     suspend fun getMerkpostenPreise(
@@ -715,19 +633,9 @@ interface BrickApiService {
     ): Response<MinifigsResponse>
 
     /**
-     * Die manuell erfassten Teile — mit SUCHTEXT und Lagerort.
-     *
-     * ── Warum die beiden Filter dazugehoeren (Marcos Befund vom 20.10.) ─────
-     *
-     * „Wenn ich im Filter z.b. nach 3001 suche passiert nichts." Gemeldet hat
-     * er es an der Webapp; hier stand dieselbe Luecke. Der Bildschirm der App
-     * hat EIN Suchfeld, und darunter steht erst der Abschnitt „Manuell
-     * erfasst" und dann die Set-Teile (PartsScreen.kt, eine LazyVerticalGrid).
-     * Der Text ging nur an /parts, die Kacheln darueber blieben stehen.
-     *
-     * Gefiltert wird am Server (die Liste ist nicht seitenweise, aber die
-     * Regel soll an EINER Stelle stehen — utils/handlers/parts.ts). Beide
-     * Parameter sind optional; wer sie nicht schickt, bekommt wie bisher alles.
+     * Die manuell erfassten Teile, mit Suchtext und Lagerort: Der Bildschirm hat ein
+     * Suchfeld über manuellen und Set-Teilen, und beide sollen ihm folgen. Gefiltert
+     * wird am Server (utils/handlers/parts.ts); ohne Parameter kommt alles.
      */
     @GET("api/v1/parts/manual")
     suspend fun getManualParts(
@@ -737,12 +645,8 @@ interface BrickApiService {
     ): Response<ch.brickinventoryapp.data.model.ManualPartsResponse>
 
     /**
-     * Die manuell erfassten Figuren — mit Suchtext, siehe getManualParts.
-     *
-     * Ohne Lagerort: Den Filter gibt es im Reiter Minifiguren nicht, in beiden
-     * Oberflaechen nicht (LAGER_VIEWS in public/js/14-scope.js nennt Galerie
-     * und Teile). Ein Parameter, den niemand setzt, waere nur eine Zeile, die
-     * etwas verspricht.
+     * Die manuell erfassten Figuren, mit Suchtext. Ohne Lagerort, weil es den Filter
+     * bei den Minifiguren in keiner Oberfläche gibt.
      */
     @GET("api/v1/minifigs/manual")
     suspend fun getManualMinifigs(
@@ -821,11 +725,8 @@ interface BrickApiService {
     suspend fun getHouseholdMembers(): Response<HouseholdMembersResponse>
 
     /**
-     * Set — oder einzelne Kaufpreise davon — in ein anderes Konto verschieben.
-     *
-     * `acquisition_ids` leer = das ganze Set. Wird nur ein Teil verschoben,
-     * behält der Absender seine übrigen Exemplare samt Teilen; das Zielkonto
-     * bekommt Kopien. Das entscheidet der Server (utils/setMove.ts).
+     * Set oder einzelne Kaufpreise in ein anderes Konto verschieben; `acquisition_ids`
+     * leer = das ganze Set. Was mitwandert, entscheidet der Server (utils/setMove.ts).
      */
     @POST("api/v1/sets/{setNumber}/move")
     suspend fun moveSet(
@@ -864,35 +765,27 @@ interface BrickApiService {
     suspend fun getJobs(): Response<JobsResponse>
 
     /**
-     * Den Zeitplan eines Jobs aendern.
+     * Den Zeitplan eines Jobs ändern, in einer der beiden Formen, die der Server
+     * liest:
      *
-     * Zwei Formen, wie der Server sie liest (routes/api_v1/admin.ts):
-     *   { name: <schluessel>, time: "HH:MM" }   fuer taegliche Jobs
-     *   { name: "priceJob",   minutes: <n> }    fuer den Preis-Job
+     *   { name: <schluessel>, time: "HH:MM" }   tägliche Jobs
+     *   { name: "priceJob",   minutes: <n> }    der Preis-Job
      *
-     * Deshalb `Map<String, Any>` statt einer Datenklasse: Zwei Datenklassen
-     * fuer zwei Formen waeren mehr Gerippe als Inhalt, und der Server
-     * unterscheidet ohnehin am Vorhandensein des Feldes.
+     * Eine Map, weil der Server am vorhandenen Feld unterscheidet.
      */
     @POST("api/v1/admin/job-schedule")
     suspend fun setJobSchedule(@Body body: Map<String, @JvmSuppressWildcards Any>): Response<GenericAdminResponse>
 
     /**
-     * Fehlende KATALOGbilder einreihen — der fuenfte Werkzeugknopf.
-     *
-     * Nicht zu verwechseln mit `redownloadMissingImages` daneben: Das holt
-     * Bilder des BESTANDS nach, dies die des Katalogs. Die Webapp hat beide
-     * (07-admin.js, queueCatalogImages), die App bisher nur eins.
+     * Fehlende Katalogbilder einreihen. Nicht redownloadMissingImages: Das holt die
+     * Bilder des Bestands.
      */
     @POST("api/v1/admin/catalog-images")
     suspend fun queueCatalogImages(): Response<GenericAdminResponse>
 
     /**
-     * Das globale Design umstellen — nur fuer Verwalter.
-     *
-     * Die App LIEST das Design seit Nachtrag 135 (zwei Stufen, siehe
-     * getAppTheme). Aendern konnte es nur die Webapp; ein Verwalter mit dem
-     * Telefon in der Hand musste sich an den Rechner setzen.
+     * Das globale Design umstellen — nur für Verwalter, damit es nicht nur am Rechner
+     * geht.
      */
     @POST("api/v1/settings/admin/theme")
     suspend fun setAppTheme(@Body body: Map<String, String>): Response<GenericAdminResponse>
@@ -922,16 +815,9 @@ interface BrickApiService {
     ): Response<GenericAdminResponse>
 
     /**
-     * Den Preis-Cache leeren; mit `all=true` auch Teilmengen und Katalog.
-     *
-     * Die Ueberwachung zeigte die vier Cache-Zahlen und liess die
-     * Gueltigkeitsdauer einstellen — leeren konnte sie nicht. Man sah also,
-     * dass tausend Preise veraltet sind, und konnte nichts tun. Die Webapp
-     * bietet es an zwei Stellen an (04-finance.js und 05-settings.js).
-     *
-     * GLOBAL, nicht je Konto: `price_cache` gehoert niemandem, und jeder
-     * Neuaufbau kostet Anfragen aus dem gemeinsamen Tageskontingent — deshalb
-     * ist es eine Verwalter-Handlung (routes/api_v1/admin.ts).
+     * Den Preis-Cache leeren; mit `all=true` auch Teilmengen und Katalog. Global und
+     * nur für Verwalter: `price_cache` gehört niemandem, und jeder Neuaufbau kostet
+     * Anfragen aus dem gemeinsamen Tageskontingent.
      */
     @POST("api/v1/admin/cache-clear")
     suspend fun clearCache(
@@ -956,13 +842,8 @@ interface BrickApiService {
         @Body body: Map<String, String>
     ): Response<GenericAdminResponse>
 
-    // getDefaultConditionAdmin() stand hier und zeigte auf
-    // api/settings/admin/default-condition. Diese Route ist in Etappe 7
-    // geloescht worden; in routes/settings.ts steht an ihrer Stelle nur noch
-    // ein Kommentar. Aufgerufen hat die Methode niemand — sie sah aber aus wie
-    // ein unterstuetzter Aufruf, und der Naechste haette einen 404 im eigenen
-    // Code gesucht. Der globale Standard-Zustand steht unter
-    // getGlobalDefaultCondition() (api/v1/settings/default-condition).
+    // Der globale Standard-Zustand steht unter getGlobalDefaultCondition()
+    // (api/v1/settings/default-condition).
 
     @GET("api/v1/admin/api-limits")
     suspend fun getApiLimits(): Response<ApiLimitsResponse>
@@ -1002,18 +883,10 @@ interface BrickApiService {
     @GET("api/v1/catalog/sets/{setNumber}")
     suspend fun getCatalogSetDetail(@Path("setNumber") setNumber: String): Response<CatalogSetDetailResponse>
 
-    // ── Gutscheine (LEGO-Geschenkkarten im eigenen Profil) ───────────────────
+    // ── Gutscheine (LEGO-Geschenkkarten im eigenen Profil) ──
     //
-    // DIESELBEN Adressen, die auch die Webapp ruft — Marcos Vorgabe „beide
-    // Apps sollen die gleichen Services des Backends verwenden". Der Server
-    // hat dafuer genau einen Router (routes/api_v1/vouchers.ts); requireToken
-    // dort nimmt Sitzungscookie UND Bearer-Token an, deshalb braucht es hier
-    // keinen eigenen Weg.
-    //
-    // Gutscheine sind streng eigentuemergebunden: kein Haushalts-Blickfeld,
-    // kein Admin-Durchgriff. Deshalb gibt es hier auch keinen
-    // `accounts`-Parameter wie bei Sets oder der Merkliste — es gaebe nichts
-    // zu waehlen.
+    // Dieselben Adressen wie die Webapp; requireToken nimmt Sitzung und Bearer an.
+    // Gutscheine gehören streng ihrem Besitzer, deshalb kein `accounts`-Parameter.
     @GET("api/v1/vouchers")
     suspend fun getGutscheine(): Response<GutscheinListe>
 
@@ -1030,23 +903,11 @@ interface BrickApiService {
     suspend fun loescheGutschein(@Path("id") id: Int): Response<GenericResponse>
 
     /**
-     * Einen Gutschein aus seinem PDF anlegen.
-     *
-     * Die vier Werte duerfen MITGESCHICKT werden; was mitkommt, gewinnt gegen
-     * das aus dem PDF Gelesene. Damit deckt derselbe Aufruf beide Faelle ab:
-     * „alles im PDF" und „PDF plus Nachtrag von Hand". Gibt das PDF zu wenig
-     * her, antwortet der Server mit 422 und dem, was er lesen konnte.
-     *
-     * Die Teile sind optional (`RequestBody?`), weil ein LEERES Feld das
-     * Gelesene ueberschreiben wuerde — mit nichts.
-     *
-     * ── Dieselbe Adresse legt auch MEHRERE an (Marcos Durchsicht, 15.10.) ──
-     *
-     * Dafuer gab es hier eine zweite Methode auf `POST /vouchers/import/pdf`.
-     * Sie ist weg, und zwar samt ihrer Route: Enthaelt die Datei mehrere
-     * Gutscheine, antwortet dieselbe Route mit `mehrere` statt mit `voucher`.
-     * Der Mensch davor soll nicht vorher wissen muessen, wie viele Gutscheine
-     * in seiner Datei stehen — das weiss der Server, und zwar genauer.
+     * Einen Gutschein aus seinem PDF anlegen. Mitgeschickte Werte gewinnen gegen das
+     * Gelesene; reicht das PDF nicht, antwortet der Server mit 422 und dem, was er
+     * lesen konnte. Die Teile sind optional, weil ein leeres Feld das Gelesene
+     * überschriebe. Enthält die Datei mehrere Gutscheine, antwortet dieselbe Route mit
+     * `mehrere`.
      */
     @Multipart
     @POST("api/v1/vouchers/pdf")
@@ -1059,34 +920,17 @@ interface BrickApiService {
     ): Response<GutscheinAntwort>
 
     /**
-     * Das Guthaben einer Karte bei LEGO abfragen und speichern.
-     *
-     * Marcos Vorgabe: „Kannst du dies bei den Gutscheinen einbauen, damit dies
-     * auf Knopfdruck abgefragt und gespeichert werden kann?" — und weiter:
-     * „Der Zurueckgemeldete Betrag soll im Feld Betrag gespeichert werden."
-     * Genau das tut der Server; die App bekommt die fertige Zeile zurueck.
-     *
-     * Kein Rumpf: Nummer und PIN stehen schon in der Datenbank, und sie noch
-     * einmal mitzuschicken hiesse, eine PIN ueber die Leitung zu schicken, die
-     * der Server ohnehin hat.
-     *
-     * Es gibt KEINE Methode fuer „alle Karten auf einmal" — der Server hat
-     * dafuer auch keine Route. Der Grund steht dort: Hoechstens eine Abfrage
-     * je 30 Sekunden ueber alle Benutzer, und das waere eine HTTP-Anfrage, die
-     * Minuten offen bliebe. Die Webapp taktet sich deshalb selbst durch diese
-     * Route; hier gibt es den Knopf je Karte.
+     * Das Guthaben einer Karte bei LEGO abfragen und speichern. Kein Rumpf: Nummer und
+     * PIN liegen schon auf dem Server. Keine Methode für alle Karten — der Server
+     * erlaubt eine Abfrage je 30 Sekunden, die Oberfläche taktet sich selbst durch
+     * diese Route.
      */
     @POST("api/v1/vouchers/{id}/guthaben")
     suspend fun frageGuthabenAb(@Path("id") id: Int): Response<GuthabenAntwort>
 
-    // Eine Methode fuer `GET /vouchers/export/pdf` steht hier NICHT, und das
-    // ist dieselbe Entscheidung wie beim Einzel-PDF unten: Der Export ist eine
-    // DATEI ZUM BEHALTEN, und die App hat keinen Weg, eine Datei zu speichern
-    // oder weiterzugeben — das vorhandene Gutschein-PDF wird nur ANGESEHEN.
-    // Dazu traegt die Antwort des Exports ihre Befunde in einer Kopfzeile
-    // (welcher Betrag ersetzt wurde und welcher nicht), und dafuer gibt es in
-    // einem Betrachter keinen Platz. Der Eintrag steht begruendet in
-    // test/webapp-endpunkte.test.js (NUR_WEB).
+    // Kein `GET /vouchers/export/pdf`: Der Export ist eine Datei zum Behalten, und die
+    // App kann Dateien nicht speichern oder weitergeben (begründet in
+    // test/webapp-endpunkte.test.js, NUR_WEB).
 
     // Eine Methode fuer `GET /vouchers/{id}/pdf` steht hier mit Absicht NICHT:
     // Das PDF holt der PdfViewerScreen selbst ueber seine Adresse, mit dem
