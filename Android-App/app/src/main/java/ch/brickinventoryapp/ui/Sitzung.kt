@@ -44,6 +44,28 @@ class Sitzung @Inject constructor() {
 }
 
 /**
+ * Die Einstellungen des Kontos vom Server in die Sitzung. Gibt das Design
+ * zurück (oder null ohne Antwort), damit das AppViewModel es für den nächsten
+ * Kaltstart merken kann. Die Bedingung für neue Einträge ist die vom Server
+ * aufgelöste (Nutzer → global → „N“).
+ */
+internal suspend fun Sitzung.ladeEinstellungen(admin: ch.brickinventoryapp.data.repository.AdminRepository): String? =
+    when (val r = admin.getSettings()) {
+        is ch.brickinventoryapp.data.repository.Result.Success -> {
+            val e = r.data.settings
+            aendere { it.copy(
+                currency = e.currency,
+                priceCondition = e.priceCondition,
+                defaultPriceCondition = e.defaultPriceCondition,
+                userDefaultCondition = e.effectiveCondition,
+                appTheme = e.appTheme,
+            ) }
+            e.appTheme
+        }
+        is ch.brickinventoryapp.data.repository.Result.Error -> null
+    }
+
+/**
  * Ein gescheiterter QR-Anlauf, während die App schon angemeldet ist, ist kein
  * Fehler: Der Scanner löste doppelt aus, der erste Anlauf hat den einmaligen
  * Token verbraucht und angemeldet. Gibt die Meldung zurück, oder null.

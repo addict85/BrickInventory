@@ -53,6 +53,8 @@ import androidx.navigation.navArgument
 import ch.brickinventoryapp.*
 import ch.brickinventoryapp.ui.MainViewModel
 import ch.brickinventoryapp.ui.viewmodel.FinanzViewModel
+import ch.brickinventoryapp.ui.viewmodel.EinstellungenViewModel
+import ch.brickinventoryapp.ui.viewmodel.HaushaltViewModel
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import ch.brickinventoryapp.ui.ManualItemDetailUiState
 
@@ -211,7 +213,7 @@ fun NavGraphBuilder.toolsGraph(
                 ch.brickinventoryapp.ui.ScrollPositionKeeper(
                     "settings", settingsScrollState, vm.scrollMemory)
                 SettingsScreen(
-                    vm = vm,
+                    vm = hiltViewModel<EinstellungenViewModel>(),
                     onLogout = { vm.logout(); navController.navigate(Screen.Login.route) { popUpTo(0) { inclusive = true } } },
                     onServerWechseln = { navController.navigate(Screen.Setup.route) },
                     // Die sechs Rubriken fuehren seit dem 17.10. nicht mehr
@@ -265,7 +267,7 @@ fun NavGraphBuilder.toolsGraph(
         composable(Screen.Preisalarme.route) {
             val state by vm.state.collectAsStateWithLifecycle()
             PreisalarmeUnterseite(
-                vm = vm,
+                vm = hiltViewModel<EinstellungenViewModel>(),
                 imageLoader = imageLoader,
                 serverUrl = state.serverUrl,
                 snackbarHostState = snackbarHostState,
@@ -278,15 +280,15 @@ fun NavGraphBuilder.toolsGraph(
         }
 
         composable(Screen.Lagerorte.route) {
-            LagerorteUnterseite(vm, snackbarHostState) { navController.popBackStack() }
+            LagerorteUnterseite(hiltViewModel<EinstellungenViewModel>(), snackbarHostState) { navController.popBackStack() }
         }
 
         composable(Screen.Haushalt.route) {
-            HaushaltUnterseite(vm, snackbarHostState) { navController.popBackStack() }
+            HaushaltUnterseite(hiltViewModel<HaushaltViewModel>(), snackbarHostState) { navController.popBackStack() }
         }
 
         composable(Screen.CsvImport.route) {
-            CsvImportUnterseite(vm, snackbarHostState) { navController.popBackStack() }
+            CsvImportUnterseite(hiltViewModel<EinstellungenViewModel>(), snackbarHostState) { navController.popBackStack() }
         }
 
         composable(Screen.Konto.route) {

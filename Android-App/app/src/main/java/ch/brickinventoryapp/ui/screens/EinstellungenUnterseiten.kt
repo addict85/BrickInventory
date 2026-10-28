@@ -31,6 +31,9 @@ import ch.brickinventoryapp.util.resolveThumbUrl
 import coil3.ImageLoader
 import ch.brickinventoryapp.util.fmtDatum
 import ch.brickinventoryapp.ui.MainViewModel
+import ch.brickinventoryapp.ui.viewmodel.EinstellungenViewModel
+import ch.brickinventoryapp.ui.viewmodel.HaushaltViewModel
+import ch.brickinventoryapp.ui.viewmodel.aktivitaetsViewModel
 import ch.brickinventoryapp.ui.*  // Feature-Extensions (saveSettings, setLanguage, …)
 import ch.brickinventoryapp.util.passwortZuKurz
 import ch.brickinventoryapp.ui.theme.Abstaende
@@ -182,7 +185,7 @@ fun GutscheineUnterseite(
  */
 @Composable
 fun PreisalarmeUnterseite(
-    vm: MainViewModel,
+    vm: EinstellungenViewModel,
     imageLoader: ImageLoader,
     serverUrl: String,
     snackbarHostState: SnackbarHostState,
@@ -190,7 +193,7 @@ fun PreisalarmeUnterseite(
     onZurueck: () -> Unit,
 ) {
     Unterseite(stringResource(R.string.alerts_group), snackbarHostState, onZurueck) {
-        PreisalarmCard(vm)
+        PreisalarmCard(aktivitaetsViewModel())
         PreisalarmeCard(vm, imageLoader, serverUrl, onSetClick)
     }
 }
@@ -198,7 +201,7 @@ fun PreisalarmeUnterseite(
 /** Lagerorte. */
 @Composable
 fun LagerorteUnterseite(
-    vm: MainViewModel,
+    vm: EinstellungenViewModel,
     snackbarHostState: SnackbarHostState,
     onZurueck: () -> Unit,
 ) {
@@ -210,7 +213,7 @@ fun LagerorteUnterseite(
 /** Haushalt — Konten verknuepfen. */
 @Composable
 fun HaushaltUnterseite(
-    vm: MainViewModel,
+    vm: HaushaltViewModel,
     snackbarHostState: SnackbarHostState,
     onZurueck: () -> Unit,
 ) {
@@ -271,7 +274,7 @@ fun KontoUnterseite(
 /** CSV importieren. */
 @Composable
 fun CsvImportUnterseite(
-    vm: MainViewModel,
+    vm: EinstellungenViewModel,
     snackbarHostState: SnackbarHostState,
     onZurueck: () -> Unit,
 ) {
@@ -355,7 +358,7 @@ fun CsvImportUnterseite(
  */
 @Composable
 private fun PreisalarmeCard(
-    vm: MainViewModel,
+    vm: EinstellungenViewModel,
     imageLoader: ImageLoader,
     serverUrl: String,
     onSetClick: (String) -> Unit,
@@ -580,7 +583,7 @@ private fun AlarmZustandPlakette(ausgeloest: Boolean) {
 
 
 @Composable
-private fun LagerorteCard(vm: MainViewModel) {
+private fun LagerorteCard(vm: EinstellungenViewModel) {
     val lager by vm.lagerState.collectAsStateWithLifecycle()
     var neuerOrt by rememberSaveable { mutableStateOf("") }
 
@@ -1418,7 +1421,7 @@ private fun CsvImportCard(
     SettingsCard(title = stringResource(R.string.csv_upload_title), icon = Icons.Default.UploadFile) {
         Text(
             stringResource(R.string.csv_upload_hint,
-                (ch.brickinventoryapp.ui.CSV_MAX_BYTES / 1024 / 1024).toInt()),
+                (ch.brickinventoryapp.ui.viewmodel.CSV_MAX_BYTES / 1024 / 1024).toInt()),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
 

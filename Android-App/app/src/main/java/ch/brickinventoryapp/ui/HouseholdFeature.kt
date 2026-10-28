@@ -66,83 +66,13 @@ internal fun MainViewModel.ladeEigeneLagerorte() {
     viewModelScope.launch { blickfeldDienst.ladeEigeneLagerorte() }
 }
 
-/**
- * Anlegen, umbenennen, loeschen — alle drei durch dieselbe Schleuse.
- *
- * ── Warum drei duenne Funktionen und EIN Rumpf ──────────────────────────────
- *
- * Der Rumpf waere dreimal derselbe (rufen, Fehler melden, Liste neu laden),
- * und genau bei solchen Paaren ist in diesem Baum schon mehrmals eine Haelfte
- * stehen geblieben.
- *
- * Der Bildschirm ruft trotzdem drei benannte Funktionen und reicht KEINEN
- * Repository-Aufruf herein — ein Composable, das `repo.teile.…` aufruft,
- * liesse sich nur mit Compose-Laufzeit pruefen, also gar nicht
- * (BildschirmHoltDatenNichtSelbstTest).
- *
- * Nach dem Umbenennen wird auch die GALERIE neu geladen: Der Server schreibt
- * die Zuordnungen mit um (benenneOrtUm in utils/lagerort.ts), und die Kacheln
- * zeigten sonst weiter den alten Namen. Ueber loadSets() und nicht ueber einen
- * eigenen Aufruf — es gibt genau einen Weg, die Galerie zu laden (siehe die
- * Begruendung am Ende von GalleryFeature.kt).
- */
-private fun MainViewModel.lagerortSchleuse(
-    galerieNeu: Boolean, tun: suspend () -> Pair<Boolean, String?>,
-) {
-    viewModelScope.launch {
-        val (gelungen, fehler) = tun()
-        if (!gelungen) { _snackbar.emit(fehler ?: ""); return@launch }
-        ladeEigeneLagerorte()
-        if (galerieNeu) bestand.melde(Aenderung.Sets)
-    }
-}
 
-// Die zwei Antwortformen auf dieselbe Frage bringen: „gelungen?" und „warum
-// nicht?". ZWEI Namen und nicht zweimal derselbe: Generische Typen sind auf
-// der JVM geloescht, beide hiessen nach der Uebersetzung `auswerten(Result)`
-// — ein Zusammenstoss, den erst der Compiler meldet.
-private fun Result<ch.brickinventoryapp.data.model.LagerortEintragResponse>.eintragAuswerten() =
-    when (this) {
-        is Result.Success -> data.success to data.error
-        is Result.Error   -> false to message
-    }
 
-private fun Result<ch.brickinventoryapp.data.model.LagerortVorgabeResponse>.vorgabeAuswerten() =
-    when (this) {
-        is Result.Success -> data.success to data.error
-        is Result.Error   -> false to message
-    }
 
-private fun Result<ch.brickinventoryapp.data.model.LagerortResponse>.lagerAuswerten() =
-    when (this) {
-        is Result.Success -> data.success to data.error
-        is Result.Error   -> false to message
-    }
 
-internal fun MainViewModel.legeLagerortAn(name: String) =
-    lagerortSchleuse(false) { repo.teile.legeLagerortAn(name).eintragAuswerten() }
 
-internal fun MainViewModel.benenneLagerortUm(id: Int, name: String) =
-    lagerortSchleuse(true) { repo.teile.benenneLagerortUm(id, name).eintragAuswerten() }
 
-/**
- * Marcos Stern umschalten.
- *
- * `istVorgabe` kommt aus der Liste: Der zweite Druck auf denselben Stern
- * schaltet die Vorgabe ab. Ein eigener Knopf dafuer waere ein zweites
- * Bedienelement fuer eine Frage mit zwei Antworten.
- *
- * Ohne Galerie-Neuladung: Es aendert sich keine Zuordnung an einem Set,
- * sondern nur, was beim NAECHSTEN Erfassen vorausgewaehlt ist. Die Schleuse
- * laedt die eigenen Orte neu, und damit kommt auch die neue Vorgabe mit.
- */
-internal fun MainViewModel.schalteLagerortVorgabe(id: Int, istVorgabe: Boolean) =
-    lagerortSchleuse(false) {
-        repo.teile.setzeLagerortVorgabe(if (istVorgabe) null else id).vorgabeAuswerten()
-    }
 
-internal fun MainViewModel.loescheLagerort(id: Int) =
-    lagerortSchleuse(false) { repo.teile.loescheLagerort(id).lagerAuswerten() }
 
 /** Gespeicherte Filterwerte beim Start einlesen. */
 internal fun MainViewModel.loadScopeModes() {
@@ -161,71 +91,7 @@ internal fun MainViewModel.loadHouseholdMembers() {
     viewModelScope.launch { blickfeldDienst.ladeMitglieder() }
 }
 
-/** Zustand der Verknüpfung für die Einstellungen. */
-internal fun MainViewModel.loadHouseholdStatus() {
-    viewModelScope.launch {
-        _householdState.update { it.copy(isLoading = true, message = null) }
-        when (val r = repo.haushalt.getHousehold()) {
-            is Result.Success -> _householdState.update {
-                it.copy(isLoading = false, status = r.data, inviteCode = null)
-            }
-            is Result.Error -> _householdState.update { it.copy(isLoading = false, message = meldung(r)) }
-        }
-    }
-}
 
-internal fun MainViewModel.createHouseholdInvite() {
-    viewModelScope.launch {
-        _householdState.update { it.copy(isLoading = true, message = null) }
-        when (val r = repo.haushalt.createHouseholdInvite()) {
-            is Result.Success ->
-                if (r.data.success) _householdState.update { it.copy(isLoading = false, inviteCode = r.data.code) }
-                else _householdState.update { it.copy(isLoading = false, message = r.data.error) }
-            is Result.Error -> _householdState.update { it.copy(isLoading = false, message = meldung(r)) }
-        }
-    }
-}
 
-internal fun MainViewModel.redeemHouseholdInvite(code: String) {
-    viewModelScope.launch {
-        _householdState.update { it.copy(isLoading = true, message = null) }
-        when (val r = repo.haushalt.redeemHouseholdInvite(code.trim())) {
-            is Result.Success -> {
-                // Der Server lehnt ab, wenn die Währung abweicht, die Konten
-                // schon oder umgekehrt verknüpft sind. Seine Meldung ist genauer als alles, was die App
-                // daraus ableiten könnte — deshalb wird sie durchgereicht.
-                _householdState.update { it.copy(isLoading = false, message = r.data.error) }
-                if (r.data.success) { loadHouseholdStatus(); loadHouseholdMembers() }
-            }
-            is Result.Error -> _householdState.update { it.copy(isLoading = false, message = meldung(r)) }
-        }
-    }
-}
 
-/** [subUserId]: Unterkonto lösen; [mainUserId]: sich von diesem Elternkonto lösen. */
-internal fun MainViewModel.unlinkHousehold(subUserId: Int? = null, mainUserId: Int? = null) {
-    viewModelScope.launch {
-        when (val r = repo.haushalt.unlinkHousehold(subUserId, mainUserId)) {
-            is Result.Success -> { loadHouseholdStatus(); loadHouseholdMembers(); bestand.melde(Aenderung.Sets) }
-            // Ohne Meldung tippt der Nutzer auf „Verknüpfung lösen", und es
-            // passiert sichtbar nichts — weder Erfolg noch Grund.
-            //
-            // Über _householdState.message und nicht über den Schnipsel: Genau
-            // dort melden die vier anderen ändernden Wege dieser Datei, und die
-            // Haushaltskarte zeigt das Feld an (SettingsScreen.kt). Ein zweiter
-            // Meldeweg für dieselbe Karte wäre die dritte Fassung derselben
-            // Sache.
-            is Result.Error -> _householdState.update { it.copy(message = meldung(r)) }
-        }
-    }
-}
 
-/** Den Hinweis auf ein nicht mehr sichtbares Konto ausblenden. */
-internal fun MainViewModel.verwerfeGetrenntesKonto(subUserId: Int) {
-    viewModelScope.launch {
-        when (val r = repo.haushalt.verwerfeGetrenntesKonto(subUserId)) {
-            is Result.Success -> loadHouseholdStatus()
-            is Result.Error -> _householdState.update { it.copy(message = meldung(r)) }
-        }
-    }
-}

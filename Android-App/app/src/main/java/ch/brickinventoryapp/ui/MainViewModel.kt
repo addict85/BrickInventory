@@ -190,8 +190,6 @@ class MainViewModel @Inject constructor(
     // Kontofilter, Haushaltskonten und Lagerorte — gehalten vom Blickfeld.
     val blickfeld = blickfeldDienst.konten
     val lagerState = blickfeldDienst.lager
-    internal val _alarmUebersicht = MutableStateFlow(AlarmUebersichtUiState())
-    val alarmUebersicht = _alarmUebersicht.asStateFlow()
 
 
     // Ziel einer angetippten Preisalarm-Meldung. Begruendung an
@@ -224,16 +222,8 @@ class MainViewModel @Inject constructor(
 
 
 
-    /** Haushalt: Verknüpfung, Einladungscode, Servermeldung. */
-    internal val _householdState = MutableStateFlow(HouseholdUiState())
-    val householdState = _householdState.asStateFlow()
 
 
-    // Das HOCHLADEN einer CSV-Datei — nicht zu verwechseln mit
-    // _csvImportState, das den Fortschritt des Imports auf dem Server zeigt.
-    // Begruendung in CsvHochladenUiState.
-    internal val _csvHochladenState = MutableStateFlow(CsvHochladenUiState())
-    val csvHochladenState = _csvHochladenState.asStateFlow()
 
 
     /**

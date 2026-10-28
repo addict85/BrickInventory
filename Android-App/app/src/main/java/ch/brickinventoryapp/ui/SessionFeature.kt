@@ -58,8 +58,6 @@ internal fun MainViewModel.logout() {
         // Nutzerverwaltung, nicht von einer Pruefung — deshalb prueft
         // felder.py das jetzt: Jeder Fluss des MainViewModel muss hier stehen.
         _csvImportState.value = CsvImportUiState()
-        _householdState.value = HouseholdUiState()
-        _csvHochladenState.value = CsvHochladenUiState()
     }
 }
 
