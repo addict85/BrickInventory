@@ -4,19 +4,9 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
- * Haushalt, Erfassungen und Verschieben.
- *
- * ── Warum diese Datei existiert (Nachtrag 155) ──────────────────────────────
- *
- * Alle 92 Datenklassen der App standen in EINER Datei, Models.kt, mit 1158
- * Zeilen. Jede Aenderung an irgendeinem Modell beruehrte dieselbe Datei — bei
- * parallelen Aenderungen ein sicherer Konflikt, und beim Suchen war der Weg
- * immer derselbe: eine Datei oeffnen und scrollen.
- *
- * Aufgeteilt wurde entlang der Sachgebiete. Die Klassen selbst sind WORTGLEICH
- * uebernommen: Es wurde nichts umbenannt, nichts zusammengefasst und kein Feld
- * angefasst. Sie liegen weiter im Paket ch.brickinventoryapp.data.model, also
- * aendert sich fuer keinen Aufrufer etwas — Kotlin bindet an das Paket, nicht
+ * Haushalt, Erfassungen und Verschieben — ein Sachgebiet der Modelle. Getrennte
+ * Dateien, damit parallele Änderungen nicht immer dieselbe Datei berühren; das
+ * Paket bleibt ch.brickinventoryapp.data.model, Kotlin bindet an das Paket, nicht
  * an die Datei.
  */
 
@@ -25,13 +15,10 @@ import kotlinx.serialization.Serializable
 // ═══════════════════════════════════════════════════════════════════════════
 /**
  * Eine Familie verwaltet die Sammlung je Kind in einem eigenen Konto; das
- * Hauptkonto sieht alles zusammen und darf verschieben.
- *
- * Entschieden wird das ausschliesslich auf dem Server (utils/household.ts):
- * Das Blickfeld, die Schreibrechte und die Regeln (eine Stufe, gleiche
- * Währung) stehen dort. Die App zeigt nur, was ankommt — eine zweite Fassung
- * derselben Regeln hier wäre genau die Doppelung, an der in diesem Projekt
- * schon mehrere Zahlen auseinandergelaufen sind.
+ * Hauptkonto sieht alles zusammen und darf verschieben. Entschieden wird
+ * ausschliesslich auf dem Server (utils/household.ts: Blickfeld, Schreibrechte,
+ * eine Stufe, gleiche Währung). Die App zeigt nur, was ankommt — eine zweite
+ * Fassung der Regeln liefe auseinander.
  */
 @Serializable
 data class HouseholdMember(
@@ -116,9 +103,9 @@ data class Acquisition(
     val condition: String = "N", // "N" = Neu, "U" = Gebraucht
     @SerialName("created_at") val createdAt: String? = null,
     /**
-     * Eigentümer DIESER Zeile — im Haushalt können die Kaufpreise eines Sets
-     * mehreren Konten gehören. Ohne das Feld wüsste die Eigentümer-Auswahl
-     * nicht, worauf sie steht, und ein Wechsel griffe die falsche Zeile ab.
+     * Eigentümer dieser Zeile — im Haushalt können die Kaufpreise eines Sets mehreren
+     * Konten gehören. Ohne das Feld wüsste die Eigentümer-Auswahl nicht, worauf sie
+     * steht, und ein Wechsel griffe die falsche Zeile ab.
      */
     @SerialName("owner_user_id") val ownerUserId: Int? = null,
     /** Ein eingesetzter Marktpreis, kein bezahlter Betrag. */
@@ -131,15 +118,10 @@ data class Acquisition(
 }
 
 /**
- * Summenzeile einer Erfassungsliste — vom SERVER gerechnet.
- *
- * Die Rechnung stand vorher viermal in den Oberflächen (zweimal hier, zweimal
- * in der Webapp) und war sich nicht einmal einig, aus welchem Feld der Preis
- * kommt. Jetzt liegt sie in utils/acquisitions.ts (`acquisitionTotals`), und
- * beide Clients zeigen dasselbe an.
- *
- * `amount = null` heisst „kein Kaufpreis erfasst" — nicht „null Franken".
- * Genau deshalb entscheidet der Server das und nicht die Ansicht.
+ * Summenzeile einer Erfassungsliste — vom Server gerechnet (utils/acquisitions.ts,
+ * `acquisitionTotals`), damit beide Clients dasselbe zeigen. `amount = null`
+ * heisst „kein Kaufpreis erfasst“, nicht „null Franken“ — deshalb entscheidet das
+ * der Server und nicht die Ansicht.
  */
 @Serializable
 data class AcquisitionTotals(
@@ -153,9 +135,9 @@ data class AcquisitionsResponse(
     val success: Boolean,
     val acquisitions: List<Acquisition> = emptyList(),
     /**
-     * Vorgabe für ältere Serverstände: leere Summe. Die Ansichten zeigen dann
-     * „×0" und einen Gedankenstrich statt einer selbst gerechneten Zahl —
-     * lieber sichtbar leer als still abweichend.
+     * Vorgabe für ältere Serverstände: leere Summe. Die Ansichten zeigen dann „×0“ und
+     * einen Gedankenstrich statt einer selbst gerechneten Zahl — lieber sichtbar leer
+     * als still abweichend.
      */
     val totals: AcquisitionTotals = AcquisitionTotals()
 )
@@ -163,28 +145,16 @@ data class AcquisitionsResponse(
 @Serializable
 data class UpdateAcquisitionRequest(
     /**
-     * Der Kaufpreis EINER Erfassungszeile — bei SETS.
-     *
-     * ── Zwei Feldnamen, kein Versehen des Servers (Nachtrag 111) ────────────
-     *
-     * Marcos Befund: „Wenn ich in der Android-App den Kaufpreis anpasse, wird
-     * er nicht gespeichert."
-     *
-     * Der Server liest das Preisfeld unter dem Namen der jeweiligen Spalte
-     * (`req.body[cfg.priceCol]`):
+     * Der Kaufpreis einer Erfassungszeile — bei Sets. Der Server liest das Preisfeld
+     * unter dem Namen der Spalte (`req.body[cfg.priceCol]`):
      *
      *     Sets                    → purchase_price
      *     Teile und Minifiguren   → unit_price
      *
-     * Das ist konsequent: Bei einem Set ist es der Preis des Sets, bei Teilen
-     * und Minifiguren der Preis JE STÜCK. Die Webapp bedient beide Namen seit
-     * jeher; die App schickte immer `purchase_price`. Für Teile und
-     * Minifiguren fand der Server also kein Preisfeld — und liess den Preis
-     * unverändert, ohne Fehler zu melden.
-     *
-     * Beide Felder sind nullbar und werden bei `null` nicht mitgeschickt
-     * (kotlinx.serialization lässt Vorgabewerte weg). Es wird also immer genau
-     * eines gesetzt — siehe `fuerSet()` und `fuerStueck()` unten.
+     * Bei einem Set ist es der Preis des Sets, bei Teilen und Figuren der Preis je
+     * Stück. Unter dem falschen Namen lässt der Server den Preis still unverändert.
+     * Beide Felder sind nullbar und werden bei `null` nicht mitgeschickt, also ist
+     * immer genau eines gesetzt — siehe `fuerSet()` und `fuerStueck()` unten.
      */
     @SerialName("purchase_price") val purchasePrice: Double? = null,
     /** Der Kaufpreis je Stück — bei TEILEN und MINIFIGUREN. Siehe oben. */
@@ -193,19 +163,15 @@ data class UpdateAcquisitionRequest(
     val quantity: Int? = null,
     val date: String? = null,
     /**
-     * Eigentümerwechsel = Verschieben genau dieser Kaufpreis-Zeile.
+     * Eigentümerwechsel = Verschieben genau dieser Kaufpreis-Zeile. Der Server
+     * behandelt das Feld vor allen anderen und beendet damit die Anfrage: Preis oder
+     * Datum im selben Aufruf hiesse, die Zeile zweimal zu suchen, beim Empfänger
+     * womöglich schon verschmolzen.
      *
-     * Der Server behandelt das Feld VOR allen anderen und beendet die Anfrage
-     * damit: Preis oder Datum derselben Zeile im selben Aufruf zu ändern
-     * hiesse, sie zweimal zu suchen — einmal beim Absender, einmal beim
-     * Empfänger, wo sie womöglich schon mit einer Tageszeile verschmolzen ist.
-     *
-     * Der ABSENDER wird nicht mitgeschickt: Die Erfassungs-ID ist eindeutig,
-     * und wem die Zeile gehört, ermittelt der Server aus der Zeile selbst
-     * (acquisitionMoveSource). Ein Client kann die Frage damit nicht mehr
-     * falsch beantworten — genau daran ist der Wechsel in der Webapp
-     * gescheitert. MoveSetRequest behält from_user_id: Dort geht es um
-     * mehrere Zeilen auf einmal, und der Absender ist Teil der Auswahl.
+     * Der Absender wird nicht mitgeschickt: Die Erfassungs-ID ist eindeutig, und wem
+     * die Zeile gehört, ermittelt der Server (acquisitionMoveSource) — ein Client kann
+     * das nicht falsch beantworten. MoveSetRequest behält from_user_id, weil dort
+     * mehrere Zeilen gemeint sind und der Absender Teil der Auswahl ist.
      */
     @SerialName("owner_user_id") val ownerUserId: Int? = null
 ) {

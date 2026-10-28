@@ -1,29 +1,14 @@
 package ch.brickinventoryapp.util
 
 /**
- * ISO-Datum aus einer Serverantwort als kurzes Datum.
+ * ISO-Datum aus einer Serverantwort als kurzes Datum — eine Fassung für alle
+ * Bildschirme, damit dasselbe Datum überall gleich aussieht.
  *
- * ── Warum das hier steht ────────────────────────────────────────────────────
- * Es gab die Umwandlung zweimal, in zwei verschiedenen Fassungen:
- *
- *   SetDetailScreen.kt   iso.take(10).split("-") → "TT.MM.JJJJ", vierstellig
- *   MinifigsScreen.kt    SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
- *                        → "TT.MM.JJ", zweistellig
- *
- * Dasselbe Datum sah in der App also an zwei Stellen unterschiedlich aus, und
- * die zweite Fassung scheiterte still an jedem Zeitstempel OHNE Millisekunden
- * (`runCatching { … }.getOrNull()` → null → gar kein Datum). Beim Bau der
- * Tabellenansicht wäre eine dritte Fassung dazugekommen.
- *
- * ── Warum ohne SimpleDateFormat ─────────────────────────────────────────────
- * Gebraucht wird der TAG, nicht die Uhrzeit. Die ersten zehn Zeichen eines
- * ISO-Zeitstempels sind das Datum — unabhängig davon, ob danach
- * Millisekunden, ein Zeitzonen-Versatz oder nichts folgt. Kein Format, das
- * passen muss, also auch keins, das nicht passen kann.
- *
- * Bewusst KEINE Zeitzonen-Umrechnung: Der Server liefert das Erfassungsdatum,
- * und eine Verschiebung um Stunden könnte daraus den Vortag machen — für ein
- * „erfasst am" wäre das falsch, nicht genauer.
+ * Ohne SimpleDateFormat: Gebraucht wird der Tag, und die ersten zehn Zeichen eines
+ * ISO-Zeitstempels sind das Datum, gleich ob danach Millisekunden, ein Versatz
+ * oder nichts folgt — kein Format, das nicht passen kann. Bewusst ohne
+ * Zeitzonen-Umrechnung: Das Erfassungsdatum ist ein Kalendertag, und eine
+ * Verschiebung um Stunden machte daraus den Vortag.
  *
  * @param iso z. B. "2026-09-03T15:00:32.194Z" oder "2026-09-03"
  * @param zweistelligesJahr true für "03.09.26", false für "03.09.2026"
@@ -40,26 +25,14 @@ fun fmtDatum(iso: String?, zweistelligesJahr: Boolean = false): String? {
 }
 
 /**
- * ISO-Zeitstempel aus einer Serverantwort als Uhrzeit — HH:MM:SS.
+ * ISO-Zeitstempel aus einer Serverantwort als Uhrzeit — HH:MM:SS, für das
+ * Protokoll der Verwaltung wie in der Webapp (public/js/logviewer.js): Ohne Zeit
+ * ist „von eben oder von gestern?“ nicht zu beantworten.
  *
- * ── Warum es das braucht ────────────────────────────────────────────────────
- * Das Protokoll der Verwaltung zeigte Stufe und Meldung, aber keine Uhrzeit.
- * Das Feld `logged_at` kommt seit jeher mit; die App hat es nie gelesen. Die
- * Weboberflaeche zeigt es (public/js/logviewer.js, toLocaleTimeString), und
- * ohne Zeitangabe ist eine Protokollzeile schwer zu gebrauchen: „Ist das von
- * eben oder von gestern?" ist die erste Frage, die man an ein Protokoll hat.
- *
- * ── Warum HIER umgerechnet wird und in [fmtDatum] nicht ─────────────────────
- * Das ist kein Widerspruch, sondern der Unterschied zwischen den beiden
- * Angaben. [fmtDatum] zeigt ein ERFASSUNGSDATUM — einen Kalendertag, den ein
- * Mensch gewaehlt hat; eine Verschiebung um Stunden koennte daraus den Vortag
- * machen, und das waere falsch, nicht genauer. Ein Protokolleintrag ist ein
- * ZEITPUNKT, und der gehoert auf die Uhr dessen, der ihn liest. Die Webapp
- * macht es genauso.
- *
- * Ohne Zeitzonen-Angabe im Text gilt UTC: Der Server speichert `timestamptz`
- * und schreibt das „Z" mit. Faellt es weg, ist das eine Serveraenderung und
- * keine lokale Zeit — die Annahme steht hier, damit sie nicht geraten wirkt.
+ * Hier wird umgerechnet, in [fmtDatum] nicht: Ein Erfassungsdatum ist ein
+ * gewählter Kalendertag, ein Protokolleintrag ein Zeitpunkt, der auf die Uhr
+ * dessen gehört, der ihn liest. Ohne Zeitzonen-Angabe im Text gilt UTC: Der Server
+ * speichert `timestamptz` und schreibt das „Z“ mit.
  *
  * @return "14:03:07", oder null wenn nichts Brauchbares dasteht
  */

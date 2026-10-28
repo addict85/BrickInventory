@@ -4,20 +4,13 @@ import ch.brickinventoryapp.R
 import ch.brickinventoryapp.data.repository.Fehlerart
 
 /**
- * Welche Textressource gehört zu welcher [Fehlerart]?
+ * Welche Textressource gehört zu welcher [Fehlerart]? Eine eigene, reine Funktion
+ * statt einer Zeile in `meldung()`, damit die Zuordnung ohne `Context` und ohne
+ * Android-Laufzeit prüfbar ist. `meldung()` holt den Satz und bevorzugt die
+ * Servermeldung — das braucht einen Context, die Zuordnung nicht.
  *
- * Bewusst eine EIGENE, reine Funktion und keine Zeile in `meldung()`
- * (Nachtrag 117): So braucht die Zuordnung keinen `Context` und ist damit ohne
- * Android-Laufzeit prüfbar. `meldung()` bleibt die Stelle, die den Satz
- * tatsächlich holt und die Servermeldung bevorzugt — das ist Verhalten, das
- * einen Context braucht; WELCHER Text zu welcher Ursache gehört, ist es nicht.
- *
- * Der Zuschnitt ist die eigentliche Lehre aus Punkt 1 der Durchsicht: Was
- * schwer prüfbar ist, ist meistens nicht zu kompliziert, sondern nur mit etwas
- * verwoben, das es nicht braucht.
- *
- * Kein `else`-Zweig: Eine neue Fehlerart soll den Build hier brechen, nicht
- * stillschweigend in einem Sammelfall landen — dieselbe Regel wie bei
+ * Kein `else`-Zweig: Eine neue Fehlerart soll den Build hier brechen, nicht still
+ * in einem Sammelfall landen — wie bei
  * [ch.brickinventoryapp.data.repository.Result].
  */
 internal fun fehlerTextId(art: Fehlerart?): Int = when (art) {
@@ -33,42 +26,23 @@ internal fun fehlerTextId(art: Fehlerart?): Int = when (art) {
 }
 
 /**
- * Braucht der Text zu dieser Ursache einen Platzhalter?
- *
- * Nur [Fehlerart.SERVER] trägt einen (`%1$d` für den HTTP-Code). Ohne diese
- * Unterscheidung müsste `meldung()` für jede Art raten, ob ein Argument
- * mitzugeben ist — und `getString()` mit einem überzähligen Argument wirft
- * nicht, sondern liefert stillschweigend denselben Text.
+ * Braucht der Text zu dieser Ursache einen Platzhalter? Nur [Fehlerart.SERVER]
+ * trägt einen (`%1$d` für den HTTP-Code). Ohne die Unterscheidung müsste
+ * `meldung()` raten — und `getString()` wirft bei einem fehlenden Argument nicht
+ * verlässlich, sondern liefert still einen falschen Text.
  */
 internal fun fehlerTextBrauchtCode(art: Fehlerart?): Boolean = art == Fehlerart.SERVER
 
 /**
- * Die technische Ursache anhaengen — aber nur, wo der Satz allein nichts sagt.
+ * Die technische Ursache anhängen — aber nur, wo der Satz allein nichts sagt.
  *
- * ── Woher das kommt ─────────────────────────────────────────────────────────
- *
- * Marcos Befund: „In der Android-App werden die Teile nicht angezeigt", dazu
- * die Meldung „Etwas ist schiefgelaufen". Das ist [Fehlerart.UNBEKANNT], der
- * Auffangzweig in RepoBasis fuer JEDE geworfene Ausnahme. Ihre Meldung wird
- * dort in `Result.Error(technisch = e.message)` gelegt — und NACHGEMESSEN von
- * niemandem gelesen: `grep -rn "\.technisch"` ueber den Hauptbaum ergab null
- * Treffer. Der Kommentar daneben sagt, sie stehe „jetzt im Log-Feld statt im
- * Satz"; das Feld gibt es, den Leser nicht.
- *
- * Die Folge war eine Fehlersuche ueber mehrere Runden, in der die App wusste,
- * was schiefging, und es niemandem sagte.
- *
- * ── Warum NUR bei UNBEKANNT ─────────────────────────────────────────────────
- *
- * Nachtrag 116 hat englischen Bibliothekstext bewusst aus den Meldungen
- * verbannt: „Socket closed" ist als Satz an einen Menschen nicht sinnvoll. Das
- * gilt weiter — fuer alle Ursachen, die einen eigenen, verstaendlichen Satz
- * haben (kein Netz, Zeitueberschreitung, Sitzung abgelaufen, Serverfehler mit
- * Code).
- *
- * „Etwas ist schiefgelaufen" ist kein solcher Satz. Er benennt nichts, und
- * ohne den technischen Zusatz bleibt dem Nutzer wie dem Entwickler nur Raten.
- * Hier ist der Bibliothekstext das Einzige, was ueberhaupt etwas aussagt.
+ * Nur bei [Fehlerart.UNBEKANNT], dem Auffangzweig in RepoBasis für jede geworfene
+ * Ausnahme. Ursachen mit eigenem, verständlichem Satz (kein Netz,
+ * Zeitüberschreitung, Sitzung abgelaufen, Serverfehler mit Code) bekommen keinen
+ * englischen Bibliothekstext — „Socket closed“ ist kein Satz an einen Menschen.
+ * „Etwas ist schiefgelaufen“ benennt dagegen nichts; dort ist der Bibliothekstext
+ * das Einzige, was etwas aussagt, und ohne ihn bliebe Nutzer wie Entwickler nur
+ * Raten.
  */
 internal fun mitTechnischerUrsache(satz: String, art: Fehlerart?, technisch: String?): String =
     if ((art == Fehlerart.UNBEKANNT || art == null) && !technisch.isNullOrBlank()) "$satz ($technisch)"

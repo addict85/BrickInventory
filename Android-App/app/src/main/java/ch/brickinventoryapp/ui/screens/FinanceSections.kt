@@ -1,20 +1,10 @@
 package ch.brickinventoryapp.ui.screens
 
 /**
- * Die Abschnitte der Finanz-Seite.
- *
- * ── Warum eigene Datei (Nachtrag 98) ────────────────────────────────────────
- *
- * `FinanceScreen()` war 482 Zeilen. Nach dem Signatur-Umbau aus Nachtrag 96
- * war die Signatur schlank, der Rumpf aber unverändert: Portfolio-Diagramm,
- * Kennzahl-Karten, Kategoriefilter und drei Listen (Sets, Teile, Minifiguren)
- * in einer Funktion.
- *
- * Wie bei SetDetailSections.kt sind es Erweiterungen auf `LazyListScope` und
- * keine @Composable-Funktionen: Sie tragen Einträge in die Liste ein.
- *
- * Jeder Rumpf ist WORTGLEICH übernommen; verändert wurde nur die Einrückung.
- * Die Parameterlisten stammen aus einer Analyse der freien Namen je Block.
+ * Die Abschnitte der Finanz-Seite: Portfolio-Diagramm, Kennzahl-Karten,
+ * Kategoriefilter und die drei Listen. Wie bei SetDetailSections.kt Erweiterungen
+ * auf `LazyListScope` statt @Composable-Funktionen, weil sie Einträge in die Liste
+ * eintragen.
  */
 
 import ch.brickinventoryapp.ui.theme.Formen
@@ -50,32 +40,21 @@ import ch.brickinventoryapp.ui.theme.Abstaende
 
 /** Gesamt-Total: Sets + manuell erfasste Teile + Minifiguren. */
 /**
- * `valuation` ist hier NICHT nullbar (Nachtrag 104).
- *
- * FinanceScreen() steigt oben mit `if (valuation == null) { … return }` aus.
- * Alles darunter lief im Original unter einem Smart-Cast auf den
- * Nicht-Null-Typ — beim Herauslösen ging der verloren, und der Rumpf griff
- * plötzlich auf einen nullbaren Wert zu.
- *
- * Statt im Rumpf überall `?.` einzustreuen (was eine andere Bedeutung hätte:
- * „darf fehlen" statt „ist an dieser Stelle immer da") verlangt die Signatur
- * den Nicht-Null-Typ. Der Aufrufer erfüllt das durch seinen frühen Ausstieg.
+ * `valuation` ist hier nicht nullbar: FinanceScreen() steigt bei `null` vorher
+ * aus. Die Signatur verlangt den Nicht-Null-Typ, statt im Rumpf `?.` einzustreuen
+ * — das hiesse „darf fehlen“ statt „ist hier immer da“.
  */
 fun LazyListScope.financeGrandTotal(valuation: ValuationResponse, partsValuation: PartsValuationResponse?, figsValuation: FigsValuationResponse?, pnl: PnlResponse?, fmtPrice: (String?) -> String) {
         // ── Gesamt-Total: Sets + manuell erfasste Teile + Minifiguren ───────────
         item {
-            // totals.avg statt qtyAvg: Marktpreis ist avg_price, der mengengewichtete
-            // Schnitt liegt systematisch darunter (gleiche Umstellung wie in der Webapp).
-            //
-            // Alle drei Summanden kommen vom Server. Vorher addierte diese
-            // Stelle die gerundeten Zeilenwerte selbst und wich damit von
-            // der Kopfkachel weiter oben ab, die schon total_value las —
-            // zwei Gesamtsummen in derselben Ansicht.
+            // totals.avg statt qtyAvg: Marktpreis ist avg_price, der mengengewichtete Schnitt
+            // liegt systematisch darunter (wie in der Webapp). Alle drei Summanden kommen vom
+            // Server, damit die Summe mit der Kopfkachel übereinstimmt, die total_value liest.
             val setsTotal  = valuation.totals.avg.toDoubleOrNull() ?: 0.0
             val partsTotal = partsValuation?.totalValue?.toDoubleOrNull() ?: 0.0
             val figsTotal  = figsValuation?.totalValue?.toDoubleOrNull() ?: 0.0
-            // Gesamtwert vom Server (Nachtrag 145). Der Rückfall auf die
-            // eigene Addition bleibt für ältere Serverstände.
+            // Gesamtwert vom Server. Der Rückfall auf die eigene Addition bleibt für ältere
+            // Serverstände.
             val grandTotal = pnl?.totals?.grandTotal?.toDoubleOrNull()
                 ?: (setsTotal + partsTotal + figsTotal)
             Spacer(Modifier.height(Abstaende.winzig))
@@ -126,12 +105,8 @@ fun LazyListScope.financeFigRows(figsValuation: FigsValuationResponse?, showFigs
             else listOf(f to f.acquisitions.firstOrNull())
         }
         items(figRows, key = { (f, acq) -> "fig_${f.id}#${acq?.id ?: 0}" }) { (fig, acq) ->
-            // Bisher wurde hier ausschliesslich fig.imageUrl roh
-            // durchgereicht — weder image_local noch der
-            // Server-Proxy kamen zum Zug, obwohl FigValuationItem
-            // image_local längst kennt (siehe Minifiguren-Bildfix
-            // in dieser Sitzung). Diese Stelle war dabei übersehen
-            // worden.
+            // Bild über image_local und den Server-Proxy, nicht roh über fig.imageUrl — sonst
+            // fehlte es offline und bei Quellen, die nur der Server erreicht.
             val figImg = remember(fig.imageLocal, fig.imageUrl, serverUrl) {
                 resolveThumbUrl(serverUrl, fig.imageLocal, fig.imageUrl)
             }
@@ -196,11 +171,9 @@ fun LazyListScope.financePartRows(partsValuation: PartsValuationResponse?, showP
             )
         }
         item {
-            // Die Summe kommt vom SERVER (total_value), nicht aus den
-            // Zeilen: display_value ist auf zwei Stellen gerundet,
-            // total_value auf vier. Über viele Positionen läuft die
-            // eigene Summe gegen die Kopfkachel — und die liest
-            // total_value bereits.
+            // Die Summe kommt vom Server (total_value), nicht aus den Zeilen: display_value
+            // ist auf zwei Stellen gerundet, total_value auf vier. Über viele Positionen liefe
+            // die eigene Summe gegen die Kopfkachel.
             SubtotalRow(stringResource(R.string.finance_subtotal_parts),
                 fmtPrice(partsValuation?.totalValue))
         }
@@ -221,22 +194,14 @@ fun LazyListScope.financeSetRows(valuation: ValuationResponse, showSets: Boolean
             modifier = Modifier.padding(top = Abstaende.winzig, bottom = Abstaende.haar, start = Abstaende.winzig))
     }
 
-    // ── Eine VOLLSTÄNDIGE Karte JE KAUFPREIS ────────────────────────
+    // ── Eine vollständige Karte je Kaufpreis ──
     //
-    // Ein Set mit einem Kaufpreis für „Neu" und einem für „Gebraucht"
-    // erscheint zweimal, jede Karte mit dem Marktpreis IHRES Zustands.
-    // Vorher galt das ganze Set als gebraucht, sobald eine einzige
-    // Erfassung gebraucht war — auch das neu gekaufte Exemplar wurde
-    // dann mit dem Gebrauchtpreis bewertet.
-    //
-    // Die erste Fassung hängte die weiteren Erfassungen als schmale
-    // Unterzeilen an EINE Karte. Das las sich wie die Aufschlüsselung
-    // einer Summe darüber; die Zeilen sind aber gleichrangig — jede
-    // steht für einen eigenen Kauf. Zusammengehalten werden sie durch
-    // Bild und Setnummer, unterschieden durch die Zustands-Plakette.
-    //
-    // Sets mit genau einer (oder ohne) Erfassung ergeben eine Karte
-    // wie bisher.
+    // Ein Set mit einem Kaufpreis für „Neu“ und einem für „Gebraucht“ erscheint
+    // zweimal, jede Karte mit dem Marktpreis ihres Zustands — sonst würde das neu
+    // gekaufte Exemplar mit dem Gebrauchtpreis bewertet. Gleichrangige Karten statt
+    // Unterzeilen, weil jede für einen eigenen Kauf steht; Unterzeilen läsen sich wie
+    // die Aufschlüsselung einer Summe. Zusammengehalten durch Bild und Setnummer,
+    // unterschieden durch die Zustands-Plakette.
     val setRows = valuation.sets.flatMap { s ->
         if (s.acquisitions.size > 1) s.acquisitions.map { s to it }
         else listOf(s to s.acquisitions.firstOrNull())
@@ -276,13 +241,9 @@ fun LazyListScope.financeSetRows(valuation: ValuationResponse, showSets: Boolean
                     }
                 }
                 Spacer(Modifier.width(Abstaende.klein))
-                // Kaufpreis und Marktpreis untereinander — dieselbe
-                // Gegenüberstellung wie in der Webapp.
-                //
-                // Bei MEHREREN Erfassungen steht hier nichts: Die
-                // Zahlen stehen dann Zeile für Zeile darunter, je
-                // Kaufpreis eine. Eine Summe daneben wäre eine zweite
-                // Darstellung derselben Werte.
+                // Kaufpreis und Marktpreis untereinander, wie in der Webapp. Bei mehreren
+                // Erfassungen steht hier nichts: Die Zahlen stehen dann je Kaufpreis darunter,
+                // eine Summe daneben wäre eine zweite Darstellung derselben Werte.
                 Column(horizontalAlignment = Alignment.End) {
                     when {
                         set.noPrice || set.error != null ->
@@ -313,15 +274,10 @@ fun LazyListScope.financeSetRows(valuation: ValuationResponse, showSets: Boolean
 }
 
 /**
- * Die Filterleiste des Reiters — additiv.
- *
- * „Alle" ist kein vierter Zustand neben den drei anderen, sondern die LEERE
- * Auswahl: Der Chip ist genau dann gewaehlt, wenn nichts eingeschraenkt ist,
- * und ein Klick darauf raeumt die Auswahl weg. Die drei uebrigen schalten ihre
- * Zeilenart einzeln zu und wieder ab.
- *
- * Die Menge kommt von aussen und liegt im FinanceUiState — nicht mehr in einem
- * `remember` dieses Bildschirms. Warum, steht dort.
+ * Die Filterleiste des Reiters — additiv. „Alle“ ist kein vierter Zustand, sondern
+ * die leere Auswahl: gewählt, wenn nichts eingeschränkt ist; ein Klick räumt die
+ * Auswahl weg. Die drei übrigen schalten ihre Zeilenart einzeln zu und ab. Die
+ * Menge liegt im FinanceUiState; warum, steht dort.
  */
 fun LazyListScope.financeCategoryFilter(
     aktive: Set<String>,
@@ -349,11 +305,7 @@ fun LazyListScope.financeCategoryFilter(
     }
 }
 
-/**
- * Ein Chip der Filterleiste. Drei Aufrufer, ein Aussehen — vorher stand
- * derselbe FilterChip dreimal wortgleich da, nur der Schluessel und der Text
- * waren verschieden.
- */
+/** Ein Chip der Filterleiste — drei Aufrufer, ein Aussehen. */
 @Composable
 private fun KategorieChip(
     schluessel: String,
@@ -390,7 +342,7 @@ fun LazyListScope.financeSummaryCards(valuation: ValuationResponse, partsValuati
                 // totals.avg statt qtyAvg: Marktpreis ist avg_price, der mengengewichtete
                 // Schnitt liegt systematisch darunter (gleiche Umstellung wie in der Webapp).
                 val setsTotal  = valuation.totals.avg.toDoubleOrNull() ?: 0.0
-                // Siehe oben (Nachtrag 145): Gesamtwert vom Server.
+                // Gesamtwert vom Server, wie oben.
                 val grandTotal = pnl?.totals?.grandTotal?.toDoubleOrNull()
                     ?: (setsTotal + partsExtra + figsExtra)
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {

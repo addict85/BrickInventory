@@ -35,14 +35,13 @@ import javax.inject.Inject
 import javax.inject.Named
 
 /**
- * Selbstaktualisierung: nachsehen, laden, installieren lassen.
+ * Selbstaktualisierung: nachsehen, laden, installieren lassen. Beim Start still
+ * prüfen, nie von allein laden, dazu ein Knopf in den Einstellungen. Die stille
+ * Prüfung meldet keinen Fehler: Wer ohne Netz startet, hat nichts gefragt; wer den
+ * Knopf drückt, schon.
  *
- * Beim Start still PRUEFEN, nie von allein LADEN — und ein Knopf in den
- * Einstellungen (Marcos Vorgabe). Die stille Pruefung meldet keinen Fehler:
- * Wer ohne Netz startet, hat nichts gefragt; wer den Knopf drueckt, schon.
- *
- * An die Activity gebunden (aktivitaetsViewModel): Startpruefung, Dialog,
- * Punkt am Kontosymbol und Einstellungen sehen dieselbe Instanz. Der eigene
+ * An die Activity gebunden (aktivitaetsViewModel), damit Startprüfung, Dialog,
+ * Punkt am Kontosymbol und Einstellungen dieselbe Instanz sehen. Der eigene
  * HTTP-Client kennt weder Server noch Token — nichts davon geht GitHub etwas an.
  */
 @HiltViewModel
@@ -112,26 +111,22 @@ class UpdateViewModel @Inject constructor(
     }
 
     /**
-     * „Spaeter" im Start-Hinweis: fuer diesen App-Lauf nicht mehr fragen.
-     *
-     * Der Zustand bleibt unveraendert — es gibt weiterhin eine neuere Fassung, und
-     * der Punkt am Konto-Symbol sagt das auch weiterhin. Weggeklickt ist nur die
-     * FRAGE, nicht der Befund.
+     * „Später“ im Start-Hinweis: für diesen App-Lauf nicht mehr fragen. Der Zustand
+     * bleibt — es gibt weiterhin eine neuere Fassung, und der Punkt am Konto-Symbol
+     * sagt das weiter. Weggeklickt ist nur die Frage, nicht der Befund.
      */
     fun updateHinweisSchliessen() {
         _state.update { it.copy(dialogAbgelehnt = true) }
     }
 
     /**
-     * Laedt das APK und bietet es zur Installation an.
+     * Lädt das APK und bietet es zur Installation an. Drei Bedingungen, bevor etwas
+     * installiert wird: 1. Die Adresse zeigt in unsere Release-Ablage (schon in der
+     * Prüfung, hier nochmal — zwischen Prüfung und Klick kann ein neuer Zustand
+     * stehen). 2. Die Signatur stimmt mit der installierten App überein. 3. Der Nutzer
+     * hat die Systemerlaubnis erteilt.
      *
-     * ── Drei Bedingungen, bevor irgendetwas installiert wird ────────────────────
-     *  1. Die Adresse zeigt in unsere Release-Ablage (schon in der Pruefung, hier
-     *     nochmal — zwischen Pruefung und Klick kann ein neuer Zustand stehen).
-     *  2. Die Signatur stimmt mit der installierten App ueberein.
-     *  3. Der Nutzer hat die Systemerlaubnis erteilt.
-     *
-     * Erst danach oeffnet sich der System-Installer, und auch der fragt nochmal.
+     * Erst danach öffnet sich der System-Installer, und auch der fragt nochmal.
      */
     fun ladeUpdate() {
         val fassung = _state.value.neuereFassung ?: return
@@ -152,21 +147,19 @@ class UpdateViewModel @Inject constructor(
                             // den linken Teil zurueck und die Ausnahme rechts war
                             // unerreichbar.
                             val koerper = antwort.body
-                            // Die Gesamtgroesse kommt bevorzugt aus version.json:
-                            // Ein Release-Anhang wird ueber eine Umleitung
-                            // ausgeliefert, und contentLength ist dabei
-                            // gelegentlich -1. Ohne Bezugsgroesse gaebe es keinen
-                            // Fortschritt, sondern nur einen wachsenden Zaehler.
+                            // Die Gesamtgrösse kommt bevorzugt aus version.json: Ein Release-Anhang
+                            // kommt über eine Umleitung, und contentLength ist dabei gelegentlich
+                            // -1 — ohne Bezugsgrösse gäbe es keinen Fortschritt, nur einen
+                            // wachsenden Zähler.
                             val gesamt = if (fassung.apkSize > 0) fassung.apkSize
                             else koerper.contentLength()
-                            // ── Wieviel darf hoechstens kommen? ─────────────────
+                            // ── Wieviel darf höchstens kommen? ──
                             //
-                            // Die angekuendigte Groesse (plus ein Megabyte Luft)
-                            // ODER die feste Obergrenze — was kleiner ist. Beide
-                            // braucht es: Die Ankuendigung stammt aus version.json
-                            // und ist damit genau das, dem hier nicht blind
-                            // vertraut wird; die feste Grenze allein liesse eine
-                            // Antwort durch, die 46 MB verspricht und 300 liefert.
+                            // Die angekündigte Grösse (plus ein Megabyte Luft) oder die feste
+                            // Obergrenze — was kleiner ist. Die Ankündigung stammt aus
+                            // version.json, der hier nicht blind vertraut wird; die feste Grenze
+                            // allein liesse eine Antwort durch, die 46 MB verspricht und 300
+                            // liefert.
                             val obergrenze =
                                 if (gesamt in 1..UPDATE_MAX_BYTES) minOf(gesamt + 1024 * 1024, UPDATE_MAX_BYTES)
                                 else UPDATE_MAX_BYTES
@@ -231,13 +224,10 @@ class UpdateViewModel @Inject constructor(
     }
 
     /**
-     * Oeffnet den System-Installer fuer das bereits geladene APK.
-     *
-     * Eigene Funktion, weil sie ZWEI Aufrufer hat: das Ende von [ladeUpdate] und
-     * der Knopf „Installieren", wenn der Nutzer die Erlaubnis nachtraeglich
-     * erteilt hat. Die Signatur wird dabei erneut geprueft — zwischen Download
-     * und zweitem Anlauf liegt ein Ausflug in die Systemeinstellungen, und die
-     * Datei liegt so lange auf der Platte.
+     * Öffnet den System-Installer für das geladene APK. Zwei Aufrufer: das Ende von
+     * [ladeUpdate] und der Knopf „Installieren“ nach nachträglich erteilter Erlaubnis.
+     * Die Signatur wird erneut geprüft, weil die Datei während des Ausflugs in die
+     * Systemeinstellungen auf der Platte liegt.
      */
     fun starteInstallation() {
         val datei = updateDatei(ctx)

@@ -15,22 +15,15 @@ import kotlinx.coroutines.flow.update
 import javax.inject.Inject
 
 /**
- * Was der Monitoring-Bildschirm vom Server weiss.
- *
- * Nur SERVERDATEN. Was gerade im Bildschirm bearbeitet wird — ob die
- * Warteschlange aufgeklappt ist, welche Zahl halb in ein Eingabefeld getippt
- * wurde — bleibt bewusst im Composable als `rememberSaveable`. Begründung
- * unten in der Klasse.
+ * Was der Monitoring-Bildschirm vom Server weiss — nur Serverdaten. Was gerade
+ * bearbeitet wird (aufgeklappt, halb getippte Zahl), bleibt im Composable in
+ * `rememberSaveable`.
  */
 data class MonitoringUiState(
     val jobs: Map<String, JobStatus> = emptyMap(),
     /**
-     * Zeitplan je Job — kommt mit derselben Antwort wie `jobs`.
-     *
-     * Der Server schickt ihn seit jeher mit (routes/api_v1/admin.ts,
-     * `schedules`); die App hat ihn nie eingelesen. Sie zeigte damit, DASS ein
-     * Job laeuft, aber nicht, wann er das naechste Mal laeuft — und aendern
-     * konnte sie es schon gar nicht (Nachtrag 137).
+     * Zeitplan je Job, mit derselben Antwort wie `jobs` (`schedules`): damit die App
+     * zeigt, wann ein Job das nächste Mal läuft, und es ändern kann.
      */
     val jobSchedules: Map<String, ch.brickinventoryapp.data.model.JobSchedule> = emptyMap(),
     val queue: List<BricksetQueueEntry> = emptyList(),
@@ -43,47 +36,18 @@ data class MonitoringUiState(
 )
 
 /**
- * Der Monitoring-Bildschirm holt seine Daten nicht mehr selbst.
+ * Der Monitoring-Bildschirm holt seine Daten über dieses ViewModel statt aus den
+ * Composables, damit die Ladelogik ohne Compose-Laufzeit prüfbar ist. Ein eigenes
+ * ViewModel am NavHost-Ziel (hiltViewModel()), weil der selten geöffnete
+ * Bildschirm mit seiner Abfrageschleife nicht die Lebensdauer der Activity
+ * braucht.
  *
- * ── Der Befund ─────────────────────────────────────────────────────────────
- * MonitoringScreen.kt und MonitoringSections.kt waren die einzigen zwei
- * Dateien im Baum, die über `vm.repo` direkt an die Datenschicht griffen —
- * sechzehn Aufrufe mitten aus Composables heraus. Alle anderen Bildschirme
- * gehen über ein ViewModel.
+ *   hierher      was vom Server kommt — wird ohnehin neu geladen
+ *   Bildschirm   was der Mensch angefasst hat (rememberSaveable)
+ *   Bildschirm   Knopftexte eines laufenden Vorgangs — dürfen eine Drehung nicht überleben
  *
- * Das ist die schlechtere Hälfte des Befunds „ViewModels je Bildschirm": Nicht
- * dass ein ViewModel zu viel kann, sondern dass ein Bildschirm die Rolle
- * gleich selbst übernimmt. Praktisch heisst das: Die Ladelogik lässt sich
- * nicht ohne Compose-Laufzeit ausführen, also auch nicht prüfen. Ob ein
- * fehlgeschlagenes Löschen die Liste wieder herstellt, konnte niemand
- * nachfahren — es stand in einem Lambda in einem `items {}`-Block.
- *
- * ── Warum ein EIGENES ViewModel und nicht das AppViewModel ─────────────────
- * Das AppViewModel lebt so lange wie die Activity. Monitoring ist ein
- * Verwaltungsbildschirm, den man selten öffnet, mit einer Abfrageschleife
- * alle fünf Sekunden. Hier eingehängt (die Route
- * ist ein NavHost-Ziel, `hiltViewModel()` bindet also an den Backstack-
- * Eintrag) entsteht der Zustand beim Betreten und verschwindet beim
- * Verlassen — statt für die Dauer der App mitgetragen zu werden.
- *
- * ── Die Grenze zum Bildschirm, und warum sie dort liegt ────────────────────
- * Ein ViewModel überlebt die Drehung, aber NICHT den Prozesstod;
- * `rememberSaveable` überlebt beides. Wer Bedienzustand in ein ViewModel
- * schiebt, nimmt also zurück, was der vorige Schritt gerade eingebaut hat.
- * Deshalb der Schnitt:
- *
- *   hierher      was vom Server kommt — es wird ohnehin neu geladen, ein
- *                Bundle wäre nur eine zweite, alternde Kopie
- *   Bildschirm   was der Mensch angefasst hat — aufgeklappt/zugeklappt,
- *                Eingabefelder, „ich bearbeite gerade" (rememberSaveable)
- *   Bildschirm   Knopftexte eines laufenden Vorgangs („starte…") — sie
- *                dürfen eine Drehung ausdrücklich NICHT überleben
- *
- * ── Keine Texte hier ───────────────────────────────────────────────────────
- * Die Funktionen geben zurück, WAS passiert ist, nicht welcher Satz dazu
- * anzuzeigen ist. Dieselbe Trennung wie in FehlerTexte.kt: Die Zuordnung
- * Ursache → Textressource braucht keinen Context und ist damit ohne
- * Android-Laufzeit prüfbar.
+ * Keine Texte hier: Die Funktionen sagen, was passiert ist; den Satz wählt die
+ * Anzeige, wie in FehlerTexte.kt.
  */
 @HiltViewModel
 class MonitoringViewModel @Inject constructor(
@@ -136,13 +100,9 @@ class MonitoringViewModel @Inject constructor(
     }
 
     /**
-     * Entfernt einen Eintrag — vorweggenommen in der Anzeige.
-     *
-     * Der Eintrag verschwindet sofort, damit der Griff sich nicht zäh anfühlt.
-     * Scheitert der Server, wird die Liste NEU GELADEN statt die alte Kopie
-     * zurückzuschreiben: Zwischen Klick und Fehlschlag kann sich am Server
-     * etwas anderes geändert haben, und dann wäre die zurückgeschriebene Liste
-     * falsch.
+     * Entfernt einen Eintrag, in der Anzeige vorweggenommen. Scheitert der Server,
+     * wird neu geladen statt die alte Kopie zurückgeschrieben — dazwischen kann sich
+     * am Server anderes geändert haben.
      */
     suspend fun entferneEintrag(setNummer: String): Boolean {
         _state.update { it.copy(queue = it.queue.filter { e -> e.setNumber != setNummer }) }
@@ -163,12 +123,9 @@ class MonitoringViewModel @Inject constructor(
         repo.admin.redownloadMissingImages() is Result.Success
 
     /**
-     * Cache-Zahlen, API-Grenzwerte, Cache-Dauer und Vorgabe-Zustand in einem Zug.
-     *
-     * Nacheinander und nicht nebenläufig: Es sind vier Abfragen an denselben
-     * Server, und sie stehen im selben Kartenstapel. Vier parallele Aufrufe
-     * würden hier nichts sichtbar beschleunigen, aber die Reihenfolge der
-     * Zustandsänderungen unbestimmt machen.
+     * Cache-Zahlen, API-Grenzwerte, Cache-Dauer und Vorgabe-Zustand in einem Zug —
+     * nacheinander, weil es parallel nicht sichtbar schneller wäre, die Reihenfolge
+     * der Zustandsänderungen aber unbestimmt.
      */
     suspend fun ladeCacheUndGrenzen() {
         (repo.admin.getCacheStats() as? Result.Success)?.let { r ->
@@ -192,12 +149,8 @@ class MonitoringViewModel @Inject constructor(
     }
 
     /**
-     * Cache leeren und die Zahlen sofort neu holen.
-     *
-     * Das Nachladen gehoert dazu: Ohne es staenden die alten Zahlen weiter da,
-     * und der Nutzer haette keinen Hinweis, dass etwas passiert ist — bei einer
-     * Handlung, die man genau EINMAL ausloest, ist das der ganze Unterschied
-     * zwischen „hat funktioniert" und „nichts passiert".
+     * Cache leeren und die Zahlen sofort neu holen — sonst stünden die alten da, und
+     * nichts zeigte, dass etwas passiert ist.
      */
     suspend fun leereCache(alles: Boolean): Boolean {
         val ok = repo.admin.clearCache(alles) is Result.Success
@@ -206,12 +159,8 @@ class MonitoringViewModel @Inject constructor(
     }
 
     /**
-     * Zeitplan eines Jobs setzen und die Liste neu holen.
-     *
-     * Neu holen, weil der Server den Wert normalisiert: „7:5" wird zu „07:05",
-     * und ein Abstand unter fuenf Minuten wird auf fuenf angehoben. Ohne das
-     * Nachladen stuende in der Oberflaeche, was der Nutzer getippt hat, und
-     * nicht, was gilt.
+     * Zeitplan eines Jobs setzen und neu holen, weil der Server normalisiert („7:5“ →
+     * „07:05“, mindestens fünf Minuten): Es soll dastehen, was gilt.
      */
     suspend fun setzeJobZeitplan(name: String, zeit: String? = null, minuten: Int? = null): Boolean {
         val ok = repo.admin.setJobSchedule(name, zeit, minuten) is Result.Success
@@ -224,12 +173,9 @@ class MonitoringViewModel @Inject constructor(
         repo.admin.queueCatalogImages() is Result.Success
 
     /**
-     * Das globale Design umstellen.
-     *
-     * Die App liest es seit Nachtrag 135 in zwei Stufen; hier wird es gesetzt.
-     * `loadSettings()` beim Aufrufer zieht den neuen Wert dann in den Zustand
-     * und merkt ihn — die Anzeige wechselt also sofort und ueberlebt den
-     * naechsten Kaltstart.
+     * Das globale Design umstellen. `loadSettings()` beim Aufrufer zieht den neuen
+     * Wert in den Zustand und merkt ihn, damit die Anzeige sofort wechselt und den
+     * Kaltstart überlebt.
      */
     suspend fun setzeDesign(theme: String): Boolean =
         repo.admin.setAppTheme(theme) is Result.Success
@@ -245,11 +191,9 @@ class MonitoringViewModel @Inject constructor(
     }
 
     /**
-     * Vorgabe-Zustand (neu/gebraucht) setzen — in der Anzeige vorweggenommen.
-     *
-     * Der Schalter springt sofort um, weil er sonst bis zur Serverantwort auf
-     * dem alten Wert stünde. Scheitert der Aufruf, wird zurückgestellt; ohne
-     * das behauptete die Oberfläche dauerhaft etwas, das nie gespeichert wurde.
+     * Vorgabe-Zustand (neu/gebraucht) setzen, in der Anzeige vorweggenommen; scheitert
+     * der Aufruf, wird zurückgestellt, sonst behauptete die Oberfläche etwas, das nie
+     * gespeichert wurde.
      */
     suspend fun setzeVorgabeZustand(zustand: String): Boolean {
         val vorher = _state.value.vorgabeZustand

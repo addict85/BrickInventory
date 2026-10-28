@@ -38,7 +38,7 @@ internal fun buildInterceptorClient(
     prefs: PreferencesManager,
     isApiClient: Boolean,
     sessionExpired: ch.brickinventoryapp.data.SessionExpiredSignal,
-    /** Nur, um die Anzeigesprache aus den Ressourcen zu lesen (Nachtrag 130). */
+    /** Nur, um die Anzeigesprache aus den Ressourcen zu lesen. */
     ctx: android.content.Context,
     /** Wohin ein Versionshinweis geht; nur der API-Client meldet. */
     meldungen: ch.brickinventoryapp.data.MeldungsKanal? = null,
@@ -46,13 +46,9 @@ internal fun buildInterceptorClient(
     val versionGemeldet = java.util.concurrent.atomic.AtomicBoolean(false)
     return OkHttpClient.Builder()
         .apply {
-            // Vorher nur für den API-Client (isApiClient) protokolliert.
-            // Genau deshalb zeigte das zuletzt gelieferte Logcat KEINE
-            // einzige Bildanfrage — nicht weil keine gemacht wurden,
-            // sondern weil der Bild-Client (isApiClient = false, von Coil
-            // benutzt) gar keinen Logging-Interceptor hatte. Das Fehlen
-            // von Bildanfragen im Log war also kein Befund, sondern eine
-            // Lücke in der Beobachtbarkeit selbst.
+            // Für beide Clients protokolliert, auch den Bild-Client von Coil: Sonst fehlten
+            // Bildanfragen im Logcat, und ihr Fehlen sähe aus wie ein Befund statt wie eine
+            // Lücke in der Beobachtung.
             if (BuildConfig.DEBUG) {
                 addInterceptor(HttpLoggingInterceptor().apply {
                     level = HttpLoggingInterceptor.Level.BASIC
@@ -102,20 +98,13 @@ internal fun buildInterceptorClient(
                 reqBuilder.header("Authorization", "Bearer $token")
             }
 
-            // ── Und in welcher Sprache soll der Server antworten? ────────
+            // ── Und in welcher Sprache soll der Server antworten? ──
             //
-            // Der Server hat seine Fehlermeldungen seit Nachtrag 130 in
-            // beiden Sprachen (utils/fehlerTexte.ts) und nimmt die aus
-            // diesem Kopf. Vorher waren alle achtzig deutsch — auch in
-            // einer vollstaendig englischen Oberflaeche.
-            //
-            // Die Kennung kommt aus den RESSOURCEN (lang_code), nicht aus
-            // einer eigenen Ermittlung: So sagt sie genau das, was die
-            // Oberflaeche gerade zeigt, samt der per-App-Sprache, die der
-            // Nutzer in den Einstellungen waehlen kann.
-            //
-            // Nur an unseren Server: Ein Bildabruf bei BrickLink hat mit
-            // unserer Anzeigesprache nichts zu tun.
+            // Der Server hat seine Fehlermeldungen in beiden Sprachen (utils/fehlerTexte.ts)
+            // und wählt nach diesem Kopf. Die Kennung kommt aus den Ressourcen (lang_code),
+            // damit sie genau das sagt, was die Oberfläche zeigt, samt der per-App-Sprache.
+            // Nur an unseren Server: Ein Bildabruf bei BrickLink hat mit unserer
+            // Anzeigesprache nichts zu tun.
             if (isOurServer) reqBuilder.header("X-App-Api", ch.brickinventoryapp.util.APP_API_VERSION.toString())
             if (isOurServer && original.header("Accept-Language") == null) {
                 val sprache = ch.brickinventoryapp.util.LanguageManager
@@ -172,15 +161,11 @@ internal fun buildInterceptorClient(
             var response = chain.proceed(outgoing)
             var tokenMitgeschickt = token.isNotBlank()
 
-            // ── Ein 401 auf eine Anfrage OHNE Token: einmal nachfassen ─────
+            // ── Ein 401 auf eine Anfrage ohne Token: einmal nachfassen ──
             //
-            // Die REGEL steht in util/Abgewiesen.kt — mitsamt der Begruendung
-            // jeder einzelnen Bedingung und dem, was an Marcos Befund belegt
-            // ist und was nicht. Sie ist dort eine reine Funktion, damit sie
-            // ohne OkHttp-Stapel und ohne Geraet pruefbar ist.
-            //
-            // Hier steht nur die AUSFUEHRUNG: Liegt inzwischen ein Token vor,
-            // geht dieselbe Anfrage ein zweites Mal hinaus — mit ihm.
+            // Die Regel steht als reine Funktion in util/Abgewiesen.kt, damit sie ohne
+            // OkHttp-Stapel prüfbar ist. Hier nur die Ausführung: Liegt inzwischen ein Token
+            // vor, geht dieselbe Anfrage mit ihm ein zweites Mal hinaus.
             if (ch.brickinventoryapp.util.darfNachfassen(
                     status = response.code,
                     unserServer = isOurServer,

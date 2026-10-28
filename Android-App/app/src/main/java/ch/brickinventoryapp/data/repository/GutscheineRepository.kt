@@ -11,24 +11,13 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Gutscheine — LEGO-Geschenkkarten im eigenen Profil.
+ * Gutscheine — LEGO-Geschenkkarten im eigenen Profil, erreichbar über
+ * `repo.gutscheine.…` (Aufteilung wie in RepoBasis.kt).
  *
- * ── Warum ein eigenes Repository ────────────────────────────────────────────
- *
- * Dieselbe Aufteilung wie bei den anderen fuenf (Nachtrag 155, Begruendung in
- * RepoBasis.kt): Ein Fachgebiet, eine Klasse, erreichbar ueber
- * `repo.gutscheine.…`.
- *
- * ── Warum hier NICHTS zwischengespeichert wird ──────────────────────────────
- *
- * Die anderen Repositories legen Antworten im ResponseCache ab. Hier nicht,
- * und das ist eine Entscheidung: Der Cache liegt auf der Platte des Geraets.
- * Ein Gutschein besteht aus Nummer und PIN — zusammen alles, was zum Einloesen
- * noetig ist. Eine Liste davon in einer Datei, die auch nach dem Abmelden noch
- * liegt, ist genau das, was man nicht will.
- *
- * Es kostet auch nichts: Die Liste hat ein paar Zeilen und wird genau dann
- * geholt, wenn jemand sein Profil oeffnet.
+ * Hier wird nichts zwischengespeichert: Der ResponseCache liegt auf der Platte,
+ * und Nummer plus PIN sind alles, was zum Einlösen nötig ist — eine Liste davon
+ * gehört nicht in eine Datei, die das Abmelden überlebt. Es kostet nichts: Die
+ * Liste ist kurz und wird beim Öffnen des Profils geholt.
  */
 @Singleton
 class GutscheineRepository @Inject constructor(
@@ -51,11 +40,11 @@ class GutscheineRepository @Inject constructor(
     /**
      * Das Guthaben bei LEGO abfragen.
      *
-     * Ist die Abfrage gesperrt (Code `guthaben_abstand` oder
-     * `guthaben_botschutz`), braucht der Durchgang über alle Karten `grund`
-     * und `wartenSek` aus dem Rumpf; safeCall behielte nur Satz und Code.
-     * Deshalb wird diese Antwort zu einer gewöhnlichen mit success=false.
-     * Andere Fehler (502: die Gegenseite schwieg) bleiben Fehler.
+     * Ist die Abfrage gesperrt (Code `guthaben_abstand` oder `guthaben_botschutz`),
+     * braucht der Durchgang über alle Karten `grund` und `wartenSek` aus dem Rumpf;
+     * safeCall behielte nur Satz und Code. Deshalb wird diese Antwort zu einer
+     * gewöhnlichen mit success=false. Andere Fehler (502: die Gegenseite schwieg)
+     * bleiben Fehler.
      */
     suspend fun guthaben(id: Int): Result<GuthabenAntwort> = safeCall {
         val antwort = api.frageGuthabenAb(id)
@@ -74,17 +63,11 @@ class GutscheineRepository @Inject constructor(
     }
 
     /**
-     * Aus dem PDF anlegen — mit der Moeglichkeit, Werte von Hand beizusteuern.
-     *
-     * Leere Felder werden NICHT mitgeschickt (`alsTeil` gibt dafuer null
-     * zurueck): Ein leerer Teil ueberschriebe auf dem Server das aus dem PDF
-     * Gelesene mit nichts. Genau diesen Fall deckt der Server mit „was
-     * mitkommt, gewinnt" ab — also darf nur mitkommen, was auch wirklich da
-     * ist.
-     *
-     * Der Medientyp der Datei kommt aus der Dateiauswahl und wird nicht
-     * geraten; dieselbe Regel wie beim Hochladen einer Anleitung. Der Server
-     * nimmt ausschliesslich `application/pdf` an.
+     * Aus dem PDF anlegen — mit Werten, die man von Hand beisteuert. Leere Felder
+     * werden nicht mitgeschickt (`alsTeil` gibt null zurück): Auf dem Server gilt „was
+     * mitkommt, gewinnt“, ein leerer Teil überschriebe das Gelesene mit nichts. Der
+     * Medientyp kommt aus der Dateiauswahl, nicht geraten; der Server nimmt nur
+     * `application/pdf` an.
      */
     suspend fun ausPdf(
         dateiname: String,
@@ -102,19 +85,14 @@ class GutscheineRepository @Inject constructor(
                 teil,
                 alsTeil(nummer), alsTeil(pin), alsTeil(betrag), alsTeil(waehrung),
             )
-            // ── Warum die 422 hier umgebogen wird ────────────────────────────
+            // ── Warum die 422 hier umgebogen wird ──
             //
-            // Der Server antwortet mit 422, wenn er das PDF gelesen hat, aber
-            // nicht genug darin stand — und legt in den Rumpf, WAS er lesen
-            // konnte. Genau das braucht die Oberflaeche, um die Felder
-            // vorzubelegen; die Webapp macht es ebenso.
-            //
-            // safeCall holt aus einem Fehlerrumpf nur `error`, also den Satz.
-            // `gelesen` ginge verloren. Statt die Transportbehandlung von
-            // safeCall zu verdoppeln (Zeitlimit, Abriss, 401 — sechs Zweige),
-            // wird die Antwort hier in eine ERFOLGREICHE umgebogen: Der
-            // Transport hat ja geklappt, und `success:false` im Rumpf sagt der
-            // Oberflaeche, woran sie ist.
+            // Bei 422 hat der Server das PDF gelesen, aber nicht genug gefunden, und legt in
+            // den Rumpf, was er lesen konnte — das braucht die Oberfläche zum Vorbelegen (wie
+            // die Webapp). safeCall holt aus einem Fehlerrumpf nur Satz und Code, `gelesen`
+            // ginge verloren. Statt seine Transportbehandlung zu verdoppeln, wird die Antwort
+            // zu einer erfolgreichen: Der Transport hat geklappt, `success:false` sagt der
+            // Oberfläche, woran sie ist.
             if (antwort.code() == 422) {
                 val roh = antwort.errorBody()?.string()
                 val geparst = roh?.let {
@@ -125,20 +103,16 @@ class GutscheineRepository @Inject constructor(
         }
     }
 
-    // `pdf(id)` stand hier und holte die Bytes selbst. ENTFALLEN, ohne je
-    // benutzt worden zu sein: Der vorhandene PdfViewerScreen bekommt eine
-    // ADRESSE und laedt sie mit demselben angemeldeten Client (vm.apiHttpClient
-    // — Bearer-Token, Klartext-Verbot und 401-Meldung haengen als Interceptor
-    // daran). Ein eigener Download waere eine zweite Fassung desselben Weges
-    // gewesen, und die Datei laege danach im Cache des Geraets — wo Nummer und
-    // PIN eines Gutscheins nichts zu suchen haben.
+    // Kein eigener PDF-Download: PdfViewerScreen bekommt eine Adresse und lädt sie mit
+    // dem angemeldeten Client (vm.apiHttpClient — Token, Klartext-Verbot und
+    // 401-Meldung hängen daran). Ein eigener Weg wäre eine zweite Fassung und legte
+    // Nummer und PIN in den Cache des Geräts.
 
     /**
-     * Fuer den 422-Rumpf. Eigene Instanz statt der aus AppModule: Die haengt
-     * dort am Retrofit-Konverter und wird nicht herausgereicht — sie hier
-     * durchzuschleifen waere ein Konstruktor-Argument fuer eine einzige Zeile.
-     * `ignoreUnknownKeys` wie dort, aus demselben Grund: Ein neues Feld auf
-     * der Serverseite darf eine aeltere App nicht zum Absturz bringen.
+     * Für den 422-Rumpf. Eine eigene Instanz statt der aus dem NetzModule, die am
+     * Retrofit-Konverter hängt — durchgeschleift wäre sie ein Konstruktor-Argument für
+     * eine Zeile. `ignoreUnknownKeys` wie dort: Ein neues Feld des Servers darf eine
+     * ältere App nicht zum Absturz bringen.
      */
     private val nachsichtigesJson = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
 

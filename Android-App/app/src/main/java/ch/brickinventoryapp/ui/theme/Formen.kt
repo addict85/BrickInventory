@@ -13,39 +13,16 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 
 /**
- * Formen und Erhebungen an EINER Stelle.
- *
- * ── Warum es das gibt (Nachtrag 120) ─────────────────────────────────────────
- *
- * Im Baum standen 129 fest eingetragene `RoundedCornerShape(N.dp)` in neun
- * verschiedenen Radien, und die Kartenoptik
- *
- *     shape = RoundedCornerShape(16.dp),
- *     elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
- *     colors = CardDefaults.cardColors(containerColor = …surface)
- *
- * stand siebenmal wörtlich da. „Mach die Karten runder" hiess damit: vierzehn
- * Stellen suchen und hoffen, keine zu übersehen.
- *
- * Auffällig war das, weil die FARBEN es längst richtig machen — zwei Designs
- * über `colorScheme`, Diagrammfarben über [LocalChartColors]. Formen und
- * Erhebungen waren von dieser Sorgfalt ausgenommen.
- *
- * Die Werte hier sind ZAHLENGLEICH mit dem, was vorher dastand. Dieser Nachtrag
- * verschiebt nur, wo sie stehen — er ändert nichts am Aussehen. Ein Design
- * ändert man danach, in einem eigenen Schritt, den man auch ansehen kann.
- *
- * BEWUSST NICHT an `MaterialTheme(shapes = …)` gehängt: Das würde auch alle
- * Bauteile umformen, die HEUTE keine Form angeben und deshalb die
- * Material3-Vorgabe benutzen — eine Änderung, die sich ohne Gerät nicht
- * beurteilen lässt. Der Schritt bleibt offen und ist dann eine Zeile.
+ * Formen und Erhebungen an einer Stelle, wie die Farben über `colorScheme`: „Mach
+ * die Karten runder“ soll eine Zeile sein, nicht vierzehn Fundstellen. Nicht an
+ * `MaterialTheme(shapes = …)` gehängt, weil das auch alle Bauteile umformte, die
+ * heute die Material3-Vorgabe benutzen.
  */
 object Formen {
     /**
-     * Der Eckenradius der Leiste — als eigener Wert, weil ZWEI Formen ihn
-     * teilen müssen: [leiste] und [kachelBildEcken]. Das Bild einer Kachel
-     * sitzt oben bündig in der Karte; wären die Radien verschieden, stünde es
-     * an den oberen Ecken über oder liesse einen Spalt.
+     * Der Eckenradius der Leiste, geteilt von [leiste] und [kachelBildEcken]: Das
+     * Kachelbild sitzt oben bündig in der Karte; verschiedene Radien liessen es
+     * überstehen oder einen Spalt.
      */
     private val leisteRadius = 14.dp
 
@@ -68,30 +45,18 @@ object Formen {
     /** Trennstriche und Fortschrittsbalken — fast eckig. */
     val strich = RoundedCornerShape(2.dp)
 
-    /**
-     * Die oberen Ecken eines Kachelbildes — passt zwingend zu [leiste].
-     *
-     * Stand als `RoundedCornerShape(topStart = 14.dp, topEnd = 14.dp)`
-     * zeichengleich in PartsScreen und MinifigsScreen, also zweimal dieselbe
-     * Zahl neben zweimal derselben Kartenform. Wer eine davon ändert, muss
-     * heute alle drei finden.
-     */
+    /** Die oberen Ecken eines Kachelbildes — passt zwingend zu [leiste]. */
     val kachelBildEcken = RoundedCornerShape(topStart = leisteRadius, topEnd = leisteRadius)
 
     /**
-     * Masse einer Bestandskachel (Teile- und Minifiguren-Reiter).
-     *
-     * Beide Reiter zeigen dieselbe Rasterbreite; standen die Zahlen in beiden
-     * Bildschirmen, konnte eine davon still abweichen und das Raster brechen.
-     * Nur diese zwei Stellen im Baum tragen sie — es ist eine Regel, kein
-     * Geschmack.
+     * Masse einer Bestandskachel (Teile- und Minifiguren-Reiter): Beide zeigen
+     * dieselbe Rasterbreite, und nur hier stehen die Zahlen, damit keine still
+     * abweicht.
      */
     val kachelBreite = 112.dp
     /**
-     * 178 -> 208 dp (Nachtrag 134): Preis und Notiz kamen dazu.
-     *
-     * Nachgerechnet statt geschaetzt. Unter dem 76 dp hohen Bild stehen im
-     * schlimmsten Fall, bei labelSmall mit 16 dp Zeilenhoehe:
+     * Höhe der Bestandskachel, nachgerechnet für den schlimmsten Fall bei labelSmall
+     * (16 dp Zeilenhöhe):
      *
      *     Name             2 Zeilen   32
      *     Farbe (Teile)    1 Zeile    16
@@ -103,9 +68,7 @@ object Formen {
      *                                ---
      *                                127  + 76 Bild = 203
      *
-     * 208 laesst fuenf Punkte Luft. Mehr Reserve waere kein Gewinn: Die Kachel
-     * ist 112 dp breit, und je hoeher sie wird, desto weniger Reihen passen
-     * auf den Bildschirm.
+     * 208 lässt fünf Punkte Luft; höher passten weniger Reihen auf den Bildschirm.
      */
     val kachelHoehe  = 208.dp
 
@@ -116,21 +79,15 @@ object Formen {
 }
 
 /**
- * Die Karte, die im Baum mehrfach zeichengleich abgeschrieben war.
- *
- * Sie kapselt NUR die Hülle — Form, Erhebung, Flächenfarbe, volle Breite. Der
- * Innenabstand bleibt beim Aufrufer, weil genau darin sich die Fundstellen
- * unterschieden (14 dp hier, 16 dp dort, mit und ohne Zeilenabstand). Ihn
- * hierher zu ziehen hiesse, an vier Stellen das Aussehen zu ändern, und dieser
- * Nachtrag soll nichts am Aussehen ändern.
+ * Die Kartenhülle — Form, Erhebung, Flächenfarbe, volle Breite. Der Innenabstand
+ * bleibt beim Aufrufer, weil er sich an den Fundstellen unterschied.
  */
 @Composable
 fun AppKarte(
     modifier: Modifier = Modifier,
     /**
-     * Antippbar machen. Material3 hat dafür eine EIGENE `Card`-Überladung mit
-     * Wellenanzeige; deshalb wird hier verzweigt statt ein `clickable` an die
-     * unantippbare Fassung gehängt — das sähe anders aus.
+     * Antippbar machen. Material3 hat dafür eine eigene `Card`-Überladung mit
+     * Wellenanzeige; ein `clickable` an der unantippbaren Fassung sähe anders aus.
      */
     onClick: (() -> Unit)? = null,
     inhalt: @Composable ColumnScope.() -> Unit
@@ -148,20 +105,9 @@ fun AppKarte(
 }
 
 /**
- * Farben mit BEDEUTUNG, die das Material-Schema nicht kennt.
- *
- * ── Warum (Nachtrag 120) ─────────────────────────────────────────────────────
- * Zwölf Farben standen fest im Quelltext verteilt: `Color(0xFF16A34A)` für
- * Erfolg in MonitoringScreen und SetDetailComponents, `Color(0xFF22C55E)` für
- * dasselbe in SetupScreen und BarcodeScannerScreen — zwei verschiedene Grüns
- * für dieselbe Aussage, in vier Dateien. Im Stein-Design zogen sie nicht mit.
- *
- * Material3 hat für „erfolgreich" und „Warnung" keine Rolle; erfunden werden
- * müssen sie also. Aber einmal, nicht viermal.
- *
- * Die Werte sind zahlengleich mit dem, was vorher dastand — bis auf die
- * Vereinheitlichung der beiden Grüns; die Werte je Design stehen in
- * statusFarbenFuer() in Theme.kt.
+ * Farben mit Bedeutung, die das Material-Schema nicht kennt („erfolgreich“,
+ * „Warnung“) — einmal festgelegt statt verstreut, damit sie mit dem Design
+ * mitziehen. Die Werte je Design stehen in statusFarbenFuer() in Theme.kt.
  */
 data class StatusFarben(
     val erfolg: Color,

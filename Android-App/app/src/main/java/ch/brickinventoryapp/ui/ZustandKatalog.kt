@@ -11,18 +11,11 @@ data class CatalogUiState(
     val isLoading: Boolean = false,
     val error: String? = null,
     /**
-     * Geladene Seiten, nach Seitennummer.
-     *
-     * ── Warum eine Karte statt einer Liste (Nachtrag 86) ────────────────────
-     * Marcos Vorgabe: Die Zeitleiste rechts soll nicht filtern, sondern
-     * schnell scrollen — „kann nicht geprüft werden, wo man hinscrollt, und
-     * dieser Teil wird dann geladen".
-     *
-     * Genau das geht mit einer angehängten Liste nicht: Wer auf Jahr 2005
-     * springt, landet mitten im Bestand, und darüber wie darunter fehlt alles.
-     * Die Ansicht führt deshalb ALLE `total` Plätze und lädt die Seite, die
-     * gerade sichtbar wird — vorwärts wie rückwärts. Was noch nicht da ist,
-     * steht als Platzhalter.
+     * Geladene Seiten, nach Seitennummer. Eine Karte statt einer Liste, weil die
+     * Zeitleiste rechts schnell scrollt statt filtert: Wer auf 2005 springt, landet
+     * mitten im Bestand. Die Ansicht führt deshalb alle `total` Plätze und lädt die
+     * Seite, die gerade sichtbar wird — vorwärts wie rückwärts; was noch fehlt, steht
+     * als Platzhalter.
      */
     val loadedPages: Map<Int, List<CatalogSetItem>> = emptyMap(),
     val loadingPages: Set<Int> = emptySet(),
@@ -35,23 +28,11 @@ data class CatalogUiState(
      */
     val scrollTo: Int? = null,
     /**
-     * Wo die Liste stand, als man sie verlassen hat.
-     *
-     * ── Marcos Befund (Nachtrag 91) ─────────────────────────────────────────
-     * „Wenn im Katalog eine Detailseite aufgerufen und wieder geschlossen wird,
-     * ist der Scrollbalken ganz zuoberst und nicht an der Stelle von vor dem
-     * Aufruf."
-     *
-     * Die Position lag im `LazyGridState` des Bildschirms. Die Detailseite ist
-     * ein eigener Navigationspunkt — beim Wechsel verlässt die Liste die
-     * Komposition, und was danach wiederhergestellt wird, hängt an Compose'
-     * Speichermechanik. Bei einer Liste, deren Länge (`total`) und Inhalt
-     * (`loadedPages`) erst nachträglich eintreffen, ist das nicht verlässlich:
-     * Wird zum Zeitpunkt der Wiederherstellung noch nichts angezeigt, gibt es
-     * keine Stelle, an die zurückgesprungen werden könnte.
-     *
-     * Im Zustand ist sie unabhängig davon — er lebt im ViewModel und überlebt
-     * jeden Wechsel des Bildschirms.
+     * Wo die Liste stand, als man sie verlassen hat. Im ViewModel statt im
+     * `LazyGridState`: Die Detailseite ist ein eigener Navigationspunkt, und bei einer
+     * Liste, deren Länge (`total`) und Inhalt (`loadedPages`) erst nachträglich
+     * eintreffen, gäbe es beim Wiederherstellen noch keine Stelle, an die
+     * zurückgesprungen werden könnte.
      */
     val scrollIndex: Int = 0,
     val scrollOffset: Int = 0,
@@ -65,22 +46,12 @@ data class CatalogUiState(
     val yearMin: Int? = null,
     val yearMax: Int? = null,
     /**
-     * Wie viele Sets je Jahr, MIT den aktuellen Filtern und in der Reihenfolge
-     * der Liste — die Zahlen, aus denen die Leiste rechts ihr Etikett rechnet.
-     *
-     * Ohne sie stand dort eine lineare Schaetzung (siehe CatalogYearMath): Der
-     * Katalog stammt weit ueberwiegend aus den letzten Jahrzehnten, und wer
-     * neun Zehntel hinunterzieht, ist deshalb noch lange nicht bei den
-     * Sechzigern. Die Webapp rechnet seit Marcos Meldung mit dieser
-     * Verteilung; hier steht sie aus demselben Grund.
-     *
-     * Jahrgaenge OHNE Jahr sind schon weggeworfen — genau wie in der Webapp.
+     * Wie viele Sets je Jahr, mit den aktuellen Filtern und in der Reihenfolge der
+     * Liste — die Zahlen, aus denen die Leiste rechts ihr Etikett rechnet (siehe
+     * CatalogYearMath), wie in der Webapp. Jahrgänge ohne Jahr sind schon weggeworfen,
+     * ebenfalls wie dort.
      */
     val jahrVerteilung: List<ch.brickinventoryapp.data.model.JahrAnzahl> = emptyList(),
-    // `yearCounts` (Anzahl Sets je Jahr) stand hier, wurde aus der
-    // Katalog-Metaantwort gefuellt und nirgends angezeigt. Der Wert steht
-    // weiterhin in CatalogMetaResponse; wer ein Jahres-Histogramm bauen will,
-    // holt ihn von dort. Gefunden von derselben Regel.
     // Detail
     val detail: CatalogSetDetail? = null,
     val detailLoading: Boolean = false,

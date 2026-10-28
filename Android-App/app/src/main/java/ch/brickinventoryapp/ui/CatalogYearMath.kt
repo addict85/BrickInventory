@@ -4,38 +4,23 @@ import ch.brickinventoryapp.data.model.JahrAnzahl
 import kotlin.math.roundToInt
 
 /**
- * Pure Mathematik der Jahres-Leiste (CatalogScreen) — als eigenes Objekt
- * extrahiert, damit sie ohne Compose/Android in JUnit-Tests prüfbar ist
- * (siehe app/src/test/.../CatalogYearMathTest.kt).
+ * Reine Mathematik der Jahres-Leiste (CatalogScreen) — ein eigenes Objekt, damit
+ * sie ohne Compose in JUnit prüfbar ist (CatalogYearMathTest).
  *
- * ── Warum die Leiste jetzt an der POSITION hängt und nicht am Jahr ──────────
- *
- * Hier stand vorher ein lineares Modell: oben yearMax, unten yearMin, und die
- * Strecke dazwischen gleichmässig auf die Jahre verteilt. Genau dieses Modell
- * hat Marco in der Webapp gemeldet:
- *
- *   „Wenn dann die Bilder geladen werden, erscheinen sie von einem anderen
- *    Jahr als rechts im Scrollbalken angezeigt wird. Es wurden die Sets von
- *    1999 geladen, obwohl rechts 1965 steht."
- *
- * Der Grund ist eine Annahme, die niemand ausgesprochen hatte: dass zwischen
- * 1949 und 2027 in jedem Jahr gleich viel läge. Tatsächlich stammt der weitaus
- * grösste Teil des Katalogs aus den letzten Jahrzehnten; wer neun Zehntel
- * hinunterzieht, ist deshalb noch lange nicht bei den Sechzigern.
- *
- * Die Webapp rechnet seither über die tatsächliche VERTEILUNG (js/09-catalog.js
- * → _jahrAnPosition). Hier steht dieselbe Rechnung, Schritt für Schritt gleich,
- * damit beide Oberflächen an derselben Stelle dasselbe Jahr zeigen. Die
- * Verteilung kommt vom Server, weil nur der die Filter kennt.
+ * Die Leiste hängt an der Position, nicht linear am Jahr: Der grösste Teil des
+ * Katalogs stammt aus den letzten Jahrzehnten, wer neun Zehntel hinunterzieht, ist
+ * noch lange nicht bei den Sechzigern — ein lineares Modell zeigte neben geladenen
+ * Sets von 1999 die Zahl 1965. Gerechnet wird über die tatsächliche Verteilung,
+ * Schritt für Schritt wie in der Webapp (js/09-catalog.js → _jahrAnPosition),
+ * damit beide an derselben Stelle dasselbe Jahr zeigen. Die Verteilung kommt vom
+ * Server, weil nur der die Filter kennt.
  */
 object CatalogYearMath {
 
     /**
-     * Anteil (0..1) an der Leiste zu einer Berührung bei y Pixeln.
-     *
-     * Wie in der Webapp (js/15-scrollbar.js → rollen): Der Griff wird mittig
-     * unter den Finger gelegt, dann wird auf die Spur ohne Griffhöhe
-     * umgerechnet.
+     * Anteil (0..1) an der Leiste zu einer Berührung bei y Pixeln. Wie in der Webapp
+     * (js/15-scrollbar.js → rollen): Der Griff liegt mittig unter dem Finger,
+     * umgerechnet wird auf die Spur ohne Griffhöhe.
      */
     fun anteilAus(y: Float, heightPx: Int, thumbHeightPx: Int): Float {
         val spur = (heightPx - thumbHeightPx).coerceAtLeast(1)
@@ -59,16 +44,14 @@ object CatalogYearMath {
     }
 
     /**
-     * Das Jahr, das neben dem Griff steht — in derselben Reihenfolge wie die
-     * Webapp (js/09-catalog.js → _jahrAnPosition):
+     * Das Jahr, das neben dem Griff steht — in derselben Reihenfolge wie die Webapp
+     * (js/09-catalog.js → _jahrAnPosition):
      *
-     *   Erste Wahl:  das Jahr der Kachel, die an dieser Stelle steht. Ist sie
-     *                geladen, ist das die Wahrheit und keine Rechnung.
-     *   Zweite Wahl: die Verteilung. Fuer noch leere Bereiche — dort weiss es
-     *                auch die Webapp nicht besser.
+     *   Erste Wahl:  das Jahr der Kachel an dieser Stelle. Ist sie geladen, ist das die Wahrheit und keine Rechnung.
+     *   Zweite Wahl: die Verteilung, für noch leere Bereiche.
      *
-     * @param geladen liefert das Jahr zu einer laufenden Nummer, oder null,
-     *        wenn diese Stelle noch nicht geladen ist
+     * @param geladen liefert das Jahr zu einer laufenden Nummer, oder null, wenn diese
+     *         Stelle noch nicht geladen ist
      */
     fun jahrFuer(
         anteil: Float, total: Int, verteilung: List<JahrAnzahl>,
@@ -76,18 +59,13 @@ object CatalogYearMath {
     ): Int? = geladen(nummerAus(anteil, total)) ?: jahrAnPosition(anteil, total, verteilung)
 
     /**
-     * Welches Jahr liegt an diesem Anteil der Liste?
+     * Welches Jahr liegt an diesem Anteil der Liste? Wie in der Webapp
+     * (js/09-catalog.js → _jahrAnPosition): Aus dem Anteil wird eine laufende Nummer,
+     * die durch die Verteilung wandert, bis sie in einen Jahrgang fällt.
      *
-     * Wortgleich zur Webapp (js/09-catalog.js → _jahrAnPosition): aus dem
-     * Anteil wird eine laufende Nummer, und die wandert durch die Verteilung,
-     * bis sie in einen Jahrgang fällt.
-     *
-     * `verteilung` enthält KEINE Jahrgänge ohne Jahr — beide Oberflächen
-     * werfen die vorher weg. `total` zählt sie dagegen mit, deshalb kann die
-     * Nummer über das Ende hinauslaufen; dann gilt der letzte Jahrgang. Das
-     * ist dieselbe Abweichung wie in der Webapp und deshalb gewollt: Ein
-     * eigener Sonderweg hier hiesse, dass die beiden an derselben Stelle
-     * verschiedene Jahre zeigen.
+     * `verteilung` enthält keine Sets ohne Jahr, `total` zählt sie mit — läuft die
+     * Nummer über das Ende, gilt der letzte Jahrgang. Dieselbe Abweichung wie in der
+     * Webapp, gewollt: Ein Sonderweg hier zeigte an derselben Stelle ein anderes Jahr.
      *
      * @return das Jahr, oder null wenn es nichts zu zeigen gibt
      */

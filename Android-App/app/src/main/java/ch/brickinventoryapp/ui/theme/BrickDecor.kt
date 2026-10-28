@@ -17,24 +17,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 /**
- * Der Lichtabfall einer lackierten Flaeche — Licht oben, Schatten unten.
- *
- * Dieselben vier Haltepunkte wie `linear-gradient(180deg, …)` in
- * themes/hochglanz.css.
- *
- * ── Warum der Lichtsaum schmaler wurde (Nachtrag 165) ─────────────────────
- *
- * Aus dem Entwurf kamen 0.55 auf 42% der Hoehe. Marco: „In der Android App ist
- * der Glanz zu stark." Er hat recht — auf dem Telefon frisst der breite
- * Weissanteil die Deckelfarbe weg, und die Deckelfarbe IST der Takt dieses
- * Designs (siehe themes/noppe.css). Jetzt 0.34 auf 30%: ein Lichtsaum statt
- * einer Waesche.
- *
- * Die dunkle Haelfte bleibt unveraendert. Sie gibt dem Deckel seine Woelbung
- * und war nie das Problem. Sie stehen hier als Zahlen und nicht in
- * design-tokens.json, weil sie keine FARBE sind: Ein Verlauf aus Weiss- und
- * Schwarzanteilen liegt ueber jeder beliebigen Grundfarbe und gehoert damit
- * nicht in eine Palette.
+ * Der Lichtabfall einer lackierten Fläche — Licht oben, Schatten unten, dieselben
+ * Haltepunkte wie in themes/hochglanz.css. Der Lichtsaum ist schmal (0.34 auf 30
+ * %), damit er auf dem Telefon die Deckelfarbe nicht wegfrisst; sie ist der Takt
+ * des Designs. Zahlen statt design-tokens.json, weil ein Verlauf aus Weiss- und
+ * Schwarzanteilen keine Farbe ist, sondern über jeder Grundfarbe liegt.
  */
 val LackVerlauf = Brush.verticalGradient(
     0.00f to Color.White.copy(alpha = 0.34f),
@@ -44,21 +31,15 @@ val LackVerlauf = Brush.verticalGradient(
 )
 
 /**
- * Die Form EINER Noppe: unten bündig am Deckel, oben rund.
- *
- * Dieselbe Form, die styles.css als Maske führt (`--noppen-form`). Sie steht
- * hier als eigener Wert und nicht dreimal im Baustein, damit beide
- * Oberflächen sie an genau einer Stelle führen.
+ * Die Form einer Noppe: unten bündig am Deckel, oben rund — dieselbe wie
+ * `--noppen-form` in styles.css, an einer Stelle.
  */
 val NoppenForm = RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp)
 
 /**
- * Der Lichtabfall auf der Steinkante — Licht oben, Kante unten.
- *
- * Dieselben Haltepunkte wie `linear-gradient(180deg, …)` fuer `.sc::before` in
- * themes/brick.css. Viel schwaecher als LackVerlauf: Das Stein-Design ist
- * mattes Plastik, kein Lack. Ohne ihn ist die Kante eine Flaeche, mit ihm ein
- * Koerper — und ohne ihn saehe die App wieder anders aus als das Web.
+ * Der Lichtabfall auf der Steinkante, dieselben Haltepunkte wie `.sc::before` in
+ * themes/brick.css. Schwächer als LackVerlauf, weil das Stein-Design mattes
+ * Plastik ist; ohne ihn wäre die Kante eine Fläche.
  */
 val SteinKantenVerlauf = Brush.verticalGradient(
     0.00f to Color.White.copy(alpha = 0.20f),
@@ -67,19 +48,9 @@ val SteinKantenVerlauf = Brush.verticalGradient(
 )
 
 /**
- * Die MASSE einer Noppenreihe — dieselben Zahlen wie im CSS.
- *
- * ── Warum als ein Satz und nicht als fünf Parameter ───────────────────────
- *
- * Die beiden Designs unterscheiden sich in genau diesen Zahlen und in sonst
- * nichts. Einzeln übergeben würden sie an der Aufrufstelle stehen — verteilt
- * über drei Bildschirme, und beim nächsten Nachbessern zieht eine Stelle nicht
- * mit. Als benannter Satz stehen sie einmal, neben der CSS-Datei, aus der sie
- * kommen.
- *
- * Marcos Befund, der dazu geführt hat: Im Stein-Design zeichnete das Web flache
- * KREISE über die ganze Breite, die App vier abgerundete Noppen links. Zwei
- * Oberflächen, zwei Formen, zwei Zahlenreihen.
+ * Die Masse einer Noppenreihe — dieselben Zahlen wie im CSS, als ein Satz: Die
+ * Designs unterscheiden sich genau darin, und verteilt über mehrere Aufrufstellen
+ * zöge beim Nachbessern eine nicht mit.
  */
 data class NoppenMass(
     /** Hoehe der Kante insgesamt — `height` der ::before-Regel im CSS. */
@@ -91,9 +62,9 @@ data class NoppenMass(
     /** Einzug links und rechts — `left`/`right` im CSS. */
     val rand: Dp,
     /**
-     * Abstand von der Oberkante der Kante — `top` im CSS. NEGATIV heisst: Die
-     * Noppen stehen über, wie an einem echten Stein. Dann muss die Reihe
-     * AUSSERHALB der Karte gezeichnet werden (siehe NoppenReihe).
+     * Abstand von der Oberkante der Kante — `top` im CSS. Negativ heisst: Die Noppen
+     * stehen über wie an einem echten Stein; dann wird die Reihe ausserhalb der Karte
+     * gezeichnet (NoppenReihe).
      */
     val oben: Dp,
     /** Füllt die Reihe die ganze Breite? Sonst gelten `anzahl` Stück. */
@@ -115,24 +86,11 @@ data class NoppenMass(
 }
 
 /**
- * Noppen-„Deckel" für Stein-Karten: eine schmale, farbige Leiste mit hellen
- * Noppen links. Wird oben in Karten platziert und über das Karten-Clipping
- * automatisch oben abgerundet.
- *
- * ── Die Form der Noppe (Nachtrag 163) ────────────────────────────────
- *
- * Ein Rechteck mit RUNDER OBERKANTE, oben am Deckel angesetzt — die Noppe von
- * vorn gesehen, so wie sie im Entwurf steht und wie themes/noppe.css sie
- * zeichnet. Vorher standen hier Kreise: Marcos Vorgabe sind einheitliche
- * Ansichten, und ein Kreis in der App neben einer Noppe im Web sind zwei
- * Designs. Die Masse (13 × 6, Radius 4, Abstand 7) sind dieselben wie dort.
- *
- * ── Der Glanz (Nachtrag 162) ────────────────────────────────────────────────
- *
- * Mit `glanz = true` woelbt sich der Deckel: derselbe Lichtabfall wie im Web,
- * und die Noppen werden Kuppen statt heller Scheiben. Als PARAMETER und nicht
- * als zweiter Baustein — es ist derselbe Deckel in einem anderen Material, und
- * zwei Bausteine liefen beim naechsten Nachbessern auseinander.
+ * Noppen-Deckel für Stein-Karten: eine schmale farbige Leiste mit Noppen; das
+ * Karten-Clipping rundet ihn oben ab. Die Noppe ist ein Rechteck mit runder
+ * Oberkante wie in themes/noppe.css (13 × 6, Radius 4, Abstand 7). `glanz` wölbt
+ * den Deckel — ein Parameter statt eines zweiten Bausteins, weil es derselbe
+ * Deckel in anderem Material ist.
  */
 @Composable
 fun BrickStudCap(
@@ -169,18 +127,9 @@ fun BrickStudCap(
 }
 
 /**
- * Nur die Noppen — ohne die Kante darunter.
- *
- * ── Warum das ein eigener Baustein ist (Nachtrag 169) ───────────────────────
- *
- * Marco: „Geht es nicht, dass die Noppen oberhalb des Bereichs sind?" Im Web
- * loest das ein `top:-6px` zusammen mit `overflow:visible` an der Kachel. In
- * Compose gibt es kein `overflow:visible`: Die Material-Card klippt auf ihre
- * Form, und was ueber ihren Rand ragt, ist weg.
- *
- * Deshalb wird die Reihe fuer das Stein-Design NEBEN der Karte gezeichnet und
- * per Offset darueber geschoben. Sie ist damit kein zweiter Deckel, sondern
- * der Teil des einen Deckels, der ausserhalb liegen muss.
+ * Nur die Noppen, ohne Kante: Compose kennt kein `overflow:visible`, und die Card
+ * klippt auf ihre Form. Deshalb wird die Reihe neben der Karte gezeichnet und per
+ * Offset darübergeschoben.
  */
 @Composable
 fun NoppenReihe(
@@ -226,15 +175,9 @@ fun NoppenReihe(
 }
 
 /**
- * Der schraege Lichtstreifen — die Spiegelung auf einer Glasflaeche.
- *
- * ── Wo er liegen darf ───────────────────────────────────────────────────────
- *
- * Auf dem BILDFELD und auf farbigen Flaechen, NICHT auf der ganzen Kachel. Ein
- * weisser Schleier ueber weissem Text ist kein Glanz, sondern Grau: Die erste
- * Fassung des Entwurfs hatte ihn ueber der ganzen Karte, und die Kacheln sahen
- * blasser aus als ohne Glanz statt lackierter. Gesehen hat man das erst im
- * Browser, nicht an den Werten.
+ * Der schräge Lichtstreifen — die Spiegelung auf Glas. Nur auf dem Bildfeld und
+ * auf farbigen Flächen: Über weissem Text wäre ein weisser Schleier Grau statt
+ * Glanz.
  */
 val LichtStreifen = Brush.linearGradient(
     0.20f to Color.White.copy(alpha = 0.00f),

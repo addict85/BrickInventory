@@ -29,32 +29,12 @@ import ch.brickinventoryapp.ui.theme.Formen
 import ch.brickinventoryapp.util.resolveFullUrl
 
 /**
- * Das Detail eines Merklisten-Eintrags.
- *
- * ── Marcos Vorgabe ──────────────────────────────────────────────────────────
- *
- * „Gleich wie der Detail Dialog der Sets aussehen. Ausser dem Kaufpreis."
- *
- * Dieselben Zeilen in derselben Reihenfolge wie im Set-Detail. Was fehlt,
- * fehlt aus einem Grund:
- *
- *     Kaufpreis      ausdruecklich ausgenommen
- *     Anzahl         ein Merkposten hat keine
- *     Lagerort       man kann nichts einlagern, was man nicht hat
- *     Hinzugefuegt   ersetzt durch „auf der Liste seit"
- *     Anleitungen    gehoeren zum Besitz; hier waere die Liste immer leer
- *
- * Was bleibt, bleibt ebenfalls aus einem Grund: Marktpreis und Preisverlauf
- * sind fuer einen MERKPOSTEN das Wichtigste ueberhaupt — man wartet ja auf einen
- * Preis. Gezeichnet werden sie von PriceChart(), derselben Funktion wie im
- * Set-Detail.
- *
- * ── Warum der Merkposten aus der LISTE kommt ────────────────────────────────────
- *
- * Nicht als Parameter durchgereicht und nicht kopiert: Er wird aus dem
- * geladenen Zustand gesucht. Nach dem Loeschen oder Uebernehmen verschwindet
- * er dort, und dieser Bildschirm merkt es — eine Kopie stuende weiter da und
- * zeigte etwas, das es nicht mehr gibt.
+ * Das Detail eines Merkpostens — dieselben Zeilen in derselben Reihenfolge wie das
+ * Set-Detail, ohne was ein Merkposten nicht hat (Kaufpreis, Anzahl, Lagerort,
+ * Anleitungen; „hinzugefügt“ heisst hier „auf der Liste seit“). Marktpreis und
+ * Verlauf zeichnet dieselbe PriceChart(). Der Merkposten wird aus dem geladenen
+ * Zustand gesucht statt kopiert, damit der Bildschirm merkt, wenn er gelöscht oder
+ * übernommen wurde.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -72,23 +52,15 @@ fun MerkpostenDetailScreen(
     val liste    by vm.merklisteState.collectAsStateWithLifecycle()
     val detail   by vm.merkpostenDetailState.collectAsStateWithLifecycle()
     val ctx = LocalContext.current
-    // `stringResource` statt `ctx.getString` im Rueckruf: Lint meldet
-    // LocalContextGetResourceValueCall (Stufe ERROR), weil ein aus
-    // LocalContext.current gegriffener Context nach einem Wechsel der
-    // Konfiguration — Sprache, Dunkelmodus, Drehung — veraltete Werte liefern
-    // kann. Hier geholt, in der Komposition, wo Compose bei einer Aenderung neu
-    // auswertet.
+    // stringResource statt ctx.getString im Rückruf: Ein aus LocalContext gegriffener
+    // Context liefert nach einem Konfigurationswechsel veraltete Werte (Lint
+    // LocalContextGetResourceValueCall).
     val keineAppText = stringResource(R.string.common_no_app_to_open)
     // Derselbe Dialog wie in der Liste, nicht ein zweiter: Anzahl, Kaufpreis
     // und Zustand muessen hier dieselbe Maske sein.
     var uebernahmeOffen by rememberSaveable { mutableStateOf(false) }
-    // Marcos Befund: „Der Zoom in der Merkliste funktioniert nicht,
-    // zumindest nicht in der Android-App." Er hat recht — das Bild war das
-    // einzige Detailbild der App ohne Zoom. Set-Detail und Katalog-Detail
-    // haben ihn seit jeher, die Webapp im Merkposten-Detail ebenfalls
-    // (index.html: data-click="openImageLightboxFromEl" auf mk-m-img).
-    //
-    // rememberSaveable: Wer im Zoom das Telefon dreht, soll darin bleiben.
+    // Zoom wie in Set- und Katalog-Detail und in der Webapp. rememberSaveable: Wer im
+    // Zoom das Telefon dreht, soll darin bleiben.
     var zoomOffen by rememberSaveable { mutableStateOf(false) }
 
     val merkposten = liste.merkposten.firstOrNull {
@@ -115,30 +87,11 @@ fun MerkpostenDetailScreen(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
                     }
                 },
-                // Der Papierkorb steht hier und nicht mehr als Knopf unten.
-                //
-                // ── Warum er umgezogen ist ──────────────────────────────────
-                //
-                // Marcos Befund kam aus der Webapp: „Der Papierkorb im
-                // Detaildialog der Teile ist kleiner als auf den anderen
-                // Detaildialogen." In der App war die Abweichung eine andere,
-                // aber dieselbe Sorte: Set-Detail und Teile-Detail tragen den
-                // Papierkorb seit jeher in der Kopfleiste, dieser Bildschirm
-                // als einziger einen Textknopf ganz unten. Wer aus dem
-                // Set-Detail herkommt, sucht ihn oben.
-                //
-                // Ohne Rueckfrage, wie in der Webapp (16-merkliste.js:
-                // merkpostenDetailLoeschen). Ein Merkposten ist kein Besitz —
-                // versehentlich geloescht, ist er in zwei Griffen wieder da.
-                //
-                // Beschriftung `common_delete` wie am Set- und am
-                // Teile-Detail: Drei Papierkoerbe, die der Bildschirmleser
-                // verschieden ansagt, waeren drei Dinge statt einem.
-                //
-                // `let` statt eines direkten Zugriffs: Hier oben ist der
-                // Merkposten noch nullbar — die Pruefung darauf steht im Rumpf
-                // des Scaffolds, der erst nach der Kopfleiste aufgebaut wird.
-                // Solange nichts geladen ist, gibt es auch nichts zu loeschen.
+                // Der Papierkorb in der Kopfleiste wie in Set- und Teile-Detail — wer von dort
+                // kommt, sucht ihn oben. Ohne Rückfrage wie in der Webapp: Ein Merkposten ist kein
+                // Besitz und schnell wieder eingetragen. Beschriftung `common_delete` wie dort,
+                // damit der Bildschirmleser alle gleich ansagt. `let`, weil der Merkposten hier
+                // oben noch nullbar ist.
                 actions = {
                     merkposten?.let { w ->
                         IconButton(onClick = {
@@ -196,16 +149,10 @@ fun MerkpostenDetailScreen(
                         CatalogDetailRow(stringResource(R.string.wanted_since),
                             ch.brickinventoryapp.util.fmtDatum(merkposten.createdAt) ?: "—")
 
-                        // ── Der Inhaber, AENDERBAR ──────────────────────────
+                        // ── Der Inhaber, änderbar ──
                         //
-                        // Marcos Befund: „Auf dem Detail-Dialog der
-                        // Merkliste kann der Inhaber nicht geaendert werden.
-                        // Auch in der Android-App nicht." Waehlbar war er nur
-                        // beim Erfassen.
-                        //
-                        // Derselbe Waehler wie in den Erfassungsmasken; bei
-                        // einem Einzelkonto blendet er sich selbst aus
-                        // (OwnerPicker: `if (members.size < 2) return`).
+                        // Derselbe Wähler wie in den Erfassungsmasken; bei einem Einzelkonto
+                        // blendet er sich selbst aus.
                         if (blick.householdMembers.size > 1) {
                             Spacer(Modifier.height(Abstaende.klein))
                             OwnerPicker(
@@ -219,13 +166,10 @@ fun MerkpostenDetailScreen(
                 }
             }
 
-            // ── Der Preisalarm, EDITIERBAR ───────────────────────────────────
+            // ── Der Preisalarm, editierbar ──
             //
-            // Marcos Vorgabe. Derselbe Abschnitt wie im Set-Detail, nicht ein
-            // zweiter: Es ist derselbe Eintrag in price_alerts, am selben
-            // Schluessel (Konto, Set, Zustand). /sets/:sn/alert verlangt
-            // keinen Besitz — nachgesehen im Routenrumpf —, also funktioniert
-            // er hier unveraendert.
+            // Derselbe Abschnitt wie im Set-Detail: derselbe Eintrag in price_alerts am selben
+            // Schlüssel, und /sets/:sn/alert verlangt keinen Besitz.
             setDetailAlarmSection(merkposten.setNumber, detail.preisalarme, appState.currency, vm::setzePreisalarm)
 
             item {
@@ -254,15 +198,9 @@ fun MerkpostenDetailScreen(
 
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                    // Marcos Vorgabe: BrickLink und Preisvergleich NEBENEINANDER,
-                    // und darunter mit ABSTAND die Uebernahme. Der groessere
-                    // Abstand ist die ganze Aussage: Oben zwei Wege nach
-                    // draussen, unten die Griffe, die hier etwas veraendern.
-                    //
-                    // `weight(1f)` teilt die Breite gleich auf. Faellt eine der
-                    // beiden Adressen weg, nimmt die andere die ganze Zeile —
-                    // ein halber leerer Streifen waere die schlechtere Antwort
-                    // auf „dafuer gibt es keine Adresse".
+                    // BrickLink und Preisvergleich nebeneinander, darunter mit Abstand die
+                    // Übernahme: oben die Wege nach draussen, unten die Griffe, die etwas
+                    // verändern. Fällt eine Adresse weg, nimmt die andere die ganze Zeile.
                     val adressen = listOfNotNull(
                         detail.katalog?.bricklink?.url?.takeIf { it.isNotBlank() }
                             ?.let { R.string.catalog_buy_bricklink to it },
@@ -327,13 +265,9 @@ fun MerkpostenDetailScreen(
     // Dialogs den letzten Eintrag anderswo loescht, soll keinen Absturz
     // bekommen, sondern nichts.
     if (zoomOffen) merkposten?.let { w ->
-        // Dieselbe Adresse wie das Bild oben, nach denselben Regeln. Neu
-        // berechnet und nicht `bildUrl` weitergereicht: Die steht im
-        // Scaffold-Rumpf, wo `merkposten` nicht mehr nullbar ist — hier draussen
-        // ist es das wieder (siehe der Absatz beim Uebernahme-Dialog).
-        //
-        // Gezeichnet wird er von derselben Stelle wie im Set- und im
-        // Katalog-Detail: ui/components/ZoomableImageDialog.kt.
+        // Dieselbe Adresse wie das Bild oben, hier neu berechnet, weil `merkposten`
+        // ausserhalb des Scaffold-Rumpfs wieder nullbar ist. Gezeichnet von
+        // ui/components/ZoomableImageDialog.kt wie in Set- und Katalog-Detail.
         val zoomUrl = resolveFullUrl(appState.serverUrl,
             detail.katalog?.imageLocal ?: w.imageLocal, w.imageUrl)
         if (zoomUrl != null) {

@@ -307,11 +307,9 @@ private fun ZoomLeiste(zoom: Float, setzeZoom: (Float) -> Unit, modifier: Modifi
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier
-            // Farben aus dem Farbschema, nicht Schwarz mit Alpha: Der Hintergrund
-            // dahinter ist surfaceVariant, und im Dunkelmodus waere ein
-            // schwarzes Plaettchen darauf unsichtbar. surface/onSurfaceVariant
-            // ist das Paar, fuer das Material3 den Kontrast in BEIDEN Modi
-            // zusichert.
+            // Farben aus dem Farbschema, nicht Schwarz mit Alpha: Dahinter liegt
+            // surfaceVariant, und im Dunkelmodus wäre ein schwarzes Plättchen unsichtbar. Für
+            // surface/onSurfaceVariant sichert Material3 den Kontrast in beiden Modi zu.
             .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.92f), shape = Formen.chip)
             .padding(horizontal = Abstaende.winzig)
     ) {
@@ -439,11 +437,9 @@ private fun PdfPages(
                         platz.place(0, 0)
                     }
                 }
-                // Reihenfolge: transformable steht HINTER horizontalScroll und
-                // ist damit das tiefere Glied — es sieht die Bewegung zuerst.
-                // Andersherum koennte das waagerechte Rollen eine Zwei-Finger-
-                // Geste fuer sich beanspruchen, deren Finger auseinandergehen,
-                // und der Zoom kaeme nie zum Zug.
+                // Reihenfolge: transformable steht hinter horizontalScroll und sieht die Bewegung
+                // zuerst. Andersherum könnte das waagerechte Rollen eine Zwei-Finger-Geste für
+                // sich beanspruchen, und der Zoom käme nie zum Zug.
                 .horizontalScroll(waagrecht)
                 .transformable(state = geste, canPan = { false })
                 .pointerInput(Unit) {
@@ -657,11 +653,9 @@ private suspend fun downloadPdfWithResume(
         .retryOnConnectionFailure(true)
         .build()
 
-    // Der laufende Download schreibt in `<name>.part`; erst der Abschluss
-    // benennt um. Warum das der Kern des Fehlers war, steht in
-    // util/PdfCache.kt — kurz: Ohne diese Trennung ist eine FERTIGE Datei von
-    // einem abgebrochenen Download nicht zu unterscheiden, und der Viewer
-    // fragte nach einem Bereich hinter dem Dateiende.
+    // Der laufende Download schreibt in `<name>.part`; erst der Abschluss benennt um.
+    // Ohne diese Trennung wäre eine fertige Datei nicht von einer abgebrochenen zu
+    // unterscheiden (siehe util/PdfCache.kt).
     val teil = File(dest.path + ".part")
 
     val maxAttempts = 8
@@ -689,11 +683,7 @@ private suspend fun downloadPdfWithResume(
                         // Server unterstützt Range → 206; ignoriert Range → 200 (neu starten).
                         val resuming = resp.code == 206 && ab > 0
                         if (ab > 0 && !resuming) teil.delete()
-                        // Kein `?:`: `resp.body` ist seit OkHttp 5 nicht
-                        // nullbar. Damit war nicht nur der Elvis-Operator
-                        // ueberfluessig, sondern auch der Parameter `leerText`
-                        // und die Zeichenkette dahinter — eine Meldung fuer
-                        // einen Fall, den es nicht mehr geben kann.
+                        // Kein `?:`: `resp.body` ist seit OkHttp 5 nicht nullbar.
                         val body = resp.body
                         val total: Long = if (resuming) {
                             resp.header("Content-Range")?.substringAfterLast('/')?.toLongOrNull()

@@ -24,25 +24,15 @@ import ch.brickinventoryapp.ui.theme.Abstaende
 import kotlinx.coroutines.launch
 
 /**
- * Das eigene Konto: Profil und Passwort.
- *
- * ── Warum es das in der App erst jetzt gibt (Nachtrag 127) ──────────────────
- *
- * Nicht, weil der Server es nicht koennte: /auth/profile und
- * /auth/change-password gibt es seit jeher. Sie hingen an einem Waechter, der
- * ausschliesslich die Browser-Sitzung kannte — und die App hat keine, sie
- * weist sich mit einem Bearer-Token aus. Fuenf weitere „fehlende Funktionen"
- * der App hatten dieselbe Ursache.
+ * Das eigene Konto: Profil und Passwort. Über /auth/profile und
+ * /auth/change-password, die auch das Bearer-Token der App annehmen.
  */
 @Composable
 internal fun KontoCard(
-    // `kontoZustand`, nicht `zustand`: In DIESER Datei ist `zustand` schon
-    // vergeben — GeraeteCard nimmt einen Parameter dieses Namens vom Typ
-    // GeraeteUiState. Fuer den Compiler ist das unproblematisch (getrennte
-    // Gueltigkeitsbereiche), fuer UiStateFieldsTest nicht: Der bestimmt den Typ
-    // je Name und DATEI und meldete prompt sechs angeblich fehlende Felder.
-    // Dieselbe Falle steht zweimal im Kopf dieser Datei beschrieben — und ich
-    // bin trotzdem hineingelaufen.
+    // `kontoZustand`, nicht `zustand`: In dieser Datei nimmt GeraeteCard einen
+    // Parameter `zustand` vom Typ GeraeteUiState. Der Compiler trennt die
+    // Gültigkeitsbereiche, UiStateFieldsTest bestimmt den Typ aber je Name und Datei
+    // und hielte die Felder für fehlend.
     kontoZustand: ch.brickinventoryapp.ui.KontoUiState,
     onSpeichern: (String, String, String, String, String?) -> Unit,
     onPasswort: (String, String) -> Unit,
@@ -146,12 +136,9 @@ internal fun KontoCard(
                 value = pwNeu, onValueChange = { pwNeu = it },
                 label = { Text(stringResource(R.string.konto_password_new)) },
                 visualTransformation = PasswordVisualTransformation(),
-                // Dieselbe Mindestlaenge wie im Server (PASSWORT_MIN_ZEICHEN in
-                // utils/auth.ts) und in der Webapp. Hier vorweggenommen, damit
-                // man dafuer nicht erst eine Runde ueber das Netz braucht.
-                //
-                // Die Zahl stand in dieser Ansicht dreimal und im
-                // Registrierformular ein viertes Mal — jetzt in util/Passwort.kt.
+                // Dieselbe Mindestlänge wie im Server (PASSWORT_MIN_ZEICHEN in utils/auth.ts) und
+                // in der Webapp, aus util/Passwort.kt. Hier vorweggenommen, damit man dafür keine
+                // Runde über das Netz braucht.
                 supportingText = if (pwNeu.isNotEmpty() && passwortZuKurz(pwNeu)) {
                     { Text(stringResource(R.string.register_password_short)) }
                 } else null,
@@ -292,22 +279,13 @@ internal fun ZweiterFaktorCard(
 /**
  * Angemeldete Geräte: die ausgestellten Zugänge sehen und aussperren.
  *
- * ── Warum der eigene Zugang keinen Knopf hat ────────────────────────────────
- * Der Server markiert die Zeile, mit der GERADE gefragt wird. Wer sie
- * entwertet, meldet sich selbst ab — ohne dass ein Mülleimer-Symbol das sagt.
- * Für „dieses Gerät abmelden" gibt es den Abmelden-Knopf am Ende der Seite;
- * er benennt, was er tut.
+ * Der eigene Zugang hat keinen Knopf: Der Server markiert die Zeile, mit der
+ * gerade gefragt wird, und wer sie entwertet, meldet sich selbst ab. Dafür gibt es
+ * den Abmelden-Knopf am Ende der Seite, der benennt, was er tut.
  *
- * ── Datumsangaben über fmtDatum(), nicht selbst gebaut ─────────────────────
- * Der Server liefert ISO-Zeitstempel. `iso.take(10)` wäre die dritte Fassung
- * derselben Umwandlung im Baum gewesen; die ersten beiden sind in
- * util/DatumFormat.kt zusammengelegt worden, weil eine davon bei Zeitstempeln
- * OHNE Millisekunden still null ergab (siehe DatumFormatTest). Genau solche
- * Zeitstempel liefert api_tokens.
- *
- * „Nie benutzt" bekommt einen eigenen Text statt eines leeren Feldes —
- * `new Date(null)` wäre der 1.1.1970, und ein leeres Feld sieht aus wie ein
- * Fehler.
+ * Datumsangaben über fmtDatum(), weil api_tokens Zeitstempel ohne Millisekunden
+ * liefert und die gemeinsame Fassung damit umgeht (DatumFormatTest). „Nie benutzt“
+ * bekommt einen eigenen Text — ein leeres Feld sähe aus wie ein Fehler.
  */
 @Composable
 internal fun GeraeteCard(

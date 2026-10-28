@@ -33,36 +33,20 @@ import ch.brickinventoryapp.util.rememberTileImageWithFallback
 import ch.brickinventoryapp.ui.theme.Abstaende
 
 /**
- * Detail-Dialog fuer ein Teil / eine Figur AUS EINEM SET.
+ * Detail-Dialog für ein Teil / eine Figur aus einem Set: Bild mit Zoom und die
+ * Sets, die es verwenden, mit Link zum Set-Detail.
  *
- * ── Marcos Wunsch ──────────────────────────────────────────────────────────
- * „Auch die automatisch erfassten Teile und Minifiguren sollen einen
- * Detail-Dialog inkl. Zoom haben. Der Marktpreis kann weggelassen werden. Die
- * Anzahl soll nicht geaendert werden koennen. Dafuer soll angezeigt werden,
- * welche Sets dieses Teil und Minifigur verwenden — inkl. Link, um den
- * Detail-Dialog des Sets oeffnen zu koennen."
+ * Was er bewusst nicht hat: • Keinen Marktpreis — gewünscht ohne. • Keine
+ * Mengenwahl. Die Zahl entsteht aus den Inventaren der Sets; eine Änderung
+ * verschwände beim nächsten Abgleich. • Keinen Löschknopf. Ein Teil aus einem Set
+ * verschwindet mit dem Set, nicht einzeln.
  *
- * Bis hierher war die Kachel eines Teils aus einem Set TOT: kein Bild in
- * voller Groesse, keine Angabe, aus welchem Set es stammt. Manuell erfasste
- * Teile hatten laengst einen Dialog.
- *
- * ── Was er NICHT hat, und warum ────────────────────────────────────────────
- *  • Keinen Marktpreis — Marcos Vorgabe.
- *  • Keine Mengenwahl. Die Zahl entsteht aus den Inventaren der Sets; sie hier
- *    zu aendern hiesse, etwas zu behaupten, das beim naechsten Abgleich wieder
- *    verschwindet.
- *  • Keinen Loeschknopf. Ein Teil aus einem Set loescht man nicht einzeln — es
- *    verschwindet mit dem Set. Der Knopf saesse fuer eine Handlung da, die es
- *    nicht gibt.
- *
- * ── Gegenstueck in der Webapp ──────────────────────────────────────────────
- * public/js/13-acquisition-modals.js, openSetItemDetail(). Beide zeigen
- * dasselbe in derselben Reihenfolge und holen es von derselben Adresse
+ * Gegenstück in der Webapp: public/js/13-acquisition-modals.js,
+ * openSetItemDetail() — dieselbe Reihenfolge, dieselbe Adresse
  * (/v1/parts/:nr/:farbe/sets bzw. /v1/minifigs/:nr/sets).
  *
- * @param onOpenSet Oeffnet das Set-Detail. Bleibt Parameter, weil nur der
- *        Navigationsgraph den NavController kennt — dieselbe Bauart wie
- *        `onOpenDetail` in PartsScreen.
+ * @param onOpenSet Öffnet das Set-Detail. Parameter, weil nur der Navigationsgraph
+ *         den NavController kennt — wie `onOpenDetail` in PartsScreen.
  */
 @Composable
 fun SetItemDetailDialog(
@@ -84,12 +68,9 @@ fun SetItemDetailDialog(
     }
     if (!zustand.offen) return
 
-    // rememberSaveable, nicht remember: Der geoeffnete Zoom ist eine
-    // Entscheidung des Nutzers und muss eine Drehung ueberstehen — so
-    // halten es die drei uebrigen Zoom-Stellen (SetDetailScreen,
-    // ManualItemDetailScreen, CatalogDetailScreen) auch. Gemeldet hat das
-    // BildschirmZustandTest; hier stand als einziger Stelle im Baum noch
-    // das blosse remember.
+    // rememberSaveable, nicht remember: Der geöffnete Zoom ist eine Entscheidung des
+    // Nutzers und muss eine Drehung überstehen — wie an den übrigen Zoom-Stellen
+    // (BildschirmZustandTest).
     var zeigeZoom by rememberSaveable { mutableStateOf(false) }
     // stringResource() geht nur ausserhalb des LazyColumn-Rumpfs — dort ist
     // kein Composable-Kontext fuer jedes Element noetig, und einmal lesen
@@ -158,24 +139,13 @@ fun SetItemDetailDialog(
                         if (kopf?.isSpare == true) {
                             SetItemZeile(stringResource(R.string.parts_spare_tag), "✓")
                         }
-                        // ── Lagerort ────────────────────────────────────────
+                        // ── Lagerort ──
                         //
-                        // Nur fuer Teile, nicht fuer Figuren (kopf.colorId
-                        // ist bei Figuren null): Eine Minifigur steckt in
-                        // ihrem Set, und dessen Ort steht im Set-Detail. Ein
-                        // zweiter Ort fuer dieselbe Sache waere eine Stelle,
-                        // an der zwei Antworten auseinanderlaufen koennen.
-                        //
-                        // Bearbeitbar wie in der Webapp: Das Feld schreibt auf
-                        // ALLE Zeilen dieses Teil-Farb-Paares.
-                        //
-                        // Die Auswahlliste gehoert dem BESITZER, wie beim Set:
-                        // Der Kopf fuehrt seine Konten jetzt selbst mit
-                        // (owner_ids), verdichtet aus denselben Zeilen wie die
-                        // Set-Liste darunter. Hier stand einmal die eigene
-                        // Liste — als einzige Stelle im Baum, und nicht aus
-                        // Absicht, sondern weil der Kopf die Besitzer nicht
-                        // kannte.
+                        // Nur für Teile (kopf.colorId ist bei Figuren null): Eine Minifigur steckt
+                        // in ihrem Set, dessen Ort im Set-Detail steht — ein zweiter Ort könnte
+                        // auseinanderlaufen. Bearbeitbar wie in der Webapp; das Feld schreibt auf
+                        // alle Zeilen dieses Teil-Farb-Paares. Die Auswahlliste gehört dem Besitzer
+                        // wie beim Set: Der Kopf führt seine Konten mit (owner_ids).
                         if (kopf != null && kopf.colorId != null) {
                             Row(Modifier.fillMaxWidth().padding(vertical = Abstaende.haar),
                                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -211,27 +181,12 @@ fun SetItemDetailDialog(
                             // nicht mehr schliessen.
                             LazyColumn(Modifier.fillMaxWidth().heightIn(max = 220.dp)) {
                                 items(zustand.sets, key = { it.setNumber + "-" + it.ownerUserId }) { s ->
-                                    // ── Bild, Nummer, Bezeichnung, Menge ────
+                                    // ── Bild, Nummer, Bezeichnung, Menge ──
                                     //
-                                    // Marcos Vorgabe fuer beide Oberflaechen:
-                                    // erst das kleine Bild, dann die Nummer,
-                                    // dann der Name — „so wie im Reiter
-                                    // Finanzen". Genau diese Zeile GIBT es
-                                    // schon: TabellenZeile, die gemeinsame
-                                    // Fassung fuer die Tabellenansicht der
-                                    // Teile und der Figuren.
-                                    //
-                                    // Hier stand zuerst ein eigener Row mit
-                                    // AsyncImage. Er sah nur fast gleich aus
-                                    // und hatte zwei Fehler, die das Bauteil
-                                    // nicht hat: einen festen Eckenradius
-                                    // (DesignTokensTest, Lauf 128 rot) und
-                                    // keinen Rueckfall auf die volle
-                                    // Aufloesung, wenn es kein Vorschaubild
-                                    // gibt — den hat die Webapp ueber
-                                    // data-orig. Zwei Fassungen derselben
-                                    // Zeile sind genau das, wogegen
-                                    // TabellenZeile gebaut wurde.
+                                    // Erst das kleine Bild, dann Nummer, dann Name — wie im Reiter
+                                    // Finanzen. Dafür gibt es TabellenZeile; eine eigene Zeile
+                                    // hätte festen Eckenradius und keinen Rückfall auf die volle
+                                    // Auflösung ohne Vorschaubild.
                                     val (bildUrl, onBildFehler) =
                                         rememberTileImageWithFallback(serverUrl, s.imageLocal, s.imageUrl)
                                     TabellenZeile(
@@ -241,11 +196,9 @@ fun SetItemDetailDialog(
                                         menge = s.quantity,
                                         imageLoader = imageLoader,
                                         onBildFehler = onBildFehler,
-                                        // onClickLabel sagt der Sprachausgabe,
-                                        // was das Antippen TUT — ohne das liest
-                                        // sie nur die Setnummer vor. In der
-                                        // Webapp steht derselbe Text als
-                                        // title-Attribut.
+                                        // onClickLabel sagt der Sprachausgabe, was das Antippen tut
+                                        // — ohne liest sie nur die Setnummer vor. In der Webapp
+                                        // steht derselbe Text als title-Attribut.
                                         onClickLabel = oeffneLabel,
                                         onClick = {
                                             // Erst schliessen, dann oeffnen:

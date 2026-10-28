@@ -24,43 +24,19 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 
 /**
- * Die Unterseiten der Einstellungen.
+ * Die Unterseiten der Einstellungen. Die Einstellungen zeigen eine Liste, und jede
+ * Rubrik hat ihre eigene Seite mit Titel und Zurück-Pfeil: Vierzehn Karten
+ * untereinander gaben dem Seltenen (einmal die Währung setzen) so viel Platz wie
+ * dem Häufigen, und eine Seite, die eine Sache zeigt, kann ihr Luft geben.
  *
- * ── Marcos Befund vom 16.10. ────────────────────────────────────────────────
- *
- *   „Die Abstände in der Android-App in den Einstellungen sind teilweise nicht
- *    vorhanden. Die Elemente sind zu nahe an einander. Generell wirkt dieser
- *    Dialog überladen und nicht liebevoll gestaltet. Kannst du dies besser
- *    machen? Evtl. Auch Elemente aus den Einstellungen in eine eigene Sicht
- *    verschieben?"
- *
- * Er hatte recht, und zwar zweifach. Die Einstellungen trugen VIERZEHN Karten
- * untereinander — Gutscheine, Währung, Erfassungs-Zustand, Preisgrundlage,
- * Sprache, Melde-Schalter, Preisalarme, Lagerorte, Haushalt, Konto,
- * CSV-Import, Geräte, Server, Aktualisierung — und jede davon ist für sich ein
- * kleiner Bildschirm. Untereinandergelegt ergeben sie eine Rolle von mehreren
- * Metern, auf der das Seltene (einmal die Währung setzen) genauso viel Platz
- * einnimmt wie das Häufige.
- *
- * Jetzt steht in den Einstellungen eine LISTE, und was dahinter liegt, hat
- * seine eigene Seite mit eigenem Titel und Zurück-Pfeil. Das ist nicht bloss
- * Aufräumen: Eine Seite, die eine Sache zeigt, kann ihr auch Platz geben.
- *
- * ── Warum die Karten UMGEZOGEN und nicht neu gebaut sind ────────────────────
- *
- * Die Karten liegen je Rubrik in Einstellungen*.kt (Alarme, Lagerorte,
- * Haushalt, Konto, Csv) und stehen zeichengleich so da, wie sie in
- * SettingsScreen.kt standen. Sie tragen Jahre von Marcos Nachbesserungen in
- * ihren Kommentaren; sie „bei der Gelegenheit" neu zu schreiben hiesse, diese
- * Entscheidungen noch einmal treffen zu müssen — und diesmal ohne den Anlass
- * zu kennen. Geändert hat sich ihr ORT, nicht ihr Inhalt.
+ * Die Karten liegen je Rubrik in Einstellungen*.kt (Alarme, Lagerorte, Haushalt,
+ * Konto, Csv) und sind umgezogen, nicht neu gebaut — sie tragen Entscheidungen,
+ * die man sonst ohne ihren Anlass neu treffen müsste.
  */
 
 /**
- * Der Rahmen jeder Unterseite.
- *
- * Titel, Zurück-Pfeil, und darunter der Inhalt mit Luft: ein Abstand zwischen
- * den Karten statt der 10 dp, die vorher zwischen vierzehn Karten standen.
+ * Der Rahmen jeder Unterseite: Titel, Zurück-Pfeil, darunter der Inhalt mit einem
+ * Abstand zwischen den Karten.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -71,16 +47,12 @@ private fun Unterseite(
     inhalt: @Composable ColumnScope.() -> Unit,
 ) {
     Scaffold(
-        // ── Warum die Unterseite ihren eigenen Snackbar-Halter braucht ──────
+        // ── Eigener Snackbar-Halter ──
         //
-        // Die Meldungen der App laufen ueber EINEN Fluss (vm.snackbar), und
-        // AppNavigation zeigt sie auf dem `snackbarHostState`. Der HALTER
-        // dafuer steht aber im Reiter-Geruest — und das ist hier nicht in der
-        // Komposition. Ohne diese Zeile gingen „Gutschein gespeichert",
-        // „250 CHF" und jede Absage der Guthaben-Abfrage still verloren.
-        // GEMESSEN am Aufbau, nicht vermutet: SetDetailScreen und die anderen
-        // Detailseiten zeigen gar keine Snackbars, deshalb ist es dort nie
-        // aufgefallen.
+        // Die Meldungen laufen über einen Fluss (vm.snackbar), und AppNavigation zeigt sie
+        // auf `snackbarHostState`; der Halter dafür steht im Reiter-Gerüst, das hier nicht
+        // in der Komposition ist. Ohne diese Zeile gingen „Gutschein gespeichert“, „250
+        // CHF“ und jede Absage der Guthaben-Abfrage still verloren.
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
@@ -106,13 +78,9 @@ private fun Unterseite(
 }
 
 /**
- * Gutscheine.
- *
- * Marcos Vorgabe von damals — „möglichst einfach erreichbar" — ist durch den
- * Umzug nicht verletzt, sondern eingelöst: Die Karte stand bisher GANZ OBEN in
- * einer sehr langen Rolle, weil sie im Laden gebraucht wird. Jetzt ist sie der
- * erste Eintrag der Liste und einen Fingertipp entfernt, ohne dass man an ihr
- * vorbeirollen muss, wenn man etwas anderes sucht.
+ * Gutscheine — der erste Eintrag der Liste, weil sie im Laden gebraucht werden:
+ * einen Fingertipp entfernt, ohne dass man an ihnen vorbeirollt, wenn man etwas
+ * anderes sucht.
  */
 @Composable
 fun GutscheineUnterseite(
@@ -120,13 +88,10 @@ fun GutscheineUnterseite(
     snackbarHostState: SnackbarHostState,
     onZurueck: () -> Unit,
 ) {
-    // `gutscheinZustand` und nicht `zustand`: UiStateFieldsTest bestimmt den
-    // Typ eines Namens je DATEI, und in dieser steht weiter unten
-    // GeraeteCard(zustand: GeraeteUiState). Mit dem kurzen Namen hielt die
-    // Pruefung jedes `zustand.geraete` dort fuer einen Feldzugriff auf
-    // GutscheinUiState und meldete fuenf Felder, die es „nicht gibt".
-    // GEMESSEN, nicht vermutet: genau daran war der erste CI-Lauf dieses
-    // Umbaus rot (534 Tests, einer rot).
+    // `gutscheinZustand` und nicht `zustand`: UiStateFieldsTest bestimmt den Typ eines
+    // Namens je Datei, und weiter unten steht GeraeteCard(zustand: GeraeteUiState).
+    // Mit dem kurzen Namen hielte die Prüfung jedes `zustand.geraete` für einen
+    // Feldzugriff auf GutscheinUiState.
     val gutscheinZustand by gvm.state.collectAsStateWithLifecycle()
     // Die Zwischenablage kommt aus Compose und nicht aus dem ViewModel: Sie
     // ist an die Komposition gebunden. Die Rueckmeldung laeuft ueber den
@@ -159,12 +124,9 @@ fun GutscheineUnterseite(
 }
 
 /**
- * Preisalarme — die Uebersicht UND der Melde-Schalter.
- *
- * Die beiden standen als zwei Karten untereinander und hiessen „Preisalarm"
- * und „🔔 Preisalarme". Auf einem Bildschirmfoto sind das zwei Rubriken mit
- * praktisch demselben Namen; hier ist es eine Seite mit zwei Abschnitten, und
- * der Schalter steht dort, wo man ihn sucht: bei den Alarmen.
+ * Preisalarme — die Übersicht und der Melde-Schalter auf einer Seite: zwei Karten
+ * mit fast demselben Namen wären zwei Rubriken, und der Schalter steht dort, wo
+ * man ihn sucht.
  */
 @Composable
 fun PreisalarmeUnterseite(

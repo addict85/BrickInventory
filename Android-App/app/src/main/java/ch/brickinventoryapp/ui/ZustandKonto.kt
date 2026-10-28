@@ -3,19 +3,10 @@ package ch.brickinventoryapp.ui
 import ch.brickinventoryapp.data.model.*
 
 /**
- * Das eigene Konto im Einstellungs-Bildschirm — eigener Zustand.
- *
- * Aus demselben Grund wie AnmeldeUiState darunter: AppUiState steht bei 14 von
- * 15 erlaubten Feldern (ZustandsflussBreiteTest), und Profil und
- * Passwortwechsel liest genau EIN Bildschirm.
- *
- * Was hier NICHT steht, ist ein Feld „abgemeldet". Ein erfolgreicher
- * Passwortwechsel meldet die App ab — der Server verwirft dabei alle Zugaenge
- * des Kontos, auch den dieser Anfrage. Der erste Entwurf merkte sich das hier;
- * gelesen haette es nie jemand, weil logout() im selben Zug alle Fluesse
- * zuruecksetzt und der Anmeldebildschirm erscheint. Die Erklaerung dafuer geht
- * deshalb in den Snackbar, der das ueberlebt. (Gefunden von der Regel „kein
- * Feld ohne Leser".)
+ * Das eigene Konto in den Einstellungen — eigener Zustand, weil nur ein Bildschirm
+ * Profil und Passwortwechsel liest. Kein Feld „abgemeldet“: Ein Passwortwechsel
+ * meldet ab, logout() setzt alle Flüsse zurück; die Erklärung geht in die
+ * Snackbar, die das überlebt.
  */
 data class KontoUiState(
     val laedt: Boolean = false,
@@ -40,12 +31,9 @@ data class ZweiterFaktorUiState(
 )
 
 /**
- * Die ausgestellten Zugänge dieses Kontos — „Angemeldete Geräte".
- *
- * Eigener Fluss und nicht Teil von AppUiState: Die Liste wird nur in den
- * Einstellungen gebraucht, hat eigene Zwischenstände (lädt, Fehler) und würde
- * sonst jeden Reiter neu zeichnen lassen. Dieselbe Überlegung wie bei
- * HouseholdUiState darüber.
+ * Die ausgestellten Zugänge dieses Kontos („Angemeldete Geräte“) — eigener Fluss:
+ * nur in den Einstellungen gebraucht, mit eigenen Zwischenständen, die sonst jeden
+ * Reiter neu zeichnen liessen.
  */
 data class GeraeteUiState(
     val laedt: Boolean = false,
@@ -69,16 +57,9 @@ data class HouseholdUiState(
 )
 
 /**
- * Das Server-Protokoll — eigener Zustand fuer Verwalter.
- *
- * Es liest genau EIN Bildschirm, und fuer die meisten Nutzer ist es nie
- * sichtbar. In AppUiState laege es sechzehn Dateien im Weg, die es nie lesen
- * (ZustandsflussBreiteTest).
- *
- * Hier standen zusaetzlich die Felder der Nutzerverwaltung (`kontenLaden`,
- * `konten`). Sie sind auf Marcos Entscheidung entfallen — Konten verwaltet man
- * am Rechner (Nachtrag 129). Der Name der Klasse bleibt: Sie traegt, was ein
- * Verwalter in der App sieht.
+ * Das Server-Protokoll — eigener Zustand für Verwalter: Es liest genau ein
+ * Bildschirm. Der Name bleibt, weil die Klasse trägt, was ein Verwalter in der App
+ * sieht.
  */
 data class VerwaltungUiState(
     val protokollLaden: Boolean = false,
@@ -89,22 +70,10 @@ data class VerwaltungUiState(
 )
 
 /**
- * Eine CSV-Datei hochladen — eigener Zustand.
- *
- * ── Warum die App das erst jetzt kann (Nachtrag 128) ────────────────────────
- *
- * Sie hat CSV-Importe bisher nur BEOBACHTET: Der Fortschrittsbalken
- * (CsvImportUiState) haengt an einem Ereigniskanal des Servers und zeigt, was
- * jemand anderes gestartet hat — in aller Regel die Webapp. Starten konnte die
- * App keinen, und zwar aus zwei Gruenden: Es fehlte die Dateiauswahl, und die
- * drei Adressen lagen hinter einem Waechter, der nur Browser-Sitzungen kannte
- * (Nachtrag 127).
- *
- * Das hier ist der HOCHLADE-Vorgang, nicht der Import-Fortschritt. Die beiden
- * sind bewusst getrennt: Das Hochladen dauert Sekunden und endet mit einer
- * Zahl; der Import danach laeuft auf dem Server weiter und meldet sich ueber
- * den bestehenden Kanal. Sie in ein Feld zu legen hiesse, zwei Vorgaenge mit
- * verschiedener Lebensdauer denselben Fortschritt teilen zu lassen.
+ * Eine CSV-Datei hochladen — getrennt vom Import-Fortschritt (CsvImportUiState):
+ * Das Hochladen dauert Sekunden und endet mit einer Zahl, der Import läuft danach
+ * auf dem Server weiter und meldet sich über seinen Kanal. Zwei Vorgänge mit
+ * verschiedener Lebensdauer teilen keinen Fortschritt.
  */
 data class CsvHochladenUiState(
     val laeuft: Boolean = false,
@@ -115,10 +84,8 @@ data class CsvHochladenUiState(
 )
 
 /**
- * CSV-Import-Fortschritt — bewusst vom Haupt-State getrennt: Während eines
- * Imports wird dieser Zustand alle 1.5s aktualisiert. Als Teil des grossen
- * AppUiState hätte jedes Update die gesamte App rekomponiert; als eigener
- * Flow rekomponiert nur die Stelle, die ihn tatsächlich sammelt (Banner).
+ * CSV-Import-Fortschritt — eigener Fluss, weil er während eines Imports alle 1.5 s
+ * wechselt; so zeichnet nur der Banner neu.
  */
 data class CsvImportUiState(
     val running: Boolean = false,
@@ -131,17 +98,10 @@ data class CsvImportUiState(
 )
 
 /**
- * Selbstaktualisierung aus dem GitHub-Release (util/AppUpdate.kt).
- *
- * ── Warum „gefunden" und „geladen" zwei Felder sind ─────────────────────────
- * Marcos Vorgabe: beim Start still PRUEFEN, aber nie von allein LADEN. Beides
- * in ein Feld zu legen hiesse, den Unterschied zu verlieren, auf dem diese
- * Vorgabe beruht — und ein Fortschrittsbalken, der bei jedem Start von selbst
- * anspringt, waere genau das, was nicht sein soll.
- *
- * `geprueft` unterscheidet „noch nicht nachgesehen" von „nachgesehen, nichts
- * Neues". Ohne das Feld saehe der Knopf in beiden Faellen gleich aus, und wer
- * ihn drueckt, bekaeme keine Rueckmeldung, dass etwas geschehen ist.
+ * Selbstaktualisierung aus dem GitHub-Release (util/AppUpdate.kt). „Gefunden“ und
+ * „geladen“ sind zwei Felder, weil beim Start nur geprüft und nie von allein
+ * geladen wird. `geprueft` unterscheidet „noch nicht nachgesehen“ von „nichts
+ * Neues“, damit der Knopf eine Rückmeldung gibt.
  */
 data class UpdateUiState(
     val laedtPruefung: Boolean = false,
@@ -156,28 +116,18 @@ data class UpdateUiState(
     /** Fehlt die Systemerlaubnis „Apps aus unbekannten Quellen"? */
     val erlaubnisFehlt: Boolean = false,
     /**
-     * Hat der Nutzer den Hinweis beim Start weggeklickt?
-     *
-     * Gilt fuer DIESEN App-Lauf, nicht dauerhaft. Wer „Spaeter" waehlt, soll
-     * nicht beim naechsten Reiterwechsel dieselbe Frage bekommen — beim
-     * naechsten START aber schon wieder, sonst waere die Meldung genauso leicht
-     * zu uebersehen wie der Punkt, den sie ersetzt. Der Punkt am Konto-Symbol
-     * bleibt in der Zwischenzeit stehen.
+     * Hat der Nutzer den Hinweis beim Start weggeklickt? Gilt für diesen App-Lauf:
+     * nicht bei jedem Reiterwechsel wieder fragen, beim nächsten Start aber schon. Der
+     * Punkt am Konto-Symbol bleibt stehen.
      */
     val dialogAbgelehnt: Boolean = false,
     val fehler: String? = null,
 )
 
 /**
- * Alle Preisalarme des Kontos — die Uebersicht in den Einstellungen.
- *
- * Marcos Frage vom 25.09.: „Wie finde ich alle Preisalarme?" Bis dahin: gar
- * nicht. Ein Alarm war nur im Detaildialog SEINES Sets zu sehen — man musste
- * das Set also schon gefunden haben.
- *
- * `geladen` und nicht nur eine leere Liste: „noch nicht abgerufen" und „keine
- * gesetzt" sehen sonst gleich aus, und die Rubrik behauptete beim Aufbau
- * kurz, es gebe keine Alarme.
+ * Alle Preisalarme des Kontos — die Übersicht in den Einstellungen. `geladen`
+ * statt nur einer leeren Liste: Sonst behauptete die Rubrik beim Aufbau kurz, es
+ * gebe keine Alarme.
  */
 data class AlarmUebersichtUiState(
     val alarme: List<ch.brickinventoryapp.data.model.Preisalarm> = emptyList(),

@@ -15,32 +15,17 @@ import com.google.mlkit.vision.common.InputImage
 import java.util.concurrent.Executors
 
 /**
- * Der Bildanalyse-Teil des Barcode-Scanners.
- *
- * ── Warum eigene Datei (Nachtrag 99) ────────────────────────────────────────
- *
- * `CameraPreviewBarcode()` war 289 Zeilen und tat zwei völlig verschiedene
- * Dinge: eine ImageAnalysis-Schleife aufbauen (Barcode-Leser, Texterkennung,
- * Bestätigungszählung, Drosselung) und daneben die Kamera-Vorschau in die
- * Compose-Welt einbetten.
- *
- * Nur das erste ist Bildverarbeitung; das zweite ist Einbettung von
- * Android-Views. Wer an der Erkennung etwas ändert, hat mit PreviewView,
- * Lebenszyklus und Fokus-Gesten nichts zu tun — und umgekehrt.
- *
- * ── Was hier mit hereinkam ──────────────────────────────────────────────────
- * Die Zählerstände (`lastValue`, `confirmCount`), die OCR-Drosselung und die
- * beiden ML-Kit-Clients wurden im Bildschirm gehalten, aber AUSSCHLIESSLICH in
- * dieser Schleife benutzt. Sie gehören hierher; das Aufräumen (DisposableEffect)
- * ebenfalls, denn es räumt genau diese Objekte weg.
- *
- * Der Rumpf ist wortgleich übernommen, verändert wurde nur die Einrückung.
+ * Der Bildanalyse-Teil des Barcode-Scanners: Barcode-Leser, Texterkennung,
+ * Bestätigungszählung und Drosselung. Getrennt von der Einbettung der
+ * Kamera-Vorschau, weil wer an der Erkennung arbeitet, mit PreviewView,
+ * Lebenszyklus und Fokus-Gesten nichts zu tun hat. Zählerstände, Drosselung, die
+ * ML-Kit-Clients und ihr Aufräumen liegen hier, weil nur diese Schleife sie
+ * benutzt.
  */
-// Einverstaendnis fuer imageProxy.image: `@androidx.annotation.OptIn` ist die
-// Form fuer einen in Java definierten Marker — `@ExperimentalGetImage` an der
-// lokalen Variablen war die MARKIERUNG und kein Einverstaendnis, und Lint hat
-// das als Error gemeldet (UnsafeOptInUsageError). Dasselbe Muster wie in
-// KameraAufbau.kt fuer ExperimentalCamera2Interop.
+// Einverständnis für imageProxy.image: `@androidx.annotation.OptIn` ist die Form
+// für einen in Java definierten Marker — `@ExperimentalGetImage` an der lokalen
+// Variablen wäre die Markierung, kein Einverständnis (Lint:
+// UnsafeOptInUsageError). Dasselbe Muster wie in KameraAufbau.kt.
 @androidx.annotation.OptIn(ExperimentalGetImage::class)
 @Composable
 fun rememberBarcodeAnalyzer(
@@ -60,12 +45,10 @@ fun rememberBarcodeAnalyzer(
     var confirmCount = remember { 0 }
     val CONFIRM_NEEDED = 2
     /**
-     * Mindestabstand zwischen zwei Texterkennungen (Nachtrag 71).
-     *
-     * 700 ms ist der Kompromiss aus Marcos Meldung „der Fokus ist sehr träge":
-     * klein genug, dass das Lesen einer vorgehaltenen Anleitung sofort wirkt,
-     * gross genug, dass der Analyse-Thread zwischendurch frei wird. Der
-     * Barcode-Leser läuft weiterhin auf JEDEM Bild.
+     * Mindestabstand zwischen zwei Texterkennungen: klein genug, dass eine
+     * vorgehaltene Anleitung sofort gelesen wird, gross genug, dass der Analyse-Thread
+     * zwischendurch frei wird und der Fokus nicht träge wirkt. Der Barcode-Leser läuft
+     * weiterhin auf jedem Bild.
      */
     val OCR_INTERVALL_MS = 700L
     val letzteOcr = remember { java.util.concurrent.atomic.AtomicLong(0L) }
@@ -80,21 +63,16 @@ fun rememberBarcodeAnalyzer(
                 .build()
         )
     }
-    // Texterkennung neben dem Barcode-Leser (Nachtrag 60). DEFAULT_OPTIONS ist
-    // das lateinische Modell — es liegt fest im APK, lädt also nichts nach.
+    // Texterkennung neben dem Barcode-Leser. DEFAULT_OPTIONS ist das lateinische
+    // Modell — es liegt fest im APK, lädt also nichts nach.
     val textRecognizer = remember { TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS) }
     DisposableEffect(Unit) { onDispose { textRecognizer.close() } }
 
 
-    // remember() hat KEINEN Aufräum-Hook: Ohne dieses DisposableEffect bleiben
-    // der Analyse-Thread und der ML-Kit-Client (native Ressourcen) bei jedem
-    // Besuch des Scanners liegen. Wer während einer Sortier-Session zwanzigmal
-    // scannt, sammelt zwanzig Threads.
-    //
-    // Betrifft NUR das Aufräumen NACH dem Verlassen des Screens — die Kamera
-    // selbst hängt am lifecycleOwner und wird von CameraX entbunden. Der
-    // kontinuierliche Autofokus (CONTROL_AF_MODE_CONTINUOUS_PICTURE, unten an
-    // beiden Use Cases) ist davon nicht berührt.
+    // remember() hat keinen Aufräum-Hook: Ohne dieses DisposableEffect blieben
+    // Analyse-Thread und ML-Kit-Client (native Ressourcen) bei jedem Besuch des
+    // Scanners liegen. Die Kamera selbst hängt am lifecycleOwner und wird von CameraX
+    // entbunden.
     DisposableEffect(Unit) {
         onDispose {
             try { barcodeScanner.close() } catch (_: Exception) {}
@@ -123,28 +101,15 @@ fun rememberBarcodeAnalyzer(
                                 else onStatus(confirmingHint)
                                 imageProxy.close()
                             } else {
-                                // Kein Barcode im Bild → Texterkennung versuchen
-                                // (Nachtrag 60). Reihenfolge ist Absicht: Der
-                                // Barcode ist eindeutig, die gelesene Zahl nur
-                                // wahrscheinlich. Auf der Verpackung gewinnt
-                                // also weiterhin der Barcode; die Texterkennung
-                                // greift dort, wo es keinen gibt — auf der
-                                // Anleitung.
-                                // ── Texterkennung DROSSELN (Nachtrag 71) ──────
+                                // Kein Barcode im Bild → Texterkennung. Die Reihenfolge ist
+                                // Absicht: Der Barcode ist eindeutig, die gelesene Zahl nur
+                                // wahrscheinlich — auf der Verpackung gewinnt der Barcode, die
+                                // Texterkennung greift auf der Anleitung.
                                 //
-                                // Marcos Beobachtung: „Der Fokus im Scanner ist
-                                // sehr träge." Ursache ist nicht der Autofokus
-                                // selbst, sondern die Last daneben: Seit
-                                // Nachtrag 60 lief die Texterkennung auf JEDEM
-                                // Bild ohne Barcode — bei 1920×1080 kostet das
-                                // je Bild ein Vielfaches der Barcode-Suche und
-                                // hält den Analyse-Thread dauerhaft belegt. Die
-                                // Kamera teilt sich die Rechenzeit mit dieser
-                                // Auswertung, also wirken Vorschau UND
-                                // Scharfstellen zäh.
-                                //
-                                // Eine gedruckte Setnummer läuft nicht weg, also
-                                // genügt ein Versuch alle 700 ms.
+                                // Gedrosselt, weil sie bei 1920×1080 je Bild ein Vielfaches der
+                                // Barcode-Suche kostet und die Kamera sich die Rechenzeit teilt —
+                                // Vorschau und Scharfstellen würden zäh. Eine gedruckte Setnummer
+                                // läuft nicht weg.
                                 val jetzt = System.currentTimeMillis()
                                 if (jetzt - letzteOcr.get() < OCR_INTERVALL_MS) {
                                     onStatus(aimHint)
@@ -154,10 +119,8 @@ fun rememberBarcodeAnalyzer(
                                 letzteOcr.set(jetzt)
 
                                 if (!ocrEnabled) {
-                                    // Texterkennung hier nicht gewünscht
-                                    // (Nachtrag 61) — wie vor dem Umbau nur der
-                                    // Zielhinweis, und der Bildpuffer muss
-                                    // trotzdem freigegeben werden.
+                                    // Texterkennung hier nicht gewünscht — nur der Zielhinweis, und
+                                    // der Bildpuffer muss trotzdem freigegeben werden.
                                     onStatus(aimHint)
                                     imageProxy.close()
                                     return@addOnSuccessListener
@@ -181,19 +144,11 @@ fun rememberBarcodeAnalyzer(
                             }
                         }
                         .addOnFailureListener { onStatus(errorHint); imageProxy.close() }
-                    // KEIN addOnCompleteListener mehr (Nachtrag 63).
-                    //
-                    // Hier lag der Fehler, warum die Texterkennung nie etwas
-                    // lieferte: Der Listener hing am BARCODE-Task und feuerte,
-                    // sobald DIESER fertig war — also unmittelbar nachdem er
-                    // „kein Barcode" gemeldet hatte. Die Texterkennung war da
-                    // gerade erst gestartet und arbeitete auf einem Bild, das
-                    // in derselben Millisekunde geschlossen wurde. Ergebnis:
-                    // still gar nichts, ohne Fehlermeldung.
-                    //
-                    // Jetzt schliesst JEDER Ausgang den Bildpuffer selbst,
-                    // genau einmal: Barcode gefunden, Barcode-Fehler,
-                    // Texterkennung aus, Texterkennung fertig.
+                    // Kein addOnCompleteListener: Am Barcode-Task feuerte er, sobald dieser „kein
+                    // Barcode“ meldete, und schloss das Bild, auf dem die Texterkennung gerade erst
+                    // anfing — still ohne Ergebnis. Darum schliesst jeder Ausgang den Bildpuffer
+                    // selbst, genau einmal: Barcode gefunden, Barcode-Fehler, Texterkennung aus,
+                    // Texterkennung fertig.
                 }
             }
     }

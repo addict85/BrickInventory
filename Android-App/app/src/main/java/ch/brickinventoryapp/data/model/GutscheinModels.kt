@@ -4,28 +4,15 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
- * LEGO-Geschenkkarten im eigenen Profil.
+ * LEGO-Geschenkkarten im eigenen Profil. Die Modelle spiegeln genau das, was
+ * routes/api_v1/vouchers.ts ausgibt — keine eigene Form, keine Umbenennung —, weil
+ * beide Apps dieselben Dienste des Backends verwenden; was hier anders hiesse,
+ * müsste die Webapp nachziehen.
  *
- * ── Marcos Vorgabe ──────────────────────────────────────────────────────────
- *
- *   „Im Eigenen Profil sollen Lego-Gutscheine mit Gutscheinnummer und Pins und
- *    Betrag hinterlegt werden können. […] Bitte die Login jeweils nur 1x im
- *    Backend bauen. Beide Apps sollen die gleichen Services des Backends
- *    verwenden."
- *
- * Deshalb spiegeln diese Modelle EXAKT das, was routes/api_v1/vouchers.ts
- * ausgibt — keine eigene Form, keine Umbenennung. Die Webapp liest dieselbe
- * Antwort; was hier anders hiesse, muesste dort nachgezogen werden.
- *
- * ── Warum der Betrag ein Double ist ─────────────────────────────────────────
- *
- * In der Datenbank steht NUMERIC(12,2), und der pg-Treiber gibt daraus eine
- * ZEICHENKETTE heraus (ein NUMERIC passt nicht zwingend in einen double). Der
- * Server wandelt deshalb schon um — `fuerAussen()` in vouchers.ts macht aus
- * `amount` eine echte Zahl. Hier kommt also eine Zahl an, kein Text.
- *
- * Fuer die ANZEIGE ist Double richtig: Ein Gutschein hat zwei
- * Nachkommastellen, und gerechnet wird mit ihm nicht — er wird gezeigt.
+ * Der Betrag ist ein Double: NUMERIC(12,2) käme vom pg-Treiber als Zeichenkette,
+ * `fuerAussen()` in vouchers.ts macht daraus eine Zahl. Für die Anzeige genügt
+ * Double — ein Gutschein hat zwei Nachkommastellen und wird gezeigt, nicht
+ * gerechnet.
  */
 @Serializable
 data class Gutschein(
@@ -37,23 +24,17 @@ data class Gutschein(
     val amount: Double = 0.0,
     val currency: String = "CHF",
     /**
-     * Ob ein PDF hinterlegt ist.
-     *
-     * Der Server gibt bewusst NICHT den Dateipfad heraus, sondern nur diese
-     * Antwort — der Pfad geht den Klienten nichts an, die Frage „gibt es ein
-     * PDF" schon. Heruntergeladen wird ueber die id.
+     * Ob ein PDF hinterlegt ist. Der Server gibt bewusst nicht den Dateipfad heraus —
+     * der geht den Klienten nichts an; heruntergeladen wird über die id.
      */
     @SerialName("hat_pdf") val hatPdf: Boolean = false,
     @SerialName("created_at") val createdAt: String? = null,
     @SerialName("updated_at") val updatedAt: String? = null,
     /**
-     * Wann das Guthaben zuletzt bei LEGO abgefragt wurde, oder null.
-     *
-     * Getrennt von `updatedAt`, und das ist der ganze Zweck: `updatedAt`
-     * aendert sich auch, wenn jemand den Betrag von Hand korrigiert. Erst
-     * dieses Feld macht aus „250 CHF" die Auskunft „250 CHF, abgefragt am
-     * 15.10." — und ein null unterscheidet „noch nie gefragt" von „gefragt
-     * und es waren 250". Die Begruendung steht in Migration 0039.
+     * Wann das Guthaben zuletzt bei LEGO abgefragt wurde, oder null. Getrennt von
+     * `updatedAt`, das sich auch bei einer Korrektur von Hand ändert: Erst dieses Feld
+     * macht aus „250 CHF“ die Auskunft „250 CHF, abgefragt am 15.10.“, und null heisst
+     * „noch nie gefragt“. Begründung in Migration 0039.
      */
     @SerialName("guthaben_geprueft_am") val guthabenGeprueftAm: String? = null,
 )
@@ -61,16 +42,14 @@ data class Gutschein(
 /**
  * Die Antwort der Guthaben-Abfrage.
  *
- * `angezeigt` ist der formatierte Text der LEGO-Seite („CHF 250.00") — nur
- * zur Anzeige, nicht gespeichert: Er steht in der Schreibweise des
- * Ausgabelandes, und die App formatiert selbst.
+ * `angezeigt` ist der formatierte Text der LEGO-Seite („CHF 250.00“) — nur zur
+ * Anzeige, nicht gespeichert: Er steht in der Schreibweise des Ausgabelandes, die
+ * App formatiert selbst.
  *
- * `wartenSek` und `grund` kommen bei HTTP 429 mit: Der Server erlaubt
- * hoechstens eine Abfrage je 30 Sekunden ueber ALLE Benutzer (Marcos
- * Vorgabe). Die App wartet damit nicht selbst — sie zeigt den Satz, den der
- * Server schon in der richtigen Sprache mitschickt. Die Felder stehen hier
- * trotzdem, weil `ignoreUnknownKeys` sie sonst stillschweigend wegwirft und
- * die naechste Fassung sie suchen muesste.
+ * `wartenSek` und `grund` kommen bei HTTP 429: Der Server erlaubt höchstens eine
+ * Abfrage je 30 Sekunden über alle Benutzer. Die App wartet nicht selbst, sie
+ * zeigt den Satz des Servers. Die Felder stehen trotzdem hier, weil
+ * `ignoreUnknownKeys` sie sonst still wegwürfe.
  */
 @Serializable
 data class GuthabenAntwort(
@@ -91,12 +70,10 @@ data class GutscheinListe(
 )
 
 /**
- * Was der Server aus einem hochgeladenen PDF gelesen hat.
- *
- * Alle vier Felder koennen null sein — genau das ist der Zweck: Die App zeigt
- * damit „diese Werte habe ich gelesen" statt den Nutzer raten zu lassen, ob
- * sie stimmen. Bei einem unlesbaren PDF antwortet der Server mit 422 und
- * diesem Objekt, und die Oberflaeche belegt die Felder vor, die da waren.
+ * Was der Server aus einem hochgeladenen PDF gelesen hat. Alle vier Felder können
+ * null sein — die App zeigt so „diese Werte habe ich gelesen“, statt raten zu
+ * lassen. Bei einem unlesbaren PDF antwortet der Server mit 422 und diesem Objekt;
+ * die Oberfläche belegt vor, was da war.
  */
 @Serializable
 data class GelesenerGutschein(
@@ -107,16 +84,10 @@ data class GelesenerGutschein(
 )
 
 /**
- * Was beim Hochladen eines SAMMEL-PDFs herauskam.
- *
- * Marcos Vorgabe vom 15.10.: „Wenn ein PDF mit mehreren Seiten selektiert
- * wird, sollen mehrere Gutscheine erfasst werden." Es gibt deshalb kein
- * zweites Dateifeld und keine zweite Adresse mehr — dieselbe Route antwortet
- * je nach Datei mit `voucher` ODER mit diesem Block.
- *
- * Dieselben Felder wie bei den CSV-Importen (added/updated/errors), also
- * dieselbe Meldung: Wer drei Gutscheine auf einmal erfasst, soll nicht
- * „Gutschein gespeichert" lesen und raten, wie viele es wurden.
+ * Was beim Hochladen eines Sammel-PDFs herauskam: Mehrere Seiten ergeben mehrere
+ * Gutscheine, und dieselbe Route antwortet je nach Datei mit `voucher` oder mit
+ * diesem Block. Dieselben Felder wie bei den CSV-Importen (added/updated/errors),
+ * damit die Meldung sagt, wie viele es wurden.
  */
 @Serializable
 data class GutscheinStapel(

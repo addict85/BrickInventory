@@ -15,13 +15,9 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Teile, Minifiguren und Farben.
- *
- * Teil der Aufteilung von BrickRepository (Nachtrag 155) — die Begruendung
- * steht in RepoBasis.kt. Die Ruempfe sind WORTGLEICH uebernommen; veraendert
- * wurde nichts ausser der Klassenzugehoerigkeit.
- *
- * Erreichbar ueber `repo.teile.…` — BrickRepository haelt die fuenf Teile.
+ * Teile, Minifiguren und Farben — eines der Sachgebiete der Datenschicht,
+ * erreichbar über `repo.teile.…`; die Begründung der Aufteilung steht in
+ * RepoBasis.kt.
  */
 @Singleton
 class TeileRepository @Inject constructor(
@@ -32,22 +28,20 @@ class TeileRepository @Inject constructor(
     suspend fun getParts(search: String? = null, color: String? = null,
                          category: String? = null, page: Int = 1,
                          accounts: String? = null,
-                         /** "0" ohne, "1" nur Ersatzteile, null alle — wie parts-spare in der Webapp. */
+                         /**
+                          * "0" ohne, "1" nur Ersatzteile, null alle — wie parts-spare in der
+                          * Webapp.
+                          */
                          spare: String? = null,
                          /** "1" nur in der Tabellenansicht — siehe BrickApiService.getParts. */
                          withSets: String? = null,
                          /** Lagerort — eigener Parameter, nicht Teil der Suche. */
                          storage: String? = null): Result<PartsResponse> =
         // Manuell erfasste Teile haben ihren eigenen Bereich — die Set-Teileliste
-        // schließt sie aus (wie in der Webapp).
-        // Nur die ungefilterte erste Seite wird gecacht — sie ist das, was nach
-        // einem Neustart gebraucht wird. Für Suchergebnisse wäre ein Cache
-        // wertlos und würde nur Platz belegen.
-        // Auch hier: gecacht wird nur die ungefilterte Sicht (siehe getSets).
-        // `storage` gehoert in diese Bedingung: Ohne das landete eine nach
-        // Lagerort gefilterte Antwort unter demselben Schluessel wie die volle
-        // Liste — und der Reiter zeigte danach je nach Cache-Zustand mal
-        // alles, mal eine Kiste. Dieselbe Falle wie in getSets().
+        // schliesst sie aus (wie in der Webapp). Gecacht wird nur die ungefilterte erste
+        // Seite: Sie wird nach einem Neustart gebraucht, ein Suchergebnis im Cache belegte
+        // nur Platz. `storage` gehört in die Bedingung, sonst landete eine nach Lagerort
+        // gefilterte Antwort unter dem Schlüssel der vollen Liste.
         if (search.isNullOrBlank() && color == null && category == null && page == 1 &&
             accounts == null && spare.isNullOrBlank() && withSets.isNullOrBlank() &&
             storage.isNullOrBlank())
@@ -64,11 +58,9 @@ class TeileRepository @Inject constructor(
         safeCall { api.getPartsStats(accounts) }
 
     /**
-     * Die beiden Filterlisten des Teile-Reiters — Farbe und Kategorie.
-     *
-     * Ohne Zwischenspeicher: Beide Listen tragen ZAEHLWERTE und aendern sich
-     * mit jedem erfassten Teil. Ein Cache zeigte dem Nutzer Zahlen, die nicht
-     * zu der Liste passen, die er gerade vor sich hat.
+     * Die beiden Filterlisten des Teile-Reiters — Farbe und Kategorie. Ohne
+     * Zwischenspeicher: Beide tragen Zählwerte, die sich mit jedem erfassten Teil
+     * ändern; ein Cache zeigte Zahlen, die nicht zur Liste passen.
      */
     suspend fun getPartsFilterColors(accounts: String? = null): Result<PartsFilterColorsResponse> =
         safeCall { api.getPartsFilterColors(accounts) }
@@ -77,9 +69,8 @@ class TeileRepository @Inject constructor(
         safeCall { api.getPartsCategories(accounts) }
 
     /**
-     * Die manuell erfassten Teile bzw. Figuren — dieselbe Quelle wie die
-     * Webapp. Vorher kamen sie aus der BEWERTUNG, also aus einer zweiten
-     * Quelle fuer dieselbe Liste; siehe ManualPartsResponse.
+     * Die manuell erfassten Teile bzw. Figuren — dieselbe Quelle wie die Webapp, damit
+     * es für dieselbe Liste nur eine Quelle gibt; siehe ManualPartsResponse.
      */
     suspend fun getManualParts(accounts: String? = null, search: String? = null,
                                storage: String? = null): Result<ManualPartsResponse> =
@@ -90,12 +81,10 @@ class TeileRepository @Inject constructor(
         safeCall { api.getManualMinifigs(accounts, search) }
 
     /**
-     * „Kann ich das bauen?" — welche Teile einer Liste schon da sind.
-     *
-     * BEWUSST ohne Zwischenspeicher, aus demselben Grund wie getSetsMitTeil()
-     * darunter: Die Antwort haengt an einer frei zusammengestellten Liste und
-     * wird auf Tastendruck geholt. Ein Eintrag je Liste waere ein Speicher,
-     * den niemand mehr ungueltig macht, wenn ein Teil dazukommt.
+     * „Kann ich das bauen?“ — welche Teile einer Liste schon da sind. Ohne
+     * Zwischenspeicher wie getSetsMitTeil(): Die Antwort hängt an einer frei
+     * zusammengestellten Liste; ein Eintrag je Liste wäre ein Speicher, den niemand
+     * ungültig macht, wenn ein Teil dazukommt.
      */
     suspend fun getOwnedParts(teile: List<BestandTeil>,
                               accounts: String? = null): Result<BestandResponse> =
@@ -111,24 +100,19 @@ class TeileRepository @Inject constructor(
         safeCall { api.setFigStorage(figNumber, LagerortRequest(ort)) }
 
     /**
-     * Welche Lagerorte es gibt.
-     *
-     * BEWUSST ohne Zwischenspeicher: Die Liste aendert sich bei jedem
-     * Eintragen, und sie ist klein. Ein Speicher haette hier genau einen
-     * Effekt — dass der gerade angelegte Ort im Vorschlag fehlt.
+     * Welche Lagerorte belegt sind. Ohne Zwischenspeicher: Die Liste ist klein und
+     * ändert sich bei jedem Eintragen — ein Speicher liesse den gerade angelegten Ort
+     * im Vorschlag fehlen.
      */
     suspend fun getLagerorte(accounts: String? = null): Result<LagerorteResponse> =
         safeCall { api.getLagerorte(accounts) }
 
-    // ── Der VORRAT an Lagerorten ─────────────────────────────────────────────
+    // ── Der Vorrat an Lagerorten ──
     //
-    // Getrennt von getLagerorte() darueber: Das eine ist die Liste der
-    // BELEGTEN Orte (fuer den Filter), das hier die Liste der WAEHLBAREN
-    // (fuer das Auswahlfeld und die Einstellungen). Ein frisch angelegter Ort
-    // steht nur in der zweiten.
-    //
-    // Ebenfalls ohne Zwischenspeicher, und aus demselben Grund wie oben: Die
-    // Liste aendert sich genau dann, wenn jemand hier etwas eintraegt.
+    // Getrennt von getLagerorte(): Dort die belegten Orte (für den Filter), hier die
+    // wählbaren (für Auswahlfeld und Einstellungen); ein frisch angelegter Ort steht
+    // nur hier. Ohne Zwischenspeicher, weil sich die Liste genau dann ändert, wenn
+    // jemand hier etwas einträgt.
 
     /** @param owner Komma-Liste von Konto-IDs; leer = das eigene Konto. */
     suspend fun getLagerortVorrat(owner: String? = null): Result<LagerortVorratResponse> =
@@ -147,13 +131,11 @@ class TeileRepository @Inject constructor(
     suspend fun setzeLagerortVorgabe(id: Int?): Result<LagerortVorgabeResponse> =
         safeCall { api.setzeLagerortVorgabe(LagerortVorgabeRequest(id)) }
 
-    // ── In welchen Sets steckt dieses Teil / diese Figur? ────────────────────
+    // ── In welchen Sets steckt dieses Teil / diese Figur? ──
     //
-    // Fuer den Detail-Dialog automatisch erfasster Teile und Figuren. BEWUSST
-    // ohne Zwischenspeicher (anders als getParts/getMinifigs darueber): Die
-    // Antwort haengt an genau einem Teil und wird auf Tastendruck geholt —
-    // ein Eintrag je Teil-Farb-Paar waere ein Speicher, den niemand mehr
-    // ungueltig macht, wenn ein Set dazukommt oder verschwindet.
+    // Für den Detail-Dialog. Ohne Zwischenspeicher: Die Antwort hängt an genau einem
+    // Teil und wird auf Tastendruck geholt — ein Eintrag je Teil-Farb-Paar würde nie
+    // ungültig, wenn ein Set dazukommt oder verschwindet.
     suspend fun getSetsMitTeil(partNumber: String, colorId: Int,
                                accounts: String? = null): Result<VerwendendeSetsResponse> =
         safeCall { api.getSetsMitTeil(partNumber, colorId, accounts) }
@@ -181,10 +163,10 @@ class TeileRepository @Inject constructor(
         safeCall { api.deletePart(partNumber, colorId, owner) }
 
     /**
-     * Die Farbe eines manuell erfassten Teils nachtraeglich aendern.
+     * Die Farbe eines manuell erfassten Teils nachträglich ändern.
      *
-     * @param colorId   die ALTE Farbe — sie sagt, welche Zeile gemeint ist.
-     * @param neueFarbe die NEUE Farbe.
+     * @param colorId   die alte Farbe — sie sagt, welche Zeile gemeint ist.
+     * @param neueFarbe die neue Farbe.
      * @param owner     Besitzer der Karte; null = eigenes Konto.
      */
     suspend fun setPartColor(partNumber: String, colorId: Int, neueFarbe: Int,
@@ -209,20 +191,13 @@ class TeileRepository @Inject constructor(
         safeCall { api.deleteMinifig(figNumber, owner) }
 
     /**
-     * Set-Figuren der Uebersicht. `source = "set"` und der Suchtext gehen an den
-     * SERVER — wie in der Webapp (public/js/06-minifigs.js, figParams).
+     * Set-Figuren der Übersicht. `source = "set"` und der Suchtext gehen an den Server
+     * — wie in der Webapp (public/js/06-minifigs.js, figParams): Der Server sucht vor
+     * der Gruppierung über jede fig_name-Zeile; im Composable träfe die Suche nur die
+     * eine Zeile, die MAX(fig_name) übrig lässt.
      *
-     * Vorher holte die App die GANZE Figurenliste und filterte beides im
-     * Composable: `figs.filter { it.source != "manual" }` im Zustand und
-     * `contains(search)` in MinifigsScreen. Damit stand dieselbe Regel zweimal
-     * im Baum, und die Suche traf nur die zusammengefasste Zeile: Der Server
-     * sucht VOR der Gruppierung ueber jede fig_name-Zeile, die App danach nur
-     * ueber die eine, die MAX(fig_name) uebrig laesst. Dieselbe Figur, unter
-     * zwei Namen aus zwei Sets, fand die Webapp und das Telefon nicht.
-     *
-     * Gecacht wird nur die ungefilterte Sicht — genau wie bei getParts und
-     * getSets. Ein Suchergebnis im Cache waere nach dem Neustart die ganze
-     * Sammlung, und der Cache wird nur im Fehlerfall gelesen.
+     * Gecacht wird nur die ungefilterte Sicht, wie bei getParts und getSets: Ein
+     * Suchergebnis im Cache wäre nach dem Neustart die ganze Sammlung.
      */
     suspend fun getMinifigs(accounts: String? = null, search: String? = null): Result<MinifigsResponse> =
         if (accounts == null && search.isNullOrBlank())

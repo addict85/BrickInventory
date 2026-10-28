@@ -1,23 +1,10 @@
 package ch.brickinventoryapp.ui
 
 /**
- * Was folgt aus einer CSV-Statusmeldung?
- *
- * ── Warum das eine eigene Datei ist (Nachtrag 110, Zuschnitt aus 117) ────────
- * Die Regel dahinter ist in `handleCsvStatus()` (AppViewModel) entstanden und
- * war dort nur durch Quelltext-Lesen prüfbar: `CsvStatusReloadTest` suchte
- * nach der Zeichenfolge `if (!running && warVorherAktiv`. Das hält die
- * FORMULIERUNG fest, nicht das Verhalten — eine gleichwertige Umschreibung
- * bricht den Test, eine gleich aussehende Verschlechterung nicht.
- *
- * Ausgeführt werden konnte die Regel nicht, weil sie in einer Methode steckte,
- * die einen `Context` braucht (Dienst starten, Texte holen) und einen
- * `viewModelScope`. Beides braucht die ENTSCHEIDUNG nicht — nur die Ausführung
- * braucht es. Also derselbe Schnitt wie bei [fehlerTextId]: Was schwer prüfbar
- * ist, ist meistens nicht zu kompliziert, sondern nur mit etwas verwoben, das
- * es nicht braucht.
- *
- * `handleCsvStatus()` bleibt die Stelle, die HANDELT; hier steht nur, WAS zu
+ * Was folgt aus einer CSV-Statusmeldung? Getrennt von `handleCsvStatus()`
+ * (AppViewModel), weil die Entscheidung weder `Context` noch `viewModelScope`
+ * braucht — nur die Ausführung. So lässt sie sich ausführen statt nur im Quelltext
+ * lesen. `handleCsvStatus()` bleibt die Stelle, die handelt; hier steht, was zu
  * tun ist.
  */
 internal enum class CsvFolge {
@@ -45,33 +32,18 @@ internal fun importLaeuft(status: String?): Boolean =
     status == "running" || status == "pending"
 
 /**
- * Die eigentliche Regel aus Nachtrag 110.
+ * Die eigentliche Regel: Nachgeladen wird beim Übergang von „läuft“ zu „fertig“,
+ * nicht in jedem Zustand „fertig“. Der SSE-Strom meldet den Importstatus
+ * fortlaufend, auch lange nach dem Ende; eine Zustandsbedingung lüde alle paar
+ * Sekunden neu und ersetzte die Galerie durch Seite 1 — die Liste spränge beim
+ * Scrollen zurück. Ohne den vorherigen Zustand ist „gerade fertig geworden“ nicht
+ * von „seit Stunden fertig“ zu unterscheiden.
  *
- * Marcos Befund: „In der Galerie springt die Liste beim Scrollen zurück — immer
- * auf dieselbe Zeile." Sein Protokoll zeigte es unmissverständlich:
- *
- *     Seite 2: 60 empfangen, Liste  60 -> 120
- *     Seite 3: 60 empfangen, Liste 120 -> 180
- *     Seite 4: 60 empfangen, Liste 180 -> 240
- *     Seite 2: 60 empfangen, Liste  60 -> 120     ← zurück auf Anfang
- *
- * Ursache: Der SSE-Strom meldet den Importstatus fortlaufend, auch lange nach
- * dem Ende. Die Bedingung fragte nur „läuft gerade nicht und ist kein Fehler" —
- * das trifft auf JEDE Meldung eines abgeschlossenen Imports zu. Also lief das
- * Nachladen alle paar Sekunden erneut und ersetzte die ganze Galerie durch
- * Seite 1.
- *
- * Ein Abschluss ist ein ÜBERGANG, kein Zustand. Deshalb nimmt diese Funktion
- * [warVorherAktiv] entgegen: Ohne den vorherigen Zustand ist „gerade fertig
- * geworden" von „seit Stunden fertig" nicht zu unterscheiden. Dieselbe
- * Verwechslung wie beim Takt der Anleitungs-Warteschlange (Manager-Nachtrag
- * 142) und beim Bild-Job (217).
- *
- * @param warVorherAktiv Lief vor DIESER Meldung ein Import? Muss der Zustand
- *   vor dem Überschreiben sein — danach gelesen ist er immer der neue.
- * @param status Der `status` der Meldung; `null`, wenn der Server keinen
- *   geschickt hat. Aus `null` folgt nie ein Nachladen: Eine Meldung ohne
- *   Zustand ist kein Abschluss, sondern eine unvollständige Meldung.
+ * @param warVorherAktiv Lief vor dieser Meldung ein Import? Muss der Zustand vor
+ *         dem Überschreiben sein — danach gelesen ist er immer der neue.
+ * @param status Der `status` der Meldung; `null`, wenn der Server keinen geschickt
+ *         hat. Aus `null` folgt nie ein Nachladen: Eine Meldung ohne Zustand ist
+ *         kein Abschluss, sondern eine unvollständige Meldung.
  */
 internal fun csvFolge(warVorherAktiv: Boolean, status: String?): CsvFolge = when {
     // Läuft: Dienst nur beim Anlaufen starten, nicht bei jeder Fortschrittszeile.

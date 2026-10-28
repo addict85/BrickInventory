@@ -17,35 +17,21 @@ import ch.brickinventoryapp.ui.theme.Abstaende
 import kotlinx.coroutines.launch
 
 /**
- * Eine CSV-Datei hochladen — Sets, Teile, Minifiguren oder die Merkliste.
+ * Eine CSV-Datei hochladen — Sets, Teile, Minifiguren oder die Merkliste, über
+ * dieselben Adressen wie die Webapp. Der Fortschritt danach kommt über den
+ * bestehenden Kanal: Der Import läuft auf dem Server weiter, auch wenn die App
+ * zugeklappt wird.
  *
- * Dieselben Adressen, die die Webapp anbietet. Die App konnte Importe
- * bisher nur beobachten (der Fortschrittsbalken oben in der Galerie); starten
- * konnte sie keinen, weil die Dateiauswahl fehlte und die Routen an einem
- * sitzungsgebundenen Waechter hingen (Nachtrag 127/128).
- *
- * Der Fortschritt DANACH kommt weiterhin ueber den bestehenden Kanal: Der
- * Import laeuft auf dem Server weiter, auch wenn die App zugeklappt wird.
- *
- * ── Warum FlowRow und nicht mehr Row ───────────────────────────────────────
- *
- * Mit der Merkliste sind es VIER Knoepfe. In einer Row mit weight(1f) teilen
- * sie sich die Breite zu gleichen Teilen, und „Minifiguren" passt dann auf
- * einem Telefon nicht mehr hinein — maxLines = 1 schneidet es ab, und was
- * abgeschnitten dasteht, liest niemand richtig. FlowRow bricht stattdessen
- * um; dieselbe Loesung wie bei den Netzschaltern in MonitoringSections.kt.
- *
- * Kein weight(1f) mehr: In einer FlowRow fuehrte es dazu, dass jeder Knopf
- * die ganze Zeile fuellt und damit jeder in seiner eigenen steht. Die Knoepfe
- * nehmen jetzt die Breite ihres Textes.
+ * FlowRow statt Row: Vier Knöpfe mit weight(1f) teilten sich die Breite, und
+ * „Minifiguren“ würde auf einem Telefon abgeschnitten. FlowRow bricht um wie bei
+ * den Netzschaltern in MonitoringSections.kt. Ohne weight(1f), weil es in einer
+ * FlowRow jeden Knopf auf eine eigene Zeile streckte; die Knöpfe nehmen die Breite
+ * ihres Textes.
  */
-// Kurzname, nicht vollqualifiziert: Die Datei hat oben
-// `import androidx.compose.foundation.layout.*`, also sind sowohl FlowRow als
-// auch diese Annotation bereits im Zugriff — und SplitFileImportsTest liest
-// aus @OptIn(...) genau den KURZEN Namen („ExperimentalLayoutApi"). Mit dem
-// vollen Paketpfad uebersetzt es zwar, aber die Regel sieht ihren Marker nicht
-// und meldet die Datei als „nutzt FlowRow ohne @OptIn". GEMESSEN: Genau daran
-// war die Android-CI im zweiten Lauf noch rot.
+// Kurzname, nicht vollqualifiziert: `import androidx.compose.foundation.layout.*`
+// macht FlowRow und diese Annotation verfügbar, und SplitFileImportsTest liest aus
+// @OptIn(...) den kurzen Namen („ExperimentalLayoutApi“). Mit dem vollen Pfad sähe
+// die Regel ihren Marker nicht.
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun CsvImportCard(
@@ -53,15 +39,11 @@ internal fun CsvImportCard(
     onDatei: (ch.brickinventoryapp.data.model.CsvArt, android.net.Uri) -> Unit,
     onSchliessen: () -> Unit,
 ) {
-    // Welche Art beim Antippen gemeint war. Der Dateiauswahl-Vertrag liefert
-    // nur den Uri zurueck, nicht den Knopf — also muss die App es sich merken.
-    //
-    // rememberSaveable und NICHT remember: Die Dateiauswahl ist eine fremde
-    // Anwendung. Waehrend sie oben liegt, darf das System diesen Vorgang
-    // beenden; kommt der Nutzer mit einer Teile-Datei zurueck und der Wert ist
-    // auf SETS zurueckgefallen, landet sie in der falschen Tabelle. Genau
-    // dieser Unterschied ist die Regel von BildschirmZustandTest, und der
-    // oertliche Spiegel hat die Stelle prompt gemeldet.
+    // Welche Art beim Antippen gemeint war — der Dateiauswahl-Vertrag liefert nur den
+    // Uri, nicht den Knopf. rememberSaveable, nicht remember: Die Dateiauswahl ist
+    // eine fremde Anwendung, währenddessen darf das System diesen Vorgang beenden;
+    // fiele der Wert auf SETS zurück, landete eine Teile-Datei in der falschen Tabelle
+    // (BildschirmZustandTest).
     var gewaehlteArt by rememberSaveable { mutableStateOf(ch.brickinventoryapp.data.model.CsvArt.SETS) }
     val auswahl = androidx.activity.compose.rememberLauncherForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.OpenDocument()
@@ -99,17 +81,10 @@ internal fun CsvImportCard(
                     shape = Formen.knopf,
                     contentPadding = PaddingValues(horizontal = Abstaende.klein)
                 ) {
-                    // Der Kreisel steht NEBEN der Beschriftung, nicht an ihrer
-                    // Stelle. Vorher tauschte ein if/else das eine gegen das
-                    // andere; das ging nur gut, solange weight(1f) die Breite
-                    // festhielt. Ohne weight (seit der FlowRow) schrumpfte der
-                    // Knopf waehrend des Imports auf Kreiselgroesse und schob
-                    // die drei anderen beiseite.
-                    //
-                    // Genau das faengt KnopfBreiteTest, und es hat es gefangen:
-                    // Die Android-CI war rot, und der Befund war richtig. Das
-                    // Muster hier steht dreissig Zeilen weiter unten in dieser
-                    // Datei schon einmal (Knopf „Nach Aktualisierung suchen").
+                    // Der Kreisel steht neben der Beschriftung, nicht an ihrer Stelle: Ohne weight
+                    // (in der FlowRow) schrumpfte der Knopf sonst während des Imports auf
+                    // Kreiselgrösse und schöbe die anderen beiseite (KnopfBreiteTest). Dasselbe
+                    // Muster wie beim Knopf „Nach Aktualisierung suchen“.
                     if (csvZustand.laeuft && csvZustand.art == art) {
                         CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
                         Spacer(Modifier.width(Abstaende.winzig))
@@ -123,11 +98,10 @@ internal fun CsvImportCard(
         val ergebnis = csvZustand.ergebnis
         if (ergebnis != null) {
             Text(
-                // Vier Zahlen, und im Englischen stimmen zwei davon ueberein
-                // („row/rows", „error/errors"). Ein <plurals> stimmt nur mit
-                // EINER ueberein, darum vier Bruchstuecke in einem Rahmen —
-                // auch „neu" und „aktualisiert", damit der Rahmen KEIN %d mehr
-                // traegt und Lint ihn nicht gleich wieder beanstandet.
+                // Vier Zahlen, im Englischen stimmen zwei davon überein („row/rows“,
+                // „error/errors“). Ein <plurals> stimmt nur mit einer überein, darum vier
+                // Bruchstücke in einem Rahmen — auch „neu“ und „aktualisiert“, damit der Rahmen
+                // kein %d trägt, das Lint beanstandet.
                 stringResource(R.string.csv_upload_result,
                     pluralStringResource(R.plurals.csv_upload_rows, ergebnis.total, ergebnis.total),
                     pluralStringResource(R.plurals.csv_upload_new, ergebnis.neuAngelegt, ergebnis.neuAngelegt),

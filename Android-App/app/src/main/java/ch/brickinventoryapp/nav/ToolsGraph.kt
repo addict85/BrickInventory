@@ -59,14 +59,9 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import ch.brickinventoryapp.ui.ManualItemDetailUiState
 
 /**
- * Navigationsziele, aus AppNavigation.kt herausgelöst (Punkt 9 der
- * Optimierungsliste). Die Blöcke sind unverändert übernommen — die einzige
- * Änderung ist, dass die zuvor aus dem umgebenden Scope eingefangenen Werte
- * jetzt als Parameter hereinkommen.
- *
- * ACHTUNG: Diese Aufteilung wurde ohne Android-SDK erzeugt und ist NICHT
- * kompiliert. Fehlende oder falsch typisierte Parameter fallen beim ersten
- * ./gradlew assembleDebug auf.
+ * Navigationsziele der Werkzeug-Reiter. Die Werte, die die Ziele aus AppNavigation
+ * brauchen, kommen als Parameter herein, damit kein Ziel Zustand aus einem
+ * umgebenden Scope einfängt.
  */
 fun NavGraphBuilder.toolsGraph(
     vm: AppViewModel,
@@ -77,25 +72,20 @@ fun NavGraphBuilder.toolsGraph(
     snackbarHostState: SnackbarHostState,
     activity: android.content.Context,
     /**
-     * Scroll-Zustand der Finanz-Liste. Wird ausserhalb des Ziels gehalten, weil
-     * das Ziel beim Öffnen der Detailansicht verworfen wird — ein
-     * rememberLazyListState() darin ginge dabei verloren und die Liste spränge
-     * bei der Rückkehr nach oben.
-     *
-     * Anders als beim Zustand aus dem ViewModel ist das unbedenklich: Hier wird
-     * eine stabile Objektreferenz durchgereicht, kein abgelesener Wert.
+     * Scroll-Zustand der Finanz-Liste. Ausserhalb des Ziels gehalten, weil das Ziel
+     * beim Öffnen der Detailansicht verworfen wird — ein rememberLazyListState() darin
+     * ginge verloren, die Liste spränge nach oben. Unbedenklich, weil eine stabile
+     * Objektreferenz durchgereicht wird, kein abgelesener Wert.
      */
     financeListState: androidx.compose.foundation.lazy.LazyListState,
     /**
-     * Scroll-Zustand der Teileliste — aus demselben Grund von aussen: Der Weg
-     * zum Barcode-Scanner führt aus diesem Bildschirm HERAUS (siehe Nachtrag 64,
-     * wo an derselben Stelle die gesammelten Sets verschwanden).
+     * Scroll-Zustand der Teileliste — aus demselben Grund von aussen: Der Weg zum
+     * Barcode-Scanner führt aus diesem Bildschirm heraus.
      */
     partsListState: androidx.compose.foundation.lazy.LazyListState,
     /**
-     * Rollposition der Einstellungen — von aussen, seit die Preisalarm-Rubrik
-     * in die Detailansicht eines Sets fuehrt. Ohne das stuende man nach der
-     * Rueckkehr wieder ganz oben, und die Rubrik liegt weit unten.
+     * Rollposition der Einstellungen — von aussen, weil die Preisalarm-Rubrik in die
+     * Detailansicht eines Sets führt; sonst stünde man nach der Rückkehr ganz oben.
      */
     settingsScrollState: androidx.compose.foundation.ScrollState,
 ) {
@@ -116,19 +106,14 @@ fun NavGraphBuilder.toolsGraph(
                 FinanceScreen(
                     vm = finanzen,
                     imageLoader = imageLoader,
-                    // Klick auf eine Zeile öffnet dieselbe Detailansicht wie in
-                    // der Galerie. Der Scroll-Zustand liegt ausserhalb dieses
-                    // Ziels (financeListState), damit die Rückkehr wieder an
-                    // derselben Stelle landet — beim Verlassen wird das Ziel
-                    // verworfen und ein rememberLazyListState() darin wäre weg.
+                    // Klick auf eine Zeile öffnet dieselbe Detailansicht wie in der Galerie. Der
+                    // Scroll-Zustand liegt ausserhalb (financeListState), damit die Rückkehr an
+                    // derselben Stelle landet.
                     onSetClick = { navController.navigate(Screen.SetDetail.createRoute(it)) },
-                    // Wie beim Set: ein ganzer Screen, kein Dialog. Den Namen
-                    // für die Leiste kennt die Bewertung, die diese Liste
-                    // ohnehin geladen hat — sonst stünde dort bis zum ersten
-                    // Laden die nackte Nummer.
-                    // Den Namen gibt die angeklickte Zeile mit; die Liste der
-                    // manuellen Stuecke hat ausserhalb der Finanzen eine eigene
-                    // Quelle (test/manuell-zustand-eine-regel-db.test.js).
+                    // Wie beim Set: ein ganzer Screen, kein Dialog. Den Namen gibt die angeklickte
+                    // Zeile mit, sonst stünde bis zum ersten Laden die nackte Nummer in der Leiste;
+                    // die manuellen Stücke haben ausserhalb der Finanzen eine eigene Quelle
+                    // (test/manuell-zustand-eine-regel-db.test.js).
                     onManualClick = { type, id, colorId, name ->
                         navController.navigate(
                             Screen.ManualItemDetail.createRoute(type, id, colorId, name ?: id))
@@ -141,19 +126,17 @@ fun NavGraphBuilder.toolsGraph(
         composable(Screen.BarcodeScanner.route) {
             val erfassung = ch.brickinventoryapp.ui.viewmodel.aktivitaetsViewModel<ch.brickinventoryapp.ui.viewmodel.ErfassungViewModel>()
             BarcodeScannerScreen(
-                // Texterkennung nur hier (Nachtrag 61): Dieser Scanner bedient
-                // „Set hinzufügen" (Galerie) und „Teileliste hinzufügen" —
-                // genau Marcos zwei Stellen. Der Preisvergleich hat einen
-                // eigenen Aufruf und lässt den Standard AUS.
+                // Texterkennung nur hier: Dieser Scanner bedient „Set hinzufügen“ (Galerie) und
+                // „Teileliste hinzufügen“. Der Preisvergleich hat einen eigenen Aufruf und lässt
+                // den Standard aus.
                 ocrEnabled = true,
                 onResult = { scannedValue ->
                     navController.popBackStack()
                     // Look up the scanned value via barcode API then navigate to add set
                     erfassung.resolveBarcode(scannedValue)
                 },
-                // Texterkennung liefert die Setnummer bereits fertig (Nachtrag
-                // 60) — der Umweg über die EAN-Auflösung entfällt. Das spart je
-                // Scan bis zu acht Rebrickable-Aufrufe und geht sofort weiter.
+                // Die Texterkennung liefert die Setnummer fertig — der Umweg über die
+                // EAN-Auflösung entfällt, das spart je Scan bis zu acht Rebrickable-Aufrufe.
                 onSetNumberResult = { setNumber ->
                     navController.popBackStack()
                     erfassung.useScannedSetNumber(setNumber)
@@ -177,7 +160,7 @@ fun NavGraphBuilder.toolsGraph(
                     pdfStatus = teileliste.pdfExportStatus,
                     imageLoader = imageLoader,
                     onScanBarcode = { erfassung.setScannerSource("partslist"); navController.navigate(Screen.BarcodeScanner.route) },
-                    // Erfolgloser Scan → Cursor ins Set-Feld (Nachtrag 113).
+                    // Erfolgloser Scan → Cursor ins Set-Feld.
                     manuelleErfassungAnfordern = barcodeState.manuelleErfassungAnfordern,
                     onManuelleErfassungQuittiert = { erfassung.manuelleErfassungQuittieren() },
                     onResolveSet = { setNumber -> teileliste.resolveSetForPartsList(setNumber) },
@@ -196,15 +179,10 @@ fun NavGraphBuilder.toolsGraph(
             // Zustand INNERHALB des Ziels lesen — als Parameter wäre es eine
             // Momentaufnahme vom Aufbau des Graphen (der NavHost-Builder läuft nur einmal).
             val state by vm.state.collectAsStateWithLifecycle()
-            // Beim Öffnen der Einstellungen laden: Der Zustand ändert sich
-            // ausserhalb dieser Ansicht kaum, und ein Dauerabo dafür wäre
-            // Aufwand ohne Nutzen.
-            //
-            // Hier stand bis zum 16.10. auch das Laden von Haushalt,
-            // Gutscheinen, Profil und Geraeten. Es ist mit den Rubriken
-            // umgezogen: Jede Unterseite holt, was SIE zeigt, und zwar wenn
-            // man sie oeffnet. Wer die Sprache umstellt, braucht keine
-            // Gutscheinliste.
+            // Beim Öffnen der Einstellungen laden: Der Zustand ändert sich ausserhalb kaum,
+            // ein Dauerabo wäre Aufwand ohne Nutzen. Haushalt, Gutscheine, Profil und Geräte
+            // holt jede Unterseite selbst, wenn man sie öffnet — wer die Sprache umstellt,
+            // braucht keine Gutscheinliste.
             LaunchedEffect(state.serverUrl) { if (state.serverUrl.isNotBlank()) vm.loadSettings() }
             ReiterGeruest(stringResource(R.string.nav_settings), vm, navController, bottomNavItems, snackbarHostState) {
                 ch.brickinventoryapp.ui.ScrollPositionKeeper(
@@ -213,27 +191,18 @@ fun NavGraphBuilder.toolsGraph(
                     vm = hiltViewModel<EinstellungenViewModel>(),
                     onLogout = { vm.logout(); navController.navigate(Screen.Login.route) { popUpTo(0) { inclusive = true } } },
                     onServerWechseln = { navController.navigate(Screen.Setup.route) },
-                    // Die sechs Rubriken fuehren seit dem 17.10. nicht mehr
-                    // von hier aus weiter: Sie stehen in der Konto-Klappe
-                    // (MainScaffold.kt), eine Ebene weiter aussen. Mit ihnen
-                    // sind `onUnterseite` und EinstellungsBereich entfallen —
-                    // ein Parameter, den niemand mehr fuellt, waere sonst der
-                    // naechste tote Pfad.
+                    // Die Rubriken führen nicht von hier weiter, sondern stehen in der Konto-Klappe
+                    // (MainScaffold.kt).
                     scrollState = settingsScrollState,
                 )
             }
         }
 
-        // ── Die Unterseiten der Einstellungen ───────────────────────────────
+        // ── Die Unterseiten der Einstellungen ──
         //
-        // Marcos Befund vom 16.10.: „Generell wirkt dieser Dialog überladen
-        // […] Evtl. Auch Elemente aus den Einstellungen in eine eigene Sicht
-        // verschieben?" — sechs Rubriken, sechs Seiten.
-        //
-        // OHNE ReiterGeruest: Eine Unterseite traegt einen Zurueck-Pfeil, keine
-        // untere Leiste. Sie bringt ihren Snackbar-Halter selbst mit (siehe
-        // EinstellungenUnterseiten.kt); sonst gingen die Meldungen des
-        // ViewModels dort verloren.
+        // Sechs Rubriken, sechs Seiten, ohne ReiterGeruest: Eine Unterseite trägt einen
+        // Zurück-Pfeil, keine untere Leiste. Sie bringt ihren Snackbar-Halter selbst mit
+        // (siehe EinstellungenUnterseiten.kt), sonst gingen die Meldungen dort verloren.
         composable(Screen.Gutscheine.route) {
             val state by vm.state.collectAsStateWithLifecycle()
             val gutscheine by gutscheinVm.state.collectAsStateWithLifecycle()
