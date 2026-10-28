@@ -321,7 +321,10 @@ async function addSetIntern(setNumber: string, quantity: number, userId: number,
   // Zweiterfassungs-Zweigs, und der Unterschied zwischen beiden ist damit an
   // einer Stelle zu sehen statt vierzig Zeilen auseinander.
   if (!global._csvImportLaeufe) nacharbeit().zieheNachNeuanlage(normalized, userId);
-  return { action:'added', set_number:normalized, name: name ?? `Set ${normalized}` };
+  // katalog_offen: Weder Rebrickable noch Brickset haben geantwortet. Das Set
+  // ist gespeichert, Name und Bild zieht die Nacharbeit nach — die Oberfläche
+  // soll das sagen statt eines schlichten „hinzugefügt“.
+  return { action:'added', set_number:normalized, name: name ?? `Set ${normalized}`, katalog_offen: !name };
 }
 
 // Shared logic to update a set's quantity and/or Kaufpreis. Used by both the

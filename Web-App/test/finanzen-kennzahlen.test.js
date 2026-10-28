@@ -10,6 +10,8 @@
  *   B  summenZellen() ohne Einstandszelle → rot: „ohne Marktpreise“
  *      („Die Summenzeile der Sets zeigt den Einstand nicht“)
  *   C  Zähler ohnePreis ohne die Teile → rot: beide Fälle (3 statt 4, 2 statt 3)
+ *   E  den Leerzustand in renderFinance entfernt → rot: „nichts erfasst“
+ *      (fünfmal „fehlt“; 28.10.)
  *   D  G&V-Betrag wieder als Gesamtwert − Einstand → rot: „mit Marktpreisen“
  *      (−397.93 neben +11.3 %; 28.10.)
  */
@@ -75,4 +77,15 @@ test('mit Marktpreisen: Gesamtwert und G&V', async () => {
     assert.match(zahl(text(d.getElementById('fin-pnl-sub'))), /^\+.*71\.00$/,
       `Betrag passt nicht zur Prozentzahl: ${text(d.getElementById('fin-pnl-sub'))}`);
   } finally { w.close(); }
+});
+
+test('nichts erfasst: ein Leerzustand, kein „Preis fehlt“', async () => {
+  const o = await oeffneOberflaeche({});
+  try {
+    await reiter(o.w, 'finance');
+    await warte(() => o.d.querySelector('#fin-tbl .leer'));
+    const finanzen = text(o.d.getElementById('tab-finance'));
+    assert.equal((finanzen.match(/fehlt/gi) || []).length, 0, `meldet „fehlt“: ${finanzen.slice(0, 300)}`);
+    assert.match(text(o.d.querySelector('#fin-tbl .leer')), /Noch nichts zu bewerten/);
+  } finally { o.w.close(); }
 });

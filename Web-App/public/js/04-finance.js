@@ -1,7 +1,7 @@
 import { ladeAnzeige } from './01-bausteine.js';
 import { registerActions } from './00-registry.js';
 import { colorName, locale, t, tRaw} from '../i18n.js';
-import { bildTag, platzhalterInhalt, ico, CURRENCY, G, api, esc, escJs, escUrl, fmtN, imgUrl, thumbUrl, toast } from './01-core.js';
+import { bildTag, platzhalterInhalt, leerZustand, ico, CURRENCY, G, api, esc, escJs, escUrl, fmtN, imgUrl, thumbUrl, toast } from './01-core.js';
 import { scopeMode, scopeQuery } from './14-scope.js';
 import { PARTS_ICON_SVG, _pnlCache, condBadges, ownerBadges, pnlBadge } from './02-gallery.js';
 import { loadCacheStats } from './05-settings.js';
@@ -307,6 +307,11 @@ export async function loadFinance(){
   zeigeKennzahlen({ einstand: einstand.alle, wert: grandTotal, guv: gesamtGuv, ohnePreis, cur,
     guvKauf: parseFloat(pnlData?.totals?.pnl_purchase) || 0, guvMarkt: parseFloat(pnlData?.totals?.pnl_current) || 0,
                     min: parseFloat(d.totals.min||0) + extra, max: parseFloat(d.totals.max||0) + extra });
+  // Nichts erfasst: ein Leerzustand statt Tabellen, die fünfmal „Preis fehlt“ melden.
+  if (!d.sets.length && !partsItems.length && !figsItems.length) {
+    G('fin-tbl').innerHTML = leerZustand({ ico: 'finanzen', titel: tRaw('finance.empty'), text: tRaw('finance.empty_text') });
+    return;
+  }
   const summenZeile = (name, kauf, wert) => `<tr><td class="fin-fuss-name">${name}</td>${summenZellen(kauf, wert, cur, 0)}</tr>`;
   const grandTotalHtml = `
     <div class="tw" style="margin-top:1.25rem">
@@ -368,7 +373,9 @@ function zeigeKennzahlen({ einstand, wert, guv, ohnePreis, cur, min, max, guvKau
     const spanne = min > 0 && max > min ? tRaw('finance.range', { min: fmtN(min, cur), max: fmtN(max, cur) }) : '';
     G('fin-wert-sub').textContent = [spanne, fehlt].filter(Boolean).join(' · ');
   } else {
-    G('fin-wert').innerHTML = `<span class="fval-hinweis">${esc(fehlt || tRaw('finance.price_missing_short'))}</span>`;
+    // Ohne Positionen fehlt kein Preis — dann einfach „—“.
+    if (fehlt) G('fin-wert').innerHTML = `<span class="fval-hinweis">${esc(fehlt)}</span>`;
+    else G('fin-wert').textContent = '—';
     G('fin-wert-sub').textContent = '';
   }
   G('fin-stat-pnl').style.display = guv != null && wert > 0 ? '' : 'none';

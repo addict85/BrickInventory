@@ -1029,7 +1029,8 @@ async function doAddSet(){
           hideProgress(); loadGallery(); loadStats();
           G('add-num').value=''; if(G('add-price')) G('add-price').value='';
           leereLagerortFeld('add-storage');
-          toast(`Set ${esc(ev.set_number)} ${ev.action==='added'?t('common.added'):t('common.updated')}!`,'success');
+          if (ev.katalog_offen) toast(tRaw('gallery.added_no_catalog', { num: ev.set_number }), 'info');
+          else toast(`Set ${esc(ev.set_number)} ${ev.action==='added'?t('common.added'):t('common.updated')}!`,'success');
           // Background jobs still running — refresh all tabs periodically
           set_lastImportAt(Date.now());
           [3000, 8000, 15000, 25000].forEach(delay => setTimeout(()=>{
