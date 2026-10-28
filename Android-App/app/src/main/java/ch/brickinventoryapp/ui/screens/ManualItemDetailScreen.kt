@@ -30,10 +30,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.R
-import ch.brickinventoryapp.ui.setzeManuellenLagerort
-import ch.brickinventoryapp.ui.MainViewModel
+import ch.brickinventoryapp.ui.viewmodel.KaeufeViewModel
 import ch.brickinventoryapp.ui.viewmodel.TeileViewModel
-import ch.brickinventoryapp.ui.loadManualAcquisitions
 import ch.brickinventoryapp.ui.components.ZoomableImageDialog
 import ch.brickinventoryapp.ui.theme.BrickStatTile
 import ch.brickinventoryapp.ui.theme.LocalIsBrickTheme
@@ -75,7 +73,7 @@ import androidx.compose.material.icons.filled.ViewInAr
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ManualItemDetailScreen(
-    vm: MainViewModel,
+    vm: KaeufeViewModel,
     /** Die Zeile des Eintrags und das Ändern, Löschen, Umfärben. */
     teile: TeileViewModel,
     type: String,          // "part" | "fig"

@@ -55,6 +55,8 @@ import ch.brickinventoryapp.*
 import ch.brickinventoryapp.ui.MainViewModel
 import ch.brickinventoryapp.ui.viewmodel.GalerieViewModel
 import ch.brickinventoryapp.ui.viewmodel.TeileViewModel
+import ch.brickinventoryapp.ui.viewmodel.SetDetailViewModel
+import ch.brickinventoryapp.ui.viewmodel.KaeufeViewModel
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import ch.brickinventoryapp.ui.ManualItemDetailUiState
 
@@ -141,15 +143,16 @@ fun NavGraphBuilder.collectionGraph(
                 val galerie by hiltViewModel<GalerieViewModel>(eintrag).galleryState.collectAsStateWithLifecycle()
                 galerie.sets.find { it.setNumber == setNumber }
             }
+            val detailVm: SetDetailViewModel = hiltViewModel()
             SetDetailScreen(
                 setNumber = setNumber,
-                vm = vm,
+                vm = detailVm,
                 vorschau = vorschau,
                 serverUrl = state.serverUrl,
                 imageLoader = imageLoader,
                 onBack = { navController.popBackStack() },
                 onDelete = { sn ->
-                    vm.deleteSet(sn)
+                    detailVm.deleteSet(sn)
                     navController.popBackStack()
                 },
                 onNavigateToAcqMgmt = { type, id, colorId, title ->
@@ -274,7 +277,7 @@ fun NavGraphBuilder.collectionGraph(
             val colorId   = backStackEntry.arguments?.getInt("colorId") ?: 0
             val itemTitle = java.net.URLDecoder.decode(backStackEntry.arguments?.getString("title") ?: "",    "UTF-8")
             ManualItemDetailScreen(
-                vm = vm,
+                vm = hiltViewModel<KaeufeViewModel>(),
                 teile = hiltViewModel(),
                 type = itemType,
                 id = itemId,
@@ -316,7 +319,7 @@ fun NavGraphBuilder.collectionGraph(
             val colorId   = backStackEntry.arguments?.getInt("colorId") ?: 0
             val itemTitle = java.net.URLDecoder.decode(backStackEntry.arguments?.getString("title")   ?: "",    "UTF-8")
             AcquisitionManagementScreen(
-                vm      = vm,
+                vm      = hiltViewModel<KaeufeViewModel>(),
                 type    = itemType,
                 id      = itemId,
                 colorId = colorId,

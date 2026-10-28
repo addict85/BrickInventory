@@ -182,14 +182,10 @@ class MainViewModel @Inject constructor(
     internal val _snackbar = meldungen.fluss
     val snackbar = meldungen.meldung
 
-    internal val _setDetailState = MutableStateFlow(SetDetailUiState())
-    val setDetailState = _setDetailState.asStateFlow()
 
     internal val _csvImportState = MutableStateFlow(CsvImportUiState())
     val csvImportState = _csvImportState.asStateFlow()
 
-    internal val _manDetailState = MutableStateFlow(ManualItemDetailUiState())
-    val manDetailState = _manDetailState.asStateFlow()
 
     // Eigener Fluss statt zwölf Felder in AppUiState (Nachtrag 117): Ein Scan
     // erzeugt viele Zwischenstände, und die gingen vorher jeden Reiter an.
@@ -409,23 +405,6 @@ class MainViewModel @Inject constructor(
     // brauchte nichts aus dieser Klasse, und die Bildschirm-ViewModels
     // ausserhalb von ui/ sollen sie ebenfalls benutzen koennen.
 
-    // ── Laufende Aufträge ────────────────────────────────────────────────────
-    // Teile, Figuren und Galerie halten ihre Aufträge selbst (Teile.kt,
-    // Galerie.kt): Ein neuer Abruf bricht den alten ab, sonst überschriebe
-    // eine langsame alte Antwort eine neuere.
-    // ── Preisalarm ───────────────────────────────────────────────────────────
-    // Dieselbe Mechanik, aber aus einem zusaetzlichen Grund: Der Auftrag muss
-    // das VERLASSEN des Bildschirms ueberleben. Stuende die Ruhezeit in einem
-    // LaunchedEffect, verwuerfe das Aufloesen der Komposition sie — und genau
-    // das war Marcos Befund: tippen, Tastatur zu, zurueck, nichts gespeichert.
-    // Hier laeuft sie im viewModelScope und ueberlebt den Bildschirm.
-    internal var alarmJob: kotlinx.coroutines.Job? = null
-
-    // ── Lagerort ─────────────────────────────────────────────────────────────
-    // Dieselbe Mechanik und derselbe Grund wie beim Preisalarm: Wer den Ort
-    // tippt und zurueckgeht, soll ihn nicht verlieren — und „Kiste 3" soll
-    // nicht fuenf halbe Orte im Vorrat hinterlassen.
-    internal var lagerJob: kotlinx.coroutines.Job? = null
 
 
     /**

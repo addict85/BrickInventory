@@ -27,4 +27,6 @@ interface Texte {
 /** Liest eine vom Nutzer gewählte Datei: Medientyp und Inhalt, oder null. */
 interface DateiLeser {
     suspend fun lies(uri: Uri): Pair<String?, ByteArray>?
+    /** Der angezeigte Dateiname, oder null, wenn ihn die Quelle nicht nennt. */
+    suspend fun name(uri: Uri): String? = null
 }

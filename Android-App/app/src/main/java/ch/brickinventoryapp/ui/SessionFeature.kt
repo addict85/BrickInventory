@@ -260,8 +260,6 @@ internal fun MainViewModel.logout() {
         // Nutzerverwaltung, nicht von einer Pruefung — deshalb prueft
         // felder.py das jetzt: Jeder Fluss des MainViewModel muss hier stehen.
         _csvImportState.value = CsvImportUiState()
-        _setDetailState.value = SetDetailUiState()
-        _manDetailState.value = ManualItemDetailUiState()
         erfassung.fertig()
         _householdState.value = HouseholdUiState()
         _anmeldeState.value = AnmeldeUiState()

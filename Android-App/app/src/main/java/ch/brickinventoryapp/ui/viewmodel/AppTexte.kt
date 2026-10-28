@@ -45,4 +45,13 @@ class AppDateiLeser @Inject constructor(
             bytes?.let { ctx.contentResolver.getType(uri) to it }
         }.getOrNull()
     }
+
+    override suspend fun name(uri: Uri): String? = withContext(Dispatchers.IO) {
+        runCatching {
+            ctx.contentResolver.query(uri, null, null, null, null)?.use { c ->
+                val i = c.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                if (i >= 0 && c.moveToFirst()) c.getString(i) else null
+            }
+        }.getOrNull()
+    }
 }

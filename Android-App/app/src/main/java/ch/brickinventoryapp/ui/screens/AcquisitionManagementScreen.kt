@@ -33,14 +33,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.R
 import ch.brickinventoryapp.data.model.Acquisition
-import ch.brickinventoryapp.ui.MainViewModel
-import ch.brickinventoryapp.ui.changeAcquisitionOwner
-import ch.brickinventoryapp.ui.deleteAcquisition
-import ch.brickinventoryapp.ui.deleteManualAcquisition
-import ch.brickinventoryapp.ui.loadAcquisitions
-import ch.brickinventoryapp.ui.loadManualAcquisitions
-import ch.brickinventoryapp.ui.updateAcquisition
-import ch.brickinventoryapp.ui.updateManualAcquisition
+import ch.brickinventoryapp.ui.viewmodel.KaeufeViewModel
 import ch.brickinventoryapp.util.fmtMoney
 import ch.brickinventoryapp.util.NumericInput
 import ch.brickinventoryapp.ui.theme.Abstaende
@@ -58,7 +51,7 @@ import ch.brickinventoryapp.ui.theme.Abstaende
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AcquisitionManagementScreen(
-    vm: MainViewModel,
+    vm: KaeufeViewModel,
     type: String,           // "set" | "part" | "fig"
     id: String,             // setNumber / partNumber / figNumber
     colorId: Int = 0,
@@ -69,14 +62,13 @@ fun AcquisitionManagementScreen(
     val blick by vm.blickfeld.collectAsStateWithLifecycle()
     val currency = state.currency
 
-    // Unified acquisition state — sets use setDetailState, parts/figs use manDetailState
-    val detailState by vm.setDetailState.collectAsStateWithLifecycle()
+    // Ein Zustand für Sets, Teile und Figuren (KaeufeViewModel).
     val manDetailState by vm.manDetailState.collectAsStateWithLifecycle()
 
-    val acquisitions = if (type == "set") detailState.acquisitions else manDetailState.acquisitions
+    val acquisitions = manDetailState.acquisitions
     // Summe vom Server — die Rechnung stand vorher hier und noch dreimal
     // woanders (siehe utils/acquisitions.ts, acquisitionTotals).
-    val totals = if (type == "set") detailState.acquisitionTotals else manDetailState.acquisitionTotals
+    val totals = manDetailState.acquisitionTotals
     // Rückmeldung nach einem Eigentümerwechsel — der Server sagt, ob und was
     // mitgewandert ist.
     var moveMessage by remember { mutableStateOf<String?>(null) }
@@ -89,7 +81,7 @@ fun AcquisitionManagementScreen(
     // die konfigurationsbewusste Form (androidx: „will be updated when
     // LocalConfiguration changes").
     val res = androidx.compose.ui.platform.LocalResources.current
-    val isLoading    = if (type == "set") detailState.acquisitionsLoading else manDetailState.isLoading
+    val isLoading    = manDetailState.isLoading
 
     LaunchedEffect(type, id, colorId) {
         when (type) {

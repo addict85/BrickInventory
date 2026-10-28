@@ -59,7 +59,7 @@ import ch.brickinventoryapp.data.model.Acquisition
 import ch.brickinventoryapp.data.model.PriceHistoryResponse
 import ch.brickinventoryapp.data.model.SetItem
 import ch.brickinventoryapp.data.model.SetPriceResponse
-import ch.brickinventoryapp.ui.MainViewModel
+import ch.brickinventoryapp.ui.viewmodel.SetDetailViewModel
 import ch.brickinventoryapp.ui.*  // Feature-Extensions (loadSets, setScope, …)
 import ch.brickinventoryapp.ui.SetDetailUiState
 import kotlinx.coroutines.CoroutineScope
@@ -405,7 +405,7 @@ fun LazyListScope.setDetailPriceSection(set: SetItem, detailState: SetDetailUiSt
 }
 
 /** Stammdaten: Nummer, Menge (änderbar), Erfassungsdatum. */
-fun LazyListScope.setDetailDetailsSection(set: SetItem, setNumber: String, vm: MainViewModel, acquisitions: List<Acquisition>, currency: String, fmtDate: (String?) -> String, onNavigateToAcqMgmt: (type: String, id: String, colorId: Int, title: String) -> Unit) {
+fun LazyListScope.setDetailDetailsSection(set: SetItem, setNumber: String, vm: SetDetailViewModel, acquisitions: List<Acquisition>, currency: String, fmtDate: (String?) -> String, onNavigateToAcqMgmt: (type: String, id: String, colorId: Int, title: String) -> Unit) {
     // ── Set details section ────────────────────────────────────────────
     item {
         SectionCard(title = stringResource(R.string.detail_section_details)) {

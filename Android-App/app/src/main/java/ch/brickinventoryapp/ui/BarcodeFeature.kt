@@ -512,10 +512,6 @@ internal fun MainViewModel.addSet(setNumber: String, quantity: Int = 1, purchase
                     // legt dann eine weitere Erfassung an — blieb eine offene
                     // Detailansicht samt Erfassungsliste unverändert.
                     bestand.melde(Aenderung.Sets)
-                    if (_setDetailState.value.setDetail?.setNumber == sn) {
-                        loadSetDetail(sn)
-                        loadAcquisitions(sn)
-                    }
                 } else {
                     meldeFehlgeschlageneErfassung(sn, r.data.error)
                 }

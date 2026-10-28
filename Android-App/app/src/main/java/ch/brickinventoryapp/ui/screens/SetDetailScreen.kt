@@ -19,7 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import ch.brickinventoryapp.ui.MainViewModel
+import ch.brickinventoryapp.ui.viewmodel.SetDetailViewModel
 import ch.brickinventoryapp.ui.*  // Feature-Extensions (loadSetDetail, updateQuantity, …)
 import ch.brickinventoryapp.ui.theme.LocalIsBrickTheme
 import ch.brickinventoryapp.ui.components.ZoomableImageDialog
@@ -31,7 +31,7 @@ import ch.brickinventoryapp.ui.theme.Abstaende
 @Composable
 fun SetDetailScreen(
     setNumber: String,
-    vm: MainViewModel,
+    vm: SetDetailViewModel,
     /** Das Set aus der geladenen Galerie — sofort sichtbar, bis das Detail da ist. */
     vorschau: ch.brickinventoryapp.data.model.SetItem? = null,
     serverUrl: String,
@@ -183,7 +183,7 @@ fun SetDetailScreen(
             setDetailPriceSection(set, detailState, price, history, pnlPct, currency, isBrick, ::fmtPrice)
             setDetailInstructionsSection(
                 set, detailState, serverUrl, onOpenPdf,
-                onAnleitungWaehlen = { anleitungAuswahl.launch(ch.brickinventoryapp.ui.ANLEITUNG_TYPEN) },
+                onAnleitungWaehlen = { anleitungAuswahl.launch(ch.brickinventoryapp.ui.viewmodel.ANLEITUNG_TYPEN) },
                 onAnleitungLoeschen = { vm.loescheAnleitung(setNumber, it) },
             )
         }

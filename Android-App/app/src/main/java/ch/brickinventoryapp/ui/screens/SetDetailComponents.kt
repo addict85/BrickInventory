@@ -54,7 +54,6 @@ import kotlinx.coroutines.launch
 import ch.brickinventoryapp.data.model.PriceChartData
 import ch.brickinventoryapp.data.model.PriceByCondition
 import ch.brickinventoryapp.ui.PriceChartMath
-import ch.brickinventoryapp.ui.MainViewModel
 import ch.brickinventoryapp.ui.*  // Feature-Extensions (loadSetDetail, updateQuantity, …)
 import ch.brickinventoryapp.ui.theme.LocalIsBrickTheme
 import ch.brickinventoryapp.ui.theme.LocalChartColors
