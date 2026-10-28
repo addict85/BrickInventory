@@ -16,6 +16,10 @@ data class HouseholdUiState(
     val inviteCode: String? = null,
     /** Meldung des Servers (Währung weicht ab, schon verknüpft, zweite Stufe). */
     val message: String? = null,
+    /** Das Passwort beim Einlösen war falsch; das Feld zeigt es an. */
+    val passwortFalsch: Boolean = false,
+    /** Zählt gelungene Einlösungen — daran leert die Ansicht ihre Felder. */
+    val eingeloest: Int = 0,
 )
 
 /**

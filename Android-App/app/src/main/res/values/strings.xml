@@ -496,8 +496,11 @@
     <string name="household_invite_copy">Copy</string>
     <string name="household_invite_label">Invitation code</string>
     <string name="household_redeem_title">Accept an invitation</string>
-    <string name="household_redeem_hint">Enter the code from the main account. Your data stays yours.</string>
+    <string name="household_redeem_hint">Enter the code from the main account and confirm with the password of this account. Your data stays yours.</string>
     <string name="household_redeem_submit">Link</string>
+    <string name="household_redeem_password">Password of this account</string>
+    <string name="household_redeem_password_wrong">The password is wrong. Enter the password of the account you are signed in with.</string>
+    <string name="household_redeem_locked">Too many wrong attempts. Please try again later.</string>
     <string name="household_unlink">Unlink</string>
     <string name="household_remove">Remove</string>
     <string name="household_move_ok">Set moved — %1$s and %2$s came along.</string>

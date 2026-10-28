@@ -487,8 +487,11 @@
     <string name="household_invite_copy">Kopieren</string>
     <string name="household_invite_label">Einladungscode</string>
     <string name="household_redeem_title">Einladung annehmen</string>
-    <string name="household_redeem_hint">Gib den Code aus dem Hauptkonto ein. Deine Daten bleiben deine.</string>
+    <string name="household_redeem_hint">Gib den Code aus dem Hauptkonto ein und bestätige mit dem Passwort dieses Kontos. Deine Daten bleiben deine.</string>
     <string name="household_redeem_submit">Verknüpfen</string>
+    <string name="household_redeem_password">Passwort dieses Kontos</string>
+    <string name="household_redeem_password_wrong">Das Passwort stimmt nicht. Gib das Passwort des Kontos ein, mit dem du angemeldet bist.</string>
+    <string name="household_redeem_locked">Zu viele Fehlversuche. Bitte versuche es später erneut.</string>
     <string name="household_unlink">Verknüpfung lösen</string>
     <string name="household_remove">Entfernen</string>
     <string name="household_move_ok">Set verschoben — %1$s und %2$s mitgenommen.</string>

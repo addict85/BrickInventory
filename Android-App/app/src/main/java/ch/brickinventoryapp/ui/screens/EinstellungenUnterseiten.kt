@@ -223,7 +223,7 @@ fun HaushaltUnterseite(
         HouseholdCard(
             state = haushalt,
             onCreateInvite = { vm.createHouseholdInvite() },
-            onRedeemInvite = { code -> vm.redeemHouseholdInvite(code) },
+            onRedeemInvite = { code, passwort -> vm.redeemHouseholdInvite(code, passwort) },
             onUnlink = { id -> vm.unlinkHousehold(subUserId = id) },
             onUnlinkParent = { id -> vm.unlinkHousehold(mainUserId = id) },
             onVerwerfen = { id -> vm.verwerfeGetrenntesKonto(id) },
@@ -938,13 +938,17 @@ private fun GeraeteCard(
 private fun HouseholdCard(
     state: ch.brickinventoryapp.ui.HouseholdUiState,
     onCreateInvite: () -> Unit,
-    onRedeemInvite: (String) -> Unit,
+    onRedeemInvite: (code: String, passwort: String) -> Unit,
     onUnlink: (Int) -> Unit,
     onUnlinkParent: (Int) -> Unit,
     onVerwerfen: (Int) -> Unit,
 ) {
     val st = state.status
     var code by rememberSaveable { mutableStateOf("") }
+    // Das Passwort bewusst nicht rememberSaveable: Es gehört nicht in den
+    // gespeicherten Zustand der Activity.
+    var passwort by remember { mutableStateOf("") }
+    LaunchedEffect(state.eingeloest) { if (state.eingeloest > 0) code = "" }
     // LocalClipboardManager ist veraltet („Use LocalClipboard instead which
     // supports suspend functions"). Der Nachfolger ist kein reiner
     // Namenstausch: `Clipboard.setClipEntry` ist SUSPEND, braucht also einen
@@ -1079,15 +1083,28 @@ private fun HouseholdCard(
                 label = { Text(stringResource(R.string.household_redeem_title)) },
                 modifier = Modifier.fillMaxWidth()
             )
-            Button(onClick = { onRedeemInvite(code); code = "" },
-                   enabled = code.isNotBlank() && !state.isLoading) {
+            // Nach einem Fehlversuch ist das Feld leer und rot, bis wieder getippt wird.
+            val passwortFalsch = state.passwortFalsch && passwort.isEmpty()
+            OutlinedTextField(
+                value = passwort, onValueChange = { passwort = it }, singleLine = true,
+                label = { Text(stringResource(R.string.household_redeem_password)) },
+                visualTransformation = PasswordVisualTransformation(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                isError = passwortFalsch,
+                supportingText = if (passwortFalsch) {
+                    { Text(stringResource(R.string.household_redeem_password_wrong)) }
+                } else null,
+                modifier = Modifier.fillMaxWidth()
+            )
+            Button(onClick = { onRedeemInvite(code, passwort); passwort = "" },
+                   enabled = code.isNotBlank() && passwort.isNotEmpty() && !state.isLoading) {
                 Text(stringResource(R.string.household_redeem_submit))
             }
         }
 
         // Meldung des Servers — Währung weicht ab, Konten schon oder
         // umgekehrt verknüpft. Wortlaut unverändert übernommen.
-        state.message?.let {
+        state.message?.takeUnless { state.passwortFalsch }?.let {
             Text(it, style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.error)
         }
