@@ -127,7 +127,7 @@ verschlüsselt es vorher (z. B. `gpg -c` oder `age`).
 ### Automatische Kopie vor einem Update
 
 Bringt ein Update neue Migrationen mit, kopiert der Server vorher alle
-Tabellen mit Nutzerdaten (`users` und jede Tabelle mit `user_id`) in ein
+Tabellen mit Nutzerdaten (`users`, jede Tabelle mit `user_id` und jede mit Fremdschlüssel auf `users`, etwa die Haushaltsverknüpfungen) in ein
 eigenes Schema `vor_migration_<Datum Uhrzeit>` derselben Datenbank. Die drei
 jüngsten bleiben. Das ersetzt `backup.sh` nicht — Katalog und Bilder fehlen
 darin —, aber ein misslungenes Update lässt sich damit zurücknehmen:
