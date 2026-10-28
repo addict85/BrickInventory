@@ -372,6 +372,8 @@ data class GalleryUiState(
      * Erfolg. Ohne das sah ein Ladefehler aus wie eine leere Sammlung.
      */
     val galleryFehler: String? = null,
+    /** Liste aus dem Plattenspeicher statt vom Server: Zeitpunkt der Ablage, sonst null. */
+    val offlineStand: Long? = null,
     val stats: DashboardStats? = null,
 
     // Gallery "Search by barcode" flow
@@ -478,6 +480,8 @@ data class PartsUiState(
      */
     val partsCategoryFilter: String = "",
     val partsLoading: Boolean = false,
+    /** Teileliste aus dem Plattenspeicher: Zeitpunkt der Ablage, sonst null. */
+    val teileOfflineStand: Long? = null,
     val minifigs: List<Minifig> = emptyList(),
     /** Die manuell erfassten Figuren — siehe manualParts, null wie dort. */
     val manualFigs: List<ch.brickinventoryapp.data.model.FigValuationItem>? = null,
@@ -485,6 +489,8 @@ data class PartsUiState(
     val minifigStats: ch.brickinventoryapp.data.model.MinifigStats =
         ch.brickinventoryapp.data.model.MinifigStats(),
     val minifigsLoading: Boolean = false,
+    /** Figurenliste aus dem Plattenspeicher: Zeitpunkt der Ablage, sonst null. */
+    val figurenOfflineStand: Long? = null,
     /**
      * Suchtext der Figurenliste — im Zustand, nicht im Composable.
      *

@@ -74,3 +74,13 @@ fun fmtUhrzeit(iso: String?): String? {
         .withZone(java.time.ZoneId.systemDefault())
         .format(zeitpunkt)
 }
+
+/**
+ * Zeitpunkt eines zwischengespeicherten Stands, auf der Uhr dessen, der ihn
+ * liest — wie [fmtUhrzeit]. Tag und Uhrzeit, weil „Stand von 14:03" ohne Tag
+ * nicht sagt, ob es von heute ist.
+ */
+fun fmtStand(millis: Long, zone: java.time.ZoneId = java.time.ZoneId.systemDefault()): String =
+    java.time.format.DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")
+        .withZone(zone)
+        .format(java.time.Instant.ofEpochMilli(millis))

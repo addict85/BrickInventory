@@ -110,6 +110,7 @@
     <string name="gallery_delete_text">%1$s und alle Teile werden entfernt.</string>
     <string name="gallery_pieces_suffix"> Teile</string>
     <string name="gallery_scan_barcode">Barcode scannen</string>
+    <string name="offline_stand">Offline – Stand von %1$s</string>
     <string name="gallery_add_set">Set hinzufügen</string>
     <string name="gallery_add_set_title">Set hinzufügen</string>
     <string name="gallery_set_number">Set-Nummer</string>

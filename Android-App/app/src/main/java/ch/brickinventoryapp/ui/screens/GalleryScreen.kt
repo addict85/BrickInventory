@@ -265,6 +265,7 @@ fun GalleryScreen(
                     }
             }
 
+            ch.brickinventoryapp.ui.components.OfflineHinweis(galerie.offlineStand)
             PullToRefreshBox(isRefreshing = isLoading, onRefresh = onRefresh, modifier = Modifier.fillMaxSize()) {
                 when (galerieAnzeige(galerie, gefiltert = searchInput.isNotBlank() || theme.isNotEmpty())) {
                     GalerieAnzeige.LAEDT -> Box(Modifier.fillMaxSize(), Alignment.Center) {

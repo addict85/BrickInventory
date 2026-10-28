@@ -57,7 +57,7 @@ internal class Galerie(
                         // Der Server schickt die Themen nur mit Seite 1; eine
                         // leere Liste räumte die Auswahl sonst leer.
                         galleryThemes = if (r.data.themes.isNotEmpty()) r.data.themes else it.galleryThemes,
-                        galleryLoading = false)
+                        galleryLoading = false, offlineStand = r.stand)
                 }
                 is Result.Error -> {
                     _state.update { it.copy(galleryLoading = false, galleryFehler = beschreibeFehler(r)) }

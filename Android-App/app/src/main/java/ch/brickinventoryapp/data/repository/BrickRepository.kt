@@ -26,7 +26,15 @@ import javax.inject.Singleton
  * muss. Bitte keinen `else`-Zweig nachrüsten.
  */
 sealed class Result<out T> {
-    data class Success<T>(val data: T) : Result<T>()
+    /**
+     * [stand] ist gesetzt, wenn die Daten nicht vom Server kommen, sondern aus
+     * dem Plattenspeicher (Millisekunden seit 1970, Zeitpunkt der Ablage). Die
+     * Oberfläche muss das sagen können — sonst sieht ein alter Stand aus wie
+     * ein frischer.
+     */
+    data class Success<T>(val data: T, val stand: Long? = null) : Result<T>() {
+        val veraltet: Boolean get() = stand != null
+    }
     // unauthorized = true bei HTTP 401: Der Token ist ungültig/abgelaufen. Von
     // "transient" bewusst getrennt — ein 401 ist kein Netzwerkproblem, das ein
     // Retry beheben könnte, und cached() (unten) darf ihn nicht mit einer alten

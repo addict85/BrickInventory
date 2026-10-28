@@ -237,6 +237,7 @@ fun PartsScreen(
             modifier = Modifier.padding(horizontal = 14.dp).padding(bottom = Abstaende.klein),
         )
 
+        ch.brickinventoryapp.ui.components.OfflineHinweis(partsState.teileOfflineStand)
         if (isLoading && parts.isEmpty() && manualParts.isEmpty()) {
             Box(Modifier.fillMaxSize(), Alignment.Center) { CircularProgressIndicator() }
         } else if (parts.isEmpty() && manualParts.isEmpty()) {

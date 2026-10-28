@@ -153,16 +153,8 @@ class VorschauAblageTest {
                 "gibt es den ResponseCache; fuer Aenderungen darf es ihn nicht " +
                 "geben."
         }
-
-        // Und der Lese-Zwischenspeicher bleibt einer: Er ersetzt eine
-        // gescheiterte Abfrage durch die letzte bekannte Antwort — mehr nicht.
-        val basis = Quellen.ohneKommentare(Quellen.lies("data/repository/RepoBasis.kt"))
-        val fn = Quellen.funktion(basis, "protected suspend fun <T : Any> cached(")
-        assert(fn.isNotEmpty()) { "cached() fehlt" }
-        assert(fn.contains("if (fresh is Result.Error && fresh.unauthorized) return fresh")) {
-            "cached() liefert auch bei abgelaufener Anmeldung die alte Antwort. " +
-                "Dann sieht man nach dem Abmelden weiter fremde Daten."
-        }
+        // Wann der Lese-Zwischenspeicher einspringt, prüft RepoCacheRueckfallTest
+        // am laufenden Code.
     }
 
     @Test

@@ -43,6 +43,8 @@ import org.junit.Test
  *      erfolgreicher neuer Versuch raeumt den Fehler weg"
  *   F  in galerieAnzeige() die Zweige FEHLER und LEER vertauscht → rot
  *      „ein Ladefehler …" und „eine leere Sammlung …"
+ *   G  (28.10.) in laden() `offlineStand = r.stand` entfernt → rot „ein Stand
+ *      aus dem Plattenspeicher wird als offline gezeigt …“
  */
 class GalerieTest {
 
@@ -153,5 +155,21 @@ class GalerieTest {
     fun `geladene Sets bleiben stehen, auch wenn das Neuladen scheitert`() {
         val st = GalleryUiState(sets = listOf(set(1)), galleryFehler = "Netz")
         assertEquals(GalerieAnzeige.LISTE, galerieAnzeige(st, gefiltert = false))
+    }
+
+    @Test
+    fun `ein Stand aus dem Plattenspeicher wird als offline gezeigt, ein frischer nicht`() = runTest {
+        var stand: Long? = 1_700_000_000_000
+        val g = Galerie(
+            scope = this,
+            holeSeite = { _, _ -> Result.Success(SetsResponse(success = true, sets = listOf(set(1)), total = 1), stand = stand) },
+            holeKennzahlen = { Result.Success(StatsResponse(success = true)) },
+            meldeFehler = {}, vergissScroll = {},
+        )
+        g.laden(); advanceUntilIdle()
+        assertEquals(1_700_000_000_000, g.state.value.offlineStand)
+        stand = null
+        g.laden(); advanceUntilIdle()
+        assertNull("Nach einer frischen Antwort steht der Hinweis noch da", g.state.value.offlineStand)
     }
 }

@@ -144,6 +144,7 @@ fun MinifigsScreen(
             modifier = Modifier.padding(horizontal = 14.dp).padding(bottom = Abstaende.klein),
         )
 
+        ch.brickinventoryapp.ui.components.OfflineHinweis(partsState.figurenOfflineStand)
         when {
             isLoading && figs.isEmpty() && manualFigs.isEmpty() -> Box(Modifier.fillMaxSize(), Alignment.Center) {
                 CircularProgressIndicator()

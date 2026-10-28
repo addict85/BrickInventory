@@ -58,29 +58,6 @@ class SessionAndLifecycleTest {
     }
 
     @Test
-    fun `cached greift bei 401 NICHT auf den Plattenspeicher zurueck`() {
-        val src = code(datenschicht())
-        // Anker ohne Sichtbarkeitsmodifikator (Nachtrag 155): cached() ist nach
-        // der Aufteilung `protected` in RepoBasis, damit die fuenf
-        // Teil-Repositories herankommen. Geprueft ist hier die REIHENFOLGE im
-        // Rumpf — erst die 401-Ausnahme, dann der Cache-Rueckgriff —, nicht wer
-        // die Funktion sehen darf.
-        val body = src.substringAfter("suspend fun <T : Any> cached(")
-            .substringBefore("\n    }")
-        val guard = body.indexOf("unauthorized")
-        val fallback = body.indexOf("cache.get(")
-        assert(guard >= 0) {
-            "cached() prüft unauthorized nicht. Ohne diese Ausnahme deckt der bis zu " +
-                "7 Tage alte Cache eine abgelaufene Sitzung zu: Der Nutzer sieht eine " +
-                "scheinbar normale Galerie, obwohl keine Sitzung mehr besteht."
-        }
-        assert(fallback >= 0) { "cached() ohne cache.get() — Test veraltet?" }
-        assert(guard < fallback) {
-            "Die 401-Ausnahme steht NACH dem Cache-Rückgriff und wirkt damit nicht mehr"
-        }
-    }
-
-    @Test
     fun `der Interceptor meldet 401 nur mit Token und nur fuer unseren Server`() {
         val src = code(read("di/AppModule.kt"))
         assert(src.contains("sessionExpired.notifyExpired()")) {
