@@ -69,7 +69,7 @@ window.I18N_EN = {
   'nav.finance': 'Finance',
   'nav.partslist': 'Parts list',
   'nav.settings': 'Settings',
-  'nav.monitoring': 'Monitoring',
+  'nav.monitoring': 'Background',
 
   // Gallery
   'gallery.search': 'Search sets…',
@@ -578,7 +578,7 @@ window.I18N_EN = {
   'wanted.topped_up': 'topped up',
   'settings.data_zip_hint': 'Export sets, manually added parts, minifigures, the watchlist and the price alerts as a ZIP with 5 CSV files — these can later be re-imported via the respective CSV importer (Sets/Parts/Minifigures/Watchlist tab, or Settings → Price alerts).',
   'settings.data_zip_btn': 'Export sets, parts, minifigures, watchlist & alerts (ZIP)',
-  'monitor.title': 'Job monitoring',
+  'monitor.title': 'Background work',
   'monitor.parts_lists': 'Parts lists',
   'settings.clear_price_cache': 'Clear price cache',
   'settings.clear_all_cache_hint': '(prices + parts + catalog)',
