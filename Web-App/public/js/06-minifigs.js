@@ -231,7 +231,7 @@ export function renderFigs(list, target) {
     <div class="parts-group">
       <div class="group-hd">
         <span class="group-title">${label}</span>
-        <span class="group-sub">${figs.length} ${t('parts.stat.types')}</span>
+        <span class="group-sub">${t('parts.group_types', { n: figs.length })}</span>
       </div>
       <div class="parts-grid">
         ${figs.map(f => {

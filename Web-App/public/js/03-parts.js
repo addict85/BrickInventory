@@ -270,7 +270,7 @@ function appendParts(parts){
       <div class="group-hd">
         <div class="color-dot" data-stil="width:18px;height:18px" data-farbe="${escHex(g.hex, 'var(--s300)')}"></div>
         <span class="group-title">${esc(colorName(g.color))}</span>
-        <span class="group-sub">${g.parts.length} ${t('parts.stat.types')}</span>
+        <span class="group-sub">${t('parts.group_types', { n: g.parts.length })}</span>
       </div>
       <div class="parts-grid">${g.parts.map(partsCard).join('')}</div>
     </div>`;
@@ -293,7 +293,7 @@ function bumpGroupCount(groupEl, add){
   const n = (parseInt(groupEl.dataset.count) || 0) + add;
   groupEl.dataset.count = n;
   const sub = groupEl.querySelector('.group-sub');
-  if (sub) sub.textContent = `${n} ${t('parts.stat.types')}`;
+  if (sub) sub.textContent = tRaw('parts.group_types', { n });
 }
 
 /**

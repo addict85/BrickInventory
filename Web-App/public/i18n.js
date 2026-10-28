@@ -107,6 +107,21 @@ function _i18nEsc(v) {
 }
 
 /**
+ * Mehrzahl nach den Regeln der Sprache: Ist {n} oder {count} eine Zahl und gibt
+ * es „schlüssel_one“ (bzw. _few, _many …), gilt diese Form. Feste Formen wie
+ * „{n} Typen“ ergaben sonst „1 Typen“.
+ * @param {Record<string,string>} dict
+ * @param {string} key
+ * @param {Record<string, unknown>} [vars]
+ */
+function mehrzahlSchluessel(dict, key, vars) {
+  const zahl = vars ? (vars.n ?? vars.count) : undefined;
+  if (typeof zahl !== 'number' || !Number.isFinite(zahl)) return key;
+  const form = key + '_' + new Intl.PluralRules(locale()).select(zahl);
+  return (dict[form] || I18N['de']?.[form]) ? form : key;
+}
+
+/**
  * Übersetzten Text holen und {platzhalter} ersetzen.
  *
  * Die eingesetzten Werte werden MASKIERT. Fast jede Aufrufstelle schiebt das
@@ -131,7 +146,8 @@ export function t(key, vars) {
   // I18N['de'] ist NICHT garantiert vorhanden — bei englischer Oberfläche wird
   // nur locales/en.js geladen. Der Rückfall greift deshalb nur, wenn Deutsch
   // tatsächlich da ist; sonst bleibt der Schlüssel selbst als letzte Stufe.
-  let str = dict[key] || I18N['de']?.[key] || key;
+  const k = mehrzahlSchluessel(dict, key, vars);
+  let str = dict[k] || I18N['de']?.[k] || key;
   if (vars) {
     Object.keys(vars).forEach(k => { str = str.replaceAll('{' + k + '}', _i18nEsc(vars[k])); });
   }
@@ -157,7 +173,8 @@ export function tRaw(key, vars) {
   // I18N['de'] ist NICHT garantiert vorhanden — bei englischer Oberfläche wird
   // nur locales/en.js geladen. Der Rückfall greift deshalb nur, wenn Deutsch
   // tatsächlich da ist; sonst bleibt der Schlüssel selbst als letzte Stufe.
-  let str = dict[key] || I18N['de']?.[key] || key;
+  const k = mehrzahlSchluessel(dict, key, vars);
+  let str = dict[k] || I18N['de']?.[k] || key;
   if (vars) {
     Object.keys(vars).forEach(k => { str = str.replaceAll('{' + k + '}', String(vars[k] ?? '')); });
   }
