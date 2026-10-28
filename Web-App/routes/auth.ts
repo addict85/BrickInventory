@@ -5,7 +5,7 @@ import bcrypt from 'bcryptjs';
 import * as db from '../db/database';
 import { meldeHaushaltsaenderung } from '../utils/household';
 import { handleRouteError, logAndContinue, meldeUndWeiter, fehlerCode, fehlertext, pfadParam } from '../utils/httpError';
-import { hashToken, pruefeAnmeldedaten, createToken, validateToken, assertLoginAllowed, establishSession, revokeAllTokens, revokeAllSessions, deleteToken, BCRYPT_ROUNDS, USERNAME_RE, EMAIL_RE, requireLoginOrToken, nutzerId, angemeldeteNutzerId, appTokenOhneAblauf, passwortZuKurz, flaggeGesetzt, leereTokenCache, laufzeitTage } from '../utils/auth';
+import { hashToken, pruefeAnmeldedaten, createToken, validateToken, assertLoginAllowed, establishSession, revokeAllTokens, revokeAllSessions, beendeAndereZugaenge, deleteToken, BCRYPT_ROUNDS, USERNAME_RE, EMAIL_RE, requireLoginOrToken, nutzerId, angemeldeteNutzerId, appTokenOhneAblauf, passwortZuKurz, flaggeGesetzt, leereTokenCache, laufzeitTage } from '../utils/auth';
 import { ipThrottle, bestaetigungGesperrt, bestaetigungFehlgeschlagen, bestaetigungGelungen } from '../utils/loginLimiter';
 import crypto from 'crypto';
 import { strictBool } from '../utils/validate';
@@ -474,15 +474,35 @@ const QR_TTL_MS = 5 * 60 * 1000;
  * Passwortwechsel, E-Mail-Wechsel und zweiten Faktor, mit Bremse je Konto
  * (utils/loginLimiter.ts). Antwortet selbst, wenn es nicht stimmt.
  */
-async function bestaetigePasswort(req: Request, res: Response, uid: number, passwort: unknown): Promise<boolean> {
+async function bestaetigePasswort(req: Request, res: Response, uid: number, passwort: unknown,
+                                 zusatz: { zweiterFaktor?: unknown } = {}): Promise<boolean> {
   const gesperrt = await bestaetigungGesperrt(uid);
   if (gesperrt) { sendeFehler(req, res, 429, gesperrt.code, gesperrt.vars); return false; }
   const u = await db.get('SELECT password_hash FROM users WHERE id = $1', [uid]);
   const ok = !!u && typeof passwort === 'string' && passwort !== '' && await bcrypt.compare(passwort, u.password_hash);
   if (!ok) {
     await bestaetigungFehlgeschlagen(uid);
-    // 400 statt 401: Beide Clients deuten 401 als „Sitzung abgelaufen".
     sendeFehler(req, res, 400, 'aktuelles_passwort_falsch');
+    return false;
+  }
+  // Ein falscher Code zählt wie ein falsches Passwort — sonst liesse er sich
+  // mit bekanntem Passwort beliebig oft raten.
+  if ('zweiterFaktor' in zusatz && !await zf.pruefeCode(uid, zusatz.zweiterFaktor)) {
+    await bestaetigungFehlgeschlagen(uid);
+    sendeFehler(req, res, 400, 'zweiter_faktor_falsch');
+    return false;
+  }
+  await bestaetigungGelungen(uid);
+  return true;
+}
+
+/** Nur der Code des zweiten Faktors — mit derselben Bremse wie das Passwort. */
+async function bestaetigeCode(req: Request, res: Response, uid: number, code: unknown): Promise<boolean> {
+  const gesperrt = await bestaetigungGesperrt(uid);
+  if (gesperrt) { sendeFehler(req, res, 429, gesperrt.code, gesperrt.vars); return false; }
+  if (!await zf.pruefeCode(uid, code)) {
+    await bestaetigungFehlgeschlagen(uid);
+    sendeFehler(req, res, 400, 'zweiter_faktor_falsch');
     return false;
   }
   await bestaetigungGelungen(uid);
@@ -508,8 +528,12 @@ router.post('/zweiter-faktor/einrichten', requireLogin, async (req, res) => {
 
 router.post('/zweiter-faktor/bestaetigen', requireLogin, async (req, res) => {
   try {
-    const codes = await zf.bestaetigeEinrichtung(angemeldeteNutzerId(req), String(req.body?.code ?? ''));
+    const uid = angemeldeteNutzerId(req);
+    const codes = await zf.bestaetigeEinrichtung(uid, String(req.body?.code ?? ''));
     if (!codes) return sendeFehler(req, res, 400, 'zweiter_faktor_falsch');
+    const kopf = String(req.headers.authorization || '');
+    await beendeAndereZugaenge(uid, kopf.startsWith('Bearer ') ? kopf.slice(7) : null,
+      req.session?.userId ? req.sessionID : null);
     res.json({ success: true, codes });
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
@@ -518,8 +542,7 @@ router.post('/zweiter-faktor/abschalten', requireLogin, async (req, res) => {
   try {
     const uid = angemeldeteNutzerId(req);
     if (!await zf.istAktiv(uid)) return sendeFehler(req, res, 409, 'zweiter_faktor_nicht_aktiv');
-    if (!await bestaetigePasswort(req, res, uid, req.body?.password)) return;
-    if (!await zf.pruefeCode(uid, req.body?.code)) return sendeFehler(req, res, 400, 'zweiter_faktor_falsch');
+    if (!await bestaetigePasswort(req, res, uid, req.body?.password, { zweiterFaktor: req.body?.code })) return;
     await zf.schalteAb(uid);
     res.json({ success: true });
   } catch (e) { handleRouteError(res, e, undefined, req); }
@@ -529,7 +552,7 @@ router.post('/zweiter-faktor/codes', requireLogin, async (req, res) => {
   try {
     const uid = angemeldeteNutzerId(req);
     if (!await zf.istAktiv(uid)) return sendeFehler(req, res, 409, 'zweiter_faktor_nicht_aktiv');
-    if (!await zf.pruefeCode(uid, req.body?.code)) return sendeFehler(req, res, 400, 'zweiter_faktor_falsch');
+    if (!await bestaetigeCode(req, res, uid, req.body?.code)) return;
     res.json({ success: true, codes: await zf.erneuereCodes(uid) });
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
@@ -550,9 +573,11 @@ router.delete('/users/:id/zweiter-faktor', requireAdmin, async (req, res) => {
 // Konto öffnet. Als GET war sie die einzige zustandsändernde Route im Baum, …
 // Ausführlich: docs/begruendungen/routes/auth.ts.md#post-qr-token
 router.post('/qr-token', requireLogin, async (req, res) => {
-  // Die eigene Sitzungspruefung stand im Rumpf; der Waechter steht jetzt in
-  // der Kette und kennt beide Ausweise — siehe den Block ueber requireLogin.
   try {
+    // Wie /token-create: Ein QR-Code eröffnet einen neuen, langlebigen Geräte-
+    // zugang. Mit einem erbeuteten Token allein darf das nicht gehen.
+    if (!req.session?.userId) return sendeFehler(req, res, 403, 'nur_mit_sitzung');
+    if (!await bestaetigePasswort(req, res, angemeldeteNutzerId(req), req.body?.password)) return;
     // Ohne Adresse kein Code
     // Verweigern und nicht raten: Der QR-Code ist der einzige Ort im Baum, an
     // dem eine falsche Adresse SPAETER auffaellt und nicht sofort. Er laesst

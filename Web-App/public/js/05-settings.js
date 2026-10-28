@@ -143,7 +143,9 @@ async function generateQrCode() {
     // sonst selbst die laengste Frist aussuchen (Begruendung ausfuehrlich in
     // db/migrations/0016-token-laufzeit.sql).
     const gueltigkeit = G('qr-validity')?.value || '';
-    const d = await api('POST', '/v1/auth/qr-token', { gueltigkeit });
+    const pw = G('qr-password');
+    const d = await api('POST', '/v1/auth/qr-token', { gueltigkeit, password: pw?.value || '' });
+    if (pw) pw.value = '';
     if (!d.success) {
       hint.textContent = tRaw('toast.error')+': ' + (d.error||t('common.unknown'));
       // Den alten Code wegraeumen: Er ist vielleicht noch gueltig, und ein

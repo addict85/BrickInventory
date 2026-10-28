@@ -649,6 +649,22 @@ async function revokeAllSessions(userId: number): Promise<void> {
   await db.run("DELETE FROM user_sessions WHERE sess::jsonb->>'userId' = $1", [String(userId)]);
 }
 
+/**
+ * Alle Zugänge eines Kontos ausser dem gerade benutzten beenden — nach dem
+ * Einschalten des zweiten Faktors: Ein Angreifer, der schon drin war, soll
+ * nicht mit einem alten Token oder einer alten Sitzung drinbleiben.
+ */
+async function beendeAndereZugaenge(userId: number, aktuellerToken: string | null, sitzungsId: string | null): Promise<void> {
+  if (aktuellerToken) {
+    await db.run('DELETE FROM api_tokens WHERE user_id = $1 AND token <> $2', [userId, hashToken(aktuellerToken)]);
+  } else {
+    await db.run('DELETE FROM api_tokens WHERE user_id = $1', [userId]);
+  }
+  leereTokenCache();
+  await db.run("DELETE FROM user_sessions WHERE sess::jsonb->>'userId' = $1 AND sid IS DISTINCT FROM $2",
+    [String(userId), sitzungsId]);
+}
+
 async function revokeAllTokens(userId: number): Promise<void> {
   // Ohne .catch(() => {}): Das Verwerfen aller Tokens ist ein Sicherheitsschritt
   // (Passwortwechsel, Zurücksetzen). Scheitert es still, meldet der Aufrufer
@@ -732,7 +748,7 @@ async function purgeExpiredTokens() {
 export {
   validateToken, invalidateToken, leereTokenCache, horcheAufTokenWiderruf, flaggeGesetzt, resolveUserId, requireLoginOrToken, nutzerId, angemeldeteNutzerId, istVerwalter, nutzerName, hashToken, deleteToken,
   verifiziereEmailToken,
-  revokeAllTokens, revokeAllSessions, purgeExpiredTokens, loginOrTokenGuard, TOKEN_IDLE_DAYS, appTokenOhneAblauf,
+  revokeAllTokens, revokeAllSessions, beendeAndereZugaenge, purgeExpiredTokens, loginOrTokenGuard, TOKEN_IDLE_DAYS, appTokenOhneAblauf,
   laufzeitTage,
   assertLoginAllowed, pruefeAnmeldedaten, createToken, escapeLike, establishSession, BCRYPT_ROUNDS, USERNAME_RE,
   PASSWORT_MIN_ZEICHEN, passwortZuKurz,

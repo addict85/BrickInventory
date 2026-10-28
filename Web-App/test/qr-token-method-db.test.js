@@ -78,7 +78,8 @@ test('QR-Nonce nur per POST', async (t) => {
     const mc = await db.pool.connect();
     try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }
   }
-  await db.run("INSERT INTO users (username, password_hash) VALUES ('qr','x')");
+  const bcrypt = require(require('node:path').join(__dirname, '..', 'node_modules', 'bcryptjs'));
+  await db.run("INSERT INTO users (username, password_hash) VALUES ('qr', $1)", [await bcrypt.hash('qr-passwort-1', 4)]);
   _uid = (await db.get("SELECT id FROM users WHERE username='qr'")).id;
 
   const app = express();
@@ -89,7 +90,11 @@ test('QR-Nonce nur per POST', async (t) => {
   _base = `http://localhost:${_srv.address().port}`;
 
   const ruf = async (methode) => {
-    const r = await fetch(`${_base}${AUTH}/qr-token`, { method: methode, redirect: 'manual' });
+    const r = await fetch(`${_base}${AUTH}/qr-token`, {
+      method: methode, redirect: 'manual',
+      ...(methode === 'POST' ? { headers: { 'content-type': 'application/json' },
+                                  body: JSON.stringify({ password: 'qr-passwort-1' }) } : {}),
+    });
     return { status: r.status, body: await r.json().catch(() => null) };
   };
   const nonces = async () =>

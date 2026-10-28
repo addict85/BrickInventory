@@ -1457,6 +1457,10 @@
               <option value="unbegrenzt" data-i18n="qr.validity_unlimited">Unbegrenzt</option>
             </select>
           </div>
+          <div style="display:flex;align-items:center;gap:.5rem;font-size:var(--fs-2)">
+            <label for="qr-password" data-i18n="qr.password_label">Dein Passwort</label>
+            <input type="password" id="qr-password" autocomplete="current-password" style="font-size:var(--fs-2);padding:4px 8px">
+          </div>
           <button class="btn bp" id="btn-gen-qr" data-i18n="settings.qr.generate" data-ico="aktualisieren">QR-Code generieren</button>
           <div id="qr-code" style="background:#fff;padding:12px;border-radius:8px;border:1px solid var(--bdr);display:inline-block"></div>
           <div id="qr-hint" style="font-size:var(--fs-1);color:var(--mut)"></div>
