@@ -37,6 +37,23 @@ import org.junit.Test
  *      zeigt die Schritte des Servers …“
  *   D  einen leeren Fehler als Satz des Servers gewertet → rot „ein
  *      abgebrochener Ereignisstrom ist ein Netzfehler …“
+ *   E  in confirmAddBarcode() die Sperre `if (stand.adding) return` entfernt →
+ *      rot „ein zweiter Klick auf Bestätigen …“; ebenso, wenn der Dialog erst
+ *      nach der Antwort schliesst oder der Eigentümer nicht mitgeht
+ *   F  `adding = false` nach der Antwort entfernt → rot „ein Fehlschlag beim
+ *      Bestätigen …“ und „ein zweiter Klick …“
+ *   G  im Teilelisten-Zweig das `return` entfernt → rot „aus der Teileliste
+ *      wird nichts angelegt …“
+ *   H  in useScannedSetNumber() die Vorabfrage übersprungen → rot „die
+ *      Texterkennung fragt den Server …“ und „ein Fehler der Vorabfrage …“
+ *   I  in zeigeVorhandenes() bei einem Fehler weitergemacht → rot „ein Fehler
+ *      der Vorabfrage bricht ab …“
+ *   J  bei gescheiterter Katalogabfrage keine manuelle Erfassung → rot „jeder
+ *      erfolglose Weg …“
+ *   K  in brichPruefungAb() den Job nicht abgebrochen → rot „der Abbruch …“
+ *      und „das Abmelden …“
+ *   L  in zuruecksetzen() die Prüfung nicht abgebrochen → rot „das Abmelden
+ *      räumt die Prüfanzeige mit“
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class ErfassungViewModelTest {
@@ -155,5 +172,125 @@ class ErfassungViewModelTest {
         assertEquals("t${R.string.wanted_added}", t.meldungen.meldung.value)
         assertTrue(pfade.anfragenAn("POST /api/v1/wanted").isNotEmpty())
         assertNull(vm.barcodeState.value.result)
+    }
+
+    /** Ein Scan bis zum Bestätigungsdialog (Quelle Galerie, also ohne Vorabfrage). */
+    private fun bisZumDialog(): ErfassungViewModel {
+        val vm = vm()
+        vm.resolveBarcode("5702016616316")
+        TestApi.warteBis("Dialog") { vm.barcodeState.value.result == "75192-1" }
+        return vm
+    }
+
+    @Test
+    fun `ein zweiter Klick auf Bestaetigen legt das Set nicht zweimal an`() {
+        pfade.antworten["/api/v1/sets"] = """{"success":true,"action":"added","set_number":"75192-1"}"""
+        pfade.verzoegert["/api/v1/sets"] = 300
+        val vm = bisZumDialog()
+        val liste = t.gemeldet(1) {
+            vm.confirmAddBarcode("75192-1", ownerUserId = 2)
+            // Der Dialog schliesst sofort, und angelegt wird im Hintergrund — ohne Prüfanzeige.
+            assertNull(vm.barcodeState.value.result)
+            assertTrue(vm.barcodeState.value.adding)
+            assertNull(vm.erfassungState.value.pruefung)
+            vm.confirmAddBarcode("75192-1", ownerUserId = 2)
+            TestApi.warteBis("fertig") { !vm.barcodeState.value.adding }
+        }
+        assertEquals(listOf(Aenderung.Sets), liste)
+        assertEquals(1, pfade.anfragenAn("POST /api/v1/sets").size)
+        val rumpf = pfade.koerper[pfade.anfragen.indexOf("POST /api/v1/sets")]
+        assertTrue(rumpf, "\"owner_user_id\":2" in rumpf)
+    }
+
+    @Test
+    fun `ein Fehlschlag beim Bestaetigen nennt die Setnummer und gibt den Knopf frei`() {
+        pfade.codes["/api/v1/sets"] = 500
+        val vm = bisZumDialog()
+        vm.confirmAddBarcode("75192-1")
+        TestApi.warteBis("gemeldet") { t.meldungen.meldung.value?.startsWith("t${R.string.vm_add_failed}") == true }
+        assertEquals("t${R.string.vm_add_failed}|75192-1|fehler", t.meldungen.meldung.value)
+        TestApi.warteBis("frei") { !vm.barcodeState.value.adding }
+    }
+
+    @Test
+    fun `aus der Teileliste wird nichts angelegt, nur die Nummer weitergereicht`() {
+        val vm = vm()
+        vm.setScannerSource("partslist")
+        vm.resolveBarcode("5702016616316")
+        TestApi.warteBis("Dialog") { vm.barcodeState.value.result == "75192-1" }
+        vm.confirmAddBarcode("75192-1")
+        assertEquals("75192-1", vm.barcodeState.value.fuerTeileliste)
+        assertNull(vm.barcodeState.value.result)
+        Thread.sleep(200)
+        assertTrue(pfade.anfragenAn("POST /api/v1/sets").isEmpty())
+    }
+
+    @Test
+    fun `die Texterkennung fragt den Server, zeigt das an und oeffnet ein vorhandenes Set`() {
+        pfade.verzoegert["/api/v1/sets/exists/75192-1"] = 300
+        val vm = vm()
+        vm.useScannedSetNumber("75192")
+        assertEquals(Pruefphase.BESTAND, vm.erfassungState.value.pruefung?.phase)
+        TestApi.warteBis("gefunden") { vm.barcodeState.value.gefundenesSet == "75192-1" }
+        TestApi.warteBis("Prüfanzeige weg") { vm.erfassungState.value.pruefung == null }
+        assertTrue("Ein vorhandenes Set fragt den Katalog nicht", pfade.anfragenAn("/catalog/").isEmpty())
+    }
+
+    @Test
+    fun `ein Fehler der Vorabfrage bricht ab, statt zu raten`() {
+        pfade.codes["/api/v1/sets/exists/10294-1"] = 500
+        val vm = vm()
+        vm.useScannedSetNumber("10294")
+        TestApi.warteBis("gemeldet") { t.meldungen.meldung.value == "fehler" }
+        TestApi.warteBis("Prüfanzeige weg") { vm.erfassungState.value.pruefung == null }
+        assertNull(vm.barcodeState.value.result)
+        assertTrue("Nach einem Fehler wird nicht auf gut Glück weitergefragt", pfade.anfragenAn("/catalog/").isEmpty())
+    }
+
+    @Test
+    fun `jeder erfolglose Weg fordert die manuelle Erfassung an`() {
+        pfade.antworten["/api/v1/sets/barcode/111"] = """{"success":true,"set_number":""}"""
+        pfade.antworten["/api/v1/sets/exists/10294-1"] = """{"success":true,"exists":false,"set_number":"10294-1"}"""
+        pfade.antworten["/api/v1/catalog/sets/10294-1"] = """{"success":true}"""
+        val vm = vm()
+        val wege = listOf<Pair<String, () -> Unit>>(
+            "EAN ohne Setnummer" to { vm.resolveBarcode("111") },
+            "Texterkennung ohne Katalogeintrag" to { vm.useScannedSetNumber("10294") },
+            "Katalogabfrage gescheitert" to {
+                pfade.codes["/api/v1/catalog/sets/10294-1"] = 500
+                vm.useScannedSetNumber("10294")
+            },
+        )
+        for ((name, weg) in wege) {
+            vm.manuelleErfassungQuittieren()
+            weg()
+            TestApi.warteBis(name) { vm.barcodeState.value.manuelleErfassungAnfordern }
+            TestApi.warteBis("$name: Prüfanzeige weg") { vm.erfassungState.value.pruefung == null }
+        }
+    }
+
+    @Test
+    fun `der Abbruch beendet den Abruf und nicht nur die Anzeige`() {
+        pfade.verzoegert["/api/v1/sets/exists/75192-1"] = 400
+        val vm = vm()
+        vm.useScannedSetNumber("75192")
+        assertTrue(vm.erfassungState.value.pruefung != null)
+        vm.brichPruefungAb()
+        assertNull(vm.erfassungState.value.pruefung)
+        Thread.sleep(700)
+        assertNull("Der abgebrochene Abruf öffnet hinterher doch noch das Set",
+            vm.barcodeState.value.gefundenesSet)
+    }
+
+    @Test
+    fun `das Abmelden raeumt die Pruefanzeige mit`() {
+        pfade.verzoegert["/api/v1/sets/exists/75192-1"] = 400
+        val vm = vm()
+        vm.useScannedSetNumber("75192")
+        assertTrue(vm.erfassungState.value.pruefung != null)
+        t.sitzung.abgemeldet()
+        TestApi.warteBis("geräumt") { vm.erfassungState.value.pruefung == null }
+        Thread.sleep(700)
+        assertNull(vm.barcodeState.value.gefundenesSet)
     }
 }

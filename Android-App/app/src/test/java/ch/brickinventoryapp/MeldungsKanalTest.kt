@@ -109,7 +109,14 @@ class MeldungsKanalTest {
             name.endsWith("ViewModel.kt") && Regex("""_snackbar\s*\.value\s*=""").containsMatchIn(s)
         }
         assert(schreiber.isNotEmpty()) { "Kein ViewModel schreibt Meldungen — Muster veraltet?" }
-        val ohneKanal = schreiber.filter { (_, s) -> !s.contains("MeldungsKanal") }.map { it.first }
+        // Die Bereichs-ViewModels bekommen ihn über AppDienste von ihrer Grundlage.
+        val grundlage = alleOhneKommentare().single { it.first == "BereichsViewModel.kt" }.second
+        assert(grundlage.contains("_snackbar: MutableStateFlow<String?> = dienste.meldungen.fluss")) {
+            "BereichsViewModel reicht den Kanal nicht mehr an die Bereiche weiter"
+        }
+        val ohneKanal = schreiber.filter { (_, s) ->
+            !s.contains("MeldungsKanal") && !s.contains(": BereichsViewModel(dienste)")
+        }.map { it.first }
         assert(ohneKanal.isEmpty()) {
             "Diese ViewModels melden, holen sich den Kanal aber nicht: " +
                 ohneKanal.joinToString()

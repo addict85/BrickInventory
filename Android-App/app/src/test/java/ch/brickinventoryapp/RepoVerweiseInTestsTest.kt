@@ -57,7 +57,7 @@ class RepoVerweiseInTestsTest {
     fun `kein Test sucht nach einem Repository-Aufruf den es nicht mehr gibt`() {
         val appCode = dateien("src/main/java/ch/brickinventoryapp")
             .joinToString("\n") { it.readText() }
-        assert(appCode.contains("repo.sets.addSet(")) {
+        assert(appCode.contains("repo.sets.getSets(")) {
             "Der App-Code wurde nicht gelesen — dieser Test prüfte sonst gegen Leere"
         }
 

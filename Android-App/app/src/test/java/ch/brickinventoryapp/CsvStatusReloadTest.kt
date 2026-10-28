@@ -131,7 +131,7 @@ class CsvStatusReloadTest {
         // gut wie das, was hineingereicht wird. Wird _csvImportState zuerst
         // überschrieben, ist `warVorherAktiv` immer der NEUE Wert — die ganze
         // Übergangstabelle oben liefe dann ins Leere.
-        val src = Quellen.ohneKommentare(Quellen.lies("ui/MainViewModel.kt"))
+        val src = Quellen.ohneKommentare(Quellen.lies("ui/AppViewModel.kt"))
         val start = src.indexOf("suspend fun handleCsvStatus(")
         assert(start >= 0) { "handleCsvStatus() nicht gefunden" }
         val fn = src.substring(start, src.indexOf("\n    }", start))
@@ -149,10 +149,11 @@ class CsvStatusReloadTest {
     @Test
     fun `finishCsvImport laedt die Daten neu`() {
         // Der Sinn der Sache — sonst bliebe nach einem Import die alte Liste stehen.
-        val src = Quellen.ohneKommentare(Quellen.lies("ui/MainViewModel.kt"))
+        val src = Quellen.ohneKommentare(Quellen.lies("ui/AppViewModel.kt"))
         val i = src.indexOf("private suspend fun finishCsvImport()")
         assert(i >= 0) { "finishCsvImport() nicht gefunden" }
         val fn = src.substring(i, src.indexOf("\n    }", i))
-        assert(fn.contains("loadSets()")) { "Nach einem Import wird nicht mehr nachgeladen" }
+        // Nachgeladen wird über das Bestandssignal: Die Galerie lädt darauf selbst.
+        assert(fn.contains("bestand.melde(Aenderung.Sets)")) { "Nach einem Import wird nicht mehr nachgeladen" }
     }
 }

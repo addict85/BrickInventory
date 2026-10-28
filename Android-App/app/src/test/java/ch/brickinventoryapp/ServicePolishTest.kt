@@ -142,9 +142,9 @@ class ServicePolishTest {
         assert(pv.contains(".newBuilder()")) {
             "PdfViewerScreen leitet den Download-Client nicht per newBuilder() ab"
         }
-        assert(code(read("java/ch/brickinventoryapp/ui/MainViewModel.kt"))
+        assert(code(read("java/ch/brickinventoryapp/ui/AppViewModel.kt"))
             .contains("apiHttpClient")) {
-            "MainViewModel stellt den api-Client nicht mehr bereit"
+            "Das AppViewModel stellt den api-Client nicht mehr bereit"
         }
     }
 

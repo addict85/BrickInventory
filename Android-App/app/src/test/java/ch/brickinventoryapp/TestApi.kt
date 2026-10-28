@@ -81,6 +81,8 @@ class PfadServer(vararg regeln: Pair<String, String>) {
     val koerper: MutableList<String> = Collections.synchronizedList(mutableListOf())
     /** Abweichender Statuscode je Pfad, z. B. 401 für „Sitzung abgelaufen“. */
     val codes: MutableMap<String, Int> = Collections.synchronizedMap(mutableMapOf())
+    /** Antwort erst nach so vielen Millisekunden — für „was geschieht, solange der Server rechnet“. */
+    val verzoegert: MutableMap<String, Long> = Collections.synchronizedMap(mutableMapOf())
 
     init {
         server.dispatcher = object : Dispatcher() {
@@ -90,8 +92,10 @@ class PfadServer(vararg regeln: Pair<String, String>) {
                 koerper += request.body.readUtf8()
                 val ohneAbfrage = pfad.substringBefore('?')
                 val rumpf = antworten[ohneAbfrage]
-                return if (rumpf == null) TestApi.antwort("""{"success":false}""", codes[ohneAbfrage] ?: 404)
-                       else TestApi.antwort(rumpf, codes[ohneAbfrage] ?: 200)
+                val antwort = if (rumpf == null) TestApi.antwort("""{"success":false}""", codes[ohneAbfrage] ?: 404)
+                              else TestApi.antwort(rumpf, codes[ohneAbfrage] ?: 200)
+                verzoegert[ohneAbfrage]?.let { antwort.setHeadersDelay(it, TimeUnit.MILLISECONDS) }
+                return antwort
             }
         }
         server.start()

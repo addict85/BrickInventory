@@ -71,20 +71,20 @@ fun NavGraphBuilder.authGraph(
         composable(Screen.Setup.route) {
             // Zustand INNERHALB des Ziels lesen — als Parameter wäre es eine
             // Momentaufnahme vom Aufbau des Graphen (der NavHost-Builder läuft nur einmal).
-            val anmeldung: AnmeldungViewModel = aktivitaetsViewModel()
-            val state by anmeldung.state.collectAsStateWithLifecycle()
+            val anmeldungVm: AnmeldungViewModel = aktivitaetsViewModel()
+            val state by anmeldungVm.state.collectAsStateWithLifecycle()
             SetupScreen(
                 currentUrl = state.serverUrl,
                 onSave = { url, klartextBestaetigt ->
-                    anmeldung.saveServerUrl(url, klartextBestaetigt)
+                    anmeldungVm.saveServerUrl(url, klartextBestaetigt)
                     navController.navigate(Screen.Login.route) {
                         popUpTo(Screen.Setup.route) { inclusive = true }
                     }
                 },
                 onQrScanned = { url, token ->
                     // Save server URL and auto-login with QR token
-                    anmeldung.saveServerUrl(url)
-                    anmeldung.loginWithQrToken(url, token)
+                    anmeldungVm.saveServerUrl(url)
+                    anmeldungVm.loginWithQrToken(url, token)
                     // Navigate to login screen (will auto-redirect to gallery on success)
                     navController.navigate(Screen.Login.route) {
                         popUpTo(Screen.Setup.route) { inclusive = true }

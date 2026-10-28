@@ -37,7 +37,7 @@ class TeilelisteViewModel @Inject constructor(
     sets: SetsRepository,
     teile: TeileRepository,
     private val pdfExport: PdfExportManager,
-    @ApplicationContext private val ctx: Context,
+    @param:ApplicationContext private val ctx: Context,
 ) : BereichsViewModel(dienste) {
 
     private val liste = Teileliste(sets, teile)

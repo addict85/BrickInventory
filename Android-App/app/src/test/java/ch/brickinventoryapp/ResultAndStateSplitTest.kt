@@ -142,10 +142,13 @@ class ResultAndStateSplitTest {
 
     @Test
     fun `die neuen Flows sind im ViewModel veroeffentlicht`() {
-        val src = code(read("ui/MainViewModel.kt"))
-        for (name in listOf("partsState", "_financeState", "financeState",
-                            "_barcodeState", "barcodeState")) {
-            assert(src.contains(name)) { "$name fehlt im MainViewModel" }
+        for ((datei, namen) in listOf(
+            "ui/viewmodel/TeileViewModel.kt" to listOf("partsState"),
+            "ui/viewmodel/FinanzViewModel.kt" to listOf("_financeState", "financeState"),
+            "ui/viewmodel/ErfassungViewModel.kt" to listOf("_barcodeState", "barcodeState"),
+        )) {
+            val src = code(read(datei))
+            for (name in namen) assert(src.contains(name)) { "$name fehlt in $datei" }
         }
     }
 
@@ -160,24 +163,34 @@ class ResultAndStateSplitTest {
         assert(!src.contains("vm.state.collectAsStateWithLifecycle()")) {
             "MainActivity sammelt weiterhin den ganzen Zustand"
         }
-        assert(code(read("ui/MainViewModel.kt")).contains("distinctUntilChanged()")) {
+        assert(code(read("ui/AppViewModel.kt")).contains("distinctUntilChanged()")) {
             "vm.appTheme filtert unveränderte Werte nicht heraus"
         }
     }
 
     @Test
     fun `beim Abmelden werden alle Zustands-Flows zurueckgesetzt`() {
-        val src = code(read("ui/SessionFeature.kt"))
-        for (reset in listOf(
-            "AppUiState(serverUrl", "teile.zuruecksetzen()", "FinanceUiState()", "CsvImportUiState()",
-            // Ein offener Barcode-Dialog trägt Setname, Bild und Nummer des
-            // vorigen Kontos.
-            "BarcodeUiState()",
-        )) {
-            assert(src.contains(reset)) {
-                "logout() setzt $reset nicht zurück — der nächste Nutzer auf demselben " +
-                    "Gerät sähe sonst noch fremde Daten"
-            }
+        // Seit dem Schnitt in Bereichs-ViewModels leert jedes seinen Zustand
+        // selbst, auf Sitzung.abgemeldet() hin. Ausgeführt prüfen das die
+        // ViewModel-Tests („nach dem Abmelden …“); hier steht die Regel für
+        // jedes künftige: Wer Zustand hält, überschreibt zuruecksetzen().
+        // Gegenprobe (28.10.2026): HaushaltViewModel ohne override → rot.
+        val app = code(read("ui/AppViewModel.kt"))
+        for (reset in listOf("sitzung.abgemeldet()", "blickfeldDienst.zuruecksetzen()", "CsvImportUiState()")) {
+            assert(app.contains(reset)) { "logout() ruft $reset nicht mehr" }
+        }
+        val bereiche = Quellen.unter("ui/viewmodel").filter {
+            code(it.readText()).contains(": BereichsViewModel(dienste)")
+        }
+        assert(bereiche.size >= 10) { "Nur ${bereiche.size} Bereichs-ViewModels gefunden — Muster veraltet?" }
+        val vergesslich = bereiche.filter {
+            val c = code(it.readText())
+            (c.contains("MutableStateFlow(") || c.contains("SavedStateHandle")) &&
+                !c.contains("override fun zuruecksetzen()")
+        }.map { it.name }
+        assert(vergesslich.isEmpty()) {
+            "Diese ViewModels halten Zustand, leeren ihn beim Abmelden aber nicht — der " +
+                "nächste Nutzer auf demselben Gerät sähe fremde Daten: ${vergesslich.joinToString()}"
         }
     }
 

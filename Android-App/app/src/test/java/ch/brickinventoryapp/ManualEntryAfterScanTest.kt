@@ -33,22 +33,6 @@ class ManualEntryAfterScanTest {
     private fun code(src: String) = Quellen.ohneKommentare(src)
 
     @Test
-    fun `alle erfolglosen Scan-Wege fordern die manuelle Erfassung an`() {
-        val bf = code(lies("ui/BarcodeFeature.kt"))
-        val anzahl = Regex("""manuelleErfassungAnfordern = true""").findAll(bf).count()
-        assert(anzahl == 4) {
-            "$anzahl statt 4 Stellen setzen die Anforderung. Es gibt vier " +
-                "erfolglose Wege: EAN nicht auflösbar, EAN ohne Setnummer, " +
-                "Texterkennung ohne Treffer, Katalogabfrage gescheitert. Fehlt " +
-                "einer, bleibt der Nutzer dort mit einer Meldung allein."
-        }
-        assert(bf.contains("fun MainViewModel.manuelleErfassungQuittieren()")) {
-            "Ohne Quittierung ginge die Erfassung beim nächsten Zusammensetzen " +
-                "des Bildschirms erneut auf."
-        }
-    }
-
-    @Test
     fun `jeder Scanner-Einstieg reagiert darauf`() {
         // Die Galerie öffnet ihren Dialog, die Teileliste setzt den Cursor.
         // Beide quittieren.
@@ -56,7 +40,7 @@ class ManualEntryAfterScanTest {
         assert(g.contains("barcodeState.manuelleErfassungAnfordern") && g.contains("showAddDialog = true")) {
             "Die Galerie öffnet die manuelle Erfassung nach einem erfolglosen Scan nicht"
         }
-        assert(g.contains("vm.manuelleErfassungQuittieren()")) { "Die Galerie quittiert nicht" }
+        assert(g.contains("erfassung.manuelleErfassungQuittieren()")) { "Die Galerie quittiert nicht" }
 
         val pl = code(lies("ui/screens/PartsListScreen.kt"))
         assert(pl.contains("manuelleErfassungAnfordern") && pl.contains("setFeldFokus.requestFocus()")) {

@@ -34,6 +34,10 @@ import org.junit.Test
  *      Set verschwindet …“
  *   D  im Zweig SetZusammenfassung `loadSets()` statt der Kachel-Änderung →
  *      rot „ein geänderter Kauf ändert die Kachel, ohne die Liste neu zu holen“
+ *   E  auf Aenderung.Teile/Figuren nichts geladen, oder auf Aenderung.Sets nur
+ *      die Liste → je rot „erfasste Teile laden die Kennzahlen …“
+ *   F  vergissScroll auf "parts" statt "gallery" → rot „ein Filterwechsel
+ *      vergisst die Rollposition der Galerie und nur sie“
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class GalerieViewModelTest {
@@ -127,6 +131,37 @@ class GalerieViewModelTest {
         TestApi.warteBis("Kennzahlen neu") { pfade.anfragenAn("GET /api/v1/stats").isNotEmpty() }
         assertEquals(1, vm.galleryState.value.sets.first { it.setNumber == "75192-1" }.usedCount)
         assertEquals("Die Liste darf nicht neu geholt werden", vorher, abrufe().size)
+    }
+
+    @Test
+    fun `erfasste Teile laden die Kennzahlen, erfasste Sets auch die Liste`() {
+        // Die Galerie zeigt Teile- und Figurenzahl aus den Kennzahlen; ohne
+        // Nachladen bliebe sie nach dem Erfassen eines Teils stehen.
+        val vm = vm()
+        vm.loadSets()
+        TestApi.warteBis("Liste geladen") { vm.galleryState.value.sets.size == 2 }
+        val listeVorher = abrufe().size
+        val zahlenVorher = pfade.anfragenAn("GET /api/v1/stats").size
+
+        t.bestand.melde(Aenderung.Teile)
+        TestApi.warteBis("Kennzahlen nach Teilen") { pfade.anfragenAn("GET /api/v1/stats").size == zahlenVorher + 1 }
+        assertEquals("Ein Teil ändert die Set-Liste nicht", listeVorher, abrufe().size)
+
+        t.bestand.melde(Aenderung.Sets)
+        TestApi.warteBis("Liste nach Sets") { abrufe().size == listeVorher + 1 }
+        TestApi.warteBis("Kennzahlen nach Sets") { pfade.anfragenAn("GET /api/v1/stats").size == zahlenVorher + 2 }
+    }
+
+    @Test
+    fun `ein Filterwechsel vergisst die Rollposition der Galerie und nur sie`() {
+        // Die gemerkte Stelle zeigte sonst auf Sets, die in der neuen Liste
+        // woanders oder gar nicht stehen.
+        t.scrollMemory.merke("gallery", 40, 3)
+        t.scrollMemory.merke("parts", 7, 0)
+        val vm = vm()
+        vm.setGalleryTheme("Technic")
+        assertEquals(0 to 0, t.scrollMemory.lies("gallery"))
+        assertEquals(7 to 0, t.scrollMemory.lies("parts"))
     }
 
     @Test

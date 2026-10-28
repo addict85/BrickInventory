@@ -161,7 +161,7 @@ class VorschauAblageTest {
     fun `die Ablage laesst sich sehen und leeren`() {
         // 150 MB unter filesDir raeumt niemand ausser dem Nutzer. Ohne Anzeige
         // waechst auf dem Telefon etwas, das man nicht findet.
-        val vm = quelle("ui/MainViewModel.kt")
+        val vm = quelle("ui/AppViewModel.kt")
         val ui = quelle("ui/screens/MonitoringSections.kt")
         assert(vm.contains("fun vorschauAblageBytes()") && vm.contains("fun vorschauAblageLeeren()")) {
             "Die Zugaenge zur Ablage fehlen im ViewModel"
@@ -189,7 +189,7 @@ class VorschauAblageTest {
     // Die erste Fassung fragte die Reiter unten in der Datenschicht ab und
     // liess dabei den Kontofilter des Haushalts weg. GalerieLaedtGefiltertTest
     // und ListenfilterImZustandTest haben genau das gemeldet. Seither sammelt
-    // ui/VorwaermenFeature.kt die Adressen (dort lebt scopeFor), und
+    // ui/Vorwaermen.kt die Adressen (mit dem Blickfeld), und
     // data/cache/VorschauVorwaermer.kt holt, drosselt und haelt die Grenze.
     // Diese Pruefungen folgen der Aufteilung.
     // ────────────────────────────────────────────────────────────────────────
@@ -208,7 +208,7 @@ class VorschauAblageTest {
         }
 
         val vw = quelle("data/cache/VorschauVorwaermer.kt")
-        val fe = quelle("ui/VorwaermenFeature.kt")
+        val fe = quelle("ui/Vorwaermen.kt") + "\n" + quelle("ui/AppViewModel.kt")
 
         // Erste Stelle: VOR dem Sammeln. Ohne sie kostet ein voller Speicher
         // bei jedem App-Start vier Listenabrufe, um danach nichts zu tun.
@@ -272,7 +272,7 @@ class VorschauAblageTest {
 
     @Test
     fun `vorgewaermt wird die Sammlung, nicht der Katalog`() {
-        val fe = quelle("ui/VorwaermenFeature.kt")
+        val fe = quelle("ui/Vorwaermen.kt") + "\n" + quelle("ui/AppViewModel.kt")
         // Alle Reiter, die Kacheln der EIGENEN Sammlung zeigen. Die manuell
         // erfassten Teile und Figuren erscheinen auch im Finanzen-Reiter — es
         // sind dieselben Bilder, deshalb steht Finanzen hier nicht eigens.
@@ -293,9 +293,9 @@ class VorschauAblageTest {
         // andere Sammlung vor als die, die man zu sehen bekommt. Genau diese
         // Form — ein zweiter Ladeweg ohne Filter — hat GalerieLaedtGefiltert-
         // Test an der ersten Fassung gemeldet.
-        assert(fe.contains("scopeFor(ScopeFilter.View.GALLERY)") &&
-               fe.contains("scopeFor(ScopeFilter.View.PARTS)") &&
-               fe.contains("scopeFor(ScopeFilter.View.MINIFIGS)")) {
+        assert(fe.contains("blickfeld.kontoFuer(ScopeFilter.View.GALLERY)") &&
+               fe.contains("blickfeld.kontoFuer(ScopeFilter.View.PARTS)") &&
+               fe.contains("blickfeld.kontoFuer(ScopeFilter.View.MINIFIGS)")) {
             "Das Vorwaermen fuehrt das Blickfeld nicht mehr mit"
         }
         // ── Warum der Katalog NICHT ──────────────────────────────────────────
@@ -349,7 +349,7 @@ class VorschauAblageTest {
         //
         // BEIDE Haelften geprueft: Das Holen steht unten, das Sammeln oben.
         val vw = quelle("data/cache/VorschauVorwaermer.kt")
-        val fe = quelle("ui/VorwaermenFeature.kt")
+        val fe = quelle("ui/Vorwaermen.kt") + "\n" + quelle("ui/AppViewModel.kt")
         for (verb in listOf(".post(", ".put(", ".patch(", ".delete(")) {
             assert(!vw.contains(verb) && !fe.contains(verb)) {
                 "Das Vorwaermen benutzt $verb. Es darf ausschliesslich lesen."

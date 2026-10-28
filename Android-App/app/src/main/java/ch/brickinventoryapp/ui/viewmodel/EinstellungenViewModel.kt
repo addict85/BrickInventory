@@ -167,13 +167,15 @@ class EinstellungenViewModel @Inject constructor(
 
     /** Erfolg und Satz einer Lagerort-Antwort; ein Fehler ohne Satz bleibt still. */
     private fun <T> Result<T>.auswerten(): Pair<Boolean, String?> = when (this) {
-        is Result.Success -> when (val d = data) {
-            is ch.brickinventoryapp.data.model.LagerortEintragResponse -> d.success to d.error
-            is ch.brickinventoryapp.data.model.LagerortVorgabeResponse -> d.success to d.error
-            is ch.brickinventoryapp.data.model.LagerortResponse -> d.success to d.error
-            else -> true to null
-        }
+        is Result.Success -> erfolgUndSatz(data)
         is Result.Error -> false to meldungFuerSnackbar(this)
+    }
+
+    private fun erfolgUndSatz(antwort: Any?): Pair<Boolean, String?> = when (antwort) {
+        is ch.brickinventoryapp.data.model.LagerortEintragResponse -> antwort.success to antwort.error
+        is ch.brickinventoryapp.data.model.LagerortVorgabeResponse -> antwort.success to antwort.error
+        is ch.brickinventoryapp.data.model.LagerortResponse -> antwort.success to antwort.error
+        else -> true to null
     }
 
     override fun beiAenderung(aenderung: Aenderung) {

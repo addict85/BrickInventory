@@ -33,9 +33,8 @@ import org.junit.Test
  *   a) LaunchedEffect(Unit) { vm.ladeAlarmUebersicht() } aus SettingsScreen.kt
  *      entfernt
  *        → „die Rubrik steht in den Einstellungen und laedt sich selbst" rot
- *   b) in SettingsFeature.kt die Schranke `if (schwelle <= 0.0)` zu
- *      `if (schwelle < -1.0)` aufgeweicht
- *        → „eine unsinnige Schwelle wird nicht stillschweigend geschrieben" rot
+ *   b) (die Schwelle prueft seit dem 28.10.2026 EinstellungenViewModelTest
+ *      ausgefuehrt, „eine Schwelle von null geht nicht hinaus")
  *   c) getAlleAlarme in SetsRepository.kt und an der Aufrufstelle umbenannt
  *        → „die App holt alle Alarme ueber die gemeinsame Route" rot
  *
@@ -112,25 +111,11 @@ class AlarmUebersichtTest {
     }
 
     @Test
-    fun `eine unsinnige Schwelle wird nicht stillschweigend geschrieben`() {
-        // Wie in der Webapp: Wer 0 eingibt, soll es sehen, statt spaeter einen
-        // Alarm zu suchen, den es nicht gibt.
-        val f = quelle("ui/SettingsFeature.kt")
-        val i = f.indexOf("fun MainViewModel.aendereAlarmSchwelle(")
-        assert(i > 0) { "aendereAlarmSchwelle fehlt — Muster veraltet?" }
-        val rumpf = f.substring(i, minOf(i + 700, f.length))
-        assert(Regex("""schwelle\s*<=\s*0""").containsMatchIn(rumpf)) {
-            "Eine Schwelle von 0 oder weniger geht ungeprueft an den Server."
-        }
-    }
-
-    @Test
     fun `geschrieben wird ueber die bestehende Route zum Set`() {
         // Zwei Schreibwege zum selben Zustand waeren zwei Stellen, an denen die
         // Regeln auseinanderlaufen. Die Uebersicht LIEST nur eigenstaendig.
-        val f = quelle("ui/SettingsFeature.kt")
-        assert(f.contains("repo.sets.setPreisalarm(")) { "Aendern geht nicht ueber die Set-Route." }
-        assert(f.contains("repo.sets.deletePreisalarm(")) { "Loeschen geht nicht ueber die Set-Route." }
+        // Dass Aendern und Loeschen die Set-Route rufen, prueft
+        // EinstellungenViewModelTest an den Anfragen; hier bleibt der Vertrag.
         val api = quelle("data/api/BrickApiService.kt")
         assert(!api.contains("""@PUT("api/v1/alerts""")) {
             "Es ist ein zweiter Schreibweg entstanden — einer davon laeuft irgendwann weg."

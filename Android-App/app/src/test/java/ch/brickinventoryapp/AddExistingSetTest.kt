@@ -32,7 +32,9 @@ import org.junit.Test
  * Der frühere `transient`-Zweig ist damit entfallen: Ein Fehler ist jetzt
  * eindeutig ein Fehler, weil „nicht vorhanden" nicht mehr als Fehler kommt.
  *
- * Der Test liest nur die Quelldateien — kein Gerät, kein Compose.
+ * Ausgeführt geprüft wird das in ErfassungViewModelTest (Nummern-Weg,
+ * Scanner, Texterkennung, Fehler der Vorabfrage). Hier bleibt die Struktur:
+ * der API-Vertrag und dass die Galerie den Auslöser auswertet.
  */
 class AddExistingSetTest {
 
@@ -42,59 +44,6 @@ class AddExistingSetTest {
     /** Kommentare ausblenden — die Erklärtexte nennen die geprüften Muster selbst. */
     private fun code(s: String) = s.lines()
         .joinToString("\n") { if (it.trim().startsWith("//") || it.trim().startsWith("*")) "" else it }
-
-    private val addSetBlock: String by lazy {
-        val c = code(read("ui/GalleryFeature.kt"))
-        val start = c.indexOf("internal fun MainViewModel.addSet(")
-        val ende = c.indexOf("internal fun MainViewModel.updateQuantity(")
-        c.substring(start, if (ende > start) ende else c.length)
-    }
-
-    @Test
-    fun `der Nummern-Weg prueft nicht mehr selbst, sondern folgt der Serverantwort`() {
-        assert(!addSetBlock.contains("repo.sets.getSetDetail(")) {
-            "Der Vorab-Aufruf ist zurück. Die Regel gehört auf den Server — sonst " +
-                "existiert sie zweimal, und die Webapp hatte sie nie."
-        }
-        assert(addSetBlock.contains("action == \"exists\"")) {
-            "Die Antwort des Servers wird nicht ausgewertet — dann bliebe ein bereits " +
-                "vorhandenes Set unbemerkt und der Nutzer sähe nur eine Meldung"
-        }
-        val exists = addSetBlock.indexOf("action == \"exists\"")
-        val geladen = addSetBlock.indexOf("loadSets()")
-        assert(geladen < 0 || exists < geladen) {
-            "Der exists-Zweig muss VOR dem Normalfall stehen — sonst läuft das " +
-                "Nachladen samt Erfolgsmeldung für einen Vorgang, der nichts geschrieben hat"
-        }
-        assert(addSetBlock.contains("galerie.zeigeDetail(")) {
-            "Bei vorhandenem Set muss der Auslöser für die Detailansicht gesetzt werden"
-        }
-    }
-
-    @Test
-    fun `Scanner und Texterkennung fragen vorher — mit der eindeutigen Antwort`() {
-        // Sie müssen vorher fragen: Ob der Zwischendialog erscheint, hängt an
-        // der Antwort. Aber sie fragen den Endpunkt, der „gibt es das schon?"
-        // ausdrücklich beantwortet, statt aus dem FEHLER von getSetDetail zu
-        // schliessen — das vermischte „nicht vorhanden" mit „nicht erreichbar".
-        val bc = code(read("ui/BarcodeFeature.kt"))
-        assert(!bc.contains("repo.sets.getSetDetail(")) {
-            "getSetDetail als Existenzprüfung ist zurück — die Antwort ist dort " +
-                "ein Fehler, und Fehler haben mehr als eine Bedeutung"
-        }
-        assert(bc.contains("repo.sets.getSetExists(")) { "die Existenzprüfung fehlt ganz" }
-        // Beide Wege: der Scanner-Zweig und useScannedSetNumber (Texterkennung).
-        assert(Regex("repo\\.sets\\.getSetExists\\(").findAll(bc).count() >= 2) {
-            "Nur EIN Weg prüft — Scanner und Texterkennung müssen sich gleich verhalten"
-        }
-        assert(bc.contains("data.exists")) {
-            "Das Ergebnis wird nicht am Feld `exists` abgelesen"
-        }
-        assert(!bc.contains(".sets.any")) {
-            "Die Prüfung gegen die geladene Liste ist zurück — sie ist seitenweise " +
-                "geladen und kontogefiltert"
-        }
-    }
 
     @Test
     fun `die Existenzpruefung schickt keinen Kontofilter mit`() {
@@ -118,34 +67,12 @@ class AddExistingSetTest {
     }
 
     @Test
-    fun `ein Fehler der Vorabfrage bricht ab, statt zu raten`() {
-        // ── Nachtrag 59, in neuer Form ──────────────────────────────────────
-        // Der gefährliche Fall war fein: Die Prüfung scheitert an einer
-        // Zeitüberschreitung, der Anlege-Aufruf kommt eine Sekunde später
-        // durch — ein vorhandenes Set wäre doch erhöht worden. Damals musste
-        // dafür `transient` von „nicht gefunden" getrennt werden, weil beides
-        // als Fehler kam. Jetzt ist „nicht vorhanden" eine ERFOLGREICHE
-        // Antwort mit `exists = false`; ein Fehler ist eindeutig ein Fehler und
-        // führt zum Abbruch.
-        val bc = code(read("ui/BarcodeFeature.kt"))
-        val stellen = Regex("""is Result\.Error -> \{[^}]*return@launch""", RegexOption.DOT_MATCHES_ALL)
-            .findAll(bc).count()
-        assert(stellen >= 2) {
-            "Ein gescheiterter exists-Aufruf muss abbrechen — sonst wird auf gut Glück " +
-                "ein womöglich vorhandenes Set zum Erfassen angeboten"
-        }
-    }
-
-    @Test
     fun `der Auslöser wird auch ausgewertet und wieder zurückgesetzt`() {
         // Ein gesetzter Auslöser ohne Empfänger wäre wirkungslos — und ohne
         // Zurücksetzen liesse sich dasselbe Set kein zweites Mal öffnen.
         val nav = code(java.io.File("src/main/java/ch/brickinventoryapp/nav/CollectionGraph.kt").readText())
-        // Geprueft wird das FELD, nicht der Name des Zustands davor: Seit die
-        // Galerie einen eigenen Fluss hat, heisst er dort `galerie` statt
-        // `state`. Der Anker buchstabierte den alten Namen aus und wurde durch
-        // den blossen Umzug rot, obwohl die gepruefte Aussage unveraendert galt.
-        assert(Regex("""\w+\.gallerySearchFoundSetNumber""").containsMatchIn(nav)) {
+        // Geprueft wird das FELD, nicht der Name des Zustands davor.
+        assert(Regex("""\w+\.gefundenesSet""").containsMatchIn(nav)) {
             "die Galerie beobachtet den Auslöser nicht — es passiert dann gar nichts"
         }
         assert(nav.contains("gallerySearchFoundConsumed()")) {

@@ -30,26 +30,27 @@ import org.junit.Test
  *
  * Bei einer Handlung des Nutzers ist es umgekehrt: Er wartet auf eine Antwort.
  *
- * Die Funktionen werden gefunden, nicht aufgezählt.
+ * Die Funktionen werden gefunden, nicht aufgezählt — seit dem 28.10.2026 in
+ * den ViewModels statt in den *Feature.kt-Dateien. Gegenprobe (gemessen): in
+ * HaushaltViewModel.unlinkHousehold() den Fehlerzweig auf `{}` gesetzt → rot.
  */
 class AktionMeldetFehlerTest {
 
-    /** Alle ViewModel-Funktionen der Feature-Dateien, je Name. */
+    /** Alle Funktionen der ViewModels, je Name. */
     private fun viewModelFunktionen(): Map<String, String> {
-        val ordner = java.io.File("src/main/java/ch/brickinventoryapp/ui")
-        val dateien = (ordner.listFiles { f -> f.name.endsWith("Feature.kt") } ?: emptyArray()).toList()
-        assert(dateien.size >= 5) {
-            "Nur ${dateien.size} *Feature.kt gefunden — der Pfad stimmt nicht, und ein " +
+        val dateien = Quellen.unter("ui").filter { it.name.endsWith("ViewModel.kt") }
+        assert(dateien.size >= 10) {
+            "Nur ${dateien.size} *ViewModel.kt gefunden — der Pfad stimmt nicht, und ein " +
                 "leeres Ergebnis würde diesen Test stillschweigend bestehen lassen."
         }
+        val kopf = Regex("""\n    (?:override |private |internal |protected )?(?:suspend )?fun (\w+)\(""")
         val ergebnis = linkedMapOf<String, String>()
         for (datei in dateien) {
             val src = Quellen.ohneKommentare(datei.readText())
-            for (m in Regex("""internal fun MainViewModel\.(\w+)\(""").findAll(src)) {
-                val start = m.range.first
-                val ende = src.indexOf("\ninternal fun ", start + 10)
-                ergebnis["${datei.name}:${m.groupValues[1]}"] =
-                    src.substring(start, if (ende > start) ende else src.length)
+            val treffer = kopf.findAll(src).toList()
+            for ((k, m) in treffer.withIndex()) {
+                val ende = treffer.getOrNull(k + 1)?.range?.first ?: src.length
+                ergebnis["${datei.name}:${m.groupValues[1]}"] = src.substring(m.range.first, ende)
             }
         }
         assert(ergebnis.size >= 40) { "Nur ${ergebnis.size} Funktionen gefunden — Muster veraltet?" }
@@ -60,7 +61,7 @@ class AktionMeldetFehlerTest {
     fun `jede aendernde Funktion meldet ihren Fehler`() {
         // Ändernd = sie ruft einen schreibenden Weg des Repositories.
         val aendernd = Regex(
-            """repo\.\w+\.(add|delete|update|unlink|invite|redeem|create|remove|save|move|change)\w*\(""",
+            """\b(?:repo|sets|teile|finanzen|haushalt|admin|konto|gutscheine)\.(?:\w+\.)?(add|delete|update|unlink|invite|redeem|create|remove|save|move|change)\w*\(""",
             RegexOption.IGNORE_CASE)
         val still = Regex("""is Result\.Error\s*->\s*\{\s*\}""")
 

@@ -90,7 +90,9 @@ class SetDetailViewModelTest {
         vm.ladeAlles()
         geladen(vm)
         val liste = t.gemeldet(1) {
-            vm.updateQuantity("75192-1", 3)
+            // Gewünscht 5, der Server deckelt auf 3 (fremde Exemplare lassen sich
+            // nicht wegnehmen): Es gilt seine Zahl, nicht die eigene Annahme.
+            vm.updateQuantity("75192-1", 5)
             TestApi.warteBis("Menge da") { vm.setDetailState.value.setDetail?.quantity == 3 }
         }
         assertEquals(listOf(Aenderung.Sets), liste)

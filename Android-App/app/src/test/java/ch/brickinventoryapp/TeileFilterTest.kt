@@ -83,8 +83,8 @@ class CsvAbbruchTest {
         // Dieselbe Regel wie fuer jede andere aendernde Handlung
         // (AktionMeldetFehlerTest): Scheitert sie lautlos, tippt der Nutzer
         // weiter und wundert sich, dass der Balken laeuft.
-        val s = code(read("ui/CsvImportFeature.kt"))
-        val ab = s.indexOf("fun MainViewModel.cancelCsvImport(")
+        val s = code(read("ui/AppViewModel.kt"))
+        val ab = s.indexOf("fun cancelCsvImport(")
         assert(ab > 0) { "cancelCsvImport fehlt" }
         val rumpf = s.substring(ab, minOf(ab + 500, s.length))
         // meldungFuerSnackbar statt meldung: Seit Marcos Befund („Sitzung
@@ -92,7 +92,7 @@ class CsvAbbruchTest {
         // Er reicht den Satz durch — ausser bei einem 401, den die
         // Sitzungsschicht schon behandelt hat. Die REGEL hier ist unveraendert:
         // Der Abbruch darf nicht lautlos scheitern.
-        assert(rumpf.contains("_snackbar.value = meldungFuerSnackbar(r)")) {
+        assert(rumpf.contains("_snackbar.value = texte.meldungFuerSnackbar(r)")) {
             "Der Abbruch scheitert lautlos"
         }
     }

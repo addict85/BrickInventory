@@ -31,6 +31,9 @@ import org.junit.Test
  *      den die Sitzungsschicht schon meldet, bleibt still“
  *   D  in setzeTeilLagerort() die Ruhezeit entfernt → rot „der Lagerort wird
  *      entprellt gespeichert …“
+ *   E  getManualParts ohne Lagerort, oder getManualMinifigs ohne Suchtext →
+ *      je rot „Suchtext und Lagerort erreichen auch die manuell erfassten …“
+ *   F  getMinifigStats ohne Blickfeld → rot „der Kontofilter der Figuren …“
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class TeileViewModelTest {
@@ -48,6 +51,7 @@ class TeileViewModelTest {
         pfade = PfadServer(
             "/api/v1/parts" to """{"success":true,"total":1,"parts":[{"part_number":"3001","color_id":5}]}""",
             "/api/v1/parts/manual" to """{"success":true,"parts":[]}""",
+            "/api/v1/minifigs" to """{"success":true,"figs":[{"fig_number":"sw0001"}]}""",
             "/api/v1/parts/stats" to """{"success":true}""",
             "/api/v1/parts/3001/5" to """{"success":true}""",
             "/api/v1/parts/3001/5/storage" to """{"success":true,"storage":"Kiste 3"}""",
@@ -81,6 +85,36 @@ class TeileViewModelTest {
         TestApi.warteBis("Liste geladen") { neu.partsState.value.parts.isNotEmpty() }
         val abruf = pfade.anfragenAn("GET /api/v1/parts?").last()
         assertTrue(abruf, listOf("color=5", "category=11", "spare=1", "with_sets=1").all { it in abruf })
+    }
+
+    @Test
+    fun `Suchtext und Lagerort erreichen auch die manuell erfassten Stuecke`() {
+        // Sonst filtert der Text die Set-Teile, und die manuellen Kacheln
+        // darüber bleiben stehen (Marcos Befund an den Teilen).
+        val vm = vm()
+        vm.setLagerFilter(ScopeFilter.View.PARTS, "Keller")
+        vm.setPartsQuery("stein")
+        vm.loadParts()
+        TestApi.warteBis("manuelle Teile") {
+            pfade.anfragenAn("GET /api/v1/parts/manual?").any { "search=stein" in it }
+        }
+        val teile = pfade.anfragenAn("GET /api/v1/parts/manual?").last { "search=stein" in it }
+        assertTrue(teile, "storage=Keller" in teile)
+
+        vm.setMinifigsQuery("han")
+        vm.loadMinifigs()
+        TestApi.warteBis("manuelle Figuren") {
+            pfade.anfragenAn("GET /api/v1/minifigs/manual?").any { "search=han" in it }
+        }
+    }
+
+    @Test
+    fun `der Kontofilter der Figuren reist mit Liste, Kennzahlen und manuellen Figuren`() {
+        val vm = vm()
+        vm.setScope(ScopeFilter.View.MINIFIGS, "own")
+        for (pfad in listOf("GET /api/v1/minifigs?", "GET /api/v1/minifigs/stats?", "GET /api/v1/minifigs/manual?")) {
+            TestApi.warteBis(pfad) { pfade.anfragenAn(pfad).any { "accounts=own" in it } }
+        }
     }
 
     @Test

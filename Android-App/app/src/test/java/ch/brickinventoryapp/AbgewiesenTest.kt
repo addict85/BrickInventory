@@ -1,5 +1,7 @@
 package ch.brickinventoryapp
 
+import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.ui.viewmodel.Texte
 import ch.brickinventoryapp.util.darfNachfassen
 import ch.brickinventoryapp.util.meldetDieSitzungsschicht
 import org.junit.Test
@@ -32,6 +34,8 @@ import org.junit.Test
  *   c) eine Datei wieder auf authToken.first() → die Quellenregel rot
  *   d) `angemeldet` in meldetDieSitzungsschicht ignoriert → „ein falsches
  *      Passwort bleibt ein falsches Passwort" rot
+ *   e) in Texte.meldungFuerSnackbar() immer meldung(fehler) → „die Snackbar
+ *      schweigt …" rot (28.10.2026)
  */
 class AbgewiesenTest {
 
@@ -126,32 +130,24 @@ class AbgewiesenTest {
 
     @Test
     fun `die Snackbar schweigt, statt einen anderen Satz zu zeigen`() {
-        // Der erste Anlauf ersetzte in meldung() den Serversatz durch „Sitzung
-        // abgelaufen". Die Meldung blieb damit stehen und wurde obendrein
-        // falsch. Richtig ist null — der Kanal zeigt dann nichts (MeldungsKanal).
-        val vm = Quellen.ohneKommentare(Quellen.lies("ui/MainViewModel.kt"))
-        assert(vm.contains("internal fun meldungFuerSnackbar(fehler: Result.Error): String?")) {
-            "meldungFuerSnackbar() fehlt oder gibt keinen nullbaren Satz mehr zurueck."
+        // Ausgeführt an Texte, der einen Stelle für alle ViewModels: Ein 401
+        // bei vorliegendem Token gibt null (der Kanal zeigt nichts), ohne Token
+        // bleibt der Satz — dann heisst 401 „falsches Passwort".
+        fun texte(mitToken: Boolean) = object : Texte {
+            override fun text(id: Int, vararg args: Any?) = "t$id"
+            override fun menge(id: Int, anzahl: Int, vararg args: Any?) = "m$id"
+            override fun meldung(fehler: Result.Error) = "Satz"
+            override fun angemeldet() = mitToken
         }
-        // Den RUMPF schneiden statt ein Muster ueber die ganze Datei zu legen:
-        // Wie der Aufruf umbrochen ist, darf die Pruefung nicht interessieren.
-        val fs = vm.indexOf("internal fun meldungFuerSnackbar(")
-        val rumpfFs = vm.substring(fs, (fs + 700).coerceAtMost(vm.length))
-        assert(rumpfFs.contains("meldetDieSitzungsschicht(")) {
-            "meldungFuerSnackbar() fragt die Regel nicht."
+        val abgewiesen = Result.Error("", unauthorized = true)
+        assert(texte(mitToken = true).meldungFuerSnackbar(abgewiesen) == null) {
+            "Ein 401 bei angemeldeter App erscheint wieder als Satz in der Snackbar."
         }
-        assert(rumpfFs.contains(") null")) {
-            "meldungFuerSnackbar() liefert im Fall der Sitzungsschicht keinen null-Wert — " +
-                "dann steht wieder ein Satz auf dem Schirm."
+        assert(texte(mitToken = false).meldungFuerSnackbar(abgewiesen) == "Satz") {
+            "Ohne Token ist ein 401 ein falsches Passwort und muss gezeigt werden."
         }
-        // Und meldung() selbst faengt wieder beim Serversatz an: Sie fuellt auch
-        // die Fehlerfelder der Formulare, und dort waere Schweigen falsch.
-        val i = vm.indexOf("internal fun meldung(fehler: Result.Error): String {")
-        assert(i > 0) { "meldung() gibt es nicht mehr — Muster veraltet?" }
-        val rumpf = vm.substring(i, (i + 400).coerceAtMost(vm.length))
-        assert(!rumpf.contains("meldetDieSitzungsschicht(")) {
-            "meldung() entscheidet wieder selbst ueber die Sitzung — dann trifft es " +
-                "auch die Anmeldemaske, wo 401 „falsches Passwort“ heisst."
+        assert(texte(mitToken = true).meldungFuerSnackbar(Result.Error("", transient = true)) == "Satz") {
+            "Ein Netzfehler bei angemeldeter App verschwindet aus der Snackbar."
         }
     }
 

@@ -61,7 +61,7 @@ class SessionAndLifecycleTest {
     fun `der Interceptor meldet 401 nur mit Token und nur fuer unseren Server`() {
         val src = code(read("di/AppModule.kt"))
         assert(src.contains("sessionExpired.notifyExpired()")) {
-            "AppModule meldet keinen abgelaufenen Token — MainViewModel erfährt nie davon"
+            "AppModule meldet keinen abgelaufenen Token — das AppViewModel erfährt nie davon"
         }
         // ── Warum hier `tokenMitgeschickt` steht und nicht `token.isNotBlank()` ──
         //
@@ -105,10 +105,10 @@ class SessionAndLifecycleTest {
     }
 
     @Test
-    fun `MainViewModel loggt bei abgelaufener Sitzung aus`() {
-        val src = code(read("ui/MainViewModel.kt"))
+    fun `das AppViewModel loggt bei abgelaufener Sitzung aus`() {
+        val src = code(read("ui/AppViewModel.kt"))
         assert(src.contains("sessionExpired.events.collect")) {
-            "MainViewModel sammelt das SessionExpiredSignal nicht ein"
+            "Das AppViewModel sammelt das SessionExpiredSignal nicht ein"
         }
         val block = src.substringAfter("sessionExpired.events.collect").substringBefore("\n        }")
         assert(block.contains("isLoggedIn")) {
@@ -174,16 +174,16 @@ class SessionAndLifecycleTest {
             "barcodeScanning", "barcodeResolving",
             "barcodeResolvedSetNumber", "barcodeResolvedSet",
         )
-        val feature = read("ui/BarcodeFeature.kt")
+        val feature = read("ui/viewmodel/ErfassungViewModel.kt")
         val state = read("ui/UiState.kt")
         for (name in dead) {
-            assert(!feature.contains(name)) { "$name ist in BarcodeFeature.kt zurück" }
+            assert(!feature.contains(name)) { "$name ist in ErfassungViewModel.kt zurück" }
             assert(!state.contains(name)) { "$name ist in AppUiState zurück" }
         }
     }
 
     /**
-     * Der LIVE-Pfad muss bleiben: Scanner-Screen → vm.resolveBarcode() →
+     * Der LIVE-Pfad muss bleiben: Scanner-Screen → erfassung.resolveBarcode() →
      * repo.resolveBarcode(). Er hat mit dem entfernten Zweitpfad nichts zu tun,
      * und an ihm hängt der Kamera-Autofokus (siehe INVARIANTEN.md).
      */
@@ -192,10 +192,10 @@ class SessionAndLifecycleTest {
         assert(exists("ui/screens/BarcodeScannerScreen.kt")) {
             "BarcodeScannerScreen.kt fehlt — das ist der Screen mit dem Autofokus"
         }
-        assert(code(read("ui/BarcodeFeature.kt")).contains("fun MainViewModel.resolveBarcode(")) {
+        assert(code(read("ui/viewmodel/ErfassungViewModel.kt")).contains("fun resolveBarcode(")) {
             "resolveBarcode() fehlt — der live genutzte Auflösungspfad"
         }
-        assert(code(read("nav/ToolsGraph.kt")).contains("vm.resolveBarcode(")) {
+        assert(code(read("nav/ToolsGraph.kt")).contains("erfassung.resolveBarcode(")) {
             "Der Scanner-Screen ruft resolveBarcode() nicht mehr auf"
         }
     }

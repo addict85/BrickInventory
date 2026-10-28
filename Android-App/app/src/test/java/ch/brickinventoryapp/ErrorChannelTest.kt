@@ -34,24 +34,9 @@ import org.junit.Test
  */
 class ErrorChannelTest {
 
-    private val featureDateien
-        get() = Quellen.alle().filter { it.name.endsWith("Feature.kt") }
-
-    @Test
-    fun `nur die Anmeldung schreibt loginError`() {
-        val schreiber = featureDateien
-            .filter { Quellen.ohneKommentare(it.readText()).contains("loginError =") }
-            .map { it.name }
-        assert(schreiber.isNotEmpty()) {
-            "Niemand schreibt loginError — dann kann der Anmeldebildschirm keinen " +
-                "Fehler mehr zeigen. Muster veraltet?"
-        }
-        assert(schreiber == listOf("SessionFeature.kt")) {
-            "loginError wird ausserhalb der Anmeldung beschrieben: ${schreiber.joinToString()}. " +
-                "Das Feld wird NUR im Anmeldeformular gelesen — anderswo geschrieben ist " +
-                "es eine Meldung, die niemand sieht."
-        }
-    }
+    // Dass nur die Anmeldung loginError schreibt, stellt seit dem 28.10.2026
+    // der Compiler sicher: Das Feld steht in AnmeldeUiState, und den hält das
+    // AnmeldungViewModel privat.
 
     @Test
     fun `jedes geschriebene Zustandsfeld wird auch irgendwo gelesen`() {
@@ -90,7 +75,8 @@ class ErrorChannelTest {
         }
         val totIntern = nurIntern.keys.filter { feld ->
             !Regex("""\b$feld\b""").containsMatchIn(
-                featureDateien.joinToString("\n") { Quellen.ohneKommentare(it.readText()) }
+                Quellen.unter("ui").filter { it.name.endsWith("ViewModel.kt") }
+                    .joinToString("\n") { Quellen.ohneKommentare(it.readText()) }
             )
         }
         assert(totIntern.isEmpty()) {
