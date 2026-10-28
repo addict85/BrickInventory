@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.*
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -26,6 +28,7 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -264,26 +267,46 @@ fun GalleryScreen(
             }
 
             PullToRefreshBox(isRefreshing = isLoading, onRefresh = onRefresh, modifier = Modifier.fillMaxSize()) {
-                when {
-                    isLoading && sets.isEmpty() -> Box(Modifier.fillMaxSize(), Alignment.Center) {
+                when (galerieAnzeige(galerie, gefiltert = searchInput.isNotBlank() || theme.isNotEmpty())) {
+                    GalerieAnzeige.LAEDT -> Box(Modifier.fillMaxSize(), Alignment.Center) {
                         CircularProgressIndicator()
                     }
-                    sets.isEmpty() -> Box(Modifier.fillMaxSize(), Alignment.Center) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                            if (searchInput.isBlank() && theme.isEmpty()) {
-                                Image(painterResource(R.drawable.ic_logo), null, Modifier.size(64.dp))
-                                Text(stringResource(R.string.gallery_no_sets), fontWeight = FontWeight.SemiBold)
-                                Text(stringResource(R.string.gallery_pull_to_refresh),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                Button(onClick = onRefresh, shape = Formen.knopf) { Text(stringResource(R.string.gallery_refresh)) }
-                            } else {
-                                LeerSymbol(Icons.Default.SearchOff)
-                                Text(stringResource(R.string.gallery_no_results, searchInput), fontWeight = FontWeight.SemiBold)
-                            }
+                    // Fehler und leere Sammlung sehen verschieden aus und bieten
+                    // Verschiedenes an: hier den Grund und einen neuen Versuch.
+                    GalerieAnzeige.FEHLER -> GalerieHinweis {
+                        LeerSymbol(Icons.Default.CloudOff)
+                        Text(stringResource(R.string.gallery_load_failed), fontWeight = FontWeight.SemiBold,
+                            textAlign = TextAlign.Center)
+                        Text(galerie.galleryFehler.orEmpty(),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center)
+                        Button(onClick = onRefresh, shape = Formen.knopf) { Text(stringResource(R.string.gallery_retry)) }
+                    }
+                    GalerieAnzeige.LEER -> GalerieHinweis {
+                        Image(painterResource(R.drawable.ic_logo), null, Modifier.size(64.dp))
+                        Text(stringResource(R.string.gallery_no_sets), fontWeight = FontWeight.SemiBold)
+                        Text(stringResource(R.string.gallery_empty_hint),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center)
+                        // Derselbe Dialog wie der Plus-Knopf — kein zweiter Erfassungsweg.
+                        Button(onClick = { showAddDialog = true }, shape = Formen.knopf) {
+                            Icon(Icons.Default.Add, null, Modifier.size(18.dp))
+                            Spacer(Modifier.width(Abstaende.klein))
+                            Text(stringResource(R.string.gallery_add_first))
+                        }
+                        OutlinedButton(onClick = onScanBarcode, shape = Formen.knopf) {
+                            Icon(Icons.Default.QrCodeScanner, null, Modifier.size(18.dp))
+                            Spacer(Modifier.width(Abstaende.klein))
+                            Text(stringResource(R.string.gallery_scan_barcode))
                         }
                     }
-                    else -> LazyVerticalGrid(
+                    GalerieAnzeige.KEINE_TREFFER -> GalerieHinweis {
+                        LeerSymbol(Icons.Default.SearchOff)
+                        Text(stringResource(R.string.gallery_no_results, searchInput), fontWeight = FontWeight.SemiBold)
+                    }
+                    GalerieAnzeige.LISTE -> LazyVerticalGrid(
                         columns = GridCells.Adaptive(160.dp),
                         state = gridState,
                         contentPadding = PaddingValues(Abstaende.mittel),
@@ -351,6 +374,21 @@ fun GalleryScreen(
             vorgabe = lagerState.vorgabe?.name ?: "",
         )
     }
+}
+
+/**
+ * Mittig, scrollbar und mit Rand: Der Inhalt muss auch im Querformat ganz
+ * erreichbar sein, und PullToRefreshBox braucht ein scrollbares Kind, damit
+ * Ziehen zum Neuladen weiter geht.
+ */
+@Composable
+private fun GalerieHinweis(inhalt: @Composable ColumnScope.() -> Unit) {
+    Column(
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Abstaende.riesig),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(Abstaende.klein, Alignment.CenterVertically),
+        content = inhalt,
+    )
 }
 
 @Composable

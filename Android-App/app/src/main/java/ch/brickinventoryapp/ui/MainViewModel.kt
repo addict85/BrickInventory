@@ -252,6 +252,7 @@ class MainViewModel @Inject constructor(
         },
         holeKennzahlen = { repo.finanzen.getStats(scopeFor(ch.brickinventoryapp.data.ScopeFilter.View.GALLERY)) },
         meldeFehler = { _snackbar.value = meldungFuerSnackbar(it) },
+        beschreibeFehler = { meldung(it) },
         vergissScroll = { scrollMemory.vergiss("gallery") },
     )
     val galleryState: kotlinx.coroutines.flow.StateFlow<GalleryUiState> = galerie.state
