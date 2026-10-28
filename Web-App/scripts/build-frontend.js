@@ -90,13 +90,15 @@ function erlaubteStile() {
   const dateien = ['index.html', ...fs.readdirSync(path.join(PUBLIC, 'js'))
     .filter(f => f.endsWith('.js') && f !== path.basename(OUT_REL)).map(f => 'js/' + f)];
   const werte = new Set();
+  /** @type {Record<string, string>} */
   const entity = { '&amp;': '&', '&quot;': '"', '&#39;': "'", '&lt;': '<', '&gt;': '>' };
   for (const d of dateien) {
     const s = fs.readFileSync(path.join(PUBLIC, d), 'utf8');
     for (const m of s.matchAll(/data-stil=(\\?["'])([\s\S]*?)\1/g)) {
-      if (!m[2].includes('${')) werte.add(m[2].replace(/\\(["'])/g, '$1').replace(/&(amp|quot|#39|lt|gt);/g, e => entity[e]));
+      const roh = m[2] ?? '';
+      if (!roh.includes('${')) werte.add(roh.replace(/\\(["'])/g, '$1').replace(/&(amp|quot|#39|lt|gt);/g, e => entity[e] ?? e));
     }
-    for (const m of s.matchAll(/\b(?:stil|zeilenStil|wertStil):\s*'([^'$]*)'/g)) werte.add(m[1]);
+    for (const m of s.matchAll(/\b(?:stil|zeilenStil|wertStil):\s*'([^'$]*)'/g)) werte.add(m[1] ?? '');
   }
   return [...werte].sort();
 }

@@ -29,49 +29,10 @@ async function computePnl(viewerId: number, ids: Blickfeld) {
 
   const sets = await db.all(
     `SELECT s.set_number, c.name, c.year,
-            -- Die Menge aus den Erfassungen (Migration 0036 hat s.quantity
-            -- geloescht) — und zwar aus der Gruppierung a weiter unten, die
-            -- diese Summe fuer total_price ohnehin schon bildet. Darum hier
-            -- KEIN zusaetzlicher JOIN ueber utils/bestandsmenge.ts: Der
-            -- rechnete dieselbe Summe ein zweites Mal im selben Satz.
-            --
-            -- (Keine Gegenstriche in diesem Kommentar — auch nicht um den
-            -- Alias a: Er steht in einem Template-Literal, und ein
-            -- Gegenstrich beendet es. Gemessen, tsc meldete „',' expected".)
+            -- Menge aus den Erfassungen (Gruppierung a unten), kein zweiter JOIN.
             COALESCE(a.total_qty, 0)::int AS quantity,
             c.image_local, c.image_url, s.added_at,
-            -- Ø-Kaufpreis pro Stück aus der Erfassungs-Historie. Frontend/Apps
-            -- rechnen weiterhin purchase_price × quantity, die Summe stimmt damit
-            -- auch bei unterschiedlich teuren Erfassungen.
-            --
-            -- Der zweite COALESCE-Operand war die Kaufpreis-Spalte der sets-Zeile.
-            -- Sie ist mit Migration 0032 weg: Kaufpreis und Zustand stehen nur
-            -- noch in den Erfassungen, und die Migration hat für jede Set-Zeile
-            -- eine nachgetragen. Die Zustands-Spalte fällt aus derselben
-            -- Auswahlliste weg — effectiveCondition() unten liest ohnehin nur
-            -- acq_count/used_count.
-            -- Eigener Name und NICHT purchase_price: Eine Spalte dieses Namens
-            -- gab es an der sets-Zeile, und das Feld hiess damit jahrelang
-            -- „der gespiegelte Einzelwert". Derselbe Name mit neuer Bedeutung
-            -- ist die Sorte Stolperstein, die hier schon mehrfach etwas
-            -- gekostet hat. Die Antwort an die Clients heisst weiter
-            -- purchase_price; zusammengesetzt wird sie unten.
-            --
-            -- (Keine Gegenstriche in diesem Kommentar: Er steht in einem
-            -- Template-Literal, und ein Gegenstrich beendet es. Gemessen —
-            -- tsc meldete „',' expected".)
-            a.total_price / NULLIF(a.total_qty, 0) AS acq_preis_schnitt,
-            -- acq_count/used_count fehlten hier komplett — effectiveCondition()
-            -- weiter unten braucht sie, um den Zustand aus den Erfassungen
-            -- abzuleiten. Ohne sie war set.acq_count/used_count immer
-            -- undefined, effectiveCondition() fiel IMMER auf die damalige
-            -- Zustands-Spalte der sets-Zeile zurück, egal was die Erfassungen
-            -- sagten. Für ein Set mit gemischten Erfassungen (z. B. 1× Neu,
-            -- 1× Gebraucht) oder einem veralteten Spaltenwert zeigte der P&L-Pfad — und damit
-            -- die Galerie-Kachel und der Detail-Dialog — dadurch den falschen
-            -- Marktpreis, während computeSetsValuation() (Finanzen-Reiter)
-            -- längst korrekt über die Erfassungen entschied. Zwei Wahrheiten
-            -- für denselben Zustand.
+            -- effectiveCondition() leitet den Zustand aus diesen Zählern ab.
             COALESCE(a.acq_count, 0)  AS acq_count,
             COALESCE(a.used_count, 0) AS used_count
      -- Name, Jahr und Bilder stehen seit Migration 0033 in set_catalog.
@@ -79,13 +40,12 @@ async function computePnl(viewerId: number, ids: Blickfeld) {
      LEFT JOIN set_catalog c ON c.set_number = s.set_number
      LEFT JOIN (
        SELECT user_id, set_number,
-              SUM(COALESCE(CASE WHEN currency = $2 THEN purchase_price END, 0) * quantity) AS total_price,
               SUM(quantity) AS total_qty,
               COUNT(*)                                AS acq_count,
               COUNT(*) FILTER (WHERE condition = 'U')  AS used_count
        FROM set_acquisitions GROUP BY user_id, set_number
      ) a ON a.user_id = s.user_id AND a.set_number = s.set_number
-     WHERE s.user_id = ANY($1)`, [uids, String(currency)]);
+     WHERE s.user_id = ANY($1)`, [uids]);
 
   // Statt 2 Queries pro Set: aktuelle Cache-Preise und ältester History-Eintrag
   // für ALLE Sets in je einer Batch-Query (nutzt UNIQUE-Index bzw. idx_price_history_set).
@@ -162,25 +122,23 @@ async function computePnl(viewerId: number, ids: Blickfeld) {
   const setResults = sets.map(set => {
     const setCondition = effectiveCondition(set);
     const currentPrice = priceMap.get(set.set_number) || 0;
-    // Kaufpreis aus den Erfassungen — purchaseMap gewichtet nach Reihenfolge,
-    // die Abfrage oben als einfacher Ø. Beide Wege lesen set_acquisitions.
+    // EIN Kostenpfad: der mengengewichtete Kaufpreis der Erfassungen mit Preis
+    // in dieser Währung. Fehlt er, ist der Kaufpreis unbekannt (null) — nicht
+    // 0, sonst stünde ein Set ohne Preis als reiner Gewinn da. 0 zählt als erfasst.
     const acqPurchase = purchaseMap.get(set.set_number);
-    // `acq_preis_schnitt` ist der Ø aus der Erfassungs-Historie (Abfrage oben)
-    // und null, wenn es gar keine Erfassung gibt. 0 zählt als erfasst.
-    const schnitt = set.acq_preis_schnitt != null ? parseFloat(set.acq_preis_schnitt) : null;
-    const hasCost = acqPurchase != null || schnitt != null;
-    const purchasePrice = acqPurchase != null ? acqPurchase : (schnitt ?? 0);
+    const hasCost = acqPurchase != null;
+    const purchasePrice = acqPurchase ?? 0;
     const qty = qtyMap.get(set.set_number) || set.quantity || 1;
     const pnlAbs = hasCost ? (currentPrice - purchasePrice) * qty : null;
     const pnlPct = (hasCost && currentPrice > 0) ? ((currentPrice - purchasePrice) / Math.max(purchasePrice, PNL_EPS)) * 100 : null;
     // First price recorded = baseline if no purchase_price (0 zählt als erfasst)
     const baselineHas = hasCost || firstHistMap.has(set.set_number);
-    const baselinePrice = hasCost ? purchasePrice : (firstHistMap.get(set.set_number) || 0);
-    const baselinePnlPct = (baselineHas && currentPrice > 0) ? ((currentPrice - baselinePrice) / Math.max(baselinePrice, PNL_EPS)) * 100 : null;
+    const baselinePrice = hasCost ? purchasePrice : (firstHistMap.get(set.set_number) ?? null);
+    const baselinePnlPct = (baselineHas && currentPrice > 0) ? ((currentPrice - (baselinePrice ?? 0)) / Math.max(baselinePrice ?? 0, PNL_EPS)) * 100 : null;
     return {
       set_number: set.set_number, name: set.name, year: set.year,
       image_local: set.image_local, image_url: set.image_url,
-      quantity: qty, current_price: currentPrice, purchase_price: purchasePrice,
+      quantity: qty, current_price: currentPrice, purchase_price: hasCost ? purchasePrice : null,
       condition: setCondition, baseline_price: baselinePrice, added_at: set.added_at,
       pnl_abs: pnlAbs?.toFixed(2) ?? null,
       pnl_pct: pnlPct?.toFixed(1) ?? null,
