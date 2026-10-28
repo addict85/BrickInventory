@@ -53,6 +53,8 @@
   --txt:var(--ink);
   --mut:#5a6270;
   --screen-bg:#eef1f6;      /* Login-/Startup-Screen, vor dem Login */
+  /* Die Marke ist rot; ein roter Preis neben grüner G&V las sich als Verlust. */
+  --preis:var(--ink);
   --rad:14px;
 
   /* Kante statt Wolke: derselbe Ton wie der Rahmen, nur versetzt. */

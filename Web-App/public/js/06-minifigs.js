@@ -602,7 +602,7 @@ function manuelleTabelle(posten, art) {
       }${esc(colorName(p.color_name))}</div></td>` : ''}
       <td><span data-stil="font-family:var(--mono);font-weight:600;color:var(--b700)">${p.quantity || 0}</span></td>
       <td>${condBadges(p)}</td>
-      <td data-stil="font-weight:600;color:var(--b600)">${preis != null ? fmtN(preis, CURRENCY) : '—'}</td>
+      <td class="preis">${preis != null ? fmtN(preis, CURRENCY) : '—'}</td>
       <td data-stil="font-size:var(--fs-1);color:var(--mut)">${esc(p.storage || '')}</td>
       <td><button class="delbtn" data-click="${loeschKlick}" ${loeschArgs} title="${esc(loeschTitel)}" aria-label="${esc(loeschTitel)}">${TRASH_ICON_SVG}</button>${ownerBadges(p)}</td>
     </tr>`;

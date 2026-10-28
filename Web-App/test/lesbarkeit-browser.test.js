@@ -7,6 +7,8 @@
  *   - Die Datei-Felder in den Knopf-Labels (CSV, BrickLink XML) lassen sich
  *     fokussieren; mit display:none übersprang Tab sie.
  *   - Nummer und Jahr auf der Set-Kachel stehen in mindestens 12 px.
+ *   - Preise stehen in „noppe“ und „hochglanz“ nicht in Rot (die Marke ist
+ *     rot; Rot heisst sonst Verlust).
  *   - Zwischen zwei Wörtern auf einem Knopf steht mindestens 0,22 em.
  *   - Der Fokusring des Knopfs „Anmelden“ ist mindestens 3 px breit und hebt
  *     sich mit 3:1 vom Grund der Anmeldekarte ab, hell wie dunkel.
@@ -21,6 +23,8 @@
  *   F  (28.10.) .cond-new wieder mit var(--g600) → rot: „hell: Etikett Neu 3:1“;
  *      .besitzer-badge mit --b600 → rot: „hell: Etikett Besitzer 4.24:1“
  *   G  (28.10.) .pnl-pos wieder #16a34a → rot: „hell: Gewinn 3.15:1“
+ *   H  (28.10.) --preis in themes/noppe.css entfernt → rot: „Preis in Rot“
+ *      mit „noppe: Preis“ und „hochglanz: Preis“
  *   E  (28.10.) word-spacing am body entfernt, ebenso word-spacing:inherit an
  *      button → rot: „Wortabstand 0.17 em“
  */
@@ -32,7 +36,8 @@ const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 
 const PUBLIC = path.join(__dirname, '..', 'public');
-const STILE = ['vendor/fonts/fonts.css', 'tokens.css', 'styles.css', 'mobile.css', 'themes/werkbank.css'];
+const STILE = ['vendor/fonts/fonts.css', 'tokens.css', 'styles.css', 'mobile.css', 'themes/werkbank.css',
+  'themes/noppe.css', 'themes/hochglanz.css'];
 
 function chrome() {
   const kandidaten = [process.env.CHROME_BIN, '/usr/bin/google-chrome', '/usr/bin/google-chrome-stable',
@@ -73,6 +78,12 @@ function testseite() {
   <span class="cond-badge besitzer-badge" data-kontrast="werkbank: Etikett Besitzer">emily</span>
   <span class="admin-hinweis" data-kontrast="werkbank: Admin-Hinweis">(Admin)</span>
 </section>
+<section data-theme="noppe" style="background:var(--sur)">
+  <span class="preis" data-kontrast="noppe: Preis" data-farbton="noppe: Preis">411,90 €</span>
+</section>
+<section data-theme="hochglanz" style="background:var(--sur)">
+  <span class="preis" data-kontrast="hochglanz: Preis" data-farbton="hochglanz: Preis">411,90 €</span>
+</section>
 <pre id="ergebnis"></pre>
 <script>
 function rgb(s){ return (s.match(/[\\d.]+/g)||[]).slice(0,3).map(Number); }
@@ -90,10 +101,18 @@ window.addEventListener('load', () => document.fonts.ready.then(() => {
     return { name: karte.dataset.fokus, breite: parseFloat(cs.outlineWidth), stil: cs.outlineStyle,
              wert: Math.round(((Math.max(a,b)+.05)/(Math.min(a,b)+.05))*100)/100 };
   });
+  const farbton = [...document.querySelectorAll('[data-farbton]')].map(el => {
+    const [r, g, b] = rgb(getComputedStyle(el).color).map(c => c / 255);
+    const max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min;
+    const s = max === 0 ? 0 : d / max;
+    let h = 0;
+    if (d) h = max === r ? 60 * (((g - b) / d) % 6) : max === g ? 60 * ((b - r) / d + 2) : 60 * ((r - g) / d + 4);
+    return { name: el.dataset.farbton, rot: s > 0.35 && (h < 25 || h > 335) };
+  });
   const datei = document.getElementById('datei'); datei.focus();
   const fokus = document.activeElement === datei;
   const px = id => parseFloat(getComputedStyle(document.getElementById(id)).fontSize);
-  document.getElementById('ergebnis').textContent = 'ERGEBNIS' + JSON.stringify({ kontrast, fokus, ring, raum: wortabstand(), snum: px('snum'), smeta: px('smeta') }) + 'ENDE';
+  document.getElementById('ergebnis').textContent = 'ERGEBNIS' + JSON.stringify({ kontrast, farbton, fokus, ring, raum: wortabstand(), snum: px('snum'), smeta: px('smeta') }) + 'ENDE';
 }));
 /** Breite eines Leerzeichens in der Schrift des Knopfs, in em. */
 function wortabstand() {
@@ -118,6 +137,8 @@ test('Kontrast, Datei-Felder und Kachelschrift', (t) => {
   assert.ok(m, 'Die Testseite hat kein Ergebnis geschrieben');
   const e = JSON.parse((m[1] ?? '').replace(/&quot;/g, '"'));
   assert.ok(e.kontrast.length >= 16);
+  assert.equal(e.farbton.length, 2);
+  assert.deepEqual(e.farbton.filter(f => f.rot).map(f => f.name), [], 'Preis in Rot — liest sich als Verlust');
   assert.deepEqual(e.kontrast.filter(k => k.wert < 4.5).map(k => `${k.name} ${k.wert}:1`), []);
   assert.equal(e.fokus, true, 'Datei-Feld fokussierbar: Tab übersprang CSV und BrickLink XML');
   assert.ok(e.snum >= 12 && e.smeta >= 12, `Kachelschrift ${e.snum}/${e.smeta} px`);

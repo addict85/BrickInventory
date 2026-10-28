@@ -72,7 +72,7 @@ function acqSummary(totals) {
   const betrag = totals?.amount;
   return `<div id="acq-summary" data-stil="display:flex;justify-content:space-between;padding:.75rem .5rem 0;border-top:2px solid var(--bdr);margin-top:.25rem">
     <span data-stil="font-size:var(--fs-2);color:var(--mut)">${t('detail.qty')}: <strong id="acq-total-qty">${menge}</strong></span>
-    <span id="acq-total-price" data-stil="font-weight:700;color:var(--b600)">${betrag != null ? fmtN(betrag, CURRENCY) : '—'}</span>
+    <span id="acq-total-price" class="preis preis-stark">${betrag != null ? fmtN(betrag, CURRENCY) : '—'}</span>
   </div>`;
 }
 

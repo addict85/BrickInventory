@@ -463,7 +463,7 @@
     .color-dot{width:14px;height:14px;border-radius:50%;border:1px solid rgba(0,0,0,.12);flex-shrink:0}
     .parts-stats-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:.75rem;margin-bottom:1.25rem}
     .pstat{background:var(--sur);border:1px solid var(--bdr);border-radius:8px;padding:.85rem 1rem;text-align:center;box-shadow:var(--sh0)}
-    .pstat .v{font-variant-numeric:tabular-nums;font-size:var(--fs-5);font-weight:600;color:var(--b600)}
+    .pstat .v{font-variant-numeric:tabular-nums;font-size:var(--fs-5);font-weight:600;color:var(--preis,var(--b600))}
     .pstat .l{font-size:var(--fs-0);color:var(--mut);text-transform:uppercase;letter-spacing:.4px;margin-top:2px}
     .parts-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:.85rem}
     .part-card{background:var(--sur);border:1.5px solid var(--bdr);border-radius:8px;padding:.85rem;text-align:center;box-shadow:var(--sh0);transition:border-color .15s}
@@ -610,7 +610,7 @@
        Verlust zeigt die G&V-Spalte. */
     .price-cell{font-variant-numeric:tabular-nums;color:var(--txt);font-size:var(--fs-2)}
     .fin-fehlt{color:var(--a-schrift);font-size:var(--fs-1);cursor:help;border-bottom:1px dotted currentColor}
-    .price-total{font-variant-numeric:tabular-nums;color:var(--b700);font-weight:600}
+    .price-total{font-variant-numeric:tabular-nums;color:var(--preis,var(--b700));font-weight:600}
     .lv{display:inline-flex;align-items:center;background:var(--g100);color:#15803d;font-size:var(--fs-0);font-weight:600;padding:2px 6px;border-radius:999px}
     .lc{display:inline-flex;align-items:center;background:var(--b100);color:var(--b700);font-size:var(--fs-0);font-weight:600;padding:2px 6px;border-radius:999px}
     /* Preisstatus in der Finanztabelle: Haken = Preis da, Warndreieck = keiner.
@@ -882,7 +882,10 @@ input.suchfeld{width:220px}
 .text-fett-3{font-weight:600;font-size:var(--fs-3)}
 .farbe-mut{color:var(--mut)}
 .farbe-primaer{color:var(--b600)}
-.wert-primaer{font-weight:700;color:var(--b600)}
+.wert-primaer{font-weight:700;color:var(--preis,var(--b600))}
+/* Preise in der Markenfarbe — ausser dort, wo die Marke rot ist (--preis im Design). */
+.preis{font-weight:600;color:var(--preis,var(--b600))}
+.preis-stark{font-weight:700}
 .mono-2{font-family:var(--mono);font-size:var(--fs-2)}
 .zeiger{cursor:pointer}
 /* Bis js/00-stile.js den Stil gesetzt hat (und data-stil entfernt), bleibt Verborgenes verborgen. */

@@ -875,7 +875,7 @@ export function updateGalleryPrices(){
     const priceStr = s._price ? fmtN(s._price, CURRENCY)
                               : (s.max_purchase_price != null ? fmtN(s.max_purchase_price, CURRENCY) : '');
     const pnl = pnlBadge(s._pnl_pct);
-    el.innerHTML = `<span data-stil="font-weight:600;color:var(--b600)">${priceStr}</span>${pnl}`;
+    el.innerHTML = `<span class="preis">${priceStr}</span>${pnl}`;
     el.hidden = !(priceStr || pnl);
   });
 }
@@ -969,7 +969,7 @@ function gridCard(s){
           ${ownerBadges(s)}
         </div>
       </div>
-      <div class="price-badge" data-price-for="${esc(s.set_number)}"${priceStr||pnl ? '' : ' hidden'}><span data-stil="font-weight:600;color:var(--b600)">${priceStr}</span>${pnl}</div>
+      <div class="price-badge" data-price-for="${esc(s.set_number)}"${priceStr||pnl ? '' : ' hidden'}><span class="preis">${priceStr}</span>${pnl}</div>
       ${addedFmt ? `<div data-stil="font-size:var(--fs-1);color:var(--mut);margin-top:.2rem">${ico('kalender')} ${addedFmt}</div>` : ''}
     </div>
   </div>`;

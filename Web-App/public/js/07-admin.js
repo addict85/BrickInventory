@@ -273,7 +273,7 @@ export function renderMarketRows(ph, targetId = 'm-market-rows') {
     .map(c => {
       const d = ph.by_condition[c];
       const price = d.market_price != null
-        ? `<span data-stil="font-weight:700;color:var(--b600)">${esc(fmtN(d.market_price, CURRENCY))}</span>`
+        ? `<span class="preis preis-stark">${esc(fmtN(d.market_price, CURRENCY))}</span>`
         : '<span data-stil="color:var(--mut)">—</span>';
       const pnl = d.pnl_pct != null ? pnlBadge(d.pnl_pct) : '';
       return detailZeile(
