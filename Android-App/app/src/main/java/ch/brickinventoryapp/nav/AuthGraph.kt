@@ -52,6 +52,8 @@ import androidx.navigation.NavType
 import androidx.navigation.navArgument
 import ch.brickinventoryapp.*
 import ch.brickinventoryapp.ui.MainViewModel
+import ch.brickinventoryapp.ui.viewmodel.AnmeldungViewModel
+import ch.brickinventoryapp.ui.viewmodel.aktivitaetsViewModel
 import ch.brickinventoryapp.ui.ManualItemDetailUiState
 
 /**
@@ -71,19 +73,20 @@ fun NavGraphBuilder.authGraph(
         composable(Screen.Setup.route) {
             // Zustand INNERHALB des Ziels lesen — als Parameter wäre es eine
             // Momentaufnahme vom Aufbau des Graphen (der NavHost-Builder läuft nur einmal).
-            val state by vm.state.collectAsStateWithLifecycle()
+            val anmeldung: AnmeldungViewModel = aktivitaetsViewModel()
+            val state by anmeldung.state.collectAsStateWithLifecycle()
             SetupScreen(
                 currentUrl = state.serverUrl,
                 onSave = { url, klartextBestaetigt ->
-                    vm.saveServerUrl(url, klartextBestaetigt)
+                    anmeldung.saveServerUrl(url, klartextBestaetigt)
                     navController.navigate(Screen.Login.route) {
                         popUpTo(Screen.Setup.route) { inclusive = true }
                     }
                 },
                 onQrScanned = { url, token ->
                     // Save server URL and auto-login with QR token
-                    vm.saveServerUrl(url)
-                    vm.loginWithQrToken(url, token)
+                    anmeldung.saveServerUrl(url)
+                    anmeldung.loginWithQrToken(url, token)
                     // Navigate to login screen (will auto-redirect to gallery on success)
                     navController.navigate(Screen.Login.route) {
                         popUpTo(Screen.Setup.route) { inclusive = true }
@@ -94,13 +97,14 @@ fun NavGraphBuilder.authGraph(
         composable(Screen.Login.route) {
             // Zustand INNERHALB des Ziels lesen — als Parameter wäre es eine
             // Momentaufnahme vom Aufbau des Graphen (der NavHost-Builder läuft nur einmal).
-            val state by vm.state.collectAsStateWithLifecycle()
-            val anmeldung by vm.anmeldeState.collectAsStateWithLifecycle()
+            val anmeldungVm: AnmeldungViewModel = aktivitaetsViewModel()
+            val state by anmeldungVm.state.collectAsStateWithLifecycle()
+            val anmeldung by anmeldungVm.anmeldeState.collectAsStateWithLifecycle()
             // Einmal beim Betreten: Steht die Registrierung ueberhaupt offen?
             // Ohne Anmeldung erreichbar — die Frage kommt ja, bevor es ein
             // Konto gibt. `Unit` als Schluessel: genau einmal je Aufbau, nicht
             // bei jeder Zustandsaenderung.
-            LaunchedEffect(Unit) { vm.pruefeRegistrierungOffen() }
+            LaunchedEffect(Unit) { anmeldungVm.pruefeRegistrierungOffen() }
             // ── Startet der Server gerade? (Nachtrag 136) ────────────────────
             //
             // Dann statt des Formulars der Fortschritt. Sich anzumelden hat in
@@ -124,10 +128,10 @@ fun NavGraphBuilder.authGraph(
                 kontoLaeuft = anmeldung.laeuft,
                 kontoMeldung = anmeldung.meldung,
                 kontoFehler = anmeldung.fehler,
-                onLogin = { user, pw, code -> vm.login(user, pw, code) },
-                onFormular = { vm.zeigeAnmeldeFormular(it) },
-                onRegistrieren = { u, e, v, n, pw -> vm.registriere(u, e, v, n, pw) },
-                onPasswortVergessen = { vm.passwortVergessen(it) },
+                onLogin = { user, pw, code -> anmeldungVm.login(user, pw, code) },
+                onFormular = { anmeldungVm.zeigeAnmeldeFormular(it) },
+                onRegistrieren = { u, e, v, n, pw -> anmeldungVm.registriere(u, e, v, n, pw) },
+                onPasswortVergessen = { anmeldungVm.passwortVergessen(it) },
                 onChangeServer = {
                     navController.navigate(Screen.Setup.route) {
                         popUpTo(Screen.Login.route) { inclusive = true }

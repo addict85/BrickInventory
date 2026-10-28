@@ -228,11 +228,6 @@ class MainViewModel @Inject constructor(
     internal val _householdState = MutableStateFlow(HouseholdUiState())
     val householdState = _householdState.asStateFlow()
 
-    // Konto anlegen und „Passwort vergessen" — eigener Fluss: Nur EIN
-    // Bildschirm liest ihn, und in AppUiState laege er sechzehn Dateien im
-    // Weg (ZustandsflussBreiteTest).
-    internal val _anmeldeState = MutableStateFlow(AnmeldeUiState())
-    val anmeldeState = _anmeldeState.asStateFlow()
 
     // Das HOCHLADEN einer CSV-Datei — nicht zu verwechseln mit
     // _csvImportState, das den Fortschritt des Imports auf dem Server zeigt.

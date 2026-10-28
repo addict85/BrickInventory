@@ -42,3 +42,11 @@ class Sitzung @Inject constructor() {
         _abmeldungen.tryEmit(Unit)
     }
 }
+
+/**
+ * Ein gescheiterter QR-Anlauf, während die App schon angemeldet ist, ist kein
+ * Fehler: Der Scanner löste doppelt aus, der erste Anlauf hat den einmaligen
+ * Token verbraucht und angemeldet. Gibt die Meldung zurück, oder null.
+ */
+internal fun qrFehler(bereitsAngemeldet: Boolean, meldung: String): String? =
+    if (bereitsAngemeldet) null else meldung
