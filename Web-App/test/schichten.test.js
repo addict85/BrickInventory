@@ -98,9 +98,14 @@ function innereDateien() {
   return gefunden;
 }
 
+/** Quelltext einer Datei (relativ zu ROOT) ohne Kommentare. */
+function quelltext(rel) {
+  return ohneKommentare(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
+}
+
 /** Alle Ziele von import/require einer Datei (relativ zu ROOT), roh. */
 function importe(rel) {
-  const src = ohneKommentare(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
+  const src = quelltext(rel);
   return [...src.matchAll(/(?:from\s+|require\()\s*['"]([^'"]+)['"]/g)].map(m => m[1]);
 }
 
@@ -174,7 +179,7 @@ test('keine Importzyklen in den inneren Schichten', () => {
   const dateien = new Set(innereDateien());
   const kanten = new Map();
   for (const d of dateien) {
-    const src = ohneKommentare(fs.readFileSync(path.join(ROOT, d), 'utf8'));
+    const src = quelltext(d);
     const ziele = [...src.matchAll(/^\s*(import|export)\s(?!type\b)[^;]*?from\s+['"](\.[^'"]+)['"]|require\(\s*['"](\.[^'"]+)['"]/gm)]
       .map(m => path.posix.normalize(path.posix.join(path.posix.dirname(d), m[2] || m[3])).replace(/\.js$/, ''))
       .flatMap(z => [z + '.ts', z + '/index.ts']).filter(z => dateien.has(z));

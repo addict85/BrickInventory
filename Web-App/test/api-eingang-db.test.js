@@ -16,7 +16,6 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
 const net = require('node:net');
 const path = require('node:path');
 const { spawn } = require('node:child_process');
@@ -24,7 +23,8 @@ const { spawn } = require('node:child_process');
 const URL_DB = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.DATABASE_URL = URL_DB;
 const ROOT = path.join(__dirname, '..');
-const _req = require('./helpers/sources').buildAndRequire();
+const { buildAndRequire, v1Routen } = require('./helpers/sources');
+const _req = buildAndRequire();
 const db = _req('db/database.js');
 const warte = (ms) => new Promise(r => setTimeout(r, ms));
 
@@ -35,21 +35,6 @@ const ERWARTET_OFFEN = [
   'POST /api/v1/auth/qr-login', 'POST /api/v1/auth/reset-password',
   'POST /api/v1/auth/serverbeweis',
 ];
-
-/** Alle Routen unter /api/v1, wie sie im Quelltext eingetragen sind. */
-function routen() {
-  const gefunden = [];
-  const lies = (datei, vorne) => {
-    const s = fs.readFileSync(path.join(ROOT, datei), 'utf8');
-    for (const m of s.matchAll(/(?:router|app)\.(get|post|put|patch|delete)\(\s*['"`]([^'"`]+)['"`]/g))
-      gefunden.push([m[1].toUpperCase(), vorne + m[2]]);
-  };
-  for (const f of fs.readdirSync(path.join(ROOT, 'routes', 'api_v1')).filter(f => f.endsWith('.ts')))
-    lies(`routes/api_v1/${f}`, '/api/v1');
-  for (const f of ['sets', 'parts', 'settings', 'minifigs', 'auth']) lies(`routes/${f}.ts`, `/api/v1/${f}`);
-  lies('server.ts', '');
-  return gefunden.filter(([, p]) => p.startsWith('/api/v1'));
-}
 
 const freierPort = () => new Promise(r => { const s = net.createServer().listen(0, () => { const p = s.address().port; s.close(() => r(p)); }); });
 
@@ -81,7 +66,7 @@ test('Eingang zu /api/v1', { concurrency: 1, timeout: 180_000 }, async (t) => {
   for (let i = 0; i < 240 && !/is PRIMARY|Startup complete/.test(log); i++) await warte(250);
   for (let i = 0; i < 40 && (await fetch(`http://127.0.0.1:${port}/api/v1/health`).catch(() => null)) === null; i++) await warte(250);
 
-  const alle = routen();
+  const alle = v1Routen();
   assert.ok(alle.length > 150, `nur ${alle.length} Routen gefunden — greift die Suche noch?`);
   const offen = new Set();
   for (const [m, p] of alle) {
