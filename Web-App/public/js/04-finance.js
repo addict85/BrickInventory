@@ -18,7 +18,9 @@ import { openModal, portfolioChartSVG } from './07-admin.js';
 
 
 G('btn-clr').onclick=async()=>{ await api('POST','/v1/admin/cache-clear'); toast(tRaw('settings.cache_cleared'),'info'); loadCacheStats(); loadFinance(); };
-let _chartPeriod  = 'week';
+// Vorgewählt ist der längste Zeitraum: Eine Woche hat bei neuem Bestand oft
+// nur einen Messpunkt und zeigte dann eine flache Linie mit „0 %“.
+let _chartPeriod  = 'max';
 function setChartPeriod(period){
   _chartPeriod = period;
   document.querySelectorAll('.period-btn').forEach(b => {
@@ -36,8 +38,14 @@ async function loadPortfolioChart(){
   if(!d.success){
     el.innerHTML='<span data-stil="color:var(--r500);font-size:var(--fs-2);padding:.5rem;display:block">'+t('toast.error')+': '+( d.error||t('common.unknown'))+'</span>'; return;
   }
-  if(!d.points?.length){
-    el.innerHTML='<div data-stil="color:var(--mut);font-size:var(--fs-2);padding:1.5rem;text-align:center">'+t('history.none_title')+'<br><span data-stil="font-size:var(--fs-1)">'+t('history.none_hint')+'</span></div>'; return;
+  // Weniger als zwei echte Messpunkte sind kein Verlauf: Der Server ergänzt
+  // dann einen künstlichen Startwert, und die Linie behauptete Stillstand.
+  const messpunkte = d.messpunkte ?? d.points?.length ?? 0;
+  if(!d.points?.length || messpunkte < 2){
+    el.innerHTML = diagrammLeer();
+    const pnlLeer = G('portfolio-pnl');
+    if(pnlLeer) pnlLeer.innerHTML = '';
+    return;
   }
 
   const cur = d.currency || CURRENCY;
@@ -57,9 +65,10 @@ async function loadPortfolioChart(){
   if(pnlEl){
     // Ohne Marktwert keine Entwicklung: Der Verlauf trägt dann nur den
     // Kaufpreis, und „0.0 %" neben „—" behauptete Stillstand.
+    const zeitraum = `<span class="pnl-zeitraum">${t('finance.change.' + _chartPeriod)}</span>`;
     if(!(window._finGrandTotal > 0)) pnlEl.innerHTML = '';
     else if(d.period_change_pct != null){
-      pnlEl.innerHTML = pnlBadge(d.period_change_pct);
+      pnlEl.innerHTML = pnlBadge(d.period_change_pct) + zeitraum;
     } else {
       // Fallback: first chart point vs current
       const purchaseBaseline = parseFloat(d.purchase_total || 0);
@@ -67,10 +76,15 @@ async function loadPortfolioChart(){
         ? purchaseBaseline : finalChartData[0].total;
       if(firstVal > 0 && grandTotal > 0){
         const pct = (grandTotal - firstVal) / firstVal * 100;
-        pnlEl.innerHTML = pnlBadge(pct);
+        pnlEl.innerHTML = pnlBadge(pct) + zeitraum;
       }
     }
   }
+}
+
+/** Leerzustand des Wertdiagramms (auch aus portfolioChartSVG). */
+export function diagrammLeer(){
+  return `<div class="diagramm-leer" role="status"><strong>${t('finance.chart.too_few_title')}</strong><span>${t('finance.chart.too_few_text')}</span></div>`;
 }
 
 /**

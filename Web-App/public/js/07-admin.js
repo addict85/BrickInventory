@@ -5,7 +5,7 @@ import { locale, t, tRaw} from '../i18n.js';
 import { ico, CURRENCY, G, ME, _settingsCache, api, esc, escJs, fmtN, fullUrl, imgUrl, toast , set_settingsCache} from './01-core.js';
 import { initStorageSelects } from './02-gallery.js';
 import { PARTS_ICON_SVG, _pnlCache, allSets, setAllSets, applySetAggregate, autosaveSet, closeModal, curSet, loadGallery, pnlBadge, reimportParts, renderInstructions, updateGalleryPrices , set_pnlCache, set_curSet} from './02-gallery.js';
-import { loadFinance } from './04-finance.js';
+import { diagrammLeer, loadFinance } from './04-finance.js';
 import { scopeQuery } from './14-scope.js';
 import { loadApiLimits, loadCacheTtl, loadSettings } from './05-settings.js';
 import { deleteManualFig, deleteManualPart, loadManualFigsTable, loadManualParts, manualFigsCache, manualPartsCache, updateManualFig, updateManualPart } from './06-minifigs.js';
@@ -173,7 +173,7 @@ export async function enrichGalleryWithPrices(){
 
 // Sparkline SVG renderer
 function sparklineSVG(data, width=260, height=44){
-  if(!data||data.length<2) return '<span data-stil="color:var(--mut);font-size:var(--fs-1)">Noch keine Daten</span>';
+  if(!data||data.length<2) return `<span data-stil="color:var(--mut);font-size:var(--fs-1)">${t('detail.no_history')}</span>`;
   // avg_price ist die massgebliche Grösse (siehe die frühere Preis-Umstellung
   // in dieser Sitzung) — qty_avg_price kann für denselben, korrekt
   // aufgelösten Zustand trotzdem fehlen oder abweichen. Genau das erzeugte
@@ -196,7 +196,7 @@ function sparklineSVG(data, width=260, height=44){
   const area = `${areaStart} ${pts} ${areaEnd}`;
   const hasPurchasePoint = !!data[0]?.is_purchase_price;
   const purchaseDot = hasPurchasePoint
-    ? `<circle cx="0" cy="${(height-((vals[0]-min)/range)*(height-6)-3).toFixed(1)}" r="3.5" fill="${purchaseColor}" stroke="white" stroke-width="1"><title>Kaufpreis</title></circle>`
+    ? `<circle cx="0" cy="${(height-((vals[0]-min)/range)*(height-6)-3).toFixed(1)}" r="3.5" fill="${purchaseColor}" stroke="white" stroke-width="1"><title>${esc(t('detail.purchase_price'))}</title></circle>`
     : '';
 
   // Format first/last date as DD.MM.YYYY
@@ -379,7 +379,7 @@ export function portfolioChartSVG(data, period, metric, yAxisData){
   const W=700, H=180, PAD={l:72,r:16,t:14,b:32};
   const iw=W-PAD.l-PAD.r, ih=H-PAD.t-PAD.b;
   const vals=data.map(d=>d.total||0);
-  if(vals.length<2) return '<div data-stil="color:var(--mut);font-size:var(--fs-2);padding:1.5rem;text-align:center">Noch keine Verlaufsdaten.</div>';
+  if(vals.length<2) return diagrammLeer();
 
   const rawMin=Math.min(...vals);
   const rawMax=Math.max(...vals);

@@ -379,6 +379,9 @@
     .pnl-pos{color:var(--gewinn,var(--g700));font-weight:700}.pnl-neg{color:var(--r700);font-weight:700}.pnl-neu{color:var(--mut)}
     .sparkline-wrap{width:100%;overflow:hidden;margin:.5rem 0}
     .chart-wrap{width:100%;overflow-x:auto}
+    .diagramm-leer{display:flex;flex-direction:column;gap:4px;align-items:center;text-align:center;padding:1.5rem 1rem;color:var(--mut);font-size:var(--fs-2)}
+    .diagramm-leer strong{color:var(--txt);font-weight:600}
+    .pnl-zeitraum{margin-left:6px;font-size:var(--fs-1);color:var(--mut)}
     .period-btn{padding:4px 14px;font-size:var(--fs-1);font-weight:600;border:1.5px solid var(--bdr);border-radius:999px;background:var(--sur);color:var(--mut);cursor:pointer;transition:all .15s}
     .period-btn:hover{border-color:var(--b400);color:var(--b600)}
     .period-btn.active{background:var(--b600);color:var(--auf-primaer,#fff);border-color:var(--b600)}

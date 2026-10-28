@@ -43,7 +43,7 @@ async function getPortfolioHistory(
      WHERE s.user_id = ANY($1)
      GROUP BY s.set_number`, [uids]);
   if (!sets.length) {
-    return { success:true, currency, period, points:[], y_axis:[], period_change_pct:null };
+    return { success:true, currency, period, points:[], y_axis:[], period_change_pct:null, messpunkte:0 };
   }
 
   const setNumbers    = sets.map((s: { set_number: string }) => s.set_number);
@@ -89,6 +89,7 @@ async function getPortfolioHistory(
   });
   let rawPoints = kurve.rawPoints;
   monatsAufloesung = kurve.monatsAufloesung;
+  const messpunkte = rawPoints.length;
 
   // Bei Monatsauflösung ist die Kurve bereits verdichtet — die Beschriftung
   // muss das wissen, sonst bekäme der erste Punkt ein Monatskürzel statt des
@@ -111,7 +112,8 @@ async function getPortfolioHistory(
     downsampled = true;
   }
 
-  // Prepend synthetic start baseline if only 1 real point
+  // Ein einzelner Messpunkt bekommt einen künstlichen Startwert, damit die App
+  // eine Linie hat; `messpunkte` sagt der Weboberfläche, dass das kein Verlauf ist.
   if (rawPoints.length <= 1) {
     const now = new Date();
     const pad = (n: number) => String(n).padStart(2,'0');
@@ -131,7 +133,7 @@ async function getPortfolioHistory(
   }
 
   if (!rawPoints.length) {
-    return { success:true, currency, period, points:[], y_axis:[], period_change_pct:null };
+    return { success:true, currency, period, points:[], y_axis:[], period_change_pct:null, messpunkte:0 };
   }
 
   // Achsen, Beschriftungen und Prozentänderung — reine Rechnung in
@@ -145,6 +147,7 @@ async function getPortfolioHistory(
     points,
     y_axis,
     period_change_pct,
+    messpunkte,
     purchase_total:    purchaseTotal.toFixed(2),
     chart,
   };
