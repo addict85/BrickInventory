@@ -1,7 +1,7 @@
 'use strict';
 
 const db      = require('../db/database');
-import { checkAndIncrementRateLimit, speicherePreis, cacheUsable, preisAusCache } from '../utils/financeCalc';
+import { kontingentFrei, speicherePreis, cacheUsable, preisAusCache } from '../utils/financeCalc';
 import { meldeUndWeiter, fehlertext } from '../utils/httpError';
 import { getSetting, getGlobalSetting } from '../utils/settings';
 import { katalogEintrag, ohneBricklinkPreis } from '../utils/setNummer';
@@ -105,7 +105,7 @@ async function fetchAndCachePrice(setNumber: string, condition: string, guideTyp
   const vorhanden = await preisAusCache(setNumber, condition, currency, ttl);
   if (cacheUsable(vorhanden, ttl)) return 'skipped';
 
-  const rl = await checkAndIncrementRateLimit('bricklink');
+  const rl = await kontingentFrei('bricklink');
   if (!rl.allowed) { log(`BrickLink Tageslimit erreicht (${rl.limit}/Tag) — Job pausiert`); return 'rate_limited'; }
 
   const fallback = condition === 'N' ? 'U' : 'N';
@@ -121,7 +121,7 @@ async function fetchAndCachePrice(setNumber: string, condition: string, guideTyp
   const p = await speicherePreis(setNumber, condition, currency, g);
 
   if (p.avg === 0 && p.qavg === 0) {
-    const rl2 = await checkAndIncrementRateLimit('bricklink');
+    const rl2 = await kontingentFrei('bricklink');
     if (rl2.allowed) {
       try {
         const g2 = await getPriceGuide(setNumber, fallback, guideType, currency);
