@@ -31,7 +31,6 @@ import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.ui.theme.Schrift
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MonitoringScreen(vm: MainViewModel) {
@@ -212,7 +211,7 @@ private fun JobCard(
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
             // Title row
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
-                Text(job.label.ifBlank { jobKey }, fontWeight = FontWeight.SemiBold, fontSize = Schrift.normal,
+                Text(job.label.ifBlank { jobKey }, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.weight(1f))
                 Row(verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
@@ -267,7 +266,7 @@ private fun JobCard(
                 ) {
                     Icon(Icons.Default.Sync, null, Modifier.size(16.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text(csvMsg ?: stringResource(R.string.monitoring_sync_now), fontSize = Schrift.klein)
+                    Text(csvMsg ?: stringResource(R.string.monitoring_sync_now), style = MaterialTheme.typography.labelMedium)
                 }
             }
 
@@ -290,7 +289,7 @@ private fun JobCard(
                 ) {
                     Icon(Icons.Default.Refresh, null, Modifier.size(16.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text(priceMsg ?: stringResource(R.string.monitoring_price_update), fontSize = Schrift.klein)
+                    Text(priceMsg ?: stringResource(R.string.monitoring_price_update), style = MaterialTheme.typography.labelMedium)
                 }
             }
 
@@ -313,7 +312,7 @@ private fun JobCard(
                 ) {
                     Icon(Icons.Default.Download, null, Modifier.size(16.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text(redlMsg ?: stringResource(R.string.monitoring_redownload_missing), fontSize = Schrift.klein)
+                    Text(redlMsg ?: stringResource(R.string.monitoring_redownload_missing), style = MaterialTheme.typography.labelMedium)
                 }
                 // Der zweite Bilderknopf (Nachtrag 137): Der darueber holt die
                 // Bilder des BESTANDS nach, dieser die des KATALOGS. Die Webapp
@@ -338,7 +337,7 @@ private fun JobCard(
                 ) {
                     Icon(Icons.Default.Download, null, Modifier.size(16.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text(katMsg ?: stringResource(R.string.monitoring_catalog_images), fontSize = Schrift.klein)
+                    Text(katMsg ?: stringResource(R.string.monitoring_catalog_images), style = MaterialTheme.typography.labelMedium)
                 }
             }
 
@@ -351,7 +350,7 @@ private fun JobCard(
                 ) {
                     Icon(Icons.Default.Download, null, Modifier.size(16.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text(reimportMsg ?: stringResource(R.string.monitoring_import_missing_instr), fontSize = Schrift.klein)
+                    Text(reimportMsg ?: stringResource(R.string.monitoring_import_missing_instr), style = MaterialTheme.typography.labelMedium)
                 }
             }
 
@@ -365,7 +364,7 @@ private fun JobCard(
                     Icon(if (queueOpen) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
                         null, Modifier.size(16.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text(if (queueOpen) stringResource(R.string.monitoring_queue_collapse) else String.format(queueShowFmt, job.total), fontSize = Schrift.klein)
+                    Text(if (queueOpen) stringResource(R.string.monitoring_queue_collapse) else String.format(queueShowFmt, job.total), style = MaterialTheme.typography.labelMedium)
                 }
 
                 AnimatedVisibility(queueOpen) {

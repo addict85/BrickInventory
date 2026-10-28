@@ -39,7 +39,6 @@ import ch.brickinventoryapp.ui.theme.BrickSage
 import ch.brickinventoryapp.ui.theme.BrickSageText
 import ch.brickinventoryapp.util.NumericInput
 import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.ui.theme.Schrift
 
 /**
  * Gemeinsame Composables für manuell erfasste Teile UND Minifiguren.
@@ -93,7 +92,7 @@ fun AcquisitionSummarySection(
                     modifier = Modifier.height(28.dp)) {
                     Icon(Icons.Default.Edit, null, Modifier.size(14.dp))
                     Spacer(Modifier.width(Abstaende.winzig))
-                    Text(stringResource(R.string.detail_edit_prices), fontSize = Schrift.klein)
+                    Text(stringResource(R.string.detail_edit_prices), style = MaterialTheme.typography.labelMedium)
                 }
             }
         }

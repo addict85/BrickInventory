@@ -110,16 +110,16 @@ class BarcodeDoubleAddGuardTest {
     }
 
     /**
-     * Die untere Leiste: die fünf Ziele der Webapp in deren Folge (Merkliste vor
-     * Katalog), dahinter der Vergleich — er bleibt unten, damit er schnell
-     * erreichbar ist (Marcos Vorgaben).
+     * Die untere Leiste: genau die fünf Ziele der Webapp in deren Folge
+     * (Merkliste vor Katalog). Material sieht höchstens fünf Reiter vor; der
+     * Vergleich steht im Konto-Menü (ErreichbareRoutenTest prüft den Weg).
      */
     @Test
-    fun `die Leiste folgt der Webapp, der Vergleich steht rechts vom Katalog`() {
+    fun `die Leiste folgt der Webapp mit fuenf Zielen`() {
         val src = code(read("AppNavigation.kt"))
         val ziele = Regex("""add\(Triple\(Screen\.(\w+)""").findAll(src).map { it.groupValues[1] }.toList()
-        assert(ziele == listOf("Gallery", "PartsList", "Finance", "Wanted", "Catalog", "Comparison")) {
-            "Die Leiste zeigt $ziele — erwartet: die fünf Ziele der Webapp, dahinter der Vergleich"
+        assert(ziele == listOf("Gallery", "PartsList", "Finance", "Wanted", "Catalog")) {
+            "Die Leiste zeigt $ziele — erwartet: die fünf Ziele der Webapp"
         }
     }
 

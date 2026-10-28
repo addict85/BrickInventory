@@ -89,14 +89,32 @@ class AbstandsskalaTest {
         assert(alle.size >= 30) { "Nur ${alle.size} Bildschirmdateien gefunden — Ordner umbenannt?" }
         val text = alle.joinToString("\n") { it.second }
         val abst = Regex("""\bAbstaende\.\w+""").findAll(text).count()
-        val schr = Regex("""\bSchrift\.\w+""").findAll(text).count()
-        // GEMESSEN beim Anlegen: 305 bzw. 54.
+        val rollen = Regex("""\bMaterialTheme\.typography\.\w+""").findAll(text).count()
+        // GEMESSEN: 305 Abstands-Token beim Anlegen, 336 Typografie-Rollen am 28.10.
         assert(abst >= 280) {
             "Nur $abst Abstands-Token im Baum (gemessen waren es 305). Wurde die " +
                 "Umstellung rueckgaengig gemacht? Die Ratsche unten faellt das nicht auf."
         }
-        assert(schr >= 50) {
-            "Nur $schr Schrift-Token im Baum (gemessen waren es 54). Siehe oben."
+        assert(rollen >= 300) {
+            "Nur $rollen Typografie-Rollen im Baum (gemessen waren es 336). Siehe oben."
+        }
+    }
+
+    /**
+     * Schriftgrössen kommen aus EINER Skala, der von Material. Bis zum 28.10.
+     * lief daneben `Schrift.*` mit eigenen Stufen (10/12/14/16/20/24 sp).
+     *
+     * Gegenproben (gemessen am 28.10., Kopie des Quellbaums, in TabellenZeile.kt
+     * `style = MaterialTheme.typography.bodySmall` ersetzt):
+     *   durch `fontSize = Schrift.klein` → rot hier
+     *   durch `fontSize = 12.sp` → rot in „die Zahl der Schriftgroessen …"
+     */
+    @Test
+    fun `es gibt nur die Schriftskala von Material`() {
+        val zweite = quellen().filter { (_, s) -> Regex("""\bSchrift\.\w+""").containsMatchIn(s) }.map { it.first }
+        assert(zweite.isEmpty()) { "Zweite Schriftskala benutzt in: $zweite — nimm MaterialTheme.typography." }
+        assert(!java.io.File("src/main/java/ch/brickinventoryapp/ui/theme/Schrift.kt").exists()) {
+            "ui/theme/Schrift.kt ist wieder da."
         }
     }
 
@@ -155,13 +173,14 @@ class AbstandsskalaTest {
         // Platz sofort wieder frei fuer die naechste rohe Zahl.
         //
         // 51 -> 2 (27.10.): Die rohen Groessen sind auf Rollen der Material-
-        // Skala umgestellt (bodyMedium, labelSmall, titleMedium …). Uebrig
-        // sind die beiden Achsenbeschriftungen im Portfolio-Diagramm, die auf
-        // die Zeichenflaeche geschrieben werden und keinen Textstil haben.
+        // Skala umgestellt (bodyMedium, labelSmall, titleMedium …).
+        //
+        // 2 -> 0 (28.10.): Auch die Achsen des Portfolio-Diagramms nehmen jetzt
+        // labelSmall statt 8 sp.
         val ist = zaehle(listOf(schriftMuster))
-        assert(ist <= 2) {
-            "$ist Schriftgroessen stehen noch als Zahl da, zuletzt waren es 2. " +
-                "Siehe die Abstandsregel daneben."
+        assert(ist <= 0) {
+            "$ist Schriftgroessen stehen als Zahl da. Nimm eine Rolle aus " +
+                "MaterialTheme.typography."
         }
     }
 }

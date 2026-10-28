@@ -4,6 +4,7 @@ import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.toArgb
 import ch.brickinventoryapp.ui.theme.farbschema
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -16,6 +17,11 @@ import org.junit.Test
  * Tests rot (surfaceContainer* gleich der Grundpalette, im dunklen Werkbank-
  * Design zudem die Stufen falsch herum). tertiaryContainer in NoppeColors
  * entfernt — der erste Test rot für "noppe" und "hochglanz".
+ *
+ * Gegenprobe Rahmen (28.10., ohne Android-SDK am Nachbau gemessen: dieselbe
+ * Formel in Python, Flächenstufen in Oklab gemischt wie Compose): mit den alten
+ * outline-Werten rot für classic (1,00:1 gegen surfaceContainerHighest), brick
+ * (1,19), werkbank (1,03) und farbfaecher (1,01); noppe blieb grün (13,8).
  */
 class FarbrollenTest {
 
@@ -48,6 +54,26 @@ class FarbrollenTest {
             }
         }
         assertTrue("Aus der Material-Grundpalette geerbt: $fehler", fehler.isEmpty())
+    }
+
+    @Test
+    fun `outline hebt sich mit mindestens 3 zu 1 von jeder Flaeche ab`() {
+        val fehler = mutableListOf<String>()
+        for (d in designs) {
+            val s = farbschema(d)
+            val rahmen = s.outline.toArgb()
+            val flaechen = mapOf("surface" to s.surface, "background" to s.background,
+                "surfaceVariant" to s.surfaceVariant, "surfaceContainerHigh" to s.surfaceContainerHigh,
+                "surfaceContainerHighest" to s.surfaceContainerHighest)
+            for ((name, flaeche) in flaechen) {
+                val k = Kontrast.verhaeltnis(rahmen, flaeche.toArgb())
+                if (k < Kontrast.RAHMEN) fehler += "$d.outline/$name " + "%.2f".format(k)
+            }
+            // Trennlinien nehmen outlineVariant; es muss der leisere Ton bleiben.
+            val leise = Kontrast.verhaeltnis(s.outlineVariant.toArgb(), s.surface.toArgb())
+            if (leise >= Kontrast.verhaeltnis(rahmen, s.surface.toArgb())) fehler += "$d.outlineVariant"
+        }
+        assertTrue("Zu schwache Rahmen: $fehler", fehler.isEmpty())
     }
 
     @Test

@@ -34,7 +34,6 @@ import ch.brickinventoryapp.ui.MainViewModel
 import ch.brickinventoryapp.ui.*  // Feature-Extensions (saveSettings, setLanguage, …)
 import ch.brickinventoryapp.util.passwortZuKurz
 import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.ui.theme.Schrift
 import kotlinx.coroutines.launch
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -662,14 +661,14 @@ private fun LagerorteCard(vm: MainViewModel) {
                 value = neuerOrt,
                 onValueChange = { if (it.length <= 60) neuerOrt = it },
                 singleLine = true,
-                placeholder = { Text(stringResource(R.string.storage_new), fontSize = Schrift.klein) },
+                placeholder = { Text(stringResource(R.string.storage_new), style = MaterialTheme.typography.bodySmall) },
                 modifier = Modifier.weight(1f),
             )
             Button(
                 onClick = { val n = neuerOrt.trim(); neuerOrt = ""; vm.legeLagerortAn(n) },
                 enabled = neuerOrt.isNotBlank(),
                 shape = Formen.knopf,
-            ) { Text(stringResource(R.string.storage_add), fontSize = Schrift.klein) }
+            ) { Text(stringResource(R.string.storage_add), style = MaterialTheme.typography.labelMedium) }
         }
     }
 }
@@ -727,7 +726,7 @@ private fun PreisalarmCard(vm: MainViewModel) {
             modifier = Modifier.fillMaxWidth(),
         ) {
             Column(Modifier.weight(1f)) {
-                Text(stringResource(R.string.alert_notify), fontSize = Schrift.normal)
+                Text(stringResource(R.string.alert_notify), style = MaterialTheme.typography.bodyMedium)
                 Text(stringResource(R.string.alert_notify_hint),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)

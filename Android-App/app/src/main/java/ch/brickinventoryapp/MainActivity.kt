@@ -7,6 +7,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -135,6 +136,9 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Vor super.onCreate(): Das Startbild ersetzt das Fenster-Theme, bis
+        // Compose das erste Bild gezeichnet hat — kein weisses Aufblitzen.
+        installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         // Die App war zu: Der Intent, der sie gestartet hat, traegt das Ziel.

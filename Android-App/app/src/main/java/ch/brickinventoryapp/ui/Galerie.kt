@@ -28,6 +28,8 @@ internal class Galerie(
     private val holeSeite: suspend (stand: GalleryUiState, seite: Int) -> Result<SetsResponse>,
     private val holeKennzahlen: suspend () -> Result<StatsResponse>,
     private val meldeFehler: (Result.Error) -> Unit,
+    /** Der Satz zum Fehler, der in der leeren Galerie stehen bleibt. */
+    private val beschreibeFehler: (Result.Error) -> String = { it.message },
     /** Filterwechsel: Die gemerkte Scrollstelle zeigt auf eine andere Liste. */
     private val vergissScroll: () -> Unit,
     private val suchPause: Long = 350,
@@ -46,7 +48,7 @@ internal class Galerie(
         val gen = ++galleryGeneration
         listJob?.cancel()
         listJob = scope.launch {
-            _state.update { it.copy(galleryLoading = true, galleryLoadingMore = false, galleryPage = 1) }
+            _state.update { it.copy(galleryLoading = true, galleryLoadingMore = false, galleryPage = 1, galleryFehler = null) }
             val r = holeSeite(_state.value, 1)
             if (gen != galleryGeneration) return@launch
             when (r) {
@@ -58,7 +60,7 @@ internal class Galerie(
                         galleryLoading = false)
                 }
                 is Result.Error -> {
-                    _state.update { it.copy(galleryLoading = false) }
+                    _state.update { it.copy(galleryLoading = false, galleryFehler = beschreibeFehler(r)) }
                     meldeFehler(r)
                 }
             }
@@ -145,4 +147,20 @@ internal class Galerie(
         suchJob?.cancel()
         _state.value = GalleryUiState()
     }
+}
+
+/** Was die Galerie zeigt, wenn noch keine Kachel da ist — oder eben die Liste. */
+enum class GalerieAnzeige { LISTE, LAEDT, FEHLER, KEINE_TREFFER, LEER }
+
+/**
+ * Ein Ladefehler und eine leere Sammlung verlangen Verschiedenes: das eine
+ * „Erneut versuchen", das andere „Set erfassen". Geladene Sets gehen vor —
+ * ein gescheitertes Neuladen lässt die alte Liste stehen.
+ */
+fun galerieAnzeige(g: GalleryUiState, gefiltert: Boolean): GalerieAnzeige = when {
+    g.sets.isNotEmpty() -> GalerieAnzeige.LISTE
+    g.galleryLoading -> GalerieAnzeige.LAEDT
+    g.galleryFehler != null -> GalerieAnzeige.FEHLER
+    gefiltert -> GalerieAnzeige.KEINE_TREFFER
+    else -> GalerieAnzeige.LEER
 }

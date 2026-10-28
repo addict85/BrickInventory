@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.*
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -26,6 +28,7 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -60,7 +63,6 @@ import kotlinx.coroutines.flow.debounce
 import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.util.NumericInput
 import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.ui.theme.Schrift
 import ch.brickinventoryapp.ui.components.LeerSymbol
 
 @OptIn(ExperimentalMaterial3Api::class, FlowPreview::class)
@@ -222,7 +224,7 @@ fun GalleryScreen(
                             FilterChip(
                                 selected = sort != ch.brickinventoryapp.data.repository.GALLERY_DEFAULT_SORT,
                                 onClick = { showSortMenu = true },
-                                label = { Text(gallerySortLabel(sort), fontSize = Schrift.klein) },
+                                label = { Text(gallerySortLabel(sort), style = MaterialTheme.typography.labelMedium) },
                                 leadingIcon = { Icon(Icons.AutoMirrored.Filled.Sort, null, Modifier.size(16.dp)) },
                                 shape = Formen.chip
                             )
@@ -248,7 +250,7 @@ fun GalleryScreen(
                         FilterChip(
                             selected = theme.isEmpty(),
                             onClick = { onThemeChange("") },
-                            label = { Text(stringResource(R.string.gallery_all), fontSize = Schrift.klein) },
+                            label = { Text(stringResource(R.string.gallery_all), style = MaterialTheme.typography.labelMedium) },
                             shape = Formen.chip
                         )
                     }
@@ -256,7 +258,7 @@ fun GalleryScreen(
                         FilterChip(
                             selected = theme == t,
                             onClick = { onThemeChange(if (theme == t) "" else t) },
-                            label = { Text(t, fontSize = Schrift.klein, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                            label = { Text(t, style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                             modifier = Modifier.widthIn(max = 140.dp),
                             shape = Formen.chip
                         )
@@ -264,26 +266,46 @@ fun GalleryScreen(
             }
 
             PullToRefreshBox(isRefreshing = isLoading, onRefresh = onRefresh, modifier = Modifier.fillMaxSize()) {
-                when {
-                    isLoading && sets.isEmpty() -> Box(Modifier.fillMaxSize(), Alignment.Center) {
+                when (galerieAnzeige(galerie, gefiltert = searchInput.isNotBlank() || theme.isNotEmpty())) {
+                    GalerieAnzeige.LAEDT -> Box(Modifier.fillMaxSize(), Alignment.Center) {
                         CircularProgressIndicator()
                     }
-                    sets.isEmpty() -> Box(Modifier.fillMaxSize(), Alignment.Center) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                            if (searchInput.isBlank() && theme.isEmpty()) {
-                                Image(painterResource(R.drawable.ic_logo), null, Modifier.size(64.dp))
-                                Text(stringResource(R.string.gallery_no_sets), fontWeight = FontWeight.SemiBold)
-                                Text(stringResource(R.string.gallery_pull_to_refresh),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                Button(onClick = onRefresh, shape = Formen.knopf) { Text(stringResource(R.string.gallery_refresh)) }
-                            } else {
-                                LeerSymbol(Icons.Default.SearchOff)
-                                Text(stringResource(R.string.gallery_no_results, searchInput), fontWeight = FontWeight.SemiBold)
-                            }
+                    // Fehler und leere Sammlung sehen verschieden aus und bieten
+                    // Verschiedenes an: hier den Grund und einen neuen Versuch.
+                    GalerieAnzeige.FEHLER -> GalerieHinweis {
+                        LeerSymbol(Icons.Default.CloudOff)
+                        Text(stringResource(R.string.gallery_load_failed), fontWeight = FontWeight.SemiBold,
+                            textAlign = TextAlign.Center)
+                        Text(galerie.galleryFehler.orEmpty(),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center)
+                        Button(onClick = onRefresh, shape = Formen.knopf) { Text(stringResource(R.string.gallery_retry)) }
+                    }
+                    GalerieAnzeige.LEER -> GalerieHinweis {
+                        Image(painterResource(R.drawable.ic_logo), null, Modifier.size(64.dp))
+                        Text(stringResource(R.string.gallery_no_sets), fontWeight = FontWeight.SemiBold)
+                        Text(stringResource(R.string.gallery_empty_hint),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center)
+                        // Derselbe Dialog wie der Plus-Knopf — kein zweiter Erfassungsweg.
+                        Button(onClick = { showAddDialog = true }, shape = Formen.knopf) {
+                            Icon(Icons.Default.Add, null, Modifier.size(18.dp))
+                            Spacer(Modifier.width(Abstaende.klein))
+                            Text(stringResource(R.string.gallery_add_first))
+                        }
+                        OutlinedButton(onClick = onScanBarcode, shape = Formen.knopf) {
+                            Icon(Icons.Default.QrCodeScanner, null, Modifier.size(18.dp))
+                            Spacer(Modifier.width(Abstaende.klein))
+                            Text(stringResource(R.string.gallery_scan_barcode))
                         }
                     }
-                    else -> LazyVerticalGrid(
+                    GalerieAnzeige.KEINE_TREFFER -> GalerieHinweis {
+                        LeerSymbol(Icons.Default.SearchOff)
+                        Text(stringResource(R.string.gallery_no_results, searchInput), fontWeight = FontWeight.SemiBold)
+                    }
+                    GalerieAnzeige.LISTE -> LazyVerticalGrid(
                         columns = GridCells.Adaptive(160.dp),
                         state = gridState,
                         contentPadding = PaddingValues(Abstaende.mittel),
@@ -353,6 +375,21 @@ fun GalleryScreen(
     }
 }
 
+/**
+ * Mittig, scrollbar und mit Rand: Der Inhalt muss auch im Querformat ganz
+ * erreichbar sein, und PullToRefreshBox braucht ein scrollbares Kind, damit
+ * Ziehen zum Neuladen weiter geht.
+ */
+@Composable
+private fun GalerieHinweis(inhalt: @Composable ColumnScope.() -> Unit) {
+    Column(
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Abstaende.riesig),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(Abstaende.klein, Alignment.CenterVertically),
+        content = inhalt,
+    )
+}
+
 @Composable
 fun GalleryStatChip(value: String, label: String) {
     Surface(
@@ -366,7 +403,7 @@ fun GalleryStatChip(value: String, label: String) {
         ) {
             Text(value, fontWeight = FontWeight.ExtraBold, style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onPrimaryContainer)
-            Text(label, style = MaterialTheme.typography.labelSmall, fontSize = Schrift.winzig,
+            Text(label, style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f))
         }
     }
@@ -517,17 +554,6 @@ fun SetCard(
                             Image(painterResource(R.drawable.ic_logo), null, Modifier.size(56.dp))
                         }
                     }
-                    if (set.quantity > 1) {
-                        Surface(
-                            color = MaterialTheme.colorScheme.primary,
-                            shape = Formen.etikett,
-                            modifier = Modifier.align(Alignment.TopEnd).padding(6.dp)
-                        ) {
-                            Text(stringResource(R.string.gallery_quantity_badge, set.quantity), Modifier.padding(horizontal = 6.dp, vertical = Abstaende.haar),
-                                color = MaterialTheme.colorScheme.onPrimary,
-                                style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
-                        }
-                    }
                     // Column statt Box (Nachtrag 33): Eine Box STAPELT ihre Kinder —
                     // die Besitzer-Etiketten lagen über den Zustandsplaketten, auf
                     // Marcos Screenshot lugte das verdeckte „N/G" zwischen den
@@ -539,17 +565,32 @@ fun SetCard(
                         // man im Haushalt das falsche.
                         OwnerBadges(set.owners)
                     }
-                    Box(Modifier.align(Alignment.TopStart).padding(Abstaende.haar)) {
-                        IconButton(onClick = { showMenu = true }) {
-                            Icon(Icons.Default.MoreVert, stringResource(R.string.cd_set_menu), Modifier.size(20.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    // Überlaufmenü oben rechts, wo Android es erwartet; die
+                    // Mengenplakette bleibt in derselben Ecke, links davon.
+                    Row(Modifier.align(Alignment.TopEnd).padding(Abstaende.haar),
+                        verticalAlignment = Alignment.CenterVertically) {
+                        if (set.quantity > 1) {
+                            Surface(
+                                color = MaterialTheme.colorScheme.primary,
+                                shape = Formen.etikett,
+                            ) {
+                                Text(stringResource(R.string.gallery_quantity_badge, set.quantity), Modifier.padding(horizontal = 6.dp, vertical = Abstaende.haar),
+                                    color = MaterialTheme.colorScheme.onPrimary,
+                                    style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                            }
                         }
-                        DropdownMenu(showMenu, { showMenu = false }) {
-                            DropdownMenuItem(
-                                text = { Text(stringResource(R.string.common_delete), color = MaterialTheme.colorScheme.error) },
-                                onClick = { showMenu = false; deleting = true },
-                                leadingIcon = { Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error) }
-                            )
+                        Box {
+                            IconButton(onClick = { showMenu = true }) {
+                                Icon(Icons.Default.MoreVert, stringResource(R.string.cd_set_menu), Modifier.size(20.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            DropdownMenu(showMenu, { showMenu = false }) {
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.common_delete), color = MaterialTheme.colorScheme.error) },
+                                    onClick = { showMenu = false; deleting = true },
+                                    leadingIcon = { Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error) }
+                                )
+                            }
                         }
                     }
                     // Die Spiegelung auf der Glasscheibe. ZULETZT im Box, damit sie

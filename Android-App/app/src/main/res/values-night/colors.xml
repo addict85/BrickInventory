@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- background des dunklen Designs Werkbank (Theme.kt, WerkbankColors) -->
+    <color name="fenster_hintergrund">#14181D</color>
+</resources>

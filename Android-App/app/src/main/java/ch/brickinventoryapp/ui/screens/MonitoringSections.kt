@@ -33,7 +33,6 @@ import ch.brickinventoryapp.ui.*  // Feature-Extensions (loadSetDetail, updateQu
 import kotlinx.coroutines.launch
 import ch.brickinventoryapp.util.NumericInput
 import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.ui.theme.Schrift
 
 /**
  * Die Abschnitte der Überwachungsseite unterhalb der Job-Liste.
@@ -280,7 +279,7 @@ fun CacheAndLimitsSection(vm: MainViewModel, onSnack: (String) -> Unit = {}) {
                     vm.vorschauAblageLeeren()
                     ablageBytes = vm.vorschauAblageBytes()
                     onSnack(cacheSavedMsg)
-                }) { Text(stringResource(R.string.monitoring_vorschau_leeren), fontSize = Schrift.klein) }
+                }) { Text(stringResource(R.string.monitoring_vorschau_leeren), style = MaterialTheme.typography.labelMedium) }
             }
 
             // ── In welchen Netzen darf vorgewaermt werden ────────────
@@ -314,7 +313,7 @@ fun CacheAndLimitsSection(vm: MainViewModel, onSnack: (String) -> Unit = {}) {
                                 vm.prefs.saveVorwaermenNetz(schluessel, !erlaubt)
                             }
                         },
-                        label = { Text(stringResource(text), fontSize = Schrift.klein) },
+                        label = { Text(stringResource(text), style = MaterialTheme.typography.labelMedium) },
                     )
                 }
             }
@@ -367,16 +366,13 @@ fun CacheAndLimitsSection(vm: MainViewModel, onSnack: (String) -> Unit = {}) {
                                 }
                             }
                         },
-                        label = { Text(stringResource(text), fontSize = Schrift.klein) },
+                        label = { Text(stringResource(text), style = MaterialTheme.typography.labelMedium) },
                     )
                 }
             }
-            // Beide Chip-Reihen dieses Blocks stehen auf der Skala
-            // (Schrift.klein = 12.sp) statt auf rohen 13.sp. Die Ratsche in
-            // AbstandsskalaTest hat gemeldet, dass mit den Netz-Chips eine
-            // WEITERE rohe Zahl dazukam. Zwei Chip-Reihen direkt
-            // uebereinander mit einem Punkt Unterschied waeren die
-            // schlechtere Antwort gewesen als ein Punkt weniger bei beiden.
+            // Beide Chip-Reihen dieses Blocks tragen dieselbe Rolle
+            // (labelMedium): Zwei Reihen direkt uebereinander mit einem Punkt
+            // Unterschied waeren nicht als Absicht lesbar.
 
             // Cache TTL
             Row(
@@ -411,7 +407,7 @@ fun CacheAndLimitsSection(vm: MainViewModel, onSnack: (String) -> Unit = {}) {
                             },
                             shape = Formen.kachel,
                             contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
-                        ) { Text("OK", fontSize = Schrift.klein) }
+                        ) { Text("OK", style = MaterialTheme.typography.labelMedium) }
                         IconButton(onClick = { editingTtl = false }) {
                             Icon(Icons.Default.Close, stringResource(R.string.common_cancel))
                         }
@@ -421,7 +417,7 @@ fun CacheAndLimitsSection(vm: MainViewModel, onSnack: (String) -> Unit = {}) {
                         horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(stringResource(R.string.monitoring_cache_ttl_hours, cacheTtl), fontWeight = FontWeight.SemiBold, fontSize = Schrift.normal)
+                        Text(stringResource(R.string.monitoring_cache_ttl_hours, cacheTtl), fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
                         FilledTonalIconButton(
                             onClick = { editingTtl = true },
                         ) { Icon(Icons.Default.Edit, stringResource(R.string.cd_edit_cache_ttl), Modifier.size(14.dp)) }
@@ -448,12 +444,12 @@ fun CacheAndLimitsSection(vm: MainViewModel, onSnack: (String) -> Unit = {}) {
                     onClick = { leerenAlles = false; zeigeLeerenFrage = true },
                     shape = Formen.kachel,
                     contentPadding = PaddingValues(horizontal = Abstaende.mittel, vertical = 6.dp),
-                ) { Text(stringResource(R.string.monitoring_cache_clear_prices), fontSize = Schrift.klein) }
+                ) { Text(stringResource(R.string.monitoring_cache_clear_prices), style = MaterialTheme.typography.labelMedium) }
                 OutlinedButton(
                     onClick = { leerenAlles = true; zeigeLeerenFrage = true },
                     shape = Formen.kachel,
                     contentPadding = PaddingValues(horizontal = Abstaende.mittel, vertical = 6.dp),
-                ) { Text(stringResource(R.string.monitoring_cache_clear_all), fontSize = Schrift.klein) }
+                ) { Text(stringResource(R.string.monitoring_cache_clear_all), style = MaterialTheme.typography.labelMedium) }
             }
         }
     }
@@ -533,7 +529,7 @@ private fun CacheStatCell(label: String, value: String) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(value, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
         Text(label, style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = Schrift.winzig)
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
@@ -836,7 +832,7 @@ fun ZeitplanZeile(
                     },
                     shape = Formen.kachel,
                     contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
-                ) { Text("OK", fontSize = Schrift.klein) }
+                ) { Text("OK", style = MaterialTheme.typography.labelMedium) }
                 IconButton(onClick = { bearbeiten = false }) {
                     Icon(Icons.Default.Close, stringResource(R.string.common_cancel))
                 }

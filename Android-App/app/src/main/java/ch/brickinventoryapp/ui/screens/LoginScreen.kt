@@ -26,7 +26,6 @@ import ch.brickinventoryapp.R
 import ch.brickinventoryapp.ui.AnmeldeFormular
 import ch.brickinventoryapp.util.passwortZuKurz
 import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.ui.theme.Schrift
 
 /**
  * Anmelden, ein Konto anlegen, einen Link zum Zuruecksetzen anfordern.
@@ -93,7 +92,7 @@ fun LoginScreen(
             Text(
                 "BrickInventory",
                 fontWeight = FontWeight.ExtraBold,
-                fontSize = Schrift.riesig,
+                style = MaterialTheme.typography.headlineSmall,
                 letterSpacing = (-0.5).sp
             )
             Text(
@@ -107,7 +106,7 @@ fun LoginScreen(
             // Server chip
             AssistChip(
                 onClick = onChangeServer,
-                label = { Text(serverUrl, maxLines = 1, fontSize = Schrift.klein) },
+                label = { Text(serverUrl, maxLines = 1, style = MaterialTheme.typography.labelMedium) },
                 leadingIcon = { Icon(Icons.Default.Cloud, null, Modifier.size(14.dp)) },
                 trailingIcon = { Icon(Icons.Default.Edit, null, Modifier.size(12.dp)) },
                 shape = Formen.chip

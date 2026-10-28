@@ -57,6 +57,8 @@
     <!-- ══════════════ Portfolio chart ══════════════ -->
     <string name="chart_portfolio_value">Portfolio value trend</string>
     <string name="chart_no_history">No history data yet</string>
+    <string name="chart_summary">Portfolio value, %1$s to %2$s: from %3$s to %4$s, change %5$s</string>
+    <string name="chart_summary_no_change">Portfolio value, %1$s to %2$s: from %3$s to %4$s</string>
     <string name="chart_period_week">Week</string>
     <string name="chart_period_month">Month</string>
     <string name="chart_period_year">Year</string>
@@ -113,7 +115,10 @@
     <string name="gallery_search_placeholder">Search sets…</string>
     <string name="gallery_all">All</string>
     <string name="gallery_no_sets">No sets yet</string>
-    <string name="gallery_pull_to_refresh">Pull down to refresh</string>
+    <string name="gallery_empty_hint">Add your first set by its number or scan the barcode on the box.</string>
+    <string name="gallery_add_first">Add your first set</string>
+    <string name="gallery_load_failed">Your collection could not be loaded</string>
+    <string name="gallery_retry">Try again</string>
     <string name="gallery_refresh">Refresh</string>
     <string name="gallery_no_results">No results for “%1$s”</string>
     <string name="gallery_quantity_badge">×%1$d</string>

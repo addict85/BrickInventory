@@ -39,7 +39,6 @@ import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.ui.theme.Schrift
 import ch.brickinventoryapp.ui.components.LeerSymbol
 import androidx.compose.material.icons.filled.ViewInAr
 
@@ -147,9 +146,9 @@ fun CatalogDetailScreen(
 
                 // Titel + Nummer
                 Column {
-                    Text(detail.name ?: "—", fontWeight = FontWeight.Bold, fontSize = Schrift.sehrGross)
+                    Text(detail.name ?: "—", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge)
                     Text(detail.setNumber, color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.SemiBold, fontSize = Schrift.normal)
+                        fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
                 }
 
                 // Metadaten
@@ -312,8 +311,8 @@ fun CatalogDetailScreen(
 @Composable
 internal fun CatalogDetailRow(label: String, value: String) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = Schrift.normal)
-        Text(value, fontWeight = FontWeight.SemiBold, fontSize = Schrift.normal,
+        Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
+        Text(value, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.padding(start = Abstaende.gross))
     }
 }

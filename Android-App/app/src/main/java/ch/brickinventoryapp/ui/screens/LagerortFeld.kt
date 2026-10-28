@@ -21,7 +21,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.R
 import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.ui.theme.Schrift
 
 /**
  * Das Lagerort-Feld: auswaehlen ODER neu eintippen.
@@ -79,7 +78,7 @@ fun LagerortFeld(
                 if (it.length <= 60) { text = it; offen = true; onWert(it) }
             },
             singleLine = true,
-            placeholder = { Text(stringResource(R.string.detail_storage_ph), fontSize = Schrift.klein) },
+            placeholder = { Text(stringResource(R.string.detail_storage_ph), style = MaterialTheme.typography.bodySmall) },
             trailingIcon = {
                 ExposedDropdownMenuDefaults.TrailingIcon(expanded = offen)
             },
@@ -92,7 +91,7 @@ fun LagerortFeld(
         ) {
             for (ort in passend) {
                 DropdownMenuItem(
-                    text = { Text(ort, fontSize = Schrift.normal) },
+                    text = { Text(ort, style = MaterialTheme.typography.labelLarge) },
                     onClick = { text = ort; offen = false; onWert(ort) },
                 )
             }

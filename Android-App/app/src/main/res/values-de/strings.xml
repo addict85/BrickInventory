@@ -41,6 +41,8 @@
     <!-- ══════════════ Portfolio chart ══════════════ -->
     <string name="chart_portfolio_value">Wertentwicklung Portfolio</string>
     <string name="chart_no_history">Noch keine Verlaufsdaten</string>
+    <string name="chart_summary">Portfoliowert, %1$s bis %2$s: von %3$s auf %4$s, Veränderung %5$s</string>
+    <string name="chart_summary_no_change">Portfoliowert, %1$s bis %2$s: von %3$s auf %4$s</string>
     <string name="chart_period_week">Woche</string>
     <string name="chart_period_month">Monat</string>
     <string name="chart_period_year">Jahr</string>
@@ -97,7 +99,10 @@
     <string name="gallery_search_placeholder">Sets suchen…</string>
     <string name="gallery_all">Alle</string>
     <string name="gallery_no_sets">Keine Sets vorhanden</string>
-    <string name="gallery_pull_to_refresh">Nach unten ziehen zum Neu laden</string>
+    <string name="gallery_empty_hint">Erfasse dein erstes Set über die Setnummer oder scanne den Barcode auf der Schachtel.</string>
+    <string name="gallery_add_first">Erstes Set erfassen</string>
+    <string name="gallery_load_failed">Die Sammlung konnte nicht geladen werden</string>
+    <string name="gallery_retry">Erneut versuchen</string>
     <string name="gallery_refresh">Neu laden</string>
     <string name="gallery_no_results">Keine Treffer für „%1$s“</string>
     <string name="gallery_quantity_badge">×%1$d</string>

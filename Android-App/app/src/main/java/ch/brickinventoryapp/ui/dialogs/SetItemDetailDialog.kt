@@ -34,7 +34,6 @@ import ch.brickinventoryapp.ui.screens.TabellenZeile
 import ch.brickinventoryapp.util.resolveFullUrlViaProxy
 import ch.brickinventoryapp.util.rememberTileImageWithFallback
 import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.ui.theme.Schrift
 
 /**
  * Detail-Dialog fuer ein Teil / eine Figur AUS EINEM SET.
@@ -118,7 +117,7 @@ fun SetItemDetailDialog(
                 Text(kopf?.name ?: zustand.nummer, fontWeight = FontWeight.SemiBold)
                 Text(
                     zustand.nummer + (kopf?.colorName?.let { " · $it" } ?: ""),
-                    fontSize = Schrift.klein,
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
@@ -186,7 +185,7 @@ fun SetItemDetailDialog(
                                 verticalAlignment = Alignment.CenterVertically) {
                                 Text(stringResource(R.string.detail_storage),
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    fontSize = Schrift.normal)
+                                    style = MaterialTheme.typography.bodyMedium)
                                 ch.brickinventoryapp.ui.screens.LagerortFeld(
                                     wert = kopf.storage ?: "",
                                     vorrat = lagerZustand.vorrat.map { it.name },
@@ -200,13 +199,13 @@ fun SetItemDetailDialog(
                         Text(
                             stringResource(R.string.setitem_used_in),
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontSize = Schrift.normal,
+                            style = MaterialTheme.typography.bodyMedium,
                         )
                         if (zustand.sets.isEmpty()) {
                             Text(
                                 stringResource(R.string.setitem_used_in_none),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                fontSize = Schrift.klein,
+                                style = MaterialTheme.typography.bodySmall,
                             )
                         } else {
                             // LazyColumn mit Hoehenbegrenzung: Ein Teil kann in
@@ -283,8 +282,8 @@ fun SetItemDetailDialog(
 private fun SetItemZeile(label: String, wert: String) {
     Row(Modifier.fillMaxWidth().padding(vertical = Abstaende.haar),
         horizontalArrangement = Arrangement.SpaceBetween) {
-        Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = Schrift.normal)
-        Text(wert, fontWeight = FontWeight.SemiBold, fontSize = Schrift.normal,
+        Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
+        Text(wert, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.padding(start = Abstaende.gross))
     }
 }

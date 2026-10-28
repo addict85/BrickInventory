@@ -5,7 +5,9 @@ import ch.brickinventoryapp.data.model.SetsResponse
 import ch.brickinventoryapp.data.model.StatsResponse
 import ch.brickinventoryapp.data.repository.Result
 import ch.brickinventoryapp.ui.Galerie
+import ch.brickinventoryapp.ui.GalerieAnzeige
 import ch.brickinventoryapp.ui.GalleryUiState
+import ch.brickinventoryapp.ui.galerieAnzeige
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
@@ -14,6 +16,7 @@ import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 /**
@@ -30,6 +33,16 @@ import org.junit.Test
  *      des alten Filters wird verworfen und gibt die Sperre frei"
  *   C  das Aussieben bekannter Schlüssel entfernt → rot: „beim Anhängen
  *      werden doppelte Sets ausgesiebt"
+ *
+ * Gegenproben Fehler/leer (am 28.10. gemessen, kotlinc gegen Galerie.kt;
+ * Result und Fehlerart dafür wörtlich aus BrickRepository.kt herausgeschnitten,
+ * weil die Datei Retrofit braucht):
+ *   D  in laden() `galleryFehler = beschreibeFehler(r)` entfernt → rot „ein
+ *      Ladefehler wird zur Fehleranzeige mit Grund"
+ *   E  `galleryFehler = null` beim neuen Versuch entfernt → rot „ein
+ *      erfolgreicher neuer Versuch raeumt den Fehler weg"
+ *   F  in galerieAnzeige() die Zweige FEHLER und LEER vertauscht → rot
+ *      „ein Ladefehler …" und „eine leere Sammlung …"
  */
 class GalerieTest {
 
@@ -40,14 +53,15 @@ class GalerieTest {
         val bestellt = mutableListOf<Pair<Int, String>>()   // Seite, Thema
     }
 
-    private fun TestScope.galerie(a: Abruf) = Galerie(
+    private fun TestScope.galerie(a: Abruf, fehler: () -> Result.Error? = { null }) = Galerie(
         scope = this,
         holeSeite = { g: GalleryUiState, seite: Int ->
             a.bestellt += seite to g.galleryTheme
             delay(a.dauer(seite))
             val nummern = if (seite == 1) listOf(1, 2) else a.seite2
-            Result.Success(SetsResponse(success = true, sets = nummern.map { SetItem(setNumber = "$it-1") }, total = 4))
+            fehler() ?: Result.Success(SetsResponse(success = true, sets = nummern.map { SetItem(setNumber = "$it-1") }, total = 4))
         },
+        beschreibeFehler = { "Grund: ${it.message}" },
         holeKennzahlen = { Result.Success(StatsResponse(success = true)) },
         meldeFehler = {},
         vergissScroll = {},
@@ -106,5 +120,38 @@ class GalerieTest {
         g.zuruecksetzen()
         advanceUntilIdle()
         assertEquals(GalleryUiState(), g.state.value)
+    }
+
+    @Test
+    fun `ein Ladefehler wird zur Fehleranzeige mit Grund`() = runTest {
+        val g = galerie(Abruf()) { Result.Error("Zeitüberschreitung") }
+        g.laden(); advanceUntilIdle()
+        val st = g.state.value
+        assertEquals("Grund: Zeitüberschreitung", st.galleryFehler)
+        assertEquals(GalerieAnzeige.FEHLER, galerieAnzeige(st, gefiltert = false))
+    }
+
+    @Test
+    fun `ein erfolgreicher neuer Versuch raeumt den Fehler weg`() = runTest {
+        var kaputt = true
+        val g = galerie(Abruf()) { if (kaputt) Result.Error("Netz") else null }
+        g.laden(); advanceUntilIdle()
+        kaputt = false
+        g.laden(); advanceUntilIdle()
+        assertNull(g.state.value.galleryFehler)
+        assertEquals(GalerieAnzeige.LISTE, galerieAnzeige(g.state.value, gefiltert = false))
+    }
+
+    @Test
+    fun `eine leere Sammlung ist kein Fehler`() {
+        assertEquals(GalerieAnzeige.LEER, galerieAnzeige(GalleryUiState(), gefiltert = false))
+        assertEquals(GalerieAnzeige.KEINE_TREFFER, galerieAnzeige(GalleryUiState(), gefiltert = true))
+        assertEquals(GalerieAnzeige.LAEDT, galerieAnzeige(GalleryUiState(galleryLoading = true), gefiltert = false))
+    }
+
+    @Test
+    fun `geladene Sets bleiben stehen, auch wenn das Neuladen scheitert`() {
+        val st = GalleryUiState(sets = listOf(set(1)), galleryFehler = "Netz")
+        assertEquals(GalerieAnzeige.LISTE, galerieAnzeige(st, gefiltert = false))
     }
 }
