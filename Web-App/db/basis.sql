@@ -819,6 +819,21 @@ CREATE TABLE public.parts_version_user (
 );
 
 --
+-- Name: pdf_auftraege; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.pdf_auftraege (
+    id text NOT NULL,
+    user_id integer NOT NULL,
+    status text NOT NULL,
+    fehler text,
+    fehlende_bilder integer,
+    eta_sekunden integer,
+    aktualisiert timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT pdf_auftraege_status_check CHECK ((status = ANY (ARRAY['running'::text, 'done'::text, 'error'::text])))
+);
+
+--
 -- Name: price_alerts; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1891,6 +1906,13 @@ ALTER TABLE ONLY public.parts_version_user
     ADD CONSTRAINT parts_version_user_pkey PRIMARY KEY (user_id);
 
 --
+-- Name: pdf_auftraege pdf_auftraege_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.pdf_auftraege
+    ADD CONSTRAINT pdf_auftraege_pkey PRIMARY KEY (id);
+
+--
 -- Name: price_alerts price_alerts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2427,6 +2449,12 @@ CREATE INDEX idx_parts_summary_sort ON public.parts_summary USING btree (user_id
 CREATE INDEX idx_parts_user ON public.parts USING btree (user_id);
 
 --
+-- Name: idx_pdf_auftraege_laufend; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_pdf_auftraege_laufend ON public.pdf_auftraege USING btree (user_id) WHERE (status = 'running'::text);
+
+--
 -- Name: idx_price_alerts_set; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -2894,6 +2922,13 @@ ALTER TABLE ONLY public.parts_version_user
     ADD CONSTRAINT parts_version_user_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
 
 --
+-- Name: pdf_auftraege pdf_auftraege_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.pdf_auftraege
+    ADD CONSTRAINT pdf_auftraege_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+--
 -- Name: price_alerts price_alerts_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3103,6 +3138,7 @@ INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0060-katalog-he
 INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0061-api-aufrufe.sql', '2026-10-28 22:10:50.251504+00');
 INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0062-set-teile-schlank.sql', '2026-10-28 22:55:20.74984+00');
 INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0063-laufzustand.sql', '2026-10-28 23:05:08.525175+00');
+INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0064-pdf-auftraege.sql', '2026-10-28 23:25:34.430147+00');
 
 --
 -- PostgreSQL database dump complete

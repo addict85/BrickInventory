@@ -451,6 +451,20 @@ CREATE TABLE parts_version_user (
   CONSTRAINT parts_version_user_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+CREATE TABLE pdf_auftraege (
+  id text NOT NULL,
+  user_id integer NOT NULL,
+  status text NOT NULL,
+  fehler text,
+  fehlende_bilder integer,
+  eta_sekunden integer,
+  aktualisiert timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT pdf_auftraege_pkey PRIMARY KEY (id),
+  CONSTRAINT pdf_auftraege_status_check CHECK ((status = ANY (ARRAY['running'::text, 'done'::text, 'error'::text]))),
+  CONSTRAINT pdf_auftraege_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+CREATE INDEX idx_pdf_auftraege_laufend ON pdf_auftraege USING btree (user_id) WHERE (status = 'running'::text);
+
 CREATE TABLE price_alerts (
   user_id integer NOT NULL,
   set_number text NOT NULL,
