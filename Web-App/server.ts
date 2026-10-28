@@ -102,7 +102,25 @@ if (cluster.isPrimary && process.env.NODE_ENV === 'production') {
   for (let i = 0; i < WORKERS; i++) cluster.fork();
   const { neustartPause } = require('./utils/workerZahl') as typeof import('./utils/workerZahl');
   const abstuerze: number[] = [];
+  // Docker schickt SIGTERM nur an PID 1, also an diesen Prozess. Ohne
+  // Weitergabe liefen die Shutdown-Handler der Worker nie, und nach der Frist
+  // folgte SIGKILL mitten in Anfragen und Importen.
+  let beendetWird = false;
+  const beendeAlle = (signal: NodeJS.Signals) => {
+    if (beendetWird) return;
+    beendetWird = true;
+    console.log(`[cluster] ${signal} — Worker werden geordnet beendet`);
+    for (const w of Object.values(cluster.workers ?? {})) w?.process.kill(signal);
+    // Etwas länger als die Frist der Worker (SHUTDOWN_TIMEOUT_MS).
+    setTimeout(() => process.exit(0), 10_000).unref();
+  };
+  process.on('SIGTERM', () => beendeAlle('SIGTERM'));
+  process.on('SIGINT', () => beendeAlle('SIGINT'));
   cluster.on('exit', (worker, code) => {
+    if (beendetWird) {
+      if (!Object.keys(cluster.workers ?? {}).length) process.exit(0);
+      return;
+    }
     if (code !== 0) {
       const jetzt = Date.now();
       abstuerze.push(jetzt);

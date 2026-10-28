@@ -21,6 +21,8 @@
  *      rot: „die Primär-Sperre kommt nach einem Verbindungsabbruch zurück"
  *   G  (27.10.) app.use('/api', …) ohne appFassungPruefen → rot: „eine zu alte
  *      App wird mit 426 abgewiesen"
+ *   H  (28.10.) im Hauptprozess die Weitergabe von SIGTERM entfernt → rot:
+ *      „SIGTERM an den Hauptprozess beendet jeden Worker geordnet"
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -233,8 +235,17 @@ test('Cache-Signale erreichen jeden Worker', { concurrency: 1, timeout: 180_000 
       assert.equal(r, 403, 'utils/herkunft.ts hängt nicht in server.ts');
     });
 
+    await t.test('SIGTERM an den Hauptprozess beendet jeden Worker geordnet', async () => {
+      srv.kill('SIGTERM');
+      for (let i = 0; i < 150 && srv.exitCode === null && srv.signalCode === null; i++) await warte(100);
+      assert.equal(srv.exitCode, 0, `Hauptprozess endete mit ${srv.exitCode}/${srv.signalCode}:\n${log.slice(-1500)}`);
+      assert.equal((log.match(/\[shutdown\] SIGTERM empfangen/g) || []).length, 2,
+        `nicht beide Worker haben geordnet beendet:\n${log.slice(-1500)}`);
+      assert.equal((log.match(/\[shutdown\] Datenbankverbindungen geschlossen/g) || []).length, 2);
+    });
+
   } finally {
-    srv.kill('SIGTERM');
+    if (srv.exitCode === null && srv.signalCode === null) srv.kill('SIGTERM');
     for (let i = 0; i < 40 && srv.exitCode === null && srv.signalCode === null; i++) await warte(100);
     if (srv.exitCode === null && srv.signalCode === null) srv.kill('SIGKILL');
     await db.run('DELETE FROM users WHERE username = ANY($1)', [[HAUPT, UNTER]]).catch(() => {});

@@ -57,11 +57,16 @@ services:
       dockerfile: Dockerfile
     container_name: brickinventory-app
     restart: unless-stopped
+    # Kleiner init-Prozess als PID 1: reicht Signale weiter und räumt
+    # verwaiste Kindprozesse (Bildwerkzeuge, PDF) ab.
+    init: true
     depends_on:
       postgres:
         condition: service_healthy
     ports:
-      - "3000:3000"
+      # Hinter einem Reverse-Proxy APP_BIND=127.0.0.1 setzen: Dann ist Port 3000
+      # nur noch über den Proxy (mit TLS) erreichbar, nicht im Klartext im LAN.
+      - "${APP_BIND:-0.0.0.0}:3000:3000"
     volumes:
       # EIN Volume genügt. Set-, Teile- und Minifiguren-Bilder liegen unter
       # data/images/ (siehe utils/appPaths.ts) und sind damit von ./data
