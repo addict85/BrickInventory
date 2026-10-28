@@ -19,7 +19,7 @@ let _catState = { page: 1, q: '', theme: '', yearFrom: '', yearTo: '', sort: 'ye
 // Filterwechsel (gleiches Muster wie in der Android-App), _catItems hält die
 // geladenen Sets für In-Place-Updates (owned-Badge nach Galerie-Aufnahme).
 let _catGen = 0;
-// ── Fensterladen statt Endlos-Scroll (Nachtrag 90) ─────────────────────────
+// ── Fensterladen statt Endlos-Scroll ─────────────────────────
 //
 // Marcos Vorgabe: Die Jahres-Leiste soll nicht filtern, sondern schnell
 // scrollen — „kann nicht geprüft werden, wo man hinscrollt, und dieser Teil
@@ -79,7 +79,7 @@ function _bindCatalogControls(){
     if (to && from && parseInt(to) < parseInt(from)) from = to;
     setCatalogYearRange(from, to);
   });
-  // Der Von-Bis-Schieber ist entfallen (Nachtrag 90) — gefiltert wird über die
+  // Der Von-Bis-Schieber ist entfallen — gefiltert wird über die
   // beiden Auswahlfelder oben, gesprungen über die Leiste am rechten Rand.
   // Auch der Sentinel des Endlos-Scrolls ist weg: Geladen wird die Seite, die
   // gerade ins Bild kommt (siehe _beobachteSeiten).
@@ -445,7 +445,7 @@ async function addCatalogSetToGallery(){
   const priceVal = G('cat-m-price').value;
   const purchase_price = (priceVal != null && String(priceVal).trim() !== '' && !isNaN(parseFloat(priceVal))) ? parseFloat(priceVal) : null;
   const condition = G('cat-m-cond').value || 'N';
-  // Konto mitschicken (Nachtrag 66, Marcos Fund): Der Katalog-Dialog war der
+  // Konto mitschicken (Marcos Fund): Der Katalog-Dialog war der
   // VIERTE Erfassungsweg — Galerie-Formular, manuelles Teil und manuelle
   // Minifigur fragen das Konto längst ab, hier fehlte es. Folge: Ein aus dem
   // Katalog aufgenommenes Set landete immer beim eigenen Konto, ohne dass man

@@ -159,7 +159,7 @@ async function withSetAggregate(uid: number, cfgTable: string, keys: any[], payl
         let p = (rawPrice === null || rawPrice === '') ? null : parseFloat(rawPrice);
         if ((p === null || isNaN(p)) && cfg.resolvePrice) {
           preisGeschaetzt = true;
-          // Zustand der ZEILE mitgeben (Nachtrag 68): Ein „Neu"-Eintrag muss den
+          // Zustand der ZEILE mitgeben: Ein „Neu"-Eintrag muss den
           // Neu-Preis bekommen, nicht den der Gebraucht-Erfassung daneben.
           // Steht im Rumpf ein neuer Zustand, gilt dieser; sonst der bisherige.
           const condRow = condition ? null
@@ -176,7 +176,7 @@ async function withSetAggregate(uid: number, cfgTable: string, keys: any[], payl
       // routes/parts.ts, damit Webapp und Android nicht auseinanderlaufen.
       const besitzer = await besitzerDerZeile(cfg.table, id, uid);
       await withInventoryLock(besitzer, bestandsSchluessel(cfg.kind, keys), async (tx) => {
-        // SCHREIB-Blickfeld statt eigener ID (Nachtrag 45): Im Haushalt gehört
+        // SCHREIB-Blickfeld statt eigener ID: Im Haushalt gehört
         // die Erfassung oft einem Unterkonto. Vorher lief die Suche stur gegen
         // user_id = eigene ID und lieferte 404 „Not found" — der Kaufpreis
         // liess sich schlicht nicht speichern. writableIds() ist bewusst enger
@@ -279,7 +279,7 @@ async function withSetAggregate(uid: number, cfgTable: string, keys: any[], payl
 
       const besitzer = await besitzerDerZeile(cfg.table, id, uid);
       const row = await withInventoryLock(besitzer, bestandsSchluessel(cfg.kind, keys), async (tx) => {
-        // Wie beim Aktualisieren (Nachtrag 45): über das SCHREIB-Blickfeld
+        // Wie beim Aktualisieren: über das SCHREIB-Blickfeld
         // suchen, danach mit dem BESITZER der Zeile weiterarbeiten. Vorher
         // konnte das Hauptkonto eine Erfassung des Unterkontos weder ändern
         // noch löschen — es bekam 404.
@@ -292,8 +292,8 @@ async function withSetAggregate(uid: number, cfgTable: string, keys: any[], payl
 
         await tx.run(`DELETE FROM ${cfg.table} WHERE id=$1 AND user_id=$2`, [id, ownerId]);
 
-        // Preis und Zustand der Elternzeile NEU bestimmen (Nachtrag 75,
-        // Marcos Fund: „Kaufpreis entfernt, die Kachel zeigt ihn weiter").
+        // Preis und Zustand der Elternzeile NEU bestimmen — sonst zeigt die Kachel einen
+        // entfernten Kaufpreis weiter.
         // Ausführlich: docs/begruendungen/routes/api_v1/acquisitions.ts.md#withsetaggregate
         if (cfg.parentPriceSql || cfg.parentConditionSql) {
           const latest = await tx.get(cfg.latestSql, [ownerId, ...keys]);
@@ -351,7 +351,7 @@ registerAcquisitionRoutes({
   existsSql: 'SELECT id, user_id, condition, purchase_price AS preis, price_estimated, currency, ((created_at AT TIME ZONE \'UTC\')::date)::text AS tag FROM set_acquisitions WHERE id=$1 AND user_id = ANY($2) AND set_number=$3',
   existsWithKeys: true,
   notFound:  'erfassung_nicht_gefunden',
-  // Marktpreis nachfüllen, wenn das Feld geleert wird (Nachtrag 68, Marcos Fund:
+  // Marktpreis nachfüllen, wenn das Feld geleert wird (Marcos Fund:
   // „Kaufpreis löschen → wird nicht von BrickLink abgefüllt").
   //
   // Hier stand `null` — als EINZIGE der drei Elementarten. Teile und

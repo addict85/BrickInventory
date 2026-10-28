@@ -336,7 +336,7 @@ function isValidLoginIdentifier(value: unknown): boolean {
 
 /**
  * Prüft die Konto-Vorbedingungen NACH erfolgreicher Passwortprüfung.
- * Die Absage kommt als CODE zurueck, nicht als Satz (Nachtrag 130): Dieser
+ * Die Absage kommt als CODE zurueck, nicht als Satz: Dieser
  * Helfer weiss nicht, welche Sprache der Anfragende sieht — die Route weiss es.
  *
  * @returns null = Login erlaubt
@@ -364,7 +364,7 @@ const DUMMY_HASH = bcrypt.hashSync('nonexistent-account-placeholder', BCRYPT_ROU
 export interface AnmeldeAbsage {
   status: number;
   /**
-   * Der Grund als SCHLUESSEL, nicht als Satz (Nachtrag 130).
+   * Der Grund als SCHLUESSEL, nicht als Satz.
    *
    * Diese Funktion laeuft ohne zu wissen, welche Sprache der Anfragende sieht.
    * Die Route weiss es (Accept-Language) und macht daraus mit sendeFehler()
@@ -393,7 +393,7 @@ export type AnmeldeErgebnis =
  * @param code     Einmal- oder Wiederherstellungscode (utils/zweiterFaktor.ts).
  */
 async function pruefeAnmeldedaten(req: Request, username: unknown, password: unknown, code?: unknown): Promise<AnmeldeErgebnis> {
-  // Die Absage traegt einen CODE und keinen Satz (Nachtrag 130): Welche
+  // Die Absage traegt einen CODE und keinen Satz: Welche
   // Sprache der Anfragende sieht, weiss die Route.
   const absage = (status: number, code: FehlerCode,
                   vars?: Record<string, string | number>, unverified?: boolean,

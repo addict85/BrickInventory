@@ -51,7 +51,7 @@ async function resolveManualFigPurchase(uid: number, { figNumber, blFigNumber = 
     effectivePurchasePrice: r.kaufpreis,
     erfassungsPreis: r.erfassungsPreis,
     effectiveCondition: r.zustand,
-    // Aus welchem Zustand der uebernommene Marktpreis stammt (Nachtrag 167).
+    // Aus welchem Zustand der uebernommene Marktpreis stammt.
     preisAusZustand: r.preisAusZustand,
     geschaetzt: r.geschaetzt,
   };
@@ -178,12 +178,12 @@ async function addManualFigIntern(uid: number, body: any) {
   // Erfassungshistorie und die PnL-Berechnung stimmen.
   await recordAcquisitionForDay('fig', uid, [num], {
     // erfassungsPreis, nicht effectivePurchasePrice — siehe oben bei der
-    // Zweiterfassung. Hier stand bis Nachtrag 139 der Stammzeilen-Wert.
+    // Zweiterfassung. Hier stand früher der Stammzeilen-Wert.
     quantity, price: erfassungsPreis, geschaetzt,
     condition: effectiveCondition, createdAt: acquiredAt,
   });
 
-  // Zwilling zu addManualPart — siehe die Begruendung dort (Nachtrag 167).
+  // Zwilling zu addManualPart — siehe die Begruendung dort.
   return { action: 'added', fig_number: num, fig_name, price_from_condition: preisAusZustand };
 }
 

@@ -1,6 +1,6 @@
 // ── CSV-Import-Fortschrittsbalken (der Balken im Kopf der Seite) ─────────────
 //
-// ── Warum eine eigene Datei (Nachtrag 141) ──────────────────────────────────
+// ── Warum eine eigene Datei ──────────────────────────────────
 //
 // Der Block lag in js/01-core.js und war dort mit 211 Zeilen der zweitgrösste
 // zusammenhängende Gegenstand. Er ist geschlossen: zwölf Namen, von denen drei
@@ -297,7 +297,7 @@ export function gibZuruecksetzen() {
 }
 
 // ── Handler beim Dispatcher anmelden (siehe js/00-registry.js) ──────────────
-// Der Handler gehört zu dem Modul, das ihn umsetzt (Nachtrag 130).
+// Der Handler gehört zu dem Modul, das ihn umsetzt.
 registerActions({
   gibToggle,
 });

@@ -9,7 +9,7 @@ import { merkeFigur } from './katalogPflege';
  *
  * Wie utils/partsImport.ts: reine Katalogarbeit ohne Route, aus routes/minifigs.ts
  * herausgelöst, damit utils/setService.ts (addSet) keinen Router importieren
- * muss (Nachtrag 131).
+ * muss.
  */
 
 // ── Import minifigs from a set (called during set import) ─────────────────────

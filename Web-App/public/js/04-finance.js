@@ -218,7 +218,7 @@ export async function loadFinance(){
   // Die Summen liefert der Server (`total_value`) — Android liest sie seit jeher
   // von dort. Hier wurde stattdessen über `display_value` addiert; heute kommt
   // dasselbe heraus, aber sobald der Server Zeilen ohne Preis anders behandelt,
-  // zeigen die beiden Clients verschiedene Zahlen (Nachtrag 145).
+  // zeigen die beiden Clients verschiedene Zahlen.
   const partsTotal = parseFloat(partsVal?.total_value || 0);
   const figsTotal  = parseFloat(figsVal?.total_value || 0);
   const pmFoot = (kauf, total) => `<tfoot><tr><td colspan="4" class="fin-fuss-l">${t('finance.sum')}</td>${summenZellen(kauf, total, cur, 1)}<td colspan="2"></td></tr></tfoot>`;
@@ -288,7 +288,7 @@ export async function loadFinance(){
     return acqs.map(a => setRow(s, a)).join('');
   }).join('');
   const setsQtyAvg = parseFloat(d.totals.avg||0);
-  // ── Gesamtwert kommt vom Server (Nachtrag 145) ─────────────────────────────
+  // ── Gesamtwert kommt vom Server ─────────────────────────────
   //
   // Hier stand `setsQtyAvg + extra` — und in FinanceSections.kt derselbe
   // Ausdruck noch einmal. Die Regel „was zählt zum Gesamtwert" lag damit an

@@ -1,6 +1,6 @@
 // ── PDF-Viewer (PDF.js, lokal eingebunden) ────────────────────────────────────
 //
-// ── Warum eigene Datei (Nachtrag 130) ────────────────────────────────────────
+// ── Warum eigene Datei ────────────────────────────────────────
 //
 // Diese 110 Zeilen standen in js/01-core.js. Deren Kopfzeile nennt als Inhalt
 // „Utils, i18n-Glue, Auth & Panels, Login/Logout, CSV-Import-Fortschrittsbalken"
@@ -13,10 +13,10 @@
 import { registerActions } from './00-registry.js';
 import { G, esc } from './01-core.js';
 // t() wird für die Lade- und Fehlermeldung gebraucht. Beim Herauslösen aus
-// 01-core.js in Nachtrag 130 blieb der Import zurück — dort war t() über den
+// 01-core.js früher blieb der Import zurück — dort war t() über den
 // Dateikopf verfügbar. Der Fehler flog erst beim ÖFFNEN eines PDFs
 // („ReferenceError: t is not defined"), also nicht beim Laden der Seite und
-// damit auch nicht beim Bündeln (Nachtrag 138).
+// damit auch nicht beim Bündeln.
 import { t } from '../i18n.js';
 
 let _pdfDoc = null, _pdfObserver = null, _pdfCurrentUrl = null;

@@ -27,7 +27,7 @@ const PROXY_THUMB_SIZE = 200;
 const THUMB_MAX_PARALLEL = 1;
 /**
  * Und eine Obergrenze für die Warteschlange — dieselbe Überlegung wie bei den
- * Katalog-Bildern (Nachtrag 95): Wer schnell durchscrollt, WILL diese
+ * Katalog-Bildern: Wer schnell durchscrollt, WILL diese
  * Vorschauen nicht, er kommt nur vorbei. Ohne Deckel staute sich der halbe
  * Katalog auf, und der Server rechnete ihn stur ab.
  */
@@ -76,8 +76,8 @@ async function mitVorschauSperre(arbeit: () => Promise<any>) {
   const db = require('../db/database');
   // NICHT aus dem Pool
   // Nicht die Bildarbeit scheiterte, sondern eine gewöhnliche Anfrage bekam
-  // keine Verbindung mehr. Dasselbe Muster wie in Nachtrag 103 — nur dass
-  // ich es diesmal selbst hineingebaut habe, beim Beheben von Nachtrag 100.
+  // keine Verbindung mehr. Dasselbe Muster — nur dass
+  // ich es diesmal selbst hineingebaut habe, bei einer früheren Behebung.
   // Ausführlich: docs/begruendungen/utils/proxyThumbs.ts.md#mitvorschausperre
   if (!_sperrClient) {
     try { _sperrClient = await db.eigeneVerbindung(); }
@@ -121,7 +121,7 @@ async function makeProxyThumb(srcFile: string, thumbFile: string) {
       await fs.promises.rename(tmpThumb, thumbFile);
       return true;
     } catch (e: any) {
-      // Wie in utils/thumbs.ts (Nachtrag 49): kein stilles false mehr — ein
+      // Wie in utils/thumbs.ts: kein stilles false mehr — ein
       // dauerhaft scheiternder Erzeuger blieb sonst unsichtbar.
       console.error(`[img-proxy] Vorschau fehlgeschlagen für ${srcFile}: ${e?.message || e}`);
       merkeFehlend('thumb:' + thumbFile);

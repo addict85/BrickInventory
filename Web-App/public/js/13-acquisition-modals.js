@@ -1,6 +1,6 @@
 // ═══ Kaufpreis-Modal und Detailfenster für manuelle Einträge ════════════════
 //
-// ── Warum eigene Datei (Nachtrag 130) ────────────────────────────────────────
+// ── Warum eigene Datei ────────────────────────────────────────
 //
 // Diese 708 Zeilen standen in js/07-admin.js, deren Kopfzeile als Inhalt
 // „Confirm-Dialog, Config-Export/Import, API-Tokens, Job-Status" nennt. Keines
@@ -187,8 +187,8 @@ async function acqSave(sn, id, field, value) {
     // nachziehen.
     toast(tRaw(d.source_emptied ? 'household.move_ok' : 'household.owner_moved',
       { parts: d.parts ?? 0, figs: d.minifigs ?? 0 }), 'success');
-    // restore: Ohne das landet der Nutzer nach dem Wechsel wieder bei Seite 1
-    // (Nachtrag 34) — Position und geladene Tiefe bleiben erhalten.
+    // restore: Ohne das landet der Nutzer nach dem Wechsel wieder bei Seite 1;
+    // so bleiben Position und geladene Tiefe erhalten.
     closeAcqModal(); closeModal(); loadGallery({ restore: true });
     return;
   }
@@ -216,7 +216,7 @@ async function acqSave(sn, id, field, value) {
   // neu geladen wurde. Dieselbe Ursache wie bei manQtySave() und in der
   // Android-App bei updateAcquisition().
   // restore wie beim Eigentümerwechsel: Auch ein Preis- oder Mengenwechsel im
-  // Dialog darf die gescrollte Tiefe nicht kosten (Nachtrag 34).
+  // Dialog darf die gescrollte Tiefe nicht kosten.
   loadGallery({ restore: true });
   loadFinance();
 
@@ -1085,7 +1085,7 @@ async function manAcqDelete(type, id, colorId, acqId) {
 
 
 // ── Handler beim Dispatcher anmelden (siehe js/00-registry.js) ──────────────
-// Die elf Handler dieser beiden Fenster meldete bis Nachtrag 130 js/07-admin.js
+// Die elf Handler dieser beiden Fenster meldete früher js/07-admin.js
 // an — obwohl sie hier umgesetzt werden.
 registerActions({
   acqDelete,

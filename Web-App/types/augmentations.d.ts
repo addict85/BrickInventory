@@ -95,7 +95,7 @@ declare global {
  * die Erinnerung des Nächsten.
  */
 /**
- * ── Warum auch username und isAdmin zugesichert sind (Nachtrag 155) ─────────
+ * ── Warum auch username und isAdmin zugesichert sind ─────────
  *
  * Zuerst stand hier nur `{ userId: number }`. Das reichte nicht: In
  * POST /change-password werden alle drei Felder gelesen und an

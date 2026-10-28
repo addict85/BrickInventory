@@ -123,7 +123,7 @@ router.get('/admin/image-diag/:setNumber', requireApiAdmin, async (req: AuthedRe
 
     // 3b. Gilt das Bild als fehlend — und warum?
     //
-    // ── Die Lücke, die Marco aufgehalten hat (Nachtrag 123) ──────────────────
+    // ── Die Lücke, die Marco aufgehalten hat ──────────────────
     // Der Endpunkt sollte „warum fehlt das Bild für Set X?" in EINER Antwort
     // beantworten. Ausgerechnet die Tabelle, die den Abruf VERHINDERT, sah er
     // nicht an. Steht dort ein Eintrag, ist jede andere Auskunft hier
@@ -352,7 +352,7 @@ router.post('/admin/catalog-images', requireApiAdmin, async (req: AuthedRequest,
       ? await vergissFehlend(zuVergessen.map((r: any) => r.cache_key))
       : 0;
     // Was schon fertig ist, wird nicht wieder eingereiht
-    // Er hatte recht, und die Begründung, die ich in Nachtrag 111 dafür notiert
+    // Er hatte recht, und die Begründung, die ich früher dafür notiert
     // habe, war zu kurz gedacht: Ich wollte 25 000 einzelne Dateizugriffe in
     // einer Anfrage vermeiden — richtig — und habe daraus geschlossen, gar …
     // Ausführlich: docs/begruendungen/routes/api_v1/admin.ts.md#post-admin-catalog-images-fs

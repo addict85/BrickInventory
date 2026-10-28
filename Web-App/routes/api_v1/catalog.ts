@@ -325,7 +325,7 @@ router.get('/catalog/sets/:setNumber', requireToken, async (req: AuthedRequest, 
         // Ohne das läge das Bild zwar dauerhaft ab, bekäme aber nie eine
         // "_thumb.jpg"-Variante, und jede Kachel würde weiterhin die grosse
         // Originaldatei laden.
-        // Über den Hintergrund-Job statt direkt (Nachtrag 105): Ein direkter
+        // Über den Hintergrund-Job statt direkt: Ein direkter
         // Aufruf liefe wieder an jeder Drosselung vorbei.
         require('../../jobs/imageQueue').merkeGebraucht(String(set.image_url || ''), set.set_number);
       }

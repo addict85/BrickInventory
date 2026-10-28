@@ -363,7 +363,7 @@ async function schreibeInLetzteErfassung(
 }
 
 async function updateSet(uid: number, sn: string, body: any) {
-  // SCHREIB-Blickfeld statt eigener ID (Nachtrag 52, Marcos Bericht: „Wenn die
+  // SCHREIB-Blickfeld statt eigener ID (Marcos Bericht: „Wenn die
   // Anzahl eines Sets erhöht wird, das einem Unterkonto gehört, funktioniert
   // die ganze Logik mit dem Kaufpreis nicht und die Anzahl wird nicht
   // gespeichert").

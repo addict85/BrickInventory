@@ -1,6 +1,6 @@
 // ── Überwachung: Jobliste im Reiter „Monitoring" und das Protokollfenster ────
 //
-// ── Warum eine eigene Datei (Nachtrag 141) ──────────────────────────────────
+// ── Warum eine eigene Datei ──────────────────────────────────
 //
 // Dieser Block lag in js/01-core.js. Deren Kopfzeile nennt als Inhalt „Utils,
 // i18n-Glue, Auth & Panels, Login/Logout, CSV-Import-Fortschrittsbalken" — die
@@ -241,7 +241,7 @@ export async function loadMonitor() {
 export function set_monitorTimer(v) { _monitorTimer = v; }
 
 // ── Handler beim Dispatcher anmelden (siehe js/00-registry.js) ──────────────
-// Der Handler gehört zu dem Modul, das ihn umsetzt (Nachtrag 130).
+// Der Handler gehört zu dem Modul, das ihn umsetzt.
 registerActions({
   openLogViewer,
 });

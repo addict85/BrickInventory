@@ -19,7 +19,7 @@ const router  = express.Router();
 import * as db from '../db/database';
 import { fehlertext, handleRouteError } from '../utils/httpError';
 import { recordAcquisitionForDay } from '../utils/acquisitions';
-// Die Katalogarbeit liegt seit Nachtrag 131 in utils/partsImport.ts — sonst
+// Die Katalogarbeit liegt in utils/partsImport.ts — sonst
 // müsste utils/setService.ts (addSet) einen Router importieren.
 import { importPartsForSet, fetchMissingBlIds } from '../utils/partsImport';
 import { requireLoginOrToken as requireLogin } from '../utils/auth';

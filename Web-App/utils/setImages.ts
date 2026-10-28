@@ -61,7 +61,7 @@ async function downloadSetImage(url: string, setNumber: string, info?: { status?
           res.on('data', d => {
             gelesen += d.length;
             if (gelesen > SET_IMG_MAX_BYTES) {
-              // Nicht mehr STILL abbrechen (Nachtrag 47): Vorher verschwand ein
+              // Nicht mehr STILL abbrechen: Vorher verschwand ein
               // übergrosses Bild spurlos — kein Log, keine Spur, und niemand
               // konnte erklären, warum ausgerechnet dieses Set kein lokales
               // Bild bekam.
@@ -93,7 +93,7 @@ async function downloadSetImage(url: string, setNumber: string, info?: { status?
     await fs.promises.writeFile(localPath, buf);
     return relPath;
   } catch (e: any) {
-    // Letzte Auffanglinie — bis Nachtrag 50 verschluckte sie JEDEN Fehler
+    // Letzte Auffanglinie — früher verschluckte sie JEDEN Fehler
     // (Schreibfehler, volle Platte, Rechteproblem) ohne eine Spur. Genau diese
     // Sorte Stille hat die Bild-Fehlersuche dieser Woche über fünf Nachträge
     // gestreckt.

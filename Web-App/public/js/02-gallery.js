@@ -610,7 +610,7 @@ export async function loadHouseholdMembers() {
   // Alle drei Erfassen-Formulare: Set, manuelles Teil, manuelle Minifigur.
   // Dieselbe Liste, dieselbe Regel — ein Kaufpreis für ein Kind zu erfassen
   // soll für alle drei gleich gehen.
-  // cat-m-owner seit Nachtrag 66 dabei — der Katalog-Dialog ist der vierte
+  // cat-m-owner dabei — der Katalog-Dialog ist der vierte
   // Erfassungsweg und war als einziger nicht angeschlossen.
   // mk-owner ist der fuenfte Erfassungsweg (Merkliste) — dieselbe Liste,
   // dieselbe Regel. Der Grossvater traegt einen Wunsch fuer den Enkel ein.
@@ -772,7 +772,7 @@ export function selectedOwner(selectId) {
  * @param {{restore?: boolean}} [opts] restore=true behält die bereits
  *   gescrollte TIEFE und die Scrollposition bei.
  *
- * ── Warum es restore gibt (Nachtrag 34, Marcos Bericht) ─────────────────────
+ * ── Warum es restore gibt (Marcos Bericht) ─────────────────────
  * Nach einem Eigentümerwechsel im Kaufpreis-Dialog rief der Aufrufer schlicht
  * loadGallery(). Das setzt _galPage auf 1 zurück: Wer sich bis Zeile 50
  * durchgescrollt hatte, stand plötzlich vor 60 statt 300 Kacheln. Das Dokument
@@ -1416,7 +1416,7 @@ export function autosaveSet(){
     const prevQty = curSet.quantity || qty;
     const d = await api('PUT',`/v1/sets/${esc(curSet.set_number)}`,{quantity:qty});
     if(d.success){
-      // Die WIRKLICHE Gesamtmenge kommt vom Server (Nachtrag 87).
+      // Die WIRKLICHE Gesamtmenge kommt vom Server.
       //
       // Angezeigt wird die Menge aller Konten, geschrieben wird die Differenz
       // auf das eigene. Beim VERRINGERN deckelt der Server bei den eigenen

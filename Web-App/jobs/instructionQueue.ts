@@ -22,7 +22,7 @@ let _driver         = false;   // true nur dort, wo start() lief (Primary)
 /**
  * Namensraum der prozessübergreifenden Sperre für die Anleitungs-Warteschlange.
  *
- * Welche Zahl das ist und welche sonst belegt sind, steht seit Nachtrag 149 in
+ * Welche Zahl das ist und welche sonst belegt sind, steht in
  * utils/lockNamespaces.ts. Hier stand eine Abschrift davon — die vollständigste
  * im Projekt, und trotzdem eine, die beim nächsten Zusatz veraltet wäre.
  */
@@ -165,13 +165,13 @@ async function processNext() {
         sub: `${row.set_number} (${done+1}/${total})`
       });
 
-      // Bis Nachtrag 127 stand hier ein require('../routes/sets') im try, dahinter
+      // Früher stand hier ein require('../routes/sets') im try, dahinter
       // eine typeof-Prüfung und ein stiller Abbruch. Beides war nötig, weil
       // niemand garantieren konnte, dass der Name zur Laufzeit existiert — und
-      // genau dieser Fall ist in Nachtrag 131 zweimal eingetreten. Mit dem
+      // genau dieser Fall ist früher zweimal eingetreten. Mit dem
       // echten Import prüft tsc den Namen; der Abbruchpfad entfällt.
       // eigenerTakt: Die Pausen IN der Funktion entfallen — diese Schlange
-      // wartet unten selbst 15 Sekunden. Zusammen waren es 20 (Nachtrag 142).
+      // wartet unten selbst 15 Sekunden. Zusammen waren es 20.
       const count = await downloadSetInstructions(row.set_number, true);
       if (block.retries || block.until) await clearBlock(); // Erfolg — Backoff zurücksetzen
       await db.run(`UPDATE instruction_queue SET status='done', updated_at=NOW() WHERE id=$1`, [row.id]);

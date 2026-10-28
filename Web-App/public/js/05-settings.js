@@ -153,7 +153,7 @@ async function generateQrCode() {
   const container = G('qr-code');
   const frei = knopfBesetzt(btn);
   try {
-    // POST, nicht GET (Nachtrag 154): Der Aufruf LEGT eine Nonce AN. Als GET war
+    // POST, nicht GET: Der Aufruf LEGT eine Nonce AN. Als GET war
     // er über eine Navigation von einer fremden Seite auslösbar, weil
     // SameSite=lax das Cookie dort mitschickt.
     // Die gewaehlte Laufzeit des SPAETEREN Geraete-Tokens reist mit der
@@ -721,7 +721,7 @@ async function delUser(uid,name){ const admin_password = await bestaetigeMitPass
  *
  * Die Schwelle ist ein Eingabefeld und kein Text: Marcos Wunsch war, den Wert
  * HIER anpassen zu koennen. Gespeichert wird beim Verlassen des Feldes —
- * dieselbe Geste wie im Wunsch-Detail (Nachtrag 133), damit man nicht nach
+ * dieselbe Geste wie im Wunsch-Detail, damit man nicht nach
  * einem Knopf suchen muss, den es anderswo nicht gibt.
  *
  * Der letzte Preis steht dabei, weil eine Schwelle ohne ihn nicht zu beurteilen

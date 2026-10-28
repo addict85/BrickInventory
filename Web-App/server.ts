@@ -568,7 +568,7 @@ app.use('/api/v1/auth',     require('./routes/auth') as typeof import('./routes/
 // Der Link in der Bestätigungs-Mail zeigt hierher.
 // Wir leiten direkt an den Auth-Handler weiter.
 app.get('/verify', async (req, res) => {
-  // Die Logik steht seit Nachtrag 154 in utils/auth.verifiziereEmailToken().
+  // Die Logik steht in utils/auth.verifiziereEmailToken().
   // Vorher lagen hier acht Zeilen, die in routes/auth.ts wortgleich ein
   // zweites Mal standen — inklusive Hash-Regel und Ablaufprüfung. Wer eine
   // davon änderte, hatte die andere übersehen.
@@ -858,7 +858,7 @@ bereiteDatenbankVor().then(async () => {
 
     if (!isPrimaryWorker) return; // all background jobs below: primary worker only
 
-    // Die Staffel der Hintergrundläufe steht seit Nachtrag 134 in
+    // Die Staffel der Hintergrundläufe steht in
     // startup/backgroundJobs.ts — beieinander statt über hundertdreissig
     // Zeilen verstreut. Die Bedingung darüber ist die EINZIGE Stelle, an der
     // „nur im Primär-Worker" geprüft wird.

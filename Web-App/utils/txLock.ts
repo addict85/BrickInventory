@@ -17,7 +17,7 @@ import { LOCKS } from './lockNamespaces';
  * @returns {Promise<T>}
  */
 async function withInventoryLock(userId: number, scopeKey: string | number, fn: (tx: any) => any) {
-  // tx: DbSchnittstelle statt any — der Typ steht seit Nachtrag 155 in
+  // tx: DbSchnittstelle statt any — der Typ steht in
   // db/database. Mit `any` war jeder Aufruf hier drin ungeprueft.
   return db.transaction(async (tx: DbSchnittstelle) => {
     // Eine eigene Klasse statt der user_id als erstem Wert: Sonst sperrte

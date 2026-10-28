@@ -591,7 +591,7 @@ async function baueAlarmMail(d: AlarmMailDaten): Promise<{ subject: string; text
 async function testSmtp() {
   const transporter = await getTransporter();
   // Code statt Satz: testSmtp() kennt den Anfragenden nicht — die Route macht
-  // mit sendeFehler() einen Satz daraus (Nachtrag 130).
+  // mit sendeFehler() einen Satz daraus.
   if (!transporter) return { success: false, code: 'smtp_nicht_konfiguriert' as const };
   try {
     await transporter.verify();

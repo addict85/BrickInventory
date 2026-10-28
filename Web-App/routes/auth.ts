@@ -685,7 +685,7 @@ router.post('/register', ipThrottle('register', 5, 60 * 60 * 1000), async (req, 
 });
 
 // GET /api/v1/auth/verify ist ENTFERNT
-// Sie hatte keinen Aufrufer, und das stand seit Nachtrag 154 als Kommentar
+// Sie hatte keinen Aufrufer, und das stand als Kommentar
 // genau hier: „Gefahrlos umzustellen, weil die Route KEINEN Aufrufer hat: Der
 // Link in der Verifikationsmail zeigt auf /verify (utils/mailer.ts), das …
 // Ausführlich: docs/begruendungen/routes/auth.ts.md#post-forgot-password

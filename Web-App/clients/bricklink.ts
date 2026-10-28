@@ -1,6 +1,6 @@
-// ── Warum diese Datei nicht mehr in routes/ liegt (Nachtrag 131) ────────────
+// ── Warum diese Datei nicht mehr in routes/ liegt ────────────
 //
-// Wie rebrickable.ts und brickset.ts (Nachtrag 126): KEINE einzige Route, nie
+// Wie rebrickable.ts und brickset.ts: KEINE einzige Route, nie
 // als Router montiert — ein reiner API-Client. Aufgefallen ist es erst jetzt,
 // weil utils/setService.ts von hier getItemImageUrl() braucht und ein Modul
 // unter utils/ keinen Router importieren soll.

@@ -368,7 +368,7 @@ export async function updateManualFig(figNumber, body, owner) {
 /**
  * Der Hinweis, wenn der Kaufpreis aus dem ANDEREN Zustand stammt.
  *
- * ── Warum es ihn gibt (Nachtrag 167) ────────────────────────────────────────
+ * ── Warum es ihn gibt ────────────────────────────────────────
  * Marcos zwei Befunde waren zwei Seiten derselben Tatsache: BrickLink fuehrt
  * zu vielen Teilen und Figuren nur EINEN Zustand.
  *

@@ -189,7 +189,7 @@ async function teileErsatzquelle(set_number: string) {
         WHERE ip.inventory_id = $1`, [invId, set_number]
       );
       if (csvParts.length > 0)
-        // page_size gehört in JEDEN Rückgabeweg (Nachtrag 132): Der Client
+        // page_size gehört in JEDEN Rückgabeweg: Der Client
         // liest daraus, ob eine weitere Seite nötig ist. Auf dieser
         // Ausweichebene wird nicht geblättert — die Antwort enthält alles,
         // also ist die Seitengrösse die Zahl der Zeilen. Fehlte das Feld,

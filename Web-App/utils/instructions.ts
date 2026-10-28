@@ -21,7 +21,7 @@ import { mitVersion, ohneVersion } from './setNummer';
  * @param info Optionales Feld, in das der HTTP-Status der letzten Antwort
  *   geschrieben wird.
  *
- * ── Warum das nötig wurde (Nachtrag 112) ────────────────────────────────────
+ * ── Warum das nötig wurde ────────────────────────────────────
  * Die Funktion antwortet auf JEDEN Fehlschlag mit `null` — bei 404 („dieses
  * Bild gibt es nicht") ebenso wie bei 403 („du fragst zu schnell"). Der
  * Hintergrund-Job leitete daraus eine Fehlanzeige ab und sperrte das Bild für

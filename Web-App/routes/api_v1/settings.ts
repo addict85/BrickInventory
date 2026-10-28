@@ -101,7 +101,7 @@ router.post('/settings/user/default-condition', requireToken, async (req: Authed
       await db.run("DELETE FROM user_settings WHERE user_id=$1 AND key='user_default_condition'", [req.apiUser.user_id]);
     } else {
       // setUserSetting() statt eigenem INSERT: Es soll GENAU EINE Schreibstelle
-      // für Benutzereinstellungen geben (Nachtrag 43). Hier stand ein zweites,
+      // für Benutzereinstellungen geben. Hier stand ein zweites,
       // wortgleiches ON CONFLICT — harmlos, solange nichts dazukommt, aber die
       // Regel gilt nur, wenn sie ausnahmslos gilt.
       await setUserSetting(req.apiUser.user_id, 'user_default_condition', condition);

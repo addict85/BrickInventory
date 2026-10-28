@@ -9,11 +9,11 @@ import { gibCheckOnLoad, gibZuruecksetzen } from './01-fortschritt.js';
 // ═══ Escaping, Werkzeuge, api(), i18n-Glue, Auth & Panels, Login/Logout ═══
 //
 // Was NICHT (mehr) hier steht, obwohl es hier stand:
-//   Kontofilter                    → js/14-scope.js      (Nachtrag 136)
-//   eigener Scrollbalken           → js/15-scrollbar.js  (Nachtrag 136)
-//   PDF-Betrachter                 → js/12-pdfviewer.js  (Nachtrag 130)
-//   CSV-Import-Fortschrittsbalken  → js/01-fortschritt.js (Nachtrag 141)
-//   Überwachung und Protokollfenster → js/01-monitor.js   (Nachtrag 141)
+//   Kontofilter                    → js/14-scope.js
+//   eigener Scrollbalken           → js/15-scrollbar.js
+//   PDF-Betrachter                 → js/12-pdfviewer.js
+//   CSV-Import-Fortschrittsbalken  → js/01-fortschritt.js
+//   Überwachung und Protokollfenster → js/01-monitor.js
 //
 // Diese Liste ist kein Verzeichnis, sondern eine Warnung: Die Datei war
 // zweimal auf über 1300 Zeilen gewachsen, weil Neues dort angehängt wurde, wo
@@ -225,7 +225,7 @@ export function leerZustand(o) {
 /**
  * Einen Knopf für die Dauer eines Aufrufs sperren.
  *
- * ── Der Befund (Nachtrag 160) ───────────────────────────────────────────────
+ * ── Der Befund ───────────────────────────────────────────────
  *
  * Fünf Stellen taten dasselbe: sperren, „läuft"-Text setzen, danach freigeben
  * und die Beschriftung ZURÜCKSCHREIBEN. Und alle fünf schrieben sie als
@@ -599,7 +599,7 @@ export function toast(msg, type='info', aktion) {
 export async function api(method, path, body) {
   // ── Accept-Language: die Sprache, die gerade AUF DEM BILDSCHIRM steht ──────
   //
-  // Der Server hat seine Fehlermeldungen seit Nachtrag 130 in beiden Sprachen
+  // Der Server hat seine Fehlermeldungen in beiden Sprachen
   // (utils/fehlerTexte.ts) und antwortet in der, die hier steht. Vorher waren
   // alle 80 Meldungen deutsch — in einer sonst vollständig englischen
   // Oberfläche.
@@ -668,7 +668,7 @@ function meldeSitzungBeendet(path) {
 /**
  * Ein GELDBETRAG in der Waehrung des Nutzers.
  *
- * ── Warum der Rueckfall nicht mehr 'EUR' ist (Nachtrag 164) ─────────────────
+ * ── Warum der Rueckfall nicht mehr 'EUR' ist ─────────────────
  *
  * Hier stand `cur||'EUR'`. Wer das zweite Argument vergisst, bekam damit still
  * Euro — und zwar auch dann, wenn der Nutzer in Franken rechnet. Genau das ist
@@ -808,7 +808,7 @@ export let _settingsCache=null;
 // Hier wird nur noch durchgereicht, damit der localStorage-Cache mitgeführt
 // wird und ein Design-Wechsel des Admins beim nächsten Laden sofort greift.
 export function applyTheme(theme){
-  // ── Keine zweite Liste hier (Nachtrag 168) ────────────────────────────────
+  // ── Keine zweite Liste hier ────────────────────────────────
   //
   // Hier stand `if (theme !== 'brick' && theme !== 'classic') return null;` —
   // eine EIGENE Liste der gueltigen Designs, geschrieben, als es zwei gab.
@@ -1096,7 +1096,7 @@ async function doLogin(){
   }
   G('lc-zeile').style.display='none'; G('lc').value='';
   if(d.success){ ME = { ...d, ...(d.user||{}), isAdmin: d.user?.is_admin === true };
-    // Jede Anmeldung beginnt mit „Alle Konten" (Nachtrag 46) — VOR showApp(),
+    // Jede Anmeldung beginnt mit „Alle Konten" — VOR showApp(),
     // damit die Auswahlfelder gleich mit dem zurückgesetzten Wert entstehen.
     resetScopeModes();
     showApp(); } else { const err=d.error||t('settings.error'); G('lerr').textContent=err; G('lerr').style.display='block'; if(d.unverified){ G('lerr').innerHTML=err+' <a href="#" data-click="showPanel" data-arg="login" data-stil="color:var(--b600)">E-Mail erneut senden?</a>'; } }
@@ -1132,7 +1132,7 @@ G('btn-logout').onclick=async()=>{
 // ── Handler beim Dispatcher anmelden (siehe js/00-registry.js) ──────────────
 // gibToggle meldet js/01-fortschritt.js an, openLogViewer js/01-monitor.js,
 // closePdfViewer/printPdfViewer js/12-pdfviewer.js — der Handler gehört zu dem
-// Modul, das ihn umsetzt (Nachtrag 130).
+// Modul, das ihn umsetzt.
 registerActions({
   showPanel,
 });

@@ -24,11 +24,11 @@ import fs from 'fs';
 
 import * as db from '../db/database';
 import { handleRouteError, logAndContinue, fehlertext, pfadParam, vorDem } from '../utils/httpError';
-// Der Kern liegt seit Nachtrag 131 in utils/setService.ts; hier bleiben die
+// Der Kern liegt in utils/setService.ts; hier bleiben die
 // HTTP-Routen, die ihn rufen.
 import { addSet, addSetWithDate } from '../utils/setService';
 import { downloadSetInstructions, anleitungenZuSet, loescheAnleitungen } from '../utils/instructions';
-// Der Standard-Zustand eines Benutzers. Stand hier bis Nachtrag 125 als
+// Der Standard-Zustand eines Benutzers. Stand hier früher als
 // `getUserDefaultCondition` — eine wortgleiche Zweitfassung von
 // nutzerStandardZustand() in utils/settings.ts.
 import {  resolveWriteTarget } from '../utils/household';
@@ -642,9 +642,9 @@ router.delete('/:setNumber/instructions/:instrId', async (req, res) => {
 
 // downloadSetImage und getUserDefaultCondition stehen hier NICHT mehr: Die
 // erste lebt in utils/setImages.ts, die zweite war eine Dublette von
-// nutzerStandardZustand() in utils/settings.ts (Nachtrag 125). Was hier noch
+// nutzerStandardZustand() in utils/settings.ts. Was hier noch
 // mitexportiert wird, wartet auf spätere Durchgänge.
 // Der Anhang ist leer: addSet, updateSet und buildSetsCsv leben in
 // utils/setService.ts und werden von dort importiert — kein Router mehr, der
-// Hilfsfunktionen weiterreicht (Nachtrag 131).
+// Hilfsfunktionen weiterreicht.
 export = router;

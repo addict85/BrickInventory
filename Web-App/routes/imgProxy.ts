@@ -68,7 +68,7 @@ let _tmpSeq = 0;
  * Proxy scheitert — Zeitüberschreitung, Verbindungsfehler oder 404 vom CDN.
  */
 
-// Der globale Ablageplatz entfällt: Der Zähler ist seit Nachtrag 129 ein
+// Der globale Ablageplatz entfällt: Der Zähler ist ein
 // eigenes Modul (utils/imgProxyStats.ts), das die Monitoring-Route direkt
 // importiert.
 
@@ -90,7 +90,7 @@ const _cdnAgent = new (require('https').Agent)({
 });
 
 // Die Vorschau-Maschinerie (Warteschlange, prozessübergreifende Sperre,
-// Verkleinern) liegt seit Nachtrag 129 in utils/proxyThumbs.ts.
+// Verkleinern) liegt in utils/proxyThumbs.ts.
 
 /**
  * Warum 200 mit Platzhalter statt 404
@@ -172,7 +172,7 @@ export async function bildDurchreichen(req: Request, res: Response) {
   };
   const thumbFile = cacheFile + '_thumb.jpg';
 
-  // Cache-Treffer (Original oder Verkleinerung) — seit Nachtrag 135 in
+  // Cache-Treffer (Original oder Verkleinerung) — in
   // utils/imgCacheServe.ts. `true` heisst: beantwortet, hier ist Schluss.
   if (await liefereAusCache({
     res, req, cacheFile, thumbFile, wantThumb, darfErzeugen, notiere, streamFileToResponse,
@@ -336,8 +336,7 @@ export async function bildDurchreichen(req: Request, res: Response) {
           ws.destroy();
           fs.promises.unlink(tmpFile).catch(() => {});
           // Bisher geschah das STILL. Ein übergrosses Bild fiel damit in ein
-          // schwarzes Loch: kein Cache, keine Vorschau, keine Spur im Log
-          // (Nachtrag 43).
+          // schwarzes Loch: kein Cache, keine Vorschau, keine Spur im Log.
           imgProxyFailures.other++;
           imgProxyFailures.lastError = `zu gross für den Cache (> ${Math.round(PROXY_CACHE_MAX_BYTES / 1024 / 1024)} MB): ${url}`;
           console.error(`[img-proxy] Bild grösser als ${Math.round(PROXY_CACHE_MAX_BYTES / 1024 / 1024)} MB — weder gecacht noch verkleinert: ${url}`);

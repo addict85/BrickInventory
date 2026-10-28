@@ -107,7 +107,7 @@ export function startApp() {
   bindGlobalErrorHandlers();
   bindTabs();
   plRenderSets();
-  // Eigener Scrollbalken für die ganze Anwendung (Nachtrag 92). Der des
+  // Eigener Scrollbalken für die ganze Anwendung. Der des
   // Browsers ist per CSS ausgeblendet; ohne diesen Aufruf gäbe es gar keinen.
   initScrollbalken();
   checkAuth();
@@ -290,7 +290,7 @@ async function plGenerate() {
 /**
  * „Kann ich das bauen?" — die Spalte „Vorhanden" aus dem eigenen Bestand füllen.
  *
- * ── Warum das hier und nicht als eigene Ansicht steht (Nachtrag 174) ────────
+ * ── Warum das hier und nicht als eigene Ansicht steht ────────
  *
  * Die Teileliste hatte die Spalte schon, nur als leeres Feld: Man trug von
  * Hand ein, was man besitzt, und die BrickLink-Wunschliste zog es vom Bedarf

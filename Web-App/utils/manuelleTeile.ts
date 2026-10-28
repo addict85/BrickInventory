@@ -71,7 +71,7 @@ async function resolveManualPartPurchase(uid: number, { partNumber, colorId, uni
     effectivePurchasePrice: r.kaufpreis,
     erfassungsPreis: r.erfassungsPreis,
     effectiveCondition: r.zustand,
-    // Aus welchem Zustand der uebernommene Marktpreis stammt (Nachtrag 167) —
+    // Aus welchem Zustand der uebernommene Marktpreis stammt —
     // null, wenn es nichts zu kennzeichnen gibt.
     preisAusZustand: r.preisAusZustand,
     geschaetzt: r.geschaetzt,
@@ -243,7 +243,7 @@ async function addManualPartIntern(uid: number, rawBody: any) {
   });
 
   // `price_from_condition` sagt der Oberflaeche, dass der uebernommene
-  // Marktpreis aus dem ANDEREN Zustand stammt (Nachtrag 167, Marcos
+  // Marktpreis aus dem ANDEREN Zustand stammt (Marcos
   // Entscheidung „uebernehmen, aber kennzeichnen"). Null, wenn es nichts zu
   // sagen gibt — dann zeigt keine der beiden Oberflaechen einen Hinweis.
   return { action: 'added', part_number, part_name, price_from_condition: preisAusZustand };

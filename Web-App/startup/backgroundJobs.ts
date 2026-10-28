@@ -1,4 +1,4 @@
-// ── Echte Importe statt später require() (Nachtrag 139) ─────────────────────
+// ── Echte Importe statt später require() ─────────────────────
 //
 // Beim Auslagern aus server.ts wanderten zehn `require('./jobs/...')`
 // WORTGLEICH mit. Aus startup/ gesehen gibt es './jobs' nicht — jeder dieser
@@ -101,7 +101,7 @@ export async function starteHintergrundlaeufe(): Promise<void> {
   starteJobAnleitungen();
 
   // Bilder, die über den Proxy angefragt wurden, im Hintergrund lokal ablegen
-  // und verkleinern (Nachtrag 102). Die Anfrage selbst rechnet nichts mehr.
+  // und verkleinern. Die Anfrage selbst rechnet nichts mehr.
   starteJobBilder();
 
   setTimeout(() => catalogSync.syncAllMissing().catch(() => {}), 10000);

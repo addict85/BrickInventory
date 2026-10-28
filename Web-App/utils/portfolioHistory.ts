@@ -80,7 +80,7 @@ async function getPortfolioHistory(
   // Ausführlich: docs/begruendungen/utils/portfolioHistory.ts.md#kurve
 
 
-  // Die Rekonstruktion aus dem Preisverlauf steht seit Nachtrag 135 in
+  // Die Rekonstruktion aus dem Preisverlauf steht in
   // utils/portfolio/kurve.ts — sie ist der Kern und mit Abstand der grösste
   // Teil dieser Funktion.
   const kurve = await rekonstruiereKurve({
@@ -134,8 +134,8 @@ async function getPortfolioHistory(
     return { success:true, currency, period, points:[], y_axis:[], period_change_pct:null };
   }
 
-  // Achsen, Beschriftungen und Prozentänderung — reine Rechnung, seit
-  // Nachtrag 135 in utils/portfolio/diagrammdaten.ts.
+  // Achsen, Beschriftungen und Prozentänderung — reine Rechnung in
+  // utils/portfolio/diagrammdaten.ts.
   const { points, y_axis, period_change_pct, chart } = baueDiagrammdaten(rawPoints, currency, downsampled);
 
   return {

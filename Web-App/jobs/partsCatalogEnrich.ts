@@ -635,7 +635,7 @@ async function _redownloadMissingImages() {
          -- sie, seit sie mit Migration 0034 einen eigenen Katalog haben.
          SELECT image_local, image_url FROM minifigs_catalog      WHERE image_local IS NOT NULL
          UNION ALL
-         -- sets fehlte hier (Nachtrag 49): Der Lauf liess ausgerechnet die
+         -- sets fehlte hier: Der Lauf liess ausgerechnet die
          -- Set-Bilder aus, die in der Galerie am sichtbarsten sind.
          -- Gelesen wird seit Migration 0033 aus set_catalog — dort steht jede
          -- Setnummer einmal statt einmal je Konto.
@@ -647,8 +647,8 @@ async function _redownloadMissingImages() {
     //
     // Bisher reparierte der Lauf ausschliesslich fehlende DATEIEN. Fehlte nur
     // die Verkleinerung, blieb es dabei: Sie entstand nur beim Erfassen, und
-    // ging es dort schief, gab es keinen zweiten Anlauf (Nachtrag 49). Nach dem
-    // .tmp-Fehler aus Nachtrag 41 war genau das der Normalzustand — jedes
+    // ging es dort schief, gab es keinen zweiten Anlauf. Nach dem
+    // .tmp-Fehler war genau das der Normalzustand — jedes
     // seither erfasste Bild blieb ohne Vorschau.
     const missing: any[] = [];
     const ohneVorschau: string[] = [];

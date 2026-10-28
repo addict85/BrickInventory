@@ -122,7 +122,7 @@ export { handleRouteError, logAndContinue, meldeUndWeiter, fehlertext, fehlerCod
  * Ausführlich: docs/begruendungen/utils/httpError.ts.md#abschnitt-2
  */
 /**
- * @param req Nur fuer die Sprache der Fehlermeldung (Nachtrag 130). Optional,
+ * @param req Nur fuer die Sprache der Fehlermeldung. Optional,
  *        weil dieser Helfer auch an einer nackten http-Antwort laeuft, wo es
  *        keinen Express-Request gibt — dann antwortet er auf Deutsch, wie
  *        bisher.

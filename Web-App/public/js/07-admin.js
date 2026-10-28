@@ -11,7 +11,7 @@ import { loadApiLimits, loadCacheTtl, loadSettings } from './05-settings.js';
 import { deleteManualFig, deleteManualPart, loadManualFigsTable, loadManualParts, manualFigsCache, manualPartsCache, updateManualFig, updateManualPart } from './06-minifigs.js';
 
 // ═══ Confirm-Dialog, Config-Export/Import, API-Tokens, Job-Status ═══
-// (Kaufpreis-Modal und Detailfenster lagen bis Nachtrag 130 ebenfalls hier —
+// (Kaufpreis-Modal und Detailfenster lagen früher ebenfalls hier —
 //  jetzt js/13-acquisition-modals.js.)
 // Teil von app.js — die Dateien in public/js/ werden in nummerierter
 // Reihenfolge geladen und teilen sich den globalen Scope (kein Modul-
