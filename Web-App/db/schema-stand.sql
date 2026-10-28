@@ -191,6 +191,13 @@ CREATE TABLE instructions (
 );
 CREATE INDEX idx_instructions_user ON instructions USING btree (user_id, set_number);
 
+CREATE TABLE laufzustand (
+  schluessel text NOT NULL,
+  wert text NOT NULL DEFAULT ''::text,
+  aktualisiert timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT laufzustand_pkey PRIMARY KEY (schluessel)
+);
+
 CREATE TABLE minifig_acquisitions (
   id integer NOT NULL DEFAULT nextval('minifig_acquisitions_id_seq'::regclass),
   user_id integer NOT NULL,

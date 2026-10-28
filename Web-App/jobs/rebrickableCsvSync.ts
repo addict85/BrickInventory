@@ -14,8 +14,8 @@ const {  DATA_DIR } = require('../utils/appPaths');
 import { fetchMissingBlIds } from '../utils/partsImport';
 import { getRbKey, httpsGetRobust } from '../clients/rebrickable';
 import { fehlertext } from '../utils/httpError';
-import { getGlobalSetting, setGlobalSetting } from '../utils/settings';
 import { merkeBlFarbnummer, blFarbnummerAus } from '../utils/blZuordnung';
+import { liesZustand, setzeZustand } from '../utils/laufzustand';
 const fs       = require('fs');
 const path     = require('path');
 
@@ -33,7 +33,7 @@ function updateStatus(step: string, progress: number, _total: number, sub: strin
   const status = { ready: false, step, progress, total: TOTAL_STEPS, sub };
   global.startupStatus = status;
   // Write to PostgreSQL so all cluster workers see the same status
-  setGlobalSetting('startup_status', JSON.stringify(status)).catch(() => {});
+  setzeZustand('startup_status', JSON.stringify(status)).catch(() => {});
   monitor.update('csvImport', { status: 'running', progress, total: TOTAL_STEPS, sub, label: `CSV-Import: ${step}` });
   // Only log step changes, not progress updates
   if (!sub && !step.includes('k)')) log(step);
@@ -171,11 +171,11 @@ const CATALOG_EXTRAS_KEY = 'rb_catalog_extras_last_sync';
 // lief, diese Files aber noch fehlen (z.B. direkt nach dem Update auf die
 // Katalog-Version). Analog zu syncPartCategoriesDaily.
 async function syncCatalogExtrasDaily(today: string) {
-  if (await getGlobalSetting(CATALOG_EXTRAS_KEY) === today) return;
+  if (await liesZustand(CATALOG_EXTRAS_KEY) === today) return;
   try {
     await runWorker('themes',             TOTAL_STEPS, 'Themen laden...',           'themes.csv.gz');
     await runWorker('inventory_minifigs', TOTAL_STEPS, 'Inventar-Figuren laden...', 'inventory_minifigs.csv.gz');
-    setGlobalSetting(CATALOG_EXTRAS_KEY, today);
+    setzeZustand(CATALOG_EXTRAS_KEY, today);
     log('catalog extras (themes + inventory_minifigs): Tagesimport erledigt');
   } catch (e) {
     log(`catalog extras: Tagesimport fehlgeschlagen: ${fehlertext(e)}`);
@@ -185,10 +185,10 @@ async function syncCatalogExtrasDaily(today: string) {
 // Stellt sicher, dass part_categories AUCH dann taeglich importiert wird, wenn der
 // Haupt-Sync heute bereits lief (z.B. weil das File nachtraeglich hinzugefuegt wurde).
 async function syncPartCategoriesDaily(today: string) {
-  if (await getGlobalSetting(PART_CAT_KEY) === today) return;
+  if (await liesZustand(PART_CAT_KEY) === today) return;
   try {
     await runWorker('part_categories', TOTAL_STEPS, 'Kategorien laden...', 'part_categories.csv.gz');
-    setGlobalSetting(PART_CAT_KEY, today);
+    setzeZustand(PART_CAT_KEY, today);
     log('part_categories: Tagesimport erledigt');
   } catch (e) {
     log(`part_categories: Tagesimport fehlgeschlagen: ${fehlertext(e)}`);
@@ -200,7 +200,7 @@ async function run() {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 
   // Check last sync date
-  const lastSync = await getGlobalSetting(SYNC_KEY);
+  const lastSync = await liesZustand(SYNC_KEY);
   const today = new Date().toISOString().slice(0, 10);
   if (lastSync === today) {
     log(`Already synced today (${today}) — skipping CSV download`);
@@ -211,7 +211,7 @@ async function run() {
     await syncCatalogExtrasDaily(today);
     const s1 = { ready: true, step: 'Bereit (Cache)', progress: TOTAL_STEPS, total: TOTAL_STEPS };
     global.startupStatus = s1;
-    setGlobalSetting('startup_status', JSON.stringify(s1)).catch(() => {});
+    setzeZustand('startup_status', JSON.stringify(s1)).catch(() => {});
   } else {
     log(`Starting CSV sync for ${today}...`);
     try {
@@ -224,11 +224,11 @@ async function run() {
       await runWorker('inventory_parts',   7, 'Inventar-Teile laden...',  'inventory_parts.csv.gz');
       await runWorker('inventory_minifigs',8, 'Inventar-Figuren laden...','inventory_minifigs.csv.gz');
 
-      setGlobalSetting(SYNC_KEY, today);
+      setzeZustand(SYNC_KEY, today);
       // part_categories wurde in der Schleife importiert -> Tagesmarker mitsetzen.
-      setGlobalSetting(PART_CAT_KEY, today);
+      setzeZustand(PART_CAT_KEY, today);
       // themes + inventory_minifigs ebenfalls in der Schleife importiert.
-      setGlobalSetting(CATALOG_EXTRAS_KEY, today);
+      setzeZustand(CATALOG_EXTRAS_KEY, today);
       log(`CSV sync complete for ${today}`);
     } catch(e) {
       log(`CSV sync failed: ${fehlertext(e)}`);
@@ -237,7 +237,7 @@ async function run() {
       // Der nächste Start (oder der Tageslauf) versucht es erneut.
       const s0 = { ready: true, step: 'Katalog nicht geladen', progress: TOTAL_STEPS, total: TOTAL_STEPS };
       global.startupStatus = s0;
-      await setGlobalSetting('startup_status', JSON.stringify(s0)).catch(() => {});
+      await setzeZustand('startup_status', JSON.stringify(s0)).catch(() => {});
       return; // Don't try BL mapping if CSV sync failed
     }
   }
@@ -249,7 +249,7 @@ async function run() {
 
   const s2 = { ready: true, step: 'Bereit', progress: TOTAL_STEPS, total: TOTAL_STEPS };
   global.startupStatus = s2;
-  setGlobalSetting('startup_status', JSON.stringify(s2)).catch(() => {});
+  setzeZustand('startup_status', JSON.stringify(s2)).catch(() => {});
   monitor.update('csvImport', { status: 'done', progress: TOTAL_STEPS, total: TOTAL_STEPS, sub: null });
   log('Startup complete — server ready');
 

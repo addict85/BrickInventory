@@ -95,11 +95,11 @@ import { verdrahte } from './jobs/verdrahtung';
 // In JEDEM Prozess: Erfassungen und Einstellungen stossen ihre Nacharbeit
 // auch in den Web-Workern an, nicht nur im Primary.
 verdrahte();
-import { getGlobalSetting, deleteGlobalSetting } from './utils/settings';
 import { HAUSHALT_KANAL, leereHaushaltCache } from './utils/household';
 import { drossleBeruehren } from './utils/sitzungsBeruehrung';
 import { SITZUNG_LEERLAUF_SEK, sitzungsHoechstdauer } from './utils/sitzungsFrist';
 import { antwortAufDateiFehler, liefereDatei, sendeDatei } from './utils/dateiAusliefern';
+import { liesZustand, loescheZustand } from './utils/laufzustand';
 
 const WORKERS = (require('./utils/workerZahl') as typeof import('./utils/workerZahl')).workerZahl();
 
@@ -524,7 +524,7 @@ app.get('/api/v1/startup-status', async (_req, res) => {
 
   // Try DB for cross-worker state
   try {
-    const roh = await getGlobalSetting('startup_status');
+    const roh = await liesZustand('startup_status');
     if (roh) {
       const status = JSON.parse(roh);
       global.startupStatus = status;
@@ -825,7 +825,7 @@ bereiteDatenbankVor().then(async () => {
 
   // Only primary worker clears stale startup_status — secondaries read it from DB
   if (isPrimaryWorker) {
-    await deleteGlobalSetting('startup_status').catch(() => {});
+    await loescheZustand('startup_status').catch(() => {});
     // Über console.warn landet der Hinweis in app_logs, also im Protokoll der Verwaltung.
     if (process.env.NODE_ENV === 'production'
         && (require('./utils/konfig') as typeof import('./utils/konfig')).standardPasswortInBenutzung())
@@ -846,7 +846,7 @@ bereiteDatenbankVor().then(async () => {
       while (true) {
         await new Promise(r => setTimeout(r, 500));
         try {
-          const roh = await getGlobalSetting('startup_status');
+          const roh = await liesZustand('startup_status');
           if (roh) {
             const s = JSON.parse(roh);
             global.startupStatus = s;
@@ -875,13 +875,13 @@ bereiteDatenbankVor().then(async () => {
   scheduler.register('brickset_retry', () =>
     (require('./jobs/bricksetRetry') as typeof import('./jobs/bricksetRetry')).processRetryQueue().catch(e => console.error('[brickset-retry]', e.message)));
   scheduler.register('csv_sync', () =>
-    deleteGlobalSetting('rb_csv_last_sync')
+    loescheZustand('rb_csv_last_sync')
       .then(() => csvSync.run())
       .catch(e => console.error('[rb-csv-sync daily]', e.message)));
   scheduler.startTriggerPoll();
 
   // CSV-Sync auf Zuruf statt im 5-Sekunden-Takt.
-  // Der Eintrag in global_settings bleibt die belastbare Quelle; das
+  // Der Eintrag in laufzustand bleibt die belastbare Quelle; das
   // NOTIFY-Signal weckt nur sofort. Beim Verbinden prüft der Handler den
   // Eintrag einmal von sich aus, sodass ein während einer Trennung verpasstes
   // Signal nachgeholt wird (siehe utils/pgNotify.ts).
@@ -889,12 +889,12 @@ bereiteDatenbankVor().then(async () => {
   (require('./utils/pgNotify') as typeof import('./utils/pgNotify')).listen('csv_sync_trigger', async () => {
     if (_csvSyncRunning) return;
     try {
-      const ausloeser = await getGlobalSetting('csv_sync_trigger');
+      const ausloeser = await liesZustand('csv_sync_trigger');
       if (!ausloeser) return;
-      await deleteGlobalSetting('csv_sync_trigger').catch(() => {});
+      await loescheZustand('csv_sync_trigger').catch(() => {});
       console.log('[rb-csv-sync] Manual trigger received — starting CSV sync');
       _csvSyncRunning = true;
-      await deleteGlobalSetting('rb_csv_last_sync').catch(() => {});
+      await loescheZustand('rb_csv_last_sync').catch(() => {});
       await csvSync.run().catch(e => console.error('[rb-csv-sync manual]', e.message));
     } catch (e) { meldeUndWeiter('server:csv-abgleich-anstossen', e); }
     finally { _csvSyncRunning = false; }

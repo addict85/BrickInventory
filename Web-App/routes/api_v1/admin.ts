@@ -24,10 +24,11 @@ import { getJobStatus, triggerNow } from '../../jobs/priceJob';
 import { SET_IMAGES_DIR } from '../../utils/appPaths';
 import { anfragenJeMinute } from '../../jobs/imageQueue';
 import { DAILY_JOBS } from '../../jobs/dailyScheduler';
-import { getGlobalSetting, getSetting, setGlobalSetting, setGlobalTrigger } from '../../utils/settings';
+import { getGlobalSetting, getSetting, setGlobalSetting } from '../../utils/settings';
 import { ausRetryWarteschlange } from '../../clients/brickset';
 import { sendeFehler } from '../../utils/fehlerTexte';
 import { mengeSkalar } from '../../utils/bestandsmenge';
+import { liesZustand, setzeAusloeser } from '../../utils/laufzustand';
 const router = express.Router();
 
 /**
@@ -40,7 +41,7 @@ const JOB_FRISCH_MS = 3 * 60_000;
 router.post('/admin/trigger-csv-sync', requireApiAdmin, async (_req: AuthedRequest, res) => {
   // Signal primary worker via DB flag (same pattern as instruction queue trigger)
   try {
-    await setGlobalTrigger('csv_sync_trigger');
+    await setzeAusloeser('csv_sync_trigger');
     // Weckt den Primary-Worker sofort. Der Eintrag oben bleibt die belastbare
     // Quelle — ohne Signal liefe er erst beim nächsten Verbindungsaufbau an.
     await require('../../utils/pgNotify').notify('csv_sync_trigger');
@@ -514,7 +515,7 @@ router.get('/admin/jobs', requireApiAdmin, async (_req: AuthedRequest, res) => {
   const blTotal  = await db.get(`SELECT COUNT(DISTINCT part_number) as c FROM parts WHERE source!='manual'`).catch(()=>null);
   const rbParts  = await db.get(`SELECT COUNT(*) as c FROM rb_parts`).catch(()=>null);
   const rbInvParts = await db.get(`SELECT COUNT(*) as c FROM rb_inventory_parts`).catch(()=>null);
-  const lastSync = await getGlobalSetting('rb_csv_last_sync');
+  const lastSync = await liesZustand('rb_csv_last_sync');
 
   // Enrich blIds job with live DB counts
   const mappedC = parseInt(blMapped?.c||0);
@@ -597,10 +598,10 @@ router.get('/admin/jobs', requireApiAdmin, async (_req: AuthedRequest, res) => {
   imgActive = Math.min(imgActive, imgPending);
   const imgRunning = imgActive > 0;
   // Manueller Re-Download fehlender Bilder (image_local gesetzt, Datei fehlt) —
-  // Status liegt in global_settings.imgredl_status.
+  // Status liegt in laufzustand.imgredl_status.
   let reDl: any = null;
   try {
-    const roh = await getGlobalSetting('imgredl_status');
+    const roh = await liesZustand('imgredl_status');
     if (roh) reDl = JSON.parse(roh);
   } catch (_) { reDl = null; }
   // „laeuft" heisst auch hier: hat KUERZLICH etwas getan
@@ -630,7 +631,7 @@ router.get('/admin/jobs', requireApiAdmin, async (_req: AuthedRequest, res) => {
   // Ausführlich: docs/begruendungen/routes/api_v1/admin.ts.md#get-admin-jobs-letzterlauf
   let letzterLauf: { zeit?: number } | null = null;
   try {
-    const roh = await getGlobalSetting('imgqueue_last_run');
+    const roh = await liesZustand('imgqueue_last_run');
     if (roh) letzterLauf = JSON.parse(roh);
   } catch (_) { letzterLauf = null; }
   const seitLauf = letzterLauf?.zeit ? Date.now() - letzterLauf.zeit : null;
@@ -732,7 +733,7 @@ router.post('/admin/job-schedule', requireApiAdmin, async (req: AuthedRequest, r
       return sendeFehler(req, res, 400, 'unbekannter_job');
     }
     // Sofort anwenden: Flag für den Primary-Worker + direkter Aufruf (falls dieser Prozess der Primary ist).
-    await setGlobalTrigger('job_reschedule_trigger').catch(() => {});
+    await setzeAusloeser('job_reschedule_trigger').catch(() => {});
     await require('../../utils/pgNotify').notify('job_reschedule_trigger');
     try { await require('../../jobs/dailyScheduler').rescheduleAll(); } catch (e) { meldeUndWeiter('admin:zeitplan-neu-planen', e); }
     res.json({ success: true });

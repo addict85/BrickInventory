@@ -396,6 +396,16 @@ CREATE SEQUENCE public.instructions_id_seq
 ALTER SEQUENCE public.instructions_id_seq OWNED BY public.instructions.id;
 
 --
+-- Name: laufzustand; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.laufzustand (
+    schluessel text NOT NULL,
+    wert text DEFAULT ''::text NOT NULL,
+    aktualisiert timestamp with time zone DEFAULT now() NOT NULL
+);
+
+--
 -- Name: minifig_acquisitions; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1739,6 +1749,13 @@ ALTER TABLE ONLY public.instruction_queue
 
 ALTER TABLE ONLY public.instructions
     ADD CONSTRAINT instructions_pkey PRIMARY KEY (id);
+
+--
+-- Name: laufzustand laufzustand_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.laufzustand
+    ADD CONSTRAINT laufzustand_pkey PRIMARY KEY (schluessel);
 
 --
 -- Name: minifig_acquisitions minifig_acquisitions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
@@ -3085,6 +3102,7 @@ INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0059-anmeldung-
 INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0060-katalog-herkunft.sql', '2026-10-28 20:09:04.452918+00');
 INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0061-api-aufrufe.sql', '2026-10-28 22:10:50.251504+00');
 INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0062-set-teile-schlank.sql', '2026-10-28 22:55:20.74984+00');
+INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0063-laufzustand.sql', '2026-10-28 23:05:08.525175+00');
 
 --
 -- PostgreSQL database dump complete

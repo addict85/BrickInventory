@@ -10,8 +10,8 @@ const db      = require('../db/database');
 import { downloadSetInstructions, letzterAbrufWarExtern, anzahlAnleitungen } from '../utils/instructions';
 import { meldeUndWeiter, fehlertext } from '../utils/httpError';
 import { alsAbrufFehler } from '../clients/abrufFehler';
-import { getGlobalSetting, setGlobalSetting, setGlobalTrigger, deleteGlobalSetting } from '../utils/settings';
 import { mitVersion } from '../utils/setNummer';
+import { liesZustand, setzeZustand, loescheZustand, setzeAusloeser } from '../utils/laufzustand';
 const monitor  = require('../utils/jobMonitor');
 const { logAndContinue } = require('../utils/httpError');
 
@@ -29,7 +29,7 @@ let _driver         = false;   // true nur dort, wo start() lief (Primary)
 const { LOCKS } = require('../utils/lockNamespaces');
 const QUEUE_LOCK = LOCKS.ANLEITUNGS_QUEUE;
 
-/** Schlüssel der Cloudflare-Pause in global_settings. */
+/** Schlüssel der Cloudflare-Pause in laufzustand. */
 const BLOCK_KEY = 'instr_queue_block';
 
 const CF_DELAYS_MS  = [
@@ -73,7 +73,7 @@ async function acquireQueueLock(): Promise<(() => Promise<void>) | null> {
 
 /** Cloudflare-Pause lesen: { until: ms-Zeitpunkt, retries: Anzahl } */
 async function readBlock(): Promise<{ until: number; retries: number }> {
-  const roh = await getGlobalSetting(BLOCK_KEY);
+  const roh = await liesZustand(BLOCK_KEY);
   if (!roh) return { until: 0, retries: 0 };
   try {
     const o = JSON.parse(roh);
@@ -82,11 +82,11 @@ async function readBlock(): Promise<{ until: number; retries: number }> {
 }
 
 async function writeBlock(until: number, retries: number) {
-  setGlobalSetting(BLOCK_KEY, JSON.stringify({ until, retries })).catch(logAndContinue('instr-queue:block-schreiben'));
+  setzeZustand(BLOCK_KEY, JSON.stringify({ until, retries })).catch(logAndContinue('instr-queue:block-schreiben'));
 }
 
 async function clearBlock() {
-  await deleteGlobalSetting(BLOCK_KEY)
+  await loescheZustand(BLOCK_KEY)
     .catch(logAndContinue('instr-queue:block-loeschen'));
 }
 
@@ -120,7 +120,7 @@ const AUSLOESER = 'instr_queue_trigger';
  * Ausführlich: docs/begruendungen/jobs/instructionQueue.ts.md#requestrun
  */
 async function requestRun() {
-  await setGlobalTrigger(AUSLOESER)
+  await setzeAusloeser(AUSLOESER)
     .catch(logAndContinue('instr-queue:trigger'));
   await require('../utils/pgNotify').notify(AUSLOESER)
     .catch(logAndContinue('instr-queue:trigger-signal'));
@@ -306,9 +306,9 @@ function start() {
   // Ausführlich: docs/begruendungen/jobs/instructionQueue.ts.md#start-aufwecken
   const aufwecken = async () => {
     try {
-      const ausloeser = await getGlobalSetting(AUSLOESER);
+      const ausloeser = await liesZustand(AUSLOESER);
       if (!ausloeser) return;
-      await deleteGlobalSetting(AUSLOESER).catch(() => {});
+      await loescheZustand(AUSLOESER).catch(() => {});
       console.log('[instr-queue] Trigger received — starting queue processing');
       if (!_running) processNext().catch(() => {});
     } catch (e) { meldeUndWeiter('instr-queue:ausloeser', e); }

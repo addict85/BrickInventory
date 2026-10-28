@@ -5,6 +5,7 @@ import { downloadSetImage } from '../utils/setImages';
 import { grundFuer, istBekanntFehlend, merkeFehlend } from '../utils/imageMisses';
 import { generateThumb } from '../utils/thumbs';
 import { SET_IMAGES_DIR } from '../utils/appPaths';
+import { setzeZustand } from '../utils/laufzustand';
 
 /**
  * Bilder, die über den Proxy angefragt wurden, im HINTERGRUND lokal ablegen —
@@ -34,7 +35,7 @@ const NOTIZ_GILT_MS = 3 * 24 * 60 * 60 * 1000;
  */
 const DURCHGANG_MAX_NOTIZEN = 500;
 
-/** Schlüssel in `global_settings` für den Stand des letzten Durchgangs. */
+/** Schlüssel in `laufzustand` für den Stand des letzten Durchgangs. */
 const LAUF_SCHLUESSEL = 'imgqueue_last_run';
 
 let _laeuft = false;
@@ -216,18 +217,11 @@ function merkeLauf(erg: StapelErgebnis): void {
  * reichlich — sie wertet den Zeitpunkt in Minuten aus.
  */
 async function speichereLauf(erg: StapelErgebnis): Promise<void> {
-  // Spaetes require() statt import ganz oben, und zwar mit Grund: db/database.ts
-  // holt initImageQueue() aus DIESER Datei. Eine import-Anweisung auf
-  // utils/settings.ts — das seinerseits db/database.ts importiert — schloesse
-  // den Kreis, und zur Ladezeit waere eine der beiden Seiten undefined
-  // (siehe test/module-layout.test.js). Ein require() im Rumpf laeuft erst beim
-  // Aufruf und ist deshalb unbedenklich.
-  const { setGlobalSetting } = require('../utils/settings') as typeof import('../utils/settings');
   // Das await gehoert hier hin: Der naechste Takt liest den Stand ueber einen
   // ANDEREN Prozess wieder aus. Ohne await kehrt der Aufrufer zurueck, bevor
   // die Zeile steht — die Kachel meldet dann „Job noch nicht gelaufen", waehrend
   // im Log Durchgaenge stehen.
-  await setGlobalSetting(LAUF_SCHLUESSEL, JSON.stringify({ zeit: Date.now(), ergebnis: erg }))
+  await setzeZustand(LAUF_SCHLUESSEL, JSON.stringify({ zeit: Date.now(), ergebnis: erg }))
     .catch(() => {});
 }
 

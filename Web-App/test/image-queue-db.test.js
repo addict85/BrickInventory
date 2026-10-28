@@ -195,7 +195,7 @@ test('die Kachel „Bild-Download (CDN)" zeigt die Katalog-Warteschlange',
     // Ohne einen Durchgang steht sie deshalb auf „idle" UND nennt den Grund.
     //
     // Zurücksetzen: Ein früherer Teilschritt dieser Datei hat den Job schon
-    // laufen lassen. Der Stand liegt seit Nachtrag 121 in `global_settings`
+    // laufen lassen. Der Stand liegt seit Migration 0063 in `laufzustand`
     // und nicht mehr nur im Modulspeicher — dort muss er also weg. (Vorher
     // genügte hier `letzterLauf.zeit = null`; genau das hat mitverdeckt, dass
     // die Kachel eine PROZESSLOKALE Zahl las. Den Nachweis, dass ein anderer
@@ -221,8 +221,8 @@ test('die Kachel „Bild-Download (CDN)" zeigt die Katalog-Warteschlange',
     // Schreiben nicht ab. Diese Zeilen hier stellen sicher, dass der Test
     // MISST, was er behauptet, statt auf einen aufgeraeumten Nachbarn zu
     // hoffen.
-    await db.run(`DELETE FROM global_settings WHERE key='imgqueue_last_run'`);
-    await db.run(`DELETE FROM global_settings WHERE key='imgredl_status'`);
+    await db.run(`DELETE FROM laufzustand WHERE schluessel='imgqueue_last_run'`);
+    await db.run(`DELETE FROM laufzustand WHERE schluessel='imgredl_status'`);
     await _req('utils/jobMonitor.js').imgDlReset().catch(() => {});
     _req('jobs/imageQueue.js').letzterLauf.zeit = null;
     const ohneLauf = await kachel();
@@ -262,15 +262,15 @@ test('die Kachel „Bild-Download (CDN)" zeigt die Katalog-Warteschlange',
     // Durchgang von eben liess `jobLaeuft` wahr sein, und die Kachel stand
     // auch mit zehn Minuten altem Nachlauf auf „running". Dieselbe
     // Fehlerklasse wie der Fehler, um den es hier geht.)
-    await db.run(`DELETE FROM global_settings WHERE key='imgqueue_last_run'`);
+    await db.run(`DELETE FROM laufzustand WHERE schluessel='imgqueue_last_run'`);
     _req('jobs/imageQueue.js').letzterLauf.zeit = null;
     await _req('utils/jobMonitor.js').imgDlReset().catch(() => {});
     assert.notEqual((await kachel()).status, 'running',
       'Vorbedingung verletzt: Ohne Nachlauf darf hier kein Betrieb stehen');
 
     const redl = async (at) => db.run(
-      `INSERT INTO global_settings (key,value) VALUES ('imgredl_status',$1)
-         ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
+      `INSERT INTO laufzustand (schluessel, wert) VALUES ('imgredl_status',$1)
+         ON CONFLICT (schluessel) DO UPDATE SET wert = EXCLUDED.wert`,
       [JSON.stringify({ running: true, phase: 'scanning', at })]);
 
     await redl(Date.now());
@@ -283,7 +283,7 @@ test('die Kachel „Bild-Download (CDN)" zeigt die Katalog-Warteschlange',
     assert.notEqual(alt.status, 'running',
       'Ein zehn Minuten alter Stand gilt noch als Betrieb — dann bleibt die ' +
       'Kachel nach einem abgebrochenen Lauf für immer auf „läuft" stehen.');
-    await db.run(`DELETE FROM global_settings WHERE key='imgredl_status'`);
+    await db.run(`DELETE FROM laufzustand WHERE schluessel='imgredl_status'`);
   } finally {
     await db.run(`DELETE FROM image_wanted`).catch(() => {});
     await db.run(`DELETE FROM users WHERE username=$1`, [NUTZER]).catch(() => {});

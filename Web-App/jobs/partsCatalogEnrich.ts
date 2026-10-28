@@ -10,7 +10,6 @@
 const db    = require('../db/database');
 import { cdnImageLimiter } from '../utils/rateLimiter';
 import { meldeUndWeiter, fehlertext, logAndContinue } from '../utils/httpError';
-import { setGlobalSetting } from '../utils/settings';
 import { neuestesInventar, inventarKandidaten } from '../utils/rbInventar';
 import { mitVersion, ohneVersion } from '../utils/setNummer';
 import { merkeBlNummer } from '../utils/blZuordnung';
@@ -33,6 +32,7 @@ type JobHttpResult = { status: number; body: string };
 const { PART_IMAGES_DIR, MINIFIG_IMAGES_DIR, SET_IMAGES_DIR } = require('../utils/appPaths');
 import { bildEndung, dateiTeil, zielImOrdner, ladeBild } from '../utils/bildDatei';
 import { ERLAUBTE_BILD_HOSTS } from '../utils/fremdeAdressen';
+import { setzeZustand } from '../utils/laufzustand';
 
 /** Ohne Browser-Kennung und Referer weist das Rebrickable-CDN Bildabrufe ab. */
 const BILD_KOPFZEILEN = {
@@ -588,7 +588,7 @@ function _fsPathFromLocal(imageLocal: string) {
  * Ausführlich: docs/begruendungen/jobs/partsCatalogEnrich.ts.md#redlsetstatus
  */
 async function _redlSetStatus(obj: Record<string, unknown>) {
-  await setGlobalSetting('imgredl_status', JSON.stringify({ ...obj, at: Date.now() }))
+  await setzeZustand('imgredl_status', JSON.stringify({ ...obj, at: Date.now() }))
     .catch(() => {});
 }
 

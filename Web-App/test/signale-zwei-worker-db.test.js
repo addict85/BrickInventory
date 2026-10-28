@@ -85,8 +85,8 @@ test('Cache-Signale erreichen jeden Worker', { concurrency: 1, timeout: 180_000 
 
   // Ohne heutige Stempel lädt der Start den Rebrickable-Katalog herunter.
   for (const k of ['rb_csv_last_sync', 'rb_part_categories_last_sync', 'rb_catalog_extras_last_sync'])
-    await db.run(`INSERT INTO global_settings (key, value) VALUES ($1, to_char(NOW(), 'YYYY-MM-DD'))
-                  ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`, [k]);
+    await db.run(`INSERT INTO laufzustand (schluessel, wert) VALUES ($1, to_char(NOW(), 'YYYY-MM-DD'))
+                  ON CONFLICT (schluessel) DO UPDATE SET wert = EXCLUDED.wert`, [k]);
 
   const HAUPT = `sig_haupt_${process.pid}`, UNTER = `sig_unter_${process.pid}`, PASS = 'Passwort12345';
   await db.run('DELETE FROM users WHERE username = ANY($1)', [[HAUPT, UNTER]]);

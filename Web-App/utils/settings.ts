@@ -181,30 +181,17 @@ async function verschluesseleGlobaleAltwerte(): Promise<number> {
 }
 
 /**
- * Auslöser-Zeile setzen (csv_sync_trigger, job_reschedule_trigger,
- * instr_queue_trigger).
- * Ausführlich: docs/begruendungen/utils/settings.ts.md#setglobaltrigger
- */
-async function setGlobalTrigger(key: string) {
-  await db.run(
-    `INSERT INTO global_settings (key, value, updated_at) VALUES ($1, NOW()::TEXT, NOW())
-     ON CONFLICT (key) DO UPDATE SET value = NOW()::TEXT, updated_at = NOW()`, [key]);
-}
-
-/**
  * Globale Einstellung entfernen.
  *
  * Es gibt einen echten Unterschied zwischen „Schlüssel fehlt" und „Wert ist
- * leer": Ein Auslöser-Schlüssel (instr_queue_trigger) gilt als abgearbeitet,
- * sobald die ZEILE weg ist — ein leerer Wert liesse die Warteschlange in einer
- * Schleife weiterlaufen. Deshalb ein eigener Weg statt setGlobalSetting(k, '').
+ * leer"; deshalb ein eigener Weg statt setGlobalSetting(k, '').
  */
 async function deleteGlobalSetting(...keys: string[]) {
   if (keys.length === 0) return;
   await db.run(`DELETE FROM global_settings WHERE key = ANY($1)`, [keys]);
 }
 
-export { WAEHRUNGEN, HAUSHALT_WAEHRUNG_SPERRE, getSetting, getGlobalSetting, setGlobalSetting, setGlobalTrigger, deleteGlobalSetting, setUserSetting, nutzerStandardZustand, globalDefaultCondition, zustandFuerPreis };
+export { WAEHRUNGEN, HAUSHALT_WAEHRUNG_SPERRE, getSetting, getGlobalSetting, setGlobalSetting, deleteGlobalSetting, setUserSetting, nutzerStandardZustand, globalDefaultCondition, zustandFuerPreis };
 
 // Einstellungen LESEN — eine Fassung fuer beide Oberflaechen
 //  Warum das hierher gehoert (Marcos Vorgabe: „die beiden Apps sollen gleich
