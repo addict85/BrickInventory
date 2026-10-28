@@ -8,6 +8,7 @@ import { getCurrentMarketPrice } from './marketPrice';
 import { downloadSetInstructions } from './instructions';
 import { zustandFuerPreis } from './settings';
 import { deleteSetRows } from '../utils/handlers/sets';
+import { legeInPapierkorb } from './papierkorb';
 import { toCsv } from './csvExport';
 import { getSetInfo } from '../clients/rebrickable';
 import * as brickset from '../clients/brickset';
@@ -17,6 +18,7 @@ import * as nachErfassung from '../jobs/nachErfassung';
 import { normalisiereSetNummer } from './setNummer';
 import { setzeLagerort, ortFuerNeuerfassung } from './lagerort';
 import { mengeSummeSql } from './bestandsmenge';
+import { bestandsMenge } from './validate';
 
 /**
  * Sets anlegen, ändern und ausgeben — der Kern hinter den Set-Routen.
@@ -374,6 +376,7 @@ async function updateSet(uid: number, sn: string, body: any) {
   const ownerId = parseInt(String(existing.user_id));
 
   const hasQuantity = body.quantity !== undefined && body.quantity !== null;
+  let papierkorb: number | null = null;
 
   if (hasQuantity) {
     // Menge und Erfassungen gehören zusammen
@@ -381,7 +384,7 @@ async function updateSet(uid: number, sn: string, body: any) {
     // priceForNewAcquisition); innerhalb läuft nur noch Datenbankarbeit.
     //  Angezeigt wird der HAUSHALT, geändert wird das EIGENE Konto
     // Ausführlich: docs/begruendungen/utils/setService.ts.md#updateset-gewuenschtgesamt
-    const gewuenschtGesamt = parseInt(body.quantity) || 0;
+    const gewuenschtGesamt = bestandsMenge(body.quantity);
     const leseFeld = await scopeIds(uid);
     const gesamtVorher = (await db.get(
       // Aus den Erfassungen, nicht aus sets.quantity — die Spalte ist mit
@@ -419,17 +422,19 @@ async function updateSet(uid: number, sn: string, body: any) {
       }
       // Der Marktpreis wird VOR der Sperre geholt (Netzaufruf); innerhalb
       // läuft nur noch Datenbankarbeit.
-      const plan = await priceForNewAcquisition(uid, sn).catch(() => ({ price: null, condition: 'N' }));
+      const plan = eigenZiel > eigenVorher
+        ? await priceForNewAcquisition(uid, sn).catch(() => ({ price: null, condition: 'N' }))
+        : { price: null, condition: 'N' };
       await withInventoryLock(uid, sn, async (tx) => {
-        // Nur noch die Erfassungen angleichen — sie SIND die Menge. Hier
-        // stand davor ein `UPDATE sets SET quantity = $1`, also zwei Stellen
-        // fuer dieselbe Zahl (utils/bestandsmenge.ts).
-        await adjustAcquisitionsToQuantity(uid, sn, eigenZiel, tx, plan);
-        // Bleibt nichts übrig, verschwindet die eigene Zeile ganz — dieselbe
-        // Regel wie beim Löschen des letzten Kaufpreises (Nachtrag 84), sonst
-        // entstünde hier wieder ein Eintrag mit Menge 0.
+        // Menge 0 ist ein Löschen und geht deshalb durch den Papierkorb wie
+        // der Löschknopf — ein Tippfehler im Mengenfeld soll sich
+        // zurückholen lassen.
         if (eigenZiel === 0) {
+          papierkorb = await legeInPapierkorb(tx, 'set', uid, sn);
           await deleteSetRows(tx, [uid], sn);
+        } else {
+          // Die Erfassungen SIND die Menge (utils/bestandsmenge.ts).
+          await adjustAcquisitionsToQuantity(uid, sn, eigenZiel, tx, plan);
         }
       });
     }
@@ -479,7 +484,7 @@ async function updateSet(uid: number, sn: string, body: any) {
     // setQuantity weiter oben.
     mengeSummeSql('blickfeld'),
     [await scopeIds(uid), sn]).catch(() => null);
-  return { quantity: nachher?.q ?? 0 };
+  return { quantity: nachher?.q ?? 0, ...(papierkorb ? { papierkorb } : {}) };
 }
 
 // Shared logic to build the Sets CSV export content. Used by both the

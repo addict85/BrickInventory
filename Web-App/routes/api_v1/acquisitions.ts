@@ -21,6 +21,7 @@ import { sendeFehler, fehlerWerfen } from '../../utils/fehlerTexte';
 import type { FehlerCode } from '../../utils/fehlerTexte';
 import { blAbrufNummer } from '../../utils/blZuordnung';
 import { mengeDesSets, mengeDerPosition } from '../../utils/bestandsmenge';
+import { bestandsMenge } from '../../utils/validate';
 const router = express.Router();
 
 type AcqConfig = {
@@ -212,7 +213,7 @@ async function withSetAggregate(uid: number, cfgTable: string, keys: any[], payl
         }
 
         if (quantity !== undefined && quantity !== null) {
-          const newQty = Math.max(1, parseInt(quantity) || 1);
+          const newQty = bestandsMenge(quantity, 1);
           await tx.run(`UPDATE ${cfg.table} SET quantity=$1 WHERE id=$2`, [newQty, id]);
           const q = await mengeDesBestands(tx, cfg, ownerId, keys);
           // Auch hier: Eine Erfassung auf 0 zu setzen ist zwar durch

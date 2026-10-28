@@ -359,7 +359,7 @@ async function updateManualPart(uid: number, partNumber: string, colorId: number
   if (!existing) { const e = Object.assign(new Error('Teil nicht gefunden oder nicht manuell hinzugefügt'), { status: 404 }); throw e; }
 
   if (body.quantity !== undefined) {
-    const newQty = parseInt(body.quantity) || 1;
+    const newQty = bestandsMenge(body.quantity, 1);
     // Marktpreis VOR der Sperre holen (Netzaufruf) und nur, wenn die Menge
     // steigt — das schont das BrickLink-Kontingent.
     const cond = await zustandFuerPreis(undefined, existing.condition, uid);
@@ -445,6 +445,7 @@ import { sendeFehler } from '../utils/fehlerTexte';
 import { setzeLagerort, ortFuerNeuerfassung } from '../utils/lagerort';
 import { merkeTeil, merkeTeilFarbe, katalogTeil } from '../utils/katalogPflege';
 import { mengeJoin, mengeAus, teilmengeJoin, teilmengeAus } from '../utils/bestandsmenge';
+import { bestandsMenge } from '../utils/validate';
 
 router.post('/import/csv', csvEmpfang.single('file'), async (req: LoggedInRequest, res) => {
   if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');

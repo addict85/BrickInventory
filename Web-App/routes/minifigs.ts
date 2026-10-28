@@ -38,6 +38,7 @@ import { setzeLagerort, ortFuerNeuerfassung } from '../utils/lagerort';
 import { merkeFigur, katalogFigur } from '../utils/katalogPflege';
 
 import { merkeBlNummer, blJoin, blNummerSql } from '../utils/blZuordnung';
+import { bestandsMenge } from '../utils/validate';
 
 router.use(requireLogin);
 
@@ -294,7 +295,7 @@ async function updateManualFig(uid: number, figNumber: string, body: any) {
   if (!existing) { const e = Object.assign(new Error('Minifigur nicht gefunden oder nicht manuell hinzugefügt'), { status: 404 }); throw e; }
 
   if (body.quantity !== undefined) {
-    const newQty = parseInt(body.quantity) || 1;
+    const newQty = bestandsMenge(body.quantity, 1);
     // Marktpreis vor der Sperre und nur bei steigender Menge — wie bei den Teilen.
     const cond = await zustandFuerPreis(undefined, existing.condition, uid);
     const bisher = (await db.get(
