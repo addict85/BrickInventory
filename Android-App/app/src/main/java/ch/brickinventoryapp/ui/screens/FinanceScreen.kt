@@ -39,7 +39,7 @@ fun FinanceScreen(
     /** Klick auf ein Set — nur der Graph kennt den NavController. */
     onSetClick: (String) -> Unit = {},
     /** Klick auf einen manuell erfassten Eintrag, ebenso. */
-    onManualClick: (type: String, id: String, colorId: Int) -> Unit = { _, _, _ -> },
+    onManualClick: (type: String, id: String, colorId: Int, name: String?) -> Unit = { _, _, _, _ -> },
     /** Scroll-Zustand von aussen, siehe Nachtrag 92. */
     listState: LazyListState = rememberLazyListState(),
 ) {

@@ -126,14 +126,10 @@ fun NavGraphBuilder.toolsGraph(
                     // für die Leiste kennt die Bewertung, die diese Liste
                     // ohnehin geladen hat — sonst stünde dort bis zum ersten
                     // Laden die nackte Nummer.
-                    onManualClick = { type, id, colorId ->
-                        // Aus der Bewertung, die diese Liste zeigt. Fehlt sie
-                        // noch, steht die Nummer da.
-                        val name = if (type == "fig")
-                            financeState.figsValuation?.figs?.find { it.figNumber == id }?.figName
-                        else
-                            financeState.partsValuation?.parts
-                                ?.find { it.partNumber == id && it.colorId == colorId }?.partName
+                    // Den Namen gibt die angeklickte Zeile mit; die Liste der
+                    // manuellen Stuecke hat ausserhalb der Finanzen eine eigene
+                    // Quelle (test/manuell-zustand-eine-regel-db.test.js).
+                    onManualClick = { type, id, colorId, name ->
                         navController.navigate(
                             Screen.ManualItemDetail.createRoute(type, id, colorId, name ?: id))
                     },
