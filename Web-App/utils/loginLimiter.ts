@@ -195,13 +195,19 @@ async function _clear(key: string): Promise<void> {
 /**
  * Name und E-Mail desselben Kontos zählen gemeinsam — sonst gälte jede Grenze
  * doppelt. Unbekannte Namen zählen unter sich selbst.
+ *
+ * Kleingeschrieben wird in PostgreSQL wie beim Login selbst: JavaScript macht
+ * aus „İ“ zwei Zeichen, PostgreSQL ein „i“. Mit zwei Regeln fand der Login das
+ * Konto, die Sperre aber nicht, und jede Schreibweise bekam frische Zähler.
  */
 async function kontoKennung(username: unknown): Promise<string> {
-  const roh = einzelwert(username).toLowerCase();
-  const u = await db.get(
-    'SELECT id FROM users WHERE lower(username) = $1 OR lower(email) = $1 ORDER BY id LIMIT 1', [roh]
+  const z = await db.get(`
+    SELECT lower($1::text) AS kennung,
+           (SELECT id FROM users WHERE lower(username) = lower($1::text) OR lower(email) = lower($1::text)
+             ORDER BY id LIMIT 1) AS id`, [einzelwert(username)]
   ).catch(() => null);
-  return u ? `konto:${u.id}` : roh;
+  if (z?.id) return `konto:${z.id}`;
+  return z?.kennung ?? einzelwert(username).toLowerCase();
 }
 
 async function checkLoginAllowed(

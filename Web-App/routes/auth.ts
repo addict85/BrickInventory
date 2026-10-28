@@ -799,8 +799,9 @@ router.post('/forgot-password', ipThrottle('forgot-password', 5, 60 * 60 * 1000)
     getSetting(user.id, 'language', 'de')
       .catch(() => 'de')
       .then((lang: unknown) => sendPasswordResetMail(
-        // resetLinkMoeglich() oben sichert die Adresse zu.
-        email, user.first_name || user.username, token, getBaseUrl(req)!, String(lang ?? 'de')))
+        // An die GESPEICHERTE Adresse: Die eingegebene passt per LOWER() auch
+        // als Unicode-Variante (Kelvin-K, „İ“) und kann ein fremdes Postfach sein.
+        user.email, user.first_name || user.username, token, getBaseUrl(req)!, String(lang ?? 'de')))
       .catch((e: any) => console.error('[forgot-password] Mailversand fehlgeschlagen:', e?.message));
 
     res.json({ success: true, message: 'Falls die E-Mail existiert, wurde ein Link gesendet.' });
