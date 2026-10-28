@@ -25,11 +25,11 @@ import ch.brickinventoryapp.util.fmtUhrzeit
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
-import ch.brickinventoryapp.ui.MainViewModel
+import ch.brickinventoryapp.ui.AppViewModel
 import ch.brickinventoryapp.ui.viewmodel.MonitoringViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import ch.brickinventoryapp.ui.*  // Feature-Extensions (loadSetDetail, updateQuantity, …)
+import ch.brickinventoryapp.ui.*
 import kotlinx.coroutines.launch
 import ch.brickinventoryapp.util.NumericInput
 import ch.brickinventoryapp.ui.theme.Abstaende
@@ -134,7 +134,7 @@ internal fun BricksetQueueRow(
 // Seit es vier Designs gibt, passen die Chips nicht mehr in eine Zeile.
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun CacheAndLimitsSection(vm: MainViewModel, onSnack: (String) -> Unit = {}) {
+fun CacheAndLimitsSection(vm: AppViewModel, onSnack: (String) -> Unit = {}) {
     val scope = rememberCoroutineScope()
     val cacheSavedMsg  = stringResource(R.string.monitoring_cache_saved)
     val cacheGeleertMsg = stringResource(R.string.monitoring_cache_cleared)

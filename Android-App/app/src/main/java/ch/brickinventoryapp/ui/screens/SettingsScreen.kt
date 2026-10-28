@@ -22,9 +22,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.R
-import ch.brickinventoryapp.ui.MainViewModel
+import ch.brickinventoryapp.ui.AppViewModel
 import ch.brickinventoryapp.ui.viewmodel.EinstellungenViewModel
-import ch.brickinventoryapp.ui.*  // Feature-Extensions (saveSettings, setLanguage, …)
+import ch.brickinventoryapp.ui.*
 import ch.brickinventoryapp.ui.theme.Abstaende
 import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -94,7 +94,7 @@ fun SettingsScreen(
     // `updateZustand`, nicht `update`: dieselbe Namensfalle.
     val selbstUpdate: UpdateViewModel = aktivitaetsViewModel()
     // Sprache und Design bei Dunkelheit gehören dem Gerät, nicht dem Konto.
-    val app: MainViewModel = aktivitaetsViewModel()
+    val app: AppViewModel = aktivitaetsViewModel()
     val updateZustand by selbstUpdate.updateState.collectAsStateWithLifecycle()
 
     val currency = appState.currency

@@ -30,11 +30,11 @@ import ch.brickinventoryapp.util.NumericInput
 import ch.brickinventoryapp.util.resolveThumbUrl
 import coil3.ImageLoader
 import ch.brickinventoryapp.util.fmtDatum
-import ch.brickinventoryapp.ui.MainViewModel
+import ch.brickinventoryapp.ui.AppViewModel
 import ch.brickinventoryapp.ui.viewmodel.EinstellungenViewModel
 import ch.brickinventoryapp.ui.viewmodel.HaushaltViewModel
 import ch.brickinventoryapp.ui.viewmodel.aktivitaetsViewModel
-import ch.brickinventoryapp.ui.*  // Feature-Extensions (saveSettings, setLanguage, …)
+import ch.brickinventoryapp.ui.*
 import ch.brickinventoryapp.util.passwortZuKurz
 import ch.brickinventoryapp.ui.theme.Abstaende
 import kotlinx.coroutines.launch
@@ -234,7 +234,7 @@ fun HaushaltUnterseite(
 /** Konto und angemeldete Geraete — beides betrifft den Zugang. */
 @Composable
 fun KontoUnterseite(
-    vm: MainViewModel,
+    vm: AppViewModel,
     snackbarHostState: SnackbarHostState,
     // An das Ziel gebunden: Profil, Geräte und ein halb eingerichteter
     // zweiter Faktor leben nur, solange die Seite offen ist.
@@ -702,7 +702,7 @@ private fun LagerorteCard(vm: EinstellungenViewModel) {
  * hier noch einmal etwas tun zu muessen.
  */
 @Composable
-private fun PreisalarmCard(vm: MainViewModel) {
+private fun PreisalarmCard(vm: AppViewModel) {
     val context = androidx.compose.ui.platform.LocalContext.current
     // Siehe AcquisitionManagementScreen: LocalResources statt Context, weil
     // Lint LocalContextGetResourceValueCall als ERROR meldet und der

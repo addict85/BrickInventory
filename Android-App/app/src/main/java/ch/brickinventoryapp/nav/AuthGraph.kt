@@ -51,7 +51,6 @@ import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
 import ch.brickinventoryapp.*
-import ch.brickinventoryapp.ui.MainViewModel
 import ch.brickinventoryapp.ui.viewmodel.AnmeldungViewModel
 import ch.brickinventoryapp.ui.viewmodel.aktivitaetsViewModel
 import ch.brickinventoryapp.ui.ManualItemDetailUiState
@@ -67,7 +66,6 @@ import ch.brickinventoryapp.ui.ManualItemDetailUiState
  * ./gradlew assembleDebug auf.
  */
 fun NavGraphBuilder.authGraph(
-    vm: MainViewModel,
     navController: NavHostController,
 ) {
         composable(Screen.Setup.route) {

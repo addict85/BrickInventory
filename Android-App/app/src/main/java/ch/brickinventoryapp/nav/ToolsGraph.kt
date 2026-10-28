@@ -51,7 +51,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
 import ch.brickinventoryapp.*
-import ch.brickinventoryapp.ui.MainViewModel
+import ch.brickinventoryapp.ui.AppViewModel
 import ch.brickinventoryapp.ui.viewmodel.FinanzViewModel
 import ch.brickinventoryapp.ui.viewmodel.EinstellungenViewModel
 import ch.brickinventoryapp.ui.viewmodel.HaushaltViewModel
@@ -69,7 +69,7 @@ import ch.brickinventoryapp.ui.ManualItemDetailUiState
  * ./gradlew assembleDebug auf.
  */
 fun NavGraphBuilder.toolsGraph(
-    vm: MainViewModel,
+    vm: AppViewModel,
     gutscheinVm: ch.brickinventoryapp.ui.viewmodel.GutscheinViewModel,
     navController: NavHostController,
     imageLoader: coil3.ImageLoader,

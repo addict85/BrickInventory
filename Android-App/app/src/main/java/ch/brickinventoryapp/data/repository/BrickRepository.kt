@@ -55,7 +55,7 @@ sealed class Result<out T> {
          * 115, nur an der Stelle, die alle Fehler formuliert.
          *
          * Jetzt entscheidet diese Schicht nur noch, WAS passiert ist; WIE es
-         * heisst, entscheidet die Anzeige (siehe MainViewModel.meldung()).
+         * heisst, entscheidet die Anzeige (siehe AppTexte.meldung()).
          *
          * `null` heisst: Der Text kommt vom Server und wird durchgereicht — der
          * kennt seine Fälle genauer als jede Aufzählung hier (Kaufdatum-Konflikt,

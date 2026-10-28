@@ -32,7 +32,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.R
 import ch.brickinventoryapp.ui.viewmodel.TeileViewModel
-import ch.brickinventoryapp.ui.*  // Feature-Extensions (loadSets, setScope, …)
+import ch.brickinventoryapp.ui.*
 import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.data.model.Part
 import ch.brickinventoryapp.data.model.PartsStats
@@ -475,7 +475,7 @@ fun SectionHeader(text: String) {
  * daneben; sieben Spalten nebeneinander passen auf kein Telefon.
  *
  * „In Sets" ist nur gefuellt, wenn der Lader `with_sets=1` mitgegeben hat, und
- * das tut er nur in dieser Ansicht (loadParts in PartsFeature.kt).
+ * das tut er nur in dieser Ansicht (TeileQuelle in ui/Teile.kt).
  */
 @Composable
 fun PartTableRow(part: Part, serverUrl: String, imageLoader: ImageLoader,

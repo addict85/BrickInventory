@@ -60,7 +60,7 @@ import ch.brickinventoryapp.data.model.PriceHistoryResponse
 import ch.brickinventoryapp.data.model.SetItem
 import ch.brickinventoryapp.data.model.SetPriceResponse
 import ch.brickinventoryapp.ui.viewmodel.SetDetailViewModel
-import ch.brickinventoryapp.ui.*  // Feature-Extensions (loadSets, setScope, …)
+import ch.brickinventoryapp.ui.*
 import ch.brickinventoryapp.ui.SetDetailUiState
 import kotlinx.coroutines.CoroutineScope
 import androidx.compose.foundation.lazy.LazyRow

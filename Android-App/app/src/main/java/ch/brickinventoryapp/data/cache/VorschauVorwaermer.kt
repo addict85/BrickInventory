@@ -40,9 +40,8 @@ object Vorwaermung
  *
  * ── Was hier NICHT entschieden wird ─────────────────────────────────────────
  *
- * WELCHE Bilder — das steht in ui/VorwaermenFeature.kt und gehoert dorthin:
- * Die Auswahl haengt am Kontofilter des Haushalts (`scopeFor`), und der lebt
- * im Zustand des MainViewModel. Die erste Fassung fragte die Reiter hier
+ * WELCHE Bilder — das steht in ui/Vorwaermen.kt und gehoert dorthin:
+ * Die Auswahl haengt am Kontofilter des Haushalts, und der lebt im Blickfeld. Die erste Fassung fragte die Reiter hier
  * unten selbst ab und liess den Filter dabei weg; GalerieLaedtGefiltertTest
  * und ListenfilterImZustandTest haben genau das gemeldet. Zu Recht: Ein
  * zweiter Ladeweg, der den Filter nicht kennt, ist der Fehler, gegen den

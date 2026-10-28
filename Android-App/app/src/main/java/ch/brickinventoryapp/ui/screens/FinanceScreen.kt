@@ -22,7 +22,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.R
 import ch.brickinventoryapp.ui.viewmodel.FinanzViewModel
-import ch.brickinventoryapp.ui.*  // Feature-Extensions (loadSets, setScope, …)
+import ch.brickinventoryapp.ui.*
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import coil3.compose.AsyncImage

@@ -52,7 +52,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
 import ch.brickinventoryapp.*
-import ch.brickinventoryapp.ui.MainViewModel
+import ch.brickinventoryapp.ui.AppViewModel
 import ch.brickinventoryapp.ui.viewmodel.GalerieViewModel
 import ch.brickinventoryapp.ui.viewmodel.TeileViewModel
 import ch.brickinventoryapp.ui.viewmodel.SetDetailViewModel
@@ -71,7 +71,7 @@ import ch.brickinventoryapp.ui.ManualItemDetailUiState
  * ./gradlew assembleDebug auf.
  */
 fun NavGraphBuilder.collectionGraph(
-    vm: MainViewModel,
+    vm: AppViewModel,
     navController: NavHostController,
     imageLoader: coil3.ImageLoader,
     bottomNavItems: List<Triple<Screen, @Composable () -> Unit, String>>,

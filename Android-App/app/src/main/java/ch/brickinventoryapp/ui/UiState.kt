@@ -3,7 +3,7 @@ package ch.brickinventoryapp.ui
 import ch.brickinventoryapp.data.model.*
 
 /**
- * UI-Zustandsklassen — aus MainViewModel.kt extrahiert.
+ * UI-Zustandsklassen der App und ihrer Bereichs-ViewModels.
  * AppUiState ist der Haupt-Zustand; CsvImportUiState, SetDetailUiState
  * und der Snackbar-Flow sind bewusst separat, damit deren hochfrequente
  * Updates nicht alle AppUiState-Konsumenten rekomponieren.

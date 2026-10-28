@@ -44,7 +44,7 @@ class CsvImportSseClient @Inject constructor(
         /** Verbindungsfehler — Aufrufer soll auf Polling zurückfallen. */
         /**
          * Verbindungsfehler. [technisch] ist AUSSCHLIESSLICH fürs Log — der
-         * Aufrufer (CsvImportFeature) setzt daraufhin nur `sseFailed = true`
+         * Aufrufer (AppViewModel.startCsvImportWatcher) setzt daraufhin nur `sseFailed = true`
          * und fällt auf Polling zurück; dem Nutzer wird nichts davon gezeigt.
          * Deshalb steht hier kein übersetzbarer Text, sondern eine Ursache in
          * technischer Form (Nachtrag 116).

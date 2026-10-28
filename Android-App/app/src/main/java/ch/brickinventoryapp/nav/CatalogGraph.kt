@@ -51,7 +51,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
 import ch.brickinventoryapp.*
-import ch.brickinventoryapp.ui.MainViewModel
+import ch.brickinventoryapp.ui.AppViewModel
 import ch.brickinventoryapp.ui.viewmodel.MerklisteViewModel
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import ch.brickinventoryapp.ui.viewmodel.CatalogViewModel
@@ -68,7 +68,7 @@ import ch.brickinventoryapp.ui.ManualItemDetailUiState
  * ./gradlew assembleDebug auf.
  */
 fun NavGraphBuilder.catalogGraph(
-    vm: MainViewModel,
+    vm: AppViewModel,
     katalog: CatalogViewModel,
     navController: NavHostController,
     imageLoader: coil3.ImageLoader,
@@ -171,7 +171,7 @@ fun NavGraphBuilder.catalogGraph(
                     katalog.markiereAufgenommen(sn, qty)
                 },
                 // Merkposten UND Preisalarm in einem Griff — die Regel dahinter
-                // steht in ui/MerklisteFeature.kt, nicht hier.
+                // steht im MerklisteViewModel, nicht hier.
                 onWish = { sn, zustand, richtung, schwelle, konto ->
                     merkliste.merkpostenMitAlarm(sn, zustand, richtung, schwelle, konto)
                 },

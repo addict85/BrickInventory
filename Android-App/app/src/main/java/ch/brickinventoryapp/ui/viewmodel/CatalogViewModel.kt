@@ -50,7 +50,7 @@ private const val CATALOG_RETRY_DELAY_MS = 500L
  * „besitze ich", und die Liste bekaeme es nie zu sehen. Beim Monitoring war
  * die Bindung an den Eintrag richtig, hier waere sie ein Fehler.
  *
- * Deshalb wird es wie MainViewModel von der Activity gehalten und
+ * Deshalb wird es wie das AppViewModel von der Activity gehalten und
  * hereingereicht. Die Lebensdauer bleibt damit exakt die bisherige — diese
  * Aenderung soll den Aufbau aendern, nicht das Verhalten.
  *
@@ -73,7 +73,7 @@ class CatalogViewModel @Inject constructor(
     val state = _catalogState.asStateFlow()
 
     /**
-     * Meldungen fuer die Snackbar — jetzt DERSELBE Fluss wie im MainViewModel.
+     * Meldungen fuer die Snackbar — derselbe Fluss wie in allen ViewModels.
      *
      * Vorher hatte dieses ViewModel einen eigenen, und der Navigationsgraph
      * musste ihn weiterleiten und quittieren: zwei gleichlautende Bloecke in
@@ -84,7 +84,7 @@ class CatalogViewModel @Inject constructor(
     private val _snackbar = meldungen.fluss
 
     /**
-     * Text in der SPRACHE DER APP — dieselbe Regel wie in MainViewModel.text().
+     * Text in der SPRACHE DER APP — dieselbe Regel wie in AppTexte.text().
      *
      * `ctx` ist der Application-Context, und den lokalisiert
      * AppCompatDelegate.setApplicationLocales() unterhalb von Android 13
@@ -115,14 +115,14 @@ class CatalogViewModel @Inject constructor(
     private var catalogGeneration = 0
 
     /**
-     * Derselbe Satz wie in MainViewModel.meldung(), ueber dieselbe gepruefte
+     * Derselbe Satz wie in AppTexte.meldung(), ueber dieselbe gepruefte
      * Zuordnung fehlerTextId(). Bewusst hier und nicht weitergereicht: Die
      * Zuordnung Ursache -> Text ist die gemeinsame Stelle, nicht diese vier
      * Zeilen. Die Servermeldung hat Vorrang — sie kennt ihren Fall genauer
      * und kommt in der Sprache des Kontos.
      */
     /**
-     * Wie MainViewModel.meldungFuerSnackbar() — null heisst: Der Kanal schweigt.
+     * Wie Texte.meldungFuerSnackbar() — null heisst: Der Kanal schweigt.
      *
      * Dieses ViewModel hat dieselben zwei Faelle wie das grosse: Ein 401, der
      * hier ankommt, ist von der Sitzungsschicht schon behandelt (Begruendung in

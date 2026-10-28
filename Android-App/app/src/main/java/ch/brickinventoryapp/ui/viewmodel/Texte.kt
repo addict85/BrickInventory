@@ -9,8 +9,7 @@ import ch.brickinventoryapp.util.meldetDieSitzungsschicht
  *
  * Eine Schnittstelle statt des Contexts, damit sich ein ViewModel ohne Gerät
  * bauen und ausführen lässt: Der Test reicht eine Fassung herein, die die
- * Ressourcennummer zurückgibt. Die Regeln selbst sind dieselben wie in
- * MainViewModel.text()/meldungFuerSnackbar().
+ * Ressourcennummer zurückgibt. Die Fassung für das Gerät ist AppTexte.
  */
 interface Texte {
     fun text(id: Int, vararg args: Any?): String

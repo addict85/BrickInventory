@@ -38,7 +38,7 @@ import ch.brickinventoryapp.ui.viewmodel.UpdateViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BrickInventoryManagerApp(
-    vm: MainViewModel,
+    vm: AppViewModel,
     // Der Katalog haelt seinen Zustand selbst; die Activity haelt beide, damit
     // Liste und Detail dieselbe Instanz sehen (siehe CatalogViewModel).
     katalog: CatalogViewModel,
@@ -219,7 +219,7 @@ fun BrickInventoryManagerApp(
         // nur einmal, ein durchgereichter Wert wäre für immer die Momentaufnahme
         // vom ersten Frame. Die Ziele lesen den Zustand selbst per
         // collectAsStateWithLifecycle() — so wie es der Katalog schon immer tat.
-        authGraph(vm, navController)
+        authGraph(navController)
         collectionGraph(vm, navController, imageLoader, bottomNavItems, snackbarHostState,
             galleryGridState, partsGridState, minifigsGridState)
         catalogGraph(vm, katalog, navController, imageLoader, bottomNavItems, snackbarHostState)

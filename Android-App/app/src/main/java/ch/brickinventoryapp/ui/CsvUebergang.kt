@@ -4,7 +4,7 @@ package ch.brickinventoryapp.ui
  * Was folgt aus einer CSV-Statusmeldung?
  *
  * ── Warum das eine eigene Datei ist (Nachtrag 110, Zuschnitt aus 117) ────────
- * Die Regel dahinter ist in `MainViewModel.handleCsvStatus()` entstanden und
+ * Die Regel dahinter ist in `handleCsvStatus()` (AppViewModel) entstanden und
  * war dort nur durch Quelltext-Lesen prüfbar: `CsvStatusReloadTest` suchte
  * nach der Zeichenfolge `if (!running && warVorherAktiv`. Das hält die
  * FORMULIERUNG fest, nicht das Verhalten — eine gleichwertige Umschreibung

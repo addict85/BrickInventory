@@ -13,7 +13,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
-/** In der Sprache der App, nicht des Systems — siehe MainViewModel.text(). */
+/** In der Sprache der App, nicht des Systems — siehe LanguageManager.localizedContext(). */
 class AppTexte @Inject constructor(
     @param:ApplicationContext private val ctx: Context,
     private val prefs: PreferencesManager,
