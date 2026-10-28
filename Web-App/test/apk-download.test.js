@@ -92,16 +92,28 @@ test('3. der Knopf trägt kein fremdes Markenzeichen', () => {
   assert.match(knopf, /<svg /, 'Das Symbol kommt nicht als eigenes SVG mit.');
 });
 
-test('signiert und veröffentlicht wird nur von main', () => {
+test('signiert und veröffentlicht wird nur von main, und Gradle sieht den Schlüssel nie', () => {
   // Ein signiertes APK im Kanal apk-neuste ist ein Update für jede installierte
   // App. Von einem Zweig aus wäre das ungeprüfter Code an Review und Merge vorbei.
-  // Gegenprobe (28.10.2026): die main-Bedingung am Release-Schritt entfernt → rot.
+  // Gegenproben (28.10.2026): die main-Bedingung am Release-Schritt entfernt → rot;
+  // BRICK_KEYSTORE_PASSWORT wieder im Schritt „Release bauen“ → rot.
   const yml = fs.readFileSync(path.join(ROOT, '..', '.github', 'workflows', 'android.yml'), 'utf8');
-  const bedingung = (schritt) => {
-    const i = yml.indexOf(`- name: ${schritt}`);
-    assert.ok(i >= 0, `Schritt „${schritt}“ nicht gefunden`);
-    return yml.slice(i).split('\n').slice(1, 4).find(z => /^\s*if:/.test(z)) || '';
+  const schritt = (name) => {
+    const i = yml.indexOf(`- name: ${name}`);
+    assert.ok(i >= 0, `Schritt „${name}“ nicht gefunden`);
+    const rest = yml.slice(i + 1);
+    const ende = rest.search(/\n      - name: /);
+    return ende < 0 ? rest : rest.slice(0, ende);
   };
-  for (const schritt of ['Schlüsselspeicher bereitstellen', 'BrickInventory.apk als Release bereitstellen'])
-    assert.match(bedingung(schritt), /github\.ref == 'refs\/heads\/main'/, `${schritt}: läuft auch auf Zweigen`);
+  assert.match(schritt('BrickInventory.apk als Release bereitstellen'),
+    /if:.*github\.ref == 'refs\/heads\/main'/, 'Release läuft auch auf Zweigen');
+  const signieren = schritt('Signieren');
+  for (const geheim of ['KEYSTORE_BASE64', 'KEYSTORE_PASSWORT', 'KEY_ALIAS', 'KEY_PASSWORT'])
+    assert.match(signieren, new RegExp(`github\\.ref == 'refs/heads/main' && secrets\\.${geheim}`),
+      `${geheim}: auch auf Zweigen erreichbar`);
+  assert.match(signieren, /ECHT: \$\{\{ env\.HAT_SCHLUESSEL == 'true' && github\.ref == 'refs\/heads\/main' \}\}/);
+  // Nur dieser Schritt nennt die Secrets; der Bau mit allen Gradle-Plugins nicht.
+  const andere = yml.split(/\n      - name: /).filter(t => !t.startsWith('Signieren'))
+    .join('\n').split('\n').filter(z => /secrets\.(KEYSTORE_PASSWORT|KEY_ALIAS|KEY_PASSWORT)|secrets\.KEYSTORE_BASE64 [^!]/.test(z));
+  assert.deepEqual(andere, [], 'Signier-Secrets ausserhalb des Signierschritts');
 });

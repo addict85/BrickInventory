@@ -1,0 +1,12 @@
+# Actions stehen per Commit-SHA, Basis-Images per Digest fest. Beides veraltet
+# sonst still; Dependabot schlägt die neuen Werte wöchentlich als PR vor.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+  - package-ecosystem: docker
+    directory: /Web-App
+    schedule:
+      interval: weekly

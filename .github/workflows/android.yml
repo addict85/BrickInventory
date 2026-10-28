@@ -71,14 +71,14 @@ jobs:
       HAT_SCHLUESSEL: ${{ secrets.KEYSTORE_BASE64 != '' }}
 
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       # JDK 17 — passt zu sourceCompatibility/targetCompatibility und jvmTarget
       # im app/build.gradle.kts. Verlangt AGP eine neuere Fassung, steht das
       # klar im Protokoll; dann hier auf '21' stellen. Die Zahlen im
       # Buildskript bleiben trotzdem auf 17.
       - name: JDK einrichten
-        uses: actions/setup-java@v6
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6
         with:
           distribution: temurin
           java-version: '17'
@@ -142,7 +142,7 @@ jobs:
       # Legt den Gradle-Cache an. Ohne das lädt jeder Lauf alle Abhängigkeiten
       # neu — mehrere Minuten pro Bau.
       - name: Gradle einrichten
-        uses: gradle/actions/setup-gradle@v6
+        uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6
 
       # Auf Windows committete Dateien tragen das Ausführbar-Bit oft nicht.
       - name: gradlew ausführbar machen
@@ -208,33 +208,10 @@ jobs:
           summe=$(grep -E '[0-9]+ tests completed' "$RUNNER_TEMP/test.log" | tr '\n' ' ' || true)
           echo "::notice title=Testsumme::${summe:-keine Summenzeile — der Lauf ist vor dem ersten Test gescheitert}"
 
-      # ── Signatur ────────────────────────────────────────────────────────────
-      #
-      # Der Schlüsselspeicher liegt als Base64 in einem Repository-Secret und
-      # wird hier in eine Datei ausserhalb des Arbeitsverzeichnisses geschrieben
-      # (RUNNER_TEMP) — so kann er nicht versehentlich ins APK oder in ein
-      # Artefakt geraten.
-      #
-      # Fehlt das Secret, wird der Schritt übersprungen. Der Bau läuft dann
-      # trotzdem durch und liefert ein UNSIGNIERTES APK; der letzte Schritt sagt
-      # das deutlich, statt still etwas Uninstallierbares hochzuladen.
-      # Signiert wird nur auf main: Ein signiertes APK ist ein Update für jede
-      # installierte App, und das darf nur geprüfter, gemergter Code sein. Ein
-      # Zweig baut unsigniert — Übersetzen und Testen bleiben dort erhalten.
-      - name: Schlüsselspeicher bereitstellen
-        if: env.HAT_SCHLUESSEL == 'true' && github.ref == 'refs/heads/main'
-        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > "$RUNNER_TEMP/brick.jks"
-
+      # Ohne Signier-Secrets: Gradle und alle Plugins laufen hier, und keines
+      # davon soll den Schlüssel sehen. Signiert wird im Schritt danach.
       - name: Release bauen
         id: bau
-        env:
-          # Immer gesetzt, auch ohne Secret: Das Buildskript prüft, ob die
-          # Datei EXISTIERT, und baut sonst unsigniert. Eine Fallunterscheidung
-          # an zwei Stellen wäre eine mehr, als es braucht.
-          BRICK_KEYSTORE_PFAD: ${{ runner.temp }}/brick.jks
-          BRICK_KEYSTORE_PASSWORT: ${{ secrets.KEYSTORE_PASSWORT }}
-          BRICK_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          BRICK_KEY_PASSWORT: ${{ secrets.KEY_PASSWORT }}
         # tee wie bei den Unit-Tests, aus einem zweiten Grund: Die
         # Warnungen des Übersetzers stehen NUR hier. Ohne Mitschnitt kann
         # `warnungen-zaehlen.py` weiter unten nichts zählen — und „0
@@ -246,6 +223,53 @@ jobs:
           set -o pipefail
           ./gradlew --no-daemon assembleRelease bundleRelease 2>&1 \
             | tee "$RUNNER_TEMP/bau.log"
+
+      # ── Signieren, getrennt vom Bau ─────────────────────────────────────────
+      #
+      # Ein signiertes APK ist ein Update für jede installierte App; mit dem
+      # echten Schlüssel deshalb nur auf main. Auf Zweigen läuft derselbe Ablauf
+      # mit einem Wegwerfschlüssel gegen eine Kopie: So ist der Schritt vor dem
+      # Merge erprobt, und das Zweig-APK bleibt unsigniert.
+      - name: Signieren
+        if: steps.bau.outcome == 'success'
+        env:
+          ECHT: ${{ env.HAT_SCHLUESSEL == 'true' && github.ref == 'refs/heads/main' }}
+          KEYSTORE_BASE64: ${{ github.ref == 'refs/heads/main' && secrets.KEYSTORE_BASE64 || '' }}
+          KS_PASS: ${{ github.ref == 'refs/heads/main' && secrets.KEYSTORE_PASSWORT || '' }}
+          KEY_ALIAS: ${{ github.ref == 'refs/heads/main' && secrets.KEY_ALIAS || '' }}
+          KEY_PASS: ${{ github.ref == 'refs/heads/main' && secrets.KEY_PASSWORT || '' }}
+        run: |
+          set -euo pipefail
+          WERKZEUGE=$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -1)
+          APKS=app/build/outputs/apk/release
+          AAB=app/build/outputs/bundle/release/app-release.aab
+          KS="$RUNNER_TEMP/signatur.jks"
+          trap 'rm -f "$KS"' EXIT
+          if [ "$ECHT" = "true" ]; then
+            printf '%s' "$KEYSTORE_BASE64" | base64 -d > "$KS"
+            ZIEL_APK="$APKS/app-release.apk"; ZIEL_AAB="$AAB"
+          else
+            KS_PASS=probe-$RANDOM$RANDOM; KEY_PASS=$KS_PASS; KEY_ALIAS=probe
+            keytool -genkeypair -keystore "$KS" -storepass "$KS_PASS" -keypass "$KEY_PASS" \
+              -alias probe -keyalg RSA -keysize 2048 -validity 1 -dname CN=Probe >/dev/null
+            ZIEL_APK="$RUNNER_TEMP/probe.apk"; ZIEL_AAB="$RUNNER_TEMP/probe.aab"
+          fi
+          export KS_PASS KEY_PASS
+          # Ausrichten VOR dem Signieren; -P 16 hält native Bibliotheken auf
+          # 16-KB-Seiten (geprüft weiter unten).
+          "$WERKZEUGE/zipalign" -f -P 16 4 "$APKS/app-release-unsigned.apk" "$RUNNER_TEMP/ausgerichtet.apk"
+          "$WERKZEUGE/apksigner" sign --ks "$KS" --ks-pass env:KS_PASS --ks-key-alias "$KEY_ALIAS" \
+            --key-pass env:KEY_PASS --out "$ZIEL_APK" "$RUNNER_TEMP/ausgerichtet.apk"
+          "$WERKZEUGE/apksigner" verify --print-certs "$ZIEL_APK" | head -3
+          [ "$ZIEL_AAB" = "$AAB" ] || cp "$AAB" "$ZIEL_AAB"
+          jarsigner -keystore "$KS" -storepass:env KS_PASS -keypass:env KEY_PASS "$ZIEL_AAB" "$KEY_ALIAS" >/dev/null
+          jarsigner -verify "$ZIEL_AAB" >/dev/null
+          if [ "$ECHT" = "true" ]; then
+            cp "$ZIEL_APK" "$APKS/BrickInventory.apk"
+            echo "signiert mit dem Release-Schlüssel"
+          else
+            echo "Probe-Signatur gelungen; das APK dieses Laufs bleibt unsigniert."
+          fi
 
       # ── Warum ZUSÄTZLICH ein Bundle (.aab) ──────────────────────────────────
       #
@@ -465,7 +489,7 @@ jobs:
       # einzufangen.
       - name: Testberichte sichern
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: testberichte
           path: |
@@ -631,7 +655,7 @@ jobs:
       # ausserdem da, falls der Play-Weg je wieder gewollt ist.
       - name: App-Bundle (.aab) sichern
         if: success()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: BrickInventory-bundle
           path: Android-App/app/build/outputs/bundle/release/app-release.aab

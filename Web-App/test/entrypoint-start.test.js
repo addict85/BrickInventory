@@ -76,7 +76,7 @@ test('die angelegten Verzeichnisse gehoeren trotzdem immer dem Dienst', () => {
   // Sie entstehen als root. Ohne diesen Schritt koennte der Server nach
   // BRICKINV_CHOWN=never nichts hineinschreiben — die Ersparnis waere dann
   // ein kaputter Container.
-  const flach = ep.slice(ep.indexOf('chown brickinv:brickinv'));
+  const flach = ep.slice(ep.search(/chown (-h )?brickinv:brickinv/));
   for (const ordner of ['/app/data', '/app/data/instructions', '/app/data/uploads',
                         '/app/data/images/sets', '/app/data/images/parts',
                         '/app/data/images/minifigs']) {
@@ -123,4 +123,15 @@ test('die Marke bricht keinen Start ab', () => {
   assert.match(fn, /\|\| true/,
     'setzeMarke() faengt den Fehlschlag nicht ab. Auf einem nur lesbaren ' +
     'Datentraeger bricht `set -e` damit den ganzen Start ab.');
+});
+
+// Gegenprobe (am 28.10.2026 gemessen): `-h` am chown der Marke entfernt → rot.
+test('chown als root folgt keinem Symlink', () => {
+  // /app/data gehört dem Dienst. Ohne -h schriebe root das ZIEL eines dort
+  // abgelegten Symlinks um — eine Datei ausserhalb, etwa /etc/passwd.
+  const ep = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'docker-entrypoint.sh'), 'utf8')
+    .split('\n').filter(z => !z.trimStart().startsWith('#')).join('\n');
+  const aufrufe = [...ep.matchAll(/\bchown\b[^\n]*/g)].map(m => m[0]);
+  assert.ok(aufrufe.length >= 3, `nur ${aufrufe.length} chown gefunden`);
+  assert.deepEqual(aufrufe.filter(z => !/\bchown (-R )?-h\b/.test(z)), []);
 });

@@ -57,3 +57,18 @@ test('das Image trägt kein Datenbankpasswort', () => {
   const compose = fs.readFileSync(path.join(ROOT, 'compose.yaml'), 'utf8');
   assert.match(compose, /PGPASSWORD: \$\{DB_PASSWORD/, 'compose.yaml muss das Passwort hereinreichen');
 });
+
+// Gegenprobe (am 28.10.2026 gemessen): den Digest an der zweiten FROM-Zeile
+// entfernt → rot. Ein Tag wie node:26-alpine zeigt morgen auf ein anderes Image.
+test('Basis-Images stehen per Digest fest', () => {
+  const quellen = {
+    Dockerfile: fs.readFileSync(path.join(ROOT, 'Dockerfile'), 'utf8'),
+    'compose.yaml': fs.readFileSync(path.join(ROOT, 'compose.yaml'), 'utf8'),
+  };
+  const lose = [];
+  for (const [name, text] of Object.entries(quellen))
+    for (const m of text.matchAll(/^\s*(?:FROM|image:)\s+(node|postgres)(:[^\s]+)/gm))
+      if (!/@sha256:[0-9a-f]{64}/.test(m[2])) lose.push(`${name}: ${m[1]}${m[2]}`);
+  assert.ok([...quellen.Dockerfile.matchAll(/^FROM /gm)].length >= 2, 'FROM-Zeilen nicht gefunden');
+  assert.deepEqual(lose, []);
+});

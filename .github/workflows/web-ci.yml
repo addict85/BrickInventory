@@ -84,7 +84,7 @@ jobs:
         # Eine andere zu nehmen hiesse, gegen eine Datenbank zu prüfen, die
         # nirgends läuft — Indizes, Sperren und Planerverhalten unterscheiden
         # sich zwischen Hauptversionen durchaus.
-        image: postgres:18-alpine
+        image: postgres:18-alpine@sha256:10a5c69a83035ab5239f5620d708520e8b28f5aa1f2b20143e6024532edadfb5
         env:
           POSTGRES_USER: tester
           POSTGRES_PASSWORD: tester
@@ -111,7 +111,7 @@ jobs:
       WEB_WORKERS: '1'
 
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       # pg_dump/psql für test/backup-restore-db.test.js. Der Postgres-DIENST
       # oben ist ein Container — die Klienten laufen auf dem Runner.
@@ -197,7 +197,7 @@ jobs:
       # Jede neue Hauptversion laeuft auf node24 — die Laufzeit aendert sich
       # also nicht, es gibt hier keine Warnung zu beseitigen und auch keine
       # einzufangen.
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           # Wie im Dockerfile (node:26-alpine) — geprüft werden soll, was auch
           # ausgeliefert wird. Node 20 stand hier bis Nachtrag 152 und war zu
