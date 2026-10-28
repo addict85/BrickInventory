@@ -914,3 +914,5 @@ select.auswahl-mini,.fg select.auswahl-mini{font-size:var(--fs-1);padding:3px 6p
 /* Auf Touch-Geräten kein Papierkorb auf jeder Kachel: zu leicht getroffen
    beim Wischen. Gelöscht wird im Detail, wie in der App. */
 @media (hover:none) and (pointer:coarse){ #tab-gallery .sc .ca{display:none} }
+/* Warnhinweis neben einem Ergebnis: Rand in der Bernsteinfarbe jedes Designs, Text in Grundfarbe für vollen Kontrast. */
+.hinweis-warnung{color:var(--txt);font-weight:600;border-left:3px solid var(--chart-used);padding-left:8px;margin-top:6px}

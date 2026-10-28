@@ -778,6 +778,7 @@ window.I18N_EN = {
 
 
   'settings.importing': 'Importing…',
+  'qr.klartext_hinweis': 'The address starts with http://. The app access token then travels unencrypted over the Wi-Fi — anyone listening can take it over. Better set up HTTPS (see README).',
   'qr.access_days': 'The access is then valid for {n} days.',
   'qr.access_default': 'The access stays valid while the device is used (90 days unused).',
   'qr.validity_unlimited': 'Unlimited',

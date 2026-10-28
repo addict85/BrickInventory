@@ -212,6 +212,13 @@ async function generateQrCode() {
     // wie „nichts gewaehlt" (null). Ein `d.token_days ? … : …` wuerde beide
     // in denselben Zweig werfen und bei „unbegrenzt" die Gleitfrist ansagen —
     // also genau das Gegenteil.
+    // Ohne TLS geht das langlebige App-Token im WLAN lesbar mit; der
+    // Serverbeweis der App schützt nur vor einem falschen Server, nicht vor Mithören.
+    const klartext = G('qr-tls-hint');
+    if (klartext) {
+      klartext.hidden = !/^http:\/\//i.test(serverUrl || '');
+      klartext.textContent = klartext.hidden ? '' : tRaw('qr.klartext_hinweis');
+    }
     const zugang = G('qr-access-hint');
     if (zugang) zugang.textContent =
       d.token_days === 0    ? tRaw('qr.access_unlimited')

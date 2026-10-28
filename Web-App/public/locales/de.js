@@ -789,6 +789,7 @@ window.I18N_DE = {
   'startup.overall': 'Gesamtfortschritt',
   'users.admin_badge': 'Admin',
   'settings.importing': 'Importiere…',
+  'qr.klartext_hinweis': 'Die Adresse beginnt mit http://. Das Zugangstoken der App geht damit im WLAN unverschlüsselt mit — wer mithört, kann es übernehmen. Besser HTTPS einrichten (siehe README).',
   'qr.access_days': 'Der Zugang gilt danach {n} Tage.',
   'qr.access_default': 'Der Zugang gilt, solange das Gerät benutzt wird (90 Tage ungenutzt).',
   'qr.validity_unlimited': 'Unbegrenzt',
