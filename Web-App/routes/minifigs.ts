@@ -92,6 +92,7 @@ router.post('/import/csv', csvEmpfang.single('file'), async (req: LoggedInReques
 
       try {
         let figName = row.fig_name || row['Name'] || null;
+        const eingetippt = !!figName;
         let imageUrl: any = null;
         if (!figName) {
           const info = await getMinifigInfo(figNumber);
@@ -118,7 +119,8 @@ router.post('/import/csv', csvEmpfang.single('file'), async (req: LoggedInReques
         } else {
           // Beschreibung in den Katalog, Bestand in minifigs — wie beim
           // Anlegen von Hand (Migration 0034).
-          await merkeFigur(figNumber, figName, imageUrl);
+          // Ein Name aus der Datei ist eine Eingabe dieses Kontos (katalogPflege.ts).
+          await merkeFigur(figNumber, figName, imageUrl, null, db, eingetippt ? uid : null);
           // Preis und Zustand in die Erfassung (Migration 0035) — siehe
           // addManualFig.
           // Ohne Menge (0038) und ohne bl_fig_number (0037) — siehe

@@ -1,4 +1,5 @@
 import * as db from '../db/database';
+import { ERLAUBTE_BILD_HOSTS, hostErlaubt } from './fremdeAdressen';
 
 /**
  * Was ein Schreiber hier koennen muss — und nicht mehr.
@@ -15,26 +16,53 @@ type Schreiber = { run: (sql: string, params?: unknown[]) => Promise<unknown> };
  * Ausführlich: docs/begruendungen/utils/katalogPflege.ts.md#merketeil
  */
 
+/**
+ * Wer einen Wert eingetippt hat; `null` heißt: aus einer geprüften Quelle
+ * (Rebrickable, BrickLink, eingespieltes Set). Der Katalog gilt für alle
+ * Konten, deshalb ist eine Eingabe nur ein Platzhalter, den die geprüfte
+ * Quelle ersetzt (Migration 0060).
+ */
+type Von = number | null;
+
+/**
+ * SET-Teil für ein Feld samt Herkunftsspalte. Alle Ausdrücke in ON CONFLICT
+ * sehen die alte Zeile, deshalb können Feld und Herkunft getrennt stehen.
+ */
+function mitHerkunft(tabelle: string, feld: string, von: string): string {
+  const ersetzt = `${tabelle}.${von} IS NOT NULL AND EXCLUDED.${von} IS NULL AND EXCLUDED.${feld} IS NOT NULL`;
+  return `${feld} = CASE WHEN ${ersetzt} THEN EXCLUDED.${feld} ELSE COALESCE(${tabelle}.${feld}, EXCLUDED.${feld}) END,
+      ${von} = CASE WHEN ${ersetzt} THEN NULL WHEN ${tabelle}.${feld} IS NULL THEN EXCLUDED.${von} ELSE ${tabelle}.${von} END`;
+}
+
+const leer = (v: string | null | undefined): string | null => (v === undefined || v === null || v === '') ? null : v;
+/** Herkunft nur dort, wo auch ein Wert steht. */
+const herkunft = (wert: string | null, von: Von): Von => wert === null ? null : von;
+/** Ein eingetipptes Bild nur von den Hosts, die der Bild-Proxy ohnehin zeigt. */
+const bildEingabe = (url: string | null, von: Von): string | null =>
+  url !== null && von !== null && !hostErlaubt(url, ERLAUBTE_BILD_HOSTS) ? null : url;
+
 /** Name und Kategorie je Teilenummer. */
 export async function merkeTeil(
   partNumber: string,
   partName?: string | null,
   categoryName?: string | null,
   dbh: Schreiber = db,
+  von: Von = null,
 ) {
   if (!partNumber) return;
-  // NULLIF(..., 'Unknown'): Die Set-Teile-Antwort von Rebrickable liefert kein
-  // part_cat_id, die Kategorie steht dort oft auf 'Unknown'. Das ist keine
-  // Kategorie, sondern ihr Fehlen — und es darf einen spaeteren, echten Wert
-  // nicht blockieren.
+  // 'Unknown': Die Set-Teile-Antwort von Rebrickable liefert kein
+  // part_cat_id; das ist das Fehlen einer Kategorie und darf einen späteren,
+  // echten Wert nicht blockieren.
+  const name = leer(partName);
+  const kategorie = leer(categoryName) === 'Unknown' ? null : leer(categoryName);
   await dbh.run(`
-    INSERT INTO part_catalog (part_number, part_name, category_name)
-    VALUES ($1, NULLIF($2, ''), NULLIF(NULLIF($3, ''), 'Unknown'))
+    INSERT INTO part_catalog (part_number, part_name, category_name, name_von, kategorie_von)
+    VALUES ($1, $2, $3, $4, $5)
     ON CONFLICT (part_number) DO UPDATE SET
-      part_name     = COALESCE(part_catalog.part_name,     EXCLUDED.part_name),
-      category_name = COALESCE(part_catalog.category_name, EXCLUDED.category_name),
-      updated_at    = NOW()`,
-    [partNumber, partName ?? null, categoryName ?? null]);
+      ${mitHerkunft('part_catalog', 'part_name', 'name_von')},
+      ${mitHerkunft('part_catalog', 'category_name', 'kategorie_von')},
+      updated_at = NOW()`,
+    [partNumber, name, kategorie, herkunft(name, von), herkunft(kategorie, von)]);
 }
 
 /**
@@ -52,22 +80,28 @@ export async function merkeTeilFarbe(
   imageUrl?: string | null,
   imageLocal?: string | null,
   dbh: Schreiber = db,
+  von: Von = null,
 ) {
   if (!partNumber) return;
   // color_id ist Teil des Primaerschluessels und darf nicht NULL sein. 0 ist
   // im Baum die Farbe „ohne Angabe" — dieselbe Lesart wie in
   // recordAcquisitionForDay (`color_id || 0`).
   const farbe = Number.isFinite(Number(colorId)) ? Number(colorId) : 0;
+  const name = leer(colorName), code = leer(colorHex);
+  const bild = bildEingabe(leer(imageUrl), von);
+  // image_local schreibt nur der Server selbst (heruntergeladene Datei).
   await dbh.run(`
-    INSERT INTO part_color_catalog (part_number, color_id, color_name, color_hex, image_url, image_local)
-    VALUES ($1, $2, NULLIF($3, ''), NULLIF($4, ''), NULLIF($5, ''), NULLIF($6, ''))
+    INSERT INTO part_color_catalog (part_number, color_id, color_name, color_hex, image_url, image_local,
+                                    farbname_von, farbcode_von, bild_von)
+    VALUES ($1, $2, $3, $4, $5, NULLIF($6, ''), $7, $8, $9)
     ON CONFLICT (part_number, color_id) DO UPDATE SET
-      color_name  = COALESCE(part_color_catalog.color_name,  EXCLUDED.color_name),
-      color_hex   = COALESCE(part_color_catalog.color_hex,   EXCLUDED.color_hex),
-      image_url   = COALESCE(part_color_catalog.image_url,   EXCLUDED.image_url),
+      ${mitHerkunft('part_color_catalog', 'color_name', 'farbname_von')},
+      ${mitHerkunft('part_color_catalog', 'color_hex', 'farbcode_von')},
+      ${mitHerkunft('part_color_catalog', 'image_url', 'bild_von')},
       image_local = COALESCE(part_color_catalog.image_local, EXCLUDED.image_local),
       updated_at  = NOW()`,
-    [partNumber, farbe, colorName ?? null, colorHex ?? null, imageUrl ?? null, imageLocal ?? null]);
+    [partNumber, farbe, name, code, bild, von === null ? (imageLocal ?? null) : null,
+     herkunft(name, von), herkunft(code, von), herkunft(bild, von)]);
 }
 
 /** Name und Bild je Figurennummer. */
@@ -77,17 +111,20 @@ export async function merkeFigur(
   imageUrl?: string | null,
   imageLocal?: string | null,
   dbh: Schreiber = db,
+  von: Von = null,
 ) {
   if (!figNumber) return;
+  const name = leer(figName);
+  const bild = bildEingabe(leer(imageUrl), von);
   await dbh.run(`
-    INSERT INTO minifigs_catalog (fig_number, fig_name, image_url, image_local)
-    VALUES ($1, NULLIF($2, ''), NULLIF($3, ''), NULLIF($4, ''))
+    INSERT INTO minifigs_catalog (fig_number, fig_name, image_url, image_local, name_von, bild_von)
+    VALUES ($1, $2, $3, NULLIF($4, ''), $5, $6)
     ON CONFLICT (fig_number) DO UPDATE SET
-      fig_name    = COALESCE(minifigs_catalog.fig_name,    EXCLUDED.fig_name),
-      image_url   = COALESCE(minifigs_catalog.image_url,   EXCLUDED.image_url),
+      ${mitHerkunft('minifigs_catalog', 'fig_name', 'name_von')},
+      ${mitHerkunft('minifigs_catalog', 'image_url', 'bild_von')},
       image_local = COALESCE(minifigs_catalog.image_local, EXCLUDED.image_local),
       updated_at  = NOW()`,
-    [figNumber, figName ?? null, imageUrl ?? null, imageLocal ?? null]);
+    [figNumber, name, bild, von === null ? (imageLocal ?? null) : null, herkunft(name, von), herkunft(bild, von)]);
 }
 
 /**
@@ -158,15 +195,20 @@ export interface KatalogTeil {
   bildDatei: string | null;
 }
 
+/**
+ * `fuer`: das fragende Konto. Was ein ANDERES Konto eingetippt hat, zählt hier
+ * nicht als bekannt — sonst fragte niemand mehr nach, und der Platzhalter
+ * würde nie durch die geprüfte Quelle ersetzt.
+ */
 export async function katalogTeil(
-  partNumber: string, colorId: number | null,
+  partNumber: string, colorId: number | null, fuer: Von = null,
 ): Promise<KatalogTeil | null> {
   if (!partNumber) return null;
   const z = await db.get(`
-    SELECT COALESCE(pc.part_name, rp.name) AS name,
-           pc.category_name                AS kategorie,
+    SELECT COALESCE(CASE WHEN pc.name_von IS NULL OR pc.name_von = $3 THEN pc.part_name END, rp.name) AS name,
+           CASE WHEN pc.kategorie_von IS NULL OR pc.kategorie_von = $3 THEN pc.category_name END AS kategorie,
            rp.part_img_url                 AS bild_allgemein,
-           pcc.image_url                   AS farb_url,
+           CASE WHEN pcc.bild_von IS NULL OR pcc.bild_von = $3 THEN pcc.image_url END AS farb_url,
            pcc.image_local                 AS farb_datei,
            spc.image_url                   AS set_url,
            spc.image_local                 AS set_datei
@@ -179,7 +221,7 @@ export async function katalogTeil(
          WHERE part_number = q.nr AND color_id = $2
            AND (image_local IS NOT NULL OR image_url IS NOT NULL)
          ORDER BY (image_local IS NULL), set_number LIMIT 1) spc ON TRUE`,
-    [partNumber, colorId]).catch(() => null);
+    [partNumber, colorId, fuer]).catch(() => null);
   if (!z) return null;
 
   // Die Reihenfolge ist die von bildNachtragen(): Farbe vor Set, Datei vor
@@ -215,12 +257,16 @@ export async function katalogTeil(
  * deshalb auch keine Unterscheidung farbrichtig/allgemein.
  */
 export async function katalogFigur(
-  figNumber: string,
+  figNumber: string, fuer: Von = null,
 ): Promise<{ name: string | null; bild: string | null; hatBild: boolean } | null> {
   if (!figNumber) return null;
-  const z = await db.get(
-    'SELECT fig_name, image_url, image_local FROM minifigs_catalog WHERE fig_number = $1',
-    [figNumber]).catch(() => null);
+  // `fuer` wie bei katalogTeil(): fremde Eingaben zählen nicht als bekannt.
+  const z = await db.get(`
+    SELECT CASE WHEN name_von IS NULL OR name_von = $2 THEN fig_name END  AS fig_name,
+           CASE WHEN bild_von IS NULL OR bild_von = $2 THEN image_url END AS image_url,
+           image_local
+      FROM minifigs_catalog WHERE fig_number = $1`,
+    [figNumber, fuer]).catch(() => null);
   if (!z) return null;
   return {
     name: z.fig_name ?? null,

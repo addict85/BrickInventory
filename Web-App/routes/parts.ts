@@ -139,6 +139,7 @@ router.post('/import/csv', csvEmpfang.single('file'), async (req: LoggedInReques
       try {
         // Lookup from Rebrickable
         let partName = row.part_name || row['Name'] || null;
+        const eingetippt = !!partName;
         let imageUrl: any = null, categoryName: any = null;
         if (!partName) {
           const info = await lookupPart(partNumber, colorId);
@@ -174,8 +175,12 @@ router.post('/import/csv', csvEmpfang.single('file'), async (req: LoggedInReques
           // Der Katalog zuerst, aus demselben Grund wie beim Anlegen von
           // Hand: lieber eine Beschreibung ohne Bestand als ein Bestand ohne
           // Beschreibung.
-          await merkeTeil(partNumber, partName, categoryName);
-          await merkeTeilFarbe(partNumber, colorId, colorName, colorHex, imageUrl);
+          // Name und Farbbezeichnung aus der Datei sind Eingaben dieses
+          // Kontos, der Rest kommt von Rebrickable (katalogPflege.ts).
+          if (eingetippt) await merkeTeil(partNumber, partName, null, db, uid);
+          else await merkeTeil(partNumber, partName, categoryName);
+          await merkeTeilFarbe(partNumber, colorId, null, colorHex, imageUrl);
+          await merkeTeilFarbe(partNumber, colorId, colorName, null, null, null, db, uid);
           // Preis und Zustand in die Erfassung, nicht an die Bestandszeile
           // (Migration 0035) — siehe addManualPart.
           // Ohne Menge — siehe addManualPart (Migration 0038).

@@ -89,6 +89,9 @@ async function addManualFigIntern(uid: number, body: any) {
   const acquiredAt = (body?.acquired_at || '').trim() || null;
   let fig_name  = V.optionalText(body?.fig_name, 200);
   let image_url = V.optionalImageUrl(body?.image_url);
+  // Wie bei den Teilen: Nur Nachgeschlagenes geht als geprüft in den Katalog.
+  const eingabe = { name: fig_name, bild: image_url };
+  let gefunden: Awaited<ReturnType<typeof getMinifigInfo>> | null = null;
 
   if (!fig_name) {
     // ── Erst der EIGENE Katalog, dann der fremde Dienst ─────────────────────
@@ -98,7 +101,7 @@ async function addManualFigIntern(uid: number, body: any) {
     // bereits vorhanden ist?"). Hier stand nur getMinifigInfo() — ein Abruf je
     // Figur, obwohl `minifigs_catalog` Name und Bild fuehrt. Die Begruendung
     // samt Messung steht bei katalogTeil() in utils/katalogPflege.ts.
-    const lokal = await katalogFigur(num);
+    const lokal = await katalogFigur(num, uid);
     if (lokal) {
       fig_name  = fig_name  || lokal.name;
       image_url = image_url || lokal.bild;
@@ -108,6 +111,7 @@ async function addManualFigIntern(uid: number, body: any) {
     // dass der Abruf nichts mehr zu holen hat.
     if (!fig_name || !(image_url || lokal?.hatBild)) {
       const info = await getMinifigInfo(num);
+      gefunden = info;
       // `||`, nicht Zuweisung: Was der Katalog schon wusste, bleibt stehen.
       if (info) {
         fig_name  = fig_name  || info.fig_name;
@@ -156,7 +160,8 @@ async function addManualFigIntern(uid: number, body: any) {
   // Katalog zuerst: Faellt die Anfrage dazwischen aus, steht lieber eine
   // Beschreibung ohne Bestand da (unsichtbar, weil niemand die Figur hat) als
   // ein Bestand ohne Namen in der Figurenliste.
-  await merkeFigur(num, fig_name, image_url);
+  await merkeFigur(num, gefunden?.fig_name, gefunden?.image_url);
+  await merkeFigur(num, eingabe.name, eingabe.bild, null, db, uid);
   // Preis und Zustand nicht mehr an die Bestandszeile (Migration 0035) — sie
   // stehen in der Erfassung, die recordAcquisitionForDay() gleich darunter
   // anlegt.

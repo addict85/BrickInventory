@@ -261,6 +261,8 @@ CREATE TABLE minifigs_catalog (
   image_url text,
   image_local text,
   updated_at timestamp with time zone DEFAULT now(),
+  name_von integer,
+  bild_von integer,
   CONSTRAINT minifigs_catalog_pkey PRIMARY KEY (fig_number)
 );
 CREATE INDEX idx_minifigs_catalog_name_trgm ON minifigs_catalog USING gin (lower(fig_name) gin_trgm_ops);
@@ -305,6 +307,8 @@ CREATE TABLE part_catalog (
   part_name text,
   category_name text,
   updated_at timestamp with time zone DEFAULT now(),
+  name_von integer,
+  kategorie_von integer,
   CONSTRAINT part_catalog_pkey PRIMARY KEY (part_number)
 );
 CREATE INDEX idx_part_catalog_category ON part_catalog USING btree (category_name);
@@ -319,6 +323,9 @@ CREATE TABLE part_color_catalog (
   image_url text,
   image_local text,
   updated_at timestamp with time zone DEFAULT now(),
+  farbname_von integer,
+  farbcode_von integer,
+  bild_von integer,
   CONSTRAINT part_color_catalog_pkey PRIMARY KEY (part_number, color_id)
 );
 CREATE TRIGGER trg_bump_parts_katalog AFTER INSERT OR DELETE OR UPDATE ON part_color_catalog FOR EACH STATEMENT EXECUTE FUNCTION bump_parts_katalog();

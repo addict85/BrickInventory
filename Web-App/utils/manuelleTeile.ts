@@ -125,6 +125,10 @@ async function addManualPartIntern(uid: number, rawBody: any) {
   let part_name = V.optionalText(rawBody?.part_name, 200);
   let image_url = V.optionalImageUrl(rawBody?.image_url);
   let category_name = V.optionalText(rawBody?.category_name, 100);
+  // Eingetipptes und Nachgeschlagenes getrennt halten: Nur was Rebrickable
+  // liefert, geht als geprüft in den gemeinsamen Katalog (katalogPflege.ts).
+  const eingabe = { name: part_name, kategorie: category_name, bild: image_url };
+  let gefunden: Awaited<ReturnType<typeof lookupPart>> | null = null;
 
   if (!part_name) {
     // Wurde überhaupt eine Farbe gewählt?
@@ -141,7 +145,7 @@ async function addManualPartIntern(uid: number, rawBody: any) {
     // Funktion, und sie gilt fuer jeden Weg, der ohne Namen hereinkommt —
     // auch POST /api/v1/parts. Deshalb steht die Staffelung hier und nicht …
     // Ausführlich: docs/begruendungen/routes/parts.ts.md#addmanualpartintern-lokal
-    const lokal = await katalogTeil(part_number, hasColor ? color_id : null);
+    const lokal = await katalogTeil(part_number, hasColor ? color_id : null, uid);
     if (lokal) {
       part_name     = part_name     || lokal.name;
       category_name = category_name || lokal.kategorie;
@@ -154,6 +158,7 @@ async function addManualPartIntern(uid: number, rawBody: any) {
     // es beweist aber, dass der Abruf nichts mehr zu holen hat.
     if (!part_name || !(image_url || lokal?.hatBild)) {
       const info = await lookupPart(part_number, hasColor ? color_id : null);
+      gefunden = info;
       // `||`, nicht Zuweisung: Was der Katalog schon wusste, bleibt stehen.
       // Gefragt wird oft nur noch, weil EIN Stueck fehlte.
       if (info) {
@@ -203,16 +208,16 @@ async function addManualPartIntern(uid: number, rawBody: any) {
     await resolveManualPartPurchase(uid, { partNumber: part_number, colorId: color_id, unitPrice: unit_price, condition });
   // Farbcode möglichst füllen: vom Client übergeben, sonst aus rb_colors ableiten
   // (sonst bleibt der Farbpunkt in der Oberfläche grau).
-  const effectiveColorHex = color_hex
-    || (await db.get('SELECT rgb FROM rb_colors WHERE id=$1', [color_id]).catch(() => null))?.rgb
-    || null;
+  const rbFarbcode = (await db.get('SELECT rgb FROM rb_colors WHERE id=$1', [color_id]).catch(() => null))?.rgb || null;
 
   // Beschreibung in den Katalog, Bestand in parts
   // Seit Migration 0034 trennt sich beides: Name, Farbbezeichnung, Farbcode,
   // Kategorie und Bild gelten fuer ALLE Konten, der Bestand gilt fuer eines.
   // Ausführlich: docs/begruendungen/routes/parts.ts.md#addmanualpartintern-2
-  await merkeTeil(part_number, part_name, category_name);
-  await merkeTeilFarbe(part_number, color_id, color_name, effectiveColorHex, image_url);
+  await merkeTeil(part_number, gefunden?.part_name, gefunden?.category_name);
+  await merkeTeil(part_number, eingabe.name, eingabe.kategorie, db, uid);
+  await merkeTeilFarbe(part_number, color_id, null, rbFarbcode, gefunden?.image_url);
+  await merkeTeilFarbe(part_number, color_id, color_name, color_hex, eingabe.bild, null, db, uid);
 
   // Preis und Zustand nicht mehr an die Bestandszeile (Migration 0035) — sie
   // stehen in der Erfassung, die recordAcquisitionForDay() gleich darunter

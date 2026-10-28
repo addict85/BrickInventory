@@ -519,7 +519,9 @@ CREATE TABLE public.minifigs_catalog (
     fig_name text,
     image_url text,
     image_local text,
-    updated_at timestamp with time zone DEFAULT now()
+    updated_at timestamp with time zone DEFAULT now(),
+    name_von integer,
+    bild_von integer
 );
 
 --
@@ -619,7 +621,9 @@ CREATE TABLE public.part_catalog (
     part_number text NOT NULL,
     part_name text,
     category_name text,
-    updated_at timestamp with time zone DEFAULT now()
+    updated_at timestamp with time zone DEFAULT now(),
+    name_von integer,
+    kategorie_von integer
 );
 
 --
@@ -633,7 +637,10 @@ CREATE TABLE public.part_color_catalog (
     color_hex text,
     image_url text,
     image_local text,
-    updated_at timestamp with time zone DEFAULT now()
+    updated_at timestamp with time zone DEFAULT now(),
+    farbname_von integer,
+    farbcode_von integer,
+    bild_von integer
 );
 
 --
@@ -3046,6 +3053,7 @@ INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0056-preisverla
 INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0057-figurenpreis-geschaetzt.sql', '2026-10-28 17:50:29.010176+00');
 INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0058-fremdschluessel-und-pruefungen.sql', '2026-10-28 17:59:06.918264+00');
 INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0059-anmeldung-laufend.sql', '2026-10-28 20:00:29.834455+00');
+INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0060-katalog-herkunft.sql', '2026-10-28 20:09:04.452918+00');
 
 --
 -- PostgreSQL database dump complete
