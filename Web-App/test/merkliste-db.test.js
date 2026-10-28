@@ -108,6 +108,21 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async (t) => {
     assert.equal(w.year, null);
   });
 
+  await t.test('ohne Rebrickable-Katalog kommen Name und Bild aus set_catalog', async () => {
+    // Gegenprobe (28.10.2026): rb.name statt COALESCE(rb.name, sc.name) → rot, name null.
+    await db.run(`INSERT INTO set_catalog (set_number, name, year, pieces, image_url)
+                  VALUES ('10316-1', 'Rivendell', 2023, 6167, 'http://x/10316.jpg')`);
+    await W.legeMerkpostenAn(U.opa, '10316-1', 'N');
+    const w = (await W.merkpostenVon([U.opa])).find(x => x.set_number === '10316-1');
+    assert.equal(w.name, 'Rivendell');
+    assert.equal(w.year, 2023);
+    assert.equal(w.num_parts, 6167);
+    assert.equal(w.image_url, 'http://x/10316.jpg');
+    assert.ok((await W.merkpostenVon([U.opa], undefined, 'EUR', { suche: 'riven' })).some(x => x.set_number === '10316-1'),
+      'Die Suche findet den Namen aus set_catalog nicht');
+    await db.run(`DELETE FROM wanted WHERE set_number = '10316-1'`);
+  });
+
   await t.test('neu und gebraucht sind ZWEI Merkposten', async () => {
     // Wer ein gebrauchtes zum Bauen und ein verpacktes zum Aufheben sucht, hat
     // zwei Merkposten mit zwei Schwellen. price_alerts führt den Zustand seit
