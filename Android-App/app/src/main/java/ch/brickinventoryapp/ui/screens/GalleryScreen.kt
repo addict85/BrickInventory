@@ -555,17 +555,6 @@ fun SetCard(
                             Image(painterResource(R.drawable.ic_logo), null, Modifier.size(56.dp))
                         }
                     }
-                    if (set.quantity > 1) {
-                        Surface(
-                            color = MaterialTheme.colorScheme.primary,
-                            shape = Formen.etikett,
-                            modifier = Modifier.align(Alignment.TopEnd).padding(6.dp)
-                        ) {
-                            Text(stringResource(R.string.gallery_quantity_badge, set.quantity), Modifier.padding(horizontal = 6.dp, vertical = Abstaende.haar),
-                                color = MaterialTheme.colorScheme.onPrimary,
-                                style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
-                        }
-                    }
                     // Column statt Box (Nachtrag 33): Eine Box STAPELT ihre Kinder —
                     // die Besitzer-Etiketten lagen über den Zustandsplaketten, auf
                     // Marcos Screenshot lugte das verdeckte „N/G" zwischen den
@@ -577,17 +566,32 @@ fun SetCard(
                         // man im Haushalt das falsche.
                         OwnerBadges(set.owners)
                     }
-                    Box(Modifier.align(Alignment.TopStart).padding(Abstaende.haar)) {
-                        IconButton(onClick = { showMenu = true }) {
-                            Icon(Icons.Default.MoreVert, stringResource(R.string.cd_set_menu), Modifier.size(20.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    // Überlaufmenü oben rechts, wo Android es erwartet; die
+                    // Mengenplakette bleibt in derselben Ecke, links davon.
+                    Row(Modifier.align(Alignment.TopEnd).padding(Abstaende.haar),
+                        verticalAlignment = Alignment.CenterVertically) {
+                        if (set.quantity > 1) {
+                            Surface(
+                                color = MaterialTheme.colorScheme.primary,
+                                shape = Formen.etikett,
+                            ) {
+                                Text(stringResource(R.string.gallery_quantity_badge, set.quantity), Modifier.padding(horizontal = 6.dp, vertical = Abstaende.haar),
+                                    color = MaterialTheme.colorScheme.onPrimary,
+                                    style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                            }
                         }
-                        DropdownMenu(showMenu, { showMenu = false }) {
-                            DropdownMenuItem(
-                                text = { Text(stringResource(R.string.common_delete), color = MaterialTheme.colorScheme.error) },
-                                onClick = { showMenu = false; deleting = true },
-                                leadingIcon = { Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error) }
-                            )
+                        Box {
+                            IconButton(onClick = { showMenu = true }) {
+                                Icon(Icons.Default.MoreVert, stringResource(R.string.cd_set_menu), Modifier.size(20.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            DropdownMenu(showMenu, { showMenu = false }) {
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.common_delete), color = MaterialTheme.colorScheme.error) },
+                                    onClick = { showMenu = false; deleting = true },
+                                    leadingIcon = { Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error) }
+                                )
+                            }
                         }
                     }
                     // Die Spiegelung auf der Glasscheibe. ZULETZT im Box, damit sie

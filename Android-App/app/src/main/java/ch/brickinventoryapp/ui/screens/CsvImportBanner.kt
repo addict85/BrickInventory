@@ -76,7 +76,9 @@ fun CsvImportBanner(
                     // Kein Bestaetigungsdialog: Abbrechen nimmt nichts zurueck,
                     // es hoert nur auf. Schon angelegte Sets bleiben.
                     if (running) {
-                        IconButton(onClick = onAbbrechen, modifier = Modifier.size(24.dp)) {
+                        // Volle 48 dp: Der Balken wird dadurch etwas höher, dafür
+                        // trifft man das Abbrechen auch unterwegs.
+                        IconButton(onClick = onAbbrechen) {
                             Icon(Icons.Default.Close, stringResource(R.string.csv_cancel),
                                 Modifier.size(16.dp),
                                 tint = MaterialTheme.colorScheme.onPrimary)
