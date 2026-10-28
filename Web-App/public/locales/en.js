@@ -222,6 +222,7 @@ window.I18N_EN = {
   // common.close stand hier schon einmal und ist als tot entfernt worden —
   // damals zu Recht: Es rief ihn niemand. Jetzt gibt es einen Aufrufer.
   'common.close': 'Close',
+  'common.image_view': 'Image view',
   'common.delete_item': 'Delete entry',
   'common.delete_text': 'This action cannot be undone.',
   'gallery.add.number_invalid': '“{num}” is not a set number. Expected e.g. 10294 or 10294-1.',

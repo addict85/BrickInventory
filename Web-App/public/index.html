@@ -1548,7 +1548,7 @@
 </div>
 
 <!-- Confirm Dialog -->
-<div class="ovl" id="confirm-modal" role="dialog" aria-modal="true" style="display:none;z-index:400">
+<div class="ovl" id="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="cd-title" style="display:none;z-index:400">
   <div class="modal" style="max-width:400px;padding:2rem;text-align:center">
     <div style="font-size:var(--fs-7);margin-bottom:.75rem" id="cd-icon"><svg class="ico" aria-hidden="true"><use href="#i-loeschen"/></svg></div>
     <h3 style="margin:0 0 .5rem;font-size:var(--fs-4);font-weight:700" id="cd-title" data-i18n="common.delete_title">Löschen?</h3>
@@ -1629,7 +1629,7 @@
     <div class="abstand-o-8 schrift-2" id="add-status"></div>
   </div>
 </div>
-<div class="ovl" id="set-modal" role="dialog" aria-modal="true">
+<div class="ovl" id="set-modal" role="dialog" aria-modal="true" aria-labelledby="m-tit">
   <div class="modal">
     <div class="mhd"><div><div class="mtit" id="m-tit">Set</div><div class="muntertit" id="m-untertit"></div></div><button class="btn bs btn-sm" data-click="closeModal" data-dialog-zu aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-schliessen"/></svg></button></div>
     <div class="m-kopfteil">
@@ -1678,7 +1678,7 @@
   Preis. Beide werden von denselben Funktionen gezeichnet wie im Set-Dialog
   (renderMarketRows, priceChartSVG).
 -->
-<div class="ovl" id="mk-detail-modal" role="dialog" aria-modal="true">
+<div class="ovl" id="mk-detail-modal" role="dialog" aria-modal="true" aria-labelledby="mk-m-tit">
   <div class="modal max-520">
     <div class="mhd">
       <div>
@@ -1735,7 +1735,7 @@
   neues. Der Merkposten, der dadurch erfuellt ist, bleibt der gebrauchte — das
   entscheidet der Server (utils/merkliste.ts).
 -->
-<div class="ovl" id="mk-take-modal" role="dialog" aria-modal="true">
+<div class="ovl" id="mk-take-modal" role="dialog" aria-modal="true" aria-labelledby="mk-take-tit">
   <div class="modal max-420">
     <div class="mhd">
       <div class="mtit" id="mk-take-tit">—</div>
@@ -1753,7 +1753,7 @@
 </div>
 
 <!-- Katalog Set-Detail Modal -->
-<div class="ovl" id="cat-modal" role="dialog" aria-modal="true">
+<div class="ovl" id="cat-modal" role="dialog" aria-modal="true" aria-labelledby="cat-m-tit">
   <div class="modal max-520">
     <div class="mhd">
       <div>
@@ -1830,11 +1830,11 @@
 
      `width:92%` bleibt daneben stehen und gilt weiterhin zuerst: Auf einem
      schmalen Fenster ändert diese Zahl nichts. -->
-<div class="ovl" id="wanted-xml-modal" role="dialog" aria-modal="true">
+<div class="ovl" id="wanted-xml-modal" role="dialog" aria-modal="true" aria-labelledby="wxml-tit">
   <div class="modal" style="max-width:1360px">
     <div class="mhd">
       <div>
-        <div class="mtit" style="display:flex;align-items:center;gap:7px"><span data-wanted-icon="1"></span><span data-i18n="wanted.preview_title">Wanted-Liste prüfen</span></div>
+        <div class="mtit" id="wxml-tit" style="display:flex;align-items:center;gap:7px"><span data-wanted-icon="1"></span><span data-i18n="wanted.preview_title">Wanted-Liste prüfen</span></div>
         <div class="text-klein abstand-o-2" id="wanted-xml-sub"></div>
       </div>
       <button class="btn bs btn-sm" data-click="wantedXmlSchliessen" data-dialog-zu aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-schliessen"/></svg></button>
@@ -1877,7 +1877,7 @@
   </div>
 </div>
 
-<div class="ovl" id="man-detail-modal" role="dialog" aria-modal="true">
+<div class="ovl" id="man-detail-modal" role="dialog" aria-modal="true" aria-labelledby="man-detail-tit">
   <div class="modal max-480">
     <div class="mhd">
       <div>
@@ -1901,7 +1901,7 @@
 </div>
 
 <!-- Detail-Dialog fuer Teile/Figuren AUS SETS (kein Preis, Menge nur Anzeige) -->
-<div class="ovl" id="setitem-modal" role="dialog" aria-modal="true">
+<div class="ovl" id="setitem-modal" role="dialog" aria-modal="true" aria-labelledby="setitem-tit">
   <div class="modal max-480">
     <div class="mhd">
       <div>
@@ -1922,7 +1922,7 @@
 </div>
 
 <!-- PDF-Viewer-Modal (In-App-Anzeige von Anleitungen) -->
-<div class="ovl" id="pdf-viewer-modal" role="dialog" aria-modal="true" style="display:none;z-index:500">
+<div class="ovl" id="pdf-viewer-modal" role="dialog" aria-modal="true" aria-labelledby="pdf-viewer-title" style="display:none;z-index:500">
   <div style="background:var(--sur);width:96vw;height:96vh;max-width:1200px;border-radius:12px;display:flex;flex-direction:column;overflow:hidden;box-shadow:var(--sh1)">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:.55rem .9rem;border-bottom:1px solid var(--bdr)">
       <div id="pdf-viewer-title" style="font-weight:600;font-size:var(--fs-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">PDF</div>
@@ -1974,7 +1974,7 @@
 </div>
 
 <!-- Image Lightbox (vergrösserte Set-Ansicht) -->
-<div class="ovl" id="img-lightbox" role="dialog" aria-modal="true" style="z-index:300;background:rgba(255,255,255,.97)" data-click="lightboxBackdrop">
+<div class="ovl" id="img-lightbox" role="dialog" aria-modal="true" aria-label="Bildansicht" data-i18n="common.image_view" data-i18n-attr="aria-label" style="z-index:300;background:rgba(255,255,255,.97)" data-click="lightboxBackdrop">
   <button class="btn bs btn-sm" data-click="closeImageLightbox" data-dialog-zu style="position:absolute;top:20px;right:20px;font-size:var(--fs-4);padding:6px 14px" aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-schliessen"/></svg></button>
   <img id="lightbox-img" alt="" data-onerror="keep" style="max-width:92vw;max-height:92vh;object-fit:contain;border-radius:8px" />
 </div>
@@ -2039,9 +2039,9 @@
 </div>
 
 <!-- Reset PW Modal -->
-<div class="ovl" id="pw-modal" role="dialog" aria-modal="true">
+<div class="ovl" id="pw-modal" role="dialog" aria-modal="true" aria-labelledby="pw-tit">
   <div class="modal max-360">
-    <div class="mhd"><div class="mtit" data-i18n="users.pw_reset_title">Passwort zurücksetzen</div><button class="btn bs btn-sm" data-click="closePwModal" data-dialog-zu aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-schliessen"/></svg></button></div>
+    <div class="mhd"><div class="mtit" id="pw-tit" data-i18n="users.pw_reset_title">Passwort zurücksetzen</div><button class="btn bs btn-sm" data-click="closePwModal" data-dialog-zu aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-schliessen"/></svg></button></div>
     <form class="sform" data-submit="btn-rpw">
       <div class="fg"><label for="rpw-v" data-i18n="users.pw_modal.new_password">Neues Passwort</label><input type="password" id="rpw-v" data-erstfokus /></div>
       <input type="hidden" id="rpw-uid" />
@@ -2053,7 +2053,8 @@
   </div>
 </div>
 
-<div id="toasts"></div>
+<!-- Vorleser hören jede Meldung; Fehler unterbrechen (role="alert" am Eintrag). -->
+<div id="toasts" role="status" aria-live="polite"></div>
 
 <script type="module" src="/js/pdfjs-boot.js?v=2026.10.27.1901"></script>
 <!-- Ein Bündel statt zwölf Einzeldateien.

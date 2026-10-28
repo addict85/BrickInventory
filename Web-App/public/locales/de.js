@@ -223,6 +223,7 @@ window.I18N_DE = {
   // common.close stand hier schon einmal und ist als tot entfernt worden —
   // damals zu Recht: Es rief ihn niemand. Jetzt gibt es einen Aufrufer.
   'common.close': 'Schliessen',
+  'common.image_view': 'Bildansicht',
   'common.delete_item': 'Eintrag löschen',
   'common.delete_text': 'Diese Aktion kann nicht rückgängig gemacht werden.',
   'gallery.add.number_invalid': '„{num}“ ist keine Set-Nummer. Erwartet wird z. B. 10294 oder 10294-1.',

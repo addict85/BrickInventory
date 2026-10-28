@@ -553,6 +553,7 @@ export function observeLazyImages(root) {
 export function toast(msg, type='info', aktion) {
   const c = G('toasts'), el = document.createElement('div');
   el.className=`toast ${type}`;
+  if (type === 'error') el.setAttribute('role', 'alert');
   // textContent statt innerHTML: msg enthält regelmässig Server-Fehlermeldungen
   // und Set-/Teilenummern aus Nutzereingaben.
   const icon = document.createElement('span');
