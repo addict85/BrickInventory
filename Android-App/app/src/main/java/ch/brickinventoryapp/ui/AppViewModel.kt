@@ -112,7 +112,8 @@ class AppViewModel @Inject constructor(
         viewModelScope.launch {
             // Bei Installationen vor dem synchronen Spiegel steht das Design
             // nur im DataStore; danach fragt der Server, ob es sich geändert hat.
-            sitzung.aendere { it.copy(appTheme = prefs.appTheme.first()) }
+            val gespeichert = prefs.appTheme.first()
+            sitzung.aendere { it.copy(appTheme = gespeichert) }
             loadAppTheme()
             verfolgeServerstart()
         }
