@@ -62,6 +62,24 @@ abstract class BereichsViewModel(protected val dienste: AppDienste) : ViewModel(
         viewModelScope.launch { dienste.bestand.aenderungen.collect { beiAenderung(it) } }
     }
 
+    /** Kontofilter einer Ansicht ändern; danach lädt der Bereich nach ([nachFilter]). */
+    fun setScope(view: ScopeFilter.View, value: String) {
+        viewModelScope.launch {
+            dienste.blickfeld.setzeKonto(view, value)
+            nachFilter(view)
+        }
+    }
+
+    fun setLagerFilter(view: ScopeFilter.View, value: String) {
+        viewModelScope.launch {
+            dienste.blickfeld.setzeLager(view, value)
+            nachFilter(view)
+        }
+    }
+
+    /** Ein Filter der Ansicht [view] hat sich geändert. */
+    protected open fun nachFilter(view: ScopeFilter.View) {}
+
     /** Nach dem Abmelden: alles vergessen, was dem vorigen Konto gehörte. */
     protected open fun zuruecksetzen() {}
 

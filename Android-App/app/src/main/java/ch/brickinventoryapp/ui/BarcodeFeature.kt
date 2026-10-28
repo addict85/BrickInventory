@@ -346,7 +346,7 @@ internal fun MainViewModel.confirmAddBarcode(setNum: String, purchasePrice: Doub
                 // sie blieben früher stehen, bis der Reiter neu geöffnet wurde.
                 loadSets()
                 loadStats()
-                loadValuation()
+                bestand.melde(Aenderung.Sets)
             }
             is Result.Error -> {
                 // Dieselbe Meldung wie im Galerie-Weg: MIT Setnummer. Der Dialog

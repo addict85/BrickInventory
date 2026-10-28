@@ -309,8 +309,6 @@ class MainViewModel @Inject constructor(
     )
     val partsState: kotlinx.coroutines.flow.StateFlow<PartsUiState> = teile.state
 
-    internal val _financeState = MutableStateFlow(FinanceUiState())
-    val financeState = _financeState.asStateFlow()
 
     /** Haushalt: Verknüpfung, Einladungscode, Servermeldung. */
     internal val _householdState = MutableStateFlow(HouseholdUiState())
@@ -439,6 +437,13 @@ class MainViewModel @Inject constructor(
         // noch — sie haben damit allerdings auch keinen Leser mehr.
         viewModelScope.launch {
             prefs.currency.collect { cur -> sitzung.aendere { it.copy(currency = cur) } }
+        }
+        // Und zurück: Eine Währung, die der Server nennt (Bewertung, Einstellungen),
+        // gilt beim nächsten Start schon vor der ersten Antwort. drop(1) lässt den
+        // Startwert aus, der sonst die gemerkte Währung überschriebe.
+        viewModelScope.launch {
+            sitzung.state.map { it.currency }.distinctUntilChanged().drop(1)
+                .collect { prefs.saveCurrency(it) }
         }
         viewModelScope.launch {
             prefs.language.collect { lang -> sitzung.aendere { it.copy(language = lang) } }

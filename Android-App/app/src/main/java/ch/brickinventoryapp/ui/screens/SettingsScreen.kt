@@ -102,7 +102,6 @@ fun SettingsScreen(
 
     val onSave: (String, String) -> Unit = { cur, cond ->
         vm.saveSettings(cur, cond)
-        vm.loadValuation()
     }
 
     var selectedCurrency  by remember(currency)       { mutableStateOf(currency) }

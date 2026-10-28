@@ -21,7 +21,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.R
-import ch.brickinventoryapp.ui.MainViewModel
+import ch.brickinventoryapp.ui.viewmodel.FinanzViewModel
 import ch.brickinventoryapp.ui.*  // Feature-Extensions (loadSets, setScope, …)
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -34,7 +34,7 @@ import ch.brickinventoryapp.ui.components.LeerSymbol
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FinanceScreen(
-    vm: MainViewModel,
+    vm: FinanzViewModel,
     imageLoader: ImageLoader,
     /** Klick auf ein Set — nur der Graph kennt den NavController. */
     onSetClick: (String) -> Unit = {},

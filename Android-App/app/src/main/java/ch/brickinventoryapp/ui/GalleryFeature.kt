@@ -190,7 +190,7 @@ internal fun MainViewModel.addSet(setNumber: String, quantity: Int = 1, purchase
                     // legt dann eine weitere Erfassung an — blieb eine offene
                     // Detailansicht samt Erfassungsliste unverändert.
                     loadStats()
-                    loadValuation()
+                    bestand.melde(Aenderung.Sets)
                     if (_setDetailState.value.setDetail?.setNumber == sn) {
                         loadSetDetail(sn)
                         loadAcquisitions(sn)
@@ -281,7 +281,7 @@ internal fun MainViewModel.updateQuantity(setNumber: String, quantity: Int, purc
                     // Beide blieben sonst stehen, bis der jeweilige Reiter neu
                     // geöffnet wurde.
                 loadStats()
-                loadValuation()
+                bestand.melde(Aenderung.Sets)
             }
             is Result.Error ->
                 // Fehler nicht mehr verschlucken — sonst ist ein fehlgeschlagener
@@ -303,7 +303,7 @@ internal fun MainViewModel.deleteSet(setNumber: String) {
                 loadStats()
                 // Die Portfolio-Bewertung enthält Sets — deletePart lädt sie
                 // schon immer nach, deleteSet bisher nicht.
-                loadValuation()
+                bestand.melde(Aenderung.Sets)
                 // Der Server löscht die Teile und Minifiguren DES SETS mit
                 // (deleteSetRows in utils/handlers.ts). Ohne dieses Nachladen
                 // zeigten die beiden Reiter sie weiter, bis man sie neu

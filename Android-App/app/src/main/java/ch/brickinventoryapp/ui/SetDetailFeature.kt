@@ -128,7 +128,7 @@ internal fun MainViewModel.updateAcquisition(setNumber: String, acqId: Int, purc
                     loadSetDetail(setNumber)
                     // Kennzahlen und Portfolio-Wert hängen an Preis und Menge.
                     loadStats()
-                    loadValuation()
+                    bestand.melde(Aenderung.Sets)
                 }
             }
             is Result.Error -> {
@@ -149,7 +149,7 @@ internal fun MainViewModel.deleteAcquisition(setNumber: String, acqId: Int) {
                     loadSetDetail(setNumber)
                     // Kennzahlen und Portfolio-Wert hängen an Preis und Menge.
                     loadStats()
-                    loadValuation()
+                    bestand.melde(Aenderung.Sets)
                 }
             }
             // Der Grund des Fehlschlags stand hier als englischer Text IN einer

@@ -33,12 +33,9 @@ internal fun MainViewModel.setScope(view: ScopeFilter.View, value: String) {
         blickfeldDienst.setzeKonto(view, value)
         when (view) {
             ScopeFilter.View.GALLERY  -> { loadSets(); loadStats() }
-            ScopeFilter.View.PARTS    -> { loadParts(); loadPartsValuationOnly() }
-            ScopeFilter.View.MINIFIGS -> { loadMinifigs(); loadFigsValuationOnly() }
-            ScopeFilter.View.FINANCE  -> {
-                loadValuation()
-                loadPortfolioHistory(_financeState.value.historyPeriod)
-            }
+            ScopeFilter.View.PARTS    -> loadParts()
+            ScopeFilter.View.MINIFIGS -> loadMinifigs()
+            ScopeFilter.View.FINANCE  -> Unit
             ScopeFilter.View.MERKLISTE -> ladeMerkliste()
         }
     }
@@ -318,7 +315,7 @@ internal fun MainViewModel.changeAcquisitionOwner(
                     // Menge, Summen und Besitzer-Plaketten stimmen danach an
                     // mehreren Stellen nicht mehr — neu laden statt vier Orte
                     // einzeln nachzuführen.
-                    loadSets(); loadValuation()
+                    loadSets(); bestand.melde(Aenderung.Sets)
                     onDone(null, r.data.parts ?: 0, r.data.minifigs ?: 0)
                 } else onDone(r.data.error ?: "", 0, 0)
             }
@@ -334,7 +331,7 @@ internal fun MainViewModel.moveSet(
     viewModelScope.launch {
         when (val r = repo.sets.moveSet(setNumber, fromUserId, toUserId, acquisitionIds)) {
             is Result.Success -> {
-                if (r.data.success) { loadSets(); loadValuation(); onDone(null) }
+                if (r.data.success) { loadSets(); bestand.melde(Aenderung.Sets); onDone(null) }
                 else onDone(r.data.error ?: "")
             }
             is Result.Error -> onDone(meldung(r))

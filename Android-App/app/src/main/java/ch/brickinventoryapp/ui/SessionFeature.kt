@@ -261,7 +261,6 @@ internal fun MainViewModel.logout() {
         // felder.py das jetzt: Jeder Fluss des MainViewModel muss hier stehen.
         galerie.zuruecksetzen()
         teile.zuruecksetzen()
-        _financeState.value = FinanceUiState()
         _csvImportState.value = CsvImportUiState()
         _setDetailState.value = SetDetailUiState()
         _manDetailState.value = ManualItemDetailUiState()

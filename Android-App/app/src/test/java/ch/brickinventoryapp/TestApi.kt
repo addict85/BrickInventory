@@ -7,9 +7,26 @@ import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFact
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
+import ch.brickinventoryapp.data.MeldungsKanal
+import ch.brickinventoryapp.data.ScopeFilter
+import ch.brickinventoryapp.data.cache.ResponseCache
+import ch.brickinventoryapp.data.repository.HaushaltRepository
+import ch.brickinventoryapp.data.repository.TeileRepository
+import ch.brickinventoryapp.ui.Bestandssignal
+import ch.brickinventoryapp.ui.Blickfeld
+import ch.brickinventoryapp.ui.FilterAblage
+import ch.brickinventoryapp.ui.ScrollMemory
+import ch.brickinventoryapp.ui.Sitzung
+import ch.brickinventoryapp.ui.viewmodel.AppDienste
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.cancel
+import okhttp3.mockwebserver.Dispatcher
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
+import okhttp3.mockwebserver.RecordedRequest
 import retrofit2.Retrofit
+import java.io.File
+import java.util.Collections
 import java.util.concurrent.TimeUnit
 
 /** Gemeinsames Gerüst der ViewModel-Tests, die gegen einen Testserver laufen. */
@@ -48,4 +65,67 @@ object NummernTexte : Texte {
     override fun menge(id: Int, anzahl: Int, vararg args: Any?) = "m$id:$anzahl"
     override fun meldung(fehler: Result.Error) = "fehler"
     override fun angemeldet() = true
+}
+
+/**
+ * Ein Testserver, der nach PFAD antwortet statt nach Reihenfolge — ViewModels
+ * stellen mehrere Abrufe nebeneinander. Unbekannte Pfade bekommen 404; jede
+ * Anfrage wird mitgeschrieben (Methode, Pfad samt Abfrage).
+ */
+class PfadServer(vararg regeln: Pair<String, String>) {
+    val server = MockWebServer()
+    val antworten: MutableMap<String, String> = Collections.synchronizedMap(linkedMapOf(*regeln))
+    val anfragen: MutableList<String> = Collections.synchronizedList(mutableListOf())
+
+    init {
+        server.dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse {
+                val pfad = request.path.orEmpty()
+                anfragen += "${request.method} $pfad"
+                val rumpf = antworten[pfad.substringBefore('?')]
+                return if (rumpf == null) TestApi.antwort("""{"success":false}""", 404) else TestApi.antwort(rumpf)
+            }
+        }
+        server.start()
+    }
+
+    fun anfragenAn(pfad: String): List<String> = synchronized(anfragen) { anfragen.filter { pfad in it } }
+}
+
+/** Filterablage im Speicher. */
+class SpeicherAblage : FilterAblage {
+    val konten = mutableMapOf<String, String>()
+    val lager = mutableMapOf<String, String>()
+    override suspend fun konto(view: ScopeFilter.View) = konten[view.key] ?: ScopeFilter.ALL
+    override suspend fun lager(view: ScopeFilter.View) = lager[view.key] ?: ""
+    override suspend fun setzeKonto(view: ScopeFilter.View, wert: String) { konten[view.key] = wert }
+    override suspend fun setzeLager(view: ScopeFilter.View, wert: String) { lager[view.key] = wert }
+    override suspend fun allesVergessen() { konten.clear(); lager.clear() }
+}
+
+/** Die gemeinsamen Dienste der Bereichs-ViewModels, gegen einen Testserver. */
+class TestDienste(server: MockWebServer) {
+    val cacheDir: File = File(System.getProperty("java.io.tmpdir"), "bim-vm-${System.nanoTime()}").apply { mkdirs() }
+    val api = TestApi.fuer(server)
+    val cache = ResponseCache { cacheDir }
+    val sitzung = Sitzung()
+    val blickfeld = Blickfeld(SpeicherAblage(), HaushaltRepository(api, cache), TeileRepository(api, cache))
+    val meldungen = MeldungsKanal()
+    val bestand = Bestandssignal()
+    val scrollMemory = ScrollMemory()
+    val dienste = AppDienste(sitzung, blickfeld, meldungen, NummernTexte, bestand, scrollMemory)
+
+    private val erzeugt = mutableListOf<androidx.lifecycle.ViewModel>()
+
+    /** Merkt sich das ViewModel, damit [aufraeumen] seine Koroutinen beendet. */
+    fun <T : androidx.lifecycle.ViewModel> merke(vm: T): T = vm.also { erzeugt += it }
+
+    /**
+     * Vor Dispatchers.resetMain() rufen: Die Sammler auf Abmeldung und
+     * Bestandssignal laufen sonst weiter und stossen auf ein fehlendes Main.
+     */
+    fun aufraeumen() {
+        erzeugt.forEach { it.viewModelScope.cancel() }
+        cacheDir.deleteRecursively()
+    }
 }

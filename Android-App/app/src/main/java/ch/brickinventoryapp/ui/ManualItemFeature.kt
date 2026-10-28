@@ -158,7 +158,7 @@ internal fun MainViewModel.deleteManualAcquisition(
 internal fun MainViewModel.reloadItemList(type: String) {
     viewModelScope.launch {
         if (type == "fig") loadMinifigs() else loadParts()
-        loadValuation()
+        bestand.melde(if (type == "fig") Aenderung.Figuren else Aenderung.Teile)
         loadStats()
     }
 }

@@ -52,6 +52,8 @@ import androidx.navigation.NavType
 import androidx.navigation.navArgument
 import ch.brickinventoryapp.*
 import ch.brickinventoryapp.ui.MainViewModel
+import ch.brickinventoryapp.ui.viewmodel.FinanzViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import ch.brickinventoryapp.ui.ManualItemDetailUiState
 
 /**
@@ -98,19 +100,19 @@ fun NavGraphBuilder.toolsGraph(
         composable(Screen.Finance.route) {
             // Zustand INNERHALB des Ziels lesen — als Parameter wäre es eine
             // Momentaufnahme vom Aufbau des Graphen (der NavHost-Builder läuft nur einmal).
-            val state by vm.state.collectAsStateWithLifecycle()
-            val financeState by vm.financeState.collectAsStateWithLifecycle()
-            val partsState by vm.partsState.collectAsStateWithLifecycle()
-            LaunchedEffect(state.serverUrl) { if (state.serverUrl.isNotBlank() && financeState.valuation == null) vm.loadValuation() }
+            val finanzen: FinanzViewModel = hiltViewModel()
+            val state by finanzen.state.collectAsStateWithLifecycle()
+            val financeState by finanzen.financeState.collectAsStateWithLifecycle()
+            LaunchedEffect(state.serverUrl) { if (state.serverUrl.isNotBlank() && financeState.valuation == null) finanzen.loadValuation() }
             ReiterGeruest(stringResource(R.string.nav_finance), vm, navController, bottomNavItems, snackbarHostState) {
                 LaunchedEffect(state.serverUrl) {
-                    if (state.serverUrl.isNotBlank() && financeState.historyPoints.isEmpty()) vm.loadPortfolioHistory()
+                    if (state.serverUrl.isNotBlank() && financeState.historyPoints.isEmpty()) finanzen.loadPortfolioHistory()
                 }
                 ch.brickinventoryapp.ui.ScrollPositionKeeper(
                     "finance", financeListState,
                     financeState.valuation != null, vm.scrollMemory)
                 FinanceScreen(
-                    vm = vm,
+                    vm = finanzen,
                     imageLoader = imageLoader,
                     // Klick auf eine Zeile öffnet dieselbe Detailansicht wie in
                     // der Galerie. Der Scroll-Zustand liegt ausserhalb dieses
@@ -123,13 +125,12 @@ fun NavGraphBuilder.toolsGraph(
                     // ohnehin geladen hat — sonst stünde dort bis zum ersten
                     // Laden die nackte Nummer.
                     onManualClick = { type, id, colorId ->
-                        // Aus DERSELBEN Quelle wie die Listen. Ist sie noch
-                        // nicht geladen, steht die Nummer da — genau wie
-                        // vorher, wenn die Bewertung noch fehlte.
+                        // Aus der Bewertung, die diese Liste zeigt. Fehlt sie
+                        // noch, steht die Nummer da.
                         val name = if (type == "fig")
-                            partsState.manualFigs?.find { it.figNumber == id }?.figName
+                            financeState.figsValuation?.figs?.find { it.figNumber == id }?.figName
                         else
-                            partsState.manualParts
+                            financeState.partsValuation?.parts
                                 ?.find { it.partNumber == id && it.colorId == colorId }?.partName
                         navController.navigate(
                             Screen.ManualItemDetail.createRoute(type, id, colorId, name ?: id))

@@ -140,7 +140,7 @@ internal fun MainViewModel.saveSettings(currency: String, condition: String) {
                 // NEUEN Währungszeichen — also schlicht falsche Beträge, bis der
                 // jeweilige Reiter neu geöffnet wurde.
                 loadSets()
-                loadValuation()
+                bestand.melde(Aenderung.Sets)
                 loadStats()
             }
             is Result.Error -> _snackbar.value = meldungFuerSnackbar(r)

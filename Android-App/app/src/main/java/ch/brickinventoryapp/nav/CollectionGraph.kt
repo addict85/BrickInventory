@@ -151,10 +151,9 @@ fun NavGraphBuilder.collectionGraph(
             // Teile und Finanzen als eigene Flows — ein Ladevorgang hier
             // rekomponiert dadurch nicht mehr Galerie und Navigationsleiste.
             val partsState by vm.partsState.collectAsStateWithLifecycle()
-            val financeState by vm.financeState.collectAsStateWithLifecycle()
             LaunchedEffect(state.serverUrl) {
                 if (state.serverUrl.isNotBlank()) {
-                    vm.loadParts(); vm.loadValuation()
+                    vm.loadParts()
                     // Farbkatalog fuer den Erfassungsdialog …
                     vm.loadPartsColors()
                     // … und die beiden FILTERlisten mit ihren Zaehlwerten
@@ -205,8 +204,7 @@ fun NavGraphBuilder.collectionGraph(
             // Momentaufnahme vom Aufbau des Graphen (der NavHost-Builder läuft nur einmal).
             val state by vm.state.collectAsStateWithLifecycle()
             val partsState by vm.partsState.collectAsStateWithLifecycle()
-            val financeState by vm.financeState.collectAsStateWithLifecycle()
-            LaunchedEffect(state.serverUrl) { if (state.serverUrl.isNotBlank()) { if (partsState.minifigs.isEmpty()) vm.loadMinifigs(); vm.loadValuation() } }
+            LaunchedEffect(state.serverUrl) { if (state.serverUrl.isNotBlank()) { if (partsState.minifigs.isEmpty()) vm.loadMinifigs() } }
             ReiterGeruest(stringResource(R.string.nav_minifigs), vm, navController, bottomNavItems, snackbarHostState) {
                 ch.brickinventoryapp.ui.ScrollPositionKeeper(
                     "minifigs", minifigsGridState,
