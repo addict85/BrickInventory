@@ -565,7 +565,7 @@ async function getPartAcquisitions(uid: number[], partNumber: string, colorId: s
   // Ausführlich: docs/begruendungen/routes/parts.ts.md#getpartacquisitions-2
   return db.all(
     `SELECT a.id, a.quantity, a.unit_price,
-            COALESCE(a.condition, 'N') AS condition,
+            COALESCE(a.condition, 'N') AS condition, a.price_estimated, a.currency,
             a.created_at, a.user_id AS owner_user_id
      FROM part_acquisitions a
      WHERE a.user_id = ANY($1) AND a.part_number=$2 AND a.color_id=$3

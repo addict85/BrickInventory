@@ -120,7 +120,11 @@ data class Acquisition(
      * mehreren Konten gehören. Ohne das Feld wüsste die Eigentümer-Auswahl
      * nicht, worauf sie steht, und ein Wechsel griffe die falsche Zeile ab.
      */
-    @SerialName("owner_user_id") val ownerUserId: Int? = null
+    @SerialName("owner_user_id") val ownerUserId: Int? = null,
+    /** Ein eingesetzter Marktpreis, kein bezahlter Betrag. */
+    @SerialName("price_estimated") val priceEstimated: Boolean = false,
+    /** Währung, in der der Preis erfasst wurde. */
+    val currency: String? = null,
 ) {
     // Effective price: whichever field is set (sets use purchase_price, parts/figs use unit_price)
     val effectivePrice: Double? get() = purchasePrice ?: unitPrice

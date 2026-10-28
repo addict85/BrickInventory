@@ -787,4 +787,5 @@
         <item quantity="one">Eingerichtet · %d Wiederherstellungscode übrig</item>
         <item quantity="other">Eingerichtet · %d Wiederherstellungscodes übrig</item>
     </plurals>
+    <string name="acq_preis_geschaetzt">Geschätzt: Marktpreis, kein bezahlter Betrag</string>
 </resources>

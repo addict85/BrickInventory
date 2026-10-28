@@ -329,7 +329,7 @@ router.get('/sets/:setNumber/acquisitions', requireToken, async (req: AuthedRequ
     const ids = await scopeIds(uid, parseScopeMode(req.query.accounts));
     const rows = await db.all(
       `SELECT id, quantity, purchase_price,
-              COALESCE(condition, 'N') AS condition,
+              COALESCE(condition, 'N') AS condition, price_estimated, currency,
               created_at, user_id AS owner_user_id FROM set_acquisitions
        WHERE user_id = ANY($1) AND set_number=$2 ORDER BY created_at ASC, id ASC`,
       [ids, sn]

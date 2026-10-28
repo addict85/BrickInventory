@@ -419,7 +419,7 @@ async function getFigAcquisitions(uid: number[], figNumber: string) {
   // getPartAcquisitions in routes/parts.ts (Migration 0035).
   return db.all(
     `SELECT a.id, a.quantity, a.unit_price,
-            COALESCE(a.condition, 'N') AS condition,
+            COALESCE(a.condition, 'N') AS condition, a.price_estimated, a.currency,
             a.created_at, a.user_id AS owner_user_id
      FROM minifig_acquisitions a
      WHERE a.user_id = ANY($1) AND a.fig_number=$2
