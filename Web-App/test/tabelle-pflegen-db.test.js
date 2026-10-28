@@ -149,6 +149,7 @@ test('Auffrischen nach Masseneinfuegen', { concurrency: 1 }, async (t) => {
     // Katalogzahl. Hier zaehlt nur die MENGE der Zeilen (300), nicht ihr Wert
     // — deshalb braucht es keine Katalogzeilen dazu; teilmengeAus() faellt auf
     // 1 zurueck, und 1 stand hier auch vorher.
+    await db.run(`INSERT INTO sets (user_id, set_number) VALUES ($1, '75192-1') ON CONFLICT DO NOTHING`, [nutzer]);
     await db.run(`INSERT INTO parts (user_id, set_number, part_number, color_id)
       SELECT $1, '75192-1', 'p'||g, 0
       FROM generate_series(1, 300) g ON CONFLICT DO NOTHING`, [nutzer]);

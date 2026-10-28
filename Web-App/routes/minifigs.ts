@@ -35,7 +35,7 @@ import { sendeFehler } from '../utils/fehlerTexte';
 import { merkeFigur } from '../utils/katalogPflege';
 
 import { merkeBlNummer } from '../utils/blZuordnung';
-import { resolveBlFigNumber, resolveManualFigPurchase, addManualFig, updateManualFig, getFigAcquisitions } from '../utils/manuelleFiguren';
+import { manuelleFigur, resolveBlFigNumber, resolveManualFigPurchase, addManualFig, updateManualFig, getFigAcquisitions } from '../utils/manuelleFiguren';
 
 router.use(requireLogin);
 
@@ -105,9 +105,7 @@ router.post('/import/csv', csvEmpfang.single('file'), async (req: LoggedInReques
           await resolveManualFigPurchase(uid, { figNumber, blFigNumber, unitPrice, condition: rawCondition });
         const acqDate = acquiredAt || new Date().toISOString().slice(0,10);
 
-        const existing = await db.get(
-          "SELECT id FROM minifigs WHERE user_id=$1 AND fig_number=$2 AND source='manual'",
-          [uid, figNumber]);
+        const existing = await manuelleFigur(uid, figNumber);
 
         if (existing) {
           // Keine Mengenaenderung hier — die Erfassung unten ist die Wahrheit

@@ -168,10 +168,7 @@ async function addManualPartIntern(uid: number, rawBody: any) {
   // Stückzahl stand hier als zweite Spalte und ist mit Migration 0038 weg.
   // Gelesen wurde sie ohnehin nicht mehr: Die Menge addiert sich dadurch,
   // dass eine zweite Erfassung entsteht.
-  const existing = await db.get(
-    "SELECT id FROM parts WHERE user_id=$1 AND part_number=$2 AND color_id=$3 AND source='manual'",
-    [uid, part_number, color_id]
-  );
+  const existing = await manuellesTeil(uid, part_number, color_id);
 
   if (existing) {
     // Menge addieren UND eine Erfassung anlegen.
@@ -358,4 +355,11 @@ async function getPartAcquisitions(uid: number[], partNumber: string, colorId: s
   );
 }
 
-export { getPartColorList, resolveManualPartPurchase, addManualPart, updateManualPart, getPartAcquisitions };
+/** Die manuelle Bestandszeile eines Teils, falls es sie gibt. */
+function manuellesTeil(uid: number, partNumber: string, colorId: number): Promise<{ id: number } | undefined> {
+  return db.get(
+    "SELECT id FROM parts WHERE user_id=$1 AND part_number=$2 AND color_id=$3 AND source='manual'",
+    [uid, partNumber, colorId]);
+}
+
+export { manuellesTeil, getPartColorList, resolveManualPartPurchase, addManualPart, updateManualPart, getPartAcquisitions };

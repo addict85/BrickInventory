@@ -116,9 +116,7 @@ async function addManualFigIntern(uid: number, body: any) {
     }
   }
 
-  const existing = await db.get(
-    "SELECT id FROM minifigs WHERE user_id=$1 AND fig_number=$2 AND source='manual'",
-    [uid, num]);
+  const existing = await manuelleFigur(uid, num);
 
   if (existing) {
     // Menge addieren UND eine Erfassung anlegen.
@@ -293,4 +291,11 @@ async function getFigAcquisitions(uid: number[], figNumber: string) {
   );
 }
 
-export { resolveBlFigNumber, resolveManualFigPurchase, addManualFig, updateManualFig, getFigAcquisitions };
+/** Die manuelle Bestandszeile einer Figur, falls es sie gibt. */
+function manuelleFigur(uid: number, figNumber: string): Promise<{ id: number } | undefined> {
+  return db.get(
+    "SELECT id FROM minifigs WHERE user_id=$1 AND fig_number=$2 AND source='manual'",
+    [uid, figNumber]);
+}
+
+export { manuelleFigur, resolveBlFigNumber, resolveManualFigPurchase, addManualFig, updateManualFig, getFigAcquisitions };

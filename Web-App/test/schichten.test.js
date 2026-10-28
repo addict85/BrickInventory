@@ -98,12 +98,17 @@ function innereDateien() {
   return gefunden;
 }
 
+/** Alle Ziele von import/require einer Datei (relativ zu ROOT), roh. */
+function importe(rel) {
+  const src = ohneKommentare(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
+  return [...src.matchAll(/(?:from\s+|require\()\s*['"]([^'"]+)['"]/g)].map(m => m[1]);
+}
+
 /** Importe und require() aus routes/, je Datei. */
 function nachAussen(rel) {
-  const src = ohneKommentare(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
   const treffer = new Set();
-  for (const m of src.matchAll(/(?:from\s+|require\()\s*['"]([^'"]*routes\/[^'"]+)['"]/g))
-    treffer.add(m[1].replace(/^.*?(routes\/)/, '$1').replace(/\.js$/, ''));
+  for (const ziel of importe(rel).filter(z => /routes\//.test(z)))
+    treffer.add(ziel.replace(/^.*?(routes\/)/, '$1').replace(/\.js$/, ''));
   return [...treffer];
 }
 
@@ -134,11 +139,9 @@ test('eine v1-Route importiert keine andere Routendatei', () => {
   const dateien = fs.readdirSync(ordner).filter(f => f.endsWith('.ts'));
   assert.ok(dateien.length > 10, `nur ${dateien.length} v1-Dateien gefunden`);
   const treffer = [];
-  for (const f of dateien) {
-    const src = ohneKommentare(fs.readFileSync(path.join(ordner, f), 'utf8'));
-    for (const m of src.matchAll(/(?:from\s+|require\()\s*['"](\.\.\/[^.'"][^'"]*)['"]/g))
-      treffer.push(`api_v1/${f} -> ${m[1]}`);
-  }
+  for (const f of dateien)
+    for (const ziel of importe(`routes/api_v1/${f}`).filter(z => /^\.\.\/[^.]/.test(z)))
+      treffer.push(`api_v1/${f} -> ${ziel}`);
   assert.deepEqual(treffer, []);
 });
 
@@ -147,11 +150,9 @@ test('utils/ und clients/ importieren nichts aus jobs/', () => {
   // die Ausführung setzt jobs/verdrahtung.ts ein.
   // Gegenprobe (28.10.2026): require('../jobs/imageQueue') in merkliste.ts → rot.
   const treffer = [];
-  for (const d of innereDateien().filter(f => /^(utils|clients)\//.test(f))) {
-    const src = ohneKommentare(fs.readFileSync(path.join(ROOT, d), 'utf8'));
-    for (const m of src.matchAll(/(?:from\s+|require\()\s*['"]([^'"]*jobs\/[^'"]+)['"]/g))
-      treffer.push(`${d} -> ${m[1]}`);
-  }
+  for (const d of innereDateien().filter(f => /^(utils|clients)\//.test(f)))
+    for (const ziel of importe(d).filter(z => /jobs\//.test(z)))
+      treffer.push(`${d} -> ${ziel}`);
   assert.deepEqual(treffer, []);
 });
 

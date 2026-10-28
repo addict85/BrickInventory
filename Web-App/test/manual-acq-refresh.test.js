@@ -61,8 +61,8 @@ test('eine Mengenerhöhung legt auch ohne bestehende Erfassung eine Zeile an', (
 test('die LIFO-Reduktion entfernt die neueste Erfassung zuerst', () => {
   // Reihenfolge DESC ist die Voraussetzung dafür, dass beim Reduzieren der
   // HEUTIGE Eintrag zuerst schrumpft bzw. wegfällt.
-  for (const [f, table] of [['routes/parts.ts', 'part_acquisitions'],
-                            ['routes/minifigs.ts', 'minifig_acquisitions']]) {
+  for (const [f, table] of [['utils/manuelleTeile.ts', 'part_acquisitions'],
+                            ['utils/manuelleFiguren.ts', 'minifig_acquisitions']]) {
     const src = read(f);
     assert.match(src, new RegExp(`FROM ${table} WHERE[^']*ORDER BY created_at DESC, id DESC`),
       `${f}: ohne DESC würde beim Reduzieren die ÄLTESTE Erfassung zuerst abgebaut`);
@@ -284,8 +284,8 @@ test('das Löschen eines manuellen Eintrags räumt die Kaufpreise mit ab', () =>
   // dauerhaft weitergezählt, und zwar unsichtbar: Keine Ansicht zeigt
   // verwaiste Erfassungen, es fällt nur als „die Summe stimmt nicht" auf.
   const stellen = [
-    ['routes/parts.ts',           'DELETE FROM part_acquisitions'],
-    ['routes/minifigs.ts',        'DELETE FROM minifig_acquisitions'],
+    ['utils/manuelleTeile.ts',    'DELETE FROM part_acquisitions'],
+    ['utils/manuelleFiguren.ts',  'DELETE FROM minifig_acquisitions'],
     // Die beiden v1-Routen und „alles löschen" gehen über utils/loeschen.ts.
     ['utils/loeschen.ts',         'DELETE FROM part_acquisitions'],
     ['utils/loeschen.ts',         'DELETE FROM minifig_acquisitions'],
@@ -318,6 +318,7 @@ test('kein stiller Fehler mehr auf Bestandstabellen', () => {
                     'part_acquisitions', 'minifig_acquisitions', 'instructions'];
   const schreibt = new RegExp(`\\b(UPDATE|INSERT INTO|DELETE FROM)\\s+(${TABELLEN.join('|')})\\b`);
   const dateien = ['routes/sets.ts', 'routes/parts.ts', 'routes/minifigs.ts',
+                   'utils/manuelleTeile.ts', 'utils/manuelleFiguren.ts',
                    'routes/api_v1/sets.ts', 'routes/api_v1/parts.ts',
                    'routes/api_v1/minifigs.ts', 'routes/api_v1/acquisitions.ts',
                    'utils/setMove.ts', 'utils/acquisitions.ts',

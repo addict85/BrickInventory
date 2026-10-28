@@ -26,7 +26,7 @@ import { requireLoginOrToken as requireLogin } from '../utils/auth';
 // Blickfeld — dieselbe Quelle wie in routes/api_v1/parts.ts.
 import { scopeIds, parseScopeMode } from '../utils/household';
 import { getCurrentPartMarketPrice } from '../utils/marketPrice';
-import { addManualPart, updateManualPart, getPartColorList, getPartAcquisitions, resolveManualPartPurchase } from '../utils/manuelleTeile';
+import { manuellesTeil, addManualPart, updateManualPart, getPartColorList, getPartAcquisitions, resolveManualPartPurchase } from '../utils/manuelleTeile';
 
 router.use(requireLogin);
 
@@ -155,10 +155,7 @@ router.post('/import/csv', csvEmpfang.single('file'), async (req: LoggedInReques
           await resolveManualPartPurchase(uid, { partNumber, colorId, unitPrice, condition: rawCondition });
         const acqDate = acquiredAt || new Date().toISOString().slice(0,10);
 
-        const existing = await db.get(
-          "SELECT id FROM parts WHERE user_id=$1 AND part_number=$2 AND color_id=$3 AND source='manual'",
-          [uid, partNumber, colorId]
-        );
+        const existing = await manuellesTeil(uid, partNumber, colorId);
         if (existing) {
           // Keine Mengenaenderung hier — die Erfassung unten ist die Wahrheit
           // (utils/bestandsmenge.ts).

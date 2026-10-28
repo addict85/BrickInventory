@@ -394,7 +394,7 @@ async function updateSet(uid: number, sn: string, body: any) {
     const leseFeld = await scopeIds(uid);
     //  Angezeigt wird der HAUSHALT, geändert wird das EIGENE Konto
     // Ausführlich: docs/begruendungen/utils/setService.ts.md#updateset-gewuenschtgesamt
-    const eigenesZiel = async (dbh: any) => {
+    const eigenesZiel = async (dbh: Pick<typeof db, 'get'>) => {
       const gesamtVorher = (await dbh.get(mengeSummeSql('blickfeld'), [leseFeld, sn]))?.q ?? 0;
       const eigenVorher = (await dbh.get(mengeSummeSql('eines'), [uid, sn]))?.q ?? 0;
       // Nach unten bei 0 gedeckelt: Die Exemplare eines anderen Kontos sind

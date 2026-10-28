@@ -78,10 +78,10 @@ test('der Rueckfall wird in beiden Preisabrufen markiert', () => {
 });
 
 test('die Herkunft erreicht beide Antworten', () => {
-  for (const datei of ['parts.ts', 'minifigs.ts']) {
-    const src = lies('routes', datei);
+  for (const datei of ['manuelleTeile.ts', 'manuelleFiguren.ts']) {
+    const src = lies('utils', datei);
     assert.match(src, /price_from_condition: preisAusZustand/,
-      `routes/${datei} liefert die Herkunft nicht aus — dann kann keine ` +
+      `utils/${datei} liefert die Herkunft nicht aus — dann kann keine ` +
       'Oberflaeche sie zeigen');
   }
 });
