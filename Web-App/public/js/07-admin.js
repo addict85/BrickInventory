@@ -155,7 +155,7 @@ export async function enrichGalleryWithPrices(){
     _pnlCache[nr] = {
       price: zeilen[0].current_price,
       pnl_pct: (basis != null && markt > 0)
-        ? ((markt - basis) / Math.max(basis, 0.01) * 100).toFixed(1)
+        ? (markt - basis) / Math.max(basis, 0.01) * 100
         : null,
     };
   }

@@ -59,14 +59,14 @@ async function loadPortfolioChart(){
     // Kaufpreis, und „0.0 %" neben „—" behauptete Stillstand.
     if(!(window._finGrandTotal > 0)) pnlEl.innerHTML = '';
     else if(d.period_change_pct != null){
-      pnlEl.innerHTML = pnlBadge(d.period_change_pct.toFixed(1));
+      pnlEl.innerHTML = pnlBadge(d.period_change_pct);
     } else {
       // Fallback: first chart point vs current
       const purchaseBaseline = parseFloat(d.purchase_total || 0);
       const firstVal = (purchaseBaseline > 0 && finalChartData.length <= 2)
         ? purchaseBaseline : finalChartData[0].total;
       if(firstVal > 0 && grandTotal > 0){
-        const pct = ((grandTotal - firstVal) / firstVal * 100).toFixed(1);
+        const pct = (grandTotal - firstVal) / firstVal * 100;
         pnlEl.innerHTML = pnlBadge(pct);
       }
     }

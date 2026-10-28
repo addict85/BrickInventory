@@ -697,6 +697,19 @@ export function fmtN(v,cur){
   if(!v||v==0) return '—';
   return new Intl.NumberFormat(locale(),{style:'currency',currency:cur||CURRENCY||'EUR',minimumFractionDigits:2}).format(v);
 }
+/**
+ * Prozent in der Form der Oberfläche (de-DE „+51,1 %“, en-GB „+51.1%“), damit
+ * sie neben den Beträgen aus fmtN() nicht in einer zweiten Schreibweise steht.
+ * @param {number|string} v  Prozentwert (51.1, nicht 0.511)
+ * @param {{vorzeichen?: boolean, stellen?: number}} [o]
+ */
+export function fmtPct(v, o = {}) {
+  const n = parseFloat(String(v));
+  if (!Number.isFinite(n)) return '—';
+  const stellen = o.stellen ?? 1;
+  return new Intl.NumberFormat(locale(), { style: 'percent', minimumFractionDigits: stellen,
+    maximumFractionDigits: stellen, signDisplay: o.vorzeichen === false ? 'auto' : 'exceptZero' }).format(n / 100);
+}
 export function fmtBig(n){ return n>1e6?(n/1e6).toFixed(1)+'M':n>1e3?(n/1e3).toFixed(1)+'k':String(n); }
 
 // ── LANGUAGE HELPERS ────────────────────────────────────────────────────────

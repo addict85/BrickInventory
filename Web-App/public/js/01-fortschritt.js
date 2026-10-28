@@ -21,7 +21,7 @@
 // längst denselben); kritisch wäre nur ein const-Zugriff während der
 // Auswertung, und den gibt es hier nicht.
 import { registerActions } from './00-registry.js';
-import { ico, G, ME, api } from './01-core.js';
+import { ico, G, ME, api, fmtPct } from './01-core.js';
 import { _csvPollActive, hideProgress, loadGallery, loadStats, showProgress } from './02-gallery.js';
 import { t, tRaw } from '../i18n.js';
 
@@ -46,7 +46,7 @@ function gibApplyStatus(s) {
     if (running) _gibEl.style.display = 'flex';
     G('gib-fill').style.width = pct + '%';
     G('gib-text').textContent = running
-      ? `${done}/${total} (${pct}%)`
+      ? `${done}/${total} (${fmtPct(pct, { vorzeichen: false, stellen: 0 })})`
       : `${s.ok} ok${s.warn ? ', '+s.warn+' '+t('csv.warnings') : ''}${s.err ? ', '+s.err+' '+t('csv.errors') : ''}`;
   }
 
@@ -70,7 +70,7 @@ function gibApplyStatus(s) {
   if (gpw && running) {
     gpw.style.display = 'block';
     G('gib-panel-fill').style.width = pct + '%';
-    G('gib-panel-footer').textContent = `${t('csv.items_progress',{done,total})} (${pct}%)`;
+    G('gib-panel-footer').textContent = `${t('csv.items_progress',{done,total})} (${fmtPct(pct, { vorzeichen: false, stellen: 0 })})`;
     if(s.current) G('gib-panel-set').textContent = `Verarbeite: ${s.current}`;
   }
   G('gib-stats').textContent = `${s.ok || 0} ok · ${s.warn || 0} ${t('csv.warnings')} · ${s.err || 0} ${t('csv.errors')}`;

@@ -1,7 +1,7 @@
 import { ladeAnzeige } from './01-bausteine.js';
 import { registerActions } from './00-registry.js';
 import { locale, t, tRaw} from '../i18n.js';
-import { bildTag, fullUrl, platzhalterInhalt, setnummerFeldGueltig, leerZustand, ico, CURRENCY, G, ME, TRASH_ICON_SVG, api, esc, escJs, escUrl, fmtBig, fmtN, imgUrl, observeLazyImages, thumbUrl, toast } from './01-core.js';
+import { bildTag, fullUrl, platzhalterInhalt, setnummerFeldGueltig, leerZustand, ico, CURRENCY, G, ME, TRASH_ICON_SVG, api, esc, escJs, escUrl, fmtBig, fmtN, fmtPct, imgUrl, observeLazyImages, thumbUrl, toast } from './01-core.js';
 import { _gibSse, _gibTimer, gibStart, protokollZeile } from './01-fortschritt.js';
 import { _monitorTimer, loadMonitor, set_monitorTimer } from './01-monitor.js';
 import { SCOPE_VIEWS, addScopeParam, scopeMode, scopeQuery, setScopeMode,
@@ -883,7 +883,7 @@ export function updateGalleryPrices(){
 export function pnlBadge(pct){
   if(pct===null||pct===undefined) return '';
   const v=parseFloat(pct); const cls=v>0?'pnl-pos':v<0?'pnl-neg':'pnl-neu';
-  return `<span class="${cls}">${v>0?'+':''}${v.toFixed(1)}%</span>`;
+  return `<span class="${cls}">${fmtPct(v)}</span>`;
 }
 
 /**
@@ -1120,7 +1120,7 @@ function csvApplyOverlayStatus(s, ctx, fi){
     G('prog-footer').textContent=`${t('csv.items_progress',{done,total})} (${s.ok} ok${s.warn?', '+s.warn+' '+t('csv.warnings'):''}${s.err?', '+s.err+' '+t('csv.errors'):''})`;
     if(s.current) G('prog-set-name').textContent=`Verarbeite: ${s.current} (${done}/${total})`;
     // Update header progress bar directly
-    { const _p=total>0?Math.round(done/total*100):0; const _b=G('global-import-bar'); if(_b){_b.style.display='flex';G('gib-fill').style.width=_p+'%';G('gib-text').textContent=done+'/'+total+' ('+_p+'%)';} }
+    { const _p=total>0?Math.round(done/total*100):0; const _b=G('global-import-bar'); if(_b){_b.style.display='flex';G('gib-fill').style.width=_p+'%';G('gib-text').textContent=done+'/'+total+' ('+fmtPct(_p,{vorzeichen:false,stellen:0})+')';} }
     // Show live results as they come in
     if(s.results && s.results.length > ctx.prevResultCount) {
       const newResults = s.results.slice(ctx.prevResultCount);
