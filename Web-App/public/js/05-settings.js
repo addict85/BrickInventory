@@ -1,6 +1,6 @@
 import { registerActions } from './00-registry.js';
 import { I18N, LANG, applyLang, locale, t, tRaw} from '../i18n.js';
-import { ico, CURRENCY, G, ME, _settingsCache, _updateLangSelect, api, applyTheme, esc, escUrl, imgUrl, initDefaultCondition, knopfBesetzt, thumbUrl, toast, zeigeBenutzernamen , set_CURRENCY, set_settingsCache, passwortZuKurz, passwortZuKurzText} from './01-core.js';
+import { bildTag, platzhalterInhalt, ico, CURRENCY, G, ME, _settingsCache, _updateLangSelect, api, applyTheme, esc, escUrl, imgUrl, initDefaultCondition, knopfBesetzt, thumbUrl, toast, zeigeBenutzernamen , set_CURRENCY, set_settingsCache, passwortZuKurz, passwortZuKurzText} from './01-core.js';
 import { loadGallery, loadStats } from './02-gallery.js';
 import { loadParts } from './03-parts.js';
 import { loadMinifigs } from './06-minifigs.js';
@@ -319,8 +319,8 @@ export async function loadProfile() {
   G('prof-email').dataset.bisher = u.email || '';
   const vEl = G('prof-email-verified');
   if (vEl) vEl.innerHTML = u.email_verified
-    ? `<span style="color:var(--g500)">${t('profile.verified')}</span>`
-    : `<span style="color:var(--a500)">${t('profile.not_verified')}</span>`;
+    ? `<span style="color:var(--g700)">${t('profile.verified')}</span>`
+    : `<span style="color:var(--a-schrift)">${t('profile.not_verified')}</span>`;
 }
 
 G('btn-sav-prof').onclick = async () => {
@@ -589,12 +589,14 @@ export async function loadUsers(){
     d.users.map(u=>`<tr><td>${u.id}</td><td><strong>${esc(u.username)}</strong></td>
       <td><span class="rb ${u.is_admin?'ra':'ru'}">${u.is_admin?t('users.role.admin'):t('users.role.user')}</span></td>
       <td>${new Date(u.created_at).toLocaleDateString(locale())}</td>
-      <td style="display:flex;gap:5px">
-        <button class="btn bs btn-sm" data-click="openRpw" data-arg="${u.id}" aria-label="${esc(tRaw('users.pw_reset_title'))}">${ico('schluessel')}</button>
-        <button class="btn bs btn-sm" data-click="toggleAdmin" data-arg="${u.id}" data-arg2="${u.is_admin}">${ico(u.is_admin?'runter':'hoch')}</button>
-        ${u.zweiter_faktor?`<button class="btn bs btn-sm" data-click="zfZuruecksetzen" data-arg="${u.id}" data-arg2="${esc(u.username)}" title="${esc(tRaw('zf.reset_title'))}">${ico('schloss')}</button>`:''}
-        <button class="btn bd btn-sm" data-click="delUser" data-arg="${u.id}" data-arg2="${esc(u.username)}" aria-label="${esc(tRaw('common.delete'))}">${ico('loeschen')}</button>
-      </td></tr>`).join('')
+      <td><div class="nutzer-aktionen">
+        ${nutzerKnopf(u, 'bs', 'openRpw', 'schluessel', 'users.action.password', 'users.pw_reset_title')}
+        ${nutzerKnopf(u, 'bs', 'toggleAdmin', u.is_admin ? 'runter' : 'hoch',
+            u.is_admin ? 'users.action.make_user' : 'users.action.make_admin',
+            u.is_admin ? 'users.action.make_user_title' : 'users.action.make_admin_title', u.is_admin ? 1 : 0)}
+        ${u.zweiter_faktor ? nutzerKnopf(u, 'bs', 'zfZuruecksetzen', 'schloss', 'users.action.2fa', 'zf.reset_title', u.username) : ''}
+        ${nutzerKnopf(u, 'bd', 'delUser', 'loeschen', 'common.delete', 'users.action.delete_title', u.username)}
+      </div></td></tr>`).join('')
   }</tbody></table></div>`;
   ladeProtokoll();
 }
@@ -614,6 +616,16 @@ async function ladeProtokoll(){
     d.eintraege.map(e=>`<tr><td>${new Date(e.zeit).toLocaleString(locale())}</td><td>${esc(e.verwalter_name||'—')}</td>
       <td>${(AKTIONEN[e.aktion] || (() => esc(e.aktion)))()}</td><td>${esc(e.ziel_name||'#'+e.ziel_id)}</td></tr>`).join('')
   }</tbody></table></div>` : `<p style="color:var(--mut);font-size:var(--fs-2)">${t('users.protokoll.leer')}</p>`;
+}
+/**
+ * Ein Knopf der Benutzertabelle: Symbol und Wort sichtbar, die längere
+ * Beschreibung als Tooltip, der Name des Kontos für Vorleser im Namen.
+ */
+function nutzerKnopf(u, art, klick, symbol, wortKey, titelKey, arg2) {
+  const wort = tRaw(wortKey), titel = tRaw(titelKey);
+  return `<button type="button" class="btn ${art} btn-sm" data-click="${klick}" data-arg="${u.id}"` +
+    `${arg2 !== undefined ? ` data-arg2="${esc(String(arg2))}"` : ''} title="${esc(titel)}"` +
+    ` aria-label="${esc(`${wort}: ${u.username}`)}">${ico(symbol)}<span>${esc(wort)}</span></button>`;
 }
 G('btn-cu').onclick=async()=>{
   const n=G('nu-n').value.trim(),p=G('nu-p').value,a=G('nu-a').checked;
@@ -718,9 +730,8 @@ export async function ladeAlarmUebersicht() {
     // sie ueberhaupt in der Antwort.
     const bildQuelle = a.image_local || a.image_url || a.set_img_url || '';
     const bild = bildQuelle
-      ? `<img src="${escUrl(imgUrl(thumbUrl(bildQuelle) || bildQuelle, true))}" loading="lazy" decoding="async"
-              alt="" style="width:38px;height:38px;object-fit:contain;border-radius:6px;flex:0 0 auto" />`
-      : '<div style="width:38px;height:38px;flex:0 0 auto"></div>';
+      ? bildTag({ src: imgUrl(thumbUrl(bildQuelle) || bildQuelle, true), alt: '', klasse: 'bild-38', ph: 'set' })
+      : `<span class="bild-ph bild-38" aria-hidden="true">${platzhalterInhalt('set')}</span>`;
     // Die ganze Zeile oeffnet den Detaildialog — derselbe `openModal` wie in
     // den Finanzen und in der Galerie. Weil der Dialog ueber der Seite liegt
     // und diese nicht verlaesst, steht man nach dem Schliessen wieder an

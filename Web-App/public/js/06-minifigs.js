@@ -1,11 +1,12 @@
 import { registerActions } from './00-registry.js';
 import { colorName, locale, t, tRaw} from '../i18n.js';
-import { leerZustand, ico, escHex, hexZiffern, CURRENCY, G, TRASH_ICON_SVG, api, esc, escJs, escUrl, fmtN, fullUrl, imgUrl, thumbUrl, toast } from './01-core.js';
+import { bildTag, platzhalterInhalt, leerZustand, ico, escHex, hexZiffern, CURRENCY, G, TRASH_ICON_SVG, api, esc, escJs, escUrl, fmtN, fullUrl, imgUrl, thumbUrl, toast } from './01-core.js';
 import { addLagerParam, addScopeParam, scopeQuery } from './14-scope.js';
-import { condBadges, leereLagerortFeld, ownerBadges, schliesseErfassen, selectedOwner, selectedStorage, PARTS_ICON_SVG } from './02-gallery.js';
+import { condBadges, leereLagerortFeld, ownerBadges, schliesseErfassen, selectedOwner, selectedStorage } from './02-gallery.js';
 import { loadFinance } from './04-finance.js';
 import { confirmDelete } from './07-admin.js';
 import { openManDetail } from './13-acquisition-modals.js';
+import { teileLeerAbgleichen, teilPasstZumFilter, zeichneTeileFilter } from './03-parts.js';
 import { geloeschtMitRueckgaengig } from './20-papierkorb.js';
 
 // ═══ Minifiguren + manuelle Teile (Erfassung, Bewertung) ═══
@@ -176,14 +177,13 @@ function appendFigs(batch) {
  */
 export function renderFigs(list, target) {
   const el = target || G('figs-list');
+  if (!target) _setFigurenLeer = !list.length;
   if (!list.length) {
-    el.innerHTML = `<div class="empty" style="padding:3rem;text-align:center">
-      <div class="leer-ico">${ico('figur')}</div>
-      <div style="font-weight:600">${t('figs.none')}</div>
-      <div style="color:var(--mut);font-size:var(--fs-3)">${t('figs.auto_hint')}</div>
-    </div>`;
+    if (target) el.innerHTML = '';
+    else figurenLeerAbgleichen();
     return;
   }
+  if (!target) figurenLeerAbgleichen();
 
   const viewMode = G('figs-view')?.value || 'grid';
 
@@ -210,7 +210,7 @@ export function renderFigs(list, target) {
         // Anklickbar wie die Kachel darunter — dieselbe Handlung in beiden
         // Ansichten (Marcos Detail-Dialog fuer automatisch erfasste Figuren).
         return `<tr style="cursor:pointer" data-click="${f.source==='manual'?'openManDetail':'openSetItemDetail'}" data-arg="fig" data-arg2="${escJs(f.fig_number)}" data-arg3="0">
-          <td>${imgSrc?`<img src="${escUrl(imgSrc)}" loading="lazy" decoding="async" data-onerror="hide" style="width:36px;height:36px;object-fit:contain;background:var(--s50);border-radius:5px" />`:'—'}</td>
+          <td>${imgSrc?bildTag({ src: imgSrc, alt: '', klasse: 'bild-klein', ph: 'figur' }):`<span class="bild-ph bild-klein" aria-hidden="true">${platzhalterInhalt('figur')}</span>`}</td>
           <td><span style="font-family:var(--mono);font-size:var(--fs-1);color:var(--b600)">${esc(f.fig_number)}</span></td>
           <td style="max-width:200px">${esc(f.fig_name)||'—'}</td>
           <td><span style="font-family:var(--mono);font-weight:600;color:var(--b700)">${f.total_quantity||f.quantity}</span></td>
@@ -271,8 +271,8 @@ export function renderFigs(list, target) {
           // `source=set` laedt.
           return `<div class="part-card" style="position:relative;cursor:pointer" data-click="${f.source==='manual'?'openManDetail':'openSetItemDetail'}" data-arg="fig" data-arg2="${escJs(f.fig_number)}" data-arg3="0">
             ${delBtn}
-            ${imgSrc ? `<img src="${escUrl(imgSrc)}" class="part-img" loading="lazy" decoding="async" data-fade="1" data-orig="${escUrl(fullUrl(imgSrc))}" />` : ''}
-            <div class="part-img-ph" style="display:${imgSrc?'none':'flex'}">${ico('figur')}</div>
+            ${imgSrc ? bildTag({ src: imgSrc, alt: f.fig_name || f.fig_number, klasse: 'part-img', fade: true, orig: fullUrl(imgSrc), ph: 'figur' })
+                     : `<span class="bild-ph part-img" role="img" aria-label="${esc(f.fig_name || f.fig_number)}">${platzhalterInhalt('figur')}</span>`}
             <div class="part-num">${esc(f.fig_number)}</div>
             <div class="part-name">${esc(f.fig_name)||'—'}</div>
             <div class="part-qty">${f.total_quantity||f.quantity}×</div>
@@ -301,14 +301,31 @@ export async function loadManualFigsTable() {
   renderManualFigsTable();
 }
 
+let _setFigurenLeer = null;   // null: noch nicht geladen
+let _manuelleFigurenLeer = null;
+
+/**
+ * Wie bei den Teilen (teileLeerAbgleichen in 03-parts.js): ein Leerzustand
+ * für den Reiter, und nur wenn beide Listen leer sind.
+ */
+function figurenLeerAbgleichen() {
+  const box = G('manual-figs-box');
+  if (box) box.style.display = _manuelleFigurenLeer ? 'none' : '';
+  if (_setFigurenLeer !== true) return;
+  const el = G('figs-list');
+  if (_manuelleFigurenLeer === false) { el.innerHTML = ''; return; }
+  const gesucht = !!G('fig-search')?.value.trim();
+  el.innerHTML = leerZustand({ ico: 'figur', titel: tRaw('figs.none'),
+    text: gesucht ? tRaw('common.filter_no_match') : tRaw('figs.auto_hint'),
+    knopf: gesucht ? null : { text: tRaw('figs.add_title'), click: 'oeffneErfassen', arg: 'fig' } });
+}
+
 export function renderManualFigsTable() {
   const el = G('manual-figs-list');
   if (!el) return;
-  if (!manualFigsCache.length) {
-    el.innerHTML = leerZustand({ ico: 'figur', titel: tRaw('figs.none_manual'), text: tRaw('figs.from_csv_hint'),
-      knopf: { text: tRaw('figs.add_title'), click: 'oeffneErfassen', arg: 'fig' } });
-    return;
-  }
+  _manuelleFigurenLeer = !manualFigsCache.length;
+  figurenLeerAbgleichen();
+  if (!manualFigsCache.length) { el.innerHTML = ''; return; }
   if (tabellenAnsicht('figs-view')) {
     el.innerHTML = manuelleTabelle(manualFigsCache, 'fig');
     if (typeof window.__bimLabelTables === 'function')
@@ -319,8 +336,8 @@ export function renderManualFigsTable() {
     ${manualFigsCache.map(f => {
       const imgSrc = imgUrl(thumbUrl(f.image_local || f.image_url) || f.image_local || f.image_url || '', true);
       const img = imgSrc
-        ? `<img class="man-tile-img" src="${escUrl(imgSrc)}" loading="lazy" decoding="async" data-onerror="hide" />`
-        : `<div class="man-tile-img-ph">${ico('figur')}</div>`;
+        ? bildTag({ src: imgSrc, alt: f.fig_name || f.fig_number, klasse: 'man-tile-img', ph: 'figur' })
+        : `<span class="bild-ph man-tile-img" role="img" aria-label="${esc(f.fig_name || f.fig_number)}">${platzhalterInhalt('figur')}</span>`;
       // Mengengewichteter Kaufpreis über die Erfassungen (Server rechnet ihn).
       // unit_price ist der zuletzt geschriebene Einzelwert der Stammzeile —
       // bei zwei Erfassungen zu verschiedenen Preisen stimmte er nicht.
@@ -388,7 +405,7 @@ G('btn-add-fig')?.addEventListener('click', async () => {
     owner_user_id: selectedOwner('af-owner'),
     storage: selectedStorage('af-storage'),
   });
-  btn.disabled=false; btn.textContent=tRaw('adding.button');
+  btn.disabled=false; btn.textContent=tRaw('gallery.add.submit');
   if(d.success){
     const hinweisF = preisHerkunftHinweis(d.price_from_condition);
     res.style.color='var(--g700)';
@@ -411,10 +428,10 @@ function csvImportStatus(elId, state, msg) {
   if (!el) return;
   if (state === 'hide') { el.style.display = 'none'; el.textContent = ''; return; }
   const styles = {
-    running: 'background:var(--b100);color:var(--b600)',
-    success: 'background:var(--g100);color:var(--g600)',
+    running: 'background:var(--b100);color:var(--b700)',
+    success: 'background:var(--g100);color:var(--g700)',
     warn:    'background:var(--s100);color:var(--s600)',
-    error:   'background:var(--r100);color:var(--r500)',
+    error:   'background:var(--r100);color:var(--r700)',
   };
   el.style.cssText = `display:block;font-size:var(--fs-3);margin-bottom:1rem;padding:.55rem .8rem;border-radius:8px;font-weight:600;${styles[state] || styles.running}`;
   el.textContent = msg;
@@ -576,8 +593,8 @@ function manuelleTabelle(posten, art) {
       : `data-arg="${esc(nummer)}" data-arg2="${p.user_id || ''}"`;
     return `<tr style="cursor:pointer" tabindex="0" data-click="openManDetail" data-arg="${art}" data-arg2="${esc(nummer)}" data-arg3="${istTeil ? (p.color_id || 0) : 0}">
       <td>${imgSrc
-        ? `<img src="${escUrl(imgSrc)}" loading="lazy" decoding="async" data-onerror="clear" style="width:36px;height:36px;object-fit:contain;background:var(--s50);border-radius:5px" />`
-        : ''}</td>
+        ? bildTag({ src: imgSrc, alt: '', klasse: 'bild-klein', ph: istTeil ? 'teil' : 'figur' })
+        : `<span class="bild-ph bild-klein" aria-hidden="true">${platzhalterInhalt(istTeil ? 'teil' : 'figur')}</span>`}</td>
       <td><span style="font-family:var(--mono);font-size:var(--fs-1);color:var(--b600)" title="${esc(nummer)}">${esc(blNummer)}</span></td>
       <td style="max-width:200px">${esc(name) || '—'}</td>
       ${istTeil ? `<td><div style="display:flex;align-items:center;gap:5px">${
@@ -622,27 +639,26 @@ export async function loadManualParts() {
 
 export function renderManualParts() {
   const el = G('manual-parts-list');
-  if (!manualPartsCache.length) {
-    el.innerHTML = leerZustand({ ico: 'teil', titel: tRaw('parts.none_manual'), text: tRaw('parts.none_manual_hint'),
-      knopf: { text: tRaw('parts.add_title'), click: 'oeffneErfassen', arg: 'part' } });
-    return;
-  }
+  zeichneTeileFilter();
+  const teile = manualPartsCache.filter(teilPasstZumFilter);
+  teileLeerAbgleichen(!teile.length);
+  if (!teile.length) { el.innerHTML = ''; return; }
   if (tabellenAnsicht('parts-view')) {
-    el.innerHTML = manuelleTabelle(manualPartsCache, 'part');
+    el.innerHTML = manuelleTabelle(teile, 'part');
     if (typeof window.__bimLabelTables === 'function')
       window.__bimLabelTables(el.querySelector('table'));
     return;
   }
   el.innerHTML = `<div class="man-grid">
-    ${manualPartsCache.map(p => {
+    ${teile.map(p => {
       // War: p.image_local || p.image_url roh, ohne Vorschau und ohne Proxy —
       // einzige Stelle im ganzen Projekt, die das CDN-Bild direkt und in
       // voller Auflösung in eine Kachel geladen hat. Jetzt wie überall sonst:
       // Vorschau über den Server-Proxy.
       const imgSrc = imgUrl(thumbUrl(p.image_local || p.image_url) || p.image_local || p.image_url || '', true);
       const img = imgSrc
-        ? `<img class="man-tile-img" src="${escUrl(imgSrc)}" loading="lazy" decoding="async" data-onerror="hide" />`
-        : `<div class="man-tile-img-ph">${PARTS_ICON_SVG.replace('style="width:1em;height:1em;vertical-align:middle"','style="width:1.6em;height:1.6em"')}</div>`;
+        ? bildTag({ src: imgSrc, alt: [p.part_name || p.part_number, p.color_name ? colorName(p.color_name) : ''].filter(Boolean).join(', '), klasse: 'man-tile-img', ph: 'teil' })
+        : `<span class="bild-ph man-tile-img" role="img" aria-label="${esc(p.part_name || p.part_number)}">${platzhalterInhalt('teil')}</span>`;
       const colorRow = p.color_name
         ? `<div class="man-tile-color">${p.color_hex ? `<span class="man-tile-swatch" style="background:${escHex(p.color_hex, 'var(--s300)')}"></span>` : ''}${esc(colorName(p.color_name))}</div>`
         : '';
@@ -747,7 +763,7 @@ G('btn-add-part')?.addEventListener('click', async () => {
     owner_user_id: selectedOwner('ap-owner'),
     storage: selectedStorage('ap-storage'),
   });
-  btn.disabled=false; btn.textContent=tRaw('adding.button');
+  btn.disabled=false; btn.textContent=tRaw('gallery.add.submit');
   if(d.success){
     const hinweisT = preisHerkunftHinweis(d.price_from_condition);
     res.style.color='var(--g700)';

@@ -15,6 +15,8 @@
  *   A  in mobile.css `.delbtn::after` entfernt → rot: „Löschknopf auf der Kachel"
  *   B  in mobile.css `.vb` aus der 44-px-Zeile genommen → rot: „Ansicht Karten/Tabelle"
  *   C  `label:has(> input[type="checkbox"])` entfernt → rot: „Häkchen mit Beschriftung"
+ *   D  (28.10.) das Häkchen wieder als 22-px-Kästchen ohne eigene Fläche
+ *      → rot: „Häkchen allein (22×22)"
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -47,6 +49,9 @@ const FAELLE = [
     '<div class="sci" style="height:150px;position:relative"></div><div class="sb">Titanic</div></div>'],
   ['Häkchen mit Beschriftung',
     '<label style="display:flex;align-items:center;gap:6px"><input type="checkbox" style="width:auto" data-ziel> Admin</label>'],
+  // Ohne Beschriftung ringsum muss das Kästchen selbst 44 px fassen.
+  ['Häkchen allein', '<input type="checkbox" style="width:auto" data-ziel aria-label="Auswahl">'],
+  ['Häkchen allein, angehakt', '<input type="checkbox" checked data-ziel aria-label="Auswahl">'],
 ];
 
 function testseite() {

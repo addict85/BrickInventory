@@ -1,5 +1,5 @@
 import { registerActions, resolveAction } from './00-registry.js';
-import { G, fullUrl, setLang } from './01-core.js';
+import { G, bildPlatzhalter, fullUrl, setLang } from './01-core.js';
 import { saveJobSchedule } from './01-monitor.js';
 import { openPdfViewer } from './12-pdfviewer.js';
 import { autosaveSet, closeImageLightbox, delSet, hideProgress, openImageLightbox } from './02-gallery.js';
@@ -158,38 +158,24 @@ import { merkpostenLoeschen } from './16-merkliste.js';
       return;
     }
 
+    if (el.dataset.onerror === 'keep') {
+      // Der Zoom (#lightbox-img) behält die Adresse: Ein leeres Overlay sähe
+      // aus wie ein kaputter Zoom, so nennt die Konsole die Adresse.
+      console.warn('[img] konnte nicht geladen werden:', el.src);
+      return;
+    }
+    const orig = el.dataset.orig;
+    if (orig && !el.dataset.origVersucht && el.getAttribute('src') !== orig) {
+      el.dataset.origVersucht = '1';
+      el.src = orig;
+      return;
+    }
     if (el.dataset.fallbackDone) return;
     el.dataset.fallbackDone = '1';
-
-    // data-onerror bestimmt das Verhalten. Ohne Angabe: volle Auflösung
-    // nachladen, wenn die Vorschau fehlschlägt (data-orig), sonst leeren.
-    switch (el.dataset.onerror) {
-      case 'hide':  el.style.display = 'none'; return;
-      case 'clear': el.removeAttribute('src'); return;
-      case 'symbol':
-        // Statt des kaputten Bildes das Set-Symbol, wie in Zeilen ohne Bild.
-        el.outerHTML = '<span class="fin-ph"><svg class="ico" aria-hidden="true"><use href="#i-set"/></svg></span>';
-        return;
-      case 'placeholder':
-        if (window._catPlaceholderImg) el.outerHTML = window._catPlaceholderImg;
-        return;
-      case 'keep':
-        // Adresse BEHALTEN und den Fehler melden.
-        //
-        // Für den Zoom (#lightbox-img) ist das Wegnehmen des src die falsche
-        // Reaktion: Das Overlay öffnet sich, zeigt eine leere Fläche, und im
-        // Log steht nichts — es sieht aus, als sei der Zoom kaputt, obwohl
-        // nur EIN Bild nicht geladen werden konnte. Mit dem behaltenen src
-        // zeigt der Browser sein Fehlersymbol, und die Konsole nennt die
-        // Adresse, an der es scheitert.
-        console.warn('[img] konnte nicht geladen werden:', el.src);
-        return;
-      default: {
-        const orig = el.dataset.orig;
-        if (orig && el.src !== orig) el.src = orig; else el.removeAttribute('src');
-        el.classList.add('loaded');
-      }
-    }
+    // Bilder aus Vorlagen (bildTag) bekommen den Platzhalter ihrer Art; die
+    // festen Dialogbilder in index.html werden nur geleert.
+    if (el.dataset.ph) bildPlatzhalter(el);
+    else { el.removeAttribute('src'); el.classList.add('loaded'); }
   }, true);
 
   // styles.css blendet JEDES img[loading=lazy] auf opacity:0 aus und erst die
