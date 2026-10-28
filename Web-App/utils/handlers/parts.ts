@@ -71,7 +71,7 @@ async function getPartsColors(userId: Blickfeld) {
            COUNT(DISTINCT p.part_number)::int AS unique_parts,
            SUM(${teilmengeAus('p', 'part')} * ${mengeAus('sm', 1)})::int AS total_quantity
     FROM parts p
-    ${mengeJoin('p')}
+    ${mengeJoin('p', 'sm', '= ANY($1)')}
     ${teilmengeJoin('p', 'part')}
     LEFT JOIN part_color_catalog pcc ON pcc.part_number = p.part_number
                                     AND pcc.color_id    = p.color_id
@@ -575,7 +575,7 @@ async function getPartsStats(userId: Blickfeld) {
            COUNT(DISTINCT p.color_id)    AS unique_colors,
            SUM(${teilmengeAus('p', 'part')} * ${mengeAus('sm', 1)}) AS total_parts
     FROM parts p
-    ${mengeJoin('p')}
+    ${mengeJoin('p', 'sm', '= ANY($1)')}
     ${teilmengeJoin('p', 'part')}
     WHERE p.user_id = ANY($1) AND COALESCE(p.source, 'set') <> 'manual'`, [uids]);
   return {
@@ -810,7 +810,7 @@ export async function getOwnedQuantities(
             COALESCE(SUM(CASE WHEN COALESCE(p.source,'set') = 'manual'
                               THEN ${teilmengeAus('p', 'part')} ELSE 0 END), 0)::int AS lose
        FROM parts p
-       ${mengeJoin('p')}
+       ${mengeJoin('p', 'sm', '= ANY($1)')}
        ${teilmengeJoin('p', 'part')}
        JOIN unnest($2::text[], $3::int[]) AS g(part_number, color_id)
          ON g.part_number = p.part_number AND g.color_id = COALESCE(p.color_id, 0)
@@ -837,7 +837,7 @@ export async function getOwnedQuantities(
             COALESCE(SUM(CASE WHEN COALESCE(m.source,'set') = 'manual'
                               THEN ${teilmengeAus('m', 'fig')} ELSE 0 END), 0)::int AS lose
        FROM minifigs m
-       ${mengeJoin('m')}
+       ${mengeJoin('m', 'sm', '= ANY($1)')}
        ${teilmengeJoin('m', 'fig')}
        JOIN unnest($2::text[]) AS g(fig_number)
          ON g.fig_number = m.fig_number

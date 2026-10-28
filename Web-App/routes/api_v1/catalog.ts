@@ -216,7 +216,7 @@ router.get('/catalog/sets', requireToken, async (req: AuthedRequest, res) => {
               ${mengeAus('sm', 0)}::int AS owned_quantity
        FROM rb_sets rb
        LEFT JOIN sets s ON s.user_id = $1 AND s.set_number = rb.set_num
-       ${mengeJoin('s')}
+       ${mengeJoin('s', 'sm', '= $1')}
        ${listWhere}
        ORDER BY ${sort}
        LIMIT $${pl} OFFSET $${po}`,
@@ -270,7 +270,7 @@ router.get('/catalog/sets/:setNumber', requireToken, async (req: AuthedRequest, 
               ${mengeAus('sm', 0)}::int AS owned_quantity
        FROM rb_sets rb
        LEFT JOIN sets s ON s.user_id = $1 AND s.set_number = rb.set_num
-       ${mengeJoin('s')}
+       ${mengeJoin('s', 'sm', '= $1')}
        WHERE rb.set_num = $2`,
       [userId, n]
     );

@@ -21,7 +21,7 @@ async function getStats(userId: number | number[]) {
     db.get(`SELECT COUNT(DISTINCT s.set_number) AS total_sets,
                    COALESCE(SUM(${mengeAus()}), 0) AS total_quantity
               FROM sets s
-              ${mengeJoin('s')}
+              ${mengeJoin('s', 'sm', '= ANY($1)')}
              WHERE s.user_id = ANY($1)`, [uids]),
     db.get(`
       SELECT
@@ -34,10 +34,10 @@ async function getStats(userId: number | number[]) {
     // erfasst) zaehlt einfach, nicht null — dieselbe Lesart wie das
     // frueherere COALESCE(s.quantity, 1).
     db.get(`SELECT SUM(${teilmengeAus('p', 'part')}*${mengeAus('sm', 1)}) AS t
-              FROM parts p ${mengeJoin('p')} ${teilmengeJoin('p', 'part')}
+              FROM parts p ${mengeJoin('p', 'sm', '= ANY($1)')} ${teilmengeJoin('p', 'part')}
              WHERE p.user_id = ANY($1)`, [uids]),
     db.get(`SELECT SUM(${teilmengeAus('m', 'fig')}*${mengeAus('sm', 1)}) AS t
-              FROM minifigs m ${mengeJoin('m')} ${teilmengeJoin('m', 'fig')}
+              FROM minifigs m ${mengeJoin('m', 'sm', '= ANY($1)')} ${teilmengeJoin('m', 'fig')}
              WHERE m.user_id = ANY($1)`, [uids]),
     db.get("SELECT value FROM user_settings WHERE user_id = ANY($1) AND key = 'currency'", [uids]),
   ]);

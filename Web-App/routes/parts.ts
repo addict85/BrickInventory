@@ -86,7 +86,7 @@ router.get('/categories', async (req, res) => {
              -- Fallunterscheidung steht in utils/bestandsmenge.ts.
              SUM(${teilmengeAus('p', 'part')} * ${mengeAus('sm', 1)})::int AS total_quantity
       FROM parts p
-      ${mengeJoin('p')}
+      ${mengeJoin('p', 'sm', '= ANY($1)')}
       ${teilmengeJoin('p', 'part')}
       LEFT JOIN part_catalog pc ON pc.part_number = p.part_number
       LEFT JOIN rb_part_categories rc

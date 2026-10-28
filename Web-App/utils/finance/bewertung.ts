@@ -17,6 +17,7 @@ import { mengeJoin, mengeAus } from '../bestandsmenge';
 import {
   DEFAULT_PRICE_CONDITION, PRICE_CACHE_COLS, parallelLimit,
   fetchPrice, fetchPartPrice, fetchMinifigPrice, ladeBlNummernVor,
+  ladeTeilepreiseVor, ladeFigurenpreiseVor,
   type Blickfeld,
 } from './preise';
 import { ladeSetErfassungen } from './abfragen';
@@ -85,7 +86,7 @@ async function computeSetsValuation(viewerId: number, ids: Blickfeld) {
             c.image_local, c.image_url, s.added_at
        FROM sets s
        LEFT JOIN set_catalog c ON c.set_number = s.set_number
-       ${mengeJoin('s')}
+       ${mengeJoin('s', 'sm', '= ANY($1)')}
       WHERE s.user_id = ANY($1)`, [uids]);
   if (!sets.length) return { currency, condition: defaultCondition, guide_type: guideType, ttl_hours: ttlHours, sets: [], totals: { min:'0.00', avg:'0.00', max:'0.00', qty_avg:'0.00' } };
 
@@ -260,6 +261,8 @@ async function computeMinifigsValuation(viewerId: number, ids: Blickfeld) {
   if (!manualFigs.length) return { currency, figs: [], total_value: '0.00' };
 
   const acqByFig = await loadManualAcquisitions(uids, 'fig', String(currency));
+  const figVorrat = await ladeFigurenpreiseVor(
+    manualFigs.filter(f => f.bl_fig_number).map(f => String(f.bl_fig_number)), String(currency), ttlHours);
 
   const tasks = manualFigs.map(fig => async () => {
     // Marktpreis kommt immer live von BrickLink (globaler, geteilter Preiscache
@@ -280,7 +283,7 @@ async function computeMinifigsValuation(viewerId: number, ids: Blickfeld) {
     for (const cond of conds) {
       let pd: any;
       if (fig.bl_fig_number) {
-        try { pd = await fetchMinifigPrice(fig.bl_fig_number, cond, currency, ttlHours); }
+        try { pd = await fetchMinifigPrice(fig.bl_fig_number, cond, currency, ttlHours, figVorrat); }
         catch (e: any) { pd = { avg_price: 0, qty_avg_price: 0, error: e.message }; }
       } else {
         // Keine BrickLink-Nummer hinterlegt: Marktpreis aus den einzelnen
@@ -383,6 +386,8 @@ async function computePartsValuation(viewerId: number, ids: Blickfeld) {
   await ladeBlNummernVor(manualParts.map(p => String(p.bl_part_number || p.part_number)));
 
   const acqByPart = await loadManualAcquisitions(uids, 'part', String(currency));
+  const teilVorrat = await ladeTeilepreiseVor(manualParts.map(p => ({
+    partNumber: String(p.bl_part_number || p.part_number), rbColorId: p.color_id || 0 })), String(currency), ttlHours);
 
   const tasks = manualParts.map(part => async () => {
     // Marktpreis kommt immer live von BrickLink (globaler, geteilter Preiscache
@@ -403,7 +408,7 @@ async function computePartsValuation(viewerId: number, ids: Blickfeld) {
     for (const cond of conds) {
       let pd: any;
       try {
-        pd = await fetchPartPrice(part.bl_part_number || part.part_number, part.color_id || 0, cond, currency, ttlHours);
+        pd = await fetchPartPrice(part.bl_part_number || part.part_number, part.color_id || 0, cond, currency, ttlHours, teilVorrat);
       } catch (e: any) {
         pd = { avg_price: 0, qty_avg_price: 0, error: e.message };
       }

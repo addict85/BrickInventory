@@ -8,7 +8,7 @@ export {
   speicherePreis, cacheUsable, preisAusCache,
   checkAndIncrementRateLimit, kontingentFrei, getLimitForApi, getRateLimitStatus,
   fetchPrice, parallelLimit, resolveBlColorId, resolveBlPartNumber,
-  fetchPartPrice, fetchMinifigPrice,
+  fetchPartPrice, fetchMinifigPrice, ladeTeilepreiseVor, ladeFigurenpreiseVor,
   farbkarte, ladeBlNummernVor,
   resolveSetCondition,
 } from './finance/preise';

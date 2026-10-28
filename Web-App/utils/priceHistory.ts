@@ -2,7 +2,7 @@
  * Preisverlauf eines Sets — die EINE Umsetzung für Webapp und Android-API.
  * Ausführlich: docs/begruendungen/utils/priceHistory.ts.md#abschnitt
  */
-import { inKontowaehrung } from './acquisitions';
+import { inKontowaehrung, kontowaehrungJoin } from './acquisitions';
 import * as db from '../db/database';
 import { resolveSetCondition, resolveBlColorId, resolveBlPartNumber } from './financeCalc';
 import { asIds } from './household';
@@ -153,10 +153,10 @@ export async function getSetPriceHistory(uid: number | number[], setNumber: stri
             SUM(purchase_price * quantity) FILTER (WHERE purchase_price IS NOT NULL AND ${inKontowaehrung('set_acquisitions')})::numeric
               / NULLIF(SUM(quantity) FILTER (WHERE purchase_price IS NOT NULL AND ${inKontowaehrung('set_acquisitions')}), 0) AS avg_purchase,
             SUM(quantity) AS qty
-       FROM set_acquisitions
+       FROM set_acquisitions ${kontowaehrungJoin('set_acquisitions')}
       -- Über ALLE Haushalts-Besitzer verdichtet — dieselbe Mengengewichtung,
       -- die auch die Bewertung im Haushalt anwendet.
-      WHERE user_id = ANY($1) AND set_number=$2
+      WHERE set_acquisitions.user_id = ANY($1) AND set_number=$2
       GROUP BY condition`,
     [uids, setNumber]
   ).catch(() => []);
@@ -251,8 +251,8 @@ export async function conditionRows(
     `SELECT condition,
             SUM(unit_price * quantity) FILTER (WHERE unit_price IS NOT NULL AND ${inKontowaehrung(acqTable)})::numeric
               / NULLIF(SUM(quantity) FILTER (WHERE unit_price IS NOT NULL AND ${inKontowaehrung(acqTable)}), 0) AS avg_purchase
-       FROM ${acqTable}
-      WHERE ${acqKeySql} AND user_id = ANY($${acqKeyVals.length + 1})
+       FROM ${acqTable} ${kontowaehrungJoin(acqTable)}
+      WHERE ${acqKeySql} AND ${acqTable}.user_id = ANY($${acqKeyVals.length + 1})
       GROUP BY condition`,
     [...acqKeyVals, uids]
   ).catch(() => []);

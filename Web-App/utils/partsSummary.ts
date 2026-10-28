@@ -84,7 +84,7 @@ export async function rebuild(userId: number, version?: { v: number; katalog: nu
              -- Regal A" gar nicht ausdruecken.
              NULLIF(STRING_AGG(DISTINCT lo.name, ', '), '')
         FROM parts p
-        ${mengeJoin('p')}
+        ${mengeJoin('p', 'sm', '= $1')}
         ${teilmengeJoin('p', 'part')}
         ${blJoin('p.part_number', 'part')}
         LEFT JOIN storage_locations lo ON lo.id = p.storage_id

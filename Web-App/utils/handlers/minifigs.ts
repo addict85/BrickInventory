@@ -209,7 +209,7 @@ async function getMinifigStats(userId: number | number[]) {
       FROM (
         SELECT m.source, SUM(${teilmengeAus('m', 'fig')} * ${mengeAus('sm', 1)}) AS menge
           FROM minifigs m
-          ${mengeJoin('m')}
+          ${mengeJoin('m', 'sm', '= ANY($1)')}
           ${teilmengeJoin('m', 'fig')}
          WHERE m.user_id = ANY($1)
          GROUP BY LOWER(TRIM(m.fig_number)), m.source

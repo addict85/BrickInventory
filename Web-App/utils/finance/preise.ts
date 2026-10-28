@@ -432,15 +432,59 @@ async function ladeBlNummernVor(teilnummern: string[]): Promise<void> {
  * Funktion nur die FARBE; die Teilenummer nahm sie so, wie der Aufrufer sie …
  * Ausführlich: docs/begruendungen/utils/finance/preise.ts.md#fetchpartprice
  */
-async function fetchPartPrice(partNumber: string, rbColorId: number, condition: string, currency: string, ttlHours: Stunden) {
+/**
+ * Die frischen Cachezeilen vieler Teile in EINER Abfrage. Die Bewertung reicht
+ * sie an fetchPartPrice weiter; sonst fragte jedes Teil je Zustand einzeln.
+ * Schlüssel wie in fetchPartPrice: BrickLink-Nummer|BrickLink-Farbe|Zustand.
+ */
+async function ladeTeilepreiseVor(teile: { partNumber: string; rbColorId: number }[],
+                                  currency: string, ttlHours: Stunden): Promise<Map<string, any>> {
+  const ttl = Math.max(1, parseInt(String(ttlHours)));
+  const nummern: string[] = [], farben: number[] = [];
+  for (const t of teile) {
+    nummern.push(await resolveBlPartNumber(t.partNumber));
+    farben.push(Number(await resolveBlColorId(t.rbColorId)) || 0);
+  }
+  const vorrat = new Map<string, any>();
+  if (!nummern.length) return vorrat;
+  const zeilen = await db.all(
+    `SELECT c.part_number, c.color_id, c.condition, c.avg_price, c.qty_avg_price
+       FROM part_price_cache c
+       JOIN unnest($1::text[], $2::int[]) AS k(nr, farbe)
+         ON c.part_number = k.nr AND c.color_id = k.farbe
+      WHERE c.currency_code = $3 AND c.fetched_at > NOW() - make_interval(hours => $4)`,
+    [nummern, farben, currency, ttl]);
+  for (const z of zeilen) vorrat.set(`${z.part_number}|${z.color_id}|${z.condition}`, z);
+  return vorrat;
+}
+
+/** Wie ladeTeilepreiseVor, für Figuren — nur echte BrickLink-Preise. */
+async function ladeFigurenpreiseVor(figuren: string[], currency: string, ttlHours: Stunden): Promise<Map<string, any>> {
+  const ttl = Math.max(1, parseInt(String(ttlHours)));
+  const vorrat = new Map<string, any>();
+  if (!figuren.length) return vorrat;
+  const zeilen = await db.all(
+    `SELECT fig_number, condition, avg_price, qty_avg_price FROM minifig_price_cache
+      WHERE fig_number = ANY($1) AND currency_code = $2 AND NOT geschaetzt
+        AND fetched_at > NOW() - make_interval(hours => $3)`,
+    [[...new Set(figuren)], currency, ttl]);
+  for (const z of zeilen) vorrat.set(`${z.fig_number}|${z.condition}`, z);
+  return vorrat;
+}
+
+/** @param vorrat aus ladeTeilepreiseVor; fehlt ein Schlüssel, gibt es keinen frischen Eintrag. */
+async function fetchPartPrice(partNumber: string, rbColorId: number, condition: string, currency: string, ttlHours: Stunden,
+                              vorrat: Map<string, any> | null = null) {
   const ttl = Math.max(1, parseInt(String(ttlHours)));
   const colorId = await resolveBlColorId(rbColorId);
   const blPartNumber = await resolveBlPartNumber(partNumber);
   const fallbackCondition = condition === 'N' ? 'U' : 'N';
 
-  const readCache = (cond: string) => db.get(
-    `SELECT avg_price, qty_avg_price FROM part_price_cache WHERE part_number=$1 AND color_id=$2 AND condition=$3 AND currency_code=$4 AND fetched_at > NOW() - make_interval(hours => $5)`,
-    [blPartNumber, colorId, cond, currency, ttl]);
+  const readCache = async (cond: string) => vorrat
+    ? (vorrat.get(`${blPartNumber}|${Number(colorId) || 0}|${cond}`) ?? null)
+    : db.get(
+      `SELECT avg_price, qty_avg_price FROM part_price_cache WHERE part_number=$1 AND color_id=$2 AND condition=$3 AND currency_code=$4 AND fetched_at > NOW() - make_interval(hours => $5)`,
+      [blPartNumber, colorId, cond, currency, ttl]);
 
   // Frischer Cache-Treffer mit echtem Preis → fertig
   const cached = await readCache(condition);
@@ -530,13 +574,17 @@ async function fetchPartPrice(partNumber: string, rbColorId: number, condition: 
 // ── Fetch price for a single minifig from BrickLink ─────────────────────────
 // Gleiche Fallback-Logik wie fetchPartPrice: erst der gewünschte Zustand,
 // bei leerem Price Guide der jeweils andere ('U' ↔ 'N').
-async function fetchMinifigPrice(figNumber: string, condition: string, currency: string, ttlHours: Stunden) {
+/** @param vorrat aus ladeFigurenpreiseVor; fehlt ein Schlüssel, gibt es keinen frischen Eintrag. */
+async function fetchMinifigPrice(figNumber: string, condition: string, currency: string, ttlHours: Stunden,
+                                 vorrat: Map<string, any> | null = null) {
   const ttl = Math.max(1, parseInt(String(ttlHours)));
   const fallbackCondition = condition === 'N' ? 'U' : 'N';
 
-  const readCache = (cond: string) => db.get(
-    `SELECT avg_price, qty_avg_price FROM minifig_price_cache WHERE fig_number=$1 AND condition=$2 AND currency_code=$3 AND NOT geschaetzt AND fetched_at > NOW() - make_interval(hours => $4)`,
-    [figNumber, cond, currency, ttl]);
+  const readCache = async (cond: string) => vorrat
+    ? (vorrat.get(`${figNumber}|${cond}`) ?? null)
+    : db.get(
+      `SELECT avg_price, qty_avg_price FROM minifig_price_cache WHERE fig_number=$1 AND condition=$2 AND currency_code=$3 AND NOT geschaetzt AND fetched_at > NOW() - make_interval(hours => $4)`,
+      [figNumber, cond, currency, ttl]);
 
   const cached = await readCache(condition);
   if (hatPreis(cached))
@@ -619,7 +667,7 @@ export {
   speicherePreis, cacheUsable, preisAusCache,
   checkAndIncrementRateLimit, kontingentFrei, getLimitForApi, getRateLimitStatus,
   fetchPrice, parallelLimit, resolveBlColorId, resolveBlPartNumber,
-  fetchPartPrice, fetchMinifigPrice,
+  fetchPartPrice, fetchMinifigPrice, ladeTeilepreiseVor, ladeFigurenpreiseVor,
   farbkarte, ladeBlNummernVor,
   resolveSetCondition,
 };
