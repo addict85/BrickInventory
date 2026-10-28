@@ -29,7 +29,7 @@ val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "ap
 class PreferencesManager @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val tresor: TokenVerschluesselung,
-) : Anmeldeablage {
+) : Anmeldeablage, ch.brickinventoryapp.data.cache.CacheBesitzer {
     companion object {
         /**
          * Der synchron lesbare Spiegel des Designs — eigene Datei, damit er
@@ -274,6 +274,17 @@ class PreferencesManager @Inject constructor(
 
     /** Dieselbe Regel fuer die Server-Adresse — aus demselben Grund. */
     override suspend fun serverUrlJetzt(): String = _serverUrlState.value ?: serverUrl.first()
+
+    /**
+     * Der Bereich des Antwort-Caches: Server und Token. Der Token gehört genau
+     * einem Konto, und er wechselt bei jeder Anmeldung — schon in dem Moment,
+     * in dem der Interceptor ihn liest, nicht erst nach dem Benutzernamen.
+     */
+    override suspend fun cacheBereich(): String? {
+        val server = serverUrlJetzt().trim().trimEnd('/')
+        val token = tokenJetzt()
+        return if (server.isBlank() || token.isBlank()) null else "$server\n$token"
+    }
 
     /** Synchron lesbar für den Interceptor, wie serverUrlState; null = noch nicht gelesen. */
     private val _klartextHosts = MutableStateFlow<Set<String>?>(null)

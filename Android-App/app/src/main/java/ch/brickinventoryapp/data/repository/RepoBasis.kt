@@ -55,9 +55,14 @@ abstract class RepoBasis(
         serializer: kotlinx.serialization.KSerializer<T>,
         call: suspend () -> Result<T>,
     ): Result<T> {
+        // Abgelegt und gelesen wird nur, wenn vor und nach dem Abruf derselbe
+        // Bereich gilt. Wechselt das Konto während des Abrufs, gehört die
+        // Antwort keinem der beiden sicher.
+        val vorher = cache.bereich()
         val fresh = call()
+        val bereich = cache.bereich()?.takeIf { it == vorher } ?: return fresh
         if (fresh is Result.Success) {
-            cache.put(key, serializer, fresh.data)
+            cache.put(bereich, key, serializer, fresh.data)
             return fresh
         }
         // Die Platte springt nur ein, wenn der Server NICHT erreichbar war
@@ -66,7 +71,7 @@ abstract class RepoBasis(
         // sie zu verschweigen. Der Rückfall trägt seinen Stand, damit die Liste
         // „Offline – Stand von …“ zeigen kann statt frisch auszusehen.
         if (fresh !is Result.Error || !fresh.transient) return fresh
-        val (stored, stand) = cache.getMitStand(key, serializer) ?: return fresh
+        val (stored, stand) = cache.getMitStand(bereich, key, serializer) ?: return fresh
         return Result.Success(stored, stand = stand)
     }
 
