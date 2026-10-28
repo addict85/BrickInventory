@@ -314,7 +314,7 @@ async function getSetConditionAggregate(userId: Blickfeld, setNumber: string) {
     " SUM(purchase_price * quantity) FILTER (WHERE purchase_price IS NOT NULL)::numeric" +
     "   / NULLIF(SUM(quantity) FILTER (WHERE purchase_price IS NOT NULL), 0) AS avg_purchase_price" +
     " FROM set_acquisitions WHERE user_id = ANY($1) AND set_number=$2",
-    [uids, setNumber]).catch(() => null);
+    [uids, setNumber]);
   const acqCount  = parseInt(acq?.acq_count) || 0;
   const usedCount = parseInt(acq?.used_count) || 0;
   return {

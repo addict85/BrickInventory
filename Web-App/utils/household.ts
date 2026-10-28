@@ -104,7 +104,7 @@ export async function householdMembers(uid: number) {
   const self = parseInt(String(uid));
   const rows = await db.all(
     'SELECT id, username FROM users WHERE id = ANY($1) ORDER BY id', [h.memberIds]
-  ).catch(() => []);
+  );
   return h.memberIds
     .map(id => rows.find((r: any) => parseInt(r.id) === id))
     .filter(Boolean)

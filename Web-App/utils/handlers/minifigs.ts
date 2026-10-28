@@ -168,7 +168,7 @@ async function getMinifigs(userId: number | number[], { search, source, set_numb
      WHERE a.user_id = ANY($1)
      GROUP BY LOWER(TRIM(a.fig_number))`,
     [uids]
-  ).catch(() => []);
+  );
   const usedFigMap = new Map<string, boolean>(usedFigRows.map(r => [r.fkey, (parseInt(r.any_used) || 0) > 0] as [string, boolean]));
 
   const mappedFigs = figs.map(({ owner_ids, ...f }: any) => ({

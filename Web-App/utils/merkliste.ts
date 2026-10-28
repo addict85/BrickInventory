@@ -2,6 +2,7 @@
  * Die Merkliste — was man haben MÖCHTE, getrennt von dem, was man hat.
  * Ausführlich: docs/begruendungen/utils/merkliste.ts.md#abschnitt
  */
+import { nacharbeit } from './nacharbeit';
 import * as db from '../db/database';
 import { addSet, sanitizeSetNumber } from './setService';
 import { findSetInScope } from './setAdd';
@@ -243,7 +244,6 @@ export async function merkpostenVon(
   // entsteht dort NUR, wenn eine Vorschau angefragt wurde (routes/imgProxy.ts:
   // `if (wantThumb) { … } else notiere();`). Das Merkposten-Detail fragt die volle …
   // Ausführlich: docs/begruendungen/utils/merkliste.ts.md#merkpostenvon-2
-  const { merkeGebraucht } = require('../jobs/imageQueue');
 
   return ((rows ?? []) as Zeile[]).map(({ alarm_richtung, alarm_schwelle, alarm_ausgeloest, ...r }) => {
     // Synchron und gecacht (utils/images.ts) — kein Dateisystemzugriff je
@@ -255,7 +255,7 @@ export async function merkpostenVon(
     // als fehlendes Feld, sonst muessten beide Oberflaechen zwei Faelle kennen.
     const lokal = resolveIfExists(
       `/images/sets/${String(r.set_number).replace(/[^a-z0-9-]/gi, '_')}.jpg`) ?? null;
-    if (!lokal && r.image_url) merkeGebraucht(String(r.image_url), String(r.set_number));
+    if (!lokal && r.image_url) nacharbeit().bildVormerken(String(r.image_url), String(r.set_number));
     return {
       ...r,
       year:      r.year      == null ? null : Number(r.year),

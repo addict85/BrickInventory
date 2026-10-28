@@ -208,13 +208,10 @@ router.post('/wanted-list/import/xml', requireToken, csvEmpfang.single('file'),
       if (!/<INVENTORY[\s>]/i.test(xml))
         return sendeFehler(req, res, 422, 'keine_wanted_liste');
 
-      // Die Anleger gibt DIESE Schicht herein
-      // utils/wantedListe.ts darf nicht aus routes/ einfuehren
-      // (test/schichten.test.js, Ausnahmeliste leer). Hier ist der Ort, der
-      // beide Seiten kennen darf: eine Route, die andere Routen kennt.
-      // Ausführlich: docs/begruendungen/routes/api_v1/wanted.ts.md#post-wanted-list-import-xml-2
-      const { addManualPart } = require('../parts');
-      const { addManualFig } = require('../minifigs');
+      // Die Anleger gibt diese Schicht herein, damit utils/wantedListe.ts sie
+      // in Tests ersetzen kann.
+      const { addManualPart } = require('../../utils/manuelleTeile');
+      const { addManualFig } = require('../../utils/manuelleFiguren');
       const { addSet } = require('../../utils/setService');
       // Korrekturen aus der Vorschau
       // Als FELD der Multipart-Anfrage und nicht als Abfrageparameter: Bei 224

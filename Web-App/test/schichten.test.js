@@ -126,6 +126,35 @@ test('keine Fachschicht importiert aus routes/ — ausser den benannten Faellen'
     'mit. Kommt sie nicht anders unter, gehoert sie oben in AUSNAHMEN, mit Grund.');
 });
 
+test('eine v1-Route importiert keine andere Routendatei', () => {
+  // Gemeinsames gehört nach utils/ (manuelleTeile, manuelleFiguren). Eine
+  // Route, die eine Route importiert, zieht deren Router samt Middleware mit.
+  // Gegenprobe (28.10.2026): require('../parts') in wanted.ts → rot.
+  const ordner = path.join(ROOT, 'routes', 'api_v1');
+  const dateien = fs.readdirSync(ordner).filter(f => f.endsWith('.ts'));
+  assert.ok(dateien.length > 10, `nur ${dateien.length} v1-Dateien gefunden`);
+  const treffer = [];
+  for (const f of dateien) {
+    const src = ohneKommentare(fs.readFileSync(path.join(ordner, f), 'utf8'));
+    for (const m of src.matchAll(/(?:from\s+|require\()\s*['"](\.\.\/[^.'"][^'"]*)['"]/g))
+      treffer.push(`api_v1/${f} -> ${m[1]}`);
+  }
+  assert.deepEqual(treffer, []);
+});
+
+test('utils/ und clients/ importieren nichts aus jobs/', () => {
+  // Was utils/ an Hintergrundarbeit anstösst, läuft über utils/nacharbeit.ts;
+  // die Ausführung setzt jobs/verdrahtung.ts ein.
+  // Gegenprobe (28.10.2026): require('../jobs/imageQueue') in merkliste.ts → rot.
+  const treffer = [];
+  for (const d of innereDateien().filter(f => /^(utils|clients)\//.test(f))) {
+    const src = ohneKommentare(fs.readFileSync(path.join(ROOT, d), 'utf8'));
+    for (const m of src.matchAll(/(?:from\s+|require\()\s*['"]([^'"]*jobs\/[^'"]+)['"]/g))
+      treffer.push(`${d} -> ${m[1]}`);
+  }
+  assert.deepEqual(treffer, []);
+});
+
 test('die Ausnahmeliste bleibt ehrlich — jeder Eintrag hat noch einen Fall', () => {
   // ── Warum es diese zweite Haelfte braucht ─────────────────────────────────
   // Eine Ausnahmeliste, die nie schrumpft, ist keine Liste offener Punkte

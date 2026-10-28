@@ -12,10 +12,10 @@ import { withInventoryLock, bestandsSchluessel } from '../../utils/txLock';
 import { requireToken } from './middleware';
 import { acquisitionMoveSource, resolveWriteTarget, scopeIds, parseScopeMode } from '../../utils/household';
 import { moveSetBetweenAccounts, moveManualAcquisition } from '../../utils/setMove';
-import { getCurrentMarketPrice } from '../../utils/marketPrice';
+import { getCurrentMarketPrice, getCurrentPartMarketPrice, getCurrentFigMarketPrice } from '../../utils/marketPrice';
 import { deleteSetRows } from '../../utils/handlers/sets';
-import { getPartAcquisitions } from '../parts';
-import { getCurrentFigMarketPrice, getFigAcquisitions } from '../minifigs';
+import { getPartAcquisitions } from '../../utils/manuelleTeile';
+import { getFigAcquisitions } from '../../utils/manuelleFiguren';
 import { loescheManuellesTeil, loescheManuelleFigur } from '../../utils/handlers/shared';
 import { sendeFehler, fehlerWerfen } from '../../utils/fehlerTexte';
 import type { FehlerCode } from '../../utils/fehlerTexte';
@@ -404,7 +404,7 @@ registerAcquisitionRoutes({
   // ihn fallen und leiteten stattdessen einen Zustand aus ALLEN Erfassungen …
   // Ausführlich: docs/begruendungen/routes/api_v1/acquisitions.ts.md#get-parts-partnumber-colorid-acquisitions
   resolvePrice: (uid, [pn, cid], cond) =>
-    require('../parts').getCurrentPartMarketPrice(pn, cid, uid, cond),
+    getCurrentPartMarketPrice(pn, cid, uid, cond),
   // Keine Spiegelung mehr — dieselbe Begruendung wie bei den Sets weiter
   // oben, nur eine Migration spaeter: Mit 0035 gibt es unit_price,
   // purchase_price und condition auf der Teilezeile nicht mehr. Die

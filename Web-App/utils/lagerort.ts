@@ -138,7 +138,7 @@ function nameOderFehler(v: unknown): string {
 export async function orteVon(userIds: number[]): Promise<Lagerort[]> {
   const rows = await db.all(
     `SELECT id, user_id, name FROM storage_locations
-      WHERE user_id = ANY($1) ORDER BY lower(name)`, [userIds]).catch(() => []);
+      WHERE user_id = ANY($1) ORDER BY lower(name)`, [userIds]);
   type Zeile = { id: string | number; user_id: string | number; name: string };
   return (rows as Zeile[] || []).map(r => ({
     id: parseInt(String(r.id)), user_id: parseInt(String(r.user_id)), name: r.name,
@@ -249,7 +249,7 @@ export async function lagerorte(blickfeld: BlickfeldEingabe) {
           GROUP BY l.name
        ) q
       GROUP BY ort
-      ORDER BY ort`, [uids]).catch(() => []);
+      ORDER BY ort`, [uids]);
   // Typisiert statt `(r: any)`: db.all() liefert Zeilen ohne Form, und dieser
   // Bauplan sagt, was diese Abfrage liefert. Die Summen stehen als string,
   // weil der Postgres-Treiber SUM() als Zeichenkette zurueckgibt — genau

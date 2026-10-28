@@ -14,7 +14,7 @@ import { getSetInfo } from '../clients/rebrickable';
 import * as brickset from '../clients/brickset';
 import { getItemImageUrl } from '../clients/bricklink';
 import { generateThumb } from './thumbs';
-import * as nachErfassung from '../jobs/nachErfassung';
+import { nacharbeit } from './nacharbeit';
 import { normalisiereSetNummer, moeglicheSetNummer } from './setNummer';
 import { fehlerWerfen } from './fehlerTexte';
 import { setzeLagerort, ortFuerNeuerfassung } from './lagerort';
@@ -219,7 +219,7 @@ async function addSetIntern(setNumber: string, quantity: number, userId: number,
     // Der Rumpf steht seit dem Herausziehen in jobs/nachErfassung.ts — als
     // anonymer Block im setTimeout war er in Tests nicht abfangbar und lief
     // dort echt, gegen einen meist schon geschlossenen Pool.
-    if (!global._csvImportLaeufe) nachErfassung.zieheNach(normalized, userId);
+    if (!global._csvImportLaeufe) nacharbeit().zieheNach(normalized, userId);
     return { action:'updated', set_number:normalized };
   }
 
@@ -320,7 +320,7 @@ async function addSetIntern(setNumber: string, quantity: number, userId: number,
   // Rumpf in jobs/nachErfassung.ts — dort steht er neben dem Nachzug des
   // Zweiterfassungs-Zweigs, und der Unterschied zwischen beiden ist damit an
   // einer Stelle zu sehen statt vierzig Zeilen auseinander.
-  if (!global._csvImportLaeufe) nachErfassung.zieheNachNeuanlage(normalized, userId);
+  if (!global._csvImportLaeufe) nacharbeit().zieheNachNeuanlage(normalized, userId);
   return { action:'added', set_number:normalized, name: name ?? `Set ${normalized}` };
 }
 

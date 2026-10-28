@@ -304,7 +304,7 @@ test('ein manuell erfasstes Teil bekommt Marktpreis und Erfassung', () => {
   // sie muss also ueber beide Dateien gehen. Nur eine zu lesen hiesse, die
   // Haelfte der Aufrufstellen nicht anzusehen.
   const src = fs.readFileSync(path.join(ROOT, 'utils', 'marketPrice.ts'), 'utf8')
-            + '\n' + fs.readFileSync(path.join(ROOT, 'routes', 'parts.ts'), 'utf8');
+            + '\n' + fs.readFileSync(path.join(ROOT, 'utils', 'manuelleTeile.ts'), 'utf8');
   const fn = src.slice(src.indexOf('async function addManualPart'),
                        src.indexOf('async function updateManualPart'));
 
@@ -428,7 +428,7 @@ test('die Teile-Schätzung landet in Cache und Verlauf', () => {
   // Schaetzung steht seit dem Schichtumbau in utils/marketPrice.ts, der
   // Erfassungsweg (recordAcquisitionForDay) ist in der Route geblieben.
   const src = fs.readFileSync(path.join(ROOT, 'utils', 'marketPrice.ts'), 'utf8')
-            + '\n' + fs.readFileSync(path.join(ROOT, 'routes', 'minifigs.ts'), 'utf8');
+            + '\n' + fs.readFileSync(path.join(ROOT, 'utils', 'manuelleFiguren.ts'), 'utf8');
   const est = src.slice(src.indexOf('async function estimateFigPriceFromParts'),
                         src.indexOf('async function getCurrentFigMarketPrice'));
 
@@ -455,7 +455,7 @@ test('auch manuelle Minifiguren legen bei jeder Erfassung eine Zeile an', () => 
   // Gleicher früher Ausstieg wie bei den Teilen: `if (existing) { … return }`
   // beendete den Pfad, bevor eine Erfassung entstand. Menge stieg, aber kein
   // Kaufpreis und kein abweichendes Erfassungsdatum.
-  const src = fs.readFileSync(path.join(ROOT, 'routes', 'minifigs.ts'), 'utf8');
+  const src = fs.readFileSync(path.join(ROOT, 'utils', 'manuelleFiguren.ts'), 'utf8');
   const fn = src.slice(src.indexOf('async function addManualFig'),
                        src.indexOf('async function addManualFig') + 6000);
 
@@ -528,7 +528,7 @@ test('neue Sets holen den richtigen Zustand, nicht den Standard', () => {
   // Und getCurrentMarketPrice muss ihn beim Anlegen mitgeben — genau an der
   // Stelle, wo die Zeile noch nicht existiert.
   const preis = fs.readFileSync(path.join(ROOT, 'utils', 'marketPrice.ts'), 'utf8');
-  assert.match(preis, /refreshPriceForSet\(setNumber, userId, condition\)/,
+  assert.match(preis, /preisFuerSetHolen\(setNumber, userId, condition\)/,
     'getCurrentMarketPrice muss den angefragten Zustand als Hinweis übergeben');
 });
 

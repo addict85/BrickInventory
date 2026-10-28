@@ -1,5 +1,5 @@
 import * as db from '../db/database';
-import { refreshPriceForSet } from '../jobs/priceJob';
+import { nacharbeit } from './nacharbeit';
 import { getSetValue } from './setValue';
 import { nutzerStandardZustand as userDefaultCondition } from './settings';
 import { getGlobalSetting } from './settings';
@@ -24,7 +24,7 @@ async function getCurrentMarketPrice(setNumber: string, userId: number, conditio
     // condition als Hinweis mitgeben: Beim Anlegen eines neuen Sets existieren
     // weder sets- noch set_acquisitions-Zeile schon, refreshPriceForSet könnte
     // sonst nur den Standardzustand holen (siehe jobs/priceJob.ts).
-    await refreshPriceForSet(setNumber, userId, condition).catch(() => {});
+    await nacharbeit().preisFuerSetHolen(setNumber, userId, condition).catch(() => {});
 
     // Ist ein Zustand AUSDRÜCKLICH angefragt, gilt genau der.
     //

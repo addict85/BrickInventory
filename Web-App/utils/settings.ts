@@ -5,8 +5,8 @@
  * Variante) und utils/mailer.js (nur global) vorhanden.
  */
 
+import { nacharbeit } from './nacharbeit';
 import * as db from '../db/database';
-import { meldeUndWeiter } from './httpError';
 import { fehlerWerfen } from './fehlerTexte';
 
 /** User-Einstellung mit Fallback auf globale Einstellung, dann Default. */
@@ -69,9 +69,7 @@ async function setUserSetting(userId: number, key: string, value: any) {
   );
   if (key === 'currency' && vorher !== v) {
     console.log(`[settings] Währung für Benutzer ${userId} geändert (${vorher ?? '—'} → ${v}) — Preis-Job wird angestossen`);
-    setImmediate(() => {
-      try { require('../jobs/priceJob').triggerNow().catch(() => {}); } catch (e) { meldeUndWeiter('einstellungen:preis-job-anstossen', e); }
-    });
+    setImmediate(() => nacharbeit().preisJobAnstossen());
   }
 }
 
