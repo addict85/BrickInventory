@@ -15,7 +15,8 @@ import * as brickset from '../clients/brickset';
 import { getItemImageUrl } from '../clients/bricklink';
 import { generateThumb } from './thumbs';
 import * as nachErfassung from '../jobs/nachErfassung';
-import { normalisiereSetNummer } from './setNummer';
+import { normalisiereSetNummer, moeglicheSetNummer } from './setNummer';
+import { fehlerWerfen } from './fehlerTexte';
 import { setzeLagerort, ortFuerNeuerfassung } from './lagerort';
 import { mengeSummeSql } from './bestandsmenge';
 import { bestandsMenge } from './validate';
@@ -188,6 +189,7 @@ async function addSetIntern(setNumber: string, quantity: number, userId: number,
                       sendProgress: ((n: { step: string; set: string }) => void) | null,
                       purchasePrice: number | null, condition: string | null = null) {
   const normalized = sanitizeSetNumber(setNumber);
+  if (!moeglicheSetNummer(normalized)) fehlerWerfen('setnummer_ungueltig', 400);
   if (sendProgress) sendProgress({ step:'meta', set:normalized });
 
   // Zustand EINMAL bestimmen, fuer BEIDE Zweige.
@@ -248,12 +250,11 @@ async function addSetIntern(setNumber: string, quantity: number, userId: number,
     }
   }
   if (!imageUrl) imageUrl = getItemImageUrl(normalized);
-  if (!name) name = `Set ${normalized}`;
 
   if (sendProgress) sendProgress({ step:'image', set:normalized });
   let localImage: any = null;
   try {
-    const imgTimeout = new Promise((_,rej)=>setTimeout(()=>rej(new Error('Image timeout')),15000));
+    const imgTimeout = new Promise((_,rej)=>setTimeout(()=>rej(new Error('Image timeout')),15000).unref());
     localImage = await Promise.race([downloadSetImage(imageUrl, normalized), imgTimeout]);
   } catch (e) { meldeUndWeiter('set-anlegen:bild-laden', e); }
   // Generate thumbnail in background
@@ -267,7 +268,16 @@ async function addSetIntern(setNumber: string, quantity: number, userId: number,
   // Namen, kein Jahr und kein Bild — und niemand erfaehrt davon. Deshalb kein
   // Fang: Das Erfassen bricht ab, und zwar mit der Meldung von Postgres. Ein …
   // Ausführlich: docs/begruendungen/utils/setService.ts.md#addsetintern-3
-  await db.run('INSERT INTO set_catalog (set_number,name,year,theme,pieces,minifigs,image_url,image_local) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT (set_number) DO UPDATE SET name=EXCLUDED.name,year=EXCLUDED.year,theme=EXCLUDED.theme,pieces=EXCLUDED.pieces,minifigs=EXCLUDED.minifigs,image_url=COALESCE(EXCLUDED.image_url,set_catalog.image_url),image_local=COALESCE(EXCLUDED.image_local,set_catalog.image_local),updated_at=NOW()',
+  // Ohne Antwort der Quellen (kein Netz, Tageslimit) bleibt stehen, was der
+  // Katalog schon weiss; der Platzhalter-Name gilt nur für ein neues Set.
+  await db.run(`INSERT INTO set_catalog (set_number,name,year,theme,pieces,minifigs,image_url,image_local)
+                VALUES ($1, COALESCE($2, 'Set ' || $1), $3,$4,$5,$6,$7,$8)
+                ON CONFLICT (set_number) DO UPDATE SET
+                  name = COALESCE($2, set_catalog.name), year = COALESCE($3, set_catalog.year),
+                  theme = COALESCE($4, set_catalog.theme), pieces = COALESCE($5, set_catalog.pieces),
+                  minifigs = COALESCE($6, set_catalog.minifigs),
+                  image_url = COALESCE($7, set_catalog.image_url),
+                  image_local = COALESCE($8, set_catalog.image_local), updated_at = NOW()`,
     [normalized, name, year, theme||null, pieces, minifigs, imageUrl, localImage]);
 
   // Zustand: siehe oben, einmal fuer beide Zweige bestimmt.
@@ -316,7 +326,7 @@ async function addSetIntern(setNumber: string, quantity: number, userId: number,
   // Zweiterfassungs-Zweigs, und der Unterschied zwischen beiden ist damit an
   // einer Stelle zu sehen statt vierzig Zeilen auseinander.
   if (!global._csvImportLaeufe) nachErfassung.zieheNachNeuanlage(normalized, userId);
-  return { action:'added', set_number:normalized, name };
+  return { action:'added', set_number:normalized, name: name ?? `Set ${normalized}` };
 }
 
 // Shared logic to update a set's quantity and/or Kaufpreis. Used by both the

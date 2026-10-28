@@ -138,11 +138,15 @@ async function getThemeName(themeId: number | string) {
 async function getSetInfo(setNumber: string) {
   const n = mitVersion(setNumber);
   const cached = await db.get('SELECT * FROM catalog_cache WHERE set_number = $1', [n]);
-  if (cached?.name) return cached;
+  // "Set <Nummer>" ist ein Platzhalter (BrickLink-Typprüfung, Rebrickable-404)
+  // und kein Name. Als Treffer zurückgegeben, überschrieb er beim nächsten
+  // Erfassen den echten Namen im Katalog. Nachgefragt wird höchstens täglich.
+  if (cached?.name && cached.name !== `Set ${n}`) return cached;
+  if (cached?.name && cached.fetched_at && Date.now() - new Date(cached.fetched_at).getTime() < 86_400_000) return null;
   const data = await rbGet(`/lego/sets/${n}/`);
   if (!data) {
     const hasKey = !!(await getRbKey());
-    await db.run('INSERT INTO catalog_cache (set_number, name, is_gear) VALUES ($1,$2,$3) ON CONFLICT (set_number) DO UPDATE SET is_gear=$3',
+    await db.run('INSERT INTO catalog_cache (set_number, name, is_gear) VALUES ($1,$2,$3) ON CONFLICT (set_number) DO UPDATE SET is_gear=$3, fetched_at=NOW()',
       [n, `Set ${n}`, hasKey ? 1 : 0]);
     return null;
   }
