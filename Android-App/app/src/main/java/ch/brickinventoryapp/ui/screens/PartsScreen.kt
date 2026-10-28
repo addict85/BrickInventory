@@ -47,7 +47,6 @@ import coil3.ImageLoader
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.ui.theme.Schrift
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -444,7 +443,7 @@ fun PartCard(part: Part, serverUrl: String, imageLoader: ImageLoader,
                     maxLines = 2, overflow = TextOverflow.Ellipsis)
                 if (part.colorName != null)
                     Text(part.colorName, style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, fontSize = Schrift.winzig)
+                        color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
                 // Ersatzteil — Sets enthalten ein Tuetchen davon. Nur wenn es
                 // eines IST: eine Plakette „kein Ersatzteil" an jeder Kachel
                 // waere Rauschen.

@@ -79,7 +79,6 @@ import ch.brickinventoryapp.ui.theme.SlateBlue
 import androidx.compose.material.icons.filled.*
 import androidx.core.net.toUri
 import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.ui.theme.Schrift
 
 /**
  * Anleitungen — ansehen, hinzufügen und entfernen.
@@ -430,7 +429,7 @@ fun LazyListScope.setDetailDetailsSection(set: SetItem, setNumber: String, vm: M
                 verticalAlignment = Alignment.CenterVertically) {
                 Text(stringResource(R.string.detail_storage),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontSize = Schrift.normal)
+                    style = MaterialTheme.typography.bodyMedium)
                 LagerortFeld(
                     wert = set.storage ?: "",
                     vorrat = lagerZustand.vorrat.map { it.name },
@@ -473,7 +472,7 @@ fun LazyListScope.setDetailDetailsSection(set: SetItem, setNumber: String, vm: M
                     Text(
                         "$qty",
                         fontWeight = FontWeight.Bold,
-                        fontSize = Schrift.gross,
+                        style = MaterialTheme.typography.bodyLarge,
                         modifier = Modifier.widthIn(min = 24.dp),
                         textAlign = TextAlign.Center
                     )
@@ -686,12 +685,12 @@ fun LazyListScope.setDetailAlarmSection(
                 FilterChip(
                     selected = zustand == "N",
                     onClick = { zustand = "N" },
-                    label = { Text(stringResource(R.string.condition_new), fontSize = Schrift.klein) },
+                    label = { Text(stringResource(R.string.condition_new), style = MaterialTheme.typography.labelMedium) },
                 )
                 FilterChip(
                     selected = zustand == "U",
                     onClick = { zustand = "U" },
-                    label = { Text(stringResource(R.string.condition_used), fontSize = Schrift.klein) },
+                    label = { Text(stringResource(R.string.condition_used), style = MaterialTheme.typography.labelMedium) },
                 )
             }
             // Schluessel ist der Alarm selbst: Kommt einer vom Server (geladen
@@ -716,13 +715,13 @@ fun LazyListScope.setDetailAlarmSection(
                     selected = richtung == "unter",
                     onClick = { richtung = "unter"
                         if (schwelle.isNotBlank()) vm.setzePreisalarm(setNumber, "unter", schwelle, zustand) },
-                    label = { Text(stringResource(R.string.detail_alert_below), fontSize = Schrift.klein) },
+                    label = { Text(stringResource(R.string.detail_alert_below), style = MaterialTheme.typography.labelMedium) },
                 )
                 FilterChip(
                     selected = richtung == "ueber",
                     onClick = { richtung = "ueber"
                         if (schwelle.isNotBlank()) vm.setzePreisalarm(setNumber, "ueber", schwelle, zustand) },
-                    label = { Text(stringResource(R.string.detail_alert_above), fontSize = Schrift.klein) },
+                    label = { Text(stringResource(R.string.detail_alert_above), style = MaterialTheme.typography.labelMedium) },
                 )
                 OutlinedTextField(
                     value = schwelle,
@@ -745,7 +744,7 @@ fun LazyListScope.setDetailAlarmSection(
                         schwelle = g; vm.setzePreisalarm(setNumber, richtung, g, zustand)
                     },
                     singleLine = true,
-                    placeholder = { Text(currency, fontSize = Schrift.klein) },
+                    placeholder = { Text(currency, style = MaterialTheme.typography.bodySmall) },
                     keyboardOptions = NumericInput.preisTastatur(),
                     modifier = Modifier.weight(1f),
                 )

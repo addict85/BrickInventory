@@ -45,7 +45,6 @@ import ch.brickinventoryapp.util.resolveThumbUrl
 import coil3.compose.AsyncImage
 import androidx.compose.material.icons.filled.*
 import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.ui.theme.Schrift
 
 /** Gesamt-Total: Sets + manuell erfasste Teile + Minifiguren. */
 /**
@@ -337,7 +336,7 @@ fun LazyListScope.financeCategoryFilter(
                 FilterChip(
                     selected = aktive.isEmpty(),
                     onClick = onAlle,
-                    label = { Text(stringResource(R.string.finance_filter_all), fontSize = Schrift.klein) },
+                    label = { Text(stringResource(R.string.finance_filter_all), style = MaterialTheme.typography.labelMedium) },
                     shape = Formen.chip
                 )
             }
@@ -363,7 +362,7 @@ private fun KategorieChip(
     FilterChip(
         selected = schluessel in aktive,
         onClick = { onUmschalten(schluessel) },
-        label = { Text(stringResource(text), fontSize = Schrift.klein) },
+        label = { Text(stringResource(text), style = MaterialTheme.typography.labelMedium) },
         shape = Formen.chip
     )
 }

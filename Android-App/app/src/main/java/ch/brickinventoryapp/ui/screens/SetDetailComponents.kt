@@ -67,7 +67,6 @@ import coil3.ImageLoader
 import java.util.Locale
 import ch.brickinventoryapp.util.NumericInput
 import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.ui.theme.Schrift
 
 // Aus SetDetailScreen.kt ausgelagert (Lesbarkeit): geteilte Detail-Composables,
 // Preis-Chart und Kaufpreis-Erfassungszeile. private→internal, damit der
@@ -89,14 +88,13 @@ internal fun StatChipV2(label: String, value: String) {
             Text(
                 value,
                 fontWeight = FontWeight.Bold,
-                fontSize = Schrift.normal,
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurface
             )
             Text(
                 label,
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontSize = Schrift.winzig
             )
         }
     }
@@ -276,10 +274,10 @@ fun PriceChart(chart: PriceChartData) {
         ) {
             Text(PriceChartMath.formatDay(first),
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = Schrift.winzig)
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text(PriceChartMath.formatDay(last),
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = Schrift.winzig)
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
@@ -371,7 +369,7 @@ fun PnlBadge(pct: Double) {
     Surface(shape = Formen.chip, color = color.copy(alpha = 0.12f)) {
         Text(
             "$sign${String.format(Locale.US, "%.1f", pct)} %",
-            color = color, fontWeight = FontWeight.Bold, fontSize = Schrift.klein,
+            color = color, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium,
             modifier = Modifier.padding(horizontal = 9.dp, vertical = 3.dp)
         )
     }
@@ -382,6 +380,6 @@ internal fun PriceStatCell(label: String, value: String) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(value, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
         Text(label, style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = Schrift.winzig)
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }

@@ -16,7 +16,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.R
 import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.ui.theme.Schrift
 import androidx.compose.material.icons.filled.UploadFile
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Warning
@@ -119,7 +118,7 @@ fun CsvImportBanner(
                             Row(verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
                                 Icon(symbol.first, null, Modifier.size(16.dp), tint = symbol.second)
-                                Text("$v", fontWeight = FontWeight.Bold, fontSize = Schrift.normal)
+                                Text("$v", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
                             }
                             Text(l, style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)

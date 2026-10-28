@@ -43,7 +43,6 @@ import ch.brickinventoryapp.ui.CatalogUiState
 import androidx.compose.foundation.lazy.grid.*
 import androidx.compose.material.icons.filled.*
 import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.ui.theme.Schrift
 
 /** Filterzeile: Thema, Jahr, Sortierung. */
 @Composable
@@ -60,7 +59,7 @@ fun CatalogFilterRow(state: CatalogUiState, selectedThemeName: String?, showThem
                 onClick = { showThemeSheet.value = true },
                 label = {
                     Text(selectedThemeName ?: stringResource(R.string.catalog_filter_theme),
-                        fontSize = Schrift.klein, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 },
                 trailingIcon = { Icon(Icons.Default.ArrowDropDown, null, Modifier.size(16.dp)) },
                 modifier = Modifier.widthIn(max = 180.dp),
@@ -71,7 +70,7 @@ fun CatalogFilterRow(state: CatalogUiState, selectedThemeName: String?, showThem
             FilterChip(
                 selected = state.year != null,
                 onClick = { showYearSheet.value = true },
-                label = { Text(state.year?.toString() ?: stringResource(R.string.catalog_filter_year), fontSize = Schrift.klein) },
+                label = { Text(state.year?.toString() ?: stringResource(R.string.catalog_filter_year), style = MaterialTheme.typography.labelMedium) },
                 trailingIcon = { Icon(Icons.Default.ArrowDropDown, null, Modifier.size(16.dp)) },
                 shape = Formen.chip
             )
@@ -81,7 +80,7 @@ fun CatalogFilterRow(state: CatalogUiState, selectedThemeName: String?, showThem
                 FilterChip(
                     selected = state.sort != "year_desc",
                     onClick = { showSortMenu.value = true },
-                    label = { Text(sortLabel(state.sort), fontSize = Schrift.klein) },
+                    label = { Text(sortLabel(state.sort), style = MaterialTheme.typography.labelMedium) },
                     leadingIcon = { Icon(Icons.AutoMirrored.Filled.Sort, null, Modifier.size(16.dp)) },
                     shape = Formen.chip
                 )

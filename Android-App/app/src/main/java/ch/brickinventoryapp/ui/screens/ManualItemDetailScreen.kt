@@ -50,7 +50,6 @@ import ch.brickinventoryapp.util.resolveFullUrlViaProxy
 import coil3.ImageLoader
 import coil3.compose.AsyncImage
 import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.ui.theme.Schrift
 import ch.brickinventoryapp.ui.components.LeerSymbol
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.ViewInAr
@@ -295,7 +294,7 @@ fun ManualItemDetailScreen(
                                 },
                                 shape = Formen.etikett
                             ) { Icon(Icons.Default.Remove, stringResource(R.string.cd_qty_decrease), Modifier.size(14.dp)) }
-                            Text("$qty", fontWeight = FontWeight.Bold, fontSize = Schrift.gross,
+                            Text("$qty", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyLarge,
                                 modifier = Modifier.widthIn(min = 24.dp), textAlign = TextAlign.Center)
                             FilledTonalIconButton(
                                 onClick = {

@@ -20,7 +20,6 @@ import ch.brickinventoryapp.data.ScopeFilter
 import ch.brickinventoryapp.data.model.HouseholdMember
 import ch.brickinventoryapp.data.model.Lagerort
 import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.ui.theme.Schrift
 
 /**
  * Kontofilter einer Ansicht — Alle Konten, Eigene, dann jedes Unterkonto
@@ -124,7 +123,7 @@ fun LagerortFilterChip(
             label = {
                 Text(if (wert.isBlank()) alle else wert,
                     maxLines = 1, overflow = TextOverflow.Ellipsis,
-                    fontSize = Schrift.klein, fontWeight = FontWeight.Medium)
+                    style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Medium)
             },
             trailingIcon = {
                 Icon(Icons.Default.ArrowDropDown, alle, Modifier.size(18.dp))
@@ -175,7 +174,7 @@ fun ScopeFilterChip(
             onClick = { open = true },
             label = {
                 Text(label, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                    fontSize = Schrift.klein, fontWeight = FontWeight.Medium)
+                    style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Medium)
             },
             trailingIcon = {
                 Icon(Icons.Default.ArrowDropDown,
@@ -230,7 +229,7 @@ fun OwnerBadges(owners: List<HouseholdMember>, modifier: Modifier = Modifier) {
                 Text(
                     o.username,
                     color = MaterialTheme.colorScheme.onSecondaryContainer,
-                    fontSize = Schrift.winzig, fontWeight = FontWeight.SemiBold,
+                    style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold,
                     maxLines = 1, overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.padding(horizontal = 6.dp, vertical = Abstaende.haar)
                 )
@@ -261,7 +260,7 @@ fun OwnerPicker(
     Box(modifier) {
         OutlinedButton(onClick = { open = true }, shape = Formen.kachel) {
             Text(stringResource(R.string.household_for_account) + ": " + current.username,
-                fontSize = Schrift.klein, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Icon(Icons.Default.ArrowDropDown, null, Modifier.size(18.dp))
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {

@@ -63,7 +63,6 @@ import kotlinx.coroutines.flow.debounce
 import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.util.NumericInput
 import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.ui.theme.Schrift
 import ch.brickinventoryapp.ui.components.LeerSymbol
 
 @OptIn(ExperimentalMaterial3Api::class, FlowPreview::class)
@@ -225,7 +224,7 @@ fun GalleryScreen(
                             FilterChip(
                                 selected = sort != ch.brickinventoryapp.data.repository.GALLERY_DEFAULT_SORT,
                                 onClick = { showSortMenu = true },
-                                label = { Text(gallerySortLabel(sort), fontSize = Schrift.klein) },
+                                label = { Text(gallerySortLabel(sort), style = MaterialTheme.typography.labelMedium) },
                                 leadingIcon = { Icon(Icons.AutoMirrored.Filled.Sort, null, Modifier.size(16.dp)) },
                                 shape = Formen.chip
                             )
@@ -251,7 +250,7 @@ fun GalleryScreen(
                         FilterChip(
                             selected = theme.isEmpty(),
                             onClick = { onThemeChange("") },
-                            label = { Text(stringResource(R.string.gallery_all), fontSize = Schrift.klein) },
+                            label = { Text(stringResource(R.string.gallery_all), style = MaterialTheme.typography.labelMedium) },
                             shape = Formen.chip
                         )
                     }
@@ -259,7 +258,7 @@ fun GalleryScreen(
                         FilterChip(
                             selected = theme == t,
                             onClick = { onThemeChange(if (theme == t) "" else t) },
-                            label = { Text(t, fontSize = Schrift.klein, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                            label = { Text(t, style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                             modifier = Modifier.widthIn(max = 140.dp),
                             shape = Formen.chip
                         )
@@ -404,7 +403,7 @@ fun GalleryStatChip(value: String, label: String) {
         ) {
             Text(value, fontWeight = FontWeight.ExtraBold, style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onPrimaryContainer)
-            Text(label, style = MaterialTheme.typography.labelSmall, fontSize = Schrift.winzig,
+            Text(label, style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f))
         }
     }

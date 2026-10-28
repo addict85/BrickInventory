@@ -29,7 +29,6 @@ import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
 import ch.brickinventoryapp.R
 import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.ui.theme.Schrift
 
 @Composable
 fun ComparisonScreen() {
@@ -187,7 +186,7 @@ fun ComparisonScreen() {
                     }
                 }
                 Text(stringResource(R.string.comparison_title),
-                    fontWeight = FontWeight.SemiBold, fontSize = Schrift.gross)
+                    fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyLarge)
                 Text(
                     stringResource(R.string.comparison_hint),
                     style = MaterialTheme.typography.bodySmall,

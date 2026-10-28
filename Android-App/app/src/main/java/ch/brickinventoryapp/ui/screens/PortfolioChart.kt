@@ -26,7 +26,6 @@ import ch.brickinventoryapp.ui.diagrammZusammenfassung
 import ch.brickinventoryapp.util.fmtAmount
 import ch.brickinventoryapp.util.fmtMoney
 import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.ui.theme.Schrift
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -68,7 +67,7 @@ fun PortfolioChart(
                     val lbl = if (pos) "+%.1f%%".format(periodChangePct) else "%.1f%%".format(periodChangePct)
                     Surface(shape = Formen.chip, color = bg.copy(alpha = 0.12f)) {
                         Text(lbl, Modifier.padding(horizontal = Abstaende.klein, vertical = 3.dp),
-                            color = bg, fontWeight = FontWeight.Bold, fontSize = Schrift.klein)
+                            color = bg, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
                     }
                 }
             }

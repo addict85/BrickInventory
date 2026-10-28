@@ -11,6 +11,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -28,7 +29,6 @@ import ch.brickinventoryapp.R
 import ch.brickinventoryapp.data.model.BrickColor
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.Formen
-import ch.brickinventoryapp.ui.theme.Schrift
 
 /**
  * Die Farbe eines manuell erfassten Teils auswaehlen — zum KORRIGIEREN.
@@ -97,7 +97,7 @@ fun FarbWahlFeld(
             modifier = Modifier.fillMaxWidth()
                 .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true),
             singleLine = true,
-            textStyle = androidx.compose.ui.text.TextStyle(fontSize = Schrift.klein),
+            textStyle = MaterialTheme.typography.bodySmall,
             shape = Formen.knopf,
         )
         ExposedDropdownMenu(expanded = offen && farben.isNotEmpty(), onDismissRequest = { offen = false }) {
