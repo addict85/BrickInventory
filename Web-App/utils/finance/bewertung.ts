@@ -21,6 +21,8 @@ import {
   type Blickfeld,
 } from './preise';
 import { ladeSetErfassungen } from './abfragen';
+import { schaetzeFigurenpreis } from '../marketPrice';
+import { withOwners } from '../handlers/shared';
 import { blJoin, blNummerSql } from '../blZuordnung';
 import { teilmengeJoin, teilmengeAus } from '../bestandsmenge';
 
@@ -290,7 +292,6 @@ async function computeMinifigsValuation(viewerId: number, ids: Blickfeld) {
         // BrickLink-Teilepreisen der Minifigur schätzen (Rebrickable→BrickLink-
         // Zuordnung existiert zuverlässig für Teile, nicht für Minifiguren).
         // Ausführlich: docs/begruendungen/utils/finance/bewertung.ts.md#computeminifigsvaluation
-        const { schaetzeFigurenpreis } = require('../marketPrice');
         const s = await schaetzeFigurenpreis(fig.fig_number, viewerId, cond).catch(() => null);
         pd = s != null
           ? { avg_price: s.preis, qty_avg_price: s.preis, from_cache: false, estimated_from_parts: true, abdeckung: s.abdeckung }
@@ -503,10 +504,6 @@ async function withOwnerNames(uids: number[], rows: any[]): Promise<any[]> {
   // dieselbe Frage und kann MEHR — dort wird auch `owner_ids` (die Liste aus
   // array_agg) zu Plaketten, hier stand nur der Einzelfall `user_id`. Zwei
   // Fassungen derselben Sache, von denen eine weniger konnte.
-  //
-  // Lazy require: utils/handlers/shared zieht die Handler nach sich, ein
-  // Import auf Modulebene ergaebe einen Zyklus.
-  const { withOwners } = require('../handlers/shared');
   return withOwners(uids, rows);
 }
 

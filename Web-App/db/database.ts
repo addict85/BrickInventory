@@ -7,15 +7,12 @@
 
 import { Pool, types as pgTypes } from 'pg';
 import { runMigrations } from './migrate';
-import { logAndContinue } from '../utils/httpError';
 import fs from 'fs';
 import path from 'path';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { Client } from 'pg';
 import { LOCKS } from '../utils/lockNamespaces';
-import { initImageMisses } from '../utils/imageMisses';
-import { initImageQueue } from '../jobs/imageQueue';
 import { fehlerCode } from '../utils/httpError';
 
 // Warum diese acht jetzt oben stehen
@@ -343,19 +340,6 @@ async function initSchemaOnce() {
     const applied = await runMigrations(client, { sichern: !neu });
     if (applied.length) console.log(`✅ ${applied.length} Migration(en) angewandt`);
     else if (!neu) console.log('✅ Schema aktuell — keine offenen Migrationen');
-
-    // ── Bild-Hilfsdienste: NACH den Migrationen, in JEDEM Arbeitsprozess ────
-    //
-    // Nach den Migrationen, weil sie die Tabellen brauchen (0009). In jedem
-    // Arbeitsprozess, weil sie PROZESS-LOKAL sind: Der Merker für fehlende
-    // Bilder lädt seinen Bestand in den Speicher, und der Puffer des Bild-Jobs
-    // bekommt seinen Schreib-Takt. Stünden sie in initSchema(), liefen sie nur
-    // in dem einen Worker, der gerade migriert — genau der Fehler, der drei
-    // Viertel aller Notizen verschwinden liess.
-    await initImageMisses()
-      .catch(logAndContinue('db:image_misses'));
-    await initImageQueue()
-      .catch(logAndContinue('db:image_wanted'));
   } finally {
     await client.query(`SELECT pg_advisory_unlock(${LOCK_ID})`).catch(() => {});
     client.release();

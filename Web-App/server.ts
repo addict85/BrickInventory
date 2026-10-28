@@ -89,6 +89,7 @@ global.startupStatus = { ready: false, step: 'Datenbank wird initialisiert...', 
 import { fehlertext, logAndContinue, meldeUndWeiter } from './utils/httpError';
 import cluster from 'cluster';
 import { starteHintergrundlaeufe } from './startup/backgroundJobs';
+import { bereiteDatenbankVor } from './startup/datenbank';
 import { verdrahte } from './jobs/verdrahtung';
 
 // In JEDEM Prozess: Erfassungen und Einstellungen stossen ihre Nacharbeit
@@ -635,10 +636,10 @@ app.get('/{*splat}', async (req, res) => {
 const { handleRouteError: _handleRouteError } = require('./utils/httpError') as typeof import('./utils/httpError');
 app.use((err: any, _req: Request, res: Response, _next: NextFunction) => { _handleRouteError(res, err); });
 
-// Der Server nimmt Anfragen erst an, NACHDEM initSchemaOnce() das Schema
+// Der Server nimmt Anfragen erst an, NACHDEM bereiteDatenbankVor() das Schema
 // (inkl. user_sessions) fertig hat — sonst schlägt der Session-Store mit
 // "relation \"user_sessions\" does not exist" fehl (Race beim Start / frische DB).
-// app.listen() steht daher im initSchemaOnce().then(...)-Callback weiter unten.
+// app.listen() steht daher im bereiteDatenbankVor().then(...)-Callback weiter unten.
 
 // Initialise DB schema, then run CSV sync
 const db = require('./db/database') as typeof import('./db/database');
@@ -718,7 +719,7 @@ async function electPrimaryWorker(db: typeof import('./db/database')) {
   return isPrimaryWorker;
 }
 
-db.initSchemaOnce().then(async () => {
+bereiteDatenbankVor().then(async () => {
   // (Hier stand loadDailyLimitsFromDb(): Das Tageslimit musste beim Start in
   // einen In-Memory-Limiter geladen werden. Der Zähler liegt jetzt in der
   // Datenbank und liest die Grenze bei jedem Aufruf — siehe

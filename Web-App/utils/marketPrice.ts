@@ -4,7 +4,7 @@ import { getSetValue } from './setValue';
 import { nutzerStandardZustand as userDefaultCondition } from './settings';
 import { getGlobalSetting } from './settings';
 import { DEFAULT_PRICE_CONDITION, fetchPartPrice, fetchMinifigPrice, ladeBlNummernVor,
-         resolveBlPartNumber, resolveBlColorId } from './financeCalc';
+         resolveBlPartNumber, resolveBlColorId } from './finance/preise';
 import { getSetting } from './settings';
 import { meldeUndWeiter, fehlertext } from './httpError';
 import { getMinifigParts } from '../clients/rebrickable';
