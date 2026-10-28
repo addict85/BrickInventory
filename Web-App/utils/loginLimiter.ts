@@ -38,6 +38,11 @@ function wartezeitSekunden(fehlversuche: number): number {
   if (fehlversuche < MAX_ATTEMPTS) return 0;
   return Math.min(2 ** (fehlversuche - MAX_ATTEMPTS), WINDOW_MS / 1000);
 }
+/**
+ * Fehlversuche je Adresse über ALLE Namen. Die Grenze je Konto lässt sonst
+ * Password-Spraying zu: fünf Versuche gegen jedes Konto, unbegrenzt viele Konten.
+ */
+const MAX_JE_ADRESSE = 30;
 /** So lange gilt eine Adresse nach einer erfolgreichen Anmeldung als bekannt. */
 const BEKANNT_MIN  = 30 * 24 * 60;
 const WINDOW_MIN   = WINDOW_MS / 60000;
@@ -59,6 +64,10 @@ function _key(req: Request, username: unknown): string {
   // Sperrpruefung; mit `unknown` als Typ hat TypeScript es sichtbar gemacht.
   // einzelwert() nimmt in dem Fall den ERSTEN Wert, wie ueberall sonst im Baum.
   return `login|${_ipOf(req)}|${einzelwert(username).toLowerCase()}`;
+}
+
+function _adressKey(req: Request): string {
+  return `login-adresse|${_ipOf(req)}`;
 }
 
 function _nameKey(username: unknown): string {
@@ -216,13 +225,19 @@ async function checkLoginAllowed(
   // Belegt den Versuch schon jetzt (siehe _reserviere); recordLoginFailure,
   // recordLoginSuccess oder gibAnmeldeplatzFrei geben ihn wieder frei.
   const kennung = await kontoKennung(username);
+  const gesamt = await _reserviere(_adressKey(req), WINDOW_MIN, s => s.count + s.laufend < MAX_JE_ADRESSE);
+  if (!gesamt.ok)
+    return { code: 'zu_viele_fehlversuche', vars: { minuten: gesamt.stand.waitMin } };
   const adresse = await _reserviere(_key(req, kennung), WINDOW_MIN,
     s => s.count + s.laufend < MAX_ATTEMPTS);
-  if (!adresse.ok)
+  if (!adresse.ok) {
+    await _freigeben(_adressKey(req));
     return { code: 'zu_viele_fehlversuche', vars: { minuten: adresse.stand.waitMin } };
+  }
   // Von einer Adresse, an der sich der Inhaber schon angemeldet hat, gilt nur
   // die Sperre je Adresse — sonst liesse sich die Wartezeit gegen ihn richten.
   if (await _read(_bekanntKey(req, kennung), BEKANNT_MIN)) return null;
+  // Ab hier zusätzlich die Bremse je Konto; scheitert sie, gibt sie beide Plätze frei.
   let rest = 0;
   const konto = await _reserviere(_nameKey(kennung), WINDOW_MIN, s => {
     rest = wartezeitSekunden(s.count) - s.seitLetztem;
@@ -231,6 +246,7 @@ async function checkLoginAllowed(
   });
   if (!konto.ok) {
     await _freigeben(_key(req, kennung));
+    await _freigeben(_adressKey(req));
     return { code: 'zu_viele_fehlversuche', vars: { minuten: Math.max(1, Math.ceil(Math.max(rest, 1) / 60)) } };
   }
   return null;
@@ -241,6 +257,7 @@ async function gibAnmeldeplatzFrei(req: Request, username: unknown): Promise<voi
   const kennung = await kontoKennung(username);
   await _freigeben(_key(req, kennung));
   await _freigeben(_nameKey(kennung));
+  await _freigeben(_adressKey(req));
 }
 
 /** Nach einem fehlgeschlagenen Login aufrufen. */
@@ -248,6 +265,7 @@ async function recordLoginFailure(req: Request, username: unknown): Promise<void
   const kennung = await kontoKennung(username);
   await _bump(_key(req, kennung), WINDOW_MIN);
   await _bump(_nameKey(kennung), WINDOW_MIN);
+  await _bump(_adressKey(req), WINDOW_MIN);
 }
 
 /** Nach einem erfolgreichen Login aufrufen. */
@@ -255,7 +273,23 @@ async function recordLoginSuccess(req: Request, username: unknown): Promise<void
   const kennung = await kontoKennung(username);
   await _clear(_key(req, kennung));
   await _clear(_nameKey(kennung));
+  // Nur freigeben, nicht löschen: Ein Erfolg nach vielen Fehlversuchen gegen
+  // andere Konten soll den Zähler der Adresse nicht zurücksetzen.
+  await _freigeben(_adressKey(req));
   await _bump(_bekanntKey(req, kennung), BEKANNT_MIN);
+}
+
+/**
+ * Abgelaufene Zähler löschen. Jeder unbekannte Name legt eine Zeile an; ohne
+ * Aufräumen wüchse die Tabelle mit jedem Rateversuch.
+ */
+async function raeumeAnmeldezaehlerAuf(): Promise<number> {
+  const r = await db.run(`
+    DELETE FROM rate_limit_attempts
+     WHERE COALESCE(last_at, first_at) < NOW() - CASE WHEN key LIKE 'login-bekannt|%'
+                                                     THEN make_interval(mins => $1) ELSE interval '1 day' END`,
+    [BEKANNT_MIN]);
+  return r?.changes || 0;
 }
 
 /**
@@ -290,5 +324,6 @@ async function bestaetigungGesperrt(uid: number): Promise<{ code: FehlerCode; va
 async function bestaetigungFehlgeschlagen(uid: number): Promise<void> { await _bump(_bestaetigungKey(uid), WINDOW_MIN); }
 async function bestaetigungGelungen(uid: number): Promise<void> { await _clear(_bestaetigungKey(uid)); }
 
-export { checkLoginAllowed, gibAnmeldeplatzFrei, recordLoginFailure, recordLoginSuccess, ipThrottle, MAX_ATTEMPTS, wartezeitSekunden,
+export { checkLoginAllowed, gibAnmeldeplatzFrei, recordLoginFailure, recordLoginSuccess, ipThrottle, MAX_ATTEMPTS, MAX_JE_ADRESSE, wartezeitSekunden,
+         raeumeAnmeldezaehlerAuf,
          bestaetigungGesperrt, bestaetigungFehlgeschlagen, bestaetigungGelungen };

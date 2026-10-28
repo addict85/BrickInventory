@@ -13,6 +13,7 @@ import * as catalogSync from '../jobs/catalogSync';
 import * as nachlaeufe from '../jobs/startNachlaeufe';
 import { purgeAltePreise } from '../utils/priceHistory';
 import { purgeExpiredTokens } from '../utils/auth';
+import { raeumeAnmeldezaehlerAuf } from '../utils/loginLimiter';
 import { raeumePapierkorbAuf } from '../utils/papierkorb';
 import { logAndContinue } from '../utils/httpError';
 import { startImgCacheCleanup } from '../routes/imgProxy';
@@ -42,6 +43,13 @@ export async function starteHintergrundlaeufe(): Promise<void> {
     };
     purge();
     setInterval(purge, 60 * 60 * 1000).unref();
+  }
+
+  // Abgelaufene Anmeldezähler (utils/loginLimiter.ts).
+  {
+    const zaehler = async () => { await raeumeAnmeldezaehlerAuf().catch(logAndContinue('anmeldung:zaehler aufräumen')); };
+    zaehler();
+    setInterval(zaehler, 60 * 60 * 1000).unref();
   }
 
   // Papierkorb-Einträge nach Ablauf der 30 Tage entfernen.
