@@ -96,7 +96,9 @@ class ApkNameTest {
         // Die Standardnamen von AGP sind kein Verstoss: Sie beschreiben, was
         // gebaut WIRD, nicht wie die Datei am Ende heisst.
         val agp = setOf("app-release.apk", "app-release-unsigned.apk", "app-debug.apk")
-        val imWorkflow = Regex("""[\w.-]+\.apk""").findAll(wf).map { it.value }.toSet() - agp
+        // Zwischendateien des Signierschritts liegen in $RUNNER_TEMP und werden nie
+        // ausgeliefert; gemeint ist der Name, unter dem die APK hochgeht.
+        val imWorkflow = Regex("""(?<!RUNNER_TEMP/)\b[\w.-]+\.apk""").findAll(wf).map { it.value }.toSet() - agp
 
         assert(imWorkflow.isNotEmpty()) {
             "Der Workflow nennt gar keinen APK-Namen mehr — dann lädt er nichts hoch, " +
