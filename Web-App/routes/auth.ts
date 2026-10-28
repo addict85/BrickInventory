@@ -1,4 +1,5 @@
 
+import { protokolliere } from '../utils/verwaltungsprotokoll';
 import express from 'express';
 const router  = express.Router();
 import bcrypt from 'bcryptjs';
@@ -304,8 +305,10 @@ router.put('/users/:id/admin', requireAdmin, async (req, res) => {
     // Ausführlich: docs/begruendungen/routes/auth.ts.md#put-users-id-admin-vorher
     const vorher = await db.get('SELECT is_admin FROM users WHERE id = $1', [targetId]);
     if (!vorher) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
+    if (!await bestaetigePasswort(req, res, angemeldeteNutzerId(req), req.body?.admin_password)) return;
     const warAdmin = flaggeGesetzt(vorher.is_admin);
     await db.run('UPDATE users SET is_admin = $1 WHERE id = $2', [soll ? 1 : 0, targetId]);
+    if (warAdmin !== soll) await protokolliere(angemeldeteNutzerId(req), targetId, soll ? 'verwalter_ernannt' : 'verwalter_entzogen');
 
     // Warum die Sitzungen enden muessen
     // istVerwalter() (utils/auth.ts) fragt ZUERST `req.session.isAdmin`. Das
@@ -338,9 +341,13 @@ router.put('/users/:id/password', requireAdmin, async (req, res) => {
     return sendeFehler(req, res, 400, 'eigenes_konto_passwort');
 
   try {
+    // Mit dem Passwort eines anderen Kontos lässt sich dieses übernehmen —
+    // eine offene Verwaltersitzung allein genügt dafür nicht.
+    if (!await bestaetigePasswort(req, res, angemeldeteNutzerId(req), req.body?.admin_password)) return;
     const hash = await bcrypt.hash(String(password), BCRYPT_ROUNDS);
     const r = await db.run('UPDATE users SET password_hash = $1 WHERE id = $2', [hash, targetId]);
     if (!r.changes) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
+    await protokolliere(angemeldeteNutzerId(req), targetId, 'passwort_gesetzt');
 
     // Offene Zugänge des Kontos beenden — ein zurückgesetztes Passwort soll
     // auch bestehende Sitzungen und Token schliessen.
@@ -355,6 +362,9 @@ router.put('/users/:id/password', requireAdmin, async (req, res) => {
 router.delete('/users/:id', requireAdmin, async (req, res) => {
   try {
     const targetId = parseInt(pfadParam(req, 'id'));
+    if (!await bestaetigePasswort(req, res, angemeldeteNutzerId(req), req.body?.admin_password)) return;
+    if (targetId !== nutzerId(req) && await db.get('SELECT 1 FROM users WHERE id = $1', [targetId]))
+      await protokolliere(angemeldeteNutzerId(req), targetId, 'konto_geloescht');
     const r = await db.run('DELETE FROM users WHERE id = $1 AND id != $2',
       [targetId, nutzerId(req)]);
     if (r.changes === 0) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden_oder_eigenes');
@@ -562,7 +572,9 @@ router.delete('/users/:id/zweiter-faktor', requireAdmin, async (req, res) => {
   try {
     const id = parseInt(pfadParam(req, 'id'));
     if (!Number.isInteger(id)) return sendeFehler(req, res, 400, 'id_ungueltig');
+    if (!await bestaetigePasswort(req, res, angemeldeteNutzerId(req), req.body?.admin_password)) return;
     await zf.schalteAb(id);
+    await protokolliere(angemeldeteNutzerId(req), id, 'zweiter_faktor_entfernt');
     res.json({ success: true });
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });

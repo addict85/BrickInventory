@@ -21,24 +21,42 @@ import { deleteManualFig, deleteManualPart, loadManualFigsTable, loadManualParts
 
 // ── CONFIRM DIALOG ────────────────────────────────────────────
 export function confirmDelete(title, msg, icon) {
+  return dialogOeffnen(title, msg, icon, false).then(r => r !== null);
+}
+
+/**
+ * Wie confirmDelete, verlangt aber das eigene Passwort — für Verwalteraktionen
+ * an fremden Konten. Liefert das Passwort oder null (abgebrochen).
+ */
+export function bestaetigeMitPasswort(title, msg, icon) {
+  return dialogOeffnen(title, msg, icon, true);
+}
+
+function dialogOeffnen(title, msg, icon, mitPasswort) {
   return new Promise(resolve => {
     const modal = G('confirm-modal');
+    const pwWrap = G('cd-pw-wrap'), pw = G('cd-pw');
+    if (pwWrap) pwWrap.style.display = mitPasswort ? '' : 'none';
+    if (pw) pw.value = '';
     G('cd-title').textContent = title || t('common.delete_title');
     G('cd-msg').textContent   = msg   || t('common.delete_text');
     G('cd-icon').innerHTML  = ico(icon || 'loeschen');
     modal.style.display = 'flex';
     const btnYes = G('cd-confirm');
     const btnNo  = G('cd-cancel');
+    if (mitPasswort) setTimeout(() => pw?.focus(), 0);
     function cleanup(result) {
+      if (pw) pw.value = '';
       modal.style.display = 'none';
       btnYes.onclick = null;
       btnNo.onclick  = null;
       modal.onclick  = null;
       resolve(result);
     }
-    btnYes.onclick = () => cleanup(true);
-    btnNo.onclick  = () => cleanup(false);
-    modal.onclick  = e => { if (e.target === modal) cleanup(false); };
+    const wert = () => (mitPasswort ? (pw?.value || '') : '');
+    btnYes.onclick = () => { const w = wert(); cleanup(w); };
+    btnNo.onclick  = () => cleanup(null);
+    modal.onclick  = e => { if (e.target === modal) cleanup(null); };
   });
 }
 

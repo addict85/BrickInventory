@@ -48,6 +48,13 @@ router.post('/admin/trigger-csv-sync', requireApiAdmin, async (_req: AuthedReque
 });
 
 // ── GET /api/v1/admin/cache-stats ─────────────────────────────────────────────
+router.get('/admin/protokoll', requireApiAdmin, async (req: AuthedRequest, res) => {
+  try {
+    const { letzteEintraege } = require('../../utils/verwaltungsprotokoll') as typeof import('../../utils/verwaltungsprotokoll');
+    res.json({ success: true, eintraege: await letzteEintraege() });
+  } catch (e) { handleRouteError(res, e, undefined, req); }
+});
+
 router.get('/admin/cache-stats', requireApiAdmin, async (_req: AuthedRequest, res) => {
   try {
     const { getCacheStats }      = require('../../clients/bricklink');

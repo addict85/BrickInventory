@@ -56,11 +56,15 @@ test('Adminrechte lassen sich auch mit "false" als Text entziehen',
       throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
     t.skip('Test-DB nicht erreichbar'); return;
   }
+  { const c = await db.pool.connect();
+    try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); } }
 
   const ADMIN = 'rollen-admin-test', ZIEL = 'rollen-ziel-test';
   await db.run(`DELETE FROM users WHERE username IN ($1, $2)`, [ADMIN, ZIEL]);
+  const bcrypt = require(require('node:path').join(__dirname, '..', 'node_modules', 'bcryptjs'));
+  const ADMIN_PW = 'verwalterPasswort1';
   await db.run(`INSERT INTO users (username, password_hash, is_admin, is_active)
-                VALUES ($1,'x',1,1), ($2,'x',1,1)`, [ADMIN, ZIEL]);
+                VALUES ($1,$3,1,1), ($2,'x',1,1)`, [ADMIN, ZIEL, await bcrypt.hash(ADMIN_PW, 4)]);
   const adminId = (await db.get(`SELECT id FROM users WHERE username=$1`, [ADMIN])).id;
   const zielId  = (await db.get(`SELECT id FROM users WHERE username=$1`, [ZIEL])).id;
 
@@ -78,7 +82,7 @@ test('Adminrechte lassen sich auch mit "false" als Text entziehen',
     await setzeZielAdmin();
     const r = await fetch(url, {
       method: methode, headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ is_admin: wert }),
+      body: JSON.stringify({ is_admin: wert, admin_password: ADMIN_PW }),
     });
     return { status: r.status, adminDanach: await istAdmin() };
   };
@@ -114,7 +118,7 @@ test('Adminrechte lassen sich auch mit "false" als Text entziehen',
     // routes/auth.ts.
     const r = await fetch(`${base}${AUTH}/users/${adminId}/admin`, {
       method: 'PUT', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ is_admin: 'false' }),
+      body: JSON.stringify({ is_admin: 'false', admin_password: ADMIN_PW }),
     });
     assert.equal(r.status, 400, 'die eigene Admin-Rolle darf auch mit "false" nicht entfernt werden');
     assert.equal((await db.get(`SELECT is_admin FROM users WHERE id=$1`, [adminId])).is_admin, 1);

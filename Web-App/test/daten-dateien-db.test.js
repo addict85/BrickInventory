@@ -11,6 +11,8 @@
  *      nur auf '..' geprüft) → rot: „%2F im Segment" (200 statt 404) und
  *      „kein Benutzerordner" (200 statt 404)
  *   B  scopeIds-Abfrage entfernt (nur eigene ID) → rot: „Hauptkonto liest Unterkonto"
+ *   C  (28.10.) die Verwalter-Ausnahme wieder eingebaut → rot: „auch ein
+ *      Verwalter liest fremde Uploads nicht"
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -57,8 +59,9 @@ test('Uploads: Haushalt ja, Fremde nein, %2F nie', { concurrency: 1 }, async (t)
 
   const sitzung = {};
   const { base } = testServer(_req, { sitzung, routen: { '/': 'routes/datenDateien.js' }, t });
-  const hole = async (als, weg) => {
+  const hole = async (als, weg, verwalter = false) => {
     sitzung.userId = als;
+    sitzung.isAdmin = verwalter;
     const r = await fetch(base + weg);
     return { status: r.status, text: await r.text() };
   };
@@ -86,6 +89,12 @@ test('Uploads: Haushalt ja, Fremde nein, %2F nie', { concurrency: 1 }, async (t)
 
   await t.test('Fremde lesen nicht', async () => {
     assert.equal((await hole(F, `/data/uploads/${H}/a.pdf`)).status, 403);
+  });
+
+  await t.test('auch ein Verwalter liest fremde Uploads nicht', async () => {
+    await db.run('UPDATE users SET is_admin = 1 WHERE id = $1', [F]);
+    assert.equal((await hole(F, `/data/uploads/${H}/a.pdf`, true)).status, 403,
+      'Rechnungen und Gutscheine anderer gehen die Kontoverwaltung nichts an');
   });
 
   await t.test('%2F im Segment', async () => {

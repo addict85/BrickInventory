@@ -27,6 +27,12 @@
  * suchte `session` statt `user_sessions`, das DELETE lief nie, und die Pruefung
  * darauf blieb gruen). Hier wird deshalb nachgesehen, ob die Zeile weg ist.
  *
+ * Gegenproben (am 28.10. gemessen):
+ *   A  bestaetigePasswort() aus PUT /users/:id/admin entfernt → rot:
+ *      „Rechte entziehen ohne Verwalterpasswort"
+ *   B  protokolliere() vor dem Löschen entfernt → rot: Protokoll ohne
+ *      „konto_geloescht"
+ *
  * Voraussetzung: Test-DB (Inhalt wird angefasst!) via TEST_DATABASE_URL.
  * Ohne DB: skip. Ausfuehren: REQUIRE_DB=1 npm test
  */
@@ -104,8 +110,11 @@ test('ein Rechtewechsel und eine Loeschung beenden die Sitzung des Ziels',
     let zielCookie = await anmelden(ZIEL);
     assert.equal(await sitzungen(idZiel), 1, 'Vorbedingung: Das Ziel hat genau eine offene Sitzung');
 
-    const entzug = await ruf(AUTH + `/users/${idZiel}/admin`,
+    const ohne = await ruf(AUTH + `/users/${idZiel}/admin`,
       { method: 'PUT', headers: { cookie: chefCookie }, body: { is_admin: false } });
+    assert.equal(ohne.status, 400, 'Rechte entziehen ohne Verwalterpasswort');
+    const entzug = await ruf(AUTH + `/users/${idZiel}/admin`,
+      { method: 'PUT', headers: { cookie: chefCookie }, body: { is_admin: false, admin_password: PASS } });
     assert.equal(entzug.status, 200, `Entzug scheiterte: ${JSON.stringify(entzug.body)}`);
     assert.equal(await sitzungen(idZiel), 0,
       'Die Sitzung des Ziels lebt weiter — dann bleibt es in seinem offenen Fenster Verwalter, ' +
@@ -119,7 +128,7 @@ test('ein Rechtewechsel und eine Loeschung beenden die Sitzung des Ziels',
     zielCookie = await anmelden(ZIEL);
     assert.equal(await sitzungen(idZiel), 1, 'Vorbedingung fuer den Nicht-Wechsel');
     const nochmal = await ruf(AUTH + `/users/${idZiel}/admin`,
-      { method: 'PUT', headers: { cookie: chefCookie }, body: { is_admin: false } });
+      { method: 'PUT', headers: { cookie: chefCookie }, body: { is_admin: false, admin_password: PASS } });
     assert.equal(nochmal.status, 200,
       'Denselben Wert nochmal zu setzen muss gelingen — die Existenzpruefung haengt ' +
       'nicht mehr an r.changes, das bei einem wertgleichen UPDATE 0 sein kann');
@@ -133,13 +142,13 @@ test('ein Rechtewechsel und eine Loeschung beenden die Sitzung des Ziels',
     // geblieben — die Route antwortete dann mit 200 auf eine Kennung, die es
     // nicht gibt.
     const unbekannt = await ruf(AUTH + '/users/99999999/admin',
-      { method: 'PUT', headers: { cookie: chefCookie }, body: { is_admin: true } });
+      { method: 'PUT', headers: { cookie: chefCookie }, body: { is_admin: true, admin_password: PASS } });
     assert.equal(unbekannt.status, 404,
       'Ein nicht vorhandenes Konto muss 404 ergeben, nicht 200');
 
     // ── 3. Und die Gegenrichtung: Rechte ERTEILEN ───────────────────────────
     const vergabe = await ruf(AUTH + `/users/${idZiel}/admin`,
-      { method: 'PUT', headers: { cookie: chefCookie }, body: { is_admin: true } });
+      { method: 'PUT', headers: { cookie: chefCookie }, body: { is_admin: true, admin_password: PASS } });
     assert.equal(vergabe.status, 200);
     assert.equal(await sitzungen(idZiel), 0,
       'Auch bei der Vergabe muss die Sitzung enden — eine fremde Sitzung laesst sich ' +
@@ -148,14 +157,24 @@ test('ein Rechtewechsel und eine Loeschung beenden die Sitzung des Ziels',
     // ── 4. Kontoloeschung ───────────────────────────────────────────────────
     zielCookie = await anmelden(ZIEL);
     assert.equal(await sitzungen(idZiel), 1, 'Vorbedingung fuer die Loeschung');
-    const weg = await ruf(AUTH + `/users/${idZiel}`,
+    const ohnePw = await ruf(AUTH + `/users/${idZiel}`,
       { method: 'DELETE', headers: { cookie: chefCookie } });
+    assert.equal(ohnePw.status, 400, 'Ein Konto zu löschen verlangt das Verwalterpasswort');
+    assert.ok(await db.get('SELECT id FROM users WHERE id=$1', [idZiel]), 'ohne Passwort wurde trotzdem gelöscht');
+    const weg = await ruf(AUTH + `/users/${idZiel}`,
+      { method: 'DELETE', headers: { cookie: chefCookie }, body: { admin_password: PASS } });
     assert.equal(weg.status, 200, `Loeschen scheiterte: ${JSON.stringify(weg.body)}`);
     assert.equal(await sitzungen(idZiel), 0,
       'Das geloeschte Konto ist noch angemeldet — user_sessions haengt an keinem ' +
       'Fremdschluessel, die Zeile muss ausdruecklich weg');
     assert.equal(await db.get('SELECT id FROM users WHERE id=$1', [idZiel]), undefined,
       'Vorbedingung: Das Konto ist wirklich geloescht');
+
+    // ── 5. Jede Verwalteraktion steht im Protokoll — auch die Löschung ──────
+    const prot = await db.all(
+      `SELECT aktion, ziel_name FROM verwaltungsprotokoll WHERE ziel_id = $1 ORDER BY id`, [idZiel]);
+    assert.deepEqual(prot.map(p => p.aktion), ['verwalter_entzogen', 'verwalter_ernannt', 'konto_geloescht']);
+    assert.ok(prot.every(p => p.ziel_name === ZIEL), 'Der Name muss auch nach dem Löschen lesbar bleiben');
   } finally {
     await new Promise(r => srv.close(r));
     await db.run('DELETE FROM users WHERE username IN ($1,$2)', [CHEF, ZIEL]).catch(() => {});
