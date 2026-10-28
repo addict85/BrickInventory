@@ -671,12 +671,9 @@ async function indizesUndZusammenfassung() {
   // Fehlschlag hätte den Bild-Job dauerhaft abgeschaltet (siehe dort).
 }
 
-// ── Upsert helpers ────────────────────────────────────────────────────────────
-
-// initSchemaOnce: wraps initSchema with a PostgreSQL advisory lock (55667788)
-// so only one cluster worker runs migrations at a time.
-// Other workers poll (non-blocking) until migrating worker is done.
-// Falls back to direct execution after 30s timeout.
+// initSchemaOnce: Erststart und Migrationen unter einem Advisory-Lock
+// (LOCKS.SCHEMA_INIT), damit im Cluster genau ein Worker das Schema anfasst.
+// Die anderen warten blockierend und finden danach alles vor.
 async function initSchemaOnce() {
   const LOCK_ID = LOCKS.SCHEMA_INIT;
   // Fassung dieses Deployments. Der postinstall-Hook (scripts/bump-version.js)

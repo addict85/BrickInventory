@@ -40,13 +40,9 @@ class TouchTargetSizeTest {
     // herausgefallen: Ihre kleinen Knöpfe standen in AcquisitionEditRow und
     // AcquisitionRow — beides Funktionen ohne Aufrufer, die dabei entfernt
     // wurden. Gemeldet hat es die zweite Behauptung dieses Tests, nicht ich.
-    private val bekannt = mapOf(
-        // Der Abbrechen-Knopf im CSV-Fortschrittsbalken: 24 dp sichtbar, weil
-        // der Balken ein schmaler Streifen über der ganzen App ist. Material3
-        // zieht die Antippfläche trotzdem auf 48 dp auf. Alle anderen kleinen
-        // Knöpfe tragen seit dem 27.10. wieder die Standardgrösse.
-        "CsvImportBanner.kt" to "Abbrechen im Fortschrittsbalken (24dp)",
-    )
+    // Leer seit dem 28.10.: Der letzte Eintrag, Abbrechen im CSV-Balken
+    // (24 dp), trägt jetzt die Standardgrösse.
+    private val bekannt = emptyMap<String, String>()
 
     @Test
     fun `kleine Antippflaechen sind bekannt und begruendet`() {

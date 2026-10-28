@@ -1,10 +1,10 @@
 import { registerActions } from './00-registry.js';
 import { I18N, LANG, applyLang, locale, t, tRaw} from '../i18n.js';
-import { ico, CURRENCY, G, ME, _settingsCache, _updateLangSelect, api, applyTheme, esc, escUrl, imgUrl, initDefaultCondition, knopfBesetzt, thumbUrl, toast, zeigeBenutzernamen , set_CURRENCY, set_settingsCache, passwortZuKurz, passwortZuKurzText} from './01-core.js';
+import { bildTag, platzhalterInhalt, ico, CURRENCY, G, ME, _settingsCache, _updateLangSelect, api, applyTheme, esc, escUrl, imgUrl, initDefaultCondition, knopfBesetzt, thumbUrl, toast, zeigeBenutzernamen , set_CURRENCY, set_settingsCache, passwortZuKurz, passwortZuKurzText} from './01-core.js';
 import { loadGallery, loadStats } from './02-gallery.js';
 import { loadParts } from './03-parts.js';
 import { loadMinifigs } from './06-minifigs.js';
-import { confirmDelete } from './07-admin.js';
+import { confirmDelete, bestaetigeMitPasswort } from './07-admin.js';
 
 // ═══ Einstellungen, SMTP, Profil, API-Keys, Benutzerverwaltung ═══
 // Teil von app.js — die Dateien in public/js/ werden in nummerierter
@@ -143,7 +143,9 @@ async function generateQrCode() {
     // sonst selbst die laengste Frist aussuchen (Begruendung ausfuehrlich in
     // db/migrations/0016-token-laufzeit.sql).
     const gueltigkeit = G('qr-validity')?.value || '';
-    const d = await api('POST', '/v1/auth/qr-token', { gueltigkeit });
+    const pw = G('qr-password');
+    const d = await api('POST', '/v1/auth/qr-token', { gueltigkeit, password: pw?.value || '' });
+    if (pw) pw.value = '';
     if (!d.success) {
       hint.textContent = tRaw('toast.error')+': ' + (d.error||t('common.unknown'));
       // Den alten Code wegraeumen: Er ist vielleicht noch gueltig, und ein
@@ -317,8 +319,8 @@ export async function loadProfile() {
   G('prof-email').dataset.bisher = u.email || '';
   const vEl = G('prof-email-verified');
   if (vEl) vEl.innerHTML = u.email_verified
-    ? `<span style="color:var(--g500)">${t('profile.verified')}</span>`
-    : `<span style="color:var(--a500)">${t('profile.not_verified')}</span>`;
+    ? `<span style="color:var(--g700)">${t('profile.verified')}</span>`
+    : `<span style="color:var(--a-schrift)">${t('profile.not_verified')}</span>`;
 }
 
 G('btn-sav-prof').onclick = async () => {
@@ -458,15 +460,9 @@ export async function loadHousehold(){
 }
 
 /**
- * Die Haushaltskarte.
- *
- * ── Warum das kein if/else-if mehr ist (Nachtrag 173) ───────────────────────
- *
- * Vorher schlossen sich die drei Zustaende aus: entweder Unterkonto ODER
- * Hauptkonto ODER unverknuepft. Seit Konten ueber mehrere Stufen verknuepfbar
- * sind, ist ein Zwischenkonto BEIDES — Kind seines Elternkontos und Elternteil
- * seiner eigenen Unterkonten. Die alte Kette zeigte ihm nur die obere Haelfte
- * und verschwieg ihm seine eigenen Unterkonten samt Loesen-Knopf.
+ * Die Haushaltskarte: Elternkonten und Unterkonten sind zwei unabhängige
+ * Abschnitte, weil ein Konto beides zugleich sein kann. Darunter der Hinweis
+ * auf Konten, die nur über eine Kette sichtbar waren und es nicht mehr sind.
  */
 function renderHousehold(d){
   const stateEl  = G('household-state');
@@ -474,45 +470,40 @@ function renderHousehold(d){
   const redeemEl = G('household-redeem-box');
   if(!stateEl) return;
 
+  // Ein Raster auf der Liste, die Zeilen als display:contents: So stehen alle
+  // Namen und alle Knöpfe in denselben zwei Spalten.
+  const liste = (eintraege, aktion) => `<ul style="list-style:none;padding:0;margin:.4rem 0 0;display:grid;grid-template-columns:max-content max-content;align-items:center;column-gap:.6rem">${
+    eintraege.map(a => `<li style="display:contents">
+      <span style="font-weight:600;padding:.3rem 0">${esc(a.username)}</span>
+      <span style="padding:.3rem 0">${aktion(a)}</span>
+    </li>`).join('')}</ul>`;
+
   const teile = [];
-  if(d.is_sub){
-    teile.push(`<div style="padding:.55rem .8rem;border-radius:8px;background:var(--b100);color:var(--b600)">
-      ${t('household.state_sub', { name: esc(d.linked_to?.username || '') })}
-      <button class="btn" style="margin-left:.6rem" data-click="unlinkHousehold">${t('household.unlink_self')}</button>
-    </div>`);
+  const eltern = d.parents || (d.linked_to ? [d.linked_to] : []);
+  if(eltern.length){
+    teile.push(`<div>${t('household.state_parents', { n: eltern.length })}${liste(eltern,
+      a => `<button class="btn" data-click="unlinkFromParent" data-arg="${a.id}">${t('household.unlink_self')}</button>`)}</div>`);
   }
   if(d.sub_accounts?.length){
-    // Nur die DIREKTEN Unterkonten stehen hier — nur deren Verknuepfung haengt
-    // am eigenen Konto und laesst sich von hier loesen (utils/household.ts,
-    // unlink()). Wer den ganzen Blick sehen will, hat dafuer den Kontofilter.
-    // ── Zwei Spalten, nicht drei Flex-Zeilen ──────────────────────────────
-    //
-    // Marcos Befund: „alle Entfernen Buttons schön in einer Spalte" — vorher
-    // war jede Zeile ein eigenes Flexfeld, und der Knopf begann dort, wo der
-    // Benutzername aufhoerte. Bei „emily.bigolin" und „alessio.bigolin" sind
-    // das verschiedene Stellen.
-    //
-    // Das Raster steht auf der LISTE, die Zeilen sind display:contents: Nur so
-    // liegen alle Namen und alle Knoepfe in DENSELBEN zwei Spalten. Waere
-    // jedes <li> ein eigenes Raster, haette jede Zeile wieder ihre eigene
-    // Spaltenbreite — also genau den Zustand von vorher.
-    const rows = d.sub_accounts.map(a => `<li style="display:contents">
-      <span style="font-weight:600;padding:.3rem 0">${esc(a.username)}</span>
-      <span style="padding:.3rem 0"><button class="btn" data-click="unlinkHousehold" data-arg="${a.id}">${t('household.unlink_sub')}</button></span>
-    </li>`).join('');
-    teile.push(`<div style="margin-top:${d.is_sub ? '.6rem' : '0'}">${t('household.state_main', { n: d.sub_accounts.length })}
-      <ul style="list-style:none;padding:0;margin:.4rem 0 0;display:grid;grid-template-columns:max-content max-content;align-items:center;column-gap:.6rem">${rows}</ul></div>`);
+    teile.push(`<div style="margin-top:${eltern.length ? '.6rem' : '0'}">${t('household.state_main', { n: d.sub_accounts.length })}${liste(d.sub_accounts,
+      a => `<button class="btn" data-click="unlinkHousehold" data-arg="${a.id}">${t('household.unlink_sub')}</button>`)}</div>`);
   }
   if(!teile.length){
     teile.push(`<div style="color:var(--mut)">${t('household.state_none', { cur: esc(d.currency||'') })}</div>`);
   }
+  if(d.former_links?.length){
+    teile.push(`<div role="note" style="margin-top:.8rem;padding:.6rem .8rem;border-radius:8px;background:var(--b100);color:var(--b600)">
+      ${t('household.former_intro')}${liste(d.former_links,
+        a => `<span style="color:var(--mut)">${a.via ? t('household.former_via', { via: esc(a.via) }) : ''}</span>
+              <button class="btn" style="margin-left:.4rem" data-click="dismissFormerLink" data-arg="${a.id}">${t('household.former_dismiss')}</button>`)}
+    </div>`);
+  }
   stateEl.innerHTML = teile.join('');
 
-  // Einladen darf JEDES Konto — auch eines, das selbst Unterkonto ist
-  // (Nachtrag 173). Einloesen kann nur, wer noch kein Elternkonto hat: Das
-  // Schema laesst hoechstens eines zu (UNIQUE auf sub_user_id).
+  // Einladen und Einlösen darf jedes Konto: Ein Konto kann mehrere
+  // Elternkonten haben, und jedes braucht seine eigene Einladung.
   if(inviteEl) inviteEl.style.display = '';
-  if(redeemEl) redeemEl.style.display = d.is_sub ? 'none' : '';
+  if(redeemEl) redeemEl.style.display = '';
 }
 
 export async function createHouseholdInvite(){
@@ -550,6 +541,20 @@ export async function redeemHouseholdInvite(){
   loadHousehold();
 }
 
+export async function unlinkFromParent(mainUserId){
+  if(!await confirmDelete(tRaw('household.unlink_confirm_title'), t('household.unlink_confirm_text'), 'link')) return;
+  const d = await api('POST','/v1/settings/household/unlink', { main_user_id: parseInt(mainUserId) });
+  if(!d.success){ toast(d.error || t('settings.error'),'error'); return; }
+  toast(tRaw('household.unlink_ok'),'success');
+  loadHousehold();
+}
+
+export async function dismissFormerLink(subUserId){
+  const d = await api('POST','/v1/settings/household/former/dismiss', { sub_user_id: parseInt(subUserId) });
+  if(!d.success){ toast(d.error || t('settings.error'),'error'); return; }
+  loadHousehold();
+}
+
 export async function unlinkHousehold(subUserId){
   if(!await confirmDelete(tRaw('household.unlink_confirm_title'), t('household.unlink_confirm_text'), 'link')) return;
   const d = await api('POST','/v1/settings/household/unlink', subUserId ? { sub_user_id: parseInt(subUserId) } : {});
@@ -584,13 +589,44 @@ export async function loadUsers(){
     d.users.map(u=>`<tr><td>${u.id}</td><td><strong>${esc(u.username)}</strong></td>
       <td><span class="rb ${u.is_admin?'ra':'ru'}">${u.is_admin?t('users.role.admin'):t('users.role.user')}</span></td>
       <td>${new Date(u.created_at).toLocaleDateString(locale())}</td>
-      <td style="display:flex;gap:5px">
-        <button class="btn bs btn-sm" data-click="openRpw" data-arg="${u.id}" aria-label="${esc(tRaw('users.pw_reset_title'))}">${ico('schluessel')}</button>
-        <button class="btn bs btn-sm" data-click="toggleAdmin" data-arg="${u.id}" data-arg2="${u.is_admin}">${ico(u.is_admin?'runter':'hoch')}</button>
-        ${u.zweiter_faktor?`<button class="btn bs btn-sm" data-click="zfZuruecksetzen" data-arg="${u.id}" data-arg2="${esc(u.username)}" title="${esc(tRaw('zf.reset_title'))}">${ico('schloss')}</button>`:''}
-        <button class="btn bd btn-sm" data-click="delUser" data-arg="${u.id}" data-arg2="${esc(u.username)}" aria-label="${esc(tRaw('common.delete'))}">${ico('loeschen')}</button>
-      </td></tr>`).join('')
+      <td><div class="nutzer-aktionen">
+        ${nutzerKnopf(u, 'bs', 'openRpw', 'schluessel', 'users.action.password', 'users.pw_reset_title')}
+        ${nutzerKnopf(u, 'bs', 'toggleAdmin', u.is_admin ? 'runter' : 'hoch',
+            u.is_admin ? 'users.action.make_user' : 'users.action.make_admin',
+            u.is_admin ? 'users.action.make_user_title' : 'users.action.make_admin_title', u.is_admin ? 1 : 0)}
+        ${u.zweiter_faktor ? nutzerKnopf(u, 'bs', 'zfZuruecksetzen', 'schloss', 'users.action.2fa', 'zf.reset_title', u.username) : ''}
+        ${nutzerKnopf(u, 'bd', 'delUser', 'loeschen', 'common.delete', 'users.action.delete_title', u.username)}
+      </div></td></tr>`).join('')
   }</tbody></table></div>`;
+  ladeProtokoll();
+}
+// Ausgeschrieben statt zusammengesetzt, damit jeder Schlüssel als Aufruf im
+// Quelltext steht und die Wörterbuchprüfung ihn findet.
+const AKTIONEN = {
+  passwort_gesetzt:        () => t('users.aktion.passwort_gesetzt'),
+  zweiter_faktor_entfernt: () => t('users.aktion.zweiter_faktor_entfernt'),
+  verwalter_ernannt:       () => t('users.aktion.verwalter_ernannt'),
+  verwalter_entzogen:      () => t('users.aktion.verwalter_entzogen'),
+  konto_geloescht:         () => t('users.aktion.konto_geloescht'),
+};
+/** Wer hat an welchem fremden Konto was geändert — die letzten Einträge. */
+async function ladeProtokoll(){
+  const d=await api('GET','/v1/admin/protokoll'); if(!d.success) return;
+  const eintraege = d.eintraege || [];
+  G('vw-protokoll').innerHTML = eintraege.length ? `<div class="tw"><table class="dt"><thead><tr><th>${t('users.protokoll.zeit')}</th><th>${t('users.protokoll.verwalter')}</th><th>${t('users.protokoll.aktion')}</th><th>${t('users.protokoll.konto')}</th></tr></thead><tbody>${
+    eintraege.map(e=>`<tr><td>${new Date(e.zeit).toLocaleString(locale())}</td><td>${esc(e.verwalter_name||'—')}</td>
+      <td>${(AKTIONEN[e.aktion] || (() => esc(e.aktion)))()}</td><td>${esc(e.ziel_name||'#'+e.ziel_id)}</td></tr>`).join('')
+  }</tbody></table></div>` : `<p style="color:var(--mut);font-size:var(--fs-2)">${t('users.protokoll.leer')}</p>`;
+}
+/**
+ * Ein Knopf der Benutzertabelle: Symbol und Wort sichtbar, die längere
+ * Beschreibung als Tooltip, der Name des Kontos für Vorleser im Namen.
+ */
+function nutzerKnopf(u, art, klick, symbol, wortKey, titelKey, arg2) {
+  const wort = tRaw(wortKey), titel = tRaw(titelKey);
+  return `<button type="button" class="btn ${art} btn-sm" data-click="${klick}" data-arg="${u.id}"` +
+    `${arg2 !== undefined ? ` data-arg2="${esc(String(arg2))}"` : ''} title="${esc(titel)}"` +
+    ` aria-label="${esc(`${wort}: ${u.username}`)}">${ico(symbol)}<span>${esc(wort)}</span></button>`;
 }
 G('btn-cu').onclick=async()=>{
   const n=G('nu-n').value.trim(),p=G('nu-p').value,a=G('nu-a').checked;
@@ -603,15 +639,19 @@ function openRpw(uid){ G('rpw-uid').value=uid; G('rpw-v').value=''; G('pw-modal'
 G('btn-rpw').onclick=async()=>{
   const neuesPw = G('rpw-v').value;
   if(passwortZuKurz(neuesPw)){toast(passwortZuKurzText(),'error');return;}
-  const d=await api('PUT',`/v1/auth/users/${G('rpw-uid').value}/password`,{password:neuesPw});
+  const admin_password = await bestaetigeMitPasswort(tRaw('users.reset_pw_title'), tRaw('users.admin_confirm_text'), 'schloss');
+  if (admin_password === null) return;
+  const d=await api('PUT',`/v1/auth/users/${G('rpw-uid').value}/password`,{password:neuesPw, admin_password});
   if(d.success){toast(tRaw('users.pw_reset'),'success');G('pw-modal').classList.remove('open');} else toast(d.error||t('settings.error'),'error');
 };
 async function toggleAdmin(uid,isAdmin){
   // isAdmin kommt seit der data-arg-Umstellung als Zeichenkette. `!"0"` ist
   // false — das Umschalten hätte damit IMMER auf "kein Admin" gesetzt.
   const cur = isAdmin === true || isAdmin === 1 || isAdmin === '1';
-  const d=await api('PUT',`/v1/auth/users/${uid}/admin`,{is_admin:!cur}); if(d.success){toast(tRaw('users.role_changed'),'success');loadUsers();} else toast(d.error||t('settings.error'),'error'); }
-async function delUser(uid,name){ if(!await confirmDelete(tRaw('users.delete.title'),t('users.delete.text'),'profil')) return; const d=await api('DELETE',`/v1/auth/users/${uid}`); if(d.success){toast(name+' '+t('common.updated'),'success');loadUsers();} else toast(d.error||t('settings.error'),'error'); }
+  const admin_password = await bestaetigeMitPasswort(tRaw('users.role_title'), tRaw('users.admin_confirm_text'), 'schloss');
+  if (admin_password === null) return;
+  const d=await api('PUT',`/v1/auth/users/${uid}/admin`,{is_admin:!cur, admin_password}); if(d.success){toast(tRaw('users.role_changed'),'success');loadUsers();} else toast(d.error||t('settings.error'),'error'); }
+async function delUser(uid,name){ const admin_password = await bestaetigeMitPasswort(tRaw('users.delete.title'),tRaw('users.delete.text'),'profil'); if(admin_password === null) return; const d=await api('DELETE',`/v1/auth/users/${uid}`,{admin_password}); if(d.success){toast(name+' '+t('common.updated'),'success');loadUsers();} else toast(d.error||t('settings.error'),'error'); }
 
 
 
@@ -691,9 +731,8 @@ export async function ladeAlarmUebersicht() {
     // sie ueberhaupt in der Antwort.
     const bildQuelle = a.image_local || a.image_url || a.set_img_url || '';
     const bild = bildQuelle
-      ? `<img src="${escUrl(imgUrl(thumbUrl(bildQuelle) || bildQuelle, true))}" loading="lazy" decoding="async"
-              alt="" style="width:38px;height:38px;object-fit:contain;border-radius:6px;flex:0 0 auto" />`
-      : '<div style="width:38px;height:38px;flex:0 0 auto"></div>';
+      ? bildTag({ src: imgUrl(thumbUrl(bildQuelle) || bildQuelle, true), alt: '', klasse: 'bild-38', ph: 'set' })
+      : `<span class="bild-ph bild-38" aria-hidden="true">${platzhalterInhalt('set')}</span>`;
     // Die ganze Zeile oeffnet den Detaildialog — derselbe `openModal` wie in
     // den Finanzen und in der Galerie. Weil der Dialog ueber der Seite liegt
     // und diese nicht verlaesst, steht man nach dem Schliessen wieder an
@@ -966,4 +1005,6 @@ registerActions({
   saveRegEnabled,
   toggleAdmin,
   unlinkHousehold,
+  unlinkFromParent,
+  dismissFormerLink,
 });

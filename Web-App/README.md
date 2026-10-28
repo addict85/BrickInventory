@@ -217,6 +217,7 @@ neu starten.
 | `SESSION_SECRET` | Pflicht in Produktion (der Start bricht sonst ab). |
 | `TOKEN_IDLE_DAYS` | Tage ohne Nutzung, nach denen ein App-Token verfällt (Vorgabe `90`, `0` schaltet die Regel ab). Betrifft nur Tokens ohne Ablaufdatum — Android-App und QR-Login. Ein Telefon, das die App regelmässig öffnet, ist nie betroffen; ausgesperrt wird nur, was ohnehin niemand mehr benutzt. |
 | `SESSION_IDLE_MINUTES` | Minuten ohne Betrieb, nach denen eine **Webapp-Sitzung** abgemeldet wird (Vorgabe `240`, also vier Stunden). Betrifft nur den Browser — die Android-App kommt mit Bearer-Token und ohne Cookie, für sie gilt `TOKEN_IDLE_DAYS`. Die Frist GLEITET: Solange jemand arbeitet, läuft sie nicht ab; sie zählt ab der letzten Anfrage. Ein Wert, der keine positive Minutenzahl ist, fällt mit einer Logzeile auf die Vorgabe zurück — `0` schaltet die Frist hier also **nicht** ab (anders als bei `TOKEN_IDLE_DAYS`), weil das genau der Zustand wäre, den die Frist beseitigen soll. |
+| `SESSION_MAX_HOURS` | Stunden ab der Anmeldung, nach denen eine **Webapp-Sitzung** endet, auch wenn sie benutzt wird (Vorgabe `168`, eine Woche). Anders als `SESSION_IDLE_MINUTES` gleitet diese Frist nicht. Ein ungültiger Wert fällt mit einer Logzeile auf die Vorgabe zurück. |
 
 Siehe `UPGRADE.md` für die Änderungen gegenüber der Vorgängerfassung.
 

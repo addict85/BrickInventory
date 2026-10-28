@@ -367,6 +367,11 @@ data class GalleryUiState(
      */
     val galleryLoading: Boolean = false,
     val galleryLoadingMore: Boolean = false,
+    /**
+     * Warum die erste Seite nicht kam, als Satz für die Anzeige; null nach
+     * Erfolg. Ohne das sah ein Ladefehler aus wie eine leere Sammlung.
+     */
+    val galleryFehler: String? = null,
     val stats: DashboardStats? = null,
 
     // Gallery "Search by barcode" flow

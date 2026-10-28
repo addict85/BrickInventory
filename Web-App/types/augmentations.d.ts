@@ -11,6 +11,8 @@ declare module 'express-session' {
     userId?: number;
     username?: string;
     isAdmin?: boolean;
+    /** Zeitpunkt der Anmeldung (ms), Grundlage der Höchstdauer */
+    angemeldetAm?: number;
   }
 }
 

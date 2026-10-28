@@ -32,9 +32,12 @@ object NetworkPolicy {
             url.port == base.port
     }
 
-    /** Suffixe, die ausschliesslich im lokalen Netz vergeben werden. */
+    /**
+     * Suffixe, die ausschliesslich im lokalen Netz vergeben werden. `.box` ist
+     * eine öffentliche Endung; lokal ist nur die der Fritzbox.
+     */
     private val LOCAL_SUFFIXES = listOf(
-        ".local", ".localhost", ".home.arpa", ".lan", ".home", ".internal", ".intern", ".box"
+        ".local", ".localhost", ".home.arpa", ".lan", ".home", ".internal", ".intern", ".fritz.box"
     )
 
     /**

@@ -1,7 +1,7 @@
-import { PARTS_ICON_SVG, bindTabs } from './02-gallery.js';
+import { bindTabs } from './02-gallery.js';
 import { registerActions } from './00-registry.js';
 import { locale, t, tRaw} from '../i18n.js';
-import { leerZustand, ico, escHex, G, api, checkAuth, esc, escUrl, imgUrl, knopfBesetzt, thumbUrl, toast } from './01-core.js';
+import { bildTag, feldFehler, istSetnummer, platzhalterInhalt, leerZustand, ico, escHex, G, api, checkAuth, esc, escUrl, imgUrl, knopfBesetzt, thumbUrl, toast } from './01-core.js';
 import { initScrollbalken } from './15-scrollbar.js';
 import { baueWantedXmlStuecke } from './19-bricklink-xml.js';
 
@@ -119,9 +119,12 @@ let _rbToBlColor = {}; // Rebrickable → BrickLink color ID mapping
 
 function plAddSet() {
   const raw = G('pl-setnr').value.trim();
-  if (!raw) { toast(tRaw('common.enter_set_number'), 'error'); return; }
+  if (!raw) { feldFehler('pl-setnr', tRaw('common.enter_set_number')); return; }
   // Support comma-separated input
   const nrs = raw.split(',').map(s => s.trim().replace(/\s/g,'')).filter(Boolean);
+  const falsch = nrs.filter(nr => !istSetnummer(nr));
+  if (falsch.length) { feldFehler('pl-setnr', tRaw('gallery.add.number_invalid', { num: falsch.join(', ') })); return; }
+  feldFehler('pl-setnr', '');
   nrs.forEach(nr => {
     const normalized = nr.includes('-') ? nr : nr + '-1';
     _plSets.push({ set_number: normalized, name: normalized });
@@ -369,11 +372,9 @@ function plRenderTable() {
       totalParts += p.quantity;
       // Build image source: prefer local cached file, then stored URL, then Rebrickable CDN
       const imgSrc = p.image_url || '';
-      const img = `<div style="width:44px;height:44px;flex-shrink:0;border-radius:6px;background:#f1f5f9;overflow:hidden;display:flex;align-items:center;justify-content:center">${
-        imgSrc
-          ? `<img src="${escUrl(imgUrl(thumbUrl(imgSrc)||imgSrc, true))}" loading="lazy" decoding="async" style="max-width:44px;max-height:44px;width:auto;height:auto;display:block" data-onerror="hide">`
-          : PARTS_ICON_SVG
-      }</div>`;
+      const img = imgSrc
+        ? bildTag({ src: imgUrl(thumbUrl(imgSrc)||imgSrc, true), alt: '', klasse: 'bild-44', ph: 'teil' })
+        : `<span class="bild-ph bild-44" aria-hidden="true">${platzhalterInhalt('teil')}</span>`;
       const pkey = `${esc(p.part_number)}__${p.color_id||0}`;
       // ── Kein Rückfall auf die REBRICKABLE-Nummer ─────────────────────────
       //

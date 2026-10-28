@@ -92,21 +92,17 @@ test('die Tagesregel steht an genau einer Stelle', () => {
   // geändert: Der Datums-Endpunkt sieht den Zustand jetzt ebenfalls an (der
   // Fall darunter prüft das). Die Zusicherung dreht sich damit um, statt zu
   // verschwinden: Die neue Regel verdient dieselbe Wachsamkeit wie die alte.
-  assert.match(strip(acq), /WHERE[\s\S]{0,300}COALESCE\(condition, 'N'\) = \$/,
+  assert.match(strip(acq), /WHERE[\s\S]{0,400}AND condition = \$/,
     'Der Zustand MUSS im Schlüssel stehen — sonst nimmt ein neuer Kauf einen ' +
     'gebrauchten vom selben Tag mit, samt Mischpreis aus zwei Käufen');
-  // Verglichen wird der TAG, nicht der Zeitstempel — und zwar in UTC.
-  //
-  // Die Prüfung verlangte wörtlich `created_at::date`. Seit die Regel als
-  // Unique-Index in der Datenbank steht (db/migrations/0008), muss der
-  // Ausdruck unveränderlich sein: `created_at::date` hängt an der Zeitzone der
-  // Sitzung und ist nicht indizierbar, `(created_at AT TIME ZONE 'UTC')::date`
-  // schon. Geprüft wird deshalb die Aussage, nicht die alte Schreibweise.
-  assert.match(acq, /\(created_at AT TIME ZONE 'UTC'\)::date\s*\n?\s*=\s*COALESCE\(/,
+  // Verglichen wird der TAG in UTC — derselbe Ausdruck wie im Unique-Index,
+  // sonst greift ON CONFLICT nicht.
+  assert.match(acq, /"\(\(created_at AT TIME ZONE 'UTC'\)::date\)", 'condition'/,
     'Verglichen wird der TAG (in UTC), nicht der Zeitstempel');
-  // Beim Zusammenfassen trägt die Zeile einen Preis — mengengewichtet.
-  assert.match(acq, /\(oldPrice \* oldQty \+ price \* qty\) \/ \(newQty \|\| 1\)/,
-    'Zwei Käufe am selben Tag ergeben den gewichteten Preis');
+  // Seit Migration 0047 gehören Preis, Herkunft und Währung zum Schlüssel: Zwei
+  // verschiedene Käufe eines Tages bleiben zwei Zeilen statt eines Mischpreises.
+  assert.doesNotMatch(strip(acq), /oldPrice \* oldQty/,
+    'Kein gewichteter Mischpreis mehr');
   // …und ihren EIGENEN Zustand: Gefunden wird die Zeile genau über ihn, also
   // gibt es beim Aufstocken nichts mehr zu verschmelzen. Hier stand
   // `existing.condition === 'U' || cond === 'U'` — „gebraucht gewinnt" —, und
@@ -204,7 +200,7 @@ test('die Regel gilt für alle drei Elementarten gleich', () => {
   // Set, ein manuell erfasstes Teil oder eine manuell erfasste Minifigur —
   // dieselbe Regel, nur ein anderer Schlüssel.
   const acq = read('utils/acquisitions.ts');
-  assert.match(acq, /Pro Tag, Element und Benutzer gibt es genau EINEN Kaufpreis/,
+  assert.match(acq, /Pro Tag, Element, Zustand, Preis und Währung gibt es genau EINE Zeile/,
     'Die Regel gehört im Wortlaut an den Anfang der Datei');
 
   // Die Schlüssel je Art stehen an EINER Stelle — sonst hiesse „Element" je
@@ -227,7 +223,7 @@ test('die Mengenerhöhung mittelt den Kaufpreis, statt ihn stehen zu lassen', ()
                        src.indexOf('async function addSet'));
   assert.doesNotMatch(fn, /UPDATE set_acquisitions SET quantity = quantity \+ \$1/,
     'Kein direktes Aufstocken mehr — das entscheidet recordAcquisitionForDay');
-  assert.match(fn, /await recordAcquisition\(userId, setNumber, delta, plan\.price, plan\.condition, dbh\);/,
+  assert.match(fn, /await recordAcquisition\(userId, setNumber, delta, plan\.price, plan\.condition, dbh, !!plan\.geschaetzt\);/,
     'Auch die Erhöhung läuft über den gemeinsamen Schreibweg');
   // Der Preis kommt aus priceForNewAcquisition() — ausgelagert, weil der
   // BrickLink-Abruf darin VOR dem Advisory-Lock laufen muss (ein Netzaufruf
@@ -238,7 +234,7 @@ test('die Mengenerhöhung mittelt den Kaufpreis, statt ihn stehen zu lassen', ()
   // nicht mehr der Besitzer irgendeiner Haushaltszeile: Angezeigt wird die
   // Gesamtmenge, geschrieben wird die Differenz auf das eigene Konto. Die
   // geprüfte REGEL ist unverändert: Preis ermitteln (Netzaufruf), DANN sperren.
-  assert.match(src, /const plan = await priceForNewAcquisition\(uid, sn\)[\s\S]{0,300}withInventoryLock\(uid, sn/,
+  assert.match(src, /const plan = [\s\S]{0,80}await priceForNewAcquisition\(uid, sn\)[\s\S]{0,400}withInventoryLock\(uid, sn/,
     'In updateSet muss der Preis VOR der Sperre stehen');
   assert.doesNotMatch(src, /function isToday\(/,
     'Die eigene Tagesprüfung gehört entfernt');

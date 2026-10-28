@@ -34,7 +34,6 @@ import ch.brickinventoryapp.ui.MainViewModel
 import ch.brickinventoryapp.ui.*  // Feature-Extensions (saveSettings, setLanguage, …)
 import ch.brickinventoryapp.util.passwortZuKurz
 import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.ui.theme.Schrift
 import kotlinx.coroutines.launch
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -222,7 +221,9 @@ fun HaushaltUnterseite(
             state = haushalt,
             onCreateInvite = { vm.createHouseholdInvite() },
             onRedeemInvite = { code -> vm.redeemHouseholdInvite(code) },
-            onUnlink = { id -> vm.unlinkHousehold(id) },
+            onUnlink = { id -> vm.unlinkHousehold(subUserId = id) },
+            onUnlinkParent = { id -> vm.unlinkHousehold(mainUserId = id) },
+            onVerwerfen = { id -> vm.verwerfeGetrenntesKonto(id) },
         )
     }
 }
@@ -660,14 +661,14 @@ private fun LagerorteCard(vm: MainViewModel) {
                 value = neuerOrt,
                 onValueChange = { if (it.length <= 60) neuerOrt = it },
                 singleLine = true,
-                placeholder = { Text(stringResource(R.string.storage_new), fontSize = Schrift.klein) },
+                placeholder = { Text(stringResource(R.string.storage_new), style = MaterialTheme.typography.bodySmall) },
                 modifier = Modifier.weight(1f),
             )
             Button(
                 onClick = { val n = neuerOrt.trim(); neuerOrt = ""; vm.legeLagerortAn(n) },
                 enabled = neuerOrt.isNotBlank(),
                 shape = Formen.knopf,
-            ) { Text(stringResource(R.string.storage_add), fontSize = Schrift.klein) }
+            ) { Text(stringResource(R.string.storage_add), style = MaterialTheme.typography.labelMedium) }
         }
     }
 }
@@ -725,7 +726,7 @@ private fun PreisalarmCard(vm: MainViewModel) {
             modifier = Modifier.fillMaxWidth(),
         ) {
             Column(Modifier.weight(1f)) {
-                Text(stringResource(R.string.alert_notify), fontSize = Schrift.normal)
+                Text(stringResource(R.string.alert_notify), style = MaterialTheme.typography.bodyMedium)
                 Text(stringResource(R.string.alert_notify_hint),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -935,7 +936,9 @@ private fun HouseholdCard(
     state: ch.brickinventoryapp.ui.HouseholdUiState,
     onCreateInvite: () -> Unit,
     onRedeemInvite: (String) -> Unit,
-    onUnlink: (Int?) -> Unit,
+    onUnlink: (Int) -> Unit,
+    onUnlinkParent: (Int) -> Unit,
+    onVerwerfen: (Int) -> Unit,
 ) {
     val st = state.status
     var code by rememberSaveable { mutableStateOf("") }
@@ -969,25 +972,24 @@ private fun HouseholdCard(
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
 
-        // Kein when-Block mehr, sondern zwei unabhaengige Abschnitte: Seit
-        // Konten ueber mehrere Stufen verknuepfbar sind, ist ein
-        // Zwischenkonto BEIDES — Kind seines Elternkontos und Elternteil
-        // seiner eigenen Unterkonten. Die frueheren Zweige schlossen sich
-        // gegenseitig aus und zeigten ihm nur die obere Haelfte.
-        if (st != null && st.isSub) {
-            Row(verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                Text(stringResource(R.string.household_state_sub, st.linkedTo?.username ?: ""),
-                    style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-                TextButton(onClick = { onUnlink(null) }) {
-                    Text(stringResource(R.string.household_unlink))
+        // Zwei unabhängige Abschnitte: Ein Konto kann zugleich Unterkonto
+        // (auch mehrerer Hauptkonten) und Hauptkonto eigener Unterkonten sein.
+        val eltern = st?.elternkonten.orEmpty()
+        if (eltern.isNotEmpty()) {
+            Text(stringResource(R.string.household_state_parents),
+                style = MaterialTheme.typography.labelLarge)
+            eltern.forEach { m ->
+                Row(verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
+                    Text(m.username, modifier = Modifier.weight(1f),
+                        fontWeight = FontWeight.SemiBold)
+                    TextButton(onClick = { onUnlinkParent(m.id) }) {
+                        Text(stringResource(R.string.household_unlink))
+                    }
                 }
             }
         }
         if (st != null && st.subAccounts.isNotEmpty()) {
-            // Nur die DIREKTEN Unterkonten — nur deren Verknuepfung haengt am
-            // eigenen Konto und laesst sich von hier loesen. Das ganze
-            // Blickfeld zeigt der Kontofilter.
             Text(stringResource(R.string.household_state_main),
                 style = MaterialTheme.typography.labelLarge)
             st.subAccounts.forEach { m ->
@@ -1001,10 +1003,38 @@ private fun HouseholdCard(
                 }
             }
         }
-        if (st != null && !st.isSub && st.subAccounts.isEmpty()) {
+        if (st != null && eltern.isEmpty() && st.subAccounts.isEmpty()) {
             Text(stringResource(R.string.household_state_none),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        if (st != null && st.formerLinks.isNotEmpty()) {
+            Surface(color = MaterialTheme.colorScheme.secondaryContainer,
+                    shape = MaterialTheme.shapes.small) {
+                Column(Modifier.padding(Abstaende.mittel),
+                       verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
+                    Text(stringResource(R.string.household_former_intro),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer)
+                    st.formerLinks.forEach { f ->
+                        Row(verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
+                            Column(Modifier.weight(1f)) {
+                                Text(f.username, fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer)
+                                f.via?.let {
+                                    Text(stringResource(R.string.household_former_via, it),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSecondaryContainer)
+                                }
+                            }
+                            TextButton(onClick = { onVerwerfen(f.id) }) {
+                                Text(stringResource(R.string.household_former_dismiss))
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         // Einladen darf JEDES Konto — auch eines, das selbst Unterkonto ist.
@@ -1034,10 +1064,9 @@ private fun HouseholdCard(
             }
         }
 
-        // Einloesen kann, wer noch kein Elternkonto hat: Das Schema laesst
-        // hoechstens eines zu (UNIQUE auf sub_user_id). Eigene Unterkonten
-        // stehen dem nicht mehr im Weg.
-        if (st != null && !st.isSub) {
+        // Einlösen kann jedes Konto: Jedes weitere Hauptkonto braucht seine
+        // eigene, angenommene Einladung.
+        if (st != null) {
             HorizontalDivider()
             Text(stringResource(R.string.household_redeem_hint),
                 style = MaterialTheme.typography.bodySmall,
@@ -1053,8 +1082,8 @@ private fun HouseholdCard(
             }
         }
 
-        // Meldung des Servers — Währung weicht ab, Konto schon verknüpft,
-        // zweite Stufe. Wortlaut unverändert übernommen.
+        // Meldung des Servers — Währung weicht ab, Konten schon oder
+        // umgekehrt verknüpft. Wortlaut unverändert übernommen.
         state.message?.let {
             Text(it, style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.error)

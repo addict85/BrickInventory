@@ -16,7 +16,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.R
 import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.ui.theme.Schrift
 import androidx.compose.material.icons.filled.UploadFile
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Warning
@@ -76,7 +75,9 @@ fun CsvImportBanner(
                     // Kein Bestaetigungsdialog: Abbrechen nimmt nichts zurueck,
                     // es hoert nur auf. Schon angelegte Sets bleiben.
                     if (running) {
-                        IconButton(onClick = onAbbrechen, modifier = Modifier.size(24.dp)) {
+                        // Volle 48 dp: Der Balken wird dadurch etwas höher, dafür
+                        // trifft man das Abbrechen auch unterwegs.
+                        IconButton(onClick = onAbbrechen) {
                             Icon(Icons.Default.Close, stringResource(R.string.csv_cancel),
                                 Modifier.size(16.dp),
                                 tint = MaterialTheme.colorScheme.onPrimary)
@@ -117,7 +118,7 @@ fun CsvImportBanner(
                             Row(verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
                                 Icon(symbol.first, null, Modifier.size(16.dp), tint = symbol.second)
-                                Text("$v", fontWeight = FontWeight.Bold, fontSize = Schrift.normal)
+                                Text("$v", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
                             }
                             Text(l, style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)

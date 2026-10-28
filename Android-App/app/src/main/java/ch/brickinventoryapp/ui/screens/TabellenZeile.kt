@@ -27,7 +27,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Clear
 import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.ui.theme.Schrift
 
 /**
  * Eine Zeile der Tabellenansicht — fuer Teile UND Figuren.
@@ -136,7 +135,7 @@ fun TabellenZeile(
                         Text(
                             nummer,
                             fontFamily = FontFamily.Monospace,
-                            fontSize = Schrift.klein,
+                            style = MaterialTheme.typography.bodySmall,
                             fontWeight = FontWeight.Medium,
                             color = MaterialTheme.colorScheme.primary,
                             maxLines = 1,
@@ -166,7 +165,7 @@ fun TabellenZeile(
                     style = MaterialTheme.typography.bodyMedium,
                 )
             }
-            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         }
     }
 }
@@ -246,9 +245,6 @@ fun Suchfeld(
         modifier = modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = Abstaende.klein),
         singleLine = true,
         shape = Formen.karte,
-        colors = OutlinedTextFieldDefaults.colors(
-            unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)
-        )
     )
 }
 

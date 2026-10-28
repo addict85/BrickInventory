@@ -101,7 +101,7 @@ test('ein Passwortwechsel beendet Sitzungen UND Token — gegen echten Store',
 
       const r = await fetch(`${basis}${AUTH}/users/${opferId}/password`, {
         method: 'PUT', headers: { 'content-type': 'application/json', cookie: chef.cookie },
-        body: JSON.stringify({ password: 'neuesPasswort1' }),
+        body: JSON.stringify({ password: 'neuesPasswort1', admin_password: 'altesPasswort1' }),
       });
       assert.equal(r.status, 200, await r.text());
 
@@ -150,7 +150,7 @@ test('ein Passwortwechsel beendet Sitzungen UND Token — gegen echten Store',
       // der Reset läuft; der Admin-Weg verlangt kein altes Passwort.
       const r = await fetch(`${basis}${AUTH}/users/${opferId}/password`, {
         method: 'PUT', headers: { 'content-type': 'application/json', cookie: chef.cookie },
-        body: JSON.stringify({ password: 'wiederNeu123' }),
+        body: JSON.stringify({ password: 'wiederNeu123', admin_password: 'nochNeuer12' }),
       });
       assert.equal(r.status, 200, await r.text());
       assert.equal(await validateToken(tok), null,

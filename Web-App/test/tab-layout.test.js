@@ -27,7 +27,7 @@ const REITER = [
   // [Name, Erfassen-Kennung, Filter-Kennung, Listen-Kennung]
   // Alle drei erfassen seit dem 25.10. im Dialog; davor steht der Knopf dazu.
   ['Galerie',     'data-click="oeffneErfassen" data-arg="set"', 'id="gs"',  '<div id="gallery"></div>'],
-  ['Teile',       'data-click="oeffneErfassen" data-arg="part"', 'id="parts-search"', '<div class="parts-layout">'],
+  ['Teile',       'data-click="oeffneErfassen" data-arg="part"', 'id="parts-search"', '<div id="parts-main">'],
   ['Minifiguren', 'data-click="oeffneErfassen" data-arg="fig"', 'id="fig-search"',   '<div id="figs-list"></div>'],
 ];
 
@@ -72,7 +72,7 @@ test('die manuell erfassten Listen stehen unter der Filterleiste (Nachtrag 34)',
   // manuelle Liste über der Filterleiste, sah es aus, als beträfe der Filter
   // nur die Set-Einträge.
   const faelle = [
-    ['Teile',       'data-click="oeffneErfassen" data-arg="part"', 'id="parts-search"', 'id="manual-parts-list"', '<div class="parts-layout">'],
+    ['Teile',       'data-click="oeffneErfassen" data-arg="part"', 'id="parts-search"', 'id="manual-parts-list"', '<div id="parts-main">'],
     ['Minifiguren', 'data-click="oeffneErfassen" data-arg="fig"',  'id="fig-search"',   'id="manual-figs-list"',  '<div id="figs-list"></div>'],
   ];
   for (const [name, erfassen, filter, manuelleListe, setListe] of faelle) {
@@ -108,15 +108,15 @@ test('die Filterleisten halten Abstand zur Liste', () => {
   // gemeldet: Sie stand auf 1rem, also genau auf dem Wert, den Marco
   // verworfen hat — eine neue Leiste, die den alten Fehler wiederholt, ist
   // der Fall, für den eine Zahl hier überhaupt steht.
-  // Nur die Leisten selbst (gap:8px) sind gemeint; andere Bereiche mit
-  // margin-bottom:1rem bleiben unberührt.
-  const LEISTE = /display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:([\d.]+)rem/g;
-  const abstaende = [...html.matchAll(LEISTE)].map(m => parseFloat(m[1]));
-  assert.equal(abstaende.length, 5,
-    `erwartet werden fünf Filterleisten (Galerie, Teile, Minifiguren, Katalog, Merkliste), gefunden: ${abstaende.length}`);
-  for (const a of abstaende) {
-    assert.ok(a >= 1.5, `eine Filterleiste steht noch auf ${a}rem — zu eng (mindestens 1.5rem)`);
-  }
+  // Seit dem 28.10. trägt jede Leiste die Klasse .filterzeile statt eines
+  // Inline-Stils; der Abstand steht an genau einer Stelle in styles.css.
+  const leisten = [...html.matchAll(/class="[^"]*\bfilterzeile\b[^"]*"/g)].length;
+  assert.equal(leisten, 5,
+    `erwartet werden fünf Filterleisten (Galerie, Teile, Minifiguren, Katalog, Merkliste), gefunden: ${leisten}`);
+  const css = fs.readFileSync(path.join(__dirname, '..', 'public', 'styles.css'), 'utf8');
+  const regel = /\.filterzeile\{[^}]*margin-bottom:([\d.]+)rem/.exec(css);
+  assert.ok(regel, 'Die Regel .filterzeile fehlt in styles.css');
+  assert.ok(parseFloat(regel[1]) >= 1.5, `die Filterleisten stehen auf ${regel[1]}rem — zu eng (mindestens 1.5rem)`);
 });
 
 /**

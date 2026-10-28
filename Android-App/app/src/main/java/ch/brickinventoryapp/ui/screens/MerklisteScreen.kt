@@ -36,7 +36,6 @@ import ch.brickinventoryapp.ui.setScannerSource
 import ch.brickinventoryapp.ui.uebernimmMerkposten
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.Formen
-import ch.brickinventoryapp.ui.theme.Schrift
 import ch.brickinventoryapp.ui.theme.LocalIsBrickTheme
 import ch.brickinventoryapp.util.NumericInput
 import ch.brickinventoryapp.util.resolveThumbUrl
@@ -136,7 +135,7 @@ fun MerklisteScreen(
                         FilterChip(
                             selected = zustand.sortierung != MERKLISTE_DEFAULT_SORT,
                             onClick = { sortMenueOffen = true },
-                            label = { Text(gallerySortLabel(zustand.sortierung), fontSize = Schrift.klein) },
+                            label = { Text(gallerySortLabel(zustand.sortierung), style = MaterialTheme.typography.labelMedium) },
                             leadingIcon = { Icon(Icons.AutoMirrored.Filled.Sort, null, Modifier.size(16.dp)) },
                             shape = Formen.chip,
                         )
@@ -165,7 +164,7 @@ fun MerklisteScreen(
                     FilterChip(
                         selected = zustand.zustandFilter == wert,
                         onClick = { vm.setzeMerklisteZustand(wert) },
-                        label = { Text(stringResource(text), fontSize = Schrift.klein) },
+                        label = { Text(stringResource(text), style = MaterialTheme.typography.labelMedium) },
                         shape = Formen.chip,
                     )
                 }

@@ -49,33 +49,27 @@ class ScopeFilterTest {
         assertEquals(4, opts.size)
     }
 
+    // Gegenprobe (am 28.10. gemessen): die frühere Einrückung nach `tiefe`
+    // wieder eingebaut → rot mit "   enkel" statt "enkel".
     @Test
-    fun `jede Stufe steht drin, eingerueckt nach Tiefe`() {
-        // Seit dem Kontenbaum (Nachtrag 173) enthaelt die Liste JEDEN
-        // Nachfahren, nicht nur die direkten Unterkonten — Marcos Festlegung:
-        // Ein Eintrag meint immer genau EIN Konto, nie dessen Unterkonten mit.
-        // Ein Enkel, der hier fehlte, waere ausser ueber „Alle Konten" gar
-        // nicht einzeln zu sehen.
-        //
-        // Ohne Einrueckung stuenden Kind und Enkel gleichrangig untereinander,
-        // und die Auswahl sagte nicht mehr, wer zu wem gehoert.
+    fun `jedes Unterkonto steht flach drin, auch wenn ein aelterer Server Stufen schickt`() {
+        // Rechte gelten nur entlang direkter Verknüpfungen; jedes Konto in der
+        // Liste ist ein direktes Unterkonto. Ein älterer Server schickt noch
+        // tiefe = 2 — eingerückt sähe das nach einer Rangordnung aus, die es
+        // nicht mehr gibt.
         val opts = ScopeFilter.options(
-            listOf(m(1, "grossvater", self = true, tiefe = 0),
+            listOf(m(1, "eltern", self = true, tiefe = 0),
                    m(2, "kind", tiefe = 1),
                    m(3, "enkel", tiefe = 2)),
             "Alle", "Eigene")
         assertEquals(
-            listOf("all" to "Alle", "own" to "Eigene",
-                   "2" to "kind", "3" to "   enkel"),
+            listOf("all" to "Alle", "own" to "Eigene", "2" to "kind", "3" to "enkel"),
             opts)
     }
 
     @Test
     fun `eine fehlende Stufe rueckt nicht ins Nichts`() {
-        // Die Vorgabe von `tiefe` ist 1 — eine aeltere Serverfassung ohne das
-        // Feld zeigt die Liste damit flach, aber vollstaendig. Ein Wert von 0
-        // oder negativ (kaputte Antwort) darf keine negative Wiederholung
-        // ergeben; coerceAtLeast(0) faengt das ab.
+        // Auch ein unerwarteter Wert (0 bei einem Unterkonto) ändert nichts am Namen.
         val opts = ScopeFilter.options(
             listOf(m(1, "ich", self = true, tiefe = 0), m(2, "lea", tiefe = 0)),
             "Alle", "Eigene")

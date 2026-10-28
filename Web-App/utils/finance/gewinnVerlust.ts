@@ -79,13 +79,13 @@ async function computePnl(viewerId: number, ids: Blickfeld) {
      LEFT JOIN set_catalog c ON c.set_number = s.set_number
      LEFT JOIN (
        SELECT user_id, set_number,
-              SUM(COALESCE(purchase_price, 0) * quantity) AS total_price,
+              SUM(COALESCE(CASE WHEN currency = $2 THEN purchase_price END, 0) * quantity) AS total_price,
               SUM(quantity) AS total_qty,
               COUNT(*)                                AS acq_count,
               COUNT(*) FILTER (WHERE condition = 'U')  AS used_count
        FROM set_acquisitions GROUP BY user_id, set_number
      ) a ON a.user_id = s.user_id AND a.set_number = s.set_number
-     WHERE s.user_id = ANY($1)`, [uids]);
+     WHERE s.user_id = ANY($1)`, [uids, String(currency)]);
 
   // Statt 2 Queries pro Set: aktuelle Cache-Preise und ältester History-Eintrag
   // für ALLE Sets in je einer Batch-Query (nutzt UNIQUE-Index bzw. idx_price_history_set).
@@ -95,7 +95,7 @@ async function computePnl(viewerId: number, ids: Blickfeld) {
   // Kaufpreis und Menge kommen jetzt ebenfalls aus den Erfassungen, damit
   // Galerie/Detail und der Finanzen-Reiter dieselben Zahlen zeigen.
   const purchaseMap = new Map(), qtyMap = new Map();
-  const acqRows = setNumbers.length ? await ladeSetErfassungen(uids) : [];
+  const acqRows = setNumbers.length ? await ladeSetErfassungen(uids, String(currency)) : [];
   const acqBySet = new Map<string, any[]>();
   for (const a of acqRows) {
     const list = acqBySet.get(a.set_number);

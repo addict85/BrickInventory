@@ -78,10 +78,11 @@ function tasteGedrueckt(ev) {
   const dialog = obersterDialog();
   if (!dialog) return;
   if (ev.key === 'Escape') {
-    // Aus einem Eingabefeld zuerst nur hinaus: Wer in der Wanted-Vorschau eine
-    // Zelle abbricht, soll nicht den Dialog samt allen Korrekturen verlieren.
+    // Escape schliesst beim ersten Druck, auch aus einem Feld. Ausnahme sind
+    // Felder in einer Tabelle (Korrekturen der Wanted-Vorschau): Dort verlässt
+    // es nur die Zelle, damit nicht alle Korrekturen mit dem Dialog verschwinden.
     const aktiv = document.activeElement;
-    if (aktiv && dialog.contains(aktiv) && /^(INPUT|TEXTAREA|SELECT)$/.test(aktiv.tagName)) {
+    if (aktiv && dialog.contains(aktiv) && /^(INPUT|TEXTAREA|SELECT)$/.test(aktiv.tagName) && aktiv.closest('table')) {
       ev.preventDefault();
       aktiv.blur();
       // Auf die Fläche, nicht zum Erstfokus: Ist der ein Eingabefeld, stünde

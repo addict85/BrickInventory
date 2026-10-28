@@ -30,6 +30,10 @@
  *
  * Voraussetzung: Test-DB (Inhalt wird angefasst!) via TEST_DATABASE_URL.
  * Ohne DB: skip. Ausfuehren: REQUIRE_DB=1 npm test
+ *
+ * Gegenprobe (am 28.10. gemessen): in /qr-token die Prüfung von Sitzung und
+ * Passwort entfernt → rot im Schritt „0. Ein Code nur mit Sitzung UND
+ * Passwort"
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -107,9 +111,23 @@ test('QR-Zugang: die Laufzeit waehlt der Erzeuger, nicht der Einloeser',
     assert.equal(an.status, 200, `Anmeldung scheiterte: ${JSON.stringify(an.body)}`);
     const keks = an.cookie.split(';')[0];
 
+    // ── 0. Ein Code nur mit Sitzung UND Passwort ──────────────────────────
+    // Sonst machte ein erbeuteter Token (oder eine offene Sitzung) über den
+    // QR-Weg einen neuen Dauerzugang — ohne das Passwort, das /token-create
+    // für genau denselben Zweck verlangt.
+    const ohnePw = await ruf('/qr-token', { method: 'POST', headers: { cookie: keks }, body: { gueltigkeit: '6m' } });
+    assert.equal(ohnePw.status, 400, `ohne Passwort: ${ohnePw.status} ${JSON.stringify(ohnePw.body)}`);
+    const falsch = await ruf('/qr-token', { method: 'POST', headers: { cookie: keks },
+      body: { gueltigkeit: '6m', password: 'falsch-falsch' } });
+    assert.equal(falsch.status, 400);
+    const geraet = await auth.createToken(uid, 'Probe', true);
+    const perToken = await ruf('/qr-token', { method: 'POST',
+      headers: { authorization: `Bearer ${geraet}` }, body: { gueltigkeit: 'unbegrenzt', password: PASS } });
+    assert.equal(perToken.status, 403, 'Mit einem Token allein darf kein neuer Zugang entstehen');
+
     // ── 1. Die Wahl landet bei der Nonce ───────────────────────────────────
     const sechs = await ruf('/qr-token', { method: 'POST', headers: { cookie: keks },
-      body: { gueltigkeit: '6m' } });
+      body: { gueltigkeit: '6m', password: PASS } });
     assert.equal(sechs.status, 200, JSON.stringify(sechs.body));
     assert.equal(sechs.body.token_days, 180, 'Sechs Monate sind 180 Tage');
 
@@ -129,7 +147,7 @@ test('QR-Zugang: die Laufzeit waehlt der Erzeuger, nicht der Einloeser',
     // Dieselbe Anfrage wie oben, nur ohne Wahl beim Erzeugen und mit einem
     // Wunsch im Rumpf der EINLOESUNG. Faellt diese Zusicherung, ist die
     // ganze Neuerung eine Schwachstelle statt einer Haertung.
-    const ohne = await ruf('/qr-token', { method: 'POST', headers: { cookie: keks }, body: {} });
+    const ohne = await ruf('/qr-token', { method: 'POST', headers: { cookie: keks }, body: { password: PASS } });
     assert.equal(ohne.body.token_days, null, 'Ohne Wahl gibt es keine feste Frist');
     const versuch = await ruf('/qr-login', { method: 'POST',
       body: { token: ohne.body.token, gueltigkeit: 'unbegrenzt', token_days: 3650 } });
@@ -150,7 +168,7 @@ test('QR-Zugang: die Laufzeit waehlt der Erzeuger, nicht der Einloeser',
     // geprueft, sondern purgeExpiredTokens() TATSAECHLICH ausgefuehrt, mit
     // einem Zugang, der seit einem Jahr unbenutzt daliegt.
     const ewig = await ruf('/qr-token', { method: 'POST', headers: { cookie: keks },
-      body: { gueltigkeit: 'unbegrenzt' } });
+      body: { gueltigkeit: 'unbegrenzt', password: PASS } });
     assert.equal(ewig.body.token_days, 0,
       '„unbegrenzt" reist als 0 mit — null hiesse „nichts gewaehlt"');
     const zugangEwig = await ruf('/qr-login', { method: 'POST', body: { token: ewig.body.token } });
@@ -180,7 +198,7 @@ test('QR-Zugang: die Laufzeit waehlt der Erzeuger, nicht der Einloeser',
     // Tageszahl an die Datenbank gegangen (ausTabelle, utils/validate).
     for (const unsinn of ['99m', 'constructor', '__proto__', 999999]) {
       const r = await ruf('/qr-token', { method: 'POST', headers: { cookie: keks },
-        body: { gueltigkeit: unsinn } });
+        body: { gueltigkeit: unsinn, password: PASS } });
       assert.equal(r.status, 200, `„${unsinn}" soll nicht scheitern, sondern nichts waehlen`);
       assert.equal(r.body.token_days, null, `„${unsinn}" darf keine Frist setzen`);
     }
@@ -190,7 +208,7 @@ test('QR-Zugang: die Laufzeit waehlt der Erzeuger, nicht der Einloeser',
     // Der eigentliche Zweck der zweiten Spalte. Ohne die Bedingung in
     // validateToken() waere sie nur Zierde.
     const abgelaufen = await ruf('/qr-token', { method: 'POST', headers: { cookie: keks },
-      body: { gueltigkeit: '1m' } });
+      body: { gueltigkeit: '1m', password: PASS } });
     const zugang = await ruf('/qr-login', { method: 'POST', body: { token: abgelaufen.body.token } });
     const roh = zugang.body.token;
     assert.ok(await auth.validateToken(roh), 'Frisch ausgestellt muss der Zugang gelten');
@@ -211,7 +229,7 @@ test('QR-Zugang: die Oberflaeche waehlt beim ERZEUGEN, nicht beim Einloesen', ()
   const einst = ohneKommentare(
     fs.readFileSync(path.join(ROOT, 'public/js/05-settings.js'), 'utf8'));
 
-  assert.ok(/api\('POST', '\/v1\/auth\/qr-token', \{ gueltigkeit \}\)/.test(einst),
+  assert.ok(/api\('POST', '\/v1\/auth\/qr-token', \{ gueltigkeit, password: /.test(einst),
     'Die Webapp soll die gewaehlte Laufzeit beim Erzeugen des Codes mitschicken');
   assert.ok(!/qr-login/.test(einst),
     'Die Webapp loest keine QR-Codes ein — taete sie es, waere hier die zweite Stelle, ' +

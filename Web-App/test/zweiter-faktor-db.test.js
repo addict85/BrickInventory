@@ -8,6 +8,10 @@
  *   C  recordLoginFailure beim falschen Code entfernt    → rot: „keine Sperre"
  *   D  hotp(): Offset aus dem ersten statt letzten Byte  → rot: RFC-Vektoren
  *   E  change-password wieder mit 401                    → rot: „die Clients melden dann ab"
+ *   F  (28.10.) beendeAndereZugaenge() beim Bestätigen entfernt → rot: „Ein
+ *      Token von vor dem Einschalten gilt weiter"
+ *   G  (28.10.) beim Abschalten wieder ohne Zählen des falschen Codes → rot:
+ *      „Code beim Abschalten beliebig oft ratbar"
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -110,7 +114,11 @@ test('Anmeldung mit zweitem Faktor — durchgespielt', { concurrency: 1 }, async
   };
 
   try {
+    // Ein Zugang von vorher — nach dem Einschalten muss er weg sein.
+    const alt = (await anmelden(NAME)).body.token;
     const { token, codes } = await einrichten(NAME);
+    assert.equal((await ruf('/zweiter-faktor', null, alt)).status, 401,
+      'Ein Token von vor dem Einschalten gilt weiter — ein Eindringling bliebe drin');
     assert.deepEqual((await ruf('/zweiter-faktor', null, token)).body, { success: true, aktiv: true, codes_uebrig: 10 });
     const roh = JSON.stringify(await db.all('SELECT code_hash FROM zweiter_faktor_codes'));
     assert.ok(!codes.some(c => roh.includes(c.replace('-', ''))), 'Wiederherstellungscodes stehen im Klartext');
@@ -147,10 +155,19 @@ test('Anmeldung mit zweitem Faktor — durchgespielt', { concurrency: 1 }, async
     assert.equal((await db.get('SELECT COUNT(*)::int n FROM zweiter_faktor_codes f JOIN users u ON u.id=f.user_id WHERE u.username=$1', [NAME])).n, 0);
 
     // Falsche Codes zählen als Fehlversuche: Danach hilft auch der richtige nicht.
-    await einrichten(SPERRE);
+    const { token: tS, codes: cS } = await einrichten(SPERRE);
     for (let i = 0; i < 5; i++) await anmelden(SPERRE, String(100000 + i));
     const gesperrt = await anmelden(SPERRE, await codeFuer(SPERRE));
     assert.equal(gesperrt.status, 429, `keine Sperre nach fünf falschen Codes: ${JSON.stringify(gesperrt.body)}`);
+
+    // Dasselbe beim Abschalten: Mit bekanntem Passwort liess sich der Code
+    // beliebig oft raten, weil das richtige Passwort den Zähler zurücksetzte.
+    for (let i = 0; i < 5; i++)
+      await ruf('/zweiter-faktor/abschalten', { password: PASS, code: String(200000 + i) }, tS);
+    const geraten = await ruf('/zweiter-faktor/abschalten', { password: PASS, code: cS[0] }, tS);
+    assert.equal(geraten.status, 429, `Code beim Abschalten beliebig oft ratbar: ${geraten.status}`);
+    assert.equal((await ruf('/zweiter-faktor/codes', { code: cS[1] }, tS)).status, 429,
+      'Auch das Erneuern der Wiederherstellungscodes muss gesperrt sein');
   } finally {
     await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, SPERRE]]).catch(() => {});
     await db.run('DELETE FROM rate_limit_attempts WHERE key LIKE $1', [`%zf_%${process.pid}%`]).catch(() => {});

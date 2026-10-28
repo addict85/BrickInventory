@@ -170,7 +170,7 @@ test('Teilebilder werden als Vorschau angefordert', () => {
   // /api/img-proxy. thumbUrl() kann für sie nichts tun ("_thumb" gibt es dort
   // nicht), also kam bisher jedes Bild in voller Auflösung — bei 36 bis 100 px
   // Anzeigegrösse und 100 Bildern je Seite.
-  const imgs = [...SRC.matchAll(/<img src="\$\{escUrl\(([^\n]*?)\)\}"/g)].map(m => m[1]);
+  const imgs = [...SRC.matchAll(/bildTag\(\{ src: ([^\n]*?), alt:/g)].map(m => m[1]);
   assert.ok(imgs.length >= 2, 'Kachel und Tabellenzeile erwartet');
   for (const expr of imgs) {
     assert.match(expr, /imgUrl\(/, `Bild läuft nicht über imgUrl(): ${expr.slice(0, 70)}`);
@@ -310,23 +310,6 @@ test('der Farbfilter vergleicht Namen — in beiden Abfragepfaden', () => {
     'Die Zusammenfassung muss über den Farbnamen filtern');
   assert.doesNotMatch(sum, /parseInt\(o\.color\)/,
     'parseInt auf einen Farbnamen ergibt NaN');
-});
-
-test('die Leer-Anzeige der Teile nutzt das Ziegel-Symbol der Navigation', () => {
-  // PARTS_ICON_SVG ist in 02-gallery.js definiert — eine zweite Deklaration
-  // hier bräche die Datei mit „Identifier has already been declared" ab.
-  // 03-parts.js skaliert sie nur.
-  const gallery = stripModuleSyntax(fs.readFileSync(path.join(ROOT, 'public', 'js', '02-gallery.js'), 'utf8'));
-  assert.match(gallery, /const PARTS_ICON_SVG = '<svg/, 'Symbol fehlt');
-
-  const parts = stripModuleSyntax(fs.readFileSync(path.join(ROOT, 'public', 'js', '03-parts.js'), 'utf8'));
-  assert.doesNotMatch(parts, /^const PARTS_ICON_SVG/m,
-    'Zweite Deklaration — sie legt die ganze Datei lahm');
-  assert.match(parts, /function partsIconLarge\(\)/, 'Vergrösserung fehlt');
-  assert.match(parts, /<div class="icon">\$\{partsIconLarge\(\)\}<\/div>/,
-    'Die Leer-Anzeige benutzt das Symbol nicht');
-  assert.doesNotMatch(parts, /<div class="icon">🧩<\/div>/,
-    'Das Puzzleteil passt weder zur Navigation noch zu LEGO');
 });
 
 test('Kategorien werden über den Teilekatalog aufgelöst', () => {

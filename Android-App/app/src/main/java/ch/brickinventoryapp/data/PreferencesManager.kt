@@ -465,9 +465,11 @@ class PreferencesManager @Inject constructor(
     /**
      * „Dunkel, wenn das System dunkel ist" — je Gerät, nicht vom Server. Im
      * Spiegel statt im DataStore, weil es wie das Design schon das erste Bild
-     * bestimmt. Vorgabe aus: Niemand bekommt ungefragt ein anderes Design.
+     * bestimmt. Ohne gespeicherte Wahl folgt die App dem System; eine einmal
+     * getroffene Wahl bleibt (dunkelNachSystemGilt).
      */
-    fun dunkelNachSystem(): Boolean = designSpiegel.getBoolean(DUNKEL_NACH_SYSTEM, false)
+    fun dunkelNachSystem(): Boolean = ch.brickinventoryapp.ui.theme.dunkelNachSystemGilt(
+        if (designSpiegel.contains(DUNKEL_NACH_SYSTEM)) designSpiegel.getBoolean(DUNKEL_NACH_SYSTEM, true) else null)
     fun setzeDunkelNachSystem(an: Boolean) {
         designSpiegel.edit().putBoolean(DUNKEL_NACH_SYSTEM, an).apply()
     }

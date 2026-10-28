@@ -1,3 +1,4 @@
+import path from 'path';
 import type { Response } from 'express';
 
 /**
@@ -44,11 +45,21 @@ export function antwortAufDateiFehler(res: Response, err: unknown): void {
 }
 
 /**
+ * res.sendFile mit dem Ordner als `root`: So prüft `send` nur den Dateinamen
+ * auf einen führenden Punkt. Mit dem ganzen Pfad antwortete jede Datei mit
+ * 404, sobald die Installation unter einem Punkt-Ordner liegt (~/.local,
+ * ein Arbeitsbaum unter .claude/).
+ */
+export function sendeDatei(res: Response, pfad: string, fertig: (err?: Error) => void): void {
+  res.sendFile(path.basename(pfad), { root: path.dirname(pfad) }, fertig);
+}
+
+/**
  * Datei ausliefern, Fehler richtig beantworten. Der gemeinsame Weg fuer alle
  * Routen, die nichts Besonderes tun, wenn die Datei fehlt.
  */
 export function liefereDatei(res: Response, pfad: string): void {
-  res.sendFile(pfad, (err?: Error) => {
+  sendeDatei(res, pfad, (err?: Error) => {
     if (err) antwortAufDateiFehler(res, err);
   });
 }

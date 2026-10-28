@@ -3,7 +3,7 @@
  * Ausführlich: docs/begruendungen/routes/api_v1/pdf.ts.md#abschnitt
  */
 import express from 'express';
-import { DATA_DIR, IMAGES_DIR, resolveWebPath } from '../../utils/appPaths';
+import { IMAGES_DIR, PDF_JOB_DIR, resolveWebPath } from '../../utils/appPaths';
 import * as db from '../../db/database';
 import {  streamFileToResponse, meldeUndWeiter, fehlertext, pfadParam } from '../../utils/httpError';
 import { requireToken } from './middleware';
@@ -25,7 +25,7 @@ const router = express.Router();
 // die Ausnahme gilt jetzt aber nur hier statt serverweit.
 router.use(express.json({ limit: '10mb' }));
 
-export const PDF_JOB_DIR = _pdfPath.join(DATA_DIR, 'pdf-jobs');
+export { PDF_JOB_DIR };
 
 /**
  * Die Bilddatei eines Teils auf der Platte, nur innerhalb des Bildordners.

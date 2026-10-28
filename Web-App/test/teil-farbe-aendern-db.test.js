@@ -230,7 +230,7 @@ test('die Farbe eines manuellen Teils lässt sich nachträglich ändern',
                   VALUES ($1,'3001',0,'manual'), ($1,'3001',4,'manual')`, [UID]);
     await db.run(`INSERT INTO part_acquisitions
                     (user_id,part_number,color_id,quantity,unit_price,condition,created_at)
-                  VALUES ($1,'3001',0,7,0.40,'N', NOW()),
+                  VALUES ($1,'3001',0,7,0.50,'N', NOW()),
                          ($1,'3001',4,10,0.50,'N', NOW())`, [UID]);
 
     const a = await aendere('3001', 0, { color_id: 4 });
@@ -245,6 +245,20 @@ test('die Farbe eines manuellen Teils lässt sich nachträglich ändern',
       [{ farbe: 4, menge: 17 }],
       'Aus 7 und 10 vom gleichen Tag muss EINE Erfassung mit 17 werden — ' +
       'verschwindet eine der beiden, fehlen Marco Stücke.');
+  });
+
+  await t.test('verschiedene Preise vom gleichen Tag bleiben eigene Zeilen', async () => {
+    await leeren();
+    await db.run(`INSERT INTO parts (user_id,part_number,color_id,source)
+                  VALUES ($1,'3001',0,'manual'), ($1,'3001',4,'manual')`, [UID]);
+    await db.run(`INSERT INTO part_acquisitions
+                    (user_id,part_number,color_id,quantity,unit_price,condition,created_at)
+                  VALUES ($1,'3001',0,7,0.40,'N', NOW()),
+                         ($1,'3001',4,10,0.50,'N', NOW())`, [UID]);
+    const a = await aendere('3001', 0, { color_id: 4 });
+    assert.equal(a.status, 200, JSON.stringify(a.body));
+    assert.deepEqual((await erfassungen()).map(e => e.menge).sort((x, y) => x - y), [7, 10],
+      'Seit Migration 0047 kein Mischpreis: zwei Käufe, zwei Zeilen, zusammen 17');
   });
 
   await t.test('der Lagerort zieht mit, wenn die Zielzeile keinen hat', async () => {

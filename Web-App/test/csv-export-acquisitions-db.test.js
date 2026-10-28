@@ -246,7 +246,7 @@ test('Minifiguren-Export: dieselbe Regel, dieselbe eine Abfrage',
     }
     await db.run(
       `INSERT INTO minifig_acquisitions (user_id, fig_number, quantity, unit_price, condition)
-       VALUES ($1,'fig-b',1,NULL,NULL)`, [uid]);
+       VALUES ($1,'fig-b',1,NULL,'U')`, [uid]);
 
     let abfragen = 0;
     db.pool.query = (...args) => { abfragen++; return echtesQuery(...args); };
@@ -268,7 +268,8 @@ test('Minifiguren-Export: dieselbe Regel, dieselbe eine Abfrage',
     const b = r.find(x => x.fig_number === 'fig-b');
     assert.equal(b.unit_price, '',
       'eine Erfassung ohne Preis muss leer exportieren — nicht als 0');
-    assert.equal(b.condition, 'N', 'fehlender Zustand wird zu N');
+    // Seit Migration 0047 ist der Zustand Pflicht; geprüft wird, dass er durchkommt.
+    assert.equal(b.condition, 'U');
 
     assert.ok(abfragen >= 1, 'der Zaehler hat nichts erfasst — der Patch greift nicht mehr');
     assert.ok(abfragen <= 2,
@@ -342,7 +343,7 @@ test('Teile-Export: dieselbe Regel, dieselbe eine Abfrage',
       `INSERT INTO part_acquisitions (user_id, part_number, color_id, quantity, unit_price, condition, created_at)
        VALUES ($1,'3001',4,2,0.50,'N', NOW() - INTERVAL '2 days'),
               ($1,'3001',4,3,1.50,'U', NOW() - INTERVAL '1 day'),
-              ($1,'3002',0,1,NULL,NULL, NOW())`, [uid]);
+              ($1,'3002',0,1,NULL,'U', NOW())`, [uid]);
 
     let abfragen = 0;
     db.pool.query = (...args) => { abfragen++; return echtesQuery(...args); };
@@ -372,7 +373,7 @@ test('Teile-Export: dieselbe Regel, dieselbe eine Abfrage',
     const ohnePreis = r.find(x => x.part_number === '3002');
     assert.equal(ohnePreis.unit_price, '',
       'eine Erfassung ohne Preis muss leer exportieren — nicht als 0');
-    assert.equal(ohnePreis.condition, 'N', 'fehlender Zustand wird zu N');
+    assert.equal(ohnePreis.condition, 'U');
 
     assert.ok(abfragen >= 1, 'der Zaehler hat nichts erfasst — der Patch greift nicht mehr');
     assert.ok(abfragen <= 2,

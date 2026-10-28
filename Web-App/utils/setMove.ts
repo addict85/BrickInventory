@@ -96,7 +96,7 @@ export async function moveSetBetweenAccounts(
   if (!src) fehlerWerfen('nicht_gefunden', 404);
 
   const all = await tx.all(
-    `SELECT id, quantity, purchase_price, COALESCE(condition,'N') AS condition, created_at
+    `SELECT id, quantity, purchase_price, COALESCE(condition,'N') AS condition, created_at, price_estimated, currency
        FROM set_acquisitions WHERE user_id=$1 AND set_number=$2
       ORDER BY created_at ASC, id ASC`, [fromId, sn]);
 
@@ -135,11 +135,12 @@ export async function moveSetBetweenAccounts(
       [toId, sn, src.added_at]);
   }
 
-  // Erfassungen einzeln übertragen — mit Tagesregel und Preisgewichtung.
+  // Erfassungen einzeln übertragen — mit Tagesregel, Preis und Währung.
   for (const a of wanted) {
     await recordAcquisitionForDay('set', toId, [sn], {
       quantity: a.quantity, price: a.purchase_price,
       condition: a.condition, createdAt: a.created_at,
+      geschaetzt: a.price_estimated, currency: a.currency,
     }, tx);
     await tx.run('DELETE FROM set_acquisitions WHERE id=$1', [a.id]);
   }
@@ -191,7 +192,7 @@ export async function moveManualAcquisition(
   const keySql = isPart ? 'part_number = $2 AND color_id = $3' : 'fig_number = $2';
 
   const acq = await tx.get(
-    `SELECT id, quantity, unit_price, COALESCE(condition,'N') AS condition, created_at
+    `SELECT id, quantity, unit_price, COALESCE(condition,'N') AS condition, created_at, price_estimated, currency
        FROM ${acqTab} WHERE id = $1 AND user_id = $2`, [acquisitionId, fromId]);
   if (!acq) fehlerWerfen('kaufpreis_nicht_gefunden', 404);
 
@@ -247,6 +248,7 @@ export async function moveManualAcquisition(
   await recordAcquisitionForDay(kind, toId, keyValues, {
     quantity: movingQty, price: acq.unit_price,
     condition: acq.condition, createdAt: acq.created_at,
+    geschaetzt: acq.price_estimated, currency: acq.currency,
   }, tx);
   await tx.run(`DELETE FROM ${acqTab} WHERE id = $1`, [acq.id]);
 

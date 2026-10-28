@@ -18,7 +18,7 @@
 // der Sache, um die es geht.
 import { registerActions } from './00-registry.js';
 import { t, tRaw, colorName } from '../i18n.js';
-import { ico, G, XML_ICON_SVG, api, esc, escHex, escUrl, fullUrl, hexZiffern, imgUrl, toast } from './01-core.js';
+import { bildTag, platzhalterInhalt, ico, G, XML_ICON_SVG, api, esc, escHex, escUrl, fullUrl, hexZiffern, imgUrl, toast } from './01-core.js';
 import { loadBrickColors, loadManualParts, loadManualFigsTable } from './06-minifigs.js';
 import { loadGallery } from './02-gallery.js';
 
@@ -49,7 +49,7 @@ let _bericht = null;
  * Das ist nicht nur Kosmetik. Der zweite Schritt SCHREIBT, und er schreibt
  * über recordAcquisitionForDay() — eine zweite Anfrage mit derselben Datei
  * legt für denselben Tag keine zweite Erfassung an, sondern ADDIERT auf die
- * bestehende (idx_part_acq_tag_zustand, utils/acquisitions.ts). Zwei Klicks auf
+ * bestehende (idx_part_acq_tag_merkmale, utils/acquisitions.ts). Zwei Klicks auf
  * „Jetzt in den Bestand übernehmen" hätten also die doppelte Stückzahl
  * ergeben, und zwar lautlos: Beide Antworten melden Erfolg.
  *
@@ -322,9 +322,8 @@ function zeichneBericht(d) {
 /** Was in einer Zeile steht. Siehe die Begründung an PostenErgebnis. */
 function zeile(p, i) {
   const bild = p.bild
-    ? `<img src="${escUrl(imgUrl(fullUrl(p.bild), true))}" alt="" loading="lazy"
-         style="width:40px;height:40px;object-fit:contain;background:var(--s50);border-radius:4px" />`
-    : '<div style="width:40px;height:40px;background:var(--s50);border-radius:4px"></div>';
+    ? bildTag({ src: imgUrl(fullUrl(p.bild), true), alt: '', klasse: 'bild-40', ph: 'teil' })
+    : `<span class="bild-ph bild-40" aria-hidden="true">${platzhalterInhalt('teil')}</span>`;
   const punkt = p.farbHex
     ? `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${
         escHex(p.farbHex, 'var(--s300)')};border:1px solid rgba(0,0,0,.15);margin-right:4px"></span>`

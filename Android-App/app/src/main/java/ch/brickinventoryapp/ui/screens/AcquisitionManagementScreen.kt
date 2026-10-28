@@ -3,6 +3,8 @@ package ch.brickinventoryapp.ui.screens
 import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -266,6 +268,7 @@ private fun AcquisitionManagementRow(
         mutableStateOf(acquisition.effectivePrice?.let { "%.2f".format(it) } ?: "")
     }
     var condition by remember(acquisition.id) { mutableStateOf(acquisition.condition) }
+    val geschaetztText = stringResource(R.string.acq_preis_geschaetzt)
     var showDeleteConfirm by rememberSaveable { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
 
@@ -432,6 +435,13 @@ private fun AcquisitionManagementRow(
                 .onFocusChanged { st -> if (!st.isFocused) flushPending() },
             singleLine = true,
             placeholder = { Text(stringResource(R.string.detail_price_placeholder), style = MaterialTheme.typography.labelSmall) },
+            // Ein Marktpreis, den der Server eingesetzt hat, ist kein bezahlter
+            // Betrag; das „≈" sagt es, bis jemand den echten Preis einträgt.
+            prefix = if (acquisition.priceEstimated && priceText.isNotEmpty()) {
+                { Text("≈", modifier = Modifier.semantics {
+                    contentDescription = geschaetztText }) }
+            } else null,
+            suffix = acquisition.currency?.let { w -> { Text(w, style = MaterialTheme.typography.labelSmall) } },
             keyboardOptions = NumericInput.preisTastatur(),
             keyboardActions = KeyboardActions(
                 onDone = { focusManager.clearFocus(); flushPending() }

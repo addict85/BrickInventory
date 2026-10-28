@@ -29,20 +29,22 @@ import { teilmengeJoin, teilmengeAus } from '../bestandsmenge';
  * @param {'part'|'fig'} kind
  * @returns Map key → Erfassungszeilen; key ist `nummer|farbe` bzw. `nummer`
  */
-async function loadManualAcquisitions(uid: Blickfeld, kind: 'part' | 'fig') {
+async function loadManualAcquisitions(uid: Blickfeld, kind: 'part' | 'fig', waehrung: string) {
   // Blickfeld: Ein Hauptkonto bewertet den ganzen Haushalt. Die Währung ist
   // beim Verknüpfen erzwungen gleich (utils/household.ts) — sonst summierte
   // diese Rechnung zwei Währungen, ohne dass man es der Zahl ansähe.
   const uids = asIds(uid as any);
   const rows = await db.all(
     kind === 'part'
-      ? `SELECT id, part_number, color_id, quantity, unit_price,
+      ? `SELECT id, part_number, color_id, quantity,
+                CASE WHEN currency = $2 THEN unit_price END AS unit_price, currency, price_estimated,
                 COALESCE(condition,'N') AS condition, created_at
            FROM part_acquisitions WHERE user_id = ANY($1) ORDER BY created_at ASC, id ASC`
-      : `SELECT id, fig_number, quantity, unit_price,
+      : `SELECT id, fig_number, quantity,
+                CASE WHEN currency = $2 THEN unit_price END AS unit_price, currency, price_estimated,
                 COALESCE(condition,'N') AS condition, created_at
            FROM minifig_acquisitions WHERE user_id = ANY($1) ORDER BY created_at ASC, id ASC`,
-    [uids]
+    [uids, waehrung]
   ).catch(() => []);
   const out = new Map<string, any[]>();
   for (const r of rows) {
@@ -103,7 +105,7 @@ async function computeSetsValuation(viewerId: number, ids: Blickfeld) {
       `SELECT ${PRICE_CACHE_COLS} FROM price_cache
        WHERE set_number = ANY($1) AND currency_code = $2 AND fetched_at > NOW() - make_interval(hours => $3)`,
       [setNumbers, currency, ttl]),
-    ladeSetErfassungen(uids),
+    ladeSetErfassungen(uids, String(currency)),
   ]);
   const pre = {
     catalog: new Map(catRows.map(r => [r.set_number, r])),
@@ -257,7 +259,7 @@ async function computeMinifigsValuation(viewerId: number, ids: Blickfeld) {
      WHERE m.user_id = ANY($1) AND m.source='manual'`, [uids]);
   if (!manualFigs.length) return { currency, figs: [], total_value: '0.00' };
 
-  const acqByFig = await loadManualAcquisitions(uids, 'fig');
+  const acqByFig = await loadManualAcquisitions(uids, 'fig', String(currency));
 
   const tasks = manualFigs.map(fig => async () => {
     // Marktpreis kommt immer live von BrickLink (globaler, geteilter Preiscache
@@ -380,7 +382,7 @@ async function computePartsValuation(viewerId: number, ids: Blickfeld) {
   // fetchPartPrice unten aufgerufen wird, sonst greift das Gedächtnis daneben.
   await ladeBlNummernVor(manualParts.map(p => String(p.bl_part_number || p.part_number)));
 
-  const acqByPart = await loadManualAcquisitions(uids, 'part');
+  const acqByPart = await loadManualAcquisitions(uids, 'part', String(currency));
 
   const tasks = manualParts.map(part => async () => {
     // Marktpreis kommt immer live von BrickLink (globaler, geteilter Preiscache

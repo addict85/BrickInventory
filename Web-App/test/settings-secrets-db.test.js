@@ -66,9 +66,9 @@ const GEHEIM = {
  * gefunden, die Geheimnisse herausgibt.
  */
 const AUSGENOMMEN = new Map([
-  ['/export', 'Die Konfigurations-Sicherung, die der Admin bewusst herunterlädt — ' +
-              'sie MUSS die Schlüssel enthalten, sonst liesse sie sich nicht ' +
-              'zurückspielen. Sie hängt hinter requireAdmin.'],
+  ['/export', 'Die Konfigurations-Sicherung lässt Geheimnisse ganz weg statt sie ' +
+              'zu maskieren; für Nicht-Verwalter enthält sie gar keine globalen ' +
+              'Werte (test/einstellungen-pruefung-db.test.js).'],
   ['/export/data', 'ZIP mit Sets/Teilen/Minifiguren als CSV — enthält gar keine ' +
                    'Einstellungen und liefert kein JSON.'],
   ['/theme', 'Gibt genau einen Wert heraus (den Designnamen) und ist bewusst ' +

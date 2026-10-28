@@ -67,6 +67,8 @@ export async function manuellerKaufpreis(
    * hat. Nur dann gibt es etwas zu kennzeichnen.
    */
   preisAusZustand: string | null;
+  /** Der Erfassungspreis ist ein eingesetzter Marktpreis, kein bezahlter. */
+  geschaetzt: boolean;
 }> {
   const roh = eingabe.unitPrice;
   const getippt = (roh !== undefined && roh !== null && String(roh).trim() !== '')
@@ -88,5 +90,6 @@ export async function manuellerKaufpreis(
     // Nur wenn tatsächlich ein Preis übernommen wurde: Eine Herkunft ohne
     // Wert wäre ein Hinweis auf etwas, das nirgends steht.
     preisAusZustand: (kaufpreis > 0 && markt?.ausZustand) ? markt.ausZustand : null,
+    geschaetzt: unitPrice === null && kaufpreis > 0,
   };
 }

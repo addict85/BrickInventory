@@ -7,7 +7,7 @@ import express, { Request, Response } from 'express';
 import { liefereDatei } from '../utils/dateiAusliefern';
 import { safeDataPath } from '../utils/datenPfad';
 
-const { requireLoginOrToken, angemeldeteNutzerId, istVerwalter } = require('../utils/auth') as typeof import('../utils/auth');
+const { requireLoginOrToken, angemeldeteNutzerId } = require('../utils/auth') as typeof import('../utils/auth');
 
 type WildcardRequest = Request<{ pfad: string[] }>;
 const router = express.Router();
@@ -22,7 +22,9 @@ router.get('/data/uploads/*pfad', requireLoginOrToken, async (req: WildcardReque
   const filePath = safeDataPath('uploads', segments);
   if (!filePath || !/^\d+$/.test(segments[0] ?? '')) return res.status(404).send('Datei nicht gefunden');
   const besitzer = Number(segments[0]);
-  if (besitzer !== userId && !istVerwalter(req)) {
+  // Auch Verwalter lesen fremde Uploads (Rechnungen, Gutscheine) nicht: Die
+  // Verwaltung der Konten braucht deren Inhalt nicht.
+  if (besitzer !== userId) {
     const { scopeIds } = require('../utils/household') as typeof import('../utils/household');
     const erlaubt = await scopeIds(userId).catch(() => [userId]);
     if (!erlaubt.includes(besitzer)) return res.status(403).send('Kein Zugriff');

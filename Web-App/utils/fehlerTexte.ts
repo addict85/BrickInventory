@@ -87,14 +87,12 @@ export const FEHLER = {
                                  en: 'Invalid or expired invitation code.' },
   konto_mit_sich_selbst:       { de: 'Ein Konto kann sich nicht mit sich selbst verknüpfen.',
                                  en: 'An account cannot be linked to itself.' },
-  konto_bereits_verknuepft:    { de: 'Dieses Konto ist bereits mit einem Hauptkonto verknüpft.',
-                                 en: 'This account is already linked to a main account.' },
-  // Die drei Absagen „nur eine Stufe" sind mit Nachtrag 173 entfallen —
-  // Konten lassen sich jetzt über mehrere Stufen verknüpfen. Geblieben ist
-  // die eine Grenze, die bleiben MUSS:
+  konto_bereits_verknuepft:    { de: 'Dieses Konto ist mit dem einladenden Konto bereits verknüpft.',
+                                 en: 'This account is already linked to the inviting account.' },
   verknuepfung_erzeugt_kreis:  {
-    de: 'Dieses Konto ist bereits ein Unterkonto des einladenden Kontos — die Verknüpfung liefe im Kreis.',
-    en: 'This account is already a sub-account of the inviting account — the link would form a cycle.' },
+    de: 'Das einladende Konto ist bereits ein Unterkonto dieses Kontos — gegenseitig lassen sich Konten nicht verknüpfen.',
+    en: 'The inviting account is already a sub-account of this account — accounts cannot be linked both ways.' },
+  konto_id_ungueltig:          { de: 'Ungültige Konto-ID.', en: 'Invalid account ID.' },
   waehrung_ungleich:           {
     de: 'Beide Konten müssen dieselbe Währung verwenden (Hauptkonto: {haupt}, dieses Konto: {unter}).',
     en: 'Both accounts must use the same currency (main account: {haupt}, this account: {unter}).' },
@@ -138,6 +136,8 @@ export const FEHLER = {
 
   // ── Sets, Teile, Minifiguren ─────────────────────────────────────────────
   set_nicht_gefunden:          { de: 'Set nicht gefunden', en: 'Set not found' },
+  setnummer_ungueltig:         { de: 'Das ist keine Setnummer (Buchstaben und Ziffern, z. B. 10294).',
+                                 en: 'That is not a set number (letters and digits, e.g. 10294).' },
   set_nicht_im_katalog:        { de: 'Set nicht im Katalog gefunden', en: 'Set not found in the catalogue' },
   set_number_erforderlich:     { de: 'set_number erforderlich', en: 'set_number is required' },
   parameter_set_fehlt:         { de: 'Parameter set fehlt', en: 'Parameter “set” is missing' },
@@ -285,8 +285,8 @@ export const FEHLER = {
   kaufpreis_nicht_gefunden:    { de: 'Kaufpreis nicht gefunden', en: 'Purchase not found' },
   datum_ungueltig:             { de: 'Ungültiges Datum', en: 'Invalid date' },
   erfassung_nicht_gefunden:    { de: 'Erfassung nicht gefunden', en: 'Entry not found' },
-  datum_belegt:                { de: 'An diesem Datum existiert bereits ein Eintrag.',
-                                 en: 'An entry already exists for that date.' },
+  datum_belegt:                { de: 'An diesem Datum gibt es schon einen Eintrag mit demselben Zustand und Preis.',
+                                 en: 'An entry with the same condition and price already exists for that date.' },
   server_ausgelastet:          { de: 'Server ausgelastet', en: 'The server is busy' },
   zu_viele_verbindungen:       { de: 'Zu viele offene Verbindungen', en: 'Too many open connections' },
   zeitlimit:                   { de: 'Zeitlimit überschritten', en: 'Timed out' },

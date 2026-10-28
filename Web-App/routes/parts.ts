@@ -17,12 +17,13 @@ import express from 'express';
 
 const router  = express.Router();
 import * as db from '../db/database';
-import { fehlertext, handleRouteError, logAndContinue } from '../utils/httpError';
+import { fehlertext, handleRouteError } from '../utils/httpError';
 import { recordAcquisitionForDay } from '../utils/acquisitions';
+import { withInventoryLock, bestandsSchluessel } from '../utils/txLock';
 // Die Katalogarbeit liegt seit Nachtrag 131 in utils/partsImport.ts — sonst
 // müsste utils/setService.ts (addSet) einen Router importieren.
 import { importPartsForSet, fetchMissingBlIds } from '../utils/partsImport';
-import { requireLogin } from './auth';
+import { requireLoginOrToken as requireLogin } from '../utils/auth';
 // Blickfeld — dieselbe Quelle wie in routes/api_v1/parts.ts.
 import { scopeIds, parseScopeMode } from '../utils/household';
 import { kaufpreisAusEingabe, manuellerKaufpreis } from '../utils/preisRegel';
@@ -164,6 +165,7 @@ async function resolveManualPartPurchase(uid: number, { partNumber, colorId, uni
     // Aus welchem Zustand der uebernommene Marktpreis stammt (Nachtrag 167) —
     // null, wenn es nichts zu kennzeichnen gibt.
     preisAusZustand: r.preisAusZustand,
+    geschaetzt: r.geschaetzt,
   };
 }
 
@@ -278,7 +280,8 @@ async function addManualPartIntern(uid: number, rawBody: any) {
     // (utils/acquisitions.ts).
     await recordAcquisitionForDay('part', uid, [part_number, color_id || 0], {
       quantity, price: ((rePrice ?? 0) > 0 ? rePrice : null), condition: reCond, createdAt: acquiredAt,
-    }).catch(e => console.error('[addManualPart] Zweiterfassung:', e.message));
+      geschaetzt: reEntered === null || isNaN(reEntered),
+    });
     // Kein Nachrechnen mehr: Die Stückzahl steht seit Migration 0038
     // nicht an der Zeile. Hier stand mengeNeuRechnen(), das sie aus den
     // Erfassungen ableitete und SCHRIEB — jetzt rechnet sie das Lesen
@@ -290,7 +293,7 @@ async function addManualPartIntern(uid: number, rawBody: any) {
   // Preis/Stk, Kaufpreis und Zustand: eine Rechnung, eine Stelle
   // (resolveManualPartPurchase oben) — dieselbe, die der CSV-Import benutzt.
   // Ausführlich: docs/begruendungen/routes/parts.ts.md#addmanualpartintern
-  const { erfassungsPreis, effectiveCondition, preisAusZustand } =
+  const { erfassungsPreis, effectiveCondition, preisAusZustand, geschaetzt } =
     await resolveManualPartPurchase(uid, { partNumber: part_number, colorId: color_id, unitPrice: unit_price, condition });
   // Farbcode möglichst füllen: vom Client übergeben, sonst aus rb_colors ableiten
   // (sonst bleibt der Farbpunkt in der Oberfläche grau).
@@ -324,9 +327,9 @@ async function addManualPartIntern(uid: number, rawBody: any) {
   // Erfassungen ist (Migration 0038). Hier stand dafuer ein eigenes …
   // Ausführlich: docs/begruendungen/routes/parts.ts.md#addmanualpartintern-3
   await recordAcquisitionForDay('part', uid, [part_number, color_id || 0], {
-    quantity, price: erfassungsPreis,
+    quantity, price: erfassungsPreis, geschaetzt,
     condition: effectiveCondition, createdAt: acquiredAt,
-  }).catch(e => console.error('[addManualPart] Erfassung:', e.message));
+  });
 
   // `price_from_condition` sagt der Oberflaeche, dass der uebernommene
   // Marktpreis aus dem ANDEREN Zustand stammt (Nachtrag 167, Marcos
@@ -356,44 +359,36 @@ async function updateManualPart(uid: number, partNumber: string, colorId: number
   if (!existing) { const e = Object.assign(new Error('Teil nicht gefunden oder nicht manuell hinzugefügt'), { status: 404 }); throw e; }
 
   if (body.quantity !== undefined) {
-    const newQty = parseInt(body.quantity) || 1;
-    // Erst die Erfassungen, dann die Menge daraus
-    // Jetzt ist die Reihenfolge umgekehrt und das Verschlucken weg: Geht das
-    // Angleichen schief, hat sich NICHTS geaendert, und der Fehler wird
-    // gemeldet. Die Spalte schreibt mengeNeuRechnen() danach aus den …
-    // Ausführlich: docs/begruendungen/routes/parts.ts.md#updatemanualpart
-    {
-      const acqs = await db.all('SELECT id, quantity, created_at FROM part_acquisitions WHERE user_id=$1 AND part_number=$2 AND color_id=$3 ORDER BY created_at DESC, id DESC',
+    const newQty = bestandsMenge(body.quantity, 1);
+    // Marktpreis VOR der Sperre holen (Netzaufruf) und nur, wenn die Menge
+    // steigt — das schont das BrickLink-Kontingent.
+    const cond = await zustandFuerPreis(undefined, existing.condition, uid);
+    const bisher = (await db.get(
+      'SELECT COALESCE(SUM(quantity), 0)::int AS q FROM part_acquisitions WHERE user_id=$1 AND part_number=$2 AND color_id=$3',
+      [uid, partNumber, colorId]))?.q ?? 0;
+    const mp = newQty > bisher
+      ? await getCurrentPartMarketPrice(partNumber, colorId, uid, cond).catch(() => null) : null;
+    // Unter der Bestandssperre: Lesen, Delta rechnen und Schreiben dürfen sich
+    // nicht mit einer gleichzeitigen Änderung (Web und App) überholen.
+    await withInventoryLock(uid, bestandsSchluessel('part', [partNumber, colorId]), async (tx) => {
+      const acqs = await tx.all('SELECT id, quantity, created_at FROM part_acquisitions WHERE user_id=$1 AND part_number=$2 AND color_id=$3 ORDER BY created_at DESC, id DESC',
         [uid, partNumber, colorId]);
-      const currentTotal = acqs.reduce((s,r)=>s+r.quantity,0);
+      const currentTotal = acqs.reduce((s: number, r: any) => s + r.quantity, 0);
       const delta = newQty - currentTotal;
-      // acqs.length === 0 wird MIT abgedeckt.
-      // Ausführlich: docs/begruendungen/routes/parts.ts.md#updatemanualpart-2
       if (delta > 0) {
-        // Aufstocken der heutigen Zeile ODER eine neue anlegen — beides
-        // erledigt recordAcquisitionForDay (utils/acquisitions.ts). Vorher
-        // stand die Tagesprüfung hier von Hand (`isToday_`) und galt nur an
-        // dieser einen Stelle; jetzt gilt sie überall gleich.
-        // Ausführlich: docs/begruendungen/routes/parts.ts.md#updatemanualpart-cond
-        const cond = await zustandFuerPreis(undefined, existing.condition, uid);
-        const mp = await getCurrentPartMarketPrice(partNumber, colorId, uid, cond).catch(()=>null);
         await recordAcquisitionForDay('part', uid, [partNumber, colorId],
-          { quantity: delta, price: mp, condition: cond });
+          { quantity: delta, price: mp, condition: cond, geschaetzt: true }, tx);
       } else if (delta < 0) {
-        // Eine Transaktion: Scheitert ein Schritt, wären sonst nur einige
-        // Erfassungen gekürzt und die Menge stimmte nicht mehr.
-        await db.transaction(async (tx) => {
-          let rem = -delta;
-          for (const a of acqs) {
-            if (rem<=0) break;
-            const take = Math.min(a.quantity, rem);
-            if (take>=a.quantity) await tx.run('DELETE FROM part_acquisitions WHERE id=$1', [a.id]);
-            else await tx.run('UPDATE part_acquisitions SET quantity=quantity-$1 WHERE id=$2', [take, a.id]);
-            rem -= take;
-          }
-        });
+        let rem = -delta;
+        for (const a of acqs) {
+          if (rem <= 0) break;
+          const take = Math.min(a.quantity, rem);
+          if (take >= a.quantity) await tx.run('DELETE FROM part_acquisitions WHERE id=$1', [a.id]);
+          else await tx.run('UPDATE part_acquisitions SET quantity=quantity-$1 WHERE id=$2', [take, a.id]);
+          rem -= take;
+        }
       }
-    }
+    });
   }
   if (body.unit_price !== undefined) {
     // Die Regel („leer heisst Marktpreis", Zustand gestaffelt) steht in
@@ -443,13 +438,15 @@ async function updateManualPart(uid: number, partNumber: string, colorId: number
 // ── POST /api/parts/import/csv — CSV import of manual parts ──────────────────
 // CSV columns: part_number, color_id (opt), color_name (opt), quantity, unit_price (opt)
 import { getBrickColors, lookupPart } from '../clients/rebrickable';
-import { csvGemeinsameFelder, csvImportAntwort, csvZeilenAusAnfrage, toCsv } from '../utils/csvExport';
+import { csvGemeinsameFelder, csvImportAntwort, csvZeilenAusAnfrage } from '../utils/csvExport';
+import { buildPartsCsv } from '../utils/bestandExport';
 import { angemeldeteNutzerId } from '../utils/auth';
 import { csvEmpfang } from '../utils/dateiEmpfang';
 import { sendeFehler } from '../utils/fehlerTexte';
 import { setzeLagerort, ortFuerNeuerfassung } from '../utils/lagerort';
 import { merkeTeil, merkeTeilFarbe, katalogTeil } from '../utils/katalogPflege';
 import { mengeJoin, mengeAus, teilmengeJoin, teilmengeAus } from '../utils/bestandsmenge';
+import { bestandsMenge } from '../utils/validate';
 
 router.post('/import/csv', csvEmpfang.single('file'), async (req: LoggedInRequest, res) => {
   if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
@@ -490,7 +487,7 @@ router.post('/import/csv', csvEmpfang.single('file'), async (req: LoggedInReques
         // und meint, was der Mensch bezahlt hat), und ohne Marktpreis stand
         // NULL im Kaufpreis statt der 0, die das Frontend erwartet.
         // Ohne effectiveUnitPrice/effectivePurchasePrice — siehe addManualPart.
-        const { erfassungsPreis, effectiveCondition: csvCondition } =
+        const { erfassungsPreis, effectiveCondition: csvCondition, geschaetzt } =
           await resolveManualPartPurchase(uid, { partNumber, colorId, unitPrice, condition: rawCondition });
         const acqDate = acquiredAt || new Date().toISOString().slice(0,10);
 
@@ -506,9 +503,8 @@ router.post('/import/csv', csvEmpfang.single('file'), async (req: LoggedInReques
           await recordAcquisitionForDay('part', uid, [partNumber, colorId],
             // > 0 wie beim Anlegen von Hand: Die 0 ist ein Anzeigewert fuer
             // die Stammzeile, in der Erfassung steht dafuer NULL.
-            { quantity: qty, price: erfassungsPreis,
-              condition: csvCondition||'N', createdAt: acqDate }
-          ).catch(logAndContinue(`teile:import ${partNumber}/${colorId} (aufgestockt)`));
+            { quantity: qty, price: erfassungsPreis, geschaetzt,
+              condition: csvCondition||'N', createdAt: acqDate });
           updated++;
           results.push({ part_number: partNumber, action: 'updated' });
         } else {
@@ -528,9 +524,8 @@ router.post('/import/csv', csvEmpfang.single('file'), async (req: LoggedInReques
           await recordAcquisitionForDay('part', uid, [partNumber, colorId],
             // > 0 wie beim Anlegen von Hand: Die 0 ist ein Anzeigewert fuer
             // die Stammzeile, in der Erfassung steht dafuer NULL.
-            { quantity: qty, price: erfassungsPreis,
-              condition: csvCondition||'N', createdAt: acqDate }
-          ).catch(logAndContinue(`teile:import ${partNumber}/${colorId} (neu)`));
+            { quantity: qty, price: erfassungsPreis, geschaetzt,
+              condition: csvCondition||'N', createdAt: acqDate });
           added++;
           results.push({ part_number: partNumber, action: 'added' });
         }
@@ -546,48 +541,6 @@ router.post('/import/csv', csvEmpfang.single('file'), async (req: LoggedInReques
 
 // ── GET /api/parts/manual — list only manually added parts ────────────────────
 
-// Shared logic to build the Teile CSV export content (manuell erfasst only).
-// Used by both the standalone CSV download and the combined ZIP export in settings.js.
-// Ausführlich: docs/begruendungen/routes/parts.ts.md#parts-csv-sql
-const PARTS_CSV_SQL = `
-  SELECT p.part_number,
-         -- Die Menge der ERFASSUNG, ohne Rueckfall auf die Zeile: Migration
-         -- 0038 hat p.quantity geloescht, und dieser Export liefert eine
-         -- Zeile JE ERFASSUNG (source='manual' unten). Ohne Erfassung gibt
-         -- es keine Zeile und damit keine Menge — 0 statt leer, dieselbe
-         -- Lesart wie im Sets-Export (utils/setService.ts).
-         COALESCE(a.quantity, 0) AS quantity,
-         COALESCE(p.color_id, 0) AS color_id,
-         COALESCE(pcc.color_name,'') AS color_name,
-         a.unit_price,
-         COALESCE(a.condition, 'N') AS condition,
-         CASE WHEN a.id IS NULL THEN ''
-              ELSE TO_CHAR(a.created_at AT TIME ZONE 'UTC','YYYY-MM-DD') END AS acquired_at
-    FROM parts p
-    LEFT JOIN part_acquisitions a
-           ON a.user_id = p.user_id
-          AND a.part_number = p.part_number
-          AND COALESCE(a.color_id, 0) = COALESCE(p.color_id, 0)
-    -- Name und Farbbezeichnung aus den Katalogen (Migration 0034). LEFT JOIN,
-    -- damit ein Teil ohne Katalogzeile nicht aus dem Export faellt.
-    LEFT JOIN part_catalog pc ON pc.part_number = p.part_number
-    LEFT JOIN part_color_catalog pcc ON pcc.part_number = p.part_number
-                                    AND pcc.color_id    = p.color_id
-   WHERE p.user_id = $1 AND p.source = 'manual'
-   ORDER BY pc.part_name ASC, p.part_number ASC, a.created_at ASC, a.id ASC`;
-
-async function buildPartsCsv(uid: number) {
-  // Ohne zweite Abfrage als Rueckfall — siehe die Begruendung bei
-  // PARTS_CSV_SQL. Scheitert sie, soll der Fehler sichtbar werden, statt eine
-  // Abfrage zu versuchen, die auf geloeschte Spalten zeigt.
-  const rows = (await db.all(PARTS_CSV_SQL, [uid]))
-    .map((r: any) => ({ ...r, unit_price: r.unit_price ?? '' }));
-
-  return toCsv(
-    ['part_number', 'quantity', 'color_id', 'color_name', 'unit_price', 'condition', 'acquired_at'],
-    rows
-  );
-}
 
 // ── GET /api/parts/export/csv ist ENTFERNT ───────────────────────────────────
 //
@@ -612,7 +565,7 @@ async function getPartAcquisitions(uid: number[], partNumber: string, colorId: s
   // Ausführlich: docs/begruendungen/routes/parts.ts.md#getpartacquisitions-2
   return db.all(
     `SELECT a.id, a.quantity, a.unit_price,
-            COALESCE(a.condition, 'N') AS condition,
+            COALESCE(a.condition, 'N') AS condition, a.price_estimated, a.currency,
             a.created_at, a.user_id AS owner_user_id
      FROM part_acquisitions a
      WHERE a.user_id = ANY($1) AND a.part_number=$2 AND a.color_id=$3

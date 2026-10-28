@@ -66,7 +66,6 @@ import ch.brickinventoryapp.util.NetworkPolicy
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.ui.semantics.Role
 import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.ui.theme.Schrift
 
 
 data class QrLoginPayload(val url: String, val token: String)
@@ -136,7 +135,7 @@ fun SetupScreen(
             }
         }
         Spacer(Modifier.height(20.dp))
-        Text(stringResource(R.string.app_name), fontWeight = FontWeight.ExtraBold, fontSize = Schrift.riesig)
+        Text(stringResource(R.string.app_name), fontWeight = FontWeight.ExtraBold, style = MaterialTheme.typography.headlineSmall)
         Text(stringResource(R.string.setup_subtitle), style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
 

@@ -24,6 +24,16 @@ export function normalisiereSetNummer(input: unknown): string {
   return s;
 }
 
+/**
+ * Ob eine normalisierte Nummer ein Set sein kann: Buchstaben und Ziffern,
+ * mindestens eine Ziffer, dazu die Version. „abc" wurde sonst still zu
+ * „abc-1" und als Set ohne Daten angelegt; echte Nummern wie „10294",
+ * „comcon001" oder „llca37" tragen alle eine Ziffer.
+ */
+export function moeglicheSetNummer(normalisiert: string): boolean {
+  return /^(?=[A-Za-z]*\d)[A-Za-z0-9]{1,20}-\d{1,3}$/.test(normalisiert);
+}
+
 /** Dieselbe Nummer ohne Versionsanhang — „10179" aus „10179-1". */
 export function ohneVersion(setNumber: string | number): string {
   return mitVersion(setNumber).replace(/-\d+$/, '');

@@ -34,6 +34,7 @@ const OEFFENTLICH = new Map([
   ['auth.ts POST /logout',              'Muss auch ohne gueltige Sitzung gehen'],
   ['auth.ts GET /me',                   'Antwortet „nicht angemeldet" — der Startpunkt der Oberflaeche'],
   ['auth.ts POST /qr-login',            'Anmeldung per QR-Code'],
+  ['auth.ts POST /serverbeweis',        'Die App prüft den Server, BEVOR sie ihren Token sendet'],
   ['auth.ts GET /registration-status',  'Ob Registrierung offen ist — vor dem Konto'],
   ['auth.ts POST /register',            'Das Konto entsteht hier erst'],
   ['auth.ts POST /forgot-password',     'Wer sein Passwort vergisst, kann sich nicht anmelden'],

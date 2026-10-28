@@ -9,7 +9,7 @@ import express from 'express';
 import * as db from '../../db/database';
 import { handleRouteError } from '../../utils/httpError';
 import { requireToken } from './middleware';
-import { householdStatus, createInvite, redeemInvite, unlink } from '../../utils/household';
+import { householdStatus, createInvite, redeemInvite, unlink, verwerfeGetrennt } from '../../utils/household';
 import { setUserSetting, nutzerStandardZustand, globalDefaultCondition } from '../../utils/settings';
 import { getGlobalSetting, readSettings } from '../../utils/settings';
 import { sendeFehler } from '../../utils/fehlerTexte';
@@ -135,7 +135,16 @@ router.post('/settings/household/redeem', requireToken, async (req: AuthedReques
 
 router.post('/settings/household/unlink', requireToken, async (req: AuthedRequest, res) => {
   try {
-    res.json({ success: true, ...(await unlink(req.apiUser.user_id, req.body?.sub_user_id)) });
+    res.json({ success: true,
+      ...(await unlink(req.apiUser.user_id, req.body?.sub_user_id, req.body?.main_user_id)) });
+  } catch (e) { handleRouteError(res, e, undefined, req); }
+});
+
+router.post('/settings/household/former/dismiss', requireToken, async (req: AuthedRequest, res) => {
+  try {
+    const sub = parseInt(String(req.body?.sub_user_id));
+    if (!Number.isFinite(sub)) return sendeFehler(req, res, 400, 'konto_id_ungueltig');
+    res.json({ success: true, ...(await verwerfeGetrennt(req.apiUser.user_id, sub)) });
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 

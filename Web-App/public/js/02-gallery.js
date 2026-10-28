@@ -1,7 +1,7 @@
 import { ladeAnzeige } from './01-bausteine.js';
 import { registerActions } from './00-registry.js';
 import { locale, t, tRaw} from '../i18n.js';
-import { leerZustand, ico, CURRENCY, G, ME, TRASH_ICON_SVG, api, esc, escJs, escUrl, fmtBig, fmtN, imgUrl, observeLazyImages, thumbUrl, toast } from './01-core.js';
+import { bildTag, fullUrl, platzhalterInhalt, setnummerFeldGueltig, leerZustand, ico, CURRENCY, G, ME, TRASH_ICON_SVG, api, esc, escJs, escUrl, fmtBig, fmtN, imgUrl, observeLazyImages, thumbUrl, toast } from './01-core.js';
 import { _gibSse, _gibTimer, gibStart, protokollZeile } from './01-fortschritt.js';
 import { _monitorTimer, loadMonitor, set_monitorTimer } from './01-monitor.js';
 import { SCOPE_VIEWS, addScopeParam, scopeMode, scopeQuery, setScopeMode,
@@ -464,22 +464,11 @@ export function initScopeSelects(members) {
   //
   // Der Server versteht `accounts=subs` weiterhin (utils/household.ts) — eine
   // ältere App-Fassung auf einem Gerät schickt es sonst ins Leere.
-  //
-  // Seit Nachtrag 173 stehen hier ALLE Nachfahren, nicht nur die direkten
-  // Unterkonten — Marcos Festlegung: Ein Eintrag meint immer genau EIN Konto,
-  // nie dessen Unterkonten mit. Ein Enkel, der hier fehlte, waere ausser ueber
-  // „Alle Konten" gar nicht einzeln zu sehen.
-  //
-  // Die Einrueckung macht die Stufen sichtbar (geschuetzte Leerzeichen, weil
-  // ein <option> fuehrende gewoehnliche Leerzeichen zusammenfaellt). Ohne sie
-  // stuenden Kind und Enkel gleichrangig untereinander, und die Liste sagte
-  // nicht mehr, wer zu wem gehoert.
   const subs = members.filter(m => !m.is_self);
-  const einzug = m => '\u00a0\u00a0\u00a0'.repeat(Math.max(0, (m.tiefe || 1) - 1));
   const opts = [
     `<option value="all">${esc(tRaw('household.scope_all'))}</option>`,
     `<option value="own">${esc(tRaw('household.scope_own'))}</option>`,
-    ...subs.map(m => `<option value="${m.id}">${einzug(m)}${esc(m.username)}</option>`),
+    ...subs.map(m => `<option value="${m.id}">${esc(m.username)}</option>`),
   ].join('');
 
   for (const view of SCOPE_VIEWS) {
@@ -860,7 +849,7 @@ export function renderGallery(){
     c.innerHTML=`<div class="sgrid">${list.map(gridCard).join('')}</div>`;
     observeLazyImages(c);
   } else {
-    c.innerHTML=`<div class="tw"><table class="dt"><thead><tr><th>${t('detail.pieces')}</th><th>Nr.</th><th>${t('gallery.sort.name')}</th><th>${t('detail.year')}</th><th>${t('detail.theme')}</th><th>${t('detail.pieces')}</th><th>${t('detail.minifigs')}</th><th>${t('detail.qty')}</th><th>${t('detail.instructions')}</th><th>${t('parts.stat.total')}</th><th></th></tr></thead><tbody>${list.map(tableRow).join('')}</tbody></table></div>`;
+    c.innerHTML=`<div class="tw"><table class="dt"><thead><tr><th>${t('col.image_th')}</th><th>Nr.</th><th>${t('col.name')}</th><th>${t('detail.year')}</th><th>${t('detail.theme')}</th><th>${t('detail.pieces')}</th><th>${t('detail.minifigs')}</th><th>${t('detail.qty')}</th><th>${t('detail.added')}</th><th>${t('detail.instructions')}</th><th><span class="vh">${t('detail.reimport_parts')}</span></th><th><span class="vh">${t('detail.delete')}</span></th></tr></thead><tbody>${list.map(tableRow).join('')}</tbody></table></div>`;
     observeLazyImages(c);   // fehlte für die Listenansicht komplett
   }
 }
@@ -924,11 +913,15 @@ export function pnlBadge(pct){
  * Mehrere Namen heisst, dass dasselbe Set in mehreren Konten liegt — die
  * Kachel zeigt es bewusst nur EINMAL, mit der Summe der Mengen.
  */
+/**
+ * Wem gehört das? Nur gezeigt, wenn ein ANDERES Konto des Haushalts mit
+ * drinsteckt — ein Etikett mit dem eigenen Namen auf jeder Kachel beantwortet
+ * keine Frage. Ohne Haushalt gibt es kein anderes Konto, also keins.
+ */
 export function ownerBadges(item) {
   if (!item?.owners?.length) return '';
-  return item.owners.map(o =>
-    `<span class="cond-badge" style="background:var(--b100);color:var(--b600)">${esc(o.username)}</span>`
-  ).join('');
+  if (item.owners.every(o => ME && o.id === ME.id)) return '';
+  return item.owners.map(o => `<span class="cond-badge besitzer-badge">${esc(o.username)}</span>`).join('');
 }
 
 export function condBadges(item) {
@@ -947,7 +940,8 @@ function gridCard(s){
   // Sets ohne lokale Kopie laufen über den Proxy — dort erzeugt imgUrl(…, true)
   // die verkleinerte Fassung, sonst käme die volle Auflösung für eine Kachel.
   const thumb=src?imgUrl(thumbUrl(src)||src, true):null;
-  const img=src?`<img src="${escUrl(thumb||src)}" loading="lazy" decoding="async" data-fade="1" data-orig="${escUrl(src)}" />`:`<img src="/assets/set-placeholder.svg" alt="Set" class="loaded" style="width:65%;height:65%;object-fit:contain;opacity:.85" />`;
+  const alt = s.name || s.set_number;
+  const img=src?bildTag({ src: thumb||src, alt, orig: imgUrl(fullUrl(src)), fade: true, ph: 'set' }):`<span class="bild-ph" role="img" aria-label="${esc(alt)}">${platzhalterInhalt('set')}</span>`;
   // Ohne geladenen Marktpreis der mengengewichtete Kaufpreis. Vorher stand
   // hier max_purchase_price — bei 2x100 und 1x160 zeigte die Kachel 160 statt
   // der tatsächlichen 120.
@@ -982,14 +976,14 @@ function tableRow(s){
   const src=s.image_local||s.image_url||'';
   const addedFmt = s.added_at ? new Date(s.added_at).toLocaleDateString(locale()) : '—';
   return `<tr style="cursor:pointer" tabindex="0" data-click="openModal" data-arg="${escJs(s.set_number)}">
-    <td>${src?`<img src="${escUrl(imgUrl(thumbUrl(src)||src, true)||'')}" loading="lazy" decoding="async" data-onerror="clear" />`:'—'}</td>
+    <td>${src?bildTag({ src: imgUrl(thumbUrl(src)||src, true), alt: '', ph: 'set' }):`<span class="bild-ph" aria-hidden="true">${platzhalterInhalt('set')}</span>`}</td>
     <td><span style="font-family:var(--mono);color:var(--b600);font-size:var(--fs-1)">${esc(s.set_number)}</span></td>
     <td>${esc(s.name)||'—'}</td><td>${s.year||'—'}</td><td>${esc(s.theme)||'—'}</td>
     <td>${s.pieces?s.pieces.toLocaleString(locale()):'—'}</td><td>${s.minifigs||'—'}</td>
     <td><span class="qbadge">×${s.quantity}</span></td>
     <td style="font-size:var(--fs-1);color:var(--mut)">${addedFmt}</td>
     <td>${s.instructions?.length?`<span class="ibadge">${ico('liste')}${s.instructions.length}</span>`:'—'}</td>
-    <td data-click="stopEvent"><button class="btn bs btn-sm" data-click="reimportParts" data-arg="${escJs(s.set_number)}">${PARTS_ICON_SVG}</button></td>
+    <td data-click="stopEvent"><button class="btn bs btn-sm" data-click="reimportParts" data-arg="${escJs(s.set_number)}" title="${esc(t('detail.reimport_parts'))}" aria-label="${esc(t('detail.reimport_parts'))}">${PARTS_ICON_SVG}</button></td>
     <td data-click="stopEvent"><button class="btn bd btn-sm" data-click="delSet" data-arg="${escJs(s.set_number)}" title="${esc(t('detail.delete'))}" aria-label="${esc(t('detail.delete'))}">${TRASH_ICON_SVG}</button></td>
   </tr>`;
 }
@@ -1012,7 +1006,7 @@ async function doAddSet(){
   // Haushalt schickt die Webapp gar nichts, und der Server bleibt beim
   // eigenen Konto — dieselbe Antwort wie vor der Haushaltssicht.
   const owner_user_id = selectedOwner('add-owner');
-  if(!num){toast(tRaw('common.enter_set_number'),'error');return;}
+  if(!setnummerFeldGueltig('add-num', num)) return;
   showProgress(t('gallery.adding_set',{num}), false);
   try{
     await streamRequest('/api/v1/sets/add-stream', {set_number:num,quantity:qty,purchase_price,condition,owner_user_id,storage:selectedStorage('add-storage')}, (ev)=>{

@@ -1,6 +1,6 @@
 import { registerActions } from './00-registry.js';
 import { locale, t, tRaw } from '../i18n.js';
-import { leerZustand, ico, CURRENCY, G, TRASH_ICON_SVG, api, esc, escJs, escUrl, fmtN, fullUrl, imgUrl, knopfBesetzt, thumbUrl, toast } from './01-core.js';
+import { bildTag, platzhalterInhalt, setnummerFeldGueltig, leerZustand, ico, CURRENCY, G, TRASH_ICON_SVG, api, esc, escJs, escUrl, fmtN, fullUrl, imgUrl, knopfBesetzt, thumbUrl, toast } from './01-core.js';
 import { detailZeile } from './01-bausteine.js';
 import { alarmBlock, ladeAlarm, priceChartSVG, renderMarketRows, setzeAlarmFeld } from './07-admin.js';
 import { leereLagerortFeld, selectedOwner, selectedStorage, haushaltsKonten, loadGallery, loadStats } from './02-gallery.js';
@@ -66,9 +66,8 @@ function zeile(w) {
   // image_local mit und der Proxy ist ganz aus dem Weg.
   const roh = w.image_local || w.image_url;
   const bild = roh
-    ? `<img src="${escUrl(imgUrl(thumbUrl(roh) || roh, 'nur'))}" alt="" loading="lazy" decoding="async"
-            style="width:56px;height:56px;object-fit:contain;border-radius:6px;background:var(--bg)" />`
-    : `<div style="width:56px;height:56px;border-radius:6px;background:var(--bg)"></div>`;
+    ? bildTag({ src: imgUrl(thumbUrl(roh) || roh, 'nur'), alt: '', klasse: 'bild-56', ph: 'set' })
+    : `<span class="bild-ph bild-56" aria-hidden="true">${platzhalterInhalt('set')}</span>`;
 
   // Kein Name heisst: rb_sets kennt das Set nicht. Der benannte Preis dafür,
   // dass hier keine zweite Kopie der Stammdaten liegt (siehe 0021) — sichtbar
@@ -199,7 +198,7 @@ export async function ladeMerkliste() {
  */
 export async function merkpostenHinzufuegen() {
   const num = (G('mk-num')?.value || '').trim();
-  if (!num) { toast(tRaw('common.enter_set_number'), 'warn'); return; }
+  if (!setnummerFeldGueltig('mk-num', num)) return;
   const frei = knopfBesetzt(G('mk-add'));
   try {
     const d = await api('POST', '/v1/wanted', {

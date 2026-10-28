@@ -7,13 +7,13 @@ import { handleRouteError, logAndContinue, meldeUndWeiter, fehlertext } from '..
 import { pruefeRebrickableZugang } from '../clients/rebrickable';
 import { pruefeBricksetZugang } from '../clients/brickset';
 import { pruefeBricklinkZugang } from '../clients/bricklink';
-import { requireLogin, requireAdmin } from './auth';
+import { requireApiAdmin as requireAdmin } from './api_v1/middleware';
+const requireLogin = requireLoginOrToken;
 
 import { setUserSetting, setGlobalSetting, setGlobalTrigger, getGlobalSetting, SECRET_KEYS, isMaskedValue, readSettings, nutzerEinstellungen } from '../utils/settings';
 import { getRateLimitStatus } from '../utils/financeCalc';
 import { buildSetsCsv } from '../utils/setService';
-import { buildPartsCsv } from './parts';
-import { buildFigsCsv } from './minifigs';
+import { buildPartsCsv, buildFigsCsv } from '../utils/bestandExport';
 import { buildMerklisteCsv } from '../utils/merkliste';
 import { buildPreisalarmeCsv } from '../utils/preisalarm';
 import { DAILY_JOBS } from '../jobs/dailyScheduler';
@@ -191,7 +191,10 @@ const EXPORT_EXCLUDE_KEYS = new Set([
 router.get('/export', async (req, res) => {
   try {
     const global: any = {};
-    (await db.all('SELECT key, value FROM global_settings'))
+    // Nur Verwalter bekommen die Installation mit: Der Import nimmt globale
+    // Werte ohnehin nur von ihnen an, und SMTP-Host, -Konto und Absender
+    // gehen ein Unterkonto nichts an.
+    if (istVerwalter(req)) (await db.all('SELECT key, value FROM global_settings'))
       // Transiente Laufzeit-Zustände nicht mit exportieren: feste Ausschlussliste
       // plus alle Job-Monitor-Status (job_monitor_*), die nur den momentanen
       // Fortschritt der Hintergrund-Jobs abbilden und beim Import nichts verloren

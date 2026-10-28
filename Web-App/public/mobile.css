@@ -35,11 +35,6 @@
   /* Zweispaltige Bereiche zusammenklappen */
   .sgrid2,
   .add2          { grid-template-columns: 1fr; gap: 1rem; }
-  .parts-layout  { grid-template-columns: 1fr; }
-
-  /* Die Teile-Seitenleiste wird oben zur ausklappbaren Filterzeile */
-  .parts-sidebar { position: static; max-height: none; }
-  .filter-list   { max-height: 150px; }
 
   .fgrid { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: .75rem; }
 }
@@ -145,12 +140,14 @@
   .frow > .fg         { flex: 1 1 calc(50% - .25rem); max-width: none !important; }
   .frow > .fg:first-child, .frow > .btn { flex: 1 1 100%; }
   /* In Rastern gibt die Spalte die Breite vor, nicht die Mindestbreite von .fg */
-  [style*="display:grid"] > .fg { min-width: 0; }
+  [style*="display:grid"] > .fg, .raster-160 > .fg { min-width: 0; }
 
   /* Zeilen ohne Umbruch (Inline-Styles der Vorlagen) dürfen umbrechen, statt
-     die Seite zu verbreitern. Ausgenommen, was ausdrücklich einzeilig bleibt. */
-  main [style*="display:flex"]:not([style*="nowrap"]):not([style*="column"]),
-  .modal [style*="display:flex"]:not([style*="nowrap"]):not([style*="column"]) { flex-wrap: wrap; }
+     die Seite zu verbreitern. Ausgenommen, was ausdrücklich einzeilig bleibt,
+     und Beschriftungen: Dort rutschte der Text unter sein Häkchen. */
+  main [style*="display:flex"]:not([style*="nowrap"]):not([style*="column"]):not(label),
+  .modal [style*="display:flex"]:not([style*="nowrap"]):not([style*="column"]):not(label),
+  main :is(.zeile, .zeile-inline):not(label), .modal :is(.zeile, .zeile-inline):not(label) { flex-wrap: wrap; }
 
   /* Detailzeilen: Beschriftung oben, Bedienelemente darunter, wenn es eng wird */
   .dr                 { flex-wrap: wrap; gap: .35rem .75rem; }
@@ -167,9 +164,24 @@
      kleinen Varianten bleiben am Desktop klein; am Telefon gilt es für alle. */
   .btn-sm, .vb, .period-btn, .ubadge-knopf, .sammlung-wahl button { min-height: 44px; }
   .vb, .btn-sm, .ubadge-knopf { min-width: 44px; }
-  /* Häkchen: grösser gezeichnet, die Beschriftung daneben fängt den Rest. */
-  /* !important: Einige Häkchen tragen inline `width:auto`. */
-  input[type="checkbox"], input[type="radio"] { width: 22px !important; height: 22px; min-height: 0; }
+  /* Häkchen: 22 px gezeichnet, aber 44 px Tippfläche am Kästchen selbst — auch
+     ohne Beschriftung. Das Kästchen malen zwei Hintergrundschichten in die Mitte;
+     der negative Rand hält den Platz im Layout bei 22 px.
+     !important: Einige Häkchen tragen inline `width:auto`. */
+  input[type="radio"] { width: 22px !important; height: 22px; min-height: 0; }
+  input[type="checkbox"] {
+    -webkit-appearance: none; appearance: none; flex: 0 0 auto;
+    width: 44px !important; height: 44px !important; min-height: 0; margin: -11px !important;
+    padding: 0; border: 0; border-radius: 0; cursor: pointer;
+    background: linear-gradient(var(--sur), var(--sur)) center / 18px 18px no-repeat,
+                linear-gradient(var(--s400), var(--s400)) center / 22px 22px no-repeat;
+  }
+  input[type="checkbox"]:checked {
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3.5 8.5l3 3 6-7' fill='none' stroke='%23fff' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 16px 16px no-repeat,
+                linear-gradient(var(--b600), var(--b600)) center / 22px 22px no-repeat;
+  }
+  input[type="checkbox"]:disabled { opacity: .5; cursor: default; }
+  input[type="checkbox"]:focus-visible { outline-offset: -9px; }
   /* Der Löschknopf auf der Kachel bleibt optisch klein; seine Tippfläche
      reicht unsichtbar auf 44 px hinaus. */
   .ca { top: 5px; right: 5px; z-index: 2; }
@@ -179,7 +191,9 @@
   label:has(> input[type="checkbox"]), label:has(> input[type="radio"]) { min-height: 44px; display: flex; align-items: center; }
 
   /* Feste px-Breiten aus den Inline-Styles der Templates neutralisieren */
-  [style*="width:"][style*="px"]:not(img):not(svg):not(.color-dot):not(.man-tile-swatch) {
+  [style*="width:"][style*="px"]:not(img):not(svg):not(.color-dot):not(.man-tile-swatch),
+  :is(.suchfeld, .min-100, .max-82, .max-110, .max-120, .max-150, .max-160, .max-220, .max-240, .max-360,
+      .max-420, .max-440, .max-480, .max-520, .max-560, .max-620, .max-720, .max-780)[class] {
     max-width: 100% !important;
   }
 
@@ -256,12 +270,20 @@
   .dt-fin td.fin-wert { grid-area: wert; text-align: right; font-weight: 700; }
   .dt-fin td.fin-guv  { grid-area: guv;  text-align: right; }
   .fin-unter { display: block !important; font-size: var(--fs-0); font-weight: 400; color: var(--mut); margin-top: 2px; }
-  .dt-summe tr { display: flex; justify-content: space-between; align-items: center; padding: .45rem .7rem; }
-  .dt-summe td { display: block; border: none; padding: 0 !important; }
+  /* Summen: Name oben, darunter Einstand und Marktwert mit eigener Beschriftung. */
+  .dt-summe tfoot { display: block; }
+  .dt-summe tr { display: grid; grid-template-columns: 1fr 1fr; gap: .2rem .75rem; padding: .55rem .7rem; }
+  .dt-summe td { display: block; border: none; padding: 0 !important; text-align: left !important; width: auto !important; }
+  .dt-summe td.fin-fuss-name { grid-column: 1 / -1; }
   .dt-summe td::before { content: none; }
   .dt-summe td:empty { display: none; }
+  .dt-fin td[data-kurz]::before, .dt-summe td[data-kurz]::before {
+    content: attr(data-kurz); display: block; font-size: var(--fs-0); font-weight: 700;
+    text-transform: uppercase; letter-spacing: .4px; color: var(--mut);
+  }
+  .fin-fuss-wert { font-size: var(--fs-3); }
   .dt-fin tfoot { display: block; }
-  .dt-fin tfoot tr { display: flex; justify-content: space-between; align-items: center; gap: .5rem;
+  .dt-fin tfoot tr { display: flex; justify-content: space-between; align-items: flex-end; gap: .75rem;
                      background: none; border: none; padding: .3rem .7rem; }
   .dt-fin tfoot td { display: block; border: none; padding: 0 !important; text-align: left !important; }
   .dt-fin tfoot td:empty { display: none; }

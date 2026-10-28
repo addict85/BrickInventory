@@ -16,7 +16,7 @@
 import { detailZeile, ladeAnzeige } from './01-bausteine.js';
 import { registerActions } from './00-registry.js';
 import { colorName, locale, t, tRaw } from '../i18n.js';
-import { ico, escHex, CURRENCY, G, ME, api, esc, escJs, escUrl, fmtN, fullUrl, hexZiffern, imgUrl, thumbUrl, toast } from './01-core.js';
+import { bildTag, platzhalterInhalt, ico, escHex, CURRENCY, G, ME, api, esc, escJs, escUrl, fmtN, fullUrl, hexZiffern, imgUrl, thumbUrl, toast } from './01-core.js';
 import { allSets, applySetAggregate, closeModal, curSet, loadGallery, pnlBadge, updateGalleryPrices } from './02-gallery.js';
 import { loadFinance } from './04-finance.js';
 import { deleteManualFig, deleteManualPart, loadBrickColors, loadManualFigsTable, loadManualParts, manualFigsCache, manualPartsCache, updateManualFig, updateManualPart } from './06-minifigs.js';
@@ -288,13 +288,25 @@ async function acqDelete(sn, id) {
   loadFinance();
 }
 
+/**
+ * Preis einer Erfassung in ihrer eigenen Währung. Ein Marktpreis, den der
+ * Server eingesetzt hat, ist kein bezahlter Betrag und trägt deshalb „≈“.
+ */
+export function erfassungsPreis(a, betrag) {
+  if (betrag == null) return '';
+  const zahl = `<strong>${fmtN(betrag, a.currency || CURRENCY)}</strong>`;
+  if (!a.price_estimated) return zahl;
+  const hinweis = esc(tRaw('acq.geschaetzt'));
+  return `<span title="${hinweis}"><span role="img" aria-label="${hinweis}">≈</span> ${zahl}</span>`;
+}
+
 // Compact link shown in set-detail-modal → opens the full acq-modal
 export function renderAcquisitionSummary(acqs, sn) {
   if (!acqs?.length) return `<div style="color:var(--mut);font-size:var(--fs-2)">—</div>`;
   return acqs.map(a => {
-    const cond = a.condition === 'U' ? `<span style="font-size:var(--fs-0);padding:1px 5px;background:var(--s100);color:var(--s600);border-radius:8px;font-weight:600">${t('common.condition_used')}</span>`
-      : `<span style="font-size:var(--fs-0);padding:1px 5px;background:var(--g100);color:var(--g600);border-radius:8px;font-weight:600">${t('common.condition_new')}</span>`;
-    const price = a.purchase_price != null ? `<strong>${fmtN(a.purchase_price, CURRENCY)}</strong>` : '';
+    const cond = a.condition === 'U' ? `<span class="cond-badge cond-used">${t('common.condition_used')}</span>`
+      : `<span class="cond-badge cond-new">${t('common.condition_new')}</span>`;
+    const price = erfassungsPreis(a, a.purchase_price);
     const dateFmt = a.created_at ? new Date(a.created_at).toLocaleDateString(locale()) : '';
     return `<div style="display:flex;align-items:center;gap:6px;padding:2px 0">
       <span style="color:var(--mut);font-size:var(--fs-1);min-width:24px">×${a.quantity}</span>
@@ -313,11 +325,9 @@ function renderManAcqSummary(acqs, type, id, colorId) {
   if (!acqs?.length) return `<div style="color:var(--mut);font-size:var(--fs-2)">—</div>`;
   return acqs.map(a => {
     const cond = a.condition === 'U'
-      ? `<span style="font-size:var(--fs-0);padding:1px 5px;background:var(--s100);color:var(--s600);border-radius:8px;font-weight:600">${t('common.condition_used')}</span>`
-      : `<span style="font-size:var(--fs-0);padding:1px 5px;background:var(--g100);color:var(--g600);border-radius:8px;font-weight:600">${t('common.condition_new')}</span>`;
-    const price = a.unit_price != null
-      ? `<strong>${fmtN(a.unit_price, CURRENCY)}</strong>`
-      : '';
+      ? `<span class="cond-badge cond-used">${t('common.condition_used')}</span>`
+      : `<span class="cond-badge cond-new">${t('common.condition_new')}</span>`;
+    const price = erfassungsPreis(a, a.unit_price);
     const dateFmt = a.created_at ? new Date(a.created_at).toLocaleDateString(locale()) : '';
     return `<div style="display:flex;align-items:center;gap:6px;padding:2px 0">
       <span style="color:var(--mut);font-size:var(--fs-1);min-width:24px">×${a.quantity}</span>
@@ -651,10 +661,8 @@ export async function openSetItemDetail(type, id, colorId) {
   const setBild = (s) => {
     const klein = thumbUrl(s.image_local || s.image_url) || s.image_local || s.image_url || '';
     return klein
-      ? `<img src="${escUrl(imgUrl(klein, true))}" loading="lazy" decoding="async"
-              data-orig="${escUrl(imgUrl(s.image_url || ''))}" alt=""
-              style="width:34px;height:34px;object-fit:contain;background:var(--s100);border-radius:6px;display:block">`
-      : `<span style="display:block;width:34px;height:34px;border-radius:6px;background:var(--s100)"></span>`;
+      ? bildTag({ src: imgUrl(klein, true), orig: imgUrl(s.image_url || ''), alt: '', klasse: 'bild-34', ph: 'set' })
+      : `<span class="bild-ph bild-34" aria-hidden="true">${platzhalterInhalt('set')}</span>`;
   };
   const liste = sets.length
     ? `<table style="width:100%;border-collapse:collapse"><tbody>${sets.map(s => `

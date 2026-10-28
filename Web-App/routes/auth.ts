@@ -1,11 +1,12 @@
 
+import { protokolliere } from '../utils/verwaltungsprotokoll';
 import express from 'express';
 const router  = express.Router();
 import bcrypt from 'bcryptjs';
 import * as db from '../db/database';
 import { meldeHaushaltsaenderung } from '../utils/household';
 import { handleRouteError, logAndContinue, meldeUndWeiter, fehlerCode, fehlertext, pfadParam } from '../utils/httpError';
-import { hashToken, pruefeAnmeldedaten, createToken, validateToken, assertLoginAllowed, establishSession, revokeAllTokens, revokeAllSessions, deleteToken, BCRYPT_ROUNDS, USERNAME_RE, EMAIL_RE, requireLoginOrToken, nutzerId, angemeldeteNutzerId, appTokenOhneAblauf, passwortZuKurz, flaggeGesetzt, leereTokenCache, laufzeitTage } from '../utils/auth';
+import { hashToken, pruefeAnmeldedaten, createToken, validateToken, assertLoginAllowed, establishSession, revokeAllTokens, revokeAllSessions, beendeAndereZugaenge, deleteToken, BCRYPT_ROUNDS, USERNAME_RE, EMAIL_RE, requireLoginOrToken, nutzerId, angemeldeteNutzerId, appTokenOhneAblauf, passwortZuKurz, flaggeGesetzt, leereTokenCache, laufzeitTage } from '../utils/auth';
 import { ipThrottle, bestaetigungGesperrt, bestaetigungFehlgeschlagen, bestaetigungGelungen } from '../utils/loginLimiter';
 import crypto from 'crypto';
 import { strictBool } from '../utils/validate';
@@ -304,8 +305,10 @@ router.put('/users/:id/admin', requireAdmin, async (req, res) => {
     // Ausführlich: docs/begruendungen/routes/auth.ts.md#put-users-id-admin-vorher
     const vorher = await db.get('SELECT is_admin FROM users WHERE id = $1', [targetId]);
     if (!vorher) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
+    if (!await bestaetigePasswort(req, res, angemeldeteNutzerId(req), req.body?.admin_password)) return;
     const warAdmin = flaggeGesetzt(vorher.is_admin);
     await db.run('UPDATE users SET is_admin = $1 WHERE id = $2', [soll ? 1 : 0, targetId]);
+    if (warAdmin !== soll) await protokolliere(angemeldeteNutzerId(req), targetId, soll ? 'verwalter_ernannt' : 'verwalter_entzogen');
 
     // Warum die Sitzungen enden muessen
     // istVerwalter() (utils/auth.ts) fragt ZUERST `req.session.isAdmin`. Das
@@ -338,9 +341,13 @@ router.put('/users/:id/password', requireAdmin, async (req, res) => {
     return sendeFehler(req, res, 400, 'eigenes_konto_passwort');
 
   try {
+    // Mit dem Passwort eines anderen Kontos lässt sich dieses übernehmen —
+    // eine offene Verwaltersitzung allein genügt dafür nicht.
+    if (!await bestaetigePasswort(req, res, angemeldeteNutzerId(req), req.body?.admin_password)) return;
     const hash = await bcrypt.hash(String(password), BCRYPT_ROUNDS);
     const r = await db.run('UPDATE users SET password_hash = $1 WHERE id = $2', [hash, targetId]);
     if (!r.changes) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
+    await protokolliere(angemeldeteNutzerId(req), targetId, 'passwort_gesetzt');
 
     // Offene Zugänge des Kontos beenden — ein zurückgesetztes Passwort soll
     // auch bestehende Sitzungen und Token schliessen.
@@ -355,6 +362,9 @@ router.put('/users/:id/password', requireAdmin, async (req, res) => {
 router.delete('/users/:id', requireAdmin, async (req, res) => {
   try {
     const targetId = parseInt(pfadParam(req, 'id'));
+    if (!await bestaetigePasswort(req, res, angemeldeteNutzerId(req), req.body?.admin_password)) return;
+    if (targetId !== nutzerId(req) && await db.get('SELECT 1 FROM users WHERE id = $1', [targetId]))
+      await protokolliere(angemeldeteNutzerId(req), targetId, 'konto_geloescht');
     const r = await db.run('DELETE FROM users WHERE id = $1 AND id != $2',
       [targetId, nutzerId(req)]);
     if (r.changes === 0) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden_oder_eigenes');
@@ -474,15 +484,35 @@ const QR_TTL_MS = 5 * 60 * 1000;
  * Passwortwechsel, E-Mail-Wechsel und zweiten Faktor, mit Bremse je Konto
  * (utils/loginLimiter.ts). Antwortet selbst, wenn es nicht stimmt.
  */
-async function bestaetigePasswort(req: Request, res: Response, uid: number, passwort: unknown): Promise<boolean> {
+async function bestaetigePasswort(req: Request, res: Response, uid: number, passwort: unknown,
+                                 zusatz: { zweiterFaktor?: unknown } = {}): Promise<boolean> {
   const gesperrt = await bestaetigungGesperrt(uid);
   if (gesperrt) { sendeFehler(req, res, 429, gesperrt.code, gesperrt.vars); return false; }
   const u = await db.get('SELECT password_hash FROM users WHERE id = $1', [uid]);
   const ok = !!u && typeof passwort === 'string' && passwort !== '' && await bcrypt.compare(passwort, u.password_hash);
   if (!ok) {
     await bestaetigungFehlgeschlagen(uid);
-    // 400 statt 401: Beide Clients deuten 401 als „Sitzung abgelaufen".
     sendeFehler(req, res, 400, 'aktuelles_passwort_falsch');
+    return false;
+  }
+  // Ein falscher Code zählt wie ein falsches Passwort — sonst liesse er sich
+  // mit bekanntem Passwort beliebig oft raten.
+  if ('zweiterFaktor' in zusatz && !await zf.pruefeCode(uid, zusatz.zweiterFaktor)) {
+    await bestaetigungFehlgeschlagen(uid);
+    sendeFehler(req, res, 400, 'zweiter_faktor_falsch');
+    return false;
+  }
+  await bestaetigungGelungen(uid);
+  return true;
+}
+
+/** Nur der Code des zweiten Faktors — mit derselben Bremse wie das Passwort. */
+async function bestaetigeCode(req: Request, res: Response, uid: number, code: unknown): Promise<boolean> {
+  const gesperrt = await bestaetigungGesperrt(uid);
+  if (gesperrt) { sendeFehler(req, res, 429, gesperrt.code, gesperrt.vars); return false; }
+  if (!await zf.pruefeCode(uid, code)) {
+    await bestaetigungFehlgeschlagen(uid);
+    sendeFehler(req, res, 400, 'zweiter_faktor_falsch');
     return false;
   }
   await bestaetigungGelungen(uid);
@@ -508,8 +538,12 @@ router.post('/zweiter-faktor/einrichten', requireLogin, async (req, res) => {
 
 router.post('/zweiter-faktor/bestaetigen', requireLogin, async (req, res) => {
   try {
-    const codes = await zf.bestaetigeEinrichtung(angemeldeteNutzerId(req), String(req.body?.code ?? ''));
+    const uid = angemeldeteNutzerId(req);
+    const codes = await zf.bestaetigeEinrichtung(uid, String(req.body?.code ?? ''));
     if (!codes) return sendeFehler(req, res, 400, 'zweiter_faktor_falsch');
+    const kopf = String(req.headers.authorization || '');
+    await beendeAndereZugaenge(uid, kopf.startsWith('Bearer ') ? kopf.slice(7) : null,
+      req.session?.userId ? req.sessionID : null);
     res.json({ success: true, codes });
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
@@ -518,8 +552,7 @@ router.post('/zweiter-faktor/abschalten', requireLogin, async (req, res) => {
   try {
     const uid = angemeldeteNutzerId(req);
     if (!await zf.istAktiv(uid)) return sendeFehler(req, res, 409, 'zweiter_faktor_nicht_aktiv');
-    if (!await bestaetigePasswort(req, res, uid, req.body?.password)) return;
-    if (!await zf.pruefeCode(uid, req.body?.code)) return sendeFehler(req, res, 400, 'zweiter_faktor_falsch');
+    if (!await bestaetigePasswort(req, res, uid, req.body?.password, { zweiterFaktor: req.body?.code })) return;
     await zf.schalteAb(uid);
     res.json({ success: true });
   } catch (e) { handleRouteError(res, e, undefined, req); }
@@ -529,7 +562,7 @@ router.post('/zweiter-faktor/codes', requireLogin, async (req, res) => {
   try {
     const uid = angemeldeteNutzerId(req);
     if (!await zf.istAktiv(uid)) return sendeFehler(req, res, 409, 'zweiter_faktor_nicht_aktiv');
-    if (!await zf.pruefeCode(uid, req.body?.code)) return sendeFehler(req, res, 400, 'zweiter_faktor_falsch');
+    if (!await bestaetigeCode(req, res, uid, req.body?.code)) return;
     res.json({ success: true, codes: await zf.erneuereCodes(uid) });
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
@@ -539,7 +572,9 @@ router.delete('/users/:id/zweiter-faktor', requireAdmin, async (req, res) => {
   try {
     const id = parseInt(pfadParam(req, 'id'));
     if (!Number.isInteger(id)) return sendeFehler(req, res, 400, 'id_ungueltig');
+    if (!await bestaetigePasswort(req, res, angemeldeteNutzerId(req), req.body?.admin_password)) return;
     await zf.schalteAb(id);
+    await protokolliere(angemeldeteNutzerId(req), id, 'zweiter_faktor_entfernt');
     res.json({ success: true });
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
@@ -550,9 +585,11 @@ router.delete('/users/:id/zweiter-faktor', requireAdmin, async (req, res) => {
 // Konto öffnet. Als GET war sie die einzige zustandsändernde Route im Baum, …
 // Ausführlich: docs/begruendungen/routes/auth.ts.md#post-qr-token
 router.post('/qr-token', requireLogin, async (req, res) => {
-  // Die eigene Sitzungspruefung stand im Rumpf; der Waechter steht jetzt in
-  // der Kette und kennt beide Ausweise — siehe den Block ueber requireLogin.
   try {
+    // Wie /token-create: Ein QR-Code eröffnet einen neuen, langlebigen Geräte-
+    // zugang. Mit einem erbeuteten Token allein darf das nicht gehen.
+    if (!req.session?.userId) return sendeFehler(req, res, 403, 'nur_mit_sitzung');
+    if (!await bestaetigePasswort(req, res, angemeldeteNutzerId(req), req.body?.password)) return;
     // Ohne Adresse kein Code
     // Verweigern und nicht raten: Der QR-Code ist der einzige Ort im Baum, an
     // dem eine falsche Adresse SPAETER auffaellt und nicht sofort. Er laesst
@@ -791,6 +828,29 @@ router.post('/reset-password', ipThrottle('reset-password', 10, 60 * 60 * 1000),
 // statt vorher zu fragen. Nachgemessen ueber alle 169 Dateien beider Apps —
 // weder Webapp noch Android nennen sie.
 
+
+// Die App fragt das vor jedem Klartext-Zugang in einem neuen Netz: Im fremden
+// WLAN kann "http://nas:3000" auf einen anderen Rechner zeigen, und der
+// bekäme sonst den Token. Nur der echte Server kennt den Hash des Tokens und
+// kann die Zufallszahl damit unterschreiben; die Kennung (16 Stellen des
+// Hashs) verrät über den Token nichts.
+router.post('/serverbeweis', ipThrottle('serverbeweis', 120, 60 * 60 * 1000), async (req, res) => {
+  const { kennung, nonce } = req.body ?? {};
+  if (typeof kennung !== 'string' || !/^[0-9a-f]{16}$/.test(kennung)
+      || typeof nonce !== 'string' || !/^[0-9a-f]{32,128}$/.test(nonce))
+    return sendeFehler(req, res, 400, 'wert_ungueltig');
+  try {
+    const zeile = await db.get(
+      `SELECT token FROM api_tokens
+        WHERE left(token, 16) = $1
+          AND (expires_at IS NULL OR expires_at > NOW())
+          AND (hard_expires_at IS NULL OR hard_expires_at > NOW())
+        LIMIT 1`, [kennung]);
+    if (!zeile) return sendeFehler(req, res, 404, 'token_ungueltig');
+    res.json({ success: true,
+      beweis: crypto.createHmac('sha256', zeile.token).update(nonce).digest('hex') });
+  } catch (e) { handleRouteError(res, e, undefined, req); }
+});
 
 // CJS-kompatibler Export: module.exports bleibt der Router selbst,
 // mit den intern/von jobs/ genutzten Funktionen als Properties (wie zuvor).

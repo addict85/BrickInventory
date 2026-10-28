@@ -57,6 +57,8 @@
     <!-- ══════════════ Portfolio chart ══════════════ -->
     <string name="chart_portfolio_value">Portfolio value trend</string>
     <string name="chart_no_history">No history data yet</string>
+    <string name="chart_summary">Portfolio value, %1$s to %2$s: from %3$s to %4$s, change %5$s</string>
+    <string name="chart_summary_no_change">Portfolio value, %1$s to %2$s: from %3$s to %4$s</string>
     <string name="chart_period_week">Week</string>
     <string name="chart_period_month">Month</string>
     <string name="chart_period_year">Year</string>
@@ -113,7 +115,10 @@
     <string name="gallery_search_placeholder">Search sets…</string>
     <string name="gallery_all">All</string>
     <string name="gallery_no_sets">No sets yet</string>
-    <string name="gallery_pull_to_refresh">Pull down to refresh</string>
+    <string name="gallery_empty_hint">Add your first set by its number or scan the barcode on the box.</string>
+    <string name="gallery_add_first">Add your first set</string>
+    <string name="gallery_load_failed">Your collection could not be loaded</string>
+    <string name="gallery_retry">Try again</string>
     <string name="gallery_refresh">Refresh</string>
     <string name="gallery_no_results">No results for “%1$s”</string>
     <string name="gallery_quantity_badge">×%1$d</string>
@@ -477,10 +482,13 @@
     <string name="household_for_account">For account</string>
     <string name="household_self">(me)</string>
     <string name="household_title">Household</string>
-    <string name="household_intro">Link accounts into a household: the main account sees all sets, parts and minifigures combined. Both accounts must use the same currency.</string>
+    <string name="household_intro">Link accounts into a household: a main account sees the sets, parts and minifigures of its direct sub-accounts combined. An account can belong to several main accounts if it accepts each invitation itself. Both accounts must use the same currency.</string>
     <string name="household_state_none">This account is not linked to any other.</string>
-    <string name="household_state_main">Linked accounts</string>
-    <string name="household_state_sub">Linked to main account %1$s</string>
+    <string name="household_state_main">Sub-accounts</string>
+    <string name="household_state_parents">Belongs to these main accounts</string>
+    <string name="household_former_intro">These accounts were only linked through another account and are no longer visible. To see them again, the account has to accept an invitation from you.</string>
+    <string name="household_former_via">previously via %1$s</string>
+    <string name="household_former_dismiss">Dismiss</string>
     <string name="household_invite_create">Create invitation code</string>
     <string name="household_invite_hint">Enter the code in the other account under Settings. Valid for 24 hours, usable once.</string>
     <string name="household_invite_copy">Copy</string>
@@ -798,4 +806,5 @@
         <item quantity="one">Set up · %d recovery code left</item>
         <item quantity="other">Set up · %d recovery codes left</item>
     </plurals>
+    <string name="acq_preis_geschaetzt">Estimated: market price, not the amount paid</string>
 </resources>

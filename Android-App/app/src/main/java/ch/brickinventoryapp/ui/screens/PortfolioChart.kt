@@ -15,13 +15,17 @@ import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.*
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.*
 import ch.brickinventoryapp.data.model.ChartPoint
 import ch.brickinventoryapp.data.model.ChartYAxis
 import ch.brickinventoryapp.R
+import ch.brickinventoryapp.ui.diagrammZusammenfassung
+import ch.brickinventoryapp.util.fmtAmount
+import ch.brickinventoryapp.util.fmtMoney
 import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.ui.theme.Schrift
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -43,6 +47,9 @@ fun PortfolioChart(
     val mutedColor = chart.gedaempft
     val gridColor  = chart.raster
     val measurer   = rememberTextMeasurer()
+    // Achsen in der kleinsten Rolle der Skala (11 sp) statt 8 sp; der Rand
+    // links und unten richtet sich unten nach der gemessenen Beschriftung.
+    val achsenStil = MaterialTheme.typography.labelSmall.copy(color = mutedColor)
 
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(Abstaende.gross)) {
@@ -60,7 +67,7 @@ fun PortfolioChart(
                     val lbl = if (pos) "+%.1f%%".format(periodChangePct) else "%.1f%%".format(periodChangePct)
                     Surface(shape = Formen.chip, color = bg.copy(alpha = 0.12f)) {
                         Text(lbl, Modifier.padding(horizontal = Abstaende.klein, vertical = 3.dp),
-                            color = bg, fontWeight = FontWeight.Bold, fontSize = Schrift.klein)
+                            color = bg, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
                     }
                 }
             }
@@ -77,14 +84,25 @@ fun PortfolioChart(
                 }
                 else -> {
                     val n = points.size
+                    // Eine Zeichenfläche hat keine Semantik; ohne diese Zeile
+                    // überspringt TalkBack das Diagramm ganz.
+                    val beschreibung = diagrammZusammenfassung(points, periodChangePct)?.let { z ->
+                        val von = fmtMoney(z.anfang, currency)
+                        val bis = fmtMoney(z.ende, currency)
+                        val prozent = z.veraenderungProzent
+                        if (prozent == null) stringResource(R.string.chart_summary_no_change, z.von, z.bis, von, bis)
+                        else stringResource(R.string.chart_summary, z.von, z.bis, von, bis,
+                            (if (prozent >= 0) "+" else "") + fmtAmount(prozent, 1, 1) + " %")
+                    }.orEmpty()
 
-                    Canvas(Modifier.fillMaxWidth().height(160.dp)) {
+                    Canvas(Modifier.fillMaxWidth().height(160.dp).semantics { contentDescription = beschreibung }) {
                         val w    = size.width
                         val h    = size.height
-                        val padL = 92f
+                        val yMasse = yAxis.map { measurer.measure(it.label, achsenStil) }
+                        val padL = (yMasse.maxOfOrNull { it.size.width } ?: 0) + 8f
                         val padR = 16f
                         val padT = 14f
-                        val padB = 32f
+                        val padB = measurer.measure("0", achsenStil).size.height + 10f
                         val iw   = w - padL - padR
                         val ih   = h - padT - padB
 
@@ -94,7 +112,7 @@ fun PortfolioChart(
                         fun yOf(yFrac: Double) = (padT + ih - yFrac.toFloat() * ih)
 
                         // Y axis: grid lines + labels (server provides 5 entries, index 0=bottom)
-                        for (ya in yAxis) {
+                        yAxis.forEachIndexed { i, ya ->
                             val y = yOf(ya.frac)
                             // Dashed grid line
                             var xd = padL
@@ -104,16 +122,14 @@ fun PortfolioChart(
                                 xd += 6f
                             }
                             // Y label right-aligned
-                            val style = TextStyle(fontSize = 8.sp, color = mutedColor)
-                            val m = measurer.measure(ya.label, style)
+                            val m = yMasse[i]
                             drawText(m, topLeft = Offset(padL - m.size.width - 4f, y - m.size.height/2f))
                         }
 
                         // X labels from server (empty string = no label)
                         points.forEachIndexed { i, p ->
                             if (p.xLabel.isEmpty()) return@forEachIndexed
-                            val style = TextStyle(fontSize = 8.sp, color = mutedColor)
-                            val m = measurer.measure(p.xLabel, style)
+                            val m = measurer.measure(p.xLabel, achsenStil)
                             drawText(m, topLeft = Offset(
                                 (xOf(i) - m.size.width/2f).coerceIn(0f, w - m.size.width.toFloat()),
                                 h - padB + 5f))

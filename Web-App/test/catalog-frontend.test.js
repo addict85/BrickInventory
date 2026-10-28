@@ -133,6 +133,9 @@ w.eval(`
   // gebraucht: Der Test prüft die Katalog-Kachel, nicht das Bild darin.
   // Seit Nachtrag 89 steht es dort statt des Puzzleteil-Emojis.
   window.PARTS_ICON_SVG = '<svg data-test-parts-icon></svg>';
+  // Bild und Platzhalter kommen aus 01-core.js; hier zählt nur die Kachel.
+  window.bildTag = o => '<img src="' + o.src + '" alt="">';
+  window.platzhalterInhalt = () => '';
   // Den gemeinsamen Scrollbalken stellt js/01-core.js; hier zählt nur, DASS
   // der Katalog sein Etikett dort anmeldet.
   window.__scrollLabelFn = undefined;

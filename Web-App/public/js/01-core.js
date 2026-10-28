@@ -132,6 +132,85 @@ export function G(id) { return document.getElementById(id); }
 /** Ein Symbol aus der Symbolfamilie (Sprite in index.html) als HTML. */
 export function ico(name) { return `<svg class="ico" aria-hidden="true"><use href="#i-${esc(name)}"/></svg>`; }
 /**
+ * Ein Vorschaubild aus einer Vorlage. Lädt es nicht, setzt 11-actions.js den
+ * Platzhalter seiner Art (`ph`) an seine Stelle — dasselbe Bild wie für einen
+ * Eintrag ganz ohne Bild, statt des Browser-Symbols für kaputte Bilder.
+ * @param {{ src: string, alt: string, ph?: 'set'|'teil'|'figur', klasse?: string,
+ *           orig?: string, stil?: string, fade?: boolean, extra?: string }} o
+ */
+export function bildTag(o) {
+  return `<img src="${escUrl(o.src)}" alt="${esc(o.alt || '')}"${o.klasse ? ` class="${esc(o.klasse)}"` : ''}` +
+    ` loading="lazy" decoding="async" data-onerror="platzhalter" data-ph="${esc(o.ph || 'set')}"` +
+    `${o.orig ? ` data-orig="${escUrl(o.orig)}"` : ''}${o.fade ? ' data-fade="1"' : ''}` +
+    `${o.stil ? ` style="${esc(o.stil)}"` : ''}${o.extra ? ' ' + o.extra : ''} />`;
+}
+
+/** Der Platzhalter einer Art: das Set-Bild oder das Symbol in einer getönten Fläche. */
+export function platzhalterInhalt(art) {
+  return art === 'set' ? '<img src="/assets/set-placeholder.svg" alt="" class="loaded" />' : ico(art === 'figur' ? 'figur' : 'teil');
+}
+
+/** Ersetzt ein Bild, das nicht lädt, durch seinen Platzhalter in derselben Grösse. */
+export function bildPlatzhalter(img) {
+  const ph = document.createElement('span');
+  ph.className = ('bild-ph ' + (img.getAttribute('class') || '').replace(/\bloaded\b/, '')).trim();
+  ph.setAttribute('role', 'img');
+  ph.setAttribute('aria-label', img.getAttribute('alt') || '');
+  if (!img.getAttribute('alt')) ph.setAttribute('aria-hidden', 'true');
+  const cs = getComputedStyle(img);
+  for (const k of ['width', 'height', 'borderRadius', 'margin']) if (cs[k] && cs[k] !== 'auto') ph.style[k] = cs[k];
+  ph.innerHTML = platzhalterInhalt(img.dataset.ph);
+  img.replaceWith(ph);
+}
+
+/**
+ * Sieht die Eingabe aus wie eine Set-Nummer? Ziffern, davor höchstens ein
+ * Buchstaben-Präfix echter Nummern (llca30, comcon001), dahinter ein
+ * Versionsanhang (-1). Der Server prüft selbst; hier geht es darum, dass
+ * „abc“ gar nicht erst als Set „abc-1“ angelegt wird.
+ */
+export function istSetnummer(eingabe) {
+  return /^[A-Za-z]{0,12}\d{1,8}[A-Za-z0-9]{0,8}(-\d{1,3})?$/.test(String(eingabe ?? '').trim());
+}
+
+/**
+ * Eine Fehlermeldung direkt am Feld (leerer Text räumt sie weg). Vorleser
+ * hören sie über role="alert" und finden sie über aria-describedby.
+ */
+export function feldFehler(id, text) {
+  const feld = G(id);
+  if (!feld) return;
+  let el = G(id + '-fehler');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = id + '-fehler';
+    el.className = 'feld-fehler';
+    el.setAttribute('role', 'alert');
+    feld.insertAdjacentElement('afterend', el);
+    feld.addEventListener('input', () => feldFehler(id, ''));
+  }
+  el.textContent = text || '';
+  el.hidden = !text;
+  if (text) {
+    feld.setAttribute('aria-invalid', 'true');
+    feld.setAttribute('aria-describedby', el.id);
+    feld.focus();
+  } else {
+    feld.removeAttribute('aria-invalid');
+    feld.removeAttribute('aria-describedby');
+  }
+}
+
+/** Prüft das Set-Nummer-Feld vor dem Absenden; meldet am Feld und sagt, ob es weitergeht. */
+export function setnummerFeldGueltig(id, wert) {
+  const v = wert ?? (G(id)?.value || '').trim();
+  if (!v) { feldFehler(id, tRaw('common.enter_set_number')); return false; }
+  if (!istSetnummer(v)) { feldFehler(id, tRaw('gallery.add.number_invalid', { num: v })); return false; }
+  feldFehler(id, '');
+  return true;
+}
+
+/**
  * Ein leerer Zustand: Symbol, ein Satz, und wenn es einen gibt, der nächste
  * Schritt als Knopf. Texte kommen fertig übersetzt; maskiert wird hier.
  * @param {{ ico: string, titel: string, text?: string, knopf?: { text: string, click: string, arg?: string } }} o

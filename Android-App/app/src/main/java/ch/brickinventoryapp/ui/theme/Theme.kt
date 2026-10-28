@@ -80,7 +80,10 @@ private val LightColors = lightColorScheme(
     surfaceVariant      = Color(0xFFF8FAFC),
     onSurface           = Color(0xFF1E293B),
     onSurfaceVariant    = Color(0xFF64748B),
-    outline             = Color(0xFFE2E8F0),
+    // outline umrandet Bedienelemente (Textfelder) und braucht 3:1 gegen jede
+    // Fläche; der helle Ton taugt nur für Trennlinien (FarbrollenTest).
+    outline             = Color(0xFF748399),
+    outlineVariant      = Color(0xFFE2E8F0),
     error               = Color(0xFFDC2626),
 )
 
@@ -112,7 +115,8 @@ private val BrickBlueColors = lightColorScheme(
     surfaceVariant      = Color(0xFFEEF1F5),
     onSurface           = Color(0xFF26323F),
     onSurfaceVariant    = Color(0xFF6B7785),
-    outline             = Color(0xFFCDD7E2),
+    outline             = Color(0xFF768391),
+    outlineVariant      = Color(0xFFCDD7E2),
     error               = Color(0xFFC0564E),
 )
 
@@ -180,7 +184,8 @@ private val WerkbankColors = darkColorScheme(
     surfaceVariant       = Color(0xFF232A33),
     onSurface            = Color(0xFFE6E9ED),
     onSurfaceVariant     = Color(0xFF8D96A3),
-    outline              = Color(0xFF262D36),
+    outline              = Color(0xFF788292),
+    outlineVariant       = Color(0xFF262D36),
     error                = Color(0xFFE07A72),
 )
 
@@ -207,7 +212,8 @@ private val FarbfaecherColors = lightColorScheme(
     surfaceVariant       = Color(0xFFF4F4F4),
     onSurface            = Color(0xFF2B2B2B),
     onSurfaceVariant     = Color(0xFF8A8A8A),
-    outline              = Color(0xFFE6E6E6),
+    outline              = Color(0xFF7F7F7F),
+    outlineVariant       = Color(0xFFE6E6E6),
     error                = Color(0xFFDC2626),
 )
 
@@ -239,6 +245,8 @@ private val NoppeColors = lightColorScheme(
     onSurface            = NoppeTinte,
     onSurfaceVariant     = Color(0xFF5A6270),
     outline              = NoppeTinte,
+    // Derselbe Wert, den ergaenzeRollen() vorher aus surface und onSurface mischte.
+    outlineVariant       = Color(0xFFD7D8DA),
     error                = Color(0xFFDC2626),
 )
 
@@ -334,14 +342,6 @@ val LocalChartColors = staticCompositionLocalOf {
 }
 
 /**
- * Das Design, das gezeichnet wird: das des Servers — ausser das Gerät will
- * „dunkel nach System" und das System ist dunkel. Werkbank ist das dunkle
- * Design; ein zweites Dunkel-Schema daneben waere ein siebtes mit eigener Pflege.
- */
-fun wirksamesDesign(design: String, dunkelNachSystem: Boolean, systemDunkel: Boolean): String =
-    if (dunkelNachSystem && systemDunkel) "werkbank" else design
-
-/**
  * Das vollständige Farbschema eines Designs.
  *
  * Vier Designs, eine Stelle. `when` statt geschachtelter Bedingungen: Ein
@@ -378,7 +378,6 @@ internal fun ergaenzeRollen(s: ColorScheme, dunkel: Boolean): ColorScheme {
         surfaceContainerHighest = stufe(0.10f),
         surfaceDim = if (dunkel) s.background else stufe(0.08f),
         surfaceBright = if (dunkel) stufe(0.12f) else s.surface,
-        outlineVariant = stufe(0.15f),
         inverseSurface = s.onSurface,
         inverseOnSurface = s.surface,
         inversePrimary = lerp(s.primary, if (dunkel) Color.Black else Color.White, 0.45f),

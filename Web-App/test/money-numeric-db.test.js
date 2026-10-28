@@ -133,6 +133,15 @@ test('Geldbeträge sind exakt', { concurrency: 1 }, async (t) => {
     ]) {
       await db.run(`ALTER TABLE ${tab} DROP COLUMN IF EXISTS ${sp}`);
     }
+    // Der Tagesindex aus 0047 enthält purchase_price. Der Umweg über REAL
+    // hat ihn mit Typumwandlungen umgeschrieben, und ON CONFLICT fände ihn
+    // danach nicht mehr — also in der Fassung der Migration neu anlegen.
+    const mig = require('node:fs').readFileSync(
+      require('node:path').join(__dirname, '..', 'db', 'migrations', '0047-erfassung-waehrung-schaetzung.sql'), 'utf8');
+    const index = /CREATE UNIQUE INDEX idx_set_acq_tag_merkmale[^;]+;/.exec(mig);
+    assert.ok(index, 'Tagesindex in 0047 nicht gefunden');
+    await db.run('DROP INDEX IF EXISTS idx_set_acq_tag_merkmale');
+    await db.run(index[0]);
   });
 
   await t.test('tausend Beträge summieren sich exakt', async () => {

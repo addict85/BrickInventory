@@ -25,7 +25,6 @@ import ch.brickinventoryapp.R
 import ch.brickinventoryapp.ui.MainViewModel
 import ch.brickinventoryapp.ui.*  // Feature-Extensions (saveSettings, setLanguage, …)
 import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.ui.theme.Schrift
 import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import ch.brickinventoryapp.ui.viewmodel.aktivitaetsViewModel

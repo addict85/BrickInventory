@@ -33,8 +33,9 @@ import { downloadSetInstructions, anleitungenZuSet, loescheAnleitungen } from '.
 // nutzerStandardZustand() in utils/settings.ts.
 import {  resolveWriteTarget } from '../utils/household';
 import { registerSse } from '../utils/sseRegistry';
-import { requireLogin } from './auth';
-import { importPartsForSet } from './parts';
+import { requireLoginOrToken as requireLogin } from '../utils/auth';
+import { importPartsForSet } from '../utils/partsImport';
+import { importMinifigsForSet } from '../utils/minifigsImport';
 
 
 
@@ -426,8 +427,6 @@ router.post('/import/csv', csvEmpfang.single('file'), async (req, res) => {
     const successSets = results.filter(r => r.success).map(r => r.set_number);
     if (successSets.length) {
       const enrich = require('../jobs/partsCatalogEnrich');
-      const { importPartsForSet }    = require('./parts');
-      const { importMinifigsForSet } = require('./minifigs');
       // Anreicherung mit BEGRENZTER Parallelität (nie mehr als ENRICH_CONCURRENCY
       // Sets gleichzeitig) — der frühere setTimeout(i*3000)-Stagger begrenzte nur
       // den Start-Abstand und erschöpfte bei langen Sets den DB-Connection-Pool.

@@ -4,7 +4,7 @@
  *
  * Gegenproben (am 25.10. gemessen):
  *   A  Zähler je Name in checkLoginAllowed entfernt → rot: „mit wechselnden
- *      Adressen unbegrenzt raten"
+ *      Adressen unbegrenzt raten" (seit 28.10. je Konto mit wachsender Wartezeit)
  *   B  server.ts wieder mit `trust proxy` 1 statt proxyVertrauen() → rot:
  *      „TRUST_PROXY=false wird nicht beachtet"
  *   C  proxyVertrauen('') liefert true → rot: „öffentliche Adresse vertraut"
@@ -13,6 +13,10 @@
  *      kommt von seiner bekannten Adresse weiter herein"
  *   F  (27.10.) die Gateway-Ausnahme (x.y.0.1) entfernt → rot: „Docker-Gateway vertraut"
  *   G  (27.10.) app.disable('x-powered-by') entfernt → rot: „verrät X-Powered-By"
+ *   H  (28.10.) kontoKennung() liefert wieder den rohen Namen → rot: „Name
+ *      und E-Mail zählen gemeinsam" (und der Zähler je Konto fehlt)
+ *   I  (28.10.) wartezeitSekunden() fest auf 1 s → rot: „Sperre je
+ *      Benutzername gilt über alle Adressen" (keine Verdoppelung)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -31,16 +35,22 @@ const _req = require('./helpers/sources').buildAndRequire();
 const AUTH = require('./helpers/sources').einhaengung('auth');
 const db = _req('db/database.js');
 const { proxyVertrauen } = _req('utils/proxyVertrauen.js');
-const { MAX_ATTEMPTS, MAX_JE_NAME } = _req('utils/loginLimiter.js');
+const { MAX_ATTEMPTS, wartezeitSekunden } = _req('utils/loginLimiter.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const bcrypt  = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 
 const NAME = `sperre_${process.pid}`, PASS = 'richtigesPasswort1';
 const warte = (ms) => new Promise(r => setTimeout(r, ms));
 
+let UID = null;
+/** Schlüssel des Zählers je Konto (Name und E-Mail zählen gemeinsam). */
+const kontoSchluessel = () => `login-name|konto:${UID}`;
+const zaehlerLeeren = () => db.run('DELETE FROM rate_limit_attempts WHERE key LIKE $1 OR key LIKE $2',
+  [`%${NAME}%`, `%konto:${UID}`]);
+
 test.after(async () => {
   await db.run('DELETE FROM users WHERE username = $1', [NAME]).catch(() => {});
-  await db.run('DELETE FROM rate_limit_attempts WHERE key LIKE $1', [`%${NAME}%`]).catch(() => {});
+  await zaehlerLeeren().catch(() => {});
   await db.pool.end().catch(() => {});
 });
 
@@ -51,10 +61,13 @@ async function vorbereiten(t) {
       throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
     t.skip('Test-DB nicht erreichbar'); return false;
   }
-  await db.run('DELETE FROM rate_limit_attempts WHERE key LIKE $1', [`%${NAME}%`]);
+  const c = await db.pool.connect();
+  try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); }
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
-  await db.run('INSERT INTO users (username, password_hash, is_active, email_verified) VALUES ($1, $2, 1, 1)',
-    [NAME, await bcrypt.hash(PASS, 4)]);
+  UID = (await db.get(
+    'INSERT INTO users (username, email, password_hash, is_active, email_verified) VALUES ($1, $2, $3, 1, 1) RETURNING id',
+    [NAME, `${NAME}@example.org`, await bcrypt.hash(PASS, 4)])).id;
+  await zaehlerLeeren();
   return true;
 }
 
@@ -99,19 +112,25 @@ test('Sperre je Benutzername gilt über alle Adressen', { concurrency: 1 }, asyn
   // Je Adresse: nach MAX_ATTEMPTS ist für diese Adresse Schluss.
   for (let i = 0; i < MAX_ATTEMPTS; i++) assert.equal(await anmelden('falsch', '198.51.100.1'), 401);
   assert.equal(await anmelden(PASS, '198.51.100.1'), 429, 'keine Sperre je Adresse');
-  // Von einer anderen Adresse geht es weiter — bis zur Grenze je Name.
-  for (let i = MAX_ATTEMPTS; i < MAX_JE_NAME; i++)
-    assert.equal(await anmelden('falsch', `198.51.100.${i + 2}`), 401, `Versuch ${i + 1}`);
-  assert.equal(await anmelden(PASS, '198.51.100.250'), 429,
-    'mit wechselnden Adressen unbegrenzt raten — der Zähler je Name fehlt');
+  // Je Konto: Ab MAX_ATTEMPTS Fehlversuchen wartet auch jede andere Adresse.
+  assert.equal(await anmelden(PASS, '198.51.100.2'), 429,
+    'mit wechselnden Adressen unbegrenzt raten — der Zähler je Konto fehlt');
+  // Ist die Wartezeit um, geht es weiter — und sie verdoppelt sich.
+  const zurueck = (sek) => db.run(
+    `UPDATE rate_limit_attempts SET last_at = NOW() - make_interval(secs => $2) WHERE key = $1`,
+    [kontoSchluessel(), sek]);
+  assert.equal(wartezeitSekunden(MAX_ATTEMPTS), 1);
+  assert.equal(wartezeitSekunden(MAX_ATTEMPTS + 1), 2);
+  await zurueck(wartezeitSekunden(MAX_ATTEMPTS) + 0.5);
+  assert.equal(await anmelden('falsch', '198.51.100.3'), 401, 'nach Ablauf der Wartezeit darf es weitergehen');
+  await zurueck(wartezeitSekunden(MAX_ATTEMPTS) + 0.5);
+  assert.equal(await anmelden(PASS, '198.51.100.4'), 429, 'die Wartezeit wächst nicht');
 
-  // Nach dem Fenster (hier: Zähler geleert) gilt das richtige Passwort wieder
-  // und räumt den Zähler je Name ab.
-  await db.run('DELETE FROM rate_limit_attempts WHERE key LIKE $1', [`login|%${NAME}%`]);
-  await db.run(`UPDATE rate_limit_attempts SET count = $2 WHERE key = $1`, [`login-name|${NAME}`, MAX_JE_NAME - 1]);
-  assert.equal(await anmelden(PASS, '198.51.100.251'), 200);
-  const rest = await db.get('SELECT count FROM rate_limit_attempts WHERE key = $1', [`login-name|${NAME}`]);
-  assert.equal(rest, undefined, 'erfolgreiche Anmeldung leert den Zähler je Name nicht');
+  // Nach der Wartezeit gilt das richtige Passwort und räumt den Zähler ab.
+  await zurueck(wartezeitSekunden(MAX_ATTEMPTS + 1) + 0.5);
+  assert.equal(await anmelden(PASS, '198.51.100.5'), 200);
+  const rest = await db.get('SELECT count FROM rate_limit_attempts WHERE key = $1', [kontoSchluessel()]);
+  assert.equal(rest, undefined, 'erfolgreiche Anmeldung leert den Zähler je Konto nicht');
 });
 
 test('die Sperre je Name sperrt den Inhaber nicht aus', { concurrency: 1 }, async (t) => {
@@ -123,17 +142,19 @@ test('die Sperre je Name sperrt den Inhaber nicht aus', { concurrency: 1 }, asyn
   app.use(AUTH, _req('routes/auth.js'));
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));
-  const anmelden = async (password, ip) => (await fetch(`http://127.0.0.1:${srv.address().port}${AUTH}/login`, {
+  const anmelden = async (password, ip, name = NAME) => (await fetch(`http://127.0.0.1:${srv.address().port}${AUTH}/login`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-forwarded-for': ip },
-    body: JSON.stringify({ username: NAME, password }),
+    body: JSON.stringify({ username: name, password }),
   })).status;
 
   assert.equal(await anmelden(PASS, '198.51.100.7'), 200, 'Vorbedingung: der Inhaber war schon einmal da');
-  // Ein Angreifer verteilt seine Fehlversuche, bis der Name gesperrt ist.
-  for (let i = 0; i < MAX_JE_NAME; i++)
-    assert.equal(await anmelden('falsch', `203.0.113.${i + 1}`), 401, `Versuch ${i + 1}`);
-  assert.equal(await anmelden(PASS, '203.0.113.200'), 429, 'eine unbekannte Adresse bleibt gesperrt');
+  // Ein Angreifer verteilt seine Fehlversuche — über Name UND E-Mail.
+  for (let i = 0; i < MAX_ATTEMPTS; i++)
+    assert.equal(await anmelden('falsch', `203.0.113.${i + 1}`, i % 2 ? `${NAME}@example.org` : NAME), 401,
+      `Versuch ${i + 1}`);
+  assert.equal(await anmelden(PASS, '203.0.113.200'), 429,
+    'eine unbekannte Adresse wartet — Name und E-Mail zählen gemeinsam');
   assert.equal(await anmelden(PASS, '198.51.100.7'), 200,
     'der Inhaber kommt von seiner bekannten Adresse weiter herein');
 });

@@ -61,7 +61,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.Color
 import ch.brickinventoryapp.data.repository.CATALOG_PAGE_SIZE
 import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.ui.theme.Schrift
 import ch.brickinventoryapp.ui.components.LeerSymbol
 
 /**
@@ -542,7 +541,7 @@ internal fun ThemeRow(label: String, id: Int?, selected: Boolean, onClick: () ->
             Modifier.padding(horizontal = Abstaende.mittel, vertical = 11.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(label, fontSize = Schrift.normal, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+            Text(label, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
             if (selected) Icon(Icons.Default.Check, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
         }
     }

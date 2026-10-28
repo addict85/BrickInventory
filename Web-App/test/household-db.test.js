@@ -10,6 +10,16 @@
  * Aufbau wie test/api-parity.test.js: echtes Schema, echte Handler, echte
  * Abfragen. Nichts gestubbt.
  *
+ * Gegenproben zum Haushalt mit mehreren Elternkonten (am 28.10. gemessen):
+ *   A  canWriteFor() wieder über alle Nachfahren → rot: „Rechte gelten nur
+ *      entlang einer direkten Verknüpfung"
+ *   B  die Prüfung auf eine umgekehrte Verknüpfung entfernt → rot:
+ *      „gegenseitig verknüpfen wird abgelehnt"
+ *   C  unlink() ignoriert main_user_id → rot: „ein Konto kann mehreren
+ *      Hauptkonten angehören"
+ *   D  beim Einlösen den Hinweis nicht gelöscht → rot: „die Umstellung trennt
+ *      Ketten und hinterlässt einen Hinweis"
+ *
  * Voraussetzung: Test-DB (Inhalt wird geleert!) via TEST_DATABASE_URL,
  * Default postgres://tester:test@localhost/cattest. Ohne DB: skip.
  */
@@ -86,8 +96,8 @@ async function seed() {
   try { await _req('db/migrate.js').runMigrations(client); }
   finally { client.release(); }
 
-  // 'enkel' seit Nachtrag 173: Erst mit drei Stufen lässt sich prüfen, dass
-  // ein Grossvater den Enkel sieht und der Enkel den Grossvater nicht.
+  // 'enkel' hängt an kindA: Damit lässt sich prüfen, dass Rechte nicht über
+  // eine Kette weitergereicht werden.
   for (const name of ['eltern', 'kindA', 'kindB', 'fremd', 'enkel']) {
     await db.run(`INSERT INTO users (username, password_hash) VALUES ($1,'x')`, [name]);
     U[name] = (await db.get('SELECT id FROM users WHERE username=$1', [name])).id;
@@ -184,106 +194,88 @@ test('Haushalt gegen echte Datenbank', async (t) => {
     assert.equal(await household.canWriteFor(U.eltern, U.fremd), false);
   });
 
-  await t.test('mehrere Stufen: ein Zwischenkonto lädt selbst ein', async () => {
-    // ── Was diese Prüfung ablöst (Nachtrag 173) ─────────────────────────────
-    //
-    // Hier stand „nur eine Stufe": Ein Kind durfte keinen Einladungscode
-    // erzeugen, und ein Elternkonto durfte nicht Unterkonto werden. Beides ist
-    // jetzt erlaubt — Marcos Festlegung. Geblieben ist nur der Kreis.
-    //
+  await t.test('Rechte gelten nur entlang einer direkten Verknüpfung', async () => {
     // Nach diesem Block steht: eltern → kindA → enkel.
     const inv = await household.createInvite(U.kindA);
-    assert.ok(inv.code, 'Ein Zwischenkonto muss einladen dürfen');
+    assert.ok(inv.code, 'Ein Unterkonto muss selbst einladen dürfen');
     const r = await household.redeemInvite(U.enkel, inv.code);
     assert.equal(r.fehler, undefined, `Einlösen abgelehnt: ${r.fehler}`);
 
-    // ── Der Grossvater sieht den Enkel ──────────────────────────────────────
-    const oben = await household.scopeIds(U.eltern, 'all');
-    assert.deepEqual([...oben].sort((a, b) => a - b),
-                     [U.eltern, U.kindA, U.kindB, U.enkel].sort((a, b) => a - b),
-                     'Das Blickfeld des Grossvaters muss den Enkel enthalten');
-
-    // ── Der Enkel sieht den Grossvater NICHT ────────────────────────────────
-    assert.deepEqual(await household.scopeIds(U.enkel, 'all'), [U.enkel],
-      'Ein Enkel sieht ausschliesslich sich selbst');
-    assert.deepEqual(await household.scopeIds(U.kindA, 'all'), [U.kindA, U.enkel],
-      'Das Zwischenkonto sieht sich und seinen Zweig, nicht das Elternkonto');
-
-    // ── Schreiben folgt derselben Richtung ──────────────────────────────────
-    assert.equal(await household.canWriteFor(U.eltern, U.enkel), true,
-      'Über zwei Stufen hinweg muss der Grossvater schreiben dürfen');
+    assert.deepEqual(await household.scopeIds(U.kindA, 'all'), [U.kindA, U.enkel]);
+    assert.ok(!(await household.scopeIds(U.eltern, 'all')).includes(U.enkel),
+      'Über eine Kette darf eltern das Konto enkel nicht sehen — enkel hat nur kindA zugestimmt');
+    assert.equal(await household.canWriteFor(U.eltern, U.enkel), false,
+      'Über eine Kette darf eltern bei enkel nicht schreiben');
+    assert.ok(!(await household.writableIds(U.eltern)).includes(U.enkel));
+    assert.equal(await household.canWriteFor(U.kindA, U.enkel), true);
     assert.equal(await household.canWriteFor(U.enkel, U.kindA), false);
-    assert.equal(await household.canWriteFor(U.enkel, U.eltern), false);
-    assert.equal(await household.canWriteFor(U.kindB, U.enkel), false, 'Onkel dürfen nicht');
-
-    // ── Die Stufe reist für die Einrückung mit ──────────────────────────────
-    const mitglieder = await household.householdMembers(U.eltern);
-    const stufe = Object.fromEntries(mitglieder.map(m => [m.username, m.tiefe]));
-    assert.deepEqual(stufe, { eltern: 0, kindA: 1, kindB: 1, enkel: 2 },
-      'Ohne richtige Stufe rückt der Kontofilter falsch ein');
-
-    // ── Lösen kann nur, wer die Kante selbst hält ───────────────────────────
-    const status = await household.householdStatus(U.eltern);
-    assert.deepEqual(status.sub_accounts.map(m => m.username).sort(), ['kindA', 'kindB'],
-      'Die Liste zum Lösen zeigt nur die DIREKTEN Unterkonten — ein Enkel ' +
-      'stünde dort mit einem Knopf, der nichts löscht');
-    assert.equal(status.blickfeld.length, 4,
-      'Der Kontofilter bekommt dagegen das ganze Blickfeld');
   });
 
-  await t.test('eine Verknüpfung im Kreis wird abgelehnt', async () => {
-    // eltern → kindA → enkel steht. Nähme der Grossvater eine Einladung des
-    // Enkels an, entstünde eltern → kindA → enkel → eltern. `UNIQUE
-    // (sub_user_id)` fängt das NICHT: In einem Kreis steht jede ID genau
-    // einmal als Unterkonto.
-    const inv = await household.createInvite(U.enkel);
-    assert.ok(inv.code, 'Auch ein Enkel darf einladen');
-    const r = await household.redeemInvite(U.eltern, inv.code);
-    assert.match(r.fehler || '', /verknuepfung_erzeugt_kreis/,
-      'Ohne diese Absage sähe anschliessend jedes Konto jedes andere');
+  await t.test('ein Konto kann mehreren Hauptkonten angehören', async () => {
+    // enkel nimmt zusätzlich die Einladung von eltern an: Jetzt sieht eltern
+    // es direkt, mit eigener Zustimmung.
+    const inv = await household.createInvite(U.eltern);
+    const r = await household.redeemInvite(U.enkel, inv.code);
+    assert.equal(r.fehler, undefined, `Zweites Elternkonto abgelehnt: ${r.fehler}`);
+    assert.ok((await household.scopeIds(U.eltern, 'all')).includes(U.enkel));
+    assert.equal(await household.canWriteFor(U.eltern, U.enkel), true);
 
-    // Und der Code muss wieder frei sein — sonst wäre er nach der Absage
-    // verbraucht, obwohl niemand verknüpft wurde.
+    const st = await household.householdStatus(U.enkel);
+    assert.deepEqual(st.parents.map(p => p.username).sort(), ['eltern', 'kindA']);
+    assert.equal(st.is_sub, true);
+    assert.ok(st.linked_to, 'Ältere Apps brauchen weiterhin linked_to');
+
+    // Dieselbe Verknüpfung ein zweites Mal ergibt eine verständliche Absage.
+    const nochmal = await household.redeemInvite(U.enkel, (await household.createInvite(U.eltern)).code);
+    assert.equal(nochmal.fehler, 'konto_bereits_verknuepft');
+
+    // Lösen von EINEM Elternkonto lässt das andere stehen.
+    await household.unlink(U.enkel, null, U.eltern);
+    assert.deepEqual((await household.householdStatus(U.enkel)).parents.map(p => p.username), ['kindA']);
+    assert.equal(await household.canWriteFor(U.eltern, U.enkel), false,
+      'Nach dem Lösen darf das frühere Elternkonto nicht mehr schreiben');
+    assert.equal(await household.canWriteFor(U.kindA, U.enkel), true);
+  });
+
+  await t.test('gegenseitig verknüpfen wird abgelehnt', async () => {
+    // kindA ist Unterkonto von eltern. Nähme eltern eine Einladung von kindA
+    // an, dürften beide beim jeweils anderen schreiben.
+    const inv = await household.createInvite(U.kindA);
+    const r = await household.redeemInvite(U.eltern, inv.code);
+    assert.equal(r.fehler, 'verknuepfung_erzeugt_kreis');
+    // Der Code ist nach der Absage wieder frei.
     const zweit = await household.redeemInvite(U.fremd, inv.code);
-    assert.equal(zweit.fehler, undefined,
-      `Der Code wurde von der Absage verbraucht: ${zweit.fehler}`);
-    // Aufräumen: 'fremd' wird in späteren Prüfungen als unbeteiligt gebraucht.
+    assert.equal(zweit.fehler, undefined, `Der Code wurde von der Absage verbraucht: ${zweit.fehler}`);
     await household.unlink(U.fremd);
   });
 
-  await t.test('ein Kreis IN DEN DATEN legt die Auflösung nicht lahm', async () => {
-    // ── Warum das geprüft wird, obwohl redeemInvite() Kreise ablehnt ────────
-    //
-    // Die Absage ist die eine Bremse, der Pfadvergleich in der rekursiven
-    // Abfrage die andere. Ein Test, der nur die Absage prüft, sichert die
-    // zweite nicht — und die ist die, auf die es ankommt, wenn eine Zeile je
-    // auf anderem Weg entsteht (Wiederherstellung einer Sicherung, ein Skript
-    // von Hand). Ohne sie liefe die Abfrage bis MAX_STUFEN und gäbe ein
-    // falsches Blickfeld statt gar keines.
-    //
-    // Hier wird der Kreis deshalb UNTER der Absage vorbei direkt in die
-    // Tabelle geschrieben: fremd → eltern, während eltern → kindA → enkel
-    // steht. Der Kreis entsteht, indem enkel zum Elternteil von fremd wird.
-    await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1,$2)',
-      [U.enkel, U.fremd]);
-    await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1,$2)',
-      [U.fremd, U.eltern]);
+  await t.test('die Umstellung trennt Ketten und hinterlässt einen Hinweis', async () => {
+    // eltern → kindA → enkel steht. Die Migration erneut laufen lassen, wie
+    // sie auf einer bestehenden Installation liefe.
+    const fs = require('node:fs');
+    const sql = fs.readFileSync(path.join(ROOT, 'db/migrations/0046-haushalt-mehrere-eltern.sql'), 'utf8');
+    await db.run('DELETE FROM household_former_links');
+    await db.exec(sql);
     household.leereHaushaltCache();
 
-    // Die Auflösung muss ZURÜCKKOMMEN — vor dem Pfadvergleich lief sie hier
-    // bis zur Tiefengrenze.
-    const ids = await household.scopeIds(U.eltern, 'all');
-    assert.ok(ids.length <= 5, `Kreis nicht abgebrochen: ${ids.length} IDs`);
-    // Jede ID genau einmal: Ein Konto, das zweimal im Blickfeld steht, zählt
-    // seine Sets doppelt.
-    assert.equal(new Set(ids).size, ids.length, `IDs doppelt: ${ids.join(',')}`);
+    const st = await household.householdStatus(U.eltern);
+    assert.deepEqual(st.former_links.map(f => [f.username, f.via]), [['enkel', 'kindA']],
+      'eltern muss erfahren, dass enkel nicht mehr sichtbar ist und über wen es lief');
+    assert.ok(!st.blickfeld.some(m => m.username === 'enkel'));
+    assert.deepEqual((await household.householdStatus(U.kindA)).former_links, [],
+      'Direkte Verknüpfungen sind keine getrennten Ketten');
 
-    // Aufräumen — die folgenden Prüfungen rechnen mit eltern → kindA/kindB.
-    await db.run('DELETE FROM account_links WHERE main_user_id = $1 AND sub_user_id = $2',
-      [U.fremd, U.eltern]);
-    await db.run('DELETE FROM account_links WHERE main_user_id = $1 AND sub_user_id = $2',
-      [U.enkel, U.fremd]);
-    household.leereHaushaltCache();
+    // Nimmt enkel die Einladung an, verschwindet der Hinweis von selbst.
+    const r = await household.redeemInvite(U.enkel, (await household.createInvite(U.eltern)).code);
+    assert.equal(r.fehler, undefined);
+    assert.deepEqual((await household.householdStatus(U.eltern)).former_links, []);
+    await household.unlink(U.enkel, null, U.eltern);
+
+    // Verwerfen löscht nur den eigenen Hinweis.
+    await db.exec(sql);
+    assert.equal((await household.verwerfeGetrennt(U.kindB, U.enkel)).removed, 0);
+    assert.equal((await household.verwerfeGetrennt(U.eltern, U.enkel)).removed, 1);
+    assert.deepEqual((await household.householdStatus(U.eltern)).former_links, []);
   });
 
   await t.test('dasselbe Set in zwei Konten wird zu EINER Zeile', async () => {
@@ -367,14 +359,13 @@ test('Haushalt gegen echte Datenbank', async (t) => {
       `SELECT COUNT(*)::int AS n FROM parts WHERE user_id=$1 AND source='manual'`, [U.kindA]);
     assert.equal(manual.n, 1, 'ein manuell erfasstes Teil wurde mitverschoben');
 
-    // Pro Tag, Element und Benutzer EIN Kaufpreis: aus zwei Zeilen wird eine.
+    // Seit Migration 0047 bleiben verschiedene Preise eigene Zeilen: 2×160
+    // von kindB und 1×100 von kindA — kein Mischpreis 140.
     const rows = await db.all(
       `SELECT quantity, purchase_price FROM set_acquisitions
-        WHERE user_id=$1 AND set_number='75192-1'`, [U.kindB]);
-    assert.equal(rows.length, 1, 'zwei Erfassungen desselben Tages nicht verschmolzen');
-    assert.equal(parseInt(rows[0].quantity), 3);
-    // Mengengewichtet: (2x160 + 1x100)/3 = 140
-    assert.equal(Math.round(parseFloat(rows[0].purchase_price)), 140);
+        WHERE user_id=$1 AND set_number='75192-1' ORDER BY purchase_price`, [U.kindB]);
+    assert.deepEqual(rows.map(r => [parseInt(r.quantity), Math.round(parseFloat(r.purchase_price))]),
+      [[1, 100], [2, 160]], 'Die Einzelkäufe müssen beim Verschieben erhalten bleiben');
 
     // Im Haushalt steht das Set weiterhin einmal, jetzt mit einem Besitzer.
     const list = await handlers.getSets(await household.scopeIds(U.eltern, 'all'), {});
@@ -570,7 +561,7 @@ test('Haushalt gegen echte Datenbank', async (t) => {
       'eine kontofremde ID muss auf das ganze Blickfeld zurückfallen');
     // Ein Unterkonto kann sich damit nicht ins Geschwisterkonto sehen: kindB
     // steht nicht in seinem Blickfeld, die fremde ID fällt also zurück — auf
-    // kindAs EIGENES Blickfeld, das seit Nachtrag 173 seinen Enkel enthält.
+    // kindAs EIGENES Blickfeld, das sein Unterkonto enkel enthält.
     // Geprüft wird die Aussage, nicht die Liste: Entscheidend ist, dass kindB
     // nicht darin vorkommt.
     const ausSichtKindA = await household.scopeIds(U.kindA, U.kindB);

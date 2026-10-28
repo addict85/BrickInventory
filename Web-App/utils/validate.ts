@@ -6,6 +6,8 @@
 /** Teile-/Figuren-/Setnummern: das, was Rebrickable und BrickLink tatsächlich vergeben. */
 export const ITEM_NUMBER_RE = /^[A-Za-z0-9][A-Za-z0-9._/-]{0,63}$/;
 
+import { fehlerWerfen } from './fehlerTexte';
+
 function fail(msg: string): never {
   const e: any = new Error(msg);
   e.status = 400;
@@ -47,6 +49,17 @@ export function positiveInt(value: any, fallback = 1, max = 1_000_000): number {
   const n = parseInt(String(value ?? ''), 10);
   if (!Number.isFinite(n)) return fallback;
   return Math.min(max, Math.max(1, n));
+}
+
+/**
+ * Gewünschte Bestandsmenge: eine Ganzzahl ab `min`, sonst 400. Hier wird
+ * nicht auf einen Ersatzwert ausgewichen — `parseInt({a:1}) || 0` machte aus
+ * einer kaputten Anfrage „Menge 0" und löschte den Bestand.
+ */
+export function bestandsMenge(value: unknown, min = 0, max = 100_000): number {
+  const roh = typeof value === 'number' || typeof value === 'string' ? String(value).trim() : '';
+  if (!/^\d{1,6}$/.test(roh) || +roh < min || +roh > max) fehlerWerfen('wert_ungueltig', 400);
+  return +roh;
 }
 
 /** Farb-ID: nicht-negative Ganzzahl. */

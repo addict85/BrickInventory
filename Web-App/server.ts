@@ -92,8 +92,8 @@ import { starteHintergrundlaeufe } from './startup/backgroundJobs';
 import { getGlobalSetting, deleteGlobalSetting } from './utils/settings';
 import { HAUSHALT_KANAL, leereHaushaltCache } from './utils/household';
 import { drossleBeruehren } from './utils/sitzungsBeruehrung';
-import { SITZUNG_LEERLAUF_SEK } from './utils/sitzungsFrist';
-import { antwortAufDateiFehler, liefereDatei } from './utils/dateiAusliefern';
+import { SITZUNG_LEERLAUF_SEK, sitzungsHoechstdauer } from './utils/sitzungsFrist';
+import { antwortAufDateiFehler, liefereDatei, sendeDatei } from './utils/dateiAusliefern';
 
 const WORKERS = (require('./utils/workerZahl') as typeof import('./utils/workerZahl')).workerZahl();
 
@@ -102,7 +102,25 @@ if (cluster.isPrimary && process.env.NODE_ENV === 'production') {
   for (let i = 0; i < WORKERS; i++) cluster.fork();
   const { neustartPause } = require('./utils/workerZahl') as typeof import('./utils/workerZahl');
   const abstuerze: number[] = [];
+  // Docker schickt SIGTERM nur an PID 1, also an diesen Prozess. Ohne
+  // Weitergabe liefen die Shutdown-Handler der Worker nie, und nach der Frist
+  // folgte SIGKILL mitten in Anfragen und Importen.
+  let beendetWird = false;
+  const beendeAlle = (signal: NodeJS.Signals) => {
+    if (beendetWird) return;
+    beendetWird = true;
+    console.log(`[cluster] ${signal} — Worker werden geordnet beendet`);
+    for (const w of Object.values(cluster.workers ?? {})) w?.process.kill(signal);
+    // Etwas länger als die Frist der Worker (SHUTDOWN_TIMEOUT_MS).
+    setTimeout(() => process.exit(0), 10_000).unref();
+  };
+  process.on('SIGTERM', () => beendeAlle('SIGTERM'));
+  process.on('SIGINT', () => beendeAlle('SIGINT'));
   cluster.on('exit', (worker, code) => {
+    if (beendetWird) {
+      if (!Object.keys(cluster.workers ?? {}).length) process.exit(0);
+      return;
+    }
     if (code !== 0) {
       const jetzt = Date.now();
       abstuerze.push(jetzt);
@@ -121,7 +139,6 @@ if (cluster.isPrimary && process.env.NODE_ENV === 'production') {
 const express = require('express') as typeof import('express');
 
 const session = require('express-session') as typeof import('express-session');
-const path    = require('path') as typeof import('path');
 const fs      = require('fs') as typeof import('fs');
 const compression = require('compression') as typeof import('compression');
 const pgSession   = (require('connect-pg-simple') as typeof import('connect-pg-simple'))(session);
@@ -336,6 +353,7 @@ app.use(session({
       : process.env.NODE_ENV === 'production',
   }
 }));
+app.use(sitzungsHoechstdauer());
 
 // resolveUserId kommt aus utils/auth.js — nutzt den Token-Cache, statt pro
 // Request die api_tokens-Tabelle zu befragen.
@@ -410,7 +428,7 @@ app.get('/images/*pfad', async (req: WildcardRequest, res: Response) => {
   // Ausführlich: docs/begruendungen/server.ts.md#lookupcdnformissingimage
   res.setHeader('Cache-Control', 'private, max-age=0');
 
-  res.sendFile(filePath, async err => {
+  sendeDatei(res, filePath, async err => {
     if (!err || res.headersSent) return;
 
     // Ein Fehler MIT eigener Zahl ist keine fehlende Datei, sondern eine
@@ -423,10 +441,8 @@ app.get('/images/*pfad', async (req: WildcardRequest, res: Response) => {
       return antwortAufDateiFehler(res, err);
     }
 
-    // Fehlt eine VORSCHAU, gibt es fast immer das Original daneben — dann geht
-    // das raus, sofort (Nachtrag 40, Marcos Anforderung: „Der Client soll das
-    // Bild jeweils direkt erhalten und nicht warten, bis das Thumbs-Image
-    // generiert wurde. Ist kein Thumb vorhanden, soll das grosse Bild …
+    // Fehlt eine Vorschau, liegt fast immer das Original daneben: Das geht
+    // sofort hinaus, statt auf die Erzeugung der Vorschau zu warten.
     // Ausführlich: docs/begruendungen/server.ts.md#lookupcdnformissingimage-rohpfad
     const rohPfad = segments.join('/');
     const thumbTreffer = /_thumb(\.[^.]+)$/.exec(rohPfad);
@@ -573,7 +589,7 @@ app.get('/reset-password', async (_req, res) => {
   try {
     res.type('html').send(await renderIndexHtml());
   } catch {
-    res.sendFile(path.join(PUBLIC_DIR, 'index.html'));
+    res.sendFile('index.html', { root: PUBLIC_DIR });
   }
 });
 
@@ -601,7 +617,7 @@ app.get('/{*splat}', async (req, res) => {
   } catch (e) {
     // Fällt das Rendern aus, bleibt die Datei unverändert ausgeliefert —
     // js/00-theme-boot.js übernimmt dann wie bisher.
-    res.sendFile(path.join(PUBLIC_DIR, 'index.html'));
+    res.sendFile('index.html', { root: PUBLIC_DIR });
   }
 });
 

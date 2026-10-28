@@ -155,6 +155,10 @@ const ALLES_LOESCHEN =
   'ganze Sammlung; einzelne Elemente löscht die App wie bisher.';
 
 const NUR_WEB = new Map([
+  ['/api/v1/admin/protokoll',
+   'Protokoll der Verwalteraktionen an fremden Konten. Diese Aktionen ' +
+   '(Passwort setzen, Rolle, Löschen) gibt es absichtlich nur in der ' +
+   'Webapp (BrickApiService.kt nennt den Grund), also auch ihr Protokoll.'],
   ['/api/v1/admin/job-status',
    'Stand des Preis-Jobs samt BrickLink-Kontingent. Die App zeigt BEIDES ' +
    'schon: den Fortschritt über /admin/jobs (jobMonitor, mit progress/total) ' +

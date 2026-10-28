@@ -1,13 +1,24 @@
 /**
  * Kaufpreis-Erfassungen schreiben — für Sets, manuelle Teile und Minifiguren.
  *
- *   Pro Tag, Element und Benutzer gibt es genau EINEN Kaufpreis.
+ *   Pro Tag, Element, Zustand, Preis und Währung gibt es genau EINE Zeile;
+ *   gleiche Käufe eines Tages werden zusammengezählt.
  *
  * Ausführlich: docs/begruendungen/utils/acquisitions.ts.md#abschnitt
  */
 import * as db from '../db/database';
 
 export type AcquisitionKind = 'set' | 'part' | 'fig';
+
+/**
+ * SQL-Bedingung: Der Kaufpreis der Zeile ist in der heutigen Währung ihres
+ * Kontos erfasst. Für Durchschnitte in der Anzeigewährung; ein älterer Preis
+ * aus einer anderen Währung wäre dort ein falscher Betrag.
+ */
+export function inKontowaehrung(tabelle: string): string {
+  return `${tabelle}.currency = COALESCE((SELECT us.value FROM user_settings us
+            WHERE us.user_id = ${tabelle}.user_id AND us.key = 'currency'), 'EUR')`;
+}
 
 export interface AcquisitionInput {
   quantity: number;
@@ -16,6 +27,10 @@ export interface AcquisitionInput {
   condition?: string | null;
   /** Tag der Erfassung (ISO). Fehlt er, zählt heute. */
   createdAt?: string | null;
+  /** Der Preis ist ein eingesetzter Marktpreis, kein bezahlter Betrag. */
+  geschaetzt?: boolean;
+  /** Währung des Preises; fehlt sie, setzt die Datenbank die des Kontos. */
+  currency?: string | null;
 }
 
 /**
@@ -55,57 +70,26 @@ export async function recordAcquisitionForDay(
   const qty   = Math.max(1, parseInt(String(input.quantity)) || 1);
   const price = num(input.price);
   const cond  = ['N', 'U'].includes(String(input.condition)) ? String(input.condition) : 'N';
-  const day   = input.createdAt || null;
+  const geschaetzt = price != null && !!input.geschaetzt;
 
-  const keyWhere = shape.keys.map((c, i) => `${c} = $${i + 2}`).join(' AND ');
-
-  // Bestehende Zeile dieses Tages IM SELBEN ZUSTAND.
-  // Ausführlich: docs/begruendungen/utils/acquisitions.ts.md#recordacquisitionforday-existing
-  const existing = await dbh.get(
-    `SELECT id, quantity, condition, ${shape.price} AS price
-       FROM ${shape.table}
-      WHERE user_id = $1 AND ${keyWhere}
-        AND (created_at AT TIME ZONE 'UTC')::date
-            = COALESCE($${shape.keys.length + 2}::date, (NOW() AT TIME ZONE 'UTC')::date)
-        AND COALESCE(condition, 'N') = $${shape.keys.length + 3}
-      ORDER BY id ASC LIMIT 1`,
-    [userId, ...keyValues, day, cond]
-  ).catch(() => null);
-
-  if (existing) {
-    const oldQty   = Math.max(0, parseInt(String(existing.quantity)) || 0);
-    const oldPrice = num(existing.price);
-    const newQty   = oldQty + qty;
-    // Mengengewichtet — siehe Modulkommentar. Auf vier Stellen gerundet, damit
-    // die NUMERIC-Spalte keine Fliesskomma-Reste sammelt.
-    const mergedPrice = (oldPrice != null && price != null)
-      ? Math.round(((oldPrice * oldQty + price * qty) / (newQty || 1)) * 10000) / 10000
-      : (price ?? oldPrice);
-    // Der Zustand bleibt, wie er ist: Gefunden wurde die Zeile GENAU über ihn
-    // (siehe oben). Hier stand `gebraucht gewinnt`, und das war die Stelle, an
-    // der ein neuer Kauf einen gebrauchten aus demselben Tag mitnahm —
-    // zusammen mit einem Mischpreis aus zwei verschiedenen Käufen. Er wird
-    // trotzdem mitgeschrieben, damit eine Altzeile ohne Zustand den Vorgabewert
-    // bekommt, unter dem sie gefunden wurde.
-    await dbh.run(
-      `UPDATE ${shape.table} SET quantity = $1, ${shape.price} = $2, condition = $3 WHERE id = $4`,
-      [newQty, mergedPrice, cond, existing.id]
-    );
-    return { merged: true };
-  }
-
-  const cols = ['user_id', ...shape.keys, 'quantity', shape.price, 'condition', 'created_at'];
-  const vals = [userId, ...keyValues, qty, price, cond];
-  const ph   = vals.map((_, i) => `$${i + 1}`);
-  await dbh.run(
-    `INSERT INTO ${shape.table} (${cols.join(', ')})
-     VALUES (${ph.join(', ')}, COALESCE($${vals.length + 1}::timestamptz, NOW()))
-     ON CONFLICT DO NOTHING`,
-    [...vals, day]
+  // Eine Anweisung statt Lesen-Rechnen-Schreiben: Zwei gleichzeitige
+  // Erfassungen (Web und App) addieren sich so, statt einander zu
+  // überschreiben. Zusammengelegt wird nur bei gleichem Preis, gleicher
+  // Herkunft und Währung — dann geht keine Information verloren.
+  const cols = ['user_id', ...shape.keys, 'quantity', shape.price, 'condition', 'price_estimated', 'currency', 'created_at'];
+  const vals = [userId, ...keyValues, qty, price, cond, geschaetzt, input.currency ?? null, input.createdAt || null];
+  const ph = vals.map((_, i) => `$${i + 1}`);
+  ph[ph.length - 1] = `COALESCE(${ph[ph.length - 1]}::timestamptz, NOW())`;
+  const ziel = ['user_id', ...shape.keys, "((created_at AT TIME ZONE 'UTC')::date)", 'condition',
+    `(COALESCE(${shape.price}, -1))`, 'price_estimated', 'currency'];
+  const row = await dbh.get(
+    `INSERT INTO ${shape.table} AS t (${cols.join(', ')}) VALUES (${ph.join(', ')})
+     ON CONFLICT (${ziel.join(', ')}) DO UPDATE SET quantity = t.quantity + EXCLUDED.quantity
+     RETURNING (xmax <> 0) AS merged`,
+    vals
   );
-  return { merged: false };
+  return { merged: !!row?.merged };
 }
-
 
 /**
  * Gibt es für diesen Tag und Zustand schon eine Erfassung — ausser der
@@ -122,20 +106,25 @@ export async function findSameDayAcquisition(
   day: string,
   excludeId: number | null,
   condition: string | null = null,
-  dbh: any = db
+  dbh: any = db,
+  merkmale: { preis?: unknown; geschaetzt?: boolean; waehrung?: string | null } = {}
 ): Promise<number | null> {
   const shape = SHAPES[kind];
   const keyWhere = shape.keys.map((c, i) => `${c} = $${i + 2}`).join(' AND ');
   const n = shape.keys.length;
   const cond = ['N', 'U'].includes(String(condition)) ? String(condition) : 'N';
+  // Dieselben Spalten wie der eindeutige Index (Migration 0047).
   const row = await dbh.get(
     `SELECT id FROM ${shape.table}
       WHERE user_id = $1 AND ${keyWhere}
         AND id <> $${n + 2} AND (created_at AT TIME ZONE 'UTC')::date = $${n + 3}::date
-        AND COALESCE(condition, 'N') = $${n + 4}
+        AND condition = $${n + 4}
+        AND COALESCE(${shape.price}, -1) = COALESCE($${n + 5}::numeric, -1)
+        AND price_estimated = $${n + 6}
+        AND ($${n + 7}::text IS NULL OR currency = $${n + 7})
       LIMIT 1`,
-    [userId, ...keyValues, excludeId ?? -1, day, cond]
-  ).catch(() => null);
+    [userId, ...keyValues, excludeId ?? -1, day, cond, num(merkmale.preis), !!merkmale.geschaetzt, merkmale.waehrung ?? null]
+  );
   return row ? parseInt(row.id) : null;
 }
 
@@ -169,4 +158,29 @@ export function acquisitionTotals(rows: any[]): {
     amount: priced ? Math.round(amount * 100) / 100 : null,
     priced_rows: priced,
   };
+}
+
+/**
+ * Einen fehlenden Kaufpreis durch einen Marktpreis ersetzen — gekennzeichnet
+ * als geschätzt. Gibt es am selben Tag schon eine gleiche Zeile, wandert die
+ * Menge dorthin, statt am eindeutigen Index zu scheitern.
+ * @returns true, wenn etwas geändert wurde
+ */
+export async function setzeGeschaetztenPreis(kind: AcquisitionKind, id: number, preis: number): Promise<boolean> {
+  const shape = SHAPES[kind];
+  return db.transaction(async (tx: any) => {
+    const z = await tx.get(
+      `SELECT *, ((created_at AT TIME ZONE 'UTC')::date)::text AS tag FROM ${shape.table} WHERE id = $1 FOR UPDATE`, [id]);
+    if (!z || z[shape.price] != null) return false;
+    const keys = shape.keys.map(k => z[k]);
+    const ziel = await findSameDayAcquisition(kind, z.user_id, keys, z.tag, id, z.condition, tx,
+      { preis, geschaetzt: true, waehrung: z.currency });
+    if (ziel) {
+      await tx.run(`UPDATE ${shape.table} SET quantity = quantity + $1 WHERE id = $2`, [z.quantity, ziel]);
+      await tx.run(`DELETE FROM ${shape.table} WHERE id = $1`, [id]);
+    } else {
+      await tx.run(`UPDATE ${shape.table} SET ${shape.price} = $1, price_estimated = true WHERE id = $2`, [preis, id]);
+    }
+    return true;
+  });
 }

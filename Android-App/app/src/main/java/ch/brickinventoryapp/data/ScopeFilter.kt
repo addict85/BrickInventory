@@ -118,10 +118,7 @@ object ScopeFilter {
         return buildList {
             add(ALL to labelAll)
             add("own" to labelOwn)
-            subs.forEach {
-                val einzug = "   ".repeat((it.tiefe - 1).coerceAtLeast(0))
-                add(it.id.toString() to (einzug + it.username))
-            }
+            subs.forEach { add(it.id.toString() to it.username) }
         }
     }
 

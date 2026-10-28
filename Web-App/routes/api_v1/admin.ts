@@ -8,13 +8,13 @@ import {  DATA_DIR } from '../../utils/appPaths';
 import * as db from '../../db/database';
 import { fehlertext, handleRouteError, meldeUndWeiter } from '../../utils/httpError';
 import { requireApiAdmin } from './middleware';
-import { PDF_JOB_DIR } from './pdf';
+import { PDF_JOB_DIR } from '../../utils/appPaths';
 import { fetchPrice, getLimitForApi, getRateLimitStatus } from '../../utils/financeCalc';
 import { katalogEintrag, ohneBricklinkPreis } from '../../utils/setNummer';
 import { scrapeInstructionsFromFallback, loescheAnleitungen } from '../../utils/instructions';
 import { imgProxyFailures } from '../../utils/imgProxyStats';
 import { getPoolStats } from '../../db/database';
-import { proxyCachePathFor } from '../imgProxy';
+import { proxyCachePathFor } from '../../utils/images';
 import { ERLAUBTE_BILD_HOSTS, hostErlaubt } from '../../utils/fremdeAdressen';
 import { vergissFehlend } from '../../utils/imageMisses';
 import { clearCatalogCache, clearSubsetsCache, getPriceGuide } from '../../clients/bricklink';
@@ -48,6 +48,13 @@ router.post('/admin/trigger-csv-sync', requireApiAdmin, async (_req: AuthedReque
 });
 
 // ── GET /api/v1/admin/cache-stats ─────────────────────────────────────────────
+router.get('/admin/protokoll', requireApiAdmin, async (req: AuthedRequest, res) => {
+  try {
+    const { letzteEintraege } = require('../../utils/verwaltungsprotokoll') as typeof import('../../utils/verwaltungsprotokoll');
+    res.json({ success: true, eintraege: await letzteEintraege() });
+  } catch (e) { handleRouteError(res, e, undefined, req); }
+});
+
 router.get('/admin/cache-stats', requireApiAdmin, async (_req: AuthedRequest, res) => {
   try {
     const { getCacheStats }      = require('../../clients/bricklink');
