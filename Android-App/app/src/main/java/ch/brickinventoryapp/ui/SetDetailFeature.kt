@@ -255,19 +255,6 @@ private fun MainViewModel.anleitungName(uri: android.net.Uri): String =
 // Preisalarm
 // ═══════════════════════════════════════════════════════════════════════════
 //
-// Hier stand `ALARM_ZUSTAND = "N"` mit der Begruendung: „Die Oberflaeche
-// bietet vorerst den Alarm fuer NEU an … ein zweites Auswahlfeld hier ist
-// dagegen eine Zeile."
-//
-// Server und Tabelle konnten es die ganze Zeit — price_alerts fuehrt den
-// Zustand im Schluessel. Neu und gebraucht liegen oft um ein Vielfaches
-// auseinander; wer ein gebrauchtes Exemplar sucht, hatte bisher keine
-// Moeglichkeit, darauf zu warten. Jetzt waehlt die Oberflaeche, in beiden
-// Apps gleich.
-//
-// Der Vorgabewert bleibt "N": Er ist der haeufigere Fall, und eine bestehende
-// Anzeige soll beim Oeffnen dasselbe zeigen wie vorher.
-internal const val ALARM_ZUSTAND_VORGABE = "N"
 
 internal fun MainViewModel.loadPreisalarme(setNumber: String) {
     viewModelScope.launch {
@@ -330,8 +317,7 @@ internal fun MainViewModel.setzePreisalarm(
                 // also nie zu — gespeichert wurde, angezeigt nichts, und der
                 // Merker „scharf" blieb aus. Genau das war Marcos „die Werte
                 // werden nicht gespeichert".
-                val offen = _setDetailState.value.setDetail?.setNumber == setNumber ||
-                            _merkpostenDetailState.value.setNumber == setNumber
+                val offen = _setDetailState.value.setDetail?.setNumber == setNumber
                 if (offen) loadPreisalarme(setNumber)
             }
             is Result.Error -> _snackbar.emit(meldungFuerSnackbar(r))

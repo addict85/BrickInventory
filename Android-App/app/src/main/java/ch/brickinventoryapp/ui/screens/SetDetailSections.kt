@@ -664,7 +664,7 @@ fun LazyListScope.setDetailAlarmSection(
     setNumber: String,
     alarme: List<ch.brickinventoryapp.data.model.Preisalarm>,
     currency: String,
-    vm: MainViewModel,
+    onSetze: (setNumber: String, richtung: String, roh: String, zustand: String) -> Unit,
 ) {
     item {
         // Fuer WELCHEN Zustand der Alarm gilt. Neu und gebraucht liegen oft
@@ -714,13 +714,13 @@ fun LazyListScope.setDetailAlarmSection(
                 FilterChip(
                     selected = richtung == "unter",
                     onClick = { richtung = "unter"
-                        if (schwelle.isNotBlank()) vm.setzePreisalarm(setNumber, "unter", schwelle, zustand) },
+                        if (schwelle.isNotBlank()) onSetze(setNumber, "unter", schwelle, zustand) },
                     label = { Text(stringResource(R.string.detail_alert_below), style = MaterialTheme.typography.labelMedium) },
                 )
                 FilterChip(
                     selected = richtung == "ueber",
                     onClick = { richtung = "ueber"
-                        if (schwelle.isNotBlank()) vm.setzePreisalarm(setNumber, "ueber", schwelle, zustand) },
+                        if (schwelle.isNotBlank()) onSetze(setNumber, "ueber", schwelle, zustand) },
                     label = { Text(stringResource(R.string.detail_alert_above), style = MaterialTheme.typography.labelMedium) },
                 )
                 OutlinedTextField(
@@ -741,7 +741,7 @@ fun LazyListScope.setDetailAlarmSection(
                     // Feld zu leeren bleibt der eine gewollte Weg dahin.
                     onValueChange = { roh ->
                         val g = NumericInput.price(roh)
-                        schwelle = g; vm.setzePreisalarm(setNumber, richtung, g, zustand)
+                        schwelle = g; onSetze(setNumber, richtung, g, zustand)
                     },
                     singleLine = true,
                     placeholder = { Text(currency, style = MaterialTheme.typography.bodySmall) },

@@ -178,7 +178,7 @@ fun SetDetailScreen(
             setDetailStatChips(set)
             setDetailValueTiles(set, price, isBrick, ::fmtPrice)
             setDetailDetailsSection(set, setNumber, vm, acquisitions, currency, ::fmtDate, onNavigateToAcqMgmt)
-            setDetailAlarmSection(setNumber, detailState.preisalarme, currency, vm)
+            setDetailAlarmSection(setNumber, detailState.preisalarme, currency, vm::setzePreisalarm)
             setDetailPriceSection(set, detailState, price, history, pnlPct, currency, isBrick, ::fmtPrice)
             setDetailInstructionsSection(
                 set, detailState, serverUrl, onOpenPdf,

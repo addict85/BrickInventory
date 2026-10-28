@@ -216,7 +216,7 @@ internal fun MainViewModel.ladeCsvHoch(art: ch.brickinventoryapp.data.model.CsvA
                     // stehen, die gerade gewachsen ist: Der Nutzer sieht „12
                     // hinzugefuegt" und davor eine unveraenderte Merkliste.
                     when (art) {
-                        ch.brickinventoryapp.data.model.CsvArt.MERKLISTE -> ladeMerkliste()
+                        ch.brickinventoryapp.data.model.CsvArt.MERKLISTE -> bestand.melde(Aenderung.Merkliste)
                         ch.brickinventoryapp.data.model.CsvArt.PREISALARME -> ladeAlarmUebersicht()
                         else -> { loadSets(); loadStats() }
                     }

@@ -284,7 +284,14 @@ internal fun MainViewModel.confirmAddBarcode(setNum: String, purchasePrice: Doub
         // Der Zustand kommt aus dem Dialog (condition), nicht aus dem
         // Merklisten-Kasten: Wer gerade einen Karton abscannt, entscheidet
         // dort, ob es der neue oder der gebrauchte sein soll.
-        legeMerkpostenAn(setNum, if (condition == "U") "U" else "N", ownerUserId)
+        viewModelScope.launch {
+            when (val r = repo.sets.legeMerkpostenAn(setNum, if (condition == "U") "U" else "N", ownerUserId)) {
+                is Result.Success -> _snackbar.value =
+                    text(if (r.data.warNeu) R.string.wanted_added else R.string.wanted_already)
+                is Result.Error -> _snackbar.value = meldungFuerSnackbar(r)?.let { text(R.string.vm_error, it) }
+            }
+            bestand.melde(Aenderung.Merkliste)
+        }
         cancelBarcode()
         return
     }

@@ -22,12 +22,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.core.net.toUri
 import ch.brickinventoryapp.R
 import ch.brickinventoryapp.data.model.Merkposten
-import ch.brickinventoryapp.ui.MainViewModel
+import ch.brickinventoryapp.ui.viewmodel.MerklisteViewModel
 import ch.brickinventoryapp.ui.components.ZoomableImageDialog
-import ch.brickinventoryapp.ui.ladeMerkpostenDetail
-import ch.brickinventoryapp.ui.loescheMerkposten
-import ch.brickinventoryapp.ui.uebernimmMerkposten
-import ch.brickinventoryapp.ui.verschiebeMerkposten
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.Formen
 import ch.brickinventoryapp.util.resolveFullUrl
@@ -63,7 +59,7 @@ import ch.brickinventoryapp.util.resolveFullUrl
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MerkpostenDetailScreen(
-    vm: MainViewModel,
+    vm: MerklisteViewModel,
     setNumber: String,
     condition: String,
     imageLoader: coil3.ImageLoader,
@@ -75,8 +71,6 @@ fun MerkpostenDetailScreen(
     val lagerZustand by vm.lagerState.collectAsStateWithLifecycle()
     val liste    by vm.merklisteState.collectAsStateWithLifecycle()
     val detail   by vm.merkpostenDetailState.collectAsStateWithLifecycle()
-    // Der Alarm liegt im Set-Detail-Zustand — Begruendung an ladeMerkpostenDetail().
-    val setDetail by vm.setDetailState.collectAsStateWithLifecycle()
     val ctx = LocalContext.current
     // `stringResource` statt `ctx.getString` im Rueckruf: Lint meldet
     // LocalContextGetResourceValueCall (Stufe ERROR), weil ein aus
@@ -232,7 +226,7 @@ fun MerkpostenDetailScreen(
             // Schluessel (Konto, Set, Zustand). /sets/:sn/alert verlangt
             // keinen Besitz — nachgesehen im Routenrumpf —, also funktioniert
             // er hier unveraendert.
-            setDetailAlarmSection(merkposten.setNumber, setDetail.preisalarme, appState.currency, vm)
+            setDetailAlarmSection(merkposten.setNumber, detail.preisalarme, appState.currency, vm::setzePreisalarm)
 
             item {
                 Card(Modifier.fillMaxWidth()) {

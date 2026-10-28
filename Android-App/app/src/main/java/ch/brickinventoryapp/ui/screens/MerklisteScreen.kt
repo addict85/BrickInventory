@@ -25,15 +25,9 @@ import ch.brickinventoryapp.R
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.data.model.Merkposten
 import ch.brickinventoryapp.data.repository.MERKLISTE_DEFAULT_SORT
-import ch.brickinventoryapp.ui.MainViewModel
+import ch.brickinventoryapp.ui.viewmodel.MerklisteViewModel
 import ch.brickinventoryapp.ui.setScope
-import ch.brickinventoryapp.ui.setzeMerklisteSortierung
-import ch.brickinventoryapp.ui.setzeMerklisteSuche
-import ch.brickinventoryapp.ui.setzeMerklisteZustand
-import ch.brickinventoryapp.ui.ladeMerkliste
-import ch.brickinventoryapp.ui.legeMerkpostenAn
 import ch.brickinventoryapp.ui.setScannerSource
-import ch.brickinventoryapp.ui.uebernimmMerkposten
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.Formen
 import ch.brickinventoryapp.ui.theme.LocalIsBrickTheme
@@ -69,7 +63,7 @@ private fun merkpostenSchluessel(w: Merkposten) = "${w.setNumber}|${w.condition}
 
 @Composable
 fun MerklisteScreen(
-    vm: MainViewModel,
+    vm: MerklisteViewModel,
     imageLoader: coil3.ImageLoader,
     onScan: () -> Unit,
     onOeffnen: (String, String) -> Unit,
@@ -223,7 +217,7 @@ fun MerklisteScreen(
             verticalArrangement = Arrangement.spacedBy(Abstaende.klein),
         ) {
             SmallFloatingActionButton(
-                onClick = { vm.setScannerSource("wanted"); onScan() },
+                onClick = { onScan() },
                 containerColor = MaterialTheme.colorScheme.secondaryContainer,
                 contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
                 shape = Formen.leiste,

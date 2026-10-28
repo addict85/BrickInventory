@@ -36,7 +36,7 @@ internal fun MainViewModel.setScope(view: ScopeFilter.View, value: String) {
             ScopeFilter.View.PARTS    -> loadParts()
             ScopeFilter.View.MINIFIGS -> loadMinifigs()
             ScopeFilter.View.FINANCE  -> Unit
-            ScopeFilter.View.MERKLISTE -> ladeMerkliste()
+            ScopeFilter.View.MERKLISTE -> Unit
         }
     }
 }

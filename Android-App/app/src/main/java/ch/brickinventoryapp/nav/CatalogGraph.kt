@@ -52,6 +52,8 @@ import androidx.navigation.NavType
 import androidx.navigation.navArgument
 import ch.brickinventoryapp.*
 import ch.brickinventoryapp.ui.MainViewModel
+import ch.brickinventoryapp.ui.viewmodel.MerklisteViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import ch.brickinventoryapp.ui.viewmodel.CatalogViewModel
 import ch.brickinventoryapp.ui.ManualItemDetailUiState
 
@@ -81,9 +83,9 @@ fun NavGraphBuilder.catalogGraph(
         composable(Screen.Wanted.route) {
             ReiterGeruest(stringResource(R.string.nav_wanted), vm, navController, bottomNavItems, snackbarHostState) {
                 ch.brickinventoryapp.ui.screens.MerklisteScreen(
-                    vm = vm,
+                    vm = hiltViewModel<MerklisteViewModel>(),
                     imageLoader = imageLoader,
-                    onScan = { navController.navigate(Screen.BarcodeScanner.route) },
+                    onScan = { vm.setScannerSource("wanted"); navController.navigate(Screen.BarcodeScanner.route) },
                     onOeffnen = { sn, zustand ->
                         navController.navigate(Screen.MerkpostenDetail.createRoute(sn, zustand))
                     },
@@ -98,7 +100,7 @@ fun NavGraphBuilder.catalogGraph(
             ),
         ) { backStack ->
             ch.brickinventoryapp.ui.screens.MerkpostenDetailScreen(
-                vm = vm,
+                vm = hiltViewModel<MerklisteViewModel>(),
                 setNumber = backStack.arguments?.getString("setNumber") ?: "",
                 condition = backStack.arguments?.getString("condition") ?: "N",
                 imageLoader = imageLoader,
@@ -139,6 +141,7 @@ fun NavGraphBuilder.catalogGraph(
             val state by vm.state.collectAsStateWithLifecycle()
             val blick by vm.blickfeld.collectAsStateWithLifecycle()
             val catSetNumber = backStack.arguments?.getString("setNumber") ?: ""
+            val merkliste: MerklisteViewModel = hiltViewModel()
             val catalogState by katalog.state.collectAsStateWithLifecycle()
             val lagerZustand by vm.lagerState.collectAsStateWithLifecycle()
             // loadCatalogDetail() meldet ebenfalls („Set nicht gefunden",
@@ -168,7 +171,7 @@ fun NavGraphBuilder.catalogGraph(
                 // Merkposten UND Preisalarm in einem Griff — die Regel dahinter
                 // steht in ui/MerklisteFeature.kt, nicht hier.
                 onWish = { sn, zustand, richtung, schwelle, konto ->
-                    vm.merkpostenMitAlarm(sn, zustand, richtung, schwelle, konto)
+                    merkliste.merkpostenMitAlarm(sn, zustand, richtung, schwelle, konto)
                 },
                 onOpenInGallery = { sn -> navController.navigate(Screen.SetDetail.createRoute(sn)) },
                 onBack = { navController.popBackStack() }

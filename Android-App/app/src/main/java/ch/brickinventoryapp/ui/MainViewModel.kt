@@ -208,8 +208,6 @@ class MainViewModel @Inject constructor(
     internal val _alarmUebersicht = MutableStateFlow(AlarmUebersichtUiState())
     val alarmUebersicht = _alarmUebersicht.asStateFlow()
 
-    internal val _merklisteState = MutableStateFlow(MerklisteUiState())
-    val merklisteState = _merklisteState.asStateFlow()
 
     // Ziel einer angetippten Preisalarm-Meldung. Begruendung an
     // MeldungsZielUiState (UiState.kt).
@@ -232,8 +230,6 @@ class MainViewModel @Inject constructor(
         _meldungsZiel.value = MeldungsZielUiState(null)
     }
 
-    internal val _merkpostenDetailState = MutableStateFlow(MerkpostenDetailUiState())
-    val merkpostenDetailState = _merkpostenDetailState.asStateFlow()
 
     /**
      * Galerie — eigener Fluss (Nachtrag: AppUiState-Aufteilung).
@@ -486,10 +482,6 @@ class MainViewModel @Inject constructor(
     // nicht fuenf halbe Orte im Vorrat hinterlassen.
     internal var lagerJob: kotlinx.coroutines.Job? = null
 
-    // Eigener Auftrag und nicht der Suchauftrag der Galerie: Beide Suchfelder
-    // koennen gleichzeitig einen Wert tragen, und ein gemeinsamer Auftrag
-    // haette das Tippen in der Merkliste die Galerie-Suche abbrechen lassen.
-    internal var merklisteSearchJob: kotlinx.coroutines.Job? = null
 
     /**
      * Die EINE Stelle, an der ein Fehler einen Satz bekommt (Nachtrag 116).
