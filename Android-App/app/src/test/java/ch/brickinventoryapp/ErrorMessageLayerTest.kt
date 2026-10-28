@@ -20,7 +20,7 @@ import org.junit.Test
  * nebeneinander, und welches griff, hing davon ab, wo der Fehler entstand.
  *
  * Jetzt meldet die Datenschicht nur noch die URSACHE als [Fehlerart]; den Satz
- * formuliert `MainViewModel.meldung()`. Dieser Test hält beide Hälften fest.
+ * formuliert `AppTexte.meldung()`. Dieser Test hält beide Hälften fest.
  */
 class ErrorMessageLayerTest {
 
@@ -52,7 +52,7 @@ class ErrorMessageLayerTest {
         assert(fehler.isEmpty()) {
             "Die Datenschicht formuliert wieder selbst. Sie hat keinen Context und " +
                 "kann nicht übersetzen — stattdessen eine Fehlerart melden und den " +
-                "Satz in MainViewModel.meldung() bilden:\n  " + fehler.joinToString("\n  ")
+                "Satz in AppTexte.meldung() bilden:\n  " + fehler.joinToString("\n  ")
         }
     }
 
@@ -69,9 +69,9 @@ class ErrorMessageLayerTest {
             "FehlerTexte.kt darf keinen Context brauchen — sonst ist die Zuordnung " +
                 "wieder nur mit Android-Laufzeit prüfbar"
         }
-        val vm = Quellen.ohneKommentare(Quellen.lies("ui/MainViewModel.kt"))
-        val meldung = Quellen.funktion(vm, "internal fun meldung(")
-        assert(meldung.isNotEmpty()) { "meldung() fehlt im MainViewModel" }
+        val vm = Quellen.ohneKommentare(Quellen.lies("ui/viewmodel/AppTexte.kt"))
+        val meldung = Quellen.funktion(vm, "override fun meldung(")
+        assert(meldung.isNotEmpty()) { "meldung() fehlt in AppTexte" }
         assert(meldung.contains("fehlerTextId(")) {
             "meldung() benutzt die gemeinsame Zuordnung nicht mehr"
         }
@@ -84,8 +84,8 @@ class ErrorMessageLayerTest {
         // antwortet in der Sprache des Kontos. Ginge dieser Vorrang verloren,
         // bekäme der Nutzer statt „Für dieses Datum gibt es schon einen
         // Kaufpreis" nur noch „Serverfehler (409)".
-        val vm = Quellen.ohneKommentare(Quellen.lies("ui/MainViewModel.kt"))
-        val meldung = Quellen.funktion(vm, "internal fun meldung(")
+        val vm = Quellen.ohneKommentare(Quellen.lies("ui/viewmodel/AppTexte.kt"))
+        val meldung = Quellen.funktion(vm, "override fun meldung(")
         assert(meldung.contains("fehler.message.isNotBlank()")) {
             "meldung() prüft die Servermeldung nicht mehr zuerst"
         }

@@ -93,7 +93,7 @@ class MediaAuthTest {
 
     @Test
     fun `der Bild-Cache wird beim Abmelden geleert`() {
-        val session = code(read("ui/SessionFeature.kt"))
+        val session = code(read("ui/AppViewModel.kt"))
         assert(session.contains("imageLoader.memoryCache?.clear()")) { "Memory-Cache bleibt stehen" }
         assert(session.contains("imageLoader.diskCache?.clear()")) {
             "Sonst sieht der nächste Nutzer auf demselben Gerät die Bilder des vorherigen"

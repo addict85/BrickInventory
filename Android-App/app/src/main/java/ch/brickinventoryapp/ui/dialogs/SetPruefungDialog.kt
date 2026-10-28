@@ -12,9 +12,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.R
-import ch.brickinventoryapp.ui.MainViewModel
+import ch.brickinventoryapp.ui.viewmodel.ErfassungViewModel
 import ch.brickinventoryapp.ui.Pruefphase
-import ch.brickinventoryapp.ui.brichPruefungAb
 import ch.brickinventoryapp.ui.theme.Abstaende
 
 /**
@@ -47,7 +46,7 @@ import ch.brickinventoryapp.ui.theme.Abstaende
  * er liest einen Fluss und ruft eine ViewModel-Funktion.
  */
 @Composable
-fun SetPruefungDialog(vm: MainViewModel) {
+fun SetPruefungDialog(vm: ErfassungViewModel) {
     val erfassung by vm.erfassungState.collectAsStateWithLifecycle()
     val schritt = erfassung.pruefung ?: return
 

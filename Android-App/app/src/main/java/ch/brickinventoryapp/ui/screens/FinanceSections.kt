@@ -41,6 +41,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ch.brickinventoryapp.R
+import ch.brickinventoryapp.ui.*
 import ch.brickinventoryapp.util.resolveThumbUrl
 import coil3.compose.AsyncImage
 import androidx.compose.material.icons.filled.*

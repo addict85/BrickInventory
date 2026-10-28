@@ -69,7 +69,7 @@ class NavigationHostSizeTest {
     fun `der Dialog liest seinen Zustand selbst`() {
         // Dieselbe Bauart wie die Reiter-Bildschirme seit Nachtrag 96.
         val dlg = code(read("ui/dialogs/BarcodeResultDialog.kt"))
-        assert(dlg.contains("vm: MainViewModel")) { "Der Dialog nimmt kein ViewModel" }
+        assert(dlg.contains("vm: ErfassungViewModel")) { "Der Dialog nimmt kein ViewModel" }
         assert(dlg.contains("vm.state.collectAsStateWithLifecycle()")) {
             "Der Dialog liest den Zustand nicht selbst"
         }

@@ -126,6 +126,7 @@
     <string name="gallery_delete_text">%1$s and all parts will be removed.</string>
     <string name="gallery_pieces_suffix"> parts</string>
     <string name="gallery_scan_barcode">Scan barcode</string>
+    <string name="offline_stand">Offline – data as of %1$s</string>
     <string name="gallery_add_set">Add set</string>
     <string name="gallery_add_set_title">Add set</string>
     <string name="gallery_set_number">Set number</string>

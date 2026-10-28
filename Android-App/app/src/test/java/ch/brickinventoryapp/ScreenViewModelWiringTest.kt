@@ -68,7 +68,7 @@ class ScreenViewModelWiringTest {
                     "warum jede Erweiterung Screen, Graph UND ViewModel anfasst — der " +
                     "Zustand gehört vom ViewModel gelesen."
             }
-            assert(params.any { it.trim().startsWith("vm: MainViewModel") }) {
+            assert(params.any { Regex("""^vm: \w*ViewModel\b""").containsMatchIn(it.trim()) }) {
                 "$fn nimmt kein ViewModel entgegen"
             }
             assert(src.contains("vm.state.collectAsStateWithLifecycle()")) {

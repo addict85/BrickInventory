@@ -51,7 +51,11 @@ import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
 import ch.brickinventoryapp.*
-import ch.brickinventoryapp.ui.MainViewModel
+import ch.brickinventoryapp.ui.AppViewModel
+import ch.brickinventoryapp.ui.viewmodel.FinanzViewModel
+import ch.brickinventoryapp.ui.viewmodel.EinstellungenViewModel
+import ch.brickinventoryapp.ui.viewmodel.HaushaltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import ch.brickinventoryapp.ui.ManualItemDetailUiState
 
 /**
@@ -65,7 +69,7 @@ import ch.brickinventoryapp.ui.ManualItemDetailUiState
  * ./gradlew assembleDebug auf.
  */
 fun NavGraphBuilder.toolsGraph(
-    vm: MainViewModel,
+    vm: AppViewModel,
     gutscheinVm: ch.brickinventoryapp.ui.viewmodel.GutscheinViewModel,
     navController: NavHostController,
     imageLoader: coil3.ImageLoader,
@@ -98,19 +102,19 @@ fun NavGraphBuilder.toolsGraph(
         composable(Screen.Finance.route) {
             // Zustand INNERHALB des Ziels lesen — als Parameter wäre es eine
             // Momentaufnahme vom Aufbau des Graphen (der NavHost-Builder läuft nur einmal).
-            val state by vm.state.collectAsStateWithLifecycle()
-            val financeState by vm.financeState.collectAsStateWithLifecycle()
-            val partsState by vm.partsState.collectAsStateWithLifecycle()
-            LaunchedEffect(state.serverUrl) { if (state.serverUrl.isNotBlank() && financeState.valuation == null) vm.loadValuation() }
+            val finanzen: FinanzViewModel = hiltViewModel()
+            val state by finanzen.state.collectAsStateWithLifecycle()
+            val financeState by finanzen.financeState.collectAsStateWithLifecycle()
+            LaunchedEffect(state.serverUrl) { if (state.serverUrl.isNotBlank() && financeState.valuation == null) finanzen.loadValuation() }
             ReiterGeruest(stringResource(R.string.nav_finance), vm, navController, bottomNavItems, snackbarHostState) {
                 LaunchedEffect(state.serverUrl) {
-                    if (state.serverUrl.isNotBlank() && financeState.historyPoints.isEmpty()) vm.loadPortfolioHistory()
+                    if (state.serverUrl.isNotBlank() && financeState.historyPoints.isEmpty()) finanzen.loadPortfolioHistory()
                 }
                 ch.brickinventoryapp.ui.ScrollPositionKeeper(
                     "finance", financeListState,
                     financeState.valuation != null, vm.scrollMemory)
                 FinanceScreen(
-                    vm = vm,
+                    vm = finanzen,
                     imageLoader = imageLoader,
                     // Klick auf eine Zeile öffnet dieselbe Detailansicht wie in
                     // der Galerie. Der Scroll-Zustand liegt ausserhalb dieses
@@ -123,13 +127,12 @@ fun NavGraphBuilder.toolsGraph(
                     // ohnehin geladen hat — sonst stünde dort bis zum ersten
                     // Laden die nackte Nummer.
                     onManualClick = { type, id, colorId ->
-                        // Aus DERSELBEN Quelle wie die Listen. Ist sie noch
-                        // nicht geladen, steht die Nummer da — genau wie
-                        // vorher, wenn die Bewertung noch fehlte.
+                        // Aus der Bewertung, die diese Liste zeigt. Fehlt sie
+                        // noch, steht die Nummer da.
                         val name = if (type == "fig")
-                            partsState.manualFigs?.find { it.figNumber == id }?.figName
+                            financeState.figsValuation?.figs?.find { it.figNumber == id }?.figName
                         else
-                            partsState.manualParts
+                            financeState.partsValuation?.parts
                                 ?.find { it.partNumber == id && it.colorId == colorId }?.partName
                         navController.navigate(
                             Screen.ManualItemDetail.createRoute(type, id, colorId, name ?: id))
@@ -140,6 +143,7 @@ fun NavGraphBuilder.toolsGraph(
             }
         }
         composable(Screen.BarcodeScanner.route) {
+            val erfassung = ch.brickinventoryapp.ui.viewmodel.aktivitaetsViewModel<ch.brickinventoryapp.ui.viewmodel.ErfassungViewModel>()
             BarcodeScannerScreen(
                 // Texterkennung nur hier (Nachtrag 61): Dieser Scanner bedient
                 // „Set hinzufügen" (Galerie) und „Teileliste hinzufügen" —
@@ -149,14 +153,14 @@ fun NavGraphBuilder.toolsGraph(
                 onResult = { scannedValue ->
                     navController.popBackStack()
                     // Look up the scanned value via barcode API then navigate to add set
-                    vm.resolveBarcode(scannedValue)
+                    erfassung.resolveBarcode(scannedValue)
                 },
                 // Texterkennung liefert die Setnummer bereits fertig (Nachtrag
                 // 60) — der Umweg über die EAN-Auflösung entfällt. Das spart je
                 // Scan bis zu acht Rebrickable-Aufrufe und geht sofort weiter.
                 onSetNumberResult = { setNumber ->
                     navController.popBackStack()
-                    vm.useScannedSetNumber(setNumber)
+                    erfassung.useScannedSetNumber(setNumber)
                 },
                 onDismiss = { navController.popBackStack() }
             )
@@ -165,26 +169,29 @@ fun NavGraphBuilder.toolsGraph(
             // Zustand INNERHALB des Ziels lesen — als Parameter wäre es eine
             // Momentaufnahme vom Aufbau des Graphen (der NavHost-Builder läuft nur einmal).
             val state by vm.state.collectAsStateWithLifecycle()
-            val barcodeState by vm.barcodeState.collectAsStateWithLifecycle()
+            val blick by vm.blickfeld.collectAsStateWithLifecycle()
+            val erfassung = ch.brickinventoryapp.ui.viewmodel.aktivitaetsViewModel<ch.brickinventoryapp.ui.viewmodel.ErfassungViewModel>()
+            val teileliste = hiltViewModel<ch.brickinventoryapp.ui.viewmodel.TeilelisteViewModel>()
+            val barcodeState by erfassung.barcodeState.collectAsStateWithLifecycle()
             ReiterGeruest(stringResource(R.string.nav_partslist), vm, navController, bottomNavItems, snackbarHostState) {
                 PartsListScreen(
                     serverUrl = state.serverUrl,
                     authToken = state.authToken,
-                    onExportPdf = { sets, parts -> vm.exportPartsPdf(activity, sets, parts) },
-                    pdfStatus = vm.pdfExportStatus,
+                    onExportPdf = { sets, parts -> teileliste.exportPartsPdf(activity, sets, parts) },
+                    pdfStatus = teileliste.pdfExportStatus,
                     imageLoader = imageLoader,
-                    onScanBarcode = { vm.setScannerSource("partslist"); navController.navigate(Screen.BarcodeScanner.route) },
+                    onScanBarcode = { erfassung.setScannerSource("partslist"); navController.navigate(Screen.BarcodeScanner.route) },
                     // Erfolgloser Scan → Cursor ins Set-Feld (Nachtrag 113).
                     manuelleErfassungAnfordern = barcodeState.manuelleErfassungAnfordern,
-                    onManuelleErfassungQuittiert = { vm.manuelleErfassungQuittieren() },
-                    onResolveSet = { setNumber -> vm.resolveSetForPartsList(setNumber) },
+                    onManuelleErfassungQuittiert = { erfassung.manuelleErfassungQuittieren() },
+                    onResolveSet = { setNumber -> teileliste.resolveSetForPartsList(setNumber) },
                     onLadeBestand = { teile, nurLose, mitUnterkonten ->
-                        vm.ladeTeilelisteBestand(teile, nurLose, mitUnterkonten) },
+                        teileliste.ladeTeilelisteBestand(teile, nurLose, mitUnterkonten) },
                     // Dieselbe Regel wie in der Webapp (02-gallery.js): Mehr als
                     // ein Mitglied im Haushalt heisst „es gibt Unterkonten".
-                    hatUnterkonten = state.householdMembers.size > 1,
+                    hatUnterkonten = blick.householdMembers.size > 1,
                     barcodeSetNumber = barcodeState.fuerTeileliste,
-                    onBarcodeConsumed = { vm.clearBarcodeForPartsList() },
+                    onBarcodeConsumed = { erfassung.clearBarcodeForPartsList() },
                     listState = partsListState
                 )
             }
@@ -207,7 +214,7 @@ fun NavGraphBuilder.toolsGraph(
                 ch.brickinventoryapp.ui.ScrollPositionKeeper(
                     "settings", settingsScrollState, vm.scrollMemory)
                 SettingsScreen(
-                    vm = vm,
+                    vm = hiltViewModel<EinstellungenViewModel>(),
                     onLogout = { vm.logout(); navController.navigate(Screen.Login.route) { popUpTo(0) { inclusive = true } } },
                     onServerWechseln = { navController.navigate(Screen.Setup.route) },
                     // Die sechs Rubriken fuehren seit dem 17.10. nicht mehr
@@ -261,7 +268,7 @@ fun NavGraphBuilder.toolsGraph(
         composable(Screen.Preisalarme.route) {
             val state by vm.state.collectAsStateWithLifecycle()
             PreisalarmeUnterseite(
-                vm = vm,
+                vm = hiltViewModel<EinstellungenViewModel>(),
                 imageLoader = imageLoader,
                 serverUrl = state.serverUrl,
                 snackbarHostState = snackbarHostState,
@@ -274,15 +281,15 @@ fun NavGraphBuilder.toolsGraph(
         }
 
         composable(Screen.Lagerorte.route) {
-            LagerorteUnterseite(vm, snackbarHostState) { navController.popBackStack() }
+            LagerorteUnterseite(hiltViewModel<EinstellungenViewModel>(), snackbarHostState) { navController.popBackStack() }
         }
 
         composable(Screen.Haushalt.route) {
-            HaushaltUnterseite(vm, snackbarHostState) { navController.popBackStack() }
+            HaushaltUnterseite(hiltViewModel<HaushaltViewModel>(), snackbarHostState) { navController.popBackStack() }
         }
 
         composable(Screen.CsvImport.route) {
-            CsvImportUnterseite(vm, snackbarHostState) { navController.popBackStack() }
+            CsvImportUnterseite(hiltViewModel<EinstellungenViewModel>(), snackbarHostState) { navController.popBackStack() }
         }
 
         composable(Screen.Konto.route) {

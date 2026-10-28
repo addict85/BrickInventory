@@ -92,7 +92,7 @@ class GalerieAbfrageTest {
 
     @After
     fun zu() {
-        server.shutdown()
+        runCatching { server.shutdown() }
         cacheDir.deleteRecursively()
     }
 
@@ -181,20 +181,21 @@ class GalerieAbfrageTest {
     }
 
     @Test
-    fun `die volle Sicht wird gespeichert und traegt bei Serverfehler`() = runTest {
+    fun `die volle Sicht wird gespeichert und traegt bei Netzausfall`() = runTest {
         // Das Gegenstueck: Genau EIN Fall darf auf die Platte, und der muss es
         // auch wirklich tun — sonst startet die App ohne Netz mit leerer Galerie.
+        // Netzausfall = die Verbindung bricht ab; ein 500 ist eine Auskunft des
+        // Servers und traegt seit dem 28.10.2026 nicht mehr (RepoCacheRueckfallTest).
         server.enqueue(MockResponse().setResponseCode(200).setBody(antwort("10-1", "11-1")))
         assert(nummern(repo.getSets()) == listOf("10-1", "11-1"))
 
-        server.enqueue(MockResponse().setResponseCode(500))
+        server.shutdown()   // Verbindung verweigert: ein echter Netzfehler
         assert(nummern(repo.getSets()) == listOf("10-1", "11-1")) {
             "Ohne Netz muss die zuletzt gesehene volle Galerie kommen"
         }
 
         // Auch mit ausgeschriebener Standardsortierung ist es dieselbe Sicht —
         // loadSets() reicht sie immer mit, die Vorgabe ist also der Normalfall.
-        server.enqueue(MockResponse().setResponseCode(500))
         assert(nummern(repo.getSets(sort = GALLERY_DEFAULT_SORT)) == listOf("10-1", "11-1")) {
             "Die Standardsortierung ist die volle Sicht — sonst greift der Cache nie, " +
                 "weil die Galerie den Wert immer mitschickt"

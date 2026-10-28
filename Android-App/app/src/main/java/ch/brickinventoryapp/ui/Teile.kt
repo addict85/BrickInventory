@@ -86,7 +86,8 @@ internal class Teile(
                     _state.update {
                         it.copy(partsLoading = false,
                             parts = if (seite == 1) r.data.parts else it.parts + r.data.parts,
-                            partsTotal = r.data.total, partsPage = seite)
+                            partsTotal = r.data.total, partsPage = seite,
+                            teileOfflineStand = if (seite == 1) r.stand else it.teileOfflineStand)
                     }
                     if (seite == 1) {
                         // Die manuellen Teile stehen als ein Abschnitt über der
@@ -181,7 +182,8 @@ internal class Teile(
             val suche = _state.value.minifigsQuery.ifBlank { null }
             when (val r = quelle.figuren(suche)) {
                 is Result.Success -> {
-                    _state.update { it.copy(minifigs = r.data.figs, minifigsLoading = false) }
+                    _state.update { it.copy(minifigs = r.data.figs, minifigsLoading = false,
+                        figurenOfflineStand = r.stand) }
                     (quelle.manuelleFiguren(suche) as? Result.Success)
                         ?.let { m -> _state.update { it.copy(manualFigs = m.data.figs) } }
                 }
@@ -199,6 +201,9 @@ internal class Teile(
     }
 
     /** Abmelden: nichts vom vorigen Konto stehen lassen, laufende Abrufe verwerfen. */
+    /** Gemerkte Filter und Ansichten übernehmen, ohne zu laden. */
+    fun stelleFilterWieder(aenderung: (PartsUiState) -> PartsUiState) = _state.update(aenderung)
+
     fun zuruecksetzen() {
         teileJob?.cancel()
         figurenJob?.cancel()

@@ -18,13 +18,15 @@ const web  = rel => lies(path.join(WEB, rel));
 
 // Jeder Pfad in den Android-Baum AUSGESCHRIEBEN — siehe test/baumbruecken.test.js.
 const KT_API    = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'data', 'api', 'BrickApiService.kt'));
-const KT_FEAT   = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'ui', 'SetDetailFeature.kt'));
+// Seit dem Schnitt des MainViewModels (28.10.2026): das entprellte Speichern
+// in Preisalarmeingabe.kt, gehalten vom SetDetailViewModel.
+const KT_FEAT   = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'ui', 'Preisalarmeingabe.kt'));
 const KT_SECT   = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'SetDetailSections.kt'));
 const KT_ABHOL  = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'alarm', 'Alarmabholung.kt'));
 const KT_WORKER = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'alarm', 'PreisalarmWorker.kt'));
 const KT_START  = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'BrickInventoryApp.kt'));
 const KT_ALARMEINGABE = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'alarm', 'Alarmeingabe.kt'));
-const KT_VM     = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'ui', 'MainViewModel.kt'));
+const KT_VM     = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'ui', 'viewmodel', 'SetDetailViewModel.kt'));
 // Die Einstellungen der App liegen seit dem 16.10. in ZWEI Dateien: Der
 // Bildschirm selbst traegt nur noch die Liste, jede Rubrik hat ihre eigene
 // Seite (EinstellungenUnterseiten.kt). Gelesen werden deshalb beide — die
@@ -91,7 +93,7 @@ test('ein leeres Feld löscht — in beiden', () => {
     'Die Webapp löscht bei leerem Feld nicht');
   assert.match(KT_ALARMEINGABE, /return if \(z > 0\.0\) z else null/,
     'Die App löscht bei leerem Feld nicht');
-  assert.match(KT_FEAT, /if \(schwelle == null\)\s*\n?\s*repo\.sets\.deletePreisalarm/,
+  assert.match(KT_FEAT, /if \(schwelle == null\)\s*\n?\s*sets\.deletePreisalarm/,
     'Die App löscht bei leerem Feld nicht');
 });
 
@@ -120,7 +122,7 @@ test('beide speichern beim TIPPEN, entprellt, mit derselben Ruhezeit', () => {
   // gerade getippten Wert — nicht die Zustandsvariable `schwelle`, die zu
   // diesem Zeitpunkt noch den vorigen Stand trägt.
   assert.match(require('./helpers/sources').ohneKommentare(KT_SECT),
-    /onValueChange = \{[\s\S]{0,400}?vm\.setzePreisalarm\(setNumber, richtung, (?!schwelle\b)\w+, zustand\)/,
+    /onValueChange = \{[\s\S]{0,400}?onSetze\(setNumber, richtung, (?!schwelle\b)\w+, zustand\)/,
     'Das Schwellenfeld der App hängt nicht am Tippen');
   assert.doesNotMatch(require('./helpers/sources').ohneKommentare(KT_SECT),
     /alarmFokus/, 'Die App speichert noch am Fokuswechsel');
@@ -139,17 +141,18 @@ test('die Ruhezeit der App überlebt das Verlassen des Bildschirms', () => {
   // denselben Fehler nur verschoben: Er hängt an der Komposition. Wer während
   // der Ruhezeit zurückgeht, löst sie auf und bricht den Auftrag ab — wieder
   // nichts gespeichert, nur seltener.
-  assert.match(KT_VM, /internal var alarmJob/,
+  assert.match(KT_VM, /Preisalarmeingabe\(\s*\n?\s*scope = viewModelScope/,
     'Der Auftrag hängt nicht mehr am ViewModel');
   const f = require('./helpers/sources').ohneKommentare(KT_FEAT);
-  assert.match(f, /alarmJob\?\.cancel\(\)\s*\n\s*alarmJob = viewModelScope\.launch/,
-    'Die Ruhezeit läuft nicht im viewModelScope');
+  assert.match(f, /job\?\.cancel\(\)\s*\n\s*job = scope\.launch/,
+    'Die Ruhezeit läuft nicht im übergebenen Scope');
   assert.doesNotMatch(require('./helpers/sources').ohneKommentare(KT_SECT),
     /LaunchedEffect\([^)]*schwelle/,
     'Die Ruhezeit steht wieder in einem LaunchedEffect — sie stirbt mit dem Bildschirm');
-  // Und die späte Antwort darf nicht im Zustand eines ANDEREN Sets landen.
-  assert.match(f, /setDetail\?\.setNumber == setNumber/,
-    'Eine späte Antwort schreibt die Alarme des vorigen Sets in den neuen Zustand');
+  // Und die späte Antwort darf nicht im Zustand eines ANDEREN Sets landen:
+  // Jedes SetDetailViewModel gehört zu genau einem Set (Navigationsargument).
+  assert.match(KT_VM, /val setNumber: String = gemerkt\[ARG_SET\]/,
+    'Das Set der Detailansicht kommt nicht mehr fest aus der Route');
 });
 
 test('beide zeigen, ob schon gemeldet wurde', () => {

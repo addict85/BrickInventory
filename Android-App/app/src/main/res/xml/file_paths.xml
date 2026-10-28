@@ -8,7 +8,7 @@
   Provider-Authority erreichbar — inklusive des API-Caches (api-1/, das
   Inventar im Klartext-JSON) und des Bild-Caches. Geteilt wird über den
   Provider aber nur das exportierte Teilelisten-PDF (PdfExportManager legt
-  es in <files>/pdf/ ab, PdfExportService und PartsListFeature reichen es
+  es in <files>/pdf/ ab, PdfExportService und TeilelisteViewModel reichen es
   per ACTION_VIEW weiter).
 
   Beide Wurzeln (extern + intern), weil der Manager auf filesDir

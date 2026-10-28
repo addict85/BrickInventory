@@ -385,72 +385,6 @@ class SplitFileImportsTest {
     }
 
     @Test
-    fun `ViewModel-Erweiterungen sind importiert`() {
-        // ── Marcos vierter Build brach hier ab (Nachtrag 103) ────────────────
-        //
-        //     FinanceScreen.kt:64:48 Unresolved reference 'setScope'.
-        //
-        // `setScope` ist `internal fun MainViewModel.setScope(…)` in
-        // ch.brickinventoryapp.ui (HouseholdFeature.kt). Die Screens liegen in
-        // ch.brickinventoryapp.ui.SCREENS — ein anderes Paket.
-        //
-        // `import ch.brickinventoryapp.ui.MainViewModel` holt NUR die Klasse,
-        // nicht ihre Erweiterungen. Dafür braucht es
-        // `import ch.brickinventoryapp.ui.*`, wie SetDetailScreen.kt es seit
-        // jeher hat.
-        //
-        // Beim Umbau in Nachtrag 96 wanderten die vm-Aufrufe aus den
-        // Navigationsgraphen (Paket …nav, dort mit Wildcard) in die Screens und
-        // verloren dabei die Sichtbarkeit. Es traf 23 Aufrufe in fünf Dateien;
-        // Marco hat den ersten gemeldet.
-        val wurzel = java.io.File("src/main/java/ch/brickinventoryapp")
-        // Untergrenze (Nachtrag 118): ein leerer Dateilauf lässt jede
-        // Sammelprüfung darunter stillschweigend bestehen.
-        check(wurzel.walkTopDown().count { it.extension == "kt" } >= 20) {
-            "Zu wenige Kotlin-Dateien unter ${'$'}{wurzel.path} — Pfad veraltet?"
-        }
-        val dateien = wurzel.walkTopDown().filter { it.extension == "kt" }.toList()
-
-        // Erweiterung → Paket, in dem sie deklariert ist
-        val erweiterung = mutableMapOf<String, String>()
-        for (f in dateien) {
-            val src = f.readText()
-            val paket = Regex("""^package ([\w.]+)""", RegexOption.MULTILINE)
-                .find(src)?.groupValues?.get(1) ?: continue
-            for (m in Regex("""^(?:internal |public |private )?(?:suspend )?fun MainViewModel\.(\w+)""",
-                    RegexOption.MULTILINE).findAll(entkleide(src))) {
-                erweiterung[m.groupValues[1]] = paket
-            }
-        }
-
-        val fehler = mutableListOf<String>()
-        for (f in dateien) {
-            val roh = f.readText()
-            val paket = Regex("""^package ([\w.]+)""", RegexOption.MULTILINE)
-                .find(roh)?.groupValues?.get(1) ?: continue
-            val code = entkleide(roh)
-            // Kommentar hinter der Importzeile zulassen — im Projekt üblich:
-            //   import ch.brickinventoryapp.ui.*  // Feature-Extensions (…)
-            val importe = Regex("""^import ([\w.*]+)\s*(?://.*)?$""", RegexOption.MULTILINE)
-                .findAll(roh).map { it.groupValues[1] }.toSet()
-            val wild = importe.filter { it.endsWith("*") }.map { it.dropLast(1) }.toSet()
-
-            for ((name, quelle) in erweiterung) {
-                if (quelle == paket) continue
-                if ("$quelle.$name" in importe || "$quelle." in wild) continue
-                if (Regex("""\bvm\.$name\s*\(""").containsMatchIn(code) ||
-                    Regex("""\bvm::$name\b""").containsMatchIn(code)) {
-                    fehler += "${f.name}: ruft vm.$name() — Erweiterung aus $quelle, nicht importiert"
-                }
-            }
-        }
-        assert(fehler.isEmpty()) {
-            "ViewModel-Erweiterungen ohne Import:\n  " + fehler.joinToString("\n  ") +
-                "\n(`import $\u007Bpaket\u007D.*` an den Dateikopf behebt das.)"
-        }
-    }
-
-    @Test
     fun `jeder Projekt-Import hat ein Ziel`() {
         // ── Marcos fünfter Build brach hier ab (Nachtrag 105) ────────────────
         //
@@ -479,7 +413,7 @@ class SplitFileImportsTest {
                 .find(src)?.groupValues?.get(1) ?: continue
             for (m in Regex(
                 """^(?:@\w+\s+)?(?:internal |public |private )?(?:const )?(?:suspend |inline )?""" +
-                """(?:fun|val|var|class|object|interface|enum class|data class|sealed class|typealias)""" +
+                """(?:fun|val|var|class|object|interface|enum class|data class|sealed class|sealed interface|abstract class|fun interface|typealias)""" +
                 """\s+(?:<[^>]*>\s*)?(?:\w+\.)?(\w+)""",
                 RegexOption.MULTILINE).findAll(src)) {
                 deklariert += "$paket.${m.groupValues[1]}"

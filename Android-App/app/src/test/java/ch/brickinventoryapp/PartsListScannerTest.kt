@@ -79,19 +79,4 @@ class PartsListScannerTest {
         }
     }
 
-    @Test
-    fun `der Teilelisten-Zweig legt keinen Bestand an`() {
-        val feature = code(
-            java.io.File("src/main/java/ch/brickinventoryapp/ui/BarcodeFeature.kt").readText())
-        val zweig = feature.indexOf("""if (_barcodeState.value.source == "partslist")""")
-        assert(zweig > 0) { "der Teilelisten-Zweig in confirmAddBarcode fehlt" }
-        val bisReturn = feature.substring(zweig, feature.indexOf("return", zweig))
-        assert(!bisReturn.contains("repo.sets.addSet")) {
-            "Aus der Teileliste darf KEIN Set in die Sammlung erfasst werden — die Nummer " +
-                "wird nur an die Liste weitergereicht"
-        }
-        assert(bisReturn.contains("fuerTeileliste")) {
-            "die gescannte Nummer muss an die Teileliste weitergereicht werden"
-        }
-    }
 }

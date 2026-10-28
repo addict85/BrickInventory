@@ -66,7 +66,7 @@ class ViewModelBauartTest {
             // Gegenprobe, die grün blieb.
             if (!Regex("""\bctx\b""").containsMatchIn(s)) continue
             assert(s.contains("@param:ApplicationContext")) {
-                "${'$'}name benutzt ctx, bekommt ihn aber nicht über @ApplicationContext"
+                "$name benutzt ctx, bekommt ihn aber nicht über @ApplicationContext"
             }
         }
     }
