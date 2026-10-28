@@ -164,7 +164,9 @@ test('die fünf Verdrahtungen über ihre echten Adressen', { concurrency: 1 }, a
     // findSameDayAcquisition() sitzt im ÄNDERN-Weg: Wer das Datum einer
     // Erfassung auf einen Tag schiebt, an dem für dieselbe Position schon
     // eine steht, bekommt 409. Ohne die Prüfung liefe es in den eindeutigen
-    // Index (idx_set_acq_tag_zustand, Migration 0008) und käme als 500 zurück.
+    // Index (seit 0047 idx_set_acq_tag_merkmale) und käme als 500 zurück.
+    // Kollision heisst seit 0047: gleicher Tag, Zustand, Preis und Währung —
+    // deshalb tragen beide Käufe denselben Preis.
     //
     // Zugesichert war bisher, dass `kind: 'set'|'part'|'fig'` im Quelltext
     // der Fabrik steht — nicht, dass die Prüfung für eine davon greift.
@@ -173,7 +175,7 @@ test('die fünf Verdrahtungen über ihre echten Adressen', { concurrency: 1 }, a
     await db.run(`DELETE FROM set_acquisitions WHERE set_number=$1`, [SN]);
     await haeltSet(db, HAUPT, SN, 1, { preis: 100, am: gestern });
     await db.run(`INSERT INTO set_acquisitions (user_id,set_number,quantity,purchase_price,condition,created_at)
-                  VALUES ($1,$2,1,80,'N',$3::timestamptz)`, [HAUPT, SN, heute]);
+                  VALUES ($1,$2,1,100,'N',$3::timestamptz)`, [HAUPT, SN, heute]);
     const zeilen = await db.all(
       `SELECT id, created_at FROM set_acquisitions WHERE user_id=$1 AND set_number=$2
         ORDER BY created_at`, [HAUPT, SN]);

@@ -59,6 +59,10 @@ test('ein neues Exemplar folgt den Erfassungen, nicht dem gespeicherten Wert', {
       throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
     t.skip('Test-DB nicht erreichbar'); return;
   }
+  // Die Tagesregel steht als Index in Migration 0047; ohne ihn greift das
+  // ON CONFLICT beim Erfassen nicht.
+  const mc = await db.pool.connect();
+  try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }
 
   const U = `neuzust-${process.pid}`, SET = '60445-1';
   const aufraeumen = async () => {
