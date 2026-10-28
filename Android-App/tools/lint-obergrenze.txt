@@ -1,5 +1,5 @@
 # Obergrenze fuer die Lint-Warnungen.
-26
+24
 # NACHGEMESSEN hochgesetzt von 25, und zwar OHNE Vorhersage — ich hatte den
 # Befund nicht erwartet (Lauf 37649940049, Android-App auf claude/pdf-zoom).
 #
