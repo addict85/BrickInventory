@@ -284,12 +284,12 @@ function establishSession(req: Request, data: { userId: number; username: string
       // express-session-Middleware gibt es kein Session-Objekt mit id/cookie.
       // Dieser Zweig existiert NUR fuer Tests — im Betrieb steht die
       // Middleware immer davor, und dann greift regenerate() darueber.
-      Object.assign(req.session || (req.session = {} as typeof req.session), data);
+      Object.assign(req.session || (req.session = {} as typeof req.session), data, { angemeldetAm: Date.now() });
       return resolve(undefined);
     }
     req.session.regenerate((err?: any) => {
       if (err) return reject(err);
-      Object.assign(req.session, data);
+      Object.assign(req.session, data, { angemeldetAm: Date.now() });
       // Sofort schreiben, damit die neue ID auch dann gültig ist, wenn der
       // Client unmittelbar danach eine zweite Anfrage stellt.
       req.session.save((e2?: any) => (e2 ? reject(e2) : resolve(undefined)));

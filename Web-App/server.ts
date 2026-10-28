@@ -92,7 +92,7 @@ import { starteHintergrundlaeufe } from './startup/backgroundJobs';
 import { getGlobalSetting, deleteGlobalSetting } from './utils/settings';
 import { HAUSHALT_KANAL, leereHaushaltCache } from './utils/household';
 import { drossleBeruehren } from './utils/sitzungsBeruehrung';
-import { SITZUNG_LEERLAUF_SEK } from './utils/sitzungsFrist';
+import { SITZUNG_LEERLAUF_SEK, sitzungsHoechstdauer } from './utils/sitzungsFrist';
 import { antwortAufDateiFehler, liefereDatei } from './utils/dateiAusliefern';
 
 const WORKERS = (require('./utils/workerZahl') as typeof import('./utils/workerZahl')).workerZahl();
@@ -354,6 +354,7 @@ app.use(session({
       : process.env.NODE_ENV === 'production',
   }
 }));
+app.use(sitzungsHoechstdauer());
 
 // resolveUserId kommt aus utils/auth.js — nutzt den Token-Cache, statt pro
 // Request die api_tokens-Tabelle zu befragen.
