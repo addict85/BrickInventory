@@ -121,9 +121,6 @@ fun ComparisonScreen() {
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                     shape = Formen.karte,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)
-                    ),
                     keyboardOptions = NumericInput.ganzzahlTastatur(ImeAction.Search),
                     keyboardActions = KeyboardActions(onSearch = { triggerSearch() })
                 )

@@ -166,7 +166,7 @@ fun TabellenZeile(
                     style = MaterialTheme.typography.bodyMedium,
                 )
             }
-            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         }
     }
 }
@@ -246,9 +246,6 @@ fun Suchfeld(
         modifier = modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = Abstaende.klein),
         singleLine = true,
         shape = Formen.karte,
-        colors = OutlinedTextFieldDefaults.colors(
-            unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)
-        )
     )
 }
 
