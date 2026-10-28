@@ -187,7 +187,7 @@ test('Gutscheine: Export und Import über die echten Adressen', { concurrency: 1
         [HAUPT, k.nr]);
       assert.ok(z, `${k.nr} kam nicht zurück`);
       assert.equal(Number(z.amount), k.app, `${k.nr}: ${z.amount} statt ${k.app}`);
-      assert.equal(z.pin, k.pin, `${k.nr}: PIN ${z.pin} statt ${k.pin}`);
+      assert.equal(_req('utils/geheimnis.js').entschluessele(z.pin), k.pin, `${k.nr}: PIN ${z.pin} statt ${k.pin}`);
     }
     // Und der von Hand erfasste, der nie ein PDF hatte.
     const ohne = await db.get(

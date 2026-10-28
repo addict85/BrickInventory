@@ -14,6 +14,7 @@ import * as nachlaeufe from '../jobs/startNachlaeufe';
 import { purgeAltePreise } from '../utils/priceHistory';
 import { purgeExpiredTokens } from '../utils/auth';
 import { raeumeAnmeldezaehlerAuf } from '../utils/loginLimiter';
+import { verschluesseleAltbestand } from '../utils/geheimnisAltbestand';
 import { raeumePapierkorbAuf } from '../utils/papierkorb';
 import { logAndContinue } from '../utils/httpError';
 import { startImgCacheCleanup } from '../routes/imgProxy';
@@ -44,6 +45,11 @@ export async function starteHintergrundlaeufe(): Promise<void> {
     purge();
     setInterval(purge, 60 * 60 * 1000).unref();
   }
+
+  // Klartext-Geheimnisse aus der Zeit vor der Verschlüsselung (utils/geheimnis.ts).
+  verschluesseleAltbestand()
+    .then(n => { if (n) console.log(`[geheimnis] ${n} Geheimnisse nachträglich verschlüsselt`); })
+    .catch(logAndContinue('geheimnis:altbestand'));
 
   // Abgelaufene Anmeldezähler (utils/loginLimiter.ts).
   {

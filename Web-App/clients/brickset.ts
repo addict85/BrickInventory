@@ -8,6 +8,7 @@
 
 import https from 'https';
 import * as db from '../db/database';
+import { getGlobalSetting } from '../utils/settings';
 import { checkAndIncrementRateLimit } from '../utils/apiKontingent';
 import { fehlertext } from '../utils/httpError';
 import { alsAbrufFehler } from './abrufFehler';
@@ -16,7 +17,7 @@ import { mitVersion } from '../utils/setNummer';
 const BASE = 'https://brickset.com/api/v3.asmx';
 
 async function getApiKey() {
-  return (await db.get("SELECT value FROM global_settings WHERE key='brickset_api_key'"))?.value || '';
+  return (await getGlobalSetting('brickset_api_key')) || '';
 }
 
 function httpsGetOnce(url: string): Promise<{ status: number; body: string }> {

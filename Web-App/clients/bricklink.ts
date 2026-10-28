@@ -10,6 +10,7 @@ import crypto from 'crypto';
 import { hatPreis } from '../utils/preisRegel';
 import https from 'https';
 import * as db from '../db/database';
+import { getGlobalSetting } from '../utils/settings';
 import { alsAbrufFehler } from './abrufFehler';
 import { mitVersion, katalogEintrag, ohneBricklinkPreis, ohneVersion } from '../utils/setNummer';
 import { checkAndIncrementRateLimit } from '../utils/apiKontingent';
@@ -17,7 +18,8 @@ import { checkAndIncrementRateLimit } from '../utils/apiKontingent';
 const BASE = 'https://api.bricklink.com/api/store/v1';
 
 async function getCredentials() {
-  const rows = await db.all("SELECT key, value FROM global_settings WHERE key IN ('bricklink_consumer_key','bricklink_consumer_secret','bricklink_token','bricklink_token_secret')");
+  const schluessel = ['bricklink_consumer_key', 'bricklink_consumer_secret', 'bricklink_token', 'bricklink_token_secret'];
+  const rows = await Promise.all(schluessel.map(async key => ({ key, value: await getGlobalSetting(key) })));
   const c: Record<string, string> = {};
   rows.forEach(r => { c[r.key] = r.value; });
   return c;
