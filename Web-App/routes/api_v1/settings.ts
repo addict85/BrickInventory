@@ -139,7 +139,8 @@ router.post('/settings/household/redeem', requireToken, async (req: AuthedReques
     const ich = await db.get('SELECT username, email FROM users WHERE id = $1', [uid]);
     if (ich?.email) {
       const sprache = await getSetting(uid, 'language', 'de').catch(() => 'de');
-      sendHaushaltVerknuepftMail(ich.email, ich.username, (r as any).linked_to?.username || '', String(sprache ?? 'de'))
+      const hauptkonto = 'linked_to' in r ? r.linked_to.username : '';
+      sendHaushaltVerknuepftMail(ich.email, ich.username, hauptkonto, String(sprache ?? 'de'))
         .catch(logAndContinue('haushalt:hinweismail'));
     }
     res.json({ success: true, ...r });
