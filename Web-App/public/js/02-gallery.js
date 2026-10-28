@@ -964,7 +964,9 @@ function gridCard(s){
   const fallbackPurchase = s.avg_purchase_price ?? s.max_purchase_price;
   const priceStr = s._price ? fmtN(s._price, CURRENCY) : (fallbackPurchase!=null ? fmtN(fallbackPurchase, CURRENCY) : '');
   const pnl = pnlBadge(s._pnl_pct);
-  const addedFmt = s.added_at ? new Date(s.added_at).toLocaleDateString(locale()) : '';
+  // Das Datum des letzten Kaufs: Die Aufnahme ins Konto war bei einem Import
+  // für alle Sets derselbe Tag und sagte nichts.
+  const kaufFmt = s.letzter_kauf ? new Date(s.letzter_kauf).toLocaleDateString(locale()) : '';
   // Zustand: Der Server liefert die vorkommenden Zustände als Aggregat —
   // eine Plakette je Zustand, siehe condBadges().
   const condBadge = condBadges(s);
@@ -984,7 +986,7 @@ function gridCard(s){
         </div>
       </div>
       <div class="price-badge" data-price-for="${esc(s.set_number)}"${priceStr||pnl ? '' : ' hidden'}><span class="preis">${priceStr}</span>${pnl}</div>
-      ${addedFmt ? `<div data-stil="font-size:var(--fs-1);color:var(--mut);margin-top:.2rem">${ico('kalender')} ${addedFmt}</div>` : ''}
+      ${kaufFmt ? `<div class="kachel-datum" title="${esc(t('gallery.card.bought'))}">${ico('kalender')} <span class="vh">${esc(t('gallery.card.bought'))} </span>${kaufFmt}</div>` : ''}
     </div>
   </div>`;
 }
