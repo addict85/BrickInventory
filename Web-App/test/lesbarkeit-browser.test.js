@@ -6,6 +6,8 @@
  *   - Die Datei-Felder in den Knopf-Labels (CSV, BrickLink XML) lassen sich
  *     fokussieren; mit display:none übersprang Tab sie.
  *   - Nummer und Jahr auf der Set-Kachel stehen in mindestens 12 px.
+ *   - Der Fokusring des Knopfs „Anmelden“ ist mindestens 3 px breit und hebt
+ *     sich mit 3:1 vom Grund der Anmeldekarte ab, hell wie dunkel.
  *
  * Ohne Chrome (CHROME_BIN, google-chrome, chromium) wird übersprungen.
  *
@@ -13,6 +15,7 @@
  *   A  --auf-primaer in themes/werkbank.css entfernt → rot: „werkbank: Primärknopf"
  *   B  .lerr wieder mit --r500 → rot: „Anmeldefehler"
  *   C  .datei-versteckt mit display:none → rot: „Datei-Feld fokussierbar"
+ *   D  (28.10.) :focus-visible wieder 2px in var(--b600) → rot: „Fokusring hell: 2px“
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -32,7 +35,8 @@ function chrome() {
 
 function testseite() {
   const css = STILE.map(s => `<link rel="stylesheet" href="file://${path.join(PUBLIC, s)}">`).join('\n');
-  return `<!doctype html><html lang="de"><head><meta charset="utf-8">${css}</head><body>
+  return `<!doctype html><html lang="de"><head><meta charset="utf-8">${css}
+<style>/* Gemessen wird der Endzustand, nicht der Übergang (.btn hat transition:all). */ *{transition:none!important}</style></head><body>
 <section id="hell">
   <button class="btn bp" data-kontrast="hell: Primärknopf">Speichern</button>
   <div class="lerr" style="display:block" data-kontrast="Anmeldefehler">Falsches Passwort</div>
@@ -40,6 +44,10 @@ function testseite() {
   <span class="pnl-neg" data-kontrast="Verlust">-4.0%</span>
   <label class="btn bs" id="csv">CSV<input type="file" class="datei-versteckt" id="datei"></label>
   <div class="sc"><div class="scb"><div class="snum" id="snum">10294-1</div><div class="smeta" id="smeta">2021</div></div></div>
+  <div class="lcard" data-fokus="hell"><button class="btn bp" type="button">Anmelden</button></div>
+</section>
+<section data-theme="werkbank" style="background:var(--bg)">
+  <div class="lcard" data-fokus="dunkel"><button class="btn bp" type="button">Anmelden</button></div>
 </section>
 <section data-theme="werkbank" style="background:var(--bg)">
   <button class="btn bp" data-kontrast="werkbank: Primärknopf">Speichern</button>
@@ -55,10 +63,17 @@ window.addEventListener('load', () => {
     const a = lum(rgb(getComputedStyle(el).color)), b = lum(rgb(hinter(el)));
     return { name: el.dataset.kontrast, wert: Math.round(((Math.max(a,b)+.05)/(Math.min(a,b)+.05))*100)/100 };
   });
+  const ring = [...document.querySelectorAll('[data-fokus]')].map(karte => {
+    const k = karte.querySelector('button'); k.focus();
+    const cs = getComputedStyle(k);
+    const a = lum(rgb(cs.outlineColor)), b = lum(rgb(hinter(karte)));
+    return { name: karte.dataset.fokus, breite: parseFloat(cs.outlineWidth), stil: cs.outlineStyle,
+             wert: Math.round(((Math.max(a,b)+.05)/(Math.min(a,b)+.05))*100)/100 };
+  });
   const datei = document.getElementById('datei'); datei.focus();
   const fokus = document.activeElement === datei;
   const px = id => parseFloat(getComputedStyle(document.getElementById(id)).fontSize);
-  document.getElementById('ergebnis').textContent = 'ERGEBNIS' + JSON.stringify({ kontrast, fokus, snum: px('snum'), smeta: px('smeta') }) + 'ENDE';
+  document.getElementById('ergebnis').textContent = 'ERGEBNIS' + JSON.stringify({ kontrast, fokus, ring, snum: px('snum'), smeta: px('smeta') }) + 'ENDE';
 });
 </script></body></html>`;
 }
@@ -80,4 +95,9 @@ test('Kontrast, Datei-Felder und Kachelschrift', (t) => {
   assert.deepEqual(e.kontrast.filter(k => k.wert < 4.5).map(k => `${k.name} ${k.wert}:1`), []);
   assert.equal(e.fokus, true, 'Datei-Feld fokussierbar: Tab übersprang CSV und BrickLink XML');
   assert.ok(e.snum >= 12 && e.smeta >= 12, `Kachelschrift ${e.snum}/${e.smeta} px`);
+  assert.equal(e.ring.length, 2);
+  for (const r of e.ring) {
+    assert.ok(r.stil !== 'none' && r.breite >= 3, `Fokusring ${r.name}: ${r.breite}px ${r.stil}`);
+    assert.ok(r.wert >= 3, `Fokusring ${r.name}: nur ${r.wert}:1 gegen den Grund`);
+  }
 });

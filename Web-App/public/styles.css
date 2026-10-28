@@ -172,7 +172,7 @@
        mitausgeliefert wurde, ein Design, das die Variable nicht kennt. */
     .umenu-abmelden{background:var(--sur);color:var(--r700,#b91c1c)}
     .umenu-abmelden:hover{background:var(--r100,var(--s100))}
-    .umenu-item:focus-visible{outline:2px solid var(--b600);outline-offset:-2px}
+    .umenu-item:focus-visible{outline:2px solid var(--fokus,var(--b700));outline-offset:-2px}
     /* Der Namenszug ist jetzt der Menüknopf (Marcos Nachzug vom 17.10.).
        `.ubadge` bleibt der Name der Plakette, obwohl darunter ein <button>
        liegt: themes/brick.css streicht `header .ubadge` eigens um, und
@@ -190,7 +190,7 @@
                   max-width:min(14rem,28vw)}
     .ubadge-knopf:hover{filter:brightness(.96)}
     .ubadge-knopf.aktiv{box-shadow:0 0 0 2px var(--b600)}
-    .ubadge-knopf:focus-visible{outline:2px solid var(--b600);outline-offset:2px}
+    .ubadge-knopf:focus-visible{outline:3px solid var(--fokus,var(--b700));outline-offset:2px}
     /* Ein langer Benutzername kürzt sich, die Striche bleiben: Sie stehen in
        einem eigenen Feld, das nicht schrumpft. Lag das Überlaufen am Knopf,
        verschwanden sie als Erstes — der Knopf sähe dann aus wie die alte
@@ -221,7 +221,7 @@
     .sammlung-wahl{display:inline-flex;gap:2px;padding:3px;background:var(--s100);border:1px solid var(--bdr);border-radius:10px}
     .sammlung-wahl button{display:inline-flex;align-items:center;gap:6px;border:0;background:none;color:var(--mut);font:inherit;font-size:var(--fs-3);font-weight:600;padding:6px 12px;border-radius:8px;cursor:pointer}
     .sammlung-wahl button[aria-selected="true"]{background:var(--sur);color:var(--b600);box-shadow:var(--sh0)}
-    .sammlung-wahl button:focus-visible{outline:2px solid var(--b600);outline-offset:1px}
+    .sammlung-wahl button:focus-visible{outline:3px solid var(--fokus,var(--b700));outline-offset:1px}
     /* Mittlere Fenster: schmalere Reiter, damit alle neun auf EINE Zeile
        passen, statt seitlich wegzuscrollen. Unterhalb von 640px uebernimmt
        mobile.css — dort ist Scrollen richtig, weil dann ohnehin nichts mehr
@@ -259,14 +259,16 @@
     input[type=text],input[type=number],input[type=password],select,textarea{background:var(--sur);border:1.5px solid var(--bdr);color:var(--txt);padding:9px 13px;border-radius:8px;font-family:var(--font);font-size:var(--fs-3);outline:none;transition:border-color .15s,box-shadow .15s;width:100%}
     input:focus,select:focus{border-color:var(--b400);box-shadow:0 0 0 3px rgba(59,130,246,.12)}
     /* Ein sichtbarer Ring für jede Tastaturbedienung; der Schatten oben allein
-       (12 % Deckkraft) war auf hellem Grund kaum zu sehen. */
-    :focus-visible{outline:2px solid var(--b600);outline-offset:2px}
-    input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--b600);outline-offset:0}
+       (12 % Deckkraft) war auf hellem Grund kaum zu sehen. --b700 ist dunkler
+       als die Primärfläche, so bleibt der Ring auch neben einem blauen Knopf
+       sichtbar; ein Design kann --fokus setzen. */
+    :focus-visible{outline:3px solid var(--fokus,var(--b700));outline-offset:2px}
+    input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--fokus,var(--b700));outline-offset:0}
     /* Datei-Felder in einem Knopf-Label: unsichtbar, aber per Tab erreichbar;
        den Ring trägt das Label. */
     .datei-versteckt{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
     label.btn{position:relative}
-    label:has(> .datei-versteckt:focus-visible){outline:2px solid var(--b600);outline-offset:2px}
+    label:has(> .datei-versteckt:focus-visible){outline:3px solid var(--fokus,var(--b700));outline-offset:2px}
     /* Die Kontoauswahl (Galerie, Teile, Minifiguren, Finanzen) steht in einer
        Werkzeugzeile neben anderen Bedienelementen und soll nur so breit sein
        wie ihr laengster Eintrag — nicht wie die Zeile. Die Regel eine Zeile
