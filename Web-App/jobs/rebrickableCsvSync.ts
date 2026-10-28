@@ -232,6 +232,12 @@ async function run() {
       log(`CSV sync complete for ${today}`);
     } catch(e) {
       log(`CSV sync failed: ${fehlertext(e)}`);
+      // Ohne Katalog ist die App trotzdem benutzbar; ohne diese Meldung bliebe
+      // der Startbildschirm stehen, bis die Oberfläche nach drei Minuten aufgibt.
+      // Der nächste Start (oder der Tageslauf) versucht es erneut.
+      const s0 = { ready: true, step: 'Katalog nicht geladen', progress: TOTAL_STEPS, total: TOTAL_STEPS };
+      global.startupStatus = s0;
+      await setGlobalSetting('startup_status', JSON.stringify(s0)).catch(() => {});
       return; // Don't try BL mapping if CSV sync failed
     }
   }

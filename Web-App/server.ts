@@ -93,7 +93,7 @@ import { getGlobalSetting, deleteGlobalSetting } from './utils/settings';
 import { HAUSHALT_KANAL, leereHaushaltCache } from './utils/household';
 import { drossleBeruehren } from './utils/sitzungsBeruehrung';
 import { SITZUNG_LEERLAUF_SEK, sitzungsHoechstdauer } from './utils/sitzungsFrist';
-import { antwortAufDateiFehler, liefereDatei } from './utils/dateiAusliefern';
+import { antwortAufDateiFehler, liefereDatei, sendeDatei } from './utils/dateiAusliefern';
 
 const WORKERS = (require('./utils/workerZahl') as typeof import('./utils/workerZahl')).workerZahl();
 
@@ -139,7 +139,6 @@ if (cluster.isPrimary && process.env.NODE_ENV === 'production') {
 const express = require('express') as typeof import('express');
 
 const session = require('express-session') as typeof import('express-session');
-const path    = require('path') as typeof import('path');
 const fs      = require('fs') as typeof import('fs');
 const compression = require('compression') as typeof import('compression');
 const pgSession   = (require('connect-pg-simple') as typeof import('connect-pg-simple'))(session);
@@ -429,7 +428,7 @@ app.get('/images/*pfad', async (req: WildcardRequest, res: Response) => {
   // Ausführlich: docs/begruendungen/server.ts.md#lookupcdnformissingimage
   res.setHeader('Cache-Control', 'private, max-age=0');
 
-  res.sendFile(filePath, async err => {
+  sendeDatei(res, filePath, async err => {
     if (!err || res.headersSent) return;
 
     // Ein Fehler MIT eigener Zahl ist keine fehlende Datei, sondern eine
@@ -590,7 +589,7 @@ app.get('/reset-password', async (_req, res) => {
   try {
     res.type('html').send(await renderIndexHtml());
   } catch {
-    res.sendFile(path.join(PUBLIC_DIR, 'index.html'));
+    res.sendFile('index.html', { root: PUBLIC_DIR });
   }
 });
 
@@ -618,7 +617,7 @@ app.get('/{*splat}', async (req, res) => {
   } catch (e) {
     // Fällt das Rendern aus, bleibt die Datei unverändert ausgeliefert —
     // js/00-theme-boot.js übernimmt dann wie bisher.
-    res.sendFile(path.join(PUBLIC_DIR, 'index.html'));
+    res.sendFile('index.html', { root: PUBLIC_DIR });
   }
 });
 
