@@ -35,11 +35,6 @@
   /* Zweispaltige Bereiche zusammenklappen */
   .sgrid2,
   .add2          { grid-template-columns: 1fr; gap: 1rem; }
-  .parts-layout  { grid-template-columns: 1fr; }
-
-  /* Die Teile-Seitenleiste wird oben zur ausklappbaren Filterzeile */
-  .parts-sidebar { position: static; max-height: none; }
-  .filter-list   { max-height: 150px; }
 
   .fgrid { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: .75rem; }
 }

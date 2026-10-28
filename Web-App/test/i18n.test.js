@@ -131,13 +131,9 @@ test('Farbnamen werden im Deutschen übersetzt, die Daten bleiben englisch', () 
   assert.match(i18n, /const COLOR_PREFIX_DE = new Set/,
     'Ohne Zusammenschreibung entstünde „Dunkel Bläulich Grau"');
 
-  // Der Filterwert muss englisch bleiben, sonst findet der Vergleich mit den
-  // Daten nichts mehr.
+  // Dass der Filterwert englisch bleibt und nur die Beschriftung übersetzt
+  // wird, prüft test/leerzustand-teile-figuren.test.js am Auswahlfeld selbst.
   const parts = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', '03-parts.js'), 'utf8');
-  assert.match(parts, /data-arg="\$\{escHtml\(c\.color_name\)\}"/,
-    'Der Filterwert darf nicht übersetzt werden');
-  assert.match(parts, /activeColor===c\.color_name/,
-    'Der Vergleich läuft über den englischen Namen');
   // Angezeigt wird übersetzt
   assert.ok(parts.includes('colorName(c.color_name)'), 'Filter-Beschriftung nicht übersetzt');
   assert.ok(parts.includes('colorName(p.color_name)'), 'Teile-Anzeige nicht übersetzt');

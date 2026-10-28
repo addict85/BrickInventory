@@ -312,23 +312,6 @@ test('der Farbfilter vergleicht Namen — in beiden Abfragepfaden', () => {
     'parseInt auf einen Farbnamen ergibt NaN');
 });
 
-test('die Leer-Anzeige der Teile nutzt das Ziegel-Symbol der Navigation', () => {
-  // PARTS_ICON_SVG ist in 02-gallery.js definiert — eine zweite Deklaration
-  // hier bräche die Datei mit „Identifier has already been declared" ab.
-  // 03-parts.js skaliert sie nur.
-  const gallery = stripModuleSyntax(fs.readFileSync(path.join(ROOT, 'public', 'js', '02-gallery.js'), 'utf8'));
-  assert.match(gallery, /const PARTS_ICON_SVG = '<svg/, 'Symbol fehlt');
-
-  const parts = stripModuleSyntax(fs.readFileSync(path.join(ROOT, 'public', 'js', '03-parts.js'), 'utf8'));
-  assert.doesNotMatch(parts, /^const PARTS_ICON_SVG/m,
-    'Zweite Deklaration — sie legt die ganze Datei lahm');
-  assert.match(parts, /function partsIconLarge\(\)/, 'Vergrösserung fehlt');
-  assert.match(parts, /<div class="icon">\$\{partsIconLarge\(\)\}<\/div>/,
-    'Die Leer-Anzeige benutzt das Symbol nicht');
-  assert.doesNotMatch(parts, /<div class="icon">🧩<\/div>/,
-    'Das Puzzleteil passt weder zur Navigation noch zu LEGO');
-});
-
 test('Kategorien werden über den Teilekatalog aufgelöst', () => {
   // parts.category_name enthält die Rebrickable-Kategorie-ID als Text — oder
   // 'Unknown', wenn die Set-Teile-Antwort kein part_cat_id mitliefert. Das ist

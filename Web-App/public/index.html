@@ -594,6 +594,8 @@
                verborgen, solange nirgends ein Ort erfasst ist — ein Feld
                mit genau einem Eintrag („Alle“) ist nur Rauschen. -->
           <select id="storage-parts" class="scope-select" aria-label="Lagerort" data-i18n="detail.storage" data-i18n-attr="aria-label" data-change="onStorageChange" data-arg="parts" style="display:none"></select>
+          <select id="parts-color" aria-label="Nach Farbe filtern" data-i18n="parts.filter.color" data-i18n-attr="aria-label" data-change="setColorFilter" style="display:none;width:auto;max-width:240px"></select>
+          <select id="parts-cat" aria-label="Nach Kategorie filtern" data-i18n="parts.filter.category" data-i18n-attr="aria-label" data-change="setCatFilter" style="display:none;width:auto;max-width:240px"></select>
           <select id="parts-view" aria-label="Ansicht" data-i18n="parts.view_label" data-i18n-attr="aria-label" style="width:auto">
             <option value="grid" data-i18n="parts.view.grid">Karten</option>
             <option value="table" data-i18n="parts.view.table">Tabelle</option>
@@ -604,23 +606,13 @@
            (Nachtrag 34, Marcos Hinweis): Der Filter wirkt auf beide Listen —
            auf die manuellen und die aus Sets. Stünde er darunter, sähe es aus,
            als beträfe er nur die Set-Teile. -->
-      <div style="background:var(--sur);border:1px solid var(--bdr);border-radius:var(--rad);padding:1.25rem;margin-bottom:1.25rem;box-shadow:var(--sh0)">
-        <div style="font-size:var(--fs-1);font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--mut);margin-bottom:.75rem" data-i18n="parts.manual_section">Manuell erfasste Teile</div>
+      <div class="bereich-karte" id="manual-parts-box">
+        <div class="bereich-titel" data-i18n="parts.manual_section">Manuell erfasste Teile</div>
         <div id="manual-parts-list"></div>
       </div>
 
       <!-- ── Teile aus Sets ──────────────────────────────────────────────────── -->
       <div class="parts-layout">
-        <div class="parts-sidebar" id="parts-sidebar">
-          <div class="sidebar-section">
-            <div class="sidebar-title" data-i18n="parts.filter.color">Nach Farbe filtern</div>
-            <div class="filter-list" id="color-filter"></div>
-          </div>
-          <div class="sidebar-section">
-            <div class="sidebar-title" data-i18n="parts.filter.category">Nach Kategorie filtern</div>
-            <div class="filter-list" id="cat-filter"></div>
-          </div>
-        </div>
         <div id="parts-main">
           <div class="loading"><div class="spin"></div><span data-i18n="parts.loading_label">Teile laden…</span></div>
         </div>
@@ -672,8 +664,8 @@
 
       <!-- Wie bei den Teilen: Die manuell erfassten Minifiguren stehen UNTER
            der Filterleiste, weil der Filter beide Listen betrifft. -->
-      <div style="background:var(--sur);border:1px solid var(--bdr);border-radius:var(--rad);padding:1.25rem;margin-bottom:1.25rem;box-shadow:var(--sh0)">
-        <div style="font-size:var(--fs-1);font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--mut);margin-bottom:.75rem" data-i18n="figs.manual_section">Manuell erfasste Minifiguren</div>
+      <div class="bereich-karte" id="manual-figs-box">
+        <div class="bereich-titel" data-i18n="figs.manual_section">Manuell erfasste Minifiguren</div>
         <div id="manual-figs-list"></div>
       </div>
 

@@ -172,7 +172,7 @@
 
 /* ── Panels/Karten etwas klobiger ────────────────────────────────────────── */
 [data-theme="brick"] .card,[data-theme="brick"] .fstat,
-[data-theme="brick"] .ssec,[data-theme="brick"] .parts-sidebar,
+[data-theme="brick"] .ssec,[data-theme="brick"] .bereich-karte,
 [data-theme="brick"] .gctrl{border-width:1.5px;border-radius:14px}
 
 /* ── Set-Karten: blauer Noppen-„Deckel" über dem Bild + Badges ──────────── */

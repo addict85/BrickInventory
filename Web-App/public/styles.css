@@ -427,17 +427,9 @@
     .fcur{font-size:var(--fs-1);color:var(--mut);margin-left:3px}
 
     /* PARTS */
-    .parts-layout{display:grid;grid-template-columns:260px 1fr;gap:1.25rem;align-items:start}
-    @media(max-width:900px){.parts-layout{grid-template-columns:1fr}}
-    .parts-sidebar{background:var(--sur);border:1px solid var(--bdr);border-radius:var(--rad);padding:1rem;box-shadow:var(--sh0);position:sticky;top:74px}
-    .sidebar-section{margin-bottom:1.25rem}
-    .sidebar-title{font-size:var(--fs-2);font-weight:700;color:var(--txt);margin-bottom:.6rem}
-    .filter-list{display:flex;flex-direction:column;gap:2px;max-height:220px;overflow-y:auto}
-    .filter-item{display:flex;align-items:center;justify-content:space-between;padding:5px 8px;border-radius:6px;cursor:pointer;font-size:var(--fs-2);transition:background .12s}
-    .filter-item:hover{background:var(--s100)}
-    .filter-item.active{background:var(--b100);color:var(--b700);font-weight:600}
-    .filter-item .cnt{font-family:var(--mono);font-size:var(--fs-0);color:var(--mut);background:var(--s100);padding:1px 6px;border-radius:999px}
-    .filter-item.active .cnt{background:var(--b200);color:var(--b700)}
+    /* Ein Bereich mit eigener Überschrift, z. B. die manuell erfassten Teile. */
+    .bereich-karte{background:var(--sur);border:1px solid var(--bdr);border-radius:var(--rad);padding:1.25rem;margin-bottom:1.25rem;box-shadow:var(--sh0)}
+    .bereich-titel{font-size:var(--fs-1);font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--mut);margin-bottom:.75rem}
     .color-dot{width:14px;height:14px;border-radius:50%;border:1px solid rgba(0,0,0,.12);flex-shrink:0}
     .parts-stats-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:.75rem;margin-bottom:1.25rem}
     .pstat{background:var(--sur);border:1px solid var(--bdr);border-radius:8px;padding:.85rem 1rem;text-align:center;box-shadow:var(--sh0)}

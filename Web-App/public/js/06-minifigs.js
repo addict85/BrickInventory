@@ -6,6 +6,7 @@ import { condBadges, leereLagerortFeld, ownerBadges, schliesseErfassen, selected
 import { loadFinance } from './04-finance.js';
 import { confirmDelete } from './07-admin.js';
 import { openManDetail } from './13-acquisition-modals.js';
+import { teileLeerAbgleichen, teilPasstZumFilter, zeichneTeileFilter } from './03-parts.js';
 import { geloeschtMitRueckgaengig } from './20-papierkorb.js';
 
 // ═══ Minifiguren + manuelle Teile (Erfassung, Bewertung) ═══
@@ -176,14 +177,13 @@ function appendFigs(batch) {
  */
 export function renderFigs(list, target) {
   const el = target || G('figs-list');
+  if (!target) _setFigurenLeer = !list.length;
   if (!list.length) {
-    el.innerHTML = `<div class="empty" style="padding:3rem;text-align:center">
-      <div class="leer-ico">${ico('figur')}</div>
-      <div style="font-weight:600">${t('figs.none')}</div>
-      <div style="color:var(--mut);font-size:var(--fs-3)">${t('figs.auto_hint')}</div>
-    </div>`;
+    if (target) el.innerHTML = '';
+    else figurenLeerAbgleichen();
     return;
   }
+  if (!target) figurenLeerAbgleichen();
 
   const viewMode = G('figs-view')?.value || 'grid';
 
@@ -301,14 +301,31 @@ export async function loadManualFigsTable() {
   renderManualFigsTable();
 }
 
+let _setFigurenLeer = null;   // null: noch nicht geladen
+let _manuelleFigurenLeer = null;
+
+/**
+ * Wie bei den Teilen (teileLeerAbgleichen in 03-parts.js): ein Leerzustand
+ * für den Reiter, und nur wenn beide Listen leer sind.
+ */
+function figurenLeerAbgleichen() {
+  const box = G('manual-figs-box');
+  if (box) box.style.display = _manuelleFigurenLeer ? 'none' : '';
+  if (_setFigurenLeer !== true) return;
+  const el = G('figs-list');
+  if (_manuelleFigurenLeer === false) { el.innerHTML = ''; return; }
+  const gesucht = !!G('fig-search')?.value.trim();
+  el.innerHTML = leerZustand({ ico: 'figur', titel: tRaw('figs.none'),
+    text: gesucht ? tRaw('common.filter_no_match') : tRaw('figs.auto_hint'),
+    knopf: gesucht ? null : { text: tRaw('figs.add_title'), click: 'oeffneErfassen', arg: 'fig' } });
+}
+
 export function renderManualFigsTable() {
   const el = G('manual-figs-list');
   if (!el) return;
-  if (!manualFigsCache.length) {
-    el.innerHTML = leerZustand({ ico: 'figur', titel: tRaw('figs.none_manual'), text: tRaw('figs.from_csv_hint'),
-      knopf: { text: tRaw('figs.add_title'), click: 'oeffneErfassen', arg: 'fig' } });
-    return;
-  }
+  _manuelleFigurenLeer = !manualFigsCache.length;
+  figurenLeerAbgleichen();
+  if (!manualFigsCache.length) { el.innerHTML = ''; return; }
   if (tabellenAnsicht('figs-view')) {
     el.innerHTML = manuelleTabelle(manualFigsCache, 'fig');
     if (typeof window.__bimLabelTables === 'function')
@@ -622,19 +639,18 @@ export async function loadManualParts() {
 
 export function renderManualParts() {
   const el = G('manual-parts-list');
-  if (!manualPartsCache.length) {
-    el.innerHTML = leerZustand({ ico: 'teil', titel: tRaw('parts.none_manual'), text: tRaw('parts.none_manual_hint'),
-      knopf: { text: tRaw('parts.add_title'), click: 'oeffneErfassen', arg: 'part' } });
-    return;
-  }
+  zeichneTeileFilter();
+  const teile = manualPartsCache.filter(teilPasstZumFilter);
+  teileLeerAbgleichen(!teile.length);
+  if (!teile.length) { el.innerHTML = ''; return; }
   if (tabellenAnsicht('parts-view')) {
-    el.innerHTML = manuelleTabelle(manualPartsCache, 'part');
+    el.innerHTML = manuelleTabelle(teile, 'part');
     if (typeof window.__bimLabelTables === 'function')
       window.__bimLabelTables(el.querySelector('table'));
     return;
   }
   el.innerHTML = `<div class="man-grid">
-    ${manualPartsCache.map(p => {
+    ${teile.map(p => {
       // War: p.image_local || p.image_url roh, ohne Vorschau und ohne Proxy —
       // einzige Stelle im ganzen Projekt, die das CDN-Bild direkt und in
       // voller Auflösung in eine Kachel geladen hat. Jetzt wie überall sonst:

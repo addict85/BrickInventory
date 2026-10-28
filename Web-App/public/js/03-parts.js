@@ -1,10 +1,10 @@
 import { ladeAnzeige } from './01-bausteine.js';
 import { registerActions } from './00-registry.js';
-import { colorName, locale, t } from '../i18n.js';
-import { ico, G, api, esc, escHex, escHtml, escJs, escUrl, fmtBig, fullUrl, imgUrl, observeLazyImages, thumbUrl } from './01-core.js';
+import { colorName, locale, t, tRaw } from '../i18n.js';
+import { ico, G, api, esc, escHex, escHtml, escJs, escUrl, fmtBig, fullUrl, imgUrl, leerZustand, observeLazyImages, thumbUrl } from './01-core.js';
 import { addScopeParam, addLagerParam, scopeQuery } from './14-scope.js';
 import { PARTS_ICON_SVG, allSets } from './02-gallery.js';
-import { loadManualParts, renderManualParts } from './06-minifigs.js';
+import { loadManualParts, manualPartsCache, renderManualParts } from './06-minifigs.js';
 
 /**
  * Ziegel-Symbol des Reiters „Teile" für die Leer-Anzeige.
@@ -50,21 +50,67 @@ async function loadPartsStats(){
 async function loadPartsFilters(){
   const [cd,catd]=await Promise.all([api('GET','/v1/parts/colors'+scopeQuery('parts')),api('GET','/v1/parts/categories')]);
   partsColors=cd.colors||[]; partsCats=catd.categories||[];
-
-  G('color-filter').innerHTML=`<div class="filter-item ${!activeColor?'active':''}" tabindex="0" role="button" data-click="setColorFilter" data-arg=""><span>${t('gallery.filter.all')}</span></div>`
-    +partsColors.map(c=>`<div class="filter-item ${activeColor===c.color_name?'active':''}" tabindex="0" role="button" data-click="setColorFilter" data-arg="${escHtml(c.color_name)}">
-      <div style="display:flex;align-items:center;gap:6px"><div class="color-dot" style="background:${escHex(c.color_hex, 'var(--s300)')}"></div><span>${esc(colorName(c.color_name))}</span></div>
-      <span class="cnt">${c.unique_parts} ${t('parts.stat.types')}</span>
-    </div>`).join('');
-
-  G('cat-filter').innerHTML=`<div class="filter-item ${!activeCat?'active':''}" tabindex="0" role="button" data-click="setCatFilter" data-arg=""><span>${t('filter.all')}</span></div>`
-    +partsCats.map(c=>`<div class="filter-item ${activeCat===c.category_name?'active':''}" tabindex="0" role="button" data-click="setCatFilter" data-arg="${escHtml(c.category_name)}">
-      <span>${esc(c.label||c.category_name)||'Unbekannt'}</span><span class="cnt">${(c.total_quantity||0).toLocaleString(locale())}</span>
-    </div>`).join('');
+  zeichneTeileFilter();
 }
 
-function setColorFilter(c){ activeColor=c; loadPartsFilters(); loadPartsData(); }
-function setCatFilter(c){ activeCat=c; loadPartsFilters(); loadPartsData(); }
+/**
+ * Farbe und Kategorie als Auswahlfelder in der Filterleiste. Sie gelten wie
+ * Suche und Konto für BEIDE Listen; die manuellen Teile bringen ihre Farben
+ * und Kategorien deshalb mit ein. Ohne Auswahl bleibt ein Feld verborgen.
+ */
+export function zeichneTeileFilter(){
+  const farben = new Map(partsColors.map(c => [c.color_name, `${colorName(c.color_name)} (${c.unique_parts} ${t('parts.stat.types')})`]));
+  const kategorien = new Map(partsCats.map(c => [String(c.category_name), c.label || String(c.category_name)]));
+  for (const p of manualPartsCache) {
+    if (p.color_name && !farben.has(p.color_name)) farben.set(p.color_name, colorName(p.color_name));
+    if (p.category_name != null && p.category_name !== '' && !kategorien.has(String(p.category_name)))
+      kategorien.set(String(p.category_name), catLabel(p.category_name));
+  }
+  fuelleFilter('parts-color', t('parts.filter.all_colors'), farben, activeColor);
+  fuelleFilter('parts-cat', t('parts.filter.all_categories'), kategorien, activeCat);
+}
+
+function fuelleFilter(id, alle, eintraege, gewaehlt){
+  const el = G(id);
+  if (!el) return;
+  // Eine gewählte Farbe bleibt auswählbar, auch wenn ein anderer Filter sie gerade ausblendet.
+  if (gewaehlt && !eintraege.has(gewaehlt)) eintraege.set(gewaehlt, gewaehlt);
+  el.innerHTML = `<option value="">${esc(alle)}</option>` +
+    [...eintraege].map(([wert, text]) => `<option value="${escHtml(wert)}">${esc(text)}</option>`).join('');
+  el.value = gewaehlt || '';
+  el.style.display = eintraege.size ? '' : 'none';
+}
+
+function setColorFilter(){ activeColor=G('parts-color').value||null; loadPartsData(); renderManualParts(); }
+function setCatFilter(){ activeCat=G('parts-cat').value||null; loadPartsData(); renderManualParts(); }
+
+/** Passt ein manuell erfasstes Teil zu Farbe und Kategorie der Filterleiste? */
+export function teilPasstZumFilter(p){
+  if (activeColor && p.color_name !== activeColor) return false;
+  if (activeCat && String(p.category_name ?? '') !== String(activeCat)) return false;
+  return true;
+}
+
+let _setTeileLeer = null;   // null: noch nicht geladen
+let _manuelleLeer = null;
+
+/**
+ * Ein Leerzustand für den ganzen Reiter: Er steht nur da, wenn weder manuell
+ * erfasste Teile noch Teile aus Sets zu sehen sind. Eine leere Teilliste
+ * verschwindet stumm, solange die andere etwas zeigt.
+ */
+export function teileLeerAbgleichen(manuelleLeer){
+  if (manuelleLeer !== undefined) _manuelleLeer = manuelleLeer;
+  const box = G('manual-parts-box');
+  if (box) box.style.display = _manuelleLeer ? 'none' : '';
+  if (_setTeileLeer !== true) return;
+  const main = G('parts-main');
+  if (_manuelleLeer === false) { main.innerHTML = ''; return; }
+  const gefiltert = !!(activeColor || activeCat || G('parts-search')?.value.trim() || G('parts-spare')?.value);
+  main.innerHTML = leerZustand({ ico: 'teil', titel: tRaw('parts.none_found'),
+    text: gefiltert ? tRaw('common.filter_no_match') : tRaw(allSets.length ? 'parts.hint_import' : 'parts.none_manual_hint'),
+    knopf: gefiltert ? null : { text: tRaw('parts.add_title'), click: 'oeffneErfassen', arg: 'part' } });
+}
 // esc / escJs / escUrl / escHex liegen jetzt zentral in 01-core.js — sie wurden
 // hier definiert, aber auch von 02-gallery.js und 04-finance.js benutzt, also
 // von Dateien, die VOR dieser geladen werden. Das ging nur gut, weil die
@@ -125,6 +171,7 @@ async function loadPartsData(){
   _partsGen++;
   _partsPage = 0; _partsShown = 0; _partsTotal = 0;
   _partsDone = false; _partsLoading = false; _partsLastColor = null;
+  _setTeileLeer = null;
 
   const main = G('parts-main');
   main.innerHTML = ladeAnzeige(t('parts.loading'));
@@ -155,16 +202,14 @@ async function loadPartsPage(isFirst){
   _partsPage  = page;
 
   if (isFirst && !parts.length){
-    G('parts-main').innerHTML =
-      // Dasselbe Ziegel-Symbol wie im Reiter „Teile" statt des Puzzleteils —
-      // ein Puzzle hat mit LEGO nichts zu tun und passte nicht zur Navigation.
-      `<div class="no-parts"><div class="icon">${partsIconLarge()}</div><h3>${t('parts.none_found')}</h3>` +
-      `<p>${allSets.length ? t('parts.hint_import') : t('parts.hint_add_sets')}</p></div>`;
+    _setTeileLeer = true;
+    teileLeerAbgleichen();
     _partsDone = true; _partsLoading = false;
+    updatePartsSentinel();
     return;
   }
 
-  if (isFirst) preparePartsShell();
+  if (isFirst) { _setTeileLeer = false; teileLeerAbgleichen(); preparePartsShell(); }
   appendParts(parts);
 
   _partsShown += parts.length;
