@@ -29,7 +29,7 @@ import { gibCheckOnLoad, gibZuruecksetzen } from './01-fortschritt.js';
 //   Textinhalt oder doppelt-gequotetes Attribut  → esc()
 //   Wert in einem JS-String im Attribut          → escJs()   z.B. data-click="fn" data-arg="${escJs(x)}"
 //   src / href                                   → escUrl()
-//   Farbwert in style=""                         → escHex()
+//   Farbwert in data-farbe=""                    → escHex()
 
 /** HTML-Escape für Textinhalte und doppelt-gequotete Attributwerte. */
 /**
@@ -94,7 +94,7 @@ export function escUrl(u){
   return esc(v);
 }
 
-/** Farbwert für style="background:…" — alles ausser 6 Hex-Ziffern fliegt raus. */
+/** Farbwert für data-farbe="…" (js/00-stile.js) — alles ausser 6 Hex-Ziffern fliegt raus. */
 export function escHex(hex, fallback){
   const v = String(hex ?? '').trim().replace(/^#/, '');
   return /^[0-9A-Fa-f]{6}$/.test(v) ? '#' + v : (fallback || 'var(--s300)');
@@ -142,7 +142,7 @@ export function bildTag(o) {
   return `<img src="${escUrl(o.src)}" alt="${esc(o.alt || '')}"${o.klasse ? ` class="${esc(o.klasse)}"` : ''}` +
     ` loading="lazy" decoding="async" data-onerror="platzhalter" data-ph="${esc(o.ph || 'set')}"` +
     `${o.orig ? ` data-orig="${escUrl(o.orig)}"` : ''}${o.fade ? ' data-fade="1"' : ''}` +
-    `${o.stil ? ` style="${esc(o.stil)}"` : ''}${o.extra ? ' ' + o.extra : ''} />`;
+    `${o.stil ? ` data-stil="${esc(o.stil)}"` : ''}${o.extra ? ' ' + o.extra : ''} />`;
 }
 
 /** Der Platzhalter einer Art: das Set-Bild oder das Symbol in einer getönten Fläche. */
@@ -450,7 +450,7 @@ export function fullUrl(src) {
  * `aria-hidden` (die Beschriftung steht daneben, das Symbol ist Zierde).
  */
 export const XML_ICON_SVG = '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" '
-  + 'style="width:1.05em;height:1.05em;display:inline-block;vertical-align:-.18em" '
+  + 'data-stil="width:1.05em;height:1.05em;display:inline-block;vertical-align:-.18em" '
   + 'fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" '
   + 'stroke-linejoin="round" aria-hidden="true">'
   + '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/>'
@@ -465,7 +465,7 @@ export const XML_ICON_SVG = '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2
  * Symbol übernimmt sie. So passt es in beide Umgebungen ohne zweite Fassung.
  */
 export const TRASH_ICON_SVG = '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" '
-  + 'style="width:1em;height:1em;display:block" fill="none" stroke="currentColor" '
+  + 'data-stil="width:1em;height:1em;display:block" fill="none" stroke="currentColor" '
   + 'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
   + '<path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/>'
   + '<path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>'
@@ -1099,7 +1099,7 @@ async function doLogin(){
     // Jede Anmeldung beginnt mit „Alle Konten" (Nachtrag 46) — VOR showApp(),
     // damit die Auswahlfelder gleich mit dem zurückgesetzten Wert entstehen.
     resetScopeModes();
-    showApp(); } else { const err=d.error||t('settings.error'); G('lerr').textContent=err; G('lerr').style.display='block'; if(d.unverified){ G('lerr').innerHTML=err+' <a href="#" data-click="showPanel" data-arg="login" style="color:var(--b600)">E-Mail erneut senden?</a>'; } }
+    showApp(); } else { const err=d.error||t('settings.error'); G('lerr').textContent=err; G('lerr').style.display='block'; if(d.unverified){ G('lerr').innerHTML=err+' <a href="#" data-click="showPanel" data-arg="login" data-stil="color:var(--b600)">E-Mail erneut senden?</a>'; } }
 }
 G('btn-logout').onclick=async()=>{
   // Ein Token aus einer älteren Anmeldung wird mit entwertet.

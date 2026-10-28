@@ -359,15 +359,15 @@ function catCard(s){
   // eine zweite Stelle, die es kennen muss. Ohne Thema-Nummer bleibt sie weg —
   // dann zeigt der Streifen nichts statt etwas Falsches.
   const ton = Number.isInteger(s.theme_id)
-    ? ` style="--faecher-ton:var(--faecher-${((s.theme_id % 12) + 12) % 12})"` : '';
+    ? ` data-faecher="${((s.theme_id % 12) + 12) % 12}"` : '';
   return `<div class="sc"${ton} tabindex="0" role="button" data-sn="${esc(s.set_number)}" data-year="${s.year||''}" data-click="openCatModal" data-arg="${esc(s.set_number)}">
     <div class="sci">${img}</div>
     <div class="scb">
       <div class="snum">${esc(s.set_number)}</div>
       <div class="sname">${esc(s.name)||'—'}</div>
       <div class="smeta">
-        <span style="font-size:var(--fs-0)">${s.year||'—'}${themeShort?' · '+esc(themeShort.substring(0,14)):''}</span>
-        <div style="display:flex;gap:3px;align-items:center;flex-wrap:wrap">
+        <span data-stil="font-size:var(--fs-0)">${s.year||'—'}${themeShort?' · '+esc(themeShort.substring(0,14)):''}</span>
+        <div data-stil="display:flex;gap:3px;align-items:center;flex-wrap:wrap">
           ${s.num_parts?`<span class="qbadge">${PARTS_ICON_SVG}${s.num_parts.toLocaleString(locale())}</span>`:''}
           ${ownedBadge}
         </div>

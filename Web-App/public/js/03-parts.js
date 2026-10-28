@@ -268,7 +268,7 @@ function appendParts(parts){
     }
     html += `<div class="parts-group" data-count="${g.parts.length}">
       <div class="group-hd">
-        <div class="color-dot" style="width:18px;height:18px;background:${escHex(g.hex, 'var(--s300)')}"></div>
+        <div class="color-dot" data-stil="width:18px;height:18px" data-farbe="${escHex(g.hex, 'var(--s300)')}"></div>
         <span class="group-title">${esc(colorName(g.color))}</span>
         <span class="group-sub">${g.parts.length} ${t('parts.stat.types')}</span>
       </div>
@@ -327,12 +327,12 @@ function partsCard(p){
   // tot: Anders als bei manuell erfassten Teilen gab es zu einem Teil aus einem
   // Set nichts zu sehen — kein Bild in voller Groesse, keine Angabe, aus
   // welchem Set es stammt.
-  return `<div class="part-card" style="cursor:pointer" tabindex="0" role="button" data-click="openSetItemDetail" data-arg="part" data-arg2="${escJs(p.part_number)}" data-arg3="${p.color_id||0}">
+  return `<div class="part-card" data-stil="cursor:pointer" tabindex="0" role="button" data-click="openSetItemDetail" data-arg="part" data-arg2="${escJs(p.part_number)}" data-arg3="${p.color_id||0}">
     ${rawSrc ? bildTag({ src: imgUrl(thumbUrl(rawSrc)||rawSrc, true), alt: teilAlt(p), klasse: 'part-img', fade: true, orig: imgUrl(fullUrl(rawSrc), false), ph: 'teil' })
              : `<span class="bild-ph part-img" role="img" aria-label="${esc(teilAlt(p))}">${platzhalterInhalt('teil')}</span>`}
     <div class="part-num" title="${esc(p.part_number)}">${esc(p.bl_part_number||p.part_number)}</div>
     <div class="part-name">${esc(p.part_name)||'—'}</div>
-    <div class="part-color"><div class="color-dot" style="background:${escHex(p.color_hex, 'var(--s300)')}"></div>${esc(colorName(p.color_name))}</div>
+    <div class="part-color"><div class="color-dot" data-farbe="${escHex(p.color_hex, 'var(--s300)')}"></div>${esc(colorName(p.color_name))}</div>
     <div class="part-qty">${(p.total_quantity||0).toLocaleString(locale())}×</div>
     ${ersatzteilPlakette(p)}
   </div>`;
@@ -342,15 +342,15 @@ function partsTableRow(p){
   // Dieselbe Handlung wie auf der Kachel — eine Ansicht darf nicht koennen,
   // was die andere nicht kann. Genau daran ist in diesem Projekt schon mehrfach
   // etwas auseinandergelaufen.
-  return `<tr style="cursor:pointer" tabindex="0" data-click="openSetItemDetail" data-arg="part" data-arg2="${escJs(p.part_number)}" data-arg3="${p.color_id||0}">
+  return `<tr data-stil="cursor:pointer" tabindex="0" data-click="openSetItemDetail" data-arg="part" data-arg2="${escJs(p.part_number)}" data-arg3="${p.color_id||0}">
     <td>${(p.image_local||p.image_url) ? bildTag({ src: imgUrl(thumbUrl(p.image_local||p.image_url)||p.image_local||p.image_url, true), alt: '', klasse: 'bild-klein', ph: 'teil' })
                                        : `<span class="bild-ph bild-klein" aria-hidden="true">${platzhalterInhalt('teil')}</span>`}</td>
-    <td><span style="font-family:var(--mono);font-size:var(--fs-1);color:var(--b600)" title="${esc(p.part_number)}">${esc(p.bl_part_number||p.part_number)}</span></td>
-    <td style="max-width:200px">${esc(p.part_name)||'—'} ${ersatzteilPlakette(p)}</td>
-    <td><div style="display:flex;align-items:center;gap:5px"><div class="color-dot" style="background:${escHex(p.color_hex, 'var(--s300)')}"></div>${esc(colorName(p.color_name))}</div></td>
+    <td><span data-stil="font-family:var(--mono);font-size:var(--fs-1);color:var(--b600)" title="${esc(p.part_number)}">${esc(p.bl_part_number||p.part_number)}</span></td>
+    <td data-stil="max-width:200px">${esc(p.part_name)||'—'} ${ersatzteilPlakette(p)}</td>
+    <td><div data-stil="display:flex;align-items:center;gap:5px"><div class="color-dot" data-farbe="${escHex(p.color_hex, 'var(--s300)')}"></div>${esc(colorName(p.color_name))}</div></td>
     <td>${esc(catLabel(p.category_name))}</td>
-    <td><span style="font-family:var(--mono);font-weight:600;color:var(--b700)">${(p.total_quantity||0).toLocaleString(locale())}</span></td>
-    <td style="font-size:var(--fs-1);color:var(--mut)">${esc((p.in_sets||'').replace(/,/g,', '))}</td>
+    <td><span data-stil="font-family:var(--mono);font-weight:600;color:var(--b700)">${(p.total_quantity||0).toLocaleString(locale())}</span></td>
+    <td data-stil="font-size:var(--fs-1);color:var(--mut)">${esc((p.in_sets||'').replace(/,/g,', '))}</td>
   </tr>`;
 }
 
@@ -360,7 +360,7 @@ function updatePartsSentinel(){
   if (!s) return;
   if (_partsDone){
     s.innerHTML = _partsTotal
-      ? `<div style="text-align:center;color:var(--mut);font-size:var(--fs-2);padding:1rem">${_partsTotal.toLocaleString(locale())} ${t('parts.stat.types')}</div>`
+      ? `<div data-stil="text-align:center;color:var(--mut);font-size:var(--fs-2);padding:1rem">${_partsTotal.toLocaleString(locale())} ${t('parts.stat.types')}</div>`
       : '';
   } else {
     s.innerHTML = ladeAnzeige('', { stil: 'padding:1rem' });

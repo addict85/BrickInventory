@@ -291,7 +291,7 @@ function zeichneBericht(d) {
   // Der Knopfzustand kommt aus knoepfeStand() — siehe die Begründung dort.
   knoepfeStand();
   el.innerHTML = `
-    <div style="border:1px solid var(--bdr);border-radius:8px;padding:.6rem">
+    <div data-stil="border:1px solid var(--bdr);border-radius:8px;padding:.6rem">
       <div><strong>${d.gelesen}</strong> ${esc(tRaw('settings.wanted_read'))}${
         d.vorschau ? ` — ${esc(tRaw('settings.wanted_preview_only'))}` : ''}</div>
       ${stufe('zuordnung', tRaw('settings.wanted_s1'))}
@@ -312,7 +312,7 @@ function zeichneBericht(d) {
         d.korrekturen.abgewiesen.length}</strong> ${
         esc(tRaw('wanted.corrections_rejected'))}</div>` : ''}
       ${d.abgebrochen ? `<div>${ico('warnung')} ${esc(tRaw('wanted.cancelled'))}</div>` : ''}
-      ${!d.vorschau ? `<div style="margin-top:.4rem"><strong>${d.angelegt}</strong> ${
+      ${!d.vorschau ? `<div data-stil="margin-top:.4rem"><strong>${d.angelegt}</strong> ${
         esc(tRaw('settings.wanted_written'))}${d.aufgestockt ? `, ${d.aufgestockt} ${
         esc(tRaw('wanted.topped_up'))}` : ''}${d.fehler ? `, ${d.fehler} ${
         esc(tRaw('settings.wanted_errors'))}` : ''}</div>` : ''}
@@ -325,8 +325,8 @@ function zeile(p, i) {
     ? bildTag({ src: imgUrl(fullUrl(p.bild), true), alt: '', klasse: 'bild-40', ph: 'teil' })
     : `<span class="bild-ph bild-40" aria-hidden="true">${platzhalterInhalt('teil')}</span>`;
   const punkt = p.farbHex
-    ? `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${
-        escHex(p.farbHex, 'var(--s300)')};border:1px solid rgba(0,0,0,.15);margin-right:4px"></span>`
+    ? `<span data-stil="display:inline-block;width:10px;height:10px;border-radius:50%;border:1px solid rgba(0,0,0,.15);margin-right:4px"
+        data-farbe="${escHex(p.farbHex, 'var(--s300)')}"></span>`
     : '';
   // Der Ausgang mit WORTEN. „offen" ist die Aussage, auf die es ankommt — sie
   // darf nicht nur eine Farbe sein.
@@ -372,7 +372,7 @@ function zeile(p, i) {
   const zustandZelle = zustandWert
     ? `<span class="cond-badge ${zustandWert === 'U' ? 'cond-used' : 'cond-new'}">${
         esc(tRaw(zustandWert === 'U' ? 'common.condition_used' : 'common.condition_new'))}</span>${
-        ausStandard ? `<div style="color:var(--mut);font-size:var(--fs-1)">${
+        ausStandard ? `<div data-stil="color:var(--mut);font-size:var(--fs-1)">${
           esc(tRaw('wanted.cond_default'))}</div>` : ''}`
     : '';
   const korr = _korrekturen.get(i) || {};
@@ -394,8 +394,8 @@ function zeile(p, i) {
   const feld = (name, wert, extra = '', breit = 72) =>
     `<input data-change="wantedKorrekturWert" data-feld="${name}" data-i="${i}"
        value="${esc(wert)}" ${extra}
-       style="width:${breit}px;font-size:var(--fs-1);padding:2px 4px;border:1px solid var(--bdr);
-              border-radius:5px;text-align:right" />`;
+       data-breite-px="${breit}"
+       data-stil="font-size:var(--fs-1);padding:2px 4px;border:1px solid var(--bdr);border-radius:5px;text-align:right" />`;
   const mengeZelle = feld('menge', korr.menge ?? p.menge, 'type="number" min="1" step="1"');
   // Der Preis je Stück. Leer heisst „keiner" — dann holt der Import den
   // Marktpreis, wie bei MAXPRICE=-1 in der Datei.
@@ -408,39 +408,39 @@ function zeile(p, i) {
   const wahl = (w, text) =>
     `<option value="${w}"${zustandJetzt === w ? ' selected' : ''}>${esc(text)}</option>`;
   const zustandWahl = `<select data-change="wantedKorrekturWert" data-feld="zustand" data-i="${i}"
-      style="font-size:var(--fs-1);padding:2px;border:1px solid var(--bdr);border-radius:5px">
+      data-stil="font-size:var(--fs-1);padding:2px;border:1px solid var(--bdr);border-radius:5px">
       ${wahl('', tRaw('wanted.cond_default_opt'))}
       ${wahl('N', tRaw('common.condition_new'))}
       ${wahl('U', tRaw('common.condition_used'))}
     </select>`;
 
-  return `<tr${p.ausgang === 'offen' ? ' style="background:var(--s50)"' : ''}>
+  return `<tr${p.ausgang === 'offen' ? ' data-stil="background:var(--s50)"' : ''}>
     <td>${bild}</td>
-    <td style="font-family:monospace;font-size:var(--fs-1)">${esc(p.blId)}${
-      p.rbId && p.rbId !== p.blId ? `<div style="color:var(--mut)">→ ${esc(p.rbId)}</div>` : ''}</td>
-    <td style="font-size:var(--fs-2)">${esc(p.name || '')}${
-      p.nameGeraten ? `<div style="color:var(--mut);font-size:var(--fs-1)">${
+    <td data-stil="font-family:monospace;font-size:var(--fs-1)">${esc(p.blId)}${
+      p.rbId && p.rbId !== p.blId ? `<div data-stil="color:var(--mut)">→ ${esc(p.rbId)}</div>` : ''}</td>
+    <td data-stil="font-size:var(--fs-2)">${esc(p.name || '')}${
+      p.nameGeraten ? `<div data-stil="color:var(--mut);font-size:var(--fs-1)">${
         esc(tRaw('wanted.name_guessed'))}</div>` : ''}</td>
-    <td style="font-size:var(--fs-2);white-space:nowrap">${punkt}${esc(p.farbName || '')}${
+    <td data-stil="font-size:var(--fs-2);white-space:nowrap">${punkt}${esc(p.farbName || '')}${
       p.blFarbe !== null && !p.farbName
-        ? `<span style="color:var(--mut)">BL ${p.blFarbe}</span>` : ''}</td>
-    <td style="text-align:right">${mengeZelle}</td>
-    <td style="font-size:var(--fs-1);white-space:nowrap">${zustandWahl}${
+        ? `<span data-stil="color:var(--mut)">BL ${p.blFarbe}</span>` : ''}</td>
+    <td data-stil="text-align:right">${mengeZelle}</td>
+    <td data-stil="font-size:var(--fs-1);white-space:nowrap">${zustandWahl}${
       // Die Plakette NUR bei „Standard": Dann sagt sie, was wirklich angelegt
       // wird — den Wert aus den Einstellungen, den die Auswahl nicht zeigen
       // kann. Steht dort N oder U, wiederholte sie bloss das Wort daneben
       // (am Bildschirm gesehen: „Gebraucht" über „Gebraucht").
       zustandJetzt === '' && zustandZelle
-        ? `<div style="margin-top:2px">${zustandZelle}</div>` : ''}</td>
-    <td style="text-align:right">${preisZelle}</td>
-    <td style="font-size:var(--fs-1)">${ausgang}${
-      grund ? `<div style="color:var(--mut);font-size:var(--fs-1)">${grund}</div>` : ''}</td>
+        ? `<div data-stil="margin-top:2px">${zustandZelle}</div>` : ''}</td>
+    <td data-stil="text-align:right">${preisZelle}</td>
+    <td data-stil="font-size:var(--fs-1)">${ausgang}${
+      grund ? `<div data-stil="color:var(--mut);font-size:var(--fs-1)">${grund}</div>` : ''}</td>
     <td><input type="text" value="${esc(korr.rbId ?? '')}" placeholder="${
-      esc(tRaw('wanted.rb_id_ph'))}" style="width:104px;font-size:var(--fs-1);padding:2px 4px;
+      esc(tRaw('wanted.rb_id_ph'))}" data-stil="width:104px;font-size:var(--fs-1);padding:2px 4px;
       border:1px solid var(--bdr);border-radius:5px"
       data-change="wantedKorrekturNummer" data-i="${i}" /></td>
     <td><select data-change="wantedKorrekturFarbe" data-i="${i}"
-      style="max-width:140px;font-size:var(--fs-1);padding:2px;border:1px solid var(--bdr);border-radius:5px">
+      data-stil="max-width:140px;font-size:var(--fs-1);padding:2px;border:1px solid var(--bdr);border-radius:5px">
       <option value="">${esc(tRaw('wanted.keep'))}</option></select></td>
   </tr>`;
 }
@@ -450,7 +450,7 @@ function zeichneTabelle(d) {
   if (!el) return;
   const posten = d.posten || [];
   if (!posten.length) { el.innerHTML = ''; return; }
-  el.innerHTML = `<table class="dt" style="font-size:var(--fs-2)"><thead><tr>
+  el.innerHTML = `<table class="dt" data-stil="font-size:var(--fs-2)"><thead><tr>
       <th>${t('col.image_th')}</th>
       <th>BrickLink</th>
       <th>${t('col.name')}</th>

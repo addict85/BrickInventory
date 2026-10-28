@@ -173,7 +173,7 @@ export async function enrichGalleryWithPrices(){
 
 // Sparkline SVG renderer
 function sparklineSVG(data, width=260, height=44){
-  if(!data||data.length<2) return '<span style="color:var(--mut);font-size:var(--fs-1)">Noch keine Daten</span>';
+  if(!data||data.length<2) return '<span data-stil="color:var(--mut);font-size:var(--fs-1)">Noch keine Daten</span>';
   // avg_price ist die massgebliche Grösse (siehe die frühere Preis-Umstellung
   // in dieser Sitzung) — qty_avg_price kann für denselben, korrekt
   // aufgelösten Zustand trotzdem fehlen oder abweichen. Genau das erzeugte
@@ -213,7 +213,7 @@ function sparklineSVG(data, width=260, height=44){
   const labelHeight = dateFirst || dateLast ? 14 : 0;
   const totalH = height + labelHeight;
 
-  return `<svg viewBox="0 0 ${width} ${totalH}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:${totalH}px">
+  return `<svg viewBox="0 0 ${width} ${totalH}" xmlns="http://www.w3.org/2000/svg" data-stil="width:100%" data-hoehe-px="${totalH}">
     <defs><linearGradient id="sg" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0%" stop-color="${color}" stop-opacity=".18"/>
       <stop offset="100%" stop-color="${color}" stop-opacity="0"/>
@@ -273,8 +273,8 @@ export function renderMarketRows(ph, targetId = 'm-market-rows') {
     .map(c => {
       const d = ph.by_condition[c];
       const price = d.market_price != null
-        ? `<span style="font-weight:700;color:var(--b600)">${esc(fmtN(d.market_price, CURRENCY))}</span>`
-        : '<span style="color:var(--mut)">—</span>';
+        ? `<span data-stil="font-weight:700;color:var(--b600)">${esc(fmtN(d.market_price, CURRENCY))}</span>`
+        : '<span data-stil="color:var(--mut)">—</span>';
       const pnl = d.pnl_pct != null ? pnlBadge(d.pnl_pct) : '';
       return detailZeile(
         `${esc(t('detail.market_price'))} (${esc(LABEL[c])})`,
@@ -311,7 +311,7 @@ export function priceChartSVG(data, uid = String(Math.random()).slice(2, 8)) {
     .filter(sd => sd.pts.length > 0);
 
   if (!series.length || axis.length < 2) {
-    return `<span style="color:var(--mut);font-size:var(--fs-1)">${t('detail.no_history')}</span>`;
+    return `<span data-stil="color:var(--mut);font-size:var(--fs-1)">${t('detail.no_history')}</span>`;
   }
 
   const W = 700, H = 190, PAD = { l: 64, r: 14, t: 12, b: 40 };
@@ -360,7 +360,7 @@ export function priceChartSVG(data, uid = String(Math.random()).slice(2, 8)) {
        <text x="22" y="0" font-size="11" fill="var(--txt)" font-family="inherit">${esc(sd.name)}</text>
      </g>`).join('');
 
-  return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto">
+  return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" data-stil="width:100%;height:auto">
     ${yTicks}
     ${parts}
     <text x="${PAD.l}" y="${H - 22}" font-size="10" fill="var(--mut)" text-anchor="start" font-family="inherit">${esc(fmtDay(first))}</text>
@@ -379,7 +379,7 @@ export function portfolioChartSVG(data, period, metric, yAxisData){
   const W=700, H=180, PAD={l:72,r:16,t:14,b:32};
   const iw=W-PAD.l-PAD.r, ih=H-PAD.t-PAD.b;
   const vals=data.map(d=>d.total||0);
-  if(vals.length<2) return '<div style="color:var(--mut);font-size:var(--fs-2);padding:1.5rem;text-align:center">Noch keine Verlaufsdaten.</div>';
+  if(vals.length<2) return '<div data-stil="color:var(--mut);font-size:var(--fs-2);padding:1.5rem;text-align:center">Noch keine Verlaufsdaten.</div>';
 
   const rawMin=Math.min(...vals);
   const rawMax=Math.max(...vals);
@@ -442,7 +442,7 @@ export function portfolioChartSVG(data, period, metric, yAxisData){
     </circle>`;
   }).join('');
 
-  return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-height:180px;display:block">
+  return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" data-stil="width:100%;max-height:180px;display:block">
   <defs><linearGradient id="pcg" x1="0" y1="0" x2="0" y2="1">
     <stop offset="0%" stop-color="${color}" stop-opacity=".15"/>
     <stop offset="100%" stop-color="${color}" stop-opacity="0"/>
@@ -569,7 +569,7 @@ export function alarmBlock(sn, praefix = 'm') {
       <input inputmode="decimal" type="number" id="${p}-alert-val" class="alarm-feld" min="0" step="0.01" placeholder="—"
              data-input="alarmGetippt" data-arg="${escJs(sn)}"
              data-change="speichereAlarm" />
-      <span id="${p}-alert-state" style="font-size:var(--fs-1);color:var(--mut)"></span>
+      <span id="${p}-alert-state" data-stil="font-size:var(--fs-1);color:var(--mut)"></span>
     `;
 }
 
@@ -658,7 +658,7 @@ export function lagerortBlock(id, wert, attrs = '') {
   return `
       <select id="${id}-sel" class="alarm-feld" data-ortauswahl="1"
               data-change="lagerortGewaehlt" data-arg="${id}">${ortOptionen(ort)}</select>
-      <input type="text" id="${id}" class="alarm-feld" maxlength="60" style="display:none"
+      <input type="text" id="${id}" class="alarm-feld" maxlength="60" data-stil="display:none"
              placeholder="${esc(tRaw('detail.storage_ph'))}" value="${esc(ort)}"
              data-blur="lagerortGetippt" ${attrs} />
     `;
@@ -965,16 +965,16 @@ export async function openModal(sn){
   const priceRow = '<div id="m-market-rows"></div>';
   const pnlRow  = '';
   const qtyRow = detailZeile(t('detail.qty'), `
-      <button class="btn bs btn-sm" data-click="mQtyDec" style="font-size:var(--fs-4);padding:2px 8px;line-height:1">−</button>
-      <input inputmode="numeric" type="number" id="m-qty" min="1" style="width:46px;text-align:center;border:1px solid var(--bdr);border-radius:6px;padding:2px;font-weight:600" data-change="autosaveSet" />
-      <button class="btn bs btn-sm" data-click="mQtyInc" style="font-size:var(--fs-4);padding:2px 8px;line-height:1">+</button>
+      <button class="btn bs btn-sm" data-click="mQtyDec" data-stil="font-size:var(--fs-4);padding:2px 8px;line-height:1">−</button>
+      <input inputmode="numeric" type="number" id="m-qty" min="1" data-stil="width:46px;text-align:center;border:1px solid var(--bdr);border-radius:6px;padding:2px;font-weight:600" data-change="autosaveSet" />
+      <button class="btn bs btn-sm" data-click="mQtyInc" data-stil="font-size:var(--fs-4);padding:2px 8px;line-height:1">+</button>
     `, { wertStil: 'display:flex;align-items:center;gap:6px' });
 
   // Acquisition summary: compact read-only rows + button to open full editor
   const acqs = ad?.acquisitions || [];
   const acqRows = detailZeile(t('detail.purchase_price'), `
       ${renderAcquisitionSummary(acqs, sn)}
-      <button class="btn bs btn-sm" data-click="openAcqModal" data-arg="${escJs(sn)}" style="margin-top:4px;font-size:var(--fs-1);padding:2px 10px">${ico('bearbeiten')} ${t('detail.edit_prices')}</button>
+      <button class="btn bs btn-sm" data-click="openAcqModal" data-arg="${escJs(sn)}" data-stil="margin-top:4px;font-size:var(--fs-1);padding:2px 10px">${ico('bearbeiten')} ${t('detail.edit_prices')}</button>
     `, { zeilenStil: 'align-items:flex-start',
          wertId: 'm-acq-summary',
          wertStil: 'flex-direction:column;align-items:flex-end;gap:3px' });
@@ -983,7 +983,7 @@ export async function openModal(sn){
     ${detailZeile(t('detail.year'), oderStrich(curSet.year))}
     ${detailZeile(t('detail.theme'), esc(oderStrich(curSet.theme)))}
     ${qtyRow}
-    ${detailZeile(t('detail.pieces'), `${curSet.pieces ? curSet.pieces.toLocaleString(locale()) : '—'} <button class="btn bs btn-sm" data-click="reimportParts" data-arg="${escJs(sn)}" title="${t('detail.reimport_parts')}" style="padding:1px 6px;font-size:var(--fs-1);margin-left:4px">${PARTS_ICON_SVG}</button>`)}
+    ${detailZeile(t('detail.pieces'), `${curSet.pieces ? curSet.pieces.toLocaleString(locale()) : '—'} <button class="btn bs btn-sm" data-click="reimportParts" data-arg="${escJs(sn)}" title="${t('detail.reimport_parts')}" data-stil="padding:1px 6px;font-size:var(--fs-1);margin-left:4px">${PARTS_ICON_SVG}</button>`)}
     ${detailZeile(t('detail.minifigs'), oderStrich(curSet.minifigs), { wertId: 'm-minifigs-val' })}
     ${detailZeile(t('detail.added'), `${ico('kalender')} ${addedFmt}`)}
     ${detailZeile(t('detail.alert'), alarmBlock(sn), {
@@ -995,9 +995,9 @@ export async function openModal(sn){
         { wertStil: 'display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end' })}
     ${acqRows}
     ${priceRow}${pnlRow}
-    <div id="m-price-chart" style="margin-top:.75rem">
-      <div style="font-size:var(--fs-1);font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--mut);margin-bottom:4px">${t('detail.price_history')}</div>
-      <div class="sparkline-wrap" id="m-sparkline-content"><span style="color:var(--mut);font-size:var(--fs-1)">${t('common.loading')}</span></div>
+    <div id="m-price-chart" data-stil="margin-top:.75rem">
+      <div data-stil="font-size:var(--fs-1);font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--mut);margin-bottom:4px">${t('detail.price_history')}</div>
+      <div class="sparkline-wrap" id="m-sparkline-content"><span data-stil="color:var(--mut);font-size:var(--fs-1)">${t('common.loading')}</span></div>
     </div>`;
 
   G('m-qty').value=curSet.quantity;
@@ -1044,7 +1044,7 @@ export async function openModal(sn){
     // Beide Zustände in EINEM Diagramm — siehe priceChartSVG().
     el.innerHTML = ph.success
       ? priceChartSVG(ph, sn.replace(/[^a-zA-Z0-9]/g, ''))
-      : `<span style="color:var(--mut);font-size:var(--fs-1)">${t('detail.no_history')}</span>`;
+      : `<span data-stil="color:var(--mut);font-size:var(--fs-1)">${t('detail.no_history')}</span>`;
   });
 
 }
@@ -1214,26 +1214,26 @@ export async function loadBricksetQueue() {
   const panel = G('brickset-queue-panel');
   if (!panel) return;
   const d = await api('GET', '/v1/admin/brickset-queue').catch(() => null);
-  if (!d?.success) { panel.innerHTML = `<div style="color:var(--r500)">${t('monitor.load_error')}</div>`; panel.style.display='block'; return; }
-  if (!d.entries?.length) { panel.innerHTML = `<div style="font-size:var(--fs-2);color:var(--mut)">${t('monitor.no_entries')}</div>`; panel.style.display='block'; return; }
+  if (!d?.success) { panel.innerHTML = `<div data-stil="color:var(--r500)">${t('monitor.load_error')}</div>`; panel.style.display='block'; return; }
+  if (!d.entries?.length) { panel.innerHTML = `<div data-stil="font-size:var(--fs-2);color:var(--mut)">${t('monitor.no_entries')}</div>`; panel.style.display='block'; return; }
   panel.innerHTML = `
-    <div style="font-size:var(--fs-1);font-weight:700;color:var(--mut);margin-bottom:.5rem;text-transform:uppercase;letter-spacing:.5px">${t('monitor.queue_entries',{n:d.count})}</div>
-    <div style="display:flex;flex-direction:column;gap:.4rem;max-height:400px;overflow-y:auto">
+    <div data-stil="font-size:var(--fs-1);font-weight:700;color:var(--mut);margin-bottom:.5rem;text-transform:uppercase;letter-spacing:.5px">${t('monitor.queue_entries',{n:d.count})}</div>
+    <div data-stil="display:flex;flex-direction:column;gap:.4rem;max-height:400px;overflow-y:auto">
       ${d.entries.map(e => `
-        <div id="bsq-${esc(e.set_number)}" style="display:flex;align-items:flex-start;gap:.5rem;padding:.5rem .6rem;background:var(--s50);border-radius:6px;font-size:var(--fs-2)">
-          <div style="flex:1;min-width:0">
-            <div style="font-weight:600">${esc(e.set_number)}${e.name ? ` — ${esc(e.name)}` : ''}</div>
-            <div style="color:var(--mut);margin-top:.15rem">${t('monitor.attempt',{a:e.attempts,r:e.retry_after})}</div>
+        <div id="bsq-${esc(e.set_number)}" data-stil="display:flex;align-items:flex-start;gap:.5rem;padding:.5rem .6rem;background:var(--s50);border-radius:6px;font-size:var(--fs-2)">
+          <div data-stil="flex:1;min-width:0">
+            <div data-stil="font-weight:600">${esc(e.set_number)}${e.name ? ` — ${esc(e.name)}` : ''}</div>
+            <div data-stil="color:var(--mut);margin-top:.15rem">${t('monitor.attempt',{a:e.attempts,r:e.retry_after})}</div>
             ${e.last_error ? `
-            <details style="margin-top:.25rem">
-              <summary style="cursor:pointer;color:var(--r500);font-size:var(--fs-1);user-select:none">${t('monitor.show_last_error')}</summary>
-              <div style="margin-top:.2rem;padding:.3rem .4rem;background:var(--s100);border-radius:4px;font-family:monospace;font-size:var(--fs-1);white-space:pre-wrap;word-break:break-all;color:var(--r600);max-height:100px;overflow-y:auto">${esc(e.last_error)}</div>
+            <details data-stil="margin-top:.25rem">
+              <summary data-stil="cursor:pointer;color:var(--r500);font-size:var(--fs-1);user-select:none">${t('monitor.show_last_error')}</summary>
+              <div data-stil="margin-top:.2rem;padding:.3rem .4rem;background:var(--s100);border-radius:4px;font-family:monospace;font-size:var(--fs-1);white-space:pre-wrap;word-break:break-all;color:var(--r600);max-height:100px;overflow-y:auto">${esc(e.last_error)}</div>
             </details>` : ''}
           </div>
-          <div style="display:flex;flex-direction:column;gap:.3rem;flex-shrink:0">
-            <button class="btn bs btn-sm" style="padding:2px 8px;font-size:var(--fs-1)"
+          <div data-stil="display:flex;flex-direction:column;gap:.3rem;flex-shrink:0">
+            <button class="btn bs btn-sm" data-stil="padding:2px 8px;font-size:var(--fs-1)"
               data-click="retryBricksetQueueEntry" data-arg="${esc(e.set_number)}" data-self="1">${ico('aktualisieren')}</button>
-            <button class="btn bd btn-sm" style="padding:2px 8px;font-size:var(--fs-1)"
+            <button class="btn bd btn-sm" data-stil="padding:2px 8px;font-size:var(--fs-1)"
               data-click="deleteBricksetQueueEntry" data-arg="${esc(e.set_number)}" data-self="1">${ico('loeschen')}</button>
           </div>
         </div>`).join('')}

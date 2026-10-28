@@ -195,17 +195,18 @@ test('Emoji in der Oberfläche werden weniger, nie mehr', () => {
 });
 
 /**
- * Inline-Stile in index.html. Ein style="…" setzt sich über jedes Design und
- * jede Telefonregel hinweg; gleiche Dinge sahen deshalb an zwei Stellen
- * verschieden aus. Gezählt werden Attribute ausserhalb von Kommentaren.
- * style="display:none" bleibt erlaubt: Die Skripte schalten es um.
+ * Inline-Stile in index.html. Ein data-stil="…" (js/00-stile.js setzt es als
+ * Inline-Stil) setzt sich über jedes Design und jede Telefonregel hinweg;
+ * gleiche Dinge sahen deshalb an zwei Stellen verschieden aus. Gezählt werden
+ * Attribute ausserhalb von Kommentaren. display:none bleibt erlaubt: Die
+ * Skripte schalten es um.
  */
 test('Inline-Stile in index.html werden weniger, nie mehr', () => {
   // GEMESSEN am 28.10.2026: 455 vor dem Umzug in Klassen, danach 170,
   // davon 56 reines display:none.
   const SCHRANKE = 114;
   const html = fs.readFileSync(path.join(WEB, 'public', 'index.html'), 'utf8').replace(/<!--[\s\S]*?-->/g, '');
-  const stile = [...html.matchAll(/<[a-zA-Z][^>]*?\sstyle="([^"]*)"/g)].map(m => m[1].trim().replace(/;$/, ''));
+  const stile = [...html.matchAll(/<[a-zA-Z][^>]*?\sdata-stil="([^"]*)"/g)].map(m => m[1].trim().replace(/;$/, ''));
   assert.ok(stile.length > 50, 'Keine Inline-Stile gefunden — greift die Suche noch?');
   const ist = stile.filter(s => s !== 'display:none').length;
   assert.ok(ist <= SCHRANKE,

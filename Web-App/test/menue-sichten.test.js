@@ -111,7 +111,7 @@ test('der Reiter „Einstellungen" ist Verwaltersache', () => {
   // Marcos Vorgabe: nur noch, was ein Administrator setzen kann. Deshalb ist
   // der Reiter wie das Monitoring vorgeblendet und wird erst für Admins
   // sichtbar (js/01-core.js).
-  assert.match(HTML, /id="ntab-settings"[^>]*style="display:none"/,
+  assert.match(HTML, /id="ntab-settings"[^>]*data-stil="display:none"/,
     'Der Einstellungs-Reiter steht wieder für alle da — für Nicht-Admins wäre ' +
     'er leer.');
   const core = fs.readFileSync(path.join(ROOT, 'public', 'js', '01-core.js'), 'utf8');

@@ -86,9 +86,9 @@ test('Abstand zwischen Einladungscode und Verknüpfen-Knopf', () => {
   const d = new JSDOM(HTML).window.document;
   const knopf = d.querySelector('[data-click="redeemHouseholdInvite"]');
   assert.ok(knopf, 'Der Verknüpfen-Knopf ist nicht mehr zu finden');
-  const stil = knopf.getAttribute('style') || '';
+  const stil = knopf.getAttribute('data-stil') || '';
   assert.match(stil, /margin-top\s*:\s*\.?\d/,
-    `Der Knopf trägt keinen oberen Abstand (style="${stil}"). Er klebt dann am ` +
+    `Der Knopf trägt keinen oberen Abstand (data-stil="${stil}"). Er klebt dann am ` +
     'Eingabefeld darüber — Marcos Bild.');
 });
 
@@ -105,9 +105,9 @@ test('die verknüpften Konten stehen in zwei Spalten, nicht je Zeile neu', () =>
 
   const liste = dom.window.document.querySelector('#household-state ul');
   assert.ok(liste, 'Die Liste der verknüpften Konten wurde nicht erzeugt');
-  const stil = liste.getAttribute('style') || '';
+  const stil = liste.getAttribute('data-stil') || '';
   assert.match(stil, /display\s*:\s*grid/,
-    `Die LISTE trägt kein Raster (style="${stil}") — dann richtet sich jede Zeile ` +
+    `Die LISTE trägt kein Raster (data-stil="${stil}") — dann richtet sich jede Zeile ` +
     'für sich aus, und die Knöpfe stehen versetzt.');
   assert.match(stil, /grid-template-columns\s*:\s*max-content\s+max-content/,
     'Die Liste hat keine zwei Inhaltsspalten — ohne sie teilen sich die Zeilen ' +
@@ -116,7 +116,7 @@ test('die verknüpften Konten stehen in zwei Spalten, nicht je Zeile neu', () =>
   const zeilen = [...liste.querySelectorAll('li')];
   assert.equal(zeilen.length, 3, `${zeilen.length} Zeilen statt 3`);
   for (const li of zeilen) {
-    assert.match(li.getAttribute('style') || '', /display\s*:\s*contents/,
+    assert.match(li.getAttribute('data-stil') || '', /display\s*:\s*contents/,
       'Eine Zeile erzeugt einen eigenen Kasten — damit liegen ihre Zellen NICHT ' +
       'in den Spalten der Liste, und die Ausrichtung ist wieder dahin');
   }
@@ -167,18 +167,18 @@ test('die Lagerorte stehen wie in einer Tabelle', () => {
   vm.createContext(sandbox);
   vm.runInContext(rumpf.replace(/^export\s+/, '') + '\nERG = ladeLagerortVerwaltung();', sandbox);
   return sandbox.ERG.then(() => {
-    const raster = d.querySelector('#storage-list > div[style*="grid"]');
+    const raster = d.querySelector('#storage-list > div[data-stil*="grid"]');
     assert.ok(raster, 'Es gibt keinen Rasterbehälter — dann richtet sich jede Zeile ' +
                       'für sich aus, und die Eingabefelder sind verschieden lang');
-    const stil = raster.getAttribute('style');
+    const stil = raster.getAttribute('data-stil');
     assert.match(stil, /grid-template-columns\s*:\s*minmax\(0,\s*1fr\)\s+max-content\s+max-content\s+max-content/,
-      `Das Raster hat nicht die vier erwarteten Spalten (style="${stil}"). minmax(0,1fr) ` +
+      `Das Raster hat nicht die vier erwarteten Spalten (data-stil="${stil}"). minmax(0,1fr) ` +
       'und nicht 1fr: Ein langer Ortsname sprengte sonst die Spalte.');
 
     const zeilen = [...raster.children];
     assert.equal(zeilen.length, 4, `${zeilen.length} Zeilen statt 4`);
     for (const z of zeilen) {
-      assert.match(z.getAttribute('style') || '', /display\s*:\s*contents/,
+      assert.match(z.getAttribute('data-stil') || '', /display\s*:\s*contents/,
         'Eine Lagerortzeile erzeugt einen eigenen Kasten — damit hat sie wieder ' +
         'ihre eigenen Spaltenbreiten');
       assert.equal(z.children.length, 4,
@@ -187,7 +187,7 @@ test('die Lagerorte stehen wie in einer Tabelle', () => {
     // Der Trennstrich sass an der Zeile; ein display:contents-Element kann
     // keinen Rahmen tragen. Er muss an den ZELLEN liegen, sonst ist er weg.
     for (const zelle of zeilen[0].children) {
-      assert.match(zelle.getAttribute('style') || '', /border-bottom/,
+      assert.match(zelle.getAttribute('data-stil') || '', /border-bottom/,
         'Eine Zelle trägt keinen Trennstrich — bei display:contents ist die Linie ' +
         'sonst verschwunden, weil die Zeile keinen Kasten mehr hat');
     }

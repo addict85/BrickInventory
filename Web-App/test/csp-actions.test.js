@@ -50,6 +50,21 @@ test("die CSP erlaubt kein 'unsafe-inline' für script-src mehr", () => {
   assert.doesNotMatch(line, /unsafe-eval/, "'unsafe-eval' wäre dasselbe Problem in Grün");
 });
 
+test('kein style-Attribut und kein <style> im Markup — die CSP verbietet beide', () => {
+  // Gegenprobe: ein data-stil in index.html wieder als style= → rot.
+  const strip = t => t.replace(/<!--[\s\S]*?-->/g, '').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/[^\n]*$/gm, '');
+  const found = [];
+  for (const [name, src] of [['index.html', HTML], ['logviewer.js', fs.readFileSync(path.join(PUB, 'js', 'logviewer.js'), 'utf8')],
+       ...JS_FILES.map(f => [f, fs.readFileSync(path.join(PUB, 'js', f), 'utf8')])]) {
+    for (const m of strip(src).matchAll(/(?<![-\w])style=\\?["']|<style[\s>]/g)) found.push(`${name}: ${m[0]}`);
+    // Ein Wert mit ${…} steht nicht auf der Freigabeliste und bliebe wirkungslos;
+    // nur die Bausteine reichen den stil-Parameter ihres Aufrufers weiter.
+    for (const m of src.matchAll(/data-stil="([^"]*\$\{[^"]*)"/g))
+      if (!/^\$\{(esc\()?o\.(stil|zeilenStil|wertStil)\)?\}$/.test(m[1])) found.push(`${name}: data-stil="${m[1]}"`);
+  }
+  assert.deepEqual(found, []);
+});
+
 test('img-src erlaubt keine fremden Hosts mehr', () => {  // ── Woher dieser Test kommt ─────────────────────────────────────────────
   // img-src trug ein pauschales `https:` mit der Begründung, Set-Bilder kämen
   // direkt von den CDNs. Seit hardened-69 stimmt das nicht mehr: imgUrl()

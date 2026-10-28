@@ -37,12 +37,14 @@ function syncTabTitleIcon(tab){
   if(!nav || !slot) return;
   // Alles vor dem .tab-label ist das Icon (Emoji-Textknoten oder <svg>).
   const label = nav.querySelector('.tab-label');
-  let html = '';
+  // Kopien statt outerHTML: Als Text neu eingelesen, stünde der Stil des
+  // Symbols wieder als style-Attribut da, und das verbietet die CSP.
+  const kopien = [];
   for(const node of nav.childNodes){
     if(node === label) break;
-    html += node.nodeType === Node.TEXT_NODE ? node.textContent : (node.outerHTML || '');
+    if(node.nodeType === Node.TEXT_NODE ? node.textContent.trim() : true) kopien.push(node.cloneNode(true));
   }
-  slot.innerHTML = html.trim();
+  slot.replaceChildren(...kopien);
 }
 
 /**
@@ -873,7 +875,7 @@ export function updateGalleryPrices(){
     const priceStr = s._price ? fmtN(s._price, CURRENCY)
                               : (s.max_purchase_price != null ? fmtN(s.max_purchase_price, CURRENCY) : '');
     const pnl = pnlBadge(s._pnl_pct);
-    el.innerHTML = `<span style="font-weight:600;color:var(--b600)">${priceStr}</span>${pnl}`;
+    el.innerHTML = `<span data-stil="font-weight:600;color:var(--b600)">${priceStr}</span>${pnl}`;
     el.hidden = !(priceStr || pnl);
   });
 }
@@ -959,29 +961,29 @@ function gridCard(s){
       <div class="snum">${esc(s.set_number)}</div>
       <div class="sname">${esc(s.name)||'Unbekannt'}</div>
       <div class="smeta">
-        <span style="font-size:var(--fs-1)">${s.year||'—'}${s.theme?' · '+esc(s.theme.substring(0,12)):''}</span>
-        <div style="display:flex;gap:3px;align-items:center;flex-wrap:wrap">
+        <span data-stil="font-size:var(--fs-1)">${s.year||'—'}${s.theme?' · '+esc(s.theme.substring(0,12)):''}</span>
+        <div data-stil="display:flex;gap:3px;align-items:center;flex-wrap:wrap">
           ${s.instructions?.length?`<span class="ibadge">${ico('liste')}${s.instructions.length}</span>`:''}
           ${s.quantity>1?`<span class="qbadge">×${s.quantity}</span>`:''}
           ${condBadge}
           ${ownerBadges(s)}
         </div>
       </div>
-      <div class="price-badge" data-price-for="${esc(s.set_number)}"${priceStr||pnl ? '' : ' hidden'}><span style="font-weight:600;color:var(--b600)">${priceStr}</span>${pnl}</div>
-      ${addedFmt ? `<div style="font-size:var(--fs-1);color:var(--mut);margin-top:.2rem">${ico('kalender')} ${addedFmt}</div>` : ''}
+      <div class="price-badge" data-price-for="${esc(s.set_number)}"${priceStr||pnl ? '' : ' hidden'}><span data-stil="font-weight:600;color:var(--b600)">${priceStr}</span>${pnl}</div>
+      ${addedFmt ? `<div data-stil="font-size:var(--fs-1);color:var(--mut);margin-top:.2rem">${ico('kalender')} ${addedFmt}</div>` : ''}
     </div>
   </div>`;
 }
 function tableRow(s){
   const src=s.image_local||s.image_url||'';
   const addedFmt = s.added_at ? new Date(s.added_at).toLocaleDateString(locale()) : '—';
-  return `<tr style="cursor:pointer" tabindex="0" data-click="openModal" data-arg="${escJs(s.set_number)}">
+  return `<tr data-stil="cursor:pointer" tabindex="0" data-click="openModal" data-arg="${escJs(s.set_number)}">
     <td>${src?bildTag({ src: imgUrl(thumbUrl(src)||src, true), alt: '', ph: 'set' }):`<span class="bild-ph" aria-hidden="true">${platzhalterInhalt('set')}</span>`}</td>
-    <td><span style="font-family:var(--mono);color:var(--b600);font-size:var(--fs-1)">${esc(s.set_number)}</span></td>
+    <td><span data-stil="font-family:var(--mono);color:var(--b600);font-size:var(--fs-1)">${esc(s.set_number)}</span></td>
     <td>${esc(s.name)||'—'}</td><td>${s.year||'—'}</td><td>${esc(s.theme)||'—'}</td>
     <td>${s.pieces?s.pieces.toLocaleString(locale()):'—'}</td><td>${s.minifigs||'—'}</td>
     <td><span class="qbadge">×${s.quantity}</span></td>
-    <td style="font-size:var(--fs-1);color:var(--mut)">${addedFmt}</td>
+    <td data-stil="font-size:var(--fs-1);color:var(--mut)">${addedFmt}</td>
     <td>${s.instructions?.length?`<span class="ibadge">${ico('liste')}${s.instructions.length}</span>`:'—'}</td>
     <td data-click="stopEvent"><button class="btn bs btn-sm" data-click="reimportParts" data-arg="${escJs(s.set_number)}" title="${esc(t('detail.reimport_parts'))}" aria-label="${esc(t('detail.reimport_parts'))}">${PARTS_ICON_SVG}</button></td>
     <td data-click="stopEvent"><button class="btn bd btn-sm" data-click="delSet" data-arg="${escJs(s.set_number)}" title="${esc(t('detail.delete'))}" aria-label="${esc(t('detail.delete'))}">${TRASH_ICON_SVG}</button></td>
@@ -1312,7 +1314,7 @@ export async function reimportParts(sn){ toast(tRaw('detail.importing_parts',{sn
 export let curSet=null;
 export let _pnlCache = {};
 // Gemeinsames "Haufen von Steinen"-Icon für Teile (Nav-Tab, Platzhalter, Überschriften)
-export const PARTS_ICON_SVG = '<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" style="width:1em;height:1em;vertical-align:middle"><rect x="18" y="62" width="56" height="26" rx="2.5" fill="#0055BF"/><circle cx="28" cy="62" r="5.5" fill="#0055BF"/><circle cx="46" cy="62" r="5.5" fill="#0055BF"/><circle cx="64" cy="62" r="5.5" fill="#0055BF"/><g transform="rotate(-9 66 55)"><rect x="38" y="42" width="52" height="24" rx="2.5" fill="#F2CD37"/><circle cx="49" cy="42" r="5" fill="#F2CD37"/><circle cx="64" cy="42" r="5" fill="#F2CD37"/><circle cx="79" cy="42" r="5" fill="#F2CD37"/></g><g transform="rotate(7 58 80)"><rect x="26" y="76" width="58" height="26" rx="2.5" fill="#E63329"/><circle cx="37" cy="76" r="5.5" fill="#E63329"/><circle cx="55" cy="76" r="5.5" fill="#E63329"/><circle cx="73" cy="76" r="5.5" fill="#E63329"/></g></svg>';
+export const PARTS_ICON_SVG = '<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" data-stil="width:1em;height:1em;vertical-align:middle"><rect x="18" y="62" width="56" height="26" rx="2.5" fill="#0055BF"/><circle cx="28" cy="62" r="5.5" fill="#0055BF"/><circle cx="46" cy="62" r="5.5" fill="#0055BF"/><circle cx="64" cy="62" r="5.5" fill="#0055BF"/><g transform="rotate(-9 66 55)"><rect x="38" y="42" width="52" height="24" rx="2.5" fill="#F2CD37"/><circle cx="49" cy="42" r="5" fill="#F2CD37"/><circle cx="64" cy="42" r="5" fill="#F2CD37"/><circle cx="79" cy="42" r="5" fill="#F2CD37"/></g><g transform="rotate(7 58 80)"><rect x="26" y="76" width="58" height="26" rx="2.5" fill="#E63329"/><circle cx="37" cy="76" r="5.5" fill="#E63329"/><circle cx="55" cy="76" r="5.5" fill="#E63329"/><circle cx="73" cy="76" r="5.5" fill="#E63329"/></g></svg>';
 // openModal defined below (with price history)
 
 export function renderInstructions(instr, sn) {
@@ -1327,36 +1329,36 @@ export function renderInstructions(instr, sn) {
     const label = esc(i.description) || t('instr.label');
     // Lokale Dateien (PDF/Bild) im In-App-Viewer öffnen; externe URLs im neuen Tab.
     const link = isLocal
-      ? `<a href="${escUrl(href)}" data-click="openPdfViewerLink" data-arg="${esc(href)}" data-arg2="${esc(i.description||'')}" style="cursor:pointer">${label}</a>`
+      ? `<a href="${escUrl(href)}" data-click="openPdfViewerLink" data-arg="${esc(href)}" data-arg2="${esc(i.description||'')}" data-stil="cursor:pointer">${label}</a>`
       : `<a href="${escUrl(href)}" target="_blank" rel="noopener">${label}</a>`;
     return `<div class="ii" id="instr-${i.id}">
       ${link}
-      ${isUpload ? `<span class="lv" style="background:var(--p100);color:var(--p600)">${t('instr.badge_manual')}</span>` : isLocal ? `<span class="lc">${ico('speichern')}</span>` : `<span class="lv">${ico('globus')}</span>`}
-      ${isUpload ? `<button data-click="delInstr" data-arg="${esc(sn)}" data-arg2="${i.id}" title="${t('instr.delete_tooltip')}" style="background:none;border:none;cursor:pointer;color:var(--s400);font-size:var(--fs-3);padding:0 2px" aria-label="${t('instr.delete_tooltip')}">${ico('schliessen')}</button>` : ''}
+      ${isUpload ? `<span class="lv" data-stil="background:var(--p100);color:var(--p600)">${t('instr.badge_manual')}</span>` : isLocal ? `<span class="lc">${ico('speichern')}</span>` : `<span class="lv">${ico('globus')}</span>`}
+      ${isUpload ? `<button data-click="delInstr" data-arg="${esc(sn)}" data-arg2="${i.id}" title="${t('instr.delete_tooltip')}" data-stil="background:none;border:none;cursor:pointer;color:var(--s400);font-size:var(--fs-3);padding:0 2px" aria-label="${t('instr.delete_tooltip')}">${ico('schliessen')}</button>` : ''}
     </div>`;
   }).join('');
 
   const uploadForm = `
-    <div id="instr-upload-form" style="margin-top:10px;padding:10px;background:var(--s50);border:1px dashed var(--bdr);border-radius:8px">
-      <div style="font-size:var(--fs-1);font-weight:600;color:var(--mut);margin-bottom:7px">${t('instr.upload_title')}</div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:flex-end">
-        <div style="flex:1;min-width:140px">
-          <input type="text" id="instr-desc" placeholder="${t('instr.desc_placeholder')}" style="font-size:var(--fs-2);padding:6px 10px" />
+    <div id="instr-upload-form" data-stil="margin-top:10px;padding:10px;background:var(--s50);border:1px dashed var(--bdr);border-radius:8px">
+      <div data-stil="font-size:var(--fs-1);font-weight:600;color:var(--mut);margin-bottom:7px">${t('instr.upload_title')}</div>
+      <div data-stil="display:flex;gap:6px;flex-wrap:wrap;align-items:flex-end">
+        <div data-stil="flex:1;min-width:140px">
+          <input type="text" id="instr-desc" placeholder="${t('instr.desc_placeholder')}" data-stil="font-size:var(--fs-2);padding:6px 10px" />
         </div>
-        <label class="btn bs btn-sm" style="cursor:pointer">
+        <label class="btn bs btn-sm" data-stil="cursor:pointer">
           ${t('instr.choose_file')}
-          <input type="file" id="instr-file" accept=".pdf,.jpg,.jpeg,.png" style="display:none" data-change="uploadInstr" data-arg="${escJs(sn)}" />
+          <input type="file" id="instr-file" accept=".pdf,.jpg,.jpeg,.png" data-stil="display:none" data-change="uploadInstr" data-arg="${escJs(sn)}" />
         </label>
       </div>
-      <div id="instr-upload-status" style="font-size:var(--fs-1);margin-top:6px;color:var(--mut)"></div>
+      <div id="instr-upload-status" data-stil="font-size:var(--fs-1);margin-top:6px;color:var(--mut)"></div>
     </div>`;
 
   G('m-instr').innerHTML = `
-    <div style="font-size:var(--fs-1);font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--mut);margin:12px 0 7px">
+    <div data-stil="font-size:var(--fs-1);font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--mut);margin:12px 0 7px">
       ${t('instr.section_title')} ${instr.length ? `(${instr.length})` : ''}
-      <button data-click="redownloadInstr" data-arg="${escJs(sn)}" class="btn bs btn-sm" style="margin-left:8px;font-size:var(--fs-0);padding:3px 8px">${t('instr.reload')}</button>
+      <button data-click="redownloadInstr" data-arg="${escJs(sn)}" class="btn bs btn-sm" data-stil="margin-left:8px;font-size:var(--fs-0);padding:3px 8px">${t('instr.reload')}</button>
     </div>
-    ${items || `<div style="color:var(--mut);font-size:var(--fs-2)">${t('instr.none_auto')}</div>`}
+    ${items || `<div data-stil="color:var(--mut);font-size:var(--fs-2)">${t('instr.none_auto')}</div>`}
     ${uploadForm}`;
 }
 
@@ -1433,7 +1435,7 @@ export function autosaveSet(){
           if (!ad?.success) return;
           const sumEl = G('m-acq-summary');
           if (sumEl) sumEl.innerHTML = renderAcquisitionSummary(ad.acquisitions, curSet.set_number) +
-            `<button class="btn bs btn-sm" data-click="openAcqModal" data-arg="${escJs(curSet.set_number)}" style="margin-top:4px;font-size:var(--fs-1);padding:2px 10px">${ico('bearbeiten')} ${t('detail.edit_prices')}</button>`;
+            `<button class="btn bs btn-sm" data-click="openAcqModal" data-arg="${escJs(curSet.set_number)}" data-stil="margin-top:4px;font-size:var(--fs-1);padding:2px 10px">${ico('bearbeiten')} ${t('detail.edit_prices')}</button>`;
           if (G('acq-modal').classList.contains('open') && typeof renderAcqModalBody === 'function') {
             renderAcqModalBody(curSet.set_number, ad.acquisitions);
           }

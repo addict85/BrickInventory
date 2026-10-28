@@ -30,14 +30,14 @@ function setChartPeriod(period){
 async function loadPortfolioChart(){
   const el  = G('portfolio-chart');
   if(!el) return;
-  el.innerHTML = '<div style="color:var(--mut);font-size:var(--fs-2);padding:1rem;text-align:center"><div class="spin" style="width:18px;height:18px;border-width:2px;margin:0 auto 6px"></div>'+t('common.loading')+'</div>';
+  el.innerHTML = '<div data-stil="color:var(--mut);font-size:var(--fs-2);padding:1rem;text-align:center"><div class="spin" data-stil="width:18px;height:18px;border-width:2px;margin:0 auto 6px"></div>'+t('common.loading')+'</div>';
 
   const d = await api('GET', `/v1/finance/portfolio-history?period=${_chartPeriod}${scopeMode('finance') !== 'all' ? '&accounts=' + scopeMode('finance') : ''}`);
   if(!d.success){
-    el.innerHTML='<span style="color:var(--r500);font-size:var(--fs-2);padding:.5rem;display:block">'+t('toast.error')+': '+( d.error||t('common.unknown'))+'</span>'; return;
+    el.innerHTML='<span data-stil="color:var(--r500);font-size:var(--fs-2);padding:.5rem;display:block">'+t('toast.error')+': '+( d.error||t('common.unknown'))+'</span>'; return;
   }
   if(!d.points?.length){
-    el.innerHTML='<div style="color:var(--mut);font-size:var(--fs-2);padding:1.5rem;text-align:center">'+t('history.none_title')+'<br><span style="font-size:var(--fs-1)">'+t('history.none_hint')+'</span></div>'; return;
+    el.innerHTML='<div data-stil="color:var(--mut);font-size:var(--fs-2);padding:1.5rem;text-align:center">'+t('history.none_title')+'<br><span data-stil="font-size:var(--fs-1)">'+t('history.none_hint')+'</span></div>'; return;
   }
 
   const cur = d.currency || CURRENCY;
@@ -143,7 +143,7 @@ export async function loadFinance(){
   // 02-gallery.js (dort für Kacheln mit mehreren Zuständen).
   const condBadge = c => condBadges({ conditions: [c] });
   const pmColgroup = `<colgroup>
-    <col style="width:60px"><col style="width:395px"><col style="width:70px"><col style="width:90px"><col style="width:110px"><col style="width:110px"><col style="width:110px"><col style="width:80px"><col style="width:40px">
+    <col data-stil="width:60px"><col data-stil="width:395px"><col data-stil="width:70px"><col data-stil="width:90px"><col data-stil="width:110px"><col data-stil="width:110px"><col data-stil="width:110px"><col data-stil="width:80px"><col data-stil="width:40px">
   </colgroup>`;
   // Wie bei den Sets: eine VOLLSTÄNDIGE Zeile je Kaufpreis-Erfassung, jede mit
   // dem Marktpreis ihres Zustands und ihrer eigenen Entwicklung. Ein Teil, das
@@ -178,15 +178,15 @@ export async function loadFinance(){
     const img = it.image_local||it.image_url ? bildTag({ src: imgUrl(thumbUrl(it.image_local||it.image_url)||it.image_local||it.image_url, true), orig: imgUrl(it.image_url||''), alt: '', ph: art }) : `<span class="bild-ph" aria-hidden="true">${platzhalterInhalt(art)}</span>`;
     // Der frühere dritte Parameter onclickAttr wurde von keinem Aufrufer
     // gesetzt — der Zweig war tot und hätte als Inline-Handler die CSP blockiert.
-    return `<tr style="cursor:pointer" ${manArgs(it)}>
+    return `<tr data-stil="cursor:pointer" ${manArgs(it)}>
       <td class="fin-bild">${img}</td>
-      <td class="fin-name"><span style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:380px">${label}${acq?` ${condBadge(acq.condition)}`:''} ${ownerBadges(it)}</span><span class="fin-unter">×${qty}</span></td>
+      <td class="fin-name"><span data-stil="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:380px">${label}${acq?` ${condBadge(acq.condition)}`:''} ${ownerBadges(it)}</span><span class="fin-unter">×${qty}</span></td>
       <td class="fin-detail"><span class="qbadge">×${qty}</span></td>
-      <td class="fin-detail" style="font-size:var(--fs-1);color:var(--mut)">${acq?.created_at?new Date(acq.created_at).toLocaleDateString(locale()):''}</td>
-      <td class="fin-detail price-cell">${purchase!=null?fmtN(purchase,cur):'<span style="color:var(--mut)">—</span>'}</td>
-      <td class="fin-detail price-cell">${current>0?geschaetztMarke(it, fmtN(current,cur)):'<span style="color:var(--mut)">—</span>'}</td>
+      <td class="fin-detail" data-stil="font-size:var(--fs-1);color:var(--mut)">${acq?.created_at?new Date(acq.created_at).toLocaleDateString(locale()):''}</td>
+      <td class="fin-detail price-cell">${purchase!=null?fmtN(purchase,cur):'<span data-stil="color:var(--mut)">—</span>'}</td>
+      <td class="fin-detail price-cell">${current>0?geschaetztMarke(it, fmtN(current,cur)):'<span data-stil="color:var(--mut)">—</span>'}</td>
       <td class="fin-wert price-total">${fmtN(total,cur)}</td>
-      <td class="fin-guv">${pnl!=null?pnlBadge(pnl):'<span style="color:var(--mut)">—</span>'}</td>
+      <td class="fin-guv">${pnl!=null?pnlBadge(pnl):'<span data-stil="color:var(--mut)">—</span>'}</td>
       <td class="fin-status"></td>
     </tr>`;
   }
@@ -209,7 +209,7 @@ export async function loadFinance(){
   einstand.alle = zahlOder(pt.purchase, einstand.sets + einstand.parts + einstand.figs);
   const ohnePreis = d.sets.filter(s => s.error || !(parseFloat(s.avg_price) > 0)).length
     + [...partsItems, ...figsItems].filter(it => !(parseFloat(it.avg_price ?? it.qty_avg_price) > 0)).length;
-  const partsRows = partsItems.map(p => pmRows(p, `${esc(p.part_name||p.part_number)}${p.color_name?` <span style="color:var(--mut);font-size:var(--fs-1)">(${esc(colorName(p.color_name))})</span>`:''}`)).join('');
+  const partsRows = partsItems.map(p => pmRows(p, `${esc(p.part_name||p.part_number)}${p.color_name?` <span data-stil="color:var(--mut);font-size:var(--fs-1)">(${esc(colorName(p.color_name))})</span>`:''}`)).join('');
   const figsRows  = figsItems.map(f => pmRows(f, esc(f.fig_name||f.fig_number))).join('');
   // Die vierte Spalte war ein reiner Platzhalter, damit die Preisspalten an
   // derselben Stelle wie in der Sets-Tabelle beginnen. Sie trägt jetzt dasselbe
@@ -223,14 +223,14 @@ export async function loadFinance(){
   const figsTotal  = parseFloat(figsVal?.total_value || 0);
   const pmFoot = (kauf, total) => `<tfoot><tr><td colspan="4" class="fin-fuss-l">${t('finance.sum')}</td>${summenZellen(kauf, total, cur, 1)}<td colspan="2"></td></tr></tfoot>`;
   const partsSectionHtml = partsItems.length ? `
-    <div class="tw" data-fin-art="parts" style="margin-top:1.25rem">
-      <div class="ctitle" style="margin:0 0 6px;display:flex;align-items:center;gap:6px">${PARTS_ICON_SVG} ${t('parts.manual_section')}</div>
-      <table class="dt dt-fin" style="table-layout:fixed;width:100%;min-width:1065px">${pmColgroup}${pmTableHead}<tbody>${partsRows}</tbody>${pmFoot(einstand.parts, partsTotal)}</table>
+    <div class="tw" data-fin-art="parts" data-stil="margin-top:1.25rem">
+      <div class="ctitle" data-stil="margin:0 0 6px;display:flex;align-items:center;gap:6px">${PARTS_ICON_SVG} ${t('parts.manual_section')}</div>
+      <table class="dt dt-fin" data-stil="table-layout:fixed;width:100%;min-width:1065px">${pmColgroup}${pmTableHead}<tbody>${partsRows}</tbody>${pmFoot(einstand.parts, partsTotal)}</table>
     </div>` : '';
   const figsSectionHtml = figsItems.length ? `
-    <div class="tw" data-fin-art="figs" style="margin-top:1.25rem">
-      <div class="ctitle" style="margin:0 0 6px">${t('finance.figs_section')}</div>
-      <table class="dt dt-fin" style="table-layout:fixed;width:100%;min-width:1065px">${pmColgroup}${pmTableHead}<tbody>${figsRows}</tbody>${pmFoot(einstand.figs, figsTotal)}</table>
+    <div class="tw" data-fin-art="figs" data-stil="margin-top:1.25rem">
+      <div class="ctitle" data-stil="margin:0 0 6px">${t('finance.figs_section')}</div>
+      <table class="dt dt-fin" data-stil="table-layout:fixed;width:100%;min-width:1065px">${pmColgroup}${pmTableHead}<tbody>${figsRows}</tbody>${pmFoot(einstand.figs, figsTotal)}</table>
     </div>` : '';
 
   // ── Eine Zeile JE KAUFPREIS-ERFASSUNG ───────────────────────────────────────
@@ -269,16 +269,16 @@ export async function loadFinance(){
     const dateSrc  = acq ? acq.created_at : s.added_at;
     // Die Fehlermeldung steht im Status-Symbol (Tooltip), nicht in der Summe:
     // Dort brach sie die Spalte fünfzeilig um.
-    return `<tr style="cursor:pointer" tabindex="0" data-click="openModal" data-arg="${escJs(s.set_number)}">
+    return `<tr data-stil="cursor:pointer" tabindex="0" data-click="openModal" data-arg="${escJs(s.set_number)}">
     <td class="fin-bild">${s.image_local||s.image_url?bildTag({ src: imgUrl(thumbUrl(s.image_local||s.image_url)||s.image_local||s.image_url, true), alt: '', ph: 'set' }):`<span class="bild-ph" aria-hidden="true">${platzhalterInhalt('set')}</span>`}</td>
-    <td class="fin-detail"><span style="font-family:var(--mono);color:var(--b600);font-size:var(--fs-1)">${esc(s.set_number)}</span></td>
+    <td class="fin-detail"><span data-stil="font-family:var(--mono);color:var(--b600);font-size:var(--fs-1)">${esc(s.set_number)}</span></td>
     <td class="fin-name">${esc(s.name)||'—'}${acq?` ${condBadge(acq.condition)}`:''} ${ownerBadges(s)}<span class="fin-unter">${esc(s.set_number)}${s.year?` · ${s.year}`:''} · ×${qty}</span></td><td class="fin-detail">${s.year||'—'}</td>
     <td class="fin-detail"><span class="qbadge">×${qty}</span></td>
-    <td class="fin-detail" style="font-size:var(--fs-1);color:var(--mut)">${dateSrc?new Date(dateSrc).toLocaleDateString(locale()):'—'}</td>
+    <td class="fin-detail" data-stil="font-size:var(--fs-1);color:var(--mut)">${dateSrc?new Date(dateSrc).toLocaleDateString(locale()):'—'}</td>
     <td class="fin-detail price-cell">${purchase!=null?fmtN(purchase,cur):'—'}</td>
     <td class="fin-detail ${s.error?'':'price-cell'}">${s.error?`<span class="fin-fehlt" title="${esc(t('finance.price_failed'))}: ${esc(s.error)}">${t('finance.price_missing_short')}</span>`:fmtN(market,cur)}</td>
-    <td class="fin-wert ${s.error?'':'price-total'}">${s.error?'<span style="color:var(--mut)">—</span>':fmtN(total,cur)}</td>
-    <td class="fin-guv">${pnl!=null?pnlBadge(pnl):'<span style="color:var(--mut)">—</span>'}</td>
+    <td class="fin-wert ${s.error?'':'price-total'}">${s.error?'<span data-stil="color:var(--mut)">—</span>':fmtN(total,cur)}</td>
+    <td class="fin-guv">${pnl!=null?pnlBadge(pnl):'<span data-stil="color:var(--mut)">—</span>'}</td>
     <td class="fin-status">${priceStatusBadge(s)}</td>
   </tr>`;
   }
@@ -314,7 +314,7 @@ export async function loadFinance(){
   }
   const summenZeile = (name, kauf, wert) => `<tr><td class="fin-fuss-name">${name}</td>${summenZellen(kauf, wert, cur, 0)}</tr>`;
   const grandTotalHtml = `
-    <div class="tw" style="margin-top:1.25rem">
+    <div class="tw" data-stil="margin-top:1.25rem">
       <table class="dt dt-summe">
         <thead><tr><th></th><th>${t('finance.stat.purchase')}</th><th>${t('finance.grand.value')}</th></tr></thead>
         <tbody>
@@ -325,7 +325,7 @@ export async function loadFinance(){
         <tfoot>${summenZeile(t('finance.grand.total'), einstand.alle, grandTotal)}</tfoot>
       </table>
     </div>`;
-  G('fin-tbl').innerHTML=`<div class="tw" data-fin-art="sets"><table class="dt dt-fin" style="table-layout:fixed;width:100%;min-width:1065px"><colgroup><col style="width:60px"><col style="width:90px"><col style="width:250px"><col style="width:55px"><col style="width:70px"><col style="width:90px"><col style="width:110px"><col style="width:110px"><col style="width:110px"><col style="width:80px"><col style="width:40px"></colgroup><thead><tr><th></th><th>Nr.</th><th>${t('col.name')}</th><th>${t('detail.year')}</th><th>${t('detail.qty')}</th><th>${t('detail.added')}</th><th>${t('detail.purchase_price')}</th><th>${t('detail.market_price')}</th><th>${t('finance.grand.total')}</th><th>${t('finance.total_pnl')}</th><th title="${esc(t('finance.price_status'))}"><span class="vh">${esc(t('finance.price_status'))}</span></th></tr></thead><tbody>${rows}</tbody><tfoot><tr><td colspan="6" class="fin-fuss-l">${t('finance.sum')}</td>${summenZellen(einstand.sets, setsQtyAvg, cur, 1)}<td colspan="2"></td></tr></tfoot></table></div>${partsSectionHtml}${figsSectionHtml}${grandTotalHtml}`;
+  G('fin-tbl').innerHTML=`<div class="tw" data-fin-art="sets"><table class="dt dt-fin" data-stil="table-layout:fixed;width:100%;min-width:1065px"><colgroup><col data-stil="width:60px"><col data-stil="width:90px"><col data-stil="width:250px"><col data-stil="width:55px"><col data-stil="width:70px"><col data-stil="width:90px"><col data-stil="width:110px"><col data-stil="width:110px"><col data-stil="width:110px"><col data-stil="width:80px"><col data-stil="width:40px"></colgroup><thead><tr><th></th><th>Nr.</th><th>${t('col.name')}</th><th>${t('detail.year')}</th><th>${t('detail.qty')}</th><th>${t('detail.added')}</th><th>${t('detail.purchase_price')}</th><th>${t('detail.market_price')}</th><th>${t('finance.grand.total')}</th><th>${t('finance.total_pnl')}</th><th title="${esc(t('finance.price_status'))}"><span class="vh">${esc(t('finance.price_status'))}</span></th></tr></thead><tbody>${rows}</tbody><tfoot><tr><td colspan="6" class="fin-fuss-l">${t('finance.sum')}</td>${summenZellen(einstand.sets, setsQtyAvg, cur, 1)}<td colspan="2"></td></tr></tfoot></table></div>${partsSectionHtml}${figsSectionHtml}${grandTotalHtml}`;
   // Der Filter ueberlebt das Neuzeichnen. Ohne diesen Aufruf stuenden nach
   // jedem „Preise laden" wieder alle drei Abschnitte da, waehrend die Chips
   // daneben weiter eine Auswahl anzeigen — die Anzeige waere dann eine

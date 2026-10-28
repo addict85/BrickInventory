@@ -26,17 +26,17 @@ export async function ladeZweitenFaktor() {
   const d = await api('GET', '/v1/auth/zweiter-faktor');
   if (!d?.success) { zeichne(`<div class="voucher-leer">${t('settings.error')}</div>`); return; }
   if (!d.aktiv) {
-    zeichne(`<form class="sform" data-submit="zf-start" style="max-width:420px">
+    zeichne(`<form class="sform" data-submit="zf-start" data-stil="max-width:420px">
       ${PASSWORTFELD()}
       <div><button type="button" class="btn bp btn-sm" id="zf-start" data-click="zfEinrichten">${t('zf.setup')}</button></div>
     </form>`);
     return;
   }
-  zeichne(`<p style="font-size:var(--fs-3);margin:0 0 .75rem 0">${ico('ok')} ${esc(tRaw('zf.active', { n: d.codes_uebrig }))}</p>
-    <form class="sform" style="max-width:420px">
+  zeichne(`<p data-stil="font-size:var(--fs-3);margin:0 0 .75rem 0">${ico('ok')} ${esc(tRaw('zf.active', { n: d.codes_uebrig }))}</p>
+    <form class="sform" data-stil="max-width:420px">
       ${PASSWORTFELD()}
       ${CODEFELD(t('login.code'))}
-      <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+      <div data-stil="display:flex;gap:.5rem;flex-wrap:wrap">
         ${knopf('zfNeueCodes', t('zf.new_codes'))}
         ${knopf('zfAbschalten', t('zf.disable'), 'bd')}
       </div>
@@ -48,12 +48,12 @@ export async function zfEinrichten() {
   if (!d?.success) { toast(d?.error || tRaw('settings.error'), 'error'); return; }
   // Gruppiert lesbar, falls jemand den Schlüssel von Hand eintippt.
   const lesbar = d.geheimnis.replace(/(.{4})/g, '$1 ').trim();
-  zeichne(`<div class="sform" style="max-width:420px">
-      <p style="font-size:var(--fs-2);margin:0">${t('zf.scan')}</p>
-      <div id="zf-qr" style="background:#fff;padding:8px;align-self:flex-start;border-radius:8px"></div>
-      <div style="font-size:var(--fs-1);color:var(--mut)">${t('zf.manual')}<br><code style="user-select:all;font-size:var(--fs-3)">${esc(lesbar)}</code></div>
+  zeichne(`<div class="sform" data-stil="max-width:420px">
+      <p data-stil="font-size:var(--fs-2);margin:0">${t('zf.scan')}</p>
+      <div id="zf-qr" data-stil="background:#fff;padding:8px;align-self:flex-start;border-radius:8px"></div>
+      <div data-stil="font-size:var(--fs-1);color:var(--mut)">${t('zf.manual')}<br><code data-stil="user-select:all;font-size:var(--fs-3)">${esc(lesbar)}</code></div>
       ${CODEFELD(t('zf.confirm_code'), 6)}
-      <div style="display:flex;gap:.5rem">
+      <div data-stil="display:flex;gap:.5rem">
         <button type="button" class="btn bp btn-sm" data-click="zfBestaetigen">${t('zf.confirm')}</button>
         ${knopf('ladeZweitenFaktor', t('common.cancel'))}
       </div>
@@ -66,10 +66,10 @@ export async function zfEinrichten() {
 }
 
 function zeigeCodes(codes) {
-  zeichne(`<div class="sform" style="max-width:420px">
-      <p style="font-size:var(--fs-2);margin:0"><strong>${t('zf.codes_title')}</strong><br>${t('zf.codes_hint')}</p>
-      <pre id="zf-codes" style="font-size:var(--fs-3);line-height:1.6;background:var(--s50,#f8fafc);border:1px solid var(--bdr);border-radius:8px;padding:.6rem .9rem;margin:0;user-select:all">${codes.map(esc).join('\n')}</pre>
-      <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+  zeichne(`<div class="sform" data-stil="max-width:420px">
+      <p data-stil="font-size:var(--fs-2);margin:0"><strong>${t('zf.codes_title')}</strong><br>${t('zf.codes_hint')}</p>
+      <pre id="zf-codes" data-stil="font-size:var(--fs-3);line-height:1.6;background:var(--s50,#f8fafc);border:1px solid var(--bdr);border-radius:8px;padding:.6rem .9rem;margin:0;user-select:all">${codes.map(esc).join('\n')}</pre>
+      <div data-stil="display:flex;gap:.5rem;flex-wrap:wrap">
         ${knopf('zfCodesKopieren', t('zf.copy'))}
         <button type="button" class="btn bp btn-sm" data-click="ladeZweitenFaktor">${t('zf.codes_done')}</button>
       </div>

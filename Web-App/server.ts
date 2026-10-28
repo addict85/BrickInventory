@@ -169,11 +169,9 @@ app.use(compression({
 
 // ── Security-Header ───────────────────────────────────────────────────────────
 // Handgerollt statt helmet: keine zusätzliche Dependency, und die CSP muss
-// ohnehin auf die App zugeschnitten sein. 'unsafe-inline' bei script/style ist
-// nötig, weil index.html Inline-onclick-Handler und Inline-Styles verwendet —
-// die Header schützen trotzdem gegen fremdes Framing (Clickjacking durch andere
-// Seiten; same-origin ist für den eigenen PDF-Viewer erlaubt), MIME-Sniffing
-// und fremde Ressourcen-Quellen.
+// ohnehin auf die App zugeschnitten sein. Weder Skript noch Stil dürfen inline
+// stehen; daneben schützen die Header gegen fremdes Framing (same-origin ist
+// für den eigenen PDF-Viewer erlaubt), MIME-Sniffing und fremde Quellen.
 app.use((req, res, next) => {
   res.setHeader('X-Frame-Options', 'SAMEORIGIN');
   res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -203,8 +201,10 @@ app.use((req, res, next) => {
     // Google Fonts sind entfallen: Schriften liegen unter
     // public/vendor/fonts/ (siehe fonts.css dort). Damit brauchen weder
     // style-src noch font-src einen Fremdhost — und eine LAN-Installation
-    // bekommt die Typografie auch ohne Internet.
-    "style-src 'self' 'unsafe-inline'",
+    // bekommt die Typografie auch ohne Internet. Ohne 'unsafe-inline': Das
+    // Markup trägt data-stil, und js/00-stile.js setzt nur freigegebene Werte
+    // per CSSOM, das die CSP nicht betrifft.
+    "style-src 'self'",
     "font-src 'self'",
     // img-src ohne https:. Der Kommentar hier lautete „Set-Bilder von CDNs
     // laden direkt" — das stimmt seit hardened-69 nicht mehr: imgUrl() in

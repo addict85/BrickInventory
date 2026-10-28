@@ -79,7 +79,7 @@ export async function openPdfViewer(url, title) {
   const pdfjsLib = window.pdfjsLib;
   if (!pdfjsLib) {
     if (loading) loading.innerHTML =
-      `<span style="color:#f88;padding:20px">${t('pdf.lib_missing')}</span>`;
+      `<span data-stil="color:#f88;padding:20px">${t('pdf.lib_missing')}</span>`;
     return;
   }
   try {
@@ -95,7 +95,7 @@ export async function openPdfViewer(url, title) {
     if (loading) loading.style.display = 'none';
     await _renderPdfLazy(_pdfDoc, pages);
   } catch (e) {
-    if (loading) { loading.style.display = 'flex'; loading.innerHTML = '<span style="color:#f88;padding:20px;text-align:center">' + (t('pdf.error')||'Fehler beim Laden') + ': ' + esc(String(e && e.message || e)) + '</span>'; }
+    if (loading) { loading.style.display = 'flex'; loading.innerHTML = '<span data-stil="color:#f88;padding:20px;text-align:center">' + (t('pdf.error')||'Fehler beim Laden') + ': ' + esc(String(e && e.message || e)) + '</span>'; }
   }
 }
 

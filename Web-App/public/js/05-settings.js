@@ -275,8 +275,8 @@ export async function loadTokens() {
   const ziel = G('tokens-tbl');
   if (!ziel) return;
   const d = await tokenRuf('/tokens');
-  if (!d.success) { ziel.innerHTML = `<p style="color:var(--mut)">${esc(d.error || t('settings.error'))}</p>`; return; }
-  if (!d.tokens.length) { ziel.innerHTML = `<p style="color:var(--mut)">${t('tokens.none')}</p>`; return; }
+  if (!d.success) { ziel.innerHTML = `<p data-stil="color:var(--mut)">${esc(d.error || t('settings.error'))}</p>`; return; }
+  if (!d.tokens.length) { ziel.innerHTML = `<p data-stil="color:var(--mut)">${t('tokens.none')}</p>`; return; }
   ziel.innerHTML = `<div class="tw"><table class="dt"><thead><tr>
       <th>${t('tokens.col.label')}</th><th>${t('tokens.col.created')}</th>
       <th>${t('tokens.col.last_used')}</th><th>${t('tokens.col.expires')}</th>
@@ -345,8 +345,8 @@ export async function loadProfile() {
   G('prof-email').dataset.bisher = u.email || '';
   const vEl = G('prof-email-verified');
   if (vEl) vEl.innerHTML = u.email_verified
-    ? `<span style="color:var(--g700)">${t('profile.verified')}</span>`
-    : `<span style="color:var(--a-schrift)">${t('profile.not_verified')}</span>`;
+    ? `<span data-stil="color:var(--g700)">${t('profile.verified')}</span>`
+    : `<span data-stil="color:var(--a-schrift)">${t('profile.not_verified')}</span>`;
 }
 
 G('btn-sav-prof').onclick = async () => {
@@ -498,10 +498,10 @@ function renderHousehold(d){
 
   // Ein Raster auf der Liste, die Zeilen als display:contents: So stehen alle
   // Namen und alle Knöpfe in denselben zwei Spalten.
-  const liste = (eintraege, aktion) => `<ul style="list-style:none;padding:0;margin:.4rem 0 0;display:grid;grid-template-columns:max-content max-content;align-items:center;column-gap:.6rem">${
-    eintraege.map(a => `<li style="display:contents">
-      <span style="font-weight:600;padding:.3rem 0">${esc(a.username)}</span>
-      <span style="padding:.3rem 0">${aktion(a)}</span>
+  const liste = (eintraege, aktion) => `<ul data-stil="list-style:none;padding:0;margin:.4rem 0 0;display:grid;grid-template-columns:max-content max-content;align-items:center;column-gap:.6rem">${
+    eintraege.map(a => `<li data-stil="display:contents">
+      <span data-stil="font-weight:600;padding:.3rem 0">${esc(a.username)}</span>
+      <span data-stil="padding:.3rem 0">${aktion(a)}</span>
     </li>`).join('')}</ul>`;
 
   const teile = [];
@@ -511,17 +511,17 @@ function renderHousehold(d){
       a => `<button class="btn" data-click="unlinkFromParent" data-arg="${a.id}">${t('household.unlink_self')}</button>`)}</div>`);
   }
   if(d.sub_accounts?.length){
-    teile.push(`<div style="margin-top:${eltern.length ? '.6rem' : '0'}">${t('household.state_main', { n: d.sub_accounts.length })}${liste(d.sub_accounts,
+    teile.push(`${eltern.length ? '<div data-stil="margin-top:.6rem">' : '<div>'}${t('household.state_main', { n: d.sub_accounts.length })}${liste(d.sub_accounts,
       a => `<button class="btn" data-click="unlinkHousehold" data-arg="${a.id}">${t('household.unlink_sub')}</button>`)}</div>`);
   }
   if(!teile.length){
-    teile.push(`<div style="color:var(--mut)">${t('household.state_none', { cur: esc(d.currency||'') })}</div>`);
+    teile.push(`<div data-stil="color:var(--mut)">${t('household.state_none', { cur: esc(d.currency||'') })}</div>`);
   }
   if(d.former_links?.length){
-    teile.push(`<div role="note" style="margin-top:.8rem;padding:.6rem .8rem;border-radius:8px;background:var(--b100);color:var(--b600)">
+    teile.push(`<div role="note" data-stil="margin-top:.8rem;padding:.6rem .8rem;border-radius:8px;background:var(--b100);color:var(--b600)">
       ${t('household.former_intro')}${liste(d.former_links,
-        a => `<span style="color:var(--mut)">${a.via ? t('household.former_via', { via: esc(a.via) }) : ''}</span>
-              <button class="btn" style="margin-left:.4rem" data-click="dismissFormerLink" data-arg="${a.id}">${t('household.former_dismiss')}</button>`)}
+        a => `<span data-stil="color:var(--mut)">${a.via ? t('household.former_via', { via: esc(a.via) }) : ''}</span>
+              <button class="btn" data-stil="margin-left:.4rem" data-click="dismissFormerLink" data-arg="${a.id}">${t('household.former_dismiss')}</button>`)}
     </div>`);
   }
   stateEl.innerHTML = teile.join('');
@@ -645,7 +645,7 @@ async function ladeProtokoll(){
   G('vw-protokoll').innerHTML = eintraege.length ? `<div class="tw"><table class="dt"><thead><tr><th>${t('users.protokoll.zeit')}</th><th>${t('users.protokoll.verwalter')}</th><th>${t('users.protokoll.aktion')}</th><th>${t('users.protokoll.konto')}</th></tr></thead><tbody>${
     eintraege.map(e=>`<tr><td>${new Date(e.zeit).toLocaleString(locale())}</td><td>${esc(e.verwalter_name||'—')}</td>
       <td>${(AKTIONEN[e.aktion] || (() => esc(e.aktion)))()}</td><td>${esc(e.ziel_name||'#'+e.ziel_id)}</td></tr>`).join('')
-  }</tbody></table></div>` : `<p style="color:var(--mut);font-size:var(--fs-2)">${t('users.protokoll.leer')}</p>`;
+  }</tbody></table></div>` : `<p data-stil="color:var(--mut);font-size:var(--fs-2)">${t('users.protokoll.leer')}</p>`;
 }
 /**
  * Ein Knopf der Benutzertabelle: Symbol und Wort sichtbar, die längere
@@ -735,7 +735,7 @@ export async function ladeAlarmUebersicht() {
   if (!d?.success) return;
   const alarme = d.alerts || [];
   if (!alarme.length) {
-    el.innerHTML = `<div style="color:var(--mut)">${esc(tRaw('alerts.empty'))}</div>`;
+    el.innerHTML = `<div data-stil="color:var(--mut)">${esc(tRaw('alerts.empty'))}</div>`;
     return;
   }
   el.innerHTML = alarme.map(a => {
@@ -776,32 +776,27 @@ export async function ladeAlarmUebersicht() {
     // Anklickbar nur, wenn es das Set in der Sammlung gibt — `openModal` holt
     // `/v1/sets/:nummer`, und fuer ein Set, das man nicht (mehr) besitzt,
     // waere der Klick eine Fehlermeldung statt eines Dialogs.
-    //
-    // Zwei `style`-Attribute an einem Element sind KEIN Zusammenzaehlen — der
-    // Browser nimmt das erste und wirft das zweite weg. Der Zeiger gehoert
-    // deshalb in dieselbe Zeichenkette und nicht in ein eigenes Attribut.
     const oeffnet = a.besitzt
-      ? ` data-click="openModal" data-arg="${esc(a.set_number)}"`
+      ? ` class="zeiger" data-click="openModal" data-arg="${esc(a.set_number)}"`
       : '';
-    const zeiger = a.besitzt ? ';cursor:pointer' : '';
-    return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--bdr);flex-wrap:wrap${zeiger}"${oeffnet}>
+    return `<div data-stil="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--bdr);flex-wrap:wrap"${oeffnet}>
       ${bild}
-      <div style="flex:1;min-width:180px">
-        <div><strong>${esc(a.set_number)}</strong> <span style="color:var(--mut)">${esc(zustand)}</span></div>
-        <div style="font-size:var(--fs-1);color:var(--mut)">${esc(a.name || '')}</div>
+      <div data-stil="flex:1;min-width:180px">
+        <div><strong>${esc(a.set_number)}</strong> <span data-stil="color:var(--mut)">${esc(zustand)}</span></div>
+        <div data-stil="font-size:var(--fs-1);color:var(--mut)">${esc(a.name || '')}</div>
       </div>
-      <span style="font-size:var(--fs-1);white-space:nowrap">${esc(richtung)}</span>
+      <span data-stil="font-size:var(--fs-1);white-space:nowrap">${esc(richtung)}</span>
       <input inputmode="decimal" type="number" step="0.01" min="0.01" value="${a.schwelle}"
              data-change="aendereAlarmSchwelle" data-arg="${esc(schluessel)}" data-val="1"
              data-click="stopEvent"
-             style="width:90px;border:1px solid var(--bdr);border-radius:6px;padding:3px 7px;font-size:var(--fs-3);background:var(--sur);color:var(--txt)" />
-      <span style="font-size:var(--fs-1);color:var(--mut);white-space:nowrap">${esc(a.currency_code)}</span>
-      <div style="display:flex;flex-direction:column;align-items:flex-end;min-width:110px">
+             data-stil="width:90px;border:1px solid var(--bdr);border-radius:6px;padding:3px 7px;font-size:var(--fs-3);background:var(--sur);color:var(--txt)" />
+      <span data-stil="font-size:var(--fs-1);color:var(--mut);white-space:nowrap">${esc(a.currency_code)}</span>
+      <div data-stil="display:flex;flex-direction:column;align-items:flex-end;min-width:110px">
         ${marke}
-        <span style="font-size:var(--fs-0);color:var(--mut);white-space:nowrap">${esc(stand)}</span>
+        <span data-stil="font-size:var(--fs-0);color:var(--mut);white-space:nowrap">${esc(stand)}</span>
       </div>
       <button class="btn bs btn-sm" data-click="loescheAlarm" data-arg="${esc(schluessel)}"
-              data-arg2="${esc(a.set_number)}" style="padding:2px 8px">${ico('loeschen')}</button>
+              data-arg2="${esc(a.set_number)}" data-stil="padding:2px 8px">${ico('loeschen')}</button>
     </div>`;
   }).join('');
 }
@@ -849,7 +844,7 @@ export async function ladeLagerortVerwaltung() {
   const belegung = new Map((b?.orte || []).map(o => [o.ort, o]));
   const orte = v.orte || [];
   if (!orte.length) {
-    el.innerHTML = `<div style="color:var(--mut)">${esc(tRaw('storage.empty'))}</div>`;
+    el.innerHTML = `<div data-stil="color:var(--mut)">${esc(tRaw('storage.empty'))}</div>`;
     return;
   }
   // Marcos Stern: „Weiter möchte ich ein Lagerort in den Einstellungen als
@@ -874,10 +869,9 @@ export async function ladeLagerortVerwaltung() {
   // Der Trennstrich sass an der Zeile. Ein display:contents-Element erzeugt
   // keinen Kasten und kann keinen Rahmen tragen — er liegt deshalb an jeder
   // Zelle und ergibt zusammen dieselbe durchgehende Linie.
-  const zelle = 'padding:4px 0;border-bottom:1px solid var(--bdr);display:flex;align-items:center';
-  el.innerHTML = `<div style="font-size:var(--fs-1);color:var(--mut);margin-bottom:6px">` +
+  el.innerHTML = `<div data-stil="font-size:var(--fs-1);color:var(--mut);margin-bottom:6px">` +
                  `${esc(tRaw('storage.default_hint'))}</div>` +
-                 `<div style="display:grid;grid-template-columns:minmax(0,1fr) max-content max-content max-content;align-items:center;column-gap:8px">` +
+                 `<div data-stil="display:grid;grid-template-columns:minmax(0,1fr) max-content max-content max-content;align-items:center;column-gap:8px">` +
                  orte.map(o => {
     const n = belegung.get(o.name);
     // Figuren stehen EIGEN da, nicht bei den Teilesorten (utils/lagerort.ts):
@@ -885,18 +879,18 @@ export async function ladeLagerortVerwaltung() {
     // Figuren, und niemand koennte der Zahl ansehen, was gemeint ist.
     const wie = n ? t('storage.belegt', { sets: n.sets, teile: n.teile, figuren: n.figuren ?? 0 })
                   : esc(tRaw('storage.leer'));
-    return `<div style="display:contents">
-      <span style="${zelle}"><input type="text" maxlength="60" value="${esc(o.name)}"
+    return `<div data-stil="display:contents">
+      <span data-stil="padding:4px 0;border-bottom:1px solid var(--bdr);display:flex;align-items:center"><input type="text" maxlength="60" value="${esc(o.name)}"
              data-change="benenneLagerortUm" data-arg="${o.id}" data-val="1"
-             style="width:100%;border:1px solid var(--bdr);border-radius:6px;padding:3px 7px;font-size:var(--fs-3);background:var(--sur);color:var(--txt)" /></span>
-      <span style="${zelle};font-size:var(--fs-1);color:var(--mut);white-space:nowrap;justify-content:flex-end">${wie}</span>
-      <span style="${zelle}"><button class="btn bs btn-sm" data-click="schalteLagerortVorgabe" data-arg="${o.id}"
-              data-arg2="${o.id === vorgabeId ? 1 : 0}" style="padding:2px 8px"
+             data-stil="width:100%;border:1px solid var(--bdr);border-radius:6px;padding:3px 7px;font-size:var(--fs-3);background:var(--sur);color:var(--txt)" /></span>
+      <span data-stil="padding:4px 0;border-bottom:1px solid var(--bdr);display:flex;align-items:center;font-size:var(--fs-1);color:var(--mut);white-space:nowrap;justify-content:flex-end">${wie}</span>
+      <span data-stil="padding:4px 0;border-bottom:1px solid var(--bdr);display:flex;align-items:center"><button class="btn bs btn-sm" data-click="schalteLagerortVorgabe" data-arg="${o.id}"
+              data-arg2="${o.id === vorgabeId ? 1 : 0}" data-stil="padding:2px 8px"
               title="${esc(tRaw(o.id === vorgabeId ? 'storage.default_is' : 'storage.default_set'))}"
               aria-label="${esc(tRaw(o.id === vorgabeId ? 'storage.default_is' : 'storage.default_set'))}"
               aria-pressed="${o.id === vorgabeId ? 'true' : 'false'}">${ico(o.id === vorgabeId ? 'stern-voll' : 'merkliste')}</button></span>
-      <span style="${zelle}"><button class="btn bs btn-sm" data-click="loescheLagerort" data-arg="${o.id}"
-              data-arg2="${esc(o.name)}" style="padding:2px 8px">${ico('loeschen')}</button></span>
+      <span data-stil="padding:4px 0;border-bottom:1px solid var(--bdr);display:flex;align-items:center"><button class="btn bs btn-sm" data-click="loescheLagerort" data-arg="${o.id}"
+              data-arg2="${esc(o.name)}" data-stil="padding:2px 8px">${ico('loeschen')}</button></span>
     </div>`;
   }).join('') + `</div>`;
 }

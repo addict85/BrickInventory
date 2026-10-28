@@ -19,7 +19,8 @@ const { spawnSync } = require('node:child_process');
 
 const ROOT = path.join(__dirname, '..');
 /** Globale Namen eingebundener Bibliotheken (public/vendor/). */
-const BIBLIOTHEKEN = ['QRCode'];
+// __ERLAUBTE_STILE__ ist keine Bibliothek: scripts/build-frontend.js setzt ihn beim Bündeln ein.
+const BIBLIOTHEKEN = ['QRCode', '__ERLAUBTE_STILE__'];
 
 /** Die Browser-Quellen — ohne app.bundle.js, das aus ihnen gebaut wird. */
 function quellen() {

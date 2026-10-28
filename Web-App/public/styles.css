@@ -882,6 +882,8 @@ input.suchfeld{width:220px}
 .wert-primaer{font-weight:700;color:var(--b600)}
 .mono-2{font-family:var(--mono);font-size:var(--fs-2)}
 .zeiger{cursor:pointer}
+/* Bis js/00-stile.js den Stil gesetzt hat (und data-stil entfernt), bleibt Verborgenes verborgen. */
+[data-stil*="display:none"]{display:none}
 .durchlaessig{display:contents}
 .ohne-rand{margin:0}
 /* Passwortabfragen: QR-Code für die App und Verwalteraktionen */
