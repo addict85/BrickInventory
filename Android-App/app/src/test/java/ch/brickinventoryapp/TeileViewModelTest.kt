@@ -5,11 +5,8 @@ import ch.brickinventoryapp.data.ScopeFilter
 import ch.brickinventoryapp.data.repository.TeileRepository
 import ch.brickinventoryapp.ui.Aenderung
 import ch.brickinventoryapp.ui.viewmodel.TeileViewModel
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.toList
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestCoroutineScheduler
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -44,14 +41,6 @@ class TeileViewModelTest {
 
     private fun vm(gemerkt: SavedStateHandle = SavedStateHandle()) =
         t.merke(TeileViewModel(t.dienste, TeileRepository(t.api, t.cache), gemerkt))
-
-    private fun gemeldet(block: () -> Unit): List<Aenderung> {
-        val liste = mutableListOf<Aenderung>()
-        val sammler = CoroutineScope(Dispatchers.Main).launch { t.bestand.aenderungen.toList(liste) }
-        block()
-        sammler.cancel()
-        return liste
-    }
 
     @Before
     fun auf() {
@@ -109,7 +98,7 @@ class TeileViewModelTest {
     @Test
     fun `ein geaendertes Teil wird gemeldet und die Liste laedt neu`() {
         val vm = vm()
-        val liste = gemeldet {
+        val liste = t.gemeldet(1) {
             vm.updatePart("3001", 5, quantity = 3, unitPrice = 0.1)
             TestApi.warteBis("Liste nachgeladen") { vm.partsState.value.parts.isNotEmpty() }
         }
@@ -122,7 +111,7 @@ class TeileViewModelTest {
     fun `ein Fehler, den die Sitzungsschicht schon meldet, bleibt still`() {
         pfade.codes["/api/v1/parts/3001/5"] = 401
         val vm = vm()
-        val liste = gemeldet {
+        val liste = t.gemeldet(0) {
             vm.deletePart("3001", 5)
             TestApi.warteBis("Antwort da") { pfade.anfragenAn("DELETE /api/v1/parts/3001/5").isNotEmpty() }
             Thread.sleep(200)

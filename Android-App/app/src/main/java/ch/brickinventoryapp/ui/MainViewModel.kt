@@ -53,8 +53,6 @@ class MainViewModel @Inject constructor(
      */
     internal val vorwaermer: ch.brickinventoryapp.data.cache.VorschauVorwaermer,
     internal val sseClient: CsvImportSseClient,
-    /** Anlegen mit Fortschritt — siehe GalleryFeature.addSet (Nachtrag 131). */
-    internal val setAnlegenSse: ch.brickinventoryapp.data.SetAnlegenSseClient,
     internal val pdfExport: PdfExportManager,
     internal val sessionExpired: ch.brickinventoryapp.data.SessionExpiredSignal,
     // Der eine Weg zur Snackbar — geteilt mit den uebrigen ViewModels.
@@ -187,10 +185,6 @@ class MainViewModel @Inject constructor(
     val csvImportState = _csvImportState.asStateFlow()
 
 
-    // Eigener Fluss statt zwölf Felder in AppUiState (Nachtrag 117): Ein Scan
-    // erzeugt viele Zwischenstände, und die gingen vorher jeden Reiter an.
-    internal val _barcodeState = MutableStateFlow(BarcodeUiState())
-    val barcodeState = _barcodeState.asStateFlow()
 
 
     // Kontofilter, Haushaltskonten und Lagerorte — gehalten vom Blickfeld.
@@ -223,23 +217,6 @@ class MainViewModel @Inject constructor(
 
 
 
-    /**
-     * Läuft gerade eine Prüfung vor dem Erfassen? Siehe ErfassungUiState.
-     *
-     * Eigener Fluss, weil ihn alle vier Erfassungswege speisen (Barcode,
-     * Texterkennung, Galerie, Katalog) und nur der Anzeige-Dialog ihn liest.
-     */
-    internal val erfassung = Erfassung()
-    val erfassungState: kotlinx.coroutines.flow.StateFlow<ErfassungUiState> = erfassung.state
-
-    /**
-     * Die laufende Prüfung, damit sie abgebrochen werden kann.
-     *
-     * Ohne den Merker wäre der Dialog eine Sackgasse: Hängt die Gegenstelle,
-     * bliebe er stehen, bis das Zeitlimit der Verbindung greift — und genau in
-     * dieser Zeit will man weiterscannen können.
-     */
-    internal var erfassungsJob: kotlinx.coroutines.Job? = null
 
     // Der Katalogzustand ist nach CatalogViewModel gewandert. Er wurde von
     // niemandem ausser den Katalogfunktionen gelesen — und die stehen jetzt

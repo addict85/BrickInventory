@@ -36,7 +36,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import ch.brickinventoryapp.R
-import ch.brickinventoryapp.ui.MainViewModel
 import ch.brickinventoryapp.ui.viewmodel.GalerieViewModel
 import ch.brickinventoryapp.ui.*  // Feature-Extensions (loadSets, setScope, …)
 import ch.brickinventoryapp.data.model.SetItem
@@ -71,7 +70,7 @@ import ch.brickinventoryapp.ui.components.LeerSymbol
 fun GalleryScreen(
     vm: GalerieViewModel,
     /** Erfassen und Scannen gehören der ganzen App, nicht der Galerie. */
-    erfassung: MainViewModel,
+    erfassung: ch.brickinventoryapp.ui.viewmodel.ErfassungViewModel,
     imageLoader: ImageLoader,
     /** Barcode-Scanner öffnen — nur der Graph kennt den NavController. */
     onScanBarcode: () -> Unit,

@@ -141,6 +141,7 @@ fun NavGraphBuilder.toolsGraph(
             }
         }
         composable(Screen.BarcodeScanner.route) {
+            val erfassung = ch.brickinventoryapp.ui.viewmodel.aktivitaetsViewModel<ch.brickinventoryapp.ui.viewmodel.ErfassungViewModel>()
             BarcodeScannerScreen(
                 // Texterkennung nur hier (Nachtrag 61): Dieser Scanner bedient
                 // „Set hinzufügen" (Galerie) und „Teileliste hinzufügen" —
@@ -150,14 +151,14 @@ fun NavGraphBuilder.toolsGraph(
                 onResult = { scannedValue ->
                     navController.popBackStack()
                     // Look up the scanned value via barcode API then navigate to add set
-                    vm.resolveBarcode(scannedValue)
+                    erfassung.resolveBarcode(scannedValue)
                 },
                 // Texterkennung liefert die Setnummer bereits fertig (Nachtrag
                 // 60) — der Umweg über die EAN-Auflösung entfällt. Das spart je
                 // Scan bis zu acht Rebrickable-Aufrufe und geht sofort weiter.
                 onSetNumberResult = { setNumber ->
                     navController.popBackStack()
-                    vm.useScannedSetNumber(setNumber)
+                    erfassung.useScannedSetNumber(setNumber)
                 },
                 onDismiss = { navController.popBackStack() }
             )
@@ -167,7 +168,8 @@ fun NavGraphBuilder.toolsGraph(
             // Momentaufnahme vom Aufbau des Graphen (der NavHost-Builder läuft nur einmal).
             val state by vm.state.collectAsStateWithLifecycle()
             val blick by vm.blickfeld.collectAsStateWithLifecycle()
-            val barcodeState by vm.barcodeState.collectAsStateWithLifecycle()
+            val erfassung = ch.brickinventoryapp.ui.viewmodel.aktivitaetsViewModel<ch.brickinventoryapp.ui.viewmodel.ErfassungViewModel>()
+            val barcodeState by erfassung.barcodeState.collectAsStateWithLifecycle()
             ReiterGeruest(stringResource(R.string.nav_partslist), vm, navController, bottomNavItems, snackbarHostState) {
                 PartsListScreen(
                     serverUrl = state.serverUrl,
@@ -175,10 +177,10 @@ fun NavGraphBuilder.toolsGraph(
                     onExportPdf = { sets, parts -> vm.exportPartsPdf(activity, sets, parts) },
                     pdfStatus = vm.pdfExportStatus,
                     imageLoader = imageLoader,
-                    onScanBarcode = { vm.setScannerSource("partslist"); navController.navigate(Screen.BarcodeScanner.route) },
+                    onScanBarcode = { erfassung.setScannerSource("partslist"); navController.navigate(Screen.BarcodeScanner.route) },
                     // Erfolgloser Scan → Cursor ins Set-Feld (Nachtrag 113).
                     manuelleErfassungAnfordern = barcodeState.manuelleErfassungAnfordern,
-                    onManuelleErfassungQuittiert = { vm.manuelleErfassungQuittieren() },
+                    onManuelleErfassungQuittiert = { erfassung.manuelleErfassungQuittieren() },
                     onResolveSet = { setNumber -> vm.resolveSetForPartsList(setNumber) },
                     onLadeBestand = { teile, nurLose, mitUnterkonten ->
                         vm.ladeTeilelisteBestand(teile, nurLose, mitUnterkonten) },
@@ -186,7 +188,7 @@ fun NavGraphBuilder.toolsGraph(
                     // ein Mitglied im Haushalt heisst „es gibt Unterkonten".
                     hatUnterkonten = blick.householdMembers.size > 1,
                     barcodeSetNumber = barcodeState.fuerTeileliste,
-                    onBarcodeConsumed = { vm.clearBarcodeForPartsList() },
+                    onBarcodeConsumed = { erfassung.clearBarcodeForPartsList() },
                     listState = partsListState
                 )
             }

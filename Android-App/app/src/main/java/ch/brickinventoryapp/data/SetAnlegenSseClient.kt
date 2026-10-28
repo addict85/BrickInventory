@@ -47,22 +47,10 @@ import javax.inject.Singleton
 class SetAnlegenSseClient @Inject constructor(
     @Named("sse") private val client: OkHttpClient,
     private val prefs: PreferencesManager,
-) {
+) : SetAnleger {
     private val json = Json { ignoreUnknownKeys = true }
 
-    /** Was der Server unterwegs meldet. */
-    sealed class Schritt {
-        /** Stammdaten geholt — der Name steht ab hier fest. */
-        data class Stammdaten(val name: String?) : Schritt()
-        /** Bild wird geladen. */
-        object Bild : Schritt()
-        /** Stammdaten und Bild sind durch; es fehlt nur noch das Aufraeumen. */
-        object FastFertig : Schritt()
-        /** Fertig — dieselbe Antwort, die auch das gewoehnliche POST liefert. */
-        data class Fertig(val ergebnis: AddSetResponse) : Schritt()
-        /** Der Server meldet einen Fehler; der Text ist schon uebersetzt. */
-        data class Fehler(val meldung: String) : Schritt()
-    }
+    // Die Schritte stehen als SetAnlegenSchritt in SetAnleger.kt.
 
     /**
      * Anlegen und dabei zuhoeren.
@@ -72,14 +60,14 @@ class SetAnlegenSseClient @Inject constructor(
      * der Server schreibt weiter. Genau deshalb bietet die Oberflaeche hier
      * auch keinen Abbrechen-Knopf an (siehe GalleryFeature.addSet).
      */
-    fun anlegen(
+    override fun anlegen(
         setNumber: String, quantity: Int, purchasePrice: Double?,
-        condition: String?, ownerUserId: Int?, storage: String? = null,
-    ): Flow<Schritt> = callbackFlow {
+        condition: String?, ownerUserId: Int?, storage: String?,
+    ): Flow<SetAnlegenSchritt> = callbackFlow {
         val baseUrl = prefs.serverUrlJetzt().trim().trimEnd('/')
         val token = prefs.tokenJetzt()
         if (baseUrl.isBlank() || token.isBlank()) {
-            trySend(Schritt.Fehler("")); close(); return@callbackFlow
+            trySend(SetAnlegenSchritt.Fehler("")); close(); return@callbackFlow
         }
 
         // Von Hand gebaut statt ueber eine Datenklasse: Die Felder, die NICHT
@@ -118,13 +106,13 @@ class SetAnlegenSseClient @Inject constructor(
                 // Koerper tatsaechlich null war.
                 val koerper = antwort.body
                 if (!antwort.isSuccessful) {
-                    trySend(Schritt.Fehler(fehlertextAus(koerper.string())))
+                    trySend(SetAnlegenSchritt.Fehler(fehlertextAus(koerper.string())))
                     close(); return@use
                 }
                 // Die JSON-Form: Das Set stand schon im Blickfeld.
                 if (antwort.header("Content-Type")?.contains("application/json") == true) {
                     val text = koerper.string()
-                    trySend(Schritt.Fertig(json.decodeFromString(AddSetResponse.serializer(), text)))
+                    trySend(SetAnlegenSchritt.Fertig(json.decodeFromString(AddSetResponse.serializer(), text)))
                     close(); return@use
                 }
                 // Die Stromform: `data: {…}` je Zeile, Leerzeilen trennen.
@@ -141,7 +129,7 @@ class SetAnlegenSseClient @Inject constructor(
                 close()
             }
         } catch (e: Exception) {
-            trySend(Schritt.Fehler(e.message ?: ""))
+            trySend(SetAnlegenSchritt.Fehler(e.message ?: ""))
             close()
         }
         awaitClose { aufruf.cancel() }
@@ -152,22 +140,22 @@ class SetAnlegenSseClient @Inject constructor(
      *
      * @return true, wenn der Vorgang damit beendet ist (fertig oder Fehler).
      */
-    private fun verarbeite(nutzlast: String, sende: (Schritt) -> Unit): Boolean {
+    private fun verarbeite(nutzlast: String, sende: (SetAnlegenSchritt) -> Unit): Boolean {
         val obj = try { json.parseToJsonElement(nutzlast).jsonObject } catch (_: Exception) { return false }
         // Dieselben Schrittnamen wie in der Webapp (public/js/02-gallery.js →
         // handleSseEvent). Sie stehen hier ein zweites Mal, weil es ein
         // Protokoll zwischen zwei Programmen ist — aber in derselben
         // Reihenfolge und mit derselben Bedeutung.
         return when (obj["step"]?.jsonPrimitive?.content) {
-            "meta"      -> { sende(Schritt.Stammdaten(obj["set"]?.jsonPrimitive?.content)); false }
-            "image"     -> { sende(Schritt.Bild); false }
-            "done_meta" -> { sende(Schritt.FastFertig); false }
+            "meta"      -> { sende(SetAnlegenSchritt.Stammdaten(obj["set"]?.jsonPrimitive?.content)); false }
+            "image"     -> { sende(SetAnlegenSchritt.Bild); false }
+            "done_meta" -> { sende(SetAnlegenSchritt.FastFertig); false }
             "done"      -> {
-                sende(Schritt.Fertig(json.decodeFromString(AddSetResponse.serializer(), nutzlast)))
+                sende(SetAnlegenSchritt.Fertig(json.decodeFromString(AddSetResponse.serializer(), nutzlast)))
                 true
             }
             "error"     -> {
-                sende(Schritt.Fehler(obj["error"]?.jsonPrimitive?.content.orEmpty()))
+                sende(SetAnlegenSchritt.Fehler(obj["error"]?.jsonPrimitive?.content.orEmpty()))
                 true
             }
             else -> false

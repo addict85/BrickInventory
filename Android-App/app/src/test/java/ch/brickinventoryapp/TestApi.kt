@@ -20,6 +20,7 @@ import ch.brickinventoryapp.ui.Sitzung
 import ch.brickinventoryapp.ui.viewmodel.AppDienste
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 import okhttp3.mockwebserver.Dispatcher
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
@@ -108,7 +109,7 @@ class SpeicherAblage : FilterAblage {
 }
 
 /** Die gemeinsamen Dienste der Bereichs-ViewModels, gegen einen Testserver. */
-class TestDienste(server: MockWebServer) {
+class TestDienste(server: MockWebServer, texte: Texte = NummernTexte) {
     val cacheDir: File = File(System.getProperty("java.io.tmpdir"), "bim-vm-${System.nanoTime()}").apply { mkdirs() }
     val api = TestApi.fuer(server)
     val cache = ResponseCache { cacheDir }
@@ -117,7 +118,25 @@ class TestDienste(server: MockWebServer) {
     val meldungen = MeldungsKanal()
     val bestand = Bestandssignal()
     val scrollMemory = ScrollMemory()
-    val dienste = AppDienste(sitzung, blickfeld, meldungen, NummernTexte, bestand, scrollMemory)
+    val dienste = AppDienste(sitzung, blickfeld, meldungen, texte, bestand, scrollMemory)
+
+    /**
+     * Sammelt die Meldungen ans Bestandssignal, während [block] läuft, und
+     * wartet auf [erwartet] Stück, ehe es aufhört — eine Meldung kommt oft erst
+     * nach dem Zustand, auf den der Test wartet. Bei 0 kurz warten: Es soll
+     * nichts kommen.
+     */
+    fun gemeldet(erwartet: Int, block: () -> Unit): List<ch.brickinventoryapp.ui.Aenderung> {
+        val liste = Collections.synchronizedList(mutableListOf<ch.brickinventoryapp.ui.Aenderung>())
+        val sammler = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main).launch {
+            bestand.aenderungen.collect { liste += it }
+        }
+        block()
+        if (erwartet > 0) TestApi.warteBis("$erwartet Meldungen") { liste.size >= erwartet }
+        else Thread.sleep(200)
+        sammler.cancel()
+        return liste.toList()
+    }
 
     private val erzeugt = mutableListOf<androidx.lifecycle.ViewModel>()
 

@@ -9,11 +9,8 @@ import ch.brickinventoryapp.data.repository.SetsRepository
 import ch.brickinventoryapp.ui.Aenderung
 import ch.brickinventoryapp.ui.viewmodel.DateiLeser
 import ch.brickinventoryapp.ui.viewmodel.SetDetailViewModel
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.toList
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestCoroutineScheduler
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -48,14 +45,6 @@ class SetDetailViewModelTest {
     private fun vm(setNumber: String = "75192-1") = t.merke(SetDetailViewModel(
         t.dienste, SetsRepository(t.api, t.cache), FinanzenRepository(t.api, t.cache),
         HaushaltRepository(t.api, t.cache), keinLeser, SavedStateHandle(mapOf("setNumber" to setNumber))))
-
-    private fun gemeldet(block: () -> Unit): List<Aenderung> {
-        val liste = mutableListOf<Aenderung>()
-        val sammler = CoroutineScope(Dispatchers.Main).launch { t.bestand.aenderungen.toList(liste) }
-        block()
-        sammler.cancel()
-        return liste
-    }
 
     @Before
     fun auf() {
@@ -100,7 +89,7 @@ class SetDetailViewModelTest {
         val vm = vm()
         vm.ladeAlles()
         geladen(vm)
-        val liste = gemeldet {
+        val liste = t.gemeldet(1) {
             vm.updateQuantity("75192-1", 3)
             TestApi.warteBis("Menge da") { vm.setDetailState.value.setDetail?.quantity == 3 }
         }
@@ -133,7 +122,7 @@ class SetDetailViewModelTest {
         geladen(vm)
         Thread.sleep(200)
         val vorher = pfade.anfragenAn("GET /api/v1/sets/75192-1/alert").size
-        val liste = gemeldet {
+        val liste = t.gemeldet(1) {
             vm.setzePreisalarm("75192-1", "unter", "450", "N")
             uhr.advanceTimeBy(900)
             TestApi.warteBis("neu geladen") { pfade.anfragenAn("GET /api/v1/sets/75192-1/alert").size > vorher }

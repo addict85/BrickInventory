@@ -260,21 +260,9 @@ internal fun MainViewModel.logout() {
         // Nutzerverwaltung, nicht von einer Pruefung — deshalb prueft
         // felder.py das jetzt: Jeder Fluss des MainViewModel muss hier stehen.
         _csvImportState.value = CsvImportUiState()
-        erfassung.fertig()
         _householdState.value = HouseholdUiState()
         _anmeldeState.value = AnmeldeUiState()
         _csvHochladenState.value = CsvHochladenUiState()
-        // Auch der Scanner-Zustand (Nachtrag 117): Ein offener Barcode-Dialog
-        // trägt Setname, Bild und Nummer des VORIGEN Kontos. Ohne diese Zeile
-        // stünde er nach dem Abmelden noch da — genau der Fall, den die drei
-        // Zeilen darüber schon abdecken.
-        _barcodeState.value = BarcodeUiState()
-        // Und die Prüfanzeige, aus demselben Grund — sie nennt die Setnummer
-        // des vorigen Kontos und liesse sich nach dem Abmelden nicht mehr
-        // wegklicken: Der Abbrechen-Knopf sitzt im Dialog selbst, und der läge
-        // dann über dem Anmeldebildschirm. Der laufende Abruf wird mit
-        // abgebrochen, nicht nur ausgeblendet.
-        brichPruefungAb()
     }
 }
 

@@ -93,7 +93,8 @@ fun NavGraphBuilder.collectionGraph(
             val galerieVm: GalerieViewModel = hiltViewModel()
             val state by galerieVm.state.collectAsStateWithLifecycle()
             val galerie by galerieVm.galleryState.collectAsStateWithLifecycle()
-            val barcode by vm.barcodeState.collectAsStateWithLifecycle()
+            val erfassung = ch.brickinventoryapp.ui.viewmodel.aktivitaetsViewModel<ch.brickinventoryapp.ui.viewmodel.ErfassungViewModel>()
+            val barcode by erfassung.barcodeState.collectAsStateWithLifecycle()
             // Retry loading if sets are empty and server URL is available
             LaunchedEffect(state.serverUrl) {
                 if (state.serverUrl.isNotBlank() && galerie.sets.isEmpty() && !galerie.galleryLoading) {
@@ -109,16 +110,16 @@ fun NavGraphBuilder.collectionGraph(
             LaunchedEffect(barcode.gefundenesSet) {
                 val found = barcode.gefundenesSet
                 if (found != null) {
-                    vm.gallerySearchFoundConsumed()
+                    erfassung.gallerySearchFoundConsumed()
                     navController.navigate(Screen.SetDetail.createRoute(found))
                 }
             }
             ReiterGeruest(stringResource(R.string.nav_gallery), vm, navController, bottomNavItems, snackbarHostState) {
                 GalleryScreen(
                     vm = galerieVm,
-                    erfassung = vm,
+                    erfassung = erfassung,
                     imageLoader = imageLoader,
-                    onScanBarcode = { vm.setScannerSource("gallery_search"); navController.navigate(Screen.BarcodeScanner.route) },
+                    onScanBarcode = { erfassung.setScannerSource("gallery_search"); navController.navigate(Screen.BarcodeScanner.route) },
                     onSetClick = { navController.navigate(Screen.SetDetail.createRoute(it)) },
                     gridState = galleryGridState
                 )

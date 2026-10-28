@@ -52,7 +52,7 @@ import javax.inject.Named
 import javax.inject.Inject
 import ch.brickinventoryapp.util.NumericInput
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import ch.brickinventoryapp.ui.MainViewModel
+import ch.brickinventoryapp.ui.viewmodel.ErfassungViewModel
 import ch.brickinventoryapp.ui.theme.Abstaende
 
 /**
@@ -79,7 +79,7 @@ import ch.brickinventoryapp.ui.theme.Abstaende
  * diese Datei beschreibt nur, WIE er aussieht.
  */
 @Composable
-fun BarcodeResultDialog(vm: MainViewModel, imageLoader: ImageLoader) {
+fun BarcodeResultDialog(vm: ErfassungViewModel, imageLoader: ImageLoader) {
     val state by vm.state.collectAsStateWithLifecycle()
     val blick by vm.blickfeld.collectAsStateWithLifecycle()
     val barcodeState by vm.barcodeState.collectAsStateWithLifecycle()

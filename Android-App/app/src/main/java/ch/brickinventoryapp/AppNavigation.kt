@@ -48,7 +48,8 @@ fun BrickInventoryManagerApp(
     // collectAsStateWithLifecycle: Collection stoppt, wenn die App im
     // Hintergrund ist — kein unnötiges Recomposition-/State-Processing mehr.
     val state by vm.state.collectAsStateWithLifecycle()
-    val barcodeState by vm.barcodeState.collectAsStateWithLifecycle()
+    val erfassung: ch.brickinventoryapp.ui.viewmodel.ErfassungViewModel = aktivitaetsViewModel()
+    val barcodeState by erfassung.barcodeState.collectAsStateWithLifecycle()
     val selbstUpdate: UpdateViewModel = aktivitaetsViewModel()
     val navController = rememberNavController()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -161,7 +162,7 @@ fun BrickInventoryManagerApp(
     // ui/dialogs/BarcodeResultDialog.kt — er machte zwei Drittel dieser
     // Funktion aus, die eigentlich den NavHost aufbaut.
     if (barcodeState.result != null) {
-        ch.brickinventoryapp.ui.dialogs.BarcodeResultDialog(vm, imageLoader)
+        ch.brickinventoryapp.ui.dialogs.BarcodeResultDialog(erfassung, imageLoader)
     }
 
     // ── „Wird geprüft" — über allem, auch über dem Scanner-Weg ──────────────
@@ -169,7 +170,7 @@ fun BrickInventoryManagerApp(
     // gehört zu keinem einzelnen Bildschirm. Sie beginnt im Scanner, der sich
     // sofort schliesst, und läuft danach über Galerie, Teileliste oder Katalog
     // weiter — je nachdem, wo man gerade steht.
-    ch.brickinventoryapp.ui.dialogs.SetPruefungDialog(vm)
+    ch.brickinventoryapp.ui.dialogs.SetPruefungDialog(erfassung)
 
     // ── „Es gibt eine neue Fassung" — ebenfalls ueber allem ─────────────────
     //

@@ -82,10 +82,11 @@ fun NavGraphBuilder.catalogGraph(
         // hinein, und wie er zeigt sie Sets, die einem NICHT gehoeren.
         composable(Screen.Wanted.route) {
             ReiterGeruest(stringResource(R.string.nav_wanted), vm, navController, bottomNavItems, snackbarHostState) {
+                val erfassung = ch.brickinventoryapp.ui.viewmodel.aktivitaetsViewModel<ch.brickinventoryapp.ui.viewmodel.ErfassungViewModel>()
                 ch.brickinventoryapp.ui.screens.MerklisteScreen(
                     vm = hiltViewModel<MerklisteViewModel>(),
                     imageLoader = imageLoader,
-                    onScan = { vm.setScannerSource("wanted"); navController.navigate(Screen.BarcodeScanner.route) },
+                    onScan = { erfassung.setScannerSource("wanted"); navController.navigate(Screen.BarcodeScanner.route) },
                     onOeffnen = { sn, zustand ->
                         navController.navigate(Screen.MerkpostenDetail.createRoute(sn, zustand))
                     },
@@ -142,6 +143,7 @@ fun NavGraphBuilder.catalogGraph(
             val blick by vm.blickfeld.collectAsStateWithLifecycle()
             val catSetNumber = backStack.arguments?.getString("setNumber") ?: ""
             val merkliste: MerklisteViewModel = hiltViewModel()
+            val erfassung = ch.brickinventoryapp.ui.viewmodel.aktivitaetsViewModel<ch.brickinventoryapp.ui.viewmodel.ErfassungViewModel>()
             val catalogState by katalog.state.collectAsStateWithLifecycle()
             val lagerZustand by vm.lagerState.collectAsStateWithLifecycle()
             // loadCatalogDetail() meldet ebenfalls („Set nicht gefunden",
@@ -165,7 +167,7 @@ fun NavGraphBuilder.catalogGraph(
                     // dem Katalog. Frueher tat addCatalogSetToGallery() beides
                     // in einer Funktion — die Abhaengigkeit steht jetzt sichtbar
                     // hier statt versteckt dort.
-                    vm.addSet(sn, qty, price, cond, owner, ort)
+                    erfassung.addSet(sn, qty, price, cond, owner, ort)
                     katalog.markiereAufgenommen(sn, qty)
                 },
                 // Merkposten UND Preisalarm in einem Griff — die Regel dahinter

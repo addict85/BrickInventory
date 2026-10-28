@@ -26,7 +26,6 @@ import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.data.model.Merkposten
 import ch.brickinventoryapp.data.repository.MERKLISTE_DEFAULT_SORT
 import ch.brickinventoryapp.ui.viewmodel.MerklisteViewModel
-import ch.brickinventoryapp.ui.setScannerSource
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.Formen
 import ch.brickinventoryapp.ui.theme.LocalIsBrickTheme

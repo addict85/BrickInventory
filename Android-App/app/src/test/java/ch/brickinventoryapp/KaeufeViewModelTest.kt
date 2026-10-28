@@ -5,11 +5,8 @@ import ch.brickinventoryapp.data.repository.HaushaltRepository
 import ch.brickinventoryapp.data.repository.TeileRepository
 import ch.brickinventoryapp.ui.Aenderung
 import ch.brickinventoryapp.ui.viewmodel.KaeufeViewModel
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.toList
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestCoroutineScheduler
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -45,14 +42,6 @@ class KaeufeViewModelTest {
     private fun vm() = t.merke(KaeufeViewModel(t.dienste, HaushaltRepository(t.api, t.cache),
         FinanzenRepository(t.api, t.cache), TeileRepository(t.api, t.cache)))
 
-    private fun gemeldet(block: () -> Unit): List<Aenderung> {
-        val liste = mutableListOf<Aenderung>()
-        val sammler = CoroutineScope(Dispatchers.Main).launch { t.bestand.aenderungen.toList(liste) }
-        block()
-        sammler.cancel()
-        return liste
-    }
-
     @Before
     fun auf() {
         Dispatchers.setMain(UnconfinedTestDispatcher(uhr))
@@ -80,7 +69,7 @@ class KaeufeViewModelTest {
         vm.loadAcquisitions("75192-1")
         TestApi.warteBis("Liste geladen") { vm.manDetailState.value.acquisitions.isNotEmpty() }
         val vorher = pfade.anfragenAn("GET /api/v1/sets/75192-1/acquisitions").size
-        val liste = gemeldet {
+        val liste = t.gemeldet(1) {
             vm.updateAcquisition("75192-1", 7, purchasePrice = 499.0)
             TestApi.warteBis("neu geladen") {
                 pfade.anfragenAn("GET /api/v1/sets/75192-1/acquisitions").size > vorher
@@ -109,7 +98,7 @@ class KaeufeViewModelTest {
     fun `ein Besitzerwechsel meldet die mitgewanderten Teile und Figuren`() {
         val vm = vm()
         var ergebnis: Triple<String?, Int, Int>? = null
-        val liste = gemeldet {
+        val liste = t.gemeldet(3) {
             vm.changeAcquisitionOwner("set", "75192-1", 0, 7, toUserId = 4) { f, teile, figuren ->
                 ergebnis = Triple(f, teile, figuren)
             }

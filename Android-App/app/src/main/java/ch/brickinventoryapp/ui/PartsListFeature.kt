@@ -8,20 +8,7 @@ import ch.brickinventoryapp.service.PdfExportState
 import ch.brickinventoryapp.util.IMG_PROXY
 import kotlinx.coroutines.flow.*
 
-
-/**
- * Temporäre Teileliste: Set-Auflösung und PDF-Export (Foreground-Service).
- *
- * Feature-Modul des MainViewModel: Die Funktionen sind Extension-
- * Functions auf dem VM — die Körper sind 1:1 aus MainViewModel.kt
- * verschoben und greifen über internal-Sichtbarkeit auf die geteilten
- * Flows (_state, _snackbar, …) zu. Aufrufer (Screens/Navigation)
- * bleiben unverändert: vm.funktion() löst die Extension auf.
- */
-
-internal fun MainViewModel.clearBarcodeForPartsList() {
-    _barcodeState.update { it.copy(fuerTeileliste = null) }
-}
+/** Temporäre Teileliste: Set-Auflösung und PDF-Export (Foreground-Service). */
 
 // For PartsListScreen — resolves a set number to its parts
 internal suspend fun MainViewModel.resolveSetForPartsList(setNumber: String): Pair<String, List<ch.brickinventoryapp.ui.screens.PlPart>> {
