@@ -288,13 +288,25 @@ async function acqDelete(sn, id) {
   loadFinance();
 }
 
+/**
+ * Preis einer Erfassung in ihrer eigenen Währung. Ein Marktpreis, den der
+ * Server eingesetzt hat, ist kein bezahlter Betrag und trägt deshalb „≈“.
+ */
+export function erfassungsPreis(a, betrag) {
+  if (betrag == null) return '';
+  const zahl = `<strong>${fmtN(betrag, a.currency || CURRENCY)}</strong>`;
+  if (!a.price_estimated) return zahl;
+  const hinweis = esc(tRaw('acq.geschaetzt'));
+  return `<span title="${hinweis}"><span role="img" aria-label="${hinweis}">≈</span> ${zahl}</span>`;
+}
+
 // Compact link shown in set-detail-modal → opens the full acq-modal
 export function renderAcquisitionSummary(acqs, sn) {
   if (!acqs?.length) return `<div style="color:var(--mut);font-size:var(--fs-2)">—</div>`;
   return acqs.map(a => {
     const cond = a.condition === 'U' ? `<span class="cond-badge cond-used">${t('common.condition_used')}</span>`
       : `<span class="cond-badge cond-new">${t('common.condition_new')}</span>`;
-    const price = a.purchase_price != null ? `<strong>${fmtN(a.purchase_price, CURRENCY)}</strong>` : '';
+    const price = erfassungsPreis(a, a.purchase_price);
     const dateFmt = a.created_at ? new Date(a.created_at).toLocaleDateString(locale()) : '';
     return `<div style="display:flex;align-items:center;gap:6px;padding:2px 0">
       <span style="color:var(--mut);font-size:var(--fs-1);min-width:24px">×${a.quantity}</span>
@@ -315,9 +327,7 @@ function renderManAcqSummary(acqs, type, id, colorId) {
     const cond = a.condition === 'U'
       ? `<span class="cond-badge cond-used">${t('common.condition_used')}</span>`
       : `<span class="cond-badge cond-new">${t('common.condition_new')}</span>`;
-    const price = a.unit_price != null
-      ? `<strong>${fmtN(a.unit_price, CURRENCY)}</strong>`
-      : '';
+    const price = erfassungsPreis(a, a.unit_price);
     const dateFmt = a.created_at ? new Date(a.created_at).toLocaleDateString(locale()) : '';
     return `<div style="display:flex;align-items:center;gap:6px;padding:2px 0">
       <span style="color:var(--mut);font-size:var(--fs-1);min-width:24px">×${a.quantity}</span>

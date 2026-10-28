@@ -301,6 +301,7 @@ window.I18N_DE = {
   'users.aktion.verwalter_ernannt': 'Zum Verwalter ernannt',
   'users.aktion.verwalter_entzogen': 'Verwalterrolle entzogen',
   'users.aktion.konto_geloescht': 'Konto gelöscht',
+  'acq.geschaetzt': 'Geschätzt: Marktpreis, kein bezahlter Betrag',
   'users.role_title': 'Verwalterrolle ändern?',
   'users.reset_pw_title': 'Passwort setzen?',
   'users.admin_confirm_text': 'Diese Änderung betrifft ein fremdes Konto. Bitte bestätige sie mit deinem Passwort.',

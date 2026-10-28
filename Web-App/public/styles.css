@@ -882,6 +882,14 @@ input.suchfeld{width:220px}
 .wert-primaer{font-weight:700;color:var(--b600)}
 .mono-2{font-family:var(--mono);font-size:var(--fs-2)}
 .zeiger{cursor:pointer}
+.durchlaessig{display:contents}
+.ohne-rand{margin:0}
+/* Passwortabfragen: QR-Code für die App und Verwalteraktionen */
+.passwort-zeile{display:flex;align-items:center;gap:.5rem;font-size:var(--fs-2)}
+.passwort-zeile input{font-size:var(--fs-2);padding:4px 8px}
+.bestaetigung-passwort{margin:0 0 1.25rem;text-align:left}
+.bestaetigung-passwort label{font-size:var(--fs-2)}
+.bestaetigung-passwort input{width:100%;margin-top:.35rem}
 .zoombar{cursor:zoom-in}
 .ohne-unterstrich{text-decoration:none}
 .ladepunkt{height:1px}

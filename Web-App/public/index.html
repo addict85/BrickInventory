@@ -890,7 +890,7 @@
           </div>
           <div class="abstand-u-125" id="users-tbl"></div>
           <details class="abstand-u-125">
-            <summary class="ctitle" style="cursor:pointer" data-i18n="users.protokoll">Protokoll der Verwalteraktionen</summary>
+            <summary class="ctitle zeiger" data-i18n="users.protokoll">Protokoll der Verwalteraktionen</summary>
             <div id="vw-protokoll"></div>
           </details>
           <div class="trenner-oben">
@@ -1451,10 +1451,10 @@
               <option value="unbegrenzt" data-i18n="qr.validity_unlimited">Unbegrenzt</option>
             </select>
           </div>
-          <form data-submit="btn-gen-qr" style="display:contents">
-          <div style="display:flex;align-items:center;gap:.5rem;font-size:var(--fs-2)">
+          <form class="durchlaessig" data-submit="btn-gen-qr">
+          <div class="passwort-zeile">
             <label for="qr-password" data-i18n="qr.password_label">Dein Passwort</label>
-            <input type="password" id="qr-password" autocomplete="current-password" style="font-size:var(--fs-2);padding:4px 8px">
+            <input type="password" id="qr-password" autocomplete="current-password">
           </div>
           <button type="button" class="btn bp" id="btn-gen-qr" data-i18n="settings.qr.generate" data-ico="aktualisieren">QR-Code generieren</button>
           </form>
@@ -1553,10 +1553,10 @@
     <div style="font-size:var(--fs-7);margin-bottom:.75rem" id="cd-icon"><svg class="ico" aria-hidden="true"><use href="#i-loeschen"/></svg></div>
     <h3 style="margin:0 0 .5rem;font-size:var(--fs-4);font-weight:700" id="cd-title" data-i18n="common.delete_title">Löschen?</h3>
     <p style="margin:0 0 1.5rem;font-size:var(--fs-3);color:var(--mut);line-height:1.55" id="cd-msg"></p>
-    <form data-submit="cd-confirm" style="margin:0">
-    <div id="cd-pw-wrap" hidden style="margin:0 0 1.25rem;text-align:left">
-      <label for="cd-pw" style="font-size:var(--fs-2)" data-i18n="confirm.admin_password">Dein Passwort zur Bestätigung</label>
-      <input type="password" id="cd-pw" autocomplete="current-password" style="width:100%;margin-top:.35rem">
+    <form class="ohne-rand" data-submit="cd-confirm">
+    <div id="cd-pw-wrap" class="bestaetigung-passwort" hidden>
+      <label for="cd-pw" data-i18n="confirm.admin_password">Dein Passwort zur Bestätigung</label>
+      <input type="password" id="cd-pw" autocomplete="current-password">
     </div>
     <div style="display:flex;gap:.75rem;justify-content:center">
       <button type="button" class="btn bs min-100" id="cd-cancel" data-dialog-zu data-erstfokus data-i18n="common.cancel">Abbrechen</button>

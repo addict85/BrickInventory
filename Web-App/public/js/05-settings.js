@@ -612,8 +612,9 @@ const AKTIONEN = {
 /** Wer hat an welchem fremden Konto was geändert — die letzten Einträge. */
 async function ladeProtokoll(){
   const d=await api('GET','/v1/admin/protokoll'); if(!d.success) return;
-  G('vw-protokoll').innerHTML = d.eintraege.length ? `<div class="tw"><table class="dt"><thead><tr><th>${t('users.protokoll.zeit')}</th><th>${t('users.protokoll.verwalter')}</th><th>${t('users.protokoll.aktion')}</th><th>${t('users.protokoll.konto')}</th></tr></thead><tbody>${
-    d.eintraege.map(e=>`<tr><td>${new Date(e.zeit).toLocaleString(locale())}</td><td>${esc(e.verwalter_name||'—')}</td>
+  const eintraege = d.eintraege || [];
+  G('vw-protokoll').innerHTML = eintraege.length ? `<div class="tw"><table class="dt"><thead><tr><th>${t('users.protokoll.zeit')}</th><th>${t('users.protokoll.verwalter')}</th><th>${t('users.protokoll.aktion')}</th><th>${t('users.protokoll.konto')}</th></tr></thead><tbody>${
+    eintraege.map(e=>`<tr><td>${new Date(e.zeit).toLocaleString(locale())}</td><td>${esc(e.verwalter_name||'—')}</td>
       <td>${(AKTIONEN[e.aktion] || (() => esc(e.aktion)))()}</td><td>${esc(e.ziel_name||'#'+e.ziel_id)}</td></tr>`).join('')
   }</tbody></table></div>` : `<p style="color:var(--mut);font-size:var(--fs-2)">${t('users.protokoll.leer')}</p>`;
 }

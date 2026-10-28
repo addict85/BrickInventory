@@ -15,6 +15,8 @@
  *   A  btn-sav-bl wieder mit data-ico="schluessel" → rot: „Speichern-Knöpfe“
  *   B  nutzerKnopf() ohne <span> mit dem Wort → rot: „Aktionen der Benutzertabelle“
  *   C  data-arg2 wieder ${u.is_admin} → rot: „Admin-Rechte entziehen“
+ *   D  in toggleAdmin admin_password nicht mitgeschickt → rot: „Admin-Rechte
+ *      entziehen“ (am 28.10. nach dem Zusammenführen gemessen)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -65,8 +67,13 @@ test('Admin-Rechte entziehen schickt is_admin:false', async () => {
     await warte(() => d.querySelectorAll('#users-tbl tbody tr').length === 2);
     d.querySelector('#users-tbl [data-click="toggleAdmin"][data-arg="1"]').click();
     await takt(20);
+    // Fremde Konten ändern verlangt das eigene Passwort (Verwaltungsprotokoll).
+    assert.equal(d.getElementById('cd-pw-wrap').hidden, false, 'Die Passwortabfrage fehlt');
+    d.getElementById('cd-pw').value = 'mein-passwort';
+    d.getElementById('cd-confirm').click();
+    await takt(20);
     const put = aufrufe.find(a => a.method === 'PUT' && a.url.includes('/v1/auth/users/1/admin'));
     assert.ok(put, 'Kein Aufruf zum Rollenwechsel');
-    assert.deepEqual(JSON.parse(put.body), { is_admin: false });
+    assert.deepEqual(JSON.parse(put.body), { is_admin: false, admin_password: 'mein-passwort' });
   } finally { w.close(); }
 });
