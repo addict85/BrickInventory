@@ -296,6 +296,9 @@ router.post('/add-stream', async (req: LoggedInRequest, res) => {
 // Der Job-Zustand steht in PostgreSQL, damit alle Arbeitsprozesse ihn lesen.
 // Ausführlich: docs/begruendungen/routes/sets.ts.md#post-import-csv
 
+/** Wie lange ein Set beim Import dauern darf, bevor die Zeile als Warnung endet. */
+const CSV_ZEILE_FRIST_MS = Number(process.env.CSV_ZEILE_FRIST_MS) || 120_000;
+
 router.post('/import/csv', csvEmpfang.single('file'), async (req, res) => {
   if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
   const userId = Number(angemeldeteNutzerId(req));
@@ -353,9 +356,10 @@ router.post('/import/csv', csvEmpfang.single('file'), async (req, res) => {
     rows.push({ sn, qty, purchasePrice: (purchasePrice !== null && !isNaN(purchasePrice)) ? purchasePrice : null, condition, acquiredAt });
   }
 
+  const lauf = (require('crypto') as typeof import('crypto')).randomUUID();
   await jobSet(userId, {
     status: 'running', total: rows.length, done: 0,
-    current: null, results: JSON.stringify([]), error: null,
+    current: null, results: JSON.stringify([]), error: null, run_id: lauf,
   });
 
   // Run import in background — writes progress to DB after each set
@@ -368,14 +372,9 @@ router.post('/import/csv', csvEmpfang.single('file'), async (req, res) => {
     try {
       for (const { sn, qty, purchasePrice, condition, acquiredAt } of rows) {
         if (cancelled) break;
-
-        // Check cancelled every 10 sets to reduce DB load
-        if (results.length % 10 === 0) {
-          const cur = await jobGet(userId).catch(() => null);
-          if (!cur || cur.status === 'cancelled') { cancelled = true; break; }
-        }
-
-        await jobUpdate(userId, { current: sn }).catch(logAndContinue('csv-import:fortschritt'));
+        // Vor jedem Set: Ist dieser Lauf noch der eingetragene? Abgebrochen
+        // oder von einem neuen Import abgelöst, hört er hier auf.
+        if (!await jobUpdate(userId, { current: sn }, lauf)) { cancelled = true; break; }
         emitJobStatus(userId);
 
         let attempt = 0;
@@ -386,7 +385,7 @@ router.post('/import/csv', csvEmpfang.single('file'), async (req, res) => {
             let wecker: NodeJS.Timeout | undefined;
             const r = await Promise.race([
               addSetWithDate(sn, qty, userId, purchasePrice, condition, acquiredAt),
-              new Promise<never>((_,rej) => { wecker = setTimeout(() => rej(new Error('Timeout')), 120000); })
+              new Promise<never>((_,rej) => { wecker = setTimeout(() => rej(new Error('Timeout')), CSV_ZEILE_FRIST_MS); })
             ]).finally(() => clearTimeout(wecker));
             results.push({ set_number:sn, success:true, action:r.action });
             break;
@@ -395,7 +394,10 @@ router.post('/import/csv', csvEmpfang.single('file'), async (req, res) => {
             const msg = fehlertext(e) || 'Unbekannter Fehler';
             const isTimeout   = msg.includes('Timeout');
             const isRateLimit = msg.includes('429') || msg.includes('rate limit') || msg.includes('Daily limit');
-            if ((isTimeout || isRateLimit) && attempt < 2) {
+            // Nur ein Kontingent-Fehler wird wiederholt: Nach einer
+            // Zeitüberschreitung läuft der erste Versuch weiter und bucht
+            // womöglich noch — ein zweiter hätte die Menge verdoppelt.
+            if (isRateLimit && !isTimeout && attempt < 2) {
               console.warn(`CSV: ${sn} retry after ${msg}...`);
               await new Promise(r => setTimeout(r, 5000));
               continue; // retry — don't push error or update job yet
@@ -403,17 +405,19 @@ router.post('/import/csv', csvEmpfang.single('file'), async (req, res) => {
             const isWarning = isTimeout || isRateLimit;
             results.push({ set_number:sn, success:false, error:msg, isWarning });
             console[isWarning?'warn':'error'](`CSV: ${sn} ${isWarning?'WARNING':'FAILED'}: ${msg}`);
+            break;
           }
         }
         // Update job after set is fully processed (success or final failure)
-        await jobUpdate(userId, { done: results.length, results: JSON.stringify(results) }).catch(e => {
+        await jobUpdate(userId, { done: results.length, results: JSON.stringify(results) }, lauf).catch(e => {
           console.error(`CSV: jobUpdate failed for ${sn}: ${e.message}`);
         });
         emitJobStatus(userId);
       }
 
       const finalStatus = cancelled ? 'cancelled' : 'done';
-      await jobUpdate(userId, { status: finalStatus, current: null }).catch(e => {
+      // Ein abgelöster Lauf schreibt nichts mehr — die Zeile gehört dem neuen.
+      if (!cancelled) await jobUpdate(userId, { status: finalStatus, current: null }, lauf).catch(e => {
         console.error(`CSV: final jobUpdate failed: ${e.message}`);
       });
       emitJobStatus(userId);

@@ -100,6 +100,7 @@ CREATE TABLE csv_import_jobs (
   error text,
   started_at timestamp with time zone NOT NULL DEFAULT now(),
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  run_id text,
   CONSTRAINT csv_import_jobs_pkey PRIMARY KEY (user_id),
   CONSTRAINT csv_import_jobs_user_fk FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
