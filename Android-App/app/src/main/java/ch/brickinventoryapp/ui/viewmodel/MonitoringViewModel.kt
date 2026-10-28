@@ -49,7 +49,7 @@ data class MonitoringUiState(
  * MonitoringScreen.kt und MonitoringSections.kt waren die einzigen zwei
  * Dateien im Baum, die über `vm.repo` direkt an die Datenschicht griffen —
  * sechzehn Aufrufe mitten aus Composables heraus. Alle anderen Bildschirme
- * gehen über MainViewModel.
+ * gehen über ein ViewModel.
  *
  * Das ist die schlechtere Hälfte des Befunds „ViewModels je Bildschirm": Nicht
  * dass ein ViewModel zu viel kann, sondern dass ein Bildschirm die Rolle
@@ -58,10 +58,10 @@ data class MonitoringUiState(
  * fehlgeschlagenes Löschen die Liste wieder herstellt, konnte niemand
  * nachfahren — es stand in einem Lambda in einem `items {}`-Block.
  *
- * ── Warum ein EIGENES ViewModel und nicht MainViewModel ────────────────────
- * MainViewModel lebt so lange wie die Activity und hält den Zustand aller
- * Reiter. Monitoring ist ein Verwaltungsbildschirm, den man selten öffnet,
- * mit einer Abfrageschleife alle fünf Sekunden. Hier eingehängt (die Route
+ * ── Warum ein EIGENES ViewModel und nicht das AppViewModel ─────────────────
+ * Das AppViewModel lebt so lange wie die Activity. Monitoring ist ein
+ * Verwaltungsbildschirm, den man selten öffnet, mit einer Abfrageschleife
+ * alle fünf Sekunden. Hier eingehängt (die Route
  * ist ein NavHost-Ziel, `hiltViewModel()` bindet also an den Backstack-
  * Eintrag) entsteht der Zustand beim Betreten und verschwindet beim
  * Verlassen — statt für die Dauer der App mitgetragen zu werden.

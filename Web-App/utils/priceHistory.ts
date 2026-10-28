@@ -2,7 +2,7 @@
  * Preisverlauf eines Sets — die EINE Umsetzung für Webapp und Android-API.
  * Ausführlich: docs/begruendungen/utils/priceHistory.ts.md#abschnitt
  */
-import { inKontowaehrung } from './acquisitions';
+import { inKontowaehrung, kontowaehrungJoin } from './acquisitions';
 import * as db from '../db/database';
 import { resolveSetCondition, resolveBlColorId, resolveBlPartNumber } from './financeCalc';
 import { asIds } from './household';
@@ -45,7 +45,7 @@ async function seriesFor(setNumber: string, currency: string, cond: 'N' | 'U'): 
       WHERE set_number = $1 AND currency_code = $2 AND condition = $3
       ORDER BY to_char(recorded_at, 'YYYY-MM-DD') ASC, recorded_at DESC`,
     [setNumber, currency, cond]
-  ).catch(() => []);
+  );
 }
 
 /**
@@ -82,7 +82,7 @@ export async function getSetPriceHistory(uid: number | number[], setNumber: stri
        FROM price_cache
       WHERE set_number=$1 AND currency_code=$2 AND condition IN ('N','U') AND avg_price > 0`,
     [setNumber, currency]
-  ).catch(() => []);
+  );
   const current = {
     N: currentRows.find((r: any) => r.condition === 'N') || null,
     U: currentRows.find((r: any) => r.condition === 'U') || null,
@@ -105,7 +105,7 @@ export async function getSetPriceHistory(uid: number | number[], setNumber: stri
       -- derselbe Massstab wie innerhalb eines Kontos.
       ORDER BY COALESCE(a.created_at, s.added_at) ASC LIMIT 1`,
     [uids, setNumber]
-  ).catch(() => null);
+  );
 
   const hasCost = set?.purchase_price != null;   // 0 zählt als erfasst
   const purchasePrice = parseFloat(set?.purchase_price || 0);
@@ -153,13 +153,13 @@ export async function getSetPriceHistory(uid: number | number[], setNumber: stri
             SUM(purchase_price * quantity) FILTER (WHERE purchase_price IS NOT NULL AND ${inKontowaehrung('set_acquisitions')})::numeric
               / NULLIF(SUM(quantity) FILTER (WHERE purchase_price IS NOT NULL AND ${inKontowaehrung('set_acquisitions')}), 0) AS avg_purchase,
             SUM(quantity) AS qty
-       FROM set_acquisitions
+       FROM set_acquisitions ${kontowaehrungJoin('set_acquisitions')}
       -- Über ALLE Haushalts-Besitzer verdichtet — dieselbe Mengengewichtung,
       -- die auch die Bewertung im Haushalt anwendet.
-      WHERE user_id = ANY($1) AND set_number=$2
+      WHERE set_acquisitions.user_id = ANY($1) AND set_number=$2
       GROUP BY condition`,
     [uids, setNumber]
-  ).catch(() => []);
+  );
 
   const byCondition: Record<string, any> = {};
   for (const cond of ['N', 'U'] as const) {
@@ -220,7 +220,7 @@ async function manualSeries(table: string, keySql: string, keyVals: any[], curre
       WHERE ${keySql} AND currency_code = $${keyVals.length + 1} AND condition = $${keyVals.length + 2}
       ORDER BY to_char(recorded_at, 'YYYY-MM-DD') ASC, recorded_at DESC`,
     [...keyVals, currency, cond]
-  ).catch(() => []);
+  );
 }
 
 /**
@@ -244,18 +244,18 @@ export async function conditionRows(
       WHERE ${keySql} AND currency_code = $${keyVals.length + 1} AND avg_price > 0
       ORDER BY fetched_at DESC`,
     [...keyVals, currency]
-  ).catch(() => []);
+  );
   // Eigener Schlüssel: Erfassungen tragen die Rebrickable-Nummer, der Cache
   // oben die BrickLink-Nummer (Nachtrag 143).
   const acqRows = await db.all(
     `SELECT condition,
             SUM(unit_price * quantity) FILTER (WHERE unit_price IS NOT NULL AND ${inKontowaehrung(acqTable)})::numeric
               / NULLIF(SUM(quantity) FILTER (WHERE unit_price IS NOT NULL AND ${inKontowaehrung(acqTable)}), 0) AS avg_purchase
-       FROM ${acqTable}
-      WHERE ${acqKeySql} AND user_id = ANY($${acqKeyVals.length + 1})
+       FROM ${acqTable} ${kontowaehrungJoin(acqTable)}
+      WHERE ${acqKeySql} AND ${acqTable}.user_id = ANY($${acqKeyVals.length + 1})
       GROUP BY condition`,
     [...acqKeyVals, uids]
-  ).catch(() => []);
+  );
 
   const out: Record<string, any> = {};
   for (const cond of ['N', 'U'] as const) {

@@ -135,13 +135,13 @@ object Quellen {
      * Welcher öffentliche Zustandsfluss des ViewModels trägt welchen Typ?
      * Ergebnis z. B. `catalogState -> CatalogUiState`.
      *
-     * Gelesen aus den Feldern `_xyzState = MutableStateFlow(XyzUiState())` in
-     * MainViewModel.kt — der öffentliche Name ist derselbe ohne Unterstrich.
-     * Bewusst abgeleitet statt in den Tests aufgezählt: Eine Liste dort wäre
-     * eine zweite Wahrheit, die beim nächsten neuen Zustand still veraltet.
+     * Gelesen aus AppViewModel.kt und BereichsViewModel.kt — die Flüsse, die
+     * jeder Bildschirm unter `vm.` findet, egal welches ViewModel `vm` ist
+     * (`state`, `blickfeld`, `lagerState`). Bewusst abgeleitet statt in den
+     * Tests aufgezählt: Eine Liste dort wäre eine zweite Wahrheit.
      */
     fun zustandsFluesse(): Map<String, String> {
-        val src = lies("ui/MainViewModel.kt")
+        val src = lies("ui/AppViewModel.kt") + "\n" + lies("ui/viewmodel/BereichsViewModel.kt")
         // Zweite Form: ein Fluss, den eine eigene Klasse hält (Galerie), steht
         // mit seinem Typ da — `val galleryState: StateFlow<GalleryUiState> = …`.
         return (Regex("""_(\w+)\s*=\s*MutableStateFlow\((\w+UiState)\(""").findAll(src) +
@@ -153,7 +153,7 @@ object Quellen {
      * Dasselbe für JEDES ViewModel: Klasse → (öffentlicher Flussname → Typ).
      *
      * ── Warum das nötig wurde ───────────────────────────────────────────────
-     * Solange aller Zustand im MainViewModel lag, genügte ein Name: `vm`. Seit
+     * Solange aller Zustand in einem ViewModel lag, genügte ein Name: `vm`. Seit
      * es Bildschirm-ViewModels gibt, heisst der Fluss in beiden schlicht
      * `state` und trägt Verschiedenes — `vm.state` ist der App-Zustand,
      * `katalog.state` der Katalogzustand. Der Name allein sagt es nicht mehr,
@@ -167,6 +167,7 @@ object Quellen {
      */
     fun fluesseJeViewModel(): Map<String, Map<String, String>> {
         val ergebnis = mutableMapOf<String, Map<String, String>>()
+        val erbt = mutableListOf<String>()
         for (datei in alle().filter { it.name.endsWith("ViewModel.kt") }) {
             val src = ohneKommentare(datei.readText())
             val klasse = Regex("""class (\w+ViewModel)""").find(src)?.groupValues?.get(1) ?: continue
@@ -178,8 +179,16 @@ object Quellen {
             Regex("""\bval\s+(\w+)\s*=\s*(_\w+)\.asStateFlow\(\)""").findAll(src).forEach { m ->
                 privat[m.groupValues[2]]?.let { namen[m.groupValues[1]] = it }
             }
+            // Mit Typ ausgeschrieben, z. B. `val partsState: StateFlow<PartsUiState> = teile.state`.
+            Regex("""\bval\s+(\w+)\s*:\s*[\w.]*StateFlow<(\w+UiState)>""").findAll(src).forEach { m ->
+                namen[m.groupValues[1]] = m.groupValues[2]
+            }
+            // Was die Grundlage der Bereiche anbietet, haben alle Bereiche.
+            if (src.contains(": BereichsViewModel(")) erbt += klasse
             ergebnis[klasse] = namen
         }
+        val grundlage = ergebnis["BereichsViewModel"].orEmpty()
+        for (k in erbt) ergebnis[k] = grundlage + ergebnis.getValue(k)
         return ergebnis
     }
 
@@ -317,7 +326,7 @@ object Quellen {
         if (i < 0) return ""
         val rest = sauber.substring(i).lines()
         // Einrückung der SIGNATURZEILE — nicht der Abstand der Fundstelle zum
-        // Zeilenanfang. Bei `internal fun MainViewModel.x(` liegt zwischen
+        // Zeilenanfang. Bei `internal fun AppViewModel.x(` liegt zwischen
         // beidem das Wort `internal`, und der Abstand ergäbe neun Leerzeichen
         // Einzug für eine Funktion, die auf Spalte 0 steht. Ende nie gefunden,
         // Fenster wieder viel zu weit.

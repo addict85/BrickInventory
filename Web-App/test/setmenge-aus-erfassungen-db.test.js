@@ -1,4 +1,8 @@
 /**
+ * Seit db/basis.sql gibt es den Stand VOR dieser Migration nicht mehr: Die
+ * Fälle zu Riegel, Nachtrag und Zwischenstand sind entfallen. Geprüft werden
+ * der Endstand und die Lesewege.
+ *
  * Die Stückzahl eines Sets steht nur noch in den Erfassungen.
  *
  * ── Marcos Frage ────────────────────────────────────────────────────────────
@@ -101,21 +105,8 @@ test('nach der ganzen Kette trägt sets keine quantity mehr',
   await db.run('CREATE SCHEMA public');
   await db.initSchema();
 
-  // ── Zwischenstand: der Selbstnachweis ────────────────────────────────────
-  //
-  // VOR den Migrationen muss die Spalte da sein, und das ist keine Formalie:
-  // Der Nachtrag in Migration 0032 LIEST sie (er legt aus ihr die fehlenden
-  // Erfassungen an), der Nachtrag in 0036 ebenso. Fehlte sie in db/schema.sql,
-  // braeche die Kette beim ersten Start einer frischen Installation ab.
-  //
-  // Ohne diese Zusicherung saehe die Pruefung unten auch dann gruen aus, wenn
-  // die Spalte nie existiert haette — und bewiese nichts.
-  const vorher = await spaltenVon('sets');
-  assert.ok(vorher.includes('quantity'),
-    'sets.quantity fehlt schon vor den Migrationen — dann haben die Nachtraege in ' +
-    '0032 und 0036 nichts zu lesen, und die Stueckzahl jeder bestehenden Zeile ' +
-    'ist beim ersten Start verloren.');
-
+  // Den Vorstand vor den Migrationen gibt es nicht mehr: Eine leere
+  // Datenbank bekommt db/basis.sql. Geprüft wird der Endstand.
   const client = await db.pool.connect();
   try { await _req('db/migrate.js').runMigrations(client); } finally { client.release(); }
 
@@ -136,139 +127,6 @@ test('nach der ganzen Kette trägt sets keine quantity mehr',
     assert.ok(erf.includes(sp),
       `set_acquisitions.${sp} fehlt — dann gibt es die Stueckzahl nirgends mehr`);
   }
-});
-
-test('Migration 0036 löscht nur, wenn keine Stückzahl verloren geht',
-  { concurrency: 1 }, async (t) => {
-  if (!(await dbDa(t))) return;
-
-  const skript = fs.readFileSync(DATEI, 'utf8');
-
-  const nachtrag = skript.slice(skript.indexOf('DO $nachtrag$'),
-                               skript.indexOf('END $nachtrag$;') + 15);
-  const riegel   = skript.slice(skript.indexOf('DO $pruefung$'),
-                               skript.indexOf('END $pruefung$;') + 15);
-  assert.match(nachtrag, /INSERT INTO set_acquisitions/,
-    'Schritt 1 (der Nachtrag) steht nicht mehr als DO-Block mit dem INSERT');
-  assert.match(riegel, /RAISE EXCEPTION '% Set-Zeilen haben keine Erfassung/,
-    'Der Riegel prüft nicht mehr auf fehlende Erfassungen');
-  assert.match(riegel, /weicht sets\.quantity von der Summe der Erfassungen ab/,
-    'Der Riegel prüft nicht mehr auf den Drift zwischen Spalte und Summe');
-  assert.ok(skript.indexOf('DO $nachtrag$') < skript.indexOf('DO $pruefung$'),
-    'Der Riegel muss NACH dem Nachtrag stehen, sonst prüft er die alte Lage');
-  assert.match(skript, /ALTER TABLE sets DROP COLUMN IF EXISTS quantity/,
-    'Schritt 3 löscht die Spalte nicht mehr');
-
-  /**
-   * Frische Datenbank, alle Migrationen VOR 0036, eine Set-Zeile mit
-   * Stückzahl — nach Wahl ohne Erfassung oder mit einer abweichenden —, dann
-   * das übergebene Skript.
-   *
-   * @param sql     das auszuführende Skript
-   * @param erfassung null = keine Erfassung anlegen, sonst deren Menge
-   * @returns {Promise<string|null>} Fehlermeldung von Postgres, sonst null
-   */
-  const lauf = async (sql, erfassung = null) => {
-    await db.run('DROP SCHEMA public CASCADE');
-    await db.run('CREATE SCHEMA public');
-    await db.initSchema();
-    const c = await db.pool.connect();
-    try {
-      await c.query(`CREATE TABLE IF NOT EXISTS schema_migrations (
-        name TEXT PRIMARY KEY, applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`);
-      for (const f of fs.readdirSync(MIG_DIR).filter(x => x.endsWith('.sql')).sort()) {
-        if (f.startsWith('0036')) break;
-        await c.query(fs.readFileSync(path.join(MIG_DIR, f), 'utf8'));
-        await c.query('INSERT INTO schema_migrations (name) VALUES ($1)', [f]);
-      }
-      await c.query(`INSERT INTO users (username,password_hash) VALUES ('menge','x')`);
-      await c.query(`INSERT INTO sets (user_id,set_number,quantity,added_at)
-                     SELECT id,'75192-1',4,'2022-02-02' FROM users WHERE username='menge'`);
-      // Migration 0032 traegt fuer jede Set-Zeile eine Erfassung nach — hier
-      // soll aber genau die Lage OHNE (oder mit abweichender) Erfassung
-      // stehen. Also loeschen und gegebenenfalls neu setzen.
-      await c.query(`DELETE FROM set_acquisitions`);
-      if (erfassung !== null) {
-        await c.query(`INSERT INTO set_acquisitions (user_id,set_number,quantity,condition)
-                       SELECT id,'75192-1',$1,'N' FROM users WHERE username='menge'`,
-          [erfassung]);
-      }
-      await c.query('BEGIN');
-      try { await c.query(sql); await c.query('COMMIT'); return null; }
-      catch (e) { await c.query('ROLLBACK').catch(() => {}); return e.message; }
-    } finally { c.release(); }
-  };
-
-  // ── Lauf 1: die ganze Datei, Set-Zeile ohne Erfassung ────────────────────
-  assert.equal(await lauf(skript), null,
-    'Die Migration muss auf dieser Lage durchlaufen — Schritt 1 trägt die ' +
-    'fehlende Erfassung ja gerade nach');
-  const erf = await db.get(
-    `SELECT quantity, condition, created_at FROM set_acquisitions WHERE set_number='75192-1'`);
-  assert.ok(erf, 'Schritt 1 hat für die Set-Zeile keine Erfassung nachgetragen');
-  assert.equal(Number(erf.quantity), 4,
-    `Die Stückzahl ist beim Umzug verloren gegangen: ${erf.quantity} statt 4`);
-  // toISOString, nicht String(): Der Treiber liefert ein Date, und dessen
-  // Textform ist „Wed Feb 02 2022 …" — ein slice(0,10) darauf verglich
-  // „Wed Feb 0" mit dem Datum und war immer rot.
-  assert.equal(new Date(erf.created_at).toISOString().slice(0, 10), '2022-02-02',
-    'Das Aufnahmedatum ist nicht mitgekommen — der Portfolio-Verlauf ordnet danach');
-  assert.ok(!(await spaltenVon('sets')).includes('quantity'),
-    'Schritt 3 hat die Spalte nicht gelöscht');
-
-  // ── Lauf 2: ohne Schritt 1 — der Riegel muss greifen ─────────────────────
-  const ohneNachtrag = skript.replace(nachtrag, '');
-  assert.notEqual(ohneNachtrag, skript, 'Schritt 1 wurde nicht herausgeschnitten');
-  const meldung = await lauf(ohneNachtrag);
-  assert.match(String(meldung), /1 Set-Zeilen haben keine Erfassung/,
-    `Der Riegel hat nicht gegriffen. Postgres sagte: ${meldung}`);
-  assert.ok((await spaltenVon('sets')).includes('quantity'),
-    'sets.quantity ist trotz Abbruch weg — dann rollt die Transaktion nicht zurück');
-  const mengeDa = await db.get(`SELECT quantity FROM sets WHERE set_number='75192-1'`);
-  assert.equal(Number(mengeDa.quantity), 4, 'Die Stückzahl ist trotz Abbruch verschwunden');
-
-  // ── Lauf 3: GEGENPROBE, ohne Schritt 1 UND ohne Schritt 2 ────────────────
-  //
-  // Der Kern. Lauf 2 zeigt nur, dass es knallt; erst Lauf 3 zeigt, dass der
-  // RIEGEL es ist, der den Verlust verhindert — und nicht Postgres, nicht die
-  // Reihenfolge, nicht ein Zufall.
-  const ohneBeides = ohneNachtrag.replace(riegel, '');
-  assert.notEqual(ohneBeides, ohneNachtrag, 'Schritt 2 wurde nicht herausgeschnitten');
-  assert.equal(await lauf(ohneBeides), null,
-    'Ohne den Riegel muss die Datei durchlaufen — sonst beweist Lauf 2 nichts');
-  assert.ok(!(await spaltenVon('sets')).includes('quantity'),
-    'Ohne Riegel muss die Spalte gelöscht sein — sonst beweist Lauf 2 nichts');
-  const verloren = await db.get(
-    `SELECT COUNT(*)::int AS c FROM set_acquisitions WHERE set_number='75192-1'`);
-  assert.equal(verloren.c, 0,
-    'Ohne Schritt 1 darf es die Erfassung NICHT geben — die Stückzahl stand nur auf ' +
-    'der Bestandszeile und ist damit restlos weg. Gibt es sie, trägt sie etwas ' +
-    'anderes nach und Lauf 2 beweist nichts.');
-
-  // ── Lauf 4: der DRIFT ────────────────────────────────────────────────────
-  //
-  // Erfassung vorhanden (Summe 2), Spalte sagt 4. Schritt 1 trägt nichts nach
-  // — es gibt ja eine Erfassung. Genau hier muss die Migration anhalten und
-  // einen Menschen fragen, statt eine der beiden Zahlen stillschweigend zu
-  // gewinnen zu lassen. Das ist Marcos Server: Dort wurde der Drift gemessen.
-  const driftMeldung = await lauf(skript, 2);
-  assert.match(String(driftMeldung), /Bei 1 Set-Zeilen weicht sets\.quantity/,
-    `Der Drift-Riegel hat nicht gegriffen. Postgres sagte: ${driftMeldung}`);
-  assert.match(String(driftMeldung), /75192-1/,
-    'Die Meldung nennt kein Beispiel — „1 Zeile weicht ab" sagt nicht, wo man nachsieht');
-  assert.match(String(driftMeldung), /Spalte 4, Erfassungen 2/,
-    'Die Meldung nennt die beiden Zahlen nicht — dann kann der Mensch nicht entscheiden');
-  assert.ok((await spaltenVon('sets')).includes('quantity'),
-    'sets.quantity ist trotz Drift-Abbruch weg — dann rollt die Transaktion nicht zurück');
-
-  // ── Und die GEGENPROBE zum Drift ─────────────────────────────────────────
-  //
-  // Dieselbe Lage, aber Spalte und Summe stimmen überein: Dann muss die
-  // Migration durchlaufen. Ohne diesen Lauf könnte der Riegel einfach immer
-  // abbrechen, sobald eine Erfassung existiert.
-  assert.equal(await lauf(skript, 4), null,
-    'Bei übereinstimmender Spalte und Summe muss die Migration durchlaufen — ' +
-    'sonst bricht der Riegel nicht beim Drift ab, sondern immer');
 });
 
 test('niemand schreibt die Stückzahl eines Sets mehr', () => {

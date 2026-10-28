@@ -37,8 +37,7 @@ class UiStateFieldsTest {
     /**
      * Welcher öffentliche Fluss des ViewModels trägt welchen Zustandstyp?
      *
-     * Gelesen aus den Feldern `_xyzState = MutableStateFlow(XyzUiState())` in
-     * MainViewModel.kt — der öffentliche Name ist derselbe ohne Unterstrich.
+     * Gelesen aus AppViewModel.kt und BereichsViewModel.kt (Quellen.zustandsFluesse).
      * Bewusst abgeleitet statt hier aufgezählt: Eine Liste im Test wäre eine
      * zweite Wahrheit, die beim nächsten neuen Zustand still veraltet.
      */
@@ -61,7 +60,7 @@ class UiStateFieldsTest {
         val klassen = felderJeKlasse()
         val fluesse = fluesse()
         assert(klassen.size >= 4) { "Zu wenige Zustandsklassen gefunden — Muster veraltet?" }
-        assert(fluesse.isNotEmpty()) { "Keine Zustandsflüsse in MainViewModel.kt gefunden — Muster veraltet?" }
+        assert(fluesse.isNotEmpty()) { "Keine Zustandsflüsse in AppViewModel.kt gefunden — Muster veraltet?" }
 
         // Namen, die überall dasselbe bedeuten.
         val fest = mapOf(
@@ -93,7 +92,7 @@ class UiStateFieldsTest {
             // (Nachtrag 96/115), haben keinen Parameter mehr, an dem der Typ
             // ablesbar wäre — die Angabe steht in der Zeile
             //   val katalog by vm.catalogState.collectAsStateWithLifecycle()
-            // Welcher Fluss welchen Zustand trägt, verrät MainViewModel.kt
+            // Welcher Fluss welchen Zustand trägt, verraten die ViewModels
             // selbst; die Zuordnung wird deshalb dort gelesen und nicht hier
             // gepflegt. Ohne das hielte der Test `state` in CatalogScreen
             // wieder für den App-Zustand und meldete vierzig Fehlalarme —
@@ -120,7 +119,8 @@ class UiStateFieldsTest {
 
             for ((name, kls) in lokal) {
                 val felder = klassen[kls] ?: continue
-                Regex("""\b$name\.(\w+)""").findAll(s).forEach { m ->
+                // Nicht nach einem Punkt: `sitzung.state.map` ist der Fluss, nicht ein Feld davon.
+                Regex("""(?<![.\w])$name\.(\w+)""").findAll(s).forEach { m ->
                     val feld = m.groupValues[1]
                     if (feld !in egal && feld !in felder) {
                         val zeile = s.substring(0, m.range.first).count { c -> c == '\n' } + 1
@@ -264,11 +264,11 @@ class UiStateFieldsTest {
             .map { ohneKommentare(it.readText()) }.toList()
         assert(dateien.size >= 20) { "Zu wenige Kotlin-Dateien — Pfad veraltet?" }
 
-        // Fluss-Deklarationen des MainViewModels: Die Feature-Dateien benutzen
-        // SEINE Flüsse, ohne sie selbst zu deklarieren. Ein baumweiter Lauf wäre
-        // hier falsch — MonitoringViewModel nennt seinen eigenen Fluss ebenfalls
-        // `_state`, und der trägt MonitoringUiState.
-        val mvm = ohneKommentare(java.io.File(wurzel, "ui/MainViewModel.kt").readText())
+        // Fluss-Deklarationen des AppViewModels und der Grundlage der Bereiche.
+        // Ein baumweiter Lauf wäre hier falsch — MonitoringViewModel nennt
+        // seinen eigenen Fluss ebenfalls `_state`, und der trägt MonitoringUiState.
+        val mvm = ohneKommentare(java.io.File(wurzel, "ui/AppViewModel.kt").readText() + "\n" +
+            java.io.File(wurzel, "ui/viewmodel/BereichsViewModel.kt").readText())
         val privGlobal = Regex("""val\s+_(\w+)\s*=\s*MutableStateFlow\((\w+UiState)\(""")
             .findAll(mvm).associate { it.groupValues[1] to it.groupValues[2] }
         val oeffentlich = Regex("""val\s+(\w+)\s*=\s*_(\w+)\.asStateFlow\(\)""")
@@ -279,16 +279,7 @@ class UiStateFieldsTest {
                 .findAll(mvm).associate { it.groupValues[1] to it.groupValues[2] }
 
         // Bildschirm-ViewModels: Klasse → {öffentlicher Flussname: Zustandstyp}
-        val jeVm = java.io.File(wurzel, "ui/viewmodel").listFiles { f -> f.extension == "kt" }
-            .orEmpty().mapNotNull { f ->
-                val t = ohneKommentare(f.readText())
-                val kl = Regex("""class (\w+ViewModel)\b""").find(t)?.groupValues?.get(1)
-                    ?: return@mapNotNull null
-                val p = Regex("""val\s+_(\w+)\s*=\s*MutableStateFlow\((\w+UiState)\(""")
-                    .findAll(t).associate { it.groupValues[1] to it.groupValues[2] }
-                kl to Regex("""val\s+(\w+)\s*=\s*_(\w+)\.asStateFlow\(\)""")
-                    .findAll(t).mapNotNull { m -> p[m.groupValues[2]]?.let { m.groupValues[1] to it } }.toMap()
-            }.toMap()
+        val jeVm = Quellen.fluesseJeViewModel()
 
         val fest = mapOf(
             "catalogState" to "CatalogUiState", "partsState" to "PartsUiState",
@@ -365,6 +356,16 @@ class UiStateFieldsTest {
                 }
                 Regex("""\b(?:it|st|s)\.(\w+)""").findAll(s.substring(m.range.last + 1, i))
                     .forEach { t -> if (t.groupValues[1] in felder) gelesen[kls]?.add(t.groupValues[1]) }
+            }
+
+            // Der gemeinsame Zustand liegt in der Sitzung: `sitzung.state.value.x`
+            // und `sitzung.state.map { it.x }` lesen AppUiState.
+            val app = klassen["AppUiState"].orEmpty()
+            Regex("""\bsitzung\.state\.value\.(\w+)""").findAll(s).forEach { m ->
+                if (m.groupValues[1] in app) gelesen["AppUiState"]?.add(m.groupValues[1])
+            }
+            Regex("""\bsitzung\.state\s*(?:\r?\n\s*)?\.map\s*\{\s*it\.(\w+)""").findAll(s).forEach { m ->
+                if (m.groupValues[1] in app) gelesen["AppUiState"]?.add(m.groupValues[1])
             }
 
             // `it.feld` innerhalb eines update-Blocks auf dem zugehörigen Fluss:

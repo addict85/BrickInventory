@@ -52,8 +52,8 @@ test('ein frischer Cache-Eintrag ersetzt die Neuberechnung', async (t) => {
   await db.run('DELETE FROM minifig_price_cache WHERE fig_number = $1', [fig]);
   await db.run('DELETE FROM minifig_price_history WHERE fig_number = $1', [fig]);
   await db.run(
-    `INSERT INTO minifig_price_cache (fig_number, condition, currency_code, avg_price, qty_avg_price)
-     VALUES ($1,'N','EUR',3.50,3.50)`, [fig]);
+    `INSERT INTO minifig_price_cache (fig_number, condition, currency_code, avg_price, qty_avg_price, geschaetzt)
+     VALUES ($1,'N','EUR',3.50,3.50,TRUE)`, [fig]);
 
   const t0 = Date.now();
   const wert = await mf.estimateFigPriceFromParts(fig, u.id, 'N');
@@ -86,8 +86,8 @@ test('ein veralteter Eintrag wird übergangen', async (t) => {
 
   await db.run('DELETE FROM minifig_price_cache WHERE fig_number = $1', [fig]);
   await db.run(
-    `INSERT INTO minifig_price_cache (fig_number, condition, currency_code, avg_price, qty_avg_price, fetched_at)
-     VALUES ($1,'N','EUR',3.50,3.50, NOW() - INTERVAL '48 hours')`, [fig]);
+    `INSERT INTO minifig_price_cache (fig_number, condition, currency_code, avg_price, qty_avg_price, geschaetzt, fetched_at)
+     VALUES ($1,'N','EUR',3.50,3.50,TRUE, NOW() - INTERVAL '48 hours')`, [fig]);
 
   // Ohne Netz liefert die Neuberechnung null — entscheidend ist, DASS sie
   // stattfindet statt den alten Wert zurückzugeben.
@@ -107,12 +107,12 @@ test('Cache und Verlauf werden beide beschrieben', () => {
   const fs = require('node:fs');
   const path = require('node:path');
   const src = fs.readFileSync(path.join(__dirname, '..', 'utils', 'marketPrice.ts'), 'utf8');
-  const i = src.indexOf('async function estimateFigPriceFromParts');
+  const i = src.indexOf('async function schaetzeFigurenpreis');
   const fn = src.slice(i, src.indexOf('\n}', i));
 
   assert.match(fn, /INSERT INTO minifig_price_cache/, 'Die Schätzung landet nicht im Cache');
   assert.match(fn, /INSERT INTO minifig_price_history/, 'Die Schätzung landet nicht im Verlauf');
-  assert.match(fn, /SELECT avg_price FROM minifig_price_cache/,
+  assert.match(fn, /SELECT avg_price, abdeckung FROM minifig_price_cache/,
     'Der Cache wird nur beschrieben, nicht gelesen — genau der Zustand vor ' +
     'Nachtrag 144.');
 });

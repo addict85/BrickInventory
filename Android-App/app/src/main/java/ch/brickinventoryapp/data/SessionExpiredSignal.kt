@@ -8,12 +8,12 @@ import javax.inject.Singleton
 
 /**
  * Verbindet den OkHttp-Interceptor (sieht als Erstes, dass der Server einen
- * 401 zurückgibt) mit dem MainViewModel (der Einzige, der abmelden darf).
+ * 401 zurückgibt) mit dem AppViewModel (der Einzige, der abmelden darf).
  *
  * Der Interceptor läuft auf einem OkHttp-Dispatcher-Thread und kennt weder
  * ViewModel noch Compose — er kann also nicht selbst ausloggen. Er meldet den
- * abgelaufenen Token stattdessen hier; MainViewModel sammelt [events] und
- * ruft dann logout() auf (siehe SessionFeature.kt).
+ * abgelaufenen Token stattdessen hier; das AppViewModel sammelt [events] und
+ * ruft dann logout() auf.
  *
  * extraBufferCapacity = 1 + DROP_OLDEST: Ein einzelner "Sitzung abgelaufen"-
  * Puffer reicht — meldet der Interceptor mehrere 401 kurz hintereinander

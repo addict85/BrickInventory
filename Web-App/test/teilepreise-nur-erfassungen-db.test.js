@@ -1,4 +1,8 @@
 /**
+ * Seit db/basis.sql gibt es den Stand VOR dieser Migration nicht mehr: Die
+ * Fälle zu Riegel, Nachtrag und Zwischenstand sind entfallen. Geprüft werden
+ * der Endstand und die Lesewege.
+ *
  * Preis und Zustand von Teilen und Figuren stehen an GENAU EINEM Ort.
  *
  * ── Marcos Vorgabe ──────────────────────────────────────────────────────────
@@ -77,26 +81,8 @@ test('nach der ganzen Kette tragen parts und minifigs keinen Preis mehr',
   await db.run('CREATE SCHEMA public');
   await db.initSchema();
 
-  // ── Zwischenstand: der Selbstnachweis ────────────────────────────────────
-  //
-  // VOR den Migrationen muessen die Spalten da sein, aus zwei Gruenden:
-  // Migration 0007 schreibt `ALTER COLUMN unit_price TYPE NUMERIC` und bricht
-  // auf einer fehlenden Spalte ab, und der Nachtrag in 0035 LIEST sie, um sie
-  // in die Erfassung zu tragen.
-  //
-  // Ohne diese Zusicherung saehe die Pruefung unten auch bei einer leeren
-  // Tabelle gruen aus.
-  const vorher = await spaltenVon('parts');
-  for (const sp of ['unit_price', 'purchase_price', 'condition']) {
-    assert.ok(vorher.includes(sp),
-      `parts.${sp} fehlt schon vor den Migrationen — dann bricht Migration 0007 ` +
-      'oder der Nachtrag in 0035 beim ersten Start einer frischen Installation ab.');
-  }
-  const vorherFigs = await spaltenVon('minifigs');
-  for (const sp of ['unit_price', 'purchase_price', 'condition']) {
-    assert.ok(vorherFigs.includes(sp), `minifigs.${sp} fehlt vor den Migrationen`);
-  }
-
+  // Den Vorstand vor den Migrationen gibt es nicht mehr: Eine leere
+  // Datenbank bekommt db/basis.sql. Geprüft wird der Endstand.
   const client = await db.pool.connect();
   try { await _req('db/migrate.js').runMigrations(client); } finally { client.release(); }
 
@@ -134,128 +120,6 @@ test('nach der ganzen Kette tragen parts und minifigs keinen Preis mehr',
         `${tab}.${sp} fehlt — dann gibt es den Kaufpreis nirgends mehr`);
     }
   }
-});
-
-test('Migration 0035 löscht nur, wenn kein Kaufpreis verloren geht',
-  { concurrency: 1 }, async (t) => {
-  if (!(await dbDa(t))) return;
-
-  // ── Drei Laeufe auf derselben Lage ───────────────────────────────────────
-  //
-  //   1. ganze Datei           → traegt nach, loescht, der Preis ist in der Erfassung
-  //   2. ohne Schritt 1        → der Riegel bricht ab, die Spalten bleiben
-  //   3. ohne Schritt 1 und 2  → laeuft durch, die Spalten sind weg, der Preis weg
-  //
-  // Lauf 2 ist die Zusage, Lauf 3 die GEGENPROBE: Er zeigt, dass der Riegel
-  // tatsaechlich das ist, was den Verlust verhindert — und nicht etwa Postgres
-  // oder ein Zufall der Reihenfolge.
-  const skript = fs.readFileSync(DATEI, 'utf8');
-
-  const nachtrag = skript.slice(skript.indexOf('DO $nachtrag$'),
-                               skript.indexOf('END $nachtrag$;') + 15);
-  const riegel   = skript.slice(skript.indexOf('DO $pruefung$'),
-                               skript.indexOf('END $pruefung$;') + 15);
-  assert.match(nachtrag, /INSERT INTO part_acquisitions/,
-    'Schritt 1 (der Nachtrag) steht nicht mehr als DO $nachtrag$-Block');
-  assert.match(nachtrag, /INSERT INTO minifig_acquisitions/,
-    'Der Nachtrag traegt die Figuren nicht mehr nach');
-  assert.match(riegel, /RAISE EXCEPTION '% manuelle Teile haben keine Erfassung/,
-    'Der Riegel prüft nicht mehr auf fehlende Erfassungen');
-  assert.match(riegel, /RAISE EXCEPTION '% manuelle Teile wuerden ihren Kaufpreis verlieren/,
-    'Der Riegel prüft nicht mehr auf verlorene Kaufpreise');
-  assert.ok(skript.indexOf('DO $nachtrag$') < skript.indexOf('DO $pruefung$'),
-    'Der Riegel muss NACH dem Nachtrag stehen, sonst prüft er die alte Lage');
-
-  /**
-   * Frische Datenbank, alle Migrationen VOR 0035, eine manuelle Position mit
-   * Preis und Zustand aber OHNE Erfassung — dann das uebergebene Skript.
-   * @returns {Promise<string|null>} Fehlermeldung von Postgres, sonst null
-   */
-  const lauf = async (sql) => {
-    await db.run('DROP SCHEMA public CASCADE');
-    await db.run('CREATE SCHEMA public');
-    await db.initSchema();
-    const c = await db.pool.connect();
-    try {
-      await c.query(`CREATE TABLE IF NOT EXISTS schema_migrations (
-        name TEXT PRIMARY KEY, applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`);
-      for (const f of fs.readdirSync(MIG_DIR).filter(x => x.endsWith('.sql')).sort()) {
-        if (f.startsWith('0035')) break;
-        await c.query(fs.readFileSync(path.join(MIG_DIR, f), 'utf8'));
-        await c.query('INSERT INTO schema_migrations (name) VALUES ($1)', [f]);
-      }
-      await c.query(`INSERT INTO users (username,password_hash) VALUES ('preise','x')`);
-      // Die Erfassungen loeschen, die initSchema() beim Erststart angelegt
-      // haben koennte — hier soll genau der Fall ohne Erfassung stehen.
-      await c.query(`DELETE FROM part_acquisitions`);
-      await c.query(`INSERT INTO parts (user_id,part_number,color_id,quantity,source,
-                                        unit_price,purchase_price,condition,added_at)
-                     SELECT id,'98138',14,7,'manual',1.25,1.25,'U','2023-03-03'
-                       FROM users WHERE username='preise'`);
-      // Ein Set-Teil dazu: Es darf KEINE Erfassung bekommen.
-      await c.query(`INSERT INTO sets (user_id,set_number,quantity)
-                     SELECT id,'75192-1',1 FROM users WHERE username='preise'`);
-      await c.query(`INSERT INTO parts (user_id,set_number,part_number,color_id,quantity,source)
-                     SELECT id,'75192-1','3001',4,6,'set' FROM users WHERE username='preise'`);
-      await c.query('BEGIN');
-      try { await c.query(sql); await c.query('COMMIT'); return null; }
-      catch (e) { await c.query('ROLLBACK').catch(() => {}); return e.message; }
-    } finally { c.release(); }
-  };
-
-  // ── Lauf 1: die ganze Datei ──────────────────────────────────────────────
-  assert.equal(await lauf(skript), null,
-    'Die Migration muss auf dieser Lage durchlaufen — Schritt 1 trägt die ' +
-    'fehlende Erfassung ja gerade nach');
-  const erf = await db.get(
-    `SELECT quantity, unit_price, condition, created_at
-       FROM part_acquisitions WHERE part_number='98138'`);
-  assert.ok(erf, 'Schritt 1 hat für die manuelle Position keine Erfassung nachgetragen');
-  assert.equal(Number(erf.unit_price), 1.25, 'Der Kaufpreis ist beim Umzug verloren gegangen');
-  assert.equal(erf.condition, 'U', 'Der Zustand ist verloren gegangen');
-  assert.equal(Number(erf.quantity), 7, 'Die Menge ist verloren gegangen');
-  // toISOString, nicht String(): Der Treiber liefert ein Date, und dessen
-  // Textform ist „Fri Mar 03 2023 …" — ein slice(0,10) darauf verglich
-  // „Fri Mar 0" mit dem Datum und war immer rot.
-  assert.equal(new Date(erf.created_at).toISOString().slice(0, 10), '2023-03-03',
-    'Das Aufnahmedatum ist nicht mitgekommen — der Portfolio-Verlauf ordnet danach');
-
-  // ── Set-Teile bekommen KEINE Erfassung ───────────────────────────────────
-  //
-  // Fuer sie gab es keinen eigenen Kauf; gekauft wurde das Set. Eine Erfassung
-  // hier wuerde in der Finanzansicht als zweiter Kaufpreis mitzaehlen.
-  const setTeil = await db.get(
-    `SELECT COUNT(*)::int AS c FROM part_acquisitions WHERE part_number='3001'`);
-  assert.equal(setTeil.c, 0,
-    'Ein Set-Teil hat eine Erfassung bekommen — es gab aber keinen eigenen Kauf');
-
-  // ── Lauf 2: ohne Schritt 1 — der Riegel muss greifen ─────────────────────
-  const ohneNachtrag = skript.replace(nachtrag, '');
-  assert.notEqual(ohneNachtrag, skript, 'Schritt 1 wurde nicht herausgeschnitten');
-  const meldung = await lauf(ohneNachtrag);
-  assert.match(String(meldung), /1 manuelle Teile haben keine Erfassung/,
-    `Der Riegel hat nicht gegriffen. Postgres sagte: ${meldung}`);
-  const nachAbbruch = await spaltenVon('parts');
-  for (const sp of ['unit_price', 'purchase_price', 'condition']) {
-    assert.ok(nachAbbruch.includes(sp),
-      `parts.${sp} ist trotz Abbruch weg — dann rollt die Transaktion nicht zurück`);
-  }
-  const preisDa = await db.get(`SELECT unit_price FROM parts WHERE part_number='98138'`);
-  assert.equal(Number(preisDa.unit_price), 1.25, 'Der Preis ist trotz Abbruch verschwunden');
-
-  // ── Lauf 3: GEGENPROBE, ohne Schritt 1 UND ohne Schritt 2 ────────────────
-  const ohneBeides = ohneNachtrag.replace(riegel, '');
-  assert.notEqual(ohneBeides, ohneNachtrag, 'Schritt 2 wurde nicht herausgeschnitten');
-  assert.equal(await lauf(ohneBeides), null,
-    'Ohne den Riegel muss die Datei durchlaufen — sonst beweist Lauf 2 nichts');
-  assert.deepEqual(
-    (await spaltenVon('parts')).filter(c => ['unit_price', 'condition'].includes(c)), [],
-    'Ohne Riegel müssen die Spalten gelöscht sein — sonst beweist Lauf 2 nichts');
-  const verloren = await db.get(
-    `SELECT COUNT(*)::int AS c FROM part_acquisitions WHERE part_number='98138'`);
-  assert.equal(verloren.c, 0,
-    'Ohne Schritt 1 darf es die Erfassung NICHT geben — der Preis war nur auf der ' +
-    'Bestandszeile. Gibt es sie, trägt sie etwas anderes nach und Lauf 2 beweist nichts.');
 });
 
 test('die Listen liefern Preis und Zustand aus der neuesten Erfassung',

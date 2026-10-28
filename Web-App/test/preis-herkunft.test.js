@@ -78,10 +78,10 @@ test('der Rueckfall wird in beiden Preisabrufen markiert', () => {
 });
 
 test('die Herkunft erreicht beide Antworten', () => {
-  for (const datei of ['parts.ts', 'minifigs.ts']) {
-    const src = lies('routes', datei);
+  for (const datei of ['manuelleTeile.ts', 'manuelleFiguren.ts']) {
+    const src = lies('utils', datei);
     assert.match(src, /price_from_condition: preisAusZustand/,
-      `routes/${datei} liefert die Herkunft nicht aus — dann kann keine ` +
+      `utils/${datei} liefert die Herkunft nicht aus — dann kann keine ` +
       'Oberflaeche sie zeigen');
   }
 });
@@ -104,8 +104,8 @@ test('beide Oberflaechen zeigen den Hinweis, aus je EINER Stelle', () => {
     'Der Hinweis fehlt bei einer der beiden Erfassungen (Teile / Figuren)');
 
   const app = ohneKommentare(fs.readFileSync(
-    path.join(APP, 'ui', 'PartsFeature.kt'), 'utf8'));
-  assert.strictEqual((app.match(/fun MainViewModel\.erfassungsMeldung\(/g) || []).length, 1,
+    path.join(APP, 'ui', 'viewmodel', 'TeileViewModel.kt'), 'utf8'));
+  assert.strictEqual((app.match(/fun erfassungsMeldung\(/g) || []).length, 1,
     'Der Hinweis der App ist nicht an genau einer Stelle gebaut');
   // `= erfassungsMeldung(` misst die AUFRUFE. Ein blosses
   // `erfassungsMeldung\(` zaehlte die Definition mit und meldete 3 statt 2 —

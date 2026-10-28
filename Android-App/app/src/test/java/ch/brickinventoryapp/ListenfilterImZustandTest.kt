@@ -49,7 +49,7 @@ class ListenfilterImZustandTest {
 
         for (datei in Quellen.unter("ui")) {
             val src = Quellen.ohneKommentare(datei.readText())
-            for (treffer in Regex("""fun (?:MainViewModel\.)?(load\w+)\(([^)]*)\)""").findAll(src)) {
+            for (treffer in Regex("""fun (load\w+)\(([^)]*)\)""").findAll(src)) {
                 lader++
                 val name = treffer.groupValues[1]
                 val parameter = treffer.groupValues[2]

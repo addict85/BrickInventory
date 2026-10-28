@@ -953,7 +953,7 @@ function gridCard(s){
   // eine Plakette je Zustand, siehe condBadges().
   const condBadge = condBadges(s);
   return `<div class="sc" tabindex="0" role="button" aria-label="${esc((s.name||'')+' '+s.set_number)}" data-click="openModal" data-arg="${escJs(s.set_number)}">
-    <div class="ca"><button class="delbtn" data-click="delSetStop" data-arg="${esc(s.set_number)}" title="${esc(t('detail.delete'))}" aria-label="${esc(t('detail.delete'))}">${TRASH_ICON_SVG}</button></div>
+    <div class="ca"><button class="delbtn" data-click="delSetStop" tabindex="-1" aria-hidden="true" data-arg="${esc(s.set_number)}" title="${esc(t('detail.delete'))}" aria-label="${esc(t('detail.delete'))}">${TRASH_ICON_SVG}</button></div>
     <div class="sci">${img}</div>
     <div class="scb">
       <div class="snum">${esc(s.set_number)}</div>
@@ -1029,7 +1029,8 @@ async function doAddSet(){
           hideProgress(); loadGallery(); loadStats();
           G('add-num').value=''; if(G('add-price')) G('add-price').value='';
           leereLagerortFeld('add-storage');
-          toast(`Set ${esc(ev.set_number)} ${ev.action==='added'?t('common.added'):t('common.updated')}!`,'success');
+          if (ev.katalog_offen) toast(tRaw('gallery.added_no_catalog', { num: ev.set_number }), 'info');
+          else toast(`Set ${esc(ev.set_number)} ${ev.action==='added'?t('common.added'):t('common.updated')}!`,'success');
           // Background jobs still running — refresh all tabs periodically
           set_lastImportAt(Date.now());
           [3000, 8000, 15000, 25000].forEach(delay => setTimeout(()=>{
@@ -1259,8 +1260,8 @@ async function readSSE(res, onEvent, signal){
   }
 }
 
-G('vg').onclick=()=>{ curView='grid'; G('vg').classList.add('active'); G('vl').classList.remove('active'); renderGallery(); };
-G('vl').onclick=()=>{ curView='list'; G('vl').classList.add('active'); G('vg').classList.remove('active'); renderGallery(); };
+G('vg').onclick=()=>{ curView='grid'; G('vg').classList.add('active'); G('vl').classList.remove('active'); G('vg').setAttribute('aria-pressed','true'); G('vl').setAttribute('aria-pressed','false'); renderGallery(); };
+G('vl').onclick=()=>{ curView='list'; G('vl').classList.add('active'); G('vg').classList.remove('active'); G('vl').setAttribute('aria-pressed','true'); G('vg').setAttribute('aria-pressed','false'); renderGallery(); };
 // Suche entprellt: renderGallery baut das komplette Grid per innerHTML neu auf
 // (inkl. Lazy-Image-Observer) — bei jedem Tastendruck wäre das bei grossen
 // Sammlungen spürbar ruckelig. 250ms Debounce, wie bei der Parts-Suche.

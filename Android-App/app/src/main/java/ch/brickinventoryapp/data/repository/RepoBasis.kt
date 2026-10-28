@@ -42,7 +42,7 @@ abstract class RepoBasis(
      * Netzabruf mit Plattenspeicher als Rückfallebene.
      *
      * Reihenfolge ist bewusst „erst Netz, dann Cache": Der Server bleibt die
-     * Wahrheit, der Cache springt nur ein, wenn der Abruf scheitert. Ein
+     * Wahrheit, der Cache springt nur ein, wenn er nicht erreichbar ist. Ein
      * Cache-First-Ansatz würde frische Daten verdrängen.
      *
      * Nutzen: Nach einem Neustart ohne Netz — oder bei langsamer Verbindung —
@@ -59,13 +59,14 @@ abstract class RepoBasis(
             cache.put(key, serializer, fresh.data)
             return fresh
         }
-        // Eine abgelaufene Sitzung darf nicht durch bis zu 7 Tage alte
-        // Plattendaten verdeckt werden — sonst sieht der Nutzer eine scheinbar
-        // normale Galerie, obwohl er längst ausgeloggt ist (siehe logout() in
-        // SessionFeature.kt, das per SessionExpiredSignal ausgelöst wird).
-        if (fresh is Result.Error && fresh.unauthorized) return fresh
-        val stored = cache.get(key, serializer)
-        return if (stored != null) Result.Success(stored) else fresh
+        // Die Platte springt nur ein, wenn der Server NICHT erreichbar war
+        // (transient: Verbindung, Zeitüberschreitung). Antwortet er mit 401, 404
+        // oder 500, ist das seine Auskunft — alte Daten darüber zu legen hiesse,
+        // sie zu verschweigen. Der Rückfall trägt seinen Stand, damit die Liste
+        // „Offline – Stand von …“ zeigen kann statt frisch auszusehen.
+        if (fresh !is Result.Error || !fresh.transient) return fresh
+        val (stored, stand) = cache.getMitStand(key, serializer) ?: return fresh
+        return Result.Success(stored, stand = stand)
     }
 
     protected suspend fun <T> safeCall(call: suspend () -> Response<T>): Result<T> {

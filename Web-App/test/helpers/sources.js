@@ -156,6 +156,9 @@ function buildAndRequire() {
     }
     _built = true;
   }
+  // Wie server.ts: Die Nacharbeit aus utils/ (Nachzug, Preis, Bilder) läuft
+  // über jobs/verdrahtung — ohne sie prüften Tests eine stumme Fassung.
+  require(path.join(ROOT, 'dist', 'jobs', 'verdrahtung.js')).verdrahte();
   return rel => require(path.join(ROOT, 'dist', rel));
 }
 

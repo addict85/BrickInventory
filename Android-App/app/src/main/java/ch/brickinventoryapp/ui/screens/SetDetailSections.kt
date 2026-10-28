@@ -59,8 +59,8 @@ import ch.brickinventoryapp.data.model.Acquisition
 import ch.brickinventoryapp.data.model.PriceHistoryResponse
 import ch.brickinventoryapp.data.model.SetItem
 import ch.brickinventoryapp.data.model.SetPriceResponse
-import ch.brickinventoryapp.ui.MainViewModel
-import ch.brickinventoryapp.ui.*  // Feature-Extensions (loadSets, setScope, …)
+import ch.brickinventoryapp.ui.viewmodel.SetDetailViewModel
+import ch.brickinventoryapp.ui.*
 import ch.brickinventoryapp.ui.SetDetailUiState
 import kotlinx.coroutines.CoroutineScope
 import androidx.compose.foundation.lazy.LazyRow
@@ -405,7 +405,7 @@ fun LazyListScope.setDetailPriceSection(set: SetItem, detailState: SetDetailUiSt
 }
 
 /** Stammdaten: Nummer, Menge (änderbar), Erfassungsdatum. */
-fun LazyListScope.setDetailDetailsSection(set: SetItem, setNumber: String, vm: MainViewModel, acquisitions: List<Acquisition>, currency: String, fmtDate: (String?) -> String, onNavigateToAcqMgmt: (type: String, id: String, colorId: Int, title: String) -> Unit) {
+fun LazyListScope.setDetailDetailsSection(set: SetItem, setNumber: String, vm: SetDetailViewModel, acquisitions: List<Acquisition>, currency: String, fmtDate: (String?) -> String, onNavigateToAcqMgmt: (type: String, id: String, colorId: Int, title: String) -> Unit) {
     // ── Set details section ────────────────────────────────────────────
     item {
         SectionCard(title = stringResource(R.string.detail_section_details)) {
@@ -464,7 +464,7 @@ fun LazyListScope.setDetailDetailsSection(set: SetItem, setNumber: String, vm: M
                     horizontalArrangement = Arrangement.spacedBy(Abstaende.mittel)
                 ) {
                     FilledTonalIconButton(
-                        onClick = { if (qty > 1) { qty--; vm.updateQuantity(set.setNumber, qty) } },
+                        onClick = { if (qty > 1) { qty--; vm.aendereMengeUm(set.setNumber, -1) } },
                         shape = Formen.etikett
                     ) {
                         Icon(Icons.Default.Remove, stringResource(R.string.cd_qty_decrease), Modifier.size(14.dp))
@@ -477,7 +477,7 @@ fun LazyListScope.setDetailDetailsSection(set: SetItem, setNumber: String, vm: M
                         textAlign = TextAlign.Center
                     )
                     FilledTonalIconButton(
-                        onClick = { qty++; vm.updateQuantity(set.setNumber, qty) },
+                        onClick = { qty++; vm.aendereMengeUm(set.setNumber, 1) },
                         shape = Formen.etikett
                     ) {
                         Icon(Icons.Default.Add, stringResource(R.string.cd_qty_increase), Modifier.size(14.dp))
@@ -664,7 +664,7 @@ fun LazyListScope.setDetailAlarmSection(
     setNumber: String,
     alarme: List<ch.brickinventoryapp.data.model.Preisalarm>,
     currency: String,
-    vm: MainViewModel,
+    onSetze: (setNumber: String, richtung: String, roh: String, zustand: String) -> Unit,
 ) {
     item {
         // Fuer WELCHEN Zustand der Alarm gilt. Neu und gebraucht liegen oft
@@ -714,13 +714,13 @@ fun LazyListScope.setDetailAlarmSection(
                 FilterChip(
                     selected = richtung == "unter",
                     onClick = { richtung = "unter"
-                        if (schwelle.isNotBlank()) vm.setzePreisalarm(setNumber, "unter", schwelle, zustand) },
+                        if (schwelle.isNotBlank()) onSetze(setNumber, "unter", schwelle, zustand) },
                     label = { Text(stringResource(R.string.detail_alert_below), style = MaterialTheme.typography.labelMedium) },
                 )
                 FilterChip(
                     selected = richtung == "ueber",
                     onClick = { richtung = "ueber"
-                        if (schwelle.isNotBlank()) vm.setzePreisalarm(setNumber, "ueber", schwelle, zustand) },
+                        if (schwelle.isNotBlank()) onSetze(setNumber, "ueber", schwelle, zustand) },
                     label = { Text(stringResource(R.string.detail_alert_above), style = MaterialTheme.typography.labelMedium) },
                 )
                 OutlinedTextField(
@@ -741,7 +741,7 @@ fun LazyListScope.setDetailAlarmSection(
                     // Feld zu leeren bleibt der eine gewollte Weg dahin.
                     onValueChange = { roh ->
                         val g = NumericInput.price(roh)
-                        schwelle = g; vm.setzePreisalarm(setNumber, richtung, g, zustand)
+                        schwelle = g; onSetze(setNumber, richtung, g, zustand)
                     },
                     singleLine = true,
                     placeholder = { Text(currency, style = MaterialTheme.typography.bodySmall) },

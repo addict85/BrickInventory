@@ -51,7 +51,9 @@ import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
 import ch.brickinventoryapp.*
-import ch.brickinventoryapp.ui.MainViewModel
+import ch.brickinventoryapp.ui.AppViewModel
+import ch.brickinventoryapp.ui.viewmodel.MerklisteViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import ch.brickinventoryapp.ui.viewmodel.CatalogViewModel
 import ch.brickinventoryapp.ui.ManualItemDetailUiState
 
@@ -66,7 +68,7 @@ import ch.brickinventoryapp.ui.ManualItemDetailUiState
  * ./gradlew assembleDebug auf.
  */
 fun NavGraphBuilder.catalogGraph(
-    vm: MainViewModel,
+    vm: AppViewModel,
     katalog: CatalogViewModel,
     navController: NavHostController,
     imageLoader: coil3.ImageLoader,
@@ -80,10 +82,11 @@ fun NavGraphBuilder.catalogGraph(
         // hinein, und wie er zeigt sie Sets, die einem NICHT gehoeren.
         composable(Screen.Wanted.route) {
             ReiterGeruest(stringResource(R.string.nav_wanted), vm, navController, bottomNavItems, snackbarHostState) {
+                val erfassung = ch.brickinventoryapp.ui.viewmodel.aktivitaetsViewModel<ch.brickinventoryapp.ui.viewmodel.ErfassungViewModel>()
                 ch.brickinventoryapp.ui.screens.MerklisteScreen(
-                    vm = vm,
+                    vm = hiltViewModel<MerklisteViewModel>(),
                     imageLoader = imageLoader,
-                    onScan = { navController.navigate(Screen.BarcodeScanner.route) },
+                    onScan = { erfassung.setScannerSource("wanted"); navController.navigate(Screen.BarcodeScanner.route) },
                     onOeffnen = { sn, zustand ->
                         navController.navigate(Screen.MerkpostenDetail.createRoute(sn, zustand))
                     },
@@ -98,7 +101,7 @@ fun NavGraphBuilder.catalogGraph(
             ),
         ) { backStack ->
             ch.brickinventoryapp.ui.screens.MerkpostenDetailScreen(
-                vm = vm,
+                vm = hiltViewModel<MerklisteViewModel>(),
                 setNumber = backStack.arguments?.getString("setNumber") ?: "",
                 condition = backStack.arguments?.getString("condition") ?: "N",
                 imageLoader = imageLoader,
@@ -137,7 +140,10 @@ fun NavGraphBuilder.catalogGraph(
             // Zustand INNERHALB des Ziels lesen — als Parameter wäre es eine
             // Momentaufnahme vom Aufbau des Graphen (der NavHost-Builder läuft nur einmal).
             val state by vm.state.collectAsStateWithLifecycle()
+            val blick by vm.blickfeld.collectAsStateWithLifecycle()
             val catSetNumber = backStack.arguments?.getString("setNumber") ?: ""
+            val merkliste: MerklisteViewModel = hiltViewModel()
+            val erfassung = ch.brickinventoryapp.ui.viewmodel.aktivitaetsViewModel<ch.brickinventoryapp.ui.viewmodel.ErfassungViewModel>()
             val catalogState by katalog.state.collectAsStateWithLifecycle()
             val lagerZustand by vm.lagerState.collectAsStateWithLifecycle()
             // loadCatalogDetail() meldet ebenfalls („Set nicht gefunden",
@@ -151,7 +157,7 @@ fun NavGraphBuilder.catalogGraph(
                 serverUrl = state.serverUrl,
                 defaultCondition = state.userDefaultCondition ?: "N",
                 onLoad = katalog::loadCatalogDetail,
-                householdMembers = state.householdMembers,
+                householdMembers = blick.householdMembers,
                 // Der VORRAT an Lagerorten, nicht die belegten Orte: Beim
                 // Erfassen soll auch ein leeres Regal zur Wahl stehen.
                 lagerorte = lagerZustand.eigene.map { it.name },
@@ -161,13 +167,13 @@ fun NavGraphBuilder.catalogGraph(
                     // dem Katalog. Frueher tat addCatalogSetToGallery() beides
                     // in einer Funktion — die Abhaengigkeit steht jetzt sichtbar
                     // hier statt versteckt dort.
-                    vm.addSet(sn, qty, price, cond, owner, ort)
+                    erfassung.addSet(sn, qty, price, cond, owner, ort)
                     katalog.markiereAufgenommen(sn, qty)
                 },
                 // Merkposten UND Preisalarm in einem Griff — die Regel dahinter
-                // steht in ui/MerklisteFeature.kt, nicht hier.
+                // steht im MerklisteViewModel, nicht hier.
                 onWish = { sn, zustand, richtung, schwelle, konto ->
-                    vm.merkpostenMitAlarm(sn, zustand, richtung, schwelle, konto)
+                    merkliste.merkpostenMitAlarm(sn, zustand, richtung, schwelle, konto)
                 },
                 onOpenInGallery = { sn -> navController.navigate(Screen.SetDetail.createRoute(sn)) },
                 onBack = { navController.popBackStack() }

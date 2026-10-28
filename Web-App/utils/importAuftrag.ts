@@ -99,7 +99,7 @@ async function jobGet(userId: number) {
  * Spalten, die jobSet()/jobUpdate() schreiben dürfen.
  * Ausführlich: docs/begruendungen/utils/importAuftrag.ts.md#job-columns
  */
-const JOB_COLUMNS = new Set(['status', 'total', 'done', 'current', 'results', 'error', 'started_at']);
+const JOB_COLUMNS = new Set(['status', 'total', 'done', 'current', 'results', 'error', 'started_at', 'run_id']);
 
 /**
  * @param {Record<string, unknown>} fields
@@ -132,15 +132,21 @@ async function jobSet(userId: number, fields: Record<string, unknown>) {
   );
 }
 
-async function jobUpdate(userId: number, fields: Record<string, unknown>) {
-  if (!fields || !Object.keys(fields).length) return;
+/**
+ * Mit `lauf` schreibt nur der Import, dessen Kennung noch eingetragen ist;
+ * die Rückgabe sagt, ob er das noch ist. Ein abgelöster Lauf hört daran auf.
+ */
+async function jobUpdate(userId: number, fields: Record<string, unknown>, lauf?: string): Promise<boolean> {
+  if (!fields || !Object.keys(fields).length) return true;
   const keys   = assertJobColumns(fields);
   const values = keys.map(k => fields[k]);
   const setClauses = keys.map((k, i) => `${k} = $${i + 2}`).join(', ');
-  await db.run(
-    `UPDATE csv_import_jobs SET ${setClauses}, updated_at = NOW() WHERE user_id = $1`,
-    [userId, ...values]
+  const r = await db.run(
+    `UPDATE csv_import_jobs SET ${setClauses}, updated_at = NOW()
+      WHERE user_id = $1${lauf ? ` AND run_id = $${keys.length + 2} AND status = 'running'` : ''}`,
+    lauf ? [userId, ...values, lauf] : [userId, ...values]
   );
+  return !lauf || (r?.changes ?? 0) > 0;
 }
 
 

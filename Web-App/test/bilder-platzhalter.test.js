@@ -9,6 +9,8 @@
  *   A  in 11-actions.js statt bildPlatzhalter() wieder removeAttribute('src')
  *      → rot: „Galerie: kaputtes Bild wird zum Platzhalter"
  *   B  in bildTag() (01-core.js) das alt weggelassen → rot: „alt an jedem Bild"
+ *   C  (28.10.) platzhalterInhalt('set') wieder mit dem roten Logo-Bild → rot:
+ *      „Galerie: kaputtes Bild wird zum Platzhalter"
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -83,7 +85,7 @@ test('Galerie: kaputtes Bild wird zum Platzhalter', async () => {
     assert.ok(ph, 'Kein Platzhalter an seiner Stelle');
     assert.equal(ph.getAttribute('role'), 'img');
     assert.equal(ph.getAttribute('aria-label'), 'Titanic');
-    assert.equal(ph.querySelector('img')?.getAttribute('src'), '/assets/set-placeholder.svg',
+    assert.equal(ph.querySelector('use')?.getAttribute('href'), '#i-set',
       'Nicht derselbe Platzhalter wie für ein Set ohne Bild');
   } finally { w.close(); }
 });

@@ -91,6 +91,7 @@ async function alsKonto(actor, pfad, opts = {}) {
 
 /** Eine Anleitungs-Zeile anlegen, wie sie der Upload erzeugt. */
 async function anleitung(uid, sn, relPath) {
+  await db.run('INSERT INTO sets (user_id, set_number) VALUES ($1,$2) ON CONFLICT DO NOTHING', [uid, sn]);
   await db.run(
     'INSERT INTO instructions (user_id,set_number,url,description,local_path) VALUES ($1,$2,$3,$4,$5)',
     [uid, sn, relPath, 'Anleitung', relPath]);

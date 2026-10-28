@@ -78,6 +78,8 @@ class FarbeAlleinTest {
         "PortfolioChart.kt",
         "SetDetailComponents.kt",
         "CsvImportBanner.kt",
+        // G&V auf der Set-Karte: Vorzeichen und Zahl wie bei der PnlBadge.
+        "GalleryScreen.kt",
     )
 
     @Test

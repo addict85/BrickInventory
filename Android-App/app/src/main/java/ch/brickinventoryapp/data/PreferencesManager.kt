@@ -29,7 +29,7 @@ val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "ap
 class PreferencesManager @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val tresor: TokenVerschluesselung,
-) {
+) : Anmeldeablage {
     companion object {
         /**
          * Der synchron lesbare Spiegel des Designs — eigene Datei, damit er
@@ -273,7 +273,7 @@ class PreferencesManager @Inject constructor(
     suspend fun tokenJetzt(): String = _authTokenState.value ?: authToken.first()
 
     /** Dieselbe Regel fuer die Server-Adresse — aus demselben Grund. */
-    suspend fun serverUrlJetzt(): String = _serverUrlState.value ?: serverUrl.first()
+    override suspend fun serverUrlJetzt(): String = _serverUrlState.value ?: serverUrl.first()
 
     /** Synchron lesbar für den Interceptor, wie serverUrlState; null = noch nicht gelesen. */
     private val _klartextHosts = MutableStateFlow<Set<String>?>(null)
@@ -285,7 +285,7 @@ class PreferencesManager @Inject constructor(
         context.dataStore.data.first()[KLARTEXT_HOSTS] ?: emptySet()
     }
 
-    suspend fun bestaetigeKlartext(host: String) {
+    override suspend fun bestaetigeKlartext(host: String) {
         val h = host.lowercase()
         _klartextHosts.value = (_klartextHosts.value ?: emptySet()) + h
         context.dataStore.edit { it[KLARTEXT_HOSTS] = (it[KLARTEXT_HOSTS] ?: emptySet()) + h }
@@ -317,7 +317,7 @@ class PreferencesManager @Inject constructor(
         }
     }
 
-    suspend fun saveServerUrl(url: String) {
+    override suspend fun saveServerUrl(url: String) {
         // Normalize: lowercase scheme (http/https), trim trailing slash
         val normalized = url.trim().trimEnd('/').let { u ->
             if (u.contains("://")) {
@@ -338,7 +338,7 @@ class PreferencesManager @Inject constructor(
      * er neben dem verschlüsselten stehen und wäre weiterhin auslesbar; die
      * Verschlüsselung wäre dann Zierde.
      */
-    suspend fun saveAuthToken(token: String) {
+    override suspend fun saveAuthToken(token: String) {
         // ZUERST in den Speicher: Der Aufrufer feuert unmittelbar nach dieser
         // Funktion die ersten Anfragen, und der Interceptor liest den Wert
         // synchron. Die ausfuehrliche Begruendung steht ueber authTokenState.
@@ -375,7 +375,7 @@ class PreferencesManager @Inject constructor(
         }
         return uebernommen
     }
-    suspend fun saveUsername(name: String) {
+    override suspend fun saveUsername(name: String) {
         context.dataStore.edit { it[USERNAME] = name }
     }
     suspend fun saveCurrency(cur: String) {

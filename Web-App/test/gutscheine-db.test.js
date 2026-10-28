@@ -303,6 +303,20 @@ test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async (t) => {
       assert.notEqual(r.status, 200, 'eine Textdatei darf nicht als Gutschein durchgehen');
     });
 
+    // Gegenprobe (am 28.10.2026 gemessen): die Absage bei `!istPdf` in
+    // routes/api_v1/vouchers.ts entfernt → rot (200, Datei abgelegt).
+    await t.test('als PDF gemeldet, aber keines: auch mit getippten Werten abgewiesen', async () => {
+      const form = new FormData();
+      form.append('file', new Blob([Buffer.from('<html><script>1</script></html>')], { type: 'application/pdf' }), 'x.pdf');
+      form.append('number', '5045076374450018888');
+      form.append('pin', '1212');
+      form.append('amount', '20');
+      const r = await hole('/api/v1/vouchers/pdf', keksOpa, { method: 'POST', body: form });
+      assert.equal(r.status, 422);
+      assert.equal((await r.json()).code, 'pdf_unlesbar');
+      assert.equal((await db.get(`SELECT count(*)::int AS n FROM vouchers WHERE number = '5045076374450018888'`)).n, 0);
+    });
+
     // ── Aendern ─────────────────────────────────────────────────────────────
     await t.test('aendern laesst stehen, was nicht mitkommt', async () => {
       const r = await jsonAn(`/api/v1/vouchers/${opasGutschein}`, keksOpa, 'PUT', { amount: 350 });

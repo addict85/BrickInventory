@@ -415,7 +415,7 @@ fun MainScaffold(
 @Composable
 fun ReiterGeruest(
     titel: String,
-    vm: ch.brickinventoryapp.ui.MainViewModel,
+    vm: ch.brickinventoryapp.ui.AppViewModel,
     navController: androidx.navigation.NavHostController,
     bottomNavItems: List<Triple<Screen, @Composable () -> Unit, String>>,
     snackbarHostState: SnackbarHostState,

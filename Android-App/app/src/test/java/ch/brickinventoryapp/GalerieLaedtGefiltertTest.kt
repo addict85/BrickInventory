@@ -53,8 +53,8 @@ class GalerieLaedtGefiltertTest {
 
         // Selbstbeweis: Findet das Muster nichts, waere die Liste leer und der
         // Test gruen, ohne etwas geprueft zu haben. Erste Seite und Nachladen
-        // gehen seit der Klasse Galerie durch DENSELBEN Abruf (MainViewModel).
-        assert(gefunden >= 1) {
+        // gehen durch DENSELBEN Abruf (GalerieViewModel), dazu das Vorwaermen.
+        assert(gefunden >= 2) {
             "Nur $gefunden Aufruf(e) von '$AUFRUF' gefunden — Muster veraltet?"
         }
 
@@ -66,10 +66,10 @@ class GalerieLaedtGefiltertTest {
     }
 
     private companion object {
-        const val AUFRUF = "repo.sets.getSets("
+        const val AUFRUF = "sets.getSets("
 
         /** Blickfeld plus die drei Filter, die die Galerie anzeigt. */
-        val PFLICHT = listOf("scopeFor(", "search", "theme", "sort")
+        val PFLICHT = listOf("ScopeFilter.View.GALLERY", "search", "theme", "sort")
 
         /**
          * Das Ende des Aufrufs ist seine schliessende Klammer — die Argumente

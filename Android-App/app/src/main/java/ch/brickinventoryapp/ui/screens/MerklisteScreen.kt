@@ -25,15 +25,7 @@ import ch.brickinventoryapp.R
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.data.model.Merkposten
 import ch.brickinventoryapp.data.repository.MERKLISTE_DEFAULT_SORT
-import ch.brickinventoryapp.ui.MainViewModel
-import ch.brickinventoryapp.ui.setScope
-import ch.brickinventoryapp.ui.setzeMerklisteSortierung
-import ch.brickinventoryapp.ui.setzeMerklisteSuche
-import ch.brickinventoryapp.ui.setzeMerklisteZustand
-import ch.brickinventoryapp.ui.ladeMerkliste
-import ch.brickinventoryapp.ui.legeMerkpostenAn
-import ch.brickinventoryapp.ui.setScannerSource
-import ch.brickinventoryapp.ui.uebernimmMerkposten
+import ch.brickinventoryapp.ui.viewmodel.MerklisteViewModel
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.Formen
 import ch.brickinventoryapp.ui.theme.LocalIsBrickTheme
@@ -69,7 +61,7 @@ private fun merkpostenSchluessel(w: Merkposten) = "${w.setNumber}|${w.condition}
 
 @Composable
 fun MerklisteScreen(
-    vm: MainViewModel,
+    vm: MerklisteViewModel,
     imageLoader: coil3.ImageLoader,
     onScan: () -> Unit,
     onOeffnen: (String, String) -> Unit,
@@ -78,6 +70,7 @@ fun MerklisteScreen(
     // Die Bildadressen zeigen auf den eigenen Server (Proxy), nicht roh aufs
     // CDN — dieselbe Regel wie in Galerie, Teilen und Finanzen.
     val appState by vm.state.collectAsStateWithLifecycle()
+    val blick by vm.blickfeld.collectAsStateWithLifecycle()
 
     // Hier stand der Uebernahme-Dialog samt seinem Zustand. Beides ist mit dem
     // Knopf aus der Zeile entfallen (Marcos Vorgabe vom 24.09.: „den Button In
@@ -102,7 +95,7 @@ fun MerklisteScreen(
     // was man nicht hat, liegt nirgends. Dafuer der Zustand, den es bei den
     // Sets als Filter nicht gibt: Hier steht dasselbe Set zweimal, neu und
     // gebraucht, und genau das ist die Frage, die man an eine Merkliste stellt.
-    val scopeModus = appState.scopeModes[ch.brickinventoryapp.data.ScopeFilter.View.MERKLISTE.key]
+    val scopeModus = blick.scopeModes[ch.brickinventoryapp.data.ScopeFilter.View.MERKLISTE.key]
         ?: ch.brickinventoryapp.data.ScopeFilter.ALL
     // Das Eingabefeld haelt seinen Text selbst (Tippen bleibt fluessig); die
     // Entprellung liegt im ViewModel. Wechselt der Wert von aussen, zieht das
@@ -114,7 +107,7 @@ fun MerklisteScreen(
         Column(Modifier.fillMaxSize()) {
 
             ScopeFilterZeile(
-                members  = appState.householdMembers,
+                members  = blick.householdMembers,
                 current  = scopeModus,
                 onSelect = { vm.setScope(ch.brickinventoryapp.data.ScopeFilter.View.MERKLISTE, it) },
             )
@@ -222,7 +215,7 @@ fun MerklisteScreen(
             verticalArrangement = Arrangement.spacedBy(Abstaende.klein),
         ) {
             SmallFloatingActionButton(
-                onClick = { vm.setScannerSource("wanted"); onScan() },
+                onClick = { onScan() },
                 containerColor = MaterialTheme.colorScheme.secondaryContainer,
                 contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
                 shape = Formen.leiste,
@@ -238,7 +231,7 @@ fun MerklisteScreen(
 
     if (maskeOffen) {
         MerkpostenErfassenDialog(
-            householdMembers = appState.householdMembers,
+            householdMembers = blick.householdMembers,
             defaultCondition = appState.userDefaultCondition ?: "N",
             onDismiss = { maskeOffen = false },
             onAnlegen = { nummer, zustandWahl, besitzer ->

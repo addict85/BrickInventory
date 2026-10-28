@@ -147,7 +147,9 @@ export function bildTag(o) {
 
 /** Der Platzhalter einer Art: das Set-Bild oder das Symbol in einer getönten Fläche. */
 export function platzhalterInhalt(art) {
-  return art === 'set' ? '<img src="/assets/set-placeholder.svg" alt="" class="loaded" />' : ico(art === 'figur' ? 'figur' : 'teil');
+  // Dasselbe dezente Symbol wie bei Teilen und Figuren; das rote Logo füllte
+  // ohne Bilder jede Karte gleich.
+  return ico(art === 'set' ? 'set' : art === 'figur' ? 'figur' : 'teil');
 }
 
 /** Ersetzt ein Bild, das nicht lädt, durch seinen Platzhalter in derselben Grösse. */
@@ -551,6 +553,7 @@ export function observeLazyImages(root) {
 export function toast(msg, type='info', aktion) {
   const c = G('toasts'), el = document.createElement('div');
   el.className=`toast ${type}`;
+  if (type === 'error') el.setAttribute('role', 'alert');
   // textContent statt innerHTML: msg enthält regelmässig Server-Fehlermeldungen
   // und Set-/Teilenummern aus Nutzereingaben.
   const icon = document.createElement('span');

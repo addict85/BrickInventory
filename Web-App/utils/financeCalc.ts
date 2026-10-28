@@ -6,9 +6,9 @@
 export {
   DEFAULT_PRICE_CONDITION, PRICE_CACHE_COLS,
   speicherePreis, cacheUsable, preisAusCache,
-  checkAndIncrementRateLimit, getLimitForApi, getRateLimitStatus,
+  checkAndIncrementRateLimit, kontingentFrei, getLimitForApi, getRateLimitStatus,
   fetchPrice, parallelLimit, resolveBlColorId, resolveBlPartNumber,
-  fetchPartPrice, fetchMinifigPrice,
+  fetchPartPrice, fetchMinifigPrice, ladeTeilepreiseVor, ladeFigurenpreiseVor,
   farbkarte, ladeBlNummernVor,
   resolveSetCondition,
 } from './finance/preise';

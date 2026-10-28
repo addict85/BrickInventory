@@ -359,6 +359,17 @@ internal fun farbschema(theme: String): ColorScheme = when (theme) {
 }.let { ergaenzeRollen(it, dunkel = theme == "werkbank") }
 
 /**
+ * Statusfarben je Design. `erfolg` färbt auch Gewinnzahlen und braucht als
+ * Text 4,5:1 auf der Fläche (FarbrollenTest).
+ * Im Stein-Design gedeckter, damit es neben Salbeigrün und Sand nicht heraussticht.
+ */
+internal fun statusFarbenFuer(theme: String): StatusFarben = when (theme) {
+    "brick" -> StatusFarben(erfolg = Color(0xFF4E7058), warnung = Color(0xFFB08A3E), fehler = Color(0xFFA34B3C))
+    "werkbank" -> StatusFarben(erfolg = Color(0xFF6FBF7F), warnung = Color(0xFFD9A84E), fehler = Color(0xFFE07A72))
+    else -> StatusFarben(erfolg = Color(0xFF166534), warnung = Color(0xFFE3B341), fehler = Color(0xFFDC2626))
+}
+
+/**
  * Belegt die Rollen, die die Paletten oben nicht nennen, aus deren eigenen Farben.
  *
  * Material3 füllt fehlende Rollen mit seiner lila Grundpalette. Dialoge, Menüs,
@@ -408,14 +419,7 @@ fun BrickInventoryManagerTheme(theme: String = "classic", content: @Composable (
             raster = Color(0xFFE4E8EF), gedaempft = Color(0xFF6A7280))
         else -> ChartColors(ChartNewClassic, ChartUsedClassic)
     }
-    // Statusfarben je Design (Nachtrag 120). Im Stein-Design gedeckter, damit
-    // sie neben Salbeigrün und Sand nicht herausstechen — vorher standen zwölf
-    // feste Farben im Quelltext verteilt und zogen beim Designwechsel nicht mit.
-    val statusFarben = when (theme) {
-        "brick" -> StatusFarben(erfolg = Color(0xFF5F8468), warnung = Color(0xFFB08A3E), fehler = Color(0xFFA34B3C))
-        "werkbank" -> StatusFarben(erfolg = Color(0xFF6FBF7F), warnung = Color(0xFFD9A84E), fehler = Color(0xFFE07A72))
-        else -> StatusFarben(erfolg = Color(0xFF16A34A), warnung = Color(0xFFE3B341), fehler = Color(0xFFDC2626))
-    }
+    val statusFarben = statusFarbenFuer(theme)
     CompositionLocalProvider(
         LocalIsBrickTheme provides isBrick,
         LocalIsFarbfaecherTheme provides (theme == "farbfaecher"),

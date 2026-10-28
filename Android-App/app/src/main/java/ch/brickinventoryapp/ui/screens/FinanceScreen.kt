@@ -21,8 +21,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.R
-import ch.brickinventoryapp.ui.MainViewModel
-import ch.brickinventoryapp.ui.*  // Feature-Extensions (loadSets, setScope, …)
+import ch.brickinventoryapp.ui.viewmodel.FinanzViewModel
+import ch.brickinventoryapp.ui.*
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import coil3.compose.AsyncImage
@@ -34,12 +34,12 @@ import ch.brickinventoryapp.ui.components.LeerSymbol
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FinanceScreen(
-    vm: MainViewModel,
+    vm: FinanzViewModel,
     imageLoader: ImageLoader,
     /** Klick auf ein Set — nur der Graph kennt den NavController. */
     onSetClick: (String) -> Unit = {},
     /** Klick auf einen manuell erfassten Eintrag, ebenso. */
-    onManualClick: (type: String, id: String, colorId: Int) -> Unit = { _, _, _ -> },
+    onManualClick: (type: String, id: String, colorId: Int, name: String?) -> Unit = { _, _, _, _ -> },
     /** Scroll-Zustand von aussen, siehe Nachtrag 92. */
     listState: LazyListState = rememberLazyListState(),
 ) {
@@ -47,6 +47,7 @@ fun FinanceScreen(
     // die Begründung steht bei PartsScreen (Nachtrag 96). Die Namen bleiben
     // absichtlich dieselben, damit der Rumpf darunter unverändert bleibt.
     val state by vm.state.collectAsStateWithLifecycle()
+    val blick by vm.blickfeld.collectAsStateWithLifecycle()
     val financeState by vm.financeState.collectAsStateWithLifecycle()
 
     val valuation = financeState.valuation
@@ -61,8 +62,8 @@ fun FinanceScreen(
     val partsValuation = financeState.partsValuation
     val figsValuation = financeState.figsValuation
     val pnl = financeState.pnl
-    val householdMembers = state.householdMembers
-    val scopeMode = state.scopeModes[ch.brickinventoryapp.data.ScopeFilter.View.FINANCE.key]
+    val householdMembers = blick.householdMembers
+    val scopeMode = blick.scopeModes[ch.brickinventoryapp.data.ScopeFilter.View.FINANCE.key]
         ?: ch.brickinventoryapp.data.ScopeFilter.ALL
 
     val onScopeChange: (String) -> Unit = { vm.setScope(ch.brickinventoryapp.data.ScopeFilter.View.FINANCE, it) }

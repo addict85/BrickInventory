@@ -46,8 +46,6 @@ import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.components.LeerSymbol
 import androidx.compose.material.icons.automirrored.filled.ListAlt
 
-data class PlSet(val setNumber: String, var name: String = "")
-
 // ── Sortierung: exakt wie Webapp & PDF ──────────────────────────────────────
 // Webapp (app.js) und PDF (api_v1.js) sortieren mit JS localeCompare:
 //   Farben:       localeCompare('de')                → ICU-Collation, de
@@ -64,29 +62,6 @@ private val plPartCollator: android.icu.text.Collator =
 
 private fun comparePartNumbers(a: String, b: String): Int = plPartCollator.compare(a, b)
 
-data class PlPart(
-    val partNumber: String,
-    val blPartNumber: String? = null,
-    val partName: String,
-    val colorName: String,
-    val colorHex: String?,
-    val colorId: Int = 0,
-    val blColorId: Int? = null,
-    var quantity: Int,
-    val imageUrl: String?,
-    val imageLocal: String? = null,
-    val isFig: Boolean = false,
-    /**
-     * Wie viele davon im eigenen Bestand liegen — `null`, solange nicht
-     * gefragt wurde.
-     *
-     * `null` und `0` sind ausdruecklich verschieden: `null` heisst „nicht
-     * gefragt" (die Zeile zeigt gar nichts), `0` heisst „gefragt, nichts
-     * vorhanden" (die Zeile zeigt eine rote Null). Ein Int mit Vorgabe 0
-     * haette beides zu „habe ich nicht" verschmolzen.
-     */
-    val vorhanden: Int? = null,
-)
 
 // ExperimentalLayoutApi kam dazu: Die FlowRow der Set-Chips trug das @OptIn
 // bisher IM RUMPF und mit vollem Paketnamen. Beides zusammen liess sie an der
@@ -589,7 +564,7 @@ fun PartListRow(
     val ctx = LocalContext.current
     val rbPrefixFmt = stringResource(R.string.partslist_rb_prefix)
     // WICHTIG: part.imageUrl ist hier bereits vollständig aufgelöst —
-    // PartsListFeature.kt bereitet ihn beim Laden auf (image_local bevorzugt,
+    // ui/Teileliste.kt bereitet ihn beim Laden auf (image_local bevorzugt,
     // sonst über den Server-Proxy). Ein erneutes resolveThumbUrl() hier würde
     // eine bereits proxy-gewickelte Adresse ein zweites Mal einwickeln
     // (doppelter /api/img-proxy?url=…). Nur noch den lokalen Server-Präfix
@@ -682,4 +657,4 @@ fun PartListRow(
     }
 }
 
-// PDF export is handled by MainViewModel.exportPartsPdf via async job polling.
+// Den PDF-Export führt TeilelisteViewModel.exportPartsPdf über den Vordergrund-Dienst.

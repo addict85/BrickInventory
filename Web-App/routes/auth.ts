@@ -271,20 +271,28 @@ router.get('/users', requireAdmin, async (_req, res) => {
 
 // Admin: create user
 router.post('/users', requireAdmin, async (req, res) => {
-  const { username, password, isAdmin = false } = req.body;
+  const { username, password } = req.body;
   if (!username || !password) return sendeFehler(req, res, 400, 'benutzername_passwort');
   if (!USERNAME_RE.test(String(username)))
     return sendeFehler(req, res, 400, 'benutzername_ungueltig');
   if (passwortZuKurz(password))
     return sendeFehler(req, res, 400, 'passwort_zu_kurz');
   try {
+    // Streng wie bei PUT /users/:id/admin: Die Zeichenkette "false" ist in
+    // JavaScript wahr und legte einen Verwalter an. Die Weboberfläche schickt
+    // is_admin; isAdmin bleibt für ältere Aufrufer lesbar.
+    const roh = req.body.is_admin ?? req.body.isAdmin;
+    const alsVerwalter = roh === undefined ? false : strictBool(roh, 'is_admin');
+    // Wie jede andere Verwalteraktion an fremden Konten: Passwort bestätigen
+    // und protokollieren — eine erbeutete Sitzung soll keinen Verwalter anlegen.
+    const verwalter = angemeldeteNutzerId(req);
+    if (!await bestaetigePasswort(req, res, verwalter, req.body?.admin_password)) return;
     const hash = await bcrypt.hash(password, BCRYPT_ROUNDS);
-    const r = await db.run('INSERT INTO users (username, password_hash, is_admin) VALUES ($1, $2, $3)',
-      [username, hash, isAdmin ? 1 : 0]);
-    // Sicherheitsnetz: r.changes === 0 hiesse, das INSERT wurde verschluckt
-    // (früher hat die SQL-Kompatschicht genau das global getan und dieser
-    //  Endpoint meldete success:true, ohne einen Nutzer anzulegen).
-    if (r.changes === 0) return sendeFehler(req, res, 409, 'benutzername_vergeben');
+    const neu = await db.get('INSERT INTO users (username, password_hash, is_admin) VALUES ($1, $2, $3) RETURNING id',
+      [username, hash, alsVerwalter ? 1 : 0]);
+    if (!neu) return sendeFehler(req, res, 409, 'benutzername_vergeben');
+    await protokolliere(verwalter, neu.id, 'konto_angelegt');
+    if (alsVerwalter) await protokolliere(verwalter, neu.id, 'verwalter_ernannt');
     res.json({ success: true });
   } catch (e) {
     if (fehlerCode(e) === '23505') return sendeFehler(req, res, 409, 'benutzername_vergeben');
@@ -369,7 +377,7 @@ router.delete('/users/:id', requireAdmin, async (req, res) => {
       [targetId, nutzerId(req)]);
     if (r.changes === 0) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden_oder_eigenes');
     // Die Zeile ist weg, der Zugang war es nicht
-    // Die Bearer-Tokens gehen per ON DELETE CASCADE mit (siehe db/schema.sql).
+    // Die Bearer-Tokens gehen per ON DELETE CASCADE mit (Fremdschlüssel in db/basis.sql).
     // user_sessions dagegen ist der Tabellenraum des Session-Stores und hat
     // KEINEN Fremdschluessel auf users — die offene Sitzung des geloeschten …
     // Ausführlich: docs/begruendungen/routes/auth.ts.md#delete-users-id
@@ -739,7 +747,7 @@ router.post('/register', ipThrottle('register', 5, 60 * 60 * 1000), async (req, 
       message: result.mode === 'ohne_basis'
         ? 'Konto erstellt. Eine Bestätigung per E-Mail ist auf diesem Server nicht eingerichtet (APP_BASE_URL fehlt) — bitte den Verwalter fragen.'
         : result.mode === 'console'
-        ? 'Konto erstellt. Da SMTP nicht konfiguriert ist, steht der Bestätigungslink in der Server-Konsole.'
+        ? 'Konto erstellt. Der Server verschickt keine E-Mails (SMTP nicht eingerichtet) – bitte den Verwalter fragen.'
         : 'Konto erstellt. Bitte bestätige deine E-Mail-Adresse.',
       email_sent: result.success,
       console_mode: result.mode === 'console',

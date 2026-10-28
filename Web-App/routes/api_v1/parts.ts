@@ -4,7 +4,7 @@ import { handleRouteError } from '../../utils/httpError';
 import { requireToken } from './middleware';
 import { scopeIds, parseScopeMode, resolveWriteTarget } from '../../utils/household';
 import { getBlColorMap, getManualParts, getOwnedQuantities, getParts, getPartsColors, getPartsStats } from '../../utils/handlers/parts';
-import { addManualPart, getPartColorList, updateManualPart } from '../parts';
+import { addManualPart, getPartColorList, updateManualPart } from '../../utils/manuelleTeile';
 import { getSetting } from '../../utils/settings';
 import { getPartPriceHistory } from '../../utils/priceHistory';
 import { einzelwert } from '../../utils/validate';

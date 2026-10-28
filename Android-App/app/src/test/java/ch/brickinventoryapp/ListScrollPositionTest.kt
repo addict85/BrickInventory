@@ -224,9 +224,8 @@ class ListScrollPositionTest {
                 "$fn verwirft die gemerkte Rollposition nicht"
             }
         }
-        assert(code(read("ui/MainViewModel.kt")).contains("vergissScroll = { scrollMemory.vergiss(\"gallery\") }")) {
-            "Die Galerie vergisst beim Filterwechsel nicht die Rollposition der Galerie"
-        }
+        // Dass dabei die Stelle der GALERIE vergessen wird, prüft
+        // GalerieViewModelTest ausgeführt.
     }
 
     @Test

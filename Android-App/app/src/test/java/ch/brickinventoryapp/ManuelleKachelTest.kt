@@ -72,12 +72,9 @@ class ManuelleKachelTest {
         }
         // Geladen wird fuer beide Arten — sonst waere das Diagramm bei einer
         // von beiden immer leer.
-        val laden = code(read("ui/ManualItemFeature.kt"))
-        assert(laden.contains("\"fig\" -> repo.finanzen.getFigPriceHistory(id)")) {
-            "Der Verlauf wird fuer Figuren nicht geladen"
-        }
-        assert(laden.contains("else  -> repo.finanzen.getPartPriceHistory(id, colorId)")) {
-            "Der Verlauf wird fuer Teile nicht geladen"
+        val laden = code(read("ui/viewmodel/KaeufeViewModel.kt"))
+        assert(laden.contains("if (type == \"fig\") finanzen.getFigPriceHistory(id) else finanzen.getPartPriceHistory(id, colorId)")) {
+            "Der Verlauf wird nicht fuer Figuren UND Teile geladen"
         }
     }
 }

@@ -5,7 +5,7 @@ import { handleRouteError, pfadParam } from '../../utils/httpError';
 import { requireToken } from './middleware';
 import { scopeIds, parseScopeMode, resolveWriteTarget, writableIds } from '../../utils/household';
 import { getManualMinifigs, getMinifigStats, getMinifigs } from '../../utils/handlers/minifigs';
-import { addManualFig, updateManualFig } from '../minifigs';
+import { addManualFig, updateManualFig } from '../../utils/manuelleFiguren';
 import { getSetting } from '../../utils/settings';
 import { ersatzteilSql } from '../../utils/validate';
 import { getMinifigPriceHistory } from '../../utils/priceHistory';
@@ -143,7 +143,7 @@ router.get('/minifigs/:figNumber/parts', requireToken, async (req: AuthedRequest
        LEFT JOIN bl_zuordnung  m ON m.art = 'part' AND m.rb_id = ip.part_num
        WHERE ip.inventory_id = $1`,
       [invId]
-    ).catch(() => []);
+    );
 
     // Check catalog — if empty, enrich NOW (get correct BL IDs before responding)
     let catRows = await db.all(
@@ -155,7 +155,7 @@ router.get('/minifigs/:figNumber/parts', requireToken, async (req: AuthedRequest
          ${blJoin('c.part_number', 'part')}
         WHERE c.set_number=$1`,
       [figNumber]
-    ).catch(() => []);
+    );
 
     // Check if BL IDs are missing
     const needsEnrich = catRows.length === 0 ||
@@ -182,7 +182,7 @@ router.get('/minifigs/:figNumber/parts', requireToken, async (req: AuthedRequest
            ${blJoin('c.part_number', 'part')}
           WHERE c.set_number=$1`,
         [figNumber]
-      ).catch(() => []);
+      );
     }
 
     const catalogMap: any = {};

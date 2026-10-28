@@ -57,7 +57,7 @@ import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
-    private val vm: MainViewModel by viewModels()
+    private val vm: AppViewModel by viewModels()
 
     // Hier gehalten und nicht ueber hiltViewModel() geholt: Katalogliste und
     // Katalogdetail sind zwei NavHost-Ziele, und an den Backstack-Eintrag

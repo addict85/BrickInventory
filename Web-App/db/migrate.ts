@@ -96,23 +96,4 @@ async function sichereNutzerdaten(client: import('pg').ClientBase, offen: string
   return schema;
 }
 
-/**
- * Nach einem erzwungenen initSchema(): Es legt Spalten und Tabellen wieder an,
- * die spätere Migrationen gelöscht haben — und die laufen nicht noch einmal.
- * Darum hier deren DROP … IF EXISTS erneut, nur für schon angewandte Dateien.
- */
-async function abgeloestesEntfernen(client: import('pg').PoolClient): Promise<number> {
-  const dir = path.join(__dirname, 'migrations');
-  const { rows } = await client.query<{ name: string }>('SELECT name FROM schema_migrations ORDER BY name');
-  let n = 0;
-  for (const { name } of rows) {
-    const datei = path.join(dir, name);
-    if (!fs.existsSync(datei)) continue;
-    const zeilen = fs.readFileSync(datei, 'utf8').split('\n')
-      .filter(z => /^\s*(ALTER TABLE\b.*\bDROP COLUMN IF EXISTS\b|DROP TABLE IF EXISTS\b)[^;]*;\s*$/i.test(z));
-    for (const z of zeilen) { await client.query(z); n++; }
-  }
-  return n;
-}
-
-export { runMigrations, abgeloestesEntfernen, sichereNutzerdaten };
+export { runMigrations, sichereNutzerdaten };

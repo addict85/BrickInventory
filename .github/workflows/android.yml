@@ -218,8 +218,11 @@ jobs:
       # Fehlt das Secret, wird der Schritt übersprungen. Der Bau läuft dann
       # trotzdem durch und liefert ein UNSIGNIERTES APK; der letzte Schritt sagt
       # das deutlich, statt still etwas Uninstallierbares hochzuladen.
+      # Signiert wird nur auf main: Ein signiertes APK ist ein Update für jede
+      # installierte App, und das darf nur geprüfter, gemergter Code sein. Ein
+      # Zweig baut unsigniert — Übersetzen und Testen bleiben dort erhalten.
       - name: Schlüsselspeicher bereitstellen
-        if: env.HAT_SCHLUESSEL == 'true'
+        if: env.HAT_SCHLUESSEL == 'true' && github.ref == 'refs/heads/main'
         run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > "$RUNNER_TEMP/brick.jks"
 
       - name: Release bauen
@@ -357,6 +360,8 @@ jobs:
           # gleich, deshalb ist sie hier keine Auskunft.
           if [ -f app-release.apk ]; then
             echo "signiert: ja"
+          elif [ "$GITHUB_REF" != "refs/heads/main" ]; then
+            echo "Zweig: unsigniert gebaut — signiert wird nur auf main."
           else
             echo "::warning::APK ist UNSIGNIERT und lässt sich nicht installieren. Die vier Secrets KEYSTORE_BASE64, KEYSTORE_PASSWORT, KEY_ALIAS und KEY_PASSWORT fehlen oder sind unvollständig."
           fi
@@ -501,10 +506,11 @@ jobs:
       # ausgecheckt haben kann — woher das APK stammt, steht deshalb im TEXT
       # des Release und wird bei jedem Lauf neu geschrieben.
       #
-      # NICHT bei Pull-Requests: Sonst ueberschriebe ein ungeprueftes Zweig-APK
-      # die Datei hinter dem stabilen Link.
+      # NUR von main, auch nicht von Hand auf einem Zweig: Sonst ueberschriebe
+      # ein ungeprueftes Zweig-APK die Datei hinter dem stabilen Link, und die
+      # App holte es sich als Update.
       - name: BrickInventory.apk als Release bereitstellen
-        if: success() && github.event_name != 'pull_request'
+        if: success() && github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |

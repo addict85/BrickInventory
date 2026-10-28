@@ -242,7 +242,7 @@ export function renderFigs(list, target) {
           // top:6px;right:6px und blendet ihn beim Ueberfahren ein
           // (styles.css). Marcos Vorgabe vom 24.09., zweiter Teil: „analog den
           // Kacheln bei den Sets. Dies aber nur in der webapp."
-          const delBtn = f.source==='manual' ? `<div class="ca"><button class="delbtn" data-click="deleteManualFigStop" data-arg="${esc(f.fig_number)}" data-arg2="${f.user_id||''}" title="${esc(t('figs.delete'))}" aria-label="${esc(t('figs.delete'))}">${TRASH_ICON_SVG}</button></div>` : '';
+          const delBtn = f.source==='manual' ? `<div class="ca"><button class="delbtn" data-click="deleteManualFigStop" tabindex="-1" aria-hidden="true" data-arg="${esc(f.fig_number)}" data-arg2="${f.user_id||''}" title="${esc(t('figs.delete'))}" aria-label="${esc(t('figs.delete'))}">${TRASH_ICON_SVG}</button></div>` : '';
           // Zustand nur bei manuell erfassten Minifiguren anzeigen (automatisch
           // hinzugefügte aus Sets haben keinen eigenen Zustand).
           // Eine Plakette je erfasstem Zustand — gemeinsame Fassung in
@@ -345,7 +345,7 @@ export function renderManualFigsTable() {
       const priceStr = figPrice!=null ? fmtN(figPrice, CURRENCY) : '—';
       const condBadge = condBadges(f);
       return `<div class="man-tile" tabindex="0" role="button" data-click="openManDetail" data-arg="fig" data-arg2="${esc(f.fig_number)}" data-arg3="0" style="cursor:pointer">
-        <div class="ca"><button class="delbtn" data-click="deleteManualFigStop" data-arg="${esc(f.fig_number)}" data-arg2="${f.user_id||''}" title="${esc(t('figs.delete'))}" aria-label="${esc(t('figs.delete'))}">${TRASH_ICON_SVG}</button></div>
+        <div class="ca"><button class="delbtn" data-click="deleteManualFigStop" tabindex="-1" aria-hidden="true" data-arg="${esc(f.fig_number)}" data-arg2="${f.user_id||''}" title="${esc(t('figs.delete'))}" aria-label="${esc(t('figs.delete'))}">${TRASH_ICON_SVG}</button></div>
         ${img}
         <div class="man-tile-num">${esc(f.fig_number)}</div>
         <div class="man-tile-name">${esc(f.fig_name) || '—'}</div>
@@ -667,7 +667,7 @@ export function renderManualParts() {
       const priceStr = partPrice!=null ? fmtN(partPrice, CURRENCY) : '—';
       const condBadge = condBadges(p);
       return `<div class="man-tile" tabindex="0" role="button" data-click="openManDetail" data-arg="part" data-arg2="${esc(p.part_number)}" data-arg3="${p.color_id||0}" style="cursor:pointer">
-        <div class="ca"><button class="delbtn" data-click="deleteManualPartStop" data-arg="${esc(p.part_number)}" data-arg2="${p.color_id||0}" data-arg3="${p.user_id||''}" title="${esc(t('parts.delete.title'))}" aria-label="${esc(t('parts.delete.title'))}">${TRASH_ICON_SVG}</button></div>
+        <div class="ca"><button class="delbtn" data-click="deleteManualPartStop" tabindex="-1" aria-hidden="true" data-arg="${esc(p.part_number)}" data-arg2="${p.color_id||0}" data-arg3="${p.user_id||''}" title="${esc(t('parts.delete.title'))}" aria-label="${esc(t('parts.delete.title'))}">${TRASH_ICON_SVG}</button></div>
         ${img}
         <div class="man-tile-num" title="${esc(p.part_number)}">${esc(p.bl_part_number||p.part_number)}</div>
         <div class="man-tile-name">${esc(p.part_name) || '—'}</div>

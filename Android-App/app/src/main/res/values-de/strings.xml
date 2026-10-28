@@ -8,7 +8,7 @@
     <string name="settings_price_condition">Preiszustand</string>
     <string name="settings_default_condition">Standard-Zustand</string>
     <string name="settings_default_condition_effective">Aktuell wirksam: %1$s.</string>
-    <string name="settings_default_condition_hint">Vorbelegung beim Erfassen. Leer = globale Vorgabe aus dem Monitoring.</string>
+    <string name="settings_default_condition_hint">Vorbelegung beim Erfassen. Leer = globale Vorgabe aus den Hintergrundarbeiten.</string>
     <string name="settings_default_condition_global">— Globale Vorgabe —</string>
     <string name="monitoring_default_condition">Standard-Zustand</string>
     <string name="settings_price_basis">Preisgrundlage für BrickLink-Bewertungen</string>
@@ -110,6 +110,7 @@
     <string name="gallery_delete_text">%1$s und alle Teile werden entfernt.</string>
     <string name="gallery_pieces_suffix"> Teile</string>
     <string name="gallery_scan_barcode">Barcode scannen</string>
+    <string name="offline_stand">Offline – Stand von %1$s</string>
     <string name="gallery_add_set">Set hinzufügen</string>
     <string name="gallery_add_set_title">Set hinzufügen</string>
     <string name="gallery_set_number">Set-Nummer</string>
@@ -250,31 +251,31 @@
     <string name="parts_add_button">Hinzufügen</string>
 
     <!-- ══════════════ Monitoring screen ══════════════ -->
-    <string name="monitoring_title">Job Monitoring</string>
+    <string name="monitoring_title">Hintergrundarbeiten</string>
     <string name="monitoring_refresh">Neu laden</string>
-    <string name="monitoring_retry_error">Fehler beim Retry</string>
+    <string name="monitoring_retry_error">Fehler beim erneuten Versuch</string>
     <string name="monitoring_delete_error">Fehler beim Löschen</string>
     <string name="monitoring_sync_now">Jetzt synchronisieren</string>
-    <string name="monitoring_queue_collapse">Queue zuklappen</string>
-    <string name="monitoring_queue_show">Queue anzeigen (%1$d)</string>
+    <string name="monitoring_queue_collapse">Warteschlange zuklappen</string>
+    <string name="monitoring_queue_show">Warteschlange anzeigen (%1$d)</string>
     <string name="monitoring_icon_retry">Erneut versuchen</string>
     <string name="monitoring_hide_error">Fehler ausblenden</string>
-    <string name="monitoring_show_error">Letzter Fehler anzeigen</string>
-    <string name="monitoring_price_cache">PREIS-CACHE</string>
+    <string name="monitoring_show_error">Letzten Fehler anzeigen</string>
+    <string name="monitoring_price_cache">PREISSPEICHER</string>
     <string name="monitoring_cache_prices">Preise</string>
     <string name="monitoring_cache_stale">Veraltet</string>
-    <string name="monitoring_cache_subsets">Subsets</string>
+    <string name="monitoring_cache_subsets">Teilsets</string>
     <string name="monitoring_cache_catalog">Katalog</string>
-    <string name="monitoring_cache_duration">Cache-Dauer</string>
+    <string name="monitoring_cache_duration">Speicherdauer</string>
     <string name="monitoring_cache_clear_prices">Preise leeren</string>
     <string name="monitoring_cache_clear_all">Alles leeren</string>
     <string name="monitoring_cache_clear_hint">Die zwischengespeicherten Preise werden verworfen. Sie neu zu holen kostet Anfragen aus dem gemeinsamen Tageskontingent.</string>
     <string name="monitoring_cache_clear_confirm">Leeren</string>
-    <string name="monitoring_cache_cleared">Cache geleert</string>
-    <string name="monitoring_cache_saved">Cache-Dauer gespeichert</string>
+    <string name="monitoring_cache_cleared">Zwischenspeicher geleert</string>
+    <string name="monitoring_cache_saved">Speicherdauer gespeichert</string>
     <string name="monitoring_api_calls">API-AUFRUFE</string>
-    <string name="monitoring_limits_saved">Limits gespeichert</string>
-    <string name="monitoring_limits_save">Limits speichern</string>
+    <string name="monitoring_limits_saved">Grenzen gespeichert</string>
+    <string name="monitoring_limits_save">Grenzen speichern</string>
     <string name="monitoring_retry_queued">%1$s wird nochmals versucht</string>
     <string name="monitoring_entry_removed">%1$s entfernt</string>
     <string name="monitoring_start_error">Fehler beim Starten</string>
@@ -315,7 +316,7 @@
     <string name="nav_finance">Finanzen</string>
     <string name="nav_comparison">Vergleich</string>
     <string name="nav_settings">Einstellungen</string>
-    <string name="nav_monitoring">Monitoring</string>
+    <string name="nav_monitoring">Hintergrundarbeiten</string>
     <string name="main_barcode_add_partslist">Zur Teileliste hinzufügen?</string>
     <string name="main_barcode_add_set">Set hinzufügen?</string>
     <string name="main_barcode_unsure">Nicht sicher erkannt — bitte Bild und Namen prüfen</string>
@@ -323,7 +324,7 @@
     <string name="main_barcode_pieces">Teile</string>
     <string name="main_barcode_figs">Figuren</string>
     <string name="main_account">Konto</string>
-    <string name="main_menu_monitoring">Monitoring</string>
+    <string name="main_menu_monitoring">Hintergrundarbeiten</string>
     <string name="main_menu_logout">Abmelden</string>
     <string name="main_menu_change_server">Server ändern</string>
     <string name="vm_settings_saved">Einstellungen gespeichert</string>
@@ -368,6 +369,7 @@
     <string name="pruef_hinweis">Das Hinzufügen läuft danach im Hintergrund — kurz warten vor dem nächsten Scan.</string>
     <string name="vm_barcode_no_set">Kein Set gefunden für: %1$s</string>
     <string name="vm_set_added">%1$s hinzugefügt!</string>
+    <string name="vm_set_added_no_catalog">Set %1$s gespeichert — Name und Bild kommen nach, sobald der Katalog erreichbar ist.</string>
     <string name="vm_error">Fehler: %1$s</string>
     <string name="vm_session_expired">Sitzung abgelaufen — bitte erneut anmelden</string>
 
@@ -406,7 +408,7 @@
     <string name="monitoring_starting">Wird gestartet…</string>
     <string name="monitoring_kontingent_eng">Kontingent fast aufgebraucht</string>
     <string name="monitoring_started">Gestartet</string>
-    <string name="monitoring_sync_started_short">Sync gestartet</string>
+    <string name="monitoring_sync_started_short">Abgleich gestartet</string>
     <string name="monitoring_price_update">Preise aktualisieren</string>
     <string name="monitoring_schedule_daily">Täglich um</string>
     <string name="monitoring_schedule_every">Alle</string>
@@ -504,8 +506,8 @@
     <string name="cd_set_menu">Weitere Aktionen für dieses Set</string>
     <string name="cd_qty_increase">Menge erhöhen</string>
     <string name="cd_qty_decrease">Menge verringern</string>
-    <string name="cd_edit_cache_ttl">Cache-Dauer bearbeiten</string>
-    <string name="cd_edit_limits">API-Limits bearbeiten</string>
+    <string name="cd_edit_cache_ttl">Speicherdauer bearbeiten</string>
+    <string name="cd_edit_limits">Abrufgrenzen bearbeiten</string>
     <string name="common_no_app_to_open">Keine App gefunden, um diesen Link zu öffnen</string>
     <string name="gallery_sort_added_desc">Neueste zuerst</string>
     <string name="gallery_sort_added_asc">Älteste zuerst</string>
@@ -520,7 +522,7 @@
 
     <!-- PDF-Betrachter (Nachtrag 115). Die Texte standen bisher als Literale
          im Code — hier stehen sie in der Sprache, in der sie dort standen. -->
-    <string name="monitoring_retry_attempt">Versuch %1$d/30 · Retry: %2$s</string>
+    <string name="monitoring_retry_attempt">Versuch %1$d/30 · nächster: %2$s</string>
     <string name="monitoring_cache_ttl_hours">%1$s Stunden</string>
     <string name="acq_total_quantity">Total ×%1$d</string>
     <string name="setup_build">Build %1$s</string>

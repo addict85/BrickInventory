@@ -640,7 +640,25 @@ function plReset() {
 
 
 // ── Handler beim Dispatcher anmelden (siehe js/00-registry.js) ──────────────
+/**
+ * Ansichtswahl Karten/Tabelle bei Teilen und Minifiguren: dieselben Knöpfe wie
+ * bei den Sets. Der Wert liegt weiter im (versteckten) Auswahlfeld, an dem die
+ * Lade- und Zeichenlogik hängt.
+ */
+function ansichtWaehlen(id, wert) {
+  const feld = G(id);
+  if (!feld || feld.value === wert) return;
+  feld.value = wert;
+  document.querySelectorAll(`[data-click="ansichtWaehlen"][data-arg="${id}"]`).forEach(b => {
+    const an = b.dataset.arg2 === wert;
+    b.classList.toggle('active', an);
+    b.setAttribute('aria-pressed', String(an));
+  });
+  feld.dispatchEvent(new Event('change', { bubbles: true }));
+}
+
 registerActions({
+  ansichtWaehlen,
   plAddSet,
   plExportBricklink,
   plExportPdf,

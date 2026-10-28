@@ -2,6 +2,7 @@
  * Die Merkliste — was man haben MÖCHTE, getrennt von dem, was man hat.
  * Ausführlich: docs/begruendungen/utils/merkliste.ts.md#abschnitt
  */
+import { nacharbeit } from './nacharbeit';
 import * as db from '../db/database';
 import { addSet, sanitizeSetNumber } from './setService';
 import { findSetInScope } from './setAdd';
@@ -228,11 +229,8 @@ export async function merkpostenVon(
                                AND pc.currency_code = ${pWaehrung}
       WHERE w.user_id = ANY($1)${wo}
       ORDER BY ${ordnung}, w.set_number, w.condition`,
-    params)
-    // Wie beim Preisalarm: Ein Aufbau, der nur initSchema() gelaufen ist, hat
-    // die Tabelle nicht (siehe die Begruendung in db/schema.sql). Eine leere
-    // Liste ist dort die richtige Antwort, kein Fehler.
-    .catch((e: unknown) => { meldeUndWeiter('merkliste:lesen', e); return []; });
+    params);
+
   // Die Zahlenspalten kommen als Zeichenkette aus dem Treiber — dieselbe
   // Stelle, an der in diesem Baum schon einmal ein Vergleich still falsch
   // wurde (siehe utils/preisalarm.ts).
@@ -246,7 +244,6 @@ export async function merkpostenVon(
   // entsteht dort NUR, wenn eine Vorschau angefragt wurde (routes/imgProxy.ts:
   // `if (wantThumb) { … } else notiere();`). Das Merkposten-Detail fragt die volle …
   // Ausführlich: docs/begruendungen/utils/merkliste.ts.md#merkpostenvon-2
-  const { merkeGebraucht } = require('../jobs/imageQueue');
 
   return ((rows ?? []) as Zeile[]).map(({ alarm_richtung, alarm_schwelle, alarm_ausgeloest, ...r }) => {
     // Synchron und gecacht (utils/images.ts) — kein Dateisystemzugriff je
@@ -258,7 +255,7 @@ export async function merkpostenVon(
     // als fehlendes Feld, sonst muessten beide Oberflaechen zwei Faelle kennen.
     const lokal = resolveIfExists(
       `/images/sets/${String(r.set_number).replace(/[^a-z0-9-]/gi, '_')}.jpg`) ?? null;
-    if (!lokal && r.image_url) merkeGebraucht(String(r.image_url), String(r.set_number));
+    if (!lokal && r.image_url) nacharbeit().bildVormerken(String(r.image_url), String(r.set_number));
     return {
       ...r,
       year:      r.year      == null ? null : Number(r.year),
@@ -337,12 +334,8 @@ export async function buildMerklisteCsv(uid: number): Promise<string> {
        FROM wanted w
       WHERE w.user_id = $1
       ORDER BY w.created_at DESC, w.set_number, w.condition`,
-    [uid])
-    // Wie beim Lesen oben: Ein Aufbau, der nur initSchema() gelaufen ist, hat
-    // die Tabelle nicht (die Begruendung steht in db/schema.sql). Eine leere
-    // Datei im Archiv ist dort die richtige Antwort — ein Fehler riss sonst
-    // den GANZEN ZIP-Export mit, samt Sets, Teilen und Minifiguren.
-    .catch((e: unknown) => { meldeUndWeiter('merkliste:export', e); return []; });
+    [uid]);
+
 
   return toCsv(['set_number', 'condition', 'created_at'], rows);
 }

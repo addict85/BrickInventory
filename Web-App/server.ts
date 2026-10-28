@@ -89,6 +89,11 @@ global.startupStatus = { ready: false, step: 'Datenbank wird initialisiert...', 
 import { fehlertext, logAndContinue, meldeUndWeiter } from './utils/httpError';
 import cluster from 'cluster';
 import { starteHintergrundlaeufe } from './startup/backgroundJobs';
+import { verdrahte } from './jobs/verdrahtung';
+
+// In JEDEM Prozess: Erfassungen und Einstellungen stossen ihre Nacharbeit
+// auch in den Web-Workern an, nicht nur im Primary.
+verdrahte();
 import { getGlobalSetting, deleteGlobalSetting } from './utils/settings';
 import { HAUSHALT_KANAL, leereHaushaltCache } from './utils/household';
 import { drossleBeruehren } from './utils/sitzungsBeruehrung';

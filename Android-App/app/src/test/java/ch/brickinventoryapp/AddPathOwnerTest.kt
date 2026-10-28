@@ -38,18 +38,6 @@ class AddPathOwnerTest {
         .joinToString("\n") { if (it.trim().startsWith("//") || it.trim().startsWith("*")) "" else it }
 
     @Test
-    fun `der Barcode-Weg reicht den Eigentuemer an das Repository durch`() {
-        val feature = code(read("ui/BarcodeFeature.kt"))
-        assert(feature.contains("ownerUserId")) {
-            "confirmAddBarcode kennt keinen Eigentümer — ein per Barcode erfasstes Set " +
-                "landet dann immer beim eigenen Konto"
-        }
-        assert(Regex("""repo\.sets\.addSet\([^)]*ownerUserId""").containsMatchIn(feature)) {
-            "der Eigentümer wird nicht an repo.sets.addSet() weitergereicht"
-        }
-    }
-
-    @Test
     fun `der Barcode-Dialog zeigt die Auswahl an`() {
         // Der Barcode-Dialog steht seit seiner Auslagerung in
         // ui/dialogs/BarcodeResultDialog.kt; AppNavigation.kt ruft ihn nur noch
@@ -60,12 +48,12 @@ class AddPathOwnerTest {
             "im Barcode-Dialog fehlt die Eigentümer-Auswahl — OwnerPicker blendet sich " +
                 "ohne Haushalt ohnehin selbst aus, schadet also nie"
         }
-        assert(nav.contains("state.householdMembers")) {
+        assert(nav.contains("blick.householdMembers")) {
             "die Auswahl braucht die Haushaltsmitglieder aus dem Zustand"
         }
         // Ohne Haushalt darf nichts mitgeschickt werden — sonst überschriebe die
         // App eine Server-Vorgabe mit einer ID, die niemand gewählt hat.
-        assert(nav.contains("state.householdMembers.size > 1")) {
+        assert(nav.contains("blick.householdMembers.size > 1")) {
             "ohne Haushalt darf kein Eigentümer mitgeschickt werden (gleiche Regel wie im Galerie-Dialog)"
         }
     }

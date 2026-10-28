@@ -56,26 +56,23 @@ async function dbReachable() {
  * `sets.name` brauchte und im GESAMTLAUF rot wurde, einzeln aber gruen blieb —
  * die unangenehmste Sorte Fehler, weil sie von der Reihenfolge abhaengt.
  *
- * Die Attrappen der rb_*-Tabellen bleiben absichtlich liegen: Sie tragen
- * dieselben Spalten wie das echte Schema, nur ohne Indizes und Beiwerk.
- * `sets` ist der einzige echte Eingriff.
+ * Seit db/basis.sql legt initSchema() in einer bestehenden Datenbank nichts
+ * mehr nach. Deshalb wird das Schema ganz neu aufgebaut: Basis plus
+ * Migrationen, wie bei einer frischen Installation.
  */
 async function schemaWiederherstellen() {
-  // Die Erfassungszeile von seed() mit weg — sie haengt an einem Konto, das
-  // spaetere Dateien nicht kennen, und waere dort ein Bestand aus dem Nichts.
-  await db.run(
-    `DELETE FROM set_acquisitions WHERE user_id = 1 AND set_number = '9000-1'`).catch(() => {});
-  await db.run(`DROP TABLE IF EXISTS sets CASCADE`).catch(() => {});
+  await db.run('DROP SCHEMA public CASCADE');
+  await db.run('CREATE SCHEMA public');
   await db.initSchema();
+  const c = await db.pool.connect();
+  try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); }
 }
 
 async function seed() {
   // Erst das echte Schema sicherstellen, dann die Attrappen daruebersetzen:
   // seed() braucht `set_acquisitions` ECHT (siehe unten), und ob eine frueher
   // gelaufene Datei sie schon angelegt hat, haengt an der Reihenfolge.
-  // initSchema() ist idempotent (CREATE TABLE IF NOT EXISTS) und muss VOR dem
-  // Loeschen stehen — danach legte es die gerade entfernten Attrappen-Tabellen
-  // wieder als echte an (gemessen: „relation rb_sets already exists").
+  // Eine leere Datenbank bekommt hier ihr Schema; danach erst die Attrappen.
   await db.initSchema();
   await db.run(`DROP TABLE IF EXISTS rb_sets, rb_themes, rb_inventories,
                                     rb_inventory_minifigs, sets CASCADE`);

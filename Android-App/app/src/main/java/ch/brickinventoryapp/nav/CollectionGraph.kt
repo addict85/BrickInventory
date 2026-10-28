@@ -52,7 +52,12 @@ import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
 import ch.brickinventoryapp.*
-import ch.brickinventoryapp.ui.MainViewModel
+import ch.brickinventoryapp.ui.AppViewModel
+import ch.brickinventoryapp.ui.viewmodel.GalerieViewModel
+import ch.brickinventoryapp.ui.viewmodel.TeileViewModel
+import ch.brickinventoryapp.ui.viewmodel.SetDetailViewModel
+import ch.brickinventoryapp.ui.viewmodel.KaeufeViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import ch.brickinventoryapp.ui.ManualItemDetailUiState
 
 /**
@@ -66,7 +71,7 @@ import ch.brickinventoryapp.ui.ManualItemDetailUiState
  * ./gradlew assembleDebug auf.
  */
 fun NavGraphBuilder.collectionGraph(
-    vm: MainViewModel,
+    vm: AppViewModel,
     navController: NavHostController,
     imageLoader: coil3.ImageLoader,
     bottomNavItems: List<Triple<Screen, @Composable () -> Unit, String>>,
@@ -85,12 +90,15 @@ fun NavGraphBuilder.collectionGraph(
         composable(Screen.Gallery.route) {
             // Zustand INNERHALB des Ziels lesen — als Parameter wäre es eine
             // Momentaufnahme vom Aufbau des Graphen (der NavHost-Builder läuft nur einmal).
-            val state by vm.state.collectAsStateWithLifecycle()
-            val galerie by vm.galleryState.collectAsStateWithLifecycle()
+            val galerieVm: GalerieViewModel = hiltViewModel()
+            val state by galerieVm.state.collectAsStateWithLifecycle()
+            val galerie by galerieVm.galleryState.collectAsStateWithLifecycle()
+            val erfassung = ch.brickinventoryapp.ui.viewmodel.aktivitaetsViewModel<ch.brickinventoryapp.ui.viewmodel.ErfassungViewModel>()
+            val barcode by erfassung.barcodeState.collectAsStateWithLifecycle()
             // Retry loading if sets are empty and server URL is available
             LaunchedEffect(state.serverUrl) {
                 if (state.serverUrl.isNotBlank() && galerie.sets.isEmpty() && !galerie.galleryLoading) {
-                    vm.loadSets(); vm.loadStats()
+                    galerieVm.loadSets(); galerieVm.loadStats()
                 }
             }
             // Rollposition ausdrücklich wiederherstellen — der hochgezogene
@@ -99,18 +107,19 @@ fun NavGraphBuilder.collectionGraph(
                 "gallery", galleryGridState, galerie.sets.isNotEmpty(), vm.scrollMemory)
 
             // Gallery-Search: set found → navigate to detail
-            LaunchedEffect(galerie.gallerySearchFoundSetNumber) {
-                val found = galerie.gallerySearchFoundSetNumber
+            LaunchedEffect(barcode.gefundenesSet) {
+                val found = barcode.gefundenesSet
                 if (found != null) {
-                    vm.gallerySearchFoundConsumed()
+                    erfassung.gallerySearchFoundConsumed()
                     navController.navigate(Screen.SetDetail.createRoute(found))
                 }
             }
             ReiterGeruest(stringResource(R.string.nav_gallery), vm, navController, bottomNavItems, snackbarHostState) {
                 GalleryScreen(
-                    vm = vm,
+                    vm = galerieVm,
+                    erfassung = erfassung,
                     imageLoader = imageLoader,
-                    onScanBarcode = { vm.setScannerSource("gallery_search"); navController.navigate(Screen.BarcodeScanner.route) },
+                    onScanBarcode = { erfassung.setScannerSource("gallery_search"); navController.navigate(Screen.BarcodeScanner.route) },
                     onSetClick = { navController.navigate(Screen.SetDetail.createRoute(it)) },
                     gridState = galleryGridState
                 )
@@ -126,14 +135,25 @@ fun NavGraphBuilder.collectionGraph(
             // Momentaufnahme vom Aufbau des Graphen (der NavHost-Builder läuft nur einmal).
             val state by vm.state.collectAsStateWithLifecycle()
             val setNumber = backStack.arguments?.getString("setNumber") ?: ""
+            // Die Galerie liegt als Startziel immer darunter; ihre geladene
+            // Kachel zeigt das Set sofort, bis das Detail da ist.
+            val galerieEintrag = remember(backStack) {
+                runCatching { navController.getBackStackEntry(Screen.Gallery.route) }.getOrNull()
+            }
+            val vorschau = galerieEintrag?.let { eintrag ->
+                val galerie by hiltViewModel<GalerieViewModel>(eintrag).galleryState.collectAsStateWithLifecycle()
+                galerie.sets.find { it.setNumber == setNumber }
+            }
+            val detailVm: SetDetailViewModel = hiltViewModel()
             SetDetailScreen(
                 setNumber = setNumber,
-                vm = vm,
+                vm = detailVm,
+                vorschau = vorschau,
                 serverUrl = state.serverUrl,
                 imageLoader = imageLoader,
                 onBack = { navController.popBackStack() },
                 onDelete = { sn ->
-                    vm.deleteSet(sn)
+                    detailVm.deleteSet(sn)
                     navController.popBackStack()
                 },
                 onNavigateToAcqMgmt = { type, id, colorId, title ->
@@ -147,20 +167,18 @@ fun NavGraphBuilder.collectionGraph(
         composable(Screen.Parts.route) {
             // Zustand INNERHALB des Ziels lesen — als Parameter wäre es eine
             // Momentaufnahme vom Aufbau des Graphen (der NavHost-Builder läuft nur einmal).
-            val state by vm.state.collectAsStateWithLifecycle()
-            // Teile und Finanzen als eigene Flows — ein Ladevorgang hier
-            // rekomponiert dadurch nicht mehr Galerie und Navigationsleiste.
-            val partsState by vm.partsState.collectAsStateWithLifecycle()
-            val financeState by vm.financeState.collectAsStateWithLifecycle()
+            val teileVm: TeileViewModel = hiltViewModel()
+            val state by teileVm.state.collectAsStateWithLifecycle()
+            val partsState by teileVm.partsState.collectAsStateWithLifecycle()
             LaunchedEffect(state.serverUrl) {
                 if (state.serverUrl.isNotBlank()) {
-                    vm.loadParts(); vm.loadValuation()
+                    teileVm.loadParts()
                     // Farbkatalog fuer den Erfassungsdialog …
-                    vm.loadPartsColors()
+                    teileVm.loadPartsColors()
                     // … und die beiden FILTERlisten mit ihren Zaehlwerten
                     // (Nachtrag 134). Zwei verschiedene Adressen, siehe
                     // BrickApiService.getPartsFilterColors.
-                    vm.loadPartsFilters()
+                    teileVm.loadPartsFilters()
                 }
             }
             ReiterGeruest(stringResource(R.string.nav_parts), vm, navController, bottomNavItems, snackbarHostState) {
@@ -175,7 +193,7 @@ fun NavGraphBuilder.collectionGraph(
                     speicher = vm.scrollMemory,
                     obenNachziehend = partsState.manualParts?.size ?: 0)
                 PartsScreen(
-                    vm = vm,
+                    vm = teileVm,
                     imageLoader = imageLoader,
                     onOpenDetail = { partNumber, colorId ->
                         navController.navigate(Screen.ManualItemDetail.createRoute(
@@ -193,7 +211,7 @@ fun NavGraphBuilder.collectionGraph(
                 // darueber. Der Dialog zeigt sich selbst nur, wenn im
                 // Zustand ein Teil offen ist (SetItemUiState.offen).
                 SetItemDetailDialog(
-                    vm = vm,
+                    vm = teileVm,
                     imageLoader = imageLoader,
                     serverUrl = state.serverUrl,
                     onOpenSet = { navController.navigate(Screen.SetDetail.createRoute(it)) },
@@ -203,10 +221,10 @@ fun NavGraphBuilder.collectionGraph(
         composable(Screen.Minifigs.route) {
             // Zustand INNERHALB des Ziels lesen — als Parameter wäre es eine
             // Momentaufnahme vom Aufbau des Graphen (der NavHost-Builder läuft nur einmal).
-            val state by vm.state.collectAsStateWithLifecycle()
-            val partsState by vm.partsState.collectAsStateWithLifecycle()
-            val financeState by vm.financeState.collectAsStateWithLifecycle()
-            LaunchedEffect(state.serverUrl) { if (state.serverUrl.isNotBlank()) { if (partsState.minifigs.isEmpty()) vm.loadMinifigs(); vm.loadValuation() } }
+            val teileVm: TeileViewModel = hiltViewModel()
+            val state by teileVm.state.collectAsStateWithLifecycle()
+            val partsState by teileVm.partsState.collectAsStateWithLifecycle()
+            LaunchedEffect(state.serverUrl) { if (state.serverUrl.isNotBlank()) { if (partsState.minifigs.isEmpty()) teileVm.loadMinifigs() } }
             ReiterGeruest(stringResource(R.string.nav_minifigs), vm, navController, bottomNavItems, snackbarHostState) {
                 ch.brickinventoryapp.ui.ScrollPositionKeeper(
                     "minifigs", minifigsGridState,
@@ -219,7 +237,7 @@ fun NavGraphBuilder.collectionGraph(
                     speicher = vm.scrollMemory,
                     obenNachziehend = partsState.manualFigs?.size ?: 0)
                 MinifigsScreen(
-                    vm = vm,
+                    vm = teileVm,
                     imageLoader = imageLoader,
                     onOpenDetail = { figNumber ->
                         navController.navigate(Screen.ManualItemDetail.createRoute(
@@ -232,7 +250,7 @@ fun NavGraphBuilder.collectionGraph(
                 // Derselbe Dialog wie im Teile-Reiter — er unterscheidet
                 // Teile und Figuren selbst ueber SetItemUiState.art.
                 SetItemDetailDialog(
-                    vm = vm,
+                    vm = teileVm,
                     imageLoader = imageLoader,
                     serverUrl = state.serverUrl,
                     onOpenSet = { navController.navigate(Screen.SetDetail.createRoute(it)) },
@@ -260,7 +278,8 @@ fun NavGraphBuilder.collectionGraph(
             val colorId   = backStackEntry.arguments?.getInt("colorId") ?: 0
             val itemTitle = java.net.URLDecoder.decode(backStackEntry.arguments?.getString("title") ?: "",    "UTF-8")
             ManualItemDetailScreen(
-                vm = vm,
+                vm = hiltViewModel<KaeufeViewModel>(),
+                teile = hiltViewModel(),
                 type = itemType,
                 id = itemId,
                 colorId = colorId,
@@ -301,7 +320,7 @@ fun NavGraphBuilder.collectionGraph(
             val colorId   = backStackEntry.arguments?.getInt("colorId") ?: 0
             val itemTitle = java.net.URLDecoder.decode(backStackEntry.arguments?.getString("title")   ?: "",    "UTF-8")
             AcquisitionManagementScreen(
-                vm      = vm,
+                vm      = hiltViewModel<KaeufeViewModel>(),
                 type    = itemType,
                 id      = itemId,
                 colorId = colorId,

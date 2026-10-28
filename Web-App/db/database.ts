@@ -6,9 +6,8 @@
  */
 
 import { Pool, types as pgTypes } from 'pg';
-import { runMigrations, abgeloestesEntfernen } from './migrate';
+import { runMigrations } from './migrate';
 import { logAndContinue } from '../utils/httpError';
-import { APP_ROOT } from '../utils/appPaths';
 import fs from 'fs';
 import path from 'path';
 import bcrypt from 'bcryptjs';
@@ -241,274 +240,50 @@ async function transaction<T>(fn: (tx: DbSchnittstelle) => Promise<T>): Promise<
 
 
 /**
- * Das Grundschema von der Platte lesen.
- * Ausführlich: docs/begruendungen/db/database.ts.md#schemasql
+ * Erststart: Eine LEERE Datenbank bekommt ihr Schema aus db/basis.sql, dem
+ * erzeugten Abbild aller Migrationen bis zu seiner Entstehung (scripts/
+ * schema-stand.js). Danach laufen nur die jüngeren Migrationen. Eine
+ * bestehende Datenbank fasst diese Funktion nicht an — so gibt es für jede
+ * Tabelle genau einen Weg: Basis plus Migrationen.
+ * @returns true, wenn die Basis eingespielt wurde
  */
-let _schemaSql: string | null = null;
-function ladeSchema(): string {
-  if (_schemaSql === null) {
-    _schemaSql = fs.readFileSync(
-      path.join(__dirname, 'schema.sql'), 'utf8') as string;
-  }
-  return _schemaSql;
-}
+const LETZTE_STARTSTUFE = '0050-teilezaehler-nur-bestehende-konten.sql';
 
-// ── Schema initialisation ─────────────────────────────────────────────────────
-/**
- * Das Schema anlegen und auf den aktuellen Stand bringen.
- * Ausführlich: docs/begruendungen/db/database.ts.md#abschnitt-6
- */
-/**
- * Ein Schema-Schritt, der den Start NICHT abbrechen soll — aber gezaehlt wird.
- * Ausführlich: docs/begruendungen/db/database.ts.md#geschluckt
- */
-let _geschluckt: string[] = [];
-
-function schlucke(bereich: string) {
-  return (e: any) => {
-    const text = e?.message ?? String(e);
-    _geschluckt.push(`${bereich}: ${text}`);
-    console.error(`[db] ${bereich}:`, text);
-  };
-}
-
-async function initSchema() {
-  // Das Grundschema liegt als db/schema.sql daneben — reines SQL ohne
-  // Einsetzungen, siehe die Begründung dort. Alles, was eine Bedingung
-  // braucht, steht in den Etappen darunter.
-  await pool.query(ladeSchema());
-
-  await preisVerlaufEindeutigProTag();
-  await spaltenMigrationen();
-  await trigrammIndizes();
-  await frueherZurLaufzeitAngelegt();
-  await indizesUndZusammenfassung();   // MUSS zuletzt laufen, siehe dort
-
-  console.log('✅ PostgreSQL schema ready');
-}
-
-/** Etappe 1 — ein Preiseintrag je Set, Zustand, Währung und Tag. */
-async function preisVerlaufEindeutigProTag() {
-  // Ein Preiseintrag je Set, Zustand, Währung und TAG
-  // Zwei Schreibwege (jobs/priceJob.ts beim Abruf, utils/financeCalc.ts) tragen
-  // `ON CONFLICT DO NOTHING` — die Tabelle hatte aber nur den Primärschlüssel
-  // auf id. Ohne passenden Unique-Index kann die Klausel nie greifen: Sie liest …
-  // Ausführlich: docs/begruendungen/db/database.ts.md#preisverlaufeindeutigprotag
-  {
-    const vorhanden = await pool.query(
-      "SELECT 1 FROM pg_indexes WHERE tablename='price_history' AND indexname='idx_price_history_tag'");
-    if (vorhanden.rows.length === 0) {
-      const weg = await pool.query(`
-        DELETE FROM price_history p
-         USING price_history q
-         WHERE p.set_number    = q.set_number
-           AND p.condition     = q.condition
-           AND p.currency_code = q.currency_code
-           AND (p.recorded_at AT TIME ZONE 'UTC')::date = (q.recorded_at AT TIME ZONE 'UTC')::date
-           AND (p.recorded_at < q.recorded_at OR (p.recorded_at = q.recorded_at AND p.id < q.id))`);
-      if (weg.rowCount) console.log(`  ✅ Migration: ${weg.rowCount} doppelte Preis-Zeilen entfernt`);
-      await pool.query(`
-        CREATE UNIQUE INDEX idx_price_history_tag ON price_history
-          (set_number, condition, currency_code, ((recorded_at AT TIME ZONE 'UTC')::date))`);
-      console.log('  ✅ Migration: Tages-Eindeutigkeit für price_history');
-    }
-  }
-}
-
-/** Etappe 2 — Spalten, die bestehende Installationen noch nicht haben. */
-async function spaltenMigrationen() {
-  //  Migrations: add columns to existing tables
-  // sets table migrations
-  // Ausführlich: docs/begruendungen/db/database.ts.md#spaltenmigrationen-setsmigrations
-  const setsMigrations = [
-    { col: 'updated_at',     sql: "ALTER TABLE sets ADD COLUMN updated_at TIMESTAMPTZ DEFAULT NOW()" },
-    { col: 'purchase_price', sql: "ALTER TABLE sets ADD COLUMN purchase_price NUMERIC(12,4)" },
-    { col: 'condition',      sql: "ALTER TABLE sets ADD COLUMN condition TEXT DEFAULT 'N'" },
-  ];
-  for (const m of setsMigrations) {
-    const exists = await pool.query(
-      "SELECT 1 FROM information_schema.columns WHERE table_name='sets' AND column_name=$1",
-      [m.col]
-    );
-    if (exists.rows.length === 0) {
-      await pool.query(m.sql);
-      console.log(`  ✅ Migration: sets.${m.col} hinzugefügt`);
-    }
-  }
-
-  // Catalog table migrations — image_local may be missing on older installs
-  for (const [tbl, col] of [
-    ['set_parts_catalog',   'image_local'],
-    ['set_minifigs_catalog','image_local'],
-  ]) {
-    const exists = await pool.query(
-      "SELECT 1 FROM information_schema.columns WHERE table_name=$1 AND column_name=$2",
-      [tbl, col]
-    );
-    if (exists.rows.length === 0) {
-      await pool.query(`ALTER TABLE ${tbl} ADD COLUMN ${col} TEXT`);
-      console.log(`  ✅ Migration: ${tbl}.${col} hinzugefügt`);
-    }
-  }
-
-  const userMigrations = [
-    { col: 'email',               sql: "ALTER TABLE users ADD COLUMN email TEXT" },
-    { col: 'first_name',          sql: "ALTER TABLE users ADD COLUMN first_name TEXT" },
-    { col: 'last_name',           sql: "ALTER TABLE users ADD COLUMN last_name TEXT" },
-    { col: 'is_active',           sql: "ALTER TABLE users ADD COLUMN is_active INTEGER DEFAULT 1" },
-    { col: 'email_verified',      sql: "ALTER TABLE users ADD COLUMN email_verified INTEGER DEFAULT 0" },
-    { col: 'verification_token',  sql: "ALTER TABLE users ADD COLUMN verification_token TEXT" },
-    { col: 'token_expires',       sql: "ALTER TABLE users ADD COLUMN token_expires TIMESTAMPTZ" },
-    { col: 'reset_token',         sql: "ALTER TABLE users ADD COLUMN reset_token TEXT" },
-    { col: 'reset_token_expires', sql: "ALTER TABLE users ADD COLUMN reset_token_expires TIMESTAMPTZ" },
-    // Siehe "Default admin user" unten: markiert Konten, deren Passwort beim
-    // Erstellen automatisch vergeben wurde (Default-Admin ohne ADMIN_PASSWORD).
-    { col: 'must_change_password', sql: "ALTER TABLE users ADD COLUMN must_change_password INTEGER DEFAULT 0" },
-  ];
-  for (const m of userMigrations) {
-    const exists = await pool.query(
-      "SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name=$1",
-      [m.col]
-    );
-    if (exists.rows.length === 0) {
-      await pool.query(m.sql);
-      console.log(`  ✅ Migration: users.${m.col} hinzugefügt`);
-    }
-  }
-
-  // Make sure existing admin user is marked as active + verified
-  // Mit Protokoll: Scheitert eine dieser beiden, bleibt ein Konto inaktiv oder
-  // unbestaetigt und niemand kann sich anmelden — der Grund stuende nirgends.
-  // Die Spaltenmigrationen darueber melden ihren Erfolg ebenfalls.
-  // Ausführlich: docs/begruendungen/db/database.ts.md#spaltenmigrationen
-  await pool.query(
-    "UPDATE users SET is_active=1, email_verified=1 WHERE is_admin=1 " +
-    "AND (is_active IS NULL OR email_verified IS NULL)"
-  ).catch(logAndContinue('start:admin aktiv setzen'));
-  await pool.query(
-    "UPDATE users SET is_active=COALESCE(is_active,1), email_verified=COALESCE(email_verified,0)"
-  ).catch(logAndContinue('start:konten-vorgaben'));
-
-  // Add unique constraint on email if not exists (ignore error if already exists)
-  await pool.query(
-    "CREATE UNIQUE INDEX IF NOT EXISTS users_email_unique ON users(email) WHERE email IS NOT NULL"
-  ).catch(()=>{});
-
-  // Default global settings
-  await pool.query(`
-    INSERT INTO global_settings (key, value) VALUES
-      ('bricklink_consumer_key',     ''),
-      ('bricklink_consumer_secret',  ''),
-      ('bricklink_token',            ''),
-      ('bricklink_token_secret',     ''),
-      ('brickset_api_key',           ''),
-      ('rebrickable_api_key',        ''),
-      ('price_job_interval_minutes', '60'),
-      ('registration_enabled',       '0'), -- disabled by default; admin enables after setup
-      ('price_cache_ttl',             '24'),  -- 1 Tag Standard
-      ('default_price_condition',     'N'),   -- N = Neu (New), U = Gebraucht (Used)
-      ('api_limit_rebrickable',       '25000'),
-      ('api_limit_bricklink',         '4000'),
-      ('api_limit_brickset',          '100'),
-      ('smtp_host',                  ''),
-      ('smtp_port',                  '587'),
-      ('smtp_user',                  ''),
-      ('smtp_pass',                  ''),
-      ('smtp_from',                  ''),
-      ('smtp_secure',                '0')
-    ON CONFLICT (key) DO NOTHING;
-  `);
-
-  // Bestandsinstallationen: Der INSERT oben greift wegen ON CONFLICT DO NOTHING
-  // nicht mehr, ein alter Standardwert bliebe also stehen. Angehoben werden
-  // nur die exakten früheren Standards — wer bewusst etwas anderes eingestellt
-  // hat (auch einen kleineren Wert), behält es.
-  //
-  // '4000' ist der ursprüngliche Standard, '10000' ein Zwischenschritt. Beide
-  // stehen hier, damit die Migration unabhängig davon greift, welche Version
-  // zuletzt lief.
-  await pool.query(`
-    UPDATE global_settings SET value = '25000'
-    WHERE key = 'api_limit_rebrickable' AND value IN ('4000', '10000')
-  `);
-}
-
-/** Etappe 3 — Trigramm-Indizes für die Katalogsuche (optional, pg_trgm). */
-async function trigrammIndizes() {
-  // ── Trigramm-Indizes für die Volltextsuche im Katalog ──────────────────────
-  // Getrennt vom grossen Schema-Block, weil CREATE EXTENSION fehlschlagen kann
-  // (fehlende Rechte bei manchen gehosteten Postgres-Angeboten). Das darf den
-  // Start nicht verhindern — ohne die Erweiterung ist die Suche langsamer,
-  // aber korrekt.
+async function initSchema(): Promise<boolean> {
+  const c = await eigeneVerbindung();
   try {
-    await pool.query('CREATE EXTENSION IF NOT EXISTS pg_trgm');
-    await pool.query('CREATE INDEX IF NOT EXISTS idx_rb_sets_name_trgm    ON rb_sets    USING GIN (name gin_trgm_ops)');
-    await pool.query('CREATE INDEX IF NOT EXISTS idx_rb_sets_setnum_trgm  ON rb_sets    USING GIN (set_num gin_trgm_ops)');
-    console.log('  ✅ Trigramm-Indizes für die Katalogsuche vorhanden');
-  } catch (e: any) {
-    console.warn(`  ⚠️  pg_trgm nicht verfügbar (${e.message}) — Katalogsuche läuft ohne Index (Seq-Scan).`);
+    const leer = !(await c.query("SELECT to_regclass('public.users') AS t")).rows[0].t;
+    if (!leer) {
+      // Bis 0050 baute der Start fehlende Spalten selbst nach; diese Stufen
+      // gibt es nicht mehr. Eine ältere Datenbank bekäme sie nie und liefe
+      // mit halbem Schema weiter — lieber gleich mit klarer Ansage stehen.
+      const r = await c.query('SELECT 1 FROM schema_migrations WHERE name = $1', [LETZTE_STARTSTUFE])
+        .catch(() => ({ rows: [] as unknown[] }));
+      if (!r.rows.length) throw new Error(
+        `Datenbank ist älter als ${LETZTE_STARTSTUFE}: bitte zuerst eine Version bis 0050 starten, dann diese.`);
+      return false;
+    }
+    // Eigene Verbindung, weil die Basis Sitzungswerte setzt (SET …), die
+    // sonst an einer Pool-Verbindung hängen blieben.
+    await c.query('BEGIN');
+    await c.query(fs.readFileSync(path.join(__dirname, 'basis.sql'), 'utf8'));
+    await c.query('COMMIT');
+  } catch (e) {
+    await c.query('ROLLBACK').catch(() => {});
+    throw e;
+  } finally {
+    await c.end().catch(() => {});
   }
+  await legeAdminAn();
+  console.log('✅ PostgreSQL schema ready');
+  return true;
 }
 
-/** Etappe 4 — Tabellen und Datenkorrekturen, die früher zur Laufzeit liefen. */
-async function frueherZurLaufzeitAngelegt() {
-  // ── Tabellen, die früher zur LAUFZEIT angelegt wurden ──────────────────────
-  //
-  // csv_import_jobs entstand per ensureJobTable() bei jedem Aufruf des
-  // CSV-Status-Endpunkts, qr_login_tokens per ensureQrTable() bei jedem
-  // QR-Token. DDL im Request-Pfad ist aus zwei Gründen unschön: Sie kostet bei
-  // jeder Anfrage einen Katalog-Zugriff, und sie verteilt das Schema über die
-  // Codebasis, sodass niemand mehr an einer Stelle sehen kann, wie die
-  // Datenbank aussieht. Beide gehören hierher.
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS csv_import_jobs (
-      user_id    INTEGER PRIMARY KEY,
-      status     TEXT    NOT NULL DEFAULT 'running',
-      total      INTEGER NOT NULL DEFAULT 0,
-      done       INTEGER NOT NULL DEFAULT 0,
-      current    TEXT,
-      results    JSONB   NOT NULL DEFAULT '[]',
-      error      TEXT,
-      started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    )`);
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS qr_login_tokens (
-      token      TEXT PRIMARY KEY,
-      user_id    INTEGER NOT NULL,
-      expires_at TIMESTAMPTZ NOT NULL,
-      used_at    TIMESTAMPTZ,
-      -- Die vom Erzeuger gewaehlte Laufzeit des SPAETEREN Geraete-Tokens, in
-      -- Tagen. Sie reist mit der Nonce, weil POST /qr-login unangemeldet
-      -- erreichbar ist — siehe db/migrations/0016-token-laufzeit.sql.
-      -- Auf gewachsenen Datenbanken zieht die Migration sie nach; dieses
-      -- CREATE TABLE IF NOT EXISTS tut dort naemlich nichts.
-      token_days INTEGER
-    )`);
-  await pool.query('CREATE INDEX IF NOT EXISTS idx_qr_login_expires ON qr_login_tokens(expires_at)');
-
-  // api_tokens.sliding und die beiden Indizes stehen in einer MIGRATION
-  // Zwei Gruende, beide stehen als Warnung schon in dieser Datei:
-  //   1. initSchema() laeuft NUR bei einer Versionsaenderung — steht in
-  //      schema_meta bereits die Fassung dieses Deployments, wird der ganze …
-  // Ausführlich: docs/begruendungen/db/database.ts.md#abschnitt-7
-
-  // Einmalige Bereinigung: Klartext-Tokens aus der Zeit vor dem Hashing.
-  //
-  // validateToken() hatte dafür einen Legacy-Fallback, der bei jedem
-  // fehlgeschlagenen Hash-Lookup ein zweites Mal mit dem Klartext suchte. Der
-  // Fallback ist entfernt (er hielt die Klartext-Speicherung dauerhaft
-  // gültig); stattdessen fliegen Alt-Zeilen hier einmalig raus. Sie sind am
-  // Format erkennbar: hashToken() liefert immer 64 Hex-Zeichen.
-  const legacy = await pool.query(
-    "DELETE FROM api_tokens WHERE token !~ '^[0-9a-f]{64}$'"
-  ).catch(() => null);
-  if (legacy?.rowCount) {
-    console.log(`  ✅ ${legacy.rowCount} Klartext-Token entfernt (bitte in der App neu erzeugen)`);
-  }
-
-  // Default admin user
-  // Ausführlich: docs/begruendungen/db/database.ts.md#frueherzurlaufzeitangelegt
+/**
+ * Das erste Konto einer neuen Installation.
+ * Ausführlich: docs/begruendungen/db/database.ts.md#frueherzurlaufzeitangelegt
+ */
+async function legeAdminAn() {
   const { rows } = await pool.query('SELECT COUNT(*) as c FROM users');
   if (parseInt(rows[0].c) === 0) {
     // Erst in eine lokale Konstante lesen, dann daraus die Entscheidung
@@ -550,125 +325,6 @@ async function frueherZurLaufzeitAngelegt() {
     }
   }
 
-  // Datenbereinigung: Whitespace-Varianten in Figurennummern normalisieren
-  // (verhinderte die Gruppierung identischer Figuren in der Übersicht)
-  await pool.query(`UPDATE minifigs SET fig_number = TRIM(fig_number)
-                    WHERE fig_number <> TRIM(fig_number)`)
-    .catch(schlucke('fig_number trim'));
-
-  // Part and minifig acquisition tables (per-purchase tracking like set_acquisitions)
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS part_acquisitions (
-      id          SERIAL PRIMARY KEY,
-      user_id     INTEGER NOT NULL,
-      part_number TEXT    NOT NULL,
-      color_id    INTEGER NOT NULL DEFAULT 0,
-      quantity    INTEGER NOT NULL DEFAULT 1,
-      unit_price  NUMERIC(12,4),
-      condition   TEXT    DEFAULT 'N',
-      created_at  TIMESTAMPTZ DEFAULT NOW()
-    )`);
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS minifig_acquisitions (
-      id          SERIAL PRIMARY KEY,
-      user_id     INTEGER NOT NULL,
-      fig_number  TEXT    NOT NULL,
-      quantity    INTEGER NOT NULL DEFAULT 1,
-      unit_price  NUMERIC(12,4),
-      condition   TEXT    DEFAULT 'N',
-      created_at  TIMESTAMPTZ DEFAULT NOW()
-    )`);
-
-  // Migration: condition column for set_acquisitions
-  const acqCondExists = await pool.query(
-    "SELECT 1 FROM information_schema.columns WHERE table_name='set_acquisitions' AND column_name='condition'",
-  ).then(r => r.rows.length > 0).catch(() => false);
-  if (!acqCondExists) {
-    await pool.query("ALTER TABLE set_acquisitions ADD COLUMN condition TEXT DEFAULT 'N'");
-    console.log('  ✅ Migration: set_acquisitions.condition hinzugefügt');
-  }
-
-  // Migration: added_at column for parts
-  const partsAddedAtExists = await pool.query(
-    "SELECT 1 FROM information_schema.columns WHERE table_name='parts' AND column_name='added_at'",
-  ).then(r => r.rows.length > 0).catch(() => false);
-  if (!partsAddedAtExists) {
-    await pool.query("ALTER TABLE parts ADD COLUMN added_at TIMESTAMPTZ DEFAULT NOW()");
-  }
-
-  // Migration: condition column for parts (manual parts)
-  // Steht hier weiter, obwohl Migration 0035 die Spalte loescht — und das ist
-  // kein Versehen, sondern dieselbe Begruendung wie bei sets.purchase_price
-  // (siehe spaltenMigrationen weiter oben): Diese Funktion legt den …
-  // Ausführlich: docs/begruendungen/db/database.ts.md#frueherzurlaufzeitangelegt-partscondexists
-  const partsCondExists = await pool.query(
-    "SELECT 1 FROM information_schema.columns WHERE table_name='parts' AND column_name='condition'",
-  ).then(r => r.rows.length > 0).catch(() => false);
-  if (!partsCondExists) {
-    await pool.query("ALTER TABLE parts ADD COLUMN condition TEXT DEFAULT 'N'");
-    console.log('  ✅ Migration: parts.condition hinzugefügt');
-  }
-
-  // Dasselbe fuer die Minifiguren — siehe die Begruendung direkt darueber.
-  const mfCondExists = await pool.query(
-    "SELECT 1 FROM information_schema.columns WHERE table_name='minifigs' AND column_name='condition'",
-  ).then(r => r.rows.length > 0).catch(() => false);
-  if (!mfCondExists) {
-    await pool.query("ALTER TABLE minifigs ADD COLUMN condition TEXT DEFAULT 'N'");
-    console.log('  ✅ Migration: minifigs.condition hinzugefügt');
-  }
-
-  // Nachtragen: erst hier, NACH den Spaltenmigrationen
-  // Diese beiden Bloecke standen weiter oben, VOR den ALTER TABLEs, die
-  // parts.added_at und parts.condition anlegen. Auf jeder Datenbank, die
-  // diese Spalten noch nicht hatte — also bei jedem Hochziehen von einem …
-  // Ausführlich: docs/begruendungen/db/database.ts.md#frueherzurlaufzeitangelegt-2
-  console.log('  ✅ part_acquisitions + minifig_acquisitions erstellt/migriert');
-
-  // Wo er gebraucht wird, steht er jetzt richtig: Migration 0032 traegt die
-  // fehlenden Erfassungen nach, einmalig, und prueft danach nach, dass keine
-  // Set-Zeile ohne Erfassung uebrig ist — bevor sie die beiden Spalten loescht.
-  // Ausführlich: docs/begruendungen/db/database.ts.md#abschnitt-8
-}
-
-/**
- * Etappe 5 — Indizes und die vorberechnete Teile-Zusammenfassung.
- * Ausführlich: docs/begruendungen/db/database.ts.md#indizesundzusammenfassung
- */
-async function indizesUndZusammenfassung() {
-  // ── Indizes ZULETZT anlegen ───────────────────────────────────────────────
-  // Bewusst ganz am Ende, nachdem ALLE Tabellen erstellt UND alle ALTER-Migra-
-  // tionen durchgelaufen sind. So referenziert ein Index garantiert nur bereits
-  // existierende Spalten/Tabellen — das verhindert "relation/column does not
-  // exist" bei Neuinstallationen, selbst wenn später ALTERs ergänzt werden.
-  await pool.query(`CREATE INDEX IF NOT EXISTS idx_rb_inv_setnum ON rb_inventories(set_num)`).catch(schlucke('idx_rb_inv_setnum'));
-
-  // Drei Nachschläge im Anfragepfad, die keinen passenden Index hatten
-  // Alle drei mit EXPLAIN (ANALYZE, BUFFERS) an je 100'000 Zeilen nachgemessen.
-  // Ausführlich: docs/begruendungen/db/database.ts.md#indizesundzusammenfassung-2
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS rate_limit_attempts (
-      key      TEXT PRIMARY KEY,
-      count    INTEGER     NOT NULL DEFAULT 1,
-      first_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    )`).catch(schlucke('rate_limit_attempts'));
-  await pool.query(`CREATE INDEX IF NOT EXISTS idx_rate_limit_first_at ON rate_limit_attempts(first_at)`).catch(() => {});
-
-
-  // idx_parts_category stand hier
-  // Der Index lag auf parts(user_id, category_name). Die Kategorie steht seit
-  // Migration 0034 in part_catalog und haengt NICHT am Konto — der fuehrende
-  // user_id waere dort sinnlos.
-  // Ausführlich: docs/begruendungen/db/database.ts.md#indizesundzusammenfassung-3
-  await require('../utils/partsSummary').initPartsSummary(pool).catch(schlucke('parts_summary'));
-  // Tabelle für bekannte Bild-Fehlanzeigen (Nachtrag 98). Sie ersetzt zwei
-  // Merker, die je Prozess im Arbeitsspeicher lagen — im Cluster hiess das:
-  // dasselbe fehlende Bild einmal PRO Arbeitsprozess holen, nach jedem Neustart
-  // erneut. In den alten Katalogjahrgängen, wo fast jedes Bild fehlt, war das
-  // der Grossteil der Last.
-  // Die Tabellen dazu legt db/migrations/0009-bild-tabellen.sql an — nicht
-  // hier: initSchema() läuft nur bei einer Versionsänderung, und ein stiller
-  // Fehlschlag hätte den Bild-Job dauerhaft abgeschaltet (siehe dort).
 }
 
 // initSchemaOnce: Erststart und Migrationen unter einem Advisory-Lock
@@ -676,76 +332,15 @@ async function indizesUndZusammenfassung() {
 // Die anderen warten blockierend und finden danach alles vor.
 async function initSchemaOnce() {
   const LOCK_ID = LOCKS.SCHEMA_INIT;
-  // Fassung dieses Deployments. Der postinstall-Hook (scripts/bump-version.js)
-  // setzt sie bei jeder Installation neu — sie ändert sich also genau dann,
-  // wenn auch neue Migrationen dazugekommen sein können.
-  // Ausführlich: docs/begruendungen/db/database.ts.md#initschemaonce-appversion
-  let appVersion = 'unknown';
-  try {
-    appVersion = JSON.parse(fs.readFileSync(path.join(APP_ROOT, 'package.json'), 'utf8')).version || 'unknown';
-  } catch (_) { /* Vermerk bleibt 'unknown' — er steuert nichts, siehe unten. */ }
-  // Blockierender Advisory-Lock auf einer DEDIZIERTEN Verbindung: So führt im
-  // Cluster immer nur EIN Worker die Schema-Migration gleichzeitig aus. Andere
-  // Worker warten hier, bis der Lock frei ist, und rufen initSchema danach als
-  // No-op auf (CREATE TABLE/INDEX IF NOT EXISTS finden alles vor).
-  // Ausführlich: docs/begruendungen/db/database.ts.md#initschemaonce-client
   const client = await pool.connect();
   try {
     await client.query(`SELECT pg_advisory_lock(${LOCK_ID})`);
-
-    // initSchema() ist der ERSTSTART, nicht der Weg fuer Aenderungen
-    //  1. UNWAHR: appVersion war immer 'unknown' (siehe oben), der Vergleich
-    //     also immer erfuellt. initSchema() lief seit Einfuehrung des Vermerks
-    //     auf jeder bestehenden Datenbank NIE wieder — unabhaengig von Updates.
-    // Ausführlich: docs/begruendungen/db/database.ts.md#initschemaonce
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS schema_meta (
-        id              INTEGER PRIMARY KEY DEFAULT 1,
-        applied_version TEXT NOT NULL,
-        applied_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        CONSTRAINT schema_meta_single_row CHECK (id = 1)
-      )`);
-
-    const vermerk = await client.query('SELECT applied_version FROM schema_meta WHERE id = 1');
-    // rowCount ist bei pg für Nicht-SELECT null — hier immer eine Zahl, aber
-    // der Typ weiss das nicht.
-    const schonAngelegt = (vermerk.rowCount ?? 0) > 0;
-    const erzwungen = process.env.FORCE_SCHEMA_INIT === '1';
-
-    if (schonAngelegt && !erzwungen) {
-      // Kurze Meldung statt des kompletten Migrationsprotokolls je Worker.
-      console.log(`✅ Schema angelegt (${vermerk.rows[0].applied_version}) — nur Migrationen`);
-    } else {
-      if (erzwungen && schonAngelegt) {
-        console.warn('⚠️  FORCE_SCHEMA_INIT=1 — initSchema() laeuft auf einer bestehenden ' +
-          'Datenbank. Spalten, die Migrationen geloescht haben, entstehen kurz neu und ' +
-          'werden danach wieder entfernt. Daten fuellt es nur dort, wo sie fehlen.');
-      }
-      _geschluckt = [];
-      await initSchema();
-      // Nur vermerken, wenn NICHTS geschluckt wurde
-      // Die Begruendung steht bei schlucke(). Kurz: Hier wurde die Fassung
-      // bedingungslos vermerkt, und damit wurde ein einmaliger Fehlschlag zu
-      // einem dauerhaften Zustand — initSchema() laeuft ja nur EINMAL, beim …
-      // Ausführlich: docs/begruendungen/db/database.ts.md#initschemaonce-2
-      if (_geschluckt.length) {
-        console.error(`⚠️  ${_geschluckt.length} Schema-Schritt(e) fehlgeschlagen — Fassung ${appVersion} NICHT vermerkt, der naechste Start versucht es erneut:`);
-        for (const zeile of _geschluckt) console.error(`    ${zeile}`);
-      } else {
-        await client.query(`
-          INSERT INTO schema_meta (id, applied_version, applied_at) VALUES (1, $1, NOW())
-          ON CONFLICT (id) DO UPDATE SET applied_version = $1, applied_at = NOW()`,
-          [appVersion]);
-      }
-    }
-
-    // Nummerierte Migrationen — laufen IMMER, auch wenn initSchema()
-    // übersprungen wurde.
-    // Ausführlich: docs/begruendungen/db/database.ts.md#applied
-
-    const applied = await runMigrations(client, { sichern: schonAngelegt });
+    const neu = await initSchema();
+    // Vor offenen Migrationen eine Kopie der Nutzerdaten — nicht bei einer
+    // eben angelegten, leeren Datenbank.
+    const applied = await runMigrations(client, { sichern: !neu });
     if (applied.length) console.log(`✅ ${applied.length} Migration(en) angewandt`);
-    if (erzwungen && schonAngelegt) await abgeloestesEntfernen(client);
+    else if (!neu) console.log('✅ Schema aktuell — keine offenen Migrationen');
 
     // ── Bild-Hilfsdienste: NACH den Migrationen, in JEDEM Arbeitsprozess ────
     //
@@ -756,9 +351,9 @@ async function initSchemaOnce() {
     // in dem einen Worker, der gerade migriert — genau der Fehler, der drei
     // Viertel aller Notizen verschwinden liess.
     await initImageMisses()
-      .catch(schlucke('image_misses'));
+      .catch(logAndContinue('db:image_misses'));
     await initImageQueue()
-      .catch(schlucke('image_wanted'));
+      .catch(logAndContinue('db:image_wanted'));
   } finally {
     await client.query(`SELECT pg_advisory_unlock(${LOCK_ID})`).catch(() => {});
     client.release();

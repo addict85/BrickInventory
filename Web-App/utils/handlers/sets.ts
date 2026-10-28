@@ -1,5 +1,5 @@
 import { resolveOne } from '../bricklinkLink';
-import { inKontowaehrung } from '../acquisitions';
+import { inKontowaehrung, kontowaehrungJoin } from '../acquisitions';
 import { meldeUndWeiter } from '../httpError';
 import { fuerSet } from '../preisvergleich';
 import * as db from '../../db/database';
@@ -127,7 +127,7 @@ async function getSets(userId: Blickfeld, query: any = {}) {
           -- Liste verschwaende — lieber ohne Namen als unsichtbar.
           LEFT JOIN set_catalog c ON c.set_number = s.set_number
           LEFT JOIN storage_locations lo ON lo.id = s.storage_id
-          ${mengeJoin('s')}
+          ${mengeJoin('s', 'sm', '= ANY($1)')}
          WHERE s.user_id = ANY($1)
          GROUP BY s.set_number) s`
     // Auch ohne Haushalt eine Unterabfrage, und zwar NUR wegen des Lagerorts:
@@ -144,7 +144,7 @@ async function getSets(userId: Blickfeld, query: any = {}) {
           FROM sets s
           LEFT JOIN set_catalog c ON c.set_number = s.set_number
           LEFT JOIN storage_locations lo ON lo.id = s.storage_id
-          ${mengeJoin('s')}) s`;
+          ${mengeJoin('s', 'sm', '= ANY($1)')}) s`;
   const SET_OWNER_COL = uids.length > 1 ? ', s.owner_ids' : '';
   // Ohne Gruppierung filtert die WHERE-Klausel wie bisher; mit Gruppierung hat
   // die Unterabfrage bereits gefiltert.
@@ -204,8 +204,8 @@ async function getSets(userId: Blickfeld, query: any = {}) {
                                                        AS avg_purchase_price,
                COUNT(*)                                AS acq_count,
                COUNT(*) FILTER (WHERE condition = 'U') AS used_count
-        FROM set_acquisitions
-        WHERE user_id = ANY($1)
+        FROM set_acquisitions ${kontowaehrungJoin('set_acquisitions')}
+        WHERE set_acquisitions.user_id = ANY($1)
         GROUP BY set_number
       ) a ON a.set_number = s.set_number
       WHERE ${whereSql} ORDER BY ${orderSql}${limitSql}`, listParams),
@@ -314,7 +314,7 @@ async function getSetConditionAggregate(userId: Blickfeld, setNumber: string) {
     " SUM(purchase_price * quantity) FILTER (WHERE purchase_price IS NOT NULL)::numeric" +
     "   / NULLIF(SUM(quantity) FILTER (WHERE purchase_price IS NOT NULL), 0) AS avg_purchase_price" +
     " FROM set_acquisitions WHERE user_id = ANY($1) AND set_number=$2",
-    [uids, setNumber]).catch(() => null);
+    [uids, setNumber]);
   const acqCount  = parseInt(acq?.acq_count) || 0;
   const usedCount = parseInt(acq?.used_count) || 0;
   return {

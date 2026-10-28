@@ -1,4 +1,8 @@
 /**
+ * Seit db/basis.sql gibt es den Stand VOR dieser Migration nicht mehr: Die
+ * Fälle zu Riegel, Nachtrag und Zwischenstand sind entfallen. Geprüft werden
+ * der Endstand und die Lesewege.
+ *
  * Die BrickLink-Nummern stehen in EINER Zuordnungstabelle.
  *
  * ── Marcos Vorgabe ──────────────────────────────────────────────────────────
@@ -92,28 +96,8 @@ test('nach der ganzen Kette stehen die Nummern nur in bl_zuordnung',
   await db.run('CREATE SCHEMA public');
   await db.initSchema();
 
-  // ── Zwischenstand: der Selbstnachweis ────────────────────────────────────
-  //
-  // VOR den Migrationen müssen die drei Spalten und rb_bl_mapping da sein, und
-  // das ist keine Formalie: Der Nachtrag in 0037 LIEST alle vier, und sein
-  // Riegel prüft danach, dass keine Nummer verloren geht. Fehlte eine in
-  // db/schema.sql, bräche die Kette beim ersten Start einer frischen
-  // Installation ab — und Migration 0015 setzt zusätzlich einen Index auf
-  // parts.bl_part_number.
-  //
-  // Ohne diese Zusicherung sähe die Prüfung unten auch dann grün aus, wenn es
-  // die Spalten nie gegeben hätte — und bewiese nichts.
-  assert.ok((await spaltenVon('parts')).includes('bl_part_number'),
-    'parts.bl_part_number fehlt schon vor den Migrationen — dann hat der Nachtrag ' +
-    'in 0037 nichts zu lesen, und Migration 0015 bricht an ihrem Index ab.');
-  assert.ok((await spaltenVon('set_parts_catalog')).includes('bl_part_number'),
-    'set_parts_catalog.bl_part_number fehlt schon vor den Migrationen');
-  assert.ok((await spaltenVon('minifigs')).includes('bl_fig_number'),
-    'minifigs.bl_fig_number fehlt schon vor den Migrationen');
-  assert.ok(await tabelleDa('rb_bl_mapping'),
-    'rb_bl_mapping fehlt schon vor den Migrationen — sie ist die erste und ' +
-    'verlässlichste Quelle des Nachtrags');
-
+  // Den Vorstand vor den Migrationen gibt es nicht mehr: Eine leere
+  // Datenbank bekommt db/basis.sql. Geprüft wird der Endstand.
   const client = await db.pool.connect();
   try { await _req('db/migrate.js').runMigrations(client); } finally { client.release(); }
 
@@ -154,154 +138,6 @@ test('nach der ganzen Kette stehen die Nummern nur in bl_zuordnung',
     `SELECT indexname FROM pg_indexes WHERE tablename='bl_zuordnung'`)).map(r => r.indexname);
   assert.ok(idx.includes('idx_bl_zuordnung_bl'),
     `idx_bl_zuordnung_bl fehlt — gefunden: ${idx.join(', ')}`);
-});
-
-test('Migration 0037 trägt alle vier Quellen zusammen und löscht nur dann',
-  { concurrency: 1 }, async (t) => {
-  if (!(await dbDa(t))) return;
-
-  const skript = fs.readFileSync(DATEI, 'utf8');
-  const nachtrag = skript.slice(skript.indexOf('DO $nachtrag$'),
-                               skript.indexOf('END $nachtrag$;') + 15);
-  const riegel   = skript.slice(skript.indexOf('DO $pruefung$'),
-                               skript.indexOf('END $pruefung$;') + 15);
-  // Vier Quellen im Nachtrag, nicht drei: Die Zuordnung selbst zuerst.
-  for (const quelle of ['FROM rb_bl_mapping', 'FROM set_parts_catalog',
-                        'FROM parts', 'FROM minifigs']) {
-    assert.ok(nachtrag.includes(quelle),
-      `Der Nachtrag liest ${quelle} nicht mehr — diese Nummern gingen verloren`);
-  }
-  assert.match(riegel, /RAISE EXCEPTION '% Teile wuerden ihre BrickLink-Nummer verlieren/,
-    'Der Riegel prüft nicht mehr auf verlorene Teilenummern');
-  assert.match(riegel, /RAISE EXCEPTION '% Figuren wuerden ihre BrickLink-Nummer verlieren/,
-    'Der Riegel prüft nicht mehr auf verlorene Figurennummern');
-  assert.match(riegel, /widersprechen sich die Quellen/,
-    'Der Riegel prüft nicht mehr auf Widersprüche');
-  assert.match(riegel, /Zeilen aus rb_bl_mapping sind nicht uebernommen/,
-    'Der Riegel prüft nicht mehr, dass die alte Tabelle vollständig übernommen ist');
-  assert.ok(skript.indexOf('DO $nachtrag$') < skript.indexOf('DO $pruefung$'),
-    'Der Riegel muss NACH dem Nachtrag stehen, sonst prüft er die alte Lage');
-
-  /**
-   * Frische Datenbank, alle Migrationen VOR 0037, Daten in allen vier Quellen,
-   * dann das übergebene Skript.
-   *
-   * @param sql     das auszuführende Skript
-   * @param streit  true: ein zweites Konto gibt derselben Figur eine ANDERE
-   *                BrickLink-Nummer
-   * @returns {Promise<string|null>} Fehlermeldung von Postgres, sonst null
-   */
-  const lauf = async (sql, streit = false) => {
-    await db.run('DROP SCHEMA public CASCADE');
-    await db.run('CREATE SCHEMA public');
-    await db.initSchema();
-    const c = await db.pool.connect();
-    try {
-      await c.query(`CREATE TABLE IF NOT EXISTS schema_migrations (
-        name TEXT PRIMARY KEY, applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`);
-      for (const f of fs.readdirSync(MIG_DIR).filter(x => x.endsWith('.sql')).sort()) {
-        if (f.startsWith('0037')) break;
-        await c.query(fs.readFileSync(path.join(MIG_DIR, f), 'utf8'));
-        await c.query('INSERT INTO schema_migrations (name) VALUES ($1)', [f]);
-      }
-      await c.query(`INSERT INTO users (username,password_hash) VALUES ('blp','x'),('blp2','x')`);
-      // Quelle 1: die Zuordnung selbst — eine echte Nummer und eine Notiz
-      // „keine abweichende" in ihrer alten Schreibweise (bl == rb).
-      await c.query(`INSERT INTO rb_bl_mapping (part_num, bl_part_num)
-                     VALUES ('3001','3001a'), ('3002','3002')`);
-      // Quelle 2: der Set-Teile-Katalog
-      await c.query(`INSERT INTO set_catalog (set_number, name) VALUES ('75192-1','Falcon')`);
-      await c.query(`INSERT INTO set_parts_catalog (set_number,part_number,color_id,bl_part_number,quantity)
-                     VALUES ('75192-1','3003',4,'3003b',5), ('75192-1','3004',1,'3004',2)`);
-      // Quelle 3: eine Bestandszeile mit eigener Nummer
-      await c.query(`INSERT INTO sets (user_id,set_number)
-                     SELECT id,'75192-1' FROM users WHERE username='blp'`);
-      await c.query(`INSERT INTO set_acquisitions (user_id,set_number,quantity)
-                     SELECT id,'75192-1',1 FROM users WHERE username='blp'`);
-      await c.query(`INSERT INTO parts (user_id,set_number,part_number,color_id,quantity,source,bl_part_number)
-                     SELECT id,'75192-1','3005',7,3,'set','3005c' FROM users WHERE username='blp'`);
-      // Quelle 4: zwei Figuren, eine mit abweichender Nummer
-      await c.query(`INSERT INTO minifigs (user_id,fig_number,quantity,source,bl_fig_number)
-                     SELECT id,'fig-001',1,'manual','sw0001' FROM users WHERE username='blp'`);
-      await c.query(`INSERT INTO minifigs (user_id,fig_number,quantity,source,bl_fig_number)
-                     SELECT id,'fig-002',1,'manual','fig-002' FROM users WHERE username='blp'`);
-      if (streit) {
-        await c.query(`INSERT INTO minifigs (user_id,fig_number,quantity,source,bl_fig_number)
-                       SELECT id,'fig-001',1,'manual','sw0001b' FROM users WHERE username='blp2'`);
-      }
-      await c.query('BEGIN');
-      try { await c.query(sql); await c.query('COMMIT'); return null; }
-      catch (e) { await c.query('ROLLBACK').catch(() => {}); return e.message; }
-    } finally { c.release(); }
-  };
-
-  const zuordnung = async () => (await db.all(
-    `SELECT art, rb_id, bl_id FROM bl_zuordnung ORDER BY art, rb_id`))
-    .map(r => `${r.art} ${r.rb_id} ${r.bl_id === null ? '-' : r.bl_id}`);
-
-  // ── Lauf 1: die ganze Datei ──────────────────────────────────────────────
-  assert.equal(await lauf(skript), null,
-    'Die Migration muss auf dieser Lage durchlaufen');
-  assert.deepEqual(await zuordnung(), [
-    'fig fig-001 sw0001',   // abweichende Nummer, von Hand eingegeben
-    'fig fig-002 -',        // „heisst genauso" → leer, EINE Schreibweise
-    'part 3001 3001a',      // aus der Zuordnung
-    'part 3002 -',          // aus der Zuordnung, Notiz bl == rb → leer
-    'part 3003 3003b',      // aus dem Set-Teile-Katalog
-    'part 3004 -',          // dort bl == rb → leer
-    'part 3005 3005c',      // aus der Bestandszeile
-  ], 'Der Nachtrag hat nicht alle vier Quellen zusammengetragen, oder „keine ' +
-     'abweichende Nummer" steht in zwei Schreibweisen (einmal leer, einmal ' +
-     'als dieselbe Nummer)');
-
-  // ── Lauf 2: ohne Schritt 1 — der Riegel muss greifen ─────────────────────
-  const ohneNachtrag = skript.replace(nachtrag, '');
-  assert.notEqual(ohneNachtrag, skript, 'Schritt 1 wurde nicht herausgeschnitten');
-  const meldung = await lauf(ohneNachtrag);
-  assert.match(String(meldung), /Zeilen aus rb_bl_mapping sind nicht uebernommen/,
-    `Der Riegel hat nicht gegriffen. Postgres sagte: ${meldung}`);
-  assert.ok((await spaltenVon('parts')).includes('bl_part_number'),
-    'parts.bl_part_number ist trotz Abbruch weg — dann rollt die Transaktion nicht zurück');
-  assert.ok(await tabelleDa('rb_bl_mapping'),
-    'rb_bl_mapping ist trotz Abbruch weg');
-
-  // ── Lauf 3: GEGENPROBE, ohne Schritt 1 UND ohne Schritt 2 ────────────────
-  //
-  // Der Kern. Lauf 2 zeigt nur, dass es knallt; erst Lauf 3 zeigt, dass der
-  // RIEGEL es ist, der den Verlust verhindert.
-  const ohneBeides = ohneNachtrag.replace(riegel, '');
-  assert.notEqual(ohneBeides, ohneNachtrag, 'Schritt 2 wurde nicht herausgeschnitten');
-  assert.equal(await lauf(ohneBeides), null,
-    'Ohne den Riegel muss die Datei durchlaufen — sonst beweist Lauf 2 nichts');
-  assert.deepEqual(await zuordnung(), [],
-    'Ohne Schritt 1 darf die Zuordnung LEER sein — sonst trägt etwas anderes ' +
-    'nach und Lauf 2 beweist nichts');
-  assert.ok(!(await spaltenVon('parts')).includes('bl_part_number'),
-    'Ohne Riegel müssen die Spalten gelöscht sein — sonst beweist Lauf 2 nichts');
-  assert.ok(!(await tabelleDa('rb_bl_mapping')),
-    'Ohne Riegel muss auch die alte Tabelle weg sein');
-
-  // ── Lauf 4: der WIDERSPRUCH ──────────────────────────────────────────────
-  //
-  // Zwei Konten haben derselben Figur verschiedene BrickLink-Nummern gegeben.
-  // Bei den Figuren kann das wirklich vorkommen: Die Nummer wird dort von Hand
-  // eingegeben (routes/minifigs.ts), und zwar je Konto. Genau hier darf die
-  // Migration nicht eine der beiden gewinnen lassen.
-  const streitMeldung = await lauf(skript, true);
-  assert.match(String(streitMeldung), /widersprechen sich die Quellen/,
-    `Der Widerspruchs-Riegel hat nicht gegriffen. Postgres sagte: ${streitMeldung}`);
-  assert.match(String(streitMeldung), /fig fig-001: sw0001 oder sw0001b|fig fig-001: sw0001b oder sw0001/,
-    'Die Meldung nennt nicht BEIDE Nummern — dann kann der Mensch nicht entscheiden');
-  assert.ok((await spaltenVon('minifigs')).includes('bl_fig_number'),
-    'minifigs.bl_fig_number ist trotz Abbruch weg');
-
-  // ── Und die GEGENPROBE zum Widerspruch ───────────────────────────────────
-  //
-  // Dieselbe Lage ohne Widerspruch läuft durch. Ohne diesen Lauf könnte der
-  // Riegel einfach immer abbrechen, sobald zwei Konten dieselbe Figur halten.
-  assert.equal(await lauf(skript, false), null,
-    'Ohne Widerspruch muss die Migration durchlaufen — sonst bricht der Riegel ' +
-    'nicht beim Widerspruch ab, sondern immer');
 });
 
 test('die Lesewege liefern die BrickLink-Nummer aus der Zuordnung',

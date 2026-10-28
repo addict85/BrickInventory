@@ -123,9 +123,9 @@ for (const datei of dateien) {
 // grün, als in einer Gegenprobe „CREATE TABLE" zu „CREATE TABEL" verstümmelt
 // wurde: „CREATE INDEX" traf ja weiterhin. Ein Selbstbeweis, den eine kaputte
 // Hälfte besteht, beweist die andere Hälfte nicht.
-const bekannt = ohneKommentare(
-  fs.readFileSync(path.join(ROOT, 'db', 'database.ts'), 'utf8') + '\n' +
-  fs.readFileSync(path.join(ROOT, 'db', 'schema.sql'), 'utf8'));
+const migVerz = path.join(ROOT, 'db', 'migrations');
+const bekannt = ohneKommentare(fs.readdirSync(migVerz).filter(f => f.endsWith('.sql'))
+  .map(f => fs.readFileSync(path.join(migVerz, f), 'utf8')).join('\n'));
 
 for (const teil of [/\bCREATE\s+TABLE\b/i, /\bCREATE\s+(?:UNIQUE\s+)?INDEX\b/i, /\bALTER\s+TABLE\b/i]) {
   if (!teil.test(bekannt)) {
@@ -139,7 +139,7 @@ if (treffer.length) {
   console.error(`ROT — Schema-Anweisungen im Anfragepfad (${treffer.length}):`);
   for (const t of treffer) console.error('  ' + t);
   console.error('');
-  console.error('Das Schema gehört nach db/schema.sql, db/migrations/ oder db/database.ts —');
+  console.error('Das Schema gehört nach db/migrations/ —');
   console.error('nicht in eine Route.');
   console.error('DDL im Anfragepfad kostet je Anfrage einen Katalog-Zugriff und verteilt');
   console.error('das Schema über die Codebasis. Und eine zweite Fassung fällt nicht auf,');
@@ -171,12 +171,7 @@ if (treffer.length) {
  * Absichtlich doppelt, mit Grund. Die Liste darf nur KÜRZER werden.
  * @type {Map<string, string>}
  */
-const DOPPELT_ERLAUBT = new Map([
-  // runMigrations() legt seine eigene Buchführung an und kann sich nicht auf
-  // schema.sql verlassen: initSchema() wird übersprungen, wenn schema_meta
-  // bereits die aktuelle App-Version trägt — die Migrationen laufen trotzdem.
-  ['schema_migrations', 'db/migrate.ts führt seine Buchführung selbst, auch wenn initSchema() übersprungen wird'],
-]);
+const DOPPELT_ERLAUBT = new Map([]);
 
 /** @type {string[]} */
 const alleQuellen = [];
@@ -191,9 +186,9 @@ function sammleAlle(verz, raus) {
   for (const eintrag of fs.readdirSync(verz, { withFileTypes: true })) {
     const p = path.join(verz, eintrag.name);
     if (eintrag.isDirectory()) sammleAlle(p, raus);
-    // schema-stand.sql ist das erzeugte Abbild zum Lesen, keine Quelle —
-    // es nennt jede Tabelle ein zweites Mal, und zwar mit Absicht.
-    else if (/\.(ts|js|sql)$/.test(eintrag.name) && eintrag.name !== 'schema-stand.sql') raus.push(p);
+    // schema-stand.sql und basis.sql sind erzeugte Abbilder, keine Quellen —
+    // sie nennen jede Tabelle ein zweites Mal, und zwar mit Absicht.
+    else if (/\.(ts|js|sql)$/.test(eintrag.name) && !['schema-stand.sql', 'basis.sql'].includes(eintrag.name)) raus.push(p);
   }
   return raus;
 }
@@ -224,8 +219,8 @@ for (const datei of alleQuellen) {
 
 // Selbstbeweis: Eine bekannte Tabelle MUSS gefunden werden. Sonst ist das
 // Muster veraltet und "nichts doppelt" bedeutet nichts.
-if (!angelegt.has('rb_sets')) {
-  console.error('ROT — rb_sets wird nirgends angelegt gefunden. Das Muster ist veraltet;');
+if (!angelegt.has('price_alerts')) {
+  console.error('ROT — price_alerts wird nirgends angelegt gefunden. Das Muster ist veraltet;');
   console.error('ein leeres Ergebnis unten waere dann wertlos.');
   process.exit(1);
 }

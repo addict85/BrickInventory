@@ -20,6 +20,7 @@
  *   D  (28.10.) :focus-visible wieder 2px in var(--b600) → rot: „Fokusring hell: 2px“
  *   F  (28.10.) .cond-new wieder mit var(--g600) → rot: „hell: Etikett Neu 3:1“;
  *      .besitzer-badge mit --b600 → rot: „hell: Etikett Besitzer 4.24:1“
+ *   G  (28.10.) .pnl-pos wieder #16a34a → rot: „hell: Gewinn 3.15:1“
  *   E  (28.10.) word-spacing am body entfernt, ebenso word-spacing:inherit an
  *      button → rot: „Wortabstand 0.17 em“
  */
@@ -48,6 +49,7 @@ function testseite() {
   <div class="lerr" style="display:block" data-kontrast="Anmeldefehler">Falsches Passwort</div>
   <button class="btn bd" data-kontrast="Löschknopf">Löschen</button>
   <span class="pnl-neg" data-kontrast="Verlust">-4.0%</span>
+  <span class="pnl-pos" data-kontrast="hell: Gewinn">+8.5%</span>
   <span class="cond-badge cond-new" data-kontrast="hell: Etikett Neu">Neu</span>
   <span class="cond-badge cond-used" data-kontrast="hell: Etikett Gebraucht">Gebraucht</span>
   <span class="cond-badge besitzer-badge" data-kontrast="hell: Etikett Besitzer">emily</span>
@@ -67,6 +69,7 @@ function testseite() {
   <button class="btn bp" data-kontrast="werkbank: Primärknopf">Speichern</button>
   <button class="period-btn active" data-kontrast="werkbank: Zeitraum">Woche</button>
   <span class="cond-badge cond-new" data-kontrast="werkbank: Etikett Neu">Neu</span>
+  <span class="pnl-pos" data-kontrast="werkbank: Gewinn">+8.5%</span>
   <span class="cond-badge besitzer-badge" data-kontrast="werkbank: Etikett Besitzer">emily</span>
   <span class="admin-hinweis" data-kontrast="werkbank: Admin-Hinweis">(Admin)</span>
 </section>

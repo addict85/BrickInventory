@@ -304,7 +304,7 @@ test('ein manuell erfasstes Teil bekommt Marktpreis und Erfassung', () => {
   // sie muss also ueber beide Dateien gehen. Nur eine zu lesen hiesse, die
   // Haelfte der Aufrufstellen nicht anzusehen.
   const src = fs.readFileSync(path.join(ROOT, 'utils', 'marketPrice.ts'), 'utf8')
-            + '\n' + fs.readFileSync(path.join(ROOT, 'routes', 'parts.ts'), 'utf8');
+            + '\n' + fs.readFileSync(path.join(ROOT, 'utils', 'manuelleTeile.ts'), 'utf8');
   const fn = src.slice(src.indexOf('async function addManualPart'),
                        src.indexOf('async function updateManualPart'));
 
@@ -385,7 +385,7 @@ test('der Minifiguren-Marktpreis fragt BrickLink auch ohne separate BL-Nummer', 
 
   // Reihenfolge: BrickLink zuerst, Teile-Schätzung nur als Rückfall
   const iLoop = fn.indexOf('for (const num of');
-  const iEst  = fn.indexOf('estimateFigPriceFromParts');
+  const iEst  = fn.indexOf('schaetzeFigurenpreis');
   assert.ok(iLoop > 0 && iEst > iLoop,
     'Die Teile-Schätzung gehört hinter den BrickLink-Abruf');
 
@@ -394,7 +394,7 @@ test('der Minifiguren-Marktpreis fragt BrickLink auch ohne separate BL-Nummer', 
   // sie fest auf „Neu", bekam eine gebraucht erfasste Figur den Neupreis
   // ihrer Teile. Für Figuren MIT Nummer war der Zustand längst berücksichtigt;
   // genau der Fall ohne Nummer fiel durch.
-  assert.match(fn, /estimateFigPriceFromParts\(figNumber, userId, effCond\)/,
+  assert.match(fn, /schaetzeFigurenpreis\(figNumber, userId, effCond\)/,
     'Der ermittelte Zustand muss in die Schätzung');
 
   const est = src.slice(src.indexOf('async function estimateFigPriceFromParts'),
@@ -411,7 +411,7 @@ test('der Minifiguren-Marktpreis fragt BrickLink auch ohne separate BL-Nummer', 
   // viewerId statt uid: Seit der Haushaltssicht sind „wessen Einstellungen"
   // und „wessen Daten" zwei Grössen. Die Schätzung braucht die EINSTELLUNGEN
   // (Währung) des fragenden Kontos — und weiterhin den Zustand.
-  assert.match(fc, /estimateFigPriceFromParts\(fig\.fig_number, viewerId, cond\)/,
+  assert.match(fc, /schaetzeFigurenpreis\(fig\.fig_number, viewerId, cond\)/,
     'Die Minifiguren-Bewertung muss den Zustand mitgeben');
 });
 
@@ -428,7 +428,7 @@ test('die Teile-Schätzung landet in Cache und Verlauf', () => {
   // Schaetzung steht seit dem Schichtumbau in utils/marketPrice.ts, der
   // Erfassungsweg (recordAcquisitionForDay) ist in der Route geblieben.
   const src = fs.readFileSync(path.join(ROOT, 'utils', 'marketPrice.ts'), 'utf8')
-            + '\n' + fs.readFileSync(path.join(ROOT, 'routes', 'minifigs.ts'), 'utf8');
+            + '\n' + fs.readFileSync(path.join(ROOT, 'utils', 'manuelleFiguren.ts'), 'utf8');
   const est = src.slice(src.indexOf('async function estimateFigPriceFromParts'),
                         src.indexOf('async function getCurrentFigMarketPrice'));
 
@@ -437,9 +437,9 @@ test('die Teile-Schätzung landet in Cache und Verlauf', () => {
   assert.match(est, /INSERT INTO minifig_price_history[\s\S]{0,200}ON CONFLICT DO NOTHING/,
     'Ohne Verlaufspunkt bleibt das Diagramm für immer leer');
   // Je ZUSTAND ein Eintrag — sonst stünde derselbe Wert in beiden Zeilen.
-  assert.match(est, /VALUES \(\$1,\$2,\$3,\$4,\$4\)/,
+  assert.match(est, /VALUES \(\$1,\$2,\$3,\$4,\$4,TRUE,\$5\)/,
     'fig_number, condition, currency gehören in den Schlüssel');
-  assert.match(est, /\[figNumber, cond, currency, total\]/,
+  assert.match(est, /\[figNumber, cond, currency, total, abdeckung\]/,
     'Geschrieben wird der geschätzte Wert im angefragten Zustand');
   // Nur mit echtem Preis: Ein Nullpunkt sähe im Diagramm aus wie ein Kurssturz.
   assert.match(est, /if \(priced === 0\) return null;/,
@@ -455,7 +455,7 @@ test('auch manuelle Minifiguren legen bei jeder Erfassung eine Zeile an', () => 
   // Gleicher früher Ausstieg wie bei den Teilen: `if (existing) { … return }`
   // beendete den Pfad, bevor eine Erfassung entstand. Menge stieg, aber kein
   // Kaufpreis und kein abweichendes Erfassungsdatum.
-  const src = fs.readFileSync(path.join(ROOT, 'routes', 'minifigs.ts'), 'utf8');
+  const src = fs.readFileSync(path.join(ROOT, 'utils', 'manuelleFiguren.ts'), 'utf8');
   const fn = src.slice(src.indexOf('async function addManualFig'),
                        src.indexOf('async function addManualFig') + 6000);
 
@@ -528,7 +528,7 @@ test('neue Sets holen den richtigen Zustand, nicht den Standard', () => {
   // Und getCurrentMarketPrice muss ihn beim Anlegen mitgeben — genau an der
   // Stelle, wo die Zeile noch nicht existiert.
   const preis = fs.readFileSync(path.join(ROOT, 'utils', 'marketPrice.ts'), 'utf8');
-  assert.match(preis, /refreshPriceForSet\(setNumber, userId, condition\)/,
+  assert.match(preis, /preisFuerSetHolen\(setNumber, userId, condition\)/,
     'getCurrentMarketPrice muss den angefragten Zustand als Hinweis übergeben');
 });
 

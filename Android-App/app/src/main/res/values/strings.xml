@@ -126,6 +126,7 @@
     <string name="gallery_delete_text">%1$s and all parts will be removed.</string>
     <string name="gallery_pieces_suffix"> parts</string>
     <string name="gallery_scan_barcode">Scan barcode</string>
+    <string name="offline_stand">Offline – data as of %1$s</string>
     <string name="gallery_add_set">Add set</string>
     <string name="gallery_add_set_title">Add set</string>
     <string name="gallery_set_number">Set number</string>
@@ -386,6 +387,7 @@
     <string name="pruef_hinweis">Adding then happens in the background — just a moment before the next scan.</string>
     <string name="vm_barcode_no_set">No set found for: %1$s</string>
     <string name="vm_set_added">%1$s added!</string>
+    <string name="vm_set_added_no_catalog">Set %1$s saved — name and image will follow once the catalogue is reachable.</string>
     <string name="vm_error">Error: %1$s</string>
     <string name="vm_session_expired">Session expired — please log in again</string>
 

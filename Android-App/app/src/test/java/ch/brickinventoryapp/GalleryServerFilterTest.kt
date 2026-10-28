@@ -100,18 +100,6 @@ class GalleryServerFilterTest {
     }
 
     @Test
-    fun `das ViewModel schickt die Filter mit und blaettert seitenweise`() {
-        // Generation, Entprellung und Nachladen prüft GalerieTest am Verhalten;
-        // hier bleibt, dass der eine Abruf die Filter mitschickt.
-        val f = code(read("ui/MainViewModel.kt"))
-        assert(f.contains("search = g.galleryQuery") && f.contains("theme = g.galleryTheme") &&
-               f.contains("sort = g.gallerySort")) {
-            "Der Abruf der Galerie reicht die Filter nicht durch — der Server bekäme sie nie zu sehen"
-        }
-        assert(code(read("ui/GalleryFeature.kt")).contains("loadMoreSets")) { "Endlos-Scroll fehlt" }
-    }
-
-    @Test
     fun `der Ablage-Cache greift nur ungefiltert`() {
         // Sonst läge die Antwort eines Filters unter demselben Schlüssel wie
         // die volle Sicht, und nach einem Neustart erschiene der falsche

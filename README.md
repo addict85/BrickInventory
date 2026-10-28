@@ -145,6 +145,11 @@ Netz muss sich der Server dann ausweisen (er beweist, dass er den Token
 kennt, ohne ihn zu senden) — so geht der Token im fremden WLAN nicht an
 einen anderen Rechner, der sich `nas` nennt.
 
+Klartext im Heimnetz ist eine bewusste Entscheidung mit einer Grenze: Der
+Serverbeweis schützt vor einem falschen Server, nicht vor Mithören. Wer im
+selben WLAN den Verkehr mitliest, sieht Token und Daten. Wer das nicht
+hinnehmen will, richtet HTTPS ein.
+
 > **Screenshots der App fehlen hier noch.** Sie lassen sich nur auf einem Gerät
 > oder Emulator aufnehmen; in der Umgebung, in der dieses README entstanden
 > ist, war beides nicht verfügbar. Zum Ergänzen: Aufnahmen nach
@@ -163,9 +168,9 @@ Die neuste fertige APK liegt hier — **ein Klick, kein Zip, kein GitHub-Konto**
 
 Der Link bleibt über alle Builds derselbe; der
 [Android-Workflow](https://github.com/addict85/BrickInventory/actions/workflows/android.yml)
-ersetzt nur die Datei dahinter. Signiert wird, wenn die vier Keystore-Secrets
-hinterlegt sind — sonst entsteht ein unsigniertes APK, das sich nicht
-installieren lässt. Siehe [`Android-App/README.md`](Android-App/README.md).
+ersetzt nur die Datei dahinter. Signiert und veröffentlicht wird nur ein Build
+von `main` mit den vier Keystore-Secrets; andere Zweige ergeben ein
+unsigniertes APK, das nur als Artefakt des Laufs liegt. Siehe [`Android-App/README.md`](Android-App/README.md).
 
 ---
 
@@ -190,10 +195,10 @@ Invarianten der App stehen in
 
 Das vollständige Datenbankschema steht in
 [`Web-App/db/schema-stand.sql`](Web-App/db/schema-stand.sql) — erzeugt aus
-einer frischen Datenbank, zum Lesen. Es entsteht aus `db/schema.sql`,
-`db/database.ts` und `db/migrations/`; nach einer Migration mit
-`npm run build && npm run schema:stand` neu schreiben (der Schema-Test meldet
-es sonst).
+einer frischen Datenbank, zum Lesen. Eine neue Installation bekommt ihr
+Schema aus `db/basis.sql` und danach die jüngeren `db/migrations/`; nach einer
+Migration beide Dateien mit `npm run build && npm run schema:stand` neu
+schreiben (braucht `pg_dump`; der Schema-Test meldet einen veralteten Stand).
 
 ---
 

@@ -12,20 +12,27 @@ class RateLimiter {
   lastCall: number;
   queue: Array<() => void>;
   _scheduled: boolean;
+  takt: { api: string; abstandMs: number } | null;
 
-  constructor(maxRequests: number, windowMs: number) {
+  /**
+   * @param takt Name und Mindestabstand eines prozessübergreifenden Takts
+   *             (Tabelle api_takt). Ohne ihn drosselt die Instanz nur sich selbst.
+   */
+  constructor(maxRequests: number, windowMs: number, takt: { api: string; abstandMs: number } | null = null) {
     this.maxRequests = maxRequests;
     this.windowMs    = windowMs;
     this.lastCall    = 0;  // timestamp of last allowed call
     this.queue       = []; // pending {resolve} entries
     this._scheduled  = false;
+    this.takt        = takt;
   }
 
-  waitForSlot() {
-    return new Promise<void>(resolve => {
+  async waitForSlot() {
+    await new Promise<void>(resolve => {
       this.queue.push(resolve);
       this._schedule();
     });
+    if (this.takt) await warteAufTakt(this.takt.api, this.takt.abstandMs);
   }
 
   _schedule() {
@@ -49,6 +56,7 @@ class RateLimiter {
   // Call when a 429 is received — pauses queue for the specified duration
   throttle(waitMs: number) {
     this.lastCall = Date.now() + waitMs - this.windowMs;
+    if (this.takt) taktAussetzen(this.takt.api, waitMs);
     // Re-schedule in case queue is waiting
     if (!this._scheduled && this.queue.length) this._schedule();
   }
@@ -100,10 +108,50 @@ class DailyLimiter {
 // Primary limiter: CSV import, set info, image downloads (foreground)
 import { meldeUndWeiter } from './httpError';
 import { setGlobalSetting } from '../utils/settings';
+import * as db from '../db/database';
 
-const rebrickableLimiter = new RateLimiter(1, 1500);
+// Nach einem Datenbankfehler eine Minute lang ohne gemeinsamen Takt: Jeder
+// Aufruf liefe sonst erst in den Verbindungs-Timeout. Die eigene Drossel
+// bleibt in dieser Zeit wirksam.
+let taktGestoertBis = 0;
+
+/**
+ * Den nächsten freien Zeitpunkt der Schnittstelle reservieren und abwarten.
+ * Ein einziges UPDATE schiebt den Zeitpunkt weiter — zwei Prozesse bekommen so
+ * nie denselben Platz, ohne dass einer eine Sperre hält, während er wartet.
+ */
+async function warteAufTakt(api: string, abstandMs: number): Promise<void> {
+  if (Date.now() < taktGestoertBis) return;
+  try {
+    const r = await db.get(
+      `INSERT INTO api_takt (api, naechster) VALUES ($1, clock_timestamp() + make_interval(secs => $2 / 1000.0))
+       ON CONFLICT (api) DO UPDATE
+         SET naechster = GREATEST(api_takt.naechster, clock_timestamp()) + make_interval(secs => $2 / 1000.0)
+       RETURNING GREATEST(0, EXTRACT(EPOCH FROM (naechster - clock_timestamp())) * 1000 - $2) AS warte_ms`,
+      [api, abstandMs]);
+    const warte = Math.ceil(Number(r?.warte_ms) || 0);
+    if (warte > 0) await new Promise(res => setTimeout(res, warte));
+  } catch (e) {
+    taktGestoertBis = Date.now() + 60_000;
+    meldeUndWeiter('drossel:gemeinsamer-takt', e);
+  }
+}
+
+/** Ein 429 gilt für alle Prozesse: den gemeinsamen Zeitpunkt hinausschieben. */
+function taktAussetzen(api: string, waitMs: number) {
+  if (Date.now() < taktGestoertBis) return;
+  db.run(`UPDATE api_takt SET naechster = GREATEST(naechster, clock_timestamp() + make_interval(secs => $2 / 1000.0))
+           WHERE api = $1`, [api, waitMs])
+    .catch(e => meldeUndWeiter('drossel:takt-aussetzen', e));
+}
+
+// Rebrickable erlaubt im Mittel einen Aufruf je Sekunde — für ALLE Prozesse
+// zusammen. Die beiden Drosseln ordnen nur innerhalb des Prozesses; den
+// Abstand untereinander und zu den anderen Prozessen hält der gemeinsame Takt.
+const REBRICKABLE_TAKT = { api: 'rebrickable', abstandMs: 1000 };
+const rebrickableLimiter = new RateLimiter(1, 1500, REBRICKABLE_TAKT);
 // Secondary limiter: background enrichment jobs (parts catalog, BL IDs)
-const rebrickableBackgroundLimiter = new RateLimiter(1, 1500);
+const rebrickableBackgroundLimiter = new RateLimiter(1, 1500, REBRICKABLE_TAKT);
 // Tageskontingent Rebrickable. Nur der Rückfallwert, falls global_settings
 // nichts sagt — die wirksame Grenze steht in api_limit_rebrickable und wird bei
 // JEDEM Aufruf gelesen (getLimitForApi).
@@ -210,4 +258,4 @@ function parseThrottleWait(body: string) {
   return 5000; // default 5s
 }
 
-export { rebrickableLimiter, rebrickableBackgroundLimiter, consumeRebrickableDaily, rebrickableDailyStatus, cdnImageLimiter, RateLimiter, DailyLimiter, ConcurrentRateLimiter, parseThrottleWait, REBRICKABLE_DEFAULT_DAILY };
+export { warteAufTakt, rebrickableLimiter, rebrickableBackgroundLimiter, consumeRebrickableDaily, rebrickableDailyStatus, cdnImageLimiter, RateLimiter, DailyLimiter, ConcurrentRateLimiter, parseThrottleWait, REBRICKABLE_DEFAULT_DAILY };

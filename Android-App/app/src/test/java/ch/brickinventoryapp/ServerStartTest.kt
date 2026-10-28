@@ -41,11 +41,11 @@ class ServerStartTest {
         // richtige. Nur wenn er ANTWORTET und `ready` verneint, laeuft ein
         // Start. Ohne diese Trennung zeigte die App „Der Server startet" auch
         // bei einer falsch eingetippten Adresse.
-        val s = code(read("ui/SettingsFeature.kt"))
-        val ab = s.indexOf("fun MainViewModel.verfolgeServerstart(")
+        val s = code(read("ui/AppViewModel.kt"))
+        val ab = s.indexOf("fun verfolgeServerstart(")
         assert(ab > 0) { "verfolgeServerstart fehlt" }
         val rumpf = s.substring(ab, minOf(ab + 1400, s.length))
-        val fehlerzweig = rumpf.indexOf("is Result.Error ->")
+        val fehlerzweig = rumpf.indexOf("r !is Result.Success")
         assert(fehlerzweig > 0) { "Der Fehlerfall wird nicht behandelt" }
         val danach = rumpf.substring(fehlerzweig, minOf(fehlerzweig + 200, rumpf.length))
         assert(danach.contains("startupStatus = null")) {
@@ -56,10 +56,11 @@ class ServerStartTest {
 
     @Test
     fun `ist der Server fertig, hoert die Abfrage auf`() {
-        val s = code(read("ui/SettingsFeature.kt"))
-        val ab = s.indexOf("fun MainViewModel.verfolgeServerstart(")
+        val s = code(read("ui/AppViewModel.kt"))
+        val ab = s.indexOf("fun verfolgeServerstart(")
+        assert(ab > 0) { "verfolgeServerstart fehlt" }
         val rumpf = s.substring(ab, minOf(ab + 1400, s.length))
-        assert(rumpf.contains("if (r.data.ready)")) {
+        assert(rumpf.contains("r.data.ready)")) {
             "Die Schleife prueft nicht, ob der Server fertig ist — sie liefe ewig"
         }
     }

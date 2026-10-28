@@ -42,7 +42,7 @@ export async function loadConditionPrices(
        FROM price_cache
       WHERE set_number = ANY($1) AND condition IN ('N','U') AND currency_code = $2${ttlClause}`,
     params
-  ).catch(() => []);
+  );
 
   for (const r of rows) {
     const p = num(r.avg_price);
@@ -120,7 +120,7 @@ export async function getSetValue(
   // Ausführlich: docs/begruendungen/utils/setValue.ts.md#getsetvalue-acqs
   const acqs = await db.all(
     'SELECT quantity, condition FROM set_acquisitions WHERE user_id=$1 AND set_number=$2',
-    [userId, setNumber]).catch(() => []);
+    [userId, setNumber]);
   const prices = await loadConditionPrices([setNumber], currency);
   return valueSet(setNumber, acqs, prices, 'N', 1);
 }

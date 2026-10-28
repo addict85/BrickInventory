@@ -67,6 +67,8 @@ test('eine echte Währungsänderung stösst den Preis-Job an, ein No-op-Speicher
   // andere Testdateien Sets hinterlassen) lief diese Datei dadurch in den
   // 60-s-Timeout des Runners, einzeln aber grün. Testreihenfolge ist keine
   // Voraussetzung, auf die man sich verlassen darf.
+  // Erst die Erfassungen: Sie sperren das Löschen ihres Sets (Fremdschlüssel).
+  await db.run(`DELETE FROM set_acquisitions`);
   await db.run(`DELETE FROM sets`);
 
   const lastRun = () => priceJob.getJobStatus().lastRun;

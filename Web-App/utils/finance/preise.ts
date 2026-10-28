@@ -102,6 +102,16 @@ async function checkAndIncrementRateLimit(apiName: ApiName, _defaultLimit = 4000
   });
 }
 
+/**
+ * Ist vom Tageskontingent noch etwas übrig? Zählt NICHT — das tut
+ * bricklinkRequest() je HTTP-Aufruf. Die Aufrufer fragen vorher, damit ein
+ * erschöpftes Kontingent als solches gemeldet wird statt als Abruffehler.
+ */
+async function kontingentFrei(apiName: ApiName) {
+  const s = await getRateLimitStatus(apiName);
+  return { allowed: s.remaining > 0, limit: s.limit };
+}
+
 async function getLimitForApi(apiName: ApiName) {
   // Rückfallwerte, falls global_settings nichts sagt.
   //
@@ -245,7 +255,7 @@ async function fetchPrice(setNumber: string, condition: string, guideType: strin
     // preislos. Sonst wird er geholt: Ein älterer Preis dafür liegt oft vor
     // (die Detailansicht zeigt ihn), und ohne Abruf bliebe Finanzen leer.
     if (!cacheUsable(cachedFb, ttl)) {
-      const rl = await checkAndIncrementRateLimit('bricklink');
+      const rl = await kontingentFrei('bricklink');
       const fb = rl.allowed ? await tryFetch(fallbackCondition) : null;
       if (hatPreis(fb)) return { ...fb, condition_used: fallbackCondition, is_fallback: true };
     }
@@ -263,7 +273,7 @@ async function fetchPrice(setNumber: string, condition: string, guideType: strin
     } catch (e) { console.log(`  Price ${setNumber} cond=${cond} error: ${fehlertext(e)}`); return null; }
   }
 
-  const rl1 = await checkAndIncrementRateLimit('bricklink');
+  const rl1 = await kontingentFrei('bricklink');
   if (!rl1.allowed) throw new Error(`BrickLink Tageslimit erreicht (${rl1.limit} Aufrufe/Tag)`);
 
   const pd = await tryFetch(condition);
@@ -276,7 +286,7 @@ async function fetchPrice(setNumber: string, condition: string, guideType: strin
   if (hatPreis(cachedFallback))
     return { min_price: cachedFallback.min_price, avg_price: cachedFallback.avg_price, max_price: cachedFallback.max_price, qty_avg_price: cachedFallback.qty_avg_price, from_cache: true, condition_used: fallbackCondition, is_fallback: true };
 
-  const rl2 = await checkAndIncrementRateLimit('bricklink');
+  const rl2 = await kontingentFrei('bricklink');
   if (!rl2.allowed) { if (pd) return { ...pd, condition_used: condition }; throw new Error('BrickLink Tageslimit erreicht'); }
 
   const pd2 = await tryFetch(fallbackCondition);
@@ -422,15 +432,59 @@ async function ladeBlNummernVor(teilnummern: string[]): Promise<void> {
  * Funktion nur die FARBE; die Teilenummer nahm sie so, wie der Aufrufer sie …
  * Ausführlich: docs/begruendungen/utils/finance/preise.ts.md#fetchpartprice
  */
-async function fetchPartPrice(partNumber: string, rbColorId: number, condition: string, currency: string, ttlHours: Stunden) {
+/**
+ * Die frischen Cachezeilen vieler Teile in EINER Abfrage. Die Bewertung reicht
+ * sie an fetchPartPrice weiter; sonst fragte jedes Teil je Zustand einzeln.
+ * Schlüssel wie in fetchPartPrice: BrickLink-Nummer|BrickLink-Farbe|Zustand.
+ */
+async function ladeTeilepreiseVor(teile: { partNumber: string; rbColorId: number }[],
+                                  currency: string, ttlHours: Stunden): Promise<Map<string, any>> {
+  const ttl = Math.max(1, parseInt(String(ttlHours)));
+  const nummern: string[] = [], farben: number[] = [];
+  for (const t of teile) {
+    nummern.push(await resolveBlPartNumber(t.partNumber));
+    farben.push(Number(await resolveBlColorId(t.rbColorId)) || 0);
+  }
+  const vorrat = new Map<string, any>();
+  if (!nummern.length) return vorrat;
+  const zeilen = await db.all(
+    `SELECT c.part_number, c.color_id, c.condition, c.avg_price, c.qty_avg_price
+       FROM part_price_cache c
+       JOIN unnest($1::text[], $2::int[]) AS k(nr, farbe)
+         ON c.part_number = k.nr AND c.color_id = k.farbe
+      WHERE c.currency_code = $3 AND c.fetched_at > NOW() - make_interval(hours => $4)`,
+    [nummern, farben, currency, ttl]);
+  for (const z of zeilen) vorrat.set(`${z.part_number}|${z.color_id}|${z.condition}`, z);
+  return vorrat;
+}
+
+/** Wie ladeTeilepreiseVor, für Figuren — nur echte BrickLink-Preise. */
+async function ladeFigurenpreiseVor(figuren: string[], currency: string, ttlHours: Stunden): Promise<Map<string, any>> {
+  const ttl = Math.max(1, parseInt(String(ttlHours)));
+  const vorrat = new Map<string, any>();
+  if (!figuren.length) return vorrat;
+  const zeilen = await db.all(
+    `SELECT fig_number, condition, avg_price, qty_avg_price FROM minifig_price_cache
+      WHERE fig_number = ANY($1) AND currency_code = $2 AND NOT geschaetzt
+        AND fetched_at > NOW() - make_interval(hours => $3)`,
+    [[...new Set(figuren)], currency, ttl]);
+  for (const z of zeilen) vorrat.set(`${z.fig_number}|${z.condition}`, z);
+  return vorrat;
+}
+
+/** @param vorrat aus ladeTeilepreiseVor; fehlt ein Schlüssel, gibt es keinen frischen Eintrag. */
+async function fetchPartPrice(partNumber: string, rbColorId: number, condition: string, currency: string, ttlHours: Stunden,
+                              vorrat: Map<string, any> | null = null) {
   const ttl = Math.max(1, parseInt(String(ttlHours)));
   const colorId = await resolveBlColorId(rbColorId);
   const blPartNumber = await resolveBlPartNumber(partNumber);
   const fallbackCondition = condition === 'N' ? 'U' : 'N';
 
-  const readCache = (cond: string) => db.get(
-    `SELECT avg_price, qty_avg_price FROM part_price_cache WHERE part_number=$1 AND color_id=$2 AND condition=$3 AND currency_code=$4 AND fetched_at > NOW() - make_interval(hours => $5)`,
-    [blPartNumber, colorId, cond, currency, ttl]);
+  const readCache = async (cond: string) => vorrat
+    ? (vorrat.get(`${blPartNumber}|${Number(colorId) || 0}|${cond}`) ?? null)
+    : db.get(
+      `SELECT avg_price, qty_avg_price FROM part_price_cache WHERE part_number=$1 AND color_id=$2 AND condition=$3 AND currency_code=$4 AND fetched_at > NOW() - make_interval(hours => $5)`,
+      [blPartNumber, colorId, cond, currency, ttl]);
 
   // Frischer Cache-Treffer mit echtem Preis → fertig
   const cached = await readCache(condition);
@@ -491,7 +545,7 @@ async function fetchPartPrice(partNumber: string, rbColorId: number, condition: 
 
   let pd: any = null;
   if (!skipPrimaryFetch) {
-    const rl1 = await checkAndIncrementRateLimit('bricklink');
+    const rl1 = await kontingentFrei('bricklink');
     if (!rl1.allowed) throw new Error('BrickLink Tageslimit erreicht');
     pd = await tryFetch(condition);
     if (hatPreis(pd)) return { ...pd, condition_used: condition };
@@ -501,7 +555,7 @@ async function fetchPartPrice(partNumber: string, rbColorId: number, condition: 
       return { avg_price: parseFloat(cachedFallback.avg_price), qty_avg_price: parseFloat(cachedFallback.qty_avg_price), from_cache: true, condition_used: fallbackCondition, is_fallback: true };
   }
 
-  const rl2 = await checkAndIncrementRateLimit('bricklink');
+  const rl2 = await kontingentFrei('bricklink');
   if (!rl2.allowed) {
     if (pd) return { ...pd, condition_used: condition };
     throw new Error('BrickLink Tageslimit erreicht');
@@ -520,13 +574,17 @@ async function fetchPartPrice(partNumber: string, rbColorId: number, condition: 
 // ── Fetch price for a single minifig from BrickLink ─────────────────────────
 // Gleiche Fallback-Logik wie fetchPartPrice: erst der gewünschte Zustand,
 // bei leerem Price Guide der jeweils andere ('U' ↔ 'N').
-async function fetchMinifigPrice(figNumber: string, condition: string, currency: string, ttlHours: Stunden) {
+/** @param vorrat aus ladeFigurenpreiseVor; fehlt ein Schlüssel, gibt es keinen frischen Eintrag. */
+async function fetchMinifigPrice(figNumber: string, condition: string, currency: string, ttlHours: Stunden,
+                                 vorrat: Map<string, any> | null = null) {
   const ttl = Math.max(1, parseInt(String(ttlHours)));
   const fallbackCondition = condition === 'N' ? 'U' : 'N';
 
-  const readCache = (cond: string) => db.get(
-    `SELECT avg_price, qty_avg_price FROM minifig_price_cache WHERE fig_number=$1 AND condition=$2 AND currency_code=$3 AND fetched_at > NOW() - make_interval(hours => $4)`,
-    [figNumber, cond, currency, ttl]);
+  const readCache = async (cond: string) => vorrat
+    ? (vorrat.get(`${figNumber}|${cond}`) ?? null)
+    : db.get(
+      `SELECT avg_price, qty_avg_price FROM minifig_price_cache WHERE fig_number=$1 AND condition=$2 AND currency_code=$3 AND NOT geschaetzt AND fetched_at > NOW() - make_interval(hours => $4)`,
+      [figNumber, cond, currency, ttl]);
 
   const cached = await readCache(condition);
   if (hatPreis(cached))
@@ -559,7 +617,7 @@ async function fetchMinifigPrice(figNumber: string, condition: string, currency:
       const qavg = parseFloat(g?.qty_avg_price || 0);
       await db.run(`INSERT INTO minifig_price_cache (fig_number, condition, currency_code, avg_price, qty_avg_price)
         VALUES ($1,$2,$3,$4,$5) ON CONFLICT (fig_number,condition,currency_code)
-        DO UPDATE SET avg_price=$4, qty_avg_price=$5, fetched_at=NOW()`,
+        DO UPDATE SET avg_price=$4, qty_avg_price=$5, fetched_at=NOW(), geschaetzt=FALSE, abdeckung=NULL`,
         [figNumber, cond, currency, avg, qavg]);
       // Verlaufspunkt mitschreiben — nur bei echtem Preis.
       // Ausführlich: docs/begruendungen/utils/finance/preise.ts.md#fetchminifigprice
@@ -579,7 +637,7 @@ async function fetchMinifigPrice(figNumber: string, condition: string, currency:
 
   let pd: any = null;
   if (!skipPrimaryFetch) {
-    const rl1 = await checkAndIncrementRateLimit('bricklink');
+    const rl1 = await kontingentFrei('bricklink');
     if (!rl1.allowed) throw new Error('BrickLink Tageslimit erreicht');
     pd = await tryFetch(condition);
     if (hatPreis(pd)) return { ...pd, condition_used: condition };
@@ -589,7 +647,7 @@ async function fetchMinifigPrice(figNumber: string, condition: string, currency:
       return { avg_price: parseFloat(cachedFallback.avg_price), qty_avg_price: parseFloat(cachedFallback.qty_avg_price), from_cache: true, condition_used: fallbackCondition, is_fallback: true };
   }
 
-  const rl2 = await checkAndIncrementRateLimit('bricklink');
+  const rl2 = await kontingentFrei('bricklink');
   if (!rl2.allowed) {
     if (pd) return { ...pd, condition_used: condition };
     throw new Error('BrickLink Tageslimit erreicht');
@@ -607,9 +665,9 @@ async function fetchMinifigPrice(figNumber: string, condition: string, currency:
 export {
   DEFAULT_PRICE_CONDITION, PRICE_CACHE_COLS,
   speicherePreis, cacheUsable, preisAusCache,
-  checkAndIncrementRateLimit, getLimitForApi, getRateLimitStatus,
+  checkAndIncrementRateLimit, kontingentFrei, getLimitForApi, getRateLimitStatus,
   fetchPrice, parallelLimit, resolveBlColorId, resolveBlPartNumber,
-  fetchPartPrice, fetchMinifigPrice,
+  fetchPartPrice, fetchMinifigPrice, ladeTeilepreiseVor, ladeFigurenpreiseVor,
   farbkarte, ladeBlNummernVor,
   resolveSetCondition,
 };

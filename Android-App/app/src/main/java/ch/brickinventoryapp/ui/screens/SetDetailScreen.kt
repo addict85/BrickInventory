@@ -19,8 +19,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import ch.brickinventoryapp.ui.MainViewModel
-import ch.brickinventoryapp.ui.*  // Feature-Extensions (loadSetDetail, updateQuantity, …)
+import ch.brickinventoryapp.ui.viewmodel.SetDetailViewModel
+import ch.brickinventoryapp.ui.*
 import ch.brickinventoryapp.ui.theme.LocalIsBrickTheme
 import ch.brickinventoryapp.ui.components.ZoomableImageDialog
 import ch.brickinventoryapp.util.resolveFullUrl
@@ -31,7 +31,9 @@ import ch.brickinventoryapp.ui.theme.Abstaende
 @Composable
 fun SetDetailScreen(
     setNumber: String,
-    vm: MainViewModel,
+    vm: SetDetailViewModel,
+    /** Das Set aus der geladenen Galerie — sofort sichtbar, bis das Detail da ist. */
+    vorschau: ch.brickinventoryapp.data.model.SetItem? = null,
     serverUrl: String,
     // Wird tatsächlich benutzt — siehe unten.
     //
@@ -56,9 +58,8 @@ fun SetDetailScreen(
     val detailState by vm.setDetailState.collectAsStateWithLifecycle()
     // Die Galerie-Liste dient hier nur als Rueckfall, solange das Detail noch
     // laedt — deshalb der eigene Fluss statt des ganzen App-Zustands.
-    val galerie by vm.galleryState.collectAsStateWithLifecycle()
     val set       = detailState.setDetail?.takeIf { it.setNumber == setNumber }
-                 ?: galerie.sets.find { it.setNumber == setNumber }
+                 ?: vorschau?.takeIf { it.setNumber == setNumber }
     val price     = detailState.setPrice?.takeIf { it.setNumber == setNumber }
     val history   = detailState.priceHistory
     val pnlPct    = history?.pnlPct
@@ -178,11 +179,11 @@ fun SetDetailScreen(
             setDetailStatChips(set)
             setDetailValueTiles(set, price, isBrick, ::fmtPrice)
             setDetailDetailsSection(set, setNumber, vm, acquisitions, currency, ::fmtDate, onNavigateToAcqMgmt)
-            setDetailAlarmSection(setNumber, detailState.preisalarme, currency, vm)
+            setDetailAlarmSection(setNumber, detailState.preisalarme, currency, vm::setzePreisalarm)
             setDetailPriceSection(set, detailState, price, history, pnlPct, currency, isBrick, ::fmtPrice)
             setDetailInstructionsSection(
                 set, detailState, serverUrl, onOpenPdf,
-                onAnleitungWaehlen = { anleitungAuswahl.launch(ch.brickinventoryapp.ui.ANLEITUNG_TYPEN) },
+                onAnleitungWaehlen = { anleitungAuswahl.launch(ch.brickinventoryapp.ui.viewmodel.ANLEITUNG_TYPEN) },
                 onAnleitungLoeschen = { vm.loescheAnleitung(setNumber, it) },
             )
         }

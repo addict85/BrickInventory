@@ -47,3 +47,13 @@ test('und keine Abhängigkeit braucht sie', () => {
     `Neue Pakete mit Install-Skript: ${unknown.join(', ')} — prüfen, ob sie kompilieren. ` +
     'Falls ja, gehört `RUN apk add --no-cache python3 make g++` zurück ins Build-Stage.');
 });
+
+// Gegenprobe (am 28.10.2026 gemessen): `ENV PGPASSWORD=brickinventory_secret`
+// wieder ins Dockerfile → rot. Ein ENV steht in jeder Kopie des Images.
+test('das Image trägt kein Datenbankpasswort', () => {
+  const df = fs.readFileSync(path.join(ROOT, 'Dockerfile'), 'utf8');
+  const zeilen = df.split('\n').filter(l => !l.trim().startsWith('#'));
+  assert.deepEqual(zeilen.filter(l => /^\s*(ENV|ARG)\b.*(PASSWORD|_SECRET|PGPASS)/i.test(l)), []);
+  const compose = fs.readFileSync(path.join(ROOT, 'compose.yaml'), 'utf8');
+  assert.match(compose, /PGPASSWORD: \$\{DB_PASSWORD/, 'compose.yaml muss das Passwort hereinreichen');
+});

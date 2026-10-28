@@ -30,8 +30,11 @@ import ch.brickinventoryapp.util.NumericInput
 import ch.brickinventoryapp.util.resolveThumbUrl
 import coil3.ImageLoader
 import ch.brickinventoryapp.util.fmtDatum
-import ch.brickinventoryapp.ui.MainViewModel
-import ch.brickinventoryapp.ui.*  // Feature-Extensions (saveSettings, setLanguage, …)
+import ch.brickinventoryapp.ui.AppViewModel
+import ch.brickinventoryapp.ui.viewmodel.EinstellungenViewModel
+import ch.brickinventoryapp.ui.viewmodel.HaushaltViewModel
+import ch.brickinventoryapp.ui.viewmodel.aktivitaetsViewModel
+import ch.brickinventoryapp.ui.*
 import ch.brickinventoryapp.util.passwortZuKurz
 import ch.brickinventoryapp.ui.theme.Abstaende
 import kotlinx.coroutines.launch
@@ -182,7 +185,7 @@ fun GutscheineUnterseite(
  */
 @Composable
 fun PreisalarmeUnterseite(
-    vm: MainViewModel,
+    vm: EinstellungenViewModel,
     imageLoader: ImageLoader,
     serverUrl: String,
     snackbarHostState: SnackbarHostState,
@@ -190,7 +193,7 @@ fun PreisalarmeUnterseite(
     onZurueck: () -> Unit,
 ) {
     Unterseite(stringResource(R.string.alerts_group), snackbarHostState, onZurueck) {
-        PreisalarmCard(vm)
+        PreisalarmCard(aktivitaetsViewModel())
         PreisalarmeCard(vm, imageLoader, serverUrl, onSetClick)
     }
 }
@@ -198,7 +201,7 @@ fun PreisalarmeUnterseite(
 /** Lagerorte. */
 @Composable
 fun LagerorteUnterseite(
-    vm: MainViewModel,
+    vm: EinstellungenViewModel,
     snackbarHostState: SnackbarHostState,
     onZurueck: () -> Unit,
 ) {
@@ -210,7 +213,7 @@ fun LagerorteUnterseite(
 /** Haushalt — Konten verknuepfen. */
 @Composable
 fun HaushaltUnterseite(
-    vm: MainViewModel,
+    vm: HaushaltViewModel,
     snackbarHostState: SnackbarHostState,
     onZurueck: () -> Unit,
 ) {
@@ -231,7 +234,7 @@ fun HaushaltUnterseite(
 /** Konto und angemeldete Geraete — beides betrifft den Zugang. */
 @Composable
 fun KontoUnterseite(
-    vm: MainViewModel,
+    vm: AppViewModel,
     snackbarHostState: SnackbarHostState,
     // An das Ziel gebunden: Profil, Geräte und ein halb eingerichteter
     // zweiter Faktor leben nur, solange die Seite offen ist.
@@ -271,7 +274,7 @@ fun KontoUnterseite(
 /** CSV importieren. */
 @Composable
 fun CsvImportUnterseite(
-    vm: MainViewModel,
+    vm: EinstellungenViewModel,
     snackbarHostState: SnackbarHostState,
     onZurueck: () -> Unit,
 ) {
@@ -355,7 +358,7 @@ fun CsvImportUnterseite(
  */
 @Composable
 private fun PreisalarmeCard(
-    vm: MainViewModel,
+    vm: EinstellungenViewModel,
     imageLoader: ImageLoader,
     serverUrl: String,
     onSetClick: (String) -> Unit,
@@ -580,7 +583,7 @@ private fun AlarmZustandPlakette(ausgeloest: Boolean) {
 
 
 @Composable
-private fun LagerorteCard(vm: MainViewModel) {
+private fun LagerorteCard(vm: EinstellungenViewModel) {
     val lager by vm.lagerState.collectAsStateWithLifecycle()
     var neuerOrt by rememberSaveable { mutableStateOf("") }
 
@@ -699,7 +702,7 @@ private fun LagerorteCard(vm: MainViewModel) {
  * hier noch einmal etwas tun zu muessen.
  */
 @Composable
-private fun PreisalarmCard(vm: MainViewModel) {
+private fun PreisalarmCard(vm: AppViewModel) {
     val context = androidx.compose.ui.platform.LocalContext.current
     // Siehe AcquisitionManagementScreen: LocalResources statt Context, weil
     // Lint LocalContextGetResourceValueCall als ERROR meldet und der
@@ -1191,7 +1194,7 @@ private fun KontoCard(
             Button(
                 onClick = { onSpeichern(benutzername, email, vorname, nachname, pwFuerEmail.takeIf { emailNeu }) },
                 enabled = geaendert && !kontoZustand.speichert && (!emailNeu || pwFuerEmail.isNotEmpty()),
-                modifier = Modifier.fillMaxWidth().height(44.dp), shape = Formen.knopf
+                modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp), shape = Formen.knopf
             ) { Text(stringResource(R.string.konto_save), fontWeight = FontWeight.SemiBold) }
 
             HorizontalDivider(Modifier.padding(vertical = Abstaende.mittel),
@@ -1229,7 +1232,7 @@ private fun KontoCard(
             OutlinedButton(
                 onClick = { onPasswort(pwAktuell, pwNeu) },
                 enabled = !kontoZustand.speichert && pwAktuell.isNotBlank() && !passwortZuKurz(pwNeu),
-                modifier = Modifier.fillMaxWidth().height(44.dp), shape = Formen.knopf
+                modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp), shape = Formen.knopf
             ) { Text(stringResource(R.string.konto_password_button), fontWeight = FontWeight.SemiBold) }
         }
     }
@@ -1350,7 +1353,7 @@ private fun ZweiterFaktorCard(
             zfZustand.aktiv == false -> {
                 passwortFeld()
                 Button(onClick = { onEinrichten(zfPasswort) }, enabled = zfPasswort.isNotBlank() && !zfZustand.laedt,
-                    modifier = Modifier.fillMaxWidth().height(44.dp), shape = Formen.knopf
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp), shape = Formen.knopf
                 ) { Text(stringResource(R.string.zf_setup), fontWeight = FontWeight.SemiBold) }
             }
         }
@@ -1418,7 +1421,7 @@ private fun CsvImportCard(
     SettingsCard(title = stringResource(R.string.csv_upload_title), icon = Icons.Default.UploadFile) {
         Text(
             stringResource(R.string.csv_upload_hint,
-                (ch.brickinventoryapp.ui.CSV_MAX_BYTES / 1024 / 1024).toInt()),
+                (ch.brickinventoryapp.ui.viewmodel.CSV_MAX_BYTES / 1024 / 1024).toInt()),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
 

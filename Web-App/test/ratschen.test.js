@@ -59,6 +59,8 @@ const STILLE_FAENGE = [
   /catch\s*\(\s*\w*\s*\)\s*\{\s*\}/g,
   /\.catch\(\(\)\s*=>\s*\{\s*\}\)/g,
   /\.catch\(\(\)\s*=>\s*(null|undefined|0|false)\)/g,
+  // Eine leere Liste ist für den Leser keine Fehlermeldung, sondern „nichts da".
+  /\.catch\(\(\)\s*=>\s*\[\]\)/g,
 ];
 
 /**
@@ -106,7 +108,7 @@ test('stille Faenge werden weniger, nie mehr', () => {
   // sind die vier neuen Faenge sprechend gemacht worden — zwei brauchte es gar
   // nicht (die Meldekette traegt ihr logAndContinue schon), zwei melden jetzt
   // ueber meldeUndWeiter. Die Schranke zieht nach, wie die Regel es vorsieht.
-  const SCHRANKE = 323;
+  const SCHRANKE = 359;
   const ist = zaehle(STILLE_FAENGE);
   assert.ok(ist <= SCHRANKE,
     `${ist} stille Faenge, erlaubt sind ${SCHRANKE}. Ein neuer \`catch {}\` ` +
@@ -121,7 +123,7 @@ test('stille Faenge werden weniger, nie mehr', () => {
 test('any wird weniger, nie mehr', () => {
   // GEMESSEN am 19.09.2026 nach Nachtrag 175: 398 Stellen. Es waren 402,
   // solange der Zaehler auch Kommentare las.
-  const SCHRANKE = 395;
+  const SCHRANKE = 392;
   const ist = zaehle([/\bas any\b/g, /:\s*any\b/g]);
   assert.ok(ist <= SCHRANKE,
     `${ist}-mal \`any\`, erlaubt sind ${SCHRANKE}. Jedes davon schaltet den ` +
@@ -150,7 +152,7 @@ function reineQuelltextTests() {
 
 test('reine Quelltext-Tests werden weniger, nie mehr', () => {
   // GEMESSEN am 25.10.2026: 103 von 312 Testdateien; am 28.10.2026: 102.
-  const SCHRANKE = 102;
+  const SCHRANKE = 101;
   const alle = fs.readdirSync(__dirname).filter(n => n.endsWith('.test.js')).length;
   assert.ok(alle >= 300, `Nur ${alle} Testdateien gefunden — greift die Suche noch?`);
   const ist = reineQuelltextTests();

@@ -77,7 +77,16 @@ export let LANG = localStorage.getItem('bim_lang') || _browserLang;
  * Sprachabhängige Zahlen-/Datumslocale für toLocaleString & Intl.NumberFormat.
  * 'de-CH' behält das gewohnte CH-Format (Apostroph-Tausendertrennung) bei Deutsch.
  */
-export function locale() { return LANG === 'en' ? 'en-GB' : 'de-CH'; }
+/**
+ * Zahlen- und Datumsformat: die Landesform des Browsers, wenn sie zur
+ * gewählten Sprache passt (de-DE schreibt 1.097,93, de-CH 1’097.93), sonst
+ * de-CH bzw. en-GB.
+ */
+export function locale() {
+  const browser = (typeof navigator !== 'undefined' && navigator.language) || '';
+  const passt = new RegExp(`^${LANG === 'en' ? 'en' : 'de'}-[A-Za-z]{2}$`).test(browser);
+  return passt ? browser : (LANG === 'en' ? 'en-GB' : 'de-CH');
+}
 
 /**
  * HTML-Sonderzeichen maskieren — Zwilling von esc() aus js/01-core.js.

@@ -35,9 +35,9 @@ import ch.brickinventoryapp.data.model.CatalogSetItem
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.flow.collectLatest
 import ch.brickinventoryapp.ui.CatalogUiState
-import ch.brickinventoryapp.ui.MainViewModel
+import ch.brickinventoryapp.ui.AppViewModel
 import ch.brickinventoryapp.ui.viewmodel.CatalogViewModel
-import ch.brickinventoryapp.ui.*  // Feature-Extensions (setCatalogQuery, loadCatalogSets, …)
+import ch.brickinventoryapp.ui.*
 import ch.brickinventoryapp.ui.CatalogYearMath
 import ch.brickinventoryapp.ui.theme.BrickStudCap
 import ch.brickinventoryapp.ui.theme.NoppenReihe
@@ -85,7 +85,7 @@ private const val SICHTFENSTER_RUHE_MS = 150L
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CatalogScreen(
-    vm: MainViewModel,
+    vm: AppViewModel,
     katalog: CatalogViewModel,
     imageLoader: ImageLoader,
     /** Klick auf ein Set — nur der Graph kennt den NavController. */
@@ -592,7 +592,7 @@ fun CatalogSetCard(
     // im CSS, nur mit den Mitteln von Compose.
     Box {
         AppKarte(
-            modifier = Modifier.height(212.dp)
+            modifier = Modifier.heightIn(min = 212.dp)
                 .then(if (isBrick) Modifier.padding(top = NoppenMass.Stein.hoehe) else Modifier),
             onClick = { onClick(set.setNumber) }
         ) {

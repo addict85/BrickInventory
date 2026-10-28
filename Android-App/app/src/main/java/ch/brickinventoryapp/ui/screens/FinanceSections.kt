@@ -41,6 +41,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ch.brickinventoryapp.R
+import ch.brickinventoryapp.ui.*
 import ch.brickinventoryapp.util.resolveThumbUrl
 import coil3.compose.AsyncImage
 import androidx.compose.material.icons.filled.*
@@ -107,7 +108,7 @@ fun LazyListScope.financeGrandTotal(valuation: ValuationResponse, partsValuation
 }
 
 /** Manuell erfasste Minifiguren, einzeln aufgelistet. */
-fun LazyListScope.financeFigRows(figsValuation: FigsValuationResponse?, showFigs: Boolean, serverUrl: String, imageLoader: ImageLoader, fmtPrice: (String?) -> String, onManualClick: (type: String, id: String, colorId: Int) -> Unit) {
+fun LazyListScope.financeFigRows(figsValuation: FigsValuationResponse?, showFigs: Boolean, serverUrl: String, imageLoader: ImageLoader, fmtPrice: (String?) -> String, onManualClick: (type: String, id: String, colorId: Int, name: String?) -> Unit) {
     // ── Manuell erfasste Minifiguren — einzeln auflisten, analog zu den Sets ─
     val figsItems = figsValuation?.figs ?: emptyList()
     if (figsItems.isNotEmpty() && showFigs) {
@@ -136,7 +137,7 @@ fun LazyListScope.financeFigRows(figsValuation: FigsValuationResponse?, showFigs
             ManualFinanceRow(
                 imageUrl = figImg,
                 imageLoader = imageLoader,
-                onClick = { onManualClick("fig", fig.figNumber, 0) },
+                onClick = { onManualClick("fig", fig.figNumber, 0, fig.figName) },
                 title = fig.figName ?: fig.figNumber,
                 blId = fig.blFigNumber ?: fig.figNumber,
                 quantity = acq?.quantity ?: fig.quantity,
@@ -156,7 +157,7 @@ fun LazyListScope.financeFigRows(figsValuation: FigsValuationResponse?, showFigs
 }
 
 /** Manuell erfasste Teile, einzeln aufgelistet. */
-fun LazyListScope.financePartRows(partsValuation: PartsValuationResponse?, showParts: Boolean, serverUrl: String, imageLoader: ImageLoader, fmtPrice: (String?) -> String, onManualClick: (type: String, id: String, colorId: Int) -> Unit) {
+fun LazyListScope.financePartRows(partsValuation: PartsValuationResponse?, showParts: Boolean, serverUrl: String, imageLoader: ImageLoader, fmtPrice: (String?) -> String, onManualClick: (type: String, id: String, colorId: Int, name: String?) -> Unit) {
     // ── Manuell erfasste Teile — einzeln auflisten, analog zu den Sets ─────
     val partsItems = partsValuation?.parts ?: emptyList()
     if (partsItems.isNotEmpty() && showParts) {
@@ -183,7 +184,7 @@ fun LazyListScope.financePartRows(partsValuation: PartsValuationResponse?, showP
             ManualFinanceRow(
                 imageUrl = partImg,
                 imageLoader = imageLoader,
-                onClick = { onManualClick("part", part.partNumber, part.colorId) },
+                onClick = { onManualClick("part", part.partNumber, part.colorId, part.partName) },
                 title = part.partName ?: part.partNumber,
                 blId = part.blPartNumber ?: part.partNumber,
                 quantity = acq?.quantity ?: part.quantity,

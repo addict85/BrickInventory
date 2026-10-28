@@ -94,12 +94,17 @@ class ResponseCache internal constructor(
      * als maxAgeMs ist oder sich nicht mehr lesen lässt (Modell geändert).
      */
     suspend fun <T> get(key: String, serializer: KSerializer<T>, maxAgeMs: Long = MAX_AGE_MS): T? =
+        getMitStand(key, serializer, maxAgeMs)?.first
+
+    /** Wie [get], dazu der Zeitpunkt der Ablage — damit die Anzeige „Stand von …“ sagen kann. */
+    suspend fun <T> getMitStand(key: String, serializer: KSerializer<T>, maxAgeMs: Long = MAX_AGE_MS): Pair<T, Long>? =
         withContext(Dispatchers.IO) {
             try {
                 val f = fileFor(key)
                 if (!f.exists()) return@withContext null
-                if (System.currentTimeMillis() - f.lastModified() > maxAgeMs) return@withContext null
-                json.decodeFromString(serializer, f.readText())
+                val stand = f.lastModified()
+                if (System.currentTimeMillis() - stand > maxAgeMs) return@withContext null
+                json.decodeFromString(serializer, f.readText()) to stand
             } catch (_: Throwable) {
                 null
             }

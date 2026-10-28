@@ -25,6 +25,10 @@
  * Abfrage ersetzt → beide Teilschritte für /raw werden rot (Nicht-Admin sieht
  * den Wert, Admin sieht ihn unmaskiert).
  *
+ * Dazu: Mailserver, Konto und Absender sieht nur der Verwalter.
+ * Gegenprobe (am 28.10.2026 gemessen): NUR_VERWALTER-Zeile in
+ * sanitizeGlobal() entfernt → rot: „… bekommt smtp_host“.
+ *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
@@ -46,6 +50,13 @@ const GEHEIM = {
   brickset_api_key:          'GEHEIM-bs-key-4713',
   rebrickable_api_key:       'GEHEIM-rb-key-4714',
   smtp_pass:                 'GEHEIM-smtp-4715',
+};
+
+/** Keine Geheimnisse, aber nur für den Verwalter. */
+const VERWALTUNG = {
+  smtp_host: 'mail.verwaltung.example',
+  smtp_user: 'postfach@verwaltung.example',
+  smtp_from: 'absender@verwaltung.example',
 };
 
 /**
@@ -118,7 +129,7 @@ test('Einstellungen geben Geheimnisse nie im Klartext heraus', { concurrency: 1 
   const uid = (await db.get(`SELECT id FROM users WHERE username=$1`, [NUTZER])).id;
 
   const vorher = {};
-  for (const [k, v] of Object.entries(GEHEIM)) {
+  for (const [k, v] of Object.entries({ ...GEHEIM, ...VERWALTUNG })) {
     vorher[k] = (await db.get(`SELECT value FROM global_settings WHERE key=$1`, [k]))?.value ?? null;
     await db.run(`INSERT INTO global_settings (key,value) VALUES ($1,$2)
                   ON CONFLICT (key) DO UPDATE SET value=$2`, [k, v]);
@@ -154,6 +165,10 @@ test('Einstellungen geben Geheimnisse nie im Klartext heraus', { concurrency: 1 
           `${pfad}: ein Konto ohne Adminrechte bekommt ${k} im Klartext`);
       }
 
+      for (const [k, v] of Object.entries(VERWALTUNG)) {
+        assert.ok(!alsNutzer.includes(v), `${pfad}: ein Konto ohne Adminrechte bekommt ${k}`);
+      }
+
       // 2. Auch ein Admin bekommt nur die Maske — die Werte landen sonst im
       //    Browser-Speicher, wo jede XSS-Lücke sie mitnimmt.
       const alsAdmin = await hol(baseAdmin, pfad);
@@ -166,6 +181,9 @@ test('Einstellungen geben Geheimnisse nie im Klartext heraus', { concurrency: 1 
       // der nur das Fehlen prüft, wäre auch bei einer leeren Antwort grün.
       assert.ok(alsAdmin.some(s => s.includes('\u2022') && s.endsWith('4713')),
         `${pfad}: der Admin muss die maskierte Fassung sehen (Punkte + letzte vier Zeichen)`);
+      for (const [k, v] of Object.entries(VERWALTUNG)) {
+        assert.ok(alsAdmin.includes(v), `${pfad}: der Verwalter braucht ${k} für sein Formular`);
+      }
     }
   } finally {
     for (const [k, v] of Object.entries(vorher)) {

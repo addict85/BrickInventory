@@ -84,12 +84,14 @@ class DesignVorAnmeldungTest {
 
     @Test
     fun `Stufe null - der Zustand wird MIT dem Design geboren`() {
-        val vm = code(read("ui/MainViewModel.kt"))
+        val vm = code(read("ui/AppViewModel.kt"))
         // Der Startwert, nicht eine Korrektur danach: `appTheme` leitet sich
-        // ueber `stateIn(..., _state.value.appTheme)` ab, und diese Eigenschaft
-        // wird VOR dem init-Block ausgewertet. Ein erst dort gesetzter Wert
-        // kaeme zu spaet — MainActivity haette schon komponiert.
-        assert(vm.contains("MutableStateFlow(AppUiState(appTheme = prefs.gemerktesDesign()))")) {
+        // ueber `stateIn(..., sitzung.state.value.appTheme)` ab. Der gemerkte
+        // Wert muss in der Sitzung stehen, BEVOR diese Eigenschaft entsteht —
+        // sonst haette MainActivity schon im Vorgabe-Design komponiert.
+        val gesetzt = vm.indexOf("sitzung.aendere { it.copy(appTheme = prefs.gemerktesDesign()) }")
+        val abgeleitet = vm.indexOf("val appTheme = ")
+        assert(gesetzt in 0 until abgeleitet) {
             "Der Zustand startet wieder im Vorgabe-Design. Ein Wert, der erst im " +
                 "init-Block gesetzt wird, kommt nach der ersten Komposition — " +
                 "genau das war Marcos aufblitzendes Design."
@@ -124,7 +126,7 @@ class DesignVorAnmeldungTest {
         assert(api.contains("@GET(\"api/v1/settings/theme\")")) {
             "Die App ruft die oeffentliche Design-Adresse nicht"
         }
-        val vm = code(read("ui/MainViewModel.kt"))
+        val vm = code(read("ui/AppViewModel.kt"))
         assert(vm.contains("prefs.appTheme.first()")) {
             "Der gemerkte Wert wird beim Start nicht gelesen"
         }
@@ -136,7 +138,7 @@ class DesignVorAnmeldungTest {
     @Test
     fun `beide Wege merken sich das Ergebnis`() {
         // Sonst gilt Stufe eins nur fuer den Weg, der zufaellig zuletzt lief.
-        val s = code(read("ui/SettingsFeature.kt"))
+        val s = code(read("ui/AppViewModel.kt"))
         val treffer = Regex("""prefs\.saveAppTheme\(""").findAll(s).count()
         assert(treffer >= 2) {
             "Nur $treffer Stelle(n) merken sich das Design — erwartet: /settings UND /settings/theme"

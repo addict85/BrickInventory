@@ -27,7 +27,8 @@ const DB_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhos
 
 // ── Statische Prüfungen (immer) ────────────────────────────────────────────
 test('die Entwertung hängt an einem Trigger, nicht an Aufrufen', () => {
-  const src = fs.readFileSync(path.join(ROOT, 'utils', 'partsSummary.ts'), 'utf8');
+  // Die Trigger stehen seit 0052 in einer Migration, nicht mehr im Code.
+  const src = fs.readFileSync(path.join(ROOT, 'db', 'migrations', '0052-teilezusammenfassung-stand.sql'), 'utf8');
   assert.match(src, /FOR EACH STATEMENT/,
     'Zeilen-Trigger würden bei einem CSV-Import 171 000 Mal feuern');
   for (const tbl of ['parts', 'sets']) {
@@ -207,7 +208,11 @@ test('Zusammenfassung stimmt mit der Live-Abfrage überein und veraltet nicht',
   await PS.rebuildNow(U);
   assert.equal(await PS.ensureFresh(U, { strict: true }), true,
     'Vorbedingung: nach dem Neuaufbau ist die Zusammenfassung frisch');
-  await db.run("UPDATE set_acquisitions SET quantity=quantity WHERE user_id=$1 AND set_number='A-1'", [U]);
+  // Ein geänderter Kaufpreis entwertet nicht (seit 0052), eine Menge schon.
+  await db.run("UPDATE set_acquisitions SET purchase_price = 1 WHERE user_id=$1 AND set_number='A-1'", [U]);
+  assert.equal(await PS.ensureFresh(U, { strict: true }), true,
+    'Ein Kaufpreis ändert keine Teilemenge — die Zusammenfassung bleibt gültig');
+  await db.run("UPDATE set_acquisitions SET quantity=quantity+1 WHERE user_id=$1 AND set_number='A-1'", [U]);
   assert.equal(await PS.ensureFresh(U, { strict: true }), false,
     'Eine Änderung an den Erfassungen muss die Zusammenfassung entwerten — die ' +
     'Setmenge steht dort (Migration 0036), und total_quantity rechnet mit ihr');

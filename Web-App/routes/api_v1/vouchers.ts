@@ -218,6 +218,9 @@ router.post('/vouchers/pdf', requireToken, upload.single('file'), async (req: Au
     // der ist eine BEHAUPTUNG des Klienten — eine Textdatei mit …
     // Ausführlich: docs/begruendungen/routes/api_v1/vouchers.ts.md#post-vouchers-pdf-istpdf
     const istPdf = req.file.buffer.subarray(0, 5).toString('latin1') === '%PDF-';
+    // Auch mit getippten Werten nicht: Die Datei wird als .pdf abgelegt und
+    // später mit application/pdf ausgeliefert.
+    if (!istPdf) return sendeFehler(req, res, 422, 'pdf_unlesbar');
 
     let gelesen: ReturnType<typeof werteAusPdf>;
     let lesefehler = !istPdf;

@@ -1,6 +1,6 @@
 -- Erzeugt von scripts/schema-stand.js aus einer frischen Datenbank.
 -- Nicht von Hand ändern und nicht einspielen: Das Schema entsteht aus
--- db/schema.sql, db/database.ts und db/migrations/. Neu erzeugen mit
+-- db/basis.sql und db/migrations/. Neu erzeugen mit
 -- `npm run build && npm run schema:stand`.
 
 CREATE EXTENSION pg_trgm;
@@ -30,6 +30,12 @@ CREATE TABLE account_links (
 );
 CREATE INDEX idx_account_links_main ON account_links USING btree (main_user_id);
 CREATE INDEX idx_account_links_sub ON account_links USING btree (sub_user_id);
+
+CREATE TABLE api_takt (
+  api text NOT NULL,
+  naechster timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT api_takt_pkey PRIMARY KEY (api)
+);
 
 CREATE TABLE api_tokens (
   token text NOT NULL,
@@ -67,6 +73,7 @@ CREATE TABLE bl_zuordnung (
   CONSTRAINT bl_zuordnung_pkey PRIMARY KEY (art, rb_id)
 );
 CREATE INDEX idx_bl_zuordnung_bl ON bl_zuordnung USING btree (art, bl_id);
+CREATE TRIGGER trg_bump_parts_katalog AFTER INSERT OR DELETE OR UPDATE ON bl_zuordnung FOR EACH STATEMENT EXECUTE FUNCTION bump_parts_katalog();
 
 CREATE TABLE brickset_retry_queue (
   set_number text NOT NULL,
@@ -100,7 +107,9 @@ CREATE TABLE csv_import_jobs (
   error text,
   started_at timestamp with time zone NOT NULL DEFAULT now(),
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  run_id text,
   CONSTRAINT csv_import_jobs_pkey PRIMARY KEY (user_id),
+  CONSTRAINT csv_import_jobs_status_check CHECK ((status = ANY (ARRAY['pending'::text, 'running'::text, 'done'::text, 'error'::text, 'cancelled'::text]))),
   CONSTRAINT csv_import_jobs_user_fk FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
@@ -153,7 +162,8 @@ CREATE TABLE instruction_queue (
   status text DEFAULT 'pending'::text,
   created_at timestamp with time zone DEFAULT now(),
   updated_at timestamp with time zone DEFAULT now(),
-  CONSTRAINT instruction_queue_pkey PRIMARY KEY (id)
+  CONSTRAINT instruction_queue_pkey PRIMARY KEY (id),
+  CONSTRAINT instruction_queue_status_check CHECK ((status = ANY (ARRAY['pending'::text, 'done'::text, 'failed'::text])))
 );
 CREATE UNIQUE INDEX idx_instr_queue_set ON instruction_queue USING btree (set_number);
 
@@ -166,6 +176,7 @@ CREATE TABLE instructions (
   local_path text,
   downloaded_at timestamp with time zone DEFAULT now(),
   CONSTRAINT instructions_pkey PRIMARY KEY (id),
+  CONSTRAINT instructions_set_fk FOREIGN KEY (user_id, set_number) REFERENCES sets(user_id, set_number) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,
   CONSTRAINT instructions_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 CREATE INDEX idx_instructions_user ON instructions USING btree (user_id, set_number);
@@ -204,6 +215,8 @@ CREATE TABLE minifig_price_cache (
   avg_price numeric(12,4),
   qty_avg_price numeric(12,4),
   fetched_at timestamp with time zone DEFAULT now(),
+  geschaetzt boolean NOT NULL DEFAULT false,
+  abdeckung numeric(4,3),
   CONSTRAINT minifig_price_cache_fig_number_condition_currency_code_key UNIQUE (fig_number, condition, currency_code),
   CONSTRAINT minifig_price_cache_pkey PRIMARY KEY (id)
 );
@@ -217,9 +230,12 @@ CREATE TABLE minifig_price_history (
   avg_price numeric(12,4),
   qty_avg_price numeric(12,4),
   recorded_at timestamp with time zone NOT NULL DEFAULT now(),
+  geschaetzt boolean NOT NULL DEFAULT false,
+  abdeckung numeric(4,3),
   CONSTRAINT minifig_price_history_pkey PRIMARY KEY (id)
 );
 CREATE INDEX idx_minifig_price_history_lookup ON minifig_price_history USING btree (fig_number, currency_code, recorded_at);
+CREATE UNIQUE INDEX idx_minifig_price_history_tag ON minifig_price_history USING btree (fig_number, condition, currency_code, (((recorded_at AT TIME ZONE 'UTC'::text))::date));
 
 CREATE TABLE minifigs (
   id integer NOT NULL DEFAULT nextval('minifigs_id_seq'::regclass),
@@ -229,6 +245,8 @@ CREATE TABLE minifigs (
   source text DEFAULT 'set'::text,
   storage_id integer,
   CONSTRAINT minifigs_pkey PRIMARY KEY (id),
+  CONSTRAINT minifigs_set_fk FOREIGN KEY (user_id, set_number) REFERENCES sets(user_id, set_number) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,
+  CONSTRAINT minifigs_source_check CHECK ((source = ANY (ARRAY['set'::text, 'manual'::text]))),
   CONSTRAINT minifigs_storage_id_fkey FOREIGN KEY (user_id, storage_id) REFERENCES storage_locations(user_id, id) ON DELETE SET NULL (storage_id),
   CONSTRAINT minifigs_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
@@ -243,6 +261,8 @@ CREATE TABLE minifigs_catalog (
   image_url text,
   image_local text,
   updated_at timestamp with time zone DEFAULT now(),
+  name_von integer,
+  bild_von integer,
   CONSTRAINT minifigs_catalog_pkey PRIMARY KEY (fig_number)
 );
 CREATE INDEX idx_minifigs_catalog_name_trgm ON minifigs_catalog USING gin (lower(fig_name) gin_trgm_ops);
@@ -287,10 +307,13 @@ CREATE TABLE part_catalog (
   part_name text,
   category_name text,
   updated_at timestamp with time zone DEFAULT now(),
+  name_von integer,
+  kategorie_von integer,
   CONSTRAINT part_catalog_pkey PRIMARY KEY (part_number)
 );
 CREATE INDEX idx_part_catalog_category ON part_catalog USING btree (category_name);
 CREATE INDEX idx_part_catalog_name_trgm ON part_catalog USING gin (lower(part_name) gin_trgm_ops);
+CREATE TRIGGER trg_bump_parts_katalog AFTER INSERT OR DELETE OR UPDATE ON part_catalog FOR EACH STATEMENT EXECUTE FUNCTION bump_parts_katalog();
 
 CREATE TABLE part_color_catalog (
   part_number text NOT NULL,
@@ -300,8 +323,12 @@ CREATE TABLE part_color_catalog (
   image_url text,
   image_local text,
   updated_at timestamp with time zone DEFAULT now(),
+  farbname_von integer,
+  farbcode_von integer,
+  bild_von integer,
   CONSTRAINT part_color_catalog_pkey PRIMARY KEY (part_number, color_id)
 );
+CREATE TRIGGER trg_bump_parts_katalog AFTER INSERT OR DELETE OR UPDATE ON part_color_catalog FOR EACH STATEMENT EXECUTE FUNCTION bump_parts_katalog();
 
 CREATE TABLE part_price_cache (
   id integer NOT NULL DEFAULT nextval('part_price_cache_id_seq'::regclass),
@@ -329,6 +356,7 @@ CREATE TABLE part_price_history (
   CONSTRAINT part_price_history_pkey PRIMARY KEY (id)
 );
 CREATE INDEX idx_part_price_history_lookup ON part_price_history USING btree (part_number, color_id, currency_code, recorded_at);
+CREATE UNIQUE INDEX idx_part_price_history_tag ON part_price_history USING btree (part_number, color_id, condition, currency_code, (((recorded_at AT TIME ZONE 'UTC'::text))::date));
 
 CREATE TABLE parts (
   id integer NOT NULL DEFAULT nextval('parts_id_seq'::regclass),
@@ -340,6 +368,8 @@ CREATE TABLE parts (
   storage_id integer,
   added_at timestamp with time zone DEFAULT now(),
   CONSTRAINT parts_pkey PRIMARY KEY (id),
+  CONSTRAINT parts_set_fk FOREIGN KEY (user_id, set_number) REFERENCES sets(user_id, set_number) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,
+  CONSTRAINT parts_source_check CHECK ((source = ANY (ARRAY['set'::text, 'manual'::text]))),
   CONSTRAINT parts_storage_id_fkey FOREIGN KEY (user_id, storage_id) REFERENCES storage_locations(user_id, id) ON DELETE SET NULL (storage_id),
   CONSTRAINT parts_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
@@ -354,6 +384,13 @@ CREATE INDEX idx_parts_user ON parts USING btree (user_id);
 CREATE TRIGGER trg_bump_parts_version_del AFTER DELETE ON parts REFERENCING OLD TABLE AS alt FOR EACH STATEMENT EXECUTE FUNCTION bump_parts_version_del();
 CREATE TRIGGER trg_bump_parts_version_ins AFTER INSERT ON parts REFERENCING NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION bump_parts_version_ins();
 CREATE TRIGGER trg_bump_parts_version_upd AFTER UPDATE ON parts REFERENCING OLD TABLE AS alt NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION bump_parts_version_upd();
+
+CREATE TABLE parts_katalog_stand (
+  id integer NOT NULL DEFAULT 1,
+  v bigint NOT NULL DEFAULT 0,
+  CONSTRAINT parts_katalog_stand_id_check CHECK ((id = 1)),
+  CONSTRAINT parts_katalog_stand_pkey PRIMARY KEY (id)
+);
 
 CREATE TABLE parts_summary (
   user_id integer NOT NULL,
@@ -377,14 +414,15 @@ CREATE TABLE parts_summary (
 CREATE INDEX idx_parts_summary_cat ON parts_summary USING btree (user_id, category_name);
 CREATE INDEX idx_parts_summary_color ON parts_summary USING btree (user_id, color_id);
 CREATE INDEX idx_parts_summary_sort ON parts_summary USING btree (user_id, color_name, part_name);
-CREATE INDEX idx_psum_blnumber_trgm ON parts_summary USING gin (bl_part_number gin_trgm_ops);
-CREATE INDEX idx_psum_name_trgm ON parts_summary USING gin (part_name gin_trgm_ops);
-CREATE INDEX idx_psum_number_trgm ON parts_summary USING gin (part_number gin_trgm_ops);
+CREATE INDEX idx_psum_blnumber_trgm ON parts_summary USING gin (bl_part_number gin_trgm_ops) WITH (fastupdate=off);
+CREATE INDEX idx_psum_name_trgm ON parts_summary USING gin (part_name gin_trgm_ops) WITH (fastupdate=off);
+CREATE INDEX idx_psum_number_trgm ON parts_summary USING gin (part_number gin_trgm_ops) WITH (fastupdate=off);
 
 CREATE TABLE parts_summary_state (
   user_id integer NOT NULL,
   built_version bigint NOT NULL DEFAULT 0,
   built_at timestamp with time zone DEFAULT now(),
+  katalog_stand bigint NOT NULL DEFAULT '-1'::integer,
   CONSTRAINT parts_summary_state_pkey PRIMARY KEY (user_id),
   CONSTRAINT parts_summary_state_user_fk FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
@@ -473,6 +511,8 @@ CREATE TABLE rate_limit_attempts (
   count integer NOT NULL DEFAULT 1,
   first_at timestamp with time zone NOT NULL DEFAULT now(),
   last_at timestamp with time zone,
+  laufend integer NOT NULL DEFAULT 0,
+  laufend_seit timestamp with time zone,
   CONSTRAINT rate_limit_attempts_pkey PRIMARY KEY (key)
 );
 CREATE INDEX idx_rate_limit_first_at ON rate_limit_attempts USING btree (first_at);
@@ -550,20 +590,10 @@ CREATE TABLE rb_themes (
   CONSTRAINT rb_themes_pkey PRIMARY KEY (id)
 );
 
-CREATE TABLE schema_meta (
-  id integer NOT NULL DEFAULT 1,
-  applied_version text NOT NULL,
-  applied_at timestamp with time zone NOT NULL DEFAULT now(),
-  CONSTRAINT schema_meta_pkey PRIMARY KEY (id),
-  CONSTRAINT schema_meta_single_row CHECK ((id = 1))
-);
-
 CREATE TABLE schema_migrations (
-  id integer NOT NULL DEFAULT nextval('schema_migrations_id_seq'::regclass),
   name text NOT NULL,
-  run_at timestamp with time zone DEFAULT now(),
-  CONSTRAINT schema_migrations_name_key UNIQUE (name),
-  CONSTRAINT schema_migrations_pkey PRIMARY KEY (id)
+  applied_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT schema_migrations_pkey PRIMARY KEY (name)
 );
 
 CREATE TABLE set_acquisitions (
@@ -587,7 +617,7 @@ CREATE UNIQUE INDEX idx_set_acq_tag_merkmale ON set_acquisitions USING btree (us
 CREATE TRIGGER set_acquisitions_waehrung BEFORE INSERT OR UPDATE ON set_acquisitions FOR EACH ROW EXECUTE FUNCTION erfassung_waehrung();
 CREATE TRIGGER trg_bump_parts_version_del AFTER DELETE ON set_acquisitions REFERENCING OLD TABLE AS alt FOR EACH STATEMENT EXECUTE FUNCTION bump_parts_version_del();
 CREATE TRIGGER trg_bump_parts_version_ins AFTER INSERT ON set_acquisitions REFERENCING NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION bump_parts_version_ins();
-CREATE TRIGGER trg_bump_parts_version_upd AFTER UPDATE ON set_acquisitions REFERENCING OLD TABLE AS alt NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION bump_parts_version_upd();
+CREATE TRIGGER trg_bump_parts_version_upd AFTER UPDATE ON set_acquisitions REFERENCING OLD TABLE AS alt NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION bump_parts_version_erfassung_upd();
 
 CREATE TABLE set_catalog (
   set_number text NOT NULL,
@@ -632,6 +662,7 @@ CREATE TABLE set_parts_catalog (
   CONSTRAINT set_parts_catalog_pkey PRIMARY KEY (set_number, part_number, color_id)
 );
 CREATE INDEX idx_spc_set ON set_parts_catalog USING btree (set_number);
+CREATE TRIGGER trg_bump_parts_katalog AFTER INSERT OR DELETE OR UPDATE ON set_parts_catalog FOR EACH STATEMENT EXECUTE FUNCTION bump_parts_katalog();
 
 CREATE TABLE sets (
   id integer NOT NULL DEFAULT nextval('sets_id_seq'::regclass),
@@ -675,6 +706,7 @@ CREATE TABLE storage_locations (
   CONSTRAINT storage_locations_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 CREATE UNIQUE INDEX storage_locations_konto_name ON storage_locations USING btree (user_id, lower(name));
+CREATE TRIGGER trg_bump_parts_version_upd AFTER UPDATE ON storage_locations REFERENCING OLD TABLE AS alt NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION bump_parts_version_lagerort_upd();
 
 CREATE TABLE subsets_cache (
   set_number text NOT NULL,
@@ -784,6 +816,15 @@ CREATE TABLE zweiter_faktor_codes (
 );
 CREATE INDEX idx_zweiter_faktor_codes_konto ON zweiter_faktor_codes USING btree (user_id);
 
+CREATE OR REPLACE FUNCTION bump_parts_katalog()
+ RETURNS trigger
+ LANGUAGE plpgsql
+AS $function$
+BEGIN
+  UPDATE parts_katalog_stand SET v = v + 1 WHERE id = 1;
+  RETURN NULL;
+END $function$;
+
 CREATE OR REPLACE FUNCTION bump_parts_version_del()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -795,6 +836,23 @@ BEGIN
   RETURN NULL;
 END $function$;
 
+CREATE OR REPLACE FUNCTION bump_parts_version_erfassung_upd()
+ RETURNS trigger
+ LANGUAGE plpgsql
+AS $function$
+BEGIN
+  INSERT INTO parts_version_user (user_id, v)
+  SELECT DISTINCT user_id, 1 FROM (
+    SELECT a.user_id FROM alt a JOIN neu n ON n.id = a.id
+     WHERE (a.quantity, a.user_id, a.set_number) IS DISTINCT FROM (n.quantity, n.user_id, n.set_number)
+    UNION
+    SELECT n.user_id FROM alt a JOIN neu n ON n.id = a.id
+     WHERE (a.quantity, a.user_id, a.set_number) IS DISTINCT FROM (n.quantity, n.user_id, n.set_number)
+  ) x WHERE user_id IN (SELECT id FROM users)
+  ON CONFLICT (user_id) DO UPDATE SET v = parts_version_user.v + 1;
+  RETURN NULL;
+END $function$;
+
 CREATE OR REPLACE FUNCTION bump_parts_version_ins()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -802,6 +860,18 @@ AS $function$
 BEGIN
   INSERT INTO parts_version_user (user_id, v)
   SELECT DISTINCT user_id, 1 FROM neu WHERE user_id IS NOT NULL AND user_id IN (SELECT id FROM users)
+  ON CONFLICT (user_id) DO UPDATE SET v = parts_version_user.v + 1;
+  RETURN NULL;
+END $function$;
+
+CREATE OR REPLACE FUNCTION bump_parts_version_lagerort_upd()
+ RETURNS trigger
+ LANGUAGE plpgsql
+AS $function$
+BEGIN
+  INSERT INTO parts_version_user (user_id, v)
+  SELECT DISTINCT n.user_id, 1 FROM alt a JOIN neu n ON n.id = a.id
+   WHERE a.name IS DISTINCT FROM n.name AND n.user_id IN (SELECT id FROM users)
   ON CONFLICT (user_id) DO UPDATE SET v = parts_version_user.v + 1;
   RETURN NULL;
 END $function$;

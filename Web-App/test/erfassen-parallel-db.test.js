@@ -125,7 +125,7 @@ test('alle Erfassen-Wege nutzen dieselbe Prüfung', () => {
   const { ROOT, ohneKommentare } = require('./helpers/sources');
 
   // Webapp UND Android-API, Sets wie manuelle Einträge — vier Wege, eine Regel.
-  for (const rel of ['routes/sets.ts', 'routes/api_v1/sets.ts', 'routes/parts.ts', 'routes/minifigs.ts']) {
+  for (const rel of ['routes/sets.ts', 'routes/api_v1/sets.ts', 'utils/manuelleTeile.ts', 'utils/manuelleFiguren.ts']) {
     const src = ohneKommentare(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
     assert.match(src, /acquisitionQuantity\(/, `${rel}: Menge ungeprüft`);
     assert.match(src, /optionalPrice\(/,       `${rel}: Preis ungeprüft`);

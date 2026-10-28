@@ -84,15 +84,10 @@ export async function aendereTeilFarbe(
   const alt = Number(alteFarbe) || 0;
   const neu = Number(neueFarbe) || 0;
 
-  // Farbbezeichnung und Farbcode: was der Aufrufer mitbringt, sonst aus dem
-  // Farbkatalog. Dieselbe Reihenfolge wie beim Anlegen von Hand
-  // (`effectiveColorHex` in routes/parts.ts) — die Auswahlliste der
-  // Oberfläche und rb_colors sind dieselbe Quelle, nur einmal über das Netz
-  // und einmal aus dem CSV-Abgleich.
+  // Farbbezeichnung und Farbcode: rb_colors zuerst, weil der Katalog für alle
+  // Konten gilt; die Angaben des Aufrufers füllen nur, was dort fehlt.
   const katalogFarbe = await db.get('SELECT name, rgb FROM rb_colors WHERE id = $1', [neu])
     .catch(() => null);
-  const farbName = angaben.color_name || katalogFarbe?.name || null;
-  const farbHex  = angaben.color_hex  || katalogFarbe?.rgb  || null;
 
   // Die Transaktion liefert alles AUSSER dem Bild: Das wird danach geholt,
   // weil der Abruf dauern und scheitern darf, ohne die Änderung mitzunehmen.
@@ -116,7 +111,9 @@ export async function aendereTeilFarbe(
     // (LEFT JOIN part_color_catalog in getManualParts). Ohne ihn hätte das
     // Teil nach der Änderung einen Farbpunkt ohne Beschriftung — genau der
     // Zustand, über den Marco sich beim Import beschwert hat.
-    await merkeTeilFarbe(partNumber, neu, farbName, farbHex, null, null, tx);
+    // rb_colors geprüft, die Angaben des Aufrufers als Eingabe dieses Kontos.
+    await merkeTeilFarbe(partNumber, neu, katalogFarbe?.name, katalogFarbe?.rgb, null, null, tx);
+    await merkeTeilFarbe(partNumber, neu, angaben.color_name, angaben.color_hex, null, null, tx, uid);
 
     const ziel = await tx.get(
       `SELECT id, storage_id FROM parts

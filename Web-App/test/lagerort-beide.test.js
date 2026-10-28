@@ -24,7 +24,12 @@ const web  = rel => lies(path.join(WEB, rel));
 // löst diese Brücken statisch auf und kann eine Variable nicht sehen.
 const KT_API    = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'data', 'api', 'BrickApiService.kt'));
 const KT_SCOPE  = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'data', 'ScopeFilter.kt'));
-const KT_HAUS   = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'ui', 'HouseholdFeature.kt'));
+// Seit dem Schnitt des MainViewModels (28.10.2026) liegt der Lagerortfilter
+// in der Grundlage der Bereichs-ViewModels, die Verwaltung im
+// EinstellungenViewModel und das Laden der eigenen Orte im Blickfeld.
+const KT_HAUS   = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'ui', 'viewmodel', 'BereichsViewModel.kt'))
+                + lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'ui', 'viewmodel', 'EinstellungenViewModel.kt'))
+                + lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'ui', 'Blickfeld.kt'));
 const KT_DIALOG = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'ui', 'dialogs', 'SetItemDetailDialog.kt'));
 const KT_SETDET = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'SetDetailSections.kt'));
 const KT_CHIPS  = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'HouseholdComposables.kt'));
@@ -196,7 +201,7 @@ test('der Filter steht neben dem Kontofilter, nicht darunter', () => {
   }
   assert.match(KT_CHIPS, /LagerortFilterChip\(orte = lagerorte/,
     'Der App fehlt der Lagerortfilter in der Filterzeile');
-  assert.match(KT_HAUS, /fun MainViewModel\.setLagerFilter/,
+  assert.match(KT_HAUS, /fun setLagerFilter\(/,
     'Der App fehlt das Umschalten');
 });
 
@@ -302,7 +307,7 @@ test('beide verwalten die Orte in den Einstellungen', () => {
 
   assert.match(KT_EINST, /LagerorteCard\(vm\)/, 'Der App fehlt die Karte');
   for (const fn of ['legeLagerortAn', 'benenneLagerortUm', 'loescheLagerort']) {
-    assert.match(KT_HAUS, new RegExp(`fun MainViewModel\\.${fn}\\(`),
+    assert.match(KT_HAUS, new RegExp(`fun ${fn}\\(`),
       `Der App fehlt ${fn}`);
   }
   // Nur die EIGENEN: Fremde Regale umzubenennen ist keine Einstellung,
@@ -323,7 +328,7 @@ test('beide speichern den Lagerort beim Tippen, nicht beim Fokuswechsel', () => 
   assert.match(ohneK(KT_HAUS) + ohneK(KT_SETDET), /onWert = \{/,
     'Das Feld gibt den getippten Wert nicht weiter');
   // Und die Ruhezeit liegt im ViewModel, damit sie den Bildschirm überlebt.
-  const gal = ohneK(lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'ui', 'GalleryFeature.kt')));
+  const gal = ohneK(lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'ui', 'viewmodel', 'SetDetailViewModel.kt')));
   assert.match(gal, /lagerJob\?\.cancel\(\)\s*\n\s*lagerJob = viewModelScope\.launch/,
     'Die Ruhezeit des Lagerorts läuft nicht im viewModelScope');
 });

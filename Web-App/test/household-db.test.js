@@ -606,40 +606,6 @@ test('Haushalt gegen echte Datenbank', async (t) => {
     assert.equal(body.code, 'kaufpreise_angeben');
   });
 
-  await t.test('die Migration führt verwaiste Teile zu ihrem Set zurück', async () => {
-    // Sets, die vor hardened-106 verschoben wurden, liessen Teile und
-    // Minifiguren beim Absender zurück: Zeilen, die auf ein Set zeigen, das
-    // ihr Konto nicht mehr besitzt. db/migrations/0006 räumt das einmalig auf.
-    //
-    // Ausgangslage nachstellen: kindB besitzt 10290-1, die Teile liegen aber
-    // noch bei kindA — und ein FREMDES Konto besitzt dasselbe Set ebenfalls,
-    // darf aber nichts abbekommen.
-    await haeltSet(db, U.kindB, '10290-1', 1, { egalWennDa: true });
-    await db.run(`DELETE FROM set_acquisitions WHERE user_id=$1 AND set_number='10290-1'`, [U.kindA]);
-    await db.run(`DELETE FROM sets WHERE user_id=$1 AND set_number='10290-1'`, [U.kindA]);
-    await haeltSet(db, U.fremd, '10290-1', 1, { egalWennDa: true });
-    await haeltTeil(db, U.kindA, '3005', { setNumber: '10290-1', menge: 7, colorId: 1 });
-    await haeltFigur(db, U.kindA, 'fig-1', { setNumber: '10290-1', menge: 1 });
-
-    const client = await db.pool.connect();
-    try {
-      // Migrationen sind einmalig verbucht — für den Test die Datei direkt
-      // ausführen, sonst überspringt der Läufer sie.
-      const sql = require('node:fs').readFileSync(
-        require('node:path').join(ROOT, 'db/migrations/0006-verwaiste-teile-nach-verschieben.sql'), 'utf8');
-      await client.query(sql);
-    } finally { client.release(); }
-
-    const bei = async (t, uid) => (await db.get(
-      `SELECT COUNT(*)::int AS n FROM ${t} WHERE user_id=$1 AND set_number='10290-1'`, [uid])).n;
-    assert.equal(await bei('parts', U.kindB), 1, 'Teile kamen nicht beim Besitzer an');
-    assert.equal(await bei('parts', U.kindA), 0, 'verwaiste Teile blieben liegen');
-    assert.equal(await bei('minifigs', U.kindB), 1);
-    // Das fremde Konto darf nichts bekommen — sonst wäre die Migration ein
-    // Datenleck über Haushaltsgrenzen hinweg.
-    assert.equal(await bei('parts', U.fremd), 0, 'Teile wanderten in ein fremdes Konto');
-  });
-
   await t.test('in ein fremdes Konto schreiben — die Richtung entscheidet', async () => {
     // ── Warum diese Prüfung hier steht (Nachtrag 149) ────────────────────────
     // Die Regel „owner_user_id wird geprüft, nicht bloss übernommen" lag

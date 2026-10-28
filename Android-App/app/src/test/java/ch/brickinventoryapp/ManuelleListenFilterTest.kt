@@ -45,11 +45,9 @@ import org.junit.Test
  *        getManualParts kennt keinen Suchtext".
  *   B  `search` aus dem Aufruf `api.getManualParts(…)` in TeileRepository.kt
  *      entfernt → nur Fall 2 rot.
- *   C  `suche` aus dem Aufruf `repo.teile.getManualParts(…)` in
- *      PartsFeature.kt entfernt (der Lagerort blieb, als benannter Parameter)
- *      → nur Fall 3 rot, an „schickt den Suchtext nicht".
- *   D  `suche` aus dem Aufruf von getManualMinifigs entfernt
- *      → nur Fall 4 rot.
+ *   C, D  (Fall 3 und 4 prüft seit dem 28.10.2026 TeileViewModelTest
+ *      ausgeführt, „Suchtext und Lagerort erreichen auch die manuell
+ *      erfassten Stücke“.)
  */
 class ManuelleListenFilterTest {
 
@@ -59,11 +57,8 @@ class ManuelleListenFilterTest {
     private val repo by lazy {
         Quellen.ohneKommentare(Quellen.lies("data/repository/TeileRepository.kt"))
     }
-    // Die Abrufe stehen dort, wo das MainViewModel die Teile-Quelle baut;
-    // dass der Suchtext dort ankommt, prüft TeileTest am Ablauf.
-    private val feature by lazy {
-        Quellen.ohneKommentare(Quellen.lies("ui/MainViewModel.kt"))
-    }
+    // Dass Suchtext und Lagerort an den Abrufen ankommen, prüft
+    // TeileViewModelTest ausgeführt; hier bleiben Vertrag und Repository.
 
     /**
      * Der Abschnitt von `ab` bis `bis` — nach BEGRENZERN geschnitten, nicht
@@ -118,29 +113,4 @@ class ManuelleListenFilterTest {
         )
     }
 
-    @Test
-    fun `die Teileliste schickt Suchtext und Lagerort an die manuelle Liste`() {
-        val aufruf = abschnitt(feature, "repo.teile.getManualParts(", ")")
-        assertTrue(
-            "Der Aufruf von getManualParts schickt den Suchtext nicht — genau das " +
-                "war der Zustand, den Marco gemeldet hat: Der Text filtert die " +
-                "Set-Teile, die manuellen Kacheln darueber bleiben stehen.",
-            aufruf.contains("suche")
-        )
-        assertTrue(
-            "Der Aufruf von getManualParts schickt den Lagerort nicht — dann " +
-                "waere der Filter halb angewandt: unten gefiltert, oben nicht.",
-            aufruf.contains("teileLager") && feature.contains("teileLager get() = lagerFor(")
-        )
-    }
-
-    @Test
-    fun `die Figurenliste schickt den Suchtext an die manuelle Liste`() {
-        assertTrue(
-            "Der Aufruf von getManualMinifigs schickt den Suchtext nicht. Marco hat " +
-                "es an den Teilen gesehen; dieser Bildschirm trug es unbemerkt mit.",
-            abschnitt(feature, "repo.teile.getManualMinifigs(", ")")
-                .contains("suche")
-        )
-    }
 }

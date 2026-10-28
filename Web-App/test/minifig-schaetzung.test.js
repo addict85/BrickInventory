@@ -51,7 +51,7 @@ test('ohne BrickLink-Nummer wird die eigene Nummer versucht', () => {
 test('die Schaetzung greift erst, wenn BrickLink nichts liefert', () => {
   const fn = abruf();
   const brickLink = fn.indexOf('fetchMinifigPrice');
-  const schaetzung = fn.indexOf('estimateFigPriceFromParts');
+  const schaetzung = fn.indexOf('schaetzeFigurenpreis');
   assert.ok(brickLink > 0 && schaetzung > 0,
     'BrickLink-Abruf oder Teile-Schaetzung fehlt im Preisweg');
   assert.ok(schaetzung > brickLink,
@@ -59,23 +59,23 @@ test('die Schaetzung greift erst, wenn BrickLink nichts liefert', () => {
     'auch dort, wo es einen echten Marktpreis gibt');
   // Sie steht hinter der Schleife, nicht darin: In der Schleife liefe sie je
   // Nummer einmal.
-  assert.match(fn, /\}\s*return \{ preis: await estimateFigPriceFromParts\(figNumber, userId, effCond\), ausZustand: null \};/,
+  assert.match(fn, /\}\s*const schaetzung = await schaetzeFigurenpreis\(figNumber, userId, effCond\);/,
     'Die Schaetzung steht nicht als Rueckfall hinter der Nummern-Schleife');
 });
 
 test('die Schaetzung rechnet im ERMITTELTEN Zustand', () => {
   const fn = abruf();
-  assert.match(fn, /estimateFigPriceFromParts\(figNumber, userId, effCond\)/,
+  assert.match(fn, /schaetzeFigurenpreis\(figNumber, userId, effCond\)/,
     'Die Schaetzung bekommt nicht den ermittelten Zustand — dann rechnete sie ' +
     'im Standardzustand, und „neu" und „gebraucht" ergaeben wieder dasselbe');
 });
 
 test('die Schaetzung wird zwischengespeichert und fortgeschrieben', () => {
-  const i = src.indexOf('async function estimateFigPriceFromParts');
-  assert.ok(i > 0, 'estimateFigPriceFromParts ist nicht mehr zu finden');
+  const i = src.indexOf('async function schaetzeFigurenpreis');
+  assert.ok(i > 0, 'schaetzeFigurenpreis ist nicht mehr zu finden');
   const fn = src.slice(i, src.indexOf('\nasync function', i + 10));
   // GELESEN: Ohne das kostete jeder Aufruf eine Preisabfrage je Teil.
-  assert.match(fn, /SELECT avg_price FROM minifig_price_cache/,
+  assert.match(fn, /SELECT avg_price, abdeckung FROM minifig_price_cache/,
     'Der Cache wird nicht mehr GELESEN — eine Figur mit fuenfzehn Teilen ' +
     'kostet dann fuenfzehn Abfragen bei jedem Oeffnen der Finanzseite');
   // GESCHRIEBEN: sonst steht im Detail-Dialog bei „Marktpreis" nur ein Strich.

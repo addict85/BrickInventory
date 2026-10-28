@@ -121,14 +121,14 @@ class ServerComputedValuesTest {
                 "die wirkliche Gesamtmenge gar nicht transportieren"
         }
 
-        val g = code(read("ui/GalleryFeature.kt"))
-        val block = g.substring(g.indexOf("fun MainViewModel.updateQuantity("))
-            .substringBefore("internal fun MainViewModel.delete")
+        val g = code(read("ui/viewmodel/SetDetailViewModel.kt"))
+        val block = g.substring(g.indexOf("fun updateQuantity("))
+            .substringBefore("fun setzeSetLagerort(")
         assert(block.contains("r.data.quantity")) {
             "updateQuantity liest die Menge der Antwort nicht"
         }
         val uebernahme = block.indexOf("r.data.quantity")
-        val laden = block.indexOf("loadSets()")
+        val laden = block.indexOf("bestand.melde(")
         assert(laden < 0 || uebernahme < laden) {
             "Die Übernahme muss VOR dem Nachladen stehen — sonst sieht man die " +
                 "falsche Zahl für die Dauer einer Rundreise"

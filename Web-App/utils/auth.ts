@@ -7,7 +7,7 @@ import * as db from '../db/database';
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import type { Request, Response, NextFunction } from 'express';
-import { checkLoginAllowed, recordLoginFailure, recordLoginSuccess } from './loginLimiter';
+import { checkLoginAllowed, gibAnmeldeplatzFrei, recordLoginFailure, recordLoginSuccess } from './loginLimiter';
 import { sendeFehler } from './fehlerTexte';
 import { logAndContinue } from './httpError';
 import * as zf from './zweiterFaktor';
@@ -425,7 +425,11 @@ async function pruefeAnmeldedaten(req: Request, username: unknown, password: unk
   if (blockiert) { await recordLoginSuccess(req, name); return absage(blockiert.status, blockiert.code, undefined, blockiert.unverified); }
 
   if (await zf.istAktiv(user.id)) {
-    if (!String(code ?? '').trim()) return absage(401, 'zweiter_faktor_noetig', undefined, false, true);
+    if (!String(code ?? '').trim()) {
+      // Das Passwort stimmte; nur der Code fehlt noch — kein Fehlversuch.
+      await gibAnmeldeplatzFrei(req, name);
+      return absage(401, 'zweiter_faktor_noetig', undefined, false, true);
+    }
     if (!await zf.pruefeCode(user.id, code)) {
       await recordLoginFailure(req, name);
       return absage(401, 'zweiter_faktor_falsch', undefined, false, true);

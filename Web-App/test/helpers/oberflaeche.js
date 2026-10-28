@@ -63,7 +63,7 @@ async function warte(bedingung, ms = 3000) {
 
 /**
  * @param {object} [antworten]  Pfad → Antwort (Objekt oder Funktion(url))
- * @param {object} [opt]        { angemeldet = true, sprache = 'de' }
+ * @param {object} [opt]        { angemeldet = true, sprache = 'de', browserSprache }
  */
 async function oeffneOberflaeche(antworten = {}, opt = {}) {
   const jsdom = require(path.join(ROOT, 'node_modules', 'jsdom'));
@@ -82,6 +82,7 @@ async function oeffneOberflaeche(antworten = {}, opt = {}) {
              json: async () => JSON.parse(JSON.stringify(daten)) };
   };
   w.console.warn = () => {};
+  if (opt.browserSprache) Object.defineProperty(w.navigator, 'language', { value: opt.browserSprache });
   // jsdom kennt keinen IntersectionObserver; nachgeladen wird hier nichts.
   w.IntersectionObserver = class { observe() {} unobserve() {} disconnect() {} };
   // Die Wörterbücher lädt index.html als eigene <script>-Tags.

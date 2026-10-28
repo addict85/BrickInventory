@@ -1,12 +1,12 @@
 import * as db from '../db/database';
-import { logAndContinue, meldeUndWeiter, fehlertext } from './httpError';
+import { meldeUndWeiter, fehlertext } from './httpError';
 import { scopeIds, writableIds } from './household';
 import { recordAcquisitionForDay } from './acquisitions';
 import { withInventoryLock } from './txLock';
 import { downloadSetImage } from './setImages';
 import { getCurrentMarketPrice } from './marketPrice';
 import { downloadSetInstructions } from './instructions';
-import { zustandFuerPreis } from './settings';
+import { zustandFuerPreis, getSetting } from './settings';
 import { deleteSetRows } from '../utils/handlers/sets';
 import { legeInPapierkorb } from './papierkorb';
 import { toCsv } from './csvExport';
@@ -14,7 +14,7 @@ import { getSetInfo } from '../clients/rebrickable';
 import * as brickset from '../clients/brickset';
 import { getItemImageUrl } from '../clients/bricklink';
 import { generateThumb } from './thumbs';
-import * as nachErfassung from '../jobs/nachErfassung';
+import { nacharbeit } from './nacharbeit';
 import { normalisiereSetNummer, moeglicheSetNummer } from './setNummer';
 import { fehlerWerfen } from './fehlerTexte';
 import { setzeLagerort, ortFuerNeuerfassung } from './lagerort';
@@ -55,8 +55,10 @@ async function priceForNewAcquisition(userId: number, setNumber: string, dbh: an
   // Ausführlich: docs/begruendungen/utils/setService.ts.md#pricefornewacquisition-blickfeld
   const blickfeld = await scopeIds(userId).catch(() => [userId]);
   const cond = await resolveSetCondition(blickfeld, setNumber, dbh);
-  const currRow = await dbh.get("SELECT value FROM global_settings WHERE key='currency'").catch(()=>null);
-  const currency = currRow?.value || 'EUR';
+  // Die Währung DES KONTOS: Der Preis wird in ihr gesucht und mit ihr
+  // gespeichert. Hier stand ein globaler Schlüssel, den es nie gibt — also
+  // immer EUR, und ein EUR-Betrag landete als CHF-Kaufpreis.
+  const currency = String(await getSetting(userId, 'currency', 'EUR'));
   const cached = await dbh.get(
     // Fallback zwischen den Zuständen, aber mit der richtigen Priorität:
     // Der angefragte Zustand gewinnt IMMER, wenn er einen Preis hat. Der
@@ -84,14 +86,15 @@ async function priceForNewAcquisition(userId: number, setNumber: string, dbh: an
     ).catch(() => null);
     pp = parseFloat(hist?.avg_price || 0) || null;
   }
-  return { price: pp, condition: cond, geschaetzt: pp != null };
+  return { price: pp, condition: cond, geschaetzt: pp != null, currency };
 }
 
 // ── Kaufpreis-Historie ────────────────────────────────────────────────────────
 // Jede Erfassung (auch Re-Add desselben Sets) erzeugt eine Zeile in
 // set_acquisitions. Das ist seit Migration 0032 der einzige Ort für Kaufpreis
 // und Zustand — die Spiegelung nach sets.purchase_price/condition ist weg.
-async function recordAcquisition(userId: number, setNumber: string, quantity: number, purchasePrice: number | null, condition: string | null = null, dbh: any = db, geschaetzt = false) {
+async function recordAcquisition(userId: number, setNumber: string, quantity: number, purchasePrice: number | null, condition: string | null = null, dbh: any = db, geschaetzt = false,
+                                 currency: string | null = null, createdAt: string | null = null) {
   // Der Zustand wurde von allen Aufrufern schon immer als 5. Argument
   // übergeben, aber bisher hier ignoriert (Signatur hatte nur 4 Parameter) —
   // neue Erfassungen bekamen dadurch nie den Set-Zustand, sondern den
@@ -101,7 +104,7 @@ async function recordAcquisition(userId: number, setNumber: string, quantity: nu
   // Kein Rückfall ohne condition mehr.
   // Ausführlich: docs/begruendungen/utils/setService.ts.md#recordacquisition
   await recordAcquisitionForDay('set', userId, [setNumber],
-    { quantity, price: pp, condition: cond || 'N', geschaetzt }, dbh);
+    { quantity, price: pp, condition: cond || 'N', geschaetzt, currency, createdAt }, dbh);
 }
 
 /**
@@ -110,7 +113,7 @@ async function recordAcquisition(userId: number, setNumber: string, quantity: nu
  *        dbh KEINE Transaktion sein, weil ein Netzaufruf darin steckt.
  */
 async function adjustAcquisitionsToQuantity(userId: number, setNumber: string, newTotalQty: number, dbh: any = db,
-                                            pricePlan: { price: number | null; condition: string; geschaetzt?: boolean } | null = null) {
+                                            pricePlan: { price: number | null; condition: string; geschaetzt?: boolean; currency?: string } | null = null) {
   const rows = await dbh.all(
     'SELECT id, quantity, created_at FROM set_acquisitions WHERE user_id=$1 AND set_number=$2 ORDER BY created_at DESC, id DESC',
     [userId, setNumber]).catch(() => []);
@@ -124,14 +127,14 @@ async function adjustAcquisitionsToQuantity(userId: number, setNumber: string, n
         // recordAcquisitionForDay() (über recordAcquisition unten).
         // Ausführlich: docs/begruendungen/utils/setService.ts.md#adjustacquisitionstoquantity-plan
         const plan = pricePlan ?? await priceForNewAcquisition(userId, setNumber, dbh);
-        await recordAcquisition(userId, setNumber, delta, plan.price, plan.condition, dbh, !!plan.geschaetzt);
+        await recordAcquisition(userId, setNumber, delta, plan.price, plan.condition, dbh, !!plan.geschaetzt, plan.currency ?? null);
       }
     } else {
       // ERSTE Erfassung dieses Kontos für das Set.
       // Ausführlich: docs/begruendungen/utils/setService.ts.md#adjustacquisitionstoquantity-plan-2
       const plan = pricePlan ?? await priceForNewAcquisition(userId, setNumber, dbh);
       await recordAcquisition(userId, setNumber, newTotalQty,
-        plan.price, plan.condition || 'N', dbh, !!plan.geschaetzt);
+        plan.price, plan.condition || 'N', dbh, !!plan.geschaetzt, plan.currency ?? null);
     }
     return;
   }
@@ -149,21 +152,12 @@ async function adjustAcquisitionsToQuantity(userId: number, setNumber: string, n
   // mehr — die verbleibenden Erfassungen SIND der Zustand.
 }
 
-// CSV import helper: add set with specific acquisition date (avoids duplicate acquisitions)
+// CSV-Import: Das Datum geht in DIESELBE Erfassung, die angelegt wird. Hier
+// stand ein nachträgliches UPDATE auf „die Erfassung mit der höchsten id“ —
+// legte die Tagesregel keine neue an, wurde ein fremder Kauf umdatiert.
 async function addSetWithDate(setNumber: string, quantity: number, userId: number, purchasePrice: number | null,
                               condition: string | null, acquiredAt: string | null) {
-  // Always use addSet for the set metadata; then fix the acquisition date if provided
-  const result = await addSet(setNumber, quantity, userId, null, purchasePrice, condition);
-  if (acquiredAt && result) {
-    // Update the most recently created acquisition to use the CSV date
-    await db.run(
-      `UPDATE set_acquisitions SET created_at=$1
-       WHERE id=(SELECT id FROM set_acquisitions WHERE user_id=$2 AND set_number=$3
-                 ORDER BY id DESC LIMIT 1)`,
-      [acquiredAt, userId, result.set_number || setNumber]
-    ).catch(logAndContinue(`sets:csv-datum ${setNumber}`));
-  }
-  return result;
+  return addSet(setNumber, quantity, userId, null, purchasePrice, condition, null, acquiredAt);
 }
 
 /**
@@ -173,12 +167,12 @@ async function addSetWithDate(setNumber: string, quantity: number, userId: numbe
 async function addSet(setNumber: string, quantity: number, userId: number,
                       sendProgress: ((n: { step: string; set: string }) => void) | null,
                       purchasePrice: number | null, condition: string | null = null,
-                      storage: string | null = null) {
+                      storage: string | null = null, erfasstAm: string | null = null) {
   // Siehe addManualPart in routes/parts.ts: ohne mitgegebenen Ort gilt
   // Marcos Stern. Betrifft hier vor allem den CSV-Import und den
   // Wanted-Listen-Import, die beide kein Lagerortfeld haben.
   const ort = await ortFuerNeuerfassung(userId, storage);
-  const ergebnis = await addSetIntern(setNumber, quantity, userId, sendProgress, purchasePrice, condition);
+  const ergebnis = await addSetIntern(setNumber, quantity, userId, sendProgress, purchasePrice, condition, erfasstAm);
   if (ort && ergebnis?.set_number) {
     await setzeLagerort('set', [userId], [ergebnis.set_number], ort);
   }
@@ -187,7 +181,8 @@ async function addSet(setNumber: string, quantity: number, userId: number,
 
 async function addSetIntern(setNumber: string, quantity: number, userId: number,
                       sendProgress: ((n: { step: string; set: string }) => void) | null,
-                      purchasePrice: number | null, condition: string | null = null) {
+                      purchasePrice: number | null, condition: string | null = null,
+                      erfasstAm: string | null = null) {
   const normalized = sanitizeSetNumber(setNumber);
   if (!moeglicheSetNummer(normalized)) fehlerWerfen('setnummer_ungueltig', 400);
   if (sendProgress) sendProgress({ step:'meta', set:normalized });
@@ -216,7 +211,7 @@ async function addSetIntern(setNumber: string, quantity: number, userId: number,
       // 0036 keine Spalte mehr — sie wird beim LESEN aus den Erfassungen
       // gerechnet (utils/bestandsmenge.ts).
       // Ausführlich: docs/begruendungen/utils/setService.ts.md#addsetintern-2
-      await recordAcquisition(userId, normalized, quantity, reAddPrice, zustand, tx, reAddGeschaetzt);
+      await recordAcquisition(userId, normalized, quantity, reAddPrice, zustand, tx, reAddGeschaetzt, null, erfasstAm);
     });
     // During bulk CSV import, skip immediate background jobs to avoid DB pool exhaustion.
     // The import loop triggers enrichment after all sets are imported.
@@ -224,7 +219,7 @@ async function addSetIntern(setNumber: string, quantity: number, userId: number,
     // Der Rumpf steht seit dem Herausziehen in jobs/nachErfassung.ts — als
     // anonymer Block im setTimeout war er in Tests nicht abfangbar und lief
     // dort echt, gegen einen meist schon geschlossenen Pool.
-    if (!global._csvImportLaeufe) nachErfassung.zieheNach(normalized, userId);
+    if (!global._csvImportLaeufe) nacharbeit().zieheNach(normalized, userId);
     return { action:'updated', set_number:normalized };
   }
 
@@ -304,7 +299,7 @@ async function addSetIntern(setNumber: string, quantity: number, userId: number,
     // Ausführlich: docs/begruendungen/utils/setService.ts.md#addsetintern-4
     await tx.run('INSERT INTO sets (user_id,set_number) VALUES ($1,$2) ON CONFLICT (user_id,set_number) DO NOTHING',
       [userId, normalized]);
-    await recordAcquisition(userId, normalized, quantity, effectivePurchasePrice, effectiveCondition, tx, preisGeschaetzt);
+    await recordAcquisition(userId, normalized, quantity, effectivePurchasePrice, effectiveCondition, tx, preisGeschaetzt, null, erfasstAm);
   });
 
   // In den Katalog, nicht an die Bestandszeile (Migration 0033). Und ohne
@@ -325,8 +320,11 @@ async function addSetIntern(setNumber: string, quantity: number, userId: number,
   // Rumpf in jobs/nachErfassung.ts — dort steht er neben dem Nachzug des
   // Zweiterfassungs-Zweigs, und der Unterschied zwischen beiden ist damit an
   // einer Stelle zu sehen statt vierzig Zeilen auseinander.
-  if (!global._csvImportLaeufe) nachErfassung.zieheNachNeuanlage(normalized, userId);
-  return { action:'added', set_number:normalized, name: name ?? `Set ${normalized}` };
+  if (!global._csvImportLaeufe) nacharbeit().zieheNachNeuanlage(normalized, userId);
+  // katalog_offen: Weder Rebrickable noch Brickset haben geantwortet. Das Set
+  // ist gespeichert, Name und Bild zieht die Nacharbeit nach — die Oberfläche
+  // soll das sagen statt eines schlichten „hinzugefügt“.
+  return { action:'added', set_number:normalized, name: name ?? `Set ${normalized}`, katalog_offen: !name };
 }
 
 // Shared logic to update a set's quantity and/or Kaufpreis. Used by both the
@@ -385,69 +383,58 @@ async function updateSet(uid: number, sn: string, body: any) {
   // Erfassungen im falschen Konto an.
   const ownerId = parseInt(String(existing.user_id));
 
-  const hasQuantity = body.quantity !== undefined && body.quantity !== null;
+  const hatDelta = body.quantity_delta !== undefined && body.quantity_delta !== null;
+  const hasQuantity = hatDelta || (body.quantity !== undefined && body.quantity !== null);
   let papierkorb: number | null = null;
 
   if (hasQuantity) {
-    // Menge und Erfassungen gehören zusammen
-    // Der Marktpreis wird VOR der Sperre geholt (Netzaufruf, siehe
-    // priceForNewAcquisition); innerhalb läuft nur noch Datenbankarbeit.
+    // quantity_delta ändert relativ: Zwei Geräte, die gleichzeitig „+1"
+    // tippen, ergeben +2. Eine absolute Menge (quantity) aus einem veralteten
+    // Stand überschriebe den anderen Zugang.
+    const delta = hatDelta ? Number(body.quantity_delta) : null;
+    if (delta !== null && (!Number.isInteger(delta) || Math.abs(delta) > 9999)) fehlerWerfen('wert_ungueltig', 400);
+    const gewuenschtGesamt = delta === null ? bestandsMenge(body.quantity) : null;
+    const leseFeld = await scopeIds(uid);
     //  Angezeigt wird der HAUSHALT, geändert wird das EIGENE Konto
     // Ausführlich: docs/begruendungen/utils/setService.ts.md#updateset-gewuenschtgesamt
-    const gewuenschtGesamt = bestandsMenge(body.quantity);
-    const leseFeld = await scopeIds(uid);
-    const gesamtVorher = (await db.get(
-      // Aus den Erfassungen, nicht aus sets.quantity — die Spalte ist mit
-      // Migration 0036 weg. Die Abfrage steht in utils/bestandsmenge.ts;
-      // derselbe Satz stand hier dreimal, und dreimal derselbe Satz heisst
-      // dreimal Gelegenheit, dass er beim naechsten Mal anders aussieht.
-      mengeSummeSql('blickfeld'),
-      [leseFeld, sn]))?.q ?? 0;
-    const eigenVorher = (await db.get(
-      mengeSummeSql('eines'),
-      [uid, sn]))?.q ?? 0;
-    // Nach unten bei 0 gedeckelt: Die Exemplare eines anderen Kontos sind
-    // nicht meine, ich kann sie nicht wegnehmen. Die Antwort trägt die
-    // tatsächliche Gesamtmenge zurück, damit die Oberfläche nicht eine Zahl
-    // stehen lässt, die es nicht gibt.
-    const eigenZiel = Math.max(0, eigenVorher + (gewuenschtGesamt - gesamtVorher));
-
-    if (eigenZiel !== eigenVorher) {
+    const eigenesZiel = async (dbh: Pick<typeof db, 'get'>) => {
+      const gesamtVorher = (await dbh.get(mengeSummeSql('blickfeld'), [leseFeld, sn]))?.q ?? 0;
+      const eigenVorher = (await dbh.get(mengeSummeSql('eines'), [uid, sn]))?.q ?? 0;
+      // Nach unten bei 0 gedeckelt: Die Exemplare eines anderen Kontos sind
+      // nicht meine, ich kann sie nicht wegnehmen.
+      const aenderung = delta ?? (Number(gewuenschtGesamt) - gesamtVorher);
+      return { eigenVorher, eigenZiel: Math.max(0, eigenVorher + aenderung) };
+    };
+    // Der Marktpreis wird VOR der Sperre geholt (Netzaufruf). Ob er gebraucht
+    // wird, sagt ein Blick vorab; massgeblich ist die Rechnung in der Sperre.
+    const vorab = await eigenesZiel(db);
+    const plan = vorab.eigenZiel > vorab.eigenVorher
+      ? await priceForNewAcquisition(uid, sn).catch(() => ({ price: null, condition: 'N' }))
+      : { price: null, condition: 'N' };
+    await withInventoryLock(uid, sn, async (tx) => {
+      const { eigenVorher, eigenZiel } = await eigenesZiel(tx);
+      if (eigenZiel === eigenVorher) return;
       // Eigene Zeile anlegen, falls das Set bisher nur einem anderen Konto
       // gehörte — sonst liefe die Mengenanpassung ins Leere.
-      if (eigenVorher === 0 && eigenZiel > 0) {
-        // Nur noch Menge und Besitzer — und damit keine Abschrift mehr.
-        // Ausführlich: docs/begruendungen/utils/setService.ts.md#updateset
-        await db.run(
+      // Ausführlich: docs/begruendungen/utils/setService.ts.md#updateset
+      if (eigenVorher === 0 && eigenZiel > 0)
+        await tx.run(
           `INSERT INTO sets (user_id, set_number)
            SELECT $1, set_number
              FROM sets WHERE user_id = ANY($2) AND set_number = $3
             ORDER BY id ASC LIMIT 1
-           ON CONFLICT DO NOTHING`, [uid, leseFeld, sn])
-          // Scheitert dieses INSERT, gibt es keine Bestandszeile — das Set
-          // erscheint in keiner Liste, waehrend adjustAcquisitionsToQuantity()
-          // trotzdem Erfassungen schreibt. Der Kommentar oben nennt genau
-          // diese Gefahr; still verschluckt werden darf sie deshalb nicht.
-          .catch(logAndContinue(`sets:eigene Zeile anlegen ${sn}`));
+           ON CONFLICT DO NOTHING`, [uid, leseFeld, sn]);
+      // Menge 0 ist ein Löschen und geht deshalb durch den Papierkorb wie
+      // der Löschknopf — ein Tippfehler im Mengenfeld soll sich
+      // zurückholen lassen.
+      if (eigenZiel === 0) {
+        papierkorb = await legeInPapierkorb(tx, 'set', uid, sn);
+        await deleteSetRows(tx, [uid], sn);
+      } else {
+        // Die Erfassungen SIND die Menge (utils/bestandsmenge.ts).
+        await adjustAcquisitionsToQuantity(uid, sn, eigenZiel, tx, plan);
       }
-      // Der Marktpreis wird VOR der Sperre geholt (Netzaufruf); innerhalb
-      // läuft nur noch Datenbankarbeit.
-      const plan = eigenZiel > eigenVorher
-        ? await priceForNewAcquisition(uid, sn).catch(() => ({ price: null, condition: 'N' }))
-        : { price: null, condition: 'N' };
-      await withInventoryLock(uid, sn, async (tx) => {
-        // Menge 0 ist ein Löschen und geht deshalb durch den Papierkorb wie
-        // der Löschknopf — ein Tippfehler im Mengenfeld soll sich
-        // zurückholen lassen.
-        if (eigenZiel === 0) {
-          papierkorb = await legeInPapierkorb(tx, 'set', uid, sn);
-          await deleteSetRows(tx, [uid], sn);
-        } else {
-          // Die Erfassungen SIND die Menge (utils/bestandsmenge.ts).
-          await adjustAcquisitionsToQuantity(uid, sn, eigenZiel, tx, plan);
-        }
-      });
-    }
+    });
   }
   // Eine Mengenänderung ist quantity-ONLY: adjustAcquisitionsToQuantity() legt
   // bereits eine neue Erfassung mit dem korrekten Marktpreis (und dem bisherigen

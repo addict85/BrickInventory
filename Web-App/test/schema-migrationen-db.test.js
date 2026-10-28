@@ -49,7 +49,7 @@ const ROOT = path.join(__dirname, '..');
 const { ohneKommentare } = require('./helpers/sources');
 
 /** Gemessen am Tag der Behebung. Die Zahl darf nur kleiner werden. */
-const BESTAND_ALTER = 17;
+const BESTAND_ALTER = 0;
 
 test('keine neue Spalten-Änderung in db/database.ts', () => {
   const quelle = ohneKommentare(fs.readFileSync(path.join(ROOT, 'db/database.ts'), 'utf8'));
@@ -61,12 +61,9 @@ test('keine neue Spalten-Änderung in db/database.ts', () => {
     + `bei einer Versionsänderung, und ein stiller Fehlschlag dort ist dauerhaft. Genau so ist `
     + `api_tokens.sliding im Betrieb ausgeblieben und hat die Anmeldung zerlegt.`);
 
-  // GEGENPROBE: Das Suchmuster muss überhaupt etwas finden. Ohne diese Zeile
-  // wäre der Test grün, sobald jemand die Datei umbenennt oder das Muster
-  // nicht mehr passt — und ausgerechnet dann prüft er nichts mehr.
-  assert.ok(treffer.length > 0,
-    'Das Suchmuster findet keine einzige Spalten-Änderung. Bei 17 bekannten Stellen heisst das: '
-    + 'Das Muster passt nicht mehr, und die Prüfung wäre stillschweigend grün.');
+  // Seit db/basis.sql steht in db/database.ts gar kein Schema mehr; das
+  // Muster prüft die Gegenprobe an einem Beispiel, damit es nicht leerläuft.
+  assert.equal(('x ALTER TABLE foo ADD COLUMN bar'.match(/ALTER TABLE \w+ ADD COLUMN/g) || []).length, 1);
 });
 
 test('api_tokens.sliding steht in einer Migration', () => {
@@ -81,9 +78,9 @@ test('api_tokens.sliding steht in einer Migration', () => {
     + `genau eine. Ohne sie scheitert createToken() auf jeder gewachsenen Datenbank, und damit `
     + `Login und QR-Login. Gefunden: ${mitSliding.join(', ') || '(keine)'}`);
 
-  // Und die Spalte muss auch im Grundschema stehen, sonst fehlt sie bei einer
-  // NEUEN Installation, deren Migrationen alle als angewandt gelten könnten.
-  const schema = fs.readFileSync(path.join(ROOT, 'db/schema.sql'), 'utf8');
-  assert.match(schema, /sliding\s+BOOLEAN/,
-    'db/schema.sql kennt die Spalte sliding nicht — dann fehlt sie auf einer frischen Installation.');
+  // Und die Spalte muss auch in der Basis stehen, sonst fehlt sie bei einer
+  // NEUEN Installation, deren Migrationen alle als angewandt gelten.
+  const basis = fs.readFileSync(path.join(ROOT, 'db/basis.sql'), 'utf8');
+  assert.match(basis, /sliding boolean/,
+    'db/basis.sql kennt die Spalte sliding nicht — dann fehlt sie auf einer frischen Installation.');
 });

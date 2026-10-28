@@ -71,7 +71,7 @@ async function getPartsColors(userId: Blickfeld) {
            COUNT(DISTINCT p.part_number)::int AS unique_parts,
            SUM(${teilmengeAus('p', 'part')} * ${mengeAus('sm', 1)})::int AS total_quantity
     FROM parts p
-    ${mengeJoin('p')}
+    ${mengeJoin('p', 'sm', '= ANY($1)')}
     ${teilmengeJoin('p', 'part')}
     LEFT JOIN part_color_catalog pcc ON pcc.part_number = p.part_number
                                     AND pcc.color_id    = p.color_id
@@ -187,7 +187,7 @@ async function teileErsatzquelle(set_number: string) {
         LEFT JOIN rb_colors c ON c.id = ip.color_id
         LEFT JOIN bl_zuordnung  m ON m.art = 'part' AND m.rb_id = ip.part_num
         WHERE ip.inventory_id = $1`, [invId, set_number]
-      ).catch(() => []);
+      );
       if (csvParts.length > 0)
         // page_size gehört in JEDEN Rückgabeweg (Nachtrag 132): Der Client
         // liest daraus, ob eine weitere Seite nötig ist. Auf dieser
@@ -492,7 +492,7 @@ async function getParts(userId: Blickfeld, query: any = {}) {
   const [countRow, parts, usedPartRows] = await Promise.all([
     db.get(countSql, params),
     db.all(partsSql, queryParams),
-    excludesManual ? Promise.resolve([]) : db.all(usedSql, [uids]).catch(() => []),
+    excludesManual ? Promise.resolve([]) : db.all(usedSql, [uids]),
   ]);
   const total = parseInt(countRow?.c || 0);
   const usedPartMap = new Map<string, boolean>(usedPartRows.map(r => [`${r.pid}|${r.color_id}`, (parseInt(r.any_used) || 0) > 0] as [string, boolean]));
@@ -558,7 +558,7 @@ async function getPartsStats(userId: Blickfeld) {
       SELECT COUNT(DISTINCT part_number)::int AS unique_parts,
              COUNT(DISTINCT color_id)::int    AS unique_colors,
              COALESCE(SUM(total_quantity), 0) AS total_parts
-        FROM parts_summary WHERE user_id = ANY($1)`, [uids]).catch(() => null);
+        FROM parts_summary WHERE user_id = ANY($1)`, [uids]);
     if (r) return {
       unique_parts:  parseInt(r.unique_parts  || 0),
       unique_colors: parseInt(r.unique_colors || 0),
@@ -575,7 +575,7 @@ async function getPartsStats(userId: Blickfeld) {
            COUNT(DISTINCT p.color_id)    AS unique_colors,
            SUM(${teilmengeAus('p', 'part')} * ${mengeAus('sm', 1)}) AS total_parts
     FROM parts p
-    ${mengeJoin('p')}
+    ${mengeJoin('p', 'sm', '= ANY($1)')}
     ${teilmengeJoin('p', 'part')}
     WHERE p.user_id = ANY($1) AND COALESCE(p.source, 'set') <> 'manual'`, [uids]);
   return {
@@ -810,14 +810,14 @@ export async function getOwnedQuantities(
             COALESCE(SUM(CASE WHEN COALESCE(p.source,'set') = 'manual'
                               THEN ${teilmengeAus('p', 'part')} ELSE 0 END), 0)::int AS lose
        FROM parts p
-       ${mengeJoin('p')}
+       ${mengeJoin('p', 'sm', '= ANY($1)')}
        ${teilmengeJoin('p', 'part')}
        JOIN unnest($2::text[], $3::int[]) AS g(part_number, color_id)
          ON g.part_number = p.part_number AND g.color_id = COALESCE(p.color_id, 0)
       WHERE p.user_id = ANY($1)
       GROUP BY p.part_number, COALESCE(p.color_id, 0)`,
     [uids, nums, farben]
-  ).catch(() => []);
+  );
 
   const out: Record<string, { gesamt: number; lose: number }> = {};
   for (const r of rows || []) {
@@ -837,14 +837,14 @@ export async function getOwnedQuantities(
             COALESCE(SUM(CASE WHEN COALESCE(m.source,'set') = 'manual'
                               THEN ${teilmengeAus('m', 'fig')} ELSE 0 END), 0)::int AS lose
        FROM minifigs m
-       ${mengeJoin('m')}
+       ${mengeJoin('m', 'sm', '= ANY($1)')}
        ${teilmengeJoin('m', 'fig')}
        JOIN unnest($2::text[]) AS g(fig_number)
          ON g.fig_number = m.fig_number
       WHERE m.user_id = ANY($1)
       GROUP BY m.fig_number`,
     [uids, nums]
-  ).catch(() => []);
+  );
   for (const r of figRows || []) {
     const key = `${r.part_number}|0`;
     if (out[key]) continue;

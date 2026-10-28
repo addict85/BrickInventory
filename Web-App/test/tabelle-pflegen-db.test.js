@@ -33,8 +33,10 @@
  *      Fall unten, mit einem Ausfuehrer, der immer wirft.
  *   b) Ein Name, der kein einfacher Tabellenname ist, fuehrt NICHTS aus —
  *      eigener Fall, der mitzaehlt, wie oft der Ausfuehrer gerufen wurde.
- *   c) Der Aufruf in rebuild() entfernt → der Fall „rebuild frischt auf" wird
- *      rot (last_vacuum bewegt sich nicht).
+ *   c) Das ANALYZE in rebuild() entfernt → der Fall „rebuild frischt auf"
+ *      wird rot (last_analyze bewegt sich nicht).
+ *   d) einen Index per ALTER INDEX … SET (fastupdate = on) zurückgestellt →
+ *      der Fall „keine Warteliste" wird rot (c und d am 28.10.2026 gemessen).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -147,6 +149,7 @@ test('Auffrischen nach Masseneinfuegen', { concurrency: 1 }, async (t) => {
     // Katalogzahl. Hier zaehlt nur die MENGE der Zeilen (300), nicht ihr Wert
     // — deshalb braucht es keine Katalogzeilen dazu; teilmengeAus() faellt auf
     // 1 zurueck, und 1 stand hier auch vorher.
+    await db.run(`INSERT INTO sets (user_id, set_number) VALUES ($1, '75192-1') ON CONFLICT DO NOTHING`, [nutzer]);
     await db.run(`INSERT INTO parts (user_id, set_number, part_number, color_id)
       SELECT $1, '75192-1', 'p'||g, 0
       FROM generate_series(1, 300) g ON CONFLICT DO NOTHING`, [nutzer]);
@@ -156,9 +159,20 @@ test('Auffrischen nach Masseneinfuegen', { concurrency: 1 }, async (t) => {
     await rebuild(nutzer);
     const nachher = await wartenAufStand('parts_summary', vorher);
 
-    assert.ok(nachher.vacuum > vorher.vacuum && nachher.analyze > vorher.analyze,
-      `rebuild() hat parts_summary nicht aufgefrischt (vacuum ${nachher.vacuum} vs ` +
-      `${vorher.vacuum}, analyze ${nachher.analyze} vs ${vorher.analyze}). DELETE + INSERT ` +
-      `aller Zeilen eines Nutzers ist ein Masseneinfuegen — danach ist die Statistik schief.`);
+    assert.ok(nachher.analyze > vorher.analyze,
+      `rebuild() hat parts_summary nicht vermessen (analyze ${nachher.analyze} vs ` +
+      `${vorher.analyze}). DELETE + INSERT aller Zeilen eines Nutzers ist ein ` +
+      `Masseneinfuegen — danach ist die Statistik schief.`);
+  });
+
+  await t.test('die Trigramm-Indizes der Zusammenfassung führen keine Warteliste', async () => {
+    // Statt VACUUM nach jedem Neuaufbau: Ohne Warteliste gibt es nichts zu leeren.
+    const idx = await db.all(`SELECT c.relname, c.reloptions FROM pg_index i
+      JOIN pg_class c ON c.oid = i.indexrelid JOIN pg_am a ON a.oid = c.relam
+      WHERE i.indrelid = 'parts_summary'::regclass AND a.amname = 'gin'`);
+    assert.ok(idx.length >= 3, `zu wenige GIN-Indizes gefunden: ${idx.map(r => r.relname).join(', ')}`);
+    for (const r of idx)
+      assert.ok((r.reloptions || []).includes('fastupdate=off'),
+        `${r.relname} sammelt Einträge in einer Warteliste, die nur VACUUM leert`);
   });
 });

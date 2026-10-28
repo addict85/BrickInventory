@@ -30,17 +30,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.R
-import ch.brickinventoryapp.ui.setzeManuellenLagerort
-import ch.brickinventoryapp.ui.MainViewModel
-import ch.brickinventoryapp.ui.deleteMinifig
-import ch.brickinventoryapp.ui.deletePart
-import ch.brickinventoryapp.ui.loadManualAcquisitions
-import ch.brickinventoryapp.ui.loadMinifigs
-import ch.brickinventoryapp.ui.loadParts
-import ch.brickinventoryapp.ui.loadPartsColors
-import ch.brickinventoryapp.ui.setzeTeilFarbe
-import ch.brickinventoryapp.ui.updateMinifig
-import ch.brickinventoryapp.ui.updatePart
+import ch.brickinventoryapp.ui.viewmodel.KaeufeViewModel
+import ch.brickinventoryapp.ui.viewmodel.TeileViewModel
 import ch.brickinventoryapp.ui.components.ZoomableImageDialog
 import ch.brickinventoryapp.ui.theme.BrickStatTile
 import ch.brickinventoryapp.ui.theme.LocalIsBrickTheme
@@ -82,7 +73,9 @@ import androidx.compose.material.icons.filled.ViewInAr
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ManualItemDetailScreen(
-    vm: MainViewModel,
+    vm: KaeufeViewModel,
+    /** Die Zeile des Eintrags und das Ändern, Löschen, Umfärben. */
+    teile: TeileViewModel,
     type: String,          // "part" | "fig"
     id: String,            // partNumber / figNumber
     colorId: Int = 0,
@@ -104,7 +97,7 @@ fun ManualItemDetailScreen(
     onFarbeGeaendert: (neueFarbe: Int) -> Unit = {},
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
-    val partsState by vm.partsState.collectAsStateWithLifecycle()
+    val partsState by teile.partsState.collectAsStateWithLifecycle()
     val manDetailState by vm.manDetailState.collectAsStateWithLifecycle()
     // Der Vorrat an Lagerorten fuer das Feld weiter unten.
     val lagerZustand by vm.lagerState.collectAsStateWithLifecycle()
@@ -123,12 +116,12 @@ fun ManualItemDetailScreen(
         // fuer den ganzen Bestand geholt, obwohl dieser Dialog nur Name,
         // Menge und Bild zeigt.
         if (partsState.manualParts == null && partsState.manualFigs == null) {
-            if (isFig) vm.loadMinifigs() else vm.loadParts()
+            if (isFig) teile.loadMinifigs() else teile.loadParts()
         }
         // Die Farbliste fuer die Auswahl weiter unten. Dieselbe Quelle wie im
         // Erfassungsdialog (/parts/brick-colors) — und nur fuer Teile: Eine
         // Figur hat keine Farbe.
-        if (!isFig && partsState.partsColors.isEmpty()) vm.loadPartsColors()
+        if (!isFig && partsState.partsColors.isEmpty()) teile.loadPartsColors()
     }
 
     val fig  = if (isFig) partsState.manualFigs?.find { it.figNumber == id } else null
@@ -288,8 +281,8 @@ fun ManualItemDetailScreen(
                                         // der manuelle Bereich die Eintraege aller
                                         // Konten; ohne die Angabe schreibt der Server
                                         // in die Zeile des Aufrufers.
-                                        if (isFig) vm.updateMinifig(id, qty, fig?.unitPrice, fig?.blFigNumber, owner = fig?.userId)
-                                        else vm.updatePart(id, colorId, qty, part?.unitPrice, part?.condition, owner = part?.userId)
+                                        if (isFig) teile.updateMinifig(id, qty, fig?.unitPrice, fig?.blFigNumber, owner = fig?.userId)
+                                        else teile.updatePart(id, colorId, qty, part?.unitPrice, part?.condition, owner = part?.userId)
                                     }
                                 },
                                 shape = Formen.etikett
@@ -299,8 +292,8 @@ fun ManualItemDetailScreen(
                             FilledTonalIconButton(
                                 onClick = {
                                     qty++
-                                    if (isFig) vm.updateMinifig(id, qty, fig?.unitPrice, fig?.blFigNumber, owner = fig?.userId)
-                                    else vm.updatePart(id, colorId, qty, part?.unitPrice, part?.condition, owner = part?.userId)
+                                    if (isFig) teile.updateMinifig(id, qty, fig?.unitPrice, fig?.blFigNumber, owner = fig?.userId)
+                                    else teile.updatePart(id, colorId, qty, part?.unitPrice, part?.condition, owner = part?.userId)
                                 },
                                 shape = Formen.etikett
                             ) { Icon(Icons.Default.Add, stringResource(R.string.cd_qty_increase), Modifier.size(14.dp)) }
@@ -332,7 +325,7 @@ fun ManualItemDetailScreen(
                                 aktuellerName = part?.colorName,
                                 aktuellerHex = part?.colorHex,
                                 onWahl = { c ->
-                                    vm.setzeTeilFarbe(id, colorId, c.id, c.name, c.hex,
+                                    teile.setzeTeilFarbe(id, colorId, c.id, c.name, c.hex,
                                         owner = part?.userId, onFertig = onFarbeGeaendert)
                                 },
                                 modifier = Modifier.padding(start = Abstaende.gross)
@@ -424,8 +417,8 @@ fun ManualItemDetailScreen(
                         showDeleteConfirm = false
                         // Auch hier der Besitzer der Karte — sonst loescht der
                         // Server die Zeile des Aufrufers statt der angezeigten.
-                        if (isFig) vm.deleteMinifig(id, fig?.userId)
-                        else vm.deletePart(id, colorId, part?.userId)
+                        if (isFig) teile.deleteMinifig(id, fig?.userId)
+                        else teile.deletePart(id, colorId, part?.userId)
                         // Der Eintrag ist weg — dieser Screen zeigte sonst eine
                         // Karteileiche mit Mengenwahl und Kaufpreisen.
                         onBack()

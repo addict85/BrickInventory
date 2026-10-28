@@ -22,8 +22,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.R
-import ch.brickinventoryapp.ui.MainViewModel
-import ch.brickinventoryapp.ui.*  // Feature-Extensions (saveSettings, setLanguage, …)
+import ch.brickinventoryapp.ui.AppViewModel
+import ch.brickinventoryapp.ui.viewmodel.EinstellungenViewModel
+import ch.brickinventoryapp.ui.*
 import ch.brickinventoryapp.ui.theme.Abstaende
 import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -63,7 +64,7 @@ import ch.brickinventoryapp.ui.viewmodel.UpdateViewModel
  */
 @Composable
 fun SettingsScreen(
-    vm: MainViewModel,
+    vm: EinstellungenViewModel,
     /** Abmelden — nur der Graph kennt den NavController. */
     onLogout: () -> Unit,
     /**
@@ -92,6 +93,8 @@ fun SettingsScreen(
     val appState by vm.state.collectAsStateWithLifecycle()
     // `updateZustand`, nicht `update`: dieselbe Namensfalle.
     val selbstUpdate: UpdateViewModel = aktivitaetsViewModel()
+    // Sprache und Design bei Dunkelheit gehören dem Gerät, nicht dem Konto.
+    val app: AppViewModel = aktivitaetsViewModel()
     val updateZustand by selbstUpdate.updateState.collectAsStateWithLifecycle()
 
     val currency = appState.currency
@@ -102,7 +105,6 @@ fun SettingsScreen(
 
     val onSave: (String, String) -> Unit = { cur, cond ->
         vm.saveSettings(cur, cond)
-        vm.loadValuation()
     }
 
     var selectedCurrency  by remember(currency)       { mutableStateOf(currency) }
@@ -157,7 +159,7 @@ fun SettingsScreen(
                 options.forEach { (code, label) ->
                     FilterChip(
                         selected = language == code,
-                        onClick = { vm.setLanguage(code) },
+                        onClick = { app.setLanguage(code) },
                         label = { Text(label) },
                         shape = Formen.chip
                     )
@@ -166,18 +168,18 @@ fun SettingsScreen(
 
             // Darstellung je Gerät — wirkt sofort wie die Sprache.
             Unterschrift(stringResource(R.string.settings_dark_label))
-            val dunkel by vm.dunkelNachSystem.collectAsStateWithLifecycle()
+            val dunkel by app.dunkelNachSystem.collectAsStateWithLifecycle()
             Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
                 modifier = Modifier.fillMaxWidth()) {
                 FilterChip(
                     selected = !dunkel,
-                    onClick = { vm.setDunkelNachSystem(false) },
+                    onClick = { app.setDunkelNachSystem(false) },
                     label = { Text(stringResource(R.string.settings_dark_server)) },
                     shape = Formen.chip
                 )
                 FilterChip(
                     selected = dunkel,
-                    onClick = { vm.setDunkelNachSystem(true) },
+                    onClick = { app.setDunkelNachSystem(true) },
                     label = { Text(stringResource(R.string.settings_dark_system)) },
                     shape = Formen.chip
                 )
@@ -261,7 +263,7 @@ fun SettingsScreen(
                     vm.saveUserDefaultCondition(selectedUserDefault ?: "")
                 },
                 enabled = hasChanges,
-                modifier = Modifier.fillMaxWidth().height(48.dp),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
                 shape = Formen.knopf
             ) {
                 Icon(Icons.Default.Save, null, Modifier.size(18.dp))
@@ -292,7 +294,7 @@ fun SettingsScreen(
 
         OutlinedButton(
             onClick = onLogout,
-            modifier = Modifier.fillMaxWidth().height(48.dp),
+            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
             shape = Formen.knopf,
             colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f))

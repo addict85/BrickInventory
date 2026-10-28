@@ -59,7 +59,7 @@ class TeilFarbeAendernTest {
         Quellen.ohneKommentare(Quellen.lies("data/repository/TeileRepository.kt"))
     }
     private val feature by lazy {
-        Quellen.ohneKommentare(Quellen.lies("ui/PartsFeature.kt"))
+        Quellen.ohneKommentare(Quellen.lies("ui/viewmodel/TeileViewModel.kt"))
     }
     private val screen by lazy {
         Quellen.ohneKommentare(Quellen.lies("ui/screens/ManualItemDetailScreen.kt"))

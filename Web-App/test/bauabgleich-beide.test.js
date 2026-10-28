@@ -41,7 +41,7 @@ const web  = rel => lies(path.join(WEB, rel));
 // Genau die unauflösbaren Brücken sind die, die beim nächsten Umbenennen
 // lautlos ins Leere zeigen.
 const KT_API   = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'data', 'api', 'BrickApiService.kt'));
-const KT_FEAT  = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'ui', 'PartsListFeature.kt'));
+const KT_FEAT  = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'ui', 'Teileliste.kt'));
 const KT_SCREEN= lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'PartsListScreen.kt'));
 const XML_EN   = lies(path.join(APP, 'res', 'values', 'strings.xml'));
 const XML_DE   = lies(path.join(APP, 'res', 'values-de', 'strings.xml'));
@@ -73,7 +73,8 @@ test('beide fragen in der Rebrickable-Schreibweise', () => {
     'Die Webapp fragt mit der BrickLink-Nummer — damit findet sie nichts');
 
   const kt = KT_FEAT;
-  const fk = kt.slice(kt.indexOf('ladeTeilelisteBestand'));
+  const fk = kt.slice(kt.indexOf('suspend fun mitBestand'));
+  assert.ok(fk.length > 100, 'mitBestand nicht gefunden');
   assert.match(fk, /partNumber = it\.partNumber/,
     'Die App muss die Rebrickable-Nummer schicken');
   assert.doesNotMatch(fk.slice(0, fk.indexOf('return teile.map')), /blPartNumber/,

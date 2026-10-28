@@ -91,3 +91,17 @@ test('3. der Knopf trägt kein fremdes Markenzeichen', () => {
     'Im Knopf steht fremdes Markenmaterial.');
   assert.match(knopf, /<svg /, 'Das Symbol kommt nicht als eigenes SVG mit.');
 });
+
+test('signiert und veröffentlicht wird nur von main', () => {
+  // Ein signiertes APK im Kanal apk-neuste ist ein Update für jede installierte
+  // App. Von einem Zweig aus wäre das ungeprüfter Code an Review und Merge vorbei.
+  // Gegenprobe (28.10.2026): die main-Bedingung am Release-Schritt entfernt → rot.
+  const yml = fs.readFileSync(path.join(ROOT, '..', '.github', 'workflows', 'android.yml'), 'utf8');
+  const bedingung = (schritt) => {
+    const i = yml.indexOf(`- name: ${schritt}`);
+    assert.ok(i >= 0, `Schritt „${schritt}“ nicht gefunden`);
+    return yml.slice(i).split('\n').slice(1, 4).find(z => /^\s*if:/.test(z)) || '';
+  };
+  for (const schritt of ['Schlüsselspeicher bereitstellen', 'BrickInventory.apk als Release bereitstellen'])
+    assert.match(bedingung(schritt), /github\.ref == 'refs\/heads\/main'/, `${schritt}: läuft auch auf Zweigen`);
+});

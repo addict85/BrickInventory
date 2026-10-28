@@ -28,10 +28,15 @@ export function mengeSkalar(bezug: string): string {
  * Ausführlich: docs/begruendungen/utils/bestandsmenge.ts.md#mengejoin
  * @param bezug Alias der Zeile, zu der die Menge gehoert.
  * @param alias Name der JOIN-Quelle; der Aufrufer liest daraus `<alias>.menge`.
+ * @param konten Bedingung auf das Konto, z. B. `= ANY($1)`. Ohne sie summiert
+ *              die Unterabfrage die Erfassungen ALLER Konten, bevor der JOIN
+ *              filtert — der Planer kann die Kontobedingung nicht hineinziehen.
  */
-export function mengeJoin(bezug: string, alias = 'sm'): string {
+export function mengeJoin(bezug: string, alias = 'sm', konten?: string): string {
+  const filter = konten ? `
+                      WHERE a.user_id ${konten}` : '';
   return `LEFT JOIN (SELECT a.user_id, a.set_number, ${SUMME} AS menge
-                       FROM set_acquisitions a
+                       FROM set_acquisitions a${filter}
                       GROUP BY a.user_id, a.set_number) ${alias}
                ON ${alias}.user_id = ${bezug}.user_id
               AND ${alias}.set_number = ${bezug}.set_number`;

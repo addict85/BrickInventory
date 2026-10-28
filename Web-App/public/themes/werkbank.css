@@ -36,6 +36,7 @@
   /* Zustands- und Meldefarben: auf dunklem Grund gedaempft, sonst leuchten
      sie staerker als die Markenfarbe und ziehen den Blick von ihr weg. */
   --g100:#1d2a20;--g500:#6fbf7f;
+  --gewinn:#6fbf7f;
   --r100:#2c1c1c;--r500:#e07a72;
   /* Dunkles Design: Hier muss roter Text HELLER sein, nicht dunkler. Das
      #b91c1c der Grundfassung waere auf #191e25 unlesbar. Der eigene Ton

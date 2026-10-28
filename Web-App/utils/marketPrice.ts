@@ -1,5 +1,5 @@
 import * as db from '../db/database';
-import { refreshPriceForSet } from '../jobs/priceJob';
+import { nacharbeit } from './nacharbeit';
 import { getSetValue } from './setValue';
 import { nutzerStandardZustand as userDefaultCondition } from './settings';
 import { getGlobalSetting } from './settings';
@@ -24,7 +24,7 @@ async function getCurrentMarketPrice(setNumber: string, userId: number, conditio
     // condition als Hinweis mitgeben: Beim Anlegen eines neuen Sets existieren
     // weder sets- noch set_acquisitions-Zeile schon, refreshPriceForSet könnte
     // sonst nur den Standardzustand holen (siehe jobs/priceJob.ts).
-    await refreshPriceForSet(setNumber, userId, condition).catch(() => {});
+    await nacharbeit().preisFuerSetHolen(setNumber, userId, condition).catch(() => {});
 
     // Ist ein Zustand AUSDRÜCKLICH angefragt, gilt genau der.
     //
@@ -236,7 +236,16 @@ async function getCurrentPartMarketPrice(partNumber: string, colorId: number, us
 }
 
 
+/** Geschätzter Figurenpreis als blosse Zahl — für Aufrufer ohne Abdeckung. */
 async function estimateFigPriceFromParts(figNumber: string, userId: number, condition = DEFAULT_PRICE_CONDITION) {
+  return (await schaetzeFigurenpreis(figNumber, userId, condition))?.preis ?? null;
+}
+
+/**
+ * Figurenpreis aus den Teilepreisen, samt Abdeckung: dem Anteil der Teile, die
+ * einen Preis hatten. Die Abdeckung sagt, wie belastbar die Zahl ist.
+ */
+async function schaetzeFigurenpreis(figNumber: string, userId: number, condition = DEFAULT_PRICE_CONDITION): Promise<{ preis: number; abdeckung: number | null } | null> {
   try {
     const currency = await getSetting(userId, 'currency', 'EUR');
     const cond0 = ['N','U'].includes(condition) ? condition : DEFAULT_PRICE_CONDITION;
@@ -248,13 +257,14 @@ async function estimateFigPriceFromParts(figNumber: string, userId: number, cond
     // Ausführlich: docs/begruendungen/utils/marketPrice.ts.md#estimatefigpricefromparts-ttl
     const ttl = Math.max(1, parseInt(await getGlobalSetting('price_cache_ttl', '24')));
     const cached = await db.get(
-      `SELECT avg_price FROM minifig_price_cache
-        WHERE fig_number = $1 AND condition = $2 AND currency_code = $3
+      `SELECT avg_price, abdeckung FROM minifig_price_cache
+        WHERE fig_number = $1 AND condition = $2 AND currency_code = $3 AND geschaetzt
           AND fetched_at > NOW() - make_interval(hours => $4)`,
       [figNumber, cond0, currency, ttl]
     ).catch(() => null);
     const zwischengespeichert = parseFloat(String(cached?.avg_price || 0));
-    if (zwischengespeichert > 0) return zwischengespeichert;
+    if (zwischengespeichert > 0)
+      return { preis: zwischengespeichert, abdeckung: cached?.abdeckung != null ? parseFloat(String(cached.abdeckung)) : null };
 
     const parts = await getMinifigParts(figNumber);
     if (!parts.length) {
@@ -291,21 +301,24 @@ async function estimateFigPriceFromParts(figNumber: string, userId: number, cond
     // bei „Marktpreis (Neu)" und „Marktpreis (Gebraucht)" nur Striche, und der
     // Preisverlauf blieb leer — obwohl Kaufpreise in beiden Zuständen erfasst …
     // Ausführlich: docs/begruendungen/utils/marketPrice.ts.md#estimatefigpricefromparts-2
+    // Die Markierung trennt die Schätzung vom BrickLink-Preis: fetchMinifigPrice
+    // liest nur unmarkierte Zeilen, die Anzeige kennzeichnet die markierten.
+    const abdeckung = Math.round(priced / parts.length * 1000) / 1000;
     await db.run(
-      `INSERT INTO minifig_price_cache (fig_number, condition, currency_code, avg_price, qty_avg_price)
-       VALUES ($1,$2,$3,$4,$4) ON CONFLICT (fig_number,condition,currency_code)
-       DO UPDATE SET avg_price=$4, qty_avg_price=$4, fetched_at=NOW()`,
-      [figNumber, cond, currency, total]
+      `INSERT INTO minifig_price_cache (fig_number, condition, currency_code, avg_price, qty_avg_price, geschaetzt, abdeckung)
+       VALUES ($1,$2,$3,$4,$4,TRUE,$5) ON CONFLICT (fig_number,condition,currency_code)
+       DO UPDATE SET avg_price=$4, qty_avg_price=$4, fetched_at=NOW(), geschaetzt=TRUE, abdeckung=$5`,
+      [figNumber, cond, currency, total, abdeckung]
     ).catch(e => console.warn(`[minifig-price-estimate] Cache ${figNumber}: ${e.message}`));
     // Wie beim echten Abruf: ON CONFLICT DO NOTHING, und nur mit echtem Preis —
     // ein Nullpunkt sähe im Diagramm aus wie ein Kurssturz.
     await db.run(
-      `INSERT INTO minifig_price_history (fig_number, condition, currency_code, avg_price, qty_avg_price)
-       VALUES ($1,$2,$3,$4,$4) ON CONFLICT DO NOTHING`,
-      [figNumber, cond, currency, total]
+      `INSERT INTO minifig_price_history (fig_number, condition, currency_code, avg_price, qty_avg_price, geschaetzt, abdeckung)
+       VALUES ($1,$2,$3,$4,$4,TRUE,$5) ON CONFLICT DO NOTHING`,
+      [figNumber, cond, currency, total, abdeckung]
     ).catch(() => {});
 
-    return total;
+    return { preis: total, abdeckung };
   } catch (e) {
     console.warn(`[minifig-price-estimate] ${figNumber}: ${fehlertext(e)}`);
     return null;
@@ -346,6 +359,7 @@ async function figMarktpreisMitHerkunft(figNumber: string, userId: number, blFig
       if (price > 0) return {
         preis: price,
         ausZustand: priceData?.is_fallback ? (priceData.condition_used || null) : null,
+        geschaetzt: false,
       };
       if (num === blFigNumber && blFigNumber === figNumber) break;   // nicht doppelt fragen
     }
@@ -355,8 +369,10 @@ async function figMarktpreisMitHerkunft(figNumber: string, userId: number, blFig
     // Ohne Herkunft: Die Schätzung rechnet mit den Teilepreisen DIESES
     // Zustands. Sie ist eine Näherung, aber keine aus dem anderen Zustand —
     // und nur die wäre zu kennzeichnen.
-    return { preis: await estimateFigPriceFromParts(figNumber, userId, effCond), ausZustand: null };
-  } catch (_) { return { preis: null, ausZustand: null }; }
+    const schaetzung = await schaetzeFigurenpreis(figNumber, userId, effCond);
+    return { preis: schaetzung?.preis ?? null, ausZustand: null, geschaetzt: schaetzung != null,
+             abdeckung: schaetzung?.abdeckung ?? null };
+  } catch (_) { return { preis: null, ausZustand: null, geschaetzt: false }; }
 }
 
 /**
@@ -371,5 +387,5 @@ export {
   getCurrentMarketPrice,
   resolvePartCondition, marktpreisMitHerkunft, getCurrentPartMarketPrice,
   marktpreiseAusCacheFuerFiguren, marktpreiseAusCacheFuerTeile,
-  estimateFigPriceFromParts, figMarktpreisMitHerkunft, getCurrentFigMarketPrice,
+  estimateFigPriceFromParts, schaetzeFigurenpreis, figMarktpreisMitHerkunft, getCurrentFigMarketPrice,
 };

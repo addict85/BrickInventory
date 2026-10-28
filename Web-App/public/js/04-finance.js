@@ -1,7 +1,7 @@
 import { ladeAnzeige } from './01-bausteine.js';
 import { registerActions } from './00-registry.js';
 import { colorName, locale, t, tRaw} from '../i18n.js';
-import { bildTag, platzhalterInhalt, ico, CURRENCY, G, api, esc, escJs, escUrl, fmtN, imgUrl, thumbUrl, toast } from './01-core.js';
+import { bildTag, platzhalterInhalt, leerZustand, ico, CURRENCY, G, api, esc, escJs, escUrl, fmtN, imgUrl, thumbUrl, toast } from './01-core.js';
 import { scopeMode, scopeQuery } from './14-scope.js';
 import { PARTS_ICON_SVG, _pnlCache, condBadges, ownerBadges, pnlBadge } from './02-gallery.js';
 import { loadCacheStats } from './05-settings.js';
@@ -156,6 +156,14 @@ export async function loadFinance(){
   const manArgs = it => it.fig_number
     ? `data-click="openManDetail" data-arg="fig" data-arg2="${escJs(it.fig_number)}" data-arg3="0"`
     : `data-click="openManDetail" data-arg="part" data-arg2="${escJs(it.part_number)}" data-arg3="${it.color_id||0}"`;
+  /** Ein aus Teilepreisen geschätzter Figurenpreis bekommt „≈" und die Abdeckung. */
+  function geschaetztMarke(it, html){
+    if (!it.estimated_from_parts) return html;
+    const p = it.abdeckung != null ? Math.round(it.abdeckung * 100) : '?';
+    const hinweis = esc(tRaw('finance.aus_teilen_geschaetzt', { p }));
+    return `<span title="${hinweis}"><span role="img" aria-label="${hinweis}">≈</span> ${html}</span>`;
+  }
+
   function pmRow(it, label, acq){
     const qty = acq ? acq.quantity : (it.quantity || 1);
     // avg_price zuerst — wie überall seit der Preisumstellung.
@@ -176,7 +184,7 @@ export async function loadFinance(){
       <td class="fin-detail"><span class="qbadge">×${qty}</span></td>
       <td class="fin-detail" style="font-size:var(--fs-1);color:var(--mut)">${acq?.created_at?new Date(acq.created_at).toLocaleDateString(locale()):''}</td>
       <td class="fin-detail price-cell">${purchase!=null?fmtN(purchase,cur):'<span style="color:var(--mut)">—</span>'}</td>
-      <td class="fin-detail price-cell">${current>0?fmtN(current,cur):'<span style="color:var(--mut)">—</span>'}</td>
+      <td class="fin-detail price-cell">${current>0?geschaetztMarke(it, fmtN(current,cur)):'<span style="color:var(--mut)">—</span>'}</td>
       <td class="fin-wert price-total">${fmtN(total,cur)}</td>
       <td class="fin-guv">${pnl!=null?pnlBadge(pnl):'<span style="color:var(--mut)">—</span>'}</td>
       <td class="fin-status"></td>
@@ -297,7 +305,13 @@ export async function loadFinance(){
   if(G('portfolio-current')) G('portfolio-current').textContent = fmtN(grandTotal, cur);
   loadPortfolioChart();
   zeigeKennzahlen({ einstand: einstand.alle, wert: grandTotal, guv: gesamtGuv, ohnePreis, cur,
+    guvKauf: parseFloat(pnlData?.totals?.pnl_purchase) || 0, guvMarkt: parseFloat(pnlData?.totals?.pnl_current) || 0,
                     min: parseFloat(d.totals.min||0) + extra, max: parseFloat(d.totals.max||0) + extra });
+  // Nichts erfasst: ein Leerzustand statt Tabellen, die fünfmal „Preis fehlt“ melden.
+  if (!d.sets.length && !partsItems.length && !figsItems.length) {
+    G('fin-tbl').innerHTML = leerZustand({ ico: 'finanzen', titel: tRaw('finance.empty'), text: tRaw('finance.empty_text') });
+    return;
+  }
   const summenZeile = (name, kauf, wert) => `<tr><td class="fin-fuss-name">${name}</td>${summenZellen(kauf, wert, cur, 0)}</tr>`;
   const grandTotalHtml = `
     <div class="tw" style="margin-top:1.25rem">
@@ -351,7 +365,7 @@ function summenZellen(kauf, wert, cur, luecke) {
  * und G&V nur, wenn es Marktpreise gibt — sonst sagt die Kachel, für wie
  * viele Positionen der Preis fehlt, statt „—“ zu zeigen.
  */
-function zeigeKennzahlen({ einstand, wert, guv, ohnePreis, cur, min, max }) {
+function zeigeKennzahlen({ einstand, wert, guv, ohnePreis, cur, min, max, guvKauf = 0, guvMarkt = 0 }) {
   G('fin-einstand').textContent = einstand > 0 ? fmtN(einstand, cur) : '—';
   const fehlt = ohnePreis > 0 ? tRaw('finance.price_missing_n', { n: ohnePreis }) : '';
   if (wert > 0) {
@@ -359,13 +373,16 @@ function zeigeKennzahlen({ einstand, wert, guv, ohnePreis, cur, min, max }) {
     const spanne = min > 0 && max > min ? tRaw('finance.range', { min: fmtN(min, cur), max: fmtN(max, cur) }) : '';
     G('fin-wert-sub').textContent = [spanne, fehlt].filter(Boolean).join(' · ');
   } else {
-    G('fin-wert').innerHTML = `<span class="fval-hinweis">${esc(fehlt || tRaw('finance.price_missing_short'))}</span>`;
+    // Ohne Positionen fehlt kein Preis — dann einfach „—“.
+    if (fehlt) G('fin-wert').innerHTML = `<span class="fval-hinweis">${esc(fehlt)}</span>`;
+    else G('fin-wert').textContent = '—';
     G('fin-wert-sub').textContent = '';
   }
   G('fin-stat-pnl').style.display = guv != null && wert > 0 ? '' : 'none';
   if (guv != null) {
     G('fin-total-pnl').innerHTML = pnlBadge(guv);
-    G('fin-pnl-sub').textContent = einstand > 0 && wert > 0 ? `${wert >= einstand ? '+' : '−'}${fmtN(Math.abs(wert - einstand), cur)}` : '';
+    // Betrag und Prozent aus denselben Posten (mit Kauf- UND Marktpreis).
+    G('fin-pnl-sub').textContent = guvKauf > 0 ? `${guvMarkt >= guvKauf ? '+' : '−'}${fmtN(Math.abs(guvMarkt - guvKauf), cur)}` : '';
   }
 }
 

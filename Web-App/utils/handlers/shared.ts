@@ -1,5 +1,5 @@
 import * as db from '../../db/database';
-import { inKontowaehrung } from '../acquisitions';
+import { inKontowaehrung, kontowaehrungJoin } from '../acquisitions';
 import { istErsatzteil } from '../validate';
 import { asIds } from '../household';
 import { teilmengeJoin, teilmengeAus } from '../bestandsmenge';
@@ -108,17 +108,19 @@ async function applyManualCondition(userId: unknown, rows: any[], kind: 'part' |
                 COUNT(*) FILTER (WHERE condition = 'U') AS used_count,
                 SUM(unit_price * quantity) FILTER (WHERE unit_price IS NOT NULL AND ${inKontowaehrung('part_acquisitions')})::numeric
                   / NULLIF(SUM(quantity) FILTER (WHERE unit_price IS NOT NULL AND ${inKontowaehrung('part_acquisitions')}), 0) AS avg_purchase_price
-           FROM part_acquisitions WHERE user_id = ANY($1)
+           FROM part_acquisitions ${kontowaehrungJoin('part_acquisitions')}
+          WHERE part_acquisitions.user_id = ANY($1)
           GROUP BY part_number, color_id`
       : `SELECT fig_number,
                 COUNT(*) AS acq_count,
                 COUNT(*) FILTER (WHERE condition = 'U') AS used_count,
                 SUM(unit_price * quantity) FILTER (WHERE unit_price IS NOT NULL AND ${inKontowaehrung('minifig_acquisitions')})::numeric
                   / NULLIF(SUM(quantity) FILTER (WHERE unit_price IS NOT NULL AND ${inKontowaehrung('minifig_acquisitions')}), 0) AS avg_purchase_price
-           FROM minifig_acquisitions WHERE user_id = ANY($1)
+           FROM minifig_acquisitions ${kontowaehrungJoin('minifig_acquisitions')}
+          WHERE minifig_acquisitions.user_id = ANY($1)
           GROUP BY fig_number`,
     [uids]
-  ).catch(() => []);
+  );
 
   const byKey = new Map<string, any>(acq.map((a: any) => [
     isPart ? `${a.part_number}|${a.color_id || 0}` : String(a.fig_number),
@@ -159,8 +161,7 @@ async function applyManualCondition(userId: unknown, rows: any[], kind: 'part' |
  */
 async function withOwners(uids: number[], rows: any[]) {
   if (uids.length < 2 || !rows?.length) return rows;
-  const owners = await db.all('SELECT id, username FROM users WHERE id = ANY($1)', [uids])
-    .catch(() => []);
+  const owners = await db.all('SELECT id, username FROM users WHERE id = ANY($1)', [uids]);
   const nameById = new Map<number, any>(owners.map((u: any) => [parseInt(u.id), u.username] as [number, any]));
   const platte = (id: number) => ({ id, username: nameById.get(id) || String(id) });
   return rows.map(r => {
@@ -319,7 +320,7 @@ async function verwendendeSets(
                c.name, c.image_local, c.image_url
       ORDER BY x.set_number`,
     params,
-  ).catch(() => []);
+  );
 
   const sets: VerwendendesSet[] = rows.map((r: any) => ({
     set_number:    String(r.set_number),

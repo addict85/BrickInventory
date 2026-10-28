@@ -33,9 +33,12 @@ import androidx.compose.runtime.snapshotFlow
  * Bildschirm bei jedem Bildlauf neu zusammengesetzt. Gelesen wird sie ohnehin
  * nur beim Betreten.
  *
- * Sie lebt im ViewModel und stirbt mit ihm — wie die Listen selbst.
+ * Ein Singleton: Galerie- und Teile-ViewModel vergessen eine Stelle nach
+ * einem Filterwechsel, die Navigation liest sie beim Betreten — beide müssen
+ * dieselbe Karte sehen.
  */
-class ScrollMemory {
+@javax.inject.Singleton
+class ScrollMemory @javax.inject.Inject constructor() {
     private val positionen = mutableMapOf<String, Pair<Int, Int>>()
 
     fun lies(schluessel: String): Pair<Int, Int> = positionen[schluessel] ?: (0 to 0)

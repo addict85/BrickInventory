@@ -83,7 +83,11 @@ class SetsRepository @Inject constructor(
                                             ownerUserId, storage)) }
 
     suspend fun updateQuantity(setNumber: String, quantity: Int, purchasePrice: Double? = null, condition: String? = null): Result<GenericResponse> =
-        safeCall { api.updateSetQuantity(setNumber, UpdateQuantityRequest(quantity, purchasePrice, condition)) }
+        safeCall { api.updateSetQuantity(setNumber, UpdateQuantityRequest(quantity, null, purchasePrice, condition)) }
+
+    /** Menge um [schritt] ändern; der Server rechnet unter Bestandssperre. */
+    suspend fun aendereMengeUm(setNumber: String, schritt: Int): Result<GenericResponse> =
+        safeCall { api.updateSetQuantity(setNumber, UpdateQuantityRequest(quantityDelta = schritt)) }
 
     // ── Merkliste ─────────────────────────────────────────────────────────
     //
