@@ -196,11 +196,6 @@ class MainViewModel @Inject constructor(
     internal val _barcodeState = MutableStateFlow(BarcodeUiState())
     val barcodeState = _barcodeState.asStateFlow()
 
-    // Detail-Dialog fuer ein Teil/eine Figur aus einem Set (Marcos Wunsch).
-    // Eigener Fluss aus demselben Grund wie der Barcode-Zustand darueber: Er
-    // hat eigene Zwischenstaende und geht sonst jeden Reiter an.
-    internal val _setItemState = MutableStateFlow(SetItemUiState())
-    val setItemState = _setItemState.asStateFlow()
 
     // Kontofilter, Haushaltskonten und Lagerorte — gehalten vom Blickfeld.
     val blickfeld = blickfeldDienst.konten
@@ -254,34 +249,6 @@ class MainViewModel @Inject constructor(
     // niemandem ausser den Katalogfunktionen gelesen — und die stehen jetzt
     // dort, wo sie auch ihre Abbruch-Jobs halten koennen.
 
-    // Teile/Minifiguren und Finanzen — aus AppUiState herausgelöst, gleiches
-    // Muster wie oben. Nur die Screens, die diese Daten tatsächlich anzeigen,
-    // sammeln sie; ein Ladevorgang in der Teileliste rekomponiert damit nicht
-    // mehr Galerie und Navigationsleiste mit.
-    internal val teile = Teile(
-        scope = viewModelScope,
-        quelle = object : TeileQuelle {
-            private val teileSicht get() = scopeFor(ch.brickinventoryapp.data.ScopeFilter.View.PARTS)
-            private val teileLager get() = lagerFor(ch.brickinventoryapp.data.ScopeFilter.View.PARTS)
-            private val figurenSicht get() = scopeFor(ch.brickinventoryapp.data.ScopeFilter.View.MINIFIGS)
-            override suspend fun seite(abfrage: TeileAbfrage) = retryOnNetwork {
-                repo.teile.getParts(search = abfrage.suche, color = abfrage.farbe,
-                    category = abfrage.kategorie, page = abfrage.seite, accounts = teileSicht,
-                    spare = abfrage.ersatzteile, withSets = abfrage.mitSets, storage = teileLager)
-            }
-            override suspend fun manuelleTeile(suche: String?) = repo.teile.getManualParts(teileSicht, suche, teileLager)
-            override suspend fun teileKennzahlen() = repo.teile.getPartsStats(teileSicht)
-            override suspend fun filterFarben() = repo.teile.getPartsFilterColors(teileSicht)
-            override suspend fun kategorien() = repo.teile.getPartsCategories(teileSicht)
-            override suspend fun alleFarben() = repo.teile.getBrickColors()
-            override suspend fun figurKennzahlen() = repo.teile.getMinifigStats(figurenSicht)
-            override suspend fun figuren(suche: String?) = repo.teile.getMinifigs(figurenSicht, suche)
-            override suspend fun manuelleFiguren(suche: String?) = repo.teile.getManualMinifigs(figurenSicht, suche)
-        },
-        meldeFehler = { _snackbar.value = meldungFuerSnackbar(it) },
-        vergissScroll = { scrollMemory.vergiss("parts") },
-    )
-    val partsState: kotlinx.coroutines.flow.StateFlow<PartsUiState> = teile.state
 
 
     /** Haushalt: Verknüpfung, Einladungscode, Servermeldung. */

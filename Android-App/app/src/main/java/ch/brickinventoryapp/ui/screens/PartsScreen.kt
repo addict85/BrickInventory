@@ -31,7 +31,7 @@ import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.R
-import ch.brickinventoryapp.ui.MainViewModel
+import ch.brickinventoryapp.ui.viewmodel.TeileViewModel
 import ch.brickinventoryapp.ui.*  // Feature-Extensions (loadSets, setScope, …)
 import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.data.model.Part
@@ -51,7 +51,7 @@ import ch.brickinventoryapp.ui.theme.Abstaende
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun PartsScreen(
-    vm: MainViewModel,
+    vm: TeileViewModel,
     imageLoader: ImageLoader,
     /**
      * Öffnet die Detailansicht eines manuell erfassten Teils. Bleibt Parameter,

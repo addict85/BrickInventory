@@ -25,11 +25,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.ImageLoader
 import coil3.compose.AsyncImage
 import ch.brickinventoryapp.R
-import ch.brickinventoryapp.ui.MainViewModel
+import ch.brickinventoryapp.ui.viewmodel.TeileViewModel
 import ch.brickinventoryapp.ui.components.ZoomableImageDialog
-import ch.brickinventoryapp.ui.schliesseSetItem
 import ch.brickinventoryapp.ui.loadLagerortVorrat
-import ch.brickinventoryapp.ui.setzeTeilLagerort
 import ch.brickinventoryapp.ui.screens.TabellenZeile
 import ch.brickinventoryapp.util.resolveFullUrlViaProxy
 import ch.brickinventoryapp.util.rememberTileImageWithFallback
@@ -69,7 +67,7 @@ import ch.brickinventoryapp.ui.theme.Abstaende
  */
 @Composable
 fun SetItemDetailDialog(
-    vm: MainViewModel,
+    vm: TeileViewModel,
     imageLoader: ImageLoader,
     serverUrl: String,
     onOpenSet: (String) -> Unit,

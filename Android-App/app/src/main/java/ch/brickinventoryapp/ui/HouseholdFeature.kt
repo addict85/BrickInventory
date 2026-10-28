@@ -22,43 +22,8 @@ import kotlinx.coroutines.launch
 /** Filterwert einer Ansicht — für die Anfrage aufbereitet (null = alle). */
 internal fun MainViewModel.scopeFor(view: ScopeFilter.View): String? = blickfeldDienst.kontoFuer(view)
 
-/**
- * Filter setzen und NUR die betroffene Ansicht neu laden.
- *
- * Alle vier gleichzeitig neu zu laden würde drei Ansichten anfassen, die
- * niemand gerade ansieht — und dabei Preisabrufe auslösen.
- */
-internal fun MainViewModel.setScope(view: ScopeFilter.View, value: String) {
-    viewModelScope.launch {
-        blickfeldDienst.setzeKonto(view, value)
-        when (view) {
-            ScopeFilter.View.GALLERY  -> Unit
-            ScopeFilter.View.PARTS    -> loadParts()
-            ScopeFilter.View.MINIFIGS -> loadMinifigs()
-            ScopeFilter.View.FINANCE  -> Unit
-            ScopeFilter.View.MERKLISTE -> Unit
-        }
-    }
-}
-
 /** Der gewaehlte Lagerort als Anfrageparameter — null, solange nicht gefiltert wird. */
 internal fun MainViewModel.lagerFor(view: ScopeFilter.View): String? = blickfeldDienst.lagerFuer(view)
-
-/**
- * Lagerortfilter setzen und NUR die betroffene Ansicht neu laden.
- *
- * Dieselbe Aufteilung wie setScope() darueber, aus demselben Grund — und
- * dieselbe wie in der Webapp (onStorageChange in public/js/02-gallery.js).
- */
-internal fun MainViewModel.setLagerFilter(view: ScopeFilter.View, value: String) {
-    viewModelScope.launch {
-        blickfeldDienst.setzeLager(view, value)
-        when (view) {
-            ScopeFilter.View.PARTS   -> loadParts()
-            else -> {}
-        }
-    }
-}
 
 /**
  * Die belegten Lagerorte holen.

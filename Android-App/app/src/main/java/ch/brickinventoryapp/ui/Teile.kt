@@ -201,6 +201,9 @@ internal class Teile(
     }
 
     /** Abmelden: nichts vom vorigen Konto stehen lassen, laufende Abrufe verwerfen. */
+    /** Gemerkte Filter und Ansichten übernehmen, ohne zu laden. */
+    fun stelleFilterWieder(aenderung: (PartsUiState) -> PartsUiState) = _state.update(aenderung)
+
     fun zuruecksetzen() {
         teileJob?.cancel()
         figurenJob?.cancel()

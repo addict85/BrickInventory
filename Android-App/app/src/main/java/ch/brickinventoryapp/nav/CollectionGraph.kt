@@ -54,6 +54,7 @@ import androidx.navigation.navArgument
 import ch.brickinventoryapp.*
 import ch.brickinventoryapp.ui.MainViewModel
 import ch.brickinventoryapp.ui.viewmodel.GalerieViewModel
+import ch.brickinventoryapp.ui.viewmodel.TeileViewModel
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import ch.brickinventoryapp.ui.ManualItemDetailUiState
 
@@ -162,19 +163,18 @@ fun NavGraphBuilder.collectionGraph(
         composable(Screen.Parts.route) {
             // Zustand INNERHALB des Ziels lesen — als Parameter wäre es eine
             // Momentaufnahme vom Aufbau des Graphen (der NavHost-Builder läuft nur einmal).
-            val state by vm.state.collectAsStateWithLifecycle()
-            // Teile und Finanzen als eigene Flows — ein Ladevorgang hier
-            // rekomponiert dadurch nicht mehr Galerie und Navigationsleiste.
-            val partsState by vm.partsState.collectAsStateWithLifecycle()
+            val teileVm: TeileViewModel = hiltViewModel()
+            val state by teileVm.state.collectAsStateWithLifecycle()
+            val partsState by teileVm.partsState.collectAsStateWithLifecycle()
             LaunchedEffect(state.serverUrl) {
                 if (state.serverUrl.isNotBlank()) {
-                    vm.loadParts()
+                    teileVm.loadParts()
                     // Farbkatalog fuer den Erfassungsdialog …
-                    vm.loadPartsColors()
+                    teileVm.loadPartsColors()
                     // … und die beiden FILTERlisten mit ihren Zaehlwerten
                     // (Nachtrag 134). Zwei verschiedene Adressen, siehe
                     // BrickApiService.getPartsFilterColors.
-                    vm.loadPartsFilters()
+                    teileVm.loadPartsFilters()
                 }
             }
             ReiterGeruest(stringResource(R.string.nav_parts), vm, navController, bottomNavItems, snackbarHostState) {
@@ -189,7 +189,7 @@ fun NavGraphBuilder.collectionGraph(
                     speicher = vm.scrollMemory,
                     obenNachziehend = partsState.manualParts?.size ?: 0)
                 PartsScreen(
-                    vm = vm,
+                    vm = teileVm,
                     imageLoader = imageLoader,
                     onOpenDetail = { partNumber, colorId ->
                         navController.navigate(Screen.ManualItemDetail.createRoute(
@@ -207,7 +207,7 @@ fun NavGraphBuilder.collectionGraph(
                 // darueber. Der Dialog zeigt sich selbst nur, wenn im
                 // Zustand ein Teil offen ist (SetItemUiState.offen).
                 SetItemDetailDialog(
-                    vm = vm,
+                    vm = teileVm,
                     imageLoader = imageLoader,
                     serverUrl = state.serverUrl,
                     onOpenSet = { navController.navigate(Screen.SetDetail.createRoute(it)) },
@@ -217,9 +217,10 @@ fun NavGraphBuilder.collectionGraph(
         composable(Screen.Minifigs.route) {
             // Zustand INNERHALB des Ziels lesen — als Parameter wäre es eine
             // Momentaufnahme vom Aufbau des Graphen (der NavHost-Builder läuft nur einmal).
-            val state by vm.state.collectAsStateWithLifecycle()
-            val partsState by vm.partsState.collectAsStateWithLifecycle()
-            LaunchedEffect(state.serverUrl) { if (state.serverUrl.isNotBlank()) { if (partsState.minifigs.isEmpty()) vm.loadMinifigs() } }
+            val teileVm: TeileViewModel = hiltViewModel()
+            val state by teileVm.state.collectAsStateWithLifecycle()
+            val partsState by teileVm.partsState.collectAsStateWithLifecycle()
+            LaunchedEffect(state.serverUrl) { if (state.serverUrl.isNotBlank()) { if (partsState.minifigs.isEmpty()) teileVm.loadMinifigs() } }
             ReiterGeruest(stringResource(R.string.nav_minifigs), vm, navController, bottomNavItems, snackbarHostState) {
                 ch.brickinventoryapp.ui.ScrollPositionKeeper(
                     "minifigs", minifigsGridState,
@@ -232,7 +233,7 @@ fun NavGraphBuilder.collectionGraph(
                     speicher = vm.scrollMemory,
                     obenNachziehend = partsState.manualFigs?.size ?: 0)
                 MinifigsScreen(
-                    vm = vm,
+                    vm = teileVm,
                     imageLoader = imageLoader,
                     onOpenDetail = { figNumber ->
                         navController.navigate(Screen.ManualItemDetail.createRoute(
@@ -245,7 +246,7 @@ fun NavGraphBuilder.collectionGraph(
                 // Derselbe Dialog wie im Teile-Reiter — er unterscheidet
                 // Teile und Figuren selbst ueber SetItemUiState.art.
                 SetItemDetailDialog(
-                    vm = vm,
+                    vm = teileVm,
                     imageLoader = imageLoader,
                     serverUrl = state.serverUrl,
                     onOpenSet = { navController.navigate(Screen.SetDetail.createRoute(it)) },
@@ -274,6 +275,7 @@ fun NavGraphBuilder.collectionGraph(
             val itemTitle = java.net.URLDecoder.decode(backStackEntry.arguments?.getString("title") ?: "",    "UTF-8")
             ManualItemDetailScreen(
                 vm = vm,
+                teile = hiltViewModel(),
                 type = itemType,
                 id = itemId,
                 colorId = colorId,

@@ -80,6 +80,16 @@ abstract class BereichsViewModel(protected val dienste: AppDienste) : ViewModel(
     /** Ein Filter der Ansicht [view] hat sich geändert. */
     protected open fun nachFilter(view: ScopeFilter.View) {}
 
+    /** Vorschläge fürs Lagerortfeld: die Orte der Besitzer des gezeigten Eintrags. */
+    fun loadLagerortVorrat(besitzer: List<Int>) {
+        viewModelScope.launch { dienste.blickfeld.ladeVorrat(besitzer) }
+    }
+
+    /** Die eigenen Orte samt Vorgabe — für die Erfassungsdialoge. */
+    fun ladeEigeneLagerorte() {
+        viewModelScope.launch { dienste.blickfeld.ladeEigeneLagerorte() }
+    }
+
     /** Nach dem Abmelden: alles vergessen, was dem vorigen Konto gehörte. */
     protected open fun zuruecksetzen() {}
 

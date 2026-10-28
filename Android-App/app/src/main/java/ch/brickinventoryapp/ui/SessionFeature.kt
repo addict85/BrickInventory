@@ -259,11 +259,9 @@ internal fun MainViewModel.logout() {
         // Er galt nur fuer die Haelfte. Gefunden beim Entfernen der
         // Nutzerverwaltung, nicht von einer Pruefung — deshalb prueft
         // felder.py das jetzt: Jeder Fluss des MainViewModel muss hier stehen.
-        teile.zuruecksetzen()
         _csvImportState.value = CsvImportUiState()
         _setDetailState.value = SetDetailUiState()
         _manDetailState.value = ManualItemDetailUiState()
-        _setItemState.value = SetItemUiState()
         erfassung.fertig()
         _householdState.value = HouseholdUiState()
         _anmeldeState.value = AnmeldeUiState()

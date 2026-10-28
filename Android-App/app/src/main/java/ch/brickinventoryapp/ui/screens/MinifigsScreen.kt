@@ -34,7 +34,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.R
-import ch.brickinventoryapp.ui.MainViewModel
+import ch.brickinventoryapp.ui.viewmodel.TeileViewModel
 import ch.brickinventoryapp.ui.*  // Feature-Extensions (loadSets, setScope, …)
 import ch.brickinventoryapp.util.NumericInput
 import ch.brickinventoryapp.ui.theme.Abstaende
@@ -43,7 +43,7 @@ import ch.brickinventoryapp.ui.components.LeerSymbol
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun MinifigsScreen(
-    vm: MainViewModel,
+    vm: TeileViewModel,
     imageLoader: ImageLoader,
     /** Öffnet die Detailansicht — nur der Graph kennt den NavController. */
     onOpenDetail: (figNumber: String) -> Unit = { _ -> },
