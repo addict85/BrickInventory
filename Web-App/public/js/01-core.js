@@ -556,6 +556,8 @@ export function observeLazyImages(root) {
   }
   imgs.forEach(img => { img.classList.add('observed'); window._imgObserver.observe(img); });
 }
+/** Anzeigedauer je Art in ms. */
+const TOAST_DAUER = { success: 3500, info: 5000, error: 9000 };
 /** @param {{text: string, fn: () => any}} [aktion] Knopf in der Meldung, z. B. „Rückgängig" */
 export function toast(msg, type='info', aktion) {
   const c = G('toasts'), el = document.createElement('div');
@@ -577,8 +579,12 @@ export function toast(msg, type='info', aktion) {
     knopf.onclick = () => { el.remove(); aktion.fn(); };
     el.append(knopf);
   }
-  // Mit Knopf länger: Man muss ihn lesen UND treffen können.
-  c.appendChild(el); setTimeout(()=>el.remove(), aktion ? 9000 : 4500);
+  // Ein Fehler will gelesen werden, eine Bestätigung nur gesehen; mit Knopf
+  // muss man ihn auch treffen. Ein Klick auf die Meldung räumt sie weg, damit
+  // sie keine Karte verdeckt.
+  el.addEventListener('click', e => { if (e.target === el || !(/** @type {Element} */ (e.target)).closest('button')) el.remove(); });
+  c.appendChild(el);
+  setTimeout(() => el.remove(), Math.max(aktion ? 9000 : 0, TOAST_DAUER[type] ?? 4500));
 }
 /**
  * Aufruf der eigenen API. Liefert IMMER ein Objekt — nie eine Ausnahme.
