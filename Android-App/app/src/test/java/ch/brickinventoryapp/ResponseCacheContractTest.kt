@@ -178,7 +178,7 @@ class ImageConcurrencyConfigTest {
 
     @Test
     fun `Bild-Nebenläufigkeit ist nicht zu eng für eine Kachelwand`() {
-        val src = read("src/main/java/ch/brickinventoryapp/di/AppModule.kt")
+        val src = Quellen.di()
         val perHost = Regex("""maxRequestsPerHost\s*=\s*(\d+)""").find(src)
         val total   = Regex("""maxRequests\s*=\s*(\d+)(?!PerHost)""").find(src)
         assertNotNull("maxRequestsPerHost nicht gefunden", perHost)
@@ -259,7 +259,7 @@ class ImageRequestHeadersTest {
 
     @Test
     fun `Bildanfragen an fremde Hosts tragen eine Browser-Kennung`() {
-        val src = read("src/main/java/ch/brickinventoryapp/di/AppModule.kt")
+        val src = Quellen.di()
         val raw = src.substring(src.indexOf("fun provideImageOkHttpClient"))
         // Kommentare ausblenden: Der Erklärtext nennt "image/avif" selbst
         // (als Beispiel, was NICHT mehr gesendet werden soll) und würde die

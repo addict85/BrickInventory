@@ -1,0 +1,430 @@
+package ch.brickinventoryapp.di
+
+import ch.brickinventoryapp.data.PreferencesManager
+import ch.brickinventoryapp.data.api.BrickApiService
+import ch.brickinventoryapp.util.NetworkPolicy
+import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
+import dagger.Module
+import dagger.Provides
+import dagger.hilt.InstallIn
+import dagger.hilt.components.SingletonComponent
+import kotlinx.serialization.json.Json
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.Dispatcher
+import okhttp3.ResponseBody.Companion.toResponseBody
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.OkHttpClient
+import retrofit2.Retrofit
+import java.io.IOException
+import java.util.concurrent.TimeUnit
+import javax.inject.Named
+import javax.inject.Singleton
+import okio.Path.Companion.toOkioPath
+
+/** OkHttp-Clients, Bildlader und Retrofit — alles, was über das Netz geht. */
+@Module
+@InstallIn(SingletonComponent::class)
+object NetzModule {
+
+    @Provides
+    @Singleton
+    @Named("api")
+    fun provideApiOkHttpClient(
+        @dagger.hilt.android.qualifiers.ApplicationContext context: android.content.Context,
+        prefs: PreferencesManager,
+        sessionExpired: ch.brickinventoryapp.data.SessionExpiredSignal,
+        meldungen: ch.brickinventoryapp.data.MeldungsKanal,
+    ): OkHttpClient =
+        buildInterceptorClient(prefs, isApiClient = true, sessionExpired = sessionExpired, ctx = context,
+            meldungen = meldungen)
+
+    /**
+     * Der Client fuer die Selbstaktualisierung — bewusst BLANK.
+     *
+     * Kein buildInterceptorClient: Dessen Interceptor kennt unseren Server,
+     * unseren Bearer-Token und unsere Anzeigesprache. Nichts davon geht GitHub
+     * etwas an. Der Origin-Vergleich (isOurServer) wuerde den Token zwar auch
+     * dort zurueckhalten — aber „haelt zurueck, weil eine Bedingung greift"
+     * ist schwaecher als „hat ihn nie gesehen", und diese Unterscheidung ist
+     * bei einem Weg, ueber den fremder Code aufs Geraet kommt, den eigenen
+     * Anbieter wert.
+     *
+     * Ebenso kein Zwischenspeicher: Ein APK ist zweistellig megabytegross und
+     * wird genau einmal gebraucht. Im Bild-Cache verdraengte es die Vorschauen.
+     *
+     * Das lange Lesezeitlimit ist das eines Downloads, nicht das einer
+     * Abfrage — 46 MB ueber ein langsames Mobilnetz brauchen laenger als die
+     * 60 Sekunden des API-Clients.
+     */
+    @Provides
+    @Singleton
+    @Named("update")
+    fun provideUpdateOkHttpClient(): OkHttpClient =
+        OkHttpClient.Builder()
+            // ── Keine Umleitung von https auf http ──────────────────────────
+            //
+            // Der Release-Anhang WIRD umgeleitet: github.com nimmt die Anfrage
+            // an, ausgeliefert wird von *.githubusercontent.com. Das muss
+            // weiter gehen — followSslRedirects betrifft nur den Wechsel des
+            // SCHEMAS, nicht den des Hosts. Auf `false` bricht eine Umleitung
+            // nach http ab, statt ihr still zu folgen.
+            //
+            // Zweite Haelfte derselben Regel: res/xml/network_security_config
+            // erlaubt fuer diese beiden Hosts ohnehin keinen Klartext und nur
+            // System-Zertifikate. Beide zusammen, weil die eine Seite die
+            // Verbindung verbietet und die andere den Weg dorthin.
+            .followSslRedirects(false)
+            .connectTimeout(15, TimeUnit.SECONDS)
+            .readTimeout(120, TimeUnit.SECONDS)
+            .build()
+
+    /**
+     * Aus abgelegten Bytes eine Antwort bauen — oder null, wenn nichts da ist.
+     *
+     * Bewusst mit Status 200 und einer eigenen Kopfzeile: Coil und der
+     * HTTP-Zwischenspeicher sollen sie behandeln wie jede andere Antwort. Die
+     * Kopfzeile `X-Vorschau-Ablage` steht nicht zur Zierde da — an ihr laesst
+     * sich im Protokoll ablesen, dass ein Bild aus der Ablage kam und nicht
+     * vom Server.
+     */
+    private fun vorschauAntwort(anfrage: okhttp3.Request, bytes: ByteArray?): okhttp3.Response? {
+        if (bytes == null || bytes.isEmpty()) return null
+        return okhttp3.Response.Builder()
+            .request(anfrage)
+            .protocol(okhttp3.Protocol.HTTP_1_1)
+            .code(200)
+            .message("aus der Vorschau-Ablage")
+            .header("X-Vorschau-Ablage", "1")
+            // no-store: Diese Antwort stammt bereits aus einer dauerhaften
+            // Ablage. Sie ein zweites Mal in den HTTP-Zwischenspeicher zu
+            // legen brauchte Platz fuer dieselben Bytes.
+            .header("Cache-Control", "no-store")
+            .body(bytes.toResponseBody("image/jpeg".toMediaTypeOrNull()))
+            .build()
+    }
+
+    @Provides
+    @Singleton
+    @Named("image")
+    fun provideImageOkHttpClient(
+        // Context für den HTTP-Zwischenspeicher unten — dieselbe Schreibweise
+        // wie bei provideImageLoader in dieser Datei.
+        @dagger.hilt.android.qualifiers.ApplicationContext context: android.content.Context,
+        prefs: PreferencesManager,
+        sessionExpired: ch.brickinventoryapp.data.SessionExpiredSignal,
+        vorschau: ch.brickinventoryapp.data.cache.VorschauSpeicher,
+    ): OkHttpClient =
+        buildInterceptorClient(prefs, isApiClient = false, sessionExpired = sessionExpired, ctx = context)
+            .newBuilder()
+            // ── Dauerhafte Ablage der Vorschaubilder ─────────────────────────
+            //
+            // Marcos Anforderung: „Die Android-App soll auch ohne Internet
+            // funktionieren", Umfang „nur fuer Vorschau Bilder".
+            //
+            // ZUERST in der Kette, damit dieser Abgriff das ENDERGEBNIS sieht:
+            // Anwendungs-Interceptoren laufen in der Reihenfolge, in der sie
+            // gesetzt werden, und der Offline-Rueckfall weiter unten ist
+            // dadurch der innere. Was er nicht mehr retten kann, landet hier.
+            //
+            // Warum es den Rueckfall nicht ersetzt, sondern ergaenzt: Beide
+            // Zwischenspeicher der App liegen unter `cacheDir` und sind LRU.
+            // Android darf sie jederzeit leeren, und wer durch den Katalog
+            // blaettert, verdraengt damit die Bilder der eigenen Sammlung.
+            // Diese Ablage liegt unter `filesDir` und wird nur von ihr selbst
+            // geraeumt (siehe VorschauSpeicher).
+            .addInterceptor { chain ->
+                val anfrage = chain.request()
+                val adresse = anfrage.url.toString()
+                if (!vorschau.istVorschau(adresse)) {
+                    chain.proceed(anfrage)
+                } else {
+                    // KEIN eigenes If-None-Match: Der HTTP-Zwischenspeicher von
+                    // OkHttp fuehrt die bedingte Anfrage laengst selbst und
+                    // kennt den ETag der gespeicherten Antwort. Setzt der
+                    // Aufrufer die Kopfzeile von Hand, haelt OkHttp die Anfrage
+                    // fuer bereits bedingt und UEBERGEHT seinen Cache — damit
+                    // haette dieser Abgriff ausgerechnet den Zwischenspeicher
+                    // abgeschaltet, den er ergaenzen soll.
+                    //
+                    // Diese Ablage ist deshalb genau zweierlei: Sie fuellt sich
+                    // bei erfolgreichen Antworten, und sie springt ein, wenn
+                    // gar nichts mehr geht.
+                    val antwort = try {
+                        chain.proceed(anfrage)
+                    } catch (e: java.io.IOException) {
+                        vorschauAntwort(anfrage, vorschau.lies(adresse)) ?: throw e
+                    }
+                    when {
+                        antwort.isSuccessful -> {
+                            // peekBody statt body.bytes(): Der Rumpf darf nur
+                            // EINMAL gelesen werden, und der Aufrufer braucht
+                            // ihn noch. Eine Vorschau ist klein genug, um sie
+                            // nebenbei mitzunehmen.
+                            val bytes = runCatching {
+                                antwort.peekBody(2L * 1024 * 1024).bytes()
+                            }.getOrNull()
+                            if (bytes != null && bytes.isNotEmpty()) {
+                                // Spekulativ oder wirklich gebraucht? Der
+                                // Vorwaermer markiert seine Anfragen mit einem
+                                // OkHttp-Tag (siehe VorschauVorwaermer). Nur
+                                // daran haengt, ob das Bild beim Aufraeumen
+                                // zuerst oder zuletzt fliegt — und weil der
+                                // Vorwaermer NICHT markiert, was jemand
+                                // ansieht, wird ein vorgewaermtes Bild beim
+                                // ersten echten Aufruf von selbst zu einem
+                                // gebrauchten.
+                                val spekulativ = anfrage.tag(
+                                    ch.brickinventoryapp.data.cache.Vorwaermung::class.java
+                                ) != null
+                                vorschau.schreibe(adresse, bytes, spekulativ)
+                            }
+                            antwort
+                        }
+                        // 504 kommt vom erzwungenen Zwischenspeicher weiter
+                        // unten, wenn dort nichts lag. Auch das ist ein Fall
+                        // fuer die Ablage.
+                        antwort.code == 504 ->
+                            vorschauAntwort(anfrage, vorschau.lies(adresse))
+                                ?.also { antwort.close() } ?: antwort
+                        else -> antwort
+                    }
+                }
+            }
+            // Browser-ähnliche Kennung für Bildanfragen an FREMDE Hosts
+            // (Rebrickable-CDN & Co.), nicht an den eigenen Server.
+            //
+            // OkHttps Standard-User-Agent ("okhttp/4.x") identifiziert die
+            // Anfrage eindeutig als Nicht-Browser-Client. Cloudflare — es
+            // steht vor Rebrickables CDN, siehe die Recherche zum
+            // Bild-Proxy der Webapp in dieser Sitzung — kann solche
+            // Anfragen dauerhaft blockieren oder mit einer HTML-Challenge
+            // statt des Bildes beantworten, die Coil nicht als Bild
+            // entpacken kann. Ein Wiederholversuch hilft dagegen NICHT,
+            // weil die Sperre nicht transient ist, sondern an jeder
+            // Anfrage neu greift — was genau zu der Beobachtung passt,
+            // dass weder die Warteschlangen-Verbreiterung noch der
+            // Wiederholversuch etwas verändert haben.
+            //
+            // Der eigene Server bekommt weiterhin keine besonderen
+            // Kopfzeilen — dort ist es unnötig, und der schlanke
+            // OkHttp-Header stört dort nicht.
+            .addInterceptor { chain ->
+                val req = chain.request()
+                val host = req.url.host
+                val isOwnServer = host == "localhost" ||
+                    NetworkPolicy.isSameOrigin(req.url, prefs.serverUrlState.value ?: "")
+                if (isOwnServer) {
+                    chain.proceed(req)
+                } else {
+                    chain.proceed(
+                        req.newBuilder()
+                            .header(
+                                "User-Agent",
+                                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
+                                "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                            )
+                            .header("Referer", "https://rebrickable.com/")
+                            // KEIN "image/avif" hier: Das war der Fehler dieser
+                            // Zeile in der vorigen Fassung. Mit avif in Accept
+                            // meldet der Client dem CDN, AVIF verarbeiten zu
+                            // können — Rebrickable/Cloudflare antwortete
+                            // daraufhin mit einer AVIF-Datei statt JPEG. Auf
+                            // Android übernimmt ImageDecoder das Dekodieren
+                            // nativer Formate; nicht jedes Gerät hat trotz
+                            // ausreichendem API-Level tatsächlich einen
+                            // AV1-Decoder, und genau das führt zu
+                            // "Failed to create image decoder with message
+                            // 'unimplemented'" statt zu einem angezeigten Bild.
+                            // JPEG/PNG/WebP sind auf jedem Android-Gerät
+                            // zuverlässig dekodierbar; das reicht hier.
+                            .header("Accept", "image/webp,image/apng,image/*,*/*;q=0.8")
+                            .build()
+                    )
+                }
+            }
+            // Bild-Downloads drosseln, aber nicht so eng, dass Kacheln
+            // verhungern.
+            //
+            // Dieser OkHttpClient ist die EINE ImageLoader-Instanz der ganzen
+            // App (siehe MainActivity) — die Drosselung für den Katalog
+            // (bis zu 60 CDN-Bilder pro Seite, auf langsamen Verbindungen
+            // sonst blockierte API-Calls) traf dadurch auch die Galerie mit.
+            // Bei 3 gleichzeitigen Verbindungen pro Host standen die übrigen
+            // Kacheln einer Seite in einer Warteschlange; scrollt man daran
+            // vorbei, bricht Coil die wartende Anfrage ab, und die Kachel
+            // bleibt dauerhaft leer — genau das gemeldete „teilweise nicht
+            // geladen". Dieselbe Fehlerklasse wie beim Server-seitigen
+            // Bild-Proxy in dieser Sitzung: eine zu enge Warteschlange lässt
+            // spät dran kommende Anfragen verhungern, nicht scheitern.
+            //
+            // 6 statt 3, 12 statt 6 gesamt: immer noch deutlich unter den
+            // OkHttp-Standardwerten (5/64), schützt die API-Anfragen auf
+            // langsamen Verbindungen weiterhin, lässt einer üblichen
+            // Kachelwand aber genug gleichzeitige Slots.
+            .dispatcher(Dispatcher().apply {
+                maxRequests = 12
+                maxRequestsPerHost = 6
+            })
+            // HTTP-Zwischenspeicher für Bilder (Nachtrag 37). Coil hat einen
+            // eigenen Plattencache, der aber nur die fertig geladenen Bytes
+            // hält — für eine BEDINGTE Anfrage und für den Offline-Rückfall
+            // braucht es die HTTP-Ebene mit ETag und Ablaufdatum.
+            .cache(okhttp3.Cache(context.cacheDir.resolve("image_http_cache"), 50L * 1024 * 1024))
+            // Offline-Rückfall: „Wenn der Server nicht erreichbar ist, sollen
+            // alle aus dem Cache kommen" (Marcos Anforderung).
+            //
+            // Bewusst am FEHLER festgemacht statt am Verbindungsstatus des
+            // Geräts: Ein Gerät kann mit einem WLAN verbunden sein, in dem der
+            // Heimserver trotzdem nicht antwortet (unterwegs, VPN aus, Server
+            // neu startend). Beobachtet wird also, was tatsächlich passiert —
+            // eine IOException —, nicht was das System über die Verbindung
+            // behauptet.
+            //
+            // FORCE_CACHE liefert die gespeicherte Kopie ohne jede
+            // Netzwerkanfrage und OHNE Rücksicht auf ihr Ablaufdatum. Gibt es
+            // keine Kopie, antwortet OkHttp mit 504 — dann greift der
+            // Platzhalter wie bisher.
+            .addInterceptor { chain ->
+                val req = chain.request()
+                try {
+                    chain.proceed(req)
+                } catch (e: java.io.IOException) {
+                    chain.proceed(
+                        req.newBuilder()
+                            .cacheControl(okhttp3.CacheControl.FORCE_CACHE)
+                            .build()
+                    )
+                }
+            }
+            .build()
+
+    /**
+     * Eine einzige ImageLoader-Instanz für die ganze App-Laufzeit statt einer
+     * pro Activity-Erzeugung.
+     *
+     * Vorher baute MainActivity.onCreate() den ImageLoader lokal — bei jeder
+     * Konfigurationsänderung (Bildschirmdrehung), die die Activity neu
+     * erzeugt, entstand ein zweiter ImageLoader auf demselben Disk-Cache-
+     * Verzeichnis, während der alte eventuell noch offene Handles hielt, und
+     * der In-Memory-Cache war jedes Mal wieder leer — alle sichtbaren
+     * Thumbnails wurden neu dekodiert. Als Hilt-Singleton bleibt Cache und
+     * Verzeichnis über die gesamte Prozesslaufzeit stabil.
+     */
+    @Provides
+    @Singleton
+    fun provideImageLoader(
+        @dagger.hilt.android.qualifiers.ApplicationContext context: android.content.Context,
+        @Named("image") client: OkHttpClient
+    ): coil3.ImageLoader =
+        coil3.ImageLoader.Builder(context)
+            // ── Das Netz ist in Coil 3 ein eigenes Bauteil ──────────────────
+            //
+            // `.okHttpClient(client)` gibt es nicht mehr. Coil 3 ist
+            // mehrplattformfaehig und kennt http(s) nur ueber einen Fetcher,
+            // der dazugesteckt wird. Ohne diese Zeile laedt die App stumm
+            // keine Bilder mehr — kein Fehler, nur leere Flaechen.
+            //
+            // NACHGESEHEN in den Quellen von coil-network-okhttp 3.3.0: Die
+            // Fabrik ist eine freie FUNKTION, keine Klasse —
+            // `OkHttpNetworkFetcherFactory(Call.Factory)`. Unser OkHttpClient
+            // IST eine Call.Factory, deshalb greift diese Ueberladung.
+            //
+            // `OkHttpNetworkFetcher.factory(...)` waere falsch: Die Datei
+            // tragt `@file:JvmName("OkHttpNetworkFetcher")` und die Funktion
+            // `@JvmName("factory")`. Das ist die Sicht von JAVA aus. Von
+            // Kotlin aus gibt es diese Klasse nicht, und genau daran ist der
+            // erste Uebersetzungsversuch gescheitert.
+            //
+            // Der Client ist derselbe wie zuvor — mit ihm bleiben
+            // Authentifizierung, Zeitgrenzen und der Offline-Interceptor am
+            // Bild-Weg genauso haengen wie bisher.
+            .components { add(coil3.network.okhttp.OkHttpNetworkFetcherFactory(client)) }
+            .memoryCache {
+                // Builder() ohne Context in Coil 3; der Context wandert an
+                // maxSizePercent, weil nur dort der Speicher des Geraets
+                // gebraucht wird.
+                coil3.memory.MemoryCache.Builder()
+                    .maxSizePercent(context, 0.15) // 15 % des App-Speichers
+                    .build()
+            }
+            .diskCache {
+                coil3.disk.DiskCache.Builder()
+                    // directory() nimmt in Coil 3 einen okio.Path statt einer
+                    // java.io.File. Derselbe Ordner wie bisher, damit ein
+                    // bestehender Zwischenspeicher nicht verwaist.
+                    .directory(context.cacheDir.resolve("image_cache").toOkioPath())
+                    .maxSizeBytes(50L * 1024 * 1024) // 50 MB auf der Platte
+                    .build()
+            }
+            // ── Hier stand `.respectCacheHeaders(true)` ────────────────────
+            //
+            // Die Anforderung dahinter gilt unveraendert. Nachtrag 37, Marcos
+            // Worte: „Wenn ein falsches Bild heruntergeladen wurde, soll
+            // geprueft werden, ob ein neues auf dem Server vorhanden ist."
+            //
+            // Die Vorgeschichte, weil sie erklaert, warum hier ueberhaupt
+            // etwas stand: Davor war es `false`, mit der Begruendung „auch
+            // dann zwischenspeichern, wenn der Server no-cache schickt". Die
+            // andere Haelfte davon war, dass Coil ein einmal geladenes Bild
+            // AUF IMMER aus dem Plattencache lieferte — ein falsches Bild
+            // liess sich nur durch Loeschen der App-Daten beseitigen.
+            //
+            // In Coil 3 ist das keine Einstellung mehr. Das Verhalten sitzt
+            // am Netzwerk-Fetcher und heisst CacheStrategy. NACHGESEHEN in
+            // coil-network-core 3.3.0: Es gibt GENAU EINE Implementierung
+            // (internal DefaultCacheStrategy, erreichbar als
+            // CacheStrategy.DEFAULT), und die ist der Vorgabewert der Fabrik
+            // oben. Eine Fassung, die Cache-Koepfe ignoriert, laesst sich gar
+            // nicht mehr hinschreiben — der Rueckfall in den Zustand von vor
+            // Nachtrag 37 ist damit baulich ausgeschlossen statt verboten.
+            //
+            // WAS ICH NICHT GEPRUEFT HABE: ob DefaultCacheStrategy sich im
+            // Einzelnen so verhaelt wie respectCacheHeaders(true). Gelesen
+            // habe ich die Signaturen, nicht den Rumpf. Diese Probe gehoert
+            // auf ein Geraet: ein Bild auf dem Server austauschen und
+            // nachsehen, ob die App es holt.
+            //
+            // Die Sorge von damals traegt weiterhin der Interceptor unten:
+            // Ist der Server nicht erreichbar, kommt alles aus dem Cache.
+            .build()
+
+    /**
+     * Separater Client für Server-Sent-Events: readTimeout = 0 (unendlich),
+     * damit die offene Stream-Verbindung nicht nach 60s gekappt wird.
+     * pingInterval hält die Verbindung durch NAT/Proxies am Leben.
+     */
+    @Provides
+    @Singleton
+    @Named("sse")
+    fun provideSseOkHttpClient(
+        @dagger.hilt.android.qualifiers.ApplicationContext context: android.content.Context,
+        prefs: PreferencesManager,
+        sessionExpired: ch.brickinventoryapp.data.SessionExpiredSignal
+    ): OkHttpClient =
+        buildInterceptorClient(prefs, isApiClient = true, sessionExpired = sessionExpired, ctx = context)
+            .newBuilder()
+            .readTimeout(0, TimeUnit.SECONDS)
+            .pingInterval(20, TimeUnit.SECONDS)
+            .build()
+
+    // Kein unqualifiziertes OkHttpClient-Binding mehr: Es hat still den
+    // api-Client (60s readTimeout, kein Dispatcher-Limit) an jeden ausgeliefert,
+    // der ein OkHttpClient injiziert hat — inklusive der Bild- und SSE-Pfade,
+    // für die es eigene, bewusst anders konfigurierte Clients gibt.
+    // Konsumenten geben ihren Qualifier jetzt explizit an: @Named("api"),
+    // @Named("image") oder @Named("sse").
+
+    @Provides
+    @Singleton
+    fun provideRetrofit(json: Json, @Named("api") client: OkHttpClient): Retrofit =
+        Retrofit.Builder()
+            .baseUrl("http://localhost:3000/")
+            .client(client)
+            .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
+            .build()
+
+    @Provides
+    @Singleton
+    fun provideApiService(retrofit: Retrofit): BrickApiService =
+        retrofit.create(BrickApiService::class.java)
+}

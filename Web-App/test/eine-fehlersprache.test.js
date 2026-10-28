@@ -163,9 +163,9 @@ test('beide Oberflächen sagen dem Server, welche Sprache sie zeigen', () => {
 
   const app = fs.readFileSync(
     path.join(ROOT, '..', 'Android-App', 'app', 'src', 'main', 'java', 'ch',
-              'brickinventoryapp', 'di', 'AppModule.kt'), 'utf8');
+              'brickinventoryapp', 'di', 'ServerClient.kt'), 'utf8');
   assert.match(app, /header\("Accept-Language",/,
-    'Die Android-App schickt Accept-Language nicht mit (di/AppModule.kt, Interceptor).');
+    'Die Android-App schickt Accept-Language nicht mit (di/ServerClient.kt, Interceptor).');
   assert.match(app, /R\.string\.lang_code/,
     'Die App leitet die Sprache nicht aus ihren Ressourcen ab — dann sagt sie ' +
     'nicht, was sie wirklich zeigt.');

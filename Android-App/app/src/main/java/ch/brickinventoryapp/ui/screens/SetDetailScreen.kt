@@ -41,7 +41,7 @@ fun SetDetailScreen(
     // durchgereicht, aber nie verwendet, und statt ihn einzusetzen war die
     // Warnung stummgeschaltet. Die AsyncImage-Aufrufe fielen dadurch auf Coils
     // Standard-Loader zurück, der den Bearer-Token NICHT anhängt (den setzt nur
-    // der Client aus di/AppModule.kt).
+    // der Client aus di/NetzModule.kt).
     //
     // Solange Set-Bilder ohne Anmeldung abrufbar waren, fiel das nicht auf.
     // Seit der Server für alle Bilder eine Anmeldung verlangt, antwortet er mit

@@ -164,7 +164,7 @@ class SelbstUpdateTest {
 
     @Test
     fun `der Update-Client traegt keinen Token`() {
-        val di = quelle("di/AppModule.kt")
+        val di = Quellen.ohneKommentare(Quellen.di())
         val ab = di.indexOf("fun provideUpdateOkHttpClient()")
         assert(ab > 0) { "Es gibt keinen eigenen Client fuer die Aktualisierung mehr" }
         val bis = di.indexOf("@Provides", ab + 10).let { if (it < 0) di.length else it }
@@ -221,7 +221,7 @@ class SelbstUpdateTest {
 
     @Test
     fun `der Update-Client folgt keiner Umleitung von https auf http`() {
-        val di = quelle("di/AppModule.kt")
+        val di = Quellen.ohneKommentare(Quellen.di())
         val ab = di.indexOf("fun provideUpdateOkHttpClient()")
         assert(ab > 0) { "Es gibt keinen eigenen Client fuer die Aktualisierung mehr" }
         val bis = di.indexOf("@Provides", ab + 10).let { if (it < 0) di.length else it }

@@ -18,7 +18,7 @@ import javax.inject.Singleton
  *
  * Ein OkHttp-Tag und keine Kopfzeile: Tags bleiben auf dem Geraet, eine
  * Kopfzeile ginge an den Server und erzaehlte ihm etwas, das ihn nichts
- * angeht. Gelesen wird die Marke im Abgriff in AppModule — er entscheidet
+ * angeht. Gelesen wird die Marke im Abgriff in NetzModule — er entscheidet
  * daran, ob das Bild spekulativ oder echt gebraucht abgelegt wird.
  */
 object Vorwaermung
@@ -55,7 +55,7 @@ object Vorwaermung
  * Coil wuerde jedes Bild entpacken und in den Speicher-Cache legen. Gebraucht
  * wird davon nichts: Das Ziel sind Bytes auf der Platte. Der blosse
  * OkHttp-Aufruf nimmt denselben Weg durch dieselbe Kette — der Abgriff in
- * AppModule legt die Antwort ab — nur ohne Bitmap und ohne den Speicher-Cache
+ * NetzModule legt die Antwort ab — nur ohne Bitmap und ohne den Speicher-Cache
  * mit Bildern zu fuellen, die gerade niemand sieht.
  */
 @Singleton
@@ -159,7 +159,7 @@ class VorschauVorwaermer @Inject constructor(
 
     /**
      * Ein Bild holen. Der Rumpf wird gelesen und weggeworfen — abgelegt hat
-     * ihn zu diesem Zeitpunkt schon der Abgriff in AppModule.
+     * ihn zu diesem Zeitpunkt schon der Abgriff in NetzModule.
      */
     private fun hole(adresse: String) {
         runCatching {

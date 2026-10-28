@@ -30,7 +30,7 @@ class AdminRepository @Inject constructor(
 ) : RepoBasis(api, cache) {
 
     // Kein expliziter Authorization-Header mehr nötig: Der OkHttp-Interceptor in
-    // AppModule setzt "Bearer <token>" automatisch für alle Requests an unseren
+    // di/ServerClient.kt setzt "Bearer <token>" automatisch für alle Requests an unseren
     // Server (aus dem In-Memory-Cache des PreferencesManagers — kein DataStore-
     // Read pro Call mehr). Einzige Ausnahme: getCsvImportStatusDirect, wo der
     // Foreground-Service den Token explizit mitgibt.

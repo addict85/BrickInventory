@@ -63,6 +63,17 @@ object Quellen {
     fun lies(rel: String): String = File(wurzel, rel).readText()
 
     /**
+     * Das Hilt-Modul samt Netz: AppModule, NetzModule und der gemeinsame
+     * Interceptor (ServerClient) liegen getrennt unter di/; wer eine Regel des
+     * Netzwegs prüft, liest alle drei.
+     */
+    fun di(): String {
+        val dateien = File(wurzel, "di").listFiles { f -> f.name.endsWith(".kt") }.orEmpty().sortedBy { it.name }
+        check(dateien.size >= 3) { "Nur ${dateien.size} Dateien unter di/ gefunden" }
+        return dateien.joinToString("\n") { it.readText() }
+    }
+
+    /**
      * Alle Zustandsklassen: Sie liegen je Bereich in ui/Zustand*.kt. Mit
      * Untergrenze, sonst prüfte ein umbenannter Ordner nichts und wäre grün.
      */

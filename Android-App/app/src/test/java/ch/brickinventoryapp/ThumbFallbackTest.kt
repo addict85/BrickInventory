@@ -138,9 +138,9 @@ class ImageClientLoggingTest {
         // Kommentare ausblenden, BEVOR das Fenster geschnitten wird: Ein
         // wachsender Erklärtext schob die geprüfte Zeile sonst aus den 800
         // Zeichen — die Regel galt weiter, nur der Ausschnitt war zu kurz.
-        val src = read("di/AppModule.kt").lines()
+        val src = Quellen.di().lines()
             .joinToString("\n") { if (it.trim().startsWith("//")) "" else it }
-        val fn = src.substring(src.indexOf("private fun buildInterceptorClient"), src.indexOf("private fun buildInterceptorClient") + 800)
+        val fn = src.substring(src.indexOf("internal fun buildInterceptorClient"), src.indexOf("internal fun buildInterceptorClient") + 800)
         assert(!fn.contains("if (isApiClient && BuildConfig.DEBUG)")) {
             "Die alte Bedingung schloss den Bild-Client von der Protokollierung aus"
         }

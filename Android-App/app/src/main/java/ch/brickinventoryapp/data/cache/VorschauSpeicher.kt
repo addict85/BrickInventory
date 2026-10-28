@@ -99,7 +99,7 @@ class VorschauSpeicher @Inject constructor(
          *
          * Mit dem Zeitstempel ganz unten steht jede Vorwaermung am Anfang der
          * Schlange und fliegt zuerst. Wird so ein Bild spaeter TATSAECHLICH
-         * angesehen, schreibt der Abgriff in AppModule es mit `spekulativ =
+         * angesehen, schreibt der Abgriff in NetzModule es mit `spekulativ =
          * false` neu — und damit rueckt es mit einem echten Zeitstempel ans
          * Ende der Schlange. Der Uebergang „geraten" -> „gebraucht" passiert
          * also von selbst, ohne eigene Buchfuehrung.

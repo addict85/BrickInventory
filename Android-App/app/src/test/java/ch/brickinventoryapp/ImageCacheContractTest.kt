@@ -67,7 +67,7 @@ class ImageCacheContractTest {
         if (line.trim().startsWith("//") || line.trim().startsWith("*")) "" else line
     }
 
-    private val src by lazy { code(read("src/main/java/ch/brickinventoryapp/di/AppModule.kt")) }
+    private val src by lazy { code(Quellen.di()) }
 
     @Test
     fun `Coil laedt ueberhaupt aus dem Netz, und damit ueber die Cache-Strategie`() {

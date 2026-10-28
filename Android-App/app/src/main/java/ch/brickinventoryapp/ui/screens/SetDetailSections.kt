@@ -135,7 +135,7 @@ fun LazyListScope.setDetailInstructionsSection(
                             // holt der In-App-Betrachter ueber den geteilten
                             // OkHttp-Client, und dessen Interceptor setzt den
                             // Authorization-Kopf fuer jede Adresse unseres
-                            // Servers (di/AppModule.kt). Der zweite Zweig
+                            // Servers (di/ServerClient.kt). Der zweite Zweig
                             // (instr.url) zeigt ohnehin nach draussen und hatte
                             // nie einen Token.
                             val openUrl = instr.localPath?.let { "$serverUrl$it" } ?: instr.url

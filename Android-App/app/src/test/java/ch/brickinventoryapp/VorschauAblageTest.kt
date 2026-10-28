@@ -84,7 +84,7 @@ class VorschauAblageTest {
 
     @Test
     fun `der Abgriff ergaenzt den Zwischenspeicher, statt ihn abzuschalten`() {
-        val s = quelle("di/AppModule.kt")
+        val s = Quellen.ohneKommentare(Quellen.di())
 
         // Reihenfolge: Anwendungs-Interceptoren laufen so, wie sie gesetzt
         // werden. Die Ablage muss AUSSEN sitzen, damit sie das Endergebnis des
@@ -137,7 +137,7 @@ class VorschauAblageTest {
         // naheliegende naechste Schritt waere eine Warteschlange fuer
         // Aenderungen — und genau die will Marco nicht: Sie braeuchte eine
         // Antwort darauf, was gilt, wenn sich beide Seiten geaendert haben.
-        val modul = Quellen.ohneKommentare(Quellen.lies("di/AppModule.kt"))
+        val modul = Quellen.ohneKommentare(Quellen.di())
         val ab = modul.indexOf("fun provideApiOkHttpClient")
         assert(ab > 0) { "Der API-Client ist nicht mehr zu finden" }
         // Bis zum naechsten @Provides: nur dieser eine Client.
@@ -253,7 +253,7 @@ class VorschauAblageTest {
         // seine Anfragen, der Abgriff liest die Marke. Wer ein Bild ansieht,
         // markiert nicht — es wird beim ersten echten Aufruf von selbst zu
         // einem gebrauchten.
-        val modul = quelle("di/AppModule.kt")
+        val modul = Quellen.ohneKommentare(Quellen.di())
         assert(modul.contains("anfrage.tag(") && modul.contains("Vorwaermung::class.java")) {
             "Der Abgriff liest die Vorwaerm-Marke nicht mehr. Dann legt er " +
                 "auch spekulativ geholte Bilder als gebraucht ab."
@@ -319,7 +319,7 @@ class VorschauAblageTest {
         // Vorwaermen davon zu viele, wartet die sichtbare Kachelwand auf
         // Bilder, die gerade niemand ansieht.
         val proHost = Regex("""maxRequestsPerHost\s*=\s*(\d+)""")
-            .find(quelle("di/AppModule.kt"))?.groupValues?.get(1)?.toInt()
+            .find(Quellen.ohneKommentare(Quellen.di()))?.groupValues?.get(1)?.toInt()
         assert(proHost != null) { "maxRequestsPerHost ist nicht mehr zu finden" }
         val gleichzeitig = Regex("""GLEICHZEITIG = (\d+)""").find(vw)?.groupValues?.get(1)?.toInt()
         assert(gleichzeitig != null) { "GLEICHZEITIG fehlt" }

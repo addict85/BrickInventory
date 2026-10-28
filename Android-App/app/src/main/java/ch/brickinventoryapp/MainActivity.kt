@@ -69,7 +69,7 @@ class MainActivity : ComponentActivity() {
     // man die Gutschein-Seite verlässt.
     private val gutscheinVm: ch.brickinventoryapp.ui.viewmodel.GutscheinViewModel by viewModels()
 
-    // ImageLoader kommt jetzt als Hilt-Singleton aus AppModule — eine
+    // ImageLoader kommt jetzt als Hilt-Singleton aus NetzModule — eine
     // Instanz für die gesamte Prozesslaufzeit statt einer pro Activity
     // (siehe Kommentar dort: sonst verlor jede Bildschirmdrehung den
     // Memory-Cache und liess zwei DiskCache-Instanzen auf demselben

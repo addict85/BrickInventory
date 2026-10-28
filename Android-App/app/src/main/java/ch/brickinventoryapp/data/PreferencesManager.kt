@@ -217,7 +217,7 @@ class PreferencesManager @Inject constructor(
     //     _state.update { isLoggedIn = true }
     //     loadDashboard()               // feuert SOFORT Anfragen
     //
-    // Der Interceptor (AppModule.kt) liest `authTokenState.value` — und das
+    // Der Interceptor (di/ServerClient.kt) liest `authTokenState.value` — und das
     // trug in diesem Moment noch den ALTEN Wert. Bei einer frischen Anmeldung
     // ist der leer, also ging die Anfrage OHNE Authorization-Kopf raus.
     // requireToken beantwortet das mit 401 und `token_ungueltig`, und
@@ -253,7 +253,7 @@ class PreferencesManager @Inject constructor(
      * Die Ursache ist NICHT bewiesen — ohne Logcat war nicht festzustellen,
      * welche Anfrage den 401 bekam. Belegt ist nur, was sie ausschliesst: Die
      * App blieb angemeldet, und der Interceptor meldet jeden 401 MIT
-     * mitgeschicktem Token als abgelaufene Sitzung (AppModule.kt). Also ging
+     * mitgeschicktem Token als abgelaufene Sitzung (di/ServerClient.kt). Also ging
      * die Anfrage OHNE Token hinaus.
      *
      * ── Warum es diese Funktion gibt ────────────────────────────────

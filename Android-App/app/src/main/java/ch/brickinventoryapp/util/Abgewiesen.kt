@@ -33,7 +33,7 @@ package ch.brickinventoryapp.util
  *
  * Belegt ist, was der Fall AUSSCHLIESST: Die App blieb angemeldet. Der
  * Interceptor meldet aber jeden 401 von unserem Server, bei dem ein Token
- * mitging, als abgelaufene Sitzung und meldet ab (AppModule.kt). Also ging die
+ * mitging, als abgelaufene Sitzung und meldet ab (di/ServerClient.kt). Also ging die
  * Anfrage OHNE Authorization-Kopf hinaus — in dem Fenster zwischen „Token ist
  * da" und „Anfrage ist gebaut", das jede Anmeldung öffnet, weil sie den Token
  * setzt und unmittelbar danach die ersten Abrufe feuert.
