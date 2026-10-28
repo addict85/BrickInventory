@@ -63,9 +63,9 @@ abgeleitet.</td>
 | **Katalog** | Set-Suche über Rebrickable, mit Jahres-Regler |
 | **Teileliste** | alle Teile eines Sets, Abgleich mit dem eigenen Bestand, PDF-Export |
 | **Anleitungen** | automatisch geholt (Rebrickable, Brickset und weitere Quellen), eigene PDFs und Bilder hochladbar |
-| **Haushalt** | mehrere Konten mit gemeinsamem Blickfeld (Eltern sehen die Sammlungen der Kinder) |
+| **Haushalt** | Konten verknüpfen: Ein Elternkonto sieht und bearbeitet die Sammlungen seiner direkt verknüpften Kinder; ein Kind kann mehrere Elternkonten haben (z. B. beide Eltern) |
 | **Papierkorb** | Gelöschtes bleibt 30 Tage wiederherstellbar |
-| **Sicherheit** | zweiter Faktor (TOTP) mit Wiederherstellungscodes, Anmeldesperre je Adresse und Konto, App-Tokens mit Ablauf |
+| **Sicherheit** | zweiter Faktor (TOTP) mit Wiederherstellungscodes, Anmeldesperre je Konto mit wachsender Wartezeit, Sitzungen mit fester Höchstdauer, App-Tokens mit Ablauf; Verwalteraktionen an fremden Konten nur mit eigenem Passwort und im Protokoll |
 | **Einrichtung** | Assistent beim ersten Start; Verwaltung mit Monitoring der Hintergrundläufe und Protokoll |
 | **Aussehen** | fünf Designs, hell und dunkel, für Telefon und Desktop |
 | **Mehrsprachig** | Deutsch und Englisch, Währung frei wählbar |
@@ -89,6 +89,16 @@ docker compose up -d
 Das Passwort des Kontos `admin` wird beim allerersten Start **einmalig ins
 Log** geschrieben (`docker compose logs app`) — oder vorab über
 `ADMIN_PASSWORD` gesetzt.
+
+Vor dem ersten Start lohnen zwei weitere Werte in einer `.env` neben
+`compose.yaml`:
+
+- `DB_PASSWORD` — sonst gilt das öffentlich bekannte Beispielpasswort der
+  Datenbank. Der Server warnt beim Start, solange es gilt. Eine bestehende
+  Datenbank behält ihr Passwort; dann den bisherigen Wert eintragen.
+- `APP_BIND=127.0.0.1` — wenn ein Reverse-Proxy (Caddy, nginx, Traefik) davor
+  steht. Port 3000 ist dann nur noch auf dem Rechner selbst erreichbar und
+  nicht am Proxy vorbei im ganzen Netz.
 
 ### Auf dem Raspberry Pi
 
@@ -123,6 +133,17 @@ Anmeldung wahlweise über den QR-Code für die Android-App aus den Einstellungen
 Barcode- und Texterkennung für das Erfassen unterwegs, Sammlung, Teileliste,
 Merkliste, Katalog, Finanzen, Anleitungen als PDF und die Verwaltung des
 zweiten Faktors.
+
+**Verbindung zum Server:** Am besten über HTTPS. Ein selbst ausgestelltes
+Zertifikat geht, sobald die eigene Zertifizierungsstelle auf dem Telefon
+installiert ist (*Einstellungen → Sicherheit → Verschlüsselung und
+Anmeldedaten → Zertifikat installieren*); die App vertraut solchen
+Zertifikaten nur für den eigenen Server, nicht für ihre Updates. Ohne HTTPS
+erlaubt die App Klartext nur zu Adressen im Heimnetz und zu Hosts, die man in
+der Einrichtung ausdrücklich bestätigt hat. Vor dem ersten Zugang in jedem
+Netz muss sich der Server dann ausweisen (er beweist, dass er den Token
+kennt, ohne ihn zu senden) — so geht der Token im fremden WLAN nicht an
+einen anderen Rechner, der sich `nas` nennt.
 
 > **Screenshots der App fehlen hier noch.** Sie lassen sich nur auf einem Gerät
 > oder Emulator aufnehmen; in der Umgebung, in der dieses README entstanden
