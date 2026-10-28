@@ -493,17 +493,6 @@ CREATE TABLE price_history (
 CREATE INDEX idx_price_history_set ON price_history USING btree (set_number, recorded_at);
 CREATE UNIQUE INDEX idx_price_history_tag ON price_history USING btree (set_number, condition, currency_code, (((recorded_at AT TIME ZONE 'UTC'::text))::date));
 
-CREATE TABLE price_market (
-  set_number text NOT NULL,
-  currency_code text NOT NULL,
-  condition text NOT NULL DEFAULT 'new'::text,
-  qty_avg_price numeric(12,4),
-  min_price numeric(12,4),
-  max_price numeric(12,4),
-  updated_at timestamp with time zone DEFAULT now(),
-  CONSTRAINT price_market_pkey PRIMARY KEY (set_number, currency_code, condition)
-);
-
 CREATE TABLE qr_login_tokens (
   token text NOT NULL,
   user_id integer NOT NULL,
@@ -656,23 +645,17 @@ CREATE TABLE set_minifigs_catalog (
 CREATE INDEX idx_set_minifigs_fig ON set_minifigs_catalog USING btree (fig_number);
 CREATE INDEX idx_smc_set ON set_minifigs_catalog USING btree (set_number);
 
-CREATE TABLE set_parts_catalog (
+CREATE TABLE set_teile (
   set_number text NOT NULL,
   part_number text NOT NULL,
-  part_name text,
   color_id integer NOT NULL,
-  color_name text,
-  color_hex text,
-  category_name text,
-  image_url text,
-  image_local text,
   is_spare integer DEFAULT 0,
   quantity integer DEFAULT 1,
   updated_at timestamp with time zone DEFAULT now(),
-  CONSTRAINT set_parts_catalog_pkey PRIMARY KEY (set_number, part_number, color_id)
+  CONSTRAINT set_teile_pkey PRIMARY KEY (set_number, part_number, color_id)
 );
-CREATE INDEX idx_spc_set ON set_parts_catalog USING btree (set_number);
-CREATE TRIGGER trg_bump_parts_katalog AFTER INSERT OR DELETE OR UPDATE ON set_parts_catalog FOR EACH STATEMENT EXECUTE FUNCTION bump_parts_katalog();
+CREATE INDEX idx_set_teile_set ON set_teile USING btree (set_number);
+CREATE TRIGGER trg_bump_parts_katalog AFTER INSERT OR DELETE OR UPDATE ON set_teile FOR EACH STATEMENT EXECUTE FUNCTION bump_parts_katalog();
 
 CREATE TABLE sets (
   id integer NOT NULL DEFAULT nextval('sets_id_seq'::regclass),

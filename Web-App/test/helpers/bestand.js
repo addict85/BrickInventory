@@ -98,7 +98,7 @@ async function haltZeile(db, userId, setNumber) {
 // Bedeutungen, und beide waren Abschriften:
 //
 //   source='manual'  Summe der Erfassungen       → part_acquisitions
-//   source='set'     Stückzahl im Set            → set_parts_catalog.quantity
+//   source='set'     Stückzahl im Set            → set_teile.quantity
 //
 // Ein Bestand ist seitdem ZWEI Zeilen, und welche zweite es ist, haengt an der
 // Herkunft. Genau das nehmen die beiden Funktionen hier auseinander — damit
@@ -140,7 +140,7 @@ async function haeltTeil(db, userId, partNumber, opt = {}) {
     // Die Katalogzahl — ohne sie faellt teilmengeAus() auf den Rueckfall 1
     // zurueck, und ein Set mit vier gleichen Steinen zaehlte als einer.
     await db.run(
-      `INSERT INTO set_parts_catalog (set_number, part_number, color_id, quantity)
+      `INSERT INTO set_teile (set_number, part_number, color_id, quantity)
        VALUES ($1,$2,$3,$4)
        ON CONFLICT (set_number, part_number, color_id) DO UPDATE SET quantity = $4`,
       [setNumber, partNumber, colorId, menge]);

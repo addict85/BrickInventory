@@ -128,6 +128,28 @@ export async function merkeFigur(
 }
 
 /**
+ * Ein Teil einer Setliste: nur Menge und Ersatzteil-Kennzeichen. Name, Farbe
+ * und Bild stehen je Teil in den Katalogen (merkeTeil, merkeTeilFarbe); die
+ * View set_parts_catalog fügt beides für die Lesestellen zusammen.
+ */
+export async function merkeSetTeil(
+  setNumber: string,
+  partNumber: string,
+  colorId: number | string | null | undefined,
+  quantity: number,
+  isSpare: number = 0,
+  dbh: Schreiber = db,
+) {
+  if (!setNumber || !partNumber) return;
+  await dbh.run(`
+    INSERT INTO set_teile (set_number, part_number, color_id, quantity, is_spare)
+    VALUES ($1, $2, $3, $4, $5)
+    ON CONFLICT (set_number, part_number, color_id) DO UPDATE
+      SET quantity = EXCLUDED.quantity, updated_at = NOW()`,
+    [setNumber, partNumber, Number(colorId) || 0, quantity || 1, isSpare ? 1 : 0]);
+}
+
+/**
  * Bild je Teil und Farbe UEBERSCHREIBEN.
  *
  * Der Gegenpol zu merkeTeilFarbe(): Wenn der Bildabgleich eine Datei
@@ -185,13 +207,11 @@ export interface KatalogTeil {
   /** Steht ein Bild da — gleich ob als URL oder als Datei? */
   hatBild: boolean;
   /**
-   * Beide stehen hier fuer bildNachtragen() in utils/teilFarbeAendern.ts: Es
-   * unterscheidet, ob das Bild schon an der Farbe steht (dann ist nichts zu
-   * tun) oder aus einem eingespielten Set kommt (dann traegt es es nach) —
-   * und dabei SCHREIBT es `image_local` mit, denn eine bereits …
-   * Ausführlich: docs/begruendungen/utils/katalogPflege.ts.md#katalogteil-2
+   * Woher das Bild kommt: von Teil und Farbe, oder (ohne Farbe) das
+   * allgemeine Bild. Die Setlisten führen seit Migration 0062 keine eigenen
+   * Bilder mehr; ihre stehen an der Farbe.
    */
-  bildQuelle: 'farbe' | 'set' | 'allgemein' | null;
+  bildQuelle: 'farbe' | 'allgemein' | null;
   bildDatei: string | null;
 }
 
@@ -209,34 +229,22 @@ export async function katalogTeil(
            CASE WHEN pc.kategorie_von IS NULL OR pc.kategorie_von = $3 THEN pc.category_name END AS kategorie,
            rp.part_img_url                 AS bild_allgemein,
            CASE WHEN pcc.bild_von IS NULL OR pcc.bild_von = $3 THEN pcc.image_url END AS farb_url,
-           pcc.image_local                 AS farb_datei,
-           spc.image_url                   AS set_url,
-           spc.image_local                 AS set_datei
+           pcc.image_local                 AS farb_datei
       FROM (SELECT $1::text AS nr) q
       LEFT JOIN part_catalog       pc  ON pc.part_number  = q.nr
       LEFT JOIN rb_parts           rp  ON rp.part_num     = q.nr
-      LEFT JOIN part_color_catalog pcc ON pcc.part_number = q.nr AND pcc.color_id = $2
-      LEFT JOIN LATERAL (
-        SELECT image_url, image_local FROM set_parts_catalog
-         WHERE part_number = q.nr AND color_id = $2
-           AND (image_local IS NOT NULL OR image_url IS NOT NULL)
-         ORDER BY (image_local IS NULL), set_number LIMIT 1) spc ON TRUE`,
+      LEFT JOIN part_color_catalog pcc ON pcc.part_number = q.nr AND pcc.color_id = $2`,
     [partNumber, colorId, fuer]).catch(() => null);
   if (!z) return null;
 
-  // Die Reihenfolge ist die von bildNachtragen(): Farbe vor Set, Datei vor
-  // URL. Ohne Farbe bleibt nur das allgemeine Bild — siehe oben, warum es
-  // genau dann zaehlt.
+  // Ohne Farbe bleibt nur das allgemeine Bild — siehe oben, warum es genau dann zählt.
   const quelle: KatalogTeil['bildQuelle'] =
       (z.farb_datei || z.farb_url) ? 'farbe'
-    : (z.set_datei  || z.set_url)  ? 'set'
     : (colorId === null && z.bild_allgemein) ? 'allgemein'
     : null;
   const url   = quelle === 'farbe' ? z.farb_url
-              : quelle === 'set'   ? z.set_url
               : quelle === 'allgemein' ? z.bild_allgemein : null;
-  const datei = quelle === 'farbe' ? z.farb_datei
-              : quelle === 'set'   ? z.set_datei : null;
+  const datei = quelle === 'farbe' ? z.farb_datei : null;
 
   return {
     name: z.name ?? null,

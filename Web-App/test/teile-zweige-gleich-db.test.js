@@ -64,7 +64,7 @@ test('beide Wege der Teileliste liefern dieselben Typen', async (t) => {
     for (const tab of ['parts', 'sets', 'parts_summary', 'parts_summary_state'])
       await db.run(`DELETE FROM ${tab} WHERE user_id=$1`, [U]).catch(() => {});
     // Die Katalogzeilen haengen an keinem Konto und bleiben sonst stehen.
-    await db.run(`DELETE FROM set_parts_catalog WHERE set_number='Z-1'`).catch(() => {});
+    await db.run(`DELETE FROM set_teile WHERE set_number='Z-1'`).catch(() => {});
   };
 
   try {
@@ -79,7 +79,7 @@ test('beide Wege der Teileliste liefern dieselben Typen', async (t) => {
     // denselben TYP liefern.
     // 3002 ist das Ersatzteil, 3001 das gewoehnliche — dieselbe Belegung wie
     // vorher, als is_spare noch an der Bestandszeile stand.
-    await db.run(`INSERT INTO set_parts_catalog (set_number,part_number,color_id,quantity,is_spare)
+    await db.run(`INSERT INTO set_teile (set_number,part_number,color_id,quantity,is_spare)
                   VALUES ('Z-1','3001',5,3,0),
                          ('Z-1','3002',1,1,1)
                   ON CONFLICT (set_number,part_number,color_id) DO UPDATE SET is_spare=EXCLUDED.is_spare`);

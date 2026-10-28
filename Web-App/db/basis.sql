@@ -897,20 +897,6 @@ CREATE SEQUENCE public.price_history_id_seq
 ALTER SEQUENCE public.price_history_id_seq OWNED BY public.price_history.id;
 
 --
--- Name: price_market; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.price_market (
-    set_number text NOT NULL,
-    currency_code text NOT NULL,
-    condition text DEFAULT 'new'::text NOT NULL,
-    qty_avg_price numeric(12,4),
-    min_price numeric(12,4),
-    max_price numeric(12,4),
-    updated_at timestamp with time zone DEFAULT now()
-);
-
---
 -- Name: qr_login_tokens; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1138,23 +1124,53 @@ CREATE TABLE public.set_minifigs_catalog (
 );
 
 --
--- Name: set_parts_catalog; Type: TABLE; Schema: public; Owner: -
+-- Name: set_teile; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.set_parts_catalog (
+CREATE TABLE public.set_teile (
     set_number text NOT NULL,
     part_number text NOT NULL,
-    part_name text,
     color_id integer NOT NULL,
-    color_name text,
-    color_hex text,
-    category_name text,
-    image_url text,
-    image_local text,
     is_spare integer DEFAULT 0,
     quantity integer DEFAULT 1,
     updated_at timestamp with time zone DEFAULT now()
 );
+
+--
+-- Name: set_parts_catalog; Type: VIEW; Schema: public; Owner: -
+--
+
+CREATE VIEW public.set_parts_catalog AS
+ SELECT t.set_number,
+    t.part_number,
+        CASE
+            WHEN (pc.name_von IS NULL) THEN pc.part_name
+            ELSE NULL::text
+        END AS part_name,
+    t.color_id,
+        CASE
+            WHEN (pcc.farbname_von IS NULL) THEN pcc.color_name
+            ELSE NULL::text
+        END AS color_name,
+        CASE
+            WHEN (pcc.farbcode_von IS NULL) THEN pcc.color_hex
+            ELSE NULL::text
+        END AS color_hex,
+        CASE
+            WHEN (pc.kategorie_von IS NULL) THEN pc.category_name
+            ELSE NULL::text
+        END AS category_name,
+        CASE
+            WHEN (pcc.bild_von IS NULL) THEN pcc.image_url
+            ELSE NULL::text
+        END AS image_url,
+    pcc.image_local,
+    t.is_spare,
+    t.quantity,
+    t.updated_at
+   FROM ((public.set_teile t
+     LEFT JOIN public.part_catalog pc ON ((pc.part_number = t.part_number)))
+     LEFT JOIN public.part_color_catalog pcc ON (((pcc.part_number = t.part_number) AND (pcc.color_id = t.color_id))));
 
 --
 -- Name: sets; Type: TABLE; Schema: public; Owner: -
@@ -1886,13 +1902,6 @@ ALTER TABLE ONLY public.price_history
     ADD CONSTRAINT price_history_pkey PRIMARY KEY (id);
 
 --
--- Name: price_market price_market_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.price_market
-    ADD CONSTRAINT price_market_pkey PRIMARY KEY (set_number, currency_code, condition);
-
---
 -- Name: qr_login_tokens qr_login_tokens_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1991,11 +2000,11 @@ ALTER TABLE ONLY public.set_minifigs_catalog
     ADD CONSTRAINT set_minifigs_catalog_pkey PRIMARY KEY (set_number, fig_number);
 
 --
--- Name: set_parts_catalog set_parts_catalog_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: set_teile set_teile_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.set_parts_catalog
-    ADD CONSTRAINT set_parts_catalog_pkey PRIMARY KEY (set_number, part_number, color_id);
+ALTER TABLE ONLY public.set_teile
+    ADD CONSTRAINT set_teile_pkey PRIMARY KEY (set_number, part_number, color_id);
 
 --
 -- Name: sets sets_pkey; Type: CONSTRAINT; Schema: public; Owner: -
@@ -2515,6 +2524,12 @@ CREATE UNIQUE INDEX idx_set_acq_tag_merkmale ON public.set_acquisitions USING bt
 CREATE INDEX idx_set_minifigs_fig ON public.set_minifigs_catalog USING btree (fig_number);
 
 --
+-- Name: idx_set_teile_set; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_set_teile_set ON public.set_teile USING btree (set_number);
+
+--
 -- Name: idx_sets_setnum; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -2549,12 +2564,6 @@ CREATE INDEX idx_shared_instructions_set ON public.shared_instructions USING btr
 --
 
 CREATE INDEX idx_smc_set ON public.set_minifigs_catalog USING btree (set_number);
-
---
--- Name: idx_spc_set; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_spc_set ON public.set_parts_catalog USING btree (set_number);
 
 --
 -- Name: idx_user_sessions_expire; Type: INDEX; Schema: public; Owner: -
@@ -2641,10 +2650,10 @@ CREATE TRIGGER trg_bump_parts_katalog AFTER INSERT OR DELETE OR UPDATE ON public
 CREATE TRIGGER trg_bump_parts_katalog AFTER INSERT OR DELETE OR UPDATE ON public.part_color_catalog FOR EACH STATEMENT EXECUTE FUNCTION public.bump_parts_katalog();
 
 --
--- Name: set_parts_catalog trg_bump_parts_katalog; Type: TRIGGER; Schema: public; Owner: -
+-- Name: set_teile trg_bump_parts_katalog; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER trg_bump_parts_katalog AFTER INSERT OR DELETE OR UPDATE ON public.set_parts_catalog FOR EACH STATEMENT EXECUTE FUNCTION public.bump_parts_katalog();
+CREATE TRIGGER trg_bump_parts_katalog AFTER INSERT OR DELETE OR UPDATE ON public.set_teile FOR EACH STATEMENT EXECUTE FUNCTION public.bump_parts_katalog();
 
 --
 -- Name: parts trg_bump_parts_version_del; Type: TRIGGER; Schema: public; Owner: -
@@ -3010,7 +3019,7 @@ INSERT INTO public.gutschein_guthaben_schranke (id, letzter_abruf, sperre_bis) V
 -- Data for Name: parts_katalog_stand; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-INSERT INTO public.parts_katalog_stand (id, v) VALUES (1, 0);
+INSERT INTO public.parts_katalog_stand (id, v) VALUES (1, 4);
 
 --
 -- Data for Name: schema_migrations; Type: TABLE DATA; Schema: public; Owner: -
@@ -3075,6 +3084,7 @@ INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0058-fremdschlu
 INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0059-anmeldung-laufend.sql', '2026-10-28 20:00:29.834455+00');
 INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0060-katalog-herkunft.sql', '2026-10-28 20:09:04.452918+00');
 INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0061-api-aufrufe.sql', '2026-10-28 22:10:50.251504+00');
+INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0062-set-teile-schlank.sql', '2026-10-28 22:55:20.74984+00');
 
 --
 -- PostgreSQL database dump complete

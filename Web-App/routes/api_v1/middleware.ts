@@ -6,6 +6,7 @@
  * Admin-Endpoint den Check versehentlich weglassen kann (genau das war
  * bei /admin/cache-ttl passiert).
  */
+import type { Request, Response, NextFunction } from 'express';
 import { validateToken, resolveUserId } from '../../utils/auth';
 import { sendeFehler } from '../../utils/fehlerTexte';
 
@@ -27,11 +28,12 @@ const OEFFENTLICH: ReadonlyArray<readonly [string, RegExp]> = [
 ];
 
 /** Eingang zu /api/v1: Sitzung oder Bearer-Token, ausser für OEFFENTLICH. */
-export async function anmeldungAmEingang(req: any, res: any, next: any) {
+export async function anmeldungAmEingang(req: Request, res: Response, next: NextFunction) {
   const methode = req.method === 'HEAD' ? 'GET' : req.method;
   if (OEFFENTLICH.some(([m, re]) => m === methode && re.test(req.path))) return next();
   if (req.session?.userId) {
-    req.apiUser = { user_id: req.session.userId, is_admin: req.session.isAdmin ? 1 : 0, username: req.session.username };
+    req.apiUser = { user_id: req.session.userId, is_admin: req.session.isAdmin ? 1 : 0,
+                    ...(req.session.username ? { username: req.session.username } : {}) };
     return next();
   }
   const uid = await resolveUserId(req).catch(() => null);

@@ -123,7 +123,7 @@ test('die Antwort traegt einen echten Wahrheitswert', async (t) => {
   // richtige Stelle: Derselbe Stein ist in einem Set Ersatzteil und im
   // naechsten Pflichtteil. Die Frage dieses Tests bleibt dieselbe — kommt
   // beim Leser ein echter Wahrheitswert an.
-  await db.run(`INSERT INTO set_parts_catalog (set_number,part_number,color_id,quantity,is_spare)
+  await db.run(`INSERT INTO set_teile (set_number,part_number,color_id,quantity,is_spare)
                 VALUES ('75192-1','3001',4,10,1),
                        ('75192-1','3020',0,2,0)`);
   await haeltTeil(db, uid, '3001', { setNumber: '75192-1', menge: 10, colorId: 4 });
