@@ -301,6 +301,7 @@ window.I18N_EN = {
   'users.aktion.verwalter_entzogen': 'Administrator role removed',
   'users.aktion.konto_geloescht': 'Account deleted',
   'acq.geschaetzt': 'Estimated: market price, not the amount paid',
+  'finance.aus_teilen_geschaetzt': 'Estimated from part prices ({p} % of parts priced)',
   'users.role_title': 'Change admin role?',
   'users.reset_pw_title': 'Set password?',
   'users.admin_confirm_text': 'This change affects another account. Please confirm it with your password.',

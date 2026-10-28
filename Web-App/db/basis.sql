@@ -157,6 +157,15 @@ CREATE TABLE public.account_links (
 );
 
 --
+-- Name: api_takt; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.api_takt (
+    api text NOT NULL,
+    naechster timestamp with time zone DEFAULT now() NOT NULL
+);
+
+--
 -- Name: api_tokens; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -428,7 +437,9 @@ CREATE TABLE public.minifig_price_cache (
     currency_code text DEFAULT 'EUR'::text NOT NULL,
     avg_price numeric(12,4),
     qty_avg_price numeric(12,4),
-    fetched_at timestamp with time zone DEFAULT now()
+    fetched_at timestamp with time zone DEFAULT now(),
+    geschaetzt boolean DEFAULT false NOT NULL,
+    abdeckung numeric(4,3)
 );
 
 --
@@ -460,7 +471,9 @@ CREATE TABLE public.minifig_price_history (
     currency_code text DEFAULT 'EUR'::text NOT NULL,
     avg_price numeric(12,4),
     qty_avg_price numeric(12,4),
-    recorded_at timestamp with time zone DEFAULT now() NOT NULL
+    recorded_at timestamp with time zone DEFAULT now() NOT NULL,
+    geschaetzt boolean DEFAULT false NOT NULL,
+    abdeckung numeric(4,3)
 );
 
 --
@@ -1581,6 +1594,13 @@ ALTER TABLE ONLY public.account_links
     ADD CONSTRAINT account_links_pkey PRIMARY KEY (main_user_id, sub_user_id);
 
 --
+-- Name: api_takt api_takt_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.api_takt
+    ADD CONSTRAINT api_takt_pkey PRIMARY KEY (api);
+
+--
 -- Name: api_tokens api_tokens_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2198,6 +2218,12 @@ CREATE INDEX idx_minifig_price_cache_lookup ON public.minifig_price_cache USING 
 CREATE INDEX idx_minifig_price_history_lookup ON public.minifig_price_history USING btree (fig_number, currency_code, recorded_at);
 
 --
+-- Name: idx_minifig_price_history_tag; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_minifig_price_history_tag ON public.minifig_price_history USING btree (fig_number, condition, currency_code, (((recorded_at AT TIME ZONE 'UTC'::text))::date));
+
+--
 -- Name: idx_minifigs_catalog_name_trgm; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -2268,6 +2294,12 @@ CREATE INDEX idx_part_price_cache_lookup ON public.part_price_cache USING btree 
 --
 
 CREATE INDEX idx_part_price_history_lookup ON public.part_price_history USING btree (part_number, color_id, currency_code, recorded_at);
+
+--
+-- Name: idx_part_price_history_tag; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_part_price_history_tag ON public.part_price_history USING btree (part_number, color_id, condition, currency_code, (((recorded_at AT TIME ZONE 'UTC'::text))::date));
 
 --
 -- Name: idx_parts_color_id; Type: INDEX; Schema: public; Owner: -
@@ -2982,6 +3014,9 @@ INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0051-csv-import
 INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0052-teilezusammenfassung-stand.sql', '2026-10-28 17:10:03.83142+00');
 INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0053-schema-buchfuehrung.sql', '2026-10-28 17:12:02.484389+00');
 INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0054-gin-ohne-warteliste.sql', '2026-10-28 17:45:20.139706+00');
+INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0055-api-takt.sql', '2026-10-28 17:50:28.999651+00');
+INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0056-preisverlauf-je-tag.sql', '2026-10-28 17:50:29.005121+00');
+INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0057-figurenpreis-geschaetzt.sql', '2026-10-28 17:50:29.010176+00');
 
 --
 -- PostgreSQL database dump complete

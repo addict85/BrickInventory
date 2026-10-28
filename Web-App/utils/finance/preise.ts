@@ -535,7 +535,7 @@ async function fetchMinifigPrice(figNumber: string, condition: string, currency:
   const fallbackCondition = condition === 'N' ? 'U' : 'N';
 
   const readCache = (cond: string) => db.get(
-    `SELECT avg_price, qty_avg_price FROM minifig_price_cache WHERE fig_number=$1 AND condition=$2 AND currency_code=$3 AND fetched_at > NOW() - make_interval(hours => $4)`,
+    `SELECT avg_price, qty_avg_price FROM minifig_price_cache WHERE fig_number=$1 AND condition=$2 AND currency_code=$3 AND NOT geschaetzt AND fetched_at > NOW() - make_interval(hours => $4)`,
     [figNumber, cond, currency, ttl]);
 
   const cached = await readCache(condition);
@@ -569,7 +569,7 @@ async function fetchMinifigPrice(figNumber: string, condition: string, currency:
       const qavg = parseFloat(g?.qty_avg_price || 0);
       await db.run(`INSERT INTO minifig_price_cache (fig_number, condition, currency_code, avg_price, qty_avg_price)
         VALUES ($1,$2,$3,$4,$5) ON CONFLICT (fig_number,condition,currency_code)
-        DO UPDATE SET avg_price=$4, qty_avg_price=$5, fetched_at=NOW()`,
+        DO UPDATE SET avg_price=$4, qty_avg_price=$5, fetched_at=NOW(), geschaetzt=FALSE, abdeckung=NULL`,
         [figNumber, cond, currency, avg, qavg]);
       // Verlaufspunkt mitschreiben — nur bei echtem Preis.
       // Ausführlich: docs/begruendungen/utils/finance/preise.ts.md#fetchminifigprice

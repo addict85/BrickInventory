@@ -156,6 +156,14 @@ export async function loadFinance(){
   const manArgs = it => it.fig_number
     ? `data-click="openManDetail" data-arg="fig" data-arg2="${escJs(it.fig_number)}" data-arg3="0"`
     : `data-click="openManDetail" data-arg="part" data-arg2="${escJs(it.part_number)}" data-arg3="${it.color_id||0}"`;
+  /** Ein aus Teilepreisen geschätzter Figurenpreis bekommt „≈" und die Abdeckung. */
+  function geschaetztMarke(it, html){
+    if (!it.estimated_from_parts) return html;
+    const p = it.abdeckung != null ? Math.round(it.abdeckung * 100) : '?';
+    const hinweis = esc(tRaw('finance.aus_teilen_geschaetzt', { p }));
+    return `<span title="${hinweis}"><span role="img" aria-label="${hinweis}">≈</span> ${html}</span>`;
+  }
+
   function pmRow(it, label, acq){
     const qty = acq ? acq.quantity : (it.quantity || 1);
     // avg_price zuerst — wie überall seit der Preisumstellung.
@@ -176,7 +184,7 @@ export async function loadFinance(){
       <td class="fin-detail"><span class="qbadge">×${qty}</span></td>
       <td class="fin-detail" style="font-size:var(--fs-1);color:var(--mut)">${acq?.created_at?new Date(acq.created_at).toLocaleDateString(locale()):''}</td>
       <td class="fin-detail price-cell">${purchase!=null?fmtN(purchase,cur):'<span style="color:var(--mut)">—</span>'}</td>
-      <td class="fin-detail price-cell">${current>0?fmtN(current,cur):'<span style="color:var(--mut)">—</span>'}</td>
+      <td class="fin-detail price-cell">${current>0?geschaetztMarke(it, fmtN(current,cur)):'<span style="color:var(--mut)">—</span>'}</td>
       <td class="fin-wert price-total">${fmtN(total,cur)}</td>
       <td class="fin-guv">${pnl!=null?pnlBadge(pnl):'<span style="color:var(--mut)">—</span>'}</td>
       <td class="fin-status"></td>

@@ -287,10 +287,10 @@ async function computeMinifigsValuation(viewerId: number, ids: Blickfeld) {
         // BrickLink-Teilepreisen der Minifigur schätzen (Rebrickable→BrickLink-
         // Zuordnung existiert zuverlässig für Teile, nicht für Minifiguren).
         // Ausführlich: docs/begruendungen/utils/finance/bewertung.ts.md#computeminifigsvaluation
-        const { estimateFigPriceFromParts } = require('../marketPrice');
-        const estimated = await estimateFigPriceFromParts(fig.fig_number, viewerId, cond).catch(() => null);
-        pd = estimated != null
-          ? { avg_price: estimated, qty_avg_price: estimated, from_cache: false, estimated_from_parts: true }
+        const { schaetzeFigurenpreis } = require('../marketPrice');
+        const s = await schaetzeFigurenpreis(fig.fig_number, viewerId, cond).catch(() => null);
+        pd = s != null
+          ? { avg_price: s.preis, qty_avg_price: s.preis, from_cache: false, estimated_from_parts: true, abdeckung: s.abdeckung }
           : { avg_price: 0, qty_avg_price: 0 };
       }
       // avg_price zuerst: BrickLinks angezeigter "Avg Price". qty_avg_price ist

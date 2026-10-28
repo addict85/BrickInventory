@@ -31,6 +31,12 @@ CREATE TABLE account_links (
 CREATE INDEX idx_account_links_main ON account_links USING btree (main_user_id);
 CREATE INDEX idx_account_links_sub ON account_links USING btree (sub_user_id);
 
+CREATE TABLE api_takt (
+  api text NOT NULL,
+  naechster timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT api_takt_pkey PRIMARY KEY (api)
+);
+
 CREATE TABLE api_tokens (
   token text NOT NULL,
   user_id integer NOT NULL,
@@ -206,6 +212,8 @@ CREATE TABLE minifig_price_cache (
   avg_price numeric(12,4),
   qty_avg_price numeric(12,4),
   fetched_at timestamp with time zone DEFAULT now(),
+  geschaetzt boolean NOT NULL DEFAULT false,
+  abdeckung numeric(4,3),
   CONSTRAINT minifig_price_cache_fig_number_condition_currency_code_key UNIQUE (fig_number, condition, currency_code),
   CONSTRAINT minifig_price_cache_pkey PRIMARY KEY (id)
 );
@@ -219,9 +227,12 @@ CREATE TABLE minifig_price_history (
   avg_price numeric(12,4),
   qty_avg_price numeric(12,4),
   recorded_at timestamp with time zone NOT NULL DEFAULT now(),
+  geschaetzt boolean NOT NULL DEFAULT false,
+  abdeckung numeric(4,3),
   CONSTRAINT minifig_price_history_pkey PRIMARY KEY (id)
 );
 CREATE INDEX idx_minifig_price_history_lookup ON minifig_price_history USING btree (fig_number, currency_code, recorded_at);
+CREATE UNIQUE INDEX idx_minifig_price_history_tag ON minifig_price_history USING btree (fig_number, condition, currency_code, (((recorded_at AT TIME ZONE 'UTC'::text))::date));
 
 CREATE TABLE minifigs (
   id integer NOT NULL DEFAULT nextval('minifigs_id_seq'::regclass),
@@ -333,6 +344,7 @@ CREATE TABLE part_price_history (
   CONSTRAINT part_price_history_pkey PRIMARY KEY (id)
 );
 CREATE INDEX idx_part_price_history_lookup ON part_price_history USING btree (part_number, color_id, currency_code, recorded_at);
+CREATE UNIQUE INDEX idx_part_price_history_tag ON part_price_history USING btree (part_number, color_id, condition, currency_code, (((recorded_at AT TIME ZONE 'UTC'::text))::date));
 
 CREATE TABLE parts (
   id integer NOT NULL DEFAULT nextval('parts_id_seq'::regclass),
