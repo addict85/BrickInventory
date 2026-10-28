@@ -3,7 +3,7 @@ import { protokolliere } from '../utils/verwaltungsprotokoll';
 import express from 'express';
 const router  = express.Router();
 import bcrypt from 'bcryptjs';
-import * as db from '../db/database';
+import * as K from '../utils/konten';
 import { meldeHaushaltsaenderung } from '../utils/household';
 import { handleRouteError, logAndContinue, meldeUndWeiter, fehlerCode, fehlertext, pfadParam } from '../utils/httpError';
 import { hashToken, pruefeAnmeldedaten, createToken, validateToken, assertLoginAllowed, establishSession, revokeAllTokens, revokeAllSessions, beendeAndereZugaenge, deleteToken, BCRYPT_ROUNDS, USERNAME_RE, EMAIL_RE, requireLoginOrToken, nutzerId, angemeldeteNutzerId, appTokenOhneAblauf, passwortZuKurz, flaggeGesetzt, leereTokenCache, laufzeitTage } from '../utils/auth';
@@ -13,7 +13,7 @@ import crypto from 'crypto';
 import { strictBool } from '../utils/validate';
 import { sendEmailGeaendertMail, sendPasswordResetMail, sendVerificationMail } from '../utils/mailer';
 import type { Request, Response } from 'express';
-import { getGlobalSetting, getSetting } from '../utils/settings';
+import { getGlobalSetting, getSetting, setUserSetting } from '../utils/settings';
 import { requireApiAdmin } from './api_v1/middleware';
 import { sendeFehler, fehlerText, antwortSprache } from '../utils/fehlerTexte';
 import { basisUrl, hinweisOhneBasisUrl } from '../utils/basisUrl';
@@ -123,7 +123,7 @@ router.get('/me', async (req, res) => {
   const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;
   try {
     if (req.session?.userId) {
-      const user = await db.get('SELECT id, username, is_admin FROM users WHERE id = $1', [req.session.userId]);
+      const user = await K.kontoKurz(req.session.userId);
       if (user) return res.json({ success: true, loggedIn: true,
         user: { id: user.id, username: user.username, is_admin: flaggeGesetzt(user.is_admin) } });
     }
@@ -166,10 +166,7 @@ router.post('/token-create', requireLogin, async (req, res) => {
 // GET /api/v1/auth/profile — get current user profile
 router.get('/profile', requireLogin, async (req, res) => {
   try {
-    const user = await db.get(
-      'SELECT id, username, email, first_name, last_name, email_verified FROM users WHERE id=$1',
-      [nutzerId(req)]
-    );
+    const user = await K.profil(nutzerId(req)!);
     if (!user) return res.status(404).json({ success: false });
     res.json({ success: true, user });
   } catch (e) { handleRouteError(res, e, undefined, req); }
@@ -179,7 +176,7 @@ router.get('/profile', requireLogin, async (req, res) => {
 router.put('/profile', requireLogin, async (req, res) => {
   const { username, email, first_name, last_name, password, password_current } = req.body;
   try {
-    const user = await db.get('SELECT * FROM users WHERE id=$1', [nutzerId(req)]);
+    const user = await K.kontoVoll(nutzerId(req)!);
     if (!user) return res.status(404).json({ success: false });
 
     // Das Passwort nur über /change-password: Nur dort werden danach alle
@@ -198,10 +195,7 @@ router.put('/profile', requireLogin, async (req, res) => {
     // beim Login trifft, war ohne ORDER BY undefiniert. Zusätzlich wird gegen
     // die E-Mail-Spalte geprüft, weil der Login beide Felder akzeptiert.
     if (username && username.toLowerCase() !== String(user.username || '').toLowerCase()) {
-      const existing = await db.get(
-        'SELECT id FROM users WHERE (LOWER(username) = LOWER($1) OR LOWER(email) = LOWER($1)) AND id != $2',
-        [username, user.id]);
-      if (existing) return sendeFehler(req, res, 400, 'benutzername_vergeben');
+      if (await K.nameVergeben(username, user.id)) return sendeFehler(req, res, 400, 'benutzername_vergeben');
     }
 
     // Check email uniqueness
@@ -209,35 +203,25 @@ router.put('/profile', requireLogin, async (req, res) => {
     if (emailChanged) {
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
         return sendeFehler(req, res, 400, 'email_ungueltig');
-      const existing = await db.get(
-        'SELECT id FROM users WHERE (LOWER(email) = LOWER($1) OR LOWER(username) = LOWER($1)) AND id != $2',
-        [email, user.id]);
-      if (existing) return sendeFehler(req, res, 400, 'email_vergeben');
+      if (await K.emailVergeben(email, user.id)) return sendeFehler(req, res, 400, 'email_vergeben');
       // Über die neue Adresse liesse sich danach das Passwort zurücksetzen —
       // wer kurz eine fremde Sitzung hat, übernähme so das Konto.
       if (!password_current) return sendeFehler(req, res, 400, 'aktuelles_passwort_erforderlich');
       if (!await bestaetigePasswort(req, res, user.id, String(password_current))) return;
     }
 
-    // Build update
-    const updates: any[] = [];
-    const params: any[] = [];
-    let pi = 1;
-    if (username)    { updates.push(`username=$${pi++}`);   params.push(username); }
-    if (first_name !== undefined) { updates.push(`first_name=$${pi++}`); params.push(first_name || null); }
-    if (last_name  !== undefined) { updates.push(`last_name=$${pi++}`);  params.push(last_name  || null); }
+    const felder: Record<string, unknown> = {};
+    if (username) felder.username = username;
+    if (first_name !== undefined) felder.first_name = first_name || null;
+    if (last_name  !== undefined) felder.last_name  = last_name  || null;
     if (emailChanged) {
       const token   = crypto.randomBytes(32).toString('hex');
-      const expires = new Date(Date.now() + 24*60*60*1000);
-      updates.push(`email=$${pi++}`);               params.push(email);
-      updates.push(`email_verified=$${pi++}`);       params.push(user.is_admin ? 1 : 0);
+      felder.email = email;
+      felder.email_verified = user.is_admin ? 1 : 0;
       // Nur der Hash landet in der DB — der Klartext geht ausschliesslich per Mail raus
-      updates.push(`verification_token=$${pi++}`);   params.push(hashToken(token));
-      updates.push(`token_expires=$${pi++}`);        params.push(expires);
-      await db.run(
-        `UPDATE users SET ${updates.join(',')} WHERE id=$${pi}`,
-        [...params, user.id]
-      );
+      felder.verification_token = hashToken(token);
+      felder.token_expires = new Date(Date.now() + 24*60*60*1000);
+      await K.aendereProfil(user.id, felder);
       // Send verification mail to new email
       // Ausführlich: docs/begruendungen/routes/auth.ts.md#put-profile-emailsent
       let emailSent = false;
@@ -253,8 +237,7 @@ router.put('/profile', requireLogin, async (req, res) => {
       return res.json({ success: true, emailChanged: true, emailSent });
     }
 
-    if (!updates.length) return res.json({ success: true });
-    await db.run(`UPDATE users SET ${updates.join(',')} WHERE id=$${pi}`, [...params, user.id]);
+    await K.aendereProfil(user.id, felder);
     res.json({ success: true });
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
@@ -262,10 +245,7 @@ router.put('/profile', requireLogin, async (req, res) => {
 // Admin: list users
 router.get('/users', requireAdmin, async (_req, res) => {
   try {
-    const users = await db.all(
-      `SELECT u.id, u.username, u.is_admin, u.created_at,
-              EXISTS (SELECT 1 FROM zweiter_faktor z WHERE z.user_id = u.id AND z.aktiv) AS zweiter_faktor
-         FROM users u ORDER BY u.id`);
+    const users = await K.kontenListe();
     res.json({ success: true, users });
   } catch (e) { handleRouteError(res, e, undefined, _req); }
 });
@@ -289,11 +269,10 @@ router.post('/users', requireAdmin, async (req, res) => {
     const verwalter = angemeldeteNutzerId(req);
     if (!await bestaetigePasswort(req, res, verwalter, req.body?.admin_password)) return;
     const hash = await bcrypt.hash(password, BCRYPT_ROUNDS);
-    const neu = await db.get('INSERT INTO users (username, password_hash, is_admin) VALUES ($1, $2, $3) RETURNING id',
-      [username, hash, alsVerwalter ? 1 : 0]);
-    if (!neu) return sendeFehler(req, res, 409, 'benutzername_vergeben');
-    await protokolliere(verwalter, neu.id, 'konto_angelegt');
-    if (alsVerwalter) await protokolliere(verwalter, neu.id, 'verwalter_ernannt');
+    const neu = await K.legeKontoAn(username, hash, alsVerwalter);
+    if (neu === null) return sendeFehler(req, res, 409, 'benutzername_vergeben');
+    await protokolliere(verwalter, neu, 'konto_angelegt');
+    if (alsVerwalter) await protokolliere(verwalter, neu, 'verwalter_ernannt');
     res.json({ success: true });
   } catch (e) {
     if (fehlerCode(e) === '23505') return sendeFehler(req, res, 409, 'benutzername_vergeben');
@@ -312,11 +291,11 @@ router.put('/users/:id/admin', requireAdmin, async (req, res) => {
       return sendeFehler(req, res, 400, 'eigene_adminrolle');
     // Den ALTEN Wert holen — daran haengt unten, ob Sitzungen enden muessen.
     // Ausführlich: docs/begruendungen/routes/auth.ts.md#put-users-id-admin-vorher
-    const vorher = await db.get('SELECT is_admin FROM users WHERE id = $1', [targetId]);
+    const vorher = await K.verwalterVorher(targetId);
     if (!vorher) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
     if (!await bestaetigePasswort(req, res, angemeldeteNutzerId(req), req.body?.admin_password)) return;
     const warAdmin = flaggeGesetzt(vorher.is_admin);
-    await db.run('UPDATE users SET is_admin = $1 WHERE id = $2', [soll ? 1 : 0, targetId]);
+    await K.setzeVerwalter(targetId, soll);
     if (warAdmin !== soll) await protokolliere(angemeldeteNutzerId(req), targetId, soll ? 'verwalter_ernannt' : 'verwalter_entzogen');
 
     // Warum die Sitzungen enden muessen
@@ -354,8 +333,7 @@ router.put('/users/:id/password', requireAdmin, async (req, res) => {
     // eine offene Verwaltersitzung allein genügt dafür nicht.
     if (!await bestaetigePasswort(req, res, angemeldeteNutzerId(req), req.body?.admin_password)) return;
     const hash = await bcrypt.hash(String(password), BCRYPT_ROUNDS);
-    const r = await db.run('UPDATE users SET password_hash = $1 WHERE id = $2', [hash, targetId]);
-    if (!r.changes) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
+    if (!await K.setzePasswortHash(targetId, hash)) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
     await protokolliere(angemeldeteNutzerId(req), targetId, 'passwort_gesetzt');
 
     // Offene Zugänge des Kontos beenden — ein zurückgesetztes Passwort soll
@@ -372,11 +350,9 @@ router.delete('/users/:id', requireAdmin, async (req, res) => {
   try {
     const targetId = parseInt(pfadParam(req, 'id'));
     if (!await bestaetigePasswort(req, res, angemeldeteNutzerId(req), req.body?.admin_password)) return;
-    if (targetId !== nutzerId(req) && await db.get('SELECT 1 FROM users WHERE id = $1', [targetId]))
+    if (targetId !== nutzerId(req) && await K.kontoExistiert(targetId))
       await protokolliere(angemeldeteNutzerId(req), targetId, 'konto_geloescht');
-    const r = await db.run('DELETE FROM users WHERE id = $1 AND id != $2',
-      [targetId, nutzerId(req)]);
-    if (r.changes === 0) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden_oder_eigenes');
+    if (!await K.loescheKonto(targetId, nutzerId(req))) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden_oder_eigenes');
     // Die Zeile ist weg, der Zugang war es nicht
     // Die Bearer-Tokens gehen per ON DELETE CASCADE mit (Fremdschlüssel in db/basis.sql).
     // user_sessions dagegen ist der Tabellenraum des Session-Stores und hat
@@ -424,7 +400,7 @@ router.post('/change-password', requireLogin, async (req: LoggedInRequest, res) 
     const hash = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
     // must_change_password mit löschen — sonst fragt der Login nach jedem
     // Login des Default-Admins weiter danach, auch nach der Änderung.
-    await db.run('UPDATE users SET password_hash = $1, must_change_password = 0 WHERE id = $2', [hash, uid]);
+    await K.setzeEigenesPasswort(uid, hash);
     // Alle Bearer-Tokens des Kontos verwerfen — siehe revokeAllTokens().
     //
     // Fuer die APP heisst das: Sie verwirft mit diesem Aufruf ihren EIGENEN
@@ -514,7 +490,7 @@ router.post('/zweiter-faktor/einrichten', requireLogin, async (req, res) => {
     if (!await bestaetigePasswort(req, res, uid, req.body?.password)) return;
     const geheimnis = await zf.beginneEinrichtung(uid);
     if (!geheimnis) return sendeFehler(req, res, 409, 'zweiter_faktor_schon_aktiv');
-    const u = await db.get('SELECT username FROM users WHERE id = $1', [uid]);
+    const u = await K.kontoKurz(uid);
     res.json({ success: true, geheimnis, otpauth: zf.otpauthAdresse(geheimnis, u?.username ?? String(uid)) });
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
@@ -587,8 +563,7 @@ router.post('/qr-token', requireLogin, async (req, res) => {
       return sendeFehler(req, res, 503, 'qr_ohne_basis_url');
     }
     // Abgelaufene/verbrauchte Nonces mitentsorgen — die Tabelle bleibt so klein.
-    await db.run(`DELETE FROM qr_login_tokens WHERE expires_at < NOW() - INTERVAL '1 hour'`)
-      .catch(logAndContinue('qr-token:aufräumen'));
+    await K.raeumeQrTokensAuf().catch(logAndContinue('qr-token:aufräumen'));
     // Wie lange soll der ZUGANG gelten, den dieser Code eroeffnet?
     // Ein unbekannter Wert wird nicht abgewiesen, sondern zu „keine feste
     // Frist" — dann gilt wie bisher allein die Gleitfrist. Ein aelterer
@@ -596,10 +571,7 @@ router.post('/qr-token', requireLogin, async (req, res) => {
     // Ausführlich: docs/begruendungen/routes/auth.ts.md#post-qr-token-tage
     const tage = laufzeitTage(req.body?.gueltigkeit);
     const nonce = crypto.randomBytes(32).toString('base64url');
-    await db.run(
-      'INSERT INTO qr_login_tokens (token, user_id, expires_at, token_days) VALUES ($1,$2,$3,$4)',
-      [hashToken(nonce), nutzerId(req), new Date(Date.now() + QR_TTL_MS), tage]
-    );
+    await K.legeQrTokenAn(hashToken(nonce), nutzerId(req), new Date(Date.now() + QR_TTL_MS), tage);
     // `token_days`: was tatsaechlich gespeichert wurde, nicht was gewuenscht
     // war. Ein unbekannter Wert wird zu null, und die Oberflaeche soll die
     // Frist nennen koennen, die wirklich gilt.
@@ -620,17 +592,10 @@ router.post('/qr-login', ipThrottle('qr-login', 30, 60 * 60 * 1000), async (req,
   if (typeof token !== 'string' || !token.startsWith('bim:'))
     return sendeFehler(req, res, 400, 'token_ungueltig');
   try {
-    // Atomar entwerten: Nur die erste Anfrage bekommt eine Zeile zurück, alle
-    // weiteren laufen ins Leere — kein Race zwischen zwei Geräten möglich.
-    const claimed = await db.get(
-      `UPDATE qr_login_tokens SET used_at = NOW()
-       WHERE token = $1 AND used_at IS NULL AND expires_at > NOW()
-       RETURNING user_id, token_days`,
-      [hashToken(token.slice(4))]
-    );
+    const claimed = await K.loeseQrTokenEin(hashToken(token.slice(4)));
     if (!claimed) return sendeFehler(req, res, 401, 'token_ungueltig');
 
-    const user = await db.get('SELECT * FROM users WHERE id=$1', [claimed.user_id]);
+    const user = await K.kontoVoll(claimed.user_id);
     if (!user) return sendeFehler(req, res, 401, 'token_ungueltig');
     const blocked = assertLoginAllowed(user);
     if (blocked) return sendeFehler(req, res, blocked.status, blocked.code);
@@ -684,33 +649,19 @@ router.post('/register', ipThrottle('register', 5, 60 * 60 * 1000), async (req, 
     return sendeFehler(req, res, 400, 'benutzername_ungueltig');
 
   try {
-    const existing = await db.get('SELECT id FROM users WHERE LOWER(username) = LOWER($1) OR LOWER(email) = LOWER($2)', [username, email]);
-    if (existing) return sendeFehler(req, res, 409, 'benutzername_oder_email_vergeben');
+    if (await K.nameOderEmailVergeben(username, email)) return sendeFehler(req, res, 409, 'benutzername_oder_email_vergeben');
 
     const token  = crypto.randomBytes(32).toString('hex');
     const expires = new Date(Date.now() + 24 * 60 * 60 * 1000);
     const hash   = await bcrypt.hash(password, BCRYPT_ROUNDS);
 
-    // verification_token wird — wie api_tokens — nur als SHA-256 gespeichert.
-    // Vorher lag er im Klartext in der users-Tabelle; bei einem DB-Leak war
-    // damit jeder ausstehende Bestätigungslink direkt einlösbar.
-    await db.run(
-      'INSERT INTO users (username, email, first_name, last_name, password_hash, is_admin, is_active, email_verified, verification_token, token_expires) VALUES ($1,$2,$3,$4,$5,0,1,0,$6,$7)',
-      [username, email, first_name || null, last_name || null, hash, hashToken(token), expires]
-    );
-    // Gewählte Sprache als Benutzereinstellung speichern (steuert UI + E-Mails).
-    // Hinweis: kein "INSERT … RETURNING" verwenden — die SQL-Kompatschicht hängt
-    // an INSERTs ohne ON CONFLICT automatisch "ON CONFLICT DO NOTHING" an, was
-    // nach einem RETURNING zu einem Syntaxfehler führen würde. Daher separater SELECT.
-    const newUser = await db.get('SELECT id FROM users WHERE LOWER(username) = LOWER($1)', [username]).catch(() => null);
-    if (newUser?.id) {
-      await db.run(
-        "INSERT INTO user_settings (user_id, key, value) VALUES ($1,'language',$2) ON CONFLICT (user_id, key) DO UPDATE SET value=$2",
-        [newUser.id, lang]
-      // Ohne Protokoll bleibt unklar, warum ein frisch angelegtes Konto in der
-      // falschen Sprache startet.
-      ).catch(logAndContinue(`registrierung:sprache ${newUser.id}`));
-    }
+    // verification_token wird — wie api_tokens — nur als SHA-256 gespeichert:
+    // Bei einem Datenbank-Leak wäre ein ausstehender Bestätigungslink sonst einlösbar.
+    const neuId = await K.registriereKonto({ username, email, first_name, last_name, hash,
+      tokenHash: hashToken(token), bis: expires });
+    // Die gewählte Sprache steuert Oberfläche und E-Mails; ohne Protokoll bliebe
+    // unklar, warum ein frisches Konto in der falschen Sprache startet.
+    if (neuId) await setUserSetting(neuId, 'language', lang).catch(logAndContinue(`registrierung:sprache ${neuId}`));
 
     const basis = getBaseUrl(req);
     const result = basis
@@ -757,14 +708,14 @@ router.post('/forgot-password', ipThrottle('forgot-password', 5, 60 * 60 * 1000)
     // "marco@example.ch" tippte, bekam "Falls die E-Mail existiert…" — und nie
     // eine Mail. Durch die Anti-Enumeration-Antwort war das von aussen nicht
     // von Erfolg zu unterscheiden; der Nutzer ist dauerhaft ausgesperrt.
-    const user = await db.get('SELECT * FROM users WHERE LOWER(email) = LOWER($1) AND is_active = 1', [email]);
+    const user = await K.aktivesKontoNachEmail(email);
     // Always return success to prevent email enumeration
     if (!user) return res.json({ success: true, message: 'Falls die E-Mail existiert, wurde ein Link gesendet.' });
 
     const token   = crypto.randomBytes(32).toString('hex');
     const expires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
     // Nur der Hash in die DB — der Klartext geht ausschliesslich per Mail raus.
-    await db.run('UPDATE users SET reset_token=$1, reset_token_expires=$2 WHERE id=$3', [hashToken(token), expires, user.id]);
+    await K.setzeRuecksetzToken(user.id, hashToken(token), expires);
 
     // NICHT awaiten: Die Antwort ist in beiden Fällen wortgleich, aber das
     // await machte sie messbar ungleich SCHNELL — bei unbekannter E-Mail kam
@@ -789,13 +740,10 @@ router.post('/reset-password', ipThrottle('reset-password', 10, 60 * 60 * 1000),
   if (!token || !password) return sendeFehler(req, res, 400, 'token_passwort_erforderlich');
   if (passwortZuKurz(password)) return sendeFehler(req, res, 400, 'passwort_zu_kurz');
   try {
-    const user = await db.get(
-      "SELECT id FROM users WHERE reset_token = $1 AND reset_token_expires > NOW()",
-      [hashToken(token)]
-    );
+    const user = await K.kontoNachRuecksetzToken(hashToken(token));
     if (!user) return sendeFehler(req, res, 400, 'token_ungueltig');
     const hash = await bcrypt.hash(password, BCRYPT_ROUNDS);
-    await db.run('UPDATE users SET password_hash=$1, reset_token=NULL, reset_token_expires=NULL WHERE id=$2', [hash, user.id]);
+    await K.setzePasswortNachRuecksetzen(user.id, hash);
     // Ein Reset ist der Moment, in dem man einen fremden Zugang loswerden will.
     // Ohne das Folgende überlebt er ihn: Bearer-Tokens laufen sieben Tage weiter
     // und die Session-Zeile in user_sessions bleibt ebenfalls gültig.
@@ -824,12 +772,7 @@ router.post('/serverbeweis', ipThrottle('serverbeweis', 120, 60 * 60 * 1000), as
       || typeof nonce !== 'string' || !/^[0-9a-f]{32,128}$/.test(nonce))
     return sendeFehler(req, res, 400, 'wert_ungueltig');
   try {
-    const zeile = await db.get(
-      `SELECT token FROM api_tokens
-        WHERE left(token, 16) = $1
-          AND (expires_at IS NULL OR expires_at > NOW())
-          AND (hard_expires_at IS NULL OR hard_expires_at > NOW())
-        LIMIT 1`, [kennung]);
+    const zeile = await K.tokenNachKennung(kennung);
     if (!zeile) return sendeFehler(req, res, 404, 'token_ungueltig');
     res.json({ success: true,
       beweis: crypto.createHmac('sha256', zeile.token).update(nonce).digest('hex') });

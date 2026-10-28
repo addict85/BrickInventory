@@ -151,7 +151,10 @@ test('Benutzernamen-Regel gilt für Login, Register UND Profil-Update', () => {
   const auth = fs.readFileSync(path.join(ROOT, 'routes', 'auth.ts'), 'utf8');
   const profile = auth.slice(auth.indexOf("router.put('/profile'"), auth.indexOf("router.get('/users'"));
   assert.match(profile, /USERNAME_RE\.test/, 'PUT /profile validiert den Benutzernamen nicht');
-  assert.match(profile, /LOWER\(username\) = LOWER\(\$1\)/,
+  // Die Abfrage steht seit dem 28.10.2026 in utils/konten.ts.
+  const konten = fs.readFileSync(path.join(ROOT, 'utils', 'konten.ts'), 'utf8');
+  assert.match(profile, /K\.nameVergeben\(username/, 'PUT /profile prüft den Namen nicht auf Eindeutigkeit');
+  assert.match(konten.slice(konten.indexOf('function nameVergeben')), /LOWER\(username\) = LOWER\(\$1\)/,
     'PUT /profile muss case-insensitiv auf Eindeutigkeit prüfen — der Login vergleicht mit LOWER()');
 });
 
@@ -180,8 +183,12 @@ test('QR-Login transportiert kein Passwort-Material mehr', () => {
   const qr = auth.slice(from, to);
   assert.doesNotMatch(qr, /password_hash/,
     'Der QR-Code darf den bcrypt-Hash nicht enthalten — er ist offline knackbar');
-  assert.match(qr, /qr_login_tokens/, 'QR-Login muss über eine serverseitige Nonce laufen');
-  assert.match(qr, /used_at IS NULL/, 'Die Nonce muss einmalig einlösbar sein');
+  const konten = fs.readFileSync(path.join(ROOT, 'utils', 'konten.ts'), 'utf8');
+  assert.match(qr, /K\.legeQrTokenAn\(/, 'QR-Login muss über eine serverseitige Nonce laufen');
+  assert.match(qr, /K\.loeseQrTokenEin\(/, 'Die Nonce muss eingelöst werden');
+  const einloesen = konten.slice(konten.indexOf('function loeseQrTokenEin'));
+  assert.match(einloesen, /qr_login_tokens/, 'QR-Login muss über eine serverseitige Nonce laufen');
+  assert.match(einloesen, /used_at IS NULL/, 'Die Nonce muss einmalig einlösbar sein');
   assert.doesNotMatch(qr, /createHmac/, 'HMAC mit dem SESSION_SECRET wird nicht mehr gebraucht');
 });
 
@@ -249,7 +256,7 @@ test('Admins können das Passwort anderer Nutzer setzen', () => {
   // Der Weg zur Antwort hat sich geändert (Nachtrag 130): Fehler gehen jetzt
   // über sendeFehler(), damit sie in der Sprache des Anfragenden ankommen.
   // Geprüft wird weiter die AUSSAGE — 404 bei unbekanntem Nutzer.
-  assert.match(fn, /if \(!r\.changes\) return sendeFehler\(req, res, 404/,
+  assert.match(fn, /if \(!await K\.setzePasswortHash\(targetId, hash\)\) return sendeFehler\(req, res, 404/,
     'Ein unbekannter Nutzer muss 404 ergeben, nicht stillen Erfolg');
 
   // Offene Zugänge schliessen.
