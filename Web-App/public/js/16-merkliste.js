@@ -1,6 +1,6 @@
 import { registerActions } from './00-registry.js';
 import { locale, t, tRaw } from '../i18n.js';
-import { bildTag, platzhalterInhalt, leerZustand, ico, CURRENCY, G, TRASH_ICON_SVG, api, esc, escJs, escUrl, fmtN, fullUrl, imgUrl, knopfBesetzt, thumbUrl, toast } from './01-core.js';
+import { bildTag, platzhalterInhalt, setnummerFeldGueltig, leerZustand, ico, CURRENCY, G, TRASH_ICON_SVG, api, esc, escJs, escUrl, fmtN, fullUrl, imgUrl, knopfBesetzt, thumbUrl, toast } from './01-core.js';
 import { detailZeile } from './01-bausteine.js';
 import { alarmBlock, ladeAlarm, priceChartSVG, renderMarketRows, setzeAlarmFeld } from './07-admin.js';
 import { leereLagerortFeld, selectedOwner, selectedStorage, haushaltsKonten, loadGallery, loadStats } from './02-gallery.js';
@@ -198,7 +198,7 @@ export async function ladeMerkliste() {
  */
 export async function merkpostenHinzufuegen() {
   const num = (G('mk-num')?.value || '').trim();
-  if (!num) { toast(tRaw('common.enter_set_number'), 'warn'); return; }
+  if (!setnummerFeldGueltig('mk-num', num)) return;
   const frei = knopfBesetzt(G('mk-add'));
   try {
     const d = await api('POST', '/v1/wanted', {

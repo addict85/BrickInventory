@@ -217,6 +217,7 @@ window.I18N_EN = {
   'common.close': 'Close',
   'common.delete_item': 'Delete entry',
   'common.delete_text': 'This action cannot be undone.',
+  'gallery.add.number_invalid': '“{num}” is not a set number. Expected e.g. 10294 or 10294-1.',
   'common.enter_set_number': 'Please enter a set number',
   'register.req_fields': 'Username, e-mail and password are required.',
   'register.email_required': 'E-mail required.',

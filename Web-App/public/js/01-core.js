@@ -164,6 +164,53 @@ export function bildPlatzhalter(img) {
 }
 
 /**
+ * Sieht die Eingabe aus wie eine Set-Nummer? Ziffern, davor höchstens ein
+ * Buchstaben-Präfix echter Nummern (llca30, comcon001), dahinter ein
+ * Versionsanhang (-1). Der Server prüft selbst; hier geht es darum, dass
+ * „abc“ gar nicht erst als Set „abc-1“ angelegt wird.
+ */
+export function istSetnummer(eingabe) {
+  return /^[A-Za-z]{0,12}\d{1,8}[A-Za-z0-9]{0,8}(-\d{1,3})?$/.test(String(eingabe ?? '').trim());
+}
+
+/**
+ * Eine Fehlermeldung direkt am Feld (leerer Text räumt sie weg). Vorleser
+ * hören sie über role="alert" und finden sie über aria-describedby.
+ */
+export function feldFehler(id, text) {
+  const feld = G(id);
+  if (!feld) return;
+  let el = G(id + '-fehler');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = id + '-fehler';
+    el.className = 'feld-fehler';
+    el.setAttribute('role', 'alert');
+    feld.insertAdjacentElement('afterend', el);
+    feld.addEventListener('input', () => feldFehler(id, ''));
+  }
+  el.textContent = text || '';
+  el.hidden = !text;
+  if (text) {
+    feld.setAttribute('aria-invalid', 'true');
+    feld.setAttribute('aria-describedby', el.id);
+    feld.focus();
+  } else {
+    feld.removeAttribute('aria-invalid');
+    feld.removeAttribute('aria-describedby');
+  }
+}
+
+/** Prüft das Set-Nummer-Feld vor dem Absenden; meldet am Feld und sagt, ob es weitergeht. */
+export function setnummerFeldGueltig(id, wert) {
+  const v = wert ?? (G(id)?.value || '').trim();
+  if (!v) { feldFehler(id, tRaw('common.enter_set_number')); return false; }
+  if (!istSetnummer(v)) { feldFehler(id, tRaw('gallery.add.number_invalid', { num: v })); return false; }
+  feldFehler(id, '');
+  return true;
+}
+
+/**
  * Ein leerer Zustand: Symbol, ein Satz, und wenn es einen gibt, der nächste
  * Schritt als Knopf. Texte kommen fertig übersetzt; maskiert wird hier.
  * @param {{ ico: string, titel: string, text?: string, knopf?: { text: string, click: string, arg?: string } }} o

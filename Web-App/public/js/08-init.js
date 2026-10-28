@@ -1,7 +1,7 @@
 import { bindTabs } from './02-gallery.js';
 import { registerActions } from './00-registry.js';
 import { locale, t, tRaw} from '../i18n.js';
-import { bildTag, platzhalterInhalt, leerZustand, ico, escHex, G, api, checkAuth, esc, escUrl, imgUrl, knopfBesetzt, thumbUrl, toast } from './01-core.js';
+import { bildTag, feldFehler, istSetnummer, platzhalterInhalt, leerZustand, ico, escHex, G, api, checkAuth, esc, escUrl, imgUrl, knopfBesetzt, thumbUrl, toast } from './01-core.js';
 import { initScrollbalken } from './15-scrollbar.js';
 import { baueWantedXmlStuecke } from './19-bricklink-xml.js';
 
@@ -119,9 +119,12 @@ let _rbToBlColor = {}; // Rebrickable → BrickLink color ID mapping
 
 function plAddSet() {
   const raw = G('pl-setnr').value.trim();
-  if (!raw) { toast(tRaw('common.enter_set_number'), 'error'); return; }
+  if (!raw) { feldFehler('pl-setnr', tRaw('common.enter_set_number')); return; }
   // Support comma-separated input
   const nrs = raw.split(',').map(s => s.trim().replace(/\s/g,'')).filter(Boolean);
+  const falsch = nrs.filter(nr => !istSetnummer(nr));
+  if (falsch.length) { feldFehler('pl-setnr', tRaw('gallery.add.number_invalid', { num: falsch.join(', ') })); return; }
+  feldFehler('pl-setnr', '');
   nrs.forEach(nr => {
     const normalized = nr.includes('-') ? nr : nr + '-1';
     _plSets.push({ set_number: normalized, name: normalized });

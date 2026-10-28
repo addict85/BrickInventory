@@ -218,6 +218,7 @@ window.I18N_DE = {
   'common.close': 'Schliessen',
   'common.delete_item': 'Eintrag löschen',
   'common.delete_text': 'Diese Aktion kann nicht rückgängig gemacht werden.',
+  'gallery.add.number_invalid': '„{num}“ ist keine Set-Nummer. Erwartet wird z. B. 10294 oder 10294-1.',
   'common.enter_set_number': 'Bitte Set-Nummer eingeben',
   'register.req_fields': 'Benutzername, E-Mail und Passwort erforderlich.',
   'register.email_required': 'E-Mail erforderlich.',

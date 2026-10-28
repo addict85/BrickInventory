@@ -1,7 +1,7 @@
 import { ladeAnzeige } from './01-bausteine.js';
 import { registerActions } from './00-registry.js';
 import { locale, t, tRaw} from '../i18n.js';
-import { bildTag, fullUrl, platzhalterInhalt, leerZustand, ico, CURRENCY, G, ME, TRASH_ICON_SVG, api, esc, escJs, escUrl, fmtBig, fmtN, imgUrl, observeLazyImages, thumbUrl, toast } from './01-core.js';
+import { bildTag, fullUrl, platzhalterInhalt, setnummerFeldGueltig, leerZustand, ico, CURRENCY, G, ME, TRASH_ICON_SVG, api, esc, escJs, escUrl, fmtBig, fmtN, imgUrl, observeLazyImages, thumbUrl, toast } from './01-core.js';
 import { _gibSse, _gibTimer, gibStart, protokollZeile } from './01-fortschritt.js';
 import { _monitorTimer, loadMonitor, set_monitorTimer } from './01-monitor.js';
 import { SCOPE_VIEWS, addScopeParam, scopeMode, scopeQuery, setScopeMode,
@@ -1013,7 +1013,7 @@ async function doAddSet(){
   // Haushalt schickt die Webapp gar nichts, und der Server bleibt beim
   // eigenen Konto — dieselbe Antwort wie vor der Haushaltssicht.
   const owner_user_id = selectedOwner('add-owner');
-  if(!num){toast(tRaw('common.enter_set_number'),'error');return;}
+  if(!setnummerFeldGueltig('add-num', num)) return;
   showProgress(t('gallery.adding_set',{num}), false);
   try{
     await streamRequest('/api/v1/sets/add-stream', {set_number:num,quantity:qty,purchase_price,condition,owner_user_id,storage:selectedStorage('add-storage')}, (ev)=>{
