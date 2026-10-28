@@ -95,6 +95,10 @@ test('Stile unter style-src ohne unsafe-inline', { concurrency: 1, timeout: 180_
   const uid = (await db.get(`INSERT INTO users (username, email, password_hash, is_active, email_verified, is_admin)
     VALUES ($1, $2, $3, 1, 1, 1) RETURNING id`, [NAME, `${NAME}@example.org`, await bcrypt.hash(PASS, 4)])).id;
   await haeltSet(db, uid, '10300-1', 1, { preis: 199 });
+  // Mit heutigen Stempeln lädt der Start den Rebrickable-Katalog nicht herunter.
+  for (const k of ['rb_csv_last_sync', 'rb_part_categories_last_sync', 'rb_catalog_extras_last_sync'])
+    await db.run(`INSERT INTO laufzustand (schluessel, wert) VALUES ($1, to_char(NOW(), 'YYYY-MM-DD'))
+                  ON CONFLICT (schluessel) DO UPDATE SET wert = EXCLUDED.wert`, [k]);
   t.after(async () => {
     await db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {});
     await db.pool.end().catch(() => {});
@@ -131,10 +135,12 @@ test('Stile unter style-src ohne unsafe-inline', { concurrency: 1, timeout: 180_
   const bis = async (ausdruck, was) => {
     for (let i = 0; i < 100; i++) { if (await b.auswerten(ausdruck).catch(() => false)) return; await warte(100); }
     const zustand = await b.auswerten(`JSON.stringify({ v: window.__verstoesse,
-      text: document.body.innerText.slice(0, 300) })`).catch(e => e.message);
+      lerr: document.getElementById('lerr')?.textContent, text: document.body.innerText.slice(0, 300) })`).catch(e => e.message);
     assert.fail(`Zeitüberschreitung: ${was} — ${zustand}`);
   };
-  await bis(`!!document.getElementById('lu')`, 'Anmeldemaske');
+  // Erst klicken, wenn das Bündel den Knopf verdrahtet hat — unter Last steht
+  // die Maske schon da, bevor das Skript am Ende der Seite gelaufen ist.
+  await bis(`typeof document.getElementById('btn-login')?.onclick === 'function'`, 'Anmeldemaske');
   await b.auswerten(`document.getElementById('lu').value = ${JSON.stringify(NAME)};
     document.getElementById('lp').value = ${JSON.stringify(PASS)};
     document.getElementById('btn-login').click(); true`);
