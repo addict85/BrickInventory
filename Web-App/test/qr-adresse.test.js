@@ -84,7 +84,7 @@ test('1. ohne APP_BASE_URL kommt kein Code — und keine Nonce', { concurrency: 
   await db.run("DELETE FROM users WHERE username = 'qr_pruefling'");
   const nutzer = await db.get(
     "INSERT INTO users (username,password_hash,is_admin,email_verified) VALUES ($1,$2,0,1) RETURNING id",
-    ['qr_pruefling', 'x']);
+    ['qr_pruefling', require('bcryptjs').hashSync('qr-passwort-1', 4)]);
   // Aufraeumen UND den Pool schliessen, beides hier: Ohne das `end()` haelt
   // die offene Verbindung den Prozess am Leben, und `node --test` haengt nach
   // dem letzten Schritt, statt rot oder gruen zu melden. Genau das ist beim
@@ -99,7 +99,9 @@ test('1. ohne APP_BASE_URL kommt kein Code — und keine Nonce', { concurrency: 
     routen: { [AUTH]: 'routes/auth.js' }, t,
   });
   const hole = () => fetch(`${base}${AUTH}/qr-token`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}',
+    // Seit dem Passwortschritt verlangt die Route das eigene Passwort.
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password: 'qr-passwort-1' }),
   });
   const nonces = async () => (await db.get(
     'SELECT COUNT(*)::int AS n FROM qr_login_tokens WHERE user_id = $1', [nutzer.id])).n;
