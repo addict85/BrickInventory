@@ -2,7 +2,7 @@ import { registerActions } from './00-registry.js';
 import { locale, t, tRaw } from '../i18n.js';
 import { bildTag, platzhalterInhalt, setnummerFeldGueltig, leerZustand, ico, CURRENCY, G, TRASH_ICON_SVG, api, esc, escJs, escUrl, fmtN, fullUrl, imgUrl, knopfBesetzt, thumbUrl, toast } from './01-core.js';
 import { detailZeile } from './01-bausteine.js';
-import { alarmBlock, ladeAlarm, priceChartSVG, renderMarketRows, setzeAlarmFeld } from './07-admin.js';
+import { alarmBlock, diagrammBreite, ladeAlarm, priceChartSVG, renderMarketRows, setzeAlarmFeld } from './07-admin.js';
 import { leereLagerortFeld, selectedOwner, selectedStorage, haushaltsKonten, loadGallery, loadStats } from './02-gallery.js';
 import { addScopeParam } from './14-scope.js';
 
@@ -429,7 +429,7 @@ export async function oeffneMerkpostenDetail(arg) {
   api('GET', `/v1/sets/${encodeURIComponent(set_number)}/price-history`).then(ph => {
     if (_detail !== arg) return;
     G('mk-m-sparkline-content').innerHTML = ph?.success
-      ? priceChartSVG(ph, 'wl' + set_number.replace(/[^a-zA-Z0-9]/g, ''))
+      ? priceChartSVG(ph, 'wl' + set_number.replace(/[^a-zA-Z0-9]/g, ''), diagrammBreite(G('mk-m-sparkline-content')))
       : `<span data-stil="color:var(--mut);font-size:var(--fs-1)">${esc(tRaw('detail.no_history'))}</span>`;
   }).catch(() => {});
 }

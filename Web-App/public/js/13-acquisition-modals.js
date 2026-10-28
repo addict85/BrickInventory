@@ -20,7 +20,7 @@ import { bildTag, platzhalterInhalt, ico, escHex, CURRENCY, G, ME, api, esc, esc
 import { allSets, applySetAggregate, closeModal, curSet, loadGallery, pnlBadge, updateGalleryPrices } from './02-gallery.js';
 import { loadFinance } from './04-finance.js';
 import { deleteManualFig, deleteManualPart, loadBrickColors, loadManualFigsTable, loadManualParts, manualFigsCache, manualPartsCache, updateManualFig, updateManualPart } from './06-minifigs.js';
-import { confirmDelete, ladeLagerorte, lagerortBlock, openModal, priceChartSVG, renderMarketRows, ladeOrtAuswahl } from './07-admin.js';
+import { confirmDelete, diagrammBreite, ladeLagerorte, lagerortBlock, openModal, priceChartSVG, renderMarketRows, ladeOrtAuswahl } from './07-admin.js';
 import { scopeQuery } from './14-scope.js';
 import { blurOnEnter, mQtyDec, mQtyInc, saveManualFigBl } from './11-actions.js';
 
@@ -494,7 +494,7 @@ export async function openManDetail(type, id, colorId) {
     const el = G('man-chart-content');
     if (!el) return;
     el.innerHTML = ph?.success
-      ? priceChartSVG(ph, `man-${String(id).replace(/[^a-zA-Z0-9]/g, '')}-${colorId || 0}`)
+      ? priceChartSVG(ph, `man-${String(id).replace(/[^a-zA-Z0-9]/g, '')}-${colorId || 0}`, diagrammBreite(el))
       : `<span data-stil="color:var(--mut);font-size:var(--fs-1)">${t('detail.no_history')}</span>`;
   }).catch(() => {
     const el = G('man-chart-content');

@@ -284,7 +284,18 @@ export function renderMarketRows(ph, targetId = 'm-market-rows') {
   el.innerHTML = rows.join('');
 }
 
-export function priceChartSVG(data, uid = String(Math.random()).slice(2, 8)) {
+/**
+ * Breite des Diagramms in Pixeln: Die viewBox bekommt die Breite des Behälters,
+ * damit eine Schrift von 12 Einheiten auch am Telefon 12 px groß ist (vorher
+ * 700 Einheiten auf 390 px, also rund 5 px). Ohne Layout (jsdom) 700.
+ * @param {Element|null} el
+ */
+export function diagrammBreite(el, ersatz = 700) {
+  const b = Math.round(el?.clientWidth || 0);
+  return b > 0 ? Math.max(260, Math.min(1200, b)) : ersatz;
+}
+
+export function priceChartSVG(data, uid = String(Math.random()).slice(2, 8), breite = 700) {
   // Erwartet die fertigen Diagrammdaten des Servers:
   //   { values: [ { name, values: [{x, y}], firstRealIndex } ], x: [...] }
   //
@@ -314,7 +325,7 @@ export function priceChartSVG(data, uid = String(Math.random()).slice(2, 8)) {
     return `<span data-stil="color:var(--mut);font-size:var(--fs-1)">${t('detail.no_history')}</span>`;
   }
 
-  const W = 700, H = 190, PAD = { l: 64, r: 14, t: 12, b: 40 };
+  const W = breite, H = 190, PAD = { l: 72, r: 14, t: 12, b: 42 };
   const iw = W - PAD.l - PAD.r, ih = H - PAD.t - PAD.b;
 
   const toTime = d => new Date(d + 'T00:00:00').getTime();
@@ -349,7 +360,7 @@ export function priceChartSVG(data, uid = String(Math.random()).slice(2, 8)) {
   }).join('');
 
   const yTicks = [min, (min + max) / 2, max].map(v =>
-    `<text x="${PAD.l - 8}" y="${(yOf(v) + 3).toFixed(1)}" font-size="10" fill="var(--mut)" text-anchor="end" font-family="inherit">${esc(fmtN(v, CURRENCY))}</text>
+    `<text x="${PAD.l - 8}" y="${(yOf(v) + 4).toFixed(1)}" font-size="12" fill="var(--mut)" text-anchor="end" font-family="inherit">${esc(fmtN(v, CURRENCY))}</text>
      <line x1="${PAD.l}" y1="${yOf(v).toFixed(1)}" x2="${W - PAD.r}" y2="${yOf(v).toFixed(1)}" stroke="var(--bdr)" stroke-width=".5"/>`
   ).join('');
 
@@ -357,14 +368,16 @@ export function priceChartSVG(data, uid = String(Math.random()).slice(2, 8)) {
   const legend = series.map((sd, i) =>
     `<g transform="translate(${PAD.l + i * 120}, ${H - 8})">
        <line x1="0" y1="-4" x2="16" y2="-4" stroke="${sd.color}" stroke-width="2.5" stroke-linecap="round"/>
-       <text x="22" y="0" font-size="11" fill="var(--txt)" font-family="inherit">${esc(sd.name)}</text>
+       <text x="22" y="0" font-size="12" fill="var(--txt)" font-family="inherit">${esc(sd.name)}</text>
      </g>`).join('');
 
-  return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" data-stil="width:100%;height:auto">
+  const zusammenfassung = t('detail.chart.summary', { titel: t('detail.price_history'), von: fmtDay(first), bis: fmtDay(last),
+    reihen: series.map(sd => tRaw('detail.chart.series', { name: sd.name, wert: fmtN(sd.pts[sd.pts.length - 1].y, CURRENCY) })).join('; ') });
+  return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" class="diagramm" role="img" aria-label="${zusammenfassung}" data-stil="width:100%;height:auto">
     ${yTicks}
     ${parts}
-    <text x="${PAD.l}" y="${H - 22}" font-size="10" fill="var(--mut)" text-anchor="start" font-family="inherit">${esc(fmtDay(first))}</text>
-    <text x="${W - PAD.r}" y="${H - 22}" font-size="10" fill="var(--mut)" text-anchor="end" font-family="inherit">${esc(fmtDay(last))}</text>
+    <text x="${PAD.l}" y="${H - 22}" font-size="12" fill="var(--mut)" text-anchor="start" font-family="inherit">${esc(fmtDay(first))}</text>
+    <text x="${W - PAD.r}" y="${H - 22}" font-size="12" fill="var(--mut)" text-anchor="end" font-family="inherit">${esc(fmtDay(last))}</text>
     ${legend}
   </svg>`;
 }
@@ -375,8 +388,8 @@ function fmtChartVal(v){
   // Use Swiss locale formatting: 1100 → 1'100, no k/M abbreviations
   return Math.round(v).toLocaleString(locale());
 }
-export function portfolioChartSVG(data, period, metric, yAxisData){
-  const W=700, H=180, PAD={l:72,r:16,t:14,b:32};
+export function portfolioChartSVG(data, period, breite = 700){
+  const W=breite, H=180, PAD={l:76,r:16,t:14,b:32};
   const iw=W-PAD.l-PAD.r, ih=H-PAD.t-PAD.b;
   const vals=data.map(d=>d.total||0);
   if(vals.length<2) return diagrammLeer();
@@ -405,11 +418,12 @@ export function portfolioChartSVG(data, period, metric, yAxisData){
     const v = min + t * range;
     const y = PAD.t + ih - t * ih;
     return `<line x1="${PAD.l}" y1="${y.toFixed(1)}" x2="${PAD.l+iw}" y2="${y.toFixed(1)}" stroke="var(--bdr)" stroke-width="0.8" stroke-dasharray="3,3"/>
-<text x="${(PAD.l-5).toFixed(0)}" y="${(y+3.5).toFixed(1)}" text-anchor="end" font-size="10" fill="var(--mut)" font-family="monospace">${fmtChartVal(v)}</text>`;
+<text x="${(PAD.l-6).toFixed(0)}" y="${(y+4).toFixed(1)}" text-anchor="end" font-size="12" fill="var(--mut)" font-family="inherit">${fmtChartVal(v)}</text>`;
   }).join('');
 
   // X labels: max 7 evenly spaced
-  const step  = Math.max(1, Math.ceil(n/7));
+  // Je Beschriftung rund 56 px, damit sie sich am Telefon nicht überlappen.
+  const step  = Math.max(1, Math.ceil(n/Math.max(2, Math.min(7, Math.floor(iw/56)))));
   const xIdxs = [];
   for(let i=0; i<n; i+=step) xIdxs.push(i);
   if(xIdxs[xIdxs.length-1] !== n-1) xIdxs.push(n-1);
@@ -430,7 +444,7 @@ export function portfolioChartSVG(data, period, metric, yAxisData){
       if(/^\d{4}-\d{2}-\d{2}$/.test(lbl)){ const[,mm,dd]=lbl.split('-'); lbl=`${dd}.${mm}`; }
       else if(/^\d{4}-\d{2}$/.test(lbl)){ const[y,m]=lbl.split('-'); lbl=`${m}/${y.slice(2)}`; }
     }
-    return `<text x="${px(i).toFixed(1)}" y="${H-6}" text-anchor="middle" font-size="10" fill="var(--mut)">${lbl}</text>`;
+    return `<text x="${px(i).toFixed(1)}" y="${H-8}" text-anchor="middle" font-size="12" fill="var(--mut)" font-family="inherit">${lbl}</text>`;
   }).join('');
 
   // Dots with tooltip
@@ -442,7 +456,9 @@ export function portfolioChartSVG(data, period, metric, yAxisData){
     </circle>`;
   }).join('');
 
-  return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" data-stil="width:100%;max-height:180px;display:block">
+  const zusammenfassung = t('finance.chart.summary', { titel: t('finance.chart.label'),
+    von: data[0].day, bis: data[n-1].day, start: fmtN(vals[0], CURRENCY), ende: fmtN(vals[n-1], CURRENCY) });
+  return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" class="diagramm" role="img" aria-label="${zusammenfassung}" data-stil="width:100%;max-height:180px;display:block">
   <defs><linearGradient id="pcg" x1="0" y1="0" x2="0" y2="1">
     <stop offset="0%" stop-color="${color}" stop-opacity=".15"/>
     <stop offset="100%" stop-color="${color}" stop-opacity="0"/>
@@ -1043,7 +1059,7 @@ export async function openModal(sn){
     if(!el) return;
     // Beide Zustände in EINEM Diagramm — siehe priceChartSVG().
     el.innerHTML = ph.success
-      ? priceChartSVG(ph, sn.replace(/[^a-zA-Z0-9]/g, ''))
+      ? priceChartSVG(ph, sn.replace(/[^a-zA-Z0-9]/g, ''), diagrammBreite(el))
       : `<span data-stil="color:var(--mut);font-size:var(--fs-1)">${t('detail.no_history')}</span>`;
   });
 

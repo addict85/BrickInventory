@@ -5,7 +5,7 @@ import { bildTag, platzhalterInhalt, leerZustand, ico, CURRENCY, G, api, esc, es
 import { scopeMode, scopeQuery } from './14-scope.js';
 import { PARTS_ICON_SVG, _pnlCache, condBadges, ownerBadges, pnlBadge } from './02-gallery.js';
 import { loadCacheStats } from './05-settings.js';
-import { openModal, portfolioChartSVG } from './07-admin.js';
+import { diagrammBreite, openModal, portfolioChartSVG } from './07-admin.js';
 
 // ═══ Finanzen: Bewertung, G&V, Portfolio-Chart ═══
 // Teil von app.js — die Dateien in public/js/ werden in nummerierter
@@ -29,6 +29,18 @@ function setChartPeriod(period){
   loadPortfolioChart();
 }
 
+/** Zuletzt gezeichnete Kurve — beim Drehen des Telefons neu in der neuen Breite. */
+let _letzteKurve = null;
+let _kurveBreite = 0;
+window.addEventListener('resize', () => {
+  const el = G('portfolio-chart');
+  if (!_letzteKurve || !el?.querySelector('svg')) return;
+  const b = diagrammBreite(el);
+  if (Math.abs(b - _kurveBreite) < 24) return;
+  _kurveBreite = b;
+  el.innerHTML = portfolioChartSVG(_letzteKurve, _chartPeriod, b);
+});
+
 async function loadPortfolioChart(){
   const el  = G('portfolio-chart');
   if(!el) return;
@@ -41,6 +53,7 @@ async function loadPortfolioChart(){
   // Weniger als zwei echte Messpunkte sind kein Verlauf: Der Server ergänzt
   // dann einen künstlichen Startwert, und die Linie behauptete Stillstand.
   const messpunkte = d.messpunkte ?? d.points?.length ?? 0;
+  _letzteKurve = null;
   if(!d.points?.length || messpunkte < 2){
     el.innerHTML = diagrammLeer();
     const pnlLeer = G('portfolio-pnl');
@@ -58,7 +71,9 @@ async function loadPortfolioChart(){
     day:   p.x_label || String(i),
     total: i === d.points.length-1 ? grandTotal : parseFloat((p.value * scale).toFixed(2))
   }));
-  el.innerHTML = portfolioChartSVG(finalChartData, _chartPeriod, d.y_axis);
+  _letzteKurve = finalChartData;
+  _kurveBreite = diagrammBreite(el);
+  el.innerHTML = portfolioChartSVG(finalChartData, _chartPeriod, _kurveBreite);
 
   // P&L: use server-computed period_change_pct (compares period start vs current)
   const pnlEl = G('portfolio-pnl');
