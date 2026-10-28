@@ -581,6 +581,11 @@ router.post('/:setNumber/instructions/upload', uploadInstr.single('file'), async
     return sendeFehler(req, res, 413, 'upload_kontingent_voll', { mb: Math.round(kontingent / 1024 / 1024) });
   }
   const uid=angemeldeteNutzerId(req), sn=req.params.setNumber;
+  // Eine Anleitung gehört zu einem Set des Kontos (Fremdschlüssel, Migration 0058).
+  if (!await db.get('SELECT 1 AS ok FROM sets WHERE user_id = $1 AND set_number = $2', [uid, sn])) {
+    verwerfen();
+    return sendeFehler(req, res, 404, 'nicht_gefunden');
+  }
   const desc=(req.body.description||req.file.originalname).substring(0,200);
   const relPath=`/data/uploads/${uid}/${req.file.filename}`;
   await db.run('INSERT INTO instructions (user_id,set_number,url,description,local_path) VALUES ($1,$2,$3,$4,$5) ON CONFLICT DO NOTHING', [uid,sn,relPath,desc,relPath]);

@@ -129,6 +129,9 @@ async function haltZeile(db, userId, setNumber) {
 async function haeltTeil(db, userId, partNumber, opt = {}) {
   const { setNumber = null, menge = 1, colorId = 0 } = opt;
   const quelle = setNumber ? 'set' : 'manual';
+  // Ein Set-Teil gehört zu einem Set des Kontos (Fremdschlüssel, Migration 0058).
+  if (setNumber) await db.run(
+    'INSERT INTO sets (user_id, set_number) VALUES ($1,$2) ON CONFLICT DO NOTHING', [userId, setNumber]);
   await db.run(
     `INSERT INTO parts (user_id, set_number, part_number, color_id, source, storage_id)
      VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT DO NOTHING`,
@@ -182,6 +185,8 @@ async function haeltTeil(db, userId, partNumber, opt = {}) {
 async function haeltFigur(db, userId, figNumber, opt = {}) {
   const { setNumber = null, menge = 1 } = opt;
   const quelle = setNumber ? 'set' : 'manual';
+  if (setNumber) await db.run(
+    'INSERT INTO sets (user_id, set_number) VALUES ($1,$2) ON CONFLICT DO NOTHING', [userId, setNumber]);
   await db.run(
     `INSERT INTO minifigs (user_id, set_number, fig_number, source, storage_id)
      VALUES ($1,$2,$3,$4,$5) ON CONFLICT DO NOTHING`,

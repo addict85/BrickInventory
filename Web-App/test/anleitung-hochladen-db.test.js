@@ -6,6 +6,8 @@
  *   A  die Prüfung inhaltPasstZuTyp() im Upload entfernt → rot: „ein Text als
  *      PDF" (200, die Datei lag im Ordner)
  *   B  die Kontingentprüfung entfernt → rot: „über dem Kontingent"
+ *   C  die Besitzprüfung entfernt → rot: „für ein Set, das das Konto nicht
+ *      hat" (500 aus dem Fremdschlüssel, die Datei lag im Ordner; 28.10.2026)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -39,6 +41,7 @@ test('Anleitung hochladen', { concurrency: 1 }, async (t) => {
                              VALUES ($1, 'x', 1, 1) RETURNING id`, [NAME])).id;
   await db.run(`INSERT INTO set_catalog (set_number, name, year, theme, pieces, minifigs)
                 VALUES ($1, 'Hochladeprobe', 2024, 'Test', 10, 0) ON CONFLICT (set_number) DO NOTHING`, [SET]);
+  await db.run('INSERT INTO sets (user_id, set_number) VALUES ($1, $2)', [uid, SET]);
   const ordner = path.join(DATA_DIR, 'uploads', String(uid));
   const altKontingent = process.env.UPLOAD_KONTINGENT_MB;
   t.after(async () => {
@@ -50,10 +53,10 @@ test('Anleitung hochladen', { concurrency: 1 }, async (t) => {
   });
 
   const { base } = testServer(_req, { sitzung: { userId: uid }, routen: { '/api/v1/sets': 'routes/sets.js' }, t });
-  const hochladen = async (inhalt, typ, name) => {
+  const hochladen = async (inhalt, typ, name, set = SET) => {
     const form = new FormData();
     form.append('file', new Blob([inhalt], { type: typ }), name);
-    const r = await fetch(`${base}/api/v1/sets/${SET}/instructions/upload`, { method: 'POST', body: form });
+    const r = await fetch(`${base}/api/v1/sets/${set}/instructions/upload`, { method: 'POST', body: form });
     return { status: r.status, body: await r.json() };
   };
   const dateien = () => (fs.existsSync(ordner) ? fs.readdirSync(ordner) : []);
@@ -85,5 +88,13 @@ test('Anleitung hochladen', { concurrency: 1 }, async (t) => {
     assert.equal(r.status, 413, JSON.stringify(r.body));
     assert.equal(r.body.code, 'upload_kontingent_voll');
     assert.equal(dateien().length, vorher, 'die Datei über dem Kontingent liegt noch im Ordner');
+  });
+
+  await t.test('für ein Set, das das Konto nicht hat', async () => {
+    delete process.env.UPLOAD_KONTINGENT_MB;
+    const vorher = dateien().length;
+    const r = await hochladen(PDF, 'application/pdf', 'fremd.pdf', '99074-1');
+    assert.equal(r.status, 404, JSON.stringify(r.body));
+    assert.equal(dateien().length, vorher, 'die Datei zum fremden Set liegt noch im Ordner');
   });
 });

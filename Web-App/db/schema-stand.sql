@@ -109,6 +109,7 @@ CREATE TABLE csv_import_jobs (
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
   run_id text,
   CONSTRAINT csv_import_jobs_pkey PRIMARY KEY (user_id),
+  CONSTRAINT csv_import_jobs_status_check CHECK ((status = ANY (ARRAY['pending'::text, 'running'::text, 'done'::text, 'error'::text, 'cancelled'::text]))),
   CONSTRAINT csv_import_jobs_user_fk FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
@@ -161,7 +162,8 @@ CREATE TABLE instruction_queue (
   status text DEFAULT 'pending'::text,
   created_at timestamp with time zone DEFAULT now(),
   updated_at timestamp with time zone DEFAULT now(),
-  CONSTRAINT instruction_queue_pkey PRIMARY KEY (id)
+  CONSTRAINT instruction_queue_pkey PRIMARY KEY (id),
+  CONSTRAINT instruction_queue_status_check CHECK ((status = ANY (ARRAY['pending'::text, 'done'::text, 'failed'::text])))
 );
 CREATE UNIQUE INDEX idx_instr_queue_set ON instruction_queue USING btree (set_number);
 
@@ -174,6 +176,7 @@ CREATE TABLE instructions (
   local_path text,
   downloaded_at timestamp with time zone DEFAULT now(),
   CONSTRAINT instructions_pkey PRIMARY KEY (id),
+  CONSTRAINT instructions_set_fk FOREIGN KEY (user_id, set_number) REFERENCES sets(user_id, set_number) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,
   CONSTRAINT instructions_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 CREATE INDEX idx_instructions_user ON instructions USING btree (user_id, set_number);
@@ -242,6 +245,8 @@ CREATE TABLE minifigs (
   source text DEFAULT 'set'::text,
   storage_id integer,
   CONSTRAINT minifigs_pkey PRIMARY KEY (id),
+  CONSTRAINT minifigs_set_fk FOREIGN KEY (user_id, set_number) REFERENCES sets(user_id, set_number) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,
+  CONSTRAINT minifigs_source_check CHECK ((source = ANY (ARRAY['set'::text, 'manual'::text]))),
   CONSTRAINT minifigs_storage_id_fkey FOREIGN KEY (user_id, storage_id) REFERENCES storage_locations(user_id, id) ON DELETE SET NULL (storage_id),
   CONSTRAINT minifigs_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
@@ -356,6 +361,8 @@ CREATE TABLE parts (
   storage_id integer,
   added_at timestamp with time zone DEFAULT now(),
   CONSTRAINT parts_pkey PRIMARY KEY (id),
+  CONSTRAINT parts_set_fk FOREIGN KEY (user_id, set_number) REFERENCES sets(user_id, set_number) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,
+  CONSTRAINT parts_source_check CHECK ((source = ANY (ARRAY['set'::text, 'manual'::text]))),
   CONSTRAINT parts_storage_id_fkey FOREIGN KEY (user_id, storage_id) REFERENCES storage_locations(user_id, id) ON DELETE SET NULL (storage_id),
   CONSTRAINT parts_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );

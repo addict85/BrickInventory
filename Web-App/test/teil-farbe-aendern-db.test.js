@@ -291,6 +291,7 @@ test('die Farbe eines manuellen Teils lässt sich nachträglich ändern',
 
   await t.test('ein Teil AUS EINEM SET bleibt unberührt', async () => {
     await leeren();
+    await db.run(`INSERT INTO sets (user_id,set_number) VALUES ($1,'10497-1') ON CONFLICT DO NOTHING`, [UID]);
     await db.run(`INSERT INTO parts (user_id,set_number,part_number,color_id,source)
                   VALUES ($1,'10497-1','3001',0,'set')`, [UID]);
     const a = await aendere('3001', 0, { color_id: 4 });

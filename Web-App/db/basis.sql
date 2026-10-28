@@ -263,7 +263,8 @@ CREATE TABLE public.csv_import_jobs (
     error text,
     started_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    run_id text
+    run_id text,
+    CONSTRAINT csv_import_jobs_status_check CHECK ((status = ANY (ARRAY['pending'::text, 'running'::text, 'done'::text, 'error'::text, 'cancelled'::text])))
 );
 
 --
@@ -327,7 +328,8 @@ CREATE TABLE public.instruction_queue (
     set_number text NOT NULL,
     status text DEFAULT 'pending'::text,
     created_at timestamp with time zone DEFAULT now(),
-    updated_at timestamp with time zone DEFAULT now()
+    updated_at timestamp with time zone DEFAULT now(),
+    CONSTRAINT instruction_queue_status_check CHECK ((status = ANY (ARRAY['pending'::text, 'done'::text, 'failed'::text])))
 );
 
 --
@@ -504,7 +506,8 @@ CREATE TABLE public.minifigs (
     set_number text,
     fig_number text NOT NULL,
     source text DEFAULT 'set'::text,
-    storage_id integer
+    storage_id integer,
+    CONSTRAINT minifigs_source_check CHECK ((source = ANY (ARRAY['set'::text, 'manual'::text])))
 );
 
 --
@@ -711,7 +714,8 @@ CREATE TABLE public.parts (
     color_id integer,
     source text DEFAULT 'set'::text,
     storage_id integer,
-    added_at timestamp with time zone DEFAULT now()
+    added_at timestamp with time zone DEFAULT now(),
+    CONSTRAINT parts_source_check CHECK ((source = ANY (ARRAY['set'::text, 'manual'::text])))
 );
 
 --
@@ -2737,6 +2741,13 @@ ALTER TABLE ONLY public.household_former_links
     ADD CONSTRAINT household_former_links_via_user_id_fkey FOREIGN KEY (via_user_id) REFERENCES public.users(id) ON DELETE SET NULL;
 
 --
+-- Name: instructions instructions_set_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.instructions
+    ADD CONSTRAINT instructions_set_fk FOREIGN KEY (user_id, set_number) REFERENCES public.sets(user_id, set_number) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
+
+--
 -- Name: instructions instructions_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2749,6 +2760,13 @@ ALTER TABLE ONLY public.instructions
 
 ALTER TABLE ONLY public.minifig_acquisitions
     ADD CONSTRAINT minifig_acquisitions_user_fk FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+--
+-- Name: minifigs minifigs_set_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.minifigs
+    ADD CONSTRAINT minifigs_set_fk FOREIGN KEY (user_id, set_number) REFERENCES public.sets(user_id, set_number) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
 
 --
 -- Name: minifigs minifigs_storage_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
@@ -2777,6 +2795,13 @@ ALTER TABLE ONLY public.papierkorb
 
 ALTER TABLE ONLY public.part_acquisitions
     ADD CONSTRAINT part_acquisitions_user_fk FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+--
+-- Name: parts parts_set_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.parts
+    ADD CONSTRAINT parts_set_fk FOREIGN KEY (user_id, set_number) REFERENCES public.sets(user_id, set_number) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
 
 --
 -- Name: parts parts_storage_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
@@ -3017,6 +3042,7 @@ INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0054-gin-ohne-w
 INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0055-api-takt.sql', '2026-10-28 17:50:28.999651+00');
 INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0056-preisverlauf-je-tag.sql', '2026-10-28 17:50:29.005121+00');
 INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0057-figurenpreis-geschaetzt.sql', '2026-10-28 17:50:29.010176+00');
+INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0058-fremdschluessel-und-pruefungen.sql', '2026-10-28 17:59:06.918264+00');
 
 --
 -- PostgreSQL database dump complete
