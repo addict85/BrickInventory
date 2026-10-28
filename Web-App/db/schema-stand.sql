@@ -208,8 +208,10 @@ CREATE TABLE minifig_acquisitions (
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   currency text NOT NULL,
   price_estimated boolean NOT NULL DEFAULT false,
+  CONSTRAINT minifig_acquisitions_currency_iso CHECK ((currency ~ '^[A-Z]{3}$'::text)),
   CONSTRAINT minifig_acquisitions_menge_positiv CHECK ((quantity > 0)),
   CONSTRAINT minifig_acquisitions_pkey PRIMARY KEY (id),
+  CONSTRAINT minifig_acquisitions_unit_price_nicht_negativ CHECK ((unit_price >= (0)::numeric)),
   CONSTRAINT minifig_acquisitions_user_fk FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
   CONSTRAINT minifig_acquisitions_zustand CHECK ((condition = ANY (ARRAY['N'::text, 'U'::text])))
 );
@@ -234,8 +236,11 @@ CREATE TABLE minifig_price_cache (
   fetched_at timestamp with time zone DEFAULT now(),
   geschaetzt boolean NOT NULL DEFAULT false,
   abdeckung numeric(4,3),
+  CONSTRAINT minifig_price_cache_avg_price_nicht_negativ CHECK ((avg_price >= (0)::numeric)),
+  CONSTRAINT minifig_price_cache_currency_code_iso CHECK ((currency_code ~ '^[A-Z]{3}$'::text)),
   CONSTRAINT minifig_price_cache_fig_number_condition_currency_code_key UNIQUE (fig_number, condition, currency_code),
-  CONSTRAINT minifig_price_cache_pkey PRIMARY KEY (id)
+  CONSTRAINT minifig_price_cache_pkey PRIMARY KEY (id),
+  CONSTRAINT minifig_price_cache_qty_avg_price_nicht_negativ CHECK ((qty_avg_price >= (0)::numeric))
 );
 CREATE INDEX idx_minifig_price_cache_lookup ON minifig_price_cache USING btree (fig_number, condition, currency_code, fetched_at DESC);
 
@@ -249,7 +254,10 @@ CREATE TABLE minifig_price_history (
   recorded_at timestamp with time zone NOT NULL DEFAULT now(),
   geschaetzt boolean NOT NULL DEFAULT false,
   abdeckung numeric(4,3),
-  CONSTRAINT minifig_price_history_pkey PRIMARY KEY (id)
+  CONSTRAINT minifig_price_history_avg_price_nicht_negativ CHECK ((avg_price >= (0)::numeric)),
+  CONSTRAINT minifig_price_history_currency_code_iso CHECK ((currency_code ~ '^[A-Z]{3}$'::text)),
+  CONSTRAINT minifig_price_history_pkey PRIMARY KEY (id),
+  CONSTRAINT minifig_price_history_qty_avg_price_nicht_negativ CHECK ((qty_avg_price >= (0)::numeric))
 );
 CREATE INDEX idx_minifig_price_history_lookup ON minifig_price_history USING btree (fig_number, currency_code, recorded_at);
 CREATE UNIQUE INDEX idx_minifig_price_history_tag ON minifig_price_history USING btree (fig_number, condition, currency_code, (((recorded_at AT TIME ZONE 'UTC'::text))::date));
@@ -310,8 +318,10 @@ CREATE TABLE part_acquisitions (
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   currency text NOT NULL,
   price_estimated boolean NOT NULL DEFAULT false,
+  CONSTRAINT part_acquisitions_currency_iso CHECK ((currency ~ '^[A-Z]{3}$'::text)),
   CONSTRAINT part_acquisitions_menge_positiv CHECK ((quantity > 0)),
   CONSTRAINT part_acquisitions_pkey PRIMARY KEY (id),
+  CONSTRAINT part_acquisitions_unit_price_nicht_negativ CHECK ((unit_price >= (0)::numeric)),
   CONSTRAINT part_acquisitions_user_fk FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
   CONSTRAINT part_acquisitions_zustand CHECK ((condition = ANY (ARRAY['N'::text, 'U'::text])))
 );
@@ -356,8 +366,11 @@ CREATE TABLE part_price_cache (
   avg_price numeric(12,4),
   qty_avg_price numeric(12,4),
   fetched_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT part_price_cache_avg_price_nicht_negativ CHECK ((avg_price >= (0)::numeric)),
+  CONSTRAINT part_price_cache_currency_code_iso CHECK ((currency_code ~ '^[A-Z]{3}$'::text)),
   CONSTRAINT part_price_cache_part_number_color_id_condition_currency_co_key UNIQUE (part_number, color_id, condition, currency_code),
-  CONSTRAINT part_price_cache_pkey PRIMARY KEY (id)
+  CONSTRAINT part_price_cache_pkey PRIMARY KEY (id),
+  CONSTRAINT part_price_cache_qty_avg_price_nicht_negativ CHECK ((qty_avg_price >= (0)::numeric))
 );
 CREATE INDEX idx_part_price_cache_lookup ON part_price_cache USING btree (part_number, color_id, condition, currency_code, fetched_at DESC);
 
@@ -370,7 +383,10 @@ CREATE TABLE part_price_history (
   avg_price numeric(12,4),
   qty_avg_price numeric(12,4),
   recorded_at timestamp with time zone NOT NULL DEFAULT now(),
-  CONSTRAINT part_price_history_pkey PRIMARY KEY (id)
+  CONSTRAINT part_price_history_avg_price_nicht_negativ CHECK ((avg_price >= (0)::numeric)),
+  CONSTRAINT part_price_history_currency_code_iso CHECK ((currency_code ~ '^[A-Z]{3}$'::text)),
+  CONSTRAINT part_price_history_pkey PRIMARY KEY (id),
+  CONSTRAINT part_price_history_qty_avg_price_nicht_negativ CHECK ((qty_avg_price >= (0)::numeric))
 );
 CREATE INDEX idx_part_price_history_lookup ON part_price_history USING btree (part_number, color_id, currency_code, recorded_at);
 CREATE UNIQUE INDEX idx_part_price_history_tag ON part_price_history USING btree (part_number, color_id, condition, currency_code, (((recorded_at AT TIME ZONE 'UTC'::text))::date));
@@ -476,6 +492,7 @@ CREATE TABLE price_alerts (
   zuletzt_am timestamp with time zone,
   zuletzt_preis numeric(12,4),
   created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT price_alerts_currency_code_iso CHECK ((currency_code ~ '^[A-Z]{3}$'::text)),
   CONSTRAINT price_alerts_pkey PRIMARY KEY (user_id, set_number, condition),
   CONSTRAINT price_alerts_richtung CHECK ((richtung = ANY (ARRAY['unter'::text, 'ueber'::text]))),
   CONSTRAINT price_alerts_schwelle CHECK ((schwelle > (0)::numeric)),
@@ -494,7 +511,12 @@ CREATE TABLE price_cache (
   qty_avg_price numeric(12,4),
   total_quantity integer,
   fetched_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT price_cache_avg_price_nicht_negativ CHECK ((avg_price >= (0)::numeric)),
+  CONSTRAINT price_cache_currency_code_iso CHECK ((currency_code ~ '^[A-Z]{3}$'::text)),
+  CONSTRAINT price_cache_max_price_nicht_negativ CHECK ((max_price >= (0)::numeric)),
+  CONSTRAINT price_cache_min_price_nicht_negativ CHECK ((min_price >= (0)::numeric)),
   CONSTRAINT price_cache_pkey PRIMARY KEY (id),
+  CONSTRAINT price_cache_qty_avg_price_nicht_negativ CHECK ((qty_avg_price >= (0)::numeric)),
   CONSTRAINT price_cache_set_number_condition_currency_code_key UNIQUE (set_number, condition, currency_code)
 );
 CREATE INDEX idx_price_cache_lookup ON price_cache USING btree (set_number, condition, currency_code, fetched_at DESC);
@@ -509,7 +531,12 @@ CREATE TABLE price_history (
   min_price numeric(12,4),
   max_price numeric(12,4),
   recorded_at timestamp with time zone DEFAULT now(),
-  CONSTRAINT price_history_pkey PRIMARY KEY (id)
+  CONSTRAINT price_history_avg_price_nicht_negativ CHECK ((avg_price >= (0)::numeric)),
+  CONSTRAINT price_history_currency_code_iso CHECK ((currency_code ~ '^[A-Z]{3}$'::text)),
+  CONSTRAINT price_history_max_price_nicht_negativ CHECK ((max_price >= (0)::numeric)),
+  CONSTRAINT price_history_min_price_nicht_negativ CHECK ((min_price >= (0)::numeric)),
+  CONSTRAINT price_history_pkey PRIMARY KEY (id),
+  CONSTRAINT price_history_qty_avg_price_nicht_negativ CHECK ((qty_avg_price >= (0)::numeric))
 );
 CREATE INDEX idx_price_history_set ON price_history USING btree (set_number, recorded_at);
 CREATE UNIQUE INDEX idx_price_history_tag ON price_history USING btree (set_number, condition, currency_code, (((recorded_at AT TIME ZONE 'UTC'::text))::date));
@@ -627,8 +654,10 @@ CREATE TABLE set_acquisitions (
   currency text NOT NULL,
   price_estimated boolean NOT NULL DEFAULT false,
   CONSTRAINT set_acquisitions_bestand_fkey FOREIGN KEY (user_id, set_number) REFERENCES sets(user_id, set_number) DEFERRABLE INITIALLY DEFERRED,
+  CONSTRAINT set_acquisitions_currency_iso CHECK ((currency ~ '^[A-Z]{3}$'::text)),
   CONSTRAINT set_acquisitions_menge_positiv CHECK ((quantity > 0)),
   CONSTRAINT set_acquisitions_pkey PRIMARY KEY (id),
+  CONSTRAINT set_acquisitions_purchase_price_nicht_negativ CHECK ((purchase_price >= (0)::numeric)),
   CONSTRAINT set_acquisitions_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
   CONSTRAINT set_acquisitions_zustand CHECK ((condition = ANY (ARRAY['N'::text, 'U'::text])))
 );
@@ -766,7 +795,6 @@ CREATE TABLE users (
   CONSTRAINT users_pkey PRIMARY KEY (id),
   CONSTRAINT users_username_key UNIQUE (username)
 );
-CREATE UNIQUE INDEX users_email_unique ON users USING btree (email) WHERE (email IS NOT NULL);
 
 CREATE TABLE verwaltungsprotokoll (
   id integer NOT NULL DEFAULT nextval('verwaltungsprotokoll_id_seq'::regclass),
@@ -792,6 +820,8 @@ CREATE TABLE vouchers (
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
   guthaben_geprueft_am timestamp with time zone,
+  CONSTRAINT vouchers_amount_nicht_negativ CHECK ((amount >= (0)::numeric)),
+  CONSTRAINT vouchers_currency_iso CHECK ((currency ~ '^[A-Z]{3}$'::text)),
   CONSTRAINT vouchers_pkey PRIMARY KEY (id),
   CONSTRAINT vouchers_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
   CONSTRAINT vouchers_user_id_number_key UNIQUE (user_id, number)

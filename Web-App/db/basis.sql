@@ -419,7 +419,9 @@ CREATE TABLE public.minifig_acquisitions (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     currency text NOT NULL,
     price_estimated boolean DEFAULT false NOT NULL,
+    CONSTRAINT minifig_acquisitions_currency_iso CHECK ((currency ~ '^[A-Z]{3}$'::text)),
     CONSTRAINT minifig_acquisitions_menge_positiv CHECK ((quantity > 0)),
+    CONSTRAINT minifig_acquisitions_unit_price_nicht_negativ CHECK ((unit_price >= (0)::numeric)),
     CONSTRAINT minifig_acquisitions_zustand CHECK ((condition = ANY (ARRAY['N'::text, 'U'::text])))
 );
 
@@ -464,7 +466,10 @@ CREATE TABLE public.minifig_price_cache (
     qty_avg_price numeric(12,4),
     fetched_at timestamp with time zone DEFAULT now(),
     geschaetzt boolean DEFAULT false NOT NULL,
-    abdeckung numeric(4,3)
+    abdeckung numeric(4,3),
+    CONSTRAINT minifig_price_cache_avg_price_nicht_negativ CHECK ((avg_price >= (0)::numeric)),
+    CONSTRAINT minifig_price_cache_currency_code_iso CHECK ((currency_code ~ '^[A-Z]{3}$'::text)),
+    CONSTRAINT minifig_price_cache_qty_avg_price_nicht_negativ CHECK ((qty_avg_price >= (0)::numeric))
 );
 
 --
@@ -498,7 +503,10 @@ CREATE TABLE public.minifig_price_history (
     qty_avg_price numeric(12,4),
     recorded_at timestamp with time zone DEFAULT now() NOT NULL,
     geschaetzt boolean DEFAULT false NOT NULL,
-    abdeckung numeric(4,3)
+    abdeckung numeric(4,3),
+    CONSTRAINT minifig_price_history_avg_price_nicht_negativ CHECK ((avg_price >= (0)::numeric)),
+    CONSTRAINT minifig_price_history_currency_code_iso CHECK ((currency_code ~ '^[A-Z]{3}$'::text)),
+    CONSTRAINT minifig_price_history_qty_avg_price_nicht_negativ CHECK ((qty_avg_price >= (0)::numeric))
 );
 
 --
@@ -614,7 +622,9 @@ CREATE TABLE public.part_acquisitions (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     currency text NOT NULL,
     price_estimated boolean DEFAULT false NOT NULL,
+    CONSTRAINT part_acquisitions_currency_iso CHECK ((currency ~ '^[A-Z]{3}$'::text)),
     CONSTRAINT part_acquisitions_menge_positiv CHECK ((quantity > 0)),
+    CONSTRAINT part_acquisitions_unit_price_nicht_negativ CHECK ((unit_price >= (0)::numeric)),
     CONSTRAINT part_acquisitions_zustand CHECK ((condition = ANY (ARRAY['N'::text, 'U'::text])))
 );
 
@@ -678,7 +688,10 @@ CREATE TABLE public.part_price_cache (
     currency_code text DEFAULT 'EUR'::text NOT NULL,
     avg_price numeric(12,4),
     qty_avg_price numeric(12,4),
-    fetched_at timestamp with time zone DEFAULT now()
+    fetched_at timestamp with time zone DEFAULT now(),
+    CONSTRAINT part_price_cache_avg_price_nicht_negativ CHECK ((avg_price >= (0)::numeric)),
+    CONSTRAINT part_price_cache_currency_code_iso CHECK ((currency_code ~ '^[A-Z]{3}$'::text)),
+    CONSTRAINT part_price_cache_qty_avg_price_nicht_negativ CHECK ((qty_avg_price >= (0)::numeric))
 );
 
 --
@@ -711,7 +724,10 @@ CREATE TABLE public.part_price_history (
     currency_code text DEFAULT 'EUR'::text NOT NULL,
     avg_price numeric(12,4),
     qty_avg_price numeric(12,4),
-    recorded_at timestamp with time zone DEFAULT now() NOT NULL
+    recorded_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT part_price_history_avg_price_nicht_negativ CHECK ((avg_price >= (0)::numeric)),
+    CONSTRAINT part_price_history_currency_code_iso CHECK ((currency_code ~ '^[A-Z]{3}$'::text)),
+    CONSTRAINT part_price_history_qty_avg_price_nicht_negativ CHECK ((qty_avg_price >= (0)::numeric))
 );
 
 --
@@ -848,6 +864,7 @@ CREATE TABLE public.price_alerts (
     zuletzt_am timestamp with time zone,
     zuletzt_preis numeric(12,4),
     created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT price_alerts_currency_code_iso CHECK ((currency_code ~ '^[A-Z]{3}$'::text)),
     CONSTRAINT price_alerts_richtung CHECK ((richtung = ANY (ARRAY['unter'::text, 'ueber'::text]))),
     CONSTRAINT price_alerts_schwelle CHECK ((schwelle > (0)::numeric))
 );
@@ -866,7 +883,12 @@ CREATE TABLE public.price_cache (
     max_price numeric(12,4),
     qty_avg_price numeric(12,4),
     total_quantity integer,
-    fetched_at timestamp with time zone DEFAULT now()
+    fetched_at timestamp with time zone DEFAULT now(),
+    CONSTRAINT price_cache_avg_price_nicht_negativ CHECK ((avg_price >= (0)::numeric)),
+    CONSTRAINT price_cache_currency_code_iso CHECK ((currency_code ~ '^[A-Z]{3}$'::text)),
+    CONSTRAINT price_cache_max_price_nicht_negativ CHECK ((max_price >= (0)::numeric)),
+    CONSTRAINT price_cache_min_price_nicht_negativ CHECK ((min_price >= (0)::numeric)),
+    CONSTRAINT price_cache_qty_avg_price_nicht_negativ CHECK ((qty_avg_price >= (0)::numeric))
 );
 
 --
@@ -900,7 +922,12 @@ CREATE TABLE public.price_history (
     qty_avg_price numeric(12,4),
     min_price numeric(12,4),
     max_price numeric(12,4),
-    recorded_at timestamp with time zone DEFAULT now()
+    recorded_at timestamp with time zone DEFAULT now(),
+    CONSTRAINT price_history_avg_price_nicht_negativ CHECK ((avg_price >= (0)::numeric)),
+    CONSTRAINT price_history_currency_code_iso CHECK ((currency_code ~ '^[A-Z]{3}$'::text)),
+    CONSTRAINT price_history_max_price_nicht_negativ CHECK ((max_price >= (0)::numeric)),
+    CONSTRAINT price_history_min_price_nicht_negativ CHECK ((min_price >= (0)::numeric)),
+    CONSTRAINT price_history_qty_avg_price_nicht_negativ CHECK ((qty_avg_price >= (0)::numeric))
 );
 
 --
@@ -1095,7 +1122,9 @@ CREATE TABLE public.set_acquisitions (
     condition text DEFAULT 'N'::text NOT NULL,
     currency text NOT NULL,
     price_estimated boolean DEFAULT false NOT NULL,
+    CONSTRAINT set_acquisitions_currency_iso CHECK ((currency ~ '^[A-Z]{3}$'::text)),
     CONSTRAINT set_acquisitions_menge_positiv CHECK ((quantity > 0)),
+    CONSTRAINT set_acquisitions_purchase_price_nicht_negativ CHECK ((purchase_price >= (0)::numeric)),
     CONSTRAINT set_acquisitions_zustand CHECK ((condition = ANY (ARRAY['N'::text, 'U'::text])))
 );
 
@@ -1404,7 +1433,9 @@ CREATE TABLE public.vouchers (
     pdf_path text,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    guthaben_geprueft_am timestamp with time zone
+    guthaben_geprueft_am timestamp with time zone,
+    CONSTRAINT vouchers_amount_nicht_negativ CHECK ((amount >= (0)::numeric)),
+    CONSTRAINT vouchers_currency_iso CHECK ((currency ~ '^[A-Z]{3}$'::text))
 );
 
 --
@@ -2653,12 +2684,6 @@ CREATE INDEX idx_zweiter_faktor_codes_konto ON public.zweiter_faktor_codes USING
 CREATE UNIQUE INDEX storage_locations_konto_name ON public.storage_locations USING btree (user_id, lower(name));
 
 --
--- Name: users_email_unique; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX users_email_unique ON public.users USING btree (email) WHERE (email IS NOT NULL);
-
---
 -- Name: minifig_acquisitions minifig_acquisitions_waehrung; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -3139,6 +3164,7 @@ INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0061-api-aufruf
 INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0062-set-teile-schlank.sql', '2026-10-28 22:55:20.74984+00');
 INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0063-laufzustand.sql', '2026-10-28 23:05:08.525175+00');
 INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0064-pdf-auftraege.sql', '2026-10-28 23:25:34.430147+00');
+INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0065-geld-und-waehrung-pruefen.sql', '2026-10-28 23:27:03.174038+00');
 
 --
 -- PostgreSQL database dump complete
