@@ -221,12 +221,17 @@ async function computePnl(viewerId: number, ids: Blickfeld) {
     setResults.reduce((s,r) => s + (r.current_price||0)*(r.quantity||1), 0) +
     partsResults.reduce((s,r) => s + (r.current_price||0)*(r.quantity||1), 0) +
     figsResults.reduce((s,r) => s + (r.current_price||0)*(r.quantity||1), 0);
+  const vergleichbar = vergleichbareSummen([...setResults, ...partsResults, ...figsResults]);
   const totalPnlPct = gesamtGuvProzent([...setResults, ...partsResults, ...figsResults]);
 
   return {
     currency, sets: setResults,
     totals: {
       purchase: totalPurchase.toFixed(2), current: totalCurrent.toFixed(2), pnl_pct: totalPnlPct,
+      // Kauf- und Marktwert der Posten, über die pnl_pct rechnet. Ein Betrag
+      // neben der Prozentzahl muss aus denselben Posten kommen — aus allen
+      // gerechnet zählte jeder Posten ohne Marktpreis als Verlust.
+      pnl_purchase: vergleichbar.kauf.toFixed(2), pnl_current: vergleichbar.markt.toFixed(2),
       /**
        * Der Gesamtwert des Portfolios — Sets + manuell erfasste Teile +
        * Minifiguren.
@@ -245,13 +250,21 @@ async function computePnl(viewerId: number, ids: Blickfeld) {
  * fehlender Marktpreis ist kein Wert 0; mitgezählt ergäbe er −100 %.
  * @returns null, wenn kein Posten beides hat
  */
-function gesamtGuvProzent(zeilen: { purchase_price: number | null; current_price: number; quantity: number }[]): string | null {
+function gesamtGuvProzent(zeilen: GuvZeile[]): string | null {
+  const { kauf, markt } = vergleichbareSummen(zeilen);
+  return kauf > 0 ? ((markt - kauf) / kauf * 100).toFixed(1) : null;
+}
+
+type GuvZeile = { purchase_price: number | null; current_price: number; quantity: number };
+
+/** Kauf- und Marktwert der Posten, die beides haben. */
+function vergleichbareSummen(zeilen: GuvZeile[]): { kauf: number; markt: number } {
   let kauf = 0, markt = 0;
   for (const z of zeilen) {
     const k = z.purchase_price || 0, m = z.current_price || 0, n = z.quantity || 1;
     if (k > 0 && m > 0) { kauf += k * n; markt += m * n; }
   }
-  return kauf > 0 ? ((markt - kauf) / kauf * 100).toFixed(1) : null;
+  return { kauf, markt };
 }
 
-export { computePnl, gesamtGuvProzent };
+export { computePnl, gesamtGuvProzent, vergleichbareSummen };

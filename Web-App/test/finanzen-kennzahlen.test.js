@@ -10,6 +10,8 @@
  *   B  summenZellen() ohne Einstandszelle → rot: „ohne Marktpreise“
  *      („Die Summenzeile der Sets zeigt den Einstand nicht“)
  *   C  Zähler ohnePreis ohne die Teile → rot: beide Fälle (3 statt 4, 2 statt 3)
+ *   D  G&V-Betrag wieder als Gesamtwert − Einstand → rot: „mit Marktpreisen“
+ *      (−397.93 neben +11.3 %; 28.10.)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -37,7 +39,8 @@ function antworten({ mitPreis }) {
       figs: [{ fig_number: 'fig-1', fig_name: 'Chewbacca', quantity: 1, avg_price: 0, acquisitions: [] }] },
     '/v1/finance/pnl': { success: true, currency: 'EUR', sets: [],
       totals: { purchase: '1097.93', sets_purchase: '1028.00', parts_purchase: '69.93', figs_purchase: '0.00',
-                grand_total: String(setPreis), pnl_pct: mitPreis ? 11.3 : null } },
+                grand_total: String(setPreis), pnl_pct: mitPreis ? 11.3 : null,
+                pnl_purchase: mitPreis ? '629.00' : '0.00', pnl_current: mitPreis ? '700.00' : '0.00' } },
   };
 }
 
@@ -68,5 +71,8 @@ test('mit Marktpreisen: Gesamtwert und G&V', async () => {
     assert.match(text(d.getElementById('fin-wert-sub')), /Marktpreis fehlt für 3 Positionen/);
     assert.notEqual(d.getElementById('fin-stat-pnl').style.display, 'none');
     assert.match(text(d.getElementById('fin-total-pnl')), /11\.3/);
+    // Betrag aus denselben Posten wie die Prozentzahl: 700 − 629, nicht 700 − 1097.93.
+    assert.match(zahl(text(d.getElementById('fin-pnl-sub'))), /^\+.*71\.00$/,
+      `Betrag passt nicht zur Prozentzahl: ${text(d.getElementById('fin-pnl-sub'))}`);
   } finally { w.close(); }
 });

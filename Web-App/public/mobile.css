@@ -127,7 +127,12 @@
   .sgrid       { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: .7rem; }
   .parts-grid  { grid-template-columns: repeat(auto-fill, minmax(108px, 1fr)); gap: .6rem; }
   .man-grid    { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: .6rem; }
-  .fgrid       { grid-template-columns: 1fr 1fr; }
+  /* minmax(0, …) statt 1fr: Eine Spalte darf schmaler werden als ihre längste
+     Zahl, die dann umbricht — sonst schob „Gesamtwert“ die Kachel über den Rand. */
+  .fgrid       { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem; }
+  .fgrid .fstat.hi { grid-column: 1 / -1; }
+  .fstat       { min-width: 0; padding: .85rem .9rem; }
+  .fval        { overflow-wrap: anywhere; }
 
   /* ─ Formularzeilen ──────────────────────────────────────────────────── */
   .frow, .gctrl, .sform {

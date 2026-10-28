@@ -305,6 +305,7 @@ export async function loadFinance(){
   if(G('portfolio-current')) G('portfolio-current').textContent = fmtN(grandTotal, cur);
   loadPortfolioChart();
   zeigeKennzahlen({ einstand: einstand.alle, wert: grandTotal, guv: gesamtGuv, ohnePreis, cur,
+    guvKauf: parseFloat(pnlData?.totals?.pnl_purchase) || 0, guvMarkt: parseFloat(pnlData?.totals?.pnl_current) || 0,
                     min: parseFloat(d.totals.min||0) + extra, max: parseFloat(d.totals.max||0) + extra });
   const summenZeile = (name, kauf, wert) => `<tr><td class="fin-fuss-name">${name}</td>${summenZellen(kauf, wert, cur, 0)}</tr>`;
   const grandTotalHtml = `
@@ -359,7 +360,7 @@ function summenZellen(kauf, wert, cur, luecke) {
  * und G&V nur, wenn es Marktpreise gibt — sonst sagt die Kachel, für wie
  * viele Positionen der Preis fehlt, statt „—“ zu zeigen.
  */
-function zeigeKennzahlen({ einstand, wert, guv, ohnePreis, cur, min, max }) {
+function zeigeKennzahlen({ einstand, wert, guv, ohnePreis, cur, min, max, guvKauf = 0, guvMarkt = 0 }) {
   G('fin-einstand').textContent = einstand > 0 ? fmtN(einstand, cur) : '—';
   const fehlt = ohnePreis > 0 ? tRaw('finance.price_missing_n', { n: ohnePreis }) : '';
   if (wert > 0) {
@@ -373,7 +374,8 @@ function zeigeKennzahlen({ einstand, wert, guv, ohnePreis, cur, min, max }) {
   G('fin-stat-pnl').style.display = guv != null && wert > 0 ? '' : 'none';
   if (guv != null) {
     G('fin-total-pnl').innerHTML = pnlBadge(guv);
-    G('fin-pnl-sub').textContent = einstand > 0 && wert > 0 ? `${wert >= einstand ? '+' : '−'}${fmtN(Math.abs(wert - einstand), cur)}` : '';
+    // Betrag und Prozent aus denselben Posten (mit Kauf- UND Marktpreis).
+    G('fin-pnl-sub').textContent = guvKauf > 0 ? `${guvMarkt >= guvKauf ? '+' : '−'}${fmtN(Math.abs(guvMarkt - guvKauf), cur)}` : '';
   }
 }
 
