@@ -442,10 +442,8 @@ app.get('/images/*pfad', async (req: WildcardRequest, res: Response) => {
       return antwortAufDateiFehler(res, err);
     }
 
-    // Fehlt eine VORSCHAU, gibt es fast immer das Original daneben — dann geht
-    // das raus, sofort (Nachtrag 40, Marcos Anforderung: „Der Client soll das
-    // Bild jeweils direkt erhalten und nicht warten, bis das Thumbs-Image
-    // generiert wurde. Ist kein Thumb vorhanden, soll das grosse Bild …
+    // Fehlt eine Vorschau, liegt fast immer das Original daneben: Das geht
+    // sofort hinaus, statt auf die Erzeugung der Vorschau zu warten.
     // Ausführlich: docs/begruendungen/server.ts.md#lookupcdnformissingimage-rohpfad
     const rohPfad = segments.join('/');
     const thumbTreffer = /_thumb(\.[^.]+)$/.exec(rohPfad);

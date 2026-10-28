@@ -186,7 +186,7 @@ CREATE TABLE minifig_acquisitions (
   CONSTRAINT minifig_acquisitions_zustand CHECK ((condition = ANY (ARRAY['N'::text, 'U'::text])))
 );
 CREATE INDEX idx_minifig_acq_gruppe ON minifig_acquisitions USING btree (user_id, fig_number);
-CREATE UNIQUE INDEX idx_minifig_acq_tag_zustand ON minifig_acquisitions USING btree (user_id, fig_number, (((created_at AT TIME ZONE 'UTC'::text))::date), condition, COALESCE(unit_price, ('-1'::integer)::numeric), price_estimated, currency);
+CREATE UNIQUE INDEX idx_minifig_acq_tag_merkmale ON minifig_acquisitions USING btree (user_id, fig_number, (((created_at AT TIME ZONE 'UTC'::text))::date), condition, COALESCE(unit_price, ('-1'::integer)::numeric), price_estimated, currency);
 CREATE TRIGGER minifig_acquisitions_waehrung BEFORE INSERT OR UPDATE ON minifig_acquisitions FOR EACH ROW EXECUTE FUNCTION erfassung_waehrung();
 
 CREATE TABLE minifig_parts_cache (
@@ -279,7 +279,7 @@ CREATE TABLE part_acquisitions (
   CONSTRAINT part_acquisitions_zustand CHECK ((condition = ANY (ARRAY['N'::text, 'U'::text])))
 );
 CREATE INDEX idx_part_acq_gruppe ON part_acquisitions USING btree (user_id, part_number, color_id);
-CREATE UNIQUE INDEX idx_part_acq_tag_zustand ON part_acquisitions USING btree (user_id, part_number, color_id, (((created_at AT TIME ZONE 'UTC'::text))::date), condition, COALESCE(unit_price, ('-1'::integer)::numeric), price_estimated, currency);
+CREATE UNIQUE INDEX idx_part_acq_tag_merkmale ON part_acquisitions USING btree (user_id, part_number, color_id, (((created_at AT TIME ZONE 'UTC'::text))::date), condition, COALESCE(unit_price, ('-1'::integer)::numeric), price_estimated, currency);
 CREATE TRIGGER part_acquisitions_waehrung BEFORE INSERT OR UPDATE ON part_acquisitions FOR EACH ROW EXECUTE FUNCTION erfassung_waehrung();
 
 CREATE TABLE part_catalog (
@@ -472,6 +472,7 @@ CREATE TABLE rate_limit_attempts (
   key text NOT NULL,
   count integer NOT NULL DEFAULT 1,
   first_at timestamp with time zone NOT NULL DEFAULT now(),
+  last_at timestamp with time zone,
   CONSTRAINT rate_limit_attempts_pkey PRIMARY KEY (key)
 );
 CREATE INDEX idx_rate_limit_first_at ON rate_limit_attempts USING btree (first_at);
@@ -582,7 +583,7 @@ CREATE TABLE set_acquisitions (
   CONSTRAINT set_acquisitions_zustand CHECK ((condition = ANY (ARRAY['N'::text, 'U'::text])))
 );
 CREATE INDEX idx_acq_user_set ON set_acquisitions USING btree (user_id, set_number);
-CREATE UNIQUE INDEX idx_set_acq_tag_zustand ON set_acquisitions USING btree (user_id, set_number, (((created_at AT TIME ZONE 'UTC'::text))::date), condition, COALESCE(purchase_price, ('-1'::integer)::numeric), price_estimated, currency);
+CREATE UNIQUE INDEX idx_set_acq_tag_merkmale ON set_acquisitions USING btree (user_id, set_number, (((created_at AT TIME ZONE 'UTC'::text))::date), condition, COALESCE(purchase_price, ('-1'::integer)::numeric), price_estimated, currency);
 CREATE TRIGGER set_acquisitions_waehrung BEFORE INSERT OR UPDATE ON set_acquisitions FOR EACH ROW EXECUTE FUNCTION erfassung_waehrung();
 CREATE TRIGGER trg_bump_parts_version_del AFTER DELETE ON set_acquisitions REFERENCING OLD TABLE AS alt FOR EACH STATEMENT EXECUTE FUNCTION bump_parts_version_del();
 CREATE TRIGGER trg_bump_parts_version_ins AFTER INSERT ON set_acquisitions REFERENCING NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION bump_parts_version_ins();
@@ -721,6 +722,19 @@ CREATE TABLE users (
 );
 CREATE UNIQUE INDEX users_email_unique ON users USING btree (email) WHERE (email IS NOT NULL);
 
+CREATE TABLE verwaltungsprotokoll (
+  id integer NOT NULL DEFAULT nextval('verwaltungsprotokoll_id_seq'::regclass),
+  zeit timestamp with time zone NOT NULL DEFAULT now(),
+  verwalter_id integer,
+  ziel_id integer,
+  ziel_name text,
+  aktion text NOT NULL,
+  CONSTRAINT verwaltungsprotokoll_pkey PRIMARY KEY (id),
+  CONSTRAINT verwaltungsprotokoll_verwalter_id_fkey FOREIGN KEY (verwalter_id) REFERENCES users(id) ON DELETE SET NULL
+);
+CREATE INDEX idx_verwaltungsprotokoll_verwalter ON verwaltungsprotokoll USING btree (verwalter_id);
+CREATE INDEX idx_verwaltungsprotokoll_zeit ON verwaltungsprotokoll USING btree (zeit DESC);
+
 CREATE TABLE vouchers (
   id integer NOT NULL DEFAULT nextval('vouchers_id_seq'::regclass),
   user_id integer NOT NULL,
@@ -774,36 +788,36 @@ CREATE OR REPLACE FUNCTION bump_parts_version_del()
  RETURNS trigger
  LANGUAGE plpgsql
 AS $function$
-    BEGIN
-      INSERT INTO parts_version_user (user_id, v)
-      SELECT DISTINCT user_id, 1 FROM alt WHERE user_id IS NOT NULL AND user_id IN (SELECT id FROM users)
-      ON CONFLICT (user_id) DO UPDATE SET v = parts_version_user.v + 1;
-      RETURN NULL;
-    END $function$;
+BEGIN
+  INSERT INTO parts_version_user (user_id, v)
+  SELECT DISTINCT user_id, 1 FROM alt WHERE user_id IS NOT NULL AND user_id IN (SELECT id FROM users)
+  ON CONFLICT (user_id) DO UPDATE SET v = parts_version_user.v + 1;
+  RETURN NULL;
+END $function$;
 
 CREATE OR REPLACE FUNCTION bump_parts_version_ins()
  RETURNS trigger
  LANGUAGE plpgsql
 AS $function$
-    BEGIN
-      INSERT INTO parts_version_user (user_id, v)
-      SELECT DISTINCT user_id, 1 FROM neu WHERE user_id IS NOT NULL AND user_id IN (SELECT id FROM users)
-      ON CONFLICT (user_id) DO UPDATE SET v = parts_version_user.v + 1;
-      RETURN NULL;
-    END $function$;
+BEGIN
+  INSERT INTO parts_version_user (user_id, v)
+  SELECT DISTINCT user_id, 1 FROM neu WHERE user_id IS NOT NULL AND user_id IN (SELECT id FROM users)
+  ON CONFLICT (user_id) DO UPDATE SET v = parts_version_user.v + 1;
+  RETURN NULL;
+END $function$;
 
 CREATE OR REPLACE FUNCTION bump_parts_version_upd()
  RETURNS trigger
  LANGUAGE plpgsql
 AS $function$
-    BEGIN
-      INSERT INTO parts_version_user (user_id, v)
-      SELECT DISTINCT user_id, 1 FROM (
-        SELECT user_id FROM alt UNION SELECT user_id FROM neu
-      ) x WHERE user_id IS NOT NULL AND user_id IN (SELECT id FROM users)
-      ON CONFLICT (user_id) DO UPDATE SET v = parts_version_user.v + 1;
-      RETURN NULL;
-    END $function$;
+BEGIN
+  INSERT INTO parts_version_user (user_id, v)
+  SELECT DISTINCT user_id, 1 FROM (
+    SELECT user_id FROM alt UNION SELECT user_id FROM neu
+  ) x WHERE user_id IS NOT NULL AND user_id IN (SELECT id FROM users)
+  ON CONFLICT (user_id) DO UPDATE SET v = parts_version_user.v + 1;
+  RETURN NULL;
+END $function$;
 
 CREATE OR REPLACE FUNCTION erfassung_waehrung()
  RETURNS trigger

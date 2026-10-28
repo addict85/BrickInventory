@@ -92,17 +92,18 @@ ALTER TABLE part_acquisitions    ALTER COLUMN currency SET NOT NULL;
 ALTER TABLE minifig_acquisitions ALTER COLUMN currency SET NOT NULL;
 
 -- ── Tagesregel mit Preis, Herkunft und Währung ──────────────────────────────
--- Der neue Schlüssel umfasst den alten; beim Anlegen kann es keine Dubletten geben.
+-- Der neue Schlüssel umfasst den alten; beim Anlegen kann es keine Dubletten
+-- geben. Neue Namen, damit jeder Index an genau einer Stelle entsteht.
 DROP INDEX IF EXISTS idx_set_acq_tag_zustand;
 DROP INDEX IF EXISTS idx_part_acq_tag_zustand;
 DROP INDEX IF EXISTS idx_minifig_acq_tag_zustand;
-CREATE UNIQUE INDEX idx_set_acq_tag_zustand ON set_acquisitions
+CREATE UNIQUE INDEX idx_set_acq_tag_merkmale ON set_acquisitions
   (user_id, set_number, ((created_at AT TIME ZONE 'UTC')::date), condition,
    (COALESCE(purchase_price, -1)), price_estimated, currency);
-CREATE UNIQUE INDEX idx_part_acq_tag_zustand ON part_acquisitions
+CREATE UNIQUE INDEX idx_part_acq_tag_merkmale ON part_acquisitions
   (user_id, part_number, color_id, ((created_at AT TIME ZONE 'UTC')::date), condition,
    (COALESCE(unit_price, -1)), price_estimated, currency);
-CREATE UNIQUE INDEX idx_minifig_acq_tag_zustand ON minifig_acquisitions
+CREATE UNIQUE INDEX idx_minifig_acq_tag_merkmale ON minifig_acquisitions
   (user_id, fig_number, ((created_at AT TIME ZONE 'UTC')::date), condition,
    (COALESCE(unit_price, -1)), price_estimated, currency);
 

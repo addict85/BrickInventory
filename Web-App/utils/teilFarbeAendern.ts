@@ -127,7 +127,7 @@ export async function aendereTeilFarbe(
     // ── Erfassungen: erst addieren, was den gleichen Indexschlüssel hätte ──
     //
     // Die Reihenfolge ist zwingend. Zöge das UPDATE unten zuerst um, liefe es
-    // in `idx_part_acq_tag_zustand` — und zwar nur manchmal, nämlich wenn beide Farben
+    // in `idx_part_acq_tag_merkmale` — und zwar nur manchmal, nämlich wenn beide Farben
     // am gleichen Tag erfasst wurden. Ein Fehler, der von der Uhr abhängt.
     const vereint = await tx.run(
       `UPDATE part_acquisitions z

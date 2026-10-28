@@ -77,6 +77,8 @@ export async function initPartsSummary(pool: any) {
     END $$ LANGUAGE plpgsql`);
   // Nur für bestehende Konten: Beim Löschen eines Kontos laufen diese Trigger
   // im Cascade, und der Fremdschlüssel auf users würde den Zähler ablehnen.
+  // Dieser Block läuft nur beim Erststart; eine Änderung braucht zusätzlich
+  // eine Migration (wie 0050), sonst behalten bestehende Datenbanken die alte.
   await pool.query(`
     CREATE OR REPLACE FUNCTION bump_parts_version_del() RETURNS trigger AS $$
     BEGIN
