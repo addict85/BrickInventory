@@ -29,7 +29,8 @@ test('de-DE', async () => {
   assert.match(await einstand('de-DE'), /1\.097,93/);
 });
 
+// Das Hochkomma hängt an der ICU-Fassung: Node 22 setzt ’, Node 26 setzt '.
 test('de-CH und ohne Landesangabe', async () => {
-  assert.match(await einstand('de-CH'), /1’097\.93/);
-  assert.match(await einstand('en-US'), /1’097\.93/, 'deutsche Oberfläche, fremder Browser: de-CH');
+  assert.match(await einstand('de-CH'), /1['’]097\.93/);
+  assert.match(await einstand('en-US'), /1['’]097\.93/, 'deutsche Oberfläche, fremder Browser: de-CH');
 });
