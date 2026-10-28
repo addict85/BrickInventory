@@ -7,13 +7,13 @@ import { handleRouteError, logAndContinue, meldeUndWeiter, fehlertext } from '..
 import { pruefeRebrickableZugang } from '../clients/rebrickable';
 import { pruefeBricksetZugang } from '../clients/brickset';
 import { pruefeBricklinkZugang } from '../clients/bricklink';
-import { requireLogin, requireAdmin } from './auth';
+import { requireApiAdmin as requireAdmin } from './api_v1/middleware';
+const requireLogin = requireLoginOrToken;
 
 import { setUserSetting, setGlobalSetting, setGlobalTrigger, getGlobalSetting, SECRET_KEYS, isMaskedValue, readSettings, nutzerEinstellungen } from '../utils/settings';
 import { getRateLimitStatus } from '../utils/financeCalc';
 import { buildSetsCsv } from '../utils/setService';
-import { buildPartsCsv } from './parts';
-import { buildFigsCsv } from './minifigs';
+import { buildPartsCsv, buildFigsCsv } from '../utils/bestandExport';
 import { buildMerklisteCsv } from '../utils/merkliste';
 import { buildPreisalarmeCsv } from '../utils/preisalarm';
 import { DAILY_JOBS } from '../jobs/dailyScheduler';

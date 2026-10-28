@@ -31,11 +31,17 @@ const ohneKommentare = (src) => src.split('\n')
   .map(z => { const t = z.trim(); return (t.startsWith('//') || t.startsWith('*') || t.startsWith('/*')) ? '' : z; })
   .join('\n');
 
-/** Die Spalten des ersten toCsv([...]) in einer Datei. */
-function exportSpalten(rel) {
-  const src = ohneKommentare(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
+/** Die Spalten des ersten toCsv([...]) in einer Datei — oder ab `datei#funktion`. */
+function exportSpalten(ziel) {
+  const [rel, fn] = ziel.split('#');
+  let src = ohneKommentare(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
+  if (fn) {
+    const i = src.indexOf(`function ${fn}(`);
+    assert.ok(i >= 0, `${rel}: ${fn}() nicht gefunden`);
+    src = src.slice(i);
+  }
   const m = /toCsv\(\s*\n?\s*\[([^\]]+)\]/.exec(src);
-  assert.ok(m, `${rel}: kein toCsv([...]) gefunden — Export umgebaut?`);
+  assert.ok(m, `${ziel}: kein toCsv([...]) gefunden — Export umgebaut?`);
   return m[1].split(",").map(s => s.trim().replace(/^['"]|['"]$/g, "")).filter(Boolean);
 }
 
@@ -82,8 +88,8 @@ function importSchluessel(rel) {
 test('jede exportierte Spalte wird beim Import auch gelesen', () => {
   const paare = [
     ['Sets',        'utils/setService.ts', 'routes/sets.ts'],
-    ['Teile',       'routes/parts.ts',     'routes/parts.ts'],
-    ['Minifiguren', 'routes/minifigs.ts',  'routes/minifigs.ts'],
+    ['Teile',       'utils/bestandExport.ts#buildPartsCsv', 'routes/parts.ts'],
+    ['Minifiguren', 'utils/bestandExport.ts#buildFigsCsv',  'routes/minifigs.ts'],
   ];
 
   const fehlend = [];

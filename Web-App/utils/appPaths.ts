@@ -46,6 +46,8 @@ const MINIFIG_IMAGES_DIR = path.join(IMAGES_DIR, 'minifigs');
  * Ausführlich: docs/begruendungen/utils/appPaths.ts.md#instructions-dir
  */
 const INSTRUCTIONS_DIR = path.join(DATA_DIR, 'instructions');
+/** Aufträge und Ergebnisse der PDF-Erzeugung. */
+const PDF_JOB_DIR = path.join(DATA_DIR, 'pdf-jobs');
 
 /**
  * Web-Pfad ("/data/…" oder "/images/…") in einen Dateisystempfad übersetzen.
@@ -65,6 +67,6 @@ function resolveWebPath(webPath: string): string | null {
 
 export {
   APP_ROOT, DATA_DIR, PUBLIC_DIR, IMAGES_DIR,
-  SET_IMAGES_DIR, PART_IMAGES_DIR, MINIFIG_IMAGES_DIR, INSTRUCTIONS_DIR,
+  SET_IMAGES_DIR, PART_IMAGES_DIR, MINIFIG_IMAGES_DIR, INSTRUCTIONS_DIR, PDF_JOB_DIR,
   resolveWebPath,
 };

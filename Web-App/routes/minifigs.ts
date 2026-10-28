@@ -30,7 +30,8 @@ import { zustandFuerPreis } from '../utils/settings';
 // Frage wurde vorher an drei Orten in zwei Schichten beantwortet.
 import { estimateFigPriceFromParts, figMarktpreisMitHerkunft, getCurrentFigMarketPrice } from '../utils/marketPrice';
 import { kaufpreisAusEingabe, manuellerKaufpreis } from '../utils/preisRegel';
-import { csvGemeinsameFelder, csvImportAntwort, csvZeilenAusAnfrage, toCsv } from '../utils/csvExport';
+import { csvGemeinsameFelder, csvImportAntwort, csvZeilenAusAnfrage } from '../utils/csvExport';
+import { buildFigsCsv } from '../utils/bestandExport';
 import { angemeldeteNutzerId } from '../utils/auth';
 import { csvEmpfang } from '../utils/dateiEmpfang';
 import { sendeFehler } from '../utils/fehlerTexte';
@@ -50,55 +51,6 @@ router.use(requireLogin);
 
 // ── GET manual minifigs only ──────────────────────────────────────────────────
 
-// Shared logic to build the Minifiguren CSV export content (manuell erfasst only).
-// Used by both the standalone CSV download and the combined ZIP export in settings.js.
-// Dieselbe Bauart wie SETS_CSV_SQL in utils/setService.ts, aus demselben Grund:
-// Hier lief eine Abfrage JE MINIFIGUR. Auch die Falle ist dieselbe — zu einer
-// vorhandenen Erfassung OHNE Preis gehoert ein leeres Feld, nicht der Preis der
-// Figuren-Zeile. Entschieden wird deshalb an `a.id IS NULL`, nicht mit COALESCE
-// ueber die Werte.
-const FIGS_CSV_SQL = `
-  SELECT f.fig_number,
-         -- Die BrickLink-Nummer aus der Zuordnung (Migration 0037); hier
-         -- stand COALESCE(f.bl_fig_number,''), eine Abschrift je Konto.
-         -- Das leere Feld bleibt die Ausgabe fuer „keine abweichende
-         -- Nummer" — in der Zuordnung ist das eine leere bl_id.
-         COALESCE(z.bl_id,'') AS bl_fig_number,
-         -- Der Rueckfall auf die Stammzeile ist weg: Migration 0035 hat
-         -- f.unit_price und f.condition geloescht und traegt fuer jede
-         -- manuelle Figur eine Erfassung nach. Dieselbe Aenderung wie bei
-         -- PARTS_CSV_SQL in routes/parts.ts, wo sie ausgeschrieben steht.
-         -- Ohne Rueckfall auf f.quantity: Migration 0038 hat die Spalte
-         -- geloescht. Siehe PARTS_CSV_SQL in routes/parts.ts.
-         COALESCE(a.quantity, 0) AS quantity,
-         a.unit_price,
-         COALESCE(a.condition, 'N') AS condition,
-         CASE WHEN a.id IS NULL THEN ''
-              ELSE TO_CHAR(a.created_at AT TIME ZONE 'UTC','YYYY-MM-DD') END AS acquired_at
-    FROM minifigs f
-    LEFT JOIN bl_zuordnung z ON z.art = 'fig' AND z.rb_id = f.fig_number
-    LEFT JOIN minifig_acquisitions a
-           ON a.user_id = f.user_id AND a.fig_number = f.fig_number
-    -- Der Figurenname steht seit Migration 0034 im Katalog. LEFT JOIN, damit
-    -- eine Figur ohne Katalogzeile nicht aus dem Export faellt.
-    LEFT JOIN minifigs_catalog mc ON mc.fig_number = f.fig_number
-   WHERE f.user_id = $1 AND f.source = 'manual'
-   ORDER BY mc.fig_name ASC, f.fig_number ASC, a.created_at ASC, a.id ASC`;
-
-async function buildFigsCsv(uid: number) {
-  // Ohne zweite Abfrage als Rueckfall — sie zeigte auf f.unit_price und
-  // f.condition, die Migration 0035 geloescht hat. Siehe buildPartsCsv in
-  // routes/parts.ts.
-  const acqRows = (await db.all(FIGS_CSV_SQL, [uid]))
-    .map((r: any) => ({ ...r, unit_price: r.unit_price ?? '' }));
-
-  // Die Abfrage liefert die Felder bereits in der Form, die der Export braucht
-  // (COALESCE auf '' beziehungsweise 'N' steht oben im SQL) — das frueher hier
-  // stehende zweite Mapping war damit eine zweite Fassung derselben Regel.
-  return toCsv(
-    ['fig_number', 'bl_fig_number', 'quantity', 'unit_price', 'condition', 'acquired_at'],
-    acqRows);
-}
 
 // ── GET /api/minifigs/export/csv ist ENTFERNT ────────────────────────────────
 //
@@ -303,7 +255,7 @@ async function updateManualFig(uid: number, figNumber: string, body: any) {
       [uid, figNumber]))?.q ?? 0;
     const mp = newQty > bisher
       ? await getCurrentFigMarketPrice(figNumber, uid, existing.bl_fig_number, cond).catch(() => null) : null;
-    await withInventoryLock(uid, bestandsSchluessel('fig', [figNumber]), async (tx: any) => {
+    await withInventoryLock(uid, bestandsSchluessel('fig', [figNumber]), async (tx) => {
       const acqs = await tx.all('SELECT id, quantity, created_at FROM minifig_acquisitions WHERE user_id=$1 AND fig_number=$2 ORDER BY created_at DESC, id DESC',
         [uid, figNumber]);
       const currentTotal = acqs.reduce((s: number, r: any) => s + r.quantity, 0);

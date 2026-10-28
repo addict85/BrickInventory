@@ -4,6 +4,7 @@
  */
 
 import fs from 'fs';
+import crypto from 'crypto';
 import { APP_ROOT, IMAGES_DIR } from '../utils/appPaths';
 import path from 'path';
 
@@ -114,3 +115,13 @@ function resolveIfExists(publicRelPath: string) {
 
 export { resolveImageLocal, proxyImageUrl, resolveIfExists,
          IMG_PROXY_PFAD, IMG_PROXY_PFAD_ALT, istProxyPfad };
+
+/**
+ * Wo läge das Bild dieser CDN-Adresse im Proxy-Cache?
+ * Ausführlich: docs/begruendungen/routes/imgProxy.ts.md#proxycachepathfor
+ */
+export function proxyCachePathFor(url: string): string | null {
+  if (!url) return null;
+  return path.join(APP_ROOT, 'data', 'img_proxy_cache',
+    crypto.createHash('sha1').update(url).digest('hex'));
+}

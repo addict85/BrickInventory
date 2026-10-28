@@ -23,7 +23,7 @@ import { withInventoryLock, bestandsSchluessel } from '../utils/txLock';
 // Die Katalogarbeit liegt seit Nachtrag 131 in utils/partsImport.ts — sonst
 // müsste utils/setService.ts (addSet) einen Router importieren.
 import { importPartsForSet, fetchMissingBlIds } from '../utils/partsImport';
-import { requireLogin } from './auth';
+import { requireLoginOrToken as requireLogin } from '../utils/auth';
 // Blickfeld — dieselbe Quelle wie in routes/api_v1/parts.ts.
 import { scopeIds, parseScopeMode } from '../utils/household';
 import { kaufpreisAusEingabe, manuellerKaufpreis } from '../utils/preisRegel';
@@ -370,7 +370,7 @@ async function updateManualPart(uid: number, partNumber: string, colorId: number
       ? await getCurrentPartMarketPrice(partNumber, colorId, uid, cond).catch(() => null) : null;
     // Unter der Bestandssperre: Lesen, Delta rechnen und Schreiben dürfen sich
     // nicht mit einer gleichzeitigen Änderung (Web und App) überholen.
-    await withInventoryLock(uid, bestandsSchluessel('part', [partNumber, colorId]), async (tx: any) => {
+    await withInventoryLock(uid, bestandsSchluessel('part', [partNumber, colorId]), async (tx) => {
       const acqs = await tx.all('SELECT id, quantity, created_at FROM part_acquisitions WHERE user_id=$1 AND part_number=$2 AND color_id=$3 ORDER BY created_at DESC, id DESC',
         [uid, partNumber, colorId]);
       const currentTotal = acqs.reduce((s: number, r: any) => s + r.quantity, 0);
@@ -438,7 +438,8 @@ async function updateManualPart(uid: number, partNumber: string, colorId: number
 // ── POST /api/parts/import/csv — CSV import of manual parts ──────────────────
 // CSV columns: part_number, color_id (opt), color_name (opt), quantity, unit_price (opt)
 import { getBrickColors, lookupPart } from '../clients/rebrickable';
-import { csvGemeinsameFelder, csvImportAntwort, csvZeilenAusAnfrage, toCsv } from '../utils/csvExport';
+import { csvGemeinsameFelder, csvImportAntwort, csvZeilenAusAnfrage } from '../utils/csvExport';
+import { buildPartsCsv } from '../utils/bestandExport';
 import { angemeldeteNutzerId } from '../utils/auth';
 import { csvEmpfang } from '../utils/dateiEmpfang';
 import { sendeFehler } from '../utils/fehlerTexte';
@@ -540,48 +541,6 @@ router.post('/import/csv', csvEmpfang.single('file'), async (req: LoggedInReques
 
 // ── GET /api/parts/manual — list only manually added parts ────────────────────
 
-// Shared logic to build the Teile CSV export content (manuell erfasst only).
-// Used by both the standalone CSV download and the combined ZIP export in settings.js.
-// Ausführlich: docs/begruendungen/routes/parts.ts.md#parts-csv-sql
-const PARTS_CSV_SQL = `
-  SELECT p.part_number,
-         -- Die Menge der ERFASSUNG, ohne Rueckfall auf die Zeile: Migration
-         -- 0038 hat p.quantity geloescht, und dieser Export liefert eine
-         -- Zeile JE ERFASSUNG (source='manual' unten). Ohne Erfassung gibt
-         -- es keine Zeile und damit keine Menge — 0 statt leer, dieselbe
-         -- Lesart wie im Sets-Export (utils/setService.ts).
-         COALESCE(a.quantity, 0) AS quantity,
-         COALESCE(p.color_id, 0) AS color_id,
-         COALESCE(pcc.color_name,'') AS color_name,
-         a.unit_price,
-         COALESCE(a.condition, 'N') AS condition,
-         CASE WHEN a.id IS NULL THEN ''
-              ELSE TO_CHAR(a.created_at AT TIME ZONE 'UTC','YYYY-MM-DD') END AS acquired_at
-    FROM parts p
-    LEFT JOIN part_acquisitions a
-           ON a.user_id = p.user_id
-          AND a.part_number = p.part_number
-          AND COALESCE(a.color_id, 0) = COALESCE(p.color_id, 0)
-    -- Name und Farbbezeichnung aus den Katalogen (Migration 0034). LEFT JOIN,
-    -- damit ein Teil ohne Katalogzeile nicht aus dem Export faellt.
-    LEFT JOIN part_catalog pc ON pc.part_number = p.part_number
-    LEFT JOIN part_color_catalog pcc ON pcc.part_number = p.part_number
-                                    AND pcc.color_id    = p.color_id
-   WHERE p.user_id = $1 AND p.source = 'manual'
-   ORDER BY pc.part_name ASC, p.part_number ASC, a.created_at ASC, a.id ASC`;
-
-async function buildPartsCsv(uid: number) {
-  // Ohne zweite Abfrage als Rueckfall — siehe die Begruendung bei
-  // PARTS_CSV_SQL. Scheitert sie, soll der Fehler sichtbar werden, statt eine
-  // Abfrage zu versuchen, die auf geloeschte Spalten zeigt.
-  const rows = (await db.all(PARTS_CSV_SQL, [uid]))
-    .map((r: any) => ({ ...r, unit_price: r.unit_price ?? '' }));
-
-  return toCsv(
-    ['part_number', 'quantity', 'color_id', 'color_name', 'unit_price', 'condition', 'acquired_at'],
-    rows
-  );
-}
 
 // ── GET /api/parts/export/csv ist ENTFERNT ───────────────────────────────────
 //

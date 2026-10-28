@@ -51,7 +51,7 @@ export function meldeHaushaltsaenderung(): void {
 async function kinder(id: number): Promise<number[]> {
   const rows = await db.all(
     'SELECT sub_user_id FROM account_links WHERE main_user_id = $1 ORDER BY sub_user_id', [id]);
-  return rows.map((r: any) => parseInt(r.sub_user_id));
+  return rows.map((r: { sub_user_id: number | string }) => parseInt(String(r.sub_user_id)));
 }
 
 export async function resolveHousehold(uid: number): Promise<Household> {
@@ -69,7 +69,7 @@ export async function resolveHousehold(uid: number): Promise<Household> {
   const haushalt: Household = {
     memberIds: [id, ...unten],
     isMain: unten.length > 0,
-    elternIds: eltern.map((r: any) => parseInt(r.main_user_id)),
+    elternIds: eltern.map((r: { main_user_id: number | string }) => parseInt(String(r.main_user_id))),
   };
   if (_haushalte.size >= HAUSHALT_MAX) _haushalte.clear();
   _haushalte.set(id, { wert: haushalt, zeit: Date.now() });

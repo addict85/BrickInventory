@@ -443,14 +443,5 @@ export function startImgCacheCleanup() {
   return setInterval(lauf, 24 * 60 * 60 * 1000).unref();
 }
 
-/**
- * Wo läge das Bild dieser CDN-Adresse im Proxy-Cache?
- * Ausführlich: docs/begruendungen/routes/imgProxy.ts.md#proxycachepathfor
- */
-function proxyCachePathFor(url: string): string | null {
-  if (!url) return null;
-  return path.join(APP_ROOT, 'data', 'img_proxy_cache',
-    crypto.createHash('sha1').update(url).digest('hex'));
-}
 
-export { registerImgProxy, proxyCachePathFor };
+export { registerImgProxy };
