@@ -243,6 +243,8 @@ app.use((req, _res, next) => { if (req.body === undefined) req.body = {}; next()
 if (process.env.NODE_ENV === 'production')
   app.set('trust proxy', (require('./utils/proxyVertrauen') as typeof import('./utils/proxyVertrauen'))
     .proxyVertrauen(process.env.TRUST_PROXY));
+  app.use((require('./utils/proxyVertrauen') as typeof import('./utils/proxyVertrauen'))
+    .proxyHinweis(process.env.TRUST_PROXY));
 
 // Doppelte Schrägstriche im Pfad zusammenfassen
 // `//api/img-proxy?url=…` trifft in Express NICHT auf `/api/img-proxy`. Die

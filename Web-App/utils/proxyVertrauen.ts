@@ -33,3 +33,36 @@ function dockerProxyOhneGateway(adresse: string): boolean {
   // fc00::/7, ohne das Gateway (letzte Gruppe 1).
   return erste >= 0xfc00 && erste <= 0xfdff && gruppen[gruppen.length - 1] !== '1';
 }
+
+/** Das Gateway eines Docker-Netzes (x.y.0.1 in 172.16/12, …:1 in fc00::/7). */
+export function istDockerGateway(adresse: string): boolean {
+  const a = adresse.replace(/^::ffff:(?=\d+\.\d+\.\d+\.\d+$)/i, '');
+  const v4 = /^(\d+)\.(\d+)\.(\d+)\.(\d+)$/.exec(a);
+  if (v4) {
+    const [o1, o2, o3, o4] = v4.slice(1).map(Number);
+    return o1 === 172 && o2! >= 16 && o2! <= 31 && o3 === 0 && o4 === 1;
+  }
+  const gruppen = a.toLowerCase().split(':');
+  const erste = parseInt(gruppen[0] || '0', 16);
+  return erste >= 0xfc00 && erste <= 0xfdff && gruppen[gruppen.length - 1] === '1';
+}
+
+/**
+ * Einmal warnen, wenn ein Proxy über das Docker-Gateway kommt und TRUST_PROXY
+ * fehlt. Dann gilt jede Anfrage als dieselbe Adresse: Fünf Fehlversuche eines
+ * Fremden sperren den Inhaber aus, und die Drosseln für Rücksetzen und
+ * Registrieren gelten für alle zusammen.
+ */
+export function proxyHinweis(trustProxy: string | undefined, warne: (text: string) => void = console.warn) {
+  let gewarnt = !!(trustProxy ?? '').trim();
+  return (req: import('express').Request, _res: import('express').Response, next: import('express').NextFunction) => {
+    const von = req.socket?.remoteAddress || '';
+    if (!gewarnt && req.headers['x-forwarded-for'] && istDockerGateway(von)) {
+      gewarnt = true;
+      warne(`⚠️ [sicherheit] Ein Reverse-Proxy erreicht den Server über das Docker-Gateway ${von}. `
+        + 'Ohne TRUST_PROXY wird sein X-Forwarded-For verworfen, und alle Clients teilen sich eine Adresse '
+        + `(Anmeldesperre, Drosseln). TRUST_PROXY=${von.replace(/^::ffff:/i, '')} setzen — siehe README.md.`);
+    }
+    next();
+  };
+}
