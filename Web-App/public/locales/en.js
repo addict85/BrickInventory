@@ -211,6 +211,8 @@ window.I18N_EN = {
   'parts.add.price_placeholder': 'Empty = market price',
   // ── Addendum: previously hardcoded dynamic UI texts ──
   'common.filter': 'Filter',
+  'common.reset_filter': 'Reset filters',
+  'gallery.no_results_filter': 'No sets match this filter',
   'common.delete': 'Delete',
   'common.remove': 'Remove',
   'common.loading': 'Loading…',

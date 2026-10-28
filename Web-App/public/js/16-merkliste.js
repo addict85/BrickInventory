@@ -1,6 +1,6 @@
 import { registerActions } from './00-registry.js';
 import { locale, t, tRaw } from '../i18n.js';
-import { bildTag, platzhalterInhalt, setnummerFeldGueltig, leerZustand, ico, CURRENCY, G, TRASH_ICON_SVG, api, esc, escJs, escUrl, fmtN, fullUrl, imgUrl, knopfBesetzt, thumbUrl, toast } from './01-core.js';
+import { bildTag, platzhalterInhalt, setnummerFeldGueltig, leerZustand, ico, CURRENCY, G, TRASH_ICON_SVG, api, esc, escJs, escUrl, fmtN, fullUrl, imgUrl, knopfBesetzt, thumbUrl, toast, zuruecksetzenKnopf } from './01-core.js';
 import { detailZeile } from './01-bausteine.js';
 import { alarmBlock, diagrammBreite, ladeAlarm, priceChartSVG, renderMarketRows, setzeAlarmFeld } from './07-admin.js';
 import { leereLagerortFeld, selectedOwner, selectedStorage, haushaltsKonten, loadGallery, loadStats } from './02-gallery.js';
@@ -168,6 +168,13 @@ function merklisteParams() {
   return p.toString();
 }
 
+/** Suche und Zustand leeren; die Sortierung ist kein Filter und bleibt. */
+export function merklisteZuruecksetzen() {
+  if (G('mks')) G('mks').value = '';
+  if (G('mkcond')) G('mkcond').value = '';
+  ladeMerkliste();
+}
+
 /** Die Liste laden und zeichnen. */
 export async function ladeMerkliste() {
   const ziel = G('mk-list');
@@ -189,7 +196,7 @@ export async function ladeMerkliste() {
   ziel.innerHTML = _merkposten.length
     ? _merkposten.map(zeile).join('')
     : (gefiltert
-      ? leerZustand({ ico: 'suche', titel: tRaw('wanted.no_results') })
+      ? leerZustand({ ico: 'suche', titel: tRaw('wanted.no_results'), knopf: zuruecksetzenKnopf('merkliste') })
       : leerZustand({ ico: 'merkliste', titel: tRaw('wanted.empty'), text: tRaw('wanted.empty_hint') }));
 }
 

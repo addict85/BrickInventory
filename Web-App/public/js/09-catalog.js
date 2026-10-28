@@ -1,7 +1,7 @@
 import { detailZeile, ladeAnzeige } from './01-bausteine.js';
 import { registerActions } from './00-registry.js';
 import { locale, t, tRaw} from '../i18n.js';
-import { bildTag, platzhalterInhalt, leerZustand, ico, G, api, esc, escUrl, fullUrl, imgUrl, thumbUrl, toast } from './01-core.js';
+import { bildTag, platzhalterInhalt, leerZustand, ico, G, api, esc, escUrl, fullUrl, imgUrl, thumbUrl, toast, zuruecksetzenKnopf } from './01-core.js';
 import { setScrollLabel } from './15-scrollbar.js';
 import { PARTS_ICON_SVG, handleSseEvent, hideProgress, leereLagerortFeld, loadGallery, loadStats, selectedOwner, selectedStorage, showProgress, streamFertig, streamRequest } from './02-gallery.js';
 import { _lastImportAt , set_lastImportAt} from './07-admin.js';
@@ -114,6 +114,13 @@ async function loadCatalogMeta(){
   _initYearRail();
 }
 
+/** Suche, Thema und Jahre leeren; die Sortierung bleibt. */
+export function katalogZuruecksetzen(){
+  G('cat-search').value = ''; G('cat-theme').value = '';
+  _catState.q = ''; _catState.theme = '';
+  setCatalogYearRange('', '');
+}
+
 /** Zentrale Stelle für Jahresbereichs-Änderungen — hält Dropdowns, Slider und Badge synchron. */
 function setCatalogYearRange(from, to){
   from = from ? String(from) : '';
@@ -171,7 +178,8 @@ async function loadCatalogSets(){
     // Ohne Filter heisst „leer": der Katalog ist noch nicht abgeglichen.
     const gefiltert = !!(_catState.q || _catState.theme || _catState.yearFrom || _catState.yearTo);
     grid.innerHTML = leerZustand({ ico: gefiltert ? 'suche' : 'katalog', titel: tRaw('catalog.no_results'),
-      text: tRaw(gefiltert ? 'catalog.no_results_hint' : 'catalog.empty_hint') });
+      text: tRaw(gefiltert ? 'catalog.no_results_hint' : 'catalog.empty_hint'),
+      knopf: gefiltert ? zuruecksetzenKnopf('catalog') : undefined });
     setScrollLabel(null);
     return;
   }

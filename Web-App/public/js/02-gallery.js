@@ -1,7 +1,7 @@
 import { ladeAnzeige } from './01-bausteine.js';
 import { registerActions } from './00-registry.js';
 import { locale, t, tRaw} from '../i18n.js';
-import { bildTag, fullUrl, platzhalterInhalt, setnummerFeldGueltig, leerZustand, ico, CURRENCY, G, ME, TRASH_ICON_SVG, api, esc, escJs, escUrl, fmtBig, fmtN, fmtPct, imgUrl, observeLazyImages, thumbUrl, toast } from './01-core.js';
+import { bildTag, fullUrl, platzhalterInhalt, setnummerFeldGueltig, leerZustand, ico, CURRENCY, G, ME, TRASH_ICON_SVG, api, esc, escJs, escUrl, fmtBig, fmtN, fmtPct, imgUrl, observeLazyImages, thumbUrl, toast, zuruecksetzenKnopf } from './01-core.js';
 import { _gibSse, _gibTimer, gibStart, protokollZeile } from './01-fortschritt.js';
 import { _monitorTimer, loadMonitor, set_monitorTimer } from './01-monitor.js';
 import { SCOPE_VIEWS, addScopeParam, scopeMode, scopeQuery, setScopeMode,
@@ -16,8 +16,8 @@ import { geloeschtMitRueckgaengig, ladePapierkorb } from './20-papierkorb.js';
 import { ladeZweitenFaktor } from './21-zweiter-faktor.js';
 import { _lastImportAt, confirmDelete, enrichGalleryWithPrices, jobPollTimer, ladeLagerorte, lagerortBlock, openModal, pollJobStatus, set_jobPollTimer, set_lastImportAt } from './07-admin.js';
 import { openAcqModal, renderAcqModalBody, renderAcquisitionSummary } from './13-acquisition-modals.js';
-import { ladeMerkliste } from './16-merkliste.js';
-import { initCatalog } from './09-catalog.js';
+import { ladeMerkliste, merklisteZuruecksetzen } from './16-merkliste.js';
+import { initCatalog, katalogZuruecksetzen } from './09-catalog.js';
 import { delSetStop, openPdfViewerLink, stopEvent } from './11-actions.js';
 
 // ═══ Navigation, Stats, Progress-Overlay, Galerie, CSV-Polling, Set-Detail-Modal ═══
@@ -541,6 +541,16 @@ export function initStorageSelects(orte) {
  * loadManualParts() ein halb angewandter Filter — oben ungefiltert, unten
  * gefiltert. Dieselbe Begruendung wie bei onScopeChange() darunter.
  */
+/** Alle Filter einer Ansicht leeren (Knopf im Leerzustand ohne Treffer). */
+function filterZuruecksetzen(ansicht) {
+  if (ansicht === 'gallery') {
+    G('gs').value = ''; G('gtheme').value = '';
+    setLagerModus('gallery', ''); if (G('storage-gallery')) G('storage-gallery').value = '';
+    loadGallery();
+  } else if (ansicht === 'merkliste') merklisteZuruecksetzen();
+  else if (ansicht === 'catalog') katalogZuruecksetzen();
+}
+
 export function onStorageChange(view) {
   const el = G('storage-' + view);
   if (!el) return;
@@ -840,9 +850,13 @@ export function renderGallery(){
   const q=G('gs')?.value?.toLowerCase()||'';
   const list=allSets;
   const c=G('gallery');
+  // Ein Filter ohne Suchtext (Thema, Lagerort) ist auch ein Filter: Sonst stünde
+  // „Noch keine Sets“ über einer Sammlung, die nur ausgeblendet ist.
+  const gefiltert = !!(q || G('gtheme')?.value || lagerModus('gallery'));
   if(!list.length){
-    c.innerHTML = q
-      ? leerZustand({ ico: 'suche', titel: tRaw('gallery.no_results', { query: q }) })
+    c.innerHTML = gefiltert
+      ? leerZustand({ ico: 'suche', titel: q ? tRaw('gallery.no_results', { query: q }) : tRaw('gallery.no_results_filter'),
+                      knopf: zuruecksetzenKnopf('gallery') })
       : leerZustand({ ico: 'set', titel: tRaw('gallery.empty'),
                       knopf: { text: tRaw('gallery.add.title'), click: 'oeffneErfassen', arg: 'set' } });
     return;
@@ -1465,6 +1479,7 @@ async function redownloadInstr(sn){ toast(tRaw('instr.loading'),'info'); const d
 // der erste Lauf dieses Umbaus rot geworden.
 registerActions({
   filterUmschalten,
+  filterZuruecksetzen,
   benutzerMenue,
   oeffneSicht,
   oeffneReiter,
