@@ -844,7 +844,7 @@
               </select>
             </div>
             <div style="font-size:var(--fs-1);color:var(--mut);margin-top:-4px" data-i18n="settings.app_theme_hint">Gilt global für alle Benutzer (Web &amp; App).</div>
-            <button class="btn bp" id="btn-save-theme" style="align-self:flex-start" data-i18n="settings.save">Speichern</button>
+            <button class="btn bp btn-speichern" id="btn-save-theme" data-i18n="settings.save" data-ico="speichern">Speichern</button>
           </div>
         </div>
         <div class="ssec">
@@ -855,7 +855,7 @@
             <div class="fg"><label for="bl-tok">Token Value</label><input type="text" id="bl-tok" autocomplete="off" /></div>
             <div class="fg"><label for="bl-ts">Token Secret</label><input type="password" id="bl-ts" autocomplete="off" /></div>
             <div class="fg"><label for="lim-bl"><span data-i18n="settings.max_calls">Max. Aufrufe pro Tag</span> <span style="font-size:var(--fs-1);color:var(--mut)" data-i18n="settings.default_n" data-i18n-vars='{"n":"4000"}'>(Standard: 4000)</span></label><input inputmode="numeric" type="number" id="lim-bl" min="1" max="100000" value="4000" style="max-width:160px" /></div>
-            <button class="btn bp" id="btn-sav-bl" style="align-self:flex-start" data-i18n="settings.save_key" data-ico="schluessel">Speichern</button>
+            <button class="btn bp btn-speichern" id="btn-sav-bl" data-i18n="settings.save" data-ico="speichern">Speichern</button>
           </div>
         </div>
         <div class="ssec">
@@ -864,7 +864,7 @@
             <div class="ibox" style="margin-bottom:4px"><a href="https://rebrickable.com/api/" target="_blank" rel="noopener noreferrer">rebrickable.com → API → Generate Key</a><br><span style="font-size:var(--fs-1)" data-i18n="settings.rebrickable_hint">Set-Infos, Teile &amp; Bilder</span></div>
             <div class="fg"><label for="rb-key">Rebrickable API Key</label><input type="text" id="rb-key" autocomplete="off" /></div>
             <div class="fg"><label for="lim-rb"><span data-i18n="settings.max_calls">Max. Aufrufe pro Tag</span> <span style="font-size:var(--fs-1);color:var(--mut)" data-i18n="settings.default_n" data-i18n-vars='{"n":"25000"}'>(Standard: 25000)</span></label><input inputmode="numeric" type="number" id="lim-rb" min="1" max="100000" value="25000" style="max-width:160px" /></div>
-            <button class="btn bp" id="btn-sav-rb" style="align-self:flex-start" data-i18n="settings.save_key" data-ico="schluessel">Speichern</button>
+            <button class="btn bp btn-speichern" id="btn-sav-rb" data-i18n="settings.save" data-ico="speichern">Speichern</button>
           </div>
         </div>
         <div class="ssec">
@@ -873,7 +873,7 @@
             <div class="ibox" style="margin-bottom:4px"><a href="https://brickset.com/tools/webservices/requestkey" target="_blank" rel="noopener noreferrer"><span data-i18n="settings.brickset_link">brickset.com → Tools → API Key anfordern</span></a><br><span style="font-size:var(--fs-1)" data-i18n="settings.brickset_hint">Anleitungen, Fallback Set-Infos</span></div>
             <div class="fg"><label for="bs-key">Brickset API Key</label><input type="text" id="bs-key" autocomplete="off" /></div>
             <div class="fg"><label for="lim-bs"><span data-i18n="settings.max_calls">Max. Aufrufe pro Tag</span> <span style="font-size:var(--fs-1);color:var(--mut)" data-i18n="settings.default_n" data-i18n-vars='{"n":"100"}'>(Standard: 100)</span></label><input inputmode="numeric" type="number" id="lim-bs" min="1" max="100000" value="100" style="max-width:160px" /></div>
-            <button class="btn bp" id="btn-sav-bs" style="align-self:flex-start" data-i18n="settings.save_key" data-ico="schluessel">Speichern</button>
+            <button class="btn bp btn-speichern" id="btn-sav-bs" data-i18n="settings.save" data-ico="speichern">Speichern</button>
           </div>
         </div>
         <div class="ssec full" id="usermgmt" style="display:none">
@@ -911,7 +911,7 @@
           <div class="stit"><svg class="ico" aria-hidden="true"><use href="#i-mail"/></svg> E-Mail / SMTP <span class="ao" style="display:none" data-i18n="settings.admins_only" data-ico="warnung">Nur Admins</span></div>
           <div class="sform">
             <div class="ibox" style="margin-bottom:.75rem" data-i18n="settings.smtp.hint">Für Registrierungsbestätigungen und Passwort-Rücksetzungen. Ohne SMTP-Konfiguration werden Links in der Server-Konsole ausgegeben.</div>
-            <div style="display:grid;grid-template-columns:1fr 120px;gap:10px">
+            <div class="host-port">
               <div class="fg"><label for="smtp-host">SMTP Host</label><input type="text" id="smtp-host" placeholder="mail.example.com" /></div>
               <div class="fg"><label for="smtp-port">Port</label><input inputmode="numeric" type="number" id="smtp-port" placeholder="587" /></div>
             </div>
@@ -920,9 +920,7 @@
             <div class="fg"><label for="smtp-from" data-i18n="settings.smtp.from">Absender (Von)</label><input type="text" id="smtp-from" placeholder="BrickInventory Manager &lt;noreply@example.com&gt;" /></div>
             <div class="fg"><label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="smtp-secure" aria-label="SMTP-Verschlüsselung" data-i18n="settings.smtp.secure_label" data-i18n-attr="aria-label" style="width:auto" /> TLS/SSL (Port 465)</label></div>
             <div class="fg"><label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="smtp-insecure" aria-label="Zertifikat des Mailservers nicht prüfen" data-i18n="settings.smtp.insecure_tls" data-i18n-attr="aria-label" style="width:auto" /> <span data-i18n="settings.smtp.insecure_tls">Zertifikat des Mailservers nicht prüfen (nur für selbst signierte Zertifikate)</span></label></div>
-            <div style="display:flex;gap:8px;flex-wrap:wrap">
-              <button class="btn bp" id="btn-sav-smtp" data-i18n="settings.smtp.save" data-ico="speichern">SMTP speichern</button>
-            </div>
+            <button class="btn bp btn-speichern" id="btn-sav-smtp" data-i18n="settings.save" data-ico="speichern">Speichern</button>
             <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;margin-top:.5rem">
               <div class="fg" style="max-width:240px;margin:0"><label for="smtp-test-email" data-i18n="settings.smtp.test_to">Test-E-Mail senden an</label><input type="email" id="smtp-test-email" placeholder="deine@email.com" /></div>
               <button class="btn bs" id="btn-test-smtp" style="margin-bottom:1px" data-i18n="smtp.test_btn" data-ico="link">Verbindung testen</button>
@@ -1033,7 +1031,7 @@
             </div>
           </div>
 
-          <button type="button" class="btn bp" id="btn-sav-prof" style="align-self:flex-start"><svg class="ico" aria-hidden="true"><use href="#i-speichern"/></svg> <span data-i18n="settings.save">Speichern</span></button>
+          <button type="button" class="btn bp btn-speichern" id="btn-sav-prof" data-i18n="settings.save" data-ico="speichern">Speichern</button>
           </form>
         </div>
       </div>
@@ -1206,7 +1204,7 @@
             </div>
 
             <div style="display:flex;gap:.5rem;align-items:center;margin-top:.5rem">
-              <button class="btn bp" data-click="gutscheinSpeichern"><svg class="ico" aria-hidden="true"><use href="#i-speichern"/></svg> <span data-i18n="settings.save">Speichern</span></button>
+              <button class="btn bp btn-speichern" data-click="gutscheinSpeichern" data-i18n="settings.save" data-ico="speichern">Speichern</button>
               <button class="btn" id="v-cancel" data-click="gutscheinAbbrechen" style="display:none" data-i18n="common.cancel">Abbrechen</button>
             </div>
           </div>
@@ -1518,7 +1516,7 @@
               <option value="N" data-i18n="monitor.condition_new">Neu</option>
               <option value="U" data-i18n="monitor.condition_used">Gebraucht</option>
             </select>
-            <button class="btn bs btn-sm" id="btn-save-cache-ttl" style="padding:3px 10px;font-size:var(--fs-1)" data-i18n="settings.save">Speichern</button>
+            <button class="btn bs btn-sm" id="btn-save-cache-ttl" data-i18n="settings.save" data-ico="speichern">Speichern</button>
           </div>
         </div>
         <div id="cache-stats-box" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:.75rem;margin-bottom:.75rem">

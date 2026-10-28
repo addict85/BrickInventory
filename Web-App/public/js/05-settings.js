@@ -584,13 +584,25 @@ export async function loadUsers(){
     d.users.map(u=>`<tr><td>${u.id}</td><td><strong>${esc(u.username)}</strong></td>
       <td><span class="rb ${u.is_admin?'ra':'ru'}">${u.is_admin?t('users.role.admin'):t('users.role.user')}</span></td>
       <td>${new Date(u.created_at).toLocaleDateString(locale())}</td>
-      <td style="display:flex;gap:5px">
-        <button class="btn bs btn-sm" data-click="openRpw" data-arg="${u.id}" aria-label="${esc(tRaw('users.pw_reset_title'))}">${ico('schluessel')}</button>
-        <button class="btn bs btn-sm" data-click="toggleAdmin" data-arg="${u.id}" data-arg2="${u.is_admin}">${ico(u.is_admin?'runter':'hoch')}</button>
-        ${u.zweiter_faktor?`<button class="btn bs btn-sm" data-click="zfZuruecksetzen" data-arg="${u.id}" data-arg2="${esc(u.username)}" title="${esc(tRaw('zf.reset_title'))}">${ico('schloss')}</button>`:''}
-        <button class="btn bd btn-sm" data-click="delUser" data-arg="${u.id}" data-arg2="${esc(u.username)}" aria-label="${esc(tRaw('common.delete'))}">${ico('loeschen')}</button>
-      </td></tr>`).join('')
+      <td><div class="nutzer-aktionen">
+        ${nutzerKnopf(u, 'bs', 'openRpw', 'schluessel', 'users.action.password', 'users.pw_reset_title')}
+        ${nutzerKnopf(u, 'bs', 'toggleAdmin', u.is_admin ? 'runter' : 'hoch',
+            u.is_admin ? 'users.action.make_user' : 'users.action.make_admin',
+            u.is_admin ? 'users.action.make_user_title' : 'users.action.make_admin_title', u.is_admin ? 1 : 0)}
+        ${u.zweiter_faktor ? nutzerKnopf(u, 'bs', 'zfZuruecksetzen', 'schloss', 'users.action.2fa', 'zf.reset_title', u.username) : ''}
+        ${nutzerKnopf(u, 'bd', 'delUser', 'loeschen', 'common.delete', 'users.action.delete_title', u.username)}
+      </div></td></tr>`).join('')
   }</tbody></table></div>`;
+}
+/**
+ * Ein Knopf der Benutzertabelle: Symbol und Wort sichtbar, die längere
+ * Beschreibung als Tooltip, der Name des Kontos für Vorleser im Namen.
+ */
+function nutzerKnopf(u, art, klick, symbol, wortKey, titelKey, arg2) {
+  const wort = tRaw(wortKey), titel = tRaw(titelKey);
+  return `<button type="button" class="btn ${art} btn-sm" data-click="${klick}" data-arg="${u.id}"` +
+    `${arg2 !== undefined ? ` data-arg2="${esc(String(arg2))}"` : ''} title="${esc(titel)}"` +
+    ` aria-label="${esc(`${wort}: ${u.username}`)}">${ico(symbol)}<span>${esc(wort)}</span></button>`;
 }
 G('btn-cu').onclick=async()=>{
   const n=G('nu-n').value.trim(),p=G('nu-p').value,a=G('nu-a').checked;

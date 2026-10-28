@@ -427,6 +427,13 @@
     .flbl{font-size:var(--fs-2);font-weight:600;color:var(--mut);margin-bottom:5px}
     .fval{font-variant-numeric:tabular-nums;font-size:var(--fs-6);font-weight:600;color:var(--b700)}
     .fstat.hi .fval{color:var(--b600)}
+    /* Speichern-Knöpfe der Einstellungen: eine Form, links unter ihren Feldern. */
+    .btn-speichern{align-self:flex-start}
+    /* Host und Port: die Port-Spalte darf schrumpfen, sonst ragt sie aus der Karte (.fg hat min-width). */
+    .host-port{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,120px);gap:10px}
+    .host-port .fg{min-width:0}
+    /* Aktionen der Benutzertabelle: Symbol und Wort. */
+    .nutzer-aktionen{display:flex;gap:5px;flex-wrap:wrap}
     .fcur{font-size:var(--fs-1);color:var(--mut);margin-left:3px}
     .fsub{font-size:var(--fs-1);color:var(--mut);margin-top:4px}
     .fsub:empty{display:none}
