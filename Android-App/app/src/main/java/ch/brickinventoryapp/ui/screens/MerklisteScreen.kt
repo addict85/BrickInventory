@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import ch.brickinventoryapp.ui.components.Bewegt
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Add
@@ -191,8 +192,10 @@ fun MerklisteScreen(
                         contentPadding = PaddingValues(bottom = Abstaende.riesig + Abstaende.riesig),
                     ) {
                         items(zustand.merkposten, key = ::merkpostenSchluessel) { w ->
-                            MerkpostenZeile(w, appState.serverUrl, imageLoader,
-                                onOeffnen = { onOeffnen(w.setNumber, w.condition) })
+                            Bewegt {
+                                MerkpostenZeile(w, appState.serverUrl, imageLoader,
+                                    onOeffnen = { onOeffnen(w.setNumber, w.condition) })
+                            }
                         }
                     }
                 }

@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.components.SkelettRaster
 import ch.brickinventoryapp.ui.theme.Formen
 import ch.brickinventoryapp.ui.theme.AppKarte
 import androidx.compose.foundation.Image
@@ -295,9 +296,12 @@ fun CatalogScreen(
             // Fehlertext klaglos anzeigen und die Ursache verstecken.
             val fehlertext = state.error
             when {
-                state.isLoading && state.total == 0 -> Box(Modifier.fillMaxSize(), Alignment.Center) {
-                    CircularProgressIndicator()
-                }
+                // Dieselben Masse wie das Raster darunter, damit beim Eintreffen nichts springt.
+                state.isLoading && state.total == 0 -> SkelettRaster(
+                    GridCells.Adaptive(160.dp), kachelHoehe = 200.dp,
+                    innenabstand = PaddingValues(start = Abstaende.mittel, top = Abstaende.mittel,
+                                                 bottom = Abstaende.mittel, end = 30.dp),
+                )
                 fehlertext != null && state.total == 0 -> Box(Modifier.fillMaxSize(), Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                         LeerSymbol(Icons.Default.ErrorOutline)
