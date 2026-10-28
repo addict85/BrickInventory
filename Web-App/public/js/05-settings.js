@@ -632,7 +632,9 @@ G('btn-cu').onclick=async()=>{
   const n=G('nu-n').value.trim(),p=G('nu-p').value,a=G('nu-a').checked;
   if(!n||!p){toast(tRaw('users.name_pw_req'),'error');return;}
   if(passwortZuKurz(p)){toast(passwortZuKurzText(),'error');return;}
-  const d=await api('POST','/v1/auth/users',{username:n,password:p,is_admin:a});
+  const admin_password = await bestaetigeMitPasswort(tRaw('users.create_title'), tRaw('users.admin_confirm_text'), 'schloss');
+  if (admin_password === null) return;
+  const d=await api('POST','/v1/auth/users',{username:n,password:p,is_admin:a,admin_password});
   if(d.success){toast(tRaw('users.created',{name:n}),'success');G('nu-n').value=G('nu-p').value='';G('nu-a').checked=false;loadUsers();} else toast(d.error||t('settings.error'),'error');
 };
 function openRpw(uid){ G('rpw-uid').value=uid; G('rpw-v').value=''; G('pw-modal').classList.add('open'); }

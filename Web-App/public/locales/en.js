@@ -297,6 +297,8 @@ window.I18N_EN = {
   'users.protokoll.aktion': 'Action',
   'users.protokoll.konto': 'Account',
   'users.protokoll.leer': 'No administrator actions on other accounts yet.',
+  'users.create_title': 'Create account',
+  'users.aktion.konto_angelegt': 'Account created',
   'users.aktion.passwort_gesetzt': 'Password reset',
   'users.aktion.zweiter_faktor_entfernt': 'Second factor removed',
   'users.aktion.verwalter_ernannt': 'Made administrator',
