@@ -1,7 +1,7 @@
 import { detailZeile, ladeAnzeige } from './01-bausteine.js';
 import { registerActions } from './00-registry.js';
 import { locale, t, tRaw} from '../i18n.js';
-import { leerZustand, ico, G, api, esc, escUrl, fullUrl, imgUrl, thumbUrl, toast } from './01-core.js';
+import { bildTag, platzhalterInhalt, leerZustand, ico, G, api, esc, escUrl, fullUrl, imgUrl, thumbUrl, toast } from './01-core.js';
 import { setScrollLabel } from './15-scrollbar.js';
 import { PARTS_ICON_SVG, handleSseEvent, hideProgress, leereLagerortFeld, loadGallery, loadStats, selectedOwner, selectedStorage, showProgress, streamFertig, streamRequest } from './02-gallery.js';
 import { _lastImportAt , set_lastImportAt} from './07-admin.js';
@@ -42,9 +42,6 @@ let _catMetaLoaded = false;
 let _catCurSet = null;      // aktuell im Modal geöffnetes Set
 let _catYearCounts = {};    // Jahr -> Set-Zahl (für Slider-Badge)
 
-// Platzhalter für fehlende/kaputte Katalogbilder — gleiches Muster wie die
-// Galerie (.no-img-box), damit es in jedem Design konsistent aussieht.
-window._catPlaceholderImg = `<div class="no-img-box"><img src="/assets/set-placeholder.svg" alt="Set" class="loaded" /></div>`;
 
 export function initCatalog(){
   if (!_catMetaLoaded) {
@@ -350,8 +347,8 @@ function catCard(s){
   // schon einmal seinem Bestand hinzugefügt) sparen den CDN-Umweg komplett.
   const src = s.image_local || s.image_url;
   const img = src
-    ? `<img src="${escUrl(imgUrl(thumbUrl(src), 'nur'))}" loading="lazy" decoding="async" data-fade="1" data-onerror="placeholder" />`
-    : window._catPlaceholderImg;
+    ? bildTag({ src: imgUrl(thumbUrl(src), 'nur'), alt: s.name || s.set_number, fade: true, ph: 'set' })
+    : `<span class="bild-ph" role="img" aria-label="${esc(s.name || s.set_number)}">${platzhalterInhalt('set')}</span>`;
   const themeShort = s.theme_name ? s.theme_name.split(' › ').pop() : '';
   const ownedBadge = s.owned
     ? `<span class="ibadge" title="${t('catalog.owned')}">${ico('ok')}${s.owned_quantity>1?'×'+s.owned_quantity:''}</span>`

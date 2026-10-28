@@ -170,7 +170,7 @@ test('Teilebilder werden als Vorschau angefordert', () => {
   // /api/img-proxy. thumbUrl() kann für sie nichts tun ("_thumb" gibt es dort
   // nicht), also kam bisher jedes Bild in voller Auflösung — bei 36 bis 100 px
   // Anzeigegrösse und 100 Bildern je Seite.
-  const imgs = [...SRC.matchAll(/<img src="\$\{escUrl\(([^\n]*?)\)\}"/g)].map(m => m[1]);
+  const imgs = [...SRC.matchAll(/bildTag\(\{ src: ([^\n]*?), alt:/g)].map(m => m[1]);
   assert.ok(imgs.length >= 2, 'Kachel und Tabellenzeile erwartet');
   for (const expr of imgs) {
     assert.match(expr, /imgUrl\(/, `Bild läuft nicht über imgUrl(): ${expr.slice(0, 70)}`);

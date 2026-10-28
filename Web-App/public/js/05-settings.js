@@ -1,6 +1,6 @@
 import { registerActions } from './00-registry.js';
 import { I18N, LANG, applyLang, locale, t, tRaw} from '../i18n.js';
-import { ico, CURRENCY, G, ME, _settingsCache, _updateLangSelect, api, applyTheme, esc, escUrl, imgUrl, initDefaultCondition, knopfBesetzt, thumbUrl, toast, zeigeBenutzernamen , set_CURRENCY, set_settingsCache, passwortZuKurz, passwortZuKurzText} from './01-core.js';
+import { bildTag, platzhalterInhalt, ico, CURRENCY, G, ME, _settingsCache, _updateLangSelect, api, applyTheme, esc, escUrl, imgUrl, initDefaultCondition, knopfBesetzt, thumbUrl, toast, zeigeBenutzernamen , set_CURRENCY, set_settingsCache, passwortZuKurz, passwortZuKurzText} from './01-core.js';
 import { loadGallery, loadStats } from './02-gallery.js';
 import { loadParts } from './03-parts.js';
 import { loadMinifigs } from './06-minifigs.js';
@@ -691,9 +691,8 @@ export async function ladeAlarmUebersicht() {
     // sie ueberhaupt in der Antwort.
     const bildQuelle = a.image_local || a.image_url || a.set_img_url || '';
     const bild = bildQuelle
-      ? `<img src="${escUrl(imgUrl(thumbUrl(bildQuelle) || bildQuelle, true))}" loading="lazy" decoding="async"
-              alt="" style="width:38px;height:38px;object-fit:contain;border-radius:6px;flex:0 0 auto" />`
-      : '<div style="width:38px;height:38px;flex:0 0 auto"></div>';
+      ? bildTag({ src: imgUrl(thumbUrl(bildQuelle) || bildQuelle, true), alt: '', klasse: 'bild-38', ph: 'set' })
+      : `<span class="bild-ph bild-38" aria-hidden="true">${platzhalterInhalt('set')}</span>`;
     // Die ganze Zeile oeffnet den Detaildialog — derselbe `openModal` wie in
     // den Finanzen und in der Galerie. Weil der Dialog ueber der Seite liegt
     // und diese nicht verlaesst, steht man nach dem Schliessen wieder an

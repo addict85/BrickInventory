@@ -16,7 +16,7 @@
 import { detailZeile, ladeAnzeige } from './01-bausteine.js';
 import { registerActions } from './00-registry.js';
 import { colorName, locale, t, tRaw } from '../i18n.js';
-import { ico, escHex, CURRENCY, G, ME, api, esc, escJs, escUrl, fmtN, fullUrl, hexZiffern, imgUrl, thumbUrl, toast } from './01-core.js';
+import { bildTag, platzhalterInhalt, ico, escHex, CURRENCY, G, ME, api, esc, escJs, escUrl, fmtN, fullUrl, hexZiffern, imgUrl, thumbUrl, toast } from './01-core.js';
 import { allSets, applySetAggregate, closeModal, curSet, loadGallery, pnlBadge, updateGalleryPrices } from './02-gallery.js';
 import { loadFinance } from './04-finance.js';
 import { deleteManualFig, deleteManualPart, loadBrickColors, loadManualFigsTable, loadManualParts, manualFigsCache, manualPartsCache, updateManualFig, updateManualPart } from './06-minifigs.js';
@@ -651,10 +651,8 @@ export async function openSetItemDetail(type, id, colorId) {
   const setBild = (s) => {
     const klein = thumbUrl(s.image_local || s.image_url) || s.image_local || s.image_url || '';
     return klein
-      ? `<img src="${escUrl(imgUrl(klein, true))}" loading="lazy" decoding="async"
-              data-orig="${escUrl(imgUrl(s.image_url || ''))}" alt=""
-              style="width:34px;height:34px;object-fit:contain;background:var(--s100);border-radius:6px;display:block">`
-      : `<span style="display:block;width:34px;height:34px;border-radius:6px;background:var(--s100)"></span>`;
+      ? bildTag({ src: imgUrl(klein, true), orig: imgUrl(s.image_url || ''), alt: '', klasse: 'bild-34', ph: 'set' })
+      : `<span class="bild-ph bild-34" aria-hidden="true">${platzhalterInhalt('set')}</span>`;
   };
   const liste = sets.length
     ? `<table style="width:100%;border-collapse:collapse"><tbody>${sets.map(s => `

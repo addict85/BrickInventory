@@ -132,6 +132,38 @@ export function G(id) { return document.getElementById(id); }
 /** Ein Symbol aus der Symbolfamilie (Sprite in index.html) als HTML. */
 export function ico(name) { return `<svg class="ico" aria-hidden="true"><use href="#i-${esc(name)}"/></svg>`; }
 /**
+ * Ein Vorschaubild aus einer Vorlage. Lädt es nicht, setzt 11-actions.js den
+ * Platzhalter seiner Art (`ph`) an seine Stelle — dasselbe Bild wie für einen
+ * Eintrag ganz ohne Bild, statt des Browser-Symbols für kaputte Bilder.
+ * @param {{ src: string, alt: string, ph?: 'set'|'teil'|'figur', klasse?: string,
+ *           orig?: string, stil?: string, fade?: boolean, extra?: string }} o
+ */
+export function bildTag(o) {
+  return `<img src="${escUrl(o.src)}" alt="${esc(o.alt || '')}"${o.klasse ? ` class="${esc(o.klasse)}"` : ''}` +
+    ` loading="lazy" decoding="async" data-onerror="platzhalter" data-ph="${esc(o.ph || 'set')}"` +
+    `${o.orig ? ` data-orig="${escUrl(o.orig)}"` : ''}${o.fade ? ' data-fade="1"' : ''}` +
+    `${o.stil ? ` style="${esc(o.stil)}"` : ''}${o.extra ? ' ' + o.extra : ''} />`;
+}
+
+/** Der Platzhalter einer Art: das Set-Bild oder das Symbol in einer getönten Fläche. */
+export function platzhalterInhalt(art) {
+  return art === 'set' ? '<img src="/assets/set-placeholder.svg" alt="" class="loaded" />' : ico(art === 'figur' ? 'figur' : 'teil');
+}
+
+/** Ersetzt ein Bild, das nicht lädt, durch seinen Platzhalter in derselben Grösse. */
+export function bildPlatzhalter(img) {
+  const ph = document.createElement('span');
+  ph.className = ('bild-ph ' + (img.getAttribute('class') || '').replace(/\bloaded\b/, '')).trim();
+  ph.setAttribute('role', 'img');
+  ph.setAttribute('aria-label', img.getAttribute('alt') || '');
+  if (!img.getAttribute('alt')) ph.setAttribute('aria-hidden', 'true');
+  const cs = getComputedStyle(img);
+  for (const k of ['width', 'height', 'borderRadius', 'margin']) if (cs[k] && cs[k] !== 'auto') ph.style[k] = cs[k];
+  ph.innerHTML = platzhalterInhalt(img.dataset.ph);
+  img.replaceWith(ph);
+}
+
+/**
  * Ein leerer Zustand: Symbol, ein Satz, und wenn es einen gibt, der nächste
  * Schritt als Knopf. Texte kommen fertig übersetzt; maskiert wird hier.
  * @param {{ ico: string, titel: string, text?: string, knopf?: { text: string, click: string, arg?: string } }} o

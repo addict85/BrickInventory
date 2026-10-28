@@ -612,15 +612,13 @@
       </div>
 
       <!-- ── Teile aus Sets ──────────────────────────────────────────────────── -->
-      <div class="parts-layout">
-        <div id="parts-main">
-          <div class="loading"><div class="spin"></div><span data-i18n="parts.loading_label">Teile laden…</span></div>
-        </div>
-        <!-- Ladepunkt für den Endlos-Scroll der Teileliste, analog cat-sentinel.
-             Steht bewusst NEBEN #parts-main: dessen Inhalt wird bei jedem
-             Filter- und Moduswechsel ersetzt, der Sentinel muss das überleben. -->
-        <div id="parts-sentinel" style="height:1px"></div>
+      <div id="parts-main">
+        <div class="loading"><div class="spin"></div><span data-i18n="parts.loading_label">Teile laden…</span></div>
       </div>
+      <!-- Ladepunkt für den Endlos-Scroll der Teileliste, analog cat-sentinel.
+           Steht bewusst NEBEN #parts-main: dessen Inhalt wird bei jedem
+           Filter- und Moduswechsel ersetzt, der Sentinel muss das überleben. -->
+      <div id="parts-sentinel" style="height:1px"></div>
 
     </div>
     <div id="tab-manual-parts" style="display:none"><!-- redirected --></div>

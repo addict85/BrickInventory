@@ -200,7 +200,7 @@ test('Teile-Kacheln laden das Zoom-Bild über den Server-Proxy, nicht direkt vom
   assert.ok(anfang >= 0, 'partsCard() gibt es nicht mehr — umbenannt?');
   const naechste = src.indexOf('\nfunction ', anfang + 1);
   const fn = src.slice(anfang, naechste > anfang ? naechste : undefined);
-  assert.match(fn, /data-orig="\$\{escUrl\(rawSrc \? imgUrl\(fullUrl\(rawSrc\), false\) : ''\)\}"/,
+  assert.match(fn, /orig: imgUrl\(fullUrl\(rawSrc\), false\)/,
     'data-orig muss über imgUrl(...) proxy-gewickelt sein, nicht die rohe Adresse');
 });
 

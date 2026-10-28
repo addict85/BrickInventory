@@ -33,6 +33,9 @@ const ANMELDUNG = {
   '/v1/finance/minifigs-valuation': { success: true, currency: 'EUR', figs: [], total_value: '0' },
   '/v1/finance/pnl': { success: true, currency: 'EUR', sets: [], totals: {} },
   '/v1/finance/portfolio-history': { success: true, points: [] },
+  '/v1/settings/raw': { success: true, settings: { currency: 'EUR', language: 'de', rebrickable_api_key: 'probe' } },
+  '/v1/auth/users': { success: true, users: [{ id: 1, username: 'anna', is_admin: true, created_at: '2026-10-01T00:00:00Z' }] },
+  '/v1/admin/api-limits': { success: true, limits: { rebrickable: 25000, bricklink: 4000, brickset: 100 } },
 };
 
 // Ein Fehler in einem Lader, den die Oberfläche selbst nicht abfängt, soll

@@ -125,6 +125,7 @@ async function zugMessen(entprellt) {
     window.locale = () => 'de-CH'; window.toast = () => {};
     window.PARTS_ICON_SVG = ''; window.setScrollLabel = () => {};
     window.escUrl = s => String(s ?? ''); window.imgUrl = s => s;
+    window.bildTag = o => '<img src="' + o.src + '" alt="">'; window.platzhalterInhalt = () => '';
     window.thumbUrl = s => s; window.fullUrl = s => s; window.detailZeile = () => '';
   `);
 

@@ -361,8 +361,6 @@
     .sci{width:100%;aspect-ratio:1;background:var(--s50);display:flex;align-items:center;justify-content:center;overflow:hidden;border-bottom:1px solid var(--bdr)}
     .sci img{width:100%;height:100%;object-fit:contain;padding:8px}
     .sci .ni{font-size:var(--fs-8)}
-    .sci .no-img-box{width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:var(--s50)}
-    .sci .no-img-box img{width:70%;height:70%;object-fit:contain;opacity:.7}
     .scb{padding:11px}
     /* [hidden] muss display:flex schlagen — die Preis-Zeile ist jetzt immer im
        Markup (stabiler Anker für updateGalleryPrices) und nur leer ausgeblendet. */
@@ -445,7 +443,6 @@
     /* Placeholder shimmer for images not yet loaded */
     .img-ph{background:linear-gradient(90deg,var(--s100) 25%,var(--s50) 50%,var(--s100) 75%);background-size:200% 100%;animation:shimmer 1.4s infinite;border-radius:6px}
     @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
-    .part-img-ph{width:70px;height:70px;display:flex;align-items:center;justify-content:center;background:var(--s50);border-radius:6px;margin:0 auto 8px;font-size:var(--fs-7);color:var(--s400)}
     .part-num{font-family:var(--mono);font-size:var(--fs-0);color:var(--b600);margin-bottom:3px}
     .part-name{font-size:var(--fs-1);font-weight:600;line-height:1.3;margin-bottom:6px;color:var(--txt)}
     .part-color{display:flex;align-items:center;justify-content:center;gap:5px;font-size:var(--fs-0);color:var(--mut)}
@@ -457,7 +454,6 @@
     .man-tile{background:var(--sur);border:1.5px solid var(--bdr);border-radius:10px;padding:.9rem;box-shadow:var(--sh0);position:relative}
     .man-tile-del{position:absolute;top:6px;right:6px}
     .man-tile-img{width:64px;height:64px;object-fit:contain;background:var(--s50);border-radius:6px;margin:0 auto 8px;display:block}
-    .man-tile-img-ph{width:64px;height:64px;display:flex;align-items:center;justify-content:center;background:var(--s50);border-radius:6px;margin:0 auto 8px;font-size:var(--fs-6);color:var(--s400)}
     .man-tile-num{font-family:var(--mono);font-size:var(--fs-0);color:var(--b600);text-align:center}
     .man-tile-name{font-size:var(--fs-2);font-weight:600;line-height:1.3;margin:2px 0 6px;text-align:center;min-height:2.1em}
     .man-tile-color{display:flex;align-items:center;justify-content:center;gap:5px;font-size:var(--fs-1);color:var(--mut);margin-bottom:6px}
@@ -774,13 +770,25 @@ html::-webkit-scrollbar{width:0;height:0}
     .empty .icon .ico,.no-parts .icon .ico,.leer-ico .ico{width:44px;height:44px;color:var(--s400);stroke-width:1.6}
     .leer-ico{margin-bottom:.5rem}
     #cd-icon .ico{width:44px;height:44px;color:var(--r500);stroke-width:1.6}
-    .part-img-ph .ico,.man-tile-img-ph .ico{width:32px;height:32px;stroke-width:1.6}
     .step-icon .ico{width:18px;height:18px}
     .toast-ico{display:inline-flex}
     .toast.success .toast-ico{color:var(--g500)} .toast.error .toast-ico{color:var(--r500)} .toast.info .toast-ico{color:var(--b600)}
     .pst .ico{width:12px;height:12px;stroke-width:3}
     .fin-unter{display:none}
-    .fin-ph{display:inline-flex;width:40px;height:40px;align-items:center;justify-content:center;background:var(--s50);border-radius:6px;color:var(--s400)}
+    /* Platzhalter für ein fehlendes oder nicht ladendes Bild (bildTag/bildPlatzhalter in
+       01-core.js): dieselbe getönte Fläche, ob es nie ein Bild gab oder eines kaputt ist. */
+    .bild-ph{display:flex;align-items:center;justify-content:center;flex:0 0 auto;background:var(--s50);color:var(--s400);border-radius:6px;overflow:hidden;width:40px;height:40px}
+    .bild-ph > img{width:70%;height:70%;object-fit:contain;opacity:.85;padding:0;background:none}
+    .bild-ph .ico{width:55%;height:55%;max-width:32px;max-height:32px;stroke-width:1.6}
+    .sci .bild-ph{width:100%;height:100%;border-radius:0}
+    .part-img.bild-ph{width:70px;height:70px;margin:0 auto 8px}
+    .man-tile-img.bild-ph{width:64px;height:64px;margin:0 auto 8px}
+    .bild-klein{width:38px;height:38px;object-fit:contain;background:var(--s100);border-radius:6px}
+    .bild-34{width:34px;height:34px;object-fit:contain;background:var(--s100);border-radius:6px;display:block}
+    .bild-38{width:38px;height:38px;object-fit:contain;border-radius:6px;flex:0 0 auto}
+    .bild-40{width:40px;height:40px;object-fit:contain;background:var(--s50);border-radius:4px}
+    .bild-44{width:44px;height:44px;object-fit:contain;flex-shrink:0;border-radius:6px;background:var(--s100)}
+    .bild-56{width:56px;height:56px;object-fit:contain;border-radius:6px;background:var(--bg)}
     .ibadge .ico,.lc .ico,.lv .ico{width:14px;height:14px}
     .btn .ico{width:16px;height:16px}
     /* Knöpfe in der Textschrift — ohne das erben sie die Systemschrift (Arial). */

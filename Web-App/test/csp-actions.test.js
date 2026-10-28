@@ -174,9 +174,16 @@ test('der Dispatcher reicht mehrere Argumente und den Feldwert durch', () => {
 });
 
 test('Bildfehler kennen die Modi aus den Templates', () => {
-  for (const mode of ['hide', 'clear']) {
-    assert.match(ACT, new RegExp(`case '${mode}'`), `data-onerror="${mode}" wird nicht behandelt`);
-  }
+  // Zwei Modi gibt es noch: den Platzhalter (bildTag in 01-core.js) und
+  // „keep" für den Zoom. Was er im Bild bewirkt, prüft test/bilder-platzhalter.test.js.
+  const js = path.join(__dirname, '..', 'public', 'js');
+  const quellen = HTML + fs.readdirSync(js).filter(f => /^\d\d-.*\.js$/.test(f))
+    .map(f => fs.readFileSync(path.join(js, f), 'utf8')).join('\n');
+  const modi = new Set([...quellen.matchAll(/data-onerror="([a-z]+)"/g)].map(m => m[1]));
+  assert.ok(modi.size >= 2, 'Keine Modi gefunden — greift die Suche noch?');
+  assert.deepEqual([...modi].sort(), ['keep', 'platzhalter']);
+  assert.match(ACT, /dataset\.onerror === 'keep'/, 'data-onerror="keep" wird nicht behandelt');
+  assert.match(ACT, /bildPlatzhalter\(el\)/, 'Der Platzhalter wird nicht gesetzt');
 });
 
 test('index.html enthält kein Inline-<script> mehr', () => {

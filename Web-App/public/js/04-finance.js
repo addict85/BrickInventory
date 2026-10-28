@@ -1,7 +1,7 @@
 import { ladeAnzeige } from './01-bausteine.js';
 import { registerActions } from './00-registry.js';
 import { colorName, locale, t, tRaw} from '../i18n.js';
-import { ico, CURRENCY, G, api, esc, escJs, escUrl, fmtN, imgUrl, thumbUrl, toast } from './01-core.js';
+import { bildTag, platzhalterInhalt, ico, CURRENCY, G, api, esc, escJs, escUrl, fmtN, imgUrl, thumbUrl, toast } from './01-core.js';
 import { scopeMode, scopeQuery } from './14-scope.js';
 import { PARTS_ICON_SVG, _pnlCache, condBadges, ownerBadges, pnlBadge } from './02-gallery.js';
 import { loadCacheStats } from './05-settings.js';
@@ -184,7 +184,8 @@ export async function loadFinance(){
       : (it.purchase_price!=null ? parseFloat(it.purchase_price) : null);
     const total = acq ? parseFloat(acq.total_avg||0) : parseFloat(it.display_value||0);
     const pnl = acq ? acq.pnl_pct : it.pnl_pct;
-    const img = it.image_local||it.image_url ? `<img src="${escUrl(imgUrl(thumbUrl(it.image_local||it.image_url)||it.image_local||it.image_url||'', true))}" loading="lazy" decoding="async" data-orig="${escUrl(imgUrl(it.image_url||''))}" alt="" />` : `<span class="fin-ph">${ico(it.fig_number ? 'figur' : 'teil')}</span>`;
+    const art = it.fig_number ? 'figur' : 'teil';
+    const img = it.image_local||it.image_url ? bildTag({ src: imgUrl(thumbUrl(it.image_local||it.image_url)||it.image_local||it.image_url, true), orig: imgUrl(it.image_url||''), alt: '', ph: art }) : `<span class="bild-ph" aria-hidden="true">${platzhalterInhalt(art)}</span>`;
     // Der frühere dritte Parameter onclickAttr wurde von keinem Aufrufer
     // gesetzt — der Zweig war tot und hätte als Inline-Handler die CSP blockiert.
     return `<tr style="cursor:pointer" ${manArgs(it)}>
@@ -269,7 +270,7 @@ export async function loadFinance(){
     // Die Fehlermeldung steht im Status-Symbol (Tooltip), nicht in der Summe:
     // Dort brach sie die Spalte fünfzeilig um.
     return `<tr style="cursor:pointer" tabindex="0" data-click="openModal" data-arg="${escJs(s.set_number)}">
-    <td class="fin-bild">${s.image_local||s.image_url?`<img src="${escUrl(imgUrl(thumbUrl(s.image_local||s.image_url)||s.image_local||s.image_url||'', true))}" loading="lazy" decoding="async" data-onerror="symbol" alt="" />`:`<span class="fin-ph">${ico('set')}</span>`}</td>
+    <td class="fin-bild">${s.image_local||s.image_url?bildTag({ src: imgUrl(thumbUrl(s.image_local||s.image_url)||s.image_local||s.image_url, true), alt: '', ph: 'set' }):`<span class="bild-ph" aria-hidden="true">${platzhalterInhalt('set')}</span>`}</td>
     <td class="fin-detail"><span style="font-family:var(--mono);color:var(--b600);font-size:var(--fs-1)">${esc(s.set_number)}</span></td>
     <td class="fin-name">${esc(s.name)||'—'}${acq?` ${condBadge(acq.condition)}`:''} ${ownerBadges(s)}<span class="fin-unter">${esc(s.set_number)}${s.year?` · ${s.year}`:''} · ×${qty}</span></td><td class="fin-detail">${s.year||'—'}</td>
     <td class="fin-detail"><span class="qbadge">×${qty}</span></td>

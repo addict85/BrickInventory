@@ -27,7 +27,7 @@ const REITER = [
   // [Name, Erfassen-Kennung, Filter-Kennung, Listen-Kennung]
   // Alle drei erfassen seit dem 25.10. im Dialog; davor steht der Knopf dazu.
   ['Galerie',     'data-click="oeffneErfassen" data-arg="set"', 'id="gs"',  '<div id="gallery"></div>'],
-  ['Teile',       'data-click="oeffneErfassen" data-arg="part"', 'id="parts-search"', '<div class="parts-layout">'],
+  ['Teile',       'data-click="oeffneErfassen" data-arg="part"', 'id="parts-search"', '<div id="parts-main">'],
   ['Minifiguren', 'data-click="oeffneErfassen" data-arg="fig"', 'id="fig-search"',   '<div id="figs-list"></div>'],
 ];
 
@@ -72,7 +72,7 @@ test('die manuell erfassten Listen stehen unter der Filterleiste (Nachtrag 34)',
   // manuelle Liste über der Filterleiste, sah es aus, als beträfe der Filter
   // nur die Set-Einträge.
   const faelle = [
-    ['Teile',       'data-click="oeffneErfassen" data-arg="part"', 'id="parts-search"', 'id="manual-parts-list"', '<div class="parts-layout">'],
+    ['Teile',       'data-click="oeffneErfassen" data-arg="part"', 'id="parts-search"', 'id="manual-parts-list"', '<div id="parts-main">'],
     ['Minifiguren', 'data-click="oeffneErfassen" data-arg="fig"',  'id="fig-search"',   'id="manual-figs-list"',  '<div id="figs-list"></div>'],
   ];
   for (const [name, erfassen, filter, manuelleListe, setListe] of faelle) {

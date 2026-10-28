@@ -1,24 +1,10 @@
 import { ladeAnzeige } from './01-bausteine.js';
 import { registerActions } from './00-registry.js';
 import { colorName, locale, t, tRaw } from '../i18n.js';
-import { ico, G, api, esc, escHex, escHtml, escJs, escUrl, fmtBig, fullUrl, imgUrl, leerZustand, observeLazyImages, thumbUrl } from './01-core.js';
+import { bildTag, ico, G, api, esc, escHex, escHtml, escJs, escUrl, fmtBig, fullUrl, imgUrl, leerZustand, observeLazyImages, platzhalterInhalt, thumbUrl } from './01-core.js';
 import { addScopeParam, addLagerParam, scopeQuery } from './14-scope.js';
-import { PARTS_ICON_SVG, allSets } from './02-gallery.js';
+import { allSets } from './02-gallery.js';
 import { loadManualParts, manualPartsCache, renderManualParts } from './06-minifigs.js';
-
-/**
- * Ziegel-Symbol des Reiters „Teile" für die Leer-Anzeige.
- *
- * PARTS_ICON_SVG ist in 02-gallery.js definiert und dort auf 1em ausgelegt
- * (Fliesstext). Für die Leer-Anzeige braucht es dieselbe Zeichnung in gross —
- * deshalb nur die Grössenangabe ersetzen statt eine zweite Konstante
- * anzulegen. Ein zweites `const PARTS_ICON_SVG` würde die Datei mit
- * „Identifier has already been declared" abbrechen lassen, und dann wäre KEINE
- * Funktion daraus definiert.
- */
-function partsIconLarge() {
-  return PARTS_ICON_SVG.replace('width:1em;height:1em', 'width:56px;height:56px');
-}
 
 // ═══ Teile-Inventar (Liste, Suche, Filter) ═══
 // Teil von app.js — die Dateien in public/js/ werden in nummerierter
@@ -327,6 +313,9 @@ function ersatzteilPlakette(p){
   return p.is_spare ? `<span class="spare-tag">${esc(t('parts.spare_tag'))}</span>` : '';
 }
 
+/** Alternativtext eines Teilbilds: Name und Farbe, wie sie auf der Kachel stehen. */
+function teilAlt(p){ return [p.part_name || p.part_number, p.color_name ? colorName(p.color_name) : ''].filter(Boolean).join(', '); }
+
 function partsCard(p){
   // data-orig speist den Zoom (11-actions.js, openImageLightboxFromEl):
   // ÜBER den Server-Proxy in voller Auflösung (imgUrl(fullUrl(...), false)),
@@ -339,8 +328,8 @@ function partsCard(p){
   // Set nichts zu sehen — kein Bild in voller Groesse, keine Angabe, aus
   // welchem Set es stammt.
   return `<div class="part-card" style="cursor:pointer" tabindex="0" role="button" data-click="openSetItemDetail" data-arg="part" data-arg2="${escJs(p.part_number)}" data-arg3="${p.color_id||0}">
-    <img src="${escUrl(imgUrl(thumbUrl(p.image_local||p.image_url)||p.image_local||p.image_url||'', true)||'')}" class="part-img" loading="lazy" decoding="async" data-fade="1" data-orig="${escUrl(rawSrc ? imgUrl(fullUrl(rawSrc), false) : '')}" />
-    <div class="part-img-ph" style="display:none">${partsIconLarge()}</div>
+    ${rawSrc ? bildTag({ src: imgUrl(thumbUrl(rawSrc)||rawSrc, true), alt: teilAlt(p), klasse: 'part-img', fade: true, orig: imgUrl(fullUrl(rawSrc), false), ph: 'teil' })
+             : `<span class="bild-ph part-img" role="img" aria-label="${esc(teilAlt(p))}">${platzhalterInhalt('teil')}</span>`}
     <div class="part-num" title="${esc(p.part_number)}">${esc(p.bl_part_number||p.part_number)}</div>
     <div class="part-name">${esc(p.part_name)||'—'}</div>
     <div class="part-color"><div class="color-dot" style="background:${escHex(p.color_hex, 'var(--s300)')}"></div>${esc(colorName(p.color_name))}</div>
@@ -354,7 +343,8 @@ function partsTableRow(p){
   // was die andere nicht kann. Genau daran ist in diesem Projekt schon mehrfach
   // etwas auseinandergelaufen.
   return `<tr style="cursor:pointer" tabindex="0" data-click="openSetItemDetail" data-arg="part" data-arg2="${escJs(p.part_number)}" data-arg3="${p.color_id||0}">
-    <td><img src="${escUrl(imgUrl(thumbUrl(p.image_local||p.image_url)||p.image_local||p.image_url||'', true)||'')}" loading="lazy" decoding="async" data-onerror="clear" style="width:36px;height:36px;object-fit:contain;background:var(--s50);border-radius:5px" /></td>
+    <td>${(p.image_local||p.image_url) ? bildTag({ src: imgUrl(thumbUrl(p.image_local||p.image_url)||p.image_local||p.image_url, true), alt: '', klasse: 'bild-klein', ph: 'teil' })
+                                       : `<span class="bild-ph bild-klein" aria-hidden="true">${platzhalterInhalt('teil')}</span>`}</td>
     <td><span style="font-family:var(--mono);font-size:var(--fs-1);color:var(--b600)" title="${esc(p.part_number)}">${esc(p.bl_part_number||p.part_number)}</span></td>
     <td style="max-width:200px">${esc(p.part_name)||'—'} ${ersatzteilPlakette(p)}</td>
     <td><div style="display:flex;align-items:center;gap:5px"><div class="color-dot" style="background:${escHex(p.color_hex, 'var(--s300)')}"></div>${esc(colorName(p.color_name))}</div></td>
