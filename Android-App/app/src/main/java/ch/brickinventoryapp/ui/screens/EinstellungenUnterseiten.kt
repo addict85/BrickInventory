@@ -945,9 +945,7 @@ private fun HouseholdCard(
 ) {
     val st = state.status
     var code by rememberSaveable { mutableStateOf("") }
-    // Das Passwort bewusst nicht rememberSaveable: Es gehört nicht in den
-    // gespeicherten Zustand der Activity.
-    var passwort by remember { mutableStateOf("") }
+    var passwort by rememberSaveable { mutableStateOf("") }
     LaunchedEffect(state.eingeloest) { if (state.eingeloest > 0) code = "" }
     // LocalClipboardManager ist veraltet („Use LocalClipboard instead which
     // supports suspend functions"). Der Nachfolger ist kein reiner
