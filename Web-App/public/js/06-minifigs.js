@@ -405,7 +405,7 @@ G('btn-add-fig')?.addEventListener('click', async () => {
     owner_user_id: selectedOwner('af-owner'),
     storage: selectedStorage('af-storage'),
   });
-  btn.disabled=false; btn.textContent=tRaw('adding.button');
+  btn.disabled=false; btn.textContent=tRaw('gallery.add.submit');
   if(d.success){
     const hinweisF = preisHerkunftHinweis(d.price_from_condition);
     res.style.color='var(--g700)';
@@ -763,7 +763,7 @@ G('btn-add-part')?.addEventListener('click', async () => {
     owner_user_id: selectedOwner('ap-owner'),
     storage: selectedStorage('ap-storage'),
   });
-  btn.disabled=false; btn.textContent=tRaw('adding.button');
+  btn.disabled=false; btn.textContent=tRaw('gallery.add.submit');
   if(d.success){
     const hinweisT = preisHerkunftHinweis(d.price_from_condition);
     res.style.color='var(--g700)';

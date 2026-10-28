@@ -344,7 +344,7 @@ window.I18N_DE = {
   'col.image': 'Bild',
   'col.number': 'Nummer',
   'adding.progress': 'Wird hinzugefügt…',
-  'adding.button': '+ Hinzufügen',
+  'adding.button': 'Hinzufügen',
   'import.summary': '{added} hinzugefügt, {updated} aktualisiert, {errors} Fehler',
   'import.running': 'Import läuft… bitte warten',
   'csv.cancel': 'Abbrechen',

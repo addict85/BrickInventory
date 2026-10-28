@@ -835,6 +835,74 @@ html::-webkit-scrollbar{width:0;height:0}
     .empty.leer p{color:var(--mut);margin:0 auto 1rem;max-width:42ch}
     .empty.leer .btn{display:inline-flex;align-items:center;gap:6px}
 
+/* ══ Aus index.html übernommene Inline-Stile ═════════════════════════════════
+   Stehen am Ende, damit sie wie vorher der Inline-Stil über den allgemeinen
+   Regeln liegen; wo eine Grundregel Element und Attribut nennt
+   (input[type=text], .fg select), nennen diese es auch. */
+.zeile{display:flex}
+.zeile-inline{display:inline-flex;align-items:center;gap:6px}
+.mittig{align-items:center}
+.unten{align-items:flex-end}
+.umbruch{flex-wrap:wrap}
+.luecke-6{gap:6px}
+.luecke-8{gap:8px}
+.luecke-10{gap:10px}
+.spalte-05{display:flex;flex-direction:column;gap:.5rem;align-items:flex-start}
+.raster-160{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;align-items:end}
+.filterzeile{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:1.5rem}
+.verteilt{justify-content:space-between}
+.zentriert{justify-content:center}
+.luecke-05,.sgrid2.luecke-05{gap:.5rem}
+.luecke-075,.frow.luecke-075,.sgrid2.luecke-075{gap:.75rem}
+.oben-buendig{align-self:flex-start}
+.unten-buendig{align-self:end}
+.fest{white-space:nowrap;flex-shrink:0}
+.fest-breite{flex-shrink:0}
+.block{display:block}
+.knopf-fuellend{flex:1;justify-content:center}
+.btn.knopf-breit{width:100%;justify-content:center;padding:11px}
+.voll-breit{width:100%}
+select.w-auto,input.w-auto,.fg select.w-auto,.w-auto{width:auto}
+input.suchfeld{width:220px}
+.hoehe-38,.fg .hoehe-38{height:38px}
+.min-100{min-width:100px}
+.max-82{max-width:82px}.max-110{max-width:110px}.max-120{max-width:120px}.max-150{max-width:150px}
+.max-160{max-width:160px}.max-220{max-width:220px}.max-240{max-width:240px}.max-360{max-width:360px}
+.max-420{max-width:420px}.max-440{max-width:440px}.max-480{max-width:480px}.max-520{max-width:520px}
+.max-560{max-width:560px}.max-620{max-width:620px}.max-720{max-width:720px}.max-780{max-width:780px}
+.ohne-rand{margin:0}
+.innen-1,.card.innen-1{padding:1rem}
+.schrift-1,.btn.schrift-1{font-size:var(--fs-1)}.schrift-2,.btn.schrift-2{font-size:var(--fs-2)}.schrift-3,.btn.schrift-3{font-size:var(--fs-3)}
+.text-klein{font-size:var(--fs-1);color:var(--mut)}
+.text-mittel{font-size:var(--fs-2);color:var(--mut)}
+.text-3-mut{font-size:var(--fs-3);color:var(--mut)}
+.text-fett-3{font-weight:600;font-size:var(--fs-3)}
+.farbe-mut{color:var(--mut)}
+.farbe-primaer{color:var(--b600)}
+.wert-primaer{font-weight:700;color:var(--b600)}
+.mono-2{font-family:var(--mono);font-size:var(--fs-2)}
+.zeiger{cursor:pointer}
+.zoombar{cursor:zoom-in}
+.ohne-unterstrich{text-decoration:none}
+.ladepunkt{height:1px}
+.hinweis-absatz{font-size:var(--fs-2);color:var(--mut);margin:0 0 .5rem 0}
+.etikett-titel{font-size:var(--fs-1);font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--mut);margin-bottom:.35rem}
+.trenner-oben{border-top:1px solid var(--bdr);padding-top:1.1rem}
+.trenner-oben-13{border-top:1px solid var(--bdr);padding-top:13px}
+.login-unterzeile{font-weight:600;margin-bottom:1rem;color:var(--s600);text-align:center}
+.login-fuss{text-align:center;margin-top:.85rem;font-size:var(--fs-2)}
+.status-zeile{min-height:1rem}
+.erfolg-box{padding:.75rem;background:var(--g50);border:1px solid var(--g300);border-radius:8px;color:var(--g700);font-size:var(--fs-3);margin-bottom:.75rem}
+.csv-status{font-size:var(--fs-3);margin-bottom:1rem;padding:.55rem .8rem;border-radius:8px}
+select.auswahl-kompakt,.fg select.auswahl-kompakt{padding:.45rem .7rem;border:1px solid var(--bdr);border-radius:var(--rad);background:var(--sur);color:var(--txt);font-size:var(--fs-3)}
+select.auswahl-mini,.fg select.auswahl-mini{font-size:var(--fs-1);padding:3px 6px;border:1px solid var(--bdr);border-radius:6px;background:var(--sur)}
+/* Abstände zuletzt: Sie ergänzen die Klassen davor (z. B. .hinweis-absatz.abstand-u-075). */
+.abstand-o-2{margin-top:2px}.abstand-o-3{margin-top:3px}.abstand-o-4{margin-top:4px}.abstand-o-8{margin-top:8px}
+.abstand-o-05{margin-top:.5rem}.abstand-o-06{margin-top:.6rem}.abstand-o-075{margin-top:.75rem}.abstand-o-minus4{margin-top:-4px}
+.abstand-u-1px{margin-bottom:1px}.abstand-u-4{margin-bottom:4px}.abstand-u-035{margin-bottom:.35rem}.abstand-u-05{margin-bottom:.5rem}
+.abstand-u-06{margin-bottom:.6rem}.abstand-u-075{margin-bottom:.75rem}.abstand-u-1{margin-bottom:1rem}.abstand-u-125{margin-bottom:1.25rem}
+.ohne-abstand-u{margin-bottom:0}
+
 /* Auf Touch-Geräten kein Papierkorb auf jeder Kachel: zu leicht getroffen
    beim Wischen. Gelöscht wird im Detail, wie in der App. */
 @media (hover:none) and (pointer:coarse){ #tab-gallery .sc .ca{display:none} }

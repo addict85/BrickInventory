@@ -343,7 +343,7 @@ window.I18N_EN = {
   'col.image': 'Image',
   'col.number': 'Number',
   'adding.progress': 'Adding…',
-  'adding.button': '+ Add',
+  'adding.button': 'Add',
   'import.summary': '{added} added, {updated} updated, {errors} errors',
   'import.running': 'Import running… please wait',
   'csv.cancel': 'Cancel',

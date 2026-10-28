@@ -149,8 +149,8 @@ function reineQuelltextTests() {
 }
 
 test('reine Quelltext-Tests werden weniger, nie mehr', () => {
-  // GEMESSEN am 25.10.2026: 103 von 312 Testdateien.
-  const SCHRANKE = 103;
+  // GEMESSEN am 25.10.2026: 103 von 312 Testdateien; am 28.10.2026: 102.
+  const SCHRANKE = 102;
   const alle = fs.readdirSync(__dirname).filter(n => n.endsWith('.test.js')).length;
   assert.ok(alle >= 300, `Nur ${alle} Testdateien gefunden — greift die Suche noch?`);
   const ist = reineQuelltextTests();
@@ -190,4 +190,24 @@ test('Emoji in der Oberfläche werden weniger, nie mehr', () => {
     `${ist} Emoji in der Oberfläche, erlaubt sind ${SCHRANKE}. Für Symbole gibt es ` +
     'die Symbolfamilie: <svg class="ico" aria-hidden="true"><use href="#i-…"/></svg>.');
   if (ist < SCHRANKE) console.log(`  ℹ Emoji: ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
+});
+
+/**
+ * Inline-Stile in index.html. Ein style="…" setzt sich über jedes Design und
+ * jede Telefonregel hinweg; gleiche Dinge sahen deshalb an zwei Stellen
+ * verschieden aus. Gezählt werden Attribute ausserhalb von Kommentaren.
+ * style="display:none" bleibt erlaubt: Die Skripte schalten es um.
+ */
+test('Inline-Stile in index.html werden weniger, nie mehr', () => {
+  // GEMESSEN am 28.10.2026: 455 vor dem Umzug in Klassen, danach 170,
+  // davon 56 reines display:none.
+  const SCHRANKE = 114;
+  const html = fs.readFileSync(path.join(WEB, 'public', 'index.html'), 'utf8').replace(/<!--[\s\S]*?-->/g, '');
+  const stile = [...html.matchAll(/<[a-zA-Z][^>]*?\sstyle="([^"]*)"/g)].map(m => m[1].trim().replace(/;$/, ''));
+  assert.ok(stile.length > 50, 'Keine Inline-Stile gefunden — greift die Suche noch?');
+  const ist = stile.filter(s => s !== 'display:none').length;
+  assert.ok(ist <= SCHRANKE,
+    `${ist} Inline-Stile (ohne display:none) in index.html, erlaubt sind ${SCHRANKE}. ` +
+    'Gestaltung gehört in styles.css; dort sieht sie jedes Design und mobile.css.');
+  if (ist < SCHRANKE) console.log(`  ℹ Inline-Stile: ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
 });

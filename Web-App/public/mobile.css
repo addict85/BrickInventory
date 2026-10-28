@@ -140,13 +140,14 @@
   .frow > .fg         { flex: 1 1 calc(50% - .25rem); max-width: none !important; }
   .frow > .fg:first-child, .frow > .btn { flex: 1 1 100%; }
   /* In Rastern gibt die Spalte die Breite vor, nicht die Mindestbreite von .fg */
-  [style*="display:grid"] > .fg { min-width: 0; }
+  [style*="display:grid"] > .fg, .raster-160 > .fg { min-width: 0; }
 
   /* Zeilen ohne Umbruch (Inline-Styles der Vorlagen) dürfen umbrechen, statt
      die Seite zu verbreitern. Ausgenommen, was ausdrücklich einzeilig bleibt,
      und Beschriftungen: Dort rutschte der Text unter sein Häkchen. */
   main [style*="display:flex"]:not([style*="nowrap"]):not([style*="column"]):not(label),
-  .modal [style*="display:flex"]:not([style*="nowrap"]):not([style*="column"]):not(label) { flex-wrap: wrap; }
+  .modal [style*="display:flex"]:not([style*="nowrap"]):not([style*="column"]):not(label),
+  main :is(.zeile, .zeile-inline):not(label), .modal :is(.zeile, .zeile-inline):not(label) { flex-wrap: wrap; }
 
   /* Detailzeilen: Beschriftung oben, Bedienelemente darunter, wenn es eng wird */
   .dr                 { flex-wrap: wrap; gap: .35rem .75rem; }
@@ -190,7 +191,9 @@
   label:has(> input[type="checkbox"]), label:has(> input[type="radio"]) { min-height: 44px; display: flex; align-items: center; }
 
   /* Feste px-Breiten aus den Inline-Styles der Templates neutralisieren */
-  [style*="width:"][style*="px"]:not(img):not(svg):not(.color-dot):not(.man-tile-swatch) {
+  [style*="width:"][style*="px"]:not(img):not(svg):not(.color-dot):not(.man-tile-swatch),
+  :is(.suchfeld, .min-100, .max-82, .max-110, .max-120, .max-150, .max-160, .max-220, .max-240, .max-360,
+      .max-420, .max-440, .max-480, .max-520, .max-560, .max-620, .max-720, .max-780)[class] {
     max-width: 100% !important;
   }
 
