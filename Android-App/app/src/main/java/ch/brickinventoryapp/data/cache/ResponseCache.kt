@@ -13,39 +13,20 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Plattenspeicher für API-Antworten.
+ * Plattenspeicher für API-Antworten, damit die App nach dem Start gefüllt ist und
+ * offline benutzbar bleibt.
  *
- * ── Warum nicht Room ────────────────────────────────────────────────────────
- * Die ursprüngliche Empfehlung lautete „Room-Persistenz". Beim Umsetzen zeigte
- * sich, dass Room hier den falschen Zuschnitt hat:
+ * Kein Room: Die App fragt ganze Listen ab und ersetzt sie ganz — keine
+ * Teilaktualisierungen, keine Joins, keine Abfragen über den Cache. Alle Modelle
+ * sind schon @Serializable, so braucht der Cache keine neue Abhängigkeit und keine
+ * Entities, DAOs oder zweite KSP-Verarbeitung.
  *
- *   • Die App fragt ganze Listen ab und ersetzt sie ganz. Es gibt keine
- *     Teilaktualisierungen, keine Joins und keine Abfragen über den Cache —
- *     also nichts, wofür eine relationale Schicht gebaut wird.
- *   • Room verlangt Entities, DAOs, TypeConverter für verschachtelte Listen
- *     (SetItem.instructions), eine Datenbankklasse, ein Hilt-Modul und eine
- *     zweite KSP-Verarbeitung. Jede dieser Stellen ist ein Fehler, der erst
- *     beim Kompilieren auffällt.
- *   • Alle Modelle sind bereits @Serializable, kotlinx.serialization ist
- *     eingebunden. Der Cache braucht damit KEINE neue Abhängigkeit und KEINE
- *     Änderung am Build.
- *
- * Der Nutzen für den Anwender ist derselbe: Die App ist nach dem Start sofort
- * gefüllt und bleibt offline benutzbar, statt bei jedem Öffnen alles neu zu
- * laden und ohne Netz leer zu bleiben.
- *
- * ── Verhalten ───────────────────────────────────────────────────────────────
- * Geschrieben wird bei jeder erfolgreichen Antwort. Gelesen wird nur, wenn der
- * Netzabruf fehlschlägt — der Server bleibt die Wahrheit, der Cache ist die
- * Rückfallebene. Damit kann der Cache nie eine frische Antwort verdrängen.
- *
- * Einträge tragen eine Formatversion. Ändert sich ein Modell, wird VERSION
- * erhöht und alles Alte verworfen, statt an einer veralteten Struktur zu
- * scheitern.
- *
- * Jede Ablage gehört einem Bereich aus Server und Sitzung ([CacheBesitzer]).
- * Nach einem Kontowechsel oder auf einem anderen Server findet ein Abruf nur
- * Einträge seines eigenen Bereichs — nie die eines anderen Kontos.
+ * Geschrieben wird bei jeder erfolgreichen Antwort, gelesen nur, wenn der
+ * Netzabruf fehlschlägt — der Server bleibt die Wahrheit. Einträge tragen eine
+ * Formatversion: Ändert sich ein Modell, wird VERSION erhöht und alles Alte
+ * verworfen. Jede Ablage gehört einem Bereich aus Server und Sitzung
+ * ([CacheBesitzer]), damit ein Abruf nie Einträge eines anderen Kontos oder
+ * Servers findet.
  */
 @Singleton
 class ResponseCache internal constructor(

@@ -12,24 +12,13 @@ class BrickInventoryApp : Application(), Configuration.Provider {
     @Inject lateinit var preferencesManager: ch.brickinventoryapp.data.PreferencesManager
 
     /**
-     * WorkManager auf Abruf statt beim Start.
-     *
-     * Das Gegenstueck zum tools:node="remove" im Manifest: Ohne den Eintrag
-     * in androidx.startup faehrt WorkManager nicht mehr von selbst hoch,
-     * sondern beim ersten WorkManager.getInstance() — und holt sich seine
-     * Einstellungen dann HIER.
-     *
-     * Fehlt diese Schnittstelle, wirft genau dieser erste Zugriff
-     * "WorkManager is not initialized properly". Die beiden Aenderungen
-     * gehoeren zusammen; eine allein ist ein Fehler.
-     *
-     * Die Vorgaben genuegen: Der einzige Auftrag ist ein stuendlicher Abruf
-     * ohne eigene WorkerFactory (siehe die Begruendung fuer EntryPoint statt
-     * @HiltWorker in PreisalarmWorker).
-     *
-     * Dass die Umstellung noetig WAR und nicht nur gut aussah, hat Marcos
-     * Geraet bestaetigt: Davor startete die App nicht mehr, danach wieder.
-     * Die ausfuehrliche Fassung steht am Manifest-Eintrag.
+     * WorkManager auf Abruf statt beim Start — das Gegenstück zum tools:node="remove"
+     * im Manifest: Ohne den androidx.startup-Eintrag fährt WorkManager erst beim
+     * ersten WorkManager.getInstance() hoch und holt seine Einstellungen hier. Fehlt
+     * diese Schnittstelle, wirft genau dieser Zugriff „WorkManager is not initialized
+     * properly“ — die beiden Änderungen gehören zusammen. Die Vorgaben genügen: Der
+     * einzige Auftrag ist ein stündlicher Abruf ohne eigene WorkerFactory (siehe
+     * PreisalarmWorker). Ausführlich am Manifest-Eintrag.
      */
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder().build()
@@ -37,34 +26,23 @@ class BrickInventoryApp : Application(), Configuration.Provider {
     override fun onCreate() {
         super.onCreate()
 
-        // ── Klartext-Token einmalig übernehmen (Nachtrag 155) ────────────────
+        // ── Klartext-Token einmalig übernehmen ──
         //
-        // Auf jedem Gerät, das die App vor dieser Fassung benutzt hat, liegt
-        // das Bearer-Token unverschlüsselt im DataStore. Hier wird es einmal
-        // verschlüsselt neu abgelegt und der Klartext entfernt.
-        //
-        // Im Hintergrund, NICHT blockierend: Der Lesepfad kommt auch ohne
-        // Übernahme an das alte Token heran (siehe PreferencesManager.authToken),
-        // die Übernahme darf den Kaltstart also nicht aufhalten. Läuft sie
-        // wegen eines Absturzes nicht durch, passiert sie beim nächsten Start.
+        // Auf Geräten mit älterer Fassung liegt das Bearer-Token unverschlüsselt im
+        // DataStore; hier wird es verschlüsselt neu abgelegt und der Klartext entfernt. Im
+        // Hintergrund, nicht blockierend: Der Lesepfad kommt auch ohne Übernahme an das
+        // alte Token (PreferencesManager.authToken), der Kaltstart soll nicht warten.
+        // Läuft sie nicht durch, passiert sie beim nächsten Start.
         kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
             runCatching { preferencesManager.uebernehmeAltesToken() }
-            // ── Den Preisalarm-Abruf wieder einplanen ────────────────────────
+            // ── Den Preisalarm-Abruf wieder einplanen ──
             //
-            // WorkManager ueberlebt Neustarts von sich aus. Was er NICHT
-            // ueberlebt, ist ein Zuruecksetzen der App-Daten, eine
-            // Neuinstallation ueber ein Backup oder ein „Force Stop", nach dem
-            // manche Hersteller die Auftraege verwerfen. Dann stuende der
-            // Schalter auf „an" und es kaeme nie wieder eine Meldung — ein
-            // Fehler, den niemand meldet, weil nichts passiert.
-            //
-            // KEEP (siehe einplanen()) macht den Aufruf im Normalfall zu einem
-            // Nichts: Ein bereits eingeplanter Auftrag laeuft unveraendert
-            // weiter und wird nicht bei jedem Start nach hinten geschoben.
-            // runCatching umschliesst hier nur noch das LESEN der Einstellung:
-            // einplanen() faengt seit dem 25.09. selbst (siehe dort). Zwei
-            // Netze uebereinander sahen aus wie Vorsicht und waren in Wahrheit
-            // der Grund, warum die zweite Aufrufstelle ohne auskam.
+            // WorkManager überlebt Neustarts, aber nicht ein Zurücksetzen der App-Daten, eine
+            // Neuinstallation über ein Backup oder ein „Force Stop“, nach dem manche
+            // Hersteller die Aufträge verwerfen. Dann stünde der Schalter auf „an“ und es käme
+            // nie wieder eine Meldung. KEEP (siehe einplanen()) lässt einen eingeplanten
+            // Auftrag unverändert, statt ihn bei jedem Start nach hinten zu schieben.
+            // runCatching umschliesst nur das Lesen der Einstellung; einplanen() fängt selbst.
             runCatching {
                 if (preferencesManager.alarmMeldungenAn.first()) {
                     ch.brickinventoryapp.alarm.PreisalarmWorker

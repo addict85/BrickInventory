@@ -383,9 +383,6 @@ fun LazyListScope.setDetailDetailsSection(set: SetItem, setNumber: String, vm: S
                     onNavigateToAcqMgmt("set", capturedSetNumber, 0, capturedSetTitle)
                 }
             )
-
-            // Hier stand „Teile neu einlesen" — der Aufruf, der die Teileliste
-            // des Sets aus dem Katalog neu holt. Auf Marcos Wunsch entfernt.
         }
     }
 

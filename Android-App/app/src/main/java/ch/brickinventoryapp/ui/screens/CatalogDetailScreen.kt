@@ -59,7 +59,7 @@ fun CatalogDetailScreen(
     householdMembers: List<ch.brickinventoryapp.data.model.HouseholdMember> = emptyList(),
     /** Vorrat an Lagerorten fuer den Erfassungsdialog. */
     lagerorte: List<String> = emptyList(),
-    /** Der vorausgewaehlte Lagerort — Marcos Stern. Leer heisst: keine Vorgabe. */
+    /** Der vorausgewählte Lagerort (Stern in den Einstellungen). Leer heisst: keine Vorgabe. */
     lagerortVorgabe: String = "",
     onLoad: (String) -> Unit,
     onAddToGallery: (String, Int, Double?, String?, Int?, String?) -> Unit,
@@ -297,7 +297,7 @@ private fun CatalogAddDialog(
     householdMembers: List<ch.brickinventoryapp.data.model.HouseholdMember>,
     /** Vorrat an Lagerorten — leer heisst: es gibt noch keine, dann wird getippt. */
     lagerorte: List<String>,
-    /** Der vorausgewaehlte Lagerort — Marcos Stern. Leer heisst: keine Vorgabe. */
+    /** Der vorausgewählte Lagerort (Stern in den Einstellungen). Leer heisst: keine Vorgabe. */
     lagerortVorgabe: String = "",
     onDismiss: () -> Unit,
     onAdd: (Int, Double?, String?, Int?, String?) -> Unit
@@ -390,9 +390,8 @@ private fun MerkpostenDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(Abstaende.mittel)) {
                 Text(setName, style = MaterialTheme.typography.bodyMedium)
-                // Marcos Befund vom 24.09.: „Wenn ich etwas aus dem Katalog auf
-                // die Merkliste setze kann ich den Account nicht waehlen."
-                // Blendet sich bei weniger als zwei Mitgliedern selbst aus.
+                // Zielkonto wie beim Erfassen; blendet sich bei weniger als
+                // zwei Mitgliedern selbst aus.
                 OwnerPicker(householdMembers, konto, { konto = it })
                 Zustandszeile(zustand = zustand, onZustand = { zustand = it })
                 HorizontalDivider()

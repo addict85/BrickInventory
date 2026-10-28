@@ -35,17 +35,10 @@ fun SetDetailScreen(
     /** Das Set aus der geladenen Galerie — sofort sichtbar, bis das Detail da ist. */
     vorschau: ch.brickinventoryapp.data.model.SetItem? = null,
     serverUrl: String,
-    // Wird tatsächlich benutzt — siehe unten.
-    //
-    // VORHER stand hier @Suppress("UNUSED_PARAMETER"): Der Parameter wurde
-    // durchgereicht, aber nie verwendet, und statt ihn einzusetzen war die
-    // Warnung stummgeschaltet. Die AsyncImage-Aufrufe fielen dadurch auf Coils
-    // Standard-Loader zurück, der den Bearer-Token NICHT anhängt (den setzt nur
-    // der Client aus di/NetzModule.kt).
-    //
-    // Solange Set-Bilder ohne Anmeldung abrufbar waren, fiel das nicht auf.
-    // Seit der Server für alle Bilder eine Anmeldung verlangt, antwortet er mit
-    // 401 — und der Detail-Dialog blieb leer, ohne jede Fehlermeldung.
+    // Die AsyncImage-Aufrufe brauchen diesen Loader: Coils Standard-Loader hängt den
+    // Bearer-Token nicht an (den setzt nur der Client aus di/NetzModule.kt), und der
+    // Server verlangt für alle Bilder eine Anmeldung — sonst bliebe der Dialog mit 401
+    // still leer.
     imageLoader: ImageLoader,
     onBack: () -> Unit,
     onDelete: (String) -> Unit,
@@ -103,12 +96,10 @@ fun SetDetailScreen(
                     }
                 },
                 actions = {
-                    // Kein Verschieben-Knopf: Verschoben wird über den
-                    // KAUFPREIS, im Kaufpreis-Screen, Zeile für Zeile. Ein Set
-                    // mit drei Erfassungen sind drei Käufe, die im Haushalt
-                    // verschiedenen Kindern gehören können — „das Set
-                    // verschieben" verdeckt, was tatsächlich wandert. Der
-                    // Server erzwingt dieselbe Regel: move ohne
+                    // Kein Verschieben-Knopf: Verschoben wird über den Kaufpreis, im
+                    // Kaufpreis-Screen, Zeile für Zeile. Ein Set mit drei Erfassungen sind drei
+                    // Käufe, die verschiedenen Kindern gehören können — „das Set verschieben“
+                    // verdeckte, was wandert. Der Server erzwingt dieselbe Regel: move ohne
                     // acquisition_ids antwortet mit 400.
                     IconButton(onClick = { showSetDeleteConfirm = true }) {
                         Icon(Icons.Default.Delete, stringResource(R.string.common_delete))
@@ -132,39 +123,27 @@ fun SetDetailScreen(
             return@Scaffold
         }
 
-        // Volle Auflösung — wie die Webapp: Dort zeigt der Detail-Dialog
-        // (07-admin.js, "m-img") ebenfalls fullUrl(), keine Vorschau. Mein
-        // früherer Kommentar hier behauptete das Gegenteil ("dieselbe
-        // Unterscheidung wie in der Webapp") — das stimmte nicht; die Webapp
-        // macht für ihr Haupt-Detailbild gar keine Thumb/Voll-Unterscheidung,
-        // nur der Zoom war je nach Kontext unterschiedlich. Beide (Vorschau-
-        // Karte und Zoom) benutzen jetzt dieselbe volle Auflösung.
+        // Volle Auflösung — wie der Detail-Dialog der Webapp (07-admin.js, "m-img",
+        // fullUrl()). Vorschau-Karte und Zoom benutzen dieselbe Adresse.
         val imageUrl = resolveFullUrl(serverUrl, set.imageLocal, set.imageUrl)
-        // Einmaliger, verzögerter Wiederholversuch — wie in der Galerie-Kachel
-        // (Nachtrag 49). Hier gab es bisher GAR KEINE Fehlerbehandlung: kein
-        // onState, also weder zweiter Versuch noch Rückfall. Schlug der erste
-        // Ladeversuch fehl — direkt nach dem Erfassen ist die Datei auf dem
-        // Server oft noch nicht fertig —, blieb die Fläche leer, bis man den
-        // Bildschirm verliess und neu öffnete. Coil versucht von sich aus nie
-        // erneut.
+        // Einmaliger, verzögerter Wiederholversuch — wie in der Galerie-Kachel: Direkt
+        // nach dem Erfassen ist die Datei auf dem Server oft noch nicht fertig, und Coil
+        // versucht von sich aus nie erneut; die Fläche bliebe leer bis zum nächsten
+        // Öffnen.
         //
-        // An setNumber UND imageUrl gebunden: Bei einem Wechsel des Sets oder
-        // der Adresse beginnt die Zählung neu. memoryCacheKeyExtra macht die
-        // zweite Anfrage für Coil unterscheidbar; ohne das gälte sie als
-        // dieselbe, bereits gescheiterte. (In Coil 2 hiess das setParameter;
-        // Parameter gibt es in Coil 3 nicht mehr.)
-        // Als State-Objekt statt per `by`: setDetailHeroImage() setzt den Wert
-        // im Fehlerzweig, um Coil zu einem zweiten Anlauf zu bewegen — dafür
-        // muss es dasselbe Objekt sein, keine Kopie (Nachtrag 98).
+        // An setNumber und imageUrl gebunden, damit die Zählung bei einem Wechsel neu
+        // beginnt. memoryCacheKeyExtra macht die zweite Anfrage für Coil unterscheidbar,
+        // sonst gälte sie als dieselbe gescheiterte. Als State-Objekt statt per `by`:
+        // setDetailHeroImage() setzt den Wert im Fehlerzweig, dafür muss es dasselbe
+        // Objekt sein, keine Kopie.
         val detailRetryState = remember(set.setNumber, imageUrl) { mutableIntStateOf(0) }
         val detailScope = rememberCoroutineScope()
         val zoomImageUrl = imageUrl
 
-        // Die Dateiauswahl fuer eine Anleitung. Hier und nicht im Abschnitt
-        // darunter: Ein `LazyListScope` ist kein Composable-Kontext, und ein
-        // Starter, der bei jedem Scrollen neu entstuende, verloere seine
-        // Rueckmeldung. Die Typenliste kommt aus SetDetailFeature — sie ist
-        // dieselbe, die der Server annimmt.
+        // Die Dateiauswahl für eine Anleitung. Hier und nicht im Abschnitt darunter: Ein
+        // `LazyListScope` ist kein Composable-Kontext, und ein Starter, der beim Scrollen
+        // neu entstünde, verlöre seine Rückmeldung. Die Typenliste kommt aus
+        // SetDetailFeature — dieselbe, die der Server annimmt.
         val anleitungAuswahl = androidx.activity.compose.rememberLauncherForActivityResult(
             androidx.activity.result.contract.ActivityResultContracts.OpenDocument()
         ) { uri -> if (uri != null) vm.ladeAnleitungHoch(setNumber, uri) }
@@ -204,10 +183,9 @@ fun SetDetailScreen(
         }
 
         if (showImageZoom && zoomImageUrl != null) {
-            // Gemeinsame Umsetzung mit dem Katalog-Detail — siehe
-            // ui/components/ZoomableImageDialog.kt. Vorher standen die Gesten-
-            // und Zustandslogik nur hier; für den Katalog wäre sonst eine
-            // zweite Kopie entstanden.
+            // Gemeinsame Umsetzung mit dem Katalog-Detail
+            // (ui/components/ZoomableImageDialog.kt), damit Gesten- und Zustandslogik nur
+            // einmal existieren.
             ZoomableImageDialog(
                 imageUrl = zoomImageUrl,
                 contentDescription = set.name,

@@ -112,9 +112,8 @@ fun SetItemDetailDialog(
                     )
                     else -> {
                         if (bild != null) {
-                            // Tippen vergroessert — genau der Zoom, den Marco
-                            // wollte. Dasselbe Bauteil wie im Set-Detail und im
-                            // Dialog fuer manuell erfasste Teile.
+                            // Tippen vergrössert — dasselbe Bauteil wie im Set-Detail
+                            // und im Dialog für manuell erfasste Teile.
                             AsyncImage(
                                 model = bild,
                                 contentDescription = kopf.name,

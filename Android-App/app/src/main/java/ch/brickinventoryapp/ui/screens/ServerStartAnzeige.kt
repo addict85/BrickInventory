@@ -24,28 +24,17 @@ import ch.brickinventoryapp.data.model.StartupStatus
 import ch.brickinventoryapp.ui.theme.Abstaende
 
 /**
- * „Der Server startet gerade" — mit Fortschritt statt einer Fehlermeldung.
+ * „Der Server startet gerade“ — mit Fortschritt statt einer Fehlermeldung, wie die
+ * Webapp über /v1/startup-status. Der erste Start einer Neuinstallation holt den
+ * Rebrickable-Katalog und dauert viele Minuten; eine allgemeine Netzmeldung liesse
+ * dabei App oder Server kaputt aussehen, obwohl alles richtig läuft.
  *
- * ── Woher das kommt (Nachtrag 136) ──────────────────────────────────────────
+ * Kein Kringel: Ein unbestimmter Kringel sagt „ich weiss nichts“, der Server nennt
+ * aber Schritt und Anzahl. Bei 0 von 0 — er hat noch nicht gezählt — steht ein
+ * unbestimmter Balken, sonst der echte Anteil.
  *
- * Gemessen ueber die Server-Adressen beider Clients: /v1/startup-status war
- * eine der Adressen, die nur die Webapp ruft. Sie zeigt damit einen
- * Fortschrittsbalken, solange der Server hochfaehrt — und der Kommentar dort
- * sagt, warum das noetig ist: Der erste Start einer Neuinstallation holt den
- * Rebrickable-Katalog und dauert VIELE MINUTEN.
- *
- * Die App zeigte in dieser ganzen Zeit ihre allgemeine Netzmeldung. Wer seinen
- * Server frisch aufsetzt und die App oeffnet, sieht „keine Verbindung" und
- * haelt das eine oder das andere fuer kaputt — obwohl alles richtig laeuft.
- *
- * ── Warum kein Kringel ──────────────────────────────────────────────────────
- *
- * Ein unbestimmter Kringel sagt „ich weiss nichts". Hier ist das Gegenteil der
- * Fall: Der Server nennt Schritt und Anzahl. Bei 0 von 0 — er hat noch nicht
- * gezaehlt — steht ein unbestimmter Balken, sonst der echte Anteil.
- *
- * @param status Der zuletzt gemeldete Stand; nie `ready`, sonst zeigt der
- *        Aufrufer diese Anzeige gar nicht erst.
+ * @param status Der zuletzt gemeldete Stand; nie `ready`, sonst zeigt der Aufrufer
+ *         diese Anzeige gar nicht erst.
  */
 @Composable
 fun ServerStartAnzeige(status: StartupStatus, modifier: Modifier = Modifier) {

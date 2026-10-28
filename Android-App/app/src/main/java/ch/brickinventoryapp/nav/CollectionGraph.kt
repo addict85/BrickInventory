@@ -61,14 +61,9 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import ch.brickinventoryapp.ui.ManualItemDetailUiState
 
 /**
- * Navigationsziele, aus AppNavigation.kt herausgelöst (Punkt 9 der
- * Optimierungsliste). Die Blöcke sind unverändert übernommen — die einzige
- * Änderung ist, dass die zuvor aus dem umgebenden Scope eingefangenen Werte
- * jetzt als Parameter hereinkommen.
- *
- * ACHTUNG: Diese Aufteilung wurde ohne Android-SDK erzeugt und ist NICHT
- * kompiliert. Fehlende oder falsch typisierte Parameter fallen beim ersten
- * ./gradlew assembleDebug auf.
+ * Navigationsziele des Bestands: Galerie, Teile, Minifiguren und ihre Details. Die
+ * Werte aus AppNavigation kommen als Parameter herein, damit kein Ziel Zustand aus
+ * einem umgebenden Scope einfängt.
  */
 fun NavGraphBuilder.collectionGraph(
     vm: AppViewModel,
@@ -101,8 +96,8 @@ fun NavGraphBuilder.collectionGraph(
                     galerieVm.loadSets(); galerieVm.loadStats()
                 }
             }
-            // Rollposition ausdrücklich wiederherstellen — der hochgezogene
-            // Zustand allein landete „verschoben" (Marcos Befund, Nachtrag 95).
+            // Rollposition ausdrücklich wiederherstellen — der hochgezogene Zustand allein
+            // landet verschoben.
             ch.brickinventoryapp.ui.ScrollPositionKeeper(
                 "gallery", galleryGridState, galerie.sets.isNotEmpty(), vm.scrollMemory)
 
@@ -175,20 +170,18 @@ fun NavGraphBuilder.collectionGraph(
                     teileVm.loadParts()
                     // Farbkatalog fuer den Erfassungsdialog …
                     teileVm.loadPartsColors()
-                    // … und die beiden FILTERlisten mit ihren Zaehlwerten
-                    // (Nachtrag 134). Zwei verschiedene Adressen, siehe
-                    // BrickApiService.getPartsFilterColors.
+                    // … und die beiden Filterlisten mit ihren Zählwerten. Zwei verschiedene
+                    // Adressen, siehe BrickApiService.getPartsFilterColors.
                     teileVm.loadPartsFilters()
                 }
             }
             ReiterGeruest(stringResource(R.string.nav_parts), vm, navController, bottomNavItems, snackbarHostState) {
                 ch.brickinventoryapp.ui.ScrollPositionKeeper(
                     "parts", partsGridState,
-                    // BEIDE Ladevorgänge, nicht nur die Set-Teile (Nachtrag 122).
-                    // `partsValuation != null` heisst "die Bewertung ist
-                    // zurück" — auch bei null manuell erfassten Teilen. Auf
-                    // `isNotEmpty()` zu prüfen hiesse, dass die Position bei
-                    // jemandem ohne eigene Teile nie wiederhergestellt würde.
+                    // Beide Ladevorgänge, nicht nur die Set-Teile. `manualParts != null` heisst
+                    // „die Antwort ist zurück“ — auch bei null manuell erfassten Teilen. Mit
+                    // `isNotEmpty()` würde die Position bei jemandem ohne eigene Teile nie
+                    // wiederhergestellt.
                     bereit = partsState.parts.isNotEmpty() && partsState.manualParts != null,
                     speicher = vm.scrollMemory,
                     obenNachziehend = partsState.manualParts?.size ?: 0)
@@ -204,12 +197,11 @@ fun NavGraphBuilder.collectionGraph(
                     },
                     gridState = partsGridState
                 )
-                // ── Der Detail-Dialog fuer Teile AUS SETS ──────────────────
+                // ── Der Detail-Dialog für Teile aus Sets ──
                 //
-                // Er liegt HIER und nicht im Bildschirm, weil nur der Graph
-                // den NavController kennt — dieselbe Bauart wie onOpenDetail
-                // darueber. Der Dialog zeigt sich selbst nur, wenn im
-                // Zustand ein Teil offen ist (SetItemUiState.offen).
+                // Hier und nicht im Bildschirm, weil nur der Graph den NavController kennt — wie
+                // onOpenDetail darüber. Der Dialog zeigt sich nur, wenn im Zustand ein Teil offen
+                // ist (SetItemUiState.offen).
                 SetItemDetailDialog(
                     vm = teileVm,
                     imageLoader = imageLoader,
@@ -228,11 +220,9 @@ fun NavGraphBuilder.collectionGraph(
             ReiterGeruest(stringResource(R.string.nav_minifigs), vm, navController, bottomNavItems, snackbarHostState) {
                 ch.brickinventoryapp.ui.ScrollPositionKeeper(
                     "minifigs", minifigsGridState,
-                    // Stand hier auf `figsValuation?.figs?.isNotEmpty() == true`
-                    // und damit auf INHALT statt auf ABGESCHLOSSEN: Wer keine
-                    // manuell erfassten Minifiguren hat, bekam nie eine
-                    // Position wiederhergestellt. Dieselbe Bedingung wie bei
-                    // den Teilen (Nachtrag 122).
+                    // Auf abgeschlossen statt auf Inhalt prüfen, wie bei den Teilen: Sonst bekäme,
+                    // wer keine manuell erfassten Minifiguren hat, nie eine Position
+                    // wiederhergestellt.
                     bereit = partsState.minifigs.isNotEmpty() && partsState.manualFigs != null,
                     speicher = vm.scrollMemory,
                     obenNachziehend = partsState.manualFigs?.size ?: 0)
@@ -289,15 +279,10 @@ fun NavGraphBuilder.collectionGraph(
                 onNavigateToAcqMgmt = { t, i, c, title ->
                     navController.navigate(Screen.AcquisitionManagement.createRoute(t, i, c, title))
                 },
-                // Die Farbe ist Teil der Route (manual_detail/.../{colorId}/...)
-                // und der Suche im Screen. Nach einer Aenderung muss der
-                // Screen deshalb mit der NEUEN Farbe neu geoeffnet werden,
-                // sonst sucht er eine Zeile, die es nicht mehr gibt, und
-                // bleibt leer.
-                //
-                // Erst zurueck, dann hin: Der alte Eintrag darf nicht im
-                // Rueckweg stehenbleiben — ein Zurueck-Tipp landete sonst auf
-                // genau der Farbe, die gerade korrigiert wurde.
+                // Die Farbe ist Teil der Route (manual_detail/.../{colorId}/...) und der Suche im
+                // Screen; nach einer Änderung muss er mit der neuen Farbe neu geöffnet werden,
+                // sonst sucht er eine Zeile, die es nicht mehr gibt. Erst zurück, dann hin: Sonst
+                // landete ein Zurück-Tipp auf genau der Farbe, die gerade korrigiert wurde.
                 onFarbeGeaendert = { neueFarbe ->
                     navController.popBackStack()
                     navController.navigate(Screen.ManualItemDetail.createRoute(

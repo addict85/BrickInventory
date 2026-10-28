@@ -299,10 +299,9 @@ private fun GutscheinZeile(
 ) {
     var loeschFrage by rememberSaveable { mutableStateOf(false) }
 
-    // Dieselbe Luecke wie bei den Preisalarmen (Marcos Befund vom 16.10.):
-    // Eine Gutscheinzeile ist EIN Kind der Karte, und der Abstand, den die
-    // Karte zwischen ihren Kindern legt, wirkt darin nicht. Nummer, Betrag
-    // und PIN standen deshalb dicht aufeinander.
+    // Eigener Abstand: Eine Gutscheinzeile ist ein Kind der Karte, und der
+    // Abstand, den die Karte zwischen ihre Kinder legt, wirkt darin nicht —
+    // Nummer, Betrag und PIN stünden sonst dicht aufeinander.
     Column(Modifier.fillMaxWidth().padding(vertical = Abstaende.klein),
            verticalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
         // Antippen kopiert Nummer oder PIN — die rohe Nummer, weil ein Bezahlfeld die

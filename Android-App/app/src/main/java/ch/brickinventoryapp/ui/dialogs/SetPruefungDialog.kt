@@ -17,33 +17,21 @@ import ch.brickinventoryapp.ui.Pruefphase
 import ch.brickinventoryapp.ui.theme.Abstaende
 
 /**
- * „Wird geprüft" — die Anzeige zwischen Scan und Zwischendialog.
+ * „Wird geprüft“ — die Anzeige zwischen Scan und Zwischendialog. Ein Dialog statt
+ * einer Snackbar, weil eine Snackbar:
  *
- * ── Warum ein Dialog und keine Schnellmeldung ───────────────────────────────
- * Vorher stand hier eine Snackbar („Suche Set für …"). Die hat drei Nachteile,
- * und alle drei sind genau das, was Marco gemeldet hat:
+ *   1. nach ein paar Sekunden verschwindet, während die Prüfung weiterläuft — der Bildschirm sähe untätig aus;
+ *   2. nichts anhält: Der Scanner ist schon geschlossen (nav/ToolsGraph.kt ruft `popBackStack()` vor der Auflösung), man könnte das nächste Set scannen, während das vorige noch geprüft wird;
+ *   3. beim Texterkennungs-Weg nichts nennt.
  *
- *   1. Sie verschwindet nach ein paar Sekunden von selbst — die Prüfung läuft
- *      aber weiter. Danach sieht der Bildschirm untätig aus, obwohl er es
- *      nicht ist.
- *   2. Sie hält nichts an. Der Scanner-Bildschirm ist zu diesem Zeitpunkt
- *      bereits geschlossen (nav/ToolsGraph.kt ruft `popBackStack()` vor der
- *      Auflösung), man kann ihn also sofort wieder öffnen und das nächste Set
- *      scannen, während das vorige noch geprüft wird.
- *   3. Sie nennt beim Texterkennungs-Weg gar nichts, weil es dort nie eine gab.
+ * Der Dialog bleibt, solange die Frage offen ist, legt sich über den Weg zurück
+ * zum Scanner und nennt die Nummer.
  *
- * Ein Dialog löst alle drei: Er bleibt, solange die Frage offen ist, er legt
- * sich über den Weg zurück zum Scanner, und er nennt die Nummer, um die es
- * geht.
- *
- * ── Was er NICHT anzeigt ────────────────────────────────────────────────────
- * Das Erfassen selbst. Marcos Regel: „Erst das effektive Hinzufügen soll im
- * Hintergrund passieren." Sobald die Bestandsfrage beantwortet ist, ist der
- * Dialog weg — Teile, Anleitungen und Preise lädt der Server ohnehin im
- * Hintergrund nach.
- *
- * Der Bildschirm holt hier nichts selbst (BildschirmHoltDatenNichtSelbstTest);
- * er liest einen Fluss und ruft eine ViewModel-Funktion.
+ * Das Erfassen selbst zeigt er nicht: Es läuft im Hintergrund. Sobald die
+ * Bestandsfrage beantwortet ist, ist er weg; Teile, Anleitungen und Preise lädt
+ * der Server ohnehin nach. Der Bildschirm holt nichts selbst
+ * (BildschirmHoltDatenNichtSelbstTest); er liest einen Fluss und ruft eine
+ * ViewModel-Funktion.
  */
 @Composable
 fun SetPruefungDialog(vm: ErfassungViewModel) {

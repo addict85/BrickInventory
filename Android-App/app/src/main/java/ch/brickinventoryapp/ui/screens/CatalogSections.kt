@@ -1,18 +1,10 @@
 package ch.brickinventoryapp.ui.screens
 
 /**
- * Die Abschnitte der Katalogseite.
- *
- * ── Warum eigene Datei (Nachtrag 98) ────────────────────────────────────────
- *
- * `CatalogScreen()` war 339 Zeilen und enthielt neben dem Raster auch das
- * Suchfeld, die Filterzeile (Thema, Jahr, Sortierung) und die Trefferliste.
- *
- * Anders als bei SetDetail und Finance sind das hier gewöhnliche
- * @Composable-Funktionen: Sie stehen in einer `Column`, nicht in einer
- * LazyColumn.
- *
- * Jeder Rumpf ist WORTGLEICH übernommen; verändert wurde nur die Einrückung.
+ * Die Abschnitte der Katalogseite: Suchfeld, Filterzeile (Thema, Jahr, Sortierung)
+ * und Trefferliste neben dem Raster. Anders als bei SetDetail und Finance
+ * gewöhnliche @Composable-Funktionen, weil sie in einer `Column` stehen, nicht in
+ * einer LazyColumn.
  */
 
 import ch.brickinventoryapp.ui.theme.Formen
@@ -104,8 +96,7 @@ fun CatalogFilterRow(state: CatalogUiState, selectedThemeName: String?, showThem
 @Composable
 fun CatalogSearchField(state: CatalogUiState, onQueryChange: (String) -> Unit) {
     // Suchfeld — derselbe Baustein wie in Galerie, Teilen und Minifiguren
-    // (TabellenZeile.kt). Er stand hier viermal, mit vier verschiedenen
-    // Beschriftungen des Leeren-Knopfes (Nachtrag 132).
+    // (TabellenZeile.kt), damit der Leeren-Knopf überall gleich heisst.
     Suchfeld(
         wert = state.query,
         onWert = onQueryChange,
@@ -154,11 +145,8 @@ fun CatalogThemeSheet(state: CatalogUiState, showThemeSheet: androidx.compose.ru
             var themeFilter by rememberSaveable { mutableStateOf("") }
             Column(Modifier.padding(horizontal = Abstaende.gross).padding(bottom = Abstaende.sehrGross)) {
                 Text(stringResource(R.string.catalog_filter_theme), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
-                // Der gemeinsame Baustein (Nachtrag 134). Vorher stand hier ein
-                // eigenes Feld — das SIEBTE der App und das einzige ganz OHNE
-                // Leeren-Knopf: Wer sich vertippt hatte, musste Zeichen fuer
-                // Zeichen zuruecknehmen, waehrend die sechs anderen Suchfelder
-                // ein Kreuz anbieten.
+                // Der gemeinsame Baustein, damit auch dieses Feld einen Leeren-Knopf hat wie alle
+                // anderen Suchfelder.
                 Suchfeld(
                     wert = themeFilter,
                     onWert = { themeFilter = it },

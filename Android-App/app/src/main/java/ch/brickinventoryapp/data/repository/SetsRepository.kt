@@ -15,13 +15,9 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Sets: Bestand, Details, Anlegen, Aendern, PDF-Ausgabe.
- *
- * Teil der Aufteilung von BrickRepository (Nachtrag 155) — die Begruendung
- * steht in RepoBasis.kt. Die Ruempfe sind WORTGLEICH uebernommen; veraendert
- * wurde nichts ausser der Klassenzugehoerigkeit.
- *
- * Erreichbar ueber `repo.sets.…` — BrickRepository haelt die fuenf Teile.
+ * Sets: Bestand, Details, Anlegen, Ändern, PDF-Ausgabe — eines der Sachgebiete der
+ * Datenschicht, erreichbar über `repo.sets.…`; die Begründung der Aufteilung steht
+ * in RepoBasis.kt.
  */
 @Singleton
 class SetsRepository @Inject constructor(
@@ -48,10 +44,9 @@ class SetsRepository @Inject constructor(
         pageSize: Int = GALLERY_PAGE_SIZE,
         storage: String? = null
     ): Result<SetsResponse> {
-        // `storage` gehoert in die Bedingung fuer „ungefiltert": Ohne das
-        // landete eine nach Lagerort gefilterte Antwort im Zwischenspeicher
-        // unter demselben Schluessel wie die volle Liste — und die Galerie
-        // zeigte danach je nach Cache-Zustand mal alles, mal eine Kiste.
+        // `storage` gehört in die Bedingung für „ungefiltert“: Sonst landete eine nach
+        // Lagerort gefilterte Antwort unter dem Schlüssel der vollen Liste, und die
+        // Galerie zeigte je nach Cache-Zustand mal alles, mal eine Kiste.
         val ungefiltert = accounts == null && search.isNullOrBlank() && theme.isNullOrBlank() &&
             storage.isNullOrBlank() &&
             (sort == null || sort == GALLERY_DEFAULT_SORT) && page == 1
@@ -247,13 +242,10 @@ class SetsRepository @Inject constructor(
         }
     }
     /**
-     * Eine Anleitung hochladen — PDF, JPG oder PNG.
-     *
-     * Der Typ kommt aus der Dateiauswahl und wird NICHT geraten: Der Server
-     * leitet die Dateiendung aus dem gemeldeten Typ ab und lehnt alles ab, was
-     * nicht in seiner festen Liste steht (routes/sets.ts). Ein pauschales
-     * `application/octet-stream` fuehrte dort zu einer Absage, obwohl die Datei
-     * in Ordnung ist.
+     * Eine Anleitung hochladen — PDF, JPG oder PNG. Der Typ kommt aus der Dateiauswahl
+     * und wird nicht geraten: Der Server leitet die Dateiendung aus dem gemeldeten Typ
+     * ab und lehnt alles ausserhalb seiner festen Liste ab (routes/sets.ts) —
+     * `application/octet-stream` würde abgewiesen, obwohl die Datei in Ordnung ist.
      */
     suspend fun uploadAnleitung(
         setNumber: String, dateiname: String, typ: String, inhalt: ByteArray, beschreibung: String,

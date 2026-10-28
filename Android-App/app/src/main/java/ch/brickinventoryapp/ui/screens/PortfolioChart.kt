@@ -38,9 +38,8 @@ fun PortfolioChart(
     periodChangePct: Double? = null,
     onPeriodChange: (String) -> Unit
 ) {
-    // Aus dem Design statt fest eingetragen (Nachtrag 120) — `new`/`used`
-    // kamen hier schon von dort, die vier hier nicht, und im Stein-Design
-    // stand deshalb ein Preussischblau neben Salbeigrün und Sand.
+    // Alle Diagrammfarben aus dem Design, wie `new`/`used` — fest eingetragene stünden
+    // in einem anderen Design als Fremdkörper neben dessen Farben.
     val chart      = LocalChartColors.current
     val lineColor  = chart.linie
     val fillStart  = chart.linie.copy(alpha = 0.18f)

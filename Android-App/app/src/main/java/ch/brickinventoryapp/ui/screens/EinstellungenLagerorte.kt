@@ -17,25 +17,15 @@ import ch.brickinventoryapp.ui.*
 import ch.brickinventoryapp.ui.theme.Abstaende
 
 /**
- * Die eigenen Lagerorte verwalten.
+ * Die eigenen Lagerorte verwalten, je Benutzer.
  *
- * ── Marcos Vorgabe ──────────────────────────────────────────────────────────
+ * Nur die eigenen: Ein Lagerort ist ein Regal in der eigenen Wohnung. Beim Set des
+ * Enkels wählt der Grossvater aus dessen Liste, aber fremde Regale umzubenennen
+ * wäre ein Versehen — lesen weit, schreiben eng.
  *
- * „Die Werte sollen pro User verwaltet werden koennen und sollen in den
- * Einstellungen bearbeitbar sein."
- *
- * ── Warum hier nur die EIGENEN stehen ───────────────────────────────────────
- *
- * Ein Lagerort ist ein Regal in der eigenen Wohnung. Beim Set des Enkels
- * waehlt der Grossvater aus dessen Liste — aber fremde Regale UMZUBENENNEN
- * ist keine Einstellung, sondern ein Versehen. Lesen weit, Schreiben eng,
- * dieselbe Trennung wie ueberall im Baum.
- *
- * ── Warum Loeschen nur bei einem leeren Ort geht ────────────────────────────
- *
- * Der Server sagt Nein, solange etwas darin liegt (lagerort_in_benutzung).
- * Die Alternative — stilles Leeren — verloere die Zuordnung von Sets, die der
- * Loeschende gar nicht im Blick hatte, und zwar ohne Weg zurueck.
+ * Löschen nur bei einem leeren Ort: Der Server sagt Nein, solange etwas darin
+ * liegt (lagerort_in_benutzung). Stilles Leeren verlöre die Zuordnung von Sets,
+ * die der Löschende nicht im Blick hatte, ohne Weg zurück.
  */
 @Composable
 internal fun LagerorteCard(vm: EinstellungenViewModel) {
@@ -52,14 +42,10 @@ internal fun LagerorteCard(vm: EinstellungenViewModel) {
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(bottom = Abstaende.haar))
-        // ── Marcos Stern ────────────────────────────────────────────────────
+        // ── Der Stern: Vorgabe für Neuerfassungen ──
         //
-        // „Weiter moechte ich ein Lagerort in den Einstellungen als Default
-        //  setzen koennen. Der soll dann bei einer Neuerfassung bereits
-        //  vorausgewaehlt sein. Ich stelle mir das mit einem Sternicon vor."
-        //
-        // Der Hinweis steht da, weil ein Stern allein nicht sagt, WAS er tut —
-        // und weil niemand erraten soll, dass ein zweiter Druck ihn abschaltet.
+        // Der Hinweis steht da, weil ein Stern allein nicht sagt, was er tut — und niemand
+        // erraten soll, dass ein zweiter Druck ihn abschaltet.
         Text(stringResource(R.string.storage_default_hint),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -83,13 +69,12 @@ internal fun LagerorteCard(vm: EinstellungenViewModel) {
                     singleLine = true,
                     modifier = Modifier.weight(1f),
                 )
-                // ── Der Stern: gefuellt ODER umrissen ───────────────────
+                // ── Der Stern: gefüllt oder umrissen ──
                 //
-                // Der Unterschied liegt in der FORM und nicht in der Farbe.
-                // Marco ist rot-gruen-schwach; ein farbig hervorgehobener
-                // Eintrag waere fuer ihn kein Unterschied. Die Beschreibung
-                // sagt dasselbe noch einmal in Worten — fuer die
-                // Sprachausgabe und fuer jeden, der den Stern nicht deutet.
+                // Der Unterschied liegt in der Form, nicht in der Farbe: Bei Rot-Grün-Schwäche
+                // wäre ein farbig hervorgehobener Eintrag kein Unterschied. Die Beschreibung sagt
+                // dasselbe in Worten — für die Sprachausgabe und für jeden, der den Stern nicht
+                // deutet.
                 val istVorgabe = lager.vorgabe?.id == ort.id
                 IconButton(onClick = { vm.schalteLagerortVorgabe(ort.id, istVorgabe) }) {
                     Icon(

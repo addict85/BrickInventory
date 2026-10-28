@@ -43,14 +43,12 @@ import ch.brickinventoryapp.R
 import ch.brickinventoryapp.ui.theme.Abstaende
 
 /**
- * Ein Filtereintrag der Teileliste: Wert, Beschriftung, Anzahl, Farbpunkt.
+ * Ein Filtereintrag der Teileliste: Wert, Beschriftung, Anzahl, Farbpunkt. Eine
+ * gemeinsame Form für Farbe und Kategorie: Die Listen kommen von verschiedenen
+ * Adressen mit verschiedenen Feldnamen, sehen aber gleich aus und werden gleich
+ * bedient — zwei Fassungen liefen auseinander.
  *
- * Eine gemeinsame Form fuer Farbe UND Kategorie. Die beiden Listen kommen von
- * verschiedenen Adressen und tragen verschiedene Feldnamen, sehen aber gleich
- * aus und werden gleich bedient — genau die Stelle, an der in diesem Baum
- * sonst zwei Fassungen entstehen, die auseinanderlaufen.
- *
- * @param wert   Was als `color=` bzw. `category=` mitreist. "" heisst „alle".
+ * @param wert   Was als `color=` bzw. `category=` mitreist. "" heisst „alle“.
  * @param anzahl Verschiedene Teile — dieselbe Zahl, die die Webapp zeigt.
  * @param farbe  Farbpunkt, nur bei der Farbliste.
  */
@@ -62,26 +60,15 @@ data class TeileFilterEintrag(
 )
 
 /**
- * Farbe und Kategorie als zwei aufklappbare Filter.
+ * Farbe und Kategorie als zwei aufklappbare Filter — wie die beiden Filterlisten
+ * der Webapp (03-parts.js, `loadPartsFilters` → `#color-filter` und
+ * `#cat-filter`), jede mit der Anzahl daneben. `getParts` reicht `color` und
+ * `category` an den Server.
  *
- * ── Warum es das jetzt gibt (Nachtrag 134) ──────────────────────────────────
- *
- * Die Webapp hat im Teile-Reiter zwei Filterlisten (03-parts.js,
- * `loadPartsFilters` → `#color-filter` und `#cat-filter`), jede mit der Anzahl
- * daneben. Die App bot ausschliesslich die Suche. Gefunden durch Messen: Ein
- * Vergleich der Server-Adressen beider Clients nannte 21 Adressen, die nur die
- * Webapp ruft — darunter /parts/colors und /parts/categories.
- *
- * Die Leitung lag bereits: `getParts` deklariert `@Query("color")` und
- * `@Query("category")` seit jeher, und das Repository reicht beide durch. Nur
- * gesetzt hat sie nie jemand.
- *
- * ── Warum ein Blatt statt einer langen Liste ────────────────────────────────
- *
- * Die Webapp hat eine Seitenspalte und zeigt beide Listen dauerhaft. Auf dem
- * Telefon waeren das zwei Bloecke, die den Bestand nach unten schieben. Ein
- * Chip mit der aktuellen Wahl und ein Blatt zum Aendern ist derselbe Weg, den
- * der Katalog fuer sein Thema geht (CatalogThemeSheet).
+ * Ein Blatt statt einer langen Liste: Die Webapp hat eine Seitenspalte; auf dem
+ * Telefon schöben zwei Blöcke den Bestand nach unten. Ein Chip mit der aktuellen
+ * Wahl und ein Blatt zum Ändern ist derselbe Weg wie beim Thema im Katalog
+ * (CatalogThemeSheet).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

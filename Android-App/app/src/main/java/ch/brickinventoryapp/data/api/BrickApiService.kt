@@ -470,7 +470,7 @@ interface BrickApiService {
         @Path("id") id: Int,
     ): Response<LagerortResponse>
 
-    // Marcos Stern: der Lagerort, der beim Erfassen schon vorausgewaehlt ist.
+    // Der Stern: der Lagerort, der beim Erfassen schon vorausgewählt ist.
     // EIN Endpunkt fuer setzen und abschalten (id = null), weil es eine
     // Einstellung mit genau einem Wert ist. Gelesen wird sie nicht hier,
     // sondern als Feld `vorgabe` der Vorratsantwort darueber.

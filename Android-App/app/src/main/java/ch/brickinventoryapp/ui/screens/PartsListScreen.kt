@@ -119,7 +119,7 @@ fun PartsListScreen(
     // rememberSaveable: Die Wahl gehoert zur Frage, nicht zur Koroutine — sie
     // soll eine Drehung ueberleben, anders als die Ladeanzeige daneben.
     var nurLose   by rememberSaveable { mutableStateOf(false) }
-    // Vorgabe AUS: Marcos „aber nur die eigenen Sets".
+    // Vorgabe aus: Gemeint sind zuerst die eigenen Sets.
     var mitUnterkonten by rememberSaveable { mutableStateOf(false) }
     val pdfStatusText by pdfStatus.collectAsStateWithLifecycle()
 
@@ -408,11 +408,6 @@ fun PartsListScreen(
                     Text(txt, style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.primary)
                 }
-
-                // Hier stand die BrickLink-Wunschliste: Zustandswahl und der
-                // Knopf, der die fehlenden Teile als XML ausgab. Auf Marcos
-                // Wunsch entfernt — samt dem Eingabefeld „vorhanden" in jeder
-                // Zeile, das nur dafuer da war (siehe PartListRow).
             }
         }
 

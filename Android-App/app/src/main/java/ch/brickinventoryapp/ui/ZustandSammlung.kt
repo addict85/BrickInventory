@@ -10,7 +10,7 @@ import ch.brickinventoryapp.data.model.*
 data class GalleryUiState(
     val sets: List<SetItem> = emptyList(),
     /**
-     * Galerie-Filter — ausgewertet wird er auf dem SERVER (Marcos Vorgabe).
+     * Galerie-Filter — ausgewertet wird er auf dem Server, wie in der Webapp.
      * Hier steht nur, was gerade eingestellt ist, damit die Oberfläche es
      * anzeigen und die nächste Seite mit denselben Werten nachladen kann.
      */

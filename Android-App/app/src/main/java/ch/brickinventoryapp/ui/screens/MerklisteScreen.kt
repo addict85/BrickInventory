@@ -223,7 +223,7 @@ internal fun UebernahmeDialog(
     merkposten: Merkposten,
     /** Vorrat an Lagerorten — leer heisst: es gibt noch keine, dann wird getippt. */
     lagerorte: List<String> = emptyList(),
-    /** Der vorausgewaehlte Lagerort — Marcos Stern. Leer heisst: keine Vorgabe. */
+    /** Der vorausgewählte Lagerort (Stern in den Einstellungen). Leer heisst: keine Vorgabe. */
     lagerortVorgabe: String = "",
     onDismiss: () -> Unit,
     onUebernehmen: (Int, String, String, String?) -> Unit,
@@ -261,8 +261,7 @@ internal fun UebernahmeDialog(
                     )
                 }
                 ZustandsWahl(zustand) { zustand = it }
-                // Marcos Befund vom 24.09.: „Wenn ich etwas aus der Merkliste in
-                // die Galerie aufnehme, kann ich den Lagerort nicht setzen."
+                // Lagerort wie bei jeder anderen Erfassung.
                 LagerortErfassung(lagerort, lagerorte, { lagerort = it })
             }
         },
@@ -358,10 +357,9 @@ private fun MerkpostenZeile(
     w: Merkposten, serverUrl: String, imageLoader: coil3.ImageLoader,
     onOeffnen: () -> Unit,
 ) {
-    // Die ganze Karte oeffnet das Detail — wie die Kachel in der Galerie.
-    // Seit dem 24.09. traegt sie GAR KEINEN Knopf mehr (Marcos Vorgabe: der
-    // Uebernahme- und der Loeschknopf sind beide entfallen), tut also auf
-    // ihrer ganzen Flaeche dasselbe.
+    // Die ganze Karte öffnet das Detail — wie die Kachel in der Galerie. Sie
+    // trägt keinen Knopf, tut also auf ihrer ganzen Fläche dasselbe;
+    // Übernehmen und Löschen stehen im Detail.
     Card(Modifier.fillMaxWidth().clickable(role = Role.Button, onClick = onOeffnen)) {
         Column(Modifier.padding(Abstaende.mittel), verticalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
             Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),

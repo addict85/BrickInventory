@@ -127,7 +127,7 @@ class TeileRepository @Inject constructor(
     suspend fun loescheLagerort(id: Int): Result<LagerortResponse> =
         safeCall { api.loescheLagerort(id) }
 
-    /** Marcos Stern — `null` schaltet die Vorgabe ab. */
+    /** Der vorausgewählte Lagerort (Stern) — `null` schaltet die Vorgabe ab. */
     suspend fun setzeLagerortVorgabe(id: Int?): Result<LagerortVorgabeResponse> =
         safeCall { api.setzeLagerortVorgabe(LagerortVorgabeRequest(id)) }
 

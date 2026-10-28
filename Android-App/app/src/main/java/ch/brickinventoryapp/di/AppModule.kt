@@ -15,14 +15,11 @@ import javax.inject.Singleton
 object AppModule {
 
     /**
-     * Die Token-Verschlüsselung als Schnittstelle bereitstellen, nicht als
-     * konkrete Klasse (Nachtrag 155).
-     *
-     * Grund: Die Umsetzung braucht den Android-Keystore und läuft deshalb NUR
-     * auf einem Gerät. Wäre PreferencesManager fest daran gebunden, liesse
-     * sich seine Übernahme-Logik auf der JVM überhaupt nicht prüfen — und
-     * genau die entscheidet, ob bestehende Installationen beim Update
-     * angemeldet bleiben.
+     * Die Token-Verschlüsselung als Schnittstelle bereitstellen, nicht als konkrete
+     * Klasse: Die Umsetzung braucht den Android-Keystore und läuft nur auf einem
+     * Gerät. Fest daran gebunden liesse sich die Übernahme-Logik des
+     * PreferencesManagers nicht auf der JVM prüfen — und die entscheidet, ob
+     * bestehende Installationen beim Update angemeldet bleiben.
      */
     @Provides
     @Singleton

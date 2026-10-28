@@ -72,7 +72,7 @@ internal class Galerie(
      *
      * Die Sperre steht VOR dem launch: Zwei Aufrufe im selben Frame lasen sonst
      * beide „frei" und holten dieselbe Seite zweimal — doppelte Schlüssel im
-     * Raster und Marcos Sprung auf immer dieselbe Zeile.
+     * Raster und ein Sprung auf immer dieselbe Zeile.
      */
     fun mehrLaden() {
         val g = _state.value

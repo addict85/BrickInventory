@@ -26,18 +26,12 @@ sealed class Screen(val route: String) {
     object PartsList : Screen("partslist")
     object Settings : Screen("settings")
 
-    // ── Die Unterseiten der Einstellungen (Marcos Befund vom 16.10.) ────────
+    // ── Die Unterseiten der Einstellungen ──
     //
-    // „Generell wirkt dieser Dialog überladen und nicht liebevoll gestaltet.
-    //  […] Evtl. Auch Elemente aus den Einstellungen in eine eigene Sicht
-    //  verschieben?"
-    //
-    // Sieben Rubriken sind umgezogen; die Einstellungen zeigen nur noch eine
-    // Liste dorthin. Eigene Routen und KEINE Route mit Parameter
-    // („einstellungen/{bereich}"): ErreichbareRoutenTest sucht nach einem
-    // ausgeschriebenen `navigate(Screen.X.route)`, und ein Bildschirm, zu dem
-    // nur ein zusammengesetzter String fuehrt, waere fuer die Pruefung
-    // unerreichbar — also genau das, was sie finden soll.
+    // Jede Rubrik hat eine eigene Route, keine Route mit Parameter
+    // („einstellungen/{bereich}“): ErreichbareRoutenTest sucht nach einem
+    // ausgeschriebenen `navigate(Screen.X.route)`, und ein Bildschirm, zu dem nur ein
+    // zusammengesetzter String führt, wäre für die Prüfung unerreichbar.
     object Gutscheine : Screen("einstellungen_gutscheine")
     object Preisalarme : Screen("einstellungen_preisalarme")
     object Lagerorte : Screen("einstellungen_lagerorte")

@@ -1,38 +1,19 @@
 package ch.brickinventoryapp.util
 
 /**
- * Was mit einer zwischengespeicherten Anleitung als Naechstes zu tun ist.
+ * Was mit einer zwischengespeicherten Anleitung als Nächstes zu tun ist.
  *
- * ── Der Befund, aus dem diese Datei kam ─────────────────────────────────────
+ * Der Zustand hängt am Dateinamen, nicht an einer Grösse: Eine Zahl allein sagt
+ * nicht, ob sie eine fertige Datei oder einen abgebrochenen Download beschreibt.
+ * Nach einem vollständigen Download fragte `Range: bytes=<vorhanden>-` hinter dem
+ * letzten Byte, und der Server antwortet zu Recht mit 416 (über die
+ * Anleitungs-Route als 404, siehe Web-App/utils/dateiAusliefern.ts). Der laufende
+ * Download schreibt deshalb in `<name>.part` und wird erst beim Abschluss
+ * umbenannt; `<name>` existiert = vollständig. `rename` ist der eine Schritt, der
+ * nicht halb passieren kann.
  *
- * Marcos Meldung: „Nach ein paar Mal die Anleitung abrufen aus der App
- * erscheint folgende Meldung" — „Fehler beim Laden: HTTP 404".
- *
- * Der PDF-Viewer laedt fortsetzbar. Lag im Cache schon etwas, schickte er
- * `Range: bytes=<vorhanden>-`. Nach einem VOLLSTAENDIGEN Download ist
- * `vorhanden` aber genau die Dateigroesse — der Bereich beginnt hinter dem
- * letzten Byte, und der Server antwortet zu Recht mit 416 (auf dem Weg durch
- * die Anleitungs-Route wurde daraus eine 404, siehe
- * Web-App/utils/dateiAusliefern.ts).
- *
- * Dass es „nach ein paar Mal" auftrat und nicht beim zweiten Oeffnen, liegt am
- * Cache-Budget: prunePdfCache raeumt die aelteste Anleitung weg, sobald 500 MB
- * ueberschritten sind. Wer zwischendurch genug andere Anleitungen ansah, fand
- * seine eigene geloescht vor und lud sie neu — bis sie einmal liegen blieb.
- *
- * ── Warum der Zustand jetzt am DATEINAMEN haengt ────────────────────────────
- *
- * Eine Zahl allein sagt nicht, ob sie eine fertige Datei oder einen
- * abgebrochenen Download beschreibt. Der laufende Download schreibt deshalb in
- * `<name>.part` und wird erst beim Abschluss auf `<name>` umbenannt. Damit
- * gilt: `<name>` existiert = vollstaendig. Das ist keine Vermutung ueber
- * Groessen, sondern eine Tatsache ueber den Ablauf — und `rename` ist auf
- * einem Dateisystem der eine Schritt, der nicht halb passieren kann.
- *
- * Nebenwirkung, die der frueheren ABSICHT entspricht: Eine schon angesehene
- * Anleitung oeffnet jetzt ohne jede Netzanfrage. Der Kommentar an
- * prunePdfCache versprach das seit jeher („erneutes Oeffnen ohne
- * Neudownload") — nur tat der Code es nie.
+ * So öffnet eine schon angesehene Anleitung ohne Netzanfrage, wie prunePdfCache es
+ * verspricht.
  */
 sealed class PdfSchritt {
     /** Die Datei liegt vollstaendig vor. Nichts holen. */

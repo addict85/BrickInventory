@@ -61,28 +61,19 @@ fun PartsScreen(
      */
     onOpenDetail: (partNumber: String, colorId: Int) -> Unit = { _, _ -> },
     /**
-     * Scroll-Zustand der Liste. Kommt von aussen, weil das Ziel beim Öffnen
-     * der Detailansicht verlassen und danach neu zusammengesetzt wird — ein
-     * `rememberLazyGridState()` hier drin würde dabei zurückgesetzt und die
-     * Liste spränge nach oben (Nachtrag 92).
+     * Scroll-Zustand der Liste. Kommt von aussen, weil das Ziel beim Öffnen der
+     * Detailansicht verlassen und danach neu zusammengesetzt wird — ein
+     * `rememberLazyGridState()` hier drin würde zurückgesetzt, die Liste spränge nach
+     * oben.
      */
     gridState: LazyGridState = rememberLazyGridState(),
 ) {
-    // ── Zustand und Aktionen: vom ViewModel statt über zwanzig Parameter ─────
+    // ── Zustand und Aktionen: vom ViewModel statt über zwanzig Parameter ──
     //
-    // Dieser Schirm nahm bis Nachtrag 96 zwanzig Parameter entgegen. Jede
-    // Erweiterung fasste dadurch drei Dateien an — Screen, Graph, ViewModel —
-    // und das war bei den letzten beiden Änderungen (Kontofilter,
-    // Scroll-Zustand) jedes Mal spürbar.
-    //
-    // Die Bauart daneben gibt es längst: ManualItemDetailScreen und
-    // AcquisitionManagementScreen nehmen `vm` und lesen selbst. Sie kommen mit
-    // sechs bis acht Parametern aus.
-    //
-    // Die Werte behalten hier ABSICHTLICH ihre alten Namen. Dadurch bleibt der
-    // ganze Rumpf darunter Zeile für Zeile unverändert — der Umbau betrifft nur
-    // diesen Kopf, und ein Tippfehler kann sich nicht durch fünfhundert Zeilen
-    // ziehen.
+    // Mit zwanzig Parametern fasste jede Erweiterung drei Dateien an (Screen, Graph,
+    // ViewModel). Dieselbe Bauart wie ManualItemDetailScreen und
+    // AcquisitionManagementScreen, die `vm` nehmen und selbst lesen. Die Werte
+    // behalten ihre alten Namen, damit der Rumpf darunter unverändert bleibt.
     val state by vm.state.collectAsStateWithLifecycle()
     val blick by vm.blickfeld.collectAsStateWithLifecycle()
     val partsState by vm.partsState.collectAsStateWithLifecycle()
@@ -104,10 +95,9 @@ fun PartsScreen(
         ?: ch.brickinventoryapp.data.ScopeFilter.ALL
     val manualParts = partsState.manualParts ?: emptyList()
 
-    // Aktualisieren BEHAELT den Suchtext — frueher stand hier `search = null`,
-    // die Liste sprang also auf den ganzen Bestand, waehrend das Suchfeld
-    // daneben den Text weiter anzeigte. Die Galerie macht es genauso
-    // (onRefresh = loadSets()).
+    // Aktualisieren behält den Suchtext — sonst spränge die Liste auf den ganzen
+    // Bestand, während das Feld den Text weiter zeigt. Wie in der Galerie (onRefresh =
+    // loadSets()).
     val onRefresh: () -> Unit = { vm.loadParts() }
     val onSearch: (String) -> Unit = vm::setPartsQuery
     val onLoadMore: (Int) -> Unit = { vm.loadParts(page = it) }
@@ -124,10 +114,10 @@ fun PartsScreen(
     // auch ein leeres Regal zur Wahl stehen.
     val lagerortVorrat = lagerState.eigene.map { it.name }
 
-    // Das Feld zeigt, was im Zustand steht. `remember(...)` darauf geschluesselt
-    // statt `rememberSaveable`: Der Text ueberlebt jetzt im ViewModel, und beim
-    // Zuruecknavigieren soll das Feld zum tatsaechlichen Filter der Liste
-    // passen — nicht zu einem eigenen, davon unabhaengigen Gedaechtnis.
+    // Das Feld zeigt, was im Zustand steht. `remember(...)` darauf geschlüsselt statt
+    // `rememberSaveable`: Der Text lebt im ViewModel, und nach dem Zurücknavigieren
+    // soll das Feld zum tatsächlichen Filter der Liste passen, nicht zu einem eigenen
+    // Gedächtnis.
     var searchQuery by remember(partsState.partsQuery) { mutableStateOf(partsState.partsQuery) }
     var showAddDialog by rememberSaveable { mutableStateOf(false) }
     // Dedup nur neu berechnen, wenn sich die Daten aendern — nicht bei jeder Recomposition
@@ -141,13 +131,9 @@ fun PartsScreen(
     LaunchedEffect(endReached) { if (endReached) onLoadMore(currentPage + 1) }
 
     var zeigeFilter by rememberSaveable { mutableStateOf(false) }
-    // Farbe und Kategorie — die beiden Filterlisten der Webapp
-    // (03-parts.js, loadPartsFilters). Sie fehlten in der App ganz;
-    // gefunden beim Vergleich der Server-Adressen beider Clients.
-    //
-    // Die Umrechnung auf die gemeinsame Form steht hier und nicht im
-    // Bildschirm darunter: Die beiden Antworten tragen verschiedene
-    // Feldnamen, alles andere ist gleich.
+    // Farbe und Kategorie — die beiden Filterlisten der Webapp (03-parts.js,
+    // loadPartsFilters). Die Umrechnung auf die gemeinsame Form steht hier: Die beiden
+    // Antworten tragen verschiedene Feldnamen, alles andere ist gleich.
     val farbEintraege = remember(partsState.partsFilterColors) {
         partsState.partsFilterColors.mapNotNull { f ->
             f.colorName?.takeIf { it.isNotBlank() }?.let { name ->
@@ -206,10 +192,8 @@ fun PartsScreen(
                     if (stats != null) {
                         item(span = { GridItemSpan(maxLineSpan) }, key = "parts-stats") { TeileKennzahlen(stats) }
                     }
-                    // Manuell erfasste Teile als Grid-Sektion: vorher sassen sie
-                    // in einer fixen FlowRow ÜBER dem Grid (eigener Scroll-
-                    // Container) — dadurch scrollte nur der Set-Teil der Liste.
-                    // Als Grid-Items scrollt alles als EINE Liste.
+                    // Manuell erfasste Teile als Grid-Sektion statt in einer FlowRow über dem Grid:
+                    // So scrollt alles als eine Liste, nicht nur der Set-Teil.
                     if (manualParts.isNotEmpty()) {
                         item(span = { GridItemSpan(maxLineSpan) }, key = "manual-header") {
                             SectionHeader(stringResource(R.string.parts_manual_section))
@@ -231,13 +215,11 @@ fun PartsScreen(
                             }
                         }
                     }
-                    // In der Tabellenansicht nimmt jede Zeile die ganze Breite
-                    // (span = maxLineSpan). Der Raster-Container bleibt derselbe —
-                    // mit einem zweiten Container waeren Scrollstand,
-                    // Endlos-Nachladen und die manuelle Sektion doppelt zu
-                    // pflegen. Die manuellen Eintraege bleiben in BEIDEN
-                    // Ansichten Kacheln, genau wie in der Webapp: Dort haengt
-                    // #manual-parts-list nicht an parts-view.
+                    // In der Tabellenansicht nimmt jede Zeile die ganze Breite (span =
+                    // maxLineSpan). Derselbe Raster-Container, sonst wären Scrollstand,
+                    // Endlos-Nachladen und die manuelle Sektion doppelt zu pflegen. Die manuellen
+                    // Einträge bleiben in beiden Ansichten Kacheln, wie in der Webapp
+                    // (#manual-parts-list hängt nicht an parts-view).
                     items(
                         distinctParts,
                         key = { "${it.partNumber}-${it.colorId}" },
@@ -252,8 +234,8 @@ fun PartsScreen(
                         }
                     }
                     if (isLoading) {
-                        // Fester Schlüssel wie bei den Kopfzeilen darüber — siehe
-                        // die Begründung in GalleryScreen.kt (Nachtrag 108).
+                        // Fester Schlüssel wie bei den Kopfzeilen darüber — Begründung in
+                        // GalleryScreen.kt.
                         item(key = "parts-loading-more", span = { GridItemSpan(maxLineSpan) }) {
                             Box(Modifier.fillMaxWidth().padding(Abstaende.gross), Alignment.Center) {
                                 CircularProgressIndicator(Modifier.size(24.dp))
@@ -332,9 +314,8 @@ fun PartsScreen(
         )
     }
 
-    // Hier stand die Loeschabfrage der KACHEL — entfallen mit dem Papierkorb
-    // darauf (Marcos Vorgabe vom 24.09.). Geloescht wird im Detail, und die
-    // Abfrage steht dort (ManualItemDetailScreen, showDeleteConfirm).
+    // Gelöscht wird im Detail (ManualItemDetailScreen, showDeleteConfirm), nicht auf
+    // der Kachel.
 }
 
 /** Die Kennzahlen der Teile — erste Zeile des Rasters, sie rollt mit. */
@@ -397,9 +378,7 @@ fun PartCard(part: Part, serverUrl: String, imageLoader: ImageLoader,
     val (imageUrl, onImageError) = rememberTileImageWithFallback(serverUrl, part.imageLocal, part.imageUrl, fullViaProxy = true)
 
     Card(
-        // Antippen oeffnet den Detail-Dialog (Marcos Wunsch). Bis dahin war
-        // die Kachel eines Teils aus einem Set tot — anders als bei manuell
-        // erfassten Teilen gab es dazu nichts zu sehen.
+        // Antippen öffnet den Detail-Dialog, wie bei manuell erfassten Teilen.
         modifier = Modifier.fillMaxWidth().heightIn(min = 164.dp)
             .let { if (onClick != null) it.clickable(role = Role.Button, onClick = onClick) else it },
         shape = Formen.leiste,

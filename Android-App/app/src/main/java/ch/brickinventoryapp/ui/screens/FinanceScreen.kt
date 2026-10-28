@@ -40,12 +40,12 @@ fun FinanceScreen(
     onSetClick: (String) -> Unit = {},
     /** Klick auf einen manuell erfassten Eintrag, ebenso. */
     onManualClick: (type: String, id: String, colorId: Int, name: String?) -> Unit = { _, _, _, _ -> },
-    /** Scroll-Zustand von aussen, siehe Nachtrag 92. */
+    /** Scroll-Zustand von aussen: Das Ziel wird beim Öffnen eines Details verworfen. */
     listState: LazyListState = rememberLazyListState(),
 ) {
     // Zustand und Aktionen vom ViewModel statt über einundzwanzig Parameter —
-    // die Begründung steht bei PartsScreen (Nachtrag 96). Die Namen bleiben
-    // absichtlich dieselben, damit der Rumpf darunter unverändert bleibt.
+    // Begründung bei PartsScreen. Die Namen bleiben dieselben, damit der Rumpf
+    // darunter unverändert bleibt.
     val state by vm.state.collectAsStateWithLifecycle()
     val blick by vm.blickfeld.collectAsStateWithLifecycle()
     val financeState by vm.financeState.collectAsStateWithLifecycle()
@@ -71,9 +71,8 @@ fun FinanceScreen(
     val onRefresh: () -> Unit = { vm.loadValuation(); vm.loadPortfolioHistory(financeState.historyPeriod) }
 
     val currencyCode = valuation?.currency ?: "EUR"
-    // Gemeinsame Fassung (util/NumberFormatUtils.kt). Hier stand als einzige
-    // Stelle der App das Symbol VOR dem Betrag, überall sonst der Code
-    // dahinter — und in der Webapp entschied das die Sprache.
+    // Gemeinsame Fassung (util/NumberFormatUtils.kt): Die Stellung von Symbol und
+    // Betrag entscheidet die Sprache, wie in der Webapp.
     fun fmtPrice(v: String?): String = ch.brickinventoryapp.util.fmtMoneyOrDash(v, currencyCode)
 
     if (isLoading && valuation == null) {
@@ -102,9 +101,8 @@ fun FinanceScreen(
     }
 
     // Der Kategoriefilter kommt aus dem Zustand des Reiters, nicht aus einem
-    // `remember` dieses Bildschirms — sonst stuende er nach jedem Ausflug in
-    // einen Detail-Bildschirm wieder auf „alle" (Marcos Befund, siehe
-    // FinanceUiState.kategorien). Leere Menge heisst: keine Einschraenkung.
+    // `remember` — sonst stünde er nach jedem Ausflug in ein Detail wieder auf „alle“
+    // (siehe FinanceUiState.kategorien). Leere Menge heisst: keine Einschränkung.
     val kategorien = financeState.kategorien
     val showSets  = financeState.zeigt("sets")
     val showParts = financeState.zeigt("parts")
@@ -121,18 +119,10 @@ fun FinanceScreen(
             // Teile und Minifiguren entstehen aus derselben ID-Liste.
             if (householdMembers.size > 1) {
                 item {
-                    // Rechtsbündig (Nachtrag 77, Marcos Wunsch für DIESEN Reiter).
-                    //
-                    // Der Chip füllt die Zeile nicht aus, also entscheidet die
-                    // Ausrichtung des umgebenden Row, wo er landet — als blosser
-                    // Listeneintrag klebte er links. `Arrangement.End` schiebt
-                    // ihn ans rechte Ende; fillMaxWidth ist dafür nötig, sonst
-                    // ist die Row nur so breit wie der Chip und die Ausrichtung
-                    // hätte keinen Spielraum.
-                    //
-                    // Bewusst NUR hier: Galerie, Teile und Minifiguren behalten
-                    // ihre linksbündige Anordnung, weil dort Suchfeld und
-                    // Filterleiste daneben stehen.
+                    // Rechtsbündig, nur in diesem Reiter: Galerie, Teile und Minifiguren bleiben
+                    // linksbündig, weil dort Suchfeld und Filterleiste daneben stehen. Der Chip
+                    // füllt die Zeile nicht, also entscheidet die Row: `Arrangement.End` schiebt
+                    // ihn nach rechts, fillMaxWidth gibt der Ausrichtung den Spielraum.
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.End
@@ -172,12 +162,9 @@ fun FinanceScreen(
 }
 
 /**
- * Das Vorschaubild einer Finanzzeile — 52 dp, Rueckfall auf das Logo.
- *
- * Stand zweimal wortgleich da: in der Set-Zeile (FinanceSections.kt) und in der
- * Zeile fuer manuelle Eintraege darunter. Beide Zeilen sind untereinander in
- * DERSELBEN Tabelle zu sehen — ein Bild, das dort verschieden gross oder
- * verschieden beschnitten waere, faellt sofort auf.
+ * Das Vorschaubild einer Finanzzeile — 52 dp, Rückfall auf das Logo. Eine Funktion
+ * für die Set-Zeile (FinanceSections.kt) und die Zeile für manuelle Einträge, weil
+ * beide in derselben Tabelle stehen und jede Abweichung sofort auffiele.
  */
 @Composable
 fun FinanzBild(imageUrl: String?, imageLoader: ImageLoader, beschreibung: String?) {
@@ -212,20 +199,10 @@ fun ManualFinanceRow(
     quantity: Int,
     priceStr: String,
     /**
-     * Kaufpreis dieser Erfassung, schon formatiert; null = keiner hinterlegt.
-     *
-     * ── Warum das Feld dazukam (Nachtrag 133) ───────────────────────────────
-     *
-     * Diese Zeile und die Set-Zeile in FinanceSections.kt waren bis auf zwei
-     * Stellen zeichengleich — aufgefallen beim Messen gleicher Achtzeiler, nicht
-     * beim Lesen. Der Unterschied WAR der Fund: Die Set-Zeile zeigt unter dem
-     * Marktpreis „Kauf: X", diese Zeile zeigte ihn nicht.
-     *
-     * Die Webapp zeigt ihn in BEIDEN Tabellen (public/js/04-finance.js, pmRow,
-     * Spalte `detail.purchase_price`) — die Spalte steht dort sogar VOR dem
-     * Marktpreis. Die App hatte die Zahl die ganze Zeit im Speicher:
-     * PartValuationItem, FigValuationItem und ValuationAcquisition tragen alle
-     * `purchase_price`. Sie kam nur nie auf den Bildschirm.
+     * Kaufpreis dieser Erfassung, schon formatiert; null = keiner hinterlegt. Wie in
+     * der Set-Zeile (FinanceSections.kt) und in beiden Tabellen der Webapp
+     * (public/js/04-finance.js, pmRow, `detail.purchase_price`), damit die Zeilen
+     * gleich viel sagen.
      */
     purchaseStr: String? = null,
     /** Zustand dieser Erfassung; null = Eintrag ohne Erfassungen. */

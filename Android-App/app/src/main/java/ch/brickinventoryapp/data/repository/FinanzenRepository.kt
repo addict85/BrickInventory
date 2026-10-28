@@ -15,13 +15,9 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Preise, Bewertung, Verlauf und Gewinn/Verlust.
- *
- * Teil der Aufteilung von BrickRepository (Nachtrag 155) — die Begruendung
- * steht in RepoBasis.kt. Die Ruempfe sind WORTGLEICH uebernommen; veraendert
- * wurde nichts ausser der Klassenzugehoerigkeit.
- *
- * Erreichbar ueber `repo.finanzen.…` — BrickRepository haelt die fuenf Teile.
+ * Preise, Bewertung, Verlauf und Gewinn/Verlust — eines der Sachgebiete der
+ * Datenschicht, erreichbar über `repo.finanzen.…`; die Begründung der Aufteilung
+ * steht in RepoBasis.kt.
  */
 @Singleton
 class FinanzenRepository @Inject constructor(

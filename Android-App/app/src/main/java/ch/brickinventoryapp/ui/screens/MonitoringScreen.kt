@@ -104,19 +104,11 @@ fun MonitoringScreen(vm: AppViewModel) {
                 CacheAndLimitsSection(vm, onSnack = { snack = it })
             }
 
-            // Das Server-Protokoll — dieselbe Ansicht wie in der Webapp. Sie
-            // konnte es bisher als einzige, nicht weil die Route fehlte,
-            // sondern weil sie hinter einem sitzungsgebundenen Waechter lag
-            // (Nachtrag 127).
-            //
-            // KEINE eigene Rechtepruefung hier, und das ist Absicht: Der
-            // einzige Weg hierher ist der Menueeintrag in MainScaffold, und
-            // der steht nur bei `isAdmin`. Massgeblich ist ohnehin der Server —
-            // die Route laeuft ueber requireApiAdmin und antwortet sonst mit
-            // 403. Eine dritte Stelle, an der „ist das ein Verwalter"
-            // entschieden wird, waere genau die Sorte zweite Wahrheit, die
-            // diese Sitzung an anderer Stelle einundzwanzig Routen gekostet
-            // hat.
+            // Das Server-Protokoll — dieselbe Ansicht wie in der Webapp. Keine eigene
+            // Rechteprüfung hier: Der einzige Weg hierher ist der Menüeintrag in MainScaffold,
+            // der nur bei `isAdmin` steht, und massgeblich ist der Server (requireApiAdmin,
+            // sonst 403). Eine dritte Stelle, die „ist das ein Verwalter“ entscheidet, wäre
+            // eine zweite Wahrheit.
             item { ProtokollSection(mon) }
 
             // Job cards
@@ -239,11 +231,10 @@ private fun JobCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
 
-            // ── Zeitplan (Nachtrag 137) ─────────────────────────────────────
+            // ── Zeitplan ──
             //
-            // Der Server schickt ihn seit jeher mit `/admin/jobs` — die App hat
-            // ihn nie eingelesen. Sie zeigte damit, DASS ein Job laeuft, aber
-            // nicht, wann er das naechste Mal laeuft.
+            // Kommt mit `/admin/jobs` und zeigt, wann ein Job das nächste Mal läuft — nicht
+            // nur, dass er läuft.
             schedule?.let { ZeitplanZeile(jobKey, it, mon, onSnack) }
 
             // Action buttons
@@ -314,11 +305,9 @@ private fun JobCard(
                     Spacer(Modifier.width(6.dp))
                     Text(redlMsg ?: stringResource(R.string.monitoring_redownload_missing), style = MaterialTheme.typography.labelMedium)
                 }
-                // Der zweite Bilderknopf (Nachtrag 137): Der darueber holt die
-                // Bilder des BESTANDS nach, dieser die des KATALOGS. Die Webapp
-                // hat beide (07-admin.js, queueCatalogImages); die App hatte
-                // bisher nur den ersten — und damit keinen Weg, ein fehlendes
-                // Bild im Katalog nachzuziehen.
+                // Der zweite Bilderknopf: Der darüber holt die Bilder des Bestands nach, dieser
+                // die des Katalogs — wie in der Webapp (07-admin.js, queueCatalogImages), damit
+                // sich ein fehlendes Katalogbild nachziehen lässt.
                 var katMsg by remember { mutableStateOf<String?>(null) }
                 FilledTonalButton(
                     onClick = {

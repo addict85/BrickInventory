@@ -15,13 +15,8 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Haushalt und Erfassungen.
- *
- * Teil der Aufteilung von BrickRepository (Nachtrag 155) — die Begruendung
- * steht in RepoBasis.kt. Die Ruempfe sind WORTGLEICH uebernommen; veraendert
- * wurde nichts ausser der Klassenzugehoerigkeit.
- *
- * Erreichbar ueber `repo.haushalt.…` — BrickRepository haelt die fuenf Teile.
+ * Haushalt und Erfassungen — eines der Sachgebiete der Datenschicht, erreichbar
+ * über `repo.haushalt.…`; die Begründung der Aufteilung steht in RepoBasis.kt.
  */
 @Singleton
 class HaushaltRepository @Inject constructor(
@@ -66,8 +61,7 @@ class HaushaltRepository @Inject constructor(
                                   condition: String? = null, quantity: Int? = null, date: String? = null,
                                   ownerUserId: Int? = null): Result<GenericResponse> =
         safeCall { api.updateAcquisition(setNumber, acqId,
-            // fuerSet(): Sets tragen den Preis als `purchase_price` — siehe die
-            // Erklärung am Modell (Nachtrag 111).
+            // fuerSet(): Sets tragen den Preis als `purchase_price` — Erklärung am Modell.
             UpdateAcquisitionRequest.fuerSet(purchasePrice, condition, quantity, date, ownerUserId)) }
 
     suspend fun deleteAcquisition(setNumber: String, acqId: Int): Result<GenericResponse> =

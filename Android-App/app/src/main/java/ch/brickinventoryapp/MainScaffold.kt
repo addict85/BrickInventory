@@ -205,11 +205,9 @@ fun MainScaffold(
                             // die Einstellungen darin stehen — vorher haette ein Trenner
                             // ohne Verwalterrechte am Anfang des Menues gestanden.
                             HorizontalDivider()
-                            // „Server aendern" ist in die Einstellungen gewandert
-                            // (Marcos Wunsch). Es passt dorthin: Der Server ist
-                            // eine EINSTELLUNG wie Waehrung und Sprache, keine
-                            // Handlung an der laufenden Sitzung. Im Menue bleibt
-                            // damit nur, was die Sitzung beendet.
+                            // „Server ändern" steht in den Einstellungen: Der Server ist
+                            // eine Einstellung wie Währung und Sprache, keine Handlung an
+                            // der laufenden Sitzung. Im Menü bleibt, was sie beendet.
                             DropdownMenuItem(text = { Text(stringResource(R.string.main_menu_logout)) }, onClick = { showLogoutMenu = false; onLogout() },
                                 leadingIcon = { Icon(Icons.AutoMirrored.Filled.Logout, null) })
                         }
