@@ -68,6 +68,9 @@ async function warte(bedingung, ms = 3000) {
 async function oeffneOberflaeche(antworten = {}, opt = {}) {
   const jsdom = require(path.join(ROOT, 'node_modules', 'jsdom'));
   const alle = { ...(opt.angemeldet === false ? { '/v1/startup-status': { ready: true }, '/v1/auth/me': { loggedIn: false } } : ANMELDUNG), ...antworten };
+  // Die Sprache des Kontos gewinnt beim Laden über die gespeicherte — also beide setzen.
+  if (opt.sprache && !antworten['/v1/settings/raw'])
+    alle['/v1/settings/raw'] = { success: true, settings: { ...ANMELDUNG['/v1/settings/raw'].settings, language: opt.sprache } };
   const dom = new jsdom.JSDOM(HTML, { runScripts: 'outside-only', url: 'http://localhost/', pretendToBeVisual: true });
   const w = dom.window;
   const aufrufe = [];

@@ -84,7 +84,7 @@ window.I18N_EN = {
   'gallery.sort.qty_desc': 'Quantity ↓',
   'gallery.sort.qty_asc': 'Quantity ↑',
   'gallery.empty': 'No sets yet. Add your first set!',
-  'gallery.no_results': 'No sets found for "{query}"',
+  'gallery.no_results': 'No sets found for “{query}”',
   'gallery.delete.title': 'Delete set?',
   'gallery.delete.text': '{name} will be removed from your collection.',
   'gallery.add.title': 'Add set',
@@ -508,7 +508,7 @@ window.I18N_EN = {
   'settings.brickset_hint': 'Instructions, fallback set info',
   'settings.brickset_link': 'brickset.com → Tools → request API key',
   'settings.rebrickable_hint': 'Set info, parts & images',
-  'settings.rb_list_hint': 'Export all sets in Rebrickable list format (columns "Set Number,Quantity") to import them under „My Sets → Add via List" on Rebrickable.',
+  'settings.rb_list_hint': 'Export all sets in Rebrickable list format (columns “Set Number,Quantity”) to import them under “My Sets → Add via List” on Rebrickable.',
   'settings.data_export': 'Data and trash',
   'settings.data_export_title': 'Export / import data',
   'settings.cfg_hint': 'Export/import API keys and settings as JSON.',
@@ -770,8 +770,8 @@ window.I18N_EN = {
   'log.search': 'Search text…',
   'log.auto': 'Auto',
   'log.stop': 'Stop',
-  'price.from_other_condition_new': 'Purchase price taken from the "new" market price — BrickLink has no price for "used".',
-  'price.from_other_condition_used': 'Purchase price taken from the "used" market price — BrickLink has no price for "new".',
+  'price.from_other_condition_new': 'Purchase price taken from the “new” market price — BrickLink has no price for “used”.',
+  'price.from_other_condition_used': 'Purchase price taken from the “used” market price — BrickLink has no price for “new”.',
 
   // ── Vouchers (LEGO gift cards in your own profile) ─────────────────────────
   'vouchers.group': 'Vouchers',

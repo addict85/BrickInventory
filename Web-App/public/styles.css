@@ -56,7 +56,10 @@
       --sh2:0 10px 30px rgba(15,23,42,.12),0 4px 10px rgba(15,23,42,.06);
     }
     *{box-sizing:border-box;margin:0;padding:0}
-    body{background:var(--bg);color:var(--txt);font-family:var(--font);font-size:15px;line-height:1.5;min-height:100vh}
+    /* Plus Jakarta Sans hat einen engen Wortabstand (gemessen 0,14 em bei 600):
+       „Set hinzufügen“ las sich wie ein Wort. +0,08 em bringt ihn auf das Mass
+       üblicher Textschriften. */
+    body{background:var(--bg);color:var(--txt);font-family:var(--font);font-size:15px;line-height:1.5;min-height:100vh;word-spacing:.08em}
 
     /* LOGIN */
     #startup-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;background:var(--screen-bg)}
@@ -814,8 +817,9 @@ html::-webkit-scrollbar{width:0;height:0}
     .bild-56{width:56px;height:56px;object-fit:contain;border-radius:6px;background:var(--bg)}
     .ibadge .ico,.lc .ico,.lv .ico{width:14px;height:14px}
     .btn .ico{width:16px;height:16px}
-    /* Knöpfe in der Textschrift — ohne das erben sie die Systemschrift (Arial). */
-    button,input,select,textarea{font-family:inherit}
+    /* Knöpfe und Felder in der Textschrift und mit ihrem Wortabstand — der Browser setzt
+       für sie beides zurück (Arial, word-spacing:normal). */
+    button,input,select,textarea{font-family:inherit;word-spacing:inherit}
     a.btn,a.btn:hover{text-decoration:none}
     .period-btn{min-height:32px;padding:5px 14px}
 
