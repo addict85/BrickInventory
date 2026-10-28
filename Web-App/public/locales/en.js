@@ -565,7 +565,7 @@ window.I18N_EN = {
   'settings.clear_all_cache_hint': '(prices + parts + catalog)',
   'header.sets': 'Sets',
   'header.minifigs': 'Minifigs',
-  'header.instr': 'Instr.',
+  'header.instr': 'Instructions',
   'parts.view.grid': 'Cards',
   'parts.view.table': 'Table',
   'parts.new_section': 'Add new part',

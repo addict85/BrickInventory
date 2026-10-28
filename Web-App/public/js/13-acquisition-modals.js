@@ -292,8 +292,8 @@ async function acqDelete(sn, id) {
 export function renderAcquisitionSummary(acqs, sn) {
   if (!acqs?.length) return `<div style="color:var(--mut);font-size:var(--fs-2)">—</div>`;
   return acqs.map(a => {
-    const cond = a.condition === 'U' ? `<span style="font-size:var(--fs-0);padding:1px 5px;background:var(--s100);color:var(--s600);border-radius:8px;font-weight:600">${t('common.condition_used')}</span>`
-      : `<span style="font-size:var(--fs-0);padding:1px 5px;background:var(--g100);color:var(--g600);border-radius:8px;font-weight:600">${t('common.condition_new')}</span>`;
+    const cond = a.condition === 'U' ? `<span class="cond-badge cond-used">${t('common.condition_used')}</span>`
+      : `<span class="cond-badge cond-new">${t('common.condition_new')}</span>`;
     const price = a.purchase_price != null ? `<strong>${fmtN(a.purchase_price, CURRENCY)}</strong>` : '';
     const dateFmt = a.created_at ? new Date(a.created_at).toLocaleDateString(locale()) : '';
     return `<div style="display:flex;align-items:center;gap:6px;padding:2px 0">
@@ -313,8 +313,8 @@ function renderManAcqSummary(acqs, type, id, colorId) {
   if (!acqs?.length) return `<div style="color:var(--mut);font-size:var(--fs-2)">—</div>`;
   return acqs.map(a => {
     const cond = a.condition === 'U'
-      ? `<span style="font-size:var(--fs-0);padding:1px 5px;background:var(--s100);color:var(--s600);border-radius:8px;font-weight:600">${t('common.condition_used')}</span>`
-      : `<span style="font-size:var(--fs-0);padding:1px 5px;background:var(--g100);color:var(--g600);border-radius:8px;font-weight:600">${t('common.condition_new')}</span>`;
+      ? `<span class="cond-badge cond-used">${t('common.condition_used')}</span>`
+      : `<span class="cond-badge cond-new">${t('common.condition_new')}</span>`;
     const price = a.unit_price != null
       ? `<strong>${fmtN(a.unit_price, CURRENCY)}</strong>`
       : '';

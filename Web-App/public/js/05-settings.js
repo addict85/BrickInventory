@@ -317,8 +317,8 @@ export async function loadProfile() {
   G('prof-email').dataset.bisher = u.email || '';
   const vEl = G('prof-email-verified');
   if (vEl) vEl.innerHTML = u.email_verified
-    ? `<span style="color:var(--g500)">${t('profile.verified')}</span>`
-    : `<span style="color:var(--a500)">${t('profile.not_verified')}</span>`;
+    ? `<span style="color:var(--g700)">${t('profile.verified')}</span>`
+    : `<span style="color:var(--a-schrift)">${t('profile.not_verified')}</span>`;
 }
 
 G('btn-sav-prof').onclick = async () => {

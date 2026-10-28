@@ -576,7 +576,7 @@ window.I18N_DE = {
   'settings.clear_all_cache_hint': '(Preise + Teile + Katalog)',
   'header.sets': 'Sets',
   'header.minifigs': 'Minifiguren',
-  'header.instr': 'Anleit.',
+  'header.instr': 'Anleitungen',
   'parts.view.grid': 'Karten',
   'parts.view.table': 'Tabelle',
   'parts.new_section': 'Neues Teil erfassen',

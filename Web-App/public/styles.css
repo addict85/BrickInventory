@@ -19,7 +19,9 @@
          #b91c1c auf #fff misst 6,47:1.
          --r500 bleibt, was es war: die Farbe fuer FLAECHEN und Rahmen. */
       --r700:#b91c1c;
-      --g100:#dcfce7;--g500:#22c55e;
+      --g50:#f0fdf4;--g100:#dcfce7;--g300:#86efac;--g500:#22c55e;--g600:#16a34a;
+      /* Grüne SCHRIFT auf heller Fläche: --g600 steht auf --g100 nur bei 3:1. */
+      --g700:#15803d;
       --a100:#fef3c7;--a500:#f59e0b;
       /* Der Ton, den SCHRIFT auf --a100 traegt. --a500 ist dafuer zu hell:
          GEMESSEN steht #f59e0b auf #fef3c7 bei 1.93:1, noetig sind 4.5.
@@ -222,7 +224,7 @@
 
     /* Umschalter der Sammlung: Sets | Teile | Minifiguren */
     .sammlung-wahl{display:inline-flex;gap:2px;padding:3px;background:var(--s100);border:1px solid var(--bdr);border-radius:10px}
-    .sammlung-wahl button{display:inline-flex;align-items:center;gap:6px;border:0;background:none;color:var(--mut);font:inherit;font-size:var(--fs-3);font-weight:600;padding:6px 12px;border-radius:8px;cursor:pointer}
+    .sammlung-wahl button{display:inline-flex;align-items:center;gap:6px;border:0;background:none;color:var(--s600);font:inherit;font-size:var(--fs-3);font-weight:600;padding:6px 12px;border-radius:8px;cursor:pointer}
     .sammlung-wahl button[aria-selected="true"]{background:var(--sur);color:var(--b600);box-shadow:var(--sh0)}
     .sammlung-wahl button:focus-visible{outline:3px solid var(--fokus,var(--b700));outline-offset:1px}
     /* Mittlere Fenster: schmalere Reiter, damit alle neun auf EINE Zeile
@@ -444,7 +446,8 @@
     /* Summenzeilen der Finanztabellen: Einstand und Marktwert. */
     .fin-fuss-l{text-align:right;padding:11px 13px;font-weight:600}
     .fin-fuss-wert{font-size:var(--fs-4);padding:11px 13px}
-    .fin-fehlt-kurz{font-size:var(--fs-2);font-weight:600;color:var(--mut)}
+    .fin-fehlt-kurz{font-size:var(--fs-2);font-weight:600;color:var(--s600)}
+    .fstat.hi .flbl{color:var(--s600)}
     .dt-summe{width:100%}
     .dt-summe th:not(:first-child),.dt-summe td:not(:first-child){width:160px;text-align:right}
     .dt-summe .fin-fuss-name{color:var(--mut)}
@@ -621,7 +624,9 @@
     .rb{display:inline-flex;padding:2px 8px;border-radius:999px;font-size:var(--fs-0);font-weight:600}
     .ra{background:var(--a100);color:var(--a-schrift)}.ru{background:var(--s100);color:var(--s600)}
     .cond-badge{font-size:var(--fs-0);padding:1px 5px;border-radius:10px;font-weight:600;display:inline-block}
-    .cond-new{background:var(--g100);color:var(--g600)}
+    .cond-new{background:var(--g100);color:var(--g700)}
+    .besitzer-badge{background:var(--b100);color:var(--b700)}
+    .admin-hinweis{font-size:var(--fs-1);color:var(--a-schrift);font-weight:400}
     .cond-used{background:var(--s100);color:var(--s600)}
     /* Ersatzteil: dieselbe Form wie die Zustands-Plakette, aber ruhiger —
        ein Ersatzteil ist eine Nebeninformation, kein Zustand. Gegenstueck zu

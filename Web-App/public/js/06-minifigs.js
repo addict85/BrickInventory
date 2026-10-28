@@ -428,10 +428,10 @@ function csvImportStatus(elId, state, msg) {
   if (!el) return;
   if (state === 'hide') { el.style.display = 'none'; el.textContent = ''; return; }
   const styles = {
-    running: 'background:var(--b100);color:var(--b600)',
-    success: 'background:var(--g100);color:var(--g600)',
+    running: 'background:var(--b100);color:var(--b700)',
+    success: 'background:var(--g100);color:var(--g700)',
     warn:    'background:var(--s100);color:var(--s600)',
-    error:   'background:var(--r100);color:var(--r500)',
+    error:   'background:var(--r100);color:var(--r700)',
   };
   el.style.cssText = `display:block;font-size:var(--fs-3);margin-bottom:1rem;padding:.55rem .8rem;border-radius:8px;font-weight:600;${styles[state] || styles.running}`;
   el.textContent = msg;

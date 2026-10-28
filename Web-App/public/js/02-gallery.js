@@ -924,11 +924,15 @@ export function pnlBadge(pct){
  * Mehrere Namen heisst, dass dasselbe Set in mehreren Konten liegt — die
  * Kachel zeigt es bewusst nur EINMAL, mit der Summe der Mengen.
  */
+/**
+ * Wem gehört das? Nur gezeigt, wenn ein ANDERES Konto des Haushalts mit
+ * drinsteckt — ein Etikett mit dem eigenen Namen auf jeder Kachel beantwortet
+ * keine Frage. Ohne Haushalt gibt es kein anderes Konto, also keins.
+ */
 export function ownerBadges(item) {
   if (!item?.owners?.length) return '';
-  return item.owners.map(o =>
-    `<span class="cond-badge" style="background:var(--b100);color:var(--b600)">${esc(o.username)}</span>`
-  ).join('');
+  if (item.owners.every(o => ME && o.id === ME.id)) return '';
+  return item.owners.map(o => `<span class="cond-badge besitzer-badge">${esc(o.username)}</span>`).join('');
 }
 
 export function condBadges(item) {
