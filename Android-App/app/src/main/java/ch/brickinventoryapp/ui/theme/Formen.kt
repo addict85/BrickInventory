@@ -160,7 +160,8 @@ fun AppKarte(
  * müssen sie also. Aber einmal, nicht viermal.
  *
  * Die Werte sind zahlengleich mit dem, was vorher dastand — bis auf die
- * Vereinheitlichung der beiden Grüns auf `0xFF16A34A`, das häufigere.
+ * Vereinheitlichung der beiden Grüns; die Werte je Design stehen in
+ * statusFarbenFuer() in Theme.kt.
  */
 data class StatusFarben(
     val erfolg: Color,
@@ -170,7 +171,7 @@ data class StatusFarben(
 
 val LocalStatusFarben = staticCompositionLocalOf {
     StatusFarben(
-        erfolg  = Color(0xFF16A34A),
+        erfolg  = Color(0xFF166534),
         warnung = Color(0xFFE3B341),
         fehler  = Color(0xFFDC2626),
     )

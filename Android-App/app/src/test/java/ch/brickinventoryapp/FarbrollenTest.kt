@@ -6,6 +6,7 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
 import ch.brickinventoryapp.ui.theme.farbschema
+import ch.brickinventoryapp.ui.theme.statusFarbenFuer
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -42,6 +43,26 @@ class FarbrollenTest {
         "errorContainer" to { it.errorContainer },
         "onBackground" to { it.onBackground },
     )
+
+    /**
+     * Gegenprobe (28.10.2026, ohne Android-SDK an der WCAG-Formel gemessen):
+     * mit dem alten #16A34A rot für classic (3,30:1 auf surface), farbfaecher
+     * und noppe; mit #15803D rot für noppe (4,43:1 auf background).
+     */
+    @Test
+    fun `Gewinnfarbe ist als Text auf jeder Flaeche lesbar`() {
+        val fehler = mutableListOf<String>()
+        for (d in designs) {
+            val s = farbschema(d)
+            val erfolg = statusFarbenFuer(d).erfolg.toArgb()
+            for ((name, flaeche) in listOf("surface" to s.surface, "surfaceContainer" to s.surfaceContainer,
+                                           "background" to s.background)) {
+                val k = Kontrast.verhaeltnis(erfolg, flaeche.toArgb())
+                if (k < 4.5) fehler += "$d.$name %.2f".format(k)
+            }
+        }
+        assertTrue("Gewinnfarbe unter 4,5:1: $fehler", fehler.isEmpty())
+    }
 
     @Test
     fun `kein Design erbt Rollen aus der Grundpalette`() {
