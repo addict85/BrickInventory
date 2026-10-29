@@ -1,12 +1,14 @@
 'use strict';
 
-const db      = require('../db/database');
 import { kontingentFrei, speicherePreis, cacheUsable, preisAusCache } from '../utils/financeCalc';
-import { meldeUndWeiter, fehlertext } from '../utils/httpError';
+import { meldeUndWeiter, fehlertext, meldeUndLiefere } from '../utils/httpError';
 import { getSetting, getGlobalSetting } from '../utils/settings';
 import { katalogEintrag, ohneBricklinkPreis } from '../utils/setNummer';
-const monitor = require('../utils/jobMonitor');
-const { getPriceGuide } = require('../clients/bricklink');
+import * as db from '../db/database';
+import * as monitor from '../utils/jobMonitor';
+import { getPriceGuide } from '../clients/bricklink';
+import { LOCKS } from '../utils/lockNamespaces';
+import { pruefeSet } from '../utils/preisalarm';
 
 /**
  * Laufzustand des Preis-Jobs.
@@ -38,7 +40,6 @@ let _started = false; // true, sobald start() lief (nur im Primary) — schützt
  * abgeschriebene Liste der belegten Namensräume; sie kannte 55 und 58 nicht
  * und wäre bei der nächsten Ergänzung wieder veraltet gewesen.
  */
-const { LOCKS } = require('../utils/lockNamespaces');
 const PRICE_JOB_LOCK = LOCKS.PREIS_JOB;
 
 /**
@@ -169,7 +170,7 @@ async function runPriceRefresh(vorhandeneSperre?: (() => Promise<void>) | null) 
     // Ausführlich: docs/begruendungen/jobs/priceJob.ts.md#runpricerefresh-eigene
     const eigene = await db.all('SELECT DISTINCT user_id, set_number FROM sets');
     const gewuenschte = await db.all(
-      'SELECT DISTINCT user_id, set_number FROM wanted').catch(() => []);
+      'SELECT DISTINCT user_id, set_number FROM wanted').catch(meldeUndLiefere('preis-job:gewuenschte', []));
     const allSets = [...eigene, ...(gewuenschte || [])]
       .filter((r, i, a) => a.findIndex(x =>
         x.user_id === r.user_id && x.set_number === r.set_number) === i)
@@ -258,9 +259,8 @@ async function runPriceRefresh(vorhandeneSperre?: (() => Promise<void>) | null) 
     // Eine Pruefung dort liefe pro Lauf tausendfach und meldete dieselbe …
     // Ausführlich: docs/begruendungen/jobs/priceJob.ts.md#runpricerefresh-2
     try {
-      const { pruefeSet } = require('../utils/preisalarm');
       const wartende = await db.all(
-        'SELECT DISTINCT set_number FROM price_alerts').catch(() => []);
+        'SELECT DISTINCT set_number FROM price_alerts').catch(meldeUndLiefere('preis-job:wartende', []));
       let gemeldet = 0;
       for (const z of wartende || []) gemeldet += await pruefeSet(String(z.set_number));
       if (wartende?.length) log(`Preisalarm: ${wartende.length} Sets geprueft, ${gemeldet} gemeldet`);
@@ -294,7 +294,7 @@ async function zustaendeJeSet(userId: number, setNumbers: string[],
   // nach unknown[], und die Zusage oben wäre nicht mehr einlösbar.
   type ZustandsZeile = { set_number: string; c?: string | null };
   const sammle = async (sql: string): Promise<Map<string, Set<string>>> => {
-    const zeilen: ZustandsZeile[] = await db.all(sql, [userId, setNumbers]).catch(() => []);
+    const zeilen: ZustandsZeile[] = await db.all(sql, [userId, setNumbers]).catch(meldeUndLiefere('preis-job:all', []));
     const m = new Map<string, Set<string>>();
     for (const r of zeilen) {
       if (!m.has(r.set_number)) m.set(r.set_number, new Set<string>());

@@ -47,6 +47,8 @@ Module.prototype.require = function (name) {
     return new Proxy(m, { get: (t, k) => k === 'start' ? merke('imageQueue') : t[k] });
   if (/routes[/\\]imgProxy(\.js)?$/.test(name))
     return new Proxy(m, { get: (t, k) => k === 'startImgCacheCleanup' ? merke('imgCacheCleanup') : t[k] });
+  if (/jobs[/\\]auftraegeStarten(\.js)?$/.test(name))
+    return new Proxy(m, { get: (t, k) => k === 'starteAuftragsWorker' ? merke('auftragsWorker') : t[k] });
   if (/api_v1[/\\]pdf(\.js)?$/.test(name))
     return new Proxy(m, { get: (t, k) => k === 'startPdfJobCleanup' ? merke('pdfJobCleanup') : t[k] });
 
@@ -122,9 +124,9 @@ test('jeder Hintergrundlauf wird tatsächlich angestossen', async (t) => {
   gestartet.length = 0;
   await _req('startup/backgroundJobs.js').starteHintergrundlaeufe();
 
-  // Die fünf, die SOFORT starten (die übrigen hängen an setTimeout-Staffeln
+  // Die sechs, die SOFORT starten (die übrigen hängen an setTimeout-Staffeln
   // von 10 bis 45 Sekunden und werden hier nicht abgewartet).
-  for (const job of ['imgCacheCleanup', 'pdfJobCleanup', 'priceJob',
+  for (const job of ['auftragsWorker', 'imgCacheCleanup', 'pdfJobCleanup', 'priceJob',
                      'instructionQueue', 'imageQueue']) {
     assert.ok(gestartet.includes(job),
       `${job} wurde nicht angestossen. Angekommen sind: ${gestartet.join(', ') || '(nichts)'}. ` +

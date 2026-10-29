@@ -12,16 +12,18 @@ import type { FehlerCode } from './fehlerTexte';
  */
 function handleRouteError(res: any, e: any, status?: number, req?: any) {
   const code = status || e?.status || 500;
-  // Der Stack sagte, WELCHE Zeile geworfen hat — aber nicht, welche Anfrage
-  // dort ankam. Bei acquisitions.js ist das entscheidend: Dieselbe Zeile
-  // bedient Teile UND Minifiguren (eine gemeinsame Fabrik), und die
-  // gesuchte Kennung steht im Pfad. Ohne sie liess sich „die Zeile war schon …
+  // Die Anfrage gehört in die Zeile: Dieselbe Stelle bedient oft mehrere
+  // Pfade (Teile und Figuren), und erst der Pfad sagt, welcher es war.
   // Ausführlich: docs/begruendungen/utils/httpError.ts.md#handlerouteerror-wo
   const wo = req?.originalUrl || req?.url;
   const anfrage = wo ? `${req.method || '?'} ${String(wo).split('?')[0]} ` : '';
-  console.error(`[route-error] ${anfrage}${code}:`, e?.stack || e?.message || e);
-  if (res.headersSent) return;
   const isServerError = code >= 500;
+  // Ein 4xx ist eine Antwort auf die Anfrage, kein Fehler des Servers: Mit
+  // Stack und als Fehler füllte jede falsche Eingabe das Protokoll und
+  // verdeckte die echten Fehler darin.
+  if (isServerError) console.error(`[route-error] ${anfrage}${code}:`, e?.stack || e?.message || e);
+  else console.warn(`[route-warnung] ${anfrage}${code}: ${fehlertext(e)}`);
+  if (res.headersSent) return;
   // Trägt der Fehler einen Code, gilt der
   // Helfer wie utils/household.ts und utils/setMove.ts werfen mit
   // fehlerWerfen() und geben damit den GRUND mit, nicht den Satz. Erst hier —
@@ -53,6 +55,25 @@ function logAndContinue(kontext: string) {
 }
 
 /**
+ * Wie logAndContinue(), liefert aber einen Ersatzwert — für `.catch(() => [])`,
+ * wo der Aufrufer mit dem Wert weiterrechnet und der Fehler trotzdem eine
+ * Spur hinterlassen soll.
+ */
+function meldeUndLiefere<T>(kontext: string, ersatz: T) {
+  return (e: unknown): T => { logAndContinue(kontext)(e); return ersatz; };
+}
+
+/**
+ * Für das Aufräumen von Dateien: Eine schon fehlende Datei ist das Ziel, kein
+ * Fehler; alles andere (Rechte, volle Platte) wird gemeldet.
+ */
+function ohneFehlendeDatei(kontext: string): (e: unknown) => void;
+function ohneFehlendeDatei<T>(kontext: string, ersatz: T): (e: unknown) => T;
+function ohneFehlendeDatei<T>(kontext: string, ersatz?: T) {
+  return (e: unknown): T | undefined => { if (fehlerCode(e) !== 'ENOENT') logAndContinue(kontext)(e); return ersatz; };
+}
+
+/**
  * Dasselbe fuer try/catch statt fuer .catch().
  * Ausführlich: docs/begruendungen/utils/httpError.ts.md#meldeundweiter
  */
@@ -67,8 +88,8 @@ function meldeUndWeiter(kontext: string, e: unknown) {
 function fehlertext(e: unknown): string {
   if (e instanceof Error && e.message) return e.message;
   if (typeof e === 'string' && e) return e;
-  if (e && typeof e === 'object' && typeof (e as any).message === 'string' && (e as any).message)
-    return (e as any).message;
+  const m = e && typeof e === 'object' ? (e as { message?: unknown }).message : undefined;
+  if (typeof m === 'string' && m) return m;
   if (e === null || e === undefined) return 'Unbekannter Fehler';
   // `String(e)` kann selbst leer sein — `String([])` ergibt den leeren String,
   // und dann staende in der Oberflaeche „Fehler: " mit nichts dahinter. Der
@@ -85,7 +106,7 @@ function fehlertext(e: unknown): string {
  * Vergleich damit sauber fehlschlaegt.
  */
 function fehlerCode(e: unknown): string | undefined {
-  const c = (e as any)?.code;
+  const c = (e as { code?: unknown } | null | undefined)?.code;
   return typeof c === 'string' || typeof c === 'number' ? String(c) : undefined;
 }
 
@@ -115,7 +136,7 @@ function vorDem(s: string, trenner: string): string {
   return s.split(trenner)[0] ?? '';
 }
 
-export { handleRouteError, logAndContinue, meldeUndWeiter, fehlertext, fehlerCode, pfadParam, vorDem };
+export { handleRouteError, logAndContinue, meldeUndWeiter, meldeUndLiefere, ohneFehlendeDatei, fehlertext, fehlerCode, pfadParam, vorDem };
 
 /**
  * Eine Datei an die Antwort streamen — mit Fehlerbehandlung.
@@ -130,7 +151,7 @@ export { handleRouteError, logAndContinue, meldeUndWeiter, fehlertext, fehlerCod
 function streamFileToResponse(res: any, filePath: string, onEnd?: () => void, req?: any) {
   const fs = require('fs');
   const stream = fs.createReadStream(filePath);
-  stream.on('error', (e: any) => {
+  stream.on('error', (e: NodeJS.ErrnoException) => {
     console.error(`[stream] ${filePath}: ${e?.code || e?.message}`);
     if (!res.headersSent) {
       // Nicht auf Express-Methoden verlassen: Dieser Helfer läuft auch an

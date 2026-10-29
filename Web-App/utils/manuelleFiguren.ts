@@ -4,7 +4,7 @@
  * darauf zugreifen — eine Route soll keine andere importieren.
  */
 import * as db from '../db/database';
-import { logAndContinue } from './httpError';
+import { logAndContinue, meldeUndLiefere } from './httpError';
 import { recordAcquisitionForDay } from './acquisitions';
 import { withInventoryLock, bestandsSchluessel } from './txLock';
 import {  getMinifigInfo } from '../clients/rebrickable';
@@ -15,6 +15,7 @@ import { setzeLagerort, ortFuerNeuerfassung } from './lagerort';
 import { merkeFigur, katalogFigur } from './katalogPflege';
 import { merkeBlNummer, blJoin, blNummerSql } from './blZuordnung';
 import { bestandsMenge } from './validate';
+import * as V from './validate';
 
 // Default the purchase price to the current BrickLink market price for a minifig,
 // when the user did not enter one manually.
@@ -78,8 +79,7 @@ async function addManualFig(uid: number, body: Record<string, unknown>) {
 
 async function addManualFigIntern(uid: number, body: any) {
   // Gleiche Eingangsvalidierung wie bei manuellen Teilen (utils/validate.ts).
-  const V = require('./validate');
-  const num       = V.requireItemNumber(body?.fig_number, 'fig_number');
+    const num       = V.requireItemNumber(body?.fig_number, 'fig_number');
   const blNum     = body?.bl_fig_number ? V.requireItemNumber(body.bl_fig_number, 'bl_fig_number') : null;
   const quantity  = V.acquisitionQuantity(body?.quantity, 1);
   const condition = V.optionalCondition(body?.condition);
@@ -216,7 +216,7 @@ async function updateManualFig(uid: number, figNumber: string, body: any) {
       'SELECT COALESCE(SUM(quantity), 0)::int AS q FROM minifig_acquisitions WHERE user_id=$1 AND fig_number=$2',
       [uid, figNumber]))?.q ?? 0;
     const mp = newQty > bisher
-      ? await getCurrentFigMarketPrice(figNumber, uid, existing.bl_fig_number, cond).catch(() => null) : null;
+      ? await getCurrentFigMarketPrice(figNumber, uid, existing.bl_fig_number, cond).catch(meldeUndLiefere('manuelle-figuren:getCurrentFigMarketPrice', null)) : null;
     await withInventoryLock(uid, bestandsSchluessel('fig', [figNumber]), async (tx) => {
       const acqs = await tx.all('SELECT id, quantity, created_at FROM minifig_acquisitions WHERE user_id=$1 AND fig_number=$2 ORDER BY created_at DESC, id DESC',
         [uid, figNumber]);

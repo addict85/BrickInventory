@@ -121,7 +121,7 @@ test('server.ts nimmt den Original-Rückfall vor dem CDN-Umweg', () => {
   // ergänzt.
   const ohneKommentare = src.slice(start).slice(0, 4000);
   const rueckfall = ohneKommentare.indexOf('_thumb');
-  const cdn = ohneKommentare.indexOf('lookupCdnForMissingImage');
+  const cdn = ohneKommentare.indexOf('cdnFuerFehlendesBild');
   assert.ok(rueckfall > 0, 'der Rückfall auf das Original fehlt');
   assert.ok(cdn > 0, 'die CDN-Heilung fehlt');
   assert.ok(rueckfall < cdn, 'der Original-Rückfall muss VOR dem CDN-Umweg stehen');

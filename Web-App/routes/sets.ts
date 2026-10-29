@@ -2,18 +2,9 @@
 import express from 'express';
 import { APP_ROOT, DATA_DIR, IMAGES_DIR } from '../utils/appPaths';
 /*
- * Erfassungs-Routen leben jetzt NUR NOCH in routes/api_v1/acquisitions.ts
- * Genau das ist hier umgesetzt. Die drei Routen (GET/PUT/DELETE) standen
- * doppelt: einmal hier für die Sitzung der Webapp, einmal in der v1-Fabrik für
- * den Token der App. Aus dieser Doppelung stammen nachweislich sechs der …
- * Ausführlich: docs/begruendungen/routes/sets.ts.md#abschnitt
- */
-
-/*
- * Zusammengelegt mit der v1-Fabrik
- * Sieben Routen standen hier doppelt — Liste, Detail, Anlegen, Ändern,
- * Löschen, Eigentümerwechsel und Haushaltsmitglieder. Sie sind entfernt; beide
- * Clients rufen /api/v1/sets/…, weil requireToken BEIDE Ausweise akzeptiert.
+ * Was unter /api/v1/sets nicht im v1-Router steht: CSV-Import samt
+ * Fortschritt, Rebrickable-Export, Anlegen mit Fortschrittsstrom und die
+ * Anleitungen. Liste, Detail, Ändern und Erfassungen stehen nur dort.
  * Ausführlich: docs/begruendungen/routes/sets.ts.md#router
  */
 
@@ -23,10 +14,10 @@ import path from 'path';
 import fs from 'fs';
 
 import * as db from '../db/database';
-import { handleRouteError, logAndContinue, fehlertext, pfadParam, vorDem } from '../utils/httpError';
+import { handleRouteError, logAndContinue, fehlertext, pfadParam, vorDem, meldeUndLiefere } from '../utils/httpError';
 // Der Kern liegt in utils/setService.ts; hier bleiben die
 // HTTP-Routen, die ihn rufen.
-import { addSet, addSetWithDate } from '../utils/setService';
+import { addSet } from '../utils/setService';
 import { downloadSetInstructions, anleitungenZuSet, loescheAnleitungen } from '../utils/instructions';
 // Der Standard-Zustand eines Benutzers. Stand hier früher als
 // `getUserDefaultCondition` — eine wortgleiche Zweitfassung von
@@ -35,7 +26,8 @@ import {  resolveWriteTarget } from '../utils/household';
 import { registerSse } from '../utils/sseRegistry';
 import { requireLoginOrToken as requireLogin } from '../utils/auth';
 import { importPartsForSet } from '../utils/partsImport';
-import { importMinifigsForSet } from '../utils/minifigsImport';
+import { stelleAuftragEin } from '../utils/auftraege';
+import { randomUUID } from 'crypto';
 
 
 
@@ -57,27 +49,10 @@ const MAX_SSE_PER_USER = 6;
 
 
 
-// Set-Bilder liegen seit der Umstellung im DATEN-Volume statt in public/ —
-// sonst sind sie nach jedem Container-Rebuild weg und werden einzeln neu vom
-// CDN geholt. Der Web-Pfad "/images/sets/…" bleibt unverändert; die Zuordnung
-// macht utils/appPaths.ts. Eigener Name, weil IMAGES_DIR dort das
-// Elternverzeichnis meint.
+// Set-Bilder liegen im Daten-Volume, damit sie einen Container-Neubau
+// überstehen; der Web-Pfad /images/sets/… bildet utils/appPaths.ts darauf ab.
 const SET_IMAGES_DIR = path.join(IMAGES_DIR, 'sets');
 if (!fs.existsSync(SET_IMAGES_DIR)) fs.mkdirSync(SET_IMAGES_DIR, { recursive: true });
-
-// Looks up the current BrickLink market price for a set (qty-weighted average,
-// falling back to plain average). Used to default the purchase price when the
-// user does not provide one manually. Returns null if no price is available
-// (e.g. missing BrickLink credentials or set unknown to BrickLink).
-
-
-// Mengen-Änderung über den Detail-Dialog auf die Historie abbilden:
-// Erhöhung → Tageszeile aufstocken oder anlegen (recordAcquisitionForDay);
-// Reduktion → LIFO von den letzten Erfassungen abziehen (Zeilen, die auf 0
-// fallen, werden gelöscht).
-//
-// Die frühere Hilfsfunktion isToday() ist entfallen: Die Tagesprüfung gehört
-// an eine Stelle, und das ist utils/acquisitions.ts.
 
 //  GET /api/sets/import/csv/status — poll import progress (session OR bearer)
 //  Zugang zum Fortschrittskanal des CSV-Imports
@@ -86,10 +61,12 @@ import { findSetInScope } from '../utils/setAdd';
 import { loginOrTokenGuard, angemeldeteNutzerId, istVerwalter } from '../utils/auth';
 import { csvEinlesen, entschaerfungRueckgaengig, parseCsvDate, sendCsv, uebersprungenHinweis } from '../utils/csvExport';
 import { ausTabelle } from '../utils/validate';
-import { mitVersion } from '../utils/setNummer';
 import { csvEmpfang, inhaltPasstZuTyp, uploadKontingentBytes, belegterPlatz } from '../utils/dateiEmpfang';
 import { sendeFehler } from '../utils/fehlerTexte';
 import { mengeSkalar } from '../utils/bestandsmenge';
+import * as pgNotify from '../utils/pgNotify';
+import * as V2 from '../utils/validate';
+import crypto from 'crypto';
 
 const requireLoginOrToken = loginOrTokenGuard({ timeoutMs: 3000 });
 
@@ -134,13 +111,9 @@ router.get('/import/csv/stream', requireLoginOrToken, async (req, res) => {
     const json = JSON.stringify(payload);
     if (json === lastJson) return; // keine Duplikate
     lastJson = json;
-    // Rückgabewert auswerten (Gegendruck).
-    //
-    // Bei einem hängenden Client — Handy im Funkloch, halb tote Verbindung —
-    // puffert Node sonst unbegrenzt im Speicher des Workers, bis TCP irgendwann
-    // aufgibt. false heisst: der Puffer läuft voll. Dann ist Schliessen die
-    // richtige Antwort; der Client baut die Verbindung neu auf und bekommt beim
-    // Verbinden ohnehin sofort den aktuellen Stand geschickt.
+    // Gegendruck: Bei einem hängenden Client puffert Node sonst unbegrenzt.
+    // false heisst „Puffer voll“ — dann schliessen; beim Neuverbinden kommt
+    // der aktuelle Stand ohnehin sofort.
     if (!res.write(`data: ${json}\n\n`)) {
       console.warn(`[csv-stream] Gegendruck bei Nutzer ${uid} — Verbindung wird geschlossen`);
       cleanup();
@@ -156,10 +129,9 @@ router.get('/import/csv/stream', requireLoginOrToken, async (req, res) => {
 
   // 2b) Dasselbe Signal aus ANDEREN Cluster-Workern, per LISTEN/NOTIFY.
   //     Der Payload ist die userId; nur der eigene Nutzer löst ein Nachladen aus.
-  const pgNotify = require('../utils/pgNotify');
-  const onNotify = async (payload: any) => {
+    const onNotify = async (payload: any) => {
     if (String(payload) !== String(uid)) return;
-    send(buildJobStatus(await jobGet(uid).catch(() => null), req));
+    send(buildJobStatus(await jobGet(uid).catch(meldeUndLiefere('sets-web:jobGet', null)), req));
   };
   pgNotify.listen('csv_import_progress', onNotify);
 
@@ -169,7 +141,7 @@ router.get('/import/csv/stream', requireLoginOrToken, async (req, res) => {
   // Der Takt ist von 10 s auf 120 s gestreckt.
   // Ausführlich: docs/begruendungen/routes/sets.ts.md#get-import-csv-stream-fallbacktimer
   const fallbackTimer = setInterval(async () => {
-    const s = buildJobStatus(await jobGet(uid).catch(() => null), req);
+    const s = buildJobStatus(await jobGet(uid).catch(meldeUndLiefere('sets-web:jobGet', null)), req);
     send(s);
   }, 120000);
 
@@ -180,7 +152,7 @@ router.get('/import/csv/stream', requireLoginOrToken, async (req, res) => {
 
   // 5) Jetzt erst den aktuellen Stand schicken — ab hier ist cleanup() sicher.
   // KEIN frühes res.end() wenn kein Import läuft: Die Verbindung bleibt offen.
-  send(buildJobStatus(await jobGet(uid).catch(() => null), req));
+  send(buildJobStatus(await jobGet(uid).catch(meldeUndLiefere('sets-web:jobGet', null)), req));
 
   function cleanup() {
     if (closed) return;
@@ -198,38 +170,9 @@ router.get('/import/csv/stream', requireLoginOrToken, async (req, res) => {
   req.on('close', cleanup);
 });
 
-// ── Routes ────────────────────────────────────────────────────────────────────
-// ── GET /api/sets/info/:setNumber — lightweight name lookup from shared catalog ─
-// Used by the Teileliste to resolve set names without requiring user ownership.
-router.get('/info/:setNumber', requireLogin, async (req, res) => {
-  // Die Bedingung sah den GEPRUEFTEN Wert an, beide Zweige gaben aber den
-  // rohen aus req.params zurueck — zwei verschiedene Werte in einer Zeile.
-  const n = mitVersion(pfadParam(req, 'setNumber'));
-  try {
-    const row = await db.get(
-      'SELECT name, year, theme, pieces, image_url, image_local FROM set_catalog WHERE set_number = $1',
-      [n]
-    );
-    if (row) return res.json({ success: true, set_number: n, name: row.name || n, ...row });
-    // Mit Migration 0033 gibt es nur noch den Katalog, und sie traegt fuer
-    // JEDE Setnummer aus `sets` eine Zeile nach (Schritt 1) und prueft das
-    // danach (Schritt 2). Ein Set, das jemand haelt, ist hier also immer
-    // gefunden. Bleibt die Abfrage leer, kennt diese Installation die Nummer …
-    // Ausführlich: docs/begruendungen/routes/sets.ts.md#get-info-setnumber
-    res.json({ success: true, set_number: n, name: n });
-  } catch (e) { handleRouteError(res, e, undefined, req); }
-});
-
 router.use(requireLogin);
 
 
-// ── GET /api/sets/export/csv ist ENTFERNT ────────────────────────────────────
-//
-// Kein Aufrufer — nachgemessen ueber alle 169 Dateien beider Apps. Was die
-// Webapp anbietet, ist der ZIP-Export unter /api/settings/export/data
-// (index.html, „Sets, Teile & Minifiguren exportieren"); er baut dieselbe
-// Datei mit derselben Funktion (buildSetsCsv), die deshalb bleibt. Der
-// Kommentar dort sagt es selbst: „implemented once".
 
 // ── GET /api/sets/export/rebrickable — export all sets in Rebrickable's own
 // "Set Number,Quantity" list-import format (see rebrickable.com/help/lists-sets/)
@@ -280,8 +223,7 @@ router.post('/add-stream', async (req: LoggedInRequest, res) => {
   try {
     // setCondition wurde oben aus dem Body gelesen, aber nicht weitergereicht —
     // der im Formular gewählte Zustand ging dadurch verloren.
-    const V2 = require('../utils/validate');
-    const result = await addSet(set_number, V2.acquisitionQuantity(quantity), streamOwner,
+        const result = await addSet(set_number, V2.acquisitionQuantity(quantity), streamOwner,
       d=>{ if(cancelled) throw new Error('CANCELLED'); send(d); },
       V2.optionalPrice(purchase_price, 'Kaufpreis'), setCondition, storage);
     // `success: true` gehoert dazu und ist nicht Zierde.
@@ -295,9 +237,6 @@ router.post('/add-stream', async (req: LoggedInRequest, res) => {
 //  CSV Import — polling approach (avoids SSE connection issues)
 // Der Job-Zustand steht in PostgreSQL, damit alle Arbeitsprozesse ihn lesen.
 // Ausführlich: docs/begruendungen/routes/sets.ts.md#post-import-csv
-
-/** Wie lange ein Set beim Import dauern darf, bevor die Zeile als Warnung endet. */
-const CSV_ZEILE_FRIST_MS = Number(process.env.CSV_ZEILE_FRIST_MS) || 120_000;
 
 router.post('/import/csv', csvEmpfang.single('file'), async (req, res) => {
   if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
@@ -356,151 +295,20 @@ router.post('/import/csv', csvEmpfang.single('file'), async (req, res) => {
     rows.push({ sn, qty, purchasePrice: (purchasePrice !== null && !isNaN(purchasePrice)) ? purchasePrice : null, condition, acquiredAt });
   }
 
-  const lauf = (require('crypto') as typeof import('crypto')).randomUUID();
+  // Der Import läuft als Auftrag im Primär-Worker (jobs/setCsvImport.ts) und
+  // übersteht so einen Neustart; die Statuszeile zeigt seinen Fortschritt.
+  const lauf = randomUUID();
   await jobSet(userId, {
     status: 'running', total: rows.length, done: 0,
     current: null, results: JSON.stringify([]), error: null, run_id: lauf,
   });
-
-  // Run import in background — writes progress to DB after each set
-  (async () => {
-    const results: any[] = [];
-    let cancelled = false;
-    // Ein Zähler statt eines Schalters: Zwei Importe nebeneinander setzten ihn
-    // sonst beim ersten Ende zurück, während der zweite noch läuft.
-    global._csvImportLaeufe = (global._csvImportLaeufe ?? 0) + 1;
-    try {
-      for (const { sn, qty, purchasePrice, condition, acquiredAt } of rows) {
-        if (cancelled) break;
-        // Vor jedem Set: Ist dieser Lauf noch der eingetragene? Abgebrochen
-        // oder von einem neuen Import abgelöst, hört er hier auf.
-        if (!await jobUpdate(userId, { current: sn }, lauf)) { cancelled = true; break; }
-        emitJobStatus(userId);
-
-        let attempt = 0;
-        while (attempt < 2) {
-          try {
-            // Der Wecker wird weggeräumt, sobald das Set da ist — sonst hielte
-            // jede Zeile zwei Minuten lang einen Zeitgeber am Leben.
-            let wecker: NodeJS.Timeout | undefined;
-            const r = await Promise.race([
-              addSetWithDate(sn, qty, userId, purchasePrice, condition, acquiredAt),
-              new Promise<never>((_,rej) => { wecker = setTimeout(() => rej(new Error('Timeout')), CSV_ZEILE_FRIST_MS); })
-            ]).finally(() => clearTimeout(wecker));
-            results.push({ set_number:sn, success:true, action:r.action });
-            break;
-          } catch(e) {
-            attempt++;
-            const msg = fehlertext(e) || 'Unbekannter Fehler';
-            const isTimeout   = msg.includes('Timeout');
-            const isRateLimit = msg.includes('429') || msg.includes('rate limit') || msg.includes('Daily limit');
-            // Nur ein Kontingent-Fehler wird wiederholt: Nach einer
-            // Zeitüberschreitung läuft der erste Versuch weiter und bucht
-            // womöglich noch — ein zweiter hätte die Menge verdoppelt.
-            if (isRateLimit && !isTimeout && attempt < 2) {
-              console.warn(`CSV: ${sn} retry after ${msg}...`);
-              await new Promise(r => setTimeout(r, 5000));
-              continue; // retry — don't push error or update job yet
-            }
-            const isWarning = isTimeout || isRateLimit;
-            results.push({ set_number:sn, success:false, error:msg, isWarning });
-            console[isWarning?'warn':'error'](`CSV: ${sn} ${isWarning?'WARNING':'FAILED'}: ${msg}`);
-            break;
-          }
-        }
-        // Update job after set is fully processed (success or final failure)
-        await jobUpdate(userId, { done: results.length, results: JSON.stringify(results) }, lauf).catch(e => {
-          console.error(`CSV: jobUpdate failed for ${sn}: ${e.message}`);
-        });
-        emitJobStatus(userId);
-      }
-
-      const finalStatus = cancelled ? 'cancelled' : 'done';
-      // Ein abgelöster Lauf schreibt nichts mehr — die Zeile gehört dem neuen.
-      if (!cancelled) await jobUpdate(userId, { status: finalStatus, current: null }, lauf).catch(e => {
-        console.error(`CSV: final jobUpdate failed: ${e.message}`);
-      });
-      emitJobStatus(userId);
-      console.log(`CSV import ${finalStatus}: ${results.filter(r=>r.success).length} ok, ${results.filter(r=>!r.success).length} errors`);
-    } finally {
-      global._csvImportLaeufe = Math.max(0, (global._csvImportLaeufe ?? 1) - 1);
-    }
-
-    // Now trigger background enrichment for all successfully imported sets
-    // (deferred during import to avoid DB pool exhaustion)
-    const successSets = results.filter(r => r.success).map(r => r.set_number);
-    if (successSets.length) {
-      const enrich = require('../jobs/partsCatalogEnrich');
-      // Anreicherung mit BEGRENZTER Parallelität (nie mehr als ENRICH_CONCURRENCY
-      // Sets gleichzeitig) — der frühere setTimeout(i*3000)-Stagger begrenzte nur
-      // den Start-Abstand und erschöpfte bei langen Sets den DB-Connection-Pool.
-      // ZWEI Pässe:
-      //   Pass 1 (DB-lastig, begrenzt): Import + Katalog-Enrich + Brickset-Meta;
-      //           die Anleitungen werden dabei in die Instruction-Queue eingereiht
-      //           und diese danach angestoßen (robust: Quota/Retry/Backoff).
-      //   Pass 2 (durch den globalen CDN-Limiter ohnehin gedrosselt): Bilder.
-      const ENRICH_CONCURRENCY = Math.max(1, parseInt(process.env.ENRICH_CONCURRENCY || '2'));
-
-      const importOne = async (sn: string) => {
-        await importMinifigsForSet(sn, userId).catch(() => {});
-        await importPartsForSet(sn, userId).catch(() => {});
-        await enrich.enrichSetParts(sn).catch(() => {});
-        await enrich.enrichSetMinifigs(sn).catch(() => {});
-        // Brickset-Metadaten (respektiert Quota)
-        // Metadaten sind Beiwerk: Sie dürfen den Import eines Sets nicht
-        // scheitern lassen — aber schweigend übersprungen sah ein dauerhaft
-        // kaputter Brickset-Zugang genauso aus wie ein Set ohne Eintrag dort.
-        await require('../clients/brickset').getSetInfo(sn).then((bs: any) => {
-          if (!bs) return;
-          // In den KATALOG, nicht in die Bestandszeilen: Die Stammdaten stehen
-          // seit Migration 0033 dort, und zwar einmal je Setnummer statt einmal
-          // je Konto. Beim CSV-Import eines Haushalts traf die alte Anweisung
-          // ohne user_id ohnehin alle Zeilen aller Konten — jetzt ist es genau
-          // eine Zeile, und sie ist die, aus der gelesen wird.
-          return db.run(
-            `UPDATE set_catalog SET name=COALESCE(name,$1), year=COALESCE(year,$2), theme=COALESCE(theme,$3), pieces=COALESCE(pieces,$4), minifigs=COALESCE(minifigs,$5) WHERE set_number=$6`,
-            [bs.name, bs.year, bs.theme, bs.pieces, bs.minifigs, sn]
-          ).catch(logAndContinue(`sets:brickset-meta ${sn}`));
-        }).catch(logAndContinue(`sets:brickset-abruf ${sn}`));
-        // Anleitungen über die Instruction-Queue einreihen statt direkt laden:
-        // Der Job verarbeitet sie robust (Brickset-Quota, Retry-Queue, Cloudflare-
-        // Backoff) und ist im Monitoring sichtbar. Angestoßen wird die Queue nach
-        // Pass 1 (siehe unten) — analog zum Admin-Reimport.
-        await require('../jobs/instructionQueue').enqueue(sn).catch(() => {});
-      };
-
-      const runPool = async (fn: (sn: string) => Promise<unknown>) => {
-        let i = 0;
-        const worker = async () => {
-          while (i < successSets.length) {
-            const sn = successSets[i++];
-            await fn(sn).catch(() => {});
-            await new Promise(r => setTimeout(r, 200)); // kleine Pause zwischen Sets
-          }
-        };
-        await Promise.all(Array.from({ length: ENRICH_CONCURRENCY }, () => worker()));
-      };
-
-      // Pass 1 abwarten (Import/Enrich + Anleitungen einreihen), dann die
-      // Instruction-Queue anstoßen und Pass 2 (Bilder) starten.
-      runPool(importOne)
-        .then(async () => {
-          // Anstoss über das Flag — der Primary pollt es alle 3 s. Hier stand
-          // zusätzlich ein direkter processNext() „falls DIESER Prozess der
-          // Primary ist"; geprüft hat das nie jemand, und in jedem anderen
-          // Worker lief dadurch eine zweite Abarbeitung derselben Queue.
-          await require('../jobs/instructionQueue').requestRun();
-        })
-        .then(() => runPool(sn => enrich.downloadSetImages(sn)))
-        .catch(() => {});
-    }
-  })().catch(async e => {
-    console.error(`CSV import fatal error: ${e.message}`);
-    await jobUpdate(userId, { status: 'error', error: e.message }).catch(e2 =>
-      console.error(`CSV: error jobUpdate also failed: ${e2.message}`)
-    );
-    emitJobStatus(userId);
-  });
+  try {
+    await stelleAuftragEin('csv_import', { user_id: userId, lauf, rows }, { userId, maxVersuche: 3 });
+  } catch (e) {
+    await jobUpdate(userId, { status: 'error', error: fehlertext(e) }, lauf).catch(logAndContinue('csv-import:fehler vermerken'));
+    return handleRouteError(res, e, undefined, req);
+  }
+  await emitJobStatus(userId);
 
   // Übersprungene Zeilen mitteilen — der Import läuft im Hintergrund weiter,
   // der Hinweis gehört aber in die sofortige Antwort, sonst erfährt niemand
@@ -535,7 +343,7 @@ router.post('/:setNumber/instructions', async (req, res) => {
       return sendeFehler(req, res, 404, 'set_nicht_gefunden');
     await loescheAnleitungen(sn);
     // Download synchronously so we can return the actual results
-    await downloadSetInstructions(sn).catch(() => {});
+    await downloadSetInstructions(sn).catch(logAndContinue('sets-web:downloadSetInstructions'));
     const instrs = await anleitungenZuSet(sn);
     res.json({ success: true, instructions: instrs, count: instrs.length });
   } catch (e) { handleRouteError(res, e, undefined, req); }
@@ -563,7 +371,7 @@ const uploadInstr = multer({
       const ext  = ausTabelle(INSTR_EXT_BY_MIME, file.mimetype);
       if (!ext) return cb(new Error('Nur PDF, JPG oder PNG'), '');
       // Zufällig statt Zeitstempel: Der Name soll sich nicht erraten lassen.
-      cb(null, `${safe}_${(require('crypto') as typeof import('crypto')).randomBytes(12).toString('hex')}${ext}`);
+      cb(null, `${safe}_${crypto.randomBytes(12).toString('hex')}${ext}`);
     }
   }),
   limits: { fileSize: 50*1024*1024 },
@@ -632,19 +440,4 @@ router.delete('/:setNumber/instructions/:instrId', async (req, res) => {
 // BrickInstructions-Prüfung. Der lebende Weg steht inline in
 // fetchInstructions() und in scrapeInstructionsFromFallback(). Entfallen.
 
-// CJS-kompatibler Export: module.exports bleibt der Router selbst,
-// mit den intern/von jobs/ genutzten Funktionen als Properties (wie zuvor).
-// ── GET /api/sets/:sn/acquisitions — list all acquisitions ───────────────────
-
-// ── PUT /api/sets/:sn/acquisitions/:id — update one acquisition ───────────────
-
-// ── DELETE /api/sets/:sn/acquisitions/:id — Erfassung löschen ────────────────
-
-// downloadSetImage und getUserDefaultCondition stehen hier NICHT mehr: Die
-// erste lebt in utils/setImages.ts, die zweite war eine Dublette von
-// nutzerStandardZustand() in utils/settings.ts. Was hier noch
-// mitexportiert wird, wartet auf spätere Durchgänge.
-// Der Anhang ist leer: addSet, updateSet und buildSetsCsv leben in
-// utils/setService.ts und werden von dort importiert — kein Router mehr, der
-// Hilfsfunktionen weiterreicht.
 export = router;

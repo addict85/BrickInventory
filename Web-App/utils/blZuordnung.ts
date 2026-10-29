@@ -2,6 +2,7 @@
  * Was bei BrickLink wie heisst — die Zuordnung, an einer Stelle.
  * Ausführlich: docs/begruendungen/utils/blZuordnung.ts.md#abschnitt
  */
+import { meldeUndLiefere } from './httpError';
 import * as db from '../db/database';
 
 /**
@@ -25,6 +26,18 @@ export async function merkeBlNummer(art: BlArt, rbId: string, blId: string) {
     [art, rbId, blId]);
 }
 
+/** merkeBlNummer() für viele Nummern in einer Anweisung (Teile-Import eines Sets). */
+export async function merkeBlNummern(art: BlArt, paare: { rbId: string; blId: string }[],
+                                     dbh: { run: (sql: string, p?: unknown[]) => Promise<unknown> } = db) {
+  const eindeutig = [...new Map(paare.filter(p => p.rbId && p.blId).map(p => [p.rbId, p])).values()];
+  if (!eindeutig.length) return;
+  await dbh.run(
+    `INSERT INTO bl_zuordnung (art, rb_id, bl_id)
+     SELECT $1, r, NULLIF(b, r) FROM unnest($2::text[], $3::text[]) AS x(r, b)
+     ON CONFLICT (art, rb_id) DO UPDATE SET bl_id = EXCLUDED.bl_id, fetched_at = NOW()`,
+    [art, eindeutig.map(p => p.rbId), eindeutig.map(p => p.blId)]);
+}
+
 /**
  * Bewusst `DO NOTHING` statt `DO UPDATE`: Diese Notiz darf eine echte, schon
  * gefundene Zuordnung nicht überschreiben. Sie verhindert nur, dass dasselbe
@@ -46,7 +59,7 @@ export async function merkeBlNummerUnveraendert(art: BlArt, rbId: string) {
  */
 export async function blNummerVon(art: BlArt, rbId: string): Promise<string | null> {
   const z = await db.get(
-    'SELECT bl_id FROM bl_zuordnung WHERE art=$1 AND rb_id=$2', [art, rbId]).catch(() => null);
+    'SELECT bl_id FROM bl_zuordnung WHERE art=$1 AND rb_id=$2', [art, rbId]).catch(meldeUndLiefere('bl-zuordnung:nummer lesen', null));
   return z?.bl_id || null;
 }
 
@@ -65,7 +78,7 @@ export async function blNummerVon(art: BlArt, rbId: string): Promise<string | nu
 export async function blAbrufNummer(art: BlArt, rbId: string): Promise<string | null> {
   const z = await db.get(
     'SELECT COALESCE(bl_id, rb_id) AS nr FROM bl_zuordnung WHERE art=$1 AND rb_id=$2',
-    [art, rbId]).catch(() => null);
+    [art, rbId]).catch(meldeUndLiefere('bl-zuordnung:abrufnummer lesen', null));
   return z?.nr || null;
 }
 
@@ -80,7 +93,7 @@ export async function blAbrufNummern(art: BlArt, rbIds: string[]): Promise<Map<s
   const zeilen = await db.all(
     `SELECT rb_id, COALESCE(bl_id, rb_id) AS nr FROM bl_zuordnung
       WHERE art=$1 AND rb_id = ANY($2)`,
-    [art, rbIds]).catch(() => []);
+    [art, rbIds]).catch(meldeUndLiefere('bl-zuordnung:zeilen', []));
   for (const z of zeilen) raus.set(String(z.rb_id), String(z.nr));
   return raus;
 }

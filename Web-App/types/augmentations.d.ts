@@ -17,24 +17,6 @@ declare module 'express-session' {
 }
 
 declare global {
-  /**
-   * Laeuft gerade ein CSV-Massenimport?
-   *
-   * routes/sets.ts zählt laufende Importe; utils/setService.ts
-   * fragt es an vier Stellen ab und laesst Hintergrundarbeit (Teile-Import,
-   * Brickset-Abruf, Anleitungen) dann aus — sonst erschoepft die Schleife den
-   * DB-Pool und verbraucht das Tagesbudget der Fremd-APIs.
-   *
-   * Steht hier statt als Index auf `global`: Ohne Deklaration ist
-   * `global._csvImportLaeufe` ein impliziter any-Zugriff, und ein Tippfehler
-   * im Namen waere an BEIDEN Enden unsichtbar — der Import liefe dann mit
-   * voller Hintergrundlast weiter, ohne dass etwas meldet.
-   */
-  var _csvImportLaeufe: number | undefined;
-  /** Startup-Fortschritt, den /api/v1/startup-status ausliefert (server.ts). */
-  var startupStatus: { ready: boolean; step: string; progress: number; total: number };
-  /** Aktiviert die Log-Persistenz in app_logs, sobald der DB-Pool bereit ist (server.ts). */
-  var _enableLogPersistence: (pool: any) => void;
 
   namespace Express {
     interface Request {

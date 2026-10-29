@@ -1,178 +1,125 @@
 import path from 'path';
 import fs from 'fs';
+import https from 'https';
 import * as db from '../db/database';
 import { PART_IMAGES_DIR } from './appPaths';
-import { getAllSetParts, downloadFile, sleep } from '../clients/rebrickable';
-import { logAndContinue, fehlertext } from './httpError';
-import { generateThumb } from './thumbs';
-import { meldeUndWeiter } from '../utils/httpError';
+import { getAllSetParts, type RbSetTeil } from '../clients/rebrickable';
+import { fehlertext, logAndContinue, meldeUndWeiter } from './httpError';
 import { getGlobalSetting } from '../utils/settings';
 import { mitVersion } from './setNummer';
-import { merkeBlNummer, merkeBlNummerUnveraendert } from './blZuordnung';
-import { merkeTeil, merkeTeilFarbe, merkeSetTeil, setzeTeilBildLokal } from './katalogPflege';
+import { merkeBlNummer, merkeBlNummern, merkeBlNummerUnveraendert } from './blZuordnung';
+import { merkeSetTeile, type SetTeilZeile } from './katalogPflege';
+import { stelleAuftragEin } from './auftraege';
+import * as monitor from './jobMonitor';
+import { rebrickableBackgroundLimiter, consumeRebrickableDaily, parseThrottleWait } from './rateLimiter';
 
 /**
- * Teile eines Sets aus dem Katalog übernehmen.
- * Ausführlich: docs/begruendungen/utils/partsImport.ts.md#downloadpartimagesbackground
+ * Teile eines Sets aus dem Katalog übernehmen — reine Katalogarbeit ohne
+ * Route. Die Bilder lädt der Auftrag 'bilder' (jobs/partsCatalogEnrich);
+ * image_local steht nur da, wo die Datei schon liegt.
  */
 
-async function downloadPartImagesBackground(
-  imageDownloads: { url: string; dest: string; partNumber: string; colorId: number | string }[],
-  setNumber: string) {
-  let done = 0;
-  const BATCH = 10;
-  for (let i = 0; i < imageDownloads.length; i += BATCH) {
-    const batch = imageDownloads.slice(i, i + BATCH);
-    await Promise.all(batch.map(async ({ url, dest, partNumber, colorId }:
-      { url: string; dest: string; partNumber: string; colorId: number | string }) => {
-      await downloadFile(url, dest).catch(() => {});
-      // Nur weitermachen, wenn die Datei wirklich geschrieben wurde. Andernfalls
-      // würde image_local auf eine nicht existierende Datei zeigen und in Web +
-      // Android 404 liefern (z.B. bei bedruckten Teilen, deren CDN-Bild fehlt).
-      // Ohne image_local fallen beide Clients automatisch auf die CDN-URL zurück.
-      if (!fs.existsSync(dest)) return;
-      const rel = '/images/parts/' + require('path').basename(dest);
-      await generateThumb(rel).catch(() => {});
-      // Sync image_local to shared catalog
-      if (partNumber && colorId !== undefined) {
-        // Als Upsert, nicht als UPDATE: Der Bildabgleich kann ein Teil
-        // treffen, dessen Katalogzeile es noch nicht gibt (das Bild wird
-        // heruntergeladen, bevor der Teile-Import die Zeile schreibt).
-        // Ein nacktes UPDATE waere dort wirkungslos — lautlos.
-        // Ausführlich: docs/begruendungen/utils/partsImport.ts.md#downloadpartimagesbackground-2
-        await setzeTeilBildLokal(partNumber, colorId, rel)
-          .catch(logAndContinue('parts:image_local katalog (teil/farbe)'));
-      }
-    }));
-    done += batch.length;
-    await sleep(200);
+/** Die Zeilen der Rebrickable-Antwort, nach Teil und Farbe sortiert (feste Sperrreihenfolge). */
+function setTeilZeilen(roh: RbSetTeil[]): SetTeilZeile[] {
+  const zeilen: SetTeilZeile[] = [];
+  for (const t of roh) {
+    const p = t.part || ({} as RbSetTeil['part']), color = t.color || ({} as RbSetTeil['color']);
+    if (!p.part_num) continue;
+    const colorId = color.id || 0;
+    const imageUrl = p.part_img_url || null;
+    let imageLocal: string | null = null;
+    if (imageUrl) {
+      try {
+        const datei = `${p.part_num}_${colorId}${path.extname(new URL(imageUrl).pathname) || '.png'}`;
+        if (fs.existsSync(path.join(PART_IMAGES_DIR, datei))) imageLocal = `/images/parts/${datei}`;
+      } catch (e) { meldeUndWeiter('teile-import:bildpfad', e); }
+    }
+    zeilen.push({
+      partNumber: p.part_num, partName: p.name || '',
+      kategorie: p.part_cat_id ? String(p.part_cat_id) : null,
+      colorId, colorName: color.name || 'Unknown', colorHex: color.rgb || null,
+      imageUrl, imageLocal, quantity: t.quantity || 1, isSpare: !!t.is_spare,
+      blNummer: p.external_ids?.BrickLink?.[0] ?? null,
+    });
   }
-  if (done > 0) console.log(`[parts] ${setNumber}: ${done} Bilder`);
+  return zeilen.sort((a, b) => a.partNumber < b.partNumber ? -1 : a.partNumber > b.partNumber ? 1 : a.colorId - b.colorId);
 }
 
-// syncBlPartNumbers() ist WEG
-// Ihre ganze Aufgabe war das KOPIEREN: Sie trug rb_bl_mapping in
-// `parts.bl_part_number` und `set_parts_catalog.bl_part_number` nach, nach
-// jedem CSV-Abgleich. Der Kommentar darueber sagte es selbst — „Sync …
-// Ausführlich: docs/begruendungen/utils/partsImport.ts.md#abschnitt
-
-// Der frühere `sendProgress`-Parameter ist ersatzlos entfallen, und mit ihm die
-// Schritte 'parts_start', 'parts_importing', 'parts_done', 'parts_images' und
-// 'parts_error'. NACHGEMESSEN: alle fünf Aufrufstellen (setService zweimal,
-// routes/sets.ts zweimal, routes/parts.ts) übergaben `null`, seit der
-// Teile-Import aus addSet() heraus in ein setTimeout gewandert ist. Die
-// Ereignisse konnten den Browser also nicht mehr erreichen; der Fortschritts-
-// dialog zeigte trotzdem Punkte dafür an. Beides ist jetzt weg.
-async function importPartsForSet(setNumber: string, userId: number) {
+/**
+ * Die Teile eines Sets in den Bestand: vorhandene Zeilen bleiben (mit
+ * Lagerort und Datum), neue kommen dazu, weggefallene gehen — alles in einer
+ * Transaktion, damit ein Fehler nie ein Set ohne Teile hinterlässt.
+ * @returns die Zahl der Zeilen; wirft bei Fehlern (der Auftrag wiederholt dann)
+ */
+export async function importiereTeile(setNumber: string, userId: number): Promise<number> {
   const n = mitVersion(setNumber);
+  const roh: RbSetTeil[] | null = await getAllSetParts(n);
+  if (!roh || !roh.length) return 0;
+  const zeilen = setTeilZeilen(roh);
+  if (!zeilen.length) return 0;
+  const teile = zeilen.map(z => z.partNumber), farben = zeilen.map(z => z.colorId);
+
+  for (let versuch = 1; ; versuch++) {
+    try {
+      await db.transaction(async (tx) => {
+        await tx.run(
+          `INSERT INTO parts (user_id, set_number, part_number, color_id)
+           SELECT $1, $2, p, f FROM unnest($3::text[], $4::int[]) AS x(p, f) ON CONFLICT DO NOTHING`,
+          [userId, n, teile, farben]);
+        await tx.run(
+          `DELETE FROM parts WHERE user_id=$1 AND set_number=$2 AND source='set'
+              AND (part_number, COALESCE(color_id, 0)) NOT IN (SELECT * FROM unnest($3::text[], $4::int[]))`,
+          [userId, n, teile, farben]);
+        await merkeSetTeile(n, zeilen, tx);
+        await merkeBlNummern('part', zeilen.map(z => ({ rbId: z.partNumber, blId: z.blNummer ?? '' })), tx);
+      });
+      break;
+    } catch (e) {
+      // Zwei Importe mit überlappenden Katalogzeilen können sich verklemmen;
+      // die feste Reihenfolge macht es selten, ganz ausschliessen nicht.
+      if (!fehlertext(e)?.includes('deadlock') || versuch >= 3) throw e;
+      console.warn(`[parts] Deadlock bei ${n}, Versuch ${versuch}/3`);
+      await new Promise(r => setTimeout(r, 200 * versuch));
+    }
+  }
+
+  if (zeilen.some(z => z.imageUrl && !z.imageLocal))
+    await stelleAuftragEin('bilder', { set_number: n }, { schluessel: `bilder:${n}`, maxVersuche: 3 });
+  console.log(`[parts] ${n}: ${zeilen.length} importiert`);
+  return zeilen.length;
+}
+
+/** Wie importiereTeile(), aber ohne zu werfen — für die Route, die nur die Zahl zeigt. */
+async function importPartsForSet(setNumber: string, userId: number): Promise<number> {
   try {
-    const rawParts = await getAllSetParts(n);
-    if (!rawParts || rawParts.length === 0) return 0;
-
-    const imgDir = PART_IMAGES_DIR;
-    if (!fs.existsSync(imgDir)) fs.mkdirSync(imgDir, { recursive: true });
-
-    await db.run('DELETE FROM parts WHERE user_id = $1 AND set_number = $2', [userId, n]);
-
-    const rows: any[] = [];
-    const imageDownloads: any[] = [];
-    for (const part of rawParts) {
-      const p = part.part || {}, color = part.color || {};
-      const partNo = p.part_num || ''; if (!partNo) continue;
-      const colorId = color.id || 0, colorName = color.name || 'Unknown', colorHex = color.rgb || null;
-      const catName = p.part_cat_id ? String(p.part_cat_id) : 'Unknown';
-      const imageUrl = part.part_img_url || p.part_img_url || null;
-      let localPath: any = null;
-      if (imageUrl) {
-        try {
-          const ext = path.extname(new URL(imageUrl).pathname) || '.png';
-          const imgFile = `${partNo}_${colorId}${ext}`;
-          localPath = `/images/parts/${imgFile}`;
-          const fullPath = path.join(imgDir, imgFile);
-          if (!fs.existsSync(fullPath)) imageDownloads.push({ url: imageUrl, dest: fullPath });
-        } catch (e) { meldeUndWeiter('teile-import:bildpfad', e); }
-      }
-      const blNum = p.external_ids?.BrickLink?.[0] || null; // null = not yet known
-      rows.push([userId, n, partNo, blNum, p.name||'', colorId, colorName, colorHex, catName, part.quantity||1, imageUrl, localPath, part.is_spare?1:0]);
-    }
-
-    // Batch insert: user parts table + shared catalog
-    if (rows.length > 0) {
-      // Sort rows by part_number+color_id for consistent lock order (prevents deadlocks)
-      rows.sort((a,b) => a[2] < b[2] ? -1 : a[2] > b[2] ? 1 : a[5] - b[5]);
-
-      // Retry up to 3 times on deadlock
-      for (let attempt = 1; attempt <= 3; attempt++) {
-        try {
-          await db.transaction(async (tx) => {
-            for (const row of rows) {
-              // [0]=userId [1]=setNum [2]=partNo [3]=blNum [4]=name [5]=colorId [6]=colorName [7]=colorHex [8]=catName [9]=qty [10]=imageUrl [11]=imageLocal [12]=isSpare
-              // Ausführlich: docs/begruendungen/utils/partsImport.ts.md#importpartsforset
-              await tx.run(
-                'INSERT INTO parts (user_id,set_number,part_number,color_id) VALUES ($1,$2,$3,$4) ON CONFLICT DO NOTHING',
-                [row[0], row[1], row[2], row[5]]
-              );
-            }
-            // Teilekatalog
-            // DO UPDATE mit COALESCE auf der SPALTE, nicht auf EXCLUDED: Ein
-            // vorhandener Name bleibt stehen, ein fehlender wird gefuellt.
-            // Die Set-Teile-Antwort von Rebrickable liefert kein part_cat_id, …
-            // Ausführlich: docs/begruendungen/utils/partsImport.ts.md#importpartsforset-2
-            for (const row of rows) {
-              await merkeTeil(row[2], row[4], row[8], tx);
-            }
-            for (const row of rows) {
-              await merkeTeilFarbe(row[2], row[5], row[6], row[7], row[10], row[11], tx);
-            }
-            // Insert catalog separately (different table — avoids cross-table deadlock)
-            for (const row of rows) {
-              // Ohne bl_part_number: Die BrickLink-Nummer steht seit
-              // Migration 0037 in bl_zuordnung, einmal je Teil. Hier stand
-              // sie je Set-Teile-Zeile, also fuer dasselbe Teil so oft, wie
-              // es Sets damit gibt — und wurde nach jedem CSV-Abgleich aus
-              // rb_bl_mapping nachkopiert (syncBlPartNumbers, siehe oben).
-              await merkeSetTeil(row[1], row[2], row[5], row[9], row[12], tx);
-              // Die BrickLink-Nummer aus derselben Antwort — jetzt dorthin,
-              // wo sie hingehoert. merkeBlNummer() schreibt NULL, wenn sie
-              // mit der Rebrickable-Nummer uebereinstimmt.
-              if (row[3]) await merkeBlNummer('part', String(row[2]), String(row[3]));
-            }
-          });
-          break; // success
-        } catch(e) {
-          if (fehlertext(e)?.includes('deadlock') && attempt < 3) {
-            console.warn(`[parts] Deadlock on ${n}, retry ${attempt}/3...`);
-            await new Promise(r => setTimeout(r, 200 * attempt));
-          } else throw e;
-        }
-      }
-    }
-
-    if (imageDownloads.length > 0) {
-      setImmediate(() => downloadPartImagesBackground(imageDownloads, n));
-    }
-
-    console.log(`[parts] ${n}: ${rows.length} importiert`);
-    return rows.length;
+    return await importiereTeile(setNumber, userId);
   } catch (e) {
-    console.error(`Parts import failed for ${n}:`, fehlertext(e));
+    console.error(`[parts] Import fehlgeschlagen für ${mitVersion(setNumber)}:`, fehlertext(e));
     return 0;
   }
 }
 
-// Fetch BL IDs for parts that have no mapping yet — runs in background, never blocks
+/** Eine Seite der Rebrickable-Teileabfrage. */
+function holeSeite(url: string, rbKey: string): Promise<{ status: number; body: string }> {
+  return new Promise(resolve => {
+    const req = https.get(url, { family: 4, headers: { Authorization: `key ${rbKey}`, 'User-Agent': 'BrickInventory/1.0' } }, r => {
+      let b = ''; r.on('data', (d: Buffer) => b += d);
+      r.on('end', () => resolve({ status: r.statusCode ?? 0, body: b }));
+    });
+    req.on('error', () => resolve({ status: 0, body: '' }));
+    req.setTimeout(30000, () => { req.destroy(); resolve({ status: 0, body: '' }); });
+  });
+}
+
+/**
+ * BrickLink-Nummern für Teile ohne Zeile in bl_zuordnung nachholen. Eine
+ * Zeile mit leerer bl_id heisst „nachgesehen, keine abweichende Nummer" und
+ * löst kein zweites Nachladen aus (merkeBlNummerUnveraendert).
+ */
 async function fetchMissingBlIds() {
-  const monitor = require('../utils/jobMonitor');
   try {
-    const { rebrickableBackgroundLimiter: rebrickableLimiter, consumeRebrickableDaily } = require('../utils/rateLimiter');
     const rbKey = await getGlobalSetting('rebrickable_api_key');
     if (!rbKey) return;
-
-    // Nur Teile, zu denen noch KEINE Zeile in bl_zuordnung steht (die
-    // Zuordnung ist seit Migration 0037 die einzige Quelle). Geprueft wird
-    // die Zeile, nicht ihr Wert: Eine Zeile mit leerer bl_id heisst
-    // „nachgesehen, keine abweichende Nummer" und darf kein zweites
-    // Nachladen ausloesen — genau dafuer gibt es merkeBlNummerUnveraendert().
     const missing = await db.all(
       `SELECT DISTINCT p.part_number FROM parts p
        LEFT JOIN bl_zuordnung m ON m.art = 'part' AND m.rb_id = p.part_number
@@ -184,28 +131,15 @@ async function fetchMissingBlIds() {
     if (!missing.length) return;
 
     monitor.update('blIds', { status: 'running', progress: 0, total: missing.length, sub: `0 / ${missing.length}` });
-
-    // `as typeof import('https')` wie in Punkt 3: Ohne das ist die Rueckgabe
-// von require() `any`, und damit auch der Antwort-Rueckruf `r`.
-const https2 = require('https') as typeof import('https');
     const BATCH = 500;
     let serverErrors = 0;
     for (let i = 0; i < missing.length; i += BATCH) {
       if (!await consumeRebrickableDaily()) break;
-      await rebrickableLimiter.waitForSlot();
-      const batch = missing.slice(i, i + BATCH).map(r => r.part_number);
-      const url = `https://rebrickable.com/api/v3/lego/parts/?part_nums=${batch.join(',')}&page_size=500`;
-      const result = await new Promise<{ status: number; body: string }>(resolve => {
-        const req = https2.get(url, { family: 4, headers: { Authorization: `key ${rbKey}`, 'User-Agent': 'BrickInventory/1.0' } }, r => {
-          let b = ''; r.on('data', (d: Buffer) => b += d);
-          r.on('end', () => resolve({ status: r.statusCode ?? 0, body: b }));
-        });
-        req.on('error', () => resolve({ status: 0, body: '' }));
-        req.setTimeout(30000, () => { req.destroy(); resolve({ status: 0, body: '' }); });
-      });
+      await rebrickableBackgroundLimiter.waitForSlot();
+      const batch: string[] = missing.slice(i, i + BATCH).map(r => r.part_number);
+      const result = await holeSeite(`https://rebrickable.com/api/v3/lego/parts/?part_nums=${batch.join(',')}&page_size=500`, rbKey);
       if (result.status === 429) {
-        const { parseThrottleWait: ptw } = require('../utils/rateLimiter');
-        await new Promise(r => setTimeout(r, ptw(result.body)));
+        await new Promise(r => setTimeout(r, parseThrottleWait(result.body)));
         i -= BATCH; continue;
       }
       if (result.status >= 500 || result.status === 0) {
@@ -213,28 +147,22 @@ const https2 = require('https') as typeof import('https');
         else break;
       }
       if (result.status !== 200) continue;
-      let data; try { data = JSON.parse(result.body); } catch(_) { continue; }
+      let data: { results?: { part_num: string; external_ids?: { BrickLink?: string[] } }[] };
+      try { data = JSON.parse(result.body); } catch (e) { meldeUndWeiter('bl-nummern:antwort', e); continue; }
       const batchDone = i + BATCH;
       monitor.update('blIds', { status: 'running', progress: batchDone, sub: `${Math.min(batchDone, missing.length)} / ${missing.length}` });
       for (const part of (data?.results || [])) {
         const blIds = part.external_ids?.BrickLink;
-        const blNum = Array.isArray(blIds) && blIds.length > 0 ? blIds[0] : part.part_num;
-        await merkeBlNummer('part', part.part_num, blNum).catch(() => {});
+        const blNum = Array.isArray(blIds) && blIds.length > 0 ? blIds[0]! : part.part_num;
+        await merkeBlNummer('part', part.part_num, blNum).catch(logAndContinue('bl-nummern:merken'));
       }
-      // Mark unmatched as checked
-      const returned = new Set((data?.results||[]).map((p: { part_num: string }) => p.part_num));
+      const returned = new Set((data?.results || []).map(p => p.part_num));
       for (const pn of batch) {
-        if (!returned.has(pn)) {
-          await merkeBlNummerUnveraendert('part', pn).catch(() => {});
-        }
+        if (!returned.has(pn)) await merkeBlNummerUnveraendert('part', pn).catch(logAndContinue('bl-nummern:merken'));
       }
     }
-    // Hier stand `await syncBlPartNumbers()`. Die eben gemerkten Nummern
-    // stehen schon da, wo sie gelesen werden — in bl_zuordnung. Nachtragen
-    // muss sie niemand mehr.
     monitor.update('blIds', { status: 'done', sub: null });
-
-  } catch(e) { console.error('[bl-fetch] error:', fehlertext(e)); }
+  } catch (e) { console.error('[bl-fetch] error:', fehlertext(e)); }
 }
 
-export { importPartsForSet, fetchMissingBlIds, downloadPartImagesBackground };
+export { importPartsForSet, fetchMissingBlIds };

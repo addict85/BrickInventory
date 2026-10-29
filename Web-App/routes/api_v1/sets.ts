@@ -4,7 +4,8 @@
  */
 import express from 'express';
 import * as db from '../../db/database';
-import { handleRouteError, meldeUndWeiter, pfadParam } from '../../utils/httpError';
+import { handleRouteError, meldeUndWeiter, fehlertext, logAndContinue, pfadParam, meldeUndLiefere } from '../../utils/httpError';
+import { stelleAuftragEin } from '../../utils/auftraege';
 import { requireToken } from './middleware';
 import { resolveImageLocal, proxyImageUrl } from '../../utils/images';
 import { getSetting, getGlobalSetting } from '../../utils/settings';
@@ -18,7 +19,7 @@ import { normalisiereLagerort, setzeLagerort, lagerorte,
          vorgabeVon, setzeVorgabe } from '../../utils/lagerort';
 import { alarmeFuer, alleAlarme, ausgeloesteSeit, loescheAlarm, setzeAlarm } from '../../utils/preisalarm';
 import { csvEmpfang } from '../../utils/dateiEmpfang';
-import { csvZeilenAusAnfrage } from '../../utils/csvExport';
+import { csvZeilenAusAnfrage, uebersprungenHinweis } from '../../utils/csvExport';
 import { istVermutung } from '../../utils/barcodeQuelle';
 import { setnummerKandidaten } from '../../utils/produkttitel';
 import { withInventoryLock } from '../../utils/txLock';
@@ -38,7 +39,28 @@ import { figurenAusKatalog } from '../../utils/minifigsImport';
 import { sendeFehler } from '../../utils/fehlerTexte';
 import { mengeSkalar } from '../../utils/bestandsmenge';
 import { blJoin, blNummerSql } from '../../utils/blZuordnung';
+import https from 'https';
+import * as V from '../../utils/validate';
+import * as partsCatalogEnrich from '../../jobs/partsCatalogEnrich';
 const router = express.Router();
+
+// ── Feste Pfade VOR den Pfaden mit :setNumber ────────────────────────────────
+// Unter /api/v1/sets hingen zwei Router (dieser und routes/sets.ts). Der
+// Namensabruf /sets/info/:setNumber stand im zweiten; /sets/info/price-history
+// traf deshalb zuerst /sets/:setNumber/price-history hier, mit „info“ als Set.
+// Jetzt steht er hier, vor allen Pfaden mit Parameter.
+
+/** GET /api/v1/sets/info/:setNumber — Name aus dem Katalog, ohne Besitz. */
+router.get('/sets/info/:setNumber', requireToken, async (req: AuthedRequest, res) => {
+  const n = mitVersion(pfadParam(req, 'setNumber'));
+  try {
+    const row = await db.get(
+      'SELECT name, year, theme, pieces, image_url, image_local FROM set_catalog WHERE set_number = $1', [n]);
+    // Ohne Katalogzeile kennt diese Installation die Nummer nicht; die
+    // Oberfläche zeigt dann die Nummer als Namen.
+    res.json(row ? { success: true, set_number: n, name: row.name || n, ...row } : { success: true, set_number: n, name: n });
+  } catch (e) { handleRouteError(res, e, undefined, req); }
+});
 
 // ── GIBT ES DIESES SET SCHON? ────────────────────────────────────────────────
 /**
@@ -77,8 +99,7 @@ router.get('/sets/barcode/:barcode', requireToken, async (req: AuthedRequest, re
     return new Promise(resolve => {
       // Typisiert wie in Punkt 3: Ohne `as typeof import` ist die Rueckgabe
       // von require() `any`, und damit auch jeder Rueckruf-Parameter.
-      const https = require('https') as typeof import('https');
-      const opts = { family: 4, headers: { Authorization: `key ${rbKey}`, 'User-Agent': 'BrickInventoryManager/1.0' } };
+            const opts = { family: 4, headers: { Authorization: `key ${rbKey}`, 'User-Agent': 'BrickInventoryManager/1.0' } };
       https.get(url, opts, r => {
         let b = ''; r.on('data', d => b += d);
         r.on('end', () => { try { resolve(JSON.parse(b)); } catch(_) { resolve(null); } });
@@ -92,24 +113,18 @@ router.get('/sets/barcode/:barcode', requireToken, async (req: AuthedRequest, re
     let rbData: any = null;
     let rbMinifigs: any = null;
     if (rbKey) {
-      rbData = await rbGet(`https://rebrickable.com/api/v3/lego/sets/${setNumber}/`).catch(()=>null);
+      rbData = await rbGet(`https://rebrickable.com/api/v3/lego/sets/${setNumber}/`).catch(meldeUndLiefere('sets:rbGet', null));
       // Minifig count requires a separate endpoint
-      const mfData = await rbGet(`https://rebrickable.com/api/v3/lego/sets/${setNumber}/minifigs/?page_size=1`).catch(()=>null);
+      const mfData = await rbGet(`https://rebrickable.com/api/v3/lego/sets/${setNumber}/minifigs/?page_size=1`).catch(meldeUndLiefere('sets:rbGet', null));
       rbMinifigs = mfData?.count ?? null;
     }
 
-    // 1. Der gemeinsame Katalog (fuer image_local und die Stammdaten)
-    //
-    // Hier stand `FROM sets … AND user_id=$2` mit dem Kommentar „Local sets
-    // table (for image_local)". Seit Migration 0033 stehen diese Felder nur im
-    // Katalog, und das ist auch die richtige Frage: Name, Jahr und Bild eines
-    // Sets haengen nicht am Konto. Nebenbei beantwortet der Katalog sie auch
-    // fuer ein Set, das dieses Konto gar nicht haelt — der Katalogdialog
-    // zeigte dort vorher nichts.
+    // 1. Der gemeinsame Katalog: Name, Jahr und Bild hängen nicht am Konto,
+    //    also gibt es sie auch für ein Set, das dieses Konto nicht hält.
     const local = await db.get(
       'SELECT name, image_local, image_url, year, pieces, theme, minifigs FROM set_catalog WHERE set_number=$1',
       [setNumber]
-    ).catch(()=>null);
+    ).catch(meldeUndLiefere('sets:local', null));
 
     const minifigs = rbMinifigs ?? local?.minifigs ?? null;
     const image_url = rbData?.set_img_url || local?.image_url || null;
@@ -135,7 +150,7 @@ router.get('/sets/barcode/:barcode', requireToken, async (req: AuthedRequest, re
       await db.run(
         'INSERT INTO catalog_cache(set_number,name,year,theme,pieces,image_url) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(set_number) DO UPDATE SET name=$2,year=$3,theme=$4,pieces=$5,image_url=$6',
         [setNumber, rbData.name, rbData.year, rbData.theme_name, rbData.num_parts, rbData.set_img_url]
-      ).catch(()=>{});
+      ).catch(logAndContinue('sets:catalog_cache schreiben'));
       return { success:true, unsicher, set_number:setNumber,
         name:   rbData.name     || name,
         year:   rbData.year,
@@ -148,7 +163,7 @@ router.get('/sets/barcode/:barcode', requireToken, async (req: AuthedRequest, re
     const cat = await db.get(
       'SELECT name, image_url, year, pieces, theme FROM catalog_cache WHERE set_number=$1',
       [setNumber]
-    ).catch(()=>null);
+    ).catch(meldeUndLiefere('sets:cat', null));
     if (cat) {
       return { success:true, unsicher, set_number:setNumber, name:cat.name||name,
         year:cat.year, pieces:cat.pieces, theme:cat.theme, minifigs,
@@ -212,7 +227,7 @@ router.get('/sets/barcode/:barcode', requireToken, async (req: AuthedRequest, re
       // „LEGO City 2023 Feuerwehrstation 60320" gewann das JAHR, und die …
       // Ausführlich: docs/begruendungen/routes/api_v1/sets.ts.md#get-sets-barcode-barcode-titel
       const titel = await new Promise<string | null>(resolve => {
-        (require('https') as typeof import('https')).get(
+        https.get(
           `https://api.upcitemdb.com/prod/trial/lookup?upc=${ean13}`,
           { family: 4, headers:{ 'User-Agent':'BrickInventoryManager/1.0' } }, r => {
             let b=''; r.on('data',d=>b+=d);
@@ -235,7 +250,7 @@ router.get('/sets/barcode/:barcode', requireToken, async (req: AuthedRequest, re
           const bekannt = await db.get(
             'SELECT set_number FROM catalog_cache WHERE set_number = $1 OR set_number = $2',
             [kandidat, n]
-          ).catch(() => null);
+          ).catch(meldeUndLiefere('sets:bekannt', null));
           if (bekannt) return res.json(await enrichResult(bekannt.set_number, titel, 'upcitemdb'));
         }
         // Kein Kandidat im Katalog: Der erste bleibt als VERMUTUNG stehen —
@@ -394,20 +409,13 @@ router.post('/alerts/import/csv', requireToken, csvEmpfang.single('file'),
             ...(abweichend ? { waehrung_angepasst: true, waehrung_datei: dateiWaehrung,
                                waehrung_konto: waehrung } : {}),
           });
-        } catch (e: any) {
+        } catch (e) {
           errors++;
-          results.push({ set_number: sn, action: 'error', error: e?.message });
+          results.push({ set_number: sn, action: 'error', error: fehlertext(e) });
         }
       }
 
-      // Ein Objektliteral statt `const antwort: any` samt nachtraeglicher
-      // Zuweisungen: test/ratschen.test.js zaehlt jedes `any` im Baum und
-      // laesst die Zahl nur SINKEN („any wird weniger, nie mehr"). Mein erster
-      // Entwurf hob sie von 398 auf 399, und die Ratsche hat das gemeldet.
-      // Hochsetzen waere die falsche Antwort gewesen — der bedingte Zusatz
-      // laesst sich als Spreizung schreiben und braucht den Typ nicht
-      // abzuschalten.
-      const { uebersprungenHinweis } = require('../../utils/csvExport');
+      // Der bedingte Zusatz als Spreizung, damit das Objekt seinen Typ behält.
       res.json({
         success: true, added, updated, errors,
         total: records.length, results,
@@ -561,8 +569,8 @@ router.get('/sets/:setNumber/parts-list', requireToken, async (req: AuthedReques
     // ── Step 2: Rebrickable API fallback if DB is empty ────────────────────
     if (!csvParts.length) {
       source = 'api';
-      const rbParts = await getAllSetParts(n).catch(() => null)
-                   || await getAllSetParts(bare).catch(() => null);
+      const rbParts = await getAllSetParts(n).catch(meldeUndLiefere('sets:getAllSetParts', null))
+                   || await getAllSetParts(bare).catch(meldeUndLiefere('sets:getAllSetParts', null));
       if (rbParts?.length) {
         csvParts = rbParts.map((r: RbSetTeil) => ({
           part_number:    r.part.part_num,
@@ -602,7 +610,7 @@ router.get('/sets/:setNumber/parts-list', requireToken, async (req: AuthedReques
     // ── Step 4: Enrich missing catalog entries synchronously ───────────────
     const missingInCatalog = csvParts.some(p => !catalogMap[`${p.part_number}|${p.color_id}`]);
     if (missingInCatalog) {
-      await require('../../jobs/partsCatalogEnrich').enrichSetParts(setNum).catch(() => {});
+      await partsCatalogEnrich.enrichSetParts(setNum).catch(logAndContinue('sets:enrichSetParts'));
       const refreshed = await db.all(
         `SELECT c.part_number, c.color_id, ${blNummerSql('c.part_number')} AS bl_part_number,
                 c.part_name, c.color_name, c.color_hex, c.image_url, c.image_local
@@ -656,11 +664,9 @@ router.get('/sets/:setNumber/parts-list', requireToken, async (req: AuthedReques
 
     res.json({ success: true, parts: finalParts, source });
 
-    // ── Background: download images for next request ───────────────────────
-    setImmediate(async () => {
-      await require('../../jobs/partsCatalogEnrich').downloadSetImages(setNum).catch(() => {});
-      await require('../../jobs/partsCatalogEnrich').enrichSetMinifigs(setNum).catch(() => {});
-    });
+    // Die Bilder für die nächste Anfrage holt ein Auftrag im Primär-Worker.
+    await stelleAuftragEin('bilder', { set_number: setNum }, { schluessel: `bilder:${mitVersion(setNum)}`, maxVersuche: 3 })
+      .catch(logAndContinue(`sets:bilder einstellen ${setNum}`));
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
@@ -702,8 +708,8 @@ router.get('/sets/:setNumber/minifigs-list', requireToken, async (req: AuthedReq
 
     // 3. Rebrickable API fallback if neither catalog nor CSV has data
     if (!figs.length) {
-      const rbFigs = await getSetMinifigs(n).catch(() => null)
-                  || await getSetMinifigs(bare).catch(() => null);
+      const rbFigs = await getSetMinifigs(n).catch(meldeUndLiefere('sets:getSetMinifigs', null))
+                  || await getSetMinifigs(bare).catch(meldeUndLiefere('sets:getSetMinifigs', null));
       if (rbFigs?.length) {
         figs = rbFigs; // already in { fig_number, fig_name, quantity, image_url } format
       }
@@ -740,7 +746,7 @@ router.get('/sets/:setNumber/minifigs-list', requireToken, async (req: AuthedReq
              image_url=COALESCE(EXCLUDED.image_url, set_minifigs_catalog.image_url),
              updated_at=NOW()`,
           [n, f.fig_number, f.fig_name || '', f.quantity || 1, imageUrl || null]
-        ).catch(() => {});
+        ).catch(logAndContinue('sets:figurenkatalog schreiben'));
       }
     });
   } catch (e) { handleRouteError(res, e, undefined, req); }
@@ -768,14 +774,9 @@ router.get('/sets/:setNumber/price', requireToken, async (req: AuthedRequest, re
   // Wert an eine Funktion weiter, die einen Text erwartet.
   const sn  = einzelwert(req.params.setNumber);
   try {
-    // BLICKFELD statt eigener ID: Im Haushalt gehört das Set oft
-    // einem Unterkonto. Die Detailroute weiter oben nutzt scopeIds() seit
-    // jeher — DIESE Route prüfte stur die eigene ID und gab für jedes fremde
-    // Haushalts-Set 404 zurück. Die App zeigte dann „—" als Marktpreis,
-    // während Finanzübersicht und Galerie-Kachel (beide über scopeIds)
-    // denselben Preis anzeigten. Wieder das Muster „Regel fehlt am zweiten
-    // Weg". Am laufenden System nachgestellt: Hauptkonto öffnet Unterkonto-Set
-    // → Detail 200, Preis 404.
+    // BLICKFELD statt eigener ID: Im Haushalt gehört das Set oft einem
+    // Unterkonto, und Detail, Finanzübersicht und Kachel lesen ebenfalls
+    // über scopeIds().
     const uids = await scopeIds(uid, parseScopeMode(req.query.accounts));
     // `s.*` plus der aufgeloeste Lagerortname: Das Detail zeigt den Ort, und
     // seit Migration 0031 steht an der Zeile nur die ID. Ohne die Spalte waere
@@ -829,7 +830,6 @@ router.get('/sets/:setNumber/price-history', requireToken, async (req: AuthedReq
     // Ausführlich: docs/begruendungen/routes/api_v1/sets.ts.md#get-sets-setnumber-price-history-uid
     const uid = req.apiUser.user_id;
     const sn  = String(req.params.setNumber);
-    const { getSetting } = require('../../utils/settings');
     const currency = await getSetting(uid, 'currency', 'EUR');
     const data = await getSetPriceHistory(await scopeIds(uid, parseScopeMode(req.query.accounts)), sn, currency);
     res.json({ success: true, set_number: sn, ...data });
@@ -876,8 +876,7 @@ router.post('/sets', requireToken, async (req: AuthedRequest, res) => {
     if (vorhanden) return res.json({ success:true, action:'exists', ...vorhanden });
     // Gleiche Prüfung wie im Webapp-Weg (utils/validate.ts) — sonst hinge die
     // Regel daran, welchen der beiden Wege jemand nimmt.
-    const V = require('../../utils/validate');
-    const result = await addSet(set_number, V.acquisitionQuantity(quantity), owner, null,
+        const result = await addSet(set_number, V.acquisitionQuantity(quantity), owner, null,
       V.optionalPrice(purchase_price, 'Kaufpreis'), condition, req.body?.storage ?? null);
     res.json({ success:true, ...result });
   } catch (e) { handleRouteError(res, e, undefined, req); }

@@ -23,6 +23,14 @@ SET row_security = off;
 CREATE EXTENSION IF NOT EXISTS pg_trgm WITH SCHEMA public;
 
 --
+-- Name: bild_stamm(text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.bild_stamm(pfad text) RETURNS text
+    LANGUAGE sql IMMUTABLE STRICT PARALLEL SAFE
+    AS $_$ SELECT regexp_replace(regexp_replace(pfad, '^.*/', ''), '\.[^.]*$', '') $_$;
+
+--
 -- Name: bump_parts_katalog(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -111,6 +119,23 @@ BEGIN
   ) x WHERE user_id IS NOT NULL AND user_id IN (SELECT id FROM users)
   ON CONFLICT (user_id) DO UPDATE SET v = parts_version_user.v + 1;
   RETURN NULL;
+END $$;
+
+--
+-- Name: erfassung_tag(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.erfassung_tag() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  IF (TG_OP = 'INSERT' AND NEW.tag IS NULL)
+     OR (TG_OP = 'UPDATE' AND NEW.created_at IS DISTINCT FROM OLD.created_at
+         AND NEW.tag IS NOT DISTINCT FROM OLD.tag) THEN
+    NEW.tag := (NEW.created_at AT TIME ZONE
+                COALESCE(NULLIF(current_setting('brickinventory.zeitzone', true), ''), 'UTC'))::date;
+  END IF;
+  RETURN NEW;
 END $$;
 
 --
@@ -221,6 +246,45 @@ CREATE SEQUENCE public.app_logs_id_seq
 --
 
 ALTER SEQUENCE public.app_logs_id_seq OWNED BY public.app_logs.id;
+
+--
+-- Name: auftraege; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.auftraege (
+    id bigint NOT NULL,
+    art text NOT NULL,
+    nutzlast jsonb DEFAULT '{}'::jsonb NOT NULL,
+    user_id integer,
+    schluessel text,
+    status text DEFAULT 'offen'::text NOT NULL,
+    versuche integer DEFAULT 0 NOT NULL,
+    max_versuche integer DEFAULT 5 NOT NULL,
+    next_run_at timestamp with time zone DEFAULT now() NOT NULL,
+    belegt_von text,
+    fehler text,
+    erstellt timestamp with time zone DEFAULT now() NOT NULL,
+    aktualisiert timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT auftraege_max_versuche_check CHECK ((max_versuche > 0)),
+    CONSTRAINT auftraege_status_check CHECK ((status = ANY (ARRAY['offen'::text, 'laeuft'::text, 'erledigt'::text, 'fehler'::text])))
+);
+
+--
+-- Name: auftraege_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.auftraege_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+--
+-- Name: auftraege_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.auftraege_id_seq OWNED BY public.auftraege.id;
 
 --
 -- Name: bl_zuordnung; Type: TABLE; Schema: public; Owner: -
@@ -419,6 +483,7 @@ CREATE TABLE public.minifig_acquisitions (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     currency text NOT NULL,
     price_estimated boolean DEFAULT false NOT NULL,
+    tag date,
     CONSTRAINT minifig_acquisitions_currency_iso CHECK ((currency ~ '^[A-Z]{3}$'::text)),
     CONSTRAINT minifig_acquisitions_menge_positiv CHECK ((quantity > 0)),
     CONSTRAINT minifig_acquisitions_unit_price_nicht_negativ CHECK ((unit_price >= (0)::numeric)),
@@ -622,6 +687,7 @@ CREATE TABLE public.part_acquisitions (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     currency text NOT NULL,
     price_estimated boolean DEFAULT false NOT NULL,
+    tag date,
     CONSTRAINT part_acquisitions_currency_iso CHECK ((currency ~ '^[A-Z]{3}$'::text)),
     CONSTRAINT part_acquisitions_menge_positiv CHECK ((quantity > 0)),
     CONSTRAINT part_acquisitions_unit_price_nicht_negativ CHECK ((unit_price >= (0)::numeric)),
@@ -1122,6 +1188,7 @@ CREATE TABLE public.set_acquisitions (
     condition text DEFAULT 'N'::text NOT NULL,
     currency text NOT NULL,
     price_estimated boolean DEFAULT false NOT NULL,
+    tag date,
     CONSTRAINT set_acquisitions_currency_iso CHECK ((currency ~ '^[A-Z]{3}$'::text)),
     CONSTRAINT set_acquisitions_menge_positiv CHECK ((quantity > 0)),
     CONSTRAINT set_acquisitions_purchase_price_nicht_negativ CHECK ((purchase_price >= (0)::numeric)),
@@ -1359,15 +1426,18 @@ CREATE TABLE public.users (
     first_name text,
     last_name text,
     password_hash text NOT NULL,
-    is_admin integer DEFAULT 0,
-    is_active integer DEFAULT 1,
-    email_verified integer DEFAULT 0,
+    is_admin integer DEFAULT 0 NOT NULL,
+    is_active integer DEFAULT 1 NOT NULL,
+    email_verified integer DEFAULT 0 NOT NULL,
     verification_token text,
     token_expires timestamp with time zone,
     reset_token text,
     reset_token_expires timestamp with time zone,
     must_change_password integer DEFAULT 0,
-    created_at timestamp with time zone DEFAULT now()
+    created_at timestamp with time zone DEFAULT now(),
+    CONSTRAINT users_email_verified_schalter CHECK ((email_verified = ANY (ARRAY[0, 1]))),
+    CONSTRAINT users_is_active_schalter CHECK ((is_active = ANY (ARRAY[0, 1]))),
+    CONSTRAINT users_is_admin_schalter CHECK ((is_admin = ANY (ARRAY[0, 1])))
 );
 
 --
@@ -1532,6 +1602,12 @@ ALTER SEQUENCE public.zweiter_faktor_codes_id_seq OWNED BY public.zweiter_faktor
 --
 
 ALTER TABLE ONLY public.app_logs ALTER COLUMN id SET DEFAULT nextval('public.app_logs_id_seq'::regclass);
+
+--
+-- Name: auftraege id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.auftraege ALTER COLUMN id SET DEFAULT nextval('public.auftraege_id_seq'::regclass);
 
 --
 -- Name: instruction_queue id; Type: DEFAULT; Schema: public; Owner: -
@@ -1718,6 +1794,13 @@ ALTER TABLE ONLY public.api_tokens
 
 ALTER TABLE ONLY public.app_logs
     ADD CONSTRAINT app_logs_pkey PRIMARY KEY (id);
+
+--
+-- Name: auftraege auftraege_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.auftraege
+    ADD CONSTRAINT auftraege_pkey PRIMARY KEY (id);
 
 --
 -- Name: bl_zuordnung bl_zuordnung_pkey; Type: CONSTRAINT; Schema: public; Owner: -
@@ -2140,13 +2223,6 @@ ALTER TABLE ONLY public.user_settings
     ADD CONSTRAINT user_settings_pkey PRIMARY KEY (user_id, key);
 
 --
--- Name: users users_email_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.users
-    ADD CONSTRAINT users_email_key UNIQUE (email);
-
---
 -- Name: users users_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2216,22 +2292,10 @@ ALTER TABLE ONLY public.zweiter_faktor
 CREATE INDEX idx_account_link_invites_main ON public.account_link_invites USING btree (main_user_id, expires_at);
 
 --
--- Name: idx_account_links_main; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_account_links_main ON public.account_links USING btree (main_user_id);
-
---
 -- Name: idx_account_links_sub; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX idx_account_links_sub ON public.account_links USING btree (sub_user_id);
-
---
--- Name: idx_acq_user_set; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_acq_user_set ON public.set_acquisitions USING btree (user_id, set_number);
 
 --
 -- Name: idx_api_tokens_expires; Type: INDEX; Schema: public; Owner: -
@@ -2262,6 +2326,24 @@ CREATE INDEX idx_api_tokens_user_created ON public.api_tokens USING btree (user_
 --
 
 CREATE INDEX idx_app_logs_logged_at ON public.app_logs USING btree (logged_at DESC);
+
+--
+-- Name: idx_auftraege_faellig; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_auftraege_faellig ON public.auftraege USING btree (next_run_at) WHERE (status = ANY (ARRAY['offen'::text, 'laeuft'::text]));
+
+--
+-- Name: idx_auftraege_schluessel; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_auftraege_schluessel ON public.auftraege USING btree (schluessel) WHERE (status = 'offen'::text);
+
+--
+-- Name: idx_auftraege_user; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_auftraege_user ON public.auftraege USING btree (user_id) WHERE (user_id IS NOT NULL);
 
 --
 -- Name: idx_bl_zuordnung_bl; Type: INDEX; Schema: public; Owner: -
@@ -2306,16 +2388,10 @@ CREATE INDEX idx_instructions_user ON public.instructions USING btree (user_id, 
 CREATE INDEX idx_invite_used_by ON public.account_link_invites USING btree (used_by);
 
 --
--- Name: idx_minifig_acq_gruppe; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_minifig_acq_erfassungstag; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_minifig_acq_gruppe ON public.minifig_acquisitions USING btree (user_id, fig_number);
-
---
--- Name: idx_minifig_acq_tag_merkmale; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX idx_minifig_acq_tag_merkmale ON public.minifig_acquisitions USING btree (user_id, fig_number, (((created_at AT TIME ZONE 'UTC'::text))::date), condition, COALESCE(unit_price, ('-1'::integer)::numeric), price_estimated, currency);
+CREATE UNIQUE INDEX idx_minifig_acq_erfassungstag ON public.minifig_acquisitions USING btree (user_id, fig_number, COALESCE(tag, ((created_at AT TIME ZONE 'UTC'::text))::date), condition, COALESCE(unit_price, ('-1'::integer)::numeric), price_estimated, currency);
 
 --
 -- Name: idx_minifig_price_cache_lookup; Type: INDEX; Schema: public; Owner: -
@@ -2336,6 +2412,12 @@ CREATE INDEX idx_minifig_price_history_lookup ON public.minifig_price_history US
 CREATE UNIQUE INDEX idx_minifig_price_history_tag ON public.minifig_price_history USING btree (fig_number, condition, currency_code, (((recorded_at AT TIME ZONE 'UTC'::text))::date));
 
 --
+-- Name: idx_minifigs_catalog_bild_stamm; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_minifigs_catalog_bild_stamm ON public.minifigs_catalog USING btree (public.bild_stamm(image_local)) WHERE (image_local IS NOT NULL);
+
+--
 -- Name: idx_minifigs_catalog_name_trgm; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -2346,6 +2428,12 @@ CREATE INDEX idx_minifigs_catalog_name_trgm ON public.minifigs_catalog USING gin
 --
 
 CREATE UNIQUE INDEX idx_minifigs_eindeutig ON public.minifigs USING btree (user_id, COALESCE(set_number, ''::text), fig_number);
+
+--
+-- Name: idx_minifigs_set; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_minifigs_set ON public.minifigs USING btree (user_id, set_number);
 
 --
 -- Name: idx_minifigs_storage_id; Type: INDEX; Schema: public; Owner: -
@@ -2360,28 +2448,16 @@ CREATE INDEX idx_minifigs_storage_id ON public.minifigs USING btree (user_id, st
 CREATE INDEX idx_minifigs_storage_ref ON public.minifigs USING btree (storage_id) WHERE (storage_id IS NOT NULL);
 
 --
--- Name: idx_minifigs_user; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_minifigs_user ON public.minifigs USING btree (user_id);
-
---
 -- Name: idx_papierkorb_konto; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX idx_papierkorb_konto ON public.papierkorb USING btree (user_id, geloescht_am DESC);
 
 --
--- Name: idx_part_acq_gruppe; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_part_acq_erfassungstag; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_part_acq_gruppe ON public.part_acquisitions USING btree (user_id, part_number, color_id);
-
---
--- Name: idx_part_acq_tag_merkmale; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX idx_part_acq_tag_merkmale ON public.part_acquisitions USING btree (user_id, part_number, color_id, (((created_at AT TIME ZONE 'UTC'::text))::date), condition, COALESCE(unit_price, ('-1'::integer)::numeric), price_estimated, currency);
+CREATE UNIQUE INDEX idx_part_acq_erfassungstag ON public.part_acquisitions USING btree (user_id, part_number, color_id, COALESCE(tag, ((created_at AT TIME ZONE 'UTC'::text))::date), condition, COALESCE(unit_price, ('-1'::integer)::numeric), price_estimated, currency);
 
 --
 -- Name: idx_part_catalog_category; Type: INDEX; Schema: public; Owner: -
@@ -2394,6 +2470,12 @@ CREATE INDEX idx_part_catalog_category ON public.part_catalog USING btree (categ
 --
 
 CREATE INDEX idx_part_catalog_name_trgm ON public.part_catalog USING gin (lower(part_name) public.gin_trgm_ops);
+
+--
+-- Name: idx_part_color_catalog_bild_stamm; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_part_color_catalog_bild_stamm ON public.part_color_catalog USING btree (public.bild_stamm(image_local)) WHERE (image_local IS NOT NULL);
 
 --
 -- Name: idx_part_price_cache_lookup; Type: INDEX; Schema: public; Owner: -
@@ -2474,16 +2556,16 @@ CREATE INDEX idx_parts_summary_color ON public.parts_summary USING btree (user_i
 CREATE INDEX idx_parts_summary_sort ON public.parts_summary USING btree (user_id, color_name, part_name);
 
 --
--- Name: idx_parts_user; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_parts_user ON public.parts USING btree (user_id);
-
---
 -- Name: idx_pdf_auftraege_laufend; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX idx_pdf_auftraege_laufend ON public.pdf_auftraege USING btree (user_id) WHERE (status = 'running'::text);
+
+--
+-- Name: idx_pdf_auftraege_user; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_pdf_auftraege_user ON public.pdf_auftraege USING btree (user_id);
 
 --
 -- Name: idx_price_alerts_set; Type: INDEX; Schema: public; Owner: -
@@ -2588,22 +2670,28 @@ CREATE INDEX idx_rb_sets_theme_year ON public.rb_sets USING btree (theme_id, yea
 CREATE INDEX idx_rb_sets_year ON public.rb_sets USING btree (year);
 
 --
--- Name: idx_set_acq_tag_merkmale; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_set_acq_erfassungstag; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX idx_set_acq_tag_merkmale ON public.set_acquisitions USING btree (user_id, set_number, (((created_at AT TIME ZONE 'UTC'::text))::date), condition, COALESCE(purchase_price, ('-1'::integer)::numeric), price_estimated, currency);
+CREATE UNIQUE INDEX idx_set_acq_erfassungstag ON public.set_acquisitions USING btree (user_id, set_number, COALESCE(tag, ((created_at AT TIME ZONE 'UTC'::text))::date), condition, COALESCE(purchase_price, ('-1'::integer)::numeric), price_estimated, currency);
+
+--
+-- Name: idx_set_catalog_bild_stamm; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_set_catalog_bild_stamm ON public.set_catalog USING btree (public.bild_stamm(image_local)) WHERE (image_local IS NOT NULL);
+
+--
+-- Name: idx_set_minifigs_catalog_bild_stamm; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_set_minifigs_catalog_bild_stamm ON public.set_minifigs_catalog USING btree (public.bild_stamm(image_local)) WHERE (image_local IS NOT NULL);
 
 --
 -- Name: idx_set_minifigs_fig; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX idx_set_minifigs_fig ON public.set_minifigs_catalog USING btree (fig_number);
-
---
--- Name: idx_set_teile_set; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_set_teile_set ON public.set_teile USING btree (set_number);
 
 --
 -- Name: idx_sets_setnum; Type: INDEX; Schema: public; Owner: -
@@ -2624,24 +2712,6 @@ CREATE INDEX idx_sets_storage_id ON public.sets USING btree (user_id, storage_id
 CREATE INDEX idx_sets_storage_ref ON public.sets USING btree (storage_id) WHERE (storage_id IS NOT NULL);
 
 --
--- Name: idx_sets_user; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_sets_user ON public.sets USING btree (user_id);
-
---
--- Name: idx_shared_instructions_set; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_shared_instructions_set ON public.shared_instructions USING btree (set_number);
-
---
--- Name: idx_smc_set; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_smc_set ON public.set_minifigs_catalog USING btree (set_number);
-
---
 -- Name: idx_user_sessions_expire; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -2658,12 +2728,6 @@ CREATE INDEX idx_verwaltungsprotokoll_verwalter ON public.verwaltungsprotokoll U
 --
 
 CREATE INDEX idx_verwaltungsprotokoll_zeit ON public.verwaltungsprotokoll USING btree (zeit DESC);
-
---
--- Name: idx_vouchers_user; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_vouchers_user ON public.vouchers USING btree (user_id);
 
 --
 -- Name: idx_wanted_user; Type: INDEX; Schema: public; Owner: -
@@ -2684,16 +2748,40 @@ CREATE INDEX idx_zweiter_faktor_codes_konto ON public.zweiter_faktor_codes USING
 CREATE UNIQUE INDEX storage_locations_konto_name ON public.storage_locations USING btree (user_id, lower(name));
 
 --
+-- Name: users_email_lower; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX users_email_lower ON public.users USING btree (lower(email));
+
+--
+-- Name: minifig_acquisitions minifig_acquisitions_tag; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER minifig_acquisitions_tag BEFORE INSERT OR UPDATE ON public.minifig_acquisitions FOR EACH ROW EXECUTE FUNCTION public.erfassung_tag();
+
+--
 -- Name: minifig_acquisitions minifig_acquisitions_waehrung; Type: TRIGGER; Schema: public; Owner: -
 --
 
 CREATE TRIGGER minifig_acquisitions_waehrung BEFORE INSERT OR UPDATE ON public.minifig_acquisitions FOR EACH ROW EXECUTE FUNCTION public.erfassung_waehrung();
 
 --
+-- Name: part_acquisitions part_acquisitions_tag; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER part_acquisitions_tag BEFORE INSERT OR UPDATE ON public.part_acquisitions FOR EACH ROW EXECUTE FUNCTION public.erfassung_tag();
+
+--
 -- Name: part_acquisitions part_acquisitions_waehrung; Type: TRIGGER; Schema: public; Owner: -
 --
 
 CREATE TRIGGER part_acquisitions_waehrung BEFORE INSERT OR UPDATE ON public.part_acquisitions FOR EACH ROW EXECUTE FUNCTION public.erfassung_waehrung();
+
+--
+-- Name: set_acquisitions set_acquisitions_tag; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER set_acquisitions_tag BEFORE INSERT OR UPDATE ON public.set_acquisitions FOR EACH ROW EXECUTE FUNCTION public.erfassung_tag();
 
 --
 -- Name: set_acquisitions set_acquisitions_waehrung; Type: TRIGGER; Schema: public; Owner: -
@@ -2819,6 +2907,13 @@ ALTER TABLE ONLY public.account_links
 
 ALTER TABLE ONLY public.api_tokens
     ADD CONSTRAINT api_tokens_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+--
+-- Name: auftraege auftraege_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.auftraege
+    ADD CONSTRAINT auftraege_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
 
 --
 -- Name: csv_import_jobs csv_import_jobs_user_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
@@ -3165,6 +3260,11 @@ INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0062-set-teile-
 INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0063-laufzustand.sql', '2026-10-28 23:05:08.525175+00');
 INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0064-pdf-auftraege.sql', '2026-10-28 23:25:34.430147+00');
 INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0065-geld-und-waehrung-pruefen.sql', '2026-10-28 23:27:03.174038+00');
+INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0066-auftraege.sql', '2026-10-29 21:52:46.143176+00');
+INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0067-bild-stamm.sql', '2026-10-29 21:59:16.007371+00');
+INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0068-praefix-indizes.sql', '2026-10-29 21:59:58.856414+00');
+INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0069-konten-pruefen.sql', '2026-10-29 22:00:41.797626+00');
+INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0070-erfassungstag.sql', '2026-10-29 22:31:52.718465+00');
 
 --
 -- PostgreSQL database dump complete

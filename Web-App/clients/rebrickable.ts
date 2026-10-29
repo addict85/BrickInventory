@@ -33,6 +33,7 @@ export type RbSetTeil = {
     part_num: string;
     name?: string | null;
     part_img_url?: string | null;
+    part_cat_id?: number | null;
     external_ids?: { BrickLink?: string[] };
   };
   color: { id: number; name?: string | null; rgb?: string | null };

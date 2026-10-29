@@ -4,7 +4,7 @@ import * as db from '../db/database';
 import { INSTRUCTIONS_DIR } from './appPaths';
 import { downloadFile, scrapeInstructions, sleep, httpsGetRobust } from '../clients/rebrickable';
 import * as brickset from '../clients/brickset';
-import { meldeUndWeiter, fehlertext } from './httpError';
+import { meldeUndWeiter, fehlertext, logAndContinue, meldeUndLiefere } from './httpError';
 import { mitVersion, ohneVersion } from './setNummer';
 
 /**
@@ -54,14 +54,14 @@ function letzterAbrufWarExtern(): boolean { return _letzterAbrufWarExtern; }
 /** Wie viele Anleitungen sind fuer dieses Set hinterlegt? */
 export async function anzahlAnleitungen(setNumber: string): Promise<number> {
   const r = await db.get('SELECT COUNT(*) as c FROM shared_instructions WHERE set_number = $1',
-    [mitVersion(setNumber)]).catch(() => null);
+    [mitVersion(setNumber)]).catch(meldeUndLiefere('anleitung:mitVersion', null));
   return parseInt(r?.c) || 0;
 }
 
 /** Die hinterlegten Anleitungen zu einem Set. */
 export async function anleitungenZuSet(setNumber: string) {
   return db.all('SELECT * FROM shared_instructions WHERE set_number = $1',
-    [mitVersion(setNumber)]).catch(() => []);
+    [mitVersion(setNumber)]).catch(meldeUndLiefere('anleitung:mitVersion', []));
 }
 
 /**
@@ -116,8 +116,8 @@ async function scrapeInstructionsFromFallback(setNumber: string) {
       const relPath  = `/data/instructions/${pdfName}`;
       const desc     = `Anleitung ${n} (BrickInstructions)`;
       await db.run('INSERT INTO shared_instructions (set_number,url,description,local_path) VALUES ($1,$2,$3,$4) ON CONFLICT (set_number,url) DO NOTHING',
-        [n, pageUrl, desc, null]).catch(() => {});
-      setImmediate(() => { collectAndBuildPDF(baseUrl, hdrs, fund.erstesBild, pdfDest, relPath, n).catch(() => {}); });
+        [n, pageUrl, desc, null]).catch(logAndContinue('anleitung:desc'));
+      setImmediate(() => { collectAndBuildPDF(baseUrl, hdrs, fund.erstesBild, pdfDest, relPath, n).catch(logAndContinue('anleitung:collectAndBuildPDF')); });
       console.log(`[brickinstructions] Fallback triggered for ${n}`);
       return 1;
     }
@@ -187,7 +187,7 @@ async function downloadSetInstructions(setNumber: string,
         await db.run(
           'INSERT INTO shared_instructions (set_number,url,description,local_path) VALUES ($1,$2,$3,$4) ON CONFLICT (set_number,url) DO NOTHING',
           [n, bdpUrl, `Anleitung ${n} (BDP)`, relPath]
-        ).catch(() => {});
+        ).catch(logAndContinue('anleitung:ok'));
         if (!eigenerTakt) await sleep(5000);
         return 1;
       }
@@ -222,7 +222,7 @@ async function downloadSetInstructions(setNumber: string,
       const pdfDest = path.join(instrDir, pdfName);
       const relPath = `/data/instructions/${pdfName}`;
       try { await db.run('INSERT INTO shared_instructions (set_number,url,description,local_path) VALUES ($1,$2,$3,$4) ON CONFLICT (set_number,url) DO NOTHING', [n, instr.url, instr.description, null]); saved++; } catch (e) { meldeUndWeiter('anleitungen:pdf-eintragen', e); }
-      setImmediate(() => { collectAndBuildPDF(instr.brickinstructions_base, instr.brickinstructions_hdrs, instr.brickinstructions_first, pdfDest, relPath, n).catch(()=>{}); });
+      setImmediate(() => { collectAndBuildPDF(instr.brickinstructions_base, instr.brickinstructions_hdrs, instr.brickinstructions_first, pdfDest, relPath, n).catch(logAndContinue('anleitung:collectAndBuildPDF')); });
       continue;
     }
     const safeName = `${safeBase}_${i + 1}.pdf`;
@@ -266,7 +266,7 @@ async function buildImagePDF_fromBuffers(imgBuffers: Buffer[], destPath: string)
       doc.on('data', (d: Buffer) => chunks.push(d));
       doc.on('end', () => { try { fs.writeFileSync(destPath, Buffer.concat(chunks)); resolve(true); } catch(_){ resolve(false); } });
       doc.on('error', () => resolve(false));
-      for (const buf of imgBuffers) { try { doc.addPage({ size:'A4', layout:'landscape', margin:0 }); doc.image(buf, 0, 0, { fit:[doc.page.width, doc.page.height], align:'center', valign:'center' }); } catch(_){} }
+      for (const buf of imgBuffers) { try { doc.addPage({ size:'A4', layout:'landscape', margin:0 }); doc.image(buf, 0, 0, { fit:[doc.page.width, doc.page.height], align:'center', valign:'center' }); } catch (e) { meldeUndWeiter('anleitung:image', e); } }
       doc.end();
     } catch(_){ resolve(false); }
   });

@@ -6,6 +6,7 @@
  * preise.ts.
  */
 
+import { meldeUndLiefere } from '../httpError';
 import * as db from '../../db/database';
 import { asIds } from '../household';
 import { getSetting, getGlobalSetting } from '../settings';
@@ -48,7 +49,7 @@ async function loadManualAcquisitions(uid: Blickfeld, kind: 'part' | 'fig', waeh
                 COALESCE(condition,'N') AS condition, created_at
            FROM minifig_acquisitions WHERE user_id = ANY($1) ORDER BY created_at ASC, id ASC`,
     [uids, waehrung]
-  ).catch(() => []);
+  ).catch(meldeUndLiefere('bewertung:rows', []));
   const out = new Map<string, any[]>();
   for (const r of rows) {
     const key = kind === 'part' ? `${r.part_number}|${r.color_id || 0}` : String(r.fig_number);
@@ -292,7 +293,7 @@ async function computeMinifigsValuation(viewerId: number, ids: Blickfeld) {
         // BrickLink-Teilepreisen der Minifigur schätzen (Rebrickable→BrickLink-
         // Zuordnung existiert zuverlässig für Teile, nicht für Minifiguren).
         // Ausführlich: docs/begruendungen/utils/finance/bewertung.ts.md#computeminifigsvaluation
-        const s = await schaetzeFigurenpreis(fig.fig_number, viewerId, cond).catch(() => null);
+        const s = await schaetzeFigurenpreis(fig.fig_number, viewerId, cond).catch(meldeUndLiefere('bewertung:schaetzeFigurenpreis', null));
         pd = s != null
           ? { avg_price: s.preis, qty_avg_price: s.preis, from_cache: false, estimated_from_parts: true, abdeckung: s.abdeckung }
           : { avg_price: 0, qty_avg_price: 0 };

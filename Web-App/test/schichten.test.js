@@ -150,6 +150,41 @@ test('eine v1-Route importiert keine andere Routendatei', () => {
   assert.deepEqual(treffer, []);
 });
 
+test('keine Route importiert eine andere Routendatei', () => {
+  // Erlaubt sind nur der Wächter (api_v1/middleware) und der Zusammenbau in
+  // api_v1/index.ts. Gegenprobe (29.10.2026): `import { requireLogin } from
+  // './auth'` zurück in routes/minifigs.ts → rot.
+  const dateien = [];
+  const lauf = (rel) => {
+    for (const e of fs.readdirSync(path.join(ROOT, rel), { withFileTypes: true })) {
+      const kind = path.posix.join(rel, e.name);
+      if (e.isDirectory()) lauf(kind);
+      else if (e.name.endsWith('.ts')) dateien.push(kind);
+    }
+  };
+  lauf('routes');
+  assert.ok(dateien.length > 15, `nur ${dateien.length} Routendateien gefunden`);
+  const treffer = [];
+  for (const d of dateien.filter(d => d !== 'routes/api_v1/index.ts'))
+    for (const ziel of importe(d).filter(z => z.startsWith('.'))) {
+      const voll = path.posix.normalize(path.posix.join(path.posix.dirname(d), ziel)).replace(/\.js$/, '');
+      if (voll.startsWith('routes/') && voll !== 'routes/api_v1/middleware') treffer.push(`${d} -> ${ziel}`);
+    }
+  assert.deepEqual(treffer, []);
+});
+
+test('kein Zustand auf global', () => {
+  // Was Prozesse teilen, steht in einem Modul (utils/startZustand.ts) und
+  // ist über den Import zu finden. Gegenprobe (29.10.2026): eine Zeile
+  // `global.startupStatus = …` in server.ts → rot.
+  const treffer = [];
+  for (const d of ['server.ts', ...innereDateien(), ...fs.readdirSync(path.join(ROOT, 'startup')).map(f => `startup/${f}`),
+                   ...fs.readdirSync(path.join(ROOT, 'routes')).filter(f => f.endsWith('.ts')).map(f => `routes/${f}`)])
+    for (const m of quelltext(d).matchAll(/\b(?:global|globalThis)\s*(?:as\s+\w+\s*\)\s*)?\.\s*\w+\s*=[^=]|\(\s*(?:global|globalThis)\s+as\s+any\s*\)/g))
+      treffer.push(`${d}: ${m[0].trim()}`);
+  assert.deepEqual(treffer, []);
+});
+
 test('utils/ und clients/ importieren nichts aus jobs/', () => {
   // Was utils/ an Hintergrundarbeit anstösst, läuft über utils/nacharbeit.ts;
   // die Ausführung setzt jobs/verdrahtung.ts ein.

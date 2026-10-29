@@ -10,7 +10,7 @@ import { hatPreis } from '../preisRegel';
 import { asIds } from '../household';
 import { checkAndIncrementRateLimit, kontingentFrei, getLimitForApi, getRateLimitStatus } from '../apiKontingent';
 import { bricklinkRequest, getPriceGuide } from '../../clients/bricklink';
-import { fehlertext } from '../httpError';
+import { fehlertext, logAndContinue, meldeUndLiefere } from '../httpError';
 import { mitVersion, katalogEintrag, ohneBricklinkPreis } from '../setNummer';
 import { effectiveCondition } from './zustand';
 import { blAbrufNummer, blAbrufNummern } from '../blZuordnung';
@@ -62,7 +62,7 @@ async function resolveSetCondition(
          ON a.user_id = s.user_id AND a.set_number = s.set_number
       WHERE s.user_id = ANY($1) AND s.set_number=$2`,
     [uids, setNumber]
-  ).catch(() => null);
+  ).catch(meldeUndLiefere('preise:row', null));
   return effectiveCondition(row);
 }
 
@@ -143,7 +143,7 @@ async function speicherePreis(setNumber: string, condition: string, currency: st
   if (avg > 0 || qavg > 0) {
     await db.run(
       'INSERT INTO price_history (set_number, condition, currency_code, avg_price, qty_avg_price, min_price, max_price) VALUES ($1,$2,$3,$4,$5,$6,$7) ON CONFLICT DO NOTHING',
-      [setNumber, condition, currency, avg, qavg, min, max]).catch(() => {});
+      [setNumber, condition, currency, avg, qavg, min, max]).catch(logAndContinue('preise:setverlauf schreiben'));
   }
   return { min, avg, max, qavg, qty };
 }
@@ -445,7 +445,7 @@ async function fetchPartPrice(partNumber: string, rbColorId: number, condition: 
       // einzelnen Teilen in seltenen Farben ist das der Normalfall.
       if (!hatPreis(g)) {
         const alt = await bricklinkRequest('GET', `/items/part/${blPartNumber}/price`,
-          { ...qp, guide_type: 'stock' }).catch(() => null);
+          { ...qp, guide_type: 'stock' }).catch(meldeUndLiefere('preise:alt', null));
         if (hatPreis(alt)) g = alt;
       }
       const avg  = parseFloat(g?.avg_price || 0);
@@ -461,7 +461,7 @@ async function fetchPartPrice(partNumber: string, rbColorId: number, condition: 
           `INSERT INTO part_price_history (part_number, color_id, condition, currency_code, avg_price, qty_avg_price)
            VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT DO NOTHING`,
           [blPartNumber, colorId || 0, cond, currency, avg, qavg]
-        ).catch(() => {});
+        ).catch(logAndContinue('preise:teileverlauf schreiben'));
       }
       return { avg_price: avg, qty_avg_price: qavg, from_cache: false };
     } catch (e) {
@@ -537,7 +537,7 @@ async function fetchMinifigPrice(figNumber: string, condition: string, currency:
       // Wie bei Teilen: ohne Verkauf in sechs Monaten auf Angebote ausweichen.
       if (!hatPreis(g)) {
         const alt = await bricklinkRequest('GET', `/items/minifig/${figNumber}/price`,
-          { ...qp, guide_type: 'stock' }).catch(() => null);
+          { ...qp, guide_type: 'stock' }).catch(meldeUndLiefere('preise:alt', null));
         if (hatPreis(alt)) g = alt;
       }
       const avg  = parseFloat(g?.avg_price || 0);
@@ -553,7 +553,7 @@ async function fetchMinifigPrice(figNumber: string, condition: string, currency:
           `INSERT INTO minifig_price_history (fig_number, condition, currency_code, avg_price, qty_avg_price)
            VALUES ($1,$2,$3,$4,$5) ON CONFLICT DO NOTHING`,
           [figNumber, cond, currency, avg, qavg]
-        ).catch(() => {});
+        ).catch(logAndContinue('preise:figurverlauf schreiben'));
       }
       return { avg_price: avg, qty_avg_price: qavg, from_cache: false };
     } catch (e) {

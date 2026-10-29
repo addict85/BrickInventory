@@ -3,6 +3,7 @@
  * Ausführlich: docs/begruendungen/utils/thumbs.ts.md#abschnitt
  */
 
+import { meldeUndWeiter } from './httpError';
 import path from 'path';
 import fs from 'fs';
 import { resolveWebPath } from './appPaths';
@@ -42,6 +43,7 @@ async function verkleinern(quelle: string, ziel: string): Promise<void> {
   }
 
   // ── Rückfall: Jimp ────────────────────────────────────────────────────────
+  // Erst hier geladen: Jimp ist der Rückfall und wird meist nie gebraucht.
   const { Jimp } = require('jimp');
   const image = await Jimp.read(quelle);
   const bg = new Jimp({ width: image.bitmap.width, height: image.bitmap.height, color: 0xffffffff });
@@ -92,7 +94,7 @@ async function generateThumb(localPath: string) {
       const reste = fs.readdirSync(path.dirname(fsPath))
         .filter(f => f.startsWith(path.basename(thumbFs)) && f.endsWith('.tmp.jpg'));
       for (const r of reste) fs.unlinkSync(path.join(path.dirname(fsPath), r));
-    } catch (_) {}
+    } catch (e) { meldeUndWeiter('vorschau:reste', e); }
     return null;
   }
 }

@@ -1,48 +1,58 @@
 /**
- * Was NACH dem Erfassen eines Sets im Hintergrund nachgezogen wird.
- * Ausführlich: docs/begruendungen/jobs/nachErfassung.ts.md#abschnitt
+ * Was nach dem Erfassen eines Sets nachgezogen wird. Es läuft als Auftrag
+ * (utils/auftraege.ts) im Primär-Worker: Ein Neustart verliert nichts, und
+ * scheitert der Import von Teilen oder Figuren, wiederholt der Worker ihn.
+ * Die Anreicherungen danach sind Beiwerk mit eigenen Kontingenten; sie melden
+ * ihren Fehler und lassen den Auftrag nicht scheitern.
  */
-import { importPartsForSet, fetchMissingBlIds } from '../utils/partsImport';
-import { importMinifigsForSet } from '../utils/minifigsImport';
+import { importiereTeile, fetchMissingBlIds } from '../utils/partsImport';
+import { importiereFiguren } from '../utils/minifigsImport';
+import { downloadSetInstructions } from '../utils/instructions';
+import { logAndContinue } from '../utils/httpError';
+import * as db from '../db/database';
+import { getSetInfo as bricksetSetInfo } from '../clients/brickset';
 import { enqueue, requestRun } from './instructionQueue';
 import { refreshPriceForSet } from './priceJob';
 import { enrichSetParts, enrichSetMinifigs, downloadSetImages } from './partsCatalogEnrich';
 
-/**
- * Teile, Minifiguren, Anleitungen und Bilder zu einem frisch erfassten Set
- * nachziehen — verzögert, damit die Antwort an den Client nicht wartet.
- *
- * Die Verzögerung ist bewusst zufällig gestreut: Beim Erfassen mehrerer Sets
- * kurz hintereinander liefen sonst alle Nachzüge gleichzeitig los und
- * erschöpften den Verbindungspool.
- */
-function zieheNach(setNumber: string, userId: number): void {
-  setTimeout(async () => {
-    await importPartsForSet(setNumber, userId).catch(() => {});
-    fetchMissingBlIds().catch(() => {});
-    enqueue(setNumber).catch(() => {});
-    requestRun().catch(() => {});
-    await enrichSetParts(setNumber).catch(() => {});
-    await enrichSetMinifigs(setNumber).catch(() => {});
-    downloadSetImages(setNumber).catch(() => {});
-  }, 2000 + Math.random() * 3000);
+/** zweit: ein vorhandenes Set noch einmal erfasst; neu: angelegt; csv: aus dem CSV-Import. */
+export type NacharbeitArt = 'zweit' | 'neu' | 'csv';
+
+async function zieheNach(setNumber: string, userId: number, art: NacharbeitArt): Promise<void> {
+  const melde = (schritt: string) => logAndContinue(`nacharbeit:${schritt} ${setNumber}`);
+  // Die Figuren in jedem Zweig: Der Import behält den Lagerort vorhandener
+  // Figuren, und so holt ein Zweiterfassen nach, was beim ersten Mal scheiterte.
+  await importiereFiguren(setNumber, userId);
+  await importiereTeile(setNumber, userId);
+
+  if (art === 'zweit') fetchMissingBlIds().catch(melde('bl-nummern'));
+  if (art === 'neu') {
+    await refreshPriceForSet(setNumber, userId).catch(melde('preis'));
+    await downloadSetInstructions(setNumber).catch(melde('anleitung'));
+  } else {
+    await enqueue(setNumber).catch(melde('anleitung-einreihen'));
+    await requestRun().catch(melde('anleitung-anstossen'));
+  }
+  await enrichSetParts(setNumber).catch(melde('teile-anreichern'));
+  await enrichSetMinifigs(setNumber).catch(melde('figuren-anreichern'));
+  if (art === 'csv') await bricksetMetadaten(setNumber).catch(melde('brickset'));
+  await downloadSetImages(setNumber).catch(melde('bilder'));
 }
 
-/**
- * Dasselbe für ein NEU angelegtes Set.
- * Ausführlich: docs/begruendungen/jobs/nachErfassung.ts.md#ziehenachneuanlage
- */
-function zieheNachNeuanlage(setNumber: string, userId: number): void {
-  setTimeout(async () => {
-    await importMinifigsForSet(setNumber, userId).catch(() => {});
-    await importPartsForSet(setNumber, userId).catch(() => {});
-    // Kein Hinweis nötig: Läuft NACH recordAcquisition(), die Zeile existiert
-    // bereits — conditionsNeededFor() findet den Zustand selbst.
-    refreshPriceForSet(setNumber, userId).catch(() => {});
-    await enrichSetParts(setNumber).catch(() => {});
-    await enrichSetMinifigs(setNumber).catch(() => {});
-    downloadSetImages(setNumber).catch(() => {});
-  }, 2000 + Math.random() * 3000);
+/** Brickset füllt nur Lücken im Katalog; der CSV-Import fragt es beim Anlegen nicht. */
+async function bricksetMetadaten(setNumber: string): Promise<void> {
+  const bs = await bricksetSetInfo(setNumber);
+  if (!bs) return;
+  await db.run(
+    `UPDATE set_catalog SET name=COALESCE(name,$1), year=COALESCE(year,$2), theme=COALESCE(theme,$3),
+            pieces=COALESCE(pieces,$4), minifigs=COALESCE(minifigs,$5) WHERE set_number=$6`,
+    [bs.name, bs.year, bs.theme, bs.pieces, bs.minifigs, setNumber]);
 }
 
-export { zieheNach, zieheNachNeuanlage };
+/** Die Bilder eines Sets, nachdem jemand seine Teileliste angesehen hat. */
+async function ladeSetBilder(setNumber: string): Promise<void> {
+  await downloadSetImages(setNumber);
+  await enrichSetMinifigs(setNumber);
+}
+
+export { zieheNach, ladeSetBilder };

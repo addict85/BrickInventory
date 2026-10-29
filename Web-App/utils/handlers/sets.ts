@@ -1,6 +1,6 @@
 import { resolveOne } from '../bricklinkLink';
 import { inKontowaehrung, kontowaehrungJoin } from '../acquisitions';
-import { meldeUndWeiter } from '../httpError';
+import { meldeUndWeiter, meldeUndLiefere } from '../httpError';
 import { fuerSet } from '../preisvergleich';
 import * as db from '../../db/database';
 import type { DbSchnittstelle } from '../../db/database';
@@ -341,7 +341,7 @@ async function withSetAggregate<T extends object>(userId: Blickfeld, setNumber: 
   const uids = asIds(userId);
   // Die Abfrage auf sets.condition, die hier stand, ist mit Migration 0032
   // entfallen — samt der Spalte. Das Aggregat rechnet aus den Erfassungen.
-  const agg = await getSetConditionAggregate(uids, setNumber).catch(() => null);
+  const agg = await getSetConditionAggregate(uids, setNumber).catch(meldeUndLiefere('sets-handler:getSetConditionAggregate', null));
   return agg ? { ...payload, set: { set_number: setNumber, ...agg } } : payload;
 }
 

@@ -13,7 +13,7 @@ import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { Client } from 'pg';
 import { LOCKS } from '../utils/lockNamespaces';
-import { fehlerCode, meldeUndWeiter } from '../utils/httpError';
+import { fehlerCode, meldeUndWeiter, logAndContinue } from '../utils/httpError';
 
 // Warum diese acht jetzt oben stehen
 // Sie standen als require() in den Funktionsruempfen. Node haelt Module im
@@ -39,8 +39,10 @@ const POOL_CONFIG = {
   min:                    parseInt(process.env.PG_POOL_MIN    || '2'),
   idleTimeoutMillis:      parseInt(process.env.PG_IDLE_MS     || '30000'),
   connectionTimeoutMillis:parseInt(process.env.PG_CONN_MS     || '30000'),
-  // Pass statement_timeout via PostgreSQL connection options (avoids client.query deprecation)
-  options:                `-c statement_timeout=${parseInt(process.env.PG_STMT_MS || '30000')}`,
+  // Über die Verbindungsoptionen statt je Anfrage: statement_timeout, und die
+  // Zeitzone, in der der Trigger erfassung_tag() den Tag eines Kaufs bildet.
+  options:                `-c statement_timeout=${parseInt(process.env.PG_STMT_MS || '30000')}`
+                        + ` -c brickinventory.zeitzone=${(require('../utils/konfig') as typeof import('../utils/konfig')).erfassungsZeitzone()}`,
   keepAlive:              true,
   keepAliveInitialDelayMillis: 10000,
 };
@@ -336,7 +338,7 @@ async function initSchemaOnce() {
     if (applied.length) console.log(`✅ ${applied.length} Migration(en) angewandt`);
     else if (!neu) console.log('✅ Schema aktuell — keine offenen Migrationen');
   } finally {
-    await client.query(`SELECT pg_advisory_unlock(${LOCK_ID})`).catch(() => {});
+    await client.query(`SELECT pg_advisory_unlock(${LOCK_ID})`).catch(logAndContinue('db:pg_advisory_unlock'));
     client.release();
   }
 }

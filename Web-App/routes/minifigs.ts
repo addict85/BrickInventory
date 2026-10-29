@@ -22,7 +22,7 @@ import { handleRouteError, logAndContinue, fehlertext } from '../utils/httpError
 import { recordAcquisitionForDay } from '../utils/acquisitions';
 import {  getMinifigInfo } from '../clients/rebrickable';
 import { importMinifigsForSet } from '../utils/minifigsImport';
-import { requireLogin } from './auth';
+import { requireLoginOrToken as requireLogin } from '../utils/auth';
 // Marktpreis und Preisschaetzung einer Figur stehen seit dem Schichtumbau in
 // utils/marketPrice.ts, zusammen mit denen fuer Sets und Teile — dieselbe
 // Frage wurde vorher an drei Orten in zwei Schichten beantwortet.

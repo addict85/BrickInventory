@@ -1,7 +1,7 @@
 /** /api/v1/minifigs — CRUD und Teile-Liste (Erfassungen: ./acquisitions.ts). */
 import express from 'express';
 import * as db from '../../db/database';
-import { handleRouteError, pfadParam } from '../../utils/httpError';
+import { handleRouteError, pfadParam, logAndContinue, meldeUndLiefere } from '../../utils/httpError';
 import { requireToken } from './middleware';
 import { scopeIds, parseScopeMode, resolveWriteTarget, writableIds } from '../../utils/household';
 import { getManualMinifigs, getMinifigStats, getMinifigs } from '../../utils/handlers/minifigs';
@@ -16,6 +16,7 @@ import { sendeFehler } from '../../utils/fehlerTexte';
 import { normalisiereLagerort, setzeLagerort } from '../../utils/lagerort';
 import { blJoin, blNummerSql } from '../../utils/blZuordnung';
 import { loescheFigur } from '../../utils/loeschen';
+import * as partsCatalogEnrich from '../../jobs/partsCatalogEnrich';
 const router = express.Router();
 
 // ── MINIFIGS ─────────────────────────────────────────────────────────────────
@@ -116,13 +117,13 @@ router.get('/minifigs/:figNumber/price-history', requireToken, async (req: Authe
 });
 
 router.get('/minifigs/:figNumber/parts', requireToken, async (req: AuthedRequest, res) => {
-  const figNumber = req.params.figNumber;
+  const figNumber = String(req.params.figNumber);
   try {
     // Look up in rb_inventories (minifigs are stored as sets with fig- prefix)
     // Figuren haben keinen Versionsanhang, sondern ein 'fig-' davor —
     // deshalb eigene Kandidaten, aber dieselbe Abfrage.
     const invId = await inventarNachKandidaten(
-      [String(figNumber), String(figNumber).replace('fig-', '')]).catch(() => null);
+      [String(figNumber), String(figNumber).replace('fig-', '')]).catch(meldeUndLiefere('figuren:replace', null));
 
     if (!invId) return res.json({ success: true, parts: [], source: 'not_found' });
 
@@ -165,14 +166,14 @@ router.get('/minifigs/:figNumber/parts', requireToken, async (req: AuthedRequest
       const parentSet = await db.get(
         `SELECT set_number FROM set_minifigs_catalog WHERE fig_number=$1 LIMIT 1`,
         [figNumber]
-      ).catch(() => null);
+      ).catch(meldeUndLiefere('figuren:parentSet', null));
 
       if (parentSet?.set_number) {
         // Enrich all minifigs of the parent set in one batch API call
-        await require('../../jobs/partsCatalogEnrich').enrichSetMinifigs(parentSet.set_number).catch(() => {});
+        await partsCatalogEnrich.enrichSetMinifigs(parentSet.set_number).catch(logAndContinue('figuren:enrichSetMinifigs'));
       } else {
         // Fallback: enrich this minifig individually
-        await require('../../jobs/partsCatalogEnrich').enrichSetParts(figNumber).catch(() => {});
+        await partsCatalogEnrich.enrichSetParts(figNumber).catch(logAndContinue('figuren:enrichSetParts'));
       }
 
       catRows = await db.all(
@@ -200,7 +201,7 @@ router.get('/minifigs/:figNumber/parts', requireToken, async (req: AuthedRequest
 
     res.json({ success: true, parts: enriched, source: catRows.length ? 'enriched' : 'csv_cache' });
     // Download images in background
-    setImmediate(() => require('../../jobs/partsCatalogEnrich').downloadSetImages(figNumber).catch(() => {}));
+    setImmediate(() => partsCatalogEnrich.downloadSetImages(figNumber).catch(logAndContinue('figuren:downloadSetImages')));
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 

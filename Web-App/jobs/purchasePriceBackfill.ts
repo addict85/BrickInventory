@@ -6,7 +6,7 @@ import { setzeGeschaetztenPreis } from '../utils/acquisitions';
 import { getCurrentFigMarketPrice, getCurrentPartMarketPrice } from '../utils/marketPrice';
 import { lookupPart } from '../clients/rebrickable';
 import { blAbrufNummer } from '../utils/blZuordnung';
-import { fehlertext, meldeUndWeiter } from '../utils/httpError';
+import { fehlertext, meldeUndWeiter, meldeUndLiefere } from '../utils/httpError';
 import { sleep } from '../clients/rebrickable';
 'use strict';
 
@@ -36,7 +36,7 @@ async function backfillAcquisitions() {
        FROM set_acquisitions
       WHERE purchase_price IS NULL
       ORDER BY id ASC`
-  ).catch(() => []);
+  ).catch(meldeUndLiefere('kaufpreis-nachtrag:rows', []));
   if (!rows.length) return;
   log(`Erfassungen ohne Kaufpreis: ${rows.length}`);
 
@@ -81,7 +81,7 @@ async function backfillTeileErfassungen() {
        FROM part_acquisitions
       WHERE unit_price IS NULL
       ORDER BY id ASC`
-  ).catch(() => []);
+  ).catch(meldeUndLiefere('kaufpreis-nachtrag:rows', []));
   if (!rows.length) return;
   log(`Teile-Erfassungen ohne Kaufpreis: ${rows.length}`);
   let done = 0;
@@ -104,7 +104,7 @@ async function backfillFigurenErfassungen() {
        FROM minifig_acquisitions
       WHERE unit_price IS NULL
       ORDER BY id ASC`
-  ).catch(() => []);
+  ).catch(meldeUndLiefere('kaufpreis-nachtrag:rows', []));
   if (!rows.length) return;
   log(`Figuren-Erfassungen ohne Kaufpreis: ${rows.length}`);
   let done = 0;
@@ -133,7 +133,7 @@ async function backfillFigurenErfassungen() {
 async function backfillPartImages() {
   const rows = await db.all(
     "SELECT id, part_number, color_id FROM parts WHERE source='manual' AND color_id IS NOT NULL AND color_id != 0 ORDER BY id ASC"
-  ).catch(() => []);
+  ).catch(meldeUndLiefere('kaufpreis-nachtrag:rows', []));
   if (!rows.length) return;
   log(`Teile mit Farbbild zu prüfen: ${rows.length}`);
   let done = 0;

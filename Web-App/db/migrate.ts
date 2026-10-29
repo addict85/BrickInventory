@@ -4,7 +4,7 @@
  */
 import fs from 'fs';
 import path from 'path';
-import { meldeUndWeiter, fehlertext } from '../utils/httpError';
+import { meldeUndWeiter, fehlertext, logAndContinue } from '../utils/httpError';
 
 /**
  * Alle noch nicht angewandten Migrationen ausführen.
@@ -47,7 +47,7 @@ async function runMigrations(client: any, { sichern = false, bis }: { sichern?: 
       applied.push(file);
       console.log(`  ✅ Migration angewandt: ${file}`);
     } catch (e: any) {
-      await client.query('ROLLBACK').catch(() => {});
+      await client.query('ROLLBACK').catch(logAndContinue('migration:query'));
       // Bewusst weiterwerfen: Der Start bricht ab. Ein Server, der auf einem
       // halb migrierten Schema weiterläuft, produziert Folgefehler, die
       // niemand mehr auf diese Stelle zurückführt.

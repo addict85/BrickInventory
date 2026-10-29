@@ -152,9 +152,12 @@ test('nach der ganzen Kette tragen parts und minifigs keine quantity mehr',
   // WIRKUNGSLOS (es gab keinen Konflikt, auf den es treffen konnte), und
   // jeder erneute Import desselben Sets legte neue Zeilen an. Ab 0038 liest
   // jede Zeile dieselbe Katalogzahl — zwei Zeilen zaehlten doppelt.
+  // Die beiden Gruppen-Indizes der Erfassungen hat Migration 0068 entfernt:
+  // Sie waren der Anfang der eindeutigen Tagesindizes, die jede ihrer Suchen
+  // bedienen (test/indizes-db.test.js).
   const ix = await indizes();
   for (const name of ['idx_parts_eindeutig', 'idx_minifigs_eindeutig',
-                      'idx_part_acq_gruppe', 'idx_minifig_acq_gruppe']) {
+                      'idx_part_acq_erfassungstag', 'idx_minifig_acq_erfassungstag']) {
     assert.ok(ix.includes(name), `${name} fehlt (Migration 0038, Schritt 5/6)`);
   }
 

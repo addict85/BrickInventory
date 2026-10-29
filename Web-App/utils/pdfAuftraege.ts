@@ -1,3 +1,5 @@
+import path from 'path';
+import { PDF_JOB_DIR } from './appPaths';
 import * as db from '../db/database';
 import { notify } from './pgNotify';
 
@@ -7,6 +9,19 @@ import { notify } from './pgNotify';
  * Statusströme sofort, auch wenn der Auftrag in einem anderen Prozess läuft.
  */
 export const PDF_KANAL = 'pdf_auftrag';
+
+/**
+ * Vom Server erzeugt: `${Date.now()}-${12 Hex-Zeichen}`. Alles andere wird
+ * abgewiesen, denn die Kennung wird zum Dateinamen. Die alte Form (4–10
+ * Zeichen) bleibt gültig, damit Aufträge über ein Update abrufbar bleiben.
+ */
+const JOB_ID_RE = /^\d{10,16}-[a-z0-9]{4,12}$/;
+export function gueltigeAuftragsKennung(id: string): boolean { return JOB_ID_RE.test(id); }
+
+/** Die PDF-Datei eines Auftrags, oder null für eine ungültige Kennung. */
+export function pdfDateiPfad(id: string): string | null {
+  return gueltigeAuftragsKennung(id) ? path.join(PDF_JOB_DIR, `${id}.pdf`) : null;
+}
 
 export type PdfAuftrag = {
   status: 'running' | 'done' | 'error';

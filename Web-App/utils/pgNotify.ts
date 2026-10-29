@@ -2,7 +2,10 @@
  * PostgreSQL LISTEN/NOTIFY statt Datenbank-Polling.
  * Ausführlich: docs/begruendungen/utils/pgNotify.ts.md#abschnitt
  */
+import { logAndContinue } from './httpError';
 import { Client } from 'pg';
+import * as db from '../db/database';
+import * as konfig from './konfig';
 
 /**
  * Handler eines Kanals.
@@ -14,11 +17,11 @@ import { Client } from 'pg';
 type Handler = (payload?: string) => void | Promise<void>;
 
 const _handlers = new Map<string, Handler[]>();
-let _client: any = null;
+let _client: Client | null = null;
 let _connecting = false;
 let _retryMs = 1000;
 /** Läuft ein Reconnect-Timer? Verhindert mehrere Timer für EINEN Abriss. */
-let _reconnectTimer: any = null;
+let _reconnectTimer: NodeJS.Timeout | null = null;
 /** Nach close() wird nicht wieder verbunden — bis ein neues listen() kommt. */
 let _closed = false;
 
@@ -27,10 +30,10 @@ async function connect() {
   if (_connecting || _client || _closed) return;
   _connecting = true;
   try {
-    const c = new Client((require('./konfig') as typeof import('./konfig')).datenbankVerbindung());
+    const c = new Client(konfig.datenbankVerbindung());
     c.on('error', () => { retire(c); });
     c.on('end',   () => { retire(c); });
-    c.on('notification', (msg: any) => {
+    c.on('notification', (msg: import('pg').Notification) => {
       for (const h of _handlers.get(msg.channel) || []) {
         Promise.resolve(h(msg.payload)).catch(e => console.error(`[notify:${msg.channel}]`, e.message));
       }
@@ -45,7 +48,7 @@ async function connect() {
     // Aufholen: Ein Signal, das während der Trennung kam, ist verloren — die
     // Handler prüfen ihren Datenbankeintrag deshalb einmal beim Verbinden.
     for (const hs of _handlers.values()) {
-      for (const h of hs) Promise.resolve(h()).catch(() => {});
+      for (const h of hs) Promise.resolve(h()).catch(logAndContinue('notify:h'));
     }
   } catch (e: any) {
     console.error('[notify] Verbindung fehlgeschlagen:', e.message);
@@ -60,7 +63,7 @@ async function connect() {
  * Eine tote Verbindung aus dem Verkehr ziehen.
  * Ausführlich: docs/begruendungen/utils/pgNotify.ts.md#retire
  */
-function retire(c: any) {
+function retire(c: Client) {
   try { c.removeAllListeners(); } catch (_) {}
   // Ersatz-Zuhörer BEVOR irgendetwas anderes passiert: Ohne ihn wirft der
   // nächste 'error' des toten Clients und beendet den Prozess.
@@ -77,7 +80,7 @@ function scheduleReconnect() {
   _retryMs = Math.min(30_000, _retryMs * 2);   // exponentiell, gedeckelt
   _reconnectTimer = setTimeout(() => {
     _reconnectTimer = null;
-    connect().catch(() => {});
+    connect().catch(logAndContinue('notify:connect'));
   }, wait);
   // Ein wartender Reconnect darf den Prozess nicht am Beenden hindern.
   _reconnectTimer.unref?.();
@@ -102,10 +105,10 @@ export function listen(channel: string, handler: Handler) {
   if (!_handlers.has(channel)) _handlers.set(channel, []);
   _handlers.get(channel)!.push(handler);
   if (_client) {
-    _client.query(`LISTEN ${quoteIdent(channel)}`).catch(() => {});
-    Promise.resolve(handler()).catch(() => {});
+    _client.query(`LISTEN ${quoteIdent(channel)}`).catch(logAndContinue('notify:quoteIdent'));
+    Promise.resolve(handler()).catch(logAndContinue('notify:handler'));
   } else {
-    connect().catch(() => {});
+    connect().catch(logAndContinue('notify:connect'));
   }
 }
 
@@ -116,8 +119,7 @@ export function listen(channel: string, handler: Handler) {
  */
 export async function notify(channel: string, payload = '') {
   try {
-    const db = require('../db/database');
-    await db.run(`SELECT pg_notify($1, $2)`, [channel, payload]);
+        await db.run(`SELECT pg_notify($1, $2)`, [channel, payload]);
   } catch (e: any) {
     console.error(`[notify:${channel}]`, e.message);
   }

@@ -6,7 +6,7 @@ import { getGlobalSetting } from './settings';
 import { DEFAULT_PRICE_CONDITION, fetchPartPrice, fetchMinifigPrice, ladeBlNummernVor,
          resolveBlPartNumber, resolveBlColorId } from './finance/preise';
 import { getSetting } from './settings';
-import { meldeUndWeiter, fehlertext } from './httpError';
+import { meldeUndWeiter, fehlertext, logAndContinue, meldeUndLiefere } from './httpError';
 import { getMinifigParts } from '../clients/rebrickable';
 
 /**
@@ -24,7 +24,7 @@ async function getCurrentMarketPrice(setNumber: string, userId: number, conditio
     // condition als Hinweis mitgeben: Beim Anlegen eines neuen Sets existieren
     // weder sets- noch set_acquisitions-Zeile schon, refreshPriceForSet könnte
     // sonst nur den Standardzustand holen (siehe jobs/priceJob.ts).
-    await nacharbeit().preisFuerSetHolen(setNumber, userId, condition).catch(() => {});
+    await nacharbeit().preisFuerSetHolen(setNumber, userId, condition).catch(logAndContinue('marktpreis:preisFuerSetHolen'));
 
     // Ist ein Zustand AUSDRÜCKLICH angefragt, gilt genau der.
     //
@@ -111,7 +111,7 @@ async function marktpreiseAusCacheFuerFiguren(
       WHERE fig_number = ANY($1) AND currency_code = $2
         AND fetched_at > NOW() - make_interval(hours => $3)`,
     [schluessel, currency, ttl],
-  ).catch(() => []);
+  ).catch(meldeUndLiefere('marktpreis:zeilen', []));
 
   const cache = new Map<string, number>();
   for (const z of zeilen) {
@@ -179,7 +179,7 @@ async function marktpreiseAusCacheFuerTeile(
       WHERE part_number = ANY($1) AND currency_code = $2
         AND fetched_at > NOW() - make_interval(hours => $3)`,
     [nummern, currency, ttl],
-  ).catch(() => []);
+  ).catch(meldeUndLiefere('marktpreis:zeilen', []));
 
   const cache = new Map<string, number>();
   for (const z of zeilen) {
@@ -261,7 +261,7 @@ async function schaetzeFigurenpreis(figNumber: string, userId: number, condition
         WHERE fig_number = $1 AND condition = $2 AND currency_code = $3 AND geschaetzt
           AND fetched_at > NOW() - make_interval(hours => $4)`,
       [figNumber, cond0, currency, ttl]
-    ).catch(() => null);
+    ).catch(meldeUndLiefere('marktpreis:cached', null));
     const zwischengespeichert = parseFloat(String(cached?.avg_price || 0));
     if (zwischengespeichert > 0)
       return { preis: zwischengespeichert, abdeckung: cached?.abdeckung != null ? parseFloat(String(cached.abdeckung)) : null };
@@ -316,7 +316,7 @@ async function schaetzeFigurenpreis(figNumber: string, userId: number, condition
       `INSERT INTO minifig_price_history (fig_number, condition, currency_code, avg_price, qty_avg_price, geschaetzt, abdeckung)
        VALUES ($1,$2,$3,$4,$4,TRUE,$5) ON CONFLICT DO NOTHING`,
       [figNumber, cond, currency, total, abdeckung]
-    ).catch(() => {});
+    ).catch(logAndContinue('marktpreis:figurverlauf schreiben'));
 
     return { preis: total, abdeckung };
   } catch (e) {
@@ -349,7 +349,7 @@ async function figMarktpreisMitHerkunft(figNumber: string, userId: number, blFig
     // Ausführlich: docs/begruendungen/utils/marketPrice.ts.md#figmarktpreismitherkunft
     for (const num of [blFigNumber, figNumber]) {
       if (!num) continue;
-      const priceData = await fetchMinifigPrice(num, effCond, currency, 24).catch(() => null);
+      const priceData = await fetchMinifigPrice(num, effCond, currency, 24).catch(meldeUndLiefere('marktpreis:fetchMinifigPrice', null));
       // Der Rueckfall wird uebernommen, aber benannt
       // Die Antwort damals war `continue` — also gar kein Preis. Darauf kam
       // Marcos naechster Befund: „Teilweise wird der Kaufpreis nicht direkt

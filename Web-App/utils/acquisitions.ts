@@ -7,6 +7,7 @@
  * Ausführlich: docs/begruendungen/utils/acquisitions.ts.md#abschnitt
  */
 import * as db from '../db/database';
+import type { DbSchnittstelle } from '../db/database';
 
 export type AcquisitionKind = 'set' | 'part' | 'fig';
 
@@ -49,11 +50,22 @@ const SHAPES = {
   fig:  { table: 'minifig_acquisitions', price: 'unit_price',     keys: ['fig_number'] },
 } as const;
 
-const num = (v: any): number | null => {
+const num = (v: unknown): number | null => {
   if (v === null || v === undefined || v === '') return null;
   const n = parseFloat(String(v));
   return Number.isFinite(n) ? n : null;
 };
+
+/**
+ * Der Tag einer Erfassung, wie ihn der eindeutige Index führt (Migration
+ * 0070): `tag` in der Zeitzone der Installation, für ältere Zeilen der
+ * bisherige UTC-Tag. Jede Abfrage über „denselben Tag“ nimmt diesen Ausdruck,
+ * sonst trifft sie den Index nicht.
+ */
+export function erfassungsTagSql(alias = ''): string {
+  const a = alias ? `${alias}.` : '';
+  return `COALESCE(${a}tag, (${a}created_at AT TIME ZONE 'UTC')::date)`;
+}
 
 /**
  * Erfassung anlegen — oder die des Tages im selben Zustand aufstocken.
@@ -68,9 +80,9 @@ const num = (v: any): number | null => {
 export async function recordAcquisitionForDay(
   kind: AcquisitionKind,
   userId: number,
-  keyValues: any[],
+  keyValues: (string | number)[],
   input: AcquisitionInput,
-  dbh: any = db
+  dbh: DbSchnittstelle = db
 ): Promise<{ merged: boolean }> {
   const shape = SHAPES[kind];
   const qty   = Math.max(1, parseInt(String(input.quantity)) || 1);
@@ -86,7 +98,7 @@ export async function recordAcquisitionForDay(
   const vals = [userId, ...keyValues, qty, price, cond, geschaetzt, input.currency ?? null, input.createdAt || null];
   const ph = vals.map((_, i) => `$${i + 1}`);
   ph[ph.length - 1] = `COALESCE(${ph[ph.length - 1]}::timestamptz, NOW())`;
-  const ziel = ['user_id', ...shape.keys, "((created_at AT TIME ZONE 'UTC')::date)", 'condition',
+  const ziel = ['user_id', ...shape.keys, `(${erfassungsTagSql()})`, 'condition',
     `(COALESCE(${shape.price}, -1))`, 'price_estimated', 'currency'];
   const row = await dbh.get(
     `INSERT INTO ${shape.table} AS t (${cols.join(', ')}) VALUES (${ph.join(', ')})
@@ -123,7 +135,7 @@ export async function findSameDayAcquisition(
   const row = await dbh.get(
     `SELECT id FROM ${shape.table}
       WHERE user_id = $1 AND ${keyWhere}
-        AND id <> $${n + 2} AND (created_at AT TIME ZONE 'UTC')::date = $${n + 3}::date
+        AND id <> $${n + 2} AND ${erfassungsTagSql()} = $${n + 3}::date
         AND condition = $${n + 4}
         AND COALESCE(${shape.price}, -1) = COALESCE($${n + 5}::numeric, -1)
         AND price_estimated = $${n + 6}
@@ -174,9 +186,9 @@ export function acquisitionTotals(rows: any[]): {
  */
 export async function setzeGeschaetztenPreis(kind: AcquisitionKind, id: number, preis: number): Promise<boolean> {
   const shape = SHAPES[kind];
-  return db.transaction(async (tx: any) => {
+  return db.transaction(async (tx) => {
     const z = await tx.get(
-      `SELECT *, ((created_at AT TIME ZONE 'UTC')::date)::text AS tag FROM ${shape.table} WHERE id = $1 FOR UPDATE`, [id]);
+      `SELECT *, (${erfassungsTagSql()})::text AS tag FROM ${shape.table} WHERE id = $1 FOR UPDATE`, [id]);
     if (!z || z[shape.price] != null) return false;
     const keys = shape.keys.map(k => z[k]);
     const ziel = await findSameDayAcquisition(kind, z.user_id, keys, z.tag, id, z.condition, tx,

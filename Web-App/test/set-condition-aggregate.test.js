@@ -812,12 +812,12 @@ test('der Hintergrund-Job für Teile und Minifiguren erzeugt jetzt Vorschaubilde
   // generateThumb in der Datei überhaupt zu haben ist.
   assert.match(src, /generateThumb/,
     'generateThumb ist in server.ts nicht mehr verfügbar');
-  assert.match(partsLoop, /generateThumb\(local\)\.catch\(\(\) => \{\}\);/,
+  assert.match(partsLoop, /generateThumb\(local\)\.catch\(logAndContinue\('[^']+'\)\);/,
     'Die Teile-Schleife muss generateThumb() nach einem erfolgreichen Download aufrufen');
 
   const figsLoop = src.slice(src.indexOf('for (const f of figsToFetch) {'),
                              src.lastIndexOf("await monitor.update('imgDl', { status: 'idle', sub: 'Alle Bilder gecacht'"));
-  assert.match(figsLoop, /generateThumb\(local\)\.catch\(\(\) => \{\}\);/,
+  assert.match(figsLoop, /generateThumb\(local\)\.catch\(logAndContinue\('[^']+'\)\);/,
     'Die Minifiguren-Schleife muss generateThumb() nach einem erfolgreichen Download aufrufen');
 });
 

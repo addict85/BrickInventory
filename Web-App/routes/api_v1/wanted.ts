@@ -19,6 +19,9 @@ import { importiereWantedListe } from '../../utils/wantedListe';
 import type { Korrektur } from '../../utils/wantedListe';
 import { merkeBlNummer } from '../../utils/blZuordnung';
 import { starteAuftrag, meldeAuftrag, beendeAuftrag, istAbgebrochen } from '../../utils/importAuftrag';
+import { addManualPart } from '../../utils/manuelleTeile';
+import { addManualFig } from '../../utils/manuelleFiguren';
+import { addSet } from '../../utils/setService';
 
 const router = express.Router();
 type AuthedRequest = express.Request & { apiUser: { user_id: number } };
@@ -210,9 +213,6 @@ router.post('/wanted-list/import/xml', requireToken, xmlEmpfang.single('file'),
 
       // Die Anleger gibt diese Schicht herein, damit utils/wantedListe.ts sie
       // in Tests ersetzen kann.
-      const { addManualPart } = require('../../utils/manuelleTeile');
-      const { addManualFig } = require('../../utils/manuelleFiguren');
-      const { addSet } = require('../../utils/setService');
       // Korrekturen aus der Vorschau
       // Als FELD der Multipart-Anfrage und nicht als Abfrageparameter: Bei 224
       // Posten wäre die Adresse länger als jeder Proxy durchlässt — dieselbe
