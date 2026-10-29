@@ -83,7 +83,9 @@ fun parseQrPayload(raw: String): QrLoginPayload? {
 fun SetupScreen(
     currentUrl: String,
     onSave: (url: String, klartextBestaetigt: Boolean) -> Unit,
-    onQrScanned: ((url: String, token: String, klartextBestaetigt: Boolean) -> Unit)? = null
+    onQrScanned: ((url: String, token: String, klartextBestaetigt: Boolean) -> Unit)? = null,
+    nutzerCa: Boolean = false,
+    onNutzerCa: (Boolean) -> Unit = {},
 ) {
     var url          by rememberSaveable { mutableStateOf(currentUrl) }
     var showScanner  by rememberSaveable { mutableStateOf(false) }
@@ -227,6 +229,23 @@ fun SetupScreen(
                         Spacer(Modifier.width(Abstaende.klein))
                         Text(stringResource(R.string.setup_url_klartext_bestaetigen, klartextHost),
                             style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+                // Vor der Anmeldung gibt es die Einstellungen noch nicht; ohne diesen
+                // Schalter käme ein Server mit eigener CA nie bis zum Anmelden.
+                if (url.trim().lowercase().startsWith("https://")) {
+                    Row(
+                        Modifier.fillMaxWidth().toggleable(value = nutzerCa, role = Role.Switch,
+                            onValueChange = onNutzerCa),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text(stringResource(R.string.settings_nutzer_ca), style = MaterialTheme.typography.bodyMedium)
+                            Text(stringResource(R.string.settings_nutzer_ca_hint), style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Spacer(Modifier.width(Abstaende.klein))
+                        Switch(checked = nutzerCa, onCheckedChange = null)
                     }
                 }
                 Spacer(Modifier.height(Abstaende.gross))

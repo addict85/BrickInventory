@@ -181,16 +181,7 @@ class SelbstUpdateTest {
 
     @Test
     fun `die Aktualisierung vertraut nur System-Zertifikaten`() {
-        // ── Warum das eine eigene Regel braucht ─────────────────────────────
-        //
-        // Die base-config erlaubt bewusst nutzerinstallierte CAs: Der Nutzer
-        // traegt seine eigene Server-Adresse ein, oft mit selbst
-        // ausgestelltem Zertifikat. Fuer den EIGENEN Server ist das richtig.
-        //
-        // Fuer GitHub nicht — von dort kommt ein APK. Wer eine CA auf das
-        // Geraet bringt, saesse sonst zwischen der App und ihrer eigenen
-        // Aktualisierung. Die Signaturpruefung faengt das Schlimmste ab; was
-        // bliebe, ist Updates unterdruecken oder ein Downgrade vortaeuschen.
+        // Von GitHub kommt ein APK: nur System-CAs, kein Klartext.
         val cfg = java.io.File("src/main/res/xml/network_security_config.xml").readText()
         val ab = cfg.indexOf("<domain-config")
         assert(ab > 0) {
@@ -210,12 +201,11 @@ class SelbstUpdateTest {
         assert(block.contains("""cleartextTrafficPermitted="false"""")) {
             "Zu GitHub waere wieder Klartext erlaubt"
         }
-        // Und die base-config behaelt ihre Ausnahme — sonst kaeme niemand mehr
-        // an seinen eigenen Server mit selbst ausgestelltem Zertifikat.
+        // Auch die base-config vertraut nur dem System; eigene CAs erlaubt der
+        // Nutzer ausdrücklich, zur Laufzeit (ServerVertrauenTest).
         val basis = cfg.substring(cfg.indexOf("<base-config"))
-        assert(basis.contains("""src="user"""")) {
-            "Die base-config vertraut keinen eigenen Zertifikaten mehr — dann ist der " +
-                "eigene Server mit selbst ausgestelltem Zertifikat nicht mehr erreichbar."
+        assert(!basis.contains("""src="user"""")) {
+            "Die base-config vertraut wieder jeder nutzerinstallierten CA"
         }
     }
 

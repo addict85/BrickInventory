@@ -44,6 +44,8 @@
     <string name="login_button">Sign in</string>
     <string name="login_code">Code from your authenticator app</string>
     <string name="login_code_hint">Or one of your recovery codes</string>
+    <string name="settings_nutzer_ca">Trust my own certificate authority</string>
+    <string name="settings_nutzer_ca_hint">For a server with a self-issued certificate whose authority is installed on this device. Otherwise leave it off: an installed authority can read every connection.</string>
     <string name="login_netz_titel">Different network than at setup</string>
     <string name="login_netz_text">Your password would go unencrypted to %1$s. In this network the address may belong to another computer. Only continue if you are sure it is your server.</string>
     <string name="login_netz_trotzdem">Log in anyway</string>

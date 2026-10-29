@@ -97,6 +97,16 @@ class AppViewModel @Inject constructor(
         _dunkelNachSystem.value = an
     }
 
+    /** Je Gerät: auch nutzerinstallierte CAs für den eigenen Server (util/ServerVertrauen.kt). */
+    private val _nutzerCa = MutableStateFlow(prefs.nutzerCaErlaubt())
+    val nutzerCa: StateFlow<Boolean> = _nutzerCa.asStateFlow()
+    fun setNutzerCa(an: Boolean) {
+        prefs.setzeNutzerCa(an)
+        _nutzerCa.value = an
+        // Offene Verbindungen trugen das alte Vertrauen.
+        apiHttpClient.connectionPool.evictAll()
+    }
+
     private val _csvImportState = MutableStateFlow(CsvImportUiState())
     val csvImportState: StateFlow<CsvImportUiState> = _csvImportState.asStateFlow()
     private var csvWatchJob: Job? = null

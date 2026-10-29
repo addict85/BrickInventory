@@ -68,8 +68,11 @@ fun NavGraphBuilder.authGraph(
             // Momentaufnahme vom Aufbau des Graphen (der NavHost-Builder läuft nur einmal).
             val anmeldungVm: AnmeldungViewModel = aktivitaetsViewModel()
             val state by anmeldungVm.state.collectAsStateWithLifecycle()
+            val nutzerCa by vm.nutzerCa.collectAsStateWithLifecycle()
             SetupScreen(
                 currentUrl = state.serverUrl,
+                nutzerCa = nutzerCa,
+                onNutzerCa = { vm.setNutzerCa(it) },
                 // Ein anderer Server meldet über den vollen Weg der App ab, bevor die
                 // neue Adresse gilt (AnmeldungViewModel.saveServerUrl).
                 onSave = { url, klartextBestaetigt ->

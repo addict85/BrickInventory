@@ -28,6 +28,8 @@
     <string name="login_button">Anmelden</string>
     <string name="login_code">Code aus der Authenticator-App</string>
     <string name="login_code_hint">Oder einer deiner Wiederherstellungscodes</string>
+    <string name="settings_nutzer_ca">Der eigenen Zertifizierungsstelle vertrauen</string>
+    <string name="settings_nutzer_ca_hint">Für einen Server mit selbst ausgestelltem Zertifikat, dessen Zertifizierungsstelle auf diesem Gerät installiert ist. Sonst ausgeschaltet lassen: Eine installierte Zertifizierungsstelle kann jede Verbindung mitlesen.</string>
     <string name="login_netz_titel">Anderes Netz als bei der Einrichtung</string>
     <string name="login_netz_text">Dein Passwort ginge unverschlüsselt an %1$s. In diesem Netz kann die Adresse zu einem anderen Rechner gehören. Nur fortfahren, wenn du sicher bist, dass es dein Server ist.</string>
     <string name="login_netz_trotzdem">Trotzdem anmelden</string>

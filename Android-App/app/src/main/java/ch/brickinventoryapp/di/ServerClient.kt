@@ -37,6 +37,26 @@ private class GeraeteZugang(
         .localizedContext(ctx).getString(ch.brickinventoryapp.R.string.lang_code)
 }
 
+private fun vertrauen(ks: java.security.KeyStore?): javax.net.ssl.X509ExtendedTrustManager {
+    val tmf = javax.net.ssl.TrustManagerFactory.getInstance(javax.net.ssl.TrustManagerFactory.getDefaultAlgorithm())
+    tmf.init(ks)
+    return tmf.trustManagers.filterIsInstance<javax.net.ssl.X509ExtendedTrustManager>().first()
+}
+
+/**
+ * System-CAs nach network_security_config (ohne Nutzer-CAs), dazu der
+ * AndroidCAStore samt Nutzer-CAs für die ausdrückliche Einstellung.
+ */
+private var gemeinsamesVertrauen: ch.brickinventoryapp.util.WahlVertrauen? = null
+
+@Synchronized
+private fun serverVertrauen(prefs: PreferencesManager): ch.brickinventoryapp.util.WahlVertrauen =
+    gemeinsamesVertrauen ?: ch.brickinventoryapp.util.WahlVertrauen(
+        system = vertrauen(null),
+        mitNutzer = lazy { vertrauen(java.security.KeyStore.getInstance("AndroidCAStore").apply { load(null) }) },
+        nutzerErlaubt = { prefs.nutzerCaErlaubt() },
+    ).also { gemeinsamesVertrauen = it }
+
 /** API-, Bild- und SSE-Client: derselbe Wächter (ServerWaechter.kt), eigene Zeitgrenzen. */
 internal fun buildInterceptorClient(
     prefs: PreferencesManager,
@@ -63,6 +83,11 @@ internal fun buildInterceptorClient(
         }
         .addInterceptor(ServerWaechter(GeraeteZugang(prefs, ctx), isApiClient, beweise,
             sitzungAbgelaufen = { sessionExpired.notifyExpired() }, versionsMeldung = versionsMeldung))
+        .apply {
+            val tm = serverVertrauen(prefs)
+            val tls = javax.net.ssl.SSLContext.getInstance("TLS").apply { init(null, arrayOf(tm), null) }
+            sslSocketFactory(tls.socketFactory, tm)
+        }
         .connectTimeout(15, TimeUnit.SECONDS)
         // Ein Zwischen-Byte-Timeout; die PDF-Erzeugung läuft über Job-Polling.
         .readTimeout(60, TimeUnit.SECONDS)

@@ -48,6 +48,7 @@ class PreferencesManager @Inject constructor(
         const val DUNKEL_NACH_SYSTEM = "dunkel_nach_system"
         const val APP_THEME_SPIEGEL = "app_theme"
         const val SPRACHE_SPIEGEL = "sprache"
+        const val NUTZER_CA = "nutzer_ca"
 
         /**
          * In welchen Netzen darf das Vorwärmen der Vorschaubilder holen? Auf dem Gerät,
@@ -247,6 +248,7 @@ class PreferencesManager @Inject constructor(
         spiegle(context.dataStore.data.map { it[TOKEN_HERKUNFT] }, _tokenHerkunftState)
         prefsScope.launch {
             uebernimmAltenKlartextHost()
+            uebernimmAltenCaStand()
             spiegle(context.dataStore.data.map { it[KLARTEXT_HOSTS] ?: emptySet() }, _klartextHosts)
         }
     }
@@ -401,6 +403,22 @@ class PreferencesManager @Inject constructor(
      */
     fun dunkelNachSystem(): Boolean = ch.brickinventoryapp.ui.theme.dunkelNachSystemGilt(
         if (designSpiegel.contains(DUNKEL_NACH_SYSTEM)) designSpiegel.getBoolean(DUNKEL_NACH_SYSTEM, true) else null)
+    /**
+     * Vertrauen die Clients des eigenen Servers auch nutzerinstallierten CAs
+     * (util/ServerVertrauen.kt)? Je Gerät und synchron: Gefragt wird bei jedem
+     * Verbindungsaufbau.
+     */
+    fun nutzerCaErlaubt(): Boolean = designSpiegel.getBoolean(NUTZER_CA, false)
+    fun setzeNutzerCa(an: Boolean) {
+        designSpiegel.edit().putBoolean(NUTZER_CA, an).apply()
+    }
+
+    /** Einmalig vor dem ersten Verbindungsaufbau (der Latch wartet darauf); siehe nutzerCaVorgabe. */
+    private suspend fun uebernimmAltenCaStand() {
+        if (designSpiegel.contains(NUTZER_CA)) return
+        setzeNutzerCa(ch.brickinventoryapp.util.nutzerCaVorgabe(context.dataStore.data.first()[SERVER_URL] ?: ""))
+    }
+
     fun setzeDunkelNachSystem(an: Boolean) {
         designSpiegel.edit().putBoolean(DUNKEL_NACH_SYSTEM, an).apply()
     }

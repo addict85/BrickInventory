@@ -228,9 +228,12 @@ fun SettingsScreen(
         //
         // Die Serveradresse ist eine Einstellung wie Währung und Sprache, keine Handlung
         // an der laufenden Sitzung.
+        val nutzerCa by app.nutzerCa.collectAsStateWithLifecycle()
         ServerCard(
             serverUrl = appState.serverUrl,
             onWechseln = onServerWechseln,
+            nutzerCa = nutzerCa,
+            onNutzerCa = { app.setNutzerCa(it) },
         )
 
         UpdateCard(
@@ -316,7 +319,7 @@ internal fun SettingsCard(
  * Betrieb) ist das der Unterschied zu falschen Daten.
  */
 @Composable
-private fun ServerCard(serverUrl: String, onWechseln: () -> Unit) {
+private fun ServerCard(serverUrl: String, onWechseln: () -> Unit, nutzerCa: Boolean, onNutzerCa: (Boolean) -> Unit) {
     SettingsCard(title = stringResource(R.string.main_menu_change_server), icon = Icons.Default.Cloud) {
         Text(
             serverUrl.ifBlank { "—" },
@@ -328,6 +331,20 @@ private fun ServerCard(serverUrl: String, onWechseln: () -> Unit) {
             Icon(Icons.Default.Cloud, null, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(Abstaende.klein))
             Text(stringResource(R.string.main_menu_change_server))
+        }
+        // Je Gerät und sofort wirksam (util/ServerVertrauen.kt); ausgeschaltet nur System-CAs.
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(Abstaende.mittel),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(stringResource(R.string.settings_nutzer_ca), style = MaterialTheme.typography.bodyMedium)
+                Text(stringResource(R.string.settings_nutzer_ca_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Switch(checked = nutzerCa, onCheckedChange = onNutzerCa)
         }
     }
 }

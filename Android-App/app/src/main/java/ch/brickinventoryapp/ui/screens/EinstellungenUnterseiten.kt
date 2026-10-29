@@ -93,6 +93,7 @@ fun GutscheineUnterseite(
     // Mit dem kurzen Namen hielte die Prüfung jedes `zustand.geraete` für einen
     // Feldzugriff auf GutscheinUiState.
     val gutscheinZustand by gvm.state.collectAsStateWithLifecycle()
+    ch.brickinventoryapp.ui.components.Sichtschutz()
     // Die Zwischenablage kommt aus Compose und nicht aus dem ViewModel: Sie
     // ist an die Komposition gebunden. Die Rueckmeldung laeuft ueber den
     // Snackbar des ViewModels, damit sie dort steht, wo alle anderen Meldungen

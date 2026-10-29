@@ -322,14 +322,3 @@ private const val ABSTAND_VERSUCHE = 4
 /** Ganze Beträge ohne „.0": Der Gutschein lautet auf 400, nicht auf 400.0. */
 internal fun betragAlsText(betrag: Double): String =
     if (betrag % 1.0 == 0.0) betrag.toLong().toString() else betrag.toString()
-
-/**
- * Die Adressen für den vorhandenen PDF-Betrachter. Er lädt sie mit dem
- * angemeldeten Client; eine eigene Kopie im Cache des Geräts wäre ein zweiter
- * Ort für Nummer und PIN, der das Abmelden überlebt.
- */
-internal fun gutscheinPdfAdresse(serverUrl: String, id: Int): String =
-    serverUrl.trimEnd('/') + "/api/v1/vouchers/" + id + "/pdf"
-
-internal fun gutscheinExportAdresse(serverUrl: String): String =
-    serverUrl.trimEnd('/') + "/api/v1/vouchers/export/pdf"
