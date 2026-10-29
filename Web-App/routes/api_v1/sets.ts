@@ -41,6 +41,24 @@ import { mengeSkalar } from '../../utils/bestandsmenge';
 import { blJoin, blNummerSql } from '../../utils/blZuordnung';
 const router = express.Router();
 
+// ── Feste Pfade VOR den Pfaden mit :setNumber ────────────────────────────────
+// Unter /api/v1/sets hingen zwei Router (dieser und routes/sets.ts). Der
+// Namensabruf /sets/info/:setNumber stand im zweiten; /sets/info/price-history
+// traf deshalb zuerst /sets/:setNumber/price-history hier, mit „info“ als Set.
+// Jetzt steht er hier, vor allen Pfaden mit Parameter.
+
+/** GET /api/v1/sets/info/:setNumber — Name aus dem Katalog, ohne Besitz. */
+router.get('/sets/info/:setNumber', requireToken, async (req: AuthedRequest, res) => {
+  const n = mitVersion(pfadParam(req, 'setNumber'));
+  try {
+    const row = await db.get(
+      'SELECT name, year, theme, pieces, image_url, image_local FROM set_catalog WHERE set_number = $1', [n]);
+    // Ohne Katalogzeile kennt diese Installation die Nummer nicht; die
+    // Oberfläche zeigt dann die Nummer als Namen.
+    res.json(row ? { success: true, set_number: n, name: row.name || n, ...row } : { success: true, set_number: n, name: n });
+  } catch (e) { handleRouteError(res, e, undefined, req); }
+});
+
 // ── GIBT ES DIESES SET SCHON? ────────────────────────────────────────────────
 /**
  * GET /api/v1/sets/exists/:setNumber

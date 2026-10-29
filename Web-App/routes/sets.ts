@@ -87,7 +87,6 @@ import { findSetInScope } from '../utils/setAdd';
 import { loginOrTokenGuard, angemeldeteNutzerId, istVerwalter } from '../utils/auth';
 import { csvEinlesen, entschaerfungRueckgaengig, parseCsvDate, sendCsv, uebersprungenHinweis } from '../utils/csvExport';
 import { ausTabelle } from '../utils/validate';
-import { mitVersion } from '../utils/setNummer';
 import { csvEmpfang, inhaltPasstZuTyp, uploadKontingentBytes, belegterPlatz } from '../utils/dateiEmpfang';
 import { sendeFehler } from '../utils/fehlerTexte';
 import { mengeSkalar } from '../utils/bestandsmenge';
@@ -197,28 +196,6 @@ router.get('/import/csv/stream', requireLoginOrToken, async (req, res) => {
   }
 
   req.on('close', cleanup);
-});
-
-// ── Routes ────────────────────────────────────────────────────────────────────
-// ── GET /api/sets/info/:setNumber — lightweight name lookup from shared catalog ─
-// Used by the Teileliste to resolve set names without requiring user ownership.
-router.get('/info/:setNumber', requireLogin, async (req, res) => {
-  // Die Bedingung sah den GEPRUEFTEN Wert an, beide Zweige gaben aber den
-  // rohen aus req.params zurueck — zwei verschiedene Werte in einer Zeile.
-  const n = mitVersion(pfadParam(req, 'setNumber'));
-  try {
-    const row = await db.get(
-      'SELECT name, year, theme, pieces, image_url, image_local FROM set_catalog WHERE set_number = $1',
-      [n]
-    );
-    if (row) return res.json({ success: true, set_number: n, name: row.name || n, ...row });
-    // Mit Migration 0033 gibt es nur noch den Katalog, und sie traegt fuer
-    // JEDE Setnummer aus `sets` eine Zeile nach (Schritt 1) und prueft das
-    // danach (Schritt 2). Ein Set, das jemand haelt, ist hier also immer
-    // gefunden. Bleibt die Abfrage leer, kennt diese Installation die Nummer …
-    // Ausführlich: docs/begruendungen/routes/sets.ts.md#get-info-setnumber
-    res.json({ success: true, set_number: n, name: n });
-  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 router.use(requireLogin);
