@@ -591,6 +591,11 @@
             <option value="0" data-i18n="parts.filter.no_spare">Ohne Ersatzteile</option>
             <option value="1" data-i18n="parts.filter.spare">Nur Ersatzteile</option>
           </select>
+          <select class="w-auto" id="parts-ordnung" aria-label="Reihenfolge" data-i18n="parts.order_label" data-i18n-attr="aria-label">
+            <option value="farbe" data-i18n="parts.order.color">Nach Farbe gruppiert</option>
+            <option value="name" data-i18n="parts.order.name">Nach Name</option>
+            <option value="menge" data-i18n="parts.order.qty">Nach Menge</option>
+          </select>
           <select id="scope-parts" class="scope-select" aria-label="Konten" data-i18n="household.scope_label" data-i18n-attr="aria-label" data-change="onScopeChange" data-arg="parts" data-stil="display:none"></select>
           <!-- Lagerort: dieselbe Form wie der Kontofilter daneben. Bleibt
                verborgen, solange nirgends ein Ort erfasst ist — ein Feld

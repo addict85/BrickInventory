@@ -140,6 +140,8 @@ function partsParams(page){
   if (search) p.set('search', search);
   const spare = G('parts-spare').value;
   if (spare !== '') p.set('spare', spare);
+  const ordnung = G('parts-ordnung').value;
+  if (ordnung !== 'farbe') p.set('ordnung', ordnung);
   // Manuell erfasste Teile haben ihren eigenen Bereich oben — hier nur Set-Teile.
   p.set('exclude_manual','1');
   // in_sets ist serverseitig Opt-in (kostet bei 380 Sets rund 155 ms und 2 MB).
@@ -241,6 +243,12 @@ function appendParts(parts){
 
   const list = G('parts-main').querySelector('.parts-list');
   if (!list) return;
+  // Ungruppiert: dasselbe Raster ohne Farbkacheln, die Reihenfolge kommt vom Server.
+  if (G('parts-ordnung').value !== 'farbe'){
+    list.insertAdjacentHTML('beforeend', parts.map(partsCard).join(''));
+    if (typeof observeLazyImages === 'function') observeLazyImages(list);
+    return;
+  }
 
   // Nach Farbe gruppieren — der Server liefert bereits farbsortiert.
   const groups = [];
@@ -414,6 +422,16 @@ function teileFilterGeaendert() {
 }
 G('parts-search').addEventListener('input', ()=>{ clearTimeout(G('parts-search')._t); G('parts-search')._t=setTimeout(teileFilterGeaendert,350); });
 G('parts-spare').addEventListener('change', loadPartsData);
+// Die Reihenfolge ist eine Vorliebe, kein Filter: Sie bleibt im Browser stehen.
+const TEILE_ORDNUNG_KEY = 'bim_teile_ordnung';
+try {
+  const gemerkt = localStorage.getItem(TEILE_ORDNUNG_KEY);
+  if (gemerkt && [...G('parts-ordnung').options].some(o => o.value === gemerkt)) G('parts-ordnung').value = gemerkt;
+} catch (_) { /* ohne Speicher gilt die Vorgabe */ }
+G('parts-ordnung').addEventListener('change', () => {
+  try { localStorage.setItem(TEILE_ORDNUNG_KEY, G('parts-ordnung').value); } catch (_) { /* nur Komfort */ }
+  loadPartsData();
+});
 /**
  * Der Ansichtsumschalter — fuer BEIDE Listen des Reiters.
  *

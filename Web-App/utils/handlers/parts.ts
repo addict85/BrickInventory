@@ -235,6 +235,21 @@ async function teileErsatzquelle(set_number: string) {
  * Seitenabfrage aus parts_summary. Gibt null zurück, wenn die Zusammenfassung
  * nicht benutzbar ist — dann übernimmt die Live-Abfrage darunter.
  */
+/**
+ * Reihenfolge der Teileliste. Nur nach Farbe gruppiert die Oberfläche; die
+ * anderen beiden sind für die ungruppierte Liste. Feste Liste, weil der Wert
+ * als SQL in die Anfrage geht. Der letzte Schlüssel macht die Seiten stabil.
+ */
+type TeileOrdnung = 'farbe' | 'name' | 'menge';
+function teileOrdnung(wert: unknown): TeileOrdnung {
+  return wert === 'name' || wert === 'menge' ? wert : 'farbe';
+}
+function ordnungSql(o: TeileOrdnung, sp: { farbe: string; name: string; menge: string; nummer: string }): string {
+  if (o === 'name')  return `${sp.name} ASC, ${sp.farbe} ASC, ${sp.nummer} ASC`;
+  if (o === 'menge') return `${sp.menge} DESC, ${sp.name} ASC, ${sp.nummer} ASC`;
+  return `${sp.farbe} ASC, ${sp.name} ASC`;
+}
+
 async function tryPartsSummary(userId: Blickfeld, o: any) {
   const uids = asIds(userId);
   // Die Zusammenfassung ist JE KONTO aufgebaut. Für den Haushalt wird über
@@ -303,7 +318,9 @@ async function tryPartsSummary(userId: Blickfeld, o: any) {
        category_name, image_url, image_local, is_spare, total_quantity::int, storage` +
       (o.withSets ? ', in_sets' : '');
   const groupSql = multi ? ' GROUP BY part_key, color_id' : '';
-  const orderSql = multi ? 'MIN(color_name) ASC, MIN(part_name) ASC' : 'color_name ASC, part_name ASC';
+  const orderSql = ordnungSql(teileOrdnung(o.ordnung), multi
+    ? { farbe: 'MIN(color_name)', name: 'MIN(part_name)', menge: 'SUM(total_quantity)', nummer: 'part_key, color_id' }
+    : { farbe: 'color_name', name: 'part_name', menge: 'total_quantity', nummer: 'part_key, color_id' });
 
   // Scheitert die Abfrage, ist das ein RUECKFALL, kein Fehler
   // Das ist der Kern des Fehlers, nicht die fehlende Spalte: Diese Funktion
@@ -403,7 +420,7 @@ async function getParts(userId: Blickfeld, query: any = {}) {
   // Live-Abfrage sowohl passend als auch schnell genug, denn der Filter macht
   // die Menge klein.
   if (excludesManual && !set_number && !query.storage) {
-    const summary = await tryPartsSummary(uids, { color, category, search, spare, page, page_size, withSets });
+    const summary = await tryPartsSummary(uids, { color, category, search, spare, page, page_size, withSets, ordnung: query.ordnung });
     if (summary) return summary;
   }
 
@@ -475,7 +492,8 @@ async function getParts(userId: Blickfeld, query: any = {}) {
     ${joinClause}
     WHERE ${where}
     GROUP BY ${blNummerSql('p.part_number')}, p.color_id
-    ORDER BY MIN(pcc.color_name) ASC, MIN(pc.part_name) ASC${limitClause}`;
+    ORDER BY ${ordnungSql(teileOrdnung(query.ordnung), { farbe: 'MIN(pcc.color_name)', name: 'MIN(pc.part_name)',
+      menge: qtyExpr, nummer: `${blNummerSql('p.part_number')}, p.color_id` })}${limitClause}`;
 
   // Angezeigter Zustand: nur noch aus den Erfassungen
   // Sobald eine Erfassung „Gebraucht" ist, gilt das Teil als gebraucht.
