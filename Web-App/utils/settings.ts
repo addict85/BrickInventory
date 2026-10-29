@@ -220,16 +220,13 @@ const NUR_VERWALTER = /^smtp_/;
 const MASK_CHAR = '\u2022';
 
 /**
- * Geheimen Wert durch eine Maske ersetzen: 12 Punkte + die letzten vier
- * Zeichen. Leere Werte bleiben leer, damit das Formular "nicht gesetzt"
- * weiterhin von "gesetzt" unterscheiden kann.
- * @param {string|null|undefined} value
- * @returns {string}
+ * Geheimen Wert durch eine Maske ersetzen, die nur „gesetzt" sagt. Kein
+ * einziges Zeichen des Werts geht mit: Schon die letzten vier verkürzen das
+ * Raten eines kurzen Schlüssels und verraten, ob zwei Installationen denselben
+ * tragen. Leer bleibt leer — das ist „nicht gesetzt".
  */
 function maskSecret(value: string | null | undefined) {
-  const v = String(value ?? '');
-  if (!v) return '';
-  return MASK_CHAR.repeat(12) + v.slice(-4);
+  return String(value ?? '') ? MASK_CHAR.repeat(12) : '';
 }
 
 /**

@@ -10,6 +10,9 @@
  *   B  in POST /vouchers verschluessele() weggelassen → rot: „Gutschein-PIN …“
  *   C  verschluesseleAltbestand() überspringt die Gutscheine → rot:
  *      „Altbestand …“
+ * Gegenprobe (am 29.10.2026 gemessen):
+ *   D  maskSecret() hängt wieder die letzten vier Zeichen an → rot:
+ *      „globale Schlüssel …“
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -54,7 +57,7 @@ test('Geheimnisse verschlüsselt', { concurrency: 1 }, async (t) => {
     assert.ok(roh.startsWith('v1:') && !roh.includes('4242'), roh);
     assert.equal(await settings.getGlobalSetting('brickset_api_key'), 'klar-brickset-4242');
     const gelesen = await settings.readSettings(uid, true);
-    assert.ok(gelesen.brickset_api_key.endsWith('4242'), 'die Maske zeigt die letzten vier Zeichen des Klartexts');
+    assert.equal(gelesen.brickset_api_key, '\u2022'.repeat(12), 'die Maske sagt nur „gesetzt"');
   });
 
   await t.test('Gutschein-PIN', async () => {
