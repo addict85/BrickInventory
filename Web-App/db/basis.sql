@@ -2276,22 +2276,10 @@ ALTER TABLE ONLY public.zweiter_faktor
 CREATE INDEX idx_account_link_invites_main ON public.account_link_invites USING btree (main_user_id, expires_at);
 
 --
--- Name: idx_account_links_main; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_account_links_main ON public.account_links USING btree (main_user_id);
-
---
 -- Name: idx_account_links_sub; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX idx_account_links_sub ON public.account_links USING btree (sub_user_id);
-
---
--- Name: idx_acq_user_set; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_acq_user_set ON public.set_acquisitions USING btree (user_id, set_number);
 
 --
 -- Name: idx_api_tokens_expires; Type: INDEX; Schema: public; Owner: -
@@ -2384,12 +2372,6 @@ CREATE INDEX idx_instructions_user ON public.instructions USING btree (user_id, 
 CREATE INDEX idx_invite_used_by ON public.account_link_invites USING btree (used_by);
 
 --
--- Name: idx_minifig_acq_gruppe; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_minifig_acq_gruppe ON public.minifig_acquisitions USING btree (user_id, fig_number);
-
---
 -- Name: idx_minifig_acq_tag_merkmale; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -2432,6 +2414,12 @@ CREATE INDEX idx_minifigs_catalog_name_trgm ON public.minifigs_catalog USING gin
 CREATE UNIQUE INDEX idx_minifigs_eindeutig ON public.minifigs USING btree (user_id, COALESCE(set_number, ''::text), fig_number);
 
 --
+-- Name: idx_minifigs_set; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_minifigs_set ON public.minifigs USING btree (user_id, set_number);
+
+--
 -- Name: idx_minifigs_storage_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -2444,22 +2432,10 @@ CREATE INDEX idx_minifigs_storage_id ON public.minifigs USING btree (user_id, st
 CREATE INDEX idx_minifigs_storage_ref ON public.minifigs USING btree (storage_id) WHERE (storage_id IS NOT NULL);
 
 --
--- Name: idx_minifigs_user; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_minifigs_user ON public.minifigs USING btree (user_id);
-
---
 -- Name: idx_papierkorb_konto; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX idx_papierkorb_konto ON public.papierkorb USING btree (user_id, geloescht_am DESC);
-
---
--- Name: idx_part_acq_gruppe; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_part_acq_gruppe ON public.part_acquisitions USING btree (user_id, part_number, color_id);
 
 --
 -- Name: idx_part_acq_tag_merkmale; Type: INDEX; Schema: public; Owner: -
@@ -2564,16 +2540,16 @@ CREATE INDEX idx_parts_summary_color ON public.parts_summary USING btree (user_i
 CREATE INDEX idx_parts_summary_sort ON public.parts_summary USING btree (user_id, color_name, part_name);
 
 --
--- Name: idx_parts_user; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_parts_user ON public.parts USING btree (user_id);
-
---
 -- Name: idx_pdf_auftraege_laufend; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX idx_pdf_auftraege_laufend ON public.pdf_auftraege USING btree (user_id) WHERE (status = 'running'::text);
+
+--
+-- Name: idx_pdf_auftraege_user; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_pdf_auftraege_user ON public.pdf_auftraege USING btree (user_id);
 
 --
 -- Name: idx_price_alerts_set; Type: INDEX; Schema: public; Owner: -
@@ -2702,12 +2678,6 @@ CREATE INDEX idx_set_minifigs_catalog_bild_stamm ON public.set_minifigs_catalog 
 CREATE INDEX idx_set_minifigs_fig ON public.set_minifigs_catalog USING btree (fig_number);
 
 --
--- Name: idx_set_teile_set; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_set_teile_set ON public.set_teile USING btree (set_number);
-
---
 -- Name: idx_sets_setnum; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -2726,24 +2696,6 @@ CREATE INDEX idx_sets_storage_id ON public.sets USING btree (user_id, storage_id
 CREATE INDEX idx_sets_storage_ref ON public.sets USING btree (storage_id) WHERE (storage_id IS NOT NULL);
 
 --
--- Name: idx_sets_user; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_sets_user ON public.sets USING btree (user_id);
-
---
--- Name: idx_shared_instructions_set; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_shared_instructions_set ON public.shared_instructions USING btree (set_number);
-
---
--- Name: idx_smc_set; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_smc_set ON public.set_minifigs_catalog USING btree (set_number);
-
---
 -- Name: idx_user_sessions_expire; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -2760,12 +2712,6 @@ CREATE INDEX idx_verwaltungsprotokoll_verwalter ON public.verwaltungsprotokoll U
 --
 
 CREATE INDEX idx_verwaltungsprotokoll_zeit ON public.verwaltungsprotokoll USING btree (zeit DESC);
-
---
--- Name: idx_vouchers_user; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_vouchers_user ON public.vouchers USING btree (user_id);
 
 --
 -- Name: idx_wanted_user; Type: INDEX; Schema: public; Owner: -
@@ -3276,6 +3222,7 @@ INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0064-pdf-auftra
 INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0065-geld-und-waehrung-pruefen.sql', '2026-10-28 23:27:03.174038+00');
 INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0066-auftraege.sql', '2026-10-29 21:52:46.143176+00');
 INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0067-bild-stamm.sql', '2026-10-29 21:59:16.007371+00');
+INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0068-praefix-indizes.sql', '2026-10-29 21:59:58.856414+00');
 
 --
 -- PostgreSQL database dump complete

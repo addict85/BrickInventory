@@ -28,7 +28,6 @@ CREATE TABLE account_links (
   CONSTRAINT account_links_pkey PRIMARY KEY (main_user_id, sub_user_id),
   CONSTRAINT account_links_sub_user_id_fkey FOREIGN KEY (sub_user_id) REFERENCES users(id) ON DELETE CASCADE
 );
-CREATE INDEX idx_account_links_main ON account_links USING btree (main_user_id);
 CREATE INDEX idx_account_links_sub ON account_links USING btree (sub_user_id);
 
 CREATE TABLE api_aufrufe (
@@ -238,7 +237,6 @@ CREATE TABLE minifig_acquisitions (
   CONSTRAINT minifig_acquisitions_user_fk FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
   CONSTRAINT minifig_acquisitions_zustand CHECK ((condition = ANY (ARRAY['N'::text, 'U'::text])))
 );
-CREATE INDEX idx_minifig_acq_gruppe ON minifig_acquisitions USING btree (user_id, fig_number);
 CREATE UNIQUE INDEX idx_minifig_acq_tag_merkmale ON minifig_acquisitions USING btree (user_id, fig_number, (((created_at AT TIME ZONE 'UTC'::text))::date), condition, COALESCE(unit_price, ('-1'::integer)::numeric), price_estimated, currency);
 CREATE TRIGGER minifig_acquisitions_waehrung BEFORE INSERT OR UPDATE ON minifig_acquisitions FOR EACH ROW EXECUTE FUNCTION erfassung_waehrung();
 
@@ -299,9 +297,9 @@ CREATE TABLE minifigs (
   CONSTRAINT minifigs_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 CREATE UNIQUE INDEX idx_minifigs_eindeutig ON minifigs USING btree (user_id, COALESCE(set_number, ''::text), fig_number);
+CREATE INDEX idx_minifigs_set ON minifigs USING btree (user_id, set_number);
 CREATE INDEX idx_minifigs_storage_id ON minifigs USING btree (user_id, storage_id) WHERE (storage_id IS NOT NULL);
 CREATE INDEX idx_minifigs_storage_ref ON minifigs USING btree (storage_id) WHERE (storage_id IS NOT NULL);
-CREATE INDEX idx_minifigs_user ON minifigs USING btree (user_id);
 
 CREATE TABLE minifigs_catalog (
   fig_number text NOT NULL,
@@ -349,7 +347,6 @@ CREATE TABLE part_acquisitions (
   CONSTRAINT part_acquisitions_user_fk FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
   CONSTRAINT part_acquisitions_zustand CHECK ((condition = ANY (ARRAY['N'::text, 'U'::text])))
 );
-CREATE INDEX idx_part_acq_gruppe ON part_acquisitions USING btree (user_id, part_number, color_id);
 CREATE UNIQUE INDEX idx_part_acq_tag_merkmale ON part_acquisitions USING btree (user_id, part_number, color_id, (((created_at AT TIME ZONE 'UTC'::text))::date), condition, COALESCE(unit_price, ('-1'::integer)::numeric), price_estimated, currency);
 CREATE TRIGGER part_acquisitions_waehrung BEFORE INSERT OR UPDATE ON part_acquisitions FOR EACH ROW EXECUTE FUNCTION erfassung_waehrung();
 
@@ -438,7 +435,6 @@ CREATE INDEX idx_parts_number_trgm ON parts USING gin (lower(part_number) gin_tr
 CREATE INDEX idx_parts_set ON parts USING btree (user_id, set_number);
 CREATE INDEX idx_parts_storage_id ON parts USING btree (user_id, storage_id) WHERE (storage_id IS NOT NULL);
 CREATE INDEX idx_parts_storage_ref ON parts USING btree (storage_id) WHERE (storage_id IS NOT NULL);
-CREATE INDEX idx_parts_user ON parts USING btree (user_id);
 CREATE TRIGGER trg_bump_parts_version_del AFTER DELETE ON parts REFERENCING OLD TABLE AS alt FOR EACH STATEMENT EXECUTE FUNCTION bump_parts_version_del();
 CREATE TRIGGER trg_bump_parts_version_ins AFTER INSERT ON parts REFERENCING NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION bump_parts_version_ins();
 CREATE TRIGGER trg_bump_parts_version_upd AFTER UPDATE ON parts REFERENCING OLD TABLE AS alt NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION bump_parts_version_upd();
@@ -505,6 +501,7 @@ CREATE TABLE pdf_auftraege (
   CONSTRAINT pdf_auftraege_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 CREATE INDEX idx_pdf_auftraege_laufend ON pdf_auftraege USING btree (user_id) WHERE (status = 'running'::text);
+CREATE INDEX idx_pdf_auftraege_user ON pdf_auftraege USING btree (user_id);
 
 CREATE TABLE price_alerts (
   user_id integer NOT NULL,
@@ -686,7 +683,6 @@ CREATE TABLE set_acquisitions (
   CONSTRAINT set_acquisitions_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
   CONSTRAINT set_acquisitions_zustand CHECK ((condition = ANY (ARRAY['N'::text, 'U'::text])))
 );
-CREATE INDEX idx_acq_user_set ON set_acquisitions USING btree (user_id, set_number);
 CREATE UNIQUE INDEX idx_set_acq_tag_merkmale ON set_acquisitions USING btree (user_id, set_number, (((created_at AT TIME ZONE 'UTC'::text))::date), condition, COALESCE(purchase_price, ('-1'::integer)::numeric), price_estimated, currency);
 CREATE TRIGGER set_acquisitions_waehrung BEFORE INSERT OR UPDATE ON set_acquisitions FOR EACH ROW EXECUTE FUNCTION erfassung_waehrung();
 CREATE TRIGGER trg_bump_parts_version_del AFTER DELETE ON set_acquisitions REFERENCING OLD TABLE AS alt FOR EACH STATEMENT EXECUTE FUNCTION bump_parts_version_del();
@@ -720,7 +716,6 @@ CREATE TABLE set_minifigs_catalog (
 );
 CREATE INDEX idx_set_minifigs_catalog_bild_stamm ON set_minifigs_catalog USING btree (bild_stamm(image_local)) WHERE (image_local IS NOT NULL);
 CREATE INDEX idx_set_minifigs_fig ON set_minifigs_catalog USING btree (fig_number);
-CREATE INDEX idx_smc_set ON set_minifigs_catalog USING btree (set_number);
 
 CREATE TABLE set_teile (
   set_number text NOT NULL,
@@ -731,7 +726,6 @@ CREATE TABLE set_teile (
   updated_at timestamp with time zone DEFAULT now(),
   CONSTRAINT set_teile_pkey PRIMARY KEY (set_number, part_number, color_id)
 );
-CREATE INDEX idx_set_teile_set ON set_teile USING btree (set_number);
 CREATE TRIGGER trg_bump_parts_katalog AFTER INSERT OR DELETE OR UPDATE ON set_teile FOR EACH STATEMENT EXECUTE FUNCTION bump_parts_katalog();
 
 CREATE TABLE sets (
@@ -749,7 +743,6 @@ CREATE TABLE sets (
 CREATE INDEX idx_sets_setnum ON sets USING btree (set_number);
 CREATE INDEX idx_sets_storage_id ON sets USING btree (user_id, storage_id) WHERE (storage_id IS NOT NULL);
 CREATE INDEX idx_sets_storage_ref ON sets USING btree (storage_id) WHERE (storage_id IS NOT NULL);
-CREATE INDEX idx_sets_user ON sets USING btree (user_id);
 CREATE TRIGGER trg_bump_parts_version_del AFTER DELETE ON sets REFERENCING OLD TABLE AS alt FOR EACH STATEMENT EXECUTE FUNCTION bump_parts_version_del();
 CREATE TRIGGER trg_bump_parts_version_ins AFTER INSERT ON sets REFERENCING NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION bump_parts_version_ins();
 CREATE TRIGGER trg_bump_parts_version_upd AFTER UPDATE ON sets REFERENCING OLD TABLE AS alt NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION bump_parts_version_upd();
@@ -764,7 +757,6 @@ CREATE TABLE shared_instructions (
   CONSTRAINT shared_instructions_pkey PRIMARY KEY (id),
   CONSTRAINT shared_instructions_set_number_url_key UNIQUE (set_number, url)
 );
-CREATE INDEX idx_shared_instructions_set ON shared_instructions USING btree (set_number);
 
 CREATE TABLE storage_locations (
   id integer NOT NULL DEFAULT nextval('storage_locations_id_seq'::regclass),
@@ -853,7 +845,6 @@ CREATE TABLE vouchers (
   CONSTRAINT vouchers_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
   CONSTRAINT vouchers_user_id_number_key UNIQUE (user_id, number)
 );
-CREATE INDEX idx_vouchers_user ON vouchers USING btree (user_id);
 
 CREATE TABLE wanted (
   id integer NOT NULL DEFAULT nextval('wishlist_id_seq'::regclass),
