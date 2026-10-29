@@ -186,14 +186,9 @@ interface AdminApi {
     suspend fun getJobs(): Response<JobsResponse>
 
     /**
-     * Den Zeitplan eines Jobs ändern, in einer der beiden Formen, die der Server
-     * liest:
-     *
-     *   { name: <schluessel>, time: "HH:MM" }   tägliche Jobs
-     *   { name: "priceJob",   minutes: <n> }    der Preis-Job
-     *
-     * Ein JsonObject, weil der Server am vorhandenen Feld unterscheidet; eine
-     * Map<String, Any> kann der kotlinx-Wandler nicht schreiben.
+     * Zeitplan eines Jobs: `{ name, time: "HH:MM" }` für tägliche Jobs, `{ name:
+     * "priceJob", minutes }` für den Preis-Job. Ein JsonObject, weil der Server am
+     * vorhandenen Feld unterscheidet; Map<String, Any> kann der Wandler nicht schreiben.
      */
     @POST("api/v1/admin/job-schedule")
     suspend fun setJobSchedule(@Body body: kotlinx.serialization.json.JsonObject): Response<GenericAdminResponse>

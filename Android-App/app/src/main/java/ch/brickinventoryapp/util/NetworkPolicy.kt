@@ -4,18 +4,9 @@ import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 
 /**
- * Netzwerk-Regeln für den OkHttp-Interceptor.
- *
- * 1. Ob der Bearer-Token angehängt wird, entscheidet der Vergleich von Scheme,
- *    Host und Port der geparsten URL — ein String-Präfix wie
- *    `startsWith(serverUrl)` liesse "https://brick.example.com.angreifer.tld/…"
- *    als eigenen Server durch.
- *
- * 2. Klartext: Weil die Server-URL vom Nutzer kommt, lässt sich das per
- *    Network-Security-Config nicht auf private Adressen einschränken (Android
- *    kennt dort keine Wildcards für RFC1918). Deshalb hier: http nur zu privaten
- *    Adressen; zu öffentlichen Hosts wird die Anfrage abgebrochen, statt den Token
- *    im Klartext übers Internet zu senden.
+ * Netzregeln des Interceptors. Der Token geht nur an dieselbe Herkunft (Schema,
+ * Host, Port), nie per String-Präfix. Klartext nur zu privaten Adressen, weil die
+ * Network-Security-Config keine RFC1918-Wildcards kennt.
  */
 object NetworkPolicy {
 

@@ -21,12 +21,8 @@ import javax.inject.Inject
 
 /**
  * Server einrichten, anmelden (Passwort, zweiter Faktor, QR), Konto anlegen,
- * Passwort vergessen.
- *
- * An die Activity gebunden: Der QR-Weg verlässt die Einrichtung, während die
- * Anmeldung noch läuft — an das Ziel gebunden, bräche ihr Abruf dabei ab.
- * Was nach der Anmeldung geladen wird, stösst das AppViewModel an, sobald der
- * Token in der Ablage steht.
+ * Passwort vergessen. An die Activity gebunden, weil der QR-Weg die Einrichtung
+ * verlässt, während die Anmeldung noch läuft.
  */
 @HiltViewModel
 class AnmeldungViewModel @Inject constructor(

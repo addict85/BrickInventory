@@ -21,14 +21,9 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
- * Gutscheine — LEGO-Geschenkkarten im eigenen Profil.
- *
- * Das PDF liest der Server (utils/gutscheinPdf.ts), und welche Werte gültig
- * sind, entscheidet `pruefeWerte` in routes/api_v1/vouchers.ts — einmal für
- * beide Apps. Hier wird deshalb weder gelesen noch geprüft, nur angezeigt.
- *
- * Die Activity hält die Instanz (wie beim Katalog): Eine Guthabenabfrage über
- * alle Karten dauert Minuten und soll weiterlaufen, wenn man die Seite verlässt.
+ * Gutscheine im eigenen Profil. Das PDF liest und die Werte prüft der Server, einmal
+ * für beide Apps; hier wird nur angezeigt. An die Activity gebunden, weil die
+ * Guthabenabfrage über alle Karten Minuten dauert.
  */
 @HiltViewModel
 class GutscheinViewModel @Inject constructor(

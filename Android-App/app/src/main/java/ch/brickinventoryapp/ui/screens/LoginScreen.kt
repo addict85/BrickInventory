@@ -28,18 +28,10 @@ import ch.brickinventoryapp.util.passwortZuKurz
 import ch.brickinventoryapp.ui.theme.Abstaende
 
 /**
- * Anmelden, ein Konto anlegen, einen Link zum Zurücksetzen anfordern — wie die
- * Webapp (`showPanel('login'|'register'|'forgot')` in public/js/01-core.js), damit
- * niemand für ein Konto oder ein vergessenes Passwort einen Browser braucht.
- *
- * Drei Formulare in einem Bildschirm statt drei Navigationszielen: Der
- * Zurück-Knopf des Geräts soll dasselbe bedeuten wie „Zurück zur Anmeldung“; mit
- * eigenen Zielen wären das zwei Wege, die auseinanderlaufen können.
- *
- * Das Setzen des neuen Passworts steht nicht hier: Der Link aus der E-Mail trägt
- * den Token und führt zur Weboberfläche des Servers. Ihn abzufangen bräuchte einen
- * Intent-Filter auf eine Adresse, die jeder selbst einstellt und die deshalb nicht
- * im Manifest stehen kann. Der Hinweistext sagt das.
+ * Anmelden, Konto anlegen, Link zum Zurücksetzen anfordern — wie die Webapp. Drei
+ * Formulare in einem Bildschirm, damit der Zurück-Knopf „zurück zur Anmeldung“
+ * heisst. Das neue Passwort setzt die Weboberfläche: Den Link abzufangen bräuchte
+ * einen Intent-Filter auf eine Adresse, die jeder selbst einstellt.
  */
 @Composable
 fun LoginScreen(

@@ -191,13 +191,9 @@ class TeileRepository @Inject constructor(
         safeCall { api.deleteMinifig(figNumber, owner) }
 
     /**
-     * Set-Figuren der Übersicht. `source = "set"` und der Suchtext gehen an den Server
-     * — wie in der Webapp (public/js/06-minifigs.js, figParams): Der Server sucht vor
-     * der Gruppierung über jede fig_name-Zeile; im Composable träfe die Suche nur die
-     * eine Zeile, die MAX(fig_name) übrig lässt.
-     *
-     * Gecacht wird nur die ungefilterte Sicht, wie bei getParts und getSets: Ein
-     * Suchergebnis im Cache wäre nach dem Neustart die ganze Sammlung.
+     * Set-Figuren der Übersicht; Suche beim Server wie im Web, weil er vor der
+     * Gruppierung über jede fig_name-Zeile sucht. Gecacht wird nur die ungefilterte
+     * Sicht, sonst wäre ein Suchergebnis nach dem Neustart die ganze Sammlung.
      */
     suspend fun getMinifigs(accounts: String? = null, search: String? = null): Result<MinifigsResponse> =
         if (accounts == null && search.isNullOrBlank())

@@ -1,29 +1,10 @@
 package ch.brickinventoryapp.ui.screens
 
 /*
- * ═══════════════════════════════════════════════════════════════════════════
- *  NICHT ÄNDERN OHNE ZU LESEN: Autofokus
- * ═══════════════════════════════════════════════════════════════════════════
- *
- *  Der Scanner stellte in dieser Datei schon MEHRFACH nicht mehr scharf. Es
- *  waren jedes Mal dieselben zwei Fehler:
- *
- *  1. CONTROL_AF_MODE_CONTINUOUS_PICTURE muss an BEIDEN Use Cases stehen —
- *     am Preview UND an der ImageAnalysis. CameraX führt die Konfigurationen
- *     aller gebundenen Use Cases zu EINEM Repeating-Request zusammen; steht
- *     der Modus nur an einem, entscheidet je nach Gerät die andere
- *     Konfiguration mit, und das Bild bleibt unscharf. Der Code sieht dabei
- *     völlig richtig aus — das ist die Tücke.
- *
- *  2. KEIN periodisches startFocusAndMetering ("Fokus-Pump"). Ein im Takt
- *     laufender Aufruf zwingt die Kamera immer wieder in eine neue Messung,
- *     der Fokus wandert dauernd. Tap-to-Focus im Touch-Listener ist in
- *     Ordnung — eine Schleife, ein Timer oder ein delay() davor nicht.
- *
- *  Beides prüft CameraFocusConfigTest in app/src/test/. Schlägt der Test
- *  fehl, ist eine dieser Regeln verletzt — nicht den Test anpassen, sondern
- *  den Code.
- * ═══════════════════════════════════════════════════════════════════════════
+ * Autofokus: CONTROL_AF_MODE_CONTINUOUS_PICTURE an Preview UND ImageAnalysis, weil
+ * CameraX alle Use Cases zu einem Request zusammenführt; kein periodisches
+ * startFocusAndMetering, das lässt den Fokus wandern. Beides prüft
+ * CameraFocusConfigTest — bei Rot den Code richten, nicht den Test.
  */
 
 import ch.brickinventoryapp.ui.theme.Formen

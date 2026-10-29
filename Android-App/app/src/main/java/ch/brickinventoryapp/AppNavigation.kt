@@ -52,17 +52,10 @@ fun BrickInventoryManagerApp(
     val selbstUpdate: UpdateViewModel = aktivitaetsViewModel()
     val navController = rememberNavController()
     val snackbarHostState = remember { SnackbarHostState() }
-    // ── Scroll-Zustände oberhalb des NavHost ──
-    //
-    // Beim Öffnen einer Detailansicht wird das darunterliegende Ziel verworfen; ein
-    // `rememberLazyListState()`/`rememberLazyGridState()` darin wäre bei der Rückkehr
-    // zurückgesetzt. Hier oben bleibt der Zustand am Leben, weil diese Ebene beim
-    // Navigieren nicht verlassen wird.
-    //
-    // Der Katalog ist nicht dabei: Seine Liste führt alle `total` Plätze und lädt
-    // seitenweise, im Moment der Rückkehr sind noch keine Plätze da. Er merkt sich die
-    // Position im ViewModel und springt zurück, sobald die Länge steht
-    // (CatalogScreen.kt).
+    // Scroll-Zustände oberhalb des NavHost: Das Ziel unter einer Detailansicht wird
+    // verworfen, ein Zustand darin wäre bei der Rückkehr zurückgesetzt. Der Katalog
+    // merkt sich seine Position im ViewModel (CatalogScreen.kt), weil seine Plätze
+    // beim Zurückkommen noch nicht geladen sind.
     val financeListState   = androidx.compose.foundation.lazy.rememberLazyListState()
     val galleryGridState   = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
     val partsGridState     = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
@@ -90,13 +83,8 @@ fun BrickInventoryManagerApp(
     LaunchedEffect(state.isLoggedIn) {
         if (state.isLoggedIn) {
             vm.startCsvImportWatcher()
-            // ── Still nach einem Update sehen ──
-            //
-            // Beim Start prüfen, nie von allein laden: `still = true` ist ein kleiner
-            // HTTPS-Abruf ohne Ladebalken und ohne Fehlermeldung — wer ohne Netz startet, soll
-            // keine rote Zeile sehen; der Knopf in den Einstellungen meldet sehr wohl
-            // (UpdateViewModel). Hier, weil die Frage der ganzen App gilt und nicht nur dem,
-            // der in den Einstellungen sitzt.
+            // Beim Start still nach einem Update sehen: kein Ladebalken, keine Meldung
+            // ohne Netz. Hier, weil die Frage der ganzen App gilt.
             selbstUpdate.pruefeAufUpdate(still = true)
         }
     }
@@ -165,15 +153,9 @@ fun BrickInventoryManagerApp(
     ch.brickinventoryapp.ui.dialogs.UpdateDialog(selbstUpdate)
 
 
-    // ── Eine angetippte Preisalarm-Meldung öffnet ihr Set ──
-    //
-    // Hier und nicht in der Activity: Navigiert wird mit dem NavController, den es
-    // erst in dieser Composition gibt; die Activity legt das Ziel nur in den Zustand
-    // (MeldungsZielUiState).
-    //
-    // Nur angemeldet: Sonst landete man auf einem Set-Detail ohne Token, das nichts
-    // laden kann. Das Ziel bleibt stehen und wird nach der Anmeldung eingelöst, weil
-    // startDest dann auf Gallery wechselt und dieser Block erneut läuft.
+    // Eine angetippte Preisalarm-Meldung öffnet ihr Set — hier, weil es den
+    // NavController erst in dieser Composition gibt. Nur angemeldet; sonst bleibt
+    // das Ziel stehen und wird nach der Anmeldung eingelöst.
     val meldungsZiel by vm.meldungsZiel.collectAsStateWithLifecycle()
     LaunchedEffect(meldungsZiel.setNummer, startDest) {
         val sn = meldungsZiel.setNummer

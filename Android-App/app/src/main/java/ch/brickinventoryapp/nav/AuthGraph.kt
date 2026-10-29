@@ -102,13 +102,9 @@ fun NavGraphBuilder.authGraph(
             // Konto gibt. `Unit` als Schluessel: genau einmal je Aufbau, nicht
             // bei jeder Zustandsaenderung.
             LaunchedEffect(Unit) { anmeldungVm.pruefeRegistrierungOffen() }
-            // ── Startet der Server gerade? ──
-            //
-            // Dann statt des Formulars der Fortschritt: Anmelden hat in dieser Zeit keinen
-            // Zweck, und die allgemeine Netzmeldung klänge nach einem Fehler, obwohl alles
-            // richtig läuft. `startupStatus` hat nur dann einen Wert, wenn der Server
-            // antwortet und `ready` verneint; ist er gar nicht erreichbar, bleibt es bei null
-            // und die Anmeldung sieht aus wie immer.
+            // Startet der Server gerade, steht statt des Formulars der Fortschritt: Die
+            // Netzmeldung klänge nach einem Fehler. `startupStatus` hat nur einen Wert,
+            // wenn der Server antwortet und `ready` verneint.
             val serverStart = state.startupStatus
             if (serverStart != null) {
                 ch.brickinventoryapp.ui.screens.ServerStartAnzeige(serverStart)

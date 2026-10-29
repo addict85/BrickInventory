@@ -24,14 +24,9 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 
 /**
- * Die Unterseiten der Einstellungen. Die Einstellungen zeigen eine Liste, und jede
- * Rubrik hat ihre eigene Seite mit Titel und Zurück-Pfeil: Vierzehn Karten
- * untereinander gaben dem Seltenen (einmal die Währung setzen) so viel Platz wie
- * dem Häufigen, und eine Seite, die eine Sache zeigt, kann ihr Luft geben.
- *
- * Die Karten liegen je Rubrik in Einstellungen*.kt (Alarme, Lagerorte, Haushalt,
- * Konto, Csv) und sind umgezogen, nicht neu gebaut — sie tragen Entscheidungen,
- * die man sonst ohne ihren Anlass neu treffen müsste.
+ * Die Unterseiten der Einstellungen: je Rubrik eine Seite mit Titel und
+ * Zurück-Pfeil, damit das Seltene nicht so viel Platz bekommt wie das Häufige. Die
+ * Karten liegen je Rubrik in Einstellungen*.kt.
  */
 
 /**

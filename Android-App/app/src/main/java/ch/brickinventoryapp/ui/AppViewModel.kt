@@ -36,13 +36,9 @@ import javax.inject.Inject
 import javax.inject.Named
 
 /**
- * Was der ganzen App gehört und an der Activity hängt: Sitzung beginnen und
- * beenden, Design und Sprache, die Snackbar, der CSV-Import-Balken, das
- * Vorwärmen der Bilder und das Ziel einer angetippten Meldung.
- *
- * Die Bereiche (Galerie, Teile, Finanzen, …) haben eigene ViewModels unter
- * ui/viewmodel; geteilt wird über Sitzung, Blickfeld, Bestandssignal und den
- * Meldungskanal, nicht über dieses ViewModel.
+ * Was der ganzen App gehört: Sitzung beginnen und beenden, Design und Sprache,
+ * Snackbar, CSV-Import-Balken, Vorwärmen und das Ziel einer angetippten Meldung.
+ * Die Bereiche teilen über Sitzung, Blickfeld, Bestandssignal und Meldungskanal.
  */
 @HiltViewModel
 class AppViewModel @Inject constructor(

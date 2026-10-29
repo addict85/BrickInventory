@@ -151,14 +151,9 @@ class PreferencesManager @Inject constructor(
     // null = DataStore noch nicht gelesen (nur ganz kurz beim Kaltstart).
     private val prefsScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    // ── Der Speicherwert führt, der DataStore folgt ──
-    //
-    // stateIn() folgte der Schreibung erst nach der Plattenschreibung. Die Anmeldung
-    // feuert aber sofort Abrufe, und der Interceptor las so noch den alten (leeren)
-    // Token oder die alte Adresse — der Server antwortete mit `token_ungueltig`,
-    // obwohl die Anmeldung gelang. Deshalb setzen saveAuthToken() und saveServerUrl()
-    // den Speicherwert zuerst. null = DataStore noch nicht gelesen (nur kurz beim
-    // Kaltstart).
+    // Der Speicherwert führt, der DataStore folgt: Die Anmeldung feuert sofort
+    // Abrufe, und ein nachlaufender Wert gäbe dem Interceptor den alten Token.
+    // null = DataStore noch nicht gelesen (nur kurz beim Kaltstart).
     private val _serverUrlState = MutableStateFlow<String?>(null)
     val serverUrlState: StateFlow<String?> = _serverUrlState.asStateFlow()
     private val _authTokenState = MutableStateFlow<String?>(null)
@@ -378,13 +373,9 @@ class PreferencesManager @Inject constructor(
         }
     }
 
-    // ── Der synchron lesbare Spiegel des Designs ──
-    //
-    // Der DataStore lässt sich nur asynchron lesen, setContent() läuft aber sofort;
-    // die ersten Bilder entstanden deshalb im Standard-Design, bis der gemerkte Wert
-    // kam. SharedPreferences sind synchron lesbar — das Gegenstück zum blockierenden
-    // 00-theme-boot.js der Webapp. Der DataStore bleibt führend; der Spiegel wird nur
-    // mitgeschrieben.
+    // Synchron lesbarer Spiegel des Designs (SharedPreferences): setContent() läuft
+    // vor dem ersten DataStore-Wert, und das erste Bild entstünde sonst im
+    // Standard-Design. Der DataStore bleibt führend.
     private val designSpiegel by lazy {
         context.getSharedPreferences(DESIGN_SPIEGEL_DATEI, Context.MODE_PRIVATE)
     }

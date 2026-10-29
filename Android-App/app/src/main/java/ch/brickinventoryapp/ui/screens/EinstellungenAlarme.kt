@@ -30,12 +30,9 @@ import ch.brickinventoryapp.ui.theme.Abstaende
 import kotlinx.coroutines.launch
 
 /**
- * Alle Preisalarme an einem Ort — ändern und löschen, wie die Rubrik der Webapp.
- * Der Zustand steht in der Zeile, weil ein Set zwei Alarme haben kann; der letzte
- * Preis steht dabei, weil eine Schwelle ohne ihn nicht zu beurteilen ist.
- * Gespeichert wird beim Knopf, nicht beim Tippen. Löschen fragt nach; die Zeile
- * öffnet das Set nur, wenn es in der Sammlung liegt (ein Alarm überlebt das
- * Entfernen des Sets).
+ * Alle Preisalarme an einem Ort — ändern und löschen wie im Web. Der letzte Preis
+ * steht dabei, weil eine Schwelle ohne ihn nicht zu beurteilen ist; die Zeile
+ * öffnet das Set nur, wenn es in der Sammlung liegt.
  */
 @Composable
 internal fun PreisalarmeCard(
@@ -268,13 +265,9 @@ internal fun PreisalarmCard(vm: AppViewModel) {
                     }
                     bereich.launch {
                         vm.prefs.setzeAlarmMeldungen(neu)
-                        // ── Nicht auf dem Hauptthread ──
-                        //
-                        // Der Auftrag folgt dem Schalter sofort, sonst wäre „eingeschaltet“ eine
-                        // Stunde lang ohne Wirkung. Beim ersten Zugriff liest WorkManager von der
-                        // Platte; auf dem Hauptthread brachte genau das die App zum Absturz.
-                        // einplanen() fängt selbst und gibt den Fehler zurück, damit ein Schalter
-                        // auf „an“ ohne Wirkung nicht unbemerkt bleibt.
+                        // Nicht auf dem Hauptthread: WorkManager liest beim ersten
+                        // Zugriff von der Platte, und das brachte die App zum Absturz.
+                        // Ein Fehler kommt zurück, damit „an“ ohne Wirkung auffällt.
                         val fehler = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                             ch.brickinventoryapp.alarm.PreisalarmWorker.einplanen(context, neu)
                         }

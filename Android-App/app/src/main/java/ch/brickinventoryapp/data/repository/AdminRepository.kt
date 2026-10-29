@@ -83,16 +83,9 @@ class AdminRepository @Inject constructor(
         safeCall { api.changePassword(PasswortAenderung(aktuell, neu)) }
 
     /**
-     * Eine CSV-Datei importieren — Sets, Teile oder Minifiguren.
-     *
-     * Die Bytes kommen fertig gelesen herein und nicht als Uri: Das Aufloesen
-     * eines content://-Verweises braucht den ContentResolver und gehoert damit
-     * in die Schicht, die einen Context hat. Ein Repository, das Android-Typen
-     * kennt, waere in diesem Baum die Ausnahme.
-     *
-     * `text/csv` als Typ, weil der Server nur die Endung und den Inhalt liest;
-     * der Dateiname geht mit, damit im Serverprotokoll steht, was importiert
-     * wurde.
+     * Eine CSV-Datei importieren. Die Bytes kommen fertig gelesen herein, weil ein
+     * content://-Verweis den ContentResolver braucht und das Repository keine
+     * Android-Typen kennt; der Dateiname geht fürs Serverprotokoll mit.
      */
     suspend fun importiereCsv(
         art: CsvArt, dateiname: String, inhalt: ByteArray,

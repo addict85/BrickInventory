@@ -10,18 +10,10 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * In welcher Art Netz hängt das Gerät gerade? Für das Vorwärmen der Vorschaubilder
- * (VorschauVorwaermer), das sich je Lage erlauben lässt — Vorgabe nur WLAN. Drei
- * Lagen statt „ist online“: Ein Durchlauf kann die ganze Sammlung holen, und das
- * ist im Ausland eine Rechnung.
- *
- * Ein gemessenes WLAN zählt als Mobilfunk: Ein Hotspot sieht für das andere Gerät
- * aus wie WLAN, die Bytes kommen aber aus einem Datentarif
- * (`NET_CAPABILITY_NOT_METERED`), und „nur im WLAN“ meint diesen Fall nicht.
- *
- * `NET_CAPABILITY_NOT_ROAMING` gibt es erst ab API 28, die App läuft ab 26. Auf
- * Android 8.0 und 8.1 beantwortet `TelephonyManager` dieselbe Frage — ohne
- * Erlaubnis. Ohne diesen Rückfall griffe die Roaming-Einstellung dort still nicht.
+ * In welcher Art Netz hängt das Gerät? Das Vorwärmen der Vorschaubilder lässt sich
+ * je Lage erlauben, denn ein Durchlauf im Ausland ist eine Rechnung. Ein gemessenes
+ * WLAN (Hotspot) zählt als Mobilfunk; unter API 28 beantwortet TelephonyManager die
+ * Roaming-Frage.
  */
 @Singleton
 class Netzlage @Inject constructor(

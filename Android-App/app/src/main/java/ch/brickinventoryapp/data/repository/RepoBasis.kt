@@ -15,12 +15,9 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Was alle Teil-Repositories gemeinsam brauchen. Die Datenschicht ist nach
- * Sachgebieten in fünf Klassen geteilt; gemeinsam sind nur zwei Stücke Mechanik —
- * der Abruf mit Plattenspeicher als Rückfallebene und die Umsetzung einer
- * Retrofit-Antwort in ein Result. Keine Funktion ruft eine andere auf, deshalb
- * lässt sich so schneiden, ohne etwas auseinanderzureissen. `protected`, weil nur
- * die Unterklassen beides brauchen.
+ * Was die Repositories gemeinsam brauchen: den Abruf mit Plattenspeicher als
+ * Rückfallebene und die Umsetzung einer Retrofit-Antwort in ein Result. Jedes
+ * Repository sieht nur seinen Bereich der Schnittstelle ([A]).
  */
 abstract class RepoBasis<A : Any>(
     /** Nur der Bereich der Schnittstelle, den dieses Repository braucht (data/api/BrickApiService.kt). */
@@ -98,16 +95,9 @@ abstract class RepoBasis<A : Any>(
         } catch (e: java.net.SocketTimeoutException) {
             Result.Error("", transient = true, art = Fehlerart.ZEIT)
         } catch (e: java.io.IOException) {
-            // ── Der Auffangzweig für alles, was der Transport wirft ──
-            //
-            // Die Zweige darüber bleiben, weil sie eine eigene Fehlerart tragen (NETZ gegen
-            // ZEIT) — „keine Verbindung“ ist nicht „zu langsam“. Dieser fängt jede übrige
-            // IOException: Sie kommt aus dem Aufruf oder dem Lesen des Rumpfes, ist also
-            // definitionsgemäss ein Transportproblem und wiederholbar — unabhängig davon,
-            // welchen Untertyp eine OkHttp-Fassung für einen Verbindungsabriss wählt.
-            //
-            // Fehler beim Auswerten der Antwort (Serialisierung) sind keine IOException und
-            // laufen weiter unten als UNBEKANNT durch — Wiederholen brächte dort nichts.
+            // Jede übrige IOException ist ein Transportproblem und wiederholbar, gleich
+            // welchen Untertyp OkHttp wählt. Fehler beim Auswerten der Antwort sind
+            // keine IOException und laufen unten als UNBEKANNT durch.
             Result.Error("", transient = true, art = Fehlerart.NETZ, technisch = e.message)
         } catch (e: Exception) {
             // e.message ist hier durchweg englischer Bibliothekstext ("Socket

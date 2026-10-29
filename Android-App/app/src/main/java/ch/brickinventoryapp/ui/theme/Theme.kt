@@ -32,13 +32,9 @@ val LocalIsFarbfaecherTheme = staticCompositionLocalOf { false }
 val LocalIsNoppeTheme = staticCompositionLocalOf { false }
 
 /**
- * Traegt die Oberflaeche den LACK des Designs "hochglanz"?
- *
- * Getrennt von [LocalIsNoppeTheme] und nicht statt seiner: "hochglanz" IST
- * "noppe" — dieselbe Anatomie, dieselbe Palette —, nur in einem anderen
- * Material. Wer die Kachel baut, fragt deshalb beides: [LocalIsNoppeTheme] fuer
- * den Deckel, dieses hier fuer den Glanz darauf. Ein einziges Local mit drei
- * Zustaenden haette an jeder Abfrage eine Fallunterscheidung erzwungen.
+ * Trägt die Oberfläche den Lack des Designs "hochglanz"? Getrennt von
+ * [LocalIsNoppeTheme]: "hochglanz" ist "noppe" in anderem Material; die Kachel
+ * fragt beides, ein Local mit drei Zuständen erzwänge überall eine Fallunterscheidung.
  */
 val LocalIstGlanz = staticCompositionLocalOf { false }
 
@@ -65,16 +61,9 @@ private val LightColors = lightColorScheme(
     onTertiary          = Color.White,
     tertiaryContainer   = Color(0xFFFFDAD6),
     onTertiaryContainer = BrandRedDark,
-    // --s100 der Webapp, NICHT --s50 (dort steht der Seitenhintergrund --bg).
-    // Hier stand jahrelang "// --s50 equivalent", waehrend der Wert --s100 war —
-    // ein Kommentar, der seinem eigenen Wert widersprach.
-    //
-    // Richtig ist der WERT: Compose fuehrt mit background, surface und
-    // surfaceVariant drei Ebenen, wo das Web mit --bg und --sur zwei fuehrt.
-    // surfaceVariant traegt unten bereits --s50 (#f8fafc). Bekaeme background
-    // denselben Wert, waeren beide identisch — und die Flaechen, die mit
-    // surfaceVariant auf dem Hintergrund liegen (Etiketten, Fortschrittsspur,
-    // ausgewaehlte Zeile, die Platzhalter-Kacheln des Katalogs), verschwaenden.
+    // --s100 der Webapp: Compose führt drei Ebenen (background, surface,
+    // surfaceVariant), das Web zwei. Mit --s50 wären background und surfaceVariant
+    // gleich, und Etiketten und Platzhalter darauf verschwänden.
     background          = Color(0xFFF1F5F9),  // --s100
     surface             = Color.White,
     surfaceVariant      = Color(0xFFF8FAFC),
@@ -122,24 +111,10 @@ private val BrickBlueColors = lightColorScheme(
 
 // ── Diagrammfarben je Zustand ────────────────────────────────────────────────
 /**
- * Farben der Verlaufslinien — aus dem Design, nicht im Zeichencode verdrahtet.
- *
- * Entspricht --chart-new / --chart-used der Webapp (styles.css bzw.
- * themes/brick.css). Im Stein-Design sind das Salbeigrün und Sand, dieselben
- * Farben, die die Zustands-Plaketten tragen: Wer sie im Diagramm wiedererkennt,
- * muss die Legende nicht lesen.
- *
- * Die Werte hier sind die VOLLTON-Varianten der Plakettenfarben. Die Container
- * BrickSage/BrickSand oben sind für Flächen hinter Text gedacht und als Linie
- * auf weissem Grund kaum zu sehen.
- */
-/**
- * Farben des Verlaufsdiagramms.
- *
- * [linie], [raster] und [gedaempft] kamen in Nachtrag 120 dazu — sie standen
- * fest in PortfolioChart.kt und zogen beim Designwechsel nicht mit, obwohl
- * `new`/`used` daneben es längst taten. Vorgabewerte, weil die klassischen
- * Werte zahlengleich mit dem sind, was vorher dort stand.
+ * Farben der Verlaufslinien aus dem Design, wie --chart-new/--chart-used im Web. Im
+ * Stein-Design Salbeigrün und Sand, dieselben Farben wie die Zustands-Plaketten,
+ * als Vollton, weil die Container auf weissem Grund kaum zu sehen wären. Die
+ * Vorgaben von [linie], [raster] und [gedaempft] sind die klassischen Werte.
  */
 data class ChartColors(
     val new: Color,
@@ -152,17 +127,9 @@ data class ChartColors(
 // Die vier Chart*-Farben stehen in DesignTokens.kt (erzeugt, siehe oben) —
 // samt der Begruendung, warum die Gebraucht-Linie im Stein-Design Sand ist.
 
-// ── Werkbank (dunkel) ───────────────────────────────────────────────────────
-//
-// Das erste DUNKLE Design der App. Material3 unterscheidet dafuer
-// darkColorScheme() von lightColorScheme(): Beide belegen dieselben Rollen,
-// aber die Vorgaben fuer alles, was hier nicht gesetzt ist, unterscheiden sich
-// — und ausserdem melden manche Compose-Bausteine (Textfeld-Rahmen, Rippel)
-// ihre Helligkeit daran. Mit lightColorScheme und dunklen Werten saehe das
-// meiste richtig aus und ein paar Stellen falsch.
-//
-// Die Werte spiegeln themes/werkbank.css; die Markenfarben kommen aus
-// DesignTokens.kt (erzeugt aus shared/design-tokens.json).
+// Werkbank (dunkel): darkColorScheme, weil einige Bausteine (Textfeld-Rahmen,
+// Rippel) ihre Helligkeit daran ablesen. Werte wie themes/werkbank.css; dieselbe
+// Zuordnung nutzen die dunklen Fassungen der übrigen Designs (DunkelTokens.kt).
 private val WerkbankColors = darkColorScheme(
     primary              = WerkbankAzur,
     onPrimary            = Color(0xFF0E1620),
@@ -217,15 +184,8 @@ private val FarbfaecherColors = lightColorScheme(
     error                = Color(0xFFDC2626),
 )
 
-// ── Noppe ──────────────────────────────────────────────────────────────────
-//
-// Der Klemmbaustein als Bauteil: weisse Flaechen, Tintenkante, roter Kopf.
-// Die Werte stehen in DesignTokens.kt und kommen aus shared/design-tokens.json
-// — dieselbe Quelle wie themes/noppe.css im Web.
-//
-// `outline` ist hier ausdruecklich die TINTE und kein helles Grau: In diesem
-// Design ist der Rahmen das tragende Element, nicht der Schatten. Kunststoff
-// wirft keine Wolke, er liegt auf.
+// Noppe: weisse Flächen, Tintenkante, roter Kopf; Werte aus DesignTokens.kt.
+// `outline` ist die TINTE, weil in diesem Design der Rahmen trägt, nicht der Schatten.
 private val NoppeColors = lightColorScheme(
     primary              = NoppeRot,
     onPrimary            = Color.White,
@@ -251,22 +211,9 @@ private val NoppeColors = lightColorScheme(
 )
 
 /**
- * Nunito — die Schrift des Designs "noppe".
- *
- * ── Warum eine eigene Familie ──────────────────────────────────────────────
- *
- * "noppe" lebt von fetten, runden Buchstaben. Die Systemschrift bleibt auch
- * bei 900 kantig, und ein Design, das seine Typografie nicht mitbringt, ist
- * nur eine Farbvariante.
- *
- * Drei statische Schnitte (400/700/900) und nicht der variable Schnitt:
- * Variable Schriften brauchen in Compose FontVariation, und das ist genau die
- * Sorte Abhaengigkeit von einer API-Stufe, die auf minSdk 26 erst im Betrieb
- * auffaellt. Drei Dateien zu 39 kB sind der ehrlichere Preis. Was dazwischen
- * liegt, rechnet Compose selbst.
- *
- * Dieselben Buchstabenformen fuehrt die Webapp unter public/vendor/fonts/ —
- * sonst waere dasselbe Design auf beiden Oberflaechen verschieden.
+ * Nunito, die Schrift des Designs "noppe": Die Systemschrift bleibt auch bei 900
+ * kantig. Drei statische Schnitte statt des variablen, der FontVariation und damit
+ * eine API-Stufe bräuchte; dieselben Formen wie public/vendor/fonts/ im Web.
  */
 private val NunitoFamilie = FontFamily(
     Font(R.font.nunito_regular, FontWeight.Normal),
