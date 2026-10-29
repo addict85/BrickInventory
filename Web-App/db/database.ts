@@ -39,8 +39,10 @@ const POOL_CONFIG = {
   min:                    parseInt(process.env.PG_POOL_MIN    || '2'),
   idleTimeoutMillis:      parseInt(process.env.PG_IDLE_MS     || '30000'),
   connectionTimeoutMillis:parseInt(process.env.PG_CONN_MS     || '30000'),
-  // Pass statement_timeout via PostgreSQL connection options (avoids client.query deprecation)
-  options:                `-c statement_timeout=${parseInt(process.env.PG_STMT_MS || '30000')}`,
+  // Über die Verbindungsoptionen statt je Anfrage: statement_timeout, und die
+  // Zeitzone, in der der Trigger erfassung_tag() den Tag eines Kaufs bildet.
+  options:                `-c statement_timeout=${parseInt(process.env.PG_STMT_MS || '30000')}`
+                        + ` -c brickinventory.zeitzone=${(require('../utils/konfig') as typeof import('../utils/konfig')).erfassungsZeitzone()}`,
   keepAlive:              true,
   keepAliveInitialDelayMillis: 10000,
 };

@@ -122,6 +122,23 @@ BEGIN
 END $$;
 
 --
+-- Name: erfassung_tag(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.erfassung_tag() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  IF (TG_OP = 'INSERT' AND NEW.tag IS NULL)
+     OR (TG_OP = 'UPDATE' AND NEW.created_at IS DISTINCT FROM OLD.created_at
+         AND NEW.tag IS NOT DISTINCT FROM OLD.tag) THEN
+    NEW.tag := (NEW.created_at AT TIME ZONE
+                COALESCE(NULLIF(current_setting('brickinventory.zeitzone', true), ''), 'UTC'))::date;
+  END IF;
+  RETURN NEW;
+END $$;
+
+--
 -- Name: erfassung_waehrung(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -466,6 +483,7 @@ CREATE TABLE public.minifig_acquisitions (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     currency text NOT NULL,
     price_estimated boolean DEFAULT false NOT NULL,
+    tag date,
     CONSTRAINT minifig_acquisitions_currency_iso CHECK ((currency ~ '^[A-Z]{3}$'::text)),
     CONSTRAINT minifig_acquisitions_menge_positiv CHECK ((quantity > 0)),
     CONSTRAINT minifig_acquisitions_unit_price_nicht_negativ CHECK ((unit_price >= (0)::numeric)),
@@ -669,6 +687,7 @@ CREATE TABLE public.part_acquisitions (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     currency text NOT NULL,
     price_estimated boolean DEFAULT false NOT NULL,
+    tag date,
     CONSTRAINT part_acquisitions_currency_iso CHECK ((currency ~ '^[A-Z]{3}$'::text)),
     CONSTRAINT part_acquisitions_menge_positiv CHECK ((quantity > 0)),
     CONSTRAINT part_acquisitions_unit_price_nicht_negativ CHECK ((unit_price >= (0)::numeric)),
@@ -1169,6 +1188,7 @@ CREATE TABLE public.set_acquisitions (
     condition text DEFAULT 'N'::text NOT NULL,
     currency text NOT NULL,
     price_estimated boolean DEFAULT false NOT NULL,
+    tag date,
     CONSTRAINT set_acquisitions_currency_iso CHECK ((currency ~ '^[A-Z]{3}$'::text)),
     CONSTRAINT set_acquisitions_menge_positiv CHECK ((quantity > 0)),
     CONSTRAINT set_acquisitions_purchase_price_nicht_negativ CHECK ((purchase_price >= (0)::numeric)),
@@ -2371,7 +2391,7 @@ CREATE INDEX idx_invite_used_by ON public.account_link_invites USING btree (used
 -- Name: idx_minifig_acq_tag_merkmale; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX idx_minifig_acq_tag_merkmale ON public.minifig_acquisitions USING btree (user_id, fig_number, (((created_at AT TIME ZONE 'UTC'::text))::date), condition, COALESCE(unit_price, ('-1'::integer)::numeric), price_estimated, currency);
+CREATE UNIQUE INDEX idx_minifig_acq_tag_merkmale ON public.minifig_acquisitions USING btree (user_id, fig_number, COALESCE(tag, ((created_at AT TIME ZONE 'UTC'::text))::date), condition, COALESCE(unit_price, ('-1'::integer)::numeric), price_estimated, currency);
 
 --
 -- Name: idx_minifig_price_cache_lookup; Type: INDEX; Schema: public; Owner: -
@@ -2437,7 +2457,7 @@ CREATE INDEX idx_papierkorb_konto ON public.papierkorb USING btree (user_id, gel
 -- Name: idx_part_acq_tag_merkmale; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX idx_part_acq_tag_merkmale ON public.part_acquisitions USING btree (user_id, part_number, color_id, (((created_at AT TIME ZONE 'UTC'::text))::date), condition, COALESCE(unit_price, ('-1'::integer)::numeric), price_estimated, currency);
+CREATE UNIQUE INDEX idx_part_acq_tag_merkmale ON public.part_acquisitions USING btree (user_id, part_number, color_id, COALESCE(tag, ((created_at AT TIME ZONE 'UTC'::text))::date), condition, COALESCE(unit_price, ('-1'::integer)::numeric), price_estimated, currency);
 
 --
 -- Name: idx_part_catalog_category; Type: INDEX; Schema: public; Owner: -
@@ -2653,7 +2673,7 @@ CREATE INDEX idx_rb_sets_year ON public.rb_sets USING btree (year);
 -- Name: idx_set_acq_tag_merkmale; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX idx_set_acq_tag_merkmale ON public.set_acquisitions USING btree (user_id, set_number, (((created_at AT TIME ZONE 'UTC'::text))::date), condition, COALESCE(purchase_price, ('-1'::integer)::numeric), price_estimated, currency);
+CREATE UNIQUE INDEX idx_set_acq_tag_merkmale ON public.set_acquisitions USING btree (user_id, set_number, COALESCE(tag, ((created_at AT TIME ZONE 'UTC'::text))::date), condition, COALESCE(purchase_price, ('-1'::integer)::numeric), price_estimated, currency);
 
 --
 -- Name: idx_set_catalog_bild_stamm; Type: INDEX; Schema: public; Owner: -
@@ -2734,16 +2754,34 @@ CREATE UNIQUE INDEX storage_locations_konto_name ON public.storage_locations USI
 CREATE UNIQUE INDEX users_email_lower ON public.users USING btree (lower(email));
 
 --
+-- Name: minifig_acquisitions minifig_acquisitions_tag; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER minifig_acquisitions_tag BEFORE INSERT OR UPDATE ON public.minifig_acquisitions FOR EACH ROW EXECUTE FUNCTION public.erfassung_tag();
+
+--
 -- Name: minifig_acquisitions minifig_acquisitions_waehrung; Type: TRIGGER; Schema: public; Owner: -
 --
 
 CREATE TRIGGER minifig_acquisitions_waehrung BEFORE INSERT OR UPDATE ON public.minifig_acquisitions FOR EACH ROW EXECUTE FUNCTION public.erfassung_waehrung();
 
 --
+-- Name: part_acquisitions part_acquisitions_tag; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER part_acquisitions_tag BEFORE INSERT OR UPDATE ON public.part_acquisitions FOR EACH ROW EXECUTE FUNCTION public.erfassung_tag();
+
+--
 -- Name: part_acquisitions part_acquisitions_waehrung; Type: TRIGGER; Schema: public; Owner: -
 --
 
 CREATE TRIGGER part_acquisitions_waehrung BEFORE INSERT OR UPDATE ON public.part_acquisitions FOR EACH ROW EXECUTE FUNCTION public.erfassung_waehrung();
+
+--
+-- Name: set_acquisitions set_acquisitions_tag; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER set_acquisitions_tag BEFORE INSERT OR UPDATE ON public.set_acquisitions FOR EACH ROW EXECUTE FUNCTION public.erfassung_tag();
 
 --
 -- Name: set_acquisitions set_acquisitions_waehrung; Type: TRIGGER; Schema: public; Owner: -
@@ -3226,6 +3264,7 @@ INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0066-auftraege.
 INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0067-bild-stamm.sql', '2026-10-29 21:59:16.007371+00');
 INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0068-praefix-indizes.sql', '2026-10-29 21:59:58.856414+00');
 INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0069-konten-pruefen.sql', '2026-10-29 22:00:41.797626+00');
+INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0070-erfassungstag.sql', '2026-10-29 22:20:08.74518+00');
 
 --
 -- PostgreSQL database dump complete

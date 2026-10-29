@@ -230,6 +230,7 @@ CREATE TABLE minifig_acquisitions (
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   currency text NOT NULL,
   price_estimated boolean NOT NULL DEFAULT false,
+  tag date,
   CONSTRAINT minifig_acquisitions_currency_iso CHECK ((currency ~ '^[A-Z]{3}$'::text)),
   CONSTRAINT minifig_acquisitions_menge_positiv CHECK ((quantity > 0)),
   CONSTRAINT minifig_acquisitions_pkey PRIMARY KEY (id),
@@ -237,7 +238,8 @@ CREATE TABLE minifig_acquisitions (
   CONSTRAINT minifig_acquisitions_user_fk FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
   CONSTRAINT minifig_acquisitions_zustand CHECK ((condition = ANY (ARRAY['N'::text, 'U'::text])))
 );
-CREATE UNIQUE INDEX idx_minifig_acq_tag_merkmale ON minifig_acquisitions USING btree (user_id, fig_number, (((created_at AT TIME ZONE 'UTC'::text))::date), condition, COALESCE(unit_price, ('-1'::integer)::numeric), price_estimated, currency);
+CREATE UNIQUE INDEX idx_minifig_acq_tag_merkmale ON minifig_acquisitions USING btree (user_id, fig_number, COALESCE(tag, ((created_at AT TIME ZONE 'UTC'::text))::date), condition, COALESCE(unit_price, ('-1'::integer)::numeric), price_estimated, currency);
+CREATE TRIGGER minifig_acquisitions_tag BEFORE INSERT OR UPDATE ON minifig_acquisitions FOR EACH ROW EXECUTE FUNCTION erfassung_tag();
 CREATE TRIGGER minifig_acquisitions_waehrung BEFORE INSERT OR UPDATE ON minifig_acquisitions FOR EACH ROW EXECUTE FUNCTION erfassung_waehrung();
 
 CREATE TABLE minifig_parts_cache (
@@ -340,6 +342,7 @@ CREATE TABLE part_acquisitions (
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   currency text NOT NULL,
   price_estimated boolean NOT NULL DEFAULT false,
+  tag date,
   CONSTRAINT part_acquisitions_currency_iso CHECK ((currency ~ '^[A-Z]{3}$'::text)),
   CONSTRAINT part_acquisitions_menge_positiv CHECK ((quantity > 0)),
   CONSTRAINT part_acquisitions_pkey PRIMARY KEY (id),
@@ -347,7 +350,8 @@ CREATE TABLE part_acquisitions (
   CONSTRAINT part_acquisitions_user_fk FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
   CONSTRAINT part_acquisitions_zustand CHECK ((condition = ANY (ARRAY['N'::text, 'U'::text])))
 );
-CREATE UNIQUE INDEX idx_part_acq_tag_merkmale ON part_acquisitions USING btree (user_id, part_number, color_id, (((created_at AT TIME ZONE 'UTC'::text))::date), condition, COALESCE(unit_price, ('-1'::integer)::numeric), price_estimated, currency);
+CREATE UNIQUE INDEX idx_part_acq_tag_merkmale ON part_acquisitions USING btree (user_id, part_number, color_id, COALESCE(tag, ((created_at AT TIME ZONE 'UTC'::text))::date), condition, COALESCE(unit_price, ('-1'::integer)::numeric), price_estimated, currency);
+CREATE TRIGGER part_acquisitions_tag BEFORE INSERT OR UPDATE ON part_acquisitions FOR EACH ROW EXECUTE FUNCTION erfassung_tag();
 CREATE TRIGGER part_acquisitions_waehrung BEFORE INSERT OR UPDATE ON part_acquisitions FOR EACH ROW EXECUTE FUNCTION erfassung_waehrung();
 
 CREATE TABLE part_catalog (
@@ -675,6 +679,7 @@ CREATE TABLE set_acquisitions (
   condition text NOT NULL DEFAULT 'N'::text,
   currency text NOT NULL,
   price_estimated boolean NOT NULL DEFAULT false,
+  tag date,
   CONSTRAINT set_acquisitions_bestand_fkey FOREIGN KEY (user_id, set_number) REFERENCES sets(user_id, set_number) DEFERRABLE INITIALLY DEFERRED,
   CONSTRAINT set_acquisitions_currency_iso CHECK ((currency ~ '^[A-Z]{3}$'::text)),
   CONSTRAINT set_acquisitions_menge_positiv CHECK ((quantity > 0)),
@@ -683,7 +688,8 @@ CREATE TABLE set_acquisitions (
   CONSTRAINT set_acquisitions_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
   CONSTRAINT set_acquisitions_zustand CHECK ((condition = ANY (ARRAY['N'::text, 'U'::text])))
 );
-CREATE UNIQUE INDEX idx_set_acq_tag_merkmale ON set_acquisitions USING btree (user_id, set_number, (((created_at AT TIME ZONE 'UTC'::text))::date), condition, COALESCE(purchase_price, ('-1'::integer)::numeric), price_estimated, currency);
+CREATE UNIQUE INDEX idx_set_acq_tag_merkmale ON set_acquisitions USING btree (user_id, set_number, COALESCE(tag, ((created_at AT TIME ZONE 'UTC'::text))::date), condition, COALESCE(purchase_price, ('-1'::integer)::numeric), price_estimated, currency);
+CREATE TRIGGER set_acquisitions_tag BEFORE INSERT OR UPDATE ON set_acquisitions FOR EACH ROW EXECUTE FUNCTION erfassung_tag();
 CREATE TRIGGER set_acquisitions_waehrung BEFORE INSERT OR UPDATE ON set_acquisitions FOR EACH ROW EXECUTE FUNCTION erfassung_waehrung();
 CREATE TRIGGER trg_bump_parts_version_del AFTER DELETE ON set_acquisitions REFERENCING OLD TABLE AS alt FOR EACH STATEMENT EXECUTE FUNCTION bump_parts_version_del();
 CREATE TRIGGER trg_bump_parts_version_ins AFTER INSERT ON set_acquisitions REFERENCING NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION bump_parts_version_ins();
@@ -958,6 +964,20 @@ BEGIN
   ) x WHERE user_id IS NOT NULL AND user_id IN (SELECT id FROM users)
   ON CONFLICT (user_id) DO UPDATE SET v = parts_version_user.v + 1;
   RETURN NULL;
+END $function$;
+
+CREATE OR REPLACE FUNCTION erfassung_tag()
+ RETURNS trigger
+ LANGUAGE plpgsql
+AS $function$
+BEGIN
+  IF (TG_OP = 'INSERT' AND NEW.tag IS NULL)
+     OR (TG_OP = 'UPDATE' AND NEW.created_at IS DISTINCT FROM OLD.created_at
+         AND NEW.tag IS NOT DISTINCT FROM OLD.tag) THEN
+    NEW.tag := (NEW.created_at AT TIME ZONE
+                COALESCE(NULLIF(current_setting('brickinventory.zeitzone', true), ''), 'UTC'))::date;
+  END IF;
+  RETURN NEW;
 END $function$;
 
 CREATE OR REPLACE FUNCTION erfassung_waehrung()

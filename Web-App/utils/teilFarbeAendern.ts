@@ -3,6 +3,7 @@ import type { DbSchnittstelle } from '../db/database';
 import { lookupPart } from '../clients/rebrickable';
 import { meldeUndWeiter } from './httpError';
 import { merkeTeilFarbe, katalogTeil } from './katalogPflege';
+import { erfassungsTagSql } from './acquisitions';
 
 /**
  * Die Farbe eines manuell erfassten Teils NACHTRÄGLICH ändern.
@@ -116,8 +117,7 @@ export async function aendereTeilFarbe(
          FROM part_acquisitions a
         WHERE a.user_id = $1 AND a.part_number = $2 AND a.color_id = $3
           AND z.user_id = $1 AND z.part_number = $2 AND z.color_id = $4
-          AND (z.created_at AT TIME ZONE 'UTC')::date
-            = (a.created_at AT TIME ZONE 'UTC')::date
+          AND ${erfassungsTagSql('z')} = ${erfassungsTagSql('a')}
           AND z.condition = a.condition AND z.price_estimated = a.price_estimated
           AND z.currency = a.currency AND COALESCE(z.unit_price, -1) = COALESCE(a.unit_price, -1)`,
       [uid, partNumber, alt, neu]);
@@ -128,8 +128,7 @@ export async function aendereTeilFarbe(
         WHERE a.user_id = $1 AND a.part_number = $2 AND a.color_id = $3
           AND EXISTS (SELECT 1 FROM part_acquisitions z
                        WHERE z.user_id = $1 AND z.part_number = $2 AND z.color_id = $4
-                         AND (z.created_at AT TIME ZONE 'UTC')::date
-                           = (a.created_at AT TIME ZONE 'UTC')::date
+                         AND ${erfassungsTagSql('z')} = ${erfassungsTagSql('a')}
                          AND z.condition = a.condition AND z.price_estimated = a.price_estimated
                          AND z.currency = a.currency AND COALESCE(z.unit_price, -1) = COALESCE(a.unit_price, -1))`,
       [uid, partNumber, alt, neu]);

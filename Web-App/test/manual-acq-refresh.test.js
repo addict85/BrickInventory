@@ -95,10 +95,10 @@ test('die Tagesregel steht an genau einer Stelle', () => {
   assert.match(strip(acq), /WHERE[\s\S]{0,400}AND condition = \$/,
     'Der Zustand MUSS im Schlüssel stehen — sonst nimmt ein neuer Kauf einen ' +
     'gebrauchten vom selben Tag mit, samt Mischpreis aus zwei Käufen');
-  // Verglichen wird der TAG in UTC — derselbe Ausdruck wie im Unique-Index,
-  // sonst greift ON CONFLICT nicht.
-  assert.match(acq, /"\(\(created_at AT TIME ZONE 'UTC'\)::date\)", 'condition'/,
-    'Verglichen wird der TAG (in UTC), nicht der Zeitstempel');
+  // Verglichen wird der TAG — derselbe Ausdruck wie im Unique-Index
+  // (erfassungsTagSql, Migration 0070), sonst greift ON CONFLICT nicht.
+  assert.match(acq, /`\(\$\{erfassungsTagSql\(\)\}\)`, 'condition'/,
+    'Verglichen wird der TAG, nicht der Zeitstempel');
   // Seit Migration 0047 gehören Preis, Herkunft und Währung zum Schlüssel: Zwei
   // verschiedene Käufe eines Tages bleiben zwei Zeilen statt eines Mischpreises.
   assert.doesNotMatch(strip(acq), /oldPrice \* oldQty/,
@@ -158,8 +158,8 @@ test('der Anlege-Pfad erzeugt keinen Zustand, den der Bearbeiten-Pfad ablehnt', 
 
   // Und die Prüfung selbst geht auf den TAG, nicht auf den Zeitstempel.
   assert.match(read('utils/acquisitions.ts'),
-    /AND id <> \$\$\{n \+ 2\} AND \(created_at AT TIME ZONE 'UTC'\)::date = \$\$\{n \+ 3\}::date/,
-    'Verglichen wird der Tag (in UTC, damit der Index greifen kann)');
+    /AND id <> \$\$\{n \+ 2\} AND \$\{erfassungsTagSql\(\)\} = \$\$\{n \+ 3\}::date/,
+    'Verglichen wird der Tag (derselbe Ausdruck wie im Index)');
 });
 
 test('der Altbestand wird einmalig auf eine Zeile je Tag zusammengefasst', () => {

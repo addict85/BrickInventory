@@ -6,7 +6,7 @@
 import express from 'express';
 import * as db from '../../db/database';
 import { writableIds } from '../../utils/household';
-import { findSameDayAcquisition, acquisitionTotals } from '../../utils/acquisitions';
+import { findSameDayAcquisition, acquisitionTotals, erfassungsTagSql } from '../../utils/acquisitions';
 import { handleRouteError, fehlertext, pfadParam } from '../../utils/httpError';
 import { withInventoryLock, bestandsSchluessel } from '../../utils/txLock';
 import { requireToken } from './middleware';
@@ -246,7 +246,7 @@ async function withSetAggregate(uid: number, cfgTable: string, keys: any[], payl
         }
 
         if (_newDate) {
-          await tx.run(`UPDATE ${cfg.table} SET created_at=$1::date + interval '12 hours' WHERE id=$2`,
+          await tx.run(`UPDATE ${cfg.table} SET created_at=$1::date + interval '12 hours', tag=$1::date WHERE id=$2`,
             [_newDate, id]);
           // Nach einer Datumsänderung kann eine ANDERE Erfassung die neueste
           // sein — die Spiegelung in die Elternzeile muss deshalb neu bestimmt
@@ -348,7 +348,7 @@ registerAcquisitionRoutes({
   kind:      'set',
   priceCol:  'purchase_price',
   keyVals:   req => [req.params.setNumber],
-  existsSql: 'SELECT id, user_id, condition, purchase_price AS preis, price_estimated, currency, ((created_at AT TIME ZONE \'UTC\')::date)::text AS tag FROM set_acquisitions WHERE id=$1 AND user_id = ANY($2) AND set_number=$3',
+  existsSql: `SELECT id, user_id, condition, purchase_price AS preis, price_estimated, currency, (${erfassungsTagSql()})::text AS tag FROM set_acquisitions WHERE id=$1 AND user_id = ANY($2) AND set_number=$3`,
   existsWithKeys: true,
   notFound:  'erfassung_nicht_gefunden',
   // Marktpreis nachfüllen, wenn das Feld geleert wird (Marcos Fund:
@@ -391,7 +391,7 @@ registerAcquisitionRoutes({
   kind:      'part',
   priceCol:  'unit_price',
   keyVals:   req => [req.params.partNumber, parseInt(req.params.colorId) || 0],
-  existsSql: 'SELECT id, user_id, condition, unit_price AS preis, price_estimated, currency, ((created_at AT TIME ZONE \'UTC\')::date)::text AS tag FROM part_acquisitions WHERE id=$1 AND user_id = ANY($2)',
+  existsSql: `SELECT id, user_id, condition, unit_price AS preis, price_estimated, currency, (${erfassungsTagSql()})::text AS tag FROM part_acquisitions WHERE id=$1 AND user_id = ANY($2)`,
   existsWithKeys: false,
   notFound:  'nicht_gefunden',
   // cond MITGEBEN
@@ -432,7 +432,7 @@ registerAcquisitionRoutes({
   kind:      'fig',
   priceCol:  'unit_price',
   keyVals:   req => [req.params.figNumber],
-  existsSql: 'SELECT id, user_id, condition, unit_price AS preis, price_estimated, currency, ((created_at AT TIME ZONE \'UTC\')::date)::text AS tag FROM minifig_acquisitions WHERE id=$1 AND user_id = ANY($2)',
+  existsSql: `SELECT id, user_id, condition, unit_price AS preis, price_estimated, currency, (${erfassungsTagSql()})::text AS tag FROM minifig_acquisitions WHERE id=$1 AND user_id = ANY($2)`,
   existsWithKeys: false,
   notFound:  'nicht_gefunden',
   // cond mitgeben — siehe die Begründung bei den Teilen.

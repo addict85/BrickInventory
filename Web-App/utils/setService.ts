@@ -1,7 +1,7 @@
 import * as db from '../db/database';
 import { meldeUndWeiter, fehlertext, logAndContinue } from './httpError';
 import { scopeIds, writableIds } from './household';
-import { recordAcquisitionForDay } from './acquisitions';
+import { recordAcquisitionForDay, erfassungsTagSql } from './acquisitions';
 import { withInventoryLock } from './txLock';
 import { downloadSetImage } from './setImages';
 import { getCurrentMarketPrice } from './marketPrice';
@@ -499,7 +499,7 @@ const SETS_CSV_SQL = `
          a.purchase_price AS purchase_price,
          COALESCE(a.condition, 'N') AS condition,
          CASE WHEN a.id IS NULL THEN ''
-              ELSE TO_CHAR(a.created_at AT TIME ZONE 'UTC','YYYY-MM-DD') END AS acquired_at
+              ELSE TO_CHAR(${erfassungsTagSql('a')}, 'YYYY-MM-DD') END AS acquired_at
     FROM sets s
     LEFT JOIN set_acquisitions a
            ON a.user_id = s.user_id AND a.set_number = s.set_number

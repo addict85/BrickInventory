@@ -5,6 +5,7 @@
  */
 import * as db from '../db/database';
 import { toCsv } from './csvExport';
+import { erfassungsTagSql } from './acquisitions';
 
 // Shared logic to build the Teile CSV export content (manuell erfasst only).
 // Used by both the standalone CSV download and the combined ZIP export in settings.js.
@@ -22,7 +23,7 @@ const PARTS_CSV_SQL = `
          a.unit_price,
          COALESCE(a.condition, 'N') AS condition,
          CASE WHEN a.id IS NULL THEN ''
-              ELSE TO_CHAR(a.created_at AT TIME ZONE 'UTC','YYYY-MM-DD') END AS acquired_at
+              ELSE TO_CHAR(${erfassungsTagSql('a')}, 'YYYY-MM-DD') END AS acquired_at
     FROM parts p
     LEFT JOIN part_acquisitions a
            ON a.user_id = p.user_id
@@ -73,7 +74,7 @@ const FIGS_CSV_SQL = `
          a.unit_price,
          COALESCE(a.condition, 'N') AS condition,
          CASE WHEN a.id IS NULL THEN ''
-              ELSE TO_CHAR(a.created_at AT TIME ZONE 'UTC','YYYY-MM-DD') END AS acquired_at
+              ELSE TO_CHAR(${erfassungsTagSql('a')}, 'YYYY-MM-DD') END AS acquired_at
     FROM minifigs f
     LEFT JOIN bl_zuordnung z ON z.art = 'fig' AND z.rb_id = f.fig_number
     LEFT JOIN minifig_acquisitions a
