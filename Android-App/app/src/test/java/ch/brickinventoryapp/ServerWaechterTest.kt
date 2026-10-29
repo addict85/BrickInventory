@@ -38,6 +38,8 @@ import java.util.concurrent.atomic.AtomicInteger
  *      nicht ab“ und „der Token geht nur an den Server, der ihn ausgab“
  *   F  den Pfad des Servers beim Umschreiben weggelassen → rot „der Platzhalter
  *      wird auf den Server samt Pfad umgeschrieben“
+ *   G  eigeneKoepfe() nicht aufgerufen → rot „der eigene Server bekommt Sprache
+ *      und Fassung“
  */
 class ServerWaechterTest {
 
@@ -58,7 +60,6 @@ class ServerWaechterTest {
         override fun tokenHerkunft() = herkunft
         override fun klartextHosts() = emptySet<String>()
         override fun netz() = "heim"
-        override fun sprache() = "de"
     }
 
     @Before
@@ -87,7 +88,8 @@ class ServerWaechterTest {
     private fun basis() = server.url("/").toString().trimEnd('/')
 
     private fun client(lage: Zugangslage, api: Boolean = true) = OkHttpClient.Builder()
-        .addInterceptor(ServerWaechter(lage, api, BeweisSpeicher(), sitzungAbgelaufen = { abgelaufen.incrementAndGet() }))
+        .addInterceptor(ServerWaechter(lage, api, BeweisSpeicher(), sitzungAbgelaufen = { abgelaufen.incrementAndGet() },
+            eigeneKoepfe = { _, ziel -> ziel.header("Accept-Language", "de") }))
         .readTimeout(2, TimeUnit.SECONDS).build()
 
     private fun hole(c: OkHttpClient, url: String): Int =
@@ -152,6 +154,15 @@ class ServerWaechterTest {
         client(lage).newCall(Request.Builder().url(basis() + "/api/v1/csv")
             .header("Authorization", "Bearer $TOKEN").build()).execute().close()
         assertNull(anfragenAn("/api/v1/csv").single().second)
+    }
+
+    @Test
+    fun `der eigene Server bekommt Sprache und Fassung`() {
+        // Ohne Token, damit kein Serverbeweis vorausgeht.
+        hole(client(Lage(basis(), tokens = ArrayDeque(listOf(""))), api = false), basis() + "/api/v1/stats")
+        val r = server.takeRequest()
+        assertEquals("de", r.getHeader("Accept-Language"))
+        assertEquals(ch.brickinventoryapp.util.APP_API_VERSION.toString(), r.getHeader("X-App-Api"))
     }
 
     @Test

@@ -30,7 +30,6 @@ interface Zugangslage {
     fun klartextHosts(): Set<String>
     /** Kennung des aktiven Netzes; ein WLAN-Wechsel ergibt eine neue. */
     fun netz(): String
-    fun sprache(): String
 }
 
 /** Platzhalter, auf den Retrofit gebaut ist; der Wächter schreibt ihn auf den Server um. */
@@ -50,6 +49,8 @@ class ServerWaechter(
     private val beweise: BeweisSpeicher,
     private val sitzungAbgelaufen: () -> Unit,
     private val versionsMeldung: ((VersionsHinweis) -> Unit)? = null,
+    /** Weitere Köpfe nur für den eigenen Server (die Anzeigesprache, ServerClient.kt). */
+    private val eigeneKoepfe: (original: Request, ziel: Request.Builder) -> Unit = { _, _ -> },
 ) : Interceptor {
 
     private val versionGemeldet = AtomicBoolean(false)
@@ -84,7 +85,7 @@ class ServerWaechter(
         }
         if (unserServer) {
             reqBuilder.header("X-App-Api", APP_API_VERSION.toString())
-            if (original.header("Accept-Language") == null) reqBuilder.header("Accept-Language", lage.sprache())
+            eigeneKoepfe(original, reqBuilder)
         }
 
         val ausgehend = reqBuilder.build()

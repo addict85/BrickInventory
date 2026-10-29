@@ -32,9 +32,6 @@ private class GeraeteZugang(
         (ctx.getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as? android.net.ConnectivityManager)
             ?.activeNetwork?.toString()
     }.getOrNull() ?: "?"
-    // Aus den Ressourcen, damit der Server in der Sprache antwortet, die die Oberfläche zeigt.
-    override fun sprache(): String = ch.brickinventoryapp.util.LanguageManager
-        .localizedContext(ctx).getString(ch.brickinventoryapp.R.string.lang_code)
 }
 
 private fun vertrauen(ks: java.security.KeyStore?): javax.net.ssl.X509ExtendedTrustManager {
@@ -82,7 +79,13 @@ internal fun buildInterceptorClient(
             }
         }
         .addInterceptor(ServerWaechter(GeraeteZugang(prefs, ctx), isApiClient, beweise,
-            sitzungAbgelaufen = { sessionExpired.notifyExpired() }, versionsMeldung = versionsMeldung))
+            sitzungAbgelaufen = { sessionExpired.notifyExpired() }, versionsMeldung = versionsMeldung,
+            // Die Sprache aus den Ressourcen: Der Server antwortet in der, die die Oberfläche zeigt.
+            eigeneKoepfe = { original, ziel ->
+                if (original.header("Accept-Language") == null) ziel.header("Accept-Language",
+                    ch.brickinventoryapp.util.LanguageManager.localizedContext(ctx)
+                        .getString(ch.brickinventoryapp.R.string.lang_code))
+            }))
         .apply {
             val tm = serverVertrauen(prefs)
             val tls = javax.net.ssl.SSLContext.getInstance("TLS").apply { init(null, arrayOf(tm), null) }
