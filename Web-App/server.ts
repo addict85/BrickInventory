@@ -91,6 +91,7 @@ import cluster from 'cluster';
 import { starteHintergrundlaeufe } from './startup/backgroundJobs';
 import { bereiteDatenbankVor } from './startup/datenbank';
 import { verdrahte } from './jobs/verdrahtung';
+import { stoppeAuftragsWorker } from './jobs/auftraegeStarten';
 
 // In JEDEM Prozess: Erfassungen und Einstellungen stossen ihre Nacharbeit
 // auch in den Web-Workern an, nicht nur im Primary.
@@ -773,6 +774,9 @@ bereiteDatenbankVor().then(async () => {
       if (beendet) console.log(`[shutdown] ${beendet} offene Ereignis-Ströme beendet`);
       await new Promise<void>(resolve => httpServer.close(() => resolve()));
       console.log('[shutdown] keine offenen HTTP-Verbindungen mehr');
+      // Laufende Aufträge halten an einer sicheren Stelle an und gehen zurück
+      // in die Tabelle; der nächste Start setzt sie fort.
+      await stoppeAuftragsWorker().catch(logAndContinue('shutdown:auftraege'));
       await (require('./utils/pgNotify') as typeof import('./utils/pgNotify')).close().catch(() => {});
       // Die Sperr-Verbindung des primaeren Workers ZUERST zurueckgeben.
       // Ausführlich: docs/begruendungen/server.ts.md#electprimaryworker

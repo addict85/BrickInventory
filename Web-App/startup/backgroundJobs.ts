@@ -19,6 +19,7 @@ import { raeumePapierkorbAuf } from '../utils/papierkorb';
 import { logAndContinue } from '../utils/httpError';
 import { startImgCacheCleanup } from '../routes/imgProxy';
 import { startPdfJobCleanup } from '../routes/api_v1/pdf';
+import { starteAuftragsWorker } from '../jobs/auftraegeStarten';
 
 /**
  * Was nach dem Start im Hintergrund anläuft — ausschliesslich im Primär-Worker.
@@ -30,6 +31,10 @@ export async function starteHintergrundlaeufe(): Promise<void> {
   // → data/images/{parts,minifigs}/, data/instructions/shared/ →
   // data/instructions/). Beide sind entfernt, nachdem der Umzug auf der …
   // Ausführlich: docs/begruendungen/startup/backgroundJobs.ts.md#abschnitt
+
+  // Die Auftragstabelle (Nacharbeit, Bilder, PDF, CSV-Import); was vor einem
+  // Neustart offen war, läuft hier weiter.
+  starteAuftragsWorker();
 
   // Abgelaufene API-Tokens aufräumen.
   //

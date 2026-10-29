@@ -4,7 +4,8 @@
  */
 import express from 'express';
 import * as db from '../../db/database';
-import { handleRouteError, meldeUndWeiter, pfadParam } from '../../utils/httpError';
+import { handleRouteError, meldeUndWeiter, logAndContinue, pfadParam } from '../../utils/httpError';
+import { stelleAuftragEin } from '../../utils/auftraege';
 import { requireToken } from './middleware';
 import { resolveImageLocal, proxyImageUrl } from '../../utils/images';
 import { getSetting, getGlobalSetting } from '../../utils/settings';
@@ -656,11 +657,9 @@ router.get('/sets/:setNumber/parts-list', requireToken, async (req: AuthedReques
 
     res.json({ success: true, parts: finalParts, source });
 
-    // ── Background: download images for next request ───────────────────────
-    setImmediate(async () => {
-      await require('../../jobs/partsCatalogEnrich').downloadSetImages(setNum).catch(() => {});
-      await require('../../jobs/partsCatalogEnrich').enrichSetMinifigs(setNum).catch(() => {});
-    });
+    // Die Bilder für die nächste Anfrage holt ein Auftrag im Primär-Worker.
+    await stelleAuftragEin('bilder', { set_number: setNum }, { schluessel: `bilder:${mitVersion(setNum)}`, maxVersuche: 3 })
+      .catch(logAndContinue(`sets:bilder einstellen ${setNum}`));
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 

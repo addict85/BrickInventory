@@ -25,6 +25,18 @@ export async function merkeBlNummer(art: BlArt, rbId: string, blId: string) {
     [art, rbId, blId]);
 }
 
+/** merkeBlNummer() für viele Nummern in einer Anweisung (Teile-Import eines Sets). */
+export async function merkeBlNummern(art: BlArt, paare: { rbId: string; blId: string }[],
+                                     dbh: { run: (sql: string, p?: unknown[]) => Promise<unknown> } = db) {
+  const eindeutig = [...new Map(paare.filter(p => p.rbId && p.blId).map(p => [p.rbId, p])).values()];
+  if (!eindeutig.length) return;
+  await dbh.run(
+    `INSERT INTO bl_zuordnung (art, rb_id, bl_id)
+     SELECT $1, r, NULLIF(b, r) FROM unnest($2::text[], $3::text[]) AS x(r, b)
+     ON CONFLICT (art, rb_id) DO UPDATE SET bl_id = EXCLUDED.bl_id, fetched_at = NOW()`,
+    [art, eindeutig.map(p => p.rbId), eindeutig.map(p => p.blId)]);
+}
+
 /**
  * Bewusst `DO NOTHING` statt `DO UPDATE`: Diese Notiz darf eine echte, schon
  * gefundene Zuordnung nicht überschreiben. Sie verhindert nur, dass dasselbe

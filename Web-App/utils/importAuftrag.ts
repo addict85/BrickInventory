@@ -150,6 +150,20 @@ async function jobUpdate(userId: number, fields: Record<string, unknown>, lauf?:
 }
 
 
+/**
+ * Ein CSV-Lauf nimmt seine Zeile wieder auf — nach einem Neustart auch dann,
+ * wenn jobGet() sie inzwischen als verwaist markiert hat. Abgebrochen oder von
+ * einem neuen Lauf abgelöst, bleibt sie, wie sie ist (dann: null).
+ */
+async function setzeImportFort(userId: number, lauf: string):
+    Promise<{ results: ImportErgebnis[]; current: string | null } | null> {
+  const z = await db.get(
+    `UPDATE csv_import_jobs SET status = 'running', error = NULL, updated_at = NOW()
+      WHERE user_id = $1 AND run_id = $2 AND status IN ('running', 'error')
+      RETURNING results, current`, [userId, lauf]);
+  return z ? { results: Array.isArray(z.results) ? z.results : [], current: z.current ?? null } : null;
+}
+
 // ── Ein Import, der NICHT der CSV-Import ist, meldet sich hier an ───────────
 //
 // Der Wanted-Listen-Import ist der erste davon. Er braucht drei Dinge, und
@@ -243,4 +257,5 @@ export async function istAbgebrochen(userId: number): Promise<boolean> {
   return !stand || stand.status !== 'running';
 }
 
-export { csvImportBus, buildJobStatus, emitJobStatus, jobGet, jobSet, jobUpdate };
+export { csvImportBus, buildJobStatus, emitJobStatus, jobGet, jobSet, jobUpdate, setzeImportFort };
+export type { ImportErgebnis };

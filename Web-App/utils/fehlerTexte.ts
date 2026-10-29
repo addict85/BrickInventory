@@ -62,6 +62,8 @@ export const FEHLER = {
                                  en: 'This is only possible from a signed-in browser session.' },
   import_unterbrochen:         { de: 'Der Import wurde unterbrochen — der Server wurde neu gestartet oder der Import hing. Bitte erneut starten.',
                                  en: 'The import was interrupted — the server restarted or the import stalled. Please start it again.' },
+  import_zeile_unterbrochen:   { de: 'Der Server wurde während dieses Sets neu gestartet — bitte die Menge prüfen.',
+                                 en: 'The server restarted while importing this set — please check the quantity.' },
   aktuelles_passwort_falsch:   { de: 'Aktuelles Passwort falsch', en: 'Current password is wrong' },
   alle_felder_erforderlich:    { de: 'Alle Felder erforderlich', en: 'All fields are required' },
   passwort_reset_nicht_eingerichtet: {

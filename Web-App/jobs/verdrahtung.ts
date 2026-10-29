@@ -9,8 +9,6 @@ import { meldeUndWeiter } from '../utils/httpError';
 
 function verdrahte(): void {
   verdrahteNacharbeit({
-    zieheNach: (sn, uid) => require('../jobs/nachErfassung').zieheNach(sn, uid),
-    zieheNachNeuanlage: (sn, uid) => require('../jobs/nachErfassung').zieheNachNeuanlage(sn, uid),
     preisJobAnstossen: () => {
       require('../jobs/priceJob').triggerNow().catch((e: unknown) => meldeUndWeiter('einstellungen:preis-job-anstossen', e));
     },

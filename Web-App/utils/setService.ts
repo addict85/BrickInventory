@@ -1,11 +1,10 @@
 import * as db from '../db/database';
-import { meldeUndWeiter, fehlertext } from './httpError';
+import { meldeUndWeiter, fehlertext, logAndContinue } from './httpError';
 import { scopeIds, writableIds } from './household';
 import { recordAcquisitionForDay } from './acquisitions';
 import { withInventoryLock } from './txLock';
 import { downloadSetImage } from './setImages';
 import { getCurrentMarketPrice } from './marketPrice';
-import { downloadSetInstructions } from './instructions';
 import { zustandFuerPreis, getSetting } from './settings';
 import { deleteSetRows } from '../utils/handlers/sets';
 import { legeInPapierkorb } from './papierkorb';
@@ -14,7 +13,7 @@ import { getSetInfo } from '../clients/rebrickable';
 import * as brickset from '../clients/brickset';
 import { getItemImageUrl } from '../clients/bricklink';
 import { generateThumb } from './thumbs';
-import { nacharbeit } from './nacharbeit';
+import { stelleAuftragEin } from './auftraege';
 import { normalisiereSetNummer, moeglicheSetNummer } from './setNummer';
 import { fehlerWerfen } from './fehlerTexte';
 import { setzeLagerort, ortFuerNeuerfassung } from './lagerort';
@@ -152,12 +151,18 @@ async function adjustAcquisitionsToQuantity(userId: number, setNumber: string, n
   // mehr — die verbleibenden Erfassungen SIND der Zustand.
 }
 
-// CSV-Import: Das Datum geht in DIESELBE Erfassung, die angelegt wird. Hier
-// stand ein nachträgliches UPDATE auf „die Erfassung mit der höchsten id“ —
-// legte die Tagesregel keine neue an, wurde ein fremder Kauf umdatiert.
+/**
+ * Wie ein Aufruf erfasst. `massenimport` (CSV-Import): kein Brickset-Abruf und
+ * keine Nacharbeit je Set — die Importschleife stellt sie selbst ein und schont
+ * so Pool und Tageskontingent. Das gilt nur für diesen Aufruf, nie für andere.
+ */
+export interface ErfassenOptionen { massenimport?: boolean }
+
+// CSV-Import: Das Datum geht in DIESELBE Erfassung, die angelegt wird — kein
+// nachträgliches UPDATE, das einen fremden Kauf desselben Tages umdatiert.
 async function addSetWithDate(setNumber: string, quantity: number, userId: number, purchasePrice: number | null,
                               condition: string | null, acquiredAt: string | null) {
-  return addSet(setNumber, quantity, userId, null, purchasePrice, condition, null, acquiredAt);
+  return addSet(setNumber, quantity, userId, null, purchasePrice, condition, null, acquiredAt, { massenimport: true });
 }
 
 /**
@@ -167,22 +172,34 @@ async function addSetWithDate(setNumber: string, quantity: number, userId: numbe
 async function addSet(setNumber: string, quantity: number, userId: number,
                       sendProgress: ((n: { step: string; set: string }) => void) | null,
                       purchasePrice: number | null, condition: string | null = null,
-                      storage: string | null = null, erfasstAm: string | null = null) {
-  // Siehe addManualPart in routes/parts.ts: ohne mitgegebenen Ort gilt
-  // Marcos Stern. Betrifft hier vor allem den CSV-Import und den
-  // Wanted-Listen-Import, die beide kein Lagerortfeld haben.
+                      storage: string | null = null, erfasstAm: string | null = null,
+                      optionen: ErfassenOptionen = {}) {
+  // Ohne mitgegebenen Ort gilt der Vorgabeort des Kontos (CSV- und
+  // Wanted-Import haben kein Lagerortfeld).
   const ort = await ortFuerNeuerfassung(userId, storage);
-  const ergebnis = await addSetIntern(setNumber, quantity, userId, sendProgress, purchasePrice, condition, erfasstAm);
+  const ergebnis = await addSetIntern(setNumber, quantity, userId, sendProgress, purchasePrice, condition, erfasstAm, optionen);
   if (ort && ergebnis?.set_number) {
     await setzeLagerort('set', [userId], [ergebnis.set_number], ort);
   }
   return ergebnis;
 }
 
+/**
+ * Die Nacharbeit eines Sets als Auftrag; ein gleicher offener Auftrag genügt.
+ * Sie ist nie Voraussetzung für die Antwort: Scheitert das Einstellen, ist das
+ * Set trotzdem erfasst, und der Fehler steht im Protokoll.
+ */
+export async function nacharbeitEinstellen(setNumber: string, userId: number, art: 'zweit' | 'neu' | 'csv') {
+  await stelleAuftragEin('nacharbeit', { set_number: setNumber, user_id: userId, art },
+    { userId, schluessel: `nacharbeit:${userId}:${setNumber}`, maxVersuche: 3 })
+    .catch(logAndContinue(`set-anlegen:nacharbeit ${setNumber}`));
+}
+
 async function addSetIntern(setNumber: string, quantity: number, userId: number,
                       sendProgress: ((n: { step: string; set: string }) => void) | null,
                       purchasePrice: number | null, condition: string | null = null,
-                      erfasstAm: string | null = null) {
+                      erfasstAm: string | null = null, optionen: ErfassenOptionen = {}) {
+  const massenimport = optionen.massenimport === true;
   const normalized = sanitizeSetNumber(setNumber);
   if (!moeglicheSetNummer(normalized)) fehlerWerfen('setnummer_ungueltig', 400);
   if (sendProgress) sendProgress({ step:'meta', set:normalized });
@@ -213,13 +230,7 @@ async function addSetIntern(setNumber: string, quantity: number, userId: number,
       // Ausführlich: docs/begruendungen/utils/setService.ts.md#addsetintern-2
       await recordAcquisition(userId, normalized, quantity, reAddPrice, zustand, tx, reAddGeschaetzt, null, erfasstAm);
     });
-    // During bulk CSV import, skip immediate background jobs to avoid DB pool exhaustion.
-    // The import loop triggers enrichment after all sets are imported.
-    //
-    // Der Rumpf steht seit dem Herausziehen in jobs/nachErfassung.ts — als
-    // anonymer Block im setTimeout war er in Tests nicht abfangbar und lief
-    // dort echt, gegen einen meist schon geschlossenen Pool.
-    if (!global._csvImportLaeufe) nacharbeit().zieheNach(normalized, userId);
+    if (!massenimport) await nacharbeitEinstellen(normalized, userId, 'zweit');
     return { action:'updated', set_number:normalized };
   }
 
@@ -231,10 +242,9 @@ async function addSetIntern(setNumber: string, quantity: number, userId: number,
   const rb = await getSetInfo(normalized).catch(() => null);
   if (rb) { name=rb.name; year=rb.year; theme=rb.theme; pieces=rb.pieces; imageUrl=rb.image_url; }
 
-  // Fetch from Brickset (secondary) — enrich but never block import
-  // Skip during CSV bulk import to preserve quota and reduce DB pool pressure
-  let bsInfo: any = null;
-  if (!global._csvImportLaeufe) {
+  // Brickset ergänzt, blockiert aber nie; beim Massenimport holt es die Nacharbeit.
+  let bsInfo: Awaited<ReturnType<typeof brickset.getSetInfo>> = null;
+  if (!massenimport) {
     try {
       bsInfo = await brickset.getSetInfo(normalized);
     } catch (e) { meldeUndWeiter('set-anlegen:brickset-info', e); }
@@ -252,12 +262,8 @@ async function addSetIntern(setNumber: string, quantity: number, userId: number,
     const imgTimeout = new Promise((_,rej)=>setTimeout(()=>rej(new Error('Image timeout')),15000).unref());
     localImage = await Promise.race([downloadSetImage(imageUrl, normalized), imgTimeout]);
   } catch (e) { meldeUndWeiter('set-anlegen:bild-laden', e); }
-  // Generate thumbnail in background
-  if(localImage){
-    setImmediate(()=>generateThumb(localImage).catch(()=>{}));
-    // Sync image_local to shared set_catalog
-    db.run('UPDATE set_catalog SET image_local=$1 WHERE set_number=$2', [localImage, normalized]).catch(()=>{});
-  }
+  // Die Vorschau entsteht nebenher; image_local schreibt der Katalog-Upsert unten.
+  if (localImage) generateThumb(localImage).catch(logAndContinue('set-anlegen:vorschau'));
   // Der Katalog ist seit Migration 0033 die EINZIGE Stelle
   // Jetzt nicht mehr. Scheitert diese Anweisung, hat das Set nirgends einen
   // Namen, kein Jahr und kein Bild — und niemand erfaehrt davon. Deshalb kein
@@ -306,21 +312,9 @@ async function addSetIntern(setNumber: string, quantity: number, userId: number,
   // user_id: Die Teilezahl eines Sets ist in jedem Konto dieselbe.
   if (minifigs) await db.run('UPDATE set_catalog SET minifigs = $1 WHERE set_number = $2', [minifigs, normalized]);
 
-  // Kein 'instructions'-Schritt mehr an die Oberfläche: Der Download läuft
-  // eine Zeile tiefer in einem setImmediate() und damit NACH der Antwort. Der
-  // Dialog zeigte dadurch einen Punkt, der auf „aktiv" sprang und nie fertig
-  // wurde. Der Hinweis auf die Hintergrundarbeit steht jetzt fest im Dialog.
-  // Skip instructions during CSV bulk import — instructionQueue handles it after
-  if (!global._csvImportLaeufe) {
-    setImmediate(() => downloadSetInstructions(normalized).catch(()=>{}));
-  }
-
   if (sendProgress) sendProgress({ step:'done_meta', set:normalized });
-  // All heavy work in background — don't block the response
-  // Rumpf in jobs/nachErfassung.ts — dort steht er neben dem Nachzug des
-  // Zweiterfassungs-Zweigs, und der Unterschied zwischen beiden ist damit an
-  // einer Stelle zu sehen statt vierzig Zeilen auseinander.
-  if (!global._csvImportLaeufe) nacharbeit().zieheNachNeuanlage(normalized, userId);
+  // Anleitung, Teile, Figuren und Bilder holt der Auftrag (jobs/nachErfassung.ts).
+  if (!massenimport) await nacharbeitEinstellen(normalized, userId, 'neu');
   // katalog_offen: Weder Rebrickable noch Brickset haben geantwortet. Das Set
   // ist gespeichert, Name und Bild zieht die Nacharbeit nach — die Oberfläche
   // soll das sagen statt eines schlichten „hinzugefügt“.

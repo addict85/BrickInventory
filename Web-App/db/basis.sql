@@ -223,6 +223,45 @@ CREATE SEQUENCE public.app_logs_id_seq
 ALTER SEQUENCE public.app_logs_id_seq OWNED BY public.app_logs.id;
 
 --
+-- Name: auftraege; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.auftraege (
+    id bigint NOT NULL,
+    art text NOT NULL,
+    nutzlast jsonb DEFAULT '{}'::jsonb NOT NULL,
+    user_id integer,
+    schluessel text,
+    status text DEFAULT 'offen'::text NOT NULL,
+    versuche integer DEFAULT 0 NOT NULL,
+    max_versuche integer DEFAULT 5 NOT NULL,
+    next_run_at timestamp with time zone DEFAULT now() NOT NULL,
+    belegt_von text,
+    fehler text,
+    erstellt timestamp with time zone DEFAULT now() NOT NULL,
+    aktualisiert timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT auftraege_max_versuche_check CHECK ((max_versuche > 0)),
+    CONSTRAINT auftraege_status_check CHECK ((status = ANY (ARRAY['offen'::text, 'laeuft'::text, 'erledigt'::text, 'fehler'::text])))
+);
+
+--
+-- Name: auftraege_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.auftraege_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+--
+-- Name: auftraege_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.auftraege_id_seq OWNED BY public.auftraege.id;
+
+--
 -- Name: bl_zuordnung; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1534,6 +1573,12 @@ ALTER SEQUENCE public.zweiter_faktor_codes_id_seq OWNED BY public.zweiter_faktor
 ALTER TABLE ONLY public.app_logs ALTER COLUMN id SET DEFAULT nextval('public.app_logs_id_seq'::regclass);
 
 --
+-- Name: auftraege id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.auftraege ALTER COLUMN id SET DEFAULT nextval('public.auftraege_id_seq'::regclass);
+
+--
 -- Name: instruction_queue id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -1718,6 +1763,13 @@ ALTER TABLE ONLY public.api_tokens
 
 ALTER TABLE ONLY public.app_logs
     ADD CONSTRAINT app_logs_pkey PRIMARY KEY (id);
+
+--
+-- Name: auftraege auftraege_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.auftraege
+    ADD CONSTRAINT auftraege_pkey PRIMARY KEY (id);
 
 --
 -- Name: bl_zuordnung bl_zuordnung_pkey; Type: CONSTRAINT; Schema: public; Owner: -
@@ -2262,6 +2314,24 @@ CREATE INDEX idx_api_tokens_user_created ON public.api_tokens USING btree (user_
 --
 
 CREATE INDEX idx_app_logs_logged_at ON public.app_logs USING btree (logged_at DESC);
+
+--
+-- Name: idx_auftraege_faellig; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_auftraege_faellig ON public.auftraege USING btree (next_run_at) WHERE (status = ANY (ARRAY['offen'::text, 'laeuft'::text]));
+
+--
+-- Name: idx_auftraege_schluessel; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_auftraege_schluessel ON public.auftraege USING btree (schluessel) WHERE (status = 'offen'::text);
+
+--
+-- Name: idx_auftraege_user; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_auftraege_user ON public.auftraege USING btree (user_id) WHERE (user_id IS NOT NULL);
 
 --
 -- Name: idx_bl_zuordnung_bl; Type: INDEX; Schema: public; Owner: -
@@ -2821,6 +2891,13 @@ ALTER TABLE ONLY public.api_tokens
     ADD CONSTRAINT api_tokens_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
 
 --
+-- Name: auftraege auftraege_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.auftraege
+    ADD CONSTRAINT auftraege_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+--
 -- Name: csv_import_jobs csv_import_jobs_user_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3165,6 +3242,7 @@ INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0062-set-teile-
 INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0063-laufzustand.sql', '2026-10-28 23:05:08.525175+00');
 INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0064-pdf-auftraege.sql', '2026-10-28 23:25:34.430147+00');
 INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0065-geld-und-waehrung-pruefen.sql', '2026-10-28 23:27:03.174038+00');
+INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0066-auftraege.sql', '2026-10-29 21:52:46.143176+00');
 
 --
 -- PostgreSQL database dump complete

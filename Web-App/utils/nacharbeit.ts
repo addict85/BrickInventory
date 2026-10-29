@@ -5,9 +5,6 @@
  * Voraussetzung für eine Antwort.
  */
 export interface Nacharbeit {
-  /** Teile, Figuren, Anleitung und Bilder zu einem erfassten Set nachziehen. */
-  zieheNach(setNumber: string, userId: number): void;
-  zieheNachNeuanlage(setNumber: string, userId: number): void;
   /** Den Preis-Job anstossen, etwa nach einem Währungswechsel. */
   preisJobAnstossen(): void;
   /** Den Marktpreis eines Sets jetzt holen und in den Cache schreiben. */
@@ -17,7 +14,7 @@ export interface Nacharbeit {
 }
 
 const OHNE: Nacharbeit = {
-  zieheNach() {}, zieheNachNeuanlage() {}, preisJobAnstossen() {},
+  preisJobAnstossen() {},
   async preisFuerSetHolen() {}, bildVormerken() {},
 };
 

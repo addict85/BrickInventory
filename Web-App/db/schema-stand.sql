@@ -74,6 +74,29 @@ CREATE TABLE app_logs (
 );
 CREATE INDEX idx_app_logs_logged_at ON app_logs USING btree (logged_at DESC);
 
+CREATE TABLE auftraege (
+  id bigint NOT NULL DEFAULT nextval('auftraege_id_seq'::regclass),
+  art text NOT NULL,
+  nutzlast jsonb NOT NULL DEFAULT '{}'::jsonb,
+  user_id integer,
+  schluessel text,
+  status text NOT NULL DEFAULT 'offen'::text,
+  versuche integer NOT NULL DEFAULT 0,
+  max_versuche integer NOT NULL DEFAULT 5,
+  next_run_at timestamp with time zone NOT NULL DEFAULT now(),
+  belegt_von text,
+  fehler text,
+  erstellt timestamp with time zone NOT NULL DEFAULT now(),
+  aktualisiert timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT auftraege_max_versuche_check CHECK ((max_versuche > 0)),
+  CONSTRAINT auftraege_pkey PRIMARY KEY (id),
+  CONSTRAINT auftraege_status_check CHECK ((status = ANY (ARRAY['offen'::text, 'laeuft'::text, 'erledigt'::text, 'fehler'::text]))),
+  CONSTRAINT auftraege_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+CREATE INDEX idx_auftraege_faellig ON auftraege USING btree (next_run_at) WHERE (status = ANY (ARRAY['offen'::text, 'laeuft'::text]));
+CREATE UNIQUE INDEX idx_auftraege_schluessel ON auftraege USING btree (schluessel) WHERE (status = 'offen'::text);
+CREATE INDEX idx_auftraege_user ON auftraege USING btree (user_id) WHERE (user_id IS NOT NULL);
+
 CREATE TABLE bl_zuordnung (
   art text NOT NULL,
   rb_id text NOT NULL,
