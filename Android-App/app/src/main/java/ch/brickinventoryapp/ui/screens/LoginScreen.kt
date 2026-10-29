@@ -56,13 +56,34 @@ fun LoginScreen(
     onFormular: (AnmeldeFormular) -> Unit,
     onRegistrieren: (String, String, String, String, String) -> Unit,
     onPasswortVergessen: (String) -> Unit,
-    onChangeServer: () -> Unit
+    onChangeServer: () -> Unit,
+    netzFrage: Boolean = false,
+    onNetzBestaetigt: (String, String, String?) -> Unit = { _, _, _ -> },
+    onNetzAbgelehnt: () -> Unit = {},
 ) {
     var username by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
     var showPw   by rememberSaveable { mutableStateOf(false) }
     var code     by rememberSaveable { mutableStateOf("") }
     val focusMgr = LocalFocusManager.current
+
+    // Das Passwort geht erst nach einem ausdrücklichen Ja hinaus (AnmeldungViewModel.login).
+    if (netzFrage) {
+        AlertDialog(
+            onDismissRequest = onNetzAbgelehnt,
+            icon = { Icon(Icons.Default.Warning, null) },
+            title = { Text(stringResource(R.string.login_netz_titel)) },
+            text = { Text(stringResource(R.string.login_netz_text, serverUrl)) },
+            confirmButton = {
+                TextButton(onClick = { onNetzBestaetigt(username, password, code.takeIf { codeNoetig }) }) {
+                    Text(stringResource(R.string.login_netz_trotzdem))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = onNetzAbgelehnt) { Text(stringResource(R.string.common_cancel)) }
+            },
+        )
+    }
 
     Box(
         modifier = Modifier.fillMaxSize(),

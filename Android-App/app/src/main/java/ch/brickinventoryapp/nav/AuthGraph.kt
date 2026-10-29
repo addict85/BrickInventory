@@ -60,6 +60,7 @@ import ch.brickinventoryapp.ui.ManualItemDetailUiState
  * herein, damit kein Ziel Zustand aus einem umgebenden Scope einfängt.
  */
 fun NavGraphBuilder.authGraph(
+    vm: AppViewModel,
     navController: NavHostController,
 ) {
         composable(Screen.Setup.route) {
@@ -69,17 +70,18 @@ fun NavGraphBuilder.authGraph(
             val state by anmeldungVm.state.collectAsStateWithLifecycle()
             SetupScreen(
                 currentUrl = state.serverUrl,
+                // Ein anderer Server meldet über den vollen Weg der App ab, bevor die
+                // neue Adresse gilt (AnmeldungViewModel.saveServerUrl).
                 onSave = { url, klartextBestaetigt ->
-                    anmeldungVm.saveServerUrl(url, klartextBestaetigt)
+                    anmeldungVm.saveServerUrl(url, klartextBestaetigt, abmelden = { vm.logout().join() })
                     navController.navigate(Screen.Login.route) {
                         popUpTo(Screen.Setup.route) { inclusive = true }
                     }
                 },
-                onQrScanned = { url, token ->
-                    // Save server URL and auto-login with QR token
-                    anmeldungVm.saveServerUrl(url)
-                    anmeldungVm.loginWithQrToken(url, token)
-                    // Navigate to login screen (will auto-redirect to gallery on success)
+                // Erst nach der Bestätigung im Einrichtungsbildschirm; die Anmeldung
+                // springt nach Erfolg in die Galerie.
+                onQrScanned = { url, token, klartextBestaetigt ->
+                    anmeldungVm.loginWithQrToken(url, token, klartextBestaetigt, abmelden = { vm.logout().join() })
                     navController.navigate(Screen.Login.route) {
                         popUpTo(Screen.Setup.route) { inclusive = true }
                     }
@@ -118,6 +120,9 @@ fun NavGraphBuilder.authGraph(
                 kontoMeldung = anmeldung.meldung,
                 kontoFehler = anmeldung.fehler,
                 onLogin = { user, pw, code -> anmeldungVm.login(user, pw, code) },
+                netzFrage = anmeldung.netzFrage,
+                onNetzBestaetigt = { user, pw, code -> anmeldungVm.login(user, pw, code, netzBestaetigt = true) },
+                onNetzAbgelehnt = { anmeldungVm.netzFrageVerwerfen() },
                 onFormular = { anmeldungVm.zeigeAnmeldeFormular(it) },
                 onRegistrieren = { u, e, v, n, pw -> anmeldungVm.registriere(u, e, v, n, pw) },
                 onPasswortVergessen = { anmeldungVm.passwortVergessen(it) },

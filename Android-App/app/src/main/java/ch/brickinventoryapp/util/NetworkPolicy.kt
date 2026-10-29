@@ -101,6 +101,41 @@ object NetworkPolicy {
         return !url.isHttps && !isPrivateHost(url.host)
     }
 
+    /**
+     * Schema, Host und Port als ein Text — die Herkunft, an die ein Token
+     * gebunden ist. Ein Token gilt nur für den Server, der ihn ausgab.
+     */
+    fun herkunft(serverUrl: String): String? {
+        val url = serverUrl.trim().trimEnd('/').toHttpUrlOrNull() ?: return null
+        return "${url.scheme}://${url.host.lowercase()}:${url.port}"
+    }
+
+    /** Beide Adressen zeigen auf denselben Server; eine leere ist keiner. */
+    fun gleicheHerkunft(a: String, b: String): Boolean {
+        val ha = herkunft(a) ?: return false
+        return ha == herkunft(b)
+    }
+
+    private fun istLoopback(host: String): Boolean {
+        val h = host.lowercase().trim('[', ']')
+        return h == "localhost" || h == "::1" || h.startsWith("127.")
+    }
+
+    /**
+     * Ein Passwort über http in einem Netz, in dem dieser Server nie eingerichtet
+     * oder bestätigt wurde, braucht eine Rückfrage: Im fremden WLAN kann
+     * „http://nas:3000“ ein anderer Rechner sein. Ohne Kennung des Netzes
+     * ([netz] null) ist es immer ein unbekanntes.
+     */
+    fun anmeldungBrauchtNetzBestaetigung(serverUrl: String, netz: String?, bekannt: Set<String>): Boolean {
+        val url = serverUrl.trim().toHttpUrlOrNull() ?: return false
+        if (url.isHttps || istLoopback(url.host)) return false
+        return netz == null || netzEintrag(serverUrl, netz) !in bekannt
+    }
+
+    /** Der gemerkte Eintrag „dieser Server in diesem Netz“. */
+    fun netzEintrag(serverUrl: String, netz: String): String = "${herkunft(serverUrl)}|$netz"
+
     /** Ist der Host eine numerische IPv4/IPv6-Adresse (kein Name)? */
     fun isIpLiteral(host: String): Boolean {
         val h = host.trim('[', ']')

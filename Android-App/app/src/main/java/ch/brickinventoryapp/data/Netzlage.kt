@@ -26,7 +26,7 @@ import javax.inject.Singleton
 @Singleton
 class Netzlage @Inject constructor(
     @param:ApplicationContext private val context: Context,
-) {
+) : Netzkennung {
     /**
      * Die vier Lagen. Sie schliessen einander aus — das ist der Grund fuer eine
      * Aufzaehlung statt dreier Ja/Nein-Fragen: Der Aufrufer soll nicht selbst
@@ -58,6 +58,32 @@ class Netzlage @Inject constructor(
             else -> Art.MOBIL
         }
     }
+
+    /**
+     * Art, Standardtor, DNS-Server und Suchdomäne des aktiven Netzes, gehasht.
+     * Ohne Standortrecht gibt Android keine SSID heraus; diese Merkmale bleiben im
+     * selben WLAN über Verbindungen gleich und unterscheiden Heim- und Hotelnetz.
+     * Ein Angreifer, der sie nachbaut, fällt nicht auf — die Rückfrage ist eine
+     * zweite Hürde nach dem Serverbeweis, keine Garantie.
+     */
+    override fun fingerabdruck(): String? = runCatching {
+        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return null
+        val netz = cm.activeNetwork ?: return null
+        val lp = cm.getLinkProperties(netz) ?: return null
+        val faehig = cm.getNetworkCapabilities(netz)
+        val art = when {
+            faehig == null -> "?"
+            faehig.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> "wlan"
+            faehig.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) -> "lan"
+            faehig.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> "mobil"
+            else -> "anders"
+        }
+        val tore = lp.routes.filter { it.isDefaultRoute }.mapNotNull { it.gateway?.hostAddress }.sorted()
+        val dns = lp.dnsServers.mapNotNull { it.hostAddress }.sorted()
+        val roh = "$art|${tore.joinToString(",")}|${dns.joinToString(",")}|${lp.domains.orEmpty()}"
+        java.security.MessageDigest.getInstance("SHA-256").digest(roh.toByteArray())
+            .joinToString("") { "%02x".format(it) }.take(16)
+    }.getOrNull()
 
     private fun istRoaming(faehig: NetworkCapabilities): Boolean =
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {

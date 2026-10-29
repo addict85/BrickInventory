@@ -83,11 +83,13 @@ fun parseQrPayload(raw: String): QrLoginPayload? {
 fun SetupScreen(
     currentUrl: String,
     onSave: (url: String, klartextBestaetigt: Boolean) -> Unit,
-    onQrScanned: ((url: String, token: String) -> Unit)? = null
+    onQrScanned: ((url: String, token: String, klartextBestaetigt: Boolean) -> Unit)? = null
 ) {
     var url          by rememberSaveable { mutableStateOf(currentUrl) }
     var showScanner  by rememberSaveable { mutableStateOf(false) }
     var scanError    by remember { mutableStateOf<String?>(null) }
+    // Ein QR-Code kann von jedem stammen: Die Adresse wird erst nach einem Ja übernommen.
+    var qrVorschlag  by remember { mutableStateOf<QrLoginPayload?>(null) }
     // Klartext zu einem öffentlich aussehenden Host nur nach ausdrücklicher
     // Bestätigung (NetworkPolicy.isCleartextAllowed).
     val klartextHost = NetworkPolicy.klartextHost(url)
@@ -108,8 +110,7 @@ fun SetupScreen(
                 showScanner = false
                 val payload = parseQrPayload(raw)
                 if (payload != null) {
-                    url = payload.url
-                    onQrScanned?.invoke(payload.url, payload.token)
+                    qrVorschlag = payload
                 } else {
                     scanError = invalidQrMsg
                 }
@@ -117,6 +118,30 @@ fun SetupScreen(
             onDismiss = { showScanner = false }
         )
         return
+    }
+
+    qrVorschlag?.let { vorschlag ->
+        val klartext = NetworkPolicy.klartextNachAussen(vorschlag.url)
+        AlertDialog(
+            onDismissRequest = { qrVorschlag = null },
+            title = { Text(stringResource(R.string.setup_qr_titel)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
+                    Text(stringResource(R.string.setup_qr_text, vorschlag.url))
+                    if (klartext) Text(stringResource(R.string.setup_qr_klartext), color = MaterialTheme.colorScheme.error)
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    qrVorschlag = null
+                    url = vorschlag.url
+                    onQrScanned?.invoke(vorschlag.url, vorschlag.token, NetworkPolicy.klartextHost(vorschlag.url) != null)
+                }) { Text(stringResource(R.string.setup_qr_uebernehmen)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { qrVorschlag = null }) { Text(stringResource(R.string.common_cancel)) }
+            },
+        )
     }
 
     Column(

@@ -146,8 +146,8 @@ class AppViewModel @Inject constructor(
         viewModelScope.launch {
             prefs.language.collect { lang -> sitzung.aendere { it.copy(language = lang) } }
         }
-        // Ein 401 mit Token meldet der Interceptor hier; abgemeldet wird nur,
-        // wenn noch eine Sitzung besteht (ein Fehlversuch beim Anmelden nicht).
+        // Ein 401 auf einen Token, der an einen ausgewiesenen Server ging
+        // (ServerWaechter); ein Fehlversuch beim Anmelden meldet nicht ab.
         viewModelScope.launch {
             sessionExpired.events.collect {
                 if (sitzung.state.value.isLoggedIn) {
@@ -173,12 +173,13 @@ class AppViewModel @Inject constructor(
     /**
      * Abmelden räumt alles weg, was zum Konto gehört — auch API- und
      * Bild-Cache, sonst sähe der nächste Nutzer auf dem Gerät fremde Daten.
-     * Die Bereichs-ViewModels leeren sich auf [Sitzung.abgemeldet].
+     * Die Bereichs-ViewModels leeren sich auf [Sitzung.abgemeldet]. Der Job lässt
+     * einen Serverwechsel warten, bis alles weg ist.
      */
     @OptIn(coil3.annotation.ExperimentalCoilApi::class)
-    fun logout() {
+    fun logout(): Job {
         csvWatchJob?.cancel(); csvWatchJob = null
-        viewModelScope.launch {
+        return viewModelScope.launch {
             prefs.clearSession()
             repo.clearCache()
             // Speicher zuerst, sonst schreibt Coil beim nächsten Treffer wieder auf die Platte.

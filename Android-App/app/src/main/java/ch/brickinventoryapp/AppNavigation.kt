@@ -192,7 +192,7 @@ fun BrickInventoryManagerApp(
         // NavHost-Builder läuft nur einmal, ein durchgereichter Wert bliebe die
         // Momentaufnahme des ersten Frames. Die Ziele lesen den Zustand selbst per
         // collectAsStateWithLifecycle().
-        authGraph(navController)
+        authGraph(vm, navController)
         collectionGraph(vm, navController, imageLoader, bottomNavItems, snackbarHostState,
             galleryGridState, partsGridState, minifigsGridState)
         catalogGraph(vm, katalog, navController, imageLoader, bottomNavItems, snackbarHostState)

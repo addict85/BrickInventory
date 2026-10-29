@@ -44,6 +44,13 @@
     <string name="login_button">Sign in</string>
     <string name="login_code">Code from your authenticator app</string>
     <string name="login_code_hint">Or one of your recovery codes</string>
+    <string name="login_netz_titel">Different network than at setup</string>
+    <string name="login_netz_text">Your password would go unencrypted to %1$s. In this network the address may belong to another computer. Only continue if you are sure it is your server.</string>
+    <string name="login_netz_trotzdem">Log in anyway</string>
+    <string name="setup_qr_titel">Use this server?</string>
+    <string name="setup_qr_text">The QR code points to:\n%1$s\n\nThe app will only send your login there. Continue only if this is your server.</string>
+    <string name="setup_qr_klartext">The connection is unencrypted — access goes over the network in plain text.</string>
+    <string name="setup_qr_uebernehmen">Use and log in</string>
 
     <!-- ══════════════ CSV import banner ══════════════ -->
     <string name="csv_ok_count">%1$d OK</string>

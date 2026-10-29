@@ -71,6 +71,10 @@ class PreferencesManager @Inject constructor(
 
         /** Der verschlüsselte Nachfolger. */
         val AUTH_TOKEN_ENC = stringPreferencesKey("auth_token_enc")
+        /** Der Server, der den Token ausgab (NetworkPolicy.herkunft); nur dorthin geht er. */
+        val TOKEN_HERKUNFT = stringPreferencesKey("token_herkunft")
+        /** „Server|Netz“, in denen eine Klartext-Anmeldung eingerichtet oder bestätigt wurde. */
+        val KLARTEXT_NETZE = stringSetPreferencesKey("klartext_netze")
         val USERNAME     = stringPreferencesKey("username")
         val CURRENCY     = stringPreferencesKey("currency")
         // "system" (folgt der OS-Sprache), "en" oder "de"
@@ -157,6 +161,29 @@ class PreferencesManager @Inject constructor(
     val serverUrlState: StateFlow<String?> = _serverUrlState.asStateFlow()
     private val _authTokenState = MutableStateFlow<String?>(null)
     val authTokenState: StateFlow<String?> = _authTokenState.asStateFlow()
+    private val _tokenHerkunftState = MutableStateFlow<String?>(null)
+    /** Leer = Altbestand ohne Bindung; dann gilt der eingetragene Server. */
+    val tokenHerkunftState: StateFlow<String?> = _tokenHerkunftState.asStateFlow()
+
+    // Vier Spiegel: Adresse, Token, Herkunft, Klartext-Hosts. Erst wenn jeder
+    // einmal von der Platte kam, ist der Kaltstart vorbei.
+    private val startGelesen = java.util.concurrent.CountDownLatch(4)
+
+    /**
+     * Für den Interceptor auf OkHttp-Threads: wartet beim Kaltstart auf den ersten
+     * Stand der Platte, ohne Koroutine und höchstens fünf Sekunden.
+     */
+    fun warteAufStart() {
+        startGelesen.await(5, java.util.concurrent.TimeUnit.SECONDS)
+    }
+
+    private fun <T> spiegle(fluss: Flow<T>, ziel: MutableStateFlow<T?>) = prefsScope.launch {
+        var erster = true
+        fluss.collect {
+            ziel.value = it
+            if (erster) { erster = false; startGelesen.countDown() }
+        }
+    }
 
     /**
      * Der Token, wie er jetzt gilt — nicht, wie er zuletzt auf der Platte stand.
@@ -212,15 +239,22 @@ class PreferencesManager @Inject constructor(
     }
 
     init {
-        // Der Nachlauf aus dem DataStore: fuer den Kaltstart und fuer
-        // Aenderungen, die NICHT ueber die beiden save-Funktionen kamen (etwa
-        // die einmalige Uebernahme eines alten Klartext-Tokens).
-        prefsScope.launch { serverUrl.collect { _serverUrlState.value = it } }
-        prefsScope.launch { authToken.collect { _authTokenState.value = it } }
+        // Der Nachlauf aus dem DataStore: für den Kaltstart und für Änderungen,
+        // die nicht über die save-Funktionen kamen (Übernahme eines alten Tokens).
+        spiegle(serverUrl, _serverUrlState)
+        spiegle(authToken, _authTokenState)
+        spiegle(context.dataStore.data.map { it[TOKEN_HERKUNFT] }, _tokenHerkunftState)
         prefsScope.launch {
             uebernimmAltenKlartextHost()
-            context.dataStore.data.map { it[KLARTEXT_HOSTS] ?: emptySet() }.collect { _klartextHosts.value = it }
+            spiegle(context.dataStore.data.map { it[KLARTEXT_HOSTS] ?: emptySet() }, _klartextHosts)
         }
+    }
+
+    override suspend fun bekannteNetze(): Set<String> =
+        context.dataStore.data.first()[KLARTEXT_NETZE] ?: emptySet()
+
+    override suspend fun merkeNetz(eintrag: String) {
+        context.dataStore.edit { it[KLARTEXT_NETZE] = (it[KLARTEXT_NETZE] ?: emptySet()) + eintrag }
     }
 
     override suspend fun saveServerUrl(url: String) {
@@ -231,11 +265,17 @@ class PreferencesManager @Inject constructor(
                 u.substring(0, idx).lowercase() + u.substring(idx)
             } else u
         }
-        // ZUERST in den Speicher, dann auf die Platte — siehe der Block ueber
-        // serverUrlState. Umgekehrt liest der Interceptor waehrend der
-        // Schreibung noch die alte Adresse.
+        // Zuerst in den Speicher, dann auf die Platte (siehe serverUrlState).
+        // Ein anderer Server beendet die Sitzung: Der Token gehört dem alten.
+        val herkunft = _tokenHerkunftState.value ?: serverUrlJetzt()
+        val anderer = tokenJetzt().isNotBlank() &&
+            !ch.brickinventoryapp.util.NetworkPolicy.gleicheHerkunft(herkunft, normalized)
+        if (anderer) { _authTokenState.value = ""; _tokenHerkunftState.value = null }
         _serverUrlState.value = normalized
-        context.dataStore.edit { it[SERVER_URL] = normalized }
+        context.dataStore.edit {
+            it[SERVER_URL] = normalized
+            if (anderer) { it.remove(AUTH_TOKEN); it.remove(AUTH_TOKEN_ENC); it.remove(TOKEN_HERKUNFT); it.remove(USERNAME) }
+        }
     }
     /**
      * Token ablegen, nur noch verschlüsselt. Der alte Klartext-Eintrag wird im selben
@@ -245,11 +285,14 @@ class PreferencesManager @Inject constructor(
         // ZUERST in den Speicher: Der Aufrufer feuert unmittelbar nach dieser
         // Funktion die ersten Anfragen, und der Interceptor liest den Wert
         // synchron. Die ausfuehrliche Begruendung steht ueber authTokenState.
+        val herkunft = ch.brickinventoryapp.util.NetworkPolicy.herkunft(serverUrlJetzt())
+        _tokenHerkunftState.value = herkunft
         _authTokenState.value = token
         val geheim = tresor.verschluessle(token)
         context.dataStore.edit {
             it[AUTH_TOKEN_ENC] = geheim
             it.remove(AUTH_TOKEN)
+            if (herkunft != null) it[TOKEN_HERKUNFT] = herkunft else it.remove(TOKEN_HERKUNFT)
         }
     }
 
@@ -347,11 +390,14 @@ class PreferencesManager @Inject constructor(
         designSpiegel.edit().putBoolean(DUNKEL_NACH_SYSTEM, an).apply()
     }
     suspend fun clearSession() {
+        _authTokenState.value = ""
+        _tokenHerkunftState.value = null
         context.dataStore.edit {
             // BEIDE Schlüssel: Bliebe der alte stehen, wäre man nach dem
             // Abmelden über den Altbestand wieder angemeldet.
             it.remove(AUTH_TOKEN)
             it.remove(AUTH_TOKEN_ENC)
+            it.remove(TOKEN_HERKUNFT)
             it.remove(USERNAME)
         }
     }
