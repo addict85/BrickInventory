@@ -801,19 +801,22 @@ CREATE TABLE users (
   first_name text,
   last_name text,
   password_hash text NOT NULL,
-  is_admin integer DEFAULT 0,
-  is_active integer DEFAULT 1,
-  email_verified integer DEFAULT 0,
+  is_admin integer NOT NULL DEFAULT 0,
+  is_active integer NOT NULL DEFAULT 1,
+  email_verified integer NOT NULL DEFAULT 0,
   verification_token text,
   token_expires timestamp with time zone,
   reset_token text,
   reset_token_expires timestamp with time zone,
   must_change_password integer DEFAULT 0,
   created_at timestamp with time zone DEFAULT now(),
-  CONSTRAINT users_email_key UNIQUE (email),
+  CONSTRAINT users_email_verified_schalter CHECK ((email_verified = ANY (ARRAY[0, 1]))),
+  CONSTRAINT users_is_active_schalter CHECK ((is_active = ANY (ARRAY[0, 1]))),
+  CONSTRAINT users_is_admin_schalter CHECK ((is_admin = ANY (ARRAY[0, 1]))),
   CONSTRAINT users_pkey PRIMARY KEY (id),
   CONSTRAINT users_username_key UNIQUE (username)
 );
+CREATE UNIQUE INDEX users_email_lower ON users USING btree (lower(email));
 
 CREATE TABLE verwaltungsprotokoll (
   id integer NOT NULL DEFAULT nextval('verwaltungsprotokoll_id_seq'::regclass),

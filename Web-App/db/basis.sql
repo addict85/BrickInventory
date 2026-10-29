@@ -1406,15 +1406,18 @@ CREATE TABLE public.users (
     first_name text,
     last_name text,
     password_hash text NOT NULL,
-    is_admin integer DEFAULT 0,
-    is_active integer DEFAULT 1,
-    email_verified integer DEFAULT 0,
+    is_admin integer DEFAULT 0 NOT NULL,
+    is_active integer DEFAULT 1 NOT NULL,
+    email_verified integer DEFAULT 0 NOT NULL,
     verification_token text,
     token_expires timestamp with time zone,
     reset_token text,
     reset_token_expires timestamp with time zone,
     must_change_password integer DEFAULT 0,
-    created_at timestamp with time zone DEFAULT now()
+    created_at timestamp with time zone DEFAULT now(),
+    CONSTRAINT users_email_verified_schalter CHECK ((email_verified = ANY (ARRAY[0, 1]))),
+    CONSTRAINT users_is_active_schalter CHECK ((is_active = ANY (ARRAY[0, 1]))),
+    CONSTRAINT users_is_admin_schalter CHECK ((is_admin = ANY (ARRAY[0, 1])))
 );
 
 --
@@ -2200,13 +2203,6 @@ ALTER TABLE ONLY public.user_settings
     ADD CONSTRAINT user_settings_pkey PRIMARY KEY (user_id, key);
 
 --
--- Name: users users_email_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.users
-    ADD CONSTRAINT users_email_key UNIQUE (email);
-
---
 -- Name: users users_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2732,6 +2728,12 @@ CREATE INDEX idx_zweiter_faktor_codes_konto ON public.zweiter_faktor_codes USING
 CREATE UNIQUE INDEX storage_locations_konto_name ON public.storage_locations USING btree (user_id, lower(name));
 
 --
+-- Name: users_email_lower; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX users_email_lower ON public.users USING btree (lower(email));
+
+--
 -- Name: minifig_acquisitions minifig_acquisitions_waehrung; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -3223,6 +3225,7 @@ INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0065-geld-und-w
 INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0066-auftraege.sql', '2026-10-29 21:52:46.143176+00');
 INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0067-bild-stamm.sql', '2026-10-29 21:59:16.007371+00');
 INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0068-praefix-indizes.sql', '2026-10-29 21:59:58.856414+00');
+INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0069-konten-pruefen.sql', '2026-10-29 22:00:41.797626+00');
 
 --
 -- PostgreSQL database dump complete
