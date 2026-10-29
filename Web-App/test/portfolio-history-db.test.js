@@ -282,8 +282,12 @@ test('der Mailer prüft Zertifikate, sofern es niemand ausdrücklich abschaltet'
   assert.match(src, /smtp_insecure_tls/, 'die Ausnahme ist nicht einstellbar');
 
   // Die Einstellung muss auch gespeichert werden können, sonst steht ein
-  // Kontrollkästchen da, das nichts tut.
+  // Kontrollkästchen da, das nichts tut. Gespeichert wird über POST / (der
+  // Import übergeht smtp_* seit dem 29.10. absichtlich, der Export nimmt alle
+  // Zeilen aus global_settings). Gegenprobe (29.10.2026): smtp_insecure_tls aus
+  // der Liste von POST / entfernt → rot.
   const settings = ohneKommentare(fs.readFileSync(path.join(ROOT, 'routes', 'settings.ts'), 'utf8'));
-  const stellen = (settings.match(/smtp_insecure_tls/g) || []).length;
-  assert.ok(stellen >= 2, `smtp_insecure_tls steht nur an ${stellen} Stelle(n) in settings.ts — Speichern oder Export fehlt`);
+  const speichern = settings.slice(settings.indexOf("router.post('/',"), settings.indexOf("router.post('/import'"));
+  assert.ok(speichern.length > 0, 'POST / in routes/settings.ts nicht gefunden');
+  assert.match(speichern, /'smtp_insecure_tls'/, 'smtp_insecure_tls lässt sich über POST / nicht speichern');
 });
