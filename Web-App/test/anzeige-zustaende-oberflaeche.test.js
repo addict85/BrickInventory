@@ -151,7 +151,7 @@ test('Konto: eigenes Design oder Vorgabe des Verwalters', async () => {
     await sicht(w, 'profil');
     const sel = d.getElementById('design-wahl');
     await warte(() => /Noppe/.test(sel.options[0].textContent));
-    assert.equal(sel.options[0].textContent, 'Vorgabe des Verwalters (Noppe (poppig))');
+    assert.equal(sel.options[0].textContent, 'Vorgabe: Noppe (poppig)');
     assert.equal(sel.value, '');
     sel.value = 'werkbank';
     sel.dispatchEvent(new w.Event('change', { bubbles: true }));

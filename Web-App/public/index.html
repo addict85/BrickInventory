@@ -109,31 +109,31 @@
 
 <!-- LOGIN -->
 <!-- kein inline background mehr: das hat jede Theme-Regel überstimmt, siehe --screen-bg in styles.css -->
-<div id="startup-screen" data-stil="display:flex;align-items:center;justify-content:center;min-height:100vh;flex-direction:column;gap:1.5rem">
-  <div data-stil="display:flex;align-items:center;gap:12px;margin-bottom:.5rem">
+<div id="startup-screen" class="start-flaeche">
+  <div class="start-marke">
     <svg width="48" height="48" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg"><rect x="18" y="38" width="84" height="68" rx="3" fill="#e63329"/><polygon points="18,38 30,20 102,20 102,38" fill="#cc2a21"/><polygon points="102,20 118,30 118,86 102,106" fill="#b5231c"/><rect x="24" y="54" width="72" height="40" rx="2" fill="#fff"/><rect x="29" y="58" width="46" height="15" rx="2" fill="#f5a800"/><text x="52" y="69" text-anchor="middle" font-family="Arial,sans-serif" font-weight="800" font-size="11" fill="#3b2600">BIM</text></svg>
     <div>
-      <div data-stil="font-size:var(--fs-6);font-weight:800;color:var(--txt)">BrickInventory</div>
+      <div class="start-titel">BrickInventory</div>
       <div class="text-3-mut">Manager</div>
     </div>
   </div>
   <div data-stil="width:360px">
     <!-- Gesamtfortschritt -->
-    <div data-stil="font-size:var(--fs-2);font-weight:600;color:var(--mut);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.4rem" data-i18n="startup.overall">Gesamtfortschritt</div>
-    <div data-stil="background:var(--s200);border-radius:999px;height:8px;overflow:hidden;margin-bottom:.3rem">
-      <div id="startup-bar" data-stil="height:100%;background:var(--b600);border-radius:999px;width:0%;transition:width .4s ease"></div>
+    <div class="fortschritt-titel" data-i18n="startup.overall">Gesamtfortschritt</div>
+    <div class="balken">
+      <div id="startup-bar" class="balken-fuellung"></div>
     </div>
-    <div data-stil="display:flex;justify-content:space-between;font-size:var(--fs-1);color:var(--s400);margin-bottom:1rem">
+    <div class="fortschritt-zeile abstand-u-1">
       <span id="startup-step" data-i18n="startup.init">Initialisiere...</span>
       <span id="startup-pct">0%</span>
     </div>
     <!-- Aktueller Schritt -->
-    <div id="startup-sub-label" data-stil="display:none;font-size:var(--fs-2);font-weight:600;color:var(--mut);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.4rem" data-i18n="startup.current_step">Aktueller Schritt</div>
+    <div id="startup-sub-label" class="fortschritt-titel" data-stil="display:none" data-i18n="startup.current_step">Aktueller Schritt</div>
     <div id="startup-sub-wrap" data-stil="display:none">
-      <div data-stil="background:var(--s200);border-radius:999px;height:6px;overflow:hidden;margin-bottom:.3rem">
-        <div id="startup-sub-bar" data-stil="height:100%;background:var(--g500);border-radius:999px;width:0%;transition:width .4s ease"></div>
+      <div class="balken balken-flach">
+        <div id="startup-sub-bar" class="balken-fuellung balken-gruen"></div>
       </div>
-      <div data-stil="display:flex;justify-content:space-between;font-size:var(--fs-1);color:var(--s400)">
+      <div class="fortschritt-zeile">
         <span id="startup-sub"></span>
         <span id="startup-sub-pct"></span>
       </div>
@@ -143,7 +143,7 @@
 
 <div id="login-screen">
   <div class="lcard max-440">
-    <div class="llogo"><svg width="44" height="44" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" data-stil="display:block;flex-shrink:0">
+    <div class="llogo"><svg width="44" height="44" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" class="logo-bild">
   <rect x="18" y="38" width="84" height="68" rx="3" fill="#e63329"/>
   <polygon points="18,38 30,20 102,20 102,38" fill="#cc2a21"/>
   <polygon points="102,20 118,30 118,86 102,106" fill="#b5231c"/>
@@ -174,7 +174,7 @@
         <a class="farbe-primaer" href="#" id="link-forgot" data-i18n="login.forgot">Passwort vergessen?</a>
         <span id="link-register-wrap" data-stil="display:none"><span data-i18n="login.register_prompt">Neu hier?</span> <a href="#" id="link-register" data-stil="color:var(--b600);font-weight:600">Registrieren</a></span>
       </div>
-      <div data-stil="color:var(--mut);font-size:var(--fs-0);margin-top:1.5rem;text-align:center;opacity:.45;letter-spacing:.03em">Build 2026.10.27.1901</div>
+      <div class="start-fuss">Build 2026.10.27.1901</div>
       <div id="verified-msg" data-stil="display:none;margin-top:.75rem;padding:.65rem .9rem;background:var(--g50);border:1px solid var(--g300);border-radius:7px;font-size:var(--fs-2);color:var(--g700)"><span data-i18n="verify.success" data-ico="ok">E-Mail erfolgreich bestätigt. Du kannst dich jetzt anmelden.</span></div>
     </div>
 
@@ -235,7 +235,7 @@
 
 <!-- PROGRESS OVERLAY -->
 <div id="progress-overlay">
-  <div class="prog-box" data-stil="position:relative">
+  <div class="prog-box relativ">
     <button data-click="hideProgress" title="Minimieren" data-stil="position:absolute;top:.75rem;right:.75rem;background:none;border:1px solid var(--bdr);cursor:pointer;color:var(--mut);padding:1px 9px 4px;border-radius:4px;line-height:1;font-size:var(--fs-4);font-weight:400" class="hover-row" >&#8722;</button>
     <div class="prog-title"><svg class="ico" aria-hidden="true"><use href="#i-aktualisieren"/></svg> <span id="prog-title-txt" data-i18n="prog.processing">Wird verarbeitet…</span></div>
     <div class="prog-set-name" id="prog-set-name"></div>
@@ -247,7 +247,7 @@
     <div class="prog-bar-wrap"><div class="prog-bar" id="prog-bar" data-stil="width:0%"></div></div>
     <div class="prog-footer" id="prog-footer" data-i18n="common.please_wait">Bitte warten…</div>
     <div id="csv-log" class="csv-log" data-stil="display:none"></div>
-    <div data-stil="text-align:center;margin-top:1rem;display:flex;gap:.5rem;justify-content:center">
+    <div class="knopf-reihe-mitte">
       <button class="btn bd btn-sm" id="btn-cancel-import" data-stil="display:none" data-i18n="csv.cancel" data-ico="schliessen">Abbrechen</button>
       <button class="btn bp btn-sm" id="btn-close-import" data-stil="display:none" data-click="closeImportProgress" data-i18n="csv.close" data-ico="ok">Schliessen</button>
     </div>
@@ -257,7 +257,7 @@
 <!-- APP -->
 <div id="app">
   <header>
-    <div class="logo"><svg width="28" height="28" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" data-stil="display:block;flex-shrink:0">
+    <div class="logo"><svg width="28" height="28" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" class="logo-bild">
   <rect x="18" y="38" width="84" height="68" rx="3" fill="#e63329"/>
   <polygon points="18,38 30,20 102,20 102,38" fill="#cc2a21"/>
   <polygon points="102,20 118,30 118,86 102,106" fill="#b5231c"/>
@@ -289,13 +289,13 @@
         <div class="hs"><span class="v" id="hs-instr">—</span><span class="l" data-i18n="header.instr">Anleitungen</span></div>
       </div>
       <!-- Inline CSV import progress -->
-      <div id="global-import-bar" data-stil="display:none;align-items:center;gap:8px;min-width:180px;max-width:280px">
+      <div id="global-import-bar" class="import-leiste" data-stil="display:none">
         <span class="schrift-1"><svg class="ico" aria-hidden="true"><use href="#i-set"/></svg></span>
-        <div data-stil="flex:1;background:var(--bdr);border-radius:999px;height:5px;overflow:hidden;cursor:pointer" data-click="gibToggle">
-          <div id="gib-fill" data-stil="height:100%;background:var(--b600);border-radius:999px;width:0%;transition:width .4s ease"></div>
+        <div class="import-leiste-balken" data-click="gibToggle">
+          <div id="gib-fill" class="balken-fuellung"></div>
         </div>
-        <span id="gib-text" data-stil="font-size:var(--fs-1);font-weight:600;color:var(--s700);white-space:nowrap;cursor:pointer" data-click="gibToggle">0%</span>
-        <span id="gib-chevron" data-stil="font-size:var(--fs-1);color:var(--mut);cursor:pointer" data-click="gibToggle">▾</span>
+        <span id="gib-text" class="import-leiste-text" data-click="gibToggle">0%</span>
+        <span id="gib-chevron" class="import-leiste-pfeil" data-click="gibToggle">▾</span>
       </div>
       <div class="umenu">
         <!-- ── DAS MENÜ IM BENUTZERNAMEN ─────────────────────────────────
@@ -701,22 +701,22 @@
              nach einem Umbruch beginnt die neue Zeile wieder LINKS — genau das
              sieht man auf schmalen Fenstern und auf dem Handy. margin-left:auto
              schiebt ihn in beiden Fällen ans rechte Ende. -->
-        <select id="scope-finance" class="scope-select" aria-label="Konten" data-i18n="household.scope_label" data-i18n-attr="aria-label" data-change="onScopeChange" data-arg="finance" data-stil="display:none;margin-left:auto"></select>
+        <select id="scope-finance" class="scope-select rechts-buendig" aria-label="Konten" data-i18n="household.scope_label" data-i18n-attr="aria-label" data-change="onScopeChange" data-arg="finance" data-stil="display:none"></select>
       </div>
       <!-- Portfolio Chart -->
-      <div id="portfolio-chart-section" data-stil="background:var(--sur);border:1.5px solid var(--bdr);border-radius:var(--rad);padding:1.25rem;margin-bottom:1.25rem;box-shadow:var(--sh0)">
-        <div data-stil="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:.75rem">
+      <div id="portfolio-chart-section" class="diagramm-karte">
+        <div class="diagramm-kopf">
           <div class="bereich-titel ohne-abstand-u" data-i18n="finance.chart.label">Wertentwicklung Portfolio</div>
-          <div data-stil="display:flex;gap:16px;align-items:center;flex-wrap:wrap">
+          <div class="diagramm-werte">
             <div class="text-klein"><span data-i18n="finance.market_label">Ø Marktpreis</span>: <span class="wert-primaer" id="portfolio-current">—</span></div>
             <span id="portfolio-pnl"></span>
           </div>
           <span id="portfolio-purchase" data-stil="display:none"></span>
         </div>
-        <div class="chart-wrap" id="portfolio-chart" data-stil="min-height:80px">
-          <div data-stil="color:var(--mut);font-size:var(--fs-2);padding:1rem" data-i18n="finance.chart.loading">Laden…</div>
+        <div class="chart-wrap diagramm-flaeche" id="portfolio-chart">
+          <div class="diagramm-hinweis" data-i18n="finance.chart.loading">Laden…</div>
         </div>
-        <div data-stil="display:flex;gap:6px;margin-top:.75rem;justify-content:center;flex-wrap:wrap">
+        <div class="zeitraum-wahl">
           <button class="period-btn"        data-period="week"  data-click="setChartPeriod" data-arg="week" data-i18n="finance.period.week">Woche</button>
           <button class="period-btn"        data-period="month" data-click="setChartPeriod" data-arg="month" data-i18n="finance.period.month">Monat</button>
           <button class="period-btn"        data-period="year"  data-click="setChartPeriod" data-arg="year" data-i18n="finance.period.year">Jahr</button>
@@ -725,11 +725,11 @@
         </div>
       </div>
 
-      <div id="fin-figs-banner" data-stil="display:none;background:var(--sur);border:1px solid var(--bdr);border-radius:var(--rad);padding:.85rem 1.25rem;margin-bottom:.75rem;align-items:center;justify-content:space-between">
+      <div id="fin-figs-banner" class="fin-banner" data-stil="display:none">
         <span class="text-3-mut" data-i18n="finance.figs_label" data-ico="figur">Minifiguren</span>
         <span class="wert-primaer" id="fin-figs-val">—</span>
       </div>
-      <div id="fin-parts-banner" data-stil="display:none;background:var(--sur);border:1px solid var(--bdr);border-radius:var(--rad);padding:.85rem 1.25rem;margin-bottom:.75rem;display:none;align-items:center;justify-content:space-between">
+      <div id="fin-parts-banner" class="fin-banner" data-stil="display:none">
         <span class="text-3-mut" data-i18n="parts.single_parts" data-ico="teil">Einzel-Teile</span>
         <span class="wert-primaer" id="fin-parts-val">—</span>
       </div>
@@ -744,7 +744,7 @@
            „Alle" ist kein vierter Zustand, sondern die LEERE Auswahl: Der Chip
            ist genau dann gewaehlt, wenn nichts eingeschraenkt ist. Die Regel
            steht ausformuliert in FinanceUiState.kategorien. -->
-      <div id="fin-filter" data-stil="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:.75rem">
+      <div id="fin-filter" class="chip-reihe">
         <button class="period-btn active" data-art=""      data-click="finFilter" data-arg="alle"  data-i18n="finance.filter.all">Alle</button>
         <button class="period-btn"        data-art="sets"  data-click="finFilter" data-arg="sets"  data-i18n="finance.filter.sets">Sets</button>
         <button class="period-btn"        data-art="parts" data-click="finFilter" data-arg="parts" data-i18n="finance.filter.parts">Teile</button>
@@ -924,11 +924,11 @@
             <div class="ctitle" data-i18n="settings.users_new">Neuen Benutzer erstellen</div>
             <!-- Formular wie bei den Anmeldefeldern; display:contents haelt die
                  Zeile (.frow) unveraendert. -->
-            <form data-stil="display:contents" data-submit="btn-cu">
+            <form class="nur-inhalt" data-submit="btn-cu">
             <div class="frow">
               <div class="fg"><label for="nu-n" data-i18n="settings.users_username">Benutzername</label><input type="text" id="nu-n" /></div>
               <div class="fg"><label for="nu-p" data-i18n="settings.users_password">Passwort</label><input type="password" id="nu-p" /></div>
-              <div class="fg" data-stil="max-width:130px;justify-content:flex-end">
+              <div class="fg max-130-rechts">
                 <!-- Umschliessendes Label: die Checkbox liegt darin, ein for= wäre falsch
                      (und zeigte hier versehentlich auf ein fremdes Feld). -->
                 <label data-stil="display:flex;align-items:center;gap:6px;cursor:pointer;margin-bottom:9px"><input class="w-auto" type="checkbox" id="nu-a" /> Admin</label>
@@ -994,7 +994,7 @@
           <div class="profil-raster">
             <div class="fg"><label for="design-wahl" data-i18n="settings.own_theme">Design</label>
               <select id="design-wahl" data-change="setzeEigenesDesign">
-                <option value="" data-i18n="settings.own_theme_default">Vorgabe des Verwalters</option>
+                <option value="" data-i18n="settings.own_theme_vorgabe">Vorgabe</option>
                 <option value="classic" data-i18n="settings.theme_classic">Klassisch</option>
                 <option value="brick" data-i18n="settings.theme_brick">Stein (Blau)</option>
                 <option value="werkbank" data-i18n="settings.theme_werkbank">Werkbank (dunkel)</option>
@@ -1005,7 +1005,7 @@
             </div>
             <div class="fg"><label for="dunkel-wahl" data-i18n="settings.dark.label">Darstellung auf diesem Gerät</label>
               <select id="dunkel-wahl" data-change="setzeDunkel">
-                <option value="system" data-i18n="settings.dark.system">Dem System folgen (hell oder dunkel)</option>
+                <option value="system" data-i18n="settings.dark.system">Wie das System (hell/dunkel)</option>
                 <option value="server" data-i18n="settings.dark.server">Ohne Dunkelmodus</option>
               </select>
             </div>
@@ -1042,7 +1042,7 @@
                Passwortmanager bietet Speichern und Ausfuellen nur noch nach
                Heuristik an. display:contents haelt das Layout unveraendert,
                data-submit nennt den Knopf fuer die Eingabetaste. -->
-          <form data-stil="display:contents" data-submit="btn-sav-prof">
+          <form class="nur-inhalt" data-submit="btn-sav-prof">
           <div class="profil-raster">
             <div class="fg"><label for="prof-first" data-i18n="settings.profile.firstname">Vorname</label><input type="text" id="prof-first" data-i18n="settings.profile.firstname" data-i18n-attr="placeholder" placeholder="Vorname" /></div>
             <div class="fg"><label for="prof-last" data-i18n="settings.profile.lastname">Nachname</label><input type="text" id="prof-last" data-i18n="settings.profile.lastname" data-i18n-attr="placeholder" placeholder="Nachname" /></div>
@@ -1081,8 +1081,8 @@
       </div>
 
       <!-- Gefahrenzone — für alle Benutzer sichtbar -->
-      <div class="sgroup-label" data-stil="color:var(--r500)" data-i18n="settings.danger_zone" data-ico="warnung">Gefahrenzone</div>
-      <div class="ssec" data-stil="border:1px solid var(--r200);border-radius:var(--rad);padding:1rem;background:var(--r50,#fff5f5)">
+      <div class="sgroup-label text-gefahr" data-i18n="settings.danger_zone" data-ico="warnung">Gefahrenzone</div>
+      <div class="ssec gefahrenzone">
         <p class="text-mittel abstand-u-075" data-i18n="settings.danger.hint">Gelöschtes liegt 30 Tage im Papierkorb (Menü → Daten und Papierkorb) und wird danach endgültig entfernt.</p>
         <button class="btn bd" id="btn-dall" data-i18n="settings.delete_all_btn" data-ico="loeschen">Alle meine Daten löschen</button>
       </div>
@@ -1124,7 +1124,7 @@
                fuer alle, die Abfrage benutzt ihn also auch bei den uebrigen
                Konten. -->
           <div class="admin-only" data-stil="display:none;margin-bottom:1rem">
-            <div class="fg" data-stil="max-width:17rem">
+            <div class="fg max-17rem">
               <label for="gutschein-land" data-i18n="vouchers.country">Ausgabeland</label>
               <select id="gutschein-land" data-change="gutscheinLandSpeichern">
                 <option value="de-CH" data-i18n="vouchers.country_de_ch">Schweiz</option>
@@ -1382,7 +1382,7 @@
 
         <div class="ssec full">
           <div class="trenner-oben">
-            <div class="stit zeile mittig luecke-6"><svg width="18" height="18" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" data-stil="flex-shrink:0"><rect x="18" y="38" width="84" height="68" rx="3" fill="#e63329"/><polygon points="18,38 30,20 102,20 102,38" fill="#cc2a21"/><polygon points="102,20 118,30 118,86 102,106" fill="#b5231c"/><ellipse cx="43" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="37" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="43" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="58" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="52" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="58" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="73" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="67" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="73" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="88" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="82" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="88" cy="17" rx="6" ry="3" fill="#b5231c"/><rect x="24" y="54" width="72" height="40" rx="2" fill="#fff"/><rect x="29" y="58" width="46" height="15" rx="2" fill="#f5a800"/><text x="52" y="69" text-anchor="middle" font-family="Arial,sans-serif" font-weight="800" font-size="11" fill="#3b2600">BIM</text></svg> <span data-i18n="settings.data_export_title">Daten exportieren / importieren</span></div>
+            <div class="stit zeile mittig luecke-6"><svg width="18" height="18" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" class="nicht-schrumpfen"><rect x="18" y="38" width="84" height="68" rx="3" fill="#e63329"/><polygon points="18,38 30,20 102,20 102,38" fill="#cc2a21"/><polygon points="102,20 118,30 118,86 102,106" fill="#b5231c"/><ellipse cx="43" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="37" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="43" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="58" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="52" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="58" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="73" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="67" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="73" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="88" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="82" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="88" cy="17" rx="6" ry="3" fill="#b5231c"/><rect x="24" y="54" width="72" height="40" rx="2" fill="#fff"/><rect x="29" y="58" width="46" height="15" rx="2" fill="#f5a800"/><text x="52" y="69" text-anchor="middle" font-family="Arial,sans-serif" font-weight="800" font-size="11" fill="#3b2600">BIM</text></svg> <span data-i18n="settings.data_export_title">Daten exportieren / importieren</span></div>
 
 
             <p class="hinweis-absatz">
@@ -1407,7 +1407,7 @@
               <span data-i18n="settings.rb_list_hint">Alle Sets im Rebrickable-Listenformat exportieren (Spalten „Set Number,Quantity“), um sie unter „My Sets → Add via List“ bei Rebrickable zu importieren.</span>
             </p>
             <div class="zeile luecke-10 umbruch mittig">
-              <a class="btn bs zeile-inline" href="/api/v1/sets/export/rebrickable"><svg width="16" height="16" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" data-stil="flex-shrink:0"><rect x="18" y="38" width="84" height="68" rx="3" fill="#e63329"/><polygon points="18,38 30,20 102,20 102,38" fill="#cc2a21"/><polygon points="102,20 118,30 118,86 102,106" fill="#b5231c"/><ellipse cx="43" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="37" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="43" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="58" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="52" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="58" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="73" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="67" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="73" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="88" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="82" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="88" cy="17" rx="6" ry="3" fill="#b5231c"/><rect x="24" y="54" width="72" height="40" rx="2" fill="#fff"/><rect x="29" y="58" width="46" height="15" rx="2" fill="#f5a800"/><text x="52" y="69" text-anchor="middle" font-family="Arial,sans-serif" font-weight="800" font-size="11" fill="#3b2600">BIM</text></svg> <span data-i18n="settings.export_rb">Sets für Rebrickable exportieren</span></a>
+              <a class="btn bs zeile-inline" href="/api/v1/sets/export/rebrickable"><svg width="16" height="16" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" class="nicht-schrumpfen"><rect x="18" y="38" width="84" height="68" rx="3" fill="#e63329"/><polygon points="18,38 30,20 102,20 102,38" fill="#cc2a21"/><polygon points="102,20 118,30 118,86 102,106" fill="#b5231c"/><ellipse cx="43" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="37" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="43" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="58" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="52" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="58" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="73" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="67" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="73" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="88" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="82" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="88" cy="17" rx="6" ry="3" fill="#b5231c"/><rect x="24" y="54" width="72" height="40" rx="2" fill="#fff"/><rect x="29" y="58" width="46" height="15" rx="2" fill="#f5a800"/><text x="52" y="69" text-anchor="middle" font-family="Arial,sans-serif" font-weight="800" font-size="11" fill="#3b2600">BIM</text></svg> <span data-i18n="settings.export_rb">Sets für Rebrickable exportieren</span></a>
             </div>
           </div>
         </div>
@@ -1581,17 +1581,17 @@
 </div>
 
 <!-- Confirm Dialog -->
-<div class="ovl" id="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="cd-title" data-stil="display:none;z-index:400">
-  <div class="modal" data-stil="max-width:400px;padding:2rem;text-align:center">
-    <div data-stil="font-size:var(--fs-7);margin-bottom:.75rem" id="cd-icon"><svg class="ico" aria-hidden="true"><use href="#i-loeschen"/></svg></div>
-    <h3 data-stil="margin:0 0 .5rem;font-size:var(--fs-4);font-weight:700" id="cd-title" data-i18n="common.delete_title">Löschen?</h3>
-    <p data-stil="margin:0 0 1.5rem;font-size:var(--fs-3);color:var(--mut);line-height:1.55" id="cd-msg"></p>
+<div class="ovl ebene-400" id="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="cd-title" data-stil="display:none">
+  <div class="modal dialog-schmal-mitte">
+    <div class="dialog-symbol" id="cd-icon"><svg class="ico" aria-hidden="true"><use href="#i-loeschen"/></svg></div>
+    <h3 class="dialog-titel-mitte" id="cd-title" data-i18n="common.delete_title">Löschen?</h3>
+    <p class="dialog-text-mitte" id="cd-msg"></p>
     <form class="ohne-rand" data-submit="cd-confirm">
     <div id="cd-pw-wrap" class="bestaetigung-passwort" hidden>
       <label for="cd-pw" data-i18n="confirm.admin_password">Dein Passwort zur Bestätigung</label>
       <input type="password" id="cd-pw" autocomplete="current-password">
     </div>
-    <div data-stil="display:flex;gap:.75rem;justify-content:center">
+    <div class="knopf-reihe-mitte knopf-reihe-weit">
       <button type="button" class="btn bs min-100" id="cd-cancel" data-dialog-zu data-erstfokus data-i18n="common.cancel">Abbrechen</button>
       <button type="button" class="btn bd min-100" id="cd-confirm" data-i18n="confirm.delete_btn">Löschen</button>
     </div>
@@ -1810,7 +1810,7 @@
     <div class="mfooter verteilt umbruch luecke-8">
       <div class="zeile luecke-8 unten umbruch">
         <div class="fg max-150" id="cat-m-owner-box" data-stil="display:none"><label for="cat-m-owner" data-i18n="household.for_account">Für Konto</label><select class="auswahl-kompakt" id="cat-m-owner"></select></div><div class="fg max-220" id="cat-m-storage-box"><span class="feld-titel" id="cat-m-storage-label" data-i18n="detail.storage">Lagerort</span><span class="zeile luecke-6 mittig" id="cat-m-storage-slot"></span></div>
-        <div class="fg" data-stil="max-width:74px"><label for="cat-m-qty" data-i18n="gallery.add.qty">Anzahl</label><input inputmode="numeric" type="number" id="cat-m-qty" value="1" min="1" /></div>
+        <div class="fg max-74"><label for="cat-m-qty" data-i18n="gallery.add.qty">Anzahl</label><input inputmode="numeric" type="number" id="cat-m-qty" value="1" min="1" /></div>
         <div class="fg max-110"><label for="cat-m-price" data-i18n="gallery.add.price">Kaufpreis (optional)</label><input inputmode="decimal" type="number" id="cat-m-price" step="0.01" min="0" placeholder="—" /></div>
         <div class="fg max-110"><label for="cat-m-cond" data-i18n="common.condition">Zustand</label><select class="auswahl-kompakt" id="cat-m-cond"><option value="N" data-i18n="common.condition_new">Neu</option><option value="U" data-i18n="common.condition_used">Gebraucht</option></select></div>
       </div>
@@ -1874,7 +1874,7 @@
      `width:92%` bleibt daneben stehen und gilt weiterhin zuerst: Auf einem
      schmalen Fenster ändert diese Zahl nichts. -->
 <div class="ovl" id="wanted-xml-modal" role="dialog" aria-modal="true" aria-labelledby="wxml-tit">
-  <div class="modal" data-stil="max-width:1360px">
+  <div class="modal max-1360">
     <div class="mhd">
       <div>
         <div class="mtit" id="wxml-tit" data-stil="display:flex;align-items:center;gap:7px"><span data-wanted-icon="1"></span><span data-i18n="wanted.preview_title">Wanted-Liste prüfen</span></div>
@@ -1965,17 +1965,17 @@
 </div>
 
 <!-- PDF-Viewer-Modal (In-App-Anzeige von Anleitungen) -->
-<div class="ovl" id="pdf-viewer-modal" role="dialog" aria-modal="true" aria-labelledby="pdf-viewer-title" data-stil="display:none;z-index:500">
-  <div data-stil="background:var(--sur);width:96vw;height:96vh;max-width:1200px;border-radius:12px;display:flex;flex-direction:column;overflow:hidden;box-shadow:var(--sh1)">
-    <div data-stil="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:.55rem .9rem;border-bottom:1px solid var(--bdr)">
-      <div id="pdf-viewer-title" data-stil="font-weight:600;font-size:var(--fs-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">PDF</div>
-      <div data-stil="display:flex;gap:8px;align-items:center;flex-shrink:0">
+<div class="ovl ebene-500" id="pdf-viewer-modal" role="dialog" aria-modal="true" aria-labelledby="pdf-viewer-title" data-stil="display:none">
+  <div class="pdf-rahmen">
+    <div class="pdf-kopf">
+      <div id="pdf-viewer-title" class="pdf-titel">PDF</div>
+      <div class="pdf-werkzeuge">
         <!-- Zoom: Minus, Faktor, Plus, und der Faktor selbst ist der
              Zurueck-auf-100%-Knopf. Der Faktor steht als ZAHL da, nicht als
              Balken oder Farbe -- man muss ablesen koennen, wo man ist. -->
-        <div data-stil="display:flex;align-items:center;gap:4px;flex-shrink:0">
+        <div class="pdf-zoom">
           <button id="pdf-viewer-zoom-out" class="btn bs btn-sm" data-click="pdfZoomOut" aria-label="Verkleinern (Taste −, oder Strg + Mausrad)" data-i18n="pdf.zoom_out" data-i18n-attr="aria-label">−</button>
-          <button id="pdf-viewer-zoom" class="btn bs btn-sm" data-click="pdfZoomReset" aria-label="Zoom zurücksetzen (Taste 0)" data-i18n="pdf.zoom_reset" data-i18n-attr="aria-label" data-stil="min-width:3.4rem">100%</button>
+          <button id="pdf-viewer-zoom" class="btn bs btn-sm min-34rem" data-click="pdfZoomReset" aria-label="Zoom zurücksetzen (Taste 0)" data-i18n="pdf.zoom_reset" data-i18n-attr="aria-label">100%</button>
           <button id="pdf-viewer-zoom-in" class="btn bs btn-sm" data-click="pdfZoomIn" aria-label="Vergrössern (Taste +, oder Strg + Mausrad)" data-i18n="pdf.zoom_in" data-i18n-attr="aria-label">+</button>
         </div>
         <button id="pdf-viewer-print" class="btn bs btn-sm" data-click="printPdfViewer"><svg class="ico" aria-hidden="true"><use href="#i-drucker"/></svg> <span data-i18n="pdf.print">Drucken</span></button>
@@ -1983,11 +1983,11 @@
         <button class="btn bs btn-sm" data-click="closePdfViewer" data-dialog-zu aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-schliessen"/></svg></button>
       </div>
     </div>
-    <div data-stil="flex:1;position:relative;background:#525659;min-height:0">
-      <div id="pdf-viewer-loading" data-stil="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:#fff;z-index:2">
+    <div class="pdf-flaeche">
+      <div id="pdf-viewer-loading" class="pdf-laden">
         <div class="spin"></div><span data-i18n="pdf.loading">PDF wird geladen…</span>
       </div>
-      <div id="pdf-viewer-pages" data-stil="position:absolute;inset:0;overflow:auto;padding:14px 0;display:flex;flex-direction:column;align-items:center;gap:14px"></div>
+      <div id="pdf-viewer-pages" class="pdf-seiten"></div>
     </div>
   </div>
 </div>
@@ -2017,9 +2017,9 @@
 </div>
 
 <!-- Image Lightbox (vergrösserte Set-Ansicht) -->
-<div class="ovl" id="img-lightbox" role="dialog" aria-modal="true" aria-label="Bildansicht" data-i18n="common.image_view" data-i18n-attr="aria-label" data-stil="z-index:300;background:rgba(255,255,255,.97)" data-click="lightboxBackdrop">
-  <button class="btn bs btn-sm" data-click="closeImageLightbox" data-dialog-zu data-stil="position:absolute;top:20px;right:20px;font-size:var(--fs-4);padding:6px 14px" aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-schliessen"/></svg></button>
-  <img id="lightbox-img" alt="" data-onerror="keep" data-stil="max-width:92vw;max-height:92vh;object-fit:contain;border-radius:8px" />
+<div class="ovl bild-gross-grund" id="img-lightbox" role="dialog" aria-modal="true" aria-label="Bildansicht" data-i18n="common.image_view" data-i18n-attr="aria-label" data-click="lightboxBackdrop">
+  <button class="btn bs btn-sm bild-gross-zu" data-click="closeImageLightbox" data-dialog-zu aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-schliessen"/></svg></button>
+  <img id="lightbox-img" alt="" data-onerror="keep" class="bild-gross" />
 </div>
 
 <!-- Einrichtung beim ersten Start — Ablauf in js/22-einrichtung.js -->
@@ -2074,7 +2074,7 @@
       </div>
     </section>
 
-    <div data-stil="display:flex;gap:.5rem;justify-content:flex-end;margin-top:1rem">
+    <div class="dialog-fuss">
       <button type="button" class="btn bs btn-sm" id="ew-zurueck" data-click="einrichtungZurueck" data-i18n="setup.back">Zurück</button>
       <button type="button" class="btn bp btn-sm" id="ew-weiter" data-click="einrichtungWeiter" data-i18n="setup.next">Weiter</button>
     </div>
@@ -2088,7 +2088,7 @@
     <form class="sform" data-submit="btn-rpw">
       <div class="fg"><label for="rpw-v" data-i18n="users.pw_modal.new_password">Neues Passwort</label><input type="password" id="rpw-v" data-erstfokus /></div>
       <input type="hidden" id="rpw-uid" />
-      <div data-stil="display:flex;gap:10px;justify-content:flex-end;margin-top:.5rem">
+      <div class="dialog-fuss dialog-fuss-eng">
         <button type="button" class="btn bs" data-click="closePwModal" data-i18n="users.pw_modal.cancel">Abbrechen</button>
         <button type="button" class="btn bp" id="btn-rpw" data-i18n="settings.save">Speichern</button>
       </div>

@@ -387,7 +387,7 @@
        strahlte. Fotos mit weissem Grund werden nur gedämpft: multiply hätte
        sie auf dunklem Grund geschwärzt. */
     [data-dunkel] .sci,[data-theme="werkbank"] .sci{background:#2b3139}
-    [data-dunkel] .sci img,[data-theme="werkbank"] .sci img{filter:brightness(.82);border-radius:6px;padding:10px}
+    [data-dunkel] .sci img,[data-theme="werkbank"] .sci img{filter:brightness(.75);border-radius:6px;padding:10px}
     [data-dunkel]{color-scheme:dark}
     .sci .ni{font-size:var(--fs-8)}
     .scb{padding:11px}
@@ -1019,7 +1019,7 @@ a.btn:hover{text-decoration:none}
 .sp-40{width:40px}.sp-55{width:55px}.sp-60{width:60px}.sp-70{width:70px}.sp-80{width:80px}.sp-90{width:90px}
 .sp-110{width:110px}.sp-250{width:250px}.sp-395{width:395px}
 /* Zahlen rechtsbündig, samt Köpfen: So stehen Stellen untereinander. */
-.dt-fin .zahl,.dt-fin th.zahl{text-align:right}
+.dt-fin .zahl,.dt-fin th.zahl,.dt-fin .fin-fuss-wert{text-align:right}
 .dt-fin .zahl .qbadge{margin-left:auto}
 
 /* ── Beträge ─────────────────────────────────────────────────────────── */
@@ -1062,13 +1062,70 @@ a.btn:hover{text-decoration:none}
 
 /* ── Konto (Profil): begrenzte Breite, eine Beschriftungsgrösse ─────────── */
 #tab-profil .ssec{max-width:52rem}
-.profil-raster{display:grid;grid-template-columns:repeat(auto-fill,minmax(14rem,1fr));gap:.75rem 1rem}
+.profil-raster{display:grid;grid-template-columns:repeat(auto-fill,minmax(15rem,1fr));gap:.75rem 1rem}
 .profil-raster .fg{min-width:0}
 .profil-raster-3{grid-template-columns:repeat(auto-fill,minmax(12rem,1fr))}
 #tab-profil .btn,#tab-profil .btn.btn-sm{font-size:var(--fs-3);padding:var(--sp-2) var(--sp-4);min-height:38px}
 .email-status{font-size:var(--fs-1);margin-left:4px}
 .email-ok{color:var(--g700)}
 .email-offen{color:var(--a-schrift)}
+
+/* Vorher Inline-Stile in index.html (data-stil) — als Klassen sieht sie jedes Design. */
+.balken-fuellung{height:100%;background:var(--b600);border-radius:999px;width:0%;transition:width .4s ease}
+.logo-bild{display:block;flex-shrink:0}
+.nicht-schrumpfen{flex-shrink:0}
+.nur-inhalt{display:contents}
+.diagramm-karte{background:var(--sur);border:1.5px solid var(--bdr);border-radius:var(--rad);padding:1.25rem;margin-bottom:1.25rem;box-shadow:var(--sh0)}
+.diagramm-kopf{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:.75rem}
+.diagramm-werte{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+.diagramm-flaeche{min-height:80px}
+.diagramm-hinweis{color:var(--mut);font-size:var(--fs-2);padding:1rem}
+.zeitraum-wahl{display:flex;gap:6px;margin-top:.75rem;justify-content:center;flex-wrap:wrap}
+.fin-banner{display:flex;background:var(--sur);border:1px solid var(--bdr);border-radius:var(--rad);padding:.85rem 1.25rem;margin-bottom:.75rem;align-items:center;justify-content:space-between}
+.chip-reihe{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:.75rem}
+.rechts-buendig{margin-left:auto}
+.text-gefahr{color:var(--r700)}
+.gefahrenzone{border:1px solid var(--r200);border-radius:var(--rad);padding:1rem;background:var(--r50,#fff5f5)}
+.dialog-fuss{display:flex;gap:.5rem;justify-content:flex-end;margin-top:1rem}
+.knopf-reihe-mitte{text-align:center;margin-top:1rem;display:flex;gap:.5rem;justify-content:center}
+.dialog-schmal-mitte{max-width:400px;padding:2rem;text-align:center}
+.dialog-symbol{font-size:var(--fs-7);margin-bottom:.75rem}
+.dialog-titel-mitte{margin:0 0 .5rem;font-size:var(--fs-4);font-weight:700}
+.dialog-text-mitte{margin:0 0 1.5rem;font-size:var(--fs-3);color:var(--mut);line-height:1.55}
+.max-1360{max-width:1360px}
+.max-17rem{max-width:17rem}
+.max-74{max-width:74px}
+.max-130-rechts{max-width:130px;justify-content:flex-end}
+.relativ{position:relative}
+.ebene-400{z-index:400}
+.ebene-500{z-index:500}
+.pdf-rahmen{background:var(--sur);width:96vw;height:96vh;max-width:1200px;border-radius:12px;display:flex;flex-direction:column;overflow:hidden;box-shadow:var(--sh1)}
+.pdf-kopf{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:.55rem .9rem;border-bottom:1px solid var(--bdr)}
+.pdf-titel{font-weight:600;font-size:var(--fs-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pdf-werkzeuge{display:flex;gap:8px;align-items:center;flex-shrink:0}
+.pdf-zoom{display:flex;align-items:center;gap:4px;flex-shrink:0}
+.min-34rem{min-width:3.4rem}
+.pdf-flaeche{flex:1;position:relative;background:#525659;min-height:0}
+.pdf-laden{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:#fff;z-index:2}
+.pdf-seiten{position:absolute;inset:0;overflow:auto;padding:14px 0;display:flex;flex-direction:column;align-items:center;gap:14px}
+.bild-gross-grund{z-index:300;background:rgba(255,255,255,.97)}
+.bild-gross-zu{position:absolute;top:20px;right:20px;font-size:var(--fs-4);padding:6px 14px}
+.bild-gross{max-width:92vw;max-height:92vh;object-fit:contain;border-radius:8px}
+.start-flaeche{display:flex;align-items:center;justify-content:center;min-height:100vh;flex-direction:column;gap:1.5rem}
+.start-marke{display:flex;align-items:center;gap:12px;margin-bottom:.5rem}
+.start-titel{font-size:var(--fs-6);font-weight:800;color:var(--txt)}
+.start-fuss{color:var(--mut);font-size:var(--fs-0);margin-top:1.5rem;text-align:center;opacity:.75;letter-spacing:.03em}
+.fortschritt-zeile{display:flex;justify-content:space-between;font-size:var(--fs-1);color:var(--s500)}
+.balken{background:var(--s200);border-radius:999px;height:8px;overflow:hidden;margin-bottom:.3rem}
+.fortschritt-titel{font-size:var(--fs-2);font-weight:600;color:var(--mut);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.4rem}
+.import-leiste{align-items:center;gap:8px;min-width:180px;max-width:280px}
+.import-leiste-balken{flex:1;background:var(--bdr);border-radius:999px;height:5px;overflow:hidden;cursor:pointer}
+.import-leiste-text{font-size:var(--fs-1);font-weight:600;color:var(--s700);white-space:nowrap;cursor:pointer}
+.import-leiste-pfeil{font-size:var(--fs-1);color:var(--mut);cursor:pointer}
+.balken-gruen{background:var(--g500)}
+.dialog-fuss-eng{gap:10px;margin-top:.5rem}
+.knopf-reihe-weit{gap:.75rem;margin-top:0}
+.balken-flach{height:6px}
 
 /* Abstände zuletzt: Sie ergänzen die Klassen davor (z. B. .hinweis-absatz.abstand-u-075). */
 .abstand-o-2{margin-top:2px}.abstand-o-3{margin-top:3px}.abstand-o-4{margin-top:4px}.abstand-o-8{margin-top:8px}
