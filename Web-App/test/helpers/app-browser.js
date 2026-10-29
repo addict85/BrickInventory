@@ -38,11 +38,11 @@ function starte(t, bin, args, opt) {
 async function cdp(wsUrl) {
   const ws = new WebSocket(wsUrl);
   await new Promise((r, f) => { ws.onopen = r; ws.onerror = f; });
-  let n = 0; const offen = new Map(); const ereignisse = [];
+  let n = 0; const offen = new Map(); const ereignisse = []; const hoerer = [];
   ws.onmessage = (m) => {
     const d = JSON.parse(m.data);
     if (d.id && offen.has(d.id)) { const { r, f } = offen.get(d.id); offen.delete(d.id); d.error ? f(new Error(d.error.message)) : r(d.result); }
-    else if (d.method) ereignisse.push(d);
+    else if (d.method) { ereignisse.push(d); for (const h of hoerer) h(d); }
   };
   const senden = (method, params = {}, sessionId) => new Promise((r, f) => {
     const id = ++n; offen.set(id, { r, f }); ws.send(JSON.stringify({ id, method, params, sessionId }));
@@ -55,7 +55,7 @@ async function cdp(wsUrl) {
     if (r.exceptionDetails) throw new Error(r.exceptionDetails.exception?.description || r.exceptionDetails.text);
     return r.result.value;
   };
-  return { tab, auswerten, ereignisse, schliessen: () => ws.close() };
+  return { tab, auswerten, ereignisse, hoerer, sessionId, schliessen: () => ws.close() };
 }
 
 /**
@@ -63,6 +63,8 @@ async function cdp(wsUrl) {
  * @param opt.name Kontoname
  * @param opt.bestand async (db, uid) => {} legt Testdaten an
  * @param opt.telefon true: 390 × 844, mobile
+ * @param opt.abfangen [{ muster, enthaelt, antwort }]: Anfragen, deren URL auf
+ *        das CDP-Muster passt und `enthaelt` enthält, bekommen `antwort` als JSON
  */
 async function starteApp(t, opt = {}) {
   const bin = chrome();
@@ -113,6 +115,17 @@ async function starteApp(t, opt = {}) {
   t.after(() => b.schliessen());
   await b.tab('Runtime.enable');
   await b.tab('Page.enable');
+  if (opt.abfangen?.length) {
+    await b.tab('Fetch.enable', { patterns: opt.abfangen.map(a => ({ urlPattern: a.muster, requestStage: 'Request' })) });
+    b.hoerer.push((d) => {
+      if (d.method !== 'Fetch.requestPaused') return;
+      const a = opt.abfangen.find(x => d.params.request.url.includes(x.enthaelt));
+      if (!a) { b.tab('Fetch.continueRequest', { requestId: d.params.requestId }).catch(() => {}); return; }
+      b.tab('Fetch.fulfillRequest', { requestId: d.params.requestId, responseCode: 200,
+        responseHeaders: [{ name: 'Content-Type', value: 'application/json' }],
+        body: Buffer.from(JSON.stringify(a.antwort)).toString('base64') }).catch(() => {});
+    });
+  }
   if (opt.telefon)
     await b.tab('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
   await b.tab('Emulation.setLocaleOverride', { locale: opt.locale || 'de-DE' });

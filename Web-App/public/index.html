@@ -583,7 +583,8 @@
            Kopf (Nachtrag 32, Marcos Wunsch): Die Bedienelemente stehen damit
            direkt über der Liste, auf die sie wirken. Beim Verschieben nur den
            Container anfassen — die IDs darin sind der Vertrag mit dem JS. -->
-      <div class="filterzeile">
+      <div class="filterleiste filterzeile">
+          <button type="button" class="btn bs filter-knopf" data-click="filterUmschalten" aria-expanded="false" data-i18n="common.filter" data-ico="liste">Filter</button>
           <input class="suchfeld" type="text" id="parts-search" placeholder="Teilenummer / Name…" data-i18n="parts.search" data-i18n-attr="placeholder" / aria-label="Teilenummer / Name">
           <select class="w-auto" id="parts-spare" aria-label="Ersatzteile" data-i18n="parts.spare_label" data-i18n-attr="aria-label">
             <option value="" data-i18n="parts.filter.all">Alle Teile</option>

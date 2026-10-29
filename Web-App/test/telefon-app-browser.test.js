@@ -9,6 +9,9 @@
  *     und jeder Text mindestens 12 px groß.
  *   - Teile und Minifiguren: Am Telefon nennt „Sammlung“ in der Leiste die
  *     offene Ansicht („Teile“); am Rechner haben beide eigene Reiter.
+ *   - Teile: zwölf Teile in zwölf Farben stehen in einem Raster (höchstens
+ *     zehn Zeilen statt 24); die Filter liegen hinter dem Knopf „Filter“ und
+ *     sind geöffnet gleich breit.
  *   - Diagramme: Jede Beschriftung im Wertdiagramm (Finanzen) und im
  *     Preisverlauf (Set-Ansicht) ist mindestens 11 px groß, und jedes
  *     Diagramm hat role="img" mit einer Zusammenfassung als aria-label.
@@ -28,6 +31,9 @@
  *   E  (29.10.) in markiereGruppe die Zeilen für .tab-unter entfernt → rot:
  *      „Teile und Minifiguren in der Leiste auffindbar“ („Sammlung“);
  *      .ntab-sammlung wieder .ntab-unter → rot (am Rechner nicht sichtbar)
+ *   F  (29.10.) .parts-list{display:grid…} aus styles.css entfernt → rot: „Teile:
+ *      ein Raster, Filter als Blatt“ (24 Zeilen); Klasse filterleiste an der
+ *      Teile-Filterzeile entfernt → rot („Die Auswahlfelder stehen offen da“)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -64,6 +70,11 @@ const KLEINES = `(() => {
 test('Telefon', { concurrency: 1, timeout: 240_000 }, async (t) => {
   const app = await starteApp(t, {
     name: `telefon_${process.pid}`, telefon: true,
+    // Zwölf Teile in zwölf Farben — der Fall, der vorher zwölf fast leere Zeilen ergab.
+    abfangen: [{ muster: '*/api/v1/parts?*', enthaelt: '/api/v1/parts?', antwort: { success: true, total: 12,
+      parts: ['Red', 'Blue', 'Yellow', 'Green', 'Black', 'White', 'Orange', 'Tan', 'Lime', 'Pink', 'Brown', 'Purple']
+        .map((farbe, i) => ({ part_number: `300${i}`, part_name: `Stein ${i}`, color_name: farbe, color_hex: '777777',
+                             color_id: i + 1, total_quantity: 2 })) } }],
     bestand: async (db, uid) => {
       await haeltSet(db, uid, '10300-1', 1, { preis: 199 });
       await db.run(`DELETE FROM price_history WHERE set_number = '10300-1'`);
@@ -136,6 +147,30 @@ test('Telefon', { concurrency: 1, timeout: 240_000 }, async (t) => {
     assert.deepEqual(rechner, { teile: true, figuren: true, sammlung: 'Sammlung', teileAktuell: 'page' });
     await reiter('gallery');
     assert.equal(await b.auswerten(`document.querySelector('.ntab[data-tab="gallery"]').innerText.trim()`), 'Sammlung');
+  });
+
+  await t.test('Teile: ein Raster, Filter als Blatt', async () => {
+    await reiter('parts');
+    await bis(`document.querySelectorAll('#parts-main .part-card').length === 12`, 'zwölf Teile');
+    const raster = await b.auswerten(`(() => {
+      const kacheln = [...document.querySelectorAll('#parts-main .group-hd, #parts-main .part-card')];
+      const zeilen = new Set(kacheln.map(k => Math.round(k.getBoundingClientRect().top)));
+      return { kacheln: kacheln.length, zeilen: zeilen.size };
+    })()`);
+    assert.equal(raster.kacheln, 24);
+    assert.ok(raster.zeilen <= 10, `${raster.zeilen} Zeilen für 12 Teile in 12 Farben`);
+    const sichtbar = (id) => `document.getElementById('${id}').getClientRects().length > 0`;
+    assert.equal(await b.auswerten(sichtbar('parts-spare')), false, 'Die Auswahlfelder stehen offen da');
+    await b.auswerten(`document.querySelector('#tab-parts .filter-knopf').click(); true`);
+    const offen = await b.auswerten(`(() => ({
+      erweitert: document.querySelector('#tab-parts .filter-knopf').getAttribute('aria-expanded'),
+      sichtbar: ${sichtbar('parts-spare')},
+      breiten: [...document.querySelectorAll('#tab-parts .filterleiste > select:not(.vh)')].filter(x => x.getClientRects().length)
+        .map(x => Math.round(x.getBoundingClientRect().width)) }))()`);
+    assert.equal(offen.erweitert, 'true');
+    assert.equal(offen.sichtbar, true);
+    assert.equal(new Set(offen.breiten).size, 1, `ungleich breite Felder: ${offen.breiten}`);
+    await b.auswerten(`document.querySelector('#tab-parts .filter-knopf').click(); true`);
   });
 
   await t.test('Diagrammschrift Finanzen', async () => {

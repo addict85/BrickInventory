@@ -76,9 +76,9 @@
   /* Filter hinter einem Knopf: Suche und Ansicht bleiben, die Auswahlfelder
      klappen auf. Vorher belegten fünf Felder den halben Bildschirm. */
   .filter-knopf { display: inline-flex; align-items: center; gap: 6px; }
-  .filterleiste > input.si { flex: 1 1 140px; width: auto !important; min-width: 0; }
+  .filterleiste > input.si, .filterleiste > input.suchfeld { flex: 1 1 140px; width: auto !important; min-width: 0; }
   .filterleiste > select { display: none; }
-  .filterleiste.offen > select { display: block; flex: 1 1 100%; }
+  .filterleiste.offen > select { display: block; flex: 1 1 100%; max-width: none; }
 
   /* Die Statistikzahlen in der Kopfzeile brauchen den Platz nicht */
   .hstats             { display: none; }
@@ -130,7 +130,7 @@
   .ptitle            { font-size: var(--fs-5); }
 
   .sgrid       { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: .7rem; }
-  .parts-grid  { grid-template-columns: repeat(auto-fill, minmax(108px, 1fr)); gap: .6rem; }
+  .parts-grid, .parts-list { grid-template-columns: repeat(auto-fill, minmax(108px, 1fr)); gap: .6rem; }
   .man-grid    { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: .6rem; }
   /* minmax(0, …) statt 1fr: Eine Spalte darf schmaler werden als ihre längste
      Zahl, die dann umbricht — sonst schob „Gesamtwert“ die Kachel über den Rand. */
@@ -352,7 +352,7 @@
 /* ── Kleines Telefon ─────────────────────────────────────────────────────── */
 @media (max-width: 380px) {
   .sgrid      { grid-template-columns: 1fr 1fr; gap: .5rem; }
-  .parts-grid { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); }
+  .parts-grid, .parts-list { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); }
   .fgrid      { grid-template-columns: 1fr; }
   .ntab       { font-size: var(--fs-0); }
 }

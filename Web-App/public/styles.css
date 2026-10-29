@@ -488,6 +488,12 @@
     .part-qty{font-variant-numeric:tabular-nums;font-weight:700;font-size:var(--fs-3);color:var(--b700);margin-top:5px}
     .spare-tag{font-size:var(--fs-0);background:var(--a100);color:var(--a-schrift);padding:1px 5px;border-radius:4px;margin-top:3px;display:inline-block}
     .parts-group{margin-bottom:1.75rem}
+    /* Teile aus Sets: EIN Raster über alle Farben. Die Farbe steht als Kachel
+       vor ihren Teilen, statt je Farbe eine Zeile zu beginnen — sonst ergaben
+       zwölf Teile in zwölf Farben zwölf fast leere Zeilen. */
+    .parts-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:.85rem}
+    .parts-list > .parts-group,.parts-list .parts-grid{display:contents}
+    .parts-list .group-hd{flex-direction:column;align-items:flex-start;justify-content:center;gap:4px;margin:0;padding:.6rem .7rem;border:1.5px solid var(--bdr);border-radius:var(--rad);background:var(--s50)}
     /* Manuell erfasste Teile/Minifiguren — einheitliche editierbare Tiles */
     .man-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:.85rem}
     .man-tile{background:var(--sur);border:1.5px solid var(--bdr);border-radius:10px;padding:.9rem;box-shadow:var(--sh0);position:relative}
