@@ -218,6 +218,12 @@ app.use((req, res, next) => {
     "connect-src 'self'",
     "worker-src 'self' blob:",  // PDF.js-Worker (lokal /vendor/pdfjs, ggf. blob:)
     "frame-ancestors 'self'",  // eigener PDF-Viewer bettet same-origin PDFs per <iframe> ein
+    // Drei Wege, die default-src nicht abdeckt: Ein eingeschleustes Formular
+    // schickte Eingaben nach draussen, ein <base> lenkte relative Adressen um,
+    // <object>/<embed> lüden Plugins. Die App braucht keinen davon fremd.
+    "form-action 'self'",
+    "base-uri 'none'",
+    "object-src 'none'",
   ].join('; '));
   next();
 });

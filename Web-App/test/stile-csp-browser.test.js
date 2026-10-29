@@ -12,6 +12,9 @@
  *   B  in js/00-stile.js die Hülle um innerHTML entfernt → rot: „jedes
  *      data-stil ist angewendet“
  *   C  im Build eine leere Freigabeliste → rot: „nur freigegebene Werte“
+ * Gegenprobe (am 29.10.2026 gemessen):
+ *   D  form-action, base-uri und object-src aus der CSP in server.ts entfernt
+ *      → rot: „form-action, base-uri und object-src greifen“
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -171,4 +174,26 @@ test('Stile unter style-src ohne unsafe-inline', { concurrency: 1, timeout: 180_
     assert.ok(s.stilGesetzt > 50, `nur ${s.stilGesetzt} Elemente mit Stil`);
   });
   await t.test('nur freigegebene Werte', () => assert.deepEqual(warnungen, []));
+
+  // Zuletzt, weil ein Formular nach draussen ohne form-action die Seite verliesse.
+  await t.test('form-action, base-uri und object-src greifen', async () => {
+    assert.match(csp, /form-action 'self'/);
+    // Ein Formular der App (Absenden per Enter) und ein Download bleiben ohne Verstoss.
+    await b.auswerten(`document.querySelector('form[data-submit="btn-gen-qr"]')?.requestSubmit(); true`);
+    await b.auswerten(`document.getElementById('btn-cfg-export')?.click(); true`);
+    await warte(800);
+    assert.deepEqual(await b.auswerten('window.__verstoesse'), [], 'Formular oder Download der App verletzt die CSP');
+    const verletzt = await b.auswerten(`new Promise(fertig => {
+      const gesehen = new Set();
+      document.addEventListener('securitypolicyviolation', e => gesehen.add(e.effectiveDirective));
+      const basis = document.createElement('base'); basis.href = 'https://fremd.invalid/';
+      document.head.appendChild(basis);
+      const obj = document.createElement('object'); obj.data = '/favicon.svg';
+      document.body.appendChild(obj);
+      const f = document.createElement('form'); f.action = 'https://fremd.invalid/'; f.method = 'post';
+      document.body.appendChild(f); f.submit();
+      setTimeout(() => fertig([...gesehen].sort()), 1500);
+    })`);
+    assert.deepEqual(verletzt, ['base-uri', 'form-action', 'object-src']);
+  });
 });
