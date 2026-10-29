@@ -47,6 +47,7 @@ class PreferencesManager @Inject constructor(
         const val DESIGN_SPIEGEL_DATEI = "design_spiegel"
         const val DUNKEL_NACH_SYSTEM = "dunkel_nach_system"
         const val APP_THEME_SPIEGEL = "app_theme"
+        const val SPRACHE_SPIEGEL = "sprache"
 
         /**
          * In welchen Netzen darf das Vorwärmen der Vorschaubilder holen? Auf dem Gerät,
@@ -347,6 +348,20 @@ class PreferencesManager @Inject constructor(
 
     suspend fun saveLanguage(lang: String) {
         context.dataStore.edit { it[LANGUAGE] = lang }
+        designSpiegel.edit().putString(SPRACHE_SPIEGEL, lang).apply()
+    }
+
+    /**
+     * Die Sprache synchron für Application.onCreate (unter Android 13), ohne den
+     * DataStore zu blockieren. null = vor dem Spiegel gespeichert; dann liest
+     * [spracheNachziehen] sie einmal nach.
+     */
+    fun gemerkteSprache(): String? = designSpiegel.getString(SPRACHE_SPIEGEL, null)
+
+    suspend fun spracheNachziehen(): String {
+        val lang = language.first()
+        designSpiegel.edit().putString(SPRACHE_SPIEGEL, lang).apply()
+        return lang
     }
     suspend fun saveAppTheme(theme: String) {
         // Unbekannte Werte NICHT schreiben: "" oder null heisst „keine

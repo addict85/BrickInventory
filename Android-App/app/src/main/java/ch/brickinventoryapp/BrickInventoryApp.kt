@@ -51,15 +51,19 @@ class BrickInventoryApp : Application(), Configuration.Provider {
                 }
             }
         }
-        // Ab Android 13 (API 33) persistiert das System die per-App-Sprache
-        // selbst (LocaleManager) und wendet sie vor Activity-Start an — der
-        // blockierende DataStore-Read beim Kaltstart ist dort unnötig.
-        // Nur auf älteren Geräten muss die gespeicherte Sprache manuell
-        // re-appliziert werden, bevor die erste Activity rendert.
+        // Unter Android 13 setzt die App ihre Sprache selbst, vor der ersten Activity.
+        // Aus dem synchronen Spiegel statt per runBlocking aus dem DataStore; fehlt er
+        // (gespeichert vor dem Spiegel), einmal nachziehen — AppCompat erneuert dann die
+        // Activity. Ab 13 merkt sich das System die Sprache selbst.
         if (android.os.Build.VERSION.SDK_INT < 33) {
-            kotlinx.coroutines.runBlocking {
-                val lang = preferencesManager.language.first()
-                ch.brickinventoryapp.util.LanguageManager.applyLanguage(lang)
+            val gemerkt = preferencesManager.gemerkteSprache()
+            if (gemerkt != null) {
+                ch.brickinventoryapp.util.LanguageManager.applyLanguage(gemerkt)
+            } else {
+                kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main).launch {
+                    val lang = runCatching { preferencesManager.spracheNachziehen() }.getOrNull() ?: return@launch
+                    ch.brickinventoryapp.util.LanguageManager.applyLanguage(lang)
+                }
             }
         }
     }
