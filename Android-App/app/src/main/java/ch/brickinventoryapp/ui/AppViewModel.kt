@@ -89,7 +89,7 @@ class AppViewModel @Inject constructor(
         .distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.Eagerly, sitzung.state.value.appTheme)
 
-    /** Je Gerät: Werkbank, solange das System dunkel ist (siehe wirksamesDesign). */
+    /** Je Gerät: die dunkle Fassung des Designs, solange das System dunkel ist (ui/theme/Darstellung.kt). */
     private val _dunkelNachSystem = MutableStateFlow(prefs.dunkelNachSystem())
     val dunkelNachSystem: StateFlow<Boolean> = _dunkelNachSystem.asStateFlow()
     fun setDunkelNachSystem(an: Boolean) {

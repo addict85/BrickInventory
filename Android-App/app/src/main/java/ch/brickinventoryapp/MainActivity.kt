@@ -32,7 +32,7 @@ import ch.brickinventoryapp.ui.*
 import ch.brickinventoryapp.ui.AppUiState
 import ch.brickinventoryapp.ui.screens.*
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
-import ch.brickinventoryapp.ui.theme.wirksamesDesign
+import ch.brickinventoryapp.ui.theme.darstellung
 import androidx.compose.foundation.isSystemInDarkTheme
 import coil3.ImageLoader
 import androidx.compose.foundation.Image
@@ -132,7 +132,8 @@ class MainActivity : ComponentActivity() {
             // und darüber die ganze App rekomponiert.
             val theme by vm.appTheme.collectAsStateWithLifecycle()
             val dunkel by vm.dunkelNachSystem.collectAsStateWithLifecycle()
-            BrickInventoryManagerTheme(theme = wirksamesDesign(theme, dunkel, isSystemInDarkTheme())) {
+            val darstellung = darstellung(theme, dunkel, isSystemInDarkTheme())
+            BrickInventoryManagerTheme(theme = darstellung.design, dunkel = darstellung.dunkel) {
                 BrickInventoryManagerApp(vm, katalogVm, gutscheinVm, imageLoader)
             }
         }

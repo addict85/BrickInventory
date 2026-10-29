@@ -1,35 +1,44 @@
 package ch.brickinventoryapp
 
+import ch.brickinventoryapp.ui.theme.Darstellung
+import ch.brickinventoryapp.ui.theme.darstellung
 import ch.brickinventoryapp.ui.theme.dunkelNachSystemGilt
-import ch.brickinventoryapp.ui.theme.wirksamesDesign
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * „Dunkel nach System" je Gerät: Werkbank nur, wenn das Gerät es will UND das
- * System dunkel ist; sonst gilt das Design des Servers. Ohne gespeicherte Wahl
- * folgt die App dem System, eine ausdrückliche Wahl bleibt.
+ * „Dunkel nach System" je Gerät: die dunkle Fassung DESSELBEN Designs, nur wenn
+ * das Gerät es will UND das System dunkel ist; Werkbank ist schon dunkel. Ohne
+ * gespeicherte Wahl folgt die App dem System, eine ausdrückliche Wahl bleibt.
  *
- * Gegenproben (gemessen am 28.10., kotlinc gegen eine Kopie von
- * ui/theme/Darstellung.kt bzw. MainActivity.kt):
- *   A  in wirksamesDesign() das `&& systemDunkel` entfernt → rot „mit Wahl
- *      dunkel nur bei dunklem System"
+ * Gegenproben (29.10.2026, gemessen gegen ui/theme/Darstellung.kt bzw.
+ * MainActivity.kt):
+ *   A  in darstellung() das `&& systemDunkel` entfernt → rot „mit Wahl dunkel
+ *      nur bei dunklem System, im selben Design“
  *   B  `?: true` → `?: false` → rot „ohne gespeicherte Wahl folgt die App dem System"
- *   C  MainActivity mit `theme = theme` → rot „MainActivity zeichnet das wirksame Design"
+ *   C  MainActivity ohne `dunkel = darstellung.dunkel` → rot „MainActivity
+ *      zeichnet das wirksame Design“
  *   D  installSplashScreen() hinter super.onCreate() → rot „der Start blitzt nicht weiss auf"
+ *   E  `&& hatDunkleFassung(design)` entfernt → rot „Werkbank bleibt, wie es ist“
  */
 class WirksamesDesignTest {
 
     @Test
     fun `ohne Wahl gilt das Design des Servers, auch bei dunklem System`() {
-        assertEquals("brick", wirksamesDesign("brick", dunkelNachSystem = false, systemDunkel = true))
+        assertEquals(Darstellung("brick", false), darstellung("brick", dunkelNachSystem = false, systemDunkel = true))
     }
 
     @Test
-    fun `mit Wahl dunkel nur bei dunklem System`() {
-        assertEquals("werkbank", wirksamesDesign("classic", dunkelNachSystem = true, systemDunkel = true))
-        assertEquals("classic", wirksamesDesign("classic", dunkelNachSystem = true, systemDunkel = false))
+    fun `mit Wahl dunkel nur bei dunklem System, im selben Design`() {
+        assertEquals(Darstellung("classic", true), darstellung("classic", dunkelNachSystem = true, systemDunkel = true))
+        assertEquals(Darstellung("noppe", true), darstellung("noppe", dunkelNachSystem = true, systemDunkel = true))
+        assertEquals(Darstellung("classic", false), darstellung("classic", dunkelNachSystem = true, systemDunkel = false))
+    }
+
+    @Test
+    fun `Werkbank bleibt, wie es ist`() {
+        assertEquals(Darstellung("werkbank", false), darstellung("werkbank", dunkelNachSystem = true, systemDunkel = true))
     }
 
     @Test
@@ -46,8 +55,10 @@ class WirksamesDesignTest {
     @Test
     fun `MainActivity zeichnet das wirksame Design`() {
         val src = Quellen.ohneKommentare(Quellen.lies("MainActivity.kt"))
-        assertTrue("MainActivity nutzt wirksamesDesign nicht — die Wahl bliebe ohne Wirkung",
-            Regex("""BrickInventoryManagerTheme\(theme\s*=\s*wirksamesDesign\(""").containsMatchIn(src))
+        assertTrue("MainActivity nutzt darstellung() nicht — die Wahl bliebe ohne Wirkung",
+            Regex("""darstellung\(theme,\s*dunkel,\s*isSystemInDarkTheme\(\)\)""").containsMatchIn(src))
+        assertTrue("MainActivity reicht die dunkle Fassung nicht ans Theme",
+            Regex("""BrickInventoryManagerTheme\(theme\s*=\s*darstellung\.design,\s*dunkel\s*=\s*darstellung\.dunkel\)""").containsMatchIn(src))
     }
 
     /**

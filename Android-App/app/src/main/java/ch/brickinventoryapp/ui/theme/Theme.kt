@@ -342,28 +342,47 @@ val LocalChartColors = staticCompositionLocalOf {
 }
 
 /**
- * Das vollständige Farbschema eines Designs.
- *
- * Vier Designs, eine Stelle. `when` statt geschachtelter Bedingungen: Ein
- * fünftes Design soll hier eine Zeile kosten, keine Umstrukturierung.
+ * Die dunkle Fassung eines Designs aus den Tokens (DunkelTokens.kt). Dieselbe
+ * Zuordnung wie WerkbankColors, nur mit den Markenfarben des Designs.
  */
-internal fun farbschema(theme: String): ColorScheme = when (theme) {
-    "brick" -> BrickBlueColors
-    "werkbank" -> WerkbankColors
-    "farbfaecher" -> FarbfaecherColors
-    // Dieselbe Palette: "hochglanz" ist "noppe" in einem anderen
-    // Material, nicht in anderen Farben. Dieselbe Regel wie `erbt` in
-    // shared/design-tokens.json.
-    "noppe", "hochglanz" -> NoppeColors
-    else -> LightColors
-}.let { ergaenzeRollen(it, dunkel = theme == "werkbank") }
+private fun dunklesSchema(theme: String): ColorScheme = dunkleRollen(theme).let { r ->
+    darkColorScheme(
+        primary = Color(r.primary), onPrimary = Color(r.onPrimary),
+        primaryContainer = Color(r.primaryContainer), onPrimaryContainer = Color(r.onPrimaryContainer),
+        secondary = Color(r.secondary), onSecondary = Color(r.onSecondary),
+        secondaryContainer = Color(r.secondaryContainer), onSecondaryContainer = Color(r.onSecondaryContainer),
+        tertiary = Color(r.tertiary), onTertiary = Color(r.onTertiary),
+        tertiaryContainer = Color(r.tertiaryContainer), onTertiaryContainer = Color(r.onTertiaryContainer),
+        background = Color(r.background), surface = Color(r.surface), surfaceVariant = Color(r.surfaceVariant),
+        onSurface = Color(r.onSurface), onSurfaceVariant = Color(r.onSurfaceVariant),
+        outline = Color(r.outline), outlineVariant = Color(r.outlineVariant),
+        error = Color(r.error),
+    )
+}
+
+/**
+ * Das vollständige Farbschema eines Designs, hell oder in seiner dunklen Fassung.
+ * `when` statt geschachtelter Bedingungen: Ein weiteres Design kostet eine Zeile.
+ */
+internal fun farbschema(theme: String, dunkel: Boolean = false): ColorScheme =
+    if (dunkel && hatDunkleFassung(theme)) ergaenzeRollen(dunklesSchema(theme), dunkel = true)
+    else when (theme) {
+        "brick" -> BrickBlueColors
+        "werkbank" -> WerkbankColors
+        "farbfaecher" -> FarbfaecherColors
+        // "hochglanz" ist "noppe" in anderem Material, nicht in anderen Farben (`erbt`).
+        "noppe", "hochglanz" -> NoppeColors
+        else -> LightColors
+    }.let { ergaenzeRollen(it, dunkel = theme == "werkbank") }
 
 /**
  * Statusfarben je Design. `erfolg` färbt auch Gewinnzahlen und braucht als
  * Text 4,5:1 auf der Fläche (FarbrollenTest).
  * Im Stein-Design gedeckter, damit es neben Salbeigrün und Sand nicht heraussticht.
  */
-internal fun statusFarbenFuer(theme: String): StatusFarben = when (theme) {
+internal fun statusFarbenFuer(theme: String, dunkel: Boolean = false): StatusFarben = if (dunkel && hatDunkleFassung(theme)) {
+    dunkleRollen(theme).let { StatusFarben(erfolg = Color(it.erfolg), warnung = Color(it.warnung), fehler = Color(it.error)) }
+} else when (theme) {
     "brick" -> StatusFarben(erfolg = Color(0xFF4E7058), warnung = Color(0xFFB08A3E), fehler = Color(0xFFA34B3C))
     "werkbank" -> StatusFarben(erfolg = Color(0xFF6FBF7F), warnung = Color(0xFFD9A84E), fehler = Color(0xFFE07A72))
     else -> StatusFarben(erfolg = Color(0xFF166534), warnung = Color(0xFFE3B341), fehler = Color(0xFFDC2626))
@@ -398,10 +417,13 @@ internal fun ergaenzeRollen(s: ColorScheme, dunkel: Boolean): ColorScheme {
 }
 
 @Composable
-fun BrickInventoryManagerTheme(theme: String = "classic", content: @Composable () -> Unit) {
+fun BrickInventoryManagerTheme(theme: String = "classic", dunkel: Boolean = false, content: @Composable () -> Unit) {
     val isBrick = theme == "brick"
-    val colors = remember(theme) { farbschema(theme) }
-    val chartColors = when (theme) {
+    val colors = remember(theme, dunkel) { farbschema(theme, dunkel) }
+    val chartColors = if (dunkel && hatDunkleFassung(theme)) dunkleRollen(theme).let {
+        ChartColors(Color(it.chartNeu), Color(it.chartGebraucht), linie = Color(it.chartNeu),
+            raster = Color(it.chartRaster), gedaempft = Color(it.chartGedaempft))
+    } else when (theme) {
         "brick" -> ChartColors(ChartNewBrick, ChartUsedBrick,
             linie = ChartNewBrick, raster = Color(0xFFE0DACE), gedaempft = Color(0xFF8C8577))
         // Auf dunklem Grund muss das Raster HELLER als der Grund sein, nicht
@@ -419,7 +441,7 @@ fun BrickInventoryManagerTheme(theme: String = "classic", content: @Composable (
             raster = Color(0xFFE4E8EF), gedaempft = Color(0xFF6A7280))
         else -> ChartColors(ChartNewClassic, ChartUsedClassic)
     }
-    val statusFarben = statusFarbenFuer(theme)
+    val statusFarben = statusFarbenFuer(theme, dunkel)
     CompositionLocalProvider(
         LocalIsBrickTheme provides isBrick,
         LocalIsFarbfaecherTheme provides (theme == "farbfaecher"),
