@@ -1,0 +1,1007 @@
+-- Die letzten Startstufen (Stand 307ee28, 28.10.2026), festgeschrieben.
+-- Bis dahin brachte der Start eine Datenbank selbst auf Stand und füllte
+-- fehlende Daten nach; danach gibt es nur noch Migrationen. Eine ältere
+-- Datenbank bekommt diese Datei einmal, vor ihren Migrationen
+-- (initSchemaOnce). Nicht ändern: Sie beschreibt einen vergangenen Stand.
+
+-- ── schema.sql (307ee28) ──────────────────────────────────────────────────
+-- ── Das Grundschema (Nachtrag 128) ──────────────────────────────────────────
+--
+-- Diese 426 Zeilen standen bis Nachtrag 127 als Zeichenkette in
+-- db/database.ts, mitten in initSchema(). Sie enthalten keine einzige
+-- Einsetzung (`${...}`), sind also reines SQL — und als solches gehören sie in
+-- eine .sql-Datei: diffbar, in jedem SQL-Werkzeug lesbar, greppbar nach
+-- Tabellennamen, und ohne die Einrückungsebene eines TypeScript-Rumpfs.
+--
+-- Was hier NICHT hingehört und deshalb in initSchema() geblieben ist: alles
+-- mit Bedingung. Die nachträglichen Spalten-Migrationen, das Anlegen des
+-- ersten Verwalters, die pg_trgm-Behandlung (CREATE EXTENSION darf
+-- fehlschlagen) und das Aufräumen alter Token brauchen Ablaufsteuerung.
+--
+-- ABGRENZUNG zu db/migrations/: Dort stehen Änderungen an einem BESTEHENDEN
+-- Schema, hier steht der Ausgangszustand. Beim ersten Start läuft erst diese
+-- Datei, danach die Migrationen. Sechs Tabellen (account_links,
+-- account_link_invites, image_misses, image_wanted, part_price_history,
+-- minifig_price_history) stehen bewusst NUR in Migrationen — siehe die
+-- Begründung in db/migrations/0001-baseline.sql.
+
+CREATE TABLE IF NOT EXISTS users (
+  id                  SERIAL PRIMARY KEY,
+  username            TEXT NOT NULL UNIQUE,
+  email               TEXT UNIQUE,
+  first_name          TEXT,
+  last_name           TEXT,
+  password_hash       TEXT NOT NULL,
+  is_admin            INTEGER DEFAULT 0,
+  is_active           INTEGER DEFAULT 1,
+  email_verified      INTEGER DEFAULT 0,
+  verification_token  TEXT,
+  token_expires       TIMESTAMPTZ,
+  reset_token         TEXT,
+  reset_token_expires TIMESTAMPTZ,
+  must_change_password INTEGER DEFAULT 0,
+  created_at          TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS sets (
+  id          SERIAL PRIMARY KEY,
+  user_id     INTEGER NOT NULL,
+  set_number  TEXT NOT NULL,
+  name        TEXT,
+  year        INTEGER,
+  theme       TEXT,
+  pieces      INTEGER,
+  minifigs    INTEGER,
+  -- quantity steht hier weiter, obwohl Migration 0036 sie loescht: Der
+  -- Nachtrag in Migration 0032 LIEST sie (`COALESCE(s.quantity, 0)`), um die
+  -- fehlenden Erfassungen anzulegen, und der in 0036 ebenso. Fehlte sie auf
+  -- einer frischen Datenbank, braeche die Kette ab — dieselbe Begruendung wie
+  -- bei purchase_price und condition weiter unten.
+  quantity    INTEGER DEFAULT 1,
+  image_url   TEXT,
+  image_local TEXT,
+  brickset_id INTEGER,
+  added_at       TIMESTAMPTZ DEFAULT NOW(),
+  updated_at     TIMESTAMPTZ DEFAULT NOW(),
+  -- ── Diese zwei Spalten sind WEG — und stehen trotzdem hier ───────────────
+  --
+  -- Kaufpreis und Zustand eines Sets stehen in set_acquisitions, eine Zeile je
+  -- Kauf. Migration 0032 LOESCHT die beiden Spalten hier; sie waren aelter als
+  -- jene Tabelle und wurden danach nur noch als Spiegel der neuesten Erfassung
+  -- gefuehrt — dreimal ist genau daran etwas auseinandergelaufen.
+  --
+  -- Warum sie dann noch angelegt werden: Diese Datei ist der Ausgangszustand
+  -- einer NEUEN Datenbank, und danach laufen ALLE Migrationen der Reihe nach.
+  -- Migration 0007 enthaelt
+  --
+  --     ALTER TABLE sets ALTER COLUMN purchase_price TYPE NUMERIC(12,4) …
+  --
+  -- und ein ALTER COLUMN auf eine fehlende Spalte ist ein harter Fehler, kein
+  -- stilles Nichts. Ohne die Deklaration hier bricht der erste Start einer
+  -- frischen Installation ab — GEMESSEN, genau so: „Migration
+  -- 0007-geld-als-numeric.sql fehlgeschlagen: column "purchase_price" does
+  -- not exist". Eine ausgelieferte Migration nachtraeglich zu aendern ist
+  -- keine Loesung (sie ist auf fremden Installationen schon gelaufen), und
+  -- eine Nummer VOR 0007 gibt es nicht mehr.
+  --
+  -- Dieselbe Aufteilung wie beim Lagerort: 0018 legt `sets.storage` an, 0031
+  -- loescht es wieder, und bis dahin muss die Spalte da sein.
+  --
+  -- `condition` steht aus demselben Grund in spaltenMigrationen() in
+  -- db/database.ts — dort hat sie immer gestanden, und 0007 fasst sie nicht an.
+  -- Verschoben wird nichts: Eine Spalte an einen anderen Ort zu heben, nur um
+  -- sie zwei Migrationen spaeter zu loeschen, waere Bewegung ohne Wirkung.
+  --
+  -- Wer eine Abfrage auf diese Spalten schreibt, hat sie auf keiner laufenden
+  -- Datenbank — nach 0032 existieren sie dort nirgends mehr.
+  --
+  -- ── Und dasselbe noch einmal fuer die STAMMDATEN ─────────────────────────
+  --
+  -- name, year, theme, pieces, minifigs, image_url und image_local stehen
+  -- unten aus demselben Grund: Migration 0033 loescht sie (sie beschreiben das
+  -- SET und stehen in set_catalog), aber Migration 0014 schreibt vorher
+  -- `UPDATE sets SET image_url = …`. Fehlte die Spalte hier, braeche der erste
+  -- Start einer frischen Installation dort ab.
+  --
+  -- Gelesen werden sie nach 0033 aus set_catalog, ueber einen in jeder
+  -- Abfrage ausgeschriebenen LEFT JOIN. Eine Sicht, die beides zusammenfuegt,
+  -- stand hier kurzzeitig und ist wieder weg: Sie sah in jedem Werkzeug wie
+  -- eine Tabelle aus und verbarg, woher ein Feld kommt.
+  purchase_price NUMERIC(12,4),
+  UNIQUE(user_id, set_number),
+  FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS instructions (
+  id            SERIAL PRIMARY KEY,
+  user_id       INTEGER NOT NULL,
+  set_number    TEXT NOT NULL,
+  url           TEXT NOT NULL,
+  description   TEXT,
+  local_path    TEXT,
+  downloaded_at TIMESTAMPTZ DEFAULT NOW(),
+  FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS shared_instructions (
+  id          SERIAL PRIMARY KEY,
+  set_number  TEXT NOT NULL,
+  url         TEXT NOT NULL,
+  description TEXT,
+  local_path  TEXT,
+  fetched_at  TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(set_number, url)
+);
+
+CREATE TABLE IF NOT EXISTS app_logs (
+  id         BIGSERIAL PRIMARY KEY,
+  level      VARCHAR(10)  NOT NULL DEFAULT 'info',
+  message    TEXT         NOT NULL,
+  logged_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_app_logs_logged_at ON app_logs (logged_at DESC);
+
+-- Session store table (created here to avoid race condition with connect-pg-simple createTableIfMissing)
+CREATE TABLE IF NOT EXISTS user_sessions (
+  sid    VARCHAR      NOT NULL COLLATE "default",
+  sess   JSON         NOT NULL,
+  expire TIMESTAMPTZ  NOT NULL,
+  CONSTRAINT user_sessions_pkey PRIMARY KEY (sid) NOT DEFERRABLE INITIALLY IMMEDIATE
+);
+CREATE INDEX IF NOT EXISTS IDX_user_sessions_expire ON user_sessions (expire);
+
+CREATE TABLE IF NOT EXISTS instruction_queue (
+  id         SERIAL PRIMARY KEY,
+  set_number TEXT NOT NULL,
+  status     TEXT DEFAULT 'pending',  -- pending, done, failed
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_instr_queue_set ON instruction_queue(set_number);
+
+-- Sets that couldn't be enriched from Brickset due to daily quota — retried next day
+CREATE TABLE IF NOT EXISTS brickset_retry_queue (
+  set_number  TEXT PRIMARY KEY,
+  retry_after DATE NOT NULL,
+  attempts    INT  NOT NULL DEFAULT 0,
+  last_error  TEXT,
+  created_at  TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE brickset_retry_queue ADD COLUMN IF NOT EXISTS attempts   INT  NOT NULL DEFAULT 0;
+ALTER TABLE brickset_retry_queue ADD COLUMN IF NOT EXISTS last_error TEXT;
+
+-- Rebrickable CSV cache tables
+CREATE TABLE IF NOT EXISTS rb_parts (
+  part_num     TEXT PRIMARY KEY,
+  name         TEXT,
+  part_cat_id  INTEGER,
+  part_img_url TEXT
+);
+CREATE TABLE IF NOT EXISTS rb_colors (
+  id       INTEGER PRIMARY KEY,
+  name     TEXT,
+  rgb      TEXT,
+  is_trans TEXT
+);
+-- Rebrickable-Kategorien (id -> Name); via CSV-Sync befüllt (part_categories.csv,
+-- siehe jobs/rebrickableCsvSync.js), damit im Kategorie-Filter Namen statt der
+-- internen part_cat_id-Zahlen erscheinen.
+CREATE TABLE IF NOT EXISTS rb_part_categories (
+  id   INTEGER PRIMARY KEY,
+  name TEXT
+);
+-- Muss NACH dem CREATE stehen, sonst schlägt die Init auf einer frischen
+-- Datenbank fehl ("relation rb_colors does not exist").
+ALTER TABLE rb_colors ADD COLUMN IF NOT EXISTS bl_color_id INTEGER;
+CREATE TABLE IF NOT EXISTS rb_sets (
+  set_num     TEXT PRIMARY KEY,
+  name        TEXT,
+  year        INTEGER,
+  theme_id    INTEGER,
+  num_parts   INTEGER,
+  set_img_url TEXT
+);
+-- Indizes für die Katalogsuche.
+--
+-- rb_sets hatte bisher KEINEN einzigen Index ausser dem Primärschlüssel,
+-- bei rund 25'000 Zeilen. Die Katalogabfrage filtert auf theme_id/year und
+-- sucht mit ILIKE '%q%' über set_num und name — und zwar zweimal je
+-- Anfrage (einmal COUNT, einmal die Liste). Beim Tippen im Suchfeld sind
+-- das zwei vollständige Tabellenscans pro Tastendruck.
+--
+-- Ein B-Tree hilft bei ILIKE mit führendem Platzhalter nicht (er kann nur
+-- Präfixe). Dafür ist pg_trgm da: Der GIN-Index über Trigramme beantwortet
+-- auch '%mitte%'-Muster. Die Erweiterung ist Teil der Standarddistribution
+-- (postgres:16-alpine bringt sie mit); scheitert CREATE EXTENSION mangels
+-- Rechten, laufen die Abfragen unverändert weiter — nur eben ohne Index.
+CREATE INDEX IF NOT EXISTS idx_rb_sets_theme_year ON rb_sets(theme_id, year);
+CREATE INDEX IF NOT EXISTS idx_rb_sets_year       ON rb_sets(year);
+CREATE TABLE IF NOT EXISTS rb_inventories (
+  id      INTEGER PRIMARY KEY,
+  set_num TEXT,
+  version INTEGER
+);
+CREATE TABLE IF NOT EXISTS rb_inventory_parts (
+  id           SERIAL PRIMARY KEY,
+  inventory_id INTEGER NOT NULL,
+  part_num     TEXT NOT NULL,
+  color_id     INTEGER,
+  quantity     INTEGER,
+  is_spare     TEXT,
+  img_url      TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_rb_inv_parts ON rb_inventory_parts(inventory_id);
+-- rb_bl_mapping: steht hier weiter, obwohl Migration 0037 die TABELLE
+-- loescht. Ihr Nachtrag liest sie als erste und verlaesslichste Quelle, und
+-- sein Riegel prueft danach, dass jede ihrer Zeilen uebernommen ist. Fehlte
+-- sie auf einer frischen Datenbank, braeche die Kette dort ab.
+--
+-- Was an ihre Stelle tritt: bl_zuordnung (art, rb_id, bl_id) — dieselbe
+-- Aussage fuer Teile, Figuren UND Sets, angelegt in Migration 0037 und
+-- deshalb NICHT hier (eine Tabelle gehoert an genau eine Stelle,
+-- scripts/check-schema-am-start.js prueft das).
+CREATE TABLE IF NOT EXISTS rb_bl_mapping (
+  part_num    TEXT PRIMARY KEY,
+  bl_part_num TEXT,
+  fetched_at  TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ── Katalog-Erweiterung: Themen und Minifiguren je Inventar ──────────────
+--
+-- Diese beiden Tabellen standen bis jetzt AUSSCHLIESSLICH in
+-- jobs/rebrickableCsvSync.ts, in einer Funktion ensureSchema(), die der
+-- Katalog-Abgleich beim Start aufrief. Damit gab es sie auf einer frischen
+-- Installation erst, wenn dieser Abgleich durchgelaufen war.
+--
+-- Das ist ein echtes Zeitfenster und kein theoretisches: Der Abgleich läuft
+-- nur im primären Arbeitsprozess, die übrigen nehmen Anfragen schon an,
+-- sobald das Schema steht. Eine Abfrage auf rb_themes in dieser Spanne
+-- bekommt keinen leeren Treffer, sondern "relation does not exist".
+--
+-- Dieselbe Begründung wie ein paar Zeilen weiter oben bei rb_colors: Das
+-- Schema gehört an EINE Stelle, und diese hier ist es.
+CREATE TABLE IF NOT EXISTS rb_themes (
+  id        INTEGER PRIMARY KEY,
+  name      TEXT,
+  parent_id INTEGER
+);
+CREATE TABLE IF NOT EXISTS rb_inventory_minifigs (
+  id           SERIAL PRIMARY KEY,
+  inventory_id INTEGER NOT NULL,
+  fig_num      TEXT NOT NULL,
+  quantity     INTEGER
+);
+CREATE INDEX IF NOT EXISTS idx_rb_inv_minifigs_inv ON rb_inventory_minifigs(inventory_id);
+
+-- ── Shared catalog tables (user-independent) ─────────────────────────────
+CREATE TABLE IF NOT EXISTS set_catalog (
+  set_number  TEXT PRIMARY KEY,
+  name        TEXT,
+  year        INTEGER,
+  theme       TEXT,
+  pieces      INTEGER,
+  minifigs    INTEGER,
+  image_url   TEXT,
+  image_local TEXT,
+  brickset_id INTEGER,
+  updated_at  TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS set_parts_catalog (
+  set_number    TEXT NOT NULL,
+  part_number   TEXT NOT NULL,
+  -- bl_part_number steht hier weiter, obwohl Migration 0037 sie loescht:
+  -- Der Nachtrag in 0037 LIEST sie, um die BrickLink-Nummern in
+  -- bl_zuordnung zu tragen, und sein Riegel prueft danach, dass keine
+  -- verloren geht. Fehlte sie auf einer frischen Datenbank, braeche die
+  -- Kette dort ab — dieselbe Begruendung wie bei sets.quantity.
+  bl_part_number TEXT,
+  part_name     TEXT,
+  color_id      INTEGER,
+  color_name    TEXT,
+  color_hex     TEXT,
+  category_name TEXT,
+  image_url     TEXT,
+  image_local   TEXT,
+  is_spare      INTEGER DEFAULT 0,
+  quantity      INTEGER DEFAULT 1,
+  updated_at    TIMESTAMPTZ DEFAULT NOW(),
+  PRIMARY KEY (set_number, part_number, color_id)
+);
+CREATE INDEX IF NOT EXISTS idx_spc_set ON set_parts_catalog(set_number);
+
+
+CREATE TABLE IF NOT EXISTS set_minifigs_catalog (
+  set_number  TEXT NOT NULL,
+  fig_number  TEXT NOT NULL,
+  fig_name    TEXT,
+  quantity    INTEGER DEFAULT 1,
+  image_url   TEXT,
+  image_local TEXT,
+  updated_at  TIMESTAMPTZ DEFAULT NOW(),
+  PRIMARY KEY (set_number, fig_number)
+);
+CREATE INDEX IF NOT EXISTS idx_smc_set ON set_minifigs_catalog(set_number);
+
+-- ── Teile- und Minifigurenkatalog: part_catalog, part_color_catalog, ───────
+-- ── minifigs_catalog — angelegt von Migration 0034 ─────────────────────────
+--
+-- Das Gegenstueck zu set_catalog: Die BESCHREIBUNG eines Teils haengt nicht am
+-- Konto, das es besitzt. Sie lag vorher in parts/minifigs und damit je Konto
+-- neu.
+--
+-- Angelegt werden die drei Tabellen in
+-- db/migrations/0034-teile-und-minifiguren-stammdaten-im-katalog.sql und NICHT
+-- hier. Zwei Gruende, beide stehen schon anderswo in diesem Baum:
+--
+--   1. initSchema() laeuft nur bei einer Versionsaenderung. Nummerierte
+--      Migrationen laufen IMMER und sind „die Stelle, an der ab jetzt jede
+--      Schemaaenderung landet" (initSchemaOnce in db/database.ts).
+--   2. Eine Tabelle gehoert an GENAU EINE Stelle. Zwei Fassungen fallen nicht
+--      auf, solange sie dasselbe wollen: Ein Anlegen mit IF NOT EXISTS meldet
+--      einen Unterschied nicht — es tut dann einfach nichts.
+--      scripts/check-schema-am-start.js prueft das.
+--      (Die Anweisung ist hier bewusst NICHT ausgeschrieben: Die Pruefung
+--       sucht sie im Text und haette diesen Kommentar als zweite Fassung
+--       gemeldet. GEMESSEN: „mehrfach angelegt: meldet".)
+--
+-- Neun weitere Tabellen liegen aus demselben Grund nur in ihrer Migration,
+-- darunter account_links und wishlist.
+--
+-- Warum eigene Tabellen und nicht rb_parts/rb_colors: jobs/csvImportWorker.ts
+-- fuellt die Rebrickable-Spiegel ueber importiereMitTausch(), und das macht
+-- `DELETE FROM <tabelle>` und schreibt den CSV-Inhalt neu. Nachgetragenes
+-- waere beim naechsten Tageslauf weg. Die Spiegel bleiben reine Spiegel.
+--
+-- Warum das BILD an der Farbe haengt: Ein 2x4-Stein in Rot und derselbe in
+-- Blau haben verschiedene Bilder. set_parts_catalog fuehrt es deshalb schon
+-- heute je (set_number, part_number, color_id). part_color_catalog ist genau
+-- diese Tabelle ohne set_number, is_spare und quantity.
+
+
+CREATE TABLE IF NOT EXISTS price_market (
+  set_number    TEXT NOT NULL,
+  currency_code TEXT NOT NULL,
+  condition     TEXT NOT NULL DEFAULT 'new',
+  qty_avg_price NUMERIC(12,4),
+  min_price     NUMERIC(12,4),
+  max_price     NUMERIC(12,4),
+  updated_at    TIMESTAMPTZ DEFAULT NOW(),
+  PRIMARY KEY (set_number, currency_code, condition)
+);
+-- ─────────────────────────────────────────────────────────────────────────
+
+-- ── Teilebestand ────────────────────────────────────────────────────────────
+--
+-- Eine Zeile sagt: WER hat WELCHES Teil in welcher Farbe aus welchem Set.
+-- Die BESCHREIBUNG des Teils (Name, Farbbezeichnung, Farbcode, Kategorie,
+-- Bild) ist kontounabhaengig und steht seit Migration 0034 in part_catalog
+-- bzw. part_color_catalog (weiter oben, bei den Katalogtabellen).
+--
+-- ── Warum die Beschreibungsspalten hier TROTZDEM noch stehen ───────────────
+--
+-- Dieselbe Begruendung wie bei sets (siehe dort): Diese Datei legt den
+-- AUSGANGSZUSTAND einer NEUEN Datenbank, danach laufen alle numerierten
+-- Migrationen der Reihe nach. Drei davon fassen Spalten an, die 0034 loescht:
+--
+--   0007-geld-als-numeric.sql        ALTER COLUMN unit_price/purchase_price TYPE
+--   0014-img-proxy-nach-v1.sql       UPDATE parts SET image_url = ...
+--   0029-trigramm-bestandssuche.sql  CREATE INDEX ... ON parts (lower(part_name))
+--
+-- Auf einer fehlenden Spalte ist jedes davon ein harter Fehler, und schema.sql
+-- laeuft in EINER Transaktion — ein Fehler darin nimmt die ganze Datei mit.
+-- GEMESSEN, als part_name hier fehlte: „Migration
+-- 0029-trigramm-bestandssuche.sql fehlgeschlagen: column \"part_name\" does not
+-- exist" — der erste Start einer frischen Installation war damit kaputt.
+--
+-- Die UEBRIGEN Beschreibungsspalten (color_name, color_hex, category_name,
+-- image_local, is_spare, created_at) fasst keine Migration an. Sie stehen hier
+-- aus einem zweiten Grund, und der ist genauso handfest: Migration 0034 traegt
+-- die Beschreibung manuell erfasster Positionen aus dem BESTAND in die
+-- Kataloge nach, und dieser Nachtrag liest sie alle in EINER Anweisung.
+-- Fehlte eine davon auf einer frischen Datenbank, braeche 0034 ab —
+-- GEMESSEN: „column p.category_name does not exist".
+--
+-- Eine frische und eine laufende Datenbank haben damit dieselbe Form, und die
+-- Migration braucht nur EINE Spaltenpruefung statt acht. Alles davon loescht
+-- 0034 am Ende der Kette.
+--
+-- unit_price und purchase_price stehen aus BEIDEN Gruenden hier: Migration
+-- 0007 fasst sie an, und der Nachtrag in Migration 0035 LIEST sie, um sie in
+-- part_acquisitions zu tragen. 0035 loescht sie danach, zusammen mit
+-- condition (die legt db/database.ts an, siehe dort).
+CREATE TABLE IF NOT EXISTS parts (
+  id            SERIAL PRIMARY KEY,
+  user_id       INTEGER NOT NULL,
+  set_number    TEXT,
+  part_number   TEXT NOT NULL,
+  part_name     TEXT,
+  color_id      INTEGER,
+  color_name    TEXT,
+  color_hex     TEXT,
+  category_name TEXT,
+  -- quantity steht hier weiter, obwohl Migration 0038 sie loescht: Ihr
+  -- Nachtrag LIEST sie, um fehlende Katalogzeilen (set_parts_catalog)
+  -- daraus anzulegen, und sein Riegel prueft danach, dass keine Stueckzahl
+  -- verloren geht. Fehlte sie auf einer frischen Datenbank, braeche die
+  -- Kette dort ab — dieselbe Begruendung wie bei sets.quantity weiter oben.
+  quantity      INTEGER DEFAULT 1,
+  image_url     TEXT,
+  image_local   TEXT,
+  is_spare      INTEGER DEFAULT 0,
+  source          TEXT DEFAULT 'set',
+  unit_price      NUMERIC(12,4),
+  purchase_price  NUMERIC(12,4),
+  created_at      TIMESTAMPTZ DEFAULT NOW(),
+  FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- bl_part_number: angelegt, damit Migration 0015 ihren Teil-Index darauf
+-- setzen kann (idx_parts_blnum) und Migration 0037 sie lesen kann. 0037
+-- loescht sie danach; die BrickLink-Nummer steht dann in bl_zuordnung,
+-- einmal je Teil. Wer eine Abfrage darauf schreibt, hat sie auf keiner
+-- laufenden Datenbank.
+ALTER TABLE parts ADD COLUMN IF NOT EXISTS bl_part_number TEXT;
+
+-- ── Lagerort ────────────────────────────────────────────────────────────────
+--
+-- Steht ZUSAETZLICH hier, obwohl db/migrations/0018-lagerort.sql dieselben
+-- beiden Spalten anlegt — und das ist kein Versehen: Diese Datei ist der
+-- Ausgangszustand fuer eine NEUE Datenbank, die Migration holt eine BESTEHENDE
+-- nach. Ohne den Eintrag hier faengt jede frische Installation (und jeder
+-- Testaufbau, der nur initSchema() ruft) ohne die Spalte an und faellt erst
+-- auf, wenn eine Abfrage sie liest. Genau das ist beim ersten Entwurf
+-- passiert: „column s.storage does not exist" aus der Paritaetspruefung.
+--
+-- Beide Wege sind idempotent (IF NOT EXISTS), die Reihenfolge spielt keine
+-- Rolle. Dieselbe Doppelung steht eine Zeile darueber fuer bl_part_number.
+--
+-- Die Begruendung der Sache selbst — warum eine Spalte und keine Tabelle,
+-- warum auf beiden Tabellen, warum NULL statt '' — steht in der Migration.
+-- Seit Migration 0031 ist es eine ID und kein Name mehr. Warum: Mit dem Namen
+-- konnte am Bestand eine Schreibweise stehen, die der Vorrat nicht fuehrt —
+-- dann wanderte sie beim Umbenennen nicht mit, und das Loeschen hielt den Ort
+-- fuer leer. Nachgestellt und begruendet in der Migration.
+--
+-- Der VORRAT steht ebenfalls hier und nicht mehr in Migration 0020, und zwar
+-- gezwungenermassen: Pruefungen, die ihre Datenbank mit initSchema() ALLEIN
+-- aufbauen (ohne Migrationen), bekamen sonst „relation storage_locations does
+-- not exist" aus jeder Abfrage, die den Lagerortnamen verbindet — gemessen an
+-- test/api-parity.test.js. Genau der Fall, den der Block darueber beschreibt,
+-- nur jetzt fuer eine Tabelle statt fuer eine Spalte. In 0020 steht an ihrer
+-- Stelle ein Hinweis; angelegt wird jede Tabelle an genau EINEM Ort
+-- (test/schema-am-start.test.js).
+CREATE TABLE IF NOT EXISTS storage_locations (
+  id         SERIAL PRIMARY KEY,
+  user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name       TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+-- Eindeutig OHNE Ruecksicht auf Gross-/Kleinschreibung: „Regal A" und „regal a"
+-- sind dasselbe Regal (Begruendung in 0020). Seit Migration 0031 haengt daran
+-- mehr als die Auswahlliste — die Zuordnung am Bestand loest den getippten
+-- Namen ueber lower(name) auf.
+CREATE UNIQUE INDEX IF NOT EXISTS storage_locations_konto_name
+  ON storage_locations (user_id, lower(name));
+
+-- Die Spalte steht hier OHNE Fremdschluessel, und das hat zwei Gruende, die
+-- beide aus dieser Datei selbst folgen:
+--
+--   1. Der Vorrat (storage_locations) wird von Migration 0020 angelegt, und
+--      jede Tabelle hat genau EINEN Anlegeort (test/schema-am-start.test.js).
+--      Diese Datei laeuft bei einer neuen Datenbank VOR den Migrationen — eine
+--      Fremdschluessel-Regel verlangt die Zieltabelle aber sofort.
+--   2. Eine Spalte darf doppelt stehen (hier und in der Migration): Ein
+--      `ADD COLUMN IF NOT EXISTS` beschreibt dieselbe ZIELFORM. Eine
+--      Fremdschluessel-REGEL ist dagegen eine Entscheidung und gehoert an
+--      genau einen Ort — dieselbe Unterscheidung, die 0018 fuer die Indizes
+--      trifft.
+--
+-- Die Regel selbst steht deshalb in 0031, gleich hinter dem Vorrat.
+ALTER TABLE sets  ADD COLUMN IF NOT EXISTS storage_id INTEGER;
+ALTER TABLE parts ADD COLUMN IF NOT EXISTS storage_id INTEGER;
+CREATE INDEX IF NOT EXISTS idx_sets_storage_id
+  ON sets (user_id, storage_id) WHERE storage_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_parts_storage_id
+  ON parts (user_id, storage_id) WHERE storage_id IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_parts_user  ON parts(user_id);
+-- Hier stand idx_parts_color ON parts(user_id, color_name). Die
+-- Farbbezeichnung steht seit Migration 0034 im Katalog; gefiltert wird nach
+-- der Farb-ID. Den Ersatzindex legt 0034 an — an EINER Stelle, aus demselben
+-- Grund wie die Katalogtabellen (siehe den Block weiter oben).
+CREATE INDEX IF NOT EXISTS idx_parts_set   ON parts(user_id, set_number);
+
+CREATE TABLE IF NOT EXISTS subsets_cache (
+  set_number TEXT PRIMARY KEY,
+  data       TEXT NOT NULL,
+  fetched_at TIMESTAMPTZ DEFAULT NOW()
+);
+-- Global, shared cache of a minifig's constituent parts (Rebrickable),
+-- used to estimate a minifig's market price from its individual parts'
+-- BrickLink prices when no direct BrickLink minifig number is known.
+CREATE TABLE IF NOT EXISTS minifig_parts_cache (
+  fig_number TEXT PRIMARY KEY,
+  data       TEXT NOT NULL,
+  fetched_at TIMESTAMPTZ DEFAULT NOW()
+);
+-- Clear stale cache entries (safe now that table exists)
+DELETE FROM subsets_cache WHERE fetched_at < NOW() - INTERVAL '1 day' OR data NOT LIKE '%external_ids%';
+
+-- Kaufpreis-Historie: eine Zeile pro Erfassung (auch beim erneuten
+-- Hinzufügen desselben Sets). Sie ist seit Migration 0032 die EINZIGE Stelle
+-- für Kaufpreis und Zustand eines Sets — hier stand vorher „sets.purchase_price
+-- spiegelt den Preis der LETZTEN Erfassung", und dieser Spiegel hat dreimal
+-- etwas auseinanderlaufen lassen.
+CREATE TABLE IF NOT EXISTS set_acquisitions (
+  id             SERIAL PRIMARY KEY,
+  user_id        INTEGER NOT NULL,
+  set_number     TEXT NOT NULL,
+  quantity       INTEGER DEFAULT 1,
+  purchase_price NUMERIC(12,4),
+  created_at     TIMESTAMPTZ DEFAULT NOW(),
+  FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_acq_user_set ON set_acquisitions(user_id, set_number);
+
+CREATE TABLE IF NOT EXISTS catalog_cache (
+  set_number TEXT PRIMARY KEY,
+  name       TEXT,
+  year       INTEGER,
+  theme      TEXT,
+  pieces     INTEGER,
+  image_url  TEXT,
+  is_gear    INTEGER DEFAULT 0,
+  bl_type    TEXT,
+  fetched_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ── Minifigurenbestand ──────────────────────────────────────────────────────
+--
+-- Wie parts: hier steht der Bestand, Name und Bild stehen seit Migration 0034
+-- in minifigs_catalog. fig_name, image_url und image_local bleiben hier
+-- stehen, aus genau den beiden Gruenden, die bei parts ausgeschrieben sind:
+-- Migration 0014 fasst image_url an, und der Nachtrag in 0034 liest alle drei
+-- in EINER Anweisung. 0034 loescht sie am Ende der Kette.
+--
+-- unit_price und purchase_price bleiben fuer Migration 0007 und fuer den
+-- Nachtrag in 0035, der sie nach minifig_acquisitions traegt; 0035 loescht
+-- sie danach zusammen mit condition.
+CREATE TABLE IF NOT EXISTS minifigs (
+  id            SERIAL PRIMARY KEY,
+  user_id       INTEGER NOT NULL,
+  set_number    TEXT,
+  fig_number    TEXT NOT NULL,
+  fig_name      TEXT,
+  -- quantity: angelegt, damit Migration 0038 sie lesen kann, und von ihr
+  -- danach geloescht — siehe parts.quantity weiter oben.
+  quantity      INTEGER DEFAULT 1,
+  image_url     TEXT,
+  image_local   TEXT,
+  source          TEXT DEFAULT 'set',
+  unit_price      NUMERIC(12,4),
+  purchase_price  NUMERIC(12,4),
+  FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_minifigs_user ON minifigs(user_id);
+-- bl_fig_number: angelegt, damit Migration 0037 sie lesen kann, und von ihr
+-- danach geloescht — siehe parts.bl_part_number weiter oben.
+ALTER TABLE minifigs ADD COLUMN IF NOT EXISTS bl_fig_number TEXT;
+
+-- Lagerort auch fuer Minifiguren (db/migrations/0024-lagerort-minifiguren.sql).
+-- Warum hier ZUSAETZLICH zur Migration: siehe den Block bei sets/parts weiter
+-- oben — diese Datei ist der Ausgangszustand fuer eine NEUE Datenbank.
+ALTER TABLE minifigs ADD COLUMN IF NOT EXISTS storage_id INTEGER;
+CREATE INDEX IF NOT EXISTS idx_minifigs_storage_id
+  ON minifigs (user_id, storage_id) WHERE storage_id IS NOT NULL;
+
+CREATE TABLE IF NOT EXISTS minifig_price_cache (
+  id            SERIAL PRIMARY KEY,
+  fig_number    TEXT NOT NULL,
+  condition     TEXT NOT NULL DEFAULT 'U',
+  currency_code TEXT NOT NULL DEFAULT 'EUR',
+  avg_price     NUMERIC(12,4),
+  qty_avg_price NUMERIC(12,4),
+  fetched_at    TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(fig_number, condition, currency_code)
+);
+
+CREATE TABLE IF NOT EXISTS part_price_cache (
+  id            SERIAL PRIMARY KEY,
+  part_number   TEXT NOT NULL,
+  color_id      INTEGER NOT NULL DEFAULT 0,
+  condition     TEXT NOT NULL DEFAULT 'U',
+  currency_code TEXT NOT NULL DEFAULT 'EUR',
+  avg_price     NUMERIC(12,4),
+  qty_avg_price NUMERIC(12,4),
+  fetched_at    TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(part_number, color_id, condition, currency_code)
+);
+
+CREATE TABLE IF NOT EXISTS price_history (
+  id            SERIAL PRIMARY KEY,
+  set_number    TEXT NOT NULL,
+  condition     TEXT NOT NULL DEFAULT 'N',
+  currency_code TEXT NOT NULL DEFAULT 'EUR',
+  avg_price     NUMERIC(12,4),
+  qty_avg_price NUMERIC(12,4),
+  min_price     NUMERIC(12,4),
+  max_price     NUMERIC(12,4),
+  recorded_at   TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_price_history_set ON price_history(set_number, recorded_at);
+
+-- ── Preisalarm ──────────────────────────────────────────────────────────────
+--
+-- price_alerts steht BEWUSST nur in db/migrations/0019-preisalarm.sql — wie
+-- account_links und die fuenf anderen Tabellen oben. Eine ganze TABELLE an
+-- zwei Orten anzulegen ist etwas anderes als ein ALTER … ADD COLUMN IF NOT
+-- EXISTS: Die Spaltendefinition beschreibt dieselbe Zielform, die
+-- Tabellendefinition beschreibt alle Spalten, Schluessel und CHECKs — und die
+-- liefen auseinander, sobald jemand einen davon nur an einem Ort aendert.
+-- test/schema-am-start.test.js meldet es.
+--
+-- Folge: Ein Testaufbau, der nur initSchema() ruft, hat die Tabelle nicht.
+-- Der Preisalarm faengt das ab (utils/preisalarm.ts fragt, jobs/priceJob.ts
+-- kapselt den ganzen Block) — ohne Alarme gibt es nichts zu melden.
+
+-- ── Merkliste ───────────────────────────────────────────────────────────────
+--
+-- `wanted` steht aus demselben Grund nur in den Migrationen: angelegt als
+-- `wishlist` in 0021, umbenannt in 0023 (Marcos „bitte auch im Quellcode …
+-- auf Englisch bitte wanted"). Die Begründung in 0021 nennt auch, warum es
+-- keine Spalte an `sets` ist: `sets` ist der Besitz und wird von Galerie,
+-- Teileliste, Portfolio und Finanzen gelesen — ein Merkposten würde überall
+-- mitgezählt.
+--
+-- Wie beim Preisalarm gilt: Ein Testaufbau, der nur initSchema() ruft, hat
+-- die Tabelle nicht. utils/merkliste.ts faengt das ab und liefert eine leere
+-- Liste, statt zu werfen.
+
+-- Meistgenutzte Query der App: SELECT ... FROM sets WHERE user_id = $1.
+-- UNIQUE(user_id, set_number) deckt das zwar theoretisch ab, ein
+-- expliziter Index dokumentiert die Absicht und bleibt bei Schema-
+-- Änderungen stabil. Die Cache-Tabellen hatten bisher NUR den SERIAL-PK —
+-- jeder Preis-Lookup war ein Seq-Scan auf einer wachsenden Tabelle.
+CREATE INDEX IF NOT EXISTS idx_sets_user ON sets(user_id);
+CREATE INDEX IF NOT EXISTS idx_instructions_user ON instructions(user_id, set_number);
+CREATE INDEX IF NOT EXISTS idx_shared_instructions_set ON shared_instructions(set_number);
+CREATE TABLE IF NOT EXISTS price_cache (
+  id            SERIAL PRIMARY KEY,
+  set_number    TEXT NOT NULL,
+  condition     TEXT NOT NULL DEFAULT 'N',
+  currency_code TEXT NOT NULL DEFAULT 'EUR',
+  min_price     NUMERIC(12,4),
+  avg_price     NUMERIC(12,4),
+  max_price     NUMERIC(12,4),
+  qty_avg_price NUMERIC(12,4),
+  total_quantity INTEGER,
+  fetched_at    TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(set_number, condition, currency_code)
+);
+CREATE INDEX IF NOT EXISTS idx_price_cache_lookup
+  ON price_cache(set_number, condition, currency_code, fetched_at DESC);
+CREATE INDEX IF NOT EXISTS idx_part_price_cache_lookup
+  ON part_price_cache(part_number, color_id, condition, currency_code, fetched_at DESC);
+CREATE INDEX IF NOT EXISTS idx_minifig_price_cache_lookup
+  ON minifig_price_cache(fig_number, condition, currency_code, fetched_at DESC);
+-- Backfill price_history from price_cache (safe now both tables exist)
+INSERT INTO price_history (set_number, condition, currency_code, avg_price, qty_avg_price, min_price, max_price, recorded_at)
+SELECT pc.set_number, pc.condition, pc.currency_code, pc.avg_price, pc.qty_avg_price, pc.min_price, pc.max_price, pc.fetched_at
+FROM price_cache pc
+WHERE (pc.avg_price > 0 OR pc.qty_avg_price > 0)
+  AND NOT EXISTS (
+    SELECT 1 FROM price_history ph
+    WHERE ph.set_number = pc.set_number
+      AND ph.condition = pc.condition
+      AND ph.currency_code = pc.currency_code
+      AND ABS(EXTRACT(EPOCH FROM (ph.recorded_at - pc.fetched_at))) < 3600
+  )
+ON CONFLICT DO NOTHING;
+
+-- rate_counters ist ENTFALLEN.
+--
+-- Die Tabelle wurde bei jeder Initialisierung angelegt, aber von keiner
+-- einzigen Abfrage benutzt: Die Login- und IP-Kontingente liegen in
+-- rate_limit_attempts (siehe weiter unten und utils/loginLimiter.ts).
+-- Übrig war ein Entwurf aus einer früheren Fassung — samt eines Tests, der
+-- noch gegen die alten Spaltennamen prüfte und dadurch rot war.
+--
+-- Bewusst KEIN DROP: Auf bestehenden Installationen bleibt die (leere)
+-- Tabelle stehen. Sie kostet nichts, und ein Löschbefehl im Startpfad ist
+-- ein Risiko ohne Gegenwert.
+
+CREATE TABLE IF NOT EXISTS global_settings (
+  key        TEXT PRIMARY KEY,
+  value      TEXT NOT NULL,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS user_settings (
+  user_id    INTEGER NOT NULL,
+  key        TEXT NOT NULL,
+  value      TEXT NOT NULL,
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  PRIMARY KEY(user_id, key),
+  FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS schema_migrations (
+  id     SERIAL PRIMARY KEY,
+  name   TEXT NOT NULL UNIQUE,
+  run_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- sliding: Gleitet das Ablaufdatum bei Benutzung mit?
+--
+-- Der Token der App und der des Browsers haben verschiedene Laufzeitregeln.
+-- Bis hierher war der Unterschied daran zu erkennen, ob expires_at NULL ist:
+-- App = kein Ablauf, Browser = sieben Tage. Der App-Token verfiel trotzdem
+-- irgendwann — aber nur, weil ein stuendlicher Aufraeumjob ihn nach 90 Tagen
+-- ohne Nutzung LOESCHTE. Durchgesetzt wurde die Frist also von einem
+-- Hintergrundjob, nicht von der Pruefung im Anfrageweg.
+--
+-- Jetzt traegt auch der App-Token ein echtes Ablaufdatum, das bei jeder
+-- Benutzung nachrueckt (siehe _touchLastUsed in utils/auth.ts). Damit
+-- entscheidet die WHERE-Klausel in validateToken() — und die laeuft bei jeder
+-- Anfrage, egal ob ein Job lebt. Dieses Feld sagt, welcher der beiden
+-- Token-Sorten eine Zeile angehoert.
+CREATE TABLE IF NOT EXISTS api_tokens (
+  token      TEXT PRIMARY KEY,
+  user_id    INTEGER NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  last_used  TIMESTAMPTZ DEFAULT NOW(),
+  expires_at TIMESTAMPTZ,
+  sliding    BOOLEAN NOT NULL DEFAULT FALSE,
+  -- Der FESTE Termin, den der Nutzer beim Erzeugen des QR-Codes gewaehlt hat.
+  -- expires_at daneben ist die GLEITENDE Frist („so lange ungenutzt");
+  -- gueltig ist der Token, bis der fruehere der beiden Termine erreicht ist.
+  -- NULL = keine feste Frist. Siehe db/migrations/0016-token-laufzeit.sql.
+  hard_expires_at TIMESTAMPTZ,
+  -- „Unbegrenzt" als ausdrueckliche Wahl: keine der beiden Fristen gilt.
+  -- Eigene Spalte und nicht bloss `expires_at IS NULL`, weil der Aufraeumjob
+  -- Zeilen ohne Datum absichtlich auf die Gleitfrist nachzieht — er wuerde die
+  -- Wahl sonst still rueckgaengig machen. Siehe
+  -- db/migrations/0017-token-unbegrenzt.sql.
+  never_expires BOOLEAN NOT NULL DEFAULT FALSE,
+  label      TEXT,
+  FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- ── Etappe 1: ein Preiseintrag je Set, Zustand, Währung und Tag ───────────
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE tablename = 'price_history' AND indexname = 'idx_price_history_tag') THEN
+    DELETE FROM price_history p
+     USING price_history q
+     WHERE p.set_number    = q.set_number
+       AND p.condition     = q.condition
+       AND p.currency_code = q.currency_code
+       AND (p.recorded_at AT TIME ZONE 'UTC')::date = (q.recorded_at AT TIME ZONE 'UTC')::date
+       AND (p.recorded_at < q.recorded_at OR (p.recorded_at = q.recorded_at AND p.id < q.id));
+    CREATE UNIQUE INDEX idx_price_history_tag ON price_history
+      (set_number, condition, currency_code, ((recorded_at AT TIME ZONE 'UTC')::date));
+  END IF;
+END $$;
+
+-- ── Etappe 2: Spalten, Kontovorgaben, globale Vorgabewerte ─────────────────
+ALTER TABLE sets ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE sets ADD COLUMN IF NOT EXISTS purchase_price NUMERIC(12,4);
+ALTER TABLE sets ADD COLUMN IF NOT EXISTS condition TEXT DEFAULT 'N';
+ALTER TABLE set_parts_catalog    ADD COLUMN IF NOT EXISTS image_local TEXT;
+ALTER TABLE set_minifigs_catalog ADD COLUMN IF NOT EXISTS image_local TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS email TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS first_name TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS last_name TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active INTEGER DEFAULT 1;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified INTEGER DEFAULT 0;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_token TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS token_expires TIMESTAMPTZ;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token_expires TIMESTAMPTZ;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS must_change_password INTEGER DEFAULT 0;
+
+DO $$
+BEGIN
+  UPDATE users SET is_active = 1, email_verified = 1
+   WHERE is_admin = 1 AND (is_active IS NULL OR email_verified IS NULL);
+  UPDATE users SET is_active = COALESCE(is_active, 1), email_verified = COALESCE(email_verified, 0);
+EXCEPTION WHEN OTHERS THEN
+  RAISE WARNING 'Altbestand: Kontovorgaben nicht gesetzt (%)', SQLERRM;
+END $$;
+
+DO $$
+BEGIN
+  CREATE UNIQUE INDEX IF NOT EXISTS users_email_unique ON users(email) WHERE email IS NOT NULL;
+EXCEPTION WHEN OTHERS THEN
+  RAISE WARNING 'Altbestand: users_email_unique nicht angelegt (%)', SQLERRM;
+END $$;
+
+INSERT INTO global_settings (key, value) VALUES
+  ('bricklink_consumer_key',     ''),
+  ('bricklink_consumer_secret',  ''),
+  ('bricklink_token',            ''),
+  ('bricklink_token_secret',     ''),
+  ('brickset_api_key',           ''),
+  ('rebrickable_api_key',        ''),
+  ('price_job_interval_minutes', '60'),
+  ('registration_enabled',       '0'),
+  ('price_cache_ttl',            '24'),
+  ('default_price_condition',    'N'),
+  ('api_limit_rebrickable',      '25000'),
+  ('api_limit_bricklink',        '4000'),
+  ('api_limit_brickset',         '100'),
+  ('smtp_host',                  ''),
+  ('smtp_port',                  '587'),
+  ('smtp_user',                  ''),
+  ('smtp_pass',                  ''),
+  ('smtp_from',                  ''),
+  ('smtp_secure',                '0')
+ON CONFLICT (key) DO NOTHING;
+
+UPDATE global_settings SET value = '25000'
+ WHERE key = 'api_limit_rebrickable' AND value IN ('4000', '10000');
+
+-- ── Etappe 3: Trigramm-Indizes der Katalogsuche (pg_trgm ist optional) ─────
+DO $$
+BEGIN
+  CREATE EXTENSION IF NOT EXISTS pg_trgm;
+  CREATE INDEX IF NOT EXISTS idx_rb_sets_name_trgm   ON rb_sets USING GIN (name gin_trgm_ops);
+  CREATE INDEX IF NOT EXISTS idx_rb_sets_setnum_trgm ON rb_sets USING GIN (set_num gin_trgm_ops);
+EXCEPTION WHEN OTHERS THEN
+  RAISE WARNING 'Altbestand: pg_trgm nicht verfügbar (%), Katalogsuche ohne Index', SQLERRM;
+END $$;
+
+-- ── Etappe 4: früher zur Laufzeit angelegte Tabellen, Datenkorrekturen ─────
+CREATE TABLE IF NOT EXISTS csv_import_jobs (
+  user_id    INTEGER PRIMARY KEY,
+  status     TEXT    NOT NULL DEFAULT 'running',
+  total      INTEGER NOT NULL DEFAULT 0,
+  done       INTEGER NOT NULL DEFAULT 0,
+  current    TEXT,
+  results    JSONB   NOT NULL DEFAULT '[]',
+  error      TEXT,
+  started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS qr_login_tokens (
+  token      TEXT PRIMARY KEY,
+  user_id    INTEGER NOT NULL,
+  expires_at TIMESTAMPTZ NOT NULL,
+  used_at    TIMESTAMPTZ,
+  token_days INTEGER
+);
+CREATE INDEX IF NOT EXISTS idx_qr_login_expires ON qr_login_tokens(expires_at);
+
+DO $$
+BEGIN
+  DELETE FROM api_tokens WHERE token !~ '^[0-9a-f]{64}$';
+EXCEPTION WHEN OTHERS THEN
+  RAISE WARNING 'Altbestand: Klartext-Tokens nicht entfernt (%)', SQLERRM;
+END $$;
+
+DO $$
+BEGIN
+  UPDATE minifigs SET fig_number = TRIM(fig_number) WHERE fig_number <> TRIM(fig_number);
+EXCEPTION WHEN OTHERS THEN
+  RAISE WARNING 'Altbestand: Figurennummern nicht getrimmt (%)', SQLERRM;
+END $$;
+
+CREATE TABLE IF NOT EXISTS part_acquisitions (
+  id          SERIAL PRIMARY KEY,
+  user_id     INTEGER NOT NULL,
+  part_number TEXT    NOT NULL,
+  color_id    INTEGER NOT NULL DEFAULT 0,
+  quantity    INTEGER NOT NULL DEFAULT 1,
+  unit_price  NUMERIC(12,4),
+  condition   TEXT    DEFAULT 'N',
+  created_at  TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS minifig_acquisitions (
+  id          SERIAL PRIMARY KEY,
+  user_id     INTEGER NOT NULL,
+  fig_number  TEXT    NOT NULL,
+  quantity    INTEGER NOT NULL DEFAULT 1,
+  unit_price  NUMERIC(12,4),
+  condition   TEXT    DEFAULT 'N',
+  created_at  TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE set_acquisitions ADD COLUMN IF NOT EXISTS condition TEXT DEFAULT 'N';
+ALTER TABLE parts    ADD COLUMN IF NOT EXISTS added_at  TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE parts    ADD COLUMN IF NOT EXISTS condition TEXT DEFAULT 'N';
+ALTER TABLE minifigs ADD COLUMN IF NOT EXISTS condition TEXT DEFAULT 'N';
+
+-- ── Etappe 5: Indizes und die Teile-Zusammenfassung (partsSummary, 307ee28) ─
+DO $$
+BEGIN
+  CREATE INDEX IF NOT EXISTS idx_rb_inv_setnum ON rb_inventories(set_num);
+EXCEPTION WHEN OTHERS THEN
+  RAISE WARNING 'Altbestand: idx_rb_inv_setnum nicht angelegt (%)', SQLERRM;
+END $$;
+
+DO $$
+BEGIN
+  CREATE TABLE IF NOT EXISTS rate_limit_attempts (
+    key      TEXT PRIMARY KEY,
+    count    INTEGER     NOT NULL DEFAULT 1,
+    first_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  );
+  CREATE INDEX IF NOT EXISTS idx_rate_limit_first_at ON rate_limit_attempts(first_at);
+EXCEPTION WHEN OTHERS THEN
+  RAISE WARNING 'Altbestand: rate_limit_attempts nicht angelegt (%)', SQLERRM;
+END $$;
+
+DO $altbestand$
+DECLARE t text; s text; op text; ref text;
+BEGIN
+  CREATE TABLE IF NOT EXISTS parts_summary (
+    user_id        INTEGER NOT NULL,
+    part_key       TEXT    NOT NULL,
+    color_id       INTEGER NOT NULL,
+    part_number    TEXT,
+    bl_part_number TEXT,
+    part_name      TEXT,
+    color_name     TEXT,
+    color_hex      TEXT,
+    category_name  TEXT,
+    image_url      TEXT,
+    image_local    TEXT,
+    is_spare       INTEGER DEFAULT 0,
+    total_quantity BIGINT  DEFAULT 0,
+    in_sets        TEXT,
+    PRIMARY KEY (user_id, part_key, color_id)
+  );
+  ALTER TABLE parts_summary ADD COLUMN IF NOT EXISTS storage TEXT;
+  CREATE INDEX IF NOT EXISTS idx_parts_summary_sort  ON parts_summary(user_id, color_name, part_name);
+  CREATE INDEX IF NOT EXISTS idx_parts_summary_color ON parts_summary(user_id, color_id);
+  CREATE INDEX IF NOT EXISTS idx_parts_summary_cat   ON parts_summary(user_id, category_name);
+  CREATE TABLE IF NOT EXISTS parts_summary_state (
+    user_id       INTEGER PRIMARY KEY,
+    built_version BIGINT  NOT NULL DEFAULT 0,
+    built_at      TIMESTAMPTZ DEFAULT NOW()
+  );
+  CREATE TABLE IF NOT EXISTS parts_version_user (
+    user_id INTEGER PRIMARY KEY,
+    v       BIGINT NOT NULL DEFAULT 0
+  );
+
+  CREATE OR REPLACE FUNCTION bump_parts_version_ins() RETURNS trigger AS $f$
+  BEGIN
+    INSERT INTO parts_version_user (user_id, v)
+    SELECT DISTINCT user_id, 1 FROM neu WHERE user_id IS NOT NULL AND user_id IN (SELECT id FROM users)
+    ON CONFLICT (user_id) DO UPDATE SET v = parts_version_user.v + 1;
+    RETURN NULL;
+  END $f$ LANGUAGE plpgsql;
+  CREATE OR REPLACE FUNCTION bump_parts_version_del() RETURNS trigger AS $f$
+  BEGIN
+    INSERT INTO parts_version_user (user_id, v)
+    SELECT DISTINCT user_id, 1 FROM alt WHERE user_id IS NOT NULL AND user_id IN (SELECT id FROM users)
+    ON CONFLICT (user_id) DO UPDATE SET v = parts_version_user.v + 1;
+    RETURN NULL;
+  END $f$ LANGUAGE plpgsql;
+  CREATE OR REPLACE FUNCTION bump_parts_version_upd() RETURNS trigger AS $f$
+  BEGIN
+    INSERT INTO parts_version_user (user_id, v)
+    SELECT DISTINCT user_id, 1 FROM (
+      SELECT user_id FROM alt UNION SELECT user_id FROM neu
+    ) x WHERE user_id IS NOT NULL AND user_id IN (SELECT id FROM users)
+    ON CONFLICT (user_id) DO UPDATE SET v = parts_version_user.v + 1;
+    RETURN NULL;
+  END $f$ LANGUAGE plpgsql;
+
+  FOREACH t IN ARRAY ARRAY['parts', 'sets', 'set_acquisitions'] LOOP
+    EXECUTE format('DROP TRIGGER IF EXISTS trg_bump_parts_version ON %I', t);
+    FOREACH s IN ARRAY ARRAY['ins', 'del', 'upd'] LOOP
+      op  := CASE s WHEN 'ins' THEN 'INSERT' WHEN 'del' THEN 'DELETE' ELSE 'UPDATE' END;
+      ref := CASE s WHEN 'ins' THEN 'REFERENCING NEW TABLE AS neu'
+                    WHEN 'del' THEN 'REFERENCING OLD TABLE AS alt'
+                    ELSE 'REFERENCING OLD TABLE AS alt NEW TABLE AS neu' END;
+      EXECUTE format('DROP TRIGGER IF EXISTS trg_bump_parts_version_%s ON %I', s, t);
+      EXECUTE format('CREATE TRIGGER trg_bump_parts_version_%s AFTER %s ON %I %s FOR EACH STATEMENT EXECUTE FUNCTION bump_parts_version_%s()',
+                     s, op, t, ref, s);
+    END LOOP;
+  END LOOP;
+  DROP FUNCTION IF EXISTS bump_parts_version();
+EXCEPTION WHEN OTHERS THEN
+  RAISE WARNING 'Altbestand: Teile-Zusammenfassung nicht angelegt (%)', SQLERRM;
+END $altbestand$;
