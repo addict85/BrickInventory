@@ -193,6 +193,10 @@ const NUR_WEB = new Map([
    'nicht, anders als bei den CSV-Importen, die einfach laufen und eine Zahl ' +
    'melden. Marco weiss es und kann es anfordern; bis dahin ist dies kein ' +
    'Versehen, sondern ein benannter Rest.'],
+  ['/api/v1/settings/user/theme',
+   'Eigenes Design des Kontos (Profil der Webapp, seit dem 29.10.). Die App liest ' +
+   'das Ergebnis schon kontoabhängig über /settings/theme und /settings; eine ' +
+   'Auswahl im Konto-Bildschirm der App steht noch aus — ein benannter Rest.'],
   ['/api/v1/vouchers/export/pdf',
    'Alle Gutscheine als EIN PDF. Die App RUFT die Adresse sehr wohl auf — seit ' +
    'Marcos Vorgabe vom 15.10. („Bitte auch den Button … in der Android-App ' +

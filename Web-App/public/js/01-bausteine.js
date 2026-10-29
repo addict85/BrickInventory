@@ -68,7 +68,8 @@ export function ladeAnzeige(text, o = {}) {
   // Ohne Text nur der Kringel — so macht es die Teile-Zusammenfassung, wo
   // daneben schon steht, worauf gewartet wird.
   const beschriftung = text ? `<span>${text}</span>` : '';
-  return `<div class="loading${o.klein ? ' klein' : ''}"${stil}><div class="spin"></div>${beschriftung}</div>`;
+  return o.klein ? `<div class="loading klein"${stil}><div class="spin"></div>${beschriftung}</div>`
+                 : `<div class="loading"${stil}><div class="spin"></div>${beschriftung}</div>`;
 }
 
 /**

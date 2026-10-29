@@ -362,8 +362,10 @@ async function ladeEigenesDesign() {
 }
 
 function zeigeDesignWahl(d) {
-  const sel = G('design-wahl');
-  const vorgabeName = tRaw('settings.theme_' + d.vorgabe);
+  const sel = /** @type {HTMLSelectElement} */ (/** @type {unknown} */ (G('design-wahl')));
+  const NAMEN = { classic: 'settings.theme_classic', brick: 'settings.theme_brick', werkbank: 'settings.theme_werkbank',
+    farbfaecher: 'settings.theme_farbfaecher', noppe: 'settings.theme_noppe', hochglanz: 'settings.theme_hochglanz' };
+  const vorgabeName = tRaw(NAMEN[d.vorgabe] || NAMEN.classic);
   sel.options[0].textContent = tRaw('settings.own_theme_default', { name: vorgabeName });
   sel.value = d.eigenes || '';
 }

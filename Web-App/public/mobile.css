@@ -387,7 +387,7 @@
     padding-bottom: 4px; scrollbar-width: none; }
   [data-theme="brick"] .brick-stats::-webkit-scrollbar { display: none; }
   [data-theme="brick"] .bstat { flex: 0 0 auto; min-width: 9.5rem; scroll-snap-align: start; padding: 10px 14px; }
-  [data-theme="brick"] .bstat .bstat-v { font-size: 1.35rem; }
+  [data-theme="brick"] .bstat .bstat-v { font-size: var(--fs-5); }
 
   /* Die Pills des Stein-Designs werden unten zur Leiste wie in den anderen. */
   [data-theme="brick"] nav {

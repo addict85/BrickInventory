@@ -1065,7 +1065,7 @@ a.btn:hover{text-decoration:none}
 .profil-raster{display:grid;grid-template-columns:repeat(auto-fill,minmax(15rem,1fr));gap:.75rem 1rem}
 .profil-raster .fg{min-width:0}
 .profil-raster-3{grid-template-columns:repeat(auto-fill,minmax(12rem,1fr))}
-#tab-profil .btn,#tab-profil .btn.btn-sm{font-size:var(--fs-3);padding:var(--sp-2) var(--sp-4);min-height:38px}
+#tab-profil .btn{font-size:var(--fs-3);padding:var(--sp-2) var(--sp-4);min-height:38px}
 .email-status{font-size:var(--fs-1);margin-left:4px}
 .email-ok{color:var(--g700)}
 .email-offen{color:var(--a-schrift)}
@@ -1097,8 +1097,6 @@ a.btn:hover{text-decoration:none}
 .max-74{max-width:74px}
 .max-130-rechts{max-width:130px;justify-content:flex-end}
 .relativ{position:relative}
-.ebene-400{z-index:400}
-.ebene-500{z-index:500}
 .pdf-rahmen{background:var(--sur);width:96vw;height:96vh;max-width:1200px;border-radius:12px;display:flex;flex-direction:column;overflow:hidden;box-shadow:var(--sh1)}
 .pdf-kopf{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:.55rem .9rem;border-bottom:1px solid var(--bdr)}
 .pdf-titel{font-weight:600;font-size:var(--fs-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -1120,8 +1118,6 @@ a.btn:hover{text-decoration:none}
 .fortschritt-titel{font-size:var(--fs-2);font-weight:600;color:var(--mut);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.4rem}
 .import-leiste{align-items:center;gap:8px;min-width:180px;max-width:280px}
 .import-leiste-balken{flex:1;background:var(--bdr);border-radius:999px;height:5px;overflow:hidden;cursor:pointer}
-.import-leiste-text{font-size:var(--fs-1);font-weight:600;color:var(--s700);white-space:nowrap;cursor:pointer}
-.import-leiste-pfeil{font-size:var(--fs-1);color:var(--mut);cursor:pointer}
 .balken-gruen{background:var(--g500)}
 .dialog-fuss-eng{gap:10px;margin-top:.5rem}
 .knopf-reihe-weit{gap:.75rem;margin-top:0}

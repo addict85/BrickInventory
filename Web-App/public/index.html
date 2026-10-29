@@ -294,8 +294,8 @@
         <div class="import-leiste-balken" data-click="gibToggle">
           <div id="gib-fill" class="balken-fuellung"></div>
         </div>
-        <span id="gib-text" class="import-leiste-text" data-click="gibToggle">0%</span>
-        <span id="gib-chevron" class="import-leiste-pfeil" data-click="gibToggle">▾</span>
+        <span id="gib-text" data-stil="font-size:var(--fs-1);font-weight:600;color:var(--s700);white-space:nowrap;cursor:pointer" data-click="gibToggle">0%</span>
+        <span id="gib-chevron" data-stil="font-size:var(--fs-1);color:var(--mut);cursor:pointer" data-click="gibToggle">▾</span>
       </div>
       <div class="umenu">
         <!-- ── DAS MENÜ IM BENUTZERNAMEN ─────────────────────────────────
@@ -1581,7 +1581,7 @@
 </div>
 
 <!-- Confirm Dialog -->
-<div class="ovl ebene-400" id="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="cd-title" data-stil="display:none">
+<div class="ovl" id="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="cd-title" data-stil="display:none;z-index:400">
   <div class="modal dialog-schmal-mitte">
     <div class="dialog-symbol" id="cd-icon"><svg class="ico" aria-hidden="true"><use href="#i-loeschen"/></svg></div>
     <h3 class="dialog-titel-mitte" id="cd-title" data-i18n="common.delete_title">Löschen?</h3>
@@ -1965,7 +1965,7 @@
 </div>
 
 <!-- PDF-Viewer-Modal (In-App-Anzeige von Anleitungen) -->
-<div class="ovl ebene-500" id="pdf-viewer-modal" role="dialog" aria-modal="true" aria-labelledby="pdf-viewer-title" data-stil="display:none">
+<div class="ovl" id="pdf-viewer-modal" role="dialog" aria-modal="true" aria-labelledby="pdf-viewer-title" data-stil="display:none;z-index:500">
   <div class="pdf-rahmen">
     <div class="pdf-kopf">
       <div id="pdf-viewer-title" class="pdf-titel">PDF</div>
