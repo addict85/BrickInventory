@@ -66,6 +66,12 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+# Der Lauf liest nur: auschecken, installieren, testen. Ohne diese Zeile gälten
+# die Vorgaben des Repositorys, je nach Einstellung mit Schreibrecht auf den
+# Code — für npm-Pakete und Testdateien eines Pull-Requests zu viel.
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: ubuntu-latest

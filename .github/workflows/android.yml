@@ -57,12 +57,11 @@ jobs:
       run:
         working-directory: Android-App
 
-    # Nur so viel, wie der Lauf braucht: `contents: write` fuer den
-    # Release-Anhang unten. Sobald dieser Block da steht, sind ALLE anderen
-    # Bereiche auf `none` — das ist Absicht und der Grund, warum er hier
-    # ausdruecklich und nicht am Anfang der Datei steht.
+    # Nur lesen: Bauen, Testen und Signieren läuft mit allen Gradle-Plugins und
+    # auf jedem Zweig. Schreiben darf allein der Job `release` unten, und der
+    # läuft nur auf main. Alle nicht genannten Bereiche stehen auf `none`.
     permissions:
-      contents: write
+      contents: read
 
     # Der `secrets`-Kontext steht in einem `if:` auf SCHRITTEBENE nicht zur
     # Verfügung — `env` schon. Deshalb wird die Frage "gibt es einen
@@ -501,6 +500,62 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
+      # Übergabe an den Job `release`, der als einziger schreiben darf: APK und
+      # output-metadata.json, nach einem Tag weg. Ausgeliefert wird weiter der
+      # rohe Release-Anhang, nicht dieses Zip — deshalb der Ordner und nicht
+      # der APK-Name, den ApkNameTest an einem Artefaktschritt als Zip wertet.
+      - name: APK an den Release-Job übergeben
+        if: success() && github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: apk-fuer-release
+          path: Android-App/app/build/outputs/apk/release/
+          if-no-files-found: error
+          retention-days: 1
+
+      # Das Bundle wird hier nur GEBAUT und gesichert, nicht veroeffentlicht.
+      #
+      # Hier stand, dass das Hochladen zu Play in android-playstore.yml stehe.
+      # Diesen Workflow gibt es nicht mehr: Die App wird als APK ueber die
+      # GitHub-Releases ausgeliefert (Schritt „BrickInventory.apk als Release
+      # bereitstellen" im Job `release`) und aktualisiert sich daraus selbst
+      # (util/AppUpdate.kt). Der Play-Weg war gebaut, aber nie benutzt.
+      #
+      # Der Bau hier bleibt trotzdem, und zwar aus dem Grund, der schon vorher
+      # der zweite war: Er faellt auf, wenn das Bundle bricht, waehrend das APK
+      # noch durchlaeuft. Das kommt vor — R8 und die Ressourcen-Aufteilung
+      # arbeiten fuer die beiden Formate nicht gleich. Als Artefakt ist es
+      # ausserdem da, falls der Play-Weg je wieder gewollt ist.
+      - name: App-Bundle (.aab) sichern
+        if: success()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: BrickInventory-bundle
+          path: Android-App/app/build/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
+          retention-days: 90
+
+  # ── Veröffentlichen: der einzige Job mit Schreibrecht ─────────────────────
+  release:
+    needs: build
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    defaults:
+      run:
+        working-directory: Android-App
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: APK aus dem Build-Job holen
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: apk-fuer-release
+          path: Android-App/app/build/outputs/apk/release
+
       # ── Warum ein Release und kein Artefakt ─────────────────────────────────
       #
       # Marcos Wunsch: am Ende kein Zip, sondern direkt das APK. Als Artefakt
@@ -639,25 +694,3 @@ jobs:
             echo "> Kein Zip: Ein Release-Anhang wird roh ausgeliefert. Der Link"
             echo "> bleibt ueber alle Builds derselbe und braucht kein GitHub-Konto."
           } >> "$GITHUB_STEP_SUMMARY"
-
-      # Das Bundle wird hier nur GEBAUT und gesichert, nicht veroeffentlicht.
-      #
-      # Hier stand, dass das Hochladen zu Play in android-playstore.yml stehe.
-      # Diesen Workflow gibt es nicht mehr: Die App wird als APK ueber die
-      # GitHub-Releases ausgeliefert (Schritt „BrickInventory.apk als Release
-      # bereitstellen" weiter oben) und aktualisiert sich daraus selbst
-      # (util/AppUpdate.kt). Der Play-Weg war gebaut, aber nie benutzt.
-      #
-      # Der Bau hier bleibt trotzdem, und zwar aus dem Grund, der schon vorher
-      # der zweite war: Er faellt auf, wenn das Bundle bricht, waehrend das APK
-      # noch durchlaeuft. Das kommt vor — R8 und die Ressourcen-Aufteilung
-      # arbeiten fuer die beiden Formate nicht gleich. Als Artefakt ist es
-      # ausserdem da, falls der Play-Weg je wieder gewollt ist.
-      - name: App-Bundle (.aab) sichern
-        if: success()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
-        with:
-          name: BrickInventory-bundle
-          path: Android-App/app/build/outputs/bundle/release/app-release.aab
-          if-no-files-found: error
-          retention-days: 90

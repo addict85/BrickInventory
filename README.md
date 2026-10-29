@@ -124,6 +124,15 @@ docker compose pull && docker compose up -d
 32-Bit (`armv7`) wird nicht unterstützt — Details und Begründung in
 [`Web-App/README.md`](Web-App/README.md).
 
+Jedes veröffentlichte Image ist mit [cosign](https://docs.sigstore.dev/)
+signiert (keyless, aus dem Workflow `docker-publish.yml` auf `main`). Prüfen:
+
+```bash
+cosign verify addict85/brickinventory:latest \
+  --certificate-identity https://github.com/addict85/BrickInventory/.github/workflows/docker-publish.yml@refs/heads/main \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com
+```
+
 ---
 
 ## Die Android-App
