@@ -244,20 +244,23 @@ async function transaction<T>(fn: (tx: DbSchnittstelle) => Promise<T>): Promise<
  * Tabelle genau einen Weg: Basis plus Migrationen.
  * @returns true, wenn die Basis eingespielt wurde
  */
-const LETZTE_STARTSTUFE = '0050-teilezaehler-nur-bestehende-konten.sql';
+// Seit 0045 haben sich die Startstufen am Schema nicht mehr geändert: Wer 0045
+// eingetragen hat, hat die letzten Startstufen durchlaufen; 0046 und jünger
+// spielen die Migrationen nach.
+const LETZTE_STARTSTUFE = '0045-erfassung-gehoert-zum-bestand.sql';
 
 async function initSchema(): Promise<boolean> {
   const c = await eigeneVerbindung();
   try {
     const leer = !(await c.query("SELECT to_regclass('public.users') AS t")).rows[0].t;
     if (!leer) {
-      // Bis 0050 baute der Start fehlende Spalten selbst nach; diese Stufen
+      // Früher baute der Start fehlende Spalten selbst nach; diese Stufen
       // gibt es nicht mehr. Eine ältere Datenbank bekäme sie nie und liefe
       // mit halbem Schema weiter — lieber gleich mit klarer Ansage stehen.
       const r = await c.query('SELECT 1 FROM schema_migrations WHERE name = $1', [LETZTE_STARTSTUFE])
         .catch(() => ({ rows: [] as unknown[] }));
       if (!r.rows.length) throw new Error(
-        `Datenbank ist älter als ${LETZTE_STARTSTUFE}: bitte zuerst eine Version bis 0050 starten, dann diese.`);
+        `Datenbank ist älter als ${LETZTE_STARTSTUFE}: bitte zuerst eine Version vom 27.10.2026 bis 28.10.2026 starten, dann diese.`);
       return false;
     }
     // Eigene Verbindung, weil die Basis Sitzungswerte setzt (SET …), die
