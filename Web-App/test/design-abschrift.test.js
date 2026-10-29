@@ -94,7 +94,10 @@ const DATEN = JSON.parse(fs.readFileSync(QUELLE, 'utf8'));
  * statt auf einen Wert.
  */
 function tokenTabelle(datei) {
-  const src = fs.readFileSync(datei, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+  // Die dunklen Varianten (seit 29.10.) sind eine zweite Belegung derselben
+  // Namen; gelesen wird hier die helle.
+  const src = fs.readFileSync(datei, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/\[data-dunkel\][^{]*\{[^}]*\}/g, '');
   const roh = {};
   for (const m of src.matchAll(/--([a-z0-9-]+)\s*:\s*(#[0-9a-fA-F]{3,8}|var\(--[a-z0-9-]+\))/g)) {
     roh[m[1]] = m[2].toLowerCase();   // die LETZTE Zuweisung gilt, wie im Browser
@@ -133,7 +136,10 @@ test('kein handgeschriebenes Stylesheet definiert einen erzeugten Token neu', ()
 
   const doppelt = [];
   for (const datei of [CSS_BASIS, CSS_BRICK, CSS_MOBIL]) {
-    const src = fs.readFileSync(datei, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+    // Die dunklen Varianten (seit 29.10.) sind eine zweite Belegung derselben
+  // Namen; gelesen wird hier die helle.
+  const src = fs.readFileSync(datei, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/\[data-dunkel\][^{]*\{[^}]*\}/g, '');
     for (const m of src.matchAll(/--([a-z0-9-]+)\s*:/g)) {
       if (erzeugt.has(m[1])) doppelt.push(`${path.basename(datei)}: --${m[1]}`);
     }

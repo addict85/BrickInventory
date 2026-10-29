@@ -85,7 +85,7 @@
 }
 /* Das Bildfeld dunkler als die Karte: Ein Set-Foto mit weissem Rand steht
    sonst als heller Block im Dunkeln. */
-[data-theme="werkbank"] .sci{background:#11151a;border-bottom-color:var(--bdr)}
+[data-theme="werkbank"] .sci{border-bottom-color:var(--bdr)}
 
 /* ── Eingaben ───────────────────────────────────────────────────────────── */
 [data-theme="werkbank"] input,

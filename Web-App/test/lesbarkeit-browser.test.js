@@ -7,6 +7,9 @@
  *   - Die Datei-Felder in den Knopf-Labels (CSV, BrickLink XML) lassen sich
  *     fokussieren; mit display:none übersprang Tab sie.
  *   - Nummer und Jahr auf der Set-Kachel stehen in mindestens 12 px.
+ *   - Die dunkle Variante jedes Designs (data-dunkel): Primärknopf, Text,
+ *     Nebentext, Preis, Gewinn, Verlust und Markenfarbe je mindestens 4,5:1
+ *     auf der Karte; die Markenfarben der Designs bleiben verschieden.
  *   - Preise stehen in „noppe“ und „hochglanz“ nicht in Rot (die Marke ist
  *     rot; Rot heisst sonst Verlust).
  *   - Zwischen zwei Wörtern auf einem Knopf steht mindestens 0,22 em.
@@ -23,6 +26,8 @@
  *   F  (28.10.) .cond-new wieder mit var(--g600) → rot: „hell: Etikett Neu 3:1“;
  *      .besitzer-badge mit --b600 → rot: „hell: Etikett Besitzer 4.24:1“
  *   G  (28.10.) .pnl-pos wieder #16a34a → rot: „hell: Gewinn 3.15:1“
+ *   I  (29.10.) im Generator die dunklen Blöcke übersprungen (Tokens neu
+ *      erzeugt) → rot: „Die Karte der dunklen Variante ist hell“ (alle fünf)
  *   H  (28.10.) --preis in themes/noppe.css entfernt → rot: „Preis in Rot“
  *      mit „noppe: Preis“ und „hochglanz: Preis“
  *   E  (28.10.) word-spacing am body entfernt, ebenso word-spacing:inherit an
@@ -84,6 +89,51 @@ function testseite() {
 <section data-theme="hochglanz" style="background:var(--sur)">
   <span class="preis" data-kontrast="hochglanz: Preis" data-farbton="hochglanz: Preis">411,90 €</span>
 </section>
+<section data-theme="classic" data-dunkel style="background:var(--bg)"><div style="background:var(--sur)">
+  <button class="btn bp" data-kontrast="dunkel classic: Primärknopf">Speichern</button>
+  <span style="color:var(--txt)" data-kontrast="dunkel classic: Text">Zeitmaschine</span>
+  <span style="color:var(--mut)" data-kontrast="dunkel classic: Nebentext">2022 · Icons</span>
+  <span class="preis" data-kontrast="dunkel classic: Preis">411,90 €</span>
+  <span class="pnl-pos" data-kontrast="dunkel classic: Gewinn">+8,5 %</span>
+  <span class="pnl-neg" data-kontrast="dunkel classic: Verlust">−4,0 %</span>
+  <span style="color:var(--b600)" data-marke="classic" data-kontrast="dunkel classic: Markenfarbe">10300-1</span>
+</div></section>
+<section data-theme="brick" data-dunkel style="background:var(--bg)"><div style="background:var(--sur)">
+  <button class="btn bp" data-kontrast="dunkel brick: Primärknopf">Speichern</button>
+  <span style="color:var(--txt)" data-kontrast="dunkel brick: Text">Zeitmaschine</span>
+  <span style="color:var(--mut)" data-kontrast="dunkel brick: Nebentext">2022 · Icons</span>
+  <span class="preis" data-kontrast="dunkel brick: Preis">411,90 €</span>
+  <span class="pnl-pos" data-kontrast="dunkel brick: Gewinn">+8,5 %</span>
+  <span class="pnl-neg" data-kontrast="dunkel brick: Verlust">−4,0 %</span>
+  <span style="color:var(--b600)" data-marke="brick" data-kontrast="dunkel brick: Markenfarbe">10300-1</span>
+</div></section>
+<section data-theme="farbfaecher" data-dunkel style="background:var(--bg)"><div style="background:var(--sur)">
+  <button class="btn bp" data-kontrast="dunkel farbfaecher: Primärknopf">Speichern</button>
+  <span style="color:var(--txt)" data-kontrast="dunkel farbfaecher: Text">Zeitmaschine</span>
+  <span style="color:var(--mut)" data-kontrast="dunkel farbfaecher: Nebentext">2022 · Icons</span>
+  <span class="preis" data-kontrast="dunkel farbfaecher: Preis">411,90 €</span>
+  <span class="pnl-pos" data-kontrast="dunkel farbfaecher: Gewinn">+8,5 %</span>
+  <span class="pnl-neg" data-kontrast="dunkel farbfaecher: Verlust">−4,0 %</span>
+  <span style="color:var(--b600)" data-marke="farbfaecher" data-kontrast="dunkel farbfaecher: Markenfarbe">10300-1</span>
+</div></section>
+<section data-theme="noppe" data-dunkel style="background:var(--bg)"><div style="background:var(--sur)">
+  <button class="btn bp" data-kontrast="dunkel noppe: Primärknopf">Speichern</button>
+  <span style="color:var(--txt)" data-kontrast="dunkel noppe: Text">Zeitmaschine</span>
+  <span style="color:var(--mut)" data-kontrast="dunkel noppe: Nebentext">2022 · Icons</span>
+  <span class="preis" data-kontrast="dunkel noppe: Preis">411,90 €</span>
+  <span class="pnl-pos" data-kontrast="dunkel noppe: Gewinn">+8,5 %</span>
+  <span class="pnl-neg" data-kontrast="dunkel noppe: Verlust">−4,0 %</span>
+  <span style="color:var(--b600)" data-marke="noppe" data-kontrast="dunkel noppe: Markenfarbe">10300-1</span>
+</div></section>
+<section data-theme="hochglanz" data-dunkel style="background:var(--bg)"><div style="background:var(--sur)">
+  <button class="btn bp" data-kontrast="dunkel hochglanz: Primärknopf">Speichern</button>
+  <span style="color:var(--txt)" data-kontrast="dunkel hochglanz: Text">Zeitmaschine</span>
+  <span style="color:var(--mut)" data-kontrast="dunkel hochglanz: Nebentext">2022 · Icons</span>
+  <span class="preis" data-kontrast="dunkel hochglanz: Preis">411,90 €</span>
+  <span class="pnl-pos" data-kontrast="dunkel hochglanz: Gewinn">+8,5 %</span>
+  <span class="pnl-neg" data-kontrast="dunkel hochglanz: Verlust">−4,0 %</span>
+  <span style="color:var(--b600)" data-marke="hochglanz" data-kontrast="dunkel hochglanz: Markenfarbe">10300-1</span>
+</div></section>
 <pre id="ergebnis"></pre>
 <script>
 function rgb(s){ return (s.match(/[\\d.]+/g)||[]).slice(0,3).map(Number); }
@@ -109,10 +159,13 @@ window.addEventListener('load', () => document.fonts.ready.then(() => {
     if (d) h = max === r ? 60 * (((g - b) / d) % 6) : max === g ? 60 * ((b - r) / d + 2) : 60 * ((r - g) / d + 4);
     return { name: el.dataset.farbton, rot: s > 0.35 && (h < 25 || h > 335) };
   });
+  const marken = [...document.querySelectorAll('[data-marke]')].map(el => getComputedStyle(el).color);
+  const dunkelGrund = [...document.querySelectorAll('section[data-dunkel] > div')]
+    .map(el => ({ name: el.parentElement.dataset.theme, hell: Math.round(lum(rgb(getComputedStyle(el).backgroundColor)) * 1000) / 1000 }));
   const datei = document.getElementById('datei'); datei.focus();
   const fokus = document.activeElement === datei;
   const px = id => parseFloat(getComputedStyle(document.getElementById(id)).fontSize);
-  document.getElementById('ergebnis').textContent = 'ERGEBNIS' + JSON.stringify({ kontrast, farbton, fokus, ring, raum: wortabstand(), snum: px('snum'), smeta: px('smeta') }) + 'ENDE';
+  document.getElementById('ergebnis').textContent = 'ERGEBNIS' + JSON.stringify({ kontrast, farbton, marken, dunkelGrund, fokus, ring, raum: wortabstand(), snum: px('snum'), smeta: px('smeta') }) + 'ENDE';
 }));
 /** Breite eines Leerzeichens in der Schrift des Knopfs, in em. */
 function wortabstand() {
@@ -137,6 +190,10 @@ test('Kontrast, Datei-Felder und Kachelschrift', (t) => {
   assert.ok(m, 'Die Testseite hat kein Ergebnis geschrieben');
   const e = JSON.parse((m[1] ?? '').replace(/&quot;/g, '"'));
   assert.ok(e.kontrast.length >= 16);
+  assert.ok(e.kontrast.filter(k => k.name.startsWith('dunkel ')).length === 35, 'Die dunklen Varianten fehlen');
+  assert.deepEqual(e.dunkelGrund.filter(g => g.hell > 0.05).map(g => `${g.name} ${g.hell}`), [], 'Die Karte der dunklen Variante ist hell');
+  // hochglanz erbt die Farben von noppe; die übrigen vier bleiben unterscheidbar.
+  assert.equal(new Set(e.marken).size, 4, `Markenfarben dunkel: ${e.marken}`);
   assert.equal(e.farbton.length, 2);
   assert.deepEqual(e.farbton.filter(f => f.rot).map(f => f.name), [], 'Preis in Rot — liest sich als Verlust');
   assert.deepEqual(e.kontrast.filter(k => k.wert < 4.5).map(k => `${k.name} ${k.wert}:1`), []);

@@ -223,5 +223,92 @@
       ]
     }
   },
-  "_erbt_warum": "Ein Design kann die Palette eines anderen ERBEN. Gebraucht wird das von \"hochglanz\": Es ist \"noppe\" als lackierte Broschuere — dieselben Farben, dazu Schichten (Woelbung, Lichtkuppen, Lichtstreifen), die kein Farbwert sind. Die elf Werte ein zweites Mal hinzuschreiben waere eine Abschrift, und eine Abschrift zieht beim naechsten Mal nicht mit."
+  "_erbt_warum": "Ein Design kann die Palette eines anderen ERBEN. Gebraucht wird das von \"hochglanz\": Es ist \"noppe\" als lackierte Broschuere — dieselben Farben, dazu Schichten (Woelbung, Lichtkuppen, Lichtstreifen), die kein Farbwert sind. Die elf Werte ein zweites Mal hinzuschreiben waere eine Abschrift, und eine Abschrift zieht beim naechsten Mal nicht mit.",
+  "_dunkel_warum": "Die dunkle Variante JE Design, aktiv mit <html data-dunkel> (Geraetewahl „Dunkel, wenn das System dunkel ist“). Vorher bekam, wer dunkel wollte, das Design „werkbank“ — also ein anderes Design. 'basis' belegt Flaechen, Grau-Achse und Meldefarben fuer alle Designs (dieselben Rollen wie in themes/werkbank.css); je Design stehen nur die Markenfarben, aufgehellt, damit Text und Linien in ihnen auf dunklem Grund lesbar bleiben. Schrift auf der Markenfarbe ist dann dunkel (--auf-primaer). Werkbank ist schon dunkel und hat keine Variante. Nur das Web liest diesen Abschnitt.",
+  "dunkel": {
+    "basis": {
+      "s50": "#11151a",
+      "s100": "#161b21",
+      "s200": "#262d36",
+      "s300": "#2f3843",
+      "s400": "#6f7986",
+      "s500": "#8d96a3",
+      "s600": "#b6bec9",
+      "s700": "#cfd6de",
+      "s800": "#e6e9ed",
+      "bg": "#14181d",
+      "sur": "#1b2027",
+      "bdr": "#2f3843",
+      "txt": "#e6e9ed",
+      "mut": "#9aa3af",
+      "screen-bg": "#14181d",
+      "auf-primaer": "#0b1a2e",
+      "g100": "#1d2a20",
+      "g500": "#6fbf7f",
+      "g700": "#7fcf8f",
+      "gewinn": "#7fcf8f",
+      "r100": "#2c1c1c",
+      "r500": "#e07a72",
+      "r700": "#f08c84",
+      "a100": "#2a2418",
+      "a500": "#d9a84e",
+      "a-schrift": "#e0b462",
+      "p100": "#241d2e",
+      "p600": "#b087d6"
+    },
+    "designs": {
+      "classic": {
+        "b50": "#13233d",
+        "b100": "#172c4d",
+        "b200": "#1e3a63",
+        "b300": "#2b4f85",
+        "b400": "#3f6db5",
+        "b500": "#5b8def",
+        "b600": "#7ab0ff",
+        "b700": "#a9caff",
+        "chart-new": "#7ab0ff",
+        "chart-used": "#f0a54a"
+      },
+      "brick": {
+        "b50": "#18222d",
+        "b100": "#1d2a38",
+        "b200": "#273849",
+        "b300": "#35506a",
+        "b400": "#4c6f93",
+        "b500": "#7397bd",
+        "b600": "#93b6dc",
+        "b700": "#bcd3ec",
+        "chart-new": "#93b6dc",
+        "chart-used": "#c9a46a"
+      },
+      "farbfaecher": {
+        "b50": "#1c1c1c",
+        "b100": "#242424",
+        "b200": "#333333",
+        "b300": "#4a4a4a",
+        "b400": "#6e6e6e",
+        "b500": "#a0a0a0",
+        "b600": "#d6d6d6",
+        "b700": "#f0f0f0",
+        "chart-new": "#7ab0ff",
+        "chart-used": "#f0a54a"
+      },
+      "noppe": {
+        "b50": "#2a1415",
+        "b100": "#3a1a1c",
+        "b200": "#5a2226",
+        "b300": "#8a2c32",
+        "b400": "#c43c43",
+        "b500": "#e8585f",
+        "b600": "#ff7479",
+        "b700": "#ffa4a8",
+        "chart-new": "#6aa8ff",
+        "chart-used": "#ff9a40",
+        "ink": "#05070a"
+      },
+      "hochglanz": {
+        "erbt": "noppe"
+      }
+    }
+  }
 }

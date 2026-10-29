@@ -377,6 +377,12 @@
     .sc:hover{transform:translateY(-3px);box-shadow:var(--sh1);border-color:var(--b300)}
     .sci{width:100%;aspect-ratio:1;background:var(--s50);display:flex;align-items:center;justify-content:center;overflow:hidden;border-bottom:1px solid var(--bdr)}
     .sci img{width:100%;height:100%;object-fit:contain;padding:8px}
+    /* Dunkel: Die Produktfotos haben weissen Grund. Auf einer gedämpften
+       hellen Fläche und mit multiply wird daraus ein ruhiges Grau statt eines
+       grellen Kastens. */
+    [data-dunkel] .sci,[data-theme="werkbank"] .sci{background:#c9ced4}
+    [data-dunkel] .sci img,[data-theme="werkbank"] .sci img{mix-blend-mode:multiply;padding:10px}
+    [data-dunkel]{color-scheme:dark}
     .sci .ni{font-size:var(--fs-8)}
     .scb{padding:11px}
     /* [hidden] muss display:flex schlagen — die Preis-Zeile ist jetzt immer im
@@ -931,7 +937,7 @@ input.suchfeld{width:220px}
 .geheim-feld{display:flex;gap:6px;align-items:stretch}
 .geheim-feld input{flex:1;min-width:0}
 .geheim-knopf{flex:none;padding:0 10px;min-width:44px;justify-content:center}
-.einst-nav{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:.25rem}
+.einst-nav{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:.25rem;grid-column:1/-1;align-self:start;align-items:flex-start}
 .ssec{scroll-margin-top:72px}
 .kachel-datum{font-size:var(--fs-1);color:var(--mut);margin-top:.2rem}
 .mono-2{font-family:var(--mono);font-size:var(--fs-2)}

@@ -43,8 +43,8 @@
 
   // ── Dunkel nach System, je Gerät (Profil-Einstellungen) ────────────────────
   // Das Design gilt global; ob ein GERÄT dunkel will, weiss nur das Gerät. Wer
-  // „system" wählt, bekommt Werkbank, solange das System dunkel ist. Gecacht
-  // wird weiter das Design des Servers, nicht das angezeigte.
+  // „system" wählt, bekommt bei dunklem System die dunkle Variante DESSELBEN
+  // Designs (data-dunkel, Farben aus tokens.css), nicht ein anderes Design.
   var DUNKEL_KEY = 'bim_dunkel';
   var systemDunkel = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
   var serverDesign = null;
@@ -52,7 +52,10 @@
     try { return localStorage.getItem(DUNKEL_KEY) === 'system'; } catch (_) { return false; }
   }
   function wirksam(theme) {
-    return folgtSystem() && systemDunkel && systemDunkel.matches ? 'werkbank' : theme;
+    var dunkel = folgtSystem() && systemDunkel && systemDunkel.matches && theme !== 'werkbank';
+    if (dunkel) document.documentElement.setAttribute('data-dunkel', '');
+    else document.documentElement.removeAttribute('data-dunkel');
+    return theme;
   }
   function neuAnwenden() {
     if (serverDesign) document.documentElement.setAttribute('data-theme', wirksam(serverDesign));

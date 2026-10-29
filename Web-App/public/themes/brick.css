@@ -76,6 +76,9 @@
   border-radius:16px;border-bottom:none;overflow:visible;
   padding:14px 20px;margin-bottom:14px;box-shadow:var(--sh1);
 }
+/* Dunkel ist --b600 hell (Text darauf dunkel); die Kopfleiste bleibt ein
+   dunkles Blau, damit die weisse Schrift darauf stehen bleibt. */
+[data-theme="brick"][data-dunkel] header{background:var(--b200)}
 [data-theme="brick"] header .logo .marke,
 [data-theme="brick"] header .logo .marke span{color:#fff}
 [data-theme="brick"] header .logo svg{
@@ -133,6 +136,11 @@
   border-radius:11px;padding:9px 16px;margin:0;font-weight:600;
 }
 [data-theme="brick"] .ntab:hover{background:#f2f6fa}
+/* Dunkel: Grundplatte und Pillen auf den dunklen Flächen statt fest hell. */
+[data-theme="brick"][data-dunkel] #app,[data-theme="brick"][data-dunkel] .lcard{background:var(--s100)}
+[data-theme="brick"][data-dunkel] .ntab{background:var(--sur);color:var(--txt);border-color:var(--bdr)}
+[data-theme="brick"][data-dunkel] .cond-new{background:var(--b100);color:var(--b700)}
+[data-theme="brick"][data-dunkel] .cond-used{background:var(--a100);color:var(--a-schrift)}
 /* Marcos Befund: „Monitoring sollte auf der gleichen Zeile sein wie die
    restlichen Tabs." — und danach noch einmal: „Die Menues in der Webapp sind
    nicht alle auf einer Zeile."
@@ -159,12 +167,12 @@
 [data-theme="brick"] nav{gap:6px}
 [data-theme="brick"] .ntab{padding:8px 9px;font-size:.82rem}
 [data-theme="brick"] .ntab.active{
-  background:var(--b600);color:#fff;border-color:var(--b600);
+  background:var(--b600);color:var(--auf-primaer,#fff);border-color:var(--b600);
 }
 [data-theme="brick"] .ntab.active svg{filter:brightness(0) invert(1)}
 @media (max-width:640px){
 [data-theme="brick"] .ntab.gruppe-aktiv{
-  background:var(--b600);color:#fff;border-color:var(--b600);
+  background:var(--b600);color:var(--auf-primaer,#fff);border-color:var(--b600);
 }
 [data-theme="brick"] .ntab.gruppe-aktiv svg{filter:brightness(0) invert(1)}}
 
@@ -231,7 +239,7 @@
 [data-theme="brick"] .sc .delbtn:hover{
   background:#fff;border-color:#fff;color:var(--r500);
 }
-[data-theme="brick"] .qbadge{background:var(--b600);color:#fff;border-radius:7px}
+[data-theme="brick"] .qbadge{background:var(--b600);color:var(--auf-primaer,#fff);border-radius:7px}
 /* Zustands-Plaketten: Neu = Salbeigrün, Gebraucht = Sand (wie im Mockup) */
 [data-theme="brick"] .cond-new{background:#e2eaf3;color:#3d6a8f}
 [data-theme="brick"] .cond-used{background:#eee7db;color:#9a7a45}

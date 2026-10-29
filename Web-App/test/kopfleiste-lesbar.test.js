@@ -142,6 +142,9 @@ function werte(designCss, design) {
     const stellen = [];
     if (nurBlock) {
       for (let i = text.indexOf(nurBlock); i >= 0; i = text.indexOf(nurBlock, i + 1)) {
+        // Die dunkle Variante (data-dunkel, seit 29.10.) ist eine zweite
+        // Belegung; geprüft wird hier die helle.
+        if (text.slice(text.lastIndexOf('}', i) + 1, i).includes('[data-dunkel]')) continue;
         const auf = text.indexOf('{', i);
         if (auf >= 0) stellen.push(text.slice(auf, text.indexOf('}', auf)));
       }

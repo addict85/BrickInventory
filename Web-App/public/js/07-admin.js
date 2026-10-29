@@ -403,8 +403,8 @@ export function portfolioChartSVG(data, period, breite = 700){
   const max = rawMax + padding;
   const range = max - min || 1;
 
-  // Always blue — consistent with webapp brand color
-  const color = '#2563eb';
+  // Die Diagrammfarbe des Designs (auch dunkel), wie im Preisverlauf.
+  const color = 'var(--chart-new)';
   const n = vals.length;
 
   function px(i){ return PAD.l+(n===1 ? iw/2 : i/(n-1)*iw); }
@@ -451,7 +451,7 @@ export function portfolioChartSVG(data, period, breite = 700){
   const dots = vals.map((v,i) => {
     const isLast = i===n-1;
     return `<circle cx="${px(i).toFixed(1)}" cy="${py(v).toFixed(1)}" r="${isLast?4:2.5}"
-      fill="${color}" stroke="white" stroke-width="1.2" opacity="${isLast?1:0.4}">
+      fill="${color}" stroke="var(--sur)" stroke-width="1.2" opacity="${isLast?1:0.4}">
       <title>${data[i].day}: ${v.toLocaleString(locale(),{minimumFractionDigits:2})}</title>
     </circle>`;
   }).join('');
