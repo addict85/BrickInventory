@@ -24,13 +24,13 @@ ALTER TABLE minifig_acquisitions ADD COLUMN tag date;
 DROP INDEX idx_set_acq_tag_merkmale;
 DROP INDEX idx_part_acq_tag_merkmale;
 DROP INDEX idx_minifig_acq_tag_merkmale;
-CREATE UNIQUE INDEX idx_set_acq_tag_merkmale ON set_acquisitions
+CREATE UNIQUE INDEX idx_set_acq_erfassungstag ON set_acquisitions
   (user_id, set_number, (COALESCE(tag, (created_at AT TIME ZONE 'UTC')::date)), condition,
    COALESCE(purchase_price, -1), price_estimated, currency);
-CREATE UNIQUE INDEX idx_part_acq_tag_merkmale ON part_acquisitions
+CREATE UNIQUE INDEX idx_part_acq_erfassungstag ON part_acquisitions
   (user_id, part_number, color_id, (COALESCE(tag, (created_at AT TIME ZONE 'UTC')::date)), condition,
    COALESCE(unit_price, -1), price_estimated, currency);
-CREATE UNIQUE INDEX idx_minifig_acq_tag_merkmale ON minifig_acquisitions
+CREATE UNIQUE INDEX idx_minifig_acq_erfassungstag ON minifig_acquisitions
   (user_id, fig_number, (COALESCE(tag, (created_at AT TIME ZONE 'UTC')::date)), condition,
    COALESCE(unit_price, -1), price_estimated, currency);
 

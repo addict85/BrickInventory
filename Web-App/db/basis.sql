@@ -2388,10 +2388,10 @@ CREATE INDEX idx_instructions_user ON public.instructions USING btree (user_id, 
 CREATE INDEX idx_invite_used_by ON public.account_link_invites USING btree (used_by);
 
 --
--- Name: idx_minifig_acq_tag_merkmale; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_minifig_acq_erfassungstag; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX idx_minifig_acq_tag_merkmale ON public.minifig_acquisitions USING btree (user_id, fig_number, COALESCE(tag, ((created_at AT TIME ZONE 'UTC'::text))::date), condition, COALESCE(unit_price, ('-1'::integer)::numeric), price_estimated, currency);
+CREATE UNIQUE INDEX idx_minifig_acq_erfassungstag ON public.minifig_acquisitions USING btree (user_id, fig_number, COALESCE(tag, ((created_at AT TIME ZONE 'UTC'::text))::date), condition, COALESCE(unit_price, ('-1'::integer)::numeric), price_estimated, currency);
 
 --
 -- Name: idx_minifig_price_cache_lookup; Type: INDEX; Schema: public; Owner: -
@@ -2454,10 +2454,10 @@ CREATE INDEX idx_minifigs_storage_ref ON public.minifigs USING btree (storage_id
 CREATE INDEX idx_papierkorb_konto ON public.papierkorb USING btree (user_id, geloescht_am DESC);
 
 --
--- Name: idx_part_acq_tag_merkmale; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_part_acq_erfassungstag; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX idx_part_acq_tag_merkmale ON public.part_acquisitions USING btree (user_id, part_number, color_id, COALESCE(tag, ((created_at AT TIME ZONE 'UTC'::text))::date), condition, COALESCE(unit_price, ('-1'::integer)::numeric), price_estimated, currency);
+CREATE UNIQUE INDEX idx_part_acq_erfassungstag ON public.part_acquisitions USING btree (user_id, part_number, color_id, COALESCE(tag, ((created_at AT TIME ZONE 'UTC'::text))::date), condition, COALESCE(unit_price, ('-1'::integer)::numeric), price_estimated, currency);
 
 --
 -- Name: idx_part_catalog_category; Type: INDEX; Schema: public; Owner: -
@@ -2670,10 +2670,10 @@ CREATE INDEX idx_rb_sets_theme_year ON public.rb_sets USING btree (theme_id, yea
 CREATE INDEX idx_rb_sets_year ON public.rb_sets USING btree (year);
 
 --
--- Name: idx_set_acq_tag_merkmale; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_set_acq_erfassungstag; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX idx_set_acq_tag_merkmale ON public.set_acquisitions USING btree (user_id, set_number, COALESCE(tag, ((created_at AT TIME ZONE 'UTC'::text))::date), condition, COALESCE(purchase_price, ('-1'::integer)::numeric), price_estimated, currency);
+CREATE UNIQUE INDEX idx_set_acq_erfassungstag ON public.set_acquisitions USING btree (user_id, set_number, COALESCE(tag, ((created_at AT TIME ZONE 'UTC'::text))::date), condition, COALESCE(purchase_price, ('-1'::integer)::numeric), price_estimated, currency);
 
 --
 -- Name: idx_set_catalog_bild_stamm; Type: INDEX; Schema: public; Owner: -
@@ -3264,7 +3264,7 @@ INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0066-auftraege.
 INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0067-bild-stamm.sql', '2026-10-29 21:59:16.007371+00');
 INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0068-praefix-indizes.sql', '2026-10-29 21:59:58.856414+00');
 INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0069-konten-pruefen.sql', '2026-10-29 22:00:41.797626+00');
-INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0070-erfassungstag.sql', '2026-10-29 22:20:08.74518+00');
+INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0070-erfassungstag.sql', '2026-10-29 22:31:52.718465+00');
 
 --
 -- PostgreSQL database dump complete
