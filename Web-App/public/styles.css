@@ -892,6 +892,12 @@ input.suchfeld{width:220px}
 /* Preise in der Markenfarbe — ausser dort, wo die Marke rot ist (--preis im Design). */
 .preis{font-weight:600;color:var(--preis,var(--b600))}
 .preis-stark{font-weight:700}
+/* Geheimnisse verdeckt, mit Knopf zum Anzeigen daneben. */
+.geheim-feld{display:flex;gap:6px;align-items:stretch}
+.geheim-feld input{flex:1;min-width:0}
+.geheim-knopf{flex:none;padding:0 10px;min-width:44px;justify-content:center}
+.einst-nav{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:.25rem}
+.ssec{scroll-margin-top:72px}
 .kachel-datum{font-size:var(--fs-1);color:var(--mut);margin-top:.2rem}
 .mono-2{font-family:var(--mono);font-size:var(--fs-2)}
 .zeiger{cursor:pointer}

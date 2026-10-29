@@ -7,6 +7,8 @@
  *     „SMTP speichern“).
  *   - Jede Aktion der Benutzertabelle hat ein sichtbares Wort, einen Tooltip
  *     und einen Namen mit dem Konto.
+ *   - API-Schlüssel und Geheimnisse sind Passwortfelder mit einem Knopf
+ *     „Anzeigen“ (aria-pressed); eine Sprungleiste führt zu den Abschnitten.
  *   - „Zum Benutzer“ bei einem Admin schickt is_admin:false. Vorher kam
  *     data-arg2="true" an, toggleAdmin() kannte nur '1' und machte jeden
  *     Admin erneut zum Admin.
@@ -15,6 +17,9 @@
  *   A  btn-sav-bl wieder mit data-ico="schluessel" → rot: „Speichern-Knöpfe“
  *   B  nutzerKnopf() ohne <span> mit dem Wort → rot: „Aktionen der Benutzertabelle“
  *   C  data-arg2 wieder ${u.is_admin} → rot: „Admin-Rechte entziehen“
+ *   E  (29.10.) rb-key wieder type="text" → rot: „Schlüssel verdeckt, mit Knopf
+ *      zum Anzeigen“; geheimUmschalten() ohne aria-pressed → rot: dieselbe
+ *   F  (29.10.) id="einst-bl" entfernt → rot: „Sprungleiste zu den Abschnitten“
  *   D  in toggleAdmin admin_password nicht mitgeschickt → rot: „Admin-Rechte
  *      entziehen“ (am 28.10. nach dem Zusammenführen gemessen)
  */
@@ -75,5 +80,36 @@ test('Admin-Rechte entziehen schickt is_admin:false', async () => {
     const put = aufrufe.find(a => a.method === 'PUT' && a.url.includes('/v1/auth/users/1/admin'));
     assert.ok(put, 'Kein Aufruf zum Rollenwechsel');
     assert.deepEqual(JSON.parse(put.body), { is_admin: false, admin_password: 'mein-passwort' });
+  } finally { w.close(); }
+});
+
+test('Schlüssel verdeckt, mit Knopf zum Anzeigen', async () => {
+  const { w, d } = await oeffneOberflaeche(NUTZER);
+  try {
+    await reiter(w, 'settings');
+    await warte(() => d.getElementById('rb-key').value === 'probe');
+    for (const id of ['rb-key', 'bs-key', 'bl-cs', 'bl-ts', 'smtp-pass'])
+      assert.equal(d.getElementById(id).type, 'password', `${id} steht im Klartext`);
+    const knopf = d.querySelector('[data-click="geheimUmschalten"][data-arg="rb-key"]');
+    assert.equal(knopf.getAttribute('aria-label'), 'Anzeigen');
+    knopf.click();
+    assert.equal(d.getElementById('rb-key').type, 'text');
+    assert.equal(knopf.getAttribute('aria-pressed'), 'true');
+    knopf.click();
+    assert.equal(d.getElementById('rb-key').type, 'password');
+    assert.equal(knopf.getAttribute('aria-pressed'), 'false');
+  } finally { w.close(); }
+});
+
+test('Sprungleiste zu den Abschnitten', async () => {
+  const { w, d } = await oeffneOberflaeche(NUTZER);
+  try {
+    await reiter(w, 'settings');
+    const ziele = [...d.querySelectorAll('#tab-settings .einst-nav a')].map(a => a.getAttribute('href'));
+    assert.ok(ziele.length >= 6, `nur ${ziele.length} Abschnitte`);
+    const fehlt = ziele.filter(z => !d.querySelector(`#tab-settings ${z}`));
+    assert.deepEqual(fehlt, [], 'Sprungziele ohne Abschnitt');
+    // Die Karte mit dem Design heisst nicht mehr „Einstellungen“ in „Einstellungen“.
+    assert.equal(d.querySelector('#einst-design .stit').textContent.trim(), 'Erscheinungsbild');
   } finally { w.close(); }
 });

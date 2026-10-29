@@ -1010,7 +1010,19 @@ async function importAlarmeCsv() {
 // jetzt in js/18-wanted-xml.js, zusammen mit der Vorschautabelle und dem
 // Export, den es damals noch nicht gab.
 
+/** Ein verdecktes Feld zeigen oder wieder verdecken (Knopf mit dem Auge). */
+function geheimUmschalten(id) {
+  const feld = G(id);
+  const knopf = document.querySelector(`[data-click="geheimUmschalten"][data-arg="${id}"]`);
+  if (!feld || !knopf) return;
+  const zeigen = feld.type === 'password';
+  feld.type = zeigen ? 'text' : 'password';
+  knopf.setAttribute('aria-pressed', String(zeigen));
+  knopf.querySelector('use')?.setAttribute('href', zeigen ? '#i-auge-zu' : '#i-auge');
+}
+
 registerActions({
+  geheimUmschalten,
   aendereAlarmSchwelle,
   importAlarmeCsv,
   loescheAlarm,

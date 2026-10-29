@@ -841,8 +841,17 @@
            index.html — nachgezaehlt. -->
       <div class="sgroup-label" id="global-settings-label" data-stil="display:none"><span data-i18n="settings.global_title" data-ico="globus">Globale Einstellungen</span> <span class="admin-hinweis">(Admin)</span></div>
       <div class="sgrid2" id="global-settings-grid" data-stil="display:none">
-        <div class="ssec">
-          <div class="stit" data-i18n="settings.general_title" data-ico="einstellungen">Einstellungen</div>
+        <nav class="einst-nav full" aria-label="Abschnitte" data-i18n="settings.sections" data-i18n-attr="aria-label">
+          <a class="btn bs btn-sm" href="#einst-design" data-i18n="settings.general_title">Erscheinungsbild</a>
+          <a class="btn bs btn-sm" href="#einst-bl">BrickLink</a>
+          <a class="btn bs btn-sm" href="#einst-rb">Rebrickable</a>
+          <a class="btn bs btn-sm" href="#einst-bs">Brickset</a>
+          <a class="btn bs btn-sm" href="#usermgmt" data-i18n="settings.users_title">Benutzerverwaltung</a>
+          <a class="btn bs btn-sm" href="#einst-smtp">E-Mail</a>
+          <a class="btn bs btn-sm" href="#einst-konfig" data-i18n="settings.group_config">Konfiguration</a>
+        </nav>
+        <div class="ssec" id="einst-design">
+          <div class="stit" data-i18n="settings.general_title" data-ico="einstellungen">Erscheinungsbild</div>
           <div class="sform">
             <div class="fg"><label for="mon-app-theme" data-i18n="settings.app_theme">App-Design</label>
               <select id="mon-app-theme">
@@ -858,31 +867,31 @@
             <button class="btn bp btn-speichern" id="btn-save-theme" data-i18n="settings.save" data-ico="speichern">Speichern</button>
           </div>
         </div>
-        <div class="ssec">
+        <div class="ssec" id="einst-bl">
           <div class="stit"><svg class="ico" aria-hidden="true"><use href="#i-schluessel"/></svg> BrickLink API <span class="ao" id="bl-ao" data-i18n="settings.admins_only" data-ico="warnung">Nur Admins</span></div>
           <div class="sform">
             <div class="fg"><label for="bl-ck">Consumer Key</label><input type="text" id="bl-ck" autocomplete="off" /></div>
-            <div class="fg"><label for="bl-cs">Consumer Secret</label><input type="password" id="bl-cs" autocomplete="off" /></div>
+            <div class="fg"><label for="bl-cs">Consumer Secret</label><div class="geheim-feld"><input type="password" id="bl-cs" autocomplete="off" spellcheck="false" /><button type="button" class="btn bs geheim-knopf" data-click="geheimUmschalten" data-arg="bl-cs" aria-pressed="false" aria-controls="bl-cs" aria-label="Anzeigen" data-i18n="settings.secret_show" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-auge"/></svg></button></div></div>
             <div class="fg"><label for="bl-tok">Token Value</label><input type="text" id="bl-tok" autocomplete="off" /></div>
-            <div class="fg"><label for="bl-ts">Token Secret</label><input type="password" id="bl-ts" autocomplete="off" /></div>
+            <div class="fg"><label for="bl-ts">Token Secret</label><div class="geheim-feld"><input type="password" id="bl-ts" autocomplete="off" spellcheck="false" /><button type="button" class="btn bs geheim-knopf" data-click="geheimUmschalten" data-arg="bl-ts" aria-pressed="false" aria-controls="bl-ts" aria-label="Anzeigen" data-i18n="settings.secret_show" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-auge"/></svg></button></div></div>
             <div class="fg"><label for="lim-bl"><span data-i18n="settings.max_calls">Max. Aufrufe pro Tag</span> <span class="text-klein" data-i18n="settings.default_n" data-i18n-vars='{"n":"4000"}'>(Standard: 4000)</span></label><input class="max-160" inputmode="numeric" type="number" id="lim-bl" min="1" max="100000" value="4000" /></div>
             <button class="btn bp btn-speichern" id="btn-sav-bl" data-i18n="settings.save" data-ico="speichern">Speichern</button>
           </div>
         </div>
-        <div class="ssec">
+        <div class="ssec" id="einst-rb">
           <div class="stit"><svg class="ico" aria-hidden="true"><use href="#i-link"/></svg> Rebrickable API <span class="ao" id="rb-ao" data-i18n="settings.admins_only" data-ico="warnung">Nur Admins</span></div>
           <div class="sform">
             <div class="ibox abstand-u-4"><a href="https://rebrickable.com/api/" target="_blank" rel="noopener noreferrer">rebrickable.com → API → Generate Key</a><br><span class="schrift-1" data-i18n="settings.rebrickable_hint">Set-Infos, Teile &amp; Bilder</span></div>
-            <div class="fg"><label for="rb-key">Rebrickable API Key</label><input type="text" id="rb-key" autocomplete="off" /></div>
+            <div class="fg"><label for="rb-key">Rebrickable API Key</label><div class="geheim-feld"><input type="password" id="rb-key" autocomplete="off" spellcheck="false" /><button type="button" class="btn bs geheim-knopf" data-click="geheimUmschalten" data-arg="rb-key" aria-pressed="false" aria-controls="rb-key" aria-label="Anzeigen" data-i18n="settings.secret_show" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-auge"/></svg></button></div></div>
             <div class="fg"><label for="lim-rb"><span data-i18n="settings.max_calls">Max. Aufrufe pro Tag</span> <span class="text-klein" data-i18n="settings.default_n" data-i18n-vars='{"n":"25000"}'>(Standard: 25000)</span></label><input class="max-160" inputmode="numeric" type="number" id="lim-rb" min="1" max="100000" value="25000" /></div>
             <button class="btn bp btn-speichern" id="btn-sav-rb" data-i18n="settings.save" data-ico="speichern">Speichern</button>
           </div>
         </div>
-        <div class="ssec">
+        <div class="ssec" id="einst-bs">
           <div class="stit"><svg class="ico" aria-hidden="true"><use href="#i-katalog"/></svg> Brickset API <span class="ao" id="bs-ao" data-i18n="settings.admins_only" data-ico="warnung">Nur Admins</span></div>
           <div class="sform">
             <div class="ibox abstand-u-4"><a href="https://brickset.com/tools/webservices/requestkey" target="_blank" rel="noopener noreferrer"><span data-i18n="settings.brickset_link">brickset.com → Tools → API Key anfordern</span></a><br><span class="schrift-1" data-i18n="settings.brickset_hint">Anleitungen, Fallback Set-Infos</span></div>
-            <div class="fg"><label for="bs-key">Brickset API Key</label><input type="text" id="bs-key" autocomplete="off" /></div>
+            <div class="fg"><label for="bs-key">Brickset API Key</label><div class="geheim-feld"><input type="password" id="bs-key" autocomplete="off" spellcheck="false" /><button type="button" class="btn bs geheim-knopf" data-click="geheimUmschalten" data-arg="bs-key" aria-pressed="false" aria-controls="bs-key" aria-label="Anzeigen" data-i18n="settings.secret_show" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-auge"/></svg></button></div></div>
             <div class="fg"><label for="lim-bs"><span data-i18n="settings.max_calls">Max. Aufrufe pro Tag</span> <span class="text-klein" data-i18n="settings.default_n" data-i18n-vars='{"n":"100"}'>(Standard: 100)</span></label><input class="max-160" inputmode="numeric" type="number" id="lim-bs" min="1" max="100000" value="100" /></div>
             <button class="btn bp btn-speichern" id="btn-sav-bs" data-i18n="settings.save" data-ico="speichern">Speichern</button>
           </div>
@@ -922,7 +931,7 @@
             </form>
           </div>
         </div>
-        <div class="ssec full">
+        <div class="ssec full" id="einst-smtp">
           <div class="stit"><svg class="ico" aria-hidden="true"><use href="#i-mail"/></svg> E-Mail / SMTP <span class="ao" data-stil="display:none" data-i18n="settings.admins_only" data-ico="warnung">Nur Admins</span></div>
           <div class="sform">
             <div class="ibox abstand-u-075" data-i18n="settings.smtp.hint">Für Registrierungsbestätigungen und Passwort-Rücksetzungen. Ohne SMTP-Konfiguration werden Links in der Server-Konsole ausgegeben.</div>
@@ -931,7 +940,7 @@
               <div class="fg"><label for="smtp-port">Port</label><input inputmode="numeric" type="number" id="smtp-port" placeholder="587" /></div>
             </div>
             <div class="fg"><label for="smtp-user" data-i18n="settings.smtp.user">Benutzername</label><input type="text" id="smtp-user" autocomplete="off" /></div>
-            <div class="fg"><label for="smtp-pass" data-i18n="settings.smtp.pass">Passwort</label><input type="password" id="smtp-pass" autocomplete="off" /></div>
+            <div class="fg"><label for="smtp-pass" data-i18n="settings.smtp.pass">Passwort</label><div class="geheim-feld"><input type="password" id="smtp-pass" autocomplete="off" spellcheck="false" /><button type="button" class="btn bs geheim-knopf" data-click="geheimUmschalten" data-arg="smtp-pass" aria-pressed="false" aria-controls="smtp-pass" aria-label="Anzeigen" data-i18n="settings.secret_show" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-auge"/></svg></button></div></div>
             <div class="fg"><label for="smtp-from" data-i18n="settings.smtp.from">Absender (Von)</label><input type="text" id="smtp-from" placeholder="BrickInventory Manager &lt;noreply@example.com&gt;" /></div>
             <div class="fg"><label class="zeile mittig luecke-8 zeiger"><input class="w-auto" type="checkbox" id="smtp-secure" aria-label="SMTP-Verschlüsselung" data-i18n="settings.smtp.secure_label" data-i18n-attr="aria-label" /> TLS/SSL (Port 465)</label></div>
             <div class="fg"><label class="zeile mittig luecke-8 zeiger"><input class="w-auto" type="checkbox" id="smtp-insecure" aria-label="Zertifikat des Mailservers nicht prüfen" data-i18n="settings.smtp.insecure_tls" data-i18n-attr="aria-label" /> <span data-i18n="settings.smtp.insecure_tls">Zertifikat des Mailservers nicht prüfen (nur für selbst signierte Zertifikate)</span></label></div>
@@ -950,7 +959,7 @@
       <!-- Konfiguration: stand bis zum 16.10. mitten in „Daten exportieren".
            Dort war sie der einzige Admin-Teil zwischen lauter Knoepfen fuer
            jeden — und wanderte deshalb beim Aufteilen hierher. -->
-      <div class="sgroup-label" data-i18n="settings.group_config" data-ico="werkzeug">Konfiguration</div>
+      <div class="sgroup-label" id="einst-konfig" data-i18n="settings.group_config" data-ico="werkzeug">Konfiguration</div>
       <div class="ssec full">
         <div class="trenner-oben">
             <!-- Konfiguration-Export/-Import: nur für Admins sichtbar -->
