@@ -114,7 +114,8 @@ test('Telefon', { concurrency: 1, timeout: 240_000 }, async (t) => {
 
   await t.test('Skelett beim Laden der Teile', async () => {
     await b.auswerten(`document.querySelector('.ntab[data-tab="parts"]').click(); true`);
-    await warte(100);
+    // Das Skelett kommt nach Kennzahlen und Filtern; die Teile selbst sind 1,5 s verzögert.
+    await bis(`!!document.querySelector('#parts-main .skelett-raster')`, 'Skelett der Teile', 30);
     const s = await b.auswerten(`(() => { const r = document.querySelector('#parts-main .skelett-raster');
       return r && { kacheln: r.querySelectorAll('.part-card.skelett').length, rolle: r.getAttribute('role'), text: r.textContent.trim() }; })()`);
     assert.deepEqual(s, { kacheln: 12, rolle: 'status', text: 'Lade Teile…' });

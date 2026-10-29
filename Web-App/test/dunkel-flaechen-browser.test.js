@@ -21,6 +21,8 @@
  *      → rot: „classic: keine helle Fläche“ (button.delbtn)
  *   D  in themes/brick.css bei .bp die feste weisse Schrift entfernt
  *      → rot: „brick: Text lesbar“ (3,63:1 auf Petrol)
+ *   E  in styles.css .ibadge wieder `color:#15803d` → rot: „classic“, „brick“
+ *      und „hochglanz: Text lesbar“ (span.ibadge, 2,98:1)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -82,6 +84,8 @@ test('Dunkelmodus: keine hellen Flächen, lesbarer Text', { concurrency: 1, time
     bestand: async (db, uid) => {
       await haeltSet(db, uid, '10300-1', 1, { preis: 199 });
       await haeltSet(db, uid, '75192-1', 1, { preis: 650, zustand: 'U' });
+      // Eine Anleitung, damit die Plakette mit der Anleitungszahl auf der Karte steht.
+      await db.run(`INSERT INTO instructions (user_id, set_number, url) VALUES ($1, '10300-1', 'https://example.org/10300.pdf')`, [uid]);
       await db.run(`INSERT INTO set_teile (set_number, part_number, color_id, quantity) VALUES ('10300-1', '3001', 5, 4)
                     ON CONFLICT DO NOTHING`);
       await haeltTeil(db, uid, '3001', { setNumber: '10300-1', menge: 4, colorId: 5 });
