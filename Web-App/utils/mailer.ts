@@ -44,16 +44,15 @@ async function getFrom() {
 }
 
 /**
- * Der Link einer Mail für die Konsole — ohne Token, ausser ausdrücklich in
- * Entwicklung oder Test. Die Konsole landet in app_logs, die jeder Verwalter
- * 48 Stunden lang sieht, und ein Reset-Link ist ein Zugang zum Konto; ein
- * vergessenes NODE_ENV darf das nicht öffnen.
+ * Der Link einer Mail für die Konsole — ohne Token, ausser mit dem eigenen
+ * Schalter MAIL_KONSOLE_MIT_TOKEN=1. Die Konsole landet in app_logs und im
+ * Container-Log, und ein Reset-Link ist ein Zugang zum Konto. NODE_ENV taugt
+ * dafür nicht: „development" steht schnell einmal auf einem echten Server.
  */
-export function linkFuerKonsole(text?: string, umgebung = process.env.NODE_ENV): string | null {
+export function linkFuerKonsole(text?: string, schalter = process.env.MAIL_KONSOLE_MIT_TOKEN): string | null {
   const url = (text || '').match(/https?:\/\/\S+/)?.[0];
   if (!url) return null;
-  const offen = umgebung === 'development' || umgebung === 'test';
-  return offen ? url : url.replace(/([?&]token=)[^&#\s]+/g, '$1…');
+  return schalter === '1' ? url : url.replace(/([?&]token=)[^&#\s]+/g, '$1…');
 }
 
 /**
