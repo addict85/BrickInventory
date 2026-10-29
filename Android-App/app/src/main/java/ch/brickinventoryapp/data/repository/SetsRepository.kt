@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.data.repository
 
-import ch.brickinventoryapp.data.api.BrickApiService
+import ch.brickinventoryapp.data.api.SetsApi
 import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.model.*
 import kotlinx.coroutines.Dispatchers
@@ -21,9 +21,9 @@ import javax.inject.Singleton
  */
 @Singleton
 class SetsRepository @Inject constructor(
-    api: BrickApiService,
+    api: SetsApi,
     cache: ResponseCache,
-) : RepoBasis(api, cache) {
+) : RepoBasis<SetsApi>(api, cache) {
 
     /**
      * Galerie-Seite vom Server — gefiltert, sortiert, paginiert.
@@ -181,7 +181,7 @@ class SetsRepository @Inject constructor(
         return safeCall { api.getCsvImportStatusDirect(url, "Bearer $token") }
     }
 
-    /** Laufenden CSV-Import abbrechen — siehe BrickApiService.cancelCsvImport. */
+    /** Laufenden CSV-Import abbrechen — siehe SetsApi.cancelCsvImport. */
     suspend fun cancelCsvImport(): Result<GenericAdminResponse> = safeCall { api.cancelCsvImport() }
 
     suspend fun triggerCsvSync(): Result<GenericAdminResponse> = safeCall { api.triggerCsvSync() }

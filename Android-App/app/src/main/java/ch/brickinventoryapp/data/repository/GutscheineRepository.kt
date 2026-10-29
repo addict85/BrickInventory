@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.data.repository
 
-import ch.brickinventoryapp.data.api.BrickApiService
+import ch.brickinventoryapp.data.api.GutscheineApi
 import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.model.*
 import ch.brickinventoryapp.data.api.Fehlerrumpf
@@ -21,9 +21,9 @@ import javax.inject.Singleton
  */
 @Singleton
 class GutscheineRepository @Inject constructor(
-    api: BrickApiService,
+    api: GutscheineApi,
     cache: ResponseCache,
-) : RepoBasis(api, cache) {
+) : RepoBasis<GutscheineApi>(api, cache) {
 
     suspend fun liste(): Result<GutscheinListe> =
         safeCall { api.getGutscheine() }

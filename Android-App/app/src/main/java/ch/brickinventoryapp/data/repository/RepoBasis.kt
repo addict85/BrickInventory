@@ -1,6 +1,5 @@
 package ch.brickinventoryapp.data.repository
 
-import ch.brickinventoryapp.data.api.BrickApiService
 import ch.brickinventoryapp.data.api.Fehlerrumpf
 import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.model.*
@@ -23,8 +22,9 @@ import javax.inject.Singleton
  * lässt sich so schneiden, ohne etwas auseinanderzureissen. `protected`, weil nur
  * die Unterklassen beides brauchen.
  */
-abstract class RepoBasis(
-    protected val api: BrickApiService,
+abstract class RepoBasis<A : Any>(
+    /** Nur der Bereich der Schnittstelle, den dieses Repository braucht (data/api/BrickApiService.kt). */
+    protected val api: A,
     protected val cache: ResponseCache,
 ) {
 

@@ -171,7 +171,7 @@ fun NavGraphBuilder.collectionGraph(
                     // Farbkatalog fuer den Erfassungsdialog …
                     teileVm.loadPartsColors()
                     // … und die beiden Filterlisten mit ihren Zählwerten. Zwei verschiedene
-                    // Adressen, siehe BrickApiService.getPartsFilterColors.
+                    // Adressen, siehe TeileApi.getPartsFilterColors.
                     teileVm.loadPartsFilters()
                 }
             }

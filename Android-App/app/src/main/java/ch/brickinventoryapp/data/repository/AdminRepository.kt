@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.data.repository
 
-import ch.brickinventoryapp.data.api.BrickApiService
+import ch.brickinventoryapp.data.api.AdminApi
 import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.model.*
 import kotlinx.coroutines.Dispatchers
@@ -21,9 +21,9 @@ import javax.inject.Singleton
  */
 @Singleton
 class AdminRepository @Inject constructor(
-    api: BrickApiService,
+    api: AdminApi,
     cache: ResponseCache,
-) : RepoBasis(api, cache) {
+) : RepoBasis<AdminApi>(api, cache) {
 
     // Kein Authorization-Header hier: Der OkHttp-Interceptor in di/ServerClient.kt
     // setzt "Bearer <token>" für alle Anfragen an unseren Server (aus dem
@@ -111,7 +111,7 @@ class AdminRepository @Inject constructor(
     }
 
     // Server-Protokoll. Die Nutzerverwaltung des Servers bleibt der Webapp vorbehalten
-    // — siehe BrickApiService.
+    // — siehe AdminApi.
     suspend fun getProtokoll(minuten: Int): Result<ProtokollResponse> =
         safeCall { api.getProtokoll(minuten) }
 
@@ -140,7 +140,7 @@ class AdminRepository @Inject constructor(
             })
         }
 
-    /** Fehlende Katalogbilder einreihen — siehe BrickApiService.queueCatalogImages. */
+    /** Fehlende Katalogbilder einreihen — siehe AdminApi.queueCatalogImages. */
     suspend fun queueCatalogImages(): Result<GenericAdminResponse> = safeCall { api.queueCatalogImages() }
 
     /** Das globale Design umstellen (nur Verwalter). */
@@ -150,7 +150,7 @@ class AdminRepository @Inject constructor(
     /** Startzustand des Servers — ohne Anmeldung. */
     suspend fun getStartupStatus(): Result<StartupStatus> = safeCall { api.getStartupStatus() }
 
-    /** Das globale Design — ohne Anmeldung. Siehe BrickApiService.getAppTheme. */
+    /** Das globale Design — ohne Anmeldung. Siehe AdminApi.getAppTheme. */
     suspend fun getAppTheme(): Result<AppThemeResponse> = safeCall { api.getAppTheme() }
 
     suspend fun updateSettings(currency: String, condition: String): Result<GenericResponse> =

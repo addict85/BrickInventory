@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.data.repository
 
-import ch.brickinventoryapp.data.api.BrickApiService
+import ch.brickinventoryapp.data.api.TeileApi
 import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.model.*
 import kotlinx.coroutines.Dispatchers
@@ -21,9 +21,9 @@ import javax.inject.Singleton
  */
 @Singleton
 class TeileRepository @Inject constructor(
-    api: BrickApiService,
+    api: TeileApi,
     cache: ResponseCache,
-) : RepoBasis(api, cache) {
+) : RepoBasis<TeileApi>(api, cache) {
 
     suspend fun getParts(search: String? = null, color: String? = null,
                          category: String? = null, page: Int = 1,
@@ -33,7 +33,7 @@ class TeileRepository @Inject constructor(
                           * Webapp.
                           */
                          spare: String? = null,
-                         /** "1" nur in der Tabellenansicht — siehe BrickApiService.getParts. */
+                         /** "1" nur in der Tabellenansicht — siehe TeileApi.getParts. */
                          withSets: String? = null,
                          /** Lagerort — eigener Parameter, nicht Teil der Suche. */
                          storage: String? = null): Result<PartsResponse> =
