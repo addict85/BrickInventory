@@ -101,6 +101,7 @@ import { drossleBeruehren } from './utils/sitzungsBeruehrung';
 import { SITZUNG_LEERLAUF_SEK, sitzungsHoechstdauer } from './utils/sitzungsFrist';
 import { antwortAufDateiFehler, liefereDatei, sendeDatei } from './utils/dateiAusliefern';
 import { liesZustand, loescheZustand } from './utils/laufzustand';
+import { cdnFuerFehlendesBild } from './utils/bildNachschlagen';
 
 const WORKERS = (require('./utils/workerZahl') as typeof import('./utils/workerZahl')).workerZahl();
 
@@ -385,43 +386,6 @@ const { safeDataPath } = require('./utils/datenPfad') as typeof import('./utils/
 // geschrumpft und beschreibt jetzt wieder nur noch Aufbau und Start.
 (require('./routes/imgProxy') as typeof import('./routes/imgProxy')).registerImgProxy(app);
 
-// Fallback-Cache: fehlende lokale Bilddatei -> CDN-URL (oder null). Vermeidet
-// wiederholte DB-Lookups, wenn viele Bilder lokal fehlen (z.B. nach Redeploy
-// eines nicht-persistenten data-Volumes oder bei früher fehlgeschlagenen
-// Downloads, deren image_local dennoch gesetzt wurde).
-const _missingImgCdnCache = new Map<string, { url: string | null, at: number }>();
-
-async function lookupCdnForMissingImage(webPath: string): Promise<string | null> {
-  const cached = _missingImgCdnCache.get(webPath);
-  if (cached && Date.now() - cached.at < 10 * 60 * 1000) return cached.url;
-  // Dateiname ohne _thumb-Suffix und ohne Endung -> passt auf image_local per LIKE
-  const fileName = webPath.split('/').pop() || '';
-  const stem = fileName.replace(/_thumb\.jpg$/i, '').replace(/\.[^.]+$/, '');
-  const esc  = stem.replace(/([%_\\])/g, '\\$1'); // LIKE-Sonderzeichen escapen
-  const like = `%/${esc}.%`;
-  let url: string | null = null;
-  try {
-    // minifigs mit aufgenommen: Figuren-Bilder liegen seit der Trennung unter
-    // /images/minifigs/, und ein fehlendes Bild einer MANUELL erfassten Figur
-    // war vorher nicht heilbar — die Tabelle stand nicht in dieser Liste.
-    for (const tbl of ['set_parts_catalog', 'set_minifigs_catalog', 'parts', 'minifigs',
-                       'sets', 'set_catalog']) {
-      const r = await pool.query(
-        `SELECT image_url FROM ${tbl} WHERE image_local LIKE $1 ESCAPE '\\' AND image_url IS NOT NULL LIMIT 1`,
-        [like]
-      );
-      if (r.rows[0]?.image_url) { url = r.rows[0].image_url; break; }
-    }
-  } catch (_) { url = null; }
-  // Ältestes Fünftel verdrängen statt alles wegwerfen (wie utils/images.ts).
-  if (_missingImgCdnCache.size > 5000) {
-    let n = 0;
-    for (const k of _missingImgCdnCache.keys()) { _missingImgCdnCache.delete(k); if (++n >= 1000) break; }
-  }
-  _missingImgCdnCache.set(webPath, { url, at: Date.now() });
-  return url;
-}
-
 // Alle Bilder: Sets, Teile, Minifiguren
 // EINE authentifizierte Route für den gesamten Baum unter data/images/.
 // Ausführlich: docs/begruendungen/server.ts.md#abschnitt-4
@@ -478,7 +442,7 @@ app.get('/images/*pfad', async (req: WildcardRequest, res: Response) => {
     // Web und Android, ohne dass verwaiste image_local-Einträge in der
     // Datenbank bereinigt werden müssen.
     const webPath = '/images/' + segments.join('/');
-    const cdn = await lookupCdnForMissingImage(webPath).catch(() => null);
+    const cdn = await cdnFuerFehlendesBild(webPath);
     if (cdn && !res.headersSent) {
       return res.redirect(302, IMG_PROXY_PFAD + '?url=' + encodeURIComponent(cdn));
     }

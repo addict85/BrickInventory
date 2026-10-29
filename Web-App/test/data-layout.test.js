@@ -39,7 +39,7 @@ test('keine Quelle schreibt mehr die alten Pfade', () => {
   for (const f of SOURCES) {
     const src = strip(read(f));
     // In server.ts sind die Alt-Pfade als Weiterleitung noch erlaubt — dort
-    // stehen sie in app.get(...) und in lookupCdnForMissingImage, nicht als
+    // stehen sie in app.get(...) und in cdnFuerFehlendesBild, nicht als
     // Ziel eines Schreibvorgangs.
     const writes = [...src.matchAll(/=\s*[`'"]\/data\/(part_images|instructions\/shared)\//g)];
     assert.deepEqual(writes.map(m => m[0]), [],
@@ -94,7 +94,7 @@ test('die Bildroute behält Anmeldepflicht und CDN-Heilung', () => {
   const route = src.slice(start, start + 2000);
   assert.match(route, /resolveUserId\(req\)/,
     'Ohne Anmeldeprüfung wären die Bilder öffentlich');
-  assert.match(route, /lookupCdnForMissingImage/,
+  assert.match(route, /cdnFuerFehlendesBild/,
     'Fehlt die lokale Datei, muss weiterhin auf den Bild-Proxy umgeleitet werden');
 });
 

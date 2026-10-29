@@ -313,6 +313,7 @@ CREATE TABLE minifigs_catalog (
   bild_von integer,
   CONSTRAINT minifigs_catalog_pkey PRIMARY KEY (fig_number)
 );
+CREATE INDEX idx_minifigs_catalog_bild_stamm ON minifigs_catalog USING btree (bild_stamm(image_local)) WHERE (image_local IS NOT NULL);
 CREATE INDEX idx_minifigs_catalog_name_trgm ON minifigs_catalog USING gin (lower(fig_name) gin_trgm_ops);
 
 CREATE TABLE papierkorb (
@@ -378,6 +379,7 @@ CREATE TABLE part_color_catalog (
   bild_von integer,
   CONSTRAINT part_color_catalog_pkey PRIMARY KEY (part_number, color_id)
 );
+CREATE INDEX idx_part_color_catalog_bild_stamm ON part_color_catalog USING btree (bild_stamm(image_local)) WHERE (image_local IS NOT NULL);
 CREATE TRIGGER trg_bump_parts_katalog AFTER INSERT OR DELETE OR UPDATE ON part_color_catalog FOR EACH STATEMENT EXECUTE FUNCTION bump_parts_katalog();
 
 CREATE TABLE part_price_cache (
@@ -704,6 +706,7 @@ CREATE TABLE set_catalog (
   updated_at timestamp with time zone DEFAULT now(),
   CONSTRAINT set_catalog_pkey PRIMARY KEY (set_number)
 );
+CREATE INDEX idx_set_catalog_bild_stamm ON set_catalog USING btree (bild_stamm(image_local)) WHERE (image_local IS NOT NULL);
 
 CREATE TABLE set_minifigs_catalog (
   set_number text NOT NULL,
@@ -715,6 +718,7 @@ CREATE TABLE set_minifigs_catalog (
   updated_at timestamp with time zone DEFAULT now(),
   CONSTRAINT set_minifigs_catalog_pkey PRIMARY KEY (set_number, fig_number)
 );
+CREATE INDEX idx_set_minifigs_catalog_bild_stamm ON set_minifigs_catalog USING btree (bild_stamm(image_local)) WHERE (image_local IS NOT NULL);
 CREATE INDEX idx_set_minifigs_fig ON set_minifigs_catalog USING btree (fig_number);
 CREATE INDEX idx_smc_set ON set_minifigs_catalog USING btree (set_number);
 
@@ -882,6 +886,12 @@ CREATE TABLE zweiter_faktor_codes (
   CONSTRAINT zweiter_faktor_codes_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 CREATE INDEX idx_zweiter_faktor_codes_konto ON zweiter_faktor_codes USING btree (user_id);
+
+CREATE OR REPLACE FUNCTION bild_stamm(pfad text)
+ RETURNS text
+ LANGUAGE sql
+ IMMUTABLE PARALLEL SAFE STRICT
+AS $function$ SELECT regexp_replace(regexp_replace(pfad, '^.*/', ''), '\.[^.]*$', '') $function$;
 
 CREATE OR REPLACE FUNCTION bump_parts_katalog()
  RETURNS trigger

@@ -23,6 +23,14 @@ SET row_security = off;
 CREATE EXTENSION IF NOT EXISTS pg_trgm WITH SCHEMA public;
 
 --
+-- Name: bild_stamm(text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.bild_stamm(pfad text) RETURNS text
+    LANGUAGE sql IMMUTABLE STRICT PARALLEL SAFE
+    AS $_$ SELECT regexp_replace(regexp_replace(pfad, '^.*/', ''), '\.[^.]*$', '') $_$;
+
+--
 -- Name: bump_parts_katalog(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -2406,6 +2414,12 @@ CREATE INDEX idx_minifig_price_history_lookup ON public.minifig_price_history US
 CREATE UNIQUE INDEX idx_minifig_price_history_tag ON public.minifig_price_history USING btree (fig_number, condition, currency_code, (((recorded_at AT TIME ZONE 'UTC'::text))::date));
 
 --
+-- Name: idx_minifigs_catalog_bild_stamm; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_minifigs_catalog_bild_stamm ON public.minifigs_catalog USING btree (public.bild_stamm(image_local)) WHERE (image_local IS NOT NULL);
+
+--
 -- Name: idx_minifigs_catalog_name_trgm; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -2464,6 +2478,12 @@ CREATE INDEX idx_part_catalog_category ON public.part_catalog USING btree (categ
 --
 
 CREATE INDEX idx_part_catalog_name_trgm ON public.part_catalog USING gin (lower(part_name) public.gin_trgm_ops);
+
+--
+-- Name: idx_part_color_catalog_bild_stamm; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_part_color_catalog_bild_stamm ON public.part_color_catalog USING btree (public.bild_stamm(image_local)) WHERE (image_local IS NOT NULL);
 
 --
 -- Name: idx_part_price_cache_lookup; Type: INDEX; Schema: public; Owner: -
@@ -2662,6 +2682,18 @@ CREATE INDEX idx_rb_sets_year ON public.rb_sets USING btree (year);
 --
 
 CREATE UNIQUE INDEX idx_set_acq_tag_merkmale ON public.set_acquisitions USING btree (user_id, set_number, (((created_at AT TIME ZONE 'UTC'::text))::date), condition, COALESCE(purchase_price, ('-1'::integer)::numeric), price_estimated, currency);
+
+--
+-- Name: idx_set_catalog_bild_stamm; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_set_catalog_bild_stamm ON public.set_catalog USING btree (public.bild_stamm(image_local)) WHERE (image_local IS NOT NULL);
+
+--
+-- Name: idx_set_minifigs_catalog_bild_stamm; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_set_minifigs_catalog_bild_stamm ON public.set_minifigs_catalog USING btree (public.bild_stamm(image_local)) WHERE (image_local IS NOT NULL);
 
 --
 -- Name: idx_set_minifigs_fig; Type: INDEX; Schema: public; Owner: -
@@ -3243,6 +3275,7 @@ INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0063-laufzustan
 INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0064-pdf-auftraege.sql', '2026-10-28 23:25:34.430147+00');
 INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0065-geld-und-waehrung-pruefen.sql', '2026-10-28 23:27:03.174038+00');
 INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0066-auftraege.sql', '2026-10-29 21:52:46.143176+00');
+INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0067-bild-stamm.sql', '2026-10-29 21:59:16.007371+00');
 
 --
 -- PostgreSQL database dump complete
