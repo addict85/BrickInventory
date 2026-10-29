@@ -266,13 +266,18 @@ router.post('/import', importUpload.single('file'), async (req: LoggedInRequest,
   const globalKeys = ['bricklink_consumer_key','bricklink_consumer_secret','bricklink_token',
     'bricklink_token_secret','brickset_api_key','rebrickable_api_key','price_job_interval_minutes',
     'price_cache_ttl','api_limit_rebrickable','api_limit_bricklink','api_limit_brickset',
-    'registration_enabled','smtp_host','smtp_port','smtp_user','smtp_pass','smtp_from','smtp_secure','smtp_insecure_tls',
-    'default_price_condition', 'gutschein_land',
+    // smtp_* fehlen mit Absicht: Ein Mailserver wird nur im Formular und mit
+    // Passwort umgestellt (POST /). Eine Importdatei kommt von irgendwoher, und
+    // mit smtp_host + smtp_insecure_tls gingen Passwort und Rücksetz-Mails an
+    // einen fremden Server. Das SMTP-Passwort steht ohnehin in keinem Export.
+    'registration_enabled', 'default_price_condition', 'gutschein_land',
     // konfigurierbare Job-Zeiten aus dem Monitoring (job_time_<name>)
     ...DAILY_JOBS.map((j: any) => `job_time_${j.name}`)];
   const userKeys = ['currency', 'user_default_condition'];
   const uid = angemeldeteNutzerId(req);
   let imported = 0;
+  const smtpUebergangen = config.global && typeof config.global === 'object'
+    ? Object.keys(config.global).filter(k => k.startsWith('smtp_')) : [];
   try {
     if (config.global && istVerwalter(req)) {
       for (const key of globalKeys) {
@@ -310,7 +315,9 @@ router.post('/import', importUpload.single('file'), async (req: LoggedInRequest,
       await require('../utils/pgNotify').notify('job_reschedule_trigger');
       try { await require('../jobs/dailyScheduler').rescheduleAll(); } catch (e) { meldeUndWeiter('einstellungen:zeitplan-neu-planen', e); }
     }
-    res.json({ success: true, imported, note: istVerwalter(req) ? 'Globale + Benutzer-Einstellungen importiert' : 'Nur Benutzer-Einstellungen importiert' });
+    const note = (istVerwalter(req) ? 'Globale + Benutzer-Einstellungen importiert' : 'Nur Benutzer-Einstellungen importiert')
+      + (istVerwalter(req) && smtpUebergangen.length ? '; SMTP nicht übernommen — bitte im Formular setzen' : '');
+    res.json({ success: true, imported, note, smtp_uebergangen: istVerwalter(req) ? smtpUebergangen : [] });
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 

@@ -5,6 +5,9 @@
  *
  * Gegenprobe (am 28.10.2026 gemessen): die Passwortprüfung in POST
  * /api/v1/settings entfernt → rot: „ohne Passwort bleibt der Mailserver“.
+ * Gegenprobe (am 29.10.2026 gemessen): smtp_* wieder in die Schlüsselliste
+ * von POST /import → rot: „der Import stellt den Mailserver nicht um“
+ * (smtp_host war danach mail.angreifer.example).
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -36,8 +39,11 @@ test('SMTP nur mit Passwort', { concurrency: 1 }, async (t) => {
     VALUES ($1, $2, 1, 1, 1) RETURNING id`, [NAME, bcrypt.hashSync(PASS, 4)])).id;
   await db.run(`INSERT INTO global_settings (key, value) VALUES ('smtp_host', 'mail.alt.example')
                 ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`);
+  const landVorher = (await db.get("SELECT value FROM global_settings WHERE key = 'gutschein_land'"))?.value;
   t.after(async () => {
-    await db.run("DELETE FROM global_settings WHERE key = 'smtp_host'");
+    await db.run("DELETE FROM global_settings WHERE key IN ('smtp_host', 'smtp_insecure_tls', 'gutschein_land')");
+    if (landVorher !== undefined)
+      await db.run("INSERT INTO global_settings (key, value) VALUES ('gutschein_land', $1)", [landVorher]);
     await db.run('DELETE FROM rate_limit_attempts WHERE key = $1', [`passwort-bestaetigen|${uid}`]);
     await db.run('DELETE FROM users WHERE id = $1', [uid]);
     await db.pool.end().catch(() => {});
@@ -65,5 +71,22 @@ test('SMTP nur mit Passwort', { concurrency: 1 }, async (t) => {
     const r = await speichern({ smtp_host: 'mail.neu.example', admin_password: PASS });
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.equal(await host(), 'mail.neu.example');
+  });
+
+  await t.test('der Import stellt den Mailserver nicht um', async () => {
+    await db.run("DELETE FROM global_settings WHERE key = 'smtp_insecure_tls'");
+    const fd = new FormData();
+    fd.append('file', new Blob([JSON.stringify({ global: {
+      smtp_host: 'mail.angreifer.example', smtp_insecure_tls: '1', gutschein_land: 'AT' } })],
+      { type: 'application/json' }), 'config.json');
+    const r = await fetch(`${base}/api/v1/settings/import`, { method: 'POST', body: fd })
+      .then(async x => ({ status: x.status, body: await x.json() }));
+    assert.equal(r.status, 200, JSON.stringify(r.body));
+    assert.equal(await host(), 'mail.neu.example', 'smtp_host kam über den Import');
+    assert.equal((await db.get("SELECT value FROM global_settings WHERE key = 'smtp_insecure_tls'"))?.value,
+      undefined, 'smtp_insecure_tls kam über den Import');
+    // Der Rest der Datei kommt an — sonst prüfte der Fall einen Import, der gar nichts tut.
+    assert.equal((await db.get("SELECT value FROM global_settings WHERE key = 'gutschein_land'"))?.value, 'AT');
+    assert.deepEqual(r.body.smtp_uebergangen, ['smtp_host', 'smtp_insecure_tls']);
   });
 });
