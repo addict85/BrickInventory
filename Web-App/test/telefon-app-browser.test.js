@@ -12,6 +12,8 @@
  *   - Teile: zwölf Teile in zwölf Farben stehen in einem Raster (höchstens
  *     zehn Zeilen statt 24); die Filter liegen hinter dem Knopf „Filter“ und
  *     sind geöffnet gleich breit.
+ *   - Merkliste: Nummer, Zustand, „Auf die Merkliste“ und CSV sind gleich
+ *     hoch und stehen am Rechner auf einer Linie.
  *   - Diagramme: Jede Beschriftung im Wertdiagramm (Finanzen) und im
  *     Preisverlauf (Set-Ansicht) ist mindestens 11 px groß, und jedes
  *     Diagramm hat role="img" mit einer Zusammenfassung als aria-label.
@@ -34,6 +36,8 @@
  *   F  (29.10.) .parts-list{display:grid…} aus styles.css entfernt → rot: „Teile:
  *      ein Raster, Filter als Blatt“ (24 Zeilen); Klasse filterleiste an der
  *      Teile-Filterzeile entfernt → rot („Die Auswahlfelder stehen offen da“)
+ *   G  (29.10.) .merk-erfassen > .btn{height:38px…} entfernt → rot:
+ *      „Merkliste: Erfassen-Zeile bündig“ (Knopf 34 px, CSV 39 px, versetzt)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -171,6 +175,23 @@ test('Telefon', { concurrency: 1, timeout: 240_000 }, async (t) => {
     assert.equal(offen.sichtbar, true);
     assert.equal(new Set(offen.breiten).size, 1, `ungleich breite Felder: ${offen.breiten}`);
     await b.auswerten(`document.querySelector('#tab-parts .filter-knopf').click(); true`);
+  });
+
+  await t.test('Merkliste: Erfassen-Zeile bündig', async () => {
+    await reiter('wanted');
+    const messen = () => b.auswerten(`['mk-num', 'mk-cond', 'mk-add', 'mk-csv-file'].map(id => {
+      const e = document.getElementById(id); const z = (id === 'mk-csv-file' ? e.closest('label') : e).getBoundingClientRect();
+      return { id, oben: Math.round(z.top), hoehe: Math.round(z.height) };
+    })`);
+    for (const [breite, hoehe, mobil] of [[1280, 900, false], [390, 844, true]]) {
+      await b.tab('Emulation.setDeviceMetricsOverride', { width: breite, height: hoehe, deviceScaleFactor: mobil ? 2 : 1, mobile: mobil });
+      await warte(200);
+      const m = await messen();
+      // Am Telefon brechen die Felder um; dort zählt nur die gleiche Höhe.
+      const zeile = mobil ? m : m.filter(x => x.oben === m[0].oben);
+      assert.equal(zeile.length, m.length, `${breite} px: nicht in einer Zeile ${JSON.stringify(m)}`);
+      assert.equal(new Set(m.map(x => x.hoehe)).size, 1, `${breite} px: Höhen ${JSON.stringify(m)}`);
+    }
   });
 
   await t.test('Diagrammschrift Finanzen', async () => {

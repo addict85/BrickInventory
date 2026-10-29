@@ -497,11 +497,11 @@
         ein Merkposten hat weder das eine noch das andere; beides wird erst bei
         der Übernahme in die Galerie gefragt.
       -->
-      <div data-stil="background:var(--sur);border:1px solid var(--bdr);border-radius:var(--rad);padding:1.25rem;margin-bottom:1.25rem;box-shadow:var(--sh0)">
+      <div class="merk-kasten">
         <div class="zeile mittig verteilt abstand-u-075">
-          <h3 data-stil="margin:0;font-size:var(--fs-4);font-weight:700" data-i18n="wanted.add.title">Merkposten hinzufügen</h3>
+          <h3 class="merk-kasten-titel" data-i18n="wanted.add.title">Merkposten hinzufügen</h3>
         </div>
-        <div class="zeile luecke-8 unten umbruch">
+        <div class="zeile luecke-8 unten umbruch merk-erfassen">
           <div class="fg"><label for="mk-num" data-i18n="gallery.add.number">Set-Nummer</label><input inputmode="numeric" type="text" id="mk-num" placeholder="z.B. 75192" data-i18n="gallery.add.number" data-i18n-attr="placeholder" /></div>
           <div class="fg max-110"><label for="mk-cond" data-i18n="common.condition">Zustand</label><select class="auswahl-kompakt" id="mk-cond"><option value="N" data-i18n="common.condition_new">Neu</option><option value="U" data-i18n="common.condition_used">Gebraucht</option></select></div>
           <div class="fg max-150" id="mk-owner-box" data-stil="display:none"><label for="mk-owner" data-i18n="household.for_account">Für Konto</label><select class="auswahl-kompakt" id="mk-owner"></select></div>

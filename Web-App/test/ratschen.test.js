@@ -204,8 +204,8 @@ test('Emoji in der Oberfläche werden weniger, nie mehr', () => {
  */
 test('Inline-Stile in index.html werden weniger, nie mehr', () => {
   // GEMESSEN am 28.10.2026: 455 vor dem Umzug in Klassen, danach 170,
-  // davon 56 reines display:none.
-  const SCHRANKE = 114;
+  // davon 56 reines display:none. 112 am 29.10. (Merkliste-Kasten als Klasse).
+  const SCHRANKE = 112;
   const html = fs.readFileSync(path.join(WEB, 'public', 'index.html'), 'utf8').replace(/<!--[\s\S]*?-->/g, '');
   const stile = [...html.matchAll(/<[a-zA-Z][^>]*?\sdata-stil="([^"]*)"/g)].map(m => m[1].trim().replace(/;$/, ''));
   assert.ok(stile.length > 50, 'Keine Inline-Stile gefunden — greift die Suche noch?');

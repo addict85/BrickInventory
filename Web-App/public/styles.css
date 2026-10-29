@@ -900,6 +900,10 @@ input.suchfeld{width:220px}
 /* Preise in der Markenfarbe — ausser dort, wo die Marke rot ist (--preis im Design). */
 .preis{font-weight:600;color:var(--preis,var(--b600))}
 .preis-stark{font-weight:700}
+.merk-kasten{background:var(--sur);border:1px solid var(--bdr);border-radius:var(--rad);padding:1.25rem;margin-bottom:1.25rem;box-shadow:var(--sh0)}
+.merk-kasten-titel{margin:0;font-size:var(--fs-4);font-weight:700}
+/* Feld, Auswahl und Knöpfe einer Zeile gleich hoch — wie die Felder (38 px). */
+.merk-erfassen > .btn{height:38px;box-sizing:border-box}
 /* Geheimnisse verdeckt, mit Knopf zum Anzeigen daneben. */
 .geheim-feld{display:flex;gap:6px;align-items:stretch}
 .geheim-feld input{flex:1;min-width:0}
