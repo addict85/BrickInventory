@@ -187,11 +187,11 @@
   }
   input[type="checkbox"]:disabled { opacity: .5; cursor: default; }
   input[type="checkbox"]:focus-visible { outline-offset: -9px; }
-  /* Der Löschknopf auf der Kachel bleibt optisch klein; seine Tippfläche
-     reicht unsichtbar auf 44 px hinaus. */
-  .ca { top: 5px; right: 5px; z-index: 2; }
-  .delbtn { position: relative; width: 36px; height: 36px; }
-  .delbtn::after { content: ""; position: absolute; inset: -5px; }
+  /* Tippziele mindestens 44 px — auch der Löschknopf und die Links zu den
+     Schlüsseln in Einstellungen und Einrichtung. */
+  .ca { top: 4px; right: 4px; z-index: 2; }
+  .delbtn { width: 44px; height: 44px; }
+  .ibox a[href], a.schrift-1[href] { display: inline-flex; align-items: center; min-height: 44px; }
   /* Ein Häkchen in seiner Beschriftung: Die ganze Zeile ist die Tippfläche. */
   label:has(> input[type="checkbox"]), label:has(> input[type="radio"]) { min-height: 44px; display: flex; align-items: center; }
 
