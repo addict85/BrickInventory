@@ -293,18 +293,45 @@ async function raeumeAnmeldezaehlerAuf(): Promise<number> {
 }
 
 /**
- * Generischer IP-Throttle als Express-Middleware — dieselbe Mechanik, nur nach
- * IP geschlüsselt. Deckt /register, /forgot-password, /reset-password und
- * /check-token ab, die vorher komplett unbegrenzt waren.
+ * Hochzählen und den neuen Stand zurückgeben, in EINEM Statement. Getrennt
+ * gelesen und gezählt sahen 25 gleichzeitige Anfragen alle denselben alten
+ * Stand und kamen durch, obwohl nur 5 erlaubt waren.
+ */
+async function _zaehle(key: string, windowMin: number): Promise<{ count: number; waitMin: number }> {
+  try {
+    const r = await db.get(
+      `INSERT INTO rate_limit_attempts (key, count, first_at, last_at) VALUES ($1, 1, NOW(), NOW())
+       ON CONFLICT (key) DO UPDATE SET
+         last_at  = NOW(),
+         count    = CASE WHEN rate_limit_attempts.first_at < NOW() - make_interval(mins => $2)
+                         THEN 1 ELSE rate_limit_attempts.count + 1 END,
+         first_at = CASE WHEN rate_limit_attempts.first_at < NOW() - make_interval(mins => $2)
+                         THEN NOW() ELSE rate_limit_attempts.first_at END
+       RETURNING count, EXTRACT(EPOCH FROM (first_at + make_interval(mins => $2) - NOW()))/60 AS wait_min`,
+      [key, windowMin]);
+    return { count: parseInt(r.count) || 0, waitMin: Math.max(1, Math.ceil(parseFloat(r.wait_min) || 1)) };
+  } catch (_) {
+    // Rückfall im Prozessspeicher: ohne await dazwischen ebenfalls atomar.
+    const now = Date.now();
+    let e = _attempts.get(key);
+    if (!e || now - e.firstAt > windowMin * 60000) { e = { count: 0, firstAt: now, lastAt: now, laufend: 0 }; _attempts.set(key, e); }
+    e.count++; e.lastAt = now;
+    _prune();
+    return { count: e.count, waitMin: Math.max(1, Math.ceil((e.firstAt + windowMin * 60000 - now) / 60000)) };
+  }
+}
+
+/**
+ * Generischer IP-Throttle als Express-Middleware, nach IP geschlüsselt, für
+ * /register, /forgot-password, /reset-password, /qr-login und /serverbeweis.
+ * Auch abgewiesene Anfragen zählen mit; das Fenster verlängern sie nicht.
  */
 function ipThrottle(bucket: string, max: number, windowMs: number) {
   const windowMin = windowMs / 60000;
   return async (req: Request, res: Response, next: NextFunction) => {
-    const key = `${bucket}|${_ipOf(req)}`;
-    const st  = await _read(key, windowMin);
-    if (st && st.count >= max)
+    const st = await _zaehle(`${bucket}|${_ipOf(req)}`, windowMin);
+    if (st.count > max)
       return sendeFehler(req, res, 429, 'zu_viele_anfragen', { minuten: st.waitMin });
-    await _bump(key, windowMin);
     next();
   };
 }
