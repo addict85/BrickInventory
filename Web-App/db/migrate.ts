@@ -12,7 +12,7 @@ import { meldeUndWeiter, fehlertext } from '../utils/httpError';
  * @param {any} client Eine DEDIZIERTE pg-Verbindung (nicht der Pool), damit
  * @returns {Promise<string[]>} Namen der neu angewandten Migrationen
  */
-async function runMigrations(client: any, { sichern = false }: { sichern?: boolean } = {}): Promise<string[]> {
+async function runMigrations(client: any, { sichern = false, bis }: { sichern?: boolean; bis?: string } = {}): Promise<string[]> {
   await client.query(`
     CREATE TABLE IF NOT EXISTS schema_migrations (
       name       TEXT PRIMARY KEY,
@@ -29,7 +29,7 @@ async function runMigrations(client: any, { sichern = false }: { sichern?: boole
   const { rows } = await client.query('SELECT name FROM schema_migrations');
   const done = new Set(rows.map((r: any) => r.name));
 
-  const offen = files.filter(f => !done.has(f));
+  const offen = files.filter(f => !done.has(f) && (bis === undefined || f <= bis));
   if (offen.length && sichern) await sichereNutzerdaten(client, offen);
 
   const applied: string[] = [];
@@ -103,4 +103,27 @@ async function sichereNutzerdaten(client: import('pg').ClientBase, offen: string
   return schema;
 }
 
-export { runMigrations, sichereNutzerdaten };
+/**
+ * Abgelöstes wieder entfernen, wie es der Start mit FORCE_SCHEMA_INIT=1 bis
+ * 307ee28 tat: Die alten Startstufen legen Spalten und Tabellen an, die
+ * Migrationen bis `bis` schon gelöscht hatten. Deren DROP … IF EXISTS-Zeilen
+ * laufen deshalb noch einmal — nur bis `bis`, spätere Migrationen ersetzen
+ * manche Tabelle durch eine gleichnamige View.
+ * @returns Zahl der ausgeführten Zeilen
+ */
+async function abgeloestesEntfernen(client: import('pg').ClientBase, bis: string): Promise<number> {
+  const dir = path.join(__dirname, 'migrations');
+  const { rows } = await client.query<{ name: string }>(
+    'SELECT name FROM schema_migrations WHERE name <= $1 ORDER BY name', [bis]);
+  let n = 0;
+  for (const { name } of rows) {
+    const datei = path.join(dir, name);
+    if (!fs.existsSync(datei)) continue;
+    const zeilen = fs.readFileSync(datei, 'utf8').split('\n')
+      .filter(z => /^\s*(ALTER TABLE\b.*\bDROP COLUMN IF EXISTS\b|DROP TABLE IF EXISTS\b)[^;]*;\s*$/i.test(z));
+    for (const z of zeilen) { await client.query(z); n++; }
+  }
+  return n;
+}
+
+export { runMigrations, sichereNutzerdaten, abgeloestesEntfernen };

@@ -187,8 +187,9 @@ function sammleAlle(verz, raus) {
     const p = path.join(verz, eintrag.name);
     if (eintrag.isDirectory()) sammleAlle(p, raus);
     // schema-stand.sql und basis.sql sind erzeugte Abbilder, keine Quellen —
-    // sie nennen jede Tabelle ein zweites Mal, und zwar mit Absicht.
-    else if (/\.(ts|js|sql)$/.test(eintrag.name) && !['schema-stand.sql', 'basis.sql'].includes(eintrag.name)) raus.push(p);
+    // sie nennen jede Tabelle ein zweites Mal, und zwar mit Absicht. Ebenso
+    // db/altbestand/startstufen.sql: das festgeschriebene Schema von 307ee28.
+    else if (/\.(ts|js|sql)$/.test(eintrag.name) && !['schema-stand.sql', 'basis.sql', 'startstufen.sql'].includes(eintrag.name)) raus.push(p);
   }
   return raus;
 }

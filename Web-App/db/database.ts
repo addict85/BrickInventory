@@ -6,14 +6,14 @@
  */
 
 import { Pool, types as pgTypes } from 'pg';
-import { runMigrations } from './migrate';
+import { runMigrations, sichereNutzerdaten, abgeloestesEntfernen } from './migrate';
 import fs from 'fs';
 import path from 'path';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { Client } from 'pg';
 import { LOCKS } from '../utils/lockNamespaces';
-import { fehlerCode } from '../utils/httpError';
+import { fehlerCode, meldeUndWeiter } from '../utils/httpError';
 
 // Warum diese acht jetzt oben stehen
 // Sie standen als require() in den Funktionsruempfen. Node haelt Module im
@@ -236,6 +236,10 @@ async function transaction<T>(fn: (tx: DbSchnittstelle) => Promise<T>): Promise<
 // Ausführlich: docs/begruendungen/db/database.ts.md#abschnitt-5
 
 
+// Die letzte Migration, die es zusammen mit den alten Startstufen gab
+// (307ee28). Eine Datenbank, die noch nicht so weit ist, ist ein Altbestand.
+const ALTBESTAND_BIS = '0050-teilezaehler-nur-bestehende-konten.sql';
+
 /**
  * Erststart: Eine LEERE Datenbank bekommt ihr Schema aus db/basis.sql, dem
  * erzeugten Abbild aller Migrationen bis zu seiner Entstehung (scripts/
@@ -244,25 +248,11 @@ async function transaction<T>(fn: (tx: DbSchnittstelle) => Promise<T>): Promise<
  * Tabelle genau einen Weg: Basis plus Migrationen.
  * @returns true, wenn die Basis eingespielt wurde
  */
-// Seit 0045 haben sich die Startstufen am Schema nicht mehr geändert: Wer 0045
-// eingetragen hat, hat die letzten Startstufen durchlaufen; 0046 und jünger
-// spielen die Migrationen nach.
-const LETZTE_STARTSTUFE = '0045-erfassung-gehoert-zum-bestand.sql';
-
 async function initSchema(): Promise<boolean> {
   const c = await eigeneVerbindung();
   try {
     const leer = !(await c.query("SELECT to_regclass('public.users') AS t")).rows[0].t;
-    if (!leer) {
-      // Früher baute der Start fehlende Spalten selbst nach; diese Stufen
-      // gibt es nicht mehr. Eine ältere Datenbank bekäme sie nie und liefe
-      // mit halbem Schema weiter — lieber gleich mit klarer Ansage stehen.
-      const r = await c.query('SELECT 1 FROM schema_migrations WHERE name = $1', [LETZTE_STARTSTUFE])
-        .catch(() => ({ rows: [] as unknown[] }));
-      if (!r.rows.length) throw new Error(
-        `Datenbank ist älter als ${LETZTE_STARTSTUFE}: bitte zuerst eine Version vom 27.10.2026 bis 28.10.2026 starten, dann diese.`);
-      return false;
-    }
+    if (!leer) return false;
     // Eigene Verbindung, weil die Basis Sitzungswerte setzt (SET …), die
     // sonst an einer Pool-Verbindung hängen blieben.
     await c.query('BEGIN');
@@ -338,15 +328,49 @@ async function initSchemaOnce() {
   try {
     await client.query(`SELECT pg_advisory_lock(${LOCK_ID})`);
     const neu = await initSchema();
+    const alt = !neu && await istAltbestand(client);
+    if (alt) await ruesteAltbestandAuf(client);
     // Vor offenen Migrationen eine Kopie der Nutzerdaten — nicht bei einer
     // eben angelegten, leeren Datenbank.
-    const applied = await runMigrations(client, { sichern: !neu });
+    const applied = await runMigrations(client, { sichern: !neu && !alt });
     if (applied.length) console.log(`✅ ${applied.length} Migration(en) angewandt`);
     else if (!neu) console.log('✅ Schema aktuell — keine offenen Migrationen');
   } finally {
     await client.query(`SELECT pg_advisory_unlock(${LOCK_ID})`).catch(() => {});
     client.release();
   }
+}
+
+/** Bestehende Datenbank, deren jüngste Migration aus der Zeit vor ALTBESTAND_BIS stammt. */
+async function istAltbestand(client: import('pg').ClientBase): Promise<boolean> {
+  const { rows } = await client.query(`SELECT to_regclass('public.schema_migrations') IS NOT NULL AS da`);
+  if (!rows[0].da) return true;
+  const r = await client.query('SELECT 1 FROM schema_migrations WHERE name >= $1 LIMIT 1', [ALTBESTAND_BIS]);
+  return r.rows.length === 0;
+}
+
+/**
+ * Ein Altbestand bekommt, was früher der Start mit FORCE_SCHEMA_INIT=1 tat:
+ * die letzten Startstufen samt ihrer Datenschritte, die Migrationen bis
+ * ALTBESTAND_BIS und danach das Entfernen dessen, was diese schon abgelöst
+ * hatten. Erst dann laufen die jüngeren Migrationen wie bei jeder Datenbank.
+ */
+async function ruesteAltbestandAuf(client: import('pg').ClientBase): Promise<void> {
+  console.log('🔧 Ältere Datenbank: die früheren Startstufen laufen einmal nach');
+  await sichereNutzerdaten(client, ['altbestand/startstufen.sql']);
+  await client.query('BEGIN');
+  try {
+    await client.query('SET LOCAL statement_timeout = 0');
+    await client.query(fs.readFileSync(path.join(__dirname, 'altbestand', 'startstufen.sql'), 'utf8'));
+    await client.query('COMMIT');
+  } catch (e) {
+    await client.query('ROLLBACK').catch((r: unknown) => meldeUndWeiter('start:altbestand', r));
+    throw new Error(`Startstufen für die ältere Datenbank fehlgeschlagen: ${e instanceof Error ? e.message : String(e)}`);
+  }
+  await runMigrations(client, { bis: ALTBESTAND_BIS });
+  const weg = await abgeloestesEntfernen(client, ALTBESTAND_BIS);
+  console.log(`  ✅ Startstufen nachgeholt, ${weg} abgelöste Spalten/Tabellen entfernt`);
+  await legeAdminAn();
 }
 
 /**
