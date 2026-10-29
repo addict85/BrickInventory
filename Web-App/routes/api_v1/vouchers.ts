@@ -15,7 +15,7 @@ import { verdecke, landErlaubt, LAND_STANDARD } from '../../utils/gutscheinGutha
 import { frageGuthabenAb, ABSTAND_SEK } from '../../utils/gutscheinGuthabenSchranke';
 import { liefereDatei } from '../../utils/dateiAusliefern';
 import { requireToken } from './middleware';
-import { werteAusPdf } from '../../utils/gutscheinPdf';
+import { werteAusPdf, PdfZuGross } from '../../utils/gutscheinPdf';
 import { verbindeGutscheine, seitenweiseLesen } from '../../utils/gutscheinPdfSchreiben';
 import type { ExportGutschein } from '../../utils/gutscheinPdfSchreiben';
 
@@ -34,9 +34,9 @@ const VOUCHER_DIR = path.join(DATA_DIR, 'vouchers');
  */
 const upload = multer({
   storage: multer.memoryStorage(),
-  // 20 MB. Marcos Beispiel wiegt 206 KB; der Spielraum ist fuer PDFs mit
-  // eingebetteten Schriften und Bildern, nicht fuer Buecher.
-  limits: { fileSize: 20 * 1024 * 1024, files: 1 },
+  // 2 MB. Marcos Beispiel wiegt 206 KB; das lässt Platz für ein Sammel-PDF
+  // aus einigen Gutscheinen. Mehr hält nur pdf-lib länger im Speicher.
+  limits: { fileSize: 2 * 1024 * 1024, files: 1 },
   fileFilter: (_req, file, cb) => {
     // Woertlicher Vergleich statt Tabellenzugriff: Bei genau EINEM erlaubten
     // Typ gibt es nichts nachzuschlagen — und damit auch nicht den geerbten
@@ -226,7 +226,12 @@ router.post('/vouchers/pdf', requireToken, upload.single('file'), async (req: Au
     let gelesen: ReturnType<typeof werteAusPdf>;
     let lesefehler = !istPdf;
     try { gelesen = werteAusPdf(req.file.buffer); }
-    catch { lesefehler = true; gelesen = { nummer: null, pin: null, betrag: null, waehrung: null }; }
+    catch (e) {
+      // Eine Entpackbombe wird auch mit getippten Werten nicht abgelegt: Der
+      // Export gäbe sie später an pdf-lib, das ohne Grenze entpackt.
+      if (e instanceof PdfZuGross) return sendeFehler(req, res, 422, 'pdf_unlesbar');
+      lesefehler = true; gelesen = { nummer: null, pin: null, betrag: null, waehrung: null };
+    }
 
     const zusammen = {
       number:   req.body?.number   ?? gelesen.nummer,
