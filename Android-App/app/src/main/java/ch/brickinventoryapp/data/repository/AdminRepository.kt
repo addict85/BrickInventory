@@ -133,10 +133,10 @@ class AdminRepository @Inject constructor(
      */
     suspend fun setJobSchedule(name: String, zeit: String? = null, minuten: Int? = null): Result<GenericAdminResponse> =
         safeCall {
-            api.setJobSchedule(buildMap {
-                put("name", name)
-                zeit?.let { put("time", it) }
-                minuten?.let { put("minutes", it) }
+            api.setJobSchedule(kotlinx.serialization.json.buildJsonObject {
+                put("name", kotlinx.serialization.json.JsonPrimitive(name))
+                zeit?.let { put("time", kotlinx.serialization.json.JsonPrimitive(it)) }
+                minuten?.let { put("minutes", kotlinx.serialization.json.JsonPrimitive(it)) }
             })
         }
 

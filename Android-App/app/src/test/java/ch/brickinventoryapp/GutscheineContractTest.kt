@@ -1,5 +1,11 @@
 package ch.brickinventoryapp
 
+import ch.brickinventoryapp.data.cache.ResponseCache
+import ch.brickinventoryapp.data.model.GutscheinRequest
+import ch.brickinventoryapp.data.repository.GutscheineRepository
+import kotlinx.coroutines.runBlocking
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
@@ -16,7 +22,8 @@ import org.junit.Test
  *
  * ── Was dieser Test prueft, und was NICHT ───────────────────────────────────
  *
- * Er liest Quelltext. Was die Routen TUN — wer welchen Gutschein sehen darf,
+ * Adressen und Ablage laufen gegen einen Testserver; der Rest liest Quelltext,
+ * weil er Bildschirme betrifft. Was die Routen TUN — wer welchen Gutschein sehen darf,
  * wie aus dem PDF die drei Werte werden —, prueft der Server gegen eine echte
  * Datenbank (Web-App/test/gutscheine-db.test.js) und braucht hier keine
  * zweite, schwaechere Fassung.
@@ -24,6 +31,11 @@ import org.junit.Test
  * Hier steht die eine Aussage, die NUR auf dieser Seite nachweisbar ist: dass
  * die App dieselben Dienste benutzt und keine eigenen baut. Genau das war
  * Marcos Vorgabe, und genau das laeuft erfahrungsgemaess auseinander.
+ *
+ * Gegenproben (29.10.2026, gemessen): in GutscheineRepository.liste() den Abruf
+ * mit cached("gutscheine", …) umhüllt → rot „die Liste wird nicht
+ * zwischengespeichert“; @PUT("api/v1/vouchers/{id}") auf POST → rot „die App
+ * ruft dieselben Adressen wie die Webapp“.
  */
 class GutscheineContractTest {
 
@@ -38,25 +50,35 @@ class GutscheineContractTest {
         if (z.trim().startsWith("//") || z.trim().startsWith("*")) "" else z
     }
 
-    private val api by lazy { code(lies("src/main/java/ch/brickinventoryapp/data/api/BrickApiService.kt")) }
     private val repo by lazy { code(lies("src/main/java/ch/brickinventoryapp/data/repository/GutscheineRepository.kt")) }
     private val feature by lazy { code(lies("src/main/java/ch/brickinventoryapp/ui/viewmodel/GutscheinViewModel.kt")) }
     private val karte by lazy { code(lies("src/main/java/ch/brickinventoryapp/ui/screens/GutscheineCard.kt")) }
 
+    /** Gutscheine gegen einen Testserver, mit Plattenablage in einem Wegwerf-Ordner. */
+    private fun <T> mitServer(block: (PfadServer, GutscheineRepository, java.io.File) -> T): T {
+        val pfade = PfadServer("/api/v1/vouchers" to """{"success":true,"vouchers":[
+            {"id":5,"number":"1234-5678","pin":"9876","amount":50.0,"currency":"CHF"}]}""")
+        val ordner = java.io.File(System.getProperty("java.io.tmpdir"), "bim-gutschein-${System.nanoTime()}").apply { mkdirs() }
+        try { return block(pfade, GutscheineRepository(TestApi.fuer(pfade.server), ResponseCache { ordner }), ordner) }
+        finally { pfade.server.shutdown(); ordner.deleteRecursively() }
+    }
+
+    /**
+     * Marcos Vorgabe wörtlich: EIN Dienst im Backend, beide Apps daran — der
+     * Router routes/api_v1/vouchers.ts. Andere Adressen hiessen zwei Umsetzungen.
+     */
     @Test
-    fun `die App ruft dieselben Adressen wie die Webapp`() {
-        // Marcos Vorgabe woertlich: EIN Dienst im Backend, beide Apps daran.
-        // Der Server hat genau einen Router dafuer (routes/api_v1/vouchers.ts);
-        // stuenden hier andere Adressen, gaebe es zwei Umsetzungen.
-        for (adresse in listOf(
-            "api/v1/vouchers",
-            "api/v1/vouchers/{id}",
-            "api/v1/vouchers/pdf",
-        )) {
-            assert(api.contains("\"$adresse\"")) {
-                "Die Adresse $adresse fehlt — dann ruft die App etwas anderes als die Webapp."
-            }
+    fun `die App ruft dieselben Adressen wie die Webapp`() = mitServer { pfade, repo, _ ->
+        val g = GutscheinRequest(number = "1234-5678", pin = "9876", amount = 50.0)
+        runBlocking {
+            repo.liste()
+            repo.anlegen(g)
+            repo.aendern(5, g)
+            repo.loeschen(5)
+            repo.ausPdf("karte.pdf", "application/pdf", byteArrayOf(1, 2, 3))
         }
+        assertEquals(listOf("GET /api/v1/vouchers", "POST /api/v1/vouchers", "PUT /api/v1/vouchers/5",
+            "DELETE /api/v1/vouchers/5", "POST /api/v1/vouchers/pdf"), pfade.anfragen.toList())
     }
 
     @Test
@@ -225,14 +247,14 @@ class GutscheineContractTest {
         }
     }
 
+    /**
+     * Die anderen Repositories legen Antworten auf der Platte ab. Eine Liste mit
+     * Nummern und PINs gehört dort nicht hin, auch nicht für fünf Minuten.
+     */
     @Test
-    fun `die Liste wird nicht zwischengespeichert`() {
-        // Die anderen Repositories legen Antworten im ResponseCache ab — der
-        // liegt auf der Platte. Eine Liste mit Nummern und PINs gehoert dort
-        // nicht hin, auch nicht fuer fuenf Minuten.
-        assert(!repo.contains("cached(")) {
-            "Die Gutscheinliste landet im Plattencache. Dort stehen dann Nummer " +
-                "und PIN — zusammen alles, was zum Einloesen noetig ist."
-        }
+    fun `die Liste wird nicht zwischengespeichert`() = mitServer { _, repo, ordner ->
+        runBlocking { repo.liste() }
+        val abgelegt = ordner.walkTopDown().filter { it.isFile }.filter { it.readText().contains("9876") }.toList()
+        assertTrue("Nummer und PIN liegen auf der Platte: $abgelegt", abgelegt.isEmpty())
     }
 }

@@ -1,5 +1,11 @@
 package ch.brickinventoryapp
 
+import ch.brickinventoryapp.data.api.BrickApiService
+import ch.brickinventoryapp.data.cache.ResponseCache
+import ch.brickinventoryapp.data.repository.SetsRepository
+import kotlinx.coroutines.runBlocking
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
@@ -76,14 +82,22 @@ class AlarmUebersichtTest {
 
     private fun quelle(rel: String) = Quellen.ohneKommentare(Quellen.lies(rel))
 
+    /**
+     * Ausgeführt gegen einen Testserver. Gegenprobe (29.10.2026, gemessen): in
+     * SetsApi `@GET("api/v1/alerts")` auf "api/v1/alarme" → rot.
+     */
     @Test
     fun `die App holt alle Alarme ueber die gemeinsame Route`() {
-        val api = quelle("data/api/BrickApiService.kt")
-        assert(api.contains("""@GET("api/v1/alerts")""")) {
-            "Die App kennt die Uebersichtsroute nicht — dann bleibt die Rubrik leer."
+        val pfade = PfadServer("/api/v1/alerts" to """{"success":true,"alerts":[]}""")
+        try {
+            runBlocking {
+                SetsRepository(TestApi.fuer(pfade.server),
+                    ResponseCache { java.io.File(System.getProperty("java.io.tmpdir"), "bim-alarme") }).getAlleAlarme()
+            }
+            assertEquals(listOf("GET /api/v1/alerts"), pfade.anfragen.toList())
+        } finally {
+            pfade.server.shutdown()
         }
-        val repo = quelle("data/repository/SetsRepository.kt")
-        assert(repo.contains("fun getAlleAlarme(")) { "Das Repository reicht sie nicht durch." }
     }
 
     @Test
@@ -112,14 +126,18 @@ class AlarmUebersichtTest {
 
     @Test
     fun `geschrieben wird ueber die bestehende Route zum Set`() {
-        // Zwei Schreibwege zum selben Zustand waeren zwei Stellen, an denen die
-        // Regeln auseinanderlaufen. Die Uebersicht LIEST nur eigenstaendig.
-        // Dass Aendern und Loeschen die Set-Route rufen, prueft
-        // EinstellungenViewModelTest an den Anfragen; hier bleibt der Vertrag.
-        val api = quelle("data/api/BrickApiService.kt")
-        assert(!api.contains("""@PUT("api/v1/alerts""")) {
-            "Es ist ein zweiter Schreibweg entstanden — einer davon laeuft irgendwann weg."
+        // Zwei Schreibwege zum selben Zustand wären zwei Stellen, an denen die Regeln
+        // auseinanderlaufen; die Übersicht LIEST nur eigenständig. Dass Ändern und
+        // Löschen die Set-Route rufen, prüft EinstellungenViewModelTest an den
+        // Anfragen. Hier die Annotationen der Schnittstelle, per Reflexion.
+        // Der CSV-Import (POST …/alerts/import/csv) legt an, er ändert keinen Alarm.
+        val aendernd = BrickApiService::class.java.methods.mapNotNull { m ->
+            m.getAnnotation(retrofit2.http.PUT::class.java)?.value
+                ?: m.getAnnotation(retrofit2.http.DELETE::class.java)?.value
         }
+        assertTrue("Keine ändernden Adressen gefunden — Reflexion greift nicht?", aendernd.size > 10)
+        val zweiterWeg = aendernd.filter { it.startsWith("api/v1/alerts") }
+        assertTrue("Es ist ein zweiter Schreibweg entstanden: $zweiterWeg", zweiterWeg.isEmpty())
     }
 
     /**

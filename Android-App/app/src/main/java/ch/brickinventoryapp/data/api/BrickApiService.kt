@@ -192,10 +192,11 @@ interface AdminApi {
      *   { name: <schluessel>, time: "HH:MM" }   tägliche Jobs
      *   { name: "priceJob",   minutes: <n> }    der Preis-Job
      *
-     * Eine Map, weil der Server am vorhandenen Feld unterscheidet.
+     * Ein JsonObject, weil der Server am vorhandenen Feld unterscheidet; eine
+     * Map<String, Any> kann der kotlinx-Wandler nicht schreiben.
      */
     @POST("api/v1/admin/job-schedule")
-    suspend fun setJobSchedule(@Body body: Map<String, @JvmSuppressWildcards Any>): Response<GenericAdminResponse>
+    suspend fun setJobSchedule(@Body body: kotlinx.serialization.json.JsonObject): Response<GenericAdminResponse>
 
     /**
      * Fehlende Katalogbilder einreihen. Nicht redownloadMissingImages: Das holt die

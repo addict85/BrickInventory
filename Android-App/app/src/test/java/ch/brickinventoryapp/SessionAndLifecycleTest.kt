@@ -1,13 +1,19 @@
 package ch.brickinventoryapp
 
+import ch.brickinventoryapp.data.cache.ResponseCache
+import ch.brickinventoryapp.data.repository.FinanzenRepository
+import ch.brickinventoryapp.data.repository.Result
+import kotlinx.coroutines.runBlocking
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
  * Absicherung der Review-Runde: abgelaufene Sitzung, ImageLoader-Lebensdauer,
  * Hintergrund-Polling und der entfernte tote Barcode-Zweitpfad.
  *
- * Alle Prüfungen lesen nur die Quelldateien — kein Gerät, kein Compose, kein
- * Netzwerk nötig.
+ * Der 401 ist ausgeführt geprüft; der Rest liest Quelltext (Gerät und
+ * Compose fehlen hier).
  */
 class SessionAndLifecycleTest {
 
@@ -31,29 +37,24 @@ class SessionAndLifecycleTest {
     // ── Abgelaufene Sitzung (HTTP 401) ───────────────────────────────────────
 
     /**
-     * Alle Dateien der Datenschicht als EIN Text (Nachtrag 155).
-     *
-     * Vorher stand hier "data/repository/BrickRepository.kt" — ein Dateiname.
-     * Die 78 Funktionen liegen seither in fuenf Klassen nach Sachgebieten,
-     * die gemeinsame Mechanik in RepoBasis. Gemeint ist DIE DATENSCHICHT,
-     * nicht eine Datei.
+     * Ein 401 ist von einem gewöhnlichen Serverfehler unterscheidbar — sonst bliebe
+     * ein abgelaufener Token unerkannt. Ausgeführt gegen einen Testserver.
+     * Gegenprobe (29.10.2026, gemessen): in RepoBasis.safeCall `unauthorized =
+     * false` → rot.
      */
-    private fun datenschicht(): String =
-        java.io.File("src/main/java/ch/brickinventoryapp/data/repository")
-            .listFiles { f -> f.extension == "kt" }
-            .orEmpty().sortedBy { it.name }
-            .joinToString("\n") { it.readText() }
-
     @Test
     fun `safeCall markiert 401 als unauthorized`() {
-        val src = code(datenschicht())
-        assert(src.contains("val unauthorized: Boolean")) {
-            "Result.Error kennt kein unauthorized-Flag — ein 401 ist dann nicht " +
-                "von einem gewöhnlichen Serverfehler unterscheidbar"
-        }
-        assert(Regex("""unauthorized\s*=\s*response\.code\(\)\s*==\s*401""").containsMatchIn(src)) {
-            "safeCall() setzt unauthorized nicht aus dem HTTP-Status — ein abgelaufener " +
-                "Token bliebe unerkannt und die App auf ewig scheinbar eingeloggt"
+        val pfade = PfadServer()
+        pfade.codes["/api/v1/stats"] = 401
+        pfade.codes["/api/v1/finance/pnl"] = 500
+        try {
+            val finanzen = FinanzenRepository(TestApi.fuer(pfade.server), ResponseCache { java.io.File(System.getProperty("java.io.tmpdir"), "bim-401") })
+            val abgelaufen = runBlocking { finanzen.getStats() } as Result.Error
+            val kaputt = runBlocking { finanzen.getPnl() } as Result.Error
+            assertTrue("Ein 401 trägt das Kennzeichen nicht", abgelaufen.unauthorized)
+            assertFalse("Ein 500 gilt als abgelaufene Sitzung", kaputt.unauthorized)
+        } finally {
+            pfade.server.shutdown()
         }
     }
 

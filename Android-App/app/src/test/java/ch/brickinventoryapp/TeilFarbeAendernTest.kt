@@ -1,6 +1,16 @@
 package ch.brickinventoryapp
 
+import androidx.lifecycle.SavedStateHandle
+import ch.brickinventoryapp.data.repository.TeileRepository
+import ch.brickinventoryapp.ui.viewmodel.TeileViewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.setMain
+import org.junit.After
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Test
 
 /**
@@ -34,33 +44,34 @@ import org.junit.Test
  *      und ausgerechnet das Teil ohne Farbnamen — genau der Fall, der
  *      korrigiert werden muss — zeigte nichts an.
  *
- * ── Gegenproben (am 19.10. GEMESSEN) ────────────────────────────────────────
+ * ── Gegenproben ─────────────────────────────────────────────────────────────
  *
- * Kotlin laesst sich in dieser Umgebung nicht uebersetzen (dl.google.com ist
- * gesperrt), die Uebersetzung macht die CI. Die SUCHMUSTER dieses Tests sind
- * deshalb einzeln gegen die echten Dateien nachgerechnet worden, jedes mit
- * seiner Gegenprobe:
- *
- *   A  `"api/v1/parts/{partNumber}/{colorId}/color"` aus BrickApiService.kt
- *      entfernt → Fall 1 rot („Die Adresse … fehlt").
- *   B  `onFarbeGeaendert` aus CollectionGraph.kt entfernt
- *      → Fall 2 rot („Der Bildschirm wird nach der Aenderung nicht …").
- *   C  die Farbzeile im Screen hinter `part?.colorName != null` gelegt
- *      → Fall 3 rot.
- *   D  `if (neueFarbe == colorId) return` aus PartsFeature.kt entfernt
- *      → Fall 4 rot.
+ * Fall 1 und 4 laufen gegen einen Testserver (TeileViewModel, TeileRepository),
+ * Fall 2 und 3 lesen Bildschirm und Graph. Gemessen am 29.10.2026:
+ *   A  in TeileApi die Adresse auf "…/colour" → rot „die App ruft denselben
+ *      Dienst wie die Webapp“
+ *   B  owner in TeileRepository.setPartColor nicht weitergereicht → rot ebenda
+ *   D  `if (neueFarbe == colorId) return` aus TeileViewModel entfernt → rot
+ *      „dieselbe Farbe nochmal löst keine Anfrage aus“ (PUT …/3001/5/color)
+ * Am 19.10. gemessen: B′ `onFarbeGeaendert` aus CollectionGraph.kt entfernt →
+ * Fall 2 rot; C die Farbzeile hinter `part?.colorName != null` → Fall 3 rot.
  */
 class TeilFarbeAendernTest {
 
-    private val api by lazy {
-        Quellen.ohneKommentare(Quellen.lies("data/api/BrickApiService.kt"))
+    private val pfade = PfadServer("/api/v1/parts/3001/5/color" to """{"success":true}""")
+    private val t = TestDienste(pfade.server)
+
+    @Before
+    fun auf() = Dispatchers.setMain(UnconfinedTestDispatcher())
+
+    @After
+    fun zu() {
+        t.aufraeumen()
+        Dispatchers.resetMain()
+        pfade.server.shutdown()
     }
-    private val repo by lazy {
-        Quellen.ohneKommentare(Quellen.lies("data/repository/TeileRepository.kt"))
-    }
-    private val feature by lazy {
-        Quellen.ohneKommentare(Quellen.lies("ui/viewmodel/TeileViewModel.kt"))
-    }
+
+    private fun vm() = t.merke(TeileViewModel(t.dienste, TeileRepository(t.api, t.cache), SavedStateHandle()))
     private val screen by lazy {
         Quellen.ohneKommentare(Quellen.lies("ui/screens/ManualItemDetailScreen.kt"))
     }
@@ -71,36 +82,24 @@ class TeilFarbeAendernTest {
         Quellen.ohneKommentare(Quellen.lies("ui/screens/FarbWahlFeld.kt"))
     }
 
+    /**
+     * Die ALTE Farbe im Pfad, die NEUE im Körper: Der Pfad sagt, welche Zeile
+     * gemeint ist, der Körper, wohin sie soll. owner ist der Besitzer der KARTE —
+     * im Haushalt zeigt der manuelle Bereich alle Konten, ohne ihn änderte der
+     * Server die eigene Zeile statt der angezeigten.
+     */
     @Test
     fun `die App ruft denselben Dienst wie die Webapp`() {
-        assertTrue(
-            "Die Adresse api/v1/parts/{partNumber}/{colorId}/color fehlt in " +
-                "BrickApiService.kt — dann ruft die App etwas anderes als die Webapp, " +
-                "oder gar nichts.",
-            api.contains("\"api/v1/parts/{partNumber}/{colorId}/color\"")
-        )
-        // Die ALTE Farbe im Pfad, die NEUE im Koerper. Beides gehoert dazu: Der
-        // Pfad sagt, welche Zeile gemeint ist, der Koerper, wohin sie soll.
-        assertTrue(
-            "setPartColor nimmt kein TeilFarbeRequest — dann reist die neue Farbe " +
-                "nicht mit, und der Server weist die Anfrage mit 400 ab.",
-            api.contains("TeilFarbeRequest")
-        )
-        assertTrue(
-            "TeileRepository hat kein setPartColor — der Bildschirm kaeme nicht an " +
-                "die Route.",
-            repo.contains("fun setPartColor")
-        )
-        // owner: Besitzer der KARTE. Im Haushalt zeigt der manuelle Bereich die
-        // Eintraege aller Konten; ohne die Angabe aendert der Server die Farbe
-        // der EIGENEN Zeile — geklickt waere die fremde Karte. Dieselbe Luecke
-        // wie beim Loeschen (siehe deletePart).
-        assertTrue(
-            "setPartColor reicht den Besitzer der Karte nicht mit — im Haushalt " +
-                "wuerde die Farbe der eigenen Zeile geaendert statt der angezeigten.",
-            Regex("""setPartColor\([^)]*owner""", RegexOption.DOT_MATCHES_ALL).containsMatchIn(repo) &&
-                Regex("""owner\s*=\s*part\?\.userId""").containsMatchIn(screen)
-        )
+        var geoeffnet: Int? = null
+        vm().setzeTeilFarbe("3001", 5, 11, owner = 7) { geoeffnet = it }
+        TestApi.warteBis("neu geöffnet") { geoeffnet != null }
+        // Danach lädt der Bereich die Teile neu (Bestandssignal) — gezählt wird nur die Farbe.
+        assertEquals(listOf("PUT /api/v1/parts/3001/5/color?owner=7"), pfade.anfragenAn("/color"))
+        val koerper = pfade.koerper[pfade.anfragen.indexOfFirst { "/color" in it }]
+        assertTrue(koerper, koerper.contains("\"color_id\":11"))
+        assertEquals("Der Bildschirm öffnet mit der neuen Farbe", 11, geoeffnet)
+        assertTrue("Der Bildschirm reicht den Besitzer der Karte nicht weiter",
+            Regex("""owner\s*=\s*part\?\.userId""").containsMatchIn(screen))
     }
 
     @Test
@@ -182,10 +181,9 @@ class TeilFarbeAendernTest {
         // Der Server weist den Fall ohnehin ab, ohne etwas zu aendern — aber
         // „der Server faengt es schon" ist kein Grund, eine Anfrage zu
         // schicken, deren Antwort ein Neuaufbau des Bildschirms ist.
-        assertTrue(
-            "setzeTeilFarbe bricht bei gleicher Farbe nicht ab.",
-            Regex("""if \(neueFarbe == colorId\) return""").containsMatchIn(feature)
-        )
+        vm().setzeTeilFarbe("3001", 5, 5)
+        Thread.sleep(200)
+        assertTrue("setzeTeilFarbe bricht bei gleicher Farbe nicht ab: ${pfade.anfragen}", pfade.anfragenAn("/color").isEmpty())
         assertTrue(
             "FarbWahlFeld ruft onWahl auch fuer die bereits gewaehlte Farbe.",
             Regex("""if \(c\.id != aktuell\) onWahl\(c\)""").containsMatchIn(feld)
