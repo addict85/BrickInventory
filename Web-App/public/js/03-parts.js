@@ -426,7 +426,7 @@ G('parts-spare').addEventListener('change', loadPartsData);
 const TEILE_ORDNUNG_KEY = 'bim_teile_ordnung';
 try {
   const gemerkt = localStorage.getItem(TEILE_ORDNUNG_KEY);
-  if (gemerkt && [...G('parts-ordnung').options].some(o => o.value === gemerkt)) G('parts-ordnung').value = gemerkt;
+  if (gemerkt && [...G('parts-ordnung').querySelectorAll('option')].some(o => o.value === gemerkt)) G('parts-ordnung').value = gemerkt;
 } catch (_) { /* ohne Speicher gilt die Vorgabe */ }
 G('parts-ordnung').addEventListener('change', () => {
   try { localStorage.setItem(TEILE_ORDNUNG_KEY, G('parts-ordnung').value); } catch (_) { /* nur Komfort */ }

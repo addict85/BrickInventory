@@ -1100,7 +1100,7 @@ function showApp(){ bindTabs(); plInit(); setTimeout(()=>{ gibCheckOnLoad(); }, 
       if(!hasRbKey) {
         const ntab = document.querySelector('.ntab[data-tab="settings"]');
         if(ntab) ntab.click();
-        document.querySelector('.einst-nav a[data-arg="einst-rb"]')?.click();
+        /** @type {HTMLElement|null} */ (document.querySelector('.einst-nav a[data-arg="einst-rb"]'))?.click();
         toast(tRaw('rb_key.missing'),'info');
         return;
       }
