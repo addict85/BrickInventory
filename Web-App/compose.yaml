@@ -37,6 +37,13 @@ services:
       # dann DB_PASSWORD weglassen oder auf das bisherige setzen.
       POSTGRES_PASSWORD: ${DB_PASSWORD:-brickinventory_secret}
     command: postgres -c max_connections=200 -c shared_buffers=128MB
+    # Der Entrypoint des Images läuft als root: Er legt $PGDATA an (chmod 700),
+    # richtet die Eigentümer per find/chown und wechselt mit gosu zu postgres.
+    # Genau dafür reichen diese fünf; der Server selbst läuft ohne.
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+    cap_add: [CHOWN, DAC_OVERRIDE, FOWNER, SETUID, SETGID]
     volumes:
       # Neuer Pfad UND neues Verzeichnis: ./pgdata (Version 16) bleibt liegen,
       # damit ein Rückfall auf die alte compose.yaml jederzeit möglich ist.
@@ -60,6 +67,17 @@ services:
     # Kleiner init-Prozess als PID 1: reicht Signale weiter und räumt
     # verwaiste Kindprozesse (Bildwerkzeuge, PDF) ab.
     init: true
+    # docker-entrypoint.sh läuft als root und braucht genau vier Rechte:
+    # mkdir/Marke im Datenordner, der brickinv gehört (DAC_OVERRIDE), chown
+    # (CHOWN) und den Wechsel zu brickinv per su-exec (SETUID, SETGID). Der
+    # Server danach läuft ohne. Schreiben darf er nur in ./data und /tmp.
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+    cap_add: [CHOWN, DAC_OVERRIDE, SETUID, SETGID]
+    read_only: true
+    tmpfs:
+      - /tmp
     depends_on:
       postgres:
         condition: service_healthy
@@ -170,6 +188,10 @@ services:
     # unbemerkt durch ein neues „latest" ersetzt werden.
     image: sosedoff/pgweb:0.17.0
     container_name: brickinventory-pgweb
+    # Ein Webserver auf Port 8081 braucht keine Capability.
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
     profiles: ["tools"]
     restart: "no"          # bewusst nicht "unless-stopped": Werkzeug auf Zeit
     depends_on:
