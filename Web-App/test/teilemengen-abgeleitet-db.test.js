@@ -157,7 +157,7 @@ test('nach der ganzen Kette tragen parts und minifigs keine quantity mehr',
   // bedienen (test/indizes-db.test.js).
   const ix = await indizes();
   for (const name of ['idx_parts_eindeutig', 'idx_minifigs_eindeutig',
-                      'idx_part_acq_tag_merkmale', 'idx_minifig_acq_tag_merkmale']) {
+                      'idx_part_acq_erfassungstag', 'idx_minifig_acq_erfassungstag']) {
     assert.ok(ix.includes(name), `${name} fehlt (Migration 0038, Schritt 5/6)`);
   }
 

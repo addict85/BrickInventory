@@ -317,8 +317,10 @@ test('Kategorien werden über den Teilekatalog aufgelöst', () => {
   // 'Unknown', wenn die Set-Teile-Antwort kein part_cat_id mitliefert. Das ist
   // bei /sets/{id}/parts/ die Regel: Das eingebettete part-Objekt führt das
   // Feld meist nicht. Die Filterliste zeigte deshalb nur einen Eintrag.
-  const parts = fs.readFileSync(path.join(ROOT, 'routes', 'parts.ts'), 'utf8');
-  assert.match(parts, /LEFT JOIN rb_parts rp ON rp\.part_num = p\.part_number/,
+  // Die Liste steht seit dem 29.10. in utils/handlers/parts.ts
+  // (getPartsCategories), einmal für Zusammenfassung und Live-Abfrage.
+  const parts = require('./helpers/sources').handlerQuelle();
+  assert.match(parts, /LEFT JOIN rb_parts rp ON rp\.part_num = \$\{nummer\}/,
     'Die Kategorieliste muss über rb_parts auflösen');
   assert.match(parts, /LEFT JOIN rb_part_categories rp_cat ON rp_cat\.id = rp\.part_cat_id/,
     'Ohne den zweiten Join fehlt der Kategoriename');
@@ -329,13 +331,13 @@ test('Kategorien werden über den Teilekatalog aufgelöst', () => {
   assert.match(h, /EXISTS \(SELECT 1 FROM rb_parts rp[\s\S]{0,160}rp\.part_cat_id::text = \$/,
     'Der Live-Filter muss die Kategorie ebenfalls über rb_parts auflösen');
 
-  // Die Zusammenfassung kann das nicht — sie muss den Fall abgeben, statt eine
-  // zweite Wahrheit zu liefern (derselbe Fehler wie zuvor beim Farbfilter).
+  // Die Zusammenfassung löst seit dem 29.10. genauso über rb_parts auf; dass
+  // beide Wege dasselbe liefern, prüft test/teile-kategorie-zusammenfassung-db.
   const sum = h.slice(h.indexOf('async function tryPartsSummary'),
                       h.indexOf('async function getParts(userId'));
   assert.ok(sum.length > 100, 'Abschnitt nicht gefunden — Prüfung liefe ins Leere');
-  assert.match(sum, /if \(o\.category\) return null;/,
-    'Bei Kategorie-Filter muss die Zusammenfassung auf den Live-Pfad ausweichen');
+  assert.match(sum, /part_number IN \(SELECT rp\.part_num FROM rb_parts rp/,
+    'Die Zusammenfassung muss die Kategorie ebenfalls über rb_parts auflösen');
 });
 
 test('beide Abfragewege deckeln page_size gleich', () => {
