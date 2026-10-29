@@ -17,10 +17,14 @@
 # Cron-Beispiel (täglich um 3 Uhr):
 #   0 3 * * * cd /opt/brickinventory && ./scripts/backup.sh >> backup.log 2>&1
 #
-# Eine Sicherung ist ein GEHEIMNIS: Der Dump enthält die API-Schlüssel
-# (Bricklink, Brickset, Rebrickable) und das SMTP-Passwort im Klartext, dazu
-# alle Passwort-Hashes. Darum entstehen Dateien und Verzeichnis nur für den
-# Besitzer lesbar (umask 077), und ein offenes Ziel wird gemeldet.
+# Eine Sicherung ist ein GEHEIMNIS: Der Dump enthält alle Passwort-Hashes und,
+# verschlüsselt, API-Schlüssel, SMTP-Passwort, Gutschein-PINs und den zweiten
+# Faktor. Darum entstehen Dateien und Verzeichnis nur für den Besitzer lesbar
+# (umask 077), und ein offenes Ziel wird gemeldet.
+#
+# Der Schlüssel dazu (data/.datenschluessel) kommt NICHT ins Archiv: Neben dem
+# Dump machte er die Verschlüsselung wertlos. Mit BACKUP_SCHLUESSEL_ZIEL=<Ordner
+# an einem anderen Ort> legt das Skript ihn dort ab; sonst meldet es ihn.
 set -eu
 umask 077
 
@@ -79,7 +83,25 @@ echo "[backup] Laufzeitdaten → $TARGET/data_$STAMP.tar.gz"
 # data/images ebenfalls in die Ausschlussliste auf.
 tar czf "$TARGET/data_$STAMP.tar.gz" \
   --exclude='data/img_proxy_cache' \
+  --exclude='data/.datenschluessel' \
   data 2>/dev/null || echo "[backup] Warnung: data/ nicht vollständig gesichert"
+
+SCHLUESSEL=data/.datenschluessel
+if [ ! -f "$SCHLUESSEL" ]; then
+  echo "[backup] Hinweis: kein $SCHLUESSEL — steht der Schlüssel in DATA_KEY, diesen getrennt aufbewahren." >&2
+elif [ -n "${BACKUP_SCHLUESSEL_ZIEL:-}" ]; then
+  mkdir -p "$BACKUP_SCHLUESSEL_ZIEL"
+  if [ "$(cd "$BACKUP_SCHLUESSEL_ZIEL" && pwd)" = "$(cd "$TARGET" && pwd)" ]; then
+    echo "[backup] Warnung: BACKUP_SCHLUESSEL_ZIEL ist das Sicherungsziel — der Schlüssel liegt dann wieder neben dem Dump." >&2
+  fi
+  cmp -s "$SCHLUESSEL" "$BACKUP_SCHLUESSEL_ZIEL/datenschluessel" 2>/dev/null \
+    || cp "$SCHLUESSEL" "$BACKUP_SCHLUESSEL_ZIEL/datenschluessel"
+  echo "[backup] Datenschlüssel → $BACKUP_SCHLUESSEL_ZIEL/datenschluessel"
+else
+  echo "[backup] ACHTUNG: $SCHLUESSEL ist NICHT in der Sicherung. Ohne ihn sind nach einem" >&2
+  echo "[backup]   Wiederherstellen API-Schlüssel, SMTP-Passwort, Gutschein-PINs und der zweite" >&2
+  echo "[backup]   Faktor verloren. Einmal getrennt sichern oder BACKUP_SCHLUESSEL_ZIEL setzen." >&2
+fi
 
 echo "[backup] Alte Sicherungen (> $KEEP_DAYS Tage) entfernen"
 find "$TARGET" -name 'db_*.sql.gz'    -mtime "+$KEEP_DAYS" -delete

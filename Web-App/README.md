@@ -119,7 +119,12 @@ Gutschein-PINs und die Geheimnisse des zweiten Faktors liegen verschlüsselt im
 Dump; der Schlüssel dazu steht in `data/.datenschluessel` (oder in `DATA_KEY`).
 **Diese Datei mitsichern, aber getrennt vom Dump** — ohne sie lassen sich die
 Werte nach einer Wiederherstellung nicht mehr lesen und müssen neu eingegeben
-werden. Die Passwort-Hashes stehen trotzdem im Dump. `backup.sh` legt die Dateien deshalb nur für den
+werden; Konten mit zweitem Faktor kommen dann nicht mehr herein. `backup.sh`
+lässt sie deshalb aus dem `data/`-Archiv weg und legt sie nur mit
+`BACKUP_SCHLUESSEL_ZIEL=/anderer/ort` dort ab (etwa ein USB-Stick oder ein
+anderes Laufwerk als das der Sicherungen); ohne die Angabe meldet es bei jedem
+Lauf, dass der Schlüssel fehlt. `restore.sh` fragt nach, bevor es ohne
+`data/.datenschluessel` neu startet. Die Passwort-Hashes stehen trotzdem im Dump. `backup.sh` legt die Dateien deshalb nur für den
 Besitzer lesbar an (`umask 077`) und warnt, wenn das Zielverzeichnis für
 andere offen ist. Wer `backups/` auf ein NAS oder in eine Cloud kopiert,
 verschlüsselt es vorher (z. B. `gpg -c` oder `age`).

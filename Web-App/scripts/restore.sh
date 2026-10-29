@@ -70,6 +70,18 @@ else
   echo "[restore] Hinweis: kein data-Archiv angegeben — Bilder/Anleitungen bleiben wie sie sind."
 fi
 
+# Der Datenschlüssel liegt nicht im Archiv (siehe backup.sh). Fehlt er, legt
+# der Server beim Neustart einen neuen an, und die verschlüsselten Werte des
+# Dumps lassen sich nicht mehr lesen.
+if [ ! -f data/.datenschluessel ]; then
+  echo "[restore] ACHTUNG: data/.datenschluessel fehlt. Vor dem Neustart die getrennt gesicherte" >&2
+  echo "[restore]   Datei dorthin legen (oder DATA_KEY setzen); sonst sind API-Schlüssel," >&2
+  echo "[restore]   SMTP-Passwort, Gutschein-PINs und der zweite Faktor nicht mehr lesbar." >&2
+  printf '[restore] Trotzdem neu starten? [ja/N] '
+  read -r antwort
+  [ "$antwort" = "ja" ] || { echo "[restore] Ohne Neustart beendet."; exit 1; }
+fi
+
 # 5. App neu starten, damit sie sauber gegen den neuen Stand initialisiert.
 echo "[restore] App-Container wird neu gestartet …"
 docker compose restart "$APP_SERVICE"

@@ -267,3 +267,47 @@ test('Sicherung und Wiederherstellung', async (t) => {
     await db.pool.end().catch(() => {});
   });
 });
+
+/**
+ * backup.sh selbst, mit einem nachgebauten `docker` auf dem PATH: Der
+ * Datenschlüssel neben dem Dump machte dessen Verschlüsselung wertlos.
+ *
+ * Gegenproben (am 29.10.2026 gemessen):
+ *   A  --exclude für data/.datenschluessel entfernt → rot: „der Schlüssel
+ *      liegt im Archiv"
+ *   B  das Kopieren nach BACKUP_SCHLUESSEL_ZIEL entfernt → rot: „… fehlt am
+ *      getrennten Ort"
+ */
+test('backup.sh: der Datenschlüssel kommt nicht ins Archiv', (t) => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sicherung-schluessel-'));
+  t.after(() => fs.rmSync(tmp, { recursive: true, force: true }));
+  const bin = path.join(tmp, 'bin');
+  fs.mkdirSync(bin);
+  fs.writeFileSync(path.join(bin, 'docker'),
+    "#!/bin/sh\nprintf -- '-- Dump\\n-- PostgreSQL database dump complete\\n'\n", { mode: 0o755 });
+  const arbeit = path.join(tmp, 'installation');
+  fs.mkdirSync(path.join(arbeit, 'data', 'uploads'), { recursive: true });
+  fs.writeFileSync(path.join(arbeit, 'data', 'uploads', 'anleitung.pdf'), '%PDF-1.4');
+  const schluessel = 'k'.repeat(44);
+  fs.writeFileSync(path.join(arbeit, 'data', '.datenschluessel'), schluessel, { mode: 0o600 });
+
+  const sichern = (env) => spawnSync('sh', [path.join(ROOT, 'scripts', 'backup.sh'), path.join(tmp, 'ziel')],
+    { cwd: arbeit, encoding: 'utf8', env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, ...env } });
+
+  const ohne = sichern({});
+  assert.equal(ohne.status, 0, ohne.stderr);
+  const archiv = fs.readdirSync(path.join(tmp, 'ziel')).find(n => n.startsWith('data_'));
+  const inhalt = execFileSync('tar', ['tzf', path.join(tmp, 'ziel', archiv)], { encoding: 'utf8' });
+  assert.match(inhalt, /data\/uploads\/anleitung\.pdf/, 'Vorbedingung: data/ ist im Archiv');
+  assert.doesNotMatch(inhalt, /datenschluessel/, 'der Schlüssel liegt im Archiv');
+  assert.match(ohne.stderr, /NICHT in der Sicherung/, 'ohne getrennten Ort muss das Skript es sagen');
+
+  const tresor = path.join(tmp, 'tresor');
+  const mit = sichern({ BACKUP_SCHLUESSEL_ZIEL: tresor });
+  assert.equal(mit.status, 0, mit.stderr);
+  const kopie = path.join(tresor, 'datenschluessel');
+  assert.equal(fs.existsSync(kopie) && fs.readFileSync(kopie, 'utf8'), schluessel,
+    'der Schlüssel fehlt am getrennten Ort');
+  assert.equal(fs.statSync(kopie).mode & 0o077, 0, 'der Schlüssel ist für andere lesbar');
+  assert.doesNotMatch(mit.stderr, /NICHT in der Sicherung/);
+});
