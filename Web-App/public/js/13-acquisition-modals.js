@@ -16,7 +16,7 @@
 import { detailZeile, ladeAnzeige } from './01-bausteine.js';
 import { registerActions } from './00-registry.js';
 import { colorName, locale, t, tRaw } from '../i18n.js';
-import { bildTag, platzhalterInhalt, ico, escHex, CURRENCY, G, ME, api, esc, escJs, escUrl, fmtN, fullUrl, hexZiffern, imgUrl, thumbUrl, toast } from './01-core.js';
+import { fmtDatum, bildTag, platzhalterInhalt, ico, escHex, CURRENCY, G, ME, api, esc, escJs, escUrl, fmtN, fullUrl, hexZiffern, imgUrl, thumbUrl, toast } from './01-core.js';
 import { allSets, applySetAggregate, closeModal, curSet, loadGallery, pnlBadge, updateGalleryPrices } from './02-gallery.js';
 import { loadFinance } from './04-finance.js';
 import { deleteManualFig, deleteManualPart, loadBrickColors, loadManualFigsTable, loadManualParts, manualFigsCache, manualPartsCache, updateManualFig, updateManualPart } from './06-minifigs.js';
@@ -307,7 +307,7 @@ export function renderAcquisitionSummary(acqs, sn) {
     const cond = a.condition === 'U' ? `<span class="cond-badge cond-used">${t('common.condition_used')}</span>`
       : `<span class="cond-badge cond-new">${t('common.condition_new')}</span>`;
     const price = erfassungsPreis(a, a.purchase_price);
-    const dateFmt = a.created_at ? new Date(a.created_at).toLocaleDateString(locale()) : '';
+    const dateFmt = a.created_at ? fmtDatum(a.created_at) : '';
     return `<div data-stil="display:flex;align-items:center;gap:6px;padding:2px 0">
       <span data-stil="color:var(--mut);font-size:var(--fs-1);min-width:24px">×${a.quantity}</span>
       ${cond}
@@ -328,7 +328,7 @@ function renderManAcqSummary(acqs, type, id, colorId) {
       ? `<span class="cond-badge cond-used">${t('common.condition_used')}</span>`
       : `<span class="cond-badge cond-new">${t('common.condition_new')}</span>`;
     const price = erfassungsPreis(a, a.unit_price);
-    const dateFmt = a.created_at ? new Date(a.created_at).toLocaleDateString(locale()) : '';
+    const dateFmt = a.created_at ? fmtDatum(a.created_at) : '';
     return `<div data-stil="display:flex;align-items:center;gap:6px;padding:2px 0">
       <span data-stil="color:var(--mut);font-size:var(--fs-1);min-width:24px">×${a.quantity}</span>
       ${cond}

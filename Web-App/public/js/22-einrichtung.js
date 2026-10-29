@@ -40,6 +40,7 @@ export async function pruefeEinrichtung() {
   for (const [q, ok] of Object.entries(d.quellen || {})) setzeStand(q, ok);
   zeige();
   G('einrichtung-modal').classList.add('open');
+  document.querySelectorAll('#toasts [data-art="rb-schluessel"]').forEach(el => el.remove());
 }
 
 function schliessen() { G('einrichtung-modal').classList.remove('open'); }

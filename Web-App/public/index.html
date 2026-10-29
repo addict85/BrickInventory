@@ -111,7 +111,7 @@
 <!-- kein inline background mehr: das hat jede Theme-Regel überstimmt, siehe --screen-bg in styles.css -->
 <div id="startup-screen" data-stil="display:flex;align-items:center;justify-content:center;min-height:100vh;flex-direction:column;gap:1.5rem">
   <div data-stil="display:flex;align-items:center;gap:12px;margin-bottom:.5rem">
-    <svg width="48" height="48" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg"><rect x="18" y="38" width="84" height="68" rx="3" fill="#e63329"/><polygon points="18,38 30,20 102,20 102,38" fill="#cc2a21"/><polygon points="102,20 118,30 118,86 102,106" fill="#b5231c"/><rect x="24" y="54" width="72" height="40" rx="2" fill="#fff"/><rect x="29" y="58" width="46" height="15" rx="2" fill="#f5a800"/><text x="52" y="69" text-anchor="middle" font-family="Arial,sans-serif" font-weight="800" font-size="11" fill="white">BIM</text></svg>
+    <svg width="48" height="48" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg"><rect x="18" y="38" width="84" height="68" rx="3" fill="#e63329"/><polygon points="18,38 30,20 102,20 102,38" fill="#cc2a21"/><polygon points="102,20 118,30 118,86 102,106" fill="#b5231c"/><rect x="24" y="54" width="72" height="40" rx="2" fill="#fff"/><rect x="29" y="58" width="46" height="15" rx="2" fill="#f5a800"/><text x="52" y="69" text-anchor="middle" font-family="Arial,sans-serif" font-weight="800" font-size="11" fill="#3b2600">BIM</text></svg>
     <div>
       <div data-stil="font-size:var(--fs-6);font-weight:800;color:var(--txt)">BrickInventory</div>
       <div class="text-3-mut">Manager</div>
@@ -149,7 +149,7 @@
   <polygon points="102,20 118,30 118,86 102,106" fill="#b5231c"/>
   <rect x="24" y="54" width="72" height="40" rx="2" fill="#fff"/>
   <rect x="29" y="58" width="46" height="15" rx="2" fill="#f5a800"/>
-  <text x="52" y="69" text-anchor="middle" font-family="Arial,sans-serif" font-weight="800" font-size="11" fill="white">BIM</text>
+  <text x="52" y="69" text-anchor="middle" font-family="Arial,sans-serif" font-weight="800" font-size="11" fill="#3b2600">BIM</text>
   <rect x="29" y="78" width="62" height="5" rx="1" fill="#e5e7eb"/>
   <rect x="29" y="86" width="42" height="5" rx="1" fill="#e5e7eb"/>
 </svg><h1>BrickInventory <span>Manager</span></h1></div>
@@ -275,11 +275,11 @@
   <ellipse cx="88" cy="17" rx="6" ry="3" fill="#b5231c"/>
   <rect x="24" y="54" width="72" height="40" rx="2" fill="#fff"/>
   <rect x="29" y="58" width="46" height="15" rx="2" fill="#f5a800"/>
-  <text x="52" y="69" text-anchor="middle" font-family="Arial,sans-serif" font-weight="800" font-size="11" fill="white">BIM</text>
+  <text x="52" y="69" text-anchor="middle" font-family="Arial,sans-serif" font-weight="800" font-size="11" fill="#3b2600">BIM</text>
   <rect x="29" y="78" width="62" height="5" rx="1" fill="#e5e7eb"/>
   <rect x="29" y="86" width="42" height="5" rx="1" fill="#e5e7eb"/>
   <rect x="80" y="78" width="16" height="13" rx="2" fill="#f5a800"/>
-  <text x="88" y="88" text-anchor="middle" font-family="Arial,sans-serif" font-weight="800" font-size="9" fill="white">6+</text>
+  <text x="88" y="88" text-anchor="middle" font-family="Arial,sans-serif" font-weight="800" font-size="9" fill="#3b2600">6+</text>
 </svg><p class="marke">BrickInventory <span>Manager</span></p></div>
     <div class="hright">
       <div class="hstats">
@@ -333,7 +333,7 @@
                   aria-controls="umenu-pop"><svg class="ico ubadge-ico" aria-hidden="true"><use href="#i-profil"/></svg><span class="ubadge-name" id="ubadge">—</span><span class="ubadge-striche" aria-hidden="true"><svg class="ico" aria-hidden="true"><use href="#i-menue"/></svg></span><span class="vh" data-i18n="menu.open">Menü</span></button>
           <div class="umenu-pop" id="umenu-pop" role="menu" data-stil="display:none">
             <button class="umenu-item" role="menuitem" data-click="oeffneSicht" data-arg="profil">
-                    <svg class="ico" aria-hidden="true"><use href="#i-profil"/></svg><span data-i18n="settings.group.profile">Profil-Einstellungen</span></button>
+                    <svg class="ico" aria-hidden="true"><use href="#i-profil"/></svg><span data-i18n="settings.group.profile">Konto</span></button>
             <button class="umenu-item" role="menuitem" data-click="oeffneSicht" data-arg="gutscheine">
                     <svg class="ico" aria-hidden="true"><use href="#i-gutschein"/></svg><span data-i18n="vouchers.group">Gutscheine</span></button>
             <button class="umenu-item" role="menuitem" data-click="oeffneSicht" data-arg="alarme">
@@ -355,7 +355,7 @@
                  inzwischen ab, denn dieser Text hier enthielt den Tag
                  ausgeschrieben und hat GENAU DAS ausgeloest.) -->
             <button class="umenu-item admin-only" role="menuitem" data-stil="display:none" data-click="oeffneReiter" data-arg="settings"><svg class="ico" aria-hidden="true"><use href="#i-einstellungen"/></svg><span data-i18n="nav.settings">Einstellungen</span></button>
-            <button class="umenu-item admin-only" role="menuitem" data-stil="display:none" data-click="oeffneReiter" data-arg="monitor"><svg class="ico" aria-hidden="true"><use href="#i-monitoring"/></svg><span data-i18n="nav.monitoring">Hintergrund</span></button>
+            <button class="umenu-item admin-only" role="menuitem" data-stil="display:none" data-click="oeffneReiter" data-arg="monitor"><svg class="ico" aria-hidden="true"><use href="#i-monitoring"/></svg><span data-i18n="nav.monitoring">Hintergrundarbeiten</span></button>
             <hr class="umenu-trenner">
             <button class="umenu-item umenu-abmelden" role="menuitem" id="btn-logout"><svg class="ico" aria-hidden="true"><use href="#i-abmelden"/></svg><span data-i18n="settings.logout">Abmelden</span></button>
           </div>
@@ -375,9 +375,10 @@
     <button type="button" class="ntab" data-tab="catalog" data-i18n-tab="nav.catalog"><svg class="ico" aria-hidden="true"><use href="#i-katalog"/></svg> <span class="tab-label">Katalog</span></button>
     <!-- Verwalterseiten: ohne Platz in der Leiste, geöffnet über das Benutzermenü. -->
     <button type="button" class="ntab ntab-unter" id="ntab-settings" data-tab="settings" data-i18n-tab="nav.settings" data-stil="display:none"><svg class="ico" aria-hidden="true"><use href="#i-einstellungen"/></svg> <span class="tab-label">Einstellungen</span></button>
-    <button type="button" class="ntab ntab-unter" id="ntab-monitor" data-tab="monitor" data-i18n-tab="nav.monitoring" data-stil="display:none"><svg class="ico" aria-hidden="true"><use href="#i-monitoring"/></svg> <span class="tab-label">Hintergrund</span></button>
+    <button type="button" class="ntab ntab-unter" id="ntab-monitor" data-tab="monitor" data-i18n-tab="nav.monitoring" data-stil="display:none"><svg class="ico" aria-hidden="true"><use href="#i-monitoring"/></svg> <span class="tab-label">Hintergrundarbeiten</span></button>
   </nav>
 
+  <div class="offline-band" id="offline-band" role="status" hidden></div>
   <main id="inhalt" tabindex="-1">
 
     <!-- ══ GALERIE ══ -->
@@ -618,7 +619,7 @@
            (Nachtrag 34, Marcos Hinweis): Der Filter wirkt auf beide Listen —
            auf die manuellen und die aus Sets. Stünde er darunter, sähe es aus,
            als beträfe er nur die Set-Teile. -->
-      <div class="bereich-karte" id="manual-parts-box">
+      <div class="bereich-karte" id="manual-parts-box" data-stil="display:none">
         <div class="bereich-titel" data-i18n="parts.manual_section">Manuell erfasste Teile</div>
         <div id="manual-parts-list"></div>
       </div>
@@ -679,7 +680,7 @@
 
       <!-- Wie bei den Teilen: Die manuell erfassten Minifiguren stehen UNTER
            der Filterleiste, weil der Filter beide Listen betrifft. -->
-      <div class="bereich-karte" id="manual-figs-box">
+      <div class="bereich-karte" id="manual-figs-box" data-stil="display:none">
         <div class="bereich-titel" data-i18n="figs.manual_section">Manuell erfasste Minifiguren</div>
         <div id="manual-figs-list"></div>
       </div>
@@ -762,7 +763,7 @@
         <button class="btn bs fest" data-click="plGenerate" id="btn-pl-gen" disabled data-i18n="pl.generate" data-ico="werkzeug">Erstellen</button>
         <button class="btn bs fest" data-click="plExportPdf" id="btn-pl-pdf" data-stil="display:none"><svg class="ico" aria-hidden="true"><use href="#i-datei"/></svg> PDF</button>
         <select id="pl-bl-condition" aria-label="Zustand" data-i18n="detail.condition" data-i18n-attr="aria-label" data-stil="display:none;width:auto;flex-shrink:0"><option value="X" data-i18n="pl.condition.any">Beliebig</option><option value="N" data-i18n="pl.condition.new">Neu</option><option value="U" data-i18n="pl.condition.used">Gebraucht</option></select>
-        <button class="btn bs fest" data-click="plExportBricklink" id="btn-pl-bl" data-stil="display:none"><svg width="14" height="14" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" data-stil="vertical-align:middle;margin-right:4px;flex-shrink:0"><rect x="18" y="38" width="84" height="68" rx="3" fill="#e63329"/><polygon points="18,38 30,20 102,20 102,38" fill="#cc2a21"/><polygon points="102,20 118,30 118,86 102,106" fill="#b5231c"/><ellipse cx="43" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="37" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="43" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="58" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="52" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="58" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="73" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="67" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="73" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="88" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="82" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="88" cy="17" rx="6" ry="3" fill="#b5231c"/><rect x="24" y="54" width="72" height="40" rx="2" fill="#fff"/><rect x="29" y="58" width="46" height="15" rx="2" fill="#f5a800"/><text x="52" y="69" text-anchor="middle" font-family="Arial,sans-serif" font-weight="800" font-size="11" fill="white">BIM</text></svg>BrickLink XML</button>
+        <button class="btn bs fest" data-click="plExportBricklink" id="btn-pl-bl" data-stil="display:none"><svg width="14" height="14" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" data-stil="vertical-align:middle;margin-right:4px;flex-shrink:0"><rect x="18" y="38" width="84" height="68" rx="3" fill="#e63329"/><polygon points="18,38 30,20 102,20 102,38" fill="#cc2a21"/><polygon points="102,20 118,30 118,86 102,106" fill="#b5231c"/><ellipse cx="43" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="37" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="43" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="58" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="52" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="58" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="73" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="67" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="73" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="88" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="82" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="88" cy="17" rx="6" ry="3" fill="#b5231c"/><rect x="24" y="54" width="72" height="40" rx="2" fill="#fff"/><rect x="29" y="58" width="46" height="15" rx="2" fill="#f5a800"/><text x="52" y="69" text-anchor="middle" font-family="Arial,sans-serif" font-weight="800" font-size="11" fill="#3b2600">BIM</text></svg>BrickLink XML</button>
         <button class="btn bd" data-click="plReset" id="btn-pl-reset" disabled data-stil="white-space:nowrap;flex-shrink:0;margin-left:auto" data-i18n="partslist.reset" data-ico="loeschen">Zurücksetzen</button>
         </div>
         <!--
@@ -869,7 +870,7 @@
                 <option value="hochglanz" data-i18n="settings.theme_hochglanz">Hochglanz</option>
               </select>
             </div>
-            <div class="text-klein abstand-o-minus4" data-i18n="settings.app_theme_hint">Gilt global für alle Benutzer (Web &amp; App).</div>
+            <div class="text-klein abstand-o-minus4" data-i18n="settings.app_theme_hint">Vorgabe für alle Konten (Web &amp; App). Jedes Konto kann unter „Konto“ ein eigenes Design wählen.</div>
             <button class="btn bp btn-speichern" id="btn-save-theme" data-i18n="settings.save" data-ico="speichern">Speichern</button>
           </div>
         </div>
@@ -982,52 +983,58 @@
 
     <!-- ══ PROFIL (Menue) ══ -->
     <div class="tab" id="tab-profil">
-      <div class="ph"><h1 class="ptitle"><span class="ptitle-icon"><svg class="ico" aria-hidden="true"><use href="#i-profil"/></svg></span><span data-i18n="settings.group.profile">Profil-Einstellungen</span></h1></div>
+      <div class="ph"><h1 class="ptitle"><span class="ptitle-icon"><svg class="ico" aria-hidden="true"><use href="#i-profil"/></svg></span><span data-i18n="settings.group.profile">Konto</span></h1></div>
 
-      <!-- ── PROFIL-EINSTELLUNGEN ─────────────────────────────────────────── -->
+      <!-- ── KONTO (Profil) ───────────────────────────────────────────────── -->
 
       <div class="ssec abstand-u-125" id="profile-settings-card">
         <div class="sform">
 
-          <!-- Darstellung: je Gerät, nicht je Konto (siehe 00-theme-boot.js) -->
-          <div>
-            <label for="dunkel-wahl" class="text-fett-3" data-i18n="settings.dark.label">Darstellung auf diesem Gerät</label>
-            <select class="abstand-o-4" id="dunkel-wahl" data-change="setzeDunkel">
-              <option value="server" data-i18n="settings.dark.server">Design des Servers</option>
-              <option value="system" data-i18n="settings.dark.system">Dunkel, wenn das System dunkel ist</option>
-            </select>
+          <!-- Darstellung: Design je Konto (Server), hell/dunkel je Gerät (00-theme-boot.js) -->
+          <div class="profil-raster">
+            <div class="fg"><label for="design-wahl" data-i18n="settings.own_theme">Design</label>
+              <select id="design-wahl" data-change="setzeEigenesDesign">
+                <option value="" data-i18n="settings.own_theme_default">Vorgabe des Verwalters</option>
+                <option value="classic" data-i18n="settings.theme_classic">Klassisch</option>
+                <option value="brick" data-i18n="settings.theme_brick">Stein (Blau)</option>
+                <option value="werkbank" data-i18n="settings.theme_werkbank">Werkbank (dunkel)</option>
+                <option value="farbfaecher" data-i18n="settings.theme_farbfaecher">Farbfächer</option>
+                <option value="noppe" data-i18n="settings.theme_noppe">Noppe (poppig)</option>
+                <option value="hochglanz" data-i18n="settings.theme_hochglanz">Hochglanz</option>
+              </select>
+            </div>
+            <div class="fg"><label for="dunkel-wahl" data-i18n="settings.dark.label">Darstellung auf diesem Gerät</label>
+              <select id="dunkel-wahl" data-change="setzeDunkel">
+                <option value="system" data-i18n="settings.dark.system">Dem System folgen (hell oder dunkel)</option>
+                <option value="server" data-i18n="settings.dark.server">Ohne Dunkelmodus</option>
+              </select>
+            </div>
+            <div class="fg"><label for="lang-select" data-i18n="settings.language">Sprache</label>
+              <select id="lang-select" data-change="setLangFromEl">
+                <option value="de" data-i18n="settings.lang.de">Deutsch</option>
+                <option value="en" data-i18n="settings.lang.en">Englisch</option>
+              </select>
+            </div>
+            <div class="fg"><label for="s-cur" data-i18n="settings.currency">Währung</label>
+              <select id="s-cur">
+                <option value="EUR" data-i18n="currency.eur">EUR – Euro</option>
+                <option value="CHF" data-i18n="currency.chf">CHF – Schweizer Franken</option>
+                <option value="USD" data-i18n="currency.usd">USD – US-Dollar</option>
+                <option value="GBP" data-i18n="currency.gbp">GBP – Britisches Pfund</option>
+                <option value="SEK" data-i18n="currency.sek">SEK – Schwedische Krone</option>
+                <option value="NOK" data-i18n="currency.nok">NOK – Norwegische Krone</option>
+                <option value="AUD" data-i18n="currency.aud">AUD – Australischer Dollar</option>
+                <option value="CAD" data-i18n="currency.cad">CAD – Kanadischer Dollar</option>
+              </select>
+            </div>
+            <div class="fg"><label for="s-default-condition" data-i18n="settings.default_condition">Standard-Zustand</label>
+              <select id="s-default-condition">
+                <option value="N" data-i18n="common.condition_new">Neu</option>
+                <option value="U" data-i18n="common.condition_used">Gebraucht</option>
+              </select>
+            </div>
           </div>
-
-          <!-- Sprache -->
-          <div>
-            <label for="lang-select" class="text-fett-3" data-i18n="settings.language">Sprache</label>
-            <select class="abstand-o-4" id="lang-select" data-change="setLangFromEl">
-              <option value="de" data-i18n="settings.lang.de">Deutsch</option>
-              <option value="en" data-i18n="settings.lang.en">Englisch</option>
-            </select>
-          </div>
-
-          <!-- Währung & Preise -->
-          <div>
-            <label for="s-cur" class="text-fett-3" data-i18n="settings.currency">Währung</label>
-            <select class="abstand-o-4" id="s-cur">
-              <option value="EUR" data-i18n="currency.eur">EUR – Euro</option>
-              <option value="CHF" data-i18n="currency.chf">CHF – Schweizer Franken</option>
-              <option value="USD" data-i18n="currency.usd">USD – US-Dollar</option>
-              <option value="GBP" data-i18n="currency.gbp">GBP – Britisches Pfund</option>
-              <option value="SEK" data-i18n="currency.sek">SEK – Schwedische Krone</option>
-              <option value="NOK" data-i18n="currency.nok">NOK – Norwegische Krone</option>
-              <option value="AUD" data-i18n="currency.aud">AUD – Australischer Dollar</option>
-              <option value="CAD" data-i18n="currency.cad">CAD – Kanadischer Dollar</option>
-            </select>
-          </div>
-          <div>
-            <label for="s-default-condition" class="text-fett-3" data-i18n="settings.default_condition">Standard-Zustand</label>
-            <select class="abstand-o-4" id="s-default-condition">
-              <option value="N" data-i18n="common.condition_new">Neu</option>
-              <option value="U" data-i18n="common.condition_used">Gebraucht</option>
-            </select>
-          </div>
+          <div class="text-klein" id="design-hinweis"></div>
 
           <!-- Profil -->
           <!-- Ein FORM um Profil UND Passwortfelder: Ohne es meldet Chrome
@@ -1036,14 +1043,14 @@
                Heuristik an. display:contents haelt das Layout unveraendert,
                data-submit nennt den Knopf fuer die Eingabetaste. -->
           <form data-stil="display:contents" data-submit="btn-sav-prof">
-          <div class="sgrid2 luecke-075">
+          <div class="profil-raster">
             <div class="fg"><label for="prof-first" data-i18n="settings.profile.firstname">Vorname</label><input type="text" id="prof-first" data-i18n="settings.profile.firstname" data-i18n-attr="placeholder" placeholder="Vorname" /></div>
             <div class="fg"><label for="prof-last" data-i18n="settings.profile.lastname">Nachname</label><input type="text" id="prof-last" data-i18n="settings.profile.lastname" data-i18n-attr="placeholder" placeholder="Nachname" /></div>
           </div>
-          <div class="sgrid2 luecke-075">
+          <div class="profil-raster">
             <div class="fg"><label for="prof-user" data-i18n="users.col.username">Benutzername</label><input type="text" id="prof-user" /></div>
             <div class="fg">
-              <label for="prof-email">E-Mail <span id="prof-email-verified" data-stil="font-size:var(--fs-1);margin-left:4px"></span></label>
+              <label for="prof-email">E-Mail <span id="prof-email-verified" class="email-status"></span></label>
               <input type="email" id="prof-email" />
               <div class="text-klein abstand-o-3" id="prof-email-hint"></div>
             </div>
@@ -1053,7 +1060,7 @@
           <div class="trenner-oben-13">
             <div class="etikett-titel"><svg class="ico" aria-hidden="true"><use href="#i-schloss"/></svg> <span data-i18n="settings.password.change">Passwort ändern</span></div>
             <div class="text-klein abstand-u-075" data-i18n="settings.password.optional_hint">Nur ausfüllen, wenn du dein Passwort ändern möchtest.</div>
-            <div class="sgrid2" data-stil="gap:.75rem;grid-template-columns:repeat(auto-fit,minmax(160px,1fr))">
+            <div class="profil-raster profil-raster-3">
               <div class="fg"><label for="pw-c" data-i18n="settings.password.current">Aktuelles Passwort</label><input type="password" id="pw-c" /></div>
               <div class="fg"><label for="pw-n" data-i18n="settings.password.new">Neues Passwort</label><input type="password" id="pw-n" /></div>
               <div class="fg"><label for="pw-r" data-i18n="settings.password.repeat">Passwort wiederholen</label><input type="password" id="pw-r" /></div>
@@ -1375,7 +1382,7 @@
 
         <div class="ssec full">
           <div class="trenner-oben">
-            <div class="stit zeile mittig luecke-6"><svg width="18" height="18" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" data-stil="flex-shrink:0"><rect x="18" y="38" width="84" height="68" rx="3" fill="#e63329"/><polygon points="18,38 30,20 102,20 102,38" fill="#cc2a21"/><polygon points="102,20 118,30 118,86 102,106" fill="#b5231c"/><ellipse cx="43" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="37" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="43" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="58" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="52" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="58" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="73" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="67" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="73" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="88" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="82" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="88" cy="17" rx="6" ry="3" fill="#b5231c"/><rect x="24" y="54" width="72" height="40" rx="2" fill="#fff"/><rect x="29" y="58" width="46" height="15" rx="2" fill="#f5a800"/><text x="52" y="69" text-anchor="middle" font-family="Arial,sans-serif" font-weight="800" font-size="11" fill="white">BIM</text></svg> <span data-i18n="settings.data_export_title">Daten exportieren / importieren</span></div>
+            <div class="stit zeile mittig luecke-6"><svg width="18" height="18" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" data-stil="flex-shrink:0"><rect x="18" y="38" width="84" height="68" rx="3" fill="#e63329"/><polygon points="18,38 30,20 102,20 102,38" fill="#cc2a21"/><polygon points="102,20 118,30 118,86 102,106" fill="#b5231c"/><ellipse cx="43" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="37" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="43" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="58" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="52" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="58" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="73" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="67" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="73" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="88" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="82" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="88" cy="17" rx="6" ry="3" fill="#b5231c"/><rect x="24" y="54" width="72" height="40" rx="2" fill="#fff"/><rect x="29" y="58" width="46" height="15" rx="2" fill="#f5a800"/><text x="52" y="69" text-anchor="middle" font-family="Arial,sans-serif" font-weight="800" font-size="11" fill="#3b2600">BIM</text></svg> <span data-i18n="settings.data_export_title">Daten exportieren / importieren</span></div>
 
 
             <p class="hinweis-absatz">
@@ -1400,7 +1407,7 @@
               <span data-i18n="settings.rb_list_hint">Alle Sets im Rebrickable-Listenformat exportieren (Spalten „Set Number,Quantity“), um sie unter „My Sets → Add via List“ bei Rebrickable zu importieren.</span>
             </p>
             <div class="zeile luecke-10 umbruch mittig">
-              <a class="btn bs zeile-inline" href="/api/v1/sets/export/rebrickable"><svg width="16" height="16" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" data-stil="flex-shrink:0"><rect x="18" y="38" width="84" height="68" rx="3" fill="#e63329"/><polygon points="18,38 30,20 102,20 102,38" fill="#cc2a21"/><polygon points="102,20 118,30 118,86 102,106" fill="#b5231c"/><ellipse cx="43" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="37" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="43" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="58" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="52" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="58" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="73" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="67" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="73" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="88" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="82" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="88" cy="17" rx="6" ry="3" fill="#b5231c"/><rect x="24" y="54" width="72" height="40" rx="2" fill="#fff"/><rect x="29" y="58" width="46" height="15" rx="2" fill="#f5a800"/><text x="52" y="69" text-anchor="middle" font-family="Arial,sans-serif" font-weight="800" font-size="11" fill="white">BIM</text></svg> <span data-i18n="settings.export_rb">Sets für Rebrickable exportieren</span></a>
+              <a class="btn bs zeile-inline" href="/api/v1/sets/export/rebrickable"><svg width="16" height="16" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" data-stil="flex-shrink:0"><rect x="18" y="38" width="84" height="68" rx="3" fill="#e63329"/><polygon points="18,38 30,20 102,20 102,38" fill="#cc2a21"/><polygon points="102,20 118,30 118,86 102,106" fill="#b5231c"/><ellipse cx="43" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="37" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="43" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="58" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="52" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="58" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="73" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="67" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="73" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="88" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="82" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="88" cy="17" rx="6" ry="3" fill="#b5231c"/><rect x="24" y="54" width="72" height="40" rx="2" fill="#fff"/><rect x="29" y="58" width="46" height="15" rx="2" fill="#f5a800"/><text x="52" y="69" text-anchor="middle" font-family="Arial,sans-serif" font-weight="800" font-size="11" fill="#3b2600">BIM</text></svg> <span data-i18n="settings.export_rb">Sets für Rebrickable exportieren</span></a>
             </div>
           </div>
         </div>
@@ -1610,7 +1617,7 @@
             <div class="fg"><label data-i18n="parts.add.qty">Anzahl</label><input class="hoehe-38" inputmode="numeric" type="number" id="ap-qty-inline" value="1" min="1" /></div>
             <div class="fg"><label for="ap-price-inline" data-i18n="parts.add.price">Kaufpreis/Stk (optional)</label><input class="hoehe-38" inputmode="decimal" type="number" id="ap-price-inline" placeholder="Leer = Marktpreis" data-i18n="parts.add.price_placeholder" data-i18n-attr="placeholder" step="0.01" /></div>
             <div class="fg"><label for="ap-condition" data-i18n="common.condition">Zustand</label><select class="auswahl-kompakt hoehe-38" id="ap-condition"><option value="N" data-i18n="common.condition_new">Neu</option><option value="U" data-i18n="common.condition_used">Gebraucht</option></select></div>
-            <div class="fg max-150" id="ap-owner-box" data-stil="display:none"><label for="ap-owner" data-i18n="household.for_account">Für Konto</label><select class="auswahl-kompakt hoehe-38" id="ap-owner"></select></div><div class="fg max-220" id="ap-storage-box"><label id="ap-storage-label" data-i18n="detail.storage">Lagerort</label><span class="zeile luecke-6 mittig" id="ap-storage-slot"></span></div>
+            <div class="fg max-150" id="ap-owner-box" data-stil="display:none"><label for="ap-owner" data-i18n="household.for_account">Für Konto</label><select class="auswahl-kompakt hoehe-38" id="ap-owner"></select></div><div class="fg max-220" id="ap-storage-box"><span class="feld-titel" id="ap-storage-label" data-i18n="detail.storage">Lagerort</span><span class="zeile luecke-6 mittig" id="ap-storage-slot"></span></div>
             <div class="fg unten-buendig"><button class="btn bp voll-breit hoehe-38" id="btn-add-part" data-i18n="gallery.add.submit">Hinzufügen</button></div>
           </div>
           <div class="schrift-2 abstand-o-05 status-zeile" id="ap-inline-result"></div>
@@ -1631,7 +1638,7 @@
           <div class="fg"><label for="af-price-inline" data-i18n="figs.price_label">Kaufpreis/Stk (opt.)</label>
             <input class="hoehe-38" inputmode="decimal" type="number" id="af-price-inline" placeholder="Leer = Marktpreis" data-i18n="parts.add.price_placeholder" data-i18n-attr="placeholder" step="0.01" /></div>
           <div class="fg"><label for="af-condition" data-i18n="common.condition">Zustand</label><select class="auswahl-kompakt hoehe-38" id="af-condition"><option value="N" data-i18n="common.condition_new">Neu</option><option value="U" data-i18n="common.condition_used">Gebraucht</option></select></div>
-            <div class="fg max-150" id="af-owner-box" data-stil="display:none"><label for="af-owner" data-i18n="household.for_account">Für Konto</label><select class="auswahl-kompakt hoehe-38" id="af-owner"></select></div><div class="fg max-220" id="af-storage-box"><label id="af-storage-label" data-i18n="detail.storage">Lagerort</label><span class="zeile luecke-6 mittig" id="af-storage-slot"></span></div>
+            <div class="fg max-150" id="af-owner-box" data-stil="display:none"><label for="af-owner" data-i18n="household.for_account">Für Konto</label><select class="auswahl-kompakt hoehe-38" id="af-owner"></select></div><div class="fg max-220" id="af-storage-box"><span class="feld-titel" id="af-storage-label" data-i18n="detail.storage">Lagerort</span><span class="zeile luecke-6 mittig" id="af-storage-slot"></span></div>
           <div class="fg unten-buendig">
             <button class="btn bp voll-breit hoehe-38" id="btn-add-fig" data-i18n="gallery.add.submit">Hinzufügen</button></div>
         </div>
@@ -1643,14 +1650,17 @@
 <div class="ovl" id="add-set-modal" role="dialog" aria-modal="true" aria-labelledby="add-set-tit">
   <div class="modal max-620">
     <div class="mhd"><div class="mtit" id="add-set-tit" data-i18n="gallery.add.title">Set hinzufügen</div><button class="btn bs btn-sm" data-click="schliesseErfassen" data-arg="set" data-dialog-zu aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-schliessen"/></svg></button></div>
-    <div class="frow">
-      <div class="fg"><label for="add-num" data-i18n="gallery.add.number">Set-Nummer</label><input inputmode="numeric" type="text" id="add-num" data-erstfokus placeholder="z.B. 75192" data-i18n="gallery.add.number" data-i18n-attr="placeholder" /></div>
-      <div class="fg max-82"><label for="add-qty" data-i18n="gallery.add.qty">Anzahl</label><input inputmode="numeric" type="number" id="add-qty" value="1" min="1" /></div>
-      <div class="fg max-120"><label for="add-price" data-i18n="gallery.add.price">Kaufpreis (optional)</label><input inputmode="decimal" type="number" id="add-price" placeholder="Marktpreis" data-i18n="detail.market_price" data-i18n-attr="placeholder" step="0.01" min="0" /></div>
-      <div class="fg max-110"><label for="add-condition" data-i18n="common.condition">Zustand</label><select class="auswahl-kompakt" id="add-condition"><option value="N" data-i18n="common.condition_new">Neu</option><option value="U" data-i18n="common.condition_used">Gebraucht</option></select></div>
+    <!-- Ein Raster mit zwei Spalten: Beschriftungen und Felder stehen bündig,
+         der Knopf schliesst rechts unten ab (vorher eine umbrechende Zeile). -->
+    <div class="erfassen-raster">
+      <div class="fg"><label for="add-num" data-i18n="gallery.add.number">Set-Nummer</label><input inputmode="numeric" type="text" id="add-num" data-erstfokus placeholder="z. B. 75192" data-i18n="gallery.add.number_ph" data-i18n-attr="placeholder" /></div>
+      <div class="fg"><label for="add-qty" data-i18n="gallery.add.qty">Anzahl</label><input inputmode="numeric" type="number" id="add-qty" value="1" min="1" /></div>
+      <div class="fg"><label for="add-price" data-i18n="gallery.add.price">Kaufpreis (optional)</label><input inputmode="decimal" type="number" id="add-price" placeholder="z. B. 79.99" data-i18n="gallery.add.price_ph" data-i18n-attr="placeholder" step="0.01" min="0" /></div>
+      <div class="fg"><label for="add-condition" data-i18n="common.condition">Zustand</label><select class="auswahl-kompakt" id="add-condition"><option value="N" data-i18n="common.condition_new">Neu</option><option value="U" data-i18n="common.condition_used">Gebraucht</option></select></div>
       <!-- Kontoauswahl: nur im Haushalt sichtbar (siehe loadHouseholdMembers) -->
-      <div class="fg max-150" id="add-owner-box" data-stil="display:none"><label for="add-owner" data-i18n="household.for_account">Für Konto</label><select class="auswahl-kompakt" id="add-owner"></select></div><div class="fg max-220" id="add-storage-box"><label id="add-storage-label" data-i18n="detail.storage">Lagerort</label><span class="zeile luecke-6 mittig" id="add-storage-slot"></span></div>
-      <button class="btn bp" id="btn-add" data-i18n="gallery.add.submit">Hinzufügen</button>
+      <div class="fg" id="add-owner-box" data-stil="display:none"><label for="add-owner" data-i18n="household.for_account">Für Konto</label><select class="auswahl-kompakt" id="add-owner"></select></div>
+      <div class="fg" id="add-storage-box"><span class="feld-titel" id="add-storage-label" data-i18n="detail.storage">Lagerort</span><span class="zeile luecke-6 mittig" id="add-storage-slot"></span></div>
+      <div class="erfassen-fuss"><button class="btn bp" id="btn-add" data-i18n="gallery.add.submit">Hinzufügen</button></div>
     </div>
     <div class="abstand-o-8 schrift-2" id="add-status"></div>
   </div>
@@ -1777,7 +1787,7 @@
     <div data-stil="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;padding:12px">
       <div class="fg max-82"><label for="mk-take-qty" data-i18n="gallery.add.qty">Anzahl</label><input inputmode="numeric" type="number" id="mk-take-qty" value="1" min="1" /></div>
       <div class="fg max-120"><label for="mk-take-price" data-i18n="gallery.add.price">Kaufpreis (optional)</label><input inputmode="decimal" type="number" id="mk-take-price" step="0.01" min="0" placeholder="—" /></div>
-      <div class="fg max-110"><label for="mk-take-cond" data-i18n="common.condition">Zustand</label><select class="auswahl-kompakt" id="mk-take-cond"><option value="N" data-i18n="common.condition_new">Neu</option><option value="U" data-i18n="common.condition_used">Gebraucht</option></select></div><div class="fg max-220" id="mk-take-storage-box"><label id="mk-take-storage-label" data-i18n="detail.storage">Lagerort</label><span class="zeile luecke-6 mittig" id="mk-take-storage-slot"></span></div>
+      <div class="fg max-110"><label for="mk-take-cond" data-i18n="common.condition">Zustand</label><select class="auswahl-kompakt" id="mk-take-cond"><option value="N" data-i18n="common.condition_new">Neu</option><option value="U" data-i18n="common.condition_used">Gebraucht</option></select></div><div class="fg max-220" id="mk-take-storage-box"><span class="feld-titel" id="mk-take-storage-label" data-i18n="detail.storage">Lagerort</span><span class="zeile luecke-6 mittig" id="mk-take-storage-slot"></span></div>
     </div>
     <div class="mfooter">
       <button class="btn bp" id="mk-take-ok" data-click="bestaetigeUebernahme" data-i18n="wanted.take" data-ico="plus">In Galerie aufnehmen</button>
@@ -1799,7 +1809,7 @@
     <div id="cat-m-det"></div>
     <div class="mfooter verteilt umbruch luecke-8">
       <div class="zeile luecke-8 unten umbruch">
-        <div class="fg max-150" id="cat-m-owner-box" data-stil="display:none"><label for="cat-m-owner" data-i18n="household.for_account">Für Konto</label><select class="auswahl-kompakt" id="cat-m-owner"></select></div><div class="fg max-220" id="cat-m-storage-box"><label id="cat-m-storage-label" data-i18n="detail.storage">Lagerort</label><span class="zeile luecke-6 mittig" id="cat-m-storage-slot"></span></div>
+        <div class="fg max-150" id="cat-m-owner-box" data-stil="display:none"><label for="cat-m-owner" data-i18n="household.for_account">Für Konto</label><select class="auswahl-kompakt" id="cat-m-owner"></select></div><div class="fg max-220" id="cat-m-storage-box"><span class="feld-titel" id="cat-m-storage-label" data-i18n="detail.storage">Lagerort</span><span class="zeile luecke-6 mittig" id="cat-m-storage-slot"></span></div>
         <div class="fg" data-stil="max-width:74px"><label for="cat-m-qty" data-i18n="gallery.add.qty">Anzahl</label><input inputmode="numeric" type="number" id="cat-m-qty" value="1" min="1" /></div>
         <div class="fg max-110"><label for="cat-m-price" data-i18n="gallery.add.price">Kaufpreis (optional)</label><input inputmode="decimal" type="number" id="cat-m-price" step="0.01" min="0" placeholder="—" /></div>
         <div class="fg max-110"><label for="cat-m-cond" data-i18n="common.condition">Zustand</label><select class="auswahl-kompakt" id="cat-m-cond"><option value="N" data-i18n="common.condition_new">Neu</option><option value="U" data-i18n="common.condition_used">Gebraucht</option></select></div>

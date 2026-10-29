@@ -2,7 +2,7 @@ import { registerActions } from './00-registry.js';
 import { detailZeile, oderStrich } from './01-bausteine.js';
 import { renderAcquisitionSummary } from './13-acquisition-modals.js';
 import { locale, t, tRaw} from '../i18n.js';
-import { ico, CURRENCY, G, ME, _settingsCache, api, esc, escJs, fmtN, fullUrl, imgUrl, toast , set_settingsCache} from './01-core.js';
+import { fmtDatum, ico, CURRENCY, G, ME, _settingsCache, api, esc, escJs, fmtN, fullUrl, imgUrl, toast , set_settingsCache} from './01-core.js';
 import { initStorageSelects } from './02-gallery.js';
 import { PARTS_ICON_SVG, _pnlCache, allSets, setAllSets, applySetAggregate, autosaveSet, closeModal, curSet, loadGallery, pnlBadge, reimportParts, renderInstructions, updateGalleryPrices , set_pnlCache, set_curSet} from './02-gallery.js';
 import { diagrammLeer, loadFinance } from './04-finance.js';
@@ -295,6 +295,71 @@ export function diagrammBreite(el, ersatz = 700) {
   return b > 0 ? Math.max(260, Math.min(1200, b)) : ersatz;
 }
 
+// ── Achsen der Diagramme ─────────────────────────────────────────────────────
+// Werte in Schritten von 1, 2 oder 5 mal einer Zehnerpotenz (4'219 / 4'441
+// liest niemand), die Zeit als echte Achse statt nach Index — sonst stünde
+// ein Monat so breit da wie ein Tag.
+
+/**
+ * Teilung nach 1-2-5 über [min, max] mit höchstens etwa `ziel` Strichen.
+ * @param {number} min @param {number} max @param {number} [ziel]
+ * @returns {{ von: number, bis: number, werte: number[] }}
+ */
+export function schoeneTeilung(min, max, ziel = 5) {
+  if (!(max > min)) { const d = Math.abs(max) * 0.1 || 1; min -= d; max += d; }
+  const roh = (max - min) / Math.max(1, ziel - 1);
+  const p = 10 ** Math.floor(Math.log10(roh));
+  const schritt = [1, 2, 5, 10].map(f => f * p).find(x => x >= roh * 0.999) ?? 10 * p;
+  const von = Math.floor(min / schritt + 1e-9) * schritt, bis = Math.ceil(max / schritt - 1e-9) * schritt;
+  const werte = [];
+  for (let i = 0; von + i * schritt <= bis + schritt / 2; i++) werte.push(Number((von + i * schritt).toPrecision(12)));
+  return { von, bis, werte };
+}
+
+/** Zeitpunkt aus „YYYY-MM-DD“, „YYYY-MM“, „YYYY-MM-DD HH“ oder ISO; sonst NaN. */
+export function zeitpunkt(s) {
+  const t = String(s ?? '');
+  let m;
+  if ((m = /^(\d{4})-(\d{2})$/.exec(t))) return new Date(+m[1], +m[2] - 1, 1).getTime();
+  if ((m = /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}))?$/.exec(t))) return new Date(+m[1], +m[2] - 1, +m[3], +(m[4] || 0)).getTime();
+  return new Date(t).getTime();
+}
+
+/**
+ * Striche einer Zeitachse mit einheitlicher Beschriftung: Stunden an einem
+ * Tag, Tage bis drei Monate („29. Okt.“), darüber Monate („Nov. 25“).
+ * @param {number} von @param {number} bis  Millisekunden
+ * @param {number} maxStriche
+ * @returns {{ t: number, text: string }[]}
+ */
+export function zeitTeilung(von, bis, maxStriche) {
+  const TAG = 864e5, spanne = Math.max(1, bis - von), max = Math.max(2, maxStriche);
+  const fmt = (o) => new Intl.DateTimeFormat(locale(), o);
+  const raus = [];
+  if (spanne <= 2 * TAG) {
+    const h = [1, 2, 3, 6, 12, 24].find(x => spanne / (x * 36e5) <= max) ?? 24;
+    const f = fmt({ hour: '2-digit', minute: '2-digit' });
+    for (let t = Math.ceil(von / (h * 36e5)) * h * 36e5; t <= bis; t += h * 36e5) raus.push({ t, text: f.format(t) });
+  } else if (spanne <= 92 * TAG) {
+    const n = [1, 2, 7, 14].find(x => spanne / (x * TAG) <= max) ?? 14;
+    const f = fmt({ day: 'numeric', month: 'short' });
+    const d = new Date(von); d.setHours(0, 0, 0, 0); if (d.getTime() < von) d.setDate(d.getDate() + 1);
+    for (; d.getTime() <= bis; d.setDate(d.getDate() + n)) raus.push({ t: d.getTime(), text: f.format(d) });
+  } else {
+    const monate = spanne / (30.44 * TAG);
+    const n = [1, 2, 3, 6, 12, 24].find(x => monate / x <= max) ?? 24;
+    const f = fmt({ month: 'short', year: '2-digit' });
+    const d = new Date(von); d.setDate(1); d.setHours(0, 0, 0, 0);
+    if (d.getTime() < von) d.setMonth(d.getMonth() + 1);
+    while (d.getMonth() % n) d.setMonth(d.getMonth() + 1);
+    for (; d.getTime() <= bis; d.setMonth(d.getMonth() + n)) raus.push({ t: d.getTime(), text: f.format(d) });
+  }
+  return raus;
+}
+
+/** Eine Beschriftung am rechten Rand endet dort, statt halb hinauszuragen. */
+function randAnker(x, rechts) { return x > rechts - 28 ? 'end' : 'middle'; }
+
 export function priceChartSVG(data, uid = String(Math.random()).slice(2, 8), breite = 700) {
   // Erwartet die fertigen Diagrammdaten des Servers:
   //   { values: [ { name, values: [{x, y}], firstRealIndex } ], x: [...] }
@@ -328,16 +393,14 @@ export function priceChartSVG(data, uid = String(Math.random()).slice(2, 8), bre
   const W = breite, H = 190, PAD = { l: 72, r: 14, t: 12, b: 42 };
   const iw = W - PAD.l - PAD.r, ih = H - PAD.t - PAD.b;
 
-  const toTime = d => new Date(d + 'T00:00:00').getTime();
+  const toTime = zeitpunkt;
   const first = axis[0], last = axis[axis.length - 1];
   const span = Math.max(1, toTime(last) - toTime(first));
   const xOf = d => PAD.l + ((toTime(d) - toTime(first)) / span) * iw;
 
   const vals = series.flatMap(sd => sd.pts.map(p => p.y));
-  const rawMin = Math.min(...vals), rawMax = Math.max(...vals);
-  const spread = rawMax - rawMin;
-  const pad = spread > 0 ? spread * 0.15 : (rawMax * 0.1 || 1);
-  const min = Math.max(0, rawMin - pad), max = rawMax + pad, range = max - min || 1;
+  const teilung = schoeneTeilung(Math.min(...vals), Math.max(...vals), 4);
+  const min = Math.max(0, teilung.von), max = teilung.bis, range = max - min || 1;
   const yOf = v => PAD.t + ih - ((v - min) / range) * ih;
 
   const parts = series.map((sd, i) => {
@@ -359,12 +422,15 @@ export function priceChartSVG(data, uid = String(Math.random()).slice(2, 8), bre
       <polyline points="${pts.join(' ')}" fill="none" stroke="${sd.color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
   }).join('');
 
-  const yTicks = [min, (min + max) / 2, max].map(v =>
+  const yTicks = teilung.werte.filter(v => v >= min).map(v =>
     `<text x="${PAD.l - 8}" y="${(yOf(v) + 4).toFixed(1)}" font-size="12" fill="var(--mut)" text-anchor="end" font-family="inherit">${esc(fmtN(v, CURRENCY))}</text>
      <line x1="${PAD.l}" y1="${yOf(v).toFixed(1)}" x2="${W - PAD.r}" y2="${yOf(v).toFixed(1)}" stroke="var(--bdr)" stroke-width=".5"/>`
   ).join('');
 
-  const fmtDay = d => { const [y, m, dd] = String(d).split('-'); return `${dd}.${m}.${y}`; };
+  const fmtDay = d => fmtDatum(new Date(toTime(d)));
+  const xTicks = zeitTeilung(toTime(first), toTime(last), Math.floor(iw / 80)).map(s => {
+    const x = PAD.l + ((s.t - toTime(first)) / span) * iw;
+    return `<text x="${x.toFixed(1)}" y="${H - 22}" font-size="12" fill="var(--mut)" text-anchor="${randAnker(x, W - PAD.r)}" font-family="inherit">${esc(s.text)}</text>`; }).join('');
   const legend = series.map((sd, i) =>
     `<g transform="translate(${PAD.l + i * 120}, ${H - 8})">
        <line x1="0" y1="-4" x2="16" y2="-4" stroke="${sd.color}" stroke-width="2.5" stroke-linecap="round"/>
@@ -373,92 +439,74 @@ export function priceChartSVG(data, uid = String(Math.random()).slice(2, 8), bre
 
   const zusammenfassung = t('detail.chart.summary', { titel: t('detail.price_history'), von: fmtDay(first), bis: fmtDay(last),
     reihen: series.map(sd => tRaw('detail.chart.series', { name: sd.name, wert: fmtN(sd.pts[sd.pts.length - 1].y, CURRENCY) })).join('; ') });
-  return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" class="diagramm" role="img" aria-label="${zusammenfassung}" data-stil="width:100%;height:auto">
+  return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" class="diagramm diagramm-preis" role="img" aria-label="${zusammenfassung}">
     ${yTicks}
     ${parts}
-    <text x="${PAD.l}" y="${H - 22}" font-size="12" fill="var(--mut)" text-anchor="start" font-family="inherit">${esc(fmtDay(first))}</text>
-    <text x="${W - PAD.r}" y="${H - 22}" font-size="12" fill="var(--mut)" text-anchor="end" font-family="inherit">${esc(fmtDay(last))}</text>
+    ${xTicks}
     ${legend}
   </svg>`;
 }
 
-// Portfolio area chart
+// Wertdiagramm in Finanzen
 function fmtChartVal(v){
   if(v===0) return '0';
-  // Use Swiss locale formatting: 1100 → 1'100, no k/M abbreviations
   return Math.round(v).toLocaleString(locale());
 }
+/**
+ * @param {{ day: string, total: number, zeit?: number, hour?: string }[]} data
+ *   `zeit` (ms) setzt die Punkte auf eine echte Zeitachse; fehlt sie, nach Index.
+ */
 export function portfolioChartSVG(data, period, breite = 700){
   const W=breite, H=180, PAD={l:76,r:16,t:14,b:32};
   const iw=W-PAD.l-PAD.r, ih=H-PAD.t-PAD.b;
   const vals=data.map(d=>d.total||0);
   if(vals.length<2) return diagrammLeer();
 
-  const rawMin=Math.min(...vals);
-  const rawMax=Math.max(...vals);
-  // Ensure meaningful Y range even if all values identical
-  const spread = rawMax - rawMin;
-  const padding = spread > 0 ? spread * 0.15 : rawMax * 0.1 || 1;
-  const min = Math.max(0, rawMin - padding);
-  const max = rawMax + padding;
-  const range = max - min || 1;
+  const teilung = schoeneTeilung(Math.min(...vals), Math.max(...vals), 5);
+  const min = Math.max(0, teilung.von), max = teilung.bis, range = max - min || 1;
 
   // Die Diagrammfarbe des Designs (auch dunkel), wie im Preisverlauf.
   const color = 'var(--chart-new)';
   const n = vals.length;
+  const mitZeit = data.every(d => Number.isFinite(d.zeit)) && data[n-1].zeit > data[0].zeit;
+  const t0 = mitZeit ? data[0].zeit : 0, spanne = mitZeit ? data[n-1].zeit - t0 : 1;
 
-  function px(i){ return PAD.l+(n===1 ? iw/2 : i/(n-1)*iw); }
+  function pxZeit(t){ return PAD.l + (t - t0) / spanne * iw; }
+  function px(i){ return mitZeit ? pxZeit(data[i].zeit) : PAD.l+(n===1 ? iw/2 : i/(n-1)*iw); }
   function py(v){ return PAD.t + ih - ((v-min)/range)*ih; }
 
   const pts  = vals.map((v,i)=>`${px(i).toFixed(1)},${py(v).toFixed(1)}`).join(' ');
-  const area = `${PAD.l},${PAD.t+ih} ${pts} ${(PAD.l+iw).toFixed(1)},${PAD.t+ih}`;
+  const area = `${px(0).toFixed(1)},${PAD.t+ih} ${pts} ${px(n-1).toFixed(1)},${PAD.t+ih}`;
 
-  // Y ticks: 5 evenly distributed values on the actual scale
-  const yTicks = [0,0.25,0.5,0.75,1].map(t => {
-    const v = min + t * range;
-    const y = PAD.t + ih - t * ih;
+  const yTicks = teilung.werte.filter(v => v >= min).map(v => {
+    const y = py(v);
     return `<line x1="${PAD.l}" y1="${y.toFixed(1)}" x2="${PAD.l+iw}" y2="${y.toFixed(1)}" stroke="var(--bdr)" stroke-width="0.8" stroke-dasharray="3,3"/>
 <text x="${(PAD.l-6).toFixed(0)}" y="${(y+4).toFixed(1)}" text-anchor="end" font-size="12" fill="var(--mut)" font-family="inherit">${fmtChartVal(v)}</text>`;
   }).join('');
 
-  // X labels: max 7 evenly spaced
-  // Je Beschriftung rund 56 px, damit sie sich am Telefon nicht überlappen.
-  const step  = Math.max(1, Math.ceil(n/Math.max(2, Math.min(7, Math.floor(iw/56)))));
-  const xIdxs = [];
-  for(let i=0; i<n; i+=step) xIdxs.push(i);
-  if(xIdxs[xIdxs.length-1] !== n-1) xIdxs.push(n-1);
+  // Je Beschriftung rund 70 px, damit sie sich am Telefon nicht überlappen.
+  let xLabels = '';
+  if (mitZeit) {
+    xLabels = zeitTeilung(t0, data[n-1].zeit, Math.floor(iw/70)).map(s =>
+      `<text x="${pxZeit(s.t).toFixed(1)}" y="${H-8}" text-anchor="${randAnker(pxZeit(s.t), W - PAD.r)}" font-size="12" fill="var(--mut)" font-family="inherit">${esc(s.text)}</text>`).join('');
+  } else {
+    const step  = Math.max(1, Math.ceil(n/Math.max(2, Math.min(7, Math.floor(iw/70)))));
+    for(let i=0; i<n; i+=step) if (data[i].day)
+      xLabels += `<text x="${px(i).toFixed(1)}" y="${H-8}" text-anchor="middle" font-size="12" fill="var(--mut)" font-family="inherit">${esc(data[i].day)}</text>`;
+  }
 
-  // Detect if all labels share the same date → show hour instead
-  const allDays = data.map(d => (d.day||'').substring(0,10));
-  const uniqueDays = new Set(allDays);
-  const useHour = uniqueDays.size === 1 && data[0].hour;
-
-  const xLabels = xIdxs.map(i => {
-    let lbl = '';
-    if(useHour){
-      // Show time HH:MM from hour field "YYYY-MM-DD HH"
-      const h = (data[i].hour||'').split(' ')[1] || '';
-      lbl = h ? `${h}:00` : (data[i].day||'');
-    } else {
-      lbl = data[i].day || '';
-      if(/^\d{4}-\d{2}-\d{2}$/.test(lbl)){ const[,mm,dd]=lbl.split('-'); lbl=`${dd}.${mm}`; }
-      else if(/^\d{4}-\d{2}$/.test(lbl)){ const[y,m]=lbl.split('-'); lbl=`${m}/${y.slice(2)}`; }
-    }
-    return `<text x="${px(i).toFixed(1)}" y="${H-8}" text-anchor="middle" font-size="12" fill="var(--mut)" font-family="inherit">${lbl}</text>`;
-  }).join('');
-
-  // Dots with tooltip
+  const wann = (i) => mitZeit ? fmtDatum(new Date(data[i].zeit)) : data[i].day;
   const dots = vals.map((v,i) => {
     const isLast = i===n-1;
     return `<circle cx="${px(i).toFixed(1)}" cy="${py(v).toFixed(1)}" r="${isLast?4:2.5}"
       fill="${color}" stroke="var(--sur)" stroke-width="1.2" opacity="${isLast?1:0.4}">
-      <title>${data[i].day}: ${v.toLocaleString(locale(),{minimumFractionDigits:2})}</title>
+      <title>${esc(wann(i))}: ${v.toLocaleString(locale(),{minimumFractionDigits:2})}</title>
     </circle>`;
   }).join('');
 
   const zusammenfassung = t('finance.chart.summary', { titel: t('finance.chart.label'),
-    von: data[0].day, bis: data[n-1].day, start: fmtN(vals[0], CURRENCY), ende: fmtN(vals[n-1], CURRENCY) });
-  return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" class="diagramm" role="img" aria-label="${zusammenfassung}" data-stil="width:100%;max-height:180px;display:block">
+    von: wann(0), bis: wann(n-1), start: fmtN(vals[0], CURRENCY), ende: fmtN(vals[n-1], CURRENCY) });
+  return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" class="diagramm diagramm-wert" role="img" aria-label="${zusammenfassung}">
   <defs><linearGradient id="pcg" x1="0" y1="0" x2="0" y2="1">
     <stop offset="0%" stop-color="${color}" stop-opacity=".15"/>
     <stop offset="100%" stop-color="${color}" stop-opacity="0"/>
@@ -469,6 +517,7 @@ export function portfolioChartSVG(data, period, breite = 700){
   ${dots}
 </svg>`;
 }
+
 
 // ═══════════════════════════════════════════════════════════════════════════
 // VERSCHIEBEN — nur über den Kaufpreis
@@ -969,7 +1018,7 @@ export async function openModal(sn){
   // fullUrl(): volle Auflösung, auch wenn image_local auf die _thumb-Datei zeigt
   const img=G('m-img'); img.src=fullUrl(curSet.image_local||curSet.image_url)||'/assets/set-placeholder.svg'; img.style.display='block';
 
-  const addedFmt = curSet.added_at ? new Date(curSet.added_at).toLocaleDateString(locale()) : '—';
+  const addedFmt = curSet.added_at ? fmtDatum(curSet.added_at) : '—';
   const cached = _pnlCache[sn];
   // Marktpreis und Entwicklung stehen jetzt JE ZUSTAND — und die Werte dafür
   // kommen aus derselben Abfrage wie der Preisverlauf (by_condition). Hier nur
@@ -1114,11 +1163,11 @@ export async function pollJobStatus() {
       if (j.lastUpdated) parts.push(`${j.lastUpdated} ${t('common.updated')}`);
       if (j.lastErrors)  parts.push(t('monitor.errors_n',{n:j.lastErrors}));
       if (j.lastDuration) parts.push(formatDur(j.lastDuration));
-      sdet.textContent = parts.join(' · ') + (j.nextRun ? ` · ${t('monitor.next_run')} ${new Date(j.nextRun).toLocaleTimeString(locale())}` : '');
+      sdet.textContent = parts.join(' · ') + (j.nextRun ? ` · ${t('monitor.next_run')} ${fmtDatum(j.nextRun, 'zeit')}` : '');
     } else {
       dot.style.background = 'var(--s300)';
       stxt.textContent = tRaw('monitor.waiting_first');
-      sdet.textContent = j.nextRun ? `Startet um: ${new Date(j.nextRun).toLocaleTimeString(locale())}` : '';
+      sdet.textContent = j.nextRun ? `Startet um: ${fmtDatum(j.nextRun, 'zeit')}` : '';
     }
     // Poll every 30s while idle
     if (jobPollTimer) clearTimeout(jobPollTimer);

@@ -2,6 +2,7 @@
  * „Dunkel, wenn das System dunkel ist" — je Gerät, über 00-theme-boot.js.
  * Seit dem 29.10. heisst das: dasselbe Design in seiner dunklen Variante
  * (data-dunkel am <html>, Farben aus tokens.css), nicht mehr „werkbank".
+ * Ohne gespeicherte Wahl folgt das Gerät dem System (Vorgabe „system“).
  *
  * Ausgeführt in jsdom mit nachgestelltem matchMedia: Das Skript läuft wie im
  * Browser im <head>, mit einem vom Server gesetzten data-theme.
@@ -13,6 +14,8 @@
  *   C  (29.10.) wirksam() setzt data-dunkel nie → rot: „bleibt hell";
  *      wirksam() wieder mit 'werkbank' bei dunklem System → rot: „das Design
  *      bleibt"
+ *   D  (29.10.) folgtSystem() wieder mit === 'system' → rot: „ohne Wahl folgt
+ *      das Gerät dem System“ (data-dunkel fehlte)
  */
 const test   = require('node:test');
 const assert = require('node:assert/strict');
@@ -39,8 +42,15 @@ function fenster({ server = 'classic', wahl = null, dunkel = false } = {}) {
   return { w, thema: () => w.document.documentElement.getAttribute('data-theme'), dunkel: hatDunkel, systemWechsel };
 }
 
-test('ohne Wahl bleibt das Design des Servers — auch bei dunklem System', () => {
-  const { thema, dunkel } = fenster({ dunkel: true });
+test('ohne Wahl folgt das Gerät dem System', () => {
+  const { w, thema, dunkel } = fenster({ dunkel: true });
+  assert.equal(thema(), 'classic');
+  assert.equal(dunkel(), true, 'Vorgabe ist „system“, das dunkle System wurde übergangen');
+  assert.equal(w.__bimDunkelWert(), 'system');
+});
+
+test('mit Wahl „server" bleibt das Design hell — auch bei dunklem System', () => {
+  const { thema, dunkel } = fenster({ wahl: 'server', dunkel: true });
   assert.equal(thema(), 'classic');
   assert.equal(dunkel(), false);
 });

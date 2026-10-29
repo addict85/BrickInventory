@@ -14,12 +14,12 @@
 //      routes/settings.ts). Weicht der Serverwert ab — anderer Browser, anderes
 //      Gerät, Admin hat gerade umgestellt — wird korrigiert und gecacht.
 //
-// Der Cache-Key ist bewusst nicht nutzerbezogen: Das Design ist eine globale
-// Einstellung, kein persönliches Merkmal.
+// Der Server liefert das Design des angemeldeten Kontos (oder die Vorgabe des
+// Verwalters); der Cache merkt sich den zuletzt gelieferten Wert je Browser.
 
 (function () {
   var KEY = 'bim_theme';
-  // Muss mit der Whitelist in routes/settings.ts uebereinstimmen — eine
+  // Muss mit DESIGNS in utils/settings.ts uebereinstimmen — eine
   // Pruefung haelt beide zusammen (theme.test.js).
   var ALLOWED = ['classic', 'brick', 'werkbank', 'farbfaecher', 'noppe', 'hochglanz'];
 
@@ -42,14 +42,14 @@
   }
 
   // ── Dunkel nach System, je Gerät (Profil-Einstellungen) ────────────────────
-  // Das Design gilt global; ob ein GERÄT dunkel will, weiss nur das Gerät. Wer
-  // „system" wählt, bekommt bei dunklem System die dunkle Variante DESSELBEN
-  // Designs (data-dunkel, Farben aus tokens.css), nicht ein anderes Design.
+  // Ob ein GERÄT dunkel will, weiss nur das Gerät. Vorgabe ist „system“: Bei
+  // dunklem System die dunkle Variante DESSELBEN Designs (data-dunkel, Farben
+  // aus tokens.css). Wer „server“ wählt, behält das Design ohne Variante.
   var DUNKEL_KEY = 'bim_dunkel';
   var systemDunkel = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
   var serverDesign = null;
   function folgtSystem() {
-    try { return localStorage.getItem(DUNKEL_KEY) === 'system'; } catch (_) { return false; }
+    try { return localStorage.getItem(DUNKEL_KEY) !== 'server'; } catch (_) { return true; }
   }
   function wirksam(theme) {
     var dunkel = folgtSystem() && systemDunkel && systemDunkel.matches && theme !== 'werkbank';

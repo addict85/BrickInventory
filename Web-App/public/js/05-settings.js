@@ -1,6 +1,6 @@
 import { registerActions } from './00-registry.js';
 import { I18N, LANG, applyLang, locale, t, tRaw} from '../i18n.js';
-import { bildTag, platzhalterInhalt, ico, CURRENCY, G, ME, _settingsCache, _updateLangSelect, api, applyTheme, esc, escUrl, imgUrl, initDefaultCondition, knopfBesetzt, thumbUrl, toast, zeigeBenutzernamen , set_CURRENCY, set_settingsCache, passwortZuKurz, passwortZuKurzText} from './01-core.js';
+import { fehlerMeldung, fmtDatum, bildTag, platzhalterInhalt, ico, CURRENCY, G, ME, _settingsCache, _updateLangSelect, api, applyTheme, esc, escUrl, imgUrl, initDefaultCondition, knopfBesetzt, thumbUrl, toast, zeigeBenutzernamen , set_CURRENCY, set_settingsCache, passwortZuKurz, passwortZuKurzText} from './01-core.js';
 import { loadGallery, loadStats } from './02-gallery.js';
 import { loadParts } from './03-parts.js';
 import { loadMinifigs } from './06-minifigs.js';
@@ -246,7 +246,7 @@ async function generateQrCode() {
     // Nach dem ersten Erzeugen heisst der Knopf „Neu generieren" — die eine
     // Stelle, an der die Beschriftung sich absichtlich ändert.
     frei(tRaw('qr.regenerate'));
-  } catch(e) { hint.textContent = tRaw('toast.error')+': ' + e.message; frei(); }
+  } catch(e) { hint.textContent = tRaw('toast.error')+': ' + fehlerMeldung(e); frei(); }
 }
 
 G('btn-gen-qr').onclick = generateQrCode;
@@ -335,6 +335,7 @@ async function revokeOtherTokens() {
 export async function loadProfile() {
   const dw = G('dunkel-wahl');
   if (dw && window.__bimDunkelWert) dw.value = window.__bimDunkelWert();
+  ladeEigenesDesign();
   const d = await api('GET', '/v1/auth/profile');
   if (!d.success) return;
   const u = d.user;
@@ -343,10 +344,38 @@ export async function loadProfile() {
   G('prof-user').value  = u.username   || '';
   G('prof-email').value = u.email      || '';
   G('prof-email').dataset.bisher = u.email || '';
+  // Ohne Adresse gibt es nichts zu bestätigen — „verifiziert“ neben einem
+  // leeren Feld widerspräche sich.
   const vEl = G('prof-email-verified');
-  if (vEl) vEl.innerHTML = u.email_verified
-    ? `<span data-stil="color:var(--g700)">${t('profile.verified')}</span>`
-    : `<span data-stil="color:var(--a-schrift)">${t('profile.not_verified')}</span>`;
+  if (vEl) vEl.innerHTML = !u.email ? ''
+    : u.email_verified ? `<span class="email-ok">${t('profile.verified')}</span>`
+    : `<span class="email-offen">${t('profile.not_verified')}</span>`;
+}
+
+/** Design-Wahl des Kontos: eigenes Design oder die Vorgabe des Verwalters. */
+async function ladeEigenesDesign() {
+  const sel = G('design-wahl');
+  if (!sel) return;
+  const d = await api('GET', '/v1/settings/theme');
+  if (!d.success) return;
+  zeigeDesignWahl(d);
+}
+
+function zeigeDesignWahl(d) {
+  const sel = G('design-wahl');
+  const vorgabeName = tRaw('settings.theme_' + d.vorgabe);
+  sel.options[0].textContent = tRaw('settings.own_theme_default', { name: vorgabeName });
+  sel.value = d.eigenes || '';
+}
+
+async function setzeEigenesDesign() {
+  const theme = G('design-wahl').value;
+  const d = await api('POST', '/v1/settings/user/theme', { theme });
+  if (!d.success) { toast(d.error || t('settings.error'), 'error'); return; }
+  applyTheme(d.theme);
+  if (_settingsCache) _settingsCache.app_theme = d.theme;
+  zeigeDesignWahl(d);
+  toast(tRaw('settings.theme_saved'), 'success');
 }
 
 G('btn-sav-prof').onclick = async () => {
@@ -452,6 +481,8 @@ function applySettings(s){
     _set('rb-key', s.rebrickable_api_key||'');
     _set('bs-key', s.brickset_api_key||'');
     _set('mon-app-theme', s.app_theme||'classic');
+    // s.app_theme ist das wirksame Design DIESES Kontos; der Verwalter stellt hier die Vorgabe.
+    api('GET', '/v1/settings/theme').then(d => { if (d.success) _set('mon-app-theme', d.vorgabe); });
     loadUsers(); loadSmtpSettings(s);
   }
   if(ME?.isAdmin) loadRateLimitStats();
@@ -594,7 +625,13 @@ export async function unlinkHousehold(subUserId){
 G('btn-sav-bl').onclick=async()=>{ const d=await api('POST','/v1/settings',{bricklink_consumer_key:G('bl-ck').value,bricklink_consumer_secret:G('bl-cs').value,bricklink_token:G('bl-tok').value,bricklink_token_secret:G('bl-ts').value}); if(d.success) await api('PUT','/v1/admin/api-limits',{bricklink:parseInt(G('lim-bl').value)}); toast(d.success?t('settings.bl_saved'):t('settings.error'),d.success?'success':'error'); if(d.success){loadRateLimitStats();} };
 G('btn-sav-rb').onclick=async()=>{ const d=await api('POST','/v1/settings',{rebrickable_api_key:G('rb-key').value}); if(d.success) await api('PUT','/v1/admin/api-limits',{rebrickable:parseInt(G('lim-rb').value)}); toast(d.success?t('settings.rb_saved'):t('settings.error'),d.success?'success':'error'); if(d.success){loadRateLimitStats();} };
 G('btn-sav-bs').onclick=async()=>{ const d=await api('POST','/v1/settings',{brickset_api_key:G('bs-key').value}); if(d.success) await api('PUT','/v1/admin/api-limits',{brickset:parseInt(G('lim-bs').value)}); toast(d.success?t('settings.bs_saved'):t('settings.error'),d.success?'success':'error'); if(d.success){loadRateLimitStats();} };
-G('btn-save-theme').onclick=async()=>{ const theme=G('mon-app-theme')?.value||'classic'; const d=await api('POST','/v1/settings/admin/theme',{theme}); if(d.success){ if(typeof applyTheme==='function') applyTheme(theme); if(_settingsCache) _settingsCache.app_theme=theme; } toast(d.success?t('settings.theme_saved'):t('settings.error'),d.success?'success':'error'); };
+G('btn-save-theme').onclick=async()=>{
+  const theme=G('mon-app-theme')?.value||'classic';
+  const d=await api('POST','/v1/settings/admin/theme',{theme});
+  // Angewendet wird, was für DIESES Konto gilt — ein eigenes Design bleibt.
+  if(d.success){ const w=await api('GET','/v1/settings/theme'); if(w.success){ applyTheme(w.theme); if(_settingsCache) _settingsCache.app_theme=w.theme; } }
+  toast(d.success?t('settings.theme_saved'):t('settings.error'),d.success?'success':'error');
+};
 G('btn-clr-prices').onclick=async()=>{ await api('POST','/v1/admin/cache-clear'); toast(tRaw('settings.cache_cleared'),'success'); loadCacheStats(); };
 G('btn-clr-all-cache').onclick=async()=>{
   if(!await confirmDelete(tRaw('settings.all_cache.clear'),t('settings.all_cache.clear'),'daten')) return;
@@ -617,7 +654,7 @@ export async function loadUsers(){
   G('users-tbl').innerHTML=`<div class="tw"><table class="dt user-tbl"><thead><tr><th>ID</th><th>${t('users.col.username')}</th><th>${t('users.col.role')}</th><th>${t('users.col.created')}</th><th>${t('users.col.actions')}</th></tr></thead><tbody>${
     d.users.map(u=>`<tr><td>${u.id}</td><td><strong>${esc(u.username)}</strong></td>
       <td><span class="rb ${u.is_admin?'ra':'ru'}">${u.is_admin?t('users.role.admin'):t('users.role.user')}</span></td>
-      <td>${new Date(u.created_at).toLocaleDateString(locale())}</td>
+      <td>${fmtDatum(u.created_at)}</td>
       <td><div class="nutzer-aktionen">
         ${nutzerKnopf(u, 'bs', 'openRpw', 'schluessel', 'users.action.password', 'users.pw_reset_title')}
         ${nutzerKnopf(u, 'bs', 'toggleAdmin', u.is_admin ? 'runter' : 'hoch',
@@ -1045,6 +1082,7 @@ export function einstAbschnitt(id, ev){
 einstAbschnitt((() => { try { return localStorage.getItem(EINST_KEY); } catch (_) { return null; } })());
 
 registerActions({
+  setzeEigenesDesign,
   einstAbschnitt,
   geheimUmschalten,
   aendereAlarmSchwelle,

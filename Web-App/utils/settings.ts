@@ -44,11 +44,14 @@ async function getGlobalSetting(key: string, fallback: any = null) {
 // PDFs und Preisabfragen; eine Währung wie "<img …>" oder "XYZ" hätte sonst
 // jede Bewertung des Kontos stillschweigend auf null gesetzt.
 const WAEHRUNGEN = new Set(['CHF', 'EUR', 'USD', 'GBP', 'SEK', 'NOK', 'AUD', 'CAD', 'DKK']);
+/** Die Designs — dieselbe Liste wie ALLOWED in public/js/00-theme-boot.js (theme.test.js). */
+const DESIGNS: readonly string[] = ['classic', 'brick', 'werkbank', 'farbfaecher', 'noppe', 'hochglanz'];
 const NUTZER_REGELN: Record<string, (v: string) => boolean> = {
   currency: v => WAEHRUNGEN.has(v),
   language: v => v === 'de' || v === 'en',
   user_default_condition: v => v === 'N' || v === 'U' || v === '',
   price_cache_ttl: v => /^\d{1,4}$/.test(v) && +v >= 1 && +v <= 8760,
+  app_theme: v => DESIGNS.includes(v),
 };
 
 /**
@@ -294,3 +297,24 @@ async function readSettings(userId: number, isAdmin: boolean) {
 }
 
 export { verschluesseleGlobaleAltwerte, SECRET_KEYS, maskSecret, isMaskedValue, sanitizeGlobal, readSettings };
+
+// ── Design je Konto ─────────────────────────────────────────────────────────
+// Der Verwalter setzt die Vorgabe (global_settings.app_theme), ein Konto darf
+// sie in user_settings.app_theme überschreiben. Ohne eigene Zeile gilt die
+// Vorgabe — so folgen alle, die nichts gewählt haben, einem Wechsel des Verwalters.
+async function designFuer(userId?: number | null): Promise<{ theme: string; vorgabe: string; eigenes: string | null }> {
+  const g = await getGlobalSetting('app_theme');
+  const vorgabe = DESIGNS.includes(g) ? g : 'classic';
+  const u = userId ? await db.get("SELECT value FROM user_settings WHERE user_id = $1 AND key = 'app_theme'", [userId]) : null;
+  const eigenes = DESIGNS.includes(u?.value) ? u.value : null;
+  return { theme: eigenes ?? vorgabe, vorgabe, eigenes };
+}
+
+/** Eigenes Design setzen; leer oder null löscht die Zeile, dann gilt wieder die Vorgabe. */
+async function setzeEigenesDesign(userId: number, theme: unknown): Promise<void> {
+  const v = String(theme ?? '').trim();
+  if (!v) { await db.run("DELETE FROM user_settings WHERE user_id = $1 AND key = 'app_theme'", [userId]); return; }
+  await setUserSetting(userId, 'app_theme', v);
+}
+
+export { DESIGNS, designFuer, setzeEigenesDesign };

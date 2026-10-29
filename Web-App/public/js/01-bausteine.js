@@ -27,7 +27,9 @@
 // verbessert, das man sehen kann. Ab jetzt sind sie eine INNERE Angelegenheit
 // dieser Datei — wer eine Detailzeile braucht, schreibt `detailZeile(…)` und
 // sieht die Kürzel nie. In styles.css steht daneben, wofür sie stehen.
-import { esc } from './01-core.js';
+import { esc, ico, toast } from './01-core.js';
+import { tRaw } from '../i18n.js';
+import { resolveAction } from './00-registry.js';
 
 /**
  * Eine Zeile „Label — Wert" in einer Detailansicht.
@@ -59,13 +61,14 @@ export function detailZeile(label, wert, o = {}) {
  * Die Ladeanzeige — Kringel und Text, wie sie fünf Stellen bauten.
  *
  * @param {string} text bereits übersetzter Text
+ * @param {{ stil?: string, klein?: boolean }} [o]  klein: für eine Fläche wie das Diagramm
  */
 export function ladeAnzeige(text, o = {}) {
   const stil = o.stil ? ` data-stil="${o.stil}"` : '';
   // Ohne Text nur der Kringel — so macht es die Teile-Zusammenfassung, wo
   // daneben schon steht, worauf gewartet wird.
   const beschriftung = text ? `<span>${text}</span>` : '';
-  return `<div class="loading"${stil}><div class="spin"></div>${beschriftung}</div>`;
+  return `<div class="loading${o.klein ? ' klein' : ''}"${stil}><div class="spin"></div>${beschriftung}</div>`;
 }
 
 /**
@@ -95,4 +98,34 @@ export function oderStrich(wert) {
 /** Wie [oderStrich], aber der Wert kommt vom Nutzer und wird escaped. */
 export function textOderStrich(wert) {
   return (wert === null || wert === undefined || wert === '') ? '—' : esc(String(wert));
+}
+
+/**
+ * Fehlerzustand einer Liste: Grund und „Erneut versuchen“. Eine leere Liste
+ * an dieser Stelle läse sich als „nichts erfasst“, obwohl nur der Server
+ * nicht geantwortet hat.
+ * @param {{ grund?: string, erneut: string, arg?: string }} o  erneut: Name der Ladefunktion (data-click)
+ */
+export function fehlerZustand(o) {
+  const arg = o.arg ? ` data-arg="${esc(o.arg)}"` : '';
+  return `<div class="empty leer fehler-zustand" role="alert"><div class="leer-ico">${ico('warnung')}</div>` +
+    `<h3>${esc(tRaw('liste.fehler_titel'))}</h3><p>${esc(o.grund || tRaw('common.unknown_error'))}</p>` +
+    `<button type="button" class="btn bp" data-click="${esc(o.erneut)}"${arg}>${ico('aktualisieren')}<span>${esc(tRaw('liste.erneut'))}</span></button></div>`;
+}
+
+/**
+ * Hat das Laden einer Liste versagt? Dann bleibt eine schon gezeigte Liste
+ * stehen (mit Meldung), sonst zeigt `ziel` den Fehlerzustand.
+ * @param {HTMLElement|null} ziel
+ * @param {any} d          Antwort von api() — null zählt als Fehler
+ * @param {{ erneut: string, arg?: string, behalten?: boolean }} o
+ * @returns {boolean} true, wenn es ein Fehler war und der Aufrufer aufhören soll
+ */
+export function listeLadefehler(ziel, d, o) {
+  if (d && d.success !== false) return false;
+  const grund = d?.error || tRaw('api.unreachable');
+  const nochmal = () => { const f = resolveAction(o.erneut); if (f) o.arg !== undefined ? f(o.arg) : f(); };
+  if (o.behalten) toast(`${grund} ${tRaw('liste.alter_stand')}`, 'error', { text: tRaw('liste.erneut'), fn: nochmal });
+  else if (ziel) ziel.innerHTML = fehlerZustand({ grund, erneut: o.erneut, arg: o.arg });
+  return true;
 }

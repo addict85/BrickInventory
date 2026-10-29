@@ -216,10 +216,16 @@
     .ntab:hover{color:var(--txt)}
     .ntab.active{color:var(--b600);border-bottom-color:var(--b600)}
     /* Die Verwalterseiten haben einen Reiter, aber keinen Platz in der Leiste:
-       erreichbar über das Menü. Teile und Minifiguren stehen in der Leiste;
-       nur am Telefon fasst „Sammlung“ sie zusammen (mobile.css). */
+       erreichbar über das Menü. Teile und Minifiguren wechselt der Umschalter
+       auf der Seite (.sammlung-wahl) — die Leiste hat EIN Ziel „Sammlung“,
+       sonst gäbe es am Rechner zwei Navigationen für dasselbe. */
     .ntab.ntab-unter{display:none!important}
+    .ntab.ntab-sammlung{display:none}
+    .ntab.gruppe-aktiv{color:var(--b600);border-bottom-color:var(--b600)}
     .ntab .tab-unter{display:none}
+    /* nav rollt waagrecht und schneidet alles ab, was hinausragt — der
+       Fokusring liegt deshalb innen. */
+    .ntab:focus-visible{outline:3px solid var(--fokus,var(--b700));outline-offset:-3px;border-radius:6px}
 
     /* Die Symbolfamilie (Sprite am Anfang von index.html) */
     .ico{width:18px;height:18px;flex-shrink:0;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;vertical-align:middle}
@@ -377,11 +383,11 @@
     .sc:hover{transform:translateY(-3px);box-shadow:var(--sh1);border-color:var(--b300)}
     .sci{width:100%;aspect-ratio:1;background:var(--s50);display:flex;align-items:center;justify-content:center;overflow:hidden;border-bottom:1px solid var(--bdr)}
     .sci img{width:100%;height:100%;object-fit:contain;padding:8px}
-    /* Dunkel: Die Produktfotos haben weissen Grund. Auf einer gedämpften
-       hellen Fläche und mit multiply wird daraus ein ruhiges Grau statt eines
-       grellen Kastens. */
-    [data-dunkel] .sci,[data-theme="werkbank"] .sci{background:#c9ced4}
-    [data-dunkel] .sci img,[data-theme="werkbank"] .sci img{mix-blend-mode:multiply;padding:10px}
+    /* Dunkel: ein dunkles Grau statt einer hellen Fläche, die in jeder Kachel
+       strahlte. Fotos mit weissem Grund werden nur gedämpft: multiply hätte
+       sie auf dunklem Grund geschwärzt. */
+    [data-dunkel] .sci,[data-theme="werkbank"] .sci{background:#2b3139}
+    [data-dunkel] .sci img,[data-theme="werkbank"] .sci img{filter:brightness(.82);border-radius:6px;padding:10px}
     [data-dunkel]{color-scheme:dark}
     .sci .ni{font-size:var(--fs-8)}
     .scb{padding:11px}
@@ -446,8 +452,10 @@
     .fstat{background:var(--sur);border:1.5px solid var(--bdr);border-radius:var(--rad);padding:1.1rem 1.35rem;box-shadow:var(--sh0)}
     .fstat.hi{border-color:var(--b300);background:var(--b50)}
     .flbl{font-size:var(--fs-2);font-weight:600;color:var(--mut);margin-bottom:5px}
-    .fval{font-variant-numeric:tabular-nums;font-size:var(--fs-6);font-weight:600;color:var(--b700)}
-    .fstat.hi .fval{color:var(--b600)}
+    /* Geld in der Preisfarbe: In „noppe“ und „hochglanz“ ist die Marke rot. */
+    .fval{font-variant-numeric:tabular-nums;font-size:var(--fs-6);font-weight:600;color:var(--preis,var(--b700))}
+    .fstat.hi .fval{color:var(--preis,var(--b600))}
+    .fstat.hi .fsub{color:var(--s600)}
     /* Speichern-Knöpfe der Einstellungen: eine Form, links unter ihren Feldern. */
     .btn-speichern{align-self:flex-start}
     /* Host und Port: die Port-Spalte darf schrumpfen, sonst ragt sie aus der Karte (.fg hat min-width). */
@@ -676,7 +684,7 @@
        ein Ersatzteil ist eine Nebeninformation, kein Zustand. Gegenstueck zu
        ErsatzteilPlakette() in ManualItemComposables.kt der App. */
     .spare-tag{font-size:var(--fs-0);padding:1px 5px;border-radius:10px;font-weight:600;
-               display:inline-block;background:var(--s100);color:var(--mut)}
+               display:inline-block;background:var(--s100);color:var(--s600)}
 
 /* ── Eigener Scrollbalken für die GANZE Anwendung ──
    Marcos Vorgabe: „Der rechte Scrollbalken ist der vom Browser, der durch den
@@ -982,6 +990,86 @@ input.suchfeld{width:220px}
 .csv-status{font-size:var(--fs-3);margin-bottom:1rem;padding:.55rem .8rem;border-radius:8px}
 select.auswahl-kompakt,.fg select.auswahl-kompakt{padding:.45rem .7rem;border:1px solid var(--bdr);border-radius:var(--rad);background:var(--sur);color:var(--txt);font-size:var(--fs-3)}
 select.auswahl-mini,.fg select.auswahl-mini{font-size:var(--fs-1);padding:3px 6px;border:1px solid var(--bdr);border-radius:6px;background:var(--sur)}
+/* ── Verweise ────────────────────────────────────────────────────────────────
+   Ohne eigene Regel standen Links in Browserblau (#0000EE) — auch im
+   Dunkelmodus. Knöpfe als Link (.btn) behalten ihre Farbe. */
+a{color:var(--b600);text-underline-offset:2px}
+a:hover{text-decoration:underline}
+a.btn:hover{text-decoration:none}
+
+/* ── Fehler, Verbindung, Laden ──────────────────────────────────────────── */
+.fehler-zustand .leer-ico .ico{color:var(--a-schrift)}
+.fehler-zustand p{margin:0 0 .9rem}
+.offline-band{position:sticky;top:0;z-index:120;display:flex;justify-content:center;gap:8px;padding:8px 16px;
+  background:var(--a100);color:var(--a-schrift);border-bottom:1px solid var(--bdr);font-size:var(--fs-2);font-weight:600;text-align:center}
+.offline-band[hidden]{display:none}
+.loading.klein{padding:1rem;font-size:var(--fs-2);gap:6px}
+.loading.klein .spin{width:18px;height:18px;border-width:2px}
+.diagramm-fehler{display:block;padding:.5rem;color:var(--r700);font-size:var(--fs-2)}
+.skelett-wert{display:inline-block;width:7.5em;max-width:100%;height:.9em;margin:0;vertical-align:middle}
+
+/* ── Kleine Bausteine, die vorher als Inline-Stil in den Vorlagen standen ── */
+.text-mut{color:var(--mut)}
+.nummer-klein{font-family:var(--mono);color:var(--b600);font-size:var(--fs-1)}
+.abstand-o-125{margin-top:1.25rem}
+.fin-abschnitt{margin:0 0 6px;display:flex;align-items:center;gap:6px}
+.fin-name-text{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:380px}
+.fin-datum{font-size:var(--fs-1);color:var(--mut)}
+.dt-fin{table-layout:fixed;width:100%;min-width:1065px}
+.sp-40{width:40px}.sp-55{width:55px}.sp-60{width:60px}.sp-70{width:70px}.sp-80{width:80px}.sp-90{width:90px}
+.sp-110{width:110px}.sp-250{width:250px}.sp-395{width:395px}
+/* Zahlen rechtsbündig, samt Köpfen: So stehen Stellen untereinander. */
+.dt-fin .zahl,.dt-fin th.zahl{text-align:right}
+.dt-fin .zahl .qbadge{margin-left:auto}
+
+/* ── Beträge ─────────────────────────────────────────────────────────── */
+.man-preis{font-size:var(--fs-2);margin-top:3px}
+.mk-preis{white-space:nowrap}
+.mk-preis.preis{font-weight:700}
+
+/* ── Diagramme ───────────────────────────────────────────────────────── */
+.diagramm-preis{width:100%;height:auto}
+.diagramm-wert{width:100%;max-height:180px;display:block}
+
+/* ── Merkliste: die Zeile ──────────────────────────────────────────────── */
+.mk-zeile{position:relative;display:flex;gap:12px;align-items:center;padding:10px 44px 10px 10px;border:1px solid var(--bdr);
+  border-radius:var(--rad);background:var(--sur);margin-bottom:8px;cursor:pointer}
+.mk-text{flex:1;min-width:0}
+.mk-titel{font-weight:600}
+.mk-unter{font-size:var(--fs-1);color:var(--mut)}
+.mk-rechts{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.mk-etikett{display:inline-flex;align-items:center;gap:4px;background:var(--bg);border:1px solid var(--bdr);border-radius:999px;padding:1px 8px;font-size:var(--fs-1)}
+.mk-etikett-ok{background:var(--ok-bg,var(--bg))}
+
+/* ── Teile: die Farbe als Etikett vor ihren Teilen ──────────────────────────
+   Als Kachel mit Rahmen sah die Farbe aus wie eine leere Karte. Jetzt ein
+   Etikett oben in der Zelle: Farbpunkt, Name (bricht um), Anzahl der Sorten. */
+.parts-list .group-hd{align-self:start;flex-direction:row;flex-wrap:wrap;align-items:center;gap:4px 8px;
+  padding:.5rem .65rem;border:0;border-left:4px solid var(--s300);border-radius:8px;background:var(--s100)}
+.parts-list .group-title{flex:1 1 0;min-width:0;overflow-wrap:anywhere;hyphens:auto;line-height:1.25}
+.parts-list .group-sub{flex-basis:100%}
+.color-dot.gross{width:18px;height:18px}
+
+
+
+/* ── Dialog „Set hinzufügen“: zwei Spalten, Knopf rechts unten ─────────── */
+.erfassen-raster{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem 1rem;align-items:end}
+.erfassen-raster .fg{min-width:0}
+.erfassen-raster .fg select,.erfassen-raster .fg input{width:100%}
+.erfassen-raster .zeile > select{flex:1 1 auto;min-width:0}
+.erfassen-fuss{grid-column:1 / -1;display:flex;justify-content:flex-end}
+.feld-titel{font-size:var(--fs-1);font-weight:600;color:var(--s600)}
+
+/* ── Konto (Profil): begrenzte Breite, eine Beschriftungsgrösse ─────────── */
+#tab-profil .ssec{max-width:52rem}
+.profil-raster{display:grid;grid-template-columns:repeat(auto-fill,minmax(14rem,1fr));gap:.75rem 1rem}
+.profil-raster .fg{min-width:0}
+.profil-raster-3{grid-template-columns:repeat(auto-fill,minmax(12rem,1fr))}
+#tab-profil .btn,#tab-profil .btn.btn-sm{font-size:var(--fs-3);padding:var(--sp-2) var(--sp-4);min-height:38px}
+.email-status{font-size:var(--fs-1);margin-left:4px}
+.email-ok{color:var(--g700)}
+.email-offen{color:var(--a-schrift)}
+
 /* Abstände zuletzt: Sie ergänzen die Klassen davor (z. B. .hinweis-absatz.abstand-u-075). */
 .abstand-o-2{margin-top:2px}.abstand-o-3{margin-top:3px}.abstand-o-4{margin-top:4px}.abstand-o-8{margin-top:8px}
 .abstand-o-05{margin-top:.5rem}.abstand-o-06{margin-top:.6rem}.abstand-o-075{margin-top:.75rem}.abstand-o-minus4{margin-top:-4px}

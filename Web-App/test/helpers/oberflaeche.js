@@ -3,8 +3,9 @@
  * fetch, der je Pfad eine vorgegebene Antwort liefert. So prüft ein Test, was
  * die Oberfläche aus einer Serverantwort macht, ohne Server und ohne Browser.
  *
- * Antworten: { '/v1/parts/manual': {...}, ... } je Pfad ohne Abfrage (?…).
- * Was fehlt, bekommt { success: true }. Jeder Aufruf landet in `aufrufe`.
+ * Antworten: { '/v1/parts/manual': {...}, ... } je Pfad ohne Abfrage (?…),
+ * als Objekt oder Funktion(url, optionen). Was fehlt, bekommt { success: true }.
+ * Jeder Aufruf landet in `aufrufe`.
  */
 const fs = require('node:fs');
 const path = require('node:path');
@@ -43,10 +44,10 @@ const ANMELDUNG = {
 const fehler = [];
 process.on('unhandledRejection', e => { fehler.push(e); });
 
-function antwortFuer(antworten, url) {
+function antwortFuer(antworten, url, o = {}) {
   const pfad = String(url).replace(/^https?:\/\/[^/]+/, '').replace(/^\/api/, '').split('?')[0];
   const a = Object.prototype.hasOwnProperty.call(antworten, pfad) ? antworten[pfad] : { success: true };
-  return typeof a === 'function' ? a(url) : a;
+  return typeof a === 'function' ? a(url, o) : a;
 }
 
 const takt = (ms = 0) => new Promise(r => setTimeout(r, ms));
@@ -75,10 +76,13 @@ async function oeffneOberflaeche(antworten = {}, opt = {}) {
   const w = dom.window;
   const aufrufe = [];
   try { w.localStorage.setItem('bim_lang', opt.sprache || 'de'); } catch (_) { /* jsdom ohne Speicher */ }
+  // Eine Antwort darf ein Promise sein (verzögert) oder werfen (Netzfehler);
+  // `$status` setzt den HTTP-Status, z. B. { $status: 500, success: false }.
   w.fetch = async (url, o = {}) => {
     aufrufe.push({ url: String(url), method: o.method || 'GET', body: o.body });
-    const daten = antwortFuer(alle, url);
-    return { ok: true, status: 200, headers: { get: () => 'application/json' },
+    const daten = await antwortFuer(alle, url, o);
+    const status = daten?.$status ?? 200;
+    return { ok: status < 400, status, headers: { get: () => 'application/json' },
              json: async () => JSON.parse(JSON.stringify(daten)) };
   };
   w.console.warn = () => {};
@@ -102,4 +106,10 @@ async function reiter(w, name) {
   await takt(50);
 }
 
-module.exports = { oeffneOberflaeche, reiter, warte, takt };
+/** Eine Sicht aus dem Benutzermenü öffnen (Konto, Gutscheine, …). */
+async function sicht(w, name) {
+  w.document.querySelector(`.umenu-item[data-arg="${name}"]`).click();
+  await takt(50);
+}
+
+module.exports = { oeffneOberflaeche, reiter, sicht, warte, takt };

@@ -2,8 +2,8 @@
  * Zählwörter folgen den Mehrzahlregeln der Sprache (Intl.PluralRules) — am
  * echten Bündel in jsdom.
  *
- *   - Teile, nach Farbe gruppiert: „1 Typ“ und „2 Typen“ (en: „1 type“,
- *     „2 types“). Vorher stand fest „{n} Typen“, also „1 Typen“.
+ *   - Teile, nach Farbe gruppiert: „1 Sorte“ und „2 Sorten“ (en: „1 kind“,
+ *     „2 kinds“). Vorher stand fest „{n} Typen“, also „1 Typen“.
  *   - Finanzen ohne Marktpreis: „Marktpreis fehlt für 1 Position“.
  *
  * Gegenproben (am 28.10.2026 gemessen):
@@ -22,7 +22,7 @@ const TEILE = { '/v1/parts': { success: true, total: 3, parts: [
   { part_num: '3004', part_number: '3004', name: 'Brick 1 x 2', color_name: 'Blue', color_hex: '0055BF', color_id: 1, quantity: 6 },
 ] } };
 
-for (const [sprache, eins, zwei] of [['de', '1 Typ', '2 Typen'], ['en', '1 type', '2 types']]) {
+for (const [sprache, eins, zwei] of [['de', '1 Sorte', '2 Sorten'], ['en', '1 kind', '2 kinds']]) {
   test(`${sprache}: Gruppen der Teile`, async () => {
     const { w, d } = await oeffneOberflaeche(TEILE, { sprache });
     try {

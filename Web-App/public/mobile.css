@@ -67,7 +67,9 @@
      Vorlage, XML) liessen sich nicht auseinanderhalten. */
   .erfassen-leiste { flex-wrap: wrap; }
   .erfassen-leiste .btn.bp { flex: 1 1 100%; justify-content: center; }
-  .erfassen-leiste .btn.bs { flex: 1 1 0; min-width: 0; justify-content: center; padding-left: 8px; padding-right: 8px; font-size: var(--fs-2); }
+  /* auto statt 0: Ein Knopf ist so breit wie sein Wort — „BrickLink XML“
+     wurde sonst abgeschnitten; reicht die Zeile nicht, bricht sie um. */
+  .erfassen-leiste .btn.bs { flex: 1 1 auto; min-width: 0; justify-content: center; padding-left: 8px; padding-right: 8px; font-size: var(--fs-2); }
 
   /* Kachel: Jahr und Thema in einer Zeile, die Plaketten darunter. */
   .smeta { flex-direction: column; align-items: flex-start; gap: 4px; }
@@ -119,7 +121,6 @@
   .ntab.active, .ntab.gruppe-aktiv { border-top-color: var(--b600); color: var(--b600); }
   /* Fünf Ziele passen in die Leiste: Teile und Minifiguren laufen über
      „Sammlung“, und deren Beschriftung nennt die offene Ansicht. */
-  .ntab.ntab-sammlung { display: none; }
   .ntab .tab-unter:not(:empty) { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
   .ntab:has(.tab-unter:not(:empty)) .tab-label { display: none; }
   .sammlung-wahl { display: flex; width: 100%; }
@@ -137,7 +138,9 @@
   .fgrid       { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem; }
   .fgrid .fstat.hi { grid-column: 1 / -1; }
   .fstat       { min-width: 0; padding: .85rem .9rem; }
-  .fval        { overflow-wrap: anywhere; }
+  /* Ein Betrag bricht nie mitten in der Zahl um: eine Zeile, die Schrift
+     wird mit der Breite kleiner; unter 420 px eine Kachel je Zeile (unten). */
+  .fval        { white-space: nowrap; font-size: clamp(1.05rem, 5.4vw, var(--fs-6)); }
 
   /* ─ Formularzeilen ──────────────────────────────────────────────────── */
   .frow, .gctrl, .sform {
@@ -201,6 +204,9 @@
      Schlüsseln in Einstellungen und Einrichtung. */
   .ca { top: 4px; right: 4px; z-index: 2; }
   .delbtn { width: 44px; height: 44px; }
+  /* Platz für den 44-px-Knopf, damit er weder Bild noch Preis verdeckt. */
+  .man-tile:has(> .ca) { padding-top: 52px; }
+  .mk-zeile { padding-right: 56px; }
   .ibox a[href], a.schrift-1[href] { display: inline-flex; align-items: center; min-height: 44px; }
   /* Ein Häkchen in seiner Beschriftung: Die ganze Zeile ist die Tippfläche. */
   label:has(> input[type="checkbox"]), label:has(> input[type="radio"]) { min-height: 44px; display: flex; align-items: center; }
@@ -355,6 +361,10 @@
 
 
 /* ── Kleines Telefon ─────────────────────────────────────────────────────── */
+@media (max-width: 420px) {
+  .fgrid { grid-template-columns: 1fr; }
+}
+
 @media (max-width: 380px) {
   .sgrid      { grid-template-columns: 1fr 1fr; gap: .5rem; }
   .parts-grid, .parts-list { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); }
@@ -371,7 +381,13 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 @media (max-width: 640px) {
 
-  [data-theme="brick"] .brick-stats { grid-template-columns: 1fr; gap: .6rem; }
+  /* Die drei Kennzahlen als waagrecht rollende Reihe: untereinander füllten
+     sie den ersten Bildschirm, bevor ein Set zu sehen war. */
+  [data-theme="brick"] .brick-stats { display: flex; gap: .6rem; overflow-x: auto; scroll-snap-type: x mandatory;
+    padding-bottom: 4px; scrollbar-width: none; }
+  [data-theme="brick"] .brick-stats::-webkit-scrollbar { display: none; }
+  [data-theme="brick"] .bstat { flex: 0 0 auto; min-width: 9.5rem; scroll-snap-align: start; padding: 10px 14px; }
+  [data-theme="brick"] .bstat .bstat-v { font-size: 1.35rem; }
 
   /* Die Pills des Stein-Designs werden unten zur Leiste wie in den anderen. */
   [data-theme="brick"] nav {

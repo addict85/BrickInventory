@@ -1,7 +1,7 @@
-import { skelettKacheln } from './01-bausteine.js';
+import { skelettKacheln, listeLadefehler } from './01-bausteine.js';
 import { registerActions } from './00-registry.js';
 import { locale, t, tRaw} from '../i18n.js';
-import { bildTag, fullUrl, platzhalterInhalt, setnummerFeldGueltig, leerZustand, ico, CURRENCY, G, ME, TRASH_ICON_SVG, api, esc, escJs, escUrl, fmtBig, fmtN, fmtPct, imgUrl, observeLazyImages, thumbUrl, toast, zuruecksetzenKnopf } from './01-core.js';
+import { fehlerMeldung, fmtDatum, bildTag, fullUrl, platzhalterInhalt, setnummerFeldGueltig, leerZustand, ico, CURRENCY, G, ME, TRASH_ICON_SVG, api, esc, escJs, escUrl, fmtBig, fmtN, fmtPct, imgUrl, observeLazyImages, thumbUrl, toast, zuruecksetzenKnopf } from './01-core.js';
 import { _gibSse, _gibTimer, gibStart, protokollZeile } from './01-fortschritt.js';
 import { _monitorTimer, loadMonitor, set_monitorTimer } from './01-monitor.js';
 import { SCOPE_VIEWS, addScopeParam, scopeMode, scopeQuery, setScopeMode,
@@ -826,8 +826,10 @@ export async function loadGallery(opts = {}){
   }
   _galGen++; _galPage = 1; _galDone = false; _galLoadingMore = false;
   const gen = _galGen;
+  const hatteListe = allSets.length > 0;
   const d=await api('GET', `/v1/sets?${galleryParams(1, holen)}`);
   if (gen !== _galGen) return;
+  if (listeLadefehler(gal, d, { erneut: 'loadGallery', behalten: hatteListe })) { if (hatteListe) renderGallery(); return; }
   allSets=d.sets||[];
   _galTotal = d.total ?? allSets.length;
   // Seitenzähler an die tatsächlich geholte Menge angleichen, damit die nächste
@@ -978,7 +980,7 @@ function gridCard(s){
   const pnl = pnlBadge(s._pnl_pct);
   // Das Datum des letzten Kaufs: Die Aufnahme ins Konto war bei einem Import
   // für alle Sets derselbe Tag und sagte nichts.
-  const kaufFmt = s.letzter_kauf ? new Date(s.letzter_kauf).toLocaleDateString(locale()) : '';
+  const kaufFmt = s.letzter_kauf ? fmtDatum(s.letzter_kauf) : '';
   // Zustand: Der Server liefert die vorkommenden Zustände als Aggregat —
   // eine Plakette je Zustand, siehe condBadges().
   const condBadge = condBadges(s);
@@ -1004,7 +1006,7 @@ function gridCard(s){
 }
 function tableRow(s){
   const src=s.image_local||s.image_url||'';
-  const addedFmt = s.added_at ? new Date(s.added_at).toLocaleDateString(locale()) : '—';
+  const addedFmt = s.added_at ? fmtDatum(s.added_at) : '—';
   return `<tr data-stil="cursor:pointer" tabindex="0" data-click="openModal" data-arg="${escJs(s.set_number)}">
     <td>${src?bildTag({ src: imgUrl(thumbUrl(src)||src, true), alt: '', ph: 'set' }):`<span class="bild-ph" aria-hidden="true">${platzhalterInhalt('set')}</span>`}</td>
     <td><span data-stil="font-family:var(--mono);color:var(--b600);font-size:var(--fs-1)">${esc(s.set_number)}</span></td>
@@ -1073,7 +1075,7 @@ async function doAddSet(){
       }
       else if(ev.step==='error'){ streamFertig(); setTimeout(()=>{hideProgress();toast(ev.error,'error');},1500); }
     });
-  }catch(e){if(e.name!=='AbortError'){hideProgress();toast(e.message,'error');}}
+  }catch(e){if(e.name!=='AbortError'){hideProgress();toast(fehlerMeldung(e),'error');}}
 }
 
 // CSV import via SSE stream — Datei-Auswahl startet den Import direkt (analog Teile-Import)
@@ -1132,7 +1134,7 @@ async function startSetCsvImport(){
         csvPollLoop(ctx, fi).then(finish);
       }
     });
-  }catch(e){ hideProgress(); toast(e.message,'error'); }
+  }catch(e){ hideProgress(); toast(fehlerMeldung(e),'error'); }
 }
 
 // Verarbeitet ein CSV-Status-Objekt fürs Overlay des startenden Fensters.
@@ -1492,6 +1494,7 @@ async function redownloadInstr(sn){ toast(tRaw('instr.loading'),'info'); const d
 // Namen, und der Handler gilt als nicht angemeldet. GEMESSEN: genau so ist
 // der erste Lauf dieses Umbaus rot geworden.
 registerActions({
+  loadGallery,
   filterUmschalten,
   filterZuruecksetzen,
   benutzerMenue,

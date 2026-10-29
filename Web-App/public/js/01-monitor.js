@@ -13,7 +13,7 @@
 // Seiten der Überwachung beieinander — die Liste, die zeigt, was läuft, und
 // das Fenster, das zeigt, was dabei protokolliert wurde.
 import { registerActions } from './00-registry.js';
-import { ico, G, api, esc, escHtmlAttr, toast } from './01-core.js';
+import { fmtDatum, ico, G, api, esc, escHtmlAttr, toast } from './01-core.js';
 import { LANG, locale, t, tRaw } from '../i18n.js';
 
 /**
@@ -197,7 +197,7 @@ export async function loadMonitor() {
             </div>
             ${j.sub ? `<div data-stil="font-size:var(--fs-2);color:var(--mut)">${translateJobSub(j.sub)}</div>` : ''}
             ${j.total > 0 ? bar(j.progress, j.total) : ''}
-            ${j.lastRun ? `<div data-stil="font-size:var(--fs-1);color:var(--mut);margin-top:.4rem">${t('monitor.last_run')} ${new Date(j.lastRun).toLocaleTimeString(locale())}</div>` : ''}
+            ${j.lastRun ? `<div data-stil="font-size:var(--fs-1);color:var(--mut);margin-top:.4rem">${t('monitor.last_run')} ${fmtDatum(j.lastRun, 'zeit')}</div>` : ''}
             ${k==='bricksetRetry' ? `<div id="brickset-queue-panel" data-stil="display:none;margin-top:.75rem"></div>` : ''}
           </div>`).join('')}
       </div>

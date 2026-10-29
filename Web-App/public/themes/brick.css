@@ -170,11 +170,10 @@
   background:var(--b600);color:var(--auf-primaer,#fff);border-color:var(--b600);
 }
 [data-theme="brick"] .ntab.active svg{filter:brightness(0) invert(1)}
-@media (max-width:640px){
 [data-theme="brick"] .ntab.gruppe-aktiv{
   background:var(--b600);color:var(--auf-primaer,#fff);border-color:var(--b600);
 }
-[data-theme="brick"] .ntab.gruppe-aktiv svg{filter:brightness(0) invert(1)}}
+[data-theme="brick"] .ntab.gruppe-aktiv svg{filter:brightness(0) invert(1)}
 
 /* ── Buttons: primäre Aktionen in Petrol (Stein-Optik mit „Bauhöhe") ─────── */
 [data-theme="brick"] .btn{border-radius:10px}
@@ -264,7 +263,6 @@
 [data-theme="brick"] .bstat-petrol{background:var(--brick-petrol)}
 [data-theme="brick"] .bstat-light{background:var(--brick-slate-lt);color:#20303f}
 [data-theme="brick"] .bstat-light .bstat-l{opacity:.9}
-@media(max-width:640px){[data-theme="brick"] .brick-stats{grid-template-columns:1fr}}
 
 /* ── Katalog: Von-Bis-Jahres-Slider im Stein-Look ────────────────────────── */
 /* Schiene wie die Grundplatten-Ränder, Füllung in Slate-Blau */

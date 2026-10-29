@@ -139,7 +139,8 @@ test('5. Löschen: Papierkorb in der Webapp, nur im Detail in der App', () => {
   // säße er an der nächsten positionierten Box — also irgendwo.
   assert.match(zeileWeb, /class="mk-zeile"/,
     'Die Zeile trägt die Klasse nicht, an der die Einblendung hängt.');
-  assert.match(zeileWeb, /position:relative/,
+  // Seit dem 29.10. steht die Gestaltung der Zeile als Klasse in styles.css.
+  assert.match(fs.readFileSync(path.join(ROOT, 'public/styles.css'), 'utf8'), /\.mk-zeile\{position:relative/,
     'Ohne position:relative sitzt der Papierkorb nicht in der Zeile.');
 
   // ── App: NICHT auf der Kachel und NICHT in der Zeile ─────────────────────
