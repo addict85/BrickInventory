@@ -17,6 +17,7 @@ window.I18N_EN = {
 
   // Navigation tabs
   'nav.collection': 'Collection',
+  'a11y.skip_to_content': 'Skip to content',
   'nav.main': 'Main navigation',
   'nav.gallery': 'Gallery',
   'nav.catalog': 'Catalog',

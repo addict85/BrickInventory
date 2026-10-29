@@ -17,6 +17,7 @@ window.I18N_DE = {
 
   // Navigation tabs
   'nav.collection': 'Sammlung',
+  'a11y.skip_to_content': 'Zum Inhalt',
   'nav.main': 'Hauptnavigation',
   'nav.gallery': 'Galerie',
   'nav.catalog': 'Katalog',

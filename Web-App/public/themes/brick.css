@@ -76,8 +76,8 @@
   border-radius:16px;border-bottom:none;overflow:visible;
   padding:14px 20px;margin-bottom:14px;box-shadow:var(--sh1);
 }
-[data-theme="brick"] header .logo h1,
-[data-theme="brick"] header .logo h1 span{color:#fff}
+[data-theme="brick"] header .logo .marke,
+[data-theme="brick"] header .logo .marke span{color:#fff}
 [data-theme="brick"] header .logo svg{
   background:#7fa3c9;border-radius:9px;padding:6px;box-sizing:content-box;
   filter:hue-rotate(200deg) saturate(.55) brightness(1.05);

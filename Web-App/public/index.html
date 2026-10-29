@@ -45,6 +45,7 @@
   <script src="/locales/de.js?v=2026.10.27.1901" data-i18n-locale></script>
 </head>
 <body>
+<a class="sprunglink" href="#inhalt" data-i18n="a11y.skip_to_content">Zum Inhalt</a>
 <!-- Die Symbolfamilie: Strichsymbole auf 24er-Raster, Farbe aus dem Text.
      Verwendung: <svg class="ico" aria-hidden="true"><use href="#i-NAME"/></svg> -->
 <svg xmlns="http://www.w3.org/2000/svg" data-stil="display:none" aria-hidden="true">
@@ -279,7 +280,7 @@
   <rect x="29" y="86" width="42" height="5" rx="1" fill="#e5e7eb"/>
   <rect x="80" y="78" width="16" height="13" rx="2" fill="#f5a800"/>
   <text x="88" y="88" text-anchor="middle" font-family="Arial,sans-serif" font-weight="800" font-size="9" fill="white">6+</text>
-</svg><h1>BrickInventory <span>Manager</span></h1></div>
+</svg><p class="marke">BrickInventory <span>Manager</span></p></div>
     <div class="hright">
       <div class="hstats">
         <div class="hs"><span class="v" id="hs-sets">—</span><span class="l" data-i18n="header.sets">Sets</span></div>
@@ -377,12 +378,12 @@
     <button type="button" class="ntab ntab-unter" id="ntab-monitor" data-tab="monitor" data-i18n-tab="nav.monitoring" data-stil="display:none"><svg class="ico" aria-hidden="true"><use href="#i-monitoring"/></svg> <span class="tab-label">Hintergrund</span></button>
   </nav>
 
-  <main>
+  <main id="inhalt" tabindex="-1">
 
     <!-- ══ GALERIE ══ -->
     <div class="tab active" id="tab-gallery">
       <div class="ph">
-        <h2 class="ptitle" data-tab-title="gallery"><span class="ptitle-icon"></span><span data-i18n="gallery.title">Meine Sammlung</span></h2>
+        <h1 class="ptitle" data-tab-title="gallery"><span class="ptitle-icon"></span><span data-i18n="gallery.title">Meine Sammlung</span></h1>
         <div class="sammlung-wahl" role="tablist" aria-label="Sammlung" data-i18n-attr="aria-label" data-i18n="nav.collection"><button type="button" role="tab" aria-selected="true" data-click="oeffneReiter" data-arg="gallery"><svg class="ico" aria-hidden="true"><use href="#i-set"/></svg><span data-i18n="header.sets">Sets</span></button><button type="button" role="tab" aria-selected="false" data-click="oeffneReiter" data-arg="parts"><svg class="ico" aria-hidden="true"><use href="#i-teil"/></svg><span data-i18n="nav.parts">Teile</span></button><button type="button" role="tab" aria-selected="false" data-click="oeffneReiter" data-arg="minifigs"><svg class="ico" aria-hidden="true"><use href="#i-figur"/></svg><span data-i18n="nav.minifigs">Minifiguren</span></button></div>
       </div>
 
@@ -442,7 +443,7 @@
     <!-- ══ KATALOG ══ -->
     <div class="tab" id="tab-catalog">
       <div class="ph">
-        <h2 class="ptitle" data-tab-title="catalog"><span class="ptitle-icon"></span><span data-i18n="catalog.title">Katalog</span></h2>
+        <h1 class="ptitle" data-tab-title="catalog"><span class="ptitle-icon"></span><span data-i18n="catalog.title">Katalog</span></h1>
       </div>
       <!-- Suche/Filter unter dem Titel — analog Galerie, Teile, Minifiguren
            (Nachtrag 34). Der Katalog hat keine Erfassung, hier steht die
@@ -486,7 +487,7 @@
     <!-- ══ TEILE ══ -->
     <div class="tab" id="tab-wanted">
       <div class="ph">
-        <h2 class="ptitle" data-tab-title="wanted"><span class="ptitle-icon"></span><span data-i18n="wanted.title">Merkliste</span></h2>
+        <h1 class="ptitle" data-tab-title="wanted"><span class="ptitle-icon"></span><span data-i18n="wanted.title">Merkliste</span></h1>
       </div>
 
       <!--
@@ -556,7 +557,7 @@
 
     <div class="tab" id="tab-parts">
       <div class="ph">
-        <h2 class="ptitle" data-tab-title="parts"><span class="ptitle-icon"></span><span data-i18n="nav.parts">Teile</span></h2>
+        <h1 class="ptitle" data-tab-title="parts"><span class="ptitle-icon"></span><span data-i18n="nav.parts">Teile</span></h1>
         <div class="sammlung-wahl" role="tablist" aria-label="Sammlung" data-i18n-attr="aria-label" data-i18n="nav.collection"><button type="button" role="tab" aria-selected="false" data-click="oeffneReiter" data-arg="gallery"><svg class="ico" aria-hidden="true"><use href="#i-set"/></svg><span data-i18n="header.sets">Sets</span></button><button type="button" role="tab" aria-selected="true" data-click="oeffneReiter" data-arg="parts"><svg class="ico" aria-hidden="true"><use href="#i-teil"/></svg><span data-i18n="nav.parts">Teile</span></button><button type="button" role="tab" aria-selected="false" data-click="oeffneReiter" data-arg="minifigs"><svg class="ico" aria-hidden="true"><use href="#i-figur"/></svg><span data-i18n="nav.minifigs">Minifiguren</span></button></div>
       </div>
       <div class="brick-stats" id="parts-stats-bar">
@@ -631,7 +632,7 @@
     <!-- ══ MINIFIGUREN ══ -->
     <div class="tab" id="tab-minifigs">
       <div class="ph">
-        <h2 class="ptitle" data-tab-title="minifigs"><span class="ptitle-icon"></span><span data-i18n="nav.minifigs">Minifiguren</span></h2>
+        <h1 class="ptitle" data-tab-title="minifigs"><span class="ptitle-icon"></span><span data-i18n="nav.minifigs">Minifiguren</span></h1>
         <div class="sammlung-wahl" role="tablist" aria-label="Sammlung" data-i18n-attr="aria-label" data-i18n="nav.collection"><button type="button" role="tab" aria-selected="false" data-click="oeffneReiter" data-arg="gallery"><svg class="ico" aria-hidden="true"><use href="#i-set"/></svg><span data-i18n="header.sets">Sets</span></button><button type="button" role="tab" aria-selected="false" data-click="oeffneReiter" data-arg="parts"><svg class="ico" aria-hidden="true"><use href="#i-teil"/></svg><span data-i18n="nav.parts">Teile</span></button><button type="button" role="tab" aria-selected="true" data-click="oeffneReiter" data-arg="minifigs"><svg class="ico" aria-hidden="true"><use href="#i-figur"/></svg><span data-i18n="nav.minifigs">Minifiguren</span></button></div>
       </div>
 
@@ -686,7 +687,7 @@
     <!-- ══ FINANZEN ══ -->
     <div class="tab" id="tab-finance">
       <div class="ph">
-        <h2 class="ptitle" data-tab-title="finance"><span class="ptitle-icon"></span><span data-i18n="finance.title">Portfolio-Wert</span></h2>
+        <h1 class="ptitle" data-tab-title="finance"><span class="ptitle-icon"></span><span data-i18n="finance.title">Portfolio-Wert</span></h1>
         <!-- margin-left:auto (Nachtrag 66, Marcos Wunsch „rechts ausgerichtet"):
              Die Kopfzeile ist flex mit space-between, also stand der Filter auf
              breiten Fenstern schon rechts. Sie bricht aber um (flex-wrap), und
@@ -748,7 +749,7 @@
     <!-- ══ TEILELISTE ══ -->
     <div class="tab" id="tab-partslist">
       <div class="ph spalte-05">
-        <h2 class="ptitle" data-tab-title="partslist"><span class="ptitle-icon"></span><span data-i18n="nav.partslist">Teileliste</span></h2>
+        <h1 class="ptitle" data-tab-title="partslist"><span class="ptitle-icon"></span><span data-i18n="nav.partslist">Teileliste</span></h1>
         <div class="zeile mittig luecke-05 umbruch">
         <input type="text" id="pl-setnr" placeholder="Set-Nr." data-i18n="pl.set_nr" data-i18n-attr="placeholder" data-stil="width:140px;flex-shrink:0" aria-label="Set-Nr." />
         <button class="btn bp fest" data-click="plAddSet" data-i18n="adding.button" data-ico="plus">Hinzufügen</button>
@@ -827,7 +828,7 @@
          selbst ist fuer alle anderen ausgeblendet — ein Reiter, der leer
          waere, ist schlimmer als keiner. -->
     <div class="tab" id="tab-settings">
-      <div class="ph"><h2 class="ptitle" data-tab-title="settings"><span class="ptitle-icon"></span><span data-i18n="settings.title">Einstellungen</span></h2></div>
+      <div class="ph"><h1 class="ptitle" data-tab-title="settings"><span class="ptitle-icon"></span><span data-i18n="settings.title">Einstellungen</span></h1></div>
 
 
       <!-- ── GLOBALE EINSTELLUNGEN (nur Admins) ─────────────────────────── -->
@@ -967,7 +968,7 @@
 
     <!-- ══ PROFIL (Menue) ══ -->
     <div class="tab" id="tab-profil">
-      <div class="ph"><h2 class="ptitle"><span class="ptitle-icon"><svg class="ico" aria-hidden="true"><use href="#i-profil"/></svg></span><span data-i18n="settings.group.profile">Profil-Einstellungen</span></h2></div>
+      <div class="ph"><h1 class="ptitle"><span class="ptitle-icon"><svg class="ico" aria-hidden="true"><use href="#i-profil"/></svg></span><span data-i18n="settings.group.profile">Profil-Einstellungen</span></h1></div>
 
       <!-- ── PROFIL-EINSTELLUNGEN ─────────────────────────────────────────── -->
 
@@ -1068,7 +1069,7 @@
 
     <!-- ══ GUTSCHEINE (Menue) ══ -->
     <div class="tab" id="tab-gutscheine">
-      <div class="ph"><h2 class="ptitle"><span class="ptitle-icon"><svg class="ico" aria-hidden="true"><use href="#i-gutschein"/></svg></span><span data-i18n="vouchers.group">Gutscheine</span></h2></div>
+      <div class="ph"><h1 class="ptitle"><span class="ptitle-icon"><svg class="ico" aria-hidden="true"><use href="#i-gutschein"/></svg></span><span data-i18n="vouchers.group">Gutscheine</span></h1></div>
 
       <!-- ── GUTSCHEINE ───────────────────────────────────────────────────── -->
       <!--
@@ -1228,7 +1229,7 @@
 
     <!-- ══ PREISALARME (Menue) ══ -->
     <div class="tab" id="tab-alarme">
-      <div class="ph"><h2 class="ptitle"><span class="ptitle-icon"><svg class="ico" aria-hidden="true"><use href="#i-alarm"/></svg></span><span data-i18n="alerts.group">Preisalarme</span></h2></div>
+      <div class="ph"><h1 class="ptitle"><span class="ptitle-icon"><svg class="ico" aria-hidden="true"><use href="#i-alarm"/></svg></span><span data-i18n="alerts.group">Preisalarme</span></h1></div>
 
       <!-- ── PREISALARME: ALLE AUF EINEN BLICK ───────────────────────────── -->
       <!--
@@ -1266,7 +1267,7 @@
 
     <!-- ══ LAGERORTE (Menue) ══ -->
     <div class="tab" id="tab-lagerorte">
-      <div class="ph"><h2 class="ptitle"><span class="ptitle-icon"><svg class="ico" aria-hidden="true"><use href="#i-lagerort"/></svg></span><span data-i18n="storage.group">Lagerorte</span></h2></div>
+      <div class="ph"><h1 class="ptitle"><span class="ptitle-icon"><svg class="ico" aria-hidden="true"><use href="#i-lagerort"/></svg></span><span data-i18n="storage.group">Lagerorte</span></h1></div>
 
       <!-- ── LAGERORTE: DER VORRAT, AUS DEM GEWÄHLT WIRD ─────────────────── -->
 
@@ -1296,7 +1297,7 @@
 
     <!-- ══ HAUSHALT (Menue) ══ -->
     <div class="tab" id="tab-haushalt">
-      <div class="ph"><h2 class="ptitle"><span class="ptitle-icon"><svg class="ico" aria-hidden="true"><use href="#i-haushalt"/></svg></span><span data-i18n="household.group">Haushalt</span></h2></div>
+      <div class="ph"><h1 class="ptitle"><span class="ptitle-icon"><svg class="ico" aria-hidden="true"><use href="#i-haushalt"/></svg></span><span data-i18n="household.group">Haushalt</span></h1></div>
 
       <!-- ── HAUSHALT: KONTEN VERKNÜPFEN ─────────────────────────────────── -->
 
@@ -1354,7 +1355,7 @@
 
     <!-- ══ DATEN (Menue) ══ -->
     <div class="tab" id="tab-daten">
-      <div class="ph"><h2 class="ptitle"><span class="ptitle-icon"><svg class="ico" aria-hidden="true"><use href="#i-daten"/></svg></span><span data-i18n="settings.data_export">Daten und Papierkorb</span></h2></div>
+      <div class="ph"><h1 class="ptitle"><span class="ptitle-icon"><svg class="ico" aria-hidden="true"><use href="#i-daten"/></svg></span><span data-i18n="settings.data_export">Daten und Papierkorb</span></h1></div>
 
       <!-- Daten exportieren: für alle Nutzer sichtbar -->
 
@@ -1405,7 +1406,7 @@
 
     <!-- ══ ANDROID-APP (Menue) ══ -->
     <div class="tab" id="tab-app">
-      <div class="ph"><h2 class="ptitle"><span class="ptitle-icon"><svg class="ico" aria-hidden="true"><use href="#i-app"/></svg></span><span data-i18n="menu.app">Android-App</span></h2></div>
+      <div class="ph"><h1 class="ptitle"><span class="ptitle-icon"><svg class="ico" aria-hidden="true"><use href="#i-app"/></svg></span><span data-i18n="menu.app">Android-App</span></h1></div>
 
       <!-- QR-Code für Android App -->
 
@@ -1495,7 +1496,7 @@
     <!-- MONITOR TAB -->
     <div class="tab" id="tab-monitor">
       <div class="ph zeile mittig verteilt umbruch luecke-05">
-        <h2 class="ptitle" data-tab-title="monitor"><span class="ptitle-icon"></span><span data-i18n="monitor.title">Hintergrundarbeiten</span></h2>
+        <h1 class="ptitle" data-tab-title="monitor"><span class="ptitle-icon"></span><span data-i18n="monitor.title">Hintergrundarbeiten</span></h1>
         <button class="btn bs btn-sm schrift-2" data-click="openLogViewer" data-i18n="monitor.logs_btn" data-ico="liste">Logs anzeigen</button>
       </div>
       <!-- Hidden stubs so existing JS references don't break -->

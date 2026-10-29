@@ -2,6 +2,9 @@
  * Die App am Telefon (390 × 844, mobile) — gemessen in Chrome am echten
  * Server mit den echten Stylesheets.
  *
+ *   - Erster Tab-Halt (Dokumentreihenfolge) ist der Sprunglink „Zum Inhalt“, mit Fokus sichtbar;
+ *     Enter setzt den Fokus auf <main>. Je Reiter ist genau eine h1 sichtbar
+ *     (der Seitentitel; vorher war die einzige h1 der Markenname).
  *   - Diagramme: Jede Beschriftung im Wertdiagramm (Finanzen) und im
  *     Preisverlauf (Set-Ansicht) ist mindestens 11 px groß, und jedes
  *     Diagramm hat role="img" mit einer Zusammenfassung als aria-label.
@@ -12,6 +15,10 @@
  * Gegenproben (am 28.10.2026 gemessen):
  *   A  diagrammBreite() liefert immer 700 → rot: „Diagrammschrift
  *      Finanzen“ (5,6 px) und „Diagrammschrift Set-Ansicht“ (6,2 px)
+ *   B  (29.10.) Marke in der Kopfleiste wieder <h1> → rot: „Sprunglink und genau eine
+ *      h1 je Reiter“ (je Reiter zwei h1)
+ *   C  (29.10.) Sprunglink aus index.html entfernt → rot: dieselbe Prüfung (erster
+ *      Tab-Halt war .ubadge-knopf)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -43,6 +50,32 @@ test('Telefon', { concurrency: 1, timeout: 240_000 }, async (t) => {
   if (app.grund) { t.skip(app.grund); return; }
   const { b, bis } = app;
   const reiter = async (name) => { await b.auswerten(`document.querySelector('.ntab[data-tab="${name}"]').click(); true`); await warte(400); };
+
+  await t.test('Sprunglink und genau eine h1 je Reiter', async () => {
+    const reiterListe = await b.auswerten(`[...document.querySelectorAll('.ntab[data-tab]')].map(x => x.dataset.tab)`);
+    assert.ok(reiterListe.length >= 8, `nur ${reiterListe.length} Reiter`);
+    const falsch = [];
+    for (const r of reiterListe) {
+      await reiter(r);
+      const h1 = await b.auswerten(`[...document.querySelectorAll('h1')].filter(h => h.getClientRects().length > 0).map(h => h.textContent.trim())`);
+      if (h1.length !== 1) falsch.push(`${r}: ${JSON.stringify(h1)}`);
+    }
+    assert.deepEqual(falsch, []);
+    await reiter('gallery');
+    // Der erste Tab-Halt in Dokumentreihenfolge — so springt Tab nach dem Laden hin.
+    const fokus = await b.auswerten(`(() => {
+      const e = [...document.querySelectorAll('a[href], button, input, select, textarea, [tabindex]')]
+        .find(x => x.tabIndex >= 0 && !x.disabled && x.getClientRects().length > 0);
+      e.focus(); const r = e.getBoundingClientRect();
+      return { klasse: e.className, text: e.textContent.trim(), oben: r.top, hoehe: r.height }; })()`);
+    assert.equal(fokus.klasse, 'sprunglink', `Erster Tab-Halt: ${JSON.stringify(fokus)}`);
+    assert.equal(fokus.text, 'Zum Inhalt');
+    assert.ok(fokus.oben >= 0 && fokus.hoehe >= 24, `Der Sprunglink ist mit Fokus nicht sichtbar: ${JSON.stringify(fokus)}`);
+    await b.tab('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 });
+    await b.tab('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 });
+    await warte(100);
+    assert.equal(await b.auswerten(`document.activeElement.id`), 'inhalt');
+  });
 
   await t.test('Diagrammschrift Finanzen', async () => {
     await reiter('finance');

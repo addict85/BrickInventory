@@ -84,7 +84,7 @@
   .hstats             { display: none; }
   /* Kopfzeile: Name und Importleiste geben nach, das Benutzermenü nie. */
   header .logo        { min-width: 0; flex: 0 1 auto; }
-  header .logo h1     { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  header .logo .marke  { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .hright             { min-width: 0; flex: 1 1 auto; justify-content: flex-end; gap: .5rem; }
   .umenu              { flex: 0 0 auto; }
   #global-import-bar  { min-width: 0 !important; max-width: none !important; flex: 1 1 60px; }

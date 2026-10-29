@@ -135,7 +135,7 @@
 [data-theme="noppe"] header,[data-theme="hochglanz"] header,
 [data-theme="noppe"] header a,[data-theme="hochglanz"] header a,
 [data-theme="noppe"] header .brand,[data-theme="hochglanz"] header .brand,
-[data-theme="noppe"] header .logo h1 span,[data-theme="hochglanz"] header .logo h1 span,
+[data-theme="noppe"] header .logo .marke span,[data-theme="hochglanz"] header .logo .marke span,
 [data-theme="noppe"] header .hs .v,[data-theme="hochglanz"] header .hs .v,
 [data-theme="noppe"] header .hs .l,[data-theme="hochglanz"] header .hs .l{color:#fff}
 
