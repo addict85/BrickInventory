@@ -104,7 +104,8 @@ Vor dem ersten Start lohnen zwei weitere Werte in einer `.env` neben
   Docker-Gateway (meist `172.17.0.1` oder `172.18.0.1`), und ohne die Angabe
   gelten alle Clients als dieselbe Adresse: Fünf Fehlversuche eines Fremden
   sperrten sonst den Inhaber aus. Der Server warnt beim ersten solchen Aufruf
-  und nennt die Adresse.
+  und nennt die Adresse. Für einen Proxy im Compose-Netz gibt `compose.yaml`
+  `TRUST_PROXY=docker` schon vor; ohne Docker glaubt der Server nur Loopback.
 
 ### Auf dem Raspberry Pi
 
