@@ -1,7 +1,7 @@
 import { registerActions } from './00-registry.js';
 import { locale, t, tRaw } from '../i18n.js';
-import { bildTag, platzhalterInhalt, setnummerFeldGueltig, leerZustand, ico, CURRENCY, G, TRASH_ICON_SVG, api, esc, escJs, escUrl, fmtN, fullUrl, imgUrl, knopfBesetzt, thumbUrl, toast, zuruecksetzenKnopf } from './01-core.js';
-import { detailZeile } from './01-bausteine.js';
+import { fmtDatum, bildTag, platzhalterInhalt, setnummerFeldGueltig, leerZustand, ico, CURRENCY, G, TRASH_ICON_SVG, api, esc, escJs, escUrl, fmtN, fullUrl, imgUrl, knopfBesetzt, thumbUrl, toast, zuruecksetzenKnopf } from './01-core.js';
+import { detailZeile, listeLadefehler } from './01-bausteine.js';
 import { alarmBlock, diagrammBreite, ladeAlarm, priceChartSVG, renderMarketRows, setzeAlarmFeld } from './07-admin.js';
 import { leereLagerortFeld, selectedOwner, selectedStorage, haushaltsKonten, loadGallery, loadStats } from './02-gallery.js';
 import { addScopeParam } from './14-scope.js';
@@ -81,7 +81,7 @@ function zeile(w) {
   ].filter(Boolean).join(' · ');
 
   const alarm = w.alarm
-    ? `<span data-stil="background:var(--bg);border:1px solid var(--bdr)">
+    ? `<span class="mk-etikett">
          ${ico(w.alarm.ausgeloest ? 'alarm' : 'uhr')}
          ${esc(tRaw(w.alarm.richtung === 'ueber' ? 'detail.alert_above' : 'detail.alert_below'))}
          ${esc(String(w.alarm.schwelle))}
@@ -91,7 +91,7 @@ function zeile(w) {
   // aufkommt — und sie meint das BLICKFELD: Beim Grossvater heisst „ich habe
   // es" auch „der Enkel hat es".
   const schon = w.owned
-    ? `<span data-stil="background:var(--ok-bg,var(--bg));border:1px solid var(--bdr)">${esc(tRaw('wanted.owned'))}</span>`
+    ? `<span class="mk-etikett mk-etikett-ok">${esc(tRaw('wanted.owned'))}</span>`
     : '';
 
   // ── Marktpreis statt Knopf ────────────────────────────────────────────────
@@ -109,8 +109,8 @@ function zeile(w) {
   // jobs/priceJob.ts holt die Preise der Merkposten taeglich; bis zum ersten
   // Lauf nach dem Eintragen gibt es schlicht noch keinen.
   const preis = w.marktpreis != null
-    ? `<span title="${esc(tRaw('detail.market_price'))}" data-stil="font-weight:700;white-space:nowrap">${fmtN(w.marktpreis, w.waehrung || CURRENCY)}</span>`
-    : `<span data-stil="color:var(--mut);white-space:nowrap">—</span>`;
+    ? `<span title="${esc(tRaw('detail.market_price'))}" class="preis mk-preis">${fmtN(w.marktpreis, w.waehrung || CURRENCY)}</span>`
+    : `<span class="mk-preis text-mut">—</span>`;
 
   const arg = escJs(`${w.set_number}|${w.condition}|${w.user_id}`);
   return `
@@ -129,17 +129,15 @@ function zeile(w) {
          Template-Literals und wuerde es sonst beenden. Genau daran ist der
          erste Entwurf gescheitert — dieselbe Falle wie in
          utils/handlers/parts.ts, wo derselbe Hinweis steht. -->
-    <div class="mk-zeile" tabindex="0" role="button" data-click="oeffneMerkpostenDetail" data-arg="${arg}"
-         data-stil="position:relative;display:flex;gap:12px;align-items:center;padding:10px 44px 10px 10px;border:1px solid var(--bdr);
-                border-radius:var(--rad);background:var(--sur);margin-bottom:8px;cursor:pointer">
+    <div class="mk-zeile" tabindex="0" role="button" data-click="oeffneMerkpostenDetail" data-arg="${arg}">
       <div class="ca"><button class="delbtn" data-click="merkpostenLoeschenStop" tabindex="-1" aria-hidden="true" data-arg="${arg}"
            title="${esc(tRaw('wanted.remove'))}" aria-label="${esc(tRaw('wanted.remove'))}">${TRASH_ICON_SVG}</button></div>
       ${bild}
-      <div data-stil="flex:1;min-width:0">
-        <div data-stil="font-weight:600">${titel}</div>
-        <div data-stil="font-size:var(--fs-1);color:var(--mut)">${unter}</div>
+      <div class="mk-text">
+        <div class="mk-titel">${titel}</div>
+        <div class="mk-unter">${unter}</div>
       </div>
-      <div data-stil="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+      <div class="mk-rechts">
         ${alarm}${schon}${preis}
       </div>
     </div>`;
@@ -183,8 +181,9 @@ export async function ladeMerkliste() {
   // Schreibweise wie bei der Galerie, und test/frontend-api-paths.test.js
   // liest den Pfad aus genau dieser Zeile — mit dem Fragezeichen im Rueckgabe-
   // wert las sie „/v1/wanted:x" und meldete eine Route, die es nicht gibt.
-  const d = await api('GET', `/v1/wanted?${merklisteParams()}`).catch(() => null);
-  _merkposten = d?.merkposten || [];
+  const d = await api('GET', `/v1/wanted?${merklisteParams()}`);
+  if (listeLadefehler(ziel, d, { erneut: 'ladeMerkliste', behalten: _merkposten.length > 0 })) return;
+  _merkposten = d.merkposten || [];
   // Zwei verschiedene Leermeldungen: „Noch keine Merkposten" ist eine Aussage
   // ueber die Liste, „Nichts gefunden" eine ueber den Filter. Stuende hier
   // immer die erste, saehe eine Suche ohne Treffer wie eine geleerte Merkliste
@@ -214,7 +213,7 @@ export async function merkpostenHinzufuegen() {
       condition:  G('mk-cond')?.value || 'N',
       owner_user_id: selectedOwner('mk-owner'),
     });
-    if (!d?.success) return;
+    if (!d?.success) { toast(d?.error || tRaw('settings.error'), 'error'); return; }
     // „war schon drauf" ist keine Fehlermeldung, aber auch kein Neuzugang —
     // wer zweimal auf denselben Knopf drückt, soll den Unterschied sehen.
     toast(tRaw(d.war_neu ? 'wanted.added' : 'wanted.already'), 'ok');
@@ -389,7 +388,7 @@ export async function oeffneMerkpostenDetail(arg) {
   G('mk-m-img').src = bild;
   G('mk-m-img').dataset.orig = bild;
   G('mk-m-sparkline-content').innerHTML =
-    `<span data-stil="color:var(--mut);font-size:var(--fs-1)">${esc(tRaw('common.loading'))}</span>`;
+    `<span class="text-mut schrift-1">${esc(tRaw('common.loading'))}</span>`;
   G('mk-m-market-rows').innerHTML = '';
   G('mk-m-det').innerHTML = zeilen(w);
   G('mk-m-bricklink').style.display = 'none';
@@ -437,7 +436,7 @@ export async function oeffneMerkpostenDetail(arg) {
     if (_detail !== arg) return;
     G('mk-m-sparkline-content').innerHTML = ph?.success
       ? priceChartSVG(ph, 'wl' + set_number.replace(/[^a-zA-Z0-9]/g, ''), diagrammBreite(G('mk-m-sparkline-content')))
-      : `<span data-stil="color:var(--mut);font-size:var(--fs-1)">${esc(tRaw('detail.no_history'))}</span>`;
+      : `<span class="text-mut schrift-1">${esc(tRaw('detail.no_history'))}</span>`;
   }).catch(() => {});
 }
 
@@ -477,7 +476,7 @@ function zeilen(w) {
     ['detail.minifigs', STRICH, 'mk-m-minifigs'],
     ['common.condition', esc(zustandText(w.condition)), null],
     ['household.for_account', inhaberWahl(w), null],
-    ['wanted.since',  w.created_at ? `${ico('kalender')} ${esc(new Date(w.created_at).toLocaleDateString(locale()))}` : STRICH, null],
+    ['wanted.since',  w.created_at ? `${ico('kalender')} ${esc(fmtDatum(w.created_at))}` : STRICH, null],
     // Derselbe Block wie im Set-Dialog, nicht ein zweiter: Es ist derselbe
     // Eintrag in price_alerts, am selben Schlüssel (Konto, Set, Zustand).
     // Gefüllt wird er von ladeAlarm() beim Öffnen.

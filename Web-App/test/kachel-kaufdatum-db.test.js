@@ -50,7 +50,8 @@ test('die Kachel zeigt das Kaufdatum', async () => {
     await warte(() => d.querySelector('.sc .kachel-datum'));
     const datum = d.querySelector('.sc .kachel-datum');
     assert.ok(datum, 'Kein Datum auf der Kachel');
-    assert.match(datum.textContent, /14\.7\.2025/);
+    // Eine Schreibweise für alle Daten (fmtDatum): zweistellig, seit dem 29.10.
+    assert.match(datum.textContent, /14\.07\.2025/);
     assert.match(datum.textContent, /Gekauft am/);
   } finally { w.close(); }
 });

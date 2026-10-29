@@ -148,7 +148,8 @@
    Rot, damit die weisse Schrift darauf lesbar bleibt. */
 [data-theme="noppe"][data-dunkel] header,[data-theme="hochglanz"][data-dunkel] header,
 [data-theme="noppe"][data-dunkel] nav,[data-theme="hochglanz"][data-dunkel] nav{background:var(--b300)}
-[data-theme="noppe"] nav .ntab,[data-theme="hochglanz"] nav .ntab{color:var(--b100);font-weight:700}
+/* Weiss statt --b100: Das helle Rosa kam auf dem Rot auf 3,74:1, Weiss auf 5,0:1. */
+[data-theme="noppe"] nav .ntab,[data-theme="hochglanz"] nav .ntab{color:#fff;font-weight:700}
 [data-theme="noppe"] nav .ntab.active,[data-theme="hochglanz"] nav .ntab.active{
   background:var(--sur);color:var(--ink);font-weight:900;
   border:2.5px solid var(--ink);border-radius:9px;

@@ -8,7 +8,8 @@
  *   - In jedem Reiter ist jedes sichtbare Bedienelement mindestens 44 × 44 px
  *     und jeder Text mindestens 12 px groß.
  *   - Teile und Minifiguren: Am Telefon nennt „Sammlung“ in der Leiste die
- *     offene Ansicht („Teile“); am Rechner haben beide eigene Reiter.
+ *     offene Ansicht („Teile“); am Rechner wie am Telefon wechselt der
+ *     Umschalter auf der Seite, die Leiste hat nur „Sammlung“.
  *   - Teile: zwölf Teile in zwölf Farben stehen in einem Raster (höchstens
  *     zehn Zeilen statt 24); die Filter liegen hinter dem Knopf „Filter“ und
  *     sind geöffnet gleich breit.
@@ -41,7 +42,8 @@
  *      Reiter“ (span.tab-label 11 px); .delbtn wieder 36 px → rot (36×36)
  *   E  (29.10.) in markiereGruppe die Zeilen für .tab-unter entfernt → rot:
  *      „Teile und Minifiguren in der Leiste auffindbar“ („Sammlung“);
- *      .ntab-sammlung wieder .ntab-unter → rot (am Rechner nicht sichtbar)
+ *      (29.10.) `.ntab.ntab-sammlung{display:none}` aus styles.css entfernt
+ *      → rot: am Rechner wieder zwei Navigationen (teile: true)
  *   F  (29.10.) .parts-list{display:grid…} aus styles.css entfernt → rot: „Teile:
  *      ein Raster, Filter als Blatt“ (24 Zeilen); Klasse filterleiste an der
  *      Teile-Filterzeile entfernt → rot („Die Auswahlfelder stehen offen da“)
@@ -197,15 +199,17 @@ test('Telefon', { concurrency: 1, timeout: 240_000 }, async (t) => {
     assert.equal(telefon.text, 'Teile', 'Die Leiste nennt die offene Ansicht nicht');
     assert.equal(telefon.aktuell, 'page');
     assert.equal(telefon.teileSichtbar, false, 'Am Telefon passen nur fünf Ziele in die Leiste');
-    // Am Rechner haben Teile und Minifiguren eigene Reiter in der Leiste.
+    // Am Rechner EINE Navigation: „Sammlung“ in der Leiste, Sets/Teile/
+    // Minifiguren nur im Umschalter auf der Seite (vorher beides).
     await b.tab('Emulation.setDeviceMetricsOverride', { width: 1280, height: 900, deviceScaleFactor: 1, mobile: false });
     await warte(200);
     const rechner = await b.auswerten(`(() => { const r = n => document.querySelector('.ntab[data-tab="' + n + '"]');
       return { teile: r('parts').getClientRects().length > 0, figuren: r('minifigs').getClientRects().length > 0,
-               sammlung: r('gallery').innerText.trim(), teileAktuell: r('parts').getAttribute('aria-current') }; })()`);
+               umschalter: document.querySelector('#tab-parts .sammlung-wahl').getClientRects().length > 0,
+               sammlungAktiv: r('gallery').classList.contains('gruppe-aktiv') }; })()`);
     await b.tab('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
     await warte(200);
-    assert.deepEqual(rechner, { teile: true, figuren: true, sammlung: 'Sammlung', teileAktuell: 'page' });
+    assert.deepEqual(rechner, { teile: false, figuren: false, umschalter: true, sammlungAktiv: true });
     await reiter('gallery');
     assert.equal(await b.auswerten(`document.querySelector('.ntab[data-tab="gallery"]').innerText.trim()`), 'Sammlung');
   });

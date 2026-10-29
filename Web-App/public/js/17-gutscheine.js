@@ -1,6 +1,6 @@
 import { registerActions } from './00-registry.js';
 import { locale, t, tRaw } from '../i18n.js';
-import { ico, G, TRASH_ICON_SVG, api, esc, fmtN, toast } from './01-core.js';
+import { fmtDatum, ico, G, TRASH_ICON_SVG, api, esc, fmtN, toast } from './01-core.js';
 import { openPdfViewer } from './12-pdfviewer.js';
 
 // ═══ Gutscheine (LEGO-Geschenkkarten) ══════════════════════════════════════
@@ -83,7 +83,7 @@ function zeile(g) {
                das — im WORT, nicht durch eine Farbe. -->
           <span class="voucher-stand">${g.guthaben_geprueft_am
             ? t('vouchers.balance_as_of',
-                { datum: new Date(g.guthaben_geprueft_am).toLocaleDateString(locale()) })
+                { datum: fmtDatum(g.guthaben_geprueft_am) })
             : t('vouchers.balance_never')}</span>
         </div>
       </div>

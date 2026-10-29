@@ -12,13 +12,14 @@ import { requireApiAdmin as requireAdmin } from './api_v1/middleware';
 const requireLogin = requireLoginOrToken;
 
 import { setUserSetting, setGlobalSetting, getGlobalSetting, SECRET_KEYS, isMaskedValue, readSettings, nutzerEinstellungen } from '../utils/settings';
+import { DESIGNS, designFuer, setzeEigenesDesign } from '../utils/settings';
 import { getRateLimitStatus } from '../utils/financeCalc';
 import { buildSetsCsv } from '../utils/setService';
 import { buildPartsCsv, buildFigsCsv } from '../utils/bestandExport';
 import { buildMerklisteCsv } from '../utils/merkliste';
 import { buildPreisalarmeCsv } from '../utils/preisalarm';
 import { DAILY_JOBS } from '../jobs/dailyScheduler';
-import { escapeLike, requireLoginOrToken, nutzerId, angemeldeteNutzerId, istVerwalter, nutzerName, hashToken, leereTokenCache } from '../utils/auth';
+import { resolveUserId, escapeLike, requireLoginOrToken, nutzerId, angemeldeteNutzerId, istVerwalter, nutzerName, hashToken, leereTokenCache } from '../utils/auth';
 import { bearerToken } from './api_v1/middleware';
 import { sendMail, testSmtp } from '../utils/mailer';
 import { sendeFehler } from '../utils/fehlerTexte';
@@ -30,10 +31,15 @@ import { setzeAusloeser } from '../utils/laufzustand';
 // Login-Pflicht — und damit war das global eingestellte Design auf dem Login-
 // und dem Startup-Screen gar nicht abrufbar. Der Wert ist eine reine
 // UI-Einstellung ('classic' | 'brick') und verrät nichts über Konten oder Daten.
-router.get('/theme', async (_req, res) => {
-  const theme = await getGlobalSetting('app_theme');
-  res.set('Cache-Control', 'no-cache');
-  res.json({ success: true, theme: theme || 'classic' });
+// Angemeldet (Sitzung oder Token) gilt das Design des Kontos, sonst die
+// Vorgabe des Verwalters. `theme` bleibt der wirksame Wert, wie die App ihn liest.
+router.get('/theme', async (req, res) => {
+  try {
+    const uid = await resolveUserId(req);
+    res.set('Cache-Control', 'no-cache');
+    res.set('Vary', 'Cookie, Authorization');
+    res.json({ success: true, ...await designFuer(uid) });
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 // Angemeldete Geräte: Sitzung ODER Token
@@ -399,11 +405,18 @@ router.post('/quelle-testen', async (req, res) => {
 // GET /api/settings/admin/cache-ttl
 // Cache-Dauer liegt seit Etappe 7 unter /api/v1/admin/cache-ttl.
 
+// Eigenes Design des Kontos; leer heisst „Vorgabe des Verwalters“.
+router.post('/user/theme', async (req: LoggedInRequest, res) => {
+  try {
+    const uid = angemeldeteNutzerId(req);
+    await setzeEigenesDesign(uid, req.body?.theme);
+    res.json({ success: true, ...await designFuer(uid) });
+  } catch (e) { handleRouteError(res, e, undefined, req); }
+});
+
 router.post('/admin/theme', requireAdmin, async (req, res) => {
   const theme = String(req.body?.theme || 'classic');
-  // Dieselbe Liste wie ALLOWED in public/js/00-theme-boot.js und wie die
-  // Dateien unter public/themes/ — theme.test.js haelt die drei zusammen.
-  if (!['classic', 'brick', 'werkbank', 'farbfaecher', 'noppe', 'hochglanz'].includes(theme)) {
+  if (!DESIGNS.includes(theme)) {
     return sendeFehler(req, res, 400, 'design_ungueltig');
   }
   setGlobalSetting('app_theme', theme);

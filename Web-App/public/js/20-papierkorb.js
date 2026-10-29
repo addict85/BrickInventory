@@ -1,6 +1,6 @@
 import { registerActions } from './00-registry.js';
 import { locale, t, tRaw } from '../i18n.js';
-import { ico, G, api, esc, toast } from './01-core.js';
+import { fmtDatum, ico, G, api, esc, toast } from './01-core.js';
 import { confirmDelete } from './07-admin.js';
 import { loadGallery, loadStats } from './02-gallery.js';
 import { loadParts } from './03-parts.js';
@@ -13,7 +13,7 @@ import { loadManualFigsTable, loadManualParts, loadMinifigs } from './06-minifig
 const ICON = { set: 'set', teil: 'teil', figur: 'figur' };
 
 function zeile(e) {
-  const frist = new Date(e.endgueltig_am).toLocaleDateString(locale());
+  const frist = fmtDatum(e.endgueltig_am);
   return `<div class="pk-zeile">
     <span aria-hidden="true">${ico(ICON[e.art] || 'loeschen')}</span>
     <span class="pk-name"><span class="pk-nr">${esc(e.nummer)}</span>

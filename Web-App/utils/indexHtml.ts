@@ -6,11 +6,10 @@ import fs from 'fs';
 import {  PUBLIC_DIR } from '../utils/appPaths';
 import path from 'path';
 import * as db from '../db/database';
-import { getGlobalSetting } from './settings';
+import { getGlobalSetting, DESIGNS, designFuer } from './settings';
 import { stempleAssetsGecacht } from './assetStempel';
 
 const INDEX_PATH = path.join(PUBLIC_DIR, 'index.html');
-const ALLOWED = ['classic', 'brick'];
 
 let _html: string | null = null;
 let _mtime = 0;
@@ -37,10 +36,15 @@ async function readIndex(): Promise<string> {
   return _html;
 }
 
-async function currentTheme(): Promise<string> {
+/** Angemeldet zählt das eigene Design; nur die Vorgabe liegt im Zwischenspeicher. */
+async function currentTheme(userId?: number): Promise<string> {
+  if (userId) {
+    const { eigenes } = await designFuer(userId);
+    if (eigenes) return eigenes;
+  }
   if (_theme !== null && Date.now() - _themeAt < THEME_TTL_MS) return _theme;
   const gespeichert = await getGlobalSetting('app_theme').catch(() => null);
-  const gewaehlt: string = ALLOWED.includes(gespeichert) ? gespeichert : 'classic';
+  const gewaehlt: string = DESIGNS.includes(gespeichert) ? gespeichert : 'classic';
   _theme = gewaehlt;
   _themeAt = Date.now();
   return gewaehlt;
@@ -72,7 +76,7 @@ async function currentLang(userId?: number): Promise<string> {
 export async function renderIndexHtml(userId?: number): Promise<string> {
   const html = await readIndex();
   try {
-    const theme = await currentTheme();
+    const theme = await currentTheme(userId);
     let out = /<html[^>]*\sdata-theme=/i.test(html)
       ? html.replace(/(<html[^>]*\sdata-theme=")[^"]*(")/i, `$1${theme}$2`)
       : html.replace(/<html\b/i, `<html data-theme="${theme}"`);

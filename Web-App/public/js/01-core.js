@@ -590,6 +590,7 @@ export function toast(msg, type='info', aktion) {
   el.addEventListener('click', e => { if (e.target === el || !(/** @type {Element} */ (e.target)).closest('button')) el.remove(); });
   c.appendChild(el);
   setTimeout(() => el.remove(), Math.max(aktion ? 9000 : 0, TOAST_DAUER[type] ?? 4500));
+  return el;
 }
 /**
  * Aufruf der eigenen API. Liefert IMMER ein Objekt — nie eine Ausnahme.
@@ -633,8 +634,11 @@ export async function api(method, path, body) {
   } catch (e) {
     // Netzfehler: offline, Verbindungsabbruch, DNS. Kein Status vorhanden.
     console.warn('[api]', method, path, e);
+    zeigeVerbindung(false);
     return { success:false, error:tRaw('api.unreachable'), networkError:true, status:0 };
   }
+  _letzteAntwort = new Date();
+  zeigeVerbindung(true);
   let daten = null;
   try {
     daten = await res.json();
@@ -654,6 +658,41 @@ export async function api(method, path, body) {
   if (daten && typeof daten === 'object') daten.status = res.status;
   if (res.status === 401) meldeSitzungBeendet(path);
   return daten;
+}
+
+/**
+ * Meldetext für eine Ausnahme aus fetch(). Der Browser sagt „Failed to
+ * fetch“ oder „NetworkError…“; der Nutzer soll lesen, was es heisst.
+ * @param {unknown} e
+ */
+export function fehlerMeldung(e) {
+  const text = String(/** @type {any} */ (e)?.message ?? e ?? '');
+  if (/failed to fetch|networkerror|load failed|network request failed/i.test(text) || (typeof navigator !== 'undefined' && navigator.onLine === false))
+    return tRaw('api.unreachable');
+  return text || tRaw('common.unknown_error');
+}
+
+// ── Verbindung ──────────────────────────────────────────────────────────────
+// Ohne Netz zeigt die Seite weiter den letzten Stand. Das Band sagt, dass es
+// einer ist und von wann — sonst hält man alte Zahlen für aktuell.
+let _letzteAntwort = null;
+let _offline = false;
+/** @param {boolean} erreichbar */
+export function zeigeVerbindung(erreichbar) {
+  if (erreichbar && typeof navigator !== 'undefined' && navigator.onLine === false) erreichbar = false;
+  const band = typeof document !== 'undefined' ? document.getElementById('offline-band') : null;
+  if (!band) return;
+  if (erreichbar) {
+    if (_offline) toast(tRaw('net.back'), 'success');
+    _offline = false; band.hidden = true; return;
+  }
+  _offline = true;
+  band.textContent = _letzteAntwort ? tRaw('net.offline_since', { zeit: fmtDatum(_letzteAntwort, 'tagzeit') }) : tRaw('net.offline');
+  band.hidden = false;
+}
+if (typeof window !== 'undefined') {
+  window.addEventListener('offline', () => zeigeVerbindung(false));
+  window.addEventListener('online', () => zeigeVerbindung(true));
 }
 
 /**
@@ -721,7 +760,27 @@ export function fmtPct(v, o = {}) {
   return new Intl.NumberFormat(locale(), { style: 'percent', minimumFractionDigits: stellen,
     maximumFractionDigits: stellen, signDisplay: o.vorzeichen === false ? 'auto' : 'exceptZero' }).format(n / 100);
 }
-export function fmtBig(n){ return n>1e6?(n/1e6).toFixed(1)+'M':n>1e3?(n/1e3).toFixed(1)+'k':String(n); }
+/** Grosse Anzahl kurz in der Sprache der Oberfläche: „1300“ → „1,3 Tsd.“ (de), „1.3K“ (en). */
+export function fmtBig(n){
+  const v = Number(n) || 0;
+  if (v < 10000) return v.toLocaleString(locale());
+  return new Intl.NumberFormat(locale(), { notation: 'compact', maximumFractionDigits: 1 }).format(v);
+}
+
+/**
+ * Ein Datum überall gleich: „05.01.2024“ (de), „05/01/2024“ (en). Vorher
+ * stand je Stelle toLocaleDateString() („5.1.2024“) neben eigenen Formen.
+ * @param {string|number|Date|null|undefined} v
+ * @param {'tag'|'zeit'|'tagzeit'} [art]
+ */
+export function fmtDatum(v, art = 'tag'){
+  if (v === null || v === undefined || v === '') return '';
+  const d = v instanceof Date ? v : new Date(typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v + 'T00:00:00' : v);
+  if (isNaN(d.getTime())) return '';
+  const tag = { day: '2-digit', month: '2-digit', year: 'numeric' }, zeit = { hour: '2-digit', minute: '2-digit' };
+  const o = art === 'zeit' ? zeit : art === 'tagzeit' ? { ...tag, ...zeit } : tag;
+  return new Intl.DateTimeFormat(locale(), /** @type {Intl.DateTimeFormatOptions} */ (o)).format(d);
+}
 
 // ── LANGUAGE HELPERS ────────────────────────────────────────────────────────
 export function setLang(lang) {
@@ -1101,7 +1160,9 @@ function showApp(){ bindTabs(); plInit(); setTimeout(()=>{ gibCheckOnLoad(); }, 
         const ntab = document.querySelector('.ntab[data-tab="settings"]');
         if(ntab) ntab.click();
         /** @type {HTMLElement|null} */ (document.querySelector('.einst-nav a[data-arg="einst-rb"]'))?.click();
-        toast(tRaw('rb_key.missing'),'info');
+        // Der Einrichtungsassistent fragt genau diesen Schlüssel ab; über ihm
+        // wäre der Hinweis doppelt. Öffnet er später, räumt er ihn weg.
+        if (!G('einrichtung-modal')?.classList.contains('open')) toast(tRaw('rb_key.missing'),'info').dataset.art = 'rb-schluessel';
         return;
       }
       loadGallery();

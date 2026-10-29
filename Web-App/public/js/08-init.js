@@ -1,7 +1,7 @@
 import { bindTabs } from './02-gallery.js';
 import { registerActions } from './00-registry.js';
 import { locale, t, tRaw} from '../i18n.js';
-import { bildTag, feldFehler, istSetnummer, platzhalterInhalt, leerZustand, ico, escHex, G, api, checkAuth, esc, escUrl, imgUrl, knopfBesetzt, thumbUrl, toast } from './01-core.js';
+import { fehlerMeldung, bildTag, feldFehler, istSetnummer, platzhalterInhalt, leerZustand, ico, escHex, G, api, checkAuth, esc, escUrl, imgUrl, knopfBesetzt, thumbUrl, toast } from './01-core.js';
 import { initScrollbalken } from './15-scrollbar.js';
 import { baueWantedXmlStuecke } from './19-bricklink-xml.js';
 
@@ -474,7 +474,7 @@ async function plExportPdf() {
     toast(tRaw('pdf.created'), 'success');
   } catch(e) {
     console.error('PDF error:', e);
-    toast(tRaw('pdf.error_prefix')+' ' + e.message, 'error');
+    toast(tRaw('pdf.error_prefix')+' ' + fehlerMeldung(e), 'error');
   } finally {
     frei();
   }
@@ -491,7 +491,7 @@ async function pollPdfStatus(jobId, btn, finish, startEta) {
       if (status === 'running' && etaSeconds != null && startEta) startEta(etaSeconds);
       if (status === 'done') { finish(null); return; }
       if (status === 'error') { finish(error || t('pdf.server_error')); return; }
-    } catch(e) { finish(e.message); return; }
+    } catch(e) { finish(fehlerMeldung(e)); return; }
   }
   finish('Timeout');
 }

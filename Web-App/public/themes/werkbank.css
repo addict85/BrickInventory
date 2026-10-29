@@ -1,5 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   APP-DESIGN "werkbank" (dunkel) — Anthrazit mit Azur, vom Admin waehlbar.
+   APP-DESIGN "werkbank" (dunkel) — die Werkstatt: warmes Graphit, Lochwand,
+   eine Holzkante unter der Kopfleiste und Messing als zweite Farbe.
    ---------------------------------------------------------------------------
    Aktiv, sobald <html data-theme="werkbank"> gesetzt ist (siehe applyTheme()
    in js/00-theme-boot.js). Alle Regeln sind unter [data-theme="werkbank"]
@@ -18,16 +19,21 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 
 [data-theme="werkbank"]{
-  /* Die Grau-Achse, umgedreht: 50 ist jetzt der DUNKELSTE Ton. */
-  --s50:#11151a;--s100:#161b21;--s200:#262d36;--s300:#2f3843;
-  --s400:#6f7986;--s500:#8d96a3;--s600:#b6bec9;--s700:#cfd6de;--s800:#e6e9ed;
+  /* Die Grau-Achse, umgedreht: 50 ist jetzt der DUNKELSTE Ton. Warm statt
+     blaustichig — sonst war das Design von „Klassisch dunkel“ kaum zu
+     unterscheiden (beide Anthrazit mit Blau). */
+  --s50:#13110d;--s100:#1a1712;--s200:#2c261e;--s300:#3a3227;
+  --s400:#7a6f60;--s500:#a89c8b;--s600:#c6b9a6;--s700:#ddd2c1;--s800:#ece4d8;
 
-  --bg:#14181d;
-  --sur:#191e25;
-  --bdr:#262d36;
-  --txt:#e6e9ed;
-  --mut:#8d96a3;
-  --screen-bg:#14181d;      /* Login-/Startup-Screen, vor dem Login */
+  --bg:#17140f;
+  --sur:#211c16;
+  --bdr:#3a3127;
+  --txt:#ece4d8;
+  --mut:#a89c8b;
+  --screen-bg:#17140f;      /* Login-/Startup-Screen, vor dem Login */
+  /* Messing: Kante, Unterstrich des offenen Reiters, Kopf der Kacheln. */
+  --messing:#c9963f;
+  --holz:#7a4f2a;
   /* Text auf --b600: Weiss auf #4d9fff kam auf 2,7:1; dunkel wie in der App
      (onPrimary) auf 6,3:1. */
   --auf-primaer:#0b1a2e;
@@ -71,13 +77,23 @@
 }
 
 /* ── Flaechen ───────────────────────────────────────────────────────────── */
-[data-theme="werkbank"] body{background:var(--bg)}
+/* Die Lochwand: ein schwaches Raster aus Löchern, wie an der Wand über der
+   Werkbank — Textur, kein Muster, über das man lesen muss. */
+[data-theme="werkbank"] body{
+  background-color:var(--bg);
+  background-image:radial-gradient(circle at 12px 12px,rgba(0,0,0,.38) 2.2px,transparent 2.8px);
+  background-size:24px 24px;
+}
 [data-theme="werkbank"] header{
-  background:var(--sur);border-bottom:1px solid var(--bdr);
+  background:linear-gradient(180deg,#2a241c,var(--sur));border-bottom:4px solid var(--holz);
+  box-shadow:inset 0 -1px 0 var(--messing);
 }
 [data-theme="werkbank"] nav{
   background:var(--sur);border-bottom:1px solid var(--bdr);
 }
+[data-theme="werkbank"] .ntab.active,[data-theme="werkbank"] .ntab.gruppe-aktiv{border-bottom-color:var(--messing)}
+[data-theme="werkbank"] .ptitle-icon .ico{color:var(--messing)}
+[data-theme="werkbank"] .sc{border-top:3px solid var(--messing)}
 [data-theme="werkbank"] .card,
 [data-theme="werkbank"] .sc,
 [data-theme="werkbank"] .modal-content{
@@ -91,7 +107,7 @@
 [data-theme="werkbank"] input,
 [data-theme="werkbank"] select,
 [data-theme="werkbank"] textarea{
-  background:#232a33;color:var(--txt);border-color:var(--s300);
+  background:#2a241c;color:var(--txt);border-color:var(--s300);
 }
 [data-theme="werkbank"] input::placeholder,
 [data-theme="werkbank"] textarea::placeholder{color:var(--s400)}

@@ -6,9 +6,9 @@
  * Text mindestens 4,5:1 (gross 3:1) gegen den tatsächlichen Grund.
  *
  * Ausgenommen sind Inhalte, deren Farbe Information ist (Farbpunkte, Bilder,
- * Diagramme), die gedämpfte Bildfläche .sci, die bewusst hellgrau bleibt,
- * damit Produktbilder mit weissem Rand nicht leuchten, und Flächen in Marken-
- * oder Diagrammfarbe — deren Text wird trotzdem auf Kontrast geprüft.
+ * Diagramme), und Flächen in Marken- oder Diagrammfarbe — deren Text wird
+ * trotzdem auf Kontrast geprüft. Die Bildfläche .sci ist seit dem 29.10.
+ * dunkel und wird mitgeprüft.
  *
  * Ohne Chrome (CHROME_BIN, google-chrome, chromium) wird übersprungen.
  *
@@ -23,6 +23,8 @@
  *      → rot: „brick: Text lesbar“ (3,63:1 auf Petrol)
  *   E  in styles.css .ibadge wieder `color:#15803d` → rot: „classic“, „brick“
  *      und „hochglanz: Text lesbar“ (span.ibadge, 2,98:1)
+ *   F  (29.10.) [data-dunkel] .sci wieder #c9ced4 → rot: „classic: keine helle
+ *      Fläche“ (div.sci)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -41,7 +43,7 @@ const MESSUNG = `(() => {
   const hell = (f) => 0.2126 * lin(f.r) + 0.7152 * lin(f.g) + 0.0722 * lin(f.b);
   const ueber = (oben, unten) => ({ r: oben.r * oben.a + unten.r * (1 - oben.a), g: oben.g * oben.a + unten.g * (1 - oben.a),
     b: oben.b * oben.a + unten.b * (1 - oben.a), a: 1 });
-  const ausgenommen = (e) => e.closest('svg, img, canvas, video, .color-dot, [data-farbe], .sci, .bild-ph, .ph, .skelett');
+  const ausgenommen = (e) => e.closest('svg, img, canvas, video, .color-dot, [data-farbe], .bild-ph, .ph, .skelett');
   const sichtbar = (e) => { const r = e.getBoundingClientRect(); const s = getComputedStyle(e);
     return r.width > 4 && r.height > 4 && s.visibility !== 'hidden' && s.display !== 'none' && +s.opacity > 0.1; };
   /** Grund hinter e: eigene und Vorfahren-Farben übereinander; ein Verlauf macht den Grund unbestimmt. */
