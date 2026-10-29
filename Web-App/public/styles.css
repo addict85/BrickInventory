@@ -940,6 +940,20 @@ input.suchfeld{width:220px}
 .geheim-feld input{flex:1;min-width:0}
 .geheim-knopf{flex:none;padding:0 10px;min-width:44px;justify-content:center}
 .einst-nav{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:.25rem;grid-column:1/-1;align-self:start;align-items:flex-start}
+/* Globale Einstellungen als Unterseiten: links die Abschnitte, daneben genau
+   einer davon. !important, weil die Anmeldung #usermgmt inline einblendet. */
+#global-settings-grid{grid-template-columns:minmax(170px,210px) minmax(0,1fr);align-items:start}
+#global-settings-grid > .einst-nav{grid-column:1;grid-row:1 / span 20;flex-direction:column;align-items:stretch;position:sticky;top:1rem}
+#global-settings-grid > .einst-nav a{justify-content:flex-start}
+#global-settings-grid > .einst-nav a[aria-current="page"]{background:var(--b600);color:var(--auf-primaer,#fff);border-color:var(--b600)}
+#global-settings-grid > .ssec{grid-column:2}
+#global-settings-grid > .ssec:not(.einst-aktiv){display:none !important}
+@media(max-width:700px){
+  #global-settings-grid{grid-template-columns:minmax(0,1fr)}
+  #global-settings-grid > .einst-nav{grid-row:auto;flex-direction:row;flex-wrap:nowrap;overflow-x:auto;position:static}
+  #global-settings-grid > .einst-nav a{flex:none}
+  #global-settings-grid > .ssec{grid-column:1}
+}
 .ssec{scroll-margin-top:72px}
 .kachel-datum{font-size:var(--fs-1);color:var(--mut);margin-top:.2rem}
 .mono-2{font-family:var(--mono);font-size:var(--fs-2)}

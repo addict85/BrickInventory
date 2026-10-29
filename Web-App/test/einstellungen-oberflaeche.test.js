@@ -8,7 +8,8 @@
  *   - Jede Aktion der Benutzertabelle hat ein sichtbares Wort, einen Tooltip
  *     und einen Namen mit dem Konto.
  *   - API-Schlüssel und Geheimnisse sind Passwortfelder mit einem Knopf
- *     „Anzeigen“ (aria-pressed); eine Sprungleiste führt zu den Abschnitten.
+ *     „Anzeigen“ (aria-pressed); die Leiste wechselt zwischen den Abschnitten,
+ *     von denen je einer dasteht.
  *   - „Zum Benutzer“ bei einem Admin schickt is_admin:false. Vorher kam
  *     data-arg2="true" an, toggleAdmin() kannte nur '1' und machte jeden
  *     Admin erneut zum Admin.
@@ -20,6 +21,8 @@
  *   E  (29.10.) rb-key wieder type="text" → rot: „Schlüssel verdeckt, mit Knopf
  *      zum Anzeigen“; geheimUmschalten() ohne aria-pressed → rot: dieselbe
  *   F  (29.10.) id="einst-bl" entfernt → rot: „Sprungleiste zu den Abschnitten“
+ *   G  (29.10.) in einstAbschnitt() preventDefault weggelassen bzw. die
+ *      Klasse einst-aktiv nicht gesetzt → rot: dieselbe Prüfung
  *   D  in toggleAdmin admin_password nicht mitgeschickt → rot: „Admin-Rechte
  *      entziehen“ (am 28.10. nach dem Zusammenführen gemessen)
  */
@@ -107,8 +110,18 @@ test('Sprungleiste zu den Abschnitten', async () => {
     await reiter(w, 'settings');
     const ziele = [...d.querySelectorAll('#tab-settings .einst-nav a')].map(a => a.getAttribute('href'));
     assert.ok(ziele.length >= 6, `nur ${ziele.length} Abschnitte`);
-    const fehlt = ziele.filter(z => !d.querySelector(`#tab-settings ${z}`));
-    assert.deepEqual(fehlt, [], 'Sprungziele ohne Abschnitt');
+    const fehlt = ziele.filter(z => !d.querySelector(`#global-settings-grid > .ssec${z}`));
+    assert.deepEqual(fehlt, [], 'Sprungziele ohne Abschnitt im Raster');
+    // Unterseiten: genau einer aktiv, der Klick wechselt ihn und springt nicht.
+    const aktiv = () => [...d.querySelectorAll('#global-settings-grid > .ssec.einst-aktiv')].map(s => s.id);
+    assert.equal(aktiv().length, 1);
+    const link = d.querySelector('.einst-nav a[data-arg="usermgmt"]');
+    const klick = new w.MouseEvent('click', { bubbles: true, cancelable: true });
+    link.dispatchEvent(klick);
+    assert.deepEqual(aktiv(), ['usermgmt']);
+    assert.equal(link.getAttribute('aria-current'), 'page');
+    assert.equal(klick.defaultPrevented, true, 'der Link soll nicht zum Anker springen');
+    assert.equal(d.querySelectorAll('.einst-nav a[aria-current]').length, 1);
     // Die Karte mit dem Design heisst nicht mehr „Einstellungen“ in „Einstellungen“.
     assert.equal(d.querySelector('#einst-design .stit').textContent.trim(), 'Erscheinungsbild');
   } finally { w.close(); }

@@ -104,7 +104,13 @@ test('Dunkelmodus: keine hellen Flächen, lesbarer Text', { concurrency: 1, time
     for (const r of reiter) {
       await b.auswerten(`document.querySelector('.ntab[data-tab="${r}"]').click(); true`);
       await warte(600);
-      await sammle(r);
+      // Die Einstellungen zeigen je einen Abschnitt; gemessen werden alle.
+      const seiten = r === 'settings'
+        ? await b.auswerten(`[...document.querySelectorAll('.einst-nav a')].map(a => a.dataset.arg)`) : [null];
+      for (const seite of seiten) {
+        if (seite) { await b.auswerten(`document.querySelector('.einst-nav a[data-arg="${seite}"]').click(); true`); await warte(100); }
+        await sammle(seite ? `${r}/${seite}` : r);
+      }
     }
     await b.auswerten(`document.querySelector('.ntab[data-tab="gallery"]').click(); true`);
     await bis(`!!document.querySelector('[data-click="openModal"]')`, 'Set-Karte');

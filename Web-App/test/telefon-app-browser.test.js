@@ -20,6 +20,9 @@
  *   - Während die Teile laden, steht ein Skelett aus zwölf Kacheln
  *     (role="status") da; Dialoge und Reiter blenden ein, ausser bei
  *     prefers-reduced-motion: reduce.
+ *   - Einstellungen: Es steht genau ein Abschnitt da, die Leiste darüber in
+ *     einer Zeile ohne die Seite zu verbreitern; ein Klick wechselt ihn, und
+ *     die Wahl bleibt im Browser.
  *   - Diagramme: Jede Beschriftung im Wertdiagramm (Finanzen) und im
  *     Preisverlauf (Set-Ansicht) ist mindestens 11 px groß, und jedes
  *     Diagramm hat role="img" mit einer Zusammenfassung als aria-label.
@@ -52,6 +55,9 @@
  *      Laden der Teile“; die prefers-reduced-motion-Regel entfernt → rot:
  *      „weniger Bewegung“ (Dialog 0,2 s); die Animation an .tab.active
  *      entfernt → rot (ohne Einstellung keine Übergänge)
+ *   J  (29.10.) die Regel `.ssec:not(.einst-aktiv){display:none…}` entfernt
+ *      → rot: „Einstellungen: ein Abschnitt je Unterseite“ (sieben sichtbar);
+ *      die Telefonregel der Leiste entfernt → rot (Leiste in mehreren Zeilen)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -120,9 +126,15 @@ test('Telefon', { concurrency: 1, timeout: 240_000 }, async (t) => {
     const klein = [], schrift = [];
     for (const r of reiterListe) {
       await reiter(r);
-      const m = await b.auswerten(KLEINES);
-      klein.push(...m.klein.map(k => `${r}: ${k}`));
-      schrift.push(...m.schrift.map(k => `${r}: ${k}`));
+      // Die Einstellungen zeigen je einen Abschnitt; gemessen werden alle.
+      const seiten = r === 'settings'
+        ? await b.auswerten(`[...document.querySelectorAll('.einst-nav a')].map(a => a.dataset.arg)`) : [null];
+      for (const seite of seiten) {
+        if (seite) { await b.auswerten(`document.querySelector('.einst-nav a[data-arg="${seite}"]').click(); true`); await warte(100); }
+        const m = await b.auswerten(KLEINES);
+        klein.push(...m.klein.map(k => `${r}: ${k}`));
+        schrift.push(...m.schrift.map(k => `${r}: ${k}`));
+      }
     }
     assert.deepEqual([...new Set(klein)], [], 'Tippziele unter 44 × 44 px');
     assert.deepEqual([...new Set(schrift)], [], 'Text unter 12 px');
@@ -152,6 +164,26 @@ test('Telefon', { concurrency: 1, timeout: 240_000 }, async (t) => {
     await b.tab('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 });
     await warte(100);
     assert.equal(await b.auswerten(`document.activeElement.id`), 'inhalt');
+  });
+
+  await t.test('Einstellungen: ein Abschnitt je Unterseite', async () => {
+    await reiter('settings');
+    const stand = () => b.auswerten(`(() => {
+      const sichtbar = [...document.querySelectorAll('#global-settings-grid > .ssec')].filter(s => s.getClientRects().length > 0);
+      const nav = document.querySelector('.einst-nav').getBoundingClientRect();
+      return { sichtbar: sichtbar.map(s => s.id), aktuell: document.querySelector('.einst-nav a[aria-current="page"]')?.dataset.arg,
+               navZeilen: new Set([...document.querySelectorAll('.einst-nav a')].map(a => Math.round(a.getBoundingClientRect().top))).size,
+               navHoehe: Math.round(nav.height), seitenBreite: document.documentElement.scrollWidth }; })()`);
+    const vorher = await stand();
+    assert.equal(vorher.sichtbar.length, 1, `sichtbar: ${vorher.sichtbar}`);
+    assert.equal(vorher.aktuell, vorher.sichtbar[0]);
+    assert.equal(vorher.navZeilen, 1, 'am Telefon steht die Leiste in einer Zeile');
+    assert.ok(vorher.seitenBreite <= 390, `Seite ${vorher.seitenBreite} px breit`);
+    await b.auswerten(`document.querySelector('.einst-nav a[data-arg="einst-smtp"]').click(); true`);
+    await warte(100);
+    const nachher = await stand();
+    assert.deepEqual([nachher.sichtbar, nachher.aktuell], [['einst-smtp'], 'einst-smtp']);
+    assert.equal(await b.auswerten(`localStorage.getItem('bim_einst_abschnitt')`), 'einst-smtp');
   });
 
   await t.test('Teile und Minifiguren in der Leiste auffindbar', async () => {

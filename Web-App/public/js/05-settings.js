@@ -1021,7 +1021,31 @@ function geheimUmschalten(id) {
   knopf.querySelector('use')?.setAttribute('href', zeigen ? '#i-auge-zu' : '#i-auge');
 }
 
+const EINST_KEY = 'bim_einst_abschnitt';
+/**
+ * Die globalen Einstellungen als Unterseiten: Es steht immer genau ein
+ * Abschnitt da, und die Leiste zeigt welcher. Gemerkt je Browser, damit ein
+ * Neuladen nicht auf den ersten Abschnitt zurückspringt.
+ * @param {string|null} id  Abschnitt; unbekannt oder leer heisst der erste
+ * @param {Event} [ev]      der Klick auf den Link — er springt dann nicht
+ */
+export function einstAbschnitt(id, ev){
+  ev?.preventDefault();
+  const raster = G('global-settings-grid'); if(!raster) return;
+  const abschnitte = [...raster.querySelectorAll(':scope > .ssec')];
+  const ziel = abschnitte.find(a => a.id === id) || abschnitte[0];
+  if(!ziel) return;
+  for(const a of abschnitte) a.classList.toggle('einst-aktiv', a === ziel);
+  for(const l of raster.querySelectorAll('.einst-nav a')){
+    if(l.getAttribute('data-arg') === ziel.id) l.setAttribute('aria-current', 'page');
+    else l.removeAttribute('aria-current');
+  }
+  try { localStorage.setItem(EINST_KEY, ziel.id); } catch (_) { /* nur Komfort */ }
+}
+einstAbschnitt((() => { try { return localStorage.getItem(EINST_KEY); } catch (_) { return null; } })());
+
 registerActions({
+  einstAbschnitt,
   geheimUmschalten,
   aendereAlarmSchwelle,
   importAlarmeCsv,

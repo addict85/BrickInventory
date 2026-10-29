@@ -150,7 +150,8 @@ async function starteApp(t, opt = {}) {
     document.getElementById('lp').value = ${JSON.stringify(PASS)};
     document.getElementById('btn-login').click(); true`);
   await bis(`document.getElementById('app')?.style.display === 'block' || getComputedStyle(document.getElementById('app')).display !== 'none'`, 'angemeldet');
-  await bis(`document.body.innerText.includes(${JSON.stringify(NAME)})`, 'Kontoname sichtbar');
+  // Am Telefon steht der Name nur im Menü; geprüft wird deshalb das Kontoschild selbst.
+  await bis(`(document.getElementById('ubadge')?.textContent || '').includes(${JSON.stringify(NAME)})`, 'Kontoname im Kontoschild');
   return { b, bis, warte, port, uid, db };
 }
 

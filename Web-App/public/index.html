@@ -848,13 +848,13 @@
       <div class="sgroup-label" id="global-settings-label" data-stil="display:none"><span data-i18n="settings.global_title" data-ico="globus">Globale Einstellungen</span> <span class="admin-hinweis">(Admin)</span></div>
       <div class="sgrid2" id="global-settings-grid" data-stil="display:none">
         <nav class="einst-nav full" aria-label="Abschnitte" data-i18n="settings.sections" data-i18n-attr="aria-label">
-          <a class="btn bs btn-sm" href="#einst-design" data-i18n="settings.general_title">Erscheinungsbild</a>
-          <a class="btn bs btn-sm" href="#einst-bl">BrickLink</a>
-          <a class="btn bs btn-sm" href="#einst-rb">Rebrickable</a>
-          <a class="btn bs btn-sm" href="#einst-bs">Brickset</a>
-          <a class="btn bs btn-sm" href="#usermgmt" data-i18n="settings.users_title">Benutzerverwaltung</a>
-          <a class="btn bs btn-sm" href="#einst-smtp">E-Mail</a>
-          <a class="btn bs btn-sm" href="#einst-konfig" data-i18n="settings.group_config">Konfiguration</a>
+          <a class="btn bs btn-sm" href="#einst-design" data-click="einstAbschnitt" data-arg="einst-design" data-i18n="settings.general_title">Erscheinungsbild</a>
+          <a class="btn bs btn-sm" href="#einst-bl" data-click="einstAbschnitt" data-arg="einst-bl">BrickLink</a>
+          <a class="btn bs btn-sm" href="#einst-rb" data-click="einstAbschnitt" data-arg="einst-rb">Rebrickable</a>
+          <a class="btn bs btn-sm" href="#einst-bs" data-click="einstAbschnitt" data-arg="einst-bs">Brickset</a>
+          <a class="btn bs btn-sm" href="#usermgmt" data-click="einstAbschnitt" data-arg="usermgmt" data-i18n="settings.users_title">Benutzerverwaltung</a>
+          <a class="btn bs btn-sm" href="#einst-smtp" data-click="einstAbschnitt" data-arg="einst-smtp">E-Mail</a>
+          <a class="btn bs btn-sm" href="#einst-konfig" data-click="einstAbschnitt" data-arg="einst-konfig" data-i18n="settings.group_config">Konfiguration</a>
         </nav>
         <div class="ssec" id="einst-design">
           <div class="stit" data-i18n="settings.general_title" data-ico="einstellungen">Erscheinungsbild</div>
@@ -960,25 +960,24 @@
         </div>
 
 
-      </div>
-
-      <!-- Konfiguration: stand bis zum 16.10. mitten in „Daten exportieren".
-           Dort war sie der einzige Admin-Teil zwischen lauter Knoepfen fuer
-           jeden — und wanderte deshalb beim Aufteilen hierher. -->
-      <div class="sgroup-label" id="einst-konfig" data-i18n="settings.group_config" data-ico="werkzeug">Konfiguration</div>
-      <div class="ssec full">
-        <div class="trenner-oben">
-            <!-- Konfiguration-Export/-Import: nur für Admins sichtbar -->
-            <div class="admin-only" data-stil="display:none">
-              <p class="hinweis-absatz" data-i18n="settings.cfg_hint">API-Keys und Einstellungen als JSON exportieren/importieren.</p>
-              <div class="zeile luecke-10 umbruch mittig abstand-u-1">
-                <button class="btn bs" id="btn-cfg-export" data-i18n="settings.cfg_export" data-ico="import">Konfiguration exportieren</button>
-                <label for="cfg-import-file" class="btn bs zeiger"><span data-i18n="settings.cfg_import" data-ico="export">Konfiguration importieren</span><input type="file" id="cfg-import-file" accept=".json" class="datei-versteckt" data-change="importConfig" /></label>
-                <span class="text-mittel" id="cfg-import-status"></span>
+        <!-- Konfiguration: nur Verwalter, deshalb bei den globalen Einstellungen. -->
+        <div class="ssec full" id="einst-konfig">
+          <div class="stit" data-i18n="settings.group_config" data-ico="werkzeug">Konfiguration</div>
+          <div>
+              <!-- Konfiguration-Export/-Import: nur für Admins sichtbar -->
+              <div class="admin-only" data-stil="display:none">
+                <p class="hinweis-absatz" data-i18n="settings.cfg_hint">API-Keys und Einstellungen als JSON exportieren/importieren.</p>
+                <div class="zeile luecke-10 umbruch mittig abstand-u-1">
+                  <button class="btn bs" id="btn-cfg-export" data-i18n="settings.cfg_export" data-ico="import">Konfiguration exportieren</button>
+                  <label for="cfg-import-file" class="btn bs zeiger"><span data-i18n="settings.cfg_import" data-ico="export">Konfiguration importieren</span><input type="file" id="cfg-import-file" accept=".json" class="datei-versteckt" data-change="importConfig" /></label>
+                  <span class="text-mittel" id="cfg-import-status"></span>
+                </div>
               </div>
-            </div>
+          </div>
         </div>
       </div>
+
+
     </div>
 
     <!-- ══ PROFIL (Menue) ══ -->
