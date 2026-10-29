@@ -7,6 +7,8 @@
  *     (der Seitentitel; vorher war die einzige h1 der Markenname).
  *   - In jedem Reiter ist jedes sichtbare Bedienelement mindestens 44 × 44 px
  *     und jeder Text mindestens 12 px groß.
+ *   - Teile und Minifiguren: Am Telefon nennt „Sammlung“ in der Leiste die
+ *     offene Ansicht („Teile“); am Rechner haben beide eigene Reiter.
  *   - Diagramme: Jede Beschriftung im Wertdiagramm (Finanzen) und im
  *     Preisverlauf (Set-Ansicht) ist mindestens 11 px groß, und jedes
  *     Diagramm hat role="img" mit einer Zusammenfassung als aria-label.
@@ -23,6 +25,9 @@
  *      Tab-Halt war .ubadge-knopf)
  *   D  (29.10.) --fs-0 wieder .6875rem → rot: „Tippziele und Schrift je
  *      Reiter“ (span.tab-label 11 px); .delbtn wieder 36 px → rot (36×36)
+ *   E  (29.10.) in markiereGruppe die Zeilen für .tab-unter entfernt → rot:
+ *      „Teile und Minifiguren in der Leiste auffindbar“ („Sammlung“);
+ *      .ntab-sammlung wieder .ntab-unter → rot (am Rechner nicht sichtbar)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -108,6 +113,29 @@ test('Telefon', { concurrency: 1, timeout: 240_000 }, async (t) => {
     await b.tab('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 });
     await warte(100);
     assert.equal(await b.auswerten(`document.activeElement.id`), 'inhalt');
+  });
+
+  await t.test('Teile und Minifiguren in der Leiste auffindbar', async () => {
+    await reiter('gallery');
+    await b.auswerten(`document.querySelector('#tab-gallery .sammlung-wahl [data-arg="parts"]').click(); true`);
+    await warte(300);
+    const telefon = await b.auswerten(`(() => { const s = document.querySelector('.ntab[data-tab="gallery"]');
+      return { text: s.innerText.trim(), aktuell: s.getAttribute('aria-current'),
+               teileSichtbar: document.querySelector('.ntab[data-tab="parts"]').getClientRects().length > 0 }; })()`);
+    assert.equal(telefon.text, 'Teile', 'Die Leiste nennt die offene Ansicht nicht');
+    assert.equal(telefon.aktuell, 'page');
+    assert.equal(telefon.teileSichtbar, false, 'Am Telefon passen nur fünf Ziele in die Leiste');
+    // Am Rechner haben Teile und Minifiguren eigene Reiter in der Leiste.
+    await b.tab('Emulation.setDeviceMetricsOverride', { width: 1280, height: 900, deviceScaleFactor: 1, mobile: false });
+    await warte(200);
+    const rechner = await b.auswerten(`(() => { const r = n => document.querySelector('.ntab[data-tab="' + n + '"]');
+      return { teile: r('parts').getClientRects().length > 0, figuren: r('minifigs').getClientRects().length > 0,
+               sammlung: r('gallery').innerText.trim(), teileAktuell: r('parts').getAttribute('aria-current') }; })()`);
+    await b.tab('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
+    await warte(200);
+    assert.deepEqual(rechner, { teile: true, figuren: true, sammlung: 'Sammlung', teileAktuell: 'page' });
+    await reiter('gallery');
+    assert.equal(await b.auswerten(`document.querySelector('.ntab[data-tab="gallery"]').innerText.trim()`), 'Sammlung');
   });
 
   await t.test('Diagrammschrift Finanzen', async () => {

@@ -116,7 +116,12 @@
   }
   .ntab .tab-label { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
   .ntab .ico { width: 22px; height: 22px; }
-  .ntab.active, .ntab.gruppe-aktiv { border-top-color: var(--b600); }
+  .ntab.active, .ntab.gruppe-aktiv { border-top-color: var(--b600); color: var(--b600); }
+  /* Fünf Ziele passen in die Leiste: Teile und Minifiguren laufen über
+     „Sammlung“, und deren Beschriftung nennt die offene Ansicht. */
+  .ntab.ntab-sammlung { display: none; }
+  .ntab .tab-unter:not(:empty) { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+  .ntab:has(.tab-unter:not(:empty)) .tab-label { display: none; }
   .sammlung-wahl { display: flex; width: 100%; }
   .sammlung-wahl button { flex: 1 1 0; justify-content: center; padding: 8px 4px; }
 

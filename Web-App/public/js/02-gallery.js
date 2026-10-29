@@ -55,12 +55,24 @@ function syncTabTitleIcon(tab){
 const SAMMLUNG = ['gallery', 'parts', 'minifigs'];
 function markiereGruppe(tab){
   // Eigene Klasse statt .active: `.ntab.active` nennt überall den offenen Reiter.
-  document.querySelector('.ntab[data-tab="gallery"]')?.classList.toggle('gruppe-aktiv', SAMMLUNG.includes(tab));
+  const sammlung = document.querySelector('.ntab[data-tab="gallery"]');
+  sammlung?.classList.toggle('gruppe-aktiv', SAMMLUNG.includes(tab));
+  // Am Telefon steht in der Leiste, welche Ansicht der Sammlung offen ist.
+  const unter = sammlung?.querySelector('.tab-unter');
+  if (unter) {
+    const schluessel = { parts: 'nav.parts', minifigs: 'nav.minifigs' }[tab];
+    if (schluessel) { unter.dataset.i18n = schluessel; unter.textContent = t(schluessel); }
+    else { delete unter.dataset.i18n; unter.textContent = ''; }
+  }
   document.querySelectorAll('.sammlung-wahl [data-arg]').forEach(b =>
     b.setAttribute('aria-selected', String(b.dataset.arg === tab)));
   // Vorleseprogramme erfahren so, welcher Reiter offen ist.
+  // „Sammlung“ gilt nur dann als aktuelle Seite, wenn der eigene Reiter der
+  // Ansicht nicht zu sehen ist (am Telefon).
+  const offen = document.querySelector('.ntab.active');
+  const offenSichtbar = !!offen?.getClientRects().length;
   document.querySelectorAll('.ntab').forEach(x => {
-    if (x.classList.contains('active') || x.classList.contains('gruppe-aktiv')) x.setAttribute('aria-current', 'page');
+    if (x.classList.contains('active') || (x.classList.contains('gruppe-aktiv') && !offenSichtbar && x !== offen)) x.setAttribute('aria-current', 'page');
     else x.removeAttribute('aria-current');
   });
 }

@@ -158,10 +158,15 @@
    Reiter, den man nicht sieht. */
 [data-theme="brick"] nav{gap:6px}
 [data-theme="brick"] .ntab{padding:8px 9px;font-size:.82rem}
-[data-theme="brick"] .ntab.active,[data-theme="brick"] .ntab.gruppe-aktiv{
+[data-theme="brick"] .ntab.active{
   background:var(--b600);color:#fff;border-color:var(--b600);
 }
-[data-theme="brick"] .ntab.active svg,[data-theme="brick"] .ntab.gruppe-aktiv svg{filter:brightness(0) invert(1)}
+[data-theme="brick"] .ntab.active svg{filter:brightness(0) invert(1)}
+@media (max-width:640px){
+[data-theme="brick"] .ntab.gruppe-aktiv{
+  background:var(--b600);color:#fff;border-color:var(--b600);
+}
+[data-theme="brick"] .ntab.gruppe-aktiv svg{filter:brightness(0) invert(1)}}
 
 /* ── Buttons: primäre Aktionen in Petrol (Stein-Optik mit „Bauhöhe") ─────── */
 [data-theme="brick"] .btn{border-radius:10px}

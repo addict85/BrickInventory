@@ -214,10 +214,12 @@
     nav::-webkit-scrollbar{display:none}
     .ntab{background:none;border:0;border-bottom:2px solid transparent;font-family:inherit;padding:12px 13px;cursor:pointer;font-size:var(--fs-3);font-weight:600;color:var(--mut);border-bottom:2px solid transparent;transition:all .15s;display:flex;align-items:center;gap:6px;white-space:nowrap;margin-bottom:-1px}
     .ntab:hover{color:var(--txt)}
-    .ntab.active,.ntab.gruppe-aktiv{color:var(--b600);border-bottom-color:var(--b600)}
-    /* Teile, Minifiguren und die Verwalterseiten haben einen Reiter, aber keinen
-       Platz in der Leiste: erreichbar über den Umschalter bzw. das Menü. */
+    .ntab.active{color:var(--b600);border-bottom-color:var(--b600)}
+    /* Die Verwalterseiten haben einen Reiter, aber keinen Platz in der Leiste:
+       erreichbar über das Menü. Teile und Minifiguren stehen in der Leiste;
+       nur am Telefon fasst „Sammlung“ sie zusammen (mobile.css). */
     .ntab.ntab-unter{display:none!important}
+    .ntab .tab-unter{display:none}
 
     /* Die Symbolfamilie (Sprite am Anfang von index.html) */
     .ico{width:18px;height:18px;flex-shrink:0;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;vertical-align:middle}
