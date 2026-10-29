@@ -43,9 +43,12 @@ async function schemaBild(c) {
     `SELECT 'spalte ' || table_name || '.' || column_name || ' ' || data_type || ' ' || is_nullable || ' ' || COALESCE(column_default, '')
        FROM information_schema.columns WHERE table_schema = 'public'`,
     `SELECT 'index ' || indexdef FROM pg_indexes WHERE schemaname = 'public'`,
+    // Ohne NOT-NULL-Regeln (contype 'n', ab PostgreSQL 18): Ihr Name folgt dem
+    // Tabellennamen bei der Anlage und bleibt beim Umbenennen (0062) stehen;
+    // ob eine Spalte NOT NULL ist, steht schon in der Spaltenzeile.
     `SELECT 'regel ' || r.relname || ' ' || k.conname || ' ' || pg_get_constraintdef(k.oid)
        FROM pg_constraint k JOIN pg_class r ON r.oid = k.conrelid JOIN pg_namespace n ON n.oid = r.relnamespace
-      WHERE n.nspname = 'public'`,
+      WHERE n.nspname = 'public' AND k.contype <> 'n'`,
     `SELECT 'trigger ' || pg_get_triggerdef(t.oid) FROM pg_trigger t JOIN pg_class r ON r.oid = t.tgrelid
        JOIN pg_namespace n ON n.oid = r.relnamespace WHERE n.nspname = 'public' AND NOT t.tgisinternal`,
     `SELECT 'funktion ' || p.proname || ' ' || md5(p.prosrc) FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
