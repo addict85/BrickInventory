@@ -61,7 +61,7 @@ function markiereGruppe(tab){
   const unter = sammlung?.querySelector('.tab-unter');
   if (unter) {
     const schluessel = { parts: 'nav.parts', minifigs: 'nav.minifigs' }[tab];
-    if (schluessel) { unter.setAttribute('data-i18n', schluessel); unter.textContent = t(schluessel); }
+    if (schluessel) { unter.setAttribute('data-i18n', schluessel); unter.textContent = tRaw(schluessel); }
     else { unter.removeAttribute('data-i18n'); unter.textContent = ''; }
   }
   document.querySelectorAll('.sammlung-wahl [data-arg]').forEach(b =>

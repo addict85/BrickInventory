@@ -543,7 +543,6 @@
     /* MODAL */
     .ovl{position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:200;display:none;align-items:center;justify-content:center;backdrop-filter:blur(2px)}
     .ovl.open{display:flex;animation:einblenden .16s ease-out}
-    .ovl.open > .modal{animation:hochgleiten .2s ease-out}
     .tab.active{animation:einblenden .18s ease-out}
     @keyframes einblenden{from{opacity:0}to{opacity:1}}
     @keyframes hochgleiten{from{opacity:0;transform:translateY(8px) scale(.985)}to{opacity:1;transform:none}}
@@ -606,6 +605,9 @@
          padding:.85rem var(--modal-padx);
          display:flex;justify-content:space-between;align-items:center}
     .mtit{font-size:var(--fs-4);font-weight:800}
+    /* Nach der Grundregel .modal: Pruefungen lesen deren ersten Fund. */
+    .ovl.open > .modal{animation:hochgleiten .2s ease-out}
+    svg.diagramm{display:block;max-width:100%}
     .muntertit{font-family:var(--mono);font-size:var(--fs-1);color:var(--mut);margin-top:2px}
     /* Breite Fenster: Bild links, Angaben rechts — sonst steht das Bild allein
        im ersten Bildschirm und alles Wichtige darunter. */

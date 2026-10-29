@@ -80,7 +80,9 @@ async function loadPortfolioChart(){
   if(pnlEl){
     // Ohne Marktwert keine Entwicklung: Der Verlauf trägt dann nur den
     // Kaufpreis, und „0.0 %" neben „—" behauptete Stillstand.
-    const zeitraum = `<span class="pnl-zeitraum">${t('finance.change.' + _chartPeriod)}</span>`;
+    const zeitraumText = { week: 'finance.change.week', month: 'finance.change.month',
+                           year: 'finance.change.year', max: 'finance.change.max' }[_chartPeriod];
+    const zeitraum = zeitraumText ? `<span class="pnl-zeitraum">${t(zeitraumText)}</span>` : '';
     if(!(window._finGrandTotal > 0)) pnlEl.innerHTML = '';
     else if(d.period_change_pct != null){
       pnlEl.innerHTML = pnlBadge(d.period_change_pct) + zeitraum;
