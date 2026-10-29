@@ -18,13 +18,27 @@ export const CSV_MAX_BYTES = 15 * 1024 * 1024;
 
 /**
  * Die Annahme für Textdateien, die sofort zerlegt werden: die CSV-Importe
- * (Sets, Teile, Minifiguren, Merkliste, Preisalarme) und die
- * BrickLink-Wanted-Liste als XML.
+ * (Sets, Teile, Minifiguren, Merkliste, Preisalarme). Die Wanted-Liste als XML
+ * hat mit `xmlEmpfang` eine eigene, engere Grenze.
  * Ausführlich: docs/begruendungen/utils/dateiEmpfang.ts.md#csvempfang
  */
 export const csvEmpfang = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: CSV_MAX_BYTES },
+});
+
+/**
+ * Wie gross eine BrickLink-Wanted-Liste (XML) sein darf. Ein Posten braucht
+ * rund 200 Bytes; 4 MB fassen also an die 20 000 Posten. Jeder Posten kostet
+ * beim Zuordnen Datenbank- und womöglich Rebrickable-Abfragen — die CSV-Grenze
+ * von 15 MB wäre dafür ein Vielfaches dessen, was eine echte Liste braucht.
+ */
+export const XML_MAX_BYTES = 4 * 1024 * 1024;
+
+/** Die Annahme für die Wanted-Liste: wie `csvEmpfang`, nur mit eigener Grenze. */
+export const xmlEmpfang = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: XML_MAX_BYTES },
 });
 
 /** Die ersten Bytes, an denen sich jede erlaubte Anleitungsdatei erkennen lässt. */

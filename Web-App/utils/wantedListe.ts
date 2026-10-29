@@ -29,14 +29,35 @@ export interface WantedPosten {
   maxPreis: number | null;
 }
 
+/**
+ * Der Inhalt zwischen `<name>` und dem nächsten `</name>` ab `ab`.
+ *
+ * Zwei Suchen nach festem Text statt `<name>([\s\S]*?)</name>`: Das faule
+ * Muster setzt bei einem offenen Tag ohne Ende an JEDER Fundstelle neu an und
+ * läuft bis ans Dateiende — quadratisch. Fehlt das Ende nach dem ersten Tag,
+ * fehlt es auch nach jedem späteren; dann ist Schluss.
+ */
+function zwischen(text: string, name: string, ab: number):
+    { inhalt: string; ende: number } | null {
+  const auf = new RegExp(`<${name}>`, 'gi');
+  auf.lastIndex = ab;
+  const a = auf.exec(text);
+  if (!a) return null;
+  const zu = new RegExp(`</${name}>`, 'gi');
+  zu.lastIndex = auf.lastIndex;
+  const z = zu.exec(text);
+  if (!z) return null;
+  return { inhalt: text.slice(auf.lastIndex, z.index), ende: zu.lastIndex };
+}
+
 /** Ein Textfeld aus einem ITEM-Block. */
 function feld(block: string, name: string): string | null {
-  const m = block.match(new RegExp(`<${name}>([\\s\\S]*?)</${name}>`, 'i'));
+  const m = zwischen(block, name, 0);
   if (!m) return null;
   // Die fünf vordefinierten Entitäten. Mehr kommt in einer Wanted-Liste nicht
   // vor; käme etwas, bliebe es stehen und fiele auf, statt still falsch zu
   // werden. &amp; ZULETZT — sonst würde aus „&amp;lt;" ein „<".
-  return (m[1] ?? '').trim()
+  return m.inhalt.trim()
     .replace(/&lt;/g, '<').replace(/&gt;/g, '>')
     .replace(/&quot;/g, '"').replace(/&apos;/g, "'")
     .replace(/&amp;/g, '&');
@@ -62,10 +83,9 @@ export function leseWantedListe(xml: string): LeseErgebnis {
   const fremdeArten: Record<string, number> = {};
   let ohneNummer = 0;
 
-  const blockRe = /<ITEM>([\s\S]*?)<\/ITEM>/gi;
-  let m: RegExpExecArray | null;
-  while ((m = blockRe.exec(xml)) !== null) {
-    const block = m[1] ?? '';
+  let m: { inhalt: string; ende: number } | null;
+  for (let ab = 0; (m = zwischen(xml, 'ITEM', ab)) !== null; ab = m.ende) {
+    const block = m.inhalt;
     const typ = (feld(block, 'ITEMTYPE') ?? '').toUpperCase();
     const art = ARTEN[typ];
     const blId = feld(block, 'ITEMID');

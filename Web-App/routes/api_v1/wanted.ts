@@ -13,7 +13,7 @@ import { scopeIds, parseScopeMode, resolveWriteTarget } from '../../utils/househ
 import { legeMerkpostenAn, loescheMerkposten, verschiebeMerkposten, uebernimm, merkpostenVon } from '../../utils/merkliste';
 import { getSetting } from '../../utils/settings';
 import { fetchPrice } from '../../utils/financeCalc';
-import { csvEmpfang } from '../../utils/dateiEmpfang';
+import { csvEmpfang, xmlEmpfang } from '../../utils/dateiEmpfang';
 import { csvZeilenAusAnfrage, csvImportAntwort, parseCsvDate } from '../../utils/csvExport';
 import { importiereWantedListe } from '../../utils/wantedListe';
 import type { Korrektur } from '../../utils/wantedListe';
@@ -185,7 +185,7 @@ router.post('/wanted/import/csv', requireToken, csvEmpfang.single('file'),
  * Sicherheitsstufen (siehe utils/wantedListe.ts), und die dritte ist eine …
  * Ausführlich: docs/begruendungen/routes/api_v1/wanted.ts.md#post-wanted-list-import-xml
  */
-router.post('/wanted-list/import/xml', requireToken, csvEmpfang.single('file'),
+router.post('/wanted-list/import/xml', requireToken, xmlEmpfang.single('file'),
   async (req: AuthedRequest & { file?: { buffer: Buffer; originalname?: string } }, res) => {
     if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
     // Vor dem try: Der catch-Zweig muss den Auftrag schliessen können, und
