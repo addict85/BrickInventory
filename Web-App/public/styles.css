@@ -482,6 +482,13 @@
     /* Placeholder shimmer for images not yet loaded */
     .img-ph{background:linear-gradient(90deg,var(--s100) 25%,var(--s50) 50%,var(--s100) 75%);background-size:200% 100%;animation:shimmer 1.4s infinite;border-radius:6px}
     @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+    .skelett{cursor:default;pointer-events:none;box-shadow:none}
+    .sc.skelett{padding:12px}
+    .skelett-bild,.skelett-zeile{background:linear-gradient(90deg,var(--s100) 25%,var(--s50) 50%,var(--s100) 75%);background-size:200% 100%;animation:shimmer 1.4s infinite;border-radius:6px}
+    .skelett-bild{aspect-ratio:4/3;width:100%}
+    .part-card.skelett .skelett-bild{width:70px;height:70px;margin:0 auto}
+    .skelett-zeile{height:12px;margin-top:10px}
+    .skelett-zeile.kurz{width:60%}
     .part-num{font-family:var(--mono);font-size:var(--fs-0);color:var(--b600);margin-bottom:3px}
     .part-name{font-size:var(--fs-1);font-weight:600;line-height:1.3;margin-bottom:6px;color:var(--txt)}
     .part-color{display:flex;align-items:center;justify-content:center;gap:5px;font-size:var(--fs-0);color:var(--mut)}
@@ -529,7 +536,19 @@
 
     /* MODAL */
     .ovl{position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:200;display:none;align-items:center;justify-content:center;backdrop-filter:blur(2px)}
-    .ovl.open{display:flex}
+    .ovl.open{display:flex;animation:einblenden .16s ease-out}
+    .ovl.open > .modal{animation:hochgleiten .2s ease-out}
+    .tab.active{animation:einblenden .18s ease-out}
+    @keyframes einblenden{from{opacity:0}to{opacity:1}}
+    @keyframes hochgleiten{from{opacity:0;transform:translateY(8px) scale(.985)}to{opacity:1;transform:none}}
+    /* Wer weniger Bewegung eingestellt hat, bekommt keine: Animationen laufen
+       sofort zum Endzustand, Übergänge entfallen (transition:none — nur die
+       Dauer zu kürzen hiesse transition-property:all für jedes Element). Der
+       Ladekringel dreht weiter, langsam: Er sagt, dass etwas arbeitet. */
+    @media (prefers-reduced-motion:reduce){
+      *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition:none!important;scroll-behavior:auto!important}
+      .spin{animation-duration:2s!important;animation-iteration-count:infinite!important}
+    }
     /* Die Polsterung steht als VARIABLE da, nicht als Zahl: Titel- und
        Fussleiste heben sie mit negativen Raendern wieder auf, um ueber die
        volle Breite zu gehen. Zwei Fassungen weichen ab (.acq-wide mit 1.25rem

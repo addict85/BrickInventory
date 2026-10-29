@@ -69,6 +69,20 @@ export function ladeAnzeige(text, o = {}) {
 }
 
 /**
+ * Platzhalterkacheln in der Form des Inhalts, solange er lädt: Die Seite
+ * springt danach nicht, und man sieht, was kommt. Der Text ist für
+ * Vorleseprogramme.
+ * @param {number} anzahl
+ * @param {string} text bereits übersetzt
+ * @param {'set'|'teil'} [art]
+ */
+export function skelettKacheln(anzahl, text, art = 'set') {
+  const raster = art === 'teil' ? 'parts-grid' : 'sgrid';
+  const kachel = `<div class="${art === 'teil' ? 'part-card' : 'sc'} skelett" aria-hidden="true"><div class="skelett-bild"></div><div class="skelett-zeile"></div><div class="skelett-zeile kurz"></div></div>`;
+  return `<div class="${raster} skelett-raster" role="status" aria-busy="true"><span class="vh">${text}</span>${kachel.repeat(anzahl)}</div>`;
+}
+
+/**
  * Ein Wert, der fehlen darf — sonst steht in der Zeile ein leeres Feld.
  *
  * Die Aufrufer schrieben dafür `${x || '—'}` oder `${x ?? '–'}`, mit zwei

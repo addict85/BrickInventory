@@ -63,8 +63,10 @@ async function cdp(wsUrl) {
  * @param opt.name Kontoname
  * @param opt.bestand async (db, uid) => {} legt Testdaten an
  * @param opt.telefon true: 390 × 844, mobile
- * @param opt.abfangen [{ muster, enthaelt, antwort }]: Anfragen, deren URL auf
- *        das CDP-Muster passt und `enthaelt` enthält, bekommen `antwort` als JSON
+ * @param opt.bewegung true: prefers-reduced-motion no-preference (sonst reduce)
+ * @param opt.abfangen [{ muster, enthaelt, antwort?, verzoegerung? }]: Anfragen,
+ *        deren URL auf das CDP-Muster passt und `enthaelt` enthält, bekommen
+ *        `antwort` als JSON (ohne `antwort` die echte), um `verzoegerung` ms später
  */
 async function starteApp(t, opt = {}) {
   const bin = chrome();
@@ -121,16 +123,21 @@ async function starteApp(t, opt = {}) {
       if (d.method !== 'Fetch.requestPaused') return;
       const a = opt.abfangen.find(x => d.params.request.url.includes(x.enthaelt));
       if (!a) { b.tab('Fetch.continueRequest', { requestId: d.params.requestId }).catch(() => {}); return; }
-      b.tab('Fetch.fulfillRequest', { requestId: d.params.requestId, responseCode: 200,
+      // Ohne Antwort nur verzögern: die echte Antwort, aber später.
+      if (!a.antwort) {
+        setTimeout(() => b.tab('Fetch.continueRequest', { requestId: d.params.requestId }).catch(() => {}), a.verzoegerung || 0);
+        return;
+      }
+      setTimeout(() => b.tab('Fetch.fulfillRequest', { requestId: d.params.requestId, responseCode: 200,
         responseHeaders: [{ name: 'Content-Type', value: 'application/json' }],
-        body: Buffer.from(JSON.stringify(a.antwort)).toString('base64') }).catch(() => {});
+        body: Buffer.from(JSON.stringify(a.antwort)).toString('base64') }).catch(() => {}), a.verzoegerung || 0);
     });
   }
   if (opt.telefon)
     await b.tab('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
   await b.tab('Emulation.setLocaleOverride', { locale: opt.locale || 'de-DE' });
   // Gemessen wird der Endzustand, nicht ein Übergang.
-  await b.tab('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
+  await b.tab('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: opt.bewegung ? 'no-preference' : 'reduce' }] });
 
   const bis = async (ausdruck, was, versuche = 100) => {
     for (let i = 0; i < versuche; i++) { if (await b.auswerten(ausdruck).catch(() => false)) return; await warte(100); }

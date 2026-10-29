@@ -17,6 +17,9 @@
  *   - Set-Detail: „Löschen“ steht hinter „Weitere Aktionen“; die drei Felder
  *     des Preisalarms stehen unter der Beschriftung in einer Zeile über
  *     (fast) die volle Breite, jedes mindestens 44 px hoch.
+ *   - Während die Teile laden, steht ein Skelett aus zwölf Kacheln
+ *     (role="status") da; Dialoge und Reiter blenden ein, ausser bei
+ *     prefers-reduced-motion: reduce.
  *   - Diagramme: Jede Beschriftung im Wertdiagramm (Finanzen) und im
  *     Preisverlauf (Set-Ansicht) ist mindestens 11 px groß, und jedes
  *     Diagramm hat role="img" mit einer Zusammenfassung als aria-label.
@@ -45,6 +48,10 @@
  *      „Set-Ansicht: Diagramm, Löschen, Preisalarm“ („Löschen steht offen im
  *      Fuss“); die drei .alarm-zeile-Regeln aus mobile.css entfernt → rot
  *      (Felder neben der Beschriftung)
+ *   I  (29.10.) in loadPartsData wieder ladeAnzeige() → rot: „Skelett beim
+ *      Laden der Teile“; die prefers-reduced-motion-Regel entfernt → rot:
+ *      „weniger Bewegung“ (Dialog 0,2 s); die Animation an .tab.active
+ *      entfernt → rot (ohne Einstellung keine Übergänge)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -82,7 +89,8 @@ test('Telefon', { concurrency: 1, timeout: 240_000 }, async (t) => {
   const app = await starteApp(t, {
     name: `telefon_${process.pid}`, telefon: true,
     // Zwölf Teile in zwölf Farben — der Fall, der vorher zwölf fast leere Zeilen ergab.
-    abfangen: [{ muster: '*/api/v1/parts?*', enthaelt: '/api/v1/parts?', antwort: { success: true, total: 12,
+    // Die Teile kommen 1,5 s später, damit das Skelett davor zu sehen ist.
+    abfangen: [{ muster: '*/api/v1/parts?*', enthaelt: '/api/v1/parts?', verzoegerung: 1500, antwort: { success: true, total: 12,
       parts: ['Red', 'Blue', 'Yellow', 'Green', 'Black', 'White', 'Orange', 'Tan', 'Lime', 'Pink', 'Brown', 'Purple']
         .map((farbe, i) => ({ part_number: `300${i}`, part_name: `Stein ${i}`, color_name: farbe, color_hex: '777777',
                              color_id: i + 1, total_quantity: 2 })) } }],
@@ -97,6 +105,15 @@ test('Telefon', { concurrency: 1, timeout: 240_000 }, async (t) => {
   if (app.grund) { t.skip(app.grund); return; }
   const { b, bis } = app;
   const reiter = async (name) => { await b.auswerten(`document.querySelector('.ntab[data-tab="${name}"]').click(); true`); await warte(400); };
+
+  await t.test('Skelett beim Laden der Teile', async () => {
+    await b.auswerten(`document.querySelector('.ntab[data-tab="parts"]').click(); true`);
+    await warte(100);
+    const s = await b.auswerten(`(() => { const r = document.querySelector('#parts-main .skelett-raster');
+      return r && { kacheln: r.querySelectorAll('.part-card.skelett').length, rolle: r.getAttribute('role'), text: r.textContent.trim() }; })()`);
+    assert.deepEqual(s, { kacheln: 12, rolle: 'status', text: 'Lade Teile…' });
+    await bis(`!document.querySelector('#parts-main .skelett-raster') && document.querySelectorAll('#parts-main .part-card').length === 12`, 'Teile statt Skelett');
+  });
 
   await t.test('Tippziele und Schrift je Reiter', async () => {
     const reiterListe = await b.auswerten(`[...document.querySelectorAll('.ntab[data-tab]')].map(x => x.dataset.tab)`);
@@ -162,7 +179,7 @@ test('Telefon', { concurrency: 1, timeout: 240_000 }, async (t) => {
 
   await t.test('Teile: ein Raster, Filter als Blatt', async () => {
     await reiter('parts');
-    await bis(`document.querySelectorAll('#parts-main .part-card').length === 12`, 'zwölf Teile');
+    await bis(`document.querySelectorAll('#parts-main .part-card:not(.skelett)').length === 12`, 'zwölf Teile');
     const raster = await b.auswerten(`(() => {
       const kacheln = [...document.querySelectorAll('#parts-main .group-hd, #parts-main .part-card')];
       const zeilen = new Set(kacheln.map(k => Math.round(k.getBoundingClientRect().top)));
@@ -240,4 +257,19 @@ test('Telefon', { concurrency: 1, timeout: 240_000 }, async (t) => {
     assert.ok(alarm.hoehe >= 44, `Preisalarm-Felder ${alarm.hoehe} px hoch`);
     await b.auswerten(`document.querySelector('#set-modal [data-click="closeModal"]')?.click(); true`);
   });
+  await t.test('weniger Bewegung: Dialog und Reiter ohne Animation', async () => {
+    // Ein Probe-Dialog ohne role="dialog", damit die Fokusführung der echten
+    // Dialoge (js/01-dialoge.js) nicht anspringt.
+    const dauer = () => b.auswerten(`(() => { const o = document.createElement('div');
+      o.className = 'ovl open'; o.innerHTML = '<div class="modal"></div>'; document.body.append(o);
+      const d = getComputedStyle(o.firstElementChild).animationDuration; o.remove();
+      return { dialog: parseFloat(d), reiter: parseFloat(getComputedStyle(document.querySelector('.tab.active')).animationDuration) }; })()`);
+    const ruhig = await dauer();
+    await b.tab('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'no-preference' }] });
+    const bewegt = await dauer();
+    await b.tab('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
+    assert.ok(bewegt.dialog >= 0.15 && bewegt.reiter >= 0.15, `ohne Einstellung keine Übergänge: ${JSON.stringify(bewegt)}`);
+    assert.ok(ruhig.dialog < 0.001 && ruhig.reiter < 0.001, `mit „weniger Bewegung“ trotzdem Animation: ${JSON.stringify(ruhig)}`);
+  });
+
 });

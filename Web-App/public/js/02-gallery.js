@@ -1,4 +1,4 @@
-import { ladeAnzeige } from './01-bausteine.js';
+import { skelettKacheln } from './01-bausteine.js';
 import { registerActions } from './00-registry.js';
 import { locale, t, tRaw} from '../i18n.js';
 import { bildTag, fullUrl, platzhalterInhalt, setnummerFeldGueltig, leerZustand, ico, CURRENCY, G, ME, TRASH_ICON_SVG, api, esc, escJs, escUrl, fmtBig, fmtN, fmtPct, imgUrl, observeLazyImages, thumbUrl, toast, zuruecksetzenKnopf } from './01-core.js';
@@ -822,7 +822,7 @@ export async function loadGallery(opts = {}){
   // Antwort da ist; erst dann wird einmal neu gezeichnet.
   const gal = G('gallery');
   if (!allSets.length || !gal.querySelector('.sgrid, .tw, .empty')) {
-    gal.innerHTML = ladeAnzeige(t('gallery.loading'));
+    gal.innerHTML = skelettKacheln(8, t('gallery.loading'));
   }
   _galGen++; _galPage = 1; _galDone = false; _galLoadingMore = false;
   const gen = _galGen;

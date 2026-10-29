@@ -1,4 +1,4 @@
-import { ladeAnzeige } from './01-bausteine.js';
+import { ladeAnzeige, skelettKacheln } from './01-bausteine.js';
 import { registerActions } from './00-registry.js';
 import { colorName, locale, t, tRaw } from '../i18n.js';
 import { bildTag, ico, G, api, esc, escHex, escHtml, escJs, escUrl, fmtBig, fullUrl, imgUrl, leerZustand, observeLazyImages, platzhalterInhalt, thumbUrl } from './01-core.js';
@@ -160,7 +160,7 @@ async function loadPartsData(){
   _setTeileLeer = null;
 
   const main = G('parts-main');
-  main.innerHTML = ladeAnzeige(t('parts.loading'));
+  main.innerHTML = skelettKacheln(12, t('parts.loading'), 'teil');
   await loadPartsPage(true);
 }
 
