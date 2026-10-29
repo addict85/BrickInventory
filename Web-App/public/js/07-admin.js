@@ -963,6 +963,7 @@ export async function openModal(sn){
   ]);
   if(!d?.success){toast(tRaw('settings.error'),'error');return;}
   set_curSet(d.set);
+  document.querySelector('#set-modal .mehr-menue')?.removeAttribute('open');
   G('m-tit').textContent=curSet.name||curSet.set_number;
   G('m-untertit').textContent=curSet.name?curSet.set_number:'';
   // fullUrl(): volle Auflösung, auch wenn image_local auf die _thumb-Datei zeigt
@@ -1002,7 +1003,7 @@ export async function openModal(sn){
     ${detailZeile(t('detail.pieces'), `${curSet.pieces ? curSet.pieces.toLocaleString(locale()) : '—'} <button class="btn bs btn-sm" data-click="reimportParts" data-arg="${escJs(sn)}" title="${t('detail.reimport_parts')}" data-stil="padding:1px 6px;font-size:var(--fs-1);margin-left:4px">${PARTS_ICON_SVG}</button>`)}
     ${detailZeile(t('detail.minifigs'), oderStrich(curSet.minifigs), { wertId: 'm-minifigs-val' })}
     ${detailZeile(t('detail.added'), `${ico('kalender')} ${addedFmt}`)}
-    ${detailZeile(t('detail.alert'), alarmBlock(sn), {
+    ${detailZeile(t('detail.alert'), alarmBlock(sn), { klasse: 'alarm-zeile',
          zeilenStil: 'align-items:flex-start',
          wertStil: 'display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end' })}
     ${detailZeile(t('detail.storage'),

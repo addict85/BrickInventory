@@ -163,6 +163,11 @@
   .dr                 { flex-wrap: wrap; gap: .35rem .75rem; }
   .dr > *             { min-width: 0; }
   .dr select, .dr input { max-width: 100%; }
+  /* Preisalarm am Telefon: Beschriftung oben, die drei Felder als eigene
+     Zeile über die volle Breite statt eng neben der Beschriftung. */
+  .dr.alarm-zeile { flex-direction: column; align-items: stretch !important; }
+  .dr.alarm-zeile > .dv { width: 100%; }
+  .alarm-zeile .alarm-feld { flex: 1 1 0; min-width: 0; width: auto; }
 
   /* Kennzahl-Kacheln: Zahl in einer Zeile */
   .pstat .v           { font-size: var(--fs-4); overflow-wrap: anywhere; }

@@ -213,6 +213,7 @@ window.I18N_DE = {
   'parts.add.price_placeholder': 'Leer = Marktpreis',
   // ── Nachtrag: zuvor hartkodierte dynamische UI-Texte ──
   'common.filter': 'Filter',
+  'common.more_actions': 'Weitere Aktionen',
   'gallery.card.bought': 'Gekauft am',
   'common.reset_filter': 'Filter zurücksetzen',
   'gallery.no_results_filter': 'Keine Sets passen zu diesem Filter',

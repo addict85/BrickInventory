@@ -14,6 +14,9 @@
  *     sind geöffnet gleich breit.
  *   - Merkliste: Nummer, Zustand, „Auf die Merkliste“ und CSV sind gleich
  *     hoch und stehen am Rechner auf einer Linie.
+ *   - Set-Detail: „Löschen“ steht hinter „Weitere Aktionen“; die drei Felder
+ *     des Preisalarms stehen unter der Beschriftung in einer Zeile über
+ *     (fast) die volle Breite, jedes mindestens 44 px hoch.
  *   - Diagramme: Jede Beschriftung im Wertdiagramm (Finanzen) und im
  *     Preisverlauf (Set-Ansicht) ist mindestens 11 px groß, und jedes
  *     Diagramm hat role="img" mit einer Zusammenfassung als aria-label.
@@ -23,7 +26,7 @@
  *
  * Gegenproben (am 28.10.2026 gemessen):
  *   A  diagrammBreite() liefert immer 700 → rot: „Diagrammschrift
- *      Finanzen“ (5,6 px) und „Diagrammschrift Set-Ansicht“ (6,2 px)
+ *      Finanzen“ (5,6 px) und die Set-Ansicht (6,2 px)
  *   B  (29.10.) Marke in der Kopfleiste wieder <h1> → rot: „Sprunglink und genau eine
  *      h1 je Reiter“ (je Reiter zwei h1)
  *   C  (29.10.) Sprunglink aus index.html entfernt → rot: dieselbe Prüfung (erster
@@ -38,6 +41,10 @@
  *      Teile-Filterzeile entfernt → rot („Die Auswahlfelder stehen offen da“)
  *   G  (29.10.) .merk-erfassen > .btn{height:38px…} entfernt → rot:
  *      „Merkliste: Erfassen-Zeile bündig“ (Knopf 34 px, CSV 39 px, versetzt)
+ *   H  (29.10.) <details class="mehr-menue"> um #btn-md entfernt → rot:
+ *      „Set-Ansicht: Diagramm, Löschen, Preisalarm“ („Löschen steht offen im
+ *      Fuss“); die drei .alarm-zeile-Regeln aus mobile.css entfernt → rot
+ *      (Felder neben der Beschriftung)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -204,7 +211,7 @@ test('Telefon', { concurrency: 1, timeout: 240_000 }, async (t) => {
     assert.match(d.name, /Wertentwicklung Portfolio, .+ bis .+: von .+ auf .+/);
   });
 
-  await t.test('Diagrammschrift Set-Ansicht', async () => {
+  await t.test('Set-Ansicht: Diagramm, Löschen, Preisalarm', async () => {
     await reiter('gallery');
     await bis(`!!document.querySelector('[data-click="openModal"]')`, 'Set-Karte');
     await b.auswerten(`document.querySelector('[data-click="openModal"]').click(); true`);
@@ -213,6 +220,24 @@ test('Telefon', { concurrency: 1, timeout: 240_000 }, async (t) => {
     assert.ok(d.kleinste >= 11, `kleinste Beschriftung ${d.kleinste.toFixed(1)} px`);
     assert.equal(d.rolle, 'img');
     assert.match(d.name, /Preisverlauf, .+ bis .+: Neu zuletzt/);
-    await b.auswerten(`document.querySelector('#modal .mc-close, #modal [data-click="closeModal"]')?.click(); true`);
+    // Set-Detail: Löschen steht hinter „Weitere Aktionen“, der Preisalarm in
+    // einer eigenen Zeile über die volle Breite.
+    const sichtbar = (sel) => `!!document.querySelector('${sel}')?.checkVisibility({ contentVisibilityAuto: true })`;
+    assert.equal(await b.auswerten(sichtbar('#btn-md')), false, 'Löschen steht offen im Fuss');
+    await b.auswerten(`document.querySelector('#set-modal .mehr-menue > summary').click(); true`);
+    await warte(150);
+    assert.equal(await b.auswerten(sichtbar('#btn-md')), true, 'Löschen ist hinter „Weitere Aktionen“ nicht zu finden');
+    const alarm = await b.auswerten(`(() => {
+      const zeile = document.querySelector('#set-modal .alarm-zeile');
+      const titel = zeile.querySelector('.dl').getBoundingClientRect();
+      const felder = [...zeile.querySelectorAll('.alarm-feld')].map(f => f.getBoundingClientRect());
+      const z = zeile.getBoundingClientRect();
+      return { unterTitel: felder.every(f => f.top >= titel.bottom - 1), eineZeile: new Set(felder.map(f => Math.round(f.top))).size,
+               hoehe: Math.min(...felder.map(f => f.height)), breite: Math.round((felder.at(-1).right - felder[0].left) / z.width * 100) };
+    })()`);
+    assert.deepEqual({ ...alarm, breite: alarm.breite >= 90 }, { unterTitel: true, eineZeile: 1, hoehe: alarm.hoehe, breite: true },
+      `Preisalarm: ${JSON.stringify(alarm)}`);
+    assert.ok(alarm.hoehe >= 44, `Preisalarm-Felder ${alarm.hoehe} px hoch`);
+    await b.auswerten(`document.querySelector('#set-modal [data-click="closeModal"]')?.click(); true`);
   });
 });

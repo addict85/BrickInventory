@@ -1675,7 +1675,14 @@
       draussen liest sie noch.
     -->
     <div class="mfooter verteilt umbruch luecke-8">
+      <!-- Löschen ist die einzige Aktion hier; hinter „Weitere Aktionen“ steht
+           sie nicht mehr allein und rot im Daumenbereich. -->
+      <details class="mehr-menue">
+        <summary class="btn bs" data-i18n="common.more_actions" data-ico="menue">Weitere Aktionen</summary>
+        <div class="mehr-liste">
       <button class="btn bd" id="btn-md" aria-label="Set löschen" data-i18n="detail.delete" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-loeschen"/></svg><span data-i18n="common.delete">Löschen</span></button>
+        </div>
+      </details>
     </div>
   </div>
 </div>

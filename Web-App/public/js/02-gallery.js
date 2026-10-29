@@ -61,8 +61,8 @@ function markiereGruppe(tab){
   const unter = sammlung?.querySelector('.tab-unter');
   if (unter) {
     const schluessel = { parts: 'nav.parts', minifigs: 'nav.minifigs' }[tab];
-    if (schluessel) { unter.dataset.i18n = schluessel; unter.textContent = t(schluessel); }
-    else { delete unter.dataset.i18n; unter.textContent = ''; }
+    if (schluessel) { unter.setAttribute('data-i18n', schluessel); unter.textContent = t(schluessel); }
+    else { unter.removeAttribute('data-i18n'); unter.textContent = ''; }
   }
   document.querySelectorAll('.sammlung-wahl [data-arg]').forEach(b =>
     b.setAttribute('aria-selected', String(b.dataset.arg === tab)));

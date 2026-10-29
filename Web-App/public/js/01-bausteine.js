@@ -44,12 +44,14 @@ import { esc } from './01-core.js';
  * @param {string} [o.wertStil]  zusätzlicher Stil (data-stil) am Wert-Element
  * @param {string} [o.zeilenStil] zusätzlicher Stil (data-stil) an der Zeile
  * @param {string} [o.wertId]    id am Wert-Element, für späteres Nachfüllen
+ * @param {string} [o.klasse]    zusätzliche Klasse an der Zeile
  */
 export function detailZeile(label, wert, o = {}) {
   const zStil = o.zeilenStil ? ` data-stil="${o.zeilenStil}"` : '';
+  const zKlasse = o.klasse ? ` ${o.klasse}` : '';
   const wStil = o.wertStil ? ` data-stil="${o.wertStil}"` : '';
   const wId   = o.wertId ? ` id="${o.wertId}"` : '';
-  return `<div class="dr"${zStil}><span class="dl">${label}</span>` +
+  return `<div class="dr${zKlasse}"${zStil}><span class="dl">${label}</span>` +
          `<span class="dv"${wId}${wStil}>${wert}</span></div>`;
 }
 
