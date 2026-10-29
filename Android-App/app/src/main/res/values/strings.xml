@@ -22,7 +22,7 @@
     <string name="common_cancel">Cancel</string>
     <string name="settings_default_condition">Default condition</string>
     <string name="settings_default_condition_effective">Currently in effect: %1$s.</string>
-    <string name="settings_default_condition_hint">Used as default when adding items. Empty = global default from Monitoring.</string>
+    <string name="settings_default_condition_hint">Used as default when adding items. Empty = global default from Background work.</string>
     <string name="settings_default_condition_global">— Global default —</string>
     <string name="condition_new">New</string>
     <string name="condition_used">Used</string>
@@ -68,6 +68,7 @@
     <string name="chart_no_history">No history data yet</string>
     <string name="chart_summary">Portfolio value, %1$s to %2$s: from %3$s to %4$s, change %5$s</string>
     <string name="chart_summary_no_change">Portfolio value, %1$s to %2$s: from %3$s to %4$s</string>
+    <string name="price_chart_summary">Price history %1$s, %2$s to %3$s: from %4$s to %5$s, lowest %6$s, highest %7$s</string>
     <string name="chart_period_week">Week</string>
     <string name="chart_period_month">Month</string>
     <string name="chart_period_year">Year</string>
@@ -286,7 +287,7 @@
     <string name="parts_add_button">Add</string>
 
     <!-- ══════════════ Monitoring screen ══════════════ -->
-    <string name="monitoring_title">Job Monitoring</string>
+    <string name="monitoring_title">Background work</string>
     <string name="monitoring_refresh">Refresh</string>
     <string name="monitoring_retry_error">Error on retry</string>
     <string name="monitoring_delete_error">Error deleting</string>
@@ -349,7 +350,7 @@
     <string name="nav_finance">Finance</string>
     <string name="nav_comparison">Comparison</string>
     <string name="nav_settings">Settings</string>
-    <string name="nav_monitoring">Monitoring</string>
+    <string name="nav_monitoring">Background work</string>
     <string name="main_barcode_add_partslist">Add to parts list?</string>
     <string name="main_barcode_add_set">Add set?</string>
     <!-- Shown when the set number was guessed, not matched: the EAN could not be
@@ -361,7 +362,7 @@
     <string name="main_barcode_pieces">Pieces</string>
     <string name="main_barcode_figs">Figures</string>
     <string name="main_account">Account</string>
-    <string name="main_menu_monitoring">Monitoring</string>
+    <string name="main_menu_monitoring">Background work</string>
     <string name="main_menu_logout">Log out</string>
     <string name="main_menu_change_server">Change server</string>
     <string name="vm_settings_saved">Settings saved</string>

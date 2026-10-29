@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui.screens
 
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import ch.brickinventoryapp.ui.theme.Formen
@@ -185,7 +186,13 @@ fun PriceChart(chart: PriceChartData) {
 
     val gridColor = MaterialTheme.colorScheme.outlineVariant
     val surfaceCol = MaterialTheme.colorScheme.surface
-    Canvas(modifier = Modifier.fillMaxWidth().height(120.dp)) {
+    // Wie im Wertdiagramm (PortfolioChart): ohne Beschreibung überspringt TalkBack die Fläche.
+    val beschreibung = PriceChartMath.zusammenfassung(lines).map { z ->
+        stringResource(R.string.price_chart_summary, labelFor(z.zustand), z.von, z.bis,
+            ch.brickinventoryapp.util.fmtAmount(z.anfang), ch.brickinventoryapp.util.fmtAmount(z.ende),
+            ch.brickinventoryapp.util.fmtAmount(z.tief), ch.brickinventoryapp.util.fmtAmount(z.hoch))
+    }.joinToString("; ")
+    Canvas(modifier = Modifier.fillMaxWidth().height(120.dp).semantics { contentDescription = beschreibung }) {
         val w = size.width
         val h = size.height
         val topPad = 4f

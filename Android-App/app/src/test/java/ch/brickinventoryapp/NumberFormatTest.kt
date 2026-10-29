@@ -1,9 +1,11 @@
 package ch.brickinventoryapp
 
 import ch.brickinventoryapp.util.fmtAmount
+import ch.brickinventoryapp.util.fmtEingabe
 import ch.brickinventoryapp.util.fmtInt
 import ch.brickinventoryapp.util.fmtMoney
 import ch.brickinventoryapp.util.fmtMoneyOrDash
+import ch.brickinventoryapp.util.zahlenLocale
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -26,10 +28,19 @@ import org.junit.Test
  *     war die Lehre aus Nachtrag 48 (der Test prüfte die Regel, es entstand
  *     trotzdem nie eine Datei).
  *
- * Bewusst NICHT festgenagelt: der genaue Wortlaut der Ausgabe. Ob de-CH das
- * Symbol vor oder hinter den Betrag setzt, entscheidet die Plattform-Locale
- * und kann sich mit einer JDK-Fassung ändern; ein Test darauf wäre eine Falle
- * ohne Aussage über unseren Code.
+ * Bewusst NICHT festgenagelt: wo de-CH das Währungssymbol setzt — das
+ * entscheidet die Plattform. Festgenagelt sind dagegen Tausender- und
+ * Dezimalzeichen je Landesform (Teil 3), denn die wählt unser Code.
+ *
+ * Gegenproben Teil 3 (29.10.2026, gemessen gegen util/NumberFormatUtils.kt):
+ *   A  zahlenLocale() wieder fest de-CH/en-GB → rot „de-DE schreibt Punkt und
+ *      Komma …“ und „ohne passende Landesform …“ (de-AT)
+ *   B  das Land ohne Sprachprüfung übernommen → rot „ohne passende Landesform …“
+ *      (de mit Gerät en-US ergab de-US)
+ *   C  in fmtEingabe() isGroupingUsed nicht abgeschaltet → rot „ein Eingabefeld
+ *      bekommt den Betrag ohne Tausendertrennung zurück“
+ *   D  in AcquisitionManagementScreen.kt wieder "%.2f".format → rot „keine
+ *      Ansicht setzt Betrag und Währung selbst zusammen“
  */
 class NumberFormatTest {
 
@@ -54,6 +65,7 @@ class NumberFormatTest {
             "ui/screens/ManualItemDetailScreen.kt",
             "ui/screens/AcquisitionManagementScreen.kt",
             "ui/screens/GalleryScreen.kt",
+            "ui/screens/EinstellungenAlarme.kt",
         )
         for (f in schirme) {
             val c = code(read(f))
@@ -77,23 +89,17 @@ class NumberFormatTest {
             assert(!c.contains("\"%,d\".format")) {
                 "$f formatiert eine Zahl von Hand statt über fmtInt()"
             }
+            assert(!c.contains("\"%.2f\".format")) {
+                "$f formatiert einen Betrag in der Gerätesprache statt über fmtAmount()/fmtEingabe()"
+            }
         }
     }
 
     @Test
-    fun `die Sprache entscheidet ueber das Zahlenformat, nicht ein fester Wert`() {
-        val u = code(read("util/NumberFormatUtils.kt"))
-        assert(u.contains("AppCompatDelegate.getApplicationLocales()")) {
-            "Das Format muss der eingestellten APP-Sprache folgen — dieselbe Quelle, " +
-                "aus der LanguageManager sie setzt. Sonst laufen App und Webapp auseinander."
-        }
-        assert(u.contains("de-CH") && u.contains("en-GB")) {
-            "Dieselbe Zuordnung wie locale() in public/i18n.js: Deutsch → de-CH, sonst en-GB"
-        }
-        // Gegenrichtung: getCurrencyInstance macht die Stellung von Symbol und
-        // Betrag zur Sache der Locale. Wer hier wieder von Hand zusammensetzt,
-        // holt sich die drei Schreibweisen zurück.
-        assert(u.contains("getCurrencyInstance")) {
+    fun `die Gegenrichtung bleibt Sache der Plattform`() {
+        // getCurrencyInstance macht die Stellung von Symbol und Betrag zur Sache
+        // der Locale; von Hand zusammengesetzt kämen die drei Schreibweisen zurück.
+        assert(code(read("util/NumberFormatUtils.kt")).contains("getCurrencyInstance")) {
             "fmtMoney muss die Währungs-Formatierung der Plattform benutzen"
         }
     }
@@ -134,5 +140,39 @@ class NumberFormatTest {
         assert(i.contains("60")) { "unerwartete Ausgabe: $i" }
         val a = fmtAmount(1234.5)
         assert(Regex("""[.,]\d{2}$""").containsMatchIn(a)) { "zwei Nachkommastellen erwartet: $a" }
+    }
+
+    // ── Teil 3: die Landesform folgt dem Gerät, wie im Web ──────────────────
+
+    private fun mitGeraet(tag: String, block: () -> Unit) {
+        val vorher = java.util.Locale.getDefault()
+        java.util.Locale.setDefault(java.util.Locale.forLanguageTag(tag))
+        try { block() } finally { java.util.Locale.setDefault(vorher) }
+    }
+
+    @Test
+    fun `de-DE schreibt Punkt und Komma, de-CH Hochkomma und Punkt`() {
+        mitGeraet("de-DE") { assertEquals("4.894,77", fmtAmount(4894.77)) }
+        mitGeraet("de-CH") { assertEquals("4\u2019894.77", fmtAmount(4894.77)) }
+        mitGeraet("en-US") { assertEquals("4,894.77", fmtAmount(4894.77)) }
+    }
+
+    @Test
+    fun `ein Eingabefeld bekommt den Betrag ohne Tausendertrennung zurueck`() {
+        mitGeraet("de-DE") { assertEquals("4894,77", fmtEingabe(4894.77)) }
+        mitGeraet("de-CH") { assertEquals("4894.77", fmtEingabe(4894.77)) }
+        // So liest AcquisitionManagementRow das Feld beim Speichern.
+        mitGeraet("de-DE") { assertEquals(4894.77, fmtEingabe(4894.77).replace(',', '.').toDouble(), 0.0) }
+    }
+
+    @Test
+    fun `ohne passende Landesform gelten de-CH und en-GB`() {
+        val de = java.util.Locale.forLanguageTag("de")
+        assertEquals("de-CH", zahlenLocale(de, java.util.Locale.forLanguageTag("en-US")).toLanguageTag())
+        assertEquals("de-CH", zahlenLocale(de, de).toLanguageTag())
+        assertEquals("en-GB", zahlenLocale(java.util.Locale.forLanguageTag("fr-FR"), java.util.Locale.forLanguageTag("fr-FR")).toLanguageTag())
+        assertEquals("Das Land kommt vom Gerät, die Sprache von der App",
+            "de-AT", zahlenLocale(de, java.util.Locale.forLanguageTag("de-AT")).toLanguageTag())
+        assertEquals("en-GB", zahlenLocale(java.util.Locale.forLanguageTag("en"), java.util.Locale.forLanguageTag("de-DE")).toLanguageTag())
     }
 }

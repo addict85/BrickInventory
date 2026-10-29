@@ -40,7 +40,33 @@ data class ChartBounds(
     fun yFraction(value: Double): Float = (1.0 - (value - minValue) / valueSpan).toFloat()
 }
 
+/** Was TalkBack je Linie sagt: Zeitraum, Anfangs- und Endwert, Tief und Hoch. */
+data class LinienZusammenfassung(
+    val zustand: String,
+    val von: String,
+    val bis: String,
+    val anfang: Double,
+    val ende: Double,
+    val tief: Double,
+    val hoch: Double,
+)
+
 object PriceChartMath {
+
+    /**
+     * Die Beschreibung des Diagramms je gezeichneter Linie — eine Zeichenfläche
+     * hat sonst keine Semantik, und TalkBack übersprang den Preisverlauf.
+     */
+    fun zusammenfassung(lines: List<ChartLine>): List<LinienZusammenfassung> = lines.map { l ->
+        val erst = l.points.minBy { it.day }
+        val letzt = l.points.maxBy { it.day }
+        LinienZusammenfassung(l.condition, tagText(erst.day), tagText(letzt.day), erst.value, letzt.value,
+            l.points.minOf { it.value }, l.points.maxOf { it.value })
+    }
+
+    /** Tage seit 1970 → "31.1.2026", dieselbe Schreibweise wie formatDay(). */
+    fun tagText(day: Long): String =
+        java.time.LocalDate.ofEpochDay(day).let { "${it.dayOfMonth}.${it.monthValue}.${it.year}" }
 
     /**
      * ISO-Tag ("2026-01-31") in Tage seit 1970. Bewusst ohne java.time-Parsing

@@ -113,7 +113,7 @@ internal fun PreisalarmeCard(
                             AlarmZustandPlakette(a.ausgeloest)
                             a.zuletztPreis?.let {
                                 Text(stringResource(R.string.alerts_last,
-                                        "${a.currencyCode} ${"%.2f".format(it)}"),
+                                        ch.brickinventoryapp.util.fmtMoney(it, a.currencyCode)),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }

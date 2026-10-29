@@ -245,7 +245,7 @@ private fun AcquisitionManagementRow(
 ) {
     var qtyText   by remember(acquisition.id) { mutableStateOf(acquisition.quantity.toString()) }
     var priceText by remember(acquisition.id) {
-        mutableStateOf(acquisition.effectivePrice?.let { "%.2f".format(it) } ?: "")
+        mutableStateOf(acquisition.effectivePrice?.let { ch.brickinventoryapp.util.fmtEingabe(it) } ?: "")
     }
     var condition by remember(acquisition.id) { mutableStateOf(acquisition.condition) }
     val geschaetztText = stringResource(R.string.acq_preis_geschaetzt)
@@ -264,7 +264,7 @@ private fun AcquisitionManagementRow(
     // Löschen. effectivePrice, nicht purchasePrice: priceText wird aus effectivePrice
     // gefüllt; mit einer anderen Quelle gälte der Ausgangswert als „geändert“.
     var lastSavedPrice by remember(acquisition.id) {
-        mutableStateOf(acquisition.effectivePrice?.let { "%.2f".format(it) } ?: "")
+        mutableStateOf(acquisition.effectivePrice?.let { ch.brickinventoryapp.util.fmtEingabe(it) } ?: "")
     }
     var lastSavedQty by remember(acquisition.id) { mutableStateOf(acquisition.quantity.toString()) }
 
