@@ -46,7 +46,7 @@ class TeileViewModelTest {
     private lateinit var pfade: PfadServer
     private lateinit var t: TestDienste
 
-    private fun vm(gemerkt: SavedStateHandle = SavedStateHandle()) =
+    private fun vm(gemerkt: SavedStateHandle = SavedStateHandle(), t: TestDienste = this.t) =
         t.merke(TeileViewModel(t.dienste, TeileRepository(t.api, t.cache), gemerkt))
 
     @Before
@@ -81,14 +81,16 @@ class TeileViewModelTest {
         erstes.setPartsSpare("1")
         erstes.setPartsView("table")
 
-        val neu = vm(gemerkt)
-        val st = neu.partsState.value
-        assertEquals(listOf("5", "11", "1", "table"),
-            listOf(st.partsColorFilter, st.partsCategoryFilter, st.partsSpare, st.partsView))
-        neu.loadParts()
-        TestApi.warteBis("Liste geladen") { neu.partsState.value.parts.isNotEmpty() }
-        val abruf = pfade.anfragenAn("GET /api/v1/parts?").last()
-        assertTrue(abruf, listOf("color=5", "category=11", "spare=1", "with_sets=1").all { it in abruf })
+        pfade.neuerProzess { pfade, t ->
+            val neu = vm(gemerkt, t)
+            val st = neu.partsState.value
+            assertEquals(listOf("5", "11", "1", "table"),
+                listOf(st.partsColorFilter, st.partsCategoryFilter, st.partsSpare, st.partsView))
+            neu.loadParts()
+            TestApi.warteBis("Liste geladen") { neu.partsState.value.parts.isNotEmpty() }
+            val abruf = pfade.anfragenAn("GET /api/v1/parts?").single()
+            assertTrue(abruf, listOf("color=5", "category=11", "spare=1", "with_sets=1").all { it in abruf })
+        }
     }
 
     @Test
