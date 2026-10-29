@@ -110,9 +110,14 @@ async function starteApp(t, opt = {}) {
   t.after(() => fs.rmSync(profil, { recursive: true, force: true }));
   const browser = starte(t, bin, ['--headless=new', '--no-sandbox', '--disable-gpu', '--remote-debugging-port=0',
     `--user-data-dir=${profil}`, '--window-size=1280,900', 'about:blank'], {});
+  // Bis 30 s, weil der Start im CI-Läufer länger dauern kann. Endet Chrome
+  // vorher, bricht der Helfer gleich ab und zeigt Chromes eigene Ausgabe.
   let wsUrl = null;
-  for (let i = 0; i < 100 && !wsUrl; i++) { wsUrl = /DevTools listening on (ws:\/\/\S+)/.exec(browser.log())?.[1]; await warte(100); }
-  if (!wsUrl) throw new Error('Chrome meldet keinen DevTools-Zugang');
+  for (let i = 0; i < 300 && !wsUrl && browser.p.exitCode === null && browser.p.signalCode === null; i++) {
+    wsUrl = /DevTools listening on (ws:\/\/\S+)/.exec(browser.log())?.[1]; if (!wsUrl) await warte(100);
+  }
+  if (!wsUrl) throw new Error(`Chrome meldet keinen DevTools-Zugang (Ende: ${browser.p.exitCode ?? browser.p.signalCode ?? 'läuft'}):\n`
+    + browser.log().slice(-1500));
   const b = await cdp(wsUrl);
   t.after(() => b.schliessen());
   await b.tab('Runtime.enable');
