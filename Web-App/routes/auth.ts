@@ -27,6 +27,19 @@ import * as zf from '../utils/zweiterFaktor';
 const requireLogin = requireLoginOrToken;
 const requireAdmin = requireApiAdmin;
 
+/** Längstes Token-Label: Es steht in der Geräteliste, ein Name passt bequem hinein. */
+const LABEL_MAX = 100;
+
+/**
+ * Das Label eines neuen Tokens aus der Anfrage. Ohne Grenze legte jede
+ * Anmeldung beliebig lange Zeilen in api_tokens ab, und die Geräteliste zeigte
+ * sie ungekürzt; Nicht-Text (Objekt, Liste) fällt auf die Vorgabe zurück.
+ */
+function tokenLabel(roh: unknown, vorgabe: string): string {
+  const text = typeof roh === 'string' ? roh.trim() : '';
+  return text ? Array.from(text).slice(0, LABEL_MAX).join('') : vorgabe;
+}
+
 /**
  * POST /api/v1/auth/login — die EINE Anmeldung, fuer Webapp und App.
  * Ausführlich: docs/begruendungen/routes/auth.ts.md#post-login
@@ -78,7 +91,7 @@ router.post('/login', async (req, res) => {
     // Die Webapp arbeitet nur mit dem httpOnly-Cookie: Ein Token im Browser
     // wäre per eingeschleustem Skript auslesbar und gälte über die Sitzung hinaus.
     if (ohne_token !== true) try {
-      token = await createToken(user.id, label || 'webapp-session', dauerhaft);
+      token = await createToken(user.id, tokenLabel(label, 'webapp-session'), dauerhaft);
     } catch (e) {
       console.warn('[login] Token konnte nicht gespeichert werden:', fehlertext(e));
       if (dauerhaft)
@@ -157,7 +170,7 @@ router.post('/token-create', requireLogin, async (req, res) => {
     if (!req.session?.userId) return sendeFehler(req, res, 403, 'nur_mit_sitzung');
     const userId = angemeldeteNutzerId(req);
     if (!await bestaetigePasswort(req, res, userId, req.body?.password)) return;
-    const label = req.body?.label || 'Android App';
+    const label = tokenLabel(req.body?.label, 'Android App');
     const neu = await createToken(userId, label, true);
     res.json({ success: true, token: neu, label, never_expires: appTokenOhneAblauf() });
   } catch (e) { handleRouteError(res, e, undefined, req); }
