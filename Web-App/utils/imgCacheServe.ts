@@ -1,6 +1,6 @@
 import fs from 'fs';
 import { queueThumb } from './proxyThumbs';
-import { vorDem } from '../utils/httpError';
+import { vorDem, ohneFehlendeDatei } from '../utils/httpError';
 
 /**
  * Ein Bild aus dem Platten-Cache ausliefern, falls es dort liegt.
@@ -21,7 +21,7 @@ export async function liefereAusCache(opts: {
   if (wantThumb) {
     try {
       await fs.promises.access(thumbFile);
-      const tst0 = await fs.promises.stat(thumbFile).catch(() => null);
+      const tst0 = await fs.promises.stat(thumbFile).catch(ohneFehlendeDatei('bild-cache:stat', null));
       // Zweite Verteidigungslinie: Eine leere oder viel zu
       // kleine Vorschau ist kein Bild. Seit der Erzeugung atomar läuft, darf
       // das nicht mehr entstehen — Altbestände aus der Zeit davor liegen
@@ -30,7 +30,7 @@ export async function liefereAusCache(opts: {
       // Anfrage auf das Original zurück (weiter unten) und die Verkleinerung
       // wird neu angestossen.
       if (!tst0 || tst0.size < 200) {
-        await fs.promises.unlink(thumbFile).catch(() => {});
+        await fs.promises.unlink(thumbFile).catch(ohneFehlendeDatei('bild-cache:unlink'));
         throw new Error('unbrauchbare Vorschau verworfen');
       }
       res.setHeader('Content-Type', 'image/jpeg');
@@ -74,7 +74,7 @@ export async function liefereAusCache(opts: {
     res.setHeader('Content-Type', ct);
     // Länge mitgeben: Ohne sie geht die Antwort als chunked raus, und ein
     // Reverse-Proxy davor kann sie puffern statt durchzureichen.
-    const cst = await fs.promises.stat(cacheFile).catch(() => null);
+    const cst = await fs.promises.stat(cacheFile).catch(ohneFehlendeDatei('bild-cache:stat', null));
     if (cst) {
       res.setHeader('Content-Length', String(cst.size));
       res.setHeader('ETag', `"c-${cst.size}-${Math.floor(cst.mtimeMs)}"`);

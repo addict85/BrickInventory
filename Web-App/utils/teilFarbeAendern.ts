@@ -1,7 +1,7 @@
 import * as db from '../db/database';
 import type { DbSchnittstelle } from '../db/database';
 import { lookupPart } from '../clients/rebrickable';
-import { meldeUndWeiter } from './httpError';
+import { meldeUndWeiter, meldeUndLiefere } from './httpError';
 import { merkeTeilFarbe, katalogTeil } from './katalogPflege';
 import { erfassungsTagSql } from './acquisitions';
 
@@ -42,7 +42,7 @@ async function bildNachtragen(partNumber: string, farbe: number): Promise<BildQu
   const lokal = await katalogTeil(partNumber, farbe);
   if (lokal?.bildQuelle === 'farbe') return 'vorhanden';
 
-  const info = await lookupPart(partNumber, farbe).catch(() => null);
+  const info = await lookupPart(partNumber, farbe).catch(meldeUndLiefere('teilfarbe:lookupPart', null));
   if (!info?.image_url) return null;
   try {
     await merkeTeilFarbe(partNumber, farbe, null, null, info.image_url, null);
@@ -72,7 +72,7 @@ export async function aendereTeilFarbe(
   // Farbbezeichnung und Farbcode: rb_colors zuerst, weil der Katalog für alle
   // Konten gilt; die Angaben des Aufrufers füllen nur, was dort fehlt.
   const katalogFarbe = await db.get('SELECT name, rgb FROM rb_colors WHERE id = $1', [neu])
-    .catch(() => null);
+    .catch(meldeUndLiefere('teilfarbe:katalogFarbe', null));
 
   // Die Transaktion liefert alles AUSSER dem Bild: Das wird danach geholt,
   // weil der Abruf dauern und scheitern darf, ohne die Änderung mitzunehmen.
@@ -109,7 +109,7 @@ export async function aendereTeilFarbe(
     // ── Erfassungen: erst addieren, was den gleichen Indexschlüssel hätte ──
     //
     // Die Reihenfolge ist zwingend. Zöge das UPDATE unten zuerst um, liefe es
-    // in `idx_part_acq_tag_merkmale` — und zwar nur manchmal, nämlich wenn beide Farben
+    // in `idx_part_acq_erfassungstag` — und zwar nur manchmal, nämlich wenn beide Farben
     // am gleichen Tag erfasst wurden. Ein Fehler, der von der Uhr abhängt.
     const vereint = await tx.run(
       `UPDATE part_acquisitions z

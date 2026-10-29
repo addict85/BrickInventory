@@ -3,7 +3,7 @@
  * UI polls GET /api/v1/admin/jobs to display progress.
  */
 
-import { meldeUndWeiter } from './httpError';
+import { meldeUndWeiter, logAndContinue, meldeUndLiefere } from './httpError';
 import { liesZustand, setzeZustand, zaehleZustand, zustaendeMitPraefix } from './laufzustand';
 
 const JOB_DEFAULTS: Record<string, any> = {
@@ -38,7 +38,7 @@ async function imgDlAdd(delta: number) {
   if (d > 0) {
     // Nur lastRun-/Label-Marker für die Anzeige — die Zahl kommt aus dem
     // Zähler oben, nicht aus diesem Feld.
-    await update('imgDl', { status: 'running', sub: null }).catch(() => {});
+    await update('imgDl', { status: 'running', sub: null }).catch(logAndContinue('job-monitor:update'));
   }
 }
 
@@ -52,7 +52,7 @@ async function imgDlReset() {
   // weil imgDlPending() eine fehlende Zeile ohnehin als 0 liest — deshalb ist
   // das Anlegen durch setzeZustand() hier unschaedlich und der Zaehler
   // steht danach in jedem Fall sichtbar auf 0.
-  await setzeZustand(IMGDL_PENDING_KEY, 0).catch(() => {});
+  await setzeZustand(IMGDL_PENDING_KEY, 0).catch(logAndContinue('job-monitor:setzeZustand'));
 }
 
 async function get(jobKey: string) {
@@ -62,7 +62,7 @@ async function get(jobKey: string) {
 }
 
 async function all() {
-  const rows = await zustaendeMitPraefix('job_monitor_').catch(() => []);
+  const rows = await zustaendeMitPraefix('job_monitor_').catch(meldeUndLiefere('job-monitor:zustaendeMitPraefix', []));
   const result: Record<string, any> = { ...JOB_DEFAULTS };
   for (const row of rows) {
     const key = row.schluessel.replace('job_monitor_', '');

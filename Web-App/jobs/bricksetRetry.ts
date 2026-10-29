@@ -2,7 +2,10 @@ import * as db from '../db/database';
 import { getSetInfo } from '../clients/brickset';
 import { downloadSetInstructions, anzahlAnleitungen } from '../utils/instructions';
 import { getLimitForApi, getRateLimitStatus } from '../utils/financeCalc';
-import { logAndContinue, meldeUndWeiter } from '../utils/httpError';
+import { logAndContinue, meldeUndWeiter, meldeUndLiefere } from '../utils/httpError';
+import * as db2 from '../db/database';
+import * as lockNamespaces from '../utils/lockNamespaces';
+import { LOCKS } from '../utils/lockNamespaces';
 
 /**
  * Die Brickset-Wiederholungsschlange.
@@ -24,7 +27,7 @@ async function _processRetryQueue(force = false) {
       ? `SELECT set_number FROM brickset_retry_queue ORDER BY retry_after`
       : `SELECT set_number FROM brickset_retry_queue WHERE retry_after <= $1`,
     force ? [] : [today]
-  ).catch(() => []);
+  ).catch(meldeUndLiefere('brickset-retry:due', []));
   if (!due.length) { console.log('[brickset] Retry queue empty'); return; }
   console.log(`[brickset] Processing retry queue: ${due.length} sets${force ? ' (forced — limit increased)' : ''}`);
 
@@ -74,7 +77,7 @@ async function _processRetryQueue(force = false) {
         // Echter Import statt spätem require('../routes/sets') samt
         // typeof-Prüfung: Der Kreis brickset → sets → brickset ist mit dem
         // Umzug nach utils/instructions.ts weg.
-        await downloadSetInstructions(set_number).catch(() => {});
+        await downloadSetInstructions(set_number).catch(logAndContinue('brickset-retry:downloadSetInstructions'));
       }
     } catch (e) { meldeUndWeiter('brickset-retry:anleitungen', e); }
 
@@ -85,17 +88,15 @@ async function _processRetryQueue(force = false) {
 }
 
 async function processRetryQueue(force = false) {
-  const db2 = require('../db/database');
-  const client = await db2.pool.connect();
+    const client = await db2.pool.connect();
   let acquired = false;
   try {
-    const { LOCKS } = require('../utils/lockNamespaces');
-    const r = await client.query('SELECT pg_try_advisory_lock($1) AS ok', [LOCKS.BRICKSET_RETRY]).catch(() => null);
+    const r = await client.query('SELECT pg_try_advisory_lock($1) AS ok', [LOCKS.BRICKSET_RETRY]).catch(meldeUndLiefere('brickset-retry:pg_try_advisory_lock', null));
     acquired = !!r?.rows?.[0]?.ok;
     if (!acquired) { console.log('[brickset] processRetryQueue skipped — another worker is running'); return; }
     await _processRetryQueue(force);
   } finally {
-    if (acquired) await client.query('SELECT pg_advisory_unlock($1)', [require('../utils/lockNamespaces').LOCKS.BRICKSET_RETRY]).catch(() => {});
+    if (acquired) await client.query('SELECT pg_advisory_unlock($1)', [lockNamespaces.LOCKS.BRICKSET_RETRY]).catch(logAndContinue('brickset-retry:pg_advisory_unlock'));
     client.release();
   }
 }

@@ -4,7 +4,7 @@
  */
 import express from 'express';
 import * as db from '../../db/database';
-import { handleRouteError } from '../../utils/httpError';
+import { handleRouteError, meldeUndLiefere } from '../../utils/httpError';
 import { resolveIfExists } from '../../utils/images';
 import { requireToken } from './middleware';
 import { resolveMany, resolveOne, resolveViaApi } from '../../utils/bricklinkLink';
@@ -279,13 +279,13 @@ router.get('/catalog/sets/:setNumber', requireToken, async (req: AuthedRequest, 
     // Minifiguren-Zahl aus dem neuesten Inventar (analog catalogSync).
     // Vorher nur EIN Kandidat, obwohl der Kommentar darueber schon auf
     // catalogSync verwies — das prueft zwei.
-    const invId = await neuestesInventar(n).catch(() => null);
+    const invId = await neuestesInventar(n).catch(meldeUndLiefere('katalog:neuestesInventar', null));
     let minifigCount = 0;
     if (invId) {
       const m = await db.get(
         'SELECT COALESCE(SUM(quantity), 0)::int AS n FROM rb_inventory_minifigs WHERE inventory_id = $1',
         [invId]
-      ).catch(() => null);
+      ).catch(meldeUndLiefere('katalog:m', null));
       minifigCount = m?.n || 0;
     }
 
@@ -317,7 +317,7 @@ router.get('/catalog/sets/:setNumber', requireToken, async (req: AuthedRequest, 
     // lebt und beim Hinzufügen des Sets erneut heruntergeladen würde.
     // Ausführlich: docs/begruendungen/routes/api_v1/catalog.ts.md#get-catalog-sets-setnumber
     if (!image_local && set.image_url) {
-      image_local = await downloadSetImage(set.image_url, set.set_number).catch(() => null);
+      image_local = await downloadSetImage(set.image_url, set.set_number).catch(meldeUndLiefere('katalog:downloadSetImage', null));
       if (image_local) {
         // Vorschau erzeugen — geschieht NICHT innerhalb von downloadSetImage()
         // selbst, sondern muss vom Aufrufer angestossen werden (derselbe

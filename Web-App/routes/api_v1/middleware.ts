@@ -6,6 +6,7 @@
  * Admin-Endpoint den Check versehentlich weglassen kann (genau das war
  * bei /admin/cache-ttl passiert).
  */
+import { meldeUndLiefere } from '../../utils/httpError';
 import type { Request, Response, NextFunction } from 'express';
 import { validateToken, resolveUserId } from '../../utils/auth';
 import { sendeFehler } from '../../utils/fehlerTexte';
@@ -36,7 +37,7 @@ export async function anmeldungAmEingang(req: Request, res: Response, next: Next
                     ...(req.session.username ? { username: req.session.username } : {}) };
     return next();
   }
-  const uid = await resolveUserId(req).catch(() => null);
+  const uid = await resolveUserId(req).catch(meldeUndLiefere('eingang:resolveUserId', null));
   if (!uid) return sendeFehler(req, res, 401, 'nicht_angemeldet');
   req.tokenUserId = uid;
   next();

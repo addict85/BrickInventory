@@ -6,7 +6,7 @@
 import express from 'express';
 import {  DATA_DIR } from '../../utils/appPaths';
 import * as verwaltung from '../../utils/verwaltung';
-import { fehlertext, handleRouteError, meldeUndWeiter, logAndContinue } from '../../utils/httpError';
+import { fehlertext, handleRouteError, meldeUndWeiter, logAndContinue, meldeUndLiefere, ohneFehlendeDatei } from '../../utils/httpError';
 import { requireApiAdmin } from './middleware';
 import { PDF_JOB_DIR } from '../../utils/appPaths';
 import { fetchPrice } from '../../utils/financeCalc';
@@ -17,7 +17,7 @@ import { imgProxyFailures } from '../../utils/imgProxyStats';
 import { proxyCachePathFor } from '../../utils/images';
 import { ERLAUBTE_BILD_HOSTS, hostErlaubt } from '../../utils/fremdeAdressen';
 import { vergissFehlend } from '../../utils/imageMisses';
-import { clearCatalogCache, clearSubsetsCache, getPriceGuide } from '../../clients/bricklink';
+import { clearCatalogCache, clearSubsetsCache, getPriceGuide, getCacheStats } from '../../clients/bricklink';
 import { enqueue, offeneAuftraege } from '../../jobs/instructionQueue';
 import { getJobStatus, triggerNow } from '../../jobs/priceJob';
 import { SET_IMAGES_DIR } from '../../utils/appPaths';
@@ -27,6 +27,16 @@ import { getGlobalSetting, getSetting, setGlobalSetting } from '../../utils/sett
 import { ausRetryWarteschlange } from '../../clients/brickset';
 import { sendeFehler } from '../../utils/fehlerTexte';
 import { liesZustand, setzeAusloeser } from '../../utils/laufzustand';
+import fs from 'fs';
+import path from 'path';
+import * as enrich from '../../jobs/partsCatalogEnrich';
+import * as monitor from '../../utils/jobMonitor';
+import https2 from 'https';
+import * as pgNotify from '../../utils/pgNotify';
+import * as bricksetRetry from '../../jobs/bricksetRetry';
+import * as instructionQueue from '../../jobs/instructionQueue';
+import * as dailyScheduler from '../../jobs/dailyScheduler';
+import { letzteEintraege } from '../../utils/verwaltungsprotokoll';
 const router = express.Router();
 
 /**
@@ -42,7 +52,7 @@ router.post('/admin/trigger-csv-sync', requireApiAdmin, async (_req: AuthedReque
     await setzeAusloeser('csv_sync_trigger');
     // Weckt den Primary-Worker sofort. Der Eintrag oben bleibt die belastbare
     // Quelle — ohne Signal liefe er erst beim nächsten Verbindungsaufbau an.
-    await require('../../utils/pgNotify').notify('csv_sync_trigger');
+    await pgNotify.notify('csv_sync_trigger');
     res.json({ success: true, message: 'CSV-Sync wird gestartet…' });
   } catch (e) { handleRouteError(res, e, undefined, _req); }
 });
@@ -50,17 +60,15 @@ router.post('/admin/trigger-csv-sync', requireApiAdmin, async (_req: AuthedReque
 // ── GET /api/v1/admin/cache-stats ─────────────────────────────────────────────
 router.get('/admin/protokoll', requireApiAdmin, async (req: AuthedRequest, res) => {
   try {
-    const { letzteEintraege } = require('../../utils/verwaltungsprotokoll') as typeof import('../../utils/verwaltungsprotokoll');
     res.json({ success: true, eintraege: await letzteEintraege() });
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 router.get('/admin/cache-stats', requireApiAdmin, async (_req: AuthedRequest, res) => {
   try {
-    const { getCacheStats }      = require('../../clients/bricklink');
     const [stats, stale, rlBL, rlRB, rlBS] = await Promise.all([
       getCacheStats().catch(() => ({})),
-      verwaltung.veraltetePreise().catch(() => null),
+      verwaltung.veraltetePreise().catch(meldeUndLiefere('verwaltung:veraltetePreise', null)),
       getRateLimitStatus('bricklink').catch(() => ({ count:0, limit:0 })),
       getRateLimitStatus('rebrickable').catch(() => ({ count:0, limit:0 })),
       getRateLimitStatus('brickset').catch(() => ({ count:0, limit:0 })),
@@ -80,22 +88,19 @@ router.get('/admin/cache-stats', requireApiAdmin, async (_req: AuthedRequest, re
 // Ausführlich: docs/begruendungen/routes/api_v1/admin.ts.md#get-admin-image-diag-setnumber
 router.get('/admin/image-diag/:setNumber', requireApiAdmin, async (req: AuthedRequest, res) => {
   try {
-    const fs   = require('fs');
-    const path = require('path');
-    const { SET_IMAGES_DIR } = require('../../utils/appPaths');
     const sn = String(req.params.setNumber);
 
     // 1. Was weiss die Datenbank — eigene Zeile UND gemeinsamer Katalog?
     // Die Liste beantwortet „welche Konten fuehren dieses Set?" — genau das
     // braucht die Einschaetzung unten.
-    const zeilen: verwaltung.KontoBildzeile[] = await verwaltung.bildZeilenDerKonten(sn).catch(() => []);
-    const katalog = await verwaltung.katalogBild(sn).catch(() => null);
+    const zeilen: verwaltung.KontoBildzeile[] = await verwaltung.bildZeilenDerKonten(sn).catch(meldeUndLiefere('verwaltung:bildZeilenDerKonten', []));
+    const katalog = await verwaltung.katalogBild(sn).catch(meldeUndLiefere('verwaltung:katalogBild', null));
 
     // 2. Was liegt auf der Platte?
     const safe = sn.replace(/[^a-z0-9-]/gi, '_');
     const datei = (p: string) => {
       try { const st = fs.statSync(p); return { vorhanden: true, bytes: st.size, geaendert: st.mtime }; }
-      catch (_) { return { vorhanden: false }; }
+      catch { return { vorhanden: false, bytes: 0, geaendert: null }; }
     };
     const original = datei(path.join(SET_IMAGES_DIR, `${safe}.jpg`));
     const vorschau = datei(path.join(SET_IMAGES_DIR, `${safe}_thumb.jpg`));
@@ -118,8 +123,8 @@ router.get('/admin/image-diag/:setNumber', requireApiAdmin, async (req: AuthedRe
     // beantworten. Ausgerechnet die Tabelle, die den Abruf VERHINDERT, sah er
     // nicht an. Steht dort ein Eintrag, ist jede andere Auskunft hier
     // gegenstandslos: Es wird gar nicht erst versucht.
-    const merker = await verwaltung.fehlanzeigeDesSets(sn).catch(() => null);
-    const vorschauMerker = await verwaltung.fehlanzeigeDerVorschau(safe).catch(() => null);
+    const merker = await verwaltung.fehlanzeigeDesSets(sn).catch(meldeUndLiefere('verwaltung:fehlanzeigeDesSets', null));
+    const vorschauMerker = await verwaltung.fehlanzeigeDerVorschau(safe).catch(meldeUndLiefere('verwaltung:fehlanzeigeDerVorschau', null));
 
     // 4. Eine Einschätzung im Klartext — das, was man sonst aus den Zahlen
     //    selbst ableiten müsste.
@@ -163,11 +168,11 @@ router.post('/admin/forget-image-misses', requireApiAdmin, async (req: AuthedReq
       // Nicht die ganze Tabelle: Die Vorschau-Vermerke haben einen anderen
       // Zweck (eine Verkleinerung, die nie gelingen kann) und sollen nicht
       // nebenbei mitverschwinden.
-      const rows = await verwaltung.setFehlanzeigen().catch(() => []);
+      const rows = await verwaltung.setFehlanzeigen().catch(meldeUndLiefere('verwaltung:setFehlanzeigen', []));
       if (rows.length) entfernt = await vergissFehlend(rows.map(r => r.cache_key));
     }
     if (req.body?.thumbs === true) {
-      const rows = await verwaltung.vorschauFehlanzeigen().catch(() => []);
+      const rows = await verwaltung.vorschauFehlanzeigen().catch(meldeUndLiefere('verwaltung:vorschauFehlanzeigen', []));
       if (rows.length) entfernt += await vergissFehlend(rows.map(r => r.cache_key));
     }
     // Die anderen Arbeitsprozesse halten den Merker im Speicher und frischen
@@ -252,11 +257,11 @@ router.put('/admin/api-limits', requireApiAdmin, async (req: AuthedRequest, res)
       setGlobalSetting('api_limit_brickset', String(newLimit));
       // If limit was increased and quota is available, trigger retry queue
       if (newLimit > oldLimit) {
-        const rl = await getRateLimitStatus('brickset').catch(() => null);
+        const rl = await getRateLimitStatus('brickset').catch(meldeUndLiefere('verwaltung:getRateLimitStatus', null));
         const remaining = rl ? Math.max(0, newLimit - (rl.count || 0)) : 0;
         if (remaining > 0) {
           console.log(`[brickset] Limit increased ${oldLimit}→${newLimit}, ${remaining} calls available — triggering retry queue`);
-          setImmediate(() => require('../../jobs/bricksetRetry').processRetryQueue(true).catch(() => {}));
+          setImmediate(() => bricksetRetry.processRetryQueue(true).catch(logAndContinue('verwaltung:processRetryQueue')));
         }
       }
     }
@@ -276,15 +281,15 @@ router.post('/admin/reimport-instructions', requireApiAdmin, async (_req: Authed
     // Delete existing queue entries for these sets so they get re-tried fresh
     let enqueued = 0;
     for (const { set_number } of missing) {
-      await loescheAnleitungen(set_number).catch(() => {});
-      await enqueue(set_number).catch(() => {});
+      await loescheAnleitungen(set_number).catch(logAndContinue('verwaltung:loescheAnleitungen'));
+      await enqueue(set_number).catch(logAndContinue('verwaltung:enqueue'));
       enqueued++;
     }
     // Der Primary-Worker holt sich die Arbeit über das Flag (Poll alle 3 s).
     // Ein zusätzlicher direkter processNext() stand hier „falls dies der
     // Primary ist" — processNext() kannte den Primary aber gar nicht und lief
     // deshalb in JEDEM Worker, der die Anfrage bearbeitet hat.
-    await require('../../jobs/instructionQueue').requestRun();
+    await instructionQueue.requestRun();
     console.log(`[admin] Reimport instructions: ${enqueued} sets enqueued`);
     res.json({ success: true, enqueued });
   } catch (e) { handleRouteError(res, e, undefined, _req); }
@@ -321,7 +326,7 @@ router.post('/admin/catalog-images', requireApiAdmin, async (req: AuthedRequest,
     const zuVergessen = await (alleErneut
       ? verwaltung.setFehlanzeigen()
       : verwaltung.setFehlanzeigenOhne404()
-    ).catch(() => []);
+    ).catch(meldeUndLiefere('verwaltung:zuVergessen', []));
     const verworfen = zuVergessen.length
       ? await vergissFehlend(zuVergessen.map(r => r.cache_key))
       : 0;
@@ -330,8 +335,7 @@ router.post('/admin/catalog-images', requireApiAdmin, async (req: AuthedRequest,
     // habe, war zu kurz gedacht: Ich wollte 25 000 einzelne Dateizugriffe in
     // einer Anfrage vermeiden — richtig — und habe daraus geschlossen, gar …
     // Ausführlich: docs/begruendungen/routes/api_v1/admin.ts.md#post-admin-catalog-images-fs
-    const fs = require('fs');
-    let vorhanden: Set<string> = new Set();
+        let vorhanden: Set<string> = new Set();
     try {
       const namen = new Set<string>(fs.readdirSync(SET_IMAGES_DIR));
       // FERTIG heisst: Original UND Vorschau. Fehlt die Vorschau, gehört das
@@ -387,9 +391,8 @@ router.post('/admin/catalog-images', requireApiAdmin, async (req: AuthedRequest,
 // unter „Bild-Download (CDN)".
 router.post('/admin/redownload-missing-images', requireApiAdmin, async (_req: AuthedRequest, res) => {
   try {
-    const enrich = require('../../jobs/partsCatalogEnrich');
-    // Nicht awaiten — kann je nach Kataloggröße lange dauern.
-    enrich.redownloadMissingImages().catch((e: any) => console.error('[admin] redownload-missing-images:', e?.message));
+        // Nicht awaiten — kann je nach Kataloggröße lange dauern.
+    enrich.redownloadMissingImages().catch(logAndContinue('verwaltung:bilder nachladen'));
     res.json({ success: true, started: true });
   } catch (e) { handleRouteError(res, e, undefined, _req); }
 });
@@ -410,7 +413,7 @@ router.get('/admin/logs', requireApiAdmin, async (req: AuthedRequest, res) => {
 });
 
 router.get('/admin/brickset-queue', requireApiAdmin, async (_req: AuthedRequest, res) => {
-  const rows = await verwaltung.bricksetWarteschlange().catch(() => []);
+  const rows = await verwaltung.bricksetWarteschlange().catch(meldeUndLiefere('verwaltung:bricksetWarteschlange', []));
   res.json({ success: true, count: rows.length, entries: rows });
 });
 
@@ -418,41 +421,40 @@ router.get('/admin/brickset-queue', requireApiAdmin, async (_req: AuthedRequest,
 router.post('/admin/brickset-queue/:setNumber/retry', requireApiAdmin, async (req: AuthedRequest, res) => {
   const sn = req.params.setNumber;
   // Reset retry_after to today so processRetryQueue picks it up immediately
-  await verwaltung.bricksetHeuteWiederholen(String(sn)).catch(() => {});
+  await verwaltung.bricksetHeuteWiederholen(String(sn)).catch(logAndContinue('verwaltung:bricksetHeuteWiederholen'));
   // Temporarily reset today's rate limit counter so the retry goes through even if limit reached
   await setzeKontingentZurueck('brickset').catch(logAndContinue('brickset:kontingent zurücksetzen'));
   // Trigger queue processing immediately
-  setImmediate(() => require('../../jobs/bricksetRetry').processRetryQueue(true).catch(() => {}));
+  setImmediate(() => bricksetRetry.processRetryQueue(true).catch(logAndContinue('verwaltung:processRetryQueue')));
   res.json({ success: true, set_number: sn });
 });
 
 // ── DELETE /api/v1/admin/brickset-queue/:setNumber — remove + trigger fallback ─
 router.delete('/admin/brickset-queue/:setNumber', requireApiAdmin, async (req: AuthedRequest, res) => {
   const sn = String(req.params.setNumber ?? '');
-  await ausRetryWarteschlange(sn).catch(() => {});
+  await ausRetryWarteschlange(sn).catch(logAndContinue('verwaltung:ausRetryWarteschlange'));
   // Trigger fallback directly — skip Brickset since that's why it was in the queue
   setImmediate(async () => {
     try {
-      await scrapeInstructionsFromFallback(sn).catch(() => {});
+      await scrapeInstructionsFromFallback(sn).catch(logAndContinue('verwaltung:scrapeInstructionsFromFallback'));
     } catch (e) { meldeUndWeiter('admin:anleitungen-nachschlagen', e); }
   });
   res.json({ success: true, set_number: sn });
 });
 
 router.get('/admin/jobs', requireApiAdmin, async (_req: AuthedRequest, res) => {
-  const monitor = require('../../utils/jobMonitor');
-  const jobs = await monitor.all(); // reads from PostgreSQL — shared across all cluster workers
+    const jobs = await monitor.all(); // reads from PostgreSQL — shared across all cluster workers
 
   // Enrich with live DB counts
   const [pending, done, failed] = await Promise.all([
-    offeneAuftraege().catch(() => 0),
-    verwaltung.anleitungenErledigt().catch(()=>null),
-    verwaltung.anleitungenGescheitert().catch(()=>null),
+    offeneAuftraege().catch(meldeUndLiefere('verwaltung:offeneAuftraege', 0)),
+    verwaltung.anleitungenErledigt().catch(meldeUndLiefere('verwaltung:anleitungenErledigt', null)),
+    verwaltung.anleitungenGescheitert().catch(meldeUndLiefere('verwaltung:anleitungenGescheitert', null)),
   ]);
-  const blMapped = await verwaltung.zugeordneteTeile().catch(()=>null);
-  const blTotal  = await verwaltung.bricklinkTeile().catch(()=>null);
-  const rbParts  = await verwaltung.rbTeile().catch(()=>null);
-  const rbInvParts = await verwaltung.rbInventarTeile().catch(()=>null);
+  const blMapped = await verwaltung.zugeordneteTeile().catch(meldeUndLiefere('verwaltung:zugeordneteTeile', null));
+  const blTotal  = await verwaltung.bricklinkTeile().catch(meldeUndLiefere('verwaltung:bricklinkTeile', null));
+  const rbParts  = await verwaltung.rbTeile().catch(meldeUndLiefere('verwaltung:rbTeile', null));
+  const rbInvParts = await verwaltung.rbInventarTeile().catch(meldeUndLiefere('verwaltung:rbInventarTeile', null));
   const lastSync = await liesZustand('rb_csv_last_sync');
 
   // Enrich blIds job with live DB counts
@@ -485,9 +487,9 @@ router.get('/admin/jobs', requireApiAdmin, async (_req: AuthedRequest, res) => {
   }
 
   // Brickset retry queue
-  const bsRetry = await verwaltung.bricksetWartend().catch(() => null);
+  const bsRetry = await verwaltung.bricksetWartend().catch(meldeUndLiefere('verwaltung:bricksetWartend', null));
   const bsRetryC = parseInt(bsRetry?.c || 0);
-  const bsRetryDue = await verwaltung.bricksetFaellig().catch(() => null);
+  const bsRetryDue = await verwaltung.bricksetFaellig().catch(meldeUndLiefere('verwaltung:bricksetFaellig', null));
   const bsRetryDueC = parseInt(bsRetryDue?.c || 0);
   jobs.bricksetRetry = {
     label:    'Brickset Retry Queue',
@@ -504,12 +506,12 @@ router.get('/admin/jobs', requireApiAdmin, async (_req: AuthedRequest, res) => {
 
   // img-dl: active download locks and pending images count
   const [imgDlPending, imgDlDone, imgDlPendingFigs, imgDlPendingOwnFigs] = await Promise.all([
-    verwaltung.teilbilderOffen().catch(()=>null),
-    verwaltung.teilbilderFertig().catch(()=>null),
-    verwaltung.setFigurenbilderOffen().catch(()=>null),
+    verwaltung.teilbilderOffen().catch(meldeUndLiefere('verwaltung:teilbilderOffen', null)),
+    verwaltung.teilbilderFertig().catch(meldeUndLiefere('verwaltung:teilbilderFertig', null)),
+    verwaltung.setFigurenbilderOffen().catch(meldeUndLiefere('verwaltung:setFigurenbilderOffen', null)),
     // Minifiguren des Bestands legt der img-dl-Hintergrundlauf ebenfalls lokal
     // ab; sie gehören deshalb in die offene Menge.
-    verwaltung.bestandsFigurenbilderOffen().catch(()=>null),
+    verwaltung.bestandsFigurenbilderOffen().catch(meldeUndLiefere('verwaltung:bestandsFigurenbilderOffen', null)),
   ]);
   const imgPending = parseInt(imgDlPending?.c||0) + parseInt(imgDlPendingFigs?.c||0)
                    + parseInt(imgDlPendingOwnFigs?.c||0);
@@ -519,9 +521,9 @@ router.get('/admin/jobs', requireApiAdmin, async (_req: AuthedRequest, res) => {
   // Batch. Deckelung auf imgPending (real noch nicht gecachte Bilder) heilt
   // einen evtl. verwaisten Zähler nach einem Worker-Crash selbst; bei 0 offenen
   // Bildern wird der Zähler zurückgesetzt.
-  const imgDlJob   = await monitor.get('imgDl').catch(() => null);
-  let imgActive    = await monitor.imgDlPending().catch(() => 0);
-  if (imgPending === 0 && imgActive > 0) { await monitor.imgDlReset().catch(() => {}); imgActive = 0; }
+  const imgDlJob   = await monitor.get('imgDl').catch(meldeUndLiefere('verwaltung:get', null));
+  let imgActive    = await monitor.imgDlPending().catch(meldeUndLiefere('verwaltung:imgDlPending', 0));
+  if (imgPending === 0 && imgActive > 0) { await monitor.imgDlReset().catch(logAndContinue('verwaltung:imgDlReset')); imgActive = 0; }
   imgActive = Math.min(imgActive, imgPending);
   const imgRunning = imgActive > 0;
   // Manueller Re-Download fehlender Bilder (image_local gesetzt, Datei fehlt) —
@@ -549,7 +551,7 @@ router.get('/admin/jobs', requireApiAdmin, async (_req: AuthedRequest, res) => {
   // BESTANDES und meldete „Alle 62 170 Bilder gecacht", während der
   // Hintergrund-Job gerade hunderte Katalogbilder nachlud. Der Titel verspricht …
   // Ausführlich: docs/begruendungen/routes/api_v1/admin.ts.md#get-admin-jobs-katalogoffen
-  const katalogOffen = (await verwaltung.katalogBilderOffen().catch(() => null))?.c ?? 0;
+  const katalogOffen = (await verwaltung.katalogBilderOffen().catch(meldeUndLiefere('verwaltung:katalogBilderOffen', null)))?.c ?? 0;
   // „läuft" heisst: hat kürzlich etwas getan
   // Die Kachel meldete „läuft", sobald die Warteschlange nicht leer war
   // . Das ist keine Aussage über TÄTIGKEIT: Eine
@@ -659,9 +661,9 @@ router.post('/admin/job-schedule', requireApiAdmin, async (req: AuthedRequest, r
       return sendeFehler(req, res, 400, 'unbekannter_job');
     }
     // Sofort anwenden: Flag für den Primary-Worker + direkter Aufruf (falls dieser Prozess der Primary ist).
-    await setzeAusloeser('job_reschedule_trigger').catch(() => {});
-    await require('../../utils/pgNotify').notify('job_reschedule_trigger');
-    try { await require('../../jobs/dailyScheduler').rescheduleAll(); } catch (e) { meldeUndWeiter('admin:zeitplan-neu-planen', e); }
+    await setzeAusloeser('job_reschedule_trigger').catch(logAndContinue('verwaltung:setzeAusloeser'));
+    await pgNotify.notify('job_reschedule_trigger');
+    try { await dailyScheduler.rescheduleAll(); } catch (e) { meldeUndWeiter('admin:zeitplan-neu-planen', e); }
     res.json({ success: true });
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
@@ -705,8 +707,7 @@ router.get('/admin/img-probe', requireApiAdmin, async (req: AuthedRequest, res) 
     return sendeFehler(req, res, 400, 'url_ungueltig');
   }
 
-  const https2 = require('https');
-  const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+    const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
   const variants = [
     { name: 'mit Referer',  headers: { 'User-Agent': UA, 'Referer': 'https://rebrickable.com/', 'Accept': 'image/*,*/*;q=0.8' } },
     { name: 'ohne Referer', headers: { 'User-Agent': UA, 'Accept': 'image/*,*/*;q=0.8' } },
@@ -717,9 +718,9 @@ router.get('/admin/img-probe', requireApiAdmin, async (req: AuthedRequest, res) 
     const t0 = Date.now();
     let settled = false;
     const done = (o: any) => { if (!settled) { settled = true; resolve({ variant: v.name, ms: Date.now() - t0, ...o }); } };
-    const rq = https2.get(url, { family: 4, headers: v.headers }, (r: any) => {
+    const rq = https2.get(url, { family: 4, headers: v.headers }, (r) => {
       let bytes = 0;
-      r.on('data', (c: any) => { bytes += c.length; if (bytes > 65536) rq.destroy(); });
+      r.on('data', (c: Buffer) => { bytes += c.length; if (bytes > 65536) rq.destroy(); });
       r.on('end',   () => done({ status: r.statusCode, content_type: r.headers['content-type'] || null,
                                  content_length: r.headers['content-length'] || null,
                                  // Liefert das CDN komprimiert, muss der Proxy die Kopfzeile
@@ -729,7 +730,7 @@ router.get('/admin/img-probe', requireApiAdmin, async (req: AuthedRequest, res) 
                                  bytes, server: r.headers['server'] || null, cf_ray: r.headers['cf-ray'] || null }));
       r.on('close', () => done({ status: r.statusCode, content_type: r.headers['content-type'] || null, bytes, truncated: true }));
     });
-    rq.on('error', (e: any) => done({ error: e.message, code: e.code }));
+    rq.on('error', (e: NodeJS.ErrnoException) => done({ error: e.message, code: e.code }));
     // Ein Diagnosewert wie ein HTTP-Status, keine Meldung an den Nutzer: Die
     // Monitoring-Ansicht zeigt ihn als Befund der Erreichbarkeitsprobe.
     rq.setTimeout(10000, () => { rq.destroy(); done({ error: 'timeout' }); });
@@ -739,11 +740,11 @@ router.get('/admin/img-probe', requireApiAdmin, async (req: AuthedRequest, res) 
   for (const v of variants) results.push(await probe(v));
 
   // Liegt das Bild bereits im Plattencache?
-  const crypto = require('crypto'), fsp = require('fs').promises, pathm = require('path');
+  const crypto = require('crypto'), fsp = fs.promises, pathm = require('path');
   const key = crypto.createHash('sha1').update(url).digest('hex');
   const dir = pathm.join(DATA_DIR, 'img_proxy_cache');
-  const cached = await fsp.stat(pathm.join(dir, key)).then((st: any) => ({ bytes: st.size })).catch(() => null);
-  const thumb  = await fsp.stat(pathm.join(dir, key + '_thumb.jpg')).then((st: any) => ({ bytes: st.size })).catch(() => null);
+  const cached = await fsp.stat(pathm.join(dir, key)).then((st: any) => ({ bytes: st.size })).catch(ohneFehlendeDatei('verwaltung:stat', null));
+  const thumb  = await fsp.stat(pathm.join(dir, key + '_thumb.jpg')).then((st: any) => ({ bytes: st.size })).catch(ohneFehlendeDatei('verwaltung:stat', null));
 
   // Fehlerzähler des Proxys mitliefern — zeigt auf einen Blick, ob und woran
   // Abrufe scheitern, ohne im Server-Log suchen zu müssen.
@@ -754,8 +755,8 @@ router.get('/admin/img-probe', requireApiAdmin, async (req: AuthedRequest, res) 
   const head = await new Promise(resolve => {
     const rq = https2.get(url, { family: 4, headers: { 'User-Agent': UA, 'Accept': 'image/*,*/*;q=0.8',
                                             'Accept-Encoding': 'identity' } }, (r: any) => {
-      const chunks: any[] = []; let n = 0;
-      r.on('data', (c: any) => { chunks.push(c); n += c.length; if (n >= 32) rq.destroy(); });
+      const chunks: Buffer[] = []; let n = 0;
+      r.on('data', (c: Buffer) => { chunks.push(c); n += c.length; if (n >= 32) rq.destroy(); });
       const fin = () => resolve({
         status: r.statusCode,
         content_encoding: r.headers['content-encoding'] || null,
@@ -771,7 +772,7 @@ router.get('/admin/img-probe', requireApiAdmin, async (req: AuthedRequest, res) 
       });
       r.on('end', fin); r.on('close', fin);
     });
-    rq.on('error', (e: any) => resolve({ error: e.message }));
+    rq.on('error', (e: Error) => resolve({ error: e.message }));
     rq.setTimeout(10000, () => { rq.destroy(); resolve({ error: 'timeout' }); });
   });
 
@@ -795,7 +796,7 @@ router.get('/admin/price-probe', requireApiAdmin, async (req: AuthedRequest, res
     verwaltung.probeErfassungen(uid, setNumber),
     verwaltung.probePreisCache(setNumber),
     verwaltung.probePreisVerlauf(setNumber),
-    verwaltung.probeWaehrung(uid).catch(() => null),
+    verwaltung.probeWaehrung(uid).catch(meldeUndLiefere('verwaltung:probeWaehrung', null)),
     getGlobalSetting('price_cache_ttl'),
   ]);
 
@@ -843,7 +844,7 @@ router.get('/admin/price-probe', requireApiAdmin, async (req: AuthedRequest, res
         const g = await getPriceGuide(setNumber, cond, 'sold', cur);
         out.live[cond] = { avg_price: g?.avg_price, qty_avg_price: g?.qty_avg_price,
                            guide_used: g?.guide_used, guide_fallback: g?.guide_fallback || false };
-      } catch (e: any) { out.live[cond] = { error: e.message }; }
+      } catch (e) { out.live[cond] = { error: fehlertext(e) }; }
     }
   }
 

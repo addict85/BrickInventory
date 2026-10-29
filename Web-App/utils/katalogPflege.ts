@@ -1,3 +1,4 @@
+import { meldeUndLiefere } from './httpError';
 import * as db from '../db/database';
 import { ERLAUBTE_BILD_HOSTS, hostErlaubt } from './fremdeAdressen';
 
@@ -316,7 +317,7 @@ export async function katalogTeil(
       LEFT JOIN part_catalog       pc  ON pc.part_number  = q.nr
       LEFT JOIN rb_parts           rp  ON rp.part_num     = q.nr
       LEFT JOIN part_color_catalog pcc ON pcc.part_number = q.nr AND pcc.color_id = $2`,
-    [partNumber, colorId, fuer]).catch(() => null);
+    [partNumber, colorId, fuer]).catch(meldeUndLiefere('katalog:teil lesen', null));
   if (!z) return null;
 
   // Ohne Farbe bleibt nur das allgemeine Bild — siehe oben, warum es genau dann zählt.
@@ -356,7 +357,7 @@ export async function katalogFigur(
            CASE WHEN bild_von IS NULL OR bild_von = $2 THEN image_url END AS image_url,
            image_local
       FROM minifigs_catalog WHERE fig_number = $1`,
-    [figNumber, fuer]).catch(() => null);
+    [figNumber, fuer]).catch(meldeUndLiefere('katalog:figur lesen', null));
   if (!z) return null;
   return {
     name: z.fig_name ?? null,

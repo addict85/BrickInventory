@@ -2,6 +2,7 @@
  * Lagerort — wo liegt das eigentlich?
  * Ausführlich: docs/begruendungen/utils/lagerort.ts.md#abschnitt
  */
+import { meldeUndLiefere } from './httpError';
 import * as db from '../db/database';
 import { asIds } from './household';
 import type { BlickfeldEingabe } from './household';
@@ -284,7 +285,7 @@ export async function vorgabeVon(userId: number): Promise<Lagerort | null> {
        JOIN storage_locations l
          ON l.id = NULLIF(btrim(e.value), '')::int AND l.user_id = e.user_id
       WHERE e.user_id = $1 AND e.key = $2`, [userId, VORGABE_SCHLUESSEL])
-    .catch(() => null);
+    .catch(meldeUndLiefere('lagerort:row', null));
   if (!row) return null;
   return { id: parseInt(String(row.id)), user_id: parseInt(String(row.user_id)),
            name: row.name };

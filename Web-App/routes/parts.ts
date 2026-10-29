@@ -17,7 +17,7 @@ import express from 'express';
 
 const router  = express.Router();
 import * as db from '../db/database';
-import { fehlertext, handleRouteError } from '../utils/httpError';
+import { fehlertext, handleRouteError, meldeUndLiefere } from '../utils/httpError';
 import { recordAcquisitionForDay } from '../utils/acquisitions';
 // Die Katalogarbeit liegt in utils/partsImport.ts — sonst
 // müsste utils/setService.ts (addSet) einen Router importieren.
@@ -129,7 +129,7 @@ router.post('/import/csv', csvEmpfang.single('file'), async (req: LoggedInReques
           updated++;
           results.push({ part_number: partNumber, action: 'updated' });
         } else {
-          const colorHex = (await db.get('SELECT rgb FROM rb_colors WHERE id=$1', [colorId]).catch(() => null))?.rgb || null;
+          const colorHex = (await db.get('SELECT rgb FROM rb_colors WHERE id=$1', [colorId]).catch(meldeUndLiefere('teile-web:get', null)))?.rgb || null;
           // Beschreibung in den Katalog, Bestand in parts (Migration 0034).
           // Der Katalog zuerst, aus demselben Grund wie beim Anlegen von
           // Hand: lieber eine Beschreibung ohne Bestand als ein Bestand ohne

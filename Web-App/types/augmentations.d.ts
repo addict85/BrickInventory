@@ -17,10 +17,6 @@ declare module 'express-session' {
 }
 
 declare global {
-  /** Startup-Fortschritt, den /api/v1/startup-status ausliefert (server.ts). */
-  var startupStatus: { ready: boolean; step: string; progress: number; total: number };
-  /** Aktiviert die Log-Persistenz in app_logs, sobald der DB-Pool bereit ist (server.ts). */
-  var _enableLogPersistence: (pool: any) => void;
 
   namespace Express {
     interface Request {

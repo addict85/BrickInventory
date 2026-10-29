@@ -7,6 +7,7 @@
  * Ausführlich: docs/begruendungen/utils/acquisitions.ts.md#abschnitt
  */
 import * as db from '../db/database';
+import type { DbSchnittstelle } from '../db/database';
 
 export type AcquisitionKind = 'set' | 'part' | 'fig';
 
@@ -49,7 +50,7 @@ const SHAPES = {
   fig:  { table: 'minifig_acquisitions', price: 'unit_price',     keys: ['fig_number'] },
 } as const;
 
-const num = (v: any): number | null => {
+const num = (v: unknown): number | null => {
   if (v === null || v === undefined || v === '') return null;
   const n = parseFloat(String(v));
   return Number.isFinite(n) ? n : null;
@@ -79,9 +80,9 @@ export function erfassungsTagSql(alias = ''): string {
 export async function recordAcquisitionForDay(
   kind: AcquisitionKind,
   userId: number,
-  keyValues: any[],
+  keyValues: (string | number)[],
   input: AcquisitionInput,
-  dbh: any = db
+  dbh: DbSchnittstelle = db
 ): Promise<{ merged: boolean }> {
   const shape = SHAPES[kind];
   const qty   = Math.max(1, parseInt(String(input.quantity)) || 1);
@@ -185,7 +186,7 @@ export function acquisitionTotals(rows: any[]): {
  */
 export async function setzeGeschaetztenPreis(kind: AcquisitionKind, id: number, preis: number): Promise<boolean> {
   const shape = SHAPES[kind];
-  return db.transaction(async (tx: any) => {
+  return db.transaction(async (tx) => {
     const z = await tx.get(
       `SELECT *, (${erfassungsTagSql()})::text AS tag FROM ${shape.table} WHERE id = $1 FOR UPDATE`, [id]);
     if (!z || z[shape.price] != null) return false;

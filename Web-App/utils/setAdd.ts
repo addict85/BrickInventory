@@ -5,6 +5,7 @@
  * erhöhte die Menge und meldete „aktualisiert". Dieselbe Eingabe, zwei …
  * Ausführlich: docs/begruendungen/utils/setAdd.ts.md#abschnitt
  */
+import { meldeUndLiefere } from './httpError';
 import * as db from '../db/database';
 import { scopeIds } from './household';
 import { normalisiereSetNummer } from './setNummer';
@@ -44,7 +45,7 @@ export async function findSetInScope(
       ORDER BY (user_id = $3) DESC
       LIMIT 1`,
     [ids, sn, viewerId]
-  ).catch(() => null);
+  ).catch(meldeUndLiefere('set-anlegen:row', null));
   if (!row) return null;
   return { set_number: row.set_number, owner_user_id: row.user_id, is_self: row.user_id === viewerId };
 }

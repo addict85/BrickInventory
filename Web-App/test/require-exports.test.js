@@ -109,7 +109,8 @@ test('jedes späte require() holt einen Namen, den es wirklich gibt', () => {
   // Fehlalarm: Was der Test bewacht, WANDERT ja gerade dorthin, wo tsc es
   // besser prüft. Die Schwelle sinkt deshalb mit; sie darf nicht auf 0 fallen,
   // sonst wäre der Selbstschutz weg.
-  assert.ok(geprueft > 60, `Nur ${geprueft} Namen geprüft — das Muster greift nicht mehr`);
+  // 29.10.2026: 40 nach dem Umbau in routes/, utils/ und jobs/ — Schwelle auf 25.
+  assert.ok(geprueft > 25, `Nur ${geprueft} Namen geprüft — das Muster greift nicht mehr`);
   assert.deepEqual(fehlend, [], `require() ohne passenden Export:\n  ${fehlend.join('\n  ')}`);
 });
 

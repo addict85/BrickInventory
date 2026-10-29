@@ -13,7 +13,7 @@ import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { Client } from 'pg';
 import { LOCKS } from '../utils/lockNamespaces';
-import { fehlerCode, meldeUndWeiter } from '../utils/httpError';
+import { fehlerCode, meldeUndWeiter, logAndContinue } from '../utils/httpError';
 
 // Warum diese acht jetzt oben stehen
 // Sie standen als require() in den Funktionsruempfen. Node haelt Module im
@@ -338,7 +338,7 @@ async function initSchemaOnce() {
     if (applied.length) console.log(`✅ ${applied.length} Migration(en) angewandt`);
     else if (!neu) console.log('✅ Schema aktuell — keine offenen Migrationen');
   } finally {
-    await client.query(`SELECT pg_advisory_unlock(${LOCK_ID})`).catch(() => {});
+    await client.query(`SELECT pg_advisory_unlock(${LOCK_ID})`).catch(logAndContinue('db:pg_advisory_unlock'));
     client.release();
   }
 }

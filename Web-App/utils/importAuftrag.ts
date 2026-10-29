@@ -1,5 +1,5 @@
 import * as db from '../db/database';
-import { meldeUndWeiter } from './httpError';
+import { meldeUndWeiter, logAndContinue } from './httpError';
 import { fehlerText, antwortSprache } from './fehlerTexte';
 
 /**
@@ -13,6 +13,7 @@ import { fehlerText, antwortSprache } from './fehlerTexte';
 // schiebt den Stand an verbundene Clients (Webapp + Android), ganz ohne
 // Polling. Der bestehende /status-Endpoint bleibt als Fallback erhalten.
 import EventEmitter from 'events';
+import * as pgNotify from '../utils/pgNotify';
 const csvImportBus = new EventEmitter();
 csvImportBus.setMaxListeners(0); // beliebig viele gleichzeitige Streams
 
@@ -74,7 +75,7 @@ async function emitJobStatus(userId: number) {
   // 10-Sekunden-Poller auf die Datenbank, dauerhaft, pro offener Verbindung.
   // LISTEN/NOTIFY erledigt genau das, wofür der Poller da war — und die
   // Infrastruktur dafür steht bereits (utils/pgNotify.ts).
-  require('../utils/pgNotify').notify('csv_import_progress', String(userId)).catch(() => {});
+  pgNotify.notify('csv_import_progress', String(userId)).catch(logAndContinue('import-auftrag:notify'));
 }
 
 

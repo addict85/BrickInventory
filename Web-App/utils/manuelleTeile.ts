@@ -3,6 +3,7 @@
  * nicht in routes/parts.ts, weil die Sitzungsroute und die v1-Fabrik beide
  * darauf zugreifen — eine Route soll keine andere importieren.
  */
+import { meldeUndLiefere } from './httpError';
 import * as db from '../db/database';
 import { recordAcquisitionForDay } from './acquisitions';
 import { withInventoryLock, bestandsSchluessel } from './txLock';
@@ -13,6 +14,7 @@ import { getBrickColors, lookupPart } from '../clients/rebrickable';
 import { setzeLagerort, ortFuerNeuerfassung } from './lagerort';
 import { merkeTeil, merkeTeilFarbe, katalogTeil } from './katalogPflege';
 import { bestandsMenge } from './validate';
+import * as V0 from './validate';
 
 // Shared logic to get the color list (Rebrickable if configured, else a
 // built-in fallback list of common colors). Used by both the session-based
@@ -88,8 +90,7 @@ async function resolveManualPartPurchase(uid: number, { partNumber, colorId, uni
  * Ausführlich: docs/begruendungen/routes/parts.ts.md#addmanualpart
  */
 async function addManualPart(uid: number, rawBody: Record<string, unknown>) {
-  const V0 = require('./validate');
-  // ortFuerNeuerfassung statt normalisiereLagerort: Kommt kein Ort mit, gilt
+    // ortFuerNeuerfassung statt normalisiereLagerort: Kommt kein Ort mit, gilt
   // Marcos Stern (die Begruendung samt Messung steht dort in utils/lagerort.ts).
   const ort = await ortFuerNeuerfassung(uid, rawBody?.storage);
   // DIESELBE Umwandlung wie im Rumpf, auf derselben Eingabe — sie kann also
@@ -108,7 +109,7 @@ async function addManualPartIntern(uid: number, rawBody: any) {
   // part_name, color_name, category_name und image_url völlig ungeprüft
   // gespeichert und später per innerHTML gerendert — das war die Server-Hälfte
   // der Stored-XSS-Kette. image_url ist jetzt zwingend https.
-  const V = require('./validate');
+  const V = V0;
   const part_number = V.requireItemNumber(rawBody?.part_number, 'part_number');
   const color_id    = V.colorId(rawBody?.color_id);
   const color_name  = V.optionalText(rawBody?.color_name, 100);
@@ -178,10 +179,10 @@ async function addManualPartIntern(uid: number, rawBody: any) {
   if (existing) {
     // Menge addieren UND eine Erfassung anlegen.
     // Ausführlich: docs/begruendungen/routes/parts.ts.md#addmanualpartintern-recond
-    const reCond = ['N','U'].includes(condition) ? condition
+    const reCond = condition && ['N','U'].includes(condition) ? condition
       : await resolvePartCondition(uid, part_number, color_id).catch(() => 'N');
-    const reEntered = (unit_price !== undefined && unit_price !== null && unit_price !== '')
-      ? parseFloat(unit_price) : null;
+    const reEntered = (unit_price !== undefined && unit_price !== null && String(unit_price) !== '')
+      ? parseFloat(String(unit_price)) : null;
     const rePrice = (reEntered !== null && !isNaN(reEntered))
       ? reEntered
       : await getCurrentPartMarketPrice(part_number, color_id, uid, reCond);
@@ -208,7 +209,7 @@ async function addManualPartIntern(uid: number, rawBody: any) {
     await resolveManualPartPurchase(uid, { partNumber: part_number, colorId: color_id, unitPrice: unit_price, condition });
   // Farbcode möglichst füllen: vom Client übergeben, sonst aus rb_colors ableiten
   // (sonst bleibt der Farbpunkt in der Oberfläche grau).
-  const rbFarbcode = (await db.get('SELECT rgb FROM rb_colors WHERE id=$1', [color_id]).catch(() => null))?.rgb || null;
+  const rbFarbcode = (await db.get('SELECT rgb FROM rb_colors WHERE id=$1', [color_id]).catch(meldeUndLiefere('manuelle-teile:get', null)))?.rgb || null;
 
   // Beschreibung in den Katalog, Bestand in parts
   // Seit Migration 0034 trennt sich beides: Name, Farbbezeichnung, Farbcode,
@@ -278,7 +279,7 @@ async function updateManualPart(uid: number, partNumber: string, colorId: number
       'SELECT COALESCE(SUM(quantity), 0)::int AS q FROM part_acquisitions WHERE user_id=$1 AND part_number=$2 AND color_id=$3',
       [uid, partNumber, colorId]))?.q ?? 0;
     const mp = newQty > bisher
-      ? await getCurrentPartMarketPrice(partNumber, colorId, uid, cond).catch(() => null) : null;
+      ? await getCurrentPartMarketPrice(partNumber, colorId, uid, cond).catch(meldeUndLiefere('manuelle-teile:getCurrentPartMarketPrice', null)) : null;
     // Unter der Bestandssperre: Lesen, Delta rechnen und Schreiben dürfen sich
     // nicht mit einer gleichzeitigen Änderung (Web und App) überholen.
     await withInventoryLock(uid, bestandsSchluessel('part', [partNumber, colorId]), async (tx) => {

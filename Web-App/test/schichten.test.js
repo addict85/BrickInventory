@@ -173,6 +173,18 @@ test('keine Route importiert eine andere Routendatei', () => {
   assert.deepEqual(treffer, []);
 });
 
+test('kein Zustand auf global', () => {
+  // Was Prozesse teilen, steht in einem Modul (utils/startZustand.ts) und
+  // ist über den Import zu finden. Gegenprobe (29.10.2026): eine Zeile
+  // `global.startupStatus = …` in server.ts → rot.
+  const treffer = [];
+  for (const d of ['server.ts', ...innereDateien(), ...fs.readdirSync(path.join(ROOT, 'startup')).map(f => `startup/${f}`),
+                   ...fs.readdirSync(path.join(ROOT, 'routes')).filter(f => f.endsWith('.ts')).map(f => `routes/${f}`)])
+    for (const m of quelltext(d).matchAll(/\b(?:global|globalThis)\s*(?:as\s+\w+\s*\)\s*)?\.\s*\w+\s*=[^=]|\(\s*(?:global|globalThis)\s+as\s+any\s*\)/g))
+      treffer.push(`${d}: ${m[0].trim()}`);
+  assert.deepEqual(treffer, []);
+});
+
 test('utils/ und clients/ importieren nichts aus jobs/', () => {
   // Was utils/ an Hintergrundarbeit anstösst, läuft über utils/nacharbeit.ts;
   // die Ausführung setzt jobs/verdrahtung.ts ein.

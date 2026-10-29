@@ -13,7 +13,7 @@ import { fetchMissingBlIds } from '../partsImport';
 import type { RbSetTeil } from '../../clients/rebrickable';
 import { getAllSetParts, getRbKey, httpsGetRobust } from '../../clients/rebrickable';
 import { clampPageSize, applyManualCondition, withOwners, MAX_PAGE_SIZE, UNPAGED_LIMIT, SET_PARTS_MAX_PAGE_SIZE } from './shared';
-import { meldeUndWeiter } from '../../utils/httpError';
+import { meldeUndWeiter, logAndContinue, meldeUndLiefere } from '../../utils/httpError';
 import { farbkarte as blFarbkarte } from '../financeCalc';
 import { getGlobalSetting } from '../../utils/settings';
 import { neuestesInventar, inventarKandidaten } from '../rbInventar';
@@ -27,13 +27,10 @@ import { mengeJoin, mengeAus, teilmengeJoin, teilmengeAus } from '../bestandsmen
  * Ausführlich: docs/begruendungen/utils/handlers/parts.ts.md#abschnitt
  */
 
-/**
- * Ein Blickfeld: eine einzelne Konto-ID oder die Liste aus scopeIds()
- * (utils/household.ts). asIds() normalisiert beides auf eine Liste — mit dem
- * Typ entfaellt der Cast `asIds(userId)`, der nur da stand, weil der
- * Parameter keinen hatte. Dieselbe Erklaerung wie in handlers/sets.ts.
- */
+/** Ein Blickfeld: eine Konto-ID oder die Liste aus scopeIds(); asIds() macht eine Liste daraus. */
 import type { BlickfeldEingabe as Blickfeld } from '../household';
+import * as httpError from '../httpError';
+import { marktpreiseAusCacheFuerTeile } from '../marketPrice';
 
 /** Farbliste des Teilebestands (ohne manuelle Positionen — die haben eine
  *  eigene Ansicht). Hex-Fallback aus rb_colors für Teile ohne eigenen Wert.
@@ -158,16 +155,9 @@ function teileFilter(uids: number[], query: any) {
  * Ausführlich: docs/begruendungen/utils/handlers/parts.ts.md#teileersatzquelle
  */
 async function teileErsatzquelle(set_number: string) {
-    // Hier standen n und alt einzeln, und alt war
-    //   set_number.includes('-') ? set_number.replace(/-\d+$/,'') : set_number + '-1'
-    // — fuer eine Nummer OHNE Versionsanhang also derselbe Wert wie n. Das
-    // schlug zweimal durch: Die Inventar-Abfrage unten fragte zweimal
-    // dasselbe (die blanke Nummer wurde nie geprueft), und die
-    // Rebrickable-Schleife `for (const sn of [n, alt])` holte denselben Satz
-    // zweimal ueber die Leitung, auf Kosten des dortigen Tageskontingents.
-    // Alle anderen sieben Fundstellen bildeten die Kandidaten richtig.
+    // Beide Schreibweisen (mit und ohne Versionsanhang), aus EINER Regel.
     const [n, alt] = inventarKandidaten(set_number);
-    const invId = await neuestesInventar(set_number).catch(() => null);
+    const invId = await neuestesInventar(set_number).catch(meldeUndLiefere('teile:neuestesInventar', null));
     if (invId) {
       const csvParts = await db.all(`
         SELECT ip.part_num AS part_number,
@@ -189,12 +179,8 @@ async function teileErsatzquelle(set_number: string) {
         WHERE ip.inventory_id = $1`, [invId, set_number]
       );
       if (csvParts.length > 0)
-        // page_size gehört in JEDEN Rückgabeweg: Der Client
-        // liest daraus, ob eine weitere Seite nötig ist. Auf dieser
-        // Ausweichebene wird nicht geblättert — die Antwort enthält alles,
-        // also ist die Seitengrösse die Zahl der Zeilen. Fehlte das Feld,
-        // stand beim Client `undefined`, und die Prüfung „total > page_size"
-        // konnte nie greifen.
+        // page_size gehört in jeden Rückgabeweg: Der Client entscheidet daran,
+        // ob er weiterblättert. Hier kommt alles, also ist es die Zeilenzahl.
         return { parts: csvParts, total: csvParts.length, source: 'csv_cache', page_size: csvParts.length };
     }
 
@@ -203,7 +189,7 @@ async function teileErsatzquelle(set_number: string) {
     const rbKey = await getGlobalSetting('rebrickable_api_key');
     if (rbKey) {
       for (const sn of [n, alt]) {
-        const items = await getAllSetParts(sn).catch(() => []);
+        const items = await getAllSetParts(sn).catch(meldeUndLiefere('teile:getAllSetParts', []));
         if (!items?.length) continue;
         const rbParts = items
           .filter((it: RbSetTeil) => !it.is_spare)
@@ -232,10 +218,6 @@ async function teileErsatzquelle(set_number: string) {
 }
 
 /**
- * Seitenabfrage aus parts_summary. Gibt null zurück, wenn die Zusammenfassung
- * nicht benutzbar ist — dann übernimmt die Live-Abfrage darunter.
- */
-/**
  * Reihenfolge der Teileliste. Nur nach Farbe gruppiert die Oberfläche; die
  * anderen beiden sind für die ungruppierte Liste. Feste Liste, weil der Wert
  * als SQL in die Anfrage geht. Der letzte Schlüssel macht die Seiten stabil.
@@ -252,13 +234,8 @@ function ordnungSql(o: TeileOrdnung, sp: { farbe: string; name: string; menge: s
 
 async function tryPartsSummary(userId: Blickfeld, o: any) {
   const uids = asIds(userId);
-  // Die Zusammenfassung ist JE KONTO aufgebaut. Für den Haushalt wird über
-  // alle beteiligten Konten gelesen und über part_key verdichtet — dasselbe
-  // Teil in zwei Konten ergibt EINE Zeile mit der Summe der Mengen, genau wie
-  // innerhalb eines Kontos dasselbe Teil aus zwei Sets.
-  //
-  // ensureFresh() prüft dafür jedes Konto einzeln und meldet nur dann frisch,
-  // wenn alle es sind (utils/partsSummary.ts).
+  // Seitenabfrage aus der Zusammenfassung; null heisst: Die Live-Abfrage
+  // übernimmt. Sie ist je Konto gebaut, frisch nur, wenn alle Konten es sind.
   if (!(await ensureFresh(uids))) return null;
 
   const cond: string[] = ['user_id = ANY($1)'];
@@ -287,14 +264,7 @@ async function tryPartsSummary(userId: Blickfeld, o: any) {
   }
   const where = cond.join(' AND ');
 
-  // Mit page_size gilt dieselbe Obergrenze wie im Live-Pfad; ohne page_size
-  // greift UNPAGED_LIMIT.
-  //
-  // Hier stand: „Ohne page_size wird alles geliefert (die Android-App ruft so
-  // auf)". Der zweite Teil stimmt nicht mehr — die App schickt page_size=500
-  // und blättert über onLoadMore nach (BrickApiService.getParts,
-  // CollectionGraph). Ein veralteter Kommentar, der eine unbegrenzte Antwort
-  // als gewollt auswies.
+  // Dieselbe Obergrenze wie im Live-Pfad; ohne page_size UNPAGED_LIMIT.
   const obergrenze = o.set_number ? SET_PARTS_MAX_PAGE_SIZE : MAX_PAGE_SIZE;
   const size = o.page_size
     ? Math.min(obergrenze, Math.max(1, parseInt(String(o.page_size)) || 100))
@@ -302,14 +272,8 @@ async function tryPartsSummary(userId: Blickfeld, o: any) {
   const pg   = Math.max(1, parseInt(String(o.page)) || 1);
   const limit = ` LIMIT ${size} OFFSET ${(pg - 1) * size}`;
 
-  // Über mehrere Konten muss verdichtet werden: Der Schlüssel der Tabelle
-  // enthält user_id, dasselbe Teil steht also je Konto einmal drin. Ohne
-  // Gruppierung erschiene es mehrfach — und die Gesamtzahl (COUNT) zählte
-  // Konten statt Teile.
-  //
-  // Gruppiert wird über part_key, den die Tabelle bereits führt (BrickLink-
-  // Nummer, ersatzweise die Rebrickable-Nummer) — dieselbe Zusammenfassung wie
-  // beim Aufbau innerhalb eines Kontos.
+  // Über mehrere Konten wird über part_key verdichtet: Dasselbe Teil steht
+  // je Konto einmal in der Tabelle und soll eine Zeile mit der Summe sein.
   const multi = uids.length > 1;
   const cols = multi
     ? `MIN(part_number) AS part_number, MIN(bl_part_number) AS bl_part_number, color_id,
@@ -344,7 +308,7 @@ async function tryPartsSummary(userId: Blickfeld, o: any) {
               ORDER BY ${orderSql}${limit}`, params),
     ]);
   } catch (e) {
-    require('../httpError').meldeUndWeiter('teile:zusammenfassung', e);
+    httpError.meldeUndWeiter('teile:zusammenfassung', e);
     return null;
   }
 
@@ -519,7 +483,6 @@ async function getParts(userId: Blickfeld, query: any = {}) {
   const usedPartMap = new Map<string, boolean>(usedPartRows.map(r => [`${r.pid}|${r.color_id}`, (parseInt(r.any_used) || 0) > 0] as [string, boolean]));
 
   // Normalize is_spare and resolve image paths
-  const { resolveImageLocal } = require('../images');
   const partsResolved = parts.map(p => ({
     ...p,
     // Ohne Erfassung 'N' — nicht mehr der gespeicherte Wert, den es nicht
@@ -537,18 +500,14 @@ async function getParts(userId: Blickfeld, query: any = {}) {
   // Background: fetch missing BL IDs
   setImmediate(async () => {
     try {
-      // „Gibt es ein Teil, zu dem noch nie nachgesehen wurde?" — geprueft
-      // wird die ZEILE, nicht ihr Wert: Eine Zeile mit leerer bl_id heisst
-      // „nachgesehen, es gibt keine abweichende Nummer" (Migration 0037) und
-      // soll kein erneutes Nachladen ausloesen. Vorher trug diese Notiz die
-      // Rebrickable-Nummer als BrickLink-Nummer, und `m.part_num IS NULL`
-      // sagte dasselbe.
+      // Gefragt wird nach der ZEILE: Eine mit leerer bl_id heisst „nachgesehen,
+      // keine abweichende Nummer“ und löst kein Nachladen aus.
       const unmapped = await db.get(
         `SELECT 1 FROM parts p
          LEFT JOIN bl_zuordnung m ON m.art = 'part' AND m.rb_id = p.part_number
          WHERE p.user_id = ANY($1) AND m.rb_id IS NULL LIMIT 1`, [uids]
       );
-      if (unmapped) fetchMissingBlIds().catch(() => {});
+      if (unmapped) fetchMissingBlIds().catch(logAndContinue('teile:fetchMissingBlIds'));
     } catch (e) { meldeUndWeiter('teile:bl-nummern-nachladen', e); }
   });
 
@@ -608,13 +567,9 @@ async function getPartsStats(userId: Blickfeld) {
   // Liste kommt von scopeIds() in utils/household.ts — hier wird sie nur
   // normalisiert, damit ältere Aufrufer mit einer nackten ID weiter gehen.
   const uids = asIds(userId);
-  // Ebenfalls aus der Zusammenfassung. Die Kennzahlen beziehen sich wie die
-  // Liste auf Set-Teile; manuell erfasste haben ihren eigenen Bereich.
-  // strict: Kennzahlen müssen zwischen Webapp und App übereinstimmen — ein
-  // veralteter Stand darf hier nicht benutzt werden (siehe partsSummary.ts).
-  // Über mehrere Konten hinweg tragen die DISTINCT-Zählungen von selbst: Ein
-  // Teil, das in zwei Konten liegt, hat dieselbe Nummer und zählt einmal. Nur
-  // die Summe addiert sich, und das ist gewollt.
+  // Kennzahlen der Set-Teile aus der Zusammenfassung — strict, weil Webapp und
+  // App dieselben Zahlen zeigen müssen. DISTINCT zählt ein Teil in zwei Konten
+  // einmal, die Summe addiert sich.
   if (await ensureFresh(uids, { strict: true })) {
     const r = await db.get(`
       SELECT COUNT(DISTINCT part_number)::int AS unique_parts,
@@ -648,12 +603,8 @@ async function getPartsStats(userId: Blickfeld) {
 }
 
 async function getBlColorMap() {
-  // Try DB first (populated after CSV sync + API fetch).
-  //
-  // Gelesen wird ueber farbkarte() in utils/financeCalc.ts — dieselbe Abfrage
-  // stand hier ein zweites Mal, und test/sql-kerne.test.js hat genau das
-  // gemeldet. Der Nebeneffekt ist erwuenscht: Die Karte wird dort zehn Minuten
-  // gemerkt, statt bei jedem Aufruf neu gelesen zu werden.
+  // Zuerst die Datenbank über farbkarte() (utils/financeCalc.ts), die die Karte
+  // zehn Minuten merkt.
   const karte = await blFarbkarte();
   if (karte.size > 0) {
     const map: any = {};
@@ -661,7 +612,7 @@ async function getBlColorMap() {
     return { map, source: 'db' };
   }
   // Fallback: fetch from Rebrickable API and cache in DB
-  const key = await getRbKey().catch(() => null);
+  const key = await getRbKey().catch(meldeUndLiefere('teile:getRbKey', null));
   if (!key) return { map: {}, source: 'empty' };
   // map traegt die Zuordnung Rebrickable-Farb-ID -> BrickLink-Farb-ID.
   // Ohne Typ ist `{}` fuer den Pruefer leer, und `map[c.id] = blId` waere
@@ -678,7 +629,7 @@ async function getBlColorMap() {
       const blId = blFarbnummerAus(c);
       if (blId != null) {
         map[c.id] = blId;
-        merkeBlFarbnummer(c.id, blId).catch(() => {});
+        merkeBlFarbnummer(c.id, blId).catch(logAndContinue('teile:merkeBlFarbnummer'));
       }
     }
     hasNext = !!data.next;
@@ -813,7 +764,6 @@ async function getManualParts(userId: Blickfeld, viewerId: number,
       // Figuren, dieselbe Begruendung: Der Detailbildschirm der App liest ihn
       // aus `avg_price`, diese Liste fuehrt nur Bestandsspalten. Nur aus dem
       // Cache, EINE Abfrage fuer die ganze Liste (utils/marketPrice.ts).
-      const { marktpreiseAusCacheFuerTeile } = require('../marketPrice');
       const preise: Map<string, number> = await marktpreiseAusCacheFuerTeile(mitZustand, viewerId)
         .catch(() => new Map<string, number>());
       const mitPreis = mitZustand.map((t: any) =>

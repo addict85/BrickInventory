@@ -6,7 +6,7 @@ import path from 'path';
 import { APP_ROOT, PUBLIC_DIR } from '../utils/appPaths';
 import fs from 'fs';
 import { resolveUserId } from '../utils/auth';
-import { streamFileToResponse, vorDem } from '../utils/httpError';
+import { streamFileToResponse, vorDem, ohneFehlendeDatei } from '../utils/httpError';
 import { queueThumb } from '../utils/proxyThumbs';
 import { liefereAusCache } from '../utils/imgCacheServe';
 import { imgProxyFailures } from '../utils/imgProxyStats';
@@ -334,7 +334,7 @@ export async function bildDurchreichen(req: Request, res: Response) {
         if (bytes > PROXY_CACHE_MAX_BYTES && !aborted) {
           aborted = true;
           ws.destroy();
-          fs.promises.unlink(tmpFile).catch(() => {});
+          fs.promises.unlink(tmpFile).catch(ohneFehlendeDatei('bild-proxy:unlink'));
           // Bisher geschah das STILL. Ein übergrosses Bild fiel damit in ein
           // schwarzes Loch: kein Cache, keine Vorschau, keine Spur im Log.
           imgProxyFailures.other++;
@@ -356,7 +356,7 @@ export async function bildDurchreichen(req: Request, res: Response) {
           // dann entfällt die Prüfung.
           if (!enc && expected > 0 && st.size !== expected) {
               console.error(`[img-proxy] unvollständig (${st.size}/${expected} Bytes), nicht gecacht: ${url}`);
-              await fs.promises.unlink(tmpFile).catch(() => {});
+              await fs.promises.unlink(tmpFile).catch(ohneFehlendeDatei('bild-proxy:unlink'));
               return;
             }
             await fs.promises.writeFile(cacheFile + '.ct', contentType);
@@ -369,9 +369,9 @@ export async function bildDurchreichen(req: Request, res: Response) {
             // gar keinen Nutzen von der Verkleinerung, die zweite bezahlte
             // sie in einem Rutsch.
           if (wantThumb) { if (darfErzeugen) queueThumb(cacheFile, thumbFile); else notiere(); }
-        } catch (_) { fs.promises.unlink(tmpFile).catch(() => {}); }
+        } catch (_) { fs.promises.unlink(tmpFile).catch(ohneFehlendeDatei('bild-proxy:unlink')); }
       });
-      ws.on('error', () => fs.promises.unlink(tmpFile).catch(() => {}));
+      ws.on('error', () => fs.promises.unlink(tmpFile).catch(ohneFehlendeDatei('bild-proxy:unlink')));
     } catch (_) { /* Cache-Schreiben ist Best-Effort */ }
 
     // Bricht der Browser ab — beim Scrollen über verzögert geladene Bilder der

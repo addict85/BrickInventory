@@ -2,6 +2,7 @@
  * Auslieferung der index.html mit bereits gesetztem data-theme.
  * Ausführlich: docs/begruendungen/utils/indexHtml.ts.md#abschnitt
  */
+import { meldeUndLiefere } from './httpError';
 import fs from 'fs';
 import {  PUBLIC_DIR } from '../utils/appPaths';
 import path from 'path';
@@ -39,7 +40,7 @@ async function readIndex(): Promise<string> {
 
 async function currentTheme(): Promise<string> {
   if (_theme !== null && Date.now() - _themeAt < THEME_TTL_MS) return _theme;
-  const gespeichert = await getGlobalSetting('app_theme').catch(() => null);
+  const gespeichert = await getGlobalSetting('app_theme').catch(meldeUndLiefere('index-html:getGlobalSetting', null));
   const gewaehlt: string = ALLOWED.includes(gespeichert) ? gespeichert : 'classic';
   _theme = gewaehlt;
   _themeAt = Date.now();
@@ -59,7 +60,7 @@ async function currentLang(userId?: number): Promise<string> {
   if (!userId) return 'de';
   const row = await db.get(
     "SELECT value FROM user_settings WHERE user_id = $1 AND key = 'language'",
-    [userId]).catch(() => null);
+    [userId]).catch(meldeUndLiefere('index-html:row', null));
   return LANGS.includes(row?.value) ? row.value : 'de';
 }
 

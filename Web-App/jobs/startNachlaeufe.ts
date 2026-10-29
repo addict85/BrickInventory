@@ -7,7 +7,7 @@ import { downloadSetImage } from '../utils/setImages';
 import { generateThumb } from '../utils/thumbs';
 import { enqueue, processNext } from './instructionQueue';
 import { APP_ROOT, IMAGES_DIR } from '../utils/appPaths';
-import { fehlertext, logAndContinue } from '../utils/httpError';
+import { fehlertext, logAndContinue, meldeUndLiefere } from '../utils/httpError';
 
 /** Sets ohne Anleitung in die Warteschlange stellen. */
 async function anleitungenNachtragen(): Promise<void> {
@@ -19,10 +19,10 @@ async function anleitungenNachtragen(): Promise<void> {
        ) AND NOT EXISTS (
          SELECT 1 FROM instruction_queue iq WHERE iq.set_number = s.set_number AND iq.status IN ('pending','done')
        )`
-    ).catch(() => []);
+    ).catch(meldeUndLiefere('nachlauf:missing', []));
     if (missing.length) {
       console.log(`[instr-queue] Enqueueing ${missing.length} sets missing instructions`);
-      for (const { set_number } of missing) await enqueue(set_number).catch(() => {});
+      for (const { set_number } of missing) await enqueue(set_number).catch(logAndContinue('nachlauf:enqueue'));
       processNext();
     }
   } catch (e) { console.error('[instr-queue startup]', fehlertext(e)); }
@@ -37,18 +37,18 @@ async function setBilderNachladen(): Promise<void> {
     const missing = await db.all(
       `SELECT set_number, image_url FROM set_catalog
        WHERE image_local IS NULL AND image_url IS NOT NULL LIMIT 500`
-    ).catch(() => []);
+    ).catch(meldeUndLiefere('nachlauf:missing', []));
     if (!missing.length) return;
     console.log(`[set-img-bg] Downloading ${missing.length} missing set images…`);
     for (const { set_number, image_url } of missing) {
-      const local = await downloadSetImage(image_url, set_number).catch(() => null);
+      const local = await downloadSetImage(image_url, set_number).catch(meldeUndLiefere('nachlauf:downloadSetImage', null));
       if (local) {
         // EINE Anweisung. Das UPDATE auf `sets`, das hier daneben stand, ist
         // mit Migration 0033 weggefallen — und mit ihm der stille Fang am
         // Katalog-Schreiber, der die wichtigere der beiden Haelften war.
         await db.run(`UPDATE set_catalog SET image_local=$1 WHERE set_number=$2 AND image_local IS NULL`, [local, set_number])
           .catch(logAndContinue(`bilder:set ${set_number}`));
-        generateThumb(local).catch(() => {});
+        generateThumb(local).catch(logAndContinue('nachlauf:generateThumb'));
       }
       await new Promise(r => setTimeout(r, 300));
     }
@@ -81,7 +81,7 @@ async function vorschaubilderNachtragen(): Promise<void> {
       else continue;
       const thumbPath = fsPath.replace(path.extname(fsPath), '_thumb.jpg');
       if (await exists(thumbPath) || !(await exists(fsPath))) continue;
-      await generateThumb(localPath).catch(() => {});
+      await generateThumb(localPath).catch(logAndContinue('nachlauf:generateThumb'));
       generated++;
       if (generated % 10 === 0) await new Promise(r => setTimeout(r, 10));
     }

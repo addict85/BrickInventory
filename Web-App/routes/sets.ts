@@ -2,18 +2,9 @@
 import express from 'express';
 import { APP_ROOT, DATA_DIR, IMAGES_DIR } from '../utils/appPaths';
 /*
- * Erfassungs-Routen leben jetzt NUR NOCH in routes/api_v1/acquisitions.ts
- * Genau das ist hier umgesetzt. Die drei Routen (GET/PUT/DELETE) standen
- * doppelt: einmal hier für die Sitzung der Webapp, einmal in der v1-Fabrik für
- * den Token der App. Aus dieser Doppelung stammen nachweislich sechs der …
- * Ausführlich: docs/begruendungen/routes/sets.ts.md#abschnitt
- */
-
-/*
- * Zusammengelegt mit der v1-Fabrik
- * Sieben Routen standen hier doppelt — Liste, Detail, Anlegen, Ändern,
- * Löschen, Eigentümerwechsel und Haushaltsmitglieder. Sie sind entfernt; beide
- * Clients rufen /api/v1/sets/…, weil requireToken BEIDE Ausweise akzeptiert.
+ * Was unter /api/v1/sets nicht im v1-Router steht: CSV-Import samt
+ * Fortschritt, Rebrickable-Export, Anlegen mit Fortschrittsstrom und die
+ * Anleitungen. Liste, Detail, Ändern und Erfassungen stehen nur dort.
  * Ausführlich: docs/begruendungen/routes/sets.ts.md#router
  */
 
@@ -23,7 +14,7 @@ import path from 'path';
 import fs from 'fs';
 
 import * as db from '../db/database';
-import { handleRouteError, logAndContinue, fehlertext, pfadParam, vorDem } from '../utils/httpError';
+import { handleRouteError, logAndContinue, fehlertext, pfadParam, vorDem, meldeUndLiefere } from '../utils/httpError';
 // Der Kern liegt in utils/setService.ts; hier bleiben die
 // HTTP-Routen, die ihn rufen.
 import { addSet } from '../utils/setService';
@@ -58,27 +49,10 @@ const MAX_SSE_PER_USER = 6;
 
 
 
-// Set-Bilder liegen seit der Umstellung im DATEN-Volume statt in public/ —
-// sonst sind sie nach jedem Container-Rebuild weg und werden einzeln neu vom
-// CDN geholt. Der Web-Pfad "/images/sets/…" bleibt unverändert; die Zuordnung
-// macht utils/appPaths.ts. Eigener Name, weil IMAGES_DIR dort das
-// Elternverzeichnis meint.
+// Set-Bilder liegen im Daten-Volume, damit sie einen Container-Neubau
+// überstehen; der Web-Pfad /images/sets/… bildet utils/appPaths.ts darauf ab.
 const SET_IMAGES_DIR = path.join(IMAGES_DIR, 'sets');
 if (!fs.existsSync(SET_IMAGES_DIR)) fs.mkdirSync(SET_IMAGES_DIR, { recursive: true });
-
-// Looks up the current BrickLink market price for a set (qty-weighted average,
-// falling back to plain average). Used to default the purchase price when the
-// user does not provide one manually. Returns null if no price is available
-// (e.g. missing BrickLink credentials or set unknown to BrickLink).
-
-
-// Mengen-Änderung über den Detail-Dialog auf die Historie abbilden:
-// Erhöhung → Tageszeile aufstocken oder anlegen (recordAcquisitionForDay);
-// Reduktion → LIFO von den letzten Erfassungen abziehen (Zeilen, die auf 0
-// fallen, werden gelöscht).
-//
-// Die frühere Hilfsfunktion isToday() ist entfallen: Die Tagesprüfung gehört
-// an eine Stelle, und das ist utils/acquisitions.ts.
 
 //  GET /api/sets/import/csv/status — poll import progress (session OR bearer)
 //  Zugang zum Fortschrittskanal des CSV-Imports
@@ -90,6 +64,9 @@ import { ausTabelle } from '../utils/validate';
 import { csvEmpfang, inhaltPasstZuTyp, uploadKontingentBytes, belegterPlatz } from '../utils/dateiEmpfang';
 import { sendeFehler } from '../utils/fehlerTexte';
 import { mengeSkalar } from '../utils/bestandsmenge';
+import * as pgNotify from '../utils/pgNotify';
+import * as V2 from '../utils/validate';
+import crypto from 'crypto';
 
 const requireLoginOrToken = loginOrTokenGuard({ timeoutMs: 3000 });
 
@@ -134,13 +111,9 @@ router.get('/import/csv/stream', requireLoginOrToken, async (req, res) => {
     const json = JSON.stringify(payload);
     if (json === lastJson) return; // keine Duplikate
     lastJson = json;
-    // Rückgabewert auswerten (Gegendruck).
-    //
-    // Bei einem hängenden Client — Handy im Funkloch, halb tote Verbindung —
-    // puffert Node sonst unbegrenzt im Speicher des Workers, bis TCP irgendwann
-    // aufgibt. false heisst: der Puffer läuft voll. Dann ist Schliessen die
-    // richtige Antwort; der Client baut die Verbindung neu auf und bekommt beim
-    // Verbinden ohnehin sofort den aktuellen Stand geschickt.
+    // Gegendruck: Bei einem hängenden Client puffert Node sonst unbegrenzt.
+    // false heisst „Puffer voll“ — dann schliessen; beim Neuverbinden kommt
+    // der aktuelle Stand ohnehin sofort.
     if (!res.write(`data: ${json}\n\n`)) {
       console.warn(`[csv-stream] Gegendruck bei Nutzer ${uid} — Verbindung wird geschlossen`);
       cleanup();
@@ -156,10 +129,9 @@ router.get('/import/csv/stream', requireLoginOrToken, async (req, res) => {
 
   // 2b) Dasselbe Signal aus ANDEREN Cluster-Workern, per LISTEN/NOTIFY.
   //     Der Payload ist die userId; nur der eigene Nutzer löst ein Nachladen aus.
-  const pgNotify = require('../utils/pgNotify');
-  const onNotify = async (payload: any) => {
+    const onNotify = async (payload: any) => {
     if (String(payload) !== String(uid)) return;
-    send(buildJobStatus(await jobGet(uid).catch(() => null), req));
+    send(buildJobStatus(await jobGet(uid).catch(meldeUndLiefere('sets-web:jobGet', null)), req));
   };
   pgNotify.listen('csv_import_progress', onNotify);
 
@@ -169,7 +141,7 @@ router.get('/import/csv/stream', requireLoginOrToken, async (req, res) => {
   // Der Takt ist von 10 s auf 120 s gestreckt.
   // Ausführlich: docs/begruendungen/routes/sets.ts.md#get-import-csv-stream-fallbacktimer
   const fallbackTimer = setInterval(async () => {
-    const s = buildJobStatus(await jobGet(uid).catch(() => null), req);
+    const s = buildJobStatus(await jobGet(uid).catch(meldeUndLiefere('sets-web:jobGet', null)), req);
     send(s);
   }, 120000);
 
@@ -180,7 +152,7 @@ router.get('/import/csv/stream', requireLoginOrToken, async (req, res) => {
 
   // 5) Jetzt erst den aktuellen Stand schicken — ab hier ist cleanup() sicher.
   // KEIN frühes res.end() wenn kein Import läuft: Die Verbindung bleibt offen.
-  send(buildJobStatus(await jobGet(uid).catch(() => null), req));
+  send(buildJobStatus(await jobGet(uid).catch(meldeUndLiefere('sets-web:jobGet', null)), req));
 
   function cleanup() {
     if (closed) return;
@@ -201,13 +173,6 @@ router.get('/import/csv/stream', requireLoginOrToken, async (req, res) => {
 router.use(requireLogin);
 
 
-// ── GET /api/sets/export/csv ist ENTFERNT ────────────────────────────────────
-//
-// Kein Aufrufer — nachgemessen ueber alle 169 Dateien beider Apps. Was die
-// Webapp anbietet, ist der ZIP-Export unter /api/settings/export/data
-// (index.html, „Sets, Teile & Minifiguren exportieren"); er baut dieselbe
-// Datei mit derselben Funktion (buildSetsCsv), die deshalb bleibt. Der
-// Kommentar dort sagt es selbst: „implemented once".
 
 // ── GET /api/sets/export/rebrickable — export all sets in Rebrickable's own
 // "Set Number,Quantity" list-import format (see rebrickable.com/help/lists-sets/)
@@ -258,8 +223,7 @@ router.post('/add-stream', async (req: LoggedInRequest, res) => {
   try {
     // setCondition wurde oben aus dem Body gelesen, aber nicht weitergereicht —
     // der im Formular gewählte Zustand ging dadurch verloren.
-    const V2 = require('../utils/validate');
-    const result = await addSet(set_number, V2.acquisitionQuantity(quantity), streamOwner,
+        const result = await addSet(set_number, V2.acquisitionQuantity(quantity), streamOwner,
       d=>{ if(cancelled) throw new Error('CANCELLED'); send(d); },
       V2.optionalPrice(purchase_price, 'Kaufpreis'), setCondition, storage);
     // `success: true` gehoert dazu und ist nicht Zierde.
@@ -379,7 +343,7 @@ router.post('/:setNumber/instructions', async (req, res) => {
       return sendeFehler(req, res, 404, 'set_nicht_gefunden');
     await loescheAnleitungen(sn);
     // Download synchronously so we can return the actual results
-    await downloadSetInstructions(sn).catch(() => {});
+    await downloadSetInstructions(sn).catch(logAndContinue('sets-web:downloadSetInstructions'));
     const instrs = await anleitungenZuSet(sn);
     res.json({ success: true, instructions: instrs, count: instrs.length });
   } catch (e) { handleRouteError(res, e, undefined, req); }
@@ -407,7 +371,7 @@ const uploadInstr = multer({
       const ext  = ausTabelle(INSTR_EXT_BY_MIME, file.mimetype);
       if (!ext) return cb(new Error('Nur PDF, JPG oder PNG'), '');
       // Zufällig statt Zeitstempel: Der Name soll sich nicht erraten lassen.
-      cb(null, `${safe}_${(require('crypto') as typeof import('crypto')).randomBytes(12).toString('hex')}${ext}`);
+      cb(null, `${safe}_${crypto.randomBytes(12).toString('hex')}${ext}`);
     }
   }),
   limits: { fileSize: 50*1024*1024 },
@@ -476,19 +440,4 @@ router.delete('/:setNumber/instructions/:instrId', async (req, res) => {
 // BrickInstructions-Prüfung. Der lebende Weg steht inline in
 // fetchInstructions() und in scrapeInstructionsFromFallback(). Entfallen.
 
-// CJS-kompatibler Export: module.exports bleibt der Router selbst,
-// mit den intern/von jobs/ genutzten Funktionen als Properties (wie zuvor).
-// ── GET /api/sets/:sn/acquisitions — list all acquisitions ───────────────────
-
-// ── PUT /api/sets/:sn/acquisitions/:id — update one acquisition ───────────────
-
-// ── DELETE /api/sets/:sn/acquisitions/:id — Erfassung löschen ────────────────
-
-// downloadSetImage und getUserDefaultCondition stehen hier NICHT mehr: Die
-// erste lebt in utils/setImages.ts, die zweite war eine Dublette von
-// nutzerStandardZustand() in utils/settings.ts. Was hier noch
-// mitexportiert wird, wartet auf spätere Durchgänge.
-// Der Anhang ist leer: addSet, updateSet und buildSetsCsv leben in
-// utils/setService.ts und werden von dort importiert — kein Router mehr, der
-// Hilfsfunktionen weiterreicht.
 export = router;

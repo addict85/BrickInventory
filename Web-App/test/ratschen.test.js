@@ -108,8 +108,8 @@ test('stille Faenge werden weniger, nie mehr', () => {
   // sind die vier neuen Faenge sprechend gemacht worden — zwei brauchte es gar
   // nicht (die Meldekette traegt ihr logAndContinue schon), zwei melden jetzt
   // ueber meldeUndWeiter. Die Schranke zieht nach, wie die Regel es vorsieht.
-  // 29.10.2026: 304 (Aufträge, sprechende Fänge in Nacharbeit, Jobs und Routen).
-  const SCHRANKE = 304;
+  // 29.10.2026: 41 — die übrigen Fänge melden über logAndContinue/meldeUndWeiter.
+  const SCHRANKE = 41;
   const ist = zaehle(STILLE_FAENGE);
   assert.ok(ist <= SCHRANKE,
     `${ist} stille Faenge, erlaubt sind ${SCHRANKE}. Ein neuer \`catch {}\` ` +
@@ -124,8 +124,8 @@ test('stille Faenge werden weniger, nie mehr', () => {
 test('any wird weniger, nie mehr', () => {
   // GEMESSEN am 19.09.2026 nach Nachtrag 175: 398 Stellen. Es waren 402,
   // solange der Zaehler auch Kommentare las. 386 am 28.10.2026.
-  // 29.10.2026: 374.
-  const SCHRANKE = 374;
+  // 29.10.2026: 333.
+  const SCHRANKE = 333;
   const ist = zaehle([/\bas any\b/g, /:\s*any\b/g]);
   assert.ok(ist <= SCHRANKE,
     `${ist}-mal \`any\`, erlaubt sind ${SCHRANKE}. Jedes davon schaltet den ` +
@@ -237,7 +237,8 @@ test('kein Verweis auf „Nachtrag N" im Code', () => {
 test('der Kommentaranteil im Server sinkt, nie steigt', () => {
   // GEMESSEN am 28.10.2026: 33,4 % der nichtleeren Zeilen in server.ts,
   // routes/, utils/ und jobs/ (25.10.: 50,5 %, siehe CLAUDE.md).
-  const SCHRANKE = 33.5;
+  // 29.10.2026: 32,44 %.
+  const SCHRANKE = 32.5;
   let zeilen = 0, kommentar = 0;
   for (const f of quellen().filter(f => /[\\/](routes|utils|jobs)[\\/]|[\\/]server\.ts$/.test(f))) {
     for (const z of fs.readFileSync(f, 'utf8').split('\n')) {

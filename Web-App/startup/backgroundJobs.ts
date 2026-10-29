@@ -16,7 +16,7 @@ import { purgeExpiredTokens } from '../utils/auth';
 import { raeumeAnmeldezaehlerAuf } from '../utils/loginLimiter';
 import { verschluesseleAltbestand } from '../utils/geheimnisAltbestand';
 import { raeumePapierkorbAuf } from '../utils/papierkorb';
-import { logAndContinue } from '../utils/httpError';
+import { logAndContinue, meldeUndLiefere } from '../utils/httpError';
 import { startImgCacheCleanup } from '../routes/imgProxy';
 import { startPdfJobCleanup } from '../routes/api_v1/pdf';
 import { starteAuftragsWorker } from '../jobs/auftraegeStarten';
@@ -44,7 +44,7 @@ export async function starteHintergrundlaeufe(): Promise<void> {
   // Die Tabelle wuchs damit monoton mit der Zahl der Anmeldungen.
   {
     const purge = async () => {
-      const n = await purgeExpiredTokens().catch(() => 0);
+      const n = await purgeExpiredTokens().catch(meldeUndLiefere('start:purgeExpiredTokens', 0));
       if (n) console.log(`[tokens] ${n} abgelaufene Token entfernt`);
     };
     purge();
@@ -89,7 +89,7 @@ export async function starteHintergrundlaeufe(): Promise<void> {
   // jede Zeile. Steuerbar über PRICE_HISTORY_KEEP_DAYS (Vorgabe 1095, 0 = aus).
   {
     const beschneiden = async () => {
-      const n = await purgeAltePreise().catch(() => 0);
+      const n = await purgeAltePreise().catch(meldeUndLiefere('start:purgeAltePreise', 0));
       if (n) console.log(`[price-history] ${n} alte Preis-Zeilen entfernt`);
     };
     beschneiden();
@@ -101,7 +101,7 @@ export async function starteHintergrundlaeufe(): Promise<void> {
 
   // One-time migration: backfill purchase_price for existing sets/minifigs/parts
   // that don't have one yet, using the current market price (see feature: Kaufpreis).
-  setTimeout(() => purchasePriceBackfill.run().catch(() => {}), 45000);
+  setTimeout(() => purchasePriceBackfill.run().catch(logAndContinue('start:run')), 45000);
 
   starteJobAnleitungen();
 
@@ -109,15 +109,15 @@ export async function starteHintergrundlaeufe(): Promise<void> {
   // und verkleinern. Die Anfrage selbst rechnet nichts mehr.
   starteJobBilder();
 
-  setTimeout(() => catalogSync.syncAllMissing().catch(() => {}), 10000);
+  setTimeout(() => catalogSync.syncAllMissing().catch(logAndContinue('start:syncAllMissing')), 10000);
 
   // Sets ohne Anleitung in die Warteschlange (jobs/startNachlaeufe.ts).
-  setTimeout(() => nachlaeufe.anleitungenNachtragen().catch(() => {}), 15000);
-  setTimeout(() => processRetryQueue().catch(() => {}), 20000);
+  setTimeout(() => nachlaeufe.anleitungenNachtragen().catch(logAndContinue('start:anleitungenNachtragen')), 15000);
+  setTimeout(() => processRetryQueue().catch(logAndContinue('start:processRetryQueue')), 20000);
 
   // Fehlende Set-Bilder vom CDN (jobs/startNachlaeufe.ts).
-  setTimeout(() => nachlaeufe.setBilderNachladen().catch(() => {}), 45_000);
+  setTimeout(() => nachlaeufe.setBilderNachladen().catch(logAndContinue('start:setBilderNachladen')), 45_000);
 
   // Fehlende Vorschaubilder (jobs/startNachlaeufe.ts).
-  setImmediate(() => { nachlaeufe.vorschaubilderNachtragen().catch(() => {}); });
+  setImmediate(() => { nachlaeufe.vorschaubilderNachtragen().catch(logAndContinue('start:vorschaubilderNachtragen')); });
 }

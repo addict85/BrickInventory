@@ -7,7 +7,7 @@ import express from 'express';
 import * as db from '../../db/database';
 import { writableIds } from '../../utils/household';
 import { findSameDayAcquisition, acquisitionTotals, erfassungsTagSql } from '../../utils/acquisitions';
-import { handleRouteError, fehlertext, pfadParam } from '../../utils/httpError';
+import { handleRouteError, fehlertext, pfadParam, meldeUndLiefere } from '../../utils/httpError';
 import { withInventoryLock, bestandsSchluessel } from '../../utils/txLock';
 import { requireToken } from './middleware';
 import { acquisitionMoveSource, resolveWriteTarget, scopeIds, parseScopeMode } from '../../utils/household';
@@ -106,8 +106,8 @@ async function mengeDesBestands(tx: any, cfg: any, ownerId: number, keys: any[])
   // vorbei. Beide liefern dieselben drei Antworten: eine Zahl, 0 („Zeile da,
   // nichts drin" → aufraeumen) oder null („Zeile gibt es nicht").
   return cfg.kind === 'set'
-    ? mengeDesSets(ownerId, String(keys[0]), tx).catch(() => null)
-    : mengeDerPosition(cfg.kind, ownerId, keys, tx).catch(() => null);
+    ? mengeDesSets(ownerId, String(keys[0]), tx).catch(meldeUndLiefere('erfassungen:mengeDesSets', null))
+    : mengeDerPosition(cfg.kind, ownerId, keys, tx).catch(meldeUndLiefere('erfassungen:mengeDerPosition', null));
 }
 
 async function withSetAggregate(uid: number, cfgTable: string, keys: any[], payload: any) {
@@ -163,9 +163,9 @@ async function withSetAggregate(uid: number, cfgTable: string, keys: any[], payl
           // Neu-Preis bekommen, nicht den der Gebraucht-Erfassung daneben.
           // Steht im Rumpf ein neuer Zustand, gilt dieser; sonst der bisherige.
           const condRow = condition ? null
-            : await db.get(`SELECT condition FROM ${cfg.table} WHERE id=$1`, [id]).catch(() => null);
+            : await db.get(`SELECT condition FROM ${cfg.table} WHERE id=$1`, [id]).catch(meldeUndLiefere('erfassungen:get', null));
           const cond = condition || condRow?.condition || null;
-          p = await cfg.resolvePrice(uid, keys, cond).catch(() => null);
+          p = await cfg.resolvePrice(uid, keys, cond).catch(meldeUndLiefere('erfassungen:resolvePrice', null));
         }
         priceVal = (p !== null && !isNaN(p)) ? p : null;
       }

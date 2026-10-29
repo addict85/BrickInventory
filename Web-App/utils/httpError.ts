@@ -67,8 +67,10 @@ function meldeUndLiefere<T>(kontext: string, ersatz: T) {
  * Für das Aufräumen von Dateien: Eine schon fehlende Datei ist das Ziel, kein
  * Fehler; alles andere (Rechte, volle Platte) wird gemeldet.
  */
-function ohneFehlendeDatei(kontext: string) {
-  return (e: unknown): void => { if (fehlerCode(e) !== 'ENOENT') logAndContinue(kontext)(e); };
+function ohneFehlendeDatei(kontext: string): (e: unknown) => void;
+function ohneFehlendeDatei<T>(kontext: string, ersatz: T): (e: unknown) => T;
+function ohneFehlendeDatei<T>(kontext: string, ersatz?: T) {
+  return (e: unknown): T | undefined => { if (fehlerCode(e) !== 'ENOENT') logAndContinue(kontext)(e); return ersatz; };
 }
 
 /**
@@ -86,8 +88,8 @@ function meldeUndWeiter(kontext: string, e: unknown) {
 function fehlertext(e: unknown): string {
   if (e instanceof Error && e.message) return e.message;
   if (typeof e === 'string' && e) return e;
-  if (e && typeof e === 'object' && typeof (e as any).message === 'string' && (e as any).message)
-    return (e as any).message;
+  const m = e && typeof e === 'object' ? (e as { message?: unknown }).message : undefined;
+  if (typeof m === 'string' && m) return m;
   if (e === null || e === undefined) return 'Unbekannter Fehler';
   // `String(e)` kann selbst leer sein — `String([])` ergibt den leeren String,
   // und dann staende in der Oberflaeche „Fehler: " mit nichts dahinter. Der
@@ -104,7 +106,7 @@ function fehlertext(e: unknown): string {
  * Vergleich damit sauber fehlschlaegt.
  */
 function fehlerCode(e: unknown): string | undefined {
-  const c = (e as any)?.code;
+  const c = (e as { code?: unknown } | null | undefined)?.code;
   return typeof c === 'string' || typeof c === 'number' ? String(c) : undefined;
 }
 
@@ -149,7 +151,7 @@ export { handleRouteError, logAndContinue, meldeUndWeiter, meldeUndLiefere, ohne
 function streamFileToResponse(res: any, filePath: string, onEnd?: () => void, req?: any) {
   const fs = require('fs');
   const stream = fs.createReadStream(filePath);
-  stream.on('error', (e: any) => {
+  stream.on('error', (e: NodeJS.ErrnoException) => {
     console.error(`[stream] ${filePath}: ${e?.code || e?.message}`);
     if (!res.headersSent) {
       // Nicht auf Express-Methoden verlassen: Dieser Helfer läuft auch an

@@ -2,9 +2,13 @@
  * Preisalarm — sag Bescheid, wenn ein Set eine Schwelle reisst.
  * Ausführlich: docs/begruendungen/utils/preisalarm.ts.md#abschnitt
  */
+import { meldeUndLiefere, meldeUndWeiter } from './httpError';
 import * as db from '../db/database';
 import { scopeIds } from './household';
 import { fehlerWerfen } from './fehlerTexte';
+import * as httpError from './httpError';
+import * as mailer from './mailer';
+import { toCsv } from './csvExport';
 
 /**
  * Eine Alarmzeile samt Empfänger — das, was pruefeSet() aus der Datenbank
@@ -91,7 +95,7 @@ export async function alarmeFuer(userId: number, setNumber: string): Promise<Pre
             ausgeloest, zuletzt_am, zuletzt_preis
        FROM price_alerts WHERE user_id=$1 AND set_number=$2 ORDER BY condition`,
     [userId, setNumber])
-    .catch(e => { require('./httpError').meldeUndWeiter('preisalarm:lesen', e); return []; });
+    .catch(e => { httpError.meldeUndWeiter('preisalarm:lesen', e); return []; });
   type Zeile = Omit<Preisalarm, 'schwelle' | 'zuletzt_preis'> &
                { schwelle: string | number; zuletzt_preis: string | number | null };
   return (rows as Zeile[] || []).map(r => ({
@@ -149,7 +153,7 @@ export async function alleAlarme(userId: number): Promise<AlarmMitName[]> {
       WHERE a.user_id = $1
       ORDER BY a.set_number, a.condition, c.image_local NULLS LAST, s.id`,
     [userId, blickfeld])
-    .catch(e => { require('./httpError').meldeUndWeiter('preisalarm:alle', e); return []; });
+    .catch(e => { httpError.meldeUndWeiter('preisalarm:alle', e); return []; });
   type Zeile = Omit<AlarmMitName, 'schwelle' | 'zuletzt_preis'> &
                { schwelle: string | number; zuletzt_preis: string | number | null };
   return (rows as Zeile[] || []).map(r => ({
@@ -196,7 +200,7 @@ export async function ausgeloesteSeit(userId: number, seit: unknown) {
         AND zuletzt_am IS NOT NULL AND date_trunc('milliseconds', zuletzt_am) > $2
       ORDER BY zuletzt_am`,
     [userId, marke])
-    .catch(e => { require('./httpError').meldeUndWeiter('preisalarm:abholen', e); return []; });
+    .catch(e => { httpError.meldeUndWeiter('preisalarm:abholen', e); return []; });
 
   type Zeile = { set_number: string; condition: string; richtung: Richtung;
                  schwelle: string | number; currency_code: string;
@@ -237,12 +241,11 @@ export type Versender = (mail: { to: string; subject: string; text: string; html
  * Ausführlich: docs/begruendungen/utils/preisalarm.ts.md#standardversand
  */
 async function standardVersand(mail: { to: string; subject: string; text: string }) {
-  return require('./mailer').sendMail(mail);
+  return mailer.sendMail(mail);
 }
 
 export async function pruefeSet(setNumber: string,
                                 versende: Versender = standardVersand): Promise<number> {
-  const { meldeUndWeiter } = require('./httpError');
   const alarme = await db.all(
     `SELECT a.user_id, a.set_number, a.condition, a.richtung, a.schwelle,
             a.currency_code, a.ausgeloest, u.email, u.username,
@@ -312,8 +315,8 @@ export async function pruefeSet(setNumber: string,
  */
 async function verschicke(versende: Versender, a: AlarmZeile, preis: number, schwelle: number) {
   const name = await db.get('SELECT name FROM rb_sets WHERE set_num = $1', [a.set_number])
-    .catch(() => null);
-  const mail = await require('./mailer').baueAlarmMail({
+    .catch(meldeUndLiefere('preisalarm:name', null));
+  const mail = await mailer.baueAlarmMail({
     username:  a.username,
     lang:      String(a.sprache),
     setNumber: a.set_number,
@@ -332,7 +335,6 @@ async function verschicke(versende: Versender, a: AlarmZeile, preis: number, sch
  * Ausführlich: docs/begruendungen/utils/preisalarm.ts.md#buildpreisalarmecsv
  */
 export async function buildPreisalarmeCsv(uid: number): Promise<string> {
-  const { toCsv } = require('./csvExport');
   const rows = await db.all(
     `SELECT set_number, condition, richtung, schwelle, currency_code
        FROM price_alerts
