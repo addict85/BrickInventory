@@ -46,48 +46,7 @@ router.get('/categories', async (req, res) => {
   // Ausführlich: docs/begruendungen/routes/parts.ts.md#get-categories-uids
   const uids = await scopeIds(angemeldeteNutzerId(req), parseScopeMode(req.query.accounts));
   try {
-    const cats = await db.all(`
-      -- Kategorie auflösen, notfalls über den Teilekatalog.
-      --
-      -- parts.category_name enthält die Rebrickable-Kategorie-ID als Text —
-      -- ODER die Zeichenkette 'Unknown', wenn die Set-Teile-Antwort kein
-      -- part_cat_id mitgeliefert hat. Das ist bei /sets/{id}/parts/ die Regel,
-      -- nicht die Ausnahme: Das eingebettete part-Objekt führt das Feld meist
-      -- nicht. Ergebnis war eine Filterliste mit nur einem Eintrag,
-      -- „Unknown".
-      --
-      -- rb_parts stammt aus dem CSV-Sync und kennt part_cat_id zu jeder
-      -- Teilenummer. Über diesen Umweg bekommt auch ein 'Unknown'-Teil seine
-      -- Kategorie, ohne dass die gespeicherten Daten angefasst werden müssen.
-      --
-      -- Die Kategorie kommt seit Migration 0034 aus part_catalog (Alias pc);
-      -- vorher stand sie je Konto in parts.
-      SELECT COALESCE(rc.id::text, rp_cat.id::text, pc.category_name) AS category_name,
-             COALESCE(rc.name, rp_cat.name, 'Unbekannt')              AS label,
-             COUNT(DISTINCT p.part_number)::int AS unique_parts,
-             -- Der zweite Faktor ist die Zahl der Exemplare DES SETS. Er stand
-             -- als COALESCE(s.quantity,1) hier; die Spalte ist mit Migration
-             -- 0036 weg, die Menge kommt aus set_acquisitions. Die 1 bleibt
-             -- die Lesart „Set nicht im Bestand, Teil trotzdem zaehlen" —
-             -- dafuer steht der zweite Parameter von mengeAus().
-             -- Der ERSTE Faktor ist die Stückzahl der Bestandszeile. Sie
-             -- stand als p.quantity dort; Migration 0038 hat die Spalte
-             -- geloescht. Fuer ein Set-Teil ist es die Katalogzahl, fuer
-             -- ein manuelles die Summe der Erfassungen — die
-             -- Fallunterscheidung steht in utils/bestandsmenge.ts.
-             SUM(${teilmengeAus('p', 'part')} * ${mengeAus('sm', 1)})::int AS total_quantity
-      FROM parts p
-      ${mengeJoin('p', 'sm', '= ANY($1)')}
-      ${teilmengeJoin('p', 'part')}
-      LEFT JOIN part_catalog pc ON pc.part_number = p.part_number
-      LEFT JOIN rb_part_categories rc
-             ON rc.id = (CASE WHEN pc.category_name ~ '^[0-9]+$' THEN pc.category_name::int ELSE NULL END)
-      LEFT JOIN rb_parts rp ON rp.part_num = p.part_number
-      LEFT JOIN rb_part_categories rp_cat ON rp_cat.id = rp.part_cat_id
-      WHERE p.user_id = ANY($1) AND COALESCE(p.source,'set') <> 'manual'
-      GROUP BY COALESCE(rc.id::text, rp_cat.id::text, pc.category_name),
-               COALESCE(rc.name, rp_cat.name, 'Unbekannt')
-      ORDER BY total_quantity DESC`, [uids]);
+    const cats = await getPartsCategories(uids);
     res.json({ success:true, categories:cats });
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
@@ -110,7 +69,7 @@ import { angemeldeteNutzerId } from '../utils/auth';
 import { csvEmpfang } from '../utils/dateiEmpfang';
 import { sendeFehler } from '../utils/fehlerTexte';
 import { merkeTeil, merkeTeilFarbe } from '../utils/katalogPflege';
-import { mengeJoin, mengeAus, teilmengeJoin, teilmengeAus } from '../utils/bestandsmenge';
+import { getPartsCategories } from '../utils/handlers/parts';
 
 router.post('/import/csv', csvEmpfang.single('file'), async (req: LoggedInRequest, res) => {
   if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');

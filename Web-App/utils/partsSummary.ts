@@ -61,7 +61,7 @@ export async function rebuild(userId: number, version?: { v: number; katalog: nu
              -- Pflichtteil. MAX() wie vorher, weil die Gruppe mehrere Sets
              -- zusammenfasst; je (Set, Teil, Farbe) ist der Wert eindeutig
              -- (Primaerschluessel von set_parts_catalog).
-             MAX(COALESCE(spc.is_spare, 0)),
+             MAX(COALESCE(tm_k.is_spare, 0)),
              -- Der zweite Faktor ist die Zahl der Exemplare DES SETS. Hier
              -- stand COALESCE(s.quantity, 1); die Spalte ist mit Migration
              -- 0036 weg. Die gruppierte Form (mengeJoin) und nicht die
@@ -85,15 +85,12 @@ export async function rebuild(userId: number, version?: { v: number; katalog: nu
              NULLIF(STRING_AGG(DISTINCT lo.name, ', '), '')
         FROM parts p
         ${mengeJoin('p', 'sm', '= $1')}
-        ${teilmengeJoin('p', 'part')}
+        ${teilmengeJoin('p', 'part', 'tm', '= $1')}
         ${blJoin('p.part_number', 'part')}
         LEFT JOIN storage_locations lo ON lo.id = p.storage_id
         LEFT JOIN part_catalog pc ON pc.part_number = p.part_number
         LEFT JOIN part_color_catalog pcc ON pcc.part_number = p.part_number
                                         AND pcc.color_id    = p.color_id
-        LEFT JOIN set_parts_catalog spc ON spc.set_number  = p.set_number
-                                       AND spc.part_number = p.part_number
-                                       AND spc.color_id    = p.color_id
        WHERE p.user_id = $1 AND COALESCE(p.source, 'set') <> 'manual'
        GROUP BY p.user_id, ${blNummerSql('p.part_number')}, p.color_id`,
       [userId]);

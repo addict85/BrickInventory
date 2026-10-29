@@ -102,7 +102,7 @@ const ART = {
   part: {
     bestand:   'parts',
     erfassung: 'part_acquisitions',
-    katalog:   'set_parts_catalog',
+    katalog:   'set_teile',
     nummer:    'part_number',
     // Die Farbe gehoert in BEIDE Schluessel — und COALESCE(...,0) auf beiden
     // Seiten: Die Erfassung fuehrt „ohne Angabe" als 0, die Bestandszeile
@@ -125,8 +125,9 @@ const ART = {
  * Ausführlich: docs/begruendungen/utils/bestandsmenge.ts.md#teilmengejoin
  * @param bezug Alias der Bestandszeile, z. B. `p` oder `m`
  * @param alias Grundname; angelegt werden `<alias>_e` (Erfassungen) und
+ * @param konten wie bei mengeJoin: schränkt die Erfassungen auf das Blickfeld ein
  */
-export function teilmengeJoin(bezug: string, art: Bestandsart, alias = 'tm'): string {
+export function teilmengeJoin(bezug: string, art: Bestandsart, alias = 'tm', konten?: string): string {
   const a = ART[art];
   const farbErf = a.farbe
     ? `, COALESCE(x.color_id, 0) AS fk` : '';
@@ -136,7 +137,8 @@ export function teilmengeJoin(bezug: string, art: Bestandsart, alias = 'tm'): st
     ? ` AND ${alias}_k.color_id = COALESCE(${bezug}.color_id, 0)` : '';
   return `LEFT JOIN (SELECT x.user_id, x.${a.nummer}${farbErf},
                              SUM(x.quantity)::int AS menge
-                        FROM ${a.erfassung} x
+                        FROM ${a.erfassung} x${konten ? `
+                       WHERE x.user_id ${konten}` : ''}
                        GROUP BY x.user_id, x.${a.nummer}${a.farbe ? ', COALESCE(x.color_id, 0)' : ''}) ${alias}_e
                ON ${alias}_e.user_id = ${bezug}.user_id
               AND ${alias}_e.${a.nummer} = ${bezug}.${a.nummer}${farbVgl}

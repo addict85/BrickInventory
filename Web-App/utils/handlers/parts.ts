@@ -106,9 +106,9 @@ function teileFilter(uids: number[], query: any) {
     where += ` AND (p.set_number = $${pi} OR p.set_number = $${pi+1})`;
     params.push(...beideSchreibweisen(set_number)); pi += 2;
   }
-  // Farbe, Kategorie, Name und Ersatzteilkennzeichen stehen seit Migration
-  // 0034 in den Katalogen; die Aliase pc/pcc/spc haengt der Aufrufer an
-  // (katalogJoin in getParts).
+  // Farbe, Kategorie und Name stehen in den Katalogen (Aliase pc/pcc aus
+  // katalogJoin), das Ersatzteilkennzeichen in der Setliste (tm_k aus
+  // teilmengeJoin).
   if (color)    { where += ` AND pcc.color_name = $${pi++}`;  params.push(color); }
   // Kategorie auch über rb_parts auflösen — die Kategorie steht bei vielen
   // Teilen auf 'Unknown', weil die Set-Teile-Antwort von
@@ -126,8 +126,8 @@ function teileFilter(uids: number[], query: any) {
   // eines Sets, nicht des Teils — derselbe Stein ist in einem Set Ersatzteil
   // und im naechsten Pflichtteil. COALESCE, weil ein Teil ohne Katalogzeile
   // (manuell erfasst) kein Ersatzteil ist.
-  if (spare === '0') where += ' AND COALESCE(spc.is_spare, 0) = 0';
-  if (spare === '1') where += ' AND COALESCE(spc.is_spare, 0) = 1';
+  if (spare === '0') where += ' AND COALESCE(tm_k.is_spare, 0) = 0';
+  if (spare === '1') where += ' AND COALESCE(tm_k.is_spare, 0) = 1';
   // Manuell erfasste Teile aus der Set-Teile-Übersicht ausschließen — sie haben
   // ihren eigenen Bereich ("Manuell erfasste Teile") und gehören nicht in die
   // nach Farbe/Kategorie gruppierte Set-Teileliste.
@@ -268,11 +268,16 @@ async function tryPartsSummary(userId: Blickfeld, o: any) {
   // sobald eine Farbe angeklickt wurde. Der Live-Pfad darunter vergleicht
   // ebenfalls über color_name; beide müssen dasselbe tun.
   if (o.color) { cond.push(`color_name = $${params.length + 1}`); params.push(o.color); }
-  // Die Zusammenfassung führt category_name so, wie es in parts steht — also
-  // teilweise 'Unknown'. Ein Kategorie-Filter würde hier andere Ergebnisse
-  // liefern als der Live-Pfad mit seiner Auflösung über rb_parts. Statt zwei
-  // Wahrheiten: bei gesetztem Kategorie-Filter auf den Live-Pfad ausweichen.
-  if (o.category) return null;
+  // Kategorie wie im Live-Pfad: die eigene, sonst die aus rb_parts (die
+  // Set-Teile-Antwort liefert oft keine und hinterlässt 'Unknown').
+  if (o.category) {
+    const pi = params.length + 1;
+    // IN statt EXISTS: Die Unterabfrage hängt nicht an der Zeile und wird
+    // einmal als Hashtabelle gebaut, statt je Zeile der Zusammenfassung.
+    cond.push(`(category_name = $${pi} OR part_number IN (SELECT rp.part_num FROM rb_parts rp
+                 WHERE rp.part_cat_id::text = $${pi}))`);
+    params.push(String(o.category));
+  }
   if (o.spare === '0' || o.spare === '1') {
     cond.push(`COALESCE(is_spare, 0) = $${params.length + 1}`);         params.push(parseInt(o.spare));
   }
@@ -390,20 +395,18 @@ async function getParts(userId: Blickfeld, query: any = {}) {
   // Die Beschreibung kommt aus den Katalogen (Migration 0034)
   // pc  je Teilenummer:          Name, Kategorie
   // pcc je Teilenummer + Farbe:  Farbbezeichnung, Farbcode, Bild
-  // spc je Set + Teil + Farbe:   Ersatzteilkennzeichen
+  // Das Ersatzteilkennzeichen kommt aus tm_k (set_teile), das für die Menge
+  // ohnehin angehängt ist — ein zweiter Join derselben Liste kostete ein Viertel.
   // Ausführlich: docs/begruendungen/utils/handlers/parts.ts.md#getparts-katalogjoin
   const katalogJoin =
     ' LEFT JOIN part_catalog pc ON pc.part_number = p.part_number'
   + ' LEFT JOIN part_color_catalog pcc ON pcc.part_number = p.part_number'
-  + '                                 AND pcc.color_id    = p.color_id'
-  + ' LEFT JOIN set_parts_catalog spc ON spc.set_number  = p.set_number'
-  + '                                AND spc.part_number = p.part_number'
-  + '                                AND spc.color_id    = p.color_id';
+  + '                                 AND pcc.color_id    = p.color_id';
   // Ohne set_number-Filter haengt die Set-Menge mit dran (der Faktor in
   // qtyExpr). Mit Filter nicht: Dort geht es um die Teile EINES Sets.
   // Ausführlich: docs/begruendungen/utils/handlers/parts.ts.md#getparts-joinclause
   const joinClause = (set_number ? 'FROM parts p' : `FROM parts p ${mengeJoin('p')}`)
-    + ` ${teilmengeJoin('p', 'part')}`
+    + ` ${teilmengeJoin('p', 'part', 'tm', '= ANY($1)')}`
     + ` ${blJoin('p.part_number', 'part')}`
     + lagerJoin + katalogJoin;
 
@@ -476,7 +479,7 @@ async function getParts(userId: Blickfeld, query: any = {}) {
       MIN(pc.category_name) AS category_name,
       MIN(pcc.image_url)   AS image_url,
       MIN(pcc.image_local) AS image_local,
-      MAX(COALESCE(spc.is_spare, 0)) AS is_spare,
+      MAX(COALESCE(tm_k.is_spare, 0)) AS is_spare,
       -- Lagerort: string_agg statt MIN, und das ist kein Zierrat. Diese
       -- Abfrage fasst je Teil-Farb-Paar MEHRERE Zeilen zusammen (dasselbe
       -- Teil aus verschiedenen Sets, im Haushalt zusaetzlich aus verschiedenen
@@ -556,6 +559,47 @@ async function getParts(userId: Blickfeld, query: any = {}) {
     if (ersatz) return ersatz;
   }
   return { parts: partsResolved, total, source: 'db', page_size: effektiveGroesse };
+}
+
+/**
+ * Die Kategorien der Set-Teile mit Zahl und Menge. Die Kategorie kommt aus
+ * dem eigenen Katalog, sonst aus rb_parts: Die Set-Teile-Antwort von
+ * Rebrickable liefert meist keine, und die Liste bestünde sonst aus „Unbekannt“.
+ * Aus der Zusammenfassung, wenn sie frisch ist; gezählt werden dann die Gruppen
+ * der Teileliste (BrickLink-Nummer und Farbe), wie bei der Farbliste.
+ */
+async function getPartsCategories(userId: Blickfeld) {
+  const uids = asIds(userId);
+  const kategorie = (spalte: string, nummer: string) => `
+      LEFT JOIN rb_part_categories rc
+             ON rc.id = (CASE WHEN ${spalte} ~ '^[0-9]+$' THEN ${spalte}::int ELSE NULL END)
+      LEFT JOIN rb_parts rp ON rp.part_num = ${nummer}
+      LEFT JOIN rb_part_categories rp_cat ON rp_cat.id = rp.part_cat_id`;
+  const gruppe = `GROUP BY COALESCE(rc.id::text, rp_cat.id::text, {k}), COALESCE(rc.name, rp_cat.name, 'Unbekannt')
+      ORDER BY total_quantity DESC`;
+  if (await ensureFresh(uids, { strict: true })) {
+    return db.all(`
+      SELECT COALESCE(rc.id::text, rp_cat.id::text, ps.category_name) AS category_name,
+             COALESCE(rc.name, rp_cat.name, 'Unbekannt')                AS label,
+             COUNT(DISTINCT ps.part_key)::int AS unique_parts,
+             SUM(ps.total_quantity)::int      AS total_quantity
+        FROM parts_summary ps
+        ${kategorie('ps.category_name', 'ps.part_number')}
+       WHERE ps.user_id = ANY($1)
+      ${gruppe.replace('{k}', 'ps.category_name')}`, [uids]);
+  }
+  return db.all(`
+    SELECT COALESCE(rc.id::text, rp_cat.id::text, pc.category_name) AS category_name,
+           COALESCE(rc.name, rp_cat.name, 'Unbekannt')              AS label,
+           COUNT(DISTINCT p.part_number)::int AS unique_parts,
+           SUM(${teilmengeAus('p', 'part')} * ${mengeAus('sm', 1)})::int AS total_quantity
+    FROM parts p
+    ${mengeJoin('p', 'sm', '= ANY($1)')}
+    ${teilmengeJoin('p', 'part', 'tm', '= ANY($1)')}
+    LEFT JOIN part_catalog pc ON pc.part_number = p.part_number
+    ${kategorie('pc.category_name', 'p.part_number')}
+    WHERE p.user_id = ANY($1) AND COALESCE(p.source,'set') <> 'manual'
+    ${gruppe.replace('{k}', 'pc.category_name')}`, [uids]);
 }
 
 async function getPartsStats(userId: Blickfeld) {
@@ -778,7 +822,7 @@ async function getManualParts(userId: Blickfeld, viewerId: number,
     });
 }
 
-export { getPartsColors, tryPartsSummary, getParts, getPartsStats, getBlColorMap, getManualParts };
+export { getPartsColors, getPartsCategories, tryPartsSummary, getParts, getPartsStats, getBlColorMap, getManualParts };
 
 /**
  * Wie viele der angefragten Teile im Blickfeld tatsächlich vorhanden sind.
