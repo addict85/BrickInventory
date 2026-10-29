@@ -5,9 +5,10 @@
  * zeichnet ungruppiert keine Farbkacheln.
  *
  * Die drei Teile sind so gewählt, dass jede Reihenfolge eine andere ist:
- *   Farbe: Blau 3002, Gelb 3003, Rot 3001
- *   Name:  Axle 3003, Brick 3001, Plate 3002
- *   Menge: 3001 (9), 3003 (7, im Haushalt 8), 3002 (1)
+ *   Farbe: Blau ORD2, Gelb ORD3, Rot ORD1
+ *   Name:  Axle ORD3, Brick ORD1, Plate ORD2
+ *   Menge: ORD1 (9), ORD3 (7, im Haushalt 8), ORD2 (1)
+ * Eigene Nummern, damit keine BrickLink-Zuordnung aus anderen Tests greift.
  *
  * Gegenproben (am 29.10.2026 gemessen):
  *   A  in ordnungSql() den Zweig 'name' entfernt (fällt auf Farbe zurück)
@@ -42,29 +43,32 @@ test('Reihenfolge der Teileliste', { concurrency: 1 }, async (t) => {
     t.skip('Test-DB nicht erreichbar'); return;
   }
   const aufraeumen = async () => {
-    for (const tab of ['parts', 'sets', 'parts_summary', 'parts_summary_state'])
+    for (const tab of ['parts', 'set_acquisitions', 'sets', 'parts_summary', 'parts_summary_state'])
       await db.run(`DELETE FROM ${tab} WHERE user_id = ANY($1)`, [[U, U2]]);
     await db.run(`DELETE FROM set_teile WHERE set_number IN ('ORD-1', 'ORD-2')`);
     await db.run('DELETE FROM users WHERE id = ANY($1)', [[U, U2]]);
+    for (const tab of ['part_color_catalog', 'part_catalog'])
+      await db.run(`DELETE FROM ${tab} WHERE part_number = ANY($1)`, [['ORD1', 'ORD2', 'ORD3']]);
+    await db.run(`DELETE FROM bl_zuordnung WHERE rb_id = ANY($1)`, [['ORD1', 'ORD2', 'ORD3']]);
   };
   await aufraeumen();
   t.after(async () => { await aufraeumen().catch(() => {}); await db.pool.end().catch(() => {}); });
 
   for (const [id, name] of [[U, 'ordnung_a'], [U2, 'ordnung_b']])
     await db.run('INSERT INTO users (id, username, password_hash) VALUES ($1, $2, $3)', [id, name, 'x']);
-  await db.run(`INSERT INTO part_catalog (part_number, part_name) VALUES ('3001','Brick'),('3002','Plate'),('3003','Axle')
+  await db.run(`INSERT INTO part_catalog (part_number, part_name) VALUES ('ORD1','Brick'),('ORD2','Plate'),('ORD3','Axle')
                 ON CONFLICT (part_number) DO UPDATE SET part_name = EXCLUDED.part_name, name_von = NULL`);
-  await db.run(`INSERT INTO part_color_catalog (part_number, color_id, color_name) VALUES ('3001',5,'Rot'),('3002',1,'Blau'),('3003',3,'Gelb')
+  await db.run(`INSERT INTO part_color_catalog (part_number, color_id, color_name) VALUES ('ORD1',5,'Rot'),('ORD2',1,'Blau'),('ORD3',3,'Gelb')
                 ON CONFLICT (part_number, color_id) DO UPDATE SET color_name = EXCLUDED.color_name`);
   await haeltSet(db, U, 'ORD-1', 1);
-  await haeltTeil(db, U, '3001', { setNumber: 'ORD-1', menge: 9, colorId: 5 });
-  await haeltTeil(db, U, '3002', { setNumber: 'ORD-1', menge: 1, colorId: 1 });
-  await haeltTeil(db, U, '3003', { setNumber: 'ORD-1', menge: 7, colorId: 3 });
+  await haeltTeil(db, U, 'ORD1', { setNumber: 'ORD-1', menge: 9, colorId: 5 });
+  await haeltTeil(db, U, 'ORD2', { setNumber: 'ORD-1', menge: 1, colorId: 1 });
+  await haeltTeil(db, U, 'ORD3', { setNumber: 'ORD-1', menge: 7, colorId: 3 });
   // Im Haushalt hat das zweite Konto dasselbe Teil: Die Menge muss summiert sortieren.
   await haeltSet(db, U2, 'ORD-2', 1);
-  await haeltTeil(db, U2, '3003', { setNumber: 'ORD-2', menge: 1, colorId: 3 });
+  await haeltTeil(db, U2, 'ORD3', { setNumber: 'ORD-2', menge: 1, colorId: 3 });
 
-  const ERWARTET = { farbe: ['3002', '3003', '3001'], name: ['3003', '3001', '3002'], menge: ['3001', '3003', '3002'] };
+  const ERWARTET = { farbe: ['ORD2', 'ORD3', 'ORD1'], name: ['ORD3', 'ORD1', 'ORD2'], menge: ['ORD1', 'ORD3', 'ORD2'] };
   const abfrage = (ordnung) => ({ exclude_manual: '1', page: 1, page_size: 50, ordnung });
   const reihe = (r) => r.parts.map(p => p.part_number);
 
@@ -87,7 +91,7 @@ test('Reihenfolge der Teileliste', { concurrency: 1 }, async (t) => {
   });
 
   await t.test('ein unbekannter Wert gilt als Farbe', async () => {
-    assert.deepEqual(reihe(await H.getParts(U, abfrage('; DROP TABLE parts'))), ['3002', '3003', '3001']);
+    assert.deepEqual(reihe(await H.getParts(U, abfrage('; DROP TABLE parts'))), ['ORD2', 'ORD3', 'ORD1']);
   });
 
   await t.test('ungruppiert zeichnet die Oberfläche keine Farbkacheln', async () => {
