@@ -9,7 +9,9 @@
  *   B  legeAdminAn() nicht aufgerufen → rot: „eine leere Datenbank bekommt
  *      Basis, Vorgaben und einen Administrator“
  *   C  die Abfrage auf LETZTE_STARTSTUFE entfernt → rot: „eine Datenbank vor
- *      0050 wird abgewiesen …“
+ *      0050 wird abgewiesen …“ (seit 29.10.: „… vor 0045 …“)
+ *   D  (29.10.) LETZTE_STARTSTUFE wieder 0050 → rot: „eine Datenbank mit
+ *      0045, aber ohne 0050 startet …“ (der Stand von main bis 1ad80a5)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL, deren Benutzer Datenbanken
  * anlegen darf.
@@ -74,8 +76,17 @@ test('Erststart über db/basis.sql', { concurrency: 1, timeout: 180_000 }, async
     assert.equal((await db.get(`SELECT value FROM global_settings WHERE key = 'api_limit_bricklink'`)).value, '123');
   });
 
-  await t.test('eine Datenbank vor 0050 wird abgewiesen statt halb weitergeführt', async () => {
+  // Der Stand von main bis 1ad80a5: 0045 da, 0050 noch nicht.
+  await t.test('eine Datenbank mit 0045, aber ohne 0050 startet und holt 0050 nach', async () => {
     await db.run(`DELETE FROM schema_migrations WHERE name LIKE '0050-%'`);
-    await assert.rejects(db.initSchema(), /älter als 0050/);
+    assert.equal(await db.initSchema(), false);
+    const c = await db.pool.connect();
+    try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); }
+    assert.ok(await db.get(`SELECT 1 FROM schema_migrations WHERE name LIKE '0050-%'`), '0050 nicht nachgeholt');
+  });
+
+  await t.test('eine Datenbank vor 0045 wird abgewiesen statt halb weitergeführt', async () => {
+    await db.run(`DELETE FROM schema_migrations WHERE name LIKE '0045-%'`);
+    await assert.rejects(db.initSchema(), /älter als 0045/);
   });
 });
