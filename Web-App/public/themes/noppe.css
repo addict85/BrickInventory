@@ -245,6 +245,8 @@
 [data-theme="noppe"] .cond-new,[data-theme="hochglanz"] .cond-new{
   background:var(--chart-new);color:#fff;border:2px solid var(--ink);font-weight:800;
 }
+/* Dunkel ist die Diagrammfarbe hell; die Schrift nimmt die (dann dunkle) Tinte. */
+[data-theme="noppe"][data-dunkel] .cond-new,[data-theme="hochglanz"][data-dunkel] .cond-new{color:var(--ink)}
 [data-theme="noppe"] .cond-used,[data-theme="hochglanz"] .cond-used{
   background:var(--chart-used);color:var(--ink);border:2px solid var(--ink);font-weight:800;
 }

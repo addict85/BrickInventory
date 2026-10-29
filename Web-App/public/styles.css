@@ -416,12 +416,12 @@
     /* Auf Geräten ohne Zeigegerät gibt es kein Überfahren — dort dauerhaft
        sichtbar, sonst wäre Löschen per Touch gar nicht erreichbar. */
     @media (hover: none){ .ca{opacity:1} }
-    .delbtn{width:26px;height:26px;border-radius:6px;border:1px solid var(--bdr);cursor:pointer;background:rgba(255,255,255,.92);color:var(--s500);font-size:var(--fs-1);display:flex;align-items:center;justify-content:center;transition:background .15s,color .15s,border-color .15s}
+    .delbtn{width:26px;height:26px;border-radius:6px;border:1px solid var(--bdr);cursor:pointer;background:color-mix(in srgb,var(--sur) 92%,transparent);color:var(--s500);font-size:var(--fs-1);display:flex;align-items:center;justify-content:center;transition:background .15s,color .15s,border-color .15s}
     /* Dezent bis zur Berührung: Der Knopf erscheint ohnehin erst beim
        Überfahren der Kachel (.ca opacity). Ein dauerhaft rotes Feld zog den
        Blick stärker auf sich als das Set selbst. Rot bleibt der Bestätigung
        vorbehalten — beim Überfahren des Knopfes zeigt er, was er tut. */
-    .delbtn:hover{background:var(--s500);color:#fff;border-color:var(--s500)}
+    .delbtn:hover{background:var(--s500);color:var(--sur);border-color:var(--s500)}
     .delbtn:focus-visible{outline:2px solid var(--s500);outline-offset:1px}
     /* Papierkorb statt ✕: Das Symbol erbt die Farbe über currentColor und
        richtet sich nach der Schriftgrösse des Knopfes. */
@@ -671,7 +671,7 @@
     .cond-new{background:var(--b100);color:var(--b700)}
     .besitzer-badge{background:var(--b100);color:var(--b700)}
     .admin-hinweis{font-size:var(--fs-1);color:var(--a-schrift);font-weight:400}
-    .cond-used{background:#fef3c7;color:#92400e}
+    .cond-used{background:var(--a100);color:var(--a-schrift)}
     /* Ersatzteil: dieselbe Form wie die Zustands-Plakette, aber ruhiger —
        ein Ersatzteil ist eine Nebeninformation, kein Zustand. Gegenstueck zu
        ErsatzteilPlakette() in ManualItemComposables.kt der App. */
