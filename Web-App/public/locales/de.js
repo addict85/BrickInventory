@@ -500,6 +500,7 @@ window.I18N_DE = {
   'pdf.almost_done': 'gleich fertig…',
   'pdf.server_error': 'PDF-Fehler auf dem Server',
   'settings.imported_note': '{n} Einstellungen importiert. {note}',
+  'settings.smtp_skipped': 'Nicht übernommen: {keys}. SMTP bitte im Formular setzen.',
 
 
     'instr.section_title': 'Anleitungen',

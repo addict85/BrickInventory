@@ -499,6 +499,7 @@ window.I18N_EN = {
   'pdf.almost_done': 'almost done…',
   'pdf.server_error': 'PDF error on the server',
   'settings.imported_note': '{n} settings imported. {note}',
+  'settings.smtp_skipped': 'Not imported: {keys}. Please set SMTP in the form.',
   'instr.section_title': 'Instructions',
   'instr.reload': 'Reload',
   'instr.upload_title': 'Upload instructions manually (PDF/JPG/PNG, max 50MB)',

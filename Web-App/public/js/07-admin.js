@@ -81,6 +81,8 @@ async function importConfig() {
       st.textContent = tRaw('settings.imported_note',{n:d.imported,note:d.note||''});
       st.style.color = 'var(--g500)';
       toast(tRaw('admin.config_imported'), 'success');
+      // SMTP-Werte übernimmt der Import nie (Passwortbestätigung); welche, steht hier.
+      if (d.smtp_uebergangen?.length) toast(tRaw('settings.smtp_skipped', { keys: d.smtp_uebergangen.join(', ') }), 'info');
       loadSettings();
       set_settingsCache(null); // invalidate cache so next loadSettings fetches fresh
       if (ME?.isAdmin) { loadCacheTtl(); loadApiLimits(); }
