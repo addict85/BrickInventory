@@ -157,6 +157,19 @@ CREATE TABLE public.account_links (
 );
 
 --
+-- Name: api_aufrufe; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.api_aufrufe (
+    tag date NOT NULL,
+    api text NOT NULL,
+    konto integer DEFAULT 0 NOT NULL,
+    anzahl integer DEFAULT 0 NOT NULL,
+    CONSTRAINT api_aufrufe_anzahl_check CHECK ((anzahl >= 0)),
+    CONSTRAINT api_aufrufe_api_check CHECK ((api = ANY (ARRAY['bricklink'::text, 'rebrickable'::text, 'brickset'::text])))
+);
+
+--
 -- Name: api_takt; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -383,6 +396,16 @@ CREATE SEQUENCE public.instructions_id_seq
 ALTER SEQUENCE public.instructions_id_seq OWNED BY public.instructions.id;
 
 --
+-- Name: laufzustand; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.laufzustand (
+    schluessel text NOT NULL,
+    wert text DEFAULT ''::text NOT NULL,
+    aktualisiert timestamp with time zone DEFAULT now() NOT NULL
+);
+
+--
 -- Name: minifig_acquisitions; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -396,7 +419,9 @@ CREATE TABLE public.minifig_acquisitions (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     currency text NOT NULL,
     price_estimated boolean DEFAULT false NOT NULL,
+    CONSTRAINT minifig_acquisitions_currency_iso CHECK ((currency ~ '^[A-Z]{3}$'::text)),
     CONSTRAINT minifig_acquisitions_menge_positiv CHECK ((quantity > 0)),
+    CONSTRAINT minifig_acquisitions_unit_price_nicht_negativ CHECK ((unit_price >= (0)::numeric)),
     CONSTRAINT minifig_acquisitions_zustand CHECK ((condition = ANY (ARRAY['N'::text, 'U'::text])))
 );
 
@@ -441,7 +466,10 @@ CREATE TABLE public.minifig_price_cache (
     qty_avg_price numeric(12,4),
     fetched_at timestamp with time zone DEFAULT now(),
     geschaetzt boolean DEFAULT false NOT NULL,
-    abdeckung numeric(4,3)
+    abdeckung numeric(4,3),
+    CONSTRAINT minifig_price_cache_avg_price_nicht_negativ CHECK ((avg_price >= (0)::numeric)),
+    CONSTRAINT minifig_price_cache_currency_code_iso CHECK ((currency_code ~ '^[A-Z]{3}$'::text)),
+    CONSTRAINT minifig_price_cache_qty_avg_price_nicht_negativ CHECK ((qty_avg_price >= (0)::numeric))
 );
 
 --
@@ -475,7 +503,10 @@ CREATE TABLE public.minifig_price_history (
     qty_avg_price numeric(12,4),
     recorded_at timestamp with time zone DEFAULT now() NOT NULL,
     geschaetzt boolean DEFAULT false NOT NULL,
-    abdeckung numeric(4,3)
+    abdeckung numeric(4,3),
+    CONSTRAINT minifig_price_history_avg_price_nicht_negativ CHECK ((avg_price >= (0)::numeric)),
+    CONSTRAINT minifig_price_history_currency_code_iso CHECK ((currency_code ~ '^[A-Z]{3}$'::text)),
+    CONSTRAINT minifig_price_history_qty_avg_price_nicht_negativ CHECK ((qty_avg_price >= (0)::numeric))
 );
 
 --
@@ -591,7 +622,9 @@ CREATE TABLE public.part_acquisitions (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     currency text NOT NULL,
     price_estimated boolean DEFAULT false NOT NULL,
+    CONSTRAINT part_acquisitions_currency_iso CHECK ((currency ~ '^[A-Z]{3}$'::text)),
     CONSTRAINT part_acquisitions_menge_positiv CHECK ((quantity > 0)),
+    CONSTRAINT part_acquisitions_unit_price_nicht_negativ CHECK ((unit_price >= (0)::numeric)),
     CONSTRAINT part_acquisitions_zustand CHECK ((condition = ANY (ARRAY['N'::text, 'U'::text])))
 );
 
@@ -655,7 +688,10 @@ CREATE TABLE public.part_price_cache (
     currency_code text DEFAULT 'EUR'::text NOT NULL,
     avg_price numeric(12,4),
     qty_avg_price numeric(12,4),
-    fetched_at timestamp with time zone DEFAULT now()
+    fetched_at timestamp with time zone DEFAULT now(),
+    CONSTRAINT part_price_cache_avg_price_nicht_negativ CHECK ((avg_price >= (0)::numeric)),
+    CONSTRAINT part_price_cache_currency_code_iso CHECK ((currency_code ~ '^[A-Z]{3}$'::text)),
+    CONSTRAINT part_price_cache_qty_avg_price_nicht_negativ CHECK ((qty_avg_price >= (0)::numeric))
 );
 
 --
@@ -688,7 +724,10 @@ CREATE TABLE public.part_price_history (
     currency_code text DEFAULT 'EUR'::text NOT NULL,
     avg_price numeric(12,4),
     qty_avg_price numeric(12,4),
-    recorded_at timestamp with time zone DEFAULT now() NOT NULL
+    recorded_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT part_price_history_avg_price_nicht_negativ CHECK ((avg_price >= (0)::numeric)),
+    CONSTRAINT part_price_history_currency_code_iso CHECK ((currency_code ~ '^[A-Z]{3}$'::text)),
+    CONSTRAINT part_price_history_qty_avg_price_nicht_negativ CHECK ((qty_avg_price >= (0)::numeric))
 );
 
 --
@@ -796,6 +835,21 @@ CREATE TABLE public.parts_version_user (
 );
 
 --
+-- Name: pdf_auftraege; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.pdf_auftraege (
+    id text NOT NULL,
+    user_id integer NOT NULL,
+    status text NOT NULL,
+    fehler text,
+    fehlende_bilder integer,
+    eta_sekunden integer,
+    aktualisiert timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT pdf_auftraege_status_check CHECK ((status = ANY (ARRAY['running'::text, 'done'::text, 'error'::text])))
+);
+
+--
 -- Name: price_alerts; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -810,6 +864,7 @@ CREATE TABLE public.price_alerts (
     zuletzt_am timestamp with time zone,
     zuletzt_preis numeric(12,4),
     created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT price_alerts_currency_code_iso CHECK ((currency_code ~ '^[A-Z]{3}$'::text)),
     CONSTRAINT price_alerts_richtung CHECK ((richtung = ANY (ARRAY['unter'::text, 'ueber'::text]))),
     CONSTRAINT price_alerts_schwelle CHECK ((schwelle > (0)::numeric))
 );
@@ -828,7 +883,12 @@ CREATE TABLE public.price_cache (
     max_price numeric(12,4),
     qty_avg_price numeric(12,4),
     total_quantity integer,
-    fetched_at timestamp with time zone DEFAULT now()
+    fetched_at timestamp with time zone DEFAULT now(),
+    CONSTRAINT price_cache_avg_price_nicht_negativ CHECK ((avg_price >= (0)::numeric)),
+    CONSTRAINT price_cache_currency_code_iso CHECK ((currency_code ~ '^[A-Z]{3}$'::text)),
+    CONSTRAINT price_cache_max_price_nicht_negativ CHECK ((max_price >= (0)::numeric)),
+    CONSTRAINT price_cache_min_price_nicht_negativ CHECK ((min_price >= (0)::numeric)),
+    CONSTRAINT price_cache_qty_avg_price_nicht_negativ CHECK ((qty_avg_price >= (0)::numeric))
 );
 
 --
@@ -862,7 +922,12 @@ CREATE TABLE public.price_history (
     qty_avg_price numeric(12,4),
     min_price numeric(12,4),
     max_price numeric(12,4),
-    recorded_at timestamp with time zone DEFAULT now()
+    recorded_at timestamp with time zone DEFAULT now(),
+    CONSTRAINT price_history_avg_price_nicht_negativ CHECK ((avg_price >= (0)::numeric)),
+    CONSTRAINT price_history_currency_code_iso CHECK ((currency_code ~ '^[A-Z]{3}$'::text)),
+    CONSTRAINT price_history_max_price_nicht_negativ CHECK ((max_price >= (0)::numeric)),
+    CONSTRAINT price_history_min_price_nicht_negativ CHECK ((min_price >= (0)::numeric)),
+    CONSTRAINT price_history_qty_avg_price_nicht_negativ CHECK ((qty_avg_price >= (0)::numeric))
 );
 
 --
@@ -882,20 +947,6 @@ CREATE SEQUENCE public.price_history_id_seq
 --
 
 ALTER SEQUENCE public.price_history_id_seq OWNED BY public.price_history.id;
-
---
--- Name: price_market; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.price_market (
-    set_number text NOT NULL,
-    currency_code text NOT NULL,
-    condition text DEFAULT 'new'::text NOT NULL,
-    qty_avg_price numeric(12,4),
-    min_price numeric(12,4),
-    max_price numeric(12,4),
-    updated_at timestamp with time zone DEFAULT now()
-);
 
 --
 -- Name: qr_login_tokens; Type: TABLE; Schema: public; Owner: -
@@ -1071,7 +1122,9 @@ CREATE TABLE public.set_acquisitions (
     condition text DEFAULT 'N'::text NOT NULL,
     currency text NOT NULL,
     price_estimated boolean DEFAULT false NOT NULL,
+    CONSTRAINT set_acquisitions_currency_iso CHECK ((currency ~ '^[A-Z]{3}$'::text)),
     CONSTRAINT set_acquisitions_menge_positiv CHECK ((quantity > 0)),
+    CONSTRAINT set_acquisitions_purchase_price_nicht_negativ CHECK ((purchase_price >= (0)::numeric)),
     CONSTRAINT set_acquisitions_zustand CHECK ((condition = ANY (ARRAY['N'::text, 'U'::text])))
 );
 
@@ -1125,23 +1178,53 @@ CREATE TABLE public.set_minifigs_catalog (
 );
 
 --
--- Name: set_parts_catalog; Type: TABLE; Schema: public; Owner: -
+-- Name: set_teile; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.set_parts_catalog (
+CREATE TABLE public.set_teile (
     set_number text NOT NULL,
     part_number text NOT NULL,
-    part_name text,
     color_id integer NOT NULL,
-    color_name text,
-    color_hex text,
-    category_name text,
-    image_url text,
-    image_local text,
     is_spare integer DEFAULT 0,
     quantity integer DEFAULT 1,
     updated_at timestamp with time zone DEFAULT now()
 );
+
+--
+-- Name: set_parts_catalog; Type: VIEW; Schema: public; Owner: -
+--
+
+CREATE VIEW public.set_parts_catalog AS
+ SELECT t.set_number,
+    t.part_number,
+        CASE
+            WHEN (pc.name_von IS NULL) THEN pc.part_name
+            ELSE NULL::text
+        END AS part_name,
+    t.color_id,
+        CASE
+            WHEN (pcc.farbname_von IS NULL) THEN pcc.color_name
+            ELSE NULL::text
+        END AS color_name,
+        CASE
+            WHEN (pcc.farbcode_von IS NULL) THEN pcc.color_hex
+            ELSE NULL::text
+        END AS color_hex,
+        CASE
+            WHEN (pc.kategorie_von IS NULL) THEN pc.category_name
+            ELSE NULL::text
+        END AS category_name,
+        CASE
+            WHEN (pcc.bild_von IS NULL) THEN pcc.image_url
+            ELSE NULL::text
+        END AS image_url,
+    pcc.image_local,
+    t.is_spare,
+    t.quantity,
+    t.updated_at
+   FROM ((public.set_teile t
+     LEFT JOIN public.part_catalog pc ON ((pc.part_number = t.part_number)))
+     LEFT JOIN public.part_color_catalog pcc ON (((pcc.part_number = t.part_number) AND (pcc.color_id = t.color_id))));
 
 --
 -- Name: sets; Type: TABLE; Schema: public; Owner: -
@@ -1350,7 +1433,9 @@ CREATE TABLE public.vouchers (
     pdf_path text,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    guthaben_geprueft_am timestamp with time zone
+    guthaben_geprueft_am timestamp with time zone,
+    CONSTRAINT vouchers_amount_nicht_negativ CHECK ((amount >= (0)::numeric)),
+    CONSTRAINT vouchers_currency_iso CHECK ((currency ~ '^[A-Z]{3}$'::text))
 );
 
 --
@@ -1607,6 +1692,13 @@ ALTER TABLE ONLY public.account_links
     ADD CONSTRAINT account_links_pkey PRIMARY KEY (main_user_id, sub_user_id);
 
 --
+-- Name: api_aufrufe api_aufrufe_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.api_aufrufe
+    ADD CONSTRAINT api_aufrufe_pkey PRIMARY KEY (tag, api, konto);
+
+--
 -- Name: api_takt api_takt_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1703,6 +1795,13 @@ ALTER TABLE ONLY public.instruction_queue
 
 ALTER TABLE ONLY public.instructions
     ADD CONSTRAINT instructions_pkey PRIMARY KEY (id);
+
+--
+-- Name: laufzustand laufzustand_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.laufzustand
+    ADD CONSTRAINT laufzustand_pkey PRIMARY KEY (schluessel);
 
 --
 -- Name: minifig_acquisitions minifig_acquisitions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
@@ -1838,6 +1937,13 @@ ALTER TABLE ONLY public.parts_version_user
     ADD CONSTRAINT parts_version_user_pkey PRIMARY KEY (user_id);
 
 --
+-- Name: pdf_auftraege pdf_auftraege_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.pdf_auftraege
+    ADD CONSTRAINT pdf_auftraege_pkey PRIMARY KEY (id);
+
+--
 -- Name: price_alerts price_alerts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1864,13 +1970,6 @@ ALTER TABLE ONLY public.price_cache
 
 ALTER TABLE ONLY public.price_history
     ADD CONSTRAINT price_history_pkey PRIMARY KEY (id);
-
---
--- Name: price_market price_market_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.price_market
-    ADD CONSTRAINT price_market_pkey PRIMARY KEY (set_number, currency_code, condition);
 
 --
 -- Name: qr_login_tokens qr_login_tokens_pkey; Type: CONSTRAINT; Schema: public; Owner: -
@@ -1971,11 +2070,11 @@ ALTER TABLE ONLY public.set_minifigs_catalog
     ADD CONSTRAINT set_minifigs_catalog_pkey PRIMARY KEY (set_number, fig_number);
 
 --
--- Name: set_parts_catalog set_parts_catalog_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: set_teile set_teile_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.set_parts_catalog
-    ADD CONSTRAINT set_parts_catalog_pkey PRIMARY KEY (set_number, part_number, color_id);
+ALTER TABLE ONLY public.set_teile
+    ADD CONSTRAINT set_teile_pkey PRIMARY KEY (set_number, part_number, color_id);
 
 --
 -- Name: sets sets_pkey; Type: CONSTRAINT; Schema: public; Owner: -
@@ -2381,6 +2480,12 @@ CREATE INDEX idx_parts_summary_sort ON public.parts_summary USING btree (user_id
 CREATE INDEX idx_parts_user ON public.parts USING btree (user_id);
 
 --
+-- Name: idx_pdf_auftraege_laufend; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_pdf_auftraege_laufend ON public.pdf_auftraege USING btree (user_id) WHERE (status = 'running'::text);
+
+--
 -- Name: idx_price_alerts_set; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -2495,6 +2600,12 @@ CREATE UNIQUE INDEX idx_set_acq_tag_merkmale ON public.set_acquisitions USING bt
 CREATE INDEX idx_set_minifigs_fig ON public.set_minifigs_catalog USING btree (fig_number);
 
 --
+-- Name: idx_set_teile_set; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_set_teile_set ON public.set_teile USING btree (set_number);
+
+--
 -- Name: idx_sets_setnum; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -2529,12 +2640,6 @@ CREATE INDEX idx_shared_instructions_set ON public.shared_instructions USING btr
 --
 
 CREATE INDEX idx_smc_set ON public.set_minifigs_catalog USING btree (set_number);
-
---
--- Name: idx_spc_set; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_spc_set ON public.set_parts_catalog USING btree (set_number);
 
 --
 -- Name: idx_user_sessions_expire; Type: INDEX; Schema: public; Owner: -
@@ -2579,12 +2684,6 @@ CREATE INDEX idx_zweiter_faktor_codes_konto ON public.zweiter_faktor_codes USING
 CREATE UNIQUE INDEX storage_locations_konto_name ON public.storage_locations USING btree (user_id, lower(name));
 
 --
--- Name: users_email_unique; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX users_email_unique ON public.users USING btree (email) WHERE (email IS NOT NULL);
-
---
 -- Name: minifig_acquisitions minifig_acquisitions_waehrung; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -2621,10 +2720,10 @@ CREATE TRIGGER trg_bump_parts_katalog AFTER INSERT OR DELETE OR UPDATE ON public
 CREATE TRIGGER trg_bump_parts_katalog AFTER INSERT OR DELETE OR UPDATE ON public.part_color_catalog FOR EACH STATEMENT EXECUTE FUNCTION public.bump_parts_katalog();
 
 --
--- Name: set_parts_catalog trg_bump_parts_katalog; Type: TRIGGER; Schema: public; Owner: -
+-- Name: set_teile trg_bump_parts_katalog; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER trg_bump_parts_katalog AFTER INSERT OR DELETE OR UPDATE ON public.set_parts_catalog FOR EACH STATEMENT EXECUTE FUNCTION public.bump_parts_katalog();
+CREATE TRIGGER trg_bump_parts_katalog AFTER INSERT OR DELETE OR UPDATE ON public.set_teile FOR EACH STATEMENT EXECUTE FUNCTION public.bump_parts_katalog();
 
 --
 -- Name: parts trg_bump_parts_version_del; Type: TRIGGER; Schema: public; Owner: -
@@ -2848,6 +2947,13 @@ ALTER TABLE ONLY public.parts_version_user
     ADD CONSTRAINT parts_version_user_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
 
 --
+-- Name: pdf_auftraege pdf_auftraege_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.pdf_auftraege
+    ADD CONSTRAINT pdf_auftraege_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+--
 -- Name: price_alerts price_alerts_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2990,7 +3096,7 @@ INSERT INTO public.gutschein_guthaben_schranke (id, letzter_abruf, sperre_bis) V
 -- Data for Name: parts_katalog_stand; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-INSERT INTO public.parts_katalog_stand (id, v) VALUES (1, 0);
+INSERT INTO public.parts_katalog_stand (id, v) VALUES (1, 4);
 
 --
 -- Data for Name: schema_migrations; Type: TABLE DATA; Schema: public; Owner: -
@@ -3054,6 +3160,11 @@ INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0057-figurenpre
 INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0058-fremdschluessel-und-pruefungen.sql', '2026-10-28 17:59:06.918264+00');
 INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0059-anmeldung-laufend.sql', '2026-10-28 20:00:29.834455+00');
 INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0060-katalog-herkunft.sql', '2026-10-28 20:09:04.452918+00');
+INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0061-api-aufrufe.sql', '2026-10-28 22:10:50.251504+00');
+INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0062-set-teile-schlank.sql', '2026-10-28 22:55:20.74984+00');
+INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0063-laufzustand.sql', '2026-10-28 23:05:08.525175+00');
+INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0064-pdf-auftraege.sql', '2026-10-28 23:25:34.430147+00');
+INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0065-geld-und-waehrung-pruefen.sql', '2026-10-28 23:27:03.174038+00');
 
 --
 -- PostgreSQL database dump complete

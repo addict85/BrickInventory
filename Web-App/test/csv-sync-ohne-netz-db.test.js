@@ -38,19 +38,19 @@ test('Katalogabgleich ohne Netz', { concurrency: 1 }, async (t) => {
       throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
     t.skip('Test-DB nicht erreichbar'); return;
   }
-  const vorher = (await db.get(`SELECT value FROM global_settings WHERE key='rb_csv_last_sync'`))?.value ?? null;
-  await db.run(`DELETE FROM global_settings WHERE key IN ('rb_csv_last_sync','startup_status')`);
+  const vorher = (await db.get(`SELECT wert AS value FROM laufzustand WHERE schluessel='rb_csv_last_sync'`))?.value ?? null;
+  await db.run(`DELETE FROM laufzustand WHERE schluessel IN ('rb_csv_last_sync','startup_status')`);
   global.startupStatus = { ready: false, step: 'CSV wird geladen...', progress: 0, total: 6 };
   try {
     await t.test('ohne Netz ist der Server trotzdem bereit', async () => {
       await _req('jobs/rebrickableCsvSync.js').run();
       assert.equal(global.startupStatus.ready, true, JSON.stringify(global.startupStatus));
-      const gespeichert = JSON.parse((await db.get(`SELECT value FROM global_settings WHERE key='startup_status'`)).value);
+      const gespeichert = JSON.parse((await db.get(`SELECT wert AS value FROM laufzustand WHERE schluessel='startup_status'`)).value);
       assert.equal(gespeichert.ready, true, 'die anderen Worker lesen den Stand aus der Datenbank');
     });
   } finally {
-    if (vorher !== null) await db.run(`INSERT INTO global_settings (key,value) VALUES ('rb_csv_last_sync',$1)
-                                       ON CONFLICT (key) DO UPDATE SET value=$1`, [vorher]);
+    if (vorher !== null) await db.run(`INSERT INTO laufzustand (schluessel, wert) VALUES ('rb_csv_last_sync',$1)
+                                       ON CONFLICT (schluessel) DO UPDATE SET wert = $1`, [vorher]);
     await db.pool.end().catch(() => {});
   }
 });

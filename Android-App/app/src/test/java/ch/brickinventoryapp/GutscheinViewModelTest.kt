@@ -122,7 +122,7 @@ class GutscheinViewModelTest {
         warteBis("Liste") { vm.state.value.gutscheine.size == 2 }
 
         // Die Schranke meldet „abstand": Das ViewModel wartet sichtbar.
-        server.enqueue(antwort("""{"success":false,"grund":"abstand","wartenSek":30}""", 429))
+        server.enqueue(antwort("""{"success":false,"code":"guthaben_abstand","grund":"abstand","wartenSek":30}""", 429))
         server.enqueue(antwort(zweiKarten))
         vm.frageAlleGuthabenAb()
         warteBis("Wartezeit") { (vm.state.value.guthabenLauf?.wartenSek ?: 0) > 0 }

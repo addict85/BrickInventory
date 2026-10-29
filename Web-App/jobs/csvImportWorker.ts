@@ -278,7 +278,7 @@ process.on('message', async (msg: any) => {
   // erfolgreicher Import gemeldet wuerde und den Tagesmarker setzt.
   if (!Object.prototype.hasOwnProperty.call(TASKS, task)) {
     // KEINE Nutzermeldung: Das geht per IPC an den Elternprozess und landet
-    // im Serverprotokoll. Deshalb bewusst ohne Uebersetzung (Nachtrag 130).
+    // im Serverprotokoll. Deshalb bewusst ohne Uebersetzung.
     send({ type: 'error', task, error: `Unbekannte Aufgabe: ${task}` });
     await pool.end().catch(() => {});
     process.exit(1);

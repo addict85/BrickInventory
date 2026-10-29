@@ -44,8 +44,9 @@ https.get = (opts, cb) => {
   return req;
 };
 
-const zaehler = async () => parseInt((await db.get(
-  `SELECT value FROM global_settings WHERE key = 'api_calls_bricklink'`))?.value || '0');
+const zaehler = async () => Number((await db.get(
+  `SELECT anzahl FROM api_aufrufe WHERE tag = $1 AND api = 'bricklink' AND konto = 0`,
+  [new Date().toISOString().slice(0, 10)]))?.anzahl || 0);
 
 test('BrickLink-Kontingent je HTTP-Aufruf', { concurrency: 1 }, async (t) => {
   try { await db.initSchema(); }
@@ -63,8 +64,7 @@ test('BrickLink-Kontingent je HTTP-Aufruf', { concurrency: 1 }, async (t) => {
   const setze = async (k, v) => db.run(
     `INSERT INTO global_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2`, [k, v]);
   const neuerTag = async () => {
-    await setze('api_calls_bricklink', '0');
-    await setze('api_calls_date_bricklink', heute);
+    await db.run(`DELETE FROM api_aufrufe WHERE tag = $1 AND api = 'bricklink'`, [heute]);
     await db.run('DELETE FROM price_cache WHERE set_number = $1', [SN]);
     aufrufe.length = 0;
   };

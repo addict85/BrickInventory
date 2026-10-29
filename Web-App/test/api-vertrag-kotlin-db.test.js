@@ -109,8 +109,11 @@ test('die Antworten passen zu den Kotlin-Modellen', { concurrency: 1, timeout: 1
                 ON CONFLICT (user_id, key) DO UPDATE SET value = 'EUR'`, [uid]).catch(() => {});
   await db.run(`INSERT INTO set_catalog (set_number, name, year, theme, pieces, minifigs)
                 VALUES ($1, 'Vertragsprobe', 2024, 'Test', 100, 1) ON CONFLICT (set_number) DO NOTHING`, [SET]);
-  await db.run(`INSERT INTO set_parts_catalog (set_number, part_number, part_name, color_id, color_name, quantity)
-                VALUES ($1, $2, 'Stein 2x2', $3, 'Rot', 4) ON CONFLICT DO NOTHING`, [SET, TEIL, FARBE]);
+  await db.run(`INSERT INTO set_teile (set_number, part_number, color_id, quantity)
+                VALUES ($1, $2, $3, 4) ON CONFLICT DO NOTHING`, [SET, TEIL, FARBE]);
+  await db.run(`INSERT INTO part_catalog (part_number, part_name) VALUES ($1, 'Stein 2x2') ON CONFLICT DO NOTHING`, [TEIL]);
+  await db.run(`INSERT INTO part_color_catalog (part_number, color_id, color_name)
+                VALUES ($1, $2, 'Rot') ON CONFLICT DO NOTHING`, [TEIL, FARBE]);
   await db.run(`INSERT INTO set_minifigs_catalog (set_number, fig_number, fig_name, quantity)
                 VALUES ($1, $2, 'Probefigur', 1) ON CONFLICT DO NOTHING`, [SET, FIGUR]);
   await db.run(`INSERT INTO minifigs_catalog (fig_number, fig_name) VALUES ($1, 'Probefigur') ON CONFLICT DO NOTHING`, [FIGUR]);

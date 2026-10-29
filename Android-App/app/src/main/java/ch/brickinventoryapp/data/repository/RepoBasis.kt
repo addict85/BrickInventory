@@ -1,6 +1,7 @@
 package ch.brickinventoryapp.data.repository
 
 import ch.brickinventoryapp.data.api.BrickApiService
+import ch.brickinventoryapp.data.api.Fehlerrumpf
 import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.model.*
 import kotlinx.coroutines.Dispatchers
@@ -15,23 +16,12 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Was alle Teil-Repositories gemeinsam brauchen.
- *
- * ── Warum es diese Klasse gibt (Nachtrag 155) ───────────────────────────────
- *
- * BrickRepository hatte 78 oeffentliche Funktionen in 519 Zeilen und war die
- * Anlaufstelle fuer Sets, Teile, Minifiguren, Finanzen, Haushalt, Katalog und
- * Betrieb zugleich. Aufgeteilt ist sie jetzt in fuenf Klassen nach
- * Sachgebieten; was sie teilen, steht hier.
- *
- * Nur zwei Dinge sind gemeinsam, und beide sind reine Mechanik: der Abruf mit
- * Plattenspeicher als Rueckfallebene und die Umsetzung einer Retrofit-Antwort
- * in ein Result. Keine der 78 Funktionen ruft eine andere auf — nachgeprueft,
- * null Stellen —, deshalb laesst sich entlang der Sachgebiete schneiden, ohne
- * dass etwas auseinandergerissen wird.
- *
- * `protected` statt `private`: Die Unterklassen brauchen beides, sonst
- * niemand.
+ * Was alle Teil-Repositories gemeinsam brauchen. Die Datenschicht ist nach
+ * Sachgebieten in fünf Klassen geteilt; gemeinsam sind nur zwei Stücke Mechanik —
+ * der Abruf mit Plattenspeicher als Rückfallebene und die Umsetzung einer
+ * Retrofit-Antwort in ein Result. Keine Funktion ruft eine andere auf, deshalb
+ * lässt sich so schneiden, ohne etwas auseinanderzureissen. `protected`, weil nur
+ * die Unterklassen beides brauchen.
  */
 abstract class RepoBasis(
     protected val api: BrickApiService,
@@ -39,24 +29,24 @@ abstract class RepoBasis(
 ) {
 
     /**
-     * Netzabruf mit Plattenspeicher als Rückfallebene.
-     *
-     * Reihenfolge ist bewusst „erst Netz, dann Cache": Der Server bleibt die
-     * Wahrheit, der Cache springt nur ein, wenn er nicht erreichbar ist. Ein
-     * Cache-First-Ansatz würde frische Daten verdrängen.
-     *
-     * Nutzen: Nach einem Neustart ohne Netz — oder bei langsamer Verbindung —
-     * ist die App gefüllt statt leer. Bisher lud sie bei jedem Öffnen alles neu
-     * und blieb offline vollständig unbrauchbar.
+     * Netzabruf mit Plattenspeicher als Rückfallebene. Erst Netz, dann Cache: Der
+     * Server bleibt die Wahrheit, der Cache springt nur ein, wenn er nicht erreichbar
+     * ist — Cache-First verdrängte frische Daten. So ist die App nach einem Neustart
+     * ohne Netz oder bei langsamer Verbindung gefüllt statt leer.
      */
     protected suspend fun <T : Any> cached(
         key: String,
         serializer: kotlinx.serialization.KSerializer<T>,
         call: suspend () -> Result<T>,
     ): Result<T> {
+        // Abgelegt und gelesen wird nur, wenn vor und nach dem Abruf derselbe
+        // Bereich gilt. Wechselt das Konto während des Abrufs, gehört die
+        // Antwort keinem der beiden sicher.
+        val vorher = cache.bereich()
         val fresh = call()
+        val bereich = cache.bereich()?.takeIf { it == vorher } ?: return fresh
         if (fresh is Result.Success) {
-            cache.put(key, serializer, fresh.data)
+            cache.put(bereich, key, serializer, fresh.data)
             return fresh
         }
         // Die Platte springt nur ein, wenn der Server NICHT erreichbar war
@@ -65,7 +55,7 @@ abstract class RepoBasis(
         // sie zu verschweigen. Der Rückfall trägt seinen Stand, damit die Liste
         // „Offline – Stand von …“ zeigen kann statt frisch auszusehen.
         if (fresh !is Result.Error || !fresh.transient) return fresh
-        val (stored, stand) = cache.getMitStand(key, serializer) ?: return fresh
+        val (stored, stand) = cache.getMitStand(bereich, key, serializer) ?: return fresh
         return Result.Success(stored, stand = stand)
     }
 
@@ -76,23 +66,22 @@ abstract class RepoBasis(
                 response.body()?.let { Result.Success(it) }
                     ?: Result.Error("", art = Fehlerart.LEERE_ANTWORT)
             } else {
-                // Fehler-Body ({success:false, error:"…"}) auslesen, damit z.B. die
-                // Meldung zum Kaufdatum-Konflikt beim Nutzer ankommt statt nur "Conflict".
-                val bodyMsg = try {
-                    val raw = response.errorBody()?.string()
-                    if (!raw.isNullOrBlank()) org.json.JSONObject(raw).optString("error").takeIf { it.isNotBlank() } else null
-                } catch (_: Exception) { null }
+                // Satz und Code des Servers: der Satz zum Anzeigen, der Code zum Verzweigen.
+                val rumpf = try {
+                    Fehlerrumpf.lies(response.errorBody()?.string())
+                } catch (_: Exception) { Fehlerrumpf(null, null) }
                 // Servermeldung gewinnt, wenn es eine gibt: Sie ist genauer als
                 // jede Einordnung hier. Nur wenn keine da ist, wird die Ursache
                 // als Aufzählung gemeldet und die Anzeige formuliert den Satz.
                 Result.Error(
-                    message = bodyMsg ?: "",
+                    message = rumpf.text ?: "",
                     unauthorized = response.code() == 401,
                     art = when {
-                        bodyMsg != null -> null
+                        rumpf.text != null -> null
                         response.code() == 401 -> Fehlerart.SITZUNG_ABGELAUFEN
                         else -> Fehlerart.SERVER
                     },
+                    code = rumpf.code,
                     httpCode = response.code()
                 )
             }
@@ -109,31 +98,16 @@ abstract class RepoBasis(
         } catch (e: java.net.SocketTimeoutException) {
             Result.Error("", transient = true, art = Fehlerart.ZEIT)
         } catch (e: java.io.IOException) {
-            // ── Der Auffangzweig fuer alles, was der Transport wirft ─────────
+            // ── Der Auffangzweig für alles, was der Transport wirft ──
             //
-            // Die drei Zweige darueber bleiben, weil sie eine eigene Fehlerart
-            // tragen (NETZ gegen ZEIT) — der Nutzer soll „keine Verbindung"
-            // von „zu langsam" unterscheiden koennen.
+            // Die Zweige darüber bleiben, weil sie eine eigene Fehlerart tragen (NETZ gegen
+            // ZEIT) — „keine Verbindung“ ist nicht „zu langsam“. Dieser fängt jede übrige
+            // IOException: Sie kommt aus dem Aufruf oder dem Lesen des Rumpfes, ist also
+            // definitionsgemäss ein Transportproblem und wiederholbar — unabhängig davon,
+            // welchen Untertyp eine OkHttp-Fassung für einen Verbindungsabriss wählt.
             //
-            // Dieser hier faengt den Rest. Warum er noetig wurde: Bis okhttp 4
-            // kam ein ABRISS der Verbindung als ConnectException an und lief in
-            // den zweiten Zweig. Unter okhttp 5 wirft derselbe Abriss einen
-            // anderen Untertyp, und damit fiel er in den letzten Zweig —
-            // `transient = false`, also kein Wiederholen. GEMESSEN: Genau das
-            // hat „abgerissene Verbindung ist ein Netzfehler und
-            // voruebergehend" rot gemacht.
-            //
-            // Die Aufzaehlung war das Zerbrechliche daran, nicht die Bibliothek.
-            // Eine IOException IST definitionsgemaess ein Transportproblem: Sie
-            // kommt aus dem Aufruf selbst oder aus dem Lesen des Rumpfes, und
-            // beides ist ein Weg ueber das Netz. Dass sie wiederholbar ist,
-            // haengt an dieser Eigenschaft und nicht daran, welchen Untertyp
-            // eine Bibliotheksfassung gerade waehlt.
-            //
-            // Was NICHT hierher faellt und auch nicht soll: Fehler beim
-            // Auswerten der Antwort (Serialisierung) sind keine IOException und
-            // laufen weiter unten als UNBEKANNT durch — ein Wiederholen
-            // brauchte dort auch nichts.
+            // Fehler beim Auswerten der Antwort (Serialisierung) sind keine IOException und
+            // laufen weiter unten als UNBEKANNT durch — Wiederholen brächte dort nichts.
             Result.Error("", transient = true, art = Fehlerart.NETZ, technisch = e.message)
         } catch (e: Exception) {
             // e.message ist hier durchweg englischer Bibliothekstext ("Socket

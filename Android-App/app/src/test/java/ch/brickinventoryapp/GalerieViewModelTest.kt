@@ -48,10 +48,11 @@ class GalerieViewModelTest {
     private lateinit var pfade: PfadServer
     private lateinit var t: TestDienste
 
-    private fun vm(gemerkt: SavedStateHandle = SavedStateHandle()) = t.merke(GalerieViewModel(
+    private fun vm(gemerkt: SavedStateHandle = SavedStateHandle(), t: TestDienste = this.t) = t.merke(GalerieViewModel(
         t.dienste, SetsRepository(t.api, t.cache), FinanzenRepository(t.api, t.cache), gemerkt))
 
-    private fun abrufe() = pfade.anfragenAn("GET /api/v1/sets?") + pfade.anfragenAn("GET /api/v1/sets ")
+    private fun abrufe(pfade: PfadServer = this.pfade) =
+        pfade.anfragenAn("GET /api/v1/sets?") + pfade.anfragenAn("GET /api/v1/sets ")
 
     @Before
     fun auf() {
@@ -91,13 +92,15 @@ class GalerieViewModelTest {
         erstes.setGallerySort("year_desc")
         erstes.setGalleryQuery("Falke")
 
-        val neu = vm(gemerkt)
-        val g = neu.galleryState.value
-        assertEquals(Triple("Falke", "Technic", "year_desc"), Triple(g.galleryQuery, g.galleryTheme, g.gallerySort))
-        neu.loadSets()
-        TestApi.warteBis("Liste geladen") { neu.galleryState.value.sets.isNotEmpty() }
-        val abruf = abrufe().last()
-        assertTrue(abruf, "search=Falke" in abruf && "theme=Technic" in abruf && "sort=year_desc" in abruf)
+        pfade.neuerProzess { pfade, t ->
+            val neu = vm(gemerkt, t)
+            val g = neu.galleryState.value
+            assertEquals(Triple("Falke", "Technic", "year_desc"), Triple(g.galleryQuery, g.galleryTheme, g.gallerySort))
+            neu.loadSets()
+            TestApi.warteBis("Liste geladen") { neu.galleryState.value.sets.isNotEmpty() }
+            val abruf = abrufe(pfade).single()
+            assertTrue(abruf, "search=Falke" in abruf && "theme=Technic" in abruf && "sort=year_desc" in abruf)
+        }
     }
 
     @Test

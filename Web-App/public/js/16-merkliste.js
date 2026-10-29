@@ -1,8 +1,8 @@
 import { registerActions } from './00-registry.js';
 import { locale, t, tRaw } from '../i18n.js';
-import { bildTag, platzhalterInhalt, setnummerFeldGueltig, leerZustand, ico, CURRENCY, G, TRASH_ICON_SVG, api, esc, escJs, escUrl, fmtN, fullUrl, imgUrl, knopfBesetzt, thumbUrl, toast } from './01-core.js';
+import { bildTag, platzhalterInhalt, setnummerFeldGueltig, leerZustand, ico, CURRENCY, G, TRASH_ICON_SVG, api, esc, escJs, escUrl, fmtN, fullUrl, imgUrl, knopfBesetzt, thumbUrl, toast, zuruecksetzenKnopf } from './01-core.js';
 import { detailZeile } from './01-bausteine.js';
-import { alarmBlock, ladeAlarm, priceChartSVG, renderMarketRows, setzeAlarmFeld } from './07-admin.js';
+import { alarmBlock, diagrammBreite, ladeAlarm, priceChartSVG, renderMarketRows, setzeAlarmFeld } from './07-admin.js';
 import { leereLagerortFeld, selectedOwner, selectedStorage, haushaltsKonten, loadGallery, loadStats } from './02-gallery.js';
 import { addScopeParam } from './14-scope.js';
 
@@ -81,7 +81,7 @@ function zeile(w) {
   ].filter(Boolean).join(' · ');
 
   const alarm = w.alarm
-    ? `<span style="background:var(--bg);border:1px solid var(--bdr)">
+    ? `<span data-stil="background:var(--bg);border:1px solid var(--bdr)">
          ${ico(w.alarm.ausgeloest ? 'alarm' : 'uhr')}
          ${esc(tRaw(w.alarm.richtung === 'ueber' ? 'detail.alert_above' : 'detail.alert_below'))}
          ${esc(String(w.alarm.schwelle))}
@@ -91,7 +91,7 @@ function zeile(w) {
   // aufkommt — und sie meint das BLICKFELD: Beim Grossvater heisst „ich habe
   // es" auch „der Enkel hat es".
   const schon = w.owned
-    ? `<span style="background:var(--ok-bg,var(--bg));border:1px solid var(--bdr)">${esc(tRaw('wanted.owned'))}</span>`
+    ? `<span data-stil="background:var(--ok-bg,var(--bg));border:1px solid var(--bdr)">${esc(tRaw('wanted.owned'))}</span>`
     : '';
 
   // ── Marktpreis statt Knopf ────────────────────────────────────────────────
@@ -109,8 +109,8 @@ function zeile(w) {
   // jobs/priceJob.ts holt die Preise der Merkposten taeglich; bis zum ersten
   // Lauf nach dem Eintragen gibt es schlicht noch keinen.
   const preis = w.marktpreis != null
-    ? `<span title="${esc(tRaw('detail.market_price'))}" style="font-weight:700;white-space:nowrap">${fmtN(w.marktpreis, w.waehrung || CURRENCY)}</span>`
-    : `<span style="color:var(--mut);white-space:nowrap">—</span>`;
+    ? `<span title="${esc(tRaw('detail.market_price'))}" data-stil="font-weight:700;white-space:nowrap">${fmtN(w.marktpreis, w.waehrung || CURRENCY)}</span>`
+    : `<span data-stil="color:var(--mut);white-space:nowrap">—</span>`;
 
   const arg = escJs(`${w.set_number}|${w.condition}|${w.user_id}`);
   return `
@@ -130,16 +130,16 @@ function zeile(w) {
          erste Entwurf gescheitert — dieselbe Falle wie in
          utils/handlers/parts.ts, wo derselbe Hinweis steht. -->
     <div class="mk-zeile" tabindex="0" role="button" data-click="oeffneMerkpostenDetail" data-arg="${arg}"
-         style="position:relative;display:flex;gap:12px;align-items:center;padding:10px 44px 10px 10px;border:1px solid var(--bdr);
+         data-stil="position:relative;display:flex;gap:12px;align-items:center;padding:10px 44px 10px 10px;border:1px solid var(--bdr);
                 border-radius:var(--rad);background:var(--sur);margin-bottom:8px;cursor:pointer">
       <div class="ca"><button class="delbtn" data-click="merkpostenLoeschenStop" tabindex="-1" aria-hidden="true" data-arg="${arg}"
            title="${esc(tRaw('wanted.remove'))}" aria-label="${esc(tRaw('wanted.remove'))}">${TRASH_ICON_SVG}</button></div>
       ${bild}
-      <div style="flex:1;min-width:0">
-        <div style="font-weight:600">${titel}</div>
-        <div style="font-size:var(--fs-1);color:var(--mut)">${unter}</div>
+      <div data-stil="flex:1;min-width:0">
+        <div data-stil="font-weight:600">${titel}</div>
+        <div data-stil="font-size:var(--fs-1);color:var(--mut)">${unter}</div>
       </div>
-      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+      <div data-stil="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
         ${alarm}${schon}${preis}
       </div>
     </div>`;
@@ -168,6 +168,13 @@ function merklisteParams() {
   return p.toString();
 }
 
+/** Suche und Zustand leeren; die Sortierung ist kein Filter und bleibt. */
+export function merklisteZuruecksetzen() {
+  if (G('mks')) G('mks').value = '';
+  if (G('mkcond')) G('mkcond').value = '';
+  ladeMerkliste();
+}
+
 /** Die Liste laden und zeichnen. */
 export async function ladeMerkliste() {
   const ziel = G('mk-list');
@@ -189,7 +196,7 @@ export async function ladeMerkliste() {
   ziel.innerHTML = _merkposten.length
     ? _merkposten.map(zeile).join('')
     : (gefiltert
-      ? leerZustand({ ico: 'suche', titel: tRaw('wanted.no_results') })
+      ? leerZustand({ ico: 'suche', titel: tRaw('wanted.no_results'), knopf: zuruecksetzenKnopf('merkliste') })
       : leerZustand({ ico: 'merkliste', titel: tRaw('wanted.empty'), text: tRaw('wanted.empty_hint') }));
 }
 
@@ -382,7 +389,7 @@ export async function oeffneMerkpostenDetail(arg) {
   G('mk-m-img').src = bild;
   G('mk-m-img').dataset.orig = bild;
   G('mk-m-sparkline-content').innerHTML =
-    `<span style="color:var(--mut);font-size:var(--fs-1)">${esc(tRaw('common.loading'))}</span>`;
+    `<span data-stil="color:var(--mut);font-size:var(--fs-1)">${esc(tRaw('common.loading'))}</span>`;
   G('mk-m-market-rows').innerHTML = '';
   G('mk-m-det').innerHTML = zeilen(w);
   G('mk-m-bricklink').style.display = 'none';
@@ -429,8 +436,8 @@ export async function oeffneMerkpostenDetail(arg) {
   api('GET', `/v1/sets/${encodeURIComponent(set_number)}/price-history`).then(ph => {
     if (_detail !== arg) return;
     G('mk-m-sparkline-content').innerHTML = ph?.success
-      ? priceChartSVG(ph, 'wl' + set_number.replace(/[^a-zA-Z0-9]/g, ''))
-      : `<span style="color:var(--mut);font-size:var(--fs-1)">${esc(tRaw('detail.no_history'))}</span>`;
+      ? priceChartSVG(ph, 'wl' + set_number.replace(/[^a-zA-Z0-9]/g, ''), diagrammBreite(G('mk-m-sparkline-content')))
+      : `<span data-stil="color:var(--mut);font-size:var(--fs-1)">${esc(tRaw('detail.no_history'))}</span>`;
   }).catch(() => {});
 }
 

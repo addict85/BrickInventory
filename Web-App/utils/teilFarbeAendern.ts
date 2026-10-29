@@ -26,36 +26,20 @@ export type FarbWechsel = {
 };
 
 /**
- * `vorhanden`    Das Farbbild stand schon da — nichts zu holen.
- * `katalog`      Aus einer eingespielten Set-Teileliste (lokal).
+ * `vorhanden`    Das Farbbild stand schon da (auch aus einer eingespielten
+ *                Setliste) — nichts zu holen.
  * `rebrickable`  Über die Rebrickable-API geholt.
  * `null`         Nirgends eines gefunden.
  */
-export type BildQuelle = 'vorhanden' | 'katalog' | 'rebrickable' | null;
+export type BildQuelle = 'vorhanden' | 'rebrickable' | null;
 
 /**
  * Das Bild der ZIELFARBE nachtragen — nach der Transaktion, nie darin.
  * Ausführlich: docs/begruendungen/utils/teilFarbeAendern.ts.md#bildnachtragen
  */
 async function bildNachtragen(partNumber: string, farbe: number): Promise<BildQuelle> {
-  // Die beiden lokalen Abfragen standen hier einzeln; sie stehen jetzt in
-  // katalogTeil() (utils/katalogPflege.ts), weil addManualPartIntern()
-  // dieselbe Reihenfolge braucht. Die Übersetzung der Quelle in `BildQuelle`
-  // bleibt hier: 'vorhanden' und 'katalog' sind die Worte DIESES Weges.
   const lokal = await katalogTeil(partNumber, farbe);
   if (lokal?.bildQuelle === 'farbe') return 'vorhanden';
-
-  if (lokal?.bildQuelle === 'set') {
-    try {
-      await merkeTeilFarbe(partNumber, farbe, null, null, lokal.bild, lokal.bildDatei);
-      return 'katalog';
-    } catch (e) {
-      // Die Farbe IST geändert — der Aufrufer darf das nicht als Fehlschlag
-      // sehen, nur weil das Bild nicht dazugekommen ist.
-      meldeUndWeiter('farbwechsel:bild aus set_parts_catalog', e);
-      return null;
-    }
-  }
 
   const info = await lookupPart(partNumber, farbe).catch(() => null);
   if (!info?.image_url) return null;

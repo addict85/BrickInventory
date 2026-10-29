@@ -89,7 +89,7 @@ fun AcquisitionSummarySection(
                 Spacer(Modifier.height(Abstaende.winzig))
                 OutlinedButton(onClick = onEditPrices,
                     contentPadding = PaddingValues(horizontal = 10.dp, vertical = Abstaende.haar),
-                    modifier = Modifier.height(28.dp)) {
+                    modifier = Modifier.heightIn(min = 28.dp)) {
                     Icon(Icons.Default.Edit, null, Modifier.size(14.dp))
                     Spacer(Modifier.width(Abstaende.winzig))
                     Text(stringResource(R.string.detail_edit_prices), style = MaterialTheme.typography.labelMedium)
@@ -103,16 +103,10 @@ fun AcquisitionSummarySection(
 // ── Condition badge (shared by sets, parts, figs) ────────────────────────────
 
 /**
- * Eine Plakette JE erfasstem Zustand.
- *
- * `condition` ist ein Aggregat und kennt nur einen Wert („gebraucht, sobald
- * eine Erfassung gebraucht ist"). Wer ein Exemplar neu und eines gebraucht
- * gekauft hat, sah damit nur „Gebraucht" — obwohl die Neu-Erfassung mit ihrem
- * eigenen Preis in die Bewertung eingeht.
- *
- * Welche Plaketten es gibt, entscheidet der Server (`conditions`); hier wird
- * nichts abgeleitet. Ältere Antworten ohne das Feld fallen auf `condition`
- * zurück — dann sieht es aus wie bisher.
+ * Eine Plakette je erfasstem Zustand. `condition` ist ein Aggregat mit einem Wert
+ * und verschwiege die Neu-Erfassung neben einer gebrauchten. Welche es gibt,
+ * entscheidet der Server (`conditions`); ältere Antworten ohne das Feld fallen auf
+ * `condition` zurück.
  */
 @Composable
 fun ConditionBadges(conditions: List<String>, fallback: String? = null) {
@@ -151,18 +145,8 @@ fun ConditionBadge(condition: String) {
 }
 
 /**
- * Ersatzteil-Plakette — dieselbe Form wie [ConditionBadge] daneben.
- *
- * Sets enthalten ein Tuetchen Ersatzteile; Rebrickable kennzeichnet sie. Der
- * Text dafuer lag in beiden Sprachen bereit und in der App gab es sogar einen
- * Helfer, der das Kennzeichen deutete — gezeichnet hat die Plakette nie
- * jemand. Der Grund stand im Feld selbst: `is_spare` kam in vier
- * verschiedenen Schreibweisen an. Seit der Server sie an einer Stelle liest
- * (istErsatzteil() in utils/validate.ts), ist es ein Wahrheitswert.
- *
- * Zurueckhaltender als die Zustands-Plakette: Ein Ersatzteil ist eine
- * Nebeninformation, kein Zustand — deshalb der ruhige Flaechenton statt der
- * Signalfarbe.
+ * Ersatzteil-Plakette in der Form von [ConditionBadge], aber im ruhigen
+ * Flächenton: Ein Ersatzteil ist eine Nebeninformation, kein Zustand.
  */
 @Composable
 fun ErsatzteilPlakette(modifier: Modifier = Modifier) {
@@ -184,26 +168,16 @@ fun ErsatzteilPlakette(modifier: Modifier = Modifier) {
 // ConditionBadge(s) und der Kaufpreis-Editor.
 
 /**
- * Der Fuss einer Kachel fuer einen MANUELL erfassten Eintrag: der Preis.
+ * Der Fuss einer Kachel für einen manuell erfassten Eintrag: der Preis, wie auf
+ * der `man-tile` der Webapp und in derselben Reihenfolge:
  *
- * ── Warum es das gibt (Nachtrag 134) ────────────────────────────────────────
+ *   avg_purchase_price ?? unit_price ?? purchase_price
  *
- * Die Webapp zeigt auf ihrer `man-tile` unter den Plaketten den Preis, die App
- * zeigte ihn nicht. Hier stand bis zum Ausbau des Notizfeldes (Migration 0022)
- * auch die Notiz.
+ * Der erste ist mengengewichtet über alle Erfassungen; der zweite nur der zuletzt
+ * geschriebene Einzelpreis.
  *
- * ── Welcher Preis ───────────────────────────────────────────────────────────
- *
- * Dieselbe Reihenfolge wie in der Webapp:
- *
- *     avg_purchase_price ?? unit_price ?? purchase_price
- *
- * Der erste ist der mengengewichtete Kaufpreis ueber alle Erfassungen; der
- * zweite ist nur der ZULETZT geschriebene Einzelpreis. Wer ein Teil einmal
- * fuer 2.- und einmal fuer 8.- gekauft hat, saehe sonst 8.- statt 5.-.
- *
- * @param preis    Roher Betrag; null = keiner hinterlegt, dann steht „—" da.
- * @param waehrung Waehrungscode aus den Einstellungen.
+ * @param preis    roher Betrag; null = keiner hinterlegt, dann steht „—“ da
+ * @param waehrung Währungscode aus den Einstellungen
  */
 @Composable
 fun ManuelleKachelFuss(preis: Double?, waehrung: String) {
@@ -219,24 +193,10 @@ fun ManuelleKachelFuss(preis: Double?, waehrung: String) {
 }
 
 /**
- * Die vier Eingaben, so wie der Server sie braucht.
- *
- * ── Warum das eine eigene Funktion ist ──────────────────────────────────────
- *
- * Die UMRECHNUNG stand zeichengleich in AddPartDialog und AddMinifigDialog:
- *
- *     anzahl.toIntOrNull() ?: 1
- *     preis.replace(',', '.').toDoubleOrNull()
- *     if (householdMembers.size > 1) besitzer else null
- *
- * Jede Zeile ist eine Entscheidung, keine Formalie: Eine leere Anzahl heisst
- * eins und nicht null; das Komma der deutschen Tastatur muss zum Punkt werden,
- * sonst kommt beim Server nichts an; und ohne Haushalt darf gar kein Besitzer
- * mitgehen, damit der Server beim eigenen Konto bleibt.
- *
- * Drei Entscheidungen mal zwei Dialoge sind sechs Stellen, an denen genau eine
- * geaendert werden koennte. Die Felder selbst stehen schon gemeinsam da
- * ([ErfassungsFelder]) — die Bedeutung ihrer Werte gehoert daneben.
+ * Die vier Eingaben, wie der Server sie braucht — eine Umrechnung für beide
+ * Dialoge: Eine leere Anzahl heisst eins, das Komma der deutschen Tastatur wird
+ * zum Punkt, und ohne Haushalt geht kein Besitzer mit, damit der Server beim
+ * eigenen Konto bleibt.
  */
 data class ErfassungsWerte(
     val anzahl: Int,
@@ -263,26 +223,10 @@ fun erfassungsWerte(
 )
 
 /**
- * Anzahl, Kaufpreis und Zustand — die drei Angaben, die JEDE manuelle
- * Erfassung hat, ob Teil oder Minifigur.
- *
- * ── Warum das zusammengezogen ist ───────────────────────────────────────────
- *
- * NACHGEMESSEN: Der Block stand zeichengleich in AddPartDialog (PartsDialogs.kt)
- * und AddMinifigDialog (MinifigsScreen.kt) — dieselben Felder, dieselben Formen,
- * dieselben Tastaturen, und darunter dieselbe Zustandszeile. Nur die Namen der
- * Textressourcen waren verschieden, und deren INHALT war in beiden Sprachen
- * wortgleich. Zwei Dialoge, die dasselbe erfassen und gleich aussehen sollen,
- * sind der Fall, für den es diese Datei gibt.
- *
- * Der Zustand bleibt bei den Aufrufern: Dort steht er in `rememberSaveable` und
- * übersteht damit eine Drehung. Hierher gereicht wird nur, was angezeigt wird —
- * eine Textfeld-Gruppe, die ihre Werte selbst hielte, wäre in einem Dialog
- * genau einmal richtig und beim nächsten Aufruf falsch vorbelegt.
- *
- * Was NICHT hierher kommt, ist die jeweilige Nummer: Ein Teil hat Nummer und
- * Farbe, eine Figur ihre Rebrickable- und ihre BrickLink-Nummer. Das ist der
- * echte Unterschied zwischen den beiden Dialogen, und er soll sichtbar bleiben.
+ * Anzahl, Kaufpreis und Zustand — was jede manuelle Erfassung hat, ob Teil oder
+ * Figur; eine Fassung, damit beide Dialoge gleich aussehen. Der Zustand bleibt
+ * beim Aufrufer in `rememberSaveable`, damit er eine Drehung übersteht. Die Nummer
+ * bleibt draussen: Sie ist der echte Unterschied der beiden Dialoge.
  */
 @Composable
 fun ErfassungsFelder(
@@ -293,13 +237,8 @@ fun ErfassungsFelder(
     zustand: String,
     onZustand: (String) -> Unit,
     /**
-     * Lagerort und sein Vorrat.
-     *
-     * Marcos Befund vom 24.09.: „Bei den manuell erfassten Teilen kann ich beim
-     * Erfassen keinen Lagerort setzen. Bei manuelle erfassten Minifiguren kann
-     * ich beim Erfassen keinen Lagerort setzen." Das Feld steht hier und nicht
-     * in den beiden Dialogen, aus demselben Grund wie alles andere in dieser
-     * Funktion: Es ist derselbe Block.
+     * Lagerort und sein Vorrat — hier, weil er zum selben Block gehört wie die übrigen
+     * Erfassungsfelder.
      */
     lagerort: String = "",
     onLagerort: (String) -> Unit = {},
@@ -325,29 +264,10 @@ fun ErfassungsFelder(
 }
 
 /**
- * Die Kachel eines MANUELL erfassten Teils oder einer manuell erfassten
- * Minifigur.
- *
- * ── Warum eine gemeinsame Fassung ───────────────────────────────────────────
- *
- * NACHGEMESSEN standen ManualPartTile (PartsScreen.kt) und ManualFigTile
- * (MinifigsScreen.kt) mit drei sich ueberlappenden Achtzeilern in der
- * Doppelungsmessung — Rahmen, Bildkasten, Mengen-Plakette, beide Knoepfe und
- * der Fuss waren zeichengleich. Was die Doppelung kostet, steht schon in
- * ManualFigTile: Der Figuren-Kachel fehlten Zustands- und Besitzer-Plaketten
- * MONATELANG, weil sie nur in der Teile-Kachel nachgezogen wurden. Gefunden
- * wurde das nicht durch Lesen, sondern durch den Vergleich der beiden Dateien.
- *
- * Eine gemeinsame Kachel macht diesen Fehler unmoeglich: Was hier steht, steht
- * fuer beide.
- *
- * ── Was Parameter ist und was nicht ─────────────────────────────────────────
- *
- * Verschieden sind nur vier Dinge, und die kommen herein: das Ersatzbild (Stein
- * bzw. Figur), der Farbpunkt und die Farbzeile (beides gibt es nur bei Teilen)
- * und die Bezeichnung. Alles andere — Groesse, Form, Erhebung, die Stellen der
- * Plaketten, die Reihenfolge Name/Farbe/Zustand/Besitzer/Preis — gehoert zur
- * Kachel und nicht zum Aufrufer.
+ * Die Kachel eines manuell erfassten Teils oder einer Figur — eine Fassung, damit
+ * Plaketten und Fuss nicht nur in einer nachgezogen werden. Hinein kommen nur die
+ * vier Unterschiede (Ersatzbild, Farbpunkt, Farbzeile, Bezeichnung); Grösse, Form
+ * und Reihenfolge gehören zur Kachel.
  *
  * @param platzhalter Was im Bildkasten steht, wenn es kein Bild gibt.
  */
@@ -415,16 +335,8 @@ fun ManuelleKachel(
                             Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary)
                     }
                 }
-                // Hier sass der Papierkorb. Marcos Vorgabe vom 24.09.: „Den
-                // Papierkorb auf den Kacheln der manuell erfassten Teilen und
-                // manuell erfassten Minifiguren entfernen. […] Auf den Detail
-                // Seiten soll jeweils der Papierkorb angezeigt werden wie in
-                // der Detailseite der sets."
-                //
-                // Die ganze Karte oeffnet ohnehin das Detail, und dort steht
-                // er — an derselben Stelle wie beim Set. Ein Loeschknopf auf
-                // einer Flaeche, die etwas anderes tut, war der Grund, warum
-                // er 24.dp gross sein musste, um nicht im Weg zu sein.
+                // Kein Papierkorb auf der Kachel: Die Karte öffnet das Detail, und dort steht er
+                // an derselben Stelle wie beim Set.
             }
             Column(Modifier.padding(horizontal = 6.dp, vertical = Abstaende.winzig)) {
                 Text(name, style = MaterialTheme.typography.labelSmall,

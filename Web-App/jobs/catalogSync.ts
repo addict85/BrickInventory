@@ -9,6 +9,8 @@ import { downloadFile } from '../clients/rebrickable';
 import { generateThumb } from '../utils/thumbs';
 import { neuestesInventar } from '../utils/rbInventar';
 import { beideSchreibweisen } from '../utils/setNummer';
+import { merkeTeil, merkeTeilFarbe, merkeSetTeil, setzeTeilBildLokal } from '../utils/katalogPflege';
+import { logAndContinue } from '../utils/httpError';
 // Pfade zentral auflösen — __dirname zeigt seit dem dist/-Build nicht mehr
 // auf die Wurzel. Siehe utils/appPaths.ts.
 const path = require('path');
@@ -89,31 +91,13 @@ async function syncSetCatalog(setNumber: string) {
 
     if (total === 0) {
       // First time: full upsert
-      await db.run(
-        // Ohne bl_part_number — siehe jobs/partsCatalogEnrich.ts
-        // (Migration 0037). Die Nummer stammt aus derselben
-        // Inventar-Abfrage und steht dort schon in bl_zuordnung; sie kommt
-        // ueber den JOIN mit, nicht ueber diese Tabelle.
-        `INSERT INTO set_parts_catalog
-           (set_number,part_number,part_name,color_id,color_name,color_hex,image_url,image_local,quantity,is_spare)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
-         ON CONFLICT (set_number,part_number,color_id) DO UPDATE SET
-           part_name      = COALESCE(EXCLUDED.part_name, set_parts_catalog.part_name),
-           color_name     = COALESCE(EXCLUDED.color_name, set_parts_catalog.color_name),
-           color_hex      = COALESCE(EXCLUDED.color_hex, set_parts_catalog.color_hex),
-           image_url      = COALESCE(EXCLUDED.image_url, set_parts_catalog.image_url),
-           image_local    = COALESCE(EXCLUDED.image_local, set_parts_catalog.image_local),
-           quantity       = EXCLUDED.quantity, updated_at = NOW()`,
-        [n, p.part_number, p.part_name||'', p.color_id||0,
-         p.color_name||'', p.color_hex||null, p.image_url||null, imageLocal, p.quantity||1, 0]
-      ).catch(()=>{});
+      // Name, Farbe und Bild in die Kataloge, Menge in die Setliste (Migration 0062).
+      const melde = logAndContinue('katalogSync:setteil');
+      await merkeTeil(p.part_number, p.part_name).catch(melde);
+      await merkeTeilFarbe(p.part_number, p.color_id||0, p.color_name, p.color_hex, p.image_url, imageLocal).catch(melde);
+      await merkeSetTeil(n, p.part_number, p.color_id||0, p.quantity||1, 0).catch(melde);
     } else if (imageLocal) {
-      // Parts exist, just update image_local where missing
-      await db.run(
-        `UPDATE set_parts_catalog SET image_local=$1, updated_at=NOW()
-         WHERE set_number=$2 AND part_number=$3 AND color_id=$4 AND image_local IS NULL`,
-        [imageLocal, n, p.part_number, p.color_id||0]
-      ).catch(()=>{});
+      await setzeTeilBildLokal(p.part_number, p.color_id||0, imageLocal).catch(logAndContinue('katalogSync:bild'));
     }
   }
 

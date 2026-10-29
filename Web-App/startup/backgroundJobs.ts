@@ -1,4 +1,4 @@
-// ── Echte Importe statt später require() (Nachtrag 139) ─────────────────────
+// ── Echte Importe statt später require() ─────────────────────
 //
 // Beim Auslagern aus server.ts wanderten zehn `require('./jobs/...')`
 // WORTGLEICH mit. Aus startup/ gesehen gibt es './jobs' nicht — jeder dieser
@@ -13,6 +13,8 @@ import * as catalogSync from '../jobs/catalogSync';
 import * as nachlaeufe from '../jobs/startNachlaeufe';
 import { purgeAltePreise } from '../utils/priceHistory';
 import { purgeExpiredTokens } from '../utils/auth';
+import { raeumeAnmeldezaehlerAuf } from '../utils/loginLimiter';
+import { verschluesseleAltbestand } from '../utils/geheimnisAltbestand';
 import { raeumePapierkorbAuf } from '../utils/papierkorb';
 import { logAndContinue } from '../utils/httpError';
 import { startImgCacheCleanup } from '../routes/imgProxy';
@@ -42,6 +44,18 @@ export async function starteHintergrundlaeufe(): Promise<void> {
     };
     purge();
     setInterval(purge, 60 * 60 * 1000).unref();
+  }
+
+  // Klartext-Geheimnisse aus der Zeit vor der Verschlüsselung (utils/geheimnis.ts).
+  verschluesseleAltbestand()
+    .then(n => { if (n) console.log(`[geheimnis] ${n} Geheimnisse nachträglich verschlüsselt`); })
+    .catch(logAndContinue('geheimnis:altbestand'));
+
+  // Abgelaufene Anmeldezähler (utils/loginLimiter.ts).
+  {
+    const zaehler = async () => { await raeumeAnmeldezaehlerAuf().catch(logAndContinue('anmeldung:zaehler aufräumen')); };
+    zaehler();
+    setInterval(zaehler, 60 * 60 * 1000).unref();
   }
 
   // Papierkorb-Einträge nach Ablauf der 30 Tage entfernen.
@@ -87,7 +101,7 @@ export async function starteHintergrundlaeufe(): Promise<void> {
   starteJobAnleitungen();
 
   // Bilder, die über den Proxy angefragt wurden, im Hintergrund lokal ablegen
-  // und verkleinern (Nachtrag 102). Die Anfrage selbst rechnet nichts mehr.
+  // und verkleinern. Die Anfrage selbst rechnet nichts mehr.
   starteJobBilder();
 
   setTimeout(() => catalogSync.syncAllMissing().catch(() => {}), 10000);

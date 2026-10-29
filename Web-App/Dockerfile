@@ -40,7 +40,7 @@
 # drei zusammen.
 #
 # ── Build Stage ────────────────────────────────────────────────────────────────
-FROM node:26-alpine AS builder
+FROM node:26-alpine@sha256:40cd011b55415bc894e45b02fdd5a5dfde056921b7d23a64c74f80497af48797 AS builder
 
 WORKDIR /app
 
@@ -164,7 +164,7 @@ RUN npm prune --omit=dev --ignore-scripts && npm cache clean --force
 
 # ── Runtime Stage ──────────────────────────────────────────────────────────────
 # Dieselbe Zeile wie im Build-Stage oben — siehe die Begründung dort.
-FROM node:26-alpine
+FROM node:26-alpine@sha256:40cd011b55415bc894e45b02fdd5a5dfde056921b7d23a64c74f80497af48797
 
 WORKDIR /app
 

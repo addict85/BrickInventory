@@ -214,10 +214,8 @@ fun SetupScreen(
         }
         Spacer(Modifier.height(Abstaende.gross))
         Text(
-            // Aus BuildConfig statt als Literal: Das fest eingetragene Datum
-            // stammte vom Juni 2026 und wurde bei keinem Build seither
-            // nachgeführt — die Zeile zeigte also verlässlich das Falsche.
-            // versionName wird bei jedem Build erzeugt (app/build.gradle.kts).
+            // Aus BuildConfig statt als Literal: versionName entsteht bei jedem Build
+            // (app/build.gradle.kts), ein fest eingetragener Stand veraltet unbemerkt.
             stringResource(R.string.setup_build, ch.brickinventoryapp.BuildConfig.VERSION_NAME),
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
@@ -273,10 +271,9 @@ fun QrSetupScannerScreen(onResult: (String) -> Unit, onDismiss: () -> Unit) {
     }
 }
 
-// ExperimentalGetImage kommt hinzu: Das Einverstaendnis fuer
-// imageProxy.image stand als `@ExperimentalGetImage` an der lokalen
-// Variablen, und das ist die MARKIERUNG, nicht das Einverstaendnis. Lint
-// meldete es als Error (UnsafeOptInUsageError).
+// ExperimentalGetImage gehört hierher: Das Einverständnis für imageProxy.image ist
+// diese Annotation; `@ExperimentalGetImage` an der lokalen Variablen wäre die
+// Markierung (Lint: UnsafeOptInUsageError).
 @androidx.annotation.OptIn(ExperimentalCamera2Interop::class, ExperimentalGetImage::class)
 @Composable
 fun QrCameraPreview(frozen: Boolean, onQrFound: (String) -> Unit) {
@@ -291,10 +288,9 @@ fun QrCameraPreview(frozen: Boolean, onQrFound: (String) -> Unit) {
         )
     }
 
-    // Siehe BarcodeScannerScreen: remember() räumt nicht auf. Ohne dieses
-    // DisposableEffect überleben Analyse-Thread und ML-Kit-Client jeden
-    // Besuch des Setup-Screens. Betrifft nur das Aufräumen nach dem
-    // Verlassen — der kontinuierliche Autofokus bleibt unberührt.
+    // remember() räumt nicht auf (wie im Barcodescanner): Ohne dieses DisposableEffect
+    // überleben Analyse-Thread und ML-Kit-Client jeden Besuch des Setup-Screens. Der
+    // kontinuierliche Autofokus bleibt davon unberührt.
     DisposableEffect(Unit) {
         onDispose {
             try { scanner.close() } catch (_: Exception) {}
@@ -303,10 +299,9 @@ fun QrCameraPreview(frozen: Boolean, onQrFound: (String) -> Unit) {
     }
 
     val imageAnalyzer = remember {
-        // Aufbau samt AF-Modus: ui/screens/KameraAufbau.kt. 1280x720 statt
-        // 1920x1080 wie im Barcodescanner: Hier wird EIN QR-Code mit grossen
-        // Modulen gelesen, und weniger Aufloesung heisst mehr Rechenzeit fuer
-        // Kamera und Vorschau (Nachtrag 71).
+        // Aufbau samt AF-Modus: ui/screens/KameraAufbau.kt. 1280x720 statt 1920x1080 wie
+        // im Barcodescanner: Hier wird ein QR-Code mit grossen Modulen gelesen, und
+        // weniger Auflösung lässt Kamera und Vorschau mehr Rechenzeit.
         bildAnalyse(1280, 720)
             .also { analysis ->
                 analysis.setAnalyzer(executor) { imageProxy ->
@@ -342,19 +337,11 @@ fun QrCameraPreview(frozen: Boolean, onQrFound: (String) -> Unit) {
                 lifecycleOwner = lifecycleOwner,
                 analyse = imageAnalyzer,
             ) { camera ->
-                // Tap-to-Focus — bewusst mit disableAutoCancel().
-                //
-                // Hier stand bis zuletzt setAutoCancelDuration(3, SECONDS):
-                // genau die Fassung, die im Barcodescanner Marcos Befund aus
-                // Nachtrag 112 ausgelöst hat („man tippt, es wird scharf, und
-                // Sekunden später ist es wieder weg"). Behoben wurde damals nur
-                // die eine Kopie — diese hier blieb stehen, weil die Regel an
-                // zwei Stellen stand und der Test nur eine ansah.
-                //
-                // Der Nutzer tippt, weil der kontinuierliche Autofokus gerade
-                // danebenliegt. Fällt die Kamera nach drei Sekunden auf ihre
-                // eigene Wahl zurück, ist genau das wieder da, wogegen der
-                // Tipper gerichtet war.
+                // Tap-to-Focus — bewusst mit disableAutoCancel(): Der Nutzer tippt, weil der
+                // kontinuierliche Autofokus gerade danebenliegt. Fiele die Kamera nach ein paar
+                // Sekunden auf ihre eigene Wahl zurück, wäre genau das wieder da, wogegen der
+                // Tipper gerichtet war — man tippt, es wird scharf, und kurz danach ist es wieder
+                // weg.
                 previewView.setOnTouchListener { v, event ->
                     if (event.action == MotionEvent.ACTION_UP) {
                         try {

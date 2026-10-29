@@ -59,23 +59,16 @@ fun CatalogDetailScreen(
     householdMembers: List<ch.brickinventoryapp.data.model.HouseholdMember> = emptyList(),
     /** Vorrat an Lagerorten fuer den Erfassungsdialog. */
     lagerorte: List<String> = emptyList(),
-    /** Der vorausgewaehlte Lagerort — Marcos Stern. Leer heisst: keine Vorgabe. */
+    /** Der vorausgewählte Lagerort (Stern in den Einstellungen). Leer heisst: keine Vorgabe. */
     lagerortVorgabe: String = "",
     onLoad: (String) -> Unit,
     onAddToGallery: (String, Int, Double?, String?, Int?, String?) -> Unit,
     /**
-     * Auf die Merkliste — Setnummer, Zustand, Alarmrichtung, Schwelle (roh)
-     * und ZIELKONTO.
-     *
-     * Die Schwelle kommt als TEXT und nicht als Double: Leer heisst „kein
-     * Alarm", nicht „Schwelle 0", und die Umwandlung gehoert an die eine
-     * Stelle, die sie schon kann (alarm/Alarmeingabe.kt).
-     *
-     * Das Zielkonto kam am 24.09. dazu (Marcos Befund: „Wenn ich etwas aus dem
-     * Katalog auf die Merkliste setze kann ich den Account nicht waehlen").
-     * Der Server nahm es seit jeher an — nur der Dialog fragte nicht danach,
-     * waehrend der Erfassungsdialog eine Zeile darueber es tat. Die Webapp
-     * hatte die Wahl bereits (cat-m-owner).
+     * Auf die Merkliste — Setnummer, Zustand, Alarmrichtung, Schwelle (roh) und
+     * Zielkonto. Die Schwelle kommt als Text: Leer heisst „kein Alarm“, nicht
+     * „Schwelle 0“, und die Umwandlung gehört an die eine Stelle, die sie kann
+     * (alarm/Alarmeingabe.kt). Das Zielkonto wie im Erfassungsdialog und in der Webapp
+     * (cat-m-owner).
      */
     onWish: (String, String, String, String, Int?) -> Unit,
     onOpenInGallery: (String) -> Unit,
@@ -87,12 +80,10 @@ fun CatalogDetailScreen(
     // Bildschirmfüllender Zoom wie im Set-Detail — auf Nutzerwunsch auch hier.
     var showImageZoom by rememberSaveable { mutableStateOf(false) }
     val ctx = LocalContext.current
-    // `stringResource` statt `ctx.getString` im Rueckruf: Lint meldet
-    // LocalContextGetResourceValueCall (Stufe ERROR), weil ein aus
-    // LocalContext.current gegriffener Context nach einem Wechsel der
-    // Konfiguration — Sprache, Dunkelmodus, Drehung — veraltete Werte liefern
-    // kann. Hier geholt, in der Komposition, wo Compose bei einer Aenderung neu
-    // auswertet.
+    // `stringResource` statt `ctx.getString` im Rückruf: Ein aus LocalContext.current
+    // gegriffener Context kann nach einem Konfigurationswechsel (Sprache, Dunkelmodus,
+    // Drehung) veraltete Werte liefern (Lint: LocalContextGetResourceValueCall). In
+    // der Komposition wertet Compose bei einer Änderung neu aus.
     val keineAppText = stringResource(R.string.common_no_app_to_open)
 
     Scaffold(
@@ -164,39 +155,24 @@ fun CatalogDetailScreen(
                     }
                 }
 
-                // ── Aktionen ────────────────────────────────────────────────
+                // ── Aktionen ──
                 //
-                // Marcos Vorgabe: BrickLink ZUERST, darunter die beiden
-                // Erfassungsknoepfe NEBENEINANDER, beide mit einem Plus.
+                // BrickLink zuerst, darunter die beiden Erfassungsknöpfe nebeneinander, beide mit
+                // Plus: oben der Weg nach draussen, unten die zwei Griffe, die hier etwas anlegen.
                 //
-                // Die Reihenfolge sagt etwas: Oben der Weg nach draussen (zu
-                // BrickLink), unten die zwei Griffe, die hier etwas anlegen.
-                // Vorher standen sie gemischt — Galerie, Merkliste, BrickLink
-                // untereinander —, und der Weg nach draussen stand ausgerechnet
-                // am weitesten unten.
-                //
-                // Kauf-Link: URL kommt fertig vom Server. Vorher wurde sie hier
-                // aus der Rebrickable-Nummer gebaut und immer als Set verlinkt
-                // (S=…) — für Gear und Bücher war damit sowohl der Parameter als
-                // auch die Nummer falsch (dort ohne "-1"-Suffix).
-                // Fallback auf die alte Bauweise nur für ältere Server, die das
-                // Feld noch nicht liefern.
-                // Der Button wird nie ausgeblendet: Bei Sammelminifiguren führt
-                // BrickLink den Artikel unter einer anderen Nummer (Rebrickable
-                // 71021-1 → BrickLink col325), die sich aus keiner der beiden
-                // Datenquellen herleiten lässt. Statt den Button zu verstecken,
-                // liefert der Server dann eine Such-URL und exact = false.
+                // Die Kauf-URL kommt fertig vom Server — für Gear und Bücher wären Parameter und
+                // Nummer anders als bei Sets. Der Rückfall auf die eigene Bauweise bleibt für
+                // ältere Server. Der Knopf wird nie ausgeblendet: Bei Sammelminifiguren führt
+                // BrickLink eine Nummer, die sich nicht herleiten lässt (71021-1 → col325); dann
+                // liefert der Server eine Such-URL und exact = false.
                 val bl = detail.bricklink
                 val blUrl = bl?.url ?: BrickLinkUrls.searchFor(detail.setNumber)
                 val blLabel = if (bl != null && !bl.exact) R.string.catalog_search_bricklink
                               else R.string.catalog_buy_bricklink
                 OutlinedButton(
                     onClick = {
-                        // Nicht mehr still schlucken (Nachtrag 49): Ist kein
-                        // Browser da oder scheitert der Aufruf, tippte der
-                        // Nutzer bisher auf den Knopf und es passierte NICHTS —
-                        // dieselbe Sorte Sackgasse wie „klicken, nichts
-                        // passiert" in der Webapp.
+                        // Nicht still schlucken: Ist kein Browser da oder scheitert der Aufruf,
+                        // passierte sonst beim Tippen nichts.
                         try { ctx.startActivity(Intent(Intent.ACTION_VIEW, blUrl.toUri())) }
                         catch (_: Exception) {
                             android.widget.Toast.makeText(ctx, keineAppText,
@@ -210,15 +186,11 @@ fun CatalogDetailScreen(
                     Spacer(Modifier.width(6.dp))
                     Text(stringResource(blLabel))
                 }
-                // Die beiden Erfassungsknoepfe nebeneinander. `weight(1f)` teilt
-                // die Breite gleich auf; die Merkliste bleibt der zweitrangige
-                // (OutlinedButton), denn der haeufigere Griff ist das Aufnehmen.
-                // Eine Stufe kleinere Schrift (labelMedium) und maxLines = 1: Zwei
-                // Knoepfe teilen sich die Breite, die vorher einer allein hatte.
-                // „In Galerie aufnehmen" ist der laengste der vier Texte; bei
-                // labelLarge stuende er auf einem 360dp-Telefon ueber dem Rand.
-                // Die Ellipse ist der Fallschirm fuer die Sprache, die noch
-                // dazukommt — kein Ersatz fuer das Nachsehen auf dem Geraet.
+                // Die beiden Erfassungsknöpfe nebeneinander; `weight(1f)` teilt die Breite gleich
+                // auf. Die Merkliste bleibt zweitrangig (OutlinedButton), denn häufiger wird
+                // aufgenommen. labelMedium und maxLines = 1, weil sich zwei Knöpfe die Breite
+                // teilen — „In Galerie aufnehmen“ stünde bei labelLarge auf einem 360dp-Telefon
+                // über dem Rand. Die Ellipse ist der Fallschirm für weitere Sprachen.
                 Row(
                     Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
@@ -325,7 +297,7 @@ private fun CatalogAddDialog(
     householdMembers: List<ch.brickinventoryapp.data.model.HouseholdMember>,
     /** Vorrat an Lagerorten — leer heisst: es gibt noch keine, dann wird getippt. */
     lagerorte: List<String>,
-    /** Der vorausgewaehlte Lagerort — Marcos Stern. Leer heisst: keine Vorgabe. */
+    /** Der vorausgewählte Lagerort (Stern in den Einstellungen). Leer heisst: keine Vorgabe. */
     lagerortVorgabe: String = "",
     onDismiss: () -> Unit,
     onAdd: (Int, Double?, String?, Int?, String?) -> Unit
@@ -390,14 +362,10 @@ private fun CatalogAddDialog(
 }
 
 /**
- * Zustand und Preisalarm fuer einen Merkposten.
- *
- * Bewusst KEINE Anzahl und kein Kaufpreis — anders als beim Aufnehmen in die
- * Galerie. Ein Merkposten hat weder das eine noch das andere; beides wird erst
- * bei der Uebernahme gefragt.
- *
- * Der Alarm ist optional und steht deshalb unter einer eigenen Ueberschrift:
- * Wer nur merken will, laesst das Feld leer und drueckt zu.
+ * Zustand und Preisalarm für einen Merkposten. Keine Anzahl und kein Kaufpreis:
+ * Ein Merkposten hat beides nicht, es wird erst bei der Übernahme gefragt. Der
+ * Alarm ist optional und steht unter eigener Überschrift — wer nur merken will,
+ * lässt das Feld leer.
  */
 @Composable
 private fun MerkpostenDialog(
@@ -422,9 +390,8 @@ private fun MerkpostenDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(Abstaende.mittel)) {
                 Text(setName, style = MaterialTheme.typography.bodyMedium)
-                // Marcos Befund vom 24.09.: „Wenn ich etwas aus dem Katalog auf
-                // die Merkliste setze kann ich den Account nicht waehlen."
-                // Blendet sich bei weniger als zwei Mitgliedern selbst aus.
+                // Zielkonto wie beim Erfassen; blendet sich bei weniger als
+                // zwei Mitgliedern selbst aus.
                 OwnerPicker(householdMembers, konto, { konto = it })
                 Zustandszeile(zustand = zustand, onZustand = { zustand = it })
                 HorizontalDivider()

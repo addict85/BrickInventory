@@ -114,23 +114,23 @@ test('Job-Sperren wirken über Prozessgrenzen', async (t) => {
   await t.test('die Cloudflare-Pause gilt prozessübergreifend, nicht nur im blockierten Worker', async () => {
     await eintragVorbereiten('10290-1');
     await db.run(
-      `INSERT INTO global_settings (key, value) VALUES ('instr_queue_block', $1)
-       ON CONFLICT (key) DO UPDATE SET value = $1`,
+      `INSERT INTO laufzustand (schluessel, wert) VALUES ('instr_queue_block', $1)
+       ON CONFLICT (schluessel) DO UPDATE SET wert = $1`,
       [JSON.stringify({ until: Date.now() + 10 * 60 * 1000, retries: 1 })]);
     try {
       await queue.processNext();
       assert.equal(await status('10290-1'), 'pending',
         'Backoff missachtet — ein zweiter Worker läuft in die nächste Cloudflare-Sperre');
     } finally {
-      await db.run(`DELETE FROM global_settings WHERE key='instr_queue_block'`);
+      await db.run(`DELETE FROM laufzustand WHERE schluessel='instr_queue_block'`);
     }
   });
 
   await t.test('requestRun() setzt nur das Flag, arbeitet aber nichts ab', async () => {
     await eintragVorbereiten('10283-1');
-    await db.run(`DELETE FROM global_settings WHERE key='instr_queue_trigger'`);
+    await db.run(`DELETE FROM laufzustand WHERE schluessel='instr_queue_trigger'`);
     await queue.requestRun();
-    const flag = await db.get(`SELECT value FROM global_settings WHERE key='instr_queue_trigger'`);
+    const flag = await db.get(`SELECT wert AS value FROM laufzustand WHERE schluessel='instr_queue_trigger'`);
     assert.ok(flag?.value, 'kein Trigger gesetzt — der Primary erfährt nie von der Arbeit');
     assert.equal(await status('10283-1'), 'pending',
       'requestRun() hat selbst abgearbeitet — dann läuft die Queue wieder im Request-Worker');

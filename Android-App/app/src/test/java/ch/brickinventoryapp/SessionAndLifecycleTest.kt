@@ -59,7 +59,7 @@ class SessionAndLifecycleTest {
 
     @Test
     fun `der Interceptor meldet 401 nur mit Token und nur fuer unseren Server`() {
-        val src = code(read("di/AppModule.kt"))
+        val src = code(Quellen.di())
         assert(src.contains("sessionExpired.notifyExpired()")) {
             "AppModule meldet keinen abgelaufenen Token — das AppViewModel erfährt nie davon"
         }
@@ -121,7 +121,7 @@ class SessionAndLifecycleTest {
 
     @Test
     fun `der ImageLoader ist ein Singleton aus dem DI-Modul`() {
-        val di = code(read("di/AppModule.kt"))
+        val di = code(Quellen.di())
         assert(di.contains("fun provideImageLoader")) {
             "Kein ImageLoader-Provider in AppModule"
         }
@@ -175,7 +175,7 @@ class SessionAndLifecycleTest {
             "barcodeResolvedSetNumber", "barcodeResolvedSet",
         )
         val feature = read("ui/viewmodel/ErfassungViewModel.kt")
-        val state = read("ui/UiState.kt")
+        val state = Quellen.zustaende()
         for (name in dead) {
             assert(!feature.contains(name)) { "$name ist in ErfassungViewModel.kt zurück" }
             assert(!state.contains(name)) { "$name ist in AppUiState zurück" }

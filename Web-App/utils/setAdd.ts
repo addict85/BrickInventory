@@ -1,6 +1,6 @@
 /**
  *  Warum das hier steht und nicht in den Clients
- * Die App prüfte das seit Nachtrag 57 selbst (ein `getSetDetail`-Aufruf vor
+ * Die App prüfte das selbst (ein `getSetDetail`-Aufruf vor
  * dem Anlegen), die Webapp gar nicht — sie schickte unbesehen ab, der Server
  * erhöhte die Menge und meldete „aktualisiert". Dieselbe Eingabe, zwei …
  * Ausführlich: docs/begruendungen/utils/setAdd.ts.md#abschnitt

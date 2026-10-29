@@ -14,49 +14,18 @@ import javax.inject.Named
 import javax.inject.Singleton
 
 /**
- * Marke an einer Anfrage, die nur VORWAERMT.
- *
- * Ein OkHttp-Tag und keine Kopfzeile: Tags bleiben auf dem Geraet, eine
- * Kopfzeile ginge an den Server und erzaehlte ihm etwas, das ihn nichts
- * angeht. Gelesen wird die Marke im Abgriff in AppModule — er entscheidet
- * daran, ob das Bild spekulativ oder echt gebraucht abgelegt wird.
+ * Marke an einer Anfrage, die nur vorwärmt. Ein OkHttp-Tag statt einer Kopfzeile,
+ * weil es den Server nichts angeht. Der Abgriff in NetzModule legt danach
+ * spekulativ oder gebraucht ab.
  */
 object Vorwaermung
 
 /**
- * Bilder im Hintergrund holen, bevor jemand sie aufruft.
- *
- * ── Marcos Anforderung ──────────────────────────────────────────────────────
- * „Ergaenzen dass die Android-App bereits im Hintergrund Bilder cached auch
- * wenn diese noch nicht aufgerufen wurden aus allen Reiter. Dabei soll nicht
- * mehr als 80% des Speichercaches genutzt werden."
- *
- * ── Warum das nicht dasselbe ist wie der bestehende Abgriff ─────────────────
- *
- * Die Ablage fuellte sich bisher NUR als Nebenwirkung des Hinsehens: Was
- * einmal auf dem Bildschirm war, lag danach auch offline vor. Wer die App
- * online nie geoeffnet hat, hatte offline nichts — und genau dann braucht man
- * sie. Diese Klasse dreht das um.
- *
- * ── Was hier NICHT entschieden wird ─────────────────────────────────────────
- *
- * WELCHE Bilder — das steht in ui/Vorwaermen.kt und gehoert dorthin:
- * Die Auswahl haengt am Kontofilter des Haushalts, und der lebt im Blickfeld. Die erste Fassung fragte die Reiter hier
- * unten selbst ab und liess den Filter dabei weg; GalerieLaedtGefiltertTest
- * und ListenfilterImZustandTest haben genau das gemeldet. Zu Recht: Ein
- * zweiter Ladeweg, der den Filter nicht kennt, ist der Fehler, gegen den
- * beide Regeln gebaut sind.
- *
- * Hier unten bleibt, was wirklich Datenschicht ist: holen, drosseln, und die
- * Grenze einhalten.
- *
- * ── Warum ohne Coil ─────────────────────────────────────────────────────────
- *
- * Coil wuerde jedes Bild entpacken und in den Speicher-Cache legen. Gebraucht
- * wird davon nichts: Das Ziel sind Bytes auf der Platte. Der blosse
- * OkHttp-Aufruf nimmt denselben Weg durch dieselbe Kette — der Abgriff in
- * AppModule legt die Antwort ab — nur ohne Bitmap und ohne den Speicher-Cache
- * mit Bildern zu fuellen, die gerade niemand sieht.
+ * Bilder im Hintergrund holen, bevor jemand sie aufruft, aus allen Reitern und bis
+ * 80 % der Ablage: Sonst lag offline nur vor, was einmal auf dem Bildschirm war.
+ * Welche Bilder, entscheidet ui/Vorwaermen.kt, weil die Auswahl am Kontofilter
+ * hängt; hier bleibt holen, drosseln und die Grenze. Ohne Coil: Gebraucht werden
+ * Bytes auf der Platte, keine Bitmaps im Speicher-Cache.
  */
 @Singleton
 class VorschauVorwaermer @Inject constructor(
@@ -67,12 +36,8 @@ class VorschauVorwaermer @Inject constructor(
 ) {
     companion object {
         /**
-         * Wie viele Bilder gleichzeitig.
-         *
-         * Der Bild-Client laeuft mit `maxRequestsPerHost = 6`. Zwei davon fuer
-         * die Vorwaermung laesst vier fuer das, was gerade auf dem Bildschirm
-         * steht. Hoeher waere schneller fertig und dabei genau das, was diese
-         * Klasse nicht sein darf: etwas, das die sichtbare App ausbremst.
+         * Zwei gleichzeitig: Der Bild-Client hat sechs je Host, vier bleiben für das
+         * Sichtbare — die Vorwärmung soll die App nicht ausbremsen.
          */
         private const val GLEICHZEITIG = 2
 
@@ -80,25 +45,16 @@ class VorschauVorwaermer @Inject constructor(
         private const val PAUSE_MS = 250L
 
         /**
-         * Erst nach dieser Zeit anfangen.
-         *
-         * Beim App-Start konkurriert alles um dieselbe Leitung: Anmeldung,
-         * Dashboard, die erste sichtbare Kachelwand. Die Vorwaermung hat es
-         * als Einzige nicht eilig.
+         * Erst nach dieser Zeit anfangen: Beim Start konkurrieren Anmeldung und erste
+         * Kachelwand um die Leitung, die Vorwärmung hat es nicht eilig.
          */
         const val ANLAUF_MS = 5_000L
     }
 
     /**
-     * Darf in der aktuellen Netzlage geholt werden?
-     *
-     * Marcos Vorgabe: „Bitte nur im WLAN vorwaermen oder noch besser in den
-     * Optionen einstellbar. Insbesondere auch ob WLAN, Mobilfunk und oder
-     * Roaming erlaubt ist. Standard auf WLAN."
-     *
-     * Erschoepfend ueber die Aufzaehlung, ohne `else`: Kaeme eine fuenfte Lage
-     * dazu, soll der Uebersetzer sie hier melden, statt dass sie stillschweigend
-     * unter „erlaubt" oder „verboten" faellt.
+     * Darf in der aktuellen Netzlage geholt werden (Vorgabe nur WLAN)? Erschöpfend
+     * ohne `else`, damit eine neue Lage hier nicht still unter erlaubt oder verboten
+     * fällt.
      */
     private suspend fun netzErlaubt(): Boolean = when (netz.aktuell()) {
         Netzlage.Art.KEIN_NETZ -> false
@@ -108,30 +64,23 @@ class VorschauVorwaermer @Inject constructor(
     }
 
     /**
-     * Ist ueberhaupt noch Platz unter der Grenze?
-     *
-     * Vor dem Sammeln gefragt, damit ein voller Speicher nicht bei jedem
-     * App-Start vier Listenabrufe kostet, um danach nichts zu tun.
+     * Noch Platz unter der Grenze? Vor dem Sammeln gefragt, damit ein voller Speicher
+     * nicht bei jedem Start Listenabrufe kostet.
      */
     private fun nochPlatz(): Boolean =
         vorschau.belegt() < VorschauSpeicher.GRENZE_VORWAERMEN
 
     /**
-     * Lohnt sich ein Durchlauf ueberhaupt? Beides zusammen, VOR dem Sammeln.
-     *
-     * Zwei getrennte Fragen hinter einem Tor, und jede hat ihren eigenen Grund:
-     * Ohne Platz gaebe es nichts abzulegen, im falschen Netz duerfte man nicht.
-     * Beide hier zu stellen erspart bei jedem App-Start vier Listenabrufe, die
-     * sonst umsonst liefen.
+     * Lohnt sich ein Durchlauf? Netz und Platz vor dem Sammeln — ohne Platz gäbe es
+     * nichts abzulegen, im falschen Netz dürfte man nicht, und die Listenabrufe liefen
+     * umsonst.
      */
     suspend fun darfStarten(): Boolean = netzErlaubt() && nochPlatz()
 
     /**
-     * Die uebergebenen Adressen holen, bis die Grenze erreicht ist.
-     *
-     * Laeuft still: Faellt etwas aus, ist die Ablage eben weniger voll — es
-     * gibt nichts zu melden und niemanden zu stoeren. Der Aufrufer sorgt fuer
-     * den Hintergrund-Dispatcher.
+     * Die übergebenen Adressen holen, bis die Grenze erreicht ist. Still: Fällt etwas
+     * aus, ist die Ablage eben weniger voll. Der Aufrufer sorgt für den
+     * Hintergrund-Dispatcher.
      */
     suspend fun vorwaermen(adressen: List<String>) {
         val offen = adressen
@@ -159,7 +108,7 @@ class VorschauVorwaermer @Inject constructor(
 
     /**
      * Ein Bild holen. Der Rumpf wird gelesen und weggeworfen — abgelegt hat
-     * ihn zu diesem Zeitpunkt schon der Abgriff in AppModule.
+     * ihn zu diesem Zeitpunkt schon der Abgriff in NetzModule.
      */
     private fun hole(adresse: String) {
         runCatching {

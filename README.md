@@ -99,6 +99,12 @@ Vor dem ersten Start lohnen zwei weitere Werte in einer `.env` neben
 - `APP_BIND=127.0.0.1` — wenn ein Reverse-Proxy (Caddy, nginx, Traefik) davor
   steht. Port 3000 ist dann nur noch auf dem Rechner selbst erreichbar und
   nicht am Proxy vorbei im ganzen Netz.
+- `TRUST_PROXY=<Adresse>` — wenn dieser Proxy auf dem Rechner selbst läuft
+  (nicht im Compose-Netz). Seine Verbindungen kommen dann über das
+  Docker-Gateway (meist `172.17.0.1` oder `172.18.0.1`), und ohne die Angabe
+  gelten alle Clients als dieselbe Adresse: Fünf Fehlversuche eines Fremden
+  sperrten sonst den Inhaber aus. Der Server warnt beim ersten solchen Aufruf
+  und nennt die Adresse.
 
 ### Auf dem Raspberry Pi
 

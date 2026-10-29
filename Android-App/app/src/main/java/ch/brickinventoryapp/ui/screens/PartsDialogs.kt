@@ -52,7 +52,7 @@ fun AddPartDialog(
     householdMembers: List<ch.brickinventoryapp.data.model.HouseholdMember> = emptyList(),
     /** Vorrat an Lagerorten — leer heisst: es gibt noch keine, dann wird getippt. */
     lagerorte: List<String> = emptyList(),
-    /** Der vorausgewaehlte Lagerort — Marcos Stern. Leer heisst: keine Vorgabe. */
+    /** Der vorausgewählte Lagerort (Stern in den Einstellungen). Leer heisst: keine Vorgabe. */
     lagerortVorgabe: String = "",
 ) {
     var partNumber by rememberSaveable { mutableStateOf("") }

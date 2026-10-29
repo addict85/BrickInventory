@@ -10,39 +10,20 @@ import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 
 /**
- * Verschlüsselung für das Bearer-Token.
+ * Verschlüsselung für das Bearer-Token. Das Token öffnet ein Konto auf dem Server
+ * und läuft erst nach TOKEN_IDLE_DAYS Untätigkeit ab. `allowBackup="false"`
+ * verschliesst `adb backup`; bei einem gerooteten Gerät oder einem ausgelesenen
+ * Datenverzeichnis wäre Klartext sofort verwendbar, Geheimtext nicht — der
+ * Schlüssel verlässt den Android-Keystore nie.
  *
- * ── Warum es das gibt (Nachtrag 155) ────────────────────────────────────────
+ * Eine eigene Hülle statt androidx.security: AES/GCM und der Keystore sind seit
+ * API 23 Teil der Plattform (minSdk 26) — siebzig lesbare Zeilen statt einer
+ * Abhängigkeit, deren Pflegezustand offen ist.
  *
- * Das Token lag als Klartext im DataStore — einer gewöhnlichen Datei im
- * privaten App-Verzeichnis. Es öffnet ein Konto auf dem Server, und es läuft
- * erst nach TOKEN_IDLE_DAYS Untätigkeit ab.
- *
- * `allowBackup="false"` im Manifest verschliesst den grössten Weg (`adb
- * backup`). Was bleibt: ein gerootetes Gerät, ein Wiederherstellungs-Abbild,
- * ein Auslesen des Datenverzeichnisses über eine andere Lücke. In all diesen
- * Fällen ist Klartext sofort verwendbar, Geheimtext nicht — der Schlüssel
- * verlässt den Android-Keystore nie und ist an dieses Gerät gebunden.
- *
- * ── Warum eine eigene Hülle statt androidx.security ─────────────────────────
- *
- * EncryptedSharedPreferences wäre der bekannte Weg. Ob die Bibliothek noch
- * gepflegt wird, liess sich in der Umgebung, in der diese Änderung entstand,
- * nicht nachprüfen (Zugriff auf dl.google.com gesperrt) — und eine Behauptung
- * dazu wäre geraten gewesen.
- *
- * Diese Hülle braucht sie nicht: AES/GCM und der Keystore sind seit API 23
- * Teil der Plattform, minSdk ist 26. Siebzig Zeilen, die jemand lesen kann,
- * statt einer Abhängigkeit, deren Zustand niemand kennt.
- *
- * ── Was passiert, wenn der Schlüssel weg ist ────────────────────────────────
- *
- * Der Keystore-Schlüssel überlebt keine Datenwiederherstellung auf ein anderes
- * Gerät und kein Zurücksetzen der App-Daten. Dann schlägt das Entschlüsseln
- * fehl, und das ist KEIN Fehlerfall, den man verstecken sollte: Es bedeutet
- * "kein gültiges Token da". Der Aufrufer bekommt null und die Anmeldemaske —
- * ärgerlich, aber richtig. Die Alternative wäre, still auf Klartext
- * zurückzufallen, und das hebt den Sinn der Übung auf.
+ * Ist der Schlüssel weg (Wiederherstellung auf ein anderes Gerät, zurückgesetzte
+ * App-Daten), schlägt das Entschlüsseln fehl, und das heisst „kein gültiges Token
+ * da“: null und die Anmeldemaske. Still auf Klartext zurückzufallen höbe den Sinn
+ * auf.
  */
 interface TokenVerschluesselung {
     /** Klartext → speicherbare Zeichenkette. Wirft, wenn die Plattform nicht kann. */

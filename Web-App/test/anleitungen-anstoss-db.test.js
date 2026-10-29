@@ -55,7 +55,7 @@ test('Anleitungen: Anstoss per NOTIFY statt im Dreisekundentakt', async (t) => {
   catch { return t.skip('keine Test-Datenbank erreichbar'); }
 
   try {
-    await db.run('DELETE FROM global_settings WHERE key = $1', [KANAL]).catch(() => {});
+    await db.run('DELETE FROM laufzustand WHERE schluessel = $1', [KANAL]).catch(() => {});
 
     // ── 1. requestRun() legt den Eintrag an UND weckt ──────────────────────
     const geweckt = new Promise((auf, ab) => {
@@ -76,7 +76,7 @@ test('Anleitungen: Anstoss per NOTIFY statt im Dreisekundentakt', async (t) => {
 
     await iq.requestRun();
 
-    const eintrag = await db.get('SELECT value FROM global_settings WHERE key = $1', [KANAL]);
+    const eintrag = await db.get('SELECT wert FROM laufzustand WHERE schluessel = $1', [KANAL]);
     assert.ok(eintrag, 'requestRun() muss den Eintrag anlegen — er ist die belastbare Quelle, nicht das Signal');
 
     assert.equal(await geweckt, true);
@@ -96,7 +96,7 @@ test('Anleitungen: Anstoss per NOTIFY statt im Dreisekundentakt', async (t) => {
       'Gegenprobe: das Suchmuster findet ein setInterval nicht');
   } finally {
     await pgNotify.close().catch(() => {});
-    await db.run('DELETE FROM global_settings WHERE key = $1', [KANAL]).catch(() => {});
+    await db.run('DELETE FROM laufzustand WHERE schluessel = $1', [KANAL]).catch(() => {});
     await db.pool.end().catch(() => {});
   }
 });

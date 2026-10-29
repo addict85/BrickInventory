@@ -3,28 +3,20 @@ package ch.brickinventoryapp.ui
 import ch.brickinventoryapp.data.model.PriceChartData
 
 /**
- * Rechnen für das Preisverlauf-Diagramm — ohne Compose, damit testbar.
+ * Rechnen für das Preisverlauf-Diagramm — ohne Compose, damit testbar (wie
+ * ui/CatalogYearMath.kt). In einem Canvas-Block wären die Fallen nur am Gerät zu
+ * sehen:
  *
- * ── Warum eine eigene Datei ─────────────────────────────────────────────────
- * Dasselbe Muster wie ui/CatalogYearMath.kt: Die Zahlenarbeit steckt sonst in
- * einem Canvas-Block, den kein Unit-Test aufrufen kann. Genau die Stellen, die
- * hier schiefgehen können (führende Nullen, zwei Reihen mit unterschiedlicher
- * Länge, alle Werte gleich), sind ohne Test nur am Gerät zu sehen.
+ * 1. Führende Nullen. Der Server füllt kürzere Reihen vorne mit 0 auf, damit alle
+ *    dieselbe x-Achse haben; 0 heisst „kein Wert“, nicht „Preis null“. Gezeichnet
+ *    ergäbe sie einen Kurssturz, den es nie gab. `firstRealIndex` sagt je Reihe,
+ *    ab wo echte Werte stehen.
  *
- * ── Die zwei Fallen ─────────────────────────────────────────────────────────
- * 1. FÜHRENDE NULLEN. Der Server füllt kürzere Reihen vorne mit 0 auf, damit
- *    alle Reihen dieselbe Länge und damit dieselbe x-Achse haben. Eine 0
- *    bedeutet „kein Wert", nicht „Preis null". Wer sie zeichnet, bekommt eine
- *    Linie, die bei null beginnt und senkrecht hochspringt — ein Kurssturz,
- *    den es nie gab. `firstRealIndex` sagt je Reihe, ab wo echte Werte stehen.
+ * 2. Die x-Achse kommt vom Datum, nicht vom Index: Gebrauchtpreise setzen oft
+ *    später ein als Neupreise, und über die volle Breite gestreckt lägen Punkte
+ *    aus verschiedenen Monaten übereinander.
  *
- * 2. INDEXBASIERTE x-ACHSE. Gebrauchtpreise setzen für viele Sets später ein
- *    als Neupreise. Wer beide Reihen über die volle Breite streckt (i / (n-1)),
- *    legt Punkte aus verschiedenen Monaten übereinander und zeigt einen
- *    Vergleich, den es nicht gibt. Die x-Position kommt deshalb vom DATUM.
- *
- * Beides ist derselbe Stand wie in der Webapp (public/js/07-admin.js,
- * priceChartSVG) — die Regeln stehen dort im selben Wortlaut.
+ * Dieselben Regeln wie in der Webapp (public/js/07-admin.js, priceChartSVG).
  */
 
 /** Ein gezeichneter Punkt: Tag als Zahl (Tage seit 1970) und Preis. */

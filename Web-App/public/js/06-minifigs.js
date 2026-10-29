@@ -209,12 +209,12 @@ export function renderFigs(list, target) {
         const erfasst = dateVal ? new Date(dateVal).toLocaleDateString(locale()) : '—';
         // Anklickbar wie die Kachel darunter — dieselbe Handlung in beiden
         // Ansichten (Marcos Detail-Dialog fuer automatisch erfasste Figuren).
-        return `<tr style="cursor:pointer" data-click="${f.source==='manual'?'openManDetail':'openSetItemDetail'}" data-arg="fig" data-arg2="${escJs(f.fig_number)}" data-arg3="0">
+        return `<tr data-stil="cursor:pointer" data-click="${f.source==='manual'?'openManDetail':'openSetItemDetail'}" data-arg="fig" data-arg2="${escJs(f.fig_number)}" data-arg3="0">
           <td>${imgSrc?bildTag({ src: imgSrc, alt: '', klasse: 'bild-klein', ph: 'figur' }):`<span class="bild-ph bild-klein" aria-hidden="true">${platzhalterInhalt('figur')}</span>`}</td>
-          <td><span style="font-family:var(--mono);font-size:var(--fs-1);color:var(--b600)">${esc(f.fig_number)}</span></td>
-          <td style="max-width:200px">${esc(f.fig_name)||'—'}</td>
-          <td><span style="font-family:var(--mono);font-weight:600;color:var(--b700)">${f.total_quantity||f.quantity}</span></td>
-          <td style="font-size:var(--fs-1);color:var(--mut)">${erfasst}</td>
+          <td><span data-stil="font-family:var(--mono);font-size:var(--fs-1);color:var(--b600)">${esc(f.fig_number)}</span></td>
+          <td data-stil="max-width:200px">${esc(f.fig_name)||'—'}</td>
+          <td><span data-stil="font-family:var(--mono);font-weight:600;color:var(--b700)">${f.total_quantity||f.quantity}</span></td>
+          <td data-stil="font-size:var(--fs-1);color:var(--mut)">${erfasst}</td>
         </tr>`;
       }).join('')}</tbody></table></div>`;
     return;
@@ -231,7 +231,7 @@ export function renderFigs(list, target) {
     <div class="parts-group">
       <div class="group-hd">
         <span class="group-title">${label}</span>
-        <span class="group-sub">${figs.length} ${t('parts.stat.types')}</span>
+        <span class="group-sub">${t('parts.group_types', { n: figs.length })}</span>
       </div>
       <div class="parts-grid">
         ${figs.map(f => {
@@ -259,17 +259,17 @@ export function renderFigs(list, target) {
           // also unerreichbar. Ohne Haushalt ist `owners` leer und
           // ownerBadges() liefert '' — im Einzelkonto aendert sich nichts.
           const condBadge = f.source==='manual'
-            ? `<div style="display:flex;gap:3px;justify-content:center;flex-wrap:wrap;margin-top:3px">${condBadges(f)}</div>`
+            ? `<div data-stil="display:flex;gap:3px;justify-content:center;flex-wrap:wrap;margin-top:3px">${condBadges(f)}</div>`
             : '';
           const besitzer = ownerBadges(f)
-            ? `<div style="display:flex;gap:3px;justify-content:center;flex-wrap:wrap;margin-top:3px">${ownerBadges(f)}</div>`
+            ? `<div data-stil="display:flex;gap:3px;justify-content:center;flex-wrap:wrap;margin-top:3px">${ownerBadges(f)}</div>`
             : '';
           // Manuell erfasste Figuren haben ihren eigenen Dialog (Kaufpreise,
           // Menge aenderbar); die aus Sets den neuen ohne Preis und ohne
           // Mengenaenderung. Die Kachel entscheidet nach der Quelle, damit
           // BEIDE Faelle richtig sind — auch wenn diese Liste heute nur
           // `source=set` laedt.
-          return `<div class="part-card" style="position:relative;cursor:pointer" data-click="${f.source==='manual'?'openManDetail':'openSetItemDetail'}" data-arg="fig" data-arg2="${escJs(f.fig_number)}" data-arg3="0">
+          return `<div class="part-card" data-stil="position:relative;cursor:pointer" data-click="${f.source==='manual'?'openManDetail':'openSetItemDetail'}" data-arg="fig" data-arg2="${escJs(f.fig_number)}" data-arg3="0">
             ${delBtn}
             ${imgSrc ? bildTag({ src: imgSrc, alt: f.fig_name || f.fig_number, klasse: 'part-img', fade: true, orig: fullUrl(imgSrc), ph: 'figur' })
                      : `<span class="bild-ph part-img" role="img" aria-label="${esc(f.fig_name || f.fig_number)}">${platzhalterInhalt('figur')}</span>`}
@@ -278,7 +278,7 @@ export function renderFigs(list, target) {
             <div class="part-qty">${f.total_quantity||f.quantity}×</div>
             ${condBadge}
             ${besitzer}
-            ${erfasst ? `<div style="font-size:var(--fs-0);color:var(--mut)">${erfasst}</div>` : ''}
+            ${erfasst ? `<div data-stil="font-size:var(--fs-0);color:var(--mut)">${erfasst}</div>` : ''}
           </div>`;
         }).join('')}
       </div>
@@ -344,15 +344,15 @@ export function renderManualFigsTable() {
       const figPrice = f.avg_purchase_price ?? f.unit_price ?? f.purchase_price;
       const priceStr = figPrice!=null ? fmtN(figPrice, CURRENCY) : '—';
       const condBadge = condBadges(f);
-      return `<div class="man-tile" tabindex="0" role="button" data-click="openManDetail" data-arg="fig" data-arg2="${esc(f.fig_number)}" data-arg3="0" style="cursor:pointer">
+      return `<div class="man-tile" tabindex="0" role="button" data-click="openManDetail" data-arg="fig" data-arg2="${esc(f.fig_number)}" data-arg3="0" data-stil="cursor:pointer">
         <div class="ca"><button class="delbtn" data-click="deleteManualFigStop" tabindex="-1" aria-hidden="true" data-arg="${esc(f.fig_number)}" data-arg2="${f.user_id||''}" title="${esc(t('figs.delete'))}" aria-label="${esc(t('figs.delete'))}">${TRASH_ICON_SVG}</button></div>
         ${img}
         <div class="man-tile-num">${esc(f.fig_number)}</div>
         <div class="man-tile-name">${esc(f.fig_name) || '—'}</div>
-        <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;margin-top:2px">
+        <div data-stil="display:flex;gap:4px;align-items:center;flex-wrap:wrap;margin-top:2px">
           <span class="qbadge">×${f.quantity}</span>${condBadge}${ownerBadges(f)}
         </div>
-        <div style="font-weight:700;font-size:var(--fs-2);color:var(--b600);margin-top:3px">${priceStr}</div>
+        <div data-stil="font-weight:700;font-size:var(--fs-2);color:var(--b600);margin-top:3px">${priceStr}</div>
       </div>`;
     }).join('')}
   </div>`;
@@ -368,7 +368,7 @@ export async function updateManualFig(figNumber, body, owner) {
 /**
  * Der Hinweis, wenn der Kaufpreis aus dem ANDEREN Zustand stammt.
  *
- * ── Warum es ihn gibt (Nachtrag 167) ────────────────────────────────────────
+ * ── Warum es ihn gibt ────────────────────────────────────────
  * Marcos zwei Befunde waren zwei Seiten derselben Tatsache: BrickLink fuehrt
  * zu vielen Teilen und Figuren nur EINEN Zustand.
  *
@@ -591,23 +591,23 @@ function manuelleTabelle(posten, art) {
     const loeschArgs = istTeil
       ? `data-arg="${esc(nummer)}" data-arg2="${p.color_id || 0}" data-arg3="${p.user_id || ''}"`
       : `data-arg="${esc(nummer)}" data-arg2="${p.user_id || ''}"`;
-    return `<tr style="cursor:pointer" tabindex="0" data-click="openManDetail" data-arg="${art}" data-arg2="${esc(nummer)}" data-arg3="${istTeil ? (p.color_id || 0) : 0}">
+    return `<tr data-stil="cursor:pointer" tabindex="0" data-click="openManDetail" data-arg="${art}" data-arg2="${esc(nummer)}" data-arg3="${istTeil ? (p.color_id || 0) : 0}">
       <td>${imgSrc
         ? bildTag({ src: imgSrc, alt: '', klasse: 'bild-klein', ph: istTeil ? 'teil' : 'figur' })
         : `<span class="bild-ph bild-klein" aria-hidden="true">${platzhalterInhalt(istTeil ? 'teil' : 'figur')}</span>`}</td>
-      <td><span style="font-family:var(--mono);font-size:var(--fs-1);color:var(--b600)" title="${esc(nummer)}">${esc(blNummer)}</span></td>
-      <td style="max-width:200px">${esc(name) || '—'}</td>
-      ${istTeil ? `<td><div style="display:flex;align-items:center;gap:5px">${
-        p.color_hex ? `<div class="color-dot" style="background:${escHex(p.color_hex, 'var(--s300)')}"></div>` : ''
+      <td><span data-stil="font-family:var(--mono);font-size:var(--fs-1);color:var(--b600)" title="${esc(nummer)}">${esc(blNummer)}</span></td>
+      <td data-stil="max-width:200px">${esc(name) || '—'}</td>
+      ${istTeil ? `<td><div data-stil="display:flex;align-items:center;gap:5px">${
+        p.color_hex ? `<div class="color-dot" data-farbe="${escHex(p.color_hex, 'var(--s300)')}"></div>` : ''
       }${esc(colorName(p.color_name))}</div></td>` : ''}
-      <td><span style="font-family:var(--mono);font-weight:600;color:var(--b700)">${p.quantity || 0}</span></td>
+      <td><span data-stil="font-family:var(--mono);font-weight:600;color:var(--b700)">${p.quantity || 0}</span></td>
       <td>${condBadges(p)}</td>
-      <td style="font-weight:600;color:var(--b600)">${preis != null ? fmtN(preis, CURRENCY) : '—'}</td>
-      <td style="font-size:var(--fs-1);color:var(--mut)">${esc(p.storage || '')}</td>
+      <td class="preis">${preis != null ? fmtN(preis, CURRENCY) : '—'}</td>
+      <td data-stil="font-size:var(--fs-1);color:var(--mut)">${esc(p.storage || '')}</td>
       <td><button class="delbtn" data-click="${loeschKlick}" ${loeschArgs} title="${esc(loeschTitel)}" aria-label="${esc(loeschTitel)}">${TRASH_ICON_SVG}</button>${ownerBadges(p)}</td>
     </tr>`;
   };
-  return `<div class="tw"><table class="dt" style="font-size:var(--fs-2)"><thead><tr>${
+  return `<div class="tw"><table class="dt" data-stil="font-size:var(--fs-2)"><thead><tr>${
     kopf.map(h => `<th>${h}</th>`).join('')
   }</tr></thead><tbody>${posten.map(zeile).join('')}</tbody></table></div>`;
 }
@@ -660,22 +660,22 @@ export function renderManualParts() {
         ? bildTag({ src: imgSrc, alt: [p.part_name || p.part_number, p.color_name ? colorName(p.color_name) : ''].filter(Boolean).join(', '), klasse: 'man-tile-img', ph: 'teil' })
         : `<span class="bild-ph man-tile-img" role="img" aria-label="${esc(p.part_name || p.part_number)}">${platzhalterInhalt('teil')}</span>`;
       const colorRow = p.color_name
-        ? `<div class="man-tile-color">${p.color_hex ? `<span class="man-tile-swatch" style="background:${escHex(p.color_hex, 'var(--s300)')}"></span>` : ''}${esc(colorName(p.color_name))}</div>`
+        ? `<div class="man-tile-color">${p.color_hex ? `<span class="man-tile-swatch" data-farbe="${escHex(p.color_hex, 'var(--s300)')}"></span>` : ''}${esc(colorName(p.color_name))}</div>`
         : '';
       // Wie bei den Minifiguren: mengengewichtet über die Erfassungen.
       const partPrice = p.avg_purchase_price ?? p.unit_price ?? p.purchase_price;
       const priceStr = partPrice!=null ? fmtN(partPrice, CURRENCY) : '—';
       const condBadge = condBadges(p);
-      return `<div class="man-tile" tabindex="0" role="button" data-click="openManDetail" data-arg="part" data-arg2="${esc(p.part_number)}" data-arg3="${p.color_id||0}" style="cursor:pointer">
+      return `<div class="man-tile" tabindex="0" role="button" data-click="openManDetail" data-arg="part" data-arg2="${esc(p.part_number)}" data-arg3="${p.color_id||0}" data-stil="cursor:pointer">
         <div class="ca"><button class="delbtn" data-click="deleteManualPartStop" tabindex="-1" aria-hidden="true" data-arg="${esc(p.part_number)}" data-arg2="${p.color_id||0}" data-arg3="${p.user_id||''}" title="${esc(t('parts.delete.title'))}" aria-label="${esc(t('parts.delete.title'))}">${TRASH_ICON_SVG}</button></div>
         ${img}
         <div class="man-tile-num" title="${esc(p.part_number)}">${esc(p.bl_part_number||p.part_number)}</div>
         <div class="man-tile-name">${esc(p.part_name) || '—'}</div>
         ${colorRow}
-        <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;margin-top:2px">
+        <div data-stil="display:flex;gap:4px;align-items:center;flex-wrap:wrap;margin-top:2px">
           <span class="qbadge">×${p.quantity}</span>${condBadge}${ownerBadges(p)}
         </div>
-        <div style="font-weight:700;font-size:var(--fs-2);color:var(--b600);margin-top:3px">${priceStr}</div>
+        <div data-stil="font-weight:700;font-size:var(--fs-2);color:var(--b600);margin-top:3px">${priceStr}</div>
       </div>`;
     }).join('')}
   </div>`;

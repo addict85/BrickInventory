@@ -3,6 +3,7 @@
  * die Form, die jede Authenticator-App versteht. Ohne Fremdpaket, mit
  * node:crypto. Freiwillig je Konto; Tabellen in Migration 0042.
  */
+import { verschluessele, entschluessele } from './geheimnis';
 import crypto from 'crypto';
 const db = require('../db/database') as typeof import('../db/database');
 
@@ -105,7 +106,7 @@ export async function beginneEinrichtung(uid: number): Promise<string | null> {
   const r = await db.run(
     `INSERT INTO zweiter_faktor (user_id, geheimnis) VALUES ($1, $2)
      ON CONFLICT (user_id) DO UPDATE SET geheimnis = EXCLUDED.geheimnis, letzter_schritt = 0, eingerichtet_am = NOW()
-       WHERE zweiter_faktor.aktiv = FALSE`, [uid, geheimnis]);
+       WHERE zweiter_faktor.aktiv = FALSE`, [uid, verschluessele(geheimnis)]);
   return (r.changes ?? 0) > 0 ? geheimnis : null;
 }
 
@@ -114,7 +115,7 @@ export async function bestaetigeEinrichtung(uid: number, code: string): Promise<
   return db.transaction(async (tx) => {
     const z = await tx.get('SELECT geheimnis FROM zweiter_faktor WHERE user_id = $1 AND aktiv = FALSE FOR UPDATE', [uid]);
     if (!z) return null;
-    const schritt = passenderSchritt(z.geheimnis, String(code ?? '').trim());
+    const schritt = passenderSchritt(entschluessele(z.geheimnis) ?? '', String(code ?? '').trim());
     if (schritt === null) return null;
     await tx.run('UPDATE zweiter_faktor SET aktiv = TRUE, letzter_schritt = $2 WHERE user_id = $1', [uid, schritt]);
     return codesErsetzen(tx, uid);
@@ -131,7 +132,7 @@ export async function pruefeCode(uid: number, code: unknown): Promise<'totp' | '
   if (!eingabe) return null;
   if (/^\d{6}$/.test(eingabe)) {
     const z = await db.get('SELECT geheimnis FROM zweiter_faktor WHERE user_id = $1 AND aktiv', [uid]);
-    const schritt = z ? passenderSchritt(z.geheimnis, eingabe) : null;
+    const schritt = z ? passenderSchritt(entschluessele(z.geheimnis) ?? '', eingabe) : null;
     if (schritt === null) return null;
     const r = await db.run(
       'UPDATE zweiter_faktor SET letzter_schritt = $2 WHERE user_id = $1 AND aktiv AND letzter_schritt < $2', [uid, schritt]);

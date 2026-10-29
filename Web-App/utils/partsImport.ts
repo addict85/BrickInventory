@@ -9,7 +9,7 @@ import { meldeUndWeiter } from '../utils/httpError';
 import { getGlobalSetting } from '../utils/settings';
 import { mitVersion } from './setNummer';
 import { merkeBlNummer, merkeBlNummerUnveraendert } from './blZuordnung';
-import { merkeTeil, merkeTeilFarbe, setzeTeilBildLokal } from './katalogPflege';
+import { merkeTeil, merkeTeilFarbe, merkeSetTeil, setzeTeilBildLokal } from './katalogPflege';
 
 /**
  * Teile eines Sets aus dem Katalog übernehmen.
@@ -35,10 +35,6 @@ async function downloadPartImagesBackground(
       await generateThumb(rel).catch(() => {});
       // Sync image_local to shared catalog
       if (partNumber && colorId !== undefined) {
-        await db.run(
-          'UPDATE set_parts_catalog SET image_local=$1 WHERE part_number=$2 AND color_id=$3',
-          [rel, partNumber, colorId]
-        ).catch(logAndContinue('parts:image_local katalog'));
         // Als Upsert, nicht als UPDATE: Der Bildabgleich kann ein Teil
         // treffen, dessen Katalogzeile es noch nicht gibt (das Bild wird
         // heruntergeladen, bevor der Teile-Import die Zeile schreibt).
@@ -135,16 +131,7 @@ async function importPartsForSet(setNumber: string, userId: number) {
               // sie je Set-Teile-Zeile, also fuer dasselbe Teil so oft, wie
               // es Sets damit gibt — und wurde nach jedem CSV-Abgleich aus
               // rb_bl_mapping nachkopiert (syncBlPartNumbers, siehe oben).
-              await tx.run(
-                `INSERT INTO set_parts_catalog (set_number,part_number,part_name,color_id,color_name,color_hex,category_name,image_url,image_local,is_spare,quantity)
-                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
-                 ON CONFLICT (set_number,part_number,color_id) DO UPDATE SET
-                   part_name=EXCLUDED.part_name,color_name=EXCLUDED.color_name,color_hex=EXCLUDED.color_hex,
-                   image_url=COALESCE(EXCLUDED.image_url,set_parts_catalog.image_url),
-                   image_local=COALESCE(EXCLUDED.image_local,set_parts_catalog.image_local),
-                   quantity=EXCLUDED.quantity,updated_at=NOW()`,
-                [row[1],row[2],row[4],row[5],row[6],row[7],row[8],row[10],row[11],row[12],row[9]]
-              );
+              await merkeSetTeil(row[1], row[2], row[5], row[9], row[12], tx);
               // Die BrickLink-Nummer aus derselben Antwort — jetzt dorthin,
               // wo sie hingehoert. merkeBlNummer() schreibt NULL, wenn sie
               // mit der Rebrickable-Nummer uebereinstimmt.

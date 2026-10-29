@@ -9,11 +9,11 @@ import { gibCheckOnLoad, gibZuruecksetzen } from './01-fortschritt.js';
 // ═══ Escaping, Werkzeuge, api(), i18n-Glue, Auth & Panels, Login/Logout ═══
 //
 // Was NICHT (mehr) hier steht, obwohl es hier stand:
-//   Kontofilter                    → js/14-scope.js      (Nachtrag 136)
-//   eigener Scrollbalken           → js/15-scrollbar.js  (Nachtrag 136)
-//   PDF-Betrachter                 → js/12-pdfviewer.js  (Nachtrag 130)
-//   CSV-Import-Fortschrittsbalken  → js/01-fortschritt.js (Nachtrag 141)
-//   Überwachung und Protokollfenster → js/01-monitor.js   (Nachtrag 141)
+//   Kontofilter                    → js/14-scope.js
+//   eigener Scrollbalken           → js/15-scrollbar.js
+//   PDF-Betrachter                 → js/12-pdfviewer.js
+//   CSV-Import-Fortschrittsbalken  → js/01-fortschritt.js
+//   Überwachung und Protokollfenster → js/01-monitor.js
 //
 // Diese Liste ist kein Verzeichnis, sondern eine Warnung: Die Datei war
 // zweimal auf über 1300 Zeilen gewachsen, weil Neues dort angehängt wurde, wo
@@ -29,7 +29,7 @@ import { gibCheckOnLoad, gibZuruecksetzen } from './01-fortschritt.js';
 //   Textinhalt oder doppelt-gequotetes Attribut  → esc()
 //   Wert in einem JS-String im Attribut          → escJs()   z.B. data-click="fn" data-arg="${escJs(x)}"
 //   src / href                                   → escUrl()
-//   Farbwert in style=""                         → escHex()
+//   Farbwert in data-farbe=""                    → escHex()
 
 /** HTML-Escape für Textinhalte und doppelt-gequotete Attributwerte. */
 /**
@@ -94,7 +94,7 @@ export function escUrl(u){
   return esc(v);
 }
 
-/** Farbwert für style="background:…" — alles ausser 6 Hex-Ziffern fliegt raus. */
+/** Farbwert für data-farbe="…" (js/00-stile.js) — alles ausser 6 Hex-Ziffern fliegt raus. */
 export function escHex(hex, fallback){
   const v = String(hex ?? '').trim().replace(/^#/, '');
   return /^[0-9A-Fa-f]{6}$/.test(v) ? '#' + v : (fallback || 'var(--s300)');
@@ -128,7 +128,14 @@ export const escHtml = escJs;
 // eine `const`-Pfeilfunktion aus 01-core.js liegt dann noch in der temporalen
 // Todeszone und wirft "G is not a function". Funktionsdeklarationen sind
 // dagegen schon beim Instanziieren initialisiert und sofort erreichbar.
-export function G(id) { return document.getElementById(id); }
+/**
+ * Als Formularelement typisiert: Die meisten Aufrufe lesen .value, .checked
+ * oder .disabled. Für ein anderes Element sind diese Felder schlicht leer —
+ * die Typprüfung soll an den echten Fehlern hängen, nicht an jedem Feldzugriff.
+ * @param {string} id
+ * @returns {HTMLInputElement}
+ */
+export function G(id) { return /** @type {HTMLInputElement} */ (document.getElementById(id)); }
 /** Ein Symbol aus der Symbolfamilie (Sprite in index.html) als HTML. */
 export function ico(name) { return `<svg class="ico" aria-hidden="true"><use href="#i-${esc(name)}"/></svg>`; }
 /**
@@ -142,7 +149,7 @@ export function bildTag(o) {
   return `<img src="${escUrl(o.src)}" alt="${esc(o.alt || '')}"${o.klasse ? ` class="${esc(o.klasse)}"` : ''}` +
     ` loading="lazy" decoding="async" data-onerror="platzhalter" data-ph="${esc(o.ph || 'set')}"` +
     `${o.orig ? ` data-orig="${escUrl(o.orig)}"` : ''}${o.fade ? ' data-fade="1"' : ''}` +
-    `${o.stil ? ` style="${esc(o.stil)}"` : ''}${o.extra ? ' ' + o.extra : ''} />`;
+    `${o.stil ? ` data-stil="${esc(o.stil)}"` : ''}${o.extra ? ' ' + o.extra : ''} />`;
 }
 
 /** Der Platzhalter einer Art: das Set-Bild oder das Symbol in einer getönten Fläche. */
@@ -215,17 +222,22 @@ export function setnummerFeldGueltig(id, wert) {
 /**
  * Ein leerer Zustand: Symbol, ein Satz, und wenn es einen gibt, der nächste
  * Schritt als Knopf. Texte kommen fertig übersetzt; maskiert wird hier.
- * @param {{ ico: string, titel: string, text?: string, knopf?: { text: string, click: string, arg?: string } }} o
+ * @param {{ ico: string, titel: string, text?: string, knopf?: { text: string, click: string, arg?: string, ico?: string, art?: string } }} o
  */
 export function leerZustand(o) {
-  const knopf = o.knopf ? `<button type="button" class="btn bp" data-click="${esc(o.knopf.click)}"${o.knopf.arg ? ` data-arg="${esc(o.knopf.arg)}"` : ''}>${ico('plus')}<span>${esc(o.knopf.text)}</span></button>` : '';
+  const knopf = o.knopf ? `<button type="button" class="btn ${o.knopf.art || 'bp'}" data-click="${esc(o.knopf.click)}"${o.knopf.arg ? ` data-arg="${esc(o.knopf.arg)}"` : ''}>${ico(o.knopf.ico || 'plus')}<span>${esc(o.knopf.text)}</span></button>` : '';
   return `<div class="empty leer"><div class="leer-ico">${ico(o.ico)}</div><h3>${esc(o.titel)}</h3>${o.text ? `<p>${esc(o.text)}</p>` : ''}${knopf}</div>`;
+}
+
+/** Der Knopf „Filter zurücksetzen“ für einen Leerzustand ohne Treffer. */
+export function zuruecksetzenKnopf(ansicht) {
+  return { text: tRaw('common.reset_filter'), click: 'filterZuruecksetzen', arg: ansicht, ico: 'schliessen', art: 'bs' };
 }
 
 /**
  * Einen Knopf für die Dauer eines Aufrufs sperren.
  *
- * ── Der Befund (Nachtrag 160) ───────────────────────────────────────────────
+ * ── Der Befund ───────────────────────────────────────────────
  *
  * Fünf Stellen taten dasselbe: sperren, „läuft"-Text setzen, danach freigeben
  * und die Beschriftung ZURÜCKSCHREIBEN. Und alle fünf schrieben sie als
@@ -450,7 +462,7 @@ export function fullUrl(src) {
  * `aria-hidden` (die Beschriftung steht daneben, das Symbol ist Zierde).
  */
 export const XML_ICON_SVG = '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" '
-  + 'style="width:1.05em;height:1.05em;display:inline-block;vertical-align:-.18em" '
+  + 'data-stil="width:1.05em;height:1.05em;display:inline-block;vertical-align:-.18em" '
   + 'fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" '
   + 'stroke-linejoin="round" aria-hidden="true">'
   + '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/>'
@@ -465,7 +477,7 @@ export const XML_ICON_SVG = '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2
  * Symbol übernimmt sie. So passt es in beide Umgebungen ohne zweite Fassung.
  */
 export const TRASH_ICON_SVG = '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" '
-  + 'style="width:1em;height:1em;display:block" fill="none" stroke="currentColor" '
+  + 'data-stil="width:1em;height:1em;display:block" fill="none" stroke="currentColor" '
   + 'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
   + '<path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/>'
   + '<path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>'
@@ -549,6 +561,8 @@ export function observeLazyImages(root) {
   }
   imgs.forEach(img => { img.classList.add('observed'); window._imgObserver.observe(img); });
 }
+/** Anzeigedauer je Art in ms. */
+const TOAST_DAUER = { success: 3500, info: 5000, error: 9000 };
 /** @param {{text: string, fn: () => any}} [aktion] Knopf in der Meldung, z. B. „Rückgängig" */
 export function toast(msg, type='info', aktion) {
   const c = G('toasts'), el = document.createElement('div');
@@ -570,8 +584,12 @@ export function toast(msg, type='info', aktion) {
     knopf.onclick = () => { el.remove(); aktion.fn(); };
     el.append(knopf);
   }
-  // Mit Knopf länger: Man muss ihn lesen UND treffen können.
-  c.appendChild(el); setTimeout(()=>el.remove(), aktion ? 9000 : 4500);
+  // Ein Fehler will gelesen werden, eine Bestätigung nur gesehen; mit Knopf
+  // muss man ihn auch treffen. Ein Klick auf die Meldung räumt sie weg, damit
+  // sie keine Karte verdeckt.
+  el.addEventListener('click', e => { if (e.target === el || !(/** @type {Element} */ (e.target)).closest('button')) el.remove(); });
+  c.appendChild(el);
+  setTimeout(() => el.remove(), Math.max(aktion ? 9000 : 0, TOAST_DAUER[type] ?? 4500));
 }
 /**
  * Aufruf der eigenen API. Liefert IMMER ein Objekt — nie eine Ausnahme.
@@ -599,7 +617,7 @@ export function toast(msg, type='info', aktion) {
 export async function api(method, path, body) {
   // ── Accept-Language: die Sprache, die gerade AUF DEM BILDSCHIRM steht ──────
   //
-  // Der Server hat seine Fehlermeldungen seit Nachtrag 130 in beiden Sprachen
+  // Der Server hat seine Fehlermeldungen in beiden Sprachen
   // (utils/fehlerTexte.ts) und antwortet in der, die hier steht. Vorher waren
   // alle 80 Meldungen deutsch — in einer sonst vollständig englischen
   // Oberfläche.
@@ -668,7 +686,7 @@ function meldeSitzungBeendet(path) {
 /**
  * Ein GELDBETRAG in der Waehrung des Nutzers.
  *
- * ── Warum der Rueckfall nicht mehr 'EUR' ist (Nachtrag 164) ─────────────────
+ * ── Warum der Rueckfall nicht mehr 'EUR' ist ─────────────────
  *
  * Hier stand `cur||'EUR'`. Wer das zweite Argument vergisst, bekam damit still
  * Euro — und zwar auch dann, wenn der Nutzer in Franken rechnet. Genau das ist
@@ -689,6 +707,19 @@ function meldeSitzungBeendet(path) {
 export function fmtN(v,cur){
   if(!v||v==0) return '—';
   return new Intl.NumberFormat(locale(),{style:'currency',currency:cur||CURRENCY||'EUR',minimumFractionDigits:2}).format(v);
+}
+/**
+ * Prozent in der Form der Oberfläche (de-DE „+51,1 %“, en-GB „+51.1%“), damit
+ * sie neben den Beträgen aus fmtN() nicht in einer zweiten Schreibweise steht.
+ * @param {number|string} v  Prozentwert (51.1, nicht 0.511)
+ * @param {{vorzeichen?: boolean, stellen?: number}} [o]
+ */
+export function fmtPct(v, o = {}) {
+  const n = parseFloat(String(v));
+  if (!Number.isFinite(n)) return '—';
+  const stellen = o.stellen ?? 1;
+  return new Intl.NumberFormat(locale(), { style: 'percent', minimumFractionDigits: stellen,
+    maximumFractionDigits: stellen, signDisplay: o.vorzeichen === false ? 'auto' : 'exceptZero' }).format(n / 100);
 }
 export function fmtBig(n){ return n>1e6?(n/1e6).toFixed(1)+'M':n>1e3?(n/1e3).toFixed(1)+'k':String(n); }
 
@@ -808,7 +839,7 @@ export let _settingsCache=null;
 // Hier wird nur noch durchgereicht, damit der localStorage-Cache mitgeführt
 // wird und ein Design-Wechsel des Admins beim nächsten Laden sofort greift.
 export function applyTheme(theme){
-  // ── Keine zweite Liste hier (Nachtrag 168) ────────────────────────────────
+  // ── Keine zweite Liste hier ────────────────────────────────
   //
   // Hier stand `if (theme !== 'brick' && theme !== 'classic') return null;` —
   // eine EIGENE Liste der gueltigen Designs, geschrieben, als es zwei gab.
@@ -1069,6 +1100,7 @@ function showApp(){ bindTabs(); plInit(); setTimeout(()=>{ gibCheckOnLoad(); }, 
       if(!hasRbKey) {
         const ntab = document.querySelector('.ntab[data-tab="settings"]');
         if(ntab) ntab.click();
+        /** @type {HTMLElement|null} */ (document.querySelector('.einst-nav a[data-arg="einst-rb"]'))?.click();
         toast(tRaw('rb_key.missing'),'info');
         return;
       }
@@ -1096,10 +1128,10 @@ async function doLogin(){
   }
   G('lc-zeile').style.display='none'; G('lc').value='';
   if(d.success){ ME = { ...d, ...(d.user||{}), isAdmin: d.user?.is_admin === true };
-    // Jede Anmeldung beginnt mit „Alle Konten" (Nachtrag 46) — VOR showApp(),
+    // Jede Anmeldung beginnt mit „Alle Konten" — VOR showApp(),
     // damit die Auswahlfelder gleich mit dem zurückgesetzten Wert entstehen.
     resetScopeModes();
-    showApp(); } else { const err=d.error||t('settings.error'); G('lerr').textContent=err; G('lerr').style.display='block'; if(d.unverified){ G('lerr').innerHTML=err+' <a href="#" data-click="showPanel" data-arg="login" style="color:var(--b600)">E-Mail erneut senden?</a>'; } }
+    showApp(); } else { const err=d.error||t('settings.error'); G('lerr').textContent=err; G('lerr').style.display='block'; if(d.unverified){ G('lerr').innerHTML=err+' <a href="#" data-click="showPanel" data-arg="login" data-stil="color:var(--b600)">E-Mail erneut senden?</a>'; } }
 }
 G('btn-logout').onclick=async()=>{
   // Ein Token aus einer älteren Anmeldung wird mit entwertet.
@@ -1132,7 +1164,7 @@ G('btn-logout').onclick=async()=>{
 // ── Handler beim Dispatcher anmelden (siehe js/00-registry.js) ──────────────
 // gibToggle meldet js/01-fortschritt.js an, openLogViewer js/01-monitor.js,
 // closePdfViewer/printPdfViewer js/12-pdfviewer.js — der Handler gehört zu dem
-// Modul, das ihn umsetzt (Nachtrag 130).
+// Modul, das ihn umsetzt.
 registerActions({
   showPanel,
 });

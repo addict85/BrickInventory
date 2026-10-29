@@ -4,34 +4,14 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
- * Anmeldung, Konto und Sitzung.
- *
- * ── Warum diese Datei existiert (Nachtrag 155) ──────────────────────────────
- *
- * Alle 92 Datenklassen der App standen in EINER Datei, Models.kt, mit 1158
- * Zeilen. Jede Aenderung an irgendeinem Modell beruehrte dieselbe Datei — bei
- * parallelen Aenderungen ein sicherer Konflikt, und beim Suchen war der Weg
- * immer derselbe: eine Datei oeffnen und scrollen.
- *
- * Aufgeteilt wurde entlang der Sachgebiete. Die Klassen selbst sind WORTGLEICH
- * uebernommen: Es wurde nichts umbenannt, nichts zusammengefasst und kein Feld
- * angefasst. Sie liegen weiter im Paket ch.brickinventoryapp.data.model, also
- * aendert sich fuer keinen Aufrufer etwas — Kotlin bindet an das Paket, nicht
- * an die Datei.
+ * Anmeldung, Konto und Sitzung. Die Modelle liegen je Sachgebiet in einer Datei,
+ * alle im Paket data.model.
  */
 
 /**
- * Anmeldung mit Zugangsdaten.
- *
- * `neverExpires` sagt dem Server, dass dieses Geraet einen Token OHNE
- * Ablaufdatum bekommen soll. Bis zum Zusammenlegen der beiden Anmeldungen
- * steckte diese Entscheidung in der ADRESSE: /api/v1/auth/login gab dauerhafte
- * Token aus, /api/auth/login solche mit sieben Tagen Laufzeit. Jetzt gibt es
- * nur noch eine Adresse, und der Unterschied steht da, wo man ihn sieht.
- *
- * Fuer die App ist `true` richtig: Der Token ist ihr einziger Ausweis, und wer
- * die App oeffnet, soll nicht jedes Mal sein Passwort eintippen. Ungenutzt
- * verfaellt er trotzdem (TOKEN_IDLE_DAYS auf dem Server, Vorgabe 90 Tage).
+ * Anmeldung mit Zugangsdaten. `neverExpires`: Die App bekommt einen Token ohne
+ * Ablaufdatum, weil er ihr einziger Ausweis ist; ungenutzt verfällt er trotzdem
+ * (TOKEN_IDLE_DAYS, Vorgabe 90 Tage).
  */
 @Serializable
 data class LoginRequest(
@@ -75,23 +55,14 @@ data class UserSettings(
 )
 
 /**
- * Startzustand des Servers — GET /api/v1/startup-status, ohne Anmeldung.
- *
- * ── Warum die App das braucht (Nachtrag 136) ────────────────────────────────
- *
- * Der erste Start einer Neuinstallation kann VIELE MINUTEN dauern: Der Server
- * holt den Rebrickable-Katalog und legt ihn an. Die Webapp zeigt in dieser Zeit
- * einen Fortschrittsbalken mit Schritt und Prozent (public/js/01-core.js); der
- * Kommentar dort sagt ausdruecklich, dass ein Zeitlimit hier falsch waere.
- *
- * Die App kannte die Adresse nicht und zeigte ihre allgemeine Netzmeldung. Wer
- * seinen Server frisch aufsetzt und die App oeffnet, sieht dann „keine
- * Verbindung" — und haelt das eine oder das andere fuer kaputt.
+ * Startzustand des Servers — GET /api/v1/startup-status, ohne Anmeldung. Der erste
+ * Start einer Neuinstallation kann viele Minuten dauern; statt „keine Verbindung“
+ * zeigt die App dann den Fortschritt wie die Webapp.
  *
  * @param ready    Server ist durch; ab hier ist alles wie immer.
- * @param step     Was gerade laeuft, schon uebersetzt vom Server.
- * @param progress Erledigte Schritte, `total` insgesamt. 0/0 = unbekannt.
- * @param sub      Feinfortschritt innerhalb eines Schritts, z. B. „40%".
+ * @param step     Was gerade läuft, vom Server übersetzt.
+ * @param progress Erledigte Schritte, `total` insgesamt; 0/0 = unbekannt.
+ * @param sub      Feinfortschritt innerhalb eines Schritts, z. B. „40%“.
  */
 @Serializable
 data class StartupStatus(
@@ -114,14 +85,10 @@ data class SettingsResponse(
 )
 
 /**
- * Ein ausgestellter Zugang, wie ihn GET /api/v1/settings/tokens auflistet.
- *
- * `tokenId` sind die ersten 16 Zeichen des SHA-256-HASHES, nicht des Tokens.
- * Der Klartext existiert auf dem Server nicht mehr — er wurde einmal
- * ausgegeben und nie gespeichert. Zum Wiederfinden der Zeile reicht der Hash.
- *
- * `aktuell` markiert den Zugang, mit dem GERADE gefragt wird. Ohne das kann
- * man sich mit dem eigenen Knopf selbst aussperren, ohne es zu merken.
+ * Ein ausgestellter Zugang (GET /api/v1/settings/tokens). `tokenId` sind 16
+ * Zeichen des SHA-256-Hashes; den Klartext hat der Server nie gespeichert.
+ * `aktuell` markiert den Zugang dieser Anfrage, damit man sich nicht unbemerkt
+ * selbst aussperrt.
  */
 @Serializable
 data class AppToken(
@@ -154,12 +121,9 @@ data class MeResponse(
 // bekommen. Dieselben Adressen, dieselben Felder wie in public/js/01-core.js.
 
 /**
- * Registrierung — POST /api/v1/auth/register.
- *
- * `language` steuert die Sprache der Bestaetigungs-E-Mail UND die
- * Nutzereinstellung des neuen Kontos (routes/auth.ts schreibt sie direkt in
- * user_settings). Die App schickt deshalb ihre eigene Anzeigesprache mit,
- * statt den Server auf 'de' zurueckfallen zu lassen.
+ * Registrierung — POST /api/v1/auth/register. `language` steuert
+ * Bestätigungs-E-Mail und Kontoeinstellung; die App schickt ihre Anzeigesprache
+ * mit, statt den Server auf 'de' zurückfallen zu lassen.
  */
 @Serializable
 data class RegisterRequest(
@@ -172,12 +136,9 @@ data class RegisterRequest(
 )
 
 /**
- * Die Antwort auf eine Registrierung.
- *
- * `consoleMode` ist der Fall ohne eingerichteten Mailversand: Der Server legt
- * das Konto an und schreibt den Bestaetigungslink in seine Konsole. Ohne diesen
- * Hinweis wartet man auf eine E-Mail, die nie kommt — die Webapp haengt dafuer
- * einen eigenen Satz an, und die App tut jetzt dasselbe.
+ * Die Antwort auf eine Registrierung. `consoleMode`: Ohne Mailversand steht der
+ * Bestätigungslink in der Konsole des Servers — ohne Hinweis wartete man auf eine
+ * E-Mail, die nie kommt.
  */
 @Serializable
 data class RegisterResponse(
@@ -192,13 +153,9 @@ data class RegisterResponse(
 data class ForgotPasswordRequest(val email: String)
 
 /**
- * Die Antwort auf „Passwort vergessen".
- *
- * Sie ist ABSICHTLICH immer dieselbe — „Falls die E-Mail existiert, wurde ein
- * Link gesendet." Der Server unterscheidet nicht zwischen bekannter und
- * unbekannter Adresse, sonst verriete das Formular, wer hier ein Konto hat.
- * Die App darf daraus also keine Erfolgs- oder Fehlermeldung ableiten; sie
- * zeigt den Satz des Servers.
+ * Die Antwort auf „Passwort vergessen“ ist absichtlich immer dieselbe, damit das
+ * Formular nicht verrät, wer ein Konto hat. Die App zeigt den Satz des Servers und
+ * leitet nichts daraus ab.
  */
 @Serializable
 data class ForgotPasswordResponse(
@@ -208,22 +165,14 @@ data class ForgotPasswordResponse(
 )
 
 /**
- * Ist die Registrierung ueberhaupt offen? — GET /api/v1/auth/registration-status.
- *
- * OHNE Anmeldung erreichbar, wie im Web. Der Verwalter kann Registrierungen
- * global abschalten (global_settings.registration_enabled); dann blendet die
- * Webapp den Link aus, und die App tut jetzt dasselbe. Ein Knopf, der immer zu
- * einem 403 fuehrt, ist schlimmer als kein Knopf.
+ * Ist die Registrierung offen? GET /api/v1/auth/registration-status, ohne
+ * Anmeldung. Ist sie abgeschaltet, fehlt der Link — ein Knopf, der immer zu einem
+ * 403 führt, ist schlimmer als keiner.
  */
 @Serializable
 data class RegistrationStatusResponse(val enabled: Boolean = false)
 
-// ── Profil und Passwort ─────────────────────────────────────────────────────
-//
-// Die Routen gab es laengst; die App kam nur nicht daran. /auth/profile und
-// /auth/change-password hingen an einem sitzungsgebundenen Waechter, und die
-// App hat keine Sitzung (Nachtrag 127). Seit beide Waechter dieselbe Frage
-// stellen, sind es normale Aufrufe wie jeder andere.
+// ── Profil und Passwort ──
 
 /** Das eigene Konto — GET /api/v1/auth/profile. */
 @Serializable
@@ -234,11 +183,9 @@ data class Profil(
     @SerialName("first_name") val firstName: String? = null,
     @SerialName("last_name") val lastName: String? = null,
     /**
-     * Ist die E-Mail-Adresse bestaetigt?
-     *
-     * Der Server liefert hier je nach Treiber 0/1 oder true/false, deshalb
-     * `Int`: Als Boolean deserialisiert eine 0 nicht. Gelesen wird sie als
-     * `emailVerified == 1`.
+     * Ist die E-Mail-Adresse bestätigt? `Int`, weil der Server je nach Treiber 0/1
+     * oder true/false liefert und eine 0 als Boolean nicht deserialisiert; gelesen als
+     * `== 1`.
      */
     @SerialName("email_verified") val emailVerified: Int = 0,
 )
@@ -251,10 +198,8 @@ data class ProfilResponse(
 )
 
 /**
- * Profil aendern — PUT /api/v1/auth/profile.
- *
- * Das Passwort aendert nur /change-password. Eine neue E-Mail-Adresse
- * verlangt `passwordCurrent`.
+ * Profil ändern — PUT /api/v1/auth/profile. Das Passwort ändert nur
+ * /change-password; eine neue E-Mail-Adresse verlangt `passwordCurrent`.
  */
 @Serializable
 data class ProfilAenderung(
@@ -267,13 +212,10 @@ data class ProfilAenderung(
 )
 
 /**
- * Passwort aendern — POST /api/v1/auth/change-password.
- *
- * ACHTUNG, und die Oberflaeche sagt es dem Nutzer vorher: Der Server verwirft
- * danach ALLE Bearer-Token des Kontos — auch den, mit dem diese Anfrage kam.
- * Die App ist nach einem erfolgreichen Wechsel abgemeldet. Das ist richtig so:
- * Wer sein Passwort aendert, will bestehende Zugaenge loswerden, und eine
- * Ausnahme fuer den gerade benutzten waere genau die Luecke.
+ * Passwort ändern — POST /api/v1/auth/change-password. Der Server verwirft danach
+ * alle Bearer-Token des Kontos, auch den dieser Anfrage; die App ist abgemeldet,
+ * und die Oberfläche sagt es vorher. Eine Ausnahme für den gerade benutzten wäre
+ * genau die Lücke.
  */
 @Serializable
 data class PasswortAenderung(
@@ -281,22 +223,14 @@ data class PasswortAenderung(
     @SerialName("newPassword") val neuesPasswort: String,
 )
 
-// ── Server-Protokoll (nur fuer Verwalter) ───────────────────────────────────
+// ── Server-Protokoll (nur für Verwalter) ──
 //
-// Auch das konnte die Webapp seit jeher. Die Route lag hinter dem
-// sitzungsgebundenen requireAdmin; seit der Waechter beide Ausweise nimmt
-// (Nachtrag 127), erreicht die App sie mit ihrem Token.
-//
-// Die Modelle der NUTZERVERWALTUNG standen hier ebenfalls (Konto,
-// KontenResponse, NeuesKonto, VerwalterAenderung, FremdesPasswort) und sind
-// auf Marcos Entscheidung wieder entfernt: Konten verwaltet man am Rechner,
-// nicht auf einem Telefon (Nachtrag 129).
+// Die Nutzerverwaltung gehört an den Rechner, ihre Modelle stehen deshalb nicht
+// hier.
 
 /**
- * Eine Zeile aus dem Server-Protokoll — GET /api/v1/admin/logs?minutes=15.
- *
- * Der Server begrenzt selbst auf 2880 Minuten und 5000 Zeilen; die App muss
- * dafuer nichts tun ausser die Zeitspanne zu schicken.
+ * Eine Zeile aus dem Server-Protokoll — GET /api/v1/admin/logs?minutes=15. Der
+ * Server begrenzt selbst auf 2880 Minuten und 5000 Zeilen.
  */
 @Serializable
 data class ProtokollZeile(

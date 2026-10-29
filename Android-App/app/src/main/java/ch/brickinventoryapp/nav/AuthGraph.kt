@@ -56,14 +56,8 @@ import ch.brickinventoryapp.ui.viewmodel.aktivitaetsViewModel
 import ch.brickinventoryapp.ui.ManualItemDetailUiState
 
 /**
- * Navigationsziele, aus AppNavigation.kt herausgelöst (Punkt 9 der
- * Optimierungsliste). Die Blöcke sind unverändert übernommen — die einzige
- * Änderung ist, dass die zuvor aus dem umgebenden Scope eingefangenen Werte
- * jetzt als Parameter hereinkommen.
- *
- * ACHTUNG: Diese Aufteilung wurde ohne Android-SDK erzeugt und ist NICHT
- * kompiliert. Fehlende oder falsch typisierte Parameter fallen beim ersten
- * ./gradlew assembleDebug auf.
+ * Navigationsziele der Anmeldung. Die Werte aus AppNavigation kommen als Parameter
+ * herein, damit kein Ziel Zustand aus einem umgebenden Scope einfängt.
  */
 fun NavGraphBuilder.authGraph(
     navController: NavHostController,
@@ -103,16 +97,13 @@ fun NavGraphBuilder.authGraph(
             // Konto gibt. `Unit` als Schluessel: genau einmal je Aufbau, nicht
             // bei jeder Zustandsaenderung.
             LaunchedEffect(Unit) { anmeldungVm.pruefeRegistrierungOffen() }
-            // ── Startet der Server gerade? (Nachtrag 136) ────────────────────
+            // ── Startet der Server gerade? ──
             //
-            // Dann statt des Formulars der Fortschritt. Sich anzumelden hat in
-            // dieser Zeit ohnehin keinen Zweck — der Server antwortet noch
-            // nicht —, und die allgemeine Netzmeldung sagt genau das Falsche:
-            // Sie klingt nach einem Fehler, obwohl alles richtig laeuft.
-            //
-            // `startupStatus` steht nur dann auf einem Wert, wenn der Server
-            // ANTWORTET und `ready` verneint. Ist er gar nicht erreichbar,
-            // bleibt es bei null und die Anmeldung sieht aus wie immer.
+            // Dann statt des Formulars der Fortschritt: Anmelden hat in dieser Zeit keinen
+            // Zweck, und die allgemeine Netzmeldung klänge nach einem Fehler, obwohl alles
+            // richtig läuft. `startupStatus` hat nur dann einen Wert, wenn der Server
+            // antwortet und `ready` verneint; ist er gar nicht erreichbar, bleibt es bei null
+            // und die Anmeldung sieht aus wie immer.
             val serverStart = state.startupStatus
             if (serverStart != null) {
                 ch.brickinventoryapp.ui.screens.ServerStartAnzeige(serverStart)

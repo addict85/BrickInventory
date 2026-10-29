@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import ch.brickinventoryapp.ui.components.Bewegt
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Add
@@ -35,27 +36,14 @@ import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Alarm
 
 /**
- * Die Merkliste.
- *
- * ── Warum eine Liste und keine Kachelwand ───────────────────────────────────
- *
- * Die Galerie zeigt Kacheln, weil man seine Sammlung ansieht. Eine
- * Merkliste wird GELESEN und abgearbeitet — Nummer, Jahr und Zustand
- * nebeneinander, dazu der Preisalarm. Dieselbe Entscheidung wie in der
- * Webapp; die beiden Oberflaechen sollen sich gleich anfuehlen.
- *
- * ── Was hier NICHT entschieden wird ─────────────────────────────────────────
- *
- * Alle Regeln stehen am Server (utils/merkliste.ts). Dieser Bildschirm
- * zeigt und ruft.
+ * Die Merkliste — als Liste, weil sie gelesen und abgearbeitet wird: Nummer, Jahr,
+ * Zustand und Preisalarm nebeneinander, wie in der Webapp. Die Regeln stehen am
+ * Server (utils/merkliste.ts); der Bildschirm zeigt und ruft.
  */
 /**
- * Der Schluessel einer Zeile: Nummer, Zustand UND Konto.
- *
- * Dasselbe Set kann zweimal dastehen (neu und gebraucht), und im Kontenbaum
- * auch bei zwei Konten. Nur die Nummer waere mehrdeutig — Compose verloere
- * beim Neuzeichnen die Zuordnung, und der Uebernahme-Dialog stuende nach
- * einer Drehung ueber der falschen Zeile.
+ * Der Schlüssel einer Zeile: Nummer, Zustand und Konto. Dasselbe Set kann neu und
+ * gebraucht und bei zwei Konten dastehen; mit der Nummer allein verlöre Compose
+ * die Zuordnung.
  */
 private fun merkpostenSchluessel(w: Merkposten) = "${w.setNumber}|${w.condition}|${w.userId}"
 
@@ -72,29 +60,17 @@ fun MerklisteScreen(
     val appState by vm.state.collectAsStateWithLifecycle()
     val blick by vm.blickfeld.collectAsStateWithLifecycle()
 
-    // Hier stand der Uebernahme-Dialog samt seinem Zustand. Beides ist mit dem
-    // Knopf aus der Zeile entfallen (Marcos Vorgabe vom 24.09.: „den Button In
-    // die Galerie aufnehme entfernen und dafuer den Marktpreis anzeigen") —
-    // ohne den Knopf ginge er nie mehr auf. Die Uebernahme fuehrt jetzt ueber
-    // das Detail, wo derselbe Dialog steht (MerkpostenDetailScreen) und wo
-    // ohnehin Anzahl, Kaufpreis und Zustand zur Wahl stehen.
+    // Übernommen wird über das Detail (MerkpostenDetailScreen), wo Anzahl, Kaufpreis
+    // und Zustand zur Wahl stehen; die Zeile zeigt dafür den Marktpreis.
     var maskeOffen by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(Unit) { vm.ladeMerkliste() }
 
-    // ── Der Filter (Marcos Vorgabe vom 24.09.) ──────────────────────────────
+    // ── Der Filter ──
     //
-    //   „In der Merkliste noch einen Filter analog den Sets einbauen inkl.
-    //    Inhaber."
-    //
-    // Dieselben Bausteine in derselben Reihenfolge wie im Galerie-Bildschirm:
-    // Kontofilter, Suchfeld, dann eine Zeile Chips. Wer das eine kennt, kennt
-    // das andere — darum geht es bei „einheitlichen Ansichten".
-    //
-    // Kein Lagerortfilter: Ein Merkposten ist ein Set, das man NICHT hat, und
-    // was man nicht hat, liegt nirgends. Dafuer der Zustand, den es bei den
-    // Sets als Filter nicht gibt: Hier steht dasselbe Set zweimal, neu und
-    // gebraucht, und genau das ist die Frage, die man an eine Merkliste stellt.
+    // Dieselben Bausteine in derselben Reihenfolge wie in der Galerie: Kontofilter,
+    // Suchfeld, Chips. Kein Lagerortfilter — was man nicht hat, liegt nirgends; dafür
+    // der Zustand, weil dasselbe Set neu und gebraucht dastehen kann.
     val scopeModus = blick.scopeModes[ch.brickinventoryapp.data.ScopeFilter.View.MERKLISTE.key]
         ?: ch.brickinventoryapp.data.ScopeFilter.ALL
     // Das Eingabefeld haelt seinen Text selbst (Tippen bleibt fluessig); die
@@ -170,13 +146,9 @@ fun MerklisteScreen(
 
                     zustand.merkposten.isEmpty() ->
                         Box(Modifier.fillMaxWidth().padding(Abstaende.riesig), Alignment.Center) {
-                            // Zwei verschiedene Leermeldungen: „Noch keine
-                            // Merkposten" ist eine Aussage ueber die Liste,
-                            // „nichts gefunden" eine ueber den Filter. Stuende
-                            // hier immer die erste, saehe eine Suche ohne Treffer
-                            // wie eine geleerte Merkliste aus — dieselbe
-                            // Verwechslung, wegen der der Kontofilter beim
-                            // Anmelden zurueckgesetzt wird (ScopeFilter.kt).
+                            // Zwei Leermeldungen: „Noch keine Merkposten“ sagt etwas über die
+                            // Liste, „nichts gefunden“ über den Filter. Sonst sähe eine Suche ohne
+                            // Treffer wie eine geleerte Merkliste aus.
                             val gefiltert = zustand.query.isNotBlank() ||
                                 zustand.zustandFilter.isNotBlank() ||
                                 scopeModus != ch.brickinventoryapp.data.ScopeFilter.ALL
@@ -191,23 +163,20 @@ fun MerklisteScreen(
                         contentPadding = PaddingValues(bottom = Abstaende.riesig + Abstaende.riesig),
                     ) {
                         items(zustand.merkposten, key = ::merkpostenSchluessel) { w ->
-                            MerkpostenZeile(w, appState.serverUrl, imageLoader,
-                                onOeffnen = { onOeffnen(w.setNumber, w.condition) })
+                            Bewegt {
+                                MerkpostenZeile(w, appState.serverUrl, imageLoader,
+                                    onOeffnen = { onOeffnen(w.setNumber, w.condition) })
+                            }
                         }
                     }
                 }
             }
         }
 
-        // ── Zwei Knoepfe, genau wie in der Galerie ───────────────────────────
+        // ── Zwei Knöpfe, wie in der Galerie ──
         //
-        // Marcos Vorgabe: „2 Buttons in der Liste, die die Erfassungsmaske
-        // entweder mit Barcode oder Setnummern oeffnet."
-        //
-        // Dieselbe Anordnung, dieselben Symbole, dieselbe Groessenstaffelung
-        // wie in GalleryScreen — der kleine scannt, der grosse oeffnet die
-        // Maske. Wer das eine kennt, kennt das andere; genau darum geht es bei
-        // „gleich wie bei den Sets".
+        // Dieselbe Anordnung und Grössenstaffelung: Der kleine scannt, der grosse öffnet
+        // die Maske.
         Column(
             modifier = Modifier.align(Alignment.BottomEnd)
                 .padding(end = Abstaende.gross, bottom = Abstaende.gross),
@@ -244,28 +213,17 @@ fun MerklisteScreen(
 }
 
 /**
- * Anzahl, Kaufpreis und Zustand vor der Uebernahme.
- *
- * ── Marcos Nachtrag ─────────────────────────────────────────────────────────
- *
- * „gewisse Inhalte wie zB. Preis und Zustand, Anzahl muessen beim Uebernehmen
- * angepasst werden." Vorher ging die Uebernahme wortlos mit Anzahl 1, ohne
- * Kaufpreis und im Zustand des Merkpostens durch — fuer ein Set, das man gerade
- * gekauft hat, ist keins davon zuverlaessig richtig.
- *
- * Dieselben drei Felder in derselben Reihenfolge wie im Katalog-Dialog
- * (CatalogAddDialog): Wer das eine kennt, kennt das andere.
- *
- * Der Zustand ist mit dem des MERKPOSTENS vorbelegt — der haeufigste Fall —,
- * laesst sich aber aendern. Welcher Merkposten dadurch erledigt ist, bleibt davon
- * unberuehrt; das entscheidet der Server.
+ * Anzahl, Kaufpreis und Zustand vor der Übernahme — für ein gerade gekauftes Set
+ * ist keine Vorgabe zuverlässig richtig. Dieselben Felder in derselben Reihenfolge
+ * wie im Katalog-Dialog. Der Zustand ist mit dem des Merkpostens vorbelegt;
+ * welcher Merkposten erledigt ist, entscheidet der Server.
  */
 @Composable
 internal fun UebernahmeDialog(
     merkposten: Merkposten,
     /** Vorrat an Lagerorten — leer heisst: es gibt noch keine, dann wird getippt. */
     lagerorte: List<String> = emptyList(),
-    /** Der vorausgewaehlte Lagerort — Marcos Stern. Leer heisst: keine Vorgabe. */
+    /** Der vorausgewählte Lagerort (Stern in den Einstellungen). Leer heisst: keine Vorgabe. */
     lagerortVorgabe: String = "",
     onDismiss: () -> Unit,
     onUebernehmen: (Int, String, String, String?) -> Unit,
@@ -283,11 +241,8 @@ internal fun UebernahmeDialog(
             Column(verticalArrangement = Arrangement.spacedBy(Abstaende.mittel)) {
                 Text(merkposten.name ?: merkposten.setNumber, style = MaterialTheme.typography.bodyMedium)
                 Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                    // NumericInput und keine eigene Filterung: Die Regel, was
-                    // eine Zahl ist, steht genau einmal im Baum
-                    // (util/NumericInput.kt). Die Preis-Fassung laesst GENAU
-                    // ein Trennzeichen zu — das haette eine hier
-                    // hingeschriebene Filterung nicht gewusst.
+                    // NumericInput statt eigener Filterung: Die Regel, was eine Zahl ist (genau ein
+                    // Trennzeichen), steht einmal in util/NumericInput.kt.
                     OutlinedTextField(
                         value = anzahl,
                         onValueChange = { anzahl = NumericInput.quantity(it) },
@@ -306,8 +261,7 @@ internal fun UebernahmeDialog(
                     )
                 }
                 ZustandsWahl(zustand) { zustand = it }
-                // Marcos Befund vom 24.09.: „Wenn ich etwas aus der Merkliste in
-                // die Galerie aufnehme, kann ich den Lagerort nicht setzen."
+                // Lagerort wie bei jeder anderen Erfassung.
                 LagerortErfassung(lagerort, lagerorte, { lagerort = it })
             }
         },
@@ -322,24 +276,11 @@ internal fun UebernahmeDialog(
 }
 
 /**
- * Die Erfassungsmaske — dieselbe Rolle wie AddSetDialog in der Galerie.
- *
- * ── Warum ein Dialog und keine Karte mehr ───────────────────────────────────
- *
- * Marcos Vorgabe: „gleich wie bei den Sets". Dort steht kein Formular
- * dauerhaft ueber der Liste; es oeffnet sich auf Knopfdruck und ist danach
- * wieder weg. Die Karte kostete auf jedem Bildschirm Platz, auch wenn gerade
- * niemand etwas erfassen wollte.
- *
- * ── Was drin steht und was nicht ────────────────────────────────────────────
- *
- * Nummer, Zustand, Konto — Anzahl und Kaufpreis fehlen bewusst: Ein
- * Merkposten hat weder das eine noch das andere. Beides wird erst bei der
- * Uebernahme in die Galerie gefragt.
- *
- * Der Cursor steht sofort im Nummernfeld, wie im AddSetDialog seit Nachtrag
- * 113 — und aus demselben Grund die kurze Pause davor: Beim ersten Durchlauf
- * ist das Feld noch nicht angeordnet, ein requestFocus() liefe ins Leere.
+ * Die Erfassungsmaske als Dialog, wie AddSetDialog in der Galerie — eine Karte
+ * kostete auf jedem Bildschirm Platz. Nummer, Zustand, Konto; Anzahl und Kaufpreis
+ * erst bei der Übernahme, ein Merkposten hat beides nicht. Der Cursor steht sofort
+ * im Nummernfeld; die kurze Pause davor braucht es, weil das Feld beim ersten
+ * Durchlauf noch nicht angeordnet ist.
  */
 @Composable
 private fun MerkpostenErfassenDialog(
@@ -416,10 +357,9 @@ private fun MerkpostenZeile(
     w: Merkposten, serverUrl: String, imageLoader: coil3.ImageLoader,
     onOeffnen: () -> Unit,
 ) {
-    // Die ganze Karte oeffnet das Detail — wie die Kachel in der Galerie.
-    // Seit dem 24.09. traegt sie GAR KEINEN Knopf mehr (Marcos Vorgabe: der
-    // Uebernahme- und der Loeschknopf sind beide entfallen), tut also auf
-    // ihrer ganzen Flaeche dasselbe.
+    // Die ganze Karte öffnet das Detail — wie die Kachel in der Galerie. Sie
+    // trägt keinen Knopf, tut also auf ihrer ganzen Fläche dasselbe;
+    // Übernehmen und Löschen stehen im Detail.
     Card(Modifier.fillMaxWidth().clickable(role = Role.Button, onClick = onOeffnen)) {
         Column(Modifier.padding(Abstaende.mittel), verticalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
             Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
@@ -466,19 +406,10 @@ private fun MerkpostenZeile(
                         label = { Text(stringResource(R.string.wanted_owned)) })
                 }
                 Spacer(Modifier.weight(1f))
-                // ── Marktpreis statt Knopf ────────────────────────────────
+                // ── Marktpreis statt Knopf ──
                 //
-                // Marcos Vorgabe vom 24.09.: „Bitte in der Tabelle der
-                // Merkliste der Button In die Galerie aufnehme entfernen und
-                // dafuer den Marktpreis anzeigen."
-                //
-                // Der Knopf verschwindet nur aus der ZEILE, nicht aus der App:
-                // Das Merkposten-Detail hat ihn weiterhin, und dort steht
-                // ohnehin der Dialog mit Anzahl, Kaufpreis und Zustand.
-                //
-                // Ein Strich, solange kein Preis im Cache liegt — das ist kein
-                // Fehler, sondern „der Preisjob war seit dem Eintragen noch
-                // nicht da".
+                // In die Galerie übernommen wird im Merkposten-Detail. Ein Strich, solange kein
+                // Preis im Cache liegt — der Preisjob war seit dem Eintragen noch nicht da.
                 Text(
                     w.marktpreis?.let { ch.brickinventoryapp.util.fmtMoney(it, w.waehrung) } ?: "—",
                     fontWeight = FontWeight.Bold,

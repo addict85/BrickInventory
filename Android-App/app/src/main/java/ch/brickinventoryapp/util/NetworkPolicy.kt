@@ -6,21 +6,16 @@ import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 /**
  * Netzwerk-Regeln für den OkHttp-Interceptor.
  *
- * Zwei Probleme, die hier gelöst werden:
+ * 1. Ob der Bearer-Token angehängt wird, entscheidet der Vergleich von Scheme,
+ *    Host und Port der geparsten URL — ein String-Präfix wie
+ *    `startsWith(serverUrl)` liesse "https://brick.example.com.angreifer.tld/…"
+ *    als eigenen Server durch.
  *
- * 1. Der Interceptor hat bisher per `finalUrl.startsWith(serverUrl)` entschieden,
- *    ob der Bearer-Token angehängt wird. Ein String-Präfixvergleich: bei
- *    serverUrl = "https://brick.example.com" matcht auch
- *    "https://brick.example.com.angreifer.tld/…" — und der Token wäre
- *    mitgegangen. Verglichen wird jetzt auf Scheme, Host und Port der
- *    geparsten URL.
- *
- * 2. Das Manifest hatte `usesCleartextTraffic="true"` app-weit. Weil die
- *    Server-URL vom Nutzer kommt, lässt sich das nicht per
- *    Network-Security-Config auf private Adressen einschränken (Android kennt
- *    dort keine Wildcards für RFC1918). Die Prüfung passiert deshalb hier:
- *    http ist nur zu privaten Adressen erlaubt, zu öffentlichen Hosts wird die
- *    Anfrage abgebrochen statt den Token im Klartext übers Internet zu senden.
+ * 2. Klartext: Weil die Server-URL vom Nutzer kommt, lässt sich das per
+ *    Network-Security-Config nicht auf private Adressen einschränken (Android
+ *    kennt dort keine Wildcards für RFC1918). Deshalb hier: http nur zu privaten
+ *    Adressen; zu öffentlichen Hosts wird die Anfrage abgebrochen, statt den Token
+ *    im Klartext übers Internet zu senden.
  */
 object NetworkPolicy {
 
@@ -41,18 +36,11 @@ object NetworkPolicy {
     )
 
     /**
-     * Privat = LAN, Loopback, mDNS oder ein Name, der öffentlich gar nicht
-     * auflösbar wäre.
-     *
-     * WICHTIG — hier lag ein Fehler: Die erste Fassung liess ausschliesslich
-     * IP-Adressen und ein paar Suffixe durch. Damit wurde jeder gewöhnliche
-     * Hostname blockiert: http://nas:3000, http://raspberrypi:3000,
-     * http://brick.fritz.box — also genau die Adressen, unter denen ein
-     * selbstgehosteter Server üblicherweise im Heimnetz erreichbar ist. Ergebnis
-     * war eine App ohne jeden Datenverkehr.
-     *
-     * Ein Name OHNE Punkt kann nicht öffentlich auflösen — er ist per
-     * Definition ein Intranet-Name und damit unbedenklich.
+     * Privat = LAN, Loopback, mDNS oder ein Name, der öffentlich gar nicht auflösbar
+     * wäre. Gewöhnliche Hostnamen wie http://nas:3000, http://raspberrypi:3000 oder
+     * http://brick.fritz.box müssen durch — unter ihnen ist ein selbstgehosteter
+     * Server im Heimnetz üblicherweise erreichbar. Ein Name ohne Punkt kann nicht
+     * öffentlich auflösen, er ist per Definition ein Intranet-Name.
      */
     fun isPrivateHost(host: String): Boolean {
         val h = host.lowercase().trim('[', ']')

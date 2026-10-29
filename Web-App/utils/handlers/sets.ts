@@ -190,7 +190,7 @@ async function getSets(userId: Blickfeld, query: any = {}) {
     // LEFT JOIN angehängt — identisches Ergebnis, eine Grössenordnung weniger
     // Arbeit ab ein paar hundert Sets.
     db.all(`SELECT ${SET_COLS}${SET_OWNER_COL},
-      a.max_purchase_price, a.avg_purchase_price,
+      a.max_purchase_price, a.avg_purchase_price, a.letzter_kauf,
       COALESCE(a.acq_count, 0)::int AS acq_count, COALESCE(a.used_count, 0)::int AS used_count
       FROM ${setsFrom}
       LEFT JOIN (
@@ -202,6 +202,8 @@ async function getSets(userId: Blickfeld, query: any = {}) {
                SUM(purchase_price * quantity) FILTER (WHERE purchase_price IS NOT NULL AND ${inKontowaehrung('set_acquisitions')})::numeric
                  / NULLIF(SUM(quantity) FILTER (WHERE purchase_price IS NOT NULL AND ${inKontowaehrung('set_acquisitions')}), 0)
                                                        AS avg_purchase_price,
+               -- Die Kachel zeigt den letzten Kauf, nicht die Aufnahme des Sets.
+               MAX(set_acquisitions.created_at)        AS letzter_kauf,
                COUNT(*)                                AS acq_count,
                COUNT(*) FILTER (WHERE condition = 'U') AS used_count
         FROM set_acquisitions ${kontowaehrungJoin('set_acquisitions')}

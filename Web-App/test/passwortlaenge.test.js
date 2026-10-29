@@ -170,7 +170,7 @@ test('beide Oberflaechen pruefen vor dem Absenden', () => {
   for (const [voll, anzahl, name] of [
     // Seit dem 16.10. steht die Kontokarte auf ihrer eigenen Seite: Der
     // Einstellungsbildschirm traegt nur noch die Liste dorthin.
-    [path.join(KOTLIN, 'ui', 'screens', 'EinstellungenUnterseiten.kt'), 3, 'Passwort aendern'],
+    [path.join(KOTLIN, 'ui', 'screens', 'EinstellungenKonto.kt'), 3, 'Passwort aendern'],
     [path.join(KOTLIN, 'ui', 'screens', 'LoginScreen.kt'),    1, 'Registrieren'],
   ]) {
     const kurz = path.basename(voll);

@@ -61,7 +61,7 @@ test('Finanzen-Filter: dieselben vier Arten in Webapp und App', () => {
   }
 
   // ── 2. Dieselbe Regel „leer heisst alle" ─────────────────────────────────
-  const zustand = ohneKommentare(lies(path.join(APP, 'ui/UiState.kt')));
+  const zustand = ohneKommentare(lies(path.join(APP, 'ui/ZustandFinanzen.kt')));
   assert.ok(/fun zeigt\(kategorie: String\): Boolean = kategorien\.isEmpty\(\) \|\| kategorie in kategorien/
     .test(zustand), 'Die Regel der App steht nicht mehr, wo dieser Test sie erwartet');
   assert.ok(/function finZeigt\(art\)\{ return finKategorien\.size === 0 \|\| finKategorien\.has\(art\); \}/

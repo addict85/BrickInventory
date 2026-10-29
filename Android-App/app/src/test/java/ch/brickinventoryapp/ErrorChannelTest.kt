@@ -43,7 +43,7 @@ class ErrorChannelTest {
         // Der allgemeine Fall des Fehlers oben: ein Feld, in das geschrieben,
         // aus dem aber nie gelesen wird. Geprüft für AppUiState, weil dort das
         // gemeinsame Objekt liegt und der Übergriff am leichtesten passiert.
-        val quelle = Quellen.ohneKommentare(Quellen.lies("ui/UiState.kt"))
+        val quelle = Quellen.ohneKommentare(Quellen.lies("ui/ZustandSitzung.kt"))
         val block = quelle.substringAfter("data class AppUiState(").substringBefore("\n)")
         val felder = Regex("""val\s+(\w+)\s*:""").findAll(block).map { it.groupValues[1] }.toList()
         // Untergrenze gegen ein veraltetes Muster, nicht gegen einen Sollwert:

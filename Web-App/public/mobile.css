@@ -76,15 +76,15 @@
   /* Filter hinter einem Knopf: Suche und Ansicht bleiben, die Auswahlfelder
      klappen auf. Vorher belegten fünf Felder den halben Bildschirm. */
   .filter-knopf { display: inline-flex; align-items: center; gap: 6px; }
-  .filterleiste > input.si { flex: 1 1 140px; width: auto !important; min-width: 0; }
+  .filterleiste > input.si, .filterleiste > input.suchfeld { flex: 1 1 140px; width: auto !important; min-width: 0; }
   .filterleiste > select { display: none; }
-  .filterleiste.offen > select { display: block; flex: 1 1 100%; }
+  .filterleiste.offen > select { display: block; flex: 1 1 100%; max-width: none; }
 
   /* Die Statistikzahlen in der Kopfzeile brauchen den Platz nicht */
   .hstats             { display: none; }
   /* Kopfzeile: Name und Importleiste geben nach, das Benutzermenü nie. */
   header .logo        { min-width: 0; flex: 0 1 auto; }
-  header .logo h1     { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  header .logo .marke  { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .hright             { min-width: 0; flex: 1 1 auto; justify-content: flex-end; gap: .5rem; }
   .umenu              { flex: 0 0 auto; }
   #global-import-bar  { min-width: 0 !important; max-width: none !important; flex: 1 1 60px; }
@@ -116,7 +116,12 @@
   }
   .ntab .tab-label { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
   .ntab .ico { width: 22px; height: 22px; }
-  .ntab.active, .ntab.gruppe-aktiv { border-top-color: var(--b600); }
+  .ntab.active, .ntab.gruppe-aktiv { border-top-color: var(--b600); color: var(--b600); }
+  /* Fünf Ziele passen in die Leiste: Teile und Minifiguren laufen über
+     „Sammlung“, und deren Beschriftung nennt die offene Ansicht. */
+  .ntab.ntab-sammlung { display: none; }
+  .ntab .tab-unter:not(:empty) { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+  .ntab:has(.tab-unter:not(:empty)) .tab-label { display: none; }
   .sammlung-wahl { display: flex; width: 100%; }
   .sammlung-wahl button { flex: 1 1 0; justify-content: center; padding: 8px 4px; }
 
@@ -125,7 +130,7 @@
   .ptitle            { font-size: var(--fs-5); }
 
   .sgrid       { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: .7rem; }
-  .parts-grid  { grid-template-columns: repeat(auto-fill, minmax(108px, 1fr)); gap: .6rem; }
+  .parts-grid, .parts-list { grid-template-columns: repeat(auto-fill, minmax(108px, 1fr)); gap: .6rem; }
   .man-grid    { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: .6rem; }
   /* minmax(0, …) statt 1fr: Eine Spalte darf schmaler werden als ihre längste
      Zahl, die dann umbricht — sonst schob „Gesamtwert“ die Kachel über den Rand. */
@@ -158,6 +163,11 @@
   .dr                 { flex-wrap: wrap; gap: .35rem .75rem; }
   .dr > *             { min-width: 0; }
   .dr select, .dr input { max-width: 100%; }
+  /* Preisalarm am Telefon: Beschriftung oben, die drei Felder als eigene
+     Zeile über die volle Breite statt eng neben der Beschriftung. */
+  .dr.alarm-zeile { flex-direction: column; align-items: stretch !important; }
+  .dr.alarm-zeile > .dv { width: 100%; }
+  .alarm-zeile .alarm-feld { flex: 1 1 0; min-width: 0; width: auto; }
 
   /* Kennzahl-Kacheln: Zahl in einer Zeile */
   .pstat .v           { font-size: var(--fs-4); overflow-wrap: anywhere; }
@@ -187,11 +197,11 @@
   }
   input[type="checkbox"]:disabled { opacity: .5; cursor: default; }
   input[type="checkbox"]:focus-visible { outline-offset: -9px; }
-  /* Der Löschknopf auf der Kachel bleibt optisch klein; seine Tippfläche
-     reicht unsichtbar auf 44 px hinaus. */
-  .ca { top: 5px; right: 5px; z-index: 2; }
-  .delbtn { position: relative; width: 36px; height: 36px; }
-  .delbtn::after { content: ""; position: absolute; inset: -5px; }
+  /* Tippziele mindestens 44 px — auch der Löschknopf und die Links zu den
+     Schlüsseln in Einstellungen und Einrichtung. */
+  .ca { top: 4px; right: 4px; z-index: 2; }
+  .delbtn { width: 44px; height: 44px; }
+  .ibox a[href], a.schrift-1[href] { display: inline-flex; align-items: center; min-height: 44px; }
   /* Ein Häkchen in seiner Beschriftung: Die ganze Zeile ist die Tippfläche. */
   label:has(> input[type="checkbox"]), label:has(> input[type="radio"]) { min-height: 44px; display: flex; align-items: center; }
 
@@ -347,7 +357,7 @@
 /* ── Kleines Telefon ─────────────────────────────────────────────────────── */
 @media (max-width: 380px) {
   .sgrid      { grid-template-columns: 1fr 1fr; gap: .5rem; }
-  .parts-grid { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); }
+  .parts-grid, .parts-list { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); }
   .fgrid      { grid-template-columns: 1fr; }
   .ntab       { font-size: var(--fs-0); }
 }

@@ -41,15 +41,17 @@ import { esc } from './01-core.js';
  *                           felder, Farbpunkte, Knöpfe). Wer Nutzertext
  *                           einsetzt, escaped ihn selbst mit esc().
  * @param {object} [o]
- * @param {string} [o.wertStil]  zusätzliches style-Attribut am Wert-Element
- * @param {string} [o.zeilenStil] zusätzliches style-Attribut an der Zeile
+ * @param {string} [o.wertStil]  zusätzlicher Stil (data-stil) am Wert-Element
+ * @param {string} [o.zeilenStil] zusätzlicher Stil (data-stil) an der Zeile
  * @param {string} [o.wertId]    id am Wert-Element, für späteres Nachfüllen
+ * @param {string} [o.klasse]    zusätzliche Klasse an der Zeile
  */
 export function detailZeile(label, wert, o = {}) {
-  const zStil = o.zeilenStil ? ` style="${o.zeilenStil}"` : '';
-  const wStil = o.wertStil ? ` style="${o.wertStil}"` : '';
+  const zStil = o.zeilenStil ? ` data-stil="${o.zeilenStil}"` : '';
+  const zKlasse = o.klasse ? ` ${o.klasse}` : '';
+  const wStil = o.wertStil ? ` data-stil="${o.wertStil}"` : '';
   const wId   = o.wertId ? ` id="${o.wertId}"` : '';
-  return `<div class="dr"${zStil}><span class="dl">${label}</span>` +
+  return `<div class="dr${zKlasse}"${zStil}><span class="dl">${label}</span>` +
          `<span class="dv"${wId}${wStil}>${wert}</span></div>`;
 }
 
@@ -59,11 +61,25 @@ export function detailZeile(label, wert, o = {}) {
  * @param {string} text bereits übersetzter Text
  */
 export function ladeAnzeige(text, o = {}) {
-  const stil = o.stil ? ` style="${o.stil}"` : '';
+  const stil = o.stil ? ` data-stil="${o.stil}"` : '';
   // Ohne Text nur der Kringel — so macht es die Teile-Zusammenfassung, wo
   // daneben schon steht, worauf gewartet wird.
   const beschriftung = text ? `<span>${text}</span>` : '';
   return `<div class="loading"${stil}><div class="spin"></div>${beschriftung}</div>`;
+}
+
+/**
+ * Platzhalterkacheln in der Form des Inhalts, solange er lädt: Die Seite
+ * springt danach nicht, und man sieht, was kommt. Der Text ist für
+ * Vorleseprogramme.
+ * @param {number} anzahl
+ * @param {string} text bereits übersetzt
+ * @param {'set'|'teil'} [art]
+ */
+export function skelettKacheln(anzahl, text, art = 'set') {
+  const raster = art === 'teil' ? 'parts-grid' : 'sgrid';
+  const kachel = `<div class="${art === 'teil' ? 'part-card' : 'sc'} skelett" aria-hidden="true"><div class="skelett-bild"></div><div class="skelett-zeile"></div><div class="skelett-zeile kurz"></div></div>`;
+  return `<div class="${raster} skelett-raster" role="status" aria-busy="true"><span class="vh">${text}</span>${kachel.repeat(anzahl)}</div>`;
 }
 
 /**

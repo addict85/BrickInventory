@@ -47,6 +47,8 @@ import coil3.ImageLoader
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.components.Bewegt
+import ch.brickinventoryapp.ui.components.SkelettRaster
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -59,28 +61,19 @@ fun PartsScreen(
      */
     onOpenDetail: (partNumber: String, colorId: Int) -> Unit = { _, _ -> },
     /**
-     * Scroll-Zustand der Liste. Kommt von aussen, weil das Ziel beim Öffnen
-     * der Detailansicht verlassen und danach neu zusammengesetzt wird — ein
-     * `rememberLazyGridState()` hier drin würde dabei zurückgesetzt und die
-     * Liste spränge nach oben (Nachtrag 92).
+     * Scroll-Zustand der Liste. Kommt von aussen, weil das Ziel beim Öffnen der
+     * Detailansicht verlassen und danach neu zusammengesetzt wird — ein
+     * `rememberLazyGridState()` hier drin würde zurückgesetzt, die Liste spränge nach
+     * oben.
      */
     gridState: LazyGridState = rememberLazyGridState(),
 ) {
-    // ── Zustand und Aktionen: vom ViewModel statt über zwanzig Parameter ─────
+    // ── Zustand und Aktionen: vom ViewModel statt über zwanzig Parameter ──
     //
-    // Dieser Schirm nahm bis Nachtrag 96 zwanzig Parameter entgegen. Jede
-    // Erweiterung fasste dadurch drei Dateien an — Screen, Graph, ViewModel —
-    // und das war bei den letzten beiden Änderungen (Kontofilter,
-    // Scroll-Zustand) jedes Mal spürbar.
-    //
-    // Die Bauart daneben gibt es längst: ManualItemDetailScreen und
-    // AcquisitionManagementScreen nehmen `vm` und lesen selbst. Sie kommen mit
-    // sechs bis acht Parametern aus.
-    //
-    // Die Werte behalten hier ABSICHTLICH ihre alten Namen. Dadurch bleibt der
-    // ganze Rumpf darunter Zeile für Zeile unverändert — der Umbau betrifft nur
-    // diesen Kopf, und ein Tippfehler kann sich nicht durch fünfhundert Zeilen
-    // ziehen.
+    // Mit zwanzig Parametern fasste jede Erweiterung drei Dateien an (Screen, Graph,
+    // ViewModel). Dieselbe Bauart wie ManualItemDetailScreen und
+    // AcquisitionManagementScreen, die `vm` nehmen und selbst lesen. Die Werte
+    // behalten ihre alten Namen, damit der Rumpf darunter unverändert bleibt.
     val state by vm.state.collectAsStateWithLifecycle()
     val blick by vm.blickfeld.collectAsStateWithLifecycle()
     val partsState by vm.partsState.collectAsStateWithLifecycle()
@@ -102,10 +95,9 @@ fun PartsScreen(
         ?: ch.brickinventoryapp.data.ScopeFilter.ALL
     val manualParts = partsState.manualParts ?: emptyList()
 
-    // Aktualisieren BEHAELT den Suchtext — frueher stand hier `search = null`,
-    // die Liste sprang also auf den ganzen Bestand, waehrend das Suchfeld
-    // daneben den Text weiter anzeigte. Die Galerie macht es genauso
-    // (onRefresh = loadSets()).
+    // Aktualisieren behält den Suchtext — sonst spränge die Liste auf den ganzen
+    // Bestand, während das Feld den Text weiter zeigt. Wie in der Galerie (onRefresh =
+    // loadSets()).
     val onRefresh: () -> Unit = { vm.loadParts() }
     val onSearch: (String) -> Unit = vm::setPartsQuery
     val onLoadMore: (Int) -> Unit = { vm.loadParts(page = it) }
@@ -122,10 +114,10 @@ fun PartsScreen(
     // auch ein leeres Regal zur Wahl stehen.
     val lagerortVorrat = lagerState.eigene.map { it.name }
 
-    // Das Feld zeigt, was im Zustand steht. `remember(...)` darauf geschluesselt
-    // statt `rememberSaveable`: Der Text ueberlebt jetzt im ViewModel, und beim
-    // Zuruecknavigieren soll das Feld zum tatsaechlichen Filter der Liste
-    // passen — nicht zu einem eigenen, davon unabhaengigen Gedaechtnis.
+    // Das Feld zeigt, was im Zustand steht. `remember(...)` darauf geschlüsselt statt
+    // `rememberSaveable`: Der Text lebt im ViewModel, und nach dem Zurücknavigieren
+    // soll das Feld zum tatsächlichen Filter der Liste passen, nicht zu einem eigenen
+    // Gedächtnis.
     var searchQuery by remember(partsState.partsQuery) { mutableStateOf(partsState.partsQuery) }
     var showAddDialog by rememberSaveable { mutableStateOf(false) }
     // Dedup nur neu berechnen, wenn sich die Daten aendern — nicht bei jeder Recomposition
@@ -138,111 +130,51 @@ fun PartsScreen(
     }
     LaunchedEffect(endReached) { if (endReached) onLoadMore(currentPage + 1) }
 
-    Box(Modifier.fillMaxSize()) {
-    Column(Modifier.fillMaxSize()) {
-        ScopeFilterZeile(householdMembers, scopeMode, onScopeChange,
-            lagerorte = lagerorte, lagerAktuell = lagerModus, onLagerSelect = onLagerChange)
-        // Stats chips
-        if (stats != null) {
-            Surface(color = MaterialTheme.colorScheme.surface, tonalElevation = 2.dp) {
-                Row(
-                    Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
-                    horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)
-                ) {
-                    GalleryStatChip("${stats.uniqueParts}", stringResource(R.string.parts_stat_types))
-                    GalleryStatChip("${stats.uniqueColors}", stringResource(R.string.parts_stat_colors))
-                    GalleryStatChip(ch.brickinventoryapp.util.fmtInt(stats.totalParts), stringResource(R.string.parts_stat_total))
-                }
-            }
-        }
-
-        // Suchfeld — gemeinsamer Baustein. Der Leeren-Knopf sagte hier
-        // „Löschen" (parts_delete, derselbe Text wie am Loeschknopf des Teils);
-        // jetzt „Suche leeren" (Nachtrag 132).
-        Suchfeld(
-            wert = searchQuery,
-            onWert = { searchQuery = it; onSearch(it) },
-            platzhalter = stringResource(R.string.parts_search_placeholder),
-        )
-
-        // Ersatzteil-Filter — dieselben drei Werte wie das Auswahlfeld der
-        // Webapp (parts-spare). Er fehlte hier ganz: Die App las `is_spare`
-        // aus der Antwort und hatte sogar einen Helfer dafuer, benutzte aber
-        // beides nirgends. Wer am Telefon nachsah, wie viele Teile er wirklich
-        // hat, bekam die Ersatzteile immer mitgezaehlt.
-        //
-        // Gefiltert wird auf dem SERVER (partsSpare im UiState) — clientseitig
-        // ueber die geladene Seite gefiltert koennte eine ganze Seite wegfallen
-        // und die Liste bliebe scheinbar leer.
-        Row(
-            Modifier.fillMaxWidth().padding(horizontal = 14.dp).padding(bottom = Abstaende.klein),
-            horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)
-        ) {
-            val filter = listOf(
-                "" to R.string.parts_filter_all,
-                "0" to R.string.parts_filter_no_spare,
-                "1" to R.string.parts_filter_spare,
-            )
-            for ((wert, text) in filter) {
-                FilterChip(
-                    selected = partsState.partsSpare == wert,
-                    onClick = { vm.setPartsSpare(wert) },
-                    label = { Text(stringResource(text), style = MaterialTheme.typography.bodyMedium) },
+    var zeigeFilter by rememberSaveable { mutableStateOf(false) }
+    // Farbe und Kategorie — die beiden Filterlisten der Webapp (03-parts.js,
+    // loadPartsFilters). Die Umrechnung auf die gemeinsame Form steht hier: Die beiden
+    // Antworten tragen verschiedene Feldnamen, alles andere ist gleich.
+    val farbEintraege = remember(partsState.partsFilterColors) {
+        partsState.partsFilterColors.mapNotNull { f ->
+            f.colorName?.takeIf { it.isNotBlank() }?.let { name ->
+                TeileFilterEintrag(
+                    wert = name, text = name, anzahl = f.uniqueParts,
+                    farbe = f.colorHex?.let {
+                        try { Color("#$it".toColorInt()) }
+                        catch (_: Exception) { null }
+                    },
                 )
             }
         }
-
-        // Farbe und Kategorie — die beiden Filterlisten der Webapp
-        // (03-parts.js, loadPartsFilters). Sie fehlten in der App ganz;
-        // gefunden beim Vergleich der Server-Adressen beider Clients.
-        //
-        // Die Umrechnung auf die gemeinsame Form steht hier und nicht im
-        // Bildschirm darunter: Die beiden Antworten tragen verschiedene
-        // Feldnamen, alles andere ist gleich.
-        val farbEintraege = remember(partsState.partsFilterColors) {
-            partsState.partsFilterColors.mapNotNull { f ->
-                f.colorName?.takeIf { it.isNotBlank() }?.let { name ->
-                    TeileFilterEintrag(
-                        wert = name, text = name, anzahl = f.uniqueParts,
-                        farbe = f.colorHex?.let {
-                            try { Color("#$it".toColorInt()) }
-                            catch (_: Exception) { null }
-                        },
-                    )
-                }
+    }
+    val kategorieEintraege = remember(partsState.partsCategories) {
+        partsState.partsCategories.mapNotNull { k ->
+            k.categoryName?.takeIf { it.isNotBlank() }?.let { wert ->
+                TeileFilterEintrag(wert = wert, text = k.label ?: wert, anzahl = k.uniqueParts)
             }
         }
-        val kategorieEintraege = remember(partsState.partsCategories) {
-            partsState.partsCategories.mapNotNull { k ->
-                k.categoryName?.takeIf { it.isNotBlank() }?.let { wert ->
-                    TeileFilterEintrag(wert = wert, text = k.label ?: wert, anzahl = k.uniqueParts)
-                }
-            }
-        }
-        TeileFilterZeile(
-            farben = farbEintraege,
-            kategorien = kategorieEintraege,
-            farbeGewaehlt = partsState.partsColorFilter,
-            kategorieGewaehlt = partsState.partsCategoryFilter,
-            onFarbe = { vm.setPartsColorFilter(it) },
-            onKategorie = { vm.setPartsCategoryFilter(it) },
-            modifier = Modifier.padding(horizontal = 14.dp).padding(bottom = Abstaende.klein),
-        )
+    }
 
-        // Karten oder Tabelle — wie das Auswahlfeld parts-view der Webapp.
-        // Eigene Zeile, weil die drei Ersatzteil-Chips darueber die Breite
-        // eines Telefons schon fuellen.
-        AnsichtUmschalter(
-            aktuell = ansicht,
-            onWechsel = { vm.setPartsView(it) },
-            modifier = Modifier.padding(horizontal = 14.dp).padding(bottom = Abstaende.klein),
+    Box(Modifier.fillMaxSize()) {
+    Column(Modifier.fillMaxSize()) {
+        // Suche und „Filter“: Konto, Lagerort, Ersatzteile, Farbe, Kategorie
+        // und die Ansicht stehen im Blatt, die Kennzahlen rollen mit dem Raster.
+        SucheMitFilter(
+            wert = searchQuery,
+            onWert = { searchQuery = it; onSearch(it) },
+            platzhalter = stringResource(R.string.parts_search_placeholder),
+            aktiveFilter = Filterzahl.teile(householdMembers, scopeMode, lagerorte, lagerModus,
+                partsState.partsSpare, partsState.partsColorFilter, partsState.partsCategoryFilter),
+            onFilter = { zeigeFilter = true },
         )
 
         ch.brickinventoryapp.ui.components.OfflineHinweis(partsState.teileOfflineStand)
         if (isLoading && parts.isEmpty() && manualParts.isEmpty()) {
-            Box(Modifier.fillMaxSize(), Alignment.Center) { CircularProgressIndicator() }
+            SkelettRaster(GridCells.Adaptive(110.dp), kachelHoehe = 164.dp, abstand = Abstaende.klein)
         } else if (parts.isEmpty() && manualParts.isEmpty()) {
             Box(Modifier.fillMaxSize(), Alignment.Center) {
+                // Die Kennzahlen meinen die ganze Sammlung — auch bei einer Suche ohne Treffer.
+                if (stats != null) Box(Modifier.align(Alignment.TopStart).padding(Abstaende.mittel)) { TeileKennzahlen(stats) }
                 Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                     Icon(ImageVector.vectorResource(R.drawable.ic_parts_bricks), null, Modifier.size(40.dp), tint = Color.Unspecified)
                     Text(stringResource(R.string.parts_none), fontWeight = FontWeight.SemiBold)
@@ -257,22 +189,25 @@ fun PartsScreen(
                     horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
                     verticalArrangement = Arrangement.spacedBy(Abstaende.klein)
                 ) {
-                    // Manuell erfasste Teile als Grid-Sektion: vorher sassen sie
-                    // in einer fixen FlowRow ÜBER dem Grid (eigener Scroll-
-                    // Container) — dadurch scrollte nur der Set-Teil der Liste.
-                    // Als Grid-Items scrollt alles als EINE Liste.
+                    if (stats != null) {
+                        item(span = { GridItemSpan(maxLineSpan) }, key = "parts-stats") { TeileKennzahlen(stats) }
+                    }
+                    // Manuell erfasste Teile als Grid-Sektion statt in einer FlowRow über dem Grid:
+                    // So scrollt alles als eine Liste, nicht nur der Set-Teil.
                     if (manualParts.isNotEmpty()) {
                         item(span = { GridItemSpan(maxLineSpan) }, key = "manual-header") {
                             SectionHeader(stringResource(R.string.parts_manual_section))
                         }
                         items(manualParts, key = { "manual-${it.id ?: "${it.partNumber}-${it.colorId}"}" }) { part ->
-                            ManualPartTile(
-                                part = part,
-                                serverUrl = serverUrl,
-                                imageLoader = imageLoader,
-                                waehrung = waehrung,
-                                onEdit = { onOpenDetail(part.partNumber, part.colorId) },
-                            )
+                            Bewegt {
+                                ManualPartTile(
+                                    part = part,
+                                    serverUrl = serverUrl,
+                                    imageLoader = imageLoader,
+                                    waehrung = waehrung,
+                                    onEdit = { onOpenDetail(part.partNumber, part.colorId) },
+                                )
+                            }
                         }
                         if (distinctParts.isNotEmpty()) {
                             item(span = { GridItemSpan(maxLineSpan) }, key = "sets-header") {
@@ -280,13 +215,11 @@ fun PartsScreen(
                             }
                         }
                     }
-                    // In der Tabellenansicht nimmt jede Zeile die ganze Breite
-                    // (span = maxLineSpan). Der Raster-Container bleibt derselbe —
-                    // mit einem zweiten Container waeren Scrollstand,
-                    // Endlos-Nachladen und die manuelle Sektion doppelt zu
-                    // pflegen. Die manuellen Eintraege bleiben in BEIDEN
-                    // Ansichten Kacheln, genau wie in der Webapp: Dort haengt
-                    // #manual-parts-list nicht an parts-view.
+                    // In der Tabellenansicht nimmt jede Zeile die ganze Breite (span =
+                    // maxLineSpan). Derselbe Raster-Container, sonst wären Scrollstand,
+                    // Endlos-Nachladen und die manuelle Sektion doppelt zu pflegen. Die manuellen
+                    // Einträge bleiben in beiden Ansichten Kacheln, wie in der Webapp
+                    // (#manual-parts-list hängt nicht an parts-view).
                     items(
                         distinctParts,
                         key = { "${it.partNumber}-${it.colorId}" },
@@ -295,12 +228,14 @@ fun PartsScreen(
                         // BEIDE Ansichten oeffnen denselben Dialog — eine
                         // Ansicht darf nicht koennen, was die andere nicht kann.
                         val oeffne = { vm.oeffneSetItem("part", part.partNumber, part.colorId) }
-                        if (ansicht == "table") PartTableRow(part, serverUrl, imageLoader, oeffne)
-                        else PartCard(part, serverUrl, imageLoader, oeffne)
+                        Bewegt {
+                            if (ansicht == "table") PartTableRow(part, serverUrl, imageLoader, oeffne)
+                            else PartCard(part, serverUrl, imageLoader, oeffne)
+                        }
                     }
                     if (isLoading) {
-                        // Fester Schlüssel wie bei den Kopfzeilen darüber — siehe
-                        // die Begründung in GalleryScreen.kt (Nachtrag 108).
+                        // Fester Schlüssel wie bei den Kopfzeilen darüber — Begründung in
+                        // GalleryScreen.kt.
                         item(key = "parts-loading-more", span = { GridItemSpan(maxLineSpan) }) {
                             Box(Modifier.fillMaxWidth().padding(Abstaende.gross), Alignment.Center) {
                                 CircularProgressIndicator(Modifier.size(24.dp))
@@ -321,6 +256,49 @@ fun PartsScreen(
         ) { Icon(Icons.Default.Add, stringResource(R.string.parts_add)) }
     }
 
+    if (zeigeFilter) {
+        val ersatz = partsState.partsSpare
+        val farbe = partsState.partsColorFilter
+        val kategorie = partsState.partsCategoryFilter
+        // Nur zurücksetzen, was abweicht: Jede Änderung lädt die Liste neu.
+        val zuruecksetzen: () -> Unit = {
+            if (Filterzahl.konto(householdMembers, scopeMode) > 0) onScopeChange(ch.brickinventoryapp.data.ScopeFilter.ALL)
+            if (Filterzahl.lager(lagerorte, lagerModus) > 0) onLagerChange("")
+            if (ersatz.isNotBlank()) vm.setPartsSpare("")
+            if (farbe.isNotBlank()) vm.setPartsColorFilter("")
+            if (kategorie.isNotBlank()) vm.setPartsCategoryFilter("")
+        }
+        val aktiv = Filterzahl.teile(householdMembers, scopeMode, lagerorte, lagerModus, ersatz, farbe, kategorie)
+        FilterBlattRahmen(onSchliessen = { zeigeFilter = false }, onZuruecksetzen = zuruecksetzen.takeIf { aktiv > 0 }) {
+            KontoFilterAbschnitt(householdMembers, scopeMode, onScopeChange)
+            LagerortFilterAbschnitt(lagerorte, lagerModus, onLagerChange)
+            // Ersatzteile — dieselben drei Werte wie parts-spare in der Webapp,
+            // gefiltert auf dem SERVER (partsSpare im Zustand).
+            FilterAbschnitt(stringResource(R.string.filter_section_spare)) {
+                for ((wert, text) in listOf(
+                    "" to R.string.parts_filter_all,
+                    "0" to R.string.parts_filter_no_spare,
+                    "1" to R.string.parts_filter_spare,
+                )) {
+                    FilterWahl(stringResource(text), ersatz == wert) { vm.setPartsSpare(wert) }
+                }
+            }
+            if (farbEintraege.isNotEmpty() || kategorieEintraege.isNotEmpty()) {
+                FilterAbschnitt(stringResource(R.string.filter_section_color_category)) {
+                    TeileFilterZeile(
+                        farben = farbEintraege,
+                        kategorien = kategorieEintraege,
+                        farbeGewaehlt = farbe,
+                        kategorieGewaehlt = kategorie,
+                        onFarbe = { vm.setPartsColorFilter(it) },
+                        onKategorie = { vm.setPartsCategoryFilter(it) },
+                    )
+                }
+            }
+            AnsichtAbschnitt(ansicht) { vm.setPartsView(it) }
+        }
+    }
+
     if (showAddDialog) {
         AddPartDialog(
             householdMembers = householdMembers,
@@ -336,9 +314,18 @@ fun PartsScreen(
         )
     }
 
-    // Hier stand die Loeschabfrage der KACHEL — entfallen mit dem Papierkorb
-    // darauf (Marcos Vorgabe vom 24.09.). Geloescht wird im Detail, und die
-    // Abfrage steht dort (ManualItemDetailScreen, showDeleteConfirm).
+    // Gelöscht wird im Detail (ManualItemDetailScreen, showDeleteConfirm), nicht auf
+    // der Kachel.
+}
+
+/** Die Kennzahlen der Teile — erste Zeile des Rasters, sie rollt mit. */
+@Composable
+private fun TeileKennzahlen(stats: PartsStats) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
+        GalleryStatChip("${stats.uniqueParts}", stringResource(R.string.parts_stat_types))
+        GalleryStatChip("${stats.uniqueColors}", stringResource(R.string.parts_stat_colors))
+        GalleryStatChip(ch.brickinventoryapp.util.fmtInt(stats.totalParts), stringResource(R.string.parts_stat_total))
+    }
 }
 
 @Composable
@@ -391,9 +378,7 @@ fun PartCard(part: Part, serverUrl: String, imageLoader: ImageLoader,
     val (imageUrl, onImageError) = rememberTileImageWithFallback(serverUrl, part.imageLocal, part.imageUrl, fullViaProxy = true)
 
     Card(
-        // Antippen oeffnet den Detail-Dialog (Marcos Wunsch). Bis dahin war
-        // die Kachel eines Teils aus einem Set tot — anders als bei manuell
-        // erfassten Teilen gab es dazu nichts zu sehen.
+        // Antippen öffnet den Detail-Dialog, wie bei manuell erfassten Teilen.
         modifier = Modifier.fillMaxWidth().heightIn(min = 164.dp)
             .let { if (onClick != null) it.clickable(role = Role.Button, onClick = onClick) else it },
         shape = Formen.leiste,

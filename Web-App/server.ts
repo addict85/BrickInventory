@@ -89,16 +89,17 @@ global.startupStatus = { ready: false, step: 'Datenbank wird initialisiert...', 
 import { fehlertext, logAndContinue, meldeUndWeiter } from './utils/httpError';
 import cluster from 'cluster';
 import { starteHintergrundlaeufe } from './startup/backgroundJobs';
+import { bereiteDatenbankVor } from './startup/datenbank';
 import { verdrahte } from './jobs/verdrahtung';
 
 // In JEDEM Prozess: Erfassungen und Einstellungen stossen ihre Nacharbeit
 // auch in den Web-Workern an, nicht nur im Primary.
 verdrahte();
-import { getGlobalSetting, deleteGlobalSetting } from './utils/settings';
 import { HAUSHALT_KANAL, leereHaushaltCache } from './utils/household';
 import { drossleBeruehren } from './utils/sitzungsBeruehrung';
 import { SITZUNG_LEERLAUF_SEK, sitzungsHoechstdauer } from './utils/sitzungsFrist';
 import { antwortAufDateiFehler, liefereDatei, sendeDatei } from './utils/dateiAusliefern';
+import { liesZustand, loescheZustand } from './utils/laufzustand';
 
 const WORKERS = (require('./utils/workerZahl') as typeof import('./utils/workerZahl')).workerZahl();
 
@@ -169,11 +170,9 @@ app.use(compression({
 
 // ── Security-Header ───────────────────────────────────────────────────────────
 // Handgerollt statt helmet: keine zusätzliche Dependency, und die CSP muss
-// ohnehin auf die App zugeschnitten sein. 'unsafe-inline' bei script/style ist
-// nötig, weil index.html Inline-onclick-Handler und Inline-Styles verwendet —
-// die Header schützen trotzdem gegen fremdes Framing (Clickjacking durch andere
-// Seiten; same-origin ist für den eigenen PDF-Viewer erlaubt), MIME-Sniffing
-// und fremde Ressourcen-Quellen.
+// ohnehin auf die App zugeschnitten sein. Weder Skript noch Stil dürfen inline
+// stehen; daneben schützen die Header gegen fremdes Framing (same-origin ist
+// für den eigenen PDF-Viewer erlaubt), MIME-Sniffing und fremde Quellen.
 app.use((req, res, next) => {
   res.setHeader('X-Frame-Options', 'SAMEORIGIN');
   res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -203,8 +202,10 @@ app.use((req, res, next) => {
     // Google Fonts sind entfallen: Schriften liegen unter
     // public/vendor/fonts/ (siehe fonts.css dort). Damit brauchen weder
     // style-src noch font-src einen Fremdhost — und eine LAN-Installation
-    // bekommt die Typografie auch ohne Internet.
-    "style-src 'self' 'unsafe-inline'",
+    // bekommt die Typografie auch ohne Internet. Ohne 'unsafe-inline': Das
+    // Markup trägt data-stil, und js/00-stile.js setzt nur freigegebene Werte
+    // per CSSOM, das die CSP nicht betrifft.
+    "style-src 'self'",
     "font-src 'self'",
     // img-src ohne https:. Der Kommentar hier lautete „Set-Bilder von CDNs
     // laden direkt" — das stimmt seit hardened-69 nicht mehr: imgUrl() in
@@ -230,6 +231,8 @@ app.use((req, res, next) => {
 // Jetzt: 256 KB überall (grosszügig für JSON-Nutzlasten dieser App), und die
 // PDF-Routen setzen ihr eigenes Limit per Router-Middleware (routes/api_v1/pdf.ts).
 app.use(express.json({ limit: '256kb' }));
+// Das Konto der Anfrage für Zähler tief unten (utils/apiKontingent.ts).
+app.use((require('./utils/anfrageKonto') as typeof import('./utils/anfrageKonto')).merkeAnfrage);
 app.use(express.urlencoded({ extended: true, limit: '256kb' }));
 
 /**
@@ -243,6 +246,8 @@ app.use((req, _res, next) => { if (req.body === undefined) req.body = {}; next()
 if (process.env.NODE_ENV === 'production')
   app.set('trust proxy', (require('./utils/proxyVertrauen') as typeof import('./utils/proxyVertrauen'))
     .proxyVertrauen(process.env.TRUST_PROXY));
+  app.use((require('./utils/proxyVertrauen') as typeof import('./utils/proxyVertrauen'))
+    .proxyHinweis(process.env.TRUST_PROXY));
 
 // Doppelte Schrägstriche im Pfad zusammenfassen
 // `//api/img-proxy?url=…` trifft in Express NICHT auf `/api/img-proxy`. Die
@@ -519,7 +524,7 @@ app.get('/api/v1/startup-status', async (_req, res) => {
 
   // Try DB for cross-worker state
   try {
-    const roh = await getGlobalSetting('startup_status');
+    const roh = await liesZustand('startup_status');
     if (roh) {
       const status = JSON.parse(roh);
       global.startupStatus = status;
@@ -547,11 +552,11 @@ app.get('/api/v1/health', async (req, res) => {
   });
 });
 
-// EINE Adressraum: alles unter /api/v1
-//  Warum das ohne Umbau der Anmeldung geht
-// requireToken in routes/api_v1/middleware.ts nimmt beide Ausweise. Die hier
-// umgehaengten Router bringen ihre eigene Absicherung mit (requireLogin, …
+// EIN Adressraum mit EINEM Eingang: anmeldungAmEingang verlangt Sitzung oder
+// Token für alles unter /api/v1 ausser den ausdrücklich öffentlichen Pfaden.
+// Der Schutz je Route bleibt als zweite Linie und kostet keinen zweiten Abruf.
 // Ausführlich: docs/begruendungen/server.ts.md#abschnitt-7
+app.use('/api/v1',          (require('./routes/api_v1/middleware') as typeof import('./routes/api_v1/middleware')).anmeldungAmEingang);
 app.use('/api/v1',          require('./routes/api_v1/index') as typeof import('./routes/api_v1/index'));
 app.use('/api/v1/sets',     require('./routes/sets') as typeof import('./routes/sets'));
 app.use('/api/v1/parts',    require('./routes/parts') as typeof import('./routes/parts'));
@@ -563,7 +568,7 @@ app.use('/api/v1/auth',     require('./routes/auth') as typeof import('./routes/
 // Der Link in der Bestätigungs-Mail zeigt hierher.
 // Wir leiten direkt an den Auth-Handler weiter.
 app.get('/verify', async (req, res) => {
-  // Die Logik steht seit Nachtrag 154 in utils/auth.verifiziereEmailToken().
+  // Die Logik steht in utils/auth.verifiziereEmailToken().
   // Vorher lagen hier acht Zeilen, die in routes/auth.ts wortgleich ein
   // zweites Mal standen — inklusive Hash-Regel und Ablaufprüfung. Wer eine
   // davon änderte, hatte die andere übersehen.
@@ -631,10 +636,10 @@ app.get('/{*splat}', async (req, res) => {
 const { handleRouteError: _handleRouteError } = require('./utils/httpError') as typeof import('./utils/httpError');
 app.use((err: any, _req: Request, res: Response, _next: NextFunction) => { _handleRouteError(res, err); });
 
-// Der Server nimmt Anfragen erst an, NACHDEM initSchemaOnce() das Schema
+// Der Server nimmt Anfragen erst an, NACHDEM bereiteDatenbankVor() das Schema
 // (inkl. user_sessions) fertig hat — sonst schlägt der Session-Store mit
 // "relation \"user_sessions\" does not exist" fehl (Race beim Start / frische DB).
-// app.listen() steht daher im initSchemaOnce().then(...)-Callback weiter unten.
+// app.listen() steht daher im bereiteDatenbankVor().then(...)-Callback weiter unten.
 
 // Initialise DB schema, then run CSV sync
 const db = require('./db/database') as typeof import('./db/database');
@@ -714,7 +719,7 @@ async function electPrimaryWorker(db: typeof import('./db/database')) {
   return isPrimaryWorker;
 }
 
-db.initSchemaOnce().then(async () => {
+bereiteDatenbankVor().then(async () => {
   // (Hier stand loadDailyLimitsFromDb(): Das Tageslimit musste beim Start in
   // einen In-Memory-Limiter geladen werden. Der Zähler liegt jetzt in der
   // Datenbank und liest die Grenze bei jedem Aufruf — siehe
@@ -820,7 +825,7 @@ db.initSchemaOnce().then(async () => {
 
   // Only primary worker clears stale startup_status — secondaries read it from DB
   if (isPrimaryWorker) {
-    await deleteGlobalSetting('startup_status').catch(() => {});
+    await loescheZustand('startup_status').catch(() => {});
     // Über console.warn landet der Hinweis in app_logs, also im Protokoll der Verwaltung.
     if (process.env.NODE_ENV === 'production'
         && (require('./utils/konfig') as typeof import('./utils/konfig')).standardPasswortInBenutzung())
@@ -841,7 +846,7 @@ db.initSchemaOnce().then(async () => {
       while (true) {
         await new Promise(r => setTimeout(r, 500));
         try {
-          const roh = await getGlobalSetting('startup_status');
+          const roh = await liesZustand('startup_status');
           if (roh) {
             const s = JSON.parse(roh);
             global.startupStatus = s;
@@ -853,7 +858,7 @@ db.initSchemaOnce().then(async () => {
 
     if (!isPrimaryWorker) return; // all background jobs below: primary worker only
 
-    // Die Staffel der Hintergrundläufe steht seit Nachtrag 134 in
+    // Die Staffel der Hintergrundläufe steht in
     // startup/backgroundJobs.ts — beieinander statt über hundertdreissig
     // Zeilen verstreut. Die Bedingung darüber ist die EINZIGE Stelle, an der
     // „nur im Primär-Worker" geprüft wird.
@@ -870,13 +875,13 @@ db.initSchemaOnce().then(async () => {
   scheduler.register('brickset_retry', () =>
     (require('./jobs/bricksetRetry') as typeof import('./jobs/bricksetRetry')).processRetryQueue().catch(e => console.error('[brickset-retry]', e.message)));
   scheduler.register('csv_sync', () =>
-    deleteGlobalSetting('rb_csv_last_sync')
+    loescheZustand('rb_csv_last_sync')
       .then(() => csvSync.run())
       .catch(e => console.error('[rb-csv-sync daily]', e.message)));
   scheduler.startTriggerPoll();
 
   // CSV-Sync auf Zuruf statt im 5-Sekunden-Takt.
-  // Der Eintrag in global_settings bleibt die belastbare Quelle; das
+  // Der Eintrag in laufzustand bleibt die belastbare Quelle; das
   // NOTIFY-Signal weckt nur sofort. Beim Verbinden prüft der Handler den
   // Eintrag einmal von sich aus, sodass ein während einer Trennung verpasstes
   // Signal nachgeholt wird (siehe utils/pgNotify.ts).
@@ -884,12 +889,12 @@ db.initSchemaOnce().then(async () => {
   (require('./utils/pgNotify') as typeof import('./utils/pgNotify')).listen('csv_sync_trigger', async () => {
     if (_csvSyncRunning) return;
     try {
-      const ausloeser = await getGlobalSetting('csv_sync_trigger');
+      const ausloeser = await liesZustand('csv_sync_trigger');
       if (!ausloeser) return;
-      await deleteGlobalSetting('csv_sync_trigger').catch(() => {});
+      await loescheZustand('csv_sync_trigger').catch(() => {});
       console.log('[rb-csv-sync] Manual trigger received — starting CSV sync');
       _csvSyncRunning = true;
-      await deleteGlobalSetting('rb_csv_last_sync').catch(() => {});
+      await loescheZustand('rb_csv_last_sync').catch(() => {});
       await csvSync.run().catch(e => console.error('[rb-csv-sync manual]', e.message));
     } catch (e) { meldeUndWeiter('server:csv-abgleich-anstossen', e); }
     finally { _csvSyncRunning = false; }

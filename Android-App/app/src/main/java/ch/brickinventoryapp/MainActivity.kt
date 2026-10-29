@@ -69,43 +69,24 @@ class MainActivity : ComponentActivity() {
     // man die Gutschein-Seite verlässt.
     private val gutscheinVm: ch.brickinventoryapp.ui.viewmodel.GutscheinViewModel by viewModels()
 
-    // ImageLoader kommt jetzt als Hilt-Singleton aus AppModule — eine
-    // Instanz für die gesamte Prozesslaufzeit statt einer pro Activity
-    // (siehe Kommentar dort: sonst verlor jede Bildschirmdrehung den
-    // Memory-Cache und liess zwei DiskCache-Instanzen auf demselben
-    // Verzeichnis nebeneinander laufen).
+    // ImageLoader als Hilt-Singleton aus NetzModule — eine Instanz je Prozess statt je
+    // Activity: Sonst verlöre jede Drehung den Memory-Cache, und zwei
+    // DiskCache-Instanzen liefen auf demselben Verzeichnis.
     @Inject lateinit var imageLoader: ImageLoader
 
     /**
-     * Beim Nach-vorn-Kommen einmal nach ausgeloesten Preisalarmen fragen.
+     * Beim Nach-vorn-Kommen einmal nach ausgelösten Preisalarmen fragen — sonst
+     * erführe man es erst durch den stündlichen Auftrag (PreisalarmWorker). Die Webapp
+     * fragt ebenso beim Anmelden (zeigeOffeneAlarme()).
      *
-     * ── Marcos Befund vom 25.09. ────────────────────────────────────────────
+     * onStart statt onCreate: onCreate läuft einmal je Activity; wer nach einer Woche
+     * aus dem Hintergrund zurückkommt, durchläuft es nicht, und gerade dann ist die
+     * Frage am interessantesten.
      *
-     *   „In der Android-App kommt trotz aktivem Preisalarm keine
-     *    notification."
-     *
-     * Abgeholt hat bis dahin allein der stuendliche Auftrag
-     * (PreisalarmWorker). Wer die App oeffnet, erfuhr nichts — im
-     * schlechtesten Fall eine Stunde lang. Die Webapp macht es laengst
-     * richtig: zeigeOffeneAlarme() laeuft dort beim Anmelden.
-     *
-     * ── Warum onStart und nicht onCreate ────────────────────────────────────
-     *
-     * onCreate laeuft einmal je Activity. Wer die App eine Woche im
-     * Hintergrund liegen laesst und dann zurueckkommt, durchlaeuft es NICHT —
-     * und genau dann ist die Frage am interessantesten. onStart trifft jedes
-     * Nach-vorn-Kommen.
-     *
-     * ── Warum das keine doppelten Meldungen gibt ────────────────────────────
-     *
-     * Dafuer sorgt die Marke, nicht der Aufrufer: Jeder Durchgang fragt „was
-     * hat seit `marke` ausgeloest?" und schreibt den Zeitpunkt des Servers
-     * zurueck. Wer die App zehnmal oeffnet, bekommt eine Meldung genau
-     * einmal — die Begruendung steht bei PreisalarmWorker.durchgang().
-     *
-     * lifecycleScope: Der Abruf haengt am Bildschirm. Geht die Activity weg,
-     * bevor der Server geantwortet hat, ist die Antwort niemandem mehr
-     * nuetzlich, und der stuendliche Auftrag fragt ohnehin weiter.
+     * Keine doppelten Meldungen, dafür sorgt die Marke: Jeder Durchgang fragt „was hat
+     * seit `marke` ausgelöst?“ und schreibt den Zeitpunkt des Servers zurück (siehe
+     * PreisalarmWorker.durchgang()). lifecycleScope, weil die Antwort niemandem nützt,
+     * wenn die Activity vorher weggeht — der stündliche Auftrag fragt ohnehin weiter.
      */
     /**
      * Eine angetippte Preisalarm-Meldung, waehrend die App schon laeuft.

@@ -28,25 +28,18 @@ import ch.brickinventoryapp.util.passwortZuKurz
 import ch.brickinventoryapp.ui.theme.Abstaende
 
 /**
- * Anmelden, ein Konto anlegen, einen Link zum Zuruecksetzen anfordern.
+ * Anmelden, ein Konto anlegen, einen Link zum Zurücksetzen anfordern — wie die
+ * Webapp (`showPanel('login'|'register'|'forgot')` in public/js/01-core.js), damit
+ * niemand für ein Konto oder ein vergessenes Passwort einen Browser braucht.
  *
- * ── Warum hier drei Formulare stehen (Nachtrag 126) ─────────────────────────
+ * Drei Formulare in einem Bildschirm statt drei Navigationszielen: Der
+ * Zurück-Knopf des Geräts soll dasselbe bedeuten wie „Zurück zur Anmeldung“; mit
+ * eigenen Zielen wären das zwei Wege, die auseinanderlaufen können.
  *
- * Die Webapp hat diese drei seit jeher (`showPanel('login'|'register'|'forgot')`
- * in public/js/01-core.js). Die App hatte nur das erste. Wer sie als Erstes
- * installierte, brauchte zwingend einen Browser, um ueberhaupt an ein Konto zu
- * kommen — und wer sein Passwort vergass, ebenso.
- *
- * Drei Formulare in EINEM Bildschirm statt drei Navigationszielen: Der
- * Zurueck-Knopf des Geraets soll dasselbe bedeuten wie „Zurueck zur Anmeldung"
- * im Formular. Mit eigenen Zielen waeren das zwei Wege, die auseinanderlaufen
- * koennen.
- *
- * Was hier NICHT steht, ist das Setzen des neuen Passworts. Der Link aus der
- * E-Mail traegt den Token in der Adresse und fuehrt zur Weboberflaeche des
- * Servers; ihn in der App abzufangen hiesse, einen Intent-Filter auf eine
- * Adresse zu legen, die jeder Nutzer selbst einstellt und die im Manifest
- * deshalb gar nicht stehen kann. Der Hinweistext sagt das dem Nutzer.
+ * Das Setzen des neuen Passworts steht nicht hier: Der Link aus der E-Mail trägt
+ * den Token und führt zur Weboberfläche des Servers. Ihn abzufangen bräuchte einen
+ * Intent-Filter auf eine Adresse, die jeder selbst einstellt und die deshalb nicht
+ * im Manifest stehen kann. Der Hinweistext sagt das.
  */
 @Composable
 fun LoginScreen(
@@ -151,11 +144,9 @@ fun LoginScreen(
 }
 
 /**
- * Eine stehende Meldung im Formular — Fehler rot, Bestaetigung ruhig.
- *
- * Stand dreimal fast gleich da (Anmelden, Registrieren, Vergessen). Genau die
- * Sorte Wiederholung, die auseinanderlaeuft: Beim dritten Mal haette der
- * Abstand oder die Randform schon nicht mehr gepasst.
+ * Eine stehende Meldung im Formular — Fehler rot, Bestätigung ruhig. Eine Fassung
+ * für Anmelden, Registrieren und Vergessen, damit Abstand und Randform überall
+ * gleich bleiben.
  */
 @Composable
 private fun FormularMeldung(text: String, fehler: Boolean) {
@@ -377,10 +368,9 @@ private fun RegistrierFelder(
         if (zuZeigen != null) FormularMeldung(zuZeigen, fehler = true)
 
         LadeKnopf(stringResource(R.string.register_button), laeuft = laeuft, aktiv = true) {
-            // Dieselben drei Pruefungen wie im Web-Formular, und in derselben
-            // Reihenfolge — die Laengengrenze von 8 Zeichen ist die des
-            // Servers (routes/auth.ts). Hier vorweggenommen, damit man dafuer
-            // nicht erst eine Runde ueber das Netz braucht.
+            // Dieselben drei Prüfungen wie im Web-Formular, in derselben Reihenfolge; die
+            // Längengrenze von 8 Zeichen ist die des Servers (routes/auth.ts). Hier
+            // vorweggenommen, damit man dafür keine Runde über das Netz braucht.
             eigenerFehler = when {
                 nutzer.isBlank() || email.isBlank() || pw1.isBlank() -> reqFields
                 passwortZuKurz(pw1) -> zuKurz

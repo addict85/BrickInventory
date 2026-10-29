@@ -54,7 +54,7 @@ function sichtbaresHtml() {
     .replace(/<!--[\s\S]*?-->/g, '');
   const teile = [];
   let i = 0;
-  for (const m of roh.matchAll(/<div[^>]*style="[^"]*display:\s*none[^"]*"[^>]*>/g)) {
+  for (const m of roh.matchAll(/<div[^>]*data-stil="[^"]*display:\s*none[^"]*"[^>]*>/g)) {
     if (m.index < i) continue;
     teile.push(roh.slice(i, m.index));
     // Bis zum passenden </div> springen — verschachtelte <div> mitzählen.

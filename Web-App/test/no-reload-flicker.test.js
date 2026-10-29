@@ -92,11 +92,12 @@ test('loadGallery zeigt den Spinner nur beim ersten Laden', () => {
   // Markups. Die Regel ist dieselbe geblieben — nur die Fundstelle sieht
   // anders aus, und ein Test, der auf einer Schreibweise beharrt, meldet den
   // Umzug als Fehler statt die Regel zu prüfen.
-  const spinnerAt = Math.max(fn.indexOf('class="loading"'), fn.indexOf('ladeAnzeige('));
+  // Seit dem 29.10. ist die Ladeanzeige ein Skelett (skelettKacheln()).
+  const spinnerAt = Math.max(fn.indexOf('class="loading"'), fn.indexOf('ladeAnzeige('), fn.indexOf('skelettKacheln('));
   const guardAt = fn.indexOf('if (!allSets.length');
   assert.ok(spinnerAt > 0,
     'In loadGallery ist keine Ladeanzeige mehr zu finden — weder als Markup ' +
-    'noch als ladeAnzeige(). Ohne sie prüft der Vergleich unten nichts.');
+    'noch als ladeAnzeige() oder skelettKacheln(). Ohne sie prüft der Vergleich unten nichts.');
   assert.ok(guardAt > 0 && guardAt < spinnerAt,
     'Die Bedingung muss VOR dem Leeren stehen, sonst ist sie wirkungslos');
 });

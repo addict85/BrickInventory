@@ -35,30 +35,14 @@ import ch.brickinventoryapp.util.NumericInput
 import ch.brickinventoryapp.ui.theme.Abstaende
 
 /**
- * Die Abschnitte der Überwachungsseite unterhalb der Job-Liste.
- *
- * ── Warum eigene Datei (Nachtrag 98) ────────────────────────────────────────
- *
- * MonitoringScreen.kt war 679 Zeilen und enthielt sechs Composables: die Seite
- * selbst, die Job-Karte, die Brickset-Warteschlange, den Preis-Cache samt
- * API-Kontingenten und zwei kleine Zell-Bausteine.
- *
- * Hier wurden GANZE FUNKTIONEN verschoben, nicht Rümpfe zerschnitten. Das ist
- * der risikoärmere Eingriff: Es gibt keine freien Namen zu bestimmen und keine
- * Parameterliste zu erraten — die Funktionen waren schon vorher abgeschlossen.
- *
- * `CacheAndLimitsSection` bleibt damit 185 Zeilen lang. Sie weiter zu
- * zerlegen hiesse, ein halbes Dutzend `var by remember` in
- * MutableState-Parameter zu verwandeln; das ist ohne Compiler die
- * fehleranfälligste Sorte Änderung, und der Gewinn wäre gering.
+ * Die Abschnitte der Überwachungsseite unterhalb der Job-Liste — ganze Funktionen
+ * aus MonitoringScreen.kt, keine zerschnittenen Rümpfe.
  */
 
 @Composable
 /**
- * `internal` statt `private`: Der Aufrufer steht seit dem Aufteilen in einer
- * ANDEREN Datei, und `private` gilt in Kotlin dateiweit (Nachtrag 101).
- * `internal` hält den Helfer weiterhin aus der öffentlichen Schnittstelle
- * heraus — sichtbar ist er nur innerhalb dieses Moduls.
+ * `internal`, weil der Aufrufer in einer anderen Datei steht und `private` in
+ * Kotlin dateiweit gilt.
  */
 internal fun BricksetQueueRow(
     entry: BricksetQueueEntry,
@@ -105,7 +89,7 @@ internal fun BricksetQueueRow(
                 TextButton(
                     onClick = { showError = !showError },
                     contentPadding = PaddingValues(0.dp),
-                    modifier = Modifier.height(24.dp)
+                    modifier = Modifier.heightIn(min = 24.dp)
                 ) {
                     Text(if (showError) stringResource(R.string.monitoring_hide_error) else stringResource(R.string.monitoring_show_error),
                         style = MaterialTheme.typography.labelSmall,
@@ -142,12 +126,10 @@ fun CacheAndLimitsSection(vm: AppViewModel, onSnack: (String) -> Unit = {}) {
     var leerenAlles by rememberSaveable { mutableStateOf(false) }
     val limitsSavedMsg = stringResource(R.string.monitoring_limits_saved)
 
-    // Serverdaten aus dem ViewModel; hiltViewModel() liefert im selben
-    // NavHost-Ziel dieselbe Instanz wie in MonitoringScreen.
-    // Die drei Netzerlaubnisse direkt aus den Einstellungen, nicht ueber
-    // AppUiState: Es sind Geraete-Einstellungen wie der Kontofilter, und drei
-    // weitere Felder im gemeinsamen Zustand haetten nur eine zweite Fassung
-    // derselben Wahrheit ergeben.
+    // Die drei Netzerlaubnisse direkt aus den Einstellungen, nicht über AppUiState: Es
+    // sind Geräte-Einstellungen, und eine Kopie im gemeinsamen Zustand wäre eine
+    // zweite Fassung derselben Wahrheit. hiltViewModel() liefert im selben Ziel
+    // dieselbe Instanz wie MonitoringScreen.
     val netzWlan    by vm.prefs.vorwaermenWlan.collectAsStateWithLifecycle(initialValue = true)
     val netzMobil   by vm.prefs.vorwaermenMobil.collectAsStateWithLifecycle(initialValue = false)
     val netzRoaming by vm.prefs.vorwaermenRoaming.collectAsStateWithLifecycle(initialValue = false)
@@ -158,8 +140,7 @@ fun CacheAndLimitsSection(vm: AppViewModel, onSnack: (String) -> Unit = {}) {
     val apiLimits  = monState.apiLimits
     val cacheTtl   = monState.cacheTtl
     val defaultCondition = monState.vorgabeZustand
-    // Das aktuelle Design steht im APP-Zustand, nicht im Ueberwachungs-Zustand:
-    // Es gilt fuer die ganze App und wird dort schon gelesen (Nachtrag 135).
+    // Das aktuelle Design steht im App-Zustand, weil es für die ganze App gilt.
     val appState by vm.state.collectAsStateWithLifecycle()
 
     // Bedienzustand: was gerade bearbeitet und halb eingetippt ist. Bleibt hier
@@ -230,38 +211,16 @@ fun CacheAndLimitsSection(vm: AppViewModel, onSnack: (String) -> Unit = {}) {
                 )
             }
 
-            // ── Vier Blöcke UNTEREINANDER, nicht nebeneinander ──────────────
-            //
-            // Marcos Befund: „Der Monitoring Bereich in der Android App hat beim
-            // Cache vorher und nachher einen grossen leeren Abstand."
-            //
-            // Hier stand eine Row um alles, was jetzt folgt — Vorschau-Ablage,
-            // Vorwärm-Netze, Hinweis und Designwahl. Eine Row legt ihre Kinder
-            // NEBENEINANDER: Die vier teilten sich die Bildschirmbreite, und für
-            // jedes blieben ein paar Punkte. Die beiden FlowRows darin brachen
-            // deshalb jeden Chip auf eine eigene Zeile und wurden sehr hoch,
-            // während `Alignment.CenterVertically` die Vorschau-Zeile in die
-            // Mitte dieser Höhe setzte — genau der leere Abstand davor und
-            // danach. Die übrigen drei Blöcke standen dabei zusammengedrückt am
-            // rechten Rand und waren praktisch unsichtbar.
-            //
-            // Die Column darüber ordnet bereits senkrecht (spacedBy 10.dp); die
-            // Row war schlicht zu viel.
+            // Die vier Blöcke stehen untereinander in der Column: In einer Row teilten sie
+            // sich die Breite, die FlowRows brachen jeden Chip um, und es entstanden grosse
+            // leere Abstände.
 
-            // ── Vorschau-Ablage ─────────────────────────────────────────────
+            // ── Vorschau-Ablage ──
             //
-            // Sie liegt unter filesDir und wird von Android NICHT geraeumt
-            // (das ist ihr Zweck). Also muss man sie hier sehen und leeren
-            // koennen — sonst waechst auf dem Telefon etwas, das niemand
-            // findet.
-            //
-            // `remember`, nicht `rememberSaveable`: Die Zahl ist eine
-            // Messung der Platte, kein Eingabewert. Aus dem Bundle
-            // wiederhergestellt stuende sie nach einem Prozesstod dauerhaft
-            // falsch da, denn nachgelesen wird sie nur hier und beim
-            // Leeren. BildschirmZustandTest fuehrt das als dritte Sorte
-            // Zustand (`gemessen`) und verbietet dort ausdruecklich die
-            // speichernde Variante.
+            // Sie liegt unter filesDir und wird von Android nicht geräumt; deshalb muss man
+            // sie hier sehen und leeren können. `remember`, nicht `rememberSaveable`: Die Zahl
+            // ist eine Messung der Platte und stünde nach einem Prozesstod falsch da
+            // (BildschirmZustandTest, Sorte „gemessen“).
             var ablageBytes by remember { mutableStateOf(vm.vorschauAblageBytes()) }
             Row(
                 Modifier.fillMaxWidth(),
@@ -282,15 +241,10 @@ fun CacheAndLimitsSection(vm: AppViewModel, onSnack: (String) -> Unit = {}) {
                 }) { Text(stringResource(R.string.monitoring_vorschau_leeren), style = MaterialTheme.typography.labelMedium) }
             }
 
-            // ── In welchen Netzen darf vorgewaermt werden ────────────
+            // ── In welchen Netzen darf vorgewärmt werden ──
             //
-            // Marcos Vorgabe: „Bitte nur im WLAN vorwaermen oder noch
-            // besser in den Optionen einstellbar. Insbesondere auch ob
-            // WLAN, Mobilfunk und oder Roaming erlaubt ist. Standard auf
-            // WLAN."
-            //
-            // Die drei sind unabhaengig — jeder Chip beantwortet EINE Lage.
-            // Begruendung an den Schluesseln in PreferencesManager.
+            // Drei unabhängige Chips, je einer für eine Lage; die Begründung steht an den
+            // Schlüsseln in PreferencesManager.
             Text(stringResource(R.string.monitoring_vorwaermen_netz),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -324,27 +278,17 @@ fun CacheAndLimitsSection(vm: AppViewModel, onSnack: (String) -> Unit = {}) {
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
 
-            // ── Design (Nachtrag 137) ───────────────────────────────────────
+            // ── Design ──
             //
-            // Die App LIEST das globale Design seit Nachtrag 135 — aendern
-            // konnte es nur die Webapp, ein Verwalter mit dem Telefon in der
-            // Hand musste sich an den Rechner setzen.
-            //
-            // `loadSettings()` danach zieht den neuen Wert in den Zustand und
-            // merkt ihn: Die Anzeige wechselt sofort und ueberlebt den
-            // naechsten Kaltstart.
+            // Das globale Design auch am Telefon ändern können. loadSettings() danach zieht
+            // den neuen Wert in den Zustand und merkt ihn, damit er den Kaltstart überlebt.
             Text(stringResource(R.string.monitoring_theme),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
             // Vier Designs passen nicht mehr in eine Zeile — FlowRow bricht
             // um, statt die letzten Chips abzuschneiden.
             androidx.compose.foundation.layout.FlowRow(
-                // Aus der Skala, nicht als Zahl: Die vorige Zeile stand auf
-                // 6.dp — einem Wert, den es auf der Skala nicht gibt. Die
-                // Ratsche in AbstandsskalaTest hat das gemeldet, als hier
-                // eine zweite Zahl dazukam. 8 statt 6 verschiebt die Chips
-                // um zwei Punkte; in einer Verwaltungszeile ist das der
-                // richtige Preis dafuer, dass neuer Code die Skala benutzt.
+                // Aus der Abstandsskala, nicht als Zahl (AbstandsskalaTest).
                 horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
                 verticalArrangement = Arrangement.spacedBy(Abstaende.klein),
             ) {
@@ -425,17 +369,10 @@ fun CacheAndLimitsSection(vm: AppViewModel, onSnack: (String) -> Unit = {}) {
                 }
             }
 
-            // ── Leeren (Nachtrag 135) ──────────────────────────────────────
+            // ── Leeren ──
             //
-            // Die Zahlen oben standen bisher ohne Handhabe da: Man sah, dass
-            // tausend Preise veraltet sind, und konnte nichts tun. Die Webapp
-            // bietet das Leeren an zwei Stellen an (04-finance.js,
-            // 05-settings.js), einmal nur die Preise, einmal alles.
-            //
-            // MIT Rueckfrage, anders als dort: Jeder Neuaufbau kostet Anfragen
-            // aus dem gemeinsamen Tageskontingent — das steht so im Kommentar
-            // der Serverroute. Ein Fehlgriff ist hier also nicht nur laestig,
-            // er nimmt allen anderen Kontingent weg.
+            // Mit Rückfrage: Jeder Neuaufbau kostet Anfragen aus dem gemeinsamen
+            // Tageskontingent; ein Fehlgriff nimmt allen anderen Kontingent weg.
             Row(
                 Modifier.fillMaxWidth().padding(top = Abstaende.winzig),
                 horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
@@ -546,20 +483,11 @@ private fun RateLimitRow(
         pct > 0.7f -> LocalStatusFarben.current.warnung
         else       -> MaterialTheme.colorScheme.primary
     }
-    // ── Das Zeichen, nicht nur die Farbe (Nachtrag 138) ─────────────────────
+    // ── Das Zeichen, nicht nur die Farbe ──
     //
-    // Marco ist rot-gruen-schwach. Diese Zeile hatte DREI Stufen — blau, gelb,
-    // rot —, und nur die Farbe sagte, in welcher man steckt. Gelb gegen Rot
-    // ist genau das Paar, das dabei zusammenfaellt.
-    //
-    // Die Zahl „750 / 1000" und die Laenge des Balkens stehen zwar da, man
-    // kann es also AUSRECHNEN. Aber der Zweck der Faerbung war nie die
-    // Auskunft, sondern der Blickfang: „hier wird es eng". Genau der fiel
-    // ersatzlos weg.
-    //
-    // Ein Zeichen davor holt ihn zurueck, ohne die Farbe zu ersetzen. EINE
-    // Schwelle und nicht zwei: Ob 75 oder 95 Prozent, sagt die Zahl daneben
-    // schon; was sie nicht sagt, ist, ab wann man hinsehen sollte.
+    // Gelb gegen Rot fällt bei Rot-Grün-Schwäche zusammen; die Farbe sollte aber auf
+    // einen Blick sagen „hier wird es eng“. Ein Zeichen davor trägt das ohne Farbe.
+    // Eine Schwelle reicht — wie eng, sagt die Zahl daneben.
     val eng = pct > 0.7f
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(3.dp)) {
         Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
@@ -599,11 +527,8 @@ private fun RateLimitRow(
 }
 
 /**
- * Das Server-Protokoll — dieselbe Ansicht, die die Webapp unter „Logs" zeigt.
- *
- * Wird NICHT von selbst geladen: Es sind bis zu 5000 Zeilen, und wer das
- * Monitoring oeffnet, will in aller Regel die Job-Karten sehen. Ein Abruf beim
- * Betreten waere Datenverkehr fuer etwas, das niemand angesehen hat.
+ * Das Server-Protokoll, wie „Logs“ in der Webapp. Nicht von selbst geladen: bis zu
+ * 5000 Zeilen, und wer die Überwachung öffnet, will meist die Job-Karten.
  */
 // ExperimentalLayoutApi gilt fuer die FlowRow der Stufenschalter weiter unten.
 // Die Annotation gehoert an die FUNKTION, nicht in den Rumpf — die Begruendung
@@ -663,12 +588,8 @@ internal fun ProtokollSection(mon: MonitoringViewModel) {
                                 shape = Formen.chip)
                         }
                     }
-                    // Der Fehler VOR der Leermeldung, und statt ihrer: „Keine
-                    // Eintraege in diesem Zeitraum" waere hier die falsche
-                    // Auskunft — es gibt keine Eintraege, WEIL der Abruf
-                    // scheiterte, nicht weil der Server still war. Gelesen wird
-                    // das Feld nur hier; die Kontenkarte, die es vorher zeigte,
-                    // ist entfallen (Nachtrag 129).
+                    // Der Fehler statt der Leermeldung: „keine Einträge“ wäre falsch, wenn der
+                    // Abruf scheiterte.
                     if (verwaltung.fehler != null) {
                         Text(verwaltung.fehler!!, style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.error)
@@ -677,17 +598,10 @@ internal fun ProtokollSection(mon: MonitoringViewModel) {
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    // ── Stufen und Suche, wie in der Weboberflaeche ─────────
+                    // ── Stufen und Suche, wie in der Weboberfläche ──
                     //
-                    // public/js/logviewer.js hat beides: Schalter je Stufe und
-                    // ein Suchfeld. Die App hatte weder das eine noch das
-                    // andere — bei 1440 Minuten sind das schnell hunderte
-                    // Zeilen, durch die man dann von Hand rollt.
-                    //
-                    // Gefiltert wird HIER und nicht auf dem Server: Die Zeilen
-                    // sind schon geladen, und ein zweiter Abruf je Tastendruck
-                    // waere fuer eine Liste, die vollstaendig vorliegt, nur
-                    // Wartezeit.
+                    // Gefiltert wird hier, nicht auf dem Server: Die Zeilen sind schon geladen, ein
+                    // Abruf je Tastendruck wäre nur Wartezeit.
                     val stufen = remember(verwaltung.protokoll) {
                         verwaltung.protokoll.mapNotNull { it.level?.lowercase() }.distinct().sorted()
                     }
@@ -755,26 +669,11 @@ internal fun ProtokollSection(mon: MonitoringViewModel) {
 }
 
 /**
- * Der Zeitplan eines Jobs — anzeigen und aendern.
- *
- * ── Warum es das jetzt gibt (Nachtrag 137) ──────────────────────────────────
- *
- * `/api/v1/admin/jobs` schickt `schedules` seit jeher mit; die App hat das Feld
- * nie eingelesen. Sie zeigte damit, DASS ein Job laeuft, aber nicht, wann er
- * das naechste Mal laeuft — und aendern konnte sie es schon gar nicht. Die
- * Webapp kann beides (07-admin.js).
- *
- * Ein Feld, das ueber die Leitung kommt und niemanden erreicht: dieselbe Sorte
- * Fund wie „geschrieben und nie gelesen", nur von der anderen Seite.
- *
- * ── Zwei Formen, ein Bedienelement ──────────────────────────────────────────
- *
- * Taegliche Jobs haben eine Uhrzeit („03:00"), der Preis-Job einen Abstand in
- * Minuten. Der Server unterscheidet sie am mitgeschickten Feld
- * (routes/api_v1/admin.ts) und normalisiert beides — „7:5" wird zu „07:05",
- * ein Abstand unter fuenf Minuten wird auf fuenf angehoben. Deshalb wird nach
- * dem Speichern neu geladen: Sonst stuende da, was getippt wurde, statt dessen,
- * was gilt.
+ * Der Zeitplan eines Jobs — anzeigen und ändern, wie in der Webapp. Tägliche Jobs
+ * haben eine Uhrzeit, der Preis-Job einen Abstand in Minuten; der Server
+ * unterscheidet am Feld und normalisiert beides („7:5“ → „07:05“, mindestens fünf
+ * Minuten). Deshalb wird nach dem Speichern neu geladen: Es soll dastehen, was
+ * gilt.
  */
 @Composable
 fun ZeitplanZeile(

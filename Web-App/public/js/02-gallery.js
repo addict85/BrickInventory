@@ -1,7 +1,7 @@
-import { ladeAnzeige } from './01-bausteine.js';
+import { skelettKacheln } from './01-bausteine.js';
 import { registerActions } from './00-registry.js';
 import { locale, t, tRaw} from '../i18n.js';
-import { bildTag, fullUrl, platzhalterInhalt, setnummerFeldGueltig, leerZustand, ico, CURRENCY, G, ME, TRASH_ICON_SVG, api, esc, escJs, escUrl, fmtBig, fmtN, imgUrl, observeLazyImages, thumbUrl, toast } from './01-core.js';
+import { bildTag, fullUrl, platzhalterInhalt, setnummerFeldGueltig, leerZustand, ico, CURRENCY, G, ME, TRASH_ICON_SVG, api, esc, escJs, escUrl, fmtBig, fmtN, fmtPct, imgUrl, observeLazyImages, thumbUrl, toast, zuruecksetzenKnopf } from './01-core.js';
 import { _gibSse, _gibTimer, gibStart, protokollZeile } from './01-fortschritt.js';
 import { _monitorTimer, loadMonitor, set_monitorTimer } from './01-monitor.js';
 import { SCOPE_VIEWS, addScopeParam, scopeMode, scopeQuery, setScopeMode,
@@ -16,8 +16,8 @@ import { geloeschtMitRueckgaengig, ladePapierkorb } from './20-papierkorb.js';
 import { ladeZweitenFaktor } from './21-zweiter-faktor.js';
 import { _lastImportAt, confirmDelete, enrichGalleryWithPrices, jobPollTimer, ladeLagerorte, lagerortBlock, openModal, pollJobStatus, set_jobPollTimer, set_lastImportAt } from './07-admin.js';
 import { openAcqModal, renderAcqModalBody, renderAcquisitionSummary } from './13-acquisition-modals.js';
-import { ladeMerkliste } from './16-merkliste.js';
-import { initCatalog } from './09-catalog.js';
+import { ladeMerkliste, merklisteZuruecksetzen } from './16-merkliste.js';
+import { initCatalog, katalogZuruecksetzen } from './09-catalog.js';
 import { delSetStop, openPdfViewerLink, stopEvent } from './11-actions.js';
 
 // ═══ Navigation, Stats, Progress-Overlay, Galerie, CSV-Polling, Set-Detail-Modal ═══
@@ -37,12 +37,14 @@ function syncTabTitleIcon(tab){
   if(!nav || !slot) return;
   // Alles vor dem .tab-label ist das Icon (Emoji-Textknoten oder <svg>).
   const label = nav.querySelector('.tab-label');
-  let html = '';
+  // Kopien statt outerHTML: Als Text neu eingelesen, stünde der Stil des
+  // Symbols wieder als style-Attribut da, und das verbietet die CSP.
+  const kopien = [];
   for(const node of nav.childNodes){
     if(node === label) break;
-    html += node.nodeType === Node.TEXT_NODE ? node.textContent : (node.outerHTML || '');
+    if(node.nodeType === Node.TEXT_NODE ? node.textContent.trim() : true) kopien.push(node.cloneNode(true));
   }
-  slot.innerHTML = html.trim();
+  slot.replaceChildren(...kopien);
 }
 
 /**
@@ -53,12 +55,24 @@ function syncTabTitleIcon(tab){
 const SAMMLUNG = ['gallery', 'parts', 'minifigs'];
 function markiereGruppe(tab){
   // Eigene Klasse statt .active: `.ntab.active` nennt überall den offenen Reiter.
-  document.querySelector('.ntab[data-tab="gallery"]')?.classList.toggle('gruppe-aktiv', SAMMLUNG.includes(tab));
+  const sammlung = document.querySelector('.ntab[data-tab="gallery"]');
+  sammlung?.classList.toggle('gruppe-aktiv', SAMMLUNG.includes(tab));
+  // Am Telefon steht in der Leiste, welche Ansicht der Sammlung offen ist.
+  const unter = sammlung?.querySelector('.tab-unter');
+  if (unter) {
+    const schluessel = { parts: 'nav.parts', minifigs: 'nav.minifigs' }[tab];
+    if (schluessel) { unter.setAttribute('data-i18n', schluessel); unter.textContent = tRaw(schluessel); }
+    else { unter.removeAttribute('data-i18n'); unter.textContent = ''; }
+  }
   document.querySelectorAll('.sammlung-wahl [data-arg]').forEach(b =>
     b.setAttribute('aria-selected', String(b.dataset.arg === tab)));
   // Vorleseprogramme erfahren so, welcher Reiter offen ist.
+  // „Sammlung“ gilt nur dann als aktuelle Seite, wenn der eigene Reiter der
+  // Ansicht nicht zu sehen ist (am Telefon).
+  const offen = document.querySelector('.ntab.active');
+  const offenSichtbar = !!offen?.getClientRects().length;
   document.querySelectorAll('.ntab').forEach(x => {
-    if (x.classList.contains('active') || x.classList.contains('gruppe-aktiv')) x.setAttribute('aria-current', 'page');
+    if (x.classList.contains('active') || (x.classList.contains('gruppe-aktiv') && !offenSichtbar && x !== offen)) x.setAttribute('aria-current', 'page');
     else x.removeAttribute('aria-current');
   });
 }
@@ -539,6 +553,16 @@ export function initStorageSelects(orte) {
  * loadManualParts() ein halb angewandter Filter — oben ungefiltert, unten
  * gefiltert. Dieselbe Begruendung wie bei onScopeChange() darunter.
  */
+/** Alle Filter einer Ansicht leeren (Knopf im Leerzustand ohne Treffer). */
+function filterZuruecksetzen(ansicht) {
+  if (ansicht === 'gallery') {
+    G('gs').value = ''; G('gtheme').value = '';
+    setLagerModus('gallery', ''); if (G('storage-gallery')) G('storage-gallery').value = '';
+    loadGallery();
+  } else if (ansicht === 'merkliste') merklisteZuruecksetzen();
+  else if (ansicht === 'catalog') katalogZuruecksetzen();
+}
+
 export function onStorageChange(view) {
   const el = G('storage-' + view);
   if (!el) return;
@@ -608,7 +632,7 @@ export async function loadHouseholdMembers() {
   // Alle drei Erfassen-Formulare: Set, manuelles Teil, manuelle Minifigur.
   // Dieselbe Liste, dieselbe Regel — ein Kaufpreis für ein Kind zu erfassen
   // soll für alle drei gleich gehen.
-  // cat-m-owner seit Nachtrag 66 dabei — der Katalog-Dialog ist der vierte
+  // cat-m-owner dabei — der Katalog-Dialog ist der vierte
   // Erfassungsweg und war als einziger nicht angeschlossen.
   // mk-owner ist der fuenfte Erfassungsweg (Merkliste) — dieselbe Liste,
   // dieselbe Regel. Der Grossvater traegt einen Wunsch fuer den Enkel ein.
@@ -770,7 +794,7 @@ export function selectedOwner(selectId) {
  * @param {{restore?: boolean}} [opts] restore=true behält die bereits
  *   gescrollte TIEFE und die Scrollposition bei.
  *
- * ── Warum es restore gibt (Nachtrag 34, Marcos Bericht) ─────────────────────
+ * ── Warum es restore gibt (Marcos Bericht) ─────────────────────
  * Nach einem Eigentümerwechsel im Kaufpreis-Dialog rief der Aufrufer schlicht
  * loadGallery(). Das setzt _galPage auf 1 zurück: Wer sich bis Zeile 50
  * durchgescrollt hatte, stand plötzlich vor 60 statt 300 Kacheln. Das Dokument
@@ -798,7 +822,7 @@ export async function loadGallery(opts = {}){
   // Antwort da ist; erst dann wird einmal neu gezeichnet.
   const gal = G('gallery');
   if (!allSets.length || !gal.querySelector('.sgrid, .tw, .empty')) {
-    gal.innerHTML = ladeAnzeige(t('gallery.loading'));
+    gal.innerHTML = skelettKacheln(8, t('gallery.loading'));
   }
   _galGen++; _galPage = 1; _galDone = false; _galLoadingMore = false;
   const gen = _galGen;
@@ -838,9 +862,13 @@ export function renderGallery(){
   const q=G('gs')?.value?.toLowerCase()||'';
   const list=allSets;
   const c=G('gallery');
+  // Ein Filter ohne Suchtext (Thema, Lagerort) ist auch ein Filter: Sonst stünde
+  // „Noch keine Sets“ über einer Sammlung, die nur ausgeblendet ist.
+  const gefiltert = !!(q || G('gtheme')?.value || lagerModus('gallery'));
   if(!list.length){
-    c.innerHTML = q
-      ? leerZustand({ ico: 'suche', titel: tRaw('gallery.no_results', { query: q }) })
+    c.innerHTML = gefiltert
+      ? leerZustand({ ico: 'suche', titel: q ? tRaw('gallery.no_results', { query: q }) : tRaw('gallery.no_results_filter'),
+                      knopf: zuruecksetzenKnopf('gallery') })
       : leerZustand({ ico: 'set', titel: tRaw('gallery.empty'),
                       knopf: { text: tRaw('gallery.add.title'), click: 'oeffneErfassen', arg: 'set' } });
     return;
@@ -873,7 +901,7 @@ export function updateGalleryPrices(){
     const priceStr = s._price ? fmtN(s._price, CURRENCY)
                               : (s.max_purchase_price != null ? fmtN(s.max_purchase_price, CURRENCY) : '');
     const pnl = pnlBadge(s._pnl_pct);
-    el.innerHTML = `<span style="font-weight:600;color:var(--b600)">${priceStr}</span>${pnl}`;
+    el.innerHTML = `<span class="preis">${priceStr}</span>${pnl}`;
     el.hidden = !(priceStr || pnl);
   });
 }
@@ -881,7 +909,7 @@ export function updateGalleryPrices(){
 export function pnlBadge(pct){
   if(pct===null||pct===undefined) return '';
   const v=parseFloat(pct); const cls=v>0?'pnl-pos':v<0?'pnl-neg':'pnl-neu';
-  return `<span class="${cls}">${v>0?'+':''}${v.toFixed(1)}%</span>`;
+  return `<span class="${cls}">${fmtPct(v)}</span>`;
 }
 
 /**
@@ -948,7 +976,9 @@ function gridCard(s){
   const fallbackPurchase = s.avg_purchase_price ?? s.max_purchase_price;
   const priceStr = s._price ? fmtN(s._price, CURRENCY) : (fallbackPurchase!=null ? fmtN(fallbackPurchase, CURRENCY) : '');
   const pnl = pnlBadge(s._pnl_pct);
-  const addedFmt = s.added_at ? new Date(s.added_at).toLocaleDateString(locale()) : '';
+  // Das Datum des letzten Kaufs: Die Aufnahme ins Konto war bei einem Import
+  // für alle Sets derselbe Tag und sagte nichts.
+  const kaufFmt = s.letzter_kauf ? new Date(s.letzter_kauf).toLocaleDateString(locale()) : '';
   // Zustand: Der Server liefert die vorkommenden Zustände als Aggregat —
   // eine Plakette je Zustand, siehe condBadges().
   const condBadge = condBadges(s);
@@ -959,29 +989,29 @@ function gridCard(s){
       <div class="snum">${esc(s.set_number)}</div>
       <div class="sname">${esc(s.name)||'Unbekannt'}</div>
       <div class="smeta">
-        <span style="font-size:var(--fs-1)">${s.year||'—'}${s.theme?' · '+esc(s.theme.substring(0,12)):''}</span>
-        <div style="display:flex;gap:3px;align-items:center;flex-wrap:wrap">
+        <span data-stil="font-size:var(--fs-1)">${s.year||'—'}${s.theme?' · '+esc(s.theme.substring(0,12)):''}</span>
+        <div data-stil="display:flex;gap:3px;align-items:center;flex-wrap:wrap">
           ${s.instructions?.length?`<span class="ibadge">${ico('liste')}${s.instructions.length}</span>`:''}
           ${s.quantity>1?`<span class="qbadge">×${s.quantity}</span>`:''}
           ${condBadge}
           ${ownerBadges(s)}
         </div>
       </div>
-      <div class="price-badge" data-price-for="${esc(s.set_number)}"${priceStr||pnl ? '' : ' hidden'}><span style="font-weight:600;color:var(--b600)">${priceStr}</span>${pnl}</div>
-      ${addedFmt ? `<div style="font-size:var(--fs-1);color:var(--mut);margin-top:.2rem">${ico('kalender')} ${addedFmt}</div>` : ''}
+      <div class="price-badge" data-price-for="${esc(s.set_number)}"${priceStr||pnl ? '' : ' hidden'}><span class="preis">${priceStr}</span>${pnl}</div>
+      ${kaufFmt ? `<div class="kachel-datum" title="${esc(t('gallery.card.bought'))}">${ico('kalender')} <span class="vh">${esc(t('gallery.card.bought'))} </span>${kaufFmt}</div>` : ''}
     </div>
   </div>`;
 }
 function tableRow(s){
   const src=s.image_local||s.image_url||'';
   const addedFmt = s.added_at ? new Date(s.added_at).toLocaleDateString(locale()) : '—';
-  return `<tr style="cursor:pointer" tabindex="0" data-click="openModal" data-arg="${escJs(s.set_number)}">
+  return `<tr data-stil="cursor:pointer" tabindex="0" data-click="openModal" data-arg="${escJs(s.set_number)}">
     <td>${src?bildTag({ src: imgUrl(thumbUrl(src)||src, true), alt: '', ph: 'set' }):`<span class="bild-ph" aria-hidden="true">${platzhalterInhalt('set')}</span>`}</td>
-    <td><span style="font-family:var(--mono);color:var(--b600);font-size:var(--fs-1)">${esc(s.set_number)}</span></td>
+    <td><span data-stil="font-family:var(--mono);color:var(--b600);font-size:var(--fs-1)">${esc(s.set_number)}</span></td>
     <td>${esc(s.name)||'—'}</td><td>${s.year||'—'}</td><td>${esc(s.theme)||'—'}</td>
     <td>${s.pieces?s.pieces.toLocaleString(locale()):'—'}</td><td>${s.minifigs||'—'}</td>
     <td><span class="qbadge">×${s.quantity}</span></td>
-    <td style="font-size:var(--fs-1);color:var(--mut)">${addedFmt}</td>
+    <td data-stil="font-size:var(--fs-1);color:var(--mut)">${addedFmt}</td>
     <td>${s.instructions?.length?`<span class="ibadge">${ico('liste')}${s.instructions.length}</span>`:'—'}</td>
     <td data-click="stopEvent"><button class="btn bs btn-sm" data-click="reimportParts" data-arg="${escJs(s.set_number)}" title="${esc(t('detail.reimport_parts'))}" aria-label="${esc(t('detail.reimport_parts'))}">${PARTS_ICON_SVG}</button></td>
     <td data-click="stopEvent"><button class="btn bd btn-sm" data-click="delSet" data-arg="${escJs(s.set_number)}" title="${esc(t('detail.delete'))}" aria-label="${esc(t('detail.delete'))}">${TRASH_ICON_SVG}</button></td>
@@ -1118,7 +1148,7 @@ function csvApplyOverlayStatus(s, ctx, fi){
     G('prog-footer').textContent=`${t('csv.items_progress',{done,total})} (${s.ok} ok${s.warn?', '+s.warn+' '+t('csv.warnings'):''}${s.err?', '+s.err+' '+t('csv.errors'):''})`;
     if(s.current) G('prog-set-name').textContent=`Verarbeite: ${s.current} (${done}/${total})`;
     // Update header progress bar directly
-    { const _p=total>0?Math.round(done/total*100):0; const _b=G('global-import-bar'); if(_b){_b.style.display='flex';G('gib-fill').style.width=_p+'%';G('gib-text').textContent=done+'/'+total+' ('+_p+'%)';} }
+    { const _p=total>0?Math.round(done/total*100):0; const _b=G('global-import-bar'); if(_b){_b.style.display='flex';G('gib-fill').style.width=_p+'%';G('gib-text').textContent=done+'/'+total+' ('+fmtPct(_p,{vorzeichen:false,stellen:0})+')';} }
     // Show live results as they come in
     if(s.results && s.results.length > ctx.prevResultCount) {
       const newResults = s.results.slice(ctx.prevResultCount);
@@ -1312,7 +1342,7 @@ export async function reimportParts(sn){ toast(tRaw('detail.importing_parts',{sn
 export let curSet=null;
 export let _pnlCache = {};
 // Gemeinsames "Haufen von Steinen"-Icon für Teile (Nav-Tab, Platzhalter, Überschriften)
-export const PARTS_ICON_SVG = '<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" style="width:1em;height:1em;vertical-align:middle"><rect x="18" y="62" width="56" height="26" rx="2.5" fill="#0055BF"/><circle cx="28" cy="62" r="5.5" fill="#0055BF"/><circle cx="46" cy="62" r="5.5" fill="#0055BF"/><circle cx="64" cy="62" r="5.5" fill="#0055BF"/><g transform="rotate(-9 66 55)"><rect x="38" y="42" width="52" height="24" rx="2.5" fill="#F2CD37"/><circle cx="49" cy="42" r="5" fill="#F2CD37"/><circle cx="64" cy="42" r="5" fill="#F2CD37"/><circle cx="79" cy="42" r="5" fill="#F2CD37"/></g><g transform="rotate(7 58 80)"><rect x="26" y="76" width="58" height="26" rx="2.5" fill="#E63329"/><circle cx="37" cy="76" r="5.5" fill="#E63329"/><circle cx="55" cy="76" r="5.5" fill="#E63329"/><circle cx="73" cy="76" r="5.5" fill="#E63329"/></g></svg>';
+export const PARTS_ICON_SVG = '<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" data-stil="width:1em;height:1em;vertical-align:middle"><rect x="18" y="62" width="56" height="26" rx="2.5" fill="#0055BF"/><circle cx="28" cy="62" r="5.5" fill="#0055BF"/><circle cx="46" cy="62" r="5.5" fill="#0055BF"/><circle cx="64" cy="62" r="5.5" fill="#0055BF"/><g transform="rotate(-9 66 55)"><rect x="38" y="42" width="52" height="24" rx="2.5" fill="#F2CD37"/><circle cx="49" cy="42" r="5" fill="#F2CD37"/><circle cx="64" cy="42" r="5" fill="#F2CD37"/><circle cx="79" cy="42" r="5" fill="#F2CD37"/></g><g transform="rotate(7 58 80)"><rect x="26" y="76" width="58" height="26" rx="2.5" fill="#E63329"/><circle cx="37" cy="76" r="5.5" fill="#E63329"/><circle cx="55" cy="76" r="5.5" fill="#E63329"/><circle cx="73" cy="76" r="5.5" fill="#E63329"/></g></svg>';
 // openModal defined below (with price history)
 
 export function renderInstructions(instr, sn) {
@@ -1327,36 +1357,36 @@ export function renderInstructions(instr, sn) {
     const label = esc(i.description) || t('instr.label');
     // Lokale Dateien (PDF/Bild) im In-App-Viewer öffnen; externe URLs im neuen Tab.
     const link = isLocal
-      ? `<a href="${escUrl(href)}" data-click="openPdfViewerLink" data-arg="${esc(href)}" data-arg2="${esc(i.description||'')}" style="cursor:pointer">${label}</a>`
+      ? `<a href="${escUrl(href)}" data-click="openPdfViewerLink" data-arg="${esc(href)}" data-arg2="${esc(i.description||'')}" data-stil="cursor:pointer">${label}</a>`
       : `<a href="${escUrl(href)}" target="_blank" rel="noopener">${label}</a>`;
     return `<div class="ii" id="instr-${i.id}">
       ${link}
-      ${isUpload ? `<span class="lv" style="background:var(--p100);color:var(--p600)">${t('instr.badge_manual')}</span>` : isLocal ? `<span class="lc">${ico('speichern')}</span>` : `<span class="lv">${ico('globus')}</span>`}
-      ${isUpload ? `<button data-click="delInstr" data-arg="${esc(sn)}" data-arg2="${i.id}" title="${t('instr.delete_tooltip')}" style="background:none;border:none;cursor:pointer;color:var(--s400);font-size:var(--fs-3);padding:0 2px" aria-label="${t('instr.delete_tooltip')}">${ico('schliessen')}</button>` : ''}
+      ${isUpload ? `<span class="lv" data-stil="background:var(--p100);color:var(--p600)">${t('instr.badge_manual')}</span>` : isLocal ? `<span class="lc">${ico('speichern')}</span>` : `<span class="lv">${ico('globus')}</span>`}
+      ${isUpload ? `<button data-click="delInstr" data-arg="${esc(sn)}" data-arg2="${i.id}" title="${t('instr.delete_tooltip')}" data-stil="background:none;border:none;cursor:pointer;color:var(--s400);font-size:var(--fs-3);padding:0 2px" aria-label="${t('instr.delete_tooltip')}">${ico('schliessen')}</button>` : ''}
     </div>`;
   }).join('');
 
   const uploadForm = `
-    <div id="instr-upload-form" style="margin-top:10px;padding:10px;background:var(--s50);border:1px dashed var(--bdr);border-radius:8px">
-      <div style="font-size:var(--fs-1);font-weight:600;color:var(--mut);margin-bottom:7px">${t('instr.upload_title')}</div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:flex-end">
-        <div style="flex:1;min-width:140px">
-          <input type="text" id="instr-desc" placeholder="${t('instr.desc_placeholder')}" style="font-size:var(--fs-2);padding:6px 10px" />
+    <div id="instr-upload-form" data-stil="margin-top:10px;padding:10px;background:var(--s50);border:1px dashed var(--bdr);border-radius:8px">
+      <div data-stil="font-size:var(--fs-1);font-weight:600;color:var(--mut);margin-bottom:7px">${t('instr.upload_title')}</div>
+      <div data-stil="display:flex;gap:6px;flex-wrap:wrap;align-items:flex-end">
+        <div data-stil="flex:1;min-width:140px">
+          <input type="text" id="instr-desc" placeholder="${t('instr.desc_placeholder')}" data-stil="font-size:var(--fs-2);padding:6px 10px" />
         </div>
-        <label class="btn bs btn-sm" style="cursor:pointer">
+        <label class="btn bs btn-sm" data-stil="cursor:pointer">
           ${t('instr.choose_file')}
-          <input type="file" id="instr-file" accept=".pdf,.jpg,.jpeg,.png" style="display:none" data-change="uploadInstr" data-arg="${escJs(sn)}" />
+          <input type="file" id="instr-file" accept=".pdf,.jpg,.jpeg,.png" data-stil="display:none" data-change="uploadInstr" data-arg="${escJs(sn)}" />
         </label>
       </div>
-      <div id="instr-upload-status" style="font-size:var(--fs-1);margin-top:6px;color:var(--mut)"></div>
+      <div id="instr-upload-status" data-stil="font-size:var(--fs-1);margin-top:6px;color:var(--mut)"></div>
     </div>`;
 
   G('m-instr').innerHTML = `
-    <div style="font-size:var(--fs-1);font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--mut);margin:12px 0 7px">
+    <div data-stil="font-size:var(--fs-1);font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--mut);margin:12px 0 7px">
       ${t('instr.section_title')} ${instr.length ? `(${instr.length})` : ''}
-      <button data-click="redownloadInstr" data-arg="${escJs(sn)}" class="btn bs btn-sm" style="margin-left:8px;font-size:var(--fs-0);padding:3px 8px">${t('instr.reload')}</button>
+      <button data-click="redownloadInstr" data-arg="${escJs(sn)}" class="btn bs btn-sm" data-stil="margin-left:8px;font-size:var(--fs-0);padding:3px 8px">${t('instr.reload')}</button>
     </div>
-    ${items || `<div style="color:var(--mut);font-size:var(--fs-2)">${t('instr.none_auto')}</div>`}
+    ${items || `<div data-stil="color:var(--mut);font-size:var(--fs-2)">${t('instr.none_auto')}</div>`}
     ${uploadForm}`;
 }
 
@@ -1414,7 +1444,7 @@ export function autosaveSet(){
     const prevQty = curSet.quantity || qty;
     const d = await api('PUT',`/v1/sets/${esc(curSet.set_number)}`,{quantity:qty});
     if(d.success){
-      // Die WIRKLICHE Gesamtmenge kommt vom Server (Nachtrag 87).
+      // Die WIRKLICHE Gesamtmenge kommt vom Server.
       //
       // Angezeigt wird die Menge aller Konten, geschrieben wird die Differenz
       // auf das eigene. Beim VERRINGERN deckelt der Server bei den eigenen
@@ -1433,7 +1463,7 @@ export function autosaveSet(){
           if (!ad?.success) return;
           const sumEl = G('m-acq-summary');
           if (sumEl) sumEl.innerHTML = renderAcquisitionSummary(ad.acquisitions, curSet.set_number) +
-            `<button class="btn bs btn-sm" data-click="openAcqModal" data-arg="${escJs(curSet.set_number)}" style="margin-top:4px;font-size:var(--fs-1);padding:2px 10px">${ico('bearbeiten')} ${t('detail.edit_prices')}</button>`;
+            `<button class="btn bs btn-sm" data-click="openAcqModal" data-arg="${escJs(curSet.set_number)}" data-stil="margin-top:4px;font-size:var(--fs-1);padding:2px 10px">${ico('bearbeiten')} ${t('detail.edit_prices')}</button>`;
           if (G('acq-modal').classList.contains('open') && typeof renderAcqModalBody === 'function') {
             renderAcqModalBody(curSet.set_number, ad.acquisitions);
           }
@@ -1463,6 +1493,7 @@ async function redownloadInstr(sn){ toast(tRaw('instr.loading'),'info'); const d
 // der erste Lauf dieses Umbaus rot geworden.
 registerActions({
   filterUmschalten,
+  filterZuruecksetzen,
   benutzerMenue,
   oeffneSicht,
   oeffneReiter,

@@ -183,7 +183,7 @@ class AbgewiesenTest {
         // Anmeldung ihre ersten Abrufe. tokenJetzt()/serverUrlJetzt() nehmen
         // erst den führenden Speicherwert.
         //
-        // AppModule ist die einzige Ausnahme, und sie ist begründet: Der
+        // di/ServerClient.kt ist die einzige Ausnahme, und sie ist begründet: Der
         // Interceptor läuft auf OkHttp-Threads und darf dort nicht
         // suspendieren; er schreibt dieselbe Regel deshalb aus.
         val treffer = mutableListOf<String>()
@@ -192,7 +192,7 @@ class AbgewiesenTest {
             // wird dieses Projekt gebaut — liefert `path` Backslashes, und der
             // Schnitt ginge ins Leere (siehe Quellen.unter()).
             val name = datei.invariantSeparatorsPath.substringAfter("ch/brickinventoryapp/")
-            if (name.endsWith("PreferencesManager.kt") || name.endsWith("AppModule.kt")) continue
+            if (name.endsWith("PreferencesManager.kt") || name.endsWith("di/ServerClient.kt")) continue
             val code = Quellen.ohneKommentare(datei.readText())
             // Ohne `prefs.` davor: Der Manager heisst nicht ueberall gleich,
             // und die Regel gilt dem Fluss, nicht dem Variablennamen.
@@ -209,7 +209,7 @@ class AbgewiesenTest {
 
     @Test
     fun `der Interceptor benutzt die Regel und faellt nicht in eine Schleife`() {
-        val di = Quellen.ohneKommentare(Quellen.lies("di/AppModule.kt"))
+        val di = Quellen.ohneKommentare(Quellen.di())
         assert(di.contains("darfNachfassen(")) {
             "Der Interceptor fragt die Regel nicht mehr — dann ist util/Abgewiesen.kt " +
                 "totes Gewicht und der Fehler zurück."

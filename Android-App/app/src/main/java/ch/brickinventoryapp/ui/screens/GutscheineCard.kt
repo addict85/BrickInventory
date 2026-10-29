@@ -29,25 +29,9 @@ import ch.brickinventoryapp.util.NumericInput
 import ch.brickinventoryapp.util.fmtDatum
 
 /**
- * Gutscheine — LEGO-Geschenkkarten im eigenen Profil.
- *
- * ── Marcos Vorgabe ──────────────────────────────────────────────────────────
- *
- *   „Im Eigenen Profil sollen Lego-Gutscheine mit Gutscheinnummer und Pins und
- *    Betrag hinterlegt werden können. […] Die Erfassung, Änderung und Anzeige
- *    soll sowohl in der Android-App als auch in der Webapp möglich sein und
- *    möglichst einfach erreichbar sein."
- *
- * Deshalb steht die Karte bei den Einstellungen, direkt neben dem Konto —
- * dieselbe Stelle wie in der Webapp, wo sie unter den Profil-Einstellungen
- * sitzt.
- *
- * ── Warum eine eigene Datei ─────────────────────────────────────────────────
- *
- * SettingsScreen.kt hat 1448 Zeilen. Eine weitere Karte dort hinein waere der
- * naechste Schritt zu einer Datei, die niemand mehr ueberblickt; die anderen
- * grossen Karten (Haushalt, Konto, CSV) stehen aus demselben Grund schon in
- * eigenen Funktionen.
+ * Gutscheine — LEGO-Geschenkkarten im eigenen Profil, möglichst einfach erreichbar
+ * und wie in der Webapp beim Profil. Eine eigene Datei, damit SettingsScreen.kt
+ * überschaubar bleibt.
  */
 @Composable
 fun GutscheineCard(
@@ -62,12 +46,9 @@ fun GutscheineCard(
     /** Nummer oder PIN in die Zwischenablage; `istNummer` steuert die Meldung. */
     onKopieren: (wert: String, istNummer: Boolean) -> Unit,
     /**
-     * Das Guthaben dieser Karte bei LEGO abfragen und speichern.
-     *
-     * Kein Knopf fuer „alle Karten": Der Server erlaubt hoechstens eine
-     * Abfrage je 30 Sekunden ueber alle Benutzer (Marcos Vorgabe), und eine
-     * Reihe davon waere eine Minutenlange Folge von Absagen. Die Webapp
-     * taktet sich dafuer selbst; hier ist es der Knopf je Zeile.
+     * Das Guthaben dieser Karte bei LEGO abfragen und speichern. Der Server erlaubt
+     * eine Abfrage je 30 Sekunden über alle Benutzer; der Lauf über alle Karten taktet
+     * sich deshalb selbst.
      */
     onGuthaben: (Int) -> Unit,
     /** Alle Gutscheine als EIN PDF — im Betrachter, nicht als Download. */
@@ -77,32 +58,20 @@ fun GutscheineCard(
     /** Den laufenden Durchgang anhalten. */
     onGuthabenAbbrechen: () -> Unit,
 ) {
-    // Die gewaehlte Datei lebt nur, solange das Formular offen ist — sie
-    // gehoert nicht in den geteilten Zustand, weil eine Uri eine Berechtigung
-    // dieses Bildschirms ist und kein Datum des Kontos.
-    // rememberSaveable und nicht remember: Die gewaehlte Datei ist eine WAHL
-    // des Menschen (Sorte 1 in BildschirmZustandTest) und soll eine Drehung
-    // ueberstehen — sonst ist sie nach dem Kippen des Telefons weg, und zwar
-    // ohne Hinweis. Eine Uri ist Parcelable, der Standard-Saver kann sie.
+    // Die gewählte Datei lebt nur im Formular — eine Uri ist eine Berechtigung dieses
+    // Bildschirms, kein Datum des Kontos. rememberSaveable, weil sie eine Wahl des
+    // Menschen ist und eine Drehung überstehen soll; Uri ist Parcelable.
     var pdfUri by rememberSaveable { mutableStateOf<android.net.Uri?>(null) }
     val auswahl = androidx.activity.compose.rememberLauncherForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.OpenDocument()
     ) { uri -> pdfUri = uri }
     SettingsCard(title = stringResource(R.string.vouchers_title), icon = Icons.Default.Redeem) {
 
-        // ── Guthaben aller Karten abfragen ────────────────────────────────
+        // ── Guthaben aller Karten abfragen ──
         //
-        // Marcos Vorgabe: „Kannst du die Buttons für die abfrage des Wertes
-        // der Gutscheine auch in der Android-App einbauen?" Der Knopf je Karte
-        // steht in der Zeile selbst; dies ist der zweite.
-        //
-        // Der Fortschritt steht DANEBEN im Text: Eine Abfrage je 30 Sekunden
-        // (Marcos Grenze, ueber alle Benutzer) heisst bei vier Karten gut
-        // anderthalb Minuten. Ein Knopf, der so lange nur ausgegraut ist, sagt
-        // niemandem, ob noch etwas passiert.
-        //
-        // Und deshalb der Abbrechen-Knopf: So lange nur zusehen zu duerfen
-        // waere unhoeflich.
+        // Der Fortschritt steht daneben im Text: Bei einer Abfrage je 30 Sekunden dauern
+        // vier Karten gut anderthalb Minuten, und ein nur ausgegrauter Knopf sagt nicht,
+        // ob noch etwas passiert. Deshalb auch der Abbrechen-Knopf.
         val lauf = zustand.guthabenLauf
         Row(verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
@@ -144,19 +113,12 @@ fun GutscheineCard(
             )
         }
 
-        // ── Alle Gutscheine als EIN PDF ───────────────────────────────────
+        // ── Alle Gutscheine als ein PDF ──
         //
-        // Marcos Vorgabe vom 15.10.: „Bitte auch den Button 'Alle Gutscheine
-        // als PDF exportieren' in der Android-App einbauen. Das erzeugte PDF
-        // soll analog den andere PDFs angezeigt werden."
-        //
-        // „Analog" heisst hier: der vorhandene PdfViewerScreen, derselbe, der
-        // Anleitungen und das einzelne Gutschein-PDF zeigt. Er bringt Drucken
-        // und Speichern mit; heruntergeladen wird hier nichts.
-        //
-        // Ohne Gutscheine ist der Knopf aus: Der Server antwortet dann mit
-        // 404 und einer Auskunft, und ein Betrachter, der eine Fehlermeldung
-        // rendert, ist der umstaendlichste Weg zu „du hast noch keine".
+        // Angezeigt im vorhandenen PdfViewerScreen wie die anderen PDFs, mit Drucken und
+        // Speichern. Ohne Gutscheine ist der Knopf aus: Der Server antwortete mit 404, und
+        // ein Betrachter mit Fehlermeldung wäre der umständlichste Weg zu „du hast noch
+        // keine“.
         Row(verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
             modifier = Modifier.padding(bottom = Abstaende.klein)) {
@@ -168,22 +130,11 @@ fun GutscheineCard(
             }
         }
 
-        // ── Kein eigener Knopf fuer den Stapel-Import mehr ─────────────────
-        //
-        // Hier stand ein zweiter Dateiknopf „PDF importieren". Marcos
-        // Durchsicht der Webapp am 15.10.: „Die Funktionalitaet des blau
-        // umrandeten Buttons soll in den gruen umrandeten integriert werden.
-        // (Wenn ein PDF mit mehreren Seiten selektiert wird, sollen mehrere
-        // Gutscheine erfasst werden)" — dasselbe gilt hier, sonst haetten die
-        // beiden Oberflaechen verschiedene Bedienungen fuer dieselbe Sache.
-        //
-        // Die Datei geht jetzt ueber das Feld im Erfassen-Formular unten, und
-        // der SERVER entscheidet, ob daraus einer oder zwanzig werden.
-        //
-        // Kein Export-Knopf: Der Export ist eine Datei zum Behalten, und die
-        // App hat keinen Weg, eine Datei zu speichern oder weiterzugeben. Die
-        // Begruendung steht in BrickApiService.kt und in
-        // test/webapp-endpunkte.test.js (NUR_WEB).
+        // Kein eigener Knopf für den Stapel-Import: Die Datei geht über das Feld im
+        // Erfassen-Formular, und der Server entscheidet, ob daraus einer oder zwanzig
+        // werden — wie in der Webapp. Kein Export-Knopf: Der Export ist eine Datei zum
+        // Behalten, und die App kann Dateien nicht speichern oder weitergeben (NUR_WEB in
+        // test/webapp-endpunkte.test.js).
 
         if (zustand.gutscheine.isEmpty() && !zustand.laedt) {
             Text(
@@ -284,11 +235,9 @@ fun GutscheineCard(
 
         WaehrungsWahl(zustand.waehrung) { onFeld(null, null, null, it) }
 
-        // ── Der PDF-Weg ────────────────────────────────────────────────────
+        // ── Der PDF-Weg ──
         //
-        // Nur beim ANLEGEN. Ein Gutschein bekommt sein PDF einmal; es
-        // nachtraeglich auszutauschen waere ein eigener Vorgang und
-        // beantwortet keine Frage, die jemand hat.
+        // Nur beim Anlegen: Ein Gutschein bekommt sein PDF einmal.
         if (zustand.bearbeitet == null) {
             Spacer(Modifier.height(Abstaende.mittel))
             Row(verticalAlignment = Alignment.CenterVertically,
@@ -332,14 +281,9 @@ fun GutscheineCard(
 }
 
 /**
- * Eine Zeile.
- *
- * Die Nummer in Vierergruppen: Neunzehn Ziffern am Stueck sind an der Kasse
- * nicht abzulesen, und genau dafuer ist sie da.
- *
- * Bedeutung haengt nirgends an der FARBE — jeder Knopf traegt ein Symbol und
- * eine Beschreibung fuer den Bildschirmleser, der verdeckte PIN steht als
- * Punkte da und nicht als graues Feld.
+ * Eine Zeile. Die Nummer in Vierergruppen, weil neunzehn Ziffern an der Kasse
+ * nicht abzulesen sind. Nichts hängt an der Farbe: Jeder Knopf trägt Symbol und
+ * Beschreibung, der verdeckte PIN steht als Punkte da.
  */
 @Composable
 private fun GutscheinZeile(
@@ -355,26 +299,14 @@ private fun GutscheinZeile(
 ) {
     var loeschFrage by rememberSaveable { mutableStateOf(false) }
 
-    // Dieselbe Luecke wie bei den Preisalarmen (Marcos Befund vom 16.10.):
-    // Eine Gutscheinzeile ist EIN Kind der Karte, und der Abstand, den die
-    // Karte zwischen ihren Kindern legt, wirkt darin nicht. Nummer, Betrag
-    // und PIN standen deshalb dicht aufeinander.
+    // Eigener Abstand: Eine Gutscheinzeile ist ein Kind der Karte, und der
+    // Abstand, den die Karte zwischen ihre Kinder legt, wirkt darin nicht —
+    // Nummer, Betrag und PIN stünden sonst dicht aufeinander.
     Column(Modifier.fillMaxWidth().padding(vertical = Abstaende.klein),
            verticalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
-        // ── Marcos Vorgabe ──────────────────────────────────────────────────
-        //
-        //   „Wenn ich in der Android-App den Gutscheincode oder den Pin
-        //    anklicke, soll dieser kopiert werden."
-        //
-        // Kopiert wird die ROHE Nummer, nicht die in Vierergruppen gezeigte:
-        // Die Gruppierung ist eine Lesehilfe fuers Abtippen an der Kasse — ein
-        // Bezahlfeld nimmt sie nicht an.
-        //
-        // `clickable` auf dem Text und kein eigener Knopf: Marco hat das Feld
-        // selbst als Ziel genannt, und ein zusaetzlicher Knopf je Zeile waere
-        // in der Webapp richtig (dort gibt es keine Beruehrung) und hier eine
-        // Verdoppelung. Die Antippflaeche wird dafuer bis zur vollen Breite
-        // aufgezogen, damit sie nicht nur die Ziffern selbst trifft.
+        // Antippen kopiert Nummer oder PIN — die rohe Nummer, weil ein Bezahlfeld die
+        // Vierergruppen nicht annimmt. `clickable` auf dem Text statt eines eigenen Knopfs
+        // je Zeile; die Fläche geht über die volle Breite.
         Text(
             g.number.chunked(4).joinToString(" "),
             style = MaterialTheme.typography.bodyMedium,
@@ -391,15 +323,9 @@ private fun GutscheinZeile(
                 fontWeight = FontWeight.Bold,
             )
             Spacer(Modifier.width(Abstaende.klein))
-            // Der Stand der Guthaben-Abfrage. Im WORT und nicht in einer
-            // Farbe: Marco unterscheidet Rot und Gruen nicht (FarbeAlleinTest
-            // haelt die Regel fest) — „abgefragt am 15.10." und „noch nie
-            // abgefragt" sagen es selbst.
-            // `if` und nicht `?.let { stringResource(…) } ?: …`: stringResource
-            // ist @Composable, und ein Composable-Aufruf in einer fremden
-            // Lambda-Funktion ist eine Wette darauf, dass der Compose-Compiler
-            // sie einbettet. Hier kann ich Kotlin nicht uebersetzen, also die
-            // Form, bei der nichts zu wetten ist.
+            // Der Stand der Guthaben-Abfrage im Wort, nicht in einer Farbe (FarbeAlleinTest).
+            // `if` statt `?.let { stringResource(…) }`: stringResource ist @Composable, und in
+            // einer fremden Lambda hinge es am Einbetten durch den Compose-Compiler.
             val stand = fmtDatum(g.guthabenGeprueftAm)
             Text(
                 if (stand != null) stringResource(R.string.vouchers_balance_as_of, stand)
@@ -439,12 +365,9 @@ private fun GutscheinZeile(
             // und ein Knopf, der ohne PIN immer dieselbe Absage erzeugt, waere
             // eine Falle. Ohne PIN steht in der Zeile ohnehin schon „–".
             if (g.pin != null) {
-                // Kreisel AN DER STELLE des Symbols und nicht daneben: Anders
-                // als beim Knopf mit Beschriftung (KnopfBreiteTest) kann hier
-                // nichts wegrutschen — ein IconButton hat eine feste Groesse.
-                // Die Zeilen stehen VOR dem Knopf, damit zwischen `IconButton(`
-                // und `stringResource` nicht mehr als zehn Zeilen liegen; so weit
-                // schaut IconButtonLabelTest nach der Beschriftung.
+                // Kreisel an der Stelle des Symbols: Ein IconButton hat eine feste Grösse, es
+                // rutscht nichts. Die Zeilen stehen vor dem Knopf, damit IconButtonLabelTest die
+                // Beschriftung innerhalb von zehn Zeilen findet.
                 IconButton(onClick = onGuthaben, enabled = !guthabenLaeuft) {
                     if (guthabenLaeuft) {
                         CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)

@@ -56,7 +56,7 @@ test('Absagen aus utils/household.ts heissen fehler, nicht code', () => {
 
 test('die Route entscheidet am Absage-Feld, nicht an der Nutzlast', () => {
   const route = lies('routes/api_v1/settings.ts');
-  const haushalt = [...route.matchAll(/router\.post\('\/settings\/household\/(\w+)'[\s\S]{0,400}?\n\}\);/g)];
+  const haushalt = [...route.matchAll(/router\.post\('\/settings\/household\/(\w+)'[\s\S]{0,1500}?\n\}\);/g)];
   // Selbstbeweis: GEMESSEN sind es drei — invite, redeem, unlink.
   assert.equal(haushalt.length, 3,
     `${haushalt.length} Haushalts-Routen gefunden statt drei — greift die Suche noch?`);

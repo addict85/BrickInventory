@@ -41,7 +41,7 @@ class MerklisteViewModelTest {
     private lateinit var pfade: PfadServer
     private lateinit var t: TestDienste
 
-    private fun vm(gemerkt: SavedStateHandle = SavedStateHandle()) = t.merke(MerklisteViewModel(
+    private fun vm(gemerkt: SavedStateHandle = SavedStateHandle(), t: TestDienste = this.t) = t.merke(MerklisteViewModel(
         t.dienste, SetsRepository(t.api, t.cache), AdminRepository(t.api, t.cache),
         FinanzenRepository(t.api, t.cache), gemerkt))
 
@@ -71,13 +71,15 @@ class MerklisteViewModelTest {
         erstes.setzeMerklisteZustand("U")
         erstes.setzeMerklisteSortierung("price_desc")
 
-        val neu = vm(gemerkt)
-        val f = neu.merklisteState.value
-        assertEquals(Triple("Titanic", "U", "price_desc"), Triple(f.query, f.zustandFilter, f.sortierung))
-        neu.ladeMerkliste()
-        TestApi.warteBis("Liste geladen") { neu.merklisteState.value.merkposten.isNotEmpty() }
-        val anfrage = pfade.anfragenAn("GET /api/v1/wanted").last()
-        assertTrue(anfrage, "search=Titanic" in anfrage && "condition=U" in anfrage && "sort=price_desc" in anfrage)
+        pfade.neuerProzess { pfade, t ->
+            val neu = vm(gemerkt, t)
+            val f = neu.merklisteState.value
+            assertEquals(Triple("Titanic", "U", "price_desc"), Triple(f.query, f.zustandFilter, f.sortierung))
+            neu.ladeMerkliste()
+            TestApi.warteBis("Liste geladen") { neu.merklisteState.value.merkposten.isNotEmpty() }
+            val anfrage = pfade.anfragenAn("GET /api/v1/wanted").single()
+            assertTrue(anfrage, "search=Titanic" in anfrage && "condition=U" in anfrage && "sort=price_desc" in anfrage)
+        }
     }
 
     @Test

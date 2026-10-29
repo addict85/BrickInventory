@@ -1,10 +1,11 @@
 const db = require('../db/database');
-// Echter Import statt spätem require(): Seit Nachtrag 125 liegt die Funktion in
+// Echter Import statt spätem require(): Inzwischen liegt die Funktion in
 // utils/setImages.ts und nicht mehr im Router — damit prüft tsc den Namen mit.
 import { downloadSetImage } from '../utils/setImages';
 import { grundFuer, istBekanntFehlend, merkeFehlend } from '../utils/imageMisses';
 import { generateThumb } from '../utils/thumbs';
 import { SET_IMAGES_DIR } from '../utils/appPaths';
+import { setzeZustand } from '../utils/laufzustand';
 
 /**
  * Bilder, die über den Proxy angefragt wurden, im HINTERGRUND lokal ablegen —
@@ -34,7 +35,7 @@ const NOTIZ_GILT_MS = 3 * 24 * 60 * 60 * 1000;
  */
 const DURCHGANG_MAX_NOTIZEN = 500;
 
-/** Schlüssel in `global_settings` für den Stand des letzten Durchgangs. */
+/** Schlüssel in `laufzustand` für den Stand des letzten Durchgangs. */
 const LAUF_SCHLUESSEL = 'imgqueue_last_run';
 
 let _laeuft = false;
@@ -99,7 +100,7 @@ const _puffer = new Map<string, string>();   // url → set_number
 
 export function merkeGebraucht(url: string, setNumber: string | null): void {
   if (!setNumber) return;
-  // GEPUFFERT (Nachtrag 103): Ein INSERT je Bildanfrage belegte eine Verbindung
+  // GEPUFFERT: Ein INSERT je Bildanfrage belegte eine Verbindung
   // aus dem Pool — bei einer Kachelwand dutzende gleichzeitig. Der Pool war
   // damit leer, und ANDERE Routen liefen in den Zeitfehler:
   //
@@ -163,7 +164,7 @@ export type StapelErgebnis = {
   /**
    * Echte Arbeitsschritte: Downloads und Verkleinerungen. NICHT die Zahl der
    * angefassten Notizen — daran hing die Drosselung, und genau das war der
-   * Fehler aus Nachtrag 121. Der Takt entscheidet an dieser Zahl, ob er noch
+   * Fehler. Der Takt entscheidet an dieser Zahl, ob er noch
    * einen Stapel nachholt.
    */
   arbeit: number;
@@ -216,18 +217,11 @@ function merkeLauf(erg: StapelErgebnis): void {
  * reichlich — sie wertet den Zeitpunkt in Minuten aus.
  */
 async function speichereLauf(erg: StapelErgebnis): Promise<void> {
-  // Spaetes require() statt import ganz oben, und zwar mit Grund: db/database.ts
-  // holt initImageQueue() aus DIESER Datei. Eine import-Anweisung auf
-  // utils/settings.ts — das seinerseits db/database.ts importiert — schloesse
-  // den Kreis, und zur Ladezeit waere eine der beiden Seiten undefined
-  // (siehe test/module-layout.test.js). Ein require() im Rumpf laeuft erst beim
-  // Aufruf und ist deshalb unbedenklich.
-  const { setGlobalSetting } = require('../utils/settings') as typeof import('../utils/settings');
   // Das await gehoert hier hin: Der naechste Takt liest den Stand ueber einen
   // ANDEREN Prozess wieder aus. Ohne await kehrt der Aufrufer zurueck, bevor
   // die Zeile steht — die Kachel meldet dann „Job noch nicht gelaufen", waehrend
   // im Log Durchgaenge stehen.
-  await setGlobalSetting(LAUF_SCHLUESSEL, JSON.stringify({ zeit: Date.now(), ergebnis: erg }))
+  await setzeZustand(LAUF_SCHLUESSEL, JSON.stringify({ zeit: Date.now(), ergebnis: erg }))
     .catch(() => {});
 }
 
@@ -289,11 +283,11 @@ async function arbeiteStapel(): Promise<StapelErgebnis> {
       // kostet jedes webp-Bild bei JEDEM Durchgang einen vergeblichen Lauf.
       if (fs.existsSync(vorschau)) erg.uebersprungen++;
       else if (istBekanntFehlend('thumb:' + vorschau)) {
-        // ── VOR der Pause und VOR dem Kontingent (Nachtrag 122) ────────────
+        // ── VOR der Pause und VOR dem Kontingent ────────────
         //
         // Die Prüfung stand bisher INNERHALB von vorschauErzeugen(), also
-        // hinter beidem. Eine Verkleinerung, die nie gelingen kann (webp vor
-        // Nachtrag 118), kostete damit bei jedem Durchgang eine
+        // hinter beidem. Eine Verkleinerung, die nie gelingen kann (früher webp),
+        // kostete damit bei jedem Durchgang eine
         // Höflichkeitspause UND einen Platz im CDN-Kontingent — für einen
         // Aufruf, der sofort `false` zurückgibt. Zehn solcher Notizen
         // verbrauchten einen ganzen Takt mit reinem Schlafen.
@@ -389,7 +383,7 @@ async function arbeiteStapel(): Promise<StapelErgebnis> {
     await vorschauErzeugen(lokal, vorschau);
     fertig++; erg.geholt++;
   }
-  // ── Zurückgelegte Zeilen sind NICHT bearbeitet (Nachtrag 122) ────────────
+  // ── Zurückgelegte Zeilen sind NICHT bearbeitet ────────────
   //
   // Nach einer Drosselung wandern die restlichen Notizen zurück in die
   // Warteschlange. `rows.length` meldete sie trotzdem als bearbeitet — bei

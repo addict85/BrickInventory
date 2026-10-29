@@ -30,10 +30,9 @@ import ch.brickinventoryapp.ui.viewmodel.UpdateViewModel
 
 
 /**
- * App-Navigation und Haupt-Gerüst — aus MainActivity.kt extrahiert.
- * Enthält den NavHost mit allen Routen, die Barcode-Dialoge und das
- * MainScaffold (TopBar/BottomBar). Gleiches Package wie MainActivity,
- * daher waren keine Referenz-Änderungen nötig.
+ * App-Navigation und Haupt-Gerüst: der NavHost mit allen Routen, die Dialoge, die
+ * über jedem Bildschirm stehen, und das MainScaffold (TopBar/BottomBar). Im Paket
+ * von MainActivity, damit sie sich ohne Import finden.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -53,22 +52,17 @@ fun BrickInventoryManagerApp(
     val selbstUpdate: UpdateViewModel = aktivitaetsViewModel()
     val navController = rememberNavController()
     val snackbarHostState = remember { SnackbarHostState() }
-    // ── Scroll-Zustände oberhalb des NavHost ────────────────────────────────
+    // ── Scroll-Zustände oberhalb des NavHost ──
     //
-    // Beim Öffnen einer Detailansicht wird das darunterliegende Ziel verworfen;
-    // ein `rememberLazyListState()`/`rememberLazyGridState()` DARIN wäre bei der
-    // Rückkehr zurückgesetzt, und die Liste spränge nach oben.
+    // Beim Öffnen einer Detailansicht wird das darunterliegende Ziel verworfen; ein
+    // `rememberLazyListState()`/`rememberLazyGridState()` darin wäre bei der Rückkehr
+    // zurückgesetzt. Hier oben bleibt der Zustand am Leben, weil diese Ebene beim
+    // Navigieren nicht verlassen wird.
     //
-    // Für die Finanz-Liste galt das schon; Galerie, Teile und Minifiguren
-    // fehlten (Marcos Befund, Nachtrag 92) — alle drei führen genauso in eine
-    // Detailansicht. Hier oben bleibt der Zustand am Leben, weil diese Ebene
-    // beim Navigieren nicht verlassen wird.
-    //
-    // Der KATALOG ist bewusst nicht dabei: Seine Liste führt alle `total`
-    // Plätze und lädt seitenweise nach, die Länge trifft also erst später ein.
-    // Ein Zustand allein hilft dort nicht, weil im Moment der Rückkehr noch
-    // keine Plätze da sind — er merkt sich die Position deshalb im ViewModel
-    // und springt einmal zurück, sobald die Länge steht (CatalogScreen.kt).
+    // Der Katalog ist nicht dabei: Seine Liste führt alle `total` Plätze und lädt
+    // seitenweise, im Moment der Rückkehr sind noch keine Plätze da. Er merkt sich die
+    // Position im ViewModel und springt zurück, sobald die Länge steht
+    // (CatalogScreen.kt).
     val financeListState   = androidx.compose.foundation.lazy.rememberLazyListState()
     val galleryGridState   = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
     val partsGridState     = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
@@ -96,17 +90,13 @@ fun BrickInventoryManagerApp(
     LaunchedEffect(state.isLoggedIn) {
         if (state.isLoggedIn) {
             vm.startCsvImportWatcher()
-            // ── Still nach einem Update sehen ───────────────────────────────
+            // ── Still nach einem Update sehen ──
             //
-            // Marcos Vorgabe: beim Start PRUEFEN, aber nie von allein laden.
-            // Genau das tut `still = true` — ein kleiner HTTPS-Abruf ohne
-            // Ladebalken, und im Fehlerfall ohne Meldung. Wer ohne Netz
-            // startet, soll keine rote Zeile sehen; wer den Knopf in den
-            // Einstellungen drueckt, sehr wohl (UpdateViewModel).
-            //
-            // Hier und nicht im Einstellungs-Bildschirm: Die Frage „gibt es
-            // etwas Neueres?" gilt der ganzen App. Im Bildschirm gestellt,
-            // bekaeme sie nur, wer ohnehin schon in den Einstellungen sitzt.
+            // Beim Start prüfen, nie von allein laden: `still = true` ist ein kleiner
+            // HTTPS-Abruf ohne Ladebalken und ohne Fehlermeldung — wer ohne Netz startet, soll
+            // keine rote Zeile sehen; der Knopf in den Einstellungen meldet sehr wohl
+            // (UpdateViewModel). Hier, weil die Frage der ganzen App gilt und nicht nur dem,
+            // der in den Einstellungen sitzt.
             selbstUpdate.pruefeAufUpdate(still = true)
         }
     }
@@ -151,55 +141,39 @@ fun BrickInventoryManagerApp(
             add(Triple(Screen.Gallery,   { Icon(Icons.Default.ViewInAr, null) },               labelCollection))
             add(Triple(Screen.PartsList, { Icon(Icons.AutoMirrored.Filled.ListAlt, null) },     labelPartslist))
             add(Triple(Screen.Finance,   { Icon(Icons.AutoMirrored.Filled.ShowChart, null) },     labelFinance))
-            // Merkliste VOR dem Katalog (Marcos Vorgabe), wie in der Webapp.
+            // Merkliste vor dem Katalog, wie in der Webapp.
             add(Triple(Screen.Wanted,    { Icon(Icons.Default.StarBorder, null) },                 labelWanted))
             add(Triple(Screen.Catalog,   { Icon(Icons.AutoMirrored.Filled.MenuBook, null) },      labelCatalog))
         }
     }
 
-    // ── Barcode confirmation dialog — shown over any screen ──────────────────
-    // Der Barcode-Dialog steht seit Nachtrag 97 in
-    // ui/dialogs/BarcodeResultDialog.kt — er machte zwei Drittel dieser
-    // Funktion aus, die eigentlich den NavHost aufbaut.
+    // ── Barcode-Bestätigung — über jedem Bildschirm ──
+    // Der Dialog steht in ui/dialogs/BarcodeResultDialog.kt; hier nur, wann er erscheint.
     if (barcodeState.result != null) {
         ch.brickinventoryapp.ui.dialogs.BarcodeResultDialog(erfassung, imageLoader)
     }
 
-    // ── „Wird geprüft" — über allem, auch über dem Scanner-Weg ──────────────
-    // Neben dem Bestätigungsdialog und aus demselben Grund hier: Die Prüfung
-    // gehört zu keinem einzelnen Bildschirm. Sie beginnt im Scanner, der sich
-    // sofort schliesst, und läuft danach über Galerie, Teileliste oder Katalog
-    // weiter — je nachdem, wo man gerade steht.
+    // ── „Wird geprüft“ — über allem, auch über dem Scanner-Weg ──
+    // Hier, weil die Prüfung zu keinem einzelnen Bildschirm gehört: Sie beginnt im Scanner, der sich sofort schliesst, und läuft über Galerie, Teileliste oder Katalog weiter.
     ch.brickinventoryapp.ui.dialogs.SetPruefungDialog(erfassung)
 
-    // ── „Es gibt eine neue Fassung" — ebenfalls ueber allem ─────────────────
+    // ── „Es gibt eine neue Fassung“ — ebenfalls über allem ──
     //
-    // Marcos Wunsch: „direkt beim Start ein Popup (mit Updaten, Ja/Nein), wenn
-    // es eine neue Version gibt. Aktuell wird nur eine Kugel in den
-    // Einstellungen angezeigt was oft übersehen wird."
-    //
-    // Hier und nicht in einem Bildschirm, aus demselben Grund wie bei den
-    // beiden darueber: Die Frage gilt der ganzen App. Die Pruefung, die ihn
-    // ausloest, steht ein paar Zeilen weiter oben.
+    // Ein Hinweis beim Start mit Ja/Nein, weil ein Punkt in den Einstellungen leicht
+    // übersehen wird. Hier, weil die Frage der ganzen App gilt; die auslösende Prüfung
+    // steht ein paar Zeilen weiter oben.
     ch.brickinventoryapp.ui.dialogs.UpdateDialog(selbstUpdate)
 
 
-    // ── Eine angetippte Preisalarm-Meldung oeffnet ihr Set ─────────────────
+    // ── Eine angetippte Preisalarm-Meldung öffnet ihr Set ──
     //
-    // Marcos Wunsch vom 25.09.: „dass ich in der Android App die notification
-    // anklicken kann und dann die App sowie das Set im Detaildialog geoeffnet
-    // wird."
+    // Hier und nicht in der Activity: Navigiert wird mit dem NavController, den es
+    // erst in dieser Composition gibt; die Activity legt das Ziel nur in den Zustand
+    // (MeldungsZielUiState).
     //
-    // Hier und nicht in der Activity: Navigiert wird mit dem NavController,
-    // und den gibt es erst in dieser Composition. Die Activity legt das Ziel
-    // nur in den Zustand (MeldungsZielUiState).
-    //
-    // NUR im angemeldeten Zustand: Wer die Meldung antippt, waehrend die App
-    // abgemeldet ist, landete sonst auf einem Set-Detail ohne Token — einem
-    // Bildschirm, der nichts laden kann und aus dem der Zurueck-Weg im Nichts
-    // endet. Das Ziel bleibt dabei stehen und wird nach der Anmeldung
-    // eingeloest, weil startDest dann auf Gallery wechselt und dieser Block
-    // erneut laeuft.
+    // Nur angemeldet: Sonst landete man auf einem Set-Detail ohne Token, das nichts
+    // laden kann. Das Ziel bleibt stehen und wird nach der Anmeldung eingelöst, weil
+    // startDest dann auf Gallery wechselt und dieser Block erneut läuft.
     val meldungsZiel by vm.meldungsZiel.collectAsStateWithLifecycle()
     LaunchedEffect(meldungsZiel.setNummer, startDest) {
         val sn = meldungsZiel.setNummer
@@ -214,11 +188,10 @@ fun BrickInventoryManagerApp(
 
     val activity = androidx.compose.ui.platform.LocalContext.current
     NavHost(navController, startDestination = startDest) {
-        // Ziele liegen in nav/*.kt — siehe Punkt 9 im CHANGELOG.
-        // state/manDetailState werden NICHT übergeben: Der NavHost-Builder läuft
-        // nur einmal, ein durchgereichter Wert wäre für immer die Momentaufnahme
-        // vom ersten Frame. Die Ziele lesen den Zustand selbst per
-        // collectAsStateWithLifecycle() — so wie es der Katalog schon immer tat.
+        // Die Ziele liegen in nav/*.kt. state/manDetailState werden nicht übergeben: Der
+        // NavHost-Builder läuft nur einmal, ein durchgereichter Wert bliebe die
+        // Momentaufnahme des ersten Frames. Die Ziele lesen den Zustand selbst per
+        // collectAsStateWithLifecycle().
         authGraph(navController)
         collectionGraph(vm, navController, imageLoader, bottomNavItems, snackbarHostState,
             galleryGridState, partsGridState, minifigsGridState)

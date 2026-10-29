@@ -1,5 +1,7 @@
 /**
  * „Dunkel, wenn das System dunkel ist" — je Gerät, über 00-theme-boot.js.
+ * Seit dem 29.10. heisst das: dasselbe Design in seiner dunklen Variante
+ * (data-dunkel am <html>, Farben aus tokens.css), nicht mehr „werkbank".
  *
  * Ausgeführt in jsdom mit nachgestelltem matchMedia: Das Skript läuft wie im
  * Browser im <head>, mit einem vom Server gesetzten data-theme.
@@ -8,6 +10,9 @@
  *   A  wirksam() gibt immer das Server-Design zurück → rot: „bleibt hell"
  *   B  in apply() das angezeigte statt des Server-Designs gecacht
  *      (localStorage KEY = werkbank) → rot: „Cache"
+ *   C  (29.10.) wirksam() setzt data-dunkel nie → rot: „bleibt hell";
+ *      wirksam() wieder mit 'werkbank' bei dunklem System → rot: „das Design
+ *      bleibt"
  */
 const test   = require('node:test');
 const assert = require('node:assert/strict');
@@ -30,30 +35,42 @@ function fenster({ server = 'classic', wahl = null, dunkel = false } = {}) {
   if (wahl) w.localStorage.setItem('bim_dunkel', wahl);
   w.eval(BOOT);
   const systemWechsel = (d) => { mq.matches = d; hoerer.forEach(f => f()); };
-  return { w, thema: () => w.document.documentElement.getAttribute('data-theme'), systemWechsel };
+  const hatDunkel = () => w.document.documentElement.hasAttribute('data-dunkel');
+  return { w, thema: () => w.document.documentElement.getAttribute('data-theme'), dunkel: hatDunkel, systemWechsel };
 }
 
 test('ohne Wahl bleibt das Design des Servers — auch bei dunklem System', () => {
-  const { thema } = fenster({ dunkel: true });
+  const { thema, dunkel } = fenster({ dunkel: true });
   assert.equal(thema(), 'classic');
+  assert.equal(dunkel(), false);
 });
 
 test('mit Wahl „system": dunkel bei dunklem System, und es folgt dem Wechsel', () => {
-  const { w, thema, systemWechsel } = fenster({ wahl: 'system', dunkel: true });
-  assert.equal(thema(), 'werkbank', 'bleibt hell, obwohl das System dunkel ist');
+  const { w, thema, dunkel, systemWechsel } = fenster({ wahl: 'system', dunkel: true });
+  assert.equal(dunkel(), true, 'bleibt hell, obwohl das System dunkel ist');
+  assert.equal(thema(), 'classic', 'das Design bleibt — dunkel ist eine Variante, kein anderes Design');
   assert.equal(w.localStorage.getItem('bim_theme'), 'classic', 'Cache: gemerkt wird das Design des Servers');
   systemWechsel(false);
-  assert.equal(thema(), 'classic');
+  assert.equal(dunkel(), false);
   systemWechsel(true);
+  assert.equal(dunkel(), true);
+  assert.equal(thema(), 'classic');
+});
+
+test('werkbank ist schon dunkel und bekommt keine Variante', () => {
+  const { thema, dunkel } = fenster({ server: 'werkbank', wahl: 'system', dunkel: true });
   assert.equal(thema(), 'werkbank');
+  assert.equal(dunkel(), false);
 });
 
 test('ein späteres Design vom Server gilt, das Gerät bleibt dunkel', () => {
-  const { w, thema } = fenster({ wahl: 'system', dunkel: true });
+  const { w, thema, dunkel } = fenster({ wahl: 'system', dunkel: true });
   w.__bimApplyTheme('brick');
-  assert.equal(thema(), 'werkbank');
+  assert.equal(thema(), 'brick');
+  assert.equal(dunkel(), true);
   assert.equal(w.localStorage.getItem('bim_theme'), 'brick', 'Cache');
   w.__bimDunkel('server');
   assert.equal(thema(), 'brick');
+  assert.equal(dunkel(), false);
   assert.equal(w.__bimDunkelWert(), 'server');
 });

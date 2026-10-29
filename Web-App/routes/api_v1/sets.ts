@@ -763,12 +763,12 @@ router.get('/sets', requireToken, async (req: AuthedRequest, res) => {
 router.get('/sets/:setNumber/price', requireToken, async (req: AuthedRequest, res) => {
   const uid = req.apiUser.user_id;
   // einzelwert() statt roher Zugriff: Routen-Parameter sind `string | string[]`
-  // (siehe utils/validate.ts, Nachtrag 132). Die übrigen Stellen dieser Datei
+  // (siehe utils/validate.ts). Die übrigen Stellen dieser Datei
   // schrieben schon `String(...)`; diese eine nicht — und genau sie reichte den
   // Wert an eine Funktion weiter, die einen Text erwartet.
   const sn  = einzelwert(req.params.setNumber);
   try {
-    // BLICKFELD statt eigener ID (Nachtrag 33): Im Haushalt gehört das Set oft
+    // BLICKFELD statt eigener ID: Im Haushalt gehört das Set oft
     // einem Unterkonto. Die Detailroute weiter oben nutzt scopeIds() seit
     // jeher — DIESE Route prüfte stur die eigene ID und gab für jedes fremde
     // Haushalts-Set 404 zurück. Die App zeigte dann „—" als Marktpreis,

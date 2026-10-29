@@ -12,7 +12,8 @@
  * Ohne Chrome (CHROME_BIN, google-chrome, chromium) wird übersprungen.
  *
  * Gegenproben (am 27.10. gemessen):
- *   A  in mobile.css `.delbtn::after` entfernt → rot: „Löschknopf auf der Kachel"
+ *   A  in mobile.css `.delbtn` wieder 36 px (29.10.; seitdem 44 px ohne ::after)
+ *      → rot: „Löschknopf auf der Kachel"
  *   B  in mobile.css `.vb` aus der 44-px-Zeile genommen → rot: „Ansicht Karten/Tabelle"
  *   C  `label:has(> input[type="checkbox"])` entfernt → rot: „Häkchen mit Beschriftung"
  *   D  (28.10.) das Häkchen wieder als 22-px-Kästchen ohne eigene Fläche

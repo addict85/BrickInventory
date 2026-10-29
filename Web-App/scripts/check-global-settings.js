@@ -42,11 +42,6 @@ const ERLAUBT = new Map([
  *
  * Beim Einfuehren der Pruefung standen hier 22 Dateien mit 92 Fundstellen. Was
  * jetzt noch uebrig ist, ist ueberwiegend KEIN einfacher Schluesselzugriff mehr:
- *   - utils/finance/preise.ts: Der Kontingentzaehler laeuft in einer Transaktion
- *     mit SELECT ... FOR UPDATE. Ein Helfer mit eigener Verbindung wuerde
- *     gerade die Sperre aufgeben, fuer die es die Transaktion gibt.
- *   - utils/jobMonitor.ts: ein atomares UPDATE mit GREATEST/COALESCE und eine
- *     LIKE-Abfrage ueber alle job_monitor_*-Schluessel.
  *   - routes/settings.ts: liest die Tabelle als GANZES fuer den
  *     Konfigurations-Export — das ist kein Zugriff auf einen einzelnen
  *     Schluessel. Die Einstellungsseite stand hier bis zur Zusammenlegung der
@@ -56,16 +51,9 @@ const ERLAUBT = new Map([
  *     hoch als eine echte Fundstelle uebersehen.
  */
 const OFFEN = new Map([
-  ['jobs/dailyScheduler.ts', 1],
-  ['jobs/imageQueue.ts', 1],
-  ['jobs/instructionQueue.ts', 1],
   ['jobs/priceJob.ts', 1],
-  ['routes/api_v1/admin.ts', 2],
+  ['routes/api_v1/admin.ts', 1],
   ['routes/settings.ts', 1],
-  ['server.ts', 1],
-  ['utils/finance/preise.ts', 5],
-  ['utils/jobMonitor.ts', 3],
-  ['utils/rateLimiter.ts', 1],
 ]);
 
 function dateien() {

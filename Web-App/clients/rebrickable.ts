@@ -1,4 +1,4 @@
-// ── Warum diese Datei nicht mehr in routes/ liegt (Nachtrag 126) ────────────
+// ── Warum diese Datei nicht mehr in routes/ liegt ────────────
 //
 // Sie enthält KEINE einzige Route und wird nirgends als Router montiert — sie
 // ist ein reiner API-Client. In routes/ zu liegen war ein Erbstück, hatte aber

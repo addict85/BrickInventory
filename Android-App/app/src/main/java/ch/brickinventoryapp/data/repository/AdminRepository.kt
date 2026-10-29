@@ -15,13 +15,9 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Anmeldung, Einstellungen, Betrieb und Katalog.
- *
- * Teil der Aufteilung von BrickRepository (Nachtrag 155) — die Begruendung
- * steht in RepoBasis.kt. Die Ruempfe sind WORTGLEICH uebernommen; veraendert
- * wurde nichts ausser der Klassenzugehoerigkeit.
- *
- * Erreichbar ueber `repo.admin.…` — BrickRepository haelt die fuenf Teile.
+ * Anmeldung, Einstellungen, Betrieb und Katalog — eines der Sachgebiete der
+ * Datenschicht, erreichbar über `repo.admin.…`; die Begründung der Aufteilung
+ * steht in RepoBasis.kt.
  */
 @Singleton
 class AdminRepository @Inject constructor(
@@ -29,11 +25,10 @@ class AdminRepository @Inject constructor(
     cache: ResponseCache,
 ) : RepoBasis(api, cache) {
 
-    // Kein expliziter Authorization-Header mehr nötig: Der OkHttp-Interceptor in
-    // AppModule setzt "Bearer <token>" automatisch für alle Requests an unseren
-    // Server (aus dem In-Memory-Cache des PreferencesManagers — kein DataStore-
-    // Read pro Call mehr). Einzige Ausnahme: getCsvImportStatusDirect, wo der
-    // Foreground-Service den Token explizit mitgibt.
+    // Kein Authorization-Header hier: Der OkHttp-Interceptor in di/ServerClient.kt
+    // setzt "Bearer <token>" für alle Anfragen an unseren Server (aus dem
+    // Speicher-Spiegel des PreferencesManagers). Einzige Ausnahme:
+    // getCsvImportStatusDirect, wo der Foreground-Service den Token selbst mitgibt.
 
     /**
      * Verlangt der Server den zweiten Faktor, antwortet er mit 401 und
@@ -115,8 +110,8 @@ class AdminRepository @Inject constructor(
         }
     }
 
-    // Server-Protokoll. Die Nutzerverwaltung des Servers bleibt der Webapp
-    // vorbehalten — siehe BrickApiService (Nachtrag 129).
+    // Server-Protokoll. Die Nutzerverwaltung des Servers bleibt der Webapp vorbehalten
+    // — siehe BrickApiService.
     suspend fun getProtokoll(minuten: Int): Result<ProtokollResponse> =
         safeCall { api.getProtokoll(minuten) }
 

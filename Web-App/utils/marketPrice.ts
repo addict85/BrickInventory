@@ -4,7 +4,7 @@ import { getSetValue } from './setValue';
 import { nutzerStandardZustand as userDefaultCondition } from './settings';
 import { getGlobalSetting } from './settings';
 import { DEFAULT_PRICE_CONDITION, fetchPartPrice, fetchMinifigPrice, ladeBlNummernVor,
-         resolveBlPartNumber, resolveBlColorId } from './financeCalc';
+         resolveBlPartNumber, resolveBlColorId } from './finance/preise';
 import { getSetting } from './settings';
 import { meldeUndWeiter, fehlertext } from './httpError';
 import { getMinifigParts } from '../clients/rebrickable';
@@ -216,7 +216,7 @@ async function marktpreisMitHerkunft(partNumber: string, colorId: number, userId
     const price = parseFloat(priceData?.avg_price || 0);
     if (!(price > 0)) return { preis: null, ausZustand: null };
     // Der Rückfall wird übernommen, aber benannt
-    // In Nachtrag 166 stand hier `if (priceData?.is_fallback) return null` —
+    // Früher stand hier `if (priceData?.is_fallback) return null` —
     // als Antwort auf Marcos Befund, dass der Zustand keinen Einfluss auf den
     // Preis hat. Der Befund stimmte, die Folge war zu scharf: Marco meldete …
     // Ausführlich: docs/begruendungen/utils/marketPrice.ts.md#marktpreismitherkunft-2

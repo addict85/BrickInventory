@@ -88,7 +88,10 @@ class ErfassungViewModel @Inject constructor(
                         ) }
                     }
                     is Result.Error -> {
-                        _snackbar.value = text(R.string.vm_barcode_not_found, value)
+                        // „Nicht gefunden“ nur, wenn der Server das sagt; ein Netzfehler
+                        // ist keine Auskunft über den Barcode.
+                        _snackbar.value = if (r.code == "barcode_kein_set") text(R.string.vm_barcode_not_found, value)
+                                          else meldungFuerSnackbar(r)
                         _barcodeState.update { it.copy(result = null, manuelleErfassungAnfordern = true) }
                     }
                 }

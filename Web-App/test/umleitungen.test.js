@@ -8,7 +8,7 @@
  *   RICHTIG   routes/imgProxy.ts holt mit `https.get`, das von sich aus keiner
  *             Umleitung folgt — plus eine Host-Allowlist.
  *   RICHTIG   Die Android-App baut ihren Update-Client mit
- *             `followSslRedirects(false)` (di/AppModule.kt).
+ *             `followSslRedirects(false)` (di/NetzModule.kt).
  *   FEHLTE    clients/rebrickable.ts folgte Umleitungen von Hand, an zwei
  *             Stellen, und pruefte dabei nichts.
  *

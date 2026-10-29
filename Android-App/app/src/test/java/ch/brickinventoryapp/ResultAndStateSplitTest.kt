@@ -115,7 +115,7 @@ class ResultAndStateSplitTest {
 
     @Test
     fun `Teile und Finanzen haben eigene Zustandsklassen`() {
-        val src = code(read("ui/UiState.kt"))
+        val src = code(Quellen.zustaende())
         assert(src.contains("data class PartsUiState")) { "PartsUiState fehlt" }
         assert(src.contains("data class FinanceUiState")) { "FinanceUiState fehlt" }
         assert(src.contains("data class BarcodeUiState")) { "BarcodeUiState fehlt" }

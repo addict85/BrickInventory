@@ -58,4 +58,6 @@
 
 /* Und die Zustandsfarben bleiben, was sie ueberall sind. */
 [data-theme="farbfaecher"] .cond-new{background:#dbeafe;color:#1d4ed8}
-[data-theme="farbfaecher"] .cond-used{background:#fef3c7;color:#a16207}
+[data-theme="farbfaecher"] .cond-used{background:#fef3c7;color:var(--a-schrift)}
+[data-theme="farbfaecher"][data-dunkel] .cond-new{background:var(--b100);color:var(--b700)}
+[data-theme="farbfaecher"][data-dunkel] .cond-used{background:var(--a100);color:var(--a-schrift)}

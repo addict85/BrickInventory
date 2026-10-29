@@ -102,6 +102,17 @@ class PfadServer(vararg regeln: Pair<String, String>) {
     }
 
     fun anfragenAn(pfad: String): List<String> = synchronized(anfragen) { anfragen.filter { pfad in it } }
+
+    /**
+     * Ein neuer Prozess bekommt einen eigenen Server mit denselben Antworten und
+     * eigene Dienste. Abrufe, die das alte ViewModel noch unterwegs hat, landen
+     * so nicht in [anfragen] des neuen — sonst entscheidet die Ankunftsreihenfolge.
+     */
+    fun <T> neuerProzess(block: (PfadServer, TestDienste) -> T): T {
+        val pfade = PfadServer(*antworten.toList().toTypedArray())
+        val t = TestDienste(pfade.server)
+        try { return block(pfade, t) } finally { t.aufraeumen(); pfade.server.shutdown() }
+    }
 }
 
 /** Filterablage im Speicher. */

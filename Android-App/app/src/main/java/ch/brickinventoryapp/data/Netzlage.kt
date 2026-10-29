@@ -10,33 +10,18 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * In welcher Art Netz haengt das Geraet gerade?
+ * In welcher Art Netz hängt das Gerät gerade? Für das Vorwärmen der Vorschaubilder
+ * (VorschauVorwaermer), das sich je Lage erlauben lässt — Vorgabe nur WLAN. Drei
+ * Lagen statt „ist online“: Ein Durchlauf kann die ganze Sammlung holen, und das
+ * ist im Ausland eine Rechnung.
  *
- * ── Wofuer ──────────────────────────────────────────────────────────────────
+ * Ein gemessenes WLAN zählt als Mobilfunk: Ein Hotspot sieht für das andere Gerät
+ * aus wie WLAN, die Bytes kommen aber aus einem Datentarif
+ * (`NET_CAPABILITY_NOT_METERED`), und „nur im WLAN“ meint diesen Fall nicht.
  *
- * Fuer das Vorwaermen der Vorschaubilder (VorschauVorwaermer). Marcos Vorgabe:
- * „Bitte nur im WLAN vorwaermen oder noch besser in den Optionen einstellbar.
- * Insbesondere auch ob WLAN, Mobilfunk und oder Roaming erlaubt ist. Standard
- * auf WLAN."
- *
- * Drei Lagen statt eines blossen „ist online": Ein Durchlauf kann beim ersten
- * Mal die ganze Sammlung holen, und das ist im Ausland eine Rechnung.
- *
- * ── Warum ein gemessenes WLAN als Mobilfunk zaehlt ──────────────────────────
- *
- * Ein Telefon, das seinen Hotspot aufspannt, sieht fuer das andere Geraet aus
- * wie WLAN — die Bytes kommen aber aus einem Datentarif. Android sagt das
- * ausdruecklich (`NET_CAPABILITY_NOT_METERED`), und wer „nur im WLAN" einstellt,
- * meint genau diesen Fall nicht mit. Ein gemessenes WLAN faellt deshalb unter
- * [Art.MOBIL].
- *
- * ── Die Falle bei minSdk 26 ─────────────────────────────────────────────────
- *
- * `NET_CAPABILITY_NOT_ROAMING` gibt es erst ab API 28. Diese App laeuft ab 26.
- * Auf Android 8.0 und 8.1 beantwortet deshalb `TelephonyManager` dieselbe
- * Frage — nicht veraltet, ohne Erlaubnis, und seit jeher vorhanden. Ohne diesen
- * Rueckfall haette die Roaming-Einstellung auf alten Geraeten stillschweigend
- * nicht gegriffen, und das faellt niemandem auf, bis die Rechnung kommt.
+ * `NET_CAPABILITY_NOT_ROAMING` gibt es erst ab API 28, die App läuft ab 26. Auf
+ * Android 8.0 und 8.1 beantwortet `TelephonyManager` dieselbe Frage — ohne
+ * Erlaubnis. Ohne diesen Rückfall griffe die Roaming-Einstellung dort still nicht.
  */
 @Singleton
 class Netzlage @Inject constructor(

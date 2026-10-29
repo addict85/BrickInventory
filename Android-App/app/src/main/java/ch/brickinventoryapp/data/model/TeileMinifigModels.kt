@@ -4,20 +4,8 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
- * Teile, Minifiguren und Farben.
- *
- * ── Warum diese Datei existiert (Nachtrag 155) ──────────────────────────────
- *
- * Alle 92 Datenklassen der App standen in EINER Datei, Models.kt, mit 1158
- * Zeilen. Jede Aenderung an irgendeinem Modell beruehrte dieselbe Datei — bei
- * parallelen Aenderungen ein sicherer Konflikt, und beim Suchen war der Weg
- * immer derselbe: eine Datei oeffnen und scrollen.
- *
- * Aufgeteilt wurde entlang der Sachgebiete. Die Klassen selbst sind WORTGLEICH
- * uebernommen: Es wurde nichts umbenannt, nichts zusammengefasst und kein Feld
- * angefasst. Sie liegen weiter im Paket ch.brickinventoryapp.data.model, also
- * aendert sich fuer keinen Aufrufer etwas — Kotlin bindet an das Paket, nicht
- * an die Datei.
+ * Teile, Minifiguren und Farben. Die Modelle liegen je Sachgebiet in einer Datei,
+ * alle im Paket data.model.
  */
 
 @Serializable
@@ -35,12 +23,9 @@ data class AddPartRequest(
      */
     @SerialName("owner_user_id") val ownerUserId: Int? = null,
     /**
-     * Lagerort — null heisst „nicht erfasst".
-     *
-     * Marcos Befund vom 24.09.: Der Ort liess sich erst NACH dem Erfassen im
-     * Detaildialog setzen. Der Server nimmt ihn seit demselben Tag auch beim
-     * Erfassen an und schreibt ihn ueber dieselbe Stelle wie der Detaildialog
-     * (utils/lagerort.ts) — ein neu getippter Ort landet damit auch im Vorrat.
+     * Lagerort beim Erfassen; null heisst „nicht erfasst“. Der Server schreibt ihn
+     * über dieselbe Stelle wie der Detaildialog (utils/lagerort.ts), ein neuer Ort
+     * landet damit auch im Vorrat.
      */
     val storage: String? = null,
 )
@@ -52,15 +37,10 @@ data class AddPartResponse(
     @SerialName("part_number") val partNumber: String? = null,
     @SerialName("part_name") val partName: String? = null,
     /**
-     * Aus welchem Zustand der uebernommene Marktpreis stammt ('N'/'U') — null,
-     * wenn er aus dem angefragten stammt oder der Mensch selbst einen Preis
-     * eingetippt hat.
-     *
-     * BrickLink fuehrt zu vielen Teilen und Figuren nur EINEN Zustand. Der
-     * Server uebernimmt den Preis des anderen (sonst bliebe der Kaufpreis
-     * leer) und sagt hier, woher er kam — die Oberflaeche schreibt es dazu,
-     * statt eine Zahl unkommentiert stehen zu lassen. Gegenstueck zur Webapp:
-     * preisHerkunftHinweis() in public/js/06-minifigs.js.
+     * Aus welchem Zustand der übernommene Marktpreis stammt ('N'/'U'); null, wenn aus
+     * dem angefragten oder von Hand eingetippt. BrickLink führt oft nur einen Zustand,
+     * der Server nimmt dann den anderen, und die Oberfläche schreibt dazu, woher er
+     * kommt (wie preisHerkunftHinweis() in der Webapp).
      */
     @SerialName("price_from_condition") val priceFromCondition: String? = null,
     val error: String? = null
@@ -79,12 +59,9 @@ data class AddMinifigRequest(
      */
     @SerialName("owner_user_id") val ownerUserId: Int? = null,
     /**
-     * Lagerort — null heisst „nicht erfasst".
-     *
-     * Marcos Befund vom 24.09.: Der Ort liess sich erst NACH dem Erfassen im
-     * Detaildialog setzen. Der Server nimmt ihn seit demselben Tag auch beim
-     * Erfassen an und schreibt ihn ueber dieselbe Stelle wie der Detaildialog
-     * (utils/lagerort.ts) — ein neu getippter Ort landet damit auch im Vorrat.
+     * Lagerort beim Erfassen; null heisst „nicht erfasst“. Der Server schreibt ihn
+     * über dieselbe Stelle wie der Detaildialog (utils/lagerort.ts), ein neuer Ort
+     * landet damit auch im Vorrat.
      */
     val storage: String? = null,
 )
@@ -96,15 +73,10 @@ data class AddMinifigResponse(
     @SerialName("fig_number") val figNumber: String? = null,
     @SerialName("fig_name") val figName: String? = null,
     /**
-     * Aus welchem Zustand der uebernommene Marktpreis stammt ('N'/'U') — null,
-     * wenn er aus dem angefragten stammt oder der Mensch selbst einen Preis
-     * eingetippt hat.
-     *
-     * BrickLink fuehrt zu vielen Teilen und Figuren nur EINEN Zustand. Der
-     * Server uebernimmt den Preis des anderen (sonst bliebe der Kaufpreis
-     * leer) und sagt hier, woher er kam — die Oberflaeche schreibt es dazu,
-     * statt eine Zahl unkommentiert stehen zu lassen. Gegenstueck zur Webapp:
-     * preisHerkunftHinweis() in public/js/06-minifigs.js.
+     * Aus welchem Zustand der übernommene Marktpreis stammt ('N'/'U'); null, wenn aus
+     * dem angefragten oder von Hand eingetippt. BrickLink führt oft nur einen Zustand,
+     * der Server nimmt dann den anderen, und die Oberfläche schreibt dazu, woher er
+     * kommt (wie preisHerkunftHinweis() in der Webapp).
      */
     @SerialName("price_from_condition") val priceFromCondition: String? = null,
     val error: String? = null
@@ -125,16 +97,9 @@ data class Part(
     @SerialName("total_quantity") val totalQuantity: Int = 0,
     @SerialName("in_sets") val inSets: String? = null,
     /**
-     * Ersatzteil? Ein echter Wahrheitswert.
-     *
-     * Stand hier als String? mit dem Vermerk „can be 'f','false','0' or '1'"
-     * — und daneben ein Helfer isSpareFlag, der das deutete. Beides ist weg:
-     * Der Server liest die Schreibweisen jetzt an EINER Stelle
-     * (istErsatzteil() in utils/validate.ts) und liefert true/false.
-     *
-     * Der Helfer war ausserdem gefaehrlich nah an einem Fehler: "0" ist in
-     * JavaScript wahr, und die Webapp haette mit einem naiven Test JEDES Teil
-     * als Ersatzteil markiert.
+     * Ersatzteil? Ein echter Wahrheitswert: Der Server deutet die Schreibweisen an
+     * einer Stelle (istErsatzteil() in utils/validate.ts) — eine zweite Deutung hier
+     * könnte "0" anders lesen.
      */
     @SerialName("is_spare") val isSpare: Boolean = false
 )
@@ -219,13 +184,9 @@ data class BrickColorsResponse(
 )
 
 /**
- * Ein Eintrag der FILTERliste „Farbe" — mit Zaehlwerten.
- *
- * Nicht zu verwechseln mit [BrickColor]: Das ist der Farbkatalog fuer die
- * Auswahl im Erfassungsdialog (id, name, hex) und kommt von
- * /parts/brick-colors. Hier geht es um die Farben, die im BESTAND vorkommen,
- * samt Anzahl — /parts/colors, dieselbe Quelle wie die Filterliste der Webapp
- * (03-parts.js, loadPartsFilters).
+ * Ein Eintrag der Filterliste „Farbe“: die Farben im Bestand mit Anzahl
+ * (/parts/colors, wie in der Webapp). Nicht [BrickColor], der Farbkatalog für die
+ * Auswahl beim Erfassen.
  */
 @Serializable
 data class PartsFilterColor(
@@ -242,13 +203,9 @@ data class PartsFilterColorsResponse(
 )
 
 /**
- * Ein Eintrag der Filterliste „Kategorie".
- *
- * `categoryName` ist der WERT, den der Server als Filter erwartet (meist eine
- * Rebrickable-Kategorie-ID als Text), `label` der Name zum Anzeigen. Die
- * Trennung stammt aus routes/parts.ts: `parts.category_name` traegt die ID,
- * und fuer Teile, bei denen sie fehlt, holt der Server sie ueber den
- * Teilekatalog nach.
+ * Ein Eintrag der Filterliste „Kategorie“. `categoryName` ist der Wert, den der
+ * Server als Filter erwartet (meist eine Kategorie-ID als Text), `label` der Name
+ * zum Anzeigen.
  */
 @Serializable
 data class PartsCategory(
@@ -267,19 +224,11 @@ data class PartsCategoriesResponse(
 @Serializable
 data class DefaultConditionResponse(val success: Boolean, val condition: String = "N")
 
-// ── Detail-Dialog fuer Teile und Figuren AUS SETS ───────────────────────────
+// ── Detail-Dialog für Teile und Figuren aus Sets ──
 //
-// Marcos Wunsch: „Auch die automatisch erfassten Teile und Minifiguren sollen
-// einen Detail-Dialog inkl. Zoom haben. Der Marktpreis kann weggelassen werden,
-// die Anzahl soll nicht geaendert werden koennen. Dafuer soll angezeigt werden,
-// welche Sets dieses Teil und Minifigur verwenden."
-//
-// EIN Modellpaar fuer beide Faelle: Der Server beantwortet die Frage mit
-// derselben Funktion (verwendendeSets in utils/handlers/shared.ts) und liefert
-// deshalb dieselbe Form. Figuren haben keine Farbe und keine Kategorie — die
-// Felder stehen dort als null, nicht als eigene Antwortform. Zwei Formen
-// unterscheiden zu muessen ist genau die Sorte Doppelung, an der hier schon
-// mehrfach etwas auseinandergelaufen ist.
+// Ein Modellpaar für beide: Der Server antwortet mit derselben Funktion
+// (verwendendeSets); bei Figuren stehen Farbe und Kategorie als null statt in
+// einer zweiten Form.
 
 /** Ein Set, in dem dieses Teil / diese Figur steckt. */
 @Serializable
@@ -305,24 +254,14 @@ data class BestandteilKopf(
     @SerialName("image_url") val imageUrl: String? = null,
     @SerialName("is_spare") val isSpare: Boolean = false,
     /**
-     * Lagerort — verdichtet ueber alle Zeilen dieses Teils.
-     *
-     * Dasselbe Teil steckt in mehreren Sets und kann in mehreren Kisten
-     * liegen; der Server fasst die Orte zusammen, statt einen davon zu
-     * zeigen. Figuren fuehren hier null — sie stecken in ihrem Set, und
-     * dessen Ort steht im Set-Detail.
+     * Lagerort, verdichtet über alle Zeilen dieses Teils — es kann in mehreren Kisten
+     * liegen. Figuren führen null; ihr Ort steht im Set-Detail.
      */
     val storage: String? = null,
     /**
-     * Wem dieses Teil gehoert — fuer die Lagerort-Auswahl im Dialog.
-     *
-     * Marcos Regel: Beim Set des Enkels gehoeren die Regale des ENKELS zur
-     * Wahl. Ohne diese Liste zeigte der Teil-Dialog als einziger Ort im Baum
-     * die EIGENE Auswahl — nicht aus Absicht, sondern weil der Kopf die
-     * Besitzer nicht kannte.
-     *
-     * MEHRERE, nicht einer: Dasselbe Teil steckt in mehreren Sets, und die
-     * koennen verschiedenen Konten gehoeren.
+     * Wem dieses Teil gehört — für die Lagerort-Auswahl im Dialog: Beim Set des Enkels
+     * stehen dessen Regale zur Wahl. Mehrere, weil dasselbe Teil in Sets verschiedener
+     * Konten stecken kann.
      */
     @SerialName("owner_ids") val ownerIds: List<Int> = emptyList(),
     /** Summe ueber ALLE Sets im Blickfeld. */
@@ -337,14 +276,11 @@ data class VerwendendeSetsResponse(
     val error: String? = null,
 )
 
-// ═══════════════════════════════════════════════════════════════════════════
-// „Kann ich das bauen?" — der eigene Bestand zu einer Teileliste
-// ═══════════════════════════════════════════════════════════════════════════
+// ═══ „Kann ich das bauen?“ — der eigene Bestand zu einer Teileliste ═══
 //
-// POST, obwohl nichts geaendert wird: Eine Teileliste hat weit ueber tausend
-// Teil-Farb-Paare; als Abfrageparameter waere die Adresse laenger, als jeder
-// Proxy durchlaesst. Der Kontofilter reist trotzdem als `accounts=` mit — er
-// gehoert zur Ansicht, nicht zur Nutzlast.
+// POST, obwohl nichts geändert wird: Über tausend Teil-Farb-Paare ergäben eine
+// Adresse, die kein Proxy durchlässt. Der Kontofilter reist als `accounts=` mit,
+// weil er zur Ansicht gehört.
 
 /** Ein angefragtes Teil-Farb-Paar in der REBRICKABLE-Schreibweise. */
 @Serializable
@@ -357,13 +293,9 @@ data class BestandTeil(
 data class BestandRequest(val teile: List<BestandTeil>)
 
 /**
- * Zwei Zahlen je Teil-Farb-Paar.
- *
- * `gesamt` zaehlt alles im Blickfeld, `lose` nur, was nicht in einem Set
- * steckt. Der Unterschied ist die eigentliche Antwort: Ein Teil in einem
- * aufgebauten Set besitzt man zwar, muesste dafuer aber ein anderes Set
- * zerlegen. Welche Zahl gilt, entscheidet der Mensch — deshalb liefert der
- * Server beide.
+ * Zwei Zahlen je Teil-Farb-Paar: `gesamt` alles im Blickfeld, `lose` nur, was
+ * nicht in einem Set steckt — für ein Teil im aufgebauten Set müsste man ein
+ * anderes zerlegen. Welche gilt, entscheidet der Mensch.
  */
 @Serializable
 data class BestandEintrag(
@@ -384,12 +316,9 @@ data class BestandResponse(
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
- * Marcos Bitte vom 19.10.: „Weiter moechte ich die Farbe nachtraeglich
- * anpassen koennen fuer den Fall dass diese nicht korrekt geladen wurde."
- *
- * `colorName` und `colorHex` reisen mit, weil die Teileliste den Namen aus der
- * Zeile liest — ohne ihn bliebe ein Farbpunkt ohne Beschriftung. Der Server
- * holt sie aus rb_colors, wenn sie fehlen (utils/teilFarbeAendern.ts).
+ * Die Farbe eines Teils nachträglich ändern. `colorName` und `colorHex` reisen
+ * mit, weil die Teileliste den Namen aus der Zeile liest; der Server holt sie aus
+ * rb_colors, wenn sie fehlen (utils/teilFarbeAendern.ts).
  */
 @Serializable
 data class TeilFarbeRequest(
@@ -399,11 +328,8 @@ data class TeilFarbeRequest(
 )
 
 /**
- * Was die Aenderung getan hat.
- *
- * `zusammengelegt` ist bei Marco der Normalfall: Dasselbe Teil stand DANEBEN
- * schon in der richtigen Farbe — das war ja sein Befund. Dann bleibt die
- * Zielzeile und die falsche geht, statt dass eine zweite entsteht.
+ * Was die Farbänderung getan hat. `zusammengelegt`: Das Teil stand schon in der
+ * richtigen Farbe da; die Zielzeile bleibt, die falsche geht.
  */
 @Serializable
 data class TeilFarbeResponse(
@@ -431,11 +357,8 @@ data class LagerortResponse(
 )
 
 /**
- * Ein belegter Lagerort mit Anzahl.
- *
- * Gezaehlt wird nach ZEILEN, nicht nach Stueckzahl: „In Kiste 3 liegen 4 Sets
- * und 120 Teilesorten" beantwortet „lohnt sich das Nachsehen?"; die Summe der
- * Einzelstuecke beantwortet gar nichts.
+ * Ein belegter Lagerort mit Anzahl — nach Zeilen, nicht nach Stückzahl: „4 Sets
+ * und 120 Teilesorten“ beantwortet, ob sich Nachsehen lohnt.
  */
 @Serializable
 data class Lagerort(
@@ -452,14 +375,9 @@ data class LagerorteResponse(
 )
 
 /**
- * Ein Eintrag im VORRAT — das, was zur Wahl steht.
- *
- * Nicht zu verwechseln mit [Lagerort] darueber: Das ist ein BELEGTER Ort mit
- * Anzahl, fuer den Filter. Dieser hier ist ein waehlbarer Name, und er darf
- * leer sein („Kiste 4 ist gekauft, aber noch nichts drin").
- *
- * `userId` steht mit drin, weil eine Liste ueber mehrere Konten spannen kann
- * — der Grossvater sieht beim Set des Enkels dessen Orte.
+ * Ein Eintrag im Vorrat — was zur Wahl steht, auch leer. Nicht [Lagerort], der
+ * belegte Ort für den Filter. Mit `userId`, weil eine Liste über mehrere Konten
+ * spannen kann.
  */
 @Serializable
 data class LagerortEintrag(
@@ -473,14 +391,9 @@ data class LagerortVorratResponse(
     val success: Boolean = false,
     val orte: List<LagerortEintrag> = emptyList(),
     /**
-     * Der Ort, der beim Erfassen schon vorausgewaehlt ist — Marcos Stern.
-     *
-     * Er kommt MIT dem Vorrat und nicht aus einem eigenen Abruf: Wer die Liste
-     * zeichnet, braucht beides zur selben Zeit, und zwei Abrufe koennten sich
-     * ueberholen — dann stuende der Stern einen Moment am falschen Eintrag.
-     *
-     * `null` heisst: keine Vorgabe. Die Liste kann ueber mehrere Konten
-     * spannen, die Vorgabe ist immer die EIGENE (so begruendet im Server).
+     * Der beim Erfassen vorausgewählte Ort (der Stern). Mit dem Vorrat statt aus einem
+     * eigenen Abruf, damit sich die beiden nicht überholen. null: keine Vorgabe; sie
+     * ist immer die eigene.
      */
     val vorgabe: LagerortEintrag? = null,
     val error: String? = null,
@@ -490,23 +403,16 @@ data class LagerortVorratResponse(
 data class LagerortNameRequest(val name: String)
 
 /**
- * Den Stern setzen oder abschalten.
- *
- * `null` schaltet ab — das ist der zweite Druck auf denselben Stern. Ein
- * eigener Loeschweg waere ein zweites Bedienelement fuer eine Frage mit zwei
- * Antworten.
+ * Den Stern setzen oder abschalten; `null` schaltet ab — der zweite Druck auf
+ * denselben Stern.
  */
 @Serializable
 data class LagerortVorgabeRequest(val id: Int? = null)
 
 /**
- * Die Antwort darauf — dasselbe Feld wie im Vorrat.
- *
- * Eigener Bauplan und nicht [LagerortEintragResponse]: Die Antwort heisst
- * `vorgabe` und nicht `ort`, und zwar mit Absicht — sie sagt, was jetzt die
- * Vorgabe IST (`null` nach dem Abschalten), nicht welcher Eintrag angefasst
- * wurde. Ein Bauplan, dessen Feldname nicht zur Antwort passt, liest still
- * `null` und niemand sieht den Grund.
+ * Die Antwort darauf. Eigener Bauplan, weil das Feld `vorgabe` heisst: Es sagt,
+ * was jetzt die Vorgabe ist (`null` nach dem Abschalten). Ein Bauplan mit falschem
+ * Feldnamen läse still `null`.
  */
 @Serializable
 data class LagerortVorgabeResponse(

@@ -5,13 +5,13 @@ import { locale, t, tRaw} from '../i18n.js';
 import { ico, CURRENCY, G, ME, _settingsCache, api, esc, escJs, fmtN, fullUrl, imgUrl, toast , set_settingsCache} from './01-core.js';
 import { initStorageSelects } from './02-gallery.js';
 import { PARTS_ICON_SVG, _pnlCache, allSets, setAllSets, applySetAggregate, autosaveSet, closeModal, curSet, loadGallery, pnlBadge, reimportParts, renderInstructions, updateGalleryPrices , set_pnlCache, set_curSet} from './02-gallery.js';
-import { loadFinance } from './04-finance.js';
+import { diagrammLeer, loadFinance } from './04-finance.js';
 import { scopeQuery } from './14-scope.js';
 import { loadApiLimits, loadCacheTtl, loadSettings } from './05-settings.js';
 import { deleteManualFig, deleteManualPart, loadManualFigsTable, loadManualParts, manualFigsCache, manualPartsCache, updateManualFig, updateManualPart } from './06-minifigs.js';
 
 // ═══ Confirm-Dialog, Config-Export/Import, API-Tokens, Job-Status ═══
-// (Kaufpreis-Modal und Detailfenster lagen bis Nachtrag 130 ebenfalls hier —
+// (Kaufpreis-Modal und Detailfenster lagen früher ebenfalls hier —
 //  jetzt js/13-acquisition-modals.js.)
 // Teil von app.js — die Dateien in public/js/ werden in nummerierter
 // Reihenfolge geladen und teilen sich den globalen Scope (kein Modul-
@@ -173,7 +173,7 @@ export async function enrichGalleryWithPrices(){
 
 // Sparkline SVG renderer
 function sparklineSVG(data, width=260, height=44){
-  if(!data||data.length<2) return '<span style="color:var(--mut);font-size:var(--fs-1)">Noch keine Daten</span>';
+  if(!data||data.length<2) return `<span data-stil="color:var(--mut);font-size:var(--fs-1)">${t('detail.no_history')}</span>`;
   // avg_price ist die massgebliche Grösse (siehe die frühere Preis-Umstellung
   // in dieser Sitzung) — qty_avg_price kann für denselben, korrekt
   // aufgelösten Zustand trotzdem fehlen oder abweichen. Genau das erzeugte
@@ -196,7 +196,7 @@ function sparklineSVG(data, width=260, height=44){
   const area = `${areaStart} ${pts} ${areaEnd}`;
   const hasPurchasePoint = !!data[0]?.is_purchase_price;
   const purchaseDot = hasPurchasePoint
-    ? `<circle cx="0" cy="${(height-((vals[0]-min)/range)*(height-6)-3).toFixed(1)}" r="3.5" fill="${purchaseColor}" stroke="white" stroke-width="1"><title>Kaufpreis</title></circle>`
+    ? `<circle cx="0" cy="${(height-((vals[0]-min)/range)*(height-6)-3).toFixed(1)}" r="3.5" fill="${purchaseColor}" stroke="white" stroke-width="1"><title>${esc(t('detail.purchase_price'))}</title></circle>`
     : '';
 
   // Format first/last date as DD.MM.YYYY
@@ -213,7 +213,7 @@ function sparklineSVG(data, width=260, height=44){
   const labelHeight = dateFirst || dateLast ? 14 : 0;
   const totalH = height + labelHeight;
 
-  return `<svg viewBox="0 0 ${width} ${totalH}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:${totalH}px">
+  return `<svg viewBox="0 0 ${width} ${totalH}" xmlns="http://www.w3.org/2000/svg" data-stil="width:100%" data-hoehe-px="${totalH}">
     <defs><linearGradient id="sg" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0%" stop-color="${color}" stop-opacity=".18"/>
       <stop offset="100%" stop-color="${color}" stop-opacity="0"/>
@@ -273,8 +273,8 @@ export function renderMarketRows(ph, targetId = 'm-market-rows') {
     .map(c => {
       const d = ph.by_condition[c];
       const price = d.market_price != null
-        ? `<span style="font-weight:700;color:var(--b600)">${esc(fmtN(d.market_price, CURRENCY))}</span>`
-        : '<span style="color:var(--mut)">—</span>';
+        ? `<span class="preis preis-stark">${esc(fmtN(d.market_price, CURRENCY))}</span>`
+        : '<span data-stil="color:var(--mut)">—</span>';
       const pnl = d.pnl_pct != null ? pnlBadge(d.pnl_pct) : '';
       return detailZeile(
         `${esc(t('detail.market_price'))} (${esc(LABEL[c])})`,
@@ -284,7 +284,18 @@ export function renderMarketRows(ph, targetId = 'm-market-rows') {
   el.innerHTML = rows.join('');
 }
 
-export function priceChartSVG(data, uid = String(Math.random()).slice(2, 8)) {
+/**
+ * Breite des Diagramms in Pixeln: Die viewBox bekommt die Breite des Behälters,
+ * damit eine Schrift von 12 Einheiten auch am Telefon 12 px groß ist (vorher
+ * 700 Einheiten auf 390 px, also rund 5 px). Ohne Layout (jsdom) 700.
+ * @param {Element|null} el
+ */
+export function diagrammBreite(el, ersatz = 700) {
+  const b = Math.round(el?.clientWidth || 0);
+  return b > 0 ? Math.max(260, Math.min(1200, b)) : ersatz;
+}
+
+export function priceChartSVG(data, uid = String(Math.random()).slice(2, 8), breite = 700) {
   // Erwartet die fertigen Diagrammdaten des Servers:
   //   { values: [ { name, values: [{x, y}], firstRealIndex } ], x: [...] }
   //
@@ -311,10 +322,10 @@ export function priceChartSVG(data, uid = String(Math.random()).slice(2, 8)) {
     .filter(sd => sd.pts.length > 0);
 
   if (!series.length || axis.length < 2) {
-    return `<span style="color:var(--mut);font-size:var(--fs-1)">${t('detail.no_history')}</span>`;
+    return `<span data-stil="color:var(--mut);font-size:var(--fs-1)">${t('detail.no_history')}</span>`;
   }
 
-  const W = 700, H = 190, PAD = { l: 64, r: 14, t: 12, b: 40 };
+  const W = breite, H = 190, PAD = { l: 72, r: 14, t: 12, b: 42 };
   const iw = W - PAD.l - PAD.r, ih = H - PAD.t - PAD.b;
 
   const toTime = d => new Date(d + 'T00:00:00').getTime();
@@ -349,7 +360,7 @@ export function priceChartSVG(data, uid = String(Math.random()).slice(2, 8)) {
   }).join('');
 
   const yTicks = [min, (min + max) / 2, max].map(v =>
-    `<text x="${PAD.l - 8}" y="${(yOf(v) + 3).toFixed(1)}" font-size="10" fill="var(--mut)" text-anchor="end" font-family="inherit">${esc(fmtN(v, CURRENCY))}</text>
+    `<text x="${PAD.l - 8}" y="${(yOf(v) + 4).toFixed(1)}" font-size="12" fill="var(--mut)" text-anchor="end" font-family="inherit">${esc(fmtN(v, CURRENCY))}</text>
      <line x1="${PAD.l}" y1="${yOf(v).toFixed(1)}" x2="${W - PAD.r}" y2="${yOf(v).toFixed(1)}" stroke="var(--bdr)" stroke-width=".5"/>`
   ).join('');
 
@@ -357,14 +368,16 @@ export function priceChartSVG(data, uid = String(Math.random()).slice(2, 8)) {
   const legend = series.map((sd, i) =>
     `<g transform="translate(${PAD.l + i * 120}, ${H - 8})">
        <line x1="0" y1="-4" x2="16" y2="-4" stroke="${sd.color}" stroke-width="2.5" stroke-linecap="round"/>
-       <text x="22" y="0" font-size="11" fill="var(--txt)" font-family="inherit">${esc(sd.name)}</text>
+       <text x="22" y="0" font-size="12" fill="var(--txt)" font-family="inherit">${esc(sd.name)}</text>
      </g>`).join('');
 
-  return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto">
+  const zusammenfassung = t('detail.chart.summary', { titel: t('detail.price_history'), von: fmtDay(first), bis: fmtDay(last),
+    reihen: series.map(sd => tRaw('detail.chart.series', { name: sd.name, wert: fmtN(sd.pts[sd.pts.length - 1].y, CURRENCY) })).join('; ') });
+  return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" class="diagramm" role="img" aria-label="${zusammenfassung}" data-stil="width:100%;height:auto">
     ${yTicks}
     ${parts}
-    <text x="${PAD.l}" y="${H - 22}" font-size="10" fill="var(--mut)" text-anchor="start" font-family="inherit">${esc(fmtDay(first))}</text>
-    <text x="${W - PAD.r}" y="${H - 22}" font-size="10" fill="var(--mut)" text-anchor="end" font-family="inherit">${esc(fmtDay(last))}</text>
+    <text x="${PAD.l}" y="${H - 22}" font-size="12" fill="var(--mut)" text-anchor="start" font-family="inherit">${esc(fmtDay(first))}</text>
+    <text x="${W - PAD.r}" y="${H - 22}" font-size="12" fill="var(--mut)" text-anchor="end" font-family="inherit">${esc(fmtDay(last))}</text>
     ${legend}
   </svg>`;
 }
@@ -375,11 +388,11 @@ function fmtChartVal(v){
   // Use Swiss locale formatting: 1100 → 1'100, no k/M abbreviations
   return Math.round(v).toLocaleString(locale());
 }
-export function portfolioChartSVG(data, period, metric, yAxisData){
-  const W=700, H=180, PAD={l:72,r:16,t:14,b:32};
+export function portfolioChartSVG(data, period, breite = 700){
+  const W=breite, H=180, PAD={l:76,r:16,t:14,b:32};
   const iw=W-PAD.l-PAD.r, ih=H-PAD.t-PAD.b;
   const vals=data.map(d=>d.total||0);
-  if(vals.length<2) return '<div style="color:var(--mut);font-size:var(--fs-2);padding:1.5rem;text-align:center">Noch keine Verlaufsdaten.</div>';
+  if(vals.length<2) return diagrammLeer();
 
   const rawMin=Math.min(...vals);
   const rawMax=Math.max(...vals);
@@ -390,8 +403,8 @@ export function portfolioChartSVG(data, period, metric, yAxisData){
   const max = rawMax + padding;
   const range = max - min || 1;
 
-  // Always blue — consistent with webapp brand color
-  const color = '#2563eb';
+  // Die Diagrammfarbe des Designs (auch dunkel), wie im Preisverlauf.
+  const color = 'var(--chart-new)';
   const n = vals.length;
 
   function px(i){ return PAD.l+(n===1 ? iw/2 : i/(n-1)*iw); }
@@ -405,11 +418,12 @@ export function portfolioChartSVG(data, period, metric, yAxisData){
     const v = min + t * range;
     const y = PAD.t + ih - t * ih;
     return `<line x1="${PAD.l}" y1="${y.toFixed(1)}" x2="${PAD.l+iw}" y2="${y.toFixed(1)}" stroke="var(--bdr)" stroke-width="0.8" stroke-dasharray="3,3"/>
-<text x="${(PAD.l-5).toFixed(0)}" y="${(y+3.5).toFixed(1)}" text-anchor="end" font-size="10" fill="var(--mut)" font-family="monospace">${fmtChartVal(v)}</text>`;
+<text x="${(PAD.l-6).toFixed(0)}" y="${(y+4).toFixed(1)}" text-anchor="end" font-size="12" fill="var(--mut)" font-family="inherit">${fmtChartVal(v)}</text>`;
   }).join('');
 
   // X labels: max 7 evenly spaced
-  const step  = Math.max(1, Math.ceil(n/7));
+  // Je Beschriftung rund 56 px, damit sie sich am Telefon nicht überlappen.
+  const step  = Math.max(1, Math.ceil(n/Math.max(2, Math.min(7, Math.floor(iw/56)))));
   const xIdxs = [];
   for(let i=0; i<n; i+=step) xIdxs.push(i);
   if(xIdxs[xIdxs.length-1] !== n-1) xIdxs.push(n-1);
@@ -430,19 +444,21 @@ export function portfolioChartSVG(data, period, metric, yAxisData){
       if(/^\d{4}-\d{2}-\d{2}$/.test(lbl)){ const[,mm,dd]=lbl.split('-'); lbl=`${dd}.${mm}`; }
       else if(/^\d{4}-\d{2}$/.test(lbl)){ const[y,m]=lbl.split('-'); lbl=`${m}/${y.slice(2)}`; }
     }
-    return `<text x="${px(i).toFixed(1)}" y="${H-6}" text-anchor="middle" font-size="10" fill="var(--mut)">${lbl}</text>`;
+    return `<text x="${px(i).toFixed(1)}" y="${H-8}" text-anchor="middle" font-size="12" fill="var(--mut)" font-family="inherit">${lbl}</text>`;
   }).join('');
 
   // Dots with tooltip
   const dots = vals.map((v,i) => {
     const isLast = i===n-1;
     return `<circle cx="${px(i).toFixed(1)}" cy="${py(v).toFixed(1)}" r="${isLast?4:2.5}"
-      fill="${color}" stroke="white" stroke-width="1.2" opacity="${isLast?1:0.4}">
+      fill="${color}" stroke="var(--sur)" stroke-width="1.2" opacity="${isLast?1:0.4}">
       <title>${data[i].day}: ${v.toLocaleString(locale(),{minimumFractionDigits:2})}</title>
     </circle>`;
   }).join('');
 
-  return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-height:180px;display:block">
+  const zusammenfassung = t('finance.chart.summary', { titel: t('finance.chart.label'),
+    von: data[0].day, bis: data[n-1].day, start: fmtN(vals[0], CURRENCY), ende: fmtN(vals[n-1], CURRENCY) });
+  return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" class="diagramm" role="img" aria-label="${zusammenfassung}" data-stil="width:100%;max-height:180px;display:block">
   <defs><linearGradient id="pcg" x1="0" y1="0" x2="0" y2="1">
     <stop offset="0%" stop-color="${color}" stop-opacity=".15"/>
     <stop offset="100%" stop-color="${color}" stop-opacity="0"/>
@@ -569,7 +585,7 @@ export function alarmBlock(sn, praefix = 'm') {
       <input inputmode="decimal" type="number" id="${p}-alert-val" class="alarm-feld" min="0" step="0.01" placeholder="—"
              data-input="alarmGetippt" data-arg="${escJs(sn)}"
              data-change="speichereAlarm" />
-      <span id="${p}-alert-state" style="font-size:var(--fs-1);color:var(--mut)"></span>
+      <span id="${p}-alert-state" data-stil="font-size:var(--fs-1);color:var(--mut)"></span>
     `;
 }
 
@@ -658,7 +674,7 @@ export function lagerortBlock(id, wert, attrs = '') {
   return `
       <select id="${id}-sel" class="alarm-feld" data-ortauswahl="1"
               data-change="lagerortGewaehlt" data-arg="${id}">${ortOptionen(ort)}</select>
-      <input type="text" id="${id}" class="alarm-feld" maxlength="60" style="display:none"
+      <input type="text" id="${id}" class="alarm-feld" maxlength="60" data-stil="display:none"
              placeholder="${esc(tRaw('detail.storage_ph'))}" value="${esc(ort)}"
              data-blur="lagerortGetippt" ${attrs} />
     `;
@@ -947,6 +963,7 @@ export async function openModal(sn){
   ]);
   if(!d?.success){toast(tRaw('settings.error'),'error');return;}
   set_curSet(d.set);
+  document.querySelector('#set-modal .mehr-menue')?.removeAttribute('open');
   G('m-tit').textContent=curSet.name||curSet.set_number;
   G('m-untertit').textContent=curSet.name?curSet.set_number:'';
   // fullUrl(): volle Auflösung, auch wenn image_local auf die _thumb-Datei zeigt
@@ -965,16 +982,16 @@ export async function openModal(sn){
   const priceRow = '<div id="m-market-rows"></div>';
   const pnlRow  = '';
   const qtyRow = detailZeile(t('detail.qty'), `
-      <button class="btn bs btn-sm" data-click="mQtyDec" style="font-size:var(--fs-4);padding:2px 8px;line-height:1">−</button>
-      <input inputmode="numeric" type="number" id="m-qty" min="1" style="width:46px;text-align:center;border:1px solid var(--bdr);border-radius:6px;padding:2px;font-weight:600" data-change="autosaveSet" />
-      <button class="btn bs btn-sm" data-click="mQtyInc" style="font-size:var(--fs-4);padding:2px 8px;line-height:1">+</button>
+      <button class="btn bs btn-sm" data-click="mQtyDec" data-stil="font-size:var(--fs-4);padding:2px 8px;line-height:1">−</button>
+      <input inputmode="numeric" type="number" id="m-qty" min="1" data-stil="width:46px;text-align:center;border:1px solid var(--bdr);border-radius:6px;padding:2px;font-weight:600" data-change="autosaveSet" />
+      <button class="btn bs btn-sm" data-click="mQtyInc" data-stil="font-size:var(--fs-4);padding:2px 8px;line-height:1">+</button>
     `, { wertStil: 'display:flex;align-items:center;gap:6px' });
 
   // Acquisition summary: compact read-only rows + button to open full editor
   const acqs = ad?.acquisitions || [];
   const acqRows = detailZeile(t('detail.purchase_price'), `
       ${renderAcquisitionSummary(acqs, sn)}
-      <button class="btn bs btn-sm" data-click="openAcqModal" data-arg="${escJs(sn)}" style="margin-top:4px;font-size:var(--fs-1);padding:2px 10px">${ico('bearbeiten')} ${t('detail.edit_prices')}</button>
+      <button class="btn bs btn-sm" data-click="openAcqModal" data-arg="${escJs(sn)}" data-stil="margin-top:4px;font-size:var(--fs-1);padding:2px 10px">${ico('bearbeiten')} ${t('detail.edit_prices')}</button>
     `, { zeilenStil: 'align-items:flex-start',
          wertId: 'm-acq-summary',
          wertStil: 'flex-direction:column;align-items:flex-end;gap:3px' });
@@ -983,10 +1000,10 @@ export async function openModal(sn){
     ${detailZeile(t('detail.year'), oderStrich(curSet.year))}
     ${detailZeile(t('detail.theme'), esc(oderStrich(curSet.theme)))}
     ${qtyRow}
-    ${detailZeile(t('detail.pieces'), `${curSet.pieces ? curSet.pieces.toLocaleString(locale()) : '—'} <button class="btn bs btn-sm" data-click="reimportParts" data-arg="${escJs(sn)}" title="${t('detail.reimport_parts')}" style="padding:1px 6px;font-size:var(--fs-1);margin-left:4px">${PARTS_ICON_SVG}</button>`)}
+    ${detailZeile(t('detail.pieces'), `${curSet.pieces ? curSet.pieces.toLocaleString(locale()) : '—'} <button class="btn bs btn-sm" data-click="reimportParts" data-arg="${escJs(sn)}" title="${t('detail.reimport_parts')}" data-stil="padding:1px 6px;font-size:var(--fs-1);margin-left:4px">${PARTS_ICON_SVG}</button>`)}
     ${detailZeile(t('detail.minifigs'), oderStrich(curSet.minifigs), { wertId: 'm-minifigs-val' })}
     ${detailZeile(t('detail.added'), `${ico('kalender')} ${addedFmt}`)}
-    ${detailZeile(t('detail.alert'), alarmBlock(sn), {
+    ${detailZeile(t('detail.alert'), alarmBlock(sn), { klasse: 'alarm-zeile',
          zeilenStil: 'align-items:flex-start',
          wertStil: 'display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end' })}
     ${detailZeile(t('detail.storage'),
@@ -995,9 +1012,9 @@ export async function openModal(sn){
         { wertStil: 'display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end' })}
     ${acqRows}
     ${priceRow}${pnlRow}
-    <div id="m-price-chart" style="margin-top:.75rem">
-      <div style="font-size:var(--fs-1);font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--mut);margin-bottom:4px">${t('detail.price_history')}</div>
-      <div class="sparkline-wrap" id="m-sparkline-content"><span style="color:var(--mut);font-size:var(--fs-1)">${t('common.loading')}</span></div>
+    <div id="m-price-chart" data-stil="margin-top:.75rem">
+      <div data-stil="font-size:var(--fs-1);font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--mut);margin-bottom:4px">${t('detail.price_history')}</div>
+      <div class="sparkline-wrap" id="m-sparkline-content"><span data-stil="color:var(--mut);font-size:var(--fs-1)">${t('common.loading')}</span></div>
     </div>`;
 
   G('m-qty').value=curSet.quantity;
@@ -1043,8 +1060,8 @@ export async function openModal(sn){
     if(!el) return;
     // Beide Zustände in EINEM Diagramm — siehe priceChartSVG().
     el.innerHTML = ph.success
-      ? priceChartSVG(ph, sn.replace(/[^a-zA-Z0-9]/g, ''))
-      : `<span style="color:var(--mut);font-size:var(--fs-1)">${t('detail.no_history')}</span>`;
+      ? priceChartSVG(ph, sn.replace(/[^a-zA-Z0-9]/g, ''), diagrammBreite(el))
+      : `<span data-stil="color:var(--mut);font-size:var(--fs-1)">${t('detail.no_history')}</span>`;
   });
 
 }
@@ -1214,26 +1231,26 @@ export async function loadBricksetQueue() {
   const panel = G('brickset-queue-panel');
   if (!panel) return;
   const d = await api('GET', '/v1/admin/brickset-queue').catch(() => null);
-  if (!d?.success) { panel.innerHTML = `<div style="color:var(--r500)">${t('monitor.load_error')}</div>`; panel.style.display='block'; return; }
-  if (!d.entries?.length) { panel.innerHTML = `<div style="font-size:var(--fs-2);color:var(--mut)">${t('monitor.no_entries')}</div>`; panel.style.display='block'; return; }
+  if (!d?.success) { panel.innerHTML = `<div data-stil="color:var(--r500)">${t('monitor.load_error')}</div>`; panel.style.display='block'; return; }
+  if (!d.entries?.length) { panel.innerHTML = `<div data-stil="font-size:var(--fs-2);color:var(--mut)">${t('monitor.no_entries')}</div>`; panel.style.display='block'; return; }
   panel.innerHTML = `
-    <div style="font-size:var(--fs-1);font-weight:700;color:var(--mut);margin-bottom:.5rem;text-transform:uppercase;letter-spacing:.5px">${t('monitor.queue_entries',{n:d.count})}</div>
-    <div style="display:flex;flex-direction:column;gap:.4rem;max-height:400px;overflow-y:auto">
+    <div data-stil="font-size:var(--fs-1);font-weight:700;color:var(--mut);margin-bottom:.5rem;text-transform:uppercase;letter-spacing:.5px">${t('monitor.queue_entries',{n:d.count})}</div>
+    <div data-stil="display:flex;flex-direction:column;gap:.4rem;max-height:400px;overflow-y:auto">
       ${d.entries.map(e => `
-        <div id="bsq-${esc(e.set_number)}" style="display:flex;align-items:flex-start;gap:.5rem;padding:.5rem .6rem;background:var(--s50);border-radius:6px;font-size:var(--fs-2)">
-          <div style="flex:1;min-width:0">
-            <div style="font-weight:600">${esc(e.set_number)}${e.name ? ` — ${esc(e.name)}` : ''}</div>
-            <div style="color:var(--mut);margin-top:.15rem">${t('monitor.attempt',{a:e.attempts,r:e.retry_after})}</div>
+        <div id="bsq-${esc(e.set_number)}" data-stil="display:flex;align-items:flex-start;gap:.5rem;padding:.5rem .6rem;background:var(--s50);border-radius:6px;font-size:var(--fs-2)">
+          <div data-stil="flex:1;min-width:0">
+            <div data-stil="font-weight:600">${esc(e.set_number)}${e.name ? ` — ${esc(e.name)}` : ''}</div>
+            <div data-stil="color:var(--mut);margin-top:.15rem">${t('monitor.attempt',{a:e.attempts,r:e.retry_after})}</div>
             ${e.last_error ? `
-            <details style="margin-top:.25rem">
-              <summary style="cursor:pointer;color:var(--r500);font-size:var(--fs-1);user-select:none">${t('monitor.show_last_error')}</summary>
-              <div style="margin-top:.2rem;padding:.3rem .4rem;background:var(--s100);border-radius:4px;font-family:monospace;font-size:var(--fs-1);white-space:pre-wrap;word-break:break-all;color:var(--r600);max-height:100px;overflow-y:auto">${esc(e.last_error)}</div>
+            <details data-stil="margin-top:.25rem">
+              <summary data-stil="cursor:pointer;color:var(--r500);font-size:var(--fs-1);user-select:none">${t('monitor.show_last_error')}</summary>
+              <div data-stil="margin-top:.2rem;padding:.3rem .4rem;background:var(--s100);border-radius:4px;font-family:monospace;font-size:var(--fs-1);white-space:pre-wrap;word-break:break-all;color:var(--r600);max-height:100px;overflow-y:auto">${esc(e.last_error)}</div>
             </details>` : ''}
           </div>
-          <div style="display:flex;flex-direction:column;gap:.3rem;flex-shrink:0">
-            <button class="btn bs btn-sm" style="padding:2px 8px;font-size:var(--fs-1)"
+          <div data-stil="display:flex;flex-direction:column;gap:.3rem;flex-shrink:0">
+            <button class="btn bs btn-sm" data-stil="padding:2px 8px;font-size:var(--fs-1)"
               data-click="retryBricksetQueueEntry" data-arg="${esc(e.set_number)}" data-self="1">${ico('aktualisieren')}</button>
-            <button class="btn bd btn-sm" style="padding:2px 8px;font-size:var(--fs-1)"
+            <button class="btn bd btn-sm" data-stil="padding:2px 8px;font-size:var(--fs-1)"
               data-click="deleteBricksetQueueEntry" data-arg="${esc(e.set_number)}" data-self="1">${ico('loeschen')}</button>
           </div>
         </div>`).join('')}

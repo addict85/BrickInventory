@@ -23,8 +23,8 @@ import ch.brickinventoryapp.data.model.ChartPoint
 import ch.brickinventoryapp.data.model.ChartYAxis
 import ch.brickinventoryapp.R
 import ch.brickinventoryapp.ui.diagrammZusammenfassung
-import ch.brickinventoryapp.util.fmtAmount
 import ch.brickinventoryapp.util.fmtMoney
+import ch.brickinventoryapp.util.fmtProzent
 import ch.brickinventoryapp.ui.theme.Abstaende
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -38,9 +38,8 @@ fun PortfolioChart(
     periodChangePct: Double? = null,
     onPeriodChange: (String) -> Unit
 ) {
-    // Aus dem Design statt fest eingetragen (Nachtrag 120) — `new`/`used`
-    // kamen hier schon von dort, die vier hier nicht, und im Stein-Design
-    // stand deshalb ein Preussischblau neben Salbeigrün und Sand.
+    // Alle Diagrammfarben aus dem Design, wie `new`/`used` — fest eingetragene stünden
+    // in einem anderen Design als Fremdkörper neben dessen Farben.
     val chart      = LocalChartColors.current
     val lineColor  = chart.linie
     val fillStart  = chart.linie.copy(alpha = 0.18f)
@@ -64,7 +63,7 @@ fun PortfolioChart(
                 if (periodChangePct != null) {
                     val pos = periodChangePct >= 0
                     val bg  = if (pos) LocalStatusFarben.current.erfolg else LocalStatusFarben.current.fehler
-                    val lbl = if (pos) "+%.1f%%".format(periodChangePct) else "%.1f%%".format(periodChangePct)
+                    val lbl = fmtProzent(periodChangePct)
                     Surface(shape = Formen.chip, color = bg.copy(alpha = 0.12f)) {
                         Text(lbl, Modifier.padding(horizontal = Abstaende.klein, vertical = 3.dp),
                             color = bg, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
@@ -78,7 +77,7 @@ fun PortfolioChart(
                 isLoading -> Box(Modifier.fillMaxWidth().height(160.dp), Alignment.Center) {
                     CircularProgressIndicator(Modifier.size(24.dp))
                 }
-                points.size < 2 -> Box(Modifier.fillMaxWidth().height(80.dp), Alignment.Center) {
+                points.size < 2 -> Box(Modifier.fillMaxWidth().heightIn(min = 80.dp), Alignment.Center) {
                     Text(stringResource(R.string.chart_no_history),
                         style = MaterialTheme.typography.bodySmall, color = mutedColor)
                 }
@@ -92,7 +91,7 @@ fun PortfolioChart(
                         val prozent = z.veraenderungProzent
                         if (prozent == null) stringResource(R.string.chart_summary_no_change, z.von, z.bis, von, bis)
                         else stringResource(R.string.chart_summary, z.von, z.bis, von, bis,
-                            (if (prozent >= 0) "+" else "") + fmtAmount(prozent, 1, 1) + " %")
+                            fmtProzent(prozent))
                     }.orEmpty()
 
                     Canvas(Modifier.fillMaxWidth().height(160.dp).semantics { contentDescription = beschreibung }) {
@@ -183,7 +182,7 @@ fun PortfolioChart(
                         selected  = selectedPeriod == p,
                         onClick   = { onPeriodChange(p) },
                         label     = { Text(label, style = MaterialTheme.typography.labelSmall) },
-                        modifier  = Modifier.height(28.dp)
+                        modifier  = Modifier.heightIn(min = 28.dp)
                     )
                 }
             }

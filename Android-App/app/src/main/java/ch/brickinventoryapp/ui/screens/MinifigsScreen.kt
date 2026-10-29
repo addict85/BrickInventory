@@ -39,6 +39,8 @@ import ch.brickinventoryapp.ui.*
 import ch.brickinventoryapp.util.NumericInput
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.components.LeerSymbol
+import ch.brickinventoryapp.ui.components.Bewegt
+import ch.brickinventoryapp.ui.components.SkelettRaster
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -47,12 +49,12 @@ fun MinifigsScreen(
     imageLoader: ImageLoader,
     /** Öffnet die Detailansicht — nur der Graph kennt den NavController. */
     onOpenDetail: (figNumber: String) -> Unit = { _ -> },
-    /** Scroll-Zustand von aussen, siehe Nachtrag 92. */
+    /** Scroll-Zustand von aussen: Das Ziel wird beim Öffnen eines Details verworfen. */
     gridState: LazyGridState = rememberLazyGridState(),
 ) {
-    // Zustand und Aktionen vom ViewModel statt über fünfzehn Parameter — die
-    // Begründung steht bei PartsScreen (Nachtrag 96). Die Namen bleiben
-    // absichtlich dieselben, damit der Rumpf darunter unverändert bleibt.
+    // Zustand und Aktionen vom ViewModel statt über fünfzehn Parameter — Begründung
+    // bei PartsScreen. Die Namen bleiben dieselben, damit der Rumpf darunter
+    // unverändert bleibt.
     val state by vm.state.collectAsStateWithLifecycle()
     val blick by vm.blickfeld.collectAsStateWithLifecycle()
     val partsState by vm.partsState.collectAsStateWithLifecycle()
@@ -79,78 +81,37 @@ fun MinifigsScreen(
     // auch ein leeres Regal zur Wahl stehen.
     val lagerortVorrat = lagerState.eigene.map { it.name }
 
-    // Suchtext aus dem Zustand, gefiltert wird auf dem SERVER — wie bei den
-    // Teilen (PartsScreen) und in der Galerie. Hier stand ein eigenes
-    // `filter { contains(search) }` ueber die schon geladene Liste; damit
-    // existierte die Suchregel zweimal, und sie traf etwas anderes als die des
-    // Servers (Begruendung in TeileRepository.getMinifigs).
-    //
-    // remember(partsState.minifigsQuery): Das Feld haelt den Text waehrend des
-    // Tippens selbst, uebernimmt aber einen von aussen gesetzten (Leeren beim
-    // Abmelden, Wiederherstellen). Genau wie in PartsScreen.
+    // Suchtext aus dem Zustand, gefiltert wird auf dem Server — wie bei den Teilen und
+    // in der Galerie, damit die Suchregel nur einmal existiert (Begründung in
+    // TeileRepository.getMinifigs). remember(partsState.minifigsQuery): Das Feld hält
+    // den Text beim Tippen selbst, übernimmt aber einen von aussen gesetzten (Leeren
+    // beim Abmelden, Wiederherstellen).
     var search by remember(partsState.minifigsQuery) { mutableStateOf(partsState.minifigsQuery) }
     val ansicht = partsState.minifigsView
     var showAddDialog by rememberSaveable { mutableStateOf(false) }
 
+    var zeigeFilter by rememberSaveable { mutableStateOf(false) }
+
     Box(Modifier.fillMaxSize()) {
     Column(Modifier.fillMaxSize()) {
-        ScopeFilterZeile(householdMembers, scopeMode, onScopeChange)
-        // ── Warum die Bedingung nicht mehr `figs.isNotEmpty()` ist ──────────────
-        //
-        // Hier stand `if (figs.isNotEmpty())`: Die Leiste erschien nur, wenn die
-        // GELADENE Seite Figuren enthielt. Eine Suche ohne Treffer liess sie
-        // also verschwinden — obwohl die drei Zahlen die ganze Sammlung meinen
-        // und weiter stimmen. Genau das sagt der Kommentar darunter seit jeher:
-        // „vom Server, nicht aus der (gefilterten) Liste".
-        //
-        // Die Teile-Ansicht daneben — derselbe Aufbau, dieselbe Leiste — prueft
-        // `stats != null` und laesst sie stehen. Die Webapp auch: Dort ist die
-        // Leiste fester Bestandteil der Seite und wird nur gefuellt
-        // (06-minifigs.js, loadMinifigStats).
-        //
-        // `partsStats` ist im Zustand nullbar, `minifigStats` nicht — deshalb
-        // hier die Frage nach dem Inhalt statt nach null. Wirkung ist dieselbe:
-        // verborgen bleibt die Leiste nur vor dem ersten Laden und bei einer
-        // wirklich leeren Sammlung.
-        if (minifigStats.types > 0 || minifigStats.totalQuantity > 0) {
-            Surface(color = MaterialTheme.colorScheme.surface, tonalElevation = 2.dp) {
-                Row(
-                    Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
-                    horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)
-                ) {
-                    // Zahlen vom Server (utils/handlers.ts, getMinifigStats) — aus der
-                    // Liste gerechnet zählten sie die manuell erfassten Figuren nicht
-                    // mit, weil die hier ausgefiltert sind; die Kachel „manuell" stand
-                    // dadurch zwangsläufig immer auf 0.
-                    GalleryStatChip(fmtInt(minifigStats.types), stringResource(R.string.minifigs_stat_types))
-                    GalleryStatChip(fmtInt(minifigStats.totalQuantity), stringResource(R.string.minifigs_stat_total))
-                    GalleryStatChip(fmtInt(minifigStats.manual), stringResource(R.string.minifigs_stat_manual))
-                }
-            }
-        }
-
-        // Suchfeld — gemeinsamer Baustein. Der Leeren-Knopf sagte hier
-        // „Löschen" (minifigs_delete, derselbe Text wie am Loeschknopf der
-        // Minifigur); jetzt „Suche leeren" (Nachtrag 132).
-        Suchfeld(
+        // Suche und „Filter“: Konto und Ansicht stehen im Blatt, die
+        // Kennzahlen rollen mit dem Raster.
+        SucheMitFilter(
             wert = search,
             onWert = { search = it; vm.setMinifigsQuery(it) },
             platzhalter = stringResource(R.string.minifigs_search_placeholder),
-        )
-
-        // Karten oder Tabelle — wie das Auswahlfeld figs-view der Webapp.
-        AnsichtUmschalter(
-            aktuell = ansicht,
-            onWechsel = { vm.setMinifigsView(it) },
-            modifier = Modifier.padding(horizontal = 14.dp).padding(bottom = Abstaende.klein),
+            aktiveFilter = Filterzahl.konto(householdMembers, scopeMode),
+            onFilter = { zeigeFilter = true },
         )
 
         ch.brickinventoryapp.ui.components.OfflineHinweis(partsState.figurenOfflineStand)
         when {
-            isLoading && figs.isEmpty() && manualFigs.isEmpty() -> Box(Modifier.fillMaxSize(), Alignment.Center) {
-                CircularProgressIndicator()
-            }
+            isLoading && figs.isEmpty() && manualFigs.isEmpty() ->
+                SkelettRaster(GridCells.Adaptive(140.dp), kachelHoehe = 196.dp)
             figs.isEmpty() && manualFigs.isEmpty() -> Box(Modifier.fillMaxSize(), Alignment.Center) {
+                if (minifigStats.types > 0 || minifigStats.totalQuantity > 0) {
+                    Box(Modifier.align(Alignment.TopStart).padding(Abstaende.mittel)) { FigurenKennzahlen(minifigStats) }
+                }
                 Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                     LeerSymbol(Icons.Default.Person)
                     Text(stringResource(R.string.minifigs_none), fontWeight = FontWeight.SemiBold)
@@ -173,6 +134,11 @@ fun MinifigsScreen(
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
+                    // Nach dem Inhalt gefragt, nicht nach der geladenen Seite: Die
+                    // Zahlen meinen die ganze Sammlung, auch während einer Suche.
+                    if (minifigStats.types > 0 || minifigStats.totalQuantity > 0) {
+                        item(span = { GridItemSpan(maxLineSpan) }, key = "figs-stats") { FigurenKennzahlen(minifigStats) }
+                    }
                     // Manuelle Figuren als Grid-Sektion — eine durchgehende
                     // Scroll-Liste statt fixem Block über dem Grid (s. PartsScreen).
                     if (manualFigs.isNotEmpty()) {
@@ -180,13 +146,15 @@ fun MinifigsScreen(
                             SectionHeader(stringResource(R.string.minifigs_manual_section))
                         }
                         items(manualFigs, key = { "manual-${it.id ?: it.figNumber}" }) { fig ->
-                            ManualFigTile(
-                                fig = fig,
-                                serverUrl = serverUrl,
-                                imageLoader = imageLoader,
-                                waehrung = waehrung,
-                                onEdit = { onOpenDetail(fig.figNumber) },
-                            )
+                            Bewegt {
+                                ManualFigTile(
+                                    fig = fig,
+                                    serverUrl = serverUrl,
+                                    imageLoader = imageLoader,
+                                    waehrung = waehrung,
+                                    onEdit = { onOpenDetail(fig.figNumber) },
+                                )
+                            }
                         }
                         if (figs.isNotEmpty()) {
                             item(span = { GridItemSpan(maxLineSpan) }, key = "sets-header") {
@@ -194,11 +162,10 @@ fun MinifigsScreen(
                             }
                         }
                     }
-                    // Wie bei den Teilen: In der Tabellenansicht nimmt jede
-                    // Zeile die ganze Breite, der Raster-Container bleibt
-                    // derselbe. Die manuellen Figuren bleiben in beiden
-                    // Ansichten Kacheln — dort haengt in der Webapp
-                    // #manual-figs-list ebenfalls nicht an figs-view.
+                    // Wie bei den Teilen: In der Tabellenansicht nimmt jede Zeile die ganze Breite,
+                    // der Raster-Container bleibt derselbe. Die manuellen Figuren bleiben in beiden
+                    // Ansichten Kacheln — wie #manual-figs-list in der Webapp, das nicht an
+                    // figs-view hängt.
                     itemsIndexed(
                         figs,
                         key = { index, fig -> "${fig.figNumber}_${fig.source}_$index" },
@@ -206,8 +173,10 @@ fun MinifigsScreen(
                     ) { _, fig ->
                         // BEIDE Ansichten oeffnen denselben Dialog.
                         val oeffne = { vm.oeffneSetItem("fig", fig.figNumber) }
-                        if (ansicht == "table") MinifigTableRow(fig, serverUrl, imageLoader, oeffne)
-                        else MinifigCard(fig, serverUrl, imageLoader, oeffne)
+                        Bewegt {
+                            if (ansicht == "table") MinifigTableRow(fig, serverUrl, imageLoader, oeffne)
+                            else MinifigCard(fig, serverUrl, imageLoader, oeffne)
+                        }
                     }
                 }
             }
@@ -221,6 +190,17 @@ fun MinifigsScreen(
             shape = Formen.fab,
             modifier = Modifier.align(Alignment.BottomEnd).padding(20.dp)
         ) { Icon(Icons.Default.Add, stringResource(R.string.minifigs_add)) }
+    }
+
+    if (zeigeFilter) {
+        val zuruecksetzen: () -> Unit = { onScopeChange(ch.brickinventoryapp.data.ScopeFilter.ALL) }
+        FilterBlattRahmen(
+            onSchliessen = { zeigeFilter = false },
+            onZuruecksetzen = zuruecksetzen.takeIf { Filterzahl.konto(householdMembers, scopeMode) > 0 },
+        ) {
+            KontoFilterAbschnitt(householdMembers, scopeMode, onScopeChange)
+            AnsichtAbschnitt(ansicht) { vm.setMinifigsView(it) }
+        }
     }
 
     if (showAddDialog) {
@@ -237,11 +217,20 @@ fun MinifigsScreen(
         )
     }
 
-    // Hier stand die Loeschabfrage der KACHEL. Sie ist mit dem Papierkorb
-    // darauf entfallen (Marcos Vorgabe vom 24.09.) und waere ohne ihn nie mehr
-    // aufgegangen. Geloescht wird im Detail, und die Abfrage steht dort
-    // (ManualItemDetailScreen, showDeleteConfirm) — an derselben Stelle wie
-    // beim Set.
+    // Gelöscht wird im Detail (ManualItemDetailScreen, showDeleteConfirm) — an
+    // derselben Stelle wie beim Set.
+}
+
+/** Die Kennzahlen der Minifiguren — erste Zeile des Rasters, sie rollt mit. */
+@Composable
+private fun FigurenKennzahlen(minifigStats: ch.brickinventoryapp.data.model.MinifigStats) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
+        // Zahlen vom Server (getMinifigStats): Aus der Liste gerechnet fehlten
+        // die manuell erfassten Figuren, die hier ausgefiltert sind.
+        GalleryStatChip(fmtInt(minifigStats.types), stringResource(R.string.minifigs_stat_types))
+        GalleryStatChip(fmtInt(minifigStats.totalQuantity), stringResource(R.string.minifigs_stat_total))
+        GalleryStatChip(fmtInt(minifigStats.manual), stringResource(R.string.minifigs_stat_manual))
+    }
 }
 
 @Composable
@@ -251,10 +240,9 @@ fun ManualFigTile(fig: FigValuationItem, serverUrl: String, imageLoader: ImageLo
     // util/ImageUrls.kt, rememberTileImageWithFallback().
     val (bild, onBildFehler) =
         rememberTileImageWithFallback(serverUrl, fig.imageLocal, fig.imageUrl, fullViaProxy = true)
-    // Alles Weitere steht in ManuelleKachel (ManualItemComposables.kt) — die
-    // Kachel der Teile daneben benutzt dieselbe. Warum: Dieser Kachel fehlten
-    // Zustands- und Besitzer-Plaketten monatelang, weil sie nur im Zwilling
-    // nachgezogen wurden.
+    // Alles Weitere steht in ManuelleKachel (ManualItemComposables.kt), die auch die
+    // Teile benutzen — damit Zustands- und Besitzer-Plaketten nicht nur in einem
+    // Zwilling nachgezogen werden.
     ManuelleKachel(
         bildUrl = bild,
         onBildFehler = onBildFehler,
@@ -280,7 +268,7 @@ fun AddMinifigDialog(
     householdMembers: List<ch.brickinventoryapp.data.model.HouseholdMember> = emptyList(),
     /** Vorrat an Lagerorten — leer heisst: es gibt noch keine, dann wird getippt. */
     lagerorte: List<String> = emptyList(),
-    /** Der vorausgewaehlte Lagerort — Marcos Stern. Leer heisst: keine Vorgabe. */
+    /** Der vorausgewählte Lagerort (Stern in den Einstellungen). Leer heisst: keine Vorgabe. */
     lagerortVorgabe: String = "",
 ) {
     var figNumber  by rememberSaveable { mutableStateOf("") }
@@ -394,30 +382,19 @@ fun MinifigCard(fig: Minifig, serverUrl: String, imageLoader: ImageLoader,
                         shape = Formen.marke,
                         modifier = Modifier.align(Alignment.TopEnd).padding(Abstaende.winzig)
                     ) {
-                        // Die Menge-Plakette: „×N" auf einer MANUELL erfassten Kachel,
-                        // „N×" auf einer Kachel aus einem Set. Das ist keine Laune,
-                        // sondern die Regel der Webapp — `man-tile` traegt dort ein
-                        // `qbadge` mit ×N, `part-card` ein `part-qty` mit N×.
+                        // Die Menge-Plakette: „×N“ auf einer manuell erfassten Kachel, „N×“ auf
+                        // einer Kachel aus einem Set — die Regel der Webapp (`man-tile` mit
+                        // `qbadge` ×N, `part-card` mit `part-qty` N×).
                         Text("$qty×", Modifier.padding(horizontal = 5.dp, vertical = Abstaende.haar),
                             color = MaterialTheme.colorScheme.onPrimary,
                             style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                     }
                 }
-                // Zustand nur bei manuell erfassten Minifiguren (automatisch aus
-                // Sets übernommene haben keinen eigenen Zustand). Die
-                // BESITZER-Plakette dagegen unbedingt: Sie beantwortet „wem
-                // gehört das?", und die Frage stellt sich bei einer Figur aus
-                // dem Set eines Kindes genauso. Die Galerie-Kachel zeigt sie
-                // seit jeher.
-                //
-                // Sie stand INNERHALB dieser Bedingung — und diese Liste lädt
-                // ausschliesslich `source=set`. Die Plakette war also
-                // unerreichbar. Ohne Haushalt ist `owners` leer, und
-                // OwnerBadges kehrt dann sofort zurück; im Einzelkonto ändert
-                // sich nichts.
-                //
-                // Column statt Box: Zwei Plaketten übereinander, nicht
-                // aufeinander — in einer Box lägen sie am selben Punkt.
+                // Zustand nur bei manuell erfassten Minifiguren (aus Sets übernommene haben keinen
+                // eigenen). Die Besitzer-Plakette dagegen immer: „Wem gehört das?“ stellt sich bei
+                // einer Figur aus dem Set eines Kindes genauso, und diese Liste lädt nur
+                // `source=set`. Ohne Haushalt ist `owners` leer und OwnerBadges kehrt sofort
+                // zurück. Column statt Box: zwei Plaketten übereinander, nicht am selben Punkt.
                 Column(Modifier.align(Alignment.BottomStart).padding(Abstaende.winzig),
                     verticalArrangement = Arrangement.spacedBy(Abstaende.haar)) {
                     if (fig.source == "manual") ConditionBadges(fig.conditions, fig.condition)
@@ -442,11 +419,8 @@ fun MinifigCard(fig: Minifig, serverUrl: String, imageLoader: ImageLoader,
                     style = MaterialTheme.typography.bodySmall,
                     fontWeight = FontWeight.Medium,
                     maxLines = 2, overflow = TextOverflow.Ellipsis)
-                // Gemeinsamer Helfer (util/DatumFormat.kt). Hier stand ein
-                // SimpleDateFormat mit dem festen Muster
-                // "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'" — bei einem Zeitstempel OHNE
-                // Millisekunden fiel es still auf null zurueck, und dann stand
-                // gar kein Datum da.
+                // Gemeinsamer Helfer (util/DatumFormat.kt): Er kommt auch mit Zeitstempeln ohne
+                // Millisekunden zurecht.
                 val dateLabel = remember(fig.setAddedAt) {
                     fmtDatum(fig.setAddedAt, zweistelligesJahr = true)
                 }
@@ -459,15 +433,10 @@ fun MinifigCard(fig: Minifig, serverUrl: String, imageLoader: ImageLoader,
 }
 
 /**
- * Eine Figur als Tabellenzeile.
- *
- * Zeigt, was die Tabelle der Webapp zeigt (renderFigs in 06-minifigs.js):
- * Bild, Nummer, Name, Menge, Erfassungsdatum.
- *
- * Die Spalten „Quelle" und Papierkorb, die dort einmal standen, sind es
- * nicht — beide waren konstant, weil diese Liste ausschliesslich `source=set`
- * laedt. Sie sind im selben Zug auch in der Webapp entfernt worden; hier steht
- * also nicht weniger, sondern in beiden dasselbe.
+ * Eine Figur als Tabellenzeile: Bild, Nummer, Name, Menge, Erfassungsdatum — was
+ * die Tabelle der Webapp zeigt (renderFigs in 06-minifigs.js). Keine Spalten
+ * „Quelle“ und Papierkorb: Diese Liste lädt nur `source=set`, beide wären
+ * konstant.
  */
 @Composable
 fun MinifigTableRow(fig: Minifig, serverUrl: String, imageLoader: ImageLoader,

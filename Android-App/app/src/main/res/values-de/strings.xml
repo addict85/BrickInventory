@@ -187,6 +187,17 @@
     <string name="detail_storage_ph">z. B. Kiste 3</string>
     <string name="filter_condition_all">Alle Zustände</string>
     <string name="filter_storage_all">Alle Lagerorte</string>
+    <string name="filter_button">Filter</string>
+    <string name="filter_title">Filter</string>
+    <string name="filter_reset">Zurücksetzen</string>
+    <string name="filter_section_sort">Sortierung</string>
+    <string name="filter_section_spare">Ersatzteile</string>
+    <string name="filter_section_color_category">Farbe und Kategorie</string>
+    <string name="filter_section_view">Ansicht</string>
+    <plurals name="filter_active">
+        <item quantity="one">%d Filter aktiv</item>
+        <item quantity="other">%d Filter aktiv</item>
+    </plurals>
     <string name="partslist_only_loose">nur manuell erfasste Teile berücksichtigen</string>
     <string name="partslist_include_subs">Unterkonten mit einbeziehen</string>
     <string name="partslist_owned_complete">Alles vorhanden — das lässt sich bauen.</string>
@@ -214,7 +225,7 @@
     <string name="finance_price_error">Preisfehler</string>
     <string name="finance_no_sets">Keine Sets</string>
     <string name="finance_load_prompt">→ Preise laden</string>
-    <string name="finance_total_pnl">Gesamt G&amp;V  %1$s%2$.1f%%</string>
+    <string name="finance_total_pnl">Gesamt G&amp;V  %1$s</string>
     <string name="finance_parts_extra">davon Teile &amp; Minifiguren: %1$s</string>
     <string name="finance_avg_label">Ø Durchschnitt</string>
     <string name="finance_filter_all">Alle</string>
@@ -487,8 +498,11 @@
     <string name="household_invite_copy">Kopieren</string>
     <string name="household_invite_label">Einladungscode</string>
     <string name="household_redeem_title">Einladung annehmen</string>
-    <string name="household_redeem_hint">Gib den Code aus dem Hauptkonto ein. Deine Daten bleiben deine.</string>
+    <string name="household_redeem_hint">Gib den Code aus dem Hauptkonto ein und bestätige mit dem Passwort dieses Kontos. Deine Daten bleiben deine.</string>
     <string name="household_redeem_submit">Verknüpfen</string>
+    <string name="household_redeem_password">Passwort dieses Kontos</string>
+    <string name="household_redeem_password_wrong">Das Passwort stimmt nicht. Gib das Passwort des Kontos ein, mit dem du angemeldet bist.</string>
+    <string name="household_redeem_locked">Zu viele Fehlversuche. Bitte versuche es später erneut.</string>
     <string name="household_unlink">Verknüpfung lösen</string>
     <string name="household_remove">Entfernen</string>
     <string name="household_move_ok">Set verschoben — %1$s und %2$s mitgenommen.</string>

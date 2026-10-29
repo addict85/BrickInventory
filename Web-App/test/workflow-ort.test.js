@@ -47,7 +47,8 @@ const ECHTER_ORT = path.join(WURZEL, '.github', 'workflows');
 /** Alle `.github/workflows`-Ordner im Baum, ohne node_modules und .git. */
 function workflowOrdner(start) {
   const gefunden = [];
-  const uebersprungen = new Set(['node_modules', '.git', 'dist', 'build', '.gradle']);
+  // .claude: lokale Arbeitskopien (git worktree) der Werkzeuge, kein Teil des Repositorys.
+  const uebersprungen = new Set(['node_modules', '.git', 'dist', 'build', '.gradle', '.claude']);
   (function lauf(dir) {
     let eintraege;
     try { eintraege = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
@@ -210,4 +211,29 @@ test('ein Lauf, der Tests ausführt, läuft auf JEDEM Zweig', () => {
     eng.join('\n  ') +
     '\nDamit kommt ihr Befund erst nach dem Zusammenführen — genau so blieben ' +
     'drei rote Android-Läufe unbemerkt im Zweig stehen.');
+});
+
+// Gegenproben (am 28.10.2026 gemessen): die Zeile mit `head_repository` aus
+// dem `if:` des Prüfjobs gestrichen → rot „… fremdes Repository …“; eine
+// Action wieder als `@v7` statt per SHA → rot „… per Commit-SHA …“.
+test('das Docker-Image entsteht nur aus einem Push auf main dieses Repositorys', () => {
+  const yml = fs.readFileSync(path.join(ECHTER_ORT, 'docker-publish.yml'), 'utf8');
+  const job = yml.split(/\n  pruefen:\n/)[1]?.split(/\n    steps:\n/)[0] ?? '';
+  assert.match(job, /\n    if: /, 'der Prüfjob hat kein if:');
+  assert.match(job, /workflow_run\.event == 'push'/, 'ein PR-Lauf der CI darf kein Image auslösen');
+  assert.match(job, /workflow_run\.head_branch == 'main'/);
+  assert.match(job, /workflow_run\.head_repository\.full_name == github\.repository/,
+    'ein fremdes Repository (Fork) darf kein Image auslösen');
+});
+
+test('jede Action ist per Commit-SHA festgelegt', () => {
+  const lose = [];
+  for (const f of fs.readdirSync(ECHTER_ORT).filter(n => n.endsWith('.yml'))) {
+    const zeilen = fs.readFileSync(path.join(ECHTER_ORT, f), 'utf8').split('\n');
+    zeilen.forEach((z, i) => {
+      const m = z.match(/^\s*-?\s*uses:\s*([^\s#]+)/);
+      if (m && !/@[0-9a-f]{40}$/.test(m[1])) lose.push(`${f}:${i + 1} ${m[1]}`);
+    });
+  }
+  assert.deepEqual(lose, [], 'Ein Tag lässt sich umhängen; nur ein SHA ist fest. Nicht per Commit-SHA festgelegt:');
 });

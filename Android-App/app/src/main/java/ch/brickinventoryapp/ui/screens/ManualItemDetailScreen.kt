@@ -46,29 +46,16 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.ViewInAr
 
 /**
- * Detailansicht eines manuell erfassten Teils / einer manuell erfassten
- * Minifigur — als ganzer Screen, wie bei den Sets.
+ * Detailansicht eines manuell erfassten Teils / einer Minifigur — als ganzer
+ * Screen wie bei den Sets, weil der Inhalt (Bild, Mengenwahl, Kaufpreise und
+ * Marktpreise je Zustand, Preisverlauf, Löschen) für einen AlertDialog zu lang
+ * ist. Derselbe Aufbau wie SetDetailScreen, damit man beim Wechsel vom Set zum
+ * Teil dieselben Dinge an denselben Stellen findet.
  *
- * ── Warum kein Dialog mehr ──────────────────────────────────────────────────
- * Der Inhalt ist über die letzten Runden gewachsen: Bild, Mengenwahl,
- * Kaufpreise je Zustand, Marktpreis je Zustand, Preisverlauf, Löschen. Ein
- * AlertDialog schneidet zu langen Inhalt unten ab; abgefangen war das zuletzt
- * nur noch durch einen eigenen Scrollbereich IM Dialog — also ein Screen im
- * Kostüm eines Dialogs, mit dem halben Bildschirm als Rand.
- *
- * Jetzt derselbe Aufbau wie SetDetailScreen: Leiste mit Zurück-Pfeil und
- * Papierkorb, darunter eine LazyColumn mit Bildkarte, Kennzahlen-Chips und
- * Abschnittskarten. Wer vom Set zum Teil wechselt, findet dieselben Dinge an
- * denselben Stellen.
- *
- * ── Woher die Daten kommen ──────────────────────────────────────────────────
- * Stammdaten aus der Bewertung (`partsValuation`/`figsValuation`) — sie trägt
- * bereits Name, Farbe, Menge, Bild und Preise. Erfassungen und Preisverlauf
- * lädt `loadManualAcquisitions()`, das den Verlaufsabruf mit anstösst.
- *
- * Der Screen liest sie direkt vom ViewModel statt sie durchgereicht zu
- * bekommen — wie AcquisitionManagementScreen. Bei sechs Zuständen und ebenso
- * vielen Rückrufen wäre die Parameterliste sonst länger als der Screen.
+ * Erfassungen und Preisverlauf lädt `loadManualAcquisitions()`. Der Screen liest
+ * seine Zustände direkt vom ViewModel wie AcquisitionManagementScreen — bei sechs
+ * Zuständen und ebenso vielen Rückrufen wäre die Parameterliste länger als der
+ * Screen.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -85,14 +72,11 @@ fun ManualItemDetailScreen(
     onBack: () -> Unit,
     onNavigateToAcqMgmt: (type: String, id: String, colorId: Int, title: String) -> Unit,
     /**
-     * Die Farbe wurde geaendert — der Screen muss mit der NEUEN Farbe neu
-     * geoeffnet werden. Sie ist Teil der Kennung des Eintrags (Route
-     * manual_detail/{type}/{id}/{colorId}/{title}) und steckt in der Suche
-     * weiter unten (`it.colorId == colorId`); ohne das steht der Screen leer
-     * da, obwohl die Aenderung geklappt hat.
-     *
-     * Vorgabe leer, damit ein Aufrufer, der nur Figuren zeigt, nichts
-     * mitgeben muss — eine Figur hat keine Farbe.
+     * Die Farbe wurde geändert — der Screen muss mit der neuen Farbe neu geöffnet
+     * werden: Sie ist Teil der Kennung (Route
+     * manual_detail/{type}/{id}/{colorId}/{title}) und der Suche unten (`it.colorId ==
+     * colorId`); sonst stünde er leer da, obwohl die Änderung geklappt hat. Vorgabe
+     * leer, weil eine Figur keine Farbe hat.
      */
     onFarbeGeaendert: (neueFarbe: Int) -> Unit = {},
 ) {
@@ -107,14 +91,11 @@ fun ManualItemDetailScreen(
 
     LaunchedEffect(type, id, colorId) {
         vm.loadManualAcquisitions(type, id, colorId)
-        // Die Bewertung kann fehlen, wenn der Screen aus einem Tiefenlink oder
-        // nach einem Prozessneustart kommt — ohne sie gäbe es weder Name noch
-        // Bild.
-        // Aus DERSELBEN Quelle wie die Liste (/parts/manual bzw.
-        // /minifigs/manual). Vorher stand hier die Bewertung — also eine
-        // zweite Quelle fuer dieselbe Zeile, und dafuer wurden Marktpreise
-        // fuer den ganzen Bestand geholt, obwohl dieser Dialog nur Name,
-        // Menge und Bild zeigt.
+        // Die Liste kann fehlen, wenn der Screen aus einem Tiefenlink oder nach einem
+        // Prozessneustart kommt — ohne sie gäbe es weder Name noch Bild. Aus derselben
+        // Quelle wie die Liste (/parts/manual bzw. /minifigs/manual), damit es für
+        // dieselbe Zeile nur eine Quelle gibt und keine Marktpreise für den ganzen Bestand
+        // geholt werden.
         if (partsState.manualParts == null && partsState.manualFigs == null) {
             if (isFig) teile.loadMinifigs() else teile.loadParts()
         }
@@ -300,16 +281,10 @@ fun ManualItemDetailScreen(
                         }
                     }
 
-                    // ── Farbe (nur Teile) — AENDERBAR ─────────────────────────
+                    // ── Farbe (nur Teile) — änderbar ──
                     //
-                    // Marcos Bitte vom 19.10.: „Weiter moechte ich die Farbe
-                    // nachtraeglich anpassen koennen fuer den Fall dass diese
-                    // nicht korrekt geladen wurde."
-                    //
-                    // Die Farbe stand bisher nur als Chip oben — und zwar nur,
-                    // wenn ein Farbname DA war. Ausgerechnet das Teil ohne
-                    // Farbnamen, also genau der Fall, der korrigiert werden
-                    // muss, zeigte gar nichts an.
+                    // Für den Fall, dass die Farbe falsch geladen wurde. Das Feld steht immer da,
+                    // auch ohne Farbnamen — gerade dieses Teil ist das, das korrigiert werden muss.
                     if (!isFig) {
                         HorizontalDivider(Modifier.padding(vertical = Abstaende.winzig),
                             color = MaterialTheme.colorScheme.outlineVariant)
@@ -337,12 +312,11 @@ fun ManualItemDetailScreen(
                     HorizontalDivider(Modifier.padding(vertical = Abstaende.winzig),
                         color = MaterialTheme.colorScheme.outlineVariant)
 
-                    // ── Lagerort ──────────────────────────────────────────────
+                    // ── Lagerort ──
                     //
-                    // Marcos Befund vom 24.09.: Hier fehlte die Zeile, die es im
-                    // Set-Detail und im Dialog der Teile AUS SETS laengst gibt.
-                    // Dasselbe Bedienelement, derselbe entprellte Weg — nur die
-                    // Adresse haengt am Typ, weil eine Figur keine Farbe hat.
+                    // Dasselbe Bedienelement und derselbe entprellte Weg wie im Set-Detail und im
+                    // Dialog der Teile aus Sets; nur die Adresse hängt am Typ, weil eine Figur
+                    // keine Farbe hat.
                     Row(Modifier.fillMaxWidth().padding(vertical = Abstaende.haar),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically) {
@@ -373,15 +347,11 @@ fun ManualItemDetailScreen(
                 }
             }
 
-            // ── Marktpreis je Zustand und Verlauf ──────────────────────────────
+            // ── Marktpreis je Zustand und Verlauf ──
             //
-            // Der Ladezustand gehoert MIT in die Bedingung: Ohne ihn erscheint
-            // der ganze Abschnitt erst, wenn die Antwort da ist — und bis dahin
-            // ist nicht zu unterscheiden, ob noch geladen wird oder ob es zu
-            // diesem Teil keine Marktpreise gibt. `priceHistoryLoading` wurde
-            // dafuer geschrieben, aber nirgends gelesen; die Preis-Sektion des
-            // Sets macht es seit jeher richtig (setPriceLoading in
-            // SetDetailSections.kt).
+            // Der Ladezustand gehört in die Bedingung: Sonst erschiene der Abschnitt erst mit
+            // der Antwort, und bis dahin wäre „lädt noch“ nicht von „keine Marktpreise“ zu
+            // unterscheiden — wie setPriceLoading in SetDetailSections.kt.
             val history = manDetailState.priceHistory
             val byCond  = history?.byCondition
             val chart   = history?.chart

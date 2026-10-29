@@ -31,38 +31,23 @@ import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.Formen
 
 /**
- * Die Farbe eines manuell erfassten Teils auswaehlen — zum KORRIGIEREN.
+ * Die Farbe eines manuell erfassten Teils auswählen — zum Korrigieren, wenn sie
+ * beim Import nicht richtig übernommen wurde.
  *
- * ── Warum es das gibt ───────────────────────────────────────────────────────
+ * Nicht die Auswahl aus AddPartDialog: Die hält selbst ein `BrickColor?` („noch
+ * nichts gewählt“ = null). Hier hat das Teil eine Farbe, sie ist nur falsch; die
+ * aktuelle kommt deshalb von aussen und muss auch anzeigbar sein, wenn die Liste
+ * sie nicht kennt. Dafür [aktuellerName] und [aktuellerHex]: Die Farbliste kommt
+ * über das Netz und kann leer sein (kein Rebrickable-Schlüssel, kein Netz) — dann
+ * steht die heutige Farbe da und die Liste bleibt zu.
  *
- * Marcos Bitte vom 19.10., nach dem Import mehrerer BrickLink-Wanted-Listen:
- * „Die Farbe wurde nicht immer uebernommen und die Teile sind nun mehrfach
- *  vorhanden (bsp 3001). … Weiter moechte ich die Farbe nachtraeglich
- *  anpassen koennen fuer den Fall dass diese nicht korrekt geladen wurde."
- *
- * ── Warum nicht AddPartDialog's Auswahl wiederverwendet ─────────────────────
- *
- * Die dort ist in den Dialog eingebaut und arbeitet auf einem `BrickColor?`,
- * das sie selbst haelt („noch nichts gewaehlt" = null). Hier gibt es keinen
- * Zustand „noch nichts": Das Teil HAT eine Farbe, sie ist nur falsch. Die
- * aktuelle muss darum von aussen kommen und auch dann anzeigbar sein, wenn die
- * Liste sie nicht kennt.
- *
- * Diese zweite Lage ist der Grund fuer [aktuellerName] und [aktuellerHex]: Die
- * Farbliste kommt ueber das Netz und kann leer sein (kein Rebrickable-
- * Schluessel, kein Netz). Dann steht hier trotzdem die heutige Farbe statt
- * eines leeren Feldes — und die Liste bleibt zu, weil es nichts zu waehlen
- * gibt.
- *
- * Eine Wahl speichert SOFORT, ohne Ruhezeit: Sie ist fertig in dem Moment, in
- * dem sie getroffen wird (dieselbe Begruendung wie bei der Ortswahl in
- * [LagerortFeld]).
+ * Eine Wahl speichert sofort, ohne Ruhezeit — wie die Ortswahl in [LagerortFeld].
  *
  * @param farben        Auswahl aus /parts/brick-colors; leer heisst „nur die
- *                      heutige Farbe".
- * @param aktuell       die Rebrickable-Farbnummer, die das Teil heute traegt.
+ *         heutige Farbe“.
+ * @param aktuell       die Rebrickable-Farbnummer, die das Teil heute trägt.
  * @param aktuellerName ihr Name, soweit bekannt — sonst steht die Nummer da.
- * @param onWahl        wird nur gerufen, wenn eine ANDERE Farbe gewaehlt wird.
+ * @param onWahl        wird nur gerufen, wenn eine andere Farbe gewählt wird.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

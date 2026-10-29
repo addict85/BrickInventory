@@ -43,11 +43,10 @@ class CsvImportSseClient @Inject constructor(
         data class Status(val status: CsvImportStatus) : Event()
         /** Verbindungsfehler — Aufrufer soll auf Polling zurückfallen. */
         /**
-         * Verbindungsfehler. [technisch] ist AUSSCHLIESSLICH fürs Log — der
-         * Aufrufer (AppViewModel.startCsvImportWatcher) setzt daraufhin nur `sseFailed = true`
-         * und fällt auf Polling zurück; dem Nutzer wird nichts davon gezeigt.
-         * Deshalb steht hier kein übersetzbarer Text, sondern eine Ursache in
-         * technischer Form (Nachtrag 116).
+         * Verbindungsfehler. [technisch] ist ausschliesslich fürs Log: Der Aufrufer
+         * (AppViewModel.startCsvImportWatcher) setzt nur `sseFailed = true` und fällt auf
+         * Polling zurück, dem Nutzer wird nichts gezeigt — deshalb kein übersetzbarer
+         * Text, sondern die Ursache in technischer Form.
          */
         data class Failed(val technisch: String?) : Event()
     }

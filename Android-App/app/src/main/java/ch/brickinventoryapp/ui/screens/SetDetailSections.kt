@@ -1,25 +1,9 @@
 package ch.brickinventoryapp.ui.screens
 
 /**
- * Die Abschnitte der Set-Detailseite.
- *
- * ── Warum eigene Datei (Nachtrag 98) ────────────────────────────────────────
- *
- * `SetDetailScreen()` war 526 Zeilen — die längste Funktion der App. Die ganze
- * Datei enthielt genau EIN Composable, obwohl daneben `SetDetailComponents.kt`
- * mit neun kleinen liegt: Die Aufteilung war angefangen und nicht zu Ende
- * geführt.
- *
- * Die sechs Abschnitte der Seite (Bild, Kennzahl-Chips, Wert-Kacheln,
- * Stammdaten, Preis, Anleitungen) sind `item { … }`-Blöcke einer LazyColumn.
- * Deshalb sind es Erweiterungen auf `LazyListScope` und KEINE @Composable-
- * Funktionen: Sie tragen Einträge in die Liste ein, die Inhalte darin sind
- * weiterhin Composables.
- *
- * ── Wie das ohne Compiler abgesichert wurde ─────────────────────────────────
- * Jeder Rumpf ist WORTGLEICH übernommen; verändert wurde nur die Einrückung.
- * Die Parameterlisten stammen aus einer Analyse der freien Namen je Block —
- * dasselbe Vorgehen wie beim Signatur-Umbau in Nachtrag 96.
+ * Die Abschnitte der Set-Detailseite. Erweiterungen auf LazyListScope und keine
+ * Composables, weil sie Einträge in die LazyColumn der Seite eintragen; die
+ * Inhalte darin sind Composables.
  */
 
 import ch.brickinventoryapp.ui.theme.Formen
@@ -81,14 +65,8 @@ import androidx.core.net.toUri
 import ch.brickinventoryapp.ui.theme.Abstaende
 
 /**
- * Anleitungen — ansehen, hinzufügen und entfernen.
- *
- * ── Warum die Karte jetzt IMMER steht (Nachtrag 128) ────────────────────────
- *
- * Sie erschien nur, wenn es schon Anleitungen gab. Das war richtig, solange sie
- * nichts als eine Liste war — jetzt trägt sie den Weg, eine erste hinzuzufügen,
- * und der wäre genau dann unerreichbar, wenn man ihn braucht. Die Webapp zeigt
- * ihr Hinzufügen-Feld ebenfalls bei leerem Set.
+ * Anleitungen — ansehen, hinzufügen und entfernen. Die Karte steht auch ohne
+ * Anleitung, weil sie den Weg trägt, eine erste hinzuzufügen.
  */
 fun LazyListScope.setDetailInstructionsSection(
     set: SetItem, detailState: SetDetailUiState, serverUrl: String,
@@ -122,59 +100,25 @@ fun LazyListScope.setDetailInstructionsSection(
                         // Konfiguration veraltete Werte liefern kann.
                         val keineAppText = stringResource(R.string.common_no_app_to_open)
                         instructions.forEachIndexed { idx, instr ->
-                            // Kein `?token=` mehr an der Adresse.
-                            //
-                            // Hier stand der Sitzungstoken der App — der, der
-                            // nicht ablaeuft. Er wurde damit gleich dreifach
-                            // abgelegt: als Navigationsargument im Backstack
-                            // (Screen.PdfViewer.createRoute), als sichtbarer
-                            // Text unter der Anleitung (siehe das Text() weiter
-                            // unten) und im Zugriffsprotokoll des Servers.
-                            //
-                            // Gebraucht wurde er an keiner Stelle: Die Datei
-                            // holt der In-App-Betrachter ueber den geteilten
-                            // OkHttp-Client, und dessen Interceptor setzt den
-                            // Authorization-Kopf fuer jede Adresse unseres
-                            // Servers (di/AppModule.kt). Der zweite Zweig
-                            // (instr.url) zeigt ohnehin nach draussen und hatte
-                            // nie einen Token.
+                            // Kein `?token=` an der Adresse: Der Sitzungstoken läge sonst im
+                            // Backstack, als Text unter der Anleitung und im Zugriffsprotokoll. Der
+                            // In-App-Betrachter lädt über den geteilten Client, der den
+                            // Authorization-Kopf setzt (di/ServerClient.kt).
                             val openUrl = instr.localPath?.let { "$serverUrl$it" } ?: instr.url
 
                             if (idx > 0) HorizontalDivider(
                                 Modifier.padding(vertical = Abstaende.winzig),
                                 color = MaterialTheme.colorScheme.outlineVariant
                             )
-                            // ── Die GANZE Zeile oeffnet die Anleitung ──────────
-                            //
-                            // Marco: „Kannst du noch anpassen, dass die ganze
-                            // Anleitung in der Android-App auf dem Detail-Dialog
-                            // klickbar ist (zum PDF öffnen) und nicht nur das Icon
-                            // rechts daneben?"
-                            //
-                            // Antippbar war allein der 36-dp-Knopf am rechten Rand.
-                            // Links davon lagen eine 38-dp-Kachel mit PDF-Symbol und
-                            // zwei Zeilen Text — und die Adresse steht in der
-                            // Akzentfarbe, also in der Farbe, die in dieser App
-                            // „hier geht etwas auf" heisst. Es sah aus wie ein
-                            // Verweis und war keiner.
-                            //
-                            // Das Symbol rechts BLEIBT, aber als Hinweis und nicht
-                            // als Knopf: Ein eigener Knopf an derselben Stelle waere
-                            // ein zweites Ziel fuer dieselbe Handlung, und die
-                            // Sprachausgabe nennte ihn als eigenes Bedienelement
-                            // neben der Zeile, die schon dasselbe tut.
-                            //
-                            // Der Papierkorb liegt AUSSERHALB der antippbaren Zeile
-                            // — als Geschwister, nicht als Kind. Damit haengt nichts
-                            // daran, welcher von zwei verschachtelten Antippbereichen
-                            // ein Tippen bekommt, und Loeschen ist die Handlung, bei
-                            // der ein Fehlgriff weh tut.
+                            // Die ganze Zeile öffnet die Anleitung — sie sah aus wie ein Verweis.
+                            // Das Symbol rechts ist nur ein Hinweis, kein zweites Ziel für dieselbe
+                            // Handlung. Der Papierkorb liegt neben, nicht in der antippbaren Zeile,
+                            // damit ein Fehlgriff nicht löscht.
                             val oeffneAnleitung: () -> Unit = {
                                 if (instr.localPath != null) {
                                     onOpenPdf(openUrl, instr.description ?: "")
                                 } else {
-                                    // Rückmeldung statt Stille (Nachtrag 49) — siehe
-                                    // CatalogDetailScreen.
+                                    // Rückmeldung statt Stille, siehe CatalogDetailScreen.
                                     try { ctx.startActivity(Intent(Intent.ACTION_VIEW, openUrl.toUri())) }
                                     catch (_: Exception) {
                                         android.widget.Toast.makeText(ctx,
@@ -240,23 +184,10 @@ fun LazyListScope.setDetailInstructionsSection(
                                         )
                                     }
                                 }
-                                // Entfernen nur bei SELBST hochgeladenen
-                                // Anleitungen.
-                                //
-                                // Die Annahme hier war, `id != null` genuege:
-                                // Anleitungen aus der automatischen Suche
-                                // haetten keine Kennung. Das stimmte nicht —
-                                // der Server legt zwei Tabellen zusammen, und
-                                // beide bringen eine `id` mit. Der Papierkorb
-                                // stand deshalb an JEDER Zeile, obwohl die
-                                // Loeschroute nur die eigene Tabelle kennt.
-                                // Schlimmer als der zu erwartende 404: Die
-                                // beiden Zaehler laufen unabhaengig, ein Klick
-                                // konnte also die gleichnamige EIGENE
-                                // Anleitung treffen.
-                                //
-                                // `isManual` beantwortet die Frage jetzt dort,
-                                // wo sie entsteht (siehe Instruction).
+                                // Entfernen nur bei selbst hochgeladenen Anleitungen (`isManual`):
+                                // Beide Quellen bringen eine `id`, und weil ihre Zähler unabhängig
+                                // laufen, könnte ein Klick sonst die gleichnamige eigene Anleitung
+                                // treffen.
                                 val id = instr.id
                                 if (id != null && instr.isManual) {
                                     IconButton(
@@ -272,17 +203,8 @@ fun LazyListScope.setDetailInstructionsSection(
                                 }
                             }
                         }
-                        // Der Weg, eine erste Anleitung hinzuzufuegen. Steht
-                        // UNTER der Liste, weil das Ansehen der haeufigere Fall
-                        // ist.
-                        //
-                        // Daneben stand „Neu laden" — der Aufruf, der die
-                        // hinterlegten Anleitungen verwirft und die
-                        // automatische Suche noch einmal laufen laesst. Auf
-                        // Marcos Wunsch entfernt. Ohne den zweiten Knopf
-                        // braucht es auch die Zeile nicht mehr: Ein einzelner
-                        // Knopf nimmt die volle Breite, wie die uebrigen
-                        // Aktionen dieser Karte.
+                        // Der Weg, eine erste Anleitung hinzuzufügen — unter der Liste, weil das
+                        // Ansehen häufiger ist; volle Breite wie die übrigen Aktionen der Karte.
                         OutlinedButton(
                             onClick = onAnleitungWaehlen,
                             modifier = Modifier.fillMaxWidth().padding(top = Abstaende.klein),
@@ -300,11 +222,8 @@ fun LazyListScope.setDetailInstructionsSection(
 
 /** Marktpreis, Kaufpreis, Gewinn/Verlust und der Preisverlauf. */
 /**
- * ── Warum diese Helfer als Parameter kommen (Nachtrag 104) ──────────────────
- * `fmtPrice`, `fmtDate` und `serverUrl` sind lokale Werte von
- * SetDetailScreen() — beim Herauslösen der Abschnitte verlieren sie ihren
- * Gültigkeitsbereich. Sie hier neu zu bauen hiesse, die Währung ein zweites
- * Mal aufzulösen; als Parameter bleibt es EINE Stelle.
+ * `fmtPrice`, `fmtDate` und `serverUrl` kommen als Parameter aus
+ * SetDetailScreen(), damit die Währung an einer Stelle aufgelöst wird.
  */
 fun LazyListScope.setDetailPriceSection(set: SetItem, detailState: SetDetailUiState, price: SetPriceResponse?, history: PriceHistoryResponse?, pnlPct: String?, currency: String, isBrick: Boolean, fmtPrice: (Double?) -> String) {
     // ── Price section ──────────────────────────────────────────────────
@@ -314,24 +233,10 @@ fun LazyListScope.setDetailPriceSection(set: SetItem, detailState: SetDetailUiSt
                 if (detailState.setPriceLoading && price == null) {
                     PreisLaedtZeile()
                 } else if (price != null && !price.noPrice) {
-                    // ── Grosse Preiszeile: nur ohne die Wert-Kacheln ─
-                    //
-                    // Marcos Befund: „Der blau markierte Wert kann
-                    // entfernt werden. Dieser bietet keinen Mehrwert."
-                    // Im Stein-Design steht derselbe Marktpreis schon
-                    // in der Kachel weiter oben und der Kaufpreis in
-                    // der daneben — die Zeile wiederholte beide, und
-                    // ihre Prozentangabe stammte aus dem
-                    // GESAMTvergleich, während die Zeilen darunter je
-                    // Zustand rechnen. Bei einem Set, das einmal neu
-                    // und einmal gebraucht im Bestand liegt, standen
-                    // damit drei Prozentzahlen untereinander, von denen
-                    // die oberste eine andere Frage beantwortete.
-                    //
-                    // Im klassischen Design gibt es die Kacheln NICHT
-                    // (siehe `if (isBrick)` weiter oben). Dort bleibt
-                    // die Zeile, sonst verschwände der Marktpreis von
-                    // der Seite.
+                    // Die grosse Preiszeile nur ohne die Wert-Kacheln: Im Stein-Design stehen
+                    // Markt- und Kaufpreis schon in den Kacheln oben, und ihre Prozentangabe
+                    // (Gesamtvergleich) stünde über den Zeilen je Zustand. Im klassischen Design
+                    // gibt es die Kacheln nicht, dort bleibt sie.
                     val zeigeGrossePreiszeile = !isBrick
                     if (zeigeGrossePreiszeile) {
                         Text(
@@ -345,13 +250,8 @@ fun LazyListScope.setDetailPriceSection(set: SetItem, detailState: SetDetailUiSt
                             Spacer(Modifier.height(Abstaende.winzig))
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                                 PnlBadge(pct)
-                                // Mengengewichtet über die Erfassungen —
-                                // dieselbe Grösse, gegen die die
-                                // Prozentangabe daneben rechnet. Der
-                                // frühere Rückfall auf den gespiegelten
-                                // Wert der LETZTEN Erfassung passte dort
-                                // nicht; die Spalte gibt es seit
-                                // Migration 0032 nicht mehr.
+                                // Mengengewichtet über die Erfassungen — dieselbe Grösse, gegen die
+                                // die Prozentangabe daneben rechnet.
                                 val shownPurchase = set.anzeigeKaufpreis
                                 if (shownPurchase != null) {
                                     Text(
@@ -382,13 +282,10 @@ fun LazyListScope.setDetailPriceSection(set: SetItem, detailState: SetDetailUiSt
                         }
                     }
 
-                    // ── Verlauf: eine Linie je Zustand ───────────────
+                    // ── Verlauf: eine Linie je Zustand ──
                     //
-                    // Preis und Verlauf sind ZWEI Abrufe. Der Preis ist meist
-                    // zuerst da; ohne den Hinweis hier springt das Diagramm
-                    // spaeter kommentarlos in die schon sichtbare Karte.
-                    // `priceHistoryLoading` wurde dafuer geschrieben, aber
-                    // nirgends gelesen.
+                    // Preis und Verlauf sind zwei Abrufe; der Hinweis verhindert, dass das Diagramm
+                    // später kommentarlos in die Karte springt.
                     val chart = history?.chart
                     if (chart != null && chart.values.isNotEmpty()) {
                         Spacer(Modifier.height(Abstaende.klein))
@@ -411,15 +308,10 @@ fun LazyListScope.setDetailDetailsSection(set: SetItem, setNumber: String, vm: S
         SectionCard(title = stringResource(R.string.detail_section_details)) {
             DetailRow2(stringResource(R.string.detail_set_number), setNumber)
             DetailRow2(stringResource(R.string.detail_added), fmtDate(set.addedAt))
-            // ── Lagerort ────────────────────────────────────────────────────
+            // ── Lagerort ──
             //
-            // Marcos Vorgabe: „Der Lagerort soll ein Auswahlfeld mit einem
-            // Dropdown sein, bei dem man auch gleich neue Auswahlwerte
-            // erfassen kann."
-            //
-            // Die Liste gehoert dem BESITZER des Sets, nicht dem Betrachter —
-            // der Grossvater sieht beim Set des Enkels dessen Regale.
-            // Begruendung an loadLagerortVorrat().
+            // Auswahlfeld mit der Möglichkeit, neue Orte zu erfassen. Die Liste gehört dem
+            // Besitzer des Sets, nicht dem Betrachter (siehe loadLagerortVorrat()).
             val lagerZustand by vm.lagerState.collectAsStateWithLifecycle()
             LaunchedEffect(setNumber, set.owners) {
                 vm.loadLagerortVorrat(set.owners.map { it.id })
@@ -441,13 +333,9 @@ fun LazyListScope.setDetailDetailsSection(set: SetItem, setNumber: String, vm: S
                 Modifier.padding(vertical = Abstaende.winzig),
                 color = MaterialTheme.colorScheme.outlineVariant
             )
-            // Quantity stepper
-            // An set.quantity gekoppelt, nicht nur an die Setnummer:
-            // Der Server kann eine Verringerung deckeln (fremde
-            // Exemplare lassen sich nicht wegnehmen) und meldet die
-            // wirkliche Gesamtmenge zurück. Ohne die Kopplung behielte
-            // der Regler seine eigene Annahme, bis man die Ansicht
-            // verlässt und neu öffnet.
+            // Mengenregler, an set.quantity gekoppelt: Der Server kann eine Verringerung
+            // deckeln und meldet die wirkliche Menge zurück; ohne die Kopplung behielte der
+            // Regler seine Annahme.
             var qty by remember(set.setNumber, set.quantity) { mutableIntStateOf(set.quantity) }
             Row(
                 Modifier.fillMaxWidth().padding(vertical = Abstaende.winzig),
@@ -495,9 +383,6 @@ fun LazyListScope.setDetailDetailsSection(set: SetItem, setNumber: String, vm: S
                     onNavigateToAcqMgmt("set", capturedSetNumber, 0, capturedSetTitle)
                 }
             )
-
-            // Hier stand „Teile neu einlesen" — der Aufruf, der die Teileliste
-            // des Sets aus dem Katalog neu holt. Auf Marcos Wunsch entfernt.
         }
     }
 
@@ -523,7 +408,7 @@ fun LazyListScope.setDetailValueTiles(set: SetItem, price: SetPriceResponse?, is
                 )
                 BrickStatTile(
                     label = stringResource(R.string.detail_purchase_price),
-                    // Mengengewichtet, wie in der Webapp (Nachtrag 76)
+                    // Mengengewichtet, wie in der Webapp.
                     value = fmtPrice(set.anzeigeKaufpreis),
                     container = SlateBlue,
                     onContainer = Color.White,
@@ -637,28 +522,11 @@ fun LazyListScope.setDetailHeroImage(
 }
 
 /**
- * Preisalarm — „sag Bescheid, wenn das Set unter X faellt".
- *
- * ── Warum eine eigene Karte und nicht eine Zeile in den Stammdaten ──────────
- *
- * Der Alarm gehoert nicht zum SET, sondern zum KONTO: Zwei Personen mit
- * demselben Set haben verschiedene Alarme. Zwischen Nummer, Menge und
- * Erfassungsdatum stuende er wie eine Eigenschaft des Sets da — und beim
- * Verschieben in ein anderes Konto fragte man sich, ob er mitwandert (er tut
- * es nicht).
- *
- * ── Warum die Schwelle beim TIPPEN gespeichert wird ─────────────────────────
- *
- * Bis hierher wurde beim Verlassen des Feldes gespeichert. Marcos Befund:
- * „Der Preisalarm wird nicht gespeichert … soll gespeichert werden, wenn man
- * was eintraegt. Analog dem Kaufpreis." Am Telefon tippt man die Zahl,
- * schliesst die Tastatur und geht zurueck — der Fokuswechsel kommt nie.
- *
- * Ein Speichern je Zeichen waere die andere Uebertreibung: „249.90" ergaebe
- * sechs Anfragen und fuenf Schwellen, die niemand wollte, eine davon bei 2.
- * Deshalb die Ruhezeit in Alarmeingabe.RUHE_MS — und sie liegt im ViewModel,
- * nicht in einem LaunchedEffect, damit sie das Verlassen des Bildschirms
- * ueberlebt. Die ausfuehrliche Begruendung steht an setzePreisalarm().
+ * Preisalarm — „sag Bescheid, wenn das Set unter X fällt“. Eigene Karte, weil der
+ * Alarm zum Konto gehört, nicht zum Set, und beim Verschieben nicht mitwandert.
+ * Gespeichert wird beim Tippen nach einer Ruhezeit (Alarmeingabe.RUHE_MS, im
+ * ViewModel, damit sie das Verlassen überlebt): Am Telefon kommt der Fokuswechsel
+ * oft nie.
  */
 fun LazyListScope.setDetailAlarmSection(
     setNumber: String,
@@ -705,12 +573,9 @@ fun LazyListScope.setDetailAlarmSection(
 
             Row(verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                // Zwei Chips statt eines Auswahlfelds: Es sind genau zwei
-                // Moeglichkeiten, und beide sollen ohne Aufklappen lesbar sein.
-                // Die Richtung schickt nur mit, wenn schon eine Schwelle
-                // dasteht: Ohne Zahl gaebe es nichts zu speichern, und der
-                // Aufruf liefe auf ein Loeschen dessen hinaus, was es noch
-                // gar nicht gibt.
+                // Zwei Chips statt eines Auswahlfelds: genau zwei Möglichkeiten, beide ohne
+                // Aufklappen lesbar. Die Richtung geht nur mit, wenn eine Schwelle dasteht — sonst
+                // liefe der Aufruf auf ein Löschen hinaus.
                 FilterChip(
                     selected = richtung == "unter",
                     onClick = { richtung = "unter"
@@ -725,20 +590,9 @@ fun LazyListScope.setDetailAlarmSection(
                 )
                 OutlinedTextField(
                     value = schwelle,
-                    // Der getippte Text geht UNVERAENDERT weiter; die Ruhezeit
-                    // und die Umrechnung stecken hinter setzePreisalarm().
-                    // Der Bildschirm rechnet hier bewusst NICHT selbst um: Dann
-                    // gaebe es die Umrechnung zweimal, und die eine Fassung
-                    // koennte die Zwischenstaende anders beurteilen als die
-                    // andere. Was ein Zwischenstand bedeutet, steht an genau
-                    // einer Stelle (Alarmeingabe.zahl).
-                    //
-                    // Der Filter (Nachtrag 28.09.) widerspricht dem nicht: Er
-                    // DEUTET nichts, er laesst nur Ziffern und ein Trennzeichen
-                    // herein. Was er verhindert, ist ein eigener Weg zum
-                    // Loeschen: Ein Buchstabe aus der Zwischenablage machte die
-                    // Eingabe unlesbar, und unlesbar heisst hier LOESCHEN. Das
-                    // Feld zu leeren bleibt der eine gewollte Weg dahin.
+                    // Der getippte Text geht unverändert an setzePreisalarm(); die Umrechnung steht
+                    // an einer Stelle (Alarmeingabe.zahl). Der Filter lässt nur Ziffern und ein
+                    // Trennzeichen herein, denn ein unlesbarer Wert hiesse hier Löschen.
                     onValueChange = { roh ->
                         val g = NumericInput.price(roh)
                         schwelle = g; onSetze(setNumber, richtung, g, zustand)
@@ -766,20 +620,6 @@ fun LazyListScope.setDetailAlarmSection(
     }
 }
 
-// Hier stand die Funktion `setDetailKaufSection` — BrickLink und
-// Preisvergleich am Set-Detail.
-//
-// ── Warum sie weg ist ───────────────────────────────────────────────────────
-//
-// Marcos Vorgabe: „Im Detaildialog der Sets sollen die Button Auf BrickLink
-// kaufen und Preisvergleich nicht angezeigt werden."
-//
-// Der Grund wird sichtbar, sobald man fragt, wem dieser Bildschirm gehoert:
-// Er zeigt ein Set, das man BESITZT. Kaufen und Preise vergleichen will, wer
-// es noch NICHT hat — und dort stehen beide Knoepfe weiter: im Katalog-Detail
-// und im Merkposten-Detail.
-//
-// `SetItem.bricklink` und `SetItem.preisvergleichUrl` bleiben im Modell: Der
-// Server liefert beide Felder weiter, und die Merkliste liest sie ueber
-// dieselbe Antwort. Ein Feld zu entfernen, das die Gegenstelle noch schickt,
-// waere eine Aenderung an der Schnittstelle fuer eine Frage der Darstellung.
+// Kaufen und Preisvergleich stehen nicht am Set-Detail: Es zeigt ein Set, das man
+// besitzt; beide Knöpfe gibt es im Katalog- und im Merkposten-Detail. Die Felder
+// bleiben im Modell, weil der Server sie schickt und die Merkliste sie liest.

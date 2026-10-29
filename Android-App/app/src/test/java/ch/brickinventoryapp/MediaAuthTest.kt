@@ -46,7 +46,7 @@ class MediaAuthTest {
 
     @Test
     fun `der Bild-Client haengt den Token an Anfragen an den eigenen Server`() {
-        val di = code(read("di/AppModule.kt"))
+        val di = code(Quellen.di())
         // Beide Clients entstehen aus derselben Fabrik — der Auth-Zweig darin
         // gilt also auch für den Bild-Client (isApiClient = false).
         assert(di.contains("""fun provideImageOkHttpClient""")) { "Bild-Client fehlt" }
@@ -61,7 +61,7 @@ class MediaAuthTest {
 
     @Test
     fun `der Token geht nur an den eigenen Server, nicht an fremde Hosts`() {
-        val di = code(read("di/AppModule.kt"))
+        val di = code(Quellen.di())
         assert(di.contains("NetworkPolicy.isSameOrigin")) {
             "Ohne Origin-Vergleich ginge der Token auch an CDN-Adressen"
         }
@@ -72,7 +72,7 @@ class MediaAuthTest {
 
     @Test
     fun `eine 401 beim Bildladen meldet die abgelaufene Sitzung`() {
-        val di = code(read("di/AppModule.kt"))
+        val di = code(Quellen.di())
         assert(di.contains("response.code == 401") && di.contains("sessionExpired.notifyExpired()")) {
             "Sonst zeigt die Galerie nach Token-Ablauf stumm leere Kacheln"
         }

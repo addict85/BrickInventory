@@ -112,6 +112,33 @@ class KachelMasseTest {
         org.junit.Assert.assertTrue("Feste Kartenhöhe statt heightIn(min = …): $verstoesse", verstoesse.isEmpty())
     }
 
+    /**
+     * Dasselbe für Knöpfe, Chips und anklickbare Flächen: Sie tragen Text.
+     *
+     * Gegenprobe (am 28.10.2026 gemessen, kotlinc): die Periodenchips in
+     * PortfolioChart.kt wieder mit `Modifier.height(28.dp)` → rot mit
+     * „PortfolioChart.kt …“.
+     */
+    @Test
+    fun `Knoepfe und Chips haben keine feste Hoehe`() {
+        val knopf = Regex("""\b(Button|OutlinedButton|TextButton|FilledTonalButton|FilterChip|AssistChip|InputChip|Surface)\(""")
+        val festeHoehe = Regex("""modifier\s*=\s*Modifier\.height\(""")
+        val verstoesse = mutableListOf<String>()
+        var knoepfe = 0
+        for (datei in Quellen.unter("ui")) {
+            val zeilen = Quellen.ohneKommentare(datei.readText()).lines()
+            for ((nr, zeile) in zeilen.withIndex()) {
+                if (!knopf.containsMatchIn(zeile)) continue
+                knoepfe++
+                val kopf = zeilen.subList(nr, minOf(nr + 6, zeilen.size))
+                val treffer = kopf.indexOfFirst { festeHoehe.containsMatchIn(it) }
+                if (treffer >= 0) verstoesse += "${datei.name}:${nr + treffer + 1}"
+            }
+        }
+        org.junit.Assert.assertTrue("Keine Knöpfe gefunden — Muster veraltet?", knoepfe >= 20)
+        org.junit.Assert.assertTrue("Feste Höhe an Knopf oder Chip statt heightIn(min = …): $verstoesse", verstoesse.isEmpty())
+    }
+
     @Test
     fun `Bildecke und Kartenform teilen sich den Radius`() {
         // Nicht der Wortlaut, sondern die Ableitung: Beide muessen aus

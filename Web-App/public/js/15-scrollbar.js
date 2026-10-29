@@ -1,6 +1,6 @@
 // ── Eigener Scrollbalken für die ganze Anwendung ────────────────────────────
 //
-// ── Warum eigene Datei (Nachtrag 136) ───────────────────────────────────────
+// ── Warum eigene Datei ───────────────────────────────────────
 //
 // Lag ebenfalls in js/01-core.js und gehört zu keinem ihrer Themen. Braucht
 // von aussen nur G() — den Rest macht er selbst.

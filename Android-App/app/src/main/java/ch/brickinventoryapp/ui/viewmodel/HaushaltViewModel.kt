@@ -1,6 +1,7 @@
 package ch.brickinventoryapp.ui.viewmodel
 
 import androidx.lifecycle.viewModelScope
+import ch.brickinventoryapp.R
 import ch.brickinventoryapp.data.repository.HaushaltRepository
 import ch.brickinventoryapp.data.repository.Result
 import ch.brickinventoryapp.ui.Aenderung
@@ -51,18 +52,35 @@ class HaushaltViewModel @Inject constructor(
         }
     }
 
-    /** Bei Erfolg lädt der Status neu; seine Antwort zeigt die neue Verknüpfung. */
-    fun redeemHouseholdInvite(code: String) {
+    /**
+     * Der Server verlangt zum Einlösen das aktuelle Passwort des eigenen
+     * Kontos, denn die Verknüpfung öffnet den eigenen Bestand einem anderen
+     * Konto. Bei Erfolg lädt der Status neu.
+     */
+    fun redeemHouseholdInvite(code: String, passwort: String) {
         viewModelScope.launch {
-            _householdState.update { it.copy(isLoading = true, message = null) }
-            when (val r = haushalt.redeemHouseholdInvite(code.trim())) {
+            _householdState.update { it.copy(isLoading = true, message = null, passwortFalsch = false) }
+            when (val r = haushalt.redeemHouseholdInvite(code.trim(), passwort)) {
                 is Result.Success -> {
-                    _householdState.update { it.copy(isLoading = false, message = r.data.error) }
+                    _householdState.update { it.copy(isLoading = false, message = r.data.error,
+                        eingeloest = if (r.data.success) it.eingeloest + 1 else it.eingeloest) }
                     if (r.data.success) kontenGeaendert(bestand = false)
                 }
-                is Result.Error -> _householdState.update { it.copy(isLoading = false, message = meldung(r)) }
+                is Result.Error -> _householdState.update { it.copy(isLoading = false,
+                    passwortFalsch = r.code == PASSWORT_FALSCH, message = einloeseFehler(r)) }
             }
         }
+    }
+
+    /**
+     * Für die Sperre nach Fehlversuchen hat der Server keinen eigenen Code
+     * zugesagt, nur den Status 429; sein Satz nennt die Wartezeit und geht vor.
+     */
+    private fun einloeseFehler(r: Result.Error): String = when {
+        r.code == PASSWORT_FALSCH -> text(R.string.household_redeem_password_wrong)
+        r.code == "zu_viele_fehlversuche" || r.httpCode == 429 ->
+            r.message.ifBlank { text(R.string.household_redeem_locked) }
+        else -> meldung(r)
     }
 
     /** [subUserId]: Unterkonto lösen; [mainUserId]: sich von diesem Elternkonto lösen. */
@@ -95,5 +113,9 @@ class HaushaltViewModel @Inject constructor(
 
     override fun zuruecksetzen() {
         _householdState.value = HouseholdUiState()
+    }
+
+    private companion object {
+        const val PASSWORT_FALSCH = "aktuelles_passwort_falsch"
     }
 }

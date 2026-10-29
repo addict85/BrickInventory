@@ -536,9 +536,13 @@ test('die Preis-Probe läuft ohne Serverfehler', () => {
   // Frühere Fassung fragte set_acquisitions.added_at ab — die Spalte heisst
   // created_at. Jede Probe endete in "Interner Serverfehler".
   const admin = fs.readFileSync(path.join(ROOT, 'routes', 'api_v1', 'admin.ts'), 'utf8');
-  const code = admin.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
+  // Die Abfragen der Probe stehen im Dienst der Verwaltungsrouten.
+  const dienst = fs.readFileSync(path.join(ROOT, 'utils', 'verwaltung.ts'), 'utf8');
+  const code = (admin + '\n' + dienst).replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
   assert.doesNotMatch(code, /added_at/, 'set_acquisitions kennt keine Spalte added_at');
-  assert.match(admin, /FROM set_acquisitions WHERE user_id=\$1 AND set_number=\$2 ORDER BY created_at/,
+  assert.match(admin, /verwaltung\.probeErfassungen\(uid, setNumber\)/,
+    'Die Probe muss die Erfassungen des Sets lesen');
+  assert.match(dienst, /FROM set_acquisitions WHERE user_id=\$1 AND set_number=\$2 ORDER BY created_at/,
     'Die Probe muss über created_at sortieren');
 
   // Die Erklärung zur Zustandswahl war seit der effectiveCondition-Umstellung

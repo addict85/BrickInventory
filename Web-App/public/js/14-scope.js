@@ -1,6 +1,6 @@
 // ═══ Kontofilter (Haushalt) — je Ansicht ═══════════════════════════════════
 //
-// ── Warum eigene Datei (Nachtrag 136) ───────────────────────────────────────
+// ── Warum eigene Datei ───────────────────────────────────────
 //
 // Dieser Abschnitt lag in js/01-core.js. Deren Kopfzeile nennt als Inhalt
 // „Utils, i18n-Glue, Auth & Panels, Login/Logout, CSV-Import-Fortschrittsbalken"
@@ -41,7 +41,7 @@ export function setScopeMode(view, mode) {
 /**
  * Kontofilter aller Ansichten zurücksetzen — bei jeder ANMELDUNG.
  *
- * ── Warum (Nachtrag 46, Marcos Wunsch) ──────────────────────────────────────
+ * ── Warum (Marcos Wunsch) ──────────────────────────────────────
  * Der Filter liegt bewusst im localStorage: Er ist eine Ansichtseinstellung
  * wie „Kachel oder Tabelle", und am Telefon will man sie womöglich anders als
  * am Rechner. Genau das machte ihn aber auch zu einer Falle — er überlebte

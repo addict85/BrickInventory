@@ -53,6 +53,8 @@
   --txt:var(--ink);
   --mut:#5a6270;
   --screen-bg:#eef1f6;      /* Login-/Startup-Screen, vor dem Login */
+  /* Die Marke ist rot; ein roter Preis neben grüner G&V las sich als Verlust. */
+  --preis:var(--ink);
   --rad:14px;
 
   /* Kante statt Wolke: derselbe Ton wie der Rahmen, nur versetzt. */
@@ -63,6 +65,8 @@
   /* Die Noppenform steht in styles.css unter :root — seit auch das
      Stein-Design sie benutzt, gehoert sie keinem Design mehr allein. */
 }
+/* Dunkel ist die Kante fast schwarz; Preise stehen dann in der Schriftfarbe. */
+[data-theme="noppe"][data-dunkel],[data-theme="hochglanz"][data-dunkel]{--preis:var(--txt)}
 
 /* ── Die Grundplatte ────────────────────────────────────────────────────────
    Der Verlauf sitzt auf dem BODY und nicht auf einem eigenen Element: So
@@ -133,18 +137,24 @@
 [data-theme="noppe"] header,[data-theme="hochglanz"] header,
 [data-theme="noppe"] header a,[data-theme="hochglanz"] header a,
 [data-theme="noppe"] header .brand,[data-theme="hochglanz"] header .brand,
-[data-theme="noppe"] header .logo h1 span,[data-theme="hochglanz"] header .logo h1 span,
+[data-theme="noppe"] header .logo .marke span,[data-theme="hochglanz"] header .logo .marke span,
 [data-theme="noppe"] header .hs .v,[data-theme="hochglanz"] header .hs .v,
 [data-theme="noppe"] header .hs .l,[data-theme="hochglanz"] header .hs .l{color:#fff}
 
 [data-theme="noppe"] nav,[data-theme="hochglanz"] nav{
   background:var(--b600);border-bottom:3px solid var(--ink);
 }
+/* Dunkel ist --b600 ein helles Rot; Kopf- und Reiterleiste nehmen das tiefe
+   Rot, damit die weisse Schrift darauf lesbar bleibt. */
+[data-theme="noppe"][data-dunkel] header,[data-theme="hochglanz"][data-dunkel] header,
+[data-theme="noppe"][data-dunkel] nav,[data-theme="hochglanz"][data-dunkel] nav{background:var(--b300)}
 [data-theme="noppe"] nav .ntab,[data-theme="hochglanz"] nav .ntab{color:var(--b100);font-weight:700}
 [data-theme="noppe"] nav .ntab.active,[data-theme="hochglanz"] nav .ntab.active{
   background:var(--sur);color:var(--ink);font-weight:900;
   border:2.5px solid var(--ink);border-radius:9px;
 }
+[data-theme="noppe"][data-dunkel] nav .ntab,[data-theme="hochglanz"][data-dunkel] nav .ntab{color:#ffd9db}
+[data-theme="noppe"][data-dunkel] nav .ntab.active,[data-theme="hochglanz"][data-dunkel] nav .ntab.active{color:var(--txt)}
 
 /* ── Flaechen ───────────────────────────────────────────────────────────── */
 [data-theme="noppe"] .card,[data-theme="hochglanz"] .card,
@@ -196,7 +206,8 @@
 [data-theme="noppe"] .sc:nth-child(6n+5)::before,[data-theme="hochglanz"] .sc:nth-child(6n+5)::before{background-color:var(--stein-4)}
 [data-theme="noppe"] .sc:nth-child(6n)::before,[data-theme="hochglanz"] .sc:nth-child(6n)::before{background-color:var(--stein-5)}
 
-[data-theme="noppe"] .sci,[data-theme="hochglanz"] .sci{background:#f7f9fc;border-bottom:2.5px solid var(--ink)}
+[data-theme="noppe"]:not([data-dunkel]) .sci,[data-theme="hochglanz"]:not([data-dunkel]) .sci{background:#f7f9fc}
+[data-theme="noppe"] .sci,[data-theme="hochglanz"] .sci{border-bottom:2.5px solid var(--ink)}
 [data-theme="noppe"] .sc .snum,[data-theme="hochglanz"] .sc .snum{color:var(--mut);font-weight:700}
 [data-theme="noppe"] .sc .sname,[data-theme="hochglanz"] .sc .sname{font-weight:800}
 
@@ -209,7 +220,7 @@
   box-shadow:0 3px 0 var(--ink);font-weight:800;
 }
 [data-theme="noppe"] .btn:active,[data-theme="hochglanz"] .btn:active{transform:translateY(3px);box-shadow:none}
-[data-theme="noppe"] .btn.bp,[data-theme="hochglanz"] .btn.bp{background:var(--b600);color:#fff}
+[data-theme="noppe"] .btn.bp,[data-theme="hochglanz"] .btn.bp{background:var(--b600);color:var(--auf-primaer,#fff)}
 
 [data-theme="noppe"] input,[data-theme="hochglanz"] input,
 [data-theme="noppe"] select,[data-theme="hochglanz"] select,
@@ -234,6 +245,8 @@
 [data-theme="noppe"] .cond-new,[data-theme="hochglanz"] .cond-new{
   background:var(--chart-new);color:#fff;border:2px solid var(--ink);font-weight:800;
 }
+/* Dunkel ist die Diagrammfarbe hell; die Schrift nimmt die (dann dunkle) Tinte. */
+[data-theme="noppe"][data-dunkel] .cond-new,[data-theme="hochglanz"][data-dunkel] .cond-new{color:var(--ink)}
 [data-theme="noppe"] .cond-used,[data-theme="hochglanz"] .cond-used{
   background:var(--chart-used);color:var(--ink);border:2px solid var(--ink);font-weight:800;
 }

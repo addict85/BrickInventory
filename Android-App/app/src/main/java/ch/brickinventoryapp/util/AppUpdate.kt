@@ -13,32 +13,17 @@ import java.io.File
 import java.security.MessageDigest
 
 /**
- * Die App aktualisiert sich selbst aus dem GitHub-Release.
+ * Die App aktualisiert sich selbst aus dem GitHub-Release: beim Start still
+ * prüfen, nie von allein laden. Es geht, weil der versionCode monoton steigt
+ * (BASIS + Minuten seit 2020, app/build.gradle.kts).
  *
- * ── Marcos Wunsch ───────────────────────────────────────────────────────────
- * „Wie gross waere der Aufwand dass sich die Android-App selbstaendig mit
- * Hilfe des bereitgestellten apk updatet?" — und dazu: beim Start still
- * pruefen, nie von allein laden, plus ein Knopf in den Einstellungen.
+ * 1. version.json aus dem Release lesen
+ * 2. versionCode vergleichen — echt grösser, nie „ungleich“
+ * 3. APK nach <files>/update/ laden, Adresse gegen die Release-Ablage prüfen
+ * 4. Signatur mit der installierten App vergleichen, erst dann anbieten
  *
- * ── Warum das ueberhaupt geht ───────────────────────────────────────────────
- * Weil der versionCode dieses Projekts monoton steigt (app/build.gradle.kts:
- * BASIS + Minuten seit 2020-01-01 UTC). Ohne eine vergleichbare Zahl waere
- * „gibt es etwas Neueres?" nicht zu beantworten, und ein Updater muesste
- * Zeitstempel vergleichen — der meldete ein Update auch dann, wenn nur der
- * Release-TEXT geaendert wurde.
- *
- * ── Der Weg, in vier Schritten ──────────────────────────────────────────────
- *  1. version.json aus dem Release lesen (der Workflow legt sie neben das APK)
- *  2. versionCode vergleichen — echt GROESSER, nie „ungleich"
- *  3. APK nach <files>/update/ laden, Adresse gegen die Release-Ablage pruefen
- *  4. Signatur mit der INSTALLIERTEN App vergleichen, dann erst anbieten
- *
- * ── Warum Schritt 4, obwohl Android es ohnehin prueft ───────────────────────
- * Android verweigert die Installation eines APK, das mit einem anderen
- * Schluessel signiert ist. Die Pruefung hier ersetzt das nicht, sie kommt
- * FRUEHER: Ohne sie stuende der Nutzer vor einer Fehlermeldung des Systems,
- * nachdem er zugestimmt hat. Mit ihr wird ein fremdes APK gar nicht erst
- * angeboten.
+ * Schritt 4 ersetzt Androids Prüfung nicht, er kommt früher: Ein fremdes APK wird
+ * gar nicht erst angeboten.
  */
 
 /** Die Release-Ablage — EIN Ort, aus dem beide Adressen entstehen. */
@@ -49,25 +34,16 @@ const val UPDATE_RELEASE_BASIS =
 const val UPDATE_VERSION_URL = "$UPDATE_RELEASE_BASIS/version.json"
 
 /**
- * Obergrenze fuer das geladene APK.
- *
- * ── Warum es eine ABSOLUTE Grenze braucht ───────────────────────────────────
- * Die erwartete Groesse steht in version.json — aber genau die ist der Teil,
- * dem hier nicht blind vertraut wird. Eine manipulierte Beschreibung koennte
- * eine beliebige Zahl nennen, und ohne feste Obergrenze liefe der Speicher
- * voll, BEVOR die Signaturpruefung ueberhaupt an die Reihe kommt.
- *
- * 300 MB ist grosszuegig gewaehlt: Das APK liegt bei rund 46 MB. Die Grenze
- * soll ein Fass ohne Boden fangen, nicht ein gewachsenes APK verbieten.
+ * Absolute Obergrenze für das APK: Die erwartete Grösse steht in version.json, und
+ * der wird nicht blind vertraut — ohne Grenze liefe der Speicher voll, bevor die
+ * Signaturprüfung dran ist. 300 MB bei rund 46 MB APK fangen ein Fass ohne Boden,
+ * nicht ein gewachsenes APK.
  */
 const val UPDATE_MAX_BYTES: Long = 300L * 1024 * 1024
 
 /**
- * Obergrenze fuer version.json — die Datei traegt fuenf Felder.
- *
- * Sie wird als Zeichenkette in den Speicher gelesen; ohne Grenze waere schon
- * das eine Stelle, an der eine manipulierte Antwort die App umbringt, ohne je
- * ein APK anfassen zu muessen.
+ * Obergrenze für version.json (fünf Felder): Sie wird als Zeichenkette gelesen,
+ * und eine manipulierte Antwort soll die App nicht umbringen können.
  */
 const val UPDATE_JSON_MAX_BYTES: Long = 64L * 1024
 
@@ -75,12 +51,9 @@ const val UPDATE_JSON_MAX_BYTES: Long = 64L * 1024
 const val UPDATE_ORDNER = "update"
 
 /**
- * Was in version.json steht.
- *
- * `apkUrl` wird MITGELIEFERT und trotzdem geprueft (siehe [istErlaubteApkAdresse]):
- * Die Datei kommt zwar ueber HTTPS aus unserem eigenen Release, aber eine
- * Adresse, der man folgt, weil sie in einer heruntergeladenen Datei stand, ist
- * genau die Stelle, an der ein Selbst-Updater gefaehrlich wird.
+ * Was in version.json steht. `apkUrl` wird trotzdem geprüft
+ * ([istErlaubteApkAdresse]): Einer Adresse zu folgen, weil sie in einer geladenen
+ * Datei stand, ist die gefährliche Stelle eines Selbst-Updaters.
  */
 @Serializable
 data class UpdateBeschreibung(
@@ -88,47 +61,34 @@ data class UpdateBeschreibung(
     @SerialName("versionName") val versionName: String,
     @SerialName("apkUrl") val apkUrl: String,
     /**
-     * Der Git-Commit, aus dem gebaut wurde — eine HERKUNFTSANGABE.
-     *
-     * Hiess `sha` und stand damit neben `apkUrl` und `apkSize` wie eine
-     * Pruefsumme des APK. Ist es nicht, war es nie, und eine waere hier auch
-     * wertlos: Sie kaeme aus derselben Datei wie die Adresse. Was das APK
-     * wirklich absichert, ist die Signaturpruefung gegen die installierte App
-     * ([signaturPasst]) und HTTPS.
-     *
-     * Mit Standardwert, wie alle optionalen Felder hier: Eine App, die neben
-     * einer aelteren version.json steht, soll daran nicht scheitern.
+     * Der Git-Commit, aus dem gebaut wurde — eine Herkunftsangabe, keine Prüfsumme:
+     * Die käme aus derselben Datei wie die Adresse. Abgesichert wird das APK durch
+     * HTTPS und [signaturPasst]. Mit Standardwert, damit eine ältere version.json
+     * nicht scheitert.
      */
     @SerialName("commit") val commit: String = "",
     @SerialName("apkSize") val apkSize: Long = 0,
 )
 
 /**
- * Ist die gemeldete Fassung neuer als die laufende?
- *
- * ECHT groesser, nicht „ungleich": Mit `!=` boete die App nach einem
- * zurueckgenommenen Build ein Downgrade an, das Android anschliessend mit
- * INSTALL_FAILED_VERSION_DOWNGRADE ablehnt — eine Sackgasse, aus der der
- * Nutzer nicht herausfindet.
+ * Ist die gemeldete Fassung neuer? Echt grösser: Mit `!=` böte die App nach einem
+ * zurückgenommenen Build ein Downgrade an, das Android mit
+ * INSTALL_FAILED_VERSION_DOWNGRADE ablehnt.
  */
 fun istNeuer(laufend: Int, gemeldet: Int): Boolean = gemeldet > laufend
 
 /**
- * Zeigt die Adresse in unsere Release-Ablage?
- *
- * Verglichen wird der ANFANG gegen [UPDATE_RELEASE_BASIS] samt Schraegstrich —
- * ein blosses `startsWith(UPDATE_RELEASE_BASIS)` liesse
- * „…/apk-neuste.angreifer.tld/x.apk" durch. Dieselbe Falle wie beim
- * Bearer-Token, die in util/NetworkPolicy.kt schon einmal behoben wurde.
+ * Zeigt die Adresse in unsere Release-Ablage? Verglichen wird mit Schrägstrich
+ * nach der Basis — ein blosses startsWith liesse
+ * „…/apk-neuste.angreifer.tld/x.apk“ durch (dieselbe Falle wie in
+ * util/NetworkPolicy.kt).
  */
 fun istErlaubteApkAdresse(url: String): Boolean =
     url.startsWith("$UPDATE_RELEASE_BASIS/") && url.endsWith(".apk")
 
 /**
- * Die Signatur eines APK, als Fingerabdruck.
- *
- * `null`, wenn die Datei nicht lesbar oder nicht signiert ist — dann wird
- * nicht installiert. Ein „unbekannt" darf hier nie als „passt schon" gelten.
+ * Die Signatur eines APK als Fingerabdruck. `null`, wenn nicht lesbar oder nicht
+ * signiert — dann wird nicht installiert; „unbekannt“ gilt nie als „passt“.
  */
 private fun fingerabdruecke(ctx: Context, apk: File): Set<String>? {
     val pm = ctx.packageManager
@@ -153,12 +113,9 @@ private fun eigeneFingerabdruecke(ctx: Context): Set<String>? {
 }
 
 /**
- * Die Signaturen aus einem PackageInfo — beide Wege, weil minSdk 26 ist.
- *
- * `GET_SIGNING_CERTIFICATES` gibt es erst ab Android 9 (API 28). Auf 26 und 27
- * bleibt nur das veraltete `signatures`. Ein Updater, der auf diesen Geraeten
- * gar nichts pruefen kann, waere dort still schwaecher als anderswo — darum
- * beide Wege statt eines mit Mindestanforderung.
+ * Die Signaturen aus einem PackageInfo, beide Wege: GET_SIGNING_CERTIFICATES gibt
+ * es erst ab API 28, auf 26 und 27 bleibt `signatures`. Sonst prüfte der Updater
+ * dort nichts.
  */
 @Suppress("DEPRECATION")
 private fun signaturen(info: android.content.pm.PackageInfo): Set<String>? {
@@ -176,10 +133,8 @@ private fun signaturen(info: android.content.pm.PackageInfo): Set<String>? {
 }
 
 /**
- * Stammt das geladene APK vom selben Schluessel wie die laufende App?
- *
- * Bei Unklarheit FALSCH — siehe [fingerabdruecke]. Eine Pruefung, die im
- * Zweifel durchwinkt, ist keine.
+ * Stammt das APK vom selben Schlüssel wie die laufende App? Bei Unklarheit falsch
+ * — eine Prüfung, die im Zweifel durchwinkt, ist keine.
  */
 fun signaturPasst(ctx: Context, apk: File): Boolean {
     val neu = fingerabdruecke(ctx, apk) ?: return false
@@ -188,11 +143,8 @@ fun signaturPasst(ctx: Context, apk: File): Boolean {
 }
 
 /**
- * Darf die App Pakete installieren?
- *
- * Ab Android 8 ist das eine Erlaubnis JE APP, die der Nutzer in den
- * Systemeinstellungen erteilt. minSdk ist 26 — es gibt also kein Geraet, auf
- * dem diese Frage entfaellt.
+ * Darf die App Pakete installieren? Ab Android 8 eine Erlaubnis je App; bei minSdk
+ * 26 entfällt die Frage auf keinem Gerät.
  */
 fun darfInstallieren(ctx: Context): Boolean =
     ctx.packageManager.canRequestPackageInstalls()
@@ -204,11 +156,9 @@ fun erlaubnisAbsicht(ctx: Context): Intent =
         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
 
 /**
- * Die Absicht, die den System-Installer oeffnet.
- *
- * Ueber den FileProvider und NICHT als `file://`-Adresse: Letztere wirft seit
- * Android 7 eine FileUriExposedException. Die Leseerlaubnis gilt nur fuer
- * diesen einen Aufruf.
+ * Die Absicht, die den System-Installer öffnet — über den FileProvider, weil
+ * `file://` seit Android 7 eine FileUriExposedException wirft; die Leseerlaubnis
+ * gilt nur für diesen Aufruf.
  */
 fun installationsAbsicht(ctx: Context, apk: File): Intent {
     val uri = FileProvider.getUriForFile(ctx, "${ctx.packageName}.provider", apk)

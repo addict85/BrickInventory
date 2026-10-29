@@ -114,9 +114,12 @@ dem Wiederherstellen schlimmstenfalls eine Datei ohne Eintrag oder einen
 Eintrag ohne Datei; die Sammlung selbst ist davon nicht betroffen. Nachts
 gesichert, kommt das praktisch nicht vor.
 
-**Sicherungen sind Geheimnisse.** Der Dump enthält die API-Schlüssel
-(Bricklink, Brickset, Rebrickable) und das SMTP-Passwort im Klartext sowie
-alle Passwort-Hashes. `backup.sh` legt die Dateien deshalb nur für den
+**Sicherungen sind Geheimnisse.** API-Schlüssel, SMTP-Passwort,
+Gutschein-PINs und die Geheimnisse des zweiten Faktors liegen verschlüsselt im
+Dump; der Schlüssel dazu steht in `data/.datenschluessel` (oder in `DATA_KEY`).
+**Diese Datei mitsichern, aber getrennt vom Dump** — ohne sie lassen sich die
+Werte nach einer Wiederherstellung nicht mehr lesen und müssen neu eingegeben
+werden. Die Passwort-Hashes stehen trotzdem im Dump. `backup.sh` legt die Dateien deshalb nur für den
 Besitzer lesbar an (`umask 077`) und warnt, wenn das Zielverzeichnis für
 andere offen ist. Wer `backups/` auf ein NAS oder in eine Cloud kopiert,
 verschlüsselt es vorher (z. B. `gpg -c` oder `age`).
@@ -124,7 +127,7 @@ verschlüsselt es vorher (z. B. `gpg -c` oder `age`).
 ### Automatische Kopie vor einem Update
 
 Bringt ein Update neue Migrationen mit, kopiert der Server vorher alle
-Tabellen mit Nutzerdaten (`users` und jede Tabelle mit `user_id`) in ein
+Tabellen mit Nutzerdaten (`users`, jede Tabelle mit `user_id` und jede mit Fremdschlüssel auf `users`, etwa die Haushaltsverknüpfungen) in ein
 eigenes Schema `vor_migration_<Datum Uhrzeit>` derselben Datenbank. Die drei
 jüngsten bleiben. Das ersetzt `backup.sh` nicht — Katalog und Bilder fehlen
 darin —, aber ein misslungenes Update lässt sich damit zurücknehmen:
@@ -213,6 +216,7 @@ neu starten.
 | `APP_BASE_URL` | Die Adresse, unter der der Server von **aussen** erreichbar ist (z. B. `https://lego.example.org`). Sie steckt in den Links der E-Mails und im **QR-Code zur Verknüpfung der App**. Ohne sie übernehmen die Bestätigungs-Links den Host aus dem Request-Header, und **Passwort-vergessen-Mails werden im Betrieb gar nicht versendet** (ein gefälschter Host-Header bekäme sonst den Reset-Link); der QR-Code wird **gar nicht erst erzeugt** — er trüge sonst die Adresse aus der Browserzeile, und die App fände den Server ausserhalb des Heimnetzes nie wieder. |
 | `TRUST_PROXY` | Wem der Server `X-Forwarded-For`/`-Proto` glaubt. Ohne Angabe nur Loopback und den Docker-Netzen (`172.16.0.0/12`) ausser deren Gateway (`x.y.0.1`, dort kommen per docker-proxy die Clients selbst herein) — das passt für nginx/Caddy/Traefik im selben Docker-Netz. Steht der Proxy auf einem anderen Rechner im Heimnetz, seine Adresse angeben (z. B. `192.168.1.5`). `false`, wenn kein Proxy davorsteht; sonst die Adresse oder das Netz des Proxys (z. B. `203.0.113.7`). Sonst könnte ein Client seine Absenderadresse selbst angeben und die Anmeldesperre umgehen. |
 | `UPLOAD_KONTINGENT_MB` | Wie viel Platz eigene Anleitungen (PDF/JPG/PNG) je Konto belegen dürfen, in MB (Vorgabe `2048`). Der Inhalt jeder Datei wird geprüft; eine Datei, deren Inhalt nicht zum Typ passt, wird abgewiesen. |
+| `DATA_KEY` | Schlüssel (32 Byte, Base64) für die verschlüsselten Geheimnisse in der Datenbank. Ohne Angabe erzeugt der Server beim ersten Start `data/.datenschluessel` (nur für den Besitzer lesbar). Wer den Schlüssel lieber getrennt von `data/` hält, setzt ihn hier: `openssl rand -base64 32`. |
 | `ADMIN_PASSWORD` | Passwort des beim ersten Start angelegten Admins. Sonst wird ein Zufallspasswort erzeugt und **einmalig** ins Log geschrieben. |
 | `SESSION_SECRET` | Pflicht in Produktion (der Start bricht sonst ab). |
 | `TOKEN_IDLE_DAYS` | Tage ohne Nutzung, nach denen ein App-Token verfällt (Vorgabe `90`, `0` schaltet die Regel ab). Betrifft nur Tokens ohne Ablaufdatum — Android-App und QR-Login. Ein Telefon, das die App regelmässig öffnet, ist nie betroffen; ausgesperrt wird nur, was ohnehin niemand mehr benutzt. |

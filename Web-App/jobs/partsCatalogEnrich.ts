@@ -10,10 +10,10 @@
 const db    = require('../db/database');
 import { cdnImageLimiter } from '../utils/rateLimiter';
 import { meldeUndWeiter, fehlertext, logAndContinue } from '../utils/httpError';
-import { setGlobalSetting } from '../utils/settings';
 import { neuestesInventar, inventarKandidaten } from '../utils/rbInventar';
 import { mitVersion, ohneVersion } from '../utils/setNummer';
 import { merkeBlNummer } from '../utils/blZuordnung';
+import { merkeTeil, merkeTeilFarbe, merkeSetTeil, setzeTeilBildLokal } from '../utils/katalogPflege';
 import { getRbKey } from '../clients/rebrickable';
 const https = require('https');
 const fs    = require('fs');
@@ -32,6 +32,7 @@ type JobHttpResult = { status: number; body: string };
 const { PART_IMAGES_DIR, MINIFIG_IMAGES_DIR, SET_IMAGES_DIR } = require('../utils/appPaths');
 import { bildEndung, dateiTeil, zielImOrdner, ladeBild } from '../utils/bildDatei';
 import { ERLAUBTE_BILD_HOSTS } from '../utils/fremdeAdressen';
+import { setzeZustand } from '../utils/laufzustand';
 
 /** Ohne Browser-Kennung und Referer weist das Rebrickable-CDN Bildabrufe ab. */
 const BILD_KOPFZEILEN = {
@@ -235,20 +236,11 @@ async function enrichSetParts(setNumber: string) {
       // Set, Teil und Farbe. Dort stand sie fuer dasselbe Teil so oft, wie
       // es Sets damit gibt.
       if (blPartNum) await merkeBlNummer('part', p.part_num, blPartNum).catch(() => {});
-      await db.run(
-        `INSERT INTO set_parts_catalog
-           (set_number, part_number, part_name, color_id, color_name, color_hex, image_url, quantity, is_spare)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
-         ON CONFLICT (set_number, part_number, color_id) DO UPDATE SET
-           part_name      = COALESCE(EXCLUDED.part_name,  set_parts_catalog.part_name),
-           color_name     = COALESCE(EXCLUDED.color_name, set_parts_catalog.color_name),
-           color_hex      = COALESCE(EXCLUDED.color_hex,  set_parts_catalog.color_hex),
-           image_url      = COALESCE(EXCLUDED.image_url,  set_parts_catalog.image_url),
-           quantity       = EXCLUDED.quantity, updated_at = NOW()`,
-        [n, p.part_num, info.part_name||p.part_num,
-         p.color_id||0, info.color_name||'', info.color_hex||null,
-         info.image_url||null, p.quantity||1, 0]
-      ).catch(() => {});
+      // Ohne Rebrickable-Antwort kein Name — die Teilenummer gehört nicht als geprüfter Name in den Katalog.
+      const melde = logAndContinue('katalog:setteil');
+      await merkeTeil(p.part_num, info.part_name).catch(melde);
+      await merkeTeilFarbe(p.part_num, p.color_id||0, info.color_name, info.color_hex, info.image_url).catch(melde);
+      await merkeSetTeil(n, p.part_num, p.color_id||0, p.quantity||1, 0).catch(melde);
       // Refresh catalogMap
       catalogMap[key] = { image_url: info.image_url||null, image_local: null };
     }
@@ -411,11 +403,7 @@ async function downloadSetImages(setNumber: string, waitIfBusy = false) {
           [rel, n, alt, p.id]
         ).catch(() => {});
       } else {
-        await db.run(
-          `UPDATE set_parts_catalog SET image_local=$1
-           WHERE (set_number=$2 OR set_number=$3) AND part_number=$4 AND color_id=$5`,
-          [rel, n, alt, p.id, p.color_id]
-        ).catch(() => {});
+        await setzeTeilBildLokal(p.id, p.color_id, rel).catch(logAndContinue('katalog:teilbild'));
       }
     }
 
@@ -558,14 +546,7 @@ async function enrichSetMinifigs(setNumber: string) {
       // einmal je Teil in bl_zuordnung, nicht je Set-Teile-Zeile. Die
       // Schleife weiter oben hat sie dort schon gemerkt (merkeBlNummer);
       // finalBlMap wird nur noch fuer die Antwort an den Aufrufer gebraucht.
-      await db.run(
-        `INSERT INTO set_parts_catalog
-           (set_number, part_number, color_id, quantity, is_spare)
-         VALUES ($1,$2,$3,$4,$5)
-         ON CONFLICT (set_number, part_number, color_id) DO UPDATE SET
-           quantity = $4, updated_at = NOW()`,
-        [figNum, p.part_num, p.color_id||0, p.quantity||1, 0]
-      ).catch(() => {});
+      await merkeSetTeil(figNum, p.part_num, p.color_id||0, p.quantity||1, 0).catch(logAndContinue('katalog:figurteil'));
     }
   }
   
@@ -607,7 +588,7 @@ function _fsPathFromLocal(imageLocal: string) {
  * Ausführlich: docs/begruendungen/jobs/partsCatalogEnrich.ts.md#redlsetstatus
  */
 async function _redlSetStatus(obj: Record<string, unknown>) {
-  await setGlobalSetting('imgredl_status', JSON.stringify({ ...obj, at: Date.now() }))
+  await setzeZustand('imgredl_status', JSON.stringify({ ...obj, at: Date.now() }))
     .catch(() => {});
 }
 
@@ -654,7 +635,7 @@ async function _redownloadMissingImages() {
          -- sie, seit sie mit Migration 0034 einen eigenen Katalog haben.
          SELECT image_local, image_url FROM minifigs_catalog      WHERE image_local IS NOT NULL
          UNION ALL
-         -- sets fehlte hier (Nachtrag 49): Der Lauf liess ausgerechnet die
+         -- sets fehlte hier: Der Lauf liess ausgerechnet die
          -- Set-Bilder aus, die in der Galerie am sichtbarsten sind.
          -- Gelesen wird seit Migration 0033 aus set_catalog — dort steht jede
          -- Setnummer einmal statt einmal je Konto.
@@ -666,8 +647,8 @@ async function _redownloadMissingImages() {
     //
     // Bisher reparierte der Lauf ausschliesslich fehlende DATEIEN. Fehlte nur
     // die Verkleinerung, blieb es dabei: Sie entstand nur beim Erfassen, und
-    // ging es dort schief, gab es keinen zweiten Anlauf (Nachtrag 49). Nach dem
-    // .tmp-Fehler aus Nachtrag 41 war genau das der Normalzustand — jedes
+    // ging es dort schief, gab es keinen zweiten Anlauf. Nach dem
+    // .tmp-Fehler war genau das der Normalzustand — jedes
     // seither erfasste Bild blieb ohne Vorschau.
     const missing: any[] = [];
     const ohneVorschau: string[] = [];

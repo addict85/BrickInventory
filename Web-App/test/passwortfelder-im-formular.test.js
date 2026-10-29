@@ -13,8 +13,9 @@
  *
  * ── Warum nicht alle dreizehn ───────────────────────────────────────────────
  *
- * Drei bleiben bewusst draussen: `bl-cs`, `bl-ts` (BrickLink-Zugangsdaten)
- * und `smtp-pass`. Das sind SCHNITTSTELLEN-Geheimnisse, keine Passwörter
+ * Fünf bleiben bewusst draussen: `bl-cs`, `bl-ts` (BrickLink-Zugangsdaten),
+ * `rb-key`, `bs-key` (Rebrickable, Brickset; seit dem 29.10. verdeckt) und
+ * `smtp-pass`. Das sind SCHNITTSTELLEN-Geheimnisse, keine Passwörter
  * eines Menschen — sie tragen `autocomplete="off"`, und ein Formular drumherum
  * lüde den Passwortmanager dazu ein, sie als Anmeldedaten zu speichern. Der
  * Hinweis in der Konsole ist dort das kleinere Übel. Diese Prüfung hält beide
@@ -77,13 +78,13 @@ test('jedes Passwortfeld eines MENSCHEN liegt in einem Formular', () => {
   assert.ok(felder.length >= 13, `Nur ${felder.length} Passwortfelder gefunden — stimmt der Pfad?`);
 
   const ohne = felder.filter(i => !i.closest('form')).map(i => i.id).sort();
-  assert.deepEqual(ohne, ['bl-cs', 'bl-ts', 'smtp-pass'],
+  assert.deepEqual(ohne, ['bl-cs', 'bl-ts', 'bs-key', 'rb-key', 'smtp-pass'],
     'Diese Passwortfelder liegen in keinem Formular: ' + ohne.join(', ') +
-    '\nErlaubt sind genau die drei Schnittstellen-Geheimnisse (BrickLink, SMTP) — ' +
+    '\nErlaubt sind genau die fünf Schnittstellen-Geheimnisse (BrickLink, Rebrickable, Brickset, SMTP) — ' +
     'siehe den Kopf dieser Datei. Steht hier ein Feld eines MENSCHEN, bietet der ' +
     'Passwortmanager dort kein Speichern mehr an.');
 
-  // Und die Gegenrichtung: Die drei duerfen auch kein `autocomplete` haben,
+  // Und die Gegenrichtung: Die fuenf duerfen auch kein `autocomplete` haben,
   // das sie doch wieder als Anmeldedaten ausweist.
   for (const id of ohne) {
     const ac = d.getElementById(id).getAttribute('autocomplete');

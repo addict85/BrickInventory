@@ -6,20 +6,9 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
- * Sets: Bestand, Details, Anlegen und Aendern.
- *
- * ── Warum diese Datei existiert (Nachtrag 155) ──────────────────────────────
- *
- * Alle 92 Datenklassen der App standen in EINER Datei, Models.kt, mit 1158
- * Zeilen. Jede Aenderung an irgendeinem Modell beruehrte dieselbe Datei — bei
- * parallelen Aenderungen ein sicherer Konflikt, und beim Suchen war der Weg
- * immer derselbe: eine Datei oeffnen und scrollen.
- *
- * Aufgeteilt wurde entlang der Sachgebiete. Die Klassen selbst sind WORTGLEICH
- * uebernommen: Es wurde nichts umbenannt, nichts zusammengefasst und kein Feld
- * angefasst. Sie liegen weiter im Paket ch.brickinventoryapp.data.model, also
- * aendert sich fuer keinen Aufrufer etwas — Kotlin bindet an das Paket, nicht
- * an die Datei.
+ * Sets: Bestand, Details, Anlegen und Ändern. Die Modelle liegen je Sachgebiet in
+ * einer Datei, alle im Paket data.model — Aufrufer binden an das Paket, nicht an
+ * die Datei.
  */
 
 @Serializable
@@ -47,39 +36,26 @@ data class SetItem(
     @SerialName("image_url") val imageUrl: String? = null,
     @SerialName("image_local") val imageLocal: String? = null,
     @SerialName("added_at") val addedAt: String? = null,
-    // Kein `purchase_price` mehr: Der Server fuehrt den Kaufpreis seit
-    // Migration 0032 nur in den Erfassungen und liefert ihn in den
-    // Set-Antworten ausschliesslich als `avg_purchase_price` (mengengewichtet)
-    // und `max_purchase_price`. Das Feld hier waere ab jetzt immer null — und
-    // ein immer leeres Feld, das `anzeigeKaufpreis` als Rueckfall benutzt, ist
-    // genau die stille Null, die Marco als Strich sehen wuerde.
+    // Kein `purchase_price`: Der Server führt den Kaufpreis nur in den Erfassungen und
+    // liefert ihn hier als `avg_purchase_price` und `max_purchase_price`. Ein immer
+    // leeres Feld als Rückfall ergäbe eine stille Null.
     val condition: String? = null, // "N" = New/Neu, "U" = Used/Gebraucht
     /**
-     * Lagerort — wo liegt dieses Set.
-     *
-     * Im Haushalt kann es MEHRERE sein („Kiste 3, Regal B"): Besitzen zwei
-     * Kinder dasselbe Set, liegt es in zwei Kisten, und der Server fasst die
-     * Orte zusammen statt einen davon zu zeigen. Deshalb ein Text und keine
-     * Liste — die Oberflaeche zeigt ihn, sie rechnet nicht damit.
+     * Lagerort. Im Haushalt können es mehrere sein (zwei Kinder, zwei Kisten); der
+     * Server fasst sie zu einem Text zusammen — die Oberfläche zeigt ihn, sie rechnet
+     * nicht damit.
      */
     val storage: String? = null,
     /**
-     * ALLE erfassten Zustände — je einer bekommt auf der Kachel eine Plakette.
-     *
-     * `condition` oben ist ein Aggregat und liefert genau einen Wert
-     * („gebraucht, sobald eine Erfassung gebraucht ist"). Wer ein Exemplar neu
-     * und eines gebraucht gekauft hat, sah damit nur „Gebraucht" — obwohl die
-     * Neu-Erfassung mit ihrem eigenen Preis in die Bewertung eingeht.
-     *
-     * Der Server entscheidet, was drinsteht (conditionsFromAcquisitions in
-     * utils/handlers.ts); hier wird nichts nachgerechnet.
+     * Alle erfassten Zustände, je einer eine Plakette auf der Kachel. `condition` ist
+     * ein Aggregat mit genau einem Wert und verschwiege die Neu-Erfassung neben einer
+     * gebrauchten. Der Server entscheidet (conditionsFromAcquisitions), hier wird
+     * nichts nachgerechnet.
      */
     val conditions: List<String> = emptyList(),
     /**
-     * Besitzer im Haushalt — nur gesetzt, wenn mehrere Konten im Blickfeld
-     * sind. Im Einzelkonto stünde an jeder Kachel „gehört mir", und das ist
-     * Rauschen; im Haushalt ist es die wichtigste Angabe der Kachel, denn ohne
-     * sie verschiebt man das falsche Exemplar.
+     * Besitzer im Haushalt — nur bei mehreren Konten im Blickfeld. Im Einzelkonto wäre
+     * es Rauschen; im Haushalt verschiebt man ohne sie das falsche Exemplar.
      */
     val owners: List<HouseholdMember> = emptyList(),
     @SerialName("max_purchase_price") val maxPurchasePrice: Double? = null,
@@ -88,44 +64,22 @@ data class SetItem(
     @SerialName("used_count") val usedCount: Int? = null,
     val instructions: List<Instruction> = emptyList(),
     /**
-     * BrickLink-Verweis, FERTIG vom Server aufgeloest (utils/bricklinkLink.ts).
-     *
-     * Dieselbe Begruendung wie beim Katalog (BrickLinkRef dort): Die Adresse
-     * laesst sich NICHT aus der Setnummer herleiten — Gear und Buecher liegen
-     * unter einem anderen Parameter, Sammelminifiguren unter einer ganz
-     * anderen Nummer. Eine im Klienten gebaute Adresse waere fuer diese Faelle
-     * still falsch.
+     * BrickLink-Verweis, fertig vom Server (utils/bricklinkLink.ts): Gear, Bücher und
+     * Sammelminifiguren liegen unter anderen Parametern oder Nummern; eine aus der
+     * Setnummer gebaute Adresse wäre dort still falsch.
      */
     val bricklink: BrickLinkRef? = null,
     /**
-     * Preisvergleich, ebenfalls fertig vom Server (utils/preisvergleich.ts).
-     *
-     * Nicht hier gebaut, obwohl es „nur eine Suchadresse" ist: Sie stand
-     * bisher an genau EINER Stelle im Baum (ComparisonScreen), und vier
-     * daraus zu machen waere der Anfang von vier Wahrheiten.
-     *
-     * Leer heisst „keine Adresse" — dann faellt der Knopf weg, statt ins
-     * Leere zu fuehren.
+     * Preisvergleich, fertig vom Server (utils/preisvergleich.ts) — eine Stelle für
+     * die Adresse statt einer je Bildschirm. Leer heisst: kein Knopf statt eines
+     * Knopfs ins Leere.
      */
     @SerialName("preisvergleich_url") val preisvergleichUrl: String? = null
 ) {
     /**
-     * Der Kaufpreis, der ANGEZEIGT wird — mengengewichtet (Nachtrag 76).
-     *
-     * Marcos Befund: „In der Android-App wird der Kaufpreis des gebrauchten
-     * Sets angezeigt, in der Webapp der gewichtete Durchschnittspreis."
-     *
-     * Hier stand `avgPurchasePrice ?: purchasePrice`. Der Rueckfall las den in
-     * die sets-Zeile GESPIEGELTEN Wert der neuesten Erfassung — bei mehreren
-     * Kaeufen (2×7.41 gebraucht, 1×9.48 neu) nicht der Preis der Sammlung,
-     * sondern der des letzten Kaufs, und er passte auch nicht zur
-     * Prozentangabe daneben.
-     *
-     * Mit Migration 0032 gibt es diese Spalte nicht mehr; der Server liefert
-     * nur noch den gewichteten Wert. Die Eigenschaft bleibt trotzdem stehen,
-     * denn sie ist die EINE Stelle, an der beide Ansichten (Kachel und
-     * Detail-Kachel) den Kaufpreis holen — und genau das war der Punkt von
-     * Nachtrag 76.
+     * Der angezeigte Kaufpreis, mengengewichtet. Die eine Stelle, an der Kachel und
+     * Detail ihn holen, damit beide denselben Wert zeigen und er zur Prozentangabe
+     * daneben passt.
      */
     val anzeigeKaufpreis: Double?
         get() = avgPurchasePrice
@@ -138,18 +92,10 @@ data class Instruction(
     val description: String? = null,
     @SerialName("local_path") val localPath: String? = null,
     /**
-     * Selbst hochgeladen (true) oder automatisch importiert (false)?
-     *
-     * Der Server legt zwei Quellen zusammen: `shared_instructions` (die Suche
-     * bei Rebrickable, Brickset & Co., fuer alle Konten dieselbe) und
-     * `instructions` (was ein Konto selbst hochgeladen hat). Nur die zweite
-     * laesst sich wieder loeschen — die Route dafuer sucht ausschliesslich
-     * dort. Beide Tabellen haben eine `id`, die Zaehler laufen unabhaengig;
-     * am `id != null` allein ist die Herkunft also NICHT zu erkennen.
-     *
-     * Der Standard `false` ist die vorsichtige Seite: Ein Server, der das Feld
-     * noch nicht mitschickt, fuehrt zu einem fehlenden Papierkorb — nicht zu
-     * einem, der die falsche Zeile trifft.
+     * Selbst hochgeladen (true) oder importiert (false)? Nur Hochgeladenes lässt sich
+     * löschen, und die `id` allein verrät die Herkunft nicht — beide Tabellen zählen
+     * unabhängig. Die Vorgabe false lässt bei einem älteren Server den Papierkorb weg,
+     * statt die falsche Zeile zu treffen.
      */
     @SerialName("is_manual") val isManual: Boolean = false
 )
@@ -158,18 +104,10 @@ data class Instruction(
 data class SetDetailResponse(val success: Boolean, val set: SetItem? = null)
 
 /**
- * Der Name eines Sets aus dem GEMEINSAMEN Katalog — unabhaengig davon, ob es
- * jemandem gehoert.
- *
- * Der Unterschied zu [SetDetailResponse] ist genau dieser Punkt:
- * /api/v1/sets/{nr} sucht im Blickfeld des Nutzers und antwortet mit 404, wenn
- * das Set niemandem im Haushalt gehoert. Fuer die temporaere Teileliste ist
- * das der Regelfall — dort traegt man Sets ein, die man NICHT hat, um zu
- * sehen, welche Teile fehlen. Die App zeigte dort bisher nur die Nummer, die
- * Webapp den Namen.
- *
- * Der Server sucht erst im Katalog, dann in den eigenen Sets, und gibt zuletzt
- * die Nummer selbst als Namen zurueck — es gibt also immer eine Antwort.
+ * Der Name eines Sets aus dem gemeinsamen Katalog, auch wenn es niemandem gehört.
+ * /api/v1/sets/{nr} sucht im Blickfeld und antwortet sonst 404 — in der Teileliste
+ * trägt man aber gerade fremde Sets ein. Der Server antwortet immer, notfalls mit
+ * der Nummer als Name.
  */
 @Serializable
 data class SetInfoResponse(
@@ -211,12 +149,9 @@ data class AddSetRequest(
      */
     @SerialName("owner_user_id") val ownerUserId: Int? = null,
     /**
-     * Lagerort — null heisst „nicht erfasst".
-     *
-     * Marcos Befund vom 24.09.: Der Ort liess sich erst NACH dem Erfassen im
-     * Detaildialog setzen. Der Server nimmt ihn seit demselben Tag auch beim
-     * Erfassen an und schreibt ihn ueber dieselbe Stelle wie der Detaildialog
-     * (utils/lagerort.ts) — ein neu getippter Ort landet damit auch im Vorrat.
+     * Lagerort beim Erfassen; null heisst „nicht erfasst“. Der Server schreibt ihn
+     * über dieselbe Stelle wie der Detaildialog (utils/lagerort.ts), ein neuer Ort
+     * landet damit auch im Vorrat.
      */
     val storage: String? = null,
 )
@@ -224,29 +159,10 @@ data class AddSetRequest(
 @Serializable
 data class AddSetResponse(
     /**
-     * Vorgabe `true`, weil „Feld fehlt" keine Aussage ist.
-     *
-     * Marcos Meldung vom 01.10.: Jedes Set, das er ueber die Nummer erfasste,
-     * endete mit „Field 'success' is required for type with serial name
-     * …AddSetResponse, but it was missing at path: $". Das Set WAR angelegt —
-     * nur meldete die App das Gegenteil und lud die Galerie nicht nach.
-     *
-     * Ursache war der Server: Das `done`-Ereignis des Stroms schickte
-     * `{step, action, set_number, name}` ohne `success`, waehrend dieselbe
-     * Route im Zweig „schon vorhanden" und die Token-Route
-     * `{ success:true, … }` schicken. Das ist dort behoben.
-     *
-     * Der Vorgabewert hier ist trotzdem richtig und nicht bloss ein Pflaster:
-     * Marcos Server ist bis zum naechsten Rollout der alte. Ohne ihn braechte
-     * das neue APK nichts, und der naechste Server, der dieses Feld vergisst,
-     * braeche das Erfassen wieder ganz.
-     *
-     * `true` und nicht `false`, mit Begruendung: Dieses Feld wird nur gelesen,
-     * wenn eine Antwort ueberhaupt ankam. Ein Fehlschlag kommt auf anderen
-     * Wegen — als `step:'error'` im Strom oder als HTTP-Fehler, und dessen
-     * Rumpf liest safeCall() gar nicht erst durch diesen Serialisierer
-     * (RepoBasis.kt: nur `isSuccessful` landet hier). „Angekommen, aber ohne
-     * success" heisst also: ein aelterer Server, dessen Arbeit getan ist.
+     * Vorgabe `true`, weil ein fehlendes Feld keine Aussage ist: Gelesen wird es nur,
+     * wenn eine Antwort ankam; ein Fehlschlag kommt als `step:'error'` oder als
+     * HTTP-Fehler. Ältere Server schickten im `done`-Ereignis kein `success` — das Set
+     * war angelegt, die App meldete das Gegenteil.
      */
     val success: Boolean = true,
     val action: String? = null,
@@ -266,13 +182,10 @@ data class UpdateManualItemRequest(
 )
 
 @Serializable
-// Der globale Json-Serializer nutzt encodeDefaults=true — ohne die
-// EncodeDefault(NEVER)-Annotationen würde eine reine Mengenänderung
-// zusätzlich "purchase_price": null und "condition": null senden. Auf dem
-// Server löste "condition": null eine Coercion auf "N" aus (setzte den
-// Zustand zurück) und ein mitgeschickter Kaufpreis überschrieb die soeben
-// angelegte Erfassung. Beide Felder werden jetzt nur noch übertragen, wenn
-// sie tatsächlich gesetzt sind.
+// encodeDefaults=true schickte bei einer reinen Mengenänderung auch "condition":
+// null und "purchase_price": null mit; der Server setzte daraufhin den Zustand
+// zurück und überschrieb die Erfassung. EncodeDefault(NEVER) schickt beide nur,
+// wenn sie gesetzt sind.
 @OptIn(ExperimentalSerializationApi::class)
 data class UpdateQuantityRequest(
     @EncodeDefault(EncodeDefault.Mode.NEVER)
@@ -290,23 +203,13 @@ data class UpdateQuantityRequest(
 )
 
 /**
- * Kennzahlen des Minifiguren-Reiters — vom SERVER gezählt.
- *
- * Vorher rechnete der Schirm sie aus der geladenen Liste. Die ist aber
- * gefiltert (`source != "manual"`), also zählte die Kachel „manuell erfasst"
- * zwangsläufig immer 0, und Arten/Stückzahl liessen die manuellen Einträge
- * aus — die Webapp zählte sie mit. Zwei Apps, zwei Zahlen für dieselbe
- * Sammlung. Gezählt wird jetzt in utils/handlers.ts über dieselbe Gruppierung
- * wie die Liste selbst.
+ * Kennzahlen des Minifiguren-Reiters, vom Server gezählt: Die geladene Liste ist
+ * gefiltert (ohne manuelle Figuren) und zählte „manuell erfasst“ immer als 0.
  */
 /**
- * Antwort auf „gibt es dieses Set schon?" (GET /api/v1/sets/exists/:nummer).
- *
- * Vorher fragte die App `getSetDetail()` und las aus dem FEHLER, ob das Set
- * existiert — das vermischt „nicht vorhanden" mit „Server nicht erreichbar"
- * und zwang zu einer eigenen Auswertung im Client. Jetzt sagt es der Server
- * ausdrücklich, mit derselben Regel, die auch beim Erfassen greift
- * (utils/setAdd.ts).
+ * „Gibt es dieses Set schon?“ (GET /api/v1/sets/exists/:nummer) — der Server sagt
+ * es ausdrücklich, mit derselben Regel wie beim Erfassen, statt dass die App es
+ * aus einem Fehler errät und „nicht vorhanden“ mit „nicht erreichbar“ verwechselt.
  */
 @Serializable
 data class SetExistsResponse(
@@ -330,20 +233,9 @@ data class BarcodeResponse(
     @SerialName("image_local") val imageLocal: String? = null,
     val source: String? = null,
     /**
-     * Die Antwort ist GERATEN, nicht abgeglichen — bitte hinsehen.
-     *
-     * Der Server hat sieben Wege zu einer Setnummer; fünf gleichen eine
-     * Kennung ab, zwei raten (utils/barcodeQuelle.ts). Bis hierher waren beide
-     * nicht zu unterscheiden: Auch der Ratepfad antwortete mit `success: true`
-     * und einer konkreten Nummer, und die App zeigte den Bestätigungsdialog,
-     * als wäre das Set erkannt worden.
-     *
-     * Marcos Meldung war genau das: „Es werden regelmässig falsche Nummern
-     * erkannt."
-     *
-     * Vorgabe false: Ein älterer Server kennt das Feld nicht, und dessen
-     * Antworten sind nicht schlechter als vorher — der Hinweis fehlt dann
-     * bloss.
+     * Die Setnummer ist geraten, nicht abgeglichen (utils/barcodeQuelle.ts) — der
+     * Dialog bittet dann hinzusehen. Vorgabe false: Bei einem älteren Server fehlt nur
+     * der Hinweis.
      */
     val unsicher: Boolean = false,
     val error: String? = null
@@ -354,37 +246,23 @@ data class GenericResponse(
     val success: Boolean,
     val error: String? = null,
     /**
-     * Neu berechnetes Zustands-Aggregat des Sets, wenn die Antwort von einem
-     * Schreibvorgang auf set_acquisitions kommt.
-     *
-     * Der Server liefert es mit, damit der Client die Regel „eine U-Erfassung
-     * macht das Set gebraucht" nicht nachbauen muss. Ohne das behielt die
-     * Galerie-Kachel nach einer Zustandsänderung im Kaufpreis-Dialog das alte
-     * Label, bis die Liste neu geladen wurde.
+     * Neu berechnetes Zustands-Aggregat nach einem Schreibvorgang auf den Erfassungen,
+     * damit die App die Regel „eine U-Erfassung macht das Set gebraucht“ nicht
+     * nachbaut und die Kachel sofort stimmt.
      */
     val set: SetAggregate? = null,
     /**
-     * Was beim Verschieben eines Kaufpreises in ein anderes Konto mitgewandert
-     * ist. Der Server liefert die Zahlen seit jeher mit (moveSetBetweenAccounts
-     * in utils/setMove.ts) — die App las sie nur nie und zeigte deshalb in der
-     * Erfolgsmeldung immer „0 Teile und 0 Minifiguren".
-     *
-     * Null bedeutet: Die Antwort kam nicht von einem Verschiebe-Vorgang.
+     * Was beim Verschieben eines Kaufpreises ins andere Konto mitgewandert ist
+     * (moveSetBetweenAccounts) — für die Erfolgsmeldung. Null: Die Antwort kam nicht
+     * vom Verschieben.
      */
     val parts: Int? = null,
     val minifigs: Int? = null,
     @SerialName("source_emptied") val sourceEmptied: Boolean = false,
     /**
-     * Die Gesamtmenge des Blickfelds NACH einer Mengenänderung.
-     *
-     * Angezeigt wird die Menge aller Konten, geschrieben wird die Differenz auf
-     * das eigene (Nachtrag 85). Beim VERRINGERN deckelt der Server bei den
-     * eigenen Exemplaren — fremde lassen sich nicht wegnehmen —, und dann ist
-     * das Ergebnis eine ANDERE Zahl als die gesendete. Der Regler hatte seine
-     * lokale Zahl aber schon hochgezählt und stünde bis zum nächsten Laden
-     * daneben.
-     *
-     * Null bedeutet: Die Antwort kam nicht von einer Mengenänderung.
+     * Die Gesamtmenge des Blickfelds nach einer Mengenänderung. Beim Verringern
+     * deckelt der Server bei den eigenen Exemplaren; der Regler übernimmt deshalb
+     * diese Zahl statt seiner eigenen. Null: keine Mengenänderung.
      */
     val quantity: Int? = null,
 )
@@ -410,18 +288,9 @@ data class DeleteWithQuantityResponse(
 )
 
 /**
- * Das Ergebnis eines CSV-Imports — Sets, Teile oder Minifiguren.
- *
- * ── Eine Huelle fuer drei Adressen (Nachtrag 128) ───────────────────────────
- *
- * /sets/import/csv, /parts/import/csv und /minifigs/import/csv antworten mit
- * denselben Feldern; nur bei den Sets heisst „hinzugefuegt" `imported` statt
- * `added`. Die Alternative waeren drei fast gleiche Datenklassen gewesen —
- * genau die Form, die in diesem Baum wiederholt auseinandergelaufen ist.
- *
- * Alle Zaehler haben einen Vorgabewert: Welches Feld eine Adresse schickt,
- * unterscheidet sich, und ein fehlendes Feld ist kein Fehler, sondern eine
- * Null.
+ * Ergebnis eines CSV-Imports — eine Hülle für alle Adressen, weil sie dieselben
+ * Felder schicken (bei Sets heisst „hinzugefügt“ `imported`). Alle Zähler haben
+ * Vorgaben: Ein fehlendes Feld ist eine Null, kein Fehler.
  */
 @Serializable
 data class CsvImportErgebnis(
@@ -439,15 +308,8 @@ data class CsvImportErgebnis(
 }
 
 /**
- * Welche Art CSV importiert wird.
- *
- * Fuenf Adressen, dieselbe Bedienung — deshalb ein Aufzaehlungstyp statt fuenf
- * Aufrufwegen durch die ganze Anwendung. Die Webapp bietet genau diese fuenf an.
- *
- * MERKLISTE kam dazu (Marcos Liste, Stueck 1): „Merklisten sollen ebenfalls
- * analog den anderen Seiten exportiert und importiert werden koennen." Dass die
- * App nachzieht, ist nicht Zugabe, sondern Pflicht — test/webapp-endpunkte.test.js
- * weist eine Adresse ab, die nur die Webapp ruft, ohne dass ein Grund dabeisteht.
+ * Welche Art CSV importiert wird: dieselbe Bedienung für alle, die die Webapp
+ * anbietet, deshalb ein Aufzählungstyp statt eines Aufrufwegs je Art.
  */
 enum class CsvArt { SETS, TEILE, MINIFIGUREN, MERKLISTE, PREISALARME }
 
@@ -456,10 +318,8 @@ enum class CsvArt { SETS, TEILE, MINIFIGUREN, MERKLISTE, PREISALARME }
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
- * Ein Alarm gehoert genau EINEM Konto — anders als alles andere in diesem
- * Modell kennt er kein Blickfeld. Wer eine Schwelle setzt, will selbst
- * benachrichtigt werden; das Elternkonto haette nichts davon, die Merkposten
- * seiner Kinder per Mail zu bekommen.
+ * Ein Alarm gehört genau einem Konto und kennt kein Blickfeld: Wer eine Schwelle
+ * setzt, will selbst benachrichtigt werden.
  */
 @Serializable
 data class Preisalarm(
@@ -471,64 +331,31 @@ data class Preisalarm(
     val schwelle: Double = 0.0,
     @SerialName("currency_code") val currencyCode: String = "",
     /**
-     * Schon gemeldet?
-     *
-     * Der Alarm meldet den UEBERGANG, nicht den Zustand: Bleibt der Preis
-     * unter der Schwelle, bleibt es bei der einen Meldung. Erst wenn er auf
-     * die andere Seite zurueckkehrt, wird der Merker geloescht und die
-     * naechste Unterschreitung meldet wieder.
+     * Schon gemeldet? Der Alarm meldet den Übergang, nicht den Zustand; erst wenn der
+     * Preis zurückkehrt, wird der Merker gelöscht.
      */
     val ausgeloest: Boolean = false,
     @SerialName("zuletzt_am") val zuletztAm: String? = null,
     @SerialName("zuletzt_preis") val zuletztPreis: Double? = null,
     /**
-     * Der Setname — NUR aus der Uebersicht (GET /v1/alerts).
-     *
-     * Die Route zum einzelnen Set schickt ihn nicht: Dort steht der Name schon
-     * ueber dem Dialog. In der Uebersicht ist er dagegen das Einzige, was die
-     * Zeile lesbar macht — „40820-1" sagt niemandem etwas.
-     *
-     * Ein zweites Modell nur dafuer waere zwei Modelle, die auseinanderlaufen
-     * koennen. `null` heisst hier zweierlei und beides ist richtig: „nicht
-     * mitgeschickt" (Einzelroute) oder „dem Katalog unbekannt" (Uebersicht).
-     * Die Anzeige behandelt beides gleich — sie laesst die Zeile weg.
+     * Der Setname — nur aus der Übersicht (GET /v1/alerts); die Einzelroute braucht
+     * ihn nicht, dort steht er über dem Dialog. Ein Modell für beide statt zweier, die
+     * auseinanderlaufen; null wird in beiden Fällen gleich behandelt.
      */
     val name: String? = null,
     /**
-     * Bildquellen fuer die Zeile der Uebersicht — dieselbe Reihenfolge wie in
-     * den Finanzen: erst die vom Server heruntergeladene Kopie, dann die
-     * Adresse der eigenen Sammlung, zuletzt die des Katalogs.
-     *
-     * Die ersten beiden gibt es nur, wenn das Set in der Sammlung liegt; die
-     * dritte auch sonst. Bei einem Preisalarm ist gerade der zweite Fall
-     * haeufig — man beobachtet oft, was man noch nicht hat.
-     *
-     * Wie [name] kommen sie NUR aus der Uebersicht (GET /v1/alerts).
+     * Bildquellen der Übersicht in der Reihenfolge der Finanzen: heruntergeladene
+     * Kopie, eigene Sammlung, Katalog. Beim Preisalarm ist der letzte häufig — man
+     * beobachtet, was man noch nicht hat. Nur aus der Übersicht.
      */
     @SerialName("image_local") val imageLocal: String? = null,
     @SerialName("image_url") val imageUrl: String? = null,
     @SerialName("set_img_url") val setImgUrl: String? = null,
     /**
-     * Gibt es zu diesem Set eine Detailansicht?
-     *
-     * Entscheidet, ob die Zeile anklickbar ist: Die Detailansicht holt
-     * `/v1/sets/:nummer`, und die gibt es fuer ein Set ausserhalb des
-     * Blickfelds nicht. Ein Alarm ueberlebt das Entfernen des Sets — er
-     * haengt am Konto, nicht am Set.
-     *
-     * ── Warum der Vorgabewert `true` ist (Nachtrag 139) ───────────────────
-     *
-     * Marcos Befund: „Das Bild ist sichtbar aber die Eintraege sind nicht
-     * klickbar." Sein Server war noch der alte und schickte das Feld gar
-     * nicht mit; das Bild kam aus `set_img_url`, das es dort schon gab. Mit
-     * dem Vorgabewert `false` hiess „Feld fehlt" dasselbe wie „Set gibt es
-     * nicht" — und die Rubrik war stillschweigend tot.
-     *
-     * Ein fehlendes Feld ist aber keine Aussage. `true` heisst hier: im
-     * Zweifel versuchen. Auf einem neuen Server schickt die Antwort das Feld
-     * IMMER mit, der Vorgabewert greift also nur gegen einen alten — und dort
-     * ist ein Klick, der in einer Fehlermeldung endet, allemal besser als
-     * eine Liste, in der nichts geht.
+     * Gibt es zu diesem Set eine Detailansicht (also ist die Zeile anklickbar)? Ein
+     * Alarm überlebt das Entfernen des Sets. Vorgabe true: Ein älterer Server schickt
+     * das Feld nicht, und ein Klick, der in einer Meldung endet, ist besser als eine
+     * tote Liste.
      */
     val besitzt: Boolean = true,
 )
@@ -556,12 +383,9 @@ data class PreisalarmResponse(
 )
 
 /**
- * Antwort auf „was hat seit <marke> ausgeloest?".
- *
- * `now` ist der Zeitpunkt des SERVERS und wird zur naechsten Marke — siehe
- * die Begruendung an Alarmabholung. Nullable, damit eine aeltere Serverfassung
- * ohne dieses Feld als „nicht verwertbar" erkannt wird statt still eine leere
- * Marke zu setzen.
+ * „Was hat seit <marke> ausgelöst?“ `now` ist die Zeit des Servers und wird zur
+ * nächsten Marke (siehe Alarmabholung). Nullable, damit ein älterer Server ohne
+ * das Feld als nicht verwertbar gilt, statt still eine leere Marke zu setzen.
  */
 @Serializable
 data class PendingAlertsResponse(
@@ -572,11 +396,9 @@ data class PendingAlertsResponse(
 )
 
 /**
- * Ein Eintrag der Merkliste.
- *
- * Die Stammdaten (name, year, …) kommen aus dem Katalog und sind NICHT
- * mitgespeichert — die Begruendung steht in der Migration 0021. Ein Set, das
- * der Katalog nicht kennt, hat hier `name == null` und zeigt seine Nummer.
+ * Ein Eintrag der Merkliste. Die Stammdaten kommen aus dem Katalog und sind nicht
+ * mitgespeichert (Migration 0021); ein unbekanntes Set hat `name == null` und
+ * zeigt seine Nummer.
  */
 @Serializable
 data class Merkposten(
@@ -590,46 +412,29 @@ data class Merkposten(
     @SerialName("num_parts") val numParts: Int? = null,
     @SerialName("image_url") val imageUrl: String? = null,
     /**
-     * Die lokal abgelegte Bilddatei — wenn es sie gibt, hat sie Vorrang.
-     *
-     * Dieselbe Regel wie bei Sets, Teilen und Minifiguren: Was schon auf der
-     * Platte des Servers liegt, wird von dort geladen statt ueber den
-     * Bild-Proxy vom CDN. Die Merkliste fuehrte das Feld als einzige Liste
-     * nicht mit — in der Webapp hat die Sicherheitsrichtlinie die direkten
-     * CDN-Aufrufe geblockt (Marcos Befund), am Telefon war es „nur" ein
-     * unnoetiger Umweg uebers Netz.
+     * Die lokal abgelegte Bilddatei hat Vorrang — dieselbe Regel wie bei Sets, Teilen
+     * und Minifiguren: Was auf der Platte des Servers liegt, kommt von dort statt über
+     * den Bild-Proxy.
      */
     @SerialName("image_local") val imageLocal: String? = null,
     /** Liegt das Set schon in der Galerie eines Kontos im Blickfeld? */
     /**
-     * Marktpreis im Zustand DIESES Merkpostens — null, solange keiner bekannt
-     * ist.
-     *
-     * Marcos Vorgabe vom 24.09.: „Bitte in der Tabelle der Merkliste der
-     * Button In die Galerie aufnehme entfernen und dafuer den Marktpreis
-     * anzeigen." Der Wert kommt aus dem Preis-Cache des Servers, den
-     * jobs/priceJob.ts taeglich fuer die Merkposten auffrischt — kein Abruf je
-     * Zeile beim Oeffnen des Reiters.
+     * Marktpreis im Zustand dieses Merkpostens, null solange keiner bekannt ist. Aus
+     * dem Preis-Cache des Servers (jobs/priceJob.ts), kein Abruf je Zeile.
      */
     val marktpreis: Double? = null,
     /** Die Waehrung, in der [marktpreis] steht. */
     val waehrung: String = "EUR",
     val owned: Boolean = false,
     /**
-     * Der Preisalarm zu GENAU diesem Merkposten — oder null.
-     *
-     * Er reist mit, statt je Zeile einzeln geholt zu werden: Wer einen Alarm
-     * setzt und ihn danach nirgends mehr sieht, hat ihn verloren, und ein
-     * Aufruf je Zeile waere N+1 fuer eine Liste, die auch lang sein kann.
+     * Der Preisalarm zu genau diesem Merkposten oder null. Er reist mit, damit ein
+     * gesetzter Alarm sichtbar bleibt, ohne einen Abruf je Zeile.
      */
     val alarm: MerkpostenAlarm? = null,
     /**
-     * Preisvergleich — die Adresse fuer den Knopf im Detail.
-     *
-     * Sie kommt mit dem Merkposten, nicht aus /catalog/sets/:nr: Ein Set, das
-     * rb_sets nicht kennt, beantwortet die Katalogroute mit 404 — und dann
-     * blieb der Knopf aus, obwohl die Adresse aus der Setnummer allein zu
-     * bilden ist. Die Begruendung steht in utils/merkliste.ts.
+     * Preisvergleich für den Knopf im Detail. Mit dem Merkposten statt aus
+     * /catalog/sets/:nr: Ein Set, das der Katalog nicht kennt, ergäbe dort 404 und
+     * keinen Knopf (utils/merkliste.ts).
      */
     @SerialName("preisvergleich_url") val preisvergleichUrl: String? = null,
 )
@@ -649,12 +454,8 @@ data class MerklisteResponse(
 )
 
 /**
- * Den Inhaber eines Merkpostens wechseln.
- *
- * ZWEI Konten im Rumpf, und beide sind noetig: Der Server muss wissen, WOHER
- * er umhaengt — die Auswahl im Bildschirm kennt nur das Ziel, und der
- * Betrachter ist nicht zwingend der bisherige Inhaber (der Grossvater sieht
- * die Merkposten der Enkel).
+ * Den Inhaber eines Merkpostens wechseln. Beide Konten im Rumpf: Der Betrachter
+ * ist nicht zwingend der bisherige Inhaber.
  */
 @Serializable
 data class MerkpostenInhaberRequest(
@@ -663,11 +464,9 @@ data class MerkpostenInhaberRequest(
 )
 
 /**
- * Antwort auf den Inhaberwechsel.
- *
- * `zusammengefuehrt` heisst: Das Zielkonto hatte denselben Merkposten schon, die
- * Quelle ist verschwunden statt umgezogen. Ohne diese Unterscheidung meldete
- * die Oberflaeche „verschoben", wo etwas weg ist.
+ * `zusammengefuehrt`: Das Zielkonto hatte den Merkposten schon, die Quelle ist
+ * verschwunden statt umgezogen — sonst meldete die Oberfläche „verschoben“, wo
+ * etwas weg ist.
  */
 @Serializable
 data class MerkpostenInhaberAntwort(
@@ -685,12 +484,7 @@ data class MerkpostenRequest(
     @SerialName("owner_user_id") val ownerUserId: Int? = null,
 )
 
-/**
- * Antwort auf das Eintragen.
- *
- * `war_neu` unterscheidet „hinzugefuegt" von „stand schon drauf". Ohne das
- * saehe der zweite Druck auf denselben Knopf aus wie der erste.
- */
+/** `war_neu` unterscheidet „hinzugefügt“ von „stand schon drauf“. */
 @Serializable
 data class MerkpostenAntwort(
     val success: Boolean = false,
@@ -700,10 +494,8 @@ data class MerkpostenAntwort(
 )
 
 /**
- * Antwort auf die Uebernahme in die Galerie.
- *
- * `action` ist 'added' oder 'exists' — dasselbe Vokabular wie beim Erfassen
- * eines Sets, weil der Server dafuer dieselbe Funktion ruft (addSet).
+ * `action` ist 'added' oder 'exists' — dasselbe Vokabular wie beim Erfassen, weil
+ * der Server dieselbe Funktion ruft (addSet).
  */
 @Serializable
 data class MerkpostenUebernahmeResponse(
@@ -714,25 +506,17 @@ data class MerkpostenUebernahmeResponse(
 )
 
 /**
- * Was bei der Uebernahme mitgeht.
- *
- * Menge und Kaufpreis wie beim Erfassen eines Sets — der Server reicht sie an
- * addSet() weiter. Beide optional: Ohne Kaufpreis setzt der Server den
- * Marktpreis ein, genau wie auf dem normalen Erfassungsweg.
+ * Was bei der Übernahme in die Galerie mitgeht; der Server reicht es an addSet()
+ * weiter. Ohne Kaufpreis setzt er den Marktpreis ein, wie beim normalen Erfassen.
  */
 @Serializable
 data class MerkpostenUebernahmeRequest(
     val quantity: Int = 1,
     @SerialName("purchase_price") val purchasePrice: Double? = null,
     /**
-     * Der Zustand, in dem ERFASST wird — nicht der des Merkpostens.
-     *
-     * Die beiden sind nicht dasselbe: Wer sich ein gebrauchtes gewuenscht und
-     * ein neues gefunden hat, erfasst ein neues, und erledigt ist trotzdem der
-     * gebrauchte Merkposten. Welcher Merkposten verschwindet, entscheidet der Pfad;
-     * dieses Feld entscheidet nur, was in der Galerie steht.
-     *
-     * null = so lassen wie der Merkposten.
+     * Der Zustand, in dem erfasst wird — nicht der des Merkpostens: Wer gebraucht
+     * gesucht und neu gefunden hat, erfasst neu, erledigt ist trotzdem der gebrauchte
+     * Merkposten. null = wie der Merkposten.
      */
     val condition: String? = null,
     @SerialName("owner_user_id") val ownerUserId: Int? = null,
@@ -744,10 +528,8 @@ data class MerkpostenUebernahmeRequest(
 )
 
 /**
- * Die Marktpreise eines Merkpostens — BEIDE Zustaende.
- *
- * Dieselbe Form wie `current` in der Verlaufsantwort, damit die Oberflaeche
- * sie mit derselben Zeichenfunktion anzeigen kann.
+ * Die Marktpreise eines Merkpostens in beiden Zuständen — dieselbe Form wie
+ * `current` im Verlauf, damit dieselbe Anzeige sie zeichnet.
  */
 @Serializable
 data class MerkpostenPreiseResponse(

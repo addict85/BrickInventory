@@ -92,7 +92,7 @@ class AlarmUebersichtTest {
     // Zeile dorthin. Die Zusicherung ist dieselbe geblieben: Die Rubrik haengt
     // irgendwo, und sie holt ihre Daten selbst.
     fun `die Rubrik steht in den Einstellungen und laedt sich selbst`() {
-        val s = quelle("ui/screens/EinstellungenUnterseiten.kt")
+        val s = quelle("ui/screens/EinstellungenUnterseiten.kt") + quelle("ui/screens/EinstellungenAlarme.kt")
         // Nur der Anfang des Aufrufs, nicht die ganze Zeile: Die Rubrik hat
         // inzwischen vier Parameter (Bild, Serveradresse, Klick), und eine
         // Regel, die an der Anzahl haengt, prueft nicht mehr das, was sie
@@ -136,7 +136,7 @@ class AlarmUebersichtTest {
      */
     @Test
     fun `die Zeile zeigt ein Bild und fuehrt in die Detailansicht`() {
-        val s = quelle("ui/screens/EinstellungenUnterseiten.kt")
+        val s = quelle("ui/screens/EinstellungenAlarme.kt")
         assert(s.contains("FinanzBild(")) {
             "Die Zeile hat kein Vorschaubild — oder ein eigenes statt des der Finanzen."
         }
@@ -236,7 +236,7 @@ class AlarmUebersichtTest {
      */
     @Test
     fun `vor dem Loeschen wird gefragt`() {
-        val s = quelle("ui/screens/EinstellungenUnterseiten.kt")
+        val s = quelle("ui/screens/EinstellungenAlarme.kt")
         assert(s.contains("R.string.alerts_confirm_delete")) {
             "Es gibt keine Rueckfrage vor dem Loeschen eines Preisalarms."
         }
@@ -260,7 +260,7 @@ class AlarmUebersichtTest {
      */
     @Test
     fun `der Alarmzustand steht als Plakette da`() {
-        val s = quelle("ui/screens/EinstellungenUnterseiten.kt")
+        val s = quelle("ui/screens/EinstellungenAlarme.kt")
         assert(s.contains("fun AlarmZustandPlakette(")) { "Es gibt keine Plakette." }
         assert(s.contains("AlarmZustandPlakette(a.ausgeloest)")) {
             "Die Plakette wird nicht benutzt — sie steht da und niemand zeigt sie."
@@ -268,7 +268,9 @@ class AlarmUebersichtTest {
         // Der Speichern-Knopf erscheint nur bei einer Aenderung. Ohne diese
         // Schranke steht wieder dauerhaft ein Symbol daneben, das wie eine
         // Zustandsanzeige aussieht.
-        assert(s.contains("val geaendert =")) {
+        // Bis zur Aufteilung der Einstellungen traf `val geaendert =` aus der
+        // Kontokarte; geprüft war damit nichts. Die Schranke ist der Vergleich.
+        assert(s.contains("zahl != a.schwelle")) {
             "Der Speichern-Knopf steht wieder dauerhaft da und sieht aus wie ein Zustand."
         }
 

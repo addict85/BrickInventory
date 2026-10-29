@@ -39,14 +39,10 @@ import ch.brickinventoryapp.util.NumericInput
 import ch.brickinventoryapp.ui.theme.Abstaende
 
 /**
- * Dedizierter Screen für die Kaufpreis-Verwaltung — analog zum acq-modal in der Webapp.
- * Funktioniert für Sets (type="set"), Teile (type="part") und Minifiguren (type="fig").
- * Die editierbaren Zeilen stehen in DIESER Datei (AcquisitionManagementRow weiter unten). Hier
- * stand bis Nachtrag 119 „Code-Sharing: … nutzen AcquisitionEditRow aus
- * ManualItemComposables.kt" — das stimmte nicht mehr, und AcquisitionEditRow
- * hatte seit Längerem gar keinen Aufrufer. Ein Kommentar, der eine Struktur
- * behauptet, die es nicht gibt, ist schlimmer als keiner: Wer die eine Stelle
- * ändert, glaubt, die andere mitgeändert zu haben.
+ * Eigener Screen für die Kaufpreis-Verwaltung — analog zum acq-modal der Webapp,
+ * für Sets (type="set"), Teile (type="part") und Minifiguren (type="fig"). Die
+ * editierbaren Zeilen stehen in dieser Datei (AcquisitionManagementRow weiter
+ * unten).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -74,12 +70,10 @@ fun AcquisitionManagementScreen(
     var moveMessage by remember { mutableStateOf<String?>(null) }
     // Für die Erfolgsmeldung mit den echten Zahlen aus der Antwort.
     val ctx = LocalContext.current
-    // Nicht `ctx.getString`: Lint meldet LocalContextGetResourceValueCall als
-    // ERROR, weil ein gegriffener Context nach einem Wechsel der Konfiguration
-    // veraltete Werte liefert. `stringResource` geht hier nicht — die Zahlen
-    // fuer die Platzhalter entstehen erst in der Antwort. LocalResources ist
-    // die konfigurationsbewusste Form (androidx: „will be updated when
-    // LocalConfiguration changes").
+    // Nicht `ctx.getString`: Ein gegriffener Context liefert nach einem
+    // Konfigurationswechsel veraltete Werte (Lint: LocalContextGetResourceValueCall).
+    // `stringResource` geht nicht, weil die Zahlen erst in der Antwort entstehen;
+    // LocalResources ist die konfigurationsbewusste Form.
     val res = androidx.compose.ui.platform.LocalResources.current
     val isLoading    = manDetailState.isLoading
 
@@ -181,16 +175,11 @@ fun AcquisitionManagementScreen(
                         }
                     }
                 )
-                // ── Eigentümer DIESER Zeile ──────────────────────────────────
+                // ── Eigentümer dieser Zeile ──
                 //
-                // Der Kaufpreis ist die Ebene, auf der ein Exemplar wirklich
-                // existiert: Drei Erfassungen sind drei Käufe, die
-                // verschiedenen Kindern gehören können. Deshalb steht die
-                // Auswahl hier und nicht nur am ganzen Set.
-                //
-                // Für ALLE drei Arten: Sets, manuelle Teile, manuelle
-                // Minifiguren. Das ist der einzige Weg, Bestand zwischen
-                // Konten zu verschieben — die Detailansichten haben keinen.
+                // Der Kaufpreis ist die Ebene, auf der ein Exemplar existiert: Drei Erfassungen
+                // sind drei Käufe, die verschiedenen Kindern gehören können. Für Sets, manuelle
+                // Teile und Minifiguren — der einzige Weg, Bestand zwischen Konten zu verschieben.
                 if (blick.householdMembers.size > 1) {
                     OwnerPicker(
                         members = blick.householdMembers,
@@ -205,12 +194,10 @@ fun AcquisitionManagementScreen(
                                 // Die Zeile liegt jetzt beim anderen Konto.
                                 if (type == "set") vm.loadAcquisitions(id)
                                 else vm.loadManualAcquisitions(type, id, colorId)
-                                // Die Zahlen kommen aus der Antwort. Sie standen
-                                // hier fest auf 0/0 — die Meldung sagte also
-                                // auch dann „0 Teile", wenn hunderte wanderten.
-                                // Zwei Zahlen, zwei Uebereinstimmungen: ein
-                                // <plurals> stimmt nur mit EINER ueberein,
-                                // darum zwei Bruchstuecke in einem Rahmen.
+                                // Die Zahlen kommen aus der Antwort, sonst sagte die Meldung „0
+                                // Teile“, auch wenn hunderte wandern. Zwei Zahlen, zwei
+                                // Übereinstimmungen: Ein <plurals> stimmt nur mit einer überein,
+                                // darum zwei Bruchstücke in einem Rahmen.
                                 moveMessage = err ?: res.getString(
                                     R.string.household_move_ok,
                                     res.getQuantityString(R.plurals.household_move_parts, teile, teile),
@@ -265,29 +252,17 @@ private fun AcquisitionManagementRow(
     var showDeleteConfirm by rememberSaveable { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
 
-    // ── Ungespeicherte Eingaben festhalten ──────────────────────────────────
+    // ── Ungespeicherte Eingaben festhalten ──
     //
-    // Gespeichert wurde bisher AUSSCHLIESSLICH bei "Fertig" auf der Tastatur.
-    // Wer den Preis ändert und dann oben links auf Zurück tippt, verlässt den
-    // Bildschirm, ohne dass je gespeichert wird: Die Eingabe ist weg, beim
-    // nächsten Öffnen steht der alte Wert da. Für den Nutzer sieht das aus, als
-    // werde der Preis gelöscht.
+    // Wer den Preis ändert und oben links auf Zurück tippt, darf die Eingabe nicht
+    // verlieren. Zwei Auslöser, weil einer allein nicht reicht:
+    //   • onFocusChanged deckt den Normalfall ab (Feld verlassen, anderes Feld antippen, Tastatur schliessen).
+    //   • DisposableEffect deckt das Zurücknavigieren ab — ob vorher ein Fokusereignis eintrifft, ist nicht zugesichert.
     //
-    // Zwei Auslöser, weil einer allein nicht reicht:
-    //   • onFocusChanged deckt den Normalfall ab (Feld verlassen, anderes Feld
-    //     antippen, Tastatur schliessen).
-    //   • DisposableEffect deckt das Zurücknavigieren ab — dabei wird die
-    //     Ansicht verworfen, und ob vorher noch ein Fokusereignis eintrifft, ist
-    //     nicht zugesichert.
-    //
-    // lastSaved verhindert doppeltes Speichern, wenn beide greifen, und sorgt
-    // dafür, dass ein blosses Antippen ohne Änderung nichts auslöst — bei einem
-    // leeren Preisfeld wäre das ein Schreiben von null, also ein ungewolltes
-    // Löschen des bestehenden Preises.
-    // effectivePrice, NICHT purchasePrice: priceText wird oben aus effectivePrice
-    // gefüllt. Mit einer anderen Quelle hier gälte der Ausgangswert als
-    // "geändert", und schon das erste Verlassen der Ansicht hätte einen
-    // Schreibvorgang ausgelöst, den niemand angefordert hat.
+    // lastSaved verhindert doppeltes Speichern, und ein blosses Antippen ohne Änderung
+    // löst nichts aus — bei leerem Feld wäre das ein Schreiben von null, also ein
+    // Löschen. effectivePrice, nicht purchasePrice: priceText wird aus effectivePrice
+    // gefüllt; mit einer anderen Quelle gälte der Ausgangswert als „geändert“.
     var lastSavedPrice by remember(acquisition.id) {
         mutableStateOf(acquisition.effectivePrice?.let { "%.2f".format(it) } ?: "")
     }
@@ -388,17 +363,9 @@ private fun AcquisitionManagementRow(
             value = qtyText,
             onValueChange = { qtyText = NumericInput.quantity(it) },
             prefix = { Text("×", fontWeight = FontWeight.Bold) },
-            // onFocusChanged zusätzlich zu onDone.
-            //
-            // ── Der gemeldete Fehler ────────────────────────────────────────
-            // Gespeichert wurde AUSSCHLIESSLICH bei "Fertig" auf der Tastatur.
-            // Wer den Wert ändert und dann oben links auf Zurück tippt, verlässt
-            // den Bildschirm, ohne dass je gespeichert wird — die Eingabe ist
-            // weg, und beim nächsten Öffnen steht der alte Wert da. Für den
-            // Nutzer sieht das aus, als werde der Preis gelöscht.
-            //
-            // Beim Verlassen des Feldes (Fokusverlust) wird jetzt ebenfalls
-            // gespeichert, aber nur wenn sich der Wert tatsächlich geändert hat.
+            // onFocusChanged zusätzlich zu onDone: Wer den Wert ändert und zurücktippt, ohne
+            // „Fertig“ zu drücken, verlöre die Eingabe. Gespeichert wird beim Fokusverlust
+            // nur, wenn sich der Wert geändert hat.
             modifier = Modifier
                 .width(72.dp)
                 .onFocusChanged { st -> if (!st.isFocused) flushPending() },

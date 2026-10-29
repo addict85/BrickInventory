@@ -3,9 +3,8 @@
  * UI polls GET /api/v1/admin/jobs to display progress.
  */
 
-import * as db from '../db/database';
 import { meldeUndWeiter } from './httpError';
-import { getGlobalSetting, setGlobalSetting } from '../utils/settings';
+import { liesZustand, setzeZustand, zaehleZustand, zustaendeMitPraefix } from './laufzustand';
 
 const JOB_DEFAULTS: Record<string, any> = {
   csvImport:     { label: 'CSV-Import (Rebrickable)', status: 'idle', progress: 0, total: 6 },
@@ -20,14 +19,14 @@ const JOB_DEFAULTS: Record<string, any> = {
 async function update(jobKey: string, patch: any) {
   const defaults = JOB_DEFAULTS[jobKey] || {};
   const value = JSON.stringify({ ...defaults, ...patch, lastRun: new Date().toISOString() });
-  setGlobalSetting(`job_monitor_${jobKey}`, value).catch(e => console.error('[jobMonitor] update error:', e.message));
+  setzeZustand(`job_monitor_${jobKey}`, value).catch(e => console.error('[jobMonitor] update error:', e.message));
 }
 
 // ── Bild-Download-Zähler ──────────────────────────────────────────────────
 // Über ALLE aktiven downloadSetImages-Batches UND Cluster-Worker summierte
 // Zahl der noch zu ladenden Bilder. Eigener Bare-Integer-Eintrag (bewusst NICHT
-// job_monitor_*, damit all() ihn nicht als Job parst). Die Arithmetik läuft
-// atomar in EINEM UPDATE — der Row-Lock serialisiert gleichzeitige Batches.
+// job_monitor_*, damit all() ihn nicht als Job parst); zaehleZustand() rechnet
+// atomar in EINER Anweisung.
 // Früher überschrieb jeder Batch den imgDl-Status (last-write-wins), sodass im
 // Monitoring nur der zuletzt gestartete Wert statt der Summe erschien.
 const IMGDL_PENDING_KEY = 'imgdl_pending_count';
@@ -35,12 +34,7 @@ const IMGDL_PENDING_KEY = 'imgdl_pending_count';
 async function imgDlAdd(delta: number) {
   const d = Math.round(Number(delta) || 0);
   if (!d) return;
-  await db.run(
-    `INSERT INTO global_settings (key, value) VALUES ($1, $2)
-     ON CONFLICT (key) DO UPDATE
-       SET value = GREATEST(0, COALESCE(NULLIF(global_settings.value, '')::int, 0) + $3)::text`,
-    [IMGDL_PENDING_KEY, String(Math.max(0, d)), d]
-  ).catch(e => console.error('[jobMonitor] imgDlAdd error:', e.message));
+  await zaehleZustand(IMGDL_PENDING_KEY, d).catch(e => console.error('[jobMonitor] imgDlAdd error:', e.message));
   if (d > 0) {
     // Nur lastRun-/Label-Marker für die Anzeige — die Zahl kommt aus dem
     // Zähler oben, nicht aus diesem Feld.
@@ -49,32 +43,30 @@ async function imgDlAdd(delta: number) {
 }
 
 async function imgDlPending() {
-  const n = parseInt(await getGlobalSetting(IMGDL_PENDING_KEY) || '0', 10);
+  const n = parseInt(await liesZustand(IMGDL_PENDING_KEY) || '0', 10);
   return Number.isFinite(n) ? Math.max(0, n) : 0;
 }
 
 async function imgDlReset() {
   // Vorher ein reines UPDATE: Fehlt die Zeile, tat es nichts. Das war folgenlos,
   // weil imgDlPending() eine fehlende Zeile ohnehin als 0 liest — deshalb ist
-  // das Anlegen durch setGlobalSetting() hier unschaedlich und der Zaehler
+  // das Anlegen durch setzeZustand() hier unschaedlich und der Zaehler
   // steht danach in jedem Fall sichtbar auf 0.
-  await setGlobalSetting(IMGDL_PENDING_KEY, 0).catch(() => {});
+  await setzeZustand(IMGDL_PENDING_KEY, 0).catch(() => {});
 }
 
 async function get(jobKey: string) {
-  const roh = await getGlobalSetting(`job_monitor_${jobKey}`);
+  const roh = await liesZustand(`job_monitor_${jobKey}`);
   if (!roh) return JOB_DEFAULTS[jobKey] || null;
   try { return JSON.parse(roh); } catch(_) { return JOB_DEFAULTS[jobKey]; }
 }
 
 async function all() {
-  const rows = await db.all(
-    `SELECT key, value FROM global_settings WHERE key LIKE 'job_monitor_%'`
-  ).catch(() => []);
+  const rows = await zustaendeMitPraefix('job_monitor_').catch(() => []);
   const result: Record<string, any> = { ...JOB_DEFAULTS };
   for (const row of rows) {
-    const key = row.key.replace('job_monitor_', '');
-    try { result[key] = { ...(JOB_DEFAULTS[key] || {}), ...JSON.parse(row.value) }; } catch (e) { meldeUndWeiter('job-monitor:beschaedigter-eintrag', e); }
+    const key = row.schluessel.replace('job_monitor_', '');
+    try { result[key] = { ...(JOB_DEFAULTS[key] || {}), ...JSON.parse(row.wert) }; } catch (e) { meldeUndWeiter('job-monitor:beschaedigter-eintrag', e); }
   }
   return result;
 }

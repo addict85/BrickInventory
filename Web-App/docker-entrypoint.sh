@@ -58,7 +58,9 @@ ZIEL_UID=$(id -u brickinv)
 # Die eben angelegten Verzeichnisse gehoeren root und sind immer zu richten.
 # Es sind sieben Stueck; das kostet nichts und macht den Fall
 # BRICKINV_CHOWN=never sicher.
-chown brickinv:brickinv \
+# -h: Ein Symlink unter /app/data (der Ordner gehört der App) darf root nicht
+# dazu bringen, das ZIEL umzuschreiben, etwa eine Datei ausserhalb.
+chown -h brickinv:brickinv \
   /app/data \
   /app/data/instructions \
   /app/data/uploads \
@@ -94,7 +96,7 @@ MARKE=/app/data/.eigentuemer
 
 berichtige() {
   echo "[entrypoint] Eigentuemer wird gesetzt — das kann bei vielen Bildern einige Minuten dauern."
-  chown -R brickinv:brickinv /app/data
+  chown -R -h brickinv:brickinv /app/data
   echo "[entrypoint] Eigentuemer berichtigt."
 }
 
@@ -102,7 +104,7 @@ berichtige() {
 # eingehaengten Datentraeger den ganzen Start abbraeche — die Marke ist eine
 # Abkuerzung, kein Muss.
 setzeMarke() {
-  { printf '%s' "$ZIEL_UID" > "$MARKE" && chown brickinv:brickinv "$MARKE"; } 2>/dev/null || true
+  { printf '%s' "$ZIEL_UID" > "$MARKE" && chown -h brickinv:brickinv "$MARKE"; } 2>/dev/null || true
 }
 
 case "${BRICKINV_CHOWN:-auto}" in

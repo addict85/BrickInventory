@@ -58,7 +58,7 @@ async function seriesFor(setNumber: string, currency: string, cond: 'N' | 'U'): 
 /**
  * @param uid Betrachter-BLICKFELD: eine ID oder die Liste aus scopeIds().
  *
- * ── Warum die Liste (Nachtrag 33) ───────────────────────────────────────────
+ * ── Warum die Liste ───────────────────────────────────────────
  * Im Haushalt gehört das Set oft einem UNTERKONTO. Mit der nackten
  * Betrachter-ID fanden die Abfragen hier weder das Set noch die Erfassungen:
  * by_condition blieb leer, der Kaufpreis-Punkt fehlte, und die Detailansicht
@@ -246,7 +246,7 @@ export async function conditionRows(
     [...keyVals, currency]
   );
   // Eigener Schlüssel: Erfassungen tragen die Rebrickable-Nummer, der Cache
-  // oben die BrickLink-Nummer (Nachtrag 143).
+  // oben die BrickLink-Nummer.
   const acqRows = await db.all(
     `SELECT condition,
             SUM(unit_price * quantity) FILTER (WHERE unit_price IS NOT NULL AND ${inKontowaehrung(acqTable)})::numeric
@@ -280,7 +280,7 @@ export async function conditionRows(
  * @param keySql/keyVals  Schlüssel für PREISE (Cache und Verlauf).
  * @param acqKeySql/acqKeyVals  Schlüssel für ERFASSUNGEN. Ohne Angabe
  *   dieselben. Bei Teilen weichen sie ab: Preise stehen unter der
- *   BrickLink-Nummer, Erfassungen unter der Rebrickable-Nummer (Nachtrag 143).
+ *   BrickLink-Nummer, Erfassungen unter der Rebrickable-Nummer.
  *
  *   Hier stand „bei Minifiguren stimmen beide überein". Das war falsch, und
  *   die Annahme kostete dort denselben Fehler: Sobald eine Figur eine eigene

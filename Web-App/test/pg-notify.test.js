@@ -49,10 +49,9 @@ test('die Handler prüfen den Datenbankeintrag, nicht die Nutzlast', () => {
   ]) {
     const at = src.indexOf(`listen('${key}'`);
     const body = src.slice(at, at + 700);
-    // Beide Stellen lesen den Eintrag inzwischen über utils/settings.ts statt
-    // mit eigener SQL-Anweisung. Geprüft wird weiterhin dasselbe: dass der
-    // Handler ÜBERHAUPT nachsieht und ohne Eintrag abbricht.
-    assert.match(body, new RegExp(`getGlobalSetting\\('${key}'\\)`),
+    // Beide Stellen lesen den Eintrag über utils/laufzustand.ts. Geprüft wird,
+    // dass der Handler ÜBERHAUPT nachsieht und ohne Eintrag abbricht.
+    assert.match(body, new RegExp(`liesZustand\\('${key}'\\)`),
       `${name}: der Handler muss den Eintrag lesen`);
     assert.match(body, /if \(!\w+\) return;/,
       `${name}: ohne Eintrag darf nichts passieren`);

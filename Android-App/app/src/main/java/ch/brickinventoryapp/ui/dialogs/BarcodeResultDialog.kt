@@ -59,24 +59,11 @@ import ch.brickinventoryapp.ui.theme.Abstaende
  * Der Dialog nach einem erfolgreichen Barcode-Scan: Set (oder Teileliste)
  * bestätigen, Menge, Kaufpreis, Zustand und Eigentümer erfassen.
  *
- * ── Warum eigene Datei (Nachtrag 97) ────────────────────────────────────────
- *
- * Diese 170 Zeilen standen mitten in `BrickInventoryManagerApp()` — der
- * Funktion, die den NavHost aufbaut. Sie war damit 277 Zeilen lang, wovon rund
- * fünfzehn der eigentliche Navigationsaufbau waren.
- *
- * Dasselbe Muster wie im Webfrontend, wo Kaufpreis- und Detailfenster in
- * js/07-admin.js lagen (hardened-222): ein Dialog liegt dort, wo er AUFGERUFEN
- * wird, statt wo er hingehört. Wer am Navigationsaufbau etwas ändern wollte,
- * las erst an einem Erfassungsformular vorbei.
- *
- * Der Dialog liest seinen Zustand selbst vom ViewModel — dieselbe Bauart, die
- * die Reiter-Bildschirme seit Nachtrag 96 haben. Von aussen kommt nur der
- * ImageLoader, den der Aufrufer ohnehin hält.
- *
- * Die äussere Bedingung `if (barcodeState.result != null)` bleibt beim
- * AUFRUFER: So steht an genau einer Stelle, WANN der Dialog erscheint, und
- * diese Datei beschreibt nur, WIE er aussieht.
+ * Eigene Datei, damit wer am Navigationsaufbau arbeitet, nicht an einem
+ * Erfassungsformular vorbeiliest. Der Dialog liest seinen Zustand selbst vom
+ * ViewModel wie die Reiter-Bildschirme; von aussen kommt nur der ImageLoader. Die
+ * Bedingung `if (barcodeState.result != null)` bleibt beim Aufrufer: So steht an
+ * einer Stelle, wann er erscheint, und hier nur, wie er aussieht.
  */
 @Composable
 fun BarcodeResultDialog(vm: ErfassungViewModel, imageLoader: ImageLoader) {
@@ -88,26 +75,15 @@ fun BarcodeResultDialog(vm: ErfassungViewModel, imageLoader: ImageLoader) {
 // Preisfeld pro gescanntem Barcode zurücksetzen
 var barcodePriceText by remember(barcodeState.result) { mutableStateOf("") }
 var barcodeCondition by remember(barcodeState.result) { mutableStateOf(state.userDefaultCondition ?: "N") }
-// Eigentümer wie im Galerie-Dialog vorbelegen: das eigene Konto
-// (Nachtrag 44, Marcos Bericht — beim Barcode-Erfassen liess sich der
-// Eigentümer gar nicht wählen, obwohl Repository, API und Server ihn
-// seit jeher entgegennehmen; nur dieser Dialog fragte ihn nie ab).
+// Eigentümer wie im Galerie-Dialog vorbelegen: das eigene Konto. Repository, API
+// und Server nehmen ihn entgegen, also muss auch dieser Weg ihn abfragen.
 var barcodeOwner by remember(barcodeState.result, blick.householdMembers) {
     mutableStateOf(blick.householdMembers.firstOrNull { it.isSelf }?.id)
 }
-// Lagerort, ebenfalls je gescanntem Barcode zurueckgesetzt.
-//
-// Marcos Befund vom 24.09.: „Wenn ich ein Set in der Galerie hinzufuegen will,
-// kann ich den Lagerort nicht waehlen. Egal ob ich das manuell oder per
-// Barcode hinzufuege." Der Barcode-Weg ist wieder der, der ein Feld nicht
-// hatte, das die anderen haben — dasselbe Muster wie beim Eigentuemer eine
-// Zeile hoeher.
-//
-// Zurueckgesetzt wird auf die VORGABE und nicht auf leer (Marcos Stern): „Der
-// soll dann bei einer Neuerfassung bereits vorausgewaehlt sein." Der zweite
-// Schluessel ist die Vorgabe selbst — sie kommt ueber das Netz und kann nach
-// dem Scan eintreffen; ohne ihn bliebe das Feld bei dem Stand, den es beim
-// Oeffnen hatte.
+// Lagerort, ebenfalls je gescanntem Barcode zurückgesetzt — der Barcode-Weg soll
+// dieselben Felder haben wie die übrigen. Zurückgesetzt auf die Vorgabe, nicht auf
+// leer, damit sie bei einer Neuerfassung vorausgewählt ist. Der zweite Schlüssel
+// ist die Vorgabe selbst: Sie kommt übers Netz und kann nach dem Scan eintreffen.
 val lagerZustand by vm.lagerState.collectAsStateWithLifecycle()
 val lagerVorgabe = lagerZustand.vorgabe?.name ?: ""
 var barcodeLagerort by remember(barcodeState.result, lagerVorgabe) { mutableStateOf(lagerVorgabe) }
@@ -124,19 +100,12 @@ AlertDialog(
     },
     text = {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            // ── Hinweis bei geratener Nummer ────────────────────────────────
+            // ── Hinweis bei geratener Nummer ──
             //
-            // Marcos Meldung: „Es werden regelmässig falsche Nummern erkannt."
-            //
-            // Der Dialog zeigt Bild und Namen seit jeher — es fehlte nur der
-            // Hinweis, WANN man hinsehen muss. Zwei Fälle setzen das Feld: Der
-            // Server konnte die EAN nicht abgleichen und hat nur einen
-            // plausiblen Kandidaten (utils/barcodeQuelle.ts), oder die Nummer
-            // kam aus der Texterkennung, wo schon das Lesen eine Vermutung ist.
-            //
-            // Bewusst ganz oben und in der Warnfarbe, aber ohne den Vorgang zu
-            // sperren: Der Treffer ist oft richtig, und wer ihn bestätigt,
-            // soll das mit einem Blick tun können statt mit einem Klick mehr.
+            // Der Dialog zeigt Bild und Namen; der Hinweis sagt, wann man hinsehen muss
+            // (Server ohne EAN-Abgleich, utils/barcodeQuelle.ts, oder Texterkennung). Oben und
+            // in der Warnfarbe, aber ohne den Vorgang zu sperren: Der Treffer ist oft richtig,
+            // und Bestätigen soll ein Blick sein, kein Klick mehr.
             if (barcodeState.unsicher) {
                 Surface(
                     color = MaterialTheme.colorScheme.errorContainer,
@@ -202,23 +171,11 @@ AlertDialog(
                         Text(stringResource(R.string.main_barcode_figs), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
             }
-            // Erfassungsfelder NUR beim Erfassen in die Sammlung
-            // (Nachtrag 56, Marcos Wunsch).
-            //
-            // Aus der TEILELISTE heraus dient der Scanner nur dazu, ein
-            // Set in die Liste aufzunehmen, aus der später die
-            // Teileübersicht erzeugt wird. Es entsteht dabei KEIN
-            // Bestand: confirmAddBarcode() reicht die Nummer im Zweig
-            // `source == "partslist"` nur weiter und ruft gar
-            // keine Erfassung auf. Eigentümer, Kaufpreis und Zustand
-            // wären dort also Felder ohne jede Wirkung — man füllt sie
-            // aus, und nichts davon wird je gespeichert. Das ist
-            // schlimmer als fehlende Felder: Es sieht aus wie eine
-            // Eingabe, die zählt.
-            //
-            // Bild, Name, Nummer und die Kennzahlen darüber bleiben —
-            // sie helfen beim Prüfen, ob das richtige Set gescannt
-            // wurde, und genau darum geht es hier.
+            // Erfassungsfelder nur beim Erfassen in die Sammlung. Aus der Teileliste entsteht
+            // kein Bestand — confirmAddBarcode() reicht im Zweig `source == "partslist"` nur
+            // die Nummer weiter. Eigentümer, Kaufpreis und Zustand wären dort Felder ohne
+            // Wirkung, die aussehen wie eine Eingabe, die zählt. Bild, Name, Nummer und
+            // Kennzahlen bleiben: Sie helfen zu prüfen, ob das richtige Set gescannt wurde.
             if (barcodeState.source != "partslist") {
                 // Kaufpreis direkt beim Erfassen (optional) — leer lassen übernimmt
                 // serverseitig den aktuellen Marktpreis (gleiche Logik wie Webapp).
@@ -250,21 +207,15 @@ AlertDialog(
         }
     },
     confirmButton = {
-        // Zweite Verteidigungslinie gegen die Doppelerfassung: sichtbar
-        // gesperrter Knopf mit Spinner. Die eigentliche Sperre sitzt in
-        // confirmAddBarcode() — hier geht es darum, dass der Nutzer
-        // sieht, dass sein Tippen angekommen ist, und gar nicht erst
-        // ein zweites Mal tippt.
+        // Zweite Verteidigungslinie gegen die Doppelerfassung: sichtbar gesperrter Knopf
+        // mit Spinner. Die eigentliche Sperre sitzt in confirmAddBarcode() — hier sieht
+        // der Nutzer, dass sein Tippen angekommen ist, und tippt kein zweites Mal.
         Button(
             onClick = {
                 if (barcodeState.source == "partslist") {
-                    // Nur die Nummer (Nachtrag 56): Aus der Teileliste
-                    // entsteht kein Bestand, die Felder sind oben gar
-                    // nicht sichtbar. Sie hier trotzdem mitzuschicken,
-                    // hiesse Werte zu übergeben, die niemand eingeben
-                    // konnte — confirmAddBarcode() verwirft sie im
-                    // partslist-Zweig zwar, aber der Aufruf soll auch
-                    // beim Lesen zeigen, was gemeint ist.
+                    // Nur die Nummer: Aus der Teileliste entsteht kein Bestand, die Felder sind
+                    // oben nicht sichtbar. confirmAddBarcode() verwürfe sie zwar, aber der Aufruf
+                    // soll beim Lesen zeigen, was gemeint ist.
                     vm.confirmAddBarcode(barcodeState.result!!)
                 } else {
                     val price = barcodePriceText.replace(',', '.').toDoubleOrNull()

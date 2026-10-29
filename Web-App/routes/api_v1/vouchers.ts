@@ -5,6 +5,7 @@
 import express from 'express';
 import fs from 'fs';
 import path from 'path';
+import { verschluessele, entschluessele } from '../../utils/geheimnis';
 import multer from 'multer';
 import { DATA_DIR } from '../../utils/appPaths';
 import { handleRouteError } from '../../utils/httpError';
@@ -68,7 +69,7 @@ function fuerAussen(z: GutscheinZeile) {
   return {
     id: z.id,
     number: z.number,
-    pin: z.pin,
+    pin: entschluessele(z.pin),
     amount: Number(z.amount),
     currency: z.currency,
     hat_pdf: !!z.pdf_path,
@@ -141,7 +142,7 @@ router.post('/vouchers', requireToken, async (req: AuthedRequest, res) => {
        VALUES ($1,$2,$3,$4,$5)
        ON CONFLICT (user_id, number) DO NOTHING
        RETURNING ${SPALTEN}`,
-      [req.apiUser.user_id, w.number, w.pin, w.amount, w.currency]);
+      [req.apiUser.user_id, w.number, verschluessele(w.pin), w.amount, w.currency]);
     // DO NOTHING liefert KEINE Zeile zurueck, wenn es die Karte schon gibt.
     // Das ist der Unterschied zwischen „angelegt" und „war schon da" — und
     // beides stillschweigend als Erfolg zu melden, hiesse: Der Nutzer legt
@@ -182,7 +183,7 @@ async function stapelAnlegen(
               currency = EXCLUDED.currency,
               updated_at = NOW()
        RETURNING id, (xmax = 0) AS war_neu`,
-      [uid, geprueft.number, geprueft.pin, geprueft.amount, geprueft.currency]);
+      [uid, geprueft.number, verschluessele(geprueft.pin), geprueft.amount, geprueft.currency]);
     if (neu?.war_neu) added++; else updated++;
     results.push({ number: geprueft.number, action: neu?.war_neu ? 'added' : 'updated' });
   }
@@ -263,7 +264,7 @@ router.post('/vouchers/pdf', requireToken, upload.single('file'), async (req: Au
        VALUES ($1,$2,$3,$4,$5)
        ON CONFLICT (user_id, number) DO NOTHING
        RETURNING ${SPALTEN}`,
-      [req.apiUser.user_id, w.number, w.pin, w.amount, w.currency]);
+      [req.apiUser.user_id, w.number, verschluessele(w.pin), w.amount, w.currency]);
     if (!zeile) return sendeFehler(req, res, 409, 'gutschein_existiert');
 
     const z = zeile as GutscheinZeile;
@@ -319,7 +320,7 @@ router.get('/vouchers/export/pdf', requireToken, async (req: AuthedRequest, res)
         try { pdf = await fs.promises.readFile(path.join(VOUCHER_DIR, z.pdf_path)); }
         catch { pdf = null; }
       }
-      gutscheine.push({ id: z.id, number: z.number, pin: z.pin,
+      gutscheine.push({ id: z.id, number: z.number, pin: entschluessele(z.pin),
                         amount: Number(z.amount), currency: z.currency, pdf });
     }
 
@@ -345,6 +346,7 @@ router.put('/vouchers/:id', requireToken, async (req: AuthedRequest, res) => {
     const alt = await db.get(`SELECT ${SPALTEN} FROM vouchers WHERE id = $1 AND user_id = $2`,
       [id, req.apiUser.user_id]) as GutscheinZeile | undefined;
     if (!alt) return sendeFehler(req, res, 404, 'nicht_gefunden');
+    alt.pin = entschluessele(alt.pin);
 
     // Was nicht mitkommt, bleibt stehen. Ohne das loescht ein Formular, das
     // nur den Betrag schickt, Nummer und PIN.
@@ -359,7 +361,7 @@ router.put('/vouchers/:id', requireToken, async (req: AuthedRequest, res) => {
     const zeile = await db.get(
       `UPDATE vouchers SET number=$1, pin=$2, amount=$3, currency=$4, updated_at=NOW()
         WHERE id=$5 AND user_id=$6 RETURNING ${SPALTEN}`,
-      [w.number, w.pin, w.amount, w.currency, id, req.apiUser.user_id]);
+      [w.number, verschluessele(w.pin), w.amount, w.currency, id, req.apiUser.user_id]);
     res.json({ success: true, voucher: fuerAussen(zeile as GutscheinZeile) });
   } catch (e) {
     // Die UNIQUE-Bedingung schlaegt zu, wenn jemand eine Karte auf die Nummer
@@ -449,6 +451,7 @@ router.post('/vouchers/:id/guthaben', requireToken, async (req: AuthedRequest, r
     const alt = await db.get(`SELECT ${SPALTEN} FROM vouchers WHERE id = $1 AND user_id = $2`,
       [id, req.apiUser.user_id]) as GutscheinZeile | undefined;
     if (!alt) return sendeFehler(req, res, 404, 'nicht_gefunden');
+    alt.pin = entschluessele(alt.pin);
 
     // Ohne PIN gibt es keine Antwort — LEGO fragt beides ab. Das VOR der
     // Schranke pruefen: Ein Aufruf, der nicht stattfinden kann, soll den

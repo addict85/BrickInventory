@@ -15,40 +15,20 @@ import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.viewmodel.UpdateViewModel
 
 /**
- * „Es gibt eine neue Fassung — jetzt aktualisieren?"
+ * „Es gibt eine neue Fassung — jetzt aktualisieren?“ Ein Dialog beim Start, weil
+ * ein Punkt am Konto-Symbol leicht übersehen wird. Geladen wird trotzdem nie von
+ * allein: Der Dialog fragt, der Ladevorgang beginnt erst auf „Jetzt aktualisieren“
+ * — fragen ist nicht automatisch handeln.
  *
- * ── Marcos Wunsch, und die Vorgabe, die er damit ersetzt ────────────────────
+ * Er bleibt offen, während geladen wird: Wer hier „Ja“ sagt, hat den Vorgang hier
+ * angestossen; der Fortschritt stünde sonst nur in den Einstellungen, wo dieser
+ * Nutzer gerade nicht ist. Er begleitet den Weg: fragen, laden, installieren
+ * lassen.
  *
- * „Kannst du noch umsetzen, dass direkt beim Start ein Popup erscheint (mit
- * Updaten, Ja/Nein), wenn es eine neue Version gibt? Aktuell wird nur eine
- * Kugel in den Einstellungen angezeigt was oft übersehen wird."
- *
- * Frueher galt: „beim Start still pruefen, nie von allein laden" — und daraus
- * war ein Punkt am Konto-Symbol geworden, ausdruecklich MIT der Begruendung,
- * ein Dialog beim Start waere das Gegenteil davon (MainScaffold.kt). Der Punkt
- * hat den einen Teil erfuellt (nicht draengen) und den anderen verfehlt
- * (bemerkt werden).
- *
- * Die alte Vorgabe faellt damit nicht ganz weg, sondern nur zur Haelfte:
- * Geladen wird weiterhin NIE von allein. Dieser Dialog fragt; der Ladevorgang
- * beginnt erst auf „Jetzt aktualisieren". Das ist der Unterschied zwischen
- * „draengen" und „automatisch handeln", und nur das Zweite war je verboten.
- *
- * ── Warum der Dialog offen bleibt, waehrend geladen wird ────────────────────
- *
- * Wer hier „Ja" sagt, hat den Vorgang HIER angestossen. Faende er danach
- * nichts mehr vor, saehe der Knopf aus, als haette er nichts getan — der
- * Fortschritt steht sonst nur in den Einstellungen, wo dieser Nutzer gerade
- * nicht ist. Der Dialog begleitet deshalb den ganzen Weg: fragen, laden,
- * installieren lassen.
- *
- * ── Was er NICHT tut ────────────────────────────────────────────────────────
- *
- * Er erscheint nicht, solange nichts gefunden wurde, und nicht mehr, wenn der
- * Nutzer „Spaeter" gewaehlt hat (fuer diesen App-Lauf, siehe
- * UpdateUiState.dialogAbgelehnt). Er ist NICHT abbrechbar durch Tippen
- * daneben, waehrend geladen wird — ein halb geladenes APK ohne sichtbaren
- * Vorgang waere schlechter als ein Dialog, der stehen bleibt.
+ * Er erscheint nicht, solange nichts gefunden wurde, und nicht mehr nach „Später“
+ * (für diesen App-Lauf, siehe UpdateUiState.dialogAbgelehnt). Während des Ladens
+ * schliesst ihn kein Tippen daneben — ein halb geladenes APK ohne sichtbaren
+ * Vorgang wäre schlechter als ein Dialog, der stehen bleibt.
  */
 @Composable
 fun UpdateDialog(selbstUpdate: UpdateViewModel) {

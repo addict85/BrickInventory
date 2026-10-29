@@ -66,7 +66,7 @@ const STILLE_FAENGE = [
 /**
  * Treffer zaehlen — im CODE, nicht in den Erklaerungen darueber.
  *
- * ── Warum ohneKommentare() (Nachtrag 175) ───────────────────────────────────
+ * ── Warum ohneKommentare() ──────────────────────────────────────────────────
  *
  * Diese Ratsche schlug an, als jemand in einem Kommentar BEGRUENDETE, warum er
  * an einer Stelle KEIN `as any` schreibt. Der Zaehler stieg um zwei, obwohl im
@@ -101,14 +101,14 @@ test('die Suche findet die Quellen ueberhaupt', () => {
 
 test('stille Faenge werden weniger, nie mehr', () => {
   // GEMESSEN am 18.09.2026: 340 Stellen in 97 Dateien.
-  // GEMESSEN am 19.09.2026 nach Nachtrag 175: 325. Die Schranke stand auf
+  // GEMESSEN am 19.09.2026: 325. Die Schranke stand auf
   // 340, solange der Zaehler auch Kommentare las.
   // GEMESSEN am 20.10.2026: 323. Die Ratsche hatte beim Auftragsdatensatz des
   // Wanted-Imports angeschlagen (327 gegen 325); statt die Schranke zu heben
   // sind die vier neuen Faenge sprechend gemacht worden — zwei brauchte es gar
   // nicht (die Meldekette traegt ihr logAndContinue schon), zwei melden jetzt
   // ueber meldeUndWeiter. Die Schranke zieht nach, wie die Regel es vorsieht.
-  const SCHRANKE = 359;
+  const SCHRANKE = 350;
   const ist = zaehle(STILLE_FAENGE);
   assert.ok(ist <= SCHRANKE,
     `${ist} stille Faenge, erlaubt sind ${SCHRANKE}. Ein neuer \`catch {}\` ` +
@@ -122,8 +122,8 @@ test('stille Faenge werden weniger, nie mehr', () => {
 
 test('any wird weniger, nie mehr', () => {
   // GEMESSEN am 19.09.2026 nach Nachtrag 175: 398 Stellen. Es waren 402,
-  // solange der Zaehler auch Kommentare las.
-  const SCHRANKE = 392;
+  // solange der Zaehler auch Kommentare las. 386 am 28.10.2026.
+  const SCHRANKE = 386;
   const ist = zaehle([/\bas any\b/g, /:\s*any\b/g]);
   assert.ok(ist <= SCHRANKE,
     `${ist}-mal \`any\`, erlaubt sind ${SCHRANKE}. Jedes davon schaltet den ` +
@@ -151,8 +151,9 @@ function reineQuelltextTests() {
 }
 
 test('reine Quelltext-Tests werden weniger, nie mehr', () => {
-  // GEMESSEN am 25.10.2026: 103 von 312 Testdateien; am 28.10.2026: 102.
-  const SCHRANKE = 101;
+  // GEMESSEN am 25.10.2026: 103 von 312 Testdateien; am 28.10.2026: 100
+  // (routen-bewacht ging in api-eingang-db auf, das den echten Server fragt).
+  const SCHRANKE = 100;
   const alle = fs.readdirSync(__dirname).filter(n => n.endsWith('.test.js')).length;
   assert.ok(alle >= 300, `Nur ${alle} Testdateien gefunden — greift die Suche noch?`);
   const ist = reineQuelltextTests();
@@ -195,21 +196,57 @@ test('Emoji in der Oberfläche werden weniger, nie mehr', () => {
 });
 
 /**
- * Inline-Stile in index.html. Ein style="…" setzt sich über jedes Design und
- * jede Telefonregel hinweg; gleiche Dinge sahen deshalb an zwei Stellen
- * verschieden aus. Gezählt werden Attribute ausserhalb von Kommentaren.
- * style="display:none" bleibt erlaubt: Die Skripte schalten es um.
+ * Inline-Stile in index.html. Ein data-stil="…" (js/00-stile.js setzt es als
+ * Inline-Stil) setzt sich über jedes Design und jede Telefonregel hinweg;
+ * gleiche Dinge sahen deshalb an zwei Stellen verschieden aus. Gezählt werden
+ * Attribute ausserhalb von Kommentaren. display:none bleibt erlaubt: Die
+ * Skripte schalten es um.
  */
 test('Inline-Stile in index.html werden weniger, nie mehr', () => {
   // GEMESSEN am 28.10.2026: 455 vor dem Umzug in Klassen, danach 170,
-  // davon 56 reines display:none.
-  const SCHRANKE = 114;
+  // davon 56 reines display:none. 112 am 29.10. (Merkliste-Kasten als Klasse).
+  const SCHRANKE = 112;
   const html = fs.readFileSync(path.join(WEB, 'public', 'index.html'), 'utf8').replace(/<!--[\s\S]*?-->/g, '');
-  const stile = [...html.matchAll(/<[a-zA-Z][^>]*?\sstyle="([^"]*)"/g)].map(m => m[1].trim().replace(/;$/, ''));
+  const stile = [...html.matchAll(/<[a-zA-Z][^>]*?\sdata-stil="([^"]*)"/g)].map(m => m[1].trim().replace(/;$/, ''));
   assert.ok(stile.length > 50, 'Keine Inline-Stile gefunden — greift die Suche noch?');
   const ist = stile.filter(s => s !== 'display:none').length;
   assert.ok(ist <= SCHRANKE,
     `${ist} Inline-Stile (ohne display:none) in index.html, erlaubt sind ${SCHRANKE}. ` +
     'Gestaltung gehört in styles.css; dort sieht sie jedes Design und mobile.css.');
   if (ist < SCHRANKE) console.log(`  ℹ Inline-Stile: ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
+});
+
+/** Quelltext von Server und Oberfläche — für die beiden Kommentar-Ratschen unten. */
+function serverUndOberflaeche() {
+  const js = path.join(WEB, 'public', 'js');
+  return [...quellen(), ...fs.readdirSync(js).filter(f => /^\d\d-.*\.js$/.test(f)).map(f => path.join(js, f))];
+}
+
+test('kein Verweis auf „Nachtrag N" im Code', () => {
+  // Die Geschichte einer Stelle steht im Commit (CLAUDE.md); eine Nummer im
+  // Kommentar verweist auf eine Liste, die es im Baum nicht gibt.
+  // GEMESSEN am 28.10.2026: 0 (vorher 138). Gegenprobe: ein „(Nachtrag 1)" in
+  // utils/auth.ts → rot.
+  const treffer = serverUndOberflaeche().flatMap(f =>
+    (fs.readFileSync(f, 'utf8').match(/Nachtr(?:ag|äge|aege) \d+/g) || []).map(m => `${path.relative(WEB, f)}: ${m}`));
+  assert.deepEqual(treffer, []);
+});
+
+test('der Kommentaranteil im Server sinkt, nie steigt', () => {
+  // GEMESSEN am 28.10.2026: 33,4 % der nichtleeren Zeilen in server.ts,
+  // routes/, utils/ und jobs/ (25.10.: 50,5 %, siehe CLAUDE.md).
+  const SCHRANKE = 33.5;
+  let zeilen = 0, kommentar = 0;
+  for (const f of quellen().filter(f => /[\\/](routes|utils|jobs)[\\/]|[\\/]server\.ts$/.test(f))) {
+    for (const z of fs.readFileSync(f, 'utf8').split('\n')) {
+      const t = z.trim();
+      if (!t) continue;
+      zeilen++;
+      if (t.startsWith('//') || t.startsWith('*') || t.startsWith('/*')) kommentar++;
+    }
+  }
+  assert.ok(zeilen > 10000, `nur ${zeilen} Zeilen gefunden — greift die Suche noch?`);
+  const anteil = Math.round(1000 * kommentar / zeilen) / 10;
+  assert.ok(anteil <= SCHRANKE, `${anteil} % Kommentarzeilen, erlaubt sind ${SCHRANKE} %`);
+  if (anteil < SCHRANKE - 0.5) console.log(`  ℹ Kommentaranteil: ${anteil} % (Schranke ${SCHRANKE}) — Schranke nachziehen`);
 });

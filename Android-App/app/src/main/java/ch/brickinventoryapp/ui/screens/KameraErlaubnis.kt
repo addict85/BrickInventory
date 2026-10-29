@@ -26,19 +26,11 @@ import ch.brickinventoryapp.R
 import ch.brickinventoryapp.ui.theme.Abstaende
 
 /**
- * „Die Kamera wird gebraucht" — der Rueckfall, wenn die Erlaubnis fehlt.
- *
- * Stand zweimal wortgleich da: BarcodeScannerScreen.kt und SetupScreen.kt, die
- * beiden Ansichten, die eine Kamera brauchen. Gefunden beim Zaehlen gleicher
- * Achtzeiler. Ein Unterschied zwischen den Kopien war diesmal nicht dabei —
- * beide sagen dasselbe und tun dasselbe.
- *
- * Der Kamera-AUFBAU liegt schon gemeinsam in KameraAufbau.kt. Diese Datei ist
- * getrennt davon, weil dort bewusst kein einziger Compose-Import steht: Die
- * Bindung an CameraX soll ohne Oberflaeche pruefbar bleiben.
- *
- * Weisse Schrift, weil beide Ansichten den Hinweis vor einem schwarzen
- * Kamerabild zeigen — dort waere die Farbe des Themas nicht zu lesen.
+ * „Die Kamera wird gebraucht“ — der Rückfall, wenn die Erlaubnis fehlt; gemeinsam
+ * für Barcodescanner und SetupScreen. Getrennt von KameraAufbau.kt, weil dort
+ * bewusst kein Compose-Import steht: Die Bindung an CameraX soll ohne Oberfläche
+ * prüfbar bleiben. Weisse Schrift, weil beide Ansichten den Hinweis vor einem
+ * schwarzen Kamerabild zeigen.
  *
  * @param onErlauben Fragt die Erlaubnis erneut an.
  */
@@ -55,33 +47,18 @@ fun KameraErlaubnisHinweis(onErlauben: () -> Unit) {
 }
 
 /**
- * Die Ueberlagerung ueber dem Kamerabild: Rahmen in der Mitte, darunter ein
- * dunkles Schild mit dem Hinweistext.
+ * Die Überlagerung über dem Kamerabild: Rahmen in der Mitte, darunter ein dunkles
+ * Schild mit dem Hinweistext — eine Gestaltung für Barcode-Scanner und QR-Aufbau
+ * (Gewichtung 0.2 / 0.8, damit der Rahmen etwas über der Mitte sitzt; Schwarz mit
+ * 72 % Deckung, Formen.kachel, weisse Schrift in 13 sp). Nur der Rahmen ist
+ * verschieden: ein breites Rechteck mit Eckwinkeln für den Strichcode, ein Quadrat
+ * für den QR-Code.
  *
- * ── Warum gemeinsam ────────────────────────────────────────────────────────
- *
- * Der Barcode-Scanner und der QR-Aufbau zeigen beide ein Kamerabild mit
- * derselben Gestaltung: dieselbe Gewichtung 0.2 / 0.8, damit der Rahmen etwas
- * ueber der Mitte sitzt, und darunter dasselbe Schild — Schwarz mit 72 Prozent
- * Deckung, Formen.kachel, weisse Schrift in 13 sp, mittig. Nur der RAHMEN ist
- * verschieden: ein breites Rechteck mit Eckwinkeln fuer den Strichcode, ein
- * Quadrat fuer den QR-Code.
- *
- * Gefunden beim Zaehlen gleicher Achtzeiler — es war der letzte, der im
- * Android-Baum noch stand.
- *
- * ── Ein Unterschied, der eingeebnet wurde ──────────────────────────────────
- *
- * Der Abstand zwischen Rahmen und Schild war 16 dp im Scanner und 20 dp im
- * Aufbau. Ein Grund dafuer stand nirgends, und vier Pixel sind keiner. Jetzt
- * beide 16 dp — die haeufigere der beiden Zahlen.
- *
- * @param rahmen Was in der Mitte steht; bekommt den ColumnScope, damit ein
- *               Rahmen sich darin ausrichten kann.
- * @param unten  Was unter dem Schild noch dazugehoert — im Barcode-Scanner der
- *               Lampenknopf, im QR-Aufbau nichts. Den eigenen Abstand nach
- *               oben setzt der Aufrufer, weil nur er weiss, ob ueberhaupt
- *               etwas kommt.
+ * @param rahmen Was in der Mitte steht; bekommt den ColumnScope, damit ein Rahmen
+ *         sich darin ausrichten kann.
+ * @param unten  Was unter dem Schild noch dazugehört — im Barcode-Scanner der
+ *         Lampenknopf, im QR-Aufbau nichts. Den Abstand nach oben setzt der
+ *         Aufrufer, weil nur er weiss, ob etwas kommt.
  */
 @Composable
 fun KameraUeberlagerung(

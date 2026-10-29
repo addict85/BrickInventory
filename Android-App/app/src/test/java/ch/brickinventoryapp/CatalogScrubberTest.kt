@@ -167,7 +167,7 @@ class CatalogScrubberTest {
         //
         // Deshalb liegt sie im ZUSTAND — der lebt im ViewModel und überlebt
         // jeden Wechsel des Bildschirms.
-        val u = code(read("ui/UiState.kt"))
+        val u = code(read("ui/ZustandKatalog.kt"))
         assert(u.contains("val scrollIndex: Int = 0") && u.contains("val scrollOffset: Int = 0")) {
             "Der Katalog-Zustand merkt sich die Rollposition nicht"
         }

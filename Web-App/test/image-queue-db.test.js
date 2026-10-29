@@ -195,7 +195,7 @@ test('die Kachel „Bild-Download (CDN)" zeigt die Katalog-Warteschlange',
     // Ohne einen Durchgang steht sie deshalb auf „idle" UND nennt den Grund.
     //
     // Zurücksetzen: Ein früherer Teilschritt dieser Datei hat den Job schon
-    // laufen lassen. Der Stand liegt seit Nachtrag 121 in `global_settings`
+    // laufen lassen. Der Stand liegt seit Migration 0063 in `laufzustand`
     // und nicht mehr nur im Modulspeicher — dort muss er also weg. (Vorher
     // genügte hier `letzterLauf.zeit = null`; genau das hat mitverdeckt, dass
     // die Kachel eine PROZESSLOKALE Zahl las. Den Nachweis, dass ein anderer
@@ -221,8 +221,8 @@ test('die Kachel „Bild-Download (CDN)" zeigt die Katalog-Warteschlange',
     // Schreiben nicht ab. Diese Zeilen hier stellen sicher, dass der Test
     // MISST, was er behauptet, statt auf einen aufgeraeumten Nachbarn zu
     // hoffen.
-    await db.run(`DELETE FROM global_settings WHERE key='imgqueue_last_run'`);
-    await db.run(`DELETE FROM global_settings WHERE key='imgredl_status'`);
+    await db.run(`DELETE FROM laufzustand WHERE schluessel='imgqueue_last_run'`);
+    await db.run(`DELETE FROM laufzustand WHERE schluessel='imgredl_status'`);
     await _req('utils/jobMonitor.js').imgDlReset().catch(() => {});
     _req('jobs/imageQueue.js').letzterLauf.zeit = null;
     const ohneLauf = await kachel();
@@ -262,15 +262,15 @@ test('die Kachel „Bild-Download (CDN)" zeigt die Katalog-Warteschlange',
     // Durchgang von eben liess `jobLaeuft` wahr sein, und die Kachel stand
     // auch mit zehn Minuten altem Nachlauf auf „running". Dieselbe
     // Fehlerklasse wie der Fehler, um den es hier geht.)
-    await db.run(`DELETE FROM global_settings WHERE key='imgqueue_last_run'`);
+    await db.run(`DELETE FROM laufzustand WHERE schluessel='imgqueue_last_run'`);
     _req('jobs/imageQueue.js').letzterLauf.zeit = null;
     await _req('utils/jobMonitor.js').imgDlReset().catch(() => {});
     assert.notEqual((await kachel()).status, 'running',
       'Vorbedingung verletzt: Ohne Nachlauf darf hier kein Betrieb stehen');
 
     const redl = async (at) => db.run(
-      `INSERT INTO global_settings (key,value) VALUES ('imgredl_status',$1)
-         ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
+      `INSERT INTO laufzustand (schluessel, wert) VALUES ('imgredl_status',$1)
+         ON CONFLICT (schluessel) DO UPDATE SET wert = EXCLUDED.wert`,
       [JSON.stringify({ running: true, phase: 'scanning', at })]);
 
     await redl(Date.now());
@@ -283,7 +283,7 @@ test('die Kachel „Bild-Download (CDN)" zeigt die Katalog-Warteschlange',
     assert.notEqual(alt.status, 'running',
       'Ein zehn Minuten alter Stand gilt noch als Betrieb — dann bleibt die ' +
       'Kachel nach einem abgebrochenen Lauf für immer auf „läuft" stehen.');
-    await db.run(`DELETE FROM global_settings WHERE key='imgredl_status'`);
+    await db.run(`DELETE FROM laufzustand WHERE schluessel='imgredl_status'`);
   } finally {
     await db.run(`DELETE FROM image_wanted`).catch(() => {});
     await db.run(`DELETE FROM users WHERE username=$1`, [NUTZER]).catch(() => {});
@@ -365,33 +365,13 @@ test('die Bild-Tabellen kommen aus einer MIGRATION, nicht aus initSchema', () =>
       `${datei} legt die Tabelle ebenfalls an — das gehört nur in die Migration`);
   }
 
-  // Die init-Funktionen müssen NACH den Migrationen laufen (sonst gibt es die
-  // Tabelle beim Laden des Bestands noch nicht) …
-  const dbSrc = fs.readFileSync(path.join(ROOT, 'db', 'database.ts'), 'utf8');
-  const nachMigration = dbSrc.indexOf('const applied = await runMigrations(client');
-  // Gesucht wird der AUFRUF, nicht seine Schreibweise (Nachtrag 155).
-  //
-  // Vorher stand hier die Zeichenkette
-  // "require('../utils/imageMisses').initImageMisses()" woertlich. Als der
-  // require() durch einen Top-Level-Import ersetzt wurde — weil ein rohes
-  // require() `any` liefert und damit jeden Zugriff darauf ungeprueft laesst —,
-  // fand indexOf() nichts mehr und lieferte -1. Der Test wurde rot, obwohl die
-  // gepruefte Zusage („der Aufruf steht NACH den Migrationen") unveraendert
-  // galt: Er stand vorher wie nachher an derselben Stelle im Ablauf.
-  //
-  // Beide Schreibweisen zaehlen jetzt, denn beide sind derselbe Aufruf.
-  const initAufruf = Math.max(
-    dbSrc.indexOf("require('../utils/imageMisses').initImageMisses()"),
-    dbSrc.indexOf('await initImageMisses()'),
-  );
-  assert.ok(nachMigration > 0 && initAufruf > nachMigration,
+  // Die init-Funktionen laufen NACH Schema und Migrationen (sonst fehlt die
+  // Tabelle beim Laden des Bestands) und in jedem Arbeitsprozess: Sie stehen in
+  // startup/datenbank.ts hinter initSchemaOnce(), das jeder Prozess aufruft.
+  const vorbereitung = fs.readFileSync(path.join(ROOT, 'startup', 'datenbank.ts'), 'utf8');
+  const schema = vorbereitung.indexOf('await db.initSchemaOnce()');
+  assert.ok(schema > 0 && vorbereitung.indexOf('await initImageMisses()') > schema,
     'initImageMisses() läuft vor den Migrationen — dann fehlt die Tabelle noch');
-  // … und ausserhalb von initSchema(), damit sie JEDEN Arbeitsprozess erreichen.
-  const initSchemaStart = dbSrc.indexOf('async function initSchema()');
-  const initSchemaEnde = dbSrc.indexOf('async function initSchemaOnce()');
-  assert.ok(initAufruf < initSchemaStart || initAufruf > initSchemaEnde,
-    'Der Aufruf steht in initSchema() — die läuft nur bei einer Versionsänderung ' +
-    'und nur in EINEM Arbeitsprozess');
 });
 
 test('der Puffer wird in JEDEM Arbeitsprozess weggeschrieben', () => {
@@ -420,7 +400,7 @@ test('der Puffer wird in JEDEM Arbeitsprozess weggeschrieben', () => {
     'wo start() aufgerufen wird, also nur im Primärprozess');
 
   // Und initImageQueue() muss tatsächlich überall laufen.
-  const dbInit = fs.readFileSync(path.join(ROOT, 'db', 'database.ts'), 'utf8');
+  const dbInit = fs.readFileSync(path.join(ROOT, 'startup', 'datenbank.ts'), 'utf8');
   // UMFORMULIERT in Nachtrag 155 — aus demselben Grund wie zwoelf Zeilen
   // tiefer bei start(), nur hatte diese Nachbarzusicherung den Fehler behalten:
   // Sie verlangte die Schreibweise `jobs/imageQueue').initImageQueue()`, also

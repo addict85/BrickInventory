@@ -57,10 +57,10 @@ function baueCss(daten) {
   // der Zeile in styles.css bzw. themes/brick.css; zoege sie beim Umzug nicht
   // mit, waere nach zwei Jahren nicht mehr nachvollziehbar, warum die
   // Gebraucht-Linie Sand ist und nicht blau.
-  /** @param {string} wahl @param {Record<string,string>} tokens */
-  const block = (wahl, tokens) => {
+  /** @param {string} wahl @param {Record<string,string>} tokens @param {boolean} [mitNotiz] */
+  const block = (wahl, tokens, mitNotiz = true) => {
     const zeilen = Object.entries(tokens).flatMap(([name, wert]) => {
-      const notiz = (daten._notizen || {})[name];
+      const notiz = mitNotiz ? (daten._notizen || {})[name] : undefined;
       // Nur die ERSTE Zeile oeffnet den Kommentar, nur die letzte schliesst
       // ihn. CSS-Kommentare schachteln nicht: Ein `/*` auf jeder Zeile waere
       // zwar zufaellig gueltig (alles bis zum ersten `*/` gehoert dazu), laese
@@ -80,6 +80,19 @@ function baueCss(daten) {
     // data-theme. Dessen hoehere Spezifitaet gewinnt gegen :root — die
     // Reihenfolge in der Datei spielt daher keine Rolle.
     teile.push(block(design === 'classic' ? ':root' : `[data-theme="${design}"]`, tokens));
+  }
+  // Dunkle Variante je Design (siehe _dunkel_warum). Die Selektoren tragen
+  // ZWEI Attribute, damit sie die themes/*.css (ein Attribut) schlagen, die
+  // nach tokens.css geladen werden.
+  if (daten.dunkel) {
+    teile.push(`/* Dunkle Variante — siehe _dunkel_warum in shared/design-tokens.json. */\n` +
+      block('[data-dunkel]:is([data-theme], :not([data-theme]))', daten.dunkel.basis, false));
+    for (const [design, roh] of Object.entries(daten.dunkel.designs || {})) {
+      const tokens = aufgeloest({ designs: daten.dunkel.designs }, design, roh);
+      teile.push(block(design === 'classic'
+        ? '[data-dunkel]:is([data-theme="classic"], :not([data-theme]))'
+        : `[data-dunkel][data-theme="${design}"]`, tokens, false));
+    }
   }
   // Durchgezaehlte Farbreihen. Frueher stand hier EIN fest verdrahteter
   // Block fuer den Themenfaecher; mit den Steinfarben des Designs "noppe"

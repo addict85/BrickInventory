@@ -23,51 +23,32 @@ import ch.brickinventoryapp.ui.theme.Abstaende
 
 /**
  * Kontofilter einer Ansicht — Alle Konten, Eigene, dann jedes Unterkonto
- * namentlich.
- *
- * ── Wann er erscheint ───────────────────────────────────────────────────────
- * Nur bei einem Hauptkonto MIT Unterkonten. Für alle anderen ist der Filter
- * wirkungslos, und eine Auswahl mit genau einer möglichen Antwort ist keine
- * Wahl, sondern eine Frage, die sich nicht stellt.
- *
- * ── Gefiltert wird auf dem Server ───────────────────────────────────────────
- * Der Wert reist als `accounts=` mit. Hier auszusieben wäre keine Alternative:
- * Eine Kachelwand liesse sich filtern, die Gesamtzahl darunter und die
- * Bewertung im Finanzreiter nicht.
+ * namentlich. Nur bei einem Hauptkonto mit Unterkonten: Eine Auswahl mit genau
+ * einer Antwort ist keine Wahl. Gefiltert wird auf dem Server (`accounts=`), weil
+ * sich hier zwar die Kachelwand sieben liesse, nicht aber die Gesamtzahl und die
+ * Bewertung.
  */
 /**
- * Der Kontofilter, wie ihn eine BESTANDSANSICHT zeigt: links oben, mit dem
- * ueblichen Abstand, und nur wenn es ueberhaupt etwas zu waehlen gibt.
+ * Der Kontofilter, wie ihn eine Bestandsansicht zeigt: links oben, mit dem
+ * üblichen Abstand, nur wenn es etwas zu wählen gibt. Eine Zeile für Teile,
+ * Minifiguren und Galerie, damit ein abweichender Abstand nicht erst beim
+ * Reiterwechsel auffällt.
  *
- * ── Warum es diese Zeile gibt ───────────────────────────────────────────────
- *
- * Teile, Minifiguren und Galerie schrieben denselben Block hin — dieselbe
- * Bedingung, derselbe Abstand, dieselben drei Werte. Die Doppelungsmessung
- * fuehrt ihn; wichtiger ist, was er kostet: Ein anderer Abstand in einer der
- * drei faellt niemandem auf, ausser dem Nutzer, der zwischen den Reitern
- * wechselt. „Einheitliche Ansichten" ist genau das.
- *
- * ── Warum der Finanz-Reiter NICHT hierher gehoert ───────────────────────────
- *
- * Dort steht der Filter rechtsbuendig (Nachtrag 77, Marcos Wunsch fuer DIESEN
- * Reiter) und als Eintrag einer LazyColumn — die Bedingung muss dort den
- * ganzen `item{}` umschliessen, sonst bleibt eine leere Zeile stehen. Eine
- * bewusste Ausnahme, die im Quelltext dort begruendet ist.
+ * Der Finanz-Reiter gehört nicht hierher: Dort steht der Filter rechtsbündig und
+ * als Eintrag einer LazyColumn, deren `item{}` die Bedingung umschliessen muss —
+ * eine bewusste Ausnahme, dort begründet.
  */
 @Composable
 fun ScopeFilterZeile(
     members: List<HouseholdMember>,
     current: String,
     onSelect: (String) -> Unit,
-    // ── Der Lagerortfilter steht daneben, nicht darunter ────────────────────
+    // ── Der Lagerortfilter steht daneben, nicht darunter ──
     //
-    // Es sind zwei Fragen an dieselbe Liste („wessen" und „wo"), die sich frei
-    // kombinieren lassen. Nebeneinander sieht man beide Antworten auf einen
-    // Blick; untereinander sucht man die zweite. Genau so steht es in der
-    // Webapp (public/index.html, scope-* und storage-* in derselben Zeile).
-    //
-    // Vorgaben, damit die Bildschirme, die nur den Kontofilter brauchen
-    // (Minifiguren), unveraendert aufrufen koennen.
+    // Zwei frei kombinierbare Fragen an dieselbe Liste („wessen“ und „wo“) —
+    // nebeneinander sieht man beide Antworten auf einen Blick, wie in der Webapp
+    // (public/index.html, scope-* und storage-* in einer Zeile). Vorgaben, damit
+    // Bildschirme, die nur den Kontofilter brauchen, unverändert aufrufen können.
     lagerorte: List<Lagerort> = emptyList(),
     lagerAktuell: String = "",
     onLagerSelect: (String) -> Unit = {},
@@ -93,13 +74,10 @@ fun ScopeFilterZeile(
 }
 
 /**
- * Lagerortfilter — dieselbe Form wie der Kontofilter daneben.
- *
- * Bewusst als eigene Funktion und nicht als zweiter Aufruf von
- * ScopeFilterChip mit anderen Daten: Die Eintraege sind etwas anderes (Orte
- * statt Konten), und der erste Eintrag heisst „Alle Lagerorte" statt „Alle
- * Konten". Eine gemeinsame Funktion haette zwei Sorten Eintraege und zwei
- * Beschriftungen unterscheiden muessen — mehr Bedingungen als Ersparnis.
+ * Lagerortfilter — dieselbe Form wie der Kontofilter daneben. Eine eigene Funktion
+ * statt ScopeFilterChip mit anderen Daten: Die Einträge sind Orte statt Konten und
+ * der erste heisst „Alle Lagerorte“ — eine gemeinsame Funktion bräuchte mehr
+ * Bedingungen, als sie spart.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -194,15 +172,11 @@ fun ScopeFilterChip(
 }
 
 /**
- * Besitzer-Plaketten — nur im Haushalt.
- *
- * Der Server hängt `owners` nur an, wenn mehrere Konten im Blickfeld sind. Im
- * Einzelkonto stünde an jeder Kachel „gehört mir", und das ist Rauschen. Im
- * Haushalt ist es dagegen die wichtigste Angabe der Kachel: Ohne sie
- * verschiebt man das falsche Exemplar.
- *
- * Mehrere Namen heissen, dass dasselbe Set in mehreren Konten liegt — die
- * Kachel zeigt es bewusst nur EINMAL, mit der Summe der Mengen.
+ * Besitzer-Plaketten — nur im Haushalt. Der Server hängt `owners` nur an, wenn
+ * mehrere Konten im Blickfeld sind; im Einzelkonto wäre „gehört mir“ an jeder
+ * Kachel Rauschen, im Haushalt ist es die wichtigste Angabe — ohne sie verschiebt
+ * man das falsche Exemplar. Mehrere Namen: dasselbe Set in mehreren Konten,
+ * bewusst eine Kachel mit der Summe der Mengen.
  */
 // ExperimentalLayoutApi gilt für FlowRow — die Annotation gehört an die
 // FUNKTION. Ein @OptIn mitten im Rumpf ist keine gültige Anweisung; zusammen
@@ -212,10 +186,9 @@ fun ScopeFilterChip(
 @Composable
 fun OwnerBadges(owners: List<HouseholdMember>, modifier: Modifier = Modifier) {
     if (owners.isEmpty()) return
-    // FlowRow statt Row (Nachtrag 33, Marcos Screenshot): Zwei Besitzer mit
-    // langen Namen sind zusammen breiter als die Kachel — in der Row schoben
-    // sich die Etiketten übereinander. FlowRow bricht in die nächste Zeile um,
-    // damit ALLE Etiketten lesbar bleiben.
+    // FlowRow statt Row: Zwei Besitzer mit langen Namen sind breiter als die Kachel,
+    // in einer Row schöben sich die Etiketten übereinander. FlowRow bricht um, damit
+    // alle lesbar bleiben.
     FlowRow(
         modifier,
         horizontalArrangement = Arrangement.spacedBy(3.dp),
@@ -239,11 +212,9 @@ fun OwnerBadges(owners: List<HouseholdMember>, modifier: Modifier = Modifier) {
 }
 
 /**
- * Kontoauswahl beim Erfassen — „Für Konto".
- *
- * Ohne Haushalt gar nicht sichtbar; der Server bleibt dann beim eigenen Konto.
- * Ausgewählt wird eine Konto-ID, die als `owner_user_id` mitgeschickt wird —
- * ob sie erlaubt ist, prüft der Server (canWriteFor), nicht die App.
+ * Kontoauswahl beim Erfassen — „Für Konto“. Ohne Haushalt unsichtbar; der Server
+ * bleibt dann beim eigenen Konto. Die Konto-ID geht als `owner_user_id` mit; ob
+ * sie erlaubt ist, prüft der Server (canWriteFor), nicht die App.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

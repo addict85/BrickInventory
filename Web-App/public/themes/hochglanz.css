@@ -38,6 +38,11 @@
   --lack:linear-gradient(180deg,rgba(255,255,255,.85) 0%,rgba(255,255,255,0) 22%,rgba(0,0,0,.05) 100%);
   --noppenraster:radial-gradient(circle at 10px 10px,rgba(22,26,33,.05) 4px,transparent 4.6px);
 }
+/* Dunkel: der Lack als schwacher Lichtschein statt einer weissen Schicht. */
+[data-theme="hochglanz"][data-dunkel]{
+  --lack:linear-gradient(180deg,rgba(255,255,255,.06) 0%,rgba(255,255,255,0) 22%,rgba(0,0,0,.25) 100%);
+  --noppenraster:radial-gradient(circle at 10px 10px,rgba(255,255,255,.035) 4px,transparent 4.6px);
+}
 [data-theme="hochglanz"] body,
 [data-theme="hochglanz"] #login-screen,
 [data-theme="hochglanz"] #startup-screen{

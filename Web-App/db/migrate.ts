@@ -60,8 +60,10 @@ async function runMigrations(client: any, { sichern = false }: { sichern?: boole
 const SICHERUNGEN_BEHALTEN = 3;
 
 /**
- * Vor offenen Migrationen die Tabellen mit Nutzerdaten (users und alles mit
- * user_id) in ein eigenes Schema kopieren. Der Container hat kein pg_dump, und
+ * Vor offenen Migrationen die Tabellen mit Nutzerdaten (users, alles mit
+ * user_id und alles mit Fremdschlüssel auf users) in ein eigenes Schema
+ * kopieren. Der Fremdschlüssel fängt Tabellen wie account_links, deren
+ * Spalten anders heissen. Der Container hat kein pg_dump, und
  * eine Migration, die Daten umformt, lässt sich ohne Kopie nicht zurücknehmen.
  * Die drei jüngsten Sicherungen bleiben; Wiederherstellen steht im README.
  */
@@ -73,6 +75,11 @@ async function sichereNutzerdaten(client: import('pg').ClientBase, offen: string
       JOIN information_schema.tables t USING (table_schema, table_name)
      WHERE c.table_schema = 'public' AND t.table_type = 'BASE TABLE'
        AND (c.column_name = 'user_id' OR c.table_name = 'users')
+    UNION
+    SELECT r.relname FROM pg_constraint k
+      JOIN pg_class r ON r.oid = k.conrelid
+      JOIN pg_namespace n ON n.oid = r.relnamespace
+     WHERE k.contype = 'f' AND k.confrelid = 'public.users'::regclass AND n.nspname = 'public'
      ORDER BY 1`);
   await client.query('BEGIN');
   try {

@@ -205,6 +205,8 @@ class StringResourceParityTest {
             // Betrag, kein eigenes Wort. Uebersetzt ist daran nichts, und der
             // Betrag kommt formatiert von LEGO oder aus „%.2f %s".
             "vouchers_balance_done",
+            // „Filter“ ist auch im Deutschen das Wort für den Knopf und das Blatt.
+            "filter_button", "filter_title",
         )
 
         val en = texte("values/strings.xml")

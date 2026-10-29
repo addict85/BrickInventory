@@ -23,27 +23,15 @@ import ch.brickinventoryapp.R
 import ch.brickinventoryapp.ui.theme.Abstaende
 
 /**
- * Das Lagerort-Feld: auswaehlen ODER neu eintippen.
+ * Das Lagerort-Feld: auswählen oder neu eintippen, in einem Bedienelement — ein
+ * ExposedDropdownMenuBox klappt auf wie ein Auswahlfeld und nimmt trotzdem
+ * Getipptes an, das Gegenstück zur `datalist` der Webapp.
  *
- * ── Warum beides in EINEM Bedienelement ─────────────────────────────────────
- *
- * Marco will beides: „ein Dropdown, bei dem man auch gleich neue Auswahlwerte
- * erfassen kann". Ein reines Auswahlfeld kann nur das erste, ein reines
- * Textfeld nur das zweite. Ein ExposedDropdownMenuBox klappt auf wie ein
- * Auswahlfeld und nimmt trotzdem Getipptes an — das Gegenstueck zur
- * `datalist` der Webapp.
- *
- * ── Warum das Tippen ENTPRELLT speichert ────────────────────────────────────
- *
- * Hier stand vorher „nur beim Verlieren des Fokus speichern". Genau das war
- * Marcos Befund beim Preisalarm: Am Telefon tippt man, schliesst die Tastatur
- * und geht zurueck — dieser Fokuswechsel kommt nie. Fuer den Lagerort galt
- * dasselbe, es hat nur noch niemand gemeldet. Die Ruhezeit liegt im
- * ViewModel und ueberlebt den Bildschirm (siehe setzeSetLagerort).
- *
- * Eine Wahl aus der Liste speichert dagegen SOFORT: Sie ist fertig in dem
- * Moment, in dem sie getroffen wird — auf eine Ruhezeit zu warten waere nur
- * eine Verzoegerung ohne Gewinn.
+ * Getipptes speichert entprellt, nicht beim Fokusverlust: Am Telefon tippt man,
+ * schliesst die Tastatur und geht zurück — dieser Fokuswechsel kommt nie. Die
+ * Ruhezeit liegt im ViewModel und überlebt den Bildschirm (siehe
+ * setzeSetLagerort). Eine Wahl aus der Liste speichert sofort: Sie ist fertig,
+ * wenn sie getroffen wird.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -57,11 +45,9 @@ fun LagerortFeld(
     // der normalisierte Wert nach dem Speichern), soll das Feld ihn zeigen
     // statt den alten Text zu behalten.
     var text by rememberSaveable(wert) { mutableStateOf(wert) }
-    // rememberSaveable, nicht remember: BildschirmZustandTest hat genau das
-    // gemeldet, und mit Recht. Wer gerade dabei ist, einen Ort zu waehlen,
-    // und dabei das Telefon dreht, soll die Liste weiter offen sehen statt
-    // von vorn anfangen zu muessen. Dass sie zwei Zeilen tiefer ohnehin nur
-    // erscheint, wenn es passende Orte gibt, macht es unschaedlich.
+    // rememberSaveable, nicht remember (BildschirmZustandTest): Wer beim Wählen eines
+    // Orts das Telefon dreht, soll die Liste weiter offen sehen. Dass sie nur
+    // erscheint, wenn es passende Orte gibt, macht es unschädlich.
     var offen by rememberSaveable { mutableStateOf(false) }
     // Was zur Auswahl steht, waehrend getippt wird: nur die passenden. Bei
     // dreissig Regalen ist eine ungefilterte Liste keine Hilfe mehr.
@@ -100,21 +86,12 @@ fun LagerortFeld(
 }
 
 /**
- * Dasselbe Feld, aber im ERFASSEN-Dialog: mit Beschriftung und voller Breite.
- *
- * ── Marcos Befund vom 24.09. ────────────────────────────────────────────────
- *
- * Der Lagerort liess sich erst NACH dem Erfassen setzen — im Detaildialog.
- * „Wenn ich ein Set in der Galerie hinzufuegen will, kann ich den Lagerort
- * nicht waehlen. Egal ob ich das manuell oder per Barcode hinzufuege." Dazu
- * die Wege aus Katalog und Merkliste sowie die manuellen Teile und Figuren.
- *
- * ── Warum eine eigene Fassung und nicht fuenfmal [LagerortFeld] ─────────────
- *
- * In den Detailansichten steht das Feld in einer Zeile NEBEN seiner
- * Beschriftung und ist schmal. In einem Dialog steht es unter ihr und nimmt
- * die ganze Breite — wie die Felder darueber. Diese eine Stelle haelt den
- * Unterschied fest; das Bedienelement selbst bleibt dasselbe.
+ * Dasselbe Feld im Erfassen-Dialog: mit Beschriftung und voller Breite, damit sich
+ * der Lagerort schon beim Erfassen setzen lässt — in Galerie, Barcode, Katalog,
+ * Merkliste und bei manuellen Teilen und Figuren. Eine eigene Fassung, weil das
+ * Feld in den Detailansichten schmal neben seiner Beschriftung steht, im Dialog
+ * darunter über die ganze Breite wie die Felder darüber. Das Bedienelement selbst
+ * bleibt dasselbe.
  */
 @Composable
 fun LagerortErfassung(

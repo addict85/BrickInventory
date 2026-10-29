@@ -33,7 +33,7 @@ let _started = false; // true, sobald start() lief (nur im Primary) — schützt
 /**
  * Namensraum der prozessübergreifenden Sperre für den Preislauf.
  *
- * Die Zahl steht seit Nachtrag 149 nicht mehr hier, sondern in
+ * Die Zahl steht nicht mehr hier, sondern in
  * utils/lockNamespaces.ts — zusammen mit allen anderen. Hier stand vorher eine
  * abgeschriebene Liste der belegten Namensräume; sie kannte 55 und 58 nicht
  * und wäre bei der nächsten Ergänzung wieder veraltet gewesen.

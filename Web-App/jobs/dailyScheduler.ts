@@ -4,7 +4,8 @@
  * Ausführlich: docs/begruendungen/jobs/dailyScheduler.ts.md#abschnitt
  */
 import { meldeUndWeiter, fehlertext } from '../utils/httpError';
-import { getGlobalSetting, deleteGlobalSetting } from '../utils/settings';
+import { getGlobalSetting } from '../utils/settings';
+import { liesZustand, loescheZustand } from '../utils/laufzustand';
 // Kein eigener db-Verweis mehr: Der Planer liest und löscht seine Uhrzeiten
 // und den Auslöser ausschliesslich über utils/settings.
 
@@ -71,15 +72,15 @@ async function rescheduleAll() {
 /**
  * Wartet auf Reschedule-Signale. Hiess früher so, weil es alle 3 Sekunden die
  * Datenbank abgefragt hat — jetzt hängt es an LISTEN/NOTIFY und meldet sich
- * nur noch, wenn tatsächlich etwas ansteht. Der Eintrag in global_settings
+ * nur noch, wenn tatsächlich etwas ansteht. Der Eintrag in laufzustand
  * bleibt die belastbare Quelle; pgNotify ruft den Handler beim Verbinden
  * einmal von sich aus auf, damit ein verpasstes Signal nachgeholt wird.
  */
 function startTriggerPoll() {
   require('../utils/pgNotify').listen('job_reschedule_trigger', async () => {
-    const ausloeser = await getGlobalSetting('job_reschedule_trigger');
+    const ausloeser = await liesZustand('job_reschedule_trigger');
     if (!ausloeser) return;
-    await deleteGlobalSetting('job_reschedule_trigger').catch(() => {});
+    await loescheZustand('job_reschedule_trigger').catch(() => {});
     console.log('[scheduler] Reschedule-Trigger empfangen — plane Jobs neu');
     await rescheduleAll();
   });

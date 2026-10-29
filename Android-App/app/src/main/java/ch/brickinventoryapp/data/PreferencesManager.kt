@@ -29,7 +29,7 @@ val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "ap
 class PreferencesManager @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val tresor: TokenVerschluesselung,
-) : Anmeldeablage {
+) : Anmeldeablage, ch.brickinventoryapp.data.cache.CacheBesitzer {
     companion object {
         /**
          * Der synchron lesbare Spiegel des Designs — eigene Datei, damit er
@@ -37,12 +37,10 @@ class PreferencesManager @Inject constructor(
          * gemerktesDesign() weiter unten.
          */
         /**
-         * Welche Designs es gibt. Dieselbe Liste wie ALLOWED in
-         * js/00-theme-boot.js, die Whitelist in routes/settings.ts und die
-         * Dateien unter public/themes/ — theme.test.js haelt sie zusammen.
-         *
-         * Unbekannte Werte werden NICHT gemerkt: "" oder null heisst „keine
-         * Information" und darf den gemerkten Wert nicht loeschen.
+         * Welche Designs es gibt — dieselbe Liste wie ALLOWED in js/00-theme-boot.js, die
+         * Whitelist in routes/settings.ts und public/themes/ (theme.test.js hält sie
+         * zusammen). Unbekannte Werte werden nicht gemerkt: "" oder null heisst „keine
+         * Information“ und darf den gemerkten Wert nicht löschen.
          */
         val ERLAUBTE_DESIGNS = setOf("classic", "brick", "werkbank", "farbfaecher", "noppe", "hochglanz")
 
@@ -51,26 +49,10 @@ class PreferencesManager @Inject constructor(
         const val APP_THEME_SPIEGEL = "app_theme"
 
         /**
-         * In welchen Netzen darf das Vorwaermen der Vorschaubilder holen?
-         *
-         * ── Marcos Vorgabe ──────────────────────────────────────────────────
-         * „Bitte nur im WLAN vorwaermen oder noch besser in den Optionen
-         * einstellbar. Insbesondere auch ob WLAN, Mobilfunk und oder Roaming
-         * erlaubt ist. Standard auf WLAN."
-         *
-         * ── Warum auf dem Geraet und nicht beim Konto ────────────────────────
-         *
-         * Dieselbe Begruendung wie beim Kontofilter (ScopeFilter): Es ist eine
-         * Eigenschaft des GERAETS, nicht des Kontos. Am Telefon mit einem
-         * knappen Tarif will man das anders als am Tablet, das das WLAN nie
-         * verlaesst — und der Server hat damit nichts zu tun.
-         *
-         * Die drei sind UNABHAENGIG, nicht gestuft: Jeder Schalter beantwortet
-         * eine Lage („im WLAN", „im Mobilfunknetz", „im Ausland"). Wer nur
-         * Roaming erlaubt und Mobilfunk nicht, bekommt genau das — ungewoehnlich,
-         * aber es steht so da. Eine verdeckte Kopplung („Roaming wirkt nur mit
-         * Mobilfunk") waere der schlechtere Fehler: Sie sieht aus wie ein
-         * kaputter Schalter.
+         * In welchen Netzen darf das Vorwärmen der Vorschaubilder holen? Auf dem Gerät,
+         * nicht beim Konto: Am Telefon mit knappem Tarif will man es anders als am Tablet.
+         * Die drei Schalter sind unabhängig, je einer für eine Lage; eine versteckte
+         * Kopplung sähe aus wie ein kaputter Schalter.
          */
         val VORWAERMEN_WLAN    = booleanPreferencesKey("vorwaermen_wlan")
         val VORWAERMEN_MOBIL   = booleanPreferencesKey("vorwaermen_mobil")
@@ -81,65 +63,39 @@ class PreferencesManager @Inject constructor(
         val KLARTEXT_HOSTS = stringSetPreferencesKey("klartext_hosts")
         val KLARTEXT_ALT_UEBERNOMMEN = booleanPreferencesKey("klartext_alt_uebernommen")
         /**
-         * Der ALTE Klartext-Schlüssel. Bleibt bestehen, weil auf jedem Gerät,
-         * das die App schon benutzt hat, genau dort das Token liegt. Er wird
-         * nur noch GELESEN (einmalig, zur Übernahme) und danach entfernt —
-         * geschrieben wird ausschliesslich AUTH_TOKEN_ENC.
+         * Der alte Klartext-Schlüssel: Auf Geräten mit älterer Fassung liegt das Token
+         * dort. Er wird nur noch einmal zur Übernahme gelesen und dann entfernt;
+         * geschrieben wird AUTH_TOKEN_ENC.
          */
         val AUTH_TOKEN     = stringPreferencesKey("auth_token")
 
-        /** Der verschlüsselte Nachfolger (Nachtrag 155). */
+        /** Der verschlüsselte Nachfolger. */
         val AUTH_TOKEN_ENC = stringPreferencesKey("auth_token_enc")
         val USERNAME     = stringPreferencesKey("username")
         val CURRENCY     = stringPreferencesKey("currency")
         // "system" (folgt der OS-Sprache), "en" oder "de"
         val LANGUAGE     = stringPreferencesKey("language")
         /**
-         * Das zuletzt bekannte Design des Servers — "classic" oder "brick".
-         *
-         * ── Warum es gemerkt wird (Nachtrag 135) ─────────────────────────────
-         *
-         * `app_theme` ist eine GLOBALE Einstellung des Servers und kam bisher
-         * nur mit /settings, also erst NACH der Anmeldung. Anmelde- und
-         * Einrichtungsbildschirm erschienen dadurch bei jedem Kaltstart im
-         * Standard-Design und sprangen nach dem Anmelden um.
-         *
-         * Die Webapp hat genau dieses Flackern in zwei Stufen behoben
-         * (public/js/00-theme-boot.js): erst der gemerkte Wert ohne Netz, dann
-         * asynchron die oeffentliche Adresse /api/v1/settings/theme. Hier
-         * dasselbe — dies ist Stufe eins.
-         *
-         * Nicht nutzerbezogen: Das Design gilt fuer alle, es ist keine
-         * persoenliche Einstellung. Deshalb ueberlebt es auch das Abmelden.
+         * Das zuletzt bekannte Design des Servers. Gemerkt, weil /settings erst nach der
+         * Anmeldung kommt und Anmelde- und Einrichtungsbildschirm sonst im Standard-Design
+         * erschienen und umsprangen — Stufe eins wie in public/js/00-theme-boot.js.
+         * Global, deshalb überlebt es das Abmelden.
          */
         val APP_THEME    = stringPreferencesKey("app_theme")
 
         /**
-         * Sollen ausgeloeste Preisalarme als Benachrichtigung erscheinen?
-         *
-         * Auf dem GERAET, nicht beim Konto — dieselbe Begruendung wie beim
-         * Vorwaermen und beim Kontofilter: Wer dasselbe Konto am Telefon und
-         * am Tablet benutzt, will die Meldung in der Regel nur an einem der
-         * beiden. Der Mailversand des Servers bleibt davon unberuehrt; er ist
-         * die kontobezogene Haelfte derselben Sache.
-         *
-         * Vorgabe AUS: Eine App, die ungefragt zu benachrichtigen beginnt,
-         * waere eine Ueberraschung — und ab Android 13 braucht es ohnehin
-         * erst die Erlaubnis des Nutzers.
+         * Sollen ausgelöste Preisalarme als Benachrichtigung erscheinen? Je Gerät: Mit
+         * Telefon und Tablet will man die Meldung meist nur an einem. Vorgabe aus —
+         * ungefragte Benachrichtigungen wären eine Überraschung, und ab Android 13 braucht
+         * es ohnehin die Erlaubnis.
          */
         val ALARM_MELDUNGEN = booleanPreferencesKey("alarm_meldungen")
 
         /**
-         * Der Zeitpunkt des letzten erfolgreichen Abrufs, als ISO-Text vom
-         * SERVER.
-         *
-         * Warum nicht die Uhr des Telefons: siehe Alarmabholung — die
-         * Gangabweichung zwischen beiden entschiede sonst darueber, ob eine
-         * Meldung doppelt kommt oder ausfaellt.
-         *
-         * Warum Text und keine Zahl: Es wird nie gerechnet, nur
-         * weitergereicht. Ein Zeitstempel, der durch eine Umwandlung in
-         * Millisekunden und zurueck laeuft, verliert unterwegs die Zeitzone.
+         * Der Zeitpunkt des letzten erfolgreichen Abrufs, als ISO-Text vom Server — nicht
+         * die Uhr des Telefons, deren Abweichung über doppelte oder fehlende Meldungen
+         * entschiede (siehe Alarmabholung). Text, weil nur weitergereicht wird und eine
+         * Umrechnung die Zeitzone verlöre.
          */
         val ALARM_MARKE = stringPreferencesKey("alarm_marke")
     }
@@ -153,18 +109,9 @@ class PreferencesManager @Inject constructor(
         } else raw
     }
     /**
-     * Das Bearer-Token im Klartext — für Aufrufer unverändert.
-     *
-     * ── Übernahme der Altbestände (Nachtrag 155) ─────────────────────────────
-     * Vor dieser Änderung lag das Token unverschlüsselt unter AUTH_TOKEN. Wer
-     * die App schon benutzt, hat es genau dort. Würde hier nur noch
-     * AUTH_TOKEN_ENC gelesen, wäre jede bestehende Installation beim nächsten
-     * Start abgemeldet — für eine Verbesserung, die niemand angefordert hat,
-     * ein zu hoher Preis.
-     *
-     * Deshalb: Erst den verschlüsselten Wert versuchen, sonst den alten
-     * Klartext nehmen. Das eigentliche Umschreiben passiert in
-     * uebernehmeAltesToken(), nicht hier — ein Lesepfad darf nicht schreiben.
+     * Das Bearer-Token im Klartext. Erst der verschlüsselte Wert, sonst der alte
+     * Klartext — sonst wäre jede ältere Installation nach dem Update abgemeldet.
+     * Umgeschrieben wird in uebernehmeAltesToken(); ein Lesepfad schreibt nicht.
      */
     val authToken: Flow<String> = context.dataStore.data.map { prefs ->
         prefs[AUTH_TOKEN_ENC]?.let { tresor.entschluessle(it) }
@@ -186,10 +133,8 @@ class PreferencesManager @Inject constructor(
     // Vorgabe AUS — Begruendung am Schluessel oben.
     val alarmMeldungenAn: Flow<Boolean> = context.dataStore.data.map { it[ALARM_MELDUNGEN] ?: false }
     /**
-     * null = noch nie abgerufen. Genau diese Unterscheidung braucht
-     * Alarmabholung: Beim allerersten Durchgang wird nur markiert und nichts
-     * gemeldet. Ein leerer Text traete hier als „schon abgerufen, aber ab
-     * Anbeginn" auf und brachte alles Alte auf einmal.
+     * null = noch nie abgerufen: Beim allerersten Durchgang markiert Alarmabholung nur
+     * und meldet nichts. Ein leerer Text brächte alles Alte auf einmal.
      */
     val alarmMarke: Flow<String?> = context.dataStore.data.map { it[ALARM_MARKE] }
 
@@ -200,80 +145,41 @@ class PreferencesManager @Inject constructor(
     // null = DataStore noch nicht gelesen (nur ganz kurz beim Kaltstart).
     private val prefsScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    // ── Warum diese beiden nicht mehr blosse stateIn() sind (Marcos Befund) ──
+    // ── Der Speicherwert führt, der DataStore folgt ──
     //
-    // „Wenn ich mich neu in der Android-App einlogge erscheint: ‚Ungültiges
-    // oder abgelaufenes Token'. Ich werde aber trotzdem eingeloggt."
-    //
-    // Beides zugleich hat einen Grund, und er steht hier. `stateIn()` spiegelt
-    // den DataStore — die Spiegelung folgt der Schreibung aber ERST, wenn der
-    // DataStore geschrieben hat und sein Fluss ausgegeben hat. Das ist eine
-    // Plattenschreibung auf Dispatchers.IO, also Millisekunden bis
-    // Zehntelsekunden.
-    //
-    // login() macht in genau diesem Fenster weiter:
-    //
-    //     prefs.saveAuthToken(neu)      // DataStore-Schreibung angestossen
-    //     _state.update { isLoggedIn = true }
-    //     loadDashboard()               // feuert SOFORT Anfragen
-    //
-    // Der Interceptor (AppModule.kt) liest `authTokenState.value` — und das
-    // trug in diesem Moment noch den ALTEN Wert. Bei einer frischen Anmeldung
-    // ist der leer, also ging die Anfrage OHNE Authorization-Kopf raus.
-    // requireToken beantwortet das mit 401 und `token_ungueltig`, und
-    // loadSets() zeigt den Text des Servers als Meldung an. Angemeldet war man
-    // trotzdem — die Anmeldung selbst war ja gelungen.
-    //
-    // Deshalb ist der Speicherwert jetzt die FUEHRENDE Fassung: saveAuthToken()
-    // und saveServerUrl() setzen ihn, bevor sie schreiben, und der DataStore
-    // fuellt ihn beim Start und bei Aenderungen von aussen nach. Damit sieht
-    // der Interceptor den neuen Wert in derselben Anweisungsfolge, in der er
-    // gesetzt wurde.
-    //
-    // Dasselbe galt fuer die Server-Adresse: loginWithQrToken() speichert sie
-    // und loest den QR-Code unmittelbar danach ein — der Aufruf ging bis
-    // hierher an den VORHERIGEN Server, der die Nonce nicht kennt.
-    //
-    // null = DataStore noch nicht gelesen (nur ganz kurz beim Kaltstart).
+    // stateIn() folgte der Schreibung erst nach der Plattenschreibung. Die Anmeldung
+    // feuert aber sofort Abrufe, und der Interceptor las so noch den alten (leeren)
+    // Token oder die alte Adresse — der Server antwortete mit `token_ungueltig`,
+    // obwohl die Anmeldung gelang. Deshalb setzen saveAuthToken() und saveServerUrl()
+    // den Speicherwert zuerst. null = DataStore noch nicht gelesen (nur kurz beim
+    // Kaltstart).
     private val _serverUrlState = MutableStateFlow<String?>(null)
     val serverUrlState: StateFlow<String?> = _serverUrlState.asStateFlow()
     private val _authTokenState = MutableStateFlow<String?>(null)
     val authTokenState: StateFlow<String?> = _authTokenState.asStateFlow()
 
     /**
-     * Der Token, wie er JETZT gilt — nicht, wie er zuletzt auf der Platte stand.
-     *
-     * ── Marcos Befund vom 25.09. ─────────────────────────────────────
-     *
-     *   „Wenn ich mich in der Webapp einlogge, einen qr Code erzeuge und mit
-     *    diesem in die App einlogge funktioniert es, es erscheint aber die
-     *    Meldung, dass das token nicht gültig sei. Wenn ich einen 2. Qr Code
-     *    generiere und nochmals einlogge erscheint die Meldung nicht mehr."
-     *
-     * Die Ursache ist NICHT bewiesen — ohne Logcat war nicht festzustellen,
-     * welche Anfrage den 401 bekam. Belegt ist nur, was sie ausschliesst: Die
-     * App blieb angemeldet, und der Interceptor meldet jeden 401 MIT
-     * mitgeschicktem Token als abgelaufene Sitzung (AppModule.kt). Also ging
-     * die Anfrage OHNE Token hinaus.
-     *
-     * ── Warum es diese Funktion gibt ────────────────────────────────
-     *
-     * `authToken` ist der DataStore-Fluss und LAEUFT NACH: Zwischen
-     * saveAuthToken() und der fertigen Plattenschreibung traegt er noch den
-     * alten Wert. Fuer den Interceptor wurde das mit authTokenState behoben;
-     * sechs andere Stellen lasen weiter `authToken.first()` — die SSE-Klienten,
-     * der CSV-Dienst, der PDF-Export, der Polling-Rueckfall und der
-     * Preisalarm-Arbeiter. Jede davon konnte im selben Fenster eine Anfrage
-     * ohne Token abschicken.
-     *
-     * Statt die eine Stelle zu suchen, die es bei Marco war, lesen jetzt alle
-     * dasselbe: erst den fuehrenden Speicherwert, und nur wenn der noch nie
-     * gefuellt wurde (Kaltstart) die Platte.
+     * Der Token, wie er jetzt gilt — nicht, wie er zuletzt auf der Platte stand.
+     * `authToken` läuft der Schreibung nach; jeder Abruf, der ihn im Fenster nach dem
+     * Anmelden liest, ginge ohne Token hinaus. Deshalb lesen SSE-Klienten, CSV-Dienst,
+     * PDF-Export und Preisalarm-Arbeiter alle hier: erst der Speicherwert, nur beim
+     * Kaltstart die Platte.
      */
     suspend fun tokenJetzt(): String = _authTokenState.value ?: authToken.first()
 
     /** Dieselbe Regel fuer die Server-Adresse — aus demselben Grund. */
     override suspend fun serverUrlJetzt(): String = _serverUrlState.value ?: serverUrl.first()
+
+    /**
+     * Der Bereich des Antwort-Caches: Server und Token. Der Token gehört genau
+     * einem Konto, und er wechselt bei jeder Anmeldung — schon in dem Moment,
+     * in dem der Interceptor ihn liest, nicht erst nach dem Benutzernamen.
+     */
+    override suspend fun cacheBereich(): String? {
+        val server = serverUrlJetzt().trim().trimEnd('/')
+        val token = tokenJetzt()
+        return if (server.isBlank() || token.isBlank()) null else "$server\n$token"
+    }
 
     /** Synchron lesbar für den Interceptor, wie serverUrlState; null = noch nicht gelesen. */
     private val _klartextHosts = MutableStateFlow<Set<String>?>(null)
@@ -332,11 +238,8 @@ class PreferencesManager @Inject constructor(
         context.dataStore.edit { it[SERVER_URL] = normalized }
     }
     /**
-     * Token ablegen — ab jetzt ausschliesslich verschlüsselt.
-     *
-     * Der alte Klartext-Eintrag wird im selben Zug ENTFERNT. Ohne das bliebe
-     * er neben dem verschlüsselten stehen und wäre weiterhin auslesbar; die
-     * Verschlüsselung wäre dann Zierde.
+     * Token ablegen, nur noch verschlüsselt. Der alte Klartext-Eintrag wird im selben
+     * Zug entfernt — sonst bliebe er auslesbar, und die Verschlüsselung wäre Zierde.
      */
     override suspend fun saveAuthToken(token: String) {
         // ZUERST in den Speicher: Der Aufrufer feuert unmittelbar nach dieser
@@ -351,14 +254,11 @@ class PreferencesManager @Inject constructor(
     }
 
     /**
-     * Ein noch im Klartext liegendes Token einmalig verschlüsselt neu ablegen.
+     * Ein noch im Klartext liegendes Token einmalig verschlüsselt neu ablegen, beim
+     * App-Start. Getrennt vom Lesepfad, weil `authToken` viele Sammler hat und ein
+     * Schreiben darin mehrfach liefe.
      *
-     * Wird beim App-Start aufgerufen. Bewusst getrennt vom Lesepfad: `authToken`
-     * ist ein Flow, den beliebig viele Sammler beobachten — ein Schreibvorgang
-     * darin liefe mehrfach und mitten in der Auswertung.
-     *
-     * @return true, wenn tatsächlich etwas übernommen wurde (für Tests und
-     *         Protokoll); false, wenn nichts zu tun war.
+     * @return true, wenn etwas übernommen wurde; false, wenn nichts zu tun war.
      */
     suspend fun uebernehmeAltesToken(): Boolean {
         var uebernommen = false
@@ -382,22 +282,16 @@ class PreferencesManager @Inject constructor(
         context.dataStore.edit { it[CURRENCY] = cur }
     }
     /**
-     * Eine der drei Netzerlaubnisse setzen.
-     *
-     * EINE Funktion mit dem Schluessel als Argument statt dreier fast gleicher:
-     * Die Oberflaeche zaehlt die drei ohnehin in einer Liste auf, und drei
-     * Kopien derselben Zeile sind genau die Sorte Doppelung, an der in diesem
-     * Projekt schon mehrmals eine Haelfte stehen geblieben ist.
+     * Eine der drei Netzerlaubnisse setzen — eine Funktion mit dem Schlüssel als
+     * Argument statt dreier fast gleicher, die auseinanderlaufen könnten.
      */
     suspend fun saveVorwaermenNetz(schluessel: Preferences.Key<Boolean>, erlaubt: Boolean) {
         context.dataStore.edit { it[schluessel] = erlaubt }
     }
 
     /**
-     * Die Marke fortschreiben.
-     *
-     * Leere Werte werden nicht geschrieben: Der Aufrufer wuerde damit die
-     * Unterscheidung „noch nie abgerufen" zerstoeren, ohne etwas zu gewinnen.
+     * Die Marke fortschreiben. Leere Werte werden nicht geschrieben, sonst ginge die
+     * Unterscheidung „noch nie abgerufen“ verloren.
      */
     suspend fun setzeAlarmMarke(marke: String) {
         if (marke.isBlank()) return
@@ -424,49 +318,28 @@ class PreferencesManager @Inject constructor(
         }
     }
 
-    // ── Der synchron lesbare Spiegel des Designs (Marcos Befund) ─────────────
+    // ── Der synchron lesbare Spiegel des Designs ──
     //
-    // „Beim Starten der App sieht man teilweise das andere Design, insbesondere
-    // wenn die Internetverbindung schlecht ist."
-    //
-    // Der gemerkte Wert lag nur im DataStore, und der laesst sich ausschliesslich
-    // ASYNCHRON lesen. MainActivity.setContent() laeuft aber sofort — die ersten
-    // Bilder entstanden deshalb immer im Vorgabewert "classic", und erst danach
-    // traf der gemerkte Wert ein. Bei schlechtem Netz dauert der Kaltstart
-    // laenger, konkurriert mehr um Haupt-Thread und Platte, und das Fenster
-    // wird sichtbar.
-    //
-    // Die Webapp hat dasselbe Problem laengst geloest: js/00-theme-boot.js ist
-    // ein BLOCKIERENDES Skript im <head>, das den zuletzt bekannten Wert aus
-    // localStorage holt, bevor irgendetwas gezeichnet wird. SharedPreferences
-    // ist das Gegenstueck dazu — sie lassen sich synchron lesen, und genau dafuer
-    // benutzt sie auch Android selbst (AppCompatDelegate merkt sich so den
-    // Nachtmodus).
-    //
-    // Der erste Zugriff liest eine winzige Datei vom Hauptthread. Das ist der
-    // Preis fuer „kein falsches Bild", und es ist derselbe Handel, den das
-    // Boot-Skript der Webapp eingeht.
-    //
-    // DataStore bleibt die fuehrende Ablage: Der Spiegel wird nur geschrieben,
-    // wenn dort geschrieben wird, und nur gelesen, wenn es synchron sein muss.
+    // Der DataStore lässt sich nur asynchron lesen, setContent() läuft aber sofort;
+    // die ersten Bilder entstanden deshalb im Standard-Design, bis der gemerkte Wert
+    // kam. SharedPreferences sind synchron lesbar — das Gegenstück zum blockierenden
+    // 00-theme-boot.js der Webapp. Der DataStore bleibt führend; der Spiegel wird nur
+    // mitgeschrieben.
     private val designSpiegel by lazy {
         context.getSharedPreferences(DESIGN_SPIEGEL_DATEI, Context.MODE_PRIVATE)
     }
 
     /**
-     * Das zuletzt bekannte Design — SYNCHRON, fuer den allerersten Bildaufbau.
-     *
-     * Kennt der Spiegel nichts (Neuinstallation), bleibt es beim Standard;
-     * dann gibt es auch kein „anderes Design", das aufblitzen koennte.
+     * Das zuletzt bekannte Design — synchron, für den allerersten Bildaufbau. Ohne
+     * Eintrag (Neuinstallation) gilt der Standard.
      */
     fun gemerktesDesign(): String =
         designSpiegel.getString(APP_THEME_SPIEGEL, null) ?: "classic"
 
     /**
-     * „Dunkel, wenn das System dunkel ist" — je Gerät, nicht vom Server. Im
-     * Spiegel statt im DataStore, weil es wie das Design schon das erste Bild
-     * bestimmt. Ohne gespeicherte Wahl folgt die App dem System; eine einmal
-     * getroffene Wahl bleibt (dunkelNachSystemGilt).
+     * „Dunkel, wenn das System dunkel ist“ — je Gerät. Im Spiegel, weil es wie das
+     * Design schon das erste Bild bestimmt; ohne gespeicherte Wahl folgt die App dem
+     * System (dunkelNachSystemGilt).
      */
     fun dunkelNachSystem(): Boolean = ch.brickinventoryapp.ui.theme.dunkelNachSystemGilt(
         if (designSpiegel.contains(DUNKEL_NACH_SYSTEM)) designSpiegel.getBoolean(DUNKEL_NACH_SYSTEM, true) else null)

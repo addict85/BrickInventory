@@ -98,9 +98,14 @@ function innereDateien() {
   return gefunden;
 }
 
+/** Quelltext einer Datei (relativ zu ROOT) ohne Kommentare. */
+function quelltext(rel) {
+  return ohneKommentare(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
+}
+
 /** Alle Ziele von import/require einer Datei (relativ zu ROOT), roh. */
 function importe(rel) {
-  const src = ohneKommentare(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
+  const src = quelltext(rel);
   return [...src.matchAll(/(?:from\s+|require\()\s*['"]([^'"]+)['"]/g)].map(m => m[1]);
 }
 
@@ -154,6 +159,58 @@ test('utils/ und clients/ importieren nichts aus jobs/', () => {
     for (const ziel of importe(d).filter(z => /jobs\//.test(z)))
       treffer.push(`${d} -> ${ziel}`);
   assert.deepEqual(treffer, []);
+});
+
+test('db/ importiert nichts aus jobs/', () => {
+  // Die Datenbankschicht ist die unterste; die Bilddienste startet
+  // startup/datenbank.ts. Gegenprobe (28.10.2026): der Import von
+  // initImageQueue zurück in db/database.ts → rot.
+  const treffer = [];
+  for (const d of innereDateien().filter(f => f.startsWith('db/')))
+    for (const ziel of importe(d).filter(z => /jobs\//.test(z))) treffer.push(`${d} -> ${ziel}`);
+  assert.deepEqual(treffer, []);
+});
+
+test('routes/auth.ts und routes/api_v1/admin.ts führen kein SQL aus', () => {
+  // Ihr Datenzugriff steht in utils/konten.ts und utils/verwaltung.ts; die
+  // Routen prüfen Eingaben und Rechte und schreiben die Antwort.
+  // Gegenprobe (28.10.2026): eine db.get-Zeile samt Import zurück in
+  // admin.ts → rot (beide Treffer gemeldet).
+  const treffer = [];
+  for (const d of ['routes/auth.ts', 'routes/api_v1/admin.ts']) {
+    for (const m of quelltext(d).matchAll(/\bdb\.\w+\s*\(/g)) treffer.push(`${d}: ${m[0]}`);
+    for (const ziel of importe(d).filter(z => /db\/database/.test(z))) treffer.push(`${d} -> ${ziel}`);
+  }
+  assert.deepEqual(treffer, []);
+});
+
+test('keine Importzyklen in den inneren Schichten', () => {
+  // Ein Zyklus zwingt zu verzögertem require() und macht die Ladereihenfolge
+  // zum Glücksspiel. `import type` zählt nicht, es verschwindet beim Übersetzen.
+  // Gegenprobe (28.10.2026): marketPrice.ts wieder über financeCalc → rot
+  // (bewertung → marketPrice → financeCalc → bewertung).
+  const dateien = new Set(innereDateien());
+  const kanten = new Map();
+  for (const d of dateien) {
+    const src = quelltext(d);
+    const ziele = [...src.matchAll(/^\s*(import|export)\s(?!type\b)[^;]*?from\s+['"](\.[^'"]+)['"]|require\(\s*['"](\.[^'"]+)['"]/gm)]
+      .map(m => path.posix.normalize(path.posix.join(path.posix.dirname(d), m[2] || m[3])).replace(/\.js$/, ''))
+      .flatMap(z => [z + '.ts', z + '/index.ts']).filter(z => dateien.has(z));
+    kanten.set(d, ziele);
+  }
+  const zyklen = [];
+  const zustand = new Map();   // 1 = auf dem Pfad, 2 = fertig
+  const pfad = [];
+  const besuche = (d) => {
+    zustand.set(d, 1); pfad.push(d);
+    for (const z of kanten.get(d) || []) {
+      if (zustand.get(z) === 1) zyklen.push(pfad.slice(pfad.indexOf(z)).concat(z).join(' → '));
+      else if (!zustand.has(z)) besuche(z);
+    }
+    pfad.pop(); zustand.set(d, 2);
+  };
+  for (const d of dateien) if (!zustand.has(d)) besuche(d);
+  assert.deepEqual(zyklen, []);
 });
 
 test('die Ausnahmeliste bleibt ehrlich — jeder Eintrag hat noch einen Fall', () => {

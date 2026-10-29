@@ -1,4 +1,4 @@
-import { ladeAnzeige } from './01-bausteine.js';
+import { ladeAnzeige, skelettKacheln } from './01-bausteine.js';
 import { registerActions } from './00-registry.js';
 import { colorName, locale, t, tRaw } from '../i18n.js';
 import { bildTag, ico, G, api, esc, escHex, escHtml, escJs, escUrl, fmtBig, fullUrl, imgUrl, leerZustand, observeLazyImages, platzhalterInhalt, thumbUrl } from './01-core.js';
@@ -140,6 +140,8 @@ function partsParams(page){
   if (search) p.set('search', search);
   const spare = G('parts-spare').value;
   if (spare !== '') p.set('spare', spare);
+  const ordnung = G('parts-ordnung').value;
+  if (ordnung !== 'farbe') p.set('ordnung', ordnung);
   // Manuell erfasste Teile haben ihren eigenen Bereich oben — hier nur Set-Teile.
   p.set('exclude_manual','1');
   // in_sets ist serverseitig Opt-in (kostet bei 380 Sets rund 155 ms und 2 MB).
@@ -160,7 +162,7 @@ async function loadPartsData(){
   _setTeileLeer = null;
 
   const main = G('parts-main');
-  main.innerHTML = ladeAnzeige(t('parts.loading'));
+  main.innerHTML = skelettKacheln(12, t('parts.loading'), 'teil');
   await loadPartsPage(true);
 }
 
@@ -241,6 +243,12 @@ function appendParts(parts){
 
   const list = G('parts-main').querySelector('.parts-list');
   if (!list) return;
+  // Ungruppiert: dasselbe Raster ohne Farbkacheln, die Reihenfolge kommt vom Server.
+  if (G('parts-ordnung').value !== 'farbe'){
+    list.insertAdjacentHTML('beforeend', parts.map(partsCard).join(''));
+    if (typeof observeLazyImages === 'function') observeLazyImages(list);
+    return;
+  }
 
   // Nach Farbe gruppieren — der Server liefert bereits farbsortiert.
   const groups = [];
@@ -268,9 +276,9 @@ function appendParts(parts){
     }
     html += `<div class="parts-group" data-count="${g.parts.length}">
       <div class="group-hd">
-        <div class="color-dot" style="width:18px;height:18px;background:${escHex(g.hex, 'var(--s300)')}"></div>
+        <div class="color-dot" data-stil="width:18px;height:18px" data-farbe="${escHex(g.hex, 'var(--s300)')}"></div>
         <span class="group-title">${esc(colorName(g.color))}</span>
-        <span class="group-sub">${g.parts.length} ${t('parts.stat.types')}</span>
+        <span class="group-sub">${t('parts.group_types', { n: g.parts.length })}</span>
       </div>
       <div class="parts-grid">${g.parts.map(partsCard).join('')}</div>
     </div>`;
@@ -293,7 +301,7 @@ function bumpGroupCount(groupEl, add){
   const n = (parseInt(groupEl.dataset.count) || 0) + add;
   groupEl.dataset.count = n;
   const sub = groupEl.querySelector('.group-sub');
-  if (sub) sub.textContent = `${n} ${t('parts.stat.types')}`;
+  if (sub) sub.textContent = tRaw('parts.group_types', { n });
 }
 
 /**
@@ -327,12 +335,12 @@ function partsCard(p){
   // tot: Anders als bei manuell erfassten Teilen gab es zu einem Teil aus einem
   // Set nichts zu sehen — kein Bild in voller Groesse, keine Angabe, aus
   // welchem Set es stammt.
-  return `<div class="part-card" style="cursor:pointer" tabindex="0" role="button" data-click="openSetItemDetail" data-arg="part" data-arg2="${escJs(p.part_number)}" data-arg3="${p.color_id||0}">
+  return `<div class="part-card" data-stil="cursor:pointer" tabindex="0" role="button" data-click="openSetItemDetail" data-arg="part" data-arg2="${escJs(p.part_number)}" data-arg3="${p.color_id||0}">
     ${rawSrc ? bildTag({ src: imgUrl(thumbUrl(rawSrc)||rawSrc, true), alt: teilAlt(p), klasse: 'part-img', fade: true, orig: imgUrl(fullUrl(rawSrc), false), ph: 'teil' })
              : `<span class="bild-ph part-img" role="img" aria-label="${esc(teilAlt(p))}">${platzhalterInhalt('teil')}</span>`}
     <div class="part-num" title="${esc(p.part_number)}">${esc(p.bl_part_number||p.part_number)}</div>
     <div class="part-name">${esc(p.part_name)||'—'}</div>
-    <div class="part-color"><div class="color-dot" style="background:${escHex(p.color_hex, 'var(--s300)')}"></div>${esc(colorName(p.color_name))}</div>
+    <div class="part-color"><div class="color-dot" data-farbe="${escHex(p.color_hex, 'var(--s300)')}"></div>${esc(colorName(p.color_name))}</div>
     <div class="part-qty">${(p.total_quantity||0).toLocaleString(locale())}×</div>
     ${ersatzteilPlakette(p)}
   </div>`;
@@ -342,15 +350,15 @@ function partsTableRow(p){
   // Dieselbe Handlung wie auf der Kachel — eine Ansicht darf nicht koennen,
   // was die andere nicht kann. Genau daran ist in diesem Projekt schon mehrfach
   // etwas auseinandergelaufen.
-  return `<tr style="cursor:pointer" tabindex="0" data-click="openSetItemDetail" data-arg="part" data-arg2="${escJs(p.part_number)}" data-arg3="${p.color_id||0}">
+  return `<tr data-stil="cursor:pointer" tabindex="0" data-click="openSetItemDetail" data-arg="part" data-arg2="${escJs(p.part_number)}" data-arg3="${p.color_id||0}">
     <td>${(p.image_local||p.image_url) ? bildTag({ src: imgUrl(thumbUrl(p.image_local||p.image_url)||p.image_local||p.image_url, true), alt: '', klasse: 'bild-klein', ph: 'teil' })
                                        : `<span class="bild-ph bild-klein" aria-hidden="true">${platzhalterInhalt('teil')}</span>`}</td>
-    <td><span style="font-family:var(--mono);font-size:var(--fs-1);color:var(--b600)" title="${esc(p.part_number)}">${esc(p.bl_part_number||p.part_number)}</span></td>
-    <td style="max-width:200px">${esc(p.part_name)||'—'} ${ersatzteilPlakette(p)}</td>
-    <td><div style="display:flex;align-items:center;gap:5px"><div class="color-dot" style="background:${escHex(p.color_hex, 'var(--s300)')}"></div>${esc(colorName(p.color_name))}</div></td>
+    <td><span data-stil="font-family:var(--mono);font-size:var(--fs-1);color:var(--b600)" title="${esc(p.part_number)}">${esc(p.bl_part_number||p.part_number)}</span></td>
+    <td data-stil="max-width:200px">${esc(p.part_name)||'—'} ${ersatzteilPlakette(p)}</td>
+    <td><div data-stil="display:flex;align-items:center;gap:5px"><div class="color-dot" data-farbe="${escHex(p.color_hex, 'var(--s300)')}"></div>${esc(colorName(p.color_name))}</div></td>
     <td>${esc(catLabel(p.category_name))}</td>
-    <td><span style="font-family:var(--mono);font-weight:600;color:var(--b700)">${(p.total_quantity||0).toLocaleString(locale())}</span></td>
-    <td style="font-size:var(--fs-1);color:var(--mut)">${esc((p.in_sets||'').replace(/,/g,', '))}</td>
+    <td><span data-stil="font-family:var(--mono);font-weight:600;color:var(--b700)">${(p.total_quantity||0).toLocaleString(locale())}</span></td>
+    <td data-stil="font-size:var(--fs-1);color:var(--mut)">${esc((p.in_sets||'').replace(/,/g,', '))}</td>
   </tr>`;
 }
 
@@ -360,7 +368,7 @@ function updatePartsSentinel(){
   if (!s) return;
   if (_partsDone){
     s.innerHTML = _partsTotal
-      ? `<div style="text-align:center;color:var(--mut);font-size:var(--fs-2);padding:1rem">${_partsTotal.toLocaleString(locale())} ${t('parts.stat.types')}</div>`
+      ? `<div data-stil="text-align:center;color:var(--mut);font-size:var(--fs-2);padding:1rem">${_partsTotal.toLocaleString(locale())} ${t('parts.stat.types')}</div>`
       : '';
   } else {
     s.innerHTML = ladeAnzeige('', { stil: 'padding:1rem' });
@@ -414,6 +422,16 @@ function teileFilterGeaendert() {
 }
 G('parts-search').addEventListener('input', ()=>{ clearTimeout(G('parts-search')._t); G('parts-search')._t=setTimeout(teileFilterGeaendert,350); });
 G('parts-spare').addEventListener('change', loadPartsData);
+// Die Reihenfolge ist eine Vorliebe, kein Filter: Sie bleibt im Browser stehen.
+const TEILE_ORDNUNG_KEY = 'bim_teile_ordnung';
+try {
+  const gemerkt = localStorage.getItem(TEILE_ORDNUNG_KEY);
+  if (gemerkt && [...G('parts-ordnung').querySelectorAll('option')].some(o => o.value === gemerkt)) G('parts-ordnung').value = gemerkt;
+} catch (_) { /* ohne Speicher gilt die Vorgabe */ }
+G('parts-ordnung').addEventListener('change', () => {
+  try { localStorage.setItem(TEILE_ORDNUNG_KEY, G('parts-ordnung').value); } catch (_) { /* nur Komfort */ }
+  loadPartsData();
+});
 /**
  * Der Ansichtsumschalter — fuer BEIDE Listen des Reiters.
  *

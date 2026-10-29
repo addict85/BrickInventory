@@ -15,22 +15,15 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Ergebnis eines Serveraufrufs — bewusst nur ZWEI Fälle.
- *
- * Es gab lange eine dritte Variante `Loading`, die nirgends erzeugt wurde:
- * [safeCall] liefert ausschliesslich [Success] oder [Error]. Ihr einziger
- * Effekt war, dass jedes `when` einen `else`-Zweig brauchte — und ein
- * `else -> {}` verschluckt stillschweigend auch jeden Fall, der später
- * dazukommt. Mit genau zwei Varianten ist jedes `when` erschöpfend, und
- * eine neue Variante bricht den Build an jeder Stelle, die sie behandeln
- * muss. Bitte keinen `else`-Zweig nachrüsten.
+ * Ergebnis eines Serveraufrufs — genau zwei Fälle, damit jedes `when` erschöpfend
+ * ist und eine neue Variante an jeder Stelle bricht, die sie behandeln muss. Bitte
+ * keinen `else`-Zweig nachrüsten: Er verschluckte künftige Fälle still.
  */
 sealed class Result<out T> {
     /**
-     * [stand] ist gesetzt, wenn die Daten nicht vom Server kommen, sondern aus
-     * dem Plattenspeicher (Millisekunden seit 1970, Zeitpunkt der Ablage). Die
-     * Oberfläche muss das sagen können — sonst sieht ein alter Stand aus wie
-     * ein frischer.
+     * [stand] ist gesetzt, wenn die Daten aus dem Plattenspeicher kommen
+     * (Millisekunden seit 1970, Zeitpunkt der Ablage) — sonst sähe ein alter Stand aus
+     * wie ein frischer.
      */
     data class Success<T>(val data: T, val stand: Long? = null) : Result<T>() {
         val veraltet: Boolean get() = stand != null
@@ -44,42 +37,33 @@ sealed class Result<out T> {
         val transient: Boolean = false,
         val unauthorized: Boolean = false,
         /**
-         * Was schiefging — als AUFZÄHLUNG, nicht als Satz (Nachtrag 116).
-         *
-         * Bis dahin erzeugte diese Schicht ihre Meldungen selbst: „Netzwerkfehler",
-         * „Zeitüberschreitung", „Leere Antwort vom Server". Deutsche Sätze, mitten
-         * im Repository — und das Repository hat keinen Context, kann also gar
-         * nicht übersetzen. Für einen englischsprachigen Nutzer war damit JEDE
-         * Fehlermeldung deutsch, egal wie sauber der Bildschirm darüber
-         * lokalisiert war. Dieselbe Ursache wie beim PDF-Betrachter in Nachtrag
-         * 115, nur an der Stelle, die alle Fehler formuliert.
-         *
-         * Jetzt entscheidet diese Schicht nur noch, WAS passiert ist; WIE es
-         * heisst, entscheidet die Anzeige (siehe AppTexte.meldung()).
-         *
-         * `null` heisst: Der Text kommt vom Server und wird durchgereicht — der
-         * kennt seine Fälle genauer als jede Aufzählung hier (Kaufdatum-Konflikt,
-         * Währung passt nicht, Code schon eingelöst).
+         * Was schiefging — als Aufzählung, nicht als Satz: Die Datenschicht hat keinen
+         * Context und kann nicht übersetzen; wie es heisst, entscheidet die Anzeige
+         * (AppTexte.meldung()). `null` heisst: Der Text kommt vom Server und wird
+         * durchgereicht, er kennt seine Fälle genauer.
          */
         val art: Fehlerart? = null,
         /** HTTP-Code, falls es einen gab — für die Meldung bei [Fehlerart.SERVER]. */
         val httpCode: Int? = null,
         /**
-         * Technischer Text der Ursache, NUR fürs Log. Bewusst getrennt von
-         * [message]: Bibliothekstexte wie „unexpected end of stream" sind
-         * englisch, wechseln mit der Bibliotheksversion und gehören nicht in
-         * eine Oberfläche.
+         * Der Fehlercode des Servers (`code` im Rumpf, utils/fehlerTexte.ts).
+         * Nach ihm wird verzweigt, nicht nach [message] oder [httpCode]: Der
+         * Satz wechselt mit der Sprache, der Status ist für viele Fälle derselbe.
+         */
+        val code: String? = null,
+        /**
+         * Technischer Text der Ursache, nur fürs Log: Bibliothekstexte wie „unexpected end
+         * of stream“ sind englisch, wechseln mit der Version und gehören nicht in eine
+         * Oberfläche.
          */
         val technisch: String? = null
     ) : Result<Nothing>()
 }
 
 /**
- * Fehlerursachen, die die Datenschicht selbst erkennt.
- *
- * Bewusst grob: Jede Unterscheidung hier muss die Anzeige in einen eigenen
- * Satz übersetzen können. Was der Server im Fehlerrumpf schreibt, ist genauer
- * und wird durchgereicht statt hier einsortiert.
+ * Fehlerursachen, die die Datenschicht selbst erkennt — bewusst grob, weil jede
+ * einen eigenen Satz in der Anzeige braucht. Genaueres schreibt der Server in den
+ * Fehlerrumpf.
  */
 enum class Fehlerart {
     /** Host nicht auflösbar, Verbindung abgelehnt — vorübergehend. */
@@ -101,10 +85,8 @@ enum class Fehlerart {
 }
 
 /**
- * Seitengrösse der Galerie. Derselbe Wert wie in der Webapp
- * (public/js/02-gallery.js) — der Server deckelt page_size ohnehin, aber zwei
- * verschiedene Seitengrössen ergäben zwei verschiedene Scroll-Erlebnisse für
- * denselben Bestand.
+ * Seitengrösse der Galerie, wie in der Webapp (public/js/02-gallery.js): Zwei
+ * Grössen ergäben zwei Scroll-Erlebnisse für denselben Bestand.
  */
 const val GALLERY_PAGE_SIZE = 60
 
@@ -119,13 +101,9 @@ const val CATALOG_PAGE_SIZE = 60
 const val GALLERY_DEFAULT_SORT = "added_desc"
 
 /**
- * Vorgabe-Sortierung der Merkliste; identisch mit MERK_SORTS.added_desc
- * (utils/merkliste.ts).
- *
- * Eigene Konstante und nicht GALLERY_DEFAULT_SORT wiederverwendet, obwohl der
- * Wert derselbe ist: Es sind zwei Tabellen am Server, und sie koennen
- * auseinanderlaufen. Eine geteilte Konstante haette diese Moeglichkeit
- * verdeckt.
+ * Vorgabe-Sortierung der Merkliste, identisch mit MERK_SORTS.added_desc
+ * (utils/merkliste.ts). Eine eigene Konstante, weil es zwei Tabellen am Server
+ * sind, die auseinanderlaufen können.
  */
 const val MERKLISTE_DEFAULT_SORT = "added_desc"
 
@@ -133,30 +111,11 @@ const val MERKLISTE_DEFAULT_SORT = "added_desc"
 data class PdfJobStatus(val status: String, val etaSeconds: Int?)
 
 /**
- * Die Anlaufstelle zur Datenschicht — jetzt nur noch ein Haltepunkt.
- *
- * ── Was sich geaendert hat (Nachtrag 155) ───────────────────────────────────
- *
- * Diese Klasse hatte 78 oeffentliche Funktionen. Sie liegen jetzt in fuenf
- * Klassen nach Sachgebieten, und der Zugriff nennt das Gebiet mit:
- *
- *     repo.sets.getSets(...)          repo.teile.getParts(...)
- *     repo.finanzen.getPnl(...)       repo.haushalt.getHousehold(...)
- *     repo.admin.getJobs(...)
- *
- * Das aendert 89 Aufrufstellen in 16 Dateien — bewusst, denn die beiden Wege,
- * die ohne diese Aenderung ausgekommen waeren, sind geprueft und ausgeschieden:
- *
- *   Schnittstellen mit Delegation   Kotlin erlaubt Vorgabewerte nicht in einer
- *                                   Ueberschreibung; 18 der 78 Funktionen haben
- *                                   welche, alle 78 Signaturen stuenden doppelt da
- *   Erweiterungsfunktionen          brauchen einen Import an jeder Aufrufstelle,
- *                                   und 17 Namen kollidieren mit den vorhandenen
- *                                   MainViewModel-Erweiterungen
- *
- * Eine Weiterreich-Fassade mit 78 Einzeilern waere moeglich gewesen und haette
- * die Aufrufstellen geschont — sie haette den Befund aber nicht behoben: Die
- * Klasse haette weiterhin 78 Mitglieder.
+ * Die Anlaufstelle zur Datenschicht, nur noch ein Haltepunkt: Die Funktionen
+ * liegen in fünf Klassen nach Sachgebieten, und der Zugriff nennt das Gebiet mit
+ * (`repo.sets.getSets(...)`, `repo.teile.getParts(...)`,
+ * `repo.finanzen.getPnl(...)`). Keine Weiterreich-Fassade, weil die Klasse sonst
+ * ihre 78 Mitglieder behielte.
  */
 @Singleton
 class BrickRepository @Inject constructor(

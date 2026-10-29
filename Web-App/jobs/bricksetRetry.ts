@@ -73,7 +73,7 @@ async function _processRetryQueue(force = false) {
       if (await anzahlAnleitungen(set_number) === 0) {
         // Echter Import statt spätem require('../routes/sets') samt
         // typeof-Prüfung: Der Kreis brickset → sets → brickset ist mit dem
-        // Umzug nach utils/instructions.ts weg (Nachtrag 127).
+        // Umzug nach utils/instructions.ts weg.
         await downloadSetInstructions(set_number).catch(() => {});
       }
     } catch (e) { meldeUndWeiter('brickset-retry:anleitungen', e); }

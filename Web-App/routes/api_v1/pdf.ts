@@ -11,7 +11,8 @@ import { registerSse } from '../../utils/sseRegistry';
 import _pdfPath from 'path';
 import _pdfFs from 'fs/promises';
 import _fsSync from 'fs';
-import { EventEmitter } from 'events';
+import { liesAuftrag, schreibeAuftrag, laufendeAuftraege, loescheAuftrag, raeumeAuftraegeAuf, PDF_KANAL, type PdfAuftrag } from '../../utils/pdfAuftraege';
+import { listen, unlisten } from '../../utils/pgNotify';
 import { getMinifigInfo } from '../../clients/rebrickable';
 import { downloadImage } from '../../jobs/partsCatalogEnrich';
 import { mitVersion, ohneVersion } from '../../utils/setNummer';
@@ -100,10 +101,9 @@ function validJobId(id: string): boolean { return JOB_ID_RE.test(id); }
 // validJobId() gegen JOB_ID_RE (^\d{10,16}-[a-z0-9]{4,12}$) — daher kommt
 // hier nie ein Pfadtrenner oder '..' an. Der Typ haelt fest, dass die
 // Absicherung OBERHALB liegt und diese Funktion sie nicht wiederholt.
-function pdfJobPath(id: string)  { return _pdfPath.join(PDF_JOB_DIR, `${id}.json`); }
 function pdfFilePath(id: string) { return _pdfPath.join(PDF_JOB_DIR, `${id}.pdf`);  }
 async function pdfJobRead(id: string) {
-  try { return JSON.parse(await _pdfFs.readFile(pdfJobPath(id), 'utf8')); } catch(_) { return null; }
+  return liesAuftrag(id).catch((e: unknown) => { meldeUndWeiter('pdf:auftrag-lesen', e); return null; });
 }
 
 /**
@@ -117,32 +117,17 @@ async function pdfJobReadFor(id: string, userId: number) {
   if (job.user_id !== userId) return null;
   return job;
 }
-async function pdfJobWrite(id: string, data: PdfJobStatus) {
-  await _pdfFs.mkdir(PDF_JOB_DIR, { recursive: true });
-  await _pdfFs.writeFile(pdfJobPath(id), JSON.stringify(data));
+async function pdfJobWrite(id: string, data: PdfAuftrag) {
+  await schreibeAuftrag(id, data);
 }
-/**
- * Wie viele Aufträge dieses Benutzers laufen gerade?
- * Ausführlich: docs/begruendungen/routes/api_v1/pdf.ts.md#laufendejobs
- */
-async function laufendeJobs(userId: number): Promise<number> {
-  let n = 0;
-  try {
-    for (const f of await _pdfFs.readdir(PDF_JOB_DIR)) {
-      if (!f.endsWith('.json')) continue;
-      try {
-        const fp = _pdfPath.join(PDF_JOB_DIR, f);
-        const st = await _pdfFs.stat(fp);
-        if (Date.now() - st.mtimeMs > PDF_JOB_TTL) continue;
-        const job = JSON.parse(await _pdfFs.readFile(fp, 'utf8'));
-        if (job?.status === 'running' && job?.user_id === userId) n++;
-      } catch (e) { meldeUndWeiter('pdf:auftrag-lesen', e); }
-    }
-  } catch (e) { meldeUndWeiter('pdf:auftragsordner-lesen', e); }
-  return n;
+/** Wie viele Aufträge dieses Benutzers laufen gerade? Hängengebliebene zählen nach PDF_JOB_TTL nicht mehr. */
+function laufendeJobs(userId: number): Promise<number> {
+  return laufendeAuftraege(userId, PDF_JOB_TTL);
 }
 
 async function cleanOldPdfJobs() {
+  for (const id of await raeumeAuftraegeAuf(PDF_JOB_TTL).catch((e: unknown) => { meldeUndWeiter('pdf:aufraeumen', e); return []; }))
+    await _pdfFs.unlink(pdfFilePath(id)).catch(() => {});
   try {
     const files = await _pdfFs.readdir(PDF_JOB_DIR);
     for (const f of files) {
@@ -155,16 +140,9 @@ async function cleanOldPdfJobs() {
   } catch(_) {}
 }
 
-// In-Process EventEmitter für PDF-Job-Statusänderungen.
-// Beim Abschluss/Fehler eines Jobs wird ein Event gefeuert, sodass der
-// SSE-Stream sofort reagiert statt auf den nächsten Poll zu warten.
-const _pdfJobBus = new EventEmitter();
-_pdfJobBus.setMaxListeners(0);
-
-async function pdfJobWriteAndEmit(id: string, data: PdfJobStatus) {
-  await pdfJobWrite(id, data);
-  _pdfJobBus.emit(`status:${id}`, data);
-}
+// schreibeAuftrag() sendet zusätzlich ein NOTIFY; der Statusstrom unten hört
+// darauf in jedem Arbeitsprozess.
+const pdfJobWriteAndEmit = pdfJobWrite;
 
 // ── POST /api/v1/sets/partslist-pdf — start async PDF job ─────────────────────
 router.post('/sets/partslist-pdf', requireToken, async (req: AuthedRequest, res) => {
@@ -349,8 +327,7 @@ router.post('/sets/partslist-pdf', requireToken, async (req: AuthedRequest, res)
         console.log(`[PDF job] ${jobId}: ${withImg}/${parts.length} Bilder vorhanden (${parts.length - withImg} ohne Bild)`);
       }
 
-      const buf = await buildPdf(sets, parts);
-      await _pdfFs.writeFile(pdfFilePath(jobId), buf);
+      await buildPdf(sets, parts, pdfFilePath(jobId));
       await pdfJobWriteAndEmit(jobId, { status: 'done', error: null, user_id: uid });
     } catch(e) {
       await pdfJobWriteAndEmit(jobId, { status: 'error', error: fehlertext(e), user_id: uid }).catch(() => {});
@@ -405,29 +382,27 @@ router.get('/sets/partslist-pdf/stream/:jobId', requireToken, async (req: Authed
   send({ status: initial.status, error: initial.error || null, etaSeconds: initial.etaSeconds ?? null, missingImages: initial.missingImages ?? null });
   if (isDone(initial.status)) { closed = true; unregisterSse(); return res.end(); }
 
-  // 2) Auf Worker-Events hören
-  const onStatus = (data: PdfJobStatus) => {
-    send({ status: data.status, error: data.error || null });
-    if (isDone(data.status)) cleanup();
-  };
-  _pdfJobBus.on(`status:${jobId}`, onStatus);
-
-  // 3) Fallback-Poll alle 3s (Job kann auf einem anderen Cluster-Worker laufen,
-  //    dessen Bus-Event diesen Prozess nie erreicht)
-  const fallback = setInterval(async () => {
+  // 2) Auf das NOTIFY hören — gleich in welchem Prozess der Auftrag läuft.
+  //    Ohne Nutzlast (beim Wiederverbinden) wird ebenfalls nachgesehen.
+  const pruefe = async () => {
     const job = await pdfJobReadFor(jobId, req.apiUser.user_id);
     if (closed) return;
     if (!job) { cleanup(); return; }
     send({ status: job.status, error: job.error || null });
     if (isDone(job.status)) cleanup();
-  }, 3000);
+  };
+  const onStatus = (nutzlast?: string) => { if (!nutzlast || nutzlast === jobId) return pruefe(); };
+  listen(PDF_KANAL, onStatus);
+
+  // 3) Rückfall, falls ein Signal während einer Verbindungsstörung verloren geht.
+  const fallback = setInterval(pruefe, 15000);
 
   const heartbeat = setInterval(() => { if (!closed) res.write(': keep-alive\n\n'); }, 20000);
 
   function cleanup() {
     if (closed) return;
     closed = true;
-    _pdfJobBus.off(`status:${jobId}`, onStatus);
+    unlisten(PDF_KANAL, onStatus);
     clearInterval(fallback);
     clearInterval(heartbeat);
     unregisterSse();
@@ -459,16 +434,23 @@ router.get('/sets/partslist-pdf/download/:jobId', requireToken, async (req: Auth
   // Aufgeräumt wird nur bei VOLLSTÄNDIGER Auslieferung.
   streamFileToResponse(res, pdfPath, () => {
     _pdfFs.unlink(pdfPath).catch(() => {});
-    _pdfFs.unlink(pdfJobPath(jobId)).catch(() => {});
+    loescheAuftrag(jobId).catch((e: unknown) => meldeUndWeiter('pdf:auftrag-loeschen', e));
   }, req);
 });
 
-async function buildPdf(sets: any, parts: any[]) {
+/**
+ * Das PDF als Strom in die Datei — nicht als Puffer im Speicher: Eine grosse
+ * Sammlung ergibt viele Megabyte, und zwei Aufträge je Konto liefen sonst
+ * vollständig im Arbeitsspeicher. Erst die fertige Datei bekommt ihren Namen.
+ */
+async function buildPdf(sets: any, parts: any[], ziel: string) {
   const PDFDocument = require('pdfkit');
-  const chunks: any[] = [];
   const doc = new PDFDocument({ margin: 40, size: 'A4' });
-  doc.on('data', (chunk: Buffer) => chunks.push(chunk));
-  const pdfDone = new Promise((resolve, reject) => { doc.on('end', resolve); doc.on('error', reject); });
+  const teil = `${ziel}.teil`;
+  const datei = _fsSync.createWriteStream(teil);
+  doc.pipe(datei);
+  const pdfDone = new Promise((resolve, reject) => {
+    datei.on('finish', resolve); datei.on('error', reject); doc.on('error', reject); });
 
   let _pageNum = 1;
   const PAGE_H = 841.89, PAGE_W = 595.28;
@@ -514,20 +496,21 @@ async function buildPdf(sets: any, parts: any[]) {
     byColor[color]?.sort((a, b) => (a.bl_part_number || a.part_number || '').localeCompare(b.bl_part_number || b.part_number || '', undefined, { numeric: true }));
   }
 
-  // Bild-Puffer VORAB asynchron (gebündelt) laden, statt synchron pro Zeile im
-  // Zeichnen-Loop — so bleibt der Event-Loop frei, während die Bilddateien von
-  // der Platte gelesen werden. pdfkit zeichnet danach synchron aus der Map.
+  // Bilder je Farbgruppe asynchron vorladen und danach wieder freigeben: Der
+  // Event-Loop bleibt frei, und im Speicher liegt nur eine Gruppe, nicht die
+  // ganze Sammlung. pdfkit zeichnet synchron aus der Map.
   const _imgFp = pdfBildPfad;
   const imgBufMap = new Map();
-  {
-    const uniqueFps = [...new Set(parts.map(_imgFp).filter((fp): fp is string => !!fp))];
+  const ladeBilder = async (gruppe: any[]) => {
+    imgBufMap.clear();
+    const uniqueFps = [...new Set(gruppe.map(_imgFp).filter((fp): fp is string => !!fp))];
     const CHUNK = 32; // begrenzte Parallelität, um File-Descriptor-Limits zu wahren
     for (let i = 0; i < uniqueFps.length; i += CHUNK) {
       const chunk = uniqueFps.slice(i, i + CHUNK);
       const bufs = await Promise.all(chunk.map(fp => _pdfFs.readFile(fp).catch(() => null)));
       chunk.forEach((fp, j) => imgBufMap.set(fp, bufs[j]));
     }
-  }
+  };
 
   const COL = { num: 40, name: 200 };
   for (const colorName of colorOrder) {
@@ -535,6 +518,7 @@ async function buildPdf(sets: any, parts: any[]) {
     // Anlegen dorthin. `?? []` sagt das dem Pruefer, ohne einen zweiten Fall
     // zu erfinden.
     const colorParts = byColor[colorName] ?? [];
+    await ladeBilder(colorParts);
     if (doc.y > 700) newPage();
 
     const colorPart0 = colorParts[0];
@@ -576,7 +560,7 @@ async function buildPdf(sets: any, parts: any[]) {
   addFooter();
   doc.end();
   await pdfDone;
-  return Buffer.concat(chunks);
+  await _pdfFs.rename(teil, ziel);
 }
 
 // GET /api/v1/minifigs/:figNumber/parts — get individual parts for a minifigure

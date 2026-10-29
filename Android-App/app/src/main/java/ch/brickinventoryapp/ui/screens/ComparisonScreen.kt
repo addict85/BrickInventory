@@ -84,21 +84,13 @@ fun ComparisonScreen() {
                 // Search field
                 OutlinedTextField(
                     value = searchText,
-                    // ── Zahlentastatur statt Freitext (Nachtrag 140) ──────────
+                    // ── Zahlentastatur statt Freitext ──
                     //
-                    // Marcos Vorgabe: „Beim Preisvergleich soll nur das
-                    // Zahlenfeld erscheinen wenn man in das Eingabefeld
-                    // klickt." Das Feld war eine Produktsuche — Platzhalter
-                    // „Suche z.B. Technic, City…", Leerzeichen wurden zu „+".
-                    // Mit der Zahlentastatur ist das nicht mehr moeglich, und
-                    // Marco hat den Tausch ausdruecklich gewaehlt: Er tippt
-                    // dort Setnummern und Barcodes, keine Namen.
-                    //
-                    // Der Filter gehoert dazu und nicht bloss die Tastatur:
-                    // Eine angeschlossene Tastatur, die Zwischenablage und
-                    // manche Bildschirmtastaturen liefern trotzdem Buchstaben.
-                    // setNumber() laesst Ziffern und den Varianten-Bindestrich
-                    // durch — genau das, was „75192-1" braucht.
+                    // Hier tippt man Setnummern und Barcodes, keine Namen — deshalb die
+                    // Zahlentastatur. Der Filter gehört dazu: Eine angeschlossene Tastatur, die
+                    // Zwischenablage und manche Bildschirmtastaturen liefern trotzdem Buchstaben.
+                    // setNumber() lässt Ziffern und den Varianten-Bindestrich durch — genau das,
+                    // was „75192-1“ braucht.
                     onValueChange = {
                         searchText = NumericInput.setNumber(it)
                         if (searchText.isNotBlank()) scannedBarcode = null
@@ -106,14 +98,10 @@ fun ComparisonScreen() {
                     placeholder = { Text(stringResource(R.string.comparison_search_placeholder)) },
                     leadingIcon = { Icon(Icons.Default.Search, null, Modifier.size(20.dp)) },
                     trailingIcon = {
-                        // `cd_search_clear` statt `comparison_clear` (Nachtrag
-                        // 134): Letzteres heisst „Löschen" / „Clear" — derselbe
-                        // Text, den in Nachtrag 132 vier andere Suchfelder
-                        // abgelegt haben, weil TalkBack am Suche-leeren-Knopf
-                        // sonst das Wort fuer „Bestand vernichten" sagt. Dieses
-                        // Feld war beim Zaehlen nicht dabei, weil es die
-                        // Suchtaste der Tastatur braucht und deshalb kein
-                        // `Suchfeld` sein kann.
+                        // `cd_search_clear` statt `comparison_clear`: Letzteres heisst „Löschen“ /
+                        // „Clear“, und TalkBack sagte am Suche-leeren-Knopf das Wort für „Bestand
+                        // vernichten“. Dieses Feld ist kein `Suchfeld`, weil es die Suchtaste der
+                        // Tastatur braucht, und nimmt den Text deshalb von Hand.
                         if (searchText.isNotEmpty())
                             IconButton(onClick = { searchText = "" }) { Icon(Icons.Default.Clear, stringResource(R.string.cd_search_clear)) }
                     },

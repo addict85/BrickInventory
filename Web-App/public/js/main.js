@@ -18,6 +18,7 @@
 // Top-Level-Auswertung zu lesen. Solche Stellen gibt es hier nicht; die
 // Top-Level-Arbeit der Module beschränkt sich auf das Anhängen von
 // Ereignisbehandlern und die Registrierung beim Dispatcher.
+import './00-stile.js';
 import './00-escapen.js';
 import '../i18n.js';
 import './01-core.js';

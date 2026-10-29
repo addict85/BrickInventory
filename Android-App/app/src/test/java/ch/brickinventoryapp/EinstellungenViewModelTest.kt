@@ -17,6 +17,7 @@ import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -35,6 +36,12 @@ import org.junit.Test
  *   D  in saveSettings() nur Sets melden → rot „eine andere Währung …“
  *   E  in kontenGeaendert() die Haushaltskonten nicht neu geladen → rot „eine
  *      eingelöste Einladung lädt Status und Haushaltskonten“
+ *   F  im Repository das Passwort nicht mitgeschickt → rot „eine eingelöste
+ *      Einladung …“ (Rumpf ohne password)
+ *   G  in redeemHouseholdInvite() `passwortFalsch` nicht gesetzt → rot „ein
+ *      falsches Passwort beim Einlösen markiert das Feld“
+ *   H  in einloeseFehler() den Zweig für die Sperre entfernt → rot „nach zu
+ *      vielen Fehlversuchen …“ (statt des eigenen Satzes kam „fehler“)
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class EinstellungenViewModelTest {
@@ -125,9 +132,41 @@ class EinstellungenViewModelTest {
     @Test
     fun `eine eingeloeste Einladung laedt Status und Haushaltskonten`() {
         val vm = t.merke(HaushaltViewModel(t.dienste, HaushaltRepository(t.api, t.cache)))
-        vm.redeemHouseholdInvite(" ABC123 ")
+        vm.redeemHouseholdInvite(" ABC123 ", "geheim1234")
         TestApi.warteBis("Konten da") { t.blickfeld.konten.value.householdMembers.size == 2 }
         TestApi.warteBis("Status da") { vm.householdState.value.status?.isSub == true }
         assertTrue(pfade.anfragenAn("POST /api/v1/settings/household/redeem").single().isNotEmpty())
+        val rumpf = pfade.koerper[pfade.anfragen.indexOfFirst { "household/redeem" in it }]
+        assertEquals("""{"code":"ABC123","password":"geheim1234"}""", rumpf)
+        assertEquals(1, vm.householdState.value.eingeloest)
+    }
+
+    @Test
+    fun `ein falsches Passwort beim Einloesen markiert das Feld`() {
+        pfade.antworten["/api/v1/settings/household/redeem"] =
+            """{"success":false,"code":"aktuelles_passwort_falsch","error":"Aktuelles Passwort falsch"}"""
+        pfade.codes["/api/v1/settings/household/redeem"] = 400
+        val vm = t.merke(HaushaltViewModel(t.dienste, HaushaltRepository(t.api, t.cache)))
+        vm.redeemHouseholdInvite("ABC123", "falsch")
+        TestApi.warteBis("Antwort") { !vm.householdState.value.isLoading && vm.householdState.value.message != null }
+        assertTrue(vm.householdState.value.passwortFalsch)
+        assertEquals("t${R.string.household_redeem_password_wrong}", vm.householdState.value.message)
+        assertEquals(0, vm.householdState.value.eingeloest)
+    }
+
+    @Test
+    fun `nach zu vielen Fehlversuchen kommt der Satz des Servers, ohne ihn ein eigener`() {
+        pfade.antworten["/api/v1/settings/household/redeem"] =
+            """{"success":false,"code":"zu_viele_fehlversuche","error":"Bitte in 5 Min. erneut"}"""
+        pfade.codes["/api/v1/settings/household/redeem"] = 429
+        val vm = t.merke(HaushaltViewModel(t.dienste, HaushaltRepository(t.api, t.cache)))
+        vm.redeemHouseholdInvite("ABC123", "falsch")
+        TestApi.warteBis("Antwort") { vm.householdState.value.message != null }
+        assertEquals("Bitte in 5 Min. erneut", vm.householdState.value.message)
+        assertFalse(vm.householdState.value.passwortFalsch)
+
+        pfade.antworten["/api/v1/settings/household/redeem"] = """{"success":false}"""
+        vm.redeemHouseholdInvite("ABC123", "falsch")
+        TestApi.warteBis("zweite Antwort") { vm.householdState.value.message == "t${R.string.household_redeem_locked}" }
     }
 }

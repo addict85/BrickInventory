@@ -27,37 +27,11 @@ private const val CATALOG_RETRIES = 2
 private const val CATALOG_RETRY_DELAY_MS = 500L
 
 /**
- * Der Katalog als eigenes ViewModel.
- *
- * ── Was das behebt, und es ist kein Schoenheitsfehler ──────────────────────
- * Als Erweiterungsfunktionen auf MainViewModel konnten diese zwoelf Funktionen
- * KEINEN Zustand halten — eine Erweiterung hat keine Felder. Die vier Dinge,
- * die sie trotzdem brauchen, standen deshalb auf DATEIEBENE:
- *
- *     private var catalogSearchJob, catalogListJob, catalogDetailJob
- *     private var catalogGeneration
- *
- * Das ist prozessweiter veraenderlicher Zustand. Heute faellt es nicht auf,
- * weil es genau ein MainViewModel je Prozess gibt — die Kommentare in
- * CatalogFeature.kt sagten das sogar ausdruecklich („Job-Referenz prozessweit
- * am VM"). Es stimmt aber nur, solange das so bleibt: Zwei Instanzen wuerden
- * sich Abbruch-Jobs und Filter-Generation teilen, und eine Ladung wuerde die
- * andere abbrechen. Als Felder dieser Klasse ist die Frage weg.
- *
- * ── Warum es NICHT an hiltViewModel() haengt ───────────────────────────────
- * Liste und Detail sind zwei getrennte NavHost-Ziele. `hiltViewModel()` bindet
- * an den Backstack-Eintrag, es gaebe also ZWEI Instanzen: Das Detail setzt
- * „besitze ich", und die Liste bekaeme es nie zu sehen. Beim Monitoring war
- * die Bindung an den Eintrag richtig, hier waere sie ein Fehler.
- *
- * Deshalb wird es wie das AppViewModel von der Activity gehalten und
- * hereingereicht. Die Lebensdauer bleibt damit exakt die bisherige — diese
- * Aenderung soll den Aufbau aendern, nicht das Verhalten.
- *
- * ── Meldungen ──────────────────────────────────────────────────────────────
- * Der Katalog fuehrt seinen eigenen Meldungsfluss; der Graph reicht ihn an die
- * eine Snackbar des MainViewModel weiter. Zwei Snackbar-Halter waeren zwei
- * Warteschlangen fuer eine sichtbare Leiste.
+ * Der Katalog als eigenes ViewModel: Suche, Liste und Detail haben Jobs und eine
+ * Filter-Generation, die als Felder einer Instanz gehören und nicht prozessweit.
+ * Nicht über hiltViewModel(): Liste und Detail sind zwei NavHost-Ziele, und zwei
+ * Instanzen sähen das „besitze ich“ des Details nicht in der Liste. Deshalb hält
+ * es wie das AppViewModel die Activity.
  */
 @HiltViewModel
 class CatalogViewModel @Inject constructor(
@@ -73,24 +47,15 @@ class CatalogViewModel @Inject constructor(
     val state = _catalogState.asStateFlow()
 
     /**
-     * Meldungen fuer die Snackbar — derselbe Fluss wie in allen ViewModels.
-     *
-     * Vorher hatte dieses ViewModel einen eigenen, und der Navigationsgraph
-     * musste ihn weiterleiten und quittieren: zwei gleichlautende Bloecke in
-     * CatalogGraph.kt, einer je Ziel. Wer ein drittes Ziel hinzufuegt und den
-     * Block vergisst, verliert die Meldungen dieses Bildschirms lautlos.
-     * Begruendung und Muster: MeldungsKanal.kt.
+     * Meldungen für die Snackbar — derselbe Fluss wie in allen ViewModels
+     * (MeldungsKanal.kt), damit kein Ziel des Graphen sie weiterleiten muss.
      */
     private val _snackbar = meldungen.fluss
 
     /**
-     * Text in der SPRACHE DER APP — dieselbe Regel wie in AppTexte.text().
-     *
-     * `ctx` ist der Application-Context, und den lokalisiert
-     * AppCompatDelegate.setApplicationLocales() unterhalb von Android 13
-     * nicht. Ein direktes ctx.getString() gab hier die Systemsprache aus —
-     * ausgerechnet in meldung(), der Stelle, die es nur gibt, damit
-     * Fehlermeldungen in der gewaehlten Sprache erscheinen.
+     * Text in der Sprache der App, wie AppTexte.text(): Den Application-Context
+     * lokalisiert setApplicationLocales() unter Android 13 nicht, ctx.getString() gäbe
+     * die Systemsprache aus.
      */
     private fun text(id: Int, vararg args: Any?): String {
         val c = ch.brickinventoryapp.util.LanguageManager.localizedContext(ctx)
@@ -115,24 +80,15 @@ class CatalogViewModel @Inject constructor(
     private var catalogGeneration = 0
 
     /**
-     * Derselbe Satz wie in AppTexte.meldung(), ueber dieselbe gepruefte
-     * Zuordnung fehlerTextId(). Bewusst hier und nicht weitergereicht: Die
-     * Zuordnung Ursache -> Text ist die gemeinsame Stelle, nicht diese vier
-     * Zeilen. Die Servermeldung hat Vorrang — sie kennt ihren Fall genauer
-     * und kommt in der Sprache des Kontos.
+     * Derselbe Satz wie in AppTexte.meldung(), über dieselbe Zuordnung fehlerTextId().
+     * Die Servermeldung hat Vorrang — sie kennt ihren Fall genauer und kommt in der
+     * Sprache des Kontos.
      */
     /**
-     * Wie Texte.meldungFuerSnackbar() — null heisst: Der Kanal schweigt.
-     *
-     * Dieses ViewModel hat dieselben zwei Faelle wie das grosse: Ein 401, der
-     * hier ankommt, ist von der Sitzungsschicht schon behandelt (Begruendung in
-     * util/Abgewiesen.kt). Er darf deshalb nicht noch einmal als Fehler des
-     * Katalogs erscheinen.
-     *
-     * „Angemeldet“ heisst hier: Es LIEGT ein Token vor. Das ist dieselbe
-     * Quelle, die auch der Interceptor liest — und ehrlicher als ein Flag der
-     * Oberflaeche, das beim Anmelden schon wahr ist, bevor die Anfragen davor
-     * beantwortet sind. Genau daran ist der erste Anlauf gescheitert.
+     * Wie Texte.meldungFuerSnackbar() — null heisst: Der Kanal schweigt. Ein 401 ist
+     * hier schon von der Sitzungsschicht behandelt (util/Abgewiesen.kt). „Angemeldet“
+     * heisst: Es liegt ein Token vor — dieselbe Quelle, die der Interceptor liest,
+     * nicht ein Flag der Oberfläche, das beim Anmelden zu früh wahr ist.
      */
     private fun meldungFuerSnackbar(fehler: Result.Error): String? =
         if (ch.brickinventoryapp.util.meldetDieSitzungsschicht(
@@ -200,15 +156,10 @@ class CatalogViewModel @Inject constructor(
     }
 
     /**
-     * Die Seite laden, auf der ein sichtbar gewordener Platz liegt.
-     *
-     * Wird von der Ansicht für jede Seite aufgerufen, die gerade ins Bild kommt —
-     * beim Scrollen nach unten, nach oben und nach einem Sprung. Bereits geladene
-     * oder gerade ladende Seiten werden übersprungen; ohne diese Prüfung löste
-     * jeder Scroll-Schritt denselben Abruf mehrfach aus.
-     *
-     * Antworten einer älteren Filter-Generation werden verworfen — sonst hinge
-     * eine späte Seite des ALTEN Filters in der neuen Liste.
+     * Die Seite laden, auf der ein sichtbar gewordener Platz liegt — beim Scrollen in
+     * beide Richtungen und nach einem Sprung. Geladene oder ladende Seiten werden
+     * übersprungen; Antworten einer älteren Filter-Generation verworfen, sonst hinge
+     * eine späte Seite des alten Filters in der neuen Liste.
      */
     fun ensureCatalogPage(seite: Int) {
         if (seite < 1) return
@@ -239,16 +190,9 @@ class CatalogViewModel @Inject constructor(
     }
 
     /**
-     * Die Jahresverteilung zu den aktuellen Filtern holen.
-     *
-     * Vom SERVER, weil nur der die Filter kennt: Eine Verteilung ueber den
-     * ganzen Katalog laege bei gesetztem Thema oder Suchtext genauso daneben
-     * wie die frueher lineare Schaetzung. Einmal je Listenaufbau, nicht beim
-     * Rollen — dieselbe Stelle wie in der Webapp (_ladeJahrVerteilung).
-     *
-     * `gen` ist dieselbe Generationsnummer wie beim Seitenabruf: Wechselt der
-     * Filter waehrend des Abrufs, gehoert die Antwort zu einer Liste, die es
-     * nicht mehr gibt.
+     * Die Jahresverteilung zu den aktuellen Filtern holen — vom Server, weil nur er
+     * die Filter kennt; einmal je Listenaufbau wie in der Webapp. `gen` verwirft die
+     * Antwort, wenn der Filter inzwischen gewechselt hat.
      */
     private fun ladeJahrVerteilung(gen: Int) {
         viewModelScope.launch {
@@ -266,24 +210,17 @@ class CatalogViewModel @Inject constructor(
     }
 
     /**
-     * Die Leiste rechts rollt die Liste an eine Stelle.
-     *
-     * Die laufende Nummer geht ueber den Zustand an die Ansicht, weil das
-     * Rollen dort geschieht (LazyGridState) und die Leiste selbst in einer
-     * Gestenerkennung sitzt. Die Ansicht meldet den Sprung mit
-     * catalogScrollConsumed() zurueck; ohne das Zuruecksetzen liesse sich
-     * dieselbe Stelle kein zweites Mal anfahren.
+     * Die Leiste rechts rollt die Liste an eine Stelle. Die Nummer geht über den
+     * Zustand an die Ansicht, weil dort gerollt wird; catalogScrollConsumed() setzt
+     * sie zurück, sonst liesse sich dieselbe Stelle kein zweites Mal anfahren.
      */
     fun scrollCatalogTo(nummer: Int) {
         _catalogState.update { it.copy(scrollTo = nummer) }
     }
 
     /**
-     * Die Ansicht meldet ihre Rollposition.
-     *
-     * Wird beim Scrollen laufend aufgerufen; nur der Zustand wird gesetzt, kein
-     * Abruf. Beim Zurückkehren von der Detailseite stellt die Ansicht daraus wieder
-     * her.
+     * Die Ansicht meldet laufend ihre Rollposition; nur der Zustand wird gesetzt, kein
+     * Abruf. Beim Zurückkehren von der Detailseite stellt sie daraus wieder her.
      */
     fun setCatalogScrollPos(index: Int, offset: Int) {
         _catalogState.update { it.copy(scrollIndex = index, scrollOffset = offset) }
@@ -341,23 +278,13 @@ class CatalogViewModel @Inject constructor(
     }
 
     /**
-     * Ein aufgenommenes Set als „besitze ich" markieren.
-     *
-     * Frueher war das die zweite Haelfte von addCatalogSetToGallery(), die
-     * zuerst addSet() aus GalleryFeature rief. Das Aufnehmen gehoert der
-     * Galerie, das Markieren dem Katalog — der Graph ruft jetzt beides
-     * nacheinander. Damit steht die Abhaengigkeit an der Aufrufstelle statt
-     * versteckt in einer Funktion, die zwei Sachgebiete anfasst.
-     *
-     * Der Eigentuemer (Nachtrag 67) wird im addSet-Aufruf uebergeben; hier
-     * spielt er keine Rolle, markiert wird die eigene Ansicht.
+     * Ein aufgenommenes Set als „besitze ich“ markieren. Das Aufnehmen gehört der
+     * Galerie, das Markieren dem Katalog; der Graph ruft beides nacheinander, damit
+     * die Abhängigkeit an der Aufrufstelle steht.
      */
     fun markiereAufgenommen(setNumber: String, quantity: Int) {
-        // Das „besitze ich"-Abzeichen sofort setzen, ohne die Liste neu zu holen.
-        //
-        // Seit dem Fensterladen (Nachtrag 86) liegen die Sets nicht mehr in einer
-        // flachen Liste, sondern in `loadedPages` je Seite — die Kachel kann auf
-        // JEDER geladenen Seite stehen, deshalb wird ueber alle gegangen.
+        // Das „besitze ich“-Abzeichen sofort setzen, ohne neu zu laden — über alle
+        // geladenen Seiten, weil die Kachel auf jeder stehen kann.
         _catalogState.update { st ->
             val markiere: (CatalogSetItem) -> CatalogSetItem = {
                 if (it.setNumber == setNumber)

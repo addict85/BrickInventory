@@ -22,7 +22,7 @@ export async function liefereAusCache(opts: {
     try {
       await fs.promises.access(thumbFile);
       const tst0 = await fs.promises.stat(thumbFile).catch(() => null);
-      // Zweite Verteidigungslinie (Nachtrag 41): Eine leere oder viel zu
+      // Zweite Verteidigungslinie: Eine leere oder viel zu
       // kleine Vorschau ist kein Bild. Seit der Erzeugung atomar läuft, darf
       // das nicht mehr entstehen — Altbestände aus der Zeit davor liegen
       // aber weiterhin auf der Platte, und ein abgebrochener Lauf könnte

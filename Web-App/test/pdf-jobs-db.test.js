@@ -9,8 +9,12 @@
  * sie zu finden. Hier laufen deshalb echte Routen mit echten Tokens.
  *
  * Der Auftrag selbst wird NICHT gestartet (er würde Bilder aus dem Netz laden
- * und ein PDF bauen); die Auftragsdateien werden direkt gelegt. Geprüft wird
+ * und ein PDF bauen); die Auftragszeilen werden direkt gelegt. Geprüft wird
  * der Abrufweg, und der ist genau der, an dem es fehlte.
+ *
+ * Gegenprobe zum Statusstrom (am 28.10.2026 gemessen): in schreibeAuftrag()
+ * das notify() entfernt → rot: „der Statusstrom meldet das Ende sofort“
+ * (erst der 15-Sekunden-Rückfall hätte es gemeldet).
  *
  * Voraussetzung: Test-DB (Inhalt wird geleert!) via TEST_DATABASE_URL.
  * Ohne DB: skip.
@@ -37,6 +41,10 @@ test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async (t) => 
     t.skip('Test-DB nicht erreichbar'); return;
   }
 
+  {
+    const c = await db.pool.connect();
+    try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); }
+  }
   const pdf = _req('routes/api_v1/pdf.js');
   const { PDF_JOB_DIR } = pdf;
 
@@ -65,11 +73,10 @@ test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async (t) => 
   const srv = app.listen(0);
   const basis = `http://localhost:${srv.address().port}`;
 
-  /** Auftragsdatei direkt legen — der Lauf selbst ginge ins Netz. */
+  /** Auftrag direkt anlegen — der Lauf selbst ginge ins Netz. */
   async function auftragLegen(jobId, userId, status = 'done') {
+    await db.run('INSERT INTO pdf_auftraege (id, user_id, status) VALUES ($1, $2, $3)', [jobId, userId, status]);
     await fs.mkdir(PDF_JOB_DIR, { recursive: true });
-    await fs.writeFile(path.join(PDF_JOB_DIR, `${jobId}.json`),
-      JSON.stringify({ status, error: null, user_id: userId }));
     if (status === 'done') {
       await fs.writeFile(path.join(PDF_JOB_DIR, `${jobId}.pdf`), '%PDF-1.4 test');
     }
@@ -103,7 +110,7 @@ test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async (t) => 
     });
 
     await t.test('der Deckel greift beim dritten gleichzeitigen Auftrag', async () => {
-      for (const f of await fs.readdir(PDF_JOB_DIR)) await fs.unlink(path.join(PDF_JOB_DIR, f)).catch(() => {});
+      await db.run('DELETE FROM pdf_auftraege');
       await auftragLegen(pdf.neueJobId(), idA, 'running');
       await auftragLegen(pdf.neueJobId(), idA, 'running');
       await auftragLegen(pdf.neueJobId(), idB, 'running');   // fremder Lauf zählt nicht mit
@@ -125,21 +132,42 @@ test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async (t) => 
     });
 
     await t.test('abgelaufene Läufe sperren niemanden dauerhaft aus', async () => {
-      for (const f of await fs.readdir(PDF_JOB_DIR)) await fs.unlink(path.join(PDF_JOB_DIR, f)).catch(() => {});
+      await db.run('DELETE FROM pdf_auftraege');
       const alt1 = pdf.neueJobId(), alt2 = pdf.neueJobId();
       await auftragLegen(alt1, idA, 'running');
       await auftragLegen(alt2, idA, 'running');
-      // Stürzt ein Worker mitten im Lauf ab, bleibt die Datei auf 'running'.
-      const vorgestern = new Date(Date.now() - 24 * 3600 * 1000);
-      for (const j of [alt1, alt2]) {
-        await fs.utimes(path.join(PDF_JOB_DIR, `${j}.json`), vorgestern, vorgestern);
-      }
+      // Stürzt ein Worker mitten im Lauf ab, bleibt der Auftrag auf 'running'.
+      await db.run(`UPDATE pdf_auftraege SET aktualisiert = NOW() - INTERVAL '1 day' WHERE id = ANY($1)`, [[alt1, alt2]]);
       const r = await fetch(`${basis}/api/v1/sets/partslist-pdf`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${tokA}`, 'content-type': 'application/json' },
         body: JSON.stringify({ sets: [], parts: [{ part_number: '3001', quantity: 1 }] }),
       });
       assert.equal(r.status, 200, 'ein hängengebliebener Lauf sperrt den Benutzer für immer aus');
+    });
+
+    await t.test('der Statusstrom meldet das Ende sofort', async () => {
+      await db.run('DELETE FROM pdf_auftraege');
+      const job = pdf.neueJobId();
+      await auftragLegen(job, idA, 'running');
+      const ctrl = new AbortController();
+      const r = await fetch(`${basis}/api/v1/sets/partslist-pdf/stream/${job}`,
+        { headers: { Authorization: `Bearer ${tokA}` }, signal: ctrl.signal });
+      assert.equal(r.status, 200);
+      const leser = r.body.getReader();
+      const dec = new TextDecoder();
+      let text = '';
+      const start = Date.now();
+      setTimeout(() => _req('utils/pdfAuftraege.js').schreibeAuftrag(job, { status: 'done', error: null, user_id: idA }), 300);
+      while (!text.includes('"done"') && Date.now() - start < 8000) {
+        const { value, done } = await Promise.race([leser.read(),
+          new Promise(f => setTimeout(() => f({ done: true }), 8000 - (Date.now() - start)))]);
+        if (done) break;
+        text += dec.decode(value);
+      }
+      ctrl.abort();
+      assert.match(text, /"done"/, `kein Ende im Strom: ${text}`);
+      assert.ok(Date.now() - start < 5000, `erst nach ${Date.now() - start} ms`);
     });
 
     await t.test('die Auftragskennung kommt aus kryptografischem Zufall', () => {
@@ -154,6 +182,8 @@ test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async (t) => 
     for (const f of await fs.readdir(PDF_JOB_DIR).catch(() => [])) {
       await fs.unlink(path.join(PDF_JOB_DIR, f)).catch(() => {});
     }
+    await db.run('DELETE FROM pdf_auftraege').catch(() => {});
+    await _req('utils/pgNotify.js').close().catch(() => {});
     await db.pool.end().catch(() => {});
   }
 });

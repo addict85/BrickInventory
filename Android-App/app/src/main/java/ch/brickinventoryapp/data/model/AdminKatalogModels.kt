@@ -4,29 +4,17 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
- * Monitoring, Grenzwerte, Einstellungen und Katalog.
- *
- * ── Warum diese Datei existiert (Nachtrag 155) ──────────────────────────────
- *
- * Alle 92 Datenklassen der App standen in EINER Datei, Models.kt, mit 1158
- * Zeilen. Jede Aenderung an irgendeinem Modell beruehrte dieselbe Datei — bei
- * parallelen Aenderungen ein sicherer Konflikt, und beim Suchen war der Weg
- * immer derselbe: eine Datei oeffnen und scrollen.
- *
- * Aufgeteilt wurde entlang der Sachgebiete. Die Klassen selbst sind WORTGLEICH
- * uebernommen: Es wurde nichts umbenannt, nichts zusammengefasst und kein Feld
- * angefasst. Sie liegen weiter im Paket ch.brickinventoryapp.data.model, also
- * aendert sich fuer keinen Aufrufer etwas — Kotlin bindet an das Paket, nicht
- * an die Datei.
+ * Monitoring, Grenzwerte, Einstellungen und Katalog — ein Sachgebiet der Modelle.
+ * Getrennte Dateien, damit parallele Änderungen nicht immer dieselbe Datei
+ * berühren; das Paket bleibt ch.brickinventoryapp.data.model, Kotlin bindet an das
+ * Paket, nicht an die Datei.
  */
 
 /**
- * Wie viele Sets je Jahr — MIT den aktuellen Filtern und in der Reihenfolge
- * der Sortierung (GET /api/v1/catalog/year-verteilung).
- *
- * `year` darf null sein: Sets ohne Jahresangabe. Postgres sortiert die bei
- * absteigender Sortierung nach vorne, und die Antwort gibt sie so heraus, wie
- * die Liste sie fuehrt.
+ * Wie viele Sets je Jahr — mit den aktuellen Filtern und in der Reihenfolge der
+ * Sortierung (GET /api/v1/catalog/year-verteilung). `year` darf null sein: Sets
+ * ohne Jahresangabe; Postgres sortiert sie absteigend nach vorne, und die Antwort
+ * gibt sie so heraus, wie die Liste sie führt.
  */
 @Serializable
 data class JahrAnzahl(
@@ -35,11 +23,9 @@ data class JahrAnzahl(
 )
 
 /**
- * Antwort auf „wie verteilen sich die Sets ueber die Jahre?"
- *
- * Vom SERVER, weil nur er die Filter kennt — eine Verteilung ueber den ganzen
- * Katalog laege bei gesetztem Thema oder Suchtext genauso daneben wie eine
- * lineare Schaetzung.
+ * Antwort auf „wie verteilen sich die Sets über die Jahre?“ — vom Server, weil nur
+ * er die Filter kennt; eine Verteilung über den ganzen Katalog läge bei gesetztem
+ * Thema oder Suchtext daneben.
  */
 @Serializable
 data class CatalogYearVerteilungResponse(
@@ -87,20 +73,11 @@ data class JobStatus(
 )
 
 /**
- * Der Zeitplan eines Jobs — taeglich zu einer Uhrzeit, oder alle N Minuten.
+ * Der Zeitplan eines Jobs — täglich zu einer Uhrzeit oder alle N Minuten. Gelesen,
+ * damit die App wie die Webapp zeigt, wann ein Job das nächste Mal läuft, und es
+ * ändern kann.
  *
- * ── Warum das Feld erst jetzt gelesen wird (Nachtrag 137) ───────────────────
- *
- * `/api/v1/admin/jobs` schickt `schedules` seit jeher mit (routes/api_v1/
- * admin.ts) — die App hat es nie eingelesen. Sie zeigte also, DASS ein Job
- * laeuft, aber nicht WANN er das naechste Mal laeuft, und aendern konnte sie
- * es schon gar nicht. Die Webapp zeigt beides.
- *
- * Wieder ein Feld, das ueber die Leitung kommt und niemanden erreicht — nur
- * diesmal von der anderen Seite als sonst: nicht geschrieben und nie gelesen,
- * sondern GESCHICKT und nie ausgepackt.
- *
- * @param type    "daily" (dann zaehlt `time`) oder "interval" (dann `minutes`)
+ * @param type    "daily" (dann zählt `time`) oder "interval" (dann `minutes`)
  * @param time    "HH:MM" — Ortszeit des Servers
  * @param minutes Abstand in Minuten; der Server erzwingt mindestens 5
  */
@@ -190,12 +167,11 @@ data class CatalogSetsResponse(
 )
 
 /**
- * BrickLink-Verweis, fertig vom Server aufgelöst (utils/bricklinkLink.ts).
- *
- * Die URL wird bewusst NICHT mehr im Client gebaut: ob eine Rebrickable-Nummer
- * auf BrickLink ein Set, Gear oder ein Buch ist, weiss nur der Server über
- * catalog_cache — und die Regel darf nicht in Webapp und App doppelt liegen.
- * url ist null, wenn der Artikel dort gar nicht gelistet ist.
+ * BrickLink-Verweis, fertig vom Server aufgelöst (utils/bricklinkLink.ts). Nicht
+ * im Client gebaut: Ob eine Rebrickable-Nummer auf BrickLink ein Set, Gear oder
+ * ein Buch ist, weiss nur der Server über catalog_cache, und die Regel darf nicht
+ * in Webapp und App doppelt liegen. url ist null, wenn der Artikel dort nicht
+ * gelistet ist.
  */
 @Serializable
 data class BrickLinkRef(
@@ -226,11 +202,9 @@ data class CatalogSetDetail(
     @SerialName("owned_quantity") val ownedQuantity: Int = 0,
     val bricklink: BrickLinkRef? = null,
     /**
-     * Preisvergleich, fertig vom Server (utils/preisvergleich.ts).
-     *
-     * Dieselbe Begruendung wie beim Set-Detail: Die Adresse steht genau einmal
-     * im Baum. Verbraucher ist das Merkposten-Detail — dort ist „was kostet das
-     * anderswo?" der wichtigste Griff ueberhaupt.
+     * Preisvergleich, fertig vom Server (utils/preisvergleich.ts) — wie beim
+     * Set-Detail steht die Adresse genau einmal im Baum. Verbraucher ist das
+     * Merkposten-Detail, wo „was kostet das anderswo?“ der wichtigste Griff ist.
      */
     @SerialName("preisvergleich_url") val preisvergleichUrl: String? = null
 )

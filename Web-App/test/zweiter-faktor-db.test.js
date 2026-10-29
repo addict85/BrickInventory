@@ -94,7 +94,7 @@ test('Anmeldung mit zweitem Faktor — durchgespielt', { concurrency: 1 }, async
   /** Ein Code, der zum aktuellen Geheimnis passt — wahlweise einen Schritt versetzt. */
   const codeFuer = async (name, versatz = 0) => {
     const z = await db.get('SELECT f.geheimnis FROM zweiter_faktor f JOIN users u ON u.id = f.user_id WHERE u.username = $1', [name]);
-    return zf.hotp(zf.ausBase32(z.geheimnis), zf.zeitschritt() + versatz);
+    return zf.hotp(zf.ausBase32(_req('utils/geheimnis.js').entschluessele(z.geheimnis)), zf.zeitschritt() + versatz);
   };
   /** Einrichten bis aktiv; gibt den Token und die Wiederherstellungscodes zurück. */
   const einrichten = async (name) => {

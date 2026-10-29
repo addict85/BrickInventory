@@ -58,14 +58,9 @@ import ch.brickinventoryapp.ui.viewmodel.CatalogViewModel
 import ch.brickinventoryapp.ui.ManualItemDetailUiState
 
 /**
- * Navigationsziele, aus AppNavigation.kt herausgelöst (Punkt 9 der
- * Optimierungsliste). Die Blöcke sind unverändert übernommen — die einzige
- * Änderung ist, dass die zuvor aus dem umgebenden Scope eingefangenen Werte
- * jetzt als Parameter hereinkommen.
- *
- * ACHTUNG: Diese Aufteilung wurde ohne Android-SDK erzeugt und ist NICHT
- * kompiliert. Fehlende oder falsch typisierte Parameter fallen beim ersten
- * ./gradlew assembleDebug auf.
+ * Navigationsziele von Katalog und Merkliste. Die Werte aus AppNavigation kommen
+ * als Parameter herein, damit kein Ziel Zustand aus einem umgebenden Scope
+ * einfängt.
  */
 fun NavGraphBuilder.catalogGraph(
     vm: AppViewModel,
@@ -75,11 +70,11 @@ fun NavGraphBuilder.catalogGraph(
     bottomNavItems: List<Triple<Screen, @Composable () -> Unit, String>>,
     snackbarHostState: SnackbarHostState,
 ) {
-        // ── Merkliste (Nachtrag 179) ──────────────────────────────────────
+        // ── Merkliste ──
         //
-        // Hier und nicht im CollectionGraph: Eine Merkliste ist kein Bestand.
-        // Sie steht dem Katalog naeher — von dort kommt der haeufigste Weg
-        // hinein, und wie er zeigt sie Sets, die einem NICHT gehoeren.
+        // Hier und nicht im CollectionGraph: Eine Merkliste ist kein Bestand. Sie steht
+        // dem Katalog näher — von dort kommt der häufigste Weg hinein, und wie er zeigt
+        // sie Sets, die einem nicht gehören.
         composable(Screen.Wanted.route) {
             ReiterGeruest(stringResource(R.string.nav_wanted), vm, navController, bottomNavItems, snackbarHostState) {
                 val erfassung = ch.brickinventoryapp.ui.viewmodel.aktivitaetsViewModel<ch.brickinventoryapp.ui.viewmodel.ErfassungViewModel>()
@@ -113,10 +108,6 @@ fun NavGraphBuilder.catalogGraph(
             // Momentaufnahme vom Aufbau des Graphen (der NavHost-Builder läuft nur einmal).
             val state by vm.state.collectAsStateWithLifecycle()
             val catalogState by katalog.state.collectAsStateWithLifecycle()
-            // Hier stand die Weiterleitung der Katalog-Meldungen an das
-            // MainViewModel — zweimal in dieser Datei, wortgleich. Sie ist weg:
-            // Beide ViewModels schreiben jetzt in denselben Kanal
-            // (data/MeldungsKanal.kt), eingesammelt wird er in AppNavigation.kt.
             LaunchedEffect(state.serverUrl) {
                 if (state.serverUrl.isNotBlank() && catalogState.loadedPages.isEmpty() && !catalogState.isLoading) {
                     katalog.loadCatalogMeta(); katalog.loadCatalogSets()
@@ -146,9 +137,8 @@ fun NavGraphBuilder.catalogGraph(
             val erfassung = ch.brickinventoryapp.ui.viewmodel.aktivitaetsViewModel<ch.brickinventoryapp.ui.viewmodel.ErfassungViewModel>()
             val catalogState by katalog.state.collectAsStateWithLifecycle()
             val lagerZustand by vm.lagerState.collectAsStateWithLifecycle()
-            // loadCatalogDetail() meldet ebenfalls („Set nicht gefunden",
-            // Netzfehler). Die Bruecke dafuer stand hier und ist entfallen —
-            // siehe oben und data/MeldungsKanal.kt.
+            // loadCatalogDetail() meldet über denselben Kanal wie alle ViewModels
+            // (data/MeldungsKanal.kt), eingesammelt in AppNavigation.kt.
             CatalogDetailScreen(
                 setNumber = catSetNumber,
                 detail = catalogState.detail?.takeIf { it.setNumber == catSetNumber },
@@ -163,10 +153,9 @@ fun NavGraphBuilder.catalogGraph(
                 lagerorte = lagerZustand.eigene.map { it.name },
                 lagerortVorgabe = lagerZustand.vorgabe?.name ?: "",
                 onAddToGallery = { sn, qty, price, cond, owner, ort ->
-                    // Das Aufnehmen gehoert der Galerie, das „besitze ich"
-                    // dem Katalog. Frueher tat addCatalogSetToGallery() beides
-                    // in einer Funktion — die Abhaengigkeit steht jetzt sichtbar
-                    // hier statt versteckt dort.
+                    // Das Aufnehmen gehört der Galerie, das „besitze ich“ dem Katalog — die
+                    // Abhängigkeit steht hier sichtbar statt versteckt in einer gemeinsamen
+                    // Funktion.
                     erfassung.addSet(sn, qty, price, cond, owner, ort)
                     katalog.markiereAufgenommen(sn, qty)
                 },

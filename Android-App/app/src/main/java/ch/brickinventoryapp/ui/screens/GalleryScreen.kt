@@ -50,8 +50,8 @@ import ch.brickinventoryapp.ui.theme.SteinKantenVerlauf
 import ch.brickinventoryapp.ui.theme.SlateBlueNoppe
 import ch.brickinventoryapp.ui.theme.NoppenMass
 import ch.brickinventoryapp.util.fmtInt
-import ch.brickinventoryapp.util.fmtAmount
 import ch.brickinventoryapp.util.fmtMoney
+import ch.brickinventoryapp.util.fmtProzent
 import ch.brickinventoryapp.ui.theme.LocalStatusFarben
 import ch.brickinventoryapp.util.rememberTileImageWithFallback
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -67,6 +67,9 @@ import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.util.NumericInput
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.components.LeerSymbol
+import ch.brickinventoryapp.ui.components.Bewegt
+import ch.brickinventoryapp.ui.components.SkelettRaster
+import ch.brickinventoryapp.data.model.DashboardStats
 
 @OptIn(ExperimentalMaterial3Api::class, FlowPreview::class)
 @Composable
@@ -79,12 +82,11 @@ fun GalleryScreen(
     onScanBarcode: () -> Unit,
     /** Klick auf ein Set, ebenso. */
     onSetClick: (String) -> Unit,
-    /** Scroll-Zustand von aussen, siehe Nachtrag 92. */
+    /** Scroll-Zustand von aussen, damit er den Weg in die Detailansicht übersteht. */
     gridState: LazyGridState = rememberLazyGridState(),
 ) {
-    // Zustand und Aktionen vom ViewModel statt über sechsundzwanzig Parameter —
-    // die Begründung steht bei PartsScreen (Nachtrag 96). Die Namen bleiben
-    // absichtlich dieselben, damit der Rumpf darunter unverändert bleibt.
+    // Zustand und Aktionen vom ViewModel statt über Parameter (wie PartsScreen); die
+    // Namen bleiben dieselben, damit der Rumpf darunter unverändert ist.
     val state by vm.state.collectAsStateWithLifecycle()
     val blick by vm.blickfeld.collectAsStateWithLifecycle()
     // Eigener Fluss fuer die Galerie: Blaettern, Suchen und Nachladen aendern
@@ -135,12 +137,11 @@ fun GalleryScreen(
 
     var showAddDialog by rememberSaveable { mutableStateOf(false) }
 
-    // ── Erfolgloser Scan öffnet die manuelle Erfassung (Nachtrag 113) ─────────
+    // ── Erfolgloser Scan öffnet die manuelle Erfassung ──
     //
-    // Marcos Vorgabe. Die drei erfolglosen Wege (EAN nicht auflösbar, EAN ohne
-    // Setnummer, Texterkennung ohne Treffer) melden sich über ein Feld im
-    // Zustand; hier wird es abgeholt und quittiert. Ohne Quittierung ginge der
-    // Dialog beim nächsten Zusammensetzen erneut auf.
+    // Die erfolglosen Wege (EAN nicht auflösbar, ohne Setnummer, Texterkennung ohne
+    // Treffer) melden sich über ein Feld im Zustand; hier abgeholt und quittiert,
+    // sonst ginge der Dialog beim nächsten Zusammensetzen erneut auf.
     LaunchedEffect(barcodeState.manuelleErfassungAnfordern) {
         if (barcodeState.manuelleErfassungAnfordern) {
             showAddDialog = true
@@ -152,13 +153,11 @@ fun GalleryScreen(
     // Filter-Generation hängt. Wechselt der Wert von aussen (Anmeldung,
     // Zurücksetzen), zieht das Feld nach.
     var searchInput by remember(query) { mutableStateOf(query) }
-    var showSortMenu by rememberSaveable { mutableStateOf(false) }
+    var zeigeFilter by rememberSaveable { mutableStateOf(false) }
 
-    // KEIN lokales Filtern und keine Themenliste aus `sets` mehr: Beides war
-    // eine zweite Fassung der Suche neben der des Servers — ohne Jahr im
-    // Suchtext, ohne Sortierung, und die Themen kamen aus der geladenen Seite
-    // statt aus dem Bestand. Der Schirm zeigt jetzt genau das, was der Server
-    // geliefert hat.
+    // Kein lokales Filtern und keine Themenliste aus `sets`: Der Schirm zeigt, was der
+    // Server geliefert hat — eine zweite Suche hier kennte weder Jahr noch Sortierung,
+    // und die Themen kämen aus der geladenen Seite statt aus dem Bestand.
 
     // Endlos-Scroll: nachladen, sobald die letzten Kacheln in Sicht kommen.
     LaunchedEffect(gridState, sets.size, total) {
@@ -171,113 +170,20 @@ fun GalleryScreen(
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
 
-            // Stats bar — directly under TopBar, no gap
-            if (stats != null) {
-                Surface(
-                    color = MaterialTheme.colorScheme.surface,
-                    tonalElevation = 2.dp
-                ) {
-                    LazyRow(
-                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp),
-                        horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        // fmtInt() statt "%,d" mit anschliessendem Ersetzen des
-                        // Kommas: Das war eine vierte, handgeschriebene
-                        // Zahlenfassung neben den drei Beträgen — und sie
-                        // erzwang den Apostroph auch dann, wenn die App auf
-                        // Englisch läuft. Die Webapp formatiert dieselben
-                        // Kennzahlen mit toLocaleString(locale()).
-                        item { GalleryStatChip(fmtInt(stats.totalSets), stringResource(R.string.gallery_stat_sets)) }
-                        item { GalleryStatChip(fmtInt(stats.totalQuantity), stringResource(R.string.gallery_stat_units)) }
-                        item { GalleryStatChip(fmtInt(stats.totalParts), stringResource(R.string.gallery_stat_parts)) }
-                        if (stats.totalMinifigs > 0)
-                            item { GalleryStatChip(fmtInt(stats.totalMinifigs), stringResource(R.string.gallery_stat_minifigs)) }
-                        // Anleitungen — die vierte Zahl, die die Webapp im
-                        // Kopf der Galerie zeigt (02-gallery.js, `hs-instr`).
-                        // `total_instructions` kam seit jeher mit und wurde
-                        // nirgends gelesen; gefunden beim Zaehlen der
-                        // Modellfelder, die niemand liest.
-                        //
-                        // Wie bei den Minifiguren nur, wenn es welche gibt: Ein
-                        // Chip mit einer Null ist eine Zahl ohne Aussage.
-                        if (stats.totalInstructions > 0)
-                            item { GalleryStatChip(fmtInt(stats.totalInstructions), stringResource(R.string.gallery_stat_instructions)) }
-                    }
-                }
-            }
-
-            ScopeFilterZeile(householdMembers, scopeMode, onScopeChange,
-            lagerorte = lagerorte, lagerAktuell = lagerModus, onLagerSelect = onLagerChange)
-
-            // Suchfeld — gemeinsamer Baustein (Nachtrag 132).
-            Suchfeld(
+            // Suche und ein Knopf für alles andere: Konto, Lagerort, Thema und
+            // Sortierung stehen im Blatt; die Kennzahlen rollen mit dem Raster.
+            SucheMitFilter(
                 wert = searchInput,
                 onWert = { searchInput = it; onQueryChange(it) },
                 platzhalter = stringResource(R.string.gallery_search_placeholder),
+                aktiveFilter = Filterzahl.galerie(householdMembers, scopeMode, lagerorte, lagerModus, theme, sort),
+                onFilter = { zeigeFilter = true },
             )
-
-            // Sortierung und Themen — beides wird auf dem SERVER angewandt.
-            // Die Zeile erscheint auch ohne Themen, weil die Sortierung darin
-            // steht; vorher gab es am Telefon gar keine Sortierung, während die
-            // Webapp neun Möglichkeiten bot.
-            LazyRow(
-                contentPadding = PaddingValues(horizontal = 14.dp),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                modifier = Modifier.padding(bottom = 6.dp)
-            ) {
-                    item {
-                        Box {
-                            FilterChip(
-                                selected = sort != ch.brickinventoryapp.data.repository.GALLERY_DEFAULT_SORT,
-                                onClick = { showSortMenu = true },
-                                label = { Text(gallerySortLabel(sort), style = MaterialTheme.typography.labelMedium) },
-                                leadingIcon = { Icon(Icons.AutoMirrored.Filled.Sort, null, Modifier.size(16.dp)) },
-                                shape = Formen.chip
-                            )
-                            DropdownMenu(showSortMenu, { showSortMenu = false }) {
-                                // Dieselben Werte wie SET_SORTS auf dem Server
-                                // (utils/handlers.ts) und dieselbe Auswahl wie in
-                                // der Webapp — ein unbekannter Wert fiele dort auf
-                                // die Vorgabe zurück, wäre hier also eine stille
-                                // Wirkungslosigkeit.
-                                listOf("added_desc", "added_asc", "name_asc", "num_asc",
-                                       "year_desc", "price_desc", "price_asc",
-                                       "qty_desc", "qty_asc").forEach { w ->
-                                    DropdownMenuItem(
-                                        text = { Text(gallerySortLabel(w)) },
-                                        onClick = { showSortMenu = false; onSortChange(w) },
-                                        trailingIcon = { if (sort == w) Icon(Icons.Default.Check, null, Modifier.size(16.dp)) }
-                                    )
-                                }
-                            }
-                        }
-                    }
-                    item {
-                        FilterChip(
-                            selected = theme.isEmpty(),
-                            onClick = { onThemeChange("") },
-                            label = { Text(stringResource(R.string.gallery_all), style = MaterialTheme.typography.labelMedium) },
-                            shape = Formen.chip
-                        )
-                    }
-                    items(themes, key = { it }) { t ->
-                        FilterChip(
-                            selected = theme == t,
-                            onClick = { onThemeChange(if (theme == t) "" else t) },
-                            label = { Text(t, style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                            modifier = Modifier.widthIn(max = 140.dp),
-                            shape = Formen.chip
-                        )
-                    }
-            }
 
             ch.brickinventoryapp.ui.components.OfflineHinweis(galerie.offlineStand)
             PullToRefreshBox(isRefreshing = isLoading, onRefresh = onRefresh, modifier = Modifier.fillMaxSize()) {
                 when (galerieAnzeige(galerie, gefiltert = searchInput.isNotBlank() || theme.isNotEmpty())) {
-                    GalerieAnzeige.LAEDT -> Box(Modifier.fillMaxSize(), Alignment.Center) {
-                        CircularProgressIndicator()
-                    }
+                    GalerieAnzeige.LAEDT -> SkelettRaster(GridCells.Adaptive(160.dp), kachelHoehe = 272.dp)
                     // Fehler und leere Sammlung sehen verschieden aus und bieten
                     // Verschiedenes an: hier den Grund und einen neuen Versuch.
                     GalerieAnzeige.FEHLER -> GalerieHinweis {
@@ -310,6 +216,8 @@ fun GalleryScreen(
                         }
                     }
                     GalerieAnzeige.KEINE_TREFFER -> GalerieHinweis {
+                        // Die Kennzahlen meinen die ganze Sammlung — auch ohne Treffer.
+                        if (stats != null) GalerieKennzahlen(stats)
                         LeerSymbol(Icons.Default.SearchOff)
                         Text(stringResource(R.string.gallery_no_results, searchInput), fontWeight = FontWeight.SemiBold)
                     }
@@ -320,23 +228,22 @@ fun GalleryScreen(
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
+                        if (stats != null) {
+                            item(key = "gallery-stats", span = { GridItemSpan(maxLineSpan) }) {
+                                GalerieKennzahlen(stats)
+                            }
+                        }
                         itemsIndexed(sets, key = { _, s -> s.setNumber }) { index, set ->
-                            SetCard(set, serverUrl, imageLoader, onSetClick, onDeleteSet, index,
-                                preis = preise[set.setNumber], waehrung = currency)
+                            Bewegt {
+                                SetCard(set, serverUrl, imageLoader, onSetClick, onDeleteSet, index,
+                                    preis = preise[set.setNumber], waehrung = currency)
+                            }
                         }
                         if (loadingMore) {
-                            // ── Eigener Schlüssel für den Lade-Eintrag (Nachtrag 108) ──
-                            //
-                            // Die Kacheln darüber sind verschlüsselt
-                            // (key = { it.setNumber }). Ein Eintrag OHNE Schlüssel
-                            // bekommt in einer solchen Liste einen Ersatz, der aus
-                            // seinem Index gebildet wird — und der wechselt, sobald
-                            // die Liste wächst. Für das Raster verschwindet damit
-                            // ein Eintrag und ein anderer erscheint, statt dass
-                            // derselbe stehen bleibt.
-                            //
-                            // Ein fester Schlüssel macht ihn zu dem, was er ist:
-                            // EIN Eintrag, der mal da ist und mal nicht.
+                            // Ein fester Schlüssel für den Lade-Eintrag: Ohne bekäme er einen aus
+                            // dem Index gebildeten Ersatz, der beim Wachsen der Liste wechselt —
+                            // für das Raster verschwände dann ein Eintrag und ein anderer
+                            // erschiene.
                             item(key = "gallery-loading-more", span = { GridItemSpan(maxLineSpan) }) {
                                 Box(Modifier.fillMaxWidth().padding(Abstaende.gross), Alignment.Center) {
                                     CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 2.dp)
@@ -371,6 +278,16 @@ fun GalleryScreen(
         }
     }
 
+    if (zeigeFilter) {
+        GalerieFilterBlatt(
+            members = householdMembers, konto = scopeMode, onKonto = onScopeChange,
+            orte = lagerorte, lager = lagerModus, onLager = onLagerChange,
+            themen = themes, thema = theme, onThema = onThemeChange,
+            sortierung = sort, onSortierung = onSortChange,
+            onSchliessen = { zeigeFilter = false },
+        )
+    }
+
     if (showAddDialog) {
         AddSetDialog(
             onDismiss = { showAddDialog = false },
@@ -381,6 +298,69 @@ fun GalleryScreen(
             lagerorte = lagerortVorrat,
             vorgabe = lagerState.vorgabe?.name ?: "",
         )
+    }
+}
+
+/** Die Kennzahlen der Sammlung — erste Zeile des Rasters, sie rollt mit. */
+@Composable
+private fun GalerieKennzahlen(stats: DashboardStats) {
+    LazyRow(
+        horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        // fmtInt() statt "%,d" mit anschliessendem Ersetzen des Kommas: Die
+        // Webapp formatiert dieselben Kennzahlen mit toLocaleString(locale()).
+        item { GalleryStatChip(fmtInt(stats.totalSets), stringResource(R.string.gallery_stat_sets)) }
+        item { GalleryStatChip(fmtInt(stats.totalQuantity), stringResource(R.string.gallery_stat_units)) }
+        item { GalleryStatChip(fmtInt(stats.totalParts), stringResource(R.string.gallery_stat_parts)) }
+        // Minifiguren und Anleitungen nur, wenn es welche gibt: Ein Chip mit
+        // einer Null ist eine Zahl ohne Aussage.
+        if (stats.totalMinifigs > 0)
+            item { GalleryStatChip(fmtInt(stats.totalMinifigs), stringResource(R.string.gallery_stat_minifigs)) }
+        if (stats.totalInstructions > 0)
+            item { GalleryStatChip(fmtInt(stats.totalInstructions), stringResource(R.string.gallery_stat_instructions)) }
+    }
+}
+
+/**
+ * Konto, Lagerort, Sortierung und Thema der Galerie. Angewandt wird jede Wahl
+ * sofort auf dem Server; das Blatt bleibt offen, damit man mehrere setzen kann.
+ */
+@Composable
+private fun GalerieFilterBlatt(
+    members: List<ch.brickinventoryapp.data.model.HouseholdMember>, konto: String, onKonto: (String) -> Unit,
+    orte: List<ch.brickinventoryapp.data.model.Lagerort>, lager: String, onLager: (String) -> Unit,
+    themen: List<String>, thema: String, onThema: (String) -> Unit,
+    sortierung: String, onSortierung: (String) -> Unit,
+    onSchliessen: () -> Unit,
+) {
+    val vorgabe = ch.brickinventoryapp.data.repository.GALLERY_DEFAULT_SORT
+    // Nur zurücksetzen, was abweicht: Jede Änderung lädt die Liste neu.
+    val zuruecksetzen: () -> Unit = {
+        if (Filterzahl.konto(members, konto) > 0) onKonto(ch.brickinventoryapp.data.ScopeFilter.ALL)
+        if (Filterzahl.lager(orte, lager) > 0) onLager("")
+        if (thema.isNotBlank()) onThema("")
+        if (sortierung != vorgabe) onSortierung(vorgabe)
+    }
+    val aktiv = Filterzahl.galerie(members, konto, orte, lager, thema, sortierung)
+    FilterBlattRahmen(onSchliessen = onSchliessen, onZuruecksetzen = zuruecksetzen.takeIf { aktiv > 0 }) {
+        KontoFilterAbschnitt(members, konto, onKonto)
+        LagerortFilterAbschnitt(orte, lager, onLager)
+        FilterAbschnitt(stringResource(R.string.filter_section_sort)) {
+            // Dieselben Werte wie SET_SORTS auf dem Server (utils/handlers.ts):
+            // Einen unbekannten Wert setzte er still auf die Vorgabe zurück.
+            listOf("added_desc", "added_asc", "name_asc", "num_asc",
+                   "year_desc", "price_desc", "price_asc",
+                   "qty_desc", "qty_asc").forEach { w ->
+                FilterWahl(gallerySortLabel(w), sortierung == w) { if (sortierung != w) onSortierung(w) }
+            }
+        }
+        if (themen.isNotEmpty()) {
+            FilterAbschnitt(stringResource(R.string.catalog_filter_theme)) {
+                FilterWahl(stringResource(R.string.gallery_all), thema.isEmpty()) { if (thema.isNotEmpty()) onThema("") }
+                themen.forEach { t -> FilterWahl(t, thema == t) { onThema(if (thema == t) "" else t) } }
+            }
+        }
     }
 }
 
@@ -435,52 +415,17 @@ fun SetCard(
     var showMenu by rememberSaveable { mutableStateOf(false) }
     var deleting by rememberSaveable { mutableStateOf(false) }
     val ctx = LocalContext.current
-    // Über den Server auflösen statt roher CDN-Adresse: liefert ein
-    // Vorschaubild (kleiner, schneller) und lässt den Server die
-    // Netzwerkarbeit gegen das CDN machen — inklusive seiner bereits
-    // gehärteten Logik (Referer-Rückfall, Entpacken, Negativ-Cache). Siehe
-    // util/ImageUrls.kt.
-    // Vorschaubild mit Rückfall auf die volle Auflösung, wenn die
-    // "_thumb.jpg"-Datei (noch) nicht existiert.
-    //
-    // Frühere Fassung: ein Wiederholversuch derselben Adresse nach einer
-    // Sekunde. Das half bei einem echten, einmaligen Netzwerk-Aussetzer,
-    // aber NICHT bei der eigentlichen Ursache — nach einem CSV-Import legt
-    // der Server Original-Bilder sofort ab, erzeugt die "_thumb"-Varianten
-    // aber nachträglich in einer eigenen, langsamen Warteschlange
-    // (server.ts, "Generate missing thumbnails"). Fragt die Kachel in dieser
-    // Zeit die Vorschau an, bekommt sie zuverlässig 404 — auch beim zweiten
-    // Versuch derselben (weiterhin fehlenden) Datei. Die Webapp fällt in
-    // genau diesem Fall auf die volle Auflösung zurück (public/js/11-actions.js,
-    // data-orig) — das bildet rememberTileImageWithFallback() jetzt nach.
+    // Vorschaubild über den Server, mit Rückfall auf die volle Auflösung, solange die
+    // `_thumb`-Datei fehlt (nach einem CSV-Import erzeugt der Server sie nachträglich)
+    // — wie data-orig in der Webapp; siehe util/ImageUrls.kt.
     val (imageUrl, onImageError) = rememberTileImageWithFallback(serverUrl, set.imageLocal, set.imageUrl)
 
-    // Einmaliger, verzögerter Wiederholversuch nach einem Ladefehler.
-    //
-    // Beobachtet (Marcos Bericht zu neu erfassten Sets): Die Kachel bleibt
-    // dauerhaft leer, obwohl die Webapp dasselbe Bild anzeigt. Beim ERSTEN
-    // Anzeigen direkt nach dem Erfassen ist die Datei auf dem Server oft noch
-    // nicht fertig — der Server lädt sie mit Frist herunter und erzeugt die
-    // Vorschau danach im Hintergrund. Coil versucht eine fehlgeschlagene
-    // Anfrage NIE von sich aus erneut, und das Ergebnis bleibt an der Kachel
-    // hängen, solange sie im Speicher ist. Deshalb blieb es auch später leer,
-    // während ein frisch geladener Browser das Bild längst bekam.
-    //
-    // retryNonce ist an setNumber UND imageUrl gebunden: Wird die Kachel
-    // wiederverwendet (LazyGrid recycelt) oder ändert sich die Adresse, beginnt
-    // die Zählung neu. memoryCacheKeyExtra("retry", …) macht die zweite
-    // Anfrage für Coil unterscheidbar — ohne das würde sie als dieselbe
-    // (gescheiterte) Anfrage behandelt. Genau EIN Versuch, damit ein dauerhaft
-    // fehlendes Bild nicht in eine Endlosschleife läuft.
-    //
-    // In Coil 2 hiess das `setParameter`. Coil 3 kennt keine Parameter mehr;
-    // NACHGESEHEN in den Quellen von coil-core 3.3.0 ist
-    // `memoryCacheKeyExtra(String, String?)` der Nachfolger für genau diesen
-    // Zweck: Der Wert landet in `MemoryCache.Key(key, extras)`
-    // (MemoryCacheService.kt), und weil ImageRequest `@Poko` ist, geht er auch
-    // in die Gleichheit der Anfrage ein. Beides ist nötig: Das erste sorgt für
-    // den Fehlschlag im Speicher-Cache, das zweite dafür, dass AsyncImage die
-    // Anfrage überhaupt neu stellt.
+    // Einmaliger, verzögerter Wiederholversuch nach einem Ladefehler: Direkt nach dem
+    // Erfassen ist das Bild auf dem Server oft noch nicht fertig, und Coil wiederholt
+    // eine gescheiterte Anfrage nie von selbst. An Setnummer und Adresse gebunden,
+    // damit eine wiederverwendete Kachel neu zählt; memoryCacheKeyExtra("retry", …)
+    // macht die zweite Anfrage für Coil 3 zu einer anderen. Genau ein Versuch, damit
+    // ein fehlendes Bild nicht in eine Schleife läuft.
     var retryNonce by remember(set.setNumber, imageUrl) { mutableStateOf(0) }
     val scope = rememberCoroutineScope()
 
@@ -488,35 +433,21 @@ fun SetCard(
     val istNoppe = LocalIsNoppeTheme.current
     val istGlanz = LocalIstGlanz.current
 
-    // ── Die Noppen stehen UEBER der Karte ───────────────────────────────────
-    //
-    // Marco: „Geht es nicht, dass die Noppen oberhalb des Bereichs sind?" Im
-    // Web macht das ein `top:-6px` an der Kachel, die dafuer `overflow:visible`
-    // bekommt. In Compose gibt es das nicht: Eine Material-Card klippt auf ihre
-    // Form, und was ueber ihren Rand ragt, waere weg.
-    //
-    // Deshalb die Box: Die Karte rueckt um die Noppenhoehe nach unten, und die
-    // Reihe wird DANEBEN gezeichnet und darueber gelegt. Dieselbe Anordnung wie
-    // im CSS, nur mit den Mitteln von Compose.
+    // Die Noppen stehen über der Karte: Eine Material-Card klippt auf ihre Form.
+    // Deshalb rückt die Karte um die Noppenhöhe nach unten, und die Reihe wird daneben
+    // gezeichnet und darübergelegt — wie `top:-6px` im CSS.
     Box {
         AppKarte(
-            // Höher als vorher (232.dp) — Nachtrag 52, Marcos Wunsch: Die
-            // Etiketten sollen das Vorschaubild nicht mehr überdecken. Die zusätzliche
-            // Höhe geht vollständig an den Bildbereich; die Textzeilen darunter
-            // bleiben unverändert.
+            // Die Mindesthöhe gibt dem Bild Raum über den Etiketten; der Zuwachs geht an den
+            // Bildbereich, die Textzeilen bleiben.
             modifier = Modifier.heightIn(min = 272.dp)
                 .then(if (isBrick) Modifier.padding(top = NoppenMass.Stein.hoehe) else Modifier),
             onClick = { onClick(set.setNumber) }
         ) {
             Column {
-                // Die Steinkante: Noppen ueber die ganze Breite, genau die Masse
-                // aus themes/brick.css (NoppenMass.Stein). Vorher stand hier der
-                // nackte Aufruf und damit der DECKEL des Noppe-Designs — vier
-                // Noppen links. Im Web waren es flache Kreise ueber die ganze
-                // Breite; dasselbe Design sah auf Telefon und Rechner anders aus.
-                // Nur die KANTE liegt in der Karte. Die Noppen stehen darueber und
-                // werden neben der Karte gezeichnet (siehe unten) — eine Card
-                // klippt auf ihre Form und wuerde sie abschneiden.
+                // Die Steinkante mit den Massen aus themes/brick.css (NoppenMass.Stein), wie im
+                // Web über die ganze Breite. Nur die Kante liegt in der Karte; die Noppen werden
+                // daneben gezeichnet, weil die Card sie abschnitte.
                 if (isBrick) BrickStudCap(
                     mass = NoppenMass.Stein,
                     verlauf = SteinKantenVerlauf,
@@ -550,13 +481,9 @@ fun SetCard(
                                     onImageError()
                                 }
                             },
-                            // Unten Platz lassen: Genau dort sitzen Zustands- und
-                            // Besitzer-Etiketten (BottomStart). Ohne diesen Streifen
-                            // liegen sie ÜBER dem Bild — bei einem Foto, das die
-                            // Fläche ausfüllt, verdecken sie es (Nachtrag 52).
-                            // ContentScale.Fit skaliert in den verbleibenden Raum,
-                            // das Bild wird also nicht beschnitten, sondern rückt
-                            // nach oben.
+                            // Unten Platz für Zustands- und Besitzer-Etiketten, damit sie das Bild
+                            // nicht verdecken; ContentScale.Fit rückt es nach oben statt es zu
+                            // beschneiden.
                             modifier = Modifier.fillMaxSize().padding(bottom = 44.dp)
                                 .then(if (isBrick) Modifier else Modifier.clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))),
                             contentScale = ContentScale.Fit
@@ -566,10 +493,8 @@ fun SetCard(
                             Image(painterResource(R.drawable.ic_logo), null, Modifier.size(56.dp))
                         }
                     }
-                    // Column statt Box (Nachtrag 33): Eine Box STAPELT ihre Kinder —
-                    // die Besitzer-Etiketten lagen über den Zustandsplaketten, auf
-                    // Marcos Screenshot lugte das verdeckte „N/G" zwischen den
-                    // Namen hervor. Untereinander bleibt beides lesbar.
+                    // Column statt Box: Eine Box stapelt, die Besitzer-Etiketten verdeckten die
+                    // Zustandsplaketten. Untereinander bleibt beides lesbar.
                     Column(Modifier.align(Alignment.BottomStart).padding(6.dp),
                            verticalArrangement = Arrangement.spacedBy(Abstaende.haar)) {
                         ConditionBadges(set.conditions, set.condition)
@@ -629,7 +554,7 @@ fun SetCard(
                         Text(fmtMoney(betrag, waehrung), style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
                         val pct = preis?.pnlPct
-                        if (pct != null) Text((if (pct >= 0) "+" else "") + fmtAmount(pct, 1, 1) + " %",
+                        if (pct != null) Text(fmtProzent(pct),
                             style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold,
                             color = if (pct >= 0) LocalStatusFarben.current.erfolg else MaterialTheme.colorScheme.error)
                     }
@@ -669,31 +594,23 @@ fun AddSetDialog(
     /** Vorrat an Lagerorten — leer heisst: es gibt noch keine, dann wird getippt. */
     lagerorte: List<String> = emptyList(),
     /**
-     * Der Ort, der schon dastehen soll — Marcos Stern aus den Einstellungen.
-     *
-     * Leer heisst: keine Vorgabe, das Feld bleibt leer wie bisher.
+     * Der Ort, der schon dastehen soll (der Stern aus den Einstellungen); leer heisst
+     * keine Vorgabe.
      */
     vorgabe: String = "",
 ) {
     var setNumber by rememberSaveable { mutableStateOf("") }
     var quantity  by rememberSaveable { mutableStateOf("1") }
-    // Schluessel ist die Vorgabe: Kommt sie erst mit der Antwort des Servers
-    // (der Dialog kann schneller offen sein als der Abruf), soll das Feld sie
-    // uebernehmen. Hat jemand in der Zwischenzeit selbst etwas eingetragen,
-    // bleibt es stehen — `rememberSaveable(vorgabe)` setzt nur neu, wenn sich
-    // die Vorgabe aendert, und das tut sie genau einmal.
+    // Schlüssel ist die Vorgabe: Kommt sie erst nach dem Öffnen des Dialogs, übernimmt
+    // das Feld sie; was jemand inzwischen getippt hat, bleibt, weil sich die Vorgabe
+    // nur einmal ändert.
     var lagerort  by rememberSaveable(vorgabe) { mutableStateOf(vorgabe) }
 
-    // ── Der Cursor steht sofort im Set-Feld (Nachtrag 113) ────────────────────
+    // ── Der Cursor steht sofort im Set-Feld ──
     //
-    // Marcos Vorgabe: „Wenn der Dialog für die manuelle Erfassung erscheint,
-    // soll der Cursor bereits im Set-Feld sein — immer, wenn das Formular
-    // angezeigt wird."
-    //
-    // `LaunchedEffect(Unit)` läuft genau einmal je Anzeige: Der Dialog wird bei
-    // jedem Öffnen neu zusammengesetzt, bei jedem Schliessen verworfen. Die
-    // kurze Pause davor ist nötig, weil das Feld beim ersten Durchlauf noch
-    // nicht angeordnet ist — ein `requestFocus()` liefe dann ins Leere.
+    // LaunchedEffect(Unit) läuft einmal je Anzeige; die kurze Pause davor braucht es,
+    // weil das Feld beim ersten Durchlauf noch nicht angeordnet ist und requestFocus()
+    // sonst ins Leere liefe.
     val setFeldFokus = remember { FocusRequester() }
     LaunchedEffect(Unit) {
         kotlinx.coroutines.delay(120)
@@ -769,15 +686,10 @@ fun AddSetDialog(
 
 
 /**
- * Beschriftung eines Sortierwerts. Die Werte selbst sind die des Servers
- * (SET_SORTS in utils/handlers/sets.ts) — hier wird nur übersetzt.
- *
- * `internal` und nicht mehr `private`: Die Merkliste sortiert nach denselben
- * Werten unter denselben Beschriftungen (MERK_SORTS in utils/merkliste.ts ist
- * eine Teilmenge ohne qty_*). Eine zweite Fassung dort wäre ein neunzeiliges
- * `when`, das bei der nächsten Umbenennung nur zur Hälfte nachgezogen würde —
- * genau die Doppelung, an der in diesem Baum schon mehrfach zwei Texte
- * auseinandergelaufen sind.
+ * Beschriftung eines Sortierwerts; die Werte sind die des Servers (SET_SORTS),
+ * hier wird nur übersetzt. `internal`, weil die Merkliste dieselben Werte unter
+ * denselben Beschriftungen braucht — eine zweite Fassung würde bei einer
+ * Umbenennung nur zur Hälfte nachgezogen.
  */
 @Composable
 internal fun gallerySortLabel(wert: String): String = when (wert) {

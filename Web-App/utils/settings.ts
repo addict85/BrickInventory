@@ -7,6 +7,7 @@
 
 import { nacharbeit } from './nacharbeit';
 import * as db from '../db/database';
+import { verschluessele, entschluessele, istVerschluesselt } from './geheimnis';
 import { fehlerWerfen } from './fehlerTexte';
 
 /** User-Einstellung mit Fallback auf globale Einstellung, dann Default. */
@@ -20,7 +21,12 @@ async function getSetting(userId: number, key: string, fallback?: any) {
   const u = await db.get('SELECT value FROM user_settings WHERE user_id = $1 AND key = $2', [userId, key]);
   if (u?.value) return u.value;
   const g = await db.get('SELECT value FROM global_settings WHERE key = $1', [key]);
-  return g?.value || fallback;
+  return klar(key, g?.value) || fallback;
+}
+
+/** Geheime Werte liegen verschlüsselt (utils/geheimnis.ts); hier werden sie wieder lesbar. */
+function klar(key: string, wert: string | null | undefined): string | null | undefined {
+  return SECRET_KEYS.has(key) ? entschluessele(wert) : wert;
 }
 
 /** Nur globale Einstellung (z.B. SMTP-Konfiguration). */
@@ -31,7 +37,7 @@ async function getSetting(userId: number, key: string, fallback?: any) {
  */
 async function getGlobalSetting(key: string, fallback: any = null) {
   const g = await db.get('SELECT value FROM global_settings WHERE key = $1', [key]).catch(() => null);
-  return g?.value ?? fallback;
+  return klar(key, g?.value) ?? fallback;
 }
 
 // Was ein Konto selbst setzen darf. Die Werte landen ungeprüft in Seiten,
@@ -155,34 +161,37 @@ async function setGlobalSetting(key: string, value: unknown) {
   await db.run(
     `INSERT INTO global_settings (key, value, updated_at) VALUES ($1, $2, NOW())
      ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = NOW()`,
-    [key, String(value)]);
+    [key, SECRET_KEYS.has(key) ? verschluessele(String(value)) : String(value)]);
 }
 
 /**
- * Auslöser-Zeile setzen (csv_sync_trigger, job_reschedule_trigger,
- * instr_queue_trigger).
- * Ausführlich: docs/begruendungen/utils/settings.ts.md#setglobaltrigger
+ * Geheime Werte aus der Zeit vor der Verschlüsselung einmal verschlüsseln.
+ * `AND value = $3`: Hat ein anderer Prozess die Zeile inzwischen neu
+ * geschrieben, bleibt sie, wie sie ist.
  */
-async function setGlobalTrigger(key: string) {
-  await db.run(
-    `INSERT INTO global_settings (key, value, updated_at) VALUES ($1, NOW()::TEXT, NOW())
-     ON CONFLICT (key) DO UPDATE SET value = NOW()::TEXT, updated_at = NOW()`, [key]);
+async function verschluesseleGlobaleAltwerte(): Promise<number> {
+  let n = 0;
+  for (const z of await db.all('SELECT key, value FROM global_settings WHERE key = ANY($1)', [[...SECRET_KEYS]])) {
+    if (!z.value || istVerschluesselt(z.value)) continue;
+    const r = await db.run('UPDATE global_settings SET value = $1, updated_at = NOW() WHERE key = $2 AND value = $3',
+      [verschluessele(z.value), z.key, z.value]);
+    n += r?.changes || 0;
+  }
+  return n;
 }
 
 /**
  * Globale Einstellung entfernen.
  *
  * Es gibt einen echten Unterschied zwischen „Schlüssel fehlt" und „Wert ist
- * leer": Ein Auslöser-Schlüssel (instr_queue_trigger) gilt als abgearbeitet,
- * sobald die ZEILE weg ist — ein leerer Wert liesse die Warteschlange in einer
- * Schleife weiterlaufen. Deshalb ein eigener Weg statt setGlobalSetting(k, '').
+ * leer"; deshalb ein eigener Weg statt setGlobalSetting(k, '').
  */
 async function deleteGlobalSetting(...keys: string[]) {
   if (keys.length === 0) return;
   await db.run(`DELETE FROM global_settings WHERE key = ANY($1)`, [keys]);
 }
 
-export { WAEHRUNGEN, HAUSHALT_WAEHRUNG_SPERRE, getSetting, getGlobalSetting, setGlobalSetting, setGlobalTrigger, deleteGlobalSetting, setUserSetting, nutzerStandardZustand, globalDefaultCondition, zustandFuerPreis };
+export { WAEHRUNGEN, HAUSHALT_WAEHRUNG_SPERRE, getSetting, getGlobalSetting, setGlobalSetting, deleteGlobalSetting, setUserSetting, nutzerStandardZustand, globalDefaultCondition, zustandFuerPreis };
 
 // Einstellungen LESEN — eine Fassung fuer beide Oberflaechen
 //  Warum das hierher gehoert (Marcos Vorgabe: „die beiden Apps sollen gleich
@@ -276,7 +285,7 @@ export async function nutzerEinstellungen(userId: number): Promise<Record<string
 
 async function readSettings(userId: number, isAdmin: boolean) {
   const raw: any = {};
-  (await db.all('SELECT key, value FROM global_settings')).forEach(r => { raw[r.key] = r.value; });
+  (await db.all('SELECT key, value FROM global_settings')).forEach(r => { raw[r.key] = klar(r.key, r.value); });
   const global = sanitizeGlobal(raw, !!isAdmin);
   const user: any = {};
   (await db.all('SELECT key, value FROM user_settings WHERE user_id = $1', [userId]))
@@ -284,4 +293,4 @@ async function readSettings(userId: number, isAdmin: boolean) {
   return { ...global, ...user };
 }
 
-export { SECRET_KEYS, maskSecret, isMaskedValue, sanitizeGlobal, readSettings };
+export { verschluesseleGlobaleAltwerte, SECRET_KEYS, maskSecret, isMaskedValue, sanitizeGlobal, readSettings };

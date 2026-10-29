@@ -1,8 +1,9 @@
     :root {
-      /* Schriftskala: neun Stufen (11/12/13/14/16/20/24/32/40 px). Jede
+      /* Schriftskala: neun Stufen (12/12/13/14/16/20/24/32/40 px). Jede
          Schriftgrösse in Stilen, Markup und Vorlagen nimmt eine davon;
-         test/skala.test.js hält das fest. Abstände: 4er-Raster. */
-      --fs-0:.6875rem;--fs-1:.75rem;--fs-2:.8125rem;--fs-3:.875rem;--fs-4:1rem;
+         test/skala.test.js hält das fest. Unter 12 px liest sich am Telefon
+         nichts mehr, deshalb ist die kleinste Stufe 12. Abstände: 4er-Raster. */
+      --fs-0:.75rem;--fs-1:.75rem;--fs-2:.8125rem;--fs-3:.875rem;--fs-4:1rem;
       --fs-5:1.25rem;--fs-6:1.5rem;--fs-7:2rem;--fs-8:2.5rem;
       --sp-1:4px;--sp-2:8px;--sp-3:12px;--sp-4:16px;--sp-5:24px;--sp-6:32px;
       /* Die gemeinsame Palette und die Diagrammfarben stehen in
@@ -81,8 +82,12 @@
     header{background:var(--sur);border-bottom:1px solid var(--bdr);padding:0 1.5rem;display:flex;align-items:center;justify-content:space-between;height:58px;position:sticky;top:0;z-index:100;box-shadow:var(--sh0)}
     .logo{display:flex;align-items:center;gap:9px}
     .logo .icon{width:30px;height:30px;background:var(--b600);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:15px}
-    .logo h1{font-size:var(--fs-4);font-weight:800}
-    .logo h1 span{color:var(--b600)}
+    .logo .marke{font-size:var(--fs-4);font-weight:800}
+    .logo .marke span{color:var(--b600)}
+    /* Sprunglink: erst sichtbar, wenn er den Fokus hat. */
+    .sprunglink{position:absolute;left:8px;top:-60px;z-index:10000;background:var(--sur);color:var(--txt);border:2px solid var(--b600);border-radius:8px;padding:10px 16px;font-weight:700;text-decoration:none}
+    .sprunglink:focus{top:8px}
+    main:focus{outline:none}
     .hright{display:flex;align-items:center;gap:16px}
     .hstats{display:flex;gap:14px}
     .hs{display:flex;flex-direction:column;align-items:center;line-height:1.2}
@@ -209,10 +214,12 @@
     nav::-webkit-scrollbar{display:none}
     .ntab{background:none;border:0;border-bottom:2px solid transparent;font-family:inherit;padding:12px 13px;cursor:pointer;font-size:var(--fs-3);font-weight:600;color:var(--mut);border-bottom:2px solid transparent;transition:all .15s;display:flex;align-items:center;gap:6px;white-space:nowrap;margin-bottom:-1px}
     .ntab:hover{color:var(--txt)}
-    .ntab.active,.ntab.gruppe-aktiv{color:var(--b600);border-bottom-color:var(--b600)}
-    /* Teile, Minifiguren und die Verwalterseiten haben einen Reiter, aber keinen
-       Platz in der Leiste: erreichbar über den Umschalter bzw. das Menü. */
+    .ntab.active{color:var(--b600);border-bottom-color:var(--b600)}
+    /* Die Verwalterseiten haben einen Reiter, aber keinen Platz in der Leiste:
+       erreichbar über das Menü. Teile und Minifiguren stehen in der Leiste;
+       nur am Telefon fasst „Sammlung“ sie zusammen (mobile.css). */
     .ntab.ntab-unter{display:none!important}
+    .ntab .tab-unter{display:none}
 
     /* Die Symbolfamilie (Sprite am Anfang von index.html) */
     .ico{width:18px;height:18px;flex-shrink:0;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;vertical-align:middle}
@@ -342,8 +349,8 @@
     .prog-steps{display:flex;flex-direction:column;gap:8px;margin-bottom:1.25rem}
     .prog-step{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:8px;font-size:var(--fs-2);background:var(--s50);border:1px solid var(--bdr);transition:all .2s}
     .prog-step.active{background:var(--b50);border-color:var(--b300);color:var(--b700)}
-    .prog-step.done{background:var(--g100);border-color:#bbf7d0;color:#15803d}
-    .prog-step.err{background:var(--r100);border-color:#fca5a5;color:var(--r700)}
+    .prog-step.done{background:var(--g100);border-color:color-mix(in srgb,var(--g500) 35%,var(--sur));color:var(--g700)}
+    .prog-step.err{background:var(--r100);border-color:color-mix(in srgb,var(--r500) 50%,var(--sur));color:var(--r700)}
     .step-icon{font-size:var(--fs-4);width:20px;text-align:center}
     .step-txt{flex:1}
     .prog-bar-wrap{background:var(--s100);border-radius:999px;height:8px;overflow:hidden;margin-bottom:.75rem}
@@ -355,7 +362,7 @@
 
     .csv-log{max-height:260px;overflow-y:auto;background:var(--s50);border:1px solid var(--bdr);border-radius:8px;padding:8px;font-size:var(--fs-1);font-family:var(--mono);margin-top:.75rem}
     .csv-log-line{padding:2px 0;border-bottom:1px solid var(--bdr)}
-    .csv-log-line.ok{color:#15803d}.csv-log-line.er{color:var(--r700)}
+    .csv-log-line.ok{color:var(--g700)}.csv-log-line.er{color:var(--r700)}
 
     /* GALLERY */
     .add2{display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;margin-bottom:1.5rem}
@@ -370,6 +377,12 @@
     .sc:hover{transform:translateY(-3px);box-shadow:var(--sh1);border-color:var(--b300)}
     .sci{width:100%;aspect-ratio:1;background:var(--s50);display:flex;align-items:center;justify-content:center;overflow:hidden;border-bottom:1px solid var(--bdr)}
     .sci img{width:100%;height:100%;object-fit:contain;padding:8px}
+    /* Dunkel: Die Produktfotos haben weissen Grund. Auf einer gedämpften
+       hellen Fläche und mit multiply wird daraus ein ruhiges Grau statt eines
+       grellen Kastens. */
+    [data-dunkel] .sci,[data-theme="werkbank"] .sci{background:#c9ced4}
+    [data-dunkel] .sci img,[data-theme="werkbank"] .sci img{mix-blend-mode:multiply;padding:10px}
+    [data-dunkel]{color-scheme:dark}
     .sci .ni{font-size:var(--fs-8)}
     .scb{padding:11px}
     /* [hidden] muss display:flex schlagen — die Preis-Zeile ist jetzt immer im
@@ -379,6 +392,9 @@
     .pnl-pos{color:var(--gewinn,var(--g700));font-weight:700}.pnl-neg{color:var(--r700);font-weight:700}.pnl-neu{color:var(--mut)}
     .sparkline-wrap{width:100%;overflow:hidden;margin:.5rem 0}
     .chart-wrap{width:100%;overflow-x:auto}
+    .diagramm-leer{display:flex;flex-direction:column;gap:4px;align-items:center;text-align:center;padding:1.5rem 1rem;color:var(--mut);font-size:var(--fs-2)}
+    .diagramm-leer strong{color:var(--txt);font-weight:600}
+    .pnl-zeitraum{margin-left:6px;font-size:var(--fs-1);color:var(--mut)}
     .period-btn{padding:4px 14px;font-size:var(--fs-1);font-weight:600;border:1.5px solid var(--bdr);border-radius:999px;background:var(--sur);color:var(--mut);cursor:pointer;transition:all .15s}
     .period-btn:hover{border-color:var(--b400);color:var(--b600)}
     .period-btn.active{background:var(--b600);color:var(--auf-primaer,#fff);border-color:var(--b600)}
@@ -386,7 +402,7 @@
     .sname{font-size:var(--fs-2);font-weight:600;line-height:1.3;margin-bottom:6px}
     .smeta{display:flex;justify-content:space-between;align-items:center;font-size:var(--fs-1);color:var(--mut)}
     .qbadge{background:var(--b100);color:var(--b700);font-weight:700;font-size:var(--fs-0);padding:2px 7px;border-radius:999px}
-    .ibadge{background:var(--g100);color:#15803d;font-weight:600;font-size:var(--fs-0);padding:2px 5px;border-radius:999px}
+    .ibadge{background:var(--g100);color:var(--g700);font-weight:600;font-size:var(--fs-0);padding:2px 5px;border-radius:999px}
     .pbadge{background:var(--p100);color:var(--p600);font-weight:600;font-size:var(--fs-0);padding:2px 5px;border-radius:999px}
     .ca{position:absolute;top:6px;right:6px;opacity:0;transition:opacity .15s}
     /* Manuelle Teile- und Figuren-Kacheln verhalten sich wie Set-Kacheln:
@@ -400,12 +416,12 @@
     /* Auf Geräten ohne Zeigegerät gibt es kein Überfahren — dort dauerhaft
        sichtbar, sonst wäre Löschen per Touch gar nicht erreichbar. */
     @media (hover: none){ .ca{opacity:1} }
-    .delbtn{width:26px;height:26px;border-radius:6px;border:1px solid var(--bdr);cursor:pointer;background:rgba(255,255,255,.92);color:var(--s500);font-size:var(--fs-1);display:flex;align-items:center;justify-content:center;transition:background .15s,color .15s,border-color .15s}
+    .delbtn{width:26px;height:26px;border-radius:6px;border:1px solid var(--bdr);cursor:pointer;background:color-mix(in srgb,var(--sur) 92%,transparent);color:var(--s500);font-size:var(--fs-1);display:flex;align-items:center;justify-content:center;transition:background .15s,color .15s,border-color .15s}
     /* Dezent bis zur Berührung: Der Knopf erscheint ohnehin erst beim
        Überfahren der Kachel (.ca opacity). Ein dauerhaft rotes Feld zog den
        Blick stärker auf sich als das Set selbst. Rot bleibt der Bestätigung
        vorbehalten — beim Überfahren des Knopfes zeigt er, was er tut. */
-    .delbtn:hover{background:var(--s500);color:#fff;border-color:var(--s500)}
+    .delbtn:hover{background:var(--s500);color:var(--sur);border-color:var(--s500)}
     .delbtn:focus-visible{outline:2px solid var(--s500);outline-offset:1px}
     /* Papierkorb statt ✕: Das Symbol erbt die Farbe über currentColor und
        richtet sich nach der Schriftgrösse des Knopfes. */
@@ -420,7 +436,7 @@
     .modal.acq-wide .dt{font-size:var(--fs-2)}
     .modal.acq-wide .dt th,.modal.acq-wide .dt td{padding-left:4px;padding-right:4px}
     .dt{width:100%;border-collapse:collapse}
-    .dt th{text-align:left;padding:10px 13px;font-size:var(--fs-0);font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--mut);border-bottom:1.5px solid var(--bdr);background:var(--s50)}
+    .dt th{text-align:left;padding:10px 13px;font-size:var(--fs-1);font-weight:700;color:var(--mut);border-bottom:1.5px solid var(--bdr);background:var(--s50)}
     .dt td{padding:10px 13px;border-bottom:1px solid var(--bdr);font-size:var(--fs-3);vertical-align:middle}
     .dt tr:hover td{background:var(--b50)}
     .dt img{width:38px;height:38px;object-fit:contain;background:var(--s100);border-radius:6px}
@@ -460,7 +476,7 @@
     .color-dot{width:14px;height:14px;border-radius:50%;border:1px solid rgba(0,0,0,.12);flex-shrink:0}
     .parts-stats-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:.75rem;margin-bottom:1.25rem}
     .pstat{background:var(--sur);border:1px solid var(--bdr);border-radius:8px;padding:.85rem 1rem;text-align:center;box-shadow:var(--sh0)}
-    .pstat .v{font-variant-numeric:tabular-nums;font-size:var(--fs-5);font-weight:600;color:var(--b600)}
+    .pstat .v{font-variant-numeric:tabular-nums;font-size:var(--fs-5);font-weight:600;color:var(--preis,var(--b600))}
     .pstat .l{font-size:var(--fs-0);color:var(--mut);text-transform:uppercase;letter-spacing:.4px;margin-top:2px}
     .parts-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:.85rem}
     .part-card{background:var(--sur);border:1.5px solid var(--bdr);border-radius:8px;padding:.85rem;text-align:center;box-shadow:var(--sh0);transition:border-color .15s}
@@ -472,12 +488,25 @@
     /* Placeholder shimmer for images not yet loaded */
     .img-ph{background:linear-gradient(90deg,var(--s100) 25%,var(--s50) 50%,var(--s100) 75%);background-size:200% 100%;animation:shimmer 1.4s infinite;border-radius:6px}
     @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+    .skelett{cursor:default;pointer-events:none;box-shadow:none}
+    .sc.skelett{padding:12px}
+    .skelett-bild,.skelett-zeile{background:linear-gradient(90deg,var(--s100) 25%,var(--s50) 50%,var(--s100) 75%);background-size:200% 100%;animation:shimmer 1.4s infinite;border-radius:6px}
+    .skelett-bild{aspect-ratio:4/3;width:100%}
+    .part-card.skelett .skelett-bild{width:70px;height:70px;margin:0 auto}
+    .skelett-zeile{height:12px;margin-top:10px}
+    .skelett-zeile.kurz{width:60%}
     .part-num{font-family:var(--mono);font-size:var(--fs-0);color:var(--b600);margin-bottom:3px}
     .part-name{font-size:var(--fs-1);font-weight:600;line-height:1.3;margin-bottom:6px;color:var(--txt)}
     .part-color{display:flex;align-items:center;justify-content:center;gap:5px;font-size:var(--fs-0);color:var(--mut)}
     .part-qty{font-variant-numeric:tabular-nums;font-weight:700;font-size:var(--fs-3);color:var(--b700);margin-top:5px}
     .spare-tag{font-size:var(--fs-0);background:var(--a100);color:var(--a-schrift);padding:1px 5px;border-radius:4px;margin-top:3px;display:inline-block}
     .parts-group{margin-bottom:1.75rem}
+    /* Teile aus Sets: EIN Raster über alle Farben. Die Farbe steht als Kachel
+       vor ihren Teilen, statt je Farbe eine Zeile zu beginnen — sonst ergaben
+       zwölf Teile in zwölf Farben zwölf fast leere Zeilen. */
+    .parts-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:.85rem}
+    .parts-list > .parts-group,.parts-list .parts-grid{display:contents}
+    .parts-list .group-hd{flex-direction:column;align-items:flex-start;justify-content:center;gap:4px;margin:0;padding:.6rem .7rem;border:1.5px solid var(--bdr);border-radius:var(--rad);background:var(--s50)}
     /* Manuell erfasste Teile/Minifiguren — einheitliche editierbare Tiles */
     .man-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:.85rem}
     .man-tile{background:var(--sur);border:1.5px solid var(--bdr);border-radius:10px;padding:.9rem;box-shadow:var(--sh0);position:relative}
@@ -513,7 +542,18 @@
 
     /* MODAL */
     .ovl{position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:200;display:none;align-items:center;justify-content:center;backdrop-filter:blur(2px)}
-    .ovl.open{display:flex}
+    .ovl.open{display:flex;animation:einblenden .16s ease-out}
+    .tab.active{animation:einblenden .18s ease-out}
+    @keyframes einblenden{from{opacity:0}to{opacity:1}}
+    @keyframes hochgleiten{from{opacity:0;transform:translateY(8px) scale(.985)}to{opacity:1;transform:none}}
+    /* Wer weniger Bewegung eingestellt hat, bekommt keine: Animationen laufen
+       sofort zum Endzustand, Übergänge entfallen (transition:none — nur die
+       Dauer zu kürzen hiesse transition-property:all für jedes Element). Der
+       Ladekringel dreht weiter, langsam: Er sagt, dass etwas arbeitet. */
+    @media (prefers-reduced-motion:reduce){
+      *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition:none!important;scroll-behavior:auto!important}
+      .spin{animation-duration:2s!important;animation-iteration-count:infinite!important}
+    }
     /* Die Polsterung steht als VARIABLE da, nicht als Zahl: Titel- und
        Fussleiste heben sie mit negativen Raendern wieder auf, um ueber die
        volle Breite zu gehen. Zwei Fassungen weichen ab (.acq-wide mit 1.25rem
@@ -565,6 +605,9 @@
          padding:.85rem var(--modal-padx);
          display:flex;justify-content:space-between;align-items:center}
     .mtit{font-size:var(--fs-4);font-weight:800}
+    /* Nach der Grundregel .modal: Pruefungen lesen deren ersten Fund. */
+    .ovl.open > .modal{animation:hochgleiten .2s ease-out}
+    svg.diagramm{display:block;max-width:100%}
     .muntertit{font-family:var(--mono);font-size:var(--fs-1);color:var(--mut);margin-top:2px}
     /* Breite Fenster: Bild links, Angaben rechts — sonst steht das Bild allein
        im ersten Bildschirm und alles Wichtige darunter. */
@@ -590,6 +633,7 @@
     /* TOAST */
     #toasts{position:fixed;bottom:1.25rem;right:1.25rem;display:flex;flex-direction:column;gap:7px;z-index:9999}
     .toast{background:var(--sur);border:1px solid var(--bdr);border-radius:10px;padding:11px 15px;font-size:var(--fs-3);min-width:240px;max-width:360px;display:flex;align-items:center;gap:9px;box-shadow:var(--sh2);animation:tIn .25s ease}
+    .toast{cursor:default}
     .toast.success{border-left:3px solid var(--g500)}
     .toast.error{border-left:3px solid var(--r500)}
     .toast.info{border-left:3px solid var(--b500)}
@@ -607,14 +651,14 @@
        Verlust zeigt die G&V-Spalte. */
     .price-cell{font-variant-numeric:tabular-nums;color:var(--txt);font-size:var(--fs-2)}
     .fin-fehlt{color:var(--a-schrift);font-size:var(--fs-1);cursor:help;border-bottom:1px dotted currentColor}
-    .price-total{font-variant-numeric:tabular-nums;color:var(--b700);font-weight:600}
-    .lv{display:inline-flex;align-items:center;background:var(--g100);color:#15803d;font-size:var(--fs-0);font-weight:600;padding:2px 6px;border-radius:999px}
+    .price-total{font-variant-numeric:tabular-nums;color:var(--preis,var(--b700));font-weight:600}
+    .lv{display:inline-flex;align-items:center;background:var(--g100);color:var(--g700);font-size:var(--fs-0);font-weight:600;padding:2px 6px;border-radius:999px}
     .lc{display:inline-flex;align-items:center;background:var(--b100);color:var(--b700);font-size:var(--fs-0);font-weight:600;padding:2px 6px;border-radius:999px}
     /* Preisstatus in der Finanztabelle: Haken = Preis da, Warndreieck = keiner.
        cursor:help zeigt an, dass ein Tooltip dranhängt — sonst probiert das
        niemand aus. */
     .pst{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:999px;font-size:var(--fs-1);font-weight:700;cursor:help}
-    .pst-ok{background:var(--g100);color:#15803d}
+    .pst-ok{background:var(--g100);color:var(--g700)}
     .pst-err{background:var(--r100);color:var(--r700)}
     .pst-leer{background:var(--s100);color:var(--mut)}
     /* Nur für Vorleseprogramme: Spaltenköpfe, die sichtbar leer bleiben sollen.
@@ -627,7 +671,7 @@
     .cond-new{background:var(--b100);color:var(--b700)}
     .besitzer-badge{background:var(--b100);color:var(--b700)}
     .admin-hinweis{font-size:var(--fs-1);color:var(--a-schrift);font-weight:400}
-    .cond-used{background:#fef3c7;color:#92400e}
+    .cond-used{background:var(--a100);color:var(--a-schrift)}
     /* Ersatzteil: dieselbe Form wie die Zustands-Plakette, aber ruhiger —
        ein Ersatzteil ist eine Nebeninformation, kein Zustand. Gegenstueck zu
        ErsatzteilPlakette() in ManualItemComposables.kt der App. */
@@ -879,9 +923,43 @@ input.suchfeld{width:220px}
 .text-fett-3{font-weight:600;font-size:var(--fs-3)}
 .farbe-mut{color:var(--mut)}
 .farbe-primaer{color:var(--b600)}
-.wert-primaer{font-weight:700;color:var(--b600)}
+.wert-primaer{font-weight:700;color:var(--preis,var(--b600))}
+/* Preise in der Markenfarbe — ausser dort, wo die Marke rot ist (--preis im Design). */
+.preis{font-weight:600;color:var(--preis,var(--b600))}
+.preis-stark{font-weight:700}
+.mehr-menue{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.mehr-menue > summary{list-style:none}
+.mehr-menue > summary::-webkit-details-marker{display:none}
+.mehr-liste{display:flex;gap:8px;flex-wrap:wrap}
+.merk-kasten{background:var(--sur);border:1px solid var(--bdr);border-radius:var(--rad);padding:1.25rem;margin-bottom:1.25rem;box-shadow:var(--sh0)}
+.merk-kasten-titel{margin:0;font-size:var(--fs-4);font-weight:700}
+/* Feld, Auswahl und Knöpfe einer Zeile gleich hoch — wie die Felder (38 px). */
+.merk-erfassen > .btn{height:38px;box-sizing:border-box}
+/* Geheimnisse verdeckt, mit Knopf zum Anzeigen daneben. */
+.geheim-feld{display:flex;gap:6px;align-items:stretch}
+.geheim-feld input{flex:1;min-width:0}
+.geheim-knopf{flex:none;padding:0 10px;min-width:44px;justify-content:center}
+.einst-nav{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:.25rem;grid-column:1/-1;align-self:start;align-items:flex-start}
+/* Globale Einstellungen als Unterseiten: links die Abschnitte, daneben genau
+   einer davon. !important, weil die Anmeldung #usermgmt inline einblendet. */
+#global-settings-grid{grid-template-columns:minmax(170px,210px) minmax(0,1fr);align-items:start}
+#global-settings-grid > .einst-nav{grid-column:1;grid-row:1 / span 20;flex-direction:column;align-items:stretch;position:sticky;top:1rem}
+#global-settings-grid > .einst-nav a{justify-content:flex-start}
+#global-settings-grid > .einst-nav a[aria-current="page"]{background:var(--b600);color:var(--auf-primaer,#fff);border-color:var(--b600)}
+#global-settings-grid > .ssec{grid-column:2}
+#global-settings-grid > .ssec:not(.einst-aktiv){display:none !important}
+@media(max-width:700px){
+  #global-settings-grid{grid-template-columns:minmax(0,1fr)}
+  #global-settings-grid > .einst-nav{grid-row:auto;flex-direction:row;flex-wrap:nowrap;overflow-x:auto;position:static}
+  #global-settings-grid > .einst-nav a{flex:none}
+  #global-settings-grid > .ssec{grid-column:1}
+}
+.ssec{scroll-margin-top:72px}
+.kachel-datum{font-size:var(--fs-1);color:var(--mut);margin-top:.2rem}
 .mono-2{font-family:var(--mono);font-size:var(--fs-2)}
 .zeiger{cursor:pointer}
+/* Bis js/00-stile.js den Stil gesetzt hat (und data-stil entfernt), bleibt Verborgenes verborgen. */
+[data-stil*="display:none"]{display:none}
 .durchlaessig{display:contents}
 .ohne-rand{margin:0}
 /* Passwortabfragen: QR-Code für die App und Verwalteraktionen */
@@ -914,3 +992,5 @@ select.auswahl-mini,.fg select.auswahl-mini{font-size:var(--fs-1);padding:3px 6p
 /* Auf Touch-Geräten kein Papierkorb auf jeder Kachel: zu leicht getroffen
    beim Wischen. Gelöscht wird im Detail, wie in der App. */
 @media (hover:none) and (pointer:coarse){ #tab-gallery .sc .ca{display:none} }
+/* Warnhinweis neben einem Ergebnis: Rand in der Bernsteinfarbe jedes Designs, Text in Grundfarbe für vollen Kontrast. */
+.hinweis-warnung{color:var(--txt);font-weight:600;border-left:3px solid var(--chart-used);padding-left:8px;margin-top:6px}

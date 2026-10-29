@@ -394,6 +394,32 @@ async function sendEmailGeaendertMail(to: string, username: string, neueAdresse:
     html: emailTemplate(L.title, L.subject, `${L.html}${infoBox(L.note, theme)}`, theme) });
 }
 
+/**
+ * Hinweis, dass das Konto einem Haushalt beigetreten ist. Das Hauptkonto liest
+ * und schreibt danach den Bestand mit; wer nur eine Sitzung erbeutet hat, soll
+ * das nicht unbemerkt einrichten können.
+ */
+async function sendHaushaltVerknuepftMail(to: string, username: string, hauptkonto: string, lang = 'de') {
+  const theme = await getMailTheme();
+  const L = lang === 'en' ? {
+    subject: 'BrickInventory Manager — Your account joined a household',
+    title: 'Household linked',
+    text: `Hello ${username},\n\nyour account is now a sub-account of ${hauptkonto}. That account can see and change your collection.\n\nIf this was not you, sign in, change your password and leave the household under Settings → Household — or ask the administrator.\n\nBrickInventory Manager`,
+    html: `<p style="margin:0 0 8px">Hello <strong>${esc(username)}</strong>,</p>
+       <p style="margin:0 0 16px">your account is now a sub-account of <strong>${esc(hauptkonto)}</strong>. That account can see and change your collection.</p>`,
+    note: 'If this was not you, sign in, change your password and leave the household under Settings → Household — or ask the administrator.',
+  } : {
+    subject: 'BrickInventory Manager — Dein Konto ist einem Haushalt beigetreten',
+    title: 'Haushalt verknüpft',
+    text: `Hallo ${username},\n\ndein Konto ist jetzt Unterkonto von ${hauptkonto}. Dieses Konto sieht und ändert deine Sammlung.\n\nWarst du das nicht, melde dich an, ändere dein Passwort und verlasse den Haushalt unter Einstellungen → Haushalt — oder wende dich an den Verwalter.\n\nBrickInventory Manager`,
+    html: `<p style="margin:0 0 8px">Hallo <strong>${esc(username)}</strong>,</p>
+       <p style="margin:0 0 16px">dein Konto ist jetzt Unterkonto von <strong>${esc(hauptkonto)}</strong>. Dieses Konto sieht und ändert deine Sammlung.</p>`,
+    note: 'Warst du das nicht, melde dich an, ändere dein Passwort und verlasse den Haushalt unter Einstellungen → Haushalt — oder wende dich an den Verwalter.',
+  };
+  return sendMail({ to, subject: L.subject, text: L.text,
+    html: emailTemplate(L.title, L.subject, `${L.html}${infoBox(L.note, theme)}`, theme) });
+}
+
 // Bis hierher: nein. Diese Mail war die einzige, die gar keine Sprache kannte
 // — sie ging IMMER auf Deutsch hinaus, auch an ein Konto, das die Oberflaeche
 // auf Englisch fuehrt. Die Bestaetigungsmail konnte es laengst (`lang`), die
@@ -565,7 +591,7 @@ async function baueAlarmMail(d: AlarmMailDaten): Promise<{ subject: string; text
 async function testSmtp() {
   const transporter = await getTransporter();
   // Code statt Satz: testSmtp() kennt den Anfragenden nicht — die Route macht
-  // mit sendeFehler() einen Satz daraus (Nachtrag 130).
+  // mit sendeFehler() einen Satz daraus.
   if (!transporter) return { success: false, code: 'smtp_nicht_konfiguriert' as const };
   try {
     await transporter.verify();
@@ -577,6 +603,6 @@ async function testSmtp() {
 
 // emailTemplate/getMailTheme mitexportieren: Damit lässt sich das Design einer
 // E-Mail prüfen, ohne eine zu versenden (test/mail-theme.test.js).
-export { sendMail, sendVerificationMail, sendEmailGeaendertMail, sendPasswordResetMail, testSmtp,
+export { sendMail, sendVerificationMail, sendEmailGeaendertMail, sendHaushaltVerknuepftMail, sendPasswordResetMail, testSmtp,
          emailTemplate, getMailTheme, MAIL_THEMES, baueAlarmMail };
 export type { AlarmMailDaten };

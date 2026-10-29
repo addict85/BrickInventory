@@ -18,30 +18,18 @@ import javax.inject.Named
 import javax.inject.Singleton
 
 /**
- * Ein Set anlegen — mit Fortschritt, wie in der Webapp.
+ * Ein Set anlegen — mit Fortschritt, wie die Webapp über /api/v1/sets/add-stream
+ * (Stammdaten holen, Bild laden, fertig), damit man bei einem grossen Set sieht,
+ * was passiert.
  *
- * ── Warum es diesen Weg gibt (Nachtrag 131) ─────────────────────────────────
- *
- * Die Webapp legt ein Set ueber /api/v1/sets/add-stream an und zeigt dabei, was
- * gerade passiert: Stammdaten holen, Bild laden, fertig. Die App schickte ein
- * gewoehnliches POST /api/v1/sets und zeigte einen Kringel, bis alles vorbei
- * war. Gleiches Ergebnis, andere Rueckmeldung — und bei einem grossen Set
- * dauert der Unterschied lange genug, um aufzufallen.
- *
- * ── Warum NICHT okhttp-sse ──────────────────────────────────────────────────
- *
- * Diese Adresse antwortet in ZWEI Formen, und das ist Absicht (routes/sets.ts):
- *
- *   * Steht das Set schon im Blickfeld, schreibt der Server NICHTS und
- *     antwortet mit gewoehnlichem JSON — ein Ereignisstrom mit genau einem
- *     Ereignis waere fuer den Client nur ein Umweg.
+ * Nicht über okhttp-sse, weil die Adresse in zwei Formen antwortet
+ * (routes/sets.ts):
+ *   * Steht das Set schon im Blickfeld, kommt gewöhnliches JSON — ein Strom mit einem Ereignis wäre nur ein Umweg.
  *   * Sonst kommt ein `text/event-stream` mit den Schritten.
  *
- * `EventSources` von okhttp-sse meldet die erste Form als FEHLER, weil der
- * Inhaltstyp nicht passt — der haeufige Fall „hab ich schon" saehe damit aus
- * wie ein Verbindungsabbruch. Deshalb wird die Antwort hier selbst gelesen:
- * eine Zeile ist eine Zeile, und der Inhaltstyp entscheidet, wie sie gemeint
- * ist.
+ * `EventSources` meldete die erste Form als Fehler, weil der Inhaltstyp nicht
+ * passt — „hab ich schon“ sähe aus wie ein Verbindungsabbruch. Deshalb wird die
+ * Antwort selbst gelesen, und der Inhaltstyp entscheidet, wie sie gemeint ist.
  */
 @Singleton
 class SetAnlegenSseClient @Inject constructor(
@@ -98,12 +86,7 @@ class SetAnlegenSseClient @Inject constructor(
         val aufruf = client.newCall(anfrage)
         try {
             aufruf.execute().use { antwort ->
-                // `antwort.body` ist seit OkHttp 5 NICHT nullbar. Die
-                // Pruefung `koerper == null` konnte darum nie zutreffen — der
-                // Uebersetzer nannte sie „Condition is always 'false'" — und
-                // der `?.` dahinter war aus demselben Grund ueberfluessig.
-                // Stehen geblieben aus der Zeit von OkHttp 4, wo ein leerer
-                // Koerper tatsaechlich null war.
+                // `antwort.body` ist seit OkHttp 5 nicht nullbar.
                 val koerper = antwort.body
                 if (!antwort.isSuccessful) {
                     trySend(SetAnlegenSchritt.Fehler(fehlertextAus(koerper.string())))

@@ -139,9 +139,9 @@ export async function verschiebeMerkposten(
 const MERK_SORTS = {
   added_desc: 'w.created_at DESC',
   added_asc:  'w.created_at ASC',
-  name_asc:   'rb.name ASC NULLS LAST',
+  name_asc:   'COALESCE(rb.name, sc.name) ASC NULLS LAST',
   num_asc:    'w.set_number ASC',
-  year_desc:  'rb.year DESC NULLS LAST',
+  year_desc:  'COALESCE(rb.year, sc.year) DESC NULLS LAST',
   price_desc: 'pc.avg_price DESC NULLS LAST',
   price_asc:  'pc.avg_price ASC NULLS LAST',
 };
@@ -187,7 +187,7 @@ export async function merkpostenVon(
     const roh = suche.replace(/[\\%_]/g, (z) => '\\' + z);
     params.push(`%${roh}%`);
     wo += ` AND (w.set_number ILIKE $${params.length} ESCAPE '\\'`
-        + ` OR rb.name ILIKE $${params.length} ESCAPE '\\')`;
+        + ` OR COALESCE(rb.name, sc.name) ILIKE $${params.length} ESCAPE '\\')`;
   }
 
   // Nur 'N' und 'U' sind Zustaende; alles andere heisst „beide" und nicht
@@ -208,8 +208,9 @@ export async function merkpostenVon(
   const pWaehrung = `$${params.length}`;
   const rows = await db.all(
     `SELECT w.set_number, w.condition, w.created_at, w.user_id,
-            rb.name, rb.year, rb.theme_id, rb.num_parts,
-            rb.set_img_url AS image_url,
+            COALESCE(rb.name, sc.name) AS name, COALESCE(rb.year, sc.year) AS year, rb.theme_id,
+            COALESCE(rb.num_parts, sc.pieces) AS num_parts,
+            COALESCE(rb.set_img_url, sc.image_url) AS image_url,
             pa.richtung AS alarm_richtung, pa.schwelle AS alarm_schwelle,
             pa.ausgeloest AS alarm_ausgeloest,
             pc.avg_price AS marktpreis,
@@ -217,6 +218,8 @@ export async function merkpostenVon(
                      WHERE s.user_id = ANY($1) AND s.set_number = w.set_number) AS owned
        FROM wanted w
        LEFT JOIN rb_sets rb ON rb.set_num = w.set_number
+       -- Ohne Rebrickable-Katalog kennt set_catalog (wie in der Sammlung) Name und Bild.
+       LEFT JOIN set_catalog sc ON sc.set_number = w.set_number
        LEFT JOIN price_alerts pa ON pa.user_id = w.user_id
                                 AND pa.set_number = w.set_number
                                 AND pa.condition = w.condition

@@ -80,6 +80,29 @@ function checkComplete() {
   }
 }
 
+/**
+ * Alle Stilwerte, die so im Quelltext stehen: data-stil="…" im Markup und die
+ * stil-Parameter der Bausteine (01-bausteine.js). js/00-stile.js wendet nur
+ * diese an — ein eingeschleustes data-stil mit anderem Wert bleibt wirkungslos.
+ * Werte mit `${…}` zählen nicht; die setzt der Aufrufer zur Laufzeit selbst.
+ */
+function erlaubteStile() {
+  const dateien = ['index.html', ...fs.readdirSync(path.join(PUBLIC, 'js'))
+    .filter(f => f.endsWith('.js') && f !== path.basename(OUT_REL)).map(f => 'js/' + f)];
+  const werte = new Set();
+  /** @type {Record<string, string>} */
+  const entity = { '&amp;': '&', '&quot;': '"', '&#39;': "'", '&lt;': '<', '&gt;': '>' };
+  for (const d of dateien) {
+    const s = fs.readFileSync(path.join(PUBLIC, d), 'utf8');
+    for (const m of s.matchAll(/data-stil=(\\?["'])([\s\S]*?)\1/g)) {
+      const roh = m[2] ?? '';
+      if (!roh.includes('${')) werte.add(roh.replace(/\\(["'])/g, '$1').replace(/&(amp|quot|#39|lt|gt);/g, e => entity[e] ?? e));
+    }
+    for (const m of s.matchAll(/\b(?:stil|zeilenStil|wertStil):\s*'([^'$]*)'/g)) werte.add(m[1] ?? '');
+  }
+  return [...werte].sort();
+}
+
 function main() {
   checkComplete();
   if (process.argv.includes('--check')) {
@@ -98,6 +121,7 @@ function main() {
   execFileSync(cmd, [
     ...prefix, path.join(PUBLIC, ENTRY),
     '--bundle', '--format=iife', '--minify', '--charset=utf8',
+    `--define:__ERLAUBTE_STILE__=${JSON.stringify(erlaubteStile())}`,
     `--outfile=${outAbs}`,
   ], { stdio: ['ignore', 'ignore', 'inherit'] });
 
@@ -107,4 +131,4 @@ function main() {
 
 if (require.main === module) main();
 
-module.exports = { ENTRY, OUT_REL, STANDALONE };
+module.exports = { ENTRY, OUT_REL, STANDALONE, erlaubteStile };

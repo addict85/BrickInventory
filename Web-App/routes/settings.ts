@@ -1,4 +1,5 @@
 
+import { bestaetigePasswort } from '../utils/passwortBestaetigung';
 import express from 'express';
 const router  = express.Router();
 import multer from 'multer';
@@ -10,7 +11,7 @@ import { pruefeBricklinkZugang } from '../clients/bricklink';
 import { requireApiAdmin as requireAdmin } from './api_v1/middleware';
 const requireLogin = requireLoginOrToken;
 
-import { setUserSetting, setGlobalSetting, setGlobalTrigger, getGlobalSetting, SECRET_KEYS, isMaskedValue, readSettings, nutzerEinstellungen } from '../utils/settings';
+import { setUserSetting, setGlobalSetting, getGlobalSetting, SECRET_KEYS, isMaskedValue, readSettings, nutzerEinstellungen } from '../utils/settings';
 import { getRateLimitStatus } from '../utils/financeCalc';
 import { buildSetsCsv } from '../utils/setService';
 import { buildPartsCsv, buildFigsCsv } from '../utils/bestandExport';
@@ -21,6 +22,7 @@ import { escapeLike, requireLoginOrToken, nutzerId, angemeldeteNutzerId, istVerw
 import { bearerToken } from './api_v1/middleware';
 import { sendMail, testSmtp } from '../utils/mailer';
 import { sendeFehler } from '../utils/fehlerTexte';
+import { setzeAusloeser } from '../utils/laufzustand';
 
 // ── Öffentlich: aktuelles App-Design ─────────────────────────────────────────
 // MUSS vor router.use(requireLogin) stehen. Der Kommentar sagte schon immer
@@ -126,6 +128,17 @@ router.post('/', async (req: LoggedInRequest, res) => {
 
   try {
     if (istVerwalter(req)) {
+      // Mailserver nur mit Passwort umstellen: Wer eine Verwaltersitzung
+      // erbeutet, läse sonst alle künftigen Rücksetz-Mails mit. Gefragt wird
+      // nur bei einer echten Änderung, nicht beim Speichern der ganzen Seite.
+      const smtpGeaendert: string[] = [];
+      for (const key of globalKeys.filter(k => k.startsWith('smtp_'))) {
+        const neu = req.body[key];
+        if (neu === undefined || (SECRET_KEYS.has(key) && isMaskedValue(neu))) continue;
+        if (String(neu) !== String(await getGlobalSetting(key) ?? '')) smtpGeaendert.push(key);
+      }
+      if (smtpGeaendert.length && !await bestaetigePasswort(req, res, uid, req.body.admin_password)) return;
+
       // Check if brickset limit is being increased before saving
       const oldBricksetLimit = req.body.api_limit_brickset !== undefined
         ? parseInt(await getGlobalSetting('api_limit_brickset') || '100')
@@ -178,16 +191,6 @@ router.get('/raw', async (req: LoggedInRequest, res) => {
 
 // /cache-stats liegt seit Etappe 7 unter /api/v1/admin/cache-stats.
 
-const EXPORT_EXCLUDE_KEYS = new Set([
-  'rb_csv_last_sync',
-  'rb_part_categories_last_sync',   // täglicher Sync-Marker (Laufzeit-Zustand)
-  'job_reschedule_trigger',         // transientes Reschedule-Signal
-  'instr_queue_trigger',            // transientes Queue-Signal
-  'api_calls_brickset',    'api_calls_date_brickset',
-  'api_calls_rebrickable', 'api_calls_date_rebrickable',
-  'api_calls_bricklink',   'api_calls_date_bricklink',
-]);
-
 router.get('/export', async (req, res) => {
   try {
     const global: any = {};
@@ -195,15 +198,12 @@ router.get('/export', async (req, res) => {
     // Werte ohnehin nur von ihnen an, und SMTP-Host, -Konto und Absender
     // gehen ein Unterkonto nichts an.
     if (istVerwalter(req)) (await db.all('SELECT key, value FROM global_settings'))
-      // Transiente Laufzeit-Zustände nicht mit exportieren: feste Ausschlussliste
-      // plus alle Job-Monitor-Status (job_monitor_*), die nur den momentanen
-      // Fortschritt der Hintergrund-Jobs abbilden und beim Import nichts verloren
-      // hätten (der Import nutzt ohnehin eine Whitelist).
+      // Laufzeitzustände stehen seit Migration 0063 nicht mehr hier (laufzustand).
       // Geheimnisse gehören NICHT in eine Datei, die der Nutzer herunterlädt,
       // per Mail weiterschickt oder in ein Repo legt. Der Export ist als
       // Konfigurations-Sicherung gedacht, nicht als Schlüsselkopie — die
       // API-Zugangsdaten trägt man beim Wiederherstellen einmalig neu ein.
-      .filter(r => !EXPORT_EXCLUDE_KEYS.has(r.key) && !r.key.startsWith('job_monitor_') && !SECRET_KEYS.has(r.key))
+      .filter(r => !SECRET_KEYS.has(r.key))
       .forEach(r => { global[r.key] = r.value; });
     const userSettings: any = await nutzerEinstellungen(nutzerId(req)!);
     res.setHeader('Content-Type', 'application/json');
@@ -303,7 +303,7 @@ router.post('/import', importUpload.single('file'), async (req: LoggedInRequest,
 
     // Importierte Job-Zeiten / Preis-Intervall sofort übernehmen (Scheduler neu planen).
     if (istVerwalter(req)) {
-      await setGlobalTrigger('job_reschedule_trigger')
+      await setzeAusloeser('job_reschedule_trigger')
         .catch(logAndContinue('settings:job_reschedule_trigger'));
       // Weckt die Scheduler sofort; ohne Signal bliebe der Eintrag bis zum
       // nächsten Verbindungsaufbau liegen.

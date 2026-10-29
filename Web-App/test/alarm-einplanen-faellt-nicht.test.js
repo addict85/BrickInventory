@@ -67,7 +67,7 @@ test('2. der Schalter ruft es NICHT auf dem Hauptthread', () => {
   // Beim ersten Zugriff fährt WorkManager hoch und liest dabei von der Platte.
   // Auf dem Hauptthread einer sichtbaren Oberfläche ist das im besten Fall ein
   // Ruckeln — und es war die Stelle, an der die App starb.
-  const s = app('ui/screens/EinstellungenUnterseiten.kt');
+  const s = app('ui/screens/EinstellungenAlarme.kt');
   const i = s.indexOf('PreisalarmWorker.einplanen(');
   assert.ok(i >= 0, 'Der Schalter plant nicht mehr ein — umgebaut?');
   // Der umgebende Ausschnitt muss den Wechsel auf einen anderen Thread zeigen.
@@ -80,7 +80,7 @@ test('3. und wirft den Fehler nicht weg', () => {
   // Ein Schalter auf „an", von dem nie eine Meldung kommt, ist die zweite
   // Hälfte desselben Fehlers: Die App stürzt nicht mehr ab, der Alarm läuft
   // aber trotzdem nicht — und niemand erfährt es.
-  const s = app('ui/screens/EinstellungenUnterseiten.kt');
+  const s = app('ui/screens/EinstellungenAlarme.kt');
   const i = s.indexOf('PreisalarmWorker.einplanen(');
   const danach = s.slice(i, i + 500);
   assert.match(danach, /showSnackbar\(/,

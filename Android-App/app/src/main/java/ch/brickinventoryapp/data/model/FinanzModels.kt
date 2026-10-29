@@ -4,20 +4,8 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
- * Preise, Bewertung, Verlauf und Gewinn/Verlust.
- *
- * ── Warum diese Datei existiert (Nachtrag 155) ──────────────────────────────
- *
- * Alle 92 Datenklassen der App standen in EINER Datei, Models.kt, mit 1158
- * Zeilen. Jede Aenderung an irgendeinem Modell beruehrte dieselbe Datei — bei
- * parallelen Aenderungen ein sicherer Konflikt, und beim Suchen war der Weg
- * immer derselbe: eine Datei oeffnen und scrollen.
- *
- * Aufgeteilt wurde entlang der Sachgebiete. Die Klassen selbst sind WORTGLEICH
- * uebernommen: Es wurde nichts umbenannt, nichts zusammengefasst und kein Feld
- * angefasst. Sie liegen weiter im Paket ch.brickinventoryapp.data.model, also
- * aendert sich fuer keinen Aufrufer etwas — Kotlin bindet an das Paket, nicht
- * an die Datei.
+ * Preise, Bewertung, Verlauf und Gewinn/Verlust. Die Modelle liegen je Sachgebiet
+ * in einer Datei, alle im Paket data.model.
  */
 
 @Serializable
@@ -48,13 +36,10 @@ data class PriceHistoryPoint(
 data class PriceChartPoint(val x: String = "", val y: Double = 0.0)
 
 /**
- * Eine benannte Linie.
- *
- * `firstRealIndex` ist NICHT kosmetisch: Davor stehen mit 0 aufgefüllte
- * Positionen, damit alle Reihen dieselbe Länge haben. Wer sie zeichnet, erhält
- * eine Linie, die bei null beginnt und dann senkrecht hochspringt — ein
- * Kurssturz, den es nie gab. Der Schlüssel heisst im JSON bewusst camelCase:
- * er kommt aus einem TypeScript-Objektliteral, nicht aus der Datenbank.
+ * Eine benannte Linie. `firstRealIndex` ist nicht kosmetisch: Davor stehen mit 0
+ * aufgefüllte Positionen, damit alle Reihen gleich lang sind; wer sie zeichnet,
+ * malt einen Kurssturz, den es nie gab. camelCase, weil der Schlüssel aus einem
+ * TypeScript-Objekt kommt.
  */
 @Serializable
 data class PriceChartSeries(
@@ -111,16 +96,11 @@ data class CurrentByCondition(
 )
 
 /**
- * Antwort von /api/v1/sets/:setNumber/price-history.
- *
- * BRUCHÄNDERUNG ab Server hardened-89: Statt einer zusammengefalteten `history`
- * kommen beide Zustände GETRENNT (history_new/history_used), dazu fertige
- * Diagrammdaten (`chart`), die aktuellen Preise je Zustand (`current`) und
- * Marktpreis/Entwicklung je Zustand (`by_condition`).
- *
- * Die x-Achse rechnet damit der Server (utils/chartData.ts) — vorher tat das
- * jeder Client für sich, und genau solche Doppelungen sind in diesem Projekt
- * schon mehrfach auseinandergelaufen.
+ * Antwort von /api/v1/sets/:setNumber/price-history: beide Zustände getrennt
+ * (history_new/history_used), fertige Diagrammdaten (`chart`), aktuelle Preise
+ * (`current`) und Marktpreis/Entwicklung je Zustand (`by_condition`). Die x-Achse
+ * rechnet der Server (utils/chartData.ts), damit nicht jeder Client seine eigene
+ * hat.
  */
 @Serializable
 data class PriceHistoryResponse(
@@ -153,16 +133,10 @@ data class PartValuationItem(
     @SerialName("unit_price") val unitPrice: Double? = null,
     @SerialName("purchase_price") val purchasePrice: Double? = null,
     /**
-     * Mengengewichteter Kaufpreis ueber alle Erfassungen.
-     *
-     * Rechnet der Server in utils/handlers/shared.ts:
-     *   SUM(unit_price * quantity) / SUM(quantity)
-     *
-     * `unit_price` in der Stammzeile ist dagegen der ZULETZT geschriebene
-     * Einzelpreis — wer ein Teil einmal fuer 2.- und einmal fuer 8.- gekauft
-     * hat, saehe dort 8.- statt 5.-. Die Webapp nimmt deshalb seit jeher
-     * `avg_purchase_price ?? unit_price ?? purchase_price` (06-minifigs.js
-     * und 03-parts.js, man-tile), und die App las das Feld gar nicht ein.
+     * Mengengewichteter Kaufpreis über alle Erfassungen (SUM(unit_price * quantity) /
+     * SUM(quantity), utils/handlers/shared.ts). `unit_price` ist nur der zuletzt
+     * geschriebene Einzelpreis; die Webapp nimmt `avg_purchase_price ?? unit_price ??
+     * purchase_price`, die App ebenso.
      */
     @SerialName("avg_purchase_price") val avgPurchasePrice: Double? = null,
     @SerialName("qty_avg_price") val qtyAvgPrice: Double? = null,
@@ -173,10 +147,9 @@ data class PartValuationItem(
     /** Alle erfassten Zustände — je einer eine Plakette (siehe SetItem). */
     val conditions: List<String> = emptyList(),
     /**
-     * Konto, dem der Eintrag gehoert. Im Haushalt zeigt der manuelle Bereich
-     * die Eintraege ALLER Konten; ohne diese Angabe konnte der Papierkorb dem
-     * Server nicht sagen, welche Karte gemeint war — geloescht wurde dann
-     * immer die eigene Zeile. Begruendung in utils/household.ts der Webapp.
+     * Konto, dem der Eintrag gehört: Im Haushalt zeigt der manuelle Bereich die
+     * Einträge aller Konten, und der Papierkorb muss dem Server sagen, welche Karte
+     * gemeint ist.
      */
     @SerialName("user_id") val userId: Int? = null,
     /** Besitzer im Haushalt — siehe SetItem.owners. */
@@ -187,36 +160,15 @@ data class PartValuationItem(
      * einen Zeile aus den Feldern oben.
      */
     val acquisitions: List<ValuationAcquisition> = emptyList(),
-    /**
-     * Lagerort — null heisst „nicht erfasst".
-     *
-     * Marcos Befund vom 24.09.: Im Detaildialog der manuell erfassten
-     * Eintraege fehlte die Zeile. Der Server liefert das Feld (die Liste ist
-     * ein `SELECT * FROM parts` bzw. das Aggregat in handlers/minifigs.ts);
-     * das Modell kannte es nur nicht.
-     */
+    /** Lagerort; null heisst „nicht erfasst“. */
     val storage: String? = null,
 )
 
 /**
- * Die manuell erfassten Teile — GET /api/v1/parts/manual.
- *
- * ── Warum es diese Huelle gibt ──────────────────────────────────────────────
- * Die App holte diese Liste bisher aus der BEWERTUNG
- * (partsValuation?.parts), die Webapp aus /parts/manual. Zwei Quellen fuer
- * dieselbe Liste — und genau daran haben die beiden Apps schon einmal
- * ENTGEGENGESETZTE Zustaende angezeigt (Nachtrag: „Ein manuell erfasstes
- * Stueck hat EINEN Zustand").
- *
- * NACHGESEHEN, welche Felder die Oberflaeche wirklich liest: ManualPartTile,
- * ManualFigTile und ManualItemDetailScreen benutzen ausschliesslich
- * Bestandsfelder (Nummer, Name, Farbe, Zustand, Bild, Menge, Besitzer) —
- * keinen einzigen Bewertungswert. Die App lud also die ganze Bewertung samt
- * Marktpreis-Abfragen, um Namen und Bilder anzuzeigen.
- *
- * Der Elementtyp bleibt PartValuationItem: Er ist ein Obermenge der
- * Bestandsfelder, und die Bewertungsfelder haben alle einen Vorgabewert. So
- * bleibt die Oberflaeche unveraendert, waehrend die Quelle wechselt.
+ * Die manuell erfassten Teile — GET /api/v1/parts/manual, dieselbe Quelle wie die
+ * Webapp statt der Bewertung, die dafür samt Marktpreisen geladen werden müsste.
+ * Der Elementtyp bleibt PartValuationItem: eine Obermenge der Bestandsfelder, die
+ * Bewertungsfelder haben Vorgaben.
  */
 @Serializable
 data class ManualPartsResponse(
@@ -257,16 +209,10 @@ data class FigValuationItem(
     @SerialName("unit_price") val unitPrice: Double? = null,
     @SerialName("purchase_price") val purchasePrice: Double? = null,
     /**
-     * Mengengewichteter Kaufpreis ueber alle Erfassungen.
-     *
-     * Rechnet der Server in utils/handlers/shared.ts:
-     *   SUM(unit_price * quantity) / SUM(quantity)
-     *
-     * `unit_price` in der Stammzeile ist dagegen der ZULETZT geschriebene
-     * Einzelpreis — wer ein Teil einmal fuer 2.- und einmal fuer 8.- gekauft
-     * hat, saehe dort 8.- statt 5.-. Die Webapp nimmt deshalb seit jeher
-     * `avg_purchase_price ?? unit_price ?? purchase_price` (06-minifigs.js
-     * und 03-parts.js, man-tile), und die App las das Feld gar nicht ein.
+     * Mengengewichteter Kaufpreis über alle Erfassungen (SUM(unit_price * quantity) /
+     * SUM(quantity), utils/handlers/shared.ts). `unit_price` ist nur der zuletzt
+     * geschriebene Einzelpreis; die Webapp nimmt `avg_purchase_price ?? unit_price ??
+     * purchase_price`, die App ebenso.
      */
     @SerialName("avg_purchase_price") val avgPurchasePrice: Double? = null,
     @SerialName("qty_avg_price") val qtyAvgPrice: Double? = null,
@@ -277,10 +223,9 @@ data class FigValuationItem(
     /** Alle erfassten Zustände — je einer eine Plakette (siehe SetItem). */
     val conditions: List<String> = emptyList(),
     /**
-     * Konto, dem der Eintrag gehoert. Im Haushalt zeigt der manuelle Bereich
-     * die Eintraege ALLER Konten; ohne diese Angabe konnte der Papierkorb dem
-     * Server nicht sagen, welche Karte gemeint war — geloescht wurde dann
-     * immer die eigene Zeile. Begruendung in utils/household.ts der Webapp.
+     * Konto, dem der Eintrag gehört: Im Haushalt zeigt der manuelle Bereich die
+     * Einträge aller Konten, und der Papierkorb muss dem Server sagen, welche Karte
+     * gemeint ist.
      */
     @SerialName("user_id") val userId: Int? = null,
     /** Besitzer im Haushalt — siehe SetItem.owners. */
@@ -291,14 +236,7 @@ data class FigValuationItem(
      * einen Zeile aus den Feldern oben.
      */
     val acquisitions: List<ValuationAcquisition> = emptyList(),
-    /**
-     * Lagerort — null heisst „nicht erfasst".
-     *
-     * Marcos Befund vom 24.09.: Im Detaildialog der manuell erfassten
-     * Eintraege fehlte die Zeile. Der Server liefert das Feld (die Liste ist
-     * ein `SELECT * FROM parts` bzw. das Aggregat in handlers/minifigs.ts);
-     * das Modell kannte es nur nicht.
-     */
+    /** Lagerort; null heisst „nicht erfasst“. */
     val storage: String? = null,
 )
 
@@ -320,13 +258,9 @@ data class PnlTotals(
     @SerialName("parts_purchase") val partsPurchase: String? = null,
     @SerialName("figs_purchase") val figsPurchase: String? = null,
     /**
-     * Gesamtwert des Portfolios — Sets + manuell erfasste Teile + Minifiguren.
-     *
-     * Kommt seit Nachtrag 145 vom Server. Vorher addierten Webapp und
-     * Android-App je selbst `sets.totals.avg + parts.total_value +
-     * figs.total_value`; die Regel „was zählt zum Gesamtwert" stand damit an
-     * drei Stellen. Nullbar, damit ältere Serverstände weiterhin gehen — der
-     * Aufrufer fällt dann auf die eigene Addition zurück.
+     * Gesamtwert des Portfolios — Sets, manuell erfasste Teile und Minifiguren, vom
+     * Server, damit die Regel „was zählt dazu“ an einer Stelle steht. Nullbar für
+     * ältere Server; dann addiert der Aufrufer selbst.
      */
     @SerialName("grand_total") val grandTotal: String? = null
 )
@@ -386,13 +320,9 @@ data class ValuationSet(
 )
 
 /**
- * Eine Erfassung in der Finanztabelle.
- *
- * Warum das nicht der Client rechnet: Vorher galt ein Set als gebraucht,
- * sobald EINE Erfassung gebraucht war — der Marktpreis für ALLE Exemplare kam
- * dann aus dem Gebraucht-Preis. Wer ein Exemplar neu und eines gebraucht
- * gekauft hat, sah damit für das neue Exemplar den falschen Wert. Der Server
- * bewertet jede Erfassung jetzt einzeln (utils/acquisitionValue.ts).
+ * Eine Erfassung in der Finanztabelle. Der Server bewertet jede Erfassung einzeln
+ * (utils/acquisitionValue.ts): Ein Exemplar neu und eines gebraucht haben
+ * verschiedene Marktpreise.
  */
 @Serializable
 data class ValuationAcquisition(

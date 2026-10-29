@@ -740,3 +740,23 @@ function leseLiteral(src, i) {
 }
 
 module.exports.leseLiteral = leseLiteral;
+
+/**
+ * Alle Routen unter /api/v1, wie sie im Quelltext eingetragen sind: [Methode, Pfad].
+ * Für test/api-eingang-db.test.js — die Dateiliste steht hier, damit der Test
+ * selbst keinen variablen Pfad liest (test/eigenbruecken.test.js zählt sie).
+ */
+function v1Routen() {
+  const gefunden = [];
+  const lies = (datei, vorne) => {
+    const s = fs.readFileSync(path.join(ROOT, datei), 'utf8');
+    for (const m of s.matchAll(/(?:router|app)\.(get|post|put|patch|delete)\(\s*['"`]([^'"`]+)['"`]/g))
+      gefunden.push([m[1].toUpperCase(), vorne + m[2]]);
+  };
+  for (const f of fs.readdirSync(path.join(ROOT, 'routes', 'api_v1')).filter(f => f.endsWith('.ts')))
+    lies(`routes/api_v1/${f}`, '/api/v1');
+  for (const f of ['sets', 'parts', 'settings', 'minifigs', 'auth']) lies(`routes/${f}.ts`, `/api/v1/${f}`);
+  lies('server.ts', '');
+  return gefunden.filter(([, p]) => p.startsWith('/api/v1'));
+}
+module.exports.v1Routen = v1Routen;

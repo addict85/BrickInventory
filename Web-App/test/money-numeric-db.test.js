@@ -102,11 +102,14 @@ test('Geldbeträge sind exakt', { concurrency: 1 }, async (t) => {
     ]) {
       await db.run(`ALTER TABLE ${tab} ADD COLUMN IF NOT EXISTS ${sp} REAL`);
     }
+    // price_market hat 0062 entfernt; 0007 stellt auch ihre Spalten um.
+    await db.run(`CREATE TABLE IF NOT EXISTS price_market (set_number TEXT, currency_code TEXT,
+      condition TEXT, qty_avg_price REAL, min_price REAL, max_price REAL)`);
     await db.run('ALTER TABLE set_acquisitions ALTER COLUMN purchase_price TYPE REAL');
     await db.run("DELETE FROM schema_migrations WHERE name LIKE '0007%'");
     const vorher = await db.get(
       `SELECT data_type FROM information_schema.columns
-        WHERE table_name='set_acquisitions' AND column_name='purchase_price'`);
+        WHERE table_schema='public' AND table_name='set_acquisitions' AND column_name='purchase_price'`);
     assert.equal(vorher.data_type, 'real', 'Vorbedingung: Spalte ist wieder REAL');
 
     const c2 = await db.pool.connect();
@@ -114,7 +117,7 @@ test('Geldbeträge sind exakt', { concurrency: 1 }, async (t) => {
 
     const nachher = await db.get(
       `SELECT data_type FROM information_schema.columns
-        WHERE table_name='set_acquisitions' AND column_name='purchase_price'`);
+        WHERE table_schema='public' AND table_name='set_acquisitions' AND column_name='purchase_price'`);
     assert.equal(nachher.data_type, 'numeric', 'Migration hat die Spalte nicht umgestellt');
 
     // ── Und den Endzustand wiederherstellen ───────────────────────────────
@@ -133,6 +136,7 @@ test('Geldbeträge sind exakt', { concurrency: 1 }, async (t) => {
     ]) {
       await db.run(`ALTER TABLE ${tab} DROP COLUMN IF EXISTS ${sp}`);
     }
+    await db.run('DROP TABLE IF EXISTS price_market');
     // Der Tagesindex aus 0047 enthält purchase_price. Der Umweg über REAL
     // hat ihn mit Typumwandlungen umgeschrieben, und ON CONFLICT fände ihn
     // danach nicht mehr — also in der Fassung der Migration neu anlegen.

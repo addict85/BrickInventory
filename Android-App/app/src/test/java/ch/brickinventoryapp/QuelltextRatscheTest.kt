@@ -15,8 +15,8 @@ import java.io.File
  * „Liest Quelltext": Quellen.*, ein Pfad unter src/main, der Workflow oder die
  * Ressourcen. „Führt aus": importiert Code aus einem Unterpaket der App.
  *
- * Gegenproben (28.10.2026, gemessen): SCHRANKE auf 78 → rot mit 79 Dateien;
- * eine zusätzliche Testdatei, die nur Quellen.lies() aufruft → rot mit 80.
+ * Gegenproben (28.10.2026, gemessen): SCHRANKE auf 76 → rot mit 77 Dateien;
+ * eine zusätzliche Testdatei, die nur Quellen.lies() aufruft → rot mit 78.
  * Stand vor dem Schnitt des MainViewModels (307ee28): 82.
  */
 class QuelltextRatscheTest {
@@ -26,7 +26,7 @@ class QuelltextRatscheTest {
 
     @Test
     fun `reine Quelltext-Tests werden weniger, nie mehr`() {
-        val SCHRANKE = 79
+        val SCHRANKE = 77
         val alle = File("src/test/java/ch/brickinventoryapp").listFiles { f -> f.name.endsWith("Test.kt") }.orEmpty()
         assert(alle.size >= 100) { "Nur ${alle.size} Testdateien gefunden — greift die Suche noch?" }
         val nur = alle.filter { it.name != "QuelltextRatscheTest.kt" }.filter {

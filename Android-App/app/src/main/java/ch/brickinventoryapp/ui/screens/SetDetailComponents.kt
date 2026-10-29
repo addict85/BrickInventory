@@ -63,8 +63,8 @@ import ch.brickinventoryapp.ui.theme.Petrol
 import ch.brickinventoryapp.ui.theme.SlateBlue
 import coil3.compose.AsyncImage
 import coil3.ImageLoader
-import java.util.Locale
 import ch.brickinventoryapp.util.NumericInput
+import ch.brickinventoryapp.util.fmtProzent
 import ch.brickinventoryapp.ui.theme.Abstaende
 
 // Aus SetDetailScreen.kt ausgelagert (Lesbarkeit): geteilte Detail-Composables,
@@ -141,26 +141,15 @@ internal fun DetailRow2(label: String, value: String) {
 }
 
 /**
- * Preisverlauf mit ZWEI Linien (neu und gebraucht) samt Legende.
+ * Preisverlauf mit zwei Linien (neu und gebraucht) samt Legende. Gezeichnet aus
+ * `chart` (history_new/history_used mit gemeinsamer x-Achse), gerechnet in
+ * ui/PriceChartMath.kt — dort stehen die Gründe für die x-Achse nach Datum und das
+ * Überspringen der aufgefüllten Nullen.
  *
- * ── Was sich geändert hat ───────────────────────────────────────────────────
- * Der Endpunkt liefert seit Server-Stand hardened-89 beide Zustände getrennt
- * (history_new/history_used) und dazu fertige Diagrammdaten mit gemeinsamer
- * x-Achse. Die alte Fassung hier las das Feld `history`, das es nicht mehr
- * gibt — das Diagramm blieb dadurch leer.
- *
- * Gezeichnet wird jetzt aus `chart`; gerechnet wird in ui/PriceChartMath.kt
- * (dort stehen auch die Gründe für die x-Achse nach Datum und für das
- * Überspringen der aufgefüllten Nullen).
- *
- * ── Farben ──────────────────────────────────────────────────────────────────
- * Aus dem Design (LocalChartColors), nicht hier verdrahtet — im Stein-Design
- * Salbeigrün für Neu und Sand für Gebraucht, dieselben Farben wie die
- * Zustands-Plaketten und wie --chart-new/--chart-used in der Webapp.
- *
- * Ohne `currency`-Parameter: Die drei Kennzahlen zeigen reine Beträge (wie
- * zuvor), und ein durchgereichter, aber ungenutzter Parameter ist in diesem
- * Projekt schon einmal teuer geworden — siehe imageLoader in SetDetailScreen.
+ * Farben aus dem Design (LocalChartColors), dieselben wie die Zustands-Plaketten
+ * und --chart-new/--chart-used in der Webapp. Ohne `currency`-Parameter: Die drei
+ * Kennzahlen zeigen reine Beträge, und ein durchgereichter, ungenutzter Parameter
+ * verdeckt, dass er fehlt (siehe imageLoader in SetDetailScreen).
  */
 @Composable
 fun PriceChart(chart: PriceChartData) {
@@ -334,14 +323,9 @@ fun MarketPriceByCondition(
 
 /** Prozent-Plakette — grün im Plus, Fehlerfarbe im Minus. */
 /**
- * „Preis wird geladen" — Kringel und Text nebeneinander.
- *
- * Stand dreimal wortgleich da: zweimal in SetDetailSections.kt (Marktpreis und
- * Preisverlauf) und einmal in ManualItemDetailScreen.kt. Gefunden beim Zaehlen
- * gleicher Achtzeiler, nicht beim Lesen. Hier gab es KEINEN Unterschied
- * zwischen den Kopien — anders als beim Suchfeld und bei der Zustands-Zeile
- * war es nur Doppelung. Sie steht trotzdem jetzt einmal: Die naechste
- * Aenderung an dieser Zeile soll nicht wieder drei Stellen suchen muessen.
+ * „Preis wird geladen“ — Kringel und Text nebeneinander, eine Fassung für
+ * Marktpreis, Preisverlauf und das Detail manueller Teile, damit die nächste
+ * Änderung nicht drei Stellen suchen muss.
  */
 @Composable
 fun PreisLaedtZeile(modifier: Modifier = Modifier) {
@@ -364,10 +348,9 @@ fun PnlBadge(pct: Double) {
         pct < 0 -> MaterialTheme.colorScheme.error
         else    -> MaterialTheme.colorScheme.onSurfaceVariant
     }
-    val sign = if (pct > 0) "+" else ""
     Surface(shape = Formen.chip, color = color.copy(alpha = 0.12f)) {
         Text(
-            "$sign${String.format(Locale.US, "%.1f", pct)} %",
+            fmtProzent(pct),
             color = color, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium,
             modifier = Modifier.padding(horizontal = 9.dp, vertical = 3.dp)
         )

@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.components.SkelettRaster
 import ch.brickinventoryapp.ui.theme.Formen
 import ch.brickinventoryapp.ui.theme.AppKarte
 import androidx.compose.foundation.Image
@@ -65,15 +66,9 @@ import ch.brickinventoryapp.ui.components.LeerSymbol
 
 /**
  * Wie lange die Liste ruhig stehen muss, bevor ihre sichtbaren Seiten geholt
- * werden.
- *
- * 150 ms, dieselbe Zahl wie in der Webapp (js/09-catalog.js,
- * `_ladeSichtbareSeiten`) — dort hat sie sich im Betrieb bewaehrt: Beim
- * gewoehnlichen Scrollen merkt man sie nicht, ein Zug ueber die ganze Leiste
- * faellt auf EINEN Abruf zusammen.
- *
- * Laenger als der Abstand zweier Beruehrungspunkte (17 ms bei 60 Hz, 8 ms bei
- * 120 Hz) muss sie sein, sonst entprellt sie waehrend eines Zuges gar nichts.
+ * werden: 150 ms wie in der Webapp (`_ladeSichtbareSeiten`). Beim Scrollen merkt
+ * man sie nicht, ein Zug über die ganze Leiste fällt auf einen Abruf zusammen;
+ * kürzer als ein Berührungsabstand entprellte sie nichts.
  */
 private const val SICHTFENSTER_RUHE_MS = 150L
 
@@ -91,10 +86,8 @@ fun CatalogScreen(
     /** Klick auf ein Set — nur der Graph kennt den NavController. */
     onSetClick: (String) -> Unit,
 ) {
-    // Zustand und Aktionen vom ViewModel statt über dreizehn Parameter —
-    // dasselbe Muster wie in Galerie/Finanzen/Teile/Minifiguren (Nachtrag 96).
-    // Die Namen darunter bleiben absichtlich dieselben, damit der Rumpf
-    // unverändert ist.
+    // Zustand und Aktionen vom ViewModel statt über Parameter — dasselbe Muster wie
+    // Galerie, Finanzen, Teile und Minifiguren.
     val state by katalog.state.collectAsStateWithLifecycle()
     val appState by vm.state.collectAsStateWithLifecycle()
 
@@ -114,47 +107,21 @@ fun CatalogScreen(
     val onScrollPos: (Int, Int) -> Unit = { index, offset -> katalog.setCatalogScrollPos(index, offset) }
     val onRefresh: () -> Unit = { katalog.loadCatalogMeta(); katalog.loadCatalogSets() }
 
-    // Als State-Objekte statt per `by`: CatalogFilterRow() setzt sie, und dafür
-    // muss es dasselbe Objekt sein, keine Kopie (Nachtrag 98).
+    // Als State-Objekte statt per `by`: CatalogFilterRow() setzt sie und braucht
+    // dasselbe Objekt, keine Kopie.
     val showThemeSheet = remember { mutableStateOf(false) }
     val showYearSheet  = remember { mutableStateOf(false) }
     val showSortMenu   = remember { mutableStateOf(false) }
 
     val gridState = rememberLazyGridState()
 
-    // ── Laden, was gerade sichtbar wird ─────────────────────────────────────
+    // ── Laden, was gerade sichtbar wird ──
     //
-    // Kein Endlos-Scroll mehr, der nur anhängt: Die Liste führt ALLE `total`
-    // Plätze, und geladen wird die Seite, auf der ein sichtbar gewordener Platz
-    // liegt — vorwärts, rückwärts und nach einem Sprung. Nur so kann die
-    // Zeitleiste rechts irgendwohin springen, statt zu filtern.
-    //
-    // Eine Seite Vorlauf in beide Richtungen, damit beim Scrollen keine
-    // Platzhalter aufblitzen.
-    //
-    // ── Und zwar ERST, wenn die Liste zur Ruhe kommt (Marcos zweite Meldung) ─
-    //
-    // „In der Android-App dauert es im Katalog noch immer 3-5 Sek. bis die
-    // Bilder geladen werden wenn ich auf ein bestimmtes Jahr springe." Dazu
-    // seine zwei entscheidenden Beobachtungen: Der Bereich ist in dieser Zeit
-    // GANZ LEER (es fehlen also die Seitendaten, nicht die Bilder), es dauert
-    // beim ZWEITEN Besuch desselben Jahres genauso lange (also kein Cache),
-    // und in der Webapp geht dasselbe sofort.
-    //
-    // Die Jahresleiste rollt die Liste WIRKLICH an jede Zwischenposition —
-    // ihr Rueckruf laeuft bei jedem Beruehrungspunkt und setzt ueber
-    // `state.scrollTo` ein `gridState.scrollToItem(...)`. Damit sieht dieser
-    // Lader hier bei jedem dieser Punkte ein neues Sichtfenster und forderte
-    // drei Seiten an. Ein Zug ueber die volle Hoehe deckt rund 420 Seiten ab;
-    // abgebrochen wird keine (ensureCatalogPage kennt kein Zurueck), und der
-    // API-Client laesst nur eine Handvoll gleichzeitig zu. Die Seite, auf der
-    // man landet, steht dann hinter allen anderen in der Schlange — das sind
-    // Marcos 3 bis 5 Sekunden mit leeren Platzhaltern.
-    //
-    // Beim gewoehnlichen Scrollen aendert sich das Sichtfenster langsam, und
-    // 150 ms Ruhe fallen dort nicht auf. Genau diese Unterscheidung macht die
-    // Webapp seit jeher, und zwar an DIESER Stelle (`_ladeSichtbareSeiten`) —
-    // nicht im Rueckruf der Leiste.
+    // Die Liste führt alle `total` Plätze; geladen wird die Seite eines sichtbar
+    // gewordenen Platzes, mit einer Seite Vorlauf — so kann die Leiste rechts
+    // überallhin springen. Erst wenn die Liste ruht: Die Leiste rollt beim Ziehen
+    // durch jede Zwischenposition, und ohne Ruhe stünde die Zielseite hinter Hunderten
+    // angeforderter Seiten in der Schlange.
     LaunchedEffect(gridState, state.total, state.loadedPages.size) {
         snapshotFlow {
             val sichtbar = gridState.layoutInfo.visibleItemsInfo
@@ -171,59 +138,19 @@ fun CatalogScreen(
         }
     }
 
-    // ── Warum es hier KEINEN zweiten, eigenen Sprung-Abruf mehr gibt ───────
-    //
-    // Genau der stand hier: Der Rueckruf der Leiste merkte sich die Zielseite,
-    // und ein eigener `LaunchedEffect` holte sie nach 200 ms. Das war die
-    // falsche Schicht. Er nahm dem Rueckruf zwar seinen unmittelbaren Abruf,
-    // aber die Leiste ROLLT die Liste ja auch — der Sichtfenster-Lader oben
-    // sah jede Zwischenposition und forderte weiter drei Seiten je
-    // Beruehrungspunkt an. Die Zahl der Abrufe blieb damit, wie sie war.
-    //
-    // Steht die Ruhe im Sichtfenster-Lader, deckt sie beide Wege ab, denn
-    // BEIDE enden dort. Ein zweiter Mechanismus daneben braucht es nicht —
-    // die Webapp hat ihn auch nie gehabt, und zwei Fassungen derselben Regel
-    // laufen mit der Zeit auseinander.
+    // Kein eigener Sprung-Abruf daneben: Beide Wege — Rollen und Leiste — enden im
+    // Sichtfenster-Lader oben, und dessen Ruhe deckt beide ab. Zwei Fassungen
+    // derselben Regel liefen auseinander.
 
 
-    // ── Die Rollposition überlebt den Wechsel zur Detailseite ───────────────
+    // ── Die Rollposition überlebt den Wechsel zur Detailseite ──
     //
-    // Marcos Befund: Nach dem Schliessen einer Detailseite stand die Liste ganz
-    // oben. Die Detailseite ist ein eigener Navigationspunkt — beim Wechsel
-    // verlässt diese Liste die Komposition, und der `LazyGridState` beginnt bei
-    // der Rückkehr von vorn. Bei einer Liste, deren Länge erst nachträglich
-    // eintrifft, hilft auch Compose' Wiederherstellung nicht: Sind im Moment
-    // der Wiederherstellung noch keine Plätze da, gibt es keine Stelle, an die
-    // gesprungen werden könnte.
-    //
-    // Gemeldet wird laufend in den Zustand (der lebt im ViewModel), und beim
-    // Betreten wird EINMAL zurückgesprungen — sobald die Liste ihre Länge hat.
-    //
-    // ── Zwei Fehler, die das jahrelang verhinderten (Nachtrag 93) ───────────
-    // Marco: „Der Fehler wurde im Katalog festgestellt." Er hatte recht, und
-    // die Mechanik war gleich doppelt entwaffnet:
-    //
-    // 1. Der Merker war `rememberSaveable`. Der überlebt den Ausflug in die
-    //    Detailseite — genau das, was er nicht soll. Beim ersten Betreten
-    //    sprang der Katalog also zurück (nirgendwohin, die Position war ja
-    //    null), setzte den Merker, und ab da war die Wiederherstellung für
-    //    immer abgeschaltet. `remember` gilt je Komposition; nach der Rückkehr
-    //    ist es eine neue.
-    //
-    // 2. Die Meldung lief SOFORT los. Bei der Rückkehr steht der frische
-    //    `LazyGridState` auf null, `snapshotFlow` gibt diesen Wert unverzüglich
-    //    heraus — und überschrieb damit die gemerkte Position, bevor jemand
-    //    sie lesen konnte. Der Melder wartet jetzt, bis zurückgesprungen wurde.
-    //
-    // Die REIHENFOLGE ist also die eigentliche Regel: erst springen, dann
-    // melden. Deshalb steht der Merker jetzt NACH dem Sprung auf true (ein
-    // `scrollToItem` unterbricht) und der Melder hängt an ihm.
-    // BEWUSST `remember`, NICHT `rememberSaveable` (Nachtrag 93, erneut 155):
-    // Dieser Merker sagt "in DIESER Komposition wurde schon zurueckgesprungen".
-    // Ueberlebt er den Ausflug in die Detailseite, gilt die Liste nach dem
-    // allerersten Betreten fuer immer als wiederhergestellt — und die Rueckkehr
-    // springt nie mehr zurueck. Genau das ist hier schon einmal passiert und
-    // musste ein zweites Mal gemeldet werden.
+    // Die Liste verlässt beim Wechsel die Komposition und ihre Länge trifft erst
+    // später ein, deshalb hilft Compose' Wiederherstellung nicht. Die Stelle steht im
+    // Zustand (ViewModel); beim Betreten wird einmal zurückgesprungen, sobald die
+    // Länge da ist, und erst danach gemeldet — sonst überschriebe die frische Null die
+    // gemerkte Stelle. `remember`, nicht `rememberSaveable`: Der Merker gilt je
+    // Komposition; überlebte er den Ausflug, spränge die Rückkehr nie mehr zurück.
     var wiederhergestellt by remember { mutableStateOf(false) }
     LaunchedEffect(state.total) {
         if (wiederhergestellt || state.total == 0) return@LaunchedEffect
@@ -241,17 +168,9 @@ fun CatalogScreen(
             .collect { (index, offset) -> onScrollPos(index, offset) }
     }
 
-    // ── Woran der Griff der Leiste haengt (Nachtrag 95, neu gefasst) ──────
-    //
-    // Marcos Befund damals: „im Katalog ist sie auf der korrekten Zeile, aber
-    // die Scrollbar zeigt an, dass man sich zuoberst befindet." Der Griff
-    // folgte NIE der Liste, sondern nur dem eigenen Ziehen.
-    //
-    // Hier stand daraufhin eine Rechnung „Jahr der obersten Kachel", weil die
-    // Leiste am JAHR haengte. Sie haengt jetzt an der STELLE in der Liste —
-    // wie ein Scrollbalken und wie in der Webapp. Damit braucht es die
-    // Rechnung nicht mehr: gridState.firstVisibleItemIndex ist die Stelle,
-    // und das Jahr dazu liefert die Verteilung (CatalogYearMath).
+    // Der Griff der Leiste hängt an der Stelle in der Liste wie ein Scrollbalken, wie
+    // in der Webapp: gridState.firstVisibleItemIndex ist die Stelle, das Jahr dazu
+    // liefert die Verteilung (CatalogYearMath).
 
     // Sprungziel des Scrubbers ausführen.
     LaunchedEffect(state.scrollTo) {
@@ -283,21 +202,17 @@ fun CatalogScreen(
             onRefresh = onRefresh,
             modifier = Modifier.fillMaxSize()
         ) {
-            // In eine lokale Variable gehoben, damit der Smart Cast greift:
-            // `state` ist seit Nachtrag 115 ein DELEGIERTES Property (`by
-            // katalog.state.collectAsStateWithLifecycle()`), vorher war es ein
-            // Parameter. Bei einem Delegierten ruft jeder Zugriff erneut
-            // getValue() auf — der Compiler kann also nicht garantieren, dass
-            // `state.error` zwischen der Null-Prüfung und der Verwendung
-            // derselbe Wert ist, und verweigert den Cast auf String.
-            //
-            // Bewusst KEIN `state.error ?: ""`: Das würde den leeren
-            // Fehlertext klaglos anzeigen und die Ursache verstecken.
+            // In eine lokale Variable gehoben, damit der Smart Cast greift: `state` ist
+            // delegiert, jeder Zugriff ruft getValue(). Kein `?: ""` — ein leerer Fehlertext
+            // verschwiege die Ursache.
             val fehlertext = state.error
             when {
-                state.isLoading && state.total == 0 -> Box(Modifier.fillMaxSize(), Alignment.Center) {
-                    CircularProgressIndicator()
-                }
+                // Dieselben Masse wie das Raster darunter, damit beim Eintreffen nichts springt.
+                state.isLoading && state.total == 0 -> SkelettRaster(
+                    GridCells.Adaptive(160.dp), kachelHoehe = 200.dp,
+                    innenabstand = PaddingValues(start = Abstaende.mittel, top = Abstaende.mittel,
+                                                 bottom = Abstaende.mittel, end = 30.dp),
+                )
                 fehlertext != null && state.total == 0 -> Box(Modifier.fillMaxSize(), Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                         LeerSymbol(Icons.Default.ErrorOutline)
@@ -330,21 +245,11 @@ fun CatalogScreen(
                             else CatalogPlaceholderCard()
                         }
                     }
-                    // Jahres-Leiste am rechten Rand — SCHNELL-SCROLL, kein
-                    // Filter (Marcos Vorgabe): Ziehen rollt die Liste, das
-                    // Etikett zeigt das Jahr an der Stelle, an der man gerade
-                    // ist. Alles davor und danach bleibt erreichbar.
-                    //
-                    // Dieselbe Bedingung wie in der Webapp (_initYearRail):
-                    // nur bei Sortierung nach Jahr. Steht die Liste nach Name
-                    // oder Nummer, liegen die Jahre verstreut, und ein Jahr im
-                    // Etikett waere ohne Aussage.
-                    // `gridState.firstVisibleItemIndex` traegt
-                    // @FrequentlyChangingValue: direkt in der Komposition
-                    // gelesen, wertet es den ganzen Bildschirm bei jeder
-                    // Aenderung neu aus. Lint meldet das als
-                    // FrequentlyChangingValue. In einem derivedStateOf gelesen
-                    // loest es nur aus, wenn sich der abgeleitete Wert aendert.
+                    // Die Jahres-Leiste ist Schnell-Scroll, kein Filter: Ziehen rollt die Liste,
+                    // das Etikett zeigt das Jahr der Stelle. Nur bei Sortierung nach Jahr, wie in
+                    // der Webapp — sonst liegen die Jahre verstreut. firstVisibleItemIndex in
+                    // derivedStateOf gelesen, damit der Bildschirm nur bei einer Änderung des
+                    // abgeleiteten Werts neu auswertet (Lint FrequentlyChangingValue).
                     val sichtbareNummer by remember(gridState) {
                         derivedStateOf { gridState.firstVisibleItemIndex }
                     }
@@ -381,31 +286,11 @@ fun CatalogScreen(
 }
 
 /**
- * Die Jahres-Leiste am rechten Rand — dieselbe wie in der Webapp.
- *
- * ── Marcos Vorgabe ──────────────────────────────────────────────────────────
- * „Die App soll die gleiche Leiste wie die Webapp erhalten."
- *
- * Der Unterschied zur vorigen Fassung ist nicht das Aussehen, sondern woran
- * die Leiste haengt:
- *
- *   vorher   Position = Jahr, linear zwischen yearMin und yearMax verteilt.
- *            Der Griff folgte NUR dem Ziehen; wo die Liste stand, wusste er
- *            nicht. Losgelassen wurde auf das erste Set des Jahres gesprungen
- *            (GET /catalog/year-offset).
- *
- *   jetzt    Position = Stelle in der Liste, wie bei einem Scrollbalken. Der
- *            Griff folgt der Liste, und das Etikett zeigt das Jahr, das an
- *            dieser Stelle WIRKLICH liegt — gerechnet aus der Verteilung vom
- *            Server (CatalogYearMath.jahrAnPosition).
- *
- * Das lineare Modell war derselbe Fehler, den Marco in der Webapp gemeldet
- * hatte: „Es wurden die Sets von 1999 geladen, obwohl rechts 1965 steht."
- * Der Katalog stammt weit ueberwiegend aus den letzten Jahrzehnten; neun
- * Zehntel hinuntergezogen ist eben noch lange nicht bei den Sechzigern.
- *
- * Aufbau als Row (Etikett-Spur links, Gesten-Leiste rechts): Das Etikett darf
- * ueber die Kacheln ragen, ohne Beruehrungen abzufangen.
+ * Die Jahres-Leiste am rechten Rand, wie in der Webapp. Position ist die Stelle in
+ * der Liste, nicht ein linear verteiltes Jahr: Der Katalog stammt überwiegend aus
+ * den letzten Jahrzehnten, und das Etikett soll das Jahr zeigen, das an dieser
+ * Stelle wirklich liegt (CatalogYearMath.jahrAnPosition). Als Row, damit das
+ * Etikett über die Kacheln ragen kann, ohne Berührungen abzufangen.
  */
 @Composable
 private fun YearScrubber(
@@ -524,10 +409,8 @@ private fun YearScrubber(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 /**
- * `internal` statt `private`: Der Aufrufer steht seit dem Aufteilen in einer
- * ANDEREN Datei, und `private` gilt in Kotlin dateiweit (Nachtrag 101).
- * `internal` hält den Helfer weiterhin aus der öffentlichen Schnittstelle
- * heraus — sichtbar ist er nur innerhalb dieses Moduls.
+ * `internal`, weil der Aufrufer in einer anderen Datei steht und `private` in
+ * Kotlin dateiweit gilt.
  */
 internal fun ThemeRow(label: String, id: Int?, selected: Boolean, onClick: () -> Unit) {
     Surface(
@@ -549,10 +432,8 @@ internal fun ThemeRow(label: String, id: Int?, selected: Boolean, onClick: () ->
 
 @Composable
 /**
- * `internal` statt `private`: Der Aufrufer steht seit dem Aufteilen in einer
- * ANDEREN Datei, und `private` gilt in Kotlin dateiweit (Nachtrag 101).
- * `internal` hält den Helfer weiterhin aus der öffentlichen Schnittstelle
- * heraus — sichtbar ist er nur innerhalb dieses Moduls.
+ * `internal`, weil der Aufrufer in einer anderen Datei steht und `private` in
+ * Kotlin dateiweit gilt.
  */
 internal fun sortLabel(sort: String): String = when (sort) {
     "year_asc"   -> stringResource(R.string.catalog_sort_year_asc)
@@ -580,16 +461,9 @@ fun CatalogSetCard(
     // --faecher-ton in js/09-catalog.js. Ohne Thema-Nummer gibt es keinen
     // Streifen, statt eines falschen.
     val ton = if (LocalIsFarbfaecherTheme.current) faecherTon(set.themeId) else null
-    // ── Die Noppen stehen UEBER der Karte ───────────────────────────────────
-    //
-    // Marco: „Geht es nicht, dass die Noppen oberhalb des Bereichs sind?" Im
-    // Web macht das ein `top:-6px` an der Kachel, die dafuer `overflow:visible`
-    // bekommt. In Compose gibt es das nicht: Eine Material-Card klippt auf ihre
-    // Form, und was ueber ihren Rand ragt, waere weg.
-    //
-    // Deshalb die Box: Die Karte rueckt um die Noppenhoehe nach unten, und die
-    // Reihe wird DANEBEN gezeichnet und darueber gelegt. Dieselbe Anordnung wie
-    // im CSS, nur mit den Mitteln von Compose.
+    // Die Noppen stehen über der Karte: Eine Material-Card klippt auf ihre Form.
+    // Deshalb rückt die Karte um die Noppenhöhe nach unten, und die Reihe wird daneben
+    // gezeichnet und darübergelegt — wie `top:-6px` im CSS.
     Box {
         AppKarte(
             modifier = Modifier.heightIn(min = 212.dp)
@@ -597,14 +471,9 @@ fun CatalogSetCard(
             onClick = { onClick(set.setNumber) }
         ) {
             Column {
-                // Die Steinkante: Noppen ueber die ganze Breite, genau die Masse
-                // aus themes/brick.css (NoppenMass.Stein). Vorher stand hier der
-                // nackte Aufruf und damit der DECKEL des Noppe-Designs — vier
-                // Noppen links. Im Web waren es flache Kreise ueber die ganze
-                // Breite; dasselbe Design sah auf Telefon und Rechner anders aus.
-                // Nur die KANTE liegt in der Karte. Die Noppen stehen darueber und
-                // werden neben der Karte gezeichnet (siehe unten) — eine Card
-                // klippt auf ihre Form und wuerde sie abschneiden.
+                // Die Steinkante mit den Massen aus themes/brick.css (NoppenMass.Stein), wie im
+                // Web über die ganze Breite. Nur die Kante liegt in der Karte; die Noppen werden
+                // daneben gezeichnet, weil die Card sie abschnitte.
                 if (isBrick) BrickStudCap(
                     mass = NoppenMass.Stein,
                     verlauf = SteinKantenVerlauf,
@@ -618,13 +487,9 @@ fun CatalogSetCard(
                     Box(Modifier.fillMaxWidth().height(5.dp).background(ton))
                 }
                 Box(Modifier.fillMaxWidth().height(if (isBrick) 92.dp else 118.dp)) {
-                    // Über den Server auflösen statt roher CDN-Adresse. Der
-                    // Server prüft dabei, ob irgendein Nutzer dieses Katalog-Set
-                    // bereits heruntergeladen hat (eine nutzerunabhängige Datei,
-                    // benannt nach der Setnummer allein) — dann kommt das Bild
-                    // direkt von dort statt über den Proxy vom CDN. Schlägt auch
-                    // die Vorschau fehl, Rückfall auf die volle Auflösung, bevor
-                    // der Logo-Platzhalter greift.
+                    // Über den Server auflösen statt roher CDN-Adresse: Hat schon jemand das
+                    // Katalog-Set heruntergeladen, kommt das Bild von dort. Scheitert die Vorschau,
+                    // Rückfall auf die volle Auflösung vor dem Platzhalter.
                     val (thumbUrl, onThumbError) = rememberTileImageWithFallback(serverUrl, set.imageLocal, set.imageUrl)
                     if (thumbUrl != null) {
                         AsyncImage(
@@ -702,11 +567,9 @@ fun CatalogSetCard(
 
 
 /**
- * Platzhalter für einen Platz, dessen Seite noch nicht geladen ist.
- *
- * Er muss dieselbe HÖHE haben wie eine echte Kachel, sonst springt die Liste,
- * sobald die Seite eintrifft — und ein Sprung an eine Jahresgrenze landete
- * daneben.
+ * Platzhalter für einen Platz, dessen Seite noch nicht geladen ist — gleich hoch
+ * wie eine echte Kachel, sonst springt die Liste beim Eintreffen, und ein Sprung
+ * an eine Jahresgrenze landete daneben.
  */
 @Composable
 private fun CatalogPlaceholderCard() {

@@ -1,7 +1,7 @@
 import { detailZeile, ladeAnzeige } from './01-bausteine.js';
 import { registerActions } from './00-registry.js';
 import { locale, t, tRaw} from '../i18n.js';
-import { bildTag, platzhalterInhalt, leerZustand, ico, G, api, esc, escUrl, fullUrl, imgUrl, thumbUrl, toast } from './01-core.js';
+import { bildTag, platzhalterInhalt, leerZustand, ico, G, api, esc, escUrl, fullUrl, imgUrl, thumbUrl, toast, zuruecksetzenKnopf } from './01-core.js';
 import { setScrollLabel } from './15-scrollbar.js';
 import { PARTS_ICON_SVG, handleSseEvent, hideProgress, leereLagerortFeld, loadGallery, loadStats, selectedOwner, selectedStorage, showProgress, streamFertig, streamRequest } from './02-gallery.js';
 import { _lastImportAt , set_lastImportAt} from './07-admin.js';
@@ -19,7 +19,7 @@ let _catState = { page: 1, q: '', theme: '', yearFrom: '', yearTo: '', sort: 'ye
 // Filterwechsel (gleiches Muster wie in der Android-App), _catItems hält die
 // geladenen Sets für In-Place-Updates (owned-Badge nach Galerie-Aufnahme).
 let _catGen = 0;
-// ── Fensterladen statt Endlos-Scroll (Nachtrag 90) ─────────────────────────
+// ── Fensterladen statt Endlos-Scroll ─────────────────────────
 //
 // Marcos Vorgabe: Die Jahres-Leiste soll nicht filtern, sondern schnell
 // scrollen — „kann nicht geprüft werden, wo man hinscrollt, und dieser Teil
@@ -79,7 +79,7 @@ function _bindCatalogControls(){
     if (to && from && parseInt(to) < parseInt(from)) from = to;
     setCatalogYearRange(from, to);
   });
-  // Der Von-Bis-Schieber ist entfallen (Nachtrag 90) — gefiltert wird über die
+  // Der Von-Bis-Schieber ist entfallen — gefiltert wird über die
   // beiden Auswahlfelder oben, gesprungen über die Leiste am rechten Rand.
   // Auch der Sentinel des Endlos-Scrolls ist weg: Geladen wird die Seite, die
   // gerade ins Bild kommt (siehe _beobachteSeiten).
@@ -112,6 +112,13 @@ async function loadCatalogMeta(){
   for (const yc of (d.year_counts||[])) _catYearCounts[yc.year] = yc.n;
   _catYearMin = d.year_min || null; _catYearMax = d.year_max || null;
   _initYearRail();
+}
+
+/** Suche, Thema und Jahre leeren; die Sortierung bleibt. */
+export function katalogZuruecksetzen(){
+  G('cat-search').value = ''; G('cat-theme').value = '';
+  _catState.q = ''; _catState.theme = '';
+  setCatalogYearRange('', '');
 }
 
 /** Zentrale Stelle für Jahresbereichs-Änderungen — hält Dropdowns, Slider und Badge synchron. */
@@ -171,7 +178,8 @@ async function loadCatalogSets(){
     // Ohne Filter heisst „leer": der Katalog ist noch nicht abgeglichen.
     const gefiltert = !!(_catState.q || _catState.theme || _catState.yearFrom || _catState.yearTo);
     grid.innerHTML = leerZustand({ ico: gefiltert ? 'suche' : 'katalog', titel: tRaw('catalog.no_results'),
-      text: tRaw(gefiltert ? 'catalog.no_results_hint' : 'catalog.empty_hint') });
+      text: tRaw(gefiltert ? 'catalog.no_results_hint' : 'catalog.empty_hint'),
+      knopf: gefiltert ? zuruecksetzenKnopf('catalog') : undefined });
     setScrollLabel(null);
     return;
   }
@@ -359,15 +367,15 @@ function catCard(s){
   // eine zweite Stelle, die es kennen muss. Ohne Thema-Nummer bleibt sie weg —
   // dann zeigt der Streifen nichts statt etwas Falsches.
   const ton = Number.isInteger(s.theme_id)
-    ? ` style="--faecher-ton:var(--faecher-${((s.theme_id % 12) + 12) % 12})"` : '';
+    ? ` data-faecher="${((s.theme_id % 12) + 12) % 12}"` : '';
   return `<div class="sc"${ton} tabindex="0" role="button" data-sn="${esc(s.set_number)}" data-year="${s.year||''}" data-click="openCatModal" data-arg="${esc(s.set_number)}">
     <div class="sci">${img}</div>
     <div class="scb">
       <div class="snum">${esc(s.set_number)}</div>
       <div class="sname">${esc(s.name)||'—'}</div>
       <div class="smeta">
-        <span style="font-size:var(--fs-0)">${s.year||'—'}${themeShort?' · '+esc(themeShort.substring(0,14)):''}</span>
-        <div style="display:flex;gap:3px;align-items:center;flex-wrap:wrap">
+        <span data-stil="font-size:var(--fs-0)">${s.year||'—'}${themeShort?' · '+esc(themeShort.substring(0,14)):''}</span>
+        <div data-stil="display:flex;gap:3px;align-items:center;flex-wrap:wrap">
           ${s.num_parts?`<span class="qbadge">${PARTS_ICON_SVG}${s.num_parts.toLocaleString(locale())}</span>`:''}
           ${ownedBadge}
         </div>
@@ -445,7 +453,7 @@ async function addCatalogSetToGallery(){
   const priceVal = G('cat-m-price').value;
   const purchase_price = (priceVal != null && String(priceVal).trim() !== '' && !isNaN(parseFloat(priceVal))) ? parseFloat(priceVal) : null;
   const condition = G('cat-m-cond').value || 'N';
-  // Konto mitschicken (Nachtrag 66, Marcos Fund): Der Katalog-Dialog war der
+  // Konto mitschicken (Marcos Fund): Der Katalog-Dialog war der
   // VIERTE Erfassungsweg — Galerie-Formular, manuelles Teil und manuelle
   // Minifigur fragen das Konto längst ab, hier fehlte es. Folge: Ein aus dem
   // Katalog aufgenommenes Set landete immer beim eigenen Konto, ohne dass man

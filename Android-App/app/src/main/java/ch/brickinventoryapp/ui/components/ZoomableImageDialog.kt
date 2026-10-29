@@ -58,7 +58,7 @@ import ch.brickinventoryapp.ui.theme.Abstaende
  * @param imageUrl Bereits aufgeloeste Adresse (resolveFullUrl) -- diese
  *        Komponente baut selbst keine Adressen zusammen.
  * @param imageLoader Der injizierte Coil-Loader. ZWINGEND: Nur dieser haengt den
- *        Bearer-Token an (di/AppModule.kt). Coils Standard-Loader tut das nicht,
+ *        Bearer-Token an (di/ServerClient.kt). Coils Standard-Loader tut das nicht,
  *        und seit alle Bilder eine Anmeldung verlangen, liefert der Server
  *        darauf 401 -- die Flaeche bleibt leer, ohne Fehlermeldung.
  * @param contentDescription Fuer Screenreader; darf null sein.
