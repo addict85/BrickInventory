@@ -4,6 +4,7 @@
  */
 import fs from 'fs';
 import path from 'path';
+import crypto from 'crypto';
 import { meldeUndWeiter, fehlertext, logAndContinue } from '../utils/httpError';
 
 /**
@@ -18,6 +19,7 @@ async function runMigrations(client: any, { sichern = false, bis }: { sichern?: 
       name       TEXT PRIMARY KEY,
       applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )`);
+  await client.query('ALTER TABLE schema_migrations ADD COLUMN IF NOT EXISTS pruefsumme TEXT');
 
   const dir = path.join(__dirname, 'migrations');
   if (!fs.existsSync(dir)) return [];
@@ -26,8 +28,9 @@ async function runMigrations(client: any, { sichern = false, bis }: { sichern?: 
   const files = fs.readdirSync(dir).filter(f => f.endsWith('.sql')).sort();
   if (!files.length) return [];
 
-  const { rows } = await client.query('SELECT name FROM schema_migrations');
-  const done = new Set(rows.map((r: any) => r.name));
+  const { rows }: { rows: Angewandt[] } = await client.query('SELECT name, pruefsumme FROM schema_migrations');
+  const done = new Set(rows.map(r => r.name));
+  await pruefeAngewandte(client, dir, rows);
 
   const offen = files.filter(f => !done.has(f) && (bis === undefined || f <= bis));
   if (offen.length && sichern) await sichereNutzerdaten(client, offen);
@@ -42,7 +45,7 @@ async function runMigrations(client: any, { sichern = false, bis }: { sichern?: 
       // grossen Tabelle; ein Abbruch mittendrin hiesse Neustart in Schleife.
       await client.query('SET LOCAL statement_timeout = 0');
       await client.query(sql);
-      await client.query('INSERT INTO schema_migrations (name) VALUES ($1)', [file]);
+      await client.query('INSERT INTO schema_migrations (name, pruefsumme) VALUES ($1, $2)', [file, pruefsumme(sql)]);
       await client.query('COMMIT');
       applied.push(file);
       console.log(`  ✅ Migration angewandt: ${file}`);
@@ -55,6 +58,33 @@ async function runMigrations(client: any, { sichern = false, bis }: { sichern?: 
     }
   }
   return applied;
+}
+
+interface Angewandt { name: string; pruefsumme: string | null }
+
+/** SHA-256 des Inhalts; Zeilenenden zählen nicht (ein Windows-Checkout ist dieselbe Migration). */
+function pruefsumme(sql: string): string {
+  return crypto.createHash('sha256').update(sql.replace(/\r\n/g, '\n')).digest('hex');
+}
+
+/**
+ * Eine angewandte Migration darf sich nicht mehr ändern: Die Datenbank hat den
+ * alten Inhalt ausgeführt, eine neue Installation bekäme den neuen — zwei
+ * Schemas unter demselben Namen. Ohne gespeicherte Summe (vor dieser Prüfung
+ * angewandt) wird sie einmal nachgetragen.
+ */
+async function pruefeAngewandte(client: import('pg').ClientBase, dir: string, rows: Angewandt[]): Promise<void> {
+  const geaendert: string[] = [];
+  for (const r of rows) {
+    const datei = path.join(dir, r.name);
+    if (!fs.existsSync(datei)) continue;
+    const ist = pruefsumme(fs.readFileSync(datei, 'utf8'));
+    if (r.pruefsumme === null) await client.query('UPDATE schema_migrations SET pruefsumme = $2 WHERE name = $1', [r.name, ist]);
+    else if (r.pruefsumme !== ist) geaendert.push(r.name);
+  }
+  if (geaendert.length) throw new Error(
+    `Schon angewandte Migration(en) nachträglich geändert: ${geaendert.join(', ')}. `
+    + 'Den alten Inhalt wiederherstellen und die Änderung als neue Migration anlegen.');
 }
 
 const SICHERUNGEN_BEHALTEN = 3;

@@ -123,9 +123,22 @@ class MainActivity : ComponentActivity() {
             // und darüber die ganze App rekomponiert.
             val theme by vm.appTheme.collectAsStateWithLifecycle()
             val dunkel by vm.dunkelNachSystem.collectAsStateWithLifecycle()
-            val sicht = darstellung(theme, dunkel, isSystemInDarkTheme())
-            BrickInventoryManagerTheme(theme = sicht.design, dunkel = sicht.dunkel) {
+            val systemfarben by vm.systemfarben.collectAsStateWithLifecycle()
+            val sicht = darstellung(theme, dunkel, isSystemInDarkTheme(), systemfarben, android.os.Build.VERSION.SDK_INT)
+            BrickInventoryManagerTheme(theme = sicht.design, dunkel = sicht.dunkel, systemfarben = sicht.systemfarben) {
                 BrickInventoryManagerApp(vm, katalogVm, gutscheinVm, imageLoader)
+                // Über allem: Ein unbekanntes Zertifikat kann jeder Abruf treffen.
+                val zertifikat by vm.zertifikatsFrage.offen.collectAsStateWithLifecycle()
+                val nutzerCa by vm.nutzerCa.collectAsStateWithLifecycle()
+                zertifikat?.let { frage ->
+                    ch.brickinventoryapp.ui.components.ZertifikatDialog(
+                        frage = frage,
+                        nutzerCaAn = nutzerCa,
+                        onVertrauen = vm::zertifikatVertrauen,
+                        onNutzerCa = { vm.setNutzerCa(true); vm.zertifikatsFrage.verwerfen() },
+                        onAbbrechen = vm.zertifikatsFrage::verwerfen,
+                    )
+                }
             }
         }
     }

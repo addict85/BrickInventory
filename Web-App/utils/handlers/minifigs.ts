@@ -1,7 +1,7 @@
 import * as db from '../../db/database';
 import { resolveImageLocal } from '../images';
 import { asIds } from '../household';
-import { clampPageSize, applyManualCondition, withOwners } from './shared';
+import { clampPageSize, applyManualCondition, withOwners, conditionFromAcquisitions, conditionsFromAcquisitions } from './shared';
 import { mitVersion } from '../setNummer';
 import { mengeJoin, mengeAus, teilmengeJoin, teilmengeAus } from '../bestandsmenge';
 import { marktpreiseAusCacheFuerFiguren } from '../marketPrice';
@@ -155,14 +155,17 @@ async function getMinifigs(userId: number | number[], { search, source, set_numb
   // gilt. Figuren aus Sets haben keine Erfassungen → gespeicherter Wert.
   const usedFigRows = await db.all(
     `SELECT LOWER(TRIM(a.fig_number)) AS fkey,
-            MAX(CASE WHEN a.condition='U' THEN 1 ELSE 0 END) AS any_used
+            COUNT(*)::int AS acq_count,
+            COUNT(*) FILTER (WHERE a.condition = 'U')::int AS used_count
      FROM minifig_acquisitions a
      WHERE a.user_id = ANY($1)
      GROUP BY LOWER(TRIM(a.fig_number))`,
     [uids]
   );
-  const usedFigMap = new Map<string, boolean>(usedFigRows.map(r => [r.fkey, (parseInt(r.any_used) || 0) > 0] as [string, boolean]));
+  const zustandJeFigur = new Map<string, { acq_count: number; used_count: number }>(
+    usedFigRows.map(r => [r.fkey, r] as [string, { acq_count: number; used_count: number }]));
 
+  const zustand = (f: { fig_number: unknown }) => zustandJeFigur.get(String(f.fig_number).trim().toLowerCase());
   const mappedFigs = figs.map(({ owner_ids, ...f }: any) => ({
     ...f,
     // owner_ids nur im Haushalt (wie bei Sets); im Einzelkonto wäre „gehört
@@ -172,7 +175,9 @@ async function getMinifigs(userId: number | number[], { search, source, set_numb
     // Ohne Erfassung 'N' — nicht mehr der gespeicherte Wert, den es seit
     // Migration 0035 nicht mehr gibt. Fuer Set-Figuren dasselbe Ergebnis wie
     // vorher: Dort stand die Spalte seit jeher auf dem Vorgabewert.
-    condition: usedFigMap.get(String(f.fig_number).trim().toLowerCase()) ? 'U' : 'N',
+    condition: conditionFromAcquisitions(zustand(f)?.acq_count, zustand(f)?.used_count),
+    // Alle erfassten Zustände — die Kachel zeigt je einen (wie bei Sets).
+    conditions: conditionsFromAcquisitions(zustand(f)?.acq_count, zustand(f)?.used_count),
   }));
 
   // Objektform wie bei getSets, damit die Gesamtzahl für den Endlos-Scroll

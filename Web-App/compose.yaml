@@ -32,10 +32,10 @@ services:
     environment:
       POSTGRES_DB:       brickinventory
       POSTGRES_USER:     brickinventory
-      # Für eine NEUE Installation ein eigenes Passwort in .env setzen
-      # (DB_PASSWORD=…). Eine bestehende Datenbank behält ihr Passwort —
-      # dann DB_PASSWORD weglassen oder auf das bisherige setzen.
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-brickinventory_secret}
+      # Pflicht: DB_PASSWORD in .env (z. B. `openssl rand -base64 24`). Eine
+      # bestehende Datenbank behält ihr Passwort; das alte Beispielpasswort
+      # weist der Server beim Start ab (UPGRADE.md, Abschnitt 13).
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD in .env setzen - siehe UPGRADE.md}
     command: postgres -c max_connections=200 -c shared_buffers=128MB
     # Der Entrypoint des Images läuft als root: Er legt $PGDATA an (chmod 700),
     # richtet die Eigentümer per find/chown und wechselt mit gosu zu postgres.
@@ -104,21 +104,21 @@ services:
       - ./data:/app/data
     environment:
 
-      # ── PFLICHT: vor dem ersten Start ändern ─────────────────────────────────
-      # Eigenen Zufallswert eintragen, z. B.:  openssl rand -base64 48
-      # Der Server verweigert in Produktion den Start, wenn dieser Beispielwert
-      # stehen bleibt oder der Wert kürzer als 32 Zeichen ist.
-      SESSION_SECRET: change-me-to-a-long-random-string
+      # ── PFLICHT: in .env setzen (Vorlage: .env.example) ──────────────────────
+      # Eigenen Zufallswert, z. B.:  openssl rand -base64 48
+      # Ohne Wert startet Compose nicht; der Server verweigert einen Wert unter
+      # 32 Zeichen.
+      SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET in .env setzen, siehe .env.example}
 
       # ── App ──────────────────────────────────────────────────────────────────
       # Adresse, unter der der Server von aussen erreichbar ist. Nötig für
       # Passwort-vergessen-Mails und den QR-Code der App (siehe README.md).
       # APP_BASE_URL: https://lego.example.org
-      # Wem X-Forwarded-For geglaubt wird. „docker" = einem Proxy im Docker-Netz
-      # (nicht dessen Gateway); ohne Angabe glaubte der Server nur Loopback.
-      # In .env überschreibbar: „false" ohne Proxy davor, sonst seine Adresse,
-      # etwa das Gateway für einen Proxy auf dem Rechner selbst (README.md).
-      TRUST_PROXY: ${TRUST_PROXY:-docker}
+      # Wem X-Forwarded-For geglaubt wird: nur ausdrücklich genannten Adressen.
+      # Leer heisst Loopback — richtig ohne Proxy, denn über den Port oben sieht
+      # der Server die echte Client-Adresse. Ein Proxy im Netz unten bekommt eine
+      # feste Adresse (z. B. 172.28.73.10), und genau die steht dann in .env.
+      TRUST_PROXY: ${TRUST_PROXY:-}
       # PORT: 3000
       # NODE_ENV: production
       # NODE_OPTIONS: "--max-old-space-size=384"
@@ -133,7 +133,7 @@ services:
       # PGHOST:     postgres
       # PGPORT:     5432
       # PGUSER:     brickinventory
-      PGPASSWORD: ${DB_PASSWORD:-brickinventory_secret}
+      PGPASSWORD: ${DB_PASSWORD:?DB_PASSWORD in .env setzen - siehe UPGRADE.md}
       # PGDATABASE: brickinventory
 
       # ── DB-Verbindungspool ───────────────────────────────────────────────────
@@ -184,9 +184,9 @@ services:
   #     Dann im lokalen Browser http://localhost:8081 öffnen.
   #   • Nach getaner Arbeit wieder herunterfahren (Befehl oben).
   pgweb:
-    # Feste Version: Ein Werkzeug mit Zugang zur ganzen Datenbank soll nicht
-    # unbemerkt durch ein neues „latest" ersetzt werden.
-    image: sosedoff/pgweb:0.17.0
+    # Fest per Digest: Ein Werkzeug mit Zugang zur ganzen Datenbank soll nicht
+    # unbemerkt durch ein umgehängtes Tag ersetzt werden.
+    image: sosedoff/pgweb:0.17.0@sha256:a5256d416e2e8b92d69a4459058e3eca33a9f075d8325491644411d0bc3bd70b
     container_name: brickinventory-pgweb
     # Ein Webserver auf Port 8081 braucht keine Capability.
     security_opt:
@@ -201,7 +201,7 @@ services:
       # Dieselben Zugangsdaten wie oben beim Dienst `postgres`. Wer sie dort
       # ändert, muss sie hier mitändern — der Verbindungsstring ist die einzige
       # Stelle, an der pgweb sie erfährt.
-      PGWEB_DATABASE_URL: postgres://brickinventory:${DB_PASSWORD:-brickinventory_secret}@postgres:5432/brickinventory?sslmode=disable
+      PGWEB_DATABASE_URL: postgres://brickinventory:${DB_PASSWORD:?DB_PASSWORD in .env setzen - siehe UPGRADE.md}@postgres:5432/brickinventory?sslmode=disable
     # --readonly erlaubt ausschliesslich lesende Abfragen. Zum Nachsehen ist
     # das die richtige Voreinstellung; für Reparaturen die Zeile auskommentieren
     # und den Dienst neu starten. Lieber bewusst freischalten als versehentlich
@@ -213,5 +213,11 @@ services:
       - brickinventory-net
 
 networks:
+  # Festes Netz: Ein Reverse-Proxy davor bekommt darin eine feste Adresse
+  # (ipv4_address: 172.28.73.10), und TRUST_PROXY nennt genau diese. Ein
+  # ganzes Docker-Netz zu vertrauen liesse jeden Container darin Adressen fälschen.
   brickinventory-net:
     driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.73.0/24

@@ -142,9 +142,11 @@ export async function pdfAuftragStarten(uid: number, sets: Array<{ set_number?: 
   const laufend = await laufendeAuftraege(uid, PDF_JOB_TTL);
   if (laufend >= MAX_JOBS_PRO_BENUTZER) return { laufend };
   const jobId = neueJobId();
+  // Bildangaben des Clients gehen nicht in den Auftrag: Die Bilder kommen aus dem Katalog (jobs/pdfErzeugung.ts).
+  const ohneBilder = parts.map(p => ({ ...p, image_url: undefined, image_local: undefined }));
   const missingImages = await fehlendeBilder(sets, parts);
   await schreibeAuftrag(jobId, { status: 'running', error: null, missingImages,
     etaSeconds: Math.max(3, Math.round(missingImages) + 3), user_id: uid });
-  await stelleAuftragEin('pdf', { job_id: jobId, user_id: uid, sets, parts }, { userId: uid, maxVersuche: 2 });
+  await stelleAuftragEin('pdf', { job_id: jobId, user_id: uid, sets, parts: ohneBilder }, { userId: uid, maxVersuche: 2 });
   return { jobId };
 }

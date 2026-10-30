@@ -1,4 +1,5 @@
 
+import { konfig } from '../utils/konfig';
 import { protokolliere } from '../utils/verwaltungsprotokoll';
 import express from 'express';
 const router  = express.Router();
@@ -18,6 +19,7 @@ import { requireApiAdmin } from './api_v1/middleware';
 import { sendeFehler, fehlerText, antwortSprache } from '../utils/fehlerTexte';
 import { basisUrl, hinweisOhneBasisUrl } from '../utils/basisUrl';
 import * as zf from '../utils/zweiterFaktor';
+import { loescheKontoDateien } from '../utils/gutscheinDateien';
 
 // „Angemeldet" gibt es nur noch in EINER Fassung
 // Sechs vermeintlich fehlende Funktionen, EINE Ursache: dieselbe Regel in zwei
@@ -372,6 +374,8 @@ router.delete('/users/:id', requireAdmin, async (req, res) => {
     // KEINEN Fremdschluessel auf users — die offene Sitzung des geloeschten …
     // Ausführlich: docs/begruendungen/routes/auth.ts.md#delete-users-id
     await revokeAllSessions(targetId);
+    // Eigene Anleitungen und Gutschein-PDFs gehören zum Konto; liegen blieben sie ohne Besitzer.
+    await loescheKontoDateien(targetId);
     // Und der Token-Cache, der die geloeschten Zeilen sonst noch bis zu 60
     // Sekunden bedient.
     leereTokenCache();
@@ -446,7 +450,7 @@ router.post('/change-password', requireLogin, async (req: LoggedInRequest, res) 
 function getBaseUrl(req: Request): string | null {
   const basis = basisUrl();
   if (basis) return basis;
-  if (process.env.NODE_ENV === 'production') {
+  if (konfig().produktion) {
     hinweisOhneBasisUrl('auth', 'Links in E-Mails werden nicht verschickt.');
     return null;
   }
@@ -457,7 +461,7 @@ function getBaseUrl(req: Request): string | null {
 
 /** Reset-Links nur mit APP_BASE_URL — ausser ausserhalb des Betriebs, wo es keinen Angreifer gibt. */
 function resetLinkMoeglich(): boolean {
-  return !!basisUrl() || process.env.NODE_ENV !== 'production';
+  return !!basisUrl() || !konfig().produktion;
 }
 
 //  QR-Login

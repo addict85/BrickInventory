@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui
 
+import androidx.glance.appwidget.updateAll
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -61,6 +62,8 @@ class AppViewModel @Inject constructor(
     private val blickfeldDienst: Blickfeld,
     private val bestand: Bestandssignal,
     val scrollMemory: ScrollMemory,
+    /** Ein unbekanntes Zertifikat wartet auf Ja oder Nein (ZertifikatDialog). */
+    val zertifikatsFrage: ch.brickinventoryapp.util.ZertifikatsFrage,
 ) : ViewModel() {
 
     // Der Zustand wird mit dem gemerkten Design geboren: appTheme unten nimmt
@@ -100,6 +103,28 @@ class AppViewModel @Inject constructor(
         prefs.setzeNutzerCa(an)
         _nutzerCa.value = an
         // Offene Verbindungen trugen das alte Vertrauen.
+        apiHttpClient.connectionPool.evictAll()
+    }
+
+    /** Expertenschalter: Klartext zum eigenen Server (NetworkPolicy.isCleartextAllowed). */
+    private val _klartextErlaubt = MutableStateFlow(prefs.klartextErlaubt())
+    val klartextErlaubt: StateFlow<Boolean> = _klartextErlaubt.asStateFlow()
+    fun setKlartextErlaubt(an: Boolean) {
+        prefs.setzeKlartextErlaubt(an)
+        _klartextErlaubt.value = an
+    }
+
+    /** Je Gerät: Material You statt der Farben des Designs (ui/theme/Darstellung.kt). */
+    private val _systemfarben = MutableStateFlow(prefs.systemfarben())
+    val systemfarben: StateFlow<Boolean> = _systemfarben.asStateFlow()
+    fun setSystemfarben(an: Boolean) {
+        prefs.setzeSystemfarben(an)
+        _systemfarben.value = an
+    }
+
+    /** Ja zum gezeigten Zertifikat: gepinnt, offene Verbindungen verworfen. */
+    fun zertifikatVertrauen() {
+        zertifikatsFrage.bestaetige(prefs)
         apiHttpClient.connectionPool.evictAll()
     }
 
@@ -202,6 +227,11 @@ class AppViewModel @Inject constructor(
                 imageLoader.memoryCache?.clear()
                 imageLoader.diskCache?.clear()
             } catch (_: Exception) { /* darf das Abmelden nie verhindern */ }
+            // Das Widget zeigt sonst die Zahlen des abgemeldeten Kontos weiter.
+            runCatching {
+                ch.brickinventoryapp.widget.WidgetAblage.leeren(ctx)
+                ch.brickinventoryapp.widget.SammlungsWidget().updateAll(ctx)
+            }
             sitzung.abgemeldet()
             blickfeldDienst.zuruecksetzen()
             _csvImportState.value = CsvImportUiState()

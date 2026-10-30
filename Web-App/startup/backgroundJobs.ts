@@ -15,11 +15,13 @@ import { purgeAltePreise } from '../utils/priceHistory';
 import { purgeExpiredTokens } from '../utils/auth';
 import { raeumeAnmeldezaehlerAuf } from '../utils/loginLimiter';
 import { verschluesseleAltbestand } from '../utils/geheimnisAltbestand';
+import { verschluesseleGutscheinAltbestand } from '../utils/gutscheinDateien';
 import { raeumePapierkorbAuf } from '../utils/papierkorb';
 import { logAndContinue, meldeUndLiefere } from '../utils/httpError';
 import { startImgCacheCleanup } from '../utils/imgCacheServe';
 import { startPdfJobCleanup } from '../utils/pdfAuftraege';
 import { starteAuftragsWorker } from '../jobs/auftraegeStarten';
+import { planeKursabruf } from '../utils/wechselkurse';
 
 /**
  * Was nach dem Start im Hintergrund anläuft — ausschliesslich im Primär-Worker.
@@ -35,6 +37,8 @@ export async function starteHintergrundlaeufe(): Promise<void> {
   // Die Auftragstabelle (Nacharbeit, Bilder, PDF, CSV-Import); was vor einem
   // Neustart offen war, läuft hier weiter.
   starteAuftragsWorker();
+  // Wechselkurse der EZB: heute einmal, danach plant jeder Lauf den nächsten Tag.
+  planeKursabruf().catch(logAndContinue('wechselkurse:einplanen'));
 
   // Abgelaufene API-Tokens aufräumen.
   //
@@ -55,6 +59,9 @@ export async function starteHintergrundlaeufe(): Promise<void> {
   verschluesseleAltbestand()
     .then(n => { if (n) console.log(`[geheimnis] ${n} Geheimnisse nachträglich verschlüsselt`); })
     .catch(logAndContinue('geheimnis:altbestand'));
+  verschluesseleGutscheinAltbestand()
+    .then(n => { if (n) console.log(`[geheimnis] ${n} Gutschein-PDFs nachträglich verschlüsselt`); })
+    .catch(logAndContinue('geheimnis:gutschein-pdfs'));
 
   // Abgelaufene Anmeldezähler (utils/loginLimiter.ts).
   {

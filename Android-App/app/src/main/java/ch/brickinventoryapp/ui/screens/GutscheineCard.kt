@@ -57,6 +57,8 @@ fun GutscheineCard(
     onGuthabenAlle: () -> Unit,
     /** Den laufenden Durchgang anhalten. */
     onGuthabenAbbrechen: () -> Unit,
+    /** Die Liste nach einem Ladefehler neu holen. */
+    onErneut: () -> Unit,
 ) {
     // Die gewählte Datei lebt nur im Formular — eine Uri ist eine Berechtigung dieses
     // Bildschirms, kein Datum des Kontos. rememberSaveable, weil sie eine Wahl des
@@ -136,7 +138,9 @@ fun GutscheineCard(
         // Behalten, und die App kann Dateien nicht speichern oder weitergeben (NUR_WEB in
         // test/webapp-endpunkte.test.js).
 
-        if (zustand.gutscheine.isEmpty() && !zustand.laedt) {
+        if (zustand.gutscheine.isEmpty() && !zustand.laedt && zustand.fehler != null) {
+            ch.brickinventoryapp.ui.components.FehlerHinweis(zustand.fehler, onErneut)
+        } else if (zustand.gutscheine.isEmpty() && !zustand.laedt) {
             Text(
                 stringResource(R.string.vouchers_empty),
                 style = MaterialTheme.typography.bodySmall,

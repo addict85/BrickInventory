@@ -10,6 +10,9 @@
  *   C  Hinweis wieder nur ohne TRUST_PROXY (die Prüfung gegen die Einstellung
  *      entfernt) → rot: „Proxy über das Gateway ohne passendes TRUST_PROXY …“
  *      (mit TRUST_PROXY=docker blieb der Hinweis aus)
+ * Gegenprobe (am 30.10.2026 gemessen):
+ *   D  der Gateway-Hinweis nennt wieder `TRUST_PROXY=${ip}` → rot: „rät, den
+ *      Clients hinter dem Gateway zu glauben“
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -27,25 +30,26 @@ function lauf(trust, anfragen) {
   return meldungen;
 }
 
-test('Proxy über das Gateway ohne passendes TRUST_PROXY wird gemeldet, nur einmal', () => {
-  for (const trust of [undefined, 'docker']) {
+test('Proxy über das Gateway wird gemeldet, nur einmal — ohne Rat, dem Gateway zu glauben', () => {
+  for (const trust of [undefined, '172.28.73.10']) {
     const m = lauf(trust, [anfrage('::ffff:172.18.0.1', '198.51.100.4'), anfrage('172.18.0.1', '198.51.100.5')]);
     assert.equal(m.length, 1, `TRUST_PROXY=${trust}`);
-    assert.match(m[0], /TRUST_PROXY=172\.18\.0\.1/);
+    assert.match(m[0], /Docker-Gateway 172\.18\.0\.1/);
+    assert.doesNotMatch(m[0], /TRUST_PROXY=172\.18\.0\.1/, 'rät, den Clients hinter dem Gateway zu glauben');
   }
 });
 
-test('Proxy im Docker-Netz ohne TRUST_PROXY: Hinweis auf TRUST_PROXY=docker', () => {
-  const m = lauf(undefined, [anfrage('172.18.0.5', '198.51.100.4')]);
+test('Proxy im Docker-Netz ohne passendes TRUST_PROXY: Hinweis auf genau seine Adresse', () => {
+  const m = lauf(undefined, [anfrage('172.28.73.10', '198.51.100.4')]);
   assert.equal(m.length, 1);
-  assert.match(m[0], /TRUST_PROXY=docker/);
+  assert.match(m[0], /TRUST_PROXY=172\.28\.73\.10/);
+  assert.doesNotMatch(m[0], /TRUST_PROXY=docker/);
 });
 
 test('kein Hinweis ohne Proxy-Kopf, von anderen Adressen oder mit passendem TRUST_PROXY', () => {
   assert.deepEqual(lauf(undefined, [anfrage('172.18.0.1')]), []);
   assert.deepEqual(lauf(undefined, [anfrage('127.0.0.1', '198.51.100.4'), anfrage('192.168.1.20', '1.2.3.4')]), []);
-  assert.deepEqual(lauf('docker', [anfrage('172.18.0.5', '198.51.100.4')]), []);
-  assert.deepEqual(lauf('172.18.0.1', [anfrage('172.18.0.1', '198.51.100.4')]), []);
+  assert.deepEqual(lauf('172.28.73.10', [anfrage('172.28.73.10', '198.51.100.4')]), []);
   assert.deepEqual(lauf('false', [anfrage('172.18.0.1', '198.51.100.4')]), [], 'ausdrücklich ohne Proxy');
 });
 

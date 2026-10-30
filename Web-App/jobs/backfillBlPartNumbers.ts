@@ -7,6 +7,7 @@
 
 import { merkeBlNummer } from '../utils/blZuordnung';
 import { getRbKey } from '../clients/rebrickable';
+import { nummernListe } from '../utils/fremdeAdressen';
 import * as db from '../db/database';
 import https from 'https';
 import { rebrickableBackgroundLimiter as rebrickableLimiter, consumeRebrickableDaily, parseThrottleWait } from '../utils/rateLimiter';
@@ -17,7 +18,7 @@ type JobHttpResult = { status: number; body: string };
 
 
 async function fetchBatch(partNums: string[], rbKey: string) {
-  const url = `https://rebrickable.com/api/v3/lego/parts/?part_nums=${partNums.join(',')}&page_size=500`;
+  const url = `https://rebrickable.com/api/v3/lego/parts/?part_nums=${nummernListe(partNums)}&page_size=500`;
   for (let attempt = 0; attempt < 3; attempt++) {
     await rebrickableLimiter.waitForSlot();
     const result = await new Promise<JobHttpResult>(resolve => {

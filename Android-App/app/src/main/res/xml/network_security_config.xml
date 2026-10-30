@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  cleartextTrafficPermitted="true" in der base-config: Die Server-URL gibt der
-  Nutzer selbst ein, meist eine LAN-Adresse; RFC1918 lässt sich hier nicht als
-  Wildcard ausdrücken. Die Klartextregel steht deshalb im Interceptor
-  (di/ServerWaechter.kt, util/NetworkPolicy.kt).
+  cleartextTrafficPermitted="true" in der base-config, weil sich ein Schalter
+  hier nicht zur Laufzeit umlegen lässt. Die Regel steht im Wächter
+  (di/ServerWaechter.kt, util/NetworkPolicy.kt): ohne Expertenschalter nur https,
+  mit ihm Klartext ins Heimnetz. Andere Clients als die des eigenen Servers
+  bekommen ihre Hosts unten fest verdrahtet.
 
-  Nur System-CAs: Eine nutzerinstallierte CA kann jeder einschleusen, der das
-  Gerät verwaltet oder kurz in der Hand hat. Wer seinen Server mit einer
-  eigenen CA betreibt, erlaubt sie ausdrücklich (Einstellungen → Server); die
-  Clients des eigenen Servers wählen dann zur Laufzeit (util/ServerVertrauen.kt).
+  Nur System-CAs. Nutzer-CAs und Pins des eigenen Servers entscheidet
+  util/ServerVertrauen.kt zur Laufzeit; nach Nutzer-CAs fragt die App erst bei
+  einem Zertifikatsfehler.
 -->
 <network-security-config>
     <!--

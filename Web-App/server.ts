@@ -1,67 +1,16 @@
 import type { Request, Response, NextFunction } from 'express';
+// Zuerst: Ein ungültiger Wert beendet den Start mit Meldung, bevor ein Modul ihn liest.
+import { konfig } from './startup/konfigPruefen';
 
 /**
  * Anfrage einer Wildcard-Route (`app.get('/images/*pfad', …)`).
  * Ausführlich: docs/begruendungen/server.ts.md#wildcardrequest
  */
 type WildcardRequest = Request<{ pfad: string[] }>;
-// ── Log interceptor — write console output to PostgreSQL app_logs ─────────────
-// Must be first so all subsequent logs are captured
-const _logBuffer: { level: string; message: string }[] = [];
-let   _logPool: import('pg').Pool | null = null;
-let   _logTimer: NodeJS.Timeout | null = null;
-
-function _flushLogs() {
-  if (!_logPool || !_logBuffer.length) return;
-  const rows = _logBuffer.splice(0);
-  const vals = rows.map((_, i) => `($${i*2+1},$${i*2+2})`).join(',');
-  const args = rows.flatMap(r => [r.level, r.message]);
-  _logPool.query(`INSERT INTO app_logs (level,message) VALUES ${vals}`, args).catch(() => {});
-}
-// Log-Cleanup läuft planbar alle 6h statt zufällig im Flush-Pfad
-setInterval(() => {
-  if (_logPool)
-    _logPool.query(`DELETE FROM app_logs WHERE logged_at < NOW() - INTERVAL '48 hours'`).catch(() => {});
-}, 6 * 60 * 60 * 1000).unref();
-function _safeStringify(a: unknown) {
-  if (typeof a === 'string') return a;
-  try {
-    const s = JSON.stringify(a);
-    // Grosse Objekte kappen, bevor sie durch Buffer und DB wandern
-    return s && s.length > 4000 ? s.substring(0, 4000) + '…' : (s ?? String(a));
-  } catch (_) { return String(a); }
-}
-/**
- * Ablaufkontext der gerade bearbeiteten Anfrage.
- * Ausführlich: docs/begruendungen/server.ts.md#abschnitt
- */
-const { AsyncLocalStorage } = require('async_hooks');
-const _reqContext = new AsyncLocalStorage();
-
-/** Kurze Prozesskennung, damit im Log erkennbar ist, welcher Worker schrieb. */
-const _pidTag = String(process.pid).slice(-4);
-
-function _intercept(level: string, orig: (...a: unknown[]) => void) {
-  return function(...args: unknown[]) {
-    const ctx = _reqContext.getStore();
-    const prefix = ctx?.rid ? `[${_pidTag}/${ctx.rid}] ` : `[${_pidTag}] `;
-    orig.apply(console, [prefix + _safeStringify(args[0]), ...args.slice(1)]);
-    const msg = prefix + args.map(_safeStringify).join(' ');
-    _logBuffer.push({ level, message: msg.substring(0, 4000) });
-    // Ohne Pool (Start, Datenbank weg) wüchse der Puffer unbegrenzt. Es
-    // bleiben die neuesten 500; jede Zeile steht ohnehin schon auf
-    // stdout/stderr (orig.apply oben), also auch die erste eines Fehlersturms.
-    if (_logBuffer.length > 500) _logBuffer.splice(0, _logBuffer.length - 500);
-    if (_logTimer) clearTimeout(_logTimer);
-    _logTimer = setTimeout(() => { _logTimer = null; _flushLogs(); }, 1500);
-  };
-}
-console.log   = _intercept('info',  console.log);
-console.info  = _intercept('info',  console.info);
-console.warn  = _intercept('warn',  console.warn);
-console.error = _intercept('error', console.error);
-/** Ab hier gehen die Protokollzeilen auch nach app_logs (sobald der Pool steht). */
-function protokollInDieDatenbank(pool: import('pg').Pool) { _logPool = pool; _flushLogs(); }
+// Protokoll zuerst: Ab hier ist jede console-Zeile eine JSON-Zeile auf
+// stdout/stderr und geht nach app_logs, sobald der Pool steht.
+import { installiereProtokoll, protokollInDieDatenbank, leereProtokoll, anfrageKontext } from './utils/protokoll';
+installiereProtokoll();
 
 // Prevent worker crashes from unhandled promise rejections
 // Log them instead of crashing the process
@@ -73,7 +22,7 @@ process.on('uncaughtException', (err) => {
   // (halb offene Transaktionen, hängende Handles). Loggen, Logs flushen und
   // kontrolliert beenden — der Cluster-Primary forkt sofort einen Ersatz-Worker.
   console.error('[uncaughtException] Uncaught exception:', err.stack || err.message);
-  try { _flushLogs(); } catch (_) {}
+  void leereProtokoll();
   setTimeout(() => process.exit(1), 500).unref();
 });
 
@@ -99,7 +48,10 @@ import { startZustand, setzeStartZustand } from './utils/startZustand';
 
 const WORKERS = (require('./utils/workerZahl') as typeof import('./utils/workerZahl')).workerZahl();
 
-if (cluster.isPrimary && process.env.NODE_ENV === 'production') {
+if (cluster.isPrimary && konfig().produktion) {
+  // Vor dem ersten Worker: sonst startete der Primary die Abgewiesenen endlos neu.
+  const verbote = (require('./utils/konfig') as typeof import('./utils/konfig')).startVerbote();
+  if (verbote.length) { for (const v of verbote) console.error(`❌ ${v}`); process.exit(1); }
   console.log(`[cluster] Primary ${process.pid} starting ${WORKERS} workers`);
   for (let i = 0; i < WORKERS; i++) cluster.fork();
   const { neustartPause } = require('./utils/workerZahl') as typeof import('./utils/workerZahl');
@@ -149,7 +101,7 @@ const { pool }    = require('./db/database') as typeof import('./db/database');
 const app  = express();
 // Verrät nur, womit der Server gebaut ist — wer sucht, soll es nicht geschenkt bekommen.
 app.disable('x-powered-by');
-const PORT = process.env.PORT || 3000;
+const PORT = konfig().port;
 
 // Gzip/Brotli compression for all responses — index.html is ~189KB, saves ~80%
 app.use(compression({
@@ -181,10 +133,9 @@ app.use((req, res, next) => {
   // COOKIE_SECURE nicht gesetzt ist. Die Umleitung auf https kommt erst als …
   // Ausführlich: docs/begruendungen/server.ts.md#port-uebertls
   const ueberTls = req.secure || req.headers['x-forwarded-proto'] === 'https';
-  const hstsAlter = process.env.HSTS_MAX_AGE ?? '31536000';   // ein Jahr
-  if (ueberTls && hstsAlter !== '0') {
-    res.setHeader('Strict-Transport-Security',
-      `max-age=${parseInt(hstsAlter) || 31536000}; includeSubDomains`);
+  const hstsAlter = konfig().hstsMaxAge;   // Vorgabe ein Jahr, 0 schaltet ab
+  if (ueberTls && hstsAlter !== 0) {
+    res.setHeader('Strict-Transport-Security', `max-age=${hstsAlter}; includeSubDomains`);
   }
 
   res.setHeader('Content-Security-Policy', [
@@ -240,11 +191,11 @@ app.use((req, _res, next) => { if (req.body === undefined) req.body = {}; next()
 
 // Hinter einem TLS-terminierenden Reverse-Proxy muss Express X-Forwarded-Proto
 // glauben, sonst setzt es das secure-Cookie nie. Wem genau: utils/proxyVertrauen.ts.
-if (process.env.NODE_ENV === 'production')
+if (konfig().produktion)
   app.set('trust proxy', (require('./utils/proxyVertrauen') as typeof import('./utils/proxyVertrauen'))
-    .proxyVertrauen(process.env.TRUST_PROXY));
+    .proxyVertrauen(konfig().trustProxy));
   app.use((require('./utils/proxyVertrauen') as typeof import('./utils/proxyVertrauen'))
-    .proxyHinweis(process.env.TRUST_PROXY));
+    .proxyHinweis(konfig().trustProxy));
 
 // Doppelte Schrägstriche im Pfad zusammenfassen
 // `//api/img-proxy?url=…` trifft in Express NICHT auf `/api/img-proxy`. Die
@@ -274,7 +225,7 @@ app.use((require('./utils/herkunft') as typeof import('./utils/herkunft')).nurEi
 }
 
 // Jede Anfrage bekommt eine kurze Kennung, die in allen Logzeilen dieser
-// Anfrage erscheint (siehe _intercept oben). Ein vom Reverse-Proxy gesetzter
+// Anfrage erscheint (utils/protokoll.ts). Ein vom Reverse-Proxy gesetzter
 // X-Request-Id-Header wird übernommen, damit sich Proxy- und App-Log
 // zusammenführen lassen.
 let _ridSeq = 0;
@@ -282,7 +233,7 @@ app.use((req, res, next) => {
   const incoming = String(req.headers['x-request-id'] || '').slice(0, 32);
   const rid = incoming || (_ridSeq = (_ridSeq + 1) % 100000).toString(36).padStart(4, '0');
   res.setHeader('X-Request-Id', rid);
-  _reqContext.run({ rid }, () => next());
+  anfrageKontext.run({ rid }, () => next());
 });
 
 // PostgreSQL session store — required for cluster mode so all workers share sessions.
@@ -319,9 +270,9 @@ app.use(session({
       'hier-langen-zufalls-string-eintragen',
       'brickinventory-manager-dev-secret',
     ];
-    const gesetzt = process.env.SESSION_SECRET;
+    const gesetzt = konfig().sessionSecret;
     if (gesetzt) {
-      if (process.env.NODE_ENV === 'production') {
+      if (konfig().produktion) {
         if (PLATZHALTER.includes(gesetzt.trim())) {
           console.error('❌ [session] SESSION_SECRET steht noch auf dem Beispielwert aus compose.yaml — Start verweigert. Bitte einen eigenen Zufallswert eintragen, z. B. `openssl rand -base64 48`.');
           process.exit(1);
@@ -333,7 +284,7 @@ app.use(session({
       }
       return gesetzt;
     }
-    if (process.env.NODE_ENV === 'production') {
+    if (konfig().produktion) {
       // Fail-fast: In Produktion ohne SESSION_SECRET zu starten hiesse, dass
       // Session-Cookies mit einem öffentlich bekannten Secret signiert werden —
       // dann lieber gar nicht starten, der Fehler fällt sofort beim Deploy auf.
@@ -351,9 +302,7 @@ app.use(session({
     sameSite: 'lax',
     // Cookie nur über HTTPS senden. Default: in Produktion aktiv; per
     // COOKIE_SECURE=0 abschaltbar, falls (ausnahmsweise) ohne TLS betrieben.
-    secure: process.env.COOKIE_SECURE !== undefined
-      ? process.env.COOKIE_SECURE === '1'
-      : process.env.NODE_ENV === 'production',
+    secure: konfig().cookieSecure ?? konfig().produktion,
   }
 }));
 app.use(sitzungsHoechstdauer());
@@ -765,11 +714,6 @@ bereiteDatenbankVor().then(async () => {
   // Only primary worker clears stale startup_status — secondaries read it from DB
   if (isPrimaryWorker) {
     await loescheZustand('startup_status').catch(logAndContinue('server:loescheZustand'));
-    // Über console.warn landet der Hinweis in app_logs, also im Protokoll der Verwaltung.
-    if (process.env.NODE_ENV === 'production'
-        && (require('./utils/konfig') as typeof import('./utils/konfig')).standardPasswortInBenutzung())
-      console.warn('⚠️ [sicherheit] Die Datenbank benutzt das Beispielpasswort aus compose.yaml. '
-        + 'Bitte ändern (ALTER USER brickinventory PASSWORD …) und DB_PASSWORD in .env setzen — siehe README.md.');
   }
 
   (async () => {

@@ -118,7 +118,7 @@ async function bricklinkRequest(method: string, path: string,
 
 function getItemImageUrl(setNumber: string) {
   const n = mitVersion(setNumber);
-  return `https://img.bricklink.com/ItemImage/SN/0/${n}.png`;
+  return `https://img.bricklink.com/ItemImage/SN/0/${encodeURIComponent(n)}.png`;
 }
 
 /**

@@ -37,6 +37,10 @@ import org.junit.Test
  *      Klartext-Login in einem fremden Netz fragt erst nach“
  *   H  richteEin() merkt das Netz nicht → rot „im Netz der Einrichtung fragt
  *      die Anmeldung nicht nach“
+ *   I  (30.10.2026) merkePin() in loginWithQrToken() nach qrLogin() → rot „ein
+ *      QR-Code mit Fingerabdruck pinnt vor der ersten Anfrage“
+ *   J  (30.10.2026) LoginRequest wieder mit festem neverExpires = true → rot
+ *      „ein Token ohne Ablauf nur ueber https“ (http-Teil)
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class AnmeldungViewModelTest {
@@ -52,6 +56,7 @@ class AnmeldungViewModelTest {
         override suspend fun bestaetigeKlartext(host: String) { protokoll += "klartext:$host" }
         override suspend fun bekannteNetze() = netze.toSet()
         override suspend fun merkeNetz(eintrag: String) { netze += eintrag; protokoll += "netz:$eintrag" }
+        override fun merkePin(schluessel: String, fingerabdruck: String) { protokoll += "pin:$schluessel=$fingerabdruck" }
     }
 
     /** Das Netz, in dem das Gerät gerade hängt. */
@@ -124,6 +129,30 @@ class AnmeldungViewModelTest {
         TestApi.warteBis("Antwort") { pfade.anfragenAn("qr-login").isNotEmpty() && !vm.anmeldeState.value.loginLaeuft }
         assertNull(vm.anmeldeState.value.loginError)
         assertEquals("Derselbe Server: keine Abmeldung", "url:https://server", ablage.protokoll.first())
+    }
+
+    @Test
+    fun `ein QR-Code mit Fingerabdruck pinnt vor der ersten Anfrage`() {
+        val fp = java.util.Base64.getEncoder().encodeToString(ByteArray(32) { 7 })
+        pfade.antworten["/api/v1/auth/qr-login"] = """{"success":true,"token":"abc","user":{"id":1,"username":"marco"}}"""
+        val vm = vm()
+        vm.loginWithQrToken("https://brick.example.org/", "bim:x", fingerabdruck = fp)
+        TestApi.warteBis("angemeldet") { t.sitzung.state.value.isLoggedIn }
+        assertEquals("pin:brick.example.org:443=$fp", ablage.protokoll.first())
+    }
+
+    @Test
+    fun `ein Token ohne Ablauf nur ueber https`() {
+        pfade.antworten["/api/v1/auth/login"] = """{"success":true,"token":"abc","user":{"id":1,"username":"marco"}}"""
+        ablage.url = "http://localhost:3000"
+        vm().login("marco", "geheim")
+        TestApi.warteBis("http-Anmeldung") { pfade.anfragenAn("/auth/login").size == 1 }
+        assertTrue(pfade.koerper.last(), pfade.koerper.last().contains("\"never_expires\":false"))
+
+        ablage.url = "https://brick.example.org"
+        vm().login("marco", "geheim")
+        TestApi.warteBis("https-Anmeldung") { pfade.anfragenAn("/auth/login").size == 2 }
+        assertTrue(pfade.koerper.last(), pfade.koerper.last().contains("\"never_expires\":true"))
     }
 
     @Test

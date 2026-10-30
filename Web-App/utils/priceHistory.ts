@@ -2,12 +2,14 @@
  * Preisverlauf eines Sets — die EINE Umsetzung für Webapp und Android-API.
  * Ausführlich: docs/begruendungen/utils/priceHistory.ts.md#abschnitt
  */
-import { inKontowaehrung, kontowaehrungJoin } from './acquisitions';
+import { kaufpreisIn } from './finance/abfragen';
 import * as db from '../db/database';
 import { resolveSetCondition, resolveBlColorId, resolveBlPartNumber } from './financeCalc';
 import { asIds } from './household';
 import { buildChart } from './chartData';
 import { blNummerVon } from './blZuordnung';
+import { entwicklungProzent } from './setValue';
+import { konfig } from './konfig';
 
 /**
  * Welche Zustaende gehoeren ins Diagramm?
@@ -18,6 +20,10 @@ import { blNummerVon } from './blZuordnung';
 export function zustaendeFuerVerlauf(belegt: string[], rueckfall: string[]): string[] {
   return belegt.length ? belegt : rueckfall;
 }
+
+/** Mengengewichteter Schnitt über die Zeilen, in denen `k` einen Preis hat. */
+const mittelUeber = (k: string) =>
+  `SUM(${k} * quantity) FILTER (WHERE ${k} IS NOT NULL)::numeric / NULLIF(SUM(quantity) FILTER (WHERE ${k} IS NOT NULL), 0)`;
 
 /** Ein Punkt im Verlauf. */
 export interface PricePoint {
@@ -82,7 +88,7 @@ export async function getSetPriceHistory(uid: number | number[], setNumber: stri
             to_char(COALESCE(a.created_at, s.added_at), 'YYYY-MM-DD') AS added_day
        FROM sets s
        LEFT JOIN LATERAL (
-         SELECT purchase_price, created_at FROM set_acquisitions
+         SELECT ${kaufpreisIn('purchase_price', '$3')} AS purchase_price, created_at FROM set_acquisitions
           WHERE user_id = s.user_id AND set_number = s.set_number
           ORDER BY created_at ASC, id ASC LIMIT 1
        ) a ON true
@@ -90,7 +96,7 @@ export async function getSetPriceHistory(uid: number | number[], setNumber: stri
       -- Bei mehreren Besitzern im Haushalt zählt die ÄLTESTE Erfassung —
       -- derselbe Massstab wie innerhalb eines Kontos.
       ORDER BY COALESCE(a.created_at, s.added_at) ASC LIMIT 1`,
-    [uids, setNumber]
+    [uids, setNumber, currency]
   );
 
   const hasCost = set?.purchase_price != null;   // 0 zählt als erfasst
@@ -120,11 +126,7 @@ export async function getSetPriceHistory(uid: number | number[], setNumber: stri
   const baselinePrice = hasCost ? purchasePrice : firstHistPrice;
   const baselineHas   = hasCost || firstHistPrice > 0;
   const currentPrice  = parseFloat(String((condition === 'U' ? current.U : current.N)?.avg_price || 0));
-  // Kaufpreis 0 gegen eine sehr kleine Zahl rechnen, sonst wäre die Steigerung
-  // nicht berechenbar.
-  const pnlPct = (baselineHas && currentPrice > 0)
-    ? ((currentPrice - baselinePrice) / Math.max(baselinePrice, 0.01) * 100).toFixed(1)
-    : null;
+  const pnlPct = baselineHas ? entwicklungProzent(baselinePrice, currentPrice)?.toFixed(1) ?? null : null;
 
   // Marktpreis und Entwicklung JE ZUSTAND
   // Eine Zeile erscheint nur, wenn für diesen Zustand auch eine Erfassung
@@ -132,16 +134,14 @@ export async function getSetPriceHistory(uid: number | number[], setNumber: stri
   // Prozentangabe daneben wäre gegen nichts gerechnet.
   // Ausführlich: docs/begruendungen/utils/priceHistory.ts.md#getsetpricehistory-acqbycond
   const acqByCond = await db.all(
-    `SELECT condition,
-            SUM(purchase_price * quantity) FILTER (WHERE purchase_price IS NOT NULL AND ${inKontowaehrung('set_acquisitions')})::numeric
-              / NULLIF(SUM(quantity) FILTER (WHERE purchase_price IS NOT NULL AND ${inKontowaehrung('set_acquisitions')}), 0) AS avg_purchase,
-            SUM(quantity) AS qty
-       FROM set_acquisitions ${kontowaehrungJoin('set_acquisitions')}
-      -- Über ALLE Haushalts-Besitzer verdichtet — dieselbe Mengengewichtung,
-      -- die auch die Bewertung im Haushalt anwendet.
-      WHERE set_acquisitions.user_id = ANY($1) AND set_number=$2
+    `SELECT condition, ${mittelUeber('k')} AS avg_purchase, SUM(quantity) AS qty
+       FROM (SELECT condition, quantity, ${kaufpreisIn('purchase_price', '$3')} AS k
+               FROM set_acquisitions
+              -- Über ALLE Haushalts-Besitzer verdichtet — dieselbe Mengengewichtung,
+              -- die auch die Bewertung im Haushalt anwendet.
+              WHERE user_id = ANY($1) AND set_number = $2) e
       GROUP BY condition`,
-    [uids, setNumber]
+    [uids, setNumber, currency]
   );
 
   const byCondition: Record<string, any> = {};
@@ -149,15 +149,13 @@ export async function getSetPriceHistory(uid: number | number[], setNumber: stri
     const acq = acqByCond.find((r: any) => (r.condition || 'N') === cond);
     if (!acq) continue;                       // kein Kaufpreis-Eintrag → keine Zeile
     const market = parseFloat(String((cond === 'N' ? current.N : current.U)?.avg_price || 0)) || null;
-    const base   = parseFloat(String(acq.avg_purchase || 0));
+    // null = kein Kaufpreis erfasst, 0 = Geschenk; beides ohne Prozentangabe.
+    const base   = acq.avg_purchase == null ? null : parseFloat(String(acq.avg_purchase));
+    const e = entwicklungProzent(base, market);
     byCondition[cond] = {
       market_price: market,
-      purchase_price: base > 0 ? base : null,
-      // Ohne Kaufpreis oder ohne Marktpreis keine Prozentangabe — eine Zahl
-      // gegen 0 gerechnet wäre bedeutungslos.
-      pnl_pct: (base > 0 && market)
-        ? parseFloat(((market - base) / base * 100).toFixed(1))
-        : null,
+      purchase_price: base,
+      pnl_pct: e == null ? null : parseFloat(e.toFixed(1)),
     };
   }
 
@@ -224,13 +222,12 @@ export async function conditionRows(
   // Eigener Schlüssel: Erfassungen tragen die Rebrickable-Nummer, der Cache
   // oben die BrickLink-Nummer.
   const acqRows = await db.all(
-    `SELECT condition,
-            SUM(unit_price * quantity) FILTER (WHERE unit_price IS NOT NULL AND ${inKontowaehrung(acqTable)})::numeric
-              / NULLIF(SUM(quantity) FILTER (WHERE unit_price IS NOT NULL AND ${inKontowaehrung(acqTable)}), 0) AS avg_purchase
-       FROM ${acqTable} ${kontowaehrungJoin(acqTable)}
-      WHERE ${acqKeySql} AND ${acqTable}.user_id = ANY($${acqKeyVals.length + 1})
+    `SELECT condition, ${mittelUeber('k')} AS avg_purchase
+       FROM (SELECT condition, quantity, ${kaufpreisIn('unit_price', `$${acqKeyVals.length + 2}`)} AS k
+               FROM ${acqTable}
+              WHERE ${acqKeySql} AND user_id = ANY($${acqKeyVals.length + 1})) e
       GROUP BY condition`,
-    [...acqKeyVals, uids]
+    [...acqKeyVals, uids, currency]
   );
 
   const out: Record<string, any> = {};
@@ -238,11 +235,12 @@ export async function conditionRows(
     const acq = acqRows.find((r: any) => (r.condition || 'N') === cond);
     if (!acq) continue;                       // kein Kaufpreis-Eintrag → keine Zeile
     const market = parseFloat(String(cacheRows.find((r: any) => r.condition === cond)?.avg_price || 0)) || null;
-    const base   = parseFloat(String(acq.avg_purchase || 0));
+    const base   = acq.avg_purchase == null ? null : parseFloat(String(acq.avg_purchase));
+    const e = entwicklungProzent(base, market);
     out[cond] = {
       market_price: market,
-      purchase_price: base > 0 ? base : null,
-      pnl_pct: (base > 0 && market) ? parseFloat(((market - base) / base * 100).toFixed(1)) : null,
+      purchase_price: base,
+      pnl_pct: e == null ? null : parseFloat(e.toFixed(1)),
     };
   }
   return out;
@@ -319,9 +317,8 @@ async function preisNummernFuerFigur(_uid: number | number[], figNumber: string)
  * @returns Anzahl entfernter Zeilen
  */
 async function purgeAltePreise(): Promise<number> {
-  const roh = process.env.PRICE_HISTORY_KEEP_DAYS;
-  const tage = roh === undefined ? 1095 : parseInt(roh);
-  if (!Number.isFinite(tage) || tage <= 0) return 0;
+  const tage = konfig().preisverlaufTage;
+  if (tage <= 0) return 0;
   const r = await db.run(
     `DELETE FROM price_history
       WHERE recorded_at < NOW() - ($1 || ' days')::interval`,

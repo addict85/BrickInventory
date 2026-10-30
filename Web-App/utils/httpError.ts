@@ -1,3 +1,4 @@
+import { konfig } from './konfig';
 import { sendeFehler } from './fehlerTexte';
 import { FEHLER, fehlerText, antwortSprache, dateiFehler } from './fehlerTexte';
 import type { FehlerCode } from './fehlerTexte';
@@ -31,7 +32,7 @@ function handleRouteError(res: any, e: any, status?: number, req?: any) {
       error: fehlerText(e.code as FehlerCode, antwortSprache(req), e.vars),
     });
   }
-  const message = (isServerError && process.env.NODE_ENV === 'production')
+  const message = (isServerError && konfig().produktion)
     ? 'Interner Serverfehler'
     : (e?.message || 'Unbekannter Fehler');
   res.status(code).json({ success: false, error: message });

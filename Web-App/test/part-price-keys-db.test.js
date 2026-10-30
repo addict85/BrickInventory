@@ -38,6 +38,8 @@ test('Preise stehen unter der BrickLink-Nummer, Erfassungen unter der Rebrickabl
   const ph = _req('utils/priceHistory.js');
   const u = await db.get(
     `INSERT INTO users (username, password_hash) VALUES ('t_'||floor(random()*1e9),'x') RETURNING id`);
+  // Kontowährung wie die abgefragte: Eine andere würde umgerechnet (Migration 0077).
+  await db.run(`INSERT INTO user_settings (user_id, key, value) VALUES ($1, 'currency', 'CHF')`, [u.id]);
 
   // Marcos Lage nachgebaut: Die BrickLink-Nummer weicht ab, die Farbe auch.
   // Die Zuordnung steht seit Migration 0037 in bl_zuordnung (art, rb_id, bl_id).

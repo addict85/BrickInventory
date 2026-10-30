@@ -110,7 +110,8 @@ test('stille Faenge werden weniger, nie mehr', () => {
   // ueber meldeUndWeiter. Die Schranke zieht nach, wie die Regel es vorsieht.
   // 29.10.2026: 41 — die übrigen Fänge melden über logAndContinue/meldeUndWeiter.
   // 30.10.2026: 39 (Schichtumbau: die Routenfänge stehen gemeldet in den Diensten).
-  const SCHRANKE = 39;
+  // 30.10.2026: 36 (Protokoll: Schreibfehler nach app_logs werden gezählt und gemeldet).
+  const SCHRANKE = 36;
   const ist = zaehle(STILLE_FAENGE);
   assert.ok(ist <= SCHRANKE,
     `${ist} stille Faenge, erlaubt sind ${SCHRANKE}. Ein neuer \`catch {}\` ` +
@@ -158,7 +159,7 @@ test('reine Quelltext-Tests werden weniger, nie mehr', () => {
   // (routen-bewacht ging in api-eingang-db auf, das den echten Server fragt).
   // 30.10.2026: 92 — acht Dateien prüfen jetzt Verhalten (Erfassungen, Summen,
   // Mengen-Echo, Preisverlauf, Figurenschätzung, LISTEN/NOTIFY, CSV, Katalogbilder).
-  const SCHRANKE = 92;
+  const SCHRANKE = 91;
   const alle = fs.readdirSync(__dirname).filter(n => n.endsWith('.test.js')).length;
   assert.ok(alle >= 300, `Nur ${alle} Testdateien gefunden — greift die Suche noch?`);
   const ist = reineQuelltextTests();

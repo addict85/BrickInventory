@@ -1,4 +1,7 @@
 /**
+ * @einzeln: schreibt data/<tabelle>.csv.tmp, das die andere CSV-Import-Datei
+ * ebenfalls benutzt; parallel räumte die eine der anderen die Datei weg.
+ *
  * Der tägliche Katalog-Import — geprüft an dem, was andere Verbindungen
  * währenddessen sehen.
  *

@@ -1,7 +1,6 @@
 package ch.brickinventoryapp
 
 import ch.brickinventoryapp.util.WahlVertrauen
-import ch.brickinventoryapp.util.nutzerCaVorgabe
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -21,8 +20,6 @@ import javax.net.ssl.X509ExtendedTrustManager
  *      und „mit Einstellung gelten die Nutzer-CAs, sofort“
  *   B  checkClientTrusted an wahl() statt an system → rot „Client-Prüfungen
  *      bleiben beim System“
- *   C  nutzerCaVorgabe() immer true → rot „eine Neuinstallation beginnt ohne
- *      Nutzer-CAs“
  */
 class ServerVertrauenTest {
 
@@ -74,12 +71,5 @@ class ServerVertrauenTest {
         erlaubt = true
         runCatching { vertrauen.checkClientTrusted(emptyArray(), "RSA", null as Socket?) }
         assertEquals(listOf("system:client"), log)
-    }
-
-    @Test
-    fun `eine Neuinstallation beginnt ohne Nutzer-CAs, ein https-Altbestand behaelt sie`() {
-        assertFalse(nutzerCaVorgabe(""))
-        assertFalse(nutzerCaVorgabe("http://nas:3000"))
-        assertTrue(nutzerCaVorgabe(" HTTPS://brick.example.org"))
     }
 }

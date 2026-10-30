@@ -6,6 +6,7 @@ import { downloadFile, scrapeInstructions, sleep, httpsGetRobust } from '../clie
 import * as brickset from '../clients/brickset';
 import { meldeUndWeiter, fehlertext, logAndContinue, meldeUndLiefere } from './httpError';
 import { mitVersion, ohneVersion } from './setNummer';
+import { pfadSegment } from './fremdeAdressen';
 
 /**
  * Bauanleitungen beschaffen: Rebrickable → Brickset → BrickLink-Designer →
@@ -77,6 +78,21 @@ export function anleitungenZusammenlegen(geteilt: any[], eigene: any[]): any[] {
   ];
 }
 
+/**
+ * Darf ein Konto die geteilten Anleitungen dieses Sets jetzt neu laden?
+ * Einmal je Set und Tag für alle zusammen: Das Neuladen löscht die Anleitung
+ * für alle und kostet Kontingent der Quellen. In EINER Anweisung, damit zwei
+ * gleichzeitige Anfragen nicht beide durchkommen.
+ */
+export async function anleitungNeuLadenErlaubt(setNumber: string): Promise<boolean> {
+  const z = await db.get(
+    `INSERT INTO rate_limit_attempts (key, count, first_at, last_at) VALUES ($1, 1, NOW(), NOW())
+     ON CONFLICT (key) DO UPDATE SET count = 1, first_at = NOW(), last_at = NOW()
+       WHERE rate_limit_attempts.first_at < NOW() - INTERVAL '1 day'
+     RETURNING key`, [`anleitung-neu|${mitVersion(setNumber)}`]);
+  return !!z;
+}
+
 /** Alle Anleitungen eines Sets entfernen (vor dem Neuholen). */
 export async function loescheAnleitungen(setNumber: string) {
   return db.run('DELETE FROM shared_instructions WHERE set_number = $1', [mitVersion(setNumber)]);
@@ -88,7 +104,7 @@ export async function loescheAnleitungen(setNumber: string) {
  * @returns null, wenn dort nichts liegt
  */
 async function brickinstructionsFund(n: string) {
-  const baseNum = ohneVersion(n);
+  const baseNum = pfadSegment(ohneVersion(n));
   const folder  = String(Math.floor(parseInt(baseNum) / 1000) * 1000).padStart(5, '0');
   const baseUrl = `https://lego.brickinstructions.com/instructions/${folder}/${baseNum}`;
   const pageUrl = `https://lego.brickinstructions.com/lego_instructions/set/${baseNum}/`;
@@ -174,7 +190,7 @@ async function downloadSetInstructions(setNumber: string,
   if (!instrList.length && bricksetSucceededEmpty) {
     try {
       const baseNum  = ohneVersion(n);
-      const bdpUrl   = `https://bdpinstructions.s3.amazonaws.com/${baseNum}.pdf`;
+      const bdpUrl   = `https://bdpinstructions.s3.amazonaws.com/${pfadSegment(baseNum)}.pdf`;
       const safeBase = n.replace(/[^a-z0-9-]/gi, '_');
       const pdfName  = `${safeBase}_bdp.pdf`;
       const instrDir = INSTRUCTIONS_DIR;

@@ -181,6 +181,15 @@ junit                       = "4.13.2"
 # org.json steckt in android.jar nur als Attrappe — siehe Kommentar bei
 # testImplementation(libs.json) in app/build.gradle.kts.
 orgJson                     = "20260814"
+# Oberflächentests auf der JVM: Robolectric stellt Android, Roborazzi macht die
+# Bildschirmfotos. Beide liegen auf Maven Central (4.17 bzw. 1.77.0, gelesen am
+# 30.10.2026 aus maven-metadata.xml).
+robolectric                 = "4.17"
+roborazzi                   = "1.77.0"
+androidxTestJunit           = "1.3.0"
+# Startbildschirm-Widget. 1.2.0 ist laut tools/fassungen-pruefen.py (CI-Lauf
+# 41095331814) die neueste stabile.
+glance                      = "1.2.0"
 # Testabhängigkeiten (Nachtrag 117). Bis dahin war JUnit die EINZIGE, weshalb
 # 41 von 47 Testdateien Quelltext lesen mussten statt Verhalten auszuführen.
 # coroutinesTest folgt bewusst der coroutines-Version — die beiden müssen
@@ -231,6 +240,16 @@ camerax-view                        = { group = "androidx.camera",            na
 mlkit-barcode                       = { group = "com.google.android.gms",     name = "play-services-mlkit-barcode-scanning", version.ref = "mlkitBarcode" }
 mlkit-textrec                       = { group = "com.google.mlkit",           name = "text-recognition",                     version.ref = "mlkitTextRec" }
 accompanist-permissions             = { group = "com.google.accompanist",     name = "accompanist-permissions",           version.ref = "accompanistPermissions" }
+robolectric                         = { group = "org.robolectric",            name = "robolectric",                       version.ref = "robolectric" }
+roborazzi                           = { group = "io.github.takahirom.roborazzi", name = "roborazzi",                    version.ref = "roborazzi" }
+roborazzi-compose                   = { group = "io.github.takahirom.roborazzi", name = "roborazzi-compose",            version.ref = "roborazzi" }
+roborazzi-junit-rule                = { group = "io.github.takahirom.roborazzi", name = "roborazzi-junit-rule",         version.ref = "roborazzi" }
+androidx-test-ext-junit             = { group = "androidx.test.ext",          name = "junit",                             version.ref = "androidxTestJunit" }
+androidx-ui-test-junit4             = { group = "androidx.compose.ui",        name = "ui-test-junit4" }
+androidx-ui-test-junit4-accessibility = { group = "androidx.compose.ui",      name = "ui-test-junit4-accessibility" }
+androidx-ui-test-manifest           = { group = "androidx.compose.ui",        name = "ui-test-manifest" }
+glance-appwidget                    = { group = "androidx.glance",            name = "glance-appwidget",                  version.ref = "glance" }
+glance-material3                    = { group = "androidx.glance",            name = "glance-material3",                  version.ref = "glance" }
 
 [plugins]
 android-application     = { id = "com.android.application",                    version.ref = "agp" }
@@ -238,3 +257,4 @@ kotlin-compose          = { id = "org.jetbrains.kotlin.plugin.compose",        v
 hilt                    = { id = "com.google.dagger.hilt.android",             version.ref = "hilt" }
 kotlin-serialization    = { id = "org.jetbrains.kotlin.plugin.serialization",  version.ref = "kotlin" }
 ksp                     = { id = "com.google.devtools.ksp",                    version.ref = "ksp" }
+roborazzi               = { id = "io.github.takahirom.roborazzi",             version.ref = "roborazzi" }

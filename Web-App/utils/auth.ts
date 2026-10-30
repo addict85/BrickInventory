@@ -3,6 +3,7 @@
  * Ausführlich: docs/begruendungen/utils/auth.ts.md#abschnitt
  */
 
+import { konfig } from './konfig';
 import * as db from '../db/database';
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
@@ -684,16 +685,7 @@ async function revokeAllTokens(userId: number): Promise<void> {
  * 0 schaltet die Regel ab (dann gilt wieder: unbegrenzt).
  * Ausführlich: docs/begruendungen/utils/auth.ts.md#token-idle-days
  */
-const TOKEN_IDLE_DAYS = (() => {
-  const roh = process.env.TOKEN_IDLE_DAYS;
-  if (roh === undefined || roh === '') return 90;
-  const n = parseInt(roh, 10);
-  if (!Number.isFinite(n) || n < 0) {
-    console.warn(`[auth] TOKEN_IDLE_DAYS="${roh}" ist keine gültige Tageszahl — es gelten 90 Tage.`);
-    return 90;
-  }
-  return n;
-})();
+const TOKEN_IDLE_DAYS = konfig().tokenLeerlaufTage;
 
 /**
  * Tokens aufräumen: abgelaufene, und solche, die zu lange ungenutzt sind.

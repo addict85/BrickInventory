@@ -27,8 +27,6 @@ data class PriceHistoryPoint(
     @SerialName("avg_price") val avgPrice: Double? = null,
     @SerialName("min_price") val minPrice: Double? = null,
     @SerialName("max_price") val maxPrice: Double? = null,
-    /** Nur beim vorangestellten Kaufpreis gesetzt (Server: is_purchase_price). */
-    @SerialName("is_purchase_price") val isPurchasePrice: Boolean = false,
 )
 
 /** Ein Punkt der fertigen Diagrammdaten des Servers (utils/chartData.ts). */
@@ -97,21 +95,17 @@ data class CurrentByCondition(
 
 /**
  * Antwort von /api/v1/sets/:setNumber/price-history: beide Zustände getrennt
- * (history_new/history_used), fertige Diagrammdaten (`chart`), aktuelle Preise
- * (`current`) und Marktpreis/Entwicklung je Zustand (`by_condition`). Die x-Achse
+ * (history_new/history_used), fertige Diagrammdaten (`chart`) und
+ * Marktpreis/Entwicklung je Zustand (`by_condition`). Die x-Achse
  * rechnet der Server (utils/chartData.ts), damit nicht jeder Client seine eigene
  * hat.
  */
 @Serializable
 data class PriceHistoryResponse(
     val success: Boolean,
-    @SerialName("set_number") val setNumber: String = "",
     val currency: String = "",
-    /** Zustand des Bestandes ('N'/'U') — worauf sich pnl_pct bezieht. */
-    val condition: String = "N",
     @SerialName("history_new")  val historyNew: List<PriceHistoryPoint> = emptyList(),
     @SerialName("history_used") val historyUsed: List<PriceHistoryPoint> = emptyList(),
-    val current: CurrentByCondition = CurrentByCondition(),
     @SerialName("by_condition") val byCondition: PriceByCondition = PriceByCondition(),
     val chart: PriceChartData = PriceChartData(),
     @SerialName("pnl_pct") val pnlPct: String? = null,
@@ -158,7 +152,7 @@ data class PartValuationItem(
      */
     @SerialName("user_id") val userId: Int? = null,
     /** Besitzer im Haushalt — siehe SetItem.owners. */
-    val owners: List<HouseholdMember> = emptyList(),
+    val owners: List<KontoName> = emptyList(),
     /**
      * Eine Zeile je Kaufpreis — dieselbe Form wie bei Sets. Leer, solange
      * es keine Erfassungen gibt (Altbestand); dann bleibt es bei der
@@ -239,7 +233,7 @@ data class FigValuationItem(
      */
     @SerialName("user_id") val userId: Int? = null,
     /** Besitzer im Haushalt — siehe SetItem.owners. */
-    val owners: List<HouseholdMember> = emptyList(),
+    val owners: List<KontoName> = emptyList(),
     /**
      * Eine Zeile je Kaufpreis — dieselbe Form wie bei Sets. Leer, solange
      * es keine Erfassungen gibt (Altbestand); dann bleibt es bei der

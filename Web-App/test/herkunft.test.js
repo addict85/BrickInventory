@@ -8,6 +8,13 @@
  *      „eine Nachbar-Subdomain"
  *   B  die Cookie-Bedingung an der Bearer-Ausnahme entfernt → rot: „ein
  *      Bearer-Kopf neben dem Sitzungs-Cookie schaltet nichts ab"
+ * Gegenproben (am 30.10. gemessen):
+ *   C  Origin/Referer nicht geprüft (Zweig entfernt) → rot: „ein alter
+ *      Browser ohne Sec-Fetch-Site, von einer fremden Seite"
+ *   D  ohne Kopf immer durchgelassen → rot: „eine Cookie-Sitzung ohne jede
+ *      Herkunftsangabe"
+ *   E  Host-Vergleich durch `startsWith` ersetzt → rot: „ein Host, der nur
+ *      so anfängt wie der eigene"
  */
 const test   = require('node:test');
 const assert = require('node:assert/strict');
@@ -37,8 +44,36 @@ test('Herkunft schreibender Anfragen', async (t) => {
     assert.equal(await ruf('POST', { 'sec-fetch-site': 'same-origin' }), 200);
     assert.equal(await ruf('POST', { 'sec-fetch-site': 'none' }), 200, 'vom Nutzer selbst eingegeben');
   });
-  await t.test('ohne Kopf: App, Skripte, alte Browser', async () => {
+  await t.test('ohne Kopf und ohne Sitzung: App, Skripte', async () => {
     assert.equal(await ruf('POST'), 200);
+    assert.equal(await ruf('POST', { authorization: 'Bearer abc' }), 200);
+  });
+  const eigen = () => `http://127.0.0.1:${srv.address().port}`;
+  const SITZUNG = { cookie: 'connect.sid=s%3Aabc' };
+  await t.test('eine Cookie-Sitzung ohne jede Herkunftsangabe', async () => {
+    assert.equal(await ruf('POST', SITZUNG), 403);
+    assert.equal(await ruf('DELETE', SITZUNG), 403);
+    assert.equal(await ruf('GET', SITZUNG), 200, 'lesend bleibt erlaubt');
+  });
+  await t.test('ein alter Browser ohne Sec-Fetch-Site, von einer fremden Seite', async () => {
+    assert.equal(await ruf('POST', { ...SITZUNG, origin: 'https://boese.example' }), 403);
+    assert.equal(await ruf('POST', { ...SITZUNG, origin: 'null' }), 403, 'Origin „null" (Sandbox, Datei)');
+    assert.equal(await ruf('POST', { ...SITZUNG, referer: 'https://boese.example/seite' }), 403);
+    assert.equal(await ruf('POST', { origin: 'https://boese.example' }), 403, 'auch ohne Sitzung (Anmelde-CSRF)');
+  });
+  await t.test('ein Host, der nur so anfängt wie der eigene', async () => {
+    process.env.APP_BASE_URL = 'https://lego.example.org';
+    try {
+      assert.equal(await ruf('POST', { ...SITZUNG, origin: 'https://lego.example.org.boese.example' }), 403);
+      assert.equal(await ruf('POST', { ...SITZUNG, referer: 'https://lego.example.org.boese.example/' }), 403);
+    } finally { delete process.env.APP_BASE_URL; }
+  });
+  await t.test('ein alter Browser von der eigenen Seite', async () => {
+    assert.equal(await ruf('POST', { ...SITZUNG, origin: eigen() }), 200);
+    assert.equal(await ruf('POST', { ...SITZUNG, referer: `${eigen()}/#/sets` }), 200);
+    process.env.APP_BASE_URL = 'https://lego.example.org';
+    try { assert.equal(await ruf('POST', { ...SITZUNG, origin: 'https://lego.example.org' }), 200, 'APP_BASE_URL'); }
+    finally { delete process.env.APP_BASE_URL; }
   });
   await t.test('lesend und mit Token', async () => {
     assert.equal(await ruf('GET', { 'sec-fetch-site': 'cross-site' }), 200);

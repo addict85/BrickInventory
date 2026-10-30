@@ -39,9 +39,10 @@ object NetzModule {
         prefs: PreferencesManager,
         sessionExpired: ch.brickinventoryapp.data.SessionExpiredSignal,
         meldungen: ch.brickinventoryapp.data.MeldungsKanal,
+        frage: ch.brickinventoryapp.util.ZertifikatsFrage,
     ): OkHttpClient =
         buildInterceptorClient(prefs, isApiClient = true, sessionExpired = sessionExpired, ctx = context,
-            meldungen = meldungen)
+            meldungen = meldungen, frage = frage)
 
     /**
      * Der Client für die Selbstaktualisierung — bewusst blank: Server, Bearer-Token
@@ -96,8 +97,9 @@ object NetzModule {
         prefs: PreferencesManager,
         sessionExpired: ch.brickinventoryapp.data.SessionExpiredSignal,
         vorschau: ch.brickinventoryapp.data.cache.VorschauSpeicher,
+        frage: ch.brickinventoryapp.util.ZertifikatsFrage,
     ): OkHttpClient =
-        buildInterceptorClient(prefs, isApiClient = false, sessionExpired = sessionExpired, ctx = context)
+        buildInterceptorClient(prefs, isApiClient = false, sessionExpired = sessionExpired, ctx = context, frage = frage)
             .newBuilder()
             // ── Dauerhafte Ablage der Vorschaubilder ──
             //
@@ -259,9 +261,10 @@ object NetzModule {
     fun provideSseOkHttpClient(
         @dagger.hilt.android.qualifiers.ApplicationContext context: android.content.Context,
         prefs: PreferencesManager,
-        sessionExpired: ch.brickinventoryapp.data.SessionExpiredSignal
+        sessionExpired: ch.brickinventoryapp.data.SessionExpiredSignal,
+        frage: ch.brickinventoryapp.util.ZertifikatsFrage,
     ): OkHttpClient =
-        buildInterceptorClient(prefs, isApiClient = true, sessionExpired = sessionExpired, ctx = context)
+        buildInterceptorClient(prefs, isApiClient = true, sessionExpired = sessionExpired, ctx = context, frage = frage)
             .newBuilder()
             .readTimeout(0, TimeUnit.SECONDS)
             .pingInterval(20, TimeUnit.SECONDS)

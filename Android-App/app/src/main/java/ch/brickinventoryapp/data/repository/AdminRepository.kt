@@ -35,10 +35,14 @@ class AdminRepository @Inject constructor(
      * `zweiter_faktor: true`. Das wird hier zu einer gewöhnlichen Antwort mit
      * success=false umgebogen (wie GutscheineRepository.guthaben), sonst gingen
      * Kennzeichen und Satz in safeCall verloren.
+     *
+     * Einen Token ohne Ablauf nur über https: Im Klartext kann ihn jeder im WLAN
+     * mitlesen, und dann soll er wenigstens verfallen.
      */
     suspend fun login(serverUrl: String, username: String, password: String, code: String? = null): Result<LoginResponse> =
         safeCall {
-            val antwort = api.login(LoginRequest(username, password, code = code))
+            val antwort = api.login(LoginRequest(username, password, code = code,
+                neverExpires = ch.brickinventoryapp.util.NetworkPolicy.istHttps(serverUrl)))
             if (antwort.code() == 401) {
                 val geparst = antwort.errorBody()?.string()?.let {
                     runCatching { nachsichtigesJson.decodeFromString<LoginResponse>(it) }.getOrNull()

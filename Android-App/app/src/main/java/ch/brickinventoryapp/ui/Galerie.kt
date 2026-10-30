@@ -150,17 +150,12 @@ internal class Galerie(
 }
 
 /** Was die Galerie zeigt, wenn noch keine Kachel da ist — oder eben die Liste. */
-enum class GalerieAnzeige { LISTE, LAEDT, FEHLER, KEINE_TREFFER, LEER }
+typealias GalerieAnzeige = Ladeanzeige
 
 /**
  * Ein Ladefehler und eine leere Sammlung verlangen Verschiedenes: das eine
  * „Erneut versuchen", das andere „Set erfassen". Geladene Sets gehen vor —
  * ein gescheitertes Neuladen lässt die alte Liste stehen.
  */
-fun galerieAnzeige(g: GalleryUiState, gefiltert: Boolean): GalerieAnzeige = when {
-    g.sets.isNotEmpty() -> GalerieAnzeige.LISTE
-    g.galleryLoading -> GalerieAnzeige.LAEDT
-    g.galleryFehler != null -> GalerieAnzeige.FEHLER
-    gefiltert -> GalerieAnzeige.KEINE_TREFFER
-    else -> GalerieAnzeige.LEER
-}
+fun galerieAnzeige(g: GalleryUiState, gefiltert: Boolean): GalerieAnzeige =
+    ladeanzeige(g.sets.isNotEmpty(), g.galleryLoading, g.galleryFehler, gefiltert)

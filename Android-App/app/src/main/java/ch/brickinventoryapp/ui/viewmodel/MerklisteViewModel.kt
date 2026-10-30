@@ -67,7 +67,7 @@ class MerklisteViewModel @Inject constructor(
     fun ladeMerkliste() {
         viewModelScope.launch {
             val f = _merklisteState.value
-            _merklisteState.update { it.copy(laedt = true) }
+            _merklisteState.update { it.copy(laedt = true, fehler = null) }
             val r = sets.getMerkliste(
                 search    = f.query.trim().ifBlank { null },
                 condition = f.zustandFilter.ifBlank { null },
@@ -78,7 +78,7 @@ class MerklisteViewModel @Inject constructor(
                 is Result.Success ->
                     _merklisteState.update { it.copy(merkposten = r.data.merkposten, laedt = false) }
                 is Result.Error -> {
-                    _merklisteState.update { it.copy(laedt = false) }
+                    _merklisteState.update { it.copy(laedt = false, fehler = meldung(r)) }
                     _snackbar.value = meldungFuerSnackbar(r)?.let { text(R.string.vm_error, it) }
                 }
             }

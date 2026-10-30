@@ -44,11 +44,11 @@ class GutscheinViewModel @Inject constructor(
     }
 
     private suspend fun lade() {
-        _state.update { it.copy(laedt = true) }
+        _state.update { it.copy(laedt = true, fehler = null) }
         when (val r = repo.liste()) {
             is Result.Success -> _state.update { it.copy(gutscheine = r.data.vouchers, laedt = false) }
             is Result.Error -> {
-                _state.update { it.copy(laedt = false) }
+                _state.update { it.copy(laedt = false, fehler = texte.meldung(r)) }
                 _snackbar.value = texte.meldungFuerSnackbar(r)
             }
         }

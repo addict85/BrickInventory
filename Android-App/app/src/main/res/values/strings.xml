@@ -128,7 +128,6 @@
     <string name="gallery_empty_hint">Add your first set by its number or scan the barcode on the box.</string>
     <string name="gallery_add_first">Add your first set</string>
     <string name="gallery_load_failed">Your collection could not be loaded</string>
-    <string name="gallery_retry">Try again</string>
     <string name="gallery_refresh">Refresh</string>
     <string name="gallery_no_results">No results for “%1$s”</string>
     <string name="gallery_quantity_badge">×%1$d</string>
@@ -839,4 +838,30 @@
         <item quantity="other">Set up · %d recovery codes left</item>
     </plurals>
     <string name="acq_preis_geschaetzt">Estimated: market price, not the amount paid</string>
+    <string name="setup_qr_pin">The code also names the server\'s certificate. The app will accept only that one.</string>
+    <string name="setup_klartext_gesperrt">Unencrypted connections (http) are switched off. Use https, or turn on the expert switch below.</string>
+    <string name="klartext_experte_titel">Expert: allow unencrypted connections (http)</string>
+    <string name="klartext_experte_warnung">Only for a server in your home network without https. Anyone on the same Wi-Fi can read your access token and use your account. The app then never asks for an access without expiry.</string>
+    <string name="settings_systemfarben">System colours (Material You)</string>
+    <string name="settings_systemfarben_hint">Colours from your wallpaper instead of the design\'s colours. Shapes and fonts stay.</string>
+    <string name="zert_titel_erstkontakt">Trust this server?</string>
+    <string name="zert_titel_unbekannt">Unknown certificate</string>
+    <string name="zert_titel_geaendert">The server\'s certificate has changed</string>
+    <string name="zert_text_erstkontakt">This is the first encrypted connection to %1$s. Compare the fingerprint with the one the server shows (web app, settings). Afterwards the app accepts only this certificate.</string>
+    <string name="zert_text_unbekannt">The certificate of %1$s was not issued by a known authority – it is self-issued or comes from your own authority. That is normal for a server at home, but it could also be someone in between. Only trust it if the fingerprint matches the one the server shows.</string>
+    <string name="zert_text_geaendert">%1$s shows a different certificate than the one you confirmed. That happens when the server gets a new key – or when someone is listening in between. Nothing has been sent. Only accept it if you changed the server yourself.</string>
+    <string name="zert_fingerabdruck">Fingerprint (SHA-256)</string>
+    <string name="zert_bisher">Previously confirmed</string>
+    <string name="zert_vertrauen">Trust this certificate</string>
+    <string name="zert_vertrauen_neu">Accept the new certificate</string>
+    <string name="zert_nutzer_ca">Use an authority installed on this device instead</string>
+    <string name="common_load_failed">Could not be loaded</string>
+    <string name="common_retry">Try again</string>
+    <string name="common_no_results">Nothing found</string>
+    <string name="common_no_results_hint">Loosen the search or the filter.</string>
+    <string name="widget_titel">Collection</string>
+    <string name="widget_wert">Value</string>
+    <string name="widget_heute">Today</string>
+    <string name="widget_gesamt">Overall</string>
+    <string name="widget_leer">Open the app once to load the figures.</string>
 </resources>

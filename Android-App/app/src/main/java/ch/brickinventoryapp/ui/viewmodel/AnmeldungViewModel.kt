@@ -11,6 +11,7 @@ import ch.brickinventoryapp.ui.AnmeldeFormular
 import ch.brickinventoryapp.ui.AnmeldeUiState
 import ch.brickinventoryapp.ui.qrFehler
 import ch.brickinventoryapp.util.NetworkPolicy
+import ch.brickinventoryapp.util.pinSchluessel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -93,10 +94,17 @@ class AnmeldungViewModel @Inject constructor(
         _anmeldeState.update { it.copy(netzFrage = false) }
     }
 
-    /** Erst nach der Bestätigung im Einrichtungsbildschirm: Die Adresse kommt aus dem Code. */
-    fun loginWithQrToken(serverUrl: String, token: String, klartextBestaetigt: Boolean = false, abmelden: suspend () -> Unit = {}) {
+    /**
+     * Erst nach der Bestätigung im Einrichtungsbildschirm: Die Adresse kommt aus dem
+     * Code. Trägt er einen Fingerabdruck, gilt der Pin schon für die erste Anfrage.
+     */
+    fun loginWithQrToken(
+        serverUrl: String, token: String, klartextBestaetigt: Boolean = false,
+        abmelden: suspend () -> Unit = {}, fingerabdruck: String? = null,
+    ) {
         viewModelScope.launch {
             _anmeldeState.update { it.copy(loginLaeuft = true, loginError = null) }
+            if (fingerabdruck != null) pinSchluessel(serverUrl)?.let { ablage.merkePin(it, fingerabdruck) }
             richteEin(serverUrl, klartextBestaetigt, abmelden)
             when (val r = admin.qrLogin(token)) {
                 is Result.Success ->

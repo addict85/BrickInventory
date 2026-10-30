@@ -8,6 +8,10 @@
  * oder sie steht mit Grund in AUSGELASSEN. Eine neue Route ohne beides macht
  * den Test rot.
  *
+ * Fehlende Felder MIT Standardwert zählen hier nicht (anders als bei den
+ * GET-Routen): GenericResponse und GenericAdminResponse sind Sammeltypen für
+ * Dutzende Routen, jedes ihrer Felder gilt nur für einige.
+ *
  * Die Schritte laufen in einer festen Reihenfolge, weil sie aufeinander
  * aufbauen (anlegen → ändern → löschen) und die Sitzung zwischen drei Konten
  * wechselt (Haushalt einladen und beitreten).
@@ -344,7 +348,8 @@ test('die Schreibantworten passen zu den Kotlin-Modellen', { concurrency: 1, tim
     gelaufen.add(schluessel);
     const typ = typJe.get(schluessel);
     if (typ && modelle.has(typ))
-      abweichungen.push(...pruefe(json, { art: 'klasse', name: typ, nullbar: false }, modelle, schluessel));
+      abweichungen.push(...pruefe(json, { art: 'klasse', name: typ, nullbar: false }, modelle, schluessel,
+        { standardwerte: false }));
     if (s.danach) await s.danach(json);
     dauer.push([Date.now() - start, schluessel]);
   }

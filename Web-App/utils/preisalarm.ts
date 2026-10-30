@@ -41,6 +41,8 @@ export interface Preisalarm {
   ausgeloest: boolean;
   zuletzt_am: string | null;
   zuletzt_preis: number | null;
+  /** Liegt das Set im Blickfeld des Kontos? Daran hängt die Detailansicht. */
+  besitzt: boolean;
 }
 
 /** Die beiden Zustände, die der ganze Baum kennt (N = neu, U = gebraucht). */
@@ -89,13 +91,19 @@ export async function loescheAlarm(userId: number, setNumber: string, condition:
   return r.changes ?? 0;
 }
 
+/**
+ * Liegt das Set im Blickfeld ($3)? Die App macht daran die Zeile anklickbar —
+ * dieselbe Frage wie in alleAlarme(), nur ohne den Join auf das Bild.
+ */
+const BESITZT_SQL = `EXISTS (SELECT 1 FROM sets s WHERE s.user_id = ANY($3) AND s.set_number = a.set_number) AS besitzt`;
+
 /** Die Alarme EINES Kontos zu einem Set (höchstens zwei: N und U). */
 export async function alarmeFuer(userId: number, setNumber: string): Promise<Preisalarm[]> {
   const rows = await db.all(
     `SELECT set_number, condition, richtung, schwelle, currency_code,
-            ausgeloest, zuletzt_am, zuletzt_preis
-       FROM price_alerts WHERE user_id=$1 AND set_number=$2 ORDER BY condition`,
-    [userId, setNumber])
+            ausgeloest, zuletzt_am, zuletzt_preis, ${BESITZT_SQL}
+       FROM price_alerts a WHERE user_id=$1 AND set_number=$2 ORDER BY condition`,
+    [userId, setNumber, await scopeIds(userId)])
     .catch(e => { httpError.meldeUndWeiter('preisalarm:lesen', e); return []; });
   type Zeile = Omit<Preisalarm, 'schwelle' | 'zuletzt_preis'> &
                { schwelle: string | number; zuletzt_preis: string | number | null };
@@ -193,18 +201,18 @@ export async function ausgeloesteSeit(userId: number, seit: unknown) {
 
   const rows = await db.all(
     `SELECT set_number, condition, richtung, schwelle, currency_code,
-            zuletzt_am, zuletzt_preis
-       FROM price_alerts
+            ausgeloest, zuletzt_am, zuletzt_preis, ${BESITZT_SQL}
+       FROM price_alerts a
       WHERE user_id = $1 AND ausgeloest = TRUE
         -- Auch die SPALTE auf Millisekunden: Zeilen, die vor dieser Aenderung
         -- geschrieben wurden, tragen noch Mikrosekunden.
         AND zuletzt_am IS NOT NULL AND date_trunc('milliseconds', zuletzt_am) > $2
       ORDER BY zuletzt_am`,
-    [userId, marke])
+    [userId, marke, await scopeIds(userId)])
     .catch(e => { httpError.meldeUndWeiter('preisalarm:abholen', e); return []; });
 
   type Zeile = { set_number: string; condition: string; richtung: Richtung;
-                 schwelle: string | number; currency_code: string;
+                 schwelle: string | number; currency_code: string; ausgeloest: boolean; besitzt: boolean;
                  zuletzt_am: string; zuletzt_preis: string | number | null };
   return {
     alerts: (rows as Zeile[] || []).map(r => ({

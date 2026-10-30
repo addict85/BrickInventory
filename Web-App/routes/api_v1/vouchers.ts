@@ -6,13 +6,12 @@ import express from 'express';
 import fs from 'fs';
 import path from 'path';
 import multer from 'multer';
-import { DATA_DIR } from '../../utils/appPaths';
-import { handleRouteError } from '../../utils/httpError';
+import { handleRouteError, ohneFehlendeDatei } from '../../utils/httpError';
 import { sendeFehler, fehlerText, antwortSprache, dateiFehler, type FehlerCode } from '../../utils/fehlerTexte';
 import { getGlobalSetting } from '../../utils/settings';
 import { verdecke, landErlaubt, LAND_STANDARD } from '../../utils/gutscheinGuthaben';
 import { frageGuthabenAb, ABSTAND_SEK } from '../../utils/gutscheinGuthabenSchranke';
-import { liefereDatei } from '../../utils/dateiAusliefern';
+import { VOUCHER_DIR, gutscheinDatei, schreibeGutscheinPdf, liesGutscheinPdf } from '../../utils/gutscheinDateien';
 import { requireToken } from './middleware';
 import { werteAusPdf, PdfZuGross } from '../../utils/gutscheinPdf';
 import { verbindeGutscheine, seitenweiseLesen } from '../../utils/gutscheinPdfSchreiben';
@@ -24,9 +23,6 @@ import type { GutscheinZeile } from '../../utils/dienste/gutscheine';
 
 const router = express.Router();
 type AuthedRequest = express.Request & { apiUser: { user_id: number } };
-
-/** Wo die PDFs liegen: data/vouchers/<benutzer-id>/<datei>. */
-const VOUCHER_DIR = path.join(DATA_DIR, 'vouchers');
 
 /**
  * Nur PDF. Anders als bei den Bauanleitungen (PDF/JPG/PNG) gibt es hier
@@ -224,12 +220,11 @@ router.post('/vouchers/pdf', requireToken, upload.single('file'), async (req: Au
     if (!z) return sendeFehler(req, res, 409, 'gutschein_existiert');
 
     const dir = path.join(VOUCHER_DIR, String(req.apiUser.user_id));
-    await fs.promises.mkdir(dir, { recursive: true });
     // Der Dateiname kommt aus der id, NICHT aus dem hochgeladenen Namen: Ein
     // Name vom Klienten ist eine Behauptung und muesste gegen Pfadanteile
     // geprueft werden. Die id ist eine Zahl aus der eigenen Datenbank.
     const datei = `${z.id}.pdf`;
-    await fs.promises.writeFile(path.join(dir, datei), req.file.buffer);
+    await schreibeGutscheinPdf(path.join(dir, datei), req.file.buffer);
     const relPfad = `${req.apiUser.user_id}/${datei}`;
     await gutscheinPdfMerken(req.apiUser.user_id, z.id, relPfad);
 
@@ -265,7 +260,8 @@ router.get('/vouchers/export/pdf', requireToken, async (req: AuthedRequest, res)
         // kein Abbruch: Dann wird die Seite erzeugt. Ein Export, der an einer
         // fehlenden Datei ganz scheitert, nimmt dem Nutzer auch die neunzehn
         // anderen Gutscheine.
-        try { pdf = await fs.promises.readFile(path.join(VOUCHER_DIR, z.pdf_path)); }
+        const datei = gutscheinDatei(uid, z.pdf_path);
+        try { pdf = datei ? await liesGutscheinPdf(datei) : null; }
         catch { pdf = null; }
       }
       gutscheine.push({ id: z.id, number: z.number, pin: z.pin,
@@ -326,24 +322,12 @@ router.delete('/vouchers/:id', requireToken, async (req: AuthedRequest, res) => 
     // Erst die Zeile, dann die Datei: Eine verwaiste Datei ist besser als
     // eine Zeile, die ins Leere zeigt.
     if (pdfPfad) {
-      const p = sicherePdfDatei(req.apiUser.user_id, pdfPfad);
+      const p = gutscheinDatei(req.apiUser.user_id, pdfPfad);
       if (p) await fs.promises.unlink(p).catch(() => { /* schon weg: in Ordnung */ });
     }
     res.json({ success: true });
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
-
-/**
- * Gespeicherter Pfad → Dateipfad, oder null. Auch ein Pfad aus der eigenen
- * Datenbank muss dem Nutzer gehören und unter data/vouchers/ liegen.
- */
-function sicherePdfDatei(userId: number, pdfPath: string): string | null {
-  const basis = path.resolve(VOUCHER_DIR, String(userId));
-  const ziel = path.resolve(VOUCHER_DIR, pdfPath);
-  // `startsWith(basis + sep)` und nicht nur `startsWith(basis)`: Sonst gilt
-  // /data/vouchers/12 als unterhalb von /data/vouchers/1.
-  return ziel.startsWith(basis + path.sep) ? ziel : null;
-}
 
 // ── GET /api/v1/vouchers/:id/pdf — anzeigen oder (?download=1) herunterladen;
 // beides ist dieselbe Datei, nur Content-Disposition unterscheidet sich.
@@ -353,8 +337,9 @@ router.get('/vouchers/:id/pdf', requireToken, async (req: AuthedRequest, res) =>
     if (!Number.isInteger(id)) return sendeFehler(req, res, 400, 'id_ungueltig');
     const zeile = await gutschein(req.apiUser.user_id, id);
     if (!zeile?.pdf_path) return sendeFehler(req, res, 404, 'nicht_gefunden');
-    const datei = sicherePdfDatei(req.apiUser.user_id, zeile.pdf_path);
-    if (!datei) return sendeFehler(req, res, 404, 'nicht_gefunden');
+    const datei = gutscheinDatei(req.apiUser.user_id, zeile.pdf_path);
+    const pdf = datei ? await liesGutscheinPdf(datei).catch(ohneFehlendeDatei('gutschein:pdf lesen', null)) : null;
+    if (!pdf) return sendeFehler(req, res, 404, 'nicht_gefunden');
 
     res.type('application/pdf');
     const alsDownload = String(req.query.download ?? '') === '1';
@@ -365,7 +350,7 @@ router.get('/vouchers/:id/pdf', requireToken, async (req: AuthedRequest, res) =>
     // Ein Gutschein gehoert in keinen Zwischenspeicher, den sich jemand
     // teilt — und auch nicht in den des Browsers, laenger als noetig.
     res.setHeader('Cache-Control', 'private, no-store');
-    liefereDatei(res, datei);
+    res.end(pdf);
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
