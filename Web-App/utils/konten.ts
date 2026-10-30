@@ -145,16 +145,35 @@ export function tokenNachKennung(kennung: string): Promise<{ token: string } | u
       LIMIT 1`, [kennung]);
 }
 
-export interface Zugang { token: string; label: string | null; created_at: Date; last_used: Date | null; hard_expires_at: Date | null; expires_at: Date | null }
+export interface Zugang {
+  token: string; label: string | null; created_at: Date; last_used: Date | null;
+  hard_expires_at: Date | null; expires_at: Date | null; scope: 'app' | 'voll';
+  ip_bereich: string | null; never_expires: boolean; rotiert_am: Date;
+}
 
 /**
- * Die Zugänge (App-Token) eines Kontos. expires_at ist die frühere der beiden
- * Fristen — gleitend und fest —, also der Tag, an dem das Gerät ausgesperrt wird.
+ * Die gültigen Zugänge (Tokens) eines Kontos. expires_at ist die frühere der
+ * beiden Fristen — gleitend und fest —, also der Tag, an dem das Gerät
+ * ausgesperrt wird. Ein getauschter Token in seiner Überlappung zählt nicht
+ * mehr als eigenes Gerät.
  */
 export function zugaengeDesKontos(uid: number): Promise<Zugang[]> {
   return db.all<Zugang>(
-    `SELECT token, label, created_at, last_used, hard_expires_at, LEAST(expires_at, hard_expires_at) AS expires_at
-       FROM api_tokens WHERE user_id = $1 ORDER BY created_at DESC`, [uid]);
+    `SELECT token, label, created_at, last_used, hard_expires_at, LEAST(expires_at, hard_expires_at) AS expires_at,
+            scope, ip_bereich, never_expires, rotiert_am
+       FROM api_tokens
+      WHERE user_id = $1 AND ersetzt_durch IS NULL
+        AND (expires_at IS NULL OR expires_at > NOW())
+        AND (hard_expires_at IS NULL OR hard_expires_at > NOW())
+      ORDER BY created_at DESC`, [uid]);
+}
+
+/** Scope und Fristen eines Tokens nach seinem Hash — für die Antworten an die App. */
+export function tokenStand(hash: string): Promise<{ scope: 'app' | 'voll'; expires_at: Date | null;
+    hard_expires_at: Date | null; never_expires: boolean; rotiert_am: Date } | undefined> {
+  return db.get(
+    `SELECT scope, LEAST(expires_at, hard_expires_at) AS expires_at, hard_expires_at, never_expires, rotiert_am
+       FROM api_tokens WHERE token = $1`, [hash]);
 }
 
 /** Zugänge entwerten, deren Kennung mit `praefix` beginnt (LIKE-sicher übergeben). */

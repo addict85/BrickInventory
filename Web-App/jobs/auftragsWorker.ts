@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto';
 import {
   AUFTRAG_KANAL, belegeAuftrag, erledigt, fehlgeschlagen, gibZurueck, lebenszeichen,
-  raeumeErledigteAuf, type AuftragsArt, type AuftragsZeile,
+  raeumeErledigteAuf, imNamenDesAuftrags, type AuftragsArt, type AuftragsZeile,
 } from '../utils/auftraege';
 import { listen, unlisten } from '../utils/pgNotify';
 import { fehlertext, logAndContinue } from '../utils/httpError';
@@ -59,7 +59,7 @@ function erzeugeWorker(bearbeiter: Bearbeitertabelle, o: WorkerOptionen = {}) {
       // Mehr Versuche als erlaubt heisst: Die früheren endeten ohne Rückmeldung
       // (Absturz mittendrin). Ein weiterer Lauf stürzte vermutlich genauso ab.
       if (!b || a.versuche > a.max_versuche) throw new Error(b ? 'ohne Rückmeldung abgebrochen' : `keine Bearbeitung für ${a.art}`);
-      await b.ausfuehren(a.nutzlast, k, a);
+      await imNamenDesAuftrags(a, () => b.ausfuehren(a.nutzlast, k, a));
       await erledigt(a);
     } catch (e) {
       if (e instanceof AuftragUnterbrochen) { await gibZurueck(a); return; }

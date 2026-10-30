@@ -13,24 +13,39 @@ Vollständige Node.js Webapp zur Verwaltung deiner Klemmbaustein-Sammlung.
 ## Docker (empfohlen)
 
 ```bash
-# Starten — alle Standardwerte sind im Dockerfile gesetzt
+cp .env.example .env    # SESSION_SECRET, DB_PASSWORD und BRICK_HOST eintragen
 docker compose up -d --build
-# → http://localhost:3000
-# Login: admin / admin
+# → https://<BRICK_HOST>   (Port 80 leitet auf HTTPS um)
 ```
 
-Einzige Pflicht-Anpassung: `SESSION_SECRET` in `compose.yaml` setzen:
-```yaml
-environment:
-  SESSION_SECRET: hier-langen-zufalls-string-eintragen
-```
+Pflicht in `.env`: `SESSION_SECRET`, `DB_PASSWORD` und `BRICK_HOST` — der
+Name oder die IP-Adresse, unter der Geräte den Server erreichen.
 
-### Ports / Pfade anpassen
-Alles direkt in `compose.yaml` editieren — kein separates `.env` nötig.
+### HTTPS mit eigener CA (Caddy)
+
+Vor der App steht Caddy (`compose.yaml`, `Caddyfile`). Er macht TLS mit einer
+eigenen, lokalen CA (`tls internal`) für `BRICK_HOST` und leitet an die App
+weiter; die App selbst veröffentlicht keinen Port mehr. Die CA liegt unter
+`./caddy/data/` — mitsichern.
+
+Damit Browser und Telefone dem Zertifikat vertrauen, kommt das
+**Wurzelzertifikat** einmal auf jedes Gerät: Es liegt unter
+`https://<BRICK_HOST>/ca.crt` (auch über `http://`, ohne Umleitung). Der
+Fingerabdruck steht in den Einstellungen unter „Sicherheit“ zum Abgleich; die
+Android-App braucht das nicht, sie bekommt ihn über den QR-Code. Schritt für
+Schritt: `UPGRADE.md`, Abschnitt 14.
+
+### Ohne HTTPS (bewusste Ausnahme)
+
+Wer ohne TLS betreiben will (etwa zum Ausprobieren auf `localhost`), nimmt in
+`compose.yaml` beim Dienst `app` die Zeilen `ports:` ein und setzt in `.env`
+`COOKIE_SECURE=0` und `APP_BASE_URL=http://…`. Passwort, Sitzung und App-Token
+gehen dann lesbar durchs Netz; „Unbegrenzt“ beim QR-Code und Passkeys gibt es
+dann nicht.
+
+### Pfade anpassen
 
 ```yaml
-ports:
-  - "8080:3000"        # anderen Host-Port nutzen
 volumes:
   - /mnt/data:/app/data   # eigener Datenpfad — enthält auch alle Bilder
 ```
@@ -217,14 +232,16 @@ neu starten.
 | Variable | Wirkung |
 |---|---|
 | `APP_BASE_URL` | Die Adresse, unter der der Server von **aussen** erreichbar ist (z. B. `https://lego.example.org`). Sie steckt in den Links der E-Mails und im **QR-Code zur Verknüpfung der App**. Ohne sie übernehmen die Bestätigungs-Links den Host aus dem Request-Header, und **Passwort-vergessen-Mails werden im Betrieb gar nicht versendet** (ein gefälschter Host-Header bekäme sonst den Reset-Link); der QR-Code wird **gar nicht erst erzeugt** — er trüge sonst die Adresse aus der Browserzeile, und die App fände den Server ausserhalb des Heimnetzes nie wieder. |
-| `TRUST_PROXY` | Wem der Server `X-Forwarded-For`/`-Proto` glaubt — nur **ausdrücklich genannten** Adressen. Ohne Angabe **nur Loopback** (`127.0.0.0/8`, `::1`); das ist ohne Reverse-Proxy richtig, denn über den veröffentlichten Port sieht der Server die echte Client-Adresse. Steht ein Proxy davor, seine **feste** Adresse eintragen: im Compose-Netz `brickinventory-net` (`172.28.73.0/24`) z. B. `172.28.73.10` per `ipv4_address`, auf einem anderen Rechner z. B. `192.168.1.5`. Mehrere durch Komma; Netze nur klein (IPv4 ab `/16`, IPv6 ab `/64`). `false` schaltet es ganz ab. `docker`, `true` und Hop-Zahlen verweigern den Start: Damit könnte jeder Container oder Client im Netz seine Absenderadresse selbst angeben und die Anmeldesperre umgehen. |
+| `TRUST_PROXY` | Wem der Server `X-Forwarded-For`/`-Proto` glaubt — nur **ausdrücklich genannten** Adressen. `compose.yaml` setzt die feste Adresse von Caddy (`172.28.73.10`). Ohne Angabe (ausserhalb von Compose) **nur Loopback** (`127.0.0.0/8`, `::1`). Steht ein Proxy davor, seine **feste** Adresse eintragen: im Compose-Netz `brickinventory-net` (`172.28.73.0/24`) z. B. `172.28.73.10` per `ipv4_address`, auf einem anderen Rechner z. B. `192.168.1.5`. Mehrere durch Komma; Netze nur klein (IPv4 ab `/16`, IPv6 ab `/64`). `false` schaltet es ganz ab. `docker`, `true` und Hop-Zahlen verweigern den Start: Damit könnte jeder Container oder Client im Netz seine Absenderadresse selbst angeben und die Anmeldesperre umgehen. |
 | `UPLOAD_KONTINGENT_MB` | Wie viel Platz eigene Anleitungen (PDF/JPG/PNG) je Konto belegen dürfen, in MB (Vorgabe `2048`). Der Inhalt jeder Datei wird geprüft; eine Datei, deren Inhalt nicht zum Typ passt, wird abgewiesen. |
 | `DATA_KEY` | Schlüssel (32 Byte, Base64) für die verschlüsselten Geheimnisse in der Datenbank. Ohne Angabe erzeugt der Server beim ersten Start `data/.datenschluessel` (nur für den Besitzer lesbar). Wer den Schlüssel lieber getrennt von `data/` hält, setzt ihn hier: `openssl rand -base64 32`. |
 | `ADMIN_PASSWORD` | Passwort des beim ersten Start angelegten Admins. Sonst wird ein Zufallspasswort erzeugt und **einmalig** ins Log geschrieben. |
 | `SESSION_SECRET` | Pflicht in Produktion (der Start bricht sonst ab). |
 | `MAIL_KONSOLE_MIT_TOKEN` | Ohne SMTP schreibt der Server jede Mail ins Log, den Link darin **ohne Token** — das Log sieht jeder Verwalter, und ein Rücksetz-Link ist ein Zugang zum Konto. `1` zeigt den vollständigen Link, etwa auf einem Entwicklungsrechner ohne Mailserver. Nur dort setzen. |
-| `TOKEN_IDLE_DAYS` | Tage ohne Nutzung, nach denen ein App-Token verfällt (Vorgabe `90`, `0` schaltet die Regel ab). Betrifft nur Tokens ohne Ablaufdatum — Android-App und QR-Login. Ein Telefon, das die App regelmässig öffnet, ist nie betroffen; ausgesperrt wird nur, was ohnehin niemand mehr benutzt. |
-| `SESSION_IDLE_MINUTES` | Minuten ohne Betrieb, nach denen eine **Webapp-Sitzung** abgemeldet wird (Vorgabe `240`, also vier Stunden). Betrifft nur den Browser — die Android-App kommt mit Bearer-Token und ohne Cookie, für sie gilt `TOKEN_IDLE_DAYS`. Die Frist GLEITET: Solange jemand arbeitet, läuft sie nicht ab; sie zählt ab der letzten Anfrage. Ein Wert, der keine positive Minutenzahl ist, fällt mit einer Logzeile auf die Vorgabe zurück — `0` schaltet die Frist hier also **nicht** ab (anders als bei `TOKEN_IDLE_DAYS`), weil das genau der Zustand wäre, den die Frist beseitigen soll. |
+| `BRICK_HOST` | Name oder IP-Adresse des Servers für Caddy (Pflicht mit `compose.yaml`). Ohne `APP_BASE_URL` gilt `https://BRICK_HOST`. Passkeys brauchen einen Namen, keine IP-Adresse. |
+| `CA_ZERTIFIKAT` | Pfad zum Wurzelzertifikat der internen CA (setzt `compose.yaml`). Daraus kommen `/ca.crt` und der Fingerabdruck `fp` im QR-Code. |
+| `TOKEN_IDLE_DAYS` | Tage ohne Nutzung, nach denen ein Gerätezugang (Token) verfällt (Vorgabe `90`, mindestens `1`). Jede Nutzung schiebt die Frist nach; geschrieben wird höchstens einmal je Tag. Ohne Ablauf gibt es nur die Wahl „Unbegrenzt“ beim QR-Code, nur über HTTPS und mit Rotation. |
+| `SESSION_IDLE_MINUTES` | Minuten ohne Betrieb, nach denen eine **Webapp-Sitzung** abgemeldet wird (Vorgabe `240`, also vier Stunden). Betrifft nur den Browser — die Android-App kommt mit Bearer-Token und ohne Cookie, für sie gilt `TOKEN_IDLE_DAYS`. Die Frist GLEITET: Solange jemand arbeitet, läuft sie nicht ab; sie zählt ab der letzten Anfrage. `0` schaltet die Frist **nicht** ab. |
 | `SESSION_MAX_HOURS` | Stunden ab der Anmeldung, nach denen eine **Webapp-Sitzung** endet, auch wenn sie benutzt wird (Vorgabe `168`, eine Woche). Anders als `SESSION_IDLE_MINUTES` gleitet diese Frist nicht. Ein ungültiger Wert fällt mit einer Logzeile auf die Vorgabe zurück. |
 
 Siehe `UPGRADE.md` für die Änderungen gegenüber der Vorgängerfassung.

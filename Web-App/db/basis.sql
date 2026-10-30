@@ -31,18 +31,6 @@ CREATE FUNCTION public.bild_stamm(pfad text) RETURNS text
     AS $_$ SELECT regexp_replace(regexp_replace(pfad, '^.*/', ''), '\.[^.]*$', '') $_$;
 
 --
--- Name: bump_parts_katalog(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.bump_parts_katalog() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-BEGIN
-  UPDATE parts_katalog_stand SET v = v + 1 WHERE id = 1;
-  RETURN NULL;
-END $$;
-
---
 -- Name: bump_parts_version_del(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -133,7 +121,7 @@ BEGIN
      OR (TG_OP = 'UPDATE' AND NEW.created_at IS DISTINCT FROM OLD.created_at
          AND NEW.tag IS NOT DISTINCT FROM OLD.tag) THEN
     NEW.tag := (NEW.created_at AT TIME ZONE
-                COALESCE(NULLIF(current_setting('brickinventory.zeitzone', true), ''), 'UTC'))::date;
+                COALESCE((SELECT NULLIF(value, '') FROM global_settings WHERE key = 'erfassung_zeitzone'), 'UTC'))::date;
   END IF;
   RETURN NEW;
 END $$;
@@ -153,6 +141,18 @@ BEGIN
 END $$;
 
 --
+-- Name: in_waehrung(numeric, text, text, date); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.in_waehrung(betrag numeric, von text, nach text, t date) RETURNS numeric
+    LANGUAGE sql STABLE
+    AS $$
+  SELECT CASE WHEN betrag IS NULL THEN NULL
+              WHEN upper(von) = upper(nach) THEN betrag
+              ELSE round(betrag / kurs_je_eur(von, t) * kurs_je_eur(nach, t), 4) END
+$$;
+
+--
 -- Name: konto_waehrung(integer); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -164,6 +164,75 @@ CREATE FUNCTION public.konto_waehrung(uid integer) RETURNS text
     (SELECT NULLIF(value, '') FROM global_settings WHERE key = 'currency'),
     'EUR')
 $$;
+
+--
+-- Name: kurs_je_eur(text, date); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.kurs_je_eur(w text, t date) RETURNS numeric
+    LANGUAGE sql STABLE
+    AS $$
+  SELECT CASE WHEN upper(w) = 'EUR' THEN 1::numeric
+              ELSE (SELECT k.je_eur FROM wechselkurse k
+                     WHERE k.waehrung = upper(w) AND k.tag <= t
+                     ORDER BY k.tag DESC LIMIT 1) END
+$$;
+
+--
+-- Name: merke_teilekatalog_alt(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.merke_teilekatalog_alt() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  IF TG_TABLE_NAME = 'bl_zuordnung' THEN
+    INSERT INTO parts_katalog_offen (nummer)
+    SELECT DISTINCT x FROM alt, LATERAL (VALUES (alt.rb_id), (alt.bl_id)) v(x)
+     WHERE alt.art = 'part' AND x IS NOT NULL;
+  ELSE
+    INSERT INTO parts_katalog_offen (nummer) SELECT DISTINCT part_number FROM alt;
+  END IF;
+  RETURN NULL;
+END $$;
+
+--
+-- Name: merke_teilekatalog_beide(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.merke_teilekatalog_beide() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  IF TG_TABLE_NAME = 'bl_zuordnung' THEN
+    INSERT INTO parts_katalog_offen (nummer)
+    SELECT DISTINCT x FROM (SELECT art, rb_id, bl_id FROM alt UNION ALL SELECT art, rb_id, bl_id FROM neu) z,
+           LATERAL (VALUES (z.rb_id), (z.bl_id)) v(x)
+     WHERE z.art = 'part' AND x IS NOT NULL;
+  ELSE
+    INSERT INTO parts_katalog_offen (nummer)
+    SELECT DISTINCT part_number FROM (SELECT part_number FROM alt UNION ALL SELECT part_number FROM neu) z;
+  END IF;
+  RETURN NULL;
+END $$;
+
+--
+-- Name: merke_teilekatalog_neu(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.merke_teilekatalog_neu() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  IF TG_TABLE_NAME = 'bl_zuordnung' THEN
+    INSERT INTO parts_katalog_offen (nummer)
+    SELECT DISTINCT x FROM neu, LATERAL (VALUES (neu.rb_id), (neu.bl_id)) v(x)
+     WHERE neu.art = 'part' AND x IS NOT NULL;
+  ELSE
+    INSERT INTO parts_katalog_offen (nummer) SELECT DISTINCT part_number FROM neu;
+  END IF;
+  RETURN NULL;
+END $$;
 
 --
 -- Name: set_nummer_mit_version(text); Type: FUNCTION; Schema: public; Owner: -
@@ -260,7 +329,13 @@ CREATE TABLE public.api_tokens (
     sliding boolean DEFAULT false NOT NULL,
     hard_expires_at timestamp with time zone,
     never_expires boolean DEFAULT false NOT NULL,
-    label text
+    label text,
+    scope text DEFAULT 'app'::text NOT NULL,
+    ip_bereich text,
+    rotiert_am timestamp with time zone DEFAULT now() NOT NULL,
+    vorgaenger text,
+    ersetzt_durch text,
+    CONSTRAINT api_tokens_scope_check CHECK ((scope = ANY (ARRAY['app'::text, 'voll'::text])))
 );
 
 --
@@ -897,14 +972,30 @@ CREATE SEQUENCE public.parts_id_seq
 ALTER SEQUENCE public.parts_id_seq OWNED BY public.parts.id;
 
 --
--- Name: parts_katalog_stand; Type: TABLE; Schema: public; Owner: -
+-- Name: parts_katalog_offen; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.parts_katalog_stand (
-    id integer DEFAULT 1 NOT NULL,
-    v bigint DEFAULT 0 NOT NULL,
-    CONSTRAINT parts_katalog_stand_id_check CHECK ((id = 1))
+CREATE TABLE public.parts_katalog_offen (
+    id bigint NOT NULL,
+    nummer text NOT NULL
 );
+
+--
+-- Name: parts_katalog_offen_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.parts_katalog_offen_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+--
+-- Name: parts_katalog_offen_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.parts_katalog_offen_id_seq OWNED BY public.parts_katalog_offen.id;
 
 --
 -- Name: parts_summary; Type: TABLE; Schema: public; Owner: -
@@ -936,8 +1027,7 @@ CREATE TABLE public.parts_summary (
 CREATE TABLE public.parts_summary_state (
     user_id integer NOT NULL,
     built_version bigint DEFAULT 0 NOT NULL,
-    built_at timestamp with time zone DEFAULT now(),
-    katalog_stand bigint DEFAULT '-1'::integer NOT NULL
+    built_at timestamp with time zone DEFAULT now()
 );
 
 --
@@ -948,6 +1038,40 @@ CREATE TABLE public.parts_version_user (
     user_id integer NOT NULL,
     v bigint DEFAULT 0 NOT NULL
 );
+
+--
+-- Name: passkeys; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.passkeys (
+    id integer NOT NULL,
+    user_id integer NOT NULL,
+    credential_id text NOT NULL,
+    public_key bytea NOT NULL,
+    sign_count bigint DEFAULT 0 NOT NULL,
+    transports text,
+    name text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    last_used timestamp with time zone
+);
+
+--
+-- Name: passkeys_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.passkeys_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+--
+-- Name: passkeys_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.passkeys_id_seq OWNED BY public.passkeys.id;
 
 --
 -- Name: pdf_auftraege; Type: TABLE; Schema: public; Owner: -
@@ -1223,7 +1347,8 @@ CREATE TABLE public.rb_themes (
 
 CREATE TABLE public.schema_migrations (
     name text NOT NULL,
-    applied_at timestamp with time zone DEFAULT now() NOT NULL
+    applied_at timestamp with time zone DEFAULT now() NOT NULL,
+    pruefsumme text
 );
 
 --
@@ -1648,6 +1773,30 @@ CREATE TABLE public.wanted (
 );
 
 --
+-- Name: webauthn_challenges; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.webauthn_challenges (
+    challenge text NOT NULL,
+    user_id integer,
+    zweck text NOT NULL,
+    expires_at timestamp with time zone NOT NULL,
+    CONSTRAINT webauthn_challenges_zweck_check CHECK ((zweck = ANY (ARRAY['registrieren'::text, 'anmelden'::text, 'zweiter_faktor'::text])))
+);
+
+--
+-- Name: wechselkurse; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.wechselkurse (
+    tag date NOT NULL,
+    waehrung character(3) NOT NULL,
+    je_eur numeric NOT NULL,
+    CONSTRAINT wechselkurse_je_eur_check CHECK ((je_eur > (0)::numeric)),
+    CONSTRAINT wechselkurse_waehrung_check CHECK (((waehrung ~ '^[A-Z]{3}$'::text) AND (waehrung <> 'EUR'::bpchar)))
+);
+
+--
 -- Name: wishlist_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
@@ -1783,6 +1932,18 @@ ALTER TABLE ONLY public.part_price_history ALTER COLUMN id SET DEFAULT nextval('
 --
 
 ALTER TABLE ONLY public.parts ALTER COLUMN id SET DEFAULT nextval('public.parts_id_seq'::regclass);
+
+--
+-- Name: parts_katalog_offen id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.parts_katalog_offen ALTER COLUMN id SET DEFAULT nextval('public.parts_katalog_offen_id_seq'::regclass);
+
+--
+-- Name: passkeys id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.passkeys ALTER COLUMN id SET DEFAULT nextval('public.passkeys_id_seq'::regclass);
 
 --
 -- Name: price_cache id; Type: DEFAULT; Schema: public; Owner: -
@@ -2094,11 +2255,11 @@ ALTER TABLE ONLY public.part_price_history
     ADD CONSTRAINT part_price_history_pkey PRIMARY KEY (id);
 
 --
--- Name: parts_katalog_stand parts_katalog_stand_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: parts_katalog_offen parts_katalog_offen_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.parts_katalog_stand
-    ADD CONSTRAINT parts_katalog_stand_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY public.parts_katalog_offen
+    ADD CONSTRAINT parts_katalog_offen_pkey PRIMARY KEY (id);
 
 --
 -- Name: parts parts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
@@ -2127,6 +2288,20 @@ ALTER TABLE ONLY public.parts_summary_state
 
 ALTER TABLE ONLY public.parts_version_user
     ADD CONSTRAINT parts_version_user_pkey PRIMARY KEY (user_id);
+
+--
+-- Name: passkeys passkeys_credential_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.passkeys
+    ADD CONSTRAINT passkeys_credential_id_key UNIQUE (credential_id);
+
+--
+-- Name: passkeys passkeys_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.passkeys
+    ADD CONSTRAINT passkeys_pkey PRIMARY KEY (id);
 
 --
 -- Name: pdf_auftraege pdf_auftraege_pkey; Type: CONSTRAINT; Schema: public; Owner: -
@@ -2365,6 +2540,20 @@ ALTER TABLE ONLY public.vouchers
 
 ALTER TABLE ONLY public.vouchers
     ADD CONSTRAINT vouchers_user_id_number_key UNIQUE (user_id, number);
+
+--
+-- Name: webauthn_challenges webauthn_challenges_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.webauthn_challenges
+    ADD CONSTRAINT webauthn_challenges_pkey PRIMARY KEY (challenge);
+
+--
+-- Name: wechselkurse wechselkurse_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.wechselkurse
+    ADD CONSTRAINT wechselkurse_pkey PRIMARY KEY (waehrung, tag);
 
 --
 -- Name: wanted wishlist_pkey; Type: CONSTRAINT; Schema: public; Owner: -
@@ -2665,6 +2854,12 @@ CREATE INDEX idx_parts_summary_color ON public.parts_summary USING btree (user_i
 CREATE INDEX idx_parts_summary_sort ON public.parts_summary USING btree (user_id, color_name, part_name);
 
 --
+-- Name: idx_passkeys_konto; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_passkeys_konto ON public.passkeys USING btree (user_id);
+
+--
 -- Name: idx_pdf_auftraege_laufend; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -2839,6 +3034,18 @@ CREATE INDEX idx_verwaltungsprotokoll_zeit ON public.verwaltungsprotokoll USING 
 CREATE INDEX idx_wanted_user ON public.wanted USING btree (user_id, created_at DESC);
 
 --
+-- Name: idx_webauthn_challenges_frist; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_webauthn_challenges_frist ON public.webauthn_challenges USING btree (expires_at);
+
+--
+-- Name: idx_webauthn_challenges_konto; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_webauthn_challenges_konto ON public.webauthn_challenges USING btree (user_id);
+
+--
 -- Name: idx_zweiter_faktor_codes_konto; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -2959,30 +3166,6 @@ CREATE TRIGGER set_teile_setnummer BEFORE INSERT OR UPDATE OF set_number ON publ
 CREATE TRIGGER sets_setnummer BEFORE INSERT OR UPDATE OF set_number ON public.sets FOR EACH ROW EXECUTE FUNCTION public.setnummer_normalisieren();
 
 --
--- Name: bl_zuordnung trg_bump_parts_katalog; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER trg_bump_parts_katalog AFTER INSERT OR DELETE OR UPDATE ON public.bl_zuordnung FOR EACH STATEMENT EXECUTE FUNCTION public.bump_parts_katalog();
-
---
--- Name: part_catalog trg_bump_parts_katalog; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER trg_bump_parts_katalog AFTER INSERT OR DELETE OR UPDATE ON public.part_catalog FOR EACH STATEMENT EXECUTE FUNCTION public.bump_parts_katalog();
-
---
--- Name: part_color_catalog trg_bump_parts_katalog; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER trg_bump_parts_katalog AFTER INSERT OR DELETE OR UPDATE ON public.part_color_catalog FOR EACH STATEMENT EXECUTE FUNCTION public.bump_parts_katalog();
-
---
--- Name: set_teile trg_bump_parts_katalog; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER trg_bump_parts_katalog AFTER INSERT OR DELETE OR UPDATE ON public.set_teile FOR EACH STATEMENT EXECUTE FUNCTION public.bump_parts_katalog();
-
---
 -- Name: parts trg_bump_parts_version_del; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -3041,6 +3224,78 @@ CREATE TRIGGER trg_bump_parts_version_upd AFTER UPDATE ON public.sets REFERENCIN
 --
 
 CREATE TRIGGER trg_bump_parts_version_upd AFTER UPDATE ON public.storage_locations REFERENCING OLD TABLE AS alt NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION public.bump_parts_version_lagerort_upd();
+
+--
+-- Name: bl_zuordnung trg_teilekatalog_del; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER trg_teilekatalog_del AFTER DELETE ON public.bl_zuordnung REFERENCING OLD TABLE AS alt FOR EACH STATEMENT EXECUTE FUNCTION public.merke_teilekatalog_alt();
+
+--
+-- Name: part_catalog trg_teilekatalog_del; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER trg_teilekatalog_del AFTER DELETE ON public.part_catalog REFERENCING OLD TABLE AS alt FOR EACH STATEMENT EXECUTE FUNCTION public.merke_teilekatalog_alt();
+
+--
+-- Name: part_color_catalog trg_teilekatalog_del; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER trg_teilekatalog_del AFTER DELETE ON public.part_color_catalog REFERENCING OLD TABLE AS alt FOR EACH STATEMENT EXECUTE FUNCTION public.merke_teilekatalog_alt();
+
+--
+-- Name: set_teile trg_teilekatalog_del; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER trg_teilekatalog_del AFTER DELETE ON public.set_teile REFERENCING OLD TABLE AS alt FOR EACH STATEMENT EXECUTE FUNCTION public.merke_teilekatalog_alt();
+
+--
+-- Name: bl_zuordnung trg_teilekatalog_ins; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER trg_teilekatalog_ins AFTER INSERT ON public.bl_zuordnung REFERENCING NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION public.merke_teilekatalog_neu();
+
+--
+-- Name: part_catalog trg_teilekatalog_ins; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER trg_teilekatalog_ins AFTER INSERT ON public.part_catalog REFERENCING NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION public.merke_teilekatalog_neu();
+
+--
+-- Name: part_color_catalog trg_teilekatalog_ins; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER trg_teilekatalog_ins AFTER INSERT ON public.part_color_catalog REFERENCING NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION public.merke_teilekatalog_neu();
+
+--
+-- Name: set_teile trg_teilekatalog_ins; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER trg_teilekatalog_ins AFTER INSERT ON public.set_teile REFERENCING NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION public.merke_teilekatalog_neu();
+
+--
+-- Name: bl_zuordnung trg_teilekatalog_upd; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER trg_teilekatalog_upd AFTER UPDATE ON public.bl_zuordnung REFERENCING OLD TABLE AS alt NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION public.merke_teilekatalog_beide();
+
+--
+-- Name: part_catalog trg_teilekatalog_upd; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER trg_teilekatalog_upd AFTER UPDATE ON public.part_catalog REFERENCING OLD TABLE AS alt NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION public.merke_teilekatalog_beide();
+
+--
+-- Name: part_color_catalog trg_teilekatalog_upd; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER trg_teilekatalog_upd AFTER UPDATE ON public.part_color_catalog REFERENCING OLD TABLE AS alt NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION public.merke_teilekatalog_beide();
+
+--
+-- Name: set_teile trg_teilekatalog_upd; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER trg_teilekatalog_upd AFTER UPDATE ON public.set_teile REFERENCING OLD TABLE AS alt NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION public.merke_teilekatalog_beide();
 
 --
 -- Name: vouchers vouchers_waehrung; Type: TRIGGER; Schema: public; Owner: -
@@ -3223,6 +3478,13 @@ ALTER TABLE ONLY public.parts_version_user
     ADD CONSTRAINT parts_version_user_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
 
 --
+-- Name: passkeys passkeys_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.passkeys
+    ADD CONSTRAINT passkeys_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+--
 -- Name: pdf_auftraege pdf_auftraege_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3300,6 +3562,13 @@ ALTER TABLE ONLY public.vouchers
     ADD CONSTRAINT vouchers_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
 
 --
+-- Name: webauthn_challenges webauthn_challenges_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.webauthn_challenges
+    ADD CONSTRAINT webauthn_challenges_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+--
 -- Name: wanted wishlist_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3361,6 +3630,7 @@ INSERT INTO public.global_settings (key, value, updated_at) VALUES ('smtp_user',
 INSERT INTO public.global_settings (key, value, updated_at) VALUES ('smtp_pass', '', '2026-10-28 17:10:03.355398+00');
 INSERT INTO public.global_settings (key, value, updated_at) VALUES ('smtp_from', '', '2026-10-28 17:10:03.355398+00');
 INSERT INTO public.global_settings (key, value, updated_at) VALUES ('smtp_secure', '0', '2026-10-28 17:10:03.355398+00');
+INSERT INTO public.global_settings (key, value, updated_at) VALUES ('erfassung_zeitzone', 'UTC', '2026-10-30 21:28:11.712633+00');
 
 --
 -- Data for Name: gutschein_guthaben_schranke; Type: TABLE DATA; Schema: public; Owner: -
@@ -3369,89 +3639,88 @@ INSERT INTO public.global_settings (key, value, updated_at) VALUES ('smtp_secure
 INSERT INTO public.gutschein_guthaben_schranke (id, letzter_abruf, sperre_bis) VALUES (1, NULL, NULL);
 
 --
--- Data for Name: parts_katalog_stand; Type: TABLE DATA; Schema: public; Owner: -
---
-
-INSERT INTO public.parts_katalog_stand (id, v) VALUES (1, 7);
-
---
 -- Data for Name: schema_migrations; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0001-baseline.sql', '2026-10-28 17:10:03.530662+00');
-INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0003-preisverlauf-teile-minifiguren.sql', '2026-10-28 17:10:03.532728+00');
-INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0004-erfassung-pro-tag.sql', '2026-10-28 17:10:03.542751+00');
-INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0005-haushalt-kontoverknuepfung.sql', '2026-10-28 17:10:03.546253+00');
-INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0006-verwaiste-teile-nach-verschieben.sql', '2026-10-28 17:10:03.55458+00');
-INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0007-geld-als-numeric.sql', '2026-10-28 17:10:03.559525+00');
-INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0008-erfassung-pro-tag-index.sql', '2026-10-28 17:10:03.6154+00');
-INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0009-bild-tabellen.sql', '2026-10-28 17:10:03.621685+00');
-INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0010-image-wanted-index.sql', '2026-10-28 17:10:03.627249+00');
-INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0011-image-misses-grund.sql', '2026-10-28 17:10:03.629838+00');
-INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0012-ueberzaehlige-katalog-indizes.sql', '2026-10-28 17:10:03.6312+00');
-INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0013-tote-spalte-brickset-id.sql', '2026-10-28 17:10:03.632393+00');
-INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0014-img-proxy-nach-v1.sql', '2026-10-28 17:10:03.633667+00');
-INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0015-api-tokens-sliding.sql', '2026-10-28 17:10:03.636581+00');
-INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0016-token-laufzeit.sql', '2026-10-28 17:10:03.641695+00');
-INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0017-token-unbegrenzt.sql', '2026-10-28 17:10:03.643872+00');
-INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0018-lagerort.sql', '2026-10-28 17:10:03.645471+00');
-INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0019-preisalarm.sql', '2026-10-28 17:10:03.646861+00');
-INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0020-lagerorte-verwaltet.sql', '2026-10-28 17:10:03.651585+00');
-INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0021-wunschliste.sql', '2026-10-28 17:10:03.6529+00');
-INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0022-notiz-ausbauen.sql', '2026-10-28 17:10:03.658588+00');
-INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0023-merkliste.sql', '2026-10-28 17:10:03.659849+00');
-INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0024-lagerort-minifiguren.sql', '2026-10-28 17:10:03.661046+00');
-INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0025-parts-summary-lagerort.sql', '2026-10-28 17:10:03.662087+00');
-INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0026-gutscheine.sql', '2026-10-28 17:10:03.663468+00');
-INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0027-gutschein-notiz-entfallen.sql', '2026-10-28 17:10:03.669053+00');
-INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0029-trigramm-bestandssuche.sql', '2026-10-28 17:10:03.670303+00');
-INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0030-api-tokens-user-index.sql', '2026-10-28 17:10:03.674249+00');
-INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0031-lagerort-als-id.sql', '2026-10-28 17:10:03.676229+00');
-INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0032-kaufpreis-und-zustand-nur-in-erfassungen.sql', '2026-10-28 17:10:03.680067+00');
-INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0033-stammdaten-nur-im-katalog.sql', '2026-10-28 17:10:03.687499+00');
-INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0034-teile-und-minifiguren-stammdaten-im-katalog.sql', '2026-10-28 17:10:03.689982+00');
-INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0035-teilepreise-nur-in-erfassungen.sql', '2026-10-28 17:10:03.71532+00');
-INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0036-setmenge-aus-erfassungen.sql', '2026-10-28 17:10:03.72587+00');
-INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0037-bricklink-nummern-in-einer-zuordnung.sql', '2026-10-28 17:10:03.732095+00');
-INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0038-teilemengen-aus-katalog-und-erfassungen.sql', '2026-10-28 17:10:03.751273+00');
-INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0039-gutschein-guthaben-geprueft.sql', '2026-10-28 17:10:03.768929+00');
-INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0040-erfassung-je-tag-und-zustand.sql', '2026-10-28 17:10:03.772136+00');
-INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0041-papierkorb.sql', '2026-10-28 17:10:03.777873+00');
-INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0042-zweiter-faktor.sql', '2026-10-28 17:10:03.783209+00');
-INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0043-fremdschluessel-konto.sql', '2026-10-28 17:10:03.790898+00');
-INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0044-doppelter-einladungsindex.sql', '2026-10-28 17:10:03.79799+00');
-INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0045-erfassung-gehoert-zum-bestand.sql', '2026-10-28 17:10:03.79953+00');
-INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0046-haushalt-mehrere-eltern.sql', '2026-10-28 17:10:03.804778+00');
-INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0047-erfassung-waehrung-schaetzung.sql', '2026-10-28 17:10:03.810525+00');
-INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0048-anmeldung-wartezeit.sql', '2026-10-28 17:10:03.821575+00');
-INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0049-verwaltungsprotokoll.sql', '2026-10-28 17:10:03.8235+00');
-INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0050-teilezaehler-nur-bestehende-konten.sql', '2026-10-28 17:10:03.829433+00');
-INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0051-csv-import-lauf.sql', '2026-10-28 17:10:03.830635+00');
-INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0052-teilezusammenfassung-stand.sql', '2026-10-28 17:10:03.83142+00');
-INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0053-schema-buchfuehrung.sql', '2026-10-28 17:12:02.484389+00');
-INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0054-gin-ohne-warteliste.sql', '2026-10-28 17:45:20.139706+00');
-INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0055-api-takt.sql', '2026-10-28 17:50:28.999651+00');
-INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0056-preisverlauf-je-tag.sql', '2026-10-28 17:50:29.005121+00');
-INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0057-figurenpreis-geschaetzt.sql', '2026-10-28 17:50:29.010176+00');
-INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0058-fremdschluessel-und-pruefungen.sql', '2026-10-28 17:59:06.918264+00');
-INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0059-anmeldung-laufend.sql', '2026-10-28 20:00:29.834455+00');
-INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0060-katalog-herkunft.sql', '2026-10-28 20:09:04.452918+00');
-INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0061-api-aufrufe.sql', '2026-10-28 22:10:50.251504+00');
-INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0062-set-teile-schlank.sql', '2026-10-28 22:55:20.74984+00');
-INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0063-laufzustand.sql', '2026-10-28 23:05:08.525175+00');
-INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0064-pdf-auftraege.sql', '2026-10-28 23:25:34.430147+00');
-INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0065-geld-und-waehrung-pruefen.sql', '2026-10-28 23:27:03.174038+00');
-INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0066-auftraege.sql', '2026-10-29 21:52:46.143176+00');
-INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0067-bild-stamm.sql', '2026-10-29 21:59:16.007371+00');
-INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0068-praefix-indizes.sql', '2026-10-29 21:59:58.856414+00');
-INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0069-konten-pruefen.sql', '2026-10-29 22:00:41.797626+00');
-INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0070-erfassungstag.sql', '2026-10-29 22:31:52.718465+00');
-INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0071-keine-farbe.sql', '2026-10-30 00:08:55.73921+00');
-INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0072-figuren-stamm.sql', '2026-10-30 00:08:55.756402+00');
-INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0073-waehrung-vorgabe.sql', '2026-10-30 00:08:55.775002+00');
-INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0074-setnummer-mit-version.sql', '2026-10-30 00:08:55.78054+00');
-INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0075-ersatzteil-null-eins.sql', '2026-10-30 00:08:55.79535+00');
-INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0076-set-stamm.sql', '2026-10-30 00:08:55.812847+00');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0001-baseline.sql', '2026-10-28 17:10:03.530662+00', '39083650d47643c61ef5779b6398bf7fcb442930caac9fd501f3655962672f0e');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0003-preisverlauf-teile-minifiguren.sql', '2026-10-28 17:10:03.532728+00', '68a2a26b36db3e33eaef01812ef40b5e83587ed03d8cb737d6221b896fa75ac2');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0004-erfassung-pro-tag.sql', '2026-10-28 17:10:03.542751+00', '61b6ad2db504c4c8afa96fc3b32e8336927cad5367519dccdd62304967a83a1a');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0005-haushalt-kontoverknuepfung.sql', '2026-10-28 17:10:03.546253+00', '066b22b0ec6991f6113994cce229e9c74e456a2e8be312871a1b232bc01b5342');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0006-verwaiste-teile-nach-verschieben.sql', '2026-10-28 17:10:03.55458+00', '34b213bd1d0f266c99dd4c273f69d0dae50413040723d8407367bb67ee2e283f');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0007-geld-als-numeric.sql', '2026-10-28 17:10:03.559525+00', '64de305e9c8b3ad61e6ad50334bfe04d7d41ada0bd56648fe30eb2dbdb84144d');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0008-erfassung-pro-tag-index.sql', '2026-10-28 17:10:03.6154+00', 'dfa6390ad1e9c0872e57ed9f2c9f03e6221a2e89765e214c21f7edbd574959e5');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0009-bild-tabellen.sql', '2026-10-28 17:10:03.621685+00', '8ccdf175eb3a314ec720a77aafed6e7ac7019a92742b3e4bbda38805a7f008f3');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0010-image-wanted-index.sql', '2026-10-28 17:10:03.627249+00', '675c690d617c26a4f09edbf4e5427e28b983617a23b0c6240f4eb45c0f065390');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0011-image-misses-grund.sql', '2026-10-28 17:10:03.629838+00', '0494c2476cac5f10ca822ea2f3cee903d2dc4203255c9bc2719aa9cfa29aa6f7');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0012-ueberzaehlige-katalog-indizes.sql', '2026-10-28 17:10:03.6312+00', '3f511d1a61661d7cc641c95f55da3bfc84644b659734dde6bfe4a3ea73e2002e');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0013-tote-spalte-brickset-id.sql', '2026-10-28 17:10:03.632393+00', '11b5faa0ba67fa160e488f5177f32aef6aa94ddb3b244e39581bc3ced8567e24');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0014-img-proxy-nach-v1.sql', '2026-10-28 17:10:03.633667+00', '69a7acb9eded3e42a263fe46813bd6bb45a76c5f352a5d789b40bc6c282b0fdf');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0015-api-tokens-sliding.sql', '2026-10-28 17:10:03.636581+00', 'fde8c117b9321f9d710d7e10adc054b9ab048146343287b705ca8fa66e967375');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0016-token-laufzeit.sql', '2026-10-28 17:10:03.641695+00', '37070620cb6739c996465042818e57fe2f51516042493e918285671dfcb027c2');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0017-token-unbegrenzt.sql', '2026-10-28 17:10:03.643872+00', '4df88f85df5dcbf733ce63531eb6f33b9ca6e82efc1ea638857751605a2c3abf');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0018-lagerort.sql', '2026-10-28 17:10:03.645471+00', '01adeffe525c9041e15b6c2969d7c38ab17448a5c15d9e7f2081d54c0931c5fe');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0019-preisalarm.sql', '2026-10-28 17:10:03.646861+00', '0dae6bc79f0564ff61ff7be606e02c5aa15594e1fea5680de5540556c7743dbc');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0020-lagerorte-verwaltet.sql', '2026-10-28 17:10:03.651585+00', 'e993456316e74ce2a83493de9556b5e033756c51d2d6878d74ef367ec9d65c0f');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0021-wunschliste.sql', '2026-10-28 17:10:03.6529+00', 'f64ecd73e269c2fbbc6799b537fb8951fb26c76f3abe631e4fe93a94ccaa1c0b');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0022-notiz-ausbauen.sql', '2026-10-28 17:10:03.658588+00', 'b7ea9e1650eacfc1b374824e4eb45d80a05a7c4eab296b4954cf55af06d4146f');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0023-merkliste.sql', '2026-10-28 17:10:03.659849+00', 'b78f06c591d482a2a75e7efac64dca37439c2d1b03dd916bcae376814915bee5');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0024-lagerort-minifiguren.sql', '2026-10-28 17:10:03.661046+00', 'd1158dda6f95eefe20f3415960bba3d9de20dd2684ba317edce9442a7606403c');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0025-parts-summary-lagerort.sql', '2026-10-28 17:10:03.662087+00', '167c65449e9610edddc9d9e743c46234a0248eb4ed62ace3d722e6ff48c4c071');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0026-gutscheine.sql', '2026-10-28 17:10:03.663468+00', 'c4a82c3960cedb2ef6bc9e3e38468303f640ee942a92956c3dc697910cfd4fe0');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0027-gutschein-notiz-entfallen.sql', '2026-10-28 17:10:03.669053+00', '23bd6ed2be2d2c8647c506cde627a58293e83e70112ee676e77499107f5f9233');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0029-trigramm-bestandssuche.sql', '2026-10-28 17:10:03.670303+00', 'e448d64564c4eb6d9b5af7b5a74f45147846d39e077d18480c6069389c521ac3');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0030-api-tokens-user-index.sql', '2026-10-28 17:10:03.674249+00', '027530176f57bdd5a098d91c7ee9c5a9efe9c6d3589fb75b843393f80cf971df');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0031-lagerort-als-id.sql', '2026-10-28 17:10:03.676229+00', '6c03643034709a2d63c535dfe3774187abfc9b70f272f0f70027485e27caf6b4');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0032-kaufpreis-und-zustand-nur-in-erfassungen.sql', '2026-10-28 17:10:03.680067+00', '66c7acae99ec71cef78d6a9b40dba8545b33bd3568fc31618603d95a459b2205');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0033-stammdaten-nur-im-katalog.sql', '2026-10-28 17:10:03.687499+00', '5d729f8afd76ddd72563ea83dca6cb5c9ab73f09c3f5315e59e188c14140134f');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0034-teile-und-minifiguren-stammdaten-im-katalog.sql', '2026-10-28 17:10:03.689982+00', '5c3d4a34621641650d3b44503ec214441976f1eb6f14e81696f06f5c01fdffa3');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0035-teilepreise-nur-in-erfassungen.sql', '2026-10-28 17:10:03.71532+00', '976d0daf2a9765c2f76d0c3b688d0e27568697ca62ac90fd9a037d3868a6e8d1');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0036-setmenge-aus-erfassungen.sql', '2026-10-28 17:10:03.72587+00', '7026c75a85843516a93656090656a8390e0de43b2f534af5952f997aaad6d0aa');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0037-bricklink-nummern-in-einer-zuordnung.sql', '2026-10-28 17:10:03.732095+00', '4df86562f5958580bb3df5369f892f809190cac5c2a9747152d95aab45ccaaa6');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0038-teilemengen-aus-katalog-und-erfassungen.sql', '2026-10-28 17:10:03.751273+00', '74e266df62d0b1be338886bd5298c06685f94c440793ebf6b8d68c1ece003862');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0039-gutschein-guthaben-geprueft.sql', '2026-10-28 17:10:03.768929+00', '08ff4c14ab90369e3b0d59093997195895ea5e4a8906b6297c63b4648cb7e25e');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0040-erfassung-je-tag-und-zustand.sql', '2026-10-28 17:10:03.772136+00', '0ec7558a291ed822df9d291211b6073d6336034dbdb42d2965b0cc39ccb2d8d8');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0041-papierkorb.sql', '2026-10-28 17:10:03.777873+00', 'f3ca16d8941a42b8a25ece4f2e10ad32cfe41a5f44cfea3f26b08d214bc8c60b');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0044-doppelter-einladungsindex.sql', '2026-10-28 17:10:03.79799+00', 'e8a7f1167c4bd6b8433c301949140eff91988d16dff1ef438c6b058f7b825df4');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0046-haushalt-mehrere-eltern.sql', '2026-10-28 17:10:03.804778+00', 'c7b5e6df8995bb337dd9379ee412bc58f0ade9d1f8c18b67d795c26e8f5e63a1');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0048-anmeldung-wartezeit.sql', '2026-10-28 17:10:03.821575+00', '66460a999c2ed23670192ed2ebc309036a123b9911709751f928ecbae7e61009');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0050-teilezaehler-nur-bestehende-konten.sql', '2026-10-28 17:10:03.829433+00', '768acceee0b32d163896a1e1ff93a54b7b64d73aa2cd999abbf0e25186da31af');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0052-teilezusammenfassung-stand.sql', '2026-10-28 17:10:03.83142+00', 'e3eaf940bb027115194c8f69e086b16c9e7781c3a13b5a741fca8feb1c9585b2');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0054-gin-ohne-warteliste.sql', '2026-10-28 17:45:20.139706+00', '7c4a9ed606da9379a246b58580045de5b63e8dcbedde6b862b95d677012d28c9');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0057-figurenpreis-geschaetzt.sql', '2026-10-28 17:50:29.010176+00', 'c9eaa44df9b330e3a73dc239dc0794067de6dc4bdff88eedd84c6aec5f8a4a8e');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0059-anmeldung-laufend.sql', '2026-10-28 20:00:29.834455+00', '1d181a0d99e66eae7ca564d4d5d9f1bd227dbb55bed10c9c984e6fbd1d784a52');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0061-api-aufrufe.sql', '2026-10-28 22:10:50.251504+00', '31420d32f9248ebe14b4946f80ba061534ce3c262a869d1ba8e39f71205dc1cb');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0063-laufzustand.sql', '2026-10-28 23:05:08.525175+00', '09055a6e49bc214be7894d0f3bf33768c7a4a10f9cafcc5781687d034d181b49');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0065-geld-und-waehrung-pruefen.sql', '2026-10-28 23:27:03.174038+00', 'fdecdbc5dcba3d6b8fbdfd18f584b556f418fca2a3e7f2bd474a279db8c582f1');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0068-praefix-indizes.sql', '2026-10-29 21:59:58.856414+00', '32813b407be012220c033dcc928c6c85f78f75b15d4c8df6b8867ddc17443ebb');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0070-erfassungstag.sql', '2026-10-29 22:31:52.718465+00', 'aec3dbdb36aecb37598265a7eb115dbf6b78b44db71770acb04240f436787b6c');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0072-figuren-stamm.sql', '2026-10-30 00:08:55.756402+00', 'ee6a8321d378cacb4a5dbb85842dfdb3f869d9c54e821762dcf074c8cd67efa1');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0075-ersatzteil-null-eins.sql', '2026-10-30 00:08:55.79535+00', '68d54fbdedaaf410fa5b80adbb3e586bcc9b428a1c6eff413df59f6d1125341d');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0042-zweiter-faktor.sql', '2026-10-28 17:10:03.783209+00', '709542fb891b1790880d961b15cb9bca5a4696e45f05ef7c875a9e75e85b17d8');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0043-fremdschluessel-konto.sql', '2026-10-28 17:10:03.790898+00', '878e94972a8a2ca0e5d1c3ef7b3516aab3869428c5a86063ab6ca58aa5df823c');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0045-erfassung-gehoert-zum-bestand.sql', '2026-10-28 17:10:03.79953+00', 'eb23f314597d28499dd9ef875f982a96ee5b9cd2dc5ee020848ebc9c858ff6c0');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0047-erfassung-waehrung-schaetzung.sql', '2026-10-28 17:10:03.810525+00', 'b992b4e483d123956149f8d6c6dea2a85a4ac7f6a9c1d1ec2e7af2ab5f92ce8c');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0049-verwaltungsprotokoll.sql', '2026-10-28 17:10:03.8235+00', 'b29cc5cf3c37e5ce9e8dca61cc1a56dcb970e131b3d16e2c19843ff06581730c');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0051-csv-import-lauf.sql', '2026-10-28 17:10:03.830635+00', '321f615de5fa471e7cc9bf814eb82a46733639109ffe5fed7485b1b7d2fcb6d2');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0053-schema-buchfuehrung.sql', '2026-10-28 17:12:02.484389+00', 'b9786b9f4ccaf07c9ba0ac9d2aaa2ce0797c7b079fdf47dc541839ca10eef411');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0055-api-takt.sql', '2026-10-28 17:50:28.999651+00', 'ac7350e6d45e983ca59e01cae88556d88be576e9bab55f4809a494028f2ff07c');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0056-preisverlauf-je-tag.sql', '2026-10-28 17:50:29.005121+00', 'f242c63b30cd086c21257a1aeb5affac864e6cabcce9cdb7d0b0f5215dc0328c');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0058-fremdschluessel-und-pruefungen.sql', '2026-10-28 17:59:06.918264+00', '136844b883ef999b8863fc380281ad2fddd6f0f514d1204a691d480fc5c745ad');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0060-katalog-herkunft.sql', '2026-10-28 20:09:04.452918+00', 'bae2163c811f269d3a2ba39118032f5f37ed53fed7000a42b91236ed69e5b286');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0062-set-teile-schlank.sql', '2026-10-28 22:55:20.74984+00', '322ed59dba7c12566527babbc8c98ac0541490db45c8bac384bd8f382f188eb8');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0064-pdf-auftraege.sql', '2026-10-28 23:25:34.430147+00', '37fe6c29324b0c4a0ccc51b1b8076e06096fee28a42f64ab1844932345ab81d5');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0066-auftraege.sql', '2026-10-29 21:52:46.143176+00', 'ce90c7fc6675d22af87079cdf916ada020e0f4a746e70fef5849255d7c79c209');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0067-bild-stamm.sql', '2026-10-29 21:59:16.007371+00', 'c3c2837b3969087d9e80d3b299436e8991983ca6b900bc0016e4b2cde5bd8d63');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0069-konten-pruefen.sql', '2026-10-29 22:00:41.797626+00', 'a7fc32d85290697233078178ab722c49586d28146928aa0c61de4fd58ef9778d');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0071-keine-farbe.sql', '2026-10-30 00:08:55.73921+00', '635f0b8610f6320359c06eed1e35ff14a9689530dbae92d6979c1b23d85a83cf');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0073-waehrung-vorgabe.sql', '2026-10-30 00:08:55.775002+00', 'ac5f68bc4755dcfd610131d5792afba9382fc45247046aadeedcaabe619a627d');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0074-setnummer-mit-version.sql', '2026-10-30 00:08:55.78054+00', '1e6623f222d4e2c8ad3873177deee2e9538e4d1aa08dd334678e9b550493d008');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0076-set-stamm.sql', '2026-10-30 00:08:55.812847+00', 'c0bd6ba903b2326e495320040f7b391df546bee25043a352ee0cf26194767108');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0077-wechselkurse.sql', '2026-10-30 21:28:11.669322+00', '71e82d0afd974c3df5507172a7730fb2c41aa6f6e3d6ab1a2a113b7a9d7a83e4');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0078-erfassungszeitzone-in-der-datenbank.sql', '2026-10-30 21:28:11.676896+00', '6559e9a3ba1d1bc7cfe8bec2ef418dbeda42e0de2608f357ddc80157e9537d6f');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0079-teilekatalog-je-teil.sql', '2026-10-30 21:28:11.685338+00', 'e07e072ab0cf9cf03ed9b30a1addc363d1479cb0f51171fa11b922b9e6b3bcbd');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0080-token-scope-rotation.sql', '2026-10-30 21:28:11.695098+00', '2b68adab0442d36c11779316c130aef91d47ea0ca3375af15b124598673348c4');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0081-passkeys.sql', '2026-10-30 21:28:11.698176+00', '2d744e20a742ae3ea212bd13ed7adc3d12019eda7a53a5a8220b7451c507122e');
 
 --
 -- PostgreSQL database dump complete

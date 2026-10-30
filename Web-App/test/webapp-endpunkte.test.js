@@ -152,6 +152,15 @@ const ALLES_LOESCHEN =
   'ganze Sammlung; einzelne Elemente löscht die App wie bisher.';
 
 const NUR_WEB = new Map([
+  ['/api/v1/settings/tls',
+   'Fingerabdruck der CA zum Abgleich von Hand. Die App bekommt ihn mit dem ' +
+   'QR-Code (`fp`) und pinnt ihn; eine Anzeige brächte ihr nichts.'],
+  ['/api/v1/auth/passkeys', 'Passkeys sind WebAuthn im Browser; die App meldet sich per QR-Code oder Passwort an.'],
+  ['/api/v1/auth/passkeys/:X', 'wie /api/v1/auth/passkeys'],
+  ['/api/v1/auth/passkey/registrieren', 'wie /api/v1/auth/passkeys'],
+  ['/api/v1/auth/passkey/registrieren/optionen', 'wie /api/v1/auth/passkeys'],
+  ['/api/v1/auth/passkey/anmelden', 'wie /api/v1/auth/passkeys; die Anmeldung legt eine Sitzung an, keinen Token'],
+  ['/api/v1/auth/passkey/anmelden/optionen', 'wie /api/v1/auth/passkey/anmelden'],
   ['/api/v1/admin/protokoll',
    'Protokoll der Verwalteraktionen an fremden Konten. Diese Aktionen ' +
    '(Passwort setzen, Rolle, Löschen) gibt es absichtlich nur in der ' +

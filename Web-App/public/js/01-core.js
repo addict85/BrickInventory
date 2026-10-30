@@ -1210,6 +1210,8 @@ async function doLogin(){
   // Zweiter Faktor verlangt: Codefeld zeigen und dort weitermachen.
   if(d.zweiter_faktor){
     G('lc-zeile').style.display=''; G('lc').value=''; G('lc').focus();
+    // Hat das Konto Passkeys, geht einer statt des Codes (js/23-passkeys.js).
+    G('lc-passkey').hidden=!d.passkey;
     G('lerr').textContent=d.error||''; G('lerr').style.display=code?'block':'none';
     return;
   }

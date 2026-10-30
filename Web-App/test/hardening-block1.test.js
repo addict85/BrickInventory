@@ -27,14 +27,17 @@ test('die Session-ID wird beim Anmelden erneuert', () => {
   assert.match(auth, /req\.session\.save\(/,
     'Ohne save() wäre die neue ID bei einer unmittelbar folgenden Anfrage noch nicht gültig');
 
-  const routes = read('routes/auth.ts');
-  // Drei Aufrufe: Login, QR-Login — und seit der Sitzungs-Bereinigung auch
+  const routes = read('routes/auth.ts') + read('routes/passkeys.ts');
+  // Drei Aufrufe: Login, Passkey-Anmeldung — und seit der Sitzungs-Bereinigung auch
   // /change-password. Dort werden erst ALLE Sitzungen des Kontos verworfen
   // (ein Passwortwechsel soll einen fremden Zugang beenden, nicht nur die
   // Tokens) und danach die eigene neu aufgebaut, damit man nicht aus dem
   // eigenen Tab fliegt. Die neue ID ist dabei erwünscht, nicht Nebensache.
   assert.equal((routes.match(/establishSession\(req,/g) || []).length, 3,
-    'Login, QR-Login und Passwortwechsel müssen die Session erneuern');
+    'Login, Passkey-Anmeldung und Passwortwechsel müssen die Session erneuern');
+  // Der QR-Login legt seit den Token-Scopes KEINE Sitzung mehr an (sie trüge
+  // die vollen Rechte an Scope `app` vorbei) — geprüft im Verhalten in
+  // token-scope-rotation-db („Scope app: …“, kein Set-Cookie).
   assert.doesNotMatch(routes, /req\.session\.userId\s*=\s*parseInt/,
     'Kein direktes Setzen mehr — das umginge die Rotation');
 });

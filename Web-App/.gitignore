@@ -31,6 +31,9 @@ dist
 # Laufzeitdaten: Bilder, Vorschaubilder, Uploads, Zwischenstände
 data/
 pgdata/
+pgdata18/
+# Caddy: CA mit privatem Schlüssel und Zertifikate
+caddy/
 
 # Protokolle und lokale Umgebung
 *.log

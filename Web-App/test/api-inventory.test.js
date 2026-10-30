@@ -143,6 +143,17 @@ const C = {
   'POST /api/v1/auth/qr-login': 'nur-v1',
   // Die App fragt vor einem Klartext-Zugang, ob der Server ihren Token kennt.
   'POST /api/v1/auth/serverbeweis': 'nur-v1',
+  // Tausch des eigenen Tokens: ein Weg der App (Rotation).
+  'POST /api/v1/auth/token-rotieren': 'nur-v1',
+  // Passkeys sind WebAuthn im Browser; die Anmeldung legt eine Sitzung an.
+  'GET /api/v1/auth/passkeys': 'nur-web',
+  'DELETE /api/v1/auth/passkeys/:id': 'nur-web',
+  'POST /api/v1/auth/passkey/registrieren/optionen': 'nur-web',
+  'POST /api/v1/auth/passkey/registrieren': 'nur-web',
+  'POST /api/v1/auth/passkey/anmelden/optionen': 'nur-web',
+  'POST /api/v1/auth/passkey/anmelden': 'nur-web',
+  // Fingerabdruck der CA zum Abgleich von Hand; die App bekommt ihn im QR-Code.
+  'GET /api/v1/settings/tls': 'nur-web',
   // Angemeldete Geraete: seit der Token-Verwaltung von BEIDEN Apps gerufen.
   // Standen als 'nur-web' da und waren es nie — es gab ueberhaupt keinen
   // Aufrufer, und die Routen hingen hinter requireLogin (sitzungsgebunden),
