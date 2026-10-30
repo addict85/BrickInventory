@@ -220,7 +220,7 @@ function sparklineSVG(data, width=260, height=44){
  * automatisch auf, sobald ein Kaufpreis in diesem Zustand erfasst wird: Nach
  * jedem Speichern wird diese Abfrage erneut geladen.
  *
- * @param {{by_condition?: Record<string, {market_price: number|null, pnl_pct: number|null}>}} ph
+ * @param {{by_condition?: Record<string, {market_price: number|null, pnl_pct: number|null, purchase_price?: number|null}>}} ph
  */
 export function renderMarketRows(ph, targetId = 'm-market-rows') {
   const el = G(targetId);
@@ -441,7 +441,7 @@ const diagrammVon = (e) => e.target?.closest?.('svg[data-punkte]');
 for (const art of ['pointermove', 'pointerdown']) {
   document.addEventListener(art, (e) => {
     const svg = diagrammVon(e);
-    if (svg) zeigeFadenkreuz(svg, naechsterPunkt(svg, e.clientX));
+    if (svg) zeigeFadenkreuz(svg, naechsterPunkt(svg, /** @type {PointerEvent} */ (e).clientX));
   });
 }
 document.addEventListener('pointerout', (e) => {

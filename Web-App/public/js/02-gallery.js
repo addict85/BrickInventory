@@ -242,7 +242,7 @@ document.addEventListener('keydown', (ev) => {
 
 /** Offene Import-Menüs schliessen, ausser dem, in dem `ausser` liegt. */
 function importMenuesSchliessen(ausser, fokusZurueck = false){
-  document.querySelectorAll('details.import-menue[open]').forEach(d => {
+  /** @type {NodeListOf<HTMLDetailsElement>} */ (document.querySelectorAll('details.import-menue[open]')).forEach(d => {
     if (ausser && d.contains(ausser)) return;
     d.open = false;
     if (fokusZurueck && d.contains(document.activeElement)) d.querySelector('summary')?.focus();
@@ -250,11 +250,13 @@ function importMenuesSchliessen(ausser, fokusZurueck = false){
 }
 // Ein Klick daneben schliesst das Menü; eine Wahl darin (Datei, Vorlage) ebenso.
 document.addEventListener('click', (ev) => {
-  importMenuesSchliessen(ev.target);
-  if (ev.target.closest?.('.import-klappe a')) ev.target.closest('details').open = false;
+  const ziel = ev.target instanceof Element ? ev.target : null;
+  importMenuesSchliessen(ziel);
+  const d = /** @type {HTMLDetailsElement|null} */ (ziel?.closest('.import-klappe a')?.closest('details') ?? null);
+  if (d) d.open = false;
 });
 document.addEventListener('change', (ev) => {
-  const d = ev.target.closest?.('details.import-menue');
+  const d = ev.target instanceof Element ? /** @type {HTMLDetailsElement|null} */ (ev.target.closest('details.import-menue')) : null;
   if (d) d.open = false;
 });
 
@@ -942,7 +944,7 @@ export function updateGalleryPrices(){
  * gerechnet stünde dort „+327.600 %“, und das sagt nichts.
  */
 export function pnlBadge(pct, kauf){
-  if(istGeschenk(kauf)) return `<span class="pnl-geschenk">${esc(t('finance.gift'))}</span>`;
+  if(istGeschenk(kauf)) return `<span class="pnl-geschenk">${t('finance.gift')}</span>`;
   if(pct===null||pct===undefined) return '';
   const v=parseFloat(pct); const cls=v>0?'pnl-pos':v<0?'pnl-neg':'pnl-neu';
   return `<span class="${cls}">${fmtPct(v)}</span>`;

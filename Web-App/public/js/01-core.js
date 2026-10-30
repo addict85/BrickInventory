@@ -563,22 +563,24 @@ export function observeLazyImages(root) {
 }
 /** Anzeigedauer je Art in ms. */
 const TOAST_DAUER = { success: 3500, info: 5000, error: 9000 };
+/** @type {WeakMap<Element, {schluessel: string, anzahl: number, frist: any}>} */
+const _toastStand = new WeakMap();
 /** @param {{text: string, fn: () => any}} [aktion] Knopf in der Meldung, z. B. „Rückgängig" */
 export function toast(msg, type='info', aktion) {
   const c = G('toasts');
   // Dieselbe Meldung noch einmal: zählen statt stapeln, und die Frist beginnt neu.
   const schluessel = `${type}|${String(msg ?? '')}`;
-  const gleich = !aktion && [...c.children].find(x => x._schluessel === schluessel);
+  const gleich = aktion ? null : [...c.children].find(x => _toastStand.get(x)?.schluessel === schluessel);
   if (gleich) {
-    gleich._anzahl = (gleich._anzahl || 1) + 1;
-    const zahl = gleich.querySelector('.toast-anzahl');
-    zahl.textContent = `×${gleich._anzahl}`; zahl.hidden = false;
-    clearTimeout(gleich._frist);
-    gleich._frist = setTimeout(() => gleich.remove(), TOAST_DAUER[type] ?? 4500);
-    return gleich;
+    const stand = _toastStand.get(gleich);
+    stand.anzahl++;
+    const zahl = /** @type {HTMLElement} */ (gleich.querySelector('.toast-anzahl'));
+    zahl.textContent = `×${stand.anzahl}`; zahl.hidden = false;
+    clearTimeout(stand.frist);
+    stand.frist = setTimeout(() => gleich.remove(), TOAST_DAUER[type] ?? 4500);
+    return /** @type {HTMLElement} */ (gleich);
   }
   const el = document.createElement('div');
-  el._schluessel = schluessel;
   el.className=`toast ${type}`;
   if (type === 'error') el.setAttribute('role', 'alert');
   // textContent statt innerHTML: msg enthält regelmässig Server-Fehlermeldungen
@@ -604,7 +606,7 @@ export function toast(msg, type='info', aktion) {
   // sie keine Karte verdeckt.
   el.addEventListener('click', e => { if (e.target === el || !(/** @type {Element} */ (e.target)).closest('button')) el.remove(); });
   c.appendChild(el);
-  el._frist = setTimeout(() => el.remove(), Math.max(aktion ? 9000 : 0, TOAST_DAUER[type] ?? 4500));
+  _toastStand.set(el, { schluessel, anzahl: 1, frist: setTimeout(() => el.remove(), Math.max(aktion ? 9000 : 0, TOAST_DAUER[type] ?? 4500)) });
   return el;
 }
 /**

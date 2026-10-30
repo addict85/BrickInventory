@@ -746,7 +746,6 @@ window.I18N_DE = {
   'settings.general_title': 'Erscheinungsbild',
   'settings.sections': 'Abschnitte',
   'settings.secret_show': 'Anzeigen',
-  'brick.stat_sets': 'Sets',
   'settings.app_theme_hint': 'Vorgabe für alle Konten (Web & App). Jedes Konto kann unter „Konto“ ein eigenes Design wählen.',
   'settings.own_theme': 'Design',
   'settings.own_theme_default': 'Vorgabe: {name}',

@@ -59,7 +59,7 @@ async function loadPortfolioChart(){
   _letzteKurve = null;
   // Ohne jeden Verlauf („Max“ leer) gibt es keinen Zeitraum zu wählen.
   const ganzLeer = (!d.points?.length || messpunkte < 2) && _chartPeriod === 'max';
-  document.querySelectorAll('.zeitraum-wahl .period-btn').forEach(b => { b.disabled = ganzLeer; });
+  /** @type {NodeListOf<HTMLButtonElement>} */ (document.querySelectorAll('.zeitraum-wahl .period-btn')).forEach(b => { b.disabled = ganzLeer; });
   if(!d.points?.length || messpunkte < 2){
     el.innerHTML = diagrammLeer();
     const pnlLeer = G('portfolio-pnl');

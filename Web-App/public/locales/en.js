@@ -733,7 +733,6 @@ window.I18N_EN = {
   'settings.general_title': 'Appearance',
   'settings.sections': 'Sections',
   'settings.secret_show': 'Show',
-  'brick.stat_sets': 'Sets',
   'settings.app_theme_hint': 'Default for all accounts (web & app). Each account can pick its own design under “Account”.',
   'settings.own_theme': 'Theme',
   'settings.own_theme_default': 'Default: {name}',
