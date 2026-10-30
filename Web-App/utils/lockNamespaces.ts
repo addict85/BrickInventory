@@ -29,8 +29,6 @@ export const LOCKS = {
   BRICKSET_RETRY:     11223344,
   /** Vorschaubilder des Bild-Proxys. */
   PROXY_THUMBS:       918273645,
-  /** Schema-Initialisierung — genau ein Worker migriert. */
+  /** Schema-Initialisierung — genau ein Prozess migriert. */
   SCHEMA_INIT:        55667788,
-  /** Wahl des Primärprozesses beim Start. */
-  PRIMARY_WORKER:     99999999,
 } as const;

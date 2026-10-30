@@ -22,7 +22,6 @@ const os = require('node:os');
 const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.WEB_WORKERS = '1';
 // Eigene Ablage, damit der Test keine Bilder in den Arbeitsbaum legt.
 process.env.APP_ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'katalog-bilder-'));
 

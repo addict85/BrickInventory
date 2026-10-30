@@ -26,7 +26,6 @@ const BASIS = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost
 const NAME = `schema_basis_${process.pid}`;
 const ziel = new URL(BASIS); ziel.pathname = '/' + NAME;
 process.env.DATABASE_URL = ziel.toString();
-process.env.WEB_WORKERS = '1';
 process.env.ADMIN_PASSWORD = 'Basis-Pruefung-2026';
 
 const _req = require('./helpers/sources').buildAndRequire();

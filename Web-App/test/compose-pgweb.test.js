@@ -146,5 +146,5 @@ test('TRUST_PROXY ohne Angabe ist Loopback, das Netz hat ein festes Subnetz', ()
 test('pgweb ist per Digest festgelegt, kein Dienst hat ein Ersatz-Datenbankpasswort', () => {
   assert.match(leseDienst(compose, 'pgweb'), /^\s*image:\s*\S+@sha256:[0-9a-f]{64}\s*$/m, 'pgweb ist nicht per Digest festgelegt');
   assert.doesNotMatch(compose, /DB_PASSWORD:-/, 'ein Dienst fällt auf ein Beispielpasswort zurück');
-  assert.equal([...compose.matchAll(/\$\{DB_PASSWORD:\?/g)].length, 3, 'postgres, app und pgweb verlangen DB_PASSWORD');
+  assert.equal([...compose.matchAll(/\$\{DB_PASSWORD:\?/g)].length, 4, 'postgres, app, jobs und pgweb verlangen DB_PASSWORD');
 });

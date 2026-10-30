@@ -26,7 +26,6 @@ const https  = require('node:https');
 const { EventEmitter } = require('node:events');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');

@@ -22,7 +22,6 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.WEB_WORKERS = '1';
 const _req = require('./helpers/sources').buildAndRequire();
 const ROOT = path.join(__dirname, '..');
 const NOTIFY = fs.readFileSync(path.join(ROOT, 'utils', 'pgNotify.ts'), 'utf8');

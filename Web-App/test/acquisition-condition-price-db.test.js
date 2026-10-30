@@ -19,7 +19,6 @@ const path = require('node:path');
 const { ohneKommentare } = require('./helpers/sources');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.WEB_WORKERS = '1';
 const _req = require('./helpers/sources').buildAndRequire();
 
 test('ein geleerter Kaufpreis wird im Zustand der Zeile nachgefüllt', { concurrency: 1 }, async (t) => {

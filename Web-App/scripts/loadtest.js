@@ -47,7 +47,6 @@ if (/prod|live/i.test(DB_URL)) {
   process.exit(1);
 }
 process.env.DATABASE_URL = DB_URL;
-process.env.WEB_WORKERS = '1';
 
 // ── Argumente ────────────────────────────────────────────────────────────────
 /**

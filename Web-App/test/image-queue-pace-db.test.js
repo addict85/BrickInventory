@@ -33,7 +33,6 @@ const { execFileSync } = require('node:child_process');
 
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.WEB_WORKERS = '1';
 
 // Herunterladen und Verkleinern abfangen — hier zählt, WIE OFT und WANN sie
 // gerufen werden, nicht was sie tun.

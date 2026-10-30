@@ -21,7 +21,6 @@ const assert = require('node:assert/strict');
 const Module = require('node:module');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.WEB_WORKERS = '1';
 
 const gestartet = [];
 const echtesRequire = Module.prototype.require;

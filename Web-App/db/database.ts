@@ -30,14 +30,13 @@ import { konfig, datenbankVerbindung } from '../utils/konfig';
 pgTypes.setTypeParser(pgTypes.builtins.NUMERIC, (v: any) => (v === null ? null : parseFloat(v)));
 
 // ── Connection pool ───────────────────────────────────────────────────────────
-// Jeder Worker hat einen eigenen Pool; zusammen müssen sie unter
-// max_connections bleiben, mit Luft für Werkzeuge.
-const { workerZahl, poolJeWorker } = require('../utils/workerZahl') as typeof import('../utils/workerZahl');
-const MAX_PER_WORKER = poolJeWorker(workerZahl());
+// Höchstens zwei Prozesse (web und jobs) mit je 15 Verbindungen: weit unter
+// max_connections, mit Luft für Werkzeuge und den CSV-Importprozess.
+const VORGABE_POOL = 15;
 
 const K = konfig();
 const POOL_CONFIG = {
-  max:                    K.pgPoolMax ?? MAX_PER_WORKER,
+  max:                    K.pgPoolMax ?? VORGABE_POOL,
   min:                    K.pgPoolMin,
   idleTimeoutMillis:      K.pgIdleMs,
   connectionTimeoutMillis:K.pgConnMs,
@@ -324,8 +323,8 @@ async function legeAdminAn() {
 }
 
 // initSchemaOnce: Erststart und Migrationen unter einem Advisory-Lock
-// (LOCKS.SCHEMA_INIT), damit im Cluster genau ein Worker das Schema anfasst.
-// Die anderen warten blockierend und finden danach alles vor.
+// (LOCKS.SCHEMA_INIT): Starten web und jobs zugleich, migriert genau einer;
+// der andere wartet blockierend und findet danach alles vor.
 async function initSchemaOnce() {
   const LOCK_ID = LOCKS.SCHEMA_INIT;
   const client = await pool.connect();

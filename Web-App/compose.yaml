@@ -123,11 +123,10 @@ services:
       # NODE_ENV: production
       # NODE_OPTIONS: "--max-old-space-size=384"
 
-      # ── Cluster / Worker ─────────────────────────────────────────────────────
-      # Anzahl paralleler Node.js-Prozesse.
-      # 0 = automatisch (Anzahl CPU-Kerne, mind. 2) — empfohlen für Produktion.
-      # 1 = kein Clustering (nützlich zum Debuggen oder auf schwacher Hardware).
-      WEB_WORKERS: 0
+      # ── Rolle ────────────────────────────────────────────────────────────────
+      # Dieser Dienst beantwortet nur Anfragen; die Hintergrundarbeit macht der
+      # Dienst `jobs` unten aus demselben Image.
+      ROLLE: web
 
       # ── Datenbank-Verbindung ─────────────────────────────────────────────────
       # PGHOST:     postgres
@@ -137,14 +136,10 @@ services:
       # PGDATABASE: brickinventory
 
       # ── DB-Verbindungspool ───────────────────────────────────────────────────
-      # Maximale gleichzeitige DB-Verbindungen pro Worker-Prozess.
-      # Gesamtverbindungen = PG_POOL_MAX × WEB_WORKERS (oder CPU-Kerne).
-      # Beispiel: 4 Worker × 20 = 80 Verbindungen — PostgreSQL max_connections
-      # prüfen (Standard: 100). Bei Bedarf PG_POOL_MAX reduzieren.
-      # PG_POOL_MAX bewusst nicht gesetzt: db/database.ts rechnet
-      # min(15, 80 / Anzahl Worker) selbst aus. Nur setzen, wenn die Postgres-
-      # Instanz ein abweichendes max_connections hat.
-      # PG_POOL_MAX: 20
+      # Höchste Zahl gleichzeitiger Verbindungen je Prozess (Vorgabe 15; app
+      # und jobs zusammen also 30). Nur setzen, wenn die Postgres-Instanz ein
+      # kleines max_connections hat.
+      # PG_POOL_MAX: 15
       # PG_POOL_MIN:  2      # Immer warm gehaltene Verbindungen
       # PG_IDLE_MS:   30000  # Idle-Timeout in ms (Standard: 30 s)
       # PG_CONN_MS:   5000   # Verbindungs-Timeout in ms (Standard: 5 s)
@@ -157,6 +152,49 @@ services:
       timeout: 10s
       retries: 3
       start_period: 20s
+    networks:
+      - brickinventory-net
+
+  # ── Hintergrundarbeit ────────────────────────────────────────────────────────
+  # Derselbe Bau wie `app`, aber ROLLE=jobs: arbeitet die Auftragstabelle ab
+  # (Preise, Bilder, Anleitungen, Importe, Zeitpläne) und nimmt keine Anfragen
+  # an. Beim Beenden gibt er laufende Aufträge zurück; der nächste Start setzt
+  # sie fort. Die Migrationen macht, wer zuerst startet — der andere wartet.
+  jobs:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: brickinventory-jobs
+    restart: unless-stopped
+    init: true
+    # Dieselben Rechte wie `app` (siehe dort): der Entrypoint richtet ./data ein.
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+    cap_add: [CHOWN, DAC_OVERRIDE, SETUID, SETGID]
+    read_only: true
+    tmpfs:
+      - /tmp
+    depends_on:
+      postgres:
+        condition: service_healthy
+    # Bilder, Anleitungen, PDFs und der Schlüssel für gespeicherte Geheimnisse
+    # (data/.datenschluessel) liegen dort, wo auch `app` sie sucht.
+    volumes:
+      - ./data:/app/data
+    environment:
+      ROLLE: jobs
+      PGPASSWORD: ${DB_PASSWORD:?DB_PASSWORD in .env setzen - siehe UPGRADE.md}
+      # Wer bei `app` DATA_KEY, TZ, ERFASSUNG_ZEITZONE oder PG_* setzt, setzt
+      # sie hier gleich.
+    # Lebenszeichen statt HTTP: Der Prozess schreibt alle 30 s eine Datei in /tmp.
+    healthcheck:
+      test: ["CMD", "node", "-e",
+        "const t = require('fs').statSync('/tmp/brickinventory-jobs.lebt').mtimeMs; process.exit(Date.now() - t < 120000 ? 0 : 1)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
     networks:
       - brickinventory-net
 

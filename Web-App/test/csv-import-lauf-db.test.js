@@ -20,7 +20,6 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.WEB_WORKERS = '1';
 process.env.CSV_ZEILE_FRIST_MS = '150';
 
 // addSetWithDate gestellt: Jeder Aufruf wird gezählt und dauert `dauer` ms.

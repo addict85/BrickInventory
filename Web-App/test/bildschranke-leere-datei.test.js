@@ -45,7 +45,6 @@ const os = require('node:os');
 const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { isDecodable } = _req('utils/imageGuard.js');

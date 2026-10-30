@@ -64,13 +64,8 @@ function routenAus(datei, mount) {
  * dessen Routen fielen dann stillschweigend aus der Prüfung.
  */
 function webRouter() {
-  const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'server.ts'), 'utf8'));
-  const out = [];
-  for (const m of src.matchAll(/app\.use\(\s*['"](\/api\/[^'"]+)['"]\s*,\s*require\(\s*['"]\.\/(routes\/[^'"]+)['"]/g)) {
-    if (m[2].startsWith('routes/api_v1')) continue;   // das IST die zweite Oberfläche
-    out.push({ mount: m[1].replace(/\/+$/, ''), datei: path.join(ROOT, m[2] + '.ts') });
-  }
-  return out;
+  // Dieselbe Lesart wie in den übrigen Prüfungen (helpers/sources.js); api_v1 ist die zweite Oberfläche.
+  return require('./helpers/sources').routerEinhaengungen();
 }
 
 /**

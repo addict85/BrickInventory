@@ -19,7 +19,10 @@ export interface Konfig {
   sitzungLeerlaufMin: number;
   sitzungHoechstStd: number;
   tokenLeerlaufTage: number;
-  webWorkers: number;
+  /** Was dieser Prozess tut: Anfragen beantworten, Aufträge abarbeiten oder beides. */
+  rolle: Rolle;
+  /** Gesetzte Variablen, die der Server nicht mehr auswertet — für einen Hinweis beim Start. */
+  veraltet: string[];
   pgPoolMax: number | null;
   pgPoolMin: number;
   pgIdleMs: number;
@@ -40,6 +43,9 @@ export interface Konfig {
   auftragFristSek: number;
 }
 
+export type Rolle = 'web' | 'jobs' | 'beides';
+const ROLLEN: readonly Rolle[] = ['web', 'jobs', 'beides'];
+
 /** Vorgaben, die auch andere Module nennen (utils/sitzungsFrist.ts). */
 // Höchstdauer eine Woche, wie der Browser-Token.
 export const VORGABE = { sitzungLeerlaufMin: 240, sitzungHoechstStd: 168 } as const;
@@ -55,13 +61,24 @@ export class KonfigFehler extends Error {
 /** Alle Variablen, die der Server kennt — auch für die Signatur des Zwischenspeichers. */
 export const VARIABLEN = [
   'NODE_ENV', 'PORT', 'HSTS_MAX_AGE', 'TRUST_PROXY', 'SESSION_SECRET', 'COOKIE_SECURE',
-  'SESSION_IDLE_MINUTES', 'SESSION_MAX_HOURS', 'TOKEN_IDLE_DAYS', 'WEB_WORKERS',
+  'SESSION_IDLE_MINUTES', 'SESSION_MAX_HOURS', 'TOKEN_IDLE_DAYS', 'ROLLE',
   'DATABASE_URL', 'PGHOST', 'PGPORT', 'PGUSER', 'PGPASSWORD', 'PGDATABASE',
   'PG_POOL_MAX', 'PG_POOL_MIN', 'PG_IDLE_MS', 'PG_CONN_MS', 'PG_STMT_MS', 'ADMIN_PASSWORD',
   'APP_BASE_URL', 'APP_ROOT', 'APP_VERSION', 'DATA_KEY', 'ERFASSUNG_ZEITZONE', 'TZ',
   'PRICE_HISTORY_KEEP_DAYS', 'UPLOAD_KONTINGENT_MB', 'MAIL_KONSOLE_MIT_TOKEN', 'IMG_USER_AGENT',
   'CSV_ZEILE_FRIST_MS', 'AUFTRAG_PARALLEL', 'AUFTRAG_FRIST_SEK',
 ] as const;
+
+/** Ausgewertet wird sie nicht mehr; steht sie noch in einer alten compose.yaml, sagt der Start es. */
+const VERALTET = ['WEB_WORKERS'] as const;
+
+/** Ohne Angabe beides in einem Prozess: der einfache Start ohne Compose. */
+function rolleAus(env: Umgebung, fehler: string[]): Rolle {
+  const roh = env.ROLLE?.trim().toLowerCase() || 'beides';
+  if ((ROLLEN as readonly string[]).includes(roh)) return roh as Rolle;
+  fehler.push(`ROLLE="${env.ROLLE}" ist weder web noch jobs noch beides`);
+  return 'beides';
+}
 
 /** Liest eine ganze Zahl in [min, max]; leer heisst Vorgabe. */
 function ganzzahl(env: Umgebung, name: string, vorgabe: number, min: number, max: number, fehler: string[]): number {
@@ -136,7 +153,8 @@ export function ladeKonfig(env: Umgebung = process.env): Konfig {
     sitzungLeerlaufMin: ganzzahl(env, 'SESSION_IDLE_MINUTES', VORGABE.sitzungLeerlaufMin, 1, 525_600, f),
     sitzungHoechstStd: ganzzahl(env, 'SESSION_MAX_HOURS', VORGABE.sitzungHoechstStd, 1, 87_600, f),
     tokenLeerlaufTage: ganzzahl(env, 'TOKEN_IDLE_DAYS', 90, 0, 36_500, f),
-    webWorkers: ganzzahl(env, 'WEB_WORKERS', 0, 0, 256, f),
+    rolle: rolleAus(env, f),
+    veraltet: VERALTET.filter(n => env[n]?.trim()),
     pgPoolMax,
     pgPoolMin: ganzzahl(env, 'PG_POOL_MIN', 2, 0, 1000, f),
     pgIdleMs: ganzzahl(env, 'PG_IDLE_MS', 30_000, 0, 86_400_000, f),
@@ -169,7 +187,7 @@ let _konfig: Konfig | null = null;
  * bekannten Variablen ändert — Tests setzen sie zur Laufzeit um.
  */
 export function konfig(): Konfig {
-  const sig = VARIABLEN.map(n => process.env[n] ?? '\u0000').join('\u0001');
+  const sig = [...VARIABLEN, ...VERALTET].map(n => process.env[n] ?? '\u0000').join('\u0001');
   if (_konfig && sig === _signatur) return _konfig;
   _konfig = ladeKonfig(process.env);
   _signatur = sig;

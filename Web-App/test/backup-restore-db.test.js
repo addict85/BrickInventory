@@ -40,7 +40,6 @@ const path   = require('node:path');
 const { execFileSync, spawnSync } = require('node:child_process');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.WEB_WORKERS = '1';
 
 const { ROOT } = require('./helpers/sources');
 const _req = require('./helpers/sources').buildAndRequire();

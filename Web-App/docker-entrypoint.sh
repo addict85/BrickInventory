@@ -8,7 +8,7 @@ set -e
 # erscheint."
 #
 # Die erste Zeile des Servers steht unmittelbar nach den Importen
-# (`[cluster] Primary … starting N workers`), und console.log schreibt synchron
+# (`[start] Prozess …, Rolle …`), und console.log schreibt synchron
 # nach stdout. Wer minutenlang nichts sieht, sieht also nicht einen langsamen
 # Server — er sieht ein Skript, das VOR dem Server laeuft und dabei schweigt.
 #
@@ -135,7 +135,7 @@ case "${BRICKINV_CHOWN:-auto}" in
     ;;
 esac
 
-echo "[entrypoint] Server wird gestartet."
+echo "[entrypoint] Server wird gestartet (Rolle ${ROLLE:-beides})."
 
 # Drop to brick user and start
 # dist/server.js statt server.js: Der Build schreibt seit der Umstellung nach

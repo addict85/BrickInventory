@@ -353,10 +353,10 @@ test('der Cache-Aufräumlauf hängt am Primary-Worker', () => {
   // Kommentare raus: Die Erklärzeile daneben nennt den Namen ebenfalls, und
   // die Gegenprobe (Aufruf entfernt) blieb dadurch zunächst grün — ein Test,
   // der den Kommentar für den Aufruf hält, prüft gar nichts.
-  const jobs = main.slice(main.indexOf('if (!isPrimaryWorker) return;'))
+  const jobs = main.slice(main.indexOf('export async function starteHintergrundlaeufe'))
     .replace(/\/\/[^\n]*/g, '');
   assert.match(jobs, /startImgCacheCleanup\(\)/,
-    'Der Aufruf gehört zu den übrigen Hintergrundarbeiten des Primary-Workers');
+    'Der Aufruf gehört zu den übrigen Hintergrundarbeiten des Job-Prozesses');
 });
 
 /**

@@ -30,7 +30,6 @@ const path   = require('node:path');
 const zlib   = require('node:zlib');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.WEB_WORKERS = '1';
 // Vor dem Laden: appPaths rechnet DATA_DIR aus APP_ROOT beim Einlesen aus.
 const SANDKASTEN = fs.mkdtempSync(path.join(os.tmpdir(), 'gutschein-bombe-'));
 fs.mkdirSync(path.join(SANDKASTEN, 'data'), { recursive: true });

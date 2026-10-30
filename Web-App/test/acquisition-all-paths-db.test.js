@@ -33,7 +33,6 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { haeltFigur, haeltSet, haeltTeil } = require('./helpers/bestand');

@@ -37,7 +37,6 @@ const Module = require('node:module');
 
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.WEB_WORKERS = '1';
 
 // Herunterladen und Verkleinern abfangen — hier zählt, WANN sie aufgerufen
 // werden, nicht was sie tun.
@@ -411,22 +410,7 @@ test('der Puffer wird in JEDEM Arbeitsprozess weggeschrieben', () => {
   assert.match(dbInit, /\binitImageQueue\(\)/,
     'initImageQueue() wird nicht beim Aufbau der Datenbank aufgerufen');
 
-  // Das ABARBEITEN dagegen gehört auf den Primärprozess — sonst rechnen
-  // wieder alle vier.
-  // UMFORMULIERT in Nachtrag 139: Geprüft wurde der WORTLAUT
-  //     require('./jobs/imageQueue').start()
-  // Beim Umstellen auf echte Importe wurde daraus `starteJobBilder()`, und die
-  // Prüfung wurde rot, ohne dass sich ihre Aussage geändert hätte.
-  //
-  // Dass der Job überhaupt anläuft, prüft jetzt test/background-jobs-start.js
-  // zur LAUFZEIT — belastbarer als jede Suche im Quelltext. Hier bleibt die
-  // Aussage, die dort nicht messbar ist: Er läuft nur im Primärprozess.
-  const start = require('./helpers/sources').startQuelle();
-  const i = start.indexOf('starteJobBilder()');
-  assert.ok(i > 0, 'Der Bilder-Job wird nirgends angestossen');
-  const davor = start.slice(0, i);
-  assert.ok(davor.lastIndexOf('if (!isPrimaryWorker) return') > davor.lastIndexOf('app.listen'),
-    'Das Abarbeiten steht nicht im Primärprozess-Block');
+  // Abgearbeitet wird nur im Job-Prozess: test/web-und-jobs-db.test.js prüft das am echten Server.
 });
 
 test('die Anfrage rechnet nichts mehr, sie notiert nur', () => {
@@ -444,13 +428,4 @@ test('die Anfrage rechnet nichts mehr, sie notiert nur', () => {
   assert.equal(_req('routes/imgProxy.js').setNummerAusBildAdresse('https://cdn.rebrickable.com/media/sets/10294-1.jpg'),
     '10294-1', 'Die Setnummer wird nicht aus der Adresse gelesen');
 
-  // Der Job läuft nur auf dem Primärprozess — sonst rechnen wieder alle vier.
-  // Siehe oben (Nachtrag 139): echter Import statt spätem require().
-  const srv = require('./helpers/sources').startQuelle();
-  const i = srv.indexOf('starteJobBilder()');
-  assert.ok(i > 0, 'Der Bilder-Job wird nirgends angestossen');
-  const davor = srv.slice(0, i);
-  assert.ok(davor.lastIndexOf('if (!isPrimaryWorker) return') > davor.lastIndexOf('app.listen'),
-    'Der Job steht nicht im Primärprozess-Block — dann läuft er in jedem ' +
-    'Arbeitsprozess, und die Drosselung ist wirkungslos');
 });

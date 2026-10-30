@@ -561,11 +561,15 @@ module.exports.pruefeParameter = pruefeParameter;
  */
 function routerEinhaengungen() {
   const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'server.ts'), 'utf8'));
+  // `import xRouter = require('./routes/x')` oben, `app.use('/api/…', xRouter)` unten.
+  const dateiJeName = new Map([...src.matchAll(/import\s+(\w+)\s*=\s*require\(\s*['"]\.\/(routes\/[^'"]+)['"]\s*\)/g)]
+    .map(m => [m[1], m[2]]));
   const out = [];
-  for (const m of src.matchAll(/app\.use\(\s*['"](\/api[^'"]*)['"]\s*,\s*require\(\s*['"]\.\/(routes\/[^'"]+)['"]/g)) {
-    if (m[2].startsWith('routes/api_v1')) continue;
-    out.push({ mount: m[1].replace(/\/+$/, ''), datei: path.join(ROOT, m[2] + '.ts'),
-               name: m[2].replace(/^routes\//, '') });
+  for (const m of src.matchAll(/app\.use\(\s*['"](\/api[^'"]*)['"]\s*,\s*(\w+)\s*\)/g)) {
+    const datei = dateiJeName.get(m[2]);
+    if (!datei || datei.startsWith('routes/api_v1')) continue;
+    out.push({ mount: m[1].replace(/\/+$/, ''), datei: path.join(ROOT, datei + '.ts'),
+               name: datei.replace(/^routes\//, '') });
   }
   return out;
 }

@@ -114,7 +114,9 @@ function erzeugeWorker(bearbeiter: Bearbeitertabelle, o: WorkerOptionen = {}) {
     if (gestartet) unlisten(AUFTRAG_KANAL, geweckt);
     const alle = [...laufend.values()];
     await Promise.race([Promise.all(alle.map(l => l.fertig)), new Promise(r => setTimeout(r, wartenMs).unref())]);
-    for (const { a } of laufend.values()) await gibZurueck(a).catch(logAndContinue('auftraege:zurückgeben'));
+    const rest = [...laufend.values()];
+    for (const { a } of rest) await gibZurueck(a).catch(logAndContinue('auftraege:zurückgeben'));
+    console.log(`[auftraege] beendet, ${rest.length} laufende Aufträge zurückgegeben`);
   }
 
   return { verarbeiteEinen, starte, stoppe, laufend: () => laufend.size };

@@ -12,7 +12,6 @@ const assert = require('node:assert/strict');
 const { EventEmitter } = require('node:events');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.WEB_WORKERS = '1';
 
 // Jeder Abruf scheitert sofort — wie ein Rechner ohne Netz.
 const Module = require('node:module');

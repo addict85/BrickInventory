@@ -26,7 +26,7 @@ function starte(env, ms = 8000) {
   return new Promise((fertig) => {
     const srv = spawn(process.execPath, [path.join(ROOT, 'dist', 'server.js')], {
       cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'],
-      env: { PATH: process.env.PATH, NODE_ENV: 'production', PORT: '39648', WEB_WORKERS: '1',
+      env: { PATH: process.env.PATH, NODE_ENV: 'production', PORT: '39648',
              SESSION_SECRET: 'startverbot-geheimnis-lang-genug-1234567', ...env },
     });
     let log = '';
