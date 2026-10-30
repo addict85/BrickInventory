@@ -41,7 +41,7 @@ export type LagerArt = keyof typeof TABELLEN;
  *  hoechsten $n ab und verlangt dann einen Typ fuer den uebersprungenen. */
 const BEDINGUNG: Record<LagerArt, (ab: number) => string> = {
   set:  (ab) => `set_number = $${ab}`,
-  part: (ab) => `part_number = $${ab} AND COALESCE(color_id, 0) = $${ab + 1}`,
+  part: (ab) => `part_number = $${ab} AND color_id = $${ab + 1}`,
   fig:  (ab) => `fig_number = $${ab}`,
 };
 

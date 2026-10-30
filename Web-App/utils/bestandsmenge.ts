@@ -65,6 +65,7 @@ export function mengeSummeSql(konten: 'eines' | 'blickfeld'): string {
 }
 
 import * as db from '../db/database';
+import { colorId } from './validate';
 
 /**
  * Was ein Leser bzw. Schreiber hier können muss, und nicht mehr. `any` wäre
@@ -130,16 +131,16 @@ const ART = {
 export function teilmengeJoin(bezug: string, art: Bestandsart, alias = 'tm', konten?: string): string {
   const a = ART[art];
   const farbErf = a.farbe
-    ? `, COALESCE(x.color_id, 0) AS fk` : '';
+    ? `, x.color_id AS fk` : '';
   const farbVgl = a.farbe
-    ? ` AND ${alias}_e.fk = COALESCE(${bezug}.color_id, 0)` : '';
+    ? ` AND ${alias}_e.fk = ${bezug}.color_id` : '';
   const farbKat = a.farbe
-    ? ` AND ${alias}_k.color_id = COALESCE(${bezug}.color_id, 0)` : '';
+    ? ` AND ${alias}_k.color_id = ${bezug}.color_id` : '';
   return `LEFT JOIN (SELECT x.user_id, x.${a.nummer}${farbErf},
                              SUM(x.quantity)::int AS menge
                         FROM ${a.erfassung} x${konten ? `
                        WHERE x.user_id ${konten}` : ''}
-                       GROUP BY x.user_id, x.${a.nummer}${a.farbe ? ', COALESCE(x.color_id, 0)' : ''}) ${alias}_e
+                       GROUP BY x.user_id, x.${a.nummer}${a.farbe ? ', x.color_id' : ''}) ${alias}_e
                ON ${alias}_e.user_id = ${bezug}.user_id
               AND ${alias}_e.${a.nummer} = ${bezug}.${a.nummer}${farbVgl}
     LEFT JOIN ${a.katalog} ${alias}_k
@@ -168,9 +169,9 @@ export async function mengeDerPosition(
   dbh: { get: (sql: string, params?: unknown[]) => Promise<any> } = db,
 ): Promise<number | null> {
   const a = ART[art];
-  const farbe = a.farbe ? ' AND COALESCE(b.color_id, 0) = COALESCE($3, 0)' : '';
-  const farbErf = a.farbe ? ' AND COALESCE(x.color_id, 0) = COALESCE($3, 0)' : '';
-  const params = a.farbe ? [userId, keys[0], keys[1] ?? 0] : [userId, keys[0]];
+  const farbe = a.farbe ? ' AND b.color_id = $3' : '';
+  const farbErf = a.farbe ? ' AND x.color_id = $3' : '';
+  const params = a.farbe ? [userId, keys[0], colorId(keys[1])] : [userId, keys[0]];
   const zeile = await dbh.get(
     `SELECT COALESCE((SELECT SUM(x.quantity) FROM ${a.erfassung} x
                        WHERE x.user_id = $1 AND x.${a.nummer} = $2${farbErf}), 0)::int AS menge
