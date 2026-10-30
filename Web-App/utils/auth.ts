@@ -110,7 +110,6 @@ const TAG_MS = 86_400_000;
 
 /** Geltungsbereich eines Tokens: `app` nie mit Verwalterrechten, `voll` wie das Konto. */
 export type TokenScope = 'app' | 'voll';
-export const TOKEN_SCOPES: readonly TokenScope[] = ['app', 'voll'];
 
 /**
  * Rotation: Ab 30 Tagen seit dem letzten Tausch sagt jede Antwort

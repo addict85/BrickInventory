@@ -1,6 +1,6 @@
 /**
- * Passkeys: Verwalten im Konto, Anmelden auf der Anmeldeseite. Hängt im
- * Router von routes/auth.ts, also unter /api/v1/auth.
+ * Passkeys: Verwalten im Konto, Anmelden auf der Anmeldeseite. Hängt wie
+ * routes/auth.ts unter /api/v1/auth (server.ts).
  */
 import express from 'express';
 import { handleRouteError, pfadParam } from '../utils/httpError';

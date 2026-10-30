@@ -102,6 +102,7 @@ test('Passkeys', { concurrency: 1 }, async (t) => {
   }));
   app.use('/api/v1', _req('routes/api_v1/middleware.js').anmeldungAmEingang);
   app.use('/api/v1/auth', _req('routes/auth.js'));
+  app.use('/api/v1/auth', _req('routes/passkeys.js'));
   const srv = app.listen(0);
   const basis = `http://localhost:${srv.address().port}/api/v1/auth`;
   t.after(async () => {

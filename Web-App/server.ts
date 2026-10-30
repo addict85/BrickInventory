@@ -463,6 +463,7 @@ app.use('/api/v1',          (require('./routes/api_v1/middleware') as typeof imp
 app.use('/api/v1',          require('./routes/api_v1/index') as typeof import('./routes/api_v1/index'));
 app.use('/api/v1/settings', require('./routes/settings') as typeof import('./routes/settings'));
 app.use('/api/v1/auth',     require('./routes/auth') as typeof import('./routes/auth'));
+app.use('/api/v1/auth',     require('./routes/passkeys') as typeof import('./routes/passkeys'));
 
 // ── E-Mail Bestätigung: /verify?token=... ─────────────────────────────────────
 // Der Link in der Bestätigungs-Mail zeigt hierher.

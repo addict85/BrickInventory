@@ -846,9 +846,6 @@ router.post('/serverbeweis', ipThrottle('serverbeweis', 120, 60 * 60 * 1000), as
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
-// Passkeys: eigene Datei, dieselbe Adresse /api/v1/auth.
-router.use(require('./passkeys') as typeof import('./passkeys'));
-
 // CJS-kompatibler Export: module.exports bleibt der Router selbst,
 // mit den intern/von jobs/ genutzten Funktionen als Properties (wie zuvor).
 export = Object.assign(router, { requireLogin, requireAdmin });
