@@ -175,6 +175,34 @@ class MonitoringViewModelVerhaltenTest {
         }
     }
 
+    // ── Das vorgegebene Design ───────────────────────────────────────────────
+    //
+    // Gegenproben (30.10.2026 gemessen):
+    //   A  ladeDesignVorgabe() nimmt r.data.theme statt vorgabe → rot „die
+    //      Auswahl zeigt die Vorgabe, nicht das eigene Design“
+    //   B  setzeDesign() übernimmt den Wert nicht → rot „ein gesetztes Design
+    //      ist sofort die Vorgabe …“
+
+    @Test
+    fun `die Auswahl zeigt die Vorgabe, nicht das eigene Design`() = runTest {
+        server.enqueue(antwort("""{"success":true,"theme":"werkbank","vorgabe":"noppe","eigenes":"werkbank"}"""))
+        vm.ladeDesignVorgabe()
+        assert(vm.state.value.vorgabeDesign == "noppe") { "Steht: ${vm.state.value.vorgabeDesign}" }
+        assert(server.takeRequest().path == "/api/v1/settings/theme")
+    }
+
+    @Test
+    fun `ein gesetztes Design ist sofort die Vorgabe, ein abgelehntes nicht`() = runTest {
+        server.enqueue(antwort("""{"success":true,"theme":"noppe","vorgabe":"noppe"}"""))
+        vm.ladeDesignVorgabe()
+        server.enqueue(antwort("""{"success":true}"""))
+        assert(vm.setzeDesign("brick"))
+        assert(vm.state.value.vorgabeDesign == "brick") { "Steht: ${vm.state.value.vorgabeDesign}" }
+        server.enqueue(antwort("""{"error":"kaputt"}""", 500))
+        assert(!vm.setzeDesign("hochglanz"))
+        assert(vm.state.value.vorgabeDesign == "brick") { "Steht: ${vm.state.value.vorgabeDesign}" }
+    }
+
     // ── Der Vorgabe-Zustand ──────────────────────────────────────────────────
 
     @Test
