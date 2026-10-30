@@ -840,4 +840,9 @@
     <string name="common_retry">Erneut versuchen</string>
     <string name="common_no_results">Nichts gefunden</string>
     <string name="common_no_results_hint">Suche oder Filter lockern.</string>
+    <string name="widget_titel">Sammlung</string>
+    <string name="widget_wert">Wert</string>
+    <string name="widget_heute">Heute</string>
+    <string name="widget_gesamt">Gesamt</string>
+    <string name="widget_leer">Öffne die App einmal, um die Zahlen zu laden.</string>
 </resources>

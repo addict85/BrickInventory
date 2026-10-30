@@ -287,7 +287,8 @@ fun SettingsScreen(
 private fun Unterschrift(text: String) {
     Text(text,
         style = MaterialTheme.typography.labelLarge,
-        fontWeight = FontWeight.SemiBold)
+        fontWeight = FontWeight.SemiBold,
+        modifier = Modifier.semantics { heading() })
 }
 
 

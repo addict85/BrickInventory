@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui
 
+import androidx.glance.appwidget.updateAll
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -226,6 +227,11 @@ class AppViewModel @Inject constructor(
                 imageLoader.memoryCache?.clear()
                 imageLoader.diskCache?.clear()
             } catch (_: Exception) { /* darf das Abmelden nie verhindern */ }
+            // Das Widget zeigt sonst die Zahlen des abgemeldeten Kontos weiter.
+            runCatching {
+                ch.brickinventoryapp.widget.WidgetAblage.leeren(ctx)
+                ch.brickinventoryapp.widget.SammlungsWidget().updateAll(ctx)
+            }
             sitzung.abgemeldet()
             blickfeldDienst.zuruecksetzen()
             _csvImportState.value = CsvImportUiState()

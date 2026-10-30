@@ -10,6 +10,8 @@ import ch.brickinventoryapp.data.model.*
 data class MerklisteUiState(
     val merkposten: List<ch.brickinventoryapp.data.model.Merkposten> = emptyList(),
     val laedt: Boolean = false,
+    /** Der Grund, warum die Liste nicht kam; null, solange nichts scheiterte. */
+    val fehler: String? = null,
     // ── Der Filter ──
     //
     // Drei Werte hier; der vierte, der Inhaber, steht wie in jeder Ansicht in

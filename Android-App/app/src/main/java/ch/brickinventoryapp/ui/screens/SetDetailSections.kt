@@ -487,7 +487,7 @@ fun LazyListScope.setDetailHeroImage(
                             }
                         }
                     },
-                    modifier = Modifier
+                    modifier = ch.brickinventoryapp.ui.components.gemeinsamesBild(set.setNumber)
                         .fillMaxWidth()
                         .height(200.dp)
                         .clip(Formen.chip)

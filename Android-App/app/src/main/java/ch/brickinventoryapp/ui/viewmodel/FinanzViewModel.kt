@@ -40,7 +40,7 @@ class FinanzViewModel @Inject constructor(
 
     fun loadValuation() {
         viewModelScope.launch {
-            _financeState.update { it.copy(valuationLoading = true) }
+            _financeState.update { it.copy(valuationLoading = true, valuationFehler = null) }
             val konto = scopeFor(ScopeFilter.View.FINANCE)
             when (val r = finanzen.getValuation(konto)) {
                 is Result.Success -> {
@@ -50,7 +50,7 @@ class FinanzViewModel @Inject constructor(
                     dienste.sitzung.aendere { it.copy(currency = r.data.currency) }
                 }
                 is Result.Error -> {
-                    _financeState.update { it.copy(valuationLoading = false) }
+                    _financeState.update { it.copy(valuationLoading = false, valuationFehler = meldung(r)) }
                     _snackbar.value = meldungFuerSnackbar(r)
                 }
             }

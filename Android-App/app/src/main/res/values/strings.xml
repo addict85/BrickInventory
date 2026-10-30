@@ -859,4 +859,9 @@
     <string name="common_retry">Try again</string>
     <string name="common_no_results">Nothing found</string>
     <string name="common_no_results_hint">Loosen the search or the filter.</string>
+    <string name="widget_titel">Collection</string>
+    <string name="widget_wert">Value</string>
+    <string name="widget_heute">Today</string>
+    <string name="widget_gesamt">Overall</string>
+    <string name="widget_leer">Open the app once to load the figures.</string>
 </resources>

@@ -62,6 +62,7 @@ class TeileViewModel @Inject constructor(
         },
         meldeFehler = { _snackbar.value = meldungFuerSnackbar(it) },
         vergissScroll = { dienste.scrollMemory.vergiss("parts") },
+        beschreibeFehler = { meldung(it) },
     )
     val partsState: StateFlow<PartsUiState> = teile.state
 

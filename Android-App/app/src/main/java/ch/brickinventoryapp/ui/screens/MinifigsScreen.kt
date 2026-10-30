@@ -41,6 +41,8 @@ import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.components.LeerSymbol
 import ch.brickinventoryapp.ui.components.Bewegt
 import ch.brickinventoryapp.ui.components.SkelettRaster
+import ch.brickinventoryapp.ui.components.FehlerHinweis
+import ch.brickinventoryapp.ui.components.ZustandsHinweis
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -105,10 +107,14 @@ fun MinifigsScreen(
         )
 
         ch.brickinventoryapp.ui.components.OfflineHinweis(partsState.figurenOfflineStand)
-        when {
-            isLoading && figs.isEmpty() && manualFigs.isEmpty() ->
+        // Vorher stand der Fall „keine Treffer“ hinter derselben Bedingung wie „leer“
+        // und war unerreichbar; ein Ladefehler sah aus wie eine leere Sammlung.
+        val figurenGefiltert = search.isNotBlank() || Filterzahl.konto(householdMembers, scopeMode) > 0
+        when (ladeanzeige(figs.isNotEmpty() || manualFigs.isNotEmpty(), isLoading, partsState.minifigsFehler, figurenGefiltert)) {
+            Ladeanzeige.LAEDT ->
                 SkelettRaster(GridCells.Adaptive(140.dp), kachelHoehe = 196.dp)
-            figs.isEmpty() && manualFigs.isEmpty() -> Box(Modifier.fillMaxSize(), Alignment.Center) {
+            Ladeanzeige.FEHLER -> ZustandsHinweis { FehlerHinweis(partsState.minifigsFehler, onRefresh) }
+            Ladeanzeige.LEER -> Box(Modifier.fillMaxSize(), Alignment.Center) {
                 if (minifigStats.types > 0 || minifigStats.totalQuantity > 0) {
                     Box(Modifier.align(Alignment.TopStart).padding(Abstaende.mittel)) { FigurenKennzahlen(minifigStats) }
                 }
@@ -120,13 +126,13 @@ fun MinifigsScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
-            figs.isEmpty() && manualFigs.isEmpty() -> Box(Modifier.fillMaxSize(), Alignment.Center) {
+            Ladeanzeige.KEINE_TREFFER -> Box(Modifier.fillMaxSize(), Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                     LeerSymbol(Icons.Default.SearchOff)
                     Text(stringResource(R.string.minifigs_no_results), fontWeight = FontWeight.SemiBold)
                 }
             }
-            else -> PullToRefreshBox(isRefreshing = isLoading, onRefresh = onRefresh) {
+            Ladeanzeige.LISTE -> PullToRefreshBox(isRefreshing = isLoading, onRefresh = onRefresh) {
                 LazyVerticalGrid(
                     columns = GridCells.Adaptive(140.dp),
                     state = gridState,
