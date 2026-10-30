@@ -27,12 +27,12 @@ import { deleteSet, getSet, getSets } from '../../utils/handlers/sets';
 import { getSetPriceHistory } from '../../utils/priceHistory';
 import { einzelwert, ausTabelle } from '../../utils/validate';
 import * as V from '../../utils/validate';
-import { mitVersion } from '../../utils/setNummer';
+import { mitVersion, normalisiereSetNummer, moeglicheSetNummer } from '../../utils/setNummer';
 import { sendeFehler, dateiFehler } from '../../utils/fehlerTexte';
 import { setTeileAnreichern } from '../../utils/nacharbeit';
 import { setInfo, setZumBarcode, teilelisteDesSets, figurenlisteDesSets, setPreis, rebrickableListe,
          setGehoertKonto, anleitungMerken, anleitungLoeschen, setCsvImportStarten, setCsvImportAbbrechen } from '../../utils/dienste/sets';
-import { downloadSetInstructions, anleitungenZuSet, loescheAnleitungen } from '../../utils/instructions';
+import { downloadSetInstructions, anleitungenZuSet, loescheAnleitungen, anleitungNeuLadenErlaubt } from '../../utils/instructions';
 import { importPartsForSet } from '../../utils/partsImport';
 import { registerSse } from '../../utils/sseRegistry';
 import { loginOrTokenGuard, angemeldeteNutzerId, istVerwalter } from '../../utils/auth';
@@ -559,13 +559,17 @@ router.post('/sets/:setNumber/parts', requireToken, async (req: LoggedInRequest,
 });
 
 // ── Anleitungen ─────────────────────────────────────────────────────────────
-// Neu laden darf, wer das Set im Haushalt hat (oder der Verwalter): Die
-// Anleitungen sind geteilt, und jeder Abruf kostet Kontingent der Quellen.
+// Neu laden darf, wer das Set im Haushalt hat, einmal je Set und Tag; der
+// Verwalter immer. Die Anleitungen sind geteilt, und jeder Abruf kostet
+// Kontingent der Quellen.
 router.post('/sets/:setNumber/instructions', requireToken, async (req, res) => {
   try {
-    const sn = pfadParam(req, 'setNumber');
-    if (!istVerwalter(req) && !(await findSetInScope(angemeldeteNutzerId(req), sn)))
-      return sendeFehler(req, res, 404, 'set_nicht_gefunden');
+    const sn = normalisiereSetNummer(pfadParam(req, 'setNumber'));
+    if (!moeglicheSetNummer(sn)) return sendeFehler(req, res, 400, 'setnummer_ungueltig');
+    if (!istVerwalter(req)) {
+      if (!(await findSetInScope(angemeldeteNutzerId(req), sn))) return sendeFehler(req, res, 404, 'set_nicht_gefunden');
+      if (!(await anleitungNeuLadenErlaubt(sn))) return sendeFehler(req, res, 429, 'zu_viele_anfragen', { minuten: 24 * 60 });
+    }
     await loescheAnleitungen(sn);
     await downloadSetInstructions(sn).catch(logAndContinue('sets:downloadSetInstructions'));
     const instrs = await anleitungenZuSet(sn);

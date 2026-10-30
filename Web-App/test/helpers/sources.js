@@ -136,7 +136,7 @@ function distIsFresh() {
   const distAt = newestMtime(dist, /\.js$/);
   if (!distAt) return false;
   let srcAt = fs.statSync(path.join(ROOT, 'server.ts')).mtimeMs;
-  for (const d of ['db', 'utils', 'routes', 'jobs']) {
+  for (const d of ['db', 'utils', 'routes', 'jobs', 'clients', 'startup']) {
     srcAt = Math.max(srcAt, newestMtime(path.join(ROOT, d), /\.ts$/));
   }
   // Migrationen sind .sql und werden mitkopiert: Eine neue zählt wie eine

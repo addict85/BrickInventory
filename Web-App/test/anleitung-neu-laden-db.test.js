@@ -8,6 +8,13 @@
  * Gegenprobe (am 27.10. gemessen): die Prüfung auf findSetInScope entfernt →
  * rot: „ein fremdes Konto" (200, die Anleitung war gelöscht).
  *
+ * Dazu einmal je Set und Tag für alle Konten zusammen; der Verwalter
+ * ist frei. Gegenproben (am 30.10. gemessen):
+ *   A  anleitungNeuLadenErlaubt() nicht gefragt → rot: „ein zweites Neuladen
+ *      am selben Tag“
+ *   B  die Prüfung moeglicheSetNummer() entfernt → rot: „eine Nummer mit
+ *      Pfadteilen“ (404 statt 400)
+ *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
 const test   = require('node:test');
@@ -52,7 +59,10 @@ test('Anleitungen neu laden', { concurrency: 1 }, async (t) => {
                                   ON CONFLICT DO NOTHING`, [SET, URL_A]);
   const vorhanden = async () => !!(await db.get('SELECT 1 AS ok FROM shared_instructions WHERE set_number = $1', [SET]));
 
+  const drossel = () => db.run('DELETE FROM rate_limit_attempts WHERE key = $1', [`anleitung-neu|${SET}`]);
+  await drossel();
   t.after(async () => {
+    await drossel().catch(() => {});
     await db.run('DELETE FROM users WHERE id = ANY($1)', [ids]).catch(() => {});
     await db.run('DELETE FROM shared_instructions WHERE set_number = $1', [SET]).catch(() => {});
     await db.run('DELETE FROM set_catalog WHERE set_number = $1', [SET]).catch(() => {});
@@ -61,9 +71,9 @@ test('Anleitungen neu laden', { concurrency: 1 }, async (t) => {
 
   const sitzung = {};
   const { base } = testServer(_req, { sitzung, routen: { '/api/v1': 'routes/api_v1/index.js' }, t });
-  const neuLaden = async (als) => {
+  const neuLaden = async (als, nummer = SET) => {
     Object.assign(sitzung, als);
-    return (await fetch(`${base}/api/v1/sets/${SET}/instructions`, { method: 'POST' })).status;
+    return (await fetch(`${base}/api/v1/sets/${nummer}/instructions`, { method: 'POST' })).status;
   };
 
   await t.test('ein fremdes Konto', async () => {
@@ -78,8 +88,23 @@ test('Anleitungen neu laden', { concurrency: 1 }, async (t) => {
     assert.ok(!await vorhanden(), 'Vorbedingung des Neuladens: die alte Zeile ist entfernt');
   });
 
+  await t.test('ein zweites Neuladen am selben Tag', async () => {
+    await anleitung();
+    assert.equal(await neuLaden({ userId: ids[0], isAdmin: false }), 429);
+    assert.ok(await vorhanden(), 'die Anleitung ist trotz Drossel gelöscht');
+    await db.run(`UPDATE rate_limit_attempts SET first_at = NOW() - INTERVAL '25 hours' WHERE key = $1`, [`anleitung-neu|${SET}`]);
+    assert.equal(await neuLaden({ userId: ids[0], isAdmin: false }), 200, 'nach einem Tag geht es wieder');
+  });
+
   await t.test('der Verwalter', async () => {
     await anleitung();
     assert.equal(await neuLaden({ userId: ids[1], isAdmin: true }), 200);
+    await anleitung();
+    assert.equal(await neuLaden({ userId: ids[1], isAdmin: true }), 200, 'den Verwalter hält die Drossel nicht');
+  });
+
+  await t.test('eine Nummer mit Pfadteilen', async () => {
+    for (const roh of ['%2E%2E%2Fx', '%2E%2E%3Fx%3D', 'users'])
+      assert.equal(await neuLaden({ userId: ids[1], isAdmin: true }, roh), 400, roh);
   });
 });

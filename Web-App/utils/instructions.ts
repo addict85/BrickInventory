@@ -77,6 +77,21 @@ export function anleitungenZusammenlegen(geteilt: any[], eigene: any[]): any[] {
   ];
 }
 
+/**
+ * Darf ein Konto die geteilten Anleitungen dieses Sets jetzt neu laden?
+ * Einmal je Set und Tag für alle zusammen: Das Neuladen löscht die Anleitung
+ * für alle und kostet Kontingent der Quellen. In EINER Anweisung, damit zwei
+ * gleichzeitige Anfragen nicht beide durchkommen.
+ */
+export async function anleitungNeuLadenErlaubt(setNumber: string): Promise<boolean> {
+  const z = await db.get(
+    `INSERT INTO rate_limit_attempts (key, count, first_at, last_at) VALUES ($1, 1, NOW(), NOW())
+     ON CONFLICT (key) DO UPDATE SET count = 1, first_at = NOW(), last_at = NOW()
+       WHERE rate_limit_attempts.first_at < NOW() - INTERVAL '1 day'
+     RETURNING key`, [`anleitung-neu|${mitVersion(setNumber)}`]);
+  return !!z;
+}
+
 /** Alle Anleitungen eines Sets entfernen (vor dem Neuholen). */
 export async function loescheAnleitungen(setNumber: string) {
   return db.run('DELETE FROM shared_instructions WHERE set_number = $1', [mitVersion(setNumber)]);

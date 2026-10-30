@@ -9,7 +9,6 @@ import { rebrickableLimiter, consumeRebrickableDaily, rebrickableDailyStatus, pa
 import { istErsatzteil, KEINE_FARBE } from '../utils/validate';
 
 import https from 'https';
-import http from 'http';
 import path from 'path';
 import fs from 'fs';
 import * as db from '../db/database';
@@ -81,8 +80,8 @@ function httpsGetRobust(url: string, headers: Record<string, string> = {}, timeo
     const attempt = (u: string, kopf: Record<string, string>) => {
       attempts++;
       let parsed; try { parsed = new URL(u); } catch (e) { return reject(new Error('Invalid URL: ' + u)); }
-      const lib = parsed.protocol === 'https:' ? https : http;
-      const req = lib.get({ hostname: parsed.hostname, path: parsed.pathname + parsed.search,
+      if (parsed.protocol !== 'https:') return reject(new Error('Nur https: ' + u));
+      const req = https.get({ hostname: parsed.hostname, path: parsed.pathname + parsed.search,
         headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36', ...kopf } }, res => {
         req.setTimeout(0);
         if (res.statusCode === 301 || res.statusCode === 302) {
@@ -287,7 +286,13 @@ async function scrapeInstructions(setNumber: string) {
   } catch (_) { return []; }
 }
 
-async function downloadFile(url: string, destPath: string) {
+/**
+ * Obergrenze je Datei. Eine Bauanleitung hat selten über 150 MB; ohne Grenze
+ * füllte ein Server, der endlos sendet, die Platte. Abgebrochen wird im Strom.
+ */
+export const DOWNLOAD_MAX_BYTES = 300 * 1024 * 1024;
+
+async function downloadFile(url: string, destPath: string, maxBytes = DOWNLOAD_MAX_BYTES) {
   if (fs.existsSync(destPath)) return true;
   fs.mkdirSync(path.dirname(destPath), { recursive: true });
   // Warum der Host hier geprueft wird, und zwar bei JEDEM Sprung
@@ -295,7 +300,8 @@ async function downloadFile(url: string, destPath: string) {
   // Bild-Cache — und von dort liefert der Server es an jeden angemeldeten
   // Nutzer aus. Ein ungeprueftes Umleitungsziel wie http://127.0.0.1:5432/ …
   // Ausführlich: docs/begruendungen/clients/rebrickable.ts.md#downloadfile
-  if (!hostErlaubt(url, ERLAUBTE_DOWNLOAD_HOSTS)) {
+  // Nur https: Im Klartext könnte jeder auf dem Weg die Datei austauschen.
+  if (!url.startsWith('https://') || !hostErlaubt(url, ERLAUBTE_DOWNLOAD_HOSTS)) {
     console.warn(`[download] Adresse nicht in der Liste erlaubter Hosts: ${url.substring(0, 120)}`);
     return false;
   }
@@ -308,8 +314,8 @@ async function downloadFile(url: string, destPath: string) {
     const attempt = (u: string, kopf: Record<string, string>, redirects = 0) => {
       if (redirects > UMLEITUNGS_GRENZE) return resolve(false);
       let parsed; try { parsed = new URL(u); } catch (_) { return resolve(false); }
-      const lib = parsed.protocol === 'https:' ? https : http;
-      const req = lib.get(u, { family: 4, headers: kopf }, res => {
+      if (parsed.protocol !== 'https:') return resolve(false);
+      const req = https.get(u, { family: 4, headers: kopf }, res => {
         if (res.statusCode===301||res.statusCode===302) {
           res.resume();
           // Dieselbe Regel wie in httpsGetRobust — hier zusaetzlich mit der
@@ -319,12 +325,22 @@ async function downloadFile(url: string, destPath: string) {
           return attempt(weiter.url, weiter.kopfzeilen, redirects + 1);
         }
         if (res.statusCode !== 200) { res.resume(); return resolve(false); }
+        if (Number(res.headers['content-length']) > maxBytes) { res.destroy(); return resolve(false); }
         // Stream directly to file — avoids buffering large PDFs in memory
         const out = fs.createWriteStream(destPath);
-        let size = 0;
-        res.on('data', chunk => { size += chunk.length; });
+        let size = 0, zuGross = false;
+        res.on('data', chunk => {
+          size += chunk.length;
+          if (size > maxBytes && !zuGross) {
+            zuGross = true;
+            console.warn(`[download] Abgebrochen nach ${maxBytes} Byte: ${u.substring(0, 120)}`);
+            res.unpipe(out); res.destroy(); out.destroy();
+            fs.unlink(destPath, () => {}); resolve(false);
+          }
+        });
         res.pipe(out);
         out.on('finish', () => {
+          if (zuGross) return;
           if (size < 100) { fs.unlink(destPath, () => {}); return resolve(false); }
           resolve(true);
         });
