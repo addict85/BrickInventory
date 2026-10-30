@@ -1,8 +1,11 @@
+import { logAndContinue } from './httpError';
 import fs from 'fs';
 import { merkeFehlend } from './imageMisses';
 import { imgProxyFailures } from './imgProxyStats';
 import { istBekanntFehlend } from '../utils/imageMisses';
 import { isDecodable } from '../utils/imageGuard';
+import * as db from '../db/database';
+import { LOCKS } from './lockNamespaces';
 
 /**
  * Die Vorschau-Maschinerie des Bild-Proxys.
@@ -57,7 +60,7 @@ function drainThumbQueue() {
     const [src, dst] = _thumbQueue.shift();
     _thumbRunning++;
     makeProxyThumb(src, dst)
-      .catch(() => {})
+      .catch(logAndContinue('proxy-vorschau:erzeugen'))
       .finally(() => { _thumbRunning--; _thumbInFlight.delete(dst); drainThumbQueue(); });
   }
 }
@@ -66,15 +69,13 @@ let _thumbInFlight = new Map();
  * EIN Vorschau-Lauf für den GANZEN Server — nicht je Arbeitsprozess.
  * Ausführlich: docs/begruendungen/utils/proxyThumbs.ts.md#abschnitt
  */
-const { LOCKS } = require('./lockNamespaces');
 const THUMB_LOCK_KEY = LOCKS.PROXY_THUMBS;
 
 /** Die Sperr-Verbindung. EINMAL aufgebaut, dann wiederverwendet. */
 let _sperrClient: any = null;
 
 async function mitVorschauSperre(arbeit: () => Promise<any>) {
-  const db = require('../db/database');
-  // NICHT aus dem Pool
+    // NICHT aus dem Pool
   // Nicht die Bildarbeit scheiterte, sondern eine gewöhnliche Anfrage bekam
   // keine Verbindung mehr. Dasselbe Muster — nur dass
   // ich es diesmal selbst hineingebaut habe, bei einer früheren Behebung.
@@ -89,7 +90,7 @@ async function mitVorschauSperre(arbeit: () => Promise<any>) {
     const r = await client.query('SELECT pg_try_advisory_lock($1) AS ok', [THUMB_LOCK_KEY]);
     if (!r.rows[0]?.ok) return false;   // ein anderer Prozess rechnet gerade
     try { return await arbeit(); }
-    finally { await client.query('SELECT pg_advisory_unlock($1)', [THUMB_LOCK_KEY]).catch(() => {}); }
+    finally { await client.query('SELECT pg_advisory_unlock($1)', [THUMB_LOCK_KEY]).catch(logAndContinue('proxy-vorschau:pg_advisory_unlock')); }
   } catch (_) {
     _sperrClient = null;   // Verbindung hin — beim nächsten Mal neu aufbauen
     return false;

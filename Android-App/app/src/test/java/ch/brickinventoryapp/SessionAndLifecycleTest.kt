@@ -1,13 +1,19 @@
 package ch.brickinventoryapp
 
+import ch.brickinventoryapp.data.cache.ResponseCache
+import ch.brickinventoryapp.data.repository.FinanzenRepository
+import ch.brickinventoryapp.data.repository.Result
+import kotlinx.coroutines.runBlocking
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
  * Absicherung der Review-Runde: abgelaufene Sitzung, ImageLoader-Lebensdauer,
  * Hintergrund-Polling und der entfernte tote Barcode-Zweitpfad.
  *
- * Alle Prüfungen lesen nur die Quelldateien — kein Gerät, kein Compose, kein
- * Netzwerk nötig.
+ * Der 401 ist ausgeführt geprüft; der Rest liest Quelltext (Gerät und
+ * Compose fehlen hier).
  */
 class SessionAndLifecycleTest {
 
@@ -31,76 +37,24 @@ class SessionAndLifecycleTest {
     // ── Abgelaufene Sitzung (HTTP 401) ───────────────────────────────────────
 
     /**
-     * Alle Dateien der Datenschicht als EIN Text (Nachtrag 155).
-     *
-     * Vorher stand hier "data/repository/BrickRepository.kt" — ein Dateiname.
-     * Die 78 Funktionen liegen seither in fuenf Klassen nach Sachgebieten,
-     * die gemeinsame Mechanik in RepoBasis. Gemeint ist DIE DATENSCHICHT,
-     * nicht eine Datei.
+     * Ein 401 ist von einem gewöhnlichen Serverfehler unterscheidbar — sonst bliebe
+     * ein abgelaufener Token unerkannt. Ausgeführt gegen einen Testserver.
+     * Gegenprobe (29.10.2026, gemessen): in RepoBasis.safeCall `unauthorized =
+     * false` → rot.
      */
-    private fun datenschicht(): String =
-        java.io.File("src/main/java/ch/brickinventoryapp/data/repository")
-            .listFiles { f -> f.extension == "kt" }
-            .orEmpty().sortedBy { it.name }
-            .joinToString("\n") { it.readText() }
-
     @Test
     fun `safeCall markiert 401 als unauthorized`() {
-        val src = code(datenschicht())
-        assert(src.contains("val unauthorized: Boolean")) {
-            "Result.Error kennt kein unauthorized-Flag — ein 401 ist dann nicht " +
-                "von einem gewöhnlichen Serverfehler unterscheidbar"
-        }
-        assert(Regex("""unauthorized\s*=\s*response\.code\(\)\s*==\s*401""").containsMatchIn(src)) {
-            "safeCall() setzt unauthorized nicht aus dem HTTP-Status — ein abgelaufener " +
-                "Token bliebe unerkannt und die App auf ewig scheinbar eingeloggt"
-        }
-    }
-
-    @Test
-    fun `der Interceptor meldet 401 nur mit Token und nur fuer unseren Server`() {
-        val src = code(Quellen.di())
-        assert(src.contains("sessionExpired.notifyExpired()")) {
-            "AppModule meldet keinen abgelaufenen Token — das AppViewModel erfährt nie davon"
-        }
-        // ── Warum hier `tokenMitgeschickt` steht und nicht `token.isNotBlank()` ──
-        //
-        // Die REGEL ist unverändert: melden nur, wenn wirklich ein Token
-        // hinausging und es unser Server war. Was sich geändert hat, ist, wann
-        // das zutrifft. Seit dem Nachfassen (util/Abgewiesen.kt) kann eine
-        // Anfrage OHNE Token losgehen und mit Token wiederholt werden — dann ist
-        // `token.isNotBlank()` beim ersten Anlauf falsch, obwohl der zweite den
-        // Kopf trug. Mit dem alten Ausdruck bliebe eine wirklich abgelaufene
-        // Sitzung nach einem Nachfassen unbemerkt.
-        //
-        // Damit der Name nicht schwächer ist als der alte Ausdruck, prüfen die
-        // beiden Zusicherungen darunter, was er BEDEUTET: Er beginnt bei
-        // „ging ein Token mit?" und wird an genau einer Stelle wahr — dort, wo
-        // der zweite Anlauf den Kopf setzt.
-        assert(Regex("""response\.code\s*==\s*401\s*&&\s*tokenMitgeschickt\s*&&\s*isOurServer""")
-            .containsMatchIn(src)) {
-            "Die 401-Meldung ist nicht auf \"Token mitgeschickt UND eigener Server\" " +
-                "eingeschränkt. Ohne diesen Schutz würde ein fehlgeschlagener " +
-                "Login-Versuch (noch kein Token) oder ein 401 von einem fremden CDN " +
-                "als abgelaufene Sitzung gewertet und den Nutzer ausloggen."
-        }
-        assert(Regex("""var tokenMitgeschickt\s*=\s*token\.isNotBlank\(\)""")
-            .containsMatchIn(src)) {
-            "tokenMitgeschickt beginnt nicht bei \"ging ein Token mit?\" — dann sagt " +
-                "der Name etwas anderes als der Wert, und der Schutz oben ist nur " +
-                "noch dem Namen nach da."
-        }
-        val gesetzt = Regex("""tokenMitgeschickt\s*=\s*true""").findAll(src).count()
-        assert(gesetzt == 1) {
-            "tokenMitgeschickt wird an $gesetzt Stellen auf true gesetzt, erwartet: " +
-                "genau eine (nach dem Nachfassen). Jede weitere würde behaupten, ein " +
-                "Token sei hinausgegangen, ohne dass einer angehängt wurde."
-        }
-        val anhaengen = src.indexOf("""Bearer ${'$'}jetzt""")
-        val markieren = src.indexOf("tokenMitgeschickt = true")
-        assert(anhaengen in 0 until markieren) {
-            "Die Markierung steht nicht NACH dem Anhängen des Tokens — dann ist sie " +
-                "keine Feststellung mehr, sondern eine Behauptung."
+        val pfade = PfadServer()
+        pfade.codes["/api/v1/stats"] = 401
+        pfade.codes["/api/v1/finance/pnl"] = 500
+        try {
+            val finanzen = FinanzenRepository(TestApi.fuer(pfade.server), ResponseCache { java.io.File(System.getProperty("java.io.tmpdir"), "bim-401") })
+            val abgelaufen = runBlocking { finanzen.getStats() } as Result.Error
+            val kaputt = runBlocking { finanzen.getPnl() } as Result.Error
+            assertTrue("Ein 401 trägt das Kennzeichen nicht", abgelaufen.unauthorized)
+            assertFalse("Ein 500 gilt als abgelaufene Sitzung", kaputt.unauthorized)
+        } finally {
+            pfade.server.shutdown()
         }
     }
 

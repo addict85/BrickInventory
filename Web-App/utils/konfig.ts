@@ -14,6 +14,18 @@ export function datenbankVerbindung(env: NodeJS.ProcessEnv = process.env) {
   };
 }
 
+/**
+ * Die Zeitzone, in der eine Erfassung ihren Tag bekommt (Migration 0070):
+ * ERFASSUNG_ZEITZONE, sonst TZ, sonst die des Prozesses. Ein Name, den
+ * Intl nicht kennt, fiele erst beim ersten Kauf in PostgreSQL auf — er wird
+ * hier verworfen, und es gilt UTC wie vor 0070.
+ */
+export function erfassungsZeitzone(env: NodeJS.ProcessEnv = process.env): string {
+  const name = env.ERFASSUNG_ZEITZONE || env.TZ || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+  try { new Intl.DateTimeFormat('de', { timeZone: name }); return /^[A-Za-z0-9_+\-/]+$/.test(name) ? name : 'UTC'; }
+  catch (e) { console.warn(`[konfig] Zeitzone „${name}“ unbekannt, Erfassungen nehmen UTC (${(e as Error).message})`); return 'UTC'; }
+}
+
 /** Das Beispielpasswort aus compose.yaml; es steht in jedem öffentlichen Klon. */
 export const STANDARD_DB_PASSWORT = 'brickinventory_secret';
 

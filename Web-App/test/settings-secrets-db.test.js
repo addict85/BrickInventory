@@ -28,6 +28,8 @@
  * Dazu: Mailserver, Konto und Absender sieht nur der Verwalter.
  * Gegenprobe (am 28.10.2026 gemessen): NUR_VERWALTER-Zeile in
  * sanitizeGlobal() entfernt → rot: „… bekommt smtp_host“.
+ * Gegenprobe (am 29.10.2026 gemessen): maskSecret() hängt wieder die letzten
+ * vier Zeichen an → rot: „… die Maske von bricklink_consumer_secret verrät 4711“.
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -179,8 +181,11 @@ test('Einstellungen geben Geheimnisse nie im Klartext heraus', { concurrency: 1 
       // Gegenrichtung: Die Maske muss überhaupt ankommen, sonst kann das
       // Formular „gesetzt" nicht von „nicht gesetzt" unterscheiden — ein Test,
       // der nur das Fehlen prüft, wäre auch bei einer leeren Antwort grün.
-      assert.ok(alsAdmin.some(s => s.includes('\u2022') && s.endsWith('4713')),
-        `${pfad}: der Admin muss die maskierte Fassung sehen (Punkte + letzte vier Zeichen)`);
+      assert.ok(alsAdmin.some(s => s.includes('\u2022'.repeat(12))),
+        `${pfad}: der Admin muss die maskierte Fassung sehen`);
+      // Nicht einmal das Ende des Werts: Es verkürzt das Raten.
+      for (const [k, v] of Object.entries(GEHEIM))
+        assert.ok(!alsAdmin.some(s => s.includes(v.slice(-4))), `${pfad}: die Maske von ${k} verrät „${v.slice(-4)}"`);
       for (const [k, v] of Object.entries(VERWALTUNG)) {
         assert.ok(alsAdmin.includes(v), `${pfad}: der Verwalter braucht ${k} für sein Formular`);
       }

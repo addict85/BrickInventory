@@ -6,14 +6,14 @@
  * - Pauses when daily limit reached, resumes next day automatically …
  * Ausführlich: docs/begruendungen/jobs/instructionQueue.ts.md#db
  */
-const db      = require('../db/database');
+import * as db from '../db/database';
 import { downloadSetInstructions, letzterAbrufWarExtern, anzahlAnleitungen } from '../utils/instructions';
-import { meldeUndWeiter, fehlertext } from '../utils/httpError';
+import { meldeUndWeiter, fehlertext, logAndContinue, meldeUndLiefere } from '../utils/httpError';
 import { alsAbrufFehler } from '../clients/abrufFehler';
 import { mitVersion } from '../utils/setNummer';
 import { liesZustand, setzeZustand, loescheZustand, setzeAusloeser } from '../utils/laufzustand';
-const monitor  = require('../utils/jobMonitor');
-const { logAndContinue } = require('../utils/httpError');
+import * as monitor from '../utils/jobMonitor';
+import { LOCKS } from '../utils/lockNamespaces';
 
 let _running        = false;   // billiger Schutz IM eigenen Prozess
 let _timer: NodeJS.Timeout | null = null;
@@ -26,7 +26,6 @@ let _driver         = false;   // true nur dort, wo start() lief (Primary)
  * utils/lockNamespaces.ts. Hier stand eine Abschrift davon — die vollständigste
  * im Projekt, und trotzdem eine, die beim nächsten Zusatz veraltet wäre.
  */
-const { LOCKS } = require('../utils/lockNamespaces');
 const QUEUE_LOCK = LOCKS.ANLEITUNGS_QUEUE;
 
 /** Schlüssel der Cloudflare-Pause in laufzustand. */
@@ -51,22 +50,22 @@ const CF_DELAYS_MS  = [
 async function acquireQueueLock(): Promise<(() => Promise<void>) | null> {
   let client;
   try { client = await db.pool.connect(); }
-  catch (e: any) {
+  catch (e) {
     // Ohne Verbindung geht ohnehin nichts — der Aufrufer bricht ab.
-    console.warn('[instr-queue] Sperre nicht verfügbar:', e?.message || e);
+    console.warn('[instr-queue] Sperre nicht verfügbar:', fehlertext(e));
     return null;
   }
   try {
     const { rows } = await client.query('SELECT pg_try_advisory_lock($1, 0) AS ok', [QUEUE_LOCK]);
     if (!rows[0]?.ok) { client.release(); return null; }
-  } catch (e: any) {
+  } catch (e) {
     client.release();
-    console.warn('[instr-queue] Sperre nicht verfügbar:', e?.message || e);
+    console.warn('[instr-queue] Sperre nicht verfügbar:', fehlertext(e));
     return null;
   }
   return async () => {
     try { await client.query('SELECT pg_advisory_unlock($1, 0)', [QUEUE_LOCK]); }
-    catch (e: any) { console.warn('[instr-queue] Sperre nicht freigegeben:', e?.message || e); }
+    catch (e) { console.warn('[instr-queue] Sperre nicht freigegeben:', fehlertext(e)); }
     finally { client.release(); }
   };
 }
@@ -92,7 +91,7 @@ async function clearBlock() {
 
 /** Wie viele Anleitungs-Auftraege warten noch? */
 export async function offeneAuftraege(): Promise<number> {
-  const r = await db.get("SELECT COUNT(*) as c FROM instruction_queue WHERE status='pending'").catch(() => null);
+  const r = await db.get("SELECT COUNT(*) as c FROM instruction_queue WHERE status='pending'").catch(meldeUndLiefere('anleitungen:COUNT', null));
   return parseInt(r?.c) || 0;
 }
 
@@ -102,7 +101,7 @@ async function enqueue(setNumber: string) {
     `INSERT INTO instruction_queue (set_number, status) VALUES ($1, 'pending')
      ON CONFLICT (set_number) DO UPDATE SET status='pending', updated_at=NOW()`,
     [n]
-  ).catch(() => {});
+  ).catch(logAndContinue('anleitungen:n'));
 }
 
 /**
@@ -157,7 +156,7 @@ async function processNext() {
       const totals = await db.get(`SELECT
         SUM(CASE WHEN status='pending' THEN 1 ELSE 0 END) as pending,
         SUM(CASE WHEN status='done'    THEN 1 ELSE 0 END) as done,
-        COUNT(*) as total FROM instruction_queue`).catch(()=>null);
+        COUNT(*) as total FROM instruction_queue`).catch(meldeUndLiefere('anleitungen:COUNT', null));
       const done  = parseInt(totals?.done||0);
       const total = parseInt(totals?.total||0);
       monitor.update('instrQueue', {
@@ -184,7 +183,7 @@ async function processNext() {
             progress: total - rem, total,
             sub: rem > 0 ? `${rem} ausstehend` : 'Alle erledigt'
           });
-        }).catch(()=>{});
+        }).catch(logAndContinue('anleitungen:rem'));
       // Takt nur nach einem ECHTEN Abruf
       // Die 15 Sekunden schonen Brickset und brickinstructions.com. Sets, die
       // schon eine Anleitung haben, fallen in downloadSetInstructions() sofort
@@ -212,11 +211,11 @@ async function processNext() {
           monitor.update('instrQueue', {
             status: 'idle',
             sub: `Cloudflare-Sperre: ${delayMin} min warten (Versuch ${block.retries + 1})`
-          }).catch(()=>{});
+          }).catch(logAndContinue('anleitungen:writeBlock'));
           scheduleNext(delayMs + 1000);
         } else {
           console.log(`[instr-queue] Cloudflare 1015 after max retries — pausing until tomorrow`);
-          monitor.update('instrQueue', { status: 'idle', sub: 'Cloudflare-Sperre: bis morgen pausiert' }).catch(()=>{});
+          monitor.update('instrQueue', { status: 'idle', sub: 'Cloudflare-Sperre: bis morgen pausiert' }).catch(logAndContinue('anleitungen:update'));
           await writeBlock(nextMidnight().getTime(), 0);
           scheduleMidnight();
         }
@@ -288,16 +287,16 @@ function start() {
             total: totalAll,
             sub: `${pending} ausstehend`
           });
-        }).catch(()=>{});
+        }).catch(logAndContinue('anleitungen:totalAll'));
         scheduleNext(3000); // wait 3s after startup
       } else {
         db.get(`SELECT COUNT(*) as c FROM instruction_queue`).then((t: any) => {
           const tot = parseInt(t?.c||0);
           if (tot > 0) monitor.update('instrQueue', { status: 'done', progress: tot, total: tot, sub: 'Alle erledigt' });
-        }).catch(()=>{});
+        }).catch(logAndContinue('anleitungen:tot'));
       }
     })
-    .catch(() => {});
+    .catch(logAndContinue('anleitungen:tot'));
 
   // Auf Zuruf statt im Dreisekundentakt
   // Genau diese Zahl steht im Kopf von utils/pgNotify.ts als Begründung
@@ -308,9 +307,9 @@ function start() {
     try {
       const ausloeser = await liesZustand(AUSLOESER);
       if (!ausloeser) return;
-      await loescheZustand(AUSLOESER).catch(() => {});
+      await loescheZustand(AUSLOESER).catch(logAndContinue('anleitungen:loescheZustand'));
       console.log('[instr-queue] Trigger received — starting queue processing');
-      if (!_running) processNext().catch(() => {});
+      if (!_running) processNext().catch(logAndContinue('anleitungen:processNext'));
     } catch (e) { meldeUndWeiter('instr-queue:ausloeser', e); }
   };
   require('../utils/pgNotify').listen(AUSLOESER, aufwecken);

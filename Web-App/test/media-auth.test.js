@@ -274,21 +274,5 @@ test('Adressen auf den eigenen Server gehen nicht durch den Proxy', () => {
 
 // Wer hochgeladene Anleitungen lesen darf, prüft test/daten-dateien-db.test.js am Handler.
 
-test('eine geteilte Anleitungsdatei überlebt, bis die letzte Zeile weg ist', () => {
-  // Beim Verschieben eines Sets wird die Anleitungs-Zeile KOPIERT und der Pfad
-  // wörtlich übernommen — zwei Konten teilen sich dann eine Datei. Das Löschen
-  // stand VOR dem DELETE und fragte niemanden: Entfernte das eine Konto seine
-  // Anleitung, zeigte die Zeile des anderen ins Leere, und im Set-Detail stand
-  // ein Eintrag, der beim Klick 404 gibt.
-  //
-  // Nachgestellt: Kind löscht → Datei bleibt; Eltern löschen → Datei weg.
-  const sets = require('./helpers/sources').setKernQuelle();
-  const fn = sets.slice(sets.indexOf("router.delete('/:setNumber/instructions/:instrId'"),
-                        sets.indexOf('// BrickInstructions PDF helpers'));
-  assert.match(fn, /SELECT 1 AS ok FROM instructions WHERE local_path = \$1/,
-    'Vor dem Löschen der Datei muss geprüft werden, ob noch jemand darauf zeigt');
-  const idxDelete = fn.indexOf('DELETE FROM instructions');
-  const idxUnlink = fn.indexOf('unlinkSync');
-  assert.ok(idxDelete > 0 && idxDelete < idxUnlink,
-    'Erst die eigene Zeile entfernen, dann zählen — sonst zählt man sich selbst mit');
-});
+// „Eine geteilte Anleitungsdatei überlebt, bis die letzte Zeile weg ist“ prüft
+// test/sets-routes-db.test.js am laufenden Router (Löschen durch beide Konten).

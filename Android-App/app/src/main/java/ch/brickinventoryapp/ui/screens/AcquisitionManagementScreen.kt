@@ -50,7 +50,7 @@ fun AcquisitionManagementScreen(
     vm: KaeufeViewModel,
     type: String,           // "set" | "part" | "fig"
     id: String,             // setNumber / partNumber / figNumber
-    colorId: Int = 0,
+    colorId: Int = ch.brickinventoryapp.data.model.KEINE_FARBE,
     title: String,
     onBack: () -> Unit
 ) {
@@ -245,26 +245,18 @@ private fun AcquisitionManagementRow(
 ) {
     var qtyText   by remember(acquisition.id) { mutableStateOf(acquisition.quantity.toString()) }
     var priceText by remember(acquisition.id) {
-        mutableStateOf(acquisition.effectivePrice?.let { "%.2f".format(it) } ?: "")
+        mutableStateOf(acquisition.effectivePrice?.let { ch.brickinventoryapp.util.fmtEingabe(it) } ?: "")
     }
     var condition by remember(acquisition.id) { mutableStateOf(acquisition.condition) }
     val geschaetztText = stringResource(R.string.acq_preis_geschaetzt)
     var showDeleteConfirm by rememberSaveable { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
 
-    // ── Ungespeicherte Eingaben festhalten ──
-    //
-    // Wer den Preis ändert und oben links auf Zurück tippt, darf die Eingabe nicht
-    // verlieren. Zwei Auslöser, weil einer allein nicht reicht:
-    //   • onFocusChanged deckt den Normalfall ab (Feld verlassen, anderes Feld antippen, Tastatur schliessen).
-    //   • DisposableEffect deckt das Zurücknavigieren ab — ob vorher ein Fokusereignis eintrifft, ist nicht zugesichert.
-    //
-    // lastSaved verhindert doppeltes Speichern, und ein blosses Antippen ohne Änderung
-    // löst nichts aus — bei leerem Feld wäre das ein Schreiben von null, also ein
-    // Löschen. effectivePrice, nicht purchasePrice: priceText wird aus effectivePrice
-    // gefüllt; mit einer anderen Quelle gälte der Ausgangswert als „geändert“.
+    // Ungespeicherte Eingaben festhalten: onFocusChanged für den Normalfall,
+    // DisposableEffect fürs Zurücknavigieren. lastSaved verhindert doppeltes Speichern
+    // und das Löschen durch blosses Antippen eines leeren Feldes.
     var lastSavedPrice by remember(acquisition.id) {
-        mutableStateOf(acquisition.effectivePrice?.let { "%.2f".format(it) } ?: "")
+        mutableStateOf(acquisition.effectivePrice?.let { ch.brickinventoryapp.util.fmtEingabe(it) } ?: "")
     }
     var lastSavedQty by remember(acquisition.id) { mutableStateOf(acquisition.quantity.toString()) }
 

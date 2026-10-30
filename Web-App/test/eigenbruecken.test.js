@@ -188,8 +188,11 @@ test('kein Test liest eine Quelldatei, die es nicht gibt', () => {
   // steht — dieselbe Lage wie bei 70 -> 71. Die Liste auszuschreiben waere
   // eine zweite Wahrheit, die beim naechsten neuen Baustein veraltet, und
   // genau dann wuerde die Pruefung die neue Datei nicht mehr ansehen.
-  assert.ok(offen.length <= 75,
-    `${offen.length} Pfade mit variablem Segment (gemessen waren es 75):\n  ` +
+  //
+  // 75 -> 76 (29.10.): test/schichten.test.js geht alle Routendateien durch
+  // („keine Route importiert eine andere Routendatei“) — dieselbe Lage.
+  assert.ok(offen.length <= 76,
+    `${offen.length} Pfade mit variablem Segment (gemessen waren es 76):\n  ` +
     offen.join('\n  ') + '\nWo es geht, gehoert der Pfad ausgeschrieben — ein ' +
     'variables Segment nimmt dieser Pruefung die Sicht.');
 });

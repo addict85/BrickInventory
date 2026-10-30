@@ -51,6 +51,17 @@
   background-size:100% 100%,20px 20px;
 }
 
+/* ── Klavierlack statt Rot ────────────────────────────────────────────────
+   Kopf- und Reiterleiste stehen auf tiefem Schwarzlack; die rote Marke
+   bleibt in den Noppen, Knöpfen und Deckeln. Mit derselben roten Leiste
+   unterschied sich „hochglanz“ von „noppe“ nur durch Verläufe. */
+[data-theme="hochglanz"] header,[data-theme="hochglanz"] nav,
+[data-theme="hochglanz"][data-dunkel] header,[data-theme="hochglanz"][data-dunkel] nav{background-color:#15181e}
+[data-theme="hochglanz"] header::before{background-color:var(--b500)}
+[data-theme="hochglanz"] nav .ntab{color:#fff}
+[data-theme="hochglanz"] .card,[data-theme="hochglanz"] .sc,[data-theme="hochglanz"] .modal-content{border-radius:20px}
+[data-theme="hochglanz"] .btn{border-radius:999px}
+
 /* ── Kopf- und Reiterleiste: Woelbung plus Querstreifen ──────────────────── */
 [data-theme="hochglanz"] header,
 [data-theme="hochglanz"] nav{

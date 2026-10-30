@@ -1,4 +1,4 @@
-import { ladeAnzeige, skelettKacheln } from './01-bausteine.js';
+import { ladeAnzeige, skelettKacheln, listeLadefehler } from './01-bausteine.js';
 import { registerActions } from './00-registry.js';
 import { colorName, locale, t, tRaw } from '../i18n.js';
 import { bildTag, ico, G, api, esc, escHex, escHtml, escJs, escUrl, fmtBig, fullUrl, imgUrl, leerZustand, observeLazyImages, platzhalterInhalt, thumbUrl } from './01-core.js';
@@ -34,7 +34,7 @@ async function loadPartsStats(){
 }
 
 async function loadPartsFilters(){
-  const [cd,catd]=await Promise.all([api('GET','/v1/parts/colors'+scopeQuery('parts')),api('GET','/v1/parts/categories')]);
+  const [cd,catd]=await Promise.all([api('GET','/v1/parts/colors'+scopeQuery('parts')),api('GET','/v1/parts/categories'+scopeQuery('parts'))]);
   partsColors=cd.colors||[]; partsCats=catd.categories||[];
   zeichneTeileFilter();
 }
@@ -88,7 +88,9 @@ let _manuelleLeer = null;
 export function teileLeerAbgleichen(manuelleLeer){
   if (manuelleLeer !== undefined) _manuelleLeer = manuelleLeer;
   const box = G('manual-parts-box');
-  if (box) box.style.display = _manuelleLeer ? 'none' : '';
+  // Erst sichtbar, wenn die Liste geladen ist und etwas zeigt: Vorher stand
+  // die leere Box „Manuell erfasste Teile“ über dem Skelett.
+  if (box) box.style.display = _manuelleLeer === false ? '' : 'none';
   if (_setTeileLeer !== true) return;
   const main = G('parts-main');
   if (_manuelleLeer === false) { main.innerHTML = ''; return; }
@@ -173,17 +175,13 @@ async function loadPartsPage(isFirst){
   const gen  = _partsGen;
   const page = _partsPage + 1;
 
-  let d;
-  try {
-    d = await (await fetch('/api/v1/parts?' + partsParams(page))).json();
-  } catch (_) {
-    _partsLoading = false;
-    if (isFirst) G('parts-main').innerHTML =
-      `<div class="no-parts"><div class="icon">${ico('warnung')}</div><h3>${t('settings.error')}</h3></div>`;
-    return;
-  }
+  const d = await api('GET', '/v1/parts?' + partsParams(page));
   // Antwort einer inzwischen verworfenen Filterkombination — verwerfen.
   if (gen !== _partsGen) { _partsLoading = false; return; }
+  if (listeLadefehler(G('parts-main'), d, { erneut: 'loadParts', behalten: !isFirst })) {
+    _partsLoading = false;
+    return;
+  }
 
   const parts = d.parts || [];
   _partsTotal = d.total ?? _partsTotal;
@@ -276,7 +274,7 @@ function appendParts(parts){
     }
     html += `<div class="parts-group" data-count="${g.parts.length}">
       <div class="group-hd">
-        <div class="color-dot" data-stil="width:18px;height:18px" data-farbe="${escHex(g.hex, 'var(--s300)')}"></div>
+        <div class="color-dot gross" data-farbe="${escHex(g.hex, 'var(--s300)')}"></div>
         <span class="group-title">${esc(colorName(g.color))}</span>
         <span class="group-sub">${t('parts.group_types', { n: g.parts.length })}</span>
       </div>
@@ -455,6 +453,7 @@ G('parts-view').addEventListener('change', teileAnsichtGeaendert);
 
 // ── Handler beim Dispatcher anmelden (siehe js/00-registry.js) ──────────────
 registerActions({
+  loadParts,
   setCatFilter,
   setColorFilter,
 });

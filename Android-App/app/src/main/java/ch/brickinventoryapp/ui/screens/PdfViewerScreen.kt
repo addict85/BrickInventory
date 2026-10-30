@@ -60,6 +60,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.graphics.createBitmap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -72,7 +73,9 @@ import java.io.RandomAccessFile
 import java.util.concurrent.TimeUnit
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.util.PdfSchritt
+import ch.brickinventoryapp.util.pdfAblage
 import ch.brickinventoryapp.util.pdfSchritt
+import ch.brickinventoryapp.util.vergissPdf
 import ch.brickinventoryapp.ui.theme.Formen
 import kotlin.math.ceil
 import kotlin.math.roundToInt
@@ -159,6 +162,13 @@ fun PdfViewerScreen(
     // drei Stellen, eine Wahrheit. Zurueck auf 1x bei einem anderen PDF.
     var zoom by remember(pdfUrl) { mutableFloatStateOf(PDF_ZOOM_MIN) }
     val anker = remember(pdfUrl) { ZoomAnker() }
+    // Ein Gutschein-PDF trägt Nummer und PIN: eigener Ordner, und beim Verlassen weg
+    // (dazu FLAG_SECURE über Sichtschutz im Graphen). Anleitungen bleiben im Zwischenspeicher.
+    val vertraulich = remember(pdfUrl) { ch.brickinventoryapp.ui.viewmodel.zeigtGutscheine(pdfUrl) }
+    val ablage = remember(pdfUrl) { pdfAblage(ctx.cacheDir, pdfUrl, vertraulich) }
+    DisposableEffect(ablage) {
+        onDispose { if (vertraulich) vergissPdf(ablage) }
+    }
     // Geste und Doppeltipp zoomen um ihren Punkt, die Knoepfe (null) um die Mitte.
     val setzeZoom = { neu: Float, punkt: Offset? ->
         anker.punkt = punkt
@@ -186,7 +196,8 @@ fun PdfViewerScreen(
             ?.createWifiLock(WifiManager.WIFI_MODE_FULL_HIGH_PERF, "brickinv:pdf")
         try {
             try { wifiLock?.acquire() } catch (_: Exception) {}
-            val cacheFile = File(ctx.cacheDir, "pdfview_${pdfUrl.hashCode()}.pdf")
+            val cacheFile = ablage
+            withContext(Dispatchers.IO) { cacheFile.parentFile?.mkdirs() }
             val (file, pageCount) = ladeUndZaehle(
                 pdfUrl, cacheFile, httpClient,
                 ladefehlerText,
@@ -700,6 +711,8 @@ private suspend fun downloadPdfWithResume(
                                 var lastEmit = 0L
                                 var read = input.read(buf)
                                 while (read != -1) {
+                                    // Verlassen bricht ab: Ein Gutschein-PDF darf nach dem Löschen nicht neu entstehen.
+                                    kotlinx.coroutines.currentCoroutineContext().ensureActive()
                                     raf.write(buf, 0, read)
                                     downloaded += read
                                     val now = System.currentTimeMillis()

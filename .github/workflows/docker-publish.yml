@@ -237,6 +237,11 @@ jobs:
     name: Manifest zusammenfuehren
     runs-on: ubuntu-latest
     needs: [pruefen, build]
+    # id-token: write nur hier: cosign holt sich damit ein kurzlebiges
+    # OIDC-Zertifikat von Sigstore (keyless), es gibt keinen Schlüssel zu hüten.
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
@@ -300,3 +305,17 @@ jobs:
           fi
           echo "Alle erwarteten Plattformen sind im Manifest."
           docker buildx imagetools inspect "$TAG"
+
+      # Keyless signiert: Die Signatur bindet den Digest an diesen Workflow auf
+      # main, nachprüfbar ohne Schlüsselaustausch (Befehl im README, Abschnitt
+      # Docker). --recursive signiert das Manifest und jede Plattform darin.
+      - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+
+      - name: Image signieren
+        run: |
+          set -eu
+          TAG="$(jq -cr '.tags[0]' <<< "$DOCKER_METADATA_OUTPUT_JSON")"
+          DIGEST="$(docker buildx imagetools inspect "$TAG" --format '{{json .Manifest}}' | jq -r .digest)"
+          case "$DIGEST" in (sha256:*) ;; (*) echo "::error::Kein Digest für $TAG ($DIGEST)"; exit 1 ;; esac
+          cosign sign --yes --recursive "${{ env.IMAGE }}@$DIGEST"
+          echo "Signiert: ${{ env.IMAGE }}@$DIGEST" >> "$GITHUB_STEP_SUMMARY"

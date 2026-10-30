@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui.screens
 
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import ch.brickinventoryapp.ui.theme.Formen
@@ -141,15 +142,9 @@ internal fun DetailRow2(label: String, value: String) {
 }
 
 /**
- * Preisverlauf mit zwei Linien (neu und gebraucht) samt Legende. Gezeichnet aus
- * `chart` (history_new/history_used mit gemeinsamer x-Achse), gerechnet in
- * ui/PriceChartMath.kt — dort stehen die Gründe für die x-Achse nach Datum und das
- * Überspringen der aufgefüllten Nullen.
- *
- * Farben aus dem Design (LocalChartColors), dieselben wie die Zustands-Plaketten
- * und --chart-new/--chart-used in der Webapp. Ohne `currency`-Parameter: Die drei
- * Kennzahlen zeigen reine Beträge, und ein durchgereichter, ungenutzter Parameter
- * verdeckt, dass er fehlt (siehe imageLoader in SetDetailScreen).
+ * Preisverlauf mit zwei Linien (neu und gebraucht) samt Legende, gerechnet in
+ * ui/PriceChartMath.kt. Farben aus dem Design (LocalChartColors), dieselben wie die
+ * Zustands-Plaketten und --chart-new/--chart-used im Web.
  */
 @Composable
 fun PriceChart(chart: PriceChartData) {
@@ -185,7 +180,13 @@ fun PriceChart(chart: PriceChartData) {
 
     val gridColor = MaterialTheme.colorScheme.outlineVariant
     val surfaceCol = MaterialTheme.colorScheme.surface
-    Canvas(modifier = Modifier.fillMaxWidth().height(120.dp)) {
+    // Wie im Wertdiagramm (PortfolioChart): ohne Beschreibung überspringt TalkBack die Fläche.
+    val beschreibung = PriceChartMath.zusammenfassung(lines).map { z ->
+        stringResource(R.string.price_chart_summary, labelFor(z.zustand), z.von, z.bis,
+            ch.brickinventoryapp.util.fmtAmount(z.anfang), ch.brickinventoryapp.util.fmtAmount(z.ende),
+            ch.brickinventoryapp.util.fmtAmount(z.tief), ch.brickinventoryapp.util.fmtAmount(z.hoch))
+    }.joinToString("; ")
+    Canvas(modifier = Modifier.fillMaxWidth().height(120.dp).semantics { contentDescription = beschreibung }) {
         val w = size.width
         val h = size.height
         val topPad = 4f
@@ -271,15 +272,9 @@ fun PriceChart(chart: PriceChartData) {
 }
 
 /**
- * Marktpreis und Entwicklung JE ZUSTAND.
- *
- * Eine Zeile erscheint nur, wenn für diesen Zustand auch eine Erfassung
- * existiert — das entscheidet der Server (by_condition, utils/priceHistory.ts)
- * und liefert für die anderen gar keinen Eintrag. Damit taucht eine Zeile von
- * selbst auf, sobald ein Kaufpreis in diesem Zustand erfasst wird.
- *
- * Ohne Marktpreis oder ohne Kaufpreis bleibt die Prozentangabe leer: eine Zahl
- * gegen nichts gerechnet wäre bedeutungslos.
+ * Marktpreis und Entwicklung je Zustand. Eine Zeile erscheint nur, wenn der Server
+ * für diesen Zustand eine Erfassung kennt; ohne Markt- oder Kaufpreis bleibt die
+ * Prozentangabe leer, statt gegen nichts zu rechnen.
  */
 @Composable
 fun MarketPriceByCondition(

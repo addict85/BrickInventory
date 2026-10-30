@@ -82,3 +82,53 @@ test('pgweb bekommt keinen Zugriff auf Projektdateien', () => {
   assert.doesNotMatch(block, /^\s*volumes:/m,
     'pgweb braucht kein Volume — es spricht über das Netzwerk mit Postgres');
 });
+
+// ── Härtung aller Dienste ─────────────────────────────────────────────────
+//
+// Docker ist hier nicht verfügbar; was der App-Entrypoint mit genau diesen
+// Rechten tut, ist am 29.10.2026 mit setpriv nachgespielt worden (siehe
+// Commit). Diese Prüfung hält fest, dass Liste und Entrypoint zusammenpassen.
+//
+// Gegenproben (am 29.10.2026 gemessen):
+//   A  cap_drop beim Dienst app entfernt → rot: „app: cap_drop: [ALL] fehlt“
+//   B  im Entrypoint ein Ziel /app/cache beim mkdir ergänzt → rot: „Der
+//      Entrypoint schreibt ausserhalb der beschreibbaren Orte“
+const liste = (block, schluessel) =>
+  (block.match(new RegExp(`^\\s*${schluessel}:\\s*\\[([^\\]]*)\\]`, 'm'))?.[1] ?? '')
+    .split(',').map(s => s.trim()).filter(Boolean);
+
+test('kein Dienst gewinnt Rechte, jeder hat nur die nötigen Capabilities', () => {
+  const erwartet = {
+    postgres: ['CHOWN', 'DAC_OVERRIDE', 'FOWNER', 'SETGID', 'SETUID'],
+    app:      ['CHOWN', 'DAC_OVERRIDE', 'SETGID', 'SETUID'],
+    pgweb:    [],
+  };
+  for (const [dienst, caps] of Object.entries(erwartet)) {
+    const block = leseDienst(compose, dienst);
+    assert.match(block, /^\s*-\s*no-new-privileges:true\s*$/m, `${dienst}: no-new-privileges fehlt`);
+    assert.deepEqual(liste(block, 'cap_drop'), ['ALL'], `${dienst}: cap_drop: [ALL] fehlt`);
+    assert.deepEqual(liste(block, 'cap_add').sort(), caps, `${dienst}: unerwartete Capabilities`);
+  }
+});
+
+test('die App schreibt nur in ./data und /tmp — der Entrypoint auch', () => {
+  const block = leseDienst(compose, 'app');
+  assert.match(block, /^\s*read_only:\s*true\s*$/m, 'app: read_only fehlt');
+  assert.match(block, /^\s*tmpfs:\s*\n\s*-\s*\/tmp\s*$/m, 'app: /tmp als tmpfs fehlt');
+  assert.match(block, /^\s*-\s*\.\/data:\/app\/data\s*$/m, 'app: ./data ist nicht nach /app/data eingehängt');
+
+  const ep = fs.readFileSync(path.join(ROOT, 'docker-entrypoint.sh'), 'utf8')
+    .split('\n').filter(z => !/^\s*#/.test(z)).join('\n');
+  // Was der Entrypoint anlegt oder beschreibt: die mkdir-Ziele und die Marke.
+  const mkdir = ep.slice(ep.indexOf('mkdir -p'), ep.indexOf('\n\n', ep.indexOf('mkdir -p')));
+  const ziele = [...mkdir.matchAll(/\/\S+/g)].map(m => m[0]);
+  ziele.push(ep.match(/^MARKE=(\S+)/m)?.[1]);
+  assert.ok(ziele.length >= 5 && ziele.every(Boolean), `Ziele nicht gefunden: ${ziele}`);
+  assert.deepEqual(ziele.filter(z => !z.startsWith('/app/data')), [],
+    'Der Entrypoint schreibt ausserhalb der beschreibbaren Orte');
+  assert.match(ep, /exec su-exec brickinv /, 'Der Wechsel zu brickinv (SETUID/SETGID) ist nicht mehr su-exec');
+});
+
+test('TRUST_PROXY ist für einen Proxy im Docker-Netz vorgegeben und in .env überschreibbar', () => {
+  assert.match(leseDienst(compose, 'app'), /^\s*TRUST_PROXY:\s*\$\{TRUST_PROXY:-docker\}\s*$/m);
+});

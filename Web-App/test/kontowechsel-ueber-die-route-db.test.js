@@ -25,7 +25,7 @@
  *
  * ── Was hier läuft ─────────────────────────────────────────────────────────
  *
- * Die drei Arten gehen durch DIESELBE Fabrik (registerAcquisitionRoutes) und
+ * Die drei Arten gehen durch DENSELBEN Dienst (utils/dienste/erfassungen.ts) und
  * dieselbe Umsetzung (moveManualAcquisition bzw. moveSetBetweenAccounts).
  * Geprüft werden alle drei über ihre echten Adressen, dazu die beiden
  * Abweisungen, die bisher nur als Muster zugesichert waren:

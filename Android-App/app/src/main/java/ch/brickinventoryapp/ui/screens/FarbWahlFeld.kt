@@ -27,6 +27,9 @@ import androidx.compose.ui.unit.dp
 import androidx.core.graphics.toColorInt
 import ch.brickinventoryapp.R
 import ch.brickinventoryapp.data.model.BrickColor
+import ch.brickinventoryapp.data.model.KEINE_FARBE
+import ch.brickinventoryapp.ui.farbName
+import ch.brickinventoryapp.ui.ohneKeineFarbe
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.Formen
 
@@ -63,10 +66,12 @@ fun FarbWahlFeld(
     // Was die Liste ueber die heutige Farbe weiss, gewinnt gegen die
     // Bestandszeile: Dort steht der Name, der beim Erfassen mitgeschickt wurde,
     // und der kann aelter sein als der Katalog.
-    val ausListe = farben.firstOrNull { it.id == aktuell }
-    val name = ausListe?.name ?: aktuellerName?.takeIf { it.isNotBlank() }
+    val keineFarbe = stringResource(R.string.parts_no_color)
+    val name = farbName(farben, aktuell, aktuellerName, keineFarbe)
         ?: stringResource(R.string.parts_color_unknown, aktuell)
-    val hex = ausListe?.hex ?: aktuellerHex
+    val hex = if (aktuell == KEINE_FARBE) null else farben.firstOrNull { it.id == aktuell }?.hex ?: aktuellerHex
+    // „Keine Farbe“ steht zur Wahl, damit sich eine falsch übernommene Farbe auch entfernen lässt.
+    val wahl = listOf(BrickColor(KEINE_FARBE, keineFarbe)) + ohneKeineFarbe(farben)
 
     ExposedDropdownMenuBox(
         expanded = offen && farben.isNotEmpty(),
@@ -86,7 +91,7 @@ fun FarbWahlFeld(
             shape = Formen.knopf,
         )
         ExposedDropdownMenu(expanded = offen && farben.isNotEmpty(), onDismissRequest = { offen = false }) {
-            farben.forEach { c ->
+            wahl.forEach { c ->
                 DropdownMenuItem(
                     text = { Text(c.name) },
                     leadingIcon = { FarbPunkt(c.hex) },

@@ -105,7 +105,7 @@ test('der Job verzichtet auf die Pausen, die er selbst schon einhält', () => {
   // Und nur er: Die drei übrigen Aufrufer haben keinen Takt über sich, für die
   // sind die Pausen die einzige Bremse. Setzte einer von ihnen den Schalter,
   // fielen dort 5 Sekunden weg, ohne dass etwas anderes sie ersetzt.
-  const fremde = ['utils/setService.ts', 'jobs/bricksetRetry.ts', 'routes/sets.ts']
+  const fremde = ['utils/setService.ts', 'jobs/bricksetRetry.ts', 'routes/api_v1/sets.ts', 'jobs/nachErfassung.ts']
     .filter(d => /downloadSetInstructions\([^)]*\btrue\s*\)/
       .test(fs.readFileSync(path.join(__dirname, '..', d), 'utf8')));
   assert.deepEqual(fremde, [],

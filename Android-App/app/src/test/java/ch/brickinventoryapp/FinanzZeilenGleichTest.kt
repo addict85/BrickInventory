@@ -1,5 +1,11 @@
 package ch.brickinventoryapp
 
+import ch.brickinventoryapp.data.model.FigValuationItem
+import ch.brickinventoryapp.data.model.PartValuationItem
+import ch.brickinventoryapp.data.model.ValuationAcquisition
+import ch.brickinventoryapp.ui.figurZeilen
+import ch.brickinventoryapp.ui.teilZeilen
+import org.junit.Assert.assertEquals
 import org.junit.Test
 
 /**
@@ -21,7 +27,12 @@ import org.junit.Test
  * — PartValuationItem, FigValuationItem und ValuationAcquisition tragen alle
  * `purchase_price` —, sie kam nur nie auf den Bildschirm.
  *
- * Der Test liest nur Quelltext: kein Geraet, kein Compose.
+ * Die Wahl des Kaufpreises (Erfassung vor Eintrag) läuft in ui/Finanzzeilen.kt
+ * und wird ausgeführt; dass die Karte ihn zeigt, prüft der Quelltext.
+ *
+ * Gegenprobe (30.10.2026, gemessen): in teilZeilen() `acq?.purchasePrice ?:
+ * p.purchasePrice` durch `p.purchasePrice` ersetzt → rot „beide Aufrufstellen
+ * reichen den Kaufpreis durch“ (150.0 statt 120.0).
  */
 class FinanzZeilenGleichTest {
 
@@ -45,14 +56,19 @@ class FinanzZeilenGleichTest {
 
     @Test
     fun `beide Aufrufstellen reichen den Kaufpreis durch`() {
+        // Die Erfassung geht vor dem Eintrag: Bei mehreren Kaeufen hat jede Zeile
+        // ihren eigenen Kaufpreis, genau wie bei den Sets.
+        val kaeufe = listOf(ValuationAcquisition(id = 1, purchasePrice = 120.0),
+                            ValuationAcquisition(id = 2, purchasePrice = 80.0))
+        val teil = PartValuationItem(id = 1, partNumber = "3001", purchasePrice = 150.0, acquisitions = kaeufe)
+        val figur = FigValuationItem(id = 2, figNumber = "sw0001", purchasePrice = 150.0, acquisitions = kaeufe)
+        assertEquals(listOf(120.0, 80.0), teilZeilen(listOf(teil)).map { it.second.kaufpreis })
+        assertEquals(listOf(120.0, 80.0), figurZeilen(listOf(figur)).map { it.second.kaufpreis })
+        assertEquals(listOf(150.0), teilZeilen(listOf(teil.copy(acquisitions = emptyList()))).map { it.second.kaufpreis })
+
         val s = code(read("ui/screens/FinanceSections.kt"))
-        // Je einmal fuer Minifiguren und fuer Teile. Die Erfassung geht vor dem
-        // Eintrag: Bei mehreren Kaeufen hat jede Zeile ihren eigenen Kaufpreis,
-        // genau wie bei den Sets.
-        for (feld in listOf("fig.purchasePrice", "part.purchasePrice")) {
-            assert(s.contains("acq?.purchasePrice ?: $feld")) {
-                "Der Kaufpreis wird fuer $feld nicht durchgereicht — die Zeile bliebe leer"
-            }
+        assert(Regex("""purchaseStr = zeile\.kaufpreis""").findAll(s).count() == 2) {
+            "Teile und Minifiguren reichen den Kaufpreis nicht durch — die Zeile bliebe leer"
         }
     }
 

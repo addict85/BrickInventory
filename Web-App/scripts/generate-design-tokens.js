@@ -24,6 +24,7 @@ const QUELLE = path.join(WURZEL, 'shared', 'design-tokens.json');
 const ZIEL_CSS = path.join(WURZEL, 'Web-App', 'public', 'tokens.css');
 const ZIEL_KT = path.join(WURZEL, 'Android-App', 'app', 'src', 'main', 'java',
   'ch', 'brickinventoryapp', 'ui', 'theme', 'DesignTokens.kt');
+const ZIEL_DUNKEL_KT = path.join(path.dirname(ZIEL_KT), 'DunkelTokens.kt');
 
 const HINWEIS = 'ERZEUGT aus shared/design-tokens.json — NICHT von Hand aendern.';
 
@@ -188,6 +189,42 @@ ${zeilen.join('\n\n')}
 ${faecherBlock}`;
 }
 
+/**
+ * Aus dem Abschnitt `dunkel` die Kotlin-Tabelle der dunklen Fassung bauen.
+ * Nur die Werte: `erbt` auflösen und die Material-Rollen zuordnen sind Regeln
+ * und stehen von Hand in DunkleRollen.kt.
+ * @param {any} daten Inhalt von shared/design-tokens.json
+ * @returns {string}
+ */
+function baueKotlinDunkel(daten) {
+  if (!daten.dunkel) throw new Error('design-tokens.json: Abschnitt "dunkel" fehlt');
+  /** @param {Record<string,string>} t @param {string} einzug */
+  const paare = (t, einzug) => Object.entries(t)
+    .map(([k, v]) => `${einzug}${JSON.stringify(k)} to ${JSON.stringify(v)},`).join('\n');
+  const designs = Object.entries(daten.dunkel.designs || {})
+    .map(([name, t]) => `        ${JSON.stringify(name)} to mapOf(\n${paare(t, '            ')}\n        ),`).join('\n');
+  return `package ch.brickinventoryapp.ui.theme
+
+/**
+ * ${HINWEIS}
+ *
+${umbruch(daten._dunkel_warum, 72).map((/** @type {string} */ z) => ` * ${z}`).join('\n')}
+ *
+ * Erzeugt von Web-App/scripts/generate-design-tokens.js. Die Regeln dazu
+ * (erbt, Material-Rollen) stehen in DunkleRollen.kt.
+ */
+object DunkelTokens {
+    val basis: Map<String, String> = mapOf(
+${paare(daten.dunkel.basis, '        ')}
+    )
+
+    val designs: Map<String, Map<String, String>> = mapOf(
+${designs}
+    )
+}
+`;
+}
+
 // Erst beim Aufruf rechnen, nicht beim Laden: Die Pruefung importiert dieses
 // Modul nur, um baueCss()/baueKotlin() selbst anzuwenden — sie braucht das
 // Ergebnis nicht schon beim require.
@@ -197,6 +234,7 @@ if (require.main === module) {
   const ausgaben = [
     { datei: ZIEL_CSS, inhalt: baueCss(daten) },
     { datei: ZIEL_KT, inhalt: baueKotlin(daten) },
+    { datei: ZIEL_DUNKEL_KT, inhalt: baueKotlinDunkel(daten) },
   ];
   for (const { datei, inhalt } of ausgaben) {
     fs.writeFileSync(datei, inhalt);
@@ -205,4 +243,4 @@ if (require.main === module) {
 }
 
 // Fuer die Pruefung: dieselbe Rechnung, ohne zu schreiben.
-module.exports = { baueCss, baueKotlin, QUELLE, ZIEL_CSS, ZIEL_KT };
+module.exports = { baueCss, baueKotlin, baueKotlinDunkel, QUELLE, ZIEL_CSS, ZIEL_KT, ZIEL_DUNKEL_KT };

@@ -28,7 +28,7 @@ data class AppUiState(
     val priceCondition: String = "N",
     val defaultPriceCondition: String = "N", // server-side default condition for new items (N=New, U=Used)
     val userDefaultCondition: String? = null, // null = use global default
-    val appTheme: String = "classic", // global vom Admin gewähltes App-Design
+    val appTheme: String = "classic", // wirksames Design: eigenes des Kontos, sonst die Vorgabe
     /**
      * Startzustand des Servers, solange er nicht `ready` meldet; sonst null. Der erste
      * Start einer Neuinstallation dauert Minuten, und statt einer Netzmeldung zeigt
@@ -132,4 +132,9 @@ data class AnmeldeUiState(
      * korrigiert — flüchtige Meldungen gehen in den Meldungskanal.
      */
     val loginError: String? = null,
+    /**
+     * Die Anmeldung wartet auf eine Rückfrage: Klartext in einem Netz, in dem dieser
+     * Server nie eingerichtet wurde (NetworkPolicy.anmeldungBrauchtNetzBestaetigung).
+     */
+    val netzFrage: Boolean = false,
 )

@@ -2,9 +2,14 @@
  * Preisalarm — sag Bescheid, wenn ein Set eine Schwelle reisst.
  * Ausführlich: docs/begruendungen/utils/preisalarm.ts.md#abschnitt
  */
+import { meldeUndLiefere, meldeUndWeiter } from './httpError';
 import * as db from '../db/database';
 import { scopeIds } from './household';
 import { fehlerWerfen } from './fehlerTexte';
+import * as httpError from './httpError';
+import * as mailer from './mailer';
+import { toCsv, csvZeilenAusAnfrage, uebersprungenHinweis } from './csvExport';
+import { normalizeSetNumber } from './setAdd';
 
 /**
  * Eine Alarmzeile samt Empfänger — das, was pruefeSet() aus der Datenbank
@@ -91,7 +96,7 @@ export async function alarmeFuer(userId: number, setNumber: string): Promise<Pre
             ausgeloest, zuletzt_am, zuletzt_preis
        FROM price_alerts WHERE user_id=$1 AND set_number=$2 ORDER BY condition`,
     [userId, setNumber])
-    .catch(e => { require('./httpError').meldeUndWeiter('preisalarm:lesen', e); return []; });
+    .catch(e => { httpError.meldeUndWeiter('preisalarm:lesen', e); return []; });
   type Zeile = Omit<Preisalarm, 'schwelle' | 'zuletzt_preis'> &
                { schwelle: string | number; zuletzt_preis: string | number | null };
   return (rows as Zeile[] || []).map(r => ({
@@ -149,7 +154,7 @@ export async function alleAlarme(userId: number): Promise<AlarmMitName[]> {
       WHERE a.user_id = $1
       ORDER BY a.set_number, a.condition, c.image_local NULLS LAST, s.id`,
     [userId, blickfeld])
-    .catch(e => { require('./httpError').meldeUndWeiter('preisalarm:alle', e); return []; });
+    .catch(e => { httpError.meldeUndWeiter('preisalarm:alle', e); return []; });
   type Zeile = Omit<AlarmMitName, 'schwelle' | 'zuletzt_preis'> &
                { schwelle: string | number; zuletzt_preis: string | number | null };
   return (rows as Zeile[] || []).map(r => ({
@@ -196,7 +201,7 @@ export async function ausgeloesteSeit(userId: number, seit: unknown) {
         AND zuletzt_am IS NOT NULL AND date_trunc('milliseconds', zuletzt_am) > $2
       ORDER BY zuletzt_am`,
     [userId, marke])
-    .catch(e => { require('./httpError').meldeUndWeiter('preisalarm:abholen', e); return []; });
+    .catch(e => { httpError.meldeUndWeiter('preisalarm:abholen', e); return []; });
 
   type Zeile = { set_number: string; condition: string; richtung: Richtung;
                  schwelle: string | number; currency_code: string;
@@ -237,12 +242,11 @@ export type Versender = (mail: { to: string; subject: string; text: string; html
  * Ausführlich: docs/begruendungen/utils/preisalarm.ts.md#standardversand
  */
 async function standardVersand(mail: { to: string; subject: string; text: string }) {
-  return require('./mailer').sendMail(mail);
+  return mailer.sendMail(mail);
 }
 
 export async function pruefeSet(setNumber: string,
                                 versende: Versender = standardVersand): Promise<number> {
-  const { meldeUndWeiter } = require('./httpError');
   const alarme = await db.all(
     `SELECT a.user_id, a.set_number, a.condition, a.richtung, a.schwelle,
             a.currency_code, a.ausgeloest, u.email, u.username,
@@ -311,9 +315,9 @@ export async function pruefeSet(setNumber: string,
  * Ausführlich: docs/begruendungen/utils/preisalarm.ts.md#verschicke
  */
 async function verschicke(versende: Versender, a: AlarmZeile, preis: number, schwelle: number) {
-  const name = await db.get('SELECT name FROM rb_sets WHERE set_num = $1', [a.set_number])
-    .catch(() => null);
-  const mail = await require('./mailer').baueAlarmMail({
+  const name = await db.get('SELECT name FROM set_stamm WHERE set_number = $1', [a.set_number])
+    .catch(meldeUndLiefere('preisalarm:name', null));
+  const mail = await mailer.baueAlarmMail({
     username:  a.username,
     lang:      String(a.sprache),
     setNumber: a.set_number,
@@ -332,7 +336,6 @@ async function verschicke(versende: Versender, a: AlarmZeile, preis: number, sch
  * Ausführlich: docs/begruendungen/utils/preisalarm.ts.md#buildpreisalarmecsv
  */
 export async function buildPreisalarmeCsv(uid: number): Promise<string> {
-  const { toCsv } = require('./csvExport');
   const rows = await db.all(
     `SELECT set_number, condition, richtung, schwelle, currency_code
        FROM price_alerts
@@ -347,4 +350,49 @@ export async function buildPreisalarmeCsv(uid: number): Promise<string> {
     // niemand schreibt eine Schwelle so hin, und beim Wiedereinlesen durch ein
     // Tabellenprogramm wird daraus je nach Gebietseinstellung etwas anderes.
     rows.map((r: any) => ({ ...r, schwelle: Number(r.schwelle) })));
+}
+
+/**
+ * Preisalarme aus einer CSV (Gegenstück zu buildPreisalarmeCsv). Die
+ * Schwellen gelten in der Kontowährung; stand eine andere in der Datei, sagt
+ * die Antwort es, statt still umzurechnen — Kurse gibt es keine.
+ */
+export async function alarmeAusCsv(uid: number, waehrung: string, text: string) {
+  const { records, bereinigt, uebersprungen } = csvZeilenAusAnfrage(text);
+  let added = 0, updated = 0, errors = 0, fremdeWaehrung = 0;
+  const results: Array<Record<string, unknown>> = [];
+  for (const row of bereinigt) {
+    const roh = String(row.set_number || row['Setnummer'] || row['set_num'] || Object.values(row)[0] || '').trim();
+    if (!roh) continue;
+    const sn = normalizeSetNumber(roh);
+    // Vor dem Schreiben fragen: setzeAlarm() legt an oder ändert, ohne es zu sagen.
+    const schon = await alarmeFuer(uid, sn);
+    const dateiWaehrung = String(row.currency_code || row['waehrung'] || '').trim().toUpperCase();
+    const abweichend = dateiWaehrung !== '' && dateiWaehrung !== waehrung.toUpperCase();
+    try {
+      const alarm = await setzeAlarm(uid, sn, waehrung, {
+        richtung: String(row.richtung || row['Richtung'] || '').trim().toLowerCase(),
+        // Komma als Dezimalzeichen wie in csvGemeinsameFelder.
+        schwelle: String(row.schwelle || row['Schwelle'] || '').trim().replace(',', '.'),
+        condition: String(row.condition || row['zustand'] || row['Zustand'] || 'N').trim().toUpperCase(),
+      });
+      const war = schon.some(a => a.condition === alarm.condition);
+      if (war) updated++; else added++;
+      if (abweichend) fremdeWaehrung++;
+      results.push({ set_number: sn, condition: alarm.condition, action: war ? 'updated' : 'added',
+        ...(abweichend ? { waehrung_angepasst: true, waehrung_datei: dateiWaehrung, waehrung_konto: waehrung } : {}) });
+    } catch (e) {
+      errors++;
+      results.push({ set_number: sn, action: 'error', error: httpError.fehlertext(e) });
+    }
+  }
+  return {
+    success: true, added, updated, errors, total: records.length, results,
+    skipped: uebersprungen.length || undefined,
+    skipped_hint: uebersprungenHinweis(uebersprungen) || undefined,
+    ...(fremdeWaehrung ? { waehrung_hinweis:
+      `${fremdeWaehrung} Alarm(e) standen in einer anderen Währung als ${waehrung}. ` +
+      `Die Schwellen wurden unverändert übernommen und gelten jetzt in ${waehrung} — ` +
+      'die Zahlen bitte nachsehen.' } : {}),
+  };
 }

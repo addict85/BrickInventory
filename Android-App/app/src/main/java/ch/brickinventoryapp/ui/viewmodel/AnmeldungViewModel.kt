@@ -3,6 +3,7 @@ package ch.brickinventoryapp.ui.viewmodel
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.R
 import ch.brickinventoryapp.data.Anmeldeablage
+import ch.brickinventoryapp.data.Netzkennung
 import ch.brickinventoryapp.data.model.RegisterRequest
 import ch.brickinventoryapp.data.repository.AdminRepository
 import ch.brickinventoryapp.data.repository.Result
@@ -20,35 +21,55 @@ import javax.inject.Inject
 
 /**
  * Server einrichten, anmelden (Passwort, zweiter Faktor, QR), Konto anlegen,
- * Passwort vergessen.
- *
- * An die Activity gebunden: Der QR-Weg verlässt die Einrichtung, während die
- * Anmeldung noch läuft — an das Ziel gebunden, bräche ihr Abruf dabei ab.
- * Was nach der Anmeldung geladen wird, stösst das AppViewModel an, sobald der
- * Token in der Ablage steht.
+ * Passwort vergessen. An die Activity gebunden, weil der QR-Weg die Einrichtung
+ * verlässt, während die Anmeldung noch läuft.
  */
 @HiltViewModel
 class AnmeldungViewModel @Inject constructor(
     dienste: AppDienste,
     private val admin: AdminRepository,
     private val ablage: Anmeldeablage,
+    private val netzkennung: Netzkennung,
 ) : BereichsViewModel(dienste) {
 
     private val _anmeldeState = MutableStateFlow(AnmeldeUiState())
     val anmeldeState: StateFlow<AnmeldeUiState> = _anmeldeState.asStateFlow()
 
-    /** Zuerst die Erlaubnis für Klartext, dann die Adresse: Die ersten Anfragen folgen sofort. */
-    fun saveServerUrl(url: String, klartextBestaetigt: Boolean = false) {
-        viewModelScope.launch {
-            if (klartextBestaetigt) NetworkPolicy.klartextHost(url)?.let { ablage.bestaetigeKlartext(it) }
-            ablage.saveServerUrl(url)
-        }
+    /**
+     * Zuerst die Erlaubnis für Klartext, dann die Adresse: Die ersten Anfragen folgen
+     * sofort. Ein anderer Server meldet vorher ganz ab ([abmelden], der Weg der App),
+     * denn der Token gehört dem alten. Das Netz der Einrichtung gilt als bekannt.
+     */
+    fun saveServerUrl(url: String, klartextBestaetigt: Boolean = false, abmelden: suspend () -> Unit = {}) {
+        viewModelScope.launch { richteEin(url, klartextBestaetigt, abmelden) }
     }
 
-    fun login(username: String, password: String, code: String? = null) {
+    private suspend fun richteEin(url: String, klartextBestaetigt: Boolean, abmelden: suspend () -> Unit) {
+        val neu = url.trim().trimEnd('/')
+        if (dienste.sitzung.state.value.isLoggedIn && !NetworkPolicy.gleicheHerkunft(ablage.serverUrlJetzt(), neu)) {
+            abmelden()
+        }
+        if (klartextBestaetigt) NetworkPolicy.klartextHost(neu)?.let { ablage.bestaetigeKlartext(it) }
+        ablage.saveServerUrl(neu)
+        netzkennung.fingerabdruck()?.let { ablage.merkeNetz(NetworkPolicy.netzEintrag(neu, it)) }
+    }
+
+    /**
+     * [netzBestaetigt]: Der Nutzer hat die Rückfrage „anderes Netz, Passwort im
+     * Klartext“ ausdrücklich bejaht; das Netz gilt danach als bekannt.
+     */
+    fun login(username: String, password: String, code: String? = null, netzBestaetigt: Boolean = false) {
         viewModelScope.launch {
-            _anmeldeState.update { it.copy(loginLaeuft = true, loginError = null) }
             val url = ablage.serverUrlJetzt()
+            val netz = netzkennung.fingerabdruck()
+            if (NetworkPolicy.anmeldungBrauchtNetzBestaetigung(url, netz, ablage.bekannteNetze())) {
+                if (!netzBestaetigt) {
+                    _anmeldeState.update { it.copy(netzFrage = true) }
+                    return@launch
+                }
+                netz?.let { ablage.merkeNetz(NetworkPolicy.netzEintrag(url, it)) }
+            }
+            _anmeldeState.update { it.copy(netzFrage = false, loginLaeuft = true, loginError = null) }
             when (val r = admin.login(url, username, password, code?.trim()?.takeIf { it.isNotEmpty() })) {
                 is Result.Success -> when {
                     // Erstes Mal nur das Codefeld zeigen; mit Code den Satz des Servers.
@@ -67,10 +88,16 @@ class AnmeldungViewModel @Inject constructor(
         }
     }
 
-    fun loginWithQrToken(serverUrl: String, token: String) {
+    /** Die Rückfrage verneint: Es geht nichts hinaus. */
+    fun netzFrageVerwerfen() {
+        _anmeldeState.update { it.copy(netzFrage = false) }
+    }
+
+    /** Erst nach der Bestätigung im Einrichtungsbildschirm: Die Adresse kommt aus dem Code. */
+    fun loginWithQrToken(serverUrl: String, token: String, klartextBestaetigt: Boolean = false, abmelden: suspend () -> Unit = {}) {
         viewModelScope.launch {
             _anmeldeState.update { it.copy(loginLaeuft = true, loginError = null) }
-            ablage.saveServerUrl(serverUrl.trim().trimEnd('/'))
+            richteEin(serverUrl, klartextBestaetigt, abmelden)
             when (val r = admin.qrLogin(token)) {
                 is Result.Success ->
                     if (r.data.success && r.data.token != null) {

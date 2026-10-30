@@ -190,6 +190,11 @@ test('die Schreibantworten passen zu den Kotlin-Modellen', { concurrency: 1, tim
     { m: 'PUT',  p: '/api/v1/settings', body: { currency: 'EUR', price_condition: 'N' } },
     { m: 'POST', p: '/api/v1/settings/user/default-condition', body: { condition: 'N' } },
     { m: 'POST', p: '/api/v1/settings/admin/theme', body: { theme: 'classic' } },
+    // Eigenes Design (Konto-Bildschirm der App), danach zurück zur Vorgabe.
+    { m: 'POST', p: '/api/v1/settings/user/theme', body: { theme: 'noppe' },
+      danach: (j) => { assert.deepEqual([j.theme, j.vorgabe, j.eigenes], ['noppe', 'classic', 'noppe']); } },
+    { m: 'POST', p: '/api/v1/settings/user/theme', body: { theme: '' },
+      danach: (j) => { assert.deepEqual([j.theme, j.eigenes], ['classic', null]); } },
     { m: 'DELETE', p: '/api/v1/settings/tokens/{tokenId}', davor: async () => {
         await _req('utils/auth.js').createToken(uid, 'Zum Entwerten');
         w.tokenId = (await erst(`SELECT substring(token, 1, 16) AS t FROM api_tokens WHERE user_id = $1 AND label = 'Zum Entwerten'`, [uid])).t;

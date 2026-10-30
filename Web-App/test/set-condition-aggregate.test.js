@@ -62,15 +62,17 @@ test('BEIDE Routenfamilien liefern das Aggregat mit', () => {
   // Genau hier lag der zweite Anlauf: Der Wrapper existierte zuerst nur in der
   // v1-Datei, die Webapp benutzt aber ihren eigenen Handler in routes/sets.ts
   // — und bekam deshalb kein `set` in der Antwort.
-  const v1  = fs.readFileSync(path.join(ROOT, 'routes', 'api_v1', 'acquisitions.ts'), 'utf8');
+  // Die Erfassungsrouten rufen den Dienst utils/dienste/erfassungen.ts; dort
+  // hängt jede Antwort das Aggregat an.
+  const v1  = fs.readFileSync(path.join(ROOT, 'utils', 'dienste', 'erfassungen.ts'), 'utf8');
   const web = require('./helpers/sources').setKernQuelle();
   const h   = require('./helpers/sources').handlerQuelle();
 
   assert.match(h, /async function withSetAggregate/,
     'Der Wrapper gehört in utils/handlers.ts, damit ihn beide Routenfamilien teilen');
 
-  assert.equal([...v1.matchAll(/res\.json\(await withSetAggregate\(/g)].length, 2,
-    'v1: PUT und DELETE müssen beide das Aggregat zurückgeben');
+  assert.equal([...v1.matchAll(/return antwort\(art, uid, keys,/g)].length, 2,
+    'Ändern und Löschen müssen beide das Aggregat zurückgeben');
   // Die Webapp-Erfassungsrouten sind mit Nachtrag 70 entfallen — sie leben in
   // der v1-Fabrik, die jetzt beide Clients bedient. Geprüft wird deshalb die
   // Gegenrichtung: In routes/sets.ts darf KEINE Zweitfassung zurückkehren.
@@ -80,7 +82,7 @@ test('BEIDE Routenfamilien liefern das Aggregat mit', () => {
     'routes/sets.ts hat wieder eigene Erfassungs-Routen — das Aggregat und alle ' +
     'übrigen Regeln würden dann erneut doppelt gepflegt');
 
-  assert.match(v1, /cfgTable !== 'set_acquisitions'/,
+  assert.match(v1, /art === 'set' \? withSetAggregate\(/,
     'Nur Set-Erfassungen haben ein Set-Aggregat — Teile und Minifiguren nicht');
 });
 
@@ -125,8 +127,7 @@ test('der im Formular gewählte Zustand kommt beim Anlegen an', () => {
   // add-stream und der CSV-Import weiter in routes/sets.ts stehen. Die Regel
   // („jeder addSet-Aufruf reicht den Zustand durch") gilt für ALLE Aufrufer —
   // deshalb werden beide Dateien zusammen betrachtet.
-  const raw = require('./helpers/sources').setKernQuelle()
-    + '\n' + fs.readFileSync(path.join(ROOT, 'routes', 'api_v1', 'sets.ts'), 'utf8');
+  const raw = require('./helpers/sources').setKernQuelle();
   // Kommentare entfernen: Der Erklärtext nennt addSet() selbst.
   const src = raw.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
 
@@ -399,7 +400,7 @@ test('der Minifiguren-Marktpreis fragt BrickLink auch ohne separate BL-Nummer', 
 
   const est = src.slice(src.indexOf('async function estimateFigPriceFromParts'),
                         src.indexOf('async function getCurrentFigMarketPrice'));
-  assert.match(est, /fetchPartPrice\(blPartNum, p\.color_id \|\| 0, cond,/,
+  assert.match(est, /fetchPartPrice\(blPartNum, p\.color_id \?\? KEINE_FARBE, cond,/,
     'Die Teilepreise müssen im übergebenen Zustand geholt werden');
   assert.doesNotMatch(est.replace(/\/\/[^\n]*/g, ''),
     /fetchPartPrice\([^)]*DEFAULT_PRICE_CONDITION/,
@@ -535,8 +536,8 @@ test('neue Sets holen den richtigen Zustand, nicht den Standard', () => {
 test('die Preis-Probe läuft ohne Serverfehler', () => {
   // Frühere Fassung fragte set_acquisitions.added_at ab — die Spalte heisst
   // created_at. Jede Probe endete in "Interner Serverfehler".
-  const admin = fs.readFileSync(path.join(ROOT, 'routes', 'api_v1', 'admin.ts'), 'utf8');
-  // Die Abfragen der Probe stehen im Dienst der Verwaltungsrouten.
+  // Die Probe steht im Dienst utils/dienste/verwaltung.ts, ihre Abfragen in utils/verwaltung.ts.
+  const admin = fs.readFileSync(path.join(ROOT, 'utils', 'dienste', 'verwaltung.ts'), 'utf8');
   const dienst = fs.readFileSync(path.join(ROOT, 'utils', 'verwaltung.ts'), 'utf8');
   const code = (admin + '\n' + dienst).replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
   assert.doesNotMatch(code, /added_at/, 'set_acquisitions kennt keine Spalte added_at');
@@ -631,13 +632,15 @@ test('Android-API: Marktpreis benutzt den Zustand des Sets, nicht den globalen S
   // Entwicklung", obwohl sich der Preis nie bewegt hatte. Ursache identisch zur
   // Webapp-Route: `fetchPrice(sn, DEFAULT_PRICE_CONDITION, …)` — fest 'U'.
   const src = fs.readFileSync(path.join(ROOT, 'routes', 'api_v1', 'sets.ts'), 'utf8');
-
-  const priceRoute = src.slice(src.indexOf("router.get('/sets/:setNumber/price'"),
-                               src.indexOf("router.get('/sets/:setNumber/price-history'"));
+  // Die Route ruft setPreis() im Dienst; dort wird der Zustand aufgelöst.
+  const dienst = fs.readFileSync(path.join(ROOT, 'utils', 'dienste', 'sets.ts'), 'utf8');
+  const priceRoute = dienst.slice(dienst.indexOf('export async function setPreis'),
+                                  dienst.indexOf('export async function rebrickableListe'));
+  assert.ok(priceRoute.length > 0, 'setPreis() nicht gefunden');
   assert.doesNotMatch(priceRoute, /fetchPrice\(sn, DEFAULT_PRICE_CONDITION/,
     'Der globale Standard darf nicht mehr direkt an fetchPrice gehen');
   // seit Nachtrag 33 mit Blickfeld (uids aus scopeIds) — sonst 404 im Haushalt
-  assert.match(priceRoute, /const cond = await resolveSetCondition\(uids, sn\);/,
+  assert.match(priceRoute, /const cond = await resolveSetCondition\(blickfeld, sn\);/,
     'Der Zustand muss über den gemeinsamen Helfer aufgelöst werden');
   assert.match(priceRoute, /fetchPrice\(sn, cond, /, 'fetchPrice muss den aufgelösten Zustand bekommen');
 
@@ -681,8 +684,8 @@ test('genau EINE Zustandsauflösung für Einzelsets — resolveSetCondition', ()
 
   // Die Preis-Route der Android-API löst weiterhin selbst auf (sie holt einen
   // Preis, keinen Verlauf) — genau ein Vorkommen.
-  const apiV1 = fs.readFileSync(path.join(ROOT, 'routes', 'api_v1', 'sets.ts'), 'utf8');
-  const uses = (apiV1.match(/resolveSetCondition\(uids, sn\)/g) || []).length;
+  const apiV1 = fs.readFileSync(path.join(ROOT, 'utils', 'dienste', 'sets.ts'), 'utf8');
+  const uses = (apiV1.match(/resolveSetCondition\(blickfeld, sn\)/g) || []).length;
   assert.equal(uses, 1, 'Die /price-Route muss ihn benutzen; der Verlauf geht über priceHistory.ts');
 });
 
@@ -768,9 +771,9 @@ test('IPv4 wird an ALLEN ausgehenden HTTPS-Aufrufen erzwungen, nicht nur beim Bi
   // änderte: Wer eine tote Zweitfassung entfernt, senkt die Zahl. Geprüft wird
   // deshalb jetzt die REGEL — jeder ausgehende Aufruf trägt family: 4 —
   // unabhängig davon, wie viele es gerade sind.
-  const dateien = ['routes/imgProxy.ts', 'routes/sets.ts', 'jobs/partsCatalogEnrich.ts',
+  const dateien = ['routes/imgProxy.ts', 'clients/rebrickable.ts', 'jobs/partsCatalogEnrich.ts',
     'jobs/backfillBlPartNumbers.ts', 'jobs/rebrickableCsvSync.ts', 'clients/brickset.ts',
-    'routes/parts.ts', 'clients/bricklink.ts', 'routes/api_v1/admin.ts', 'routes/api_v1/sets.ts'];
+    'clients/bricklink.ts', 'utils/dienste/verwaltung.ts', 'utils/dienste/sets.ts'];
 
   const ohne = [];
   let gefunden = 0;
@@ -812,12 +815,12 @@ test('der Hintergrund-Job für Teile und Minifiguren erzeugt jetzt Vorschaubilde
   // generateThumb in der Datei überhaupt zu haben ist.
   assert.match(src, /generateThumb/,
     'generateThumb ist in server.ts nicht mehr verfügbar');
-  assert.match(partsLoop, /generateThumb\(local\)\.catch\(\(\) => \{\}\);/,
+  assert.match(partsLoop, /generateThumb\(local\)\.catch\(logAndContinue\('[^']+'\)\);/,
     'Die Teile-Schleife muss generateThumb() nach einem erfolgreichen Download aufrufen');
 
   const figsLoop = src.slice(src.indexOf('for (const f of figsToFetch) {'),
                              src.lastIndexOf("await monitor.update('imgDl', { status: 'idle', sub: 'Alle Bilder gecacht'"));
-  assert.match(figsLoop, /generateThumb\(local\)\.catch\(\(\) => \{\}\);/,
+  assert.match(figsLoop, /generateThumb\(local\)\.catch\(logAndContinue\('[^']+'\)\);/,
     'Die Minifiguren-Schleife muss generateThumb() nach einem erfolgreichen Download aufrufen');
 });
 

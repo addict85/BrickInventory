@@ -10,8 +10,10 @@
  *   - Die dunkle Variante jedes Designs (data-dunkel): Primärknopf, Text,
  *     Nebentext, Preis, Gewinn, Verlust und Markenfarbe je mindestens 4,5:1
  *     auf der Karte; die Markenfarben der Designs bleiben verschieden.
- *   - Preise stehen in „noppe“ und „hochglanz“ nicht in Rot (die Marke ist
- *     rot; Rot heisst sonst Verlust).
+ *   - Preise und Kennzahl-Beträge stehen in „noppe“ und „hochglanz“ nicht in
+ *     Rot (die Marke ist rot; Rot heisst sonst Verlust); die Reiter auf der
+ *     roten bzw. schwarzen Leiste, das Ersatzteil-Etikett und die Unterzeile
+ *     der hellblauen Kachel haben mindestens 4,5:1.
  *   - Zwischen zwei Wörtern auf einem Knopf steht mindestens 0,22 em.
  *   - Der Fokusring des Knopfs „Anmelden“ ist mindestens 3 px breit und hebt
  *     sich mit 3:1 vom Grund der Anmeldekarte ab, hell wie dunkel.
@@ -32,6 +34,10 @@
  *      mit „noppe: Preis“ und „hochglanz: Preis“
  *   E  (28.10.) word-spacing am body entfernt, ebenso word-spacing:inherit an
  *      button → rot: „Wortabstand 0.17 em“
+ *   J  (29.10.) .fval wieder var(--b700) → rot: „Preis in Rot“ (noppe: Kennzahl,
+ *      hochglanz: Kennzahl); noppe nav .ntab wieder var(--b100) → rot: „noppe:
+ *      Reiter 3.74:1“; .spare-tag wieder var(--mut) → rot: „hell: Ersatzteil
+ *      4.34:1“; .fstat.hi .fsub entfernt → rot: „… hellblauen Kachel 4.37:1“
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -67,6 +73,8 @@ function testseite() {
   <div class="hs"><span class="l" data-kontrast="hell: Kopfzahl">Anleitungen</span></div>
   <span class="admin-hinweis" data-kontrast="hell: Admin-Hinweis">(Admin)</span>
   <div class="sammlung-wahl"><button type="button" data-kontrast="hell: Sammlungswahl">Teile</button></div>
+  <span class="spare-tag" data-kontrast="hell: Ersatzteil">Ersatzteil</span>
+  <div class="fstat hi"><div class="fsub" data-kontrast="hell: Unterzeile der hellblauen Kachel">Spanne 4'005 – 6'295</div></div>
   <label class="btn bs" id="csv">CSV<input type="file" class="datei-versteckt" id="datei"></label>
   <div class="sc"><div class="scb"><div class="snum" id="snum">10294-1</div><div class="smeta" id="smeta">2021</div></div></div>
   <div class="lcard" data-fokus="hell"><button class="btn bp" type="button">Anmelden</button></div>
@@ -85,9 +93,13 @@ function testseite() {
 </section>
 <section data-theme="noppe" style="background:var(--sur)">
   <span class="preis" data-kontrast="noppe: Preis" data-farbton="noppe: Preis">411,90 €</span>
+  <div class="fstat"><div class="fval" data-farbton="noppe: Kennzahl">EUR 4'894.77</div></div>
+  <nav><button type="button" class="ntab" data-kontrast="noppe: Reiter">Teile</button></nav>
 </section>
 <section data-theme="hochglanz" style="background:var(--sur)">
   <span class="preis" data-kontrast="hochglanz: Preis" data-farbton="hochglanz: Preis">411,90 €</span>
+  <div class="fstat hi"><div class="fval" data-farbton="hochglanz: Kennzahl">EUR 5'002.20</div></div>
+  <nav><button type="button" class="ntab" data-kontrast="hochglanz: Reiter">Teile</button></nav>
 </section>
 <section data-theme="classic" data-dunkel style="background:var(--bg)"><div style="background:var(--sur)">
   <button class="btn bp" data-kontrast="dunkel classic: Primärknopf">Speichern</button>
@@ -194,7 +206,7 @@ test('Kontrast, Datei-Felder und Kachelschrift', (t) => {
   assert.deepEqual(e.dunkelGrund.filter(g => g.hell > 0.05).map(g => `${g.name} ${g.hell}`), [], 'Die Karte der dunklen Variante ist hell');
   // hochglanz erbt die Farben von noppe; die übrigen vier bleiben unterscheidbar.
   assert.equal(new Set(e.marken).size, 4, `Markenfarben dunkel: ${e.marken}`);
-  assert.equal(e.farbton.length, 2);
+  assert.equal(e.farbton.length, 4);
   assert.deepEqual(e.farbton.filter(f => f.rot).map(f => f.name), [], 'Preis in Rot — liest sich als Verlust');
   assert.deepEqual(e.kontrast.filter(k => k.wert < 4.5).map(k => `${k.name} ${k.wert}:1`), []);
   assert.equal(e.fokus, true, 'Datei-Feld fokussierbar: Tab übersprang CSV und BrickLink XML');

@@ -104,7 +104,8 @@ Vor dem ersten Start lohnen zwei weitere Werte in einer `.env` neben
   Docker-Gateway (meist `172.17.0.1` oder `172.18.0.1`), und ohne die Angabe
   gelten alle Clients als dieselbe Adresse: Fünf Fehlversuche eines Fremden
   sperrten sonst den Inhaber aus. Der Server warnt beim ersten solchen Aufruf
-  und nennt die Adresse.
+  und nennt die Adresse. Für einen Proxy im Compose-Netz gibt `compose.yaml`
+  `TRUST_PROXY=docker` schon vor; ohne Docker glaubt der Server nur Loopback.
 
 ### Auf dem Raspberry Pi
 
@@ -122,6 +123,15 @@ docker compose pull && docker compose up -d
 
 32-Bit (`armv7`) wird nicht unterstützt — Details und Begründung in
 [`Web-App/README.md`](Web-App/README.md).
+
+Jedes veröffentlichte Image ist mit [cosign](https://docs.sigstore.dev/)
+signiert (keyless, aus dem Workflow `docker-publish.yml` auf `main`). Prüfen:
+
+```bash
+cosign verify addict85/brickinventory:latest \
+  --certificate-identity https://github.com/addict85/BrickInventory/.github/workflows/docker-publish.yml@refs/heads/main \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com
+```
 
 ---
 

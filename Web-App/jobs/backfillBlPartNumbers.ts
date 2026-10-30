@@ -4,12 +4,12 @@
  * but no BrickLink mapping yet.
  * Uses GET /api/v3/lego/parts/?part_nums=a,b,c (batch of 500) instead of single calls.
  */
-const db      = require('../db/database');
-const https   = require('https');
-const { rebrickableBackgroundLimiter: rebrickableLimiter, consumeRebrickableDaily, parseThrottleWait } = require('../utils/rateLimiter');
 
 import { merkeBlNummer } from '../utils/blZuordnung';
 import { getRbKey } from '../clients/rebrickable';
+import * as db from '../db/database';
+import https from 'https';
+import { rebrickableBackgroundLimiter as rebrickableLimiter, consumeRebrickableDaily, parseThrottleWait } from '../utils/rateLimiter';
 
 /** Ergebnis der handgebauten HTTPS-Aufrufe in dieser Datei. Ohne Typparameter
  *  leitet TypeScript bei `new Promise` `unknown` ab. */

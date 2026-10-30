@@ -119,7 +119,12 @@ Gutschein-PINs und die Geheimnisse des zweiten Faktors liegen verschlüsselt im
 Dump; der Schlüssel dazu steht in `data/.datenschluessel` (oder in `DATA_KEY`).
 **Diese Datei mitsichern, aber getrennt vom Dump** — ohne sie lassen sich die
 Werte nach einer Wiederherstellung nicht mehr lesen und müssen neu eingegeben
-werden. Die Passwort-Hashes stehen trotzdem im Dump. `backup.sh` legt die Dateien deshalb nur für den
+werden; Konten mit zweitem Faktor kommen dann nicht mehr herein. `backup.sh`
+lässt sie deshalb aus dem `data/`-Archiv weg und legt sie nur mit
+`BACKUP_SCHLUESSEL_ZIEL=/anderer/ort` dort ab (etwa ein USB-Stick oder ein
+anderes Laufwerk als das der Sicherungen); ohne die Angabe meldet es bei jedem
+Lauf, dass der Schlüssel fehlt. `restore.sh` fragt nach, bevor es ohne
+`data/.datenschluessel` neu startet. Die Passwort-Hashes stehen trotzdem im Dump. `backup.sh` legt die Dateien deshalb nur für den
 Besitzer lesbar an (`umask 077`) und warnt, wenn das Zielverzeichnis für
 andere offen ist. Wer `backups/` auf ein NAS oder in eine Cloud kopiert,
 verschlüsselt es vorher (z. B. `gpg -c` oder `age`).
@@ -214,11 +219,12 @@ neu starten.
 | Variable | Wirkung |
 |---|---|
 | `APP_BASE_URL` | Die Adresse, unter der der Server von **aussen** erreichbar ist (z. B. `https://lego.example.org`). Sie steckt in den Links der E-Mails und im **QR-Code zur Verknüpfung der App**. Ohne sie übernehmen die Bestätigungs-Links den Host aus dem Request-Header, und **Passwort-vergessen-Mails werden im Betrieb gar nicht versendet** (ein gefälschter Host-Header bekäme sonst den Reset-Link); der QR-Code wird **gar nicht erst erzeugt** — er trüge sonst die Adresse aus der Browserzeile, und die App fände den Server ausserhalb des Heimnetzes nie wieder. |
-| `TRUST_PROXY` | Wem der Server `X-Forwarded-For`/`-Proto` glaubt. Ohne Angabe nur Loopback und den Docker-Netzen (`172.16.0.0/12`) ausser deren Gateway (`x.y.0.1`, dort kommen per docker-proxy die Clients selbst herein) — das passt für nginx/Caddy/Traefik im selben Docker-Netz. Steht der Proxy auf einem anderen Rechner im Heimnetz, seine Adresse angeben (z. B. `192.168.1.5`). `false`, wenn kein Proxy davorsteht; sonst die Adresse oder das Netz des Proxys (z. B. `203.0.113.7`). Sonst könnte ein Client seine Absenderadresse selbst angeben und die Anmeldesperre umgehen. |
+| `TRUST_PROXY` | Wem der Server `X-Forwarded-For`/`-Proto` glaubt. Ohne Angabe **nur Loopback** (`127.0.0.0/8`, `::1`). `docker` glaubt zusätzlich den Docker-Netzen (`172.16.0.0/12`, `fc00::/7`) ausser deren Gateway (`x.y.0.1`, dort kommen per docker-proxy die Clients selbst herein) — das passt für nginx/Caddy/Traefik im selben Docker-Netz und ist in `compose.yaml` vorgegeben (in `.env` überschreibbar). Ausserhalb von Docker bleibt es bei Loopback: Dort kann `172.16.0.0/12` ein gewöhnliches Netz sein. Steht der Proxy auf einem anderen Rechner im Heimnetz, seine Adresse angeben (z. B. `192.168.1.5`). `false`, wenn kein Proxy davorsteht; sonst die Adresse oder das Netz des Proxys (z. B. `203.0.113.7`). Sonst könnte ein Client seine Absenderadresse selbst angeben und die Anmeldesperre umgehen. |
 | `UPLOAD_KONTINGENT_MB` | Wie viel Platz eigene Anleitungen (PDF/JPG/PNG) je Konto belegen dürfen, in MB (Vorgabe `2048`). Der Inhalt jeder Datei wird geprüft; eine Datei, deren Inhalt nicht zum Typ passt, wird abgewiesen. |
 | `DATA_KEY` | Schlüssel (32 Byte, Base64) für die verschlüsselten Geheimnisse in der Datenbank. Ohne Angabe erzeugt der Server beim ersten Start `data/.datenschluessel` (nur für den Besitzer lesbar). Wer den Schlüssel lieber getrennt von `data/` hält, setzt ihn hier: `openssl rand -base64 32`. |
 | `ADMIN_PASSWORD` | Passwort des beim ersten Start angelegten Admins. Sonst wird ein Zufallspasswort erzeugt und **einmalig** ins Log geschrieben. |
 | `SESSION_SECRET` | Pflicht in Produktion (der Start bricht sonst ab). |
+| `MAIL_KONSOLE_MIT_TOKEN` | Ohne SMTP schreibt der Server jede Mail ins Log, den Link darin **ohne Token** — das Log sieht jeder Verwalter, und ein Rücksetz-Link ist ein Zugang zum Konto. `1` zeigt den vollständigen Link, etwa auf einem Entwicklungsrechner ohne Mailserver. Nur dort setzen. |
 | `TOKEN_IDLE_DAYS` | Tage ohne Nutzung, nach denen ein App-Token verfällt (Vorgabe `90`, `0` schaltet die Regel ab). Betrifft nur Tokens ohne Ablaufdatum — Android-App und QR-Login. Ein Telefon, das die App regelmässig öffnet, ist nie betroffen; ausgesperrt wird nur, was ohnehin niemand mehr benutzt. |
 | `SESSION_IDLE_MINUTES` | Minuten ohne Betrieb, nach denen eine **Webapp-Sitzung** abgemeldet wird (Vorgabe `240`, also vier Stunden). Betrifft nur den Browser — die Android-App kommt mit Bearer-Token und ohne Cookie, für sie gilt `TOKEN_IDLE_DAYS`. Die Frist GLEITET: Solange jemand arbeitet, läuft sie nicht ab; sie zählt ab der letzten Anfrage. Ein Wert, der keine positive Minutenzahl ist, fällt mit einer Logzeile auf die Vorgabe zurück — `0` schaltet die Frist hier also **nicht** ab (anders als bei `TOKEN_IDLE_DAYS`), weil das genau der Zustand wäre, den die Frist beseitigen soll. |
 | `SESSION_MAX_HOURS` | Stunden ab der Anmeldung, nach denen eine **Webapp-Sitzung** endet, auch wenn sie benutzt wird (Vorgabe `168`, eine Woche). Anders als `SESSION_IDLE_MINUTES` gleitet diese Frist nicht. Ein ungültiger Wert fällt mit einer Logzeile auf die Vorgabe zurück. |

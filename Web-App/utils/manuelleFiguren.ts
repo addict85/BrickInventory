@@ -4,7 +4,8 @@
  * darauf zugreifen — eine Route soll keine andere importieren.
  */
 import * as db from '../db/database';
-import { logAndContinue } from './httpError';
+import { logAndContinue, meldeUndLiefere, fehlertext } from './httpError';
+import { csvGemeinsameFelder, csvZeilenAusAnfrage } from './csvExport';
 import { recordAcquisitionForDay } from './acquisitions';
 import { withInventoryLock, bestandsSchluessel } from './txLock';
 import {  getMinifigInfo } from '../clients/rebrickable';
@@ -15,18 +16,8 @@ import { setzeLagerort, ortFuerNeuerfassung } from './lagerort';
 import { merkeFigur, katalogFigur } from './katalogPflege';
 import { merkeBlNummer, blJoin, blNummerSql } from './blZuordnung';
 import { bestandsMenge } from './validate';
+import * as V from './validate';
 
-// Default the purchase price to the current BrickLink market price for a minifig,
-// when the user did not enter one manually.
-// Rebrickable-Nummern (z.B. "fig-007357") entsprechen NICHT der BrickLink-
-// Katalognummer (z.B. "sw0001") — es gibt keine automatische Umrechnung.
-// Für die Marktpreis-Abfrage bei BrickLink wird daher, falls vom Nutzer
-// hinterlegt, die BrickLink-Nummer (bl_fig_number) verwendet; ansonsten wird
-// mit der (ggf. falschen) Rebrickable-Nummer versucht, was für die meisten
-// manuell erfassten Figuren zu keinem Treffer führt.
-function resolveBlFigNumber(fig: { bl_fig_number?: string | null; fig_number?: string | null } | null | undefined) {
-  return fig?.bl_fig_number || fig?.fig_number;
-}
 
 // Fällt keine BrickLink-Minifigur-Nummer vor, wird der Marktpreis stattdessen
 // aus den einzelnen BrickLink-Teilepreisen der Minifigur zusammengesetzt
@@ -78,8 +69,7 @@ async function addManualFig(uid: number, body: Record<string, unknown>) {
 
 async function addManualFigIntern(uid: number, body: any) {
   // Gleiche Eingangsvalidierung wie bei manuellen Teilen (utils/validate.ts).
-  const V = require('./validate');
-  const num       = V.requireItemNumber(body?.fig_number, 'fig_number');
+    const num       = V.requireItemNumber(body?.fig_number, 'fig_number');
   const blNum     = body?.bl_fig_number ? V.requireItemNumber(body.bl_fig_number, 'bl_fig_number') : null;
   const quantity  = V.acquisitionQuantity(body?.quantity, 1);
   const condition = V.optionalCondition(body?.condition);
@@ -216,7 +206,7 @@ async function updateManualFig(uid: number, figNumber: string, body: any) {
       'SELECT COALESCE(SUM(quantity), 0)::int AS q FROM minifig_acquisitions WHERE user_id=$1 AND fig_number=$2',
       [uid, figNumber]))?.q ?? 0;
     const mp = newQty > bisher
-      ? await getCurrentFigMarketPrice(figNumber, uid, existing.bl_fig_number, cond).catch(() => null) : null;
+      ? await getCurrentFigMarketPrice(figNumber, uid, existing.bl_fig_number, cond).catch(meldeUndLiefere('manuelle-figuren:getCurrentFigMarketPrice', null)) : null;
     await withInventoryLock(uid, bestandsSchluessel('fig', [figNumber]), async (tx) => {
       const acqs = await tx.all('SELECT id, quantity, created_at FROM minifig_acquisitions WHERE user_id=$1 AND fig_number=$2 ORDER BY created_at DESC, id DESC',
         [uid, figNumber]);
@@ -303,4 +293,57 @@ function manuelleFigur(uid: number, figNumber: string): Promise<{ id: number } |
     [uid, figNumber]);
 }
 
-export { manuelleFigur, resolveBlFigNumber, resolveManualFigPurchase, addManualFig, updateManualFig, getFigAcquisitions };
+/**
+ * CSV-Import manueller Figuren (Spalten fig_number, bl_fig_number, fig_name,
+ * quantity, unit_price, condition, acquired_at). Dieselbe Preisregel wie beim
+ * Anlegen von Hand, samt Schätzung aus den Teilen.
+ */
+async function importiereFigurenCsv(uid: number, text: string) {
+  const { records, bereinigt, uebersprungen } = csvZeilenAusAnfrage(text);
+  let added = 0, updated = 0, errors = 0;
+  const results: Array<{ fig_number: string; action: string; fig_name?: string | null; error?: string }> = [];
+
+  for (const row of bereinigt) {
+    const figNumber = String(row.fig_number || row['Nummer'] || row['fig_num'] || Object.values(row)[0] || '').trim();
+    if (!figNumber) continue;
+    const blFigNumber = String(row.bl_fig_number || row['BrickLink-Nr'] || '').trim() || null;
+    const { menge: qty, preis: unitPrice, erfasstAm: acquiredAt, zustand: rawCondition } = csvGemeinsameFelder(row);
+
+    try {
+      let figName = row.fig_name || row['Name'] || null;
+      const eingetippt = !!figName;
+      let imageUrl: string | null = null;
+      if (!figName) {
+        const info = await getMinifigInfo(figNumber);
+        if (info) { figName = info.fig_name; imageUrl = info.image_url; }
+      }
+      const { erfassungsPreis, effectiveCondition, geschaetzt } =
+        await resolveManualFigPurchase(uid, { figNumber, blFigNumber, unitPrice, condition: rawCondition });
+      const erfassung = { quantity: qty, price: erfassungsPreis, geschaetzt,
+                          condition: effectiveCondition || 'N', createdAt: acquiredAt || new Date().toISOString().slice(0, 10) };
+
+      if (await manuelleFigur(uid, figNumber)) {
+        await recordAcquisitionForDay('fig', uid, [figNumber], erfassung);
+        updated++;
+        results.push({ fig_number: figNumber, action: 'updated' });
+        continue;
+      }
+      // Ein Name aus der Datei ist eine Eingabe dieses Kontos (katalogPflege.ts).
+      await merkeFigur(figNumber, figName, imageUrl, null, db, eingetippt ? uid : null);
+      await db.run(
+        "INSERT INTO minifigs (user_id, set_number, fig_number, source) VALUES ($1,NULL,$2,'manual') ON CONFLICT DO NOTHING",
+        [uid, figNumber]);
+      if (blFigNumber) await merkeBlNummer('fig', figNumber, blFigNumber)
+        .catch(logAndContinue(`minifigs:import ${figNumber} (bl-nummer)`));
+      await recordAcquisitionForDay('fig', uid, [figNumber], erfassung);
+      added++;
+      results.push({ fig_number: figNumber, action: 'added', fig_name: figName });
+    } catch (e) {
+      errors++;
+      results.push({ fig_number: figNumber, action: 'error', error: fehlertext(e) });
+    }
+  }
+  return { added, updated, errors, records, results, uebersprungen };
+}
+
+export { manuelleFigur, resolveManualFigPurchase, addManualFig, updateManualFig, getFigAcquisitions, importiereFigurenCsv };

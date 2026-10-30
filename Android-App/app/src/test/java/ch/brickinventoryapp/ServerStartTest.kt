@@ -1,5 +1,8 @@
 package ch.brickinventoryapp
 
+import ch.brickinventoryapp.data.repository.AdminRepository
+import kotlinx.coroutines.runBlocking
+import org.junit.Assert.assertEquals
 import org.junit.Test
 
 /**
@@ -17,7 +20,11 @@ import org.junit.Test
  * Server frisch aufsetzt und die App oeffnet, sieht „keine Verbindung" — und
  * haelt das eine oder das andere fuer kaputt, obwohl alles richtig laeuft.
  *
- * Der Test liest nur Quelltext: kein Geraet, kein Compose.
+ * Die Abfrage läuft gegen einen Testserver; die Auswertung im AppViewModel
+ * und die Anzeige lesen Quelltext (Gerät und Compose fehlen hier).
+ *
+ * Gegenprobe (29.10.2026, gemessen): in AdminApi `@GET("api/v1/startup-status")`
+ * auf "…/startstatus" → rot „die App fragt den Startzustand ab“.
  */
 class ServerStartTest {
 
@@ -27,11 +34,9 @@ class ServerStartTest {
         .joinToString("\n") { if (it.trim().startsWith("//") || it.trim().startsWith("*")) "" else it }
 
     @Test
-    fun `die App fragt den Startzustand ab`() {
-        val api = code(read("data/api/BrickApiService.kt"))
-        assert(api.contains("@GET(\"api/v1/startup-status\")")) {
-            "Die App kennt den Startzustand nicht"
-        }
+    fun `die App fragt den Startzustand ab`() = mitRepo(::AdminRepository) { pfade, admin ->
+        runBlocking { admin.getStartupStatus() }
+        assertEquals(listOf("GET /api/v1/startup-status"), pfade.anfragen.toList())
     }
 
     @Test

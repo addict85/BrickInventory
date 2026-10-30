@@ -1,10 +1,8 @@
 /** /api/v1/finance — Bewertungen, PnL, Portfolio-Historie (Logik in ../finance). */
 import express from 'express';
-import * as db from '../../db/database';
 import { handleRouteError } from '../../utils/httpError';
 import { requireToken } from './middleware';
 import { getPortfolioHistory } from '../../utils/portfolioHistory';
-import { getSetting } from '../../utils/settings';
 import { scopeIds, parseScopeMode } from '../../utils/household';
 import { computeMinifigsValuation, computePartsValuation, computePnl, computeSetsValuation } from '../../utils/financeCalc';
 import { einzelwert } from '../../utils/validate';
@@ -55,7 +53,7 @@ router.get('/finance/portfolio-history', requireToken, async (req: AuthedRequest
   // Antwort zurueckgegeben. Derselbe Helfer wie im Anmeldezaehler.
   const period = einzelwert(req.query.period, 'week');
   try {
-    const result = await getPortfolioHistory(uid, await scopeIds(uid, parseScopeMode(req.query.accounts)), period, db, getSetting);
+    const result = await getPortfolioHistory(uid, await scopeIds(uid, parseScopeMode(req.query.accounts)), period);
     res.json(result);
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });

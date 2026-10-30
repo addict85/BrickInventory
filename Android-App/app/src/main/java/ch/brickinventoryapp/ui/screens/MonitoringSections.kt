@@ -140,7 +140,8 @@ fun CacheAndLimitsSection(vm: AppViewModel, onSnack: (String) -> Unit = {}) {
     val apiLimits  = monState.apiLimits
     val cacheTtl   = monState.cacheTtl
     val defaultCondition = monState.vorgabeZustand
-    // Das aktuelle Design steht im App-Zustand, weil es für die ganze App gilt.
+    // Das wirksame Design steht im App-Zustand; die Auswahl hier zeigt aber die
+    // Vorgabe des Verwalters, die mit einem eigenen Design des Kontos abweicht.
     val appState by vm.state.collectAsStateWithLifecycle()
 
     // Bedienzustand: was gerade bearbeitet und halb eingetippt ist. Bleibt hier
@@ -152,7 +153,7 @@ fun CacheAndLimitsSection(vm: AppViewModel, onSnack: (String) -> Unit = {}) {
     var blInput    by rememberSaveable { mutableStateOf("0") }
     var bsInput    by rememberSaveable { mutableStateOf("0") }
 
-    LaunchedEffect(Unit) { mon.ladeCacheUndGrenzen() }
+    LaunchedEffect(Unit) { mon.ladeCacheUndGrenzen(); mon.ladeDesignVorgabe() }
 
     // Die Eingabefelder mit den geladenen Werten vorbelegen — aber nur, solange
     // NICHT bearbeitet wird. Das Speichern laedt die Grenzwerte selbst neu; ohne
@@ -281,7 +282,7 @@ fun CacheAndLimitsSection(vm: AppViewModel, onSnack: (String) -> Unit = {}) {
             // ── Design ──
             //
             // Das globale Design auch am Telefon ändern können. loadSettings() danach zieht
-            // den neuen Wert in den Zustand und merkt ihn, damit er den Kaltstart überlebt.
+            // das wirksame Design neu; ohne eigenes Design des Kontos ist es die neue Vorgabe.
             Text(stringResource(R.string.monitoring_theme),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -292,16 +293,9 @@ fun CacheAndLimitsSection(vm: AppViewModel, onSnack: (String) -> Unit = {}) {
                 horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
                 verticalArrangement = Arrangement.spacedBy(Abstaende.klein),
             ) {
-                for ((wert, text) in listOf(
-                    "classic" to R.string.monitoring_theme_classic,
-                    "brick" to R.string.monitoring_theme_brick,
-                    "werkbank" to R.string.monitoring_theme_werkbank,
-                    "farbfaecher" to R.string.monitoring_theme_farbfaecher,
-                    "noppe" to R.string.monitoring_theme_noppe,
-                    "hochglanz" to R.string.monitoring_theme_hochglanz,
-                )) {
+                for ((wert, text) in ch.brickinventoryapp.ui.DESIGN_NAMEN) {
                     FilterChip(
-                        selected = appState.appTheme == wert,
+                        selected = (monState.vorgabeDesign ?: appState.appTheme) == wert,
                         onClick = {
                             scope.launch {
                                 if (mon.setzeDesign(wert)) {

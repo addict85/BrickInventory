@@ -50,7 +50,10 @@ test('Merkliste: ohne Namen steht die Nummer einmal, rechts bleibt Platz', async
     const zeile = d.querySelector('.mk-zeile');
     const n = (zeile.textContent.match(/99999-1/g) || []).length;
     assert.equal(n, 1, `Merkliste: Nummer einmal — steht ${n}-mal da`);
-    assert.equal(zeile.style.paddingRight, '44px', 'rechts kein Platz für den Papierkorb');
+    // Den Platz hält seit dem 29.10. die Klasse (styles.css); die Zeile trägt keinen Inline-Stil mehr.
+    assert.equal(zeile.getAttribute('style'), null, 'die Zeile trägt wieder einen Inline-Stil');
+    assert.match(require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'public', 'styles.css'), 'utf8'),
+      /\.mk-zeile\{[^}]*padding:10px 44px 10px 10px/, 'rechts kein Platz für den Papierkorb');
     assert.equal(tabbar(zeile).filter(el => el !== zeile).length, 0, 'der Papierkorb steht in der Tab-Folge');
   } finally { w.close(); }
 });

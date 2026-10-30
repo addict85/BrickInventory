@@ -224,7 +224,7 @@
     }
   },
   "_erbt_warum": "Ein Design kann die Palette eines anderen ERBEN. Gebraucht wird das von \"hochglanz\": Es ist \"noppe\" als lackierte Broschuere — dieselben Farben, dazu Schichten (Woelbung, Lichtkuppen, Lichtstreifen), die kein Farbwert sind. Die elf Werte ein zweites Mal hinzuschreiben waere eine Abschrift, und eine Abschrift zieht beim naechsten Mal nicht mit.",
-  "_dunkel_warum": "Die dunkle Variante JE Design, aktiv mit <html data-dunkel> (Geraetewahl „Dunkel, wenn das System dunkel ist“). Vorher bekam, wer dunkel wollte, das Design „werkbank“ — also ein anderes Design. 'basis' belegt Flaechen, Grau-Achse und Meldefarben fuer alle Designs (dieselben Rollen wie in themes/werkbank.css); je Design stehen nur die Markenfarben, aufgehellt, damit Text und Linien in ihnen auf dunklem Grund lesbar bleiben. Schrift auf der Markenfarbe ist dann dunkel (--auf-primaer). Werkbank ist schon dunkel und hat keine Variante. Nur das Web liest diesen Abschnitt.",
+  "_dunkel_warum": "Die dunkle Variante JE Design, aktiv mit <html data-dunkel> (Geraetewahl „Dunkel, wenn das System dunkel ist“). Vorher bekam, wer dunkel wollte, das Design „werkbank“ — also ein anderes Design. 'basis' belegt Flaechen, Grau-Achse und Meldefarben fuer alle Designs (dieselben Rollen wie in themes/werkbank.css); je Design stehen nur die Markenfarben, aufgehellt, damit Text und Linien in ihnen auf dunklem Grund lesbar bleiben. Schrift auf der Markenfarbe ist dann dunkel (--auf-primaer). Werkbank ist schon dunkel und hat keine Variante. Beide Oberflaechen lesen diesen Abschnitt: Der Generator erzeugt daraus die dunklen Bloecke in public/tokens.css und die App-Tabelle ui/theme/DunkelTokens.kt.",
   "dunkel": {
     "basis": {
       "s50": "#11151a",

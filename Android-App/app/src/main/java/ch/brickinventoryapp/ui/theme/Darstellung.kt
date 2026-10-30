@@ -1,12 +1,15 @@
 package ch.brickinventoryapp.ui.theme
 
+/** Was gezeichnet wird: das Design des Servers, bei Bedarf in seiner dunklen Fassung. */
+data class Darstellung(val design: String, val dunkel: Boolean)
+
 /**
- * Das Design, das gezeichnet wird: das des Servers — ausser das Gerät will
- * „dunkel nach System" und das System ist dunkel. Werkbank ist das dunkle
- * Design; ein zweites Dunkel-Schema daneben waere ein siebtes mit eigener Pflege.
+ * Dunkel, wenn das Gerät „dunkel nach System“ will und das System dunkel ist —
+ * dann die dunkle Fassung DESSELBEN Designs wie im Web (data-dunkel), nicht ein
+ * anderes Design. Werkbank ist schon dunkel und bleibt, wie es ist.
  */
-fun wirksamesDesign(design: String, dunkelNachSystem: Boolean, systemDunkel: Boolean): String =
-    if (dunkelNachSystem && systemDunkel) "werkbank" else design
+fun darstellung(design: String, dunkelNachSystem: Boolean, systemDunkel: Boolean): Darstellung =
+    Darstellung(design, dunkel = dunkelNachSystem && systemDunkel && hatDunkleFassung(design))
 
 /**
  * Gilt „dunkel nach System"? Ohne gespeicherte Wahl ja — eine App, die nachts

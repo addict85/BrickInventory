@@ -2,10 +2,12 @@
  * Vorberechnete Teile-Zusammenfassung.
  * Ausführlich: docs/begruendungen/utils/partsSummary.ts.md#abschnitt
  */
+import { meldeUndLiefere } from './httpError';
 import { mengeJoin, mengeAus } from './bestandsmenge';
 import { blJoin, blNummerSql } from './blZuordnung';
 import { teilmengeJoin, teilmengeAus } from './bestandsmenge';
 import * as db from '../db/database';
+import * as lockNamespaces from './lockNamespaces';
 
 
 /** Stand der Rohdaten dieses Kontos und des gemeinsamen Katalogs. */
@@ -23,12 +25,12 @@ export async function rebuild(userId: number, version?: { v: number; katalog: nu
   // vorzeitig, wenn ein anderer Arbeiter die Sperre haelt — dann hat hier
   // nichts geschrieben, und nachzupflegen waere 240 ms fuer nichts.
   let gebaut = false;
-  await db.transaction(async (tx: any) => {
+  await db.transaction(async (tx) => {
     // Sperre über die Datenbank, nicht nur über die In-Memory-Map
     // (_rebuilding) weiter unten.
     // Ausführlich: docs/begruendungen/utils/partsSummary.ts.md#rebuild-lock
     const lock = await tx.get('SELECT pg_try_advisory_xact_lock($1, $2) AS ok',
-      [require('./lockNamespaces').LOCKS.TEILE_SUMMARY, userId]);
+      [lockNamespaces.LOCKS.TEILE_SUMMARY, userId]);
     if (!lock?.ok) {
       // Ein anderer Worker baut gerade für denselben Nutzer — nichts tun,
       // dessen Ergebnis gilt gleich mit. Kein Fehler, kein Retry nötig.
@@ -61,7 +63,7 @@ export async function rebuild(userId: number, version?: { v: number; katalog: nu
              -- Pflichtteil. MAX() wie vorher, weil die Gruppe mehrere Sets
              -- zusammenfasst; je (Set, Teil, Farbe) ist der Wert eindeutig
              -- (Primaerschluessel von set_parts_catalog).
-             MAX(COALESCE(spc.is_spare, 0)),
+             MAX(COALESCE(tm_k.is_spare, 0)),
              -- Der zweite Faktor ist die Zahl der Exemplare DES SETS. Hier
              -- stand COALESCE(s.quantity, 1); die Spalte ist mit Migration
              -- 0036 weg. Die gruppierte Form (mengeJoin) und nicht die
@@ -85,15 +87,12 @@ export async function rebuild(userId: number, version?: { v: number; katalog: nu
              NULLIF(STRING_AGG(DISTINCT lo.name, ', '), '')
         FROM parts p
         ${mengeJoin('p', 'sm', '= $1')}
-        ${teilmengeJoin('p', 'part')}
+        ${teilmengeJoin('p', 'part', 'tm', '= $1')}
         ${blJoin('p.part_number', 'part')}
         LEFT JOIN storage_locations lo ON lo.id = p.storage_id
         LEFT JOIN part_catalog pc ON pc.part_number = p.part_number
         LEFT JOIN part_color_catalog pcc ON pcc.part_number = p.part_number
                                         AND pcc.color_id    = p.color_id
-        LEFT JOIN set_parts_catalog spc ON spc.set_number  = p.set_number
-                                       AND spc.part_number = p.part_number
-                                       AND spc.color_id    = p.color_id
        WHERE p.user_id = $1 AND COALESCE(p.source, 'set') <> 'manual'
        GROUP BY p.user_id, ${blNummerSql('p.part_number')}, p.color_id`,
       [userId]);
@@ -153,7 +152,7 @@ export async function ensureFresh(userId: number | number[], opts?: { strict?: b
   try {
     const [v, state] = await Promise.all([
       currentVersion(userId as number),
-      db.get('SELECT built_version, katalog_stand FROM parts_summary_state WHERE user_id = $1', [userId]).catch(() => null),
+      db.get('SELECT built_version, katalog_stand FROM parts_summary_state WHERE user_id = $1', [userId]).catch(meldeUndLiefere('teile-zsf:get', null)),
     ]);
     if (state && parseInt(state.built_version) === v.v && parseInt(state.katalog_stand) === v.katalog) return true;
 

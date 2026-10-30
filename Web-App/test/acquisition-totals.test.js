@@ -25,15 +25,18 @@
  * Gegenprobe (durchgeführt): `amount` in acquisitionTotals() auf 0 statt null
  * bei fehlenden Preisen → der Randfall-Teilschritt wird rot. Und ein
  * eingefügtes `acqs.reduce(...)` in 07-admin.js → der Regel-Teilschritt.
+ * Am 30.10.2026 gemessen: `totals` aus der Teile-Antwort in
+ * routes/api_v1/acquisitions.ts entfernt → rot: „parts“ im Routen-Teilschritt.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const path = require('node:path');
 
-const ROOT = path.join(__dirname, '..');
+process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
+process.env.WEB_WORKERS = '1';
 const { ohneKommentare } = require('./helpers/sources');
-const { acquisitionTotals } = require(path.join(ROOT, 'dist/utils/acquisitions.js'));
+const _req = require('./helpers/sources').buildAndRequire();
+const { testServer } = require('./helpers/server');
+const { acquisitionTotals } = _req('utils/acquisitions.js');
 
 // ── Teil 1: die Rechnung ────────────────────────────────────────────────────
 
@@ -93,16 +96,40 @@ test('leere Liste', () => {
 
 // ── Teil 2: die Regel ───────────────────────────────────────────────────────
 
-test('alle drei Erfassungs-Routen liefern die Summe mit', () => {
-  const src = ohneKommentare(fs.readFileSync(
-    path.join(ROOT, 'routes/api_v1/acquisitions.ts'), 'utf8'));
-  const treffer = [...src.matchAll(/res\.json\(\{[^}]*acquisitions:/g)];
-  assert.ok(treffer.length >= 3, `nur ${treffer.length} Antworten mit Erfassungen gefunden`);
-  for (const m of treffer) {
-    const zeile = src.slice(m.index, src.indexOf('\n', m.index));
-    assert.match(zeile, /totals:/,
-      `Eine Erfassungs-Antwort ohne totals — die Oberfläche müsste dann wieder ` +
-      `selbst rechnen: ${zeile.trim()}`);
+test('alle drei Erfassungs-Routen liefern die Summe mit', { concurrency: 1 }, async (t) => {
+  const db = _req('db/database.js');
+  try { await db.initSchema(); }
+  catch (e) {
+    if (process.env.REQUIRE_DB === '1')
+      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
+    t.skip('Test-DB nicht erreichbar'); return;
+  }
+  const mc = await db.pool.connect();
+  try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }
+  const P = process.pid, NAME = `summen-${P}`, SN = `${P}7-1`, PN = `su${P}`, FN = `fig-su${P}`;
+  await db.run('DELETE FROM users WHERE username=$1', [NAME]);
+  const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
+  t.after(async () => { await db.run('DELETE FROM users WHERE id=$1', [uid]).catch(() => {}); await db.pool.end().catch(() => {}); });
+  await db.run('INSERT INTO sets (user_id, set_number) VALUES ($1,$2)', [uid, SN]);
+  await db.run(`INSERT INTO set_acquisitions (user_id, set_number, quantity, purchase_price, condition, currency, created_at)
+                VALUES ($1,$2,2,7.41,'N','CHF','2026-01-01'), ($1,$2,1,9.48,'N','CHF','2026-01-02')`, [uid, SN]);
+  await db.run(`INSERT INTO parts (user_id, part_number, color_id, source) VALUES ($1,$2,4,'manual')`, [uid, PN]);
+  await db.run(`INSERT INTO part_acquisitions (user_id, part_number, color_id, quantity, unit_price, condition, currency)
+                VALUES ($1,$2,4,3,0.6,'N','CHF')`, [uid, PN]);
+  await db.run(`INSERT INTO minifigs (user_id, fig_number, source) VALUES ($1,$2,'manual')`, [uid, FN]);
+  await db.run(`INSERT INTO minifig_acquisitions (user_id, fig_number, quantity, unit_price, condition, currency)
+                VALUES ($1,$2,2,NULL,'U','CHF')`, [uid, FN]);
+
+  const { base } = testServer(_req, { sitzung: { userId: uid }, apiNutzer: { user_id: uid, is_admin: 0 },
+                                     routen: { '/api/v1': 'routes/api_v1/index.js' }, t });
+  for (const [art, pfad, erwartet] of [
+    ['sets', `sets/${SN}/acquisitions`, { quantity: 3, amount: 24.3, priced_rows: 2 }],
+    ['parts', `parts/${PN}/4/acquisitions`, { quantity: 3, amount: 1.8, priced_rows: 1 }],
+    ['minifigs', `minifigs/${FN}/acquisitions`, { quantity: 2, amount: null, priced_rows: 0 }],
+  ]) {
+    const r = await (await fetch(`${base}/api/v1/${pfad}`)).json();
+    assert.equal(r.acquisitions?.length > 0, true, `${art}: keine Erfassungen in der Antwort`);
+    assert.deepEqual(r.totals, erwartet, art);
   }
 });
 

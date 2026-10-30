@@ -32,13 +32,9 @@ val LocalIsFarbfaecherTheme = staticCompositionLocalOf { false }
 val LocalIsNoppeTheme = staticCompositionLocalOf { false }
 
 /**
- * Traegt die Oberflaeche den LACK des Designs "hochglanz"?
- *
- * Getrennt von [LocalIsNoppeTheme] und nicht statt seiner: "hochglanz" IST
- * "noppe" — dieselbe Anatomie, dieselbe Palette —, nur in einem anderen
- * Material. Wer die Kachel baut, fragt deshalb beides: [LocalIsNoppeTheme] fuer
- * den Deckel, dieses hier fuer den Glanz darauf. Ein einziges Local mit drei
- * Zustaenden haette an jeder Abfrage eine Fallunterscheidung erzwungen.
+ * Trägt die Oberfläche den Lack des Designs "hochglanz"? Getrennt von
+ * [LocalIsNoppeTheme]: "hochglanz" ist "noppe" in anderem Material; die Kachel
+ * fragt beides, ein Local mit drei Zuständen erzwänge überall eine Fallunterscheidung.
  */
 val LocalIstGlanz = staticCompositionLocalOf { false }
 
@@ -65,16 +61,9 @@ private val LightColors = lightColorScheme(
     onTertiary          = Color.White,
     tertiaryContainer   = Color(0xFFFFDAD6),
     onTertiaryContainer = BrandRedDark,
-    // --s100 der Webapp, NICHT --s50 (dort steht der Seitenhintergrund --bg).
-    // Hier stand jahrelang "// --s50 equivalent", waehrend der Wert --s100 war —
-    // ein Kommentar, der seinem eigenen Wert widersprach.
-    //
-    // Richtig ist der WERT: Compose fuehrt mit background, surface und
-    // surfaceVariant drei Ebenen, wo das Web mit --bg und --sur zwei fuehrt.
-    // surfaceVariant traegt unten bereits --s50 (#f8fafc). Bekaeme background
-    // denselben Wert, waeren beide identisch — und die Flaechen, die mit
-    // surfaceVariant auf dem Hintergrund liegen (Etiketten, Fortschrittsspur,
-    // ausgewaehlte Zeile, die Platzhalter-Kacheln des Katalogs), verschwaenden.
+    // --s100 der Webapp: Compose führt drei Ebenen (background, surface,
+    // surfaceVariant), das Web zwei. Mit --s50 wären background und surfaceVariant
+    // gleich, und Etiketten und Platzhalter darauf verschwänden.
     background          = Color(0xFFF1F5F9),  // --s100
     surface             = Color.White,
     surfaceVariant      = Color(0xFFF8FAFC),
@@ -122,24 +111,10 @@ private val BrickBlueColors = lightColorScheme(
 
 // ── Diagrammfarben je Zustand ────────────────────────────────────────────────
 /**
- * Farben der Verlaufslinien — aus dem Design, nicht im Zeichencode verdrahtet.
- *
- * Entspricht --chart-new / --chart-used der Webapp (styles.css bzw.
- * themes/brick.css). Im Stein-Design sind das Salbeigrün und Sand, dieselben
- * Farben, die die Zustands-Plaketten tragen: Wer sie im Diagramm wiedererkennt,
- * muss die Legende nicht lesen.
- *
- * Die Werte hier sind die VOLLTON-Varianten der Plakettenfarben. Die Container
- * BrickSage/BrickSand oben sind für Flächen hinter Text gedacht und als Linie
- * auf weissem Grund kaum zu sehen.
- */
-/**
- * Farben des Verlaufsdiagramms.
- *
- * [linie], [raster] und [gedaempft] kamen in Nachtrag 120 dazu — sie standen
- * fest in PortfolioChart.kt und zogen beim Designwechsel nicht mit, obwohl
- * `new`/`used` daneben es längst taten. Vorgabewerte, weil die klassischen
- * Werte zahlengleich mit dem sind, was vorher dort stand.
+ * Farben der Verlaufslinien aus dem Design, wie --chart-new/--chart-used im Web. Im
+ * Stein-Design Salbeigrün und Sand, dieselben Farben wie die Zustands-Plaketten,
+ * als Vollton, weil die Container auf weissem Grund kaum zu sehen wären. Die
+ * Vorgaben von [linie], [raster] und [gedaempft] sind die klassischen Werte.
  */
 data class ChartColors(
     val new: Color,
@@ -152,17 +127,9 @@ data class ChartColors(
 // Die vier Chart*-Farben stehen in DesignTokens.kt (erzeugt, siehe oben) —
 // samt der Begruendung, warum die Gebraucht-Linie im Stein-Design Sand ist.
 
-// ── Werkbank (dunkel) ───────────────────────────────────────────────────────
-//
-// Das erste DUNKLE Design der App. Material3 unterscheidet dafuer
-// darkColorScheme() von lightColorScheme(): Beide belegen dieselben Rollen,
-// aber die Vorgaben fuer alles, was hier nicht gesetzt ist, unterscheiden sich
-// — und ausserdem melden manche Compose-Bausteine (Textfeld-Rahmen, Rippel)
-// ihre Helligkeit daran. Mit lightColorScheme und dunklen Werten saehe das
-// meiste richtig aus und ein paar Stellen falsch.
-//
-// Die Werte spiegeln themes/werkbank.css; die Markenfarben kommen aus
-// DesignTokens.kt (erzeugt aus shared/design-tokens.json).
+// Werkbank (dunkel): darkColorScheme, weil einige Bausteine (Textfeld-Rahmen,
+// Rippel) ihre Helligkeit daran ablesen. Werte wie themes/werkbank.css; dieselbe
+// Zuordnung nutzen die dunklen Fassungen der übrigen Designs (DunkelTokens.kt).
 private val WerkbankColors = darkColorScheme(
     primary              = WerkbankAzur,
     onPrimary            = Color(0xFF0E1620),
@@ -217,15 +184,8 @@ private val FarbfaecherColors = lightColorScheme(
     error                = Color(0xFFDC2626),
 )
 
-// ── Noppe ──────────────────────────────────────────────────────────────────
-//
-// Der Klemmbaustein als Bauteil: weisse Flaechen, Tintenkante, roter Kopf.
-// Die Werte stehen in DesignTokens.kt und kommen aus shared/design-tokens.json
-// — dieselbe Quelle wie themes/noppe.css im Web.
-//
-// `outline` ist hier ausdruecklich die TINTE und kein helles Grau: In diesem
-// Design ist der Rahmen das tragende Element, nicht der Schatten. Kunststoff
-// wirft keine Wolke, er liegt auf.
+// Noppe: weisse Flächen, Tintenkante, roter Kopf; Werte aus DesignTokens.kt.
+// `outline` ist die TINTE, weil in diesem Design der Rahmen trägt, nicht der Schatten.
 private val NoppeColors = lightColorScheme(
     primary              = NoppeRot,
     onPrimary            = Color.White,
@@ -251,22 +211,9 @@ private val NoppeColors = lightColorScheme(
 )
 
 /**
- * Nunito — die Schrift des Designs "noppe".
- *
- * ── Warum eine eigene Familie ──────────────────────────────────────────────
- *
- * "noppe" lebt von fetten, runden Buchstaben. Die Systemschrift bleibt auch
- * bei 900 kantig, und ein Design, das seine Typografie nicht mitbringt, ist
- * nur eine Farbvariante.
- *
- * Drei statische Schnitte (400/700/900) und nicht der variable Schnitt:
- * Variable Schriften brauchen in Compose FontVariation, und das ist genau die
- * Sorte Abhaengigkeit von einer API-Stufe, die auf minSdk 26 erst im Betrieb
- * auffaellt. Drei Dateien zu 39 kB sind der ehrlichere Preis. Was dazwischen
- * liegt, rechnet Compose selbst.
- *
- * Dieselben Buchstabenformen fuehrt die Webapp unter public/vendor/fonts/ —
- * sonst waere dasselbe Design auf beiden Oberflaechen verschieden.
+ * Nunito, die Schrift des Designs "noppe": Die Systemschrift bleibt auch bei 900
+ * kantig. Drei statische Schnitte statt des variablen, der FontVariation und damit
+ * eine API-Stufe bräuchte; dieselben Formen wie public/vendor/fonts/ im Web.
  */
 private val NunitoFamilie = FontFamily(
     Font(R.font.nunito_regular, FontWeight.Normal),
@@ -341,29 +288,53 @@ val LocalChartColors = staticCompositionLocalOf {
     ChartColors(new = ChartNewClassic, used = ChartUsedClassic)
 }
 
+/** Farben der Stein-Dekoration (Noppen, Schieferkachel) — hell oder dunkel, siehe dunkleSteinDekor(). */
+data class SteinDekor(val noppen: Color, val schiefer: Color, val aufSchiefer: Color)
+
+val LocalSteinDekor = staticCompositionLocalOf { SteinDekor(SlateBlueNoppe, SlateBlue, Color.White) }
+
 /**
- * Das vollständige Farbschema eines Designs.
- *
- * Vier Designs, eine Stelle. `when` statt geschachtelter Bedingungen: Ein
- * fünftes Design soll hier eine Zeile kosten, keine Umstrukturierung.
+ * Die dunkle Fassung eines Designs aus den Tokens (DunkelTokens.kt). Dieselbe
+ * Zuordnung wie WerkbankColors, nur mit den Markenfarben des Designs.
  */
-internal fun farbschema(theme: String): ColorScheme = when (theme) {
-    "brick" -> BrickBlueColors
-    "werkbank" -> WerkbankColors
-    "farbfaecher" -> FarbfaecherColors
-    // Dieselbe Palette: "hochglanz" ist "noppe" in einem anderen
-    // Material, nicht in anderen Farben. Dieselbe Regel wie `erbt` in
-    // shared/design-tokens.json.
-    "noppe", "hochglanz" -> NoppeColors
-    else -> LightColors
-}.let { ergaenzeRollen(it, dunkel = theme == "werkbank") }
+private fun dunklesSchema(theme: String): ColorScheme = dunkleRollen(theme).let { r ->
+    darkColorScheme(
+        primary = Color(r.primary), onPrimary = Color(r.onPrimary),
+        primaryContainer = Color(r.primaryContainer), onPrimaryContainer = Color(r.onPrimaryContainer),
+        secondary = Color(r.secondary), onSecondary = Color(r.onSecondary),
+        secondaryContainer = Color(r.secondaryContainer), onSecondaryContainer = Color(r.onSecondaryContainer),
+        tertiary = Color(r.tertiary), onTertiary = Color(r.onTertiary),
+        tertiaryContainer = Color(r.tertiaryContainer), onTertiaryContainer = Color(r.onTertiaryContainer),
+        background = Color(r.background), surface = Color(r.surface), surfaceVariant = Color(r.surfaceVariant),
+        onSurface = Color(r.onSurface), onSurfaceVariant = Color(r.onSurfaceVariant),
+        outline = Color(r.outline), outlineVariant = Color(r.outlineVariant),
+        error = Color(r.error),
+    )
+}
+
+/**
+ * Das vollständige Farbschema eines Designs, hell oder in seiner dunklen Fassung.
+ * `when` statt geschachtelter Bedingungen: Ein weiteres Design kostet eine Zeile.
+ */
+internal fun farbschema(theme: String, dunkel: Boolean = false): ColorScheme =
+    if (dunkel && hatDunkleFassung(theme)) ergaenzeRollen(dunklesSchema(theme), dunkel = true)
+    else when (theme) {
+        "brick" -> BrickBlueColors
+        "werkbank" -> WerkbankColors
+        "farbfaecher" -> FarbfaecherColors
+        // "hochglanz" ist "noppe" in anderem Material, nicht in anderen Farben (`erbt`).
+        "noppe", "hochglanz" -> NoppeColors
+        else -> LightColors
+    }.let { ergaenzeRollen(it, dunkel = theme == "werkbank") }
 
 /**
  * Statusfarben je Design. `erfolg` färbt auch Gewinnzahlen und braucht als
  * Text 4,5:1 auf der Fläche (FarbrollenTest).
  * Im Stein-Design gedeckter, damit es neben Salbeigrün und Sand nicht heraussticht.
  */
-internal fun statusFarbenFuer(theme: String): StatusFarben = when (theme) {
+internal fun statusFarbenFuer(theme: String, dunkel: Boolean = false): StatusFarben = if (dunkel && hatDunkleFassung(theme)) {
+    dunkleRollen(theme).let { StatusFarben(erfolg = Color(it.erfolg), warnung = Color(it.warnung), fehler = Color(it.error)) }
+} else when (theme) {
     "brick" -> StatusFarben(erfolg = Color(0xFF4E7058), warnung = Color(0xFFB08A3E), fehler = Color(0xFFA34B3C))
     "werkbank" -> StatusFarben(erfolg = Color(0xFF6FBF7F), warnung = Color(0xFFD9A84E), fehler = Color(0xFFE07A72))
     else -> StatusFarben(erfolg = Color(0xFF166534), warnung = Color(0xFFE3B341), fehler = Color(0xFFDC2626))
@@ -398,10 +369,13 @@ internal fun ergaenzeRollen(s: ColorScheme, dunkel: Boolean): ColorScheme {
 }
 
 @Composable
-fun BrickInventoryManagerTheme(theme: String = "classic", content: @Composable () -> Unit) {
+fun BrickInventoryManagerTheme(theme: String = "classic", dunkel: Boolean = false, content: @Composable () -> Unit) {
     val isBrick = theme == "brick"
-    val colors = remember(theme) { farbschema(theme) }
-    val chartColors = when (theme) {
+    val colors = remember(theme, dunkel) { farbschema(theme, dunkel) }
+    val chartColors = if (dunkel && hatDunkleFassung(theme)) dunkleRollen(theme).let {
+        ChartColors(Color(it.chartNeu), Color(it.chartGebraucht), linie = Color(it.chartNeu),
+            raster = Color(it.chartRaster), gedaempft = Color(it.chartGedaempft))
+    } else when (theme) {
         "brick" -> ChartColors(ChartNewBrick, ChartUsedBrick,
             linie = ChartNewBrick, raster = Color(0xFFE0DACE), gedaempft = Color(0xFF8C8577))
         // Auf dunklem Grund muss das Raster HELLER als der Grund sein, nicht
@@ -419,7 +393,9 @@ fun BrickInventoryManagerTheme(theme: String = "classic", content: @Composable (
             raster = Color(0xFFE4E8EF), gedaempft = Color(0xFF6A7280))
         else -> ChartColors(ChartNewClassic, ChartUsedClassic)
     }
-    val statusFarben = statusFarbenFuer(theme)
+    val statusFarben = statusFarbenFuer(theme, dunkel)
+    val steinDekor = if (dunkel && isBrick) dunkleSteinDekor().let { SteinDekor(Color(it.noppen), Color(it.schiefer), Color(it.aufSchiefer)) }
+                     else SteinDekor(SlateBlueNoppe, SlateBlue, Color.White)
     CompositionLocalProvider(
         LocalIsBrickTheme provides isBrick,
         LocalIsFarbfaecherTheme provides (theme == "farbfaecher"),
@@ -427,6 +403,7 @@ fun BrickInventoryManagerTheme(theme: String = "classic", content: @Composable (
         LocalIstGlanz provides (theme == "hochglanz"),
         LocalChartColors  provides chartColors,
         LocalStatusFarben provides statusFarben,
+        LocalSteinDekor provides steinDekor,
     ) {
         MaterialTheme(
             colorScheme = colors,

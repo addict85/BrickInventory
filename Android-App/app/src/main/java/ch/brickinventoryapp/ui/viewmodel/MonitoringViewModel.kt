@@ -33,6 +33,8 @@ data class MonitoringUiState(
     val apiLimits: ApiLimits? = null,
     val cacheTtl: String = "24",
     val vorgabeZustand: String = "N",
+    /** Das Design, das der Verwalter allen vorgibt — nicht das eigene des Kontos. */
+    val vorgabeDesign: String? = null,
 )
 
 /**
@@ -177,8 +179,21 @@ class MonitoringViewModel @Inject constructor(
      * Wert in den Zustand und merkt ihn, damit die Anzeige sofort wechselt und den
      * Kaltstart überlebt.
      */
-    suspend fun setzeDesign(theme: String): Boolean =
-        repo.admin.setAppTheme(theme) is Result.Success
+    /**
+     * Die Vorgabe aus /settings/theme. Ein älterer Server kennt `vorgabe` noch
+     * nicht; dort war das wirksame Design zugleich die Vorgabe.
+     */
+    suspend fun ladeDesignVorgabe() {
+        (repo.admin.getAppTheme() as? Result.Success)?.let { r ->
+            if (r.data.success) _state.update { it.copy(vorgabeDesign = r.data.vorgabe ?: r.data.theme) }
+        }
+    }
+
+    suspend fun setzeDesign(theme: String): Boolean {
+        val ok = repo.admin.setAppTheme(theme) is Result.Success
+        if (ok) _state.update { it.copy(vorgabeDesign = theme) }
+        return ok
+    }
 
     suspend fun setzeGrenzwerte(rebrickable: Int, bricklink: Int, brickset: Int): Boolean {
         val ok = repo.admin.setApiLimits(rebrickable, bricklink, brickset) is Result.Success

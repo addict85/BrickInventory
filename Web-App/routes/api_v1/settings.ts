@@ -6,12 +6,12 @@
  * neue Einträge.
  */
 import express from 'express';
-import * as db from '../../db/database';
 import { handleRouteError, logAndContinue } from '../../utils/httpError';
 import { requireToken } from './middleware';
 import { householdStatus, createInvite, redeemInvite, unlink, verwerfeGetrennt } from '../../utils/household';
-import { setUserSetting, nutzerStandardZustand, globalDefaultCondition } from '../../utils/settings';
-import { getGlobalSetting, readSettings, getSetting } from '../../utils/settings';
+import { setUserSetting, deleteUserSetting, nutzerStandardZustand, globalDefaultCondition } from '../../utils/settings';
+import { profil } from '../../utils/konten';
+import { readSettings, getSetting, designFuer } from '../../utils/settings';
 import { bestaetigePasswort } from '../../utils/passwortBestaetigung';
 import { sendHaushaltVerknuepftMail } from '../../utils/mailer';
 import { sendeFehler } from '../../utils/fehlerTexte';
@@ -49,8 +49,9 @@ router.get('/settings', requireToken, async (req: AuthedRequest, res) => {
   // steht in utils/settings.ts, damit sie nicht neben dem Webapp-Weg ein
   // zweites Mal existiert (Etappe 6).
   settings['effective_condition'] = await nutzerStandardZustand(uid);
-  // Globales App-Design (vom Admin gesetzt) — die App wendet es an
-  settings['app_theme'] = await getGlobalSetting('app_theme') || 'classic';
+  // Das wirksame Design des Kontos, wie /settings/theme: Mit der Vorgabe des
+  // Verwalters überschrieb dieser Abruf das eigene Design in der App.
+  settings['app_theme'] = (await designFuer(uid)).theme;
   res.json({ success:true, settings });
 });
 
@@ -98,7 +99,7 @@ router.post('/settings/user/default-condition', requireToken, async (req: Authed
   try {
     if (condition === '') {
       // Leeren → auf globalen Standard zurückfallen
-      await db.run("DELETE FROM user_settings WHERE user_id=$1 AND key='user_default_condition'", [req.apiUser.user_id]);
+      await deleteUserSetting(req.apiUser.user_id, 'user_default_condition');
     } else {
       // setUserSetting() statt eigenem INSERT: Es soll GENAU EINE Schreibstelle
       // für Benutzereinstellungen geben. Hier stand ein zweites,
@@ -136,7 +137,7 @@ router.post('/settings/household/redeem', requireToken, async (req: AuthedReques
     if (!await bestaetigePasswort(req, res, uid, req.body?.password)) return;
     const r = await redeemInvite(uid, String(req.body?.code || ''));
     if ((r as any).fehler) return sendeFehler(req, res, 409, (r as any).fehler, (r as any).vars);
-    const ich = await db.get('SELECT username, email FROM users WHERE id = $1', [uid]);
+    const ich = await profil(uid);
     if (ich?.email) {
       const sprache = await getSetting(uid, 'language', 'de').catch(() => 'de');
       const hauptkonto = 'linked_to' in r ? r.linked_to.username : '';

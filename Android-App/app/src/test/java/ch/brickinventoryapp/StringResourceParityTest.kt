@@ -266,6 +266,23 @@ class StringResourceParityTest {
      * dürfen sich unabhängig ändern. Der `common_`-Name ist das Zeichen, dass
      * jemand die Gemeinsamkeit ausdrücklich gewollt hat.
      */
+    /**
+     * Ein Bereich, ein Name — wie im Web (monitor.title): „Hintergrundarbeiten“
+     * bzw. „Background work“ in Titel, Navigation und Menü, kein „Monitoring“.
+     * Gegenprobe (29.10.2026): nav_monitoring auf Englisch wieder „Monitoring“ → rot.
+     */
+    @Test
+    fun `der Bereich heisst ueberall Hintergrundarbeiten`() {
+        val en = texte("values/strings.xml")
+        val de = texte("values-de/strings.xml")
+        for (k in listOf("monitoring_title", "nav_monitoring", "main_menu_monitoring")) {
+            assert(de[k] == "Hintergrundarbeiten") { "$k (de) = ${de[k]}" }
+            assert(en[k] == "Background work") { "$k (en) = ${en[k]}" }
+        }
+        val alt = (en + de.mapKeys { "de:" + it.key }).filterValues { it.contains("Monitoring") }
+        assert(alt.isEmpty()) { "Noch „Monitoring“ in: ${alt.keys}" }
+    }
+
     @Test
     fun `kein zweiter Name fuer einen common-Text`() {
         val en = texte("values/strings.xml")

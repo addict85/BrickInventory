@@ -5,21 +5,22 @@
 import express from 'express';
 import fs from 'fs';
 import path from 'path';
-import { verschluessele, entschluessele } from '../../utils/geheimnis';
 import multer from 'multer';
 import { DATA_DIR } from '../../utils/appPaths';
 import { handleRouteError } from '../../utils/httpError';
-import { sendeFehler, fehlerText, antwortSprache, type FehlerCode } from '../../utils/fehlerTexte';
+import { sendeFehler, fehlerText, antwortSprache, dateiFehler, type FehlerCode } from '../../utils/fehlerTexte';
 import { getGlobalSetting } from '../../utils/settings';
 import { verdecke, landErlaubt, LAND_STANDARD } from '../../utils/gutscheinGuthaben';
 import { frageGuthabenAb, ABSTAND_SEK } from '../../utils/gutscheinGuthabenSchranke';
 import { liefereDatei } from '../../utils/dateiAusliefern';
 import { requireToken } from './middleware';
-import { werteAusPdf } from '../../utils/gutscheinPdf';
+import { werteAusPdf, PdfZuGross } from '../../utils/gutscheinPdf';
 import { verbindeGutscheine, seitenweiseLesen } from '../../utils/gutscheinPdfSchreiben';
 import type { ExportGutschein } from '../../utils/gutscheinPdfSchreiben';
 
-const db = require('../../db/database') as typeof import('../../db/database');
+import { gutscheineDesKontos, gutschein, gutscheinAnlegen, gutscheinErsetzen, gutscheinAendern,
+         gutscheinPdfMerken, gutscheinLoeschen, guthabenMerken } from '../../utils/dienste/gutscheine';
+import type { GutscheinZeile } from '../../utils/dienste/gutscheine';
 
 const router = express.Router();
 type AuthedRequest = express.Request & { apiUser: { user_id: number } };
@@ -34,32 +35,18 @@ const VOUCHER_DIR = path.join(DATA_DIR, 'vouchers');
  */
 const upload = multer({
   storage: multer.memoryStorage(),
-  // 20 MB. Marcos Beispiel wiegt 206 KB; der Spielraum ist fuer PDFs mit
-  // eingebetteten Schriften und Bildern, nicht fuer Buecher.
-  limits: { fileSize: 20 * 1024 * 1024, files: 1 },
+  // 2 MB. Marcos Beispiel wiegt 206 KB; das lässt Platz für ein Sammel-PDF
+  // aus einigen Gutscheinen. Mehr hält nur pdf-lib länger im Speicher.
+  limits: { fileSize: 2 * 1024 * 1024, files: 1 },
   fileFilter: (_req, file, cb) => {
     // Woertlicher Vergleich statt Tabellenzugriff: Bei genau EINEM erlaubten
     // Typ gibt es nichts nachzuschlagen — und damit auch nicht den geerbten
     // Wert, an dem der Anleitungs-Upload einmal vorbeigelaufen ist (die
     // Begruendung steht dort bei INSTR_EXT_BY_MIME).
     if (file.mimetype === 'application/pdf') cb(null, true);
-    else cb(new Error('nur_pdf'));
+    else cb(dateiFehler('nur_pdf', 415));
   },
 });
-
-/** Eine Datenbankzeile, wie die Oberflaechen sie bekommen. */
-interface GutscheinZeile {
-  id: number;
-  number: string;
-  pin: string | null;
-  amount: string | number;
-  currency: string;
-  pdf_path: string | null;
-  created_at: string | Date;
-  updated_at: string | Date;
-  /** Wann das Guthaben zuletzt bei LEGO abgefragt wurde, oder NULL. */
-  guthaben_geprueft_am: string | Date | null;
-}
 
 /**
  * Eine Zeile fuer die Oberflaechen aufbereiten.
@@ -69,7 +56,7 @@ function fuerAussen(z: GutscheinZeile) {
   return {
     id: z.id,
     number: z.number,
-    pin: entschluessele(z.pin),
+    pin: z.pin,
     amount: Number(z.amount),
     currency: z.currency,
     hat_pdf: !!z.pdf_path,
@@ -83,20 +70,13 @@ function fuerAussen(z: GutscheinZeile) {
   };
 }
 
-const SPALTEN = 'id, number, pin, amount, currency, pdf_path, created_at, updated_at, '
-              + 'guthaben_geprueft_am';
-
 /**
- * Die drei Pflichtwerte pruefen.
- *
- * Gibt die geprueften Werte zurueck oder einen Fehlercode. Eigene Funktion,
- * weil DREI Wege hier hereinkommen — manuelles Anlegen, Anlegen aus dem PDF
- * und Aendern — und eine Pruefung, die an drei Stellen steht, steht bald in
- * drei Fassungen da.
+ * Die drei Pflichtwerte prüfen: geprüfte Werte oder ein Fehlercode. Eine
+ * Funktion für Anlegen, Anlegen aus dem PDF und Ändern.
  */
 function pruefeWerte(roh: { number?: unknown; pin?: unknown; amount?: unknown; currency?: unknown },
                      opt: { nullBetragErlaubt?: boolean } = {}):
-  { ok: true; number: string; pin: string | null; amount: number; currency: string } | { ok: false; code: FehlerCode } {
+  { ok: true; number: string; pin: string | null; amount: number; currency: string | null } | { ok: false; code: FehlerCode } {
   const number = String(roh.number ?? '').replace(/[\s-]/g, '');
   if (!/^\d{4,25}$/.test(number)) return { ok: false, code: 'nummer_ungueltig' };
 
@@ -111,8 +91,9 @@ function pruefeWerte(roh: { number?: unknown; pin?: unknown; amount?: unknown; c
   if (!Number.isFinite(amount) || amount > 1_000_000) return { ok: false, code: 'betrag_ungueltig' };
   if (opt.nullBetragErlaubt ? amount < 0 : amount <= 0) return { ok: false, code: 'betrag_ungueltig' };
 
-  const currency = String(roh.currency ?? 'CHF').toUpperCase();
-  if (!/^[A-Z]{3}$/.test(currency)) return { ok: false, code: 'waehrung_ungueltig' };
+  // Ohne Angabe setzt die Datenbank die Währung des Kontos (Migration 0073).
+  const currency = roh.currency == null || roh.currency === '' ? null : String(roh.currency).toUpperCase();
+  if (currency !== null && !/^[A-Z]{3}$/.test(currency)) return { ok: false, code: 'waehrung_ungueltig' };
 
   return { ok: true, number, pin: pinRoh || null, amount, currency };
 }
@@ -125,10 +106,7 @@ function pruefeWerte(roh: { number?: unknown; pin?: unknown; amount?: unknown; c
 // ── GET /api/v1/vouchers — die eigenen Gutscheine ───────────────────────────
 router.get('/vouchers', requireToken, async (req: AuthedRequest, res) => {
   try {
-    const zeilen = await db.all(
-      `SELECT ${SPALTEN} FROM vouchers WHERE user_id = $1 ORDER BY created_at DESC, id DESC`,
-      [req.apiUser.user_id]);
-    res.json({ success: true, vouchers: (zeilen as GutscheinZeile[]).map(fuerAussen) });
+    res.json({ success: true, vouchers: (await gutscheineDesKontos(req.apiUser.user_id)).map(fuerAussen) });
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
@@ -137,18 +115,11 @@ router.post('/vouchers', requireToken, async (req: AuthedRequest, res) => {
   try {
     const w = pruefeWerte(req.body || {});
     if (!w.ok) return sendeFehler(req, res, 400, w.code);
-    const zeile = await db.get(
-      `INSERT INTO vouchers (user_id, number, pin, amount, currency)
-       VALUES ($1,$2,$3,$4,$5)
-       ON CONFLICT (user_id, number) DO NOTHING
-       RETURNING ${SPALTEN}`,
-      [req.apiUser.user_id, w.number, verschluessele(w.pin), w.amount, w.currency]);
-    // DO NOTHING liefert KEINE Zeile zurueck, wenn es die Karte schon gibt.
-    // Das ist der Unterschied zwischen „angelegt" und „war schon da" — und
-    // beides stillschweigend als Erfolg zu melden, hiesse: Der Nutzer legt
-    // zweimal an und sieht einmal nichts passieren.
+    // Keine Zeile heisst „war schon da“ — als Erfolg gemeldet, sähe der Nutzer
+    // beim zweiten Anlegen nichts passieren.
+    const zeile = await gutscheinAnlegen(req.apiUser.user_id, w);
     if (!zeile) return sendeFehler(req, res, 409, 'gutschein_existiert');
-    res.json({ success: true, voucher: fuerAussen(zeile as GutscheinZeile) });
+    res.json({ success: true, voucher: fuerAussen(zeile) });
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
@@ -167,25 +138,16 @@ async function stapelAnlegen(
 
   for (const w of gefunden) {
     const geprueft = pruefeWerte({
-      number: w.nummer, pin: w.pin, amount: w.betrag, currency: w.waehrung ?? 'CHF',
+      number: w.nummer, pin: w.pin, amount: w.betrag, currency: w.waehrung,
     });
     if (!geprueft.ok) {
       errors++;
       results.push({ number: String(w.nummer ?? ''), action: 'error', error: geprueft.code });
       continue;
     }
-    const neu = await db.get(
-      `INSERT INTO vouchers (user_id, number, pin, amount, currency)
-       VALUES ($1,$2,$3,$4,$5)
-       ON CONFLICT (user_id, number) DO UPDATE
-          SET pin = COALESCE(EXCLUDED.pin, vouchers.pin),
-              amount = EXCLUDED.amount,
-              currency = EXCLUDED.currency,
-              updated_at = NOW()
-       RETURNING id, (xmax = 0) AS war_neu`,
-      [uid, geprueft.number, verschluessele(geprueft.pin), geprueft.amount, geprueft.currency]);
-    if (neu?.war_neu) added++; else updated++;
-    results.push({ number: geprueft.number, action: neu?.war_neu ? 'added' : 'updated' });
+    const warNeu = await gutscheinErsetzen(uid, geprueft);
+    if (warNeu) added++; else updated++;
+    results.push({ number: geprueft.number, action: warNeu ? 'added' : 'updated' });
   }
 
   // `mehrere` als eigener Block und nicht flach daneben: So kann eine
@@ -226,24 +188,23 @@ router.post('/vouchers/pdf', requireToken, upload.single('file'), async (req: Au
     let gelesen: ReturnType<typeof werteAusPdf>;
     let lesefehler = !istPdf;
     try { gelesen = werteAusPdf(req.file.buffer); }
-    catch { lesefehler = true; gelesen = { nummer: null, pin: null, betrag: null, waehrung: null }; }
+    catch (e) {
+      // Eine Entpackbombe wird auch mit getippten Werten nicht abgelegt: Der
+      // Export gäbe sie später an pdf-lib, das ohne Grenze entpackt.
+      if (e instanceof PdfZuGross) return sendeFehler(req, res, 422, 'pdf_unlesbar');
+      lesefehler = true; gelesen = { nummer: null, pin: null, betrag: null, waehrung: null };
+    }
 
     const zusammen = {
       number:   req.body?.number   ?? gelesen.nummer,
       pin:      req.body?.pin      ?? gelesen.pin,
       amount:   req.body?.amount   ?? gelesen.betrag,
-      currency: req.body?.currency ?? gelesen.waehrung ?? 'CHF',
+      currency: req.body?.currency ?? gelesen.waehrung,
     };
     const w = pruefeWerte(zusammen);
     if (!w.ok) {
-      // ── Drei verschiedene Absagen, und der Nutzer tut bei jeder etwas
-      //    anderes ───────────────────────────────────────────────────────────
-      //
-      // Bis zum Zusammenlegen der beiden Dateifelder standen die ersten zwei
-      // Texte in der Stapel-Route; hier gab es nur den Feldcode, also etwa
-      // „betrag_ungueltig" fuer eine Datei, die gar kein PDF ist. Das war
-      // schon vorher schief, ist aber erst jetzt aufgefallen: Seit es EINEN
-      // Weg gibt, kommt auch die kaputte Datei hier an.
+      // Drei Absagen, weil der Nutzer bei jeder etwas anderes tun muss:
+      // kein PDF, nichts lesbar, oder ein Feld fehlt.
       const nichtsGetippt = !req.body?.number && !req.body?.pin && !req.body?.amount;
       const nichtsGelesen = gelesen.nummer == null && gelesen.betrag == null;
       const code: FehlerCode =
@@ -259,15 +220,9 @@ router.post('/vouchers/pdf', requireToken, upload.single('file'), async (req: Au
       });
     }
 
-    const zeile = await db.get(
-      `INSERT INTO vouchers (user_id, number, pin, amount, currency)
-       VALUES ($1,$2,$3,$4,$5)
-       ON CONFLICT (user_id, number) DO NOTHING
-       RETURNING ${SPALTEN}`,
-      [req.apiUser.user_id, w.number, verschluessele(w.pin), w.amount, w.currency]);
-    if (!zeile) return sendeFehler(req, res, 409, 'gutschein_existiert');
+    const z = await gutscheinAnlegen(req.apiUser.user_id, w);
+    if (!z) return sendeFehler(req, res, 409, 'gutschein_existiert');
 
-    const z = zeile as GutscheinZeile;
     const dir = path.join(VOUCHER_DIR, String(req.apiUser.user_id));
     await fs.promises.mkdir(dir, { recursive: true });
     // Der Dateiname kommt aus der id, NICHT aus dem hochgeladenen Namen: Ein
@@ -276,8 +231,7 @@ router.post('/vouchers/pdf', requireToken, upload.single('file'), async (req: Au
     const datei = `${z.id}.pdf`;
     await fs.promises.writeFile(path.join(dir, datei), req.file.buffer);
     const relPfad = `${req.apiUser.user_id}/${datei}`;
-    await db.run('UPDATE vouchers SET pdf_path = $1, updated_at = NOW() WHERE id = $2 AND user_id = $3',
-      [relPfad, z.id, req.apiUser.user_id]);
+    await gutscheinPdfMerken(req.apiUser.user_id, z.id, relPfad);
 
     res.json({
       success: true,
@@ -296,17 +250,11 @@ router.post('/vouchers/pdf', requireToken, upload.single('file'), async (req: Au
 // Ausführlich: docs/begruendungen/routes/api_v1/vouchers.ts.md#abschnitt-2
 
 // ── GET /api/v1/vouchers/export/pdf — alle Gutscheine in EIN PDF ────────────
-/**
- * Die Arbeit steckt in utils/gutscheinPdfSchreiben.ts; diese Route tut, was
- * eine Route tun soll: eigene Zeilen holen, Dateien dazulegen, ausliefern.
- * Ausführlich: docs/begruendungen/routes/api_v1/vouchers.ts.md#get-vouchers-export-pdf
- */
+/** Das PDF baut utils/gutscheinPdfSchreiben.ts; die Route holt die eigenen Zeilen und liefert aus. */
 router.get('/vouchers/export/pdf', requireToken, async (req: AuthedRequest, res) => {
   try {
     const uid = req.apiUser.user_id;
-    const zeilen = await db.all(
-      `SELECT ${SPALTEN} FROM vouchers WHERE user_id = $1 ORDER BY created_at, id`,
-      [uid]) as GutscheinZeile[];
+    const zeilen = await gutscheineDesKontos(uid, 'aelteste');
     if (!zeilen.length) return sendeFehler(req, res, 404, 'keine_gutscheine');
 
     const gutscheine: ExportGutschein[] = [];
@@ -320,7 +268,7 @@ router.get('/vouchers/export/pdf', requireToken, async (req: AuthedRequest, res)
         try { pdf = await fs.promises.readFile(path.join(VOUCHER_DIR, z.pdf_path)); }
         catch { pdf = null; }
       }
-      gutscheine.push({ id: z.id, number: z.number, pin: entschluessele(z.pin),
+      gutscheine.push({ id: z.id, number: z.number, pin: z.pin,
                         amount: Number(z.amount), currency: z.currency, pdf });
     }
 
@@ -343,10 +291,8 @@ router.put('/vouchers/:id', requireToken, async (req: AuthedRequest, res) => {
   try {
     const id = Number(req.params.id);
     if (!Number.isInteger(id)) return sendeFehler(req, res, 400, 'id_ungueltig');
-    const alt = await db.get(`SELECT ${SPALTEN} FROM vouchers WHERE id = $1 AND user_id = $2`,
-      [id, req.apiUser.user_id]) as GutscheinZeile | undefined;
+    const alt = await gutschein(req.apiUser.user_id, id);
     if (!alt) return sendeFehler(req, res, 404, 'nicht_gefunden');
-    alt.pin = entschluessele(alt.pin);
 
     // Was nicht mitkommt, bleibt stehen. Ohne das loescht ein Formular, das
     // nur den Betrag schickt, Nummer und PIN.
@@ -358,11 +304,9 @@ router.put('/vouchers/:id', requireToken, async (req: AuthedRequest, res) => {
     }, { nullBetragErlaubt: req.body?.amount === undefined });
     if (!w.ok) return sendeFehler(req, res, 400, w.code);
 
-    const zeile = await db.get(
-      `UPDATE vouchers SET number=$1, pin=$2, amount=$3, currency=$4, updated_at=NOW()
-        WHERE id=$5 AND user_id=$6 RETURNING ${SPALTEN}`,
-      [w.number, verschluessele(w.pin), w.amount, w.currency, id, req.apiUser.user_id]);
-    res.json({ success: true, voucher: fuerAussen(zeile as GutscheinZeile) });
+    const zeile = await gutscheinAendern(req.apiUser.user_id, id, w);
+    if (!zeile) return sendeFehler(req, res, 404, 'nicht_gefunden');
+    res.json({ success: true, voucher: fuerAussen(zeile) });
   } catch (e) {
     // Die UNIQUE-Bedingung schlaegt zu, wenn jemand eine Karte auf die Nummer
     // einer anderen umschreibt. Das ist eine Nutzereingabe, kein Serverfehler.
@@ -376,18 +320,13 @@ router.delete('/vouchers/:id', requireToken, async (req: AuthedRequest, res) => 
   try {
     const id = Number(req.params.id);
     if (!Number.isInteger(id)) return sendeFehler(req, res, 400, 'id_ungueltig');
-    const zeile = await db.get('SELECT pdf_path FROM vouchers WHERE id = $1 AND user_id = $2',
-      [id, req.apiUser.user_id]) as { pdf_path: string | null } | undefined;
-    if (!zeile) return sendeFehler(req, res, 404, 'nicht_gefunden');
-    await db.run('DELETE FROM vouchers WHERE id = $1 AND user_id = $2', [id, req.apiUser.user_id]);
+    const pdfPfad = await gutscheinLoeschen(req.apiUser.user_id, id);
+    if (pdfPfad === undefined) return sendeFehler(req, res, 404, 'nicht_gefunden');
 
-    // Erst die Zeile, dann die Datei — dieselbe Reihenfolge wie bei den
-    // Anleitungen. Anders als dort kann die Datei hier niemandem sonst
-    // gehoeren (sie traegt die id des Gutscheins), also braucht es keine
-    // Zaehlung. Scheitert das Loeschen, bleibt eine verwaiste Datei liegen;
-    // das ist unschoen, aber besser als eine Zeile, die ins Leere zeigt.
-    if (zeile.pdf_path) {
-      const p = sicherePdfDatei(req.apiUser.user_id, zeile.pdf_path);
+    // Erst die Zeile, dann die Datei: Eine verwaiste Datei ist besser als
+    // eine Zeile, die ins Leere zeigt.
+    if (pdfPfad) {
+      const p = sicherePdfDatei(req.apiUser.user_id, pdfPfad);
       if (p) await fs.promises.unlink(p).catch(() => { /* schon weg: in Ordnung */ });
     }
     res.json({ success: true });
@@ -395,12 +334,8 @@ router.delete('/vouchers/:id', requireToken, async (req: AuthedRequest, res) => 
 });
 
 /**
- * Aus dem gespeicherten Pfad einen echten Dateipfad machen — oder null.
- *
- * Der Pfad kommt zwar aus der eigenen Datenbank und nicht vom Klienten, aber
- * genau diese Annahme ist die, die irgendwann nicht mehr stimmt. Geprueft
- * wird deshalb beides: dass das erste Segment der anfragende Nutzer ist, und
- * dass das Ergebnis unterhalb von data/vouchers/ liegt.
+ * Gespeicherter Pfad → Dateipfad, oder null. Auch ein Pfad aus der eigenen
+ * Datenbank muss dem Nutzer gehören und unter data/vouchers/ liegen.
  */
 function sicherePdfDatei(userId: number, pdfPath: string): string | null {
   const basis = path.resolve(VOUCHER_DIR, String(userId));
@@ -410,18 +345,13 @@ function sicherePdfDatei(userId: number, pdfPath: string): string | null {
   return ziel.startsWith(basis + path.sep) ? ziel : null;
 }
 
-// ── GET /api/v1/vouchers/:id/pdf — anzeigen oder herunterladen ──────────────
-//
-// Marcos Vorgabe: „Das PDF soll jeweils auch wieder heruntergeladen, resp. in
-// einem neuen Fenster angezeigt werden können." Beides ist dieselbe Datei und
-// unterscheidet sich nur im Content-Disposition — deshalb EINE Route mit
-// `?download=1`, nicht zwei.
+// ── GET /api/v1/vouchers/:id/pdf — anzeigen oder (?download=1) herunterladen;
+// beides ist dieselbe Datei, nur Content-Disposition unterscheidet sich.
 router.get('/vouchers/:id/pdf', requireToken, async (req: AuthedRequest, res) => {
   try {
     const id = Number(req.params.id);
     if (!Number.isInteger(id)) return sendeFehler(req, res, 400, 'id_ungueltig');
-    const zeile = await db.get('SELECT pdf_path, number FROM vouchers WHERE id = $1 AND user_id = $2',
-      [id, req.apiUser.user_id]) as { pdf_path: string | null; number: string } | undefined;
+    const zeile = await gutschein(req.apiUser.user_id, id);
     if (!zeile?.pdf_path) return sendeFehler(req, res, 404, 'nicht_gefunden');
     const datei = sicherePdfDatei(req.apiUser.user_id, zeile.pdf_path);
     if (!datei) return sendeFehler(req, res, 404, 'nicht_gefunden');
@@ -448,10 +378,8 @@ router.post('/vouchers/:id/guthaben', requireToken, async (req: AuthedRequest, r
   try {
     const id = Number(req.params.id);
     if (!Number.isInteger(id)) return sendeFehler(req, res, 400, 'id_ungueltig');
-    const alt = await db.get(`SELECT ${SPALTEN} FROM vouchers WHERE id = $1 AND user_id = $2`,
-      [id, req.apiUser.user_id]) as GutscheinZeile | undefined;
+    const alt = await gutschein(req.apiUser.user_id, id);
     if (!alt) return sendeFehler(req, res, 404, 'nicht_gefunden');
-    alt.pin = entschluessele(alt.pin);
 
     // Ohne PIN gibt es keine Antwort — LEGO fragt beides ab. Das VOR der
     // Schranke pruefen: Ein Aufruf, der nicht stattfinden kann, soll den
@@ -501,13 +429,10 @@ router.post('/vouchers/:id/guthaben', requireToken, async (req: AuthedRequest, r
     // kaputte Angabe duerfte sonst `currency` zerstoeren, und die Summe in
     // der Liste rechnet nur, wenn alle Gutscheine dieselbe Waehrung tragen.
     const waehrung = /^[A-Z]{3}$/.test(g.waehrung) ? g.waehrung : alt.currency;
-    const zeile = await db.get(
-      `UPDATE vouchers SET amount = $1, currency = $2,
-              guthaben_geprueft_am = NOW(), updated_at = NOW()
-        WHERE id = $3 AND user_id = $4 RETURNING ${SPALTEN}`,
-      [g.betrag, waehrung, id, req.apiUser.user_id]);
+    const zeile = await guthabenMerken(req.apiUser.user_id, id, g.betrag, waehrung);
+    if (!zeile) return sendeFehler(req, res, 404, 'nicht_gefunden');
     res.json({
-      success: true, voucher: fuerAussen(zeile as GutscheinZeile),
+      success: true, voucher: fuerAussen(zeile),
       angezeigt: g.angezeigt,
       // Damit die Oberflaeche es SAGEN kann: Eine stillschweigend geaenderte
       // Waehrung waere eine geaenderte Summe ohne Hinweis.

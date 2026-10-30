@@ -79,8 +79,8 @@ test('Listenansichten fordern Vorschaubilder an', () => {
 test('Teile- und Minifiguren-Preise lesen avg_price', () => {
   // routes/finance.ts ist entfallen: Der Router trug NULL Routen und war
   // trotzdem unter /api/finance eingehaengt (siehe server.ts).
-  for (const f of ['routes/minifigs.ts', 'routes/parts.ts',
-                   'routes/api_v1/sets.ts']) {
+  for (const f of ['utils/manuelleFiguren.ts', 'utils/manuelleTeile.ts',
+                   'routes/api_v1/sets.ts', 'utils/dienste/sets.ts']) {
     const src = read(f);
     // Lesende Zugriffe: kein qty_avg_price mehr. Schreibende (INSERT/VALUES)
     // und Feldnamen in Antwortobjekten bleiben — der Wert wird weiter gepflegt.
@@ -134,7 +134,7 @@ test('kein Token reitet mehr in der Adresszeile', () => {
   // mehr ansieht, und die Aufrufer, die keinen mehr anhaengen. Nur eine der
   // beiden zu pruefen reichte nicht — die Ausnahmeliste hier war jahrelang
   // gruen, WEIL nur ihr Vorhandensein geprueft wurde und nie ihr Nutzen.
-  const { ohneKommentare, einhaengung, setKernQuelle, coreQuelle } = require('./helpers/sources');
+  const { ohneKommentare, setKernQuelle, coreQuelle } = require('./helpers/sources');
   const auth = ohneKommentare(read('utils/auth.ts'));
 
   assert.doesNotMatch(auth, /TOKEN_QUERY_ALLOWED/,
@@ -198,7 +198,7 @@ test('kein Token reitet mehr in der Adresszeile', () => {
   // coreQuelle() statt eines Dateinamens: Der Balken zog in Nachtrag 141 nach
   // js/01-fortschritt.js um, und dieser Satz prüfte danach eine Datei, in der
   // der Kanal gar nicht mehr stand. Gesucht ist der KANAL, nicht sein Ablageort.
-  assert.ok(coreQuelle().includes(einhaengung('sets') + '/import/csv/stream'),
+  assert.ok(coreQuelle().includes('/api/v1/sets/import/csv/stream'),
     'Der SSE-Kanal des CSV-Imports fehlt — Route umgezogen?');
 });
 
@@ -233,7 +233,7 @@ test('offene Ereignis-Ströme halten das Herunterfahren nicht auf', () => {
     'Ein erzwungenes Beenden nach Ablauf der Frist ist kein Fehlschlag');
 
   // Alle drei SSE-Routen melden sich an — eine vergessene hält wieder auf.
-  for (const datei of ['routes/sets.ts', 'routes/api_v1/pdf.ts']) {
+  for (const datei of ['routes/api_v1/sets.ts', 'routes/api_v1/pdf.ts']) {
     assert.match(read(datei), /registerSse\(res\)/, `${datei}: Strom nicht angemeldet`);
   }
   assert.equal((require('./helpers/sources').setKernQuelle().match(/registerSse\(res\)/g) || []).length, 2,
@@ -255,8 +255,8 @@ test('den Preis-Cache leert nur, wer Administrator ist', () => {
   // verbrannte Kontingent). Der Import-Weg wurde übersehen — er sieht ja auch
   // nicht nach „Cache leeren" aus. Genau deshalb prüft dieser Test die REGEL
   // und nicht eine einzelne Route: Wer den Cache leert, braucht requireAdmin.
-  const dateien = ['routes/settings.ts', 'routes/sets.ts',
-                   'routes/parts.ts', 'routes/minifigs.ts', 'clients/bricklink.ts'];
+  const dateien = ['routes/settings.ts', 'routes/api_v1/sets.ts',
+                   'routes/api_v1/parts.ts', 'routes/api_v1/minifigs.ts', 'clients/bricklink.ts'];
   const treffer = [];
   for (const datei of dateien) {
     const src = read(datei).replace(/\/\/[^\n]*/g, '');   // Kommentare zitieren die alte Zeile
@@ -282,15 +282,21 @@ test('ein Währungswechsel braucht keine Cache-Leerung', () => {
   //
   // Bricht jemand diese Eigenschaft (eine Abfrage ohne currency_code), wäre
   // die Zeile plötzlich wieder nötig — dann soll hier etwas rot werden.
-  const leser = ['utils/finance/preise.ts', 'utils/portfolioHistory.ts',
-                 'utils/priceHistory.ts', 'utils/setValue.ts', 'routes/sets.ts'];
+  // Alle Quellen statt einer Liste: Eine Liste veraltet beim nächsten Umzug.
+  const leser = require('./helpers/sources').alleQuellen()
+    .filter(d => read(d).includes('FROM price_cache'));
+  assert.ok(leser.length >= 4, `nur ${leser.length} Leser von price_cache gefunden — Suche veraltet?`);
   for (const datei of leser) {
     const src = read(datei);
     let i = src.indexOf('FROM price_cache');
     while (i !== -1) {
-      // Die WHERE-Klausel steht innerhalb der nächsten paar Zeilen.
-      const block = src.slice(i, i + 400);
-      assert.match(block, /currency_code/,
+      // Bis zum Ende der Anweisung. Zählungen und Abfragen ohne WHERE wählen
+      // keinen Preis für eine Anzeige aus und dürfen ohne Währung bleiben.
+      const vorher = src.slice(Math.max(0, i - 400), i);
+      const auf = vorher[Math.max(vorher.lastIndexOf('`'), vorher.lastIndexOf("'"), vorher.lastIndexOf('"'))] || '`';
+      const block = src.slice(i, i + 400).split(auf)[0];
+      const zaehlung = /COUNT\(\*\)[^`'"]*$/.test(vorher);
+      if (!zaehlung && /\bWHERE\b/.test(block)) assert.match(block, /currency_code/,
         `${datei}: Abfrage auf price_cache ohne currency_code — dann mischen sich Währungen`);
       i = src.indexOf('FROM price_cache', i + 1);
     }

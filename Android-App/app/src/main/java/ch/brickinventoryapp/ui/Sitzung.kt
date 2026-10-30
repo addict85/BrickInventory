@@ -36,34 +36,37 @@ class Sitzung @Inject constructor() {
      */
     val abmeldungen: SharedFlow<Unit> = _abmeldungen.asSharedFlow()
 
-    /** Der Server bleibt eingetragen — abgemeldet heisst nicht „anderer Server“. */
+    /**
+     * Der Server bleibt eingetragen — abgemeldet heisst nicht „anderer Server“.
+     * Das Design bleibt, bis die Vorgabe des Servers da ist; sonst blitzte „classic“ auf.
+     */
     fun abgemeldet() {
-        _state.update { AppUiState(serverUrl = it.serverUrl) }
+        _state.update { AppUiState(serverUrl = it.serverUrl, appTheme = it.appTheme) }
         _abmeldungen.tryEmit(Unit)
     }
 }
 
 /**
- * Die Einstellungen des Kontos vom Server in die Sitzung. Gibt das Design
- * zurück (oder null ohne Antwort), damit das AppViewModel es für den nächsten
- * Kaltstart merken kann. Die Bedingung für neue Einträge ist die vom Server
- * aufgelöste (Nutzer → global → „N“).
+ * Die Einstellungen des Kontos vom Server in die Sitzung. Die Bedingung für
+ * neue Einträge ist die vom Server aufgelöste (Nutzer → global → „N“). Das
+ * Design nicht: /settings nennt in app_theme die Vorgabe des Verwalters, das
+ * des Kontos kommt von /settings/theme (AppViewModel.loadAppTheme).
  */
-internal suspend fun Sitzung.ladeEinstellungen(admin: ch.brickinventoryapp.data.repository.AdminRepository): String? =
-    when (val r = admin.getSettings()) {
-        is ch.brickinventoryapp.data.repository.Result.Success -> {
-            val e = r.data.settings
-            aendere { it.copy(
-                currency = e.currency,
-                priceCondition = e.priceCondition,
-                defaultPriceCondition = e.defaultPriceCondition,
-                userDefaultCondition = e.effectiveCondition,
-                appTheme = e.appTheme,
-            ) }
-            e.appTheme
-        }
-        is ch.brickinventoryapp.data.repository.Result.Error -> null
+internal suspend fun Sitzung.ladeEinstellungen(admin: ch.brickinventoryapp.data.repository.AdminRepository) {
+    val r = admin.getSettings()
+    if (r is ch.brickinventoryapp.data.repository.Result.Success) {
+        val e = r.data.settings
+        aendere { it.copy(
+            currency = e.currency,
+            priceCondition = e.priceCondition,
+            defaultPriceCondition = e.defaultPriceCondition,
+            userDefaultCondition = e.effectiveCondition,
+        ) }
     }
+}
+
+/** Das wirksame Design, z. B. nach einer Wahl im Konto; das AppViewModel merkt es sich für den Kaltstart. */
+internal fun Sitzung.setzeDesign(theme: String) = aendere { it.copy(appTheme = theme) }
 
 /**
  * Ein gescheiterter QR-Anlauf, während die App schon angemeldet ist, ist kein

@@ -7,7 +7,7 @@
  * HEUTE gibt — so übersteht ein Eintrag auch eine spätere Spaltenänderung.
  */
 import type { DbSchnittstelle } from '../db/database';
-const db = require('../db/database') as typeof import('../db/database');
+import * as db from '../db/database';
 
 export type Art = 'set' | 'teil' | 'figur';
 export const AUFBEWAHRUNG_TAGE = 30;

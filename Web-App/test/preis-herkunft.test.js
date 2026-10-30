@@ -31,10 +31,12 @@ const lies = (...p) => ohneKommentare(fs.readFileSync(path.join(WURZEL, ...p), '
 test('der Rueckfall wird nicht mehr verworfen', () => {
   // Das war der zu scharfe Fix aus Nachtrag 166. Steht er wieder da, bleibt
   // der Kaufpreis fuer alles leer, was BrickLink nur in einem Zustand fuehrt.
-  for (const datei of ['parts.ts', 'minifigs.ts']) {
-    const src = lies('routes', datei);
-    assert.doesNotMatch(src, /is_fallback\)\s*(return null|continue)/,
-      `routes/${datei} verwirft den Rueckfall wieder — dann bleibt der Kaufpreis leer`);
+  // In allen Quellen: Die Preisabrufe sind schon einmal umgezogen.
+  const quellen = require('./helpers/sources').alleQuellen();
+  assert.ok(quellen.length > 80, 'Quellen nicht gefunden');
+  for (const datei of quellen) {
+    assert.doesNotMatch(lies(datei), /is_fallback\)\s*(return null|continue)/,
+      `${datei} verwirft den Rueckfall wieder — dann bleibt der Kaufpreis leer`);
   }
 });
 

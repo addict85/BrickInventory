@@ -119,7 +119,7 @@ test('vorhandenes Set: Erfassen meldet exists und schreibt nichts',
   const { base, srv } = testServer(_req, {
     sitzung: { userId: hauptId },
     apiNutzer: { user_id: hauptId, is_admin: 0 },
-    routen: { '/api/sets': 'routes/sets.js', '/api/v1': 'routes/api_v1/index.js' },
+    routen: { '/api/v1': 'routes/api_v1/index.js' },
     t,
   });
 
@@ -135,7 +135,7 @@ test('vorhandenes Set: Erfassen meldet exists und schreibt nichts',
     // 1. EIGENES Set und Set des UNTERKONTOS — beide Wege, beide Sets.
     for (const [wer, sn] of [['eigenes', EIGEN], ['Unterkonto', KIND]]) {
       for (const [name, pfad] of [['Android/Webapp (v1)', '/api/v1/sets'],
-                                  ['Webapp (add-stream)', '/api/sets/add-stream']]) {
+                                  ['Webapp (add-stream)', '/api/v1/sets/add-stream']]) {
         const vor = await stand(sn);
         const r = await erfassen(pfad, sn);
         assert.equal(r.status, 200, `${wer}/${name}: ${r.status}`);

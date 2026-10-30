@@ -13,7 +13,7 @@ import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { Client } from 'pg';
 import { LOCKS } from '../utils/lockNamespaces';
-import { fehlerCode, meldeUndWeiter } from '../utils/httpError';
+import { fehlerCode, meldeUndWeiter, logAndContinue } from '../utils/httpError';
 
 // Warum diese acht jetzt oben stehen
 // Sie standen als require() in den Funktionsruempfen. Node haelt Module im
@@ -39,8 +39,10 @@ const POOL_CONFIG = {
   min:                    parseInt(process.env.PG_POOL_MIN    || '2'),
   idleTimeoutMillis:      parseInt(process.env.PG_IDLE_MS     || '30000'),
   connectionTimeoutMillis:parseInt(process.env.PG_CONN_MS     || '30000'),
-  // Pass statement_timeout via PostgreSQL connection options (avoids client.query deprecation)
-  options:                `-c statement_timeout=${parseInt(process.env.PG_STMT_MS || '30000')}`,
+  // Über die Verbindungsoptionen statt je Anfrage: statement_timeout, und die
+  // Zeitzone, in der der Trigger erfassung_tag() den Tag eines Kaufs bildet.
+  options:                `-c statement_timeout=${parseInt(process.env.PG_STMT_MS || '30000')}`
+                        + ` -c brickinventory.zeitzone=${(require('../utils/konfig') as typeof import('../utils/konfig')).erfassungsZeitzone()}`,
   keepAlive:              true,
   keepAliveInitialDelayMillis: 10000,
 };
@@ -147,13 +149,14 @@ function getPoolStats() {
  * Ausführlich: docs/begruendungen/db/database.ts.md#dbschnittstelle
  */
 export interface DbSchnittstelle {
-  all(sql: string, params?: any[]): Promise<any[]>;
-  get(sql: string, params?: any[]): Promise<any>;
+  /** T beschreibt die Zeile; ohne Angabe bleibt sie untypisiert (Altbestand). */
+  all<T = any>(sql: string, params?: unknown[]): Promise<T[]>;
+  get<T = any>(sql: string, params?: unknown[]): Promise<T | undefined>;
   run(sql: string, params?: any[]): Promise<{ changes: number | null; lastID: any }>;
   exec(sql: string): Promise<any>;
 }
 
-async function all(sql: string, params: any[] = []): Promise<any[]> {
+async function all<T = any>(sql: string, params: unknown[] = []): Promise<T[]> {
   return queryWithRetry(async () => {
     const { rows } = await pool.query(sql, params);
     return rows;
@@ -165,7 +168,7 @@ async function all(sql: string, params: any[] = []): Promise<any[]> {
  * Replaces: db.prepare(sql).get(...params)
  */
 /** Erste Zeile einer Abfrage, oder undefined. Zum Typ siehe all(). */
-async function get(sql: string, params: any[] = []): Promise<any> {
+async function get<T = any>(sql: string, params: unknown[] = []): Promise<T | undefined> {
   return queryWithRetry(async () => {
     const { rows } = await pool.query(sql, params);
     return rows[0];
@@ -210,8 +213,8 @@ async function transaction<T>(fn: (tx: DbSchnittstelle) => Promise<T>): Promise<
     await client.query('BEGIN');
     // Provide a client-bound db interface for the transaction
     const txDb: DbSchnittstelle = {
-      all:  (sql: string, p?: any[]) => client.query(sql, p).then(r => r.rows),
-      get:  (sql: string, p?: any[]) => client.query(sql, p).then(r => r.rows[0]),
+      all:  <T = any>(sql: string, p?: unknown[]) => client.query(sql, p).then(r => r.rows as T[]),
+      get:  <T = any>(sql: string, p?: unknown[]) => client.query(sql, p).then(r => r.rows[0] as T | undefined),
       run:  (sql: string, p?: any[]) => client.query(sql, p).then(r => ({ changes: r.rowCount, lastID: (r.rows?.[0] as any)?.id })),
       exec: (sql: string)            => client.query(sql),
     };
@@ -336,7 +339,7 @@ async function initSchemaOnce() {
     if (applied.length) console.log(`✅ ${applied.length} Migration(en) angewandt`);
     else if (!neu) console.log('✅ Schema aktuell — keine offenen Migrationen');
   } finally {
-    await client.query(`SELECT pg_advisory_unlock(${LOCK_ID})`).catch(() => {});
+    await client.query(`SELECT pg_advisory_unlock(${LOCK_ID})`).catch(logAndContinue('db:pg_advisory_unlock'));
     client.release();
   }
 }

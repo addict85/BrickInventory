@@ -317,7 +317,7 @@ test('Schreiben in ein fremdes Konto verlangt die richtige Richtung', () => {
   // Für Minifiguren liegt der Schreibpfad seit Nachtrag 72 in der gemeinsamen
   // Fabrik — deshalb steht dort routes/api_v1/minifigs.ts statt der entfernten
   // Session-Route. Geprüft wird dieselbe Regel am neuen Ort.
-  for (const f of ['routes/sets.ts', 'routes/api_v1/parts.ts', 'routes/api_v1/minifigs.ts']) {
+  for (const f of ['routes/api_v1/sets.ts', 'routes/api_v1/parts.ts', 'routes/api_v1/minifigs.ts']) {
     const src = read(f);
     assert.match(src, /resolveWriteTarget\(/, `${f}: Kontoauswahl fehlt`);
     assert.match(src, /=== null\)[\s\S]{0,120}sendeFehler\(req, res, 403/,
@@ -578,11 +578,11 @@ test('auch manuelle Teile und Minifiguren wandern über den Kaufpreis', () => {
   // jetzt Webapp UND App bedient. Die Regel gilt unverändert — sie wird nur an
   // EINER Stelle geprüft statt an dreien, weil es nur noch eine gibt.
   // Teile und Figuren gehen über denselben Aufruf; die Art kommt aus der Tabelle.
-  const f = 'routes/api_v1/acquisitions.ts';
+  // Die Regel steht seit dem Schichtumbau im Dienst; die Route ruft ihn nur.
+  const f = 'utils/dienste/erfassungen.ts';
   const src = read(f);
-  assert.ok(src.includes('moveManualAcquisition(tx, kind, keys, id, from, to)'), `${f}: Wechsel fehlt`);
-  assert.match(src, /'part_acquisitions' \? 'part' : 'fig'/, `${f}: Teile und Figuren fehlen in der Zuordnung`);
-  assert.match(src, /if \(to === null\)\s*\n\s*return sendeFehler\(req, res, 403/,
+  assert.ok(src.includes('moveManualAcquisition(tx, art, keys, id, from, to)'), `${f}: Wechsel fehlt`);
+  assert.match(src, /if \(to === null\) fehlerWerfen\('kein_schreibrecht', 403\)/,
     `${f}: ohne Schreibrecht muss 403 kommen`);
 });
 
@@ -608,18 +608,12 @@ test('der Absender eines Eigentümerwechsels kommt aus der ZEILE, nicht aus dem 
   // auseinanderlaufen, und mehrfach ist sie es auch. Seit dem Zusammenlegen
   // bedient die Fabrik beide Clients, also gibt es nur noch eine Stelle. Der
   // Test prüft dieselbe Regel, nur nicht mehr an vier Orten.
-  assert.ok(read('routes/api_v1/acquisitions.ts').includes('acquisitionMoveSource(uid,'),
+  assert.ok(read('utils/dienste/erfassungen.ts').includes('acquisitionMoveSource(uid,'),
     'Eigentümer-Zweig leitet den Absender nicht aus der Zeile ab');
-  // Gegenrichtung: In den Session-Routen darf KEINE zweite Fassung
-  // zurückkehren — sonst hätten wir die Doppelung wieder.
-  for (const f of ['routes/sets.ts', 'routes/parts.ts', 'routes/minifigs.ts']) {
-    assert.ok(!read(f).includes("/acquisitions/:id'"),
-      `${f}: Erfassungs-Routen sind wieder doppelt vorhanden — sie gehören nur in die Fabrik`);
-  }
   // … und keiner vertraut mehr einem mitgeschickten from_user_id. Das Muster
-  // `from_user_id ?? uid` bleibt NUR in den beiden /move-Routen erlaubt
+  // `from_user_id ?? uid` bleibt NUR in der /move-Route erlaubt
   // (mehrere IDs, ausdrücklich benannter Absender).
-  for (const f of ['routes/parts.ts', 'routes/minifigs.ts', 'routes/api_v1/acquisitions.ts']) {
+  for (const f of ['utils/dienste/erfassungen.ts', 'routes/api_v1/acquisitions.ts']) {
     assert.ok(!read(f).includes('from_user_id ?? uid'),
       `${f}: der Eigentümer-Zweig darf den Request-Absender nicht übernehmen`);
   }
@@ -636,10 +630,10 @@ test('die App-Routen kennen den Eigentümerwechsel', () => {
   // las aber nur Menge, Preis und Zustand. Die Anfrage lief als LEERES Update
   // durch und antwortete success:true: Der Wechsel in der App war ein
   // stiller No-op, ohne Fehlermeldung und ohne Bewegung.
-  const v1 = read('routes/api_v1/acquisitions.ts');
-  assert.match(v1, /req\.body\?\.owner_user_id/,
-    'Die v1-Fabrik muss owner_user_id auswerten');
-  assert.match(v1, /moveSetBetweenAccounts\(tx, keys\[0\], from, to, \[id\]\)/,
-    'Sets wandern über dieselbe Umsetzung wie in der Session-Route');
-  assert.match(v1, /moveManualAcquisition\(tx, kind, keys, id, from, to\)/);
+  const v1 = read('utils/dienste/erfassungen.ts');
+  assert.match(v1, /body\.owner_user_id/,
+    'Der Erfassungsdienst muss owner_user_id auswerten');
+  assert.match(v1, /moveSetBetweenAccounts\(tx, String\(keys\[0\]\), from, to, \[id\]\)/,
+    'Sets wandern über dieselbe Umsetzung wie beim Verschieben');
+  assert.match(v1, /moveManualAcquisition\(tx, art, keys, id, from, to\)/);
 });

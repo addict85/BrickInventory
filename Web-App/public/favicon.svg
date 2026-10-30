@@ -4,7 +4,7 @@
   <polygon points="102,20 118,30 118,86 102,106" fill="#b5231c"/>
   <rect x="24" y="54" width="72" height="40" rx="2" fill="#fff"/>
   <rect x="29" y="58" width="46" height="15" rx="2" fill="#f5a800"/>
-  <text x="52" y="69" text-anchor="middle" font-family="Arial,sans-serif" font-weight="800" font-size="11" fill="white">BIM</text>
+  <text x="52" y="69" text-anchor="middle" font-family="Arial,sans-serif" font-weight="800" font-size="11" fill="#3b2600">BIM</text>
   <rect x="29" y="78" width="62" height="5" rx="1" fill="#e5e7eb"/>
   <rect x="29" y="86" width="42" height="5" rx="1" fill="#e5e7eb"/>
 </svg>

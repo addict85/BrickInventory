@@ -170,17 +170,15 @@ fun GutscheineCard(
             )
         }
 
-        // Die Summe — nur bei EINER Waehrung. Betraege in verschiedenen
-        // Waehrungen zusammenzuzaehlen waere schlimmer als gar keine Summe,
-        // weil das Ergebnis richtig aussieht und keines ist.
-        val waehrungen = zustand.gutscheine.map { it.currency }.toSet()
-        if (zustand.gutscheine.isNotEmpty() && waehrungen.size == 1) {
+        // Die Summe — nur bei EINER Waehrung (gutscheinSumme).
+        val summe = ch.brickinventoryapp.ui.gutscheinSumme(zustand.gutscheine)
+        if (summe != null) {
             HorizontalDivider(Modifier.padding(vertical = Abstaende.klein))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(stringResource(R.string.vouchers_total),
                      style = MaterialTheme.typography.bodySmall,
                      color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text("%.2f %s".format(zustand.gutscheine.sumOf { it.amount }, waehrungen.first()),
+                Text("${summe.first.toPlainString()} ${summe.second}",
                      style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
             }
         }

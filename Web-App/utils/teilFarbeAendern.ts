@@ -1,8 +1,10 @@
 import * as db from '../db/database';
 import type { DbSchnittstelle } from '../db/database';
 import { lookupPart } from '../clients/rebrickable';
-import { meldeUndWeiter } from './httpError';
+import { meldeUndWeiter, meldeUndLiefere } from './httpError';
 import { merkeTeilFarbe, katalogTeil } from './katalogPflege';
+import { erfassungsTagSql } from './acquisitions';
+import { colorId } from './validate';
 
 /**
  * Die Farbe eines manuell erfassten Teils NACHTRÄGLICH ändern.
@@ -41,7 +43,7 @@ async function bildNachtragen(partNumber: string, farbe: number): Promise<BildQu
   const lokal = await katalogTeil(partNumber, farbe);
   if (lokal?.bildQuelle === 'farbe') return 'vorhanden';
 
-  const info = await lookupPart(partNumber, farbe).catch(() => null);
+  const info = await lookupPart(partNumber, farbe).catch(meldeUndLiefere('teilfarbe:lookupPart', null));
   if (!info?.image_url) return null;
   try {
     await merkeTeilFarbe(partNumber, farbe, null, null, info.image_url, null);
@@ -56,7 +58,7 @@ async function bildNachtragen(partNumber: string, farbe: number): Promise<BildQu
  * @param uid        Besitzer der Zeile — NICHT der Betrachter. Wer in wessen
  *                   Bestand schreiben darf, entscheidet resolveWriteTarget()
  *                   in der Route (utils/household.ts).
- * @param neueFarbe  Rebrickable-Farbnummer. 0 ist im Baum „ohne Angabe".
+ * @param neueFarbe  Rebrickable-Farbnummer; KEINE_FARBE (9999) heisst „ohne Angabe".
  */
 export async function aendereTeilFarbe(
   uid: number,
@@ -65,20 +67,20 @@ export async function aendereTeilFarbe(
   neueFarbe: number,
   angaben: { color_name?: string | null; color_hex?: string | null } = {},
 ): Promise<FarbWechsel> {
-  const alt = Number(alteFarbe) || 0;
-  const neu = Number(neueFarbe) || 0;
+  const alt = colorId(alteFarbe);
+  const neu = colorId(neueFarbe);
 
   // Farbbezeichnung und Farbcode: rb_colors zuerst, weil der Katalog für alle
   // Konten gilt; die Angaben des Aufrufers füllen nur, was dort fehlt.
   const katalogFarbe = await db.get('SELECT name, rgb FROM rb_colors WHERE id = $1', [neu])
-    .catch(() => null);
+    .catch(meldeUndLiefere('teilfarbe:katalogFarbe', null));
 
   // Die Transaktion liefert alles AUSSER dem Bild: Das wird danach geholt,
   // weil der Abruf dauern und scheitern darf, ohne die Änderung mitzunehmen.
   const wechsel = await db.transaction(async (tx: DbSchnittstelle): Promise<Omit<FarbWechsel, 'bild'>> => {
     const quelle = await tx.get(
       `SELECT id, storage_id FROM parts
-        WHERE user_id = $1 AND part_number = $2 AND COALESCE(color_id, 0) = $3
+        WHERE user_id = $1 AND part_number = $2 AND color_id = $3
           AND source = 'manual'`,
       [uid, partNumber, alt]);
     if (!quelle) {
@@ -101,14 +103,14 @@ export async function aendereTeilFarbe(
 
     const ziel = await tx.get(
       `SELECT id, storage_id FROM parts
-        WHERE user_id = $1 AND part_number = $2 AND COALESCE(color_id, 0) = $3
+        WHERE user_id = $1 AND part_number = $2 AND color_id = $3
           AND source = 'manual'`,
       [uid, partNumber, neu]);
 
     // ── Erfassungen: erst addieren, was den gleichen Indexschlüssel hätte ──
     //
     // Die Reihenfolge ist zwingend. Zöge das UPDATE unten zuerst um, liefe es
-    // in `idx_part_acq_tag_merkmale` — und zwar nur manchmal, nämlich wenn beide Farben
+    // in `idx_part_acq_erfassungstag` — und zwar nur manchmal, nämlich wenn beide Farben
     // am gleichen Tag erfasst wurden. Ein Fehler, der von der Uhr abhängt.
     const vereint = await tx.run(
       `UPDATE part_acquisitions z
@@ -116,8 +118,7 @@ export async function aendereTeilFarbe(
          FROM part_acquisitions a
         WHERE a.user_id = $1 AND a.part_number = $2 AND a.color_id = $3
           AND z.user_id = $1 AND z.part_number = $2 AND z.color_id = $4
-          AND (z.created_at AT TIME ZONE 'UTC')::date
-            = (a.created_at AT TIME ZONE 'UTC')::date
+          AND ${erfassungsTagSql('z')} = ${erfassungsTagSql('a')}
           AND z.condition = a.condition AND z.price_estimated = a.price_estimated
           AND z.currency = a.currency AND COALESCE(z.unit_price, -1) = COALESCE(a.unit_price, -1)`,
       [uid, partNumber, alt, neu]);
@@ -128,8 +129,7 @@ export async function aendereTeilFarbe(
         WHERE a.user_id = $1 AND a.part_number = $2 AND a.color_id = $3
           AND EXISTS (SELECT 1 FROM part_acquisitions z
                        WHERE z.user_id = $1 AND z.part_number = $2 AND z.color_id = $4
-                         AND (z.created_at AT TIME ZONE 'UTC')::date
-                           = (a.created_at AT TIME ZONE 'UTC')::date
+                         AND ${erfassungsTagSql('z')} = ${erfassungsTagSql('a')}
                          AND z.condition = a.condition AND z.price_estimated = a.price_estimated
                          AND z.currency = a.currency AND COALESCE(z.unit_price, -1) = COALESCE(a.unit_price, -1))`,
       [uid, partNumber, alt, neu]);

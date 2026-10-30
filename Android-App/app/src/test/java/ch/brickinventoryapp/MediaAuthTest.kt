@@ -54,28 +54,8 @@ class MediaAuthTest {
             "Der Bild-Client muss aus derselben Fabrik kommen wie der API-Client — " +
             "sonst fehlt ihm der Authorization-Header"
         }
-        assert(di.contains("""reqBuilder.header("Authorization", "Bearer ${'$'}token")""")) {
-            "Kein Bearer-Header im gemeinsamen Interceptor"
-        }
-    }
-
-    @Test
-    fun `der Token geht nur an den eigenen Server, nicht an fremde Hosts`() {
-        val di = code(Quellen.di())
-        assert(di.contains("NetworkPolicy.isSameOrigin")) {
-            "Ohne Origin-Vergleich ginge der Token auch an CDN-Adressen"
-        }
-        assert(!di.contains("urlStr.startsWith(serverUrl)")) {
-            "Ein Präfixtest würde auch https://<serverUrl>.angreifer.tld treffen"
-        }
-    }
-
-    @Test
-    fun `eine 401 beim Bildladen meldet die abgelaufene Sitzung`() {
-        val di = code(Quellen.di())
-        assert(di.contains("response.code == 401") && di.contains("sessionExpired.notifyExpired()")) {
-            "Sonst zeigt die Galerie nach Token-Ablauf stumm leere Kacheln"
-        }
+        // Dass der gemeinsame Wächter den Token anhängt, nur an den eigenen Server, und
+        // einen 401 meldet, prüft ServerWaechterTest ausgeführt.
     }
 
     @Test

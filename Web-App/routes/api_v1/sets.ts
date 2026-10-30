@@ -1,44 +1,61 @@
 /**
- * /api/v1/sets — Barcode-Lookup, Teile-/Minifig-Listen, Preise und CRUD.
- * Kaufpreis-Erfassungen (acquisitions) liegen in ./acquisitions.ts.
+ * /api/v1/sets — Liste, Detail, Erfassen, Barcode, Teile- und Figurenlisten,
+ * Preise, Lagerorte, Alarme, CSV-Import und Anleitungen. Ein Router für den
+ * ganzen Pfad; die Arbeit steht in utils/dienste/sets.ts und den Helfern dort.
+ * Kaufpreis-Erfassungen liegen in ./acquisitions.ts.
  */
 import express from 'express';
-import * as db from '../../db/database';
-import { handleRouteError, meldeUndWeiter, pfadParam } from '../../utils/httpError';
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
+import crypto from 'crypto';
+import { handleRouteError, fehlertext, pfadParam, meldeUndLiefere, logAndContinue } from '../../utils/httpError';
 import { requireToken } from './middleware';
-import { resolveImageLocal, proxyImageUrl } from '../../utils/images';
-import { getSetting, getGlobalSetting } from '../../utils/settings';
+import { getSetting } from '../../utils/settings';
 import { findSetInScope, normalizeSetNumber } from '../../utils/setAdd';
-import { scopeIds, parseScopeMode, writableIds } from '../../utils/household';
-import { istErsatzteil, ersatzteilSql } from '../../utils/validate';
-import { householdMembers, resolveWriteTarget } from '../../utils/household';
+import { scopeIds, parseScopeMode, writableIds, householdMembers, resolveWriteTarget } from '../../utils/household';
 import { moveSetBetweenAccounts } from '../../utils/setMove';
 import { normalisiereLagerort, setzeLagerort, lagerorte,
          orteVon, legeOrtAn, benenneOrtUm, loescheOrt,
          vorgabeVon, setzeVorgabe } from '../../utils/lagerort';
-import { alarmeFuer, alleAlarme, ausgeloesteSeit, loescheAlarm, setzeAlarm } from '../../utils/preisalarm';
-import { csvEmpfang } from '../../utils/dateiEmpfang';
-import { csvZeilenAusAnfrage } from '../../utils/csvExport';
-import { istVermutung } from '../../utils/barcodeQuelle';
-import { setnummerKandidaten } from '../../utils/produkttitel';
+import { alarmeFuer, alleAlarme, ausgeloesteSeit, loescheAlarm, setzeAlarm, alarmeAusCsv } from '../../utils/preisalarm';
+import { csvEmpfang, inhaltPasstZuTyp, uploadKontingentBytes, belegterPlatz } from '../../utils/dateiEmpfang';
+import { sendCsv, uebersprungenHinweis } from '../../utils/csvExport';
 import { withInventoryLock } from '../../utils/txLock';
-import { fetchPrice } from '../../utils/financeCalc';
 import { addSet, updateSet } from '../../utils/setService';
-import { getSetByBarcode, getSetByEan } from '../../clients/brickset';
-import { consumeRebrickableDaily, rebrickableLimiter } from '../../utils/rateLimiter';
-import type { RbSetTeil } from '../../clients/rebrickable';
-import { getAllSetParts, getMinifigInfo, getSetMinifigs } from '../../clients/rebrickable';
 import { deleteSet, getSet, getSets } from '../../utils/handlers/sets';
-import { resolveSetCondition } from '../../utils/financeCalc';
 import { getSetPriceHistory } from '../../utils/priceHistory';
-import { einzelwert } from '../../utils/validate';
-import { neuestesInventar } from '../../utils/rbInventar';
-import { mitVersion, ohneVersion } from '../../utils/setNummer';
-import { figurenAusKatalog } from '../../utils/minifigsImport';
-import { sendeFehler } from '../../utils/fehlerTexte';
-import { mengeSkalar } from '../../utils/bestandsmenge';
-import { blJoin, blNummerSql } from '../../utils/blZuordnung';
+import { einzelwert, ausTabelle } from '../../utils/validate';
+import * as V from '../../utils/validate';
+import { mitVersion } from '../../utils/setNummer';
+import { sendeFehler, dateiFehler } from '../../utils/fehlerTexte';
+import { setTeileAnreichern } from '../../utils/nacharbeit';
+import { setInfo, setZumBarcode, teilelisteDesSets, figurenlisteDesSets, setPreis, rebrickableListe,
+         setGehoertKonto, anleitungMerken, anleitungLoeschen, setCsvImportStarten, setCsvImportAbbrechen } from '../../utils/dienste/sets';
+import { downloadSetInstructions, anleitungenZuSet, loescheAnleitungen } from '../../utils/instructions';
+import { importPartsForSet } from '../../utils/partsImport';
+import { registerSse } from '../../utils/sseRegistry';
+import { loginOrTokenGuard, angemeldeteNutzerId, istVerwalter } from '../../utils/auth';
+import { csvImportBus, buildJobStatus, jobGet } from '../../utils/importAuftrag';
+import * as pgNotify from '../../utils/pgNotify';
+import { APP_ROOT, DATA_DIR } from '../../utils/appPaths';
 const router = express.Router();
+
+// ── Feste Pfade VOR den Pfaden mit :setNumber ────────────────────────────────
+// Unter /api/v1/sets hingen zwei Router (dieser und routes/sets.ts). Der
+// Namensabruf /sets/info/:setNumber stand im zweiten; /sets/info/price-history
+// traf deshalb zuerst /sets/:setNumber/price-history hier, mit „info“ als Set.
+// Jetzt steht er hier, vor allen Pfaden mit Parameter.
+
+/** GET /api/v1/sets/info/:setNumber — Name aus dem Katalog, ohne Besitz. */
+router.get('/sets/info/:setNumber', requireToken, async (req: AuthedRequest, res) => {
+  const n = mitVersion(pfadParam(req, 'setNumber'));
+  try {
+    // Ohne Katalogzeile zeigt die Oberfläche die Nummer als Namen.
+    const row = await setInfo(n);
+    res.json(row ? { success: true, set_number: n, ...row, name: row.name || n } : { success: true, set_number: n, name: n });
+  } catch (e) { handleRouteError(res, e, undefined, req); }
+});
 
 // ── GIBT ES DIESES SET SCHON? ────────────────────────────────────────────────
 /**
@@ -55,220 +72,16 @@ router.get('/sets/exists/:setNumber', requireToken, async (req: AuthedRequest, r
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
-// ── BARCODE LOOKUP ───────────────────────────────────────────────────────────
-// Resolves a barcode to a set number using Rebrickable or catalog_cache
+// ── BARCODE ──────────────────────────────────────────────────────────────────
 router.get('/sets/barcode/:barcode', requireToken, async (req: AuthedRequest, res) => {
   const barcode = String(req.params.barcode).trim();
-  // getSetByBarcode statt getSetByItemNumber: Diesen Namen hat routes/brickset
-  // nie exportiert — der Aufruf weiter unten endete deshalb immer in einem
-  // TypeError, und die Bestellnummern-Suche der App antwortete mit 500 statt
-  // in die Rebrickable-Rückfallebene zu gehen.
-  // Ausführlich: docs/begruendungen/routes/api_v1/sets.ts.md#abschnitt
-
-  // Helper: Rebrickable HTTPS GET (declared first so enrichResult can use it)
-  // Ausführlich: docs/begruendungen/routes/api_v1/sets.ts.md#get-sets-barcode-barcode-rbkey
-  const rbKey = await getGlobalSetting('rebrickable_api_key');
-  const rbGet = async (url: string): Promise<any> => {
-    if (!await consumeRebrickableDaily()) {
-      console.log('[barcode] Rebrickable-Tageslimit erreicht — Abruf übersprungen');
-      return null;
-    }
-    await rebrickableLimiter.waitForSlot();
-    return new Promise(resolve => {
-      // Typisiert wie in Punkt 3: Ohne `as typeof import` ist die Rueckgabe
-      // von require() `any`, und damit auch jeder Rueckruf-Parameter.
-      const https = require('https') as typeof import('https');
-      const opts = { family: 4, headers: { Authorization: `key ${rbKey}`, 'User-Agent': 'BrickInventoryManager/1.0' } };
-      https.get(url, opts, r => {
-        let b = ''; r.on('data', d => b += d);
-        r.on('end', () => { try { resolve(JSON.parse(b)); } catch(_) { resolve(null); } });
-      }).on('error', () => resolve(null)).setTimeout(8000, function (this: import('http').ClientRequest) { this.destroy(); resolve(null); });
-    });
-  };
-
-  // Helper: enrich result with set image and details from local DB or Rebrickable
-  async function enrichResult(setNumber: string, name: string | null, source: string) {
-    // Always fetch Rebrickable for minifigs + image (most reliable source)
-    let rbData: any = null;
-    let rbMinifigs: any = null;
-    if (rbKey) {
-      rbData = await rbGet(`https://rebrickable.com/api/v3/lego/sets/${setNumber}/`).catch(()=>null);
-      // Minifig count requires a separate endpoint
-      const mfData = await rbGet(`https://rebrickable.com/api/v3/lego/sets/${setNumber}/minifigs/?page_size=1`).catch(()=>null);
-      rbMinifigs = mfData?.count ?? null;
-    }
-
-    // 1. Der gemeinsame Katalog (fuer image_local und die Stammdaten)
-    //
-    // Hier stand `FROM sets … AND user_id=$2` mit dem Kommentar „Local sets
-    // table (for image_local)". Seit Migration 0033 stehen diese Felder nur im
-    // Katalog, und das ist auch die richtige Frage: Name, Jahr und Bild eines
-    // Sets haengen nicht am Konto. Nebenbei beantwortet der Katalog sie auch
-    // fuer ein Set, das dieses Konto gar nicht haelt — der Katalogdialog
-    // zeigte dort vorher nichts.
-    const local = await db.get(
-      'SELECT name, image_local, image_url, year, pieces, theme, minifigs FROM set_catalog WHERE set_number=$1',
-      [setNumber]
-    ).catch(()=>null);
-
-    const minifigs = rbMinifigs ?? local?.minifigs ?? null;
-    const image_url = rbData?.set_img_url || local?.image_url || null;
-    const image_local = local?.image_local ? resolveImageLocal(local.image_local) : null;
-
-    // Jede Antwort sagt, WIE sie zustande kam (utils/barcodeQuelle.ts).
-    // Positivliste: Was dort nicht als geprüft steht, gilt als Vermutung — ein
-    // künftiger achter Weg ist damit automatisch als unsicher markiert, statt
-    // still als Treffer durchzugehen.
-    const unsicher = istVermutung(source);
-
-    if (local) {
-      return { success:true, unsicher, set_number:setNumber,
-        name:  local.name  || rbData?.name  || name,
-        year:  local.year  || rbData?.year,
-        pieces:local.pieces|| rbData?.num_parts,
-        theme: local.theme || rbData?.theme_name,
-        minifigs, image_local, image_url, source };
-    }
-
-    // Cache in catalog_cache for future use
-    if (rbData?.set_num) {
-      await db.run(
-        'INSERT INTO catalog_cache(set_number,name,year,theme,pieces,image_url) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(set_number) DO UPDATE SET name=$2,year=$3,theme=$4,pieces=$5,image_url=$6',
-        [setNumber, rbData.name, rbData.year, rbData.theme_name, rbData.num_parts, rbData.set_img_url]
-      ).catch(()=>{});
-      return { success:true, unsicher, set_number:setNumber,
-        name:   rbData.name     || name,
-        year:   rbData.year,
-        pieces: rbData.num_parts,
-        theme:  rbData.theme_name,
-        minifigs, image_url, source };
-    }
-
-    // Fallback: catalog_cache
-    const cat = await db.get(
-      'SELECT name, image_url, year, pieces, theme FROM catalog_cache WHERE set_number=$1',
-      [setNumber]
-    ).catch(()=>null);
-    if (cat) {
-      return { success:true, unsicher, set_number:setNumber, name:cat.name||name,
-        year:cat.year, pieces:cat.pieces, theme:cat.theme, minifigs,
-        image_url:cat.image_url||image_url, source };
-    }
-
-    return { success:true, unsicher, set_number:setNumber, name, minifigs, image_url, source };
-  }
-
   try {
-
-    // 1. Direct set number match in local DB
-    const direct = await db.get(
-      'SELECT set_number, name FROM catalog_cache WHERE set_number = $1 OR set_number = $2',
-      [barcode, mitVersion(barcode)]
-    );
-    if (direct) { return res.json(await enrichResult(direct.set_number, direct.name, 'catalog_cache')); }
-
-    // 2. EAN barcode (12-13 digits)
-    if (/^\d{12,13}$/.test(barcode)) {
-      const ean13 = barcode.length === 12 ? '0' + barcode : barcode;
-
-      // 2a. Rebrickable external_ids search (most reliable for EAN)
-      if (rbKey) {
-        const rb = await rbGet(
-          `https://rebrickable.com/api/v3/lego/sets/?search=${encodeURIComponent(ean13)}&page_size=5`
-        );
-        for (const set of (rb?.results || [])) {
-          const detail = await rbGet(`https://rebrickable.com/api/v3/lego/sets/${set.set_num}/`);
-          const extIds = Object.values(detail?.external_ids || {}).flat().map(String);
-          if (extIds.includes(ean13) || extIds.includes(barcode)) {
-            return res.json(await enrichResult(set.set_num, set.name, 'rebrickable-ean'));
-          }
-        }
-        // Plausible match fallback
-        // Was wir von Rebrickable tatsaechlich lesen — mehr braucht die
-        // Stelle nicht, und mehr zu behaupten waere geraten.
-        const plausible = rb?.results?.find(
-          (s: { year: number; num_parts: number; set_num: string; name: string }) =>
-            s.year > 2010 && s.num_parts > 0);
-        if (plausible) {
-          return res.json(await enrichResult(plausible.set_num, plausible.name, 'rebrickable-search'));
-        }
-      }
-
-      // 2b. Brickset EAN fallback (uses quota)
-      const bsEan = await getSetByEan(ean13);
-      if (bsEan) {
-        const result = await enrichResult(bsEan.set_number, bsEan.name, 'brickset-ean');
-        return res.json({
-          ...result,
-          year:   result.year   || bsEan.year,
-          theme:  result.theme  || bsEan.theme,
-          pieces: result.pieces || bsEan.pieces,
-        });
-      }
-
-      // 2c. UPCitemdb (free, 100/day)
-      // Der Titel ist Fliesstext eines Händlers. Hier stand `match(/(\d{4,6})/)`
-      // — also die ERSTE vier- bis sechsstellige Zahl, egal welche. Bei
-      // „LEGO City 2023 Feuerwehrstation 60320" gewann das JAHR, und die …
-      // Ausführlich: docs/begruendungen/routes/api_v1/sets.ts.md#get-sets-barcode-barcode-titel
-      const titel = await new Promise<string | null>(resolve => {
-        (require('https') as typeof import('https')).get(
-          `https://api.upcitemdb.com/prod/trial/lookup?upc=${ean13}`,
-          { family: 4, headers:{ 'User-Agent':'BrickInventoryManager/1.0' } }, r => {
-            let b=''; r.on('data',d=>b+=d);
-            r.on('end',()=>{
-              try {
-                const d=JSON.parse(b);
-                resolve(d?.items?.[0]?.title || null);
-              } catch(_){resolve(null);}
-            });
-          }
-        ).on('error',()=>resolve(null)).setTimeout(6000, function (this: import('http').ClientRequest) { this.destroy(); resolve(null); });
-      });
-      if (titel) {
-        const kandidaten = setnummerKandidaten(titel);
-        for (const kandidat of kandidaten) {
-          // normalizeSetNumber statt `${kandidat}-1`: Ein Kandidat kann den
-          // Variantenzusatz schon mitbringen („60445-1" im Titel), und daraus
-          // wurde sonst „60445-1-1" — eine Nummer, die es nirgends gibt.
-          const n = normalizeSetNumber(kandidat);
-          const bekannt = await db.get(
-            'SELECT set_number FROM catalog_cache WHERE set_number = $1 OR set_number = $2',
-            [kandidat, n]
-          ).catch(() => null);
-          if (bekannt) return res.json(await enrichResult(bekannt.set_number, titel, 'upcitemdb'));
-        }
-        // Kein Kandidat im Katalog: Der erste bleibt als VERMUTUNG stehen —
-        // Marcos Entscheidung, lieber einen markierten Vorschlag als gar nichts.
-        // enrichResult holt Bild und Namen dazu, und die App weist im Dialog
-        // darauf hin, dass hier hingesehen werden muss.
-        const ersterKandidat = kandidaten[0];
-        if (ersterKandidat) {
-          return res.json(await enrichResult(normalizeSetNumber(ersterKandidat), titel, 'upcitemdb'));
-        }
-      }
-    }
-
-
-    // 3. item/order number (5-8 digits) → BrickSet itemNumber lookup
-    if (/^\d{5,8}$/.test(barcode)) {
-      const bsResult = await getSetByBarcode(barcode);
-      if (bsResult) return res.json(await enrichResult(bsResult.set_number, bsResult.name, 'brickset-item'));
-
-      // Fallback: Rebrickable direct set lookup
-      if (rbKey) {
-        const rb = await rbGet(`https://rebrickable.com/api/v3/lego/sets/${barcode}-1/`);
-        if (rb?.set_num) return res.json(await enrichResult(rb.set_num, rb.name, 'rebrickable-direct'));
-      }
-    }
-
+    const treffer = await setZumBarcode(barcode);
+    if (treffer) return res.json(treffer);
     sendeFehler(req, res, 404, 'barcode_kein_set', { barcode });
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
-// extractSetFromEan() stand hier: EAN-Präfix abschneiden und daraus eine
-// Setnummer raten. Aufgerufen wurde die Funktion nie — die Barcode-Route geht
-// über Katalog, Brickset und Rebrickable. Entfallen.
 
 
 /**
@@ -345,79 +158,13 @@ router.get('/alerts', requireToken, async (req: AuthedRequest, res) => {
 });
 
 // ── POST /api/v1/alerts/import/csv — Preisalarme einlesen ───────────────────
-/**
- * Das Gegenstueck zu buildPreisalarmeCsv().
- * Ausführlich: docs/begruendungen/routes/api_v1/sets.ts.md#post-alerts-import-csv
- */
 router.post('/alerts/import/csv', requireToken, csvEmpfang.single('file'),
   async (req: AuthedRequest & { file?: { buffer: Buffer } }, res) => {
     if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
     try {
       const uid = req.apiUser.user_id;
       const waehrung = String(await getSetting(uid, 'currency', 'EUR'));
-      const { records, bereinigt, uebersprungen } =
-        csvZeilenAusAnfrage(req.file.buffer.toString('utf-8'));
-
-      let added = 0, updated = 0, errors = 0, fremdeWaehrung = 0;
-      const results: any[] = [];
-
-      for (const row of bereinigt) {
-        const setNumber = String(row.set_number || row['Setnummer'] || row['set_num']
-                                 || Object.values(row)[0] || '').trim();
-        if (!setNumber) continue;
-
-        const sn = normalizeSetNumber(setNumber);
-        // Stand da schon einer? Das entscheidet added gegen updated, und
-        // fragen muss man VOR dem Schreiben — setzeAlarm() legt an oder
-        // aendert, ohne es zu verraten (ON CONFLICT DO UPDATE).
-        const schon = await alarmeFuer(uid, sn);
-        const zustandRoh = String(row.condition || row['zustand'] || row['Zustand'] || 'N')
-          .trim().toUpperCase();
-
-        const dateiWaehrung = String(row.currency_code || row['waehrung'] || '').trim().toUpperCase();
-        const abweichend = dateiWaehrung !== '' && dateiWaehrung !== waehrung.toUpperCase();
-
-        try {
-          const alarm = await setzeAlarm(uid, sn, waehrung, {
-            richtung: String(row.richtung || row['Richtung'] || '').trim().toLowerCase(),
-            // Komma als Dezimalzeichen zulassen: Dieselbe Nachsicht wie in
-            // csvGemeinsameFelder beim Preis — eine Datei aus einem deutschen
-            // Tabellenprogramm schreibt „24,90".
-            schwelle: String(row.schwelle || row['Schwelle'] || '').trim().replace(',', '.'),
-            condition: zustandRoh,
-          });
-          if (schon.some(a => a.condition === alarm.condition)) updated++; else added++;
-          if (abweichend) fremdeWaehrung++;
-          results.push({
-            set_number: sn, condition: alarm.condition,
-            action: schon.some(a => a.condition === alarm.condition) ? 'updated' : 'added',
-            ...(abweichend ? { waehrung_angepasst: true, waehrung_datei: dateiWaehrung,
-                               waehrung_konto: waehrung } : {}),
-          });
-        } catch (e: any) {
-          errors++;
-          results.push({ set_number: sn, action: 'error', error: e?.message });
-        }
-      }
-
-      // Ein Objektliteral statt `const antwort: any` samt nachtraeglicher
-      // Zuweisungen: test/ratschen.test.js zaehlt jedes `any` im Baum und
-      // laesst die Zahl nur SINKEN („any wird weniger, nie mehr"). Mein erster
-      // Entwurf hob sie von 398 auf 399, und die Ratsche hat das gemeldet.
-      // Hochsetzen waere die falsche Antwort gewesen — der bedingte Zusatz
-      // laesst sich als Spreizung schreiben und braucht den Typ nicht
-      // abzuschalten.
-      const { uebersprungenHinweis } = require('../../utils/csvExport');
-      res.json({
-        success: true, added, updated, errors,
-        total: records.length, results,
-        skipped: uebersprungen.length || undefined,
-        skipped_hint: uebersprungenHinweis(uebersprungen) || undefined,
-        ...(fremdeWaehrung ? { waehrung_hinweis:
-          `${fremdeWaehrung} Alarm(e) standen in einer anderen Währung als ${waehrung}. ` +
-          `Die Schwellen wurden unverändert übernommen und gelten jetzt in ${waehrung} — ` +
-          'die Zahlen bitte nachsehen.' } : {}),
-      });
+      res.json(await alarmeAusCsv(uid, waehrung, req.file.buffer.toString('utf-8')));
     } catch (e) { handleRouteError(res, e, undefined, req); }
   });
 
@@ -522,227 +269,17 @@ router.get('/storage', requireToken, async (req: AuthedRequest, res) => {
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
-// GET /api/v1/sets/:setNumber/parts-list — user-independent parts
+// GET /api/v1/sets/:setNumber/parts-list — Teile eines Sets, ohne Konto
 router.get('/sets/:setNumber/parts-list', requireToken, async (req: AuthedRequest, res) => {
-  const setNum = String(req.params.setNumber);
-  const n    = mitVersion(setNum);
-  const bare = ohneVersion(n);
   try {
-    // ── Step 1: Find inventory in CSV database ─────────────────────────────
-    const invId = await neuestesInventar(setNum);
-
-    let csvParts: any[] = [];
-    let source   = 'db';
-
-    if (invId) {
-      // Fetch all parts including spares flag from DB
-      csvParts = await db.all(
-        `SELECT ip.part_num AS part_number, ip.color_id,
-                ip.quantity AS total_quantity, ip.is_spare,
-                COALESCE(m.bl_id, ip.part_num) AS bl_part_number,
-                p.name AS part_name, p.part_img_url AS rb_image_url,
-                c.name AS color_name, c.rgb AS color_hex,
-                c.bl_color_id
-         FROM rb_inventory_parts ip
-         LEFT JOIN rb_parts      p ON p.part_num = ip.part_num
-         LEFT JOIN rb_colors     c ON c.id       = ip.color_id
-         LEFT JOIN bl_zuordnung  m ON m.art = 'part' AND m.rb_id = ip.part_num
-         WHERE ip.inventory_id = $1
-           -- „Kein Ersatzteil" als Kehrseite derselben Lesart wie
-           -- istErsatzteil() in utils/validate.ts. Vorher stand hier eine
-           -- eigene Liste ('f','false','False','0',''), die z. B. 'no' oder
-           -- ein grossgeschriebenes 'T' anders eingeordnet haette als der
-           -- Rest des Baums.
-           AND (ip.is_spare IS NULL OR NOT ${ersatzteilSql('ip.is_spare')})`,
-        [invId]
-      );
-    }
-
-    // ── Step 2: Rebrickable API fallback if DB is empty ────────────────────
-    if (!csvParts.length) {
-      source = 'api';
-      const rbParts = await getAllSetParts(n).catch(() => null)
-                   || await getAllSetParts(bare).catch(() => null);
-      if (rbParts?.length) {
-        csvParts = rbParts.map((r: RbSetTeil) => ({
-          part_number:    r.part.part_num,
-          bl_part_number: r.part.external_ids?.BrickLink?.[0] || r.part.part_num,
-          part_name:      r.part.name || r.part.part_num,
-          color_id:       r.color.id,
-          color_name:     r.color.name || '',
-          color_hex:      r.color.rgb  || null,
-          rb_image_url:   r.part.part_img_url || null,
-          total_quantity: r.quantity,
-          // Wahrheitswert statt 't'/'f' — die dritte Darstellung desselben
-          // Merkmals in derselben Datei.
-          is_spare:       !!r.is_spare
-        }));
-      }
-    }
-
-    if (!csvParts.length) {
-      return res.json({ success: true, parts: [], source: 'not_found' });
-    }
-
-    // ── Step 3: Load catalog enrichment (image_url from API / image_local) ─
-    const catalogMap: any = {};
-    const catalog = await db.all(
-      // bl_part_number kommt aus der Zuordnung (Migration 0037), nicht mehr
-      // aus dieser Tabelle: Dort stand sie je Set-Teile-Zeile, also fuer
-      // dasselbe Teil so oft, wie es Sets damit gibt.
-      `SELECT c.part_number, c.color_id, ${blNummerSql('c.part_number')} AS bl_part_number,
-              c.part_name, c.color_name, c.color_hex, c.image_url, c.image_local
-         FROM set_parts_catalog c
-         ${blJoin('c.part_number', 'part')}
-        WHERE c.set_number=$1 OR c.set_number=$2`,
-      [n, bare]
-    );
-    for (const r of catalog) catalogMap[`${r.part_number}|${r.color_id}`] = r;
-
-    // ── Step 4: Enrich missing catalog entries synchronously ───────────────
-    const missingInCatalog = csvParts.some(p => !catalogMap[`${p.part_number}|${p.color_id}`]);
-    if (missingInCatalog) {
-      await require('../../jobs/partsCatalogEnrich').enrichSetParts(setNum).catch(() => {});
-      const refreshed = await db.all(
-        `SELECT c.part_number, c.color_id, ${blNummerSql('c.part_number')} AS bl_part_number,
-                c.part_name, c.color_name, c.color_hex, c.image_url, c.image_local
-           FROM set_parts_catalog c
-           ${blJoin('c.part_number', 'part')}
-          WHERE c.set_number=$1 OR c.set_number=$2`,
-        [n, bare]
-      );
-      for (const r of refreshed) catalogMap[`${r.part_number}|${r.color_id}`] = r;
-    }
-
-    // Warum das Zusammenfassen mitwandert
-    // Der Schluessel MUSS derselbe sein wie das, was in `part_number` landet.
-    // Bliebe er auf der BrickLink-Nummer, fielen mehrere Rebrickable-Teile zu
-    // einer Zeile zusammen (Formvarianten teilen sich regelmaessig eine …
-    // Ausführlich: docs/begruendungen/routes/api_v1/sets.ts.md#get-sets-setnumber-parts-list-blmap
-    const blMap = new Map();
-    for (const p of csvParts) {
-      const cat  = catalogMap[`${p.part_number}|${p.color_id}`] || {};
-      const blId = cat.bl_part_number || p.bl_part_number || p.part_number;
-      const key  = `${p.part_number}|${p.color_id}`;
-      const qty  = parseInt(p.total_quantity) || 0;
-
-      // Image priority: local file → catalog CDN URL → Rebrickable CDN URL
-      const imageUrl = cat.image_local
-        ? cat.image_local
-        : (cat.image_url ? proxyImageUrl(cat.image_url) : null)
-          || p.rb_image_url || null;
-
-      if (blMap.has(key)) {
-        blMap.get(key).total_quantity += qty;
-      } else {
-        blMap.set(key, {
-          part_number:    p.part_number,
-          bl_part_number: blId,
-          part_name:      cat.part_name   || p.part_name   || p.part_number,
-          color_id:       p.color_id,
-          bl_color_id:    p.bl_color_id   ?? null,
-          color_name:     cat.color_name  || p.color_name  || '',
-          color_hex:      cat.color_hex   || p.color_hex   || null,
-          image_url:      imageUrl,
-          total_quantity: qty,
-          // Ein echter Wahrheitswert ueber den gemeinsamen Helfer. Hier stand
-          // eine eigene Aufzaehlung der Schreibweisen — eine, die 'True'
-          // kannte, waehrend die Teileliste daneben es nicht tat.
-          is_spare: istErsatzteil(p.is_spare)
-        });
-      }
-    }
-    const finalParts = Array.from(blMap.values());
-
-    res.json({ success: true, parts: finalParts, source });
-
-    // ── Background: download images for next request ───────────────────────
-    setImmediate(async () => {
-      await require('../../jobs/partsCatalogEnrich').downloadSetImages(setNum).catch(() => {});
-      await require('../../jobs/partsCatalogEnrich').enrichSetMinifigs(setNum).catch(() => {});
-    });
+    res.json({ success: true, ...await teilelisteDesSets(String(req.params.setNumber), setTeileAnreichern) });
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
-// GET /api/v1/sets/:setNumber/minifigs-list — user-independent minifigs
+// GET /api/v1/sets/:setNumber/minifigs-list — Figuren eines Sets, ohne Konto
 router.get('/sets/:setNumber/minifigs-list', requireToken, async (req: AuthedRequest, res) => {
-  const setNum = String(req.params.setNumber);
-  const n    = mitVersion(setNum);
-  const bare = ohneVersion(n);
   try {
-    // 1. Try shared catalog first (fastest, already enriched)
-    const catalog = await figurenAusKatalog(setNum);
-    if (catalog.length > 0) {
-      const figs = catalog.map(f => ({
-        fig_number:     f.fig_number,
-        fig_name:       f.fig_name,
-        quantity:       f.quantity,
-        total_quantity: f.quantity,
-        image_url:      proxyImageUrl(f.image_url)
-      }));
-      return res.json({ success: true, figs, source: 'catalog' });
-    }
-
-    // 2. Try rb_inventory_parts (CSV cache) — fig- entries
-    const invId = await neuestesInventar(setNum);
-
-    let figs: any[] = [];
-    if (invId) {
-      const rows = await db.all(
-        `SELECT ip.part_num AS fig_number, ip.quantity,
-                COALESCE(mc.fig_name, ip.part_num) AS fig_name,
-                mc.image_url AS image_url
-         FROM rb_inventory_parts ip
-         LEFT JOIN set_minifigs_catalog mc ON mc.fig_number = ip.part_num
-         WHERE ip.inventory_id = $1 AND ip.part_num LIKE 'fig-%'`,
-        [invId]
-      );
-      figs = rows;
-    }
-
-    // 3. Rebrickable API fallback if neither catalog nor CSV has data
-    if (!figs.length) {
-      const rbFigs = await getSetMinifigs(n).catch(() => null)
-                  || await getSetMinifigs(bare).catch(() => null);
-      if (rbFigs?.length) {
-        figs = rbFigs; // already in { fig_number, fig_name, quantity, image_url } format
-      }
-    }
-
-    if (!figs.length) return res.json({ success: true, figs: [], source: 'not_found' });
-
-    const figsOut = figs.map(f => ({
-      fig_number:     f.fig_number,
-      fig_name:       f.fig_name || f.fig_number,
-      quantity:       f.quantity || 1,
-      total_quantity: f.quantity || 1,
-      image_url:      proxyImageUrl(f.image_url)
-    }));
-
-    res.json({ success: true, figs: figsOut, source: 'csv_cache' });
-
-    // Background: populate catalog for future requests
-    setImmediate(async () => {
-      for (const f of figs) {
-        let imageUrl = f.image_url || null;
-        if (!imageUrl) {
-          try {
-            const info = await getMinifigInfo(f.fig_number);
-            if (info?.image_url) imageUrl = info.image_url;
-          } catch (e) { meldeUndWeiter('sets:minifigur-info', e); }
-        }
-        await db.run(
-          `INSERT INTO set_minifigs_catalog (set_number, fig_number, fig_name, quantity, image_url)
-           VALUES ($1,$2,$3,$4,$5)
-           ON CONFLICT (set_number, fig_number) DO UPDATE SET
-             fig_name=COALESCE(EXCLUDED.fig_name, set_minifigs_catalog.fig_name),
-             quantity=EXCLUDED.quantity,
-             image_url=COALESCE(EXCLUDED.image_url, set_minifigs_catalog.image_url),
-             updated_at=NOW()`,
-          [n, f.fig_number, f.fig_name || '', f.quantity || 1, imageUrl || null]
-        ).catch(() => {});
-      }
-    });
+    res.json({ success: true, ...await figurenlisteDesSets(String(req.params.setNumber)) });
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
@@ -762,62 +299,12 @@ router.get('/sets', requireToken, async (req: AuthedRequest, res) => {
 
 router.get('/sets/:setNumber/price', requireToken, async (req: AuthedRequest, res) => {
   const uid = req.apiUser.user_id;
-  // einzelwert() statt roher Zugriff: Routen-Parameter sind `string | string[]`
-  // (siehe utils/validate.ts). Die übrigen Stellen dieser Datei
-  // schrieben schon `String(...)`; diese eine nicht — und genau sie reichte den
-  // Wert an eine Funktion weiter, die einen Text erwartet.
   const sn  = einzelwert(req.params.setNumber);
   try {
-    // BLICKFELD statt eigener ID: Im Haushalt gehört das Set oft
-    // einem Unterkonto. Die Detailroute weiter oben nutzt scopeIds() seit
-    // jeher — DIESE Route prüfte stur die eigene ID und gab für jedes fremde
-    // Haushalts-Set 404 zurück. Die App zeigte dann „—" als Marktpreis,
-    // während Finanzübersicht und Galerie-Kachel (beide über scopeIds)
-    // denselben Preis anzeigten. Wieder das Muster „Regel fehlt am zweiten
-    // Weg". Am laufenden System nachgestellt: Hauptkonto öffnet Unterkonto-Set
-    // → Detail 200, Preis 404.
-    const uids = await scopeIds(uid, parseScopeMode(req.query.accounts));
-    // `s.*` plus der aufgeloeste Lagerortname: Das Detail zeigt den Ort, und
-    // seit Migration 0031 steht an der Zeile nur die ID. Ohne die Spalte waere
-    // das Feld im Detaildialog leer — und zwar in beiden Oberflaechen.
-    const set = await db.get(
-      // Die Menge aus den Erfassungen (Migration 0036 hat s.quantity
-      // geloescht). Die Unterabfrage-Form und nicht der JOIN, weil diese
-      // Abfrage GENAU EINE Zeile holt: ein Indexzugriff ueber
-      // idx_acq_user_set statt einer Gruppierung ueber alle Erfassungen.
-      `SELECT s.id, s.user_id, s.set_number, ${mengeSkalar('s')}::int AS quantity,
-              s.added_at, s.updated_at, s.storage_id,
-              lo.name AS storage,
-              c.name, c.year, c.theme, c.pieces, c.minifigs,
-              c.image_url, c.image_local
-         FROM sets s
-         LEFT JOIN set_catalog c ON c.set_number = s.set_number
-         LEFT JOIN storage_locations lo ON lo.id = s.storage_id
-        WHERE s.set_number = $1 AND s.user_id = ANY($2)`, [sn, uids]);
-    if (!set) return sendeFehler(req, res, 404, 'set_nicht_gefunden');
-    // Die Währung kommt aus der NUTZEREINSTELLUNG — der frühere
-    // `req.query.currency ||`-Vorrang ist weg. Die Android-App
-    // schickte hier ihren lokal gespeicherten Wert mit, und der startet auf
-    // "EUR" und wird erst beim ersten Laden der Finanzübersicht vom Server …
-    // Ausführlich: docs/begruendungen/routes/api_v1/sets.ts.md#get-sets-setnumber-price-currency
-    const currency  = await getSetting(uid, 'currency', 'EUR');
-    const guideType = await getSetting(uid, 'price_guide_type', 'sold');
-    const ttlHours  = await getSetting(uid, 'price_cache_ttl', '24');
-    try {
-      // Zustand DIESES Sets statt des globalen Standards — sonst zeigt die
-      // App für ein als „Neu" geführtes Set den Gebrauchtpreis als Marktpreis.
-      // resolveSetCondition kann das Blickfeld selbst (nimmt eine ID-Liste).
-      const cond = await resolveSetCondition(uids, sn);
-      const pd = await fetchPrice(sn, cond, guideType, currency, ttlHours);
-      res.json({ success: true, set_number: sn, currency,
-        min_price: pd.min_price, avg_price: pd.avg_price,
-        max_price: pd.max_price, qty_avg_price: pd.qty_avg_price,
-        from_cache: pd.from_cache });
-    } catch(_) {
-      res.json({ success: true, set_number: sn, currency,
-        min_price: null, avg_price: null, max_price: null, qty_avg_price: null,
-        no_price: true });
-    }
+    // Blickfeld statt eigener ID: Im Haushalt gehört das Set oft einem Unterkonto.
+    const preis = await setPreis(uid, await scopeIds(uid, parseScopeMode(req.query.accounts)), sn);
+    if (!preis) return sendeFehler(req, res, 404, 'set_nicht_gefunden');
+    res.json({ success: true, ...preis });
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
@@ -829,7 +316,6 @@ router.get('/sets/:setNumber/price-history', requireToken, async (req: AuthedReq
     // Ausführlich: docs/begruendungen/routes/api_v1/sets.ts.md#get-sets-setnumber-price-history-uid
     const uid = req.apiUser.user_id;
     const sn  = String(req.params.setNumber);
-    const { getSetting } = require('../../utils/settings');
     const currency = await getSetting(uid, 'currency', 'EUR');
     const data = await getSetPriceHistory(await scopeIds(uid, parseScopeMode(req.query.accounts)), sn, currency);
     res.json({ success: true, set_number: sn, ...data });
@@ -876,8 +362,7 @@ router.post('/sets', requireToken, async (req: AuthedRequest, res) => {
     if (vorhanden) return res.json({ success:true, action:'exists', ...vorhanden });
     // Gleiche Prüfung wie im Webapp-Weg (utils/validate.ts) — sonst hinge die
     // Regel daran, welchen der beiden Wege jemand nimmt.
-    const V = require('../../utils/validate');
-    const result = await addSet(set_number, V.acquisitionQuantity(quantity), owner, null,
+        const result = await addSet(set_number, V.acquisitionQuantity(quantity), owner, null,
       V.optionalPrice(purchase_price, 'Kaufpreis'), condition, req.body?.storage ?? null);
     res.json({ success:true, ...result });
   } catch (e) { handleRouteError(res, e, undefined, req); }
@@ -947,6 +432,212 @@ router.post('/sets/:sn/move', requireToken, async (req: AuthedRequest, res) => {
     const moved = await withInventoryLock(fromId, sn, (tx) =>
       moveSetBetweenAccounts(tx, sn, fromId, toId, acqIds));
     res.json({ success: true, set_number: sn, from_user_id: fromId, to_user_id: toId, ...moved });
+  } catch (e) { handleRouteError(res, e, undefined, req); }
+});
+
+// ── CSV-Import: Fortschritt als Abfrage und als Strom ───────────────────────
+// Die Zustandsrouten antworten nach 3 s mit 503 statt zu warten: Sie hängen
+// an jeder geöffneten Seite und dürfen bei voller Datenbank nicht stauen.
+const zustandsWaechter = loginOrTokenGuard({ timeoutMs: 3000 });
+
+router.get('/sets/import/csv/status', zustandsWaechter, async (req, res) => {
+  res.json(buildJobStatus(await jobGet(angemeldeteNutzerId(req)), req));
+});
+
+/** Offene Ströme je Konto: Jede Ansicht öffnet einen, mehr als sechs sind ein Leck. */
+const _sseCounts = new Map<number, number>();
+const MAX_SSE_PER_USER = 6;
+
+router.get('/sets/import/csv/stream', zustandsWaechter, async (req, res) => {
+  const uid = angemeldeteNutzerId(req);
+  const offen = _sseCounts.get(uid) || 0;
+  if (offen >= MAX_SSE_PER_USER) {
+    console.warn(`[csv-stream] Nutzer ${uid} hat bereits ${offen} offene Streams — abgelehnt`);
+    return sendeFehler(req, res, 429, 'zu_viele_verbindungen');
+  }
+  _sseCounts.set(uid, offen + 1);
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no');
+  res.flushHeaders?.();
+  // Beim Herunterfahren muss der Strom enden, sonst hält er httpServer.close() auf.
+  const unregisterSse = registerSse(res);
+
+  let closed = false, lastJson = '';
+  const send = (payload: unknown) => {
+    if (closed) return;
+    const json = JSON.stringify(payload);
+    if (json === lastJson) return;
+    lastJson = json;
+    // Gegendruck: Ein hängender Client liesse Node unbegrenzt puffern.
+    if (!res.write(`data: ${json}\n\n`)) {
+      console.warn(`[csv-stream] Gegendruck bei Nutzer ${uid} — Verbindung wird geschlossen`);
+      cleanup();
+    }
+  };
+  const stand = async () => buildJobStatus(await jobGet(uid).catch(meldeUndLiefere('sets:jobGet', null)), req);
+  // Erst anmelden, dann den ersten Stand schicken: Sonst geht ein Ereignis
+  // zwischen Lesen und Anmelden verloren.
+  const onProgress = (status: unknown) => { send(status); };
+  csvImportBus.on(`progress:${uid}`, onProgress);
+  // Andere Worker melden über LISTEN/NOTIFY; der Takt fängt Verpasstes auf.
+  const onNotify = async (payload: unknown) => { if (String(payload) === String(uid)) send(await stand()); };
+  pgNotify.listen('csv_import_progress', onNotify);
+  const fallbackTimer = setInterval(async () => { send(await stand()); }, 120000);
+  const heartbeat = setInterval(() => { if (!closed) res.write(': keep-alive\n\n'); }, 20000);
+  send(await stand());
+
+  function cleanup() {
+    if (closed) return;
+    closed = true;
+    const rest = (_sseCounts.get(uid) || 1) - 1;
+    if (rest > 0) _sseCounts.set(uid, rest); else _sseCounts.delete(uid);
+    csvImportBus.off(`progress:${uid}`, onProgress);
+    pgNotify.unlisten('csv_import_progress', onNotify);
+    clearInterval(fallbackTimer);
+    clearInterval(heartbeat);
+    unregisterSse();
+    res.end();
+  }
+  req.on('close', cleanup);
+});
+
+router.post('/sets/import/csv', requireToken, csvEmpfang.single('file'), async (req, res) => {
+  if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
+  try {
+    const { total, uebersprungen } = await setCsvImportStarten(angemeldeteNutzerId(req), req.file.buffer.toString('utf-8'));
+    // Übersprungene Zeilen gehören in die sofortige Antwort; der Import läuft weiter.
+    res.json({ success: true, total,
+      skipped: uebersprungen.length || undefined,
+      skipped_hint: uebersprungenHinweis(uebersprungen) || undefined });
+  } catch (e) { handleRouteError(res, e, undefined, req); }
+});
+
+router.post('/sets/import/csv/cancel', requireToken, async (req, res) => {
+  await setCsvImportAbbrechen(angemeldeteNutzerId(req));
+  res.json({ success: true });
+});
+
+// ── Export im Listenformat von Rebrickable ──────────────────────────────────
+router.get('/sets/export/rebrickable', requireToken, async (req, res) => {
+  try {
+    sendCsv(res, `rebrickable-sets-${new Date().toISOString().substring(0, 10)}.csv`,
+      ['Set Number', 'Quantity'], await rebrickableListe(angemeldeteNutzerId(req)));
+  } catch (e) { handleRouteError(res, e, undefined, req); }
+});
+
+// ── Anlegen mit Fortschrittsstrom ───────────────────────────────────────────
+router.post('/sets/add-stream', requireToken, async (req: LoggedInRequest, res) => {
+  const { set_number, quantity = 1, purchase_price, condition: setCondition, owner_user_id, storage } = req.body;
+  if (!set_number) { sendeFehler(req, res, 400, 'set_number_erforderlich'); return; }
+  const owner = await resolveWriteTarget(angemeldeteNutzerId(req), owner_user_id);
+  if (owner === null) { sendeFehler(req, res, 403, 'kein_schreibrecht'); return; }
+  // Schon im Blickfeld? Dann kein Strom, sondern die Antwort „exists“ — es
+  // gibt nichts zu verfolgen (utils/setAdd.ts).
+  const vorhanden = await findSetInScope(angemeldeteNutzerId(req), set_number);
+  if (vorhanden) { res.json({ success: true, action: 'exists', ...vorhanden }); return; }
+  res.setHeader('Content-Type', 'text/event-stream'); res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive'); res.flushHeaders();
+  const unregisterAddSse = registerSse(res);
+  let cancelled = false; req.on('close', () => { cancelled = true; });
+  const send = (d: unknown) => { if (!cancelled && !res.destroyed) res.write(`data: ${JSON.stringify(d)}\n\n`); };
+  try {
+    const result = await addSet(set_number, V.acquisitionQuantity(quantity), owner,
+      d => { if (cancelled) throw new Error('CANCELLED'); send(d); },
+      V.optionalPrice(purchase_price, 'Kaufpreis'), setCondition, storage);
+    // success gehört dazu: Die Clients lesen das letzte Ereignis wie eine Antwort.
+    send({ step: 'done', success: true, ...result });
+  } catch (e) { if (fehlertext(e) !== 'CANCELLED') send({ step: 'error', error: fehlertext(e) }); }
+  unregisterAddSse();
+  res.end();
+});
+
+router.post('/sets/:setNumber/parts', requireToken, async (req: LoggedInRequest, res) => {
+  try { res.json({ success: true, count: await importPartsForSet(pfadParam(req, 'setNumber'), angemeldeteNutzerId(req)) }); }
+  catch (e) { handleRouteError(res, e, undefined, req); }
+});
+
+// ── Anleitungen ─────────────────────────────────────────────────────────────
+// Neu laden darf, wer das Set im Haushalt hat (oder der Verwalter): Die
+// Anleitungen sind geteilt, und jeder Abruf kostet Kontingent der Quellen.
+router.post('/sets/:setNumber/instructions', requireToken, async (req, res) => {
+  try {
+    const sn = pfadParam(req, 'setNumber');
+    if (!istVerwalter(req) && !(await findSetInScope(angemeldeteNutzerId(req), sn)))
+      return sendeFehler(req, res, 404, 'set_nicht_gefunden');
+    await loescheAnleitungen(sn);
+    await downloadSetInstructions(sn).catch(logAndContinue('sets:downloadSetInstructions'));
+    const instrs = await anleitungenZuSet(sn);
+    res.json({ success: true, instructions: instrs, count: instrs.length });
+  } catch (e) { handleRouteError(res, e, undefined, req); }
+});
+
+// Die Endung kommt aus dem MIME-Typ, nie aus dem Dateinamen des Clients.
+const INSTR_EXT_BY_MIME = { 'application/pdf': '.pdf', 'image/jpeg': '.jpg', 'image/png': '.png' };
+
+const uploadInstr = multer({
+  storage: multer.diskStorage({
+    destination: (req, _file, cb) => { const dir = path.join(DATA_DIR, 'uploads', String(angemeldeteNutzerId(req))); fs.mkdirSync(dir, { recursive: true }); cb(null, dir); },
+    filename: (req, file, cb) => {
+      const safe = String(req.params.setNumber).replace(/[^a-z0-9-]/gi, '_');
+      // ausTabelle: Ein geerbter Schlüssel wie 'constructor' ist keine Endung.
+      const ext = ausTabelle(INSTR_EXT_BY_MIME, file.mimetype);
+      if (!ext) return cb(dateiFehler('datei_typ_falsch', 415), '');
+      // Zufällig statt Zeitstempel: Der Name soll sich nicht erraten lassen.
+      cb(null, `${safe}_${crypto.randomBytes(12).toString('hex')}${ext}`);
+    },
+  }),
+  limits: { fileSize: 50 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => { if (ausTabelle(INSTR_EXT_BY_MIME, file.mimetype)) cb(null, true); else cb(dateiFehler('datei_typ_falsch', 415)); },
+});
+
+/**
+ * Besitz und Kontingent vor dem Schreiben, sonst liegen bis zu 50 MB auf der
+ * Platte, bevor feststeht, dass die Datei nicht bleiben darf. Content-Length
+ * schliesst die Formularhülle ein, ist also nie kleiner als die Datei.
+ */
+async function vorDemUpload(req: express.Request, res: express.Response, next: express.NextFunction) {
+  try {
+    const uid = angemeldeteNutzerId(req);
+    if (!await setGehoertKonto(uid, pfadParam(req, 'setNumber'))) return sendeFehler(req, res, 404, 'nicht_gefunden');
+    const ordner = path.join(DATA_DIR, 'uploads', String(uid));
+    const belegt = fs.existsSync(ordner) ? belegterPlatz(ordner) : 0;
+    const kontingent = uploadKontingentBytes();
+    if (belegt + (Number(req.headers['content-length']) || 0) > kontingent)
+      return sendeFehler(req, res, 413, 'upload_kontingent_voll', { mb: Math.round(kontingent / 1024 / 1024) });
+    next();
+  } catch (e) { handleRouteError(res, e, undefined, req); }
+}
+
+router.post('/sets/:setNumber/instructions/upload', requireToken, vorDemUpload, uploadInstr.single('file'), async (req, res) => {
+  if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
+  const verwerfen = () => fs.rmSync(req.file!.path, { force: true });
+  if (!inhaltPasstZuTyp(req.file.path, req.file.mimetype)) { verwerfen(); return sendeFehler(req, res, 400, 'datei_inhalt_falsch'); }
+  // Noch einmal nach dem Schreiben: Ohne Content-Length (chunked) greift die Vorabprüfung nicht.
+  const kontingent = uploadKontingentBytes();
+  if (belegterPlatz(path.dirname(req.file.path)) > kontingent) {
+    verwerfen();
+    return sendeFehler(req, res, 413, 'upload_kontingent_voll', { mb: Math.round(kontingent / 1024 / 1024) });
+  }
+  try {
+    const uid = angemeldeteNutzerId(req), sn = pfadParam(req, 'setNumber');
+    const desc = (req.body.description || req.file.originalname).substring(0, 200);
+    const relPath = `/data/uploads/${uid}/${req.file.filename}`;
+    await anleitungMerken(uid, sn, relPath, desc);
+    res.json({ success: true, instruction: { url: relPath, description: desc, local_path: relPath } });
+  } catch (e) { handleRouteError(res, e, undefined, req); }
+});
+
+router.delete('/sets/:setNumber/instructions/:instrId', requireToken, async (req, res) => {
+  try {
+    const datei = await anleitungLoeschen(angemeldeteNutzerId(req), pfadParam(req, 'instrId'));
+    if (datei === false) return sendeFehler(req, res, 404, 'nicht_gefunden');
+    if (datei) {
+      try { const fp = path.join(APP_ROOT, datei.slice(1)); if (fs.existsSync(fp)) fs.unlinkSync(fp); }
+      catch (e) { console.warn('[instructions] Datei konnte nicht gelöscht werden:', fehlertext(e)); }
+    }
+    res.json({ success: true });
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 

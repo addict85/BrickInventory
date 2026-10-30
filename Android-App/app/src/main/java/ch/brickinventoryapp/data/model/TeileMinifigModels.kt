@@ -8,10 +8,17 @@ import kotlinx.serialization.Serializable
  * alle im Paket data.model.
  */
 
+/**
+ * „Keine Farbe“ wie bei Rebrickable ([No Color/Any Color]) und auf dem Server
+ * (utils/validate.ts). 0 ist Schwarz: Wer 0 für „keine“ schickt, macht aus
+ * einem Teil ohne Farbangabe ein schwarzes.
+ */
+const val KEINE_FARBE = 9999
+
 @Serializable
 data class AddPartRequest(
     @SerialName("part_number") val partNumber: String,
-    @SerialName("color_id") val colorId: Int = 0,
+    @SerialName("color_id") val colorId: Int = KEINE_FARBE,
     @SerialName("color_name") val colorName: String? = null,
     @SerialName("color_hex") val colorHex: String? = null,
     val quantity: Int = 1,
@@ -87,7 +94,7 @@ data class Part(
     @SerialName("part_number") val partNumber: String,
     @SerialName("bl_part_number") val blPartNumber: String? = null,
     @SerialName("part_name") val partName: String? = null,
-    @SerialName("color_id") val colorId: Int = 0,
+    @SerialName("color_id") val colorId: Int = KEINE_FARBE,
     @SerialName("bl_color_id") val blColorId: Int? = null,
     @SerialName("color_name") val colorName: String? = null,
     @SerialName("color_hex") val colorHex: String? = null,

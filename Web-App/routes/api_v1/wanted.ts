@@ -13,12 +13,15 @@ import { scopeIds, parseScopeMode, resolveWriteTarget } from '../../utils/househ
 import { legeMerkpostenAn, loescheMerkposten, verschiebeMerkposten, uebernimm, merkpostenVon } from '../../utils/merkliste';
 import { getSetting } from '../../utils/settings';
 import { fetchPrice } from '../../utils/financeCalc';
-import { csvEmpfang } from '../../utils/dateiEmpfang';
+import { csvEmpfang, xmlEmpfang } from '../../utils/dateiEmpfang';
 import { csvZeilenAusAnfrage, csvImportAntwort, parseCsvDate } from '../../utils/csvExport';
 import { importiereWantedListe } from '../../utils/wantedListe';
 import type { Korrektur } from '../../utils/wantedListe';
 import { merkeBlNummer } from '../../utils/blZuordnung';
 import { starteAuftrag, meldeAuftrag, beendeAuftrag, istAbgebrochen } from '../../utils/importAuftrag';
+import { addManualPart } from '../../utils/manuelleTeile';
+import { addManualFig } from '../../utils/manuelleFiguren';
+import { addSet } from '../../utils/setService';
 
 const router = express.Router();
 type AuthedRequest = express.Request & { apiUser: { user_id: number } };
@@ -185,7 +188,7 @@ router.post('/wanted/import/csv', requireToken, csvEmpfang.single('file'),
  * Sicherheitsstufen (siehe utils/wantedListe.ts), und die dritte ist eine …
  * Ausführlich: docs/begruendungen/routes/api_v1/wanted.ts.md#post-wanted-list-import-xml
  */
-router.post('/wanted-list/import/xml', requireToken, csvEmpfang.single('file'),
+router.post('/wanted-list/import/xml', requireToken, xmlEmpfang.single('file'),
   async (req: AuthedRequest & { file?: { buffer: Buffer; originalname?: string } }, res) => {
     if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
     // Vor dem try: Der catch-Zweig muss den Auftrag schliessen können, und
@@ -210,9 +213,6 @@ router.post('/wanted-list/import/xml', requireToken, csvEmpfang.single('file'),
 
       // Die Anleger gibt diese Schicht herein, damit utils/wantedListe.ts sie
       // in Tests ersetzen kann.
-      const { addManualPart } = require('../../utils/manuelleTeile');
-      const { addManualFig } = require('../../utils/manuelleFiguren');
-      const { addSet } = require('../../utils/setService');
       // Korrekturen aus der Vorschau
       // Als FELD der Multipart-Anfrage und nicht als Abfrageparameter: Bei 224
       // Posten wäre die Adresse länger als jeder Proxy durchlässt — dieselbe

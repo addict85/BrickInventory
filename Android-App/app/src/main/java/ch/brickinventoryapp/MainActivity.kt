@@ -32,7 +32,7 @@ import ch.brickinventoryapp.ui.*
 import ch.brickinventoryapp.ui.AppUiState
 import ch.brickinventoryapp.ui.screens.*
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
-import ch.brickinventoryapp.ui.theme.wirksamesDesign
+import ch.brickinventoryapp.ui.theme.darstellung
 import androidx.compose.foundation.isSystemInDarkTheme
 import coil3.ImageLoader
 import androidx.compose.foundation.Image
@@ -75,20 +75,6 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var imageLoader: ImageLoader
 
     /**
-     * Beim Nach-vorn-Kommen einmal nach ausgelösten Preisalarmen fragen — sonst
-     * erführe man es erst durch den stündlichen Auftrag (PreisalarmWorker). Die Webapp
-     * fragt ebenso beim Anmelden (zeigeOffeneAlarme()).
-     *
-     * onStart statt onCreate: onCreate läuft einmal je Activity; wer nach einer Woche
-     * aus dem Hintergrund zurückkommt, durchläuft es nicht, und gerade dann ist die
-     * Frage am interessantesten.
-     *
-     * Keine doppelten Meldungen, dafür sorgt die Marke: Jeder Durchgang fragt „was hat
-     * seit `marke` ausgelöst?“ und schreibt den Zeitpunkt des Servers zurück (siehe
-     * PreisalarmWorker.durchgang()). lifecycleScope, weil die Antwort niemandem nützt,
-     * wenn die Activity vorher weggeht — der stündliche Auftrag fragt ohnehin weiter.
-     */
-    /**
      * Eine angetippte Preisalarm-Meldung, waehrend die App schon laeuft.
      *
      * launchMode="singleTop" im Manifest sorgt dafuer, dass hier gelandet wird
@@ -108,6 +94,11 @@ class MainActivity : ComponentActivity() {
             intent?.getStringExtra(ch.brickinventoryapp.alarm.PreisalarmWorker.EXTRA_SET))
     }
 
+    /**
+     * Beim Nach-vorn-Kommen einmal nach ausgelösten Preisalarmen fragen, nicht erst
+     * im stündlichen Auftrag. onStart, weil onCreate bei der Rückkehr aus dem
+     * Hintergrund nicht läuft; die Marke des Servers verhindert doppelte Meldungen.
+     */
     override fun onStart() {
         super.onStart()
         lifecycleScope.launch {
@@ -132,7 +123,8 @@ class MainActivity : ComponentActivity() {
             // und darüber die ganze App rekomponiert.
             val theme by vm.appTheme.collectAsStateWithLifecycle()
             val dunkel by vm.dunkelNachSystem.collectAsStateWithLifecycle()
-            BrickInventoryManagerTheme(theme = wirksamesDesign(theme, dunkel, isSystemInDarkTheme())) {
+            val sicht = darstellung(theme, dunkel, isSystemInDarkTheme())
+            BrickInventoryManagerTheme(theme = sicht.design, dunkel = sicht.dunkel) {
                 BrickInventoryManagerApp(vm, katalogVm, gutscheinVm, imageLoader)
             }
         }

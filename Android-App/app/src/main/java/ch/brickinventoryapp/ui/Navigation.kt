@@ -44,14 +44,14 @@ sealed class Screen(val route: String) {
     // type: "set" | "part" | "fig"
     object AcquisitionManagement : Screen("acq_mgmt/{type}/{id}/{colorId}/{title}") {
         private fun encode(s: String) = java.net.URLEncoder.encode(s, "UTF-8").replace("+", "%20")
-        fun createRoute(type: String, id: String, colorId: Int = 0, title: String) =
+        fun createRoute(type: String, id: String, colorId: Int = ch.brickinventoryapp.data.model.KEINE_FARBE, title: String) =
             "acq_mgmt/$type/${encode(id)}/$colorId/${encode(title)}"
     }
     // Detailansicht eines manuell erfassten Teils / einer Minifigur — ein
     // ganzer Screen wie beim Set, nicht mehr ein Dialog. type: "part" | "fig"
     object ManualItemDetail : Screen("manual_detail/{type}/{id}/{colorId}/{title}") {
         private fun encode(s: String) = java.net.URLEncoder.encode(s, "UTF-8").replace("+", "%20")
-        fun createRoute(type: String, id: String, colorId: Int = 0, title: String) =
+        fun createRoute(type: String, id: String, colorId: Int = ch.brickinventoryapp.data.model.KEINE_FARBE, title: String) =
             "manual_detail/$type/${encode(id)}/$colorId/${encode(title)}"
     }
     object PdfViewer : Screen("pdf_viewer/{url}/{title}") {

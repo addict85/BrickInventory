@@ -67,7 +67,7 @@ class RateLimiter {
 }
 
 // Primary limiter: CSV import, set info, image downloads (foreground)
-import { meldeUndWeiter } from './httpError';
+import { meldeUndWeiter, meldeUndLiefere } from './httpError';
 import { checkAndIncrementRateLimit, getRateLimitStatus, REBRICKABLE_DEFAULT_DAILY } from './apiKontingent';
 import * as db from '../db/database';
 
@@ -120,7 +120,7 @@ const rebrickableBackgroundLimiter = new RateLimiter(1, 1500, REBRICKABLE_TAKT);
  * @returns true, wenn der Aufruf erlaubt ist (und gezählt wurde)
  */
 async function consumeRebrickableDaily(): Promise<boolean> {
-  const rl = await checkAndIncrementRateLimit('rebrickable').catch(() => null);
+  const rl = await checkAndIncrementRateLimit('rebrickable').catch(meldeUndLiefere('takt:checkAndIncrementRateLimit', null));
   // Im Zweifel durchlassen: Ein Datenbankproblem darf nicht dazu führen, dass
   // gar nichts mehr geladen wird. Umgekehrte Abwägung als beim Login-Zähler —
   // dort sperrt der Rückfall, hier öffnet er, weil ein überschrittenes

@@ -6,7 +6,7 @@ import {
   PDFDocument as PdfLibDocument, PDFArray, PDFDict, PDFName, PDFRawStream,
   decodePDFRawStream, PDFPage, PDFObject,
 } from '@cantoo/pdf-lib';
-import { werteAusPdf, pdfText, TEXT_OP_RE, operatorText } from './gutscheinPdf';
+import { werteAusPdf, pdfText, textOperatoren } from './gutscheinPdf';
 import type { GutscheinWerte } from './gutscheinPdf';
 
 /**
@@ -60,22 +60,27 @@ function ersetzeImStrom(inhalt: string, suchen: string, ersetzen: string,
                         sicher: (schrift: string) => boolean):
                         { aus: string; treffer: number; abgelehnt: number } {
   let treffer = 0, abgelehnt = 0;
-  TEXT_OP_RE.lastIndex = 0;
-  const aus = inhalt.replace(TEXT_OP_RE, (ganz, arg: string, op: string, pos: number) => {
-    const logisch = operatorText(arg);
-    if (!logisch.includes(suchen)) return ganz;
-
-    // Die AKTIVE Schrift: das letzte `/Name <groesse> Tf` vor dieser Stelle.
-    // Ohne Tf gibt es keine Schrift, die sich nachsehen liesse — also nicht
-    // anfassen.
-    const davor = inhalt.slice(0, pos);
-    const tf = davor.match(/\/([^\s/<>\][(){}]+)\s+[\d.+-]+\s+Tf(?![\s\S]*\bTf\b)/);
-    if (!tf || !sicher(tf[1] ?? '')) { abgelehnt++; return ganz; }
+  // Die AKTIVE Schrift ist das letzte `/Name <groesse> Tf` vor dem Operator.
+  // Steht dort ein anderes Tf als in dieser Form, ist sie unbekannt — und
+  // unbekannt heisst: nicht anfassen. Beides in einem Durchgang gesammelt.
+  const tfs = [...inhalt.matchAll(/\bTf\b/g)].map(m => m.index ?? 0);
+  const namen = new Map<number, string>();
+  for (const m of inhalt.matchAll(/\/([^\s/<>\][(){}]+)\s+[\d.+-]+\s+Tf/g))
+    namen.set((m.index ?? 0) + m[0].length - 2, m[1] ?? '');
+  let aus = '', bisher = 0, n = 0;
+  for (const t of textOperatoren(inhalt)) {
+    if (!t.text.includes(suchen)) continue;
+    while (n < tfs.length && (tfs[n] ?? 0) < t.von) n++;
+    const schrift = n > 0 ? namen.get(tfs[n - 1] ?? -1) : undefined;
+    if (schrift === undefined || !sicher(schrift)) { abgelehnt++; continue; }
 
     treffer++;
     // TJ wird zu Tj: Ein einzelnes Argument ist kein Feld mehr.
-    return alsLiteral(logisch.split(suchen).join(ersetzen)) + ' ' + (op === 'TJ' ? 'Tj' : op);
-  });
+    aus += inhalt.slice(bisher, t.von)
+      + alsLiteral(t.text.split(suchen).join(ersetzen)) + ' ' + (t.op === 'TJ' ? 'Tj' : t.op);
+    bisher = t.bis;
+  }
+  aus += inhalt.slice(bisher);
   return { aus, treffer, abgelehnt };
 }
 
@@ -124,7 +129,7 @@ export async function ersetzeBetrag(daten: Buffer, neuerBetrag: number): Promise
   // wird: „400", „1'234.50", „1.234,50". Gesucht wird die Schreibweise, denn
   // die steht im Strom.
   const text = pdfText(daten);
-  const geschrieben = text.match(/[\d'’.,]+(?=\s*(?:CHF|EUR|USD|GBP|SEK|NOK|AUD|CAD|DKK)\b)/i)?.[0]
+  const geschrieben = text.match(/[\d'’.,]{1,30}(?=\s{0,9}(?:CHF|EUR|USD|GBP|SEK|NOK|AUD|CAD|DKK)\b)/i)?.[0]
     ?? String(vorher.betrag);
   const neuGeschrieben = neuerBetrag.toLocaleString('de-CH', {
     minimumFractionDigits: Number.isInteger(neuerBetrag) ? 0 : 2,

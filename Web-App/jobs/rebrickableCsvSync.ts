@@ -8,32 +8,31 @@
  */
 // Pfade zentral auflösen — __dirname zeigt seit dem dist/-Build nicht mehr
 // auf die Wurzel. Siehe utils/appPaths.ts.
-const {  DATA_DIR } = require('../utils/appPaths');
 // Direkt aus utils/partsImport — siehe die Begruendung in
 // utils/handlers/parts.ts: routes/parts reicht die Funktion nur weiter.
+import { meldeStartZustand } from '../utils/startZustand';
 import { fetchMissingBlIds } from '../utils/partsImport';
 import { getRbKey, httpsGetRobust } from '../clients/rebrickable';
-import { fehlertext } from '../utils/httpError';
+import { fehlertext, logAndContinue, meldeUndLiefere, ohneFehlendeDatei } from '../utils/httpError';
 import { merkeBlFarbnummer, blFarbnummerAus } from '../utils/blZuordnung';
 import { liesZustand, setzeZustand } from '../utils/laufzustand';
-const fs       = require('fs');
-const path     = require('path');
+import fs from 'fs';
+import path from 'path';
+import * as monitor from '../utils/jobMonitor';
+import zlib2 from 'zlib';
+import { DATA_DIR } from '../utils/appPaths';
+import { fork as _fork } from 'child_process';
+import { get } from 'https';
 
 const CSV_BASE = 'https://cdn.rebrickable.com/media/downloads/';
 
 /** Frist ohne empfangene Daten, nach der ein CSV-Download abgebrochen wird. */
 const DOWNLOAD_IDLE_MS = 60000;
 
-// Global startup status — read by /api/v1/startup-status
-// Only initialize if not already set by server.js
-if (!global.startupStatus) global.startupStatus = { ready: false, step: 'Starte...', progress: 0, total: 8 };
-const monitor = require('../utils/jobMonitor');
 
 function updateStatus(step: string, progress: number, _total: number, sub: string | null = null) {
   const status = { ready: false, step, progress, total: TOTAL_STEPS, sub };
-  global.startupStatus = status;
-  // Write to PostgreSQL so all cluster workers see the same status
-  setzeZustand('startup_status', JSON.stringify(status)).catch(() => {});
+  void meldeStartZustand(status);
   monitor.update('csvImport', { status: 'running', progress, total: TOTAL_STEPS, sub, label: `CSV-Import: ${step}` });
   // Only log step changes, not progress updates
   if (!sub && !step.includes('k)')) log(step);
@@ -63,7 +62,6 @@ function log(msg: string) { console.log(`[rb-csv-sync] ${msg}`); }
 
 // ── Main run ──────────────────────────────────────────────────────────────────
 // ── CSV-Import-Helfer (Modulebene, damit auch der Skip-Zweig sie nutzen kann) ──
-const { fork: _fork } = require('child_process');
 // __dirname ist hier RICHTIG und darf nicht durch appPaths ersetzt werden:
 // Der Worker liegt neben dieser Datei, egal ob der Code aus den Quellen oder
 // aus dist/ läuft. Ein Pfad über die Wurzel würde bei laufendem dist/-Build
@@ -91,9 +89,7 @@ function fileOverall(stepNum: number, phase: 'download' | 'import', pct: number)
 async function downloadToTmp(filename: string, stepLabel: string, stepNum: number) {
   const tmp = path.join(DATA_DIR, filename.replace('.gz', '.tmp'));
   await new Promise((resolve, reject) => {
-    const { get } = require('https');
-    const zlib2 = require('zlib');
-    // Zeitlimit: Ohne dieses blieb eine hängende CDN-Verbindung für immer
+        // Zeitlimit: Ohne dieses blieb eine hängende CDN-Verbindung für immer
     // stehen — und weil der Abgleich beim Erststart läuft, blieb die
     // Startanzeige ewig auf „Lade…". Die API-Aufrufe weiter unten hatten seit
     // jeher 30 s, dieser Weg nicht. Die Frist gilt je Datenpaket (setTimeout
@@ -136,7 +132,7 @@ async function runWorker(task: string, stepNum: number, stepLabel: string, filen
     // Aufräumen — auch bei Abbruch. Vorher löschte NIEMAND die entpackten
     // Zwischendateien: inventory_parts.csv.tmp liegt bei rund einem Gigabyte
     // und blieb nach jedem Lauf dauerhaft in data/ stehen.
-    fs.promises.unlink(tmpFile).catch(() => {});
+    fs.promises.unlink(tmpFile).catch(ohneFehlendeDatei('rb-csv:unlink'));
   }
 }
 
@@ -210,8 +206,7 @@ async function run() {
     // wenn der Haupt-Sync heute vor dem Update schon lief).
     await syncCatalogExtrasDaily(today);
     const s1 = { ready: true, step: 'Bereit (Cache)', progress: TOTAL_STEPS, total: TOTAL_STEPS };
-    global.startupStatus = s1;
-    setzeZustand('startup_status', JSON.stringify(s1)).catch(() => {});
+    void meldeStartZustand(s1);
   } else {
     log(`Starting CSV sync for ${today}...`);
     try {
@@ -236,8 +231,7 @@ async function run() {
       // der Startbildschirm stehen, bis die Oberfläche nach drei Minuten aufgibt.
       // Der nächste Start (oder der Tageslauf) versucht es erneut.
       const s0 = { ready: true, step: 'Katalog nicht geladen', progress: TOTAL_STEPS, total: TOTAL_STEPS };
-      global.startupStatus = s0;
-      await setzeZustand('startup_status', JSON.stringify(s0)).catch(() => {});
+      await meldeStartZustand(s0);
       return; // Don't try BL mapping if CSV sync failed
     }
   }
@@ -248,15 +242,14 @@ async function run() {
   } catch(e) { log(`fetchMissingBlIds error: ${fehlertext(e)}`); }
 
   const s2 = { ready: true, step: 'Bereit', progress: TOTAL_STEPS, total: TOTAL_STEPS };
-  global.startupStatus = s2;
-  setzeZustand('startup_status', JSON.stringify(s2)).catch(() => {});
+  void meldeStartZustand(s2);
   monitor.update('csvImport', { status: 'done', progress: TOTAL_STEPS, total: TOTAL_STEPS, sub: null });
   log('Startup complete — server ready');
 
   // Fetch BrickLink color mapping from Rebrickable API and cache in DB
   // (not in CSV — only available via API)
   try {
-    const key = await getRbKey().catch(() => null);
+    const key = await getRbKey().catch(meldeUndLiefere('rb-csv:getRbKey', null));
     if (key) {
       log('[colors] Fetching BrickLink color mapping from Rebrickable API…');
       let page = 1, count = 0, hasNext = true;
@@ -270,7 +263,7 @@ async function run() {
         for (const c of (data.results || [])) {
           const blId = blFarbnummerAus(c);
           if (blId != null) {
-            await merkeBlFarbnummer(c.id, blId).catch(() => {});
+            await merkeBlFarbnummer(c.id, blId).catch(logAndContinue('rb-csv:merkeBlFarbnummer'));
             count++;
           }
         }

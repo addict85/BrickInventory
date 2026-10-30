@@ -2,7 +2,7 @@ import * as db from '../../db/database';
 import { resolveImageLocal } from '../images';
 import { asIds } from '../household';
 import { clampPageSize, applyManualCondition, withOwners } from './shared';
-import { beideSchreibweisen } from '../setNummer';
+import { mitVersion } from '../setNummer';
 import { mengeJoin, mengeAus, teilmengeJoin, teilmengeAus } from '../bestandsmenge';
 import { marktpreiseAusCacheFuerFiguren } from '../marketPrice';
 import { blJoin, blNummerSql } from '../blZuordnung';
@@ -33,8 +33,8 @@ async function getMinifigs(userId: number | number[], { search, source, set_numb
   const params: any[] = [uids]; let pi = 2;
   let where = 'm.user_id = ANY($1)';
   if (set_number) {
-    where += ` AND (m.set_number = $${pi} OR m.set_number = $${pi+1})`;
-    params.push(...beideSchreibweisen(set_number)); pi += 2;
+    where += ` AND m.set_number = $${pi++}`;
+    params.push(mitVersion(set_number));
   }
   if (source === 'set')    where += " AND m.source = 'set'";
   if (source === 'manual') where += " AND m.source = 'manual'";
@@ -44,12 +44,8 @@ async function getMinifigs(userId: number | number[], { search, source, set_numb
     where += ` AND ${figurenSuche('m.fig_number', 'mc.fig_name', pi)}`;
     params.push(`%${search}%`); pi++;
   }
-  // Gruppierung pro Figur (und Quelle): Dieselbe Figur aus mehreren Sets
-  // erscheint EINMAL mit aufsummierter Gesamtmenge — analog Teile/Sets.
-  // Vorher wurde nach m.id gruppiert, wodurch jede Set-Zeile einzeln blieb
-  // und identische Figuren mehrfach in der Übersicht auftauchten.
-  // Zählen über dieselbe Gruppierung — COUNT(*) über die Gruppen, nicht über
-  // die Zeilen, sonst zählt eine Figur aus fünf Sets fünfmal.
+  // Je Figur und Quelle eine Zeile mit der Gesamtmenge (wie Teile); gezählt
+  // werden die Gruppen, sonst zählte eine Figur aus fünf Sets fünfmal.
   const figParams = [...params];
   let figLimit = '';
   if (page_size) {
@@ -58,12 +54,8 @@ async function getMinifigs(userId: number | number[], { search, source, set_numb
     figParams.push(size, off);
     figLimit = ` LIMIT $${figParams.length - 1} OFFSET $${figParams.length}`;
   }
-  // In dieser ZAEHLUNG stand ein LEFT JOIN auf sets. Er diente allein der
-  // Spalte s.quantity — die hier gar nicht gelesen wird und die es seit
-  // Migration 0036 nicht mehr gibt. Der Kommentar steht VOR der Abfrage und
-  // nicht darin: test/gallery-paging.test.js prueft, dass zwischen
-  // „SELECT 1 FROM minifigs m" und dem GROUP BY nicht mehr als 220 Zeichen
-  // liegen — ein Erklaertext im SQL hat diese Regel gerissen (gemessen).
+  // Die Zählung braucht keinen Join auf sets; kein Text im SQL, das
+  // test/gallery-paging.test.js kurz halten will.
   const figCount = page_size
     ? await db.get(`SELECT COUNT(*)::int AS c FROM (
          SELECT 1 FROM minifigs m
@@ -173,12 +165,8 @@ async function getMinifigs(userId: number | number[], { search, source, set_numb
 
   const mappedFigs = figs.map(({ owner_ids, ...f }: any) => ({
     ...f,
-    // Nur im Haushalt: Im Einzelkonto waere „gehoert mir" an jeder Kachel
-    // Rauschen — dieselbe Entscheidung wie bei den Sets.
-    //
-    // owner_ids wird beim Zerlegen oben ABGETRENNT und hier bewusst wieder
-    // hinzugefuegt. Mit `...f` allein waere das Aggregat aus der Abfrage auch
-    // im Einzelkonto durchgerutscht — der Test hat genau das gemeldet.
+    // owner_ids nur im Haushalt (wie bei Sets); im Einzelkonto wäre „gehört
+    // mir“ an jeder Kachel Rauschen, deshalb oben abgetrennt.
     ...(uids.length > 1 ? { owner_ids: (owner_ids || []).map((n: any) => parseInt(n)) } : {}),
     image_local: resolveImageLocal(f.image_local),
     // Ohne Erfassung 'N' — nicht mehr der gespeicherte Wert, den es seit
@@ -224,12 +212,9 @@ async function getMinifigStats(userId: number | number[]) {
   };
 }
 
-/** Manuell erfasste Minifiguren.
- *  Von /api/minifigs/manual UND /api/v1/minifigs/manual genutzt (Parität). */
 /**
- * @param viewerId Wessen EINSTELLUNGEN gelten (Waehrung fuer den Marktpreis).
- *   Getrennt von `userId`, das sagt, WESSEN DATEN gelesen werden — dieselbe
- *   Unterscheidung wie in computeMinifigsValuation.
+ * Manuell erfasste Minifiguren.
+ * @param viewerId wessen Einstellungen gelten (Währung); `userId` sagt, wessen Daten.
  */
 async function getManualMinifigs(userId: number | number[], viewerId: number,
                                  { page = 1, page_size = null, search = null }: any = {}) {
@@ -239,13 +224,8 @@ async function getManualMinifigs(userId: number | number[], viewerId: number,
   // normalisiert, damit ältere Aufrufer mit einer nackten ID weiter gehen.
   const uids = asIds(userId as any);
   const params: any[] = [uids];
-  // Der Suchtext der Filterleiste wirkt auch hier — dieselbe Luecke wie bei den
-  // manuell erfassten Teilen (die Begruendung steht an getManualParts in
-  // utils/handlers/parts.ts). Marco hat sie an den Teilen gemeldet; der Reiter
-  // Minifiguren trug sie unbemerkt mit, bis zum gleichen Versprechen in
-  // public/index.html und zur gleichen Pruefung in test/tab-layout.test.js.
-  //
-  // Platzhalter vor LIMIT/OFFSET — siehe dort.
+  // Der Suchtext der Filterleiste wirkt auch hier (wie getManualParts);
+  // Platzhalter vor LIMIT/OFFSET.
   let suche = '';
   if (search) {
     params.push(`%${search}%`);

@@ -11,7 +11,7 @@ data class PlPart(
     val partName: String,
     val colorName: String,
     val colorHex: String?,
-    val colorId: Int = 0,
+    val colorId: Int = ch.brickinventoryapp.data.model.KEINE_FARBE,
     val blColorId: Int? = null,
     var quantity: Int,
     val imageUrl: String?,

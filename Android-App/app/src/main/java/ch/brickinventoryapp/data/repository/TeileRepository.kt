@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.data.repository
 
-import ch.brickinventoryapp.data.api.BrickApiService
+import ch.brickinventoryapp.data.api.TeileApi
 import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.model.*
 import kotlinx.coroutines.Dispatchers
@@ -21,9 +21,9 @@ import javax.inject.Singleton
  */
 @Singleton
 class TeileRepository @Inject constructor(
-    api: BrickApiService,
+    api: TeileApi,
     cache: ResponseCache,
-) : RepoBasis(api, cache) {
+) : RepoBasis<TeileApi>(api, cache) {
 
     suspend fun getParts(search: String? = null, color: String? = null,
                          category: String? = null, page: Int = 1,
@@ -33,7 +33,7 @@ class TeileRepository @Inject constructor(
                           * Webapp.
                           */
                          spare: String? = null,
-                         /** "1" nur in der Tabellenansicht — siehe BrickApiService.getParts. */
+                         /** "1" nur in der Tabellenansicht — siehe TeileApi.getParts. */
                          withSets: String? = null,
                          /** Lagerort — eigener Parameter, nicht Teil der Suche. */
                          storage: String? = null): Result<PartsResponse> =
@@ -147,12 +147,16 @@ class TeileRepository @Inject constructor(
     suspend fun getBrickColors(): Result<BrickColorsResponse> =
         safeCall { api.getBrickColors() }
 
-    suspend fun addPart(partNumber: String, colorId: Int = 0, colorName: String? = null, colorHex: String? = null,
+    /** Ohne Farbe KEINE_FARBE, nie 0 (Schwarz); Name und Code gehören dann nicht dazu. */
+    suspend fun addPart(partNumber: String, colorId: Int = KEINE_FARBE, colorName: String? = null, colorHex: String? = null,
                          quantity: Int = 1, unitPrice: Double? = null,
                          condition: String? = null, ownerUserId: Int? = null,
-                         storage: String? = null): Result<AddPartResponse> =
-        safeCall { api.addPart(AddPartRequest(partNumber, colorId, colorName, colorHex, quantity,
+                         storage: String? = null): Result<AddPartResponse> {
+        val ohne = colorId == KEINE_FARBE
+        return safeCall { api.addPart(AddPartRequest(partNumber, colorId, colorName.takeUnless { ohne },
+                                              colorHex.takeUnless { ohne }, quantity,
                                               unitPrice, condition, ownerUserId, storage)) }
+    }
 
     /** @param owner Besitzer der Karte; null = eigenes Konto. */
     suspend fun updatePart(partNumber: String, colorId: Int, quantity: Int, unitPrice: Double?, condition: String? = null, owner: Int? = null): Result<GenericResponse> =
@@ -172,8 +176,8 @@ class TeileRepository @Inject constructor(
     suspend fun setPartColor(partNumber: String, colorId: Int, neueFarbe: Int,
                              farbName: String? = null, farbHex: String? = null,
                              owner: Int? = null): Result<TeilFarbeResponse> =
-        safeCall { api.setPartColor(partNumber, colorId,
-                                    TeilFarbeRequest(neueFarbe, farbName, farbHex), owner) }
+        safeCall { api.setPartColor(partNumber, colorId, TeilFarbeRequest(neueFarbe,
+            farbName.takeUnless { neueFarbe == KEINE_FARBE }, farbHex.takeUnless { neueFarbe == KEINE_FARBE }), owner) }
 
     suspend fun addMinifig(figNumber: String, blFigNumber: String? = null, quantity: Int = 1,
                            unitPrice: Double? = null, condition: String? = null,
@@ -191,13 +195,9 @@ class TeileRepository @Inject constructor(
         safeCall { api.deleteMinifig(figNumber, owner) }
 
     /**
-     * Set-Figuren der Übersicht. `source = "set"` und der Suchtext gehen an den Server
-     * — wie in der Webapp (public/js/06-minifigs.js, figParams): Der Server sucht vor
-     * der Gruppierung über jede fig_name-Zeile; im Composable träfe die Suche nur die
-     * eine Zeile, die MAX(fig_name) übrig lässt.
-     *
-     * Gecacht wird nur die ungefilterte Sicht, wie bei getParts und getSets: Ein
-     * Suchergebnis im Cache wäre nach dem Neustart die ganze Sammlung.
+     * Set-Figuren der Übersicht; Suche beim Server wie im Web, weil er vor der
+     * Gruppierung über jede fig_name-Zeile sucht. Gecacht wird nur die ungefilterte
+     * Sicht, sonst wäre ein Suchergebnis nach dem Neustart die ganze Sammlung.
      */
     suspend fun getMinifigs(accounts: String? = null, search: String? = null): Result<MinifigsResponse> =
         if (accounts == null && search.isNullOrBlank())

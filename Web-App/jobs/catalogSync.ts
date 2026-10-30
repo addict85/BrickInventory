@@ -4,33 +4,35 @@
  * and downloads part images — runs in background after set import.
  * All data is user-independent and shared across all users.
  */
-const db   = require('../db/database');
 import { downloadFile } from '../clients/rebrickable';
 import { generateThumb } from '../utils/thumbs';
 import { neuestesInventar } from '../utils/rbInventar';
-import { beideSchreibweisen } from '../utils/setNummer';
-import { merkeTeil, merkeTeilFarbe, merkeSetTeil, setzeTeilBildLokal } from '../utils/katalogPflege';
-import { logAndContinue } from '../utils/httpError';
+import { mitVersion } from '../utils/setNummer';
+import { merkeTeil, merkeTeilFarbe, merkeSetTeil, setzeTeilBildLokal, merkeFiguren, merkeSetFiguren } from '../utils/katalogPflege';
+import { logAndContinue, meldeUndLiefere } from '../utils/httpError';
+import * as db from '../db/database';
+import path from 'path';
+import fs from 'fs';
+import { PART_IMAGES_DIR as IMG_DIR } from '../utils/appPaths';
+import { rebrickableBackgroundLimiter as rebrickableLimiter } from '../utils/rateLimiter';
+import { KEINE_FARBE } from '../utils/validate';
 // Pfade zentral auflösen — __dirname zeigt seit dem dist/-Build nicht mehr
 // auf die Wurzel. Siehe utils/appPaths.ts.
-const path = require('path');
-const fs   = require('fs');
 
 // Teilebilder — Figuren liegen getrennt (siehe utils/appPaths.ts).
-const { PART_IMAGES_DIR: IMG_DIR } = require('../utils/appPaths');
 
 async function syncSetCatalog(setNumber: string) {
   // Ohne Versionsanhang in der Eingabe ergab `alt` denselben Wert wie `n` —
   // die Abfrage unten fragte dann zweimal dasselbe, und die blanke Nummer
   // wurde nie geprueft. Dieselbe Fehlbildung wie in utils/handlers/parts.ts.
-  const [n, alt] = beideSchreibweisen(setNumber);
+  const n = mitVersion(setNumber);
 
   // Check if catalog is already fully populated (has images)
   const existing = await db.get(
     `SELECT COUNT(*) AS total, COUNT(image_local) AS with_img
-     FROM set_parts_catalog WHERE set_number=$1 OR set_number=$2`,
-    [n, alt]
-  ).catch(()=>null);
+     FROM set_parts_catalog WHERE set_number = $1`,
+    [n]
+  ).catch(meldeUndLiefere('katalog-sync:existing', null));
   const total   = parseInt(existing?.total || 0);
   const withImg = parseInt(existing?.with_img || 0);
   if (total > 0 && withImg >= total) {
@@ -38,7 +40,7 @@ async function syncSetCatalog(setNumber: string) {
     return;
   }
   // Find inventory in CSV cache
-  const invId = await neuestesInventar(n).catch(() => null);
+  const invId = await neuestesInventar(n).catch(meldeUndLiefere('katalog-sync:neuestesInventar', null));
   if (!invId) {
     return;
   }
@@ -56,9 +58,9 @@ async function syncSetCatalog(setNumber: string) {
      LEFT JOIN rb_colors c ON c.id = ip.color_id
      LEFT JOIN bl_zuordnung  m ON m.art = 'part' AND m.rb_id = ip.part_num
      WHERE ip.inventory_id = $1
-       AND (ip.is_spare IS NULL OR ip.is_spare IN ('f','false','False','0',''))`,
+       AND ip.is_spare = 0`,
     [invId]
-  ).catch(()=>[]);
+  ).catch(meldeUndLiefere('katalog-sync:inventar lesen', []));
 
   if (!parts.length) {
     // No parts in CSV cache yet — skip silently
@@ -66,13 +68,12 @@ async function syncSetCatalog(setNumber: string) {
   }
   fs.mkdirSync(IMG_DIR, { recursive: true });
 
-  const { rebrickableBackgroundLimiter: rebrickableLimiter } = require('../utils/rateLimiter');
 
   let downloaded = 0;
   for (const p of parts) {
     let imageLocal: any = null;
     if (p.image_url) {
-      const imgFile = `${p.part_number}_${p.color_id||0}.jpg`;
+      const imgFile = `${p.part_number}_${p.color_id ?? KEINE_FARBE}.jpg`;
       const dest    = path.join(IMG_DIR, imgFile);
       const rel     = `/images/parts/${imgFile}`;
 
@@ -80,9 +81,9 @@ async function syncSetCatalog(setNumber: string) {
         imageLocal = rel;
       } else {
         await rebrickableLimiter.waitForSlot();
-        await downloadFile(p.image_url, dest).catch(()=>{});
+        await downloadFile(p.image_url, dest).catch(logAndContinue('katalog-sync:downloadFile'));
         if (fs.existsSync(dest)) {
-          await generateThumb(rel).catch(()=>{});
+          await generateThumb(rel).catch(logAndContinue('katalog-sync:generateThumb'));
           imageLocal = rel;
           downloaded++;
         }
@@ -94,10 +95,10 @@ async function syncSetCatalog(setNumber: string) {
       // Name, Farbe und Bild in die Kataloge, Menge in die Setliste (Migration 0062).
       const melde = logAndContinue('katalogSync:setteil');
       await merkeTeil(p.part_number, p.part_name).catch(melde);
-      await merkeTeilFarbe(p.part_number, p.color_id||0, p.color_name, p.color_hex, p.image_url, imageLocal).catch(melde);
-      await merkeSetTeil(n, p.part_number, p.color_id||0, p.quantity||1, 0).catch(melde);
+      await merkeTeilFarbe(p.part_number, p.color_id ?? KEINE_FARBE, p.color_name, p.color_hex, p.image_url, imageLocal).catch(melde);
+      await merkeSetTeil(n, p.part_number, p.color_id ?? KEINE_FARBE, p.quantity||1, 0).catch(melde);
     } else if (imageLocal) {
-      await setzeTeilBildLokal(p.part_number, p.color_id||0, imageLocal).catch(logAndContinue('katalogSync:bild'));
+      await setzeTeilBildLokal(p.part_number, p.color_id ?? KEINE_FARBE, imageLocal).catch(logAndContinue('katalogSync:bild'));
     }
   }
 
@@ -109,18 +110,12 @@ async function syncSetCatalog(setNumber: string) {
      LEFT JOIN rb_sets s ON s.set_num = ip.part_num
      WHERE ip.inventory_id = $1 AND ip.part_num LIKE 'fig-%'`,
     [invId]
-  ).catch(()=>[]);
+  ).catch(meldeUndLiefere('katalog-sync:figs', []));
 
-  for (const f of figs) {
-    await db.run(
-      `INSERT INTO set_minifigs_catalog (set_number,fig_number,fig_name,quantity,image_url)
-       VALUES ($1,$2,$3,$4,$5)
-       ON CONFLICT (set_number,fig_number) DO UPDATE SET
-         fig_name=EXCLUDED.fig_name, quantity=EXCLUDED.quantity,
-         image_url=COALESCE(EXCLUDED.image_url, set_minifigs_catalog.image_url), updated_at=NOW()`,
-      [n, f.fig_number, f.fig_name||'', f.quantity||1, f.image_url||null]
-    ).catch(()=>{});
-  }
+  await merkeFiguren(figs.map(f => ({ figNumber: f.fig_number, figName: f.fig_name, imageUrl: f.image_url })))
+    .catch(logAndContinue('katalog-sync:figur merken'));
+  await merkeSetFiguren(n, figs.map(f => ({ figNumber: f.fig_number, quantity: f.quantity })))
+    .catch(logAndContinue('katalog-sync:setfigur merken'));
 }
 
 // Sync all sets that are in rb_inventories but not yet in set_parts_catalog
@@ -130,7 +125,7 @@ async function syncAllMissing() {
      LEFT JOIN set_parts_catalog c ON c.set_number = s.set_num
      WHERE c.set_number IS NULL AND s.set_num NOT LIKE 'fig-%'
      LIMIT 50`
-  ).catch(()=>[]);
+  ).catch(meldeUndLiefere('katalog-sync:sets', []));
 
   if (!sets.length) return;
   for (const s of sets) {

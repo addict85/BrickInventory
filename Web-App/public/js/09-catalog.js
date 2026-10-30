@@ -1,7 +1,7 @@
-import { detailZeile, ladeAnzeige } from './01-bausteine.js';
+import { detailZeile, ladeAnzeige, listeLadefehler } from './01-bausteine.js';
 import { registerActions } from './00-registry.js';
 import { locale, t, tRaw} from '../i18n.js';
-import { bildTag, platzhalterInhalt, leerZustand, ico, G, api, esc, escUrl, fullUrl, imgUrl, thumbUrl, toast, zuruecksetzenKnopf } from './01-core.js';
+import { fehlerMeldung, bildTag, platzhalterInhalt, leerZustand, ico, G, api, esc, escUrl, fullUrl, imgUrl, thumbUrl, toast, zuruecksetzenKnopf } from './01-core.js';
 import { setScrollLabel } from './15-scrollbar.js';
 import { PARTS_ICON_SVG, handleSseEvent, hideProgress, leereLagerortFeld, loadGallery, loadStats, selectedOwner, selectedStorage, showProgress, streamFertig, streamRequest } from './02-gallery.js';
 import { _lastImportAt , set_lastImportAt} from './07-admin.js';
@@ -167,7 +167,7 @@ async function loadCatalogSets(){
   _catState.page = 1;
   const d = await api('GET', '/v1/catalog/sets?' + _catQuery(1));
   if (gen !== _catGen) return;   // inzwischen neuer Filter — Antwort verwerfen
-  if (!d.success) { grid.innerHTML = `<div class="empty"><h3>${esc(d.error||t('settings.error'))}</h3></div>`; return; }
+  if (listeLadefehler(grid, d, { erneut: 'loadCatalogSets' })) return;
 
   _catTotal = d.total || 0;
   _catPageCount = Math.max(1, Math.ceil(_catTotal / CAT_LIMIT));
@@ -482,7 +482,7 @@ async function addCatalogSetToGallery(){
         setTimeout(()=>{ hideProgress(); toast(ev.error, 'error'); }, 1500);
       }
     });
-  } catch(e) { if (e.name !== 'AbortError') { hideProgress(); toast(e.message, 'error'); } }
+  } catch(e) { if (e.name !== 'AbortError') { hideProgress(); toast(fehlerMeldung(e), 'error'); } }
 }
 
 /** owned-Badge eines Sets in der geladenen Liste aktualisieren, ohne die
@@ -499,6 +499,7 @@ function _patchCatalogOwned(setNumber, qty){
 
 // ── Handler beim Dispatcher anmelden (siehe js/00-registry.js) ──────────────
 registerActions({
+  loadCatalogSets,
   closeCatModal,
   openCatModal,
 });

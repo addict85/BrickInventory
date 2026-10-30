@@ -1,21 +1,16 @@
 'use strict';
 
-const db      = require('../db/database');
-import { kontingentFrei, speicherePreis, cacheUsable, preisAusCache } from '../utils/financeCalc';
-import { meldeUndWeiter, fehlertext } from '../utils/httpError';
+import { kontingentFrei, speicherePreis, cacheUsable, preisAusCache, parallelLimit } from '../utils/financeCalc';
+import { meldeUndWeiter, fehlertext, meldeUndLiefere } from '../utils/httpError';
 import { getSetting, getGlobalSetting } from '../utils/settings';
 import { katalogEintrag, ohneBricklinkPreis } from '../utils/setNummer';
-const monitor = require('../utils/jobMonitor');
-const { getPriceGuide } = require('../clients/bricklink');
+import * as db from '../db/database';
+import * as monitor from '../utils/jobMonitor';
+import { getPriceGuide } from '../clients/bricklink';
+import { LOCKS } from '../utils/lockNamespaces';
+import { pruefeSet } from '../utils/preisalarm';
 
-/**
- * Laufzustand des Preis-Jobs.
- *
- * Ausgeschrieben, weil TypeScript aus `lastRun:null` sonst den Typ `null`
- * ableitet und aus `log:[]` den Typ `never[]` — beides ist nicht gemeint und
- * war unter strictNullChecks die grösste Einzelgruppe Meldungen in dieser
- * Datei. Der Typ beschreibt, was das Feld über die Laufzeit WIRKLICH annimmt.
- */
+/** Laufzustand des Preis-Jobs; ausgeschrieben, weil `null` und `[]` sonst zu engen Typen würden. */
 interface PriceJobState {
   running: boolean;
   lastRun: string | null;
@@ -30,15 +25,7 @@ const state: PriceJobState = { running:false, lastRun:null, lastDuration:null, l
 let _timer: any = null;
 let _started = false; // true, sobald start() lief (nur im Primary) — schützt reschedule()
 
-/**
- * Namensraum der prozessübergreifenden Sperre für den Preislauf.
- *
- * Die Zahl steht nicht mehr hier, sondern in
- * utils/lockNamespaces.ts — zusammen mit allen anderen. Hier stand vorher eine
- * abgeschriebene Liste der belegten Namensräume; sie kannte 55 und 58 nicht
- * und wäre bei der nächsten Ergänzung wieder veraltet gewesen.
- */
-const { LOCKS } = require('../utils/lockNamespaces');
+/** Namensraum der prozessübergreifenden Sperre; alle Nummern stehen in utils/lockNamespaces.ts. */
 const PRICE_JOB_LOCK = LOCKS.PREIS_JOB;
 
 /**
@@ -75,19 +62,6 @@ function log(msg: string) {
   console.log('  PriceJob:', msg);
   state.log.unshift(line);
   if (state.log.length > 50) state.log.length = 50;
-}
-
-// getSetting()/getGlobalSetting() standen hier als wortgleiche Kopien von
-// utils/settings.ts — inklusive der eigenen SELECT-Anweisung auf
-// global_settings. Beide sind ersatzlos gestrichen: Wer den Tabellenzugriff
-// aendert (Zwischenspeicher, Umbenennung einer Spalte), soll das an EINER …
-// Ausführlich: docs/begruendungen/jobs/priceJob.ts.md#parallellimit
-
-async function parallelLimit<T>(tasks: (() => Promise<T>)[], limit: number) {
-  const results = new Array(tasks.length); let idx = 0;
-  async function worker() { while (idx < tasks.length) { const i = idx++; const t = tasks[i]; if (t) results[i] = await t(); } }
-  await Promise.all(Array.from({ length: Math.min(limit, tasks.length) }, worker));
-  return results;
 }
 
 // forceTtlHours ist `string | number`: dieselbe Herkunft wie in
@@ -169,7 +143,7 @@ async function runPriceRefresh(vorhandeneSperre?: (() => Promise<void>) | null) 
     // Ausführlich: docs/begruendungen/jobs/priceJob.ts.md#runpricerefresh-eigene
     const eigene = await db.all('SELECT DISTINCT user_id, set_number FROM sets');
     const gewuenschte = await db.all(
-      'SELECT DISTINCT user_id, set_number FROM wanted').catch(() => []);
+      'SELECT DISTINCT user_id, set_number FROM wanted').catch(meldeUndLiefere('preis-job:gewuenschte', []));
     const allSets = [...eigene, ...(gewuenschte || [])]
       .filter((r, i, a) => a.findIndex(x =>
         x.user_id === r.user_id && x.set_number === r.set_number) === i)
@@ -258,9 +232,8 @@ async function runPriceRefresh(vorhandeneSperre?: (() => Promise<void>) | null) 
     // Eine Pruefung dort liefe pro Lauf tausendfach und meldete dieselbe …
     // Ausführlich: docs/begruendungen/jobs/priceJob.ts.md#runpricerefresh-2
     try {
-      const { pruefeSet } = require('../utils/preisalarm');
       const wartende = await db.all(
-        'SELECT DISTINCT set_number FROM price_alerts').catch(() => []);
+        'SELECT DISTINCT set_number FROM price_alerts').catch(meldeUndLiefere('preis-job:wartende', []));
       let gemeldet = 0;
       for (const z of wartende || []) gemeldet += await pruefeSet(String(z.set_number));
       if (wartende?.length) log(`Preisalarm: ${wartende.length} Sets geprueft, ${gemeldet} gemeldet`);
@@ -294,7 +267,7 @@ async function zustaendeJeSet(userId: number, setNumbers: string[],
   // nach unknown[], und die Zusage oben wäre nicht mehr einlösbar.
   type ZustandsZeile = { set_number: string; c?: string | null };
   const sammle = async (sql: string): Promise<Map<string, Set<string>>> => {
-    const zeilen: ZustandsZeile[] = await db.all(sql, [userId, setNumbers]).catch(() => []);
+    const zeilen: ZustandsZeile[] = await db.all(sql, [userId, setNumbers]).catch(meldeUndLiefere('preis-job:all', []));
     const m = new Map<string, Set<string>>();
     for (const r of zeilen) {
       if (!m.has(r.set_number)) m.set(r.set_number, new Set<string>());
@@ -312,12 +285,8 @@ async function zustaendeJeSet(userId: number, setNumbers: string[],
        FROM wanted WHERE user_id=$1 AND set_number = ANY($2)`);
 
   for (const sn of setNumbers) {
-    // Hier stand eine dritte Quelle: `COALESCE(condition,'N') FROM sets`, die
-    // nur zählte, wenn es KEINE Erfassung gab. Mit Migration 0032 ist die
-    // Spalte weg — und mit ihr der Fall, dass zwei Orte verschiedene Zustände
-    // behaupten. Der Hinweis bleibt und ist jetzt die einzige Quelle für ein
-    // Set, dessen Erfassung noch nicht geschrieben ist (siehe
-    // conditionsNeededFor unten).
+    // Ohne Erfassung ist der Hinweis die einzige Quelle: Die Erfassung des
+    // neuen Sets ist noch nicht geschrieben (conditionsNeededFor).
     const eigene = new Set<string>(erfasst.get(sn) ?? []);
     if (hintCondition === 'U' || hintCondition === 'N') eigene.add(hintCondition);
     for (const c of gewuenscht.get(sn) ?? []) eigene.add(c);

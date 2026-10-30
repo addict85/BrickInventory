@@ -1,4 +1,4 @@
-import { fehlertext } from '../utils/httpError';
+import { fehlertext, logAndContinue } from '../utils/httpError';
 // Nur eine reine Funktion, kein Verbindungspool — der eigene Prozess
 // dieses Workers bleibt davon unberuehrt.
 import { istErsatzteil } from '../utils/validate';
@@ -139,7 +139,7 @@ async function importiereMitTausch(opts: any) {
     try {
       return await importiereMitTauschIntern(client, { tabelle, schatten, cols, onConflict, tmp, chunkSize, mapRow, filename });
     } finally {
-      await client.query('SELECT pg_advisory_unlock($1, $2)', [CSV_IMPORT_LOCK, lockKeyFor(tabelle)]).catch(() => {});
+      await client.query('SELECT pg_advisory_unlock($1, $2)', [CSV_IMPORT_LOCK, lockKeyFor(tabelle)]).catch(logAndContinue('csv-worker:lockKeyFor'));
     }
   } finally {
     client.release();
@@ -173,7 +173,7 @@ async function importiereMitTauschIntern(client: any, opts: any) {
       await client.query('ROLLBACK').catch(() => {});
       throw e;
     }
-    await client.query(`DROP TABLE IF EXISTS ${schatten}`).catch(() => {});
+    await client.query(`DROP TABLE IF EXISTS ${schatten}`).catch(logAndContinue('csv-worker:query'));
     // Nach einem VOLLSTAENDIGEN Tausch ist die Statistik der Tabelle
     // bedeutungslos — der Planer rechnet mit den Zahlen von vorher, und bei
     // einer eben noch leeren Tabelle schaetzt er eine Zeile. Gemessen greift er
@@ -255,12 +255,9 @@ const TASKS = {
     cols: ['inventory_id','part_num','color_id','quantity','is_spare','img_url'],
     chunkSize: 50,
     mapRow: (c: string[]) => [parseInt(sp(c,0))||0, sp(c,1), parseInt(sp(c,2))||0, parseInt(sp(c,3))||1,
-                  // Diese Zeile SCHREIBT, was spaeter alle lesen. Hier stand
-                  // eine eigene Aufzaehlung ('True','t','1') — ein
-                  // kleingeschriebenes 'true' aus der Katalogdatei landete
-                  // damit als 'f' in der Datenbank, und kein Leser konnte das
-                  // hinterher noch richtigstellen.
-                  istErsatzteil(sp(c,4)) ? 't' : 'f', sp(c,5)],
+                  // Die Spalte ist 0/1 (Migration 0075); die Schreibweisen
+                  // der Datei liest istErsatzteil(), damit es nur eine Lesart gibt.
+                  istErsatzteil(sp(c,4)) ? 1 : 0, sp(c,5)],
   }),
 };
 
@@ -280,7 +277,7 @@ process.on('message', async (msg: any) => {
     // KEINE Nutzermeldung: Das geht per IPC an den Elternprozess und landet
     // im Serverprotokoll. Deshalb bewusst ohne Uebersetzung.
     send({ type: 'error', task, error: `Unbekannte Aufgabe: ${task}` });
-    await pool.end().catch(() => {});
+    await pool.end().catch(logAndContinue('csv-worker:end'));
     process.exit(1);
     return;
   }
@@ -292,7 +289,7 @@ process.on('message', async (msg: any) => {
     process.exit(0);
   } catch(e) {
     send({ type: 'error', task, error: fehlertext(e) });
-    await pool.end().catch(() => {});
+    await pool.end().catch(logAndContinue('csv-worker:end'));
     process.exit(1);
   }
 });

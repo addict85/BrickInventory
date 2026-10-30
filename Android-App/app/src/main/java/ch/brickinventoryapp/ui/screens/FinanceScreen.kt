@@ -74,6 +74,7 @@ fun FinanceScreen(
     // Gemeinsame Fassung (util/NumberFormatUtils.kt): Die Stellung von Symbol und
     // Betrag entscheidet die Sprache, wie in der Webapp.
     fun fmtPrice(v: String?): String = ch.brickinventoryapp.util.fmtMoneyOrDash(v, currencyCode)
+    fun fmtWert(v: Double?): String = v?.let { ch.brickinventoryapp.util.fmtMoney(it, currencyCode) } ?: "—"
 
     if (isLoading && valuation == null) {
         Box(Modifier.fillMaxSize(), Alignment.Center) {
@@ -153,9 +154,9 @@ fun FinanceScreen(
                 onUmschalten = { vm.finanzKategorieUmschalten(it) },
                 onAlle = { vm.finanzKategorienZuruecksetzen() },
             )
-            financeSetRows(valuation, showSets, serverUrl, imageLoader, ::fmtPrice, onSetClick)
-            financePartRows(partsValuation, showParts, serverUrl, imageLoader, ::fmtPrice, onManualClick)
-            financeFigRows(figsValuation, showFigs, serverUrl, imageLoader, ::fmtPrice, onManualClick)
+            financeSetRows(valuation, showSets, serverUrl, imageLoader, ::fmtWert, onSetClick)
+            financePartRows(partsValuation, showParts, serverUrl, imageLoader, ::fmtPrice, ::fmtWert, onManualClick)
+            financeFigRows(figsValuation, showFigs, serverUrl, imageLoader, ::fmtPrice, ::fmtWert, onManualClick)
             financeGrandTotal(valuation, partsValuation, figsValuation, pnl, ::fmtPrice)
         }
     }
@@ -207,8 +208,8 @@ fun ManualFinanceRow(
     purchaseStr: String? = null,
     /** Zustand dieser Erfassung; null = Eintrag ohne Erfassungen. */
     condition: String? = null,
-    /** Entwicklung gegen den Kaufpreis dieser Erfassung (vom Server). */
-    pnlPct: String? = null
+    /** Entwicklung gegen den Kaufpreis dieser Erfassung (vom Server, pnl_prozent). */
+    pnlProzent: Double? = null
 ) {
     // Zwei Karten statt einer mit `enabled`: Material3 hat für die anklickbare
     // Karte eine eigene Überladung, und eine Card mit onClick = {} sähe zwar
@@ -253,7 +254,7 @@ fun ManualFinanceRow(
                 }
                 // Entwicklung wie bei den Sets — gegen den Kaufpreis dieser
                 // Erfassung, gerechnet auf dem Server.
-                pnlPct?.toDoubleOrNull()?.let {
+                pnlProzent?.let {
                     Box(Modifier.padding(top = Abstaende.haar)) { PnlBadge(it) }
                 }
             }

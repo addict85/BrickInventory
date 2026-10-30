@@ -1,6 +1,7 @@
 const db = require('../db/database');
 // Echter Import statt spätem require(): Inzwischen liegt die Funktion in
 // utils/setImages.ts und nicht mehr im Router — damit prüft tsc den Namen mit.
+import { logAndContinue, meldeUndLiefere } from '../utils/httpError';
 import { downloadSetImage } from '../utils/setImages';
 import { grundFuer, istBekanntFehlend, merkeFehlend } from '../utils/imageMisses';
 import { generateThumb } from '../utils/thumbs';
@@ -89,7 +90,7 @@ export async function initImageQueue(): Promise<void> {
   // diesmal in meinem eigenen Fix: Der Puffer liegt im ARBEITSSPEICHER eines
   // Prozesses, das Wegschreiben hing aber an start(), und start() läuft nur auf …
   // Ausführlich: docs/begruendungen/jobs/imageQueue.ts.md#initimagequeue
-  setInterval(() => { schreibePuffer().catch(() => {}); }, 10_000).unref();
+  setInterval(() => { schreibePuffer().catch(logAndContinue('bild-job:schreibePuffer')); }, 10_000).unref();
 }
 
 /**
@@ -100,13 +101,8 @@ const _puffer = new Map<string, string>();   // url → set_number
 
 export function merkeGebraucht(url: string, setNumber: string | null): void {
   if (!setNumber) return;
-  // GEPUFFERT: Ein INSERT je Bildanfrage belegte eine Verbindung
-  // aus dem Pool — bei einer Kachelwand dutzende gleichzeitig. Der Pool war
-  // damit leer, und ANDERE Routen liefen in den Zeitfehler:
-  //
-  //     [route-error] 500: timeout exceeded when trying to connect at getStats
-  //
-  // Der Puffer wird im Takt weggeschrieben, in EINEM Statement.
+  // Gepuffert und im Takt in EINER Anweisung geschrieben: Ein INSERT je
+  // Bildanfrage leerte bei einer Kachelwand den Pool für alle anderen Routen.
   if (_puffer.size < 500) _puffer.set(url, setNumber);
 }
 
@@ -120,24 +116,16 @@ async function schreibePuffer(): Promise<void> {
     `INSERT INTO image_wanted (url, set_number)
        SELECT * FROM unnest($1::text[], $2::text[])
        ON CONFLICT (url) DO NOTHING`, [urls, sets]
-  ).catch(() => {});
+  ).catch(logAndContinue('bild-job:sets'));
 }
 
-/**
- * Einen Stapel abarbeiten: Original lokal ablegen, Vorschau erzeugen, Notiz
- * entfernen.
- *
- * Fehlschläge werden NICHT wiederholt: Die Notiz verschwindet, und der Merker
- * für fehlende Bilder (utils/imageMisses.ts) sorgt dafür, dass es nicht gleich
- * wieder versucht wird.
- */
 /**
  * Eine Vorschau erzeugen — und einen Fehlschlag MERKEN.
  * Ausführlich: docs/begruendungen/jobs/imageQueue.ts.md#vorschauerzeugen
  */
 async function vorschauErzeugen(relPfad: string, schluessel: string): Promise<boolean> {
   if (istBekanntFehlend('thumb:' + schluessel)) return false;
-  const ok = await generateThumb(relPfad).catch(() => false);
+  const ok = await generateThumb(relPfad).catch(meldeUndLiefere('bild-job:generateThumb', false));
   if (!ok) merkeFehlend('thumb:' + schluessel, 'Vorschau konnte nicht erzeugt werden');
   return !!ok;
 }
@@ -209,12 +197,8 @@ function merkeLauf(erg: StapelErgebnis): void {
 }
 
 /**
- * Den Stand für die anderen Arbeitsprozesse ablegen — EINMAL je Takt.
- *
- * Bewusst nicht je Stapel: Ein Takt besteht jetzt aus bis zu fünfzig davon, und
- * ein Schreibvorgang alle paar Millisekunden ist auf der SD-Karte eines
- * Raspberry Pi keine gute Idee. Einmal je zwanzig Sekunden reicht der Kachel
- * reichlich — sie wertet den Zeitpunkt in Minuten aus.
+ * Den Stand für die anderen Arbeitsprozesse ablegen — einmal je Takt, nicht
+ * je Stapel: Die Kachel liest Minuten, und eine SD-Karte schont das.
  */
 async function speichereLauf(erg: StapelErgebnis): Promise<void> {
   // Das await gehoert hier hin: Der naechste Takt liest den Stand ueber einen
@@ -222,7 +206,7 @@ async function speichereLauf(erg: StapelErgebnis): Promise<void> {
   // die Zeile steht — die Kachel meldet dann „Job noch nicht gelaufen", waehrend
   // im Log Durchgaenge stehen.
   await setzeZustand(LAUF_SCHLUESSEL, JSON.stringify({ zeit: Date.now(), ergebnis: erg }))
-    .catch(() => {});
+    .catch(logAndContinue('bild-job:setzeZustand'));
 }
 
 /**
@@ -234,7 +218,7 @@ async function loescheVerfallene(): Promise<number> {
     `DELETE FROM image_wanted
       WHERE requested_at <= NOW() - ($1 || ' milliseconds')::interval`,
     [String(NOTIZ_GILT_MS)]
-  ).catch(() => null);
+  ).catch(meldeUndLiefere('bild-job:r', null));
   return r?.changes || 0;
 }
 
@@ -248,7 +232,7 @@ async function arbeiteStapel(): Promise<StapelErgebnis> {
                      ORDER BY requested_at ASC LIMIT $2)
       RETURNING url, set_number`,
     [String(NOTIZ_GILT_MS), STAPEL]
-  ).catch(() => []);
+  ).catch(meldeUndLiefere('bild-job:rows', []));
   if (!rows.length) { merkeLauf(erg); return erg; }
 
 
@@ -283,14 +267,8 @@ async function arbeiteStapel(): Promise<StapelErgebnis> {
       // kostet jedes webp-Bild bei JEDEM Durchgang einen vergeblichen Lauf.
       if (fs.existsSync(vorschau)) erg.uebersprungen++;
       else if (istBekanntFehlend('thumb:' + vorschau)) {
-        // ── VOR der Pause und VOR dem Kontingent ────────────
-        //
-        // Die Prüfung stand bisher INNERHALB von vorschauErzeugen(), also
-        // hinter beidem. Eine Verkleinerung, die nie gelingen kann (früher webp),
-        // kostete damit bei jedem Durchgang eine
-        // Höflichkeitspause UND einen Platz im CDN-Kontingent — für einen
-        // Aufruf, der sofort `false` zurückgibt. Zehn solcher Notizen
-        // verbrauchten einen ganzen Takt mit reinem Schlafen.
+        // VOR der Pause und VOR dem Kontingent: Eine Verkleinerung, die nie
+        // gelingen kann, soll weder warten noch einen CDN-Platz kosten.
         erg.bekanntFehlend++;
       }
       else {
@@ -323,19 +301,13 @@ async function arbeiteStapel(): Promise<StapelErgebnis> {
       continue;
     }
 
-    // ── Zwischen zwei Anfragen warten ──────────────────────────────────────
-    //
-    // NICHT vor der ersten: Der erste Durchgang soll nicht künstlich später
-    // beginnen. Die Pause gehört ZWISCHEN die Anfragen.
-    //
-    // Sie steht hier und nicht um den ganzen Schleifenkörper, weil Sets mit
-    // bereits vorhandener Datei oben abgekürzt werden — die kosten den CDN
-    // nichts und sollen auch nichts kosten.
+    // Die Pause steht ZWISCHEN zwei Anfragen ans CDN — nicht vor der ersten
+    // und nicht für Sets, deren Datei schon da ist (oben abgekürzt).
     await pauseVorArbeit();
     arbeit++;
 
     const info: { status?: number } = {};
-    const lokal = await downloadSetImage(r.url, r.set_number, info).catch(() => null);
+    const lokal = await downloadSetImage(r.url, r.set_number, info).catch(meldeUndLiefere('bild-job:downloadSetImage', null));
     if (!lokal) {
       // Drosselung ist KEINE Fehlanzeige
       // Beim Nachsehen fiel auf: Bisher galt jeder Fehlschlag als „dieses Bild
@@ -346,19 +318,14 @@ async function arbeiteStapel(): Promise<StapelErgebnis> {
         _pauseBis = Date.now() + DROSSEL_PAUSE_MS;
         console.error(`[image-queue] CDN drosselt (HTTP ${info.status}) — Pause bis ` +
                       new Date(_pauseBis).toLocaleTimeString());
-        // ALLE noch unbearbeiteten Notizen zurücklegen, nicht nur diese eine.
-        //
-        // Der Stapel wird mit DELETE … RETURNING geholt — die Zeilen sind also
-        // bereits aus der Warteschlange verschwunden. Legte man beim Abbruch
-        // nur die aktuelle zurück, verlöre man den ganzen Rest des Stapels
-        // still. (Genau das ist mir beim ersten Entwurf passiert: 10 Notizen
-        // rein, nach der Drosselung war 1 übrig.)
+        // ALLE noch unbearbeiteten Notizen zurücklegen: Der Stapel kam per
+        // DELETE … RETURNING, der Rest wäre sonst still verloren.
         const rest = rows.slice(idx);
         await db.run(
           `INSERT INTO image_wanted (url, set_number)
              SELECT * FROM unnest($1::text[], $2::text[])
              ON CONFLICT (url) DO NOTHING`,
-          [rest.map((x: any) => x.url), rest.map((x: any) => x.set_number)]).catch(() => {});
+          [rest.map((x: any) => x.url), rest.map((x: any) => x.set_number)]).catch(logAndContinue('bild-job:map'));
         erg.zurueckgelegt = rest.length;
         break;
       }
@@ -406,12 +373,6 @@ async function arbeiteStapel(): Promise<StapelErgebnis> {
   return erg;
 }
 
-/**
- * Die Notizen abarbeiten — nur auf dem Primärprozess.
- *
- * Das Wegschreiben des Puffers steht bewusst NICHT hier, sondern in
- * initImageQueue(): Der Puffer ist je Prozess, das Abarbeiten ist es nicht.
- */
 /**
  * Ein Takt: Stapel nachholen, bis das Kontingent für echte Arbeit aufgebraucht
  * ist, die Warteschlange leer ist oder der Deckel greift.

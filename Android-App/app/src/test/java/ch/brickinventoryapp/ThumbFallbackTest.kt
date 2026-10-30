@@ -140,17 +140,15 @@ class ImageClientLoggingTest {
         // Zeichen — die Regel galt weiter, nur der Ausschnitt war zu kurz.
         val src = Quellen.di().lines()
             .joinToString("\n") { if (it.trim().startsWith("//")) "" else it }
-        val fn = src.substring(src.indexOf("internal fun buildInterceptorClient"), src.indexOf("internal fun buildInterceptorClient") + 800)
+        val start = src.indexOf("internal fun buildInterceptorClient")
+        val fn = src.substring(start, minOf(src.length, start + 2000))
         assert(!fn.contains("if (isApiClient && BuildConfig.DEBUG)")) {
             "Die alte Bedingung schloss den Bild-Client von der Protokollierung aus"
         }
         assert(fn.contains("if (BuildConfig.DEBUG) {")) {
             "Beide Clients müssen im Debug-Build protokolliert werden"
         }
-        // isApiClient wird weiterhin für die localhost-Umschreibung gebraucht
-        assert(src.contains("if (isApiClient && urlStr.startsWith(\"http://localhost:3000/\"))")) {
-            "isApiClient darf für die URL-Umschreibung nicht verloren gegangen sein"
-        }
+        // Die Umschreibung des Platzhalters prüft ServerWaechterTest ausgeführt.
     }
 }
 

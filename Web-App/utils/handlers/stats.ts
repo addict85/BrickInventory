@@ -1,3 +1,4 @@
+import { meldeUndLiefere } from '../httpError';
 import * as db from '../../db/database';
 import { asIds } from '../household';
 import { getGlobalSetting } from '../settings';
@@ -41,7 +42,7 @@ async function getStats(userId: number | number[]) {
              WHERE m.user_id = ANY($1)`, [uids]),
     db.get("SELECT value FROM user_settings WHERE user_id = ANY($1) AND key = 'currency'", [uids]),
   ]);
-  const userCondRow = await db.get("SELECT value FROM user_settings WHERE user_id = ANY($1) AND key='user_default_condition'", [uids]).catch(() => null);
+  const userCondRow = await db.get("SELECT value FROM user_settings WHERE user_id = ANY($1) AND key='user_default_condition'", [uids]).catch(meldeUndLiefere('statistik:ANY', null));
   const globalCond = await getGlobalSetting('default_price_condition');
   const effectiveCondition = (userCondRow?.value && ['N','U'].includes(userCondRow.value))
     ? userCondRow.value : (globalCond || 'N');

@@ -83,8 +83,8 @@ test('ohne Marktpreis: Anzeigewert 0, Erfassung NULL — bei Teil UND Figur',
   const uid = u.id;
 
   try {
-    const { addManualPart } = _req('routes/parts.js');
-    const { addManualFig }  = _req('routes/minifigs.js');
+    const { addManualPart } = _req('utils/manuelleTeile.js');
+    const { addManualFig }  = _req('utils/manuelleFiguren.js');
 
     // Namen mitgeben, damit kein Rebrickable-Nachschlag nötig ist. KEIN Preis
     // — darum geht es.

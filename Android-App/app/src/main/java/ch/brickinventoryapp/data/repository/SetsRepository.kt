@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.data.repository
 
-import ch.brickinventoryapp.data.api.BrickApiService
+import ch.brickinventoryapp.data.api.SetsApi
 import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.model.*
 import kotlinx.coroutines.Dispatchers
@@ -21,19 +21,14 @@ import javax.inject.Singleton
  */
 @Singleton
 class SetsRepository @Inject constructor(
-    api: BrickApiService,
+    api: SetsApi,
     cache: ResponseCache,
-) : RepoBasis(api, cache) {
+) : RepoBasis<SetsApi>(api, cache) {
 
     /**
-     * Galerie-Seite vom Server — gefiltert, sortiert, paginiert.
-     *
-     * Gecacht wird nur die ROHE erste Seite ohne Filter: Eine gefilterte
-     * Antwort unter demselben Schlüssel abzulegen hiesse, dass die Antwort
-     * eines Kontos unter derselben Adresse läge wie die des ganzen Haushalts —
-     * und nach dem nächsten Start der falsche Bestand erschiene.
-     *
-     * @param accounts Kontofilter des Haushalts (null = Vorgabe „alle").
+     * Galerie-Seite vom Server — gefiltert, sortiert, paginiert. Gecacht wird nur die
+     * rohe erste Seite: Eine gefilterte Antwort unter demselben Schlüssel erschiene
+     * offline als der ganze Bestand.
      */
     suspend fun getSets(
         accounts: String? = null,
@@ -181,7 +176,7 @@ class SetsRepository @Inject constructor(
         return safeCall { api.getCsvImportStatusDirect(url, "Bearer $token") }
     }
 
-    /** Laufenden CSV-Import abbrechen — siehe BrickApiService.cancelCsvImport. */
+    /** Laufenden CSV-Import abbrechen — siehe SetsApi.cancelCsvImport. */
     suspend fun cancelCsvImport(): Result<GenericAdminResponse> = safeCall { api.cancelCsvImport() }
 
     suspend fun triggerCsvSync(): Result<GenericAdminResponse> = safeCall { api.triggerCsvSync() }

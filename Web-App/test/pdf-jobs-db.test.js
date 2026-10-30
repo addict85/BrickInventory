@@ -46,7 +46,8 @@ test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async (t) => 
     try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); }
   }
   const pdf = _req('routes/api_v1/pdf.js');
-  const { PDF_JOB_DIR } = pdf;
+  const auftraege = _req('utils/pdfAuftraege.js');
+  const { PDF_JOB_DIR } = _req('utils/appPaths.js');
 
   for (const name of ['pdf_a', 'pdf_b']) await db.run('DELETE FROM users WHERE username = $1', [name]);
   await db.run("INSERT INTO users (username,password_hash,email_verified) VALUES ('pdf_a','x',1)");
@@ -85,7 +86,7 @@ test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async (t) => 
     fetch(`${basis}/api/v1/sets/partslist-pdf/${pfad}`, { headers: { Authorization: `Bearer ${token}` } });
 
   try {
-    const jobA = pdf.neueJobId();
+    const jobA = auftraege.neueJobId();
     await auftragLegen(jobA, idA);
 
     await t.test('der eigene Auftrag ist abrufbar', async () => {
@@ -111,9 +112,9 @@ test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async (t) => 
 
     await t.test('der Deckel greift beim dritten gleichzeitigen Auftrag', async () => {
       await db.run('DELETE FROM pdf_auftraege');
-      await auftragLegen(pdf.neueJobId(), idA, 'running');
-      await auftragLegen(pdf.neueJobId(), idA, 'running');
-      await auftragLegen(pdf.neueJobId(), idB, 'running');   // fremder Lauf zählt nicht mit
+      await auftragLegen(auftraege.neueJobId(), idA, 'running');
+      await auftragLegen(auftraege.neueJobId(), idA, 'running');
+      await auftragLegen(auftraege.neueJobId(), idB, 'running');   // fremder Lauf zählt nicht mit
 
       const r = await fetch(`${basis}/api/v1/sets/partslist-pdf`, {
         method: 'POST',
@@ -133,7 +134,7 @@ test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async (t) => 
 
     await t.test('abgelaufene Läufe sperren niemanden dauerhaft aus', async () => {
       await db.run('DELETE FROM pdf_auftraege');
-      const alt1 = pdf.neueJobId(), alt2 = pdf.neueJobId();
+      const alt1 = auftraege.neueJobId(), alt2 = auftraege.neueJobId();
       await auftragLegen(alt1, idA, 'running');
       await auftragLegen(alt2, idA, 'running');
       // Stürzt ein Worker mitten im Lauf ab, bleibt der Auftrag auf 'running'.
@@ -148,7 +149,7 @@ test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async (t) => 
 
     await t.test('der Statusstrom meldet das Ende sofort', async () => {
       await db.run('DELETE FROM pdf_auftraege');
-      const job = pdf.neueJobId();
+      const job = auftraege.neueJobId();
       await auftragLegen(job, idA, 'running');
       const ctrl = new AbortController();
       const r = await fetch(`${basis}/api/v1/sets/partslist-pdf/stream/${job}`,
@@ -171,9 +172,9 @@ test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async (t) => 
     });
 
     await t.test('die Auftragskennung kommt aus kryptografischem Zufall', () => {
-      const ids = new Set(Array.from({ length: 200 }, () => pdf.neueJobId()));
+      const ids = new Set(Array.from({ length: 200 }, () => auftraege.neueJobId()));
       assert.equal(ids.size, 200, 'Kennungen wiederholen sich');
-      for (const id of ids) assert.ok(pdf.validJobId(id), `eigene Kennung ist ungültig: ${id}`);
+      for (const id of ids) assert.ok(auftraege.gueltigeAuftragsKennung(id), `eigene Kennung ist ungültig: ${id}`);
       const zufallsteil = [...ids][0].split('-')[1];
       assert.match(zufallsteil, /^[0-9a-f]{12}$/, 'kein 6-Byte-Hex — stammt die Kennung noch aus Math.random()?');
     });

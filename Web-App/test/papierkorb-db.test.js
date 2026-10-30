@@ -164,7 +164,7 @@ test('Papierkorb', { concurrency: 1 }, async (t) => {
       await haeltTeil(db, haupt, PN, { colorId: 5, menge: 3 });
       await haeltFigur(db, haupt, FN, { menge: 1 });
       // Ein Set des Unterkontos: Das Hauptkonto sieht es, „meine Daten" ist es nicht.
-      const SN2 = `${SN}-sub`;
+      const SN2 = `${SN.replace(/-\d+$/, "")}9-1`;   // mit Version: die Datenbank ergänzt sie sonst (Migration 0074)
       await haeltSet(db, sub, SN2, 1);
       const vorher = await zeilen(haupt);
 

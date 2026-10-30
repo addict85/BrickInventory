@@ -1,6 +1,8 @@
 import fs from 'fs';
 import { queueThumb } from './proxyThumbs';
-import { vorDem } from '../utils/httpError';
+import { vorDem, ohneFehlendeDatei } from '../utils/httpError';
+import path from 'path';
+import { APP_ROOT } from './appPaths';
 
 /**
  * Ein Bild aus dem Platten-Cache ausliefern, falls es dort liegt.
@@ -21,7 +23,7 @@ export async function liefereAusCache(opts: {
   if (wantThumb) {
     try {
       await fs.promises.access(thumbFile);
-      const tst0 = await fs.promises.stat(thumbFile).catch(() => null);
+      const tst0 = await fs.promises.stat(thumbFile).catch(ohneFehlendeDatei('bild-cache:stat', null));
       // Zweite Verteidigungslinie: Eine leere oder viel zu
       // kleine Vorschau ist kein Bild. Seit der Erzeugung atomar läuft, darf
       // das nicht mehr entstehen — Altbestände aus der Zeit davor liegen
@@ -30,7 +32,7 @@ export async function liefereAusCache(opts: {
       // Anfrage auf das Original zurück (weiter unten) und die Verkleinerung
       // wird neu angestossen.
       if (!tst0 || tst0.size < 200) {
-        await fs.promises.unlink(thumbFile).catch(() => {});
+        await fs.promises.unlink(thumbFile).catch(ohneFehlendeDatei('bild-cache:unlink'));
         throw new Error('unbrauchbare Vorschau verworfen');
       }
       res.setHeader('Content-Type', 'image/jpeg');
@@ -74,7 +76,7 @@ export async function liefereAusCache(opts: {
     res.setHeader('Content-Type', ct);
     // Länge mitgeben: Ohne sie geht die Antwort als chunked raus, und ein
     // Reverse-Proxy davor kann sie puffern statt durchzureichen.
-    const cst = await fs.promises.stat(cacheFile).catch(() => null);
+    const cst = await fs.promises.stat(cacheFile).catch(ohneFehlendeDatei('bild-cache:stat', null));
     if (cst) {
       res.setHeader('Content-Length', String(cst.size));
       res.setHeader('ETag', `"c-${cst.size}-${Math.floor(cst.mtimeMs)}"`);
@@ -86,4 +88,29 @@ export async function liefereAusCache(opts: {
   } catch (_) { /* Cache-Miss oder Fehler — normal weiterladen */ }
 
   return false;
+}
+
+/**
+ * Img-Proxy-Cache aufräumen: Dateien, die 30 Tage nicht angefasst wurden,
+ * löschen — sonst wächst data/img_proxy_cache unbegrenzt.
+ * Ausführlich: docs/begruendungen/routes/imgProxy.ts.md#startimgcachecleanup
+ */
+export function startImgCacheCleanup() {
+  const lauf = () => {
+    const cacheDir = path.join(APP_ROOT, 'data', 'img_proxy_cache');
+    fs.readdir(cacheDir, (err, files) => {
+      if (err) return;
+      const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
+      for (const f of files) {
+        const p = path.join(cacheDir, f);
+        fs.stat(p, (e, st) => {
+          // atime UND mtime: Wird das Dateisystem mit noatime eingehängt (in
+          // Containern verbreitet), bleibt atime auf dem Erstellungszeitpunkt
+          // stehen — dann entscheidet mtime, und beides muss alt sein.
+          if (!e && st.isFile() && st.atimeMs < cutoff && st.mtimeMs < cutoff) fs.unlink(p, () => {});
+        });
+      }
+    });
+  };
+  return setInterval(lauf, 24 * 60 * 60 * 1000).unref();
 }

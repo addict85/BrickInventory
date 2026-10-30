@@ -5,6 +5,7 @@
  */
 import * as db from '../db/database';
 import { toCsv } from './csvExport';
+import { erfassungsTagSql } from './acquisitions';
 
 // Shared logic to build the Teile CSV export content (manuell erfasst only).
 // Used by both the standalone CSV download and the combined ZIP export in settings.js.
@@ -17,17 +18,17 @@ const PARTS_CSV_SQL = `
          -- es keine Zeile und damit keine Menge — 0 statt leer, dieselbe
          -- Lesart wie im Sets-Export (utils/setService.ts).
          COALESCE(a.quantity, 0) AS quantity,
-         COALESCE(p.color_id, 0) AS color_id,
+         p.color_id,
          COALESCE(pcc.color_name,'') AS color_name,
          a.unit_price,
          COALESCE(a.condition, 'N') AS condition,
          CASE WHEN a.id IS NULL THEN ''
-              ELSE TO_CHAR(a.created_at AT TIME ZONE 'UTC','YYYY-MM-DD') END AS acquired_at
+              ELSE TO_CHAR(${erfassungsTagSql('a')}, 'YYYY-MM-DD') END AS acquired_at
     FROM parts p
     LEFT JOIN part_acquisitions a
            ON a.user_id = p.user_id
           AND a.part_number = p.part_number
-          AND COALESCE(a.color_id, 0) = COALESCE(p.color_id, 0)
+          AND a.color_id = p.color_id
     -- Name und Farbbezeichnung aus den Katalogen (Migration 0034). LEFT JOIN,
     -- damit ein Teil ohne Katalogzeile nicht aus dem Export faellt.
     LEFT JOIN part_catalog pc ON pc.part_number = p.part_number
@@ -73,7 +74,7 @@ const FIGS_CSV_SQL = `
          a.unit_price,
          COALESCE(a.condition, 'N') AS condition,
          CASE WHEN a.id IS NULL THEN ''
-              ELSE TO_CHAR(a.created_at AT TIME ZONE 'UTC','YYYY-MM-DD') END AS acquired_at
+              ELSE TO_CHAR(${erfassungsTagSql('a')}, 'YYYY-MM-DD') END AS acquired_at
     FROM minifigs f
     LEFT JOIN bl_zuordnung z ON z.art = 'fig' AND z.rb_id = f.fig_number
     LEFT JOIN minifig_acquisitions a

@@ -6,8 +6,9 @@ import { getGlobalSetting } from './settings';
 import { DEFAULT_PRICE_CONDITION, fetchPartPrice, fetchMinifigPrice, ladeBlNummernVor,
          resolveBlPartNumber, resolveBlColorId } from './finance/preise';
 import { getSetting } from './settings';
-import { meldeUndWeiter, fehlertext } from './httpError';
+import { meldeUndWeiter, fehlertext, logAndContinue, meldeUndLiefere } from './httpError';
 import { getMinifigParts } from '../clients/rebrickable';
+import { KEINE_FARBE } from './validate';
 
 /**
  * Der aktuelle Marktpreis eines Sets.
@@ -24,16 +25,10 @@ async function getCurrentMarketPrice(setNumber: string, userId: number, conditio
     // condition als Hinweis mitgeben: Beim Anlegen eines neuen Sets existieren
     // weder sets- noch set_acquisitions-Zeile schon, refreshPriceForSet könnte
     // sonst nur den Standardzustand holen (siehe jobs/priceJob.ts).
-    await nacharbeit().preisFuerSetHolen(setNumber, userId, condition).catch(() => {});
+    await nacharbeit().preisFuerSetHolen(setNumber, userId, condition).catch(logAndContinue('marktpreis:preisFuerSetHolen'));
 
-    // Ist ein Zustand AUSDRÜCKLICH angefragt, gilt genau der.
-    //
-    // Sonst entschied getSetValue() anhand der Erfassungen — und beim Anlegen
-    // eines neuen Sets gibt es noch keine. Die Funktion fiel dann auf
-    // sets.condition zurück, das ebenfalls noch nicht geschrieben war, also auf
-    // 'N'. Ein als gebraucht erfasstes Set bekam so den Neupreis (55 statt 33).
-    // Der weiter oben berechnete effectiveCond wurde nur im unerreichbaren
-    // Rückfall darunter benutzt.
+    // Ein ausdrücklich angefragter Zustand gilt genau so: Beim Anlegen gibt es
+    // noch keine Erfassung, aus der getSetValue() ihn ableiten könnte.
     if (!condition) {
       // Ohne ausdrücklichen Wunsch: Bewertung je Erfassung nach deren Zustand
       // (utils/setValue.ts) — das ist der richtige Wert für eine Anzeige.
@@ -54,27 +49,17 @@ async function getCurrentMarketPrice(setNumber: string, userId: number, conditio
 }
 
 
-/**
- * Warum die Teile- und Figurenpreise jetzt AUCH hier stehen
- * Diese Datei fuehrte den Marktpreis fuer SETS. Die Pendants fuer Teile und
- * Minifiguren wohnten in routes/parts.ts und routes/minifigs.ts — dieselbe
- * Frage, dreimal beantwortet, an drei Orten in zwei Schichten. Wer die Regel …
- * Ausführlich: docs/begruendungen/utils/marketPrice.ts.md#abschnitt
- */
+// Marktpreise für Sets, Teile und Figuren stehen hier zusammen: eine Frage, eine Stelle.
+// Ausführlich: docs/begruendungen/utils/marketPrice.ts.md#abschnitt
 
-// Default the purchase price to the current BrickLink market price for a part,
-// when the user did not enter one manually.
-// Effektiver Zustand eines Teils für die Preisabfrage: sobald eine Erfassung
-// "Gebraucht" ist → 'U', sonst 'N'; ohne Erfassungen der User-Default. Der
-// eigentliche Preis-Fallback (gewünschter Zustand → jeweils anderer) steckt in
-// fetchPartPrice.
+/** Zustand eines Teils für den Preis: 'U' sobald eine Erfassung gebraucht ist, sonst 'N'; ohne Erfassung der Standard. */
 async function resolvePartCondition(userId: number, partNumber: string, colorId: number) {
   try {
     const row = await db.get(
       "SELECT MAX(CASE WHEN condition='U' THEN 1 ELSE 0 END) AS any_used, COUNT(*) AS cnt FROM part_acquisitions WHERE user_id=$1 AND part_number=$2 AND color_id=$3",
       // parseInt entfaellt: colorId ist bereits eine Zahl (V.colorId gibt
       // number zurueck). parseInt(5) ging nur ueber den Umweg ueber "5".
-      [userId, partNumber, colorId || 0]);
+      [userId, partNumber, colorId]);
     if (row && parseInt(row.cnt) > 0) return parseInt(row.any_used) > 0 ? 'U' : 'N';
   } catch (e) { meldeUndWeiter('teile:zustand-ermitteln', e); }
   try { return await userDefaultCondition(userId); }
@@ -111,7 +96,7 @@ async function marktpreiseAusCacheFuerFiguren(
       WHERE fig_number = ANY($1) AND currency_code = $2
         AND fetched_at > NOW() - make_interval(hours => $3)`,
     [schluessel, currency, ttl],
-  ).catch(() => []);
+  ).catch(meldeUndLiefere('marktpreis:zeilen', []));
 
   const cache = new Map<string, number>();
   for (const z of zeilen) {
@@ -164,11 +149,11 @@ async function marktpreiseAusCacheFuerTeile(
   for (const t of teile) {
     const roh = String(t.bl_part_number || t.part_number || '');
     if (!roh) continue;
-    const schluessel = `${t.part_number}|${t.color_id ?? 0}`;
+    const schluessel = `${t.part_number}|${t.color_id ?? KEINE_FARBE}`;
     if (auflösung.has(schluessel)) continue;
     auflösung.set(schluessel, {
       nummer: await resolveBlPartNumber(roh),
-      farbe:  Number(await resolveBlColorId(Number(t.color_id ?? 0))) || 0,
+      farbe:  Number(await resolveBlColorId(Number(t.color_id ?? KEINE_FARBE))) || 0,
     });
   }
 
@@ -179,7 +164,7 @@ async function marktpreiseAusCacheFuerTeile(
       WHERE part_number = ANY($1) AND currency_code = $2
         AND fetched_at > NOW() - make_interval(hours => $3)`,
     [nummern, currency, ttl],
-  ).catch(() => []);
+  ).catch(meldeUndLiefere('marktpreis:zeilen', []));
 
   const cache = new Map<string, number>();
   for (const z of zeilen) {
@@ -188,7 +173,7 @@ async function marktpreiseAusCacheFuerTeile(
   }
 
   for (const t of teile) {
-    const schluessel = `${t.part_number}|${t.color_id ?? 0}`;
+    const schluessel = `${t.part_number}|${t.color_id ?? KEINE_FARBE}`;
     const a = auflösung.get(schluessel);
     if (!a) continue;
     const zustand = t.condition === 'U' ? 'U' : 'N';
@@ -209,7 +194,7 @@ async function marktpreisMitHerkunft(partNumber: string, colorId: number, userId
     const currency  = await getSetting(userId, 'currency', 'EUR');
     const ttlHours  = 24;
     const effCond   = condition || await resolvePartCondition(userId, partNumber, colorId);
-    const priceData = await fetchPartPrice(partNumber, colorId || 0, effCond, currency, ttlHours);
+    const priceData = await fetchPartPrice(partNumber, colorId, effCond, currency, ttlHours);
     // avg_price statt qty_avg_price — dieselbe Begründung wie bei den Sets:
     // der mengengewichtete Schnitt liegt unter BrickLinks "Avg Price", und
     // "0.00" aus Postgres ist truthy und hätte avg_price verdeckt.
@@ -261,7 +246,7 @@ async function schaetzeFigurenpreis(figNumber: string, userId: number, condition
         WHERE fig_number = $1 AND condition = $2 AND currency_code = $3 AND geschaetzt
           AND fetched_at > NOW() - make_interval(hours => $4)`,
       [figNumber, cond0, currency, ttl]
-    ).catch(() => null);
+    ).catch(meldeUndLiefere('marktpreis:cached', null));
     const zwischengespeichert = parseFloat(String(cached?.avg_price || 0));
     if (zwischengespeichert > 0)
       return { preis: zwischengespeichert, abdeckung: cached?.abdeckung != null ? parseFloat(String(cached.abdeckung)) : null };
@@ -288,7 +273,7 @@ async function schaetzeFigurenpreis(figNumber: string, userId: number, condition
       // Antwort im eben gefuellten Gedaechtnis.
       const blPartNum = p.bl_part_num || p.part_num;
       try {
-        const priceData = await fetchPartPrice(blPartNum, p.color_id || 0, cond, currency, 24);
+        const priceData = await fetchPartPrice(blPartNum, p.color_id ?? KEINE_FARBE, cond, currency, 24);
         const unitPrice = parseFloat(priceData?.avg_price || 0);
         if (unitPrice > 0) { total += unitPrice * (p.quantity || 1); priced++; }
       } catch (_) { /* Teil ohne Preis — überspringen */ }
@@ -296,13 +281,9 @@ async function schaetzeFigurenpreis(figNumber: string, userId: number, condition
     console.log(`[minifig-price-estimate] ${figNumber} (${cond}): ${priced}/${parts.length} Teile bepreist, geschätzt=${priced>0?total.toFixed(2):'—'}`);
     if (priced === 0) return null;
 
-    // Die Schätzung gehört in Cache UND Verlauf
-    // Gemeldet: Im Detail-Dialog einer Minifigur OHNE BrickLink-Nummer standen
-    // bei „Marktpreis (Neu)" und „Marktpreis (Gebraucht)" nur Striche, und der
-    // Preisverlauf blieb leer — obwohl Kaufpreise in beiden Zuständen erfasst …
+    // Die Schätzung gehört in Cache und Verlauf, markiert als geschätzt:
+    // fetchMinifigPrice liest nur unmarkierte Zeilen, die Anzeige kennzeichnet sie.
     // Ausführlich: docs/begruendungen/utils/marketPrice.ts.md#estimatefigpricefromparts-2
-    // Die Markierung trennt die Schätzung vom BrickLink-Preis: fetchMinifigPrice
-    // liest nur unmarkierte Zeilen, die Anzeige kennzeichnet die markierten.
     const abdeckung = Math.round(priced / parts.length * 1000) / 1000;
     await db.run(
       `INSERT INTO minifig_price_cache (fig_number, condition, currency_code, avg_price, qty_avg_price, geschaetzt, abdeckung)
@@ -316,7 +297,7 @@ async function schaetzeFigurenpreis(figNumber: string, userId: number, condition
       `INSERT INTO minifig_price_history (fig_number, condition, currency_code, avg_price, qty_avg_price, geschaetzt, abdeckung)
        VALUES ($1,$2,$3,$4,$4,TRUE,$5) ON CONFLICT DO NOTHING`,
       [figNumber, cond, currency, total, abdeckung]
-    ).catch(() => {});
+    ).catch(logAndContinue('marktpreis:figurverlauf schreiben'));
 
     return { preis: total, abdeckung };
   } catch (e) {
@@ -349,7 +330,7 @@ async function figMarktpreisMitHerkunft(figNumber: string, userId: number, blFig
     // Ausführlich: docs/begruendungen/utils/marketPrice.ts.md#figmarktpreismitherkunft
     for (const num of [blFigNumber, figNumber]) {
       if (!num) continue;
-      const priceData = await fetchMinifigPrice(num, effCond, currency, 24).catch(() => null);
+      const priceData = await fetchMinifigPrice(num, effCond, currency, 24).catch(meldeUndLiefere('marktpreis:fetchMinifigPrice', null));
       // Der Rueckfall wird uebernommen, aber benannt
       // Die Antwort damals war `continue` — also gar kein Preis. Darauf kam
       // Marcos naechster Befund: „Teilweise wird der Kaufpreis nicht direkt
@@ -363,12 +344,8 @@ async function figMarktpreisMitHerkunft(figNumber: string, userId: number, blFig
       };
       if (num === blFigNumber && blFigNumber === figNumber) break;   // nicht doppelt fragen
     }
-    // Bei BrickLink nichts gefunden: über die Teile der Minifigur schätzen —
-    // im ERMITTELTEN Zustand, nicht im Standardzustand.
-    //
-    // Ohne Herkunft: Die Schätzung rechnet mit den Teilepreisen DIESES
-    // Zustands. Sie ist eine Näherung, aber keine aus dem anderen Zustand —
-    // und nur die wäre zu kennzeichnen.
+    // Bei BrickLink nichts: über die Teile schätzen, im ermittelten Zustand.
+    // Ohne Herkunftsangabe — sie stammt nicht aus dem anderen Zustand.
     const schaetzung = await schaetzeFigurenpreis(figNumber, userId, effCond);
     return { preis: schaetzung?.preis ?? null, ausZustand: null, geschaetzt: schaetzung != null,
              abdeckung: schaetzung?.abdeckung ?? null };

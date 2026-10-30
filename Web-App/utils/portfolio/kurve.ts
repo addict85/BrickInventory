@@ -1,3 +1,4 @@
+import { meldeUndLiefere } from '../httpError';
 /**
  * Die Kurve aus dem PREISVERLAUF je Set rekonstruieren.
  * Ausführlich: docs/begruendungen/utils/portfolio/kurve.ts.md#rekonstruierekurve
@@ -176,7 +177,7 @@ export async function rekonstruiereKurve(opts: {
        SELECT ROUND(SUM(m.qty * l.preis), 2) AS total
          FROM letzte l JOIN mengen m ON m.set_number = l.set_number`,
       [currency, condition, setNumbers, mengen, ersterTag]
-    ).catch(() => []);
+    ).catch(meldeUndLiefere('portfolio:kurve rechnen', []));
     const wert = parseFloat(start?.[0]?.total);
     if (Number.isFinite(wert) && wert > 0) rawPoints[0].total = wert;
   }

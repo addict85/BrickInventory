@@ -1,5 +1,11 @@
 package ch.brickinventoryapp
 
+import ch.brickinventoryapp.data.cache.ResponseCache
+import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.data.repository.SetsRepository
+import kotlinx.coroutines.runBlocking
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
@@ -23,8 +29,10 @@ import org.junit.Test
  * nächsten Umbau zählt — ein „schnelles" lokales Filtern wäre sofort wieder
  * die zweite Fassung.
  *
- * Gegenprobe (durchgeführt): in GalleryScreen wieder ein `sets.filter { … }`
- * eingesetzt → der erste Teilschritt wird rot.
+ * Gegenproben: in GalleryScreen wieder ein `sets.filter { … }` eingesetzt → der
+ * erste Teilschritt wird rot (durchgeführt). In SetsRepository.getSets die
+ * Bedingung `ungefiltert` auf `true` gesetzt → rot „der Ablage-Cache greift nur
+ * ungefiltert“ (29.10.2026, gemessen).
  */
 class GalleryServerFilterTest {
 
@@ -34,20 +42,6 @@ class GalleryServerFilterTest {
     /** Kommentare ausblenden — die Erklärtexte nennen die geprüften Muster selbst. */
     private fun code(s: String) = s.lines()
         .joinToString("\n") { if (it.trim().startsWith("//") || it.trim().startsWith("*")) "" else it }
-
-    /**
-     * Alle Dateien der Datenschicht als EIN Text (Nachtrag 155).
-     *
-     * Vorher stand hier "data/repository/BrickRepository.kt" — ein Dateiname.
-     * Die 78 Funktionen liegen seither in fuenf Klassen nach Sachgebieten,
-     * die gemeinsame Mechanik in RepoBasis. Gemeint ist DIE DATENSCHICHT,
-     * nicht eine Datei.
-     */
-    private fun datenschicht(): String =
-        java.io.File("src/main/java/ch/brickinventoryapp/data/repository")
-            .listFiles { f -> f.extension == "kt" }
-            .orEmpty().sortedBy { it.name }
-            .joinToString("\n") { it.readText() }
 
     @Test
     fun `der Schirm filtert und sortiert die Liste nicht selbst`() {
@@ -99,18 +93,32 @@ class GalleryServerFilterTest {
         }
     }
 
+    /**
+     * Sonst läge die Antwort eines Filters unter demselben Schlüssel wie die volle
+     * Sicht, und offline erschiene der falsche Bestand. Ausgeführt: erst gefiltert,
+     * dann ungefiltert abrufen, Server weg, und sehen, was die Platte liefert.
+     */
     @Test
     fun `der Ablage-Cache greift nur ungefiltert`() {
-        // Sonst läge die Antwort eines Filters unter demselben Schlüssel wie
-        // die volle Sicht, und nach einem Neustart erschiene der falsche
-        // Bestand. Dieselbe Regel wie beim Kontofilter (Haushalt).
-        val r = code(datenschicht())
-        // Funktionsrumpf statt 1400 fester Zeichen (Nachtrag 115) — siehe Quellen.kt.
-        val block = Quellen.funktion(r, "suspend fun getSets(")
-        assert(block.isNotEmpty()) { "getSets fehlt" }
-        assert(block.contains("cached(\"sets\"")) { "der Cache ist ganz weg" }
-        assert(block.contains("ungefiltert")) {
-            "Der Cache-Zweig prüft nicht mehr, ob überhaupt ungefiltert abgerufen wird"
+        val pfade = PfadServer("/api/v1/sets" to """{"success":true,"total":1,"sets":[{"set_number":"75192-1","name":"Falke"}]}""")
+        val ordner = java.io.File(System.getProperty("java.io.tmpdir"), "bim-galerie-${System.nanoTime()}").apply { mkdirs() }
+        try {
+            val sets = SetsRepository(TestApi.fuer(pfade.server), ResponseCache { ordner })
+            runBlocking { sets.getSets(search = "Falke") }
+            pfade.server.shutdown()
+            val offline = runBlocking { sets.getSets() }
+            assertTrue("Eine gefilterte Antwort lag unter dem Schlüssel der vollen Liste: $offline",
+                offline is Result.Error)
+
+            val neu = PfadServer("/api/v1/sets" to """{"success":true,"total":1,"sets":[{"set_number":"10294-1","name":"Titanic"}]}""")
+            val sets2 = SetsRepository(TestApi.fuer(neu.server), ResponseCache { ordner })
+            runBlocking { sets2.getSets() }
+            neu.server.shutdown()
+            val gespeichert = runBlocking { sets2.getSets() }
+            assertEquals("Die volle Liste kommt offline von der Platte",
+                "10294-1", (gespeichert as Result.Success).data.sets.single().setNumber)
+        } finally {
+            ordner.deleteRecursively()
         }
     }
 }

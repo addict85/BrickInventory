@@ -72,65 +72,144 @@ function hexLesen(roh: string): string {
   return out;
 }
 
+/** Ein Textoperator im Inhaltsstrom: (…)Tj, […]TJ, (…)' und (…)". */
+export interface TextOperator {
+  /** Von der ersten Klammer bis hinter den Operatornamen. */
+  von: number;
+  bis: number;
+  op: string;
+  /**
+   * Der LOGISCHE Text: Bei TJ sind die Zahlen zwischen den Ketten Abstände,
+   * kein Inhalt — sie fliegen raus, die Ketten werden aneinandergehängt.
+   */
+  text: string;
+}
+
+const istHex = (c: number) =>
+  (c >= 48 && c <= 57) || (c >= 65 && c <= 70) || (c >= 97 && c <= 102)
+  || c === 32 || (c >= 9 && c <= 13);
+const istLeer = (c: number) => c === 32 || (c >= 9 && c <= 13) || c === 0;
+
+/** Ende hinter `)` einer Literal-Kette ab `(` bei i; -1 ohne Ende. */
+function literalEnde(s: string, i: number): number {
+  let tiefe = 0;
+  for (let j = i; j < s.length; j++) {
+    const c = s.charCodeAt(j);
+    if (c === 92) j++;                                       // Escape
+    else if (c === 40) tiefe++;                              // (
+    else if (c === 41 && --tiefe === 0) return j + 1;        // )
+  }
+  return -1;
+}
+
+/** Ende hinter `>` einer Hex-Kette ab `<` bei i; -1, wenn es keine ist. */
+function hexEnde(s: string, i: number): number {
+  for (let j = i + 1; j < s.length; j++) {
+    const c = s.charCodeAt(j);
+    if (c === 62) return j + 1;
+    if (!istHex(c)) return -1;
+  }
+  return -1;
+}
+
+/**
+ * Alle Textoperatoren eines Inhaltsstroms, in EINEM Durchgang.
+ *
+ * Ein Lexer statt eines Musters über den Strom: Ein Muster setzt nach jedem
+ * Fehlschlag eine Stelle weiter neu an, und `(\(\(\(…` ohne Ende kostete so
+ * quadratische Zeit. Hier wird jedes Zeichen höchstens zweimal angesehen.
+ * Literal-Ketten dürfen paarweise Klammern enthalten, wie die PDF-Norm es will.
+ */
+export function textOperatoren(s: string): TextOperator[] {
+  const aus: TextOperator[] = [];
+  let i = 0;
+  while (i < s.length) {
+    const c = s.charCodeAt(i);
+    let ende = -1, text = '';
+    if (c === 40) {                                          // (
+      ende = literalEnde(s, i);
+      if (ende < 0) break;                                   // nie geschlossen
+      text = literalLesen(s.slice(i + 1, ende - 1));
+    } else if (c === 60 && s.charCodeAt(i + 1) !== 60) {     // < aber nicht <<
+      ende = hexEnde(s, i);
+      if (ende > 0) text = hexLesen(s.slice(i + 1, ende - 1));
+    } else if (c === 91) {                                   // [
+      let j = i + 1;
+      while (j < s.length && ende < 0) {
+        const d = s.charCodeAt(j);
+        if (d === 93) ende = j + 1;
+        else if (d === 91) break;
+        else if (d === 40) {
+          const e = literalEnde(s, j);
+          if (e < 0) return aus;
+          text += literalLesen(s.slice(j + 1, e - 1)); j = e;
+        } else if (d === 60) {
+          const e = hexEnde(s, j);
+          if (e < 0) break;
+          text += hexLesen(s.slice(j + 1, e - 1)); j = e;
+        } else j++;
+      }
+    }
+    if (ende < 0) { i++; continue; }
+    let k = ende;
+    while (k < s.length && istLeer(s.charCodeAt(k))) k++;
+    const op = ['TJ', 'Tj', "'", '"'].find(o => s.startsWith(o, k));
+    if (op) aus.push({ von: i, bis: k + op.length, op, text });
+    i = op ? k + op.length : ende;
+  }
+  return aus;
+}
+
+/**
+ * Grenzen beim Entpacken. Ein Gutschein hat eine Handvoll Ströme von einigen
+ * hundert KB; ohne Grenze wurden 299 KB zu 300 MB entpackt. Wer darüber
+ * liegt, ist kein Gutschein — und kommt auch nicht bis zu pdf-lib, das
+ * Objektströme ohne Grenze entpackt.
+ */
+export const STROM_MAX_BYTES = 5 * 1024 * 1024;
+export const ENTPACKT_MAX_BYTES = 20 * 1024 * 1024;
+export const STROEME_MAX = 2000;
+
+export class PdfZuGross extends Error {}
+
 /**
  * Den sichtbaren Text eines PDFs herausholen.
  * Ausführlich: docs/begruendungen/utils/gutscheinPdf.ts.md#abschnitt-2
  */
-/**
- * Ein Textoperator im Inhaltsstrom: (…)Tj, […]TJ, (…)' und (…)".
- * Ausführlich: docs/begruendungen/utils/gutscheinPdf.ts.md#text-op-re
- */
-export const TEXT_OP_RE =
-  /(\[(?:[^\][\\]|\\[\s\S])*\]|\((?:[^()\\]|\\[\s\S])*\)|<[0-9A-Fa-f\s]*>)\s*(TJ|Tj|'|")/g;
-
-/**
- * Der LOGISCHE Text eines Textoperator-Arguments.
- *
- * TJ-Array: Zeichenketten und Kerning-Zahlen im Wechsel. Die Zahlen sind
- * Abstände, kein Inhalt — sie fliegen raus, die Ketten werden aneinander­
- * gehängt. Genau so entsteht aus den Bruchstücken wieder „Ihre
- * LEGO-Geschenkkarte im Wert von 400 CHF:".
- */
-export function operatorText(arg: string): string {
-  if (arg.startsWith('[')) {
-    let text = '';
-    const teilRe = /\((?:[^()\\]|\\[\s\S])*\)|<[0-9A-Fa-f\s]*>/g;
-    let teil: RegExpExecArray | null;
-    while ((teil = teilRe.exec(arg)) !== null) {
-      text += teil[0].startsWith('<')
-        ? hexLesen(teil[0].slice(1, -1))
-        : literalLesen(teil[0].slice(1, -1));
-    }
-    return text;
-  }
-  return arg.startsWith('<') ? hexLesen(arg.slice(1, -1)) : literalLesen(arg.slice(1, -1));
-}
-
 export function pdfText(daten: Buffer): string {
   const roh = daten.toString('latin1');
   const zeilen: string[] = [];
+  let stroeme = 0, entpackt = 0;
 
-  // `stream` … `endstream`. Nicht gierig, damit zwei Stroeme nicht zu einem
-  // werden; [\s\S] statt `.`, weil Strominhalt Zeilenumbrueche enthaelt.
-  const stromRe = /stream\r?\n([\s\S]*?)endstream/g;
-  let m: RegExpExecArray | null;
-  while ((m = stromRe.exec(roh)) !== null) {
+  // `stream` … das nächste `endstream`, per indexOf: Das faule Muster dafür
+  // lief bei vielen `stream` ohne Ende von jeder Fundstelle bis zum Dateiende.
+  for (let ab = 0; ;) {
+    const anfang = roh.indexOf('stream', ab);
+    if (anfang < 0) break;
+    let start = anfang + 6;
+    if (roh[start] === '\r') start++;
+    if (roh[start] !== '\n') { ab = anfang + 1; continue; }
+    start++;
+    const schluss = roh.indexOf('endstream', start);
+    if (schluss < 0) break;
+    ab = schluss + 9;
+    if (++stroeme > STROEME_MAX) throw new PdfZuGross(`mehr als ${STROEME_MAX} Ströme`);
+
+    const strom = Buffer.from(roh.slice(start, schluss), 'latin1');
     let inhalt: string;
     try {
-      inhalt = zlib.inflateSync(Buffer.from(m[1] ?? '', 'latin1')).toString('latin1');
-    } catch {
-      // Kein FlateDecode (Bilder sind DCTDecode, der Rest kann unkomprimiert
-      // sein). Unkomprimierte Inhaltsstroeme sind direkt lesbar, also NICHT
-      // ueberspringen — nur bei Binaermuell faellt unten ohnehin nichts an.
-      inhalt = m[1] ?? '';
+      const flach = zlib.inflateSync(strom, { maxOutputLength: STROM_MAX_BYTES });
+      entpackt += flach.length;
+      inhalt = flach.toString('latin1');
+    } catch (e) {
+      if ((e as { code?: string }).code === 'ERR_BUFFER_TOO_LARGE')
+        throw new PdfZuGross(`ein Strom entpackt auf mehr als ${STROM_MAX_BYTES} Bytes`);
+      // Kein FlateDecode: Unkomprimierte Inhaltsströme sind direkt lesbar.
+      inhalt = strom.toString('latin1');
     }
+    if (entpackt > ENTPACKT_MAX_BYTES) throw new PdfZuGross('zu viel entpackter Inhalt');
 
-    let t: RegExpExecArray | null;
-    TEXT_OP_RE.lastIndex = 0;
-    while ((t = TEXT_OP_RE.exec(inhalt)) !== null) {
-      const text = operatorText(t[1] ?? '');
-      if (text.trim()) zeilen.push(text);
-    }
+    for (const t of textOperatoren(inhalt)) if (t.text.trim()) zeilen.push(t.text);
   }
   return zeilen.join('\n');
 }
@@ -152,10 +231,13 @@ export function werteAusText(text: string): GutscheinWerte {
   // ist der Schutz: Im Kleingedruckten steht „LEGO.com/gift-cards" und noch
   // einiges mehr, und irgendwo dort koennte zufaellig eine Zahl neben einem
   // Code stehen. Die benannte Stelle ist die verlaessliche.
+  // Alle Wiederholungen sind beschränkt: Der Text kommt aus einer fremden
+  // Datei, und `\s*` neben `[…\s]+?` kostet bei einer langen Leerzeile
+  // quadratische Zeit. Ein Betrag hat keine 30 Zeichen.
   const betragMuster = [
-    new RegExp(`im\\s+Wert\\s+von\\s+([\\d'’.,\\s]+?)\\s*(${w})\\b`, 'i'),
-    new RegExp(`value\\s+of\\s+([\\d'’.,\\s]+?)\\s*(${w})\\b`, 'i'),
-    new RegExp(`\\b([\\d'’.,]+)\\s*(${w})\\b`),
+    new RegExp(`im\\s{1,9}Wert\\s{1,9}von\\s{1,9}([\\d'’.,\\s]{1,30}?)\\s{0,9}(${w})\\b`, 'i'),
+    new RegExp(`value\\s{1,9}of\\s{1,9}([\\d'’.,\\s]{1,30}?)\\s{0,9}(${w})\\b`, 'i'),
+    new RegExp(`\\b([\\d'’.,]{1,30})\\s{0,9}(${w})\\b`),
   ];
   let betrag: number | null = null, waehrung: string | null = null;
   for (const muster of betragMuster) {
@@ -164,7 +246,7 @@ export function werteAusText(text: string): GutscheinWerte {
   }
   // Waehrung VOR dem Betrag („CHF 400") — nur falls oben nichts kam.
   if (betrag === null) {
-    const tr = text.match(new RegExp(`\\b(${w})\\s*([\\d'’.,]+)`, 'i'));
+    const tr = text.match(new RegExp(`\\b(${w})\\s{0,9}([\\d'’.,]{1,30})`, 'i'));
     if (tr) { waehrung = (tr[1] ?? '').toUpperCase(); betrag = zahlLesen(tr[2] ?? ''); }
   }
 
@@ -172,7 +254,7 @@ export function werteAusText(text: string): GutscheinWerte {
   //
   // Am Wort festgemacht, nicht an der Stellung. „PIN" heisst im Englischen
   // genauso; dazwischen darf ein Doppelpunkt oder Leerraum stehen.
-  const pinTreffer = text.match(/\bPIN\b\s*[:.\-]?\s*(\d{3,8})\b/i);
+  const pinTreffer = text.match(/\bPIN\b\s{0,9}[:.\-]?\s{0,9}(\d{3,8})\b/i);
   const pin = pinTreffer ? (pinTreffer[1] ?? null) : null;
 
   // Kartennummer

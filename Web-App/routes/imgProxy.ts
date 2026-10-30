@@ -6,7 +6,7 @@ import path from 'path';
 import { APP_ROOT, PUBLIC_DIR } from '../utils/appPaths';
 import fs from 'fs';
 import { resolveUserId } from '../utils/auth';
-import { streamFileToResponse, vorDem } from '../utils/httpError';
+import { streamFileToResponse, vorDem, ohneFehlendeDatei } from '../utils/httpError';
 import { queueThumb } from '../utils/proxyThumbs';
 import { liefereAusCache } from '../utils/imgCacheServe';
 import { imgProxyFailures } from '../utils/imgProxyStats';
@@ -17,36 +17,9 @@ import type { OutgoingHttpHeaders } from 'http';
 import crypto from 'crypto';
 import https from 'https';
 import zlib from 'zlib';
-import { merkeGebraucht } from '../jobs/imageQueue';
+import { nacharbeit } from '../utils/nacharbeit';
 import { ERLAUBTE_BILD_HOSTS, hostErlaubt } from '../utils/fremdeAdressen';
 
-// Warum diese vier jetzt oben stehen
-// Sie standen als require() in den Funktionsruempfen. Node haelt Module im
-// Cache, die Laufzeitkosten waren also gering — der Preis war ein anderer:
-// Die Abhaengigkeiten einer Datei standen nicht mehr an ihrem Kopf, und ein …
-// Ausführlich: docs/begruendungen/routes/imgProxy.ts.md#abschnitt-2
-
-/**
- * Wurzelverzeichnis der Anwendung.
- * Ausführlich: docs/begruendungen/routes/imgProxy.ts.md#abschnitt-3
- */
-
-
-/**
- * Registriert die Proxy-Route und den Aufräum-Timer an der übergebenen App.
- * Ausführlich: docs/begruendungen/routes/imgProxy.ts.md#abschnitt-4
- * @param {any} app Express-Anwendung
- */
-// Gemeinsamer Zustand und Helfer des Bild-Proxys
-//  Warum das nicht mehr in registerImgProxy steht
-// registerImgProxy() war 458 Zeilen: Zustand, Helfer und der komplette
-// Anfrage-Ablauf lagen als Verschluss (Closure) IN der Anmeldefunktion. Das …
-// Ausführlich: docs/begruendungen/routes/imgProxy.ts.md#abschnitt-5
-/**
- * Verkleinerte Fassung eines bereits zwischengespeicherten Proxy-Bildes.
- * Gleiche Grösse und Qualität wie utils/thumbs.ts, damit lokale und
- * proxied Bilder gleich aussehen. Transparente PNGs bekommen weissen Grund.
- */
 /**
  * Obergrenze für den Bild-Zwischenspeicher des Proxys.
  * Ausführlich: docs/begruendungen/routes/imgProxy.ts.md#proxy-cache-max-bytes
@@ -59,18 +32,8 @@ const _imgNegCache = new Map();
 /** Laufende Nummer für Temp-Dateien des Bild-Proxys (siehe tmpFile unten). */
 let _tmpSeq = 0;
 
-/**
- * Zähler für fehlgeschlagene Proxy-Abrufe, abrufbar über
- * GET /api/v1/admin/img-probe (Feld `failures`).
- *
- * Grund: „Bilder erscheinen teilweise nicht" liess sich mehrfach nicht
- * eingrenzen, weil im Log nichts stand. Jetzt ist ablesbar, OB und WOMIT der
- * Proxy scheitert — Zeitüberschreitung, Verbindungsfehler oder 404 vom CDN.
- */
-
-// Der globale Ablageplatz entfällt: Der Zähler ist ein
-// eigenes Modul (utils/imgProxyStats.ts), das die Monitoring-Route direkt
-// importiert.
+// Fehlgeschlagene Abrufe zählt utils/imgProxyStats.ts (GET /api/v1/admin/img-probe):
+// Ohne Zähler war „Bilder erscheinen teilweise nicht“ nicht einzugrenzen.
 
 /**
  * Verbindungs-Pool für CDN-Abrufe.
@@ -81,10 +44,8 @@ const _cdnAgent = new (require('https').Agent)({
   maxSockets: 32,
   maxFreeSockets: 16,
   timeout: 30000,
-  // IPv4 erzwingen. Mehrere VÖLLIG unterschiedliche Set-Nummern liefen alle
-  // exakt bis zur eingestellten 25-Sekunden-Grenze, ohne je eine Antwort zu
-  // bekommen — kein TCP-Reset, kein Fehler, einfach nichts. Das ist das
-  // typische Bild einer kaputten oder nicht gerouteten IPv6-Verbindung des …
+  // IPv4 erzwingen: Der Server hat keine IPv6-Route; Abrufe liefen sonst
+  // stumm bis zur Zeitgrenze.
   // Ausführlich: docs/begruendungen/routes/imgProxy.ts.md#cdnagent-2
   family: 4,
 });
@@ -93,10 +54,8 @@ const _cdnAgent = new (require('https').Agent)({
 // Verkleinern) liegt in utils/proxyThumbs.ts.
 
 /**
- * Warum 200 mit Platzhalter statt 404
- * Der Platzhalter ist ohnehin das, was der Nutzer danach sieht: Beide
- * Oberflaechen zeigen ihn, wenn kein Bild kommt. Ihn gleich auszuliefern
- * spart den Umweg ueber die Fehlerbehandlung und macht die Konsole wieder …
+ * 200 mit Platzhalter statt 404: Den Platzhalter zeigen beide Oberflächen
+ * ohnehin, und die Browserkonsole bleibt frei von Fehlzeilen.
  * Ausführlich: docs/begruendungen/routes/imgProxy.ts.md#platzhalter
  */
 let _platzhalter: Buffer | null = null;
@@ -124,10 +83,7 @@ function sendePlatzhalter(res: Response) {
 
 /**
  * Ein CDN-Bild ausliefern: aus dem Plattencache, sonst vom CDN geholt und
- * dabei abgelegt.
- *
- * Der eigentliche Ablauf, herausgelöst aus registerImgProxy(). Die Funktion
- * antwortet selbst (res) und gibt nichts zurück.
+ * dabei abgelegt. Antwortet selbst über res.
  */
 export async function bildDurchreichen(req: Request, res: Response) {
   // Auth: der Proxy holt fremde Inhalte über unseren Server — ohne Login-Pflicht
@@ -138,14 +94,8 @@ export async function bildDurchreichen(req: Request, res: Response) {
   if (!url || !url.startsWith('https://')) return res.status(400).end();
   // Rebrickable API sometimes returns pre-encoded URLs — decode once to fix double-encoding
   try { const decoded = decodeURIComponent(url); if (decoded.startsWith('https://')) url = decoded; } catch(_) {}
-  // Nur bekannte Bild-CDNs. Liste und Prüfung stehen seit dem Umbau der
-  // Umleitungen in utils/fremdeAdressen.ts — dieselbe Stelle, die auch der
-  // Dateidownload in clients/rebrickable.ts benutzt.
-  //
-  // hostErlaubt() antwortet bei einer unparsebaren Adresse mit false statt zu
-  // werfen. Der frühere try/catch unterschied 403 und 400 — ein Unterschied,
-  // den der Aufrufer nicht auseinanderhalten muss: Beides heisst „diese
-  // Adresse holt der Server nicht".
+  // Nur bekannte Bild-CDNs (utils/fremdeAdressen.ts, wie der Dateidownload).
+  // Eine unlesbare Adresse ist ebenfalls 403: „holt der Server nicht“.
   if (!hostErlaubt(url, ERLAUBTE_BILD_HOSTS)) return res.status(403).end();
   // Disk-Cache: jedes CDN-Bild wird serverseitig nur einmal geholt.
   // Schlüssel = SHA1 der URL; Content-Type als Sidecar-Datei (.ct).
@@ -168,7 +118,7 @@ export async function bildDurchreichen(req: Request, res: Response) {
   };
   const notiere = () => {
     const sn = setAusUrl();
-    if (sn) merkeGebraucht(String(url), sn);
+    if (sn) nacharbeit().bildVormerken(String(url), sn);
   };
   const thumbFile = cacheFile + '_thumb.jpg';
 
@@ -247,11 +197,7 @@ export async function bildDurchreichen(req: Request, res: Response) {
       // Ausführlich: docs/begruendungen/routes/imgProxy.ts.md#bilddurchreichen-meldung
       const meldung = `[img-proxy] CDN antwortete ${r.statusCode} (auch ohne Referer): ${url}`;
       if (r.statusCode === 404) console.info(meldung); else console.error(meldung);
-      // ?? 502: r.statusCode ist auf Nodes IncomingMessage `number | undefined`
-      // — dieselbe Schnittstelle dient auch eingehenden Anfragen, wo es fehlt.
-      // Bei einer Client-Antwort ist es in der Praxis immer gesetzt; faellt es
-      // doch aus, ist "Bad Gateway" die ehrliche Auskunft. Vorher waere hier
-      // res.status(undefined) gelaufen — das wirft.
+      // statusCode ist laut Typ optional; fehlt er, ist 502 die ehrliche Auskunft.
       return r.statusCode === 404 ? sendePlatzhalter(res) : res.status(r.statusCode ?? 502).end();
     }
     const contentType = r.headers['content-type'] || 'image/jpeg';
@@ -273,14 +219,8 @@ export async function bildDurchreichen(req: Request, res: Response) {
     // Erwartete Länge merken: Nur eine vollständige Datei darf in den Cache.
     const expected = parseInt(String(r.headers['content-length'] || '0'), 10) || 0;
     res.setHeader('Content-Type', contentType);
-    // Content-Length weiterreichen, wenn das CDN sie kennt.
-    //
-    // Ohne sie geht die Antwort als chunked raus. Ein Reverse-Proxy davor kann
-    // eine solche Antwort puffern, statt sie durchzureichen — der Browser sieht
-    // dann minutenlang eine weisse Seite, obwohl der Inhalt längst da ist.
-    // Beim zweiten Aufruf kommt das Bild sofort, weil es dann aus dem
-    // Plattencache mit bekannter Länge geliefert wird. Genau dieses Muster war
-    // zu beobachten.
+    // Content-Length weiterreichen: Eine chunked-Antwort puffert ein
+    // Reverse-Proxy davor womöglich, und der Browser wartet minutenlang.
     if (expected > 0) res.setHeader('Content-Length', String(expected));
 
     // Komprimierte Antworten werden ENTPACKT, nicht weitergereicht.
@@ -310,11 +250,8 @@ export async function bildDurchreichen(req: Request, res: Response) {
         console.error(`[img-proxy] an den Client gingen ${sentToClient} von ${expected} Bytes: ${url}`);
       }
     });
-    // Kürzer und mit Pflicht zur Rückfrage: Diese Antwort wird gestreamt, ihr
-    // Inhalt ist also noch nicht überprüft. Wäre etwas daran faul, nagelte ein
-    // langes max-age den Fehler für einen Tag im Browser fest — und die
-    // Anfrage erreicht den Server dann gar nicht mehr („200 from disk cache").
-    // Genau so überlebten kaputte Antworten aus behobenen Fehlern.
+    // Kurz und mit Rückfrage: Die Antwort wird ungeprüft gestreamt; ein langes
+    // max-age nagelte einen Fehler im Browser fest.
     res.setHeader('Cache-Control', 'public, max-age=3600, must-revalidate');
 
     // Parallel auf Disk schreiben: erst in .tmp, bei Erfolg atomar umbenennen,
@@ -334,7 +271,7 @@ export async function bildDurchreichen(req: Request, res: Response) {
         if (bytes > PROXY_CACHE_MAX_BYTES && !aborted) {
           aborted = true;
           ws.destroy();
-          fs.promises.unlink(tmpFile).catch(() => {});
+          fs.promises.unlink(tmpFile).catch(ohneFehlendeDatei('bild-proxy:unlink'));
           // Bisher geschah das STILL. Ein übergrosses Bild fiel damit in ein
           // schwarzes Loch: kein Cache, keine Vorschau, keine Spur im Log.
           imgProxyFailures.other++;
@@ -356,22 +293,17 @@ export async function bildDurchreichen(req: Request, res: Response) {
           // dann entfällt die Prüfung.
           if (!enc && expected > 0 && st.size !== expected) {
               console.error(`[img-proxy] unvollständig (${st.size}/${expected} Bytes), nicht gecacht: ${url}`);
-              await fs.promises.unlink(tmpFile).catch(() => {});
+              await fs.promises.unlink(tmpFile).catch(ohneFehlendeDatei('bild-proxy:unlink'));
               return;
             }
             await fs.promises.writeFile(cacheFile + '.ct', contentType);
             await fs.promises.rename(tmpFile, cacheFile);
-            // Vorschau GLEICH miterzeugen, nicht erst beim nächsten Aufruf.
-            //
-            // Vorher entstand sie ausschliesslich im Cache-Hit-Zweig — also
-            // frühestens beim zweiten Seitenaufruf, und dann für alle Bilder
-            // einer Kachelwand gleichzeitig. Die erste Ansicht hatte damit
-            // gar keinen Nutzen von der Verkleinerung, die zweite bezahlte
-            // sie in einem Rutsch.
+            // Vorschau gleich miterzeugen: Sonst entstünde sie erst beim
+            // zweiten Aufruf, dann für eine ganze Kachelwand auf einmal.
           if (wantThumb) { if (darfErzeugen) queueThumb(cacheFile, thumbFile); else notiere(); }
-        } catch (_) { fs.promises.unlink(tmpFile).catch(() => {}); }
+        } catch (_) { fs.promises.unlink(tmpFile).catch(ohneFehlendeDatei('bild-proxy:unlink')); }
       });
-      ws.on('error', () => fs.promises.unlink(tmpFile).catch(() => {}));
+      ws.on('error', () => fs.promises.unlink(tmpFile).catch(ohneFehlendeDatei('bild-proxy:unlink')));
     } catch (_) { /* Cache-Schreiben ist Best-Effort */ }
 
     // Bricht der Browser ab — beim Scrollen über verzögert geladene Bilder der
@@ -416,31 +348,5 @@ function registerImgProxy(app: Express) {
   app.get(IMG_PROXY_PFAD, bildDurchreichen);
   app.get(IMG_PROXY_PFAD_ALT, bildDurchreichen);
 }
-
-/**
- * Img-Proxy-Cache aufräumen: Dateien, die 30 Tage nicht angefasst wurden,
- * löschen — sonst wächst data/img_proxy_cache unbegrenzt.
- * Ausführlich: docs/begruendungen/routes/imgProxy.ts.md#startimgcachecleanup
- */
-export function startImgCacheCleanup() {
-  const lauf = () => {
-    const cacheDir = path.join(APP_ROOT, 'data', 'img_proxy_cache');
-    fs.readdir(cacheDir, (err, files) => {
-      if (err) return;
-      const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
-      for (const f of files) {
-        const p = path.join(cacheDir, f);
-        fs.stat(p, (e, st) => {
-          // atime UND mtime: Wird das Dateisystem mit noatime eingehängt (in
-          // Containern verbreitet), bleibt atime auf dem Erstellungszeitpunkt
-          // stehen — dann entscheidet mtime, und beides muss alt sein.
-          if (!e && st.isFile() && st.atimeMs < cutoff && st.mtimeMs < cutoff) fs.unlink(p, () => {});
-        });
-      }
-    });
-  };
-  return setInterval(lauf, 24 * 60 * 60 * 1000).unref();
-}
-
 
 export { registerImgProxy };

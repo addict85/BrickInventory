@@ -77,7 +77,8 @@ test('ein Funktionsname bedeutet eine Sache', () => {
     const code = fs.readFileSync(f, 'utf8')
       .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/[^\n]*$/gm, '');
     const rel = path.relative(ROOT, f);
-    for (const m of code.matchAll(/^(?:export )?(?:async )?function (\w+)\(/gm)) {
+    // Auch generische Funktionen (`function all<T = any>(`).
+    for (const m of code.matchAll(/^(?:export )?(?:async )?function (\w+)(?:<[^>(]*>)?\(/gm)) {
       gefunden++;
       if (!wo.has(m[1])) wo.set(m[1], new Set());
       wo.get(m[1]).add(rel);

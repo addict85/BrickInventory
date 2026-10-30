@@ -62,6 +62,8 @@ export const FEHLER = {
                                  en: 'This is only possible from a signed-in browser session.' },
   import_unterbrochen:         { de: 'Der Import wurde unterbrochen — der Server wurde neu gestartet oder der Import hing. Bitte erneut starten.',
                                  en: 'The import was interrupted — the server restarted or the import stalled. Please start it again.' },
+  import_zeile_unterbrochen:   { de: 'Der Server wurde während dieses Sets neu gestartet — bitte die Menge prüfen.',
+                                 en: 'The server restarted while importing this set — please check the quantity.' },
   aktuelles_passwort_falsch:   { de: 'Aktuelles Passwort falsch', en: 'Current password is wrong' },
   alle_felder_erforderlich:    { de: 'Alle Felder erforderlich', en: 'All fields are required' },
   passwort_reset_nicht_eingerichtet: {
@@ -161,6 +163,9 @@ export const FEHLER = {
 
   // ── Dateien, Import, Export ──────────────────────────────────────────────
   keine_datei:                 { de: 'Keine Datei', en: 'No file' },
+  datei_zu_gross:              { de: 'Die Datei ist zu gross', en: 'The file is too large' },
+  datei_typ_falsch:            { de: 'Nur PDF, JPG oder PNG', en: 'PDF, JPG or PNG only' },
+  upload_ungueltig:            { de: 'Der Upload ist ungültig', en: 'The upload is invalid' },
   datei_inhalt_falsch:         { de: 'Der Inhalt ist kein PDF, JPG oder PNG', en: 'The content is not a PDF, JPG or PNG' },
   upload_kontingent_voll:      { de: 'Der Platz für eigene Anleitungen ({mb} MB) ist belegt — bitte erst alte löschen',
                                  en: 'The space for your own instructions ({mb} MB) is full — please delete old ones first' },
@@ -326,13 +331,22 @@ export function antwortSprache(req: { headers?: Record<string, any> } | undefine
  * Einen Fehler WERFEN, der seinen Grund als Code traegt.
  * Ausführlich: docs/begruendungen/utils/fehlerTexte.ts.md#fehlerwerfen
  */
-export function fehlerWerfen(code: FehlerCode, status: number): never {
+export function fehlerWerfen(code: FehlerCode, status: number, vars?: Record<string, string | number>): never {
+  throw dateiFehler(code, status, vars);
+}
+
+/**
+ * Derselbe Fehler, aber zurückgegeben — für Rückrufe wie multers fileFilter,
+ * die einen Fehler übergeben statt ihn zu werfen.
+ */
+export function dateiFehler(code: FehlerCode, status: number, vars?: Record<string, string | number>): Error {
   // Die deutsche Fassung als `message`, damit ein Protokolleintrag lesbar
-  // bleibt; die Antwort an den Client entsteht aus `code`.
-  const e: any = new Error(fehlerText(code, 'de'));
+  // bleibt; die Antwort an den Client entsteht aus `code` und `vars`.
+  const e: any = new Error(fehlerText(code, 'de', vars));
   e.status = status;
   e.code = code;
-  throw e;
+  if (vars) e.vars = vars;
+  return e;
 }
 
 /** Der Text zu einem Code, mit eingesetzten Platzhaltern. */

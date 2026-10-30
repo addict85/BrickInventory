@@ -403,3 +403,39 @@ internal fun GeraeteCard(
         },
     )
 }
+
+/**
+ * Das Design dieses Kontos: die Vorgabe des Verwalters oder ein eigenes. Es gilt
+ * auf allen Geräten des Kontos, weil der Server es speichert; ohne [design]
+ * (älterer Server) bleibt die Karte weg.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+internal fun DesignCard(design: ch.brickinventoryapp.ui.DesignWahl?, onWahl: (String) -> Unit) {
+    if (design == null) return
+    val namen = ch.brickinventoryapp.ui.DESIGN_NAMEN.toMap()
+    SettingsCard(title = stringResource(R.string.monitoring_theme), icon = Icons.Default.Palette) {
+        Text(stringResource(R.string.konto_design_hint), style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
+            verticalArrangement = Arrangement.spacedBy(Abstaende.klein),
+        ) {
+            val vorgabe = namen[design.vorgabe]?.let { stringResource(it) } ?: design.vorgabe
+            FilterChip(
+                selected = design.eigenes == null,
+                onClick = { if (design.eigenes != null) onWahl("") },
+                label = { Text(stringResource(R.string.konto_design_vorgabe, vorgabe), style = MaterialTheme.typography.labelMedium) },
+                shape = Formen.chip,
+            )
+            for ((wert, text) in ch.brickinventoryapp.ui.DESIGN_NAMEN) {
+                FilterChip(
+                    selected = design.eigenes == wert,
+                    onClick = { if (design.eigenes != wert) onWahl(wert) },
+                    label = { Text(stringResource(text), style = MaterialTheme.typography.labelMedium) },
+                    shape = Formen.chip,
+                )
+            }
+        }
+    }
+}

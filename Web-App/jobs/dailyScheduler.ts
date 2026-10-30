@@ -3,18 +3,17 @@
  * Zeitplaner für TÄGLICHE Jobs mit im Monitoring konfigurierbarer Uhrzeit (HH:MM).
  * Ausführlich: docs/begruendungen/jobs/dailyScheduler.ts.md#abschnitt
  */
-import { meldeUndWeiter, fehlertext } from '../utils/httpError';
+import { meldeUndWeiter, fehlertext, logAndContinue } from '../utils/httpError';
 import { getGlobalSetting } from '../utils/settings';
 import { liesZustand, loescheZustand } from '../utils/laufzustand';
+import * as priceJob from './priceJob';
+import * as pgNotify from '../utils/pgNotify';
 // Kein eigener db-Verweis mehr: Der Planer liest und löscht seine Uhrzeiten
 // und den Auslöser ausschliesslich über utils/settings.
 
-// Metadaten der täglichen Jobs. monitorKey = Schlüssel der Job-Karte im Monitoring
-// (damit die UI die passende Uhrzeit dem richtigen Job zuordnen kann).
-const DAILY_JOBS = [
-  { name: 'brickset_retry', monitorKey: 'bricksetRetry', default: '04:00' },
-  { name: 'csv_sync',       monitorKey: 'csvImport',     default: '03:00' },
-];
+// Die Liste steht in utils/jobsteuerung.ts: Verwaltung und Einstellungen
+// brauchen die Namen, ohne den Planer zu laden.
+import { DAILY_JOBS } from '../utils/jobsteuerung';
 
 const _registry: any = {}; // name -> { fn, timer }
 
@@ -65,7 +64,7 @@ function register(name: string, fn: () => any) {
 // Alle täglichen Jobs neu planen (nach Config-Änderung) + Preis-Job (Intervall).
 async function rescheduleAll() {
   for (const name of Object.keys(_registry)) await _scheduleOne(name);
-  try { require('./priceJob').reschedule(); } catch (e) { meldeUndWeiter('zeitplan:preis-job-neu-planen', e); }
+  try { priceJob.reschedule(); } catch (e) { meldeUndWeiter('zeitplan:preis-job-neu-planen', e); }
 }
 
 // Poll für Reschedule-Signal (Config-Änderung kann auf beliebigem Worker passieren).
@@ -77,10 +76,10 @@ async function rescheduleAll() {
  * einmal von sich aus auf, damit ein verpasstes Signal nachgeholt wird.
  */
 function startTriggerPoll() {
-  require('../utils/pgNotify').listen('job_reschedule_trigger', async () => {
+  pgNotify.listen('job_reschedule_trigger', async () => {
     const ausloeser = await liesZustand('job_reschedule_trigger');
     if (!ausloeser) return;
-    await loescheZustand('job_reschedule_trigger').catch(() => {});
+    await loescheZustand('job_reschedule_trigger').catch(logAndContinue('tagesplan:loescheZustand'));
     console.log('[scheduler] Reschedule-Trigger empfangen — plane Jobs neu');
     await rescheduleAll();
   });

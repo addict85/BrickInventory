@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.util
 
+import java.io.File
+
 /**
  * Was mit einer zwischengespeicherten Anleitung als Nächstes zu tun ist.
  *
@@ -38,4 +40,29 @@ fun pdfSchritt(fertigeGroesse: Long, teilGroesse: Long): PdfSchritt = when {
     fertigeGroesse > 0L -> PdfSchritt.Fertig
     teilGroesse > 0L    -> PdfSchritt.Holen(teilGroesse)
     else                -> PdfSchritt.Holen(0L)
+}
+
+/** Eigener Ordner im cacheDir für PDFs mit Nummer und PIN der Gutscheine. */
+const val PDF_VERTRAULICH_ORDNER = "pdf_vertraulich"
+
+/**
+ * Wo der Betrachter ein PDF ablegt. Anleitungen bleiben im Zwischenspeicher
+ * (wieder öffnen, fortsetzen); ein vertrauliches PDF kommt in einen eigenen
+ * Ordner, den das Aufräumen des Zwischenspeichers nicht sieht und der beim
+ * Verlassen, Abmelden und Start geleert wird.
+ */
+fun pdfAblage(cacheDir: File, pdfUrl: String, vertraulich: Boolean): File {
+    val name = "pdfview_${pdfUrl.hashCode()}.pdf"
+    return if (vertraulich) File(File(cacheDir, PDF_VERTRAULICH_ORDNER), name) else File(cacheDir, name)
+}
+
+/** Ein abgelegtes PDF samt Teildatei löschen — ein abgebrochener Download enthält dieselbe PIN. */
+fun vergissPdf(datei: File) {
+    datei.delete()
+    File(datei.path + ".part").delete()
+}
+
+/** Alle vertraulichen PDFs löschen: beim Start (nach einem Absturz) und beim Abmelden. */
+fun raeumeVertraulichePdfsAuf(cacheDir: File) {
+    File(cacheDir, PDF_VERTRAULICH_ORDNER).deleteRecursively()
 }

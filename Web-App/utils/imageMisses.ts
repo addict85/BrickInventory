@@ -1,4 +1,5 @@
-const db = require('../db/database');
+import { logAndContinue, meldeUndLiefere } from './httpError';
+import * as db from '../db/database';
 
 /**
  * Bilder, die es beim CDN nicht gibt — EINMAL gemerkt, für alle Prozesse.
@@ -37,8 +38,8 @@ export async function initImageMisses(): Promise<void> {
   // muss deshalb in JEDEM Arbeitsprozess laufen.
   await auffrischen();
   // Auffrischen und Schreiben im Takt — nicht bei jeder Anfrage.
-  setInterval(() => { auffrischen().catch(() => {}); }, AUFFRISCHEN_MS).unref();
-  setInterval(() => { schreibePuffer().catch(() => {}); }, 10_000).unref();
+  setInterval(() => { auffrischen().catch(logAndContinue('bild-fehlanzeige:auffrischen')); }, AUFFRISCHEN_MS).unref();
+  setInterval(() => { schreibePuffer().catch(logAndContinue('bild-fehlanzeige:schreibePuffer')); }, 10_000).unref();
 }
 
 /**
@@ -69,7 +70,7 @@ async function auffrischen(): Promise<void> {
     `SELECT cache_key, checked_at, reason FROM image_misses
       WHERE checked_at > NOW() - ($1 || ' milliseconds')::interval`,
     [String(ERNEUT_PRUEFEN_MS)]
-  ).catch(() => null);
+  ).catch(meldeUndLiefere('bild-fehlanzeige:rows', null));
   if (!rows) return;
   _vorne.clear(); _gruende.clear();
   for (const r of rows) {

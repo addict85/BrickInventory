@@ -50,22 +50,8 @@ async function seriesFor(setNumber: string, currency: string, cond: 'N' | 'U'): 
 
 /**
  * Vollständiger Preisverlauf samt aktuellen Preisen und Wertentwicklung.
- *
- * @param {number} uid
- * @param {string} setNumber
- * @param {string} currency
- */
-/**
- * @param uid Betrachter-BLICKFELD: eine ID oder die Liste aus scopeIds().
- *
- * ── Warum die Liste ───────────────────────────────────────────
- * Im Haushalt gehört das Set oft einem UNTERKONTO. Mit der nackten
- * Betrachter-ID fanden die Abfragen hier weder das Set noch die Erfassungen:
- * by_condition blieb leer, der Kaufpreis-Punkt fehlte, und die Detailansicht
- * der App zeigte für jedes fremde Haushalts-Set weder Marktpreis je Zustand
- * noch Wertentwicklung — während die (längst über scopeIds laufende)
- * Finanzübersicht dieselben Sets korrekt bewertete. resolveSetCondition()
- * konnte das Blickfeld immer schon; hier kam es nur nie an.
+ * @param uid Blickfeld (scopeIds()): Im Haushalt gehört das Set oft einem
+ *   Unterkonto, mit der nackten Betrachter-ID fände die Abfrage es nicht.
  */
 export async function getSetPriceHistory(uid: number | number[], setNumber: string, currency: string) {
   const uids = asIds(uid as any);
@@ -110,11 +96,8 @@ export async function getSetPriceHistory(uid: number | number[], setNumber: stri
   const hasCost = set?.purchase_price != null;   // 0 zählt als erfasst
   const purchasePrice = parseFloat(set?.purchase_price || 0);
 
-  // Als erster Punkt AN DER PASSENDEN REIHE.
-  //
-  // Vorher hing er an der einen zusammengefalteten Reihe. Bei zwei Linien wäre
-  // das ein Vergleich von Gebrauchtkauf und Neupreis-Verlauf — genau die
-  // Vermischung, aus der die „−32 %"-Meldung entstanden ist.
+  // Der Kaufpreis als erster Punkt an der Reihe SEINES Zustands, sonst
+  // vergliche das Diagramm einen Gebrauchtkauf mit dem Neupreis.
   if (hasCost && set?.added_day) {
     const target = condition === 'U' ? historyUsed : historyNew;
     const firstDay = target[0]?.recorded_at;
@@ -178,10 +161,7 @@ export async function getSetPriceHistory(uid: number | number[], setNumber: stri
     };
   }
 
-  // Diagrammdaten: nur die Zustände, die auch im Bestand liegen
-  // Die Regel gab es bereits — zwei Blöcke weiter oben, für `by_condition`:
-  // Eine Zeile erscheint nur, wenn für diesen Zustand eine Erfassung existiert.
-  // Der Diagramm-Aufbau stand davor und kannte sie nicht; er nahm immer beide …
+  // Im Diagramm nur Zustände mit Erfassung — dieselbe Regel wie by_condition.
   // Ausführlich: docs/begruendungen/utils/priceHistory.ts.md#getsetpricehistory-zustaendefuerchart
   const zustaendeFuerChart = zustaendeFuerVerlauf(Object.keys(byCondition), [condition]);
   const chart = buildChart(
@@ -195,6 +175,8 @@ export async function getSetPriceHistory(uid: number | number[], setNumber: stri
     history_used: historyUsed,
     current,
     pnl_pct: pnlPct,
+    // pnl_pct als Zahl; das Textfeld bleibt für ältere Clients.
+    pnl_prozent: pnlPct == null ? null : Number(pnlPct),
     purchase_price: hasCost ? purchasePrice : null,
     chart,
   };
@@ -204,10 +186,7 @@ export async function getSetPriceHistory(uid: number | number[], setNumber: stri
 // Preisverlauf manueller Teile und Minifiguren
 // ═══════════════════════════════════════════════════════════════════════════
 /**
- * Dieselbe Antwortform wie oben für Sets — und aus demselben Grund hier und
- * nicht in einer Routendatei: Die Android-API braucht sie jetzt ebenfalls
- * (/api/v1/parts/:nummer/:farbe/price-history und
- * /api/v1/minifigs/:nummer/price-history), und der Set-Verlauf ist genau daran …
+ * Dieselbe Antwortform wie für Sets; Web und App fragen beide hier.
  * Ausführlich: docs/begruendungen/utils/priceHistory.ts.md#manualseries
  */
 
@@ -224,11 +203,8 @@ async function manualSeries(table: string, keySql: string, keyVals: any[], curre
 }
 
 /**
- * Marktpreis und Entwicklung je Zustand für ein manuelles Teil / eine Minifigur.
- *
- * Gleiche Regel wie bei Sets: Eine Zeile entsteht nur für Zustände, zu denen
- * eine Erfassung existiert — sonst stünde ein Marktpreis ohne Bezugsgrösse da,
- * und die Prozentangabe wäre gegen nichts gerechnet.
+ * Marktpreis und Entwicklung je Zustand für ein manuelles Teil / eine Figur —
+ * nur für Zustände mit Erfassung, sonst fehlte der Prozentangabe die Basis.
  */
 export async function conditionRows(
   cacheTable: string, acqTable: string, keySql: string, keyVals: any[], uid: number | number[], currency: string,
@@ -273,20 +249,9 @@ export async function conditionRows(
 }
 
 /**
- * Gemeinsamer Aufbau für beide Arten.
- * Ausführlich: docs/begruendungen/utils/priceHistory.ts.md#abschnitt-2
- */
-/**
- * @param keySql/keyVals  Schlüssel für PREISE (Cache und Verlauf).
- * @param acqKeySql/acqKeyVals  Schlüssel für ERFASSUNGEN. Ohne Angabe
- *   dieselben. Bei Teilen weichen sie ab: Preise stehen unter der
- *   BrickLink-Nummer, Erfassungen unter der Rebrickable-Nummer.
- *
- *   Hier stand „bei Minifiguren stimmen beide überein". Das war falsch, und
- *   die Annahme kostete dort denselben Fehler: Sobald eine Figur eine eigene
- *   bl_fig_number trägt, schreibt fetchMinifigPrice Cache und Verlauf UNTER
- *   DIESER Nummer, die Erfassungen tragen aber die des Benutzers. Siehe
- *   getMinifigPriceHistory.
+ * Gemeinsamer Aufbau für Teile und Figuren.
+ * @param keySql/keyVals  Schlüssel für PREISE (stehen unter der BrickLink-Nummer).
+ * @param acqKeySql/acqKeyVals  Schlüssel für ERFASSUNGEN (Nummer des Benutzers).
  */
 async function manualPriceHistory(
   uid: number | number[], currency: string,
@@ -299,14 +264,8 @@ async function manualPriceHistory(
     manualSeries(historyTable, keySql, keyVals, currency, 'U'),
     conditionRows(cacheTable, acqTable, keySql, keyVals, uid, currency, acqKeySql, acqKeyVals),
   ]);
-  // Nur Zustaende mit Erfassung ins Diagramm — dieselbe Regel wie bei den
-  // Sets, und seit Marcos Befund an EINER Stelle (zustaendeFuerVerlauf).
-  // Ohne sie zeichnete ein nur gebraucht gekauftes Teil auch eine Linie
-  // „neu", die gegen keinen Kaufpreis steht.
-  //
-  // history_new/history_used bleiben VOLLSTAENDIG in der Antwort: Sie sind die
-  // Rohdaten, und wer sie auswertet (nicht das Diagramm) soll nicht
-  // stillschweigend weniger bekommen. Gefiltert wird, was GEZEICHNET wird.
+  // Gezeichnet werden nur Zustände mit Erfassung (wie bei Sets); die
+  // Rohreihen history_new/history_used bleiben vollständig.
   const zustaende = zustaendeFuerVerlauf(Object.keys(by_condition), ['N', 'U']);
   return {
     currency, by_condition,

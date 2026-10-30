@@ -24,14 +24,9 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 
 /**
- * Die Unterseiten der Einstellungen. Die Einstellungen zeigen eine Liste, und jede
- * Rubrik hat ihre eigene Seite mit Titel und Zurück-Pfeil: Vierzehn Karten
- * untereinander gaben dem Seltenen (einmal die Währung setzen) so viel Platz wie
- * dem Häufigen, und eine Seite, die eine Sache zeigt, kann ihr Luft geben.
- *
- * Die Karten liegen je Rubrik in Einstellungen*.kt (Alarme, Lagerorte, Haushalt,
- * Konto, Csv) und sind umgezogen, nicht neu gebaut — sie tragen Entscheidungen,
- * die man sonst ohne ihren Anlass neu treffen müsste.
+ * Die Unterseiten der Einstellungen: je Rubrik eine Seite mit Titel und
+ * Zurück-Pfeil, damit das Seltene nicht so viel Platz bekommt wie das Häufige. Die
+ * Karten liegen je Rubrik in Einstellungen*.kt.
  */
 
 /**
@@ -93,6 +88,7 @@ fun GutscheineUnterseite(
     // Mit dem kurzen Namen hielte die Prüfung jedes `zustand.geraete` für einen
     // Feldzugriff auf GutscheinUiState.
     val gutscheinZustand by gvm.state.collectAsStateWithLifecycle()
+    ch.brickinventoryapp.ui.components.Sichtschutz()
     // Die Zwischenablage kommt aus Compose und nicht aus dem ViewModel: Sie
     // ist an die Komposition gebunden. Die Rueckmeldung laeuft ueber den
     // Snackbar des ViewModels, damit sie dort steht, wo alle anderen Meldungen
@@ -192,6 +188,7 @@ fun KontoUnterseite(
     LaunchedEffect(Unit) { konto.ladeProfil() }
     LaunchedEffect(Unit) { konto.ladeGeraete() }
     LaunchedEffect(Unit) { konto.ladeZweitenFaktor() }
+    LaunchedEffect(Unit) { konto.ladeDesign() }
     Unterseite(stringResource(R.string.konto_title), snackbarHostState, onZurueck) {
         KontoCard(
             kontoZustand = kontoZustand,
@@ -199,6 +196,7 @@ fun KontoUnterseite(
             onPasswort = { alt, neu -> konto.aenderePasswort(alt, neu) { vm.logout() } },
             onMeldungWeg = { konto.kontoMeldungWeg() },
         )
+        DesignCard(design = kontoZustand.design, onWahl = { konto.waehleDesign(it) })
         ZweiterFaktorCard(
             zfZustand = zfZustand,
             onEinrichten = { konto.richteZweitenFaktorEin(it) },

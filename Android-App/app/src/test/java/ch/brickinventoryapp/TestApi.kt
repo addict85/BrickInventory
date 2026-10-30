@@ -170,3 +170,12 @@ class TestDienste(server: MockWebServer, texte: Texte = NummernTexte) {
         cacheDir.deleteRecursively()
     }
 }
+
+/** Ein Repository gegen einen Testserver, mit Ablage in einem Wegwerf-Ordner. */
+fun <R, T> mitRepo(bau: (BrickApiService, ResponseCache) -> R, block: (PfadServer, R) -> T): T {
+    val pfade = PfadServer()
+    val ordner = File(System.getProperty("java.io.tmpdir"), "bim-repo-${System.nanoTime()}").apply { mkdirs() }
+    try {
+        return block(pfade, bau(TestApi.fuer(pfade.server), ResponseCache { ordner }))
+    } finally { pfade.server.shutdown(); ordner.deleteRecursively() }
+}

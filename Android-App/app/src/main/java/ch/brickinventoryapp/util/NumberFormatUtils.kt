@@ -5,35 +5,35 @@ import java.text.NumberFormat
 import java.util.Currency
 import java.util.Locale
 
-/**
+/*
  * Zahlen und Beträge — eine Fassung für die ganze App, gleichgezogen mit der
- * Webapp, damit derselbe Betrag überall gleich aussieht.
- *
- * Dieselbe Zuordnung wie in der Webapp (`locale()` in public/i18n.js): Deutsch →
- * de-CH (Apostroph als Tausendertrennung), alles andere → en-GB. Beträge laufen
- * über die Währungs-Formatierung der Plattform statt über selbst zusammengesetzte
- * Zeichenketten — die Stellung von Symbol und Betrag unterscheidet sich je
- * Sprache, und die trifft man von Hand nicht.
+ * Webapp (locale() in public/i18n.js), damit derselbe Betrag überall gleich
+ * aussieht. Beträge laufen über die Währungs-Formatierung der Plattform: Die
+ * Stellung von Symbol und Betrag trifft man von Hand nicht.
  */
 
 /**
- * Zahlen-Locale zur eingestellten APP-Sprache — nicht zur Systemsprache.
- *
- * AppCompatDelegate ist dieselbe Quelle, aus der LanguageManager die Sprache
- * setzt; das System hält sie ab Android 13 selbst, darunter AppCompat. Ist
- * nichts gesetzt („System"), entscheidet die Systemsprache.
+ * Wie das Web: die Landesform des Geräts, wenn sie zur App-Sprache passt
+ * (de-DE schreibt 4.894,77, de-CH 4’894.77), sonst de-CH bzw. en-GB.
+ */
+fun zahlenLocale(sprache: Locale, geraet: Locale): Locale {
+    val ziel = if (sprache.language == "de") "de" else "en"
+    val land = sprache.country.takeIf { sprache.language == ziel && it.length == 2 }
+        ?: geraet.country.takeIf { geraet.language == ziel && it.length == 2 }
+    return Locale.forLanguageTag(if (land != null) "$ziel-$land" else if (ziel == "de") "de-CH" else "en-GB")
+}
+
+/**
+ * Zahlen-Locale zur eingestellten APP-Sprache (AppCompat, dieselbe Quelle wie
+ * LanguageManager), das Land vom Gerät. Ohne App-Sprache gilt die des Geräts.
  */
 fun appNumberLocale(): Locale {
-    // try/catch, weil diese Funktion auch aus JVM-Unit-Tests läuft, wo kein
-    // AppCompat-Zustand existiert. Ohne den Rückfall liesse sich im Test nur die Regel
-    // prüfen, nicht das formatierte Ergebnis.
-    val sprache = try {
-        val locales = AppCompatDelegate.getApplicationLocales()
-        if (locales.isEmpty) Locale.getDefault().language else locales[0]?.language
-    } catch (_: Throwable) {
-        Locale.getDefault().language
-    }
-    return if (sprache == "de") Locale.forLanguageTag("de-CH") else Locale.forLanguageTag("en-GB")
+    val geraet = Locale.getDefault()
+    // Im JVM-Test gibt es keinen AppCompat-Zustand; dann gilt das Gerät.
+    val app = try {
+        AppCompatDelegate.getApplicationLocales().let { if (it.isEmpty) null else it[0] }
+    } catch (_: Throwable) { null }
+    return zahlenLocale(app ?: geraet, geraet)
 }
 
 /**
@@ -67,6 +67,19 @@ fun fmtAmount(v: Double, minFractionDigits: Int = 2, maxFractionDigits: Int = 2)
     val nf = NumberFormat.getNumberInstance(appNumberLocale())
     nf.minimumFractionDigits = minFractionDigits
     nf.maximumFractionDigits = maxFractionDigits
+    return nf.format(v)
+}
+
+/**
+ * Betrag für ein Eingabefeld: zwei Nachkommastellen im Dezimalzeichen der
+ * App-Sprache, ohne Tausendertrennung — die liesse sich beim Speichern nicht
+ * vom Dezimalzeichen unterscheiden.
+ */
+fun fmtEingabe(v: Double): String {
+    val nf = NumberFormat.getNumberInstance(appNumberLocale())
+    nf.isGroupingUsed = false
+    nf.minimumFractionDigits = 2
+    nf.maximumFractionDigits = 2
     return nf.format(v)
 }
 

@@ -2,6 +2,7 @@
  * BrickLink-Katalog-Links für Set-Nummern.
  * Ausführlich: docs/begruendungen/utils/bricklinkLink.ts.md#abschnitt
  */
+import { logAndContinue, meldeUndLiefere } from './httpError';
 import * as db from '../db/database';
 import { bricklinkRequest } from '../clients/bricklink';
 import { getGlobalSetting } from './settings';
@@ -91,7 +92,7 @@ export async function resolveMany(setNumbers: string[]): Promise<Map<string, BlL
   const rows = await db.all(
     'SELECT set_number, bl_type FROM catalog_cache WHERE set_number = ANY($1::text[])',
     [keys]
-  ).catch(() => []);
+  ).catch(meldeUndLiefere('bl-link:rows', []));
 
   const byNumber = new Map<string, string | null>();
   for (const r of rows) byNumber.set(r.set_number, r.bl_type);
@@ -147,6 +148,6 @@ export async function resolveViaApi(setNumber: string): Promise<BlLink> {
     `INSERT INTO catalog_cache (set_number, name, bl_type, is_gear) VALUES ($1,$2,$3,$4)
      ON CONFLICT (set_number) DO UPDATE SET bl_type = $3, fetched_at = NOW()`,
     [n, `Set ${n}`, found, found === 'NONE' ? 1 : 0]
-  ).catch(() => {});
+  ).catch(logAndContinue('bl-link:probe'));
   return toLink(n, found);
 }

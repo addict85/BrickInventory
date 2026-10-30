@@ -10,10 +10,11 @@ import { hatPreis } from '../preisRegel';
 import { asIds } from '../household';
 import { checkAndIncrementRateLimit, kontingentFrei, getLimitForApi, getRateLimitStatus } from '../apiKontingent';
 import { bricklinkRequest, getPriceGuide } from '../../clients/bricklink';
-import { fehlertext } from '../httpError';
+import { fehlertext, logAndContinue, meldeUndLiefere } from '../httpError';
 import { mitVersion, katalogEintrag, ohneBricklinkPreis } from '../setNummer';
 import { effectiveCondition } from './zustand';
 import { blAbrufNummer, blAbrufNummern } from '../blZuordnung';
+import { KEINE_FARBE } from '../validate';
 
 
 
@@ -46,12 +47,8 @@ type Stunden = string | number;
 async function resolveSetCondition(
   uid: number | number[], setNumber: string, dbh: { get: typeof db.get } = db,
 ): Promise<'N' | 'U'> {
-  // Auch hier das Blickfeld: Der Hauptaccount fragt den Zustand eines Sets ab,
-  // das einem Unterkonto gehört — mit einer nackten ID fände er es nicht.
-  //
-  // `dbh`: Wer INNERHALB einer Transaktion fragt, muss auch darin lesen —
-  // sonst sieht er den Stand von vorher. utils/setService.ts →
-  // priceForNewAcquisition() tut genau das.
+  // Blickfeld statt nackter ID: Das Set gehört oft einem Unterkonto. `dbh`:
+  // Wer in einer Transaktion fragt, liest auch darin (priceForNewAcquisition).
   const uids = asIds(uid as any);
   const row = await dbh.get(
     // Ohne s.condition (Migration 0032): Der Zustand steht in den Erfassungen,
@@ -62,19 +59,13 @@ async function resolveSetCondition(
          ON a.user_id = s.user_id AND a.set_number = s.set_number
       WHERE s.user_id = ANY($1) AND s.set_number=$2`,
     [uids, setNumber]
-  ).catch(() => null);
+  ).catch(meldeUndLiefere('preise:row', null));
   return effectiveCondition(row);
 }
 
 
-// ── Price fetch with fallback ─────────────────────────────────────────────────
-// Optionales `pre` erlaubt Batch-Aufrufern (computeSetsValuation), Katalog- und
-// Preiscache-Zeilen vorab in EINER Query zu laden statt pro Set einzeln:
-//   pre = { catalog: Map<set_number, row>, cache: Map<`${set}|${cond}`, row> }
-// ── Preis-Zustand ─────────────────────────────────────────────────────────────
-// Alle BrickLink-Preisabfragen laufen primär mit diesem Zustand; der jeweils
-// andere Zustand ('N' ↔ 'U') dient als Fallback, wenn kein Preis gefunden wird.
-// 'U' = gebraucht: entspricht dem realistischen Wiederverkaufswert der Sammlung.
+// Vorgabezustand der Preisabfragen; der andere dient als Rückfall. 'U', weil
+// der Gebrauchtpreis dem Wiederverkaufswert der Sammlung entspricht.
 const DEFAULT_PRICE_CONDITION = 'U';
 
 const PRICE_CACHE_COLS = 'set_number, condition, min_price, avg_price, max_price, qty_avg_price, fetched_at';
@@ -85,13 +76,7 @@ const PRICE_CACHE_COLS = 'set_number, condition, min_price, avg_price, max_price
  */
 const ZERO_PRICE_TTL_HOURS = 6;
 
-/**
- * Die Preiszeile aus dem Cache — sofern sie jung genug ist.
- *
- * Diese Abfrage stand fuenfmal da: viermal hier, einmal in jobs/priceJob.ts.
- * Die Spaltenliste (PRICE_CACHE_COLS) war schon zusammengefasst, die Bedingung
- * nicht — und genau die entscheidet, was „frisch" heisst.
- */
+/** Die Preiszeile aus dem Cache, sofern sie jung genug ist — die eine Stelle, die „frisch“ festlegt. */
 async function preisAusCache(setNumber: string, condition: string, currency: string, ttlStunden: number) {
   return db.get(
     `SELECT ${PRICE_CACHE_COLS} FROM price_cache
@@ -143,7 +128,7 @@ async function speicherePreis(setNumber: string, condition: string, currency: st
   if (avg > 0 || qavg > 0) {
     await db.run(
       'INSERT INTO price_history (set_number, condition, currency_code, avg_price, qty_avg_price, min_price, max_price) VALUES ($1,$2,$3,$4,$5,$6,$7) ON CONFLICT DO NOTHING',
-      [setNumber, condition, currency, avg, qavg, min, max]).catch(() => {});
+      [setNumber, condition, currency, avg, qavg, min, max]).catch(logAndContinue('preise:setverlauf schreiben'));
   }
   return { min, avg, max, qavg, qty };
 }
@@ -239,12 +224,7 @@ const NACHSCHLAG_TTL_MS = 10 * 60 * 1000;
 // utils/auth.ts, aus demselben Grund (eine Handvoll Nutzer, kleine Tabellen).
 const NACHSCHLAG_MAX = 5000;
 
-/**
- * Baut eine gemerkte Fassung von `hole`.
- *
- * `hole` gibt `null` zurück, wenn es nichts gefunden hat — dieser Fall wird
- * NICHT gemerkt (siehe oben). Der Aufrufer setzt seinen eigenen Rückfall ein.
- */
+/** Gemerkte Fassung von `hole`; ein `null` (nichts gefunden) wird nicht gemerkt. */
 function nachschlagwerk<S, W>(hole: (schluessel: S) => Promise<W | null>) {
   const karte = new Map<S, { wert: W; zeit: number }>();
   const frage = async (schluessel: S): Promise<W | null> => {
@@ -257,13 +237,8 @@ function nachschlagwerk<S, W>(hole: (schluessel: S) => Promise<W | null>) {
     karte.set(schluessel, { wert, zeit: jetzt });
     return wert;
   };
-  // Kein leeren()-Griff: Beide Tabellen werden nur ergänzt, nie geleert
-  // (nachgesehen — es gibt kein TRUNCATE/DELETE auf rb_colors oder
-  // rb_bl_mapping). Ein einmal gemerkter Treffer kann also nicht falsch
-  // werden, und ein Griff, den niemand zieht, wäre toter Code.
-  //
-  // kennt()/merken() gibt es, damit ein Aufrufer VIELE Antworten auf einmal
-  // holen und hier ablegen kann — siehe ladeBlNummernVor().
+  // Kein Leeren: Die Quelltabellen werden nur ergänzt, ein Treffer bleibt
+  // richtig. kennt()/merken() erlauben das Vorladen vieler Antworten (ladeBlNummernVor).
   frage.kennt = (schluessel: S) => {
     const treffer = karte.get(schluessel);
     return !!treffer && Date.now() - treffer.zeit < NACHSCHLAG_TTL_MS;
@@ -280,20 +255,10 @@ function nachschlagwerk<S, W>(hole: (schluessel: S) => Promise<W | null>) {
  * Ausführlich: docs/begruendungen/utils/finance/preise.ts.md#farbkarte
  */
 let _farbkarte: { karte: Map<number, any>; zeit: number } | null = null;
-// Der LADEVORGANG wird geteilt, nicht nur sein Ergebnis.
-//
-// NACHGEMESSEN: Ohne das blieben von 50 Abfragen fünf übrig statt einer. Die
-// Bewertung läuft über parallelLimit(tasks, 5) — fünf Arbeiter treffen den
-// kalten Speicher gleichzeitig, jeder sieht „noch nichts da" und lädt selbst.
-// Wer die laufende Zusage findet, wartet auf sie, statt eine zweite zu starten.
+// Der Ladevorgang wird geteilt, nicht nur sein Ergebnis: Fünf parallele
+// Bewerter träfen den kalten Speicher sonst gleichzeitig und lüden je selbst.
 let _farbladung: Promise<Map<number, any>> | null = null;
-/**
- * Die Farbzuordnung als Map — auch fuer utils/handlers/parts.ts.
- *
- * Die Abfrage stand dort ein zweites Mal (getBlColorMap). test/sql-kerne.test.js
- * hat es gemeldet: dieselbe SQL-Anweisung in zwei Dateien. Jetzt liest sie
- * einer, und beide Wege bekommen dasselbe Gedaechtnis dazu.
- */
+/** Die Farbzuordnung Rebrickable → BrickLink als Map, für Bewertung und Teileliste. */
 async function farbkarte(): Promise<Map<number, any>> {
   const jetzt = Date.now();
   if (_farbkarte && jetzt - _farbkarte.zeit < NACHSCHLAG_TTL_MS) return _farbkarte.karte;
@@ -312,8 +277,12 @@ async function farbkarte(): Promise<Map<number, any>> {
   finally { _farbladung = null; }
 }
 
+/**
+ * Rebrickable-Farbe → BrickLink-Farbe. KEINE_FARBE ist bei BrickLink 0
+ * („(Not Applicable)“); Rebrickables 0 ist Schwarz und geht über die Karte.
+ */
 async function resolveBlColorId(rbColorId: number) {
-  if (rbColorId == null || rbColorId === 0) return rbColorId;
+  if (rbColorId == null || rbColorId === KEINE_FARBE) return 0;
   try {
     const treffer = (await farbkarte()).get(Number(rbColorId));
     return treffer != null ? treffer : rbColorId;
@@ -348,17 +317,6 @@ async function ladeBlNummernVor(teilnummern: string[]): Promise<void> {
   for (const [rb, bl] of await blAbrufNummern('part', offen)) _blTeil.merken(rb, bl);
 }
 
-// ── Fetch price for a single part from BrickLink ─────────────────────────────
-// Spiegelt die Fallback-Logik von fetchPrice (Sets): Liefert der gewünschte
-// Zustand (neu/gebraucht) keinen Preis, wird der jeweils andere Zustand
-// versucht — viele ältere Teile werden nur noch gebraucht angeboten.
-/**
- * Ein Schlüsselraum für den Teile-Cache
- * Die Nummer wird HIER übersetzt, ganz oben, und danach für alles benutzt: den
- * Cache-Zugriff, die Anfrage und das Schreiben. Vorher übersetzte diese
- * Funktion nur die FARBE; die Teilenummer nahm sie so, wie der Aufrufer sie …
- * Ausführlich: docs/begruendungen/utils/finance/preise.ts.md#fetchpartprice
- */
 /**
  * Die frischen Cachezeilen vieler Teile in EINER Abfrage. Die Bewertung reicht
  * sie an fetchPartPrice weiter; sonst fragte jedes Teil je Zustand einzeln.
@@ -399,7 +357,12 @@ async function ladeFigurenpreiseVor(figuren: string[], currency: string, ttlHour
   return vorrat;
 }
 
-/** @param vorrat aus ladeTeilepreiseVor; fehlt ein Schlüssel, gibt es keinen frischen Eintrag. */
+/**
+ * Teilepreis bei BrickLink, mit Rückfall auf den anderen Zustand (viele ältere
+ * Teile gibt es nur gebraucht). Nummer und Farbe werden zuerst auf BrickLink
+ * übersetzt und dann für Cache, Abruf und Schreiben benutzt.
+ * Ausführlich: docs/begruendungen/utils/finance/preise.ts.md#fetchpartprice
+ * @param vorrat aus ladeTeilepreiseVor; fehlt ein Schlüssel, gibt es keinen frischen Eintrag. */
 async function fetchPartPrice(partNumber: string, rbColorId: number, condition: string, currency: string, ttlHours: Stunden,
                               vorrat: Map<string, any> | null = null) {
   const ttl = Math.max(1, parseInt(String(ttlHours)));
@@ -445,7 +408,7 @@ async function fetchPartPrice(partNumber: string, rbColorId: number, condition: 
       // einzelnen Teilen in seltenen Farben ist das der Normalfall.
       if (!hatPreis(g)) {
         const alt = await bricklinkRequest('GET', `/items/part/${blPartNumber}/price`,
-          { ...qp, guide_type: 'stock' }).catch(() => null);
+          { ...qp, guide_type: 'stock' }).catch(meldeUndLiefere('preise:alt', null));
         if (hatPreis(alt)) g = alt;
       }
       const avg  = parseFloat(g?.avg_price || 0);
@@ -461,7 +424,7 @@ async function fetchPartPrice(partNumber: string, rbColorId: number, condition: 
           `INSERT INTO part_price_history (part_number, color_id, condition, currency_code, avg_price, qty_avg_price)
            VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT DO NOTHING`,
           [blPartNumber, colorId || 0, cond, currency, avg, qavg]
-        ).catch(() => {});
+        ).catch(logAndContinue('preise:teileverlauf schreiben'));
       }
       return { avg_price: avg, qty_avg_price: qavg, from_cache: false };
     } catch (e) {
@@ -537,7 +500,7 @@ async function fetchMinifigPrice(figNumber: string, condition: string, currency:
       // Wie bei Teilen: ohne Verkauf in sechs Monaten auf Angebote ausweichen.
       if (!hatPreis(g)) {
         const alt = await bricklinkRequest('GET', `/items/minifig/${figNumber}/price`,
-          { ...qp, guide_type: 'stock' }).catch(() => null);
+          { ...qp, guide_type: 'stock' }).catch(meldeUndLiefere('preise:alt', null));
         if (hatPreis(alt)) g = alt;
       }
       const avg  = parseFloat(g?.avg_price || 0);
@@ -553,7 +516,7 @@ async function fetchMinifigPrice(figNumber: string, condition: string, currency:
           `INSERT INTO minifig_price_history (fig_number, condition, currency_code, avg_price, qty_avg_price)
            VALUES ($1,$2,$3,$4,$5) ON CONFLICT DO NOTHING`,
           [figNumber, cond, currency, avg, qavg]
-        ).catch(() => {});
+        ).catch(logAndContinue('preise:figurverlauf schreiben'));
       }
       return { avg_price: avg, qty_avg_price: qavg, from_cache: false };
     } catch (e) {

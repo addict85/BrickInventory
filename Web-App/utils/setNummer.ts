@@ -39,18 +39,6 @@ export function ohneVersion(setNumber: string | number): string {
   return mitVersion(setNumber).replace(/-\d+$/, '');
 }
 
-/**
- * Beide Schreibweisen, mit der versionierten zuerst.
- *
- * Wer in einem Bestand sucht, der beide Formen enthalten kann, braucht
- * beide — und sie müssen VERSCHIEDEN sein, sonst fragt die Abfrage zweimal
- * dasselbe. Genau das ist in utils/handlers/parts.ts passiert.
- */
-export function beideSchreibweisen(setNumber: string | number): [string, string] {
-  const n = mitVersion(setNumber);
-  return [n, ohneVersion(n)];
-}
-
 // ── Der Katalog-Eintrag zu einem Set ────────────────────────────────────────
 //
 // Hier steht der LESER, nicht nur die Schreibweise: Die drei Stellen, die
@@ -63,8 +51,8 @@ export interface KatalogEintrag { is_gear?: number | null; bl_type?: string | nu
 
 /** Der Katalog-Eintrag zu einem Set — unter der Schreibweise, unter der er abgelegt wird. */
 export async function katalogEintrag(setNumber: string): Promise<KatalogEintrag | null> {
-  return db.get('SELECT is_gear, bl_type, fetched_at FROM catalog_cache WHERE set_number = $1',
-                [mitVersion(setNumber)]);
+  return (await db.get<KatalogEintrag>('SELECT is_gear, bl_type, fetched_at FROM catalog_cache WHERE set_number = $1',
+                [mitVersion(setNumber)])) ?? null;
 }
 
 /**

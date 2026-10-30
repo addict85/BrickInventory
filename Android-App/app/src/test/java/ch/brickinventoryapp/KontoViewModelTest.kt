@@ -50,7 +50,8 @@ class KontoViewModelTest {
         cacheDir = File(System.getProperty("java.io.tmpdir"), "bim-konto-${System.nanoTime()}")
         cacheDir.mkdirs()
         kanal = MeldungsKanal()
-        vm = KontoViewModel(AdminRepository(TestApi.fuer(server), ResponseCache { cacheDir }), NummernTexte, kanal)
+        vm = KontoViewModel(AdminRepository(TestApi.fuer(server), ResponseCache { cacheDir }), NummernTexte, kanal,
+                            ch.brickinventoryapp.ui.Sitzung())
     }
 
     @After

@@ -3,37 +3,34 @@ import { bestaetigePasswort } from '../utils/passwortBestaetigung';
 import express from 'express';
 const router  = express.Router();
 import multer from 'multer';
-import * as db from '../db/database';
-import { handleRouteError, logAndContinue, meldeUndWeiter, fehlertext } from '../utils/httpError';
-import { pruefeRebrickableZugang } from '../clients/rebrickable';
-import { pruefeBricksetZugang } from '../clients/brickset';
-import { pruefeBricklinkZugang } from '../clients/bricklink';
+import { handleRouteError } from '../utils/httpError';
 import { requireApiAdmin as requireAdmin } from './api_v1/middleware';
 const requireLogin = requireLoginOrToken;
 
-import { setUserSetting, setGlobalSetting, getGlobalSetting, SECRET_KEYS, isMaskedValue, readSettings, nutzerEinstellungen } from '../utils/settings';
-import { getRateLimitStatus } from '../utils/financeCalc';
+import { setUserSetting, setGlobalSetting, getGlobalSetting, SECRET_KEYS, isMaskedValue, readSettings, nutzerEinstellungen, globaleWerteOhneGeheimnisse } from '../utils/settings';
+import { DESIGNS, designFuer, setzeEigenesDesign } from '../utils/settings';
 import { buildSetsCsv } from '../utils/setService';
 import { buildPartsCsv, buildFigsCsv } from '../utils/bestandExport';
 import { buildMerklisteCsv } from '../utils/merkliste';
 import { buildPreisalarmeCsv } from '../utils/preisalarm';
-import { DAILY_JOBS } from '../jobs/dailyScheduler';
-import { escapeLike, requireLoginOrToken, nutzerId, angemeldeteNutzerId, istVerwalter, nutzerName, hashToken, leereTokenCache } from '../utils/auth';
+import { DAILY_JOBS } from '../utils/jobsteuerung';
+import { quellePruefen, bricksetLimitGesetzt, zeitplanNeuPlanen } from '../utils/dienste/verwaltung';
+import { zugaengeDesKontos, zugaengeLoeschen, andereSitzungenBeenden, mussPasswortAendern, profil } from '../utils/konten';
+import { resolveUserId, escapeLike, requireLoginOrToken, nutzerId, angemeldeteNutzerId, istVerwalter, nutzerName, hashToken, leereTokenCache } from '../utils/auth';
 import { bearerToken } from './api_v1/middleware';
 import { sendMail, testSmtp } from '../utils/mailer';
 import { sendeFehler } from '../utils/fehlerTexte';
-import { setzeAusloeser } from '../utils/laufzustand';
 
-// ── Öffentlich: aktuelles App-Design ─────────────────────────────────────────
-// MUSS vor router.use(requireLogin) stehen. Der Kommentar sagte schon immer
-// „von allen Nutzern lesbar", faktisch lag die Route aber hinter der
-// Login-Pflicht — und damit war das global eingestellte Design auf dem Login-
-// und dem Startup-Screen gar nicht abrufbar. Der Wert ist eine reine
-// UI-Einstellung ('classic' | 'brick') und verrät nichts über Konten oder Daten.
-router.get('/theme', async (_req, res) => {
-  const theme = await getGlobalSetting('app_theme');
-  res.set('Cache-Control', 'no-cache');
-  res.json({ success: true, theme: theme || 'classic' });
+// ── Öffentlich: aktuelles App-Design — vor router.use(requireLogin), denn
+// Anmelde- und Startbildschirm brauchen es; es verrät nichts über Konten.
+// Angemeldet gilt das Design des Kontos, sonst die Vorgabe des Verwalters.
+router.get('/theme', async (req, res) => {
+  try {
+    const uid = await resolveUserId(req);
+    res.set('Cache-Control', 'no-cache');
+    res.set('Vary', 'Cookie, Authorization');
+    res.json({ success: true, ...await designFuer(uid) });
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 // Angemeldete Geräte: Sitzung ODER Token
@@ -47,7 +44,6 @@ router.get('/theme', async (_req, res) => {
  */
 router.get('/tokens', requireLoginOrToken, async (req: LoggedInRequest, res) => {
   try {
-    const uid = nutzerId(req);
     const eigener = bearerToken(req);
     const eigenerHash = eigener ? hashToken(eigener) : null;
     // LEAST ueber beide Fristen: `expires_at` ist die gleitende („so lange
@@ -55,12 +51,8 @@ router.get('/tokens', requireLoginOrToken, async (req: LoggedInRequest, res) => 
     // wurde. Was den Nutzer interessiert, ist der FRUEHERE der beiden — der
     // Tag, an dem dieses Geraet ausgesperrt wird.
     // Ausführlich: docs/begruendungen/routes/settings.ts.md#get-tokens-tokens
-    const tokens = await db.all(
-      `SELECT token, label, created_at, last_used, hard_expires_at,
-              LEAST(expires_at, hard_expires_at) AS expires_at
-         FROM api_tokens WHERE user_id = $1 ORDER BY created_at DESC`,
-      [uid]);
-    res.json({ success: true, tokens: tokens.map((t: any) => ({
+    const tokens = await zugaengeDesKontos(angemeldeteNutzerId(req));
+    res.json({ success: true, tokens: tokens.map(t => ({
       token_prefix: t.token.substring(0, 8),
       token_id:     t.token.substring(0, 16),
       label:        t.label,
@@ -80,25 +72,19 @@ router.get('/tokens', requireLoginOrToken, async (req: LoggedInRequest, res) => 
  */
 router.delete('/tokens/:tokenId', requireLoginOrToken, async (req: LoggedInRequest, res) => {
   try {
-    const uid = nutzerId(req);
     // escapeLike: ohne das löscht ein "%" als tokenId ALLE Tokens des Nutzers.
     const prefix = escapeLike(String(req.params.tokenId || '')).slice(0, 64);
     if (!prefix) return sendeFehler(req, res, 400, 'token_id_fehlt');
-    const r = await db.run(
-      "DELETE FROM api_tokens WHERE user_id = $1 AND token LIKE $2 ESCAPE '\\'",
-      [uid, prefix + '%']);
-    if (r.changes) leereTokenCache();
-    res.json({ success: true, deleted: r.changes });
+    const geloescht = await zugaengeLoeschen(angemeldeteNutzerId(req), prefix);
+    if (geloescht) leereTokenCache();
+    res.json({ success: true, deleted: geloescht });
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 /** Die übrigen Browser-Sitzungen beenden; die eigene bleibt. */
 router.post('/sessions/andere-beenden', requireLogin, async (req: LoggedInRequest, res) => {
   try {
-    const r = await db.run(
-      "DELETE FROM user_sessions WHERE sess::jsonb->>'userId' = $1 AND sid <> $2",
-      [String(angemeldeteNutzerId(req)), req.sessionID]);
-    res.json({ success: true, deleted: r.changes });
+    res.json({ success: true, deleted: await andereSitzungenBeenden(angemeldeteNutzerId(req), req.sessionID) });
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
@@ -117,12 +103,8 @@ router.post('/', async (req: LoggedInRequest, res) => {
     'price_cache_ttl','api_limit_rebrickable','api_limit_bricklink','api_limit_brickset',
     'registration_enabled','smtp_host','smtp_port','smtp_user','smtp_pass','smtp_from','smtp_secure','smtp_insecure_tls',
     'default_price_condition',
-    // Das Ausgabeland der Gutscheine. GLOBAL und nicht je Nutzer, weil Marco
-    // es so wollte: „das Ausgabeland soll in den Einstellungen bei den
-    // Gutscheinen fuer alle erfasst werden koennen". Damit liegt es hier und
-    // nicht in userKeys — und damit darf es, wie alle globalen Werte, nur ein
-    // Verwalter setzen. Lesen duerfen es alle (es ist kein Geheimnis, steht
-    // also nicht in SECRET_KEYS), sonst stuende im Auswahlfeld nichts.
+    // Ausgabeland der Gutscheine: global für alle Konten, also nur vom
+    // Verwalter gesetzt; kein Geheimnis, lesen dürfen es alle.
     'gutschein_land'];
   const userKeys = ['currency', 'language', 'user_default_condition'];
 
@@ -146,28 +128,14 @@ router.post('/', async (req: LoggedInRequest, res) => {
 
       for (const key of globalKeys) {
         if (req.body[key] !== undefined) {
-          // Das Formular bekommt Geheimnisse maskiert (siehe sanitizeGlobal).
-          // Schickt der Client die Maske unverändert zurück — der Normalfall,
-          // wenn nur ein anderes Feld geändert wurde —, darf sie NICHT als
-          // neuer Wert gespeichert werden: Sonst überschreibt jedes Speichern
-          // der Einstellungsseite die echten API-Schlüssel mit Punkten.
+          // Eine unverändert zurückgeschickte Maske ist kein neuer Wert, sonst
+          // überschriebe jedes Speichern die echten Schlüssel mit Punkten.
           if (SECRET_KEYS.has(key) && isMaskedValue(req.body[key])) continue;
           await setGlobalSetting(key, req.body[key]);
         }
       }
 
-      // If brickset limit was increased, check if retry queue can now be processed
-      if (oldBricksetLimit !== null) {
-        const newLimit = parseInt(req.body.api_limit_brickset);
-        if (newLimit > oldBricksetLimit) {
-          const rl = await getRateLimitStatus('brickset').catch(() => null);
-          const remaining = rl ? Math.max(0, newLimit - (rl.count || 0)) : 0;
-          if (remaining > 0) {
-            console.log(`[brickset] Limit increased from ${oldBricksetLimit} to ${newLimit} — ${remaining} calls available, processing retry queue`);
-            setImmediate(() => require('../jobs/bricksetRetry').processRetryQueue().catch(() => {}));
-          }
-        }
-      }
+      if (oldBricksetLimit !== null) await bricksetLimitGesetzt(oldBricksetLimit, parseInt(req.body.api_limit_brickset));
     }
     for (const key of userKeys) {
       if (req.body[key] !== undefined) {
@@ -193,18 +161,9 @@ router.get('/raw', async (req: LoggedInRequest, res) => {
 
 router.get('/export', async (req, res) => {
   try {
-    const global: any = {};
     // Nur Verwalter bekommen die Installation mit: Der Import nimmt globale
-    // Werte ohnehin nur von ihnen an, und SMTP-Host, -Konto und Absender
-    // gehen ein Unterkonto nichts an.
-    if (istVerwalter(req)) (await db.all('SELECT key, value FROM global_settings'))
-      // Laufzeitzustände stehen seit Migration 0063 nicht mehr hier (laufzustand).
-      // Geheimnisse gehören NICHT in eine Datei, die der Nutzer herunterlädt,
-      // per Mail weiterschickt oder in ein Repo legt. Der Export ist als
-      // Konfigurations-Sicherung gedacht, nicht als Schlüsselkopie — die
-      // API-Zugangsdaten trägt man beim Wiederherstellen einmalig neu ein.
-      .filter(r => !SECRET_KEYS.has(r.key))
-      .forEach(r => { global[r.key] = r.value; });
+    // Werte ohnehin nur von ihnen an, und SMTP-Daten gehen ein Unterkonto nichts an.
+    const global = istVerwalter(req) ? await globaleWerteOhneGeheimnisse() : {};
     const userSettings: any = await nutzerEinstellungen(nutzerId(req)!);
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Content-Disposition', `attachment; filename="brickinventory-config-${new Date().toISOString().substring(0,10)}.json"`);
@@ -212,21 +171,12 @@ router.get('/export', async (req, res) => {
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
-// ── GET /api/settings/export/data — Sets, Teile und Minifiguren jeweils als CSV,
-// gebündelt in einem ZIP (reuses the exact same CSV-building logic as the
-// individual /api/sets|parts|minifigs/export/csv endpoints, implemented once).
-// LoggedInRequest: Der Router liegt hinter requireLogin (oben), und die
-// Augmentierung sichert userId als number zu — die drei CSV-Bauer verlangen das.
+// ── GET /api/settings/export/data — Sets, Teile, Figuren, Merkliste und Alarme
+// als CSV in einem ZIP; dieselben CSV-Bauer wie die Einzelexporte.
 router.get('/export/data', async (req: LoggedInRequest, res) => {
   try {
-    // archiver 8 (05.10.) exportiert KEINE aufrufbare Funktion mehr, sondern
-    // Klassen — das Paket ist `type: module`. Node kann es aus CommonJS
-    // heraus weiterhin per `require()` holen (seit 22.12 stabil, wir fahren
-    // 26), was herauskommt ist dann aber ein Objekt.
-    //
-    // NACHGEMESSEN gegen archiver 8.0.0: `new ZipArchive(opts)` traegt
-    // dieselben vier Dinge, die hier gebraucht werden — append, pipe,
-    // finalize, on('error') — und erzeugt ein Archiv mit PK-Signatur.
+    // archiver 8 ist ein ES-Modul mit Klassen; aus CommonJS kommt per
+    // require() ein Objekt, ZipArchive bietet append/pipe/finalize/on('error').
     const { ZipArchive } = require('archiver');
     const uid = angemeldeteNutzerId(req);
 
@@ -266,13 +216,18 @@ router.post('/import', importUpload.single('file'), async (req: LoggedInRequest,
   const globalKeys = ['bricklink_consumer_key','bricklink_consumer_secret','bricklink_token',
     'bricklink_token_secret','brickset_api_key','rebrickable_api_key','price_job_interval_minutes',
     'price_cache_ttl','api_limit_rebrickable','api_limit_bricklink','api_limit_brickset',
-    'registration_enabled','smtp_host','smtp_port','smtp_user','smtp_pass','smtp_from','smtp_secure','smtp_insecure_tls',
-    'default_price_condition', 'gutschein_land',
+    // smtp_* fehlen mit Absicht: Ein Mailserver wird nur im Formular und mit
+    // Passwort umgestellt (POST /). Eine Importdatei kommt von irgendwoher, und
+    // mit smtp_host + smtp_insecure_tls gingen Passwort und Rücksetz-Mails an
+    // einen fremden Server. Das SMTP-Passwort steht ohnehin in keinem Export.
+    'registration_enabled', 'default_price_condition', 'gutschein_land',
     // konfigurierbare Job-Zeiten aus dem Monitoring (job_time_<name>)
-    ...DAILY_JOBS.map((j: any) => `job_time_${j.name}`)];
+    ...DAILY_JOBS.map(j => `job_time_${j.name}`)];
   const userKeys = ['currency', 'user_default_condition'];
   const uid = angemeldeteNutzerId(req);
   let imported = 0;
+  const smtpUebergangen = config.global && typeof config.global === 'object'
+    ? Object.keys(config.global).filter(k => k.startsWith('smtp_')) : [];
   try {
     if (config.global && istVerwalter(req)) {
       for (const key of globalKeys) {
@@ -302,15 +257,10 @@ router.post('/import', importUpload.single('file'), async (req: LoggedInRequest,
     // Ausführlich: docs/begruendungen/routes/settings.ts.md#abschnitt-2
 
     // Importierte Job-Zeiten / Preis-Intervall sofort übernehmen (Scheduler neu planen).
-    if (istVerwalter(req)) {
-      await setzeAusloeser('job_reschedule_trigger')
-        .catch(logAndContinue('settings:job_reschedule_trigger'));
-      // Weckt die Scheduler sofort; ohne Signal bliebe der Eintrag bis zum
-      // nächsten Verbindungsaufbau liegen.
-      await require('../utils/pgNotify').notify('job_reschedule_trigger');
-      try { await require('../jobs/dailyScheduler').rescheduleAll(); } catch (e) { meldeUndWeiter('einstellungen:zeitplan-neu-planen', e); }
-    }
-    res.json({ success: true, imported, note: istVerwalter(req) ? 'Globale + Benutzer-Einstellungen importiert' : 'Nur Benutzer-Einstellungen importiert' });
+    if (istVerwalter(req)) await zeitplanNeuPlanen();
+    const note = (istVerwalter(req) ? 'Globale + Benutzer-Einstellungen importiert' : 'Nur Benutzer-Einstellungen importiert')
+      + (istVerwalter(req) && smtpUebergangen.length ? '; SMTP nicht übernommen — bitte im Formular setzen' : '');
+    res.json({ success: true, imported, note, smtp_uebergangen: istVerwalter(req) ? smtpUebergangen : [] });
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
@@ -326,8 +276,7 @@ router.post('/smtp-test', async (req, res) => {
     // Determine recipient: use provided email, or look up admin's email from DB
     let to = (req.body.to || '').trim();
     if (!to) {
-      const user = await db.get('SELECT email FROM users WHERE id = $1', [nutzerId(req)]);
-      to = user?.email || '';
+      to = (await profil(angemeldeteNutzerId(req)))?.email || '';
     }
     if (!to || !to.includes('@')) {
       return sendeFehler(req, res, 400, 'keine_ziel_email');
@@ -350,8 +299,7 @@ router.get('/einrichtung', async (req, res) => {
   if (!istVerwalter(req)) return sendeFehler(req, res, 403, 'nur_admins');
   try {
     const wert = async (k: string) => !!(await getGlobalSetting(k));
-    const ich = await db.get('SELECT must_change_password FROM users WHERE id = $1', [nutzerId(req)]);
-    const passwort = ich?.must_change_password === 1 || ich?.must_change_password === true;
+    const passwort = await mussPasswortAendern(angemeldeteNutzerId(req));
     const quellen = {
       rebrickable: await wert('rebrickable_api_key'),
       brickset:    await wert('brickset_api_key'),
@@ -375,28 +323,27 @@ router.post('/einrichtung/fertig', async (req, res) => {
 // Testknopf je Quelle: prüft den GESPEICHERTEN Zugang mit einem kleinen Abruf.
 router.post('/quelle-testen', async (req, res) => {
   if (!istVerwalter(req)) return sendeFehler(req, res, 403, 'nur_admins');
-  const pruefer: Record<string, () => Promise<void>> = {
-    rebrickable: pruefeRebrickableZugang, brickset: pruefeBricksetZugang, bricklink: pruefeBricklinkZugang,
-  };
-  const quelle = String(req.body?.quelle ?? '');
-  const pruefe = Object.hasOwn(pruefer, quelle) ? pruefer[quelle] : undefined;
-  if (!pruefe) return sendeFehler(req, res, 400, 'quelle_unbekannt');
   try {
-    await pruefe();
+    await quellePruefen(String(req.body?.quelle ?? ''));
     res.json({ success: true });
-  } catch (e) {
-    sendeFehler(req, res, 400, 'quelle_test_fehlgeschlagen', { grund: fehlertext(e).slice(0, 200) });
-  }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 // GET /api/settings/admin/cache-ttl
 // Cache-Dauer liegt seit Etappe 7 unter /api/v1/admin/cache-ttl.
 
+// Eigenes Design des Kontos; leer heisst „Vorgabe des Verwalters“.
+router.post('/user/theme', async (req: LoggedInRequest, res) => {
+  try {
+    const uid = angemeldeteNutzerId(req);
+    await setzeEigenesDesign(uid, req.body?.theme);
+    res.json({ success: true, ...await designFuer(uid) });
+  } catch (e) { handleRouteError(res, e, undefined, req); }
+});
+
 router.post('/admin/theme', requireAdmin, async (req, res) => {
   const theme = String(req.body?.theme || 'classic');
-  // Dieselbe Liste wie ALLOWED in public/js/00-theme-boot.js und wie die
-  // Dateien unter public/themes/ — theme.test.js haelt die drei zusammen.
-  if (!['classic', 'brick', 'werkbank', 'farbfaecher', 'noppe', 'hochglanz'].includes(theme)) {
+  if (!DESIGNS.includes(theme)) {
     return sendeFehler(req, res, 400, 'design_ungueltig');
   }
   setGlobalSetting('app_theme', theme);

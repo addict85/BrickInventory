@@ -1,5 +1,9 @@
 package ch.brickinventoryapp
 
+import ch.brickinventoryapp.data.api.ApiJson
+import ch.brickinventoryapp.data.model.AcquisitionsResponse
+import ch.brickinventoryapp.data.model.GenericResponse
+import org.junit.Assert.assertEquals
 import org.junit.Test
 
 /**
@@ -38,20 +42,6 @@ class ServerComputedValuesTest {
     private fun code(s: String) = s.lines()
         .joinToString("\n") { if (it.trim().startsWith("//") || it.trim().startsWith("*")) "" else it }
 
-    /**
-     * Alle Modelldateien als EIN Text (Nachtrag 155).
-     *
-     * Vorher stand hier "data/model/Models.kt" — ein Dateiname. Die 92
-     * Datenklassen lagen in einer Datei mit 1158 Zeilen; beim Aufteilen nach
-     * Sachgebieten waeren alle Pruefungen hier rot geworden, obwohl sich an den
-     * Klassen nichts geaendert hat. Gemeint sind DIE MODELLE, nicht eine Datei.
-     */
-    private fun modelle(): String =
-        java.io.File("src/main/java/ch/brickinventoryapp/data/model")
-            .listFiles { f -> f.extension == "kt" }
-            .orEmpty().sortedBy { it.name }
-            .joinToString("\n") { it.readText() }
-
     @Test
     fun `die Summenzeile der Erfassungen kommt vom Server`() {
         for (f in listOf(
@@ -74,13 +64,19 @@ class ServerComputedValuesTest {
         }
     }
 
+    /**
+     * Ausgeführt mit dem Json der App. Gegenprobe (29.10.2026, gemessen): die
+     * Vorgabe `= AcquisitionTotals()` entfernt → rot.
+     */
     @Test
     fun `die Antwort traegt die Summe, mit sicherer Vorgabe`() {
-        val m = code(modelle())
-        assert(m.contains("data class AcquisitionTotals")) { "AcquisitionTotals fehlt im Modell" }
-        assert(Regex("""val totals: AcquisitionTotals = AcquisitionTotals\(\)""").containsMatchIn(m)) {
-            "Ohne Vorgabe scheitert die Antwort älterer Serverstände an der Deserialisierung"
-        }
+        val neu = ApiJson.decodeFromString(AcquisitionsResponse.serializer(),
+            """{"success":true,"acquisitions":[],"totals":{"quantity":3,"amount":42.5,"priced_rows":2}}""")
+        assertEquals(3, neu.totals.quantity)
+        assertEquals(42.5, neu.totals.amount ?: 0.0, 0.0)
+        // Ältere Serverstände schicken keine Summe; die Antwort scheitert daran nicht.
+        val alt = ApiJson.decodeFromString(AcquisitionsResponse.serializer(), """{"success":true,"acquisitions":[]}""")
+        assertEquals(0, alt.totals.quantity)
     }
 
     @Test
@@ -115,11 +111,9 @@ class ServerComputedValuesTest {
         // Dieselbe Lücke ist hier schon zweimal aufgefallen — die
         // Verschiebe-Zahlen und das Zustands-Aggregat lieferte der Server
         // seit jeher mit, und die App las sie nie.
-        val m = code(modelle())
-        assert(m.contains("val quantity: Int? = null")) {
-            "GenericResponse hat kein nullable quantity — dann kann die Antwort " +
-                "die wirkliche Gesamtmenge gar nicht transportieren"
-        }
+        val antwort = ApiJson.decodeFromString(GenericResponse.serializer(), """{"success":true,"quantity":2}""")
+        assertEquals("Die Antwort transportiert die wirkliche Gesamtmenge", 2, antwort.quantity)
+        assertEquals(null, ApiJson.decodeFromString(GenericResponse.serializer(), """{"success":true}""").quantity)
 
         val g = code(read("ui/viewmodel/SetDetailViewModel.kt"))
         val block = g.substring(g.indexOf("fun updateQuantity("))

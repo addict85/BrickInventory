@@ -2,9 +2,12 @@
  * Haushalt — verknüpfte Konten.
  * Ausführlich: docs/begruendungen/utils/household.ts.md#abschnitt
  */
+import { logAndContinue, meldeUndLiefere } from './httpError';
 import * as db from '../db/database';
 import { HAUSHALT_WAEHRUNG_SPERRE, getSetting } from './settings';
 import { fehlerWerfen } from './fehlerTexte';
+import * as pgNotify from './pgNotify';
+import crypto from 'crypto';
 
 /** Wie lange ein Einladungscode gilt. Lang genug für „später am Abend“,
  *  kurz genug, dass ein liegen gebliebener Code nicht dauerhaft öffnet. */
@@ -41,7 +44,7 @@ export function leereHaushaltCache(): void { _haushalte.clear(); }
  */
 export function meldeHaushaltsaenderung(): void {
   leereHaushaltCache();
-  require('./pgNotify').notify(HAUSHALT_KANAL).catch(() => {});
+  pgNotify.notify(HAUSHALT_KANAL).catch(logAndContinue('haushalt:notify'));
 }
 
 /**
@@ -118,7 +121,7 @@ export async function householdMembers(uid: number) {
 
 /** SHA-256 wie bei API-Tokens und QR-Codes — im Klartext steht der Code nirgends. */
 function hash(token: string) {
-  return require('crypto').createHash('sha256').update(token).digest('hex');
+  return crypto.createHash('sha256').update(token).digest('hex');
 }
 
 /**
@@ -138,9 +141,9 @@ export async function createInvite(uid: number) {
   // Vorher stand hier eine Absage für diesen Fall.
   await db.run(
     `DELETE FROM account_link_invites WHERE expires_at < NOW() OR used_at IS NOT NULL`
-  ).catch(() => {});
+  ).catch(logAndContinue('haushalt:id'));
 
-  const code = require('crypto').randomBytes(24).toString('base64url');
+  const code = crypto.randomBytes(24).toString('base64url');
   await db.run(
     'INSERT INTO account_link_invites (token_hash, main_user_id, expires_at) VALUES ($1,$2,$3)',
     [hash(code), id, new Date(Date.now() + INVITE_TTL_MS)]
@@ -164,14 +167,14 @@ export async function redeemInvite(uid: number, code: string) {
       WHERE token_hash = $1 AND used_at IS NULL AND expires_at > NOW()
       RETURNING main_user_id`,
     [th, subId]
-  ).catch(() => null);
+  ).catch(meldeUndLiefere('haushalt:claimed', null));
   if (!claimed) return { fehler: 'einladungscode_abgelaufen' as const };
 
   const mainId = parseInt(claimed.main_user_id);
   const release = async () => {
     await db.run(
       'UPDATE account_link_invites SET used_at = NULL, used_by = NULL WHERE token_hash = $1', [th]
-    ).catch(() => {});
+    ).catch(logAndContinue('haushalt:release'));
   };
 
   if (mainId === subId) {
@@ -222,7 +225,7 @@ export async function redeemInvite(uid: number, code: string) {
     return { fehler: 'waehrung_ungleich' as const, vars: ungleich };
   }
   meldeHaushaltsaenderung();
-  const main = await db.get('SELECT username FROM users WHERE id = $1', [mainId]).catch(() => null);
+  const main = await db.get('SELECT username FROM users WHERE id = $1', [mainId]).catch(meldeUndLiefere('haushalt:get', null));
   return { linked_to: { id: mainId, username: main?.username || String(mainId) } };
 }
 

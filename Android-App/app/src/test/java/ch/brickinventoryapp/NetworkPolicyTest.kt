@@ -2,6 +2,7 @@ package ch.brickinventoryapp
 
 import ch.brickinventoryapp.util.NetworkPolicy
 import okhttp3.HttpUrl.Companion.toHttpUrl
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -14,6 +15,11 @@ import org.junit.Test
  *    eigenen Server.
  *  - `usesCleartextTraffic="true"` galt app-weit, also auch für öffentliche
  *    Hosts — der nie ablaufende Bearer-Token ging dann im Klartext raus.
+ *
+ * Gegenproben für Herkunft und Rückfrage (29.10.2026, gemessen): in herkunft()
+ * den Port weggelassen → rot „die Herkunft eines Tokens …“; in
+ * anmeldungBrauchtNetzBestaetigung() die Loopback-Ausnahme entfernt → rot „nur
+ * ein Passwort im Klartext …“.
  */
 class NetworkPolicyTest {
 
@@ -130,5 +136,26 @@ class NetworkPolicyTest {
         for (url in listOf("https://brick.example.com", "http://192.168.1.50:3000", "http://nas:3000",
                            "http://brick.fritz.box", "http://localhost:3000", "", "kein url"))
             assertFalse("$url darf nicht warnen", NetworkPolicy.klartextNachAussen(url))
+    }
+
+    @Test
+    fun `die Herkunft eines Tokens ist Schema, Host und Port`() {
+        assertEquals("https://brick.example.com:443", NetworkPolicy.herkunft("https://Brick.example.com/brick/"))
+        assertTrue(NetworkPolicy.gleicheHerkunft("http://nas:3000", "http://NAS:3000/"))
+        assertFalse(NetworkPolicy.gleicheHerkunft("http://nas:3000", "http://nas:3001"))
+        assertFalse(NetworkPolicy.gleicheHerkunft("http://nas:3000", "https://nas:3000"))
+        assertFalse("Eine leere Adresse ist kein Server", NetworkPolicy.gleicheHerkunft("", ""))
+    }
+
+    @Test
+    fun `nur ein Passwort im Klartext in einem unbekannten Netz braucht die Rueckfrage`() {
+        val bekannt = setOf(NetworkPolicy.netzEintrag("http://nas:3000", "heim"))
+        assertFalse(NetworkPolicy.anmeldungBrauchtNetzBestaetigung("http://nas:3000", "heim", bekannt))
+        assertTrue(NetworkPolicy.anmeldungBrauchtNetzBestaetigung("http://nas:3000", "hotel", bekannt))
+        assertTrue("Ohne Kennung ist das Netz unbekannt",
+            NetworkPolicy.anmeldungBrauchtNetzBestaetigung("http://nas:3000", null, bekannt))
+        assertFalse(NetworkPolicy.anmeldungBrauchtNetzBestaetigung("https://nas:3000", "hotel", emptySet()))
+        assertFalse("Das Gerät selbst ist kein fremder Rechner",
+            NetworkPolicy.anmeldungBrauchtNetzBestaetigung("http://127.0.0.1:3000", null, emptySet()))
     }
 }

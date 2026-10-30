@@ -28,6 +28,8 @@ import org.junit.Test
  *   A  setNumber nicht aus dem SavedStateHandle, sondern "" → alle vier rot,
  *      zuerst „das Set kommt aus dem SavedStateHandle …“
  *   B  in updateQuantity() das Melden entfernt → rot „eine geänderte Menge …“
+ *      (30.10. nach dem Angleichen der Nachlade-Antwort erneut gemessen;
+ *      ebenso E für „der Regler …“)
  *   C  in beiAenderung() den Vergleich der Setnummer weggelassen → rot „ein
  *      geänderter Kauf eines anderen Sets lädt hier nichts“
  *   D  den Alarme-Zweig in beiAenderung() entfernt → rot „ein gespeicherter
@@ -68,6 +70,15 @@ class SetDetailViewModelTest {
         pfade.server.shutdown()
     }
 
+    /**
+     * Nach dem PUT hat der Server 3; das Nachladen nach der Meldung muss dieselbe
+     * Zahl liefern, sonst überschreibt es die 3, bevor der Test sie sieht.
+     */
+    private fun serverHatDanachDrei() {
+        pfade.antworten["/api/v1/sets/75192-1"] =
+            """{"success":true,"quantity":3,"set":{"set_number":"75192-1","name":"Falke","quantity":3}}"""
+    }
+
     private fun geladen(vm: SetDetailViewModel) = TestApi.warteBis("Detail geladen") {
         vm.setDetailState.value.setDetail != null && vm.setDetailState.value.acquisitions.isNotEmpty()
     }
@@ -91,6 +102,7 @@ class SetDetailViewModelTest {
         val vm = vm()
         vm.ladeAlles()
         geladen(vm)
+        serverHatDanachDrei()
         val liste = t.gemeldet(1) {
             // Gewünscht 5, der Server deckelt auf 3 (fremde Exemplare lassen sich
             // nicht wegnehmen): Es gilt seine Zahl, nicht die eigene Annahme.
@@ -106,6 +118,7 @@ class SetDetailViewModelTest {
         val vm = vm()
         vm.ladeAlles()
         geladen(vm)
+        serverHatDanachDrei()
         vm.aendereMengeUm("75192-1", -1)
         TestApi.warteBis("PUT gesendet") { pfade.anfragenAn("PUT /api/v1/sets/75192-1").isNotEmpty() }
         val i = pfade.anfragen.indexOfFirst { "PUT /api/v1/sets/75192-1" in it }

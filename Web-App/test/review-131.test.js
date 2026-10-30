@@ -62,7 +62,7 @@ test('Teile-Rückfallebene für fremde Sets', async (t) => {
     await db.run(`INSERT INTO rb_parts (part_num, name, part_img_url) VALUES ('3001','Brick 2x4','https://example.invalid/3001.png')`);
     await db.run(`INSERT INTO rb_colors (id, name, rgb) VALUES (4,'Red','C91A09')`);
     await db.run(`INSERT INTO rb_inventory_parts (inventory_id, part_num, color_id, quantity, is_spare)
-                  VALUES (1,'3001',4,6,'f')`);
+                  VALUES (1,'3001',4,6,0)`);
 
     const r = await getParts([uid], { set_number: '10280-1' });
     assert.equal(r.source, 'csv_cache', `Quelle war ${r.source}`);
@@ -144,12 +144,15 @@ test('Pfade werden an genau EINER Stelle normalisiert', () => {
 });
 
 test('die Barcode-Suche zählt ihre Rebrickable-Aufrufe', () => {
-  const src = quelle('routes', 'api_v1', 'sets.ts');
-  assert.match(src, /consumeRebrickableDaily/,
-    'eigener Abrufweg am Tageskontingent vorbei');
-  const rbGet = src.slice(src.indexOf('const rbGet'), src.indexOf('async function enrichResult'));
-  assert.match(rbGet, /consumeRebrickableDaily/, 'rbGet zählt nicht mit');
-  assert.match(rbGet, /waitForSlot/,            'rbGet umgeht die Drossel');
+  // Die Barcode-Suche (utils/dienste/sets.ts) fragt Rebrickable nur über
+  // rebrickableJson() — und das zählt und drosselt.
+  const dienst = quelle('utils', 'dienste', 'sets.ts');
+  assert.match(dienst, /rebrickableJson\(/, 'die Barcode-Suche fragt Rebrickable nicht über den Client');
+  assert.doesNotMatch(dienst, /https\.get\(/, 'eigener Abrufweg am Tageskontingent vorbei');
+  const client = quelle('clients', 'rebrickable.ts');
+  const rbJson = client.slice(client.indexOf('async function rebrickableJson'), client.indexOf('function httpsGetRobust'));
+  assert.match(rbJson, /consumeRebrickableDaily/, 'rebrickableJson zählt nicht mit');
+  assert.match(rbJson, /waitForSlot/,            'rebrickableJson umgeht die Drossel');
 });
 
 test('CSV-Export entschärft Formeln, der eigene Import macht es rückgängig', () => {
@@ -184,22 +187,17 @@ test('CSV-Export entschärft Formeln, der eigene Import macht es rückgängig', 
 });
 
 test('alle drei CSV-Importwege entschärfen zurück', () => {
-  // Teile und Minifiguren bereinigen seit Nachtrag 144 über
-  // csvZeilenAusAnfrage() — die Funktion ruft csvZeilenBereinigen() für beide.
-  // Der Name am Aufrufer ist ein anderer, die Wirkung dieselbe.
-  for (const [datei, marke] of [
-    ['routes/sets.ts', 'entschaerfungRueckgaengig'],
-    ['routes/parts.ts', 'csvZeilenBereinigen|csvZeilenAusAnfrage'],
-    ['routes/minifigs.ts', 'csvZeilenBereinigen|csvZeilenAusAnfrage'],
-  ]) {
-    const src = quelle(...datei.split('/'));
-    assert.match(src, new RegExp(marke),
-      `${datei}: ein hier erzeugter Export käme mit Hochkomma zurück`);
-  }
-  // Und die gemeinsame Fassung bereinigt wirklich.
-  assert.match(quelle('utils', 'csvExport.ts'),
-    /function csvZeilenAusAnfrage[\s\S]*?csvZeilenBereinigen\(/,
-    'csvZeilenAusAnfrage() bereinigt die Zeilen nicht mehr');
+  // Die Zeilenleser der Importe laufen hier selbst: der der Sets und der
+  // gemeinsame für Teile und Figuren (csvZeilenAusAnfrage). Dass beide
+  // Importe ihn benutzen, zeigt test/csv-rundlauf-db.test.js.
+  // Gegenprobe (29.10.2026): entschaerfungRueckgaengig in setCsvZeilen
+  // weggelassen → rot („Sets: …“).
+  const { setCsvZeilen } = _reqCsv('utils/dienste/sets.js');
+  const { csvZeilenAusAnfrage } = _reqCsv('utils/csvExport.js');
+  assert.equal(setCsvZeilen("set_number,quantity\n'-10001-1,1\n").rows[0].sn, '-10001-1',
+    'Sets: ein hier erzeugter Export käme mit Hochkomma zurück');
+  assert.equal(csvZeilenAusAnfrage("part_number,quantity\n'=X1,1\n").bereinigt[0].part_number, '=X1',
+    'Teile und Figuren: ein hier erzeugter Export käme mit Hochkomma zurück');
 });
 
 test('der CSV-Fortschrittsstrom überlebt Gegendruck beim ersten Schreiben', () => {

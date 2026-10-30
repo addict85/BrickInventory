@@ -7,7 +7,7 @@ import type { Request, Response, NextFunction } from 'express';
 type WildcardRequest = Request<{ pfad: string[] }>;
 // ── Log interceptor — write console output to PostgreSQL app_logs ─────────────
 // Must be first so all subsequent logs are captured
-const _logBuffer: any[] = [];
+const _logBuffer: { level: string; message: string }[] = [];
 let   _logPool: import('pg').Pool | null = null;
 let   _logTimer: NodeJS.Timeout | null = null;
 
@@ -37,26 +37,20 @@ function _safeStringify(a: unknown) {
  */
 const { AsyncLocalStorage } = require('async_hooks');
 const _reqContext = new AsyncLocalStorage();
-(global as any)._reqContext = _reqContext;
 
 /** Kurze Prozesskennung, damit im Log erkennbar ist, welcher Worker schrieb. */
 const _pidTag = String(process.pid).slice(-4);
 
-function _intercept(level: string, orig: (...a: any[]) => void) {
-  return function(...args: any[]) {
+function _intercept(level: string, orig: (...a: unknown[]) => void) {
+  return function(...args: unknown[]) {
     const ctx = _reqContext.getStore();
     const prefix = ctx?.rid ? `[${_pidTag}/${ctx.rid}] ` : `[${_pidTag}] `;
     orig.apply(console, [prefix + _safeStringify(args[0]), ...args.slice(1)]);
     const msg = prefix + args.map(_safeStringify).join(' ');
     _logBuffer.push({ level, message: msg.substring(0, 4000) });
-    // Puffer kappen: solange der DB-Pool noch nicht bereit ist (oder die DB
-    // down ist), würde der Buffer sonst unbegrenzt wachsen (Memory-Leak).
-    //
-    // Gekappt wird am ANFANG, es überleben also die neuesten 500. Das ist eine
-    // bewusste Wahl und keine gute: Bei einem Fehlersturm ist die erste
-    // Meldung meist die aussagekräftige. Deshalb geht jede Zeile zusätzlich
-    // unverändert nach stdout/stderr (orig.apply oben) — der Docker-Log-Treiber
-    // hat sie also auch dann, wenn die Datenbank sie nie zu sehen bekommt.
+    // Ohne Pool (Start, Datenbank weg) wüchse der Puffer unbegrenzt. Es
+    // bleiben die neuesten 500; jede Zeile steht ohnehin schon auf
+    // stdout/stderr (orig.apply oben), also auch die erste eines Fehlersturms.
     if (_logBuffer.length > 500) _logBuffer.splice(0, _logBuffer.length - 500);
     if (_logTimer) clearTimeout(_logTimer);
     _logTimer = setTimeout(() => { _logTimer = null; _flushLogs(); }, 1500);
@@ -66,12 +60,13 @@ console.log   = _intercept('info',  console.log);
 console.info  = _intercept('info',  console.info);
 console.warn  = _intercept('warn',  console.warn);
 console.error = _intercept('error', console.error);
-global._enableLogPersistence = (pool) => { _logPool = pool; _flushLogs(); };
+/** Ab hier gehen die Protokollzeilen auch nach app_logs (sobald der Pool steht). */
+function protokollInDieDatenbank(pool: import('pg').Pool) { _logPool = pool; _flushLogs(); }
 
 // Prevent worker crashes from unhandled promise rejections
 // Log them instead of crashing the process
-process.on('unhandledRejection', (reason: any, _promise) => {
-  console.error('[unhandledRejection] Unhandled promise rejection:', reason?.message || reason);
+process.on('unhandledRejection', (reason: unknown, _promise) => {
+  console.error('[unhandledRejection] Unhandled promise rejection:', fehlertext(reason));
 });
 process.on('uncaughtException', (err) => {
   // Nach einer uncaught Exception ist der Prozesszustand potenziell korrupt
@@ -82,8 +77,6 @@ process.on('uncaughtException', (err) => {
   setTimeout(() => process.exit(1), 500).unref();
 });
 
-// Set IMMEDIATELY — before any requires or async code
-global.startupStatus = { ready: false, step: 'Datenbank wird initialisiert...', progress: 0, total: 6 };
 
 // ── Cluster: fork one worker per CPU so multiple requests run in parallel ─────
 import { fehlertext, logAndContinue, meldeUndWeiter } from './utils/httpError';
@@ -91,6 +84,7 @@ import cluster from 'cluster';
 import { starteHintergrundlaeufe } from './startup/backgroundJobs';
 import { bereiteDatenbankVor } from './startup/datenbank';
 import { verdrahte } from './jobs/verdrahtung';
+import { stoppeAuftragsWorker } from './jobs/auftraegeStarten';
 
 // In JEDEM Prozess: Erfassungen und Einstellungen stossen ihre Nacharbeit
 // auch in den Web-Workern an, nicht nur im Primary.
@@ -100,6 +94,8 @@ import { drossleBeruehren } from './utils/sitzungsBeruehrung';
 import { SITZUNG_LEERLAUF_SEK, sitzungsHoechstdauer } from './utils/sitzungsFrist';
 import { antwortAufDateiFehler, liefereDatei, sendeDatei } from './utils/dateiAusliefern';
 import { liesZustand, loescheZustand } from './utils/laufzustand';
+import { cdnFuerFehlendesBild } from './utils/bildNachschlagen';
+import { startZustand, setzeStartZustand } from './utils/startZustand';
 
 const WORKERS = (require('./utils/workerZahl') as typeof import('./utils/workerZahl')).workerZahl();
 
@@ -218,18 +214,19 @@ app.use((req, res, next) => {
     "connect-src 'self'",
     "worker-src 'self' blob:",  // PDF.js-Worker (lokal /vendor/pdfjs, ggf. blob:)
     "frame-ancestors 'self'",  // eigener PDF-Viewer bettet same-origin PDFs per <iframe> ein
+    // Drei Wege, die default-src nicht abdeckt: Ein eingeschleustes Formular
+    // schickte Eingaben nach draussen, ein <base> lenkte relative Adressen um,
+    // <object>/<embed> lüden Plugins. Die App braucht keinen davon fremd.
+    "form-action 'self'",
+    "base-uri 'none'",
+    "object-src 'none'",
   ].join('; '));
   next();
 });
 
-// Body-Grenzen: knapp als Standard, grosszügig nur wo nötig.
-//
-// VORHER galt 10 MB für JEDEN Endpunkt. Der Kommentar nannte den Grund — die
-// Teileliste für den PDF-Export — aber die Ausnahme war global. Bei acht
-// Workern heisst das: jede beliebige Route nimmt 10-MB-Körper an, und ein
-// einzelner Client kann damit ohne Aufwand achtzig Megabyte Heap belegen.
-// Jetzt: 256 KB überall (grosszügig für JSON-Nutzlasten dieser App), und die
-// PDF-Routen setzen ihr eigenes Limit per Router-Middleware (routes/api_v1/pdf.ts).
+// Body-Grenze 256 KB: Ein grosses Limit überall liesse jeden Client mit ein
+// paar Anfragen den Heap füllen. Die PDF-Routen setzen ihr eigenes
+// (routes/api_v1/pdf.ts).
 app.use(express.json({ limit: '256kb' }));
 // Das Konto der Anfrage für Zähler tief unten (utils/apiKontingent.ts).
 app.use((require('./utils/anfrageKonto') as typeof import('./utils/anfrageKonto')).merkeAnfrage);
@@ -315,12 +312,8 @@ drossleBeruehren(sitzungsSpeicher);
 app.use(session({
   store: sitzungsSpeicher,
   secret: (() => {
-    // Aus compose.yaml/README bekannte Platzhalter. Sie sind öffentlich — ein
-    // damit signiertes Session-Cookie kann jeder selbst erzeugen und sich als
-    // beliebiger Benutzer ausgeben. Der Fail-fast prüfte bisher nur, OB die
-    // Variable gesetzt ist; wer `docker compose up` ungelesen ausführte, lief
-    // also mit einem allgemein bekannten Secret in Produktion — genau die
-    // Situation, die der Fail-fast verhindern sollte.
+    // Die Platzhalter aus compose.yaml/README sind öffentlich: Mit ihnen
+    // signierte Sitzungen könnte jeder selbst erzeugen.
     const PLATZHALTER = [
       'change-me-to-a-long-random-string',
       'hier-langen-zufalls-string-eintragen',
@@ -384,43 +377,6 @@ const { safeDataPath } = require('./utils/datenPfad') as typeof import('./utils/
 // geschrumpft und beschreibt jetzt wieder nur noch Aufbau und Start.
 (require('./routes/imgProxy') as typeof import('./routes/imgProxy')).registerImgProxy(app);
 
-// Fallback-Cache: fehlende lokale Bilddatei -> CDN-URL (oder null). Vermeidet
-// wiederholte DB-Lookups, wenn viele Bilder lokal fehlen (z.B. nach Redeploy
-// eines nicht-persistenten data-Volumes oder bei früher fehlgeschlagenen
-// Downloads, deren image_local dennoch gesetzt wurde).
-const _missingImgCdnCache = new Map<string, { url: string | null, at: number }>();
-
-async function lookupCdnForMissingImage(webPath: string): Promise<string | null> {
-  const cached = _missingImgCdnCache.get(webPath);
-  if (cached && Date.now() - cached.at < 10 * 60 * 1000) return cached.url;
-  // Dateiname ohne _thumb-Suffix und ohne Endung -> passt auf image_local per LIKE
-  const fileName = webPath.split('/').pop() || '';
-  const stem = fileName.replace(/_thumb\.jpg$/i, '').replace(/\.[^.]+$/, '');
-  const esc  = stem.replace(/([%_\\])/g, '\\$1'); // LIKE-Sonderzeichen escapen
-  const like = `%/${esc}.%`;
-  let url: string | null = null;
-  try {
-    // minifigs mit aufgenommen: Figuren-Bilder liegen seit der Trennung unter
-    // /images/minifigs/, und ein fehlendes Bild einer MANUELL erfassten Figur
-    // war vorher nicht heilbar — die Tabelle stand nicht in dieser Liste.
-    for (const tbl of ['set_parts_catalog', 'set_minifigs_catalog', 'parts', 'minifigs',
-                       'sets', 'set_catalog']) {
-      const r = await pool.query(
-        `SELECT image_url FROM ${tbl} WHERE image_local LIKE $1 ESCAPE '\\' AND image_url IS NOT NULL LIMIT 1`,
-        [like]
-      );
-      if (r.rows[0]?.image_url) { url = r.rows[0].image_url; break; }
-    }
-  } catch (_) { url = null; }
-  // Ältestes Fünftel verdrängen statt alles wegwerfen (wie utils/images.ts).
-  if (_missingImgCdnCache.size > 5000) {
-    let n = 0;
-    for (const k of _missingImgCdnCache.keys()) { _missingImgCdnCache.delete(k); if (++n >= 1000) break; }
-  }
-  _missingImgCdnCache.set(webPath, { url, at: Date.now() });
-  return url;
-}
-
 // Alle Bilder: Sets, Teile, Minifiguren
 // EINE authentifizierte Route für den gesamten Baum unter data/images/.
 // Ausführlich: docs/begruendungen/server.ts.md#abschnitt-4
@@ -465,7 +421,7 @@ app.get('/images/*pfad', async (req: WildcardRequest, res: Response) => {
         const webPfadOriginal = '/images/' + originalSegs.join('/');
         setImmediate(() => {
           try {
-            (require('./utils/thumbs') as typeof import('./utils/thumbs')).generateThumb(webPfadOriginal).catch(() => {});
+            (require('./utils/thumbs') as typeof import('./utils/thumbs')).generateThumb(webPfadOriginal).catch(logAndContinue('server:generateThumb'));
           } catch (e) { meldeUndWeiter('server:vorschau-erzeugen', e); }
         });
         return liefereDatei(res, originalPfad);
@@ -477,7 +433,7 @@ app.get('/images/*pfad', async (req: WildcardRequest, res: Response) => {
     // Web und Android, ohne dass verwaiste image_local-Einträge in der
     // Datenbank bereinigt werden müssen.
     const webPath = '/images/' + segments.join('/');
-    const cdn = await lookupCdnForMissingImage(webPath).catch(() => null);
+    const cdn = await cdnFuerFehlendesBild(webPath);
     if (cdn && !res.headersSent) {
       return res.redirect(302, IMG_PROXY_PFAD + '?url=' + encodeURIComponent(cdn));
     }
@@ -519,7 +475,7 @@ app.get('/api/v1/startup-status', async (_req, res) => {
   res.set('Pragma', 'no-cache');
   res.set('Expires', '0');
   // First check in-memory state (most current for this worker)
-  const mem = global.startupStatus;
+  const mem = startZustand();
   if (mem?.ready) return res.json(mem);
 
   // Try DB for cross-worker state
@@ -527,7 +483,7 @@ app.get('/api/v1/startup-status', async (_req, res) => {
     const roh = await liesZustand('startup_status');
     if (roh) {
       const status = JSON.parse(roh);
-      global.startupStatus = status;
+      setzeStartZustand(status);
       return res.json(status);
     }
   } catch(_) {}
@@ -545,8 +501,8 @@ app.get('/api/v1/health', async (req, res) => {
   const verwalter = !!(await resolveUserId(req).catch(logAndContinue('health:anmeldung'))) && istVerwalter(req);
   const { getPoolStats } = require('./db/database') as typeof import('./db/database');
   res.json({
-    status: global.startupStatus?.ready ? 'ok' : 'starting',
-    startup: global.startupStatus,
+    status: startZustand().ready ? 'ok' : 'starting',
+    startup: startZustand(),
     ...(verwalter ? { db_pool: getPoolStats ? getPoolStats() : {},
                       uptime_seconds: Math.floor(process.uptime()) } : {}),
   });
@@ -558,24 +514,15 @@ app.get('/api/v1/health', async (req, res) => {
 // Ausführlich: docs/begruendungen/server.ts.md#abschnitt-7
 app.use('/api/v1',          (require('./routes/api_v1/middleware') as typeof import('./routes/api_v1/middleware')).anmeldungAmEingang);
 app.use('/api/v1',          require('./routes/api_v1/index') as typeof import('./routes/api_v1/index'));
-app.use('/api/v1/sets',     require('./routes/sets') as typeof import('./routes/sets'));
-app.use('/api/v1/parts',    require('./routes/parts') as typeof import('./routes/parts'));
 app.use('/api/v1/settings', require('./routes/settings') as typeof import('./routes/settings'));
-app.use('/api/v1/minifigs', require('./routes/minifigs') as typeof import('./routes/minifigs'));
 app.use('/api/v1/auth',     require('./routes/auth') as typeof import('./routes/auth'));
 
 // ── E-Mail Bestätigung: /verify?token=... ─────────────────────────────────────
 // Der Link in der Bestätigungs-Mail zeigt hierher.
 // Wir leiten direkt an den Auth-Handler weiter.
 app.get('/verify', async (req, res) => {
-  // Die Logik steht in utils/auth.verifiziereEmailToken().
-  // Vorher lagen hier acht Zeilen, die in routes/auth.ts wortgleich ein
-  // zweites Mal standen — inklusive Hash-Regel und Ablaufprüfung. Wer eine
-  // davon änderte, hatte die andere übersehen.
-  //
-  // Was HIER bleibt, ist die Antwortform: Dieser Weg wird aus einer E-Mail
-  // angeklickt, also muss am Ende eine Seite stehen, keine JSON-Zeile. Die
-  // Oberfläche liest ?verified= aus und zeigt die Meldung.
+  // Die Prüfung steht in utils/auth (verifiziereEmailToken); hier bleibt die
+  // Antwortform: Der Link kommt aus einer E-Mail, also eine Seite, kein JSON.
   const { verifiziereEmailToken } = require('./utils/auth') as typeof import('./utils/auth');
   try {
     const e = await verifiziereEmailToken(req.query.token);
@@ -604,13 +551,8 @@ app.get('/reset-password', async (_req, res) => {
 });
 
 // ── 404 für unbekannte API-Pfade ────────────────────────────────────────────
-// MUSS vor dem SPA-Catch-all stehen. Vorher war es umgekehrt: app.get('*') hat
-// jeden unbekannten GET auf /api abgefangen und die ~189 KB grosse index.html
-// mit Status 200 ausgeliefert. Für die Android-App hiess das, dass ein
-// Tippfehler im Pfad als Serialisierungsfehler ankam statt als 404 — und jeder
-// Retry hat die komplette HTML-Seite übertragen.
-// Alle echten /api-Routen (inkl. img-proxy und debug/test) sind weiter oben
-// registriert und damit nicht betroffen.
+// VOR dem SPA-Catch-all: Sonst bekäme ein Tippfehler im API-Pfad die
+// index.html mit 200, und die App meldete einen Serialisierungsfehler.
 app.use('/api', (_req, res) => res.status(404).json({ success: false, error: 'Endpoint nicht gefunden' }));
 
 // Die Schreibweise mit den geschweiften Klammern ist NICHT Geschmack.
@@ -634,7 +576,7 @@ app.get('/{*splat}', async (req, res) => {
 // Fängt synchron geworfene Fehler und next(err)-Aufrufe, die an den
 // Route-Catches vorbeikommen — loggt voll, antwortet generisch.
 const { handleRouteError: _handleRouteError } = require('./utils/httpError') as typeof import('./utils/httpError');
-app.use((err: any, _req: Request, res: Response, _next: NextFunction) => { _handleRouteError(res, err); });
+app.use((err: any, req: Request, res: Response, _next: NextFunction) => { _handleRouteError(res, err, undefined, req); });
 
 // Der Server nimmt Anfragen erst an, NACHDEM bereiteDatenbankVor() das Schema
 // (inkl. user_sessions) fertig hat — sonst schlägt der Session-Store mit
@@ -649,7 +591,7 @@ const { renderIndexHtml } = require('./utils/indexHtml') as typeof import('./uti
 // The first worker to acquire it becomes primary and runs background jobs.
 // If it dies and restarts, it will re-acquire on next startup.
 let isPrimaryWorker = false;
-let _primaryLockClient: any = null; // dedizierte Verbindung, die den Advisory-Lock hält
+let _primaryLockClient: import('pg').PoolClient | null = null; // dedizierte Verbindung, die den Advisory-Lock hält
 // Geordnet beenden mit Code 1, damit der Cluster neu startet; gesetzt, sobald
 // shutdown() steht. Ohne Cluster (Entwicklung) bleibt es bei der Warnung.
 let neuStarten: ((grund: string) => void) | null = null;
@@ -761,19 +703,16 @@ bereiteDatenbankVor().then(async () => {
     force.unref();
 
     try {
-      // ZUERST die SSE-Ströme beenden, DANN auf close() warten.
-      //
-      // Ohne das kam der close()-Rückruf nie: Er wartet auf die letzte
-      // Verbindung, und ein SSE-Strom geht von sich aus nie weg. Jeder
-      // Neustart lief deshalb in die Frist unten und endete mit exit(1) —
-      // für Docker sah jedes Deploy aus wie ein Absturz. Der Kommentar bei
-      // der Reissleine nannte das einen Ausnahmefall; es war der Regelfall,
-      // weil der Fortschrittskanal der Webapp dauerhaft offen bleibt.
+      // ZUERST die SSE-Ströme beenden, DANN auf close() warten: close()
+      // wartet auf die letzte Verbindung, und ein SSE-Strom endet nie von selbst.
       const beendet = (require('./utils/sseRegistry') as typeof import('./utils/sseRegistry')).closeAllSse();
       if (beendet) console.log(`[shutdown] ${beendet} offene Ereignis-Ströme beendet`);
       await new Promise<void>(resolve => httpServer.close(() => resolve()));
       console.log('[shutdown] keine offenen HTTP-Verbindungen mehr');
-      await (require('./utils/pgNotify') as typeof import('./utils/pgNotify')).close().catch(() => {});
+      // Laufende Aufträge halten an einer sicheren Stelle an und gehen zurück
+      // in die Tabelle; der nächste Start setzt sie fort.
+      await stoppeAuftragsWorker().catch(logAndContinue('shutdown:auftraege'));
+      await (require('./utils/pgNotify') as typeof import('./utils/pgNotify')).close().catch(logAndContinue('server:close'));
       // Die Sperr-Verbindung des primaeren Workers ZUERST zurueckgeben.
       // Ausführlich: docs/begruendungen/server.ts.md#electprimaryworker
       if (_primaryLockClient) {
@@ -782,12 +721,12 @@ bereiteDatenbankVor().then(async () => {
         try { _primaryLockClient.release(); } catch { void 0; }
         _primaryLockClient = null;
       }
-      await (require('./db/database') as typeof import('./db/database')).pool.end().catch(() => {});
+      await (require('./db/database') as typeof import('./db/database')).pool.end().catch(logAndContinue('server:end'));
       console.log('[shutdown] Datenbankverbindungen geschlossen');
       clearTimeout(force);
       process.exit(code);
-    } catch (e: any) {
-      console.error('[shutdown] Fehler beim Beenden:', e.message);
+    } catch (e) {
+      console.error('[shutdown] Fehler beim Beenden:', fehlertext(e));
       process.exit(1);
     }
   }
@@ -796,8 +735,8 @@ bereiteDatenbankVor().then(async () => {
   process.on('SIGINT',  () => shutdown('SIGINT'));
   neuStarten = (grund) => { void shutdown(grund, 1); };
 
-  global._enableLogPersistence((require('./db/database') as typeof import('./db/database')).pool);
-  global.startupStatus = { ready: false, step: 'CSV wird geladen...', progress: 0, total: 6 };
+  protokollInDieDatenbank(db.pool);
+  setzeStartZustand({ ready: false, step: 'CSV wird geladen...', progress: 0, total: 6 });
   const csvSync = require('./jobs/rebrickableCsvSync') as typeof import('./jobs/rebrickableCsvSync');
 
   await electPrimaryWorker(db);
@@ -825,7 +764,7 @@ bereiteDatenbankVor().then(async () => {
 
   // Only primary worker clears stale startup_status — secondaries read it from DB
   if (isPrimaryWorker) {
-    await loescheZustand('startup_status').catch(() => {});
+    await loescheZustand('startup_status').catch(logAndContinue('server:loescheZustand'));
     // Über console.warn landet der Hinweis in app_logs, also im Protokoll der Verwaltung.
     if (process.env.NODE_ENV === 'production'
         && (require('./utils/konfig') as typeof import('./utils/konfig')).standardPasswortInBenutzung())
@@ -839,7 +778,7 @@ bereiteDatenbankVor().then(async () => {
         await csvSync.run();
       } catch(e) {
         console.error('[rb-csv-sync] startup error:', fehlertext(e));
-        global.startupStatus = { ready: true, step: 'Fehler beim CSV-Import', progress: 6, total: 6 };
+        setzeStartZustand({ ready: true, step: 'Fehler beim CSV-Import', progress: 6, total: 6 });
       }
     } else {
       // Non-primary workers wait for primary to finish startup sync
@@ -849,7 +788,7 @@ bereiteDatenbankVor().then(async () => {
           const roh = await liesZustand('startup_status');
           if (roh) {
             const s = JSON.parse(roh);
-            global.startupStatus = s;
+            setzeStartZustand(s);
             if (s.ready) break;
           }
         } catch(_) {}
@@ -891,10 +830,10 @@ bereiteDatenbankVor().then(async () => {
     try {
       const ausloeser = await liesZustand('csv_sync_trigger');
       if (!ausloeser) return;
-      await loescheZustand('csv_sync_trigger').catch(() => {});
+      await loescheZustand('csv_sync_trigger').catch(logAndContinue('server:loescheZustand'));
       console.log('[rb-csv-sync] Manual trigger received — starting CSV sync');
       _csvSyncRunning = true;
-      await loescheZustand('rb_csv_last_sync').catch(() => {});
+      await loescheZustand('rb_csv_last_sync').catch(logAndContinue('server:loescheZustand'));
       await csvSync.run().catch(e => console.error('[rb-csv-sync manual]', e.message));
     } catch (e) { meldeUndWeiter('server:csv-abgleich-anstossen', e); }
     finally { _csvSyncRunning = false; }

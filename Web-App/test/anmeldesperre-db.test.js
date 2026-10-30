@@ -13,6 +13,8 @@
  *      kommt von seiner bekannten Adresse weiter herein"
  *   F  (27.10.) die Gateway-Ausnahme (x.y.0.1) entfernt → rot: „Docker-Gateway vertraut"
  *   G  (27.10.) app.disable('x-powered-by') entfernt → rot: „verrät X-Powered-By"
+ *   J  (29.10.) Standard ohne TRUST_PROXY wieder das Docker-Netz → rot:
+ *      „ohne TRUST_PROXY dem Docker-Netz vertraut: 172.18.0.2"
  *   H  (28.10.) kontoKennung() liefert wieder den rohen Namen → rot: „Name
  *      und E-Mail zählen gemeinsam" (und der Zähler je Konto fehlt)
  *   I  (28.10.) wartezeitSekunden() fest auf 1 s → rot: „Sperre je
@@ -77,12 +79,19 @@ test('proxyVertrauen: wem X-Forwarded-For geglaubt wird', () => {
     app.set('trust proxy', proxyVertrauen(einstellung));
     return app.get('trust proxy fn')(adresse, 0);
   };
-  for (const eigen of ['127.0.0.1', '::1', '172.18.0.2', '172.31.255.1', 'fd00::5'])
+  // Ohne Angabe nur Loopback: Ausserhalb von Docker ist 172.16/12 ein Netz wie jedes andere.
+  for (const eigen of ['127.0.0.1', '127.8.9.10', '::1', '::ffff:127.0.0.1'])
     assert.equal(vertraut(undefined, eigen), true, `${eigen} ist der eigene Proxy`);
-  // Das Gateway des Docker-Netzes ist kein Proxy: Über docker-proxy kommen dort
-  // die Clients selbst herein und könnten ihre Adresse sonst frei angeben.
+  for (const netz of ['172.18.0.2', '172.31.255.1', 'fd00::5'])
+    assert.equal(vertraut(undefined, netz), false, `ohne TRUST_PROXY dem Docker-Netz vertraut: ${netz}`);
+  // TRUST_PROXY=docker (Vorgabe in compose.yaml): das Docker-Netz, aber nicht
+  // dessen Gateway — über docker-proxy kommen dort die Clients selbst herein.
+  for (const eigen of ['127.0.0.1', '::1', '172.18.0.2', '172.31.255.1', '::ffff:172.20.3.4', 'fd00::5'])
+    assert.equal(vertraut('docker', eigen), true, `docker: ${eigen} ist der eigene Proxy`);
   for (const gateway of ['172.17.0.1', '172.18.0.1', '::ffff:172.18.0.1', 'fd00::1'])
-    assert.equal(vertraut(undefined, gateway), false, `Docker-Gateway vertraut: ${gateway}`);
+    assert.equal(vertraut('docker', gateway), false, `Docker-Gateway vertraut: ${gateway}`);
+  for (const fremd of ['203.0.113.5', '192.168.1.10', '10.1.2.3', '172.32.0.2'])
+    assert.equal(vertraut('docker', fremd), false, `docker: ${fremd} vertraut`);
   for (const fremd of ['203.0.113.5', '8.8.8.8', '2001:db8::1'])
     assert.equal(vertraut(undefined, fremd), false, `öffentliche Adresse vertraut: ${fremd}`);
   // Rechner im Heimnetz geben ihre Adresse nicht selbst an.

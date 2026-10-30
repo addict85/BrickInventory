@@ -23,6 +23,12 @@ import org.junit.Test
  *      dann übereinander, und das Diagramm zeigt einen Vergleich, den es
  *      nicht gibt. Gebrauchtpreise setzen für viele Sets später ein — der
  *      Normalfall, nicht die Ausnahme.
+ *
+ * Dazu die Beschreibung für TalkBack. Gegenproben (29.10.2026, gemessen):
+ *   A  in zusammenfassung() Anfang und Ende nach Index statt nach Tag → rot „die
+ *      Beschreibung nennt je Linie Zeitraum, Anfang, Ende, Tief und Hoch“
+ *   B  `.semantics { contentDescription = beschreibung }` am Canvas entfernt →
+ *      rot „das Preisdiagramm trägt eine Beschreibung“
  */
 class PriceChartMathTest {
 
@@ -146,5 +152,32 @@ class PriceChartMathTest {
         val range = PriceChartMath.axisRange(
             PriceChartData(x = listOf("2026-01-01", "2026-02-01", "2026-03-01")))
         assertEquals("2026-01-01" to "2026-03-01", range)
+    }
+
+    @Test
+    fun `die Beschreibung nennt je Linie Zeitraum, Anfang, Ende, Tief und Hoch`() {
+        // Ungeordnet geliefert: Anfang und Ende richten sich nach dem Tag.
+        val chart = PriceChartData(
+            values = listOf(
+                series("N", 0, "2026-03-01" to 120.0, "2026-01-01" to 100.0, "2026-02-01" to 90.0),
+                series("U", 1, "2026-01-01" to 0.0, "2026-02-01" to 70.0, "2026-03-01" to 80.0),
+            ),
+            x = listOf("2026-01-01", "2026-02-01", "2026-03-01")
+        )
+        val z = PriceChartMath.zusammenfassung(PriceChartMath.buildLines(chart)).associateBy { it.zustand }
+        val neu = z.getValue("N")
+        assertEquals(listOf("1.1.2026", "1.3.2026"), listOf(neu.von, neu.bis))
+        assertEquals(listOf(100.0, 120.0, 90.0, 120.0), listOf(neu.anfang, neu.ende, neu.tief, neu.hoch))
+        val gebraucht = z.getValue("U")
+        assertEquals("Die aufgefüllte Null zählt nicht", "1.2.2026", gebraucht.von)
+        assertEquals(70.0, gebraucht.tief, 0.0)
+    }
+
+    @Test
+    fun `das Preisdiagramm traegt eine Beschreibung`() {
+        val f = Quellen.funktion(Quellen.lies("ui/screens/SetDetailComponents.kt"), "fun PriceChart(")
+        assertTrue("PriceChart rechnet keine Beschreibung", f.contains("PriceChartMath.zusammenfassung(lines)"))
+        assertTrue("Der Canvas des Preisdiagramms hat keine Semantik",
+            Regex("""Canvas\(modifier = Modifier[^{]*\.semantics \{ contentDescription = beschreibung \}""").containsMatchIn(f))
     }
 }

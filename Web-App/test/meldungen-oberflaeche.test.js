@@ -15,7 +15,14 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { oeffneOberflaeche, reiter, warte } = require('./helpers/oberflaeche');
 
-const FEHLER = { '/v1/finance/valuation': { success: false, error: 'Bewertung kaputt' } };
+// Seit dem 29.10. zeigt eine Liste ihren Ladefehler selbst (fehlerZustand);
+// eine Meldung kommt von einer Handlung — hier „Auf die Merkliste“.
+const FEHLER = { '/v1/wanted': { success: false, error: 'Merkliste kaputt' } };
+async function merkpostenAnlegen(w, d) {
+  await reiter(w, 'wanted');
+  d.getElementById('mk-num').value = '10294-1';
+  d.getElementById('mk-add').click();
+}
 
 /** Zeitgeber ab jetzt mitschreiben, statt sie laufen zu lassen. */
 function zeitgeberFangen(w) {
@@ -32,10 +39,10 @@ test('Fehler bleibt länger stehen', async () => {
   const { w, d } = await oeffneOberflaeche(FEHLER);
   try {
     const gefangen = zeitgeberFangen(w);
-    await reiter(w, 'finance');
+    await merkpostenAnlegen(w, d);
     await warte(() => d.querySelector('#toasts .toast.error'));
     const meldung = d.querySelector('#toasts .toast.error');
-    assert.match(meldung.textContent, /Bewertung kaputt/);
+    assert.match(meldung.textContent, /Merkliste kaputt/);
     for (const z of gefangen.filter(z => z.ms < 8000)) z.fn();
     assert.ok(meldung.isConnected, `nach ${gefangen.filter(z => z.ms < 8000).map(z => z.ms).join(', ')} ms schon weg`);
     for (const z of gefangen.filter(z => z.ms >= 8000)) z.fn();
@@ -46,7 +53,7 @@ test('Fehler bleibt länger stehen', async () => {
 test('Klick räumt die Meldung weg', async () => {
   const { w, d } = await oeffneOberflaeche(FEHLER);
   try {
-    await reiter(w, 'finance');
+    await merkpostenAnlegen(w, d);
     await warte(() => d.querySelector('#toasts .toast.error'));
     const meldung = d.querySelector('#toasts .toast.error');
     meldung.querySelector('span:last-child').click();

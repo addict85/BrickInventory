@@ -1,5 +1,9 @@
 package ch.brickinventoryapp
 
+import ch.brickinventoryapp.data.cache.ResponseCache
+import ch.brickinventoryapp.data.repository.SetsRepository
+import kotlinx.coroutines.runBlocking
+import org.junit.Assert.assertEquals
 import org.junit.Test
 
 /**
@@ -33,8 +37,12 @@ import org.junit.Test
  * eindeutig ein Fehler, weil „nicht vorhanden" nicht mehr als Fehler kommt.
  *
  * Ausgeführt geprüft wird das in ErfassungViewModelTest (Nummern-Weg,
- * Scanner, Texterkennung, Fehler der Vorabfrage). Hier bleibt die Struktur:
- * der API-Vertrag und dass die Galerie den Auslöser auswertet.
+ * Scanner, Texterkennung, Fehler der Vorabfrage). Hier: die Vorabfrage gegen
+ * einen Testserver und die Struktur, dass die Galerie den Auslöser auswertet.
+ *
+ * Gegenprobe (29.10.2026, gemessen): an getSetExists ein
+ * `@Query("accounts") accounts: String? = "own"` → rot „die Existenzprüfung
+ * schickt keinen Kontofilter mit“.
  */
 class AddExistingSetTest {
 
@@ -45,24 +53,21 @@ class AddExistingSetTest {
     private fun code(s: String) = s.lines()
         .joinToString("\n") { if (it.trim().startsWith("//") || it.trim().startsWith("*")) "" else it }
 
+    /**
+     * Die Frage lautet „habe ich das schon?", nicht „sehe ich das gerade?". Ohne
+     * accounts nimmt der Server sein Standard-Blickfeld — Haupt- UND Unterkonten;
+     * darauf beruht Marcos Zusage „oder einer der Unteraccounts".
+     */
     @Test
     fun `die Existenzpruefung schickt keinen Kontofilter mit`() {
-        // Die Frage lautet „habe ich das schon?", nicht „sehe ich das gerade?".
-        // Ohne accounts-Parameter nimmt der Server sein Standard-Blickfeld —
-        // Haupt- UND Unterkonten, unabhängig vom Filter der Ansicht. Genau
-        // darauf beruht Marcos Zusage „oder einer der Unteraccounts".
-        val api = code(java.io.File("src/main/java/ch/brickinventoryapp/data/api/BrickApiService.kt").readText())
-        val i = api.indexOf("fun getSetExists(")
-        assert(i > 0) { "getSetExists fehlt im API-Vertrag" }
-        // NUR bis zum Ende der Signatur schneiden. Ein festes Zeichenfenster
-        // reichte in die NÄCHSTE Deklaration hinein, und die hat einen
-        // accounts-Parameter — die Prüfung wäre grundlos rot geworden.
-        // Dasselbe Muster ist in diesem Projekt schon viermal aufgefallen.
-        val ende = api.indexOf("): Response", i)
-        val sig = api.substring(i, if (ende > i) ende else minOf(i + 300, api.length))
-        assert(!sig.contains("accounts")) {
-            "getSetExists schickt einen Kontofilter mit — dann fände ein auf \"eigene\" " +
-                "gefilterter Client die Sets des Unterkontos nicht"
+        val pfade = PfadServer("/api/v1/sets/exists/75192-1" to """{"success":true,"exists":false}""")
+        try {
+            val sets = SetsRepository(TestApi.fuer(pfade.server),
+                ResponseCache { java.io.File(System.getProperty("java.io.tmpdir"), "bim-exists") })
+            runBlocking { sets.getSetExists("75192-1") }
+            assertEquals(listOf("GET /api/v1/sets/exists/75192-1"), pfade.anfragen.toList())
+        } finally {
+            pfade.server.shutdown()
         }
     }
 

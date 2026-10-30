@@ -171,7 +171,7 @@ fun NavGraphBuilder.collectionGraph(
                     // Farbkatalog fuer den Erfassungsdialog …
                     teileVm.loadPartsColors()
                     // … und die beiden Filterlisten mit ihren Zählwerten. Zwei verschiedene
-                    // Adressen, siehe BrickApiService.getPartsFilterColors.
+                    // Adressen, siehe TeileApi.getPartsFilterColors.
                     teileVm.loadPartsFilters()
                 }
             }
@@ -259,13 +259,13 @@ fun NavGraphBuilder.collectionGraph(
             arguments = listOf(
                 androidx.navigation.navArgument("type")    { type = androidx.navigation.NavType.StringType },
                 androidx.navigation.navArgument("id")      { type = androidx.navigation.NavType.StringType },
-                androidx.navigation.navArgument("colorId") { type = androidx.navigation.NavType.IntType; defaultValue = 0 },
+                androidx.navigation.navArgument("colorId") { type = androidx.navigation.NavType.IntType; defaultValue = ch.brickinventoryapp.data.model.KEINE_FARBE },
                 androidx.navigation.navArgument("title")   { type = androidx.navigation.NavType.StringType }
             )
         ) { backStackEntry ->
             val itemType  = java.net.URLDecoder.decode(backStackEntry.arguments?.getString("type") ?: "part", "UTF-8")
             val itemId    = java.net.URLDecoder.decode(backStackEntry.arguments?.getString("id")   ?: "",     "UTF-8")
-            val colorId   = backStackEntry.arguments?.getInt("colorId") ?: 0
+            val colorId   = backStackEntry.arguments?.getInt("colorId") ?: ch.brickinventoryapp.data.model.KEINE_FARBE
             val itemTitle = java.net.URLDecoder.decode(backStackEntry.arguments?.getString("title") ?: "",    "UTF-8")
             ManualItemDetailScreen(
                 vm = hiltViewModel<KaeufeViewModel>(),
@@ -296,13 +296,13 @@ fun NavGraphBuilder.collectionGraph(
             arguments = listOf(
                 androidx.navigation.navArgument("type")    { type = androidx.navigation.NavType.StringType },
                 androidx.navigation.navArgument("id")      { type = androidx.navigation.NavType.StringType },
-                androidx.navigation.navArgument("colorId") { type = androidx.navigation.NavType.IntType; defaultValue = 0 },
+                androidx.navigation.navArgument("colorId") { type = androidx.navigation.NavType.IntType; defaultValue = ch.brickinventoryapp.data.model.KEINE_FARBE },
                 androidx.navigation.navArgument("title")   { type = androidx.navigation.NavType.StringType }
             )
         ) { backStackEntry ->
             val itemType  = java.net.URLDecoder.decode(backStackEntry.arguments?.getString("type")    ?: "set", "UTF-8")
             val itemId    = java.net.URLDecoder.decode(backStackEntry.arguments?.getString("id")      ?: "",    "UTF-8")
-            val colorId   = backStackEntry.arguments?.getInt("colorId") ?: 0
+            val colorId   = backStackEntry.arguments?.getInt("colorId") ?: ch.brickinventoryapp.data.model.KEINE_FARBE
             val itemTitle = java.net.URLDecoder.decode(backStackEntry.arguments?.getString("title")   ?: "",    "UTF-8")
             AcquisitionManagementScreen(
                 vm      = hiltViewModel<KaeufeViewModel>(),

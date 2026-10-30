@@ -1,6 +1,7 @@
 import { registerActions } from './00-registry.js';
+import { listeLadefehler } from './01-bausteine.js';
 import { colorName, locale, t, tRaw} from '../i18n.js';
-import { bildTag, platzhalterInhalt, leerZustand, ico, escHex, hexZiffern, CURRENCY, G, TRASH_ICON_SVG, api, esc, escJs, escUrl, fmtN, fullUrl, imgUrl, thumbUrl, toast } from './01-core.js';
+import { fmtDatum, bildTag, platzhalterInhalt, leerZustand, ico, escHex, hexZiffern, CURRENCY, G, TRASH_ICON_SVG, api, esc, escJs, escUrl, fmtN, fullUrl, imgUrl, thumbUrl, toast } from './01-core.js';
 import { addLagerParam, addScopeParam, scopeQuery } from './14-scope.js';
 import { condBadges, leereLagerortFeld, ownerBadges, schliesseErfassen, selectedOwner, selectedStorage } from './02-gallery.js';
 import { loadFinance } from './04-finance.js';
@@ -90,7 +91,8 @@ export async function loadMinifigs() {
   _figGen++; _figPage = 1; _figDone = false; _figLoadingMore = false;
   const gen = _figGen;
   const d = await api('GET', `/v1/minifigs?${figParams(1)}`);
-  if (!d.success || gen !== _figGen) return;
+  if (gen !== _figGen) return;
+  if (listeLadefehler(G('figs-list'), d, { erneut: 'loadMinifigs', behalten: allFigsCache.length > 0 })) return;
   allFigsCache = d.figs || [];
   _figTotal = d.total ?? allFigsCache.length;
   if (allFigsCache.length >= _figTotal) _figDone = true;
@@ -206,7 +208,7 @@ export function renderFigs(list, target) {
       <tbody>${list.map(f => {
         const imgSrc = imgUrl(thumbUrl(f.image_local || f.image_url) || f.image_local || f.image_url || '', true);
         const dateVal = f.set_added_at || null;
-        const erfasst = dateVal ? new Date(dateVal).toLocaleDateString(locale()) : '—';
+        const erfasst = dateVal ? fmtDatum(dateVal) : '—';
         // Anklickbar wie die Kachel darunter — dieselbe Handlung in beiden
         // Ansichten (Marcos Detail-Dialog fuer automatisch erfasste Figuren).
         return `<tr data-stil="cursor:pointer" data-click="${f.source==='manual'?'openManDetail':'openSetItemDetail'}" data-arg="fig" data-arg2="${escJs(f.fig_number)}" data-arg3="0">
@@ -237,7 +239,7 @@ export function renderFigs(list, target) {
         ${figs.map(f => {
           const imgSrc = imgUrl(thumbUrl(f.image_local || f.image_url) || f.image_local || f.image_url || '', true);
           const dateVal = f.set_added_at || null;
-          const erfasst = dateVal ? new Date(dateVal).toLocaleDateString(locale()) : '';
+          const erfasst = dateVal ? fmtDatum(dateVal) : '';
           // Papierkorb oben rechts, wie auf der Set-Kachel: .ca setzt
           // top:6px;right:6px und blendet ihn beim Ueberfahren ein
           // (styles.css). Marcos Vorgabe vom 24.09., zweiter Teil: „analog den
@@ -310,7 +312,7 @@ let _manuelleFigurenLeer = null;
  */
 function figurenLeerAbgleichen() {
   const box = G('manual-figs-box');
-  if (box) box.style.display = _manuelleFigurenLeer ? 'none' : '';
+  if (box) box.style.display = _manuelleFigurenLeer === false ? '' : 'none';
   if (_setFigurenLeer !== true) return;
   const el = G('figs-list');
   if (_manuelleFigurenLeer === false) { el.innerHTML = ''; return; }
@@ -352,7 +354,7 @@ export function renderManualFigsTable() {
         <div data-stil="display:flex;gap:4px;align-items:center;flex-wrap:wrap;margin-top:2px">
           <span class="qbadge">×${f.quantity}</span>${condBadge}${ownerBadges(f)}
         </div>
-        <div data-stil="font-weight:700;font-size:var(--fs-2);color:var(--b600);margin-top:3px">${priceStr}</div>
+        <div class="preis man-preis">${priceStr}</div>
       </div>`;
     }).join('')}
   </div>`;
@@ -675,7 +677,7 @@ export function renderManualParts() {
         <div data-stil="display:flex;gap:4px;align-items:center;flex-wrap:wrap;margin-top:2px">
           <span class="qbadge">×${p.quantity}</span>${condBadge}${ownerBadges(p)}
         </div>
-        <div data-stil="font-weight:700;font-size:var(--fs-2);color:var(--b600);margin-top:3px">${priceStr}</div>
+        <div class="preis man-preis">${priceStr}</div>
       </div>`;
     }).join('')}
   </div>`;
@@ -847,6 +849,7 @@ async function loadPartsValuation() {
 
 // ── Handler beim Dispatcher anmelden (siehe js/00-registry.js) ──────────────
 registerActions({
+  loadMinifigs,
   deleteManualFig,
   filterFigs,
   importFigsCsv,

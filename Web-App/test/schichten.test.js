@@ -82,18 +82,8 @@ function innereDateien() {
       else if (e.name.endsWith('.ts')) gefunden.push(kind);
     }
   };
-  // startup/ steht NICHT in dieser Liste — und das ist eine Berichtigung.
-  //
-  // Der erste Entwurf zaehlte es zu den inneren Schichten, weil es kein
-  // „routes" im Namen traegt. Nachgemessen: startup/backgroundJobs.ts wird von
-  // GENAU EINER Datei benutzt, naemlich server.ts. Es ist ausgelagerter
-  // Serverstart, also dieselbe Schicht wie server.ts selbst — dass es Routen
-  // anfasst (startImgCacheCleanup, startPdfJobCleanup), ist sein Zweck und
-  // kein Verstoss.
-  //
-  // Eine Regel, die Gesundes als Verstoss fuehrt, ist schlimmer als keine: Sie
-  // erzieht dazu, die Ausnahmeliste fuer normal zu halten. Zwei der acht
-  // Eintraege standen nur wegen dieses Fehlers dort.
+  // startup/ ist ausgelagerter Serverstart (nur server.ts benutzt es) und
+  // zählt zur äusseren Schicht; seine eigene Regel steht weiter unten.
   ['utils', 'jobs', 'clients', 'db'].forEach(lauf);
   return gefunden;
 }
@@ -150,6 +140,41 @@ test('eine v1-Route importiert keine andere Routendatei', () => {
   assert.deepEqual(treffer, []);
 });
 
+test('keine Route importiert eine andere Routendatei', () => {
+  // Erlaubt sind nur der Wächter (api_v1/middleware) und der Zusammenbau in
+  // api_v1/index.ts. Gegenprobe (29.10.2026): `import { requireLogin } from
+  // './auth'` zurück in routes/minifigs.ts → rot.
+  const dateien = [];
+  const lauf = (rel) => {
+    for (const e of fs.readdirSync(path.join(ROOT, rel), { withFileTypes: true })) {
+      const kind = path.posix.join(rel, e.name);
+      if (e.isDirectory()) lauf(kind);
+      else if (e.name.endsWith('.ts')) dateien.push(kind);
+    }
+  };
+  lauf('routes');
+  assert.ok(dateien.length > 15, `nur ${dateien.length} Routendateien gefunden`);
+  const treffer = [];
+  for (const d of dateien.filter(d => d !== 'routes/api_v1/index.ts'))
+    for (const ziel of importe(d).filter(z => z.startsWith('.'))) {
+      const voll = path.posix.normalize(path.posix.join(path.posix.dirname(d), ziel)).replace(/\.js$/, '');
+      if (voll.startsWith('routes/') && voll !== 'routes/api_v1/middleware') treffer.push(`${d} -> ${ziel}`);
+    }
+  assert.deepEqual(treffer, []);
+});
+
+test('kein Zustand auf global', () => {
+  // Was Prozesse teilen, steht in einem Modul (utils/startZustand.ts) und
+  // ist über den Import zu finden. Gegenprobe (29.10.2026): eine Zeile
+  // `global.startupStatus = …` in server.ts → rot.
+  const treffer = [];
+  for (const d of ['server.ts', ...innereDateien(), ...fs.readdirSync(path.join(ROOT, 'startup')).map(f => `startup/${f}`),
+                   ...fs.readdirSync(path.join(ROOT, 'routes')).filter(f => f.endsWith('.ts')).map(f => `routes/${f}`)])
+    for (const m of quelltext(d).matchAll(/\b(?:global|globalThis)\s*(?:as\s+\w+\s*\)\s*)?\.\s*\w+\s*=[^=]|\(\s*(?:global|globalThis)\s+as\s+any\s*\)/g))
+      treffer.push(`${d}: ${m[0].trim()}`);
+  assert.deepEqual(treffer, []);
+});
+
 test('utils/ und clients/ importieren nichts aus jobs/', () => {
   // Was utils/ an Hintergrundarbeit anstösst, läuft über utils/nacharbeit.ts;
   // die Ausführung setzt jobs/verdrahtung.ts ein.
@@ -171,16 +196,67 @@ test('db/ importiert nichts aus jobs/', () => {
   assert.deepEqual(treffer, []);
 });
 
-test('routes/auth.ts und routes/api_v1/admin.ts führen kein SQL aus', () => {
-  // Ihr Datenzugriff steht in utils/konten.ts und utils/verwaltung.ts; die
-  // Routen prüfen Eingaben und Rechte und schreiben die Antwort.
-  // Gegenprobe (28.10.2026): eine db.get-Zeile samt Import zurück in
-  // admin.ts → rot (beide Treffer gemeldet).
+/** Alle .ts-Dateien unter routes/, relativ zu ROOT. */
+function routenDateien() {
+  const dateien = [];
+  const lauf = (rel) => {
+    for (const e of fs.readdirSync(path.join(ROOT, rel), { withFileTypes: true })) {
+      const kind = path.posix.join(rel, e.name);
+      if (e.isDirectory()) lauf(kind);
+      else if (e.name.endsWith('.ts')) dateien.push(kind);
+    }
+  };
+  lauf('routes');
+  return dateien;
+}
+
+test('keine Route führt SQL aus oder importiert die Datenbank', () => {
+  // Routen lesen die Anfrage, rufen einen Dienst und schreiben die Antwort;
+  // der Datenzugriff steht in utils/ (utils/dienste/ je Gebiet).
+  // Gegenprobe (29.10.2026): `import * as db from '../../db/database'` und
+  // eine db.get-Zeile zurück in routes/api_v1/catalog.ts → rot, beide Treffer.
+  const dateien = routenDateien();
+  assert.ok(dateien.length > 15, `nur ${dateien.length} Routendateien gefunden`);
   const treffer = [];
-  for (const d of ['routes/auth.ts', 'routes/api_v1/admin.ts']) {
-    for (const m of quelltext(d).matchAll(/\bdb\.\w+\s*\(/g)) treffer.push(`${d}: ${m[0]}`);
+  for (const d of dateien) {
+    for (const m of quelltext(d).matchAll(/\b(?:db|tx)\.(?:get|all|run|exec|transaction|pool)\b/g)) treffer.push(`${d}: ${m[0]}`);
     for (const ziel of importe(d).filter(z => /db\/database/.test(z))) treffer.push(`${d} -> ${ziel}`);
   }
+  assert.deepEqual(treffer, []);
+});
+
+test('keine Route importiert aus jobs/ oder clients/', () => {
+  // Jobs steuert eine Route über utils/nacharbeit.ts und utils/jobsteuerung.ts,
+  // fremde Dienste erreicht sie über einen Dienst in utils/.
+  // Gegenprobe (29.10.2026): `import { triggerNow } from '../../jobs/priceJob'`
+  // in admin.ts und `import { getSetByEan } from '../../clients/brickset'` in
+  // api_v1/sets.ts → rot, beide Treffer.
+  const treffer = [];
+  for (const d of routenDateien())
+    for (const ziel of importe(d).filter(z => /(?:^|\/)(?:jobs|clients)\//.test(z))) treffer.push(`${d} -> ${ziel}`);
+  assert.deepEqual(treffer, []);
+});
+
+test('nur der Bild-Proxy ruft aus einer Route selbst ins Netz', () => {
+  // Der Bild-Proxy reicht CDN-Antworten durch; das Durchreichen ist seine
+  // Aufgabe. Jeder andere Abruf gehört in einen Client oder Dienst.
+  // Gegenprobe (29.10.2026): `import https from 'https'` in api_v1/admin.ts → rot.
+  const ERLAUBT = new Set(['routes/imgProxy.ts']);
+  const treffer = [];
+  for (const d of routenDateien().filter(d => !ERLAUBT.has(d)))
+    for (const ziel of importe(d).filter(z => /^(?:node:)?https?$/.test(z))) treffer.push(`${d} -> ${ziel}`);
+  assert.deepEqual(treffer, []);
+  for (const d of ERLAUBT) assert.ok(fs.existsSync(path.join(ROOT, d)), `${d} gibt es nicht mehr — Ausnahme streichen`);
+});
+
+test('startup/ importiert nichts aus routes/', () => {
+  // Was der Start anstösst (Aufräumläufe), steht in utils/; eine Route
+  // gehört nur in server.ts.
+  // Gegenprobe (29.10.2026): startPdfJobCleanup wieder aus
+  // '../routes/api_v1/pdf' in startup/backgroundJobs.ts → rot.
+  const treffer = [];
+  for (const f of fs.readdirSync(path.join(ROOT, 'startup')).filter(f => f.endsWith('.ts')))
+    for (const ziel of importe(`startup/${f}`).filter(z => /routes\//.test(z))) treffer.push(`startup/${f} -> ${ziel}`);
   assert.deepEqual(treffer, []);
 });
 

@@ -36,7 +36,6 @@ import ch.brickinventoryapp.ui.components.ZoomableImageDialog
 import ch.brickinventoryapp.ui.theme.BrickStatTile
 import ch.brickinventoryapp.ui.theme.LocalIsBrickTheme
 import ch.brickinventoryapp.ui.theme.Petrol
-import ch.brickinventoryapp.ui.theme.SlateBlue
 import ch.brickinventoryapp.util.resolveFullUrlViaProxy
 import coil3.ImageLoader
 import coil3.compose.AsyncImage
@@ -65,7 +64,7 @@ fun ManualItemDetailScreen(
     teile: TeileViewModel,
     type: String,          // "part" | "fig"
     id: String,            // partNumber / figNumber
-    colorId: Int = 0,
+    colorId: Int = ch.brickinventoryapp.data.model.KEINE_FARBE,
     /** Aus der Navigation — bis die Bewertung geladen ist, steht er in der Leiste. */
     fallbackTitle: String,
     imageLoader: ImageLoader,
@@ -227,7 +226,8 @@ fun ManualItemDetailScreen(
                         BrickStatTile(
                             label = stringResource(R.string.detail_purchase_price),
                             value = fmt(fig?.purchasePrice ?: part?.purchasePrice),
-                            container = SlateBlue, onContainer = Color.White,
+                            container = ch.brickinventoryapp.ui.theme.LocalSteinDekor.current.schiefer,
+                            onContainer = ch.brickinventoryapp.ui.theme.LocalSteinDekor.current.aufSchiefer,
                             modifier = Modifier.weight(1f)
                         )
                     }

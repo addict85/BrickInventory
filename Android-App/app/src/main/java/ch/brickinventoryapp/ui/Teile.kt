@@ -210,3 +210,21 @@ internal class Teile(
         _state.value = PartsUiState()
     }
 }
+
+/**
+ * Die Farbliste ohne ihren Eintrag für KEINE_FARBE („[No Color/Any Color]“):
+ * Die Auswahl führt „keine Farbe“ selbst, in der Sprache der App; sonst stünde
+ * dieselbe Wahl zweimal da.
+ */
+fun ohneKeineFarbe(farben: List<ch.brickinventoryapp.data.model.BrickColor>) =
+    farben.filter { it.id != ch.brickinventoryapp.data.model.KEINE_FARBE }
+
+/**
+ * Der Name der heutigen Farbe: KEINE_FARBE heisst [keineFarbe], nie „Farbe
+ * 9999“; sonst der Name aus der Liste, dann der gespeicherte. Null, wenn
+ * keiner bekannt ist — dann nennt die Anzeige die Nummer.
+ */
+fun farbName(farben: List<ch.brickinventoryapp.data.model.BrickColor>, aktuell: Int,
+             aktuellerName: String?, keineFarbe: String): String? =
+    if (aktuell == ch.brickinventoryapp.data.model.KEINE_FARBE) keineFarbe
+    else farben.firstOrNull { it.id == aktuell }?.name ?: aktuellerName?.takeIf { it.isNotBlank() }

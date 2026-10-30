@@ -1,5 +1,5 @@
 import * as db from '../db/database';
-import { meldeUndWeiter } from './httpError';
+import { meldeUndWeiter, logAndContinue } from './httpError';
 import { fehlerText, antwortSprache } from './fehlerTexte';
 
 /**
@@ -13,6 +13,7 @@ import { fehlerText, antwortSprache } from './fehlerTexte';
 // schiebt den Stand an verbundene Clients (Webapp + Android), ganz ohne
 // Polling. Der bestehende /status-Endpoint bleibt als Fallback erhalten.
 import EventEmitter from 'events';
+import * as pgNotify from '../utils/pgNotify';
 const csvImportBus = new EventEmitter();
 csvImportBus.setMaxListeners(0); // beliebig viele gleichzeitige Streams
 
@@ -74,7 +75,7 @@ async function emitJobStatus(userId: number) {
   // 10-Sekunden-Poller auf die Datenbank, dauerhaft, pro offener Verbindung.
   // LISTEN/NOTIFY erledigt genau das, wofür der Poller da war — und die
   // Infrastruktur dafür steht bereits (utils/pgNotify.ts).
-  require('../utils/pgNotify').notify('csv_import_progress', String(userId)).catch(() => {});
+  pgNotify.notify('csv_import_progress', String(userId)).catch(logAndContinue('import-auftrag:notify'));
 }
 
 
@@ -149,6 +150,20 @@ async function jobUpdate(userId: number, fields: Record<string, unknown>, lauf?:
   return !lauf || (r?.changes ?? 0) > 0;
 }
 
+
+/**
+ * Ein CSV-Lauf nimmt seine Zeile wieder auf — nach einem Neustart auch dann,
+ * wenn jobGet() sie inzwischen als verwaist markiert hat. Abgebrochen oder von
+ * einem neuen Lauf abgelöst, bleibt sie, wie sie ist (dann: null).
+ */
+async function setzeImportFort(userId: number, lauf: string):
+    Promise<{ results: ImportErgebnis[]; current: string | null } | null> {
+  const z = await db.get(
+    `UPDATE csv_import_jobs SET status = 'running', error = NULL, updated_at = NOW()
+      WHERE user_id = $1 AND run_id = $2 AND status IN ('running', 'error')
+      RETURNING results, current`, [userId, lauf]);
+  return z ? { results: Array.isArray(z.results) ? z.results : [], current: z.current ?? null } : null;
+}
 
 // ── Ein Import, der NICHT der CSV-Import ist, meldet sich hier an ───────────
 //
@@ -243,4 +258,5 @@ export async function istAbgebrochen(userId: number): Promise<boolean> {
   return !stand || stand.status !== 'running';
 }
 
-export { csvImportBus, buildJobStatus, emitJobStatus, jobGet, jobSet, jobUpdate };
+export { csvImportBus, buildJobStatus, emitJobStatus, jobGet, jobSet, jobUpdate, setzeImportFort };
+export type { ImportErgebnis };

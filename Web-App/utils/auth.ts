@@ -9,10 +9,11 @@ import bcrypt from 'bcryptjs';
 import type { Request, Response, NextFunction } from 'express';
 import { checkLoginAllowed, gibAnmeldeplatzFrei, recordLoginFailure, recordLoginSuccess } from './loginLimiter';
 import { sendeFehler } from './fehlerTexte';
-import { logAndContinue } from './httpError';
+import { logAndContinue, meldeUndLiefere } from './httpError';
 import * as zf from './zweiterFaktor';
 import { ausTabelle } from './validate';
 import type { FehlerCode } from './fehlerTexte';
+import * as pgNotify from './pgNotify';
 
 /**
  * Warum diese Typen hier stehen
@@ -225,7 +226,7 @@ function _touchLastUsed(token: string, entry: CacheEintrag): void {
 export const TOKEN_KANAL = 'tokens_geaendert';
 
 function meldeTokenWiderruf(): void {
-  require('./pgNotify').notify(TOKEN_KANAL).catch(logAndContinue('tokens:widerruf melden'));
+  pgNotify.notify(TOKEN_KANAL).catch(logAndContinue('tokens:widerruf melden'));
 }
 
 /** Nur der eigene Cache — für den Empfang des Signals, das nicht zurückfunken darf. */
@@ -236,7 +237,7 @@ function leereTokenCacheLokal(): void { _tokenCache.clear(); }
  * einmal ohne Signal auf — dann wird ebenfalls geleert, die sichere Seite.
  */
 function horcheAufTokenWiderruf(): void {
-  require('./pgNotify').listen(TOKEN_KANAL, () => leereTokenCacheLokal());
+  pgNotify.listen(TOKEN_KANAL, () => leereTokenCacheLokal());
 }
 
 /** Beim Logout/Token-Löschen aufrufen, damit der Token sofort ungültig wird. */
@@ -462,7 +463,7 @@ async function resolveUserId(req: Request): Promise<number | null> {
   const auth = req.headers.authorization || '';
   const token: string | null = auth.startsWith('Bearer ') ? auth.slice(7) : null;
   if (!token) return null;
-  const user = await validateToken(token).catch(() => null);
+  const user = await validateToken(token).catch(meldeUndLiefere('auth:validateToken', null));
   // Der ganze Nutzer wird abgelegt, nicht nur seine Kennung: Sonst wuesste ein
   // Handler hinter requireLoginOrToken zwar WER fragt, aber nicht, ob es ein
   // Verwalter ist — `req.session.isAdmin` ist bei einer Token-Anfrage immer

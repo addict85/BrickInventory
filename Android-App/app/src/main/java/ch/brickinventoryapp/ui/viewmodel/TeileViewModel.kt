@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.R
 import ch.brickinventoryapp.alarm.Alarmeingabe
 import ch.brickinventoryapp.data.ScopeFilter
+import ch.brickinventoryapp.data.model.KEINE_FARBE
 import ch.brickinventoryapp.data.repository.Result
 import ch.brickinventoryapp.data.repository.TeileRepository
 import ch.brickinventoryapp.ui.Aenderung
@@ -117,7 +118,7 @@ class TeileViewModel @Inject constructor(
         return if (hinweis != null) "$kopf — $hinweis" else kopf
     }
 
-    fun addPart(partNumber: String, colorId: Int = 0, colorName: String? = null, colorHex: String? = null,
+    fun addPart(partNumber: String, colorId: Int = KEINE_FARBE, colorName: String? = null, colorHex: String? = null,
                 quantity: Int = 1, unitPrice: Double? = null,
                 condition: String? = null, ownerUserId: Int? = null,
                 storage: String? = null) {
@@ -219,7 +220,7 @@ class TeileViewModel @Inject constructor(
 
     // ── „In welchen Sets steckt das?“ ────────────────────────────────────────
 
-    fun oeffneSetItem(art: String, nummer: String, colorId: Int = 0) {
+    fun oeffneSetItem(art: String, nummer: String, colorId: Int = KEINE_FARBE) {
         _setItemState.value = SetItemUiState(art = art, nummer = nummer, colorId = colorId, laedt = true)
         viewModelScope.launch {
             val blick = scopeFor(if (art == "fig") ScopeFilter.View.MINIFIGS else ScopeFilter.View.PARTS)

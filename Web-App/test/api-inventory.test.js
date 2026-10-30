@@ -62,10 +62,6 @@ function inventory() {
     if (f.endsWith('.ts') && !['index.ts', 'middleware.ts'].includes(f))
       for (const [m, p] of scan(path.join(ROOT, 'routes', 'api_v1', f)))
         eps.add(`${m} /api/v1${p}`);
-  // Dynamisch registrierte Erfassungs-Routen (registerAcquisitionRoutes):
-  for (const base of ['/sets/:setNumber/acquisitions', '/parts/:partNumber/:colorId/acquisitions', '/minifigs/:figNumber/acquisitions'])
-    for (const m of ['PUT', 'DELETE'])
-      eps.add(`${m} /api/v1${base}/:acqId`);
   return eps;
 }
 
@@ -286,6 +282,8 @@ const C = {
   'POST /api/v1/wanted/import/csv': 'nur-v1',
   'POST /api/v1/alerts/import/csv': 'nur-v1',
   'POST /api/v1/wanted-list/import/xml': 'nur-web',
+  // Eigenes Design des Kontos: Profil der Webapp und Konto-Bildschirm der App.
+  'POST /api/v1/settings/user/theme': 'nur-v1',
 
   // ── Gutscheine ───────────────────────────────────────────────────────────
   //

@@ -55,7 +55,7 @@ test('Import ohne Preis hinterlässt dasselbe wie Erfassen ohne Preis', { concur
   const app = express();
   app.use(express.json());
   app.use((req, _res, next) => { req.session = { userId: uid }; next(); });
-  app.use('/api/parts', _req('routes/parts.js'));
+  app.use('/api/v1', _req('routes/api_v1/index.js'));
   const srv = app.listen(0);
   const base = `http://localhost:${srv.address().port}`;
 
@@ -65,13 +65,13 @@ test('Import ohne Preis hinterlässt dasselbe wie Erfassen ohne Preis', { concur
     const csv = `part_number,part_name,quantity\n${IMPORTIERT},Testteil,3\n`;
     const fd = new FormData();
     fd.append('file', new Blob([csv], { type: 'text/csv' }), 'teile.csv');
-    const antwort = await fetch(`${base}/api/parts/import/csv`, { method: 'POST', body: fd });
+    const antwort = await fetch(`${base}/api/v1/parts/import/csv`, { method: 'POST', body: fd });
     const ergebnis = await antwort.json();
     assert.equal(ergebnis.success, true, `Import fehlgeschlagen: ${JSON.stringify(ergebnis)}`);
     assert.equal(ergebnis.added, 1, `Es wurde nichts angelegt: ${JSON.stringify(ergebnis)}`);
 
     // Derselbe Fall von Hand, ueber dieselbe Route wie die Webapp.
-    const { addManualPart } = _req('routes/parts.js');
+    const { addManualPart } = _req('utils/manuelleTeile.js');
     await addManualPart(uid, { part_number: VON_HAND, part_name: 'Testteil', color_id: 0, quantity: 3 });
 
     // ── Gelesen aus der ERFASSUNG ─────────────────────────────────────────

@@ -62,9 +62,9 @@ test('ohne Vorgabe kommt undefined statt eines geerbten Werts', () => {
 // ── Die drei Fundstellen: kein direkter Tabellenzugriff mehr ────────────────
 
 const STELLEN = [
-  ['routes/api_v1/catalog.ts', 'SORTS',              /SORTS\s*\[/],
+  ['utils/dienste/katalog.ts', 'SORTS',              /SORTS\s*\[/],
   ['utils/handlers/sets.ts',   'SET_SORTS',          /SET_SORTS\s*\[/],
-  ['routes/sets.ts',           'INSTR_EXT_BY_MIME',  /INSTR_EXT_BY_MIME\s*\[/],
+  ['routes/api_v1/sets.ts',    'INSTR_EXT_BY_MIME',  /INSTR_EXT_BY_MIME\s*\[/],
 ];
 
 for (const [datei, name, muster] of STELLEN) {

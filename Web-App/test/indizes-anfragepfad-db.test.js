@@ -52,7 +52,8 @@ const db = _req('db/database.js');
 // bl_zuordnung. Der steht in der MIGRATION und nicht in initSchema(),
 // gehoert also nicht in diese Liste — sie sagt, was der Schema-Aufbau
 // anlegt.
-const ERWARTET = ['idx_set_minifigs_fig', 'idx_sets_setnum'];
+// idx_set_figuren_fig ersetzt seit Migration 0072 idx_set_minifigs_fig (die Tabelle wurde zur Sicht).
+const ERWARTET = ['idx_set_figuren_fig', 'idx_sets_setnum'];
 
 /**
  * Den Plan einer Abfrage holen — ohne Tabellenscan-Ausweg.
@@ -120,7 +121,7 @@ test('Anfragepfad: die drei Indizes gibt es und der Planer kann sie nehmen', asy
 
     const figurPlan = await plan(
       `SELECT set_number FROM set_minifigs_catalog WHERE fig_number = 'x' LIMIT 1`);
-    assert.match(figurPlan, /idx_set_minifigs_fig/, `Plan:\n${figurPlan}`);
+    assert.match(figurPlan, /idx_set_figuren_fig/, `Plan:\n${figurPlan}`);
 
     const setPlan = await plan(
       `SELECT user_id FROM sets WHERE set_number = 'x' ORDER BY user_id`);

@@ -60,7 +60,7 @@ test('Anleitungen neu laden', { concurrency: 1 }, async (t) => {
   });
 
   const sitzung = {};
-  const { base } = testServer(_req, { sitzung, routen: { '/api/v1/sets': 'routes/sets.js' }, t });
+  const { base } = testServer(_req, { sitzung, routen: { '/api/v1': 'routes/api_v1/index.js' }, t });
   const neuLaden = async (als) => {
     Object.assign(sitzung, als);
     return (await fetch(`${base}/api/v1/sets/${SET}/instructions`, { method: 'POST' })).status;

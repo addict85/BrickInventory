@@ -2,15 +2,15 @@
  * Auslieferung der index.html mit bereits gesetztem data-theme.
  * Ausführlich: docs/begruendungen/utils/indexHtml.ts.md#abschnitt
  */
+import { meldeUndLiefere } from './httpError';
 import fs from 'fs';
 import {  PUBLIC_DIR } from '../utils/appPaths';
 import path from 'path';
 import * as db from '../db/database';
-import { getGlobalSetting } from './settings';
+import { getGlobalSetting, DESIGNS, designFuer } from './settings';
 import { stempleAssetsGecacht } from './assetStempel';
 
 const INDEX_PATH = path.join(PUBLIC_DIR, 'index.html');
-const ALLOWED = ['classic', 'brick'];
 
 let _html: string | null = null;
 let _mtime = 0;
@@ -37,10 +37,15 @@ async function readIndex(): Promise<string> {
   return _html;
 }
 
-async function currentTheme(): Promise<string> {
+/** Angemeldet zählt das eigene Design; nur die Vorgabe liegt im Zwischenspeicher. */
+async function currentTheme(userId?: number): Promise<string> {
+  if (userId) {
+    const { eigenes } = await designFuer(userId);
+    if (eigenes) return eigenes;
+  }
   if (_theme !== null && Date.now() - _themeAt < THEME_TTL_MS) return _theme;
-  const gespeichert = await getGlobalSetting('app_theme').catch(() => null);
-  const gewaehlt: string = ALLOWED.includes(gespeichert) ? gespeichert : 'classic';
+  const gespeichert = await getGlobalSetting('app_theme').catch(meldeUndLiefere('index-html:getGlobalSetting', null));
+  const gewaehlt: string = DESIGNS.includes(gespeichert) ? gespeichert : 'classic';
   _theme = gewaehlt;
   _themeAt = Date.now();
   return gewaehlt;
@@ -59,7 +64,7 @@ async function currentLang(userId?: number): Promise<string> {
   if (!userId) return 'de';
   const row = await db.get(
     "SELECT value FROM user_settings WHERE user_id = $1 AND key = 'language'",
-    [userId]).catch(() => null);
+    [userId]).catch(meldeUndLiefere('index-html:row', null));
   return LANGS.includes(row?.value) ? row.value : 'de';
 }
 
@@ -72,7 +77,7 @@ async function currentLang(userId?: number): Promise<string> {
 export async function renderIndexHtml(userId?: number): Promise<string> {
   const html = await readIndex();
   try {
-    const theme = await currentTheme();
+    const theme = await currentTheme(userId);
     let out = /<html[^>]*\sdata-theme=/i.test(html)
       ? html.replace(/(<html[^>]*\sdata-theme=")[^"]*(")/i, `$1${theme}$2`)
       : html.replace(/<html\b/i, `<html data-theme="${theme}"`);

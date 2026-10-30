@@ -32,6 +32,8 @@ import ch.brickinventoryapp.data.model.PartsStats
 import ch.brickinventoryapp.data.model.PartValuationItem
 import ch.brickinventoryapp.data.model.Acquisition
 import ch.brickinventoryapp.data.model.BrickColor
+import ch.brickinventoryapp.data.model.KEINE_FARBE
+import ch.brickinventoryapp.ui.ohneKeineFarbe
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.core.graphics.toColorInt
@@ -78,7 +80,7 @@ fun AddPartDialog(
             // Entscheidung und keine Formalie; sie gehoert an eine Stelle.
             val w = erfassungsWerte(quantity, unitPrice, condition, owner, householdMembers)
             onAdd(
-                partNumber, selectedColor?.id ?: 0, selectedColor?.name, selectedColor?.hex,
+                partNumber, selectedColor?.id ?: KEINE_FARBE, selectedColor?.name, selectedColor?.hex,
                 w.anzahl, w.preis, w.zustand, w.besitzer,
                 lagerort.trim().takeIf { it.isNotEmpty() }
             )
@@ -126,7 +128,7 @@ fun AddPartDialog(
                             text = { Text(stringResource(R.string.parts_no_color)) },
                             onClick = { selectedColor = null; colorMenuExpanded = false }
                         )
-                        colors.forEach { c ->
+                        ohneKeineFarbe(colors).forEach { c ->
                             DropdownMenuItem(
                                 text = { Text(c.name) },
                                 leadingIcon = {

@@ -3,11 +3,16 @@
  * nicht erneut versucht, und ein von einem neuen Import abgelöster Lauf hört
  * auf, statt weiter in dieselbe Statuszeile zu schreiben.
  *
- * Gegenproben (am 28.10.2026 gemessen):
+ * Der Import läuft als Auftrag (jobs/setCsvImport.ts); der Test startet den
+ * Worker dafür selbst, beschränkt auf die Art csv_import.
+ *
+ * Gegenproben (am 28.10.2026 gemessen, am 29.10. nach dem Umzug in den
+ * Auftrag wiederholt — beide wieder rot):
  *   A  `isTimeout` wieder in die Wiederholungsbedingung → rot: „nach einer
  *      Zeitüberschreitung kein zweiter Versuch“ (2 Aufrufe)
- *   B  jobUpdate in der Schleife ohne `lauf` → rot: „ein abgelöster Lauf hört
- *      auf“ (der alte Lauf buchte alle fünf Sets weiter)
+ *   B  jobUpdate in der Schleife ohne `lauf` (alle drei Aufrufe in
+ *      fuehreCsvImportAus) → rot: „ein abgelöster Lauf hört auf“ (der alte
+ *      Lauf buchte alle fünf Sets weiter)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -51,12 +56,13 @@ test('CSV-Import: keine Doppelbuchung', { concurrency: 1 }, async (t) => {
   const NAME = `csvlauf-${process.pid}`;
   await db.run('DELETE FROM users WHERE username=$1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
-  const { base } = testServer(_req, { sitzung: { userId: uid }, routen: { '/api/sets': 'routes/sets.js' }, t });
+  const { base } = testServer(_req, { sitzung: { userId: uid }, routen: { '/api/v1': 'routes/api_v1/index.js' }, t });
+  const worker = _req('jobs/auftraegeStarten.js').starteAuftragsWorker({ arten: ['csv_import'], taktMs: 50 });
 
   const importiere = async (zeilen) => {
     const fd = new FormData();
     fd.append('file', new Blob(['set_number,quantity\n' + zeilen.map(z => `${z},1`).join('\n')]), 'import.csv');
-    const r = await fetch(`${base}/api/sets/import/csv`, { method: 'POST', body: fd });
+    const r = await fetch(`${base}/api/v1/sets/import/csv`, { method: 'POST', body: fd });
     assert.equal(r.status, 200, await r.text());
   };
   const auftrag = () => db.get('SELECT status, done, results FROM csv_import_jobs WHERE user_id=$1', [uid]);
@@ -90,6 +96,8 @@ test('CSV-Import: keine Doppelbuchung', { concurrency: 1 }, async (t) => {
       assert.equal(a.done, 1);
     });
   } finally {
+    await worker.stoppe(0);
+    await _req('utils/pgNotify.js').close();
     await db.run('DELETE FROM users WHERE id=$1', [uid]);
     await db.pool.end().catch(() => {});
   }

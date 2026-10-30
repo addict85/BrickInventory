@@ -41,6 +41,9 @@ object AppModule {
     fun provideAnmeldeablage(p: ch.brickinventoryapp.data.PreferencesManager): ch.brickinventoryapp.data.Anmeldeablage = p
 
     @Provides
+    fun provideNetzkennung(n: ch.brickinventoryapp.data.Netzlage): ch.brickinventoryapp.data.Netzkennung = n
+
+    @Provides
     fun provideCacheBesitzer(p: ch.brickinventoryapp.data.PreferencesManager): ch.brickinventoryapp.data.cache.CacheBesitzer = p
 
     @Provides
