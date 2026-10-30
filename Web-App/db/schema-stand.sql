@@ -680,6 +680,7 @@ CREATE TABLE rb_themes (
 CREATE TABLE schema_migrations (
   name text NOT NULL,
   applied_at timestamp with time zone NOT NULL DEFAULT now(),
+  pruefsumme text,
   CONSTRAINT schema_migrations_pkey PRIMARY KEY (name)
 );
 
@@ -892,6 +893,15 @@ CREATE TABLE wanted (
 CREATE INDEX idx_wanted_user ON wanted USING btree (user_id, created_at DESC);
 CREATE TRIGGER wanted_setnummer BEFORE INSERT OR UPDATE OF set_number ON wanted FOR EACH ROW EXECUTE FUNCTION setnummer_normalisieren();
 
+CREATE TABLE wechselkurse (
+  tag date NOT NULL,
+  waehrung character(3) NOT NULL,
+  je_eur numeric NOT NULL,
+  CONSTRAINT wechselkurse_je_eur_check CHECK ((je_eur > (0)::numeric)),
+  CONSTRAINT wechselkurse_pkey PRIMARY KEY (waehrung, tag),
+  CONSTRAINT wechselkurse_waehrung_check CHECK (((waehrung ~ '^[A-Z]{3}$'::text) AND (waehrung <> 'EUR'::bpchar)))
+);
+
 CREATE TABLE zweiter_faktor (
   user_id integer NOT NULL,
   geheimnis text NOT NULL,
@@ -1000,7 +1010,7 @@ BEGIN
      OR (TG_OP = 'UPDATE' AND NEW.created_at IS DISTINCT FROM OLD.created_at
          AND NEW.tag IS NOT DISTINCT FROM OLD.tag) THEN
     NEW.tag := (NEW.created_at AT TIME ZONE
-                COALESCE(NULLIF(current_setting('brickinventory.zeitzone', true), ''), 'UTC'))::date;
+                COALESCE((SELECT NULLIF(value, '') FROM global_settings WHERE key = 'erfassung_zeitzone'), 'UTC'))::date;
   END IF;
   RETURN NEW;
 END $function$;
@@ -1016,6 +1026,16 @@ BEGIN
   RETURN NEW;
 END $function$;
 
+CREATE OR REPLACE FUNCTION in_waehrung(betrag numeric, von text, nach text, t date)
+ RETURNS numeric
+ LANGUAGE sql
+ STABLE
+AS $function$
+  SELECT CASE WHEN betrag IS NULL THEN NULL
+              WHEN upper(von) = upper(nach) THEN betrag
+              ELSE round(betrag / kurs_je_eur(von, t) * kurs_je_eur(nach, t), 4) END
+$function$;
+
 CREATE OR REPLACE FUNCTION konto_waehrung(uid integer)
  RETURNS text
  LANGUAGE sql
@@ -1025,6 +1045,17 @@ AS $function$
     (SELECT NULLIF(value, '') FROM user_settings WHERE user_id = uid AND key = 'currency'),
     (SELECT NULLIF(value, '') FROM global_settings WHERE key = 'currency'),
     'EUR')
+$function$;
+
+CREATE OR REPLACE FUNCTION kurs_je_eur(w text, t date)
+ RETURNS numeric
+ LANGUAGE sql
+ STABLE
+AS $function$
+  SELECT CASE WHEN upper(w) = 'EUR' THEN 1::numeric
+              ELSE (SELECT k.je_eur FROM wechselkurse k
+                     WHERE k.waehrung = upper(w) AND k.tag <= t
+                     ORDER BY k.tag DESC LIMIT 1) END
 $function$;
 
 CREATE OR REPLACE FUNCTION set_nummer_mit_version(n text)

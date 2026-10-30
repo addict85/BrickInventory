@@ -22,10 +22,10 @@ import { konfig, datenbankVerbindung } from '../utils/konfig';
 // Abhaengigkeiten dieser Datei standen nicht an ihrem Kopf, und ein require() …
 // Ausführlich: docs/begruendungen/db/database.ts.md#abschnitt-2
 
-// NUMERIC kommt als Zahl zurück, nicht als Zeichenkette
-// Seit db/migrations/0007 liegen alle Geldbeträge als NUMERIC in der Datenbank
-// statt als REAL — sonst rechnet Postgres in 32-Bit-Gleitkomma, und die Summe
-// aus 1000 Beträgen à 0.07 ergibt 69.99974 statt 70.00.
+// NUMERIC kommt als Zahl zurück, nicht als Zeichenkette: Geldspalten sind
+// NUMERIC(12,4), also höchstens 10^12 Zehntausendstel — weit unter 2^53, ein
+// double trifft jeden Wert so genau, dass Math.round(n * 10^4) ihn zurückgibt.
+// Gerechnet wird in utils/geld.ts in Zehntausendsteln, nie mit dem double selbst.
 // Ausführlich: docs/begruendungen/db/database.ts.md#abschnitt-3
 pgTypes.setTypeParser(pgTypes.builtins.NUMERIC, (v: any) => (v === null ? null : parseFloat(v)));
 
@@ -41,10 +41,9 @@ const POOL_CONFIG = {
   min:                    K.pgPoolMin,
   idleTimeoutMillis:      K.pgIdleMs,
   connectionTimeoutMillis:K.pgConnMs,
-  // Über die Verbindungsoptionen statt je Anfrage: statement_timeout, und die
-  // Zeitzone, in der der Trigger erfassung_tag() den Tag eines Kaufs bildet.
-  options:                `-c statement_timeout=${K.pgStmtMs}`
-                        + ` -c brickinventory.zeitzone=${K.erfassungZeitzone}`,
+  // Über die Verbindungsoptionen statt je Anfrage. Die Zeitzone des
+  // Erfassungstags steht in der Datenbank (schreibeErfassungsZeitzone).
+  options:                `-c statement_timeout=${K.pgStmtMs}`,
   keepAlive:              true,
   keepAliveInitialDelayMillis: 10000,
 };
@@ -338,12 +337,24 @@ async function initSchemaOnce() {
     // Vor offenen Migrationen eine Kopie der Nutzerdaten — nicht bei einer
     // eben angelegten, leeren Datenbank.
     const applied = await runMigrations(client, { sichern: !neu && !alt });
+    await schreibeErfassungsZeitzone(client);
     if (applied.length) console.log(`✅ ${applied.length} Migration(en) angewandt`);
     else if (!neu) console.log('✅ Schema aktuell — keine offenen Migrationen');
   } finally {
     await client.query(`SELECT pg_advisory_unlock(${LOCK_ID})`).catch(logAndContinue('db:pg_advisory_unlock'));
     client.release();
   }
+}
+
+/**
+ * Die konfigurierte Zeitzone für den Trigger erfassung_tag() (Migration
+ * 0078) — in der Datenbank, damit jede Verbindung denselben Tag rechnet.
+ */
+async function schreibeErfassungsZeitzone(client: import('pg').ClientBase): Promise<void> {
+  await client.query(
+    `INSERT INTO global_settings (key, value) VALUES ('erfassung_zeitzone', $1)
+     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
+     WHERE global_settings.value IS DISTINCT FROM EXCLUDED.value`, [konfig().erfassungZeitzone]);
 }
 
 /** Bestehende Datenbank, deren jüngste Migration aus der Zeit vor ALTBESTAND_BIS stammt. */
