@@ -140,6 +140,10 @@ test('Zusammenfassung stimmt mit der Live-Abfrage überein und veraltet nicht',
   await haeltTeil(db, U, '3001', { setNumber: 'A-1', menge: 3, colorId: 5 });
   await haeltTeil(db, U, '3001', { setNumber: 'B-1', menge: 4, colorId: 5 });
   await haeltTeil(db, U, '3002', { setNumber: 'A-1', menge: 1, colorId: 1 });
+  // Die Setliste für 3003 steht schon jetzt im Katalog; unten kommt nur die
+  // Bestandszeile dazu (eine Katalogänderung zöge die Gruppe sofort nach).
+  await db.run(`INSERT INTO set_teile (set_number, part_number, color_id, quantity) VALUES ('A-1','3003',2,9)
+                ON CONFLICT (set_number, part_number, color_id) DO UPDATE SET quantity = 9`);
 
   // Seit dem Fix baut ensureFresh() NICHT mehr im Request auf. Der erste
   // Zugriff eines Nutzers ohne Zusammenfassung wird deshalb aus der
@@ -158,7 +162,7 @@ test('Zusammenfassung stimmt mit der Live-Abfrage überein und veraltet nicht',
     'die Set-Menge muss in die Teilemenge eingehen');
 
   // Änderung an parts → Trigger → nächster Lesezugriff baut neu auf
-  await haeltTeil(db, U, '3003', { setNumber: 'A-1', menge: 9, colorId: 2 });
+  await db.run(`INSERT INTO parts (user_id, set_number, part_number, color_id, source) VALUES ($1,'A-1','3003',2,'set')`, [U]);
   // Der Lesezugriff darf jetzt NICHT mehr blockieren: Er liefert den alten
   // Stand und stösst den Aufbau nur an. Erst danach stimmen die Zahlen wieder.
   const stale = await H.getParts(U, { exclude_manual: '1', page: 1, page_size: 50 });

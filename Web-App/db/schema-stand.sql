@@ -105,7 +105,9 @@ CREATE TABLE bl_zuordnung (
   CONSTRAINT bl_zuordnung_pkey PRIMARY KEY (art, rb_id)
 );
 CREATE INDEX idx_bl_zuordnung_bl ON bl_zuordnung USING btree (art, bl_id);
-CREATE TRIGGER trg_bump_parts_katalog AFTER INSERT OR DELETE OR UPDATE ON bl_zuordnung FOR EACH STATEMENT EXECUTE FUNCTION bump_parts_katalog();
+CREATE TRIGGER trg_teilekatalog_del AFTER DELETE ON bl_zuordnung REFERENCING OLD TABLE AS alt FOR EACH STATEMENT EXECUTE FUNCTION merke_teilekatalog_alt();
+CREATE TRIGGER trg_teilekatalog_ins AFTER INSERT ON bl_zuordnung REFERENCING NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION merke_teilekatalog_neu();
+CREATE TRIGGER trg_teilekatalog_upd AFTER UPDATE ON bl_zuordnung REFERENCING OLD TABLE AS alt NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION merke_teilekatalog_beide();
 
 CREATE TABLE brickset_retry_queue (
   set_number text NOT NULL,
@@ -371,7 +373,9 @@ CREATE TABLE part_catalog (
 );
 CREATE INDEX idx_part_catalog_category ON part_catalog USING btree (category_name);
 CREATE INDEX idx_part_catalog_name_trgm ON part_catalog USING gin (lower(part_name) gin_trgm_ops);
-CREATE TRIGGER trg_bump_parts_katalog AFTER INSERT OR DELETE OR UPDATE ON part_catalog FOR EACH STATEMENT EXECUTE FUNCTION bump_parts_katalog();
+CREATE TRIGGER trg_teilekatalog_del AFTER DELETE ON part_catalog REFERENCING OLD TABLE AS alt FOR EACH STATEMENT EXECUTE FUNCTION merke_teilekatalog_alt();
+CREATE TRIGGER trg_teilekatalog_ins AFTER INSERT ON part_catalog REFERENCING NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION merke_teilekatalog_neu();
+CREATE TRIGGER trg_teilekatalog_upd AFTER UPDATE ON part_catalog REFERENCING OLD TABLE AS alt NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION merke_teilekatalog_beide();
 
 CREATE TABLE part_color_catalog (
   part_number text NOT NULL,
@@ -387,7 +391,9 @@ CREATE TABLE part_color_catalog (
   CONSTRAINT part_color_catalog_pkey PRIMARY KEY (part_number, color_id)
 );
 CREATE INDEX idx_part_color_catalog_bild_stamm ON part_color_catalog USING btree (bild_stamm(image_local)) WHERE (image_local IS NOT NULL);
-CREATE TRIGGER trg_bump_parts_katalog AFTER INSERT OR DELETE OR UPDATE ON part_color_catalog FOR EACH STATEMENT EXECUTE FUNCTION bump_parts_katalog();
+CREATE TRIGGER trg_teilekatalog_del AFTER DELETE ON part_color_catalog REFERENCING OLD TABLE AS alt FOR EACH STATEMENT EXECUTE FUNCTION merke_teilekatalog_alt();
+CREATE TRIGGER trg_teilekatalog_ins AFTER INSERT ON part_color_catalog REFERENCING NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION merke_teilekatalog_neu();
+CREATE TRIGGER trg_teilekatalog_upd AFTER UPDATE ON part_color_catalog REFERENCING OLD TABLE AS alt NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION merke_teilekatalog_beide();
 
 CREATE TABLE part_price_cache (
   id integer NOT NULL DEFAULT nextval('part_price_cache_id_seq'::regclass),
@@ -451,11 +457,10 @@ CREATE TRIGGER trg_bump_parts_version_del AFTER DELETE ON parts REFERENCING OLD 
 CREATE TRIGGER trg_bump_parts_version_ins AFTER INSERT ON parts REFERENCING NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION bump_parts_version_ins();
 CREATE TRIGGER trg_bump_parts_version_upd AFTER UPDATE ON parts REFERENCING OLD TABLE AS alt NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION bump_parts_version_upd();
 
-CREATE TABLE parts_katalog_stand (
-  id integer NOT NULL DEFAULT 1,
-  v bigint NOT NULL DEFAULT 0,
-  CONSTRAINT parts_katalog_stand_id_check CHECK ((id = 1)),
-  CONSTRAINT parts_katalog_stand_pkey PRIMARY KEY (id)
+CREATE TABLE parts_katalog_offen (
+  id bigint NOT NULL DEFAULT nextval('parts_katalog_offen_id_seq'::regclass),
+  nummer text NOT NULL,
+  CONSTRAINT parts_katalog_offen_pkey PRIMARY KEY (id)
 );
 
 CREATE TABLE parts_summary (
@@ -489,7 +494,6 @@ CREATE TABLE parts_summary_state (
   user_id integer NOT NULL,
   built_version bigint NOT NULL DEFAULT 0,
   built_at timestamp with time zone DEFAULT now(),
-  katalog_stand bigint NOT NULL DEFAULT '-1'::integer,
   CONSTRAINT parts_summary_state_pkey PRIMARY KEY (user_id),
   CONSTRAINT parts_summary_state_user_fk FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
@@ -753,7 +757,9 @@ CREATE TABLE set_teile (
   CONSTRAINT set_teile_setnummer_mit_version CHECK ((set_number ~ '-[0-9]+$'::text))
 );
 CREATE TRIGGER set_teile_setnummer BEFORE INSERT OR UPDATE OF set_number ON set_teile FOR EACH ROW EXECUTE FUNCTION setnummer_normalisieren();
-CREATE TRIGGER trg_bump_parts_katalog AFTER INSERT OR DELETE OR UPDATE ON set_teile FOR EACH STATEMENT EXECUTE FUNCTION bump_parts_katalog();
+CREATE TRIGGER trg_teilekatalog_del AFTER DELETE ON set_teile REFERENCING OLD TABLE AS alt FOR EACH STATEMENT EXECUTE FUNCTION merke_teilekatalog_alt();
+CREATE TRIGGER trg_teilekatalog_ins AFTER INSERT ON set_teile REFERENCING NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION merke_teilekatalog_neu();
+CREATE TRIGGER trg_teilekatalog_upd AFTER UPDATE ON set_teile REFERENCING OLD TABLE AS alt NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION merke_teilekatalog_beide();
 
 CREATE TABLE sets (
   id integer NOT NULL DEFAULT nextval('sets_id_seq'::regclass),
@@ -928,15 +934,6 @@ CREATE OR REPLACE FUNCTION bild_stamm(pfad text)
  IMMUTABLE PARALLEL SAFE STRICT
 AS $function$ SELECT regexp_replace(regexp_replace(pfad, '^.*/', ''), '\.[^.]*$', '') $function$;
 
-CREATE OR REPLACE FUNCTION bump_parts_katalog()
- RETURNS trigger
- LANGUAGE plpgsql
-AS $function$
-BEGIN
-  UPDATE parts_katalog_stand SET v = v + 1 WHERE id = 1;
-  RETURN NULL;
-END $function$;
-
 CREATE OR REPLACE FUNCTION bump_parts_version_del()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -1057,6 +1054,53 @@ AS $function$
                      WHERE k.waehrung = upper(w) AND k.tag <= t
                      ORDER BY k.tag DESC LIMIT 1) END
 $function$;
+
+CREATE OR REPLACE FUNCTION merke_teilekatalog_alt()
+ RETURNS trigger
+ LANGUAGE plpgsql
+AS $function$
+BEGIN
+  IF TG_TABLE_NAME = 'bl_zuordnung' THEN
+    INSERT INTO parts_katalog_offen (nummer)
+    SELECT DISTINCT x FROM alt, LATERAL (VALUES (alt.rb_id), (alt.bl_id)) v(x)
+     WHERE alt.art = 'part' AND x IS NOT NULL;
+  ELSE
+    INSERT INTO parts_katalog_offen (nummer) SELECT DISTINCT part_number FROM alt;
+  END IF;
+  RETURN NULL;
+END $function$;
+
+CREATE OR REPLACE FUNCTION merke_teilekatalog_beide()
+ RETURNS trigger
+ LANGUAGE plpgsql
+AS $function$
+BEGIN
+  IF TG_TABLE_NAME = 'bl_zuordnung' THEN
+    INSERT INTO parts_katalog_offen (nummer)
+    SELECT DISTINCT x FROM (SELECT art, rb_id, bl_id FROM alt UNION ALL SELECT art, rb_id, bl_id FROM neu) z,
+           LATERAL (VALUES (z.rb_id), (z.bl_id)) v(x)
+     WHERE z.art = 'part' AND x IS NOT NULL;
+  ELSE
+    INSERT INTO parts_katalog_offen (nummer)
+    SELECT DISTINCT part_number FROM (SELECT part_number FROM alt UNION ALL SELECT part_number FROM neu) z;
+  END IF;
+  RETURN NULL;
+END $function$;
+
+CREATE OR REPLACE FUNCTION merke_teilekatalog_neu()
+ RETURNS trigger
+ LANGUAGE plpgsql
+AS $function$
+BEGIN
+  IF TG_TABLE_NAME = 'bl_zuordnung' THEN
+    INSERT INTO parts_katalog_offen (nummer)
+    SELECT DISTINCT x FROM neu, LATERAL (VALUES (neu.rb_id), (neu.bl_id)) v(x)
+     WHERE neu.art = 'part' AND x IS NOT NULL;
+  ELSE
+    INSERT INTO parts_katalog_offen (nummer) SELECT DISTINCT part_number FROM neu;
+  END IF;
+  RETURN NULL;
+END $function$;
 
 CREATE OR REPLACE FUNCTION set_nummer_mit_version(n text)
  RETURNS text

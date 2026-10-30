@@ -21,6 +21,8 @@ export const LOCKS = {
   CSV_IMPORT:         58,
   /** Teile-Zusammenfassung je Nutzer — zweiter Wert: user_id. */
   TEILE_SUMMARY:      77,
+  /** Nachziehen von Katalogänderungen in die Teile-Zusammenfassung (Migration 0079). */
+  TEILE_KATALOG:      79,
   /** Bestandszeile je Nutzer (utils/txLock.ts) — zweiter Wert: hashtext('<user_id>|<schlüssel>'). */
   INVENTAR:           61,
   /** Brickset-Wiedervorlage. */
