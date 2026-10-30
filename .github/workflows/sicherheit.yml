@@ -64,13 +64,16 @@ jobs:
           build-mode: ${{ matrix.bau }}
           queries: security-extended
 
-      # Kotlin braucht einen echten Übersetzungslauf, sonst sieht CodeQL nichts.
+      # Kotlin braucht einen echten Übersetzungslauf, sonst sieht CodeQL nichts:
+      # ohne Build-Cache (sonst kommt compileKotlin FROM-CACHE) und mit dem
+      # Übersetzer im Gradle-Prozess, den CodeQL mitschneidet.
       - name: App übersetzen
         if: matrix.bau == 'manual'
         working-directory: Android-App
         run: |
           chmod +x gradlew
-          ./gradlew --no-daemon assembleDebug
+          ./gradlew --no-daemon --no-build-cache --rerun-tasks \
+            -Pkotlin.compiler.execution.strategy=in-process assembleDebug
 
       - uses: github/codeql-action/analyze@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
         with:

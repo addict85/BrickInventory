@@ -72,3 +72,11 @@ test('Basis-Images stehen per Digest fest', () => {
   assert.ok([...quellen.Dockerfile.matchAll(/^FROM /gm)].length >= 2, 'FROM-Zeilen nicht gefunden');
   assert.deepEqual(lose, []);
 });
+
+// Gegenprobe (30.10.2026): die rm-Zeile im Laufzeit-Stage entfernt → rot.
+test('das Laufzeit-Image trägt kein npm, corepack oder yarn', () => {
+  const df = fs.readFileSync(path.join(ROOT, 'Dockerfile'), 'utf8');
+  const laufzeit = df.split(/^FROM /m).pop().split('\n').filter(l => !l.trim().startsWith('#')).join('\n');
+  for (const pfad of ['/usr/local/lib/node_modules', '/usr/local/bin/npm', '/usr/local/bin/corepack', '/opt/yarn-'])
+    assert.ok(laufzeit.includes(pfad), `${pfad} bleibt im Laufzeit-Image`);
+});

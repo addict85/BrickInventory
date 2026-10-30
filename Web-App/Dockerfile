@@ -170,6 +170,10 @@ WORKDIR /app
 
 # su-exec for privilege dropping
 RUN apk add --no-cache su-exec
+# Zur Laufzeit startet nur `node`; npm, corepack und yarn des Basis-Images
+# brächten fremde Pakete mit eigenen Lücken ins Image (Trivy).
+RUN rm -rf /usr/local/lib/node_modules /usr/local/bin/npm /usr/local/bin/npx \
+           /usr/local/bin/corepack /usr/local/bin/yarn /usr/local/bin/yarnpkg /opt/yarn-*
 
 RUN addgroup -S brickinv && adduser -S brickinv -G brickinv
 
