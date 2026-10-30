@@ -1,6 +1,7 @@
 package ch.brickinventoryapp.widget
 
 import android.content.Context
+import androidx.core.content.edit
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -57,12 +58,13 @@ internal object WidgetAblage {
     }.getOrNull()
 
     fun leeren(ctx: Context) {
-        ctx.getSharedPreferences(DATEI, Context.MODE_PRIVATE).edit().remove(SCHLUESSEL).apply()
+        ctx.getSharedPreferences(DATEI, Context.MODE_PRIVATE).edit { remove(SCHLUESSEL) }
     }
 
     fun schreibe(ctx: Context, z: WidgetZahlen) {
-        ctx.getSharedPreferences(DATEI, Context.MODE_PRIVATE).edit()
-            .putString(SCHLUESSEL, ApiJson.encodeToString(WidgetZahlen.serializer(), z)).apply()
+        ctx.getSharedPreferences(DATEI, Context.MODE_PRIVATE).edit {
+            putString(SCHLUESSEL, ApiJson.encodeToString(WidgetZahlen.serializer(), z))
+        }
     }
 }
 

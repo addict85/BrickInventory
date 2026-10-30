@@ -471,7 +471,8 @@ fun LazyListScope.setDetailHeroImage(
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
         ) {
             if (imageUrl != null) {
-                AsyncImage(
+                ch.brickinventoryapp.ui.components.GemeinsamesBild(set.setNumber) { bild ->
+                    AsyncImage(
                     model = coil3.request.ImageRequest.Builder(LocalContext.current)
                         .data(imageUrl)
                         .memoryCacheKeyExtra("retry", detailRetry.intValue.toString())
@@ -487,13 +488,14 @@ fun LazyListScope.setDetailHeroImage(
                             }
                         }
                     },
-                    modifier = ch.brickinventoryapp.ui.components.gemeinsamesBild(set.setNumber)
+                    modifier = bild
                         .fillMaxWidth()
                         .height(200.dp)
                         .clip(Formen.chip)
                         .clickable(role = Role.Button) { onZoom() },
                     contentScale = ContentScale.Fit
                 )
+                }
             } else {
                 Box(
                     Modifier

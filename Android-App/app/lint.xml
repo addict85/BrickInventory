@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Keine Baseline: Hier stehen nur Befunde, die bewusst so gewollt sind, je mit Grund. -->
+<lint>
+    <!-- Schweizer Rechtschreibung (ss statt ß, die App rechnet in CHF); Lint prüft
+         gegen die bundesdeutsche und hielte „Vergrössern“ für einen Tippfehler. -->
+    <issue id="Typos">
+        <ignore path="src/main/res/values-de/strings.xml" />
+    </issue>
+</lint>

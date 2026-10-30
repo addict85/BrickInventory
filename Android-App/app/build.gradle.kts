@@ -218,6 +218,14 @@ android {
             "**/libandroidx.graphics.path.so"
         )
     }
+    // Die Sprache wechselt in der App (LanguageManager); im App-Bundle müssen darum
+    // alle Sprachen im Basis-APK liegen, sonst fehlten die Texte der anderen.
+    bundle {
+        language {
+            enableSplit = false
+        }
+    }
+
     buildFeatures {
         compose = true
         // BuildConfig wird fuer BuildConfig.DEBUG benoetigt (Logging nur im Debug-Build)
