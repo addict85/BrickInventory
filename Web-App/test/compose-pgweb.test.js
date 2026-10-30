@@ -102,6 +102,7 @@ test('kein Dienst gewinnt Rechte, jeder hat nur die nötigen Capabilities', () =
     postgres: ['CHOWN', 'DAC_OVERRIDE', 'FOWNER', 'SETGID', 'SETUID'],
     app:      ['CHOWN', 'DAC_OVERRIDE', 'SETGID', 'SETUID'],
     pgweb:    [],
+    caddy:    ['NET_BIND_SERVICE'],
   };
   for (const [dienst, caps] of Object.entries(erwartet)) {
     const block = leseDienst(compose, dienst);
@@ -130,17 +131,40 @@ test('die App schreibt nur in ./data und /tmp — der Entrypoint auch', () => {
 });
 
 // Gegenproben (am 30.10.2026 gemessen): Vorgabe wieder `${TRUST_PROXY:-docker}` →
-// rot „TRUST_PROXY ohne Angabe …“; `ipam` am Netz entfernt → rot „… festes Subnetz“;
-// pgweb wieder ohne Digest → rot „pgweb ist nicht per Digest …“.
-test('TRUST_PROXY ohne Angabe ist Loopback, das Netz hat ein festes Subnetz', () => {
+// rot „TRUST_PROXY vertraut genau Caddy …“; `ipam` am Netz entfernt → rot „… festes
+// Subnetz“; pgweb wieder ohne Digest → rot „pgweb ist nicht per Digest …“;
+// `sign_with_root` aus dem Caddyfile entfernt → rot „Caddy: …“; Port 3000 der
+// App wieder veröffentlicht → rot „die App ist nur über Caddy erreichbar“.
+test('TRUST_PROXY vertraut genau Caddy, das Netz hat ein festes Subnetz', () => {
   const app = leseDienst(compose, 'app');
-  assert.match(app, /^\s*TRUST_PROXY:\s*\$\{TRUST_PROXY:-\}\s*$/m, 'TRUST_PROXY ohne Angabe ist nicht leer (= Loopback)');
+  const caddy = leseDienst(compose, 'caddy');
+  const adresse = caddy.match(/ipv4_address:\s*(\S+)/)?.[1];
+  assert.equal(adresse, '172.28.73.10', 'Caddy hat keine feste Adresse');
+  assert.match(app, /^\s*TRUST_PROXY:\s*\$\{TRUST_PROXY:-172\.28\.73\.10\}\s*$/m,
+    'TRUST_PROXY nennt ohne Angabe nicht genau Caddy');
   const { proxyVertrauen } = require('./helpers/sources').buildAndRequire()('utils/proxyVertrauen.js');
-  const vorgabe = proxyVertrauen('');
-  assert.equal(typeof vorgabe, 'function');
-  assert.equal(vorgabe('172.28.73.10'), false, 'ohne Angabe wird dem Compose-Netz vertraut');
+  assert.deepEqual(proxyVertrauen(adresse), ['172.28.73.10'], 'geglaubt wird genau Caddy, kein ganzes Netz');
   const netz = compose.slice(compose.indexOf('\nnetworks:'));
   assert.match(netz, /subnet:\s*172\.28\.73\.0\/24/, 'brickinventory-net hat kein festes Subnetz');
+});
+
+test('die App ist nur über Caddy erreichbar', () => {
+  const app = leseDienst(compose, 'app').split('\n').filter(z => !/^\s*#/.test(z)).join('\n');
+  assert.doesNotMatch(app, /^\s*ports:/m, 'die App veröffentlicht einen Port am Proxy vorbei');
+  const caddy = leseDienst(compose, 'caddy');
+  assert.match(caddy, /:443:443"/);
+  assert.match(caddy, /:80:80"/);
+  assert.match(caddy, /^\s*image:\s*caddy:\S+@sha256:[0-9a-f]{64}\s*$/m, 'Caddy ist nicht per Digest festgelegt');
+  assert.match(app, /\.\/caddy\/data\/caddy\/pki\/authorities\/local:\/caddy-ca:ro/, 'die CA ist nicht nur lesend eingehängt');
+});
+
+test('Caddy: interne CA, Wurzel in der Kette, eigene Anfragekennung, /ca.crt im Klartext', () => {
+  const datei = fs.readFileSync(path.join(ROOT, 'Caddyfile'), 'utf8')
+    .split('\n').filter(z => !/^\s*#/.test(z)).join('\n');
+  assert.match(datei, /issuer internal \{\s*sign_with_root\s*\}/, 'Caddy liefert die Wurzel nicht in der Kette aus');
+  assert.match(datei, /reverse_proxy app:3000 \{[^}]*header_up X-Request-Id \{http\.request\.uuid\}/);
+  assert.match(datei, /http:\/\/ \{[\s\S]*handle \/ca\.crt[\s\S]*redir /, 'Port 80 leitet nicht um');
+  assert.match(datei, /default_sni \{\$BRICK_HOST\}/);
 });
 
 test('pgweb ist per Digest festgelegt, kein Dienst hat ein Ersatz-Datenbankpasswort', () => {

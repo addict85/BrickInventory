@@ -3,7 +3,7 @@ import type { Request, Response, NextFunction } from 'express';
 import { konfig } from './startup/konfigPruefen';
 // Protokoll zuerst: Ab hier ist jede console-Zeile eine JSON-Zeile auf
 // stdout/stderr und geht nach app_logs, sobald der Pool steht.
-import { installiereProtokoll, protokollInDieDatenbank, leereProtokoll, anfrageKontext } from './utils/protokoll';
+import { installiereProtokoll, protokollInDieDatenbank, leereProtokoll, anfrageKontext, anfrageKennung } from './utils/protokoll';
 installiereProtokoll();
 
 import fs from 'fs';
@@ -14,7 +14,7 @@ import compression from 'compression';
 import connectPgSimple from 'connect-pg-simple';
 import * as db from './db/database';
 import { fehlertext, logAndContinue, meldeUndWeiter, handleRouteError } from './utils/httpError';
-import { startVerbote } from './utils/konfig';
+import { startVerbote, cookieSicher } from './utils/konfig';
 import { bereiteDatenbankVor } from './startup/datenbank';
 import { starteJobs, stoppeJobs } from './startup/jobsProzess';
 import { verdrahte } from './jobs/verdrahtung';
@@ -41,6 +41,8 @@ import datenDateien = require('./routes/datenDateien');
 import apiV1Router = require('./routes/api_v1/index');
 import settingsRouter = require('./routes/settings');
 import authRouter = require('./routes/auth');
+import passkeysRouter = require('./routes/passkeys');
+import zertifikatRouter = require('./routes/zertifikat');
 
 /**
  * Anfrage einer Wildcard-Route (`app.get('/images/*pfad', …)`).
@@ -191,14 +193,10 @@ app.use('/api', (_req, res, next) => {
   next();
 }, appFassungPruefen);
 
-// Jede Anfrage bekommt eine kurze Kennung, die in allen Logzeilen dieser
-// Anfrage erscheint (utils/protokoll.ts). Ein vom Reverse-Proxy gesetzter
-// X-Request-Id-Header wird übernommen, damit sich Proxy- und App-Log
-// zusammenführen lassen.
-let _ridSeq = 0;
+// Jede Anfrage bekommt eine kurze Kennung für alle ihre Logzeilen; die des
+// Proxys nur, wenn sie die Prüfung in utils/protokoll.ts besteht.
 app.use((req, res, next) => {
-  const incoming = String(req.headers['x-request-id'] || '').slice(0, 32);
-  const rid = incoming || (_ridSeq = (_ridSeq + 1) % 100000).toString(36).padStart(4, '0');
+  const rid = anfrageKennung(req.headers['x-request-id']);
   res.setHeader('X-Request-Id', rid);
   anfrageKontext.run({ rid }, () => next());
 });
@@ -237,13 +235,15 @@ app.use(session({
     sameSite: 'lax',
     // Cookie nur über HTTPS senden. Default: in Produktion aktiv; per
     // COOKIE_SECURE=0 abschaltbar, falls (ausnahmsweise) ohne TLS betrieben.
-    secure: konfig().cookieSecure ?? konfig().produktion,
+    secure: cookieSicher(konfig()),
   }
 }));
 app.use(sitzungsHoechstdauer());
 
 // Eigene und geteilte Anleitungen unter /data/ — samt Pfad- und Besitzerprüfung.
 app.use(datenDateien);
+// Wurzelzertifikat der internen CA (öffentlich, routes/zertifikat.ts).
+app.use(zertifikatRouter);
 registerImgProxy(app);
 
 // Alle Bilder: Sets, Teile, Minifiguren
@@ -358,6 +358,7 @@ app.use('/api/v1',          anmeldungAmEingang);
 app.use('/api/v1',          apiV1Router);
 app.use('/api/v1/settings', settingsRouter);
 app.use('/api/v1/auth',     authRouter);
+app.use('/api/v1/auth',     passkeysRouter);
 
 // ── E-Mail Bestätigung: /verify?token=... ─────────────────────────────────────
 // Der Link kommt aus einer E-Mail: Die Antwort ist eine Seite, kein JSON.

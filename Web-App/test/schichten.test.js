@@ -226,7 +226,7 @@ test('keine Route führt SQL aus oder importiert die Datenbank', () => {
 });
 
 test('keine Route importiert aus jobs/ oder clients/', () => {
-  // Jobs steuert eine Route über utils/nacharbeit.ts und utils/jobsteuerung.ts,
+  // Jobs steuert eine Route über utils/nacharbeit.ts und die Auftragstabelle,
   // fremde Dienste erreicht sie über einen Dienst in utils/.
   // Gegenprobe (29.10.2026): `import { triggerNow } from '../../jobs/priceJob'`
   // in admin.ts und `import { getSetByEan } from '../../clients/brickset'` in

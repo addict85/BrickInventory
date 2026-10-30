@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <string name="app_name">BrickInventory Manager</string>
     <!-- Die Sprachkennung DIESER Ressourcen. Wird an den Server geschickt
          (Registrierung: Sprache der Bestaetigungs-E-Mail und des neuen Kontos).
@@ -75,7 +75,8 @@
     <string name="chart_period_max">Max</string>
 
     <!-- ══════════════ Comparison screen ══════════════ -->
-    <string name="comparison_search_placeholder">e.g. 75192-1 or barcode</string>
+    <!-- „75192-1“ ist eine Setnummer, kein Bereich: kein Gedankenstrich. -->
+    <string name="comparison_search_placeholder" tools:ignore="TypographyDashes">e.g. 75192-1 or barcode</string>
     <string name="comparison_search">Search</string>
     <string name="comparison_scan_new">New</string>
     <string name="comparison_scan">Scan</string>
@@ -139,7 +140,7 @@
     <string name="gallery_add_set">Add set</string>
     <string name="gallery_add_set_title">Add set</string>
     <string name="gallery_set_number">Set number</string>
-    <string name="gallery_set_number_placeholder">e.g. 75192-1 or 75192</string>
+    <string name="gallery_set_number_placeholder" tools:ignore="TypographyDashes">e.g. 75192-1 or 75192</string>
     <string name="gallery_purchase_price">Purchase price (optional)</string>
     <string name="gallery_add">Add</string>
 

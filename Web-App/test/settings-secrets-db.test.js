@@ -83,6 +83,7 @@ const AUSGENOMMEN = new Map([
               'Werte (test/einstellungen-pruefung-db.test.js).'],
   ['/export/data', 'ZIP mit Sets/Teilen/Minifiguren als CSV — enthält gar keine ' +
                    'Einstellungen und liefert kein JSON.'],
+  ['/tls', 'Gibt den öffentlichen Fingerabdruck der CA heraus, keine Einstellungen.'],
   ['/theme', 'Gibt genau einen Wert heraus (den Designnamen) und ist bewusst ' +
              'ohne Login erreichbar, damit der Login-Bildschirm passt.'],
   ['/tokens', 'Listet App-Token, keine Einstellungen. Die Token selbst stehen ' +

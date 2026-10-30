@@ -122,6 +122,14 @@ async function starteApp(t, opt = {}) {
   t.after(() => b.schliessen());
   await b.tab('Runtime.enable');
   await b.tab('Page.enable');
+  // Jede 401 ab dem Start: Wirft die Oberfläche später zur Anmeldung zurück,
+  // nennt der Test damit die Anfrage, die die Sitzung beendet hat.
+  const abgewiesen = [];
+  await b.tab('Network.enable');
+  b.hoerer.push((d) => {
+    if (d.method === 'Network.responseReceived' && d.params.response.status === 401)
+      abgewiesen.push(d.params.response.url.replace(/^https?:\/\/[^/]+/, ''));
+  });
   if (opt.abfangen?.length) {
     await b.tab('Fetch.enable', { patterns: opt.abfangen.map(a => ({ urlPattern: a.muster, requestStage: 'Request' })) });
     b.hoerer.push((d) => {
@@ -164,7 +172,7 @@ async function starteApp(t, opt = {}) {
     if (document.querySelector('.ntab[data-tab="settings"]')?.classList.contains('active')) return true;
     const g = document.getElementById('gallery');
     return !!g && g.children.length > 0 && !g.querySelector('.skelett-raster'); })()`, 'Start abgeschlossen');
-  return { b, bis, warte, port, uid, db };
+  return { b, bis, warte, port, uid, db, abgewiesen };
 }
 
 module.exports = { starteApp, warte };

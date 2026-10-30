@@ -1,6 +1,7 @@
 import { randomUUID } from 'crypto';
 import * as db from '../db/database';
 import { notify } from './pgNotify';
+import { imNamenVon } from './anfrageKonto';
 
 /**
  * Die Auftragstabelle (Migrationen 0066, 0080): jede Hintergrundarbeit als
@@ -249,4 +250,16 @@ export async function zaehleArt(art: AuftragsArt): Promise<Record<AuftragsStatus
   const aus = { offen: 0, laeuft: 0, erledigt: 0, fehler: 0, abgebrochen: 0 };
   for (const z of zeilen) aus[z.status] = z.n;
   return aus;
+}
+
+/**
+ * Einen Auftrag im Namen des Kontos ausführen, das ihn eingestellt hat. Sonst
+ * zählte ein CSV-Import eines Unterkontos als Hintergrund und umginge dessen
+ * Anteil am Fremdkontingent (utils/apiKontingent.ts). Die Rolle gilt, wie sie
+ * jetzt ist, nicht wie beim Einstellen.
+ */
+export async function imNamenDesAuftrags<T>(a: Pick<AuftragsZeile, 'user_id'>, f: () => Promise<T>): Promise<T> {
+  if (a.user_id == null) return f();
+  const u = await db.get<{ is_admin: number | boolean }>('SELECT is_admin FROM users WHERE id = $1', [a.user_id]);
+  return imNamenVon({ apiUser: { user_id: a.user_id, is_admin: u?.is_admin === true || Number(u?.is_admin) === 1 ? 1 : 0 } }, f);
 }

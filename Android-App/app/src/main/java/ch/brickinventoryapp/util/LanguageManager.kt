@@ -40,6 +40,9 @@ object LanguageManager {
      * wendet das System die per-App-Sprache selbst auf den ganzen Prozess an,
      * dort ist der Context unverändert richtig.
      */
+    // Das App-Bundle trennt die Sprachen nicht (build.gradle.kts, bundle.language),
+    // und verteilt wird ohnehin das APK: Alle Texte sind immer an Bord.
+    @Suppress("AppBundleLocaleChanges")
     fun localizedContext(base: android.content.Context): android.content.Context {
         if (android.os.Build.VERSION.SDK_INT >= 33) return base
         val locales = AppCompatDelegate.getApplicationLocales()

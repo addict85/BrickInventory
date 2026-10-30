@@ -15,7 +15,7 @@
  * Gegenprobe zum Statusstrom (am 28.10.2026 gemessen): in schreibeAuftrag()
  * das notify() entfernt → rot: „der Statusstrom meldet das Ende sofort“
  * (erst der 15-Sekunden-Rückfall hätte es gemeldet). Seit der Status im
- * Auftrag steht (Migration 0081) am 30.10.2026 wiederholt: in erledigt()
+ * Auftrag steht (Migration 0083) am 30.10.2026 wiederholt: in erledigt()
  * (utils/auftraege.ts) meldeStand() entfernt → rot: derselbe Test.
  *
  * Voraussetzung: Test-DB (Inhalt wird geleert!) via TEST_DATABASE_URL.

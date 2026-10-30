@@ -247,7 +247,8 @@ test('der Kommentaranteil im Server sinkt, nie steigt', () => {
   // GEMESSEN am 28.10.2026: 33,4 % der nichtleeren Zeilen in server.ts,
   // routes/, utils/ und jobs/ (25.10.: 50,5 %, siehe CLAUDE.md).
   // 29.10.2026: 32,44 %. 30.10.2026: 30,6 % (Kommentare der umgebauten Dateien gekürzt).
-  const SCHRANKE = 30.7;
+  // 30.10.2026: 30,0 % (Cluster, Planer und Warteschlangen entfallen).
+  const SCHRANKE = 30.1;
   let zeilen = 0, kommentar = 0;
   for (const f of quellen().filter(f => /[\\/](routes|utils|jobs)[\\/]|[\\/]server\.ts$/.test(f))) {
     for (const z of fs.readFileSync(f, 'utf8').split('\n')) {

@@ -168,8 +168,10 @@
         <div class="fg"><label for="lu" data-i18n="login.email_or_user">Benutzername oder E-Mail</label><input type="text" id="lu" autocomplete="username" /></div>
         <div class="fg"><label for="lp" data-i18n="login.password">Passwort</label><input type="password" id="lp" autocomplete="current-password" /></div>
         <!-- Erst sichtbar, wenn der Server einen zweiten Faktor verlangt (utils/zweiterFaktor.ts). -->
-        <div class="fg" id="lc-zeile" data-stil="display:none"><label for="lc" data-i18n="login.code">Code aus der Authenticator-App</label><input type="text" id="lc" inputmode="numeric" autocomplete="one-time-code" maxlength="12" /><div class="text-klein abstand-o-3" data-i18n="login.code_hint">Oder einer deiner Wiederherstellungscodes.</div></div>
+        <div class="fg" id="lc-zeile" data-stil="display:none"><label for="lc" data-i18n="login.code">Code aus der Authenticator-App</label><input type="text" id="lc" inputmode="numeric" autocomplete="one-time-code" maxlength="12" /><div class="text-klein abstand-o-3" data-i18n="login.code_hint">Oder einer deiner Wiederherstellungscodes.</div>
+          <button type="button" class="btn bs btn-sm abstand-o-075" id="lc-passkey" data-click="passkeyZweiterFaktor" data-i18n="pk.statt_code" hidden>Passkey statt Code verwenden</button></div>
         <button type="button" class="btn bp knopf-breit" id="btn-login" data-i18n="login.submit">Anmelden</button>
+        <button type="button" class="btn bs knopf-breit abstand-o-075" id="btn-passkey" data-click="passkeyAnmelden" data-i18n="pk.login" hidden>Mit Passkey anmelden</button>
       </form>
       <div data-stil="display:flex;justify-content:space-between;margin-top:.85rem;font-size:var(--fs-2)">
         <a class="farbe-primaer" href="#" id="link-forgot" data-i18n="login.forgot">Passwort vergessen?</a>
@@ -1091,6 +1093,13 @@
         <div id="zf-flaeche"></div>
       </div>
 
+      <!-- Passkeys — Inhalt zeichnet js/23-passkeys.js -->
+      <div class="ssec abstand-u-125">
+        <div class="stit" data-i18n="pk.title" data-ico="schluessel">Passkeys</div>
+        <p class="hinweis-absatz abstand-u-075" data-i18n="pk.hint">Anmelden ohne Passwort mit Fingerabdruck, Gesicht oder Geräte-PIN. Mit eingeschaltetem zweitem Faktor ersetzt ein Passkey auch den Code.</p>
+        <div id="pk-flaeche"></div>
+      </div>
+
       <!-- Gefahrenzone — für alle Benutzer sichtbar -->
       <div class="sgroup-label text-gefahr" data-i18n="settings.danger_zone" data-ico="warnung">Gefahrenzone</div>
       <div class="ssec gefahrenzone">
@@ -1491,7 +1500,7 @@
               <option value="2m" data-i18n="qr.validity_2m">2 Monate</option>
               <option value="6m" data-i18n="qr.validity_6m">6 Monate</option>
               <option value="12m" data-i18n="qr.validity_12m">12 Monate</option>
-              <option value="unbegrenzt" data-i18n="qr.validity_unlimited">Unbegrenzt</option>
+              <option value="unbegrenzt" data-i18n="qr.validity_unlimited">Unbegrenzt (nur HTTPS, mit Rotation)</option>
             </select>
           </div>
           <form class="durchlaessig" data-submit="btn-gen-qr">
@@ -1509,6 +1518,12 @@
           <div class="text-klein" id="qr-access-hint"></div>
           <div class="text-klein hinweis-warnung" id="qr-tls-hint" role="note" hidden></div>
         </div>
+      </div>
+
+      <!-- Server-Zertifikat: Fingerabdruck der CA-Wurzel zum Abgleich (js/05-settings.js, ladeTls) -->
+      <div class="ssec abstand-u-125">
+        <div class="stit" data-i18n="tls.title" data-ico="schloss">Server-Zertifikat</div>
+        <div id="tls-flaeche"></div>
       </div>
 
       <!-- Angemeldete Geraete: die ausgestellten Zugaenge sehen und entwerten -->

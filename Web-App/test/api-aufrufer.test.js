@@ -133,6 +133,10 @@ const OHNE_AUFRUFER = new Map([
     'Gegen BrickLink selbst geht das nicht (deren API kennt nur einzelne ' +
     'Artikel und drosselt) — deshalb existiert die Route, benutzt wird sie ' +
     'noch nicht.'],
+  ['POST /api/v1/auth/token-rotieren',
+    'Tausch des App-Tokens (Rotation). Gebaut für die Android-App, die ihn ' +
+    'nach ihrem Umbau ruft (X-Token-Rotation, token_rotation_noetig); dann ' +
+    'gehört dieser Eintrag weg.'],
   ['POST /api/v1/auth/token-create',
     'Stellt einen App-Token für eine bereits bestehende Anmeldung aus ' +
     '(Sitzung ODER Token). Die App holt ihren Token beim Anmelden, die Webapp ' +

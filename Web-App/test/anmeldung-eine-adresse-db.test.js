@@ -107,7 +107,8 @@ test('eine Adresse, zwei Ausweise — durchgespielt', { concurrency: 1 }, async 
     // antwortet jetzt nur ehrlich: „ohne Ablauf" ist der Token nur noch, wenn
     // die Frist ganz abgeschaltet ist (TOKEN_IDLE_DAYS=0).
     const app1 = await ruf('/login', { method: 'POST',
-      body: { username: NAME, password: PASS, label: 'Android App', never_expires: true } });
+      // Scope `voll`: Verwalterrechte bekommt ein Token nur auf ausdrücklichen Wunsch.
+      body: { username: NAME, password: PASS, label: 'Android App', never_expires: true, scope: 'voll' } });
     assert.equal(app1.status, 200, `Anmeldung der App scheiterte: ${JSON.stringify(app1.body)}`);
     assert.equal(app1.body.never_expires, false,
       'Bei eingeschalteter Gleitfrist ist kein Token „ohne Ablauf" — die Antwort darf das nicht behaupten');

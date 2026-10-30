@@ -329,7 +329,13 @@ CREATE TABLE public.api_tokens (
     sliding boolean DEFAULT false NOT NULL,
     hard_expires_at timestamp with time zone,
     never_expires boolean DEFAULT false NOT NULL,
-    label text
+    label text,
+    scope text DEFAULT 'app'::text NOT NULL,
+    ip_bereich text,
+    rotiert_am timestamp with time zone DEFAULT now() NOT NULL,
+    vorgaenger text,
+    ersetzt_durch text,
+    CONSTRAINT api_tokens_scope_check CHECK ((scope = ANY (ARRAY['app'::text, 'voll'::text])))
 );
 
 --
@@ -1003,6 +1009,40 @@ CREATE TABLE public.parts_version_user (
     user_id integer NOT NULL,
     v bigint DEFAULT 0 NOT NULL
 );
+
+--
+-- Name: passkeys; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.passkeys (
+    id integer NOT NULL,
+    user_id integer NOT NULL,
+    credential_id text NOT NULL,
+    public_key bytea NOT NULL,
+    sign_count bigint DEFAULT 0 NOT NULL,
+    transports text,
+    name text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    last_used timestamp with time zone
+);
+
+--
+-- Name: passkeys_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.passkeys_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+--
+-- Name: passkeys_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.passkeys_id_seq OWNED BY public.passkeys.id;
 
 --
 -- Name: price_alerts; Type: TABLE; Schema: public; Owner: -
@@ -1689,6 +1729,18 @@ CREATE TABLE public.wanted (
 );
 
 --
+-- Name: webauthn_challenges; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.webauthn_challenges (
+    challenge text NOT NULL,
+    user_id integer,
+    zweck text NOT NULL,
+    expires_at timestamp with time zone NOT NULL,
+    CONSTRAINT webauthn_challenges_zweck_check CHECK ((zweck = ANY (ARRAY['registrieren'::text, 'anmelden'::text, 'zweiter_faktor'::text])))
+);
+
+--
 -- Name: wechselkurse; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1836,6 +1888,12 @@ ALTER TABLE ONLY public.parts ALTER COLUMN id SET DEFAULT nextval('public.parts_
 --
 
 ALTER TABLE ONLY public.parts_katalog_offen ALTER COLUMN id SET DEFAULT nextval('public.parts_katalog_offen_id_seq'::regclass);
+
+--
+-- Name: passkeys id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.passkeys ALTER COLUMN id SET DEFAULT nextval('public.passkeys_id_seq'::regclass);
 
 --
 -- Name: price_cache id; Type: DEFAULT; Schema: public; Owner: -
@@ -2175,6 +2233,20 @@ ALTER TABLE ONLY public.parts_version_user
     ADD CONSTRAINT parts_version_user_pkey PRIMARY KEY (user_id);
 
 --
+-- Name: passkeys passkeys_credential_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.passkeys
+    ADD CONSTRAINT passkeys_credential_id_key UNIQUE (credential_id);
+
+--
+-- Name: passkeys passkeys_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.passkeys
+    ADD CONSTRAINT passkeys_pkey PRIMARY KEY (id);
+
+--
 -- Name: price_alerts price_alerts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2404,6 +2476,13 @@ ALTER TABLE ONLY public.vouchers
 
 ALTER TABLE ONLY public.vouchers
     ADD CONSTRAINT vouchers_user_id_number_key UNIQUE (user_id, number);
+
+--
+-- Name: webauthn_challenges webauthn_challenges_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.webauthn_challenges
+    ADD CONSTRAINT webauthn_challenges_pkey PRIMARY KEY (challenge);
 
 --
 -- Name: wechselkurse wechselkurse_pkey; Type: CONSTRAINT; Schema: public; Owner: -
@@ -2717,6 +2796,12 @@ CREATE INDEX idx_parts_summary_color ON public.parts_summary USING btree (user_i
 CREATE INDEX idx_parts_summary_sort ON public.parts_summary USING btree (user_id, color_name, part_name);
 
 --
+-- Name: idx_passkeys_konto; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_passkeys_konto ON public.passkeys USING btree (user_id);
+
+--
 -- Name: idx_price_alerts_set; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -2877,6 +2962,18 @@ CREATE INDEX idx_verwaltungsprotokoll_zeit ON public.verwaltungsprotokoll USING 
 --
 
 CREATE INDEX idx_wanted_user ON public.wanted USING btree (user_id, created_at DESC);
+
+--
+-- Name: idx_webauthn_challenges_frist; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_webauthn_challenges_frist ON public.webauthn_challenges USING btree (expires_at);
+
+--
+-- Name: idx_webauthn_challenges_konto; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_webauthn_challenges_konto ON public.webauthn_challenges USING btree (user_id);
 
 --
 -- Name: idx_zweiter_faktor_codes_konto; Type: INDEX; Schema: public; Owner: -
@@ -3311,6 +3408,13 @@ ALTER TABLE ONLY public.parts_version_user
     ADD CONSTRAINT parts_version_user_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
 
 --
+-- Name: passkeys passkeys_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.passkeys
+    ADD CONSTRAINT passkeys_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+--
 -- Name: price_alerts price_alerts_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3381,6 +3485,13 @@ ALTER TABLE ONLY public.vouchers
     ADD CONSTRAINT vouchers_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
 
 --
+-- Name: webauthn_challenges webauthn_challenges_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.webauthn_challenges
+    ADD CONSTRAINT webauthn_challenges_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+--
 -- Name: wanted wishlist_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3442,7 +3553,7 @@ INSERT INTO public.global_settings (key, value, updated_at) VALUES ('smtp_user',
 INSERT INTO public.global_settings (key, value, updated_at) VALUES ('smtp_pass', '', '2026-10-28 17:10:03.355398+00');
 INSERT INTO public.global_settings (key, value, updated_at) VALUES ('smtp_from', '', '2026-10-28 17:10:03.355398+00');
 INSERT INTO public.global_settings (key, value, updated_at) VALUES ('smtp_secure', '0', '2026-10-28 17:10:03.355398+00');
-INSERT INTO public.global_settings (key, value, updated_at) VALUES ('erfassung_zeitzone', 'UTC', '2026-10-30 22:47:33.043432+00');
+INSERT INTO public.global_settings (key, value, updated_at) VALUES ('erfassung_zeitzone', 'UTC', '2026-10-30 21:28:11.712633+00');
 
 --
 -- Data for Name: gutschein_guthaben_schranke; Type: TABLE DATA; Schema: public; Owner: -
@@ -3528,11 +3639,13 @@ INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('007
 INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0073-waehrung-vorgabe.sql', '2026-10-30 00:08:55.775002+00', 'ac5f68bc4755dcfd610131d5792afba9382fc45247046aadeedcaabe619a627d');
 INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0074-setnummer-mit-version.sql', '2026-10-30 00:08:55.78054+00', '1e6623f222d4e2c8ad3873177deee2e9538e4d1aa08dd334678e9b550493d008');
 INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0076-set-stamm.sql', '2026-10-30 00:08:55.812847+00', 'c0bd6ba903b2326e495320040f7b391df546bee25043a352ee0cf26194767108');
-INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0077-wechselkurse.sql', '2026-10-30 22:47:33.010942+00', '71e82d0afd974c3df5507172a7730fb2c41aa6f6e3d6ab1a2a113b7a9d7a83e4');
-INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0078-erfassungszeitzone-in-der-datenbank.sql', '2026-10-30 22:47:33.018004+00', '6559e9a3ba1d1bc7cfe8bec2ef418dbeda42e0de2608f357ddc80157e9537d6f');
-INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0079-teilekatalog-je-teil.sql', '2026-10-30 22:47:33.020057+00', 'e07e072ab0cf9cf03ed9b30a1addc363d1479cb0f51171fa11b922b9e6b3bcbd');
-INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0080-auftraege-fuer-alle-hintergrundarbeit.sql', '2026-10-30 22:47:33.02814+00', '19a363da438aa10657bfa58892aa86b3206291d9bd4109f280c1bfdabe1e2e47');
-INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0081-warteschlangen-in-auftraege.sql', '2026-10-30 22:47:33.037102+00', '81c51936203cfd2e60e1ddca67e03ae4c0bb97661e25229225bfdba08e146199');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0077-wechselkurse.sql', '2026-10-30 21:28:11.669322+00', '71e82d0afd974c3df5507172a7730fb2c41aa6f6e3d6ab1a2a113b7a9d7a83e4');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0078-erfassungszeitzone-in-der-datenbank.sql', '2026-10-30 21:28:11.676896+00', '6559e9a3ba1d1bc7cfe8bec2ef418dbeda42e0de2608f357ddc80157e9537d6f');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0079-teilekatalog-je-teil.sql', '2026-10-30 21:28:11.685338+00', 'e07e072ab0cf9cf03ed9b30a1addc363d1479cb0f51171fa11b922b9e6b3bcbd');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0080-token-scope-rotation.sql', '2026-10-30 21:28:11.695098+00', '2b68adab0442d36c11779316c130aef91d47ea0ca3375af15b124598673348c4');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0081-passkeys.sql', '2026-10-30 21:28:11.698176+00', '2d744e20a742ae3ea212bd13ed7adc3d12019eda7a53a5a8220b7451c507122e');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0082-auftraege-fuer-alle-hintergrundarbeit.sql', '2026-10-30 23:06:24.730278+00', '19a363da438aa10657bfa58892aa86b3206291d9bd4109f280c1bfdabe1e2e47');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0083-warteschlangen-in-auftraege.sql', '2026-10-30 23:06:24.744668+00', '81c51936203cfd2e60e1ddca67e03ae4c0bb97661e25229225bfdba08e146199');
 
 --
 -- PostgreSQL database dump complete

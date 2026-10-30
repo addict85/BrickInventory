@@ -14,7 +14,7 @@
  *   D  der PDF-Auftrag ohne Bearbeiter (BEARBEITER.pdf entfernt) → rot: „ein
  *      PDF-Auftrag entsteht im Worker“ (Status blieb running)
  *
- * Seit Migration 0080 (am 30.10.2026 gemessen):
+ * Seit Migration 0082 (am 30.10.2026 gemessen):
  *   E  in belegeAuftrag die Bedingung zu auftrag_pausen entfernt → rot: „eine
  *      pausierte Art wartet, eine exklusive läuft einzeln“
  *   F  in belegeAuftrag die Bedingung für exklusive Arten entfernt → rot:

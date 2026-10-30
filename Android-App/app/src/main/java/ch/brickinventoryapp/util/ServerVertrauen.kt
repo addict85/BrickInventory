@@ -27,6 +27,9 @@ import javax.net.ssl.X509ExtendedTrustManager
  * wirkt. Eine nutzerinstallierte CA kann jeder einschleusen, der kurz ans Gerät
  * kommt oder es verwaltet — darum ist die Vorgabe aus (PreferencesManager).
  */
+// Eigener TrustManager mit Absicht: Er reicht an die System-Prüfung weiter und
+// wählt nur, ob Nutzer-CAs mitzählen.
+@Suppress("CustomX509TrustManager")
 class WahlVertrauen(
     private val system: X509ExtendedTrustManager,
     /** Erst beim ersten Bedarf: Der CA-Speicher liest Hunderte Zertifikate von der Platte. */
@@ -138,6 +141,9 @@ class ZertifikatsFrage @Inject constructor() {
  * bekannte CA. Ohne Pin wird nie still vertraut. Andere Hosts (Bild-CDN)
  * prüft nur die Kette.
  */
+// Das Pinning braucht ihn: Er prüft die Kette per PKIX bis zum Pin bzw. über
+// WahlVertrauen und lehnt ab, was der Nutzer nicht bestätigt hat.
+@Suppress("CustomX509TrustManager")
 class PinVertrauen(
     private val kette: X509ExtendedTrustManager,
     private val pins: PinAblage,

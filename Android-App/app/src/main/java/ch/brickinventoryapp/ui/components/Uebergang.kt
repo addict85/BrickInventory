@@ -35,13 +35,18 @@ fun MitZiel(ziel: AnimatedVisibilityScope, inhalt: @Composable () -> Unit) {
     CompositionLocalProvider(LocalZielSichtbarkeit provides ziel) { inhalt() }
 }
 
-/** Das Bild eines Sets, in Galerie und Detail unter demselben Schlüssel. */
+/**
+ * Das Bild eines Sets, in Galerie und Detail unter demselben Schlüssel. Als
+ * Hülle, die den Modifier hineinreicht: Ein @Composable, der einen Modifier
+ * zurückgibt, wäre eine Modifier-Fabrik ausserhalb von Modifier.
+ */
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
-fun gemeinsamesBild(setNumber: String): Modifier {
-    val uebergang = LocalUebergang.current ?: return Modifier
-    val ziel = LocalZielSichtbarkeit.current ?: return Modifier
-    return with(uebergang) {
-        Modifier.sharedElement(rememberSharedContentState("set-bild-$setNumber"), ziel)
+fun GemeinsamesBild(setNumber: String, inhalt: @Composable (Modifier) -> Unit) {
+    val uebergang = LocalUebergang.current
+    val ziel = LocalZielSichtbarkeit.current
+    if (uebergang == null || ziel == null) return inhalt(Modifier)
+    with(uebergang) {
+        inhalt(Modifier.sharedElement(rememberSharedContentState("set-bild-$setNumber"), ziel))
     }
 }

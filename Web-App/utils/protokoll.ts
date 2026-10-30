@@ -10,6 +10,22 @@ import { AsyncLocalStorage } from 'async_hooks';
 /** Kennung der laufenden Anfrage; server.ts setzt sie je Anfrage. */
 export const anfrageKontext = new AsyncLocalStorage<{ rid: string }>();
 
+/** Was von aussen als Kennung durchgeht: kein Leerraum, keine Steuer- oder Anführungszeichen. */
+const KENNUNG_RE = /^[A-Za-z0-9._:-]{1,64}$/;
+let _kennungFolge = 0;
+
+/**
+ * Die Kennung einer Anfrage: die des Proxys (X-Request-Id), wenn sie harmlos
+ * ist, sonst eine eigene. Ungefiltert könnte ein Client Zeilenumbrüche oder
+ * fremde Kennungen ins Protokoll schreiben und Einträge vortäuschen.
+ */
+export function anfrageKennung(roh: unknown): string {
+  const wert = typeof roh === 'string' ? roh : '';
+  if (KENNUNG_RE.test(wert)) return wert;
+  _kennungFolge = (_kennungFolge + 1) % 1_679_616;
+  return _kennungFolge.toString(36).padStart(4, '0');
+}
+
 type Stufe = 'debug' | 'info' | 'warn' | 'error';
 const STUFEN: Stufe[] = ['debug', 'info', 'warn', 'error'];
 const LOG_STUFE: Record<Stufe | 'log', Stufe> = { log: 'info', debug: 'debug', info: 'info', warn: 'warn', error: 'error' };

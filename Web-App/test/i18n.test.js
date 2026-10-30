@@ -70,6 +70,8 @@ test('kein Text steht in beiden Sprachen unübersetzt', () => {
   // lauten. Jeder Eintrag ist eine Entscheidung, keine Nachsicht.
   const gewolltGleich = new Set([
     'catalog.sort.name', 'col.name', 'col.sets', 'currency.eur',
+    // „Passkey“ und „Name“ heissen in beiden Sprachen so.
+    'pk.title', 'pk.col.name',
     // „Filter“ heisst in beiden Sprachen so.
     'common.filter',
     'finance.filter.sets', 'finance.period.max',

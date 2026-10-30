@@ -1,6 +1,7 @@
 package ch.brickinventoryapp.data
 
 import android.content.Context
+import androidx.core.content.edit
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
@@ -360,7 +361,7 @@ class PreferencesManager @Inject constructor(
 
     suspend fun saveLanguage(lang: String) {
         context.dataStore.edit { it[LANGUAGE] = lang }
-        designSpiegel.edit().putString(SPRACHE_SPIEGEL, lang).apply()
+        designSpiegel.edit { putString(SPRACHE_SPIEGEL, lang) }
     }
 
     /**
@@ -372,7 +373,7 @@ class PreferencesManager @Inject constructor(
 
     suspend fun spracheNachziehen(): String {
         val lang = language.first()
-        designSpiegel.edit().putString(SPRACHE_SPIEGEL, lang).apply()
+        designSpiegel.edit { putString(SPRACHE_SPIEGEL, lang) }
         return lang
     }
     suspend fun saveAppTheme(theme: String) {
@@ -384,7 +385,7 @@ class PreferencesManager @Inject constructor(
             // Und in den synchron lesbaren Spiegel, siehe gemerktesDesign().
             // Beides an EINER Stelle, damit die zwei Ablagen nicht
             // auseinanderlaufen koennen.
-            designSpiegel.edit().putString(APP_THEME_SPIEGEL, theme).apply()
+            designSpiegel.edit { putString(APP_THEME_SPIEGEL, theme) }
         }
     }
 
@@ -409,7 +410,7 @@ class PreferencesManager @Inject constructor(
      */
     fun nutzerCaErlaubt(): Boolean = designSpiegel.getBoolean(NUTZER_CA, false)
     fun setzeNutzerCa(an: Boolean) {
-        designSpiegel.edit().putBoolean(NUTZER_CA, an).apply()
+        designSpiegel.edit { putBoolean(NUTZER_CA, an) }
     }
 
     /**
@@ -420,7 +421,7 @@ class PreferencesManager @Inject constructor(
      */
     private fun uebernimmAltenCaStand() {
         if (designSpiegel.getBoolean(NUTZER_CA_AUS_ANGEWANDT, false)) return
-        designSpiegel.edit().putBoolean(NUTZER_CA, false).putBoolean(NUTZER_CA_AUS_ANGEWANDT, true).commit()
+        designSpiegel.edit { putBoolean(NUTZER_CA, false); putBoolean(NUTZER_CA_AUS_ANGEWANDT, true) }
     }
 
     /**
@@ -430,30 +431,30 @@ class PreferencesManager @Inject constructor(
      */
     fun klartextErlaubt(): Boolean = designSpiegel.getBoolean(KLARTEXT_EXPERTE, false)
     fun setzeKlartextErlaubt(an: Boolean) {
-        designSpiegel.edit().putBoolean(KLARTEXT_EXPERTE, an).apply()
+        designSpiegel.edit { putBoolean(KLARTEXT_EXPERTE, an) }
     }
 
     private suspend fun uebernimmKlartextStand() {
         if (designSpiegel.getBoolean(KLARTEXT_EXPERTE_UEBERNOMMEN, false)) return
         val an = ch.brickinventoryapp.util.NetworkPolicy.klartextVorgabe(context.dataStore.data.first()[SERVER_URL] ?: "")
-        designSpiegel.edit().putBoolean(KLARTEXT_EXPERTE, an).putBoolean(KLARTEXT_EXPERTE_UEBERNOMMEN, true).commit()
+        designSpiegel.edit { putBoolean(KLARTEXT_EXPERTE, an); putBoolean(KLARTEXT_EXPERTE_UEBERNOMMEN, true) }
     }
 
-    // Pins je Host und Port (util/ServerVertrauen.kt). commit statt apply: Der
-    // nächste Handshake folgt sofort und liest von hier.
+    // Pins je Host und Port (util/ServerVertrauen.kt). apply genügt: Der Speicher
+    // gilt sofort für den nächsten Handshake, nur die Platte folgt nach.
     override fun pin(schluessel: String): String? = designSpiegel.getString(PIN_PRAEFIX + schluessel, null)
     override fun merkePin(schluessel: String, fingerabdruck: String) {
-        designSpiegel.edit().putString(PIN_PRAEFIX + schluessel, fingerabdruck).commit()
+        designSpiegel.edit { putString(PIN_PRAEFIX + schluessel, fingerabdruck) }
     }
 
     /** Material You statt der Farben des Designs; je Gerät, wirkt ab Android 12. */
     fun systemfarben(): Boolean = designSpiegel.getBoolean(SYSTEMFARBEN, false)
     fun setzeSystemfarben(an: Boolean) {
-        designSpiegel.edit().putBoolean(SYSTEMFARBEN, an).apply()
+        designSpiegel.edit { putBoolean(SYSTEMFARBEN, an) }
     }
 
     fun setzeDunkelNachSystem(an: Boolean) {
-        designSpiegel.edit().putBoolean(DUNKEL_NACH_SYSTEM, an).apply()
+        designSpiegel.edit { putBoolean(DUNKEL_NACH_SYSTEM, an) }
     }
     suspend fun clearSession() {
         _authTokenState.value = ""

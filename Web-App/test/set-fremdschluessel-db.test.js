@@ -89,7 +89,7 @@ test('Set-Inhalte und Wertemengen', { concurrency: 1 }, async (t) => {
     const c = await db.pool.connect();
     try {
       await c.query('BEGIN');
-      // Die Migration stammt aus der Zeit vor 0081: deren Tabellen für die Dauer der Probe nachstellen.
+      // Die Migration stammt aus der Zeit vor 0083: deren Tabellen für die Dauer der Probe nachstellen.
       await c.query(`CREATE TABLE instruction_queue (set_number TEXT, status TEXT,
                        CONSTRAINT instruction_queue_status_check CHECK (status IN ('pending','done','failed')))`);
       await c.query('ALTER TABLE import_stand RENAME TO csv_import_jobs');

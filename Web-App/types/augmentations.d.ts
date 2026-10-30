@@ -27,6 +27,8 @@ declare global {
       apiUser?: { user_id: number; is_admin: number; username?: string; [k: string]: any };
       /** Von requireLoginOrToken gesetzt, wenn per Bearer-/Query-Token authentifiziert. */
       tokenUserId?: number;
+      /** Warum ein vorgelegter Token nicht galt, wenn es mehr zu sagen gibt als „ungültig“. */
+      tokenAbsage?: 'token_rotation_noetig';
     }
   }
 }

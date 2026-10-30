@@ -10,11 +10,11 @@ import bcrypt from 'bcryptjs';
 import type { Request, Response, NextFunction } from 'express';
 import { checkLoginAllowed, gibAnmeldeplatzFrei, recordLoginFailure, recordLoginSuccess } from './loginLimiter';
 import { sendeFehler } from './fehlerTexte';
-import { logAndContinue, meldeUndLiefere } from './httpError';
+import { meldeUndLiefere } from './httpError';
 import * as zf from './zweiterFaktor';
+import * as passkeys from './passkeys';
 import { ausTabelle } from './validate';
 import type { FehlerCode } from './fehlerTexte';
-import * as pgNotify from './pgNotify';
 
 /**
  * Warum diese Typen hier stehen
@@ -35,6 +35,11 @@ export interface TokenBenutzer {
   /** Die FESTE Frist, falls beim QR-Code eine gewaehlt wurde. `null` = keine. */
   hard_expires_at?: string | Date | null;
   last_used?: string | Date | null;
+  sliding?: boolean;
+  never_expires?: boolean;
+  scope?: TokenScope;
+  rotiert_am?: string | Date | null;
+  vorgaenger?: string | null;
   [k: string]: unknown;
 }
 
@@ -42,8 +47,9 @@ export interface TokenBenutzer {
 interface CacheEintrag {
   user: TokenBenutzer;
   cachedAt: number;
-  lastUsedWritten: number;
   dbKey: string;
+  /** Ein Schreibvorgang läuft schon; ein zweiter wäre derselbe. */
+  schreibt?: boolean;
 }
 
 /** Die Konto-Felder, die assertLoginAllowed tatsaechlich prueft. */
@@ -98,11 +104,25 @@ async function verifiziereEmailToken(token: unknown): Promise<{ ok: boolean; gru
   return { ok: true, userId: user.id };
 }
 
-const TOKEN_TTL_MS      = 60 * 1000;       // Cache-Gültigkeit
-const LAST_USED_THROTTLE = 5 * 60 * 1000;  // last_used max. alle 5 Min schreiben
+const TOKEN_TTL_MS = 60 * 1000;       // Cache-Gültigkeit
+const TAG_MS = 86_400_000;
 
-// token → { user: {user_id, username, is_admin, expires_at}, cachedAt, lastUsedWritten }
-const _tokenCache = new Map();
+/** Geltungsbereich eines Tokens: `app` nie mit Verwalterrechten, `voll` wie das Konto. */
+export type TokenScope = 'app' | 'voll';
+
+/**
+ * Rotation: Ab 30 Tagen seit dem letzten Tausch sagt jede Antwort
+ * `X-Token-Rotation: faellig`. Ein unbegrenzter Token gilt nach 60 Tagen ohne
+ * Tausch nur noch für den Tausch selbst — so stirbt eine gestohlene Kopie,
+ * sobald das echte Gerät tauscht, und ein Gerät, das nie tauscht, fällt auf.
+ */
+export const ROTATION_FAELLIG_TAGE = 30;
+export const ROTATION_PFLICHT_TAGE = 60;
+/** So lange gilt der alte Token nach dem Tausch noch, falls die Antwort verloren geht. */
+export const UEBERLAPPUNG_MS = 5 * 60 * 1000;
+
+// token → { user, cachedAt }
+const _tokenCache = new Map<string, CacheEintrag>();
 
 // Cache klein halten — bei einer Handvoll Nutzern reichen 200 Einträge locker.
 function _pruneCache() {
@@ -114,147 +134,152 @@ function _pruneCache() {
 }
 
 /**
- * @typedef {Object} TokenUser
- * @property {number|string} user_id
- * @property {string} username
- * @property {number|boolean} is_admin
- * @property {string|null} expires_at
- * @property {string|null} [last_used]
- */
-
-/**
- * Validiert einen Bearer-Token. Nutzt den In-Memory-Cache; DB nur bei Miss.
- * @param {string|null|undefined} token
- * @returns {Promise<TokenUser|null>}
- */
-/**
  * Ist dieser Zeitpunkt erreicht? `null`/leer heisst „keine Frist", also nein.
- *
- * Steht als Funktion da, weil die Frage seit der festen Laufzeit ZWEIMAL im
- * selben Zweig gestellt wird (gleitende und feste Frist) — und weil `null`
- * hier „unbegrenzt" bedeutet und nicht „sofort abgelaufen".
+ * `null` bedeutet hier „unbegrenzt" und nicht „sofort abgelaufen".
  */
 function fristErreicht(zeitpunkt: string | Date | null | undefined, jetzt: number): boolean {
   return !!zeitpunkt && new Date(zeitpunkt).getTime() <= jetzt;
 }
 
-async function validateToken(token: string | null | undefined): Promise<TokenBenutzer | null> {
-  if (!token) return null;
+const tageSeit = (zeitpunkt: string | Date | null | undefined, jetzt: number): number =>
+  zeitpunkt ? (jetzt - new Date(zeitpunkt).getTime()) / TAG_MS : 0;
+
+/** Sollte dieser Token getauscht werden? (Nur Hinweis, keine Sperre.) */
+function rotationFaellig(u: TokenBenutzer, jetzt = Date.now()): boolean {
+  return tageSeit(u.rotiert_am, jetzt) >= ROTATION_FAELLIG_TAGE;
+}
+
+/** Gilt dieser Token nur noch für den Tausch? Betrifft allein „unbegrenzt". */
+function rotationPflicht(u: TokenBenutzer, jetzt = Date.now()): boolean {
+  return flaggeGesetzt(u.never_expires) && tageSeit(u.rotiert_am, jetzt) >= ROTATION_PFLICHT_TAGE;
+}
+
+/**
+ * Der grobe Adressbereich für die Geräteliste: IPv4 als /24, IPv6 als /48.
+ * Genug, um ein fremdes Netz zu erkennen; die genaue Adresse wird nicht gespeichert.
+ */
+function ipBereich(ip: string | null | undefined): string | null {
+  if (!ip) return null;
+  const v4 = /^(?:::ffff:)?(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.\d{1,3}$/i.exec(ip);
+  if (v4) return `${v4[1]}.${v4[2]}.${v4[3]}.0/24`;
+  if (!ip.includes(':')) return null;
+  const [kopf = '', rest] = ip.split('::');
+  const teile = kopf ? kopf.split(':') : [];
+  // „a::b“ hat links weniger als drei Gruppen: die fehlenden sind Nullen.
+  while (teile.length < 3 && rest !== undefined) teile.push('0');
+  if (teile.length < 3 || teile.slice(0, 3).some(g => !/^[0-9a-f]{1,4}$/i.test(g))) return null;
+  return `${teile.slice(0, 3).map(g => g.toLowerCase().replace(/^0+(?=.)/, '')).join(':')}::/48`;
+}
+
+/** Was eine Prüfung ergibt: der Nutzer, oder warum nicht. */
+export interface TokenPruefung { nutzer: TokenBenutzer | null; grund?: 'token_rotation_noetig' }
+
+/**
+ * Validiert einen Bearer-Token. Nutzt den In-Memory-Cache; DB nur bei Miss.
+ * `zweck: 'rotation'` lässt einen unbegrenzten Token auch nach der Pflichtfrist
+ * durch — nur der Tausch selbst darf ihn dann noch benutzen.
+ */
+async function pruefeToken(token: string | null | undefined,
+                           o: { ip?: string | null | undefined; zweck?: 'nutzung' | 'rotation' } = {}): Promise<TokenPruefung> {
+  if (!token) return { nutzer: null };
   const now = Date.now();
+  const ergebnis = (u: TokenBenutzer): TokenPruefung =>
+    o.zweck !== 'rotation' && rotationPflicht(u, now)
+      ? { nutzer: null, grund: 'token_rotation_noetig' } : { nutzer: u };
 
   const hit = _tokenCache.get(token);
   if (hit && now - hit.cachedAt < TOKEN_TTL_MS) {
-    // Ablauf auch bei Cache-Treffern respektieren — BEIDE Fristen.
-    //
-    // `hard_expires_at` muss hier eigens stehen und nicht bloss in der
-    // WHERE-Klausel unten: Dieser Zweig fragt die Datenbank gar nicht. Ohne
-    // die zweite Bedingung bediente der Cache einen Token noch bis zu
-    // TOKEN_TTL_MS ueber seinen festen Termin hinaus — bei einer Frist, die
-    // der Nutzer AUSDRUECKLICH gesetzt hat, ist das die falsche Seite zum
-    // Irren.
+    // Beide Fristen auch hier: Dieser Zweig fragt die Datenbank nicht.
     if (fristErreicht(hit.user.expires_at, now) || fristErreicht(hit.user.hard_expires_at, now)) {
       _tokenCache.delete(token);
-      return null;
+      return { nutzer: null };
     }
-    _touchLastUsed(token, hit);
-    return hit.user;
+    _touchLastUsed(hit, o.ip);
+    return ergebnis(hit.user);
   }
 
   const hashed = hashToken(token);
-  const SQL = `
-    SELECT t.user_id, t.expires_at, t.hard_expires_at, t.last_used, t.sliding,
-           u.username, u.is_admin
+  const row = await db.get<TokenBenutzer>(`
+    SELECT t.user_id, t.expires_at, t.hard_expires_at, t.last_used, t.sliding, t.never_expires,
+           t.scope, t.rotiert_am, t.vorgaenger, t.label, t.ip_bereich,
+           u.username, u.is_admin AS konto_is_admin
     FROM api_tokens t JOIN users u ON u.id = t.user_id
     WHERE t.token = $1
       AND (t.expires_at      IS NULL OR t.expires_at      > NOW())
-      AND (t.hard_expires_at IS NULL OR t.hard_expires_at > NOW())`;
-  // Nur noch der Hash-Pfad.
-  // Ausführlich: docs/begruendungen/utils/auth.ts.md#validatetoken-row
-  const row = await db.get(SQL, [hashed]);
-  const dbKey = hashed;
-  if (!row) { _tokenCache.delete(token); return null; }
+      AND (t.hard_expires_at IS NULL OR t.hard_expires_at > NOW())`, [hashed]);
+  if (!row) { _tokenCache.delete(token); return { nutzer: null }; }
+  // Verwalterrecht nur mit Scope `voll`: An dieser einen Stelle entschieden,
+  // sehen es alle Wächter (requireApiAdmin, istVerwalter, Kontingent) gleich.
+  row.is_admin = flaggeGesetzt(row.konto_is_admin) && row.scope === 'voll' ? 1 : 0;
+  // Die erste Nutzung des Nachfolgers beendet die Überlappung sofort.
+  if (row.vorgaenger) {
+    await db.run('DELETE FROM api_tokens WHERE token = $1 AND ersetzt_durch = $2', [row.vorgaenger, hashed]);
+    await db.run('UPDATE api_tokens SET vorgaenger = NULL WHERE token = $1', [hashed]);
+    row.vorgaenger = null;
+    leereTokenCache();
+  }
 
-  const entry = { user: row, cachedAt: now, lastUsedWritten: 0, dbKey };
+  const entry: CacheEintrag = { user: row, cachedAt: now, dbKey: hashed };
   _tokenCache.set(token, entry);
   _pruneCache();
-  _touchLastUsed(token, entry);
-  return row;
+  _touchLastUsed(entry, o.ip);
+  return ergebnis(row);
 }
 
-// last_used gedrosselt und fire-and-forget aktualisieren — blockiert den
-// Request-Pfad nicht und schreibt höchstens alle 5 Minuten pro Token.
-function _touchLastUsed(token: string, entry: CacheEintrag): void {
-  const now = Date.now();
-  if (now - entry.lastUsedWritten < LAST_USED_THROTTLE) return;
-  entry.lastUsedWritten = now;
-  // Die stille Erneuerung
-  // Hier wird nicht nur vermerkt, DASS der Token benutzt wurde, sondern die
-  // Frist gleich mit nach vorn geschoben. Genau das macht sie zur gleitenden:
-  // Ein Telefon, das taeglich synchronisiert, laeuft nie ab; eines, das in …
-  // Ausführlich: docs/begruendungen/utils/auth.ts.md#touchlastused-gleitet
-  const gleitet = TOKEN_IDLE_DAYS > 0;
-  const sql = gleitet
-    ? `UPDATE api_tokens
-          SET last_used = NOW(),
-              expires_at = CASE WHEN sliding AND expires_at IS NOT NULL
-                                THEN NOW() + make_interval(days => $2)
-                                ELSE expires_at END
-        WHERE token = $1`
-    : 'UPDATE api_tokens SET last_used = NOW() WHERE token = $1';
-  const params = gleitet
-    ? [entry.dbKey || hashToken(token), TOKEN_IDLE_DAYS]
-    : [entry.dbKey || hashToken(token)];
-  db.run(sql, params)
+async function validateToken(token: string | null | undefined,
+                             o: { ip?: string | null | undefined; zweck?: 'nutzung' | 'rotation' } = {}): Promise<TokenBenutzer | null> {
+  return (await pruefeToken(token, o)).nutzer;
+}
+
+/**
+ * Letzte Nutzung, Adressbereich und Gleitfrist schreiben — höchstens einmal je
+ * Tag und Token, und ohne den Anfrageweg aufzuhalten. Die Entscheidung fällt
+ * am gelesenen Datensatz, nicht an einem Zähler je Prozess: so gilt der Tag
+ * auch über mehrere Worker, und die WHERE-Klausel fängt den Wettlauf.
+ */
+function _touchLastUsed(entry: CacheEintrag, ip?: string | null): void {
+  const jetzt = Date.now();
+  const u = entry.user;
+  const zuletzt = u.last_used ? new Date(u.last_used).getTime() : 0;
+  const ziel = jetzt + TOKEN_IDLE_DAYS * TAG_MS;
+  const fristHinkt = flaggeGesetzt(u.sliding) && !!u.expires_at
+    && new Date(u.expires_at).getTime() < ziel - TAG_MS;
+  if ((jetzt - zuletzt < TAG_MS && !fristHinkt) || entry.schreibt) return;
+  entry.schreibt = true;
+  db.run(
+    `UPDATE api_tokens
+        SET last_used = NOW(),
+            ip_bereich = COALESCE($3, ip_bereich),
+            expires_at = CASE WHEN sliding AND expires_at IS NOT NULL
+                              THEN NOW() + make_interval(days => $2) ELSE expires_at END
+      WHERE token = $1
+        AND (last_used IS NULL OR last_used < NOW() - INTERVAL '1 day'
+             OR (sliding AND expires_at < NOW() + make_interval(days => $2) - INTERVAL '1 day'))`,
+    [entry.dbKey, TOKEN_IDLE_DAYS, ipBereich(ip)])
     .then(() => {
-      // Den Cache mitziehen. Ohne das haelt er bis zu TOKEN_TTL_MS (eine
-      // Minute) das ALTE Datum und wuerde einen gerade erneuerten Token am
-      // Fristende einmal faelschlich abweisen — der Treffer-Zweig oben prueft
-      // `hit.user.expires_at` selbst.
-      if (gleitet && entry.user?.sliding && entry.user.expires_at)
-        entry.user.expires_at = new Date(now + TOKEN_IDLE_DAYS * 86400_000);
+      // Den Cache mitziehen, sonst wiese der Treffer-Zweig einen gerade
+      // erneuerten Token am alten Fristende einmal ab.
+      u.last_used = new Date(jetzt);
+      if (fristHinkt || (flaggeGesetzt(u.sliding) && u.expires_at)) u.expires_at = new Date(ziel);
     })
-    .catch(e => console.warn('[auth] last_used konnte nicht geschrieben werden:', e?.message || e));
-}
-
-/**
- * Ein Widerruf muss in JEDEM Worker wirken, nicht nur im eigenen.
- *
- * Jeder Worker hat seinen eigenen Cache. Ohne Signal bediente ein anderer
- * einen widerrufenen Token noch bis zu TOKEN_TTL_MS. Die Empfänger leeren
- * ganz: Den Klartext schicken wir nicht über die Datenbank, und nach ihm ist
- * der Cache indiziert.
- */
-export const TOKEN_KANAL = 'tokens_geaendert';
-
-function meldeTokenWiderruf(): void {
-  pgNotify.notify(TOKEN_KANAL).catch(logAndContinue('tokens:widerruf melden'));
-}
-
-/** Nur der eigene Cache — für den Empfang des Signals, das nicht zurückfunken darf. */
-function leereTokenCacheLokal(): void { _tokenCache.clear(); }
-
-/**
- * Den Empfang anmelden. Beim (Wieder-)Verbinden ruft pgNotify den Handler
- * einmal ohne Signal auf — dann wird ebenfalls geleert, die sichere Seite.
- */
-function horcheAufTokenWiderruf(): void {
-  pgNotify.listen(TOKEN_KANAL, () => leereTokenCacheLokal());
+    .catch(e => console.warn('[auth] last_used konnte nicht geschrieben werden:', e?.message || e))
+    .finally(() => { entry.schreibt = false; });
 }
 
 /** Beim Logout/Token-Löschen aufrufen, damit der Token sofort ungültig wird. */
 function invalidateToken(token: string | null | undefined): void {
   if (!token) return;
   _tokenCache.delete(token);
-  meldeTokenWiderruf();
 }
 
 /**
  * Den ganzen Token-Cache verwerfen — für Löschungen ohne Klartext (die
- * Token-Verwaltung kennt nur den Hash-Anfang). Gilt für alle Worker.
+ * Token-Verwaltung kennt nur den Hash-Anfang). Den Cache hält nur der
+ * Web-Prozess, und widerrufen wird nur dort; ein Signal an andere Prozesse
+ * braucht es nicht (der Job-Prozess löscht nur abgelaufene Tokens).
  */
 function leereTokenCache(): void {
-  leereTokenCacheLokal();
-  meldeTokenWiderruf();
+  _tokenCache.clear();
 }
 
 /**
@@ -379,6 +404,8 @@ export interface AnmeldeAbsage {
   unverified?: boolean;
   /** Passwort stimmt, es fehlt (oder scheiterte) der Code des zweiten Faktors. */
   zweiterFaktor?: boolean;
+  /** Das Konto hat Passkeys: Statt des Codes geht auch eine Passkey-Antwort. */
+  passkey?: boolean;
 }
 
 /** Ergebnis von pruefeAnmeldedaten(): entweder die Konto-Zeile oder eine Absage. */
@@ -394,7 +421,8 @@ export type AnmeldeErgebnis =
  * @param password Klartext-Passwort aus dem Request.
  * @param code     Einmal- oder Wiederherstellungscode (utils/zweiterFaktor.ts).
  */
-async function pruefeAnmeldedaten(req: Request, username: unknown, password: unknown, code?: unknown): Promise<AnmeldeErgebnis> {
+async function pruefeAnmeldedaten(req: Request, username: unknown, password: unknown, code?: unknown,
+                                  passkeyAntwort?: unknown): Promise<AnmeldeErgebnis> {
   // Die Absage traegt einen CODE und keinen Satz: Welche
   // Sprache der Anfragende sieht, weiss die Route.
   const absage = (status: number, code: FehlerCode,
@@ -427,14 +455,21 @@ async function pruefeAnmeldedaten(req: Request, username: unknown, password: unk
   if (blockiert) { await recordLoginSuccess(req, name); return absage(blockiert.status, blockiert.code, undefined, blockiert.unverified); }
 
   if (await zf.istAktiv(user.id)) {
-    if (!String(code ?? '').trim()) {
+    // Ein Passkey ersetzt den Code — gebunden an DIESES Konto, dessen Passwort stimmte.
+    const mitPasskey = passkeyAntwort !== undefined && passkeyAntwort !== null;
+    const hatPasskey = await passkeys.hatPasskeys(user.id);
+    const ergaenzt = (e: AnmeldeErgebnis) => { if (!e.ok && hatPasskey) e.absage.passkey = true; return e; };
+    if (!mitPasskey && !String(code ?? '').trim()) {
       // Das Passwort stimmte; nur der Code fehlt noch — kein Fehlversuch.
       await gibAnmeldeplatzFrei(req, name);
-      return absage(401, 'zweiter_faktor_noetig', undefined, false, true);
+      return ergaenzt(absage(401, 'zweiter_faktor_noetig', undefined, false, true));
     }
-    if (!await zf.pruefeCode(user.id, code)) {
+    const gilt = mitPasskey
+      ? await passkeys.anmeldungPruefen(passkeyAntwort, 'zweiter_faktor', user.id) === user.id
+      : await zf.pruefeCode(user.id, code);
+    if (!gilt) {
       await recordLoginFailure(req, name);
-      return absage(401, 'zweiter_faktor_falsch', undefined, false, true);
+      return ergaenzt(absage(401, 'zweiter_faktor_falsch', undefined, false, true));
     }
   }
   await recordLoginSuccess(req, name);
@@ -464,7 +499,12 @@ async function resolveUserId(req: Request): Promise<number | null> {
   const auth = req.headers.authorization || '';
   const token: string | null = auth.startsWith('Bearer ') ? auth.slice(7) : null;
   if (!token) return null;
-  const user = await validateToken(token).catch(meldeUndLiefere('auth:validateToken', null));
+  const pruefung = await pruefeToken(token, { ip: req.ip })
+    .catch(meldeUndLiefere<TokenPruefung>('auth:validateToken', { nutzer: null }));
+  const user = pruefung.nutzer;
+  if (pruefung.grund) req.tokenAbsage = pruefung.grund;
+  // Der Hinweis reist mit jeder Antwort; die App tauscht dann von selbst.
+  if (user && rotationFaellig(user)) req.res?.setHeader('X-Token-Rotation', 'faellig');
   // Der ganze Nutzer wird abgelegt, nicht nur seine Kennung: Sonst wuesste ein
   // Handler hinter requireLoginOrToken zwar WER fragt, aber nicht, ob es ein
   // Verwalter ist — `req.session.isAdmin` ist bei einer Token-Anfrage immer
@@ -492,7 +532,7 @@ function loginOrTokenGuard(opts: { timeoutMs?: number } = {}) {
     if (timer) clearTimeout(timer);
     if (res.headersSent) return;               // Zeitlimit war schneller
     if (uid) { req.tokenUserId = uid; return next(); }
-    return sendeFehler(req, res, 401, 'nicht_angemeldet');
+    return sendeFehler(req, res, 401, req.tokenAbsage ?? 'nicht_angemeldet');
   };
 }
 
@@ -534,16 +574,16 @@ function nutzerName(req: Request): string | null {
   return req.session?.username ?? (req as any).apiUser?.username ?? null;
 }
 
+/** Kam die Anfrage mit einer Browser-Sitzung (nicht mit einem Token)? Für Schritte, die nur dort gehen. */
+function perSitzung(req: Request): boolean {
+  return !!req.session?.userId;
+}
+
 function istVerwalter(req: Request): boolean {
   if (req.session?.isAdmin) return true;
   return !!(req as any).apiUser?.is_admin;
 }
 
-/**
- * Einen Bearer-Token ausstellen.
- * Ausführlich: docs/begruendungen/utils/auth.ts.md#abschnitt-4
- * @param dauerhaft true = kein Ablaufdatum (App, QR-Anmeldung).
- */
 /**
  * Der Wert, mit dem „unbegrenzt" in der Tageszahl steht.
  * Ausführlich: docs/begruendungen/utils/auth.ts.md#unbegrenzt
@@ -576,59 +616,103 @@ function laufzeitTage(wahl: unknown): number | null {
   return ausTabelle(TOKEN_LAUFZEITEN, String(wahl)) ?? null;
 }
 
+/** Zusätzliche Angaben zu einem neuen Token. */
+export interface TokenOptionen {
+  /** Vorgabe `app`: Verwalterrechte gibt es nur auf ausdrücklichen Wunsch. */
+  scope?: TokenScope;
+  /** Adresse der ausstellenden Anfrage, für die Geräteliste. */
+  ip?: string | null | undefined;
+}
+
+/**
+ * Einen Bearer-Token ausstellen.
+ * @param dauerhaft  true = Gerätezugang mit Gleitfrist (App, QR); false = sieben feste Tage.
+ * @param festeTage  feste Höchstdauer; `UNBEGRENZT` (0) = ohne Ablauf, nur über HTTPS erlaubt
+ *                   (prüft die Route) und dann mit Rotationspflicht.
+ */
 async function createToken(userId: number, label = 'Android App', dauerhaft = false,
-                           festeTage: number | null = null): Promise<string> {
+                           festeTage: number | null = null, o: TokenOptionen = {}): Promise<string> {
   const token = crypto.randomBytes(32).toString('hex');
-  if (dauerhaft) {
-    // Gleitende Frist statt gar keiner. Bis hierher stand hier NULL, und die
-    // 90 Tage aus TOKEN_IDLE_DAYS setzte allein der stuendliche Aufraeumjob
-    // durch — per DELETE. Lief der Job nicht (kein Primary-Worker, Absturz,
-    // ein Neustart zur falschen Stunde), galt der Token weiter, denn die …
-    // Ausführlich: docs/begruendungen/utils/auth.ts.md#createtoken
-    if (festeTage === UNBEGRENZT) {
-      await db.run(
-        `INSERT INTO api_tokens (token, user_id, label, expires_at, sliding, hard_expires_at, never_expires)
-         VALUES ($1,$2,$3,NULL,FALSE,NULL,TRUE) ON CONFLICT DO NOTHING`,
-        [hashToken(token), userId, label]
-      );
-      return token;
-    }
+  const scope: TokenScope = o.scope === 'voll' ? 'voll' : 'app';
+  const ip = ipBereich(o.ip);
+  if (dauerhaft && festeTage === UNBEGRENZT) {
+    await db.run(
+      `INSERT INTO api_tokens (token, user_id, label, expires_at, sliding, hard_expires_at, never_expires, scope, ip_bereich)
+       VALUES ($1,$2,$3,NULL,FALSE,NULL,TRUE,$4,$5) ON CONFLICT DO NOTHING`,
+      [hashToken(token), userId, label, scope, ip]);
+  } else if (dauerhaft) {
     const fest = festeTage && festeTage > 0 ? festeTage : null;
     await db.run(
-      TOKEN_IDLE_DAYS > 0
-        ? `INSERT INTO api_tokens (token, user_id, label, expires_at, sliding, hard_expires_at)
-           VALUES ($1,$2,$3, NOW() + make_interval(days => $4), TRUE,
-                   CASE WHEN $5::int IS NULL THEN NULL ELSE NOW() + make_interval(days => $5::int) END)
-           ON CONFLICT DO NOTHING`
-        : `INSERT INTO api_tokens (token, user_id, label, expires_at, sliding, hard_expires_at)
-           VALUES ($1,$2,$3,NULL,TRUE,
-                   CASE WHEN $4::int IS NULL THEN NULL ELSE NOW() + make_interval(days => $4::int) END)
-           ON CONFLICT DO NOTHING`,
-      TOKEN_IDLE_DAYS > 0
-        ? [hashToken(token), userId, label, TOKEN_IDLE_DAYS, fest]
-        : [hashToken(token), userId, label, fest]
-    );
+      `INSERT INTO api_tokens (token, user_id, label, expires_at, sliding, hard_expires_at, scope, ip_bereich)
+       VALUES ($1,$2,$3, NOW() + make_interval(days => $4), TRUE,
+               CASE WHEN $5::int IS NULL THEN NULL ELSE NOW() + make_interval(days => $5::int) END, $6, $7)
+       ON CONFLICT DO NOTHING`,
+      [hashToken(token), userId, label, TOKEN_IDLE_DAYS, fest, scope, ip]);
   } else {
-    // Der Token des Browsers gleitet NICHT: Er liegt im sessionStorage und ist
-    // damit per XSS auslesbar. Sieben feste Tage sind hier Absicht — eine
-    // gleitende Frist wuerde ihn genau so lange am Leben halten, wie ein
-    // Angreifer ihn benutzt.
+    // Ein kurzlebiger Token gleitet nicht: Benutzung durch einen Angreifer
+    // soll ihn nicht verlängern.
     await db.run(
-      "INSERT INTO api_tokens (token, user_id, label, expires_at, sliding) VALUES ($1,$2,$3, NOW() + INTERVAL '7 days', FALSE) ON CONFLICT DO NOTHING",
-      [hashToken(token), userId, label]
-    );
+      `INSERT INTO api_tokens (token, user_id, label, expires_at, sliding, scope, ip_bereich)
+       VALUES ($1,$2,$3, NOW() + INTERVAL '7 days', FALSE, $4, $5) ON CONFLICT DO NOTHING`,
+      [hashToken(token), userId, label, scope, ip]);
   }
   return token;
 }
 
+/** Ergebnis eines Tauschs. */
+export interface Tausch {
+  token: string;
+  scope: TokenScope;
+  expires_at: Date | null;
+  hard_expires_at: Date | null;
+  never_expires: boolean;
+  rotiert_am: Date;
+  alt_gueltig_bis: Date;
+}
+
 /**
- * Bekommt ein App-Token ueberhaupt ein Ablaufdatum?
- *
- * Genau dann nicht, wenn die Gleitfrist abgeschaltet ist. Die Antwort steht
- * hier statt an den drei Routen, die sie als `never_expires` weitergeben —
- * sonst waere die Regel wieder an mehreren Stellen buchstabiert.
+ * Einen Token gegen einen neuen tauschen. Der alte gilt danach höchstens noch
+ * UEBERLAPPUNG_MS — bis zur ersten Nutzung des neuen. Ein zweiter Tausch mit
+ * dem alten (Antwort verloren) ersetzt den unbenutzten Nachfolger.
+ * @returns null, wenn der alte Token nicht (mehr) gilt.
  */
-function appTokenOhneAblauf(): boolean { return TOKEN_IDLE_DAYS === 0; }
+async function rotiereToken(alt: string, ip?: string | null): Promise<Tausch | null> {
+  const altHash = hashToken(alt);
+  const neu = crypto.randomBytes(32).toString('hex');
+  const neuHash = hashToken(neu);
+  const ergebnis = await db.transaction(async (tx) => {
+    const z = await tx.get<{ user_id: number; label: string | null; scope: TokenScope; sliding: boolean;
+                             never_expires: boolean; expires_at: Date | null; hard_expires_at: Date | null;
+                             created_at: Date; ersetzt_durch: string | null }>(
+      `SELECT user_id, label, scope, sliding, never_expires, expires_at, hard_expires_at, created_at, ersetzt_durch
+         FROM api_tokens
+        WHERE token = $1
+          AND (expires_at      IS NULL OR expires_at      > NOW())
+          AND (hard_expires_at IS NULL OR hard_expires_at > NOW())
+        FOR UPDATE`, [altHash]);
+    if (!z) return null;
+    if (z.ersetzt_durch) await tx.run('DELETE FROM api_tokens WHERE token = $1 AND vorgaenger = $2', [z.ersetzt_durch, altHash]);
+    const zeile = await tx.get<{ expires_at: Date | null; hard_expires_at: Date | null; rotiert_am: Date }>(
+      `INSERT INTO api_tokens (token, user_id, label, created_at, last_used, expires_at, sliding,
+                               hard_expires_at, never_expires, scope, ip_bereich, rotiert_am, vorgaenger)
+       VALUES ($1, $2, $3, $4, NOW(),
+               CASE WHEN $5 AND $6::timestamptz IS NOT NULL THEN NOW() + make_interval(days => $7) ELSE $6::timestamptz END,
+               $5, $8, $9, $10, $11, NOW(), $12)
+       RETURNING expires_at, hard_expires_at, rotiert_am`,
+      [neuHash, z.user_id, z.label, z.created_at, z.sliding, z.expires_at, TOKEN_IDLE_DAYS,
+       z.hard_expires_at, z.never_expires, z.scope, ipBereich(ip), altHash]);
+    const alt = await tx.get<{ expires_at: Date }>(
+      `UPDATE api_tokens
+          SET ersetzt_durch = $2, sliding = FALSE, never_expires = FALSE,
+              expires_at = LEAST(COALESCE(expires_at, 'infinity'::timestamptz), NOW() + make_interval(secs => $3))
+        WHERE token = $1 RETURNING expires_at`, [altHash, neuHash, UEBERLAPPUNG_MS / 1000]);
+    return { token: neu, scope: z.scope, expires_at: zeile!.expires_at, hard_expires_at: zeile!.hard_expires_at,
+             never_expires: flaggeGesetzt(z.never_expires), rotiert_am: zeile!.rotiert_am,
+             alt_gueltig_bis: alt!.expires_at };
+  });
+  if (ergebnis) leereTokenCache();
+  return ergebnis;
+}
 
 /**
  * Löscht einen Token und invalidiert den Cache.
@@ -681,8 +765,8 @@ async function revokeAllTokens(userId: number): Promise<void> {
 }
 
 /**
- * Tage ohne Nutzung, nach denen ein Token OHNE Ablaufdatum verfällt.
- * 0 schaltet die Regel ab (dann gilt wieder: unbegrenzt).
+ * Tage ohne Nutzung, nach denen ein Gerätezugang verfällt (mindestens 1).
+ * Ohne Ablauf gibt es nur die ausdrückliche Wahl „unbegrenzt“ je Gerät.
  * Ausführlich: docs/begruendungen/utils/auth.ts.md#token-idle-days
  */
 const TOKEN_IDLE_DAYS = konfig().tokenLeerlaufTage;
@@ -700,7 +784,7 @@ async function purgeExpiredTokens() {
   // Ablaufdatum. Ihre Frist lief bisher ueber COALESCE(last_used, created_at)
   // — genau diese Rechnung wird hier einmal in die Spalte geschrieben. Damit …
   // Ausführlich: docs/begruendungen/utils/auth.ts.md#purgeexpiredtokens-2
-  if (TOKEN_IDLE_DAYS > 0) {
+  {
     const nachgezogen = await db.run(
       `UPDATE api_tokens
           SET sliding = TRUE,
@@ -728,7 +812,7 @@ async function purgeExpiredTokens() {
   // entweder eine ALTZEILE (die soll nachgezogen und irgendwann geraeumt
   // werden) oder eine ausdrueckliche Wahl „unbegrenzt" (die soll genau das …
   // Ausführlich: docs/begruendungen/utils/auth.ts.md#purgeexpiredtokens-3
-  if (TOKEN_IDLE_DAYS > 0) {
+  {
     const ungenutzt = await db.run(
       `DELETE FROM api_tokens
         WHERE expires_at IS NULL AND NOT never_expires
@@ -743,9 +827,10 @@ async function purgeExpiredTokens() {
 }
 
 export {
-  validateToken, invalidateToken, leereTokenCache, horcheAufTokenWiderruf, flaggeGesetzt, resolveUserId, requireLoginOrToken, nutzerId, angemeldeteNutzerId, istVerwalter, nutzerName, hashToken, deleteToken,
-  verifiziereEmailToken,
-  revokeAllTokens, revokeAllSessions, beendeAndereZugaenge, purgeExpiredTokens, loginOrTokenGuard, TOKEN_IDLE_DAYS, appTokenOhneAblauf,
+  validateToken, invalidateToken, leereTokenCache, flaggeGesetzt, resolveUserId, requireLoginOrToken, nutzerId, angemeldeteNutzerId, istVerwalter, nutzerName, hashToken, deleteToken,
+  verifiziereEmailToken, perSitzung,
+  revokeAllTokens, revokeAllSessions, beendeAndereZugaenge, purgeExpiredTokens, loginOrTokenGuard, TOKEN_IDLE_DAYS,
+  pruefeToken, rotiereToken, rotationFaellig, rotationPflicht, ipBereich, UNBEGRENZT,
   laufzeitTage,
   assertLoginAllowed, pruefeAnmeldedaten, createToken, escapeLike, establishSession, BCRYPT_ROUNDS, USERNAME_RE,
   PASSWORT_MIN_ZEICHEN, passwortZuKurz,

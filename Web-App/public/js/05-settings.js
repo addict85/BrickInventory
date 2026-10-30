@@ -195,8 +195,9 @@ async function generateQrCode() {
     // Falsches zu zeigen, das sich anstandslos scannen laesst.
     const serverUrl = d.url;
 
-    // Full payload: server URL + token
-    const qrData = JSON.stringify({ url: serverUrl, token: d.token });
+    // Mit `fp` (Fingerabdruck der CA-Wurzel) pinnt die App das Zertifikat;
+    // der Server schickt ihn nur zu einer https-Adresse.
+    const qrData = JSON.stringify({ url: serverUrl, token: d.token, ...(d.fp ? { fp: d.fp } : {}) });
     // Clear and render QR code
     container.innerHTML = '';
     if (typeof QRCode !== 'undefined') {
@@ -281,12 +282,14 @@ export async function loadTokens() {
   if (!d.tokens.length) { ziel.innerHTML = `<p data-stil="color:var(--mut)">${t('tokens.none')}</p>`; return; }
   ziel.innerHTML = `<div class="tw"><table class="dt"><thead><tr>
       <th>${t('tokens.col.label')}</th><th>${t('tokens.col.created')}</th>
-      <th>${t('tokens.col.last_used')}</th><th>${t('tokens.col.expires')}</th>
-      <th>${t('users.col.actions')}</th></tr></thead><tbody>${
+      <th>${t('tokens.col.last_used')}</th><th>${t('tokens.col.scope')}</th><th>${t('tokens.col.ip')}</th>
+      <th>${t('tokens.col.expires')}</th><th>${t('users.col.actions')}</th></tr></thead><tbody>${
     d.tokens.map(tk => `<tr>
       <td><strong>${esc(tk.label || '—')}</strong>${tk.aktuell ? ` <span class="rb ra">${t('tokens.current')}</span>` : ''}</td>
       <td>${tokenDatum(tk.created_at)}</td>
       <td>${tokenDatum(tk.last_used)}</td>
+      <td>${tk.scope === 'voll' ? t('tokens.scope.voll') : t('tokens.scope.app')}</td>
+      <td>${esc(tk.ip_bereich || '—')}</td>
       <td>${tk.never_expires ? t('tokens.never') : tokenDatum(tk.expires_at)}${
         // Plakette „fest": Ohne sie stuenden beide Fristen als dasselbe Datum
         // da, und sie bedeuten Verschiedenes. Die gleitende rueckt bei jeder
@@ -296,6 +299,28 @@ export async function loadTokens() {
         `<button class="btn bd btn-sm" data-click="revokeToken" data-arg="${esc(tk.token_id)}" data-arg2="${esc(tk.label || '')}" aria-label="${esc(tRaw('common.delete'))}">${ico('loeschen')}</button>`}</td>
     </tr>`).join('')
   }</tbody></table></div>`;
+}
+
+/**
+ * Der Fingerabdruck der CA-Wurzel zum Abgleich von Hand — derselbe Wert steht
+ * als `fp` im QR-Code. Ohne interne CA (fremder Proxy) steht nur, ob HTTPS gilt.
+ */
+export async function ladeTls() {
+  const ziel = G('tls-flaeche');
+  if (!ziel) return;
+  const d = await api('GET', '/v1/settings/tls');
+  if (!d?.success) { ziel.innerHTML = `<p class="hinweis-absatz">${esc(d?.error || t('settings.error'))}</p>`; return; }
+  if (!d.fp) {
+    ziel.innerHTML = `<p class="hinweis-absatz">${d.https ? t('tls.ohne_ca') : t('tls.ohne_https')}</p>`;
+    return;
+  }
+  ziel.innerHTML = `<p class="hinweis-absatz">${t('tls.hint')}</p>
+    <div class="text-klein">${t('tls.subject')}: ${esc(d.subject)}<br>${t('tls.valid_until')}: ${esc(tokenDatum(d.gueltig_bis))}</div>
+    <div class="text-klein abstand-o-075">${t('tls.fp_sha256')}</div>
+    <code id="tls-fp-hex" data-stil="user-select:all;word-break:break-all;font-size:var(--fs-2)">${esc(d.fp_hex)}</code>
+    <div class="text-klein abstand-o-075">${t('tls.fp_base64')}</div>
+    <code id="tls-fp" data-stil="user-select:all;word-break:break-all;font-size:var(--fs-2)">${esc(d.fp)}</code>
+    <div class="abstand-o-075"><a class="btn bs btn-sm" href="${esc(d.download)}" download>${t('tls.download')}</a></div>`;
 }
 
 async function revokeToken(tokenId, label) {

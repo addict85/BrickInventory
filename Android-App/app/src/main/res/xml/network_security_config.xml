@@ -10,7 +10,7 @@
   util/ServerVertrauen.kt zur Laufzeit; nach Nutzer-CAs fragt die App erst bei
   einem Zertifikatsfehler.
 -->
-<network-security-config>
+<network-security-config xmlns:tools="http://schemas.android.com/tools">
     <!--
       Die Selbstaktualisierung lädt ein APK von GitHub: nur System-CAs und kein
       Klartext, auch wenn der Nutzer für seinen Server eigene CAs erlaubt. Die
@@ -26,7 +26,9 @@
         </trust-anchors>
     </domain-config>
 
-    <base-config cleartextTrafficPermitted="true">
+    <!-- Klartext nur hinter dem Expertenschalter, durchgesetzt im Wächter; hier
+         lässt er sich nicht zur Laufzeit umschalten. -->
+    <base-config cleartextTrafficPermitted="true" tools:ignore="InsecureBaseConfiguration">
         <trust-anchors>
             <certificates src="system" />
         </trust-anchors>
