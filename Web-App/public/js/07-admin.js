@@ -339,7 +339,7 @@ function yAchse(teilung, min, yOf, links, rechts, oben, unten, cur) {
   const schritt = teilung.werte.length > 1 ? teilung.werte[1] - teilung.werte[0] : 1;
   const striche = teilung.werte.filter(v => v >= min).map(v => {
     const y = yOf(v).toFixed(1);
-    return `<line x1="${links}" y1="${y}" x2="${rechts}" y2="${y}" stroke="var(--bdr)" stroke-width="1"/>
+    return `<line x1="${links}" y1="${y}" x2="${rechts}" y2="${y}" stroke="var(--mut)" stroke-opacity=".22" stroke-width="1"/>
       <text x="${links - 8}" y="${(yOf(v) + 4).toFixed(1)}" font-size="12" fill="var(--mut)" text-anchor="end" font-family="inherit">${esc(achsenBetrag(v, schritt, cur))}</text>`;
   }).join('');
   const achse = `<line x1="${links}" y1="${oben}" x2="${links}" y2="${unten}" stroke="var(--mut)" stroke-width="1"/>`;

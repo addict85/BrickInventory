@@ -555,7 +555,7 @@ window.I18N_DE = {
   'parts.filter.all': 'Alle Teile',
   'parts.filter.spare': 'Nur Ersatzteile',
   'parts.stat.total_label': 'Teile gesamt',
-  'parts.stat.unique': 'Unique Teile',
+  'parts.stat.unique': 'Sorten',
   'parts.loading_label': 'Teile laden…',
   'parts.single_parts': 'Einzel-Teile',
   'settings.admins_only': 'Nur Admins',

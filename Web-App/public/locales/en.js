@@ -549,7 +549,7 @@ window.I18N_EN = {
   'parts.filter.all': 'All parts',
   'parts.filter.spare': 'Spare parts only',
   'parts.stat.total_label': 'Parts in total',
-  'parts.stat.unique': 'Unique parts',
+  'parts.stat.unique': 'Part types',
   'parts.loading_label': 'Loading parts…',
   'parts.single_parts': 'Single parts',
   'settings.admins_only': 'Admins only',

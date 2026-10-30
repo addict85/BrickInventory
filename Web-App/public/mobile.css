@@ -392,6 +392,7 @@
   /* Kennzahlen (alle Designs) kompakt in zwei Spalten: untereinander füllten
      sie den ersten Bildschirm; eine rollende Reihe versteckte die Hälfte. */
   .brick-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; margin-bottom: var(--sp-4); }
+  .brick-stats:has(> :nth-child(3):last-child) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .bstat { padding: 8px 12px; }
   .bstat .bstat-v { font-size: var(--fs-5); }
 
