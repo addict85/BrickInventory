@@ -52,7 +52,9 @@ on:
 # stehen bei mehreren Pushes drei Läufe in der Schlange und der erste ist
 # längst uninteressant.
 concurrency:
-  group: android-${{ github.ref }}
+  # Ein Prüfsummenlauf hat eine eigene Gruppe: Er bricht den Bau desselben
+  # Zweigs sonst ab (gemessen am 30.10.: Lauf 41005196874 abgebrochen).
+  group: android-${{ github.ref }}${{ inputs.pruefsummen && '-pruefsummen' || '' }}
   cancel-in-progress: true
 
 jobs:
@@ -732,9 +734,12 @@ jobs:
       - name: Prüfsummen erzeugen
         run: |
           chmod +x gradlew
-          ./gradlew --no-daemon --write-verification-metadata sha256 \
+          ./gradlew --no-daemon --continue --write-verification-metadata sha256 \
             testDebugUnitTest assembleRelease bundleRelease lintRelease
+      # Auch nach einem roten Test: Gradle schreibt die Datei am Ende jedes
+      # Laufs, und die Prüfsummen hängen nicht am Testergebnis.
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        if: ${{ !cancelled() }}
         with:
           name: verification-metadata
           path: Android-App/gradle/verification-metadata.xml
