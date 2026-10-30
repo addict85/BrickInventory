@@ -75,7 +75,8 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # Regulär rund 12 Minuten, davon 6 für die Browser-Dateien nacheinander.
+    timeout-minutes: 30
 
     # Die Datei lag frueher IN Web-App/ und ging davon aus, dass das das
     # Wurzelverzeichnis ist. Vom Repositoriums-Wurzelverzeichnis aus muss jeder
