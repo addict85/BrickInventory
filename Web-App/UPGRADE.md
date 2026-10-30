@@ -355,3 +355,20 @@ Bereits geschützt und unverändert: PDF-Export
 > **Die Android-App braucht dafür eine Anpassung.** Coil-Bildanfragen an
 > `/images/…` bekommen ohne `Authorization`-Header ab sofort eine 401.
 > Siehe den Abschnitt am Ende dieser Datei bzw. den separaten Änderungsauftrag.
+
+## 13. Datenbankpasswort und TRUST_PROXY
+
+- **`DB_PASSWORD` ist Pflicht.** `compose.yaml` hat keinen Ersatzwert mehr, und
+  mit dem alten Beispielpasswort `brickinventory_secret` verweigert der Server
+  in Produktion den Start. Bestehende Datenbank umstellen:
+  ```
+  docker compose exec postgres psql -U brickinventory -c "ALTER USER brickinventory PASSWORD 'neues-passwort'"
+  echo DB_PASSWORD=neues-passwort >> .env
+  docker compose up -d
+  ```
+- **`TRUST_PROXY=docker` gibt es nicht mehr.** Erlaubt sind nur feste Adressen
+  oder kleine Netze; ohne Angabe gilt Loopback. Ein Reverse-Proxy im
+  Compose-Netz bekommt eine feste Adresse (`ipv4_address: 172.28.73.10`) und
+  genau diese kommt in `.env`. Das Netz `brickinventory-net` hat dafür jetzt
+  das feste Subnetz `172.28.73.0/24`; bei einer Fehlermeldung zum Netz einmal
+  `docker compose down` und wieder `up -d`.

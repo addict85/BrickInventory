@@ -100,6 +100,9 @@ import { startZustand, setzeStartZustand } from './utils/startZustand';
 const WORKERS = (require('./utils/workerZahl') as typeof import('./utils/workerZahl')).workerZahl();
 
 if (cluster.isPrimary && process.env.NODE_ENV === 'production') {
+  // Vor dem ersten Worker: sonst startete der Primary die Abgewiesenen endlos neu.
+  const verbote = (require('./utils/konfig') as typeof import('./utils/konfig')).startVerbote();
+  if (verbote.length) { for (const v of verbote) console.error(`❌ ${v}`); process.exit(1); }
   console.log(`[cluster] Primary ${process.pid} starting ${WORKERS} workers`);
   for (let i = 0; i < WORKERS; i++) cluster.fork();
   const { neustartPause } = require('./utils/workerZahl') as typeof import('./utils/workerZahl');
@@ -765,11 +768,6 @@ bereiteDatenbankVor().then(async () => {
   // Only primary worker clears stale startup_status — secondaries read it from DB
   if (isPrimaryWorker) {
     await loescheZustand('startup_status').catch(logAndContinue('server:loescheZustand'));
-    // Über console.warn landet der Hinweis in app_logs, also im Protokoll der Verwaltung.
-    if (process.env.NODE_ENV === 'production'
-        && (require('./utils/konfig') as typeof import('./utils/konfig')).standardPasswortInBenutzung())
-      console.warn('⚠️ [sicherheit] Die Datenbank benutzt das Beispielpasswort aus compose.yaml. '
-        + 'Bitte ändern (ALTER USER brickinventory PASSWORD …) und DB_PASSWORD in .env setzen — siehe README.md.');
   }
 
   (async () => {

@@ -46,17 +46,15 @@ Für eine **neue** Installation vor dem ersten Start eine Datei `.env` neben
 ```
 DB_PASSWORD=mein-sicheres-passwort
 ```
-`compose.yaml` gibt es an die Datenbank, die App und pgweb weiter. Eine
-**bestehende** Datenbank behält ihr Passwort aus dem ersten Start; dort
-`DB_PASSWORD` weglassen oder auf das bisherige setzen. Die Datenbank ist nicht
-nach aussen veröffentlicht — das Standardpasswort ist deshalb kein offener
-Zugang, aber ein eigenes ist besser.
+`compose.yaml` gibt es an die Datenbank, die App und pgweb weiter; ohne
+`DB_PASSWORD` bricht `docker compose up` ab. Eine **bestehende** Datenbank
+behält ihr Passwort aus dem ersten Start; dort den bisherigen Wert eintragen.
 
-Läuft die Datenbank noch mit dem Beispielpasswort, schreibt der Server beim
-Start eine Warnung ins Protokoll (Verwaltung → Logs). Für eine bestehende
-Datenbank: `docker compose exec postgres psql -U brickinventory -c "ALTER USER
-brickinventory PASSWORD 'neues-passwort'"`, dann `DB_PASSWORD` in `.env`
-setzen und `docker compose up -d` ausführen.
+Läuft die Datenbank noch mit dem alten Beispielpasswort `brickinventory_secret`,
+verweigert der Server in Produktion den Start. Ändern: `docker compose exec
+postgres psql -U brickinventory -c "ALTER USER brickinventory PASSWORD
+'neues-passwort'"`, dann `DB_PASSWORD` in `.env` setzen und `docker compose up
+-d` ausführen.
 
 ### DB-Pool-Größe anpassen
 Normalerweise **nicht nötig**: Die App rechnet `min(15, 80 / Anzahl Worker)`
@@ -219,7 +217,7 @@ neu starten.
 | Variable | Wirkung |
 |---|---|
 | `APP_BASE_URL` | Die Adresse, unter der der Server von **aussen** erreichbar ist (z. B. `https://lego.example.org`). Sie steckt in den Links der E-Mails und im **QR-Code zur Verknüpfung der App**. Ohne sie übernehmen die Bestätigungs-Links den Host aus dem Request-Header, und **Passwort-vergessen-Mails werden im Betrieb gar nicht versendet** (ein gefälschter Host-Header bekäme sonst den Reset-Link); der QR-Code wird **gar nicht erst erzeugt** — er trüge sonst die Adresse aus der Browserzeile, und die App fände den Server ausserhalb des Heimnetzes nie wieder. |
-| `TRUST_PROXY` | Wem der Server `X-Forwarded-For`/`-Proto` glaubt. Ohne Angabe **nur Loopback** (`127.0.0.0/8`, `::1`). `docker` glaubt zusätzlich den Docker-Netzen (`172.16.0.0/12`, `fc00::/7`) ausser deren Gateway (`x.y.0.1`, dort kommen per docker-proxy die Clients selbst herein) — das passt für nginx/Caddy/Traefik im selben Docker-Netz und ist in `compose.yaml` vorgegeben (in `.env` überschreibbar). Ausserhalb von Docker bleibt es bei Loopback: Dort kann `172.16.0.0/12` ein gewöhnliches Netz sein. Steht der Proxy auf einem anderen Rechner im Heimnetz, seine Adresse angeben (z. B. `192.168.1.5`). `false`, wenn kein Proxy davorsteht; sonst die Adresse oder das Netz des Proxys (z. B. `203.0.113.7`). Sonst könnte ein Client seine Absenderadresse selbst angeben und die Anmeldesperre umgehen. |
+| `TRUST_PROXY` | Wem der Server `X-Forwarded-For`/`-Proto` glaubt — nur **ausdrücklich genannten** Adressen. Ohne Angabe **nur Loopback** (`127.0.0.0/8`, `::1`); das ist ohne Reverse-Proxy richtig, denn über den veröffentlichten Port sieht der Server die echte Client-Adresse. Steht ein Proxy davor, seine **feste** Adresse eintragen: im Compose-Netz `brickinventory-net` (`172.28.73.0/24`) z. B. `172.28.73.10` per `ipv4_address`, auf einem anderen Rechner z. B. `192.168.1.5`. Mehrere durch Komma; Netze nur klein (IPv4 ab `/16`, IPv6 ab `/64`). `false` schaltet es ganz ab. `docker`, `true` und Hop-Zahlen verweigern den Start: Damit könnte jeder Container oder Client im Netz seine Absenderadresse selbst angeben und die Anmeldesperre umgehen. |
 | `UPLOAD_KONTINGENT_MB` | Wie viel Platz eigene Anleitungen (PDF/JPG/PNG) je Konto belegen dürfen, in MB (Vorgabe `2048`). Der Inhalt jeder Datei wird geprüft; eine Datei, deren Inhalt nicht zum Typ passt, wird abgewiesen. |
 | `DATA_KEY` | Schlüssel (32 Byte, Base64) für die verschlüsselten Geheimnisse in der Datenbank. Ohne Angabe erzeugt der Server beim ersten Start `data/.datenschluessel` (nur für den Besitzer lesbar). Wer den Schlüssel lieber getrennt von `data/` hält, setzt ihn hier: `openssl rand -base64 32`. |
 | `ADMIN_PASSWORD` | Passwort des beim ersten Start angelegten Admins. Sonst wird ein Zufallspasswort erzeugt und **einmalig** ins Log geschrieben. |

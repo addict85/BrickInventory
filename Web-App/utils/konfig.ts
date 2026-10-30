@@ -29,14 +29,27 @@ export function erfassungsZeitzone(env: NodeJS.ProcessEnv = process.env): string
 /** Das Beispielpasswort aus compose.yaml; es steht in jedem öffentlichen Klon. */
 export const STANDARD_DB_PASSWORT = 'brickinventory_secret';
 
-/**
- * Ob die Verbindung noch das Beispielpasswort benutzt. Der Start wird nicht
- * verweigert — eine bestehende Datenbank behält ihr Passwort, und eine Sperre
- * legte laufende Installationen still —, aber der Verwalter soll es sehen.
- */
+/** Ob die Verbindung noch das Beispielpasswort benutzt (in Produktion ein Startverbot). */
 export function standardPasswortInBenutzung(env: NodeJS.ProcessEnv = process.env): boolean {
   const v = datenbankVerbindung(env);
   if (!('connectionString' in v)) return v.password === STANDARD_DB_PASSWORT;
   try { return decodeURIComponent(new URL(v.connectionString).password) === STANDARD_DB_PASSWORT; }
   catch { return false; }
+}
+
+/**
+ * Gründe, den Start in Produktion zu verweigern. Ein öffentlich bekanntes
+ * Datenbankpasswort oder ein TRUST_PROXY, das Clients ihre Adresse selbst
+ * angeben lässt, soll beim Deploy auffallen, nicht erst im Ernstfall.
+ */
+export function startVerbote(env: NodeJS.ProcessEnv = process.env): string[] {
+  if (env.NODE_ENV !== 'production') return [];
+  const gruende: string[] = [];
+  if (standardPasswortInBenutzung(env))
+    gruende.push('[datenbank] Die Datenbank benutzt das Beispielpasswort „brickinventory_secret" aus compose.yaml — '
+      + 'Start verweigert. Ein eigenes setzen: in psql `ALTER USER brickinventory PASSWORD \'…\';` und denselben '
+      + 'Wert als DB_PASSWORD in .env (siehe UPGRADE.md).');
+  try { (require('./proxyVertrauen') as typeof import('./proxyVertrauen')).proxyVertrauen(env.TRUST_PROXY); }
+  catch (e) { gruende.push(`[proxy] ${(e as Error).message} Start verweigert.`); }
+  return gruende;
 }

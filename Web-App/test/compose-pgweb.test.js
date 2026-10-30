@@ -129,6 +129,22 @@ test('die App schreibt nur in ./data und /tmp — der Entrypoint auch', () => {
   assert.match(ep, /exec su-exec brickinv /, 'Der Wechsel zu brickinv (SETUID/SETGID) ist nicht mehr su-exec');
 });
 
-test('TRUST_PROXY ist für einen Proxy im Docker-Netz vorgegeben und in .env überschreibbar', () => {
-  assert.match(leseDienst(compose, 'app'), /^\s*TRUST_PROXY:\s*\$\{TRUST_PROXY:-docker\}\s*$/m);
+// Gegenproben (am 30.10.2026 gemessen): Vorgabe wieder `${TRUST_PROXY:-docker}` →
+// rot „TRUST_PROXY ohne Angabe …“; `ipam` am Netz entfernt → rot „… festes Subnetz“;
+// pgweb wieder ohne Digest → rot „pgweb ist nicht per Digest …“.
+test('TRUST_PROXY ohne Angabe ist Loopback, das Netz hat ein festes Subnetz', () => {
+  const app = leseDienst(compose, 'app');
+  assert.match(app, /^\s*TRUST_PROXY:\s*\$\{TRUST_PROXY:-\}\s*$/m, 'TRUST_PROXY ohne Angabe ist nicht leer (= Loopback)');
+  const { proxyVertrauen } = require('./helpers/sources').buildAndRequire()('utils/proxyVertrauen.js');
+  const vorgabe = proxyVertrauen('');
+  assert.equal(typeof vorgabe, 'function');
+  assert.equal(vorgabe('172.28.73.10'), false, 'ohne Angabe wird dem Compose-Netz vertraut');
+  const netz = compose.slice(compose.indexOf('\nnetworks:'));
+  assert.match(netz, /subnet:\s*172\.28\.73\.0\/24/, 'brickinventory-net hat kein festes Subnetz');
+});
+
+test('pgweb ist per Digest festgelegt, kein Dienst hat ein Ersatz-Datenbankpasswort', () => {
+  assert.match(leseDienst(compose, 'pgweb'), /^\s*image:\s*\S+@sha256:[0-9a-f]{64}\s*$/m, 'pgweb ist nicht per Digest festgelegt');
+  assert.doesNotMatch(compose, /DB_PASSWORD:-/, 'ein Dienst fällt auf ein Beispielpasswort zurück');
+  assert.equal([...compose.matchAll(/\$\{DB_PASSWORD:\?/g)].length, 3, 'postgres, app und pgweb verlangen DB_PASSWORD');
 });

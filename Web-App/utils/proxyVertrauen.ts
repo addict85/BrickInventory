@@ -1,20 +1,41 @@
+import net from 'node:net';
+
 /**
  * Wem der Server X-Forwarded-For und -Proto glaubt (Express „trust proxy").
  *
- * Ohne Einstellung nur Loopback: Ausserhalb von Docker kann 172.16.0.0/12 ein
- * gewöhnliches Firmen- oder Heimnetz sein, und jeder Rechner darin gäbe seine
- * Absenderadresse sonst selbst an. TRUST_PROXY: „docker" für einen Proxy im
- * Docker-Netz (compose.yaml gibt das vor), „false" ohne Proxy, eine Zahl für
- * so viele Hops, sonst Adressen/Netze wie „10.0.0.2, 192.168.1.0/24".
+ * Nur Adressen, die ausdrücklich genannt sind: Jeder vertraute Absender kann
+ * seine Client-Adresse frei angeben und damit die Anmeldesperre je Adresse
+ * umgehen. Ohne Angabe gilt Loopback, „false" schaltet es ganz ab. Hop-Zahlen,
+ * „true" und ganze Netze wie das alte „docker" (172.16.0.0/12) werden abgelehnt.
  */
-export function proxyVertrauen(wert?: string): boolean | number | string | ((adresse: string) => boolean) {
+export function proxyVertrauen(wert?: string): false | string[] | ((adresse: string) => boolean) {
   const v = (wert ?? '').trim();
   if (!v) return nurLoopback;
-  if (/^docker$/i.test(v)) return dockerProxyOhneGateway;
   if (/^(false|nein|no|off)$/i.test(v)) return false;
-  if (/^(true|ja|yes|on)$/i.test(v)) return true;
-  if (/^\d+$/.test(v)) return parseInt(v, 10);
-  return v;
+  const eintraege = v.split(/[\s,]+/).filter(Boolean);
+  const falsch = eintraege.filter(e => !proxyEintragGueltig(e));
+  if (falsch.length) throw new Error(proxyFehlertext(falsch));
+  return eintraege;
+}
+
+/** Die Meldung für einen Start mit unbrauchbarem TRUST_PROXY. */
+function proxyFehlertext(falsch: string[]): string {
+  return `TRUST_PROXY enthält ${falsch.map(f => `„${f}"`).join(', ')}. Erlaubt sind nur die feste Adresse `
+    + 'des eigenen Reverse-Proxys (z. B. 172.28.73.10) oder ein kleines Netz (IPv4 ab /16, IPv6 ab /64), '
+    + 'mehrere durch Komma getrennt, oder „false" ohne Proxy. „docker", „true" und Hop-Zahlen gibt es nicht mehr — '
+    + 'siehe README.md und docs/SICHERHEIT.md.';
+}
+
+/** Eine IP-Adresse oder ein CIDR-Netz, das höchstens einen kleinen Bereich umfasst. */
+export function proxyEintragGueltig(eintrag: string): boolean {
+  const [adresse, praefix, rest] = eintrag.split('/');
+  if (rest !== undefined || !adresse) return false;
+  const art = net.isIP(adresse);
+  if (!art) return false;
+  if (praefix === undefined) return true;
+  if (!/^\d{1,3}$/.test(praefix)) return false;
+  const p = Number(praefix);
+  return art === 4 ? p >= 16 && p <= 32 : p >= 64 && p <= 128;
 }
 
 const ohneV4Huelle = (adresse: string) => adresse.replace(/^::ffff:(?=\d+\.\d+\.\d+\.\d+$)/i, '');
@@ -33,15 +54,6 @@ function imDockerNetz(adresse: string): boolean {
   return a.includes(':') && erste >= 0xfc00 && erste <= 0xfdff;
 }
 
-/**
- * Loopback und Docker-Netz, aber nicht dessen Gateway (x.y.0.1): Über das
- * Gateway kommen per docker-proxy die Clients selbst herein (IPv6, rootless,
- * Docker Desktop); ihnen zu glauben machte die Sperre je Adresse umgehbar.
- */
-function dockerProxyOhneGateway(adresse: string): boolean {
-  return nurLoopback(adresse) || (imDockerNetz(adresse) && !istDockerGateway(adresse));
-}
-
 /** Das Gateway eines Docker-Netzes (x.y.0.1 in 172.16/12, …:1 in fc00::/7). */
 export function istDockerGateway(adresse: string): boolean {
   const a = ohneV4Huelle(adresse);
@@ -52,26 +64,32 @@ export function istDockerGateway(adresse: string): boolean {
 }
 
 /**
- * Einmal warnen, wenn ein Proxy aus dem Docker-Netz oder über dessen Gateway
- * kommt und TRUST_PROXY ihm nicht glaubt. Dann gilt jede Anfrage als dieselbe
- * Adresse: Fünf Fehlversuche eines Fremden sperren den Inhaber aus, und die
- * Drosseln für Rücksetzen und Registrieren gelten für alle zusammen.
+ * Einmal warnen, wenn ein Proxy aus dem Docker-Netz kommt und TRUST_PROXY ihm
+ * nicht glaubt: Dann teilen sich alle Clients eine Adresse (Anmeldesperre,
+ * Drosseln). Über das Gateway kommen auch Clients selbst herein, deshalb wird
+ * ihm nie zu vertrauen geraten, sondern zu einer festen Proxy-Adresse.
  */
 export function proxyHinweis(trustProxy: string | undefined, warne: (text: string) => void = console.warn) {
+  let vertrauen: ReturnType<typeof proxyVertrauen>;
+  try { vertrauen = proxyVertrauen(trustProxy); } catch { vertrauen = false; }
   // Dieselbe Auswertung wie im Server, damit Hinweis und Wirkung übereinstimmen.
   const pruefer = require('express')();
-  pruefer.set('trust proxy', proxyVertrauen(trustProxy));
+  pruefer.set('trust proxy', vertrauen);
   const vertraut = pruefer.get('trust proxy fn') as (adresse: string, hop: number) => boolean;
-  let gewarnt = proxyVertrauen(trustProxy) === false;
+  let gewarnt = vertrauen === false;
   return (req: import('express').Request, _res: import('express').Response, next: import('express').NextFunction) => {
     const von = req.socket?.remoteAddress || '';
     if (!gewarnt && req.headers['x-forwarded-for'] && imDockerNetz(von) && !vertraut(von, 0)) {
       gewarnt = true;
       const ip = ohneV4Huelle(von);
-      const gateway = istDockerGateway(von);
-      warne(`⚠️ [sicherheit] Ein Reverse-Proxy erreicht den Server über ${gateway ? 'das Docker-Gateway' : 'das Docker-Netz'} ${ip}. `
-        + 'Sein X-Forwarded-For wird verworfen, und alle Clients teilen sich eine Adresse '
-        + `(Anmeldesperre, Drosseln). TRUST_PROXY=${gateway ? ip : 'docker'} setzen — siehe README.md.`);
+      warne(istDockerGateway(von)
+        ? `⚠️ [sicherheit] X-Forwarded-For kommt über das Docker-Gateway ${ip} und wird verworfen. Über das Gateway `
+          + 'erreichen auch Clients selbst den Server; ihm zu vertrauen hiesse, ihnen ihre Adresse zu glauben. Den '
+          + 'Reverse-Proxy mit fester Adresse ins Netz brickinventory-net stellen und genau diese in TRUST_PROXY '
+          + 'eintragen — siehe compose.yaml und README.md.'
+        : `⚠️ [sicherheit] Ein Reverse-Proxy erreicht den Server aus dem Docker-Netz unter ${ip}. Sein X-Forwarded-For `
+          + 'wird verworfen, und alle Clients teilen sich eine Adresse (Anmeldesperre, Drosseln). Ist das der eigene '
+          + `Proxy, ihm eine feste Adresse geben und TRUST_PROXY=${ip} setzen — siehe README.md.`);
     }
     next();
   };
