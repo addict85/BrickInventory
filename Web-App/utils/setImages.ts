@@ -1,3 +1,4 @@
+import { konfig } from './konfig';
 import path from 'path';
 import fs from 'fs';
 import https from 'https';
@@ -20,7 +21,8 @@ const SET_IMG_MAX_BYTES = 20 * 1024 * 1024;
  */
 function bildUserAgent(): string {
   const { appVersion } = require('../utils/appVersion');
-  if (process.env.IMG_USER_AGENT) return process.env.IMG_USER_AGENT;
+  const eigener = konfig().bildUserAgent;
+  if (eigener) return eigener;
   return `BrickInventoryManager/${appVersion()} (self-hosted; +https://github.com/brickinventory)`;
 }
 

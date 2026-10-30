@@ -104,11 +104,11 @@ services:
       - ./data:/app/data
     environment:
 
-      # ── PFLICHT: vor dem ersten Start ändern ─────────────────────────────────
-      # Eigenen Zufallswert eintragen, z. B.:  openssl rand -base64 48
-      # Der Server verweigert in Produktion den Start, wenn dieser Beispielwert
-      # stehen bleibt oder der Wert kürzer als 32 Zeichen ist.
-      SESSION_SECRET: change-me-to-a-long-random-string
+      # ── PFLICHT: in .env setzen (Vorlage: .env.example) ──────────────────────
+      # Eigenen Zufallswert, z. B.:  openssl rand -base64 48
+      # Ohne Wert startet Compose nicht; der Server verweigert einen Wert unter
+      # 32 Zeichen.
+      SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET in .env setzen, siehe .env.example}
 
       # ── App ──────────────────────────────────────────────────────────────────
       # Adresse, unter der der Server von aussen erreichbar ist. Nötig für

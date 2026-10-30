@@ -1,4 +1,5 @@
 
+import { konfig } from '../utils/konfig';
 import { protokolliere } from '../utils/verwaltungsprotokoll';
 import express from 'express';
 const router  = express.Router();
@@ -446,7 +447,7 @@ router.post('/change-password', requireLogin, async (req: LoggedInRequest, res) 
 function getBaseUrl(req: Request): string | null {
   const basis = basisUrl();
   if (basis) return basis;
-  if (process.env.NODE_ENV === 'production') {
+  if (konfig().produktion) {
     hinweisOhneBasisUrl('auth', 'Links in E-Mails werden nicht verschickt.');
     return null;
   }
@@ -457,7 +458,7 @@ function getBaseUrl(req: Request): string | null {
 
 /** Reset-Links nur mit APP_BASE_URL — ausser ausserhalb des Betriebs, wo es keinen Angreifer gibt. */
 function resetLinkMoeglich(): boolean {
-  return !!basisUrl() || process.env.NODE_ENV !== 'production';
+  return !!basisUrl() || !konfig().produktion;
 }
 
 //  QR-Login

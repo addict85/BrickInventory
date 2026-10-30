@@ -9,6 +9,7 @@ import { asIds } from './household';
 import { buildChart } from './chartData';
 import { blNummerVon } from './blZuordnung';
 import { entwicklungProzent } from './setValue';
+import { konfig } from './konfig';
 
 /**
  * Welche Zustaende gehoeren ins Diagramm?
@@ -316,9 +317,8 @@ async function preisNummernFuerFigur(_uid: number | number[], figNumber: string)
  * @returns Anzahl entfernter Zeilen
  */
 async function purgeAltePreise(): Promise<number> {
-  const roh = process.env.PRICE_HISTORY_KEEP_DAYS;
-  const tage = roh === undefined ? 1095 : parseInt(roh);
-  if (!Number.isFinite(tage) || tage <= 0) return 0;
+  const tage = konfig().preisverlaufTage;
+  if (tage <= 0) return 0;
   const r = await db.run(
     `DELETE FROM price_history
       WHERE recorded_at < NOW() - ($1 || ' days')::interval`,

@@ -14,6 +14,7 @@ import crypto from 'crypto';
 import { Client } from 'pg';
 import { LOCKS } from '../utils/lockNamespaces';
 import { fehlerCode, meldeUndWeiter, logAndContinue } from '../utils/httpError';
+import { konfig, datenbankVerbindung } from '../utils/konfig';
 
 // Warum diese acht jetzt oben stehen
 // Sie standen als require() in den Funktionsruempfen. Node haelt Module im
@@ -34,20 +35,21 @@ pgTypes.setTypeParser(pgTypes.builtins.NUMERIC, (v: any) => (v === null ? null :
 const { workerZahl, poolJeWorker } = require('../utils/workerZahl') as typeof import('../utils/workerZahl');
 const MAX_PER_WORKER = poolJeWorker(workerZahl());
 
+const K = konfig();
 const POOL_CONFIG = {
-  max:                    parseInt(process.env.PG_POOL_MAX    || String(MAX_PER_WORKER)),
-  min:                    parseInt(process.env.PG_POOL_MIN    || '2'),
-  idleTimeoutMillis:      parseInt(process.env.PG_IDLE_MS     || '30000'),
-  connectionTimeoutMillis:parseInt(process.env.PG_CONN_MS     || '30000'),
+  max:                    K.pgPoolMax ?? MAX_PER_WORKER,
+  min:                    K.pgPoolMin,
+  idleTimeoutMillis:      K.pgIdleMs,
+  connectionTimeoutMillis:K.pgConnMs,
   // Über die Verbindungsoptionen statt je Anfrage: statement_timeout, und die
   // Zeitzone, in der der Trigger erfassung_tag() den Tag eines Kaufs bildet.
-  options:                `-c statement_timeout=${parseInt(process.env.PG_STMT_MS || '30000')}`
-                        + ` -c brickinventory.zeitzone=${(require('../utils/konfig') as typeof import('../utils/konfig')).erfassungsZeitzone()}`,
+  options:                `-c statement_timeout=${K.pgStmtMs}`
+                        + ` -c brickinventory.zeitzone=${K.erfassungZeitzone}`,
   keepAlive:              true,
   keepAliveInitialDelayMillis: 10000,
 };
 
-const baseConfig = (require('../utils/konfig') as typeof import('../utils/konfig')).datenbankVerbindung();
+const baseConfig = datenbankVerbindung();
 
 const pool = new Pool({ ...baseConfig, ...POOL_CONFIG });
 
@@ -287,7 +289,7 @@ async function legeAdminAn() {
     // oben importiert statt per require() geholt wurde: Solange hashSync `any`
     // war, prueft niemand sein Argument. Ein Fehler war es nicht — der Zweig
     // ist durch dieselbe Bedingung geschuetzt —, beweisbar war es aber auch nicht.
-    const envPasswort = process.env.ADMIN_PASSWORD || '';
+    const envPasswort = konfig().adminPasswort;
     const useEnvPassword = envPasswort !== '';
     const plainPassword = useEnvPassword
       ? envPasswort

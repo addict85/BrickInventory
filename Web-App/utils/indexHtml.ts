@@ -2,6 +2,7 @@
  * Auslieferung der index.html mit bereits gesetztem data-theme.
  * Ausführlich: docs/begruendungen/utils/indexHtml.ts.md#abschnitt
  */
+import { konfig } from './konfig';
 import { meldeUndLiefere } from './httpError';
 import fs from 'fs';
 import {  PUBLIC_DIR } from '../utils/appPaths';
@@ -28,7 +29,7 @@ const THEME_TTL_MS = 30_000;
 export function invalidateTheme() { _theme = null; }
 
 async function readIndex(): Promise<string> {
-  if (_html !== null && process.env.NODE_ENV === 'production') return _html;
+  if (_html !== null && konfig().produktion) return _html;
   const st = await fs.promises.stat(INDEX_PATH);
   if (_html === null || st.mtimeMs !== _mtime) {
     _html = await fs.promises.readFile(INDEX_PATH, 'utf8');

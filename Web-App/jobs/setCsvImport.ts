@@ -1,3 +1,4 @@
+import { konfig } from '../utils/konfig';
 import { addSetWithDate, nacharbeitEinstellen } from '../utils/setService';
 import { emitJobStatus, jobUpdate, setzeImportFort, type ImportErgebnis } from '../utils/importAuftrag';
 import { fehlertext } from '../utils/httpError';
@@ -15,7 +16,7 @@ export type CsvZeile = { sn: string; qty: number; purchasePrice: number | null; 
 export interface CsvNutzlast { user_id: number; lauf: string; rows: CsvZeile[] }
 
 /** Wie lange ein Set beim Import dauern darf, bevor die Zeile als Warnung endet. */
-const zeilenFrist = () => Number(process.env.CSV_ZEILE_FRIST_MS) || 120_000;
+const zeilenFrist = () => konfig().csvZeileFristMs;
 
 async function importiereZeile(z: CsvZeile, userId: number): Promise<ImportErgebnis> {
   for (let versuch = 1; ; versuch++) {

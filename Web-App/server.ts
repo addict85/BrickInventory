@@ -1,4 +1,6 @@
 import type { Request, Response, NextFunction } from 'express';
+// Zuerst: Ein ungültiger Wert beendet den Start mit Meldung, bevor ein Modul ihn liest.
+import { konfig } from './startup/konfigPruefen';
 
 /**
  * Anfrage einer Wildcard-Route (`app.get('/images/*pfad', …)`).
@@ -99,7 +101,7 @@ import { startZustand, setzeStartZustand } from './utils/startZustand';
 
 const WORKERS = (require('./utils/workerZahl') as typeof import('./utils/workerZahl')).workerZahl();
 
-if (cluster.isPrimary && process.env.NODE_ENV === 'production') {
+if (cluster.isPrimary && konfig().produktion) {
   console.log(`[cluster] Primary ${process.pid} starting ${WORKERS} workers`);
   for (let i = 0; i < WORKERS; i++) cluster.fork();
   const { neustartPause } = require('./utils/workerZahl') as typeof import('./utils/workerZahl');
@@ -149,7 +151,7 @@ const { pool }    = require('./db/database') as typeof import('./db/database');
 const app  = express();
 // Verrät nur, womit der Server gebaut ist — wer sucht, soll es nicht geschenkt bekommen.
 app.disable('x-powered-by');
-const PORT = process.env.PORT || 3000;
+const PORT = konfig().port;
 
 // Gzip/Brotli compression for all responses — index.html is ~189KB, saves ~80%
 app.use(compression({
@@ -181,10 +183,9 @@ app.use((req, res, next) => {
   // COOKIE_SECURE nicht gesetzt ist. Die Umleitung auf https kommt erst als …
   // Ausführlich: docs/begruendungen/server.ts.md#port-uebertls
   const ueberTls = req.secure || req.headers['x-forwarded-proto'] === 'https';
-  const hstsAlter = process.env.HSTS_MAX_AGE ?? '31536000';   // ein Jahr
-  if (ueberTls && hstsAlter !== '0') {
-    res.setHeader('Strict-Transport-Security',
-      `max-age=${parseInt(hstsAlter) || 31536000}; includeSubDomains`);
+  const hstsAlter = konfig().hstsMaxAge;   // Vorgabe ein Jahr, 0 schaltet ab
+  if (ueberTls && hstsAlter !== 0) {
+    res.setHeader('Strict-Transport-Security', `max-age=${hstsAlter}; includeSubDomains`);
   }
 
   res.setHeader('Content-Security-Policy', [
@@ -240,11 +241,11 @@ app.use((req, _res, next) => { if (req.body === undefined) req.body = {}; next()
 
 // Hinter einem TLS-terminierenden Reverse-Proxy muss Express X-Forwarded-Proto
 // glauben, sonst setzt es das secure-Cookie nie. Wem genau: utils/proxyVertrauen.ts.
-if (process.env.NODE_ENV === 'production')
+if (konfig().produktion)
   app.set('trust proxy', (require('./utils/proxyVertrauen') as typeof import('./utils/proxyVertrauen'))
-    .proxyVertrauen(process.env.TRUST_PROXY));
+    .proxyVertrauen(konfig().trustProxy));
   app.use((require('./utils/proxyVertrauen') as typeof import('./utils/proxyVertrauen'))
-    .proxyHinweis(process.env.TRUST_PROXY));
+    .proxyHinweis(konfig().trustProxy));
 
 // Doppelte Schrägstriche im Pfad zusammenfassen
 // `//api/img-proxy?url=…` trifft in Express NICHT auf `/api/img-proxy`. Die
@@ -319,9 +320,9 @@ app.use(session({
       'hier-langen-zufalls-string-eintragen',
       'brickinventory-manager-dev-secret',
     ];
-    const gesetzt = process.env.SESSION_SECRET;
+    const gesetzt = konfig().sessionSecret;
     if (gesetzt) {
-      if (process.env.NODE_ENV === 'production') {
+      if (konfig().produktion) {
         if (PLATZHALTER.includes(gesetzt.trim())) {
           console.error('❌ [session] SESSION_SECRET steht noch auf dem Beispielwert aus compose.yaml — Start verweigert. Bitte einen eigenen Zufallswert eintragen, z. B. `openssl rand -base64 48`.');
           process.exit(1);
@@ -333,7 +334,7 @@ app.use(session({
       }
       return gesetzt;
     }
-    if (process.env.NODE_ENV === 'production') {
+    if (konfig().produktion) {
       // Fail-fast: In Produktion ohne SESSION_SECRET zu starten hiesse, dass
       // Session-Cookies mit einem öffentlich bekannten Secret signiert werden —
       // dann lieber gar nicht starten, der Fehler fällt sofort beim Deploy auf.
@@ -351,9 +352,7 @@ app.use(session({
     sameSite: 'lax',
     // Cookie nur über HTTPS senden. Default: in Produktion aktiv; per
     // COOKIE_SECURE=0 abschaltbar, falls (ausnahmsweise) ohne TLS betrieben.
-    secure: process.env.COOKIE_SECURE !== undefined
-      ? process.env.COOKIE_SECURE === '1'
-      : process.env.NODE_ENV === 'production',
+    secure: konfig().cookieSecure ?? konfig().produktion,
   }
 }));
 app.use(sitzungsHoechstdauer());
@@ -766,7 +765,7 @@ bereiteDatenbankVor().then(async () => {
   if (isPrimaryWorker) {
     await loescheZustand('startup_status').catch(logAndContinue('server:loescheZustand'));
     // Über console.warn landet der Hinweis in app_logs, also im Protokoll der Verwaltung.
-    if (process.env.NODE_ENV === 'production'
+    if (konfig().produktion
         && (require('./utils/konfig') as typeof import('./utils/konfig')).standardPasswortInBenutzung())
       console.warn('⚠️ [sicherheit] Die Datenbank benutzt das Beispielpasswort aus compose.yaml. '
         + 'Bitte ändern (ALTER USER brickinventory PASSWORD …) und DB_PASSWORD in .env setzen — siehe README.md.');

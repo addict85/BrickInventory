@@ -1,4 +1,5 @@
 import os from 'os';
+import { konfig } from './konfig';
 
 /**
  * Wie viele Worker der Server startet — EINE Rechnung für server.ts und den
@@ -6,8 +7,8 @@ import os from 'os';
  * „ein Worker" (15 Verbindungen je Worker), während der Server so viele Worker
  * startete, wie es Kerne gibt.
  */
-export function workerZahl(env: NodeJS.ProcessEnv = process.env, kerne = os.cpus().length): number {
-  const n = parseInt(env.WEB_WORKERS || '', 10);
+export function workerZahl(env?: Record<string, string | undefined>, kerne = os.cpus().length): number {
+  const n = env ? parseInt(env.WEB_WORKERS || '', 10) : konfig().webWorkers;
   return n > 0 ? n : Math.max(2, kerne);
 }
 

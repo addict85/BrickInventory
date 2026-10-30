@@ -138,7 +138,7 @@ async function runWorker(task: string, stepNum: number, stepLabel: string, filen
 
 function importInWorker(task: string, stepNum: number, stepLabel: string) {
   return new Promise((resolve, reject) => {
-    const worker = _fork(_workerPath, [], { env: process.env, silent: false });
+    const worker = _fork(_workerPath, [], { silent: false });
     worker.on('message', (msg: any) => {
       if (msg.type === 'progress') {
         const sub = msg.pct != null ? `${msg.pct}%` : null;
