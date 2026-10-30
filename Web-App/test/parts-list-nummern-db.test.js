@@ -66,7 +66,7 @@ async function seed() {
   //   3069b → BrickLink 3070   (zweite Rebrickable-Nummer, GLEICHE BL-Nummer)
   //   3001  → keine Zuordnung  (BrickLink-Nummer = Rebrickable-Nummer)
   await db.run(`INSERT INTO rb_inventory_parts (inventory_id, part_num, color_id, quantity, is_spare)
-                VALUES (900,'3070b',0,4,'f'), (900,'3069b',0,2,'f'), (900,'3001',0,7,'f')`);
+                VALUES (900,'3070b',0,4,0), (900,'3069b',0,2,0), (900,'3001',0,7,0)`);
   await db.run(`INSERT INTO rb_parts (part_num, name) VALUES
                 ('3070b','Tile 1x1'), ('3069b','Tile 1x2'), ('3001','Brick 2x4')`);
   // Seit Migration 0037 in bl_zuordnung, mit Art-Unterscheidung.

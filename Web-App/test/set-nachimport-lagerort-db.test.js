@@ -45,12 +45,14 @@ test('erneuter Set-Import behält Lagerort und Kennung', { concurrency: 1 }, asy
   const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
   const ort = (await db.get(`INSERT INTO storage_locations (user_id, name) VALUES ($1, 'Regal') RETURNING id`, [uid])).id;
   await db.run('INSERT INTO sets (user_id, set_number) VALUES ($1, $2)', [uid, SN]);
-  await db.run(`INSERT INTO set_minifigs_catalog (set_number, fig_number, fig_name, quantity)
-                VALUES ($1, 'fig-t1', 'Eins', 1), ($1, 'fig-t2', 'Zwei', 2)`, [SN]);
+  await db.run(`INSERT INTO minifigs_catalog (fig_number, fig_name) VALUES ('fig-t1', 'Eins'), ('fig-t2', 'Zwei')
+                ON CONFLICT (fig_number) DO UPDATE SET fig_name = EXCLUDED.fig_name`);
+  await db.run(`INSERT INTO set_figuren (set_number, fig_number, quantity)
+                VALUES ($1, 'fig-t1', 1), ($1, 'fig-t2', 2)`, [SN]);
   await db.run(`INSERT INTO minifigs (user_id, set_number, fig_number, source) VALUES ($1, NULL, 'fig-t9', 'manual')`, [uid]);
   await db.run('INSERT INTO rb_inventories (id, set_num, version) VALUES ($1, $2, 1)', [INV, SN]);
   await db.run(`INSERT INTO rb_inventory_parts (inventory_id, part_num, color_id, quantity, is_spare)
-                VALUES ($1, 'tp-1', 1, 4, 'f'), ($1, 'tp-1', 1, 1, 't'), ($1, 'tp-2', 5, 2, 'f')`, [INV]);
+                VALUES ($1, 'tp-1', 1, 4, 0), ($1, 'tp-1', 1, 1, 1), ($1, 'tp-2', 5, 2, 0)`, [INV]);
 
   const figur = (nr) => db.get('SELECT id, storage_id FROM minifigs WHERE user_id=$1 AND fig_number=$2', [uid, nr]);
   const teil = (nr) => db.get(`SELECT id, storage_id, added_at::text AS added_at FROM parts WHERE user_id=$1 AND part_number=$2`, [uid, nr]);
@@ -66,7 +68,7 @@ test('erneuter Set-Import behält Lagerort und Kennung', { concurrency: 1 }, asy
     });
 
     await t.test('eine weggefallene Figur geht, eine eingetippte bleibt', async () => {
-      await db.run(`DELETE FROM set_minifigs_catalog WHERE set_number=$1 AND fig_number='fig-t2'`, [SN]);
+      await db.run(`DELETE FROM set_figuren WHERE set_number=$1 AND fig_number='fig-t2'`, [SN]);
       assert.equal(await importiereFiguren(SN, uid), 1);
       assert.equal(await figur('fig-t2'), undefined);
       assert.ok(await figur('fig-t1'));
@@ -96,7 +98,7 @@ test('erneuter Set-Import behält Lagerort und Kennung', { concurrency: 1 }, asy
   } finally {
     await db.run('DELETE FROM rb_inventory_parts WHERE inventory_id=$1', [INV]);
     await db.run('DELETE FROM rb_inventories WHERE id=$1', [INV]);
-    await db.run('DELETE FROM set_minifigs_catalog WHERE set_number=$1', [SN]);
+    await db.run('DELETE FROM set_figuren WHERE set_number=$1', [SN]);
     await db.run('DELETE FROM set_teile WHERE set_number=$1', [SN]);
     await db.run('DELETE FROM users WHERE id=$1', [uid]);
     await db.pool.end().catch(() => {});

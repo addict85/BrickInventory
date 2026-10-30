@@ -324,7 +324,7 @@ test('die Lesewege liefern die Stückzahl aus Katalog und Erfassungen',
                 VALUES ($1,'3001',4,6)`, [SN]);
   await db.run(`INSERT INTO parts (user_id,set_number,part_number,color_id,source)
                 VALUES ($1,$2,'3001',4,'set'), ($3,$2,'3001',4,'set')`, [haupt, SN, kind]);
-  await db.run(`INSERT INTO set_minifigs_catalog (set_number,fig_number,quantity)
+  await db.run(`INSERT INTO set_figuren (set_number,fig_number,quantity)
                 VALUES ($1,'sw0001',1)`, [SN]);
   await db.run(`INSERT INTO minifigs (user_id,set_number,fig_number,source)
                 VALUES ($1,$2,'sw0001','set'), ($3,$2,'sw0001','set')`, [haupt, SN, kind]);
@@ -484,9 +484,9 @@ test('die Lesewege liefern die Stückzahl aus Katalog und Erfassungen',
   assert.equal(Number(bewFig.quantity), 2,
     `Die Figuren-Bewertung liest 2, bekam ${bewFig.quantity}`);
 
-  const csvP = await _req('routes/parts.js').buildPartsCsv(haupt);
+  const csvP = await _req('utils/bestandExport.js').buildPartsCsv(haupt);
   assert.match(csvP, /3070b/, 'Der Teile-Export laesst die manuelle Position aus');
-  const csvM = await _req('routes/minifigs.js').buildFigsCsv(haupt);
+  const csvM = await _req('utils/bestandExport.js').buildFigsCsv(haupt);
   assert.match(csvM, /fig-m/, 'Der Figuren-Export laesst die manuelle Figur aus');
 
   // ── GEGENPROBE 1: die KATALOGZAHL ändern ────────────────────────────────

@@ -255,12 +255,9 @@ const TASKS = {
     cols: ['inventory_id','part_num','color_id','quantity','is_spare','img_url'],
     chunkSize: 50,
     mapRow: (c: string[]) => [parseInt(sp(c,0))||0, sp(c,1), parseInt(sp(c,2))||0, parseInt(sp(c,3))||1,
-                  // Diese Zeile SCHREIBT, was spaeter alle lesen. Hier stand
-                  // eine eigene Aufzaehlung ('True','t','1') — ein
-                  // kleingeschriebenes 'true' aus der Katalogdatei landete
-                  // damit als 'f' in der Datenbank, und kein Leser konnte das
-                  // hinterher noch richtigstellen.
-                  istErsatzteil(sp(c,4)) ? 't' : 'f', sp(c,5)],
+                  // Die Spalte ist 0/1 (Migration 0075); die Schreibweisen
+                  // der Datei liest istErsatzteil(), damit es nur eine Lesart gibt.
+                  istErsatzteil(sp(c,4)) ? 1 : 0, sp(c,5)],
   }),
 };
 

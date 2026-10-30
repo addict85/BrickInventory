@@ -94,7 +94,7 @@ test('die Antworten passen zu den Kotlin-Modellen', { concurrency: 1, timeout: 1
   };
   t.after(async () => {
     await db.run('DELETE FROM users WHERE id = ANY($1)', [[uid, sub, oben, getrennt]]).catch(() => {});
-    for (const tab of ['set_parts_catalog', 'set_minifigs_catalog', 'price_cache', 'price_history', 'set_catalog'])
+    for (const tab of ['set_teile', 'set_figuren', 'price_cache', 'price_history', 'set_catalog'])
       await db.run(`DELETE FROM ${tab} WHERE set_number = $1`, [SET]).catch(() => {});
     for (const tab of ['part_price_cache', 'part_price_history', 'part_catalog', 'part_color_catalog'])
       await db.run(`DELETE FROM ${tab} WHERE part_number = $1`, [TEIL]).catch(() => {});
@@ -114,8 +114,8 @@ test('die Antworten passen zu den Kotlin-Modellen', { concurrency: 1, timeout: 1
   await db.run(`INSERT INTO part_catalog (part_number, part_name) VALUES ($1, 'Stein 2x2') ON CONFLICT DO NOTHING`, [TEIL]);
   await db.run(`INSERT INTO part_color_catalog (part_number, color_id, color_name)
                 VALUES ($1, $2, 'Rot') ON CONFLICT DO NOTHING`, [TEIL, FARBE]);
-  await db.run(`INSERT INTO set_minifigs_catalog (set_number, fig_number, fig_name, quantity)
-                VALUES ($1, $2, 'Probefigur', 1) ON CONFLICT DO NOTHING`, [SET, FIGUR]);
+  await db.run(`INSERT INTO set_figuren (set_number, fig_number, quantity)
+                VALUES ($1, $2, 1) ON CONFLICT DO NOTHING`, [SET, FIGUR]);
   await db.run(`INSERT INTO minifigs_catalog (fig_number, fig_name) VALUES ($1, 'Probefigur') ON CONFLICT DO NOTHING`, [FIGUR]);
   for (const zustand of ['N', 'U']) {
     await db.run(`INSERT INTO price_cache (set_number, condition, currency_code, min_price, avg_price, max_price, qty_avg_price, total_quantity)
@@ -132,7 +132,7 @@ test('die Antworten passen zu den Kotlin-Modellen', { concurrency: 1, timeout: 1
   await katalog(`INSERT INTO rb_inventories (id, set_num, version) VALUES (999074, $1, 1)`, [SET],
                 'DELETE FROM rb_inventories WHERE id = 999074', []);
   await katalog(`INSERT INTO rb_inventory_parts (id, inventory_id, part_num, color_id, quantity, is_spare)
-                 VALUES (999074, 999074, $1, $2, 4, 'f')`, [TEIL, FARBE],
+                 VALUES (999074, 999074, $1, $2, 4, 0)`, [TEIL, FARBE],
                 'DELETE FROM rb_inventory_parts WHERE id = 999074', []);
   await db.run(`INSERT INTO part_catalog (part_number, part_name, category_name) VALUES ($1, 'Stein 2x2', 'Steine')
                 ON CONFLICT DO NOTHING`, [TEIL]);

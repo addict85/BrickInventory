@@ -1,7 +1,12 @@
 import path from 'path';
+import crypto from 'crypto';
+import fsp from 'fs/promises';
 import { PDF_JOB_DIR } from './appPaths';
 import * as db from '../db/database';
 import { notify } from './pgNotify';
+import { logAndContinue, meldeUndLiefere, meldeUndWeiter, ohneFehlendeDatei } from './httpError';
+import { stelleAuftragEin } from './auftraege';
+import { mitVersion } from './setNummer';
 
 /**
  * Status der PDF-Aufträge. Er steht in der Datenbank, damit jeder
@@ -67,4 +72,79 @@ export async function raeumeAuftraegeAuf(ttlMs: number): Promise<string[]> {
   const rows = await db.all(
     'DELETE FROM pdf_auftraege WHERE aktualisiert < NOW() - make_interval(secs => $1) RETURNING id', [ttlMs / 1000]);
   return rows.map((r: { id: string }) => r.id);
+}
+
+/** Ein Auftrag gilt nach zehn Minuten als verwaist; seine Datei wird gelöscht. */
+export const PDF_JOB_TTL = 10 * 60 * 1000;
+/** Gleichzeitig laufende PDF-Aufträge je Benutzer: Ein Auftrag lädt hunderte Bilder nach. */
+export const MAX_JOBS_PRO_BENUTZER = 2;
+const PDF_CLEANUP_MS = 60 * 60 * 1000;
+
+/** Kennung aus Zeit und kryptografischem Zufall: nicht erratbar, aber sortierbar. */
+export function neueJobId(): string {
+  return `${Date.now()}-${crypto.randomBytes(6).toString('hex')}`;
+}
+
+/** Verwaiste Aufträge und alte Dateien entfernen. */
+export async function cleanOldPdfJobs() {
+  for (const id of await raeumeAuftraegeAuf(PDF_JOB_TTL).catch(meldeUndLiefere('pdf:aufraeumen', [] as string[]))) {
+    const datei = pdfDateiPfad(id);
+    if (datei) await fsp.unlink(datei).catch(ohneFehlendeDatei('pdf:datei loeschen'));
+  }
+  const files = await fsp.readdir(PDF_JOB_DIR).catch((e: unknown) => { ohneFehlendeDatei('pdf:ordner lesen')(e); return [] as string[]; });
+  for (const f of files) {
+    const fp = path.join(PDF_JOB_DIR, f);
+    const st = await fsp.stat(fp).catch(ohneFehlendeDatei('pdf:datei pruefen'));
+    if (st && Date.now() - st.mtimeMs > PDF_JOB_TTL) await fsp.unlink(fp).catch(ohneFehlendeDatei('pdf:datei loeschen'));
+  }
+}
+
+/** Stündliches Aufräumen, nur im Primary (startup/backgroundJobs.ts). */
+export function startPdfJobCleanup() {
+  cleanOldPdfJobs().catch(logAndContinue('pdf:aufraeumen'));
+  const t = setInterval(() => { cleanOldPdfJobs().catch(logAndContinue('pdf:aufraeumen')); }, PDF_CLEANUP_MS);
+  t.unref?.();
+  return t;
+}
+
+/**
+ * Wie viele Bilder der beteiligten Sets lokal noch fehlen — daran hängt die
+ * Wartezeit (etwa ein Bild je Sekunde). Ohne Sets zählen die Teile selbst.
+ */
+async function fehlendeBilder(sets: Array<{ set_number?: unknown }>, parts: Array<{ image_local?: string; image_url?: string }>) {
+  let fehlend = parts.filter(p => !p.image_local && p.image_url).length;
+  const nummern = new Set<string>();
+  for (const s of sets || []) {
+    const raw = String(s?.set_number || '').trim();
+    if (!raw) continue;
+    nummern.add(mitVersion(raw));
+  }
+  if (!nummern.size) return fehlend;
+  try {
+    const r = await db.get<{ c: string | number }>(
+      `SELECT (SELECT COUNT(*) FROM (SELECT DISTINCT part_number, color_id FROM set_parts_catalog
+                WHERE set_number = ANY($1) AND image_url IS NOT NULL AND image_local IS NULL) p)
+            + (SELECT COUNT(*) FROM (SELECT DISTINCT fig_number FROM set_minifigs_catalog
+                WHERE set_number = ANY($1) AND image_url IS NOT NULL AND image_local IS NULL) f) AS c`, [[...nummern]]);
+    const c = Number(r?.c);
+    if (Number.isFinite(c)) fehlend = c;
+  } catch (e) { meldeUndWeiter('pdf:wartezeit schaetzen', e); }
+  return fehlend;
+}
+
+/**
+ * Einen PDF-Auftrag einstellen. Laufen schon MAX_JOBS_PRO_BENUTZER, gibt es
+ * keine Kennung, sondern deren Zahl.
+ */
+export async function pdfAuftragStarten(uid: number, sets: Array<{ set_number?: unknown }>,
+                                        parts: Array<{ image_local?: string; image_url?: string }>)
+  : Promise<{ jobId: string } | { laufend: number }> {
+  const laufend = await laufendeAuftraege(uid, PDF_JOB_TTL);
+  if (laufend >= MAX_JOBS_PRO_BENUTZER) return { laufend };
+  const jobId = neueJobId();
+  const missingImages = await fehlendeBilder(sets, parts);
+  await schreibeAuftrag(jobId, { status: 'running', error: null, missingImages,
+    etaSeconds: Math.max(3, Math.round(missingImages) + 3), user_id: uid });
+  await stelleAuftragEin('pdf', { job_id: jobId, user_id: uid, sets, parts }, { userId: uid, maxVersuche: 2 });
+  return { jobId };
 }

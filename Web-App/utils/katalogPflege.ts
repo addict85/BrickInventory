@@ -1,15 +1,9 @@
 import { meldeUndLiefere } from './httpError';
 import * as db from '../db/database';
 import { ERLAUBTE_BILD_HOSTS, hostErlaubt } from './fremdeAdressen';
+import { colorId as farbeLesen } from './validate';
 
-/**
- * Was ein Schreiber hier koennen muss — und nicht mehr.
- *
- * `any` waere kuerzer und steht im Baum an vielen Stellen; hier geht es ohne.
- * Beide Aufrufer passen: das Modul db/database und das tx-Objekt aus
- * db.transaction(). Der Typ schreibt hin, was gebraucht wird, statt den
- * Typpruefer fuer den ganzen Ausdruck abzuschalten.
- */
+/** Was ein Schreiber können muss: db/database und das tx-Objekt aus db.transaction() passen beide. */
 type Schreiber = { run: (sql: string, params?: unknown[]) => Promise<unknown> };
 
 /**
@@ -66,13 +60,7 @@ export async function merkeTeil(
     [partNumber, name, kategorie, herkunft(name, von), herkunft(kategorie, von)]);
 }
 
-/**
- * Farbbezeichnung, Farbcode und Bild je Teilenummer UND Farbe.
- *
- * Warum das Bild an der Farbe haengt und nicht am Teil: Ein 2x4-Stein in Rot
- * und derselbe in Blau haben verschiedene Bilder. `set_parts_catalog` fuehrt
- * es deshalb schon immer je (set_number, part_number, color_id).
- */
+/** Farbbezeichnung, Farbcode und Bild je Teil UND Farbe — ein roter Stein sieht anders aus als ein blauer. */
 export async function merkeTeilFarbe(
   partNumber: string,
   colorId: number | null | undefined,
@@ -84,10 +72,9 @@ export async function merkeTeilFarbe(
   von: Von = null,
 ) {
   if (!partNumber) return;
-  // color_id ist Teil des Primaerschluessels und darf nicht NULL sein. 0 ist
-  // im Baum die Farbe „ohne Angabe" — dieselbe Lesart wie in
-  // recordAcquisitionForDay (`color_id || 0`).
-  const farbe = Number.isFinite(Number(colorId)) ? Number(colorId) : 0;
+  // color_id ist Teil des Primaerschluessels; ohne Angabe gilt KEINE_FARBE,
+  // nie 0 (Schwarz).
+  const farbe = farbeLesen(colorId);
   const name = leer(colorName), code = leer(colorHex);
   const bild = bildEingabe(leer(imageUrl), von);
   // image_local schreibt nur der Server selbst (heruntergeladene Datei).
@@ -147,7 +134,7 @@ export async function merkeSetTeil(
     VALUES ($1, $2, $3, $4, $5)
     ON CONFLICT (set_number, part_number, color_id) DO UPDATE
       SET quantity = EXCLUDED.quantity, updated_at = NOW()`,
-    [setNumber, partNumber, Number(colorId) || 0, quantity || 1, isSpare ? 1 : 0]);
+    [setNumber, partNumber, farbeLesen(colorId), quantity || 1, isSpare ? 1 : 0]);
 }
 
 /** Eine Zeile aus der Teileliste eines Sets, wie sie Rebrickable liefert. */
@@ -233,12 +220,8 @@ export async function merkeFiguren(
 }
 
 /**
- * Bild je Teil und Farbe UEBERSCHREIBEN.
- *
- * Der Gegenpol zu merkeTeilFarbe(): Wenn der Bildabgleich eine Datei
- * tatsaechlich heruntergeladen hat, ist der neue Pfad der richtige — auch
- * wenn schon einer dasteht (der alte kann auf eine geloeschte Datei zeigen).
- * Deshalb hier ohne COALESCE.
+ * Bild je Teil und Farbe überschreiben, ohne COALESCE: Nach einem echten
+ * Download ist der neue Pfad richtig, der alte kann ins Leere zeigen.
  */
 export async function setzeTeilBildLokal(
   partNumber: string,
@@ -252,7 +235,32 @@ export async function setzeTeilBildLokal(
     VALUES ($1, $2, $3)
     ON CONFLICT (part_number, color_id) DO UPDATE
       SET image_local = EXCLUDED.image_local, updated_at = NOW()`,
-    [partNumber, Number(colorId) || 0, imageLocal]);
+    [partNumber, farbeLesen(colorId), imageLocal]);
+}
+
+/**
+ * Die Figuren einer Setliste: nur Menge (Migration 0072). Name und Bild
+ * gehören in minifigs_catalog (merkeFigur/merkeFiguren).
+ */
+export async function merkeSetFiguren(
+  setNumber: string, figuren: { figNumber: string; quantity?: number | null | undefined }[], dbh: Schreiber = db,
+) {
+  const f = jeSchluessel(figuren.filter(x => x.figNumber), x => x.figNumber);
+  if (!setNumber || !f.length) return;
+  await dbh.run(`
+    INSERT INTO set_figuren (set_number, fig_number, quantity)
+    SELECT $1, * FROM unnest($2::text[], $3::int[])
+    ON CONFLICT (set_number, fig_number) DO UPDATE SET quantity = EXCLUDED.quantity, updated_at = NOW()`,
+    [setNumber, f.map(x => x.figNumber), f.map(x => Math.max(1, Number(x.quantity) || 1))]);
+}
+
+/** Bildadresse einer Figur nur dort setzen, wo noch keine steht. */
+export async function merkeFigurBildAdresse(figNumber: string, imageUrl: string, dbh: Schreiber = db) {
+  if (!figNumber || !imageUrl) return;
+  await dbh.run(`
+    INSERT INTO minifigs_catalog (fig_number, image_url) VALUES ($1, $2)
+    ON CONFLICT (fig_number) DO UPDATE SET image_url = COALESCE(minifigs_catalog.image_url, EXCLUDED.image_url)`,
+    [figNumber, imageUrl]);
 }
 
 /** Bild je Figur UEBERSCHREIBEN — dieselbe Begruendung wie setzeTeilBildLokal. */
@@ -278,14 +286,7 @@ export interface KatalogTeil {
   /** Name aus `part_catalog`, Rueckfall `rb_parts`. */
   name: string | null;
   kategorie: string | null;
-  /**
-   * Das Bild als https-URL — und NUR als URL.
-   *
-   * `image_local` ist ein Pfad im eigenen Baum und faellt bei der
-   * Eingangspruefung durch (V.optionalImageUrl verlangt https). Es steht
-   * deshalb nicht hier, zaehlt aber bei `hatBild` mit: Dass eine Datei
-   * dasteht, ist der beste Beleg dafuer, dass kein Abruf noetig ist.
-   */
+  /** Das Bild nur als https-URL; ein lokaler Pfad zählt bei `hatBild` mit, nicht hier. */
   bild: string | null;
   /** Steht ein Bild da — gleich ob als URL oder als Datei? */
   hatBild: boolean;
@@ -339,14 +340,7 @@ export async function katalogTeil(
   };
 }
 
-/**
- * Was der eigene Katalog ueber eine Figur weiss.
- *
- * Zwilling zu katalogTeil() — und aus demselben Befund: addManualFigIntern()
- * fragt getMinifigInfo(), sobald kein Name mitkommt, obwohl
- * `minifigs_catalog` Name und Bild fuehrt. Hier gibt es keine Farbe und
- * deshalb auch keine Unterscheidung farbrichtig/allgemein.
- */
+/** Was der eigene Katalog über eine Figur weiss — vor jedem Abruf bei Rebrickable (wie katalogTeil()). */
 export async function katalogFigur(
   figNumber: string, fuer: Von = null,
 ): Promise<{ name: string | null; bild: string | null; hatBild: boolean } | null> {

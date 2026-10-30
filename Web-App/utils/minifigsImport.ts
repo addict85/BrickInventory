@@ -1,8 +1,8 @@
 import * as db from '../db/database';
 import { getSetMinifigs } from '../clients/rebrickable';
-import { fehlertext, logAndContinue } from '../utils/httpError';
-import { mitVersion, beideSchreibweisen } from './setNummer';
-import { merkeFiguren } from './katalogPflege';
+import { logAndContinue } from '../utils/httpError';
+import { mitVersion } from './setNummer';
+import { merkeFiguren, merkeSetFiguren } from './katalogPflege';
 
 /**
  * Minifiguren eines Sets aus dem Katalog übernehmen — reine Katalogarbeit
@@ -17,8 +17,8 @@ export async function figurenAusKatalog(setNumber: string) {
   return db.all(
     `SELECT fig_number, fig_name, quantity, image_url
        FROM set_minifigs_catalog
-      WHERE set_number=$1 OR set_number=$2`,
-    beideSchreibweisen(setNumber)).catch((e: unknown) => { logAndContinue('minifiguren:katalog lesen')(e); return []; });
+      WHERE set_number = $1`,
+    [mitVersion(setNumber)]).catch((e: unknown) => { logAndContinue('minifiguren:katalog lesen')(e); return []; });
 }
 
 type Figur = { fig_number: string; fig_name: string; quantity: number; image_url: string | null };
@@ -58,26 +58,8 @@ export async function importiereFiguren(setNumber: string, userId: number): Prom
       `DELETE FROM minifigs WHERE user_id=$1 AND set_number=$2 AND source='set' AND NOT (fig_number = ANY($3::text[]))`,
       [userId, setNumber, nummern]);
     await merkeFiguren(figs.map(f => ({ figNumber: f.fig_number, figName: f.fig_name, imageUrl: f.image_url })), tx);
-    if (ausQuelle) await tx.run(
-      `INSERT INTO set_minifigs_catalog (set_number, fig_number, fig_name, quantity, image_url)
-       SELECT $1, * FROM unnest($2::text[], $3::text[], $4::int[], $5::text[])
-       ON CONFLICT (set_number, fig_number) DO UPDATE SET
-         fig_name=EXCLUDED.fig_name, quantity=EXCLUDED.quantity,
-         image_url=EXCLUDED.image_url, updated_at=NOW()`,
-      [setNumber, nummern, figs.map(f => f.fig_name), figs.map(f => f.quantity), figs.map(f => f.image_url)]);
+    if (ausQuelle) await merkeSetFiguren(setNumber, figs.map(f => ({ figNumber: f.fig_number, quantity: f.quantity })), tx);
   });
   console.log(`[minifigs] ${setNumber}: ${figs.length} importiert`);
   return figs.length;
 }
-
-/** Wie importiereFiguren(), aber ohne zu werfen — für Aufrufer, die nur die Zahl wollen. */
-async function importMinifigsForSet(setNumber: string, userId: number): Promise<number> {
-  try {
-    return await importiereFiguren(setNumber, userId);
-  } catch (e) {
-    console.warn(`[minifigs] Import fehlgeschlagen für ${setNumber}: ${fehlertext(e)}`);
-    return 0;
-  }
-}
-
-export { importMinifigsForSet };
