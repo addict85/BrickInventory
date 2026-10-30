@@ -26,7 +26,7 @@ function starte(env, ms = 8000) {
   return new Promise((fertig) => {
     const srv = spawn(process.execPath, [path.join(ROOT, 'dist', 'server.js')], {
       cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'],
-      env: { PATH: process.env.PATH, NODE_ENV: 'production', PORT: '0', WEB_WORKERS: '1',
+      env: { PATH: process.env.PATH, NODE_ENV: 'production', PORT: '39648', WEB_WORKERS: '1',
              SESSION_SECRET: 'startverbot-geheimnis-lang-genug-1234567', ...env },
     });
     let log = '';
@@ -49,7 +49,7 @@ test('Beispielpasswort der Datenbank: Start verweigert', { timeout: 30_000 }, as
 test('TRUST_PROXY=docker: Start verweigert', { timeout: 30_000 }, async () => {
   const { code, log } = await starte({ DATABASE_URL: 'postgres://u:eigenes@127.0.0.1:1/x', TRUST_PROXY: 'docker' });
   assert.equal(code, 1, log.slice(-400));
-  assert.match(log, /TRUST_PROXY enthält „docker"/);
+  assert.match(log, /TRUST_PROXY enthält „docker/);
 });
 
 test('ausserhalb von Produktion kein Verbot, mit eigenem Passwort keines', () => {

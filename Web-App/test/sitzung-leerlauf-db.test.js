@@ -63,8 +63,8 @@
  *
  * Eine Reserve unter einer Sekunde kann die Rundung also auffressen. Mit
  * ganzzahliger Frist und zwei Sekunden Reserve geht die Rechnung in JEDEM
- * Fall auf: expire = ceil(t+2) liegt höchstens bei t+3, gelesen wird bei
- * t+4, und ceil(t+4) ist immer grösser als t+3.
+ * Fall auf: expire = ceil(t+5) liegt höchstens bei t+6, gelesen wird bei
+ * t+7, und ceil(t+7) ist immer grösser als t+6.
  *
  * Das ist der Grund, warum hier keine krummen Millisekunden stehen. Eine
  * Prüfung, die vier von fünf Mälen grün ist, misst nichts — sie würfelt.
@@ -77,7 +77,8 @@
  *   A  `ttl` aus dem Speicher entfernt (der Zustand VOR dieser Änderung)
  *      → nur Fall 1 rot. Die Sitzung lebt weiter, denn dann gilt wieder
  *        der Tag von connect-pg-simple.
- *   B  Drosselung 4000 ms bei 2 s Frist — also länger als die Frist
+ *   B  Drosselung 10000 ms bei 5 s Frist — also länger als die Frist
+ *      (30.10.2026 mit den heutigen Zahlen erneut gemessen, ebenso A)
  *      → nur Fall 2 rot. Der Ablauf wird nicht nachgeführt, die TÄTIGE
  *        Sitzung stirbt mitten im Betrieb.
  *   C  `ttl` aus server.ts entfernt
@@ -168,13 +169,15 @@ test('ohne Betrieb verfällt die Sitzung', async (t) => {
   try { await db.get('SELECT 1'); }
   catch { return t.skip('keine Test-Datenbank erreichbar'); }
 
-  const { srv, base } = await starteServer(2, null);
+  // 5 s statt 2 s: Unter Last (paralleler Volllauf) lagen zwischen Anmelden
+  // und erstem Lesen schon über 2 s, und die Vorbedingung kippte.
+  const { srv, base } = await starteServer(5, null);
   try {
     const keks = await anmelden(base);
     assert.equal(await wer(base, keks), UID,
       'direkt nach dem Anmelden muss die Sitzung gelten — sonst misst der Rest nichts');
 
-    await schlafe(4000);                       // 2 s Frist, 2 s Reserve — siehe Kopf
+    await schlafe(7000);                       // 5 s Frist, 2 s Reserve — siehe Kopf
     assert.equal(await wer(base, keks), null,
       'nach der Leerlauf-Frist darf die Sitzung nicht mehr gelten — '
       + 'fehlt dem Sitzungsspeicher das `ttl`, gilt wieder der Tag von connect-pg-simple');
@@ -188,17 +191,17 @@ test('mit Betrieb bleibt die Sitzung', async (t) => {
   catch { return t.skip('keine Test-Datenbank erreichbar'); }
 
   // Dasselbe Verhältnis wie im Betrieb: Die Drosselung ist ein Fünftel der
-  // Frist, nicht länger. Mit einer Drosselung von 4000 ms bei 2 s Frist wird
+  // Frist, nicht länger. Mit einer Drosselung länger als die Frist wird
   // dieser Fall rot — gemessen, siehe Kopf.
-  const { srv, base } = await starteServer(2, 400);
+  const { srv, base } = await starteServer(5, 1000);
   try {
     const keks = await anmelden(base);
-    // Über die Frist HINAUS arbeiten: 12 Anfragen à 300 ms = 3,6 s bei 2 s
-    // Frist. Ohne Nachführen wäre die Sitzung nach etwa Anfrage 7 tot.
-    for (let i = 0; i < 12; i++) {
-      await schlafe(300);
+    // Über die Frist HINAUS arbeiten: 20 Anfragen à 400 ms = 8 s bei 5 s
+    // Frist. Ohne Nachführen wäre die Sitzung nach etwa Anfrage 13 tot.
+    for (let i = 0; i < 20; i++) {
+      await schlafe(400);
       assert.equal(await wer(base, keks), UID,
-        `die tätige Sitzung ist bei Anfrage ${i + 1} von 12 gestorben — `
+        `die tätige Sitzung ist bei Anfrage ${i + 1} von 20 gestorben — `
         + 'der Ablauf wird nicht nachgeführt (drosselt die Berührung länger als die Frist?)');
     }
   } finally {
