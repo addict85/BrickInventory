@@ -15,7 +15,6 @@ const fs     = require('node:fs');
 const path   = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.WEB_WORKERS = '1';
 
 const { ROOT, buildAndRequire, ohneKommentare } = require('./helpers/sources');
 const _reqCsv = buildAndRequire();

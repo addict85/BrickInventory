@@ -21,7 +21,6 @@ const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.WEB_WORKERS = '1';
 process.env.DATA_KEY = crypto.randomBytes(32).toString('base64');
 
 const _req = require('./helpers/sources').buildAndRequire();

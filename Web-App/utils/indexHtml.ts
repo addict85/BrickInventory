@@ -18,11 +18,10 @@ let _mtime = 0;
 let _theme: string | null = null;
 let _themeAt = 0;
 
-// Der Cache ist prozesslokal, der Server läuft aber im Cluster: Ein Speichern
-// invalidiert nur den Worker, der die Anfrage bearbeitet hat. Die kurze
-// Lebensdauer sorgt dafür, dass die übrigen Worker von allein nachziehen —
-// deutlich einfacher als LISTEN/NOTIFY für eine Einstellung, die sich
-// vielleicht einmal im Jahr ändert.
+// Der Cache ist prozesslokal; gespeichert wird im Web-Prozess selbst, der ihn
+// dabei leert. Die kurze Lebensdauer deckt eine Änderung von aussen (Skript,
+// Wiederherstellung) ab — einfacher als LISTEN/NOTIFY für eine Einstellung,
+// die sich vielleicht einmal im Jahr ändert.
 const THEME_TTL_MS = 30_000;
 
 /** Beim Speichern eines neuen Designs aufrufen. */

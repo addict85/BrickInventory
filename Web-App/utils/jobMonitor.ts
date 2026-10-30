@@ -1,5 +1,5 @@
 /**
- * Central job monitoring — stores status in PostgreSQL so all cluster workers share state.
+ * Stand der Job-Kacheln in laufzustand: Der Job-Prozess schreibt, der Web-Prozess liest.
  * UI polls GET /api/v1/admin/jobs to display progress.
  */
 
@@ -23,7 +23,7 @@ async function update(jobKey: string, patch: any) {
 }
 
 // ── Bild-Download-Zähler ──────────────────────────────────────────────────
-// Über ALLE aktiven downloadSetImages-Batches UND Cluster-Worker summierte
+// Über ALLE aktiven downloadSetImages-Batches beider Prozesse summierte
 // Zahl der noch zu ladenden Bilder. Eigener Bare-Integer-Eintrag (bewusst NICHT
 // job_monitor_*, damit all() ihn nicht als Job parst); zaehleZustand() rechnet
 // atomar in EINER Anweisung.

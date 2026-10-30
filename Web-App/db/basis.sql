@@ -379,13 +379,16 @@ CREATE TABLE public.auftraege (
     status text DEFAULT 'offen'::text NOT NULL,
     versuche integer DEFAULT 0 NOT NULL,
     max_versuche integer DEFAULT 5 NOT NULL,
-    next_run_at timestamp with time zone DEFAULT now() NOT NULL,
+    faellig_ab timestamp with time zone DEFAULT now() NOT NULL,
     belegt_von text,
     fehler text,
     erstellt timestamp with time zone DEFAULT now() NOT NULL,
     aktualisiert timestamp with time zone DEFAULT now() NOT NULL,
+    frist_bis timestamp with time zone,
+    gestartet timestamp with time zone,
+    fortschritt jsonb,
     CONSTRAINT auftraege_max_versuche_check CHECK ((max_versuche > 0)),
-    CONSTRAINT auftraege_status_check CHECK ((status = ANY (ARRAY['offen'::text, 'laeuft'::text, 'erledigt'::text, 'fehler'::text])))
+    CONSTRAINT auftraege_status_check CHECK ((status = ANY (ARRAY['offen'::text, 'laeuft'::text, 'erledigt'::text, 'fehler'::text, 'abgebrochen'::text])))
 );
 
 --
@@ -406,6 +409,17 @@ CREATE SEQUENCE public.auftraege_id_seq
 ALTER SEQUENCE public.auftraege_id_seq OWNED BY public.auftraege.id;
 
 --
+-- Name: auftrag_pausen; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.auftrag_pausen (
+    art text NOT NULL,
+    bis timestamp with time zone NOT NULL,
+    grund text,
+    stufe integer DEFAULT 0 NOT NULL
+);
+
+--
 -- Name: bl_zuordnung; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -415,18 +429,6 @@ CREATE TABLE public.bl_zuordnung (
     bl_id text,
     fetched_at timestamp with time zone DEFAULT now(),
     CONSTRAINT bl_zuordnung_art CHECK ((art = ANY (ARRAY['part'::text, 'fig'::text, 'set'::text])))
-);
-
---
--- Name: brickset_retry_queue; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.brickset_retry_queue (
-    set_number text NOT NULL,
-    retry_after date NOT NULL,
-    attempts integer DEFAULT 0 NOT NULL,
-    last_error text,
-    created_at timestamp with time zone DEFAULT now()
 );
 
 --
@@ -444,24 +446,6 @@ CREATE TABLE public.catalog_cache (
     bl_type text,
     fetched_at timestamp with time zone DEFAULT now(),
     CONSTRAINT catalog_cache_setnummer_mit_version CHECK ((set_number ~ '-[0-9]+$'::text))
-);
-
---
--- Name: csv_import_jobs; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.csv_import_jobs (
-    user_id integer NOT NULL,
-    status text DEFAULT 'running'::text NOT NULL,
-    total integer DEFAULT 0 NOT NULL,
-    done integer DEFAULT 0 NOT NULL,
-    current text,
-    results jsonb DEFAULT '[]'::jsonb NOT NULL,
-    error text,
-    started_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    run_id text,
-    CONSTRAINT csv_import_jobs_status_check CHECK ((status = ANY (ARRAY['pending'::text, 'running'::text, 'done'::text, 'error'::text, 'cancelled'::text])))
 );
 
 --
@@ -517,35 +501,22 @@ CREATE TABLE public.image_wanted (
 );
 
 --
--- Name: instruction_queue; Type: TABLE; Schema: public; Owner: -
+-- Name: import_stand; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.instruction_queue (
-    id integer NOT NULL,
-    set_number text NOT NULL,
-    status text DEFAULT 'pending'::text,
-    created_at timestamp with time zone DEFAULT now(),
-    updated_at timestamp with time zone DEFAULT now(),
-    CONSTRAINT instruction_queue_status_check CHECK ((status = ANY (ARRAY['pending'::text, 'done'::text, 'failed'::text])))
+CREATE TABLE public.import_stand (
+    user_id integer NOT NULL,
+    status text DEFAULT 'running'::text NOT NULL,
+    total integer DEFAULT 0 NOT NULL,
+    done integer DEFAULT 0 NOT NULL,
+    current text,
+    results jsonb DEFAULT '[]'::jsonb NOT NULL,
+    error text,
+    started_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    run_id text,
+    CONSTRAINT csv_import_jobs_status_check CHECK ((status = ANY (ARRAY['pending'::text, 'running'::text, 'done'::text, 'error'::text, 'cancelled'::text])))
 );
-
---
--- Name: instruction_queue_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
-CREATE SEQUENCE public.instruction_queue_id_seq
-    AS integer
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
---
--- Name: instruction_queue_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.instruction_queue_id_seq OWNED BY public.instruction_queue.id;
 
 --
 -- Name: instructions; Type: TABLE; Schema: public; Owner: -
@@ -1072,21 +1043,6 @@ CREATE SEQUENCE public.passkeys_id_seq
 --
 
 ALTER SEQUENCE public.passkeys_id_seq OWNED BY public.passkeys.id;
-
---
--- Name: pdf_auftraege; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.pdf_auftraege (
-    id text NOT NULL,
-    user_id integer NOT NULL,
-    status text NOT NULL,
-    fehler text,
-    fehlende_bilder integer,
-    eta_sekunden integer,
-    aktualisiert timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT pdf_auftraege_status_check CHECK ((status = ANY (ARRAY['running'::text, 'done'::text, 'error'::text])))
-);
 
 --
 -- Name: price_alerts; Type: TABLE; Schema: public; Owner: -
@@ -1868,12 +1824,6 @@ ALTER TABLE ONLY public.app_logs ALTER COLUMN id SET DEFAULT nextval('public.app
 ALTER TABLE ONLY public.auftraege ALTER COLUMN id SET DEFAULT nextval('public.auftraege_id_seq'::regclass);
 
 --
--- Name: instruction_queue id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.instruction_queue ALTER COLUMN id SET DEFAULT nextval('public.instruction_queue_id_seq'::regclass);
-
---
 -- Name: instructions id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -2073,18 +2023,18 @@ ALTER TABLE ONLY public.auftraege
     ADD CONSTRAINT auftraege_pkey PRIMARY KEY (id);
 
 --
+-- Name: auftrag_pausen auftrag_pausen_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.auftrag_pausen
+    ADD CONSTRAINT auftrag_pausen_pkey PRIMARY KEY (art);
+
+--
 -- Name: bl_zuordnung bl_zuordnung_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.bl_zuordnung
     ADD CONSTRAINT bl_zuordnung_pkey PRIMARY KEY (art, rb_id);
-
---
--- Name: brickset_retry_queue brickset_retry_queue_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.brickset_retry_queue
-    ADD CONSTRAINT brickset_retry_queue_pkey PRIMARY KEY (set_number);
 
 --
 -- Name: catalog_cache catalog_cache_pkey; Type: CONSTRAINT; Schema: public; Owner: -
@@ -2094,10 +2044,10 @@ ALTER TABLE ONLY public.catalog_cache
     ADD CONSTRAINT catalog_cache_pkey PRIMARY KEY (set_number);
 
 --
--- Name: csv_import_jobs csv_import_jobs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: import_stand csv_import_jobs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.csv_import_jobs
+ALTER TABLE ONLY public.import_stand
     ADD CONSTRAINT csv_import_jobs_pkey PRIMARY KEY (user_id);
 
 --
@@ -2134,13 +2084,6 @@ ALTER TABLE ONLY public.image_misses
 
 ALTER TABLE ONLY public.image_wanted
     ADD CONSTRAINT image_wanted_pkey PRIMARY KEY (url);
-
---
--- Name: instruction_queue instruction_queue_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.instruction_queue
-    ADD CONSTRAINT instruction_queue_pkey PRIMARY KEY (id);
 
 --
 -- Name: instructions instructions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
@@ -2302,13 +2245,6 @@ ALTER TABLE ONLY public.passkeys
 
 ALTER TABLE ONLY public.passkeys
     ADD CONSTRAINT passkeys_pkey PRIMARY KEY (id);
-
---
--- Name: pdf_auftraege pdf_auftraege_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.pdf_auftraege
-    ADD CONSTRAINT pdf_auftraege_pkey PRIMARY KEY (id);
 
 --
 -- Name: price_alerts price_alerts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
@@ -2626,10 +2562,22 @@ CREATE INDEX idx_api_tokens_user_created ON public.api_tokens USING btree (user_
 CREATE INDEX idx_app_logs_logged_at ON public.app_logs USING btree (logged_at DESC);
 
 --
--- Name: idx_auftraege_faellig; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_auftraege_art; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_auftraege_faellig ON public.auftraege USING btree (next_run_at) WHERE (status = ANY (ARRAY['offen'::text, 'laeuft'::text]));
+CREATE INDEX idx_auftraege_art ON public.auftraege USING btree (art, status);
+
+--
+-- Name: idx_auftraege_frist; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_auftraege_frist ON public.auftraege USING btree (frist_bis) WHERE (status = 'laeuft'::text);
+
+--
+-- Name: idx_auftraege_offen_faellig; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_auftraege_offen_faellig ON public.auftraege USING btree (faellig_ab) WHERE (status = 'offen'::text);
 
 --
 -- Name: idx_auftraege_schluessel; Type: INDEX; Schema: public; Owner: -
@@ -2666,12 +2614,6 @@ CREATE INDEX idx_household_former_via ON public.household_former_links USING btr
 --
 
 CREATE INDEX idx_image_wanted_alter ON public.image_wanted USING btree (requested_at);
-
---
--- Name: idx_instr_queue_set; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX idx_instr_queue_set ON public.instruction_queue USING btree (set_number);
 
 --
 -- Name: idx_instructions_user; Type: INDEX; Schema: public; Owner: -
@@ -2858,18 +2800,6 @@ CREATE INDEX idx_parts_summary_sort ON public.parts_summary USING btree (user_id
 --
 
 CREATE INDEX idx_passkeys_konto ON public.passkeys USING btree (user_id);
-
---
--- Name: idx_pdf_auftraege_laufend; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_pdf_auftraege_laufend ON public.pdf_auftraege USING btree (user_id) WHERE (status = 'running'::text);
-
---
--- Name: idx_pdf_auftraege_user; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_pdf_auftraege_user ON public.pdf_auftraege USING btree (user_id);
 
 --
 -- Name: idx_price_alerts_set; Type: INDEX; Schema: public; Owner: -
@@ -3352,10 +3282,10 @@ ALTER TABLE ONLY public.auftraege
     ADD CONSTRAINT auftraege_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
 
 --
--- Name: csv_import_jobs csv_import_jobs_user_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: import_stand csv_import_jobs_user_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.csv_import_jobs
+ALTER TABLE ONLY public.import_stand
     ADD CONSTRAINT csv_import_jobs_user_fk FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
 
 --
@@ -3483,13 +3413,6 @@ ALTER TABLE ONLY public.parts_version_user
 
 ALTER TABLE ONLY public.passkeys
     ADD CONSTRAINT passkeys_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
-
---
--- Name: pdf_auftraege pdf_auftraege_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.pdf_auftraege
-    ADD CONSTRAINT pdf_auftraege_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
 
 --
 -- Name: price_alerts price_alerts_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
@@ -3721,6 +3644,8 @@ INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('007
 INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0079-teilekatalog-je-teil.sql', '2026-10-30 21:28:11.685338+00', 'e07e072ab0cf9cf03ed9b30a1addc363d1479cb0f51171fa11b922b9e6b3bcbd');
 INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0080-token-scope-rotation.sql', '2026-10-30 21:28:11.695098+00', '2b68adab0442d36c11779316c130aef91d47ea0ca3375af15b124598673348c4');
 INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0081-passkeys.sql', '2026-10-30 21:28:11.698176+00', '2d744e20a742ae3ea212bd13ed7adc3d12019eda7a53a5a8220b7451c507122e');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0082-auftraege-fuer-alle-hintergrundarbeit.sql', '2026-10-30 23:06:24.730278+00', '19a363da438aa10657bfa58892aa86b3206291d9bd4109f280c1bfdabe1e2e47');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0083-warteschlangen-in-auftraege.sql', '2026-10-30 23:06:24.744668+00', '81c51936203cfd2e60e1ddca67e03ae4c0bb97661e25229225bfdba08e146199');
 
 --
 -- PostgreSQL database dump complete

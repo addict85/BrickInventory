@@ -35,12 +35,8 @@ const ROOT = path.join(__dirname, '..');
 /** Alle Routen des Servers als [METHODE, vollständiger Pfad]. */
 function routen() {
   const raus = new Set();
-  const server = fs.readFileSync(path.join(ROOT, 'server.ts'), 'utf8');
-
-  // app.use('/api/x', require('./routes/y'))
-  for (const m of server.matchAll(/app\.use\('(\/api[^']*)',\s*require\('\.\/([\w/]+)'\)/g)) {
-    sammle(m[2], m[1]);
-  }
+  // Die Einhängepunkte aus server.ts (helpers/sources.js), ohne api_v1.
+  for (const r of require('./helpers/sources').routerEinhaengungen()) sammle(`routes/${r.name}`, r.mount);
   // api_v1 wird über index.ts eingebunden — die Dateien direkt lesen.
   for (const f of fs.readdirSync(path.join(ROOT, 'routes', 'api_v1'))) {
     if (f.endsWith('.ts')) sammle(`routes/api_v1/${f.replace(/\.ts$/, '')}`, '/api/v1');

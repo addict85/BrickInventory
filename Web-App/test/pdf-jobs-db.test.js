@@ -14,7 +14,9 @@
  *
  * Gegenprobe zum Statusstrom (am 28.10.2026 gemessen): in schreibeAuftrag()
  * das notify() entfernt → rot: „der Statusstrom meldet das Ende sofort“
- * (erst der 15-Sekunden-Rückfall hätte es gemeldet).
+ * (erst der 15-Sekunden-Rückfall hätte es gemeldet). Seit der Status im
+ * Auftrag steht (Migration 0083) am 30.10.2026 wiederholt: in erledigt()
+ * (utils/auftraege.ts) meldeStand() entfernt → rot: derselbe Test.
  *
  * Voraussetzung: Test-DB (Inhalt wird geleert!) via TEST_DATABASE_URL.
  * Ohne DB: skip.
@@ -26,7 +28,6 @@ const path   = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.WEB_WORKERS = '1';
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
 const _req    = require('./helpers/sources').buildAndRequire();
@@ -76,7 +77,10 @@ test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async (t) => 
 
   /** Auftrag direkt anlegen — der Lauf selbst ginge ins Netz. */
   async function auftragLegen(jobId, userId, status = 'done') {
-    await db.run('INSERT INTO pdf_auftraege (id, user_id, status) VALUES ($1, $2, $3)', [jobId, userId, status]);
+    await db.run(`INSERT INTO auftraege (art, user_id, schluessel, status, belegt_von, frist_bis)
+                  VALUES ('pdf', $2, $1, $3, CASE WHEN $3 = 'laeuft' THEN 'test' END,
+                          CASE WHEN $3 = 'laeuft' THEN NOW() + INTERVAL '1 hour' END)`,
+      [auftraege.pdfSchluessel(jobId), userId, status === 'done' ? 'erledigt' : 'laeuft']);
     await fs.mkdir(PDF_JOB_DIR, { recursive: true });
     if (status === 'done') {
       await fs.writeFile(path.join(PDF_JOB_DIR, `${jobId}.pdf`), '%PDF-1.4 test');
@@ -111,7 +115,7 @@ test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async (t) => 
     });
 
     await t.test('der Deckel greift beim dritten gleichzeitigen Auftrag', async () => {
-      await db.run('DELETE FROM pdf_auftraege');
+      await db.run(`DELETE FROM auftraege WHERE art = 'pdf'`);
       await auftragLegen(auftraege.neueJobId(), idA, 'running');
       await auftragLegen(auftraege.neueJobId(), idA, 'running');
       await auftragLegen(auftraege.neueJobId(), idB, 'running');   // fremder Lauf zählt nicht mit
@@ -133,12 +137,13 @@ test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async (t) => 
     });
 
     await t.test('abgelaufene Läufe sperren niemanden dauerhaft aus', async () => {
-      await db.run('DELETE FROM pdf_auftraege');
+      await db.run(`DELETE FROM auftraege WHERE art = 'pdf'`);
       const alt1 = auftraege.neueJobId(), alt2 = auftraege.neueJobId();
       await auftragLegen(alt1, idA, 'running');
       await auftragLegen(alt2, idA, 'running');
       // Stürzt ein Worker mitten im Lauf ab, bleibt der Auftrag auf 'running'.
-      await db.run(`UPDATE pdf_auftraege SET aktualisiert = NOW() - INTERVAL '1 day' WHERE id = ANY($1)`, [[alt1, alt2]]);
+      await db.run(`UPDATE auftraege SET erstellt = NOW() - INTERVAL '1 day' WHERE schluessel = ANY($1)`,
+        [[alt1, alt2].map(auftraege.pdfSchluessel)]);
       const r = await fetch(`${basis}/api/v1/sets/partslist-pdf`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${tokA}`, 'content-type': 'application/json' },
@@ -148,7 +153,7 @@ test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async (t) => 
     });
 
     await t.test('der Statusstrom meldet das Ende sofort', async () => {
-      await db.run('DELETE FROM pdf_auftraege');
+      await db.run(`DELETE FROM auftraege WHERE art = 'pdf'`);
       const job = auftraege.neueJobId();
       await auftragLegen(job, idA, 'running');
       const ctrl = new AbortController();
@@ -159,7 +164,9 @@ test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async (t) => 
       const dec = new TextDecoder();
       let text = '';
       const start = Date.now();
-      setTimeout(() => _req('utils/pdfAuftraege.js').schreibeAuftrag(job, { status: 'done', error: null, user_id: idA }), 300);
+      // Der Worker meldet das Ende über erledigt(); der Auftrag gehört hier dem Belegenden 'test'.
+      const zeile = await db.get(`SELECT id FROM auftraege WHERE schluessel = $1`, [auftraege.pdfSchluessel(job)]);
+      setTimeout(() => _req('utils/auftraege.js').erledigt({ id: String(zeile.id), belegt_von: 'test' }), 300);
       while (!text.includes('"done"') && Date.now() - start < 8000) {
         const { value, done } = await Promise.race([leser.read(),
           new Promise(f => setTimeout(() => f({ done: true }), 8000 - (Date.now() - start)))]);
@@ -183,7 +190,7 @@ test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async (t) => 
     for (const f of await fs.readdir(PDF_JOB_DIR).catch(() => [])) {
       await fs.unlink(path.join(PDF_JOB_DIR, f)).catch(() => {});
     }
-    await db.run('DELETE FROM pdf_auftraege').catch(() => {});
+    await db.run(`DELETE FROM auftraege WHERE art = 'pdf'`).catch(() => {});
     await _req('utils/pgNotify.js').close().catch(() => {});
     await db.pool.end().catch(() => {});
   }

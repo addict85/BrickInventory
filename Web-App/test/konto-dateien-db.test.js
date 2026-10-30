@@ -22,7 +22,6 @@ const path   = require('node:path');
 const PDFKit = require('pdfkit');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
 const AUTH = require('./helpers/sources').einhaengung('auth');

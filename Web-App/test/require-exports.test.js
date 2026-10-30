@@ -110,7 +110,8 @@ test('jedes späte require() holt einen Namen, den es wirklich gibt', () => {
   // besser prüft. Die Schwelle sinkt deshalb mit; sie darf nicht auf 0 fallen,
   // sonst wäre der Selbstschutz weg.
   // 29.10.2026: 40 nach dem Umbau in routes/, utils/ und jobs/ — Schwelle auf 25.
-  assert.ok(geprueft > 25, `Nur ${geprueft} Namen geprüft — das Muster greift nicht mehr`);
+  // 30.10.2026: 16, seit server.ts und die Jobsteuerung echte Importe haben — Schwelle auf 10.
+  assert.ok(geprueft > 10, `Nur ${geprueft} Namen geprüft — das Muster greift nicht mehr`);
   assert.deepEqual(fehlend, [], `require() ohne passenden Export:\n  ${fehlend.join('\n  ')}`);
 });
 

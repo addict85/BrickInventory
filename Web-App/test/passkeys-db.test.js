@@ -27,7 +27,6 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
-process.env.WEB_WORKERS = '1';
 process.env.APP_BASE_URL = 'https://lego.test';
 
 const _req = require('./helpers/sources').buildAndRequire();

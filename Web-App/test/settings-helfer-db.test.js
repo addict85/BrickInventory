@@ -22,8 +22,7 @@
  *      Parameter auf `[keys]` gelassen → Teilschritt 4 blieb grün (ANY('{}')
  *      trifft nichts). Erst mit `WHERE key = ANY($1) OR $1 IS NULL` wurde er
  *      rot — die Probe misst also wirklich den Tabelleninhalt.
- *   b) In setzeAusloeser `NOW()::TEXT` durch `''` ersetzt (am 28.10.2026 neu
- *      gemessen) → Teilschritt 2 rot.
+ *   b) entfällt mit setzeAusloeser (30.10.2026): Anstösse sind Aufträge.
  *   c) In deleteGlobalSetting nur den ERSTEN Schlüssel gelöscht
  *      (`WHERE key = $1`, `[keys[0]]`) → Teilschritt 3 rot.
  *
@@ -33,12 +32,11 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
 const { getGlobalSetting, setGlobalSetting, deleteGlobalSetting } = _req('utils/settings.js');
-const { setzeAusloeser, liesZustand, loescheZustand } = _req('utils/laufzustand.js');
+const { setzeZustand, liesZustand, loescheZustand } = _req('utils/laufzustand.js');
 
 test('globale Einstellungen: schreiben, auslösen, löschen', { concurrency: 1 }, async (t) => {
   try { await db.initSchema(); }
@@ -64,17 +62,9 @@ test('globale Einstellungen: schreiben, auslösen, löschen', { concurrency: 1 }
     assert.equal(await getGlobalSetting(A), 'zwei', 'der zweite Aufruf muss überschreiben');
     assert.equal(await getGlobalSetting(`gibt_es_nicht_${process.pid}`, 'ersatz'), 'ersatz');
 
-    // 2. Auslöser: Der Wert muss nicht leer sein — die Leser prüfen genau
-    //    darauf ("if (!ausloeser) return"). Und er muss beim zweiten Aufruf
-    //    einen NEUEN Zeitpunkt tragen, sonst bliebe ein zweiter Anstoss ohne
-    //    Wirkung, wenn der erste noch nicht abgeräumt war.
-    await setzeAusloeser(T);
-    const erst = await liesZustand(T);
-    assert.ok(erst && erst.length > 0, 'Auslöser darf nicht leer sein');
-    await new Promise(r => setTimeout(r, 5));
-    await setzeAusloeser(T);
-    const zweit = await liesZustand(T);
-    assert.notEqual(zweit, erst, 'der zweite Anstoss muss einen neuen Zeitpunkt schreiben');
+    // 2. Laufzustand: gelöscht heisst, die Zeile ist weg.
+    await setzeZustand(T, 'x');
+    assert.equal(await liesZustand(T), 'x');
     await loescheZustand(T);
     assert.equal(await liesZustand(T), null, 'abgearbeitet heisst: die Zeile ist weg');
     await setGlobalSetting(T, 'bleibt');

@@ -342,11 +342,9 @@ function handlerModul(_req) {
 module.exports.handlerModul = handlerModul;
 
 /**
- * server.ts samt der Startstaffel, die daraus ausgelagert wurde.
- *
- * Die Hintergrundläufe (Preis-Job, Anleitungen, Bilder, Aufräumen) stehen seit
- * Nachtrag 134 in startup/backgroundJobs.ts. Prüfungen der Art „läuft X beim
- * Start an und nur im Primär-Worker" müssen beide Dateien sehen.
+ * server.ts samt dem Start des Job-Prozesses und den Läufen, die früher dort
+ * standen (startup/, jobs/bildNachlauf.ts, jobs/startNachlaeufe.ts,
+ * jobs/aufraeumen.ts). Prüfungen der Art „läuft X beim Start an" sehen alle.
  *
  * Fünfter Helfer desselben Musters — siehe proxyThumbQuelle().
  */
@@ -354,7 +352,8 @@ function startQuelle() {
   const path = require('path'), fs = require('fs');
   const ROOT = path.join(__dirname, '..', '..');
   const dir = path.join(ROOT, 'startup');
-  const teile = [fs.readFileSync(path.join(ROOT, 'server.ts'), 'utf8')];
+  const teile = ['server.ts', 'jobs/bildNachlauf.ts', 'jobs/startNachlaeufe.ts', 'jobs/aufraeumen.ts']
+    .map(f => fs.readFileSync(path.join(ROOT, f), 'utf8'));
   if (fs.existsSync(dir)) {
     for (const f of fs.readdirSync(dir).filter(x => x.endsWith('.ts'))) {
       teile.push(fs.readFileSync(path.join(dir, f), 'utf8'));
@@ -561,11 +560,15 @@ module.exports.pruefeParameter = pruefeParameter;
  */
 function routerEinhaengungen() {
   const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'server.ts'), 'utf8'));
+  // `import xRouter = require('./routes/x')` oben, `app.use('/api/…', xRouter)` unten.
+  const dateiJeName = new Map([...src.matchAll(/import\s+(\w+)\s*=\s*require\(\s*['"]\.\/(routes\/[^'"]+)['"]\s*\)/g)]
+    .map(m => [m[1], m[2]]));
   const out = [];
-  for (const m of src.matchAll(/app\.use\(\s*['"](\/api[^'"]*)['"]\s*,\s*require\(\s*['"]\.\/(routes\/[^'"]+)['"]/g)) {
-    if (m[2].startsWith('routes/api_v1')) continue;
-    out.push({ mount: m[1].replace(/\/+$/, ''), datei: path.join(ROOT, m[2] + '.ts'),
-               name: m[2].replace(/^routes\//, '') });
+  for (const m of src.matchAll(/app\.use\(\s*['"](\/api[^'"]*)['"]\s*,\s*(\w+)\s*\)/g)) {
+    const datei = dateiJeName.get(m[2]);
+    if (!datei || datei.startsWith('routes/api_v1')) continue;
+    out.push({ mount: m[1].replace(/\/+$/, ''), datei: path.join(ROOT, datei + '.ts'),
+               name: datei.replace(/^routes\//, '') });
   }
   return out;
 }

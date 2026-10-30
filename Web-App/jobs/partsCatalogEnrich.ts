@@ -290,9 +290,8 @@ async function downloadSetImages(setNumber: string, waitIfBusy = false) {
   const lock = new Promise<void>(r => { resolveLock = r; });
   _downloadLocks.set(n, lock);
 
-  // Cross-worker Lock: verhindert, dass zwei Cluster-Worker (z. B. der
-  // Primary-Job UND der Add-Flow auf einem Request-Worker) dieselben
-  // Set-Bilder gleichzeitig laden. Advisory-Lock auf einer DEDIZIERTEN
+  // Prozessübergreifende Sperre: Job-Prozess und Web-Prozess (Erfassen mit
+  // Bildern) sollen dieselben Set-Bilder nicht gleichzeitig laden. Advisory-Lock auf einer DEDIZIERTEN
   // Verbindung, damit acquire/release auf derselben Session laufen (ein über
   // den Pool geholter Lock würde beim Idle-Timeout unzuverlässig freigegeben).
   let lockClient: import('pg').PoolClient | null = null, haveXlock = false;

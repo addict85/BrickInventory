@@ -73,7 +73,7 @@ async function main() {
     await a.query(`CREATE DATABASE ${id(vorlage)}`);
     execFileSync(process.execPath, ['-e',
       "const db = require('./dist/db/database.js'); db.initSchemaOnce().then(() => db.pool.end()).catch(e => { console.error(e); process.exit(1); })"],
-      { cwd: ROOT, stdio: ['ignore', 'ignore', 'inherit'], env: { ...process.env, DATABASE_URL: mitDb(basis, vorlage), WEB_WORKERS: '1' } });
+      { cwd: ROOT, stdio: ['ignore', 'ignore', 'inherit'], env: { ...process.env, DATABASE_URL: mitDb(basis, vorlage) } });
     env = { TEST_DB_VORLAGE: vorlage, TEST_DB_BASIS: basis };
   }
   let code = 0;

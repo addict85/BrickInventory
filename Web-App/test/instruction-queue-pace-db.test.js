@@ -19,7 +19,8 @@
  * Minuten Wartezeit für „10 bearbeitet: 0/0/0 bereits vorhanden".
  *
  * Die Lehre gilt für jede Drosselung: Sie muss an der Handlung hängen, die
- * geschont werden soll — nicht an der Schleife darüber.
+ * geschont werden soll — nicht an der Schleife darüber. Dass der Auftrag nur
+ * nach einem echten Abruf pausiert, prüft test/anleitung-auftrag-db.test.js.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -60,62 +61,3 @@ test('ein bereits versorgtes Set löst keinen Abruf aus', async (t) => {
   await db.pool.end().catch(() => {});
 });
 
-test('die Warteschlange bremst nur nach einem echten Abruf', () => {
-  // Am Quelltext geprüft, weil es um die ENTSCHEIDUNG geht: Ein Test über die
-  // Zeit müsste fünfzehn Sekunden warten, um das Gegenteil zu belegen.
-  const fs = require('node:fs');
-  const src = fs.readFileSync(
-    path.join(__dirname, '..', 'jobs', 'instructionQueue.ts'), 'utf8');
-
-  assert.match(src, /scheduleNext\(letzterAbrufWarExtern\(\) \? 15000 : \d+\)/,
-    'Der Takt hängt wieder am Durchgang statt am Abruf — genau der Zustand, ' +
-    'in dem 700 versorgte Sets knapp drei Stunden Wartezeit erzeugten.');
-
-  // Und die lange Pause muss erhalten bleiben, wo wirklich gefragt wird.
-  assert.ok(src.includes('15000'),
-    'Ohne Pause nach einem echten Abruf läuft die Anwendung in die ' +
-    'Cloudflare-Sperre, die weiter unten behandelt wird.');
-});
-
-test('der Job verzichtet auf die Pausen, die er selbst schon einhält', () => {
-  // ── Die zweite Hälfte des Befunds (Nachtrag 142) ─────────────────────────
-  //
-  // downloadSetInstructions() legt nach dem BDP-Rückfallweg 5 Sekunden ein.
-  // Die Warteschlange wartet danach nochmal 15 — zusammen 20, ohne dass ein
-  // Server dadurch besser geschont würde: Der nächste Abruf kommt so oder so
-  // frühestens nach 15 Sekunden.
-  //
-  // Die beiden ANDEREN Aufrufer (Set erfassen, Brickset-Wiederholung) haben
-  // keinen Takt über sich. Für die bleiben die Pausen — deshalb ein Schalter
-  // und kein Löschen.
-  const fs = require('node:fs');
-  const jobs = fs.readFileSync(path.join(__dirname, '..', 'jobs', 'instructionQueue.ts'), 'utf8');
-  const ins  = fs.readFileSync(path.join(__dirname, '..', 'utils', 'instructions.ts'), 'utf8');
-
-  // Der Anker buchstabierte früher die ganze Argumentliste aus
-  // (`(row.set_number, null, true)`) und wurde rot, als der tote
-  // `sendProgress`-Parameter aus downloadSetInstructions verschwand — obwohl
-  // sich an der geprüften Aussage nichts geändert hatte. Gemeint ist nur: DER
-  // JOB SETZT DEN TAKT-SCHALTER. Genau das steht jetzt hier, unabhängig davon,
-  // wie viele Argumente die Funktion sonst noch nimmt.
-  assert.match(jobs, /downloadSetInstructions\([^)]*\btrue\s*\)/,
-    'Der Job meldet nicht mehr, dass er den Takt selbst einhält — dann wartet ' +
-    'er wieder 20 Sekunden statt 15.');
-
-  // Und nur er: Die drei übrigen Aufrufer haben keinen Takt über sich, für die
-  // sind die Pausen die einzige Bremse. Setzte einer von ihnen den Schalter,
-  // fielen dort 5 Sekunden weg, ohne dass etwas anderes sie ersetzt.
-  const fremde = ['utils/setService.ts', 'jobs/bricksetRetry.ts', 'routes/api_v1/sets.ts', 'jobs/nachErfassung.ts']
-    .filter(d => /downloadSetInstructions\([^)]*\btrue\s*\)/
-      .test(fs.readFileSync(path.join(__dirname, '..', d), 'utf8')));
-  assert.deepEqual(fremde, [],
-    `Diese Aufrufer setzen den Takt-Schalter, obwohl kein Takt über ihnen liegt: ${fremde.join(', ')}`);
-  assert.match(ins, /if \(!eigenerTakt\) await sleep\(5000\)/,
-    'Die Pausen sind nicht mehr abschaltbar');
-
-  // Und sie müssen für die übrigen Aufrufer erhalten bleiben.
-  const anzahl = (ins.match(/if \(!eigenerTakt\) await sleep\(5000\)/g) || []).length;
-  assert.equal(anzahl, 2,
-    `${anzahl} statt 2 Pausen — für „Set erfassen" und die Brickset-Wiederholung ` +
-    'gibt es keinen Takt darüber, dort sind sie die einzige Bremse.');
-});

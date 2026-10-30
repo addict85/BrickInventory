@@ -88,19 +88,32 @@ CREATE TABLE auftraege (
   status text NOT NULL DEFAULT 'offen'::text,
   versuche integer NOT NULL DEFAULT 0,
   max_versuche integer NOT NULL DEFAULT 5,
-  next_run_at timestamp with time zone NOT NULL DEFAULT now(),
+  faellig_ab timestamp with time zone NOT NULL DEFAULT now(),
   belegt_von text,
   fehler text,
   erstellt timestamp with time zone NOT NULL DEFAULT now(),
   aktualisiert timestamp with time zone NOT NULL DEFAULT now(),
+  frist_bis timestamp with time zone,
+  gestartet timestamp with time zone,
+  fortschritt jsonb,
   CONSTRAINT auftraege_max_versuche_check CHECK ((max_versuche > 0)),
   CONSTRAINT auftraege_pkey PRIMARY KEY (id),
-  CONSTRAINT auftraege_status_check CHECK ((status = ANY (ARRAY['offen'::text, 'laeuft'::text, 'erledigt'::text, 'fehler'::text]))),
+  CONSTRAINT auftraege_status_check CHECK ((status = ANY (ARRAY['offen'::text, 'laeuft'::text, 'erledigt'::text, 'fehler'::text, 'abgebrochen'::text]))),
   CONSTRAINT auftraege_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
-CREATE INDEX idx_auftraege_faellig ON auftraege USING btree (next_run_at) WHERE (status = ANY (ARRAY['offen'::text, 'laeuft'::text]));
+CREATE INDEX idx_auftraege_art ON auftraege USING btree (art, status);
+CREATE INDEX idx_auftraege_frist ON auftraege USING btree (frist_bis) WHERE (status = 'laeuft'::text);
+CREATE INDEX idx_auftraege_offen_faellig ON auftraege USING btree (faellig_ab) WHERE (status = 'offen'::text);
 CREATE UNIQUE INDEX idx_auftraege_schluessel ON auftraege USING btree (schluessel) WHERE (status = 'offen'::text);
 CREATE INDEX idx_auftraege_user ON auftraege USING btree (user_id) WHERE (user_id IS NOT NULL);
+
+CREATE TABLE auftrag_pausen (
+  art text NOT NULL,
+  bis timestamp with time zone NOT NULL,
+  grund text,
+  stufe integer NOT NULL DEFAULT 0,
+  CONSTRAINT auftrag_pausen_pkey PRIMARY KEY (art)
+);
 
 CREATE TABLE bl_zuordnung (
   art text NOT NULL,
@@ -114,15 +127,6 @@ CREATE INDEX idx_bl_zuordnung_bl ON bl_zuordnung USING btree (art, bl_id);
 CREATE TRIGGER trg_teilekatalog_del AFTER DELETE ON bl_zuordnung REFERENCING OLD TABLE AS alt FOR EACH STATEMENT EXECUTE FUNCTION merke_teilekatalog_alt();
 CREATE TRIGGER trg_teilekatalog_ins AFTER INSERT ON bl_zuordnung REFERENCING NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION merke_teilekatalog_neu();
 CREATE TRIGGER trg_teilekatalog_upd AFTER UPDATE ON bl_zuordnung REFERENCING OLD TABLE AS alt NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION merke_teilekatalog_beide();
-
-CREATE TABLE brickset_retry_queue (
-  set_number text NOT NULL,
-  retry_after date NOT NULL,
-  attempts integer NOT NULL DEFAULT 0,
-  last_error text,
-  created_at timestamp with time zone DEFAULT now(),
-  CONSTRAINT brickset_retry_queue_pkey PRIMARY KEY (set_number)
-);
 
 CREATE TABLE catalog_cache (
   set_number text NOT NULL,
@@ -138,22 +142,6 @@ CREATE TABLE catalog_cache (
   CONSTRAINT catalog_cache_setnummer_mit_version CHECK ((set_number ~ '-[0-9]+$'::text))
 );
 CREATE TRIGGER catalog_cache_setnummer BEFORE INSERT OR UPDATE OF set_number ON catalog_cache FOR EACH ROW EXECUTE FUNCTION setnummer_normalisieren();
-
-CREATE TABLE csv_import_jobs (
-  user_id integer NOT NULL,
-  status text NOT NULL DEFAULT 'running'::text,
-  total integer NOT NULL DEFAULT 0,
-  done integer NOT NULL DEFAULT 0,
-  current text,
-  results jsonb NOT NULL DEFAULT '[]'::jsonb,
-  error text,
-  started_at timestamp with time zone NOT NULL DEFAULT now(),
-  updated_at timestamp with time zone NOT NULL DEFAULT now(),
-  run_id text,
-  CONSTRAINT csv_import_jobs_pkey PRIMARY KEY (user_id),
-  CONSTRAINT csv_import_jobs_status_check CHECK ((status = ANY (ARRAY['pending'::text, 'running'::text, 'done'::text, 'error'::text, 'cancelled'::text]))),
-  CONSTRAINT csv_import_jobs_user_fk FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-);
 
 CREATE TABLE global_settings (
   key text NOT NULL,
@@ -198,16 +186,21 @@ CREATE TABLE image_wanted (
 );
 CREATE INDEX idx_image_wanted_alter ON image_wanted USING btree (requested_at);
 
-CREATE TABLE instruction_queue (
-  id integer NOT NULL DEFAULT nextval('instruction_queue_id_seq'::regclass),
-  set_number text NOT NULL,
-  status text DEFAULT 'pending'::text,
-  created_at timestamp with time zone DEFAULT now(),
-  updated_at timestamp with time zone DEFAULT now(),
-  CONSTRAINT instruction_queue_pkey PRIMARY KEY (id),
-  CONSTRAINT instruction_queue_status_check CHECK ((status = ANY (ARRAY['pending'::text, 'done'::text, 'failed'::text])))
+CREATE TABLE import_stand (
+  user_id integer NOT NULL,
+  status text NOT NULL DEFAULT 'running'::text,
+  total integer NOT NULL DEFAULT 0,
+  done integer NOT NULL DEFAULT 0,
+  current text,
+  results jsonb NOT NULL DEFAULT '[]'::jsonb,
+  error text,
+  started_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  run_id text,
+  CONSTRAINT csv_import_jobs_pkey PRIMARY KEY (user_id),
+  CONSTRAINT csv_import_jobs_status_check CHECK ((status = ANY (ARRAY['pending'::text, 'running'::text, 'done'::text, 'error'::text, 'cancelled'::text]))),
+  CONSTRAINT csv_import_jobs_user_fk FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
-CREATE UNIQUE INDEX idx_instr_queue_set ON instruction_queue USING btree (set_number);
 
 CREATE TABLE instructions (
   id integer NOT NULL DEFAULT nextval('instructions_id_seq'::regclass),
@@ -526,21 +519,6 @@ CREATE TABLE passkeys (
   CONSTRAINT passkeys_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 CREATE INDEX idx_passkeys_konto ON passkeys USING btree (user_id);
-
-CREATE TABLE pdf_auftraege (
-  id text NOT NULL,
-  user_id integer NOT NULL,
-  status text NOT NULL,
-  fehler text,
-  fehlende_bilder integer,
-  eta_sekunden integer,
-  aktualisiert timestamp with time zone NOT NULL DEFAULT now(),
-  CONSTRAINT pdf_auftraege_pkey PRIMARY KEY (id),
-  CONSTRAINT pdf_auftraege_status_check CHECK ((status = ANY (ARRAY['running'::text, 'done'::text, 'error'::text]))),
-  CONSTRAINT pdf_auftraege_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-);
-CREATE INDEX idx_pdf_auftraege_laufend ON pdf_auftraege USING btree (user_id) WHERE (status = 'running'::text);
-CREATE INDEX idx_pdf_auftraege_user ON pdf_auftraege USING btree (user_id);
 
 CREATE TABLE price_alerts (
   user_id integer NOT NULL,

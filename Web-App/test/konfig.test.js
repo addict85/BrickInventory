@@ -21,6 +21,8 @@
  *   F  den Import von startup/konfigPruefen aus server.ts entfernt → rot:
  *      „der Server startet mit falschem Wert nicht“ (Stacktrace aus
  *      utils/sitzungsFrist statt der Meldung)
+ *   G  (30.10.) in ladeKonfig `veraltet` immer leer → rot: „ungültige Werte:
+ *      alle auf einmal, mit Namen“ (WEB_WORKERS wurde nicht mehr genannt)
  */
 const test   = require('node:test');
 const assert = require('node:assert/strict');
@@ -96,9 +98,12 @@ test('ungültige Werte: alle auf einmal, mit Namen', () => {
       assert.match(e.message, /PORT="0" ist keine ganze Zahl von 1 bis 65535/);
       return true;
     });
-  const k = ladeKonfig({ PORT: '8080', WEB_WORKERS: '3', COOKIE_SECURE: '0', APP_BASE_URL: 'https://lego.example.org//' });
+  const k = ladeKonfig({ PORT: '8080', ROLLE: 'Jobs', WEB_WORKERS: '3', COOKIE_SECURE: '0', APP_BASE_URL: 'https://lego.example.org//' });
   assert.equal(k.port, 8080);
-  assert.equal(k.webWorkers, 3);
+  assert.equal(k.rolle, 'jobs');
+  assert.deepEqual(k.veraltet, ['WEB_WORKERS'], 'WEB_WORKERS wirkt nicht mehr, der Start nennt es');
+  assert.equal(ladeKonfig({}).rolle, 'beides', 'ohne Angabe ein Prozess für alles');
+  assert.throws(() => ladeKonfig({ ROLLE: 'primary' }), /ROLLE="primary" ist weder web noch jobs noch beides/);
   assert.equal(k.cookieSecure, false);
   assert.equal(k.appBaseUrl, 'https://lego.example.org');
   assert.equal(ladeKonfig({}).sitzungLeerlaufMin, 240, 'ohne Angabe die Vorgabe');

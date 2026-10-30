@@ -228,11 +228,10 @@ test('offene Ereignis-Ströme halten das Herunterfahren nicht auf', () => {
     'Erst die Ströme beenden, DANN auf close() warten — umgekehrt wartet man vergeblich');
 
   // Die Reissleine ist eine Notbremse, kein Fehler.
-  const start = server.indexOf('async function shutdown');
-  const fn = server.slice(start, server.indexOf("process.on('SIGTERM'", start));
-  // Code 1 nur für den gewollten Neustart (neuStarten), sonst 0.
-  assert.match(fn, /async function shutdown\(signal: string, code = 0\)/, 'shutdown() endet ohne Grund mit 0');
-  assert.match(fn, /Frist abgelaufen[\s\S]{0,400}?process\.exit\(code\)/,
+  const start = server.indexOf('async function herunterfahren');
+  const fn = server.slice(start, server.indexOf('async function starte', start));
+  assert.ok(start > 0, 'herunterfahren() fehlt in server.ts');
+  assert.match(fn, /Frist abgelaufen[\s\S]{0,400}?process\.exit\(0\)/,
     'Ein erzwungenes Beenden nach Ablauf der Frist ist kein Fehlschlag');
 
   // Alle drei SSE-Routen melden sich an — eine vergessene hält wieder auf.

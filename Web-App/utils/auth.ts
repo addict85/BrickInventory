@@ -10,12 +10,11 @@ import bcrypt from 'bcryptjs';
 import type { Request, Response, NextFunction } from 'express';
 import { checkLoginAllowed, gibAnmeldeplatzFrei, recordLoginFailure, recordLoginSuccess } from './loginLimiter';
 import { sendeFehler } from './fehlerTexte';
-import { logAndContinue, meldeUndLiefere } from './httpError';
+import { meldeUndLiefere } from './httpError';
 import * as zf from './zweiterFaktor';
 import * as passkeys from './passkeys';
 import { ausTabelle } from './validate';
 import type { FehlerCode } from './fehlerTexte';
-import * as pgNotify from './pgNotify';
 
 /**
  * Warum diese Typen hier stehen
@@ -267,45 +266,20 @@ function _touchLastUsed(entry: CacheEintrag, ip?: string | null): void {
     .finally(() => { entry.schreibt = false; });
 }
 
-/**
- * Ein Widerruf muss in JEDEM Worker wirken, nicht nur im eigenen.
- *
- * Jeder Worker hat seinen eigenen Cache. Ohne Signal bediente ein anderer
- * einen widerrufenen Token noch bis zu TOKEN_TTL_MS. Die Empfänger leeren
- * ganz: Den Klartext schicken wir nicht über die Datenbank, und nach ihm ist
- * der Cache indiziert.
- */
-export const TOKEN_KANAL = 'tokens_geaendert';
-
-function meldeTokenWiderruf(): void {
-  pgNotify.notify(TOKEN_KANAL).catch(logAndContinue('tokens:widerruf melden'));
-}
-
-/** Nur der eigene Cache — für den Empfang des Signals, das nicht zurückfunken darf. */
-function leereTokenCacheLokal(): void { _tokenCache.clear(); }
-
-/**
- * Den Empfang anmelden. Beim (Wieder-)Verbinden ruft pgNotify den Handler
- * einmal ohne Signal auf — dann wird ebenfalls geleert, die sichere Seite.
- */
-function horcheAufTokenWiderruf(): void {
-  pgNotify.listen(TOKEN_KANAL, () => leereTokenCacheLokal());
-}
-
 /** Beim Logout/Token-Löschen aufrufen, damit der Token sofort ungültig wird. */
 function invalidateToken(token: string | null | undefined): void {
   if (!token) return;
   _tokenCache.delete(token);
-  meldeTokenWiderruf();
 }
 
 /**
  * Den ganzen Token-Cache verwerfen — für Löschungen ohne Klartext (die
- * Token-Verwaltung kennt nur den Hash-Anfang). Gilt für alle Worker.
+ * Token-Verwaltung kennt nur den Hash-Anfang). Den Cache hält nur der
+ * Web-Prozess, und widerrufen wird nur dort; ein Signal an andere Prozesse
+ * braucht es nicht (der Job-Prozess löscht nur abgelaufene Tokens).
  */
 function leereTokenCache(): void {
-  leereTokenCacheLokal();
-  meldeTokenWiderruf();
+  _tokenCache.clear();
 }
 
 /**
@@ -853,7 +827,7 @@ async function purgeExpiredTokens() {
 }
 
 export {
-  validateToken, invalidateToken, leereTokenCache, horcheAufTokenWiderruf, flaggeGesetzt, resolveUserId, requireLoginOrToken, nutzerId, angemeldeteNutzerId, istVerwalter, nutzerName, hashToken, deleteToken,
+  validateToken, invalidateToken, leereTokenCache, flaggeGesetzt, resolveUserId, requireLoginOrToken, nutzerId, angemeldeteNutzerId, istVerwalter, nutzerName, hashToken, deleteToken,
   verifiziereEmailToken, perSitzung,
   revokeAllTokens, revokeAllSessions, beendeAndereZugaenge, purgeExpiredTokens, loginOrTokenGuard, TOKEN_IDLE_DAYS,
   pruefeToken, rotiereToken, rotationFaellig, rotationPflicht, ipBereich, UNBEGRENZT,

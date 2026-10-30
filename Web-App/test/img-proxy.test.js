@@ -151,7 +151,7 @@ test('der ausgebaute Reparaturjob ist restlos weg', () => {
   // Er beruhte auf der Annahme, die Bildadressen seien kaputt. Die war falsch —
   // das CDN lieferte durchgehend 200.
   assert.ok(!fs.existsSync(path.join(ROOT, 'jobs', 'imageRepair.ts')), 'Job-Datei noch da');
-  for (const f of ['server.ts', 'utils/jobMonitor.ts', 'jobs/dailyScheduler.ts', 'db/database.ts']) {
+  for (const f of ['server.ts', 'utils/jobMonitor.ts', 'utils/zeitplan.ts', 'db/database.ts']) {
     const src = fs.readFileSync(path.join(ROOT, f), 'utf8');
     assert.doesNotMatch(src, /imgRepair|img_repair|dead_images/, `${f}: Reste vorhanden`);
   }
@@ -329,34 +329,19 @@ test('ein bekannter Bildstand wird mit 304 beantwortet', () => {
     'Ohne gesetzten ETag vergleicht req.fresh gegen nichts');
 });
 
-test('der Cache-Aufräumlauf hängt am Primary-Worker', () => {
-  // ── Woher dieser Test kommt ─────────────────────────────────────────────
-  // Das tägliche Aufräumen stand in registerImgProxy() — und die wird von
-  // JEDEM Cluster-Worker aufgerufen. Bei acht Workern hiess das acht
-  // vollständige Durchläufe über das Cache-Verzeichnis (readdir plus stat je
-  // Datei) und acht Prozesse, die sich beim unlink gegenseitig ins Gehege
-  // kamen; unbemerkt, weil die Fehler ohnehin verworfen werden.
-  //
-  // Alle übrigen wiederkehrenden Arbeiten (Preis-Job, Token-Aufräumen,
-  // Log-Bereinigung) hängen längst hinter isPrimaryWorker.
-  assert.match(SERVER, /export function startImgCacheCleanup/,
+test('der Cache-Aufräumlauf ist ein geplanter Auftrag', () => {
+  // Das tägliche Aufräumen stand einmal in registerImgProxy() und lief damit
+  // in jedem Web-Worker; heute ist es ein Schritt des geplanten Auftrags
+  // 'aufraeumen_taeglich' (jobs/aufraeumen.ts) und läuft nur im Job-Prozess.
+  assert.match(SERVER, /export async function raeumeBildCacheAuf/,
     'Der Lauf muss von aussen startbar sein, statt beim Registrieren loszulaufen');
-  // abschnitt(): nur doesNotMatch auf diesem Ausschnitt — auf leerem Text
-  // gruen. Siehe die Begruendung an abschnitt().
-  const reg = abschnitt(SERVER, 'function registerImgProxy',
-                        'export function startImgCacheCleanup',
+  const reg = abschnitt(SERVER, 'function registerImgProxy', 'export async function raeumeBildCacheAuf',
                         'Registrierung ohne tagesweites Intervall');
-  assert.doesNotMatch(reg, /24 \* 60 \* 60 \* 1000/,
-    'Kein tägliches Intervall mehr im Teil, den jeder Worker ausführt');
-
-  const main = require('./helpers/sources').startQuelle();
-  // Kommentare raus: Die Erklärzeile daneben nennt den Namen ebenfalls, und
-  // die Gegenprobe (Aufruf entfernt) blieb dadurch zunächst grün — ein Test,
-  // der den Kommentar für den Aufruf hält, prüft gar nichts.
-  const jobs = main.slice(main.indexOf('if (!isPrimaryWorker) return;'))
-    .replace(/\/\/[^\n]*/g, '');
-  assert.match(jobs, /startImgCacheCleanup\(\)/,
-    'Der Aufruf gehört zu den übrigen Hintergrundarbeiten des Primary-Workers');
+  assert.doesNotMatch(reg, /setInterval/, 'Kein eigenes Intervall im Teil, den der Web-Prozess ausführt');
+  const plan = require('./helpers/sources').ohneKommentare(
+    fs.readFileSync(path.join(ROOT, 'jobs', 'aufraeumen.ts'), 'utf8'));
+  assert.match(plan.slice(plan.indexOf('function aufraeumenTaeglich')), /raeumeBildCacheAuf\]/,
+    'Der Bild-Cache gehört zum täglichen Aufräumen');
 });
 
 /**

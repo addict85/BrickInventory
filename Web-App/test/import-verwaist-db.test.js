@@ -36,7 +36,7 @@ test('verwaiste Importe', { concurrency: 1 }, async (t) => {
     await db.pool.end().catch(() => {});
   });
   const auftrag = (vorMin) => db.run(
-    `INSERT INTO csv_import_jobs (user_id, status, total, done, current, updated_at)
+    `INSERT INTO import_stand (user_id, status, total, done, current, updated_at)
      VALUES ($1, 'running', 10, 3, '10001-1', NOW() - make_interval(mins => $2))
      ON CONFLICT (user_id) DO UPDATE SET status = 'running', current = '10001-1', error = NULL,
        updated_at = NOW() - make_interval(mins => $2)`, [uid, vorMin]);

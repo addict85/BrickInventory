@@ -199,8 +199,8 @@ RUN chmod +x docker-entrypoint.sh
 ENV NODE_ENV=production
 ENV PORT=3000
 ENV NODE_OPTIONS="--max-old-space-size=384"
-# Workers: 0 = auto-detect CPU count (recommended). Set to 1 to disable clustering.
-ENV WEB_WORKERS=0
+# Ein Prozess für Web und Jobs; compose.yaml teilt sie mit ROLLE=web und ROLLE=jobs.
+ENV ROLLE=beides
 
 # ── Datenbank ─────────────────────────────────────────────────────────────────
 ENV PGHOST=postgres
@@ -211,16 +211,8 @@ ENV PGUSER=brickinventory
 ENV PGDATABASE=brickinventory
 
 # ── DB-Verbindungspool ────────────────────────────────────────────────────────
-# PG_POOL_MAX ist bewusst NICHT mehr gesetzt.
-#
-# VORHER stand hier 20 — und überschrieb damit die Berechnung in
-# db/database.ts, die max. 15 pro Worker und höchstens 80 insgesamt vorsieht.
-# Auf einem Achtkerner (WEB_WORKERS=0 → 8 Worker) ergab die Vorgabe
-# 8 × 20 = 160 gleichzeitige Verbindungen; Postgres' Standard liegt bei 100.
-# Die sorgfältige Formel im Code war damit wirkungslos.
-#
-# Ohne die Variable rechnet die App selbst: min(15, 80 / Anzahl Worker).
-# Wer sie doch braucht, setzt sie in compose.yaml — dann bewusst und sichtbar.
+# PG_POOL_MAX ist bewusst nicht gesetzt: Die Vorgabe in db/database.ts (15 je
+# Prozess) reicht für Web und Jobs. Wer sie ändert, setzt sie sichtbar in compose.yaml.
 ENV PG_POOL_MIN=2
 ENV PG_IDLE_MS=30000
 ENV PG_CONN_MS=5000

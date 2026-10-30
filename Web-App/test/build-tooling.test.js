@@ -110,7 +110,8 @@ test('compose.yaml mountet nichts mehr nach public/', () => {
 
 test('das Datenverzeichnis ist als einziges Volume der App gemountet', () => {
   const compose = read('compose.yaml');
-  const appMounts = [...compose.matchAll(/^\s*-\s*\.\/[^\s:#]+:(\/app[^\s:#]*)/gm)].map(m => m[1]);
+  // app und jobs hängen dasselbe ./data ein; ein zweites Ziel gäbe es nicht.
+  const appMounts = [...new Set([...compose.matchAll(/^\s*-\s*\.\/[^\s:#]+:(\/app[^\s:#]*)/gm)].map(m => m[1]))];
   assert.deepEqual(appMounts, ['/app/data'],
     'Alles Persistente liegt unter data/ — ein zweites Volume erzeugt nur einen verwaisten Ordner');
 });

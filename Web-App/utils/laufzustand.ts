@@ -19,16 +19,9 @@ export async function setzeZustand(schluessel: string, wert: unknown): Promise<v
     [schluessel, String(wert)]);
 }
 
-/** Ein Auslöser gilt als abgearbeitet, sobald seine Zeile weg ist — darum Löschen statt Leeren. */
+/** Mehrere Einträge in einer Anweisung entfernen. */
 export async function loescheZustand(...schluessel: string[]): Promise<void> {
   if (schluessel.length) await db.run('DELETE FROM laufzustand WHERE schluessel = ANY($1)', [schluessel]);
-}
-
-/** Auslöser setzen; der Wert ist der Zeitpunkt, damit ein späterer Anstoss ihn überschreibt. */
-export async function setzeAusloeser(schluessel: string): Promise<void> {
-  await db.run(
-    `INSERT INTO laufzustand (schluessel, wert, aktualisiert) VALUES ($1, NOW()::TEXT, NOW())
-     ON CONFLICT (schluessel) DO UPDATE SET wert = NOW()::TEXT, aktualisiert = NOW()`, [schluessel]);
 }
 
 /** Zähler atomar verschieben, nie unter 0 — eine Anweisung, die Zeilensperre serialisiert gleichzeitige Aufrufe. */

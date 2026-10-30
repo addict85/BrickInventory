@@ -4,7 +4,7 @@ import * as db from '../db/database';
 import { MINIFIG_IMAGES_DIR } from '../utils/appPaths';
 import { getMinifigInfo } from '../clients/rebrickable';
 import { logAndContinue, meldeUndWeiter } from '../utils/httpError';
-import { schreibeAuftrag, pdfDateiPfad } from '../utils/pdfAuftraege';
+import { pdfDateiPfad } from '../utils/pdfAuftraege';
 import { downloadImage, downloadSetImages } from './partsCatalogEnrich';
 import { zeichnePdfImFaden, type PdfSet, type PdfTeil } from './pdfZeichnen';
 import { KEINE_FARBE } from '../utils/validate';
@@ -13,8 +13,8 @@ import { normalisiereSetNummer, moeglicheSetNummer } from '../utils/setNummer';
 
 /**
  * Ein PDF-Auftrag aus der Auftragstabelle: fehlende Bilder holen, dann im
- * eigenen Faden zeichnen. Der Status für die Oberfläche steht weiter in
- * pdf_auftraege (utils/pdfAuftraege.ts).
+ * eigenen Faden zeichnen. Den Status für die Oberfläche liest
+ * utils/pdfAuftraege.ts aus demselben Auftrag.
  */
 export interface PdfNutzlast { job_id: string; user_id: number; sets: PdfSet[]; parts: PdfTeil[] }
 
@@ -108,13 +108,12 @@ async function erzeugePdf(n: PdfNutzlast): Promise<void> {
 
   await fsp.mkdir(path.dirname(ziel), { recursive: true });
   await zeichnePdfImFaden(sets, parts, ziel);
-  await schreibeAuftrag(jobId, { status: 'done', error: null, user_id: uid });
+  console.log(`[PDF job] ${jobId} fertig für Konto ${uid}`);
 }
 
-/** Nach dem letzten Versuch: Die Oberfläche bekommt den Fehler statt eines ewigen „läuft". */
+/** Nach dem letzten Versuch; den Fehler für die Oberfläche hält der Auftrag selbst. */
 async function pdfAufgegeben(n: PdfNutzlast, fehler: string): Promise<void> {
-  console.error('[PDF job] error:', fehler);
-  await schreibeAuftrag(n.job_id, { status: 'error', error: fehler, user_id: n.user_id });
+  console.error(`[PDF job] ${n.job_id} error:`, fehler);
 }
 
 export { erzeugePdf, pdfAufgegeben };

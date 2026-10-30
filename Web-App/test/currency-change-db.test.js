@@ -14,18 +14,19 @@
  * Benutzereinstellungen — und gilt damit für alle drei Wege: Webapp-Formular,
  * Einstellungs-Import und /api/v1.
  *
- * Geprüft wird VERHALTEN, nicht Wortlaut — über die Wirkung des echten
- * triggerNow(): Mit Fake-Zugangsdaten und leerer sets-Tabelle endet der Lauf
- * gefahrlos im "No sets"-Zweig und setzt state.lastRun (getJobStatus()).
- * Ein Monkeypatch auf priceJob.triggerNow funktioniert NICHT — esbuild
- * exportiert per Getter, die Zuweisung verpufft still. Erwartung:
- *   • Währung EUR → CHF        : genau EIN Anstoss
- *   • dieselbe Währung nochmal : KEIN Anstoss (das Formular schickt bei jedem
- *     Speichern alle Felder — jedes Speichern dürfte sonst einen Lauf kosten)
+ * Geprüft wird VERHALTEN: Der Preis-Job ist ein geplanter Auftrag
+ * (utils/zeitplan.ts); ein Anstoss zieht seinen Termin auf jetzt vor.
+ * Erwartung:
+ *   • Währung EUR → CHF        : der Termin ist jetzt fällig
+ *   • dieselbe Währung nochmal : der Termin bleibt in der Zukunft (das Formular
+ *     schickt bei jedem Speichern alle Felder — jedes Speichern dürfte sonst
+ *     einen Lauf kosten)
  *   • v1-Route                 : gleiches Verhalten (Parität)
  *
  * Gegenprobe (durchgeführt): den Anstoss in setUserSetting() entfernt →
- * die beiden „stösst an"-Schritte hier werden rot.
+ * die beiden „stösst an"-Schritte hier werden rot. Am 30.10.2026 mit dem
+ * geplanten Auftrag wiederholt: preisJobAnstossen in jobs/verdrahtung.ts leer
+ * → rot: „EUR → CHF muss den Preis-Job anstossen“.
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL. Ohne DB: skip.
  */
@@ -35,7 +36,6 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { testServer } = require('./helpers/server');
@@ -52,31 +52,15 @@ test('eine echte Währungsänderung stösst den Preis-Job an, ein No-op-Speicher
     t.skip('Test-DB nicht erreichbar'); return;
   }
 
-  // Beobachtet wird die WIRKUNG des Jobs, nicht ein Monkeypatch: esbuild
-  // exportiert per Getter, eine Zuweisung auf priceJob.triggerNow verpufft
-  // still (erster Anlauf dieses Tests — der Zähler blieb bei 0, obwohl der
-  // Anstoss lief). Stattdessen: Fake-Zugangsdaten, damit runPriceRefresh()
-  // nicht am Credentials-Check abbricht, und eine LEERE sets-Tabelle, damit
-  // er ohne Netzzugriff im "No sets"-Zweig endet — der setzt state.lastRun,
-  // ablesbar über getJobStatus(). Ein Anstoss = lastRun ändert sich.
-  const priceJob = _req('jobs/priceJob.js');
-  await db.run(`INSERT INTO global_settings (key, value) VALUES ('bricklink_consumer_key','test-nur-fuer-diesen-test')
-                ON CONFLICT (key) DO UPDATE SET value='test-nur-fuer-diesen-test'`);
-  // MUSS leer sein: Mit Sets im Bestand nimmt runPriceRefresh() den langen Weg
-  // und versucht echte BrickLink-Abrufe — in der vollständigen Suite (wo
-  // andere Testdateien Sets hinterlassen) lief diese Datei dadurch in den
-  // 60-s-Timeout des Runners, einzeln aber grün. Testreihenfolge ist keine
-  // Voraussetzung, auf die man sich verlassen darf.
-  // Erst die Erfassungen: Sie sperren das Löschen ihres Sets (Fremdschlüssel).
-  await db.run(`DELETE FROM set_acquisitions`);
-  await db.run(`DELETE FROM sets`);
-
-  const lastRun = () => priceJob.getJobStatus().lastRun;
-  const warteAufLauf = async (vorher) => {
-    for (let i = 0; i < 100; i++) {
-      if (lastRun() !== vorher) return true;
-      await new Promise(r => setTimeout(r, 50));
-    }
+  // Beobachtet wird der Termin des geplanten Auftrags 'preise'.
+  const Z = _req('utils/zeitplan.js');
+  await db.run(`DELETE FROM auftraege WHERE art = 'preise'`);
+  await Z.planeNaechsten('preise');
+  const spaeter = () => db.run(`UPDATE auftraege SET faellig_ab = NOW() + INTERVAL '1 hour' WHERE art = 'preise' AND status = 'offen'`);
+  const faellig = async () => (await db.get(
+    `SELECT faellig_ab <= NOW() AS jetzt FROM auftraege WHERE art = 'preise' AND status = 'offen'`))?.jetzt === true;
+  const warteAufLauf = async () => {
+    for (let i = 0; i < 40; i++) { if (await faellig()) return true; await new Promise(r => setTimeout(r, 50)); }
     return false;
   };
 
@@ -100,20 +84,20 @@ test('eine echte Währungsänderung stösst den Preis-Job an, ein No-op-Speicher
   });
 
   try {
-    // 1) Echte Änderung über die Webapp-Route → ein Lauf (lastRun ändert sich).
-    let vorher = lastRun();
+    // 1) Echte Änderung über die Webapp-Route → der Termin ist jetzt.
+    assert.equal(await faellig(), false, 'Vorbedingung: der Lauf liegt in der Zukunft');
     let r = await postWeb({ currency: 'CHF' });
     assert.equal(r.status, 200);
-    assert.ok(await warteAufLauf(vorher), 'EUR → CHF muss den Preis-Job anstossen');
+    assert.ok(await warteAufLauf(), 'EUR → CHF muss den Preis-Job anstossen');
     assert.equal((await db.get(
       `SELECT value FROM user_settings WHERE user_id=$1 AND key='currency'`, [uid])).value, 'CHF');
 
     // 2) Dieselbe Währung nochmal (Formular schickt immer alle Felder) → kein Lauf.
-    vorher = lastRun();
+    await spaeter();
     r = await postWeb({ currency: 'CHF', language: 'de' });
     assert.equal(r.status, 200);
     await new Promise(res => setTimeout(res, 700));
-    assert.equal(lastRun(), vorher, 'ein Speichern OHNE Währungsänderung darf keinen Lauf kosten');
+    assert.equal(await faellig(), false, 'ein Speichern OHNE Währungsänderung darf keinen Lauf kosten');
 
     // 3) Parität: dieselbe Regel auf der v1-Route.
     r = await fetch(`${base}/api/v1/settings`, {
@@ -121,12 +105,9 @@ test('eine echte Währungsänderung stösst den Preis-Job an, ein No-op-Speicher
       body: JSON.stringify({ currency: 'EUR' }),
     });
     assert.equal(r.status, 200, `v1-Settings-Route antwortete ${r.status}`);
-    assert.ok(await warteAufLauf(vorher), 'CHF → EUR über /api/v1 muss den Preis-Job ebenfalls anstossen');
+    assert.ok(await warteAufLauf(), 'CHF → EUR über /api/v1 muss den Preis-Job ebenfalls anstossen');
   } finally {
-    // Der "No sets"-Zweig ruft scheduleNext() — ohne stop() hielte der
-    // gestellte Intervall-Timer den Testprozess bis zu 60 Minuten am Leben.
-    priceJob.stop();
-    await db.run(`DELETE FROM global_settings WHERE key='bricklink_consumer_key' AND value='test-nur-fuer-diesen-test'`);
+    await db.run(`DELETE FROM auftraege WHERE art = 'preise'`);
     await db.run(`DELETE FROM users WHERE username = $1`, [USERNAME]);
     await new Promise(r => srv.close(r));
     await db.pool.end().catch(() => {});

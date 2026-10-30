@@ -111,7 +111,8 @@ test('stille Faenge werden weniger, nie mehr', () => {
   // 29.10.2026: 41 — die übrigen Fänge melden über logAndContinue/meldeUndWeiter.
   // 30.10.2026: 39 (Schichtumbau: die Routenfänge stehen gemeldet in den Diensten).
   // 30.10.2026: 36 (Protokoll: Schreibfehler nach app_logs werden gezählt und gemeldet).
-  const SCHRANKE = 36;
+  // 30.10.2026: 32 (Cluster, Planer und eigene Warteschlangen entfallen).
+  const SCHRANKE = 32;
   const ist = zaehle(STILLE_FAENGE);
   assert.ok(ist <= SCHRANKE,
     `${ist} stille Faenge, erlaubt sind ${SCHRANKE}. Ein neuer \`catch {}\` ` +
@@ -127,7 +128,8 @@ test('any wird weniger, nie mehr', () => {
   // GEMESSEN am 19.09.2026 nach Nachtrag 175: 398 Stellen. Es waren 402,
   // solange der Zaehler auch Kommentare las. 386 am 28.10.2026.
   // 29.10.2026: 333. 30.10.2026: 288 (db.get<T>/db.all<T> statt any-Zeilen).
-  const SCHRANKE = 288;
+  // 30.10.2026: 281 (Planer und Preis-Job-Zustand entfallen).
+  const SCHRANKE = 281;
   const ist = zaehle([/\bas any\b/g, /:\s*any\b/g]);
   assert.ok(ist <= SCHRANKE,
     `${ist}-mal \`any\`, erlaubt sind ${SCHRANKE}. Jedes davon schaltet den ` +
@@ -159,7 +161,8 @@ test('reine Quelltext-Tests werden weniger, nie mehr', () => {
   // (routen-bewacht ging in api-eingang-db auf, das den echten Server fragt).
   // 30.10.2026: 92 — acht Dateien prüfen jetzt Verhalten (Erfassungen, Summen,
   // Mengen-Echo, Preisverlauf, Figurenschätzung, LISTEN/NOTIFY, CSV, Katalogbilder).
-  const SCHRANKE = 91;
+  // 30.10.2026: 90 — der Start des Job-Prozesses wird ausgeführt statt gelesen.
+  const SCHRANKE = 90;
   const alle = fs.readdirSync(__dirname).filter(n => n.endsWith('.test.js')).length;
   assert.ok(alle >= 300, `Nur ${alle} Testdateien gefunden — greift die Suche noch?`);
   const ist = reineQuelltextTests();
@@ -244,7 +247,8 @@ test('der Kommentaranteil im Server sinkt, nie steigt', () => {
   // GEMESSEN am 28.10.2026: 33,4 % der nichtleeren Zeilen in server.ts,
   // routes/, utils/ und jobs/ (25.10.: 50,5 %, siehe CLAUDE.md).
   // 29.10.2026: 32,44 %. 30.10.2026: 30,6 % (Kommentare der umgebauten Dateien gekürzt).
-  const SCHRANKE = 30.7;
+  // 30.10.2026: 30,0 % (Cluster, Planer und Warteschlangen entfallen).
+  const SCHRANKE = 30.1;
   let zeilen = 0, kommentar = 0;
   for (const f of quellen().filter(f => /[\\/](routes|utils|jobs)[\\/]|[\\/]server\.ts$/.test(f))) {
     for (const z of fs.readFileSync(f, 'utf8').split('\n')) {

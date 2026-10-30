@@ -8,7 +8,7 @@ set -e
 # erscheint."
 #
 # Die erste Zeile des Servers steht unmittelbar nach den Importen
-# (`[cluster] Primary … starting N workers`), und console.log schreibt synchron
+# (`[start] Prozess …, Rolle …`), und console.log schreibt synchron
 # nach stdout. Wer minutenlang nichts sieht, sieht also nicht einen langsamen
 # Server — er sieht ein Skript, das VOR dem Server laeuft und dabei schweigt.
 #
@@ -152,7 +152,7 @@ if [ -n "$CA_ZERTIFIKAT" ] && [ -d /caddy-ca ] && ! kopiereCa; then
   ( i=0; while [ "$i" -lt 120 ]; do kopiereCa && exit 0; sleep 1; i=$((i+1)); done ) &
 fi
 
-echo "[entrypoint] Server wird gestartet."
+echo "[entrypoint] Server wird gestartet (Rolle ${ROLLE:-beides})."
 
 # Drop to brick user and start
 # dist/server.js statt server.js: Der Build schreibt seit der Umstellung nach

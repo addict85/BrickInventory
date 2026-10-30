@@ -1,318 +1,89 @@
-'use strict';
 /**
- * Instruction download queue — persistent, survives restarts.
- * - Sets are added to instruction_queue when imported
- * - Worker processes pending entries respecting Brickset 100/day limit
- * - Pauses when daily limit reached, resumes next day automatically …
+ * Anleitungen je Set laden — der Auftrag 'anleitung' (eingereiht über
+ * utils/anleitungsAuftrag.ts). Brickset und brickinstructions.com wollen
+ * Abstand: Nach einem echten Abruf pausiert die ganze Art 15 Sekunden, nach
+ * einer Cloudflare-Sperre 5, 10, 15, 20 Minuten und dann bis zum nächsten Tag.
  * Ausführlich: docs/begruendungen/jobs/instructionQueue.ts.md#db
  */
 import * as db from '../db/database';
-import { downloadSetInstructions, letzterAbrufWarExtern, anzahlAnleitungen } from '../utils/instructions';
-import { meldeUndWeiter, fehlertext, logAndContinue, meldeUndLiefere } from '../utils/httpError';
+import { downloadSetInstructions, letzterAbrufWarExtern, anzahlAnleitungen, scrapeInstructionsFromFallback } from '../utils/instructions';
+import { fehlertext } from '../utils/httpError';
 import { alsAbrufFehler } from '../clients/abrufFehler';
-import { mitVersion } from '../utils/setNummer';
-import { liesZustand, setzeZustand, loescheZustand, setzeAusloeser } from '../utils/laufzustand';
+import { beendePause, liesPause, pausiereArt, zaehleArt } from '../utils/auftraege';
 import * as monitor from '../utils/jobMonitor';
 import { LOCKS } from '../utils/lockNamespaces';
+import { AuftragVerschieben } from './auftragsWorker';
 
-let _running        = false;   // billiger Schutz IM eigenen Prozess
-let _timer: NodeJS.Timeout | null = null;
-let _driver         = false;   // true nur dort, wo start() lief (Primary)
+/** Abstand nach einem Abruf, der wirklich einen fremden Server fragte. */
+const TAKT_NACH_ABRUF_MS = 15_000;
+/** Pausen nach der ersten bis vierten Cloudflare-Sperre; danach bis morgen. */
+const CF_PAUSEN_MS = [5, 10, 15, 20].map(min => min * 60 * 1000);
 
-/**
- * Namensraum der prozessübergreifenden Sperre für die Anleitungs-Warteschlange.
- *
- * Welche Zahl das ist und welche sonst belegt sind, steht in
- * utils/lockNamespaces.ts. Hier stand eine Abschrift davon — die vollständigste
- * im Projekt, und trotzdem eine, die beim nächsten Zusatz veraltet wäre.
- */
-const QUEUE_LOCK = LOCKS.ANLEITUNGS_QUEUE;
-
-/** Schlüssel der Cloudflare-Pause in laufzustand. */
-const BLOCK_KEY = 'instr_queue_block';
-
-const CF_DELAYS_MS  = [
-  5  * 60 * 1000,   // 1st block: 5 min
-  10 * 60 * 1000,   // 2nd block: 10 min
-  15 * 60 * 1000,   // 3rd block: 15 min
-  20 * 60 * 1000,   // 4th block: 20 min
-  // after 4th: pause until next day
-];
+/** 00:05 des nächsten Tages: Dann ist das Tageskontingent wieder frei. */
+function naechsterTag(jetzt = new Date()): Date {
+  const z = new Date(jetzt);
+  z.setHours(0, 5, 0, 0);
+  if (z <= jetzt) z.setDate(z.getDate() + 1);
+  return z;
+}
 
 /**
- * Sperre für die Dauer EINES Eintrags — auf einer eigenen Verbindung, weil
- * Advisory-Locks an der Session hängen und über den Pool sonst Sperren und
- * Freigeben auf verschiedenen Verbindungen landen (siehe die ausführliche
- * Begründung in clients/brickset.ts).
- *
- * @returns Freigabefunktion, oder null wenn ein anderer Prozess gerade arbeitet
+ * Zwei Job-Prozesse sollen sich den Takt nicht teilen: Hält ein anderer die
+ * Sperre, wartet dieser Auftrag einen Takt (auf eigener Verbindung, weil
+ * Advisory-Locks an der Sitzung hängen).
  */
-async function acquireQueueLock(): Promise<(() => Promise<void>) | null> {
-  let client;
-  try { client = await db.pool.connect(); }
-  catch (e) {
-    // Ohne Verbindung geht ohnehin nichts — der Aufrufer bricht ab.
-    console.warn('[instr-queue] Sperre nicht verfügbar:', fehlertext(e));
-    return null;
-  }
+async function mitSperre<T>(lauf: () => Promise<T>): Promise<T> {
+  const client = await db.pool.connect();
   try {
-    const { rows } = await client.query('SELECT pg_try_advisory_lock($1, 0) AS ok', [QUEUE_LOCK]);
-    if (!rows[0]?.ok) { client.release(); return null; }
-  } catch (e) {
-    client.release();
-    console.warn('[instr-queue] Sperre nicht verfügbar:', fehlertext(e));
-    return null;
-  }
-  return async () => {
-    try { await client.query('SELECT pg_advisory_unlock($1, 0)', [QUEUE_LOCK]); }
-    catch (e) { console.warn('[instr-queue] Sperre nicht freigegeben:', fehlertext(e)); }
-    finally { client.release(); }
-  };
+    const { rows } = await client.query('SELECT pg_try_advisory_lock($1, 0) AS ok', [LOCKS.ANLEITUNGS_QUEUE]);
+    if (!rows[0]?.ok) throw new AuftragVerschieben(new Date(Date.now() + TAKT_NACH_ABRUF_MS), 'Anleitungen laufen in einem anderen Prozess');
+    try { return await lauf(); }
+    finally { await client.query('SELECT pg_advisory_unlock($1, 0)', [LOCKS.ANLEITUNGS_QUEUE]); }
+  } finally { client.release(); }
 }
 
-/** Cloudflare-Pause lesen: { until: ms-Zeitpunkt, retries: Anzahl } */
-async function readBlock(): Promise<{ until: number; retries: number }> {
-  const roh = await liesZustand(BLOCK_KEY);
-  if (!roh) return { until: 0, retries: 0 };
-  try {
-    const o = JSON.parse(roh);
-    return { until: parseInt(o?.until) || 0, retries: parseInt(o?.retries) || 0 };
-  } catch { return { until: 0, retries: 0 }; }
+async function meldeMonitor(setNumber: string): Promise<void> {
+  const z = await zaehleArt('anleitung');
+  const offen = z.offen + z.laeuft, gesamt = offen + z.erledigt + z.fehler;
+  await monitor.update('instrQueue', { status: offen > 1 ? 'running' : 'done', progress: gesamt - offen + 1, total: gesamt,
+    sub: offen > 1 ? `${setNumber} · ${offen - 1} ausstehend` : 'Alle erledigt' });
 }
 
-async function writeBlock(until: number, retries: number) {
-  setzeZustand(BLOCK_KEY, JSON.stringify({ until, retries })).catch(logAndContinue('instr-queue:block-schreiben'));
-}
-
-async function clearBlock() {
-  await loescheZustand(BLOCK_KEY)
-    .catch(logAndContinue('instr-queue:block-loeschen'));
-}
-
-/** Wie viele Anleitungs-Auftraege warten noch? */
-export async function offeneAuftraege(): Promise<number> {
-  const r = await db.get("SELECT COUNT(*) as c FROM instruction_queue WHERE status='pending'").catch(meldeUndLiefere('anleitungen:COUNT', null));
-  return parseInt(r?.c) || 0;
-}
-
-async function enqueue(setNumber: string) {
-  const n = mitVersion(setNumber);
-  await db.run(
-    `INSERT INTO instruction_queue (set_number, status) VALUES ($1, 'pending')
-     ON CONFLICT (set_number) DO UPDATE SET status='pending', updated_at=NOW()`,
-    [n]
-  ).catch(logAndContinue('anleitungen:n'));
-}
-
-/**
- * Schlüssel UND Kanalname des Anstosses.
- *
- * Beides ist derselbe Name, und das ist Absicht: Der gespeicherte Auslöser und
- * das NOTIFY darauf gehören zusammen — zwei Schreibweisen wären zwei Stellen,
- * an denen sich ein Tippfehler still versteckt, denn ein NOTIFY auf einen
- * Kanal, dem niemand zuhört, meldet nichts.
- */
-const AUSLOESER = 'instr_queue_trigger';
-
-/**
- * Abarbeitung ANSTOSSEN — für alles ausserhalb des Primary-Workers.
- * Ausführlich: docs/begruendungen/jobs/instructionQueue.ts.md#requestrun
- */
-async function requestRun() {
-  await setzeAusloeser(AUSLOESER)
-    .catch(logAndContinue('instr-queue:trigger'));
-  await require('../utils/pgNotify').notify(AUSLOESER)
-    .catch(logAndContinue('instr-queue:trigger-signal'));
-}
-
-async function processNext() {
-  if (_running) return;
-  _running = true;
-  let release: null | (() => Promise<void>) = null;
-  try {
-    release = await acquireQueueLock();
-    if (!release) return;   // anderer Prozess arbeitet die Warteschlange gerade ab
-
-    // Cloudflare-Pause gilt prozessübergreifend.
-    const block = await readBlock();
-    if (block.until > Date.now()) {
-      scheduleNext(Math.min(block.until - Date.now() + 1000, 5 * 60 * 1000));
-      return;
-    }
-
-    const row = await db.get(
-      `SELECT id, set_number FROM instruction_queue
-       WHERE status = 'pending' ORDER BY created_at ASC LIMIT 1`
-    );
-    if (!row) return;
-
-    if (await anzahlAnleitungen(row.set_number) > 0) {
-      await db.run(`UPDATE instruction_queue SET status='done', updated_at=NOW() WHERE id=$1`, [row.id]);
-      scheduleNext(100);
-      return;
-    }
-
+/** Der Bearbeiter. Eine Drosselung verschiebt den Auftrag, ohne ihn als Versuch zu zählen. */
+async function anleitungLaden(n: Record<string, unknown>): Promise<void> {
+  const sn = String(n.set_number);
+  if (await anzahlAnleitungen(sn) > 0) return;
+  if (n.nur_ausweichquelle) { await scrapeInstructionsFromFallback(sn); return; }
+  await mitSperre(async () => {
     try {
-      const totals = await db.get(`SELECT
-        SUM(CASE WHEN status='pending' THEN 1 ELSE 0 END) as pending,
-        SUM(CASE WHEN status='done'    THEN 1 ELSE 0 END) as done,
-        COUNT(*) as total FROM instruction_queue`).catch(meldeUndLiefere('anleitungen:COUNT', null));
-      const done  = parseInt(totals?.done||0);
-      const total = parseInt(totals?.total||0);
-      monitor.update('instrQueue', {
-        status: 'running', progress: done, total,
-        sub: `${row.set_number} (${done+1}/${total})`
-      });
-
-      // Früher stand hier ein require('../routes/sets') im try, dahinter
-      // eine typeof-Prüfung und ein stiller Abbruch. Beides war nötig, weil
-      // niemand garantieren konnte, dass der Name zur Laufzeit existiert — und
-      // genau dieser Fall ist früher zweimal eingetreten. Mit dem
-      // echten Import prüft tsc den Namen; der Abbruchpfad entfällt.
-      // eigenerTakt: Die Pausen IN der Funktion entfallen — diese Schlange
-      // wartet unten selbst 15 Sekunden. Zusammen waren es 20.
-      const count = await downloadSetInstructions(row.set_number, true);
-      if (block.retries || block.until) await clearBlock(); // Erfolg — Backoff zurücksetzen
-      await db.run(`UPDATE instruction_queue SET status='done', updated_at=NOW() WHERE id=$1`, [row.id]);
-      console.log(`[instr-queue] ${row.set_number}: ${count} instructions`);
-      db.get(`SELECT COUNT(*) as c FROM instruction_queue WHERE status='pending'`)
-        .then((r: any) => {
-          const rem = parseInt(r?.c||0);
-          monitor.update('instrQueue', {
-            status: rem > 0 ? 'running' : 'done',
-            progress: total - rem, total,
-            sub: rem > 0 ? `${rem} ausstehend` : 'Alle erledigt'
-          });
-        }).catch(logAndContinue('anleitungen:rem'));
-      // Takt nur nach einem ECHTEN Abruf
-      // Die 15 Sekunden schonen Brickset und brickinstructions.com. Sets, die
-      // schon eine Anleitung haben, fallen in downloadSetInstructions() sofort
-      // heraus, OHNE eine Verbindung zu öffnen — für die gibt es nichts zu …
-      // Ausführlich: docs/begruendungen/jobs/instructionQueue.ts.md#processnext
-      scheduleNext(letzterAbrufWarExtern() ? 15000 : 250);
-
-    } catch(e) {
+      // eigenerTakt: Die Pausen in der Funktion entfallen, den Abstand hält die Pause der Art.
+      const anzahl = await downloadSetInstructions(sn, true);
+      console.log(`[instr-queue] ${sn}: ${anzahl} instructions`);
+      if (await liesPause('anleitung')) await beendePause('anleitung');
+      if (letzterAbrufWarExtern()) await pausiereArt('anleitung', new Date(Date.now() + TAKT_NACH_ABRUF_MS), 'Abstand zwischen zwei Abrufen');
+      await meldeMonitor(sn);
+    } catch (e) {
       const f = alsAbrufFehler(e);
       const msg = fehlertext(e) || '';
-
       if (f.isCloudflare || msg.includes('1015')) {
-        if (_timer) { clearTimeout(_timer); _timer = null; }
-
-        if (block.retries < CF_DELAYS_MS.length) {
-          // Der Rueckfall ist die LETZTE Stufe, nicht 0. Die Bedingung eine
-          // Zeile darueber schliesst den Fall zwar aus, aber der Uebersetzer
-          // sieht das nicht — und `?? 0` waere hier die gefaehrlichste
-          // Antwort: keine Pause, also weiter gegen eine Cloudflare-Sperre
-          // laufen, die genau deshalb verhaengt wurde.
-          const delayMs = CF_DELAYS_MS[block.retries] ?? CF_DELAYS_MS[CF_DELAYS_MS.length - 1] ?? 300000;
-          const delayMin = Math.round(delayMs / 60000);
-          await writeBlock(Date.now() + delayMs, block.retries + 1);
-          console.log(`[instr-queue] Cloudflare 1015 — pausing ${delayMin} min (attempt ${block.retries + 1}/${CF_DELAYS_MS.length})`);
-          monitor.update('instrQueue', {
-            status: 'idle',
-            sub: `Cloudflare-Sperre: ${delayMin} min warten (Versuch ${block.retries + 1})`
-          }).catch(logAndContinue('anleitungen:writeBlock'));
-          scheduleNext(delayMs + 1000);
-        } else {
-          console.log(`[instr-queue] Cloudflare 1015 after max retries — pausing until tomorrow`);
-          monitor.update('instrQueue', { status: 'idle', sub: 'Cloudflare-Sperre: bis morgen pausiert' }).catch(logAndContinue('anleitungen:update'));
-          await writeBlock(nextMidnight().getTime(), 0);
-          scheduleMidnight();
-        }
-        return;
+        const stufe = (await liesPause('anleitung'))?.stufe ?? 0;
+        const bis = stufe < CF_PAUSEN_MS.length ? new Date(Date.now() + CF_PAUSEN_MS[stufe]!) : naechsterTag();
+        const grund = stufe < CF_PAUSEN_MS.length
+          ? `Cloudflare-Sperre: ${Math.round(CF_PAUSEN_MS[stufe]! / 60000)} min warten (Versuch ${stufe + 1})`
+          : 'Cloudflare-Sperre: bis morgen pausiert';
+        await pausiereArt('anleitung', bis, grund, stufe < CF_PAUSEN_MS.length ? stufe + 1 : 0);
+        await monitor.update('instrQueue', { status: 'idle', sub: grund });
+        console.log(`[instr-queue] ${grund}`);
+        throw new AuftragVerschieben(bis, grund);
       }
-
       if (msg.includes('Tageslimit') || msg.includes('rate limit') || msg.includes('429')) {
-        console.log(`[instr-queue] Daily limit reached, pausing until tomorrow`);
-        scheduleMidnight();
-      } else {
-        await db.run(`UPDATE instruction_queue SET status='failed', updated_at=NOW() WHERE id=$1`, [row.id]);
-        console.log(`[instr-queue] ${row.set_number} failed: ${msg}`);
-        scheduleNext(15000);
+        const bis = naechsterTag();
+        await pausiereArt('anleitung', bis, 'Tageskontingent erschöpft');
+        throw new AuftragVerschieben(bis, 'Tageskontingent erschöpft');
       }
+      throw e;
     }
-  } catch(e) {
-    console.error('[instr-queue] error:', fehlertext(e));
-    scheduleNext(2000);
-  } finally {
-    _running = false;
-    if (release) await release();
-  }
+  });
 }
 
-/**
- * Nachfolge-Zeitgeber — nur im Prozess, in dem start() lief.
- *
- * Ohne diese Bedingung würde ein Direktaufruf aus einem Request-Worker dort
- * eine zweite Zeitgeber-Kette starten: erlaubt zwar durch die Sperre keine
- * gleichzeitige Arbeit, halbiert aber die 15-Sekunden-Drossel, weil zwei
- * Ketten unabhängig voneinander takten.
- */
-function scheduleNext(delayMs = 500) {
-  if (!_driver) return;
-  if (_timer) clearTimeout(_timer);
-  _timer = setTimeout(processNext, delayMs);
-}
-
-function nextMidnight() {
-  const now  = new Date();
-  const next = new Date(now);
-  next.setHours(0, 5, 0, 0); // 00:05 next day
-  if (next <= now) next.setDate(next.getDate() + 1);
-  return next;
-}
-
-function scheduleMidnight() {
-  if (!_driver) return;
-  if (_timer) clearTimeout(_timer);
-  const next = nextMidnight();
-  const ms = next.getTime() - Date.now();
-  console.log(`[instr-queue] Resuming at ${next.toLocaleTimeString('de-CH')} (in ${Math.round(ms/3600000*10)/10}h)`);
-  _timer = setTimeout(() => { processNext(); }, ms);
-}
-
-function start() {
-  _driver = true;   // ab hier laufen die Nachfolge-Zeitgeber in DIESEM Prozess
-  // Resume any pending items from before restart
-  db.get(`SELECT COUNT(*) as c FROM instruction_queue WHERE status='pending'`)
-    .then((row: any) => {
-      const pending = parseInt(row?.c || 0);
-      if (pending > 0) {
-        console.log(`[instr-queue] ${pending} pending instructions — resuming`);
-        db.get(`SELECT COUNT(*) as c FROM instruction_queue`).then((t2: any) => {
-          const totalAll = parseInt(t2?.c||0);
-          monitor.update('instrQueue', {
-            status: 'running',
-            progress: totalAll - pending,
-            total: totalAll,
-            sub: `${pending} ausstehend`
-          });
-        }).catch(logAndContinue('anleitungen:totalAll'));
-        scheduleNext(3000); // wait 3s after startup
-      } else {
-        db.get(`SELECT COUNT(*) as c FROM instruction_queue`).then((t: any) => {
-          const tot = parseInt(t?.c||0);
-          if (tot > 0) monitor.update('instrQueue', { status: 'done', progress: tot, total: tot, sub: 'Alle erledigt' });
-        }).catch(logAndContinue('anleitungen:tot'));
-      }
-    })
-    .catch(logAndContinue('anleitungen:tot'));
-
-  // Auf Zuruf statt im Dreisekundentakt
-  // Genau diese Zahl steht im Kopf von utils/pgNotify.ts als Begründung
-  // dafür, dass es das Modul gibt — es hat zwei solche Schleifen abgelöst
-  // (csv_sync_trigger, job_reschedule_trigger). Diese dritte war übrig …
-  // Ausführlich: docs/begruendungen/jobs/instructionQueue.ts.md#start-aufwecken
-  const aufwecken = async () => {
-    try {
-      const ausloeser = await liesZustand(AUSLOESER);
-      if (!ausloeser) return;
-      await loescheZustand(AUSLOESER).catch(logAndContinue('anleitungen:loescheZustand'));
-      console.log('[instr-queue] Trigger received — starting queue processing');
-      if (!_running) processNext().catch(logAndContinue('anleitungen:processNext'));
-    } catch (e) { meldeUndWeiter('instr-queue:ausloeser', e); }
-  };
-  require('../utils/pgNotify').listen(AUSLOESER, aufwecken);
-}
-
-export { enqueue, start, processNext, requestRun };
+export { TAKT_NACH_ABRUF_MS, CF_PAUSEN_MS, naechsterTag, anleitungLaden };

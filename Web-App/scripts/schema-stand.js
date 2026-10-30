@@ -120,7 +120,6 @@ async function main() {
   await admin.query(`CREATE DATABASE ${name}`);
   const ziel = new URL(basis); ziel.pathname = '/' + name;
   process.env.DATABASE_URL = ziel.toString();
-  process.env.WEB_WORKERS = '1';
   const db = require(path.join(__dirname, '..', 'dist', 'db', 'database.js'));
   try {
     await db.initSchemaOnce();

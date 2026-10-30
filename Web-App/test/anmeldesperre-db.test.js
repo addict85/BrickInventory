@@ -183,7 +183,7 @@ test('server.ts: TRUST_PROXY=false — X-Forwarded-For wird ignoriert', { concur
   const srv = spawn(process.execPath, [path.join(ROOT, 'dist', 'server.js')], {
     cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'],
     env: { ...process.env, DATABASE_URL: URL_DB, SESSION_SECRET: 'sperre-test-geheimnis-lang-genug-1234',
-           PORT: String(port), WEB_WORKERS: '1', NODE_ENV: 'production', TRUST_PROXY: 'false' },
+           PORT: String(port), NODE_ENV: 'production', TRUST_PROXY: 'false' },
   });
   let log = '';
   srv.stdout.on('data', d => { log += d; });
@@ -202,7 +202,7 @@ test('server.ts: TRUST_PROXY=false — X-Forwarded-For wird ignoriert', { concur
       })).status;
     } catch { return 0; }
   };
-  for (let i = 0; i < 240 && !/is PRIMARY|Startup complete/.test(log); i++) await warte(250);
+  for (let i = 0; i < 240 && !/localhost:\d+|Startup complete/.test(log); i++) await warte(250);
   for (let i = 0; i < 40 && (await fetch(`http://127.0.0.1:${port}/api/v1/`).catch(() => null)) === null; i++) await warte(250);
   assert.equal((await fetch(`http://127.0.0.1:${port}/api/v1/`)).headers.get('x-powered-by'), null,
     'Der Server verrät X-Powered-By');

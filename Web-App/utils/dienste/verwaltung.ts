@@ -5,19 +5,24 @@
 import fs from 'fs';
 import https from 'https';
 import * as verwaltung from '../verwaltung';
+import * as db from '../../db/database';
+import { naechsteUhrzeit, taeglicheUhrzeit } from '../zeitplan';
 import { DATA_DIR, PDF_JOB_DIR, SET_IMAGES_DIR } from '../appPaths';
 import { fehlertext, meldeUndWeiter, logAndContinue, meldeUndLiefere, ohneFehlendeDatei } from '../httpError';
 import { fetchPrice } from '../financeCalc';
 import { getRateLimitStatus, setzeKontingentZurueck } from '../apiKontingent';
 import { katalogEintrag, ohneBricklinkPreis } from '../setNummer';
-import { scrapeInstructionsFromFallback, loescheAnleitungen } from '../instructions';
+import { loescheAnleitungen } from '../instructions';
 import { imgProxyFailures } from '../imgProxyStats';
 import { vergissFehlend } from '../imageMisses';
 import { getGlobalSetting, getSetting, setGlobalSetting } from '../settings';
-import { liesZustand, setzeAusloeser } from '../laufzustand';
+import { liesZustand } from '../laufzustand';
 import * as monitor from '../jobMonitor';
-import * as pgNotify from '../pgNotify';
-import { jobsteuerung, DAILY_JOBS } from '../jobsteuerung';
+import { DAILY_JOBS, ziehePlanVor, zeitplanGeaendert } from '../zeitplan';
+import { stelleAuftragEin, zaehleArt } from '../auftraege';
+import { anleitungEinreihen } from '../anleitungsAuftrag';
+import { bricksetJetzt, bricksetZahlen } from '../bricksetAuftrag';
+import { anfragenJeMinute, bildbedarfAnstossen } from '../bildbedarf';
 import { fehlerWerfen } from '../fehlerTexte';
 import { clearCatalogCache, clearSubsetsCache, getPriceGuide, getCacheStats, pruefeBricklinkZugang } from '../../clients/bricklink';
 import { ausRetryWarteschlange, pruefeBricksetZugang } from '../../clients/brickset';
@@ -71,63 +76,90 @@ export async function bricksetLimitGesetzt(alt: number, neu: number) {
   const rest = rl ? Math.max(0, neu - (rl.count || 0)) : 0;
   if (rest <= 0) return;
   console.log(`[brickset] Limit erhöht ${alt}→${neu}, ${rest} Abrufe frei — Warteschlange wird abgearbeitet`);
-  setImmediate(() => { jobsteuerung().bricksetWarteschlange(true).catch(logAndContinue('verwaltung:processRetryQueue')); });
+  await bricksetJetzt();
 }
 
-/** Alle Sets ohne Anleitung neu einreihen; die Arbeit macht der Primary. */
+/** Alle Sets ohne Anleitung neu einreihen; die Arbeit macht der Job-Prozess. */
 export async function anleitungenNeuEinreihen() {
   const fehlend = await verwaltung.setsOhneAnleitung();
   for (const { set_number } of fehlend) {
     await loescheAnleitungen(set_number).catch(logAndContinue('verwaltung:loescheAnleitungen'));
-    await jobsteuerung().anleitungEinreihen(set_number).catch(logAndContinue('verwaltung:enqueue'));
+    await anleitungEinreihen(set_number);
   }
-  if (fehlend.length) await jobsteuerung().anleitungenLaufAnfordern();
   return fehlend.length;
 }
 
+/**
+ * Der Stand des Preis-Jobs im Format von früher: Lauf und Fortschritt aus dem
+ * geplanten Auftrag, das Ergebnis des letzten Laufs aus laufzustand.
+ */
 export async function preisJobStand() {
-  return { success: true, job: jobsteuerung().preisJobStatus(), rate_limit: await getRateLimitStatus('bricklink') };
+  const plan = await db.get<{ status: string; faellig_ab: Date; fortschritt: any }>(
+    `SELECT status, faellig_ab, fortschritt FROM auftraege
+      WHERE art = 'preise' AND status IN ('offen', 'laeuft') ORDER BY status = 'laeuft' DESC, faellig_ab LIMIT 1`);
+  let letzter: Record<string, any> = {};
+  try { letzter = JSON.parse(await liesZustand('preis_job_stand') ?? '{}'); } catch (e) { meldeUndWeiter('verwaltung:preis-stand', e); }
+  const laeuft = plan?.status === 'laeuft';
+  const job = {
+    running: laeuft, lastRun: letzter.lastRun ?? null, lastDuration: letzter.lastDuration ?? null,
+    lastUpdated: letzter.lastUpdated ?? 0, lastErrors: letzter.lastErrors ?? 0,
+    nextRun: plan && !laeuft ? new Date(plan.faellig_ab).toISOString() : null,
+    progress: laeuft && plan?.fortschritt ? { current: plan.fortschritt.erledigt ?? 0, total: plan.fortschritt.gesamt ?? 0,
+                                              set: plan.fortschritt.text ?? null } : null,
+    log: Array.isArray(letzter.log) ? letzter.log : [],
+  };
+  return { success: true, job, rate_limit: await getRateLimitStatus('bricklink') };
 }
 
-export const preisJobJetzt = () => jobsteuerung().preisJobJetzt();
-export const fehlendeBilderNachladen = () => { jobsteuerung().fehlendeBilderNachladen().catch(logAndContinue('verwaltung:bilder nachladen')); };
+/** Den Preis-Job jetzt laufen lassen; false, wenn er schon läuft. */
+export const preisJobJetzt = () => ziehePlanVor('preise');
+export const fehlendeBilderNachladen = () => {
+  stelleAuftragEin('bilder_neu_laden', {}, { schluessel: 'bilder_neu_laden', maxVersuche: 2 })
+    .catch(logAndContinue('verwaltung:bilder nachladen'));
+};
+
+/** Den Rebrickable-Katalog jetzt neu laden (auch wenn heute schon geladen). */
+export const katalogAbgleichJetzt = () => ziehePlanVor('csv_sync');
+
+/** Die Brickset-Wiedervorlage im Format der früheren Tabelle. */
+export { bricksetListe } from '../bricksetAuftrag';
 
 /** Einen Brickset-Eintrag heute wiederholen, auch über das Tageskontingent hinweg. */
 export async function bricksetWiederholen(sn: string) {
-  await verwaltung.bricksetHeuteWiederholen(sn).catch(logAndContinue('verwaltung:bricksetHeuteWiederholen'));
   await setzeKontingentZurueck('brickset').catch(logAndContinue('brickset:kontingent zurücksetzen'));
-  setImmediate(() => { jobsteuerung().bricksetWarteschlange(true).catch(logAndContinue('verwaltung:processRetryQueue')); });
+  await bricksetJetzt(sn);
 }
 
 /** Aus der Brickset-Warteschlange nehmen und gleich die anderen Quellen fragen. */
 export async function bricksetEntfernen(sn: string) {
   await ausRetryWarteschlange(sn).catch(logAndContinue('verwaltung:ausRetryWarteschlange'));
-  setImmediate(() => { scrapeInstructionsFromFallback(sn).catch(logAndContinue('verwaltung:scrapeInstructionsFromFallback')); });
+  await anleitungEinreihen(sn, { nurAusweichquelle: true });
 }
 
 /**
- * Uhrzeit eines täglichen Jobs oder Intervall des Preis-Jobs setzen und
- * sofort neu planen (Auslöser für den Primary, direkter Aufruf hier).
+ * Uhrzeit eines täglichen Jobs oder Intervall des Preis-Jobs setzen; der
+ * offene geplante Auftrag bekommt sofort den neuen Termin.
  */
 export async function jobZeitplanSetzen(name: unknown, time: unknown, minutes: unknown) {
   const daily = DAILY_JOBS.find(j => j.monitorKey === name);
   if (daily) {
     const m = /^(\d{1,2}):(\d{2})$/.exec(String(time || '').trim());
     if (!m || +(m[1] ?? '') > 23 || +(m[2] ?? '') > 59) fehlerWerfen('uhrzeit_ungueltig', 400);
-    setGlobalSetting(`job_time_${daily.name}`, `${String(+(m[1] ?? '')).padStart(2, '0')}:${String(+(m[2] ?? '')).padStart(2, '0')}`);
+    await setGlobalSetting(`job_time_${daily.name}`, `${String(+(m[1] ?? '')).padStart(2, '0')}:${String(+(m[2] ?? '')).padStart(2, '0')}`);
   } else if (name === 'priceJob') {
-    setGlobalSetting('price_job_interval_minutes', String(Math.max(5, parseInt(String(minutes)) || 60)));
+    await setGlobalSetting('price_job_interval_minutes', String(Math.max(5, parseInt(String(minutes)) || 60)));
   } else {
     fehlerWerfen('unbekannter_job', 400);
   }
   await zeitplanNeuPlanen();
 }
 
-/** Auslöser für den Primary setzen, wecken und hier selbst neu planen. */
+/** Die offenen Termine an die eingestellten Zeiten anpassen; Brickset-Einträge warten auf ihre Uhrzeit. */
 export async function zeitplanNeuPlanen() {
-  await setzeAusloeser('job_reschedule_trigger').catch(logAndContinue('verwaltung:setzeAusloeser'));
-  await pgNotify.notify('job_reschedule_trigger');
-  await jobsteuerung().zeitplanNeu().catch((e: unknown) => meldeUndWeiter('verwaltung:zeitplan-neu-planen', e));
+  await zeitplanGeaendert('csv_sync');
+  await zeitplanGeaendert('preise');
+  const bis = naechsteUhrzeit(await taeglicheUhrzeit('brickset_retry'));
+  await db.run(`UPDATE auftraege SET faellig_ab = $1 WHERE art = 'brickset' AND status = 'offen' AND faellig_ab > NOW()`, [bis]);
 }
 
 /**
@@ -135,13 +167,13 @@ export async function zeitplanNeuPlanen() {
  * die nur die Datenbank kennt (Anleitungen, Zuordnungen, Bilder, PDF-Aufträge).
  */
 export async function jobUebersicht() {
-    const jobs = await monitor.all(); // reads from PostgreSQL — shared across all cluster workers
+    const jobs = await monitor.all(); // aus laufzustand: der Job-Prozess schreibt, hier wird gelesen
 
   // Enrich with live DB counts
   const [pending, done, failed] = await Promise.all([
-    jobsteuerung().anleitungenOffen().catch(meldeUndLiefere('verwaltung:offeneAuftraege', 0)),
-    verwaltung.anleitungenErledigt().catch(meldeUndLiefere('verwaltung:anleitungenErledigt', null)),
-    verwaltung.anleitungenGescheitert().catch(meldeUndLiefere('verwaltung:anleitungenGescheitert', null)),
+    zaehleArt('anleitung').then(z => z.offen + z.laeuft).catch(meldeUndLiefere('verwaltung:offeneAuftraege', 0)),
+    zaehleArt('anleitung').then(z => ({ c: z.erledigt })).catch(meldeUndLiefere('verwaltung:anleitungenErledigt', null)),
+    zaehleArt('anleitung').then(z => ({ c: z.fehler })).catch(meldeUndLiefere('verwaltung:anleitungenGescheitert', null)),
   ]);
   const blMapped = await verwaltung.zugeordneteTeile().catch(meldeUndLiefere('verwaltung:zugeordneteTeile', null));
   const blTotal  = await verwaltung.bricklinkTeile().catch(meldeUndLiefere('verwaltung:bricklinkTeile', null));
@@ -164,8 +196,8 @@ export async function jobUebersicht() {
 
   // Enrich instrQueue job with live DB counts
   const pendingC = pending ?? 0;
-  const doneC    = parseInt(done?.c||0);
-  const failedC  = parseInt(failed?.c||0);
+  const doneC    = done?.c ?? 0;
+  const failedC  = failed?.c ?? 0;
   const totalC   = pendingC + doneC + failedC;
   if (totalC > 0) {
     const enriched = {
@@ -179,10 +211,8 @@ export async function jobUebersicht() {
   }
 
   // Brickset retry queue
-  const bsRetry = await verwaltung.bricksetWartend().catch(meldeUndLiefere('verwaltung:bricksetWartend', null));
-  const bsRetryC = parseInt(bsRetry?.c || 0);
-  const bsRetryDue = await verwaltung.bricksetFaellig().catch(meldeUndLiefere('verwaltung:bricksetFaellig', null));
-  const bsRetryDueC = parseInt(bsRetryDue?.c || 0);
+  const bs = await bricksetZahlen().catch(meldeUndLiefere('verwaltung:bricksetZahlen', { wartend: 0, faellig: 0 }));
+  const bsRetryC = bs.wartend, bsRetryDueC = bs.faellig;
   jobs.bricksetRetry = {
     label:    'Brickset Retry Queue',
     status:   bsRetryC === 0 ? 'done' : bsRetryDueC > 0 ? 'idle' : 'idle',
@@ -518,12 +548,13 @@ export async function katalogBilderEinreihen(alleErneut: boolean) {
     if (offenUrls.length) {
       const r = await verwaltung.reiheKatalogBilderEin(offenUrls, offenSets);
       neuEingereiht = r?.n ?? 0;
+      await bildbedarfAnstossen();
     }
     const offen = await verwaltung.offeneBildauftraege();
     // Wie lange das dauert — die Zahl der Aufträge allein sagt es nicht, und
     // „Stunden oder Tage?" ist die erste Frage, die sich stellt. Die Rate kommt
     // aus dem Job selbst, damit sie nicht an zwei Stellen gepflegt wird.
-    const proMinute = jobsteuerung().bilderJeMinute() || 30;
+    const proMinute = anfragenJeMinute();
     return {
       success: true,
       queued:  neuEingereiht,

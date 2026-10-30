@@ -6,7 +6,7 @@
  * `db/database.ts` trägt seit der Umstellung eine Etappe namens
  * `frueherZurLaufzeitAngelegt()` mit dem Kommentar:
  *
- *     „csv_import_jobs entstand per ensureJobTable() bei jedem Aufruf des
+ *     „csv_import_jobs (heute import_stand) entstand per ensureJobTable() bei jedem Aufruf des
  *      CSV-Status-Endpunkts, qr_login_tokens per ensureQrTable() bei jedem
  *      QR-Token. DDL im Request-Pfad ist aus zwei Gründen unschön: Sie kostet
  *      bei jeder Anfrage einen Katalog-Zugriff, und sie verteilt das Schema

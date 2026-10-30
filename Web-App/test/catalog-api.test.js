@@ -21,7 +21,6 @@ const ROOT = path.join(__dirname, '..');
 const DB_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 process.env.DATABASE_URL = DB_URL;
-process.env.WEB_WORKERS = '1';
 
 // .ts -> .js bauen (esbuild, in-place) — idempotent und schnell
 // Nach dist/ bauen statt in-place — siehe helpers/sources.js.

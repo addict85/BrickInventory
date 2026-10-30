@@ -1,12 +1,16 @@
-const db = require('../db/database');
-// Echter Import statt spätem require(): Inzwischen liegt die Funktion in
-// utils/setImages.ts und nicht mehr im Router — damit prüft tsc den Namen mit.
+import fs from 'fs';
+import path from 'path';
+import * as db from '../db/database';
 import { logAndContinue, meldeUndLiefere } from '../utils/httpError';
 import { downloadSetImage } from '../utils/setImages';
 import { grundFuer, istBekanntFehlend, merkeFehlend } from '../utils/imageMisses';
 import { generateThumb } from '../utils/thumbs';
 import { SET_IMAGES_DIR } from '../utils/appPaths';
 import { setzeZustand } from '../utils/laufzustand';
+import { liesPause, pausiereArt } from '../utils/auftraege';
+import { STAPEL, TAKT_MS, NOTIZ_GILT_MS, merkeGebraucht, schreibePuffer, notiereBildbedarf, loescheVerfallene, initImageQueue,
+         anfragenJeMinute } from '../utils/bildbedarf';
+import { AuftragUnterbrochen, AuftragVerschieben, type AuftragsKontext } from './auftragsWorker';
 
 /**
  * Bilder, die über den Proxy angefragt wurden, im HINTERGRUND lokal ablegen —
@@ -14,20 +18,9 @@ import { setzeZustand } from '../utils/laufzustand';
  * Ausführlich: docs/begruendungen/jobs/imageQueue.ts.md#abschnitt
  */
 
-/**
- * Wie schnell geholt wird
- * Beides zusammen ergibt die Taktung: zehn Bilder je Durchgang, dazwischen
- * jeweils eine Pause, alle 20 Sekunden ein Durchgang. Macht dreissig Anfragen
- * je Minute, und keine zwei davon fallen zusammen.
- * Ausführlich: docs/begruendungen/jobs/imageQueue.ts.md#stapel
- */
-const STAPEL = 10;
+/** Abstand zwischen zwei Arbeitsschritten (siehe STAPEL in utils/bildbedarf.ts). */
 const VERZOEGERUNG_MIN_MS = 500;
 const VERZOEGERUNG_MAX_MS = 1000;
-/** Pause zwischen den Durchgängen. */
-const TAKT_MS = 20_000;
-/** Ältere Notizen als diese verfallen: Was seit Tagen niemand ansah, eilt nicht. */
-const NOTIZ_GILT_MS = 3 * 24 * 60 * 60 * 1000;
 
 /**
  * Wie viele Notizen ein Takt anfasst
@@ -39,17 +32,12 @@ const DURCHGANG_MAX_NOTIZEN = 500;
 /** Schlüssel in `laufzustand` für den Stand des letzten Durchgangs. */
 const LAUF_SCHLUESSEL = 'imgqueue_last_run';
 
-let _laeuft = false;
 /**
- * Pause nach einer Drosselung durch das CDN.
- *
- * Fünf Minuten sind lang genug, dass ein kurzes Limit abläuft, und kurz genug,
- * dass ein nächtlicher Durchlauf nicht stehenbleibt. Wichtiger als die Länge
- * ist, dass überhaupt eine Pause entsteht: Stur weiterzufragen ist genau das
- * Verhalten, das eine Sperre verlängert.
+ * Pause nach einer Drosselung durch das CDN, als Pause der Art 'bildbedarf'
+ * in der Datenbank. Fünf Minuten lassen ein kurzes Limit ablaufen; wichtiger
+ * ist, dass überhaupt pausiert wird: Stures Weiterfragen verlängert die Sperre.
  */
 const DROSSEL_PAUSE_MS = 5 * 60 * 1000;
-let _pauseBis = 0;
 
 /** Kurz warten. Eigene Funktion, damit die Absicht im Aufruf sichtbar bleibt. */
 function warte(ms: number): Promise<void> {
@@ -64,6 +52,7 @@ function pause(): number {
 
 /**
  * Zeitpunkt des letzten echten Arbeitsschritts — modulweit, nicht je Stapel.
+ * Prozesslokal mit Absicht: Er drosselt die Anfragen DIESES Prozesses ans CDN.
  * Ausführlich: docs/begruendungen/jobs/imageQueue.ts.md#letztearbeit
  */
 let _letzteArbeit = 0;
@@ -80,43 +69,6 @@ async function pauseVorArbeit(): Promise<void> {
     if (seit < soll) await warte(soll - seit);
   }
   _letzteArbeit = Date.now();
-}
-
-export async function initImageQueue(): Promise<void> {
-  // Die Tabelle legt db/migrations/0009-bild-tabellen.sql an.
-
-  // Wegschreiben läuft in JEDEM Arbeitsprozess
-  // Er hat recht, und es ist derselbe Fehler wie in den Nachträgen 98 bis 100 —
-  // diesmal in meinem eigenen Fix: Der Puffer liegt im ARBEITSSPEICHER eines
-  // Prozesses, das Wegschreiben hing aber an start(), und start() läuft nur auf …
-  // Ausführlich: docs/begruendungen/jobs/imageQueue.ts.md#initimagequeue
-  setInterval(() => { schreibePuffer().catch(logAndContinue('bild-job:schreibePuffer')); }, 10_000).unref();
-}
-
-/**
- * Notieren, dass ein Bild gebraucht wurde. Wird vom Proxy aufgerufen und darf
- * NIE die Anfrage aufhalten — deshalb ohne await und mit verschlucktem Fehler.
- */
-const _puffer = new Map<string, string>();   // url → set_number
-
-export function merkeGebraucht(url: string, setNumber: string | null): void {
-  if (!setNumber) return;
-  // Gepuffert und im Takt in EINER Anweisung geschrieben: Ein INSERT je
-  // Bildanfrage leerte bei einer Kachelwand den Pool für alle anderen Routen.
-  if (_puffer.size < 500) _puffer.set(url, setNumber);
-}
-
-/** Den Puffer in einem Statement wegschreiben. */
-async function schreibePuffer(): Promise<void> {
-  if (!_puffer.size) return;
-  const urls = [..._puffer.keys()];
-  const sets = urls.map(u => _puffer.get(u)!);
-  _puffer.clear();
-  await db.run(
-    `INSERT INTO image_wanted (url, set_number)
-       SELECT * FROM unnest($1::text[], $2::text[])
-       ON CONFLICT (url) DO NOTHING`, [urls, sets]
-  ).catch(logAndContinue('bild-job:sets'));
 }
 
 /**
@@ -209,22 +161,10 @@ async function speichereLauf(erg: StapelErgebnis): Promise<void> {
     .catch(logAndContinue('bild-job:setzeZustand'));
 }
 
-/**
- * Verfallene Notizen löschen.
- * Ausführlich: docs/begruendungen/jobs/imageQueue.ts.md#loescheverfallene
- */
-async function loescheVerfallene(): Promise<number> {
-  const r = await db.run(
-    `DELETE FROM image_wanted
-      WHERE requested_at <= NOW() - ($1 || ' milliseconds')::interval`,
-    [String(NOTIZ_GILT_MS)]
-  ).catch(meldeUndLiefere('bild-job:r', null));
-  return r?.changes || 0;
-}
-
 async function arbeiteStapel(): Promise<StapelErgebnis> {
   const erg = leeresErgebnis();
-  if (Date.now() < _pauseBis) return erg;   // CDN hat gedrosselt, siehe unten
+  const pause = await liesPause('bildbedarf');
+  if (pause && new Date(pause.bis).getTime() > Date.now()) return erg;   // CDN hat gedrosselt, siehe unten
   const rows = await db.all(
     `DELETE FROM image_wanted
       WHERE url IN (SELECT url FROM image_wanted
@@ -242,8 +182,6 @@ async function arbeiteStapel(): Promise<StapelErgebnis> {
   // tut es nicht (siehe die Sammelzeile am Ende), alles andere schon.
   let etwasZuTun = false;
 
-  const fs = require('fs');
-  const path = require('path');
 
   let fertig = 0;
   /**
@@ -315,17 +253,14 @@ async function arbeiteStapel(): Promise<StapelErgebnis> {
       // sind die Bilder aber VORHANDEN, und der Ansturm, der sie auslöst, …
       // Ausführlich: docs/begruendungen/jobs/imageQueue.ts.md#arbeitestapel-2
       if (info.status === 403 || info.status === 429) {
-        _pauseBis = Date.now() + DROSSEL_PAUSE_MS;
-        console.error(`[image-queue] CDN drosselt (HTTP ${info.status}) — Pause bis ` +
-                      new Date(_pauseBis).toLocaleTimeString());
+        const bis = new Date(Date.now() + DROSSEL_PAUSE_MS);
+        await pausiereArt('bildbedarf', bis, `CDN drosselt (HTTP ${info.status})`);
+        console.error(`[image-queue] CDN drosselt (HTTP ${info.status}) — Pause bis ${bis.toLocaleTimeString()}`);
         // ALLE noch unbearbeiteten Notizen zurücklegen: Der Stapel kam per
         // DELETE … RETURNING, der Rest wäre sonst still verloren.
         const rest = rows.slice(idx);
-        await db.run(
-          `INSERT INTO image_wanted (url, set_number)
-             SELECT * FROM unnest($1::text[], $2::text[])
-             ON CONFLICT (url) DO NOTHING`,
-          [rest.map((x: any) => x.url), rest.map((x: any) => x.set_number)]).catch(logAndContinue('bild-job:map'));
+        await notiereBildbedarf(rest.map((x: any) => x.url), rest.map((x: any) => x.set_number))
+          .catch(logAndContinue('bild-job:map'));
         erg.zurueckgelegt = rest.length;
         break;
       }
@@ -402,45 +337,25 @@ async function taktDurchgang(): Promise<StapelErgebnis> {
   return summe;
 }
 
-export function start(): void {
-  if (_laeuft) return;
-  _laeuft = true;
-  let _naechsterVerfall = 0;
-  const takt = async () => {
-    try {
-      await schreibePuffer();
-      // Verfallene Notizen wegräumen — nicht in jedem Takt, sondern stündlich:
-      // Ohne Frist wäre es alle zwanzig Sekunden ein Durchgang durch die ganze
-      // Tabelle, und dringend ist die Aufräumarbeit nicht.
-      if (Date.now() >= _naechsterVerfall) {
-        _naechsterVerfall = Date.now() + 60 * 60 * 1000;
-        const weg = await loescheVerfallene();
-        if (weg) console.log(`[image-queue] ${weg} verfallene Notizen entfernt`);
-      }
-      const e = await taktDurchgang();
-      // Auch melden, wenn NUR übersprungen wurde: Sonst schweigt der Job
-      // genau dann, wenn er am schnellsten arbeitet — und sieht von aussen
-      // aus wie einer, der hängt.
-      // Auch ein Takt, der NUR zurückgelegt hat, gehört gemeldet — sonst
-      // schweigt der Job ausgerechnet bei einer Drosselung.
-      if (e.gesamt || e.zurueckgelegt) console.log(`[image-queue] ${meldung(e)}`);
-    } catch (e: any) { console.error('[image-queue]', e.message); }
-  };
-  // Erster Lauf verzögert: Beim Start hat der Server anderes zu tun.
-  setTimeout(takt, 30_000);
-  setInterval(takt, TAKT_MS).unref();
+/**
+ * Der Auftrag 'bildbedarf': Takt um Takt, bis kein Bedarf mehr da ist. Drosselt
+ * das CDN, geht er bis zum Ende der Pause zurück in die Tabelle.
+ */
+export async function bildbedarfAbarbeiten(k: AuftragsKontext): Promise<void> {
+  await schreibePuffer();
+  for (;;) {
+    if (k.beendet) throw new AuftragUnterbrochen();
+    const e = await taktDurchgang();
+    if (e.gesamt || e.zurueckgelegt) console.log(`[image-queue] ${meldung(e)}`);
+    const pause = await liesPause('bildbedarf');
+    if (pause && new Date(pause.bis).getTime() > Date.now()) throw new AuftragVerschieben(new Date(pause.bis), pause.grund ?? 'CDN drosselt');
+    if (!e.gesamt) return;
+    if (!await k.fortschritt({ text: meldung(e) })) return;   // abgebrochen
+    await warte(TAKT_MS);
+  }
 }
 
-/**
- * Wie viele CDN-Anfragen der Job je Minute stellt.
- *
- * Für Abschätzungen an anderer Stelle („wie lange dauert das?"). Die Zahl steht
- * hier und wird nicht anderswo wiederholt — sonst laufen Takt und Auskunft
- * auseinander, sobald jemand STAPEL oder TAKT_MS ändert.
- */
-export function anfragenJeMinute(): number {
-  return STAPEL * (60_000 / TAKT_MS);
-}
+export { merkeGebraucht, initImageQueue, anfragenJeMinute, STAPEL, TAKT_MS, DURCHGANG_MAX_NOTIZEN };
 
 export {
   arbeiteStapel as _arbeiteStapel,

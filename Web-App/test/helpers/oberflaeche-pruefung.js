@@ -79,6 +79,9 @@ function pruefeOberflaeche(design, geraet) {
 
     for (const [ansicht, schritte] of ANSICHTEN) {
       const funde = [];
+      // Steht die Anmeldemaske da, misst der Rest nur sie; dann lieber die Ursache nennen.
+      if (await b.auswerten(`getComputedStyle(document.getElementById('app')).display === 'none'`))
+        assert.fail(`Sitzung vor „${ansicht}“ verloren; 401 auf: ${app.abgewiesen.join(', ') || 'keine'}`);
       await b.auswerten(SCHLIESSEN);
       await b.auswerten(`document.documentElement.setAttribute('data-theme', '${design}'); document.documentElement.removeAttribute('data-dunkel'); true`);
       for (const s of schritte) { await b.auswerten(s); await ruhig(); }

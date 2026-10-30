@@ -32,7 +32,6 @@ const BASIS = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost
 const NAME = `altbestand_${process.pid}`, REF = `altbestand_ref_${process.pid}`;
 const url = (db) => { const u = new URL(BASIS); u.pathname = '/' + db; return u.toString(); };
 process.env.DATABASE_URL = url(NAME);
-process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { Client } = require(path.join(ROOT, 'node_modules', 'pg'));

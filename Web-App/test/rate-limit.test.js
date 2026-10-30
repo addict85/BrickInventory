@@ -238,16 +238,12 @@ test('Jobs mit externem Kontingent haben eine prozessübergreifende Sperre', () 
     'Eine Transaktion minutenlang offen zu halten wäre der falsche Weg');
   // Freigabe im finally — sonst blockiert ein abgestürzter Lauf alle folgenden.
   const fn = job.slice(job.indexOf('async function runPriceRefresh'),
-                       job.indexOf('function scheduleNext'));
+                       job.indexOf('async function merkeStand'));
   assert.match(fn, /finally\s*\{[\s\S]{0,300}releaseLock\(\)/,
     'Ohne Freigabe im finally sperrt ein Absturz den Job bis zum Neustart');
 
-  // Der manuelle Anstoss muss die Sperre SELBST holen — sonst meldet die Route
-  // „gestartet", während anderswo längst ein Lauf läuft.
-  const trigger = job.slice(job.indexOf('async function triggerNow'),
-                            job.indexOf('export {'));
-  assert.match(trigger, /await acquireRunLock\(\)/,
-    'triggerNow muss die Sperre holen, bevor es Erfolg meldet');
+  // Der manuelle Anstoss zieht nur den geplanten Auftrag vor (utils/zeitplan.ts);
+  // läuft er schon, meldet ziehePlanVor false statt eines zweiten Laufs.
 
   // Und die Aufrufer müssen das Ergebnis abwarten.
   //
@@ -255,14 +251,9 @@ test('Jobs mit externem Kontingent haben eine prozessübergreifende Sperre', () 
   // noch unter /api/v1/admin/trigger-price-job, die Webapp ruft dieselbe
   // Adresse auf. Vorher gab es ihn zweimal — genau die Doppelung, bei der eine
   // Seite das `await` verlieren kann, ohne dass es auffällt.
-  // Die Route erreicht den Job über die Jobsteuerung (Routen importieren
-  // nichts aus jobs/); die Brücke muss das Promise von triggerNow weitergeben.
   const route = fs.readFileSync(path.join(ROOT, 'routes', 'api_v1', 'admin.ts'), 'utf8');
   assert.match(route, /await preisJobJetzt\(\)/,
     'routes/api_v1/admin.ts: ohne await meldet die Route ein Promise als „gestartet"');
-  const bruecke = fs.readFileSync(path.join(ROOT, 'jobs', 'verdrahtung.ts'), 'utf8');
-  assert.match(bruecke, /preisJobJetzt: \(\) => require\('\.\.\/jobs\/priceJob'\)\.triggerNow\(\),/,
-    'jobs/verdrahtung.ts: preisJobJetzt muss das Ergebnis von triggerNow zurückgeben');
 
   // Der Namensraum kommt aus der gemeinsamen Liste.
   //

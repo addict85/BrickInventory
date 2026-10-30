@@ -36,7 +36,6 @@ const Module = require('node:module');
 
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.WEB_WORKERS = '1';
 
 // Den Bild-Download abfangen, BEVOR die Routen geladen werden: Sie holen ihn
 // über ein spätes require(). null = das CDN hat kein Bild.

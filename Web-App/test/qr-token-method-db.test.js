@@ -32,7 +32,6 @@ const path   = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.WEB_WORKERS = '1';
 // Seit der QR-Code die Adresse des Servers traegt (utils/basisUrl.ts), ist
 // APP_BASE_URL eine VORBEDINGUNG der Route: Ohne sie sagt sie mit 503 ab,
 // damit kein Code mit der Browseradresse hinausgeht. Diese Datei prueft etwas

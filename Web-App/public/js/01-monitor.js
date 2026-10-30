@@ -201,6 +201,7 @@ export async function loadMonitor() {
             ${k==='bricksetRetry' ? `<div id="brickset-queue-panel" data-stil="display:none;margin-top:.75rem"></div>` : ''}
           </div>`).join('')}
       </div>
+      <div class="card" id="auftraege-karte" data-stil="padding:1rem;margin-top:.5rem"></div>
       <div class="card" data-stil="padding:1rem;margin-top:.5rem">
         <div data-stil="font-weight:600;margin-bottom:.75rem">${t('monitor.db')}</div>
         <div data-stil="display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem;font-size:var(--fs-2)">
@@ -223,6 +224,8 @@ export async function loadMonitor() {
       }
     }
 
+    await zeigeAuftraege();
+
     // Refresh faster when img-dl or PDF jobs are actively running
     const anyActive = Object.values(jobs).some(j => j.status === 'running');
     const interval = anyActive ? 2000 : 5000;
@@ -230,6 +233,103 @@ export async function loadMonitor() {
     _monitorTimer = setInterval(render, interval);
   };
   await render();
+}
+
+/** Namen der Auftragsarten und Status — ausgeschrieben, damit jeder Schlüssel prüfbar im Wörterbuch steht. */
+const ARTNAMEN = {
+  nacharbeit: () => t('monitor.art.nacharbeit'),
+  bilder: () => t('monitor.art.bilder'),
+  pdf: () => t('monitor.art.pdf'),
+  csv_import: () => t('monitor.art.csv_import'),
+  wechselkurse: () => t('monitor.art.wechselkurse'),
+  anleitung: () => t('monitor.art.anleitung'),
+  brickset: () => t('monitor.art.brickset'),
+  bildbedarf: () => t('monitor.art.bildbedarf'),
+  bilder_neu_laden: () => t('monitor.art.bilder_neu_laden'),
+  nachlauf: () => t('monitor.art.nachlauf'),
+  csv_sync: () => t('monitor.art.csv_sync'),
+  preise: () => t('monitor.art.preise'),
+  bild_nachlauf: () => t('monitor.art.bild_nachlauf'),
+  aufraeumen: () => t('monitor.art.aufraeumen'),
+  aufraeumen_taeglich: () => t('monitor.art.aufraeumen_taeglich'),
+};
+const STATUSNAMEN = {
+  offen: () => t('monitor.auftraege.offen'),
+  laeuft: () => t('monitor.auftraege.laeuft'),
+  fehler: () => t('monitor.auftraege.fehler'),
+  abgebrochen: () => t('monitor.auftraege.abgebrochen'),
+};
+/** Der Name einer Auftragsart in der Oberflächensprache, fertig maskiert; unbekannte bleiben, wie sie sind. */
+const artName = (art) => (Object.hasOwn(ARTNAMEN, art) ? ARTNAMEN[art]() : esc(art));
+
+/**
+ * Die Karte „Hintergrundarbeiten“: die Auftragstabelle des Servers
+ * (GET /api/v1/admin/auftraege) — je Art die Zahlen mit „Jetzt“ und
+ * „Leeren“, darunter laufende, wartende und gescheiterte Aufträge.
+ */
+async function zeigeAuftraege() {
+  const el = G('auftraege-karte');
+  if (!el) return;
+  const d = await api('GET', '/v1/admin/auftraege').catch(() => null);
+  if (!d?.success) { el.innerHTML = ''; return; }
+  const zahl = {};
+  for (const z of d.zusammenfassung) (zahl[z.art] ||= {})[z.status] = z.anzahl;
+  const knopf = (aktion, arg, text) =>
+    `<button class="btn bs btn-sm" data-stil="padding:2px 10px;font-size:var(--fs-1)" data-click="${aktion}" data-arg="${esc(arg)}">${text}</button>`;
+  const arten = Object.keys(zahl).sort((a, b) => artName(a).localeCompare(artName(b), locale()));
+  const zeile = (a) => {
+    const zeit = fmtDatum(a.status === 'laeuft' ? a.gestartet : a.faellig_ab, 'zeit');
+    const wann = a.status === 'offen' ? t(a.geplant ? 'monitor.auftraege.geplant' : 'monitor.auftraege.faellig', { zeit }) : '';
+    const stand = a.fortschritt?.gesamt ? `${a.fortschritt.erledigt ?? 0} / ${a.fortschritt.gesamt}` : (a.fortschritt?.text || '');
+    return `<div data-stil="display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;font-size:var(--fs-2);padding:.35rem 0;border-top:1px solid var(--bdr)">
+      <span data-stil="font-weight:600">${artName(a.art)}${a.set_number ? ' · ' + esc(a.set_number) : ''}</span>
+      <span data-stil="color:var(--mut)">${Object.hasOwn(STATUSNAMEN, a.status) ? STATUSNAMEN[a.status]() : esc(a.status)}${wann ? ' · ' + wann : ''}${stand ? ' · ' + esc(stand) : ''}</span>
+      ${a.versuche > 1 ? `<span data-stil="color:var(--mut)">${t('monitor.auftraege.versuch', { n: a.versuche, max: a.max_versuche })}</span>` : ''}
+      ${a.fehler && a.status !== 'laeuft' ? `<span data-stil="color:var(--r700);flex-basis:100%">${esc(a.fehler)}</span>` : ''}
+      <span data-stil="margin-left:auto;display:inline-flex;gap:.35rem">
+        ${a.status === 'offen' || a.status === 'laeuft' ? knopf('auftragAbbrechen', a.id, t('monitor.auftraege.abbrechen')) : ''}
+        ${a.status === 'fehler' || a.status === 'abgebrochen' ? knopf('auftragWiederholen', a.id, t('monitor.auftraege.wiederholen')) : ''}
+      </span></div>`;
+  };
+  el.innerHTML = `
+    <div data-stil="font-weight:600;margin-bottom:.5rem">${t('monitor.auftraege.titel')}</div>
+    ${d.job_prozess.laeuft ? '' : `<div data-stil="color:var(--r700);font-size:var(--fs-2);margin-bottom:.5rem">${ico('warnung')} ${t('monitor.auftraege.kein_prozess')}</div>`}
+    ${d.pausen.map(p => `<div data-stil="font-size:var(--fs-2);color:var(--mut)">${t('monitor.auftraege.pause', { art: Object.hasOwn(ARTNAMEN, p.art) ? ARTNAMEN[p.art]() : p.art, bis: fmtDatum(p.bis, 'zeit'), grund: p.grund || '' })}</div>`).join('')}
+    ${d.bildbedarf ? `<div data-stil="font-size:var(--fs-2);color:var(--mut)">${t('monitor.auftraege.bildbedarf', { n: d.bildbedarf })}</div>` : ''}
+    <div data-stil="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:.35rem .75rem;margin:.5rem 0">
+      ${arten.map(art => `<div data-stil="display:flex;align-items:center;gap:.5rem;font-size:var(--fs-2)">
+        <span data-stil="flex:1;min-width:0">${artName(art)}</span>
+        <span data-stil="color:var(--mut)">${zahl[art].laeuft || 0} · ${zahl[art].offen || 0} · ${zahl[art].fehler || 0}</span>
+        ${knopf('auftragsArtJetzt', art, t('monitor.auftraege.jetzt'))}
+        ${zahl[art].offen ? knopf('auftragsArtLeeren', art, t('monitor.auftraege.leeren')) : ''}
+      </div>`).join('')}
+    </div>
+    ${d.auftraege.length ? d.auftraege.slice(0, 40).map(zeile).join('') : `<div data-stil="font-size:var(--fs-2);color:var(--mut)">${t('monitor.auftraege.leer')}</div>`}`;
+}
+
+async function auftragAbbrechen(id) {
+  const d = await api('POST', `/v1/admin/auftraege/${encodeURIComponent(id)}/abbrechen`).catch(() => null);
+  if (!d?.success) toast(d?.error || t('settings.error'), 'error');
+  await zeigeAuftraege();
+}
+
+async function auftragWiederholen(id) {
+  const d = await api('POST', `/v1/admin/auftraege/${encodeURIComponent(id)}/wiederholen`).catch(() => null);
+  if (!d?.success) toast(d?.error || t('settings.error'), 'error');
+  await zeigeAuftraege();
+}
+
+async function auftragsArtJetzt(art) {
+  const d = await api('POST', `/v1/admin/auftraege/art/${encodeURIComponent(art)}/jetzt`).catch(() => null);
+  if (!d?.success) toast(d?.error || t('settings.error'), 'error');
+  await zeigeAuftraege();
+}
+
+async function auftragsArtLeeren(art) {
+  const d = await api('DELETE', `/v1/admin/auftraege/art/${encodeURIComponent(art)}`).catch(() => null);
+  if (d?.success) toast(tRaw('monitor.auftraege.geleert', { n: d.entfernt }), 'success');
+  else toast(d?.error || t('settings.error'), 'error');
+  await zeigeAuftraege();
 }
 
 /**
@@ -243,5 +343,5 @@ export function set_monitorTimer(v) { _monitorTimer = v; }
 // ── Handler beim Dispatcher anmelden (siehe js/00-registry.js) ──────────────
 // Der Handler gehört zu dem Modul, das ihn umsetzt.
 registerActions({
-  openLogViewer,
+  openLogViewer, auftragAbbrechen, auftragWiederholen, auftragsArtJetzt, auftragsArtLeeren,
 });

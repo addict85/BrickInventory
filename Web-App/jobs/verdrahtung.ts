@@ -1,34 +1,31 @@
 /**
- * Setzt die Ausführung für utils/nacharbeit.ts ein. Die Module werden erst beim
- * Aufruf geladen, damit die Verdrahtung beim Start nichts nachzieht. Der Pfad
- * führt über ../jobs/, damit require-Haken der Tests (/jobs[/\\]nachErfassung/)
- * ihn erkennen.
+ * Setzt die Ausführung für utils/nacharbeit.ts ein: Was eine Anfrage sofort
+ * braucht (Marktpreis, Katalog), läuft hier; was warten kann, wird ein
+ * Auftrag. Die Module werden erst beim Aufruf geladen (dynamisches import):
+ * Die Verdrahtung läuft vor dem Setzen der Datenbankadresse, etwa in Tests;
+ * der Pfad über ../jobs/ lässt require-Haken der Tests ihn erkennen.
  */
 import { verdrahteNacharbeit } from '../utils/nacharbeit';
-import { verdrahteJobsteuerung } from '../utils/jobsteuerung';
 import { meldeUndWeiter } from '../utils/httpError';
 
 function verdrahte(): void {
   verdrahteNacharbeit({
     preisJobAnstossen: () => {
-      require('../jobs/priceJob').triggerNow().catch((e: unknown) => meldeUndWeiter('einstellungen:preis-job-anstossen', e));
+      import('../utils/zeitplan.js').then(z => z.ziehePlanVor('preise'))
+        .catch((e: unknown) => meldeUndWeiter('einstellungen:preis-job-anstossen', e));
     },
-    preisFuerSetHolen: (sn, uid, zustand) => require('../jobs/priceJob').refreshPriceForSet(sn, uid, zustand),
-    bildVormerken: (url, sn) => require('../jobs/imageQueue').merkeGebraucht(url, sn),
-    setTeileAnreichern: (sn) => require('../jobs/partsCatalogEnrich').enrichSetParts(sn),
-    figurenAnreichern: (sn) => require('../jobs/partsCatalogEnrich').enrichSetMinifigs(sn),
-    setBilderLaden: (sn) => require('../jobs/partsCatalogEnrich').downloadSetImages(sn),
-  });
-  verdrahteJobsteuerung({
-    anleitungEinreihen: (sn) => require('../jobs/instructionQueue').enqueue(sn),
-    anleitungenOffen: () => require('../jobs/instructionQueue').offeneAuftraege(),
-    anleitungenLaufAnfordern: () => require('../jobs/instructionQueue').requestRun(),
-    preisJobStatus: () => require('../jobs/priceJob').getJobStatus(),
-    preisJobJetzt: () => require('../jobs/priceJob').triggerNow(),
-    bilderJeMinute: () => require('../jobs/imageQueue').anfragenJeMinute(),
-    fehlendeBilderNachladen: () => require('../jobs/partsCatalogEnrich').redownloadMissingImages(),
-    bricksetWarteschlange: (sofort) => require('../jobs/bricksetRetry').processRetryQueue(sofort),
-    zeitplanNeu: () => require('../jobs/dailyScheduler').rescheduleAll(),
+    preisFuerSetHolen: async (sn, uid, zustand) => (await import('../jobs/priceJob.js')).refreshPriceForSet(sn, uid, zustand),
+    bildVormerken: (url, sn) => {
+      import('../utils/bildbedarf.js').then(b => b.merkeGebraucht(url, sn))
+        .catch((e: unknown) => meldeUndWeiter('nacharbeit:bild-vormerken', e));
+    },
+    setTeileAnreichern: async (sn) => (await import('../jobs/partsCatalogEnrich.js')).enrichSetParts(sn),
+    figurenAnreichern: async (sn) => (await import('../jobs/partsCatalogEnrich.js')).enrichSetMinifigs(sn),
+    setBilderLaden: async (sn) => {
+      const [{ stelleAuftragEin }, { mitVersion }] = await Promise.all([import('../utils/auftraege.js'), import('../utils/setNummer.js')]);
+      return stelleAuftragEin('bilder', { set_number: sn, nur_bilder: true },
+        { schluessel: `bilder:${mitVersion(sn)}:nur`, maxVersuche: 3 });
+    },
   });
 }
 
