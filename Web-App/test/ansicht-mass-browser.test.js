@@ -5,8 +5,8 @@
  *   - Kein Betrag in den Finanzkacheln bricht um oder ragt über die Kachel.
  *   - Der Löschknopf (44 × 44) überdeckt weder das Bild einer manuellen
  *     Teilekachel noch den Preis einer Merklistenzeile.
- *   - Stein: Die drei Kennzahlen stehen in EINER Reihe (waagrecht rollend)
- *     statt untereinander den ersten Bildschirm zu füllen.
+ *   - Kennzahlen (in jedem Design als Kacheln): höchstens zwei Reihen und
+ *     140 px hoch, ohne waagrechten Rollbereich.
  *   - Noppe: Die Reiter der unteren Leiste haben mindestens 4,5:1.
  * Rechner (1280 × 900):
  *   - Der Fokusring der Reiter liegt innen und wird von der rollenden Leiste
@@ -21,8 +21,8 @@
  *      420-px-Regel entfernt → rot: „Telefon: Beträge in einer Zeile“
  *   B  die beiden Platzregeln (.man-tile:has(> .ca), .mk-zeile) aus
  *      mobile.css entfernt → rot: „Telefon: Löschknopf verdeckt nichts“
- *   C  die Stein-Reihe wieder `grid-template-columns: 1fr` → rot: „Stein:
- *      Kennzahlen in einer Reihe“ (3 Reihen)
+ *   C  die Telefonregel wieder `grid-template-columns: 1fr` → rot: „Stein:
+ *      Kennzahlen kompakt“ (4 Reihen; 30.10.2026)
  *   D  noppe nav .ntab wieder var(--b100) → rot: „Noppe: untere Leiste“ (3,74:1)
  *   E  .ntab:focus-visible entfernt → rot: „Rechner: Fokusring innen“
  *   F  `.dt-fin .zahl{text-align:right}` entfernt → rot: „Rechner: Zahlen
@@ -94,14 +94,16 @@ test('Masse der Oberfläche', { concurrency: 1, timeout: 300_000 }, async (t) =>
     assert.deepEqual({ teil, merk }, { teil: 0, merk: 0 }, 'überdeckte Fläche in px²');
   });
 
-  await t.test('Stein: Kennzahlen in einer Reihe', async () => {
+  await t.test('Stein: Kennzahlen kompakt', async () => {
     await b.auswerten(`document.documentElement.setAttribute('data-theme', 'brick'); true`);
     await reiter('gallery');
     const m = await b.auswerten(`(() => {
       const k = [...document.querySelectorAll('#tab-gallery .bstat')].map(e => Math.round(e.getBoundingClientRect().top));
-      return { reihen: new Set(k).size, hoehe: Math.round(document.querySelector('#tab-gallery .brick-stats').getBoundingClientRect().height) }; })()`);
+      const r = document.querySelector('#tab-gallery .brick-stats');
+      return { reihen: new Set(k).size, hoehe: Math.round(r.getBoundingClientRect().height), rollt: r.scrollWidth > r.clientWidth + 1 }; })()`);
     await b.auswerten(`document.documentElement.setAttribute('data-theme', 'classic'); true`);
-    assert.equal(m.reihen, 1, `Kennzahlen in ${m.reihen} Reihen`);
+    assert.ok(m.reihen <= 2, `Kennzahlen in ${m.reihen} Reihen`);
+    assert.equal(m.rollt, false, 'Kennzahlen rollen waagrecht');
     assert.ok(m.hoehe <= 140, `Kennzahlen ${m.hoehe} px hoch`);
   });
 

@@ -350,7 +350,8 @@ test('Finanzen: Kaufpreis statt zweiter Marktpreis-Spalte', () => {
     'Die mengengewichtete Spalte ist entfallen');
   assert.match(fin, /<th[^>]*>\$\{t\('detail\.purchase_price'\)\}<\/th><th[^>]*>\$\{t\('detail\.market_price'\)\}/,
     'Sets-Tabelle: Kaufpreis vor Marktpreis, wie bei Teilen und Minifiguren');
-  assert.match(fin, /purchase!=null\?fmtN\(purchase,cur\)/,
+  // fmtGeld statt fmtN: Ein Kaufpreis von 0 (Geschenk) steht als „0,00 €“ da.
+  assert.match(fin, /purchase!=null\?fmtGeld\(purchase,cur\)/,
     'Die Kaufpreis-Spalte muss den Wert auch anzeigen');
 
   // Die Gewichtung des Kaufpreises ist aus dem SQL in weightedPurchase()

@@ -92,7 +92,7 @@ val ChartNewBrick = Color(0xFF3D6A8F)
  * unterschieden, und verkleinert oder gedruckt verschwindet so ein
  * Unterschied als Erstes.
  */
-val ChartUsedBrick = Color(0xFF9A7A45)
+val ChartUsedBrick = Color(0xFF7A5C2A)
 
 /** --b600 im Design "werkbank". */
 val WerkbankAzur = Color(0xFF4D9FFF)

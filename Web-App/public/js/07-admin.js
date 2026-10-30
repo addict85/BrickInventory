@@ -220,7 +220,7 @@ function sparklineSVG(data, width=260, height=44){
  * automatisch auf, sobald ein Kaufpreis in diesem Zustand erfasst wird: Nach
  * jedem Speichern wird diese Abfrage erneut geladen.
  *
- * @param {{by_condition?: Record<string, {market_price: number|null, pnl_pct: number|null}>}} ph
+ * @param {{by_condition?: Record<string, {market_price: number|null, pnl_pct: number|null, purchase_price?: number|null}>}} ph
  */
 export function renderMarketRows(ph, targetId = 'm-market-rows') {
   const el = G(targetId);
@@ -233,7 +233,7 @@ export function renderMarketRows(ph, targetId = 'm-market-rows') {
       const price = d.market_price != null
         ? `<span class="preis preis-stark">${esc(fmtN(d.market_price, CURRENCY))}</span>`
         : '<span data-stil="color:var(--mut)">—</span>';
-      const pnl = d.pnl_pct != null ? pnlBadge(d.pnl_pct) : '';
+      const pnl = pnlBadge(d.pnl_pct, d.purchase_price);
       return detailZeile(
         `${esc(t('detail.market_price'))} (${esc(LABEL[c])})`,
         `${price}${pnl}`,
@@ -312,35 +312,174 @@ export function zeitTeilung(von, bis, maxStriche) {
     while (d.getMonth() % n) d.setMonth(d.getMonth() + 1);
     for (; d.getTime() <= bis; d.setMonth(d.getMonth() + n)) raus.push({ t: d.getTime(), text: f.format(d) });
   }
+  // Passt auch der grösste Schritt nicht (schmales Telefon), nur jeden k-ten Strich.
+  if (raus.length > max) { const k = Math.ceil(raus.length / max); return raus.filter((_, i) => i % k === 0); }
   return raus;
 }
 
 /** Eine Beschriftung am rechten Rand endet dort, statt halb hinauszuragen. */
 function randAnker(x, rechts) { return x > rechts - 28 ? 'end' : 'middle'; }
 
+// ── Gemeinsame Teile der beiden Diagramme ───────────────────────────────────
+// Preisverlauf und Wertdiagramm teilen Achsen, Einstand-Linie und Fadenkreuz,
+// damit dieselbe Grösse in beiden gleich aussieht und gleich bedient wird.
+
+/** Betrag an der y-Achse: mit Währung, Nachkommastellen nur bei Schritten unter 1. */
+export function achsenBetrag(v, schritt, cur) {
+  const stellen = schritt > 0 && schritt < 1 ? 2 : 0;
+  return new Intl.NumberFormat(locale(), { style: 'currency', currency: cur || CURRENCY || 'EUR',
+    minimumFractionDigits: stellen, maximumFractionDigits: stellen }).format(v);
+}
+
+/**
+ * Gitter und Beschriftung der y-Achse. Beginnt sie nicht bei 0, trägt sie unten
+ * einen Achsenbruch: Sonst läse man eine Bewegung von 5 % als Verdopplung.
+ */
+function yAchse(teilung, min, yOf, links, rechts, oben, unten, cur) {
+  const schritt = teilung.werte.length > 1 ? teilung.werte[1] - teilung.werte[0] : 1;
+  const striche = teilung.werte.filter(v => v >= min).map(v => {
+    const y = yOf(v).toFixed(1);
+    return `<line x1="${links}" y1="${y}" x2="${rechts}" y2="${y}" stroke="var(--mut)" stroke-opacity=".22" stroke-width="1"/>
+      <text x="${links - 8}" y="${(yOf(v) + 4).toFixed(1)}" font-size="12" fill="var(--mut)" text-anchor="end" font-family="inherit">${esc(achsenBetrag(v, schritt, cur))}</text>`;
+  }).join('');
+  const achse = `<line x1="${links}" y1="${oben}" x2="${links}" y2="${unten}" stroke="var(--mut)" stroke-width="1"/>`;
+  const bruch = min > 0
+    ? `<g class="achsenbruch"><rect x="${links - 6}" y="${unten - 12}" width="12" height="7" fill="var(--sur)"/>
+        <path d="M${links - 6},${unten - 9} l12,-4 M${links - 6},${unten - 4} l12,-4" stroke="var(--mut)" stroke-width="1.2" fill="none"/></g>`
+    : '';
+  return striche + achse + bruch;
+}
+
+/** Waagrechte, gestrichelte Bezugslinie (Einstand, Kaufpreis) mit Beschriftung am rechten Ende. */
+function bezugsLinie(wert, yOf, links, rechts, text, farbe = 'var(--txt)') {
+  const y = yOf(wert);
+  return `<g class="einstand-linie"><line x1="${links}" y1="${y.toFixed(1)}" x2="${rechts}" y2="${y.toFixed(1)}" stroke="${farbe}" stroke-width="1.5" stroke-dasharray="6 4"/>
+    <text x="${rechts - 4}" y="${(y - 6).toFixed(1)}" font-size="12" font-weight="600" fill="var(--txt)" text-anchor="end" font-family="inherit"
+      paint-order="stroke" stroke="var(--sur)" stroke-width="4" stroke-linejoin="round">${esc(text)}</text></g>`;
+}
+
+/**
+ * Das Fadenkreuz: unsichtbar, bis jemand zeigt, tippt oder mit den Pfeiltasten
+ * wandert. Die Punkte stehen als JSON am SVG (x in viewBox-Einheiten, je Reihe
+ * ein y, dazu die Beschriftung), damit eine Steuerung für alle Diagramme reicht.
+ */
+function fadenkreuzTeile(punkte, farben, oben, unten) {
+  const json = esc(JSON.stringify(punkte));
+  const kreise = farben.map(f => `<circle class="fk-punkt" r="4.5" fill="${f}" stroke="var(--sur)" stroke-width="2"/>`).join('');
+  return {
+    attr: ` data-punkte="${json}" tabindex="0"`,
+    svg: `<g class="fadenkreuz" visibility="hidden" pointer-events="none">
+      <line class="fk-linie" y1="${oben}" y2="${unten}" stroke="var(--txt)" stroke-width="1"/>${kreise}
+      <rect class="fk-schild" rx="6" height="0" width="0" fill="var(--txt)"/>
+      <text class="fk-text" font-size="12" font-weight="600" fill="var(--sur)" font-family="inherit"></text></g>`,
+  };
+}
+
+/** Die Punkte am SVG, einmal gelesen. */
+function punkteVon(svg) {
+  if (!svg._punkte) { try { svg._punkte = JSON.parse(svg.dataset.punkte || '[]'); } catch (_) { svg._punkte = []; } }
+  return svg._punkte;
+}
+
+/** Fadenkreuz eines Diagramms auf Punkt i setzen (null blendet es aus). */
+export function zeigeFadenkreuz(svg, i, ansagen = false) {
+  const g = svg?.querySelector('.fadenkreuz');
+  if (!g) return;
+  const punkte = punkteVon(svg);
+  if (i == null || !punkte.length) { g.setAttribute('visibility', 'hidden'); return; }
+  i = Math.max(0, Math.min(punkte.length - 1, i));
+  svg._fk = i;
+  const p = punkte[i];
+  const linie = g.querySelector('.fk-linie');
+  linie.setAttribute('x1', p.x); linie.setAttribute('x2', p.x);
+  g.querySelectorAll('.fk-punkt').forEach((c, k) => {
+    const y = p.y[k];
+    c.setAttribute('visibility', y == null ? 'hidden' : 'visible');
+    if (y != null) { c.setAttribute('cx', p.x); c.setAttribute('cy', y); }
+  });
+  const text = g.querySelector('.fk-text');
+  text.replaceChildren(...p.t.map((zeile, k) => {
+    const ts = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+    ts.setAttribute('dy', k ? '16' : '0');
+    if (k) ts.setAttribute('font-weight', '400');
+    ts.textContent = zeile;
+    return ts;
+  }));
+  const breiteText = Math.max(...[...text.children].map(ts => (typeof ts.getComputedTextLength === 'function' && ts.getComputedTextLength()) || ts.textContent.length * 7));
+  const b = breiteText + 16, h = 16 * p.t.length + 8;
+  const vb = svg.viewBox?.baseVal;
+  const W = vb?.width || 700;
+  const x = p.x + 12 + b > W ? p.x - 12 - b : p.x + 12;
+  const y0 = Number(g.querySelector('.fk-linie').getAttribute('y1')) || 0;
+  const schild = g.querySelector('.fk-schild');
+  schild.setAttribute('x', x); schild.setAttribute('y', y0); schild.setAttribute('width', b); schild.setAttribute('height', h);
+  text.setAttribute('x', x + 8); text.setAttribute('y', y0 + 17);
+  text.querySelectorAll('tspan').forEach(ts => ts.setAttribute('x', x + 8));
+  g.setAttribute('visibility', 'visible');
+  if (ansagen) {
+    let ansage = svg.parentElement?.querySelector(':scope > .diagramm-ansage');
+    if (!ansage && svg.parentElement) {
+      ansage = document.createElement('span');
+      ansage.className = 'vh diagramm-ansage'; ansage.setAttribute('aria-live', 'polite');
+      svg.after(ansage);
+    }
+    if (ansage) ansage.textContent = p.t.join(', ');
+  }
+}
+
+function naechsterPunkt(svg, clientX) {
+  const punkte = punkteVon(svg);
+  const r = svg.getBoundingClientRect();
+  const W = svg.viewBox?.baseVal?.width || r.width || 1;
+  const x = (clientX - r.left) * W / (r.width || 1);
+  let best = 0;
+  punkte.forEach((p, k) => { if (Math.abs(p.x - x) < Math.abs(punkte[best].x - x)) best = k; });
+  return best;
+}
+
+const diagrammVon = (e) => e.target?.closest?.('svg[data-punkte]');
+for (const art of ['pointermove', 'pointerdown']) {
+  document.addEventListener(art, (e) => {
+    const svg = diagrammVon(e);
+    if (svg) zeigeFadenkreuz(svg, naechsterPunkt(svg, /** @type {PointerEvent} */ (e).clientX));
+  });
+}
+document.addEventListener('pointerout', (e) => {
+  const svg = diagrammVon(e);
+  if (svg && !svg.contains(e.relatedTarget) && document.activeElement !== svg && e.pointerType !== 'touch') zeigeFadenkreuz(svg, null);
+});
+document.addEventListener('focusin', (e) => {
+  const svg = diagrammVon(e);
+  if (svg) zeigeFadenkreuz(svg, svg._fk ?? punkteVon(svg).length - 1, true);
+});
+document.addEventListener('focusout', (e) => { const svg = diagrammVon(e); if (svg) zeigeFadenkreuz(svg, null); });
+document.addEventListener('keydown', (e) => {
+  const svg = diagrammVon(e);
+  if (!svg) return;
+  const n = punkteVon(svg).length, i = svg._fk ?? n - 1;
+  const ziel = { ArrowLeft: i - 1, ArrowRight: i + 1, Home: 0, End: n - 1 }[e.key];
+  if (ziel === undefined) return;
+  e.preventDefault();
+  zeigeFadenkreuz(svg, ziel, true);
+});
+
 export function priceChartSVG(data, uid = String(Math.random()).slice(2, 8), breite = 700) {
-  // Erwartet die fertigen Diagrammdaten des Servers:
+  // Erwartet die fertigen Diagrammdaten des Servers (utils/chartData.ts):
   //   { values: [ { name, values: [{x, y}], firstRealIndex } ], x: [...] }
-  //
-  // Die Zeitachse rechnet nicht mehr der Client — siehe utils/chartData.ts.
-  // Vorher tat das jeder Client für sich, und Android hätte dieselbe Rechnung
-  // ein zweites Mal gebraucht.
   const NAMES  = { N: t('common.condition_new'), U: t('common.condition_used') };
-  // Farben aus dem Design, nicht fest verdrahtet. In inline-SVG greift var()
-  // sowohl in stroke als auch in stop-color, das Diagramm folgt damit dem
-  // aktiven Design ohne eigene Fallunterscheidung.
+  // Farben aus dem Design; var() greift in inline-SVG auch in stroke und stop-color.
   const COLORS = { N: 'var(--chart-new)', U: 'var(--chart-used)' };
 
   const chart = data?.chart;
   const axis  = chart?.x || [];
-  // firstRealIndex überspringen: Vor dem ersten echten Wert stehen aufgefüllte
-  // Nullen. Als Punkt gezeichnet ergäben sie eine Linie, die bei null beginnt
-  // und dann senkrecht hochspringt — ein Kurssturz, den es nie gab.
+  // Vor firstRealIndex stehen aufgefüllte Nullen; gezeichnet ergäben sie einen Kurssturz.
   const series = (chart?.values || [])
     .map(sd => ({
+      key: sd.name,
       name: NAMES[sd.name] || sd.name,
       color: COLORS[sd.name] || 'var(--mut)',
       pts: (sd.values || []).slice(sd.firstRealIndex ?? 0).filter(pt => pt.y > 0),
+      kauf: Number(data?.by_condition?.[sd.name]?.purchase_price) || 0,
     }))
     .filter(sd => sd.pts.length > 0);
 
@@ -348,15 +487,16 @@ export function priceChartSVG(data, uid = String(Math.random()).slice(2, 8), bre
     return `<span data-stil="color:var(--mut);font-size:var(--fs-1)">${t('detail.no_history')}</span>`;
   }
 
-  const W = breite, H = 190, PAD = { l: 72, r: 14, t: 12, b: 42 };
-  const iw = W - PAD.l - PAD.r, ih = H - PAD.t - PAD.b;
+  const W = breite, H = 200, PAD = { l: 76, r: 14, t: 12, b: 46 };
+  const iw = W - PAD.l - PAD.r, ih = H - PAD.t - PAD.b, unten = PAD.t + ih;
 
   const toTime = zeitpunkt;
   const first = axis[0], last = axis[axis.length - 1];
   const span = Math.max(1, toTime(last) - toTime(first));
   const xOf = d => PAD.l + ((toTime(d) - toTime(first)) / span) * iw;
 
-  const vals = series.flatMap(sd => sd.pts.map(p => p.y));
+  const kaeufe = series.filter(sd => sd.kauf > 0);
+  const vals = [...series.flatMap(sd => sd.pts.map(p => p.y)), ...kaeufe.map(sd => sd.kauf)];
   const teilung = schoeneTeilung(Math.min(...vals), Math.max(...vals), 4);
   const min = Math.max(0, teilung.von), max = teilung.bis, range = max - min || 1;
   const yOf = v => PAD.t + ih - ((v - min) / range) * ih;
@@ -367,11 +507,9 @@ export function priceChartSVG(data, uid = String(Math.random()).slice(2, 8), bre
       const [cx, cy] = pts[0].split(',');
       return `<circle cx="${cx}" cy="${cy}" r="3.5" fill="${sd.color}"/>`;
     }
-    // Eindeutige Verlaufs-ID: Die alte Sparkline benutzt ein festes id="sg" —
-    // stehen zwei SVGs mit derselben ID im Dokument, verweisen beide auf den
-    // ERSTEN Verlauf, und die zweite Fläche bekäme die falsche Farbe.
+    // Eindeutige Verlaufs-ID je Diagramm, sonst nähme ein zweites SVG den ersten Verlauf.
     const gid = `pg-${uid}-${i}`;
-    const area = `${xOf(sd.pts[0].x).toFixed(1)},${PAD.t + ih} ${pts.join(' ')} ${xOf(sd.pts[sd.pts.length-1].x).toFixed(1)},${PAD.t + ih}`;
+    const area = `${xOf(sd.pts[0].x).toFixed(1)},${unten} ${pts.join(' ')} ${xOf(sd.pts[sd.pts.length-1].x).toFixed(1)},${unten}`;
     return `<defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1">
         <stop offset="0%" stop-color="${sd.color}" stop-opacity=".16"/>
         <stop offset="100%" stop-color="${sd.color}" stop-opacity="0"/>
@@ -380,50 +518,56 @@ export function priceChartSVG(data, uid = String(Math.random()).slice(2, 8), bre
       <polyline points="${pts.join(' ')}" fill="none" stroke="${sd.color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
   }).join('');
 
-  const yTicks = teilung.werte.filter(v => v >= min).map(v =>
-    `<text x="${PAD.l - 8}" y="${(yOf(v) + 4).toFixed(1)}" font-size="12" fill="var(--mut)" text-anchor="end" font-family="inherit">${esc(fmtN(v, CURRENCY))}</text>
-     <line x1="${PAD.l}" y1="${yOf(v).toFixed(1)}" x2="${W - PAD.r}" y2="${yOf(v).toFixed(1)}" stroke="var(--bdr)" stroke-width=".5"/>`
-  ).join('');
+  const kaufLinien = kaeufe.map(sd => bezugsLinie(sd.kauf, yOf, PAD.l, W - PAD.r,
+    `${tRaw('detail.purchase_price')}${series.length > 1 ? ' ' + sd.name : ''} ${fmtN(sd.kauf, CURRENCY)}`, sd.color)).join('');
 
   const fmtDay = d => fmtDatum(new Date(toTime(d)));
   const xTicks = zeitTeilung(toTime(first), toTime(last), Math.floor(iw / 80)).map(s => {
     const x = PAD.l + ((s.t - toTime(first)) / span) * iw;
-    return `<text x="${x.toFixed(1)}" y="${H - 22}" font-size="12" fill="var(--mut)" text-anchor="${randAnker(x, W - PAD.r)}" font-family="inherit">${esc(s.text)}</text>`; }).join('');
+    return `<text x="${x.toFixed(1)}" y="${H - 26}" font-size="12" fill="var(--mut)" text-anchor="${randAnker(x, W - PAD.r)}" font-family="inherit">${esc(s.text)}</text>`; }).join('');
   const legend = series.map((sd, i) =>
-    `<g transform="translate(${PAD.l + i * 120}, ${H - 8})">
+    `<g transform="translate(${PAD.l + i * 120}, ${H - 6})">
        <line x1="0" y1="-4" x2="16" y2="-4" stroke="${sd.color}" stroke-width="2.5" stroke-linecap="round"/>
        <text x="22" y="0" font-size="12" fill="var(--txt)" font-family="inherit">${esc(sd.name)}</text>
      </g>`).join('');
 
-  const zusammenfassung = t('detail.chart.summary', { titel: t('detail.price_history'), von: fmtDay(first), bis: fmtDay(last),
-    reihen: series.map(sd => tRaw('detail.chart.series', { name: sd.name, wert: fmtN(sd.pts[sd.pts.length - 1].y, CURRENCY) })).join('; ') });
-  return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" class="diagramm diagramm-preis" role="img" aria-label="${zusammenfassung}">
-    ${yTicks}
+  // Fadenkreuz: je Tag der Achse die Werte aller Reihen, die dort einen Punkt haben.
+  const tage = [...new Set(series.flatMap(sd => sd.pts.map(p => p.x)))].sort((a, b) => toTime(a) - toTime(b));
+  const punkte = tage.map(tag => {
+    const werte = series.map(sd => sd.pts.find(p => p.x === tag)?.y ?? null);
+    return { x: +xOf(tag).toFixed(1), y: werte.map(v => v == null ? null : +yOf(v).toFixed(1)),
+      t: [fmtDay(tag), ...series.map((sd, k) => werte[k] == null ? null : (series.length > 1 ? sd.name + ' ' : '') + fmtN(werte[k], CURRENCY)).filter(Boolean)] };
+  });
+  const fk = fadenkreuzTeile(punkte, series.map(sd => sd.color), PAD.t, unten);
+
+  const zusammenfassung = [tRaw('detail.chart.summary', { titel: tRaw('detail.price_history'), von: fmtDay(first), bis: fmtDay(last),
+    reihen: series.map(sd => tRaw('detail.chart.series', { name: sd.name, wert: fmtN(sd.pts[sd.pts.length - 1].y, CURRENCY) })).join('; ') }),
+    min > 0 ? tRaw('chart.axis_from', { wert: fmtN(min, CURRENCY) }) : '', tRaw('chart.keys')].filter(Boolean).join('. ');
+  return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" class="diagramm diagramm-preis" role="img" aria-label="${esc(zusammenfassung)}"${fk.attr}>
+    ${yAchse(teilung, min, yOf, PAD.l, W - PAD.r, PAD.t, unten, CURRENCY)}
     ${parts}
+    ${kaufLinien}
     ${xTicks}
     ${legend}
+    ${fk.svg}
   </svg>`;
 }
 
-// Wertdiagramm in Finanzen
-function fmtChartVal(v){
-  if(v===0) return '0';
-  return Math.round(v).toLocaleString(locale());
-}
 /**
- * @param {{ day: string, total: number, zeit?: number, hour?: string }[]} data
+ * @param {{ day: string, total: number, zeit?: number }[]} data
  *   `zeit` (ms) setzt die Punkte auf eine echte Zeitachse; fehlt sie, nach Index.
+ * @param {number} [einstand] Summe der Kaufpreise; > 0 zeichnet die Einstand-Linie.
  */
-export function portfolioChartSVG(data, period, breite = 700){
-  const W=breite, H=180, PAD={l:76,r:16,t:14,b:32};
-  const iw=W-PAD.l-PAD.r, ih=H-PAD.t-PAD.b;
+export function portfolioChartSVG(data, period, breite = 700, einstand = 0, cur = CURRENCY){
+  const W=breite, H=180, PAD={l:84,r:16,t:14,b:32};
+  const iw=W-PAD.l-PAD.r, ih=H-PAD.t-PAD.b, unten=PAD.t+ih;
   const vals=data.map(d=>d.total||0);
   if(vals.length<2) return diagrammLeer();
 
-  const teilung = schoeneTeilung(Math.min(...vals), Math.max(...vals), 5);
+  const mitEinstand = einstand > 0;
+  const teilung = schoeneTeilung(Math.min(...vals, ...(mitEinstand ? [einstand] : [])), Math.max(...vals, ...(mitEinstand ? [einstand] : [])), 5);
   const min = Math.max(0, teilung.von), max = teilung.bis, range = max - min || 1;
 
-  // Die Diagrammfarbe des Designs (auch dunkel), wie im Preisverlauf.
   const color = 'var(--chart-new)';
   const n = vals.length;
   const mitZeit = data.every(d => Number.isFinite(d.zeit)) && data[n-1].zeit > data[0].zeit;
@@ -434,13 +578,7 @@ export function portfolioChartSVG(data, period, breite = 700){
   function py(v){ return PAD.t + ih - ((v-min)/range)*ih; }
 
   const pts  = vals.map((v,i)=>`${px(i).toFixed(1)},${py(v).toFixed(1)}`).join(' ');
-  const area = `${px(0).toFixed(1)},${PAD.t+ih} ${pts} ${px(n-1).toFixed(1)},${PAD.t+ih}`;
-
-  const yTicks = teilung.werte.filter(v => v >= min).map(v => {
-    const y = py(v);
-    return `<line x1="${PAD.l}" y1="${y.toFixed(1)}" x2="${PAD.l+iw}" y2="${y.toFixed(1)}" stroke="var(--bdr)" stroke-width="0.8" stroke-dasharray="3,3"/>
-<text x="${(PAD.l-6).toFixed(0)}" y="${(y+4).toFixed(1)}" text-anchor="end" font-size="12" fill="var(--mut)" font-family="inherit">${fmtChartVal(v)}</text>`;
-  }).join('');
+  const area = `${px(0).toFixed(1)},${unten} ${pts} ${px(n-1).toFixed(1)},${unten}`;
 
   // Je Beschriftung rund 70 px, damit sie sich am Telefon nicht überlappen.
   let xLabels = '';
@@ -454,25 +592,24 @@ export function portfolioChartSVG(data, period, breite = 700){
   }
 
   const wann = (i) => mitZeit ? fmtDatum(new Date(data[i].zeit)) : data[i].day;
-  const dots = vals.map((v,i) => {
-    const isLast = i===n-1;
-    return `<circle cx="${px(i).toFixed(1)}" cy="${py(v).toFixed(1)}" r="${isLast?4:2.5}"
-      fill="${color}" stroke="var(--sur)" stroke-width="1.2" opacity="${isLast?1:0.4}">
-      <title>${esc(wann(i))}: ${v.toLocaleString(locale(),{minimumFractionDigits:2})}</title>
-    </circle>`;
-  }).join('');
+  const letzter = `<circle cx="${px(n-1).toFixed(1)}" cy="${py(vals[n-1]).toFixed(1)}" r="4" fill="${color}" stroke="var(--sur)" stroke-width="1.5"/>`;
+  const linie = mitEinstand ? bezugsLinie(einstand, py, PAD.l, W - PAD.r, `${tRaw('finance.stat.purchase')} ${fmtN(einstand, cur)}`) : '';
+  const fk = fadenkreuzTeile(vals.map((v, i) => ({ x: +px(i).toFixed(1), y: [+py(v).toFixed(1)], t: [wann(i), fmtN(v, cur)] })), [color], PAD.t, unten);
 
-  const zusammenfassung = t('finance.chart.summary', { titel: t('finance.chart.label'),
-    von: wann(0), bis: wann(n-1), start: fmtN(vals[0], CURRENCY), ende: fmtN(vals[n-1], CURRENCY) });
-  return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" class="diagramm diagramm-wert" role="img" aria-label="${zusammenfassung}">
+  const zusammenfassung = [tRaw('finance.chart.summary', { titel: tRaw('finance.chart.label'),
+    von: wann(0), bis: wann(n-1), start: fmtN(vals[0], cur), ende: fmtN(vals[n-1], cur) }),
+    mitEinstand ? `${tRaw('finance.stat.purchase')} ${fmtN(einstand, cur)}` : '',
+    min > 0 ? tRaw('chart.axis_from', { wert: fmtN(min, cur) }) : '', tRaw('chart.keys')].filter(Boolean).join('. ');
+  return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" class="diagramm diagramm-wert" role="img" aria-label="${esc(zusammenfassung)}"${fk.attr}>
   <defs><linearGradient id="pcg" x1="0" y1="0" x2="0" y2="1">
     <stop offset="0%" stop-color="${color}" stop-opacity=".15"/>
     <stop offset="100%" stop-color="${color}" stop-opacity="0"/>
   </linearGradient></defs>
-  ${yTicks}${xLabels}
+  ${yAchse(teilung, min, py, PAD.l, W - PAD.r, PAD.t, unten, cur)}${xLabels}
   <polygon points="${area}" fill="url(#pcg)"/>
   <polyline points="${pts}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
-  ${dots}
+  ${linie}${letzter}
+  ${fk.svg}
 </svg>`;
 }
 
@@ -581,15 +718,15 @@ export function alarmBlock(sn, praefix = 'm') {
   // Hoehe im style-Attribut hat den gewaehlten Eintrag auf sechs Pixel
   // zusammengeschnitten (im Browser gemessen, Begruendung dort).
   return `
-      <select id="${p}-alert-cond" class="alarm-feld" data-change="wechsleAlarmZustand" data-arg="${escJs(sn)}">
+      <select id="${p}-alert-cond" class="alarm-feld" aria-label="${esc(tRaw('detail.alert'))}: ${esc(tRaw('common.condition'))}" data-change="wechsleAlarmZustand" data-arg="${escJs(sn)}">
         <option value="N">${esc(tRaw('common.condition_new'))}</option>
         <option value="U">${esc(tRaw('common.condition_used'))}</option>
       </select>
-      <select id="${p}-alert-dir" class="alarm-feld" data-change="speichereAlarm" data-arg="${escJs(sn)}">
+      <select id="${p}-alert-dir" class="alarm-feld" aria-label="${esc(tRaw('detail.alert'))}" data-change="speichereAlarm" data-arg="${escJs(sn)}">
         <option value="unter">${esc(tRaw('detail.alert_below'))}</option>
         <option value="ueber">${esc(tRaw('detail.alert_above'))}</option>
       </select>
-      <input inputmode="decimal" type="number" id="${p}-alert-val" class="alarm-feld" min="0" step="0.01" placeholder="—"
+      <input inputmode="decimal" type="number" id="${p}-alert-val" class="alarm-feld" min="0" step="0.01" placeholder="—" aria-label="${esc(tRaw('detail.alert_price'))}"
              data-input="alarmGetippt" data-arg="${escJs(sn)}"
              data-change="speichereAlarm" />
       <span id="${p}-alert-state" data-stil="font-size:var(--fs-1);color:var(--mut)"></span>
@@ -679,9 +816,9 @@ function ortOptionen(wert) {
 export function lagerortBlock(id, wert, attrs = '') {
   const ort = String(wert || '');
   return `
-      <select id="${id}-sel" class="alarm-feld" data-ortauswahl="1"
+      <select id="${id}-sel" class="alarm-feld" aria-label="${esc(tRaw('detail.storage'))}" data-ortauswahl="1"
               data-change="lagerortGewaehlt" data-arg="${id}">${ortOptionen(ort)}</select>
-      <input type="text" id="${id}" class="alarm-feld" maxlength="60" data-stil="display:none"
+      <input type="text" id="${id}" class="alarm-feld" maxlength="60" aria-label="${esc(tRaw('detail.storage'))}" data-stil="display:none"
              placeholder="${esc(tRaw('detail.storage_ph'))}" value="${esc(ort)}"
              data-blur="lagerortGetippt" ${attrs} />
     `;
@@ -989,9 +1126,9 @@ export async function openModal(sn){
   const priceRow = '<div id="m-market-rows"></div>';
   const pnlRow  = '';
   const qtyRow = detailZeile(t('detail.qty'), `
-      <button class="btn bs btn-sm" data-click="mQtyDec" data-stil="font-size:var(--fs-4);padding:2px 8px;line-height:1">−</button>
-      <input inputmode="numeric" type="number" id="m-qty" min="1" data-stil="width:46px;text-align:center;border:1px solid var(--bdr);border-radius:6px;padding:2px;font-weight:600" data-change="autosaveSet" />
-      <button class="btn bs btn-sm" data-click="mQtyInc" data-stil="font-size:var(--fs-4);padding:2px 8px;line-height:1">+</button>
+      <button class="btn bs btn-sm" data-click="mQtyDec" aria-label="${esc(tRaw('detail.qty_less'))}" data-stil="font-size:var(--fs-4);padding:2px 8px;line-height:1">−</button>
+      <input inputmode="numeric" type="number" id="m-qty" min="1" aria-label="${esc(tRaw('detail.qty'))}" data-stil="width:46px;text-align:center;border:1px solid var(--bdr);border-radius:6px;padding:2px;font-weight:600" data-change="autosaveSet" />
+      <button class="btn bs btn-sm" data-click="mQtyInc" aria-label="${esc(tRaw('detail.qty_more'))}" data-stil="font-size:var(--fs-4);padding:2px 8px;line-height:1">+</button>
     `, { wertStil: 'display:flex;align-items:center;gap:6px' });
 
   // Acquisition summary: compact read-only rows + button to open full editor

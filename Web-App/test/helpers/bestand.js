@@ -250,5 +250,53 @@ async function figurmengeVon(db, userId, figNumber) {
   return z ? Number(z.menge) : null;
 }
 
-module.exports = { haeltSet, erfasse, mengeVon, haltZeile,
+
+/**
+ * Eine Sammlung, in der jede Ansicht etwas zeigt: Sets mit Thema, Kaufpreis
+ * (auch 0 = Geschenk), Marktpreis und Verlauf, Teile in mehreren Farben
+ * (Schwarz für den Farbpunkt im Dunkelmodus), Figuren und Merkliste. Für
+ * Layout-, Kontrast- und axe-Prüfungen, die sonst leere Listen prüften.
+ */
+async function musterSammlung(db, uid) {
+  const sets = [
+    ['10294-1', 'Titanic', 'Icons / Modular Buildings Collection', 2021, 9090, 679.99, 'N', 712.4],
+    ['75192-1', 'Millennium Falcon Ultimate Collector Series', 'Star Wars', 2017, 7541, 650, 'U', 801.5],
+    ['10300-1', 'Back to the Future Time Machine', 'Icons', 2022, 1872, 0, 'N', 163.8],
+    ['21318-1', 'Tree House', 'Ideas', 2019, 3036, 199.99, 'N', 186.2],
+  ];
+  for (const [nr, name, thema, jahr, teile, preis, zustand, markt] of sets) {
+    await db.run(`INSERT INTO set_catalog (set_number, name, year, theme, pieces, minifigs) VALUES ($1,$2,$3,$4,$5,4)
+                  ON CONFLICT (set_number) DO UPDATE SET name = $2, theme = $4`, [nr, name, jahr, thema, teile]);
+    await haeltSet(db, uid, nr, 1, { preis, zustand, am: '2026-06-01T10:00:00Z' });
+    await db.run(`INSERT INTO price_cache (set_number, condition, currency_code, min_price, avg_price, max_price, qty_avg_price, total_quantity, fetched_at)
+                  VALUES ($1,$2,'EUR',$3,$4,$5,$4,12,NOW()) ON CONFLICT (set_number, condition, currency_code) DO UPDATE SET avg_price = $4, qty_avg_price = $4`,
+    [nr, zustand, markt * 0.85, markt, markt * 1.2]);
+    for (let tag = 60; tag >= 0; tag -= 3)
+      await db.run(`INSERT INTO price_history (set_number, condition, currency_code, avg_price, qty_avg_price, recorded_at)
+                    VALUES ($1,$2,'EUR',$3,$3, NOW() - ($4 || ' days')::interval) ON CONFLICT DO NOTHING`,
+      [nr, zustand, Math.round(markt * (0.9 + 0.1 * Math.sin(tag / 9) + (60 - tag) / 600) * 100) / 100, String(tag)]);
+  }
+  await db.run(`INSERT INTO wanted (user_id, set_number, condition) VALUES ($1, '10276-1', 'N') ON CONFLICT DO NOTHING`, [uid]);
+  const farben = [[0, 'Black', '05131D'], [4, 'Red', 'C91A09'], [1, 'Blue', '0055BF'], [15, 'White', 'FFFFFF']];
+  for (const [id, name, rgb] of farben)
+    await db.run(`INSERT INTO rb_colors (id, name, rgb, is_trans) VALUES ($1,$2,$3,'f') ON CONFLICT (id) DO NOTHING`, [id, name, rgb]);
+  for (const [teil, name] of [['3001', 'Brick 2 x 4'], ['3020', 'Plate 2 x 4'], ['3023', 'Plate 1 x 2']]) {
+    await db.run(`INSERT INTO part_catalog (part_number, part_name, category_name) VALUES ($1,$2,'Bricks') ON CONFLICT DO NOTHING`, [teil, name]);
+    for (const [id, fname, rgb] of farben) {
+      await db.run(`INSERT INTO part_color_catalog (part_number, color_id, color_name, color_hex) VALUES ($1,$2,$3,$4) ON CONFLICT DO NOTHING`, [teil, id, fname, rgb]);
+      await haeltTeil(db, uid, teil, { setNumber: '10294-1', colorId: id, menge: 12 });
+    }
+  }
+  await haeltTeil(db, uid, '3001', { colorId: 0, menge: 250, preis: 0.12 });
+  await db.run(`INSERT INTO minifigs_catalog (fig_number, fig_name) VALUES ('fig-000001', 'Marty McFly') ON CONFLICT DO NOTHING`);
+  await haeltFigur(db, uid, 'fig-000001', { setNumber: '10300-1', menge: 1 });
+  await db.run(`INSERT INTO minifigs_catalog (fig_number, fig_name) VALUES ('fig-000002', 'Doc Brown') ON CONFLICT DO NOTHING`);
+  await haeltFigur(db, uid, 'fig-000002', { menge: 2, preis: 4.5 });
+  await db.run(`INSERT INTO vouchers (user_id, number, pin, amount, currency) VALUES ($1, '6123-4567-8901', '4711', 50, 'EUR')`, [uid]);
+  await db.run(`INSERT INTO price_alerts (user_id, set_number, condition, richtung, schwelle, currency_code)
+                VALUES ($1, '10276-1', 'N', 'unter', 299, 'EUR') ON CONFLICT DO NOTHING`, [uid]);
+  await db.run(`INSERT INTO storage_locations (user_id, name) VALUES ($1, 'Regal Keller')`, [uid]);
+}
+
+module.exports = { musterSammlung, haeltSet, erfasse, mengeVon, haltZeile,
                    haeltTeil, haeltFigur, teilmengeVon, figurmengeVon };

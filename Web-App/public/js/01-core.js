@@ -563,9 +563,24 @@ export function observeLazyImages(root) {
 }
 /** Anzeigedauer je Art in ms. */
 const TOAST_DAUER = { success: 3500, info: 5000, error: 9000 };
+/** @type {WeakMap<Element, {schluessel: string, anzahl: number, frist: any}>} */
+const _toastStand = new WeakMap();
 /** @param {{text: string, fn: () => any}} [aktion] Knopf in der Meldung, z. B. „Rückgängig" */
 export function toast(msg, type='info', aktion) {
-  const c = G('toasts'), el = document.createElement('div');
+  const c = G('toasts');
+  // Dieselbe Meldung noch einmal: zählen statt stapeln, und die Frist beginnt neu.
+  const schluessel = `${type}|${String(msg ?? '')}`;
+  const gleich = aktion ? null : [...c.children].find(x => _toastStand.get(x)?.schluessel === schluessel);
+  if (gleich) {
+    const stand = _toastStand.get(gleich);
+    stand.anzahl++;
+    const zahl = /** @type {HTMLElement} */ (gleich.querySelector('.toast-anzahl'));
+    zahl.textContent = `×${stand.anzahl}`; zahl.hidden = false;
+    clearTimeout(stand.frist);
+    stand.frist = setTimeout(() => gleich.remove(), TOAST_DAUER[type] ?? 4500);
+    return /** @type {HTMLElement} */ (gleich);
+  }
+  const el = document.createElement('div');
   el.className=`toast ${type}`;
   if (type === 'error') el.setAttribute('role', 'alert');
   // textContent statt innerHTML: msg enthält regelmässig Server-Fehlermeldungen
@@ -575,7 +590,9 @@ export function toast(msg, type='info', aktion) {
   icon.innerHTML = ico({ success: 'ok', error: 'fehler' }[type] || 'info');
   const text = document.createElement('span');
   text.textContent = String(msg ?? '');
-  el.append(icon, text);
+  const anzahl = document.createElement('span');
+  anzahl.className = 'toast-anzahl'; anzahl.hidden = true;
+  el.append(icon, text, anzahl);
   if (aktion) {
     const knopf = document.createElement('button');
     knopf.type = 'button';
@@ -589,7 +606,7 @@ export function toast(msg, type='info', aktion) {
   // sie keine Karte verdeckt.
   el.addEventListener('click', e => { if (e.target === el || !(/** @type {Element} */ (e.target)).closest('button')) el.remove(); });
   c.appendChild(el);
-  setTimeout(() => el.remove(), Math.max(aktion ? 9000 : 0, TOAST_DAUER[type] ?? 4500));
+  _toastStand.set(el, { schluessel, anzahl: 1, frist: setTimeout(() => el.remove(), Math.max(aktion ? 9000 : 0, TOAST_DAUER[type] ?? 4500)) });
   return el;
 }
 /**
@@ -746,6 +763,15 @@ function meldeSitzungBeendet(path) {
 export function fmtN(v,cur){
   if(!v||v==0) return '—';
   return new Intl.NumberFormat(locale(),{style:'currency',currency:cur||CURRENCY||'EUR',minimumFractionDigits:2}).format(v);
+}
+/** Ein erfasster Kaufpreis von 0 ist ein Geschenk; fehlt er (null), ist er unbekannt. */
+export function istGeschenk(kauf){
+  return kauf !== null && kauf !== undefined && String(kauf).trim() !== '' && Number(kauf) === 0;
+}
+/** Betrag, bei dem 0 ein Wert ist (Kaufpreis): „0,00 €“ statt „—“. */
+export function fmtGeld(v, cur){
+  if (v === null || v === undefined || String(v).trim() === '' || !Number.isFinite(Number(v))) return '—';
+  return Number(v) === 0 ? new Intl.NumberFormat(locale(),{style:'currency',currency:cur||CURRENCY||'EUR',minimumFractionDigits:2}).format(0) : fmtN(v, cur);
 }
 /**
  * Prozent in der Form der Oberfläche (de-DE „+51,1 %“, en-GB „+51.1%“), damit

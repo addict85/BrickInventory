@@ -1,10 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120">
-  <!-- Neutral statt Markenrot: Ohne Bilder stand sonst eine Wand gleicher roter Klötze da. -->
-  <g fill="none" stroke="#9aa3ad" stroke-width="3" stroke-linejoin="round">
-    <rect x="22" y="44" width="76" height="52" rx="4"/>
-    <path d="M22 44 L34 30 H110 L98 44"/>
-    <path d="M98 96 L110 82 V30"/>
-    <rect x="42" y="22" width="12" height="8" rx="2"/>
-    <rect x="70" y="22" width="12" height="8" rx="2"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-24 -24 72 72" width="120" height="120">
+  <!-- Dasselbe Würfelsymbol wie in der Kachel (i-set), damit ein Set ohne Bild überall gleich aussieht. -->
+  <g fill="none" stroke="#94a3b8" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/>
   </g>
 </svg>

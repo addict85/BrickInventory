@@ -332,11 +332,13 @@ test('Löschknöpfe auf Kacheln tragen einen Papierkorb, kein ✕', () => {
   const gallery = fs.readFileSync(path.join(PUB, 'js', '02-gallery.js'), 'utf8');
   assert.doesNotMatch(gallery, /class="delbtn"[^>]*>✕/, 'Set-Kachel zeigt noch ✕');
 
-  // Ohne Text braucht der Knopf eine Beschriftung für Hilfstechnik
-  assert.match(gallery, /aria-label="\$\{esc\(t\('detail\.delete'\)\)\}"/, 'Set-Knopf ohne aria-label');
+  // Der Papierkorb auf der Kachel ist ein Mausweg und für Hilfstechnik
+  // verborgen (sonst steckte ein Knopf im Knopf); Löschen per Tastatur geht
+  // über den Detail-Dialog. Ein title sagt der Maus, was er tut.
+  assert.match(gallery, /<span class="delbtn" data-click="delSetStop" aria-hidden="true"[^>]*title=/, 'Set-Kachel: Papierkorb nicht verborgen');
   const figs = fs.readFileSync(path.join(PUB, 'js', '06-minifigs.js'), 'utf8');
-  assert.match(figs, /aria-label="\$\{esc\(t\('figs\.delete'\)\)\}"/,
-    'Minifiguren-Knopf ohne aria-label');
+  assert.match(figs, /<span class="delbtn" data-click="deleteManualFigStop" aria-hidden="true"[^>]*title=/,
+    'Minifiguren-Kachel: Papierkorb nicht verborgen');
 
   // Einheitliches Muster über alle drei Tabellen: .ca als Hover-Behälter mit
   // .delbtn darin. Vorher war der Minifiguren-Knopf ein "btn bd" mit eigenem
@@ -350,7 +352,7 @@ test('Löschknöpfe auf Kacheln tragen einen Papierkorb, kein ✕', () => {
   // werden analog den Kacheln bei den Sets. Dies aber nur in der webapp."
   for (const [file, expected] of [['02-gallery.js', 1], ['06-minifigs.js', 3]]) {
     const src = fs.readFileSync(path.join(PUB, 'js', file), 'utf8');
-    const n = (src.match(/<div class="ca"><button class="delbtn"/g) || []).length;
+    const n = (src.match(/<div class="ca"><(?:button|span) class="delbtn"/g) || []).length;
     assert.equal(n, expected, `${file}: ${n} statt ${expected} Kachel-Löschknöpfe im .ca/.delbtn-Muster`);
   }
 

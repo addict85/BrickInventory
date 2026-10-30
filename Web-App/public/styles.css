@@ -5,6 +5,7 @@
          nichts mehr, deshalb ist die kleinste Stufe 12. Abstände: 4er-Raster. */
       --fs-0:.75rem;--fs-1:.75rem;--fs-2:.8125rem;--fs-3:.875rem;--fs-4:1rem;
       --fs-5:1.25rem;--fs-6:1.5rem;--fs-7:2rem;--fs-8:2.5rem;
+      --farbpunkt-rand:rgba(0,0,0,.28);
       --sp-1:4px;--sp-2:8px;--sp-3:12px;--sp-4:16px;--sp-5:24px;--sp-6:32px;
       /* Die gemeinsame Palette und die Diagrammfarben stehen in
          /tokens.css — erzeugt aus shared/design-tokens.json, damit die
@@ -84,6 +85,10 @@
     .logo .icon{width:30px;height:30px;background:var(--b600);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:15px}
     .logo .marke{font-size:var(--fs-4);font-weight:800}
     .logo .marke span{color:var(--b600)}
+    /* Seiten hinter dem Menü haben keinen Reiter; ihr Name steht deshalb im Kopf. */
+    .kopf-sicht{font-size:var(--fs-3);font-weight:600;color:inherit;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+    .kopf-sicht::before{content:"›" / "";margin-right:9px}
+    .kopf-sicht[hidden]{display:none}
     /* Sprunglink: erst sichtbar, wenn er den Fokus hat. */
     .sprunglink{position:absolute;left:8px;top:-60px;z-index:10000;background:var(--sur);color:var(--txt);border:2px solid var(--b600);border-radius:8px;padding:10px 16px;font-weight:700;text-decoration:none}
     .sprunglink:focus{top:8px}
@@ -234,6 +239,16 @@
     /* Handlungen über der Sammlung — das Formular dazu steht im Dialog */
     .erfassen-leiste{display:flex;gap:var(--sp-2);flex-wrap:wrap;align-items:center;margin-bottom:var(--sp-5)}
     .erfassen-leiste .btn{display:inline-flex;align-items:center;gap:6px}
+    /* Importwege als ein Menü: neben der Hauptaktion steht nur ein Nebenknopf. */
+    .import-menue{position:relative}
+    .import-menue > summary{list-style:none;min-height:40px}
+    .import-menue > summary::-webkit-details-marker{display:none}
+    .import-menue .import-pfeil{transition:transform .15s}
+    .import-menue[open] .import-pfeil{transform:rotate(180deg)}
+    .import-klappe{position:absolute;top:calc(100% + 4px);left:0;z-index:60;min-width:17rem;background:var(--sur);color:var(--txt);border:1px solid var(--bdr);border-radius:var(--rad);box-shadow:var(--sh2);padding:6px}
+    .import-eintrag{display:flex;align-items:center;gap:10px;min-height:44px;padding:8px 12px;border-radius:8px;color:var(--txt);text-decoration:none;font-size:var(--fs-3);font-weight:500}
+    .import-eintrag:hover{background:var(--bg)}
+    .import-eintrag .ico,.import-eintrag svg{width:18px;height:18px;flex:0 0 auto}
 
     /* Umschalter der Sammlung: Sets | Teile | Minifiguren */
     .sammlung-wahl{display:inline-flex;gap:2px;padding:3px;background:var(--s100);border:1px solid var(--bdr);border-radius:10px}
@@ -317,7 +332,7 @@
        Pixel hoeher als die beiden Auswahlfelder daneben (gemessen). */
     select.alarm-feld,input.alarm-feld{width:auto;padding:3px 8px;font-size:var(--fs-2);border:1px solid var(--bdr);border-radius:6px;background:var(--sur);color:var(--txt)}
     input.alarm-feld[type=number]{width:84px;text-align:right}
-    input[type=file]{background:var(--b50);border:2px dashed var(--b200);color:var(--mut);padding:14px;border-radius:8px;width:100%;cursor:pointer;font-size:var(--fs-3)}
+    input[type=file]{background:var(--b50);border:2px dashed var(--b200);color:var(--txt);padding:14px;border-radius:8px;width:100%;cursor:pointer;font-size:var(--fs-3)}
     input[type=file]:hover{border-color:var(--b400)}
 
     .btn{padding:var(--sp-2) var(--sp-4);border-radius:8px;font-family:var(--font);font-weight:600;font-size:var(--fs-3);cursor:pointer;border:none;transition:all .15s;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
@@ -388,13 +403,18 @@
        sie auf dunklem Grund geschwärzt. */
     [data-dunkel] .sci,[data-theme="werkbank"] .sci{background:#2b3139}
     [data-dunkel] .sci img,[data-theme="werkbank"] .sci img{filter:brightness(.75);border-radius:6px;padding:10px}
-    [data-dunkel]{color-scheme:dark}
+    /* Platzhalter in der Grauschrift des Designs: Das Browsergrau hielt im Dunkeln keine 4,5:1. */
+    ::placeholder{color:var(--mut);opacity:1}
+    [data-dunkel]{color-scheme:dark;--farbpunkt-rand:rgba(255,255,255,.55)}
     .sci .ni{font-size:var(--fs-8)}
     .scb{padding:11px}
     /* [hidden] muss display:flex schlagen — die Preis-Zeile ist jetzt immer im
        Markup (stabiler Anker für updateGalleryPrices) und nur leer ausgeblendet. */
     .price-badge[hidden]{display:none}
-    .price-badge{display:flex;align-items:center;justify-content:space-between;margin-top:.35rem;padding:.2rem .4rem;background:var(--s50);border-radius:5px;font-size:var(--fs-1)}
+    .price-badge{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-top:.35rem;padding:.2rem .4rem;background:var(--s50);border-radius:5px;font-size:var(--fs-1)}
+    .pnl-geschenk{color:var(--txt);font-weight:600}
+    /* Bezugslinie und Achsenbruch nehmen dem Fadenkreuz keine Zeigerereignisse weg. */
+    .einstand-linie,.achsenbruch{pointer-events:none}
     .pnl-pos{color:var(--gewinn,var(--g700));font-weight:700}.pnl-neg{color:var(--r700);font-weight:700}.pnl-neu{color:var(--mut)}
     .sparkline-wrap{width:100%;overflow:hidden;margin:.5rem 0}
     .chart-wrap{width:100%;overflow-x:auto}
@@ -406,7 +426,10 @@
     .period-btn.active{background:var(--b600);color:var(--auf-primaer,#fff);border-color:var(--b600)}
     .snum{font-family:var(--mono);font-size:var(--fs-1);color:var(--b600);font-weight:500;margin-bottom:2px}
     .sname{font-size:var(--fs-2);font-weight:600;line-height:1.3;margin-bottom:6px}
-    .smeta{display:flex;justify-content:space-between;align-items:center;font-size:var(--fs-1);color:var(--mut)}
+    .smeta{display:flex;justify-content:space-between;align-items:center;gap:6px;font-size:var(--fs-1);color:var(--mut)}
+    /* Lange Themennamen enden mit „…“; der volle Name steht im title. */
+    .smeta-text{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .smeta > div{flex:0 0 auto}
     .qbadge{background:var(--b100);color:var(--b700);font-weight:700;font-size:var(--fs-0);padding:2px 7px;border-radius:999px}
     .ibadge{background:var(--g100);color:var(--g700);font-weight:600;font-size:var(--fs-0);padding:2px 5px;border-radius:999px}
     .pbadge{background:var(--p100);color:var(--p600);font-weight:600;font-size:var(--fs-0);padding:2px 5px;border-radius:999px}
@@ -432,6 +455,8 @@
     /* Papierkorb statt ✕: Das Symbol erbt die Farbe über currentColor und
        richtet sich nach der Schriftgrösse des Knopfes. */
     .delbtn svg{width:14px;height:14px}
+    .acq-loeschen{background:none;border:none;cursor:pointer;color:var(--r700);min-width:32px;min-height:32px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center}
+    .acq-loeschen:hover{background:var(--r100)}
 
     /* DATA TABLE */
     .tw{overflow-x:auto}
@@ -481,7 +506,13 @@
     /* Ein Bereich mit eigener Überschrift, z. B. die manuell erfassten Teile. */
     .bereich-karte{background:var(--sur);border:1px solid var(--bdr);border-radius:var(--rad);padding:1.25rem;margin-bottom:1.25rem;box-shadow:var(--sh0)}
     .bereich-titel{font-size:var(--fs-1);font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--mut);margin-bottom:.75rem}
-    .color-dot{width:14px;height:14px;border-radius:50%;border:1px solid rgba(0,0,0,.12);flex-shrink:0}
+    /* Rand aus einem Token: Ein schwarzer Punkt auf dunklem Grund braucht einen hellen Ring. */
+    .color-dot{width:14px;height:14px;border-radius:50%;border:1px solid var(--farbpunkt-rand);flex-shrink:0}
+    /* Kennzahlen: in jedem Design dieselbe Reihe Kacheln über dem Inhalt. */
+    .brick-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin:0 0 var(--sp-5)}
+    .bstat{background:var(--sur);border:1px solid var(--bdr);border-radius:var(--rad);padding:12px 16px;box-shadow:var(--sh0);min-width:0}
+    .bstat .bstat-l{font-size:var(--fs-1);font-weight:600;color:var(--mut);text-transform:uppercase;letter-spacing:.4px}
+    .bstat .bstat-v{font-variant-numeric:tabular-nums;font-size:var(--fs-6);font-weight:700;line-height:1.2;margin-top:2px;color:var(--txt)}
     .parts-stats-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:.75rem;margin-bottom:1.25rem}
     .pstat{background:var(--sur);border:1px solid var(--bdr);border-radius:8px;padding:.85rem 1rem;text-align:center;box-shadow:var(--sh0)}
     .pstat .v{font-variant-numeric:tabular-nums;font-size:var(--fs-5);font-weight:600;color:var(--preis,var(--b600))}
@@ -523,7 +554,7 @@
     .man-tile-num{font-family:var(--mono);font-size:var(--fs-0);color:var(--b600);text-align:center}
     .man-tile-name{font-size:var(--fs-2);font-weight:600;line-height:1.3;margin:2px 0 6px;text-align:center;min-height:2.1em}
     .man-tile-color{display:flex;align-items:center;justify-content:center;gap:5px;font-size:var(--fs-1);color:var(--mut);margin-bottom:6px}
-    .man-tile-swatch{width:12px;height:12px;border-radius:50%;border:1px solid var(--bdr);display:inline-block;flex-shrink:0}
+    .man-tile-swatch{width:12px;height:12px;border-radius:50%;border:1px solid var(--farbpunkt-rand);display:inline-block;flex-shrink:0}
     .man-tile-row{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:5px;font-size:var(--fs-1)}
     .man-tile-row label{color:var(--mut)}
     .man-tile-row input{width:64px;text-align:right;border:1px solid var(--bdr);border-radius:6px;padding:2px 6px;font-size:var(--fs-1);font-weight:600;background:var(--sur);color:var(--txt)}
@@ -544,7 +575,7 @@
     .stit{font-size:var(--fs-3);font-weight:700;color:var(--txt);display:flex;align-items:center;gap:6px;margin-bottom:1rem;padding-bottom:.75rem;border-bottom:1px solid var(--bdr)}
     .sform{display:flex;flex-direction:column;gap:13px}
     .ibox{background:var(--b50);border:1px solid var(--b200);border-radius:8px;padding:11px 13px;font-size:var(--fs-2);color:var(--b700);line-height:1.7}
-    .ibox a{color:var(--b600);font-weight:600}
+    .ibox a{color:var(--b700);font-weight:600;text-decoration:underline}
     .ibox code{background:var(--b100);padding:1px 5px;border-radius:4px;font-family:var(--mono);font-size:var(--fs-1)}
     .ao{font-size:var(--fs-1);color:var(--a500);display:flex;align-items:center;gap:3px}
 
@@ -642,6 +673,7 @@
     #toasts{position:fixed;bottom:1.25rem;right:1.25rem;display:flex;flex-direction:column;gap:7px;z-index:9999}
     .toast{background:var(--sur);border:1px solid var(--bdr);border-radius:10px;padding:11px 15px;font-size:var(--fs-3);min-width:240px;max-width:360px;display:flex;align-items:center;gap:9px;box-shadow:var(--sh2);animation:tIn .25s ease}
     .toast{cursor:default}
+    .toast-anzahl{margin-left:auto;font-weight:700;font-variant-numeric:tabular-nums;color:var(--mut)}
     .toast.success{border-left:3px solid var(--g500)}
     .toast.error{border-left:3px solid var(--r500)}
     .toast.info{border-left:3px solid var(--b500)}
@@ -982,6 +1014,9 @@ input.suchfeld{width:220px}
 .hinweis-absatz{font-size:var(--fs-2);color:var(--mut);margin:0 0 .5rem 0}
 .etikett-titel{font-size:var(--fs-1);font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--mut);margin-bottom:.35rem}
 .trenner-oben{border-top:1px solid var(--bdr);padding-top:1.1rem}
+/* Karten untereinander stossen nicht aneinander. */
+.tab > .ssec + .ssec{margin-top:var(--sp-4)}
+#tab-daten .ssec{max-width:52rem}
 .trenner-oben-13{border-top:1px solid var(--bdr);padding-top:13px}
 .login-unterzeile{font-weight:600;margin-bottom:1rem;color:var(--s600);text-align:center}
 .login-fuss{text-align:center;margin-top:.85rem;font-size:var(--fs-2)}
@@ -1041,13 +1076,14 @@ a.btn:hover{text-decoration:none}
 .mk-etikett{display:inline-flex;align-items:center;gap:4px;background:var(--bg);border:1px solid var(--bdr);border-radius:999px;padding:1px 8px;font-size:var(--fs-1)}
 .mk-etikett-ok{background:var(--ok-bg,var(--bg))}
 
-/* ── Teile: die Farbe als Etikett vor ihren Teilen ──────────────────────────
-   Als Kachel mit Rahmen sah die Farbe aus wie eine leere Karte. Jetzt ein
-   Etikett oben in der Zelle: Farbpunkt, Name (bricht um), Anzahl der Sorten. */
-.parts-list .group-hd{align-self:start;flex-direction:row;flex-wrap:wrap;align-items:center;gap:4px 8px;
-  padding:.5rem .65rem;border:0;border-left:4px solid var(--s300);border-radius:8px;background:var(--s100)}
-.parts-list .group-title{flex:1 1 0;min-width:0;overflow-wrap:anywhere;hyphens:auto;line-height:1.25}
-.parts-list .group-sub{flex-basis:100%}
+/* ── Teile: die Farbe als Zwischenüberschrift über die ganze Breite ─────────
+   Als Kachel im Raster las sie sich wie ein Teil; als Zeile beginnt sie
+   sichtbar eine Gruppe. Der Farbname wird nie getrennt. */
+.parts-list .group-hd{grid-column:1/-1;flex-direction:row;align-items:center;justify-content:flex-start;gap:10px;
+  margin:.5rem 0 0;padding:.45rem .75rem;border:0;border-left:4px solid var(--s300);border-radius:8px;background:var(--s100)}
+.parts-list .parts-group:first-child .group-hd{margin-top:0}
+.parts-list .group-title{font-weight:700;white-space:nowrap;hyphens:manual;overflow-wrap:normal}
+.parts-list .group-sub{color:var(--s600);font-size:var(--fs-2)}
 .color-dot.gross{width:18px;height:18px}
 
 
@@ -1085,7 +1121,9 @@ a.btn:hover{text-decoration:none}
 .chip-reihe{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:.75rem}
 .rechts-buendig{margin-left:auto}
 .text-gefahr{color:var(--r700)}
-.gefahrenzone{border:1px solid var(--r200);border-radius:var(--rad);padding:1rem;background:var(--r50,#fff5f5)}
+/* Grund und Rand aus den Rot-Tokens, die jedes Design hell und dunkel führt. */
+.gefahrenzone{border:1px solid var(--r500);border-radius:var(--rad);padding:1rem;background:color-mix(in srgb,var(--r100) 40%,var(--sur))}
+.gefahrenzone .text-mittel{color:var(--txt)}
 .dialog-fuss{display:flex;gap:.5rem;justify-content:flex-end;margin-top:1rem}
 .knopf-reihe-mitte{text-align:center;margin-top:1rem;display:flex;gap:.5rem;justify-content:center}
 .dialog-schmal-mitte{max-width:400px;padding:2rem;text-align:center}

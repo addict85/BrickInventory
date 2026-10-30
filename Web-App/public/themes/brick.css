@@ -26,6 +26,10 @@
   --bg:#c9d5e2;                 /* Seitenhintergrund hinter der Grundplatte */
   --screen-bg:#c9d5e2;          /* Login-/Startup-Screen (vor dem Login) */
   --rad:14px;
+  /* Die Grundplatte (#e6ecf2) ist dunkler als Weiss; Grau- und Gewinnschrift
+     darauf brauchen dunklere Töne, um 4,5:1 zu halten. */
+  --mut:#52606f;
+  --gewinn:#136c35;
   --sh0:0 1px 2px rgba(45,71,99,.10);
   --sh1:0 3px 10px rgba(45,71,99,.12);
   --sh2:0 8px 24px rgba(45,71,99,.16);
@@ -85,13 +89,6 @@
   background:#7fa3c9;border-radius:9px;padding:6px;box-sizing:content-box;
   filter:hue-rotate(200deg) saturate(.55) brightness(1.05);
 }
-/* Kopf-Statistik rechts als dezente helle Chips */
-[data-theme="brick"] header .hstats .hs .v{color:#fff}
-[data-theme="brick"] header .hstats .hs .l{color:rgba(255,255,255,.72)}
-[data-theme="brick"] header .hstats .hs{border-color:rgba(255,255,255,.18)}
-/* Kopf-Statistik im Stein-Design ausblenden — die Werte stehen bereits in den
-   großen Stat-Kacheln unter der Navigation. */
-[data-theme="brick"] header .hstats{display:none}
 [data-theme="brick"] header .ubadge{background:rgba(255,255,255,.16);color:#fff}
 [data-theme="brick"] header .abadge{background:var(--brick-petrol);color:#fff}
 /* ── Hier stand eine Regel fuer #btn-logout, und sie war der Fehler ────────
@@ -245,24 +242,19 @@
 [data-theme="brick"] .qbadge{background:var(--b600);color:var(--auf-primaer,#fff);border-radius:7px}
 /* Zustands-Plaketten: Neu = Salbeigrün, Gebraucht = Sand (wie im Mockup) */
 [data-theme="brick"] .cond-new{background:#e2eaf3;color:#3d6a8f}
-[data-theme="brick"] .cond-used{background:#eee7db;color:#9a7a45}
+[data-theme="brick"] .cond-used{background:#eee7db;color:#7a5c2a}
 
-/* ── Große Stat-Kacheln in der Galerie (nur im Stein-Design sichtbar) ─────── */
-.brick-stats{display:none}
-[data-theme="brick"] .brick-stats{
-  display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:0 0 16px;
-}
+/* ── Kennzahlen-Kacheln: im Stein-Design farbig ──────────────────────────── */
 [data-theme="brick"] .bstat{
-  position:relative;border-radius:14px;padding:14px 16px;color:#fff;
+  position:relative;border:0;border-radius:14px;padding:14px 16px;color:#fff;
 }
-[data-theme="brick"] .bstat .bstat-l{font-size:.82rem;opacity:.86}
-[data-theme="brick"] .bstat .bstat-v{font-size:1.7rem;font-weight:800;margin-top:2px;line-height:1.1}
+[data-theme="brick"] .bstat .bstat-l{font-size:.82rem;color:inherit;text-transform:none;letter-spacing:0}
+[data-theme="brick"] .bstat .bstat-v{font-size:1.7rem;font-weight:800;margin-top:2px;line-height:1.1;color:inherit}
 [data-theme="brick"] .bstat-slate{background:var(--b600)}
 /* Dunkel ist die Markenfarbe hell; weisse Schrift darauf läge unter 3:1. */
 [data-theme="brick"][data-dunkel] .bstat-slate{color:var(--auf-primaer)}
 [data-theme="brick"] .bstat-petrol{background:var(--brick-petrol)}
 [data-theme="brick"] .bstat-light{background:var(--brick-slate-lt);color:#20303f}
-[data-theme="brick"] .bstat-light .bstat-l{opacity:.9}
 
 /* ── Katalog: Von-Bis-Jahres-Slider im Stein-Look ────────────────────────── */
 /* Schiene wie die Grundplatten-Ränder, Füllung in Slate-Blau */

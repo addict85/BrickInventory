@@ -72,7 +72,7 @@ test('kein Text steht in beiden Sprachen unübersetzt', () => {
     'catalog.sort.name', 'col.name', 'col.sets', 'currency.eur',
     // „Filter“ heisst in beiden Sprachen so.
     'common.filter',
-    'finance.filter.sets', 'finance.grand.total', 'finance.period.max',
+    'finance.filter.sets', 'finance.period.max',
     'gallery.sort.name', 'header.sets', 'log.auto', 'monitor.api.bricklink',
     'monitor.api.brickset', 'monitor.api.rebrickable',
     'settings.users_admin_badge', 'users.admin_badge', 'users.role.admin',

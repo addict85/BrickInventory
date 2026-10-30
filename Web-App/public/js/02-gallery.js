@@ -1,7 +1,7 @@
 import { skelettKacheln, listeLadefehler } from './01-bausteine.js';
 import { registerActions } from './00-registry.js';
 import { locale, t, tRaw} from '../i18n.js';
-import { fehlerMeldung, fmtDatum, bildTag, fullUrl, platzhalterInhalt, setnummerFeldGueltig, leerZustand, ico, CURRENCY, G, ME, TRASH_ICON_SVG, api, esc, escJs, escUrl, fmtBig, fmtN, fmtPct, imgUrl, observeLazyImages, thumbUrl, toast, zuruecksetzenKnopf } from './01-core.js';
+import { fehlerMeldung, fmtDatum, bildTag, fullUrl, platzhalterInhalt, setnummerFeldGueltig, leerZustand, ico, CURRENCY, G, ME, TRASH_ICON_SVG, api, esc, escJs, escUrl, fmtBig, fmtGeld, fmtN, fmtPct, istGeschenk, imgUrl, observeLazyImages, thumbUrl, toast, zuruecksetzenKnopf } from './01-core.js';
 import { _gibSse, _gibTimer, gibStart, protokollZeile } from './01-fortschritt.js';
 import { _monitorTimer, loadMonitor, set_monitorTimer } from './01-monitor.js';
 import { SCOPE_VIEWS, addScopeParam, scopeMode, scopeQuery, setScopeMode,
@@ -106,6 +106,7 @@ export function bindTabs(){
       t.classList.add('active'); G('tab-'+t.dataset.tab).classList.add('active');
       const tab = t.dataset.tab;
       markiereGruppe(tab);
+      zeigeSeitenname(G('tab-'+tab), unter);
       syncTabTitleIcon(tab);
       // Das Jahres-Etikett am Scrollbalken gehört NUR in den Katalog. Ohne
       // dieses Abmelden lieferte die dort angemeldete Funktion weiterhin ein
@@ -185,6 +186,8 @@ export function oeffneSicht(name){
   document.querySelectorAll('.ntab').forEach(x=>x.classList.remove('active'));
   document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
   flaeche.classList.add('active');
+  markiereGruppe(null);
+  zeigeSeitenname(flaeche, true);
   menueSchliessen();
   // Die Sichten liegen im Kontomenü, nicht in der Leiste: Dann zeigt der
   // Menüknopf, wo man ist — sonst wäre kein Reiter als aktiv markiert.
@@ -194,6 +197,17 @@ export function oeffneSicht(name){
   // gerollt war, und man sieht die Mitte einer fremden Seite.
   window.scrollTo({ top: 0, behavior: 'smooth' });
   SICHTEN[name]();
+}
+
+/**
+ * Seitenname im Fenstertitel und, für Seiten hinter dem Menü, im Kopf: Dort
+ * markiert kein Reiter die offene Seite, sonst wüsste man nur am Inhalt, wo man ist.
+ */
+function zeigeSeitenname(flaeche, imKopf){
+  const titel = flaeche?.querySelector('.ptitle')?.textContent.trim() || '';
+  const kopf = G('kopf-sicht');
+  if (kopf) { kopf.textContent = imKopf ? titel : ''; kopf.hidden = !(imKopf && titel); }
+  document.title = titel ? `${titel} – BrickInventory` : 'BrickInventory Manager';
 }
 
 function menueSchliessen(){
@@ -223,7 +237,27 @@ document.addEventListener('click', (ev) => {
   menueSchliessen();
 });
 document.addEventListener('keydown', (ev) => {
-  if(ev.key === 'Escape') menueSchliessen();
+  if(ev.key === 'Escape') { menueSchliessen(); importMenuesSchliessen(null, true); }
+});
+
+/** Offene Import-Menüs schliessen, ausser dem, in dem `ausser` liegt. */
+function importMenuesSchliessen(ausser, fokusZurueck = false){
+  /** @type {NodeListOf<HTMLDetailsElement>} */ (document.querySelectorAll('details.import-menue[open]')).forEach(d => {
+    if (ausser && d.contains(ausser)) return;
+    d.open = false;
+    if (fokusZurueck && d.contains(document.activeElement)) d.querySelector('summary')?.focus();
+  });
+}
+// Ein Klick daneben schliesst das Menü; eine Wahl darin (Datei, Vorlage) ebenso.
+document.addEventListener('click', (ev) => {
+  const ziel = ev.target instanceof Element ? ev.target : null;
+  importMenuesSchliessen(ziel);
+  const d = /** @type {HTMLDetailsElement|null} */ (ziel?.closest('.import-klappe a')?.closest('details') ?? null);
+  if (d) d.open = false;
+});
+document.addEventListener('change', (ev) => {
+  const d = ev.target instanceof Element ? /** @type {HTMLDetailsElement|null} */ (ev.target.closest('details.import-menue')) : null;
+  if (d) d.open = false;
 });
 
 // ── STATS ─────────────────────────────────────────────
@@ -240,14 +274,11 @@ export async function loadStats(){
   // (BrickApiService.getStats).
   const d = await api('GET', '/v1/stats' + scopeQuery('gallery'));
   if (d.success) {
-    G('hs-sets').textContent     = d.stats.total_sets;
-    G('hs-parts').textContent    = fmtBig(d.stats.total_parts    || 0);
-    G('hs-minifigs').textContent = fmtBig(d.stats.total_minifigs || 0);
-    G('hs-instr').textContent    = d.stats.total_instructions;
-    // Werte in die großen Stein-Stat-Kacheln der Galerie spiegeln (nur im
-    // Stein-Design sichtbar, sonst per CSS ausgeblendet).
-    const _mir = (from, to) => { const s = G(from), t2 = G(to); if (s && t2) t2.textContent = s.textContent; };
-    _mir('hs-sets', 'bstat-sets'); _mir('hs-parts', 'bstat-parts'); _mir('hs-minifigs', 'bstat-minifigs');
+    // Die Kennzahlen stehen in jedem Design als Kacheln über der Sammlung.
+    G('bstat-sets').textContent     = d.stats.total_sets;
+    G('bstat-parts').textContent    = fmtBig(d.stats.total_parts    || 0);
+    G('bstat-minifigs').textContent = fmtBig(d.stats.total_minifigs || 0);
+    G('bstat-instr').textContent    = d.stats.total_instructions;
   }
 }
 
@@ -900,15 +931,20 @@ export function updateGalleryPrices(){
   document.querySelectorAll('[data-price-for]').forEach(el => {
     const s = bySet.get(el.dataset.priceFor);
     if (!s) return;
-    const priceStr = s._price ? fmtN(s._price, CURRENCY)
-                              : (s.max_purchase_price != null ? fmtN(s.max_purchase_price, CURRENCY) : '');
-    const pnl = pnlBadge(s._pnl_pct);
+    const kauf = s.avg_purchase_price ?? s.max_purchase_price;
+    const priceStr = s._price ? fmtN(s._price, CURRENCY) : (kauf != null ? fmtGeld(kauf, CURRENCY) : '');
+    const pnl = pnlBadge(s._pnl_pct, kauf);
     el.innerHTML = `<span class="preis">${priceStr}</span>${pnl}`;
     el.hidden = !(priceStr || pnl);
   });
 }
 
-export function pnlBadge(pct){
+/**
+ * G&V-Plakette. Bei Kaufpreis 0 „Geschenk“ statt einer Prozentzahl: Gegen 0
+ * gerechnet stünde dort „+327.600 %“, und das sagt nichts.
+ */
+export function pnlBadge(pct, kauf){
+  if(istGeschenk(kauf)) return `<span class="pnl-geschenk">${t('finance.gift')}</span>`;
   if(pct===null||pct===undefined) return '';
   const v=parseFloat(pct); const cls=v>0?'pnl-pos':v<0?'pnl-neg':'pnl-neu';
   return `<span class="${cls}">${fmtPct(v)}</span>`;
@@ -976,22 +1012,23 @@ function gridCard(s){
   // hier max_purchase_price — bei 2x100 und 1x160 zeigte die Kachel 160 statt
   // der tatsächlichen 120.
   const fallbackPurchase = s.avg_purchase_price ?? s.max_purchase_price;
-  const priceStr = s._price ? fmtN(s._price, CURRENCY) : (fallbackPurchase!=null ? fmtN(fallbackPurchase, CURRENCY) : '');
-  const pnl = pnlBadge(s._pnl_pct);
+  const priceStr = s._price ? fmtN(s._price, CURRENCY) : (fallbackPurchase!=null ? fmtGeld(fallbackPurchase, CURRENCY) : '');
+  const pnl = pnlBadge(s._pnl_pct, fallbackPurchase);
   // Das Datum des letzten Kaufs: Die Aufnahme ins Konto war bei einem Import
   // für alle Sets derselbe Tag und sagte nichts.
   const kaufFmt = s.letzter_kauf ? fmtDatum(s.letzter_kauf) : '';
   // Zustand: Der Server liefert die vorkommenden Zustände als Aggregat —
   // eine Plakette je Zustand, siehe condBadges().
   const condBadge = condBadges(s);
-  return `<div class="sc" tabindex="0" role="button" aria-label="${esc((s.name||'')+' '+s.set_number)}" data-click="openModal" data-arg="${escJs(s.set_number)}">
-    <div class="ca"><button class="delbtn" data-click="delSetStop" tabindex="-1" aria-hidden="true" data-arg="${esc(s.set_number)}" title="${esc(t('detail.delete'))}" aria-label="${esc(t('detail.delete'))}">${TRASH_ICON_SVG}</button></div>
+  // Kein aria-label: Der Name kommt aus dem Inhalt, sonst fehlte dem Vorleser, was sichtbar dasteht.
+  return `<div class="sc" tabindex="0" role="button" data-click="openModal" data-arg="${escJs(s.set_number)}">
+    <div class="ca"><span class="delbtn" data-click="delSetStop" aria-hidden="true" data-arg="${esc(s.set_number)}" title="${esc(t('detail.delete'))}">${TRASH_ICON_SVG}</span></div>
     <div class="sci">${img}</div>
     <div class="scb">
       <div class="snum">${esc(s.set_number)}</div>
       <div class="sname">${esc(s.name)||'Unbekannt'}</div>
       <div class="smeta">
-        <span data-stil="font-size:var(--fs-1)">${s.year||'—'}${s.theme?' · '+esc(s.theme.substring(0,12)):''}</span>
+        <span class="smeta-text"${s.theme ? ` title="${esc(s.theme)}"` : ''}>${s.year||'—'}${s.theme?' · '+esc(s.theme):''}</span>
         <div data-stil="display:flex;gap:3px;align-items:center;flex-wrap:wrap">
           ${s.instructions?.length?`<span class="ibadge">${ico('liste')}${s.instructions.length}</span>`:''}
           ${s.quantity>1?`<span class="qbadge">×${s.quantity}</span>`:''}
