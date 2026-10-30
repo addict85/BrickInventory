@@ -69,7 +69,6 @@ test('Löschen im Haushalt: vorwärts erlaubt, rückwärts nicht',
       req.apiUser = { user_id: userId, is_admin: 0 };
       next();
     });
-    app.use('/api/sets', _req('routes/sets.js'));
     app.use('/api/v1', _req('routes/api_v1/index.js'));
     return app;
   };

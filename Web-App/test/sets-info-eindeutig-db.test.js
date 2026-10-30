@@ -41,7 +41,7 @@ test('der Namensabruf unter /api/v1/sets ist eindeutig', { concurrency: 1 }, asy
   const { base } = testServer(_req, {
     sitzung: { userId: uid, username: NAME, isAdmin: false },
     apiNutzer: { user_id: uid, is_admin: 0 },
-    routen: { '/api/v1': 'routes/api_v1/index.js', '/api/v1/sets': 'routes/sets.js' }, t });
+    routen: { '/api/v1': 'routes/api_v1/index.js' }, t });
 
   try {
     await t.test('eine gewöhnliche Nummer', async () => {

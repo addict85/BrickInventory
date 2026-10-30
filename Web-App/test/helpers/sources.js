@@ -283,7 +283,8 @@ function adminQuelle() {
 module.exports.adminQuelle = adminQuelle;
 
 /**
- * Der Set-Kern: routes/sets.ts samt dem, was daraus ausgelagert wurde.
+ * Der Set-Kern: die Set-Routen samt dem, was daraus ausgelagert wurde
+ * (routes/sets.ts ging in routes/api_v1/sets.ts und utils/dienste/sets.ts auf).
  *
  * ── Warum ein Helfer (Nachtrag 131) ─────────────────────────────────────────
  *
@@ -300,7 +301,8 @@ function setKernQuelle() {
   const path = require('path'), fs = require('fs');
   const ROOT = path.join(__dirname, '..', '..');
   return [
-    ['routes', 'sets.ts'],
+    ['routes', 'api_v1', 'sets.ts'],
+    ['utils', 'dienste', 'sets.ts'],
     ['utils', 'setService.ts'],
     ['utils', 'partsImport.ts'],
     ['utils', 'minifigsImport.ts'],
@@ -755,8 +757,27 @@ function v1Routen() {
   };
   for (const f of fs.readdirSync(path.join(ROOT, 'routes', 'api_v1')).filter(f => f.endsWith('.ts')))
     lies(`routes/api_v1/${f}`, '/api/v1');
-  for (const f of ['sets', 'parts', 'settings', 'minifigs', 'auth']) lies(`routes/${f}.ts`, `/api/v1/${f}`);
+  for (const f of ['settings', 'auth']) lies(`routes/${f}.ts`, `/api/v1/${f}`);
   lies('server.ts', '');
   return gefunden.filter(([, p]) => p.startsWith('/api/v1'));
 }
 module.exports.v1Routen = v1Routen;
+
+/**
+ * Alle TypeScript-Quellen des Servers (relativ zu ROOT), ohne Tests, Skripte
+ * und Erzeugnisse — für Prüfungen, die eine Eigenschaft überall verlangen,
+ * statt eine Dateiliste zu führen, die beim nächsten Umzug veraltet.
+ */
+function alleQuellen() {
+  const raus = [];
+  const lauf = (rel) => {
+    for (const e of fs.readdirSync(path.join(ROOT, rel), { withFileTypes: true })) {
+      const kind = rel ? path.posix.join(rel, e.name) : e.name;
+      if (e.isDirectory()) { if (!['node_modules', 'dist', 'test', 'scripts', 'public', 'docs', '.git'].includes(e.name)) lauf(kind); }
+      else if (e.name.endsWith('.ts') && !e.name.endsWith('.d.ts')) raus.push(kind);
+    }
+  };
+  lauf('');
+  return raus;
+}
+module.exports.alleQuellen = alleQuellen;

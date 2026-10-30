@@ -45,7 +45,7 @@ test('ein frischer Cache-Eintrag ersetzt die Neuberechnung', async (t) => {
     t.skip('Test-DB nicht erreichbar'); return;
   }
 
-  const mf = _req('routes/minifigs.js');
+  const mf = _req('utils/marketPrice.js');
   const u = await neuerNutzer(db);
   const fig = 'fig-cache-test-01';
 
@@ -80,7 +80,7 @@ test('ein veralteter Eintrag wird übergangen', async (t) => {
     t.skip('Test-DB nicht erreichbar'); return;
   }
 
-  const mf = _req('routes/minifigs.js');
+  const mf = _req('utils/marketPrice.js');
   const u = await neuerNutzer(db);
   const fig = 'fig-cache-test-02';
 

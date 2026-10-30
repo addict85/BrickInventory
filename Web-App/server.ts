@@ -514,10 +514,7 @@ app.get('/api/v1/health', async (req, res) => {
 // Ausführlich: docs/begruendungen/server.ts.md#abschnitt-7
 app.use('/api/v1',          (require('./routes/api_v1/middleware') as typeof import('./routes/api_v1/middleware')).anmeldungAmEingang);
 app.use('/api/v1',          require('./routes/api_v1/index') as typeof import('./routes/api_v1/index'));
-app.use('/api/v1/sets',     require('./routes/sets') as typeof import('./routes/sets'));
-app.use('/api/v1/parts',    require('./routes/parts') as typeof import('./routes/parts'));
 app.use('/api/v1/settings', require('./routes/settings') as typeof import('./routes/settings'));
-app.use('/api/v1/minifigs', require('./routes/minifigs') as typeof import('./routes/minifigs'));
 app.use('/api/v1/auth',     require('./routes/auth') as typeof import('./routes/auth'));
 
 // ── E-Mail Bestätigung: /verify?token=... ─────────────────────────────────────

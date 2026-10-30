@@ -137,9 +137,11 @@ test('Fehler werden gezählt und protokolliert', () => {
 });
 
 test('die Diagnose-Endpunkte sind vorhanden', () => {
-  const admin = fs.readFileSync(path.join(ROOT, 'routes', 'api_v1', 'admin.ts'), 'utf8');
-  assert.match(admin, /router\.get\('\/admin\/img-probe', requireApiAdmin/, 'img-probe fehlt');
-  assert.match(admin, /router\.get\('\/admin\/price-probe', requireApiAdmin/, 'price-probe fehlt');
+  const route = fs.readFileSync(path.join(ROOT, 'routes', 'api_v1', 'admin.ts'), 'utf8');
+  assert.match(route, /router\.get\('\/admin\/img-probe', requireApiAdmin/, 'img-probe fehlt');
+  assert.match(route, /router\.get\('\/admin\/price-probe', requireApiAdmin/, 'price-probe fehlt');
+  // Die Abrufe selbst stehen im Dienst der Verwaltung (Routen rufen nicht ins Netz).
+  const admin = fs.readFileSync(path.join(ROOT, 'utils', 'dienste', 'verwaltung.ts'), 'utf8');
   assert.match(admin, /content_encoding: r\.headers\['content-encoding'\]/,
     'Die Probe muss zeigen, ob das CDN komprimiert liefert');
   assert.match(admin, /proxy_failures: failures/, 'Die Zähler gehören in die Antwort');
@@ -159,7 +161,7 @@ test('die Probe zeigt, WAS ausgeliefert wird', () => {
   // Server meldet 200, CDN meldet 200, nichts im Log — und der Browser zeigt
   // trotzdem nichts. Der einzige Blickwinkel, der fehlte, ist der tatsächliche
   // Inhalt der ersten Bytes.
-  const admin = fs.readFileSync(path.join(ROOT, 'routes', 'api_v1', 'admin.ts'), 'utf8');
+  const admin = fs.readFileSync(path.join(ROOT, 'utils', 'dienste', 'verwaltung.ts'), 'utf8');
   assert.match(admin, /body_check: head/, 'Die Inhaltsprüfung fehlt in der Antwort');
   assert.match(admin, /first_bytes_hex/, 'Die ersten Bytes gehören als Hex in die Antwort');
   for (const sig of ['JPEG', 'PNG', 'gzip (komprimiert!)', 'HTML/XML statt Bild']) {
@@ -248,7 +250,7 @@ test('Minifiguren-Bilder werden lokal abgelegt wie Set-Bilder', () => {
 
   // Und die offene Menge im Monitoring muss sie mitzählen. Die Abfrage steht
   // im Dienst der Verwaltungsrouten; die Route ruft sie für die Kachel auf.
-  const route = fs.readFileSync(path.join(ROOT, 'routes', 'api_v1', 'admin.ts'), 'utf8');
+  const route = fs.readFileSync(path.join(ROOT, 'utils', 'dienste', 'verwaltung.ts'), 'utf8');
   assert.match(route, /verwaltung\.bestandsFigurenbilderOffen\(\)/,
     'Die Job-Übersicht muss die Figurenbilder des Bestands abfragen');
   const admin = fs.readFileSync(path.join(ROOT, 'utils', 'verwaltung.ts'), 'utf8');

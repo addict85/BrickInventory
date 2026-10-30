@@ -164,7 +164,8 @@ test('jeder Router haengt unter /api/v1', () => {
   const einhaengungen = webRouter();
   // Selbstbeweis: Findet das Muster keine Einhaengepunkte, prueft alles
   // darunter nichts und waere trotzdem gruen.
-  assert.ok(einhaengungen.length >= 4,
+  // Zwei: settings und auth. sets, parts und minifigs gingen in den v1-Router auf.
+  assert.ok(einhaengungen.length >= 2,
     `Nur ${einhaengungen.length} Router-Einhaengepunkte in server.ts gefunden — Muster veraltet?`);
 
   const daneben = einhaengungen

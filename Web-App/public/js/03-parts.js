@@ -34,7 +34,7 @@ async function loadPartsStats(){
 }
 
 async function loadPartsFilters(){
-  const [cd,catd]=await Promise.all([api('GET','/v1/parts/colors'+scopeQuery('parts')),api('GET','/v1/parts/categories')]);
+  const [cd,catd]=await Promise.all([api('GET','/v1/parts/colors'+scopeQuery('parts')),api('GET','/v1/parts/categories'+scopeQuery('parts'))]);
   partsColors=cd.colors||[]; partsCats=catd.categories||[];
   zeichneTeileFilter();
 }

@@ -70,7 +70,9 @@ G('btn-test-smtp')?.addEventListener('click', async()=>{
   res.style.display = 'block';
   if(d.success) {
     res.style.background = 'var(--g50)'; res.style.color = 'var(--g700)'; res.style.border = '1px solid var(--g300)';
-    res.textContent = d.mode === 'console' ? t('smtp.console') : (d.message || t('smtp.ok'));
+    // Die Kennung des Mailservers hilft, die Nachricht in dessen Protokoll zu finden.
+    res.textContent = d.mode === 'console' ? t('smtp.console')
+      : [d.message || t('smtp.ok'), d.messageId].filter(Boolean).join(' · ');
   } else {
     res.style.background = 'var(--r100)'; res.style.color = 'var(--r500)'; res.style.border = '1px solid var(--r300)';
     res.textContent = d.error || t('settings.error');

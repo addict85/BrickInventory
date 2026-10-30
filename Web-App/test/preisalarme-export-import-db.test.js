@@ -194,8 +194,7 @@ test('Preisalarme: Rundlauf über die echten Adressen', { concurrency: 1 }, asyn
 
   const srv = testServer(_req, {
     sitzung: { userId: HAUPT }, apiNutzer: { user_id: HAUPT, is_admin: 0 },
-    routen: { '/api/v1': 'routes/api_v1/index.js', '/api/v1/settings': 'routes/settings.js',
-              '/api/v1/sets': 'routes/sets.js' }, t,
+    routen: { '/api/v1': 'routes/api_v1/index.js', '/api/v1/settings': 'routes/settings.js' }, t,
   });
 
   let csvText = '';

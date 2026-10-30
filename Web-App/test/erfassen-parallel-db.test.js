@@ -124,8 +124,8 @@ test('alle Erfassen-Wege nutzen dieselbe Prüfung', () => {
   const path = require('node:path');
   const { ROOT, ohneKommentare } = require('./helpers/sources');
 
-  // Webapp UND Android-API, Sets wie manuelle Einträge — vier Wege, eine Regel.
-  for (const rel of ['routes/sets.ts', 'routes/api_v1/sets.ts', 'utils/manuelleTeile.ts', 'utils/manuelleFiguren.ts']) {
+  // Sets (Webapp und App teilen sich die Routen) wie manuelle Einträge — eine Regel.
+  for (const rel of ['routes/api_v1/sets.ts', 'utils/manuelleTeile.ts', 'utils/manuelleFiguren.ts']) {
     const src = ohneKommentare(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
     assert.match(src, /acquisitionQuantity\(/, `${rel}: Menge ungeprüft`);
     assert.match(src, /optionalPrice\(/,       `${rel}: Preis ungeprüft`);
@@ -188,15 +188,14 @@ test('alle drei Importwege melden übersprungene Zeilen', () => {
   const { ROOT, ohneKommentare } = require('./helpers/sources');
   // ── Zwei Wege zum selben Ziel (Nachtrag 144) ────────────────────────────
   //
-  // routes/sets.ts liest und antwortet selbst; Teile und Minifiguren gehen
-  // seit dem Zusammenlegen über csvZeilenAusAnfrage() und csvImportAntwort()
-  // in utils/csvExport.ts — die tun beides für beide. Geprüft wird deshalb
-  // „einer der beiden Wege", nicht mehr der eine Name.
-  //
-  // Die AUSSAGE bleibt unverändert: Jeder Importweg überspringt krumme Zeilen
-  // und sagt es dem Nutzer.
-  for (const rel of ['routes/sets.ts', 'routes/parts.ts', 'routes/minifigs.ts']) {
-    const src = ohneKommentare(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
+  // Der Set-Import liest selbst und antwortet selbst; Teile und Minifiguren
+  // gehen über csvZeilenAusAnfrage() und csvImportAntwort() in
+  // utils/csvExport.ts. Je Weg zählen Route und Dienst zusammen.
+  for (const [rel, dienst] of [['routes/api_v1/sets.ts', 'utils/dienste/sets.ts'],
+                               ['routes/api_v1/parts.ts', 'utils/manuelleTeile.ts'],
+                               ['routes/api_v1/minifigs.ts', 'utils/manuelleFiguren.ts']]) {
+    const src = ohneKommentare(fs.readFileSync(path.join(ROOT, rel), 'utf8')
+      + '\n' + fs.readFileSync(path.join(ROOT, dienst), 'utf8'));
     assert.match(src, /csvEinlesen\(|csvZeilenAusAnfrage\(/, `${rel}: liest noch selbst`);
     assert.match(src, /skipped_hint|csvImportAntwort\(/,
       `${rel}: sagt dem Nutzer nichts über übersprungene Zeilen`);

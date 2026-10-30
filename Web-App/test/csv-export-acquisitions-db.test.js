@@ -250,7 +250,7 @@ test('Minifiguren-Export: dieselbe Regel, dieselbe eine Abfrage',
 
     let abfragen = 0;
     db.pool.query = (...args) => { abfragen++; return echtesQuery(...args); };
-    const csv = await _req('routes/minifigs.js').buildFigsCsv(uid);
+    const csv = await _req('utils/bestandExport.js').buildFigsCsv(uid);
     db.pool.query = echtesQuery;
 
     const r = zeilen(csv);
@@ -347,7 +347,7 @@ test('Teile-Export: dieselbe Regel, dieselbe eine Abfrage',
 
     let abfragen = 0;
     db.pool.query = (...args) => { abfragen++; return echtesQuery(...args); };
-    const csv = await _req('routes/parts.js').buildPartsCsv(uid);
+    const csv = await _req('utils/bestandExport.js').buildPartsCsv(uid);
     db.pool.query = echtesQuery;
 
     const r = zeilen(csv);

@@ -11,12 +11,9 @@ import * as pgNotify from '../utils/pgNotify';
 // Kein eigener db-Verweis mehr: Der Planer liest und löscht seine Uhrzeiten
 // und den Auslöser ausschliesslich über utils/settings.
 
-// Metadaten der täglichen Jobs. monitorKey = Schlüssel der Job-Karte im Monitoring
-// (damit die UI die passende Uhrzeit dem richtigen Job zuordnen kann).
-const DAILY_JOBS = [
-  { name: 'brickset_retry', monitorKey: 'bricksetRetry', default: '04:00' },
-  { name: 'csv_sync',       monitorKey: 'csvImport',     default: '03:00' },
-];
+// Die Liste steht in utils/jobsteuerung.ts: Verwaltung und Einstellungen
+// brauchen die Namen, ohne den Planer zu laden.
+import { DAILY_JOBS } from '../utils/jobsteuerung';
 
 const _registry: any = {}; // name -> { fn, timer }
 

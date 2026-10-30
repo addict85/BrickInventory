@@ -22,7 +22,7 @@
  * Die Lehre aus Nachtrag 53 lautete, nach zwei Funden derselben Klasse sofort
  * die ganze Familie durchzugehen. Genau das ist hier der Fall.
  *
- * Gegenprobe (durchgeführt): writableIds in routes/sets.ts durch die eigene ID
+ * Gegenprobe (durchgeführt): writableIds in utils/dienste/erfassungen.ts durch die eigene ID
  * ersetzt → „Set-Erfassung löschen" endet wieder in 404.
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL (Migrationen für account_links).
@@ -69,9 +69,6 @@ test('Erfassungen des Unterkontos: ändern und löschen auf allen drei Elementar
     req.apiUser = { user_id: hauptId, is_admin: 0 };
     next();
   });
-  app.use('/api/sets', _req('routes/sets.js'));
-  app.use('/api/parts', _req('routes/parts.js'));
-  app.use('/api/minifigs', _req('routes/minifigs.js'));
   // Die Erfassungs-Routen liegen seit Nachtrag 70 nur noch hier — eine
   // Adresse für Webapp UND App.
   app.use('/api/v1', _req('routes/api_v1/index.js'));

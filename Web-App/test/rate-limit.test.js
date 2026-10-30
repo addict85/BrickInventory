@@ -70,7 +70,7 @@ test('das Tageskontingent zählt für die Installation, nicht je Worker', () => 
     'Keine prozesslokale Instanz mehr für ein Tagesbudget');
 
   // Alle Aufrufstellen gehen über den gemeinsamen Weg.
-  for (const datei of ['clients/rebrickable.ts', 'routes/parts.ts',
+  for (const datei of ['clients/rebrickable.ts', 'utils/partsImport.ts', 'utils/dienste/sets.ts',
                        'jobs/partsCatalogEnrich.ts', 'jobs/backfillBlPartNumbers.ts',
                        'jobs/rebrickableCsvSync.ts']) {
     const src = fs.readFileSync(path.join(ROOT, datei), 'utf8');
@@ -255,11 +255,14 @@ test('Jobs mit externem Kontingent haben eine prozessübergreifende Sperre', () 
   // noch unter /api/v1/admin/trigger-price-job, die Webapp ruft dieselbe
   // Adresse auf. Vorher gab es ihn zweimal — genau die Doppelung, bei der eine
   // Seite das `await` verlieren kann, ohne dass es auffällt.
-  for (const datei of ['routes/api_v1/admin.ts']) {
-    const src = fs.readFileSync(path.join(ROOT, datei), 'utf8');
-    assert.match(src, /await triggerNow\(\)/,
-      `${datei}: ohne await meldet die Route ein Promise als „gestartet"`);
-  }
+  // Die Route erreicht den Job über die Jobsteuerung (Routen importieren
+  // nichts aus jobs/); die Brücke muss das Promise von triggerNow weitergeben.
+  const route = fs.readFileSync(path.join(ROOT, 'routes', 'api_v1', 'admin.ts'), 'utf8');
+  assert.match(route, /await preisJobJetzt\(\)/,
+    'routes/api_v1/admin.ts: ohne await meldet die Route ein Promise als „gestartet"');
+  const bruecke = fs.readFileSync(path.join(ROOT, 'jobs', 'verdrahtung.ts'), 'utf8');
+  assert.match(bruecke, /preisJobJetzt: \(\) => require\('\.\.\/jobs\/priceJob'\)\.triggerNow\(\),/,
+    'jobs/verdrahtung.ts: preisJobJetzt muss das Ergebnis von triggerNow zurückgeben');
 
   // Der Namensraum kommt aus der gemeinsamen Liste.
   //

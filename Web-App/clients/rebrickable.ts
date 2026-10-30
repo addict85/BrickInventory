@@ -6,7 +6,7 @@
 // Kreise, die daraus entstanden, wurden mit späten `require()` umgangen.
 //
 import { rebrickableLimiter, consumeRebrickableDaily, rebrickableDailyStatus, parseThrottleWait } from '../utils/rateLimiter';
-import { istErsatzteil } from '../utils/validate';
+import { istErsatzteil, KEINE_FARBE } from '../utils/validate';
 
 import https from 'https';
 import http from 'http';
@@ -14,7 +14,7 @@ import path from 'path';
 import fs from 'fs';
 import * as db from '../db/database';
 import { rebrickableBackgroundLimiter } from '../utils/rateLimiter';
-import { fehlertext } from '../utils/httpError';
+import { fehlertext, meldeUndLiefere } from '../utils/httpError';
 import { neuestesInventar } from '../utils/rbInventar';
 import { mitVersion } from '../utils/setNummer';
 import { getGlobalSetting } from '../utils/settings';
@@ -47,6 +47,25 @@ export type RbSetTeil = {
  */
 async function getRbKey(): Promise<string | null> {
   return await getGlobalSetting('rebrickable_api_key') || null;
+}
+
+/**
+ * Ein GET gegen die Rebrickable-API mit Tageskontingent und Drossel. Jeder
+ * Fehlschlag (kein Schlüssel, Kontingent, Netz, Status) ist null: Die Aufrufer
+ * suchen dann auf dem nächsten Weg weiter.
+ */
+async function rebrickableJson(pfad: string): Promise<any> {
+  const key = await getRbKey();
+  if (!key) return null;
+  if (!await consumeRebrickableDaily()) {
+    console.log(`[rebrickable] Tageslimit erreicht — ${pfad} übersprungen`);
+    return null;
+  }
+  await rebrickableLimiter.waitForSlot();
+  const r = await httpsGetRobust(`${BASE}${pfad}`, { Authorization: `key ${key}` }, 8000)
+    .catch(meldeUndLiefere(`rebrickable:${pfad}`, null));
+  if (!r || r.status !== 200) return null;
+  try { return JSON.parse(r.body); } catch (e) { return meldeUndLiefere(`rebrickable:${pfad}`, null)(e); }
 }
 
 function httpsGetRobust(url: string, headers: Record<string, string> = {}, timeoutMs = 60000): Promise<{ status: number; body: string; buffer: Buffer }> {
@@ -290,7 +309,7 @@ async function downloadFile(url: string, destPath: string) {
       if (redirects > UMLEITUNGS_GRENZE) return resolve(false);
       let parsed; try { parsed = new URL(u); } catch (_) { return resolve(false); }
       const lib = parsed.protocol === 'https:' ? https : http;
-      const req = lib.get(u, { headers: kopf }, res => {
+      const req = lib.get(u, { family: 4, headers: kopf }, res => {
         if (res.statusCode===301||res.statusCode===302) {
           res.resume();
           // Dieselbe Regel wie in httpsGetRobust — hier zusaetzlich mit der
@@ -454,7 +473,7 @@ async function lookupPart(partNumber: string, colorId?: number | null) {
     // (Der lokale set_parts_catalog-Cache ist meist leer, da er nur Farben
     // enthält, die bereits über ein importiertes Set gesehen wurden.) …
     // Ausführlich: docs/begruendungen/clients/rebrickable.ts.md#lookuppart
-    if (colorId !== null && colorId !== undefined) {
+    if (colorId !== null && colorId !== undefined && colorId !== KEINE_FARBE) {
       try {
         await rebrickableBackgroundLimiter.waitForSlot();
         const colorResp = await httpsGetRobust(
@@ -541,6 +560,6 @@ async function pruefeRebrickableZugang(): Promise<void> {
   await rbGet('/lego/themes/', { page_size: 1 });
 }
 
-export { pruefeRebrickableZugang, lookupPart, getSetInfo, getAllSetParts, downloadFile, scrapeInstructions,
+export { rebrickableJson, pruefeRebrickableZugang, lookupPart, getSetInfo, getAllSetParts, downloadFile, scrapeInstructions,
   getSetMinifigs, getMinifigInfo, getBrickColors, getRbKey, sleep, httpsGetRobust, getMinifigParts,
   blTeilZuRb, blFilterWirkungslos };

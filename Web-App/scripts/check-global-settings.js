@@ -41,19 +41,12 @@ const ERLAUBT = new Map([
  * Wer eine Datei leerraeumt, streicht ihre Zeile.
  *
  * Beim Einfuehren der Pruefung standen hier 22 Dateien mit 92 Fundstellen. Was
- * jetzt noch uebrig ist, ist ueberwiegend KEIN einfacher Schluesselzugriff mehr:
- *   - routes/settings.ts: liest die Tabelle als GANZES fuer den
- *     Konfigurations-Export — das ist kein Zugriff auf einen einzelnen
- *     Schluessel. Die Einstellungsseite stand hier bis zur Zusammenlegung der
- *     API-Oberflaechen ebenfalls; sie liest jetzt ueber readSettings().
- *   - Der Rest sind Erwaehnungen in Kommentaren. Die zaehlt die Pruefung mit,
- *     weil sie nur nach dem Tabellennamen sucht — Absicht: lieber eine Zahl zu
- *     hoch als eine echte Fundstelle uebersehen.
+ * jetzt noch uebrig ist, sind Erwaehnungen in Kommentaren. Die zaehlt die Pruefung mit,
+ * weil sie nur nach dem Tabellennamen sucht — Absicht: lieber eine Zahl zu
+ * hoch als eine echte Fundstelle uebersehen.
  */
 const OFFEN = new Map([
-  ['jobs/priceJob.ts', 1],
   ['routes/api_v1/admin.ts', 1],
-  ['routes/settings.ts', 1],
 ]);
 
 function dateien() {

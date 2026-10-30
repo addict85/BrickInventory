@@ -79,7 +79,7 @@ async function startApi() {
   const app = express();
   app.use(express.json());
   app.use((req, _res, next) => { req.session = { userId: _actingAs }; next(); });
-  app.use('/api/sets', _req('routes/sets.js'));
+  app.use('/api/v1', _req('routes/api_v1/index.js'));
   _srv  = app.listen(0);
   _base = `http://localhost:${_srv.address().port}`;
 }
@@ -113,7 +113,7 @@ test('routes/sets gegen echte Datenbank', async (t) => {
 
   await t.test('das eigene Konto kann seine Anleitung löschen', async () => {
     const id = await anleitung(U.anna, '10001-1', '/data/uploads/1/a_1.pdf');
-    const r = await alsKonto(U.anna, `/api/sets/10001-1/instructions/${id}`, { method: 'DELETE' });
+    const r = await alsKonto(U.anna, `/api/v1/sets/10001-1/instructions/${id}`, { method: 'DELETE' });
     assert.equal(r.status, 200);
     assert.equal(await db.get('SELECT id FROM instructions WHERE id=$1', [id]), undefined,
       'Die Zeile wurde nicht gelöscht');
@@ -127,7 +127,7 @@ test('routes/sets gegen echte Datenbank', async (t) => {
     // Das ist der teuerste Ausfall im ganzen Modul: Er meldet keinen Fehler,
     // er löscht einfach die Daten von jemand anderem.
     const id = await anleitung(U.anna, '10002-1', '/data/uploads/1/b_1.pdf');
-    const r = await alsKonto(U.bruno, `/api/sets/10002-1/instructions/${id}`, { method: 'DELETE' });
+    const r = await alsKonto(U.bruno, `/api/v1/sets/10002-1/instructions/${id}`, { method: 'DELETE' });
     assert.equal(r.status, 404, 'Ein fremdes Konto bekam Zugriff auf die Anleitung');
     assert.ok(await db.get('SELECT id FROM instructions WHERE id=$1', [id]),
       'Die Zeile eines anderen Kontos wurde gelöscht');
@@ -150,7 +150,7 @@ test('routes/sets gegen echte Datenbank', async (t) => {
     const idA = await anleitung(U.anna,  '10003-1', rel);
     await anleitung(U.bruno, '10003-1', rel);
 
-    const r = await alsKonto(U.anna, `/api/sets/10003-1/instructions/${idA}`, { method: 'DELETE' });
+    const r = await alsKonto(U.anna, `/api/v1/sets/10003-1/instructions/${idA}`, { method: 'DELETE' });
     assert.equal(r.status, 200);
     assert.ok(fs.existsSync(abs),
       'Die Datei wurde gelöscht, obwohl das andere Konto noch darauf zeigt');
@@ -166,13 +166,13 @@ test('routes/sets gegen echte Datenbank', async (t) => {
     fs.writeFileSync(abs, 'PDF');
     const id = await anleitung(U.anna, '10004-1', rel);
 
-    await alsKonto(U.anna, `/api/sets/10004-1/instructions/${id}`, { method: 'DELETE' });
+    await alsKonto(U.anna, `/api/v1/sets/10004-1/instructions/${id}`, { method: 'DELETE' });
     assert.equal(fs.existsSync(abs), false, 'Die verwaiste Datei blieb liegen');
     fs.rmSync(path.dirname(abs), { recursive: true, force: true });
   });
 
   await t.test('eine unbekannte Anleitungs-ID meldet 404 statt 500', async () => {
-    const r = await alsKonto(U.anna, '/api/sets/10005-1/instructions/999999', { method: 'DELETE' });
+    const r = await alsKonto(U.anna, '/api/v1/sets/10005-1/instructions/999999', { method: 'DELETE' });
     assert.equal(r.status, 404);
     assert.equal(r.body?.success, false);
   });

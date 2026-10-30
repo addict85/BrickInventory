@@ -93,11 +93,6 @@ function serverRouten() {
       alle.add(`${m[1].toUpperCase()} ${m[2]}`);
   }
 
-  // registerAcquisitionRoutes() baut diese Routen zur Laufzeit zusammen — der
-  // Parser oben sieht sie nicht, weil kein Pfad-Literal dasteht.
-  for (const basis of ['/sets/:X/acquisitions', '/parts/:X/:X/acquisitions', '/minifigs/:X/acquisitions'])
-    for (const verb of ['PUT', 'DELETE']) alle.add(`${verb} /api/v1${basis}/:X`);
-
   return alle;
 }
 

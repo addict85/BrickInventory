@@ -3,59 +3,23 @@
  * nicht in routes/parts.ts, weil die Sitzungsroute und die v1-Fabrik beide
  * darauf zugreifen — eine Route soll keine andere importieren.
  */
-import { meldeUndLiefere } from './httpError';
+import { meldeUndLiefere, fehlertext } from './httpError';
+import { csvGemeinsameFelder, csvZeilenAusAnfrage } from './csvExport';
 import * as db from '../db/database';
 import { recordAcquisitionForDay } from './acquisitions';
 import { withInventoryLock, bestandsSchluessel } from './txLock';
 import { kaufpreisAusEingabe, manuellerKaufpreis } from './preisRegel';
 import { zustandFuerPreis } from './settings';
 import { resolvePartCondition, marktpreisMitHerkunft, getCurrentPartMarketPrice } from './marketPrice';
-import { getBrickColors, lookupPart } from '../clients/rebrickable';
+import { lookupPart } from '../clients/rebrickable';
+import { farbliste, KEINE_FARBE } from './farben';
 import { setzeLagerort, ortFuerNeuerfassung } from './lagerort';
 import { merkeTeil, merkeTeilFarbe, katalogTeil } from './katalogPflege';
 import { bestandsMenge } from './validate';
 import * as V0 from './validate';
 
-// Shared logic to get the color list (Rebrickable if configured, else a
-// built-in fallback list of common colors). Used by both the session-based
-// web route (GET /api/parts/brick-colors) and the token-based API
-// (GET /api/v1/parts/colors), so it is implemented exactly once.
-async function getPartColorList() {
-  const colors = await getBrickColors();
-  if (colors.length) return colors;
-  // If Rebrickable not configured, return common colors
-  return [
-    {id:0,name:'[No Color/Any Color]',hex:'FCFCFC'},
-    {id:1,name:'White',hex:'F4F4F4'},
-    {id:2,name:'Tan',hex:'DEC69C'},
-    {id:3,name:'Yellow',hex:'F2CD37'},
-    {id:4,name:'Red',hex:'C91A09'},
-    {id:5,name:'Dark Red',hex:'720E0F'},
-    {id:6,name:'Orange',hex:'FE8A18'},
-    {id:7,name:'Blue',hex:'0055BF'},
-    {id:8,name:'Dark Blue',hex:'003352'},
-    {id:9,name:'Light Blue',hex:'68C3E2'},
-    {id:10,name:'Green',hex:'237841'},
-    {id:11,name:'Dark Green',hex:'184632'},
-    {id:12,name:'Lime',hex:'BBE90B'},
-    {id:13,name:'Black',hex:'05131D'},
-    {id:14,name:'Dark Bluish Gray',hex:'595D60'},
-    {id:15,name:'Light Bluish Gray',hex:'9BA19D'},
-    {id:16,name:'Flat Silver',hex:'898788'},
-    {id:17,name:'Brown',hex:'583927'},
-    {id:18,name:'Dark Brown',hex:'352100'},
-    {id:19,name:'Reddish Brown',hex:'82422A'},
-    {id:20,name:'Sand Green',hex:'A0BCAC'},
-    {id:21,name:'Dark Tan',hex:'958A73'},
-    {id:22,name:'Medium Azure',hex:'36AEBF'},
-    {id:23,name:'Magenta',hex:'FC97AC'},
-    {id:24,name:'Dark Purple',hex:'3F3691'},
-    {id:25,name:'Medium Lavender',hex:'AC78BA'},
-    {id:26,name:'Coral',hex:'FF698F'},
-    {id:27,name:'Nougat',hex:'D09168'},
-    {id:28,name:'Gold',hex:'DBAC34'},
-  ];
-}
+/** Farbauswahl beim Erfassen; Quelle und Notliste stehen in utils/farben.ts. */
+const getPartColorList = farbliste;
 
 /**
  * Preis/Stk, Kaufpreis und Zustand fuer ein manuell erfasstes Teil.
@@ -99,7 +63,7 @@ async function addManualPart(uid: number, rawBody: Record<string, unknown>) {
   const farbe = V0.colorId(rawBody?.color_id);
   const ergebnis = await addManualPartIntern(uid, rawBody);
   if (ort && ergebnis?.part_number) {
-    await setzeLagerort('part', [uid], [ergebnis.part_number, String(farbe || 0)], ort);
+    await setzeLagerort('part', [uid], [ergebnis.part_number, String(farbe)], ort);
   }
   return ergebnis;
 }
@@ -132,14 +96,8 @@ async function addManualPartIntern(uid: number, rawBody: any) {
   let gefunden: Awaited<ReturnType<typeof lookupPart>> | null = null;
 
   if (!part_name) {
-    // Wurde überhaupt eine Farbe gewählt?
-    //
-    // V.colorId() macht aus null/'' eine 0 — für die Spalte richtig (die
-    // Vorgabe ist 0), für die Bildsuche fatal: 0 ist bei Rebrickable SCHWARZ.
-    // Die Unterscheidung muss deshalb am Rohwert getroffen und getrennt
-    // weitergereicht werden.
-    const rawColor = rawBody?.color_id;
-    const hasColor = rawColor !== null && rawColor !== undefined && String(rawColor).trim() !== '';
+    // Ohne gewählte Farbe sucht der Abruf das allgemeine Teilebild.
+    const hasColor = color_id !== KEINE_FARBE;
 
     // Erst der EIGENE Katalog, dann der fremde Dienst
     // Der Import ist dabei nur der Auffaellige. Die Luecke war in DIESER
@@ -190,7 +148,7 @@ async function addManualPartIntern(uid: number, rawBody: any) {
     // Pro Tag und Zustand EINE Erfassung — wird am selben Tag erneut erfasst,
     // wächst die bestehende Zeile, statt dass eine zweite entsteht
     // (utils/acquisitions.ts).
-    await recordAcquisitionForDay('part', uid, [part_number, color_id || 0], {
+    await recordAcquisitionForDay('part', uid, [part_number, color_id], {
       quantity, price: ((rePrice ?? 0) > 0 ? rePrice : null), condition: reCond, createdAt: acquiredAt,
       geschaetzt: reEntered === null || isNaN(reEntered),
     });
@@ -238,7 +196,7 @@ async function addManualPartIntern(uid: number, rawBody: any) {
   // Fehler, und sie addiert sich von selbst, weil die Stückzahl die SUMME der
   // Erfassungen ist (Migration 0038). Hier stand dafuer ein eigenes …
   // Ausführlich: docs/begruendungen/routes/parts.ts.md#addmanualpartintern-3
-  await recordAcquisitionForDay('part', uid, [part_number, color_id || 0], {
+  await recordAcquisitionForDay('part', uid, [part_number, color_id], {
     quantity, price: erfassungsPreis, geschaetzt,
     condition: effectiveCondition, createdAt: acquiredAt,
   });
@@ -262,7 +220,7 @@ async function updateManualPart(uid: number, partNumber: string, colorId: number
     `SELECT p.id,
             (SELECT a.condition FROM part_acquisitions a
               WHERE a.user_id = p.user_id AND a.part_number = p.part_number
-                AND COALESCE(a.color_id, 0) = COALESCE(p.color_id, 0)
+                AND a.color_id = p.color_id
               ORDER BY a.created_at DESC, a.id DESC LIMIT 1) AS condition
        FROM parts p
       WHERE p.user_id=$1 AND p.part_number=$2 AND p.color_id=$3 AND p.source='manual'`,
@@ -320,7 +278,7 @@ async function updateManualPart(uid: number, partNumber: string, colorId: number
       `UPDATE part_acquisitions SET unit_price = NULLIF($1::numeric, 0)
         WHERE id = (SELECT a.id FROM part_acquisitions a
                      WHERE a.user_id=$2 AND a.part_number=$3
-                       AND COALESCE(a.color_id, 0) = COALESCE($4, 0)
+                       AND a.color_id = $4
                      ORDER BY a.created_at DESC, a.id DESC LIMIT 1)`,
       [unitPrice, uid, partNumber, colorId]);
   }
@@ -334,7 +292,7 @@ async function updateManualPart(uid: number, partNumber: string, colorId: number
       `UPDATE part_acquisitions SET condition=$1
         WHERE id = (SELECT a.id FROM part_acquisitions a
                      WHERE a.user_id=$2 AND a.part_number=$3
-                       AND COALESCE(a.color_id, 0) = COALESCE($4, 0)
+                       AND a.color_id = $4
                      ORDER BY a.created_at DESC, a.id DESC LIMIT 1)`,
       [cond, uid, partNumber, colorId]);
   }
@@ -357,7 +315,7 @@ async function getPartAcquisitions(uid: number[], partNumber: string, colorId: s
      FROM part_acquisitions a
      WHERE a.user_id = ANY($1) AND a.part_number=$2 AND a.color_id=$3
      ORDER BY a.created_at ASC, a.id ASC`,
-    [uid, partNumber, parseInt(String(colorId)) || 0]
+    [uid, partNumber, V0.colorId(colorId)]
   );
 }
 
@@ -368,4 +326,61 @@ function manuellesTeil(uid: number, partNumber: string, colorId: number): Promis
     [uid, partNumber, colorId]);
 }
 
-export { manuellesTeil, getPartColorList, resolveManualPartPurchase, addManualPart, updateManualPart, getPartAcquisitions };
+/**
+ * CSV-Import manueller Teile (Spalten part_number, color_id, color_name,
+ * quantity, unit_price, condition, acquired_at). Dieselbe Preisregel wie beim
+ * Anlegen von Hand; eine fehlerhafte Zeile bricht den Rest nicht ab.
+ */
+async function importiereTeileCsv(uid: number, text: string) {
+  const { records, bereinigt, uebersprungen } = csvZeilenAusAnfrage(text);
+  let added = 0, updated = 0, errors = 0;
+  const results: Array<{ part_number: string; action: string; error?: string }> = [];
+
+  for (const row of bereinigt) {
+    const partNumber = String(row.part_number || row['Teilenummer'] || row['part_num'] || Object.values(row)[0] || '').trim();
+    if (!partNumber) continue;
+    const colorId   = V0.colorId(row.color_id ?? row['Farb-ID']);
+    const colorName = row.color_name || row['Farbe'] || null;
+    const { menge: qty, preis: unitPrice, erfasstAm: acquiredAt, zustand: rawCondition } = csvGemeinsameFelder(row);
+
+    try {
+      let partName = row.part_name || row['Name'] || null;
+      const eingetippt = !!partName;
+      let imageUrl: string | null = null, categoryName: string | null = null;
+      if (!partName) {
+        const info = await lookupPart(partNumber, colorId === KEINE_FARBE ? null : colorId);
+        if (info) { partName = info.part_name; imageUrl = info.image_url; categoryName = info.category_name; }
+      }
+      const { erfassungsPreis, effectiveCondition, geschaetzt } =
+        await resolveManualPartPurchase(uid, { partNumber, colorId, unitPrice, condition: rawCondition });
+      const erfassung = { quantity: qty, price: erfassungsPreis, geschaetzt,
+                          condition: effectiveCondition || 'N', createdAt: acquiredAt || new Date().toISOString().slice(0, 10) };
+
+      if (await manuellesTeil(uid, partNumber, colorId)) {
+        await recordAcquisitionForDay('part', uid, [partNumber, colorId], erfassung);
+        updated++;
+        results.push({ part_number: partNumber, action: 'updated' });
+        continue;
+      }
+      // Katalog vor Bestand: lieber eine Beschreibung ohne Bestand als umgekehrt.
+      // Name und Farbbezeichnung aus der Datei sind Eingaben dieses Kontos.
+      const colorHex = (await db.get<{ rgb: string | null }>('SELECT rgb FROM rb_colors WHERE id=$1', [colorId])
+        .catch(meldeUndLiefere('teile-csv:farbcode', undefined)))?.rgb || null;
+      if (eingetippt) await merkeTeil(partNumber, partName, null, db, uid);
+      else await merkeTeil(partNumber, partName, categoryName);
+      await merkeTeilFarbe(partNumber, colorId, null, colorHex, imageUrl);
+      await merkeTeilFarbe(partNumber, colorId, colorName, null, null, null, db, uid);
+      await db.run(`INSERT INTO parts (user_id, set_number, part_number, color_id, source)
+        VALUES ($1, NULL, $2, $3, 'manual') ON CONFLICT DO NOTHING`, [uid, partNumber, colorId]);
+      await recordAcquisitionForDay('part', uid, [partNumber, colorId], erfassung);
+      added++;
+      results.push({ part_number: partNumber, action: 'added' });
+    } catch (e) {
+      errors++;
+      results.push({ part_number: partNumber, action: 'error', error: fehlertext(e) });
+    }
+  }
+  return { added, updated, errors, records, results, uebersprungen };
+}
+
+export { manuellesTeil, getPartColorList, resolveManualPartPurchase, addManualPart, updateManualPart, getPartAcquisitions, importiereTeileCsv };

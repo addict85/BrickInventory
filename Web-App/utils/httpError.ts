@@ -2,13 +2,8 @@ import { sendeFehler } from './fehlerTexte';
 import { FEHLER, fehlerText, antwortSprache } from './fehlerTexte';
 import type { FehlerCode } from './fehlerTexte';
 /**
- * Zentrale Fehlerbehandlung für Routen.
+ * Zentrale Fehlerbehandlung für Routen; Status aus `status`, sonst e.status || 500.
  * Ausführlich: docs/begruendungen/utils/httpError.ts.md#handlerouteerror
- */
-/**
- * @param res    Express-Response
- * @param e      Fehler (Error oder beliebig geworfen)
- * @param status expliziter HTTP-Status, sonst e.status || 500
  */
 function handleRouteError(res: any, e: any, status?: number, req?: any) {
   const code = status || e?.status || 500;
@@ -32,7 +27,7 @@ function handleRouteError(res: any, e: any, status?: number, req?: any) {
   if (e?.code && typeof e.code === 'string' && e.code in FEHLER) {
     return res.status(code).json({
       success: false, code: e.code,
-      error: fehlerText(e.code as FehlerCode, antwortSprache(req)),
+      error: fehlerText(e.code as FehlerCode, antwortSprache(req), e.vars),
     });
   }
   const message = (isServerError && process.env.NODE_ENV === 'production')
@@ -97,25 +92,14 @@ function fehlertext(e: unknown): string {
   return String(e) || 'Unbekannter Fehler';
 }
 
-/**
- * Der Fehlercode einer Ausnahme, falls sie einen traegt.
- *
- * Node-Systemfehler (ENOENT, ECONNREFUSED, 23505 von Postgres) fuehren ihn in
- * `code`. Die drei Stellen, die danach verzweigen, brauchen ihn typsicher —
- * und `undefined` ist die richtige Antwort, wenn kein Code da ist, weil jeder
- * Vergleich damit sauber fehlschlaegt.
- */
+/** Der Fehlercode einer Ausnahme (ENOENT, 23505 …), typsicher; ohne Code undefined. */
 function fehlerCode(e: unknown): string | undefined {
   const c = (e as { code?: unknown } | null | undefined)?.code;
   return typeof c === 'string' || typeof c === 'number' ? String(c) : undefined;
 }
 
 /**
- * Ein Routen-Parameter, den der Pfad garantiert.
- * Ausführlich: docs/begruendungen/utils/httpError.ts.md#abschnitt
- */
-/*
- * Der Typ nimmt seit Express 5 auch `string[]` an (05.10.).
+ * Ein Routen-Parameter, den der Pfad garantiert (Express 5 typisiert ihn auch als string[]).
  * Ausführlich: docs/begruendungen/utils/httpError.ts.md#pfadparam
  */
 function pfadParam(req: { params: Record<string, string | string[] | undefined> },
@@ -124,14 +108,7 @@ function pfadParam(req: { params: Record<string, string | string[] | undefined> 
   return Array.isArray(wert) ? wert.join('/') : (wert ?? '');
 }
 
-/**
- * Der Teil vor dem ersten Trenner.
- *
- * `'a;b'.split(';')[0]` ist immer da — auch `''.split(';')` liefert `['']`.
- * Der Pruefer weiss das nicht: Eine Index-Signatur ist fuer ihn immer
- * moeglicherweise leer. Statt an sechs Stellen `?? ''` anzuhaengen, steht die
- * Zusicherung einmal hier, mit dem Grund dabei.
- */
+/** Der Teil vor dem ersten Trenner; split() liefert immer ein erstes Element, der Typprüfer weiss es nicht. */
 function vorDem(s: string, trenner: string): string {
   return s.split(trenner)[0] ?? '';
 }
@@ -140,13 +117,7 @@ export { handleRouteError, logAndContinue, meldeUndWeiter, meldeUndLiefere, ohne
 
 /**
  * Eine Datei an die Antwort streamen — mit Fehlerbehandlung.
- * Ausführlich: docs/begruendungen/utils/httpError.ts.md#abschnitt-2
- */
-/**
- * @param req Nur fuer die Sprache der Fehlermeldung. Optional,
- *        weil dieser Helfer auch an einer nackten http-Antwort laeuft, wo es
- *        keinen Express-Request gibt — dann antwortet er auf Deutsch, wie
- *        bisher.
+ * @param req nur für die Sprache der Meldung; ohne ihn Deutsch.
  */
 function streamFileToResponse(res: any, filePath: string, onEnd?: () => void, req?: any) {
   const fs = require('fs');

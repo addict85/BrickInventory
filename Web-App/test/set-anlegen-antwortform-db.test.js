@@ -18,8 +18,8 @@
  * von drei Ausgängen wickelten das Ergebnis ein:
  *
  *   routes/api_v1/sets.ts  POST /sets        → `{ success:true, ...result }`
- *   routes/sets.ts         „schon im Blickfeld" → `{ success:true, action:'exists', … }`
- *   routes/sets.ts         `step:'done'`     → `{ step:'done', ...result }`   ← ohne
+ *   routes/api_v1/sets.ts  „schon im Blickfeld" → `{ success:true, action:'exists', … }`
+ *   routes/api_v1/sets.ts  `step:'done'`     → `{ step:'done', ...result }`   ← ohne
  *
  * Dieselbe Route antwortete also in zwei Formen, je nachdem ob das Set neu
  * war. Der Webapp fiel das nie auf, weil handleSseEvent() (public/js/
@@ -118,7 +118,7 @@ test('ein neu angelegtes Set wird in beiden Routen gleich beantwortet',
   const { base, srv } = testServer(_req, {
     sitzung: { userId: uid },
     apiNutzer: { user_id: uid, is_admin: 0 },
-    routen: { '/api/sets': 'routes/sets.js', '/api/v1': 'routes/api_v1/index.js' },
+    routen: { '/api/v1': 'routes/api_v1/index.js' },
     t,
   });
 
@@ -141,7 +141,7 @@ test('ein neu angelegtes Set wird in beiden Routen gleich beantwortet',
     gestellteAddSet = async (sn) => ({ action: 'added', set_number: sn, name: 'Testset' });
     const vorher = stellungGerufen;
 
-    const strom = await fetch(`${base}/api/sets/add-stream`, {
+    const strom = await fetch(`${base}/api/v1/sets/add-stream`, {
       method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ set_number: NEU_A, quantity: 1 }),
     });

@@ -55,7 +55,7 @@ test('Anleitung hochladen', { concurrency: 1 }, async (t) => {
     await db.pool.end().catch(() => {});
   });
 
-  const { base } = testServer(_req, { sitzung: { userId: uid }, routen: { '/api/v1/sets': 'routes/sets.js' }, t });
+  const { base } = testServer(_req, { sitzung: { userId: uid }, routen: { '/api/v1': 'routes/api_v1/index.js' }, t });
   const hochladen = async (inhalt, typ, name, set = SET) => {
     const form = new FormData();
     form.append('file', new Blob([inhalt], { type: typ }), name);

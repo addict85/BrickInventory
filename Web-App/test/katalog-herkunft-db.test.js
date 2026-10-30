@@ -67,8 +67,8 @@ test('der gemeinsame Katalog', { concurrency: 1 }, async (t) => {
     `INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [name])).id;
   const A = await neu('anna'), B = await neu('bruno');
 
-  const { addManualPart } = _req('routes/parts.js');
-  const { addManualFig }  = _req('routes/minifigs.js');
+  const { addManualPart } = _req('utils/manuelleTeile.js');
+  const { addManualFig }  = _req('utils/manuelleFiguren.js');
   const teil = (nr) => db.get(
     `SELECT pc.part_name, pc.name_von, pcc.image_url, pcc.bild_von
        FROM part_catalog pc LEFT JOIN part_color_catalog pcc

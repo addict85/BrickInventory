@@ -1,22 +1,20 @@
 /** /api/v1/minifigs — CRUD und Teile-Liste (Erfassungen: ./acquisitions.ts). */
 import express from 'express';
-import * as db from '../../db/database';
-import { handleRouteError, pfadParam, logAndContinue, meldeUndLiefere } from '../../utils/httpError';
+import { handleRouteError, pfadParam } from '../../utils/httpError';
 import { requireToken } from './middleware';
 import { scopeIds, parseScopeMode, resolveWriteTarget, writableIds } from '../../utils/household';
 import { getManualMinifigs, getMinifigStats, getMinifigs } from '../../utils/handlers/minifigs';
-import { addManualFig, updateManualFig } from '../../utils/manuelleFiguren';
+import { addManualFig, updateManualFig, importiereFigurenCsv } from '../../utils/manuelleFiguren';
 import { getSetting } from '../../utils/settings';
-import { ersatzteilSql } from '../../utils/validate';
 import { getMinifigPriceHistory } from '../../utils/priceHistory';
 import { einzelwert } from '../../utils/validate';
 import { verwendendeSets } from '../../utils/handlers/shared';
-import { inventarNachKandidaten } from '../../utils/rbInventar';
 import { sendeFehler } from '../../utils/fehlerTexte';
 import { normalisiereLagerort, setzeLagerort } from '../../utils/lagerort';
-import { blJoin, blNummerSql } from '../../utils/blZuordnung';
 import { loescheFigur } from '../../utils/loeschen';
-import * as partsCatalogEnrich from '../../jobs/partsCatalogEnrich';
+import { teileDerFigur } from '../../utils/dienste/figuren';
+import { csvEmpfang } from '../../utils/dateiEmpfang';
+import { csvImportAntwort } from '../../utils/csvExport';
 const router = express.Router();
 
 // ── MINIFIGS ─────────────────────────────────────────────────────────────────
@@ -117,94 +115,17 @@ router.get('/minifigs/:figNumber/price-history', requireToken, async (req: Authe
 });
 
 router.get('/minifigs/:figNumber/parts', requireToken, async (req: AuthedRequest, res) => {
-  const figNumber = String(req.params.figNumber);
-  try {
-    // Look up in rb_inventories (minifigs are stored as sets with fig- prefix)
-    // Figuren haben keinen Versionsanhang, sondern ein 'fig-' davor —
-    // deshalb eigene Kandidaten, aber dieselbe Abfrage.
-    const invId = await inventarNachKandidaten(
-      [String(figNumber), String(figNumber).replace('fig-', '')]).catch(meldeUndLiefere('figuren:replace', null));
-
-    if (!invId) return res.json({ success: true, parts: [], source: 'not_found' });
-
-    // Get CSV parts for this minifig
-    const csvParts = await db.all(
-      `SELECT ip.part_num AS part_number,
-              COALESCE(m.bl_id, ip.part_num) AS bl_part_number,
-              p.name AS part_name, ip.color_id,
-              c.name AS color_name, c.rgb AS color_hex,
-              -- Dieselbe Lesart wie istErsatzteil() in utils/validate.ts.
-              -- Vorher nur 't' — ein '1' oder 'true' aus dem Katalog galt hier
-              -- als KEIN Ersatzteil, drei Dateien weiter aber als eines.
-              ${ersatzteilSql('ip.is_spare')} AS is_spare,
-              ip.quantity
-       FROM rb_inventory_parts ip
-       LEFT JOIN rb_parts  p ON p.part_num = ip.part_num
-       LEFT JOIN rb_colors c ON c.id       = ip.color_id
-       LEFT JOIN bl_zuordnung  m ON m.art = 'part' AND m.rb_id = ip.part_num
-       WHERE ip.inventory_id = $1`,
-      [invId]
-    );
-
-    // Check catalog — if empty, enrich NOW (get correct BL IDs before responding)
-    let catRows = await db.all(
-      // bl_part_number aus der Zuordnung (Migration 0037) — siehe die
-      // Begruendung in routes/api_v1/sets.ts.
-      `SELECT c.part_number, c.color_id, ${blNummerSql('c.part_number')} AS bl_part_number,
-              c.image_url, c.image_local
-         FROM set_parts_catalog c
-         ${blJoin('c.part_number', 'part')}
-        WHERE c.set_number=$1`,
-      [figNumber]
-    );
-
-    // Check if BL IDs are missing
-    const needsEnrich = catRows.length === 0 ||
-      catRows.some(r => !r.bl_part_number || r.bl_part_number === r.part_number);
-    if (needsEnrich) {
-      // Find which set this minifig belongs to, then enrich ALL minifigs of that set at once
-      const parentSet = await db.get(
-        `SELECT set_number FROM set_minifigs_catalog WHERE fig_number=$1 LIMIT 1`,
-        [figNumber]
-      ).catch(meldeUndLiefere('figuren:parentSet', null));
-
-      if (parentSet?.set_number) {
-        // Enrich all minifigs of the parent set in one batch API call
-        await partsCatalogEnrich.enrichSetMinifigs(parentSet.set_number).catch(logAndContinue('figuren:enrichSetMinifigs'));
-      } else {
-        // Fallback: enrich this minifig individually
-        await partsCatalogEnrich.enrichSetParts(figNumber).catch(logAndContinue('figuren:enrichSetParts'));
-      }
-
-      catRows = await db.all(
-        `SELECT c.part_number, c.color_id, ${blNummerSql('c.part_number')} AS bl_part_number,
-                c.image_url, c.image_local
-           FROM set_parts_catalog c
-           ${blJoin('c.part_number', 'part')}
-          WHERE c.set_number=$1`,
-        [figNumber]
-      );
-    }
-
-    const catalogMap: any = {};
-    for (const r of catRows) catalogMap[`${r.part_number}|${r.color_id}`] = r;
-
-    // Merge: catalog BL IDs take priority (from API), fallback to rb_bl_mapping
-    const enriched = csvParts.map(p => {
-      const cat = catalogMap[`${p.part_number}|${p.color_id}`] || {};
-      return {
-        ...p,
-        bl_part_number: cat.bl_part_number || p.bl_part_number,
-        image_url:      cat.image_local    || cat.image_url    || null,
-      };
-    });
-
-    res.json({ success: true, parts: enriched, source: catRows.length ? 'enriched' : 'csv_cache' });
-    // Download images in background
-    setImmediate(() => partsCatalogEnrich.downloadSetImages(figNumber).catch(logAndContinue('figuren:downloadSetImages')));
-  } catch (e) { handleRouteError(res, e, undefined, req); }
+  try { res.json({ success: true, ...await teileDerFigur(String(req.params.figNumber)) }); }
+  catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
+// ── POST /api/v1/minifigs/import/csv ────────────────────────────────────────
+router.post('/minifigs/import/csv', requireToken, csvEmpfang.single('file'), async (req: AuthedRequest & { file?: { buffer: Buffer } }, res) => {
+  if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
+  try {
+    csvImportAntwort(res, await importiereFigurenCsv(req.apiUser.user_id, req.file.buffer.toString('utf-8')));
+  } catch (e) { handleRouteError(res, e, undefined, req); }
+});
 
 // ── GET /api/v1/minifigs/:figNumber/sets ─────────────────────────────────────
 /**

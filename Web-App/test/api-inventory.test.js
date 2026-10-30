@@ -62,10 +62,6 @@ function inventory() {
     if (f.endsWith('.ts') && !['index.ts', 'middleware.ts'].includes(f))
       for (const [m, p] of scan(path.join(ROOT, 'routes', 'api_v1', f)))
         eps.add(`${m} /api/v1${p}`);
-  // Dynamisch registrierte Erfassungs-Routen (registerAcquisitionRoutes):
-  for (const base of ['/sets/:setNumber/acquisitions', '/parts/:partNumber/:colorId/acquisitions', '/minifigs/:figNumber/acquisitions'])
-    for (const m of ['PUT', 'DELETE'])
-      eps.add(`${m} /api/v1${base}/:acqId`);
   return eps;
 }
 
