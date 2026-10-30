@@ -145,8 +145,8 @@ class DesignVorAnmeldungTest {
 
     /**
      * Sonst gilt Stufe eins nur fuer den Weg, der zufaellig zuletzt lief. Seit das
-     * Design je Konto gilt, kommt es auf drei Wegen (/settings, /settings/theme, Wahl
-     * im Konto); gemerkt wird an EINER Stelle, die jede Aenderung der Sitzung sieht.
+     * Design je Konto gilt, kommt es auf zwei Wegen (/settings/theme, Wahl im Konto);
+     * gemerkt wird an EINER Stelle, die jede Aenderung der Sitzung sieht.
      * Gegenprobe (30.10.2026, gemessen): das Sammeln entfernt → rot.
      */
     @Test

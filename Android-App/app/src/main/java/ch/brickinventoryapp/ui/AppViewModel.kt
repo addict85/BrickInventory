@@ -143,7 +143,7 @@ class AppViewModel @Inject constructor(
         viewModelScope.launch {
             prefs.currency.collect { cur -> sitzung.aendere { it.copy(currency = cur) } }
         }
-        // Jede Änderung des Designs landet im Spiegel des Geräts — ob sie aus /settings,
+        // Jede Änderung des Designs landet im Spiegel des Geräts — ob sie aus
         // /settings/theme oder der Wahl im Konto kommt. Beim Kontowechsel ist es damit
         // das Design des neuen Kontos, nach dem Abmelden die Vorgabe.
         viewModelScope.launch {
@@ -222,11 +222,10 @@ class AppViewModel @Inject constructor(
 
     // ── Design, Sprache, Einstellungen ───────────────────────────────────────
 
-    /** Das Design merken, damit der nächste Kaltstart schon darin anfängt. */
+    /** Einstellungen und Design des Kontos; das Design kommt von /settings/theme. */
     fun loadSettings() {
-        viewModelScope.launch {
-            sitzung.ladeEinstellungen(repo.admin)
-        }
+        viewModelScope.launch { sitzung.ladeEinstellungen(repo.admin) }
+        loadAppTheme()
     }
 
     /**

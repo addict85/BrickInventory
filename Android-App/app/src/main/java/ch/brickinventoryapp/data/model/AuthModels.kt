@@ -51,7 +51,7 @@ data class UserSettings(
     @SerialName("default_price_condition") val defaultPriceCondition: String = "N",
     @SerialName("user_default_condition") val userDefaultCondition: String? = null,
     @SerialName("effective_condition") val effectiveCondition: String = "N", // resolved: user→global→'N'
-    @SerialName("app_theme") val appTheme: String = "classic" // wirksames Design des Kontos
+    @SerialName("app_theme") val appTheme: String = "classic" // Vorgabe des Verwalters; das des Kontos: /settings/theme
 )
 
 /**

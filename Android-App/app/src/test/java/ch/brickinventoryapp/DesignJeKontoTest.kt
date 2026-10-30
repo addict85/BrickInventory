@@ -2,8 +2,11 @@ package ch.brickinventoryapp
 
 import ch.brickinventoryapp.data.repository.AdminRepository
 import ch.brickinventoryapp.ui.DesignWahl
+import ch.brickinventoryapp.ui.ladeEinstellungen
+import ch.brickinventoryapp.ui.setzeDesign
 import ch.brickinventoryapp.ui.viewmodel.KontoViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
@@ -28,6 +31,8 @@ import org.junit.Test
  *      älterer Server ohne Vorgabe zeigt keine Auswahl“
  *   D  in Sitzung.abgemeldet() appTheme nicht übernommen → rot „Abmelden lässt
  *      das Design stehen …“
+ *   E  in Sitzung.ladeEinstellungen() wieder `appTheme = e.appTheme` → rot „die
+ *      Einstellungen überschreiben das Design des Kontos nicht“ (classic statt noppe)
  */
 class DesignJeKontoTest {
 
@@ -84,6 +89,16 @@ class DesignJeKontoTest {
         TestApi.warteBis("Antwort") { pfade.anfragen.isNotEmpty() }
         Thread.sleep(100)
         assertNull(vm.kontoState.value.design)
+    }
+
+    /** /settings nennt in app_theme die Vorgabe des Verwalters (routes/api_v1/settings.ts), nicht das Konto. */
+    @Test
+    fun `die Einstellungen ueberschreiben das Design des Kontos nicht`() {
+        pfade.antworten["/api/v1/settings"] = """{"success":true,"settings":{"currency":"CHF","app_theme":"classic"}}"""
+        t.sitzung.setzeDesign("noppe")
+        runBlocking { t.sitzung.ladeEinstellungen(AdminRepository(t.api, t.cache)) }
+        assertEquals("CHF", t.sitzung.state.value.currency)
+        assertEquals("noppe", t.sitzung.state.value.appTheme)
     }
 
     @Test
