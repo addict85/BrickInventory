@@ -412,6 +412,9 @@
        Markup (stabiler Anker für updateGalleryPrices) und nur leer ausgeblendet. */
     .price-badge[hidden]{display:none}
     .price-badge{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-top:.35rem;padding:.2rem .4rem;background:var(--s50);border-radius:5px;font-size:var(--fs-1)}
+    .pnl-geschenk{color:var(--txt);font-weight:600}
+    /* Bezugslinie und Achsenbruch nehmen dem Fadenkreuz keine Zeigerereignisse weg. */
+    .einstand-linie,.achsenbruch{pointer-events:none}
     .pnl-pos{color:var(--gewinn,var(--g700));font-weight:700}.pnl-neg{color:var(--r700);font-weight:700}.pnl-neu{color:var(--mut)}
     .sparkline-wrap{width:100%;overflow:hidden;margin:.5rem 0}
     .chart-wrap{width:100%;overflow-x:auto}

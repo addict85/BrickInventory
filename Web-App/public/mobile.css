@@ -395,6 +395,8 @@
   .brick-stats:has(> :nth-child(3):last-child) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .bstat { padding: 8px 12px; }
   .bstat .bstat-v { font-size: var(--fs-5); }
+  [data-theme="brick"] .bstat { padding: 8px 12px; }
+  [data-theme="brick"] .bstat .bstat-v { font-size: var(--fs-5); }
 
   /* Die Pills des Stein-Designs werden unten zur Leiste wie in den anderen. */
   [data-theme="brick"] nav {
