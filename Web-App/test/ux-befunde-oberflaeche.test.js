@@ -12,7 +12,8 @@
  *   - Der Preis-Platzhalter folgt der Sprache.
  *   - Ein Set ohne Bild zeigt im Detail denselben Würfel wie in der Kachel.
  *
- * Gegenproben (am 30.10.2026 gemessen):
+ * Gegenproben (am 30.10.2026 gemessen; B bis F zusammen angewendet, jede
+ * machte genau ihren eigenen Fall rot):
  *   A  pnlBadge ohne den Geschenk-Zweig → rot: „Geschenk in Kachel, Tabelle
  *      und Detail“ (Kachel zeigte „+163.700,0 %“)
  *   B  in oeffneSicht markiereGruppe(null) entfernt → rot: „Menüseite:

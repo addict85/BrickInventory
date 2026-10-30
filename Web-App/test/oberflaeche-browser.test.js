@@ -11,15 +11,17 @@
  * Gemessen werden Eigenschaften statt Bilder: Pixelvergleiche hingen an den
  * Schriften der Maschine.
  *
- * Gegenproben (am 30.10.2026 gemessen):
- *   A  .v-btn in mobile.css wieder 26 px → rot: „Teile“ (Tippziel 26×26)
- *   B  themes/farbfaecher.css --mut wieder #8a8a8a → rot: „Sammlung“ u. a.
- *      (farbfaecher/hell: Kontrast 3.45:1 und axe color-contrast)
- *   C  in mobile.css den Seitenrand der Kopfzeile auf 0 und .marke ohne
- *      Ellipsis → rot: „Sammlung“ (telefon: abgeschnitten)
- *   D  aria-label des Suchfelds #gs entfernt → rot: „Sammlung“ (axe label)
- *   E  `.import-klappe` ohne rechtsbündige Telefonregel → rot: „Import-Menü“
- *      (Überlauf am Telefon)
+ * Gegenproben (am 30.10.2026 gemessen, auf die genannten Ansichten verengt):
+ *   A  .v-btn aus der 44-px-Regel in mobile.css genommen → rot: „Sicht
+ *      gutscheine“ (Tippziel 26×26)
+ *   B  themes/farbfaecher.css --mut wieder #8a8a8a → rot: „Sammlung“, „Teile“
+ *      (farbfaecher/hell: Kontrast 3.45:1)
+ *   C  die ::placeholder-Regel in styles.css entfernt → rot: „Sammlung“,
+ *      „Teile“ (dunkel: Platzhalter 3.55:1)
+ *   D  der Papierkorb der Set-Kachel wieder <button tabindex="-1"> → rot:
+ *      „Sammlung“ (axe nested-interactive)
+ *   E  die Telefonregel des Import-Menüs entfernt → rot: „Import-Menü“
+ *      (Überlauf 104 px)
  *
  * Ohne Chrome oder Test-DB wird übersprungen.
  */
