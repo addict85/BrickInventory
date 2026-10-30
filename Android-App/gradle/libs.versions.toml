@@ -187,9 +187,9 @@ orgJson                     = "20260814"
 robolectric                 = "4.17"
 roborazzi                   = "1.77.0"
 androidxTestJunit           = "1.3.0"
-# Startbildschirm-Widget. Google-Maven ist von hier nicht lesbar; 1.1.1 ist die
-# letzte stabile, die ich sicher kenne — tools/fassungen-pruefen.py misst nach.
-glance                      = "1.1.1"
+# Startbildschirm-Widget. 1.2.0 ist laut tools/fassungen-pruefen.py (CI-Lauf
+# 41095331814) die neueste stabile.
+glance                      = "1.2.0"
 # Testabhängigkeiten (Nachtrag 117). Bis dahin war JUnit die EINZIGE, weshalb
 # 41 von 47 Testdateien Quelltext lesen mussten statt Verhalten auszuführen.
 # coroutinesTest folgt bewusst der coroutines-Version — die beiden müssen

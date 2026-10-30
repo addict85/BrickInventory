@@ -91,17 +91,20 @@ fun HinweisText(symbol: ImageVector, titel: String, text: String? = null) {
         color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
 }
 
-/** Der Fehler wird angesagt (liveRegion), sobald er erscheint. */
+/**
+ * Der Fehler wird angesagt (liveRegion), sobald er erscheint. Ohne Empfänger,
+ * damit ihn jede Fläche einbetten kann, auch eine Karte in den Einstellungen.
+ */
 @Composable
-fun ColumnScope.FehlerHinweis(fehler: String?, onErneut: () -> Unit) {
+fun FehlerHinweis(fehler: String?, onErneut: () -> Unit) {
     Column(
         Modifier.fillMaxWidth().semantics { liveRegion = LiveRegionMode.Polite },
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(Abstaende.mittel),
     ) {
         HinweisText(Icons.Default.CloudOff, stringResource(R.string.common_load_failed), fehler)
+        Button(onClick = onErneut, shape = Formen.knopf) { Text(stringResource(R.string.common_retry)) }
     }
-    Button(onClick = onErneut, shape = Formen.knopf) { Text(stringResource(R.string.common_retry)) }
 }
 
 @Composable
