@@ -576,7 +576,7 @@ app.get('/{*splat}', async (req, res) => {
 // Fängt synchron geworfene Fehler und next(err)-Aufrufe, die an den
 // Route-Catches vorbeikommen — loggt voll, antwortet generisch.
 const { handleRouteError: _handleRouteError } = require('./utils/httpError') as typeof import('./utils/httpError');
-app.use((err: any, _req: Request, res: Response, _next: NextFunction) => { _handleRouteError(res, err); });
+app.use((err: any, req: Request, res: Response, _next: NextFunction) => { _handleRouteError(res, err, undefined, req); });
 
 // Der Server nimmt Anfragen erst an, NACHDEM bereiteDatenbankVor() das Schema
 // (inkl. user_sessions) fertig hat — sonst schlägt der Session-Store mit

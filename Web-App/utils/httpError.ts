@@ -1,11 +1,12 @@
 import { sendeFehler } from './fehlerTexte';
-import { FEHLER, fehlerText, antwortSprache } from './fehlerTexte';
+import { FEHLER, fehlerText, antwortSprache, dateiFehler } from './fehlerTexte';
 import type { FehlerCode } from './fehlerTexte';
 /**
  * Zentrale Fehlerbehandlung für Routen; Status aus `status`, sonst e.status || 500.
  * Ausführlich: docs/begruendungen/utils/httpError.ts.md#handlerouteerror
  */
 function handleRouteError(res: any, e: any, status?: number, req?: any) {
+  e = alsUploadFehler(e);
   const code = status || e?.status || 500;
   // Die Anfrage gehört in die Zeile: Dieselbe Stelle bedient oft mehrere
   // Pfade (Teile und Figuren), und erst der Pfad sagt, welcher es war.
@@ -34,6 +35,18 @@ function handleRouteError(res: any, e: any, status?: number, req?: any) {
     ? 'Interner Serverfehler'
     : (e?.message || 'Unbekannter Fehler');
   res.status(code).json({ success: false, error: message });
+}
+
+/**
+ * Multer meldet eine zu grosse oder überzählige Datei ohne Status; als 500
+ * sähe sie aus wie ein Serverfehler, und die App zeigte „Interner Fehler“
+ * statt „zu gross“. Hier wird daraus 413 bzw. 400 mit Code.
+ */
+function alsUploadFehler<T>(e: T): T | Error {
+  const m = e as { name?: unknown; code?: unknown } | null;
+  if (m?.name !== 'MulterError') return e;
+  const zuGross = m.code === 'LIMIT_FILE_SIZE';
+  return dateiFehler(zuGross ? 'datei_zu_gross' : 'upload_ungueltig', zuGross ? 413 : 400);
 }
 
 /**

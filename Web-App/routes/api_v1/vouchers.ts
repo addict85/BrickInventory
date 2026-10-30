@@ -8,7 +8,7 @@ import path from 'path';
 import multer from 'multer';
 import { DATA_DIR } from '../../utils/appPaths';
 import { handleRouteError } from '../../utils/httpError';
-import { sendeFehler, fehlerText, antwortSprache, type FehlerCode } from '../../utils/fehlerTexte';
+import { sendeFehler, fehlerText, antwortSprache, dateiFehler, type FehlerCode } from '../../utils/fehlerTexte';
 import { getGlobalSetting } from '../../utils/settings';
 import { verdecke, landErlaubt, LAND_STANDARD } from '../../utils/gutscheinGuthaben';
 import { frageGuthabenAb, ABSTAND_SEK } from '../../utils/gutscheinGuthabenSchranke';
@@ -44,7 +44,7 @@ const upload = multer({
     // Wert, an dem der Anleitungs-Upload einmal vorbeigelaufen ist (die
     // Begruendung steht dort bei INSTR_EXT_BY_MIME).
     if (file.mimetype === 'application/pdf') cb(null, true);
-    else cb(new Error('nur_pdf'));
+    else cb(dateiFehler('nur_pdf', 415));
   },
 });
 

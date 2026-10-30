@@ -28,7 +28,7 @@ import { getSetPriceHistory } from '../../utils/priceHistory';
 import { einzelwert, ausTabelle } from '../../utils/validate';
 import * as V from '../../utils/validate';
 import { mitVersion } from '../../utils/setNummer';
-import { sendeFehler } from '../../utils/fehlerTexte';
+import { sendeFehler, dateiFehler } from '../../utils/fehlerTexte';
 import { setTeileAnreichern } from '../../utils/nacharbeit';
 import { setInfo, setZumBarcode, teilelisteDesSets, figurenlisteDesSets, setPreis, rebrickableListe,
          setGehoertKonto, anleitungMerken, anleitungLoeschen, setCsvImportStarten, setCsvImportAbbrechen } from '../../utils/dienste/sets';
@@ -583,13 +583,13 @@ const uploadInstr = multer({
       const safe = String(req.params.setNumber).replace(/[^a-z0-9-]/gi, '_');
       // ausTabelle: Ein geerbter Schlüssel wie 'constructor' ist keine Endung.
       const ext = ausTabelle(INSTR_EXT_BY_MIME, file.mimetype);
-      if (!ext) return cb(new Error('Nur PDF, JPG oder PNG'), '');
+      if (!ext) return cb(dateiFehler('datei_typ_falsch', 415), '');
       // Zufällig statt Zeitstempel: Der Name soll sich nicht erraten lassen.
       cb(null, `${safe}_${crypto.randomBytes(12).toString('hex')}${ext}`);
     },
   }),
   limits: { fileSize: 50 * 1024 * 1024 },
-  fileFilter: (_req, file, cb) => { if (ausTabelle(INSTR_EXT_BY_MIME, file.mimetype)) cb(null, true); else cb(new Error('Nur PDF, JPG oder PNG')); },
+  fileFilter: (_req, file, cb) => { if (ausTabelle(INSTR_EXT_BY_MIME, file.mimetype)) cb(null, true); else cb(dateiFehler('datei_typ_falsch', 415)); },
 });
 
 /**

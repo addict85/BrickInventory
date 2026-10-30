@@ -163,6 +163,9 @@ export const FEHLER = {
 
   // ── Dateien, Import, Export ──────────────────────────────────────────────
   keine_datei:                 { de: 'Keine Datei', en: 'No file' },
+  datei_zu_gross:              { de: 'Die Datei ist zu gross', en: 'The file is too large' },
+  datei_typ_falsch:            { de: 'Nur PDF, JPG oder PNG', en: 'PDF, JPG or PNG only' },
+  upload_ungueltig:            { de: 'Der Upload ist ungültig', en: 'The upload is invalid' },
   datei_inhalt_falsch:         { de: 'Der Inhalt ist kein PDF, JPG oder PNG', en: 'The content is not a PDF, JPG or PNG' },
   upload_kontingent_voll:      { de: 'Der Platz für eigene Anleitungen ({mb} MB) ist belegt — bitte erst alte löschen',
                                  en: 'The space for your own instructions ({mb} MB) is full — please delete old ones first' },
@@ -329,13 +332,21 @@ export function antwortSprache(req: { headers?: Record<string, any> } | undefine
  * Ausführlich: docs/begruendungen/utils/fehlerTexte.ts.md#fehlerwerfen
  */
 export function fehlerWerfen(code: FehlerCode, status: number, vars?: Record<string, string | number>): never {
+  throw dateiFehler(code, status, vars);
+}
+
+/**
+ * Derselbe Fehler, aber zurückgegeben — für Rückrufe wie multers fileFilter,
+ * die einen Fehler übergeben statt ihn zu werfen.
+ */
+export function dateiFehler(code: FehlerCode, status: number, vars?: Record<string, string | number>): Error {
   // Die deutsche Fassung als `message`, damit ein Protokolleintrag lesbar
   // bleibt; die Antwort an den Client entsteht aus `code` und `vars`.
   const e: any = new Error(fehlerText(code, 'de', vars));
   e.status = status;
   e.code = code;
   if (vars) e.vars = vars;
-  throw e;
+  return e;
 }
 
 /** Der Text zu einem Code, mit eingesetzten Platzhaltern. */
