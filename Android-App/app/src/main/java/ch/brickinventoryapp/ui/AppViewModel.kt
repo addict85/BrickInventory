@@ -36,13 +36,9 @@ import javax.inject.Inject
 import javax.inject.Named
 
 /**
- * Was der ganzen App gehört und an der Activity hängt: Sitzung beginnen und
- * beenden, Design und Sprache, die Snackbar, der CSV-Import-Balken, das
- * Vorwärmen der Bilder und das Ziel einer angetippten Meldung.
- *
- * Die Bereiche (Galerie, Teile, Finanzen, …) haben eigene ViewModels unter
- * ui/viewmodel; geteilt wird über Sitzung, Blickfeld, Bestandssignal und den
- * Meldungskanal, nicht über dieses ViewModel.
+ * Was der ganzen App gehört: Sitzung beginnen und beenden, Design und Sprache,
+ * Snackbar, CSV-Import-Balken, Vorwärmen und das Ziel einer angetippten Meldung.
+ * Die Bereiche teilen über Sitzung, Blickfeld, Bestandssignal und Meldungskanal.
  */
 @HiltViewModel
 class AppViewModel @Inject constructor(
@@ -89,12 +85,22 @@ class AppViewModel @Inject constructor(
         .distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.Eagerly, sitzung.state.value.appTheme)
 
-    /** Je Gerät: Werkbank, solange das System dunkel ist (siehe wirksamesDesign). */
+    /** Je Gerät: die dunkle Fassung des Designs, solange das System dunkel ist (ui/theme/Darstellung.kt). */
     private val _dunkelNachSystem = MutableStateFlow(prefs.dunkelNachSystem())
     val dunkelNachSystem: StateFlow<Boolean> = _dunkelNachSystem.asStateFlow()
     fun setDunkelNachSystem(an: Boolean) {
         prefs.setzeDunkelNachSystem(an)
         _dunkelNachSystem.value = an
+    }
+
+    /** Je Gerät: auch nutzerinstallierte CAs für den eigenen Server (util/ServerVertrauen.kt). */
+    private val _nutzerCa = MutableStateFlow(prefs.nutzerCaErlaubt())
+    val nutzerCa: StateFlow<Boolean> = _nutzerCa.asStateFlow()
+    fun setNutzerCa(an: Boolean) {
+        prefs.setzeNutzerCa(an)
+        _nutzerCa.value = an
+        // Offene Verbindungen trugen das alte Vertrauen.
+        apiHttpClient.connectionPool.evictAll()
     }
 
     private val _csvImportState = MutableStateFlow(CsvImportUiState())
@@ -146,8 +152,8 @@ class AppViewModel @Inject constructor(
         viewModelScope.launch {
             prefs.language.collect { lang -> sitzung.aendere { it.copy(language = lang) } }
         }
-        // Ein 401 mit Token meldet der Interceptor hier; abgemeldet wird nur,
-        // wenn noch eine Sitzung besteht (ein Fehlversuch beim Anmelden nicht).
+        // Ein 401 auf einen Token, der an einen ausgewiesenen Server ging
+        // (ServerWaechter); ein Fehlversuch beim Anmelden meldet nicht ab.
         viewModelScope.launch {
             sessionExpired.events.collect {
                 if (sitzung.state.value.isLoggedIn) {
@@ -173,12 +179,13 @@ class AppViewModel @Inject constructor(
     /**
      * Abmelden räumt alles weg, was zum Konto gehört — auch API- und
      * Bild-Cache, sonst sähe der nächste Nutzer auf dem Gerät fremde Daten.
-     * Die Bereichs-ViewModels leeren sich auf [Sitzung.abgemeldet].
+     * Die Bereichs-ViewModels leeren sich auf [Sitzung.abgemeldet]. Der Job lässt
+     * einen Serverwechsel warten, bis alles weg ist.
      */
     @OptIn(coil3.annotation.ExperimentalCoilApi::class)
-    fun logout() {
+    fun logout(): Job {
         csvWatchJob?.cancel(); csvWatchJob = null
-        viewModelScope.launch {
+        return viewModelScope.launch {
             prefs.clearSession()
             repo.clearCache()
             // Speicher zuerst, sonst schreibt Coil beim nächsten Treffer wieder auf die Platte.

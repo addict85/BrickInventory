@@ -1,5 +1,12 @@
 package ch.brickinventoryapp
 
+import ch.brickinventoryapp.data.api.ApiJson
+import ch.brickinventoryapp.data.cache.ResponseCache
+import ch.brickinventoryapp.data.model.JobsResponse
+import ch.brickinventoryapp.data.repository.AdminRepository
+import kotlinx.coroutines.runBlocking
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
@@ -29,24 +36,39 @@ class VerwaltungLueckenTest {
     private fun code(s: String) = s.lines()
         .joinToString("\n") { if (it.trim().startsWith("//") || it.trim().startsWith("*")) "" else it }
 
+    /**
+     * Ausgeführt gegen einen Testserver. Gegenproben (29.10.2026, gemessen):
+     *   A  `@POST("api/v1/admin/catalog-images")` auf "…/katalogbilder" → rot
+     *   B  setJobSchedule wieder mit `Map<String, Any>` (Stand 8f4f9d3) → rot:
+     *      Der kotlinx-Wandler kann `Any` nicht schreiben, der Zeitplan ging nie
+     *      hinaus. Gefunden beim Umstellen dieses Tests auf einen Testserver.
+     */
     @Test
-    fun `die App kennt alle drei Adressen`() {
-        val api = code(read("data/api/BrickApiService.kt"))
-        for (adresse in listOf(
-            "api/v1/admin/job-schedule",
-            "api/v1/admin/catalog-images",
-            "api/v1/settings/admin/theme",
-        )) {
-            assert(api.contains("(\"$adresse\")")) { "Die App ruft $adresse nicht" }
+    fun `die App ruft alle drei Adressen`() {
+        val pfade = PfadServer()
+        try {
+            val admin = AdminRepository(TestApi.fuer(pfade.server),
+                ResponseCache { java.io.File(System.getProperty("java.io.tmpdir"), "bim-verwaltung") })
+            runBlocking {
+                admin.setJobSchedule("prices", zeit = "07:05")
+                admin.queueCatalogImages()
+                admin.setAppTheme("noppe")
+            }
+            assertEquals(listOf("POST /api/v1/admin/job-schedule", "POST /api/v1/admin/catalog-images",
+                "POST /api/v1/settings/admin/theme"), pfade.anfragen.toList())
+            assertTrue(pfade.koerper[0], "\"time\":\"07:05\"" in pfade.koerper[0] && "\"name\":\"prices\"" in pfade.koerper[0])
+            assertEquals("""{"theme":"noppe"}""", pfade.koerper[2])
+        } finally {
+            pfade.server.shutdown()
         }
     }
 
+    /** Der Server schickt den Zeitplan seit jeher mit; die App liest ihn ein. */
     @Test
     fun `der Zeitplan wird eingelesen und angezeigt`() {
-        val modelle = code(read("data/model/AdminKatalogModels.kt"))
-        assert(modelle.contains("val schedules: Map<String, JobSchedule>")) {
-            "JobsResponse liest den Zeitplan nicht ein — der Server schickt ihn seit jeher mit"
-        }
+        val r = ApiJson.decodeFromString(JobsResponse.serializer(),
+            """{"success":true,"jobs":{},"schedules":{"prices":{"type":"daily","time":"07:05"}}}""")
+        assertEquals("07:05", r.schedules["prices"]?.time)
         val vm = code(read("ui/viewmodel/MonitoringViewModel.kt"))
         assert(vm.contains("jobSchedules = r.data.schedules")) {
             "Der Zeitplan kommt nicht in den Zustand"

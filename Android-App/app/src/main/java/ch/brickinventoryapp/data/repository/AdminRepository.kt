@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.data.repository
 
-import ch.brickinventoryapp.data.api.BrickApiService
+import ch.brickinventoryapp.data.api.AdminApi
 import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.model.*
 import kotlinx.coroutines.Dispatchers
@@ -21,9 +21,9 @@ import javax.inject.Singleton
  */
 @Singleton
 class AdminRepository @Inject constructor(
-    api: BrickApiService,
+    api: AdminApi,
     cache: ResponseCache,
-) : RepoBasis(api, cache) {
+) : RepoBasis<AdminApi>(api, cache) {
 
     // Kein Authorization-Header hier: Der OkHttp-Interceptor in di/ServerClient.kt
     // setzt "Bearer <token>" für alle Anfragen an unseren Server (aus dem
@@ -83,16 +83,9 @@ class AdminRepository @Inject constructor(
         safeCall { api.changePassword(PasswortAenderung(aktuell, neu)) }
 
     /**
-     * Eine CSV-Datei importieren — Sets, Teile oder Minifiguren.
-     *
-     * Die Bytes kommen fertig gelesen herein und nicht als Uri: Das Aufloesen
-     * eines content://-Verweises braucht den ContentResolver und gehoert damit
-     * in die Schicht, die einen Context hat. Ein Repository, das Android-Typen
-     * kennt, waere in diesem Baum die Ausnahme.
-     *
-     * `text/csv` als Typ, weil der Server nur die Endung und den Inhalt liest;
-     * der Dateiname geht mit, damit im Serverprotokoll steht, was importiert
-     * wurde.
+     * Eine CSV-Datei importieren. Die Bytes kommen fertig gelesen herein, weil ein
+     * content://-Verweis den ContentResolver braucht und das Repository keine
+     * Android-Typen kennt; der Dateiname geht fürs Serverprotokoll mit.
      */
     suspend fun importiereCsv(
         art: CsvArt, dateiname: String, inhalt: ByteArray,
@@ -111,7 +104,7 @@ class AdminRepository @Inject constructor(
     }
 
     // Server-Protokoll. Die Nutzerverwaltung des Servers bleibt der Webapp vorbehalten
-    // — siehe BrickApiService.
+    // — siehe AdminApi.
     suspend fun getProtokoll(minuten: Int): Result<ProtokollResponse> =
         safeCall { api.getProtokoll(minuten) }
 
@@ -133,14 +126,14 @@ class AdminRepository @Inject constructor(
      */
     suspend fun setJobSchedule(name: String, zeit: String? = null, minuten: Int? = null): Result<GenericAdminResponse> =
         safeCall {
-            api.setJobSchedule(buildMap {
-                put("name", name)
-                zeit?.let { put("time", it) }
-                minuten?.let { put("minutes", it) }
+            api.setJobSchedule(kotlinx.serialization.json.buildJsonObject {
+                put("name", kotlinx.serialization.json.JsonPrimitive(name))
+                zeit?.let { put("time", kotlinx.serialization.json.JsonPrimitive(it)) }
+                minuten?.let { put("minutes", kotlinx.serialization.json.JsonPrimitive(it)) }
             })
         }
 
-    /** Fehlende Katalogbilder einreihen — siehe BrickApiService.queueCatalogImages. */
+    /** Fehlende Katalogbilder einreihen — siehe AdminApi.queueCatalogImages. */
     suspend fun queueCatalogImages(): Result<GenericAdminResponse> = safeCall { api.queueCatalogImages() }
 
     /** Das globale Design umstellen (nur Verwalter). */
@@ -150,7 +143,7 @@ class AdminRepository @Inject constructor(
     /** Startzustand des Servers — ohne Anmeldung. */
     suspend fun getStartupStatus(): Result<StartupStatus> = safeCall { api.getStartupStatus() }
 
-    /** Das globale Design — ohne Anmeldung. Siehe BrickApiService.getAppTheme. */
+    /** Das globale Design — ohne Anmeldung. Siehe AdminApi.getAppTheme. */
     suspend fun getAppTheme(): Result<AppThemeResponse> = safeCall { api.getAppTheme() }
 
     suspend fun updateSettings(currency: String, condition: String): Result<GenericResponse> =

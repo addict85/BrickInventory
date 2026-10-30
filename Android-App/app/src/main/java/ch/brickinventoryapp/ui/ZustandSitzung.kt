@@ -132,4 +132,9 @@ data class AnmeldeUiState(
      * korrigiert — flüchtige Meldungen gehen in den Meldungskanal.
      */
     val loginError: String? = null,
+    /**
+     * Die Anmeldung wartet auf eine Rückfrage: Klartext in einem Netz, in dem dieser
+     * Server nie eingerichtet wurde (NetworkPolicy.anmeldungBrauchtNetzBestaetigung).
+     */
+    val netzFrage: Boolean = false,
 )

@@ -60,6 +60,7 @@ import ch.brickinventoryapp.ui.ManualItemDetailUiState
  * herein, damit kein Ziel Zustand aus einem umgebenden Scope einfängt.
  */
 fun NavGraphBuilder.authGraph(
+    vm: AppViewModel,
     navController: NavHostController,
 ) {
         composable(Screen.Setup.route) {
@@ -67,19 +68,23 @@ fun NavGraphBuilder.authGraph(
             // Momentaufnahme vom Aufbau des Graphen (der NavHost-Builder läuft nur einmal).
             val anmeldungVm: AnmeldungViewModel = aktivitaetsViewModel()
             val state by anmeldungVm.state.collectAsStateWithLifecycle()
+            val nutzerCa by vm.nutzerCa.collectAsStateWithLifecycle()
             SetupScreen(
                 currentUrl = state.serverUrl,
+                nutzerCa = nutzerCa,
+                onNutzerCa = { vm.setNutzerCa(it) },
+                // Ein anderer Server meldet über den vollen Weg der App ab, bevor die
+                // neue Adresse gilt (AnmeldungViewModel.saveServerUrl).
                 onSave = { url, klartextBestaetigt ->
-                    anmeldungVm.saveServerUrl(url, klartextBestaetigt)
+                    anmeldungVm.saveServerUrl(url, klartextBestaetigt, abmelden = { vm.logout().join() })
                     navController.navigate(Screen.Login.route) {
                         popUpTo(Screen.Setup.route) { inclusive = true }
                     }
                 },
-                onQrScanned = { url, token ->
-                    // Save server URL and auto-login with QR token
-                    anmeldungVm.saveServerUrl(url)
-                    anmeldungVm.loginWithQrToken(url, token)
-                    // Navigate to login screen (will auto-redirect to gallery on success)
+                // Erst nach der Bestätigung im Einrichtungsbildschirm; die Anmeldung
+                // springt nach Erfolg in die Galerie.
+                onQrScanned = { url, token, klartextBestaetigt ->
+                    anmeldungVm.loginWithQrToken(url, token, klartextBestaetigt, abmelden = { vm.logout().join() })
                     navController.navigate(Screen.Login.route) {
                         popUpTo(Screen.Setup.route) { inclusive = true }
                     }
@@ -97,13 +102,9 @@ fun NavGraphBuilder.authGraph(
             // Konto gibt. `Unit` als Schluessel: genau einmal je Aufbau, nicht
             // bei jeder Zustandsaenderung.
             LaunchedEffect(Unit) { anmeldungVm.pruefeRegistrierungOffen() }
-            // ── Startet der Server gerade? ──
-            //
-            // Dann statt des Formulars der Fortschritt: Anmelden hat in dieser Zeit keinen
-            // Zweck, und die allgemeine Netzmeldung klänge nach einem Fehler, obwohl alles
-            // richtig läuft. `startupStatus` hat nur dann einen Wert, wenn der Server
-            // antwortet und `ready` verneint; ist er gar nicht erreichbar, bleibt es bei null
-            // und die Anmeldung sieht aus wie immer.
+            // Startet der Server gerade, steht statt des Formulars der Fortschritt: Die
+            // Netzmeldung klänge nach einem Fehler. `startupStatus` hat nur einen Wert,
+            // wenn der Server antwortet und `ready` verneint.
             val serverStart = state.startupStatus
             if (serverStart != null) {
                 ch.brickinventoryapp.ui.screens.ServerStartAnzeige(serverStart)
@@ -118,6 +119,9 @@ fun NavGraphBuilder.authGraph(
                 kontoMeldung = anmeldung.meldung,
                 kontoFehler = anmeldung.fehler,
                 onLogin = { user, pw, code -> anmeldungVm.login(user, pw, code) },
+                netzFrage = anmeldung.netzFrage,
+                onNetzBestaetigt = { user, pw, code -> anmeldungVm.login(user, pw, code, netzBestaetigt = true) },
+                onNetzAbgelehnt = { anmeldungVm.netzFrageVerwerfen() },
                 onFormular = { anmeldungVm.zeigeAnmeldeFormular(it) },
                 onRegistrieren = { u, e, v, n, pw -> anmeldungVm.registriere(u, e, v, n, pw) },
                 onPasswortVergessen = { anmeldungVm.passwortVergessen(it) },

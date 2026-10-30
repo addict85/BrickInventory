@@ -6,6 +6,7 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
 import ch.brickinventoryapp.ui.theme.farbschema
+import ch.brickinventoryapp.ui.theme.hatDunkleFassung
 import ch.brickinventoryapp.ui.theme.statusFarbenFuer
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -26,7 +27,16 @@ import org.junit.Test
  */
 class FarbrollenTest {
 
-    private val designs = listOf("classic", "brick", "werkbank", "farbfaecher", "noppe", "hochglanz")
+    private val hell = listOf("classic", "brick", "werkbank", "farbfaecher", "noppe", "hochglanz")
+
+    /** Jedes Design, dazu seine dunkle Fassung (DunkelTokens.kt): Name, Schema, Statusfarben, dunkel? */
+    private data class Fassung(val name: String, val schema: ColorScheme, val erfolg: Int, val dunkel: Boolean)
+
+    private val fassungen: List<Fassung> = hell.map {
+        Fassung(it, farbschema(it), statusFarbenFuer(it).erfolg.toArgb(), it == "werkbank")
+    } + hell.filter { hatDunkleFassung(it) }.map {
+        Fassung("$it/dunkel", farbschema(it, dunkel = true), statusFarbenFuer(it, dunkel = true).erfolg.toArgb(), true)
+    }
 
     private val rollen: List<Pair<String, (ColorScheme) -> Any>> = listOf(
         "surfaceContainerLow" to { it.surfaceContainerLow },
@@ -52,9 +62,10 @@ class FarbrollenTest {
     @Test
     fun `Gewinnfarbe ist als Text auf jeder Flaeche lesbar`() {
         val fehler = mutableListOf<String>()
-        for (d in designs) {
-            val s = farbschema(d)
-            val erfolg = statusFarbenFuer(d).erfolg.toArgb()
+        for (f in fassungen) {
+            val d = f.name
+            val s = f.schema
+            val erfolg = f.erfolg
             for ((name, flaeche) in listOf("surface" to s.surface, "surfaceContainer" to s.surfaceContainer,
                                            "background" to s.background)) {
                 val k = Kontrast.verhaeltnis(erfolg, flaeche.toArgb())
@@ -67,9 +78,10 @@ class FarbrollenTest {
     @Test
     fun `kein Design erbt Rollen aus der Grundpalette`() {
         val fehler = mutableListOf<String>()
-        for (d in designs) {
-            val s = farbschema(d)
-            val grund = if (d == "werkbank") darkColorScheme() else lightColorScheme()
+        for (f in fassungen) {
+            val d = f.name
+            val s = f.schema
+            val grund = if (f.dunkel) darkColorScheme() else lightColorScheme()
             for ((name, rolle) in rollen) {
                 if (rolle(s) == rolle(grund)) fehler += "$d.$name"
             }
@@ -80,8 +92,9 @@ class FarbrollenTest {
     @Test
     fun `outline hebt sich mit mindestens 3 zu 1 von jeder Flaeche ab`() {
         val fehler = mutableListOf<String>()
-        for (d in designs) {
-            val s = farbschema(d)
+        for (f in fassungen) {
+            val d = f.name
+            val s = f.schema
             val rahmen = s.outline.toArgb()
             val flaechen = mapOf("surface" to s.surface, "background" to s.background,
                 "surfaceVariant" to s.surfaceVariant, "surfaceContainerHigh" to s.surfaceContainerHigh,
@@ -99,12 +112,13 @@ class FarbrollenTest {
 
     @Test
     fun `Flaechenstufen entfernen sich schrittweise von surface`() {
-        for (d in designs) {
-            val s = farbschema(d)
+        for (f in fassungen) {
+            val d = f.name
+            val s = f.schema
             val stufen = listOf(s.surface, s.surfaceContainerLow, s.surfaceContainer,
                 s.surfaceContainerHigh, s.surfaceContainerHighest).map { it.luminance() }
             // Im Hellen wird jede Stufe dunkler, im Dunklen heller.
-            val richtig = if (d == "werkbank") stufen.zipWithNext().all { (a, b) -> b > a }
+            val richtig = if (f.dunkel) stufen.zipWithNext().all { (a, b) -> b > a }
                           else stufen.zipWithNext().all { (a, b) -> b < a }
             assertTrue("$d: Helligkeit der Stufen $stufen", richtig)
         }

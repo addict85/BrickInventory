@@ -47,6 +47,8 @@ class PreferencesManager @Inject constructor(
         const val DESIGN_SPIEGEL_DATEI = "design_spiegel"
         const val DUNKEL_NACH_SYSTEM = "dunkel_nach_system"
         const val APP_THEME_SPIEGEL = "app_theme"
+        const val SPRACHE_SPIEGEL = "sprache"
+        const val NUTZER_CA = "nutzer_ca"
 
         /**
          * In welchen Netzen darf das Vorwärmen der Vorschaubilder holen? Auf dem Gerät,
@@ -71,6 +73,10 @@ class PreferencesManager @Inject constructor(
 
         /** Der verschlüsselte Nachfolger. */
         val AUTH_TOKEN_ENC = stringPreferencesKey("auth_token_enc")
+        /** Der Server, der den Token ausgab (NetworkPolicy.herkunft); nur dorthin geht er. */
+        val TOKEN_HERKUNFT = stringPreferencesKey("token_herkunft")
+        /** „Server|Netz“, in denen eine Klartext-Anmeldung eingerichtet oder bestätigt wurde. */
+        val KLARTEXT_NETZE = stringSetPreferencesKey("klartext_netze")
         val USERNAME     = stringPreferencesKey("username")
         val CURRENCY     = stringPreferencesKey("currency")
         // "system" (folgt der OS-Sprache), "en" oder "de"
@@ -145,18 +151,36 @@ class PreferencesManager @Inject constructor(
     // null = DataStore noch nicht gelesen (nur ganz kurz beim Kaltstart).
     private val prefsScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    // ── Der Speicherwert führt, der DataStore folgt ──
-    //
-    // stateIn() folgte der Schreibung erst nach der Plattenschreibung. Die Anmeldung
-    // feuert aber sofort Abrufe, und der Interceptor las so noch den alten (leeren)
-    // Token oder die alte Adresse — der Server antwortete mit `token_ungueltig`,
-    // obwohl die Anmeldung gelang. Deshalb setzen saveAuthToken() und saveServerUrl()
-    // den Speicherwert zuerst. null = DataStore noch nicht gelesen (nur kurz beim
-    // Kaltstart).
+    // Der Speicherwert führt, der DataStore folgt: Die Anmeldung feuert sofort
+    // Abrufe, und ein nachlaufender Wert gäbe dem Interceptor den alten Token.
+    // null = DataStore noch nicht gelesen (nur kurz beim Kaltstart).
     private val _serverUrlState = MutableStateFlow<String?>(null)
     val serverUrlState: StateFlow<String?> = _serverUrlState.asStateFlow()
     private val _authTokenState = MutableStateFlow<String?>(null)
     val authTokenState: StateFlow<String?> = _authTokenState.asStateFlow()
+    private val _tokenHerkunftState = MutableStateFlow<String?>(null)
+    /** Leer = Altbestand ohne Bindung; dann gilt der eingetragene Server. */
+    val tokenHerkunftState: StateFlow<String?> = _tokenHerkunftState.asStateFlow()
+
+    // Vier Spiegel: Adresse, Token, Herkunft, Klartext-Hosts. Erst wenn jeder
+    // einmal von der Platte kam, ist der Kaltstart vorbei.
+    private val startGelesen = java.util.concurrent.CountDownLatch(4)
+
+    /**
+     * Für den Interceptor auf OkHttp-Threads: wartet beim Kaltstart auf den ersten
+     * Stand der Platte, ohne Koroutine und höchstens fünf Sekunden.
+     */
+    fun warteAufStart() {
+        startGelesen.await(5, java.util.concurrent.TimeUnit.SECONDS)
+    }
+
+    private fun <T> spiegle(fluss: Flow<T>, ziel: MutableStateFlow<T?>) = prefsScope.launch {
+        var erster = true
+        fluss.collect {
+            ziel.value = it
+            if (erster) { erster = false; startGelesen.countDown() }
+        }
+    }
 
     /**
      * Der Token, wie er jetzt gilt — nicht, wie er zuletzt auf der Platte stand.
@@ -211,16 +235,32 @@ class PreferencesManager @Inject constructor(
         }
     }
 
+    // Synchron lesbarer Spiegel des Designs (SharedPreferences): setContent() läuft
+    // vor dem ersten DataStore-Wert, und das erste Bild entstünde sonst im
+    // Standard-Design. Der DataStore bleibt führend. Vor
+    // init, weil die Übernahme dort im Hintergrund schon darauf zugreift.
+    private val designSpiegel by lazy {
+        context.getSharedPreferences(DESIGN_SPIEGEL_DATEI, Context.MODE_PRIVATE)
+    }
+
     init {
-        // Der Nachlauf aus dem DataStore: fuer den Kaltstart und fuer
-        // Aenderungen, die NICHT ueber die beiden save-Funktionen kamen (etwa
-        // die einmalige Uebernahme eines alten Klartext-Tokens).
-        prefsScope.launch { serverUrl.collect { _serverUrlState.value = it } }
-        prefsScope.launch { authToken.collect { _authTokenState.value = it } }
+        // Der Nachlauf aus dem DataStore: für den Kaltstart und für Änderungen,
+        // die nicht über die save-Funktionen kamen (Übernahme eines alten Tokens).
+        spiegle(serverUrl, _serverUrlState)
+        spiegle(authToken, _authTokenState)
+        spiegle(context.dataStore.data.map { it[TOKEN_HERKUNFT] }, _tokenHerkunftState)
         prefsScope.launch {
             uebernimmAltenKlartextHost()
-            context.dataStore.data.map { it[KLARTEXT_HOSTS] ?: emptySet() }.collect { _klartextHosts.value = it }
+            uebernimmAltenCaStand()
+            spiegle(context.dataStore.data.map { it[KLARTEXT_HOSTS] ?: emptySet() }, _klartextHosts)
         }
+    }
+
+    override suspend fun bekannteNetze(): Set<String> =
+        context.dataStore.data.first()[KLARTEXT_NETZE] ?: emptySet()
+
+    override suspend fun merkeNetz(eintrag: String) {
+        context.dataStore.edit { it[KLARTEXT_NETZE] = (it[KLARTEXT_NETZE] ?: emptySet()) + eintrag }
     }
 
     override suspend fun saveServerUrl(url: String) {
@@ -231,11 +271,17 @@ class PreferencesManager @Inject constructor(
                 u.substring(0, idx).lowercase() + u.substring(idx)
             } else u
         }
-        // ZUERST in den Speicher, dann auf die Platte — siehe der Block ueber
-        // serverUrlState. Umgekehrt liest der Interceptor waehrend der
-        // Schreibung noch die alte Adresse.
+        // Zuerst in den Speicher, dann auf die Platte (siehe serverUrlState).
+        // Ein anderer Server beendet die Sitzung: Der Token gehört dem alten.
+        val herkunft = _tokenHerkunftState.value ?: serverUrlJetzt()
+        val anderer = tokenJetzt().isNotBlank() &&
+            !ch.brickinventoryapp.util.NetworkPolicy.gleicheHerkunft(herkunft, normalized)
+        if (anderer) { _authTokenState.value = ""; _tokenHerkunftState.value = null }
         _serverUrlState.value = normalized
-        context.dataStore.edit { it[SERVER_URL] = normalized }
+        context.dataStore.edit {
+            it[SERVER_URL] = normalized
+            if (anderer) { it.remove(AUTH_TOKEN); it.remove(AUTH_TOKEN_ENC); it.remove(TOKEN_HERKUNFT); it.remove(USERNAME) }
+        }
     }
     /**
      * Token ablegen, nur noch verschlüsselt. Der alte Klartext-Eintrag wird im selben
@@ -245,11 +291,14 @@ class PreferencesManager @Inject constructor(
         // ZUERST in den Speicher: Der Aufrufer feuert unmittelbar nach dieser
         // Funktion die ersten Anfragen, und der Interceptor liest den Wert
         // synchron. Die ausfuehrliche Begruendung steht ueber authTokenState.
+        val herkunft = ch.brickinventoryapp.util.NetworkPolicy.herkunft(serverUrlJetzt())
+        _tokenHerkunftState.value = herkunft
         _authTokenState.value = token
         val geheim = tresor.verschluessle(token)
         context.dataStore.edit {
             it[AUTH_TOKEN_ENC] = geheim
             it.remove(AUTH_TOKEN)
+            if (herkunft != null) it[TOKEN_HERKUNFT] = herkunft else it.remove(TOKEN_HERKUNFT)
         }
     }
 
@@ -304,6 +353,20 @@ class PreferencesManager @Inject constructor(
 
     suspend fun saveLanguage(lang: String) {
         context.dataStore.edit { it[LANGUAGE] = lang }
+        designSpiegel.edit().putString(SPRACHE_SPIEGEL, lang).apply()
+    }
+
+    /**
+     * Die Sprache synchron für Application.onCreate (unter Android 13), ohne den
+     * DataStore zu blockieren. null = vor dem Spiegel gespeichert; dann liest
+     * [spracheNachziehen] sie einmal nach.
+     */
+    fun gemerkteSprache(): String? = designSpiegel.getString(SPRACHE_SPIEGEL, null)
+
+    suspend fun spracheNachziehen(): String {
+        val lang = language.first()
+        designSpiegel.edit().putString(SPRACHE_SPIEGEL, lang).apply()
+        return lang
     }
     suspend fun saveAppTheme(theme: String) {
         // Unbekannte Werte NICHT schreiben: "" oder null heisst „keine
@@ -316,17 +379,6 @@ class PreferencesManager @Inject constructor(
             // auseinanderlaufen koennen.
             designSpiegel.edit().putString(APP_THEME_SPIEGEL, theme).apply()
         }
-    }
-
-    // ── Der synchron lesbare Spiegel des Designs ──
-    //
-    // Der DataStore lässt sich nur asynchron lesen, setContent() läuft aber sofort;
-    // die ersten Bilder entstanden deshalb im Standard-Design, bis der gemerkte Wert
-    // kam. SharedPreferences sind synchron lesbar — das Gegenstück zum blockierenden
-    // 00-theme-boot.js der Webapp. Der DataStore bleibt führend; der Spiegel wird nur
-    // mitgeschrieben.
-    private val designSpiegel by lazy {
-        context.getSharedPreferences(DESIGN_SPIEGEL_DATEI, Context.MODE_PRIVATE)
     }
 
     /**
@@ -343,15 +395,34 @@ class PreferencesManager @Inject constructor(
      */
     fun dunkelNachSystem(): Boolean = ch.brickinventoryapp.ui.theme.dunkelNachSystemGilt(
         if (designSpiegel.contains(DUNKEL_NACH_SYSTEM)) designSpiegel.getBoolean(DUNKEL_NACH_SYSTEM, true) else null)
+    /**
+     * Vertrauen die Clients des eigenen Servers auch nutzerinstallierten CAs
+     * (util/ServerVertrauen.kt)? Je Gerät und synchron: Gefragt wird bei jedem
+     * Verbindungsaufbau.
+     */
+    fun nutzerCaErlaubt(): Boolean = designSpiegel.getBoolean(NUTZER_CA, false)
+    fun setzeNutzerCa(an: Boolean) {
+        designSpiegel.edit().putBoolean(NUTZER_CA, an).apply()
+    }
+
+    /** Einmalig vor dem ersten Verbindungsaufbau (der Latch wartet darauf); siehe nutzerCaVorgabe. */
+    private suspend fun uebernimmAltenCaStand() {
+        if (designSpiegel.contains(NUTZER_CA)) return
+        setzeNutzerCa(ch.brickinventoryapp.util.nutzerCaVorgabe(context.dataStore.data.first()[SERVER_URL] ?: ""))
+    }
+
     fun setzeDunkelNachSystem(an: Boolean) {
         designSpiegel.edit().putBoolean(DUNKEL_NACH_SYSTEM, an).apply()
     }
     suspend fun clearSession() {
+        _authTokenState.value = ""
+        _tokenHerkunftState.value = null
         context.dataStore.edit {
             // BEIDE Schlüssel: Bliebe der alte stehen, wäre man nach dem
             // Abmelden über den Altbestand wieder angemeldet.
             it.remove(AUTH_TOKEN)
             it.remove(AUTH_TOKEN_ENC)
+            it.remove(TOKEN_HERKUNFT)
             it.remove(USERNAME)
         }
     }

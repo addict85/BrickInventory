@@ -4,30 +4,56 @@ import ch.brickinventoryapp.data.model.*
 import retrofit2.Response
 import retrofit2.http.*
 
-interface BrickApiService {
+/**
+ * Alle Bereiche zusammen. Die App injiziert nur die Bereiche (NetzModule), jedes
+ * Repository sieht nur seinen; diese Summe gibt es für Tests, die mit einem
+ * Testserver alle Repositories bauen. Alle Bereiche stehen in dieser einen
+ * Datei, weil die Vertragsprüfungen des Web sie lesen.
+ */
+interface BrickApiService : AdminApi, SetsApi, TeileApi, HaushaltApi, FinanzenApi, GutscheineApi
+
+/**
+ * Teile und Figuren abfragen — für die Teile-Reiter und für den Inhalt eines
+ * Sets; Sets- und Teile-Bereich erben sie beide.
+ */
+interface BestandsInhaltApi {
+
+    @GET("api/v1/parts")
+    suspend fun getParts(
+        @Query("search") search: String? = null,
+        @Query("color") color: String? = null,
+        @Query("category") category: String? = null,
+        @Query("page") page: Int = 1,
+        @Query("page_size") pageSize: Int = 500,
+        @Query("set_number") setNumber: String? = null,
+        @Query("exclude_manual") excludeManual: String? = null,
+        @Query("accounts") accounts: String? = null,
+        // "0" = ohne Ersatzteile, "1" = nur Ersatzteile, null = alle.
+        // Dieselben drei Werte wie das Auswahlfeld der Webapp (parts-spare);
+        // der Server liest sie in utils/handlers/parts.ts.
+        @Query("spare") spare: String? = null,
+        // "1" holt zusaetzlich, in welchen Sets das Teil steckt. Kostet den
+        // Server eine eigene Abfrage — deshalb nur in der Tabellenansicht,
+        // genau wie in der Webapp (parts-view === 'table').
+        @Query("with_sets") withSets: String? = null,
+        /** Lagerort — eigener Parameter, nicht Teil der Suche (siehe Server). */
+        @Query("storage") storage: String? = null
+    ): Response<PartsResponse>
+
+    @GET("api/v1/minifigs")
+    suspend fun getMinifigs(
+        @Query("source") source: String? = null,
+        @Query("set_number") setNumber: String? = null,
+        @Query("accounts") accounts: String? = null,
+        @Query("search") search: String? = null
+    ): Response<MinifigsResponse>
+}
+
+/** Anmeldung, Konto, zweiter Faktor, CSV-Import, Einstellungen, Hintergrundarbeiten, Katalog (AdminRepository). */
+interface AdminApi {
 
     @POST("api/v1/auth/login")
     suspend fun login(@Body request: LoginRequest): Response<LoginResponse>
-
-    // Umgezogen nach /api/v1: Seit der Zusammenfuehrung gibt es nur noch EINEN
-    // Adressraum. Der Router dahinter ist derselbe wie vorher — nur die Adresse
-    // hat sich geaendert (siehe server.ts).
-    @GET("api/v1/sets/import/csv/status")
-    suspend fun getCsvImportStatus(): Response<ch.brickinventoryapp.data.model.CsvImportStatus>
-
-    /**
-     * Einen laufenden CSV-Import abbrechen. Der Server vermerkt nur `cancelled`; schon
-     * angelegte Sets bleiben — abgebrochen heisst „ab hier nicht weiter“, nicht
-     * „rückgängig“, wie in der Webapp.
-     */
-    @POST("api/v1/sets/import/csv/cancel")
-    suspend fun cancelCsvImport(): Response<GenericAdminResponse>
-
-    @GET
-    suspend fun getCsvImportStatusDirect(
-        @retrofit2.http.Url url: String,
-        @Header("Authorization") token: String
-    ): Response<ch.brickinventoryapp.data.model.CsvImportStatus>
 
     @POST("api/v1/auth/qr-login")
     suspend fun qrLogin(@Body request: QrLoginRequest): Response<LoginResponse>
@@ -106,6 +132,171 @@ interface BrickApiService {
     @POST("api/v1/alerts/import/csv")
     suspend fun importAlarmeCsv(@retrofit2.http.Part datei: okhttp3.MultipartBody.Part): Response<CsvImportErgebnis>
 
+    // ── Server-Protokoll (nur für Verwalter) ──
+    //
+    // Die Nutzerverwaltung (/auth/users) fehlt hier mit Absicht: Sie gehört an den
+    // Rechner, nicht aufs Telefon.
+    @GET("api/v1/admin/logs")
+    suspend fun getProtokoll(@Query("minutes") minuten: Int): Response<ProtokollResponse>
+
+    /**
+     * Startzustand des Servers — ohne Anmeldung, weil er gebraucht wird, bevor sich
+     * jemand anmelden kann.
+     */
+    @GET("api/v1/startup-status")
+    suspend fun getStartupStatus(): Response<ch.brickinventoryapp.data.model.StartupStatus>
+
+    /**
+     * Das globale Design des Servers — ohne Anmeldung: Anmelde- und
+     * Einrichtungsbildschirm sollen schon im richtigen Design erscheinen.
+     */
+    @GET("api/v1/settings/theme")
+    suspend fun getAppTheme(): Response<ch.brickinventoryapp.data.model.AppThemeResponse>
+
+    @GET("api/v1/catalog/year-verteilung")
+    suspend fun getCatalogYearVerteilung(
+        @Query("q") q: String? = null,
+        @Query("theme_id") themeId: Int? = null,
+        @Query("sort") sort: String? = null
+    ): Response<ch.brickinventoryapp.data.model.CatalogYearVerteilungResponse>
+
+    @GET("api/v1/settings")
+    suspend fun getSettings(): Response<SettingsResponse>
+
+    @PUT("api/v1/settings")
+    suspend fun updateSettings(
+        @Body body: Map<String, String>
+    ): Response<GenericResponse>
+
+    @GET("api/v1/auth/me")
+    suspend fun getMe(): Response<MeResponse>
+
+    // ── Angemeldete Geraete ──────────────────────────────────────────────────
+    // Beide Adressen gab es schon; sie waren nur sitzungsgebunden und damit
+    // fuer die App nicht erreichbar. Seit der Token-Verwaltung nehmen sie
+    // Sitzung ODER Bearer-Token (requireLoginOrToken), wie der Rest von /api/v1.
+    @GET("api/v1/settings/tokens")
+    suspend fun getTokens(): Response<TokensResponse>
+
+    @DELETE("api/v1/settings/tokens/{tokenId}")
+    suspend fun revokeToken(@Path("tokenId") tokenId: String): Response<GenericResponse>
+
+    // ── Admin / Monitoring ────────────────────────────────────────────────────
+    @GET("api/v1/admin/jobs")
+    suspend fun getJobs(): Response<JobsResponse>
+
+    /**
+     * Zeitplan eines Jobs: `{ name, time: "HH:MM" }` für tägliche Jobs, `{ name:
+     * "priceJob", minutes }` für den Preis-Job. Ein JsonObject, weil der Server am
+     * vorhandenen Feld unterscheidet; Map<String, Any> kann der Wandler nicht schreiben.
+     */
+    @POST("api/v1/admin/job-schedule")
+    suspend fun setJobSchedule(@Body body: kotlinx.serialization.json.JsonObject): Response<GenericAdminResponse>
+
+    /**
+     * Fehlende Katalogbilder einreihen. Nicht redownloadMissingImages: Das holt die
+     * Bilder des Bestands.
+     */
+    @POST("api/v1/admin/catalog-images")
+    suspend fun queueCatalogImages(): Response<GenericAdminResponse>
+
+    /**
+     * Das globale Design umstellen — nur für Verwalter, damit es nicht nur am Rechner
+     * geht.
+     */
+    @POST("api/v1/settings/admin/theme")
+    suspend fun setAppTheme(@Body body: Map<String, String>): Response<GenericAdminResponse>
+
+    @GET("api/v1/admin/brickset-queue")
+    suspend fun getBricksetQueue(): Response<BricksetQueueResponse>
+
+    @POST("api/v1/admin/brickset-queue/{setNumber}/retry")
+    suspend fun retryBricksetEntry(
+        @Path("setNumber") setNumber: String
+    ): Response<GenericAdminResponse>
+
+    @DELETE("api/v1/admin/brickset-queue/{setNumber}")
+    suspend fun deleteBricksetEntry(
+        @Path("setNumber") setNumber: String
+    ): Response<GenericAdminResponse>
+
+    @GET("api/v1/admin/cache-stats")
+    suspend fun getCacheStats(): Response<CacheStatsResponse>
+
+    @GET("api/v1/admin/cache-ttl")
+    suspend fun getCacheTtl(): Response<CacheTtlResponse>
+
+    @POST("api/v1/admin/cache-ttl")
+    suspend fun setCacheTtl(
+        @Body body: Map<String, String>
+    ): Response<GenericAdminResponse>
+
+    /**
+     * Den Preis-Cache leeren; mit `all=true` auch Teilmengen und Katalog. Global und
+     * nur für Verwalter: `price_cache` gehört niemandem, und jeder Neuaufbau kostet
+     * Anfragen aus dem gemeinsamen Tageskontingent.
+     */
+    @POST("api/v1/admin/cache-clear")
+    suspend fun clearCache(
+        @Body body: Map<String, Boolean> = emptyMap()
+    ): Response<GenericAdminResponse>
+
+    // Der globale Standard-Zustand steht unter getGlobalDefaultCondition()
+    // (api/v1/settings/default-condition).
+
+    @GET("api/v1/admin/api-limits")
+    suspend fun getApiLimits(): Response<ApiLimitsResponse>
+
+    @PUT("api/v1/admin/api-limits")
+    suspend fun setApiLimits(
+        @Body body: Map<String, Int>
+    ): Response<GenericAdminResponse>
+
+    @POST("api/v1/admin/redownload-missing-images")
+    suspend fun redownloadMissingImages(): Response<GenericAdminResponse>
+
+    // ── Katalog ──────────────────────────────────────────────────────────────
+    @GET("api/v1/catalog/meta")
+    suspend fun getCatalogMeta(): Response<CatalogMetaResponse>
+
+    @GET("api/v1/catalog/sets")
+    suspend fun getCatalogSets(
+        @Query("q") q: String? = null,
+        @Query("theme_id") themeId: Int? = null,
+        @Query("year_from") yearFrom: Int? = null,
+        @Query("year_to") yearTo: Int? = null,
+        @Query("sort") sort: String = "year_desc",
+        @Query("page") page: Int = 1,
+        @Query("limit") limit: Int = 60
+    ): Response<CatalogSetsResponse>
+
+    @GET("api/v1/catalog/sets/{setNumber}")
+    suspend fun getCatalogSetDetail(@Path("setNumber") setNumber: String): Response<CatalogSetDetailResponse>
+}
+
+/** Sets, Anleitungen, Preisalarme, Lagerort je Set, Merkliste, PDF-Export, Teilelisten (SetsRepository). */
+interface SetsApi : BestandsInhaltApi {
+
+    // Umgezogen nach /api/v1: Seit der Zusammenfuehrung gibt es nur noch EINEN
+    // Adressraum. Der Router dahinter ist derselbe wie vorher — nur die Adresse
+    // hat sich geaendert (siehe server.ts).
+    @GET("api/v1/sets/import/csv/status")
+    suspend fun getCsvImportStatus(): Response<ch.brickinventoryapp.data.model.CsvImportStatus>
+
+    /**
+     * Einen laufenden CSV-Import abbrechen. Der Server vermerkt nur `cancelled`; schon
+     * angelegte Sets bleiben — abgebrochen heisst „ab hier nicht weiter“, nicht
+     * „rückgängig“, wie in der Webapp.
+     */
+    @POST("api/v1/sets/import/csv/cancel")
+    suspend fun cancelCsvImport(): Response<GenericAdminResponse>
+
+    @GET
+    suspend fun getCsvImportStatusDirect(
+        @retrofit2.http.Url url: String,
+        @Header("Authorization") token: String
+    ): Response<ch.brickinventoryapp.data.model.CsvImportStatus>
+
     // ── Anleitungen: hinzufügen und entfernen ──
     //
     // Der Server nimmt nur PDF, JPG und PNG an und leitet die Dateiendung aus dem
@@ -125,13 +316,6 @@ interface BrickApiService {
         @Path("instrId") instrId: Int,
     ): Response<GenericResponse>
 
-    // ── Server-Protokoll (nur für Verwalter) ──
-    //
-    // Die Nutzerverwaltung (/auth/users) fehlt hier mit Absicht: Sie gehört an den
-    // Rechner, nicht aufs Telefon.
-    @GET("api/v1/admin/logs")
-    suspend fun getProtokoll(@Query("minutes") minuten: Int): Response<ProtokollResponse>
-
     /**
      * Nur der Name, aus dem gemeinsamen Katalog. Getrennt von getSetDetail: „Wie
      * heisst dieses Set?“ gibt es auch für fremde Sets, „was habe ich davon?“ nicht.
@@ -145,24 +329,6 @@ interface BrickApiService {
     suspend fun getSetDetail(
         @Path("setNumber") setNumber: String
     ): Response<SetDetailResponse>
-
-    // Kein currency-Parameter: Die Währung bestimmt der Server aus der
-    // Nutzereinstellung. Ein eigener Startwert traf den Cache der eingestellten
-    // Währung nicht, und die Detailansicht zeigte keinen Marktpreis, wo Finanzen und
-    // Kachel einen hatten.
-    @GET("api/v1/sets/{setNumber}/price")
-    suspend fun getSetPrice(
-        @Path("setNumber") setNumber: String
-    ): Response<SetPriceResponse>
-
-    // Auch hier ohne currency: Diese Route hat den Parameter serverseitig
-    // nie ausgewertet — der Vorgabewert "CHF" hier (gegen "EUR" beim Preis!)
-    // war totes Gewicht und hat die Verwirrung nur vergrössert.
-    @GET("api/v1/sets/{setNumber}/price-history")
-    suspend fun getSetPriceHistory(
-        @Path("setNumber") setNumber: String
-    ): Response<PriceHistoryResponse>
-
 
     // ── Kontofilter (Haushalt) ──
     //
@@ -208,158 +374,6 @@ interface BrickApiService {
         @Path("setNumber") setNumber: String
     ): Response<GenericResponse>
 
-    // Kaufpreis-Historie
-    @GET("api/v1/sets/{setNumber}/acquisitions")
-    suspend fun getAcquisitions(
-        @Path("setNumber") setNumber: String
-    ): Response<AcquisitionsResponse>
-
-    @PUT("api/v1/sets/{setNumber}/acquisitions/{acqId}")
-    suspend fun updateAcquisition(
-        @Path("setNumber") setNumber: String,
-        @Path("acqId") acqId: Int,
-        @Body body: UpdateAcquisitionRequest
-    ): Response<GenericResponse>
-
-    @DELETE("api/v1/sets/{setNumber}/acquisitions/{acqId}")
-    suspend fun deleteAcquisition(
-        @Path("setNumber") setNumber: String,
-        @Path("acqId") acqId: Int
-    ): Response<GenericResponse>
-
-    /**
-     * Preisverlauf eines manuell erfassten Teils, je Zustand. Dieselbe Antwortform wie
-     * beim Set, deshalb dasselbe Modell; die Set-Felder bleiben auf ihren Vorgaben.
-     */
-    @GET("api/v1/parts/{partNumber}/{colorId}/price-history")
-    suspend fun getPartPriceHistory(
-        @Path("partNumber") partNumber: String,
-        @Path("colorId") colorId: Int
-    ): Response<PriceHistoryResponse>
-
-    @GET("api/v1/minifigs/{figNumber}/price-history")
-    suspend fun getFigPriceHistory(
-        @Path("figNumber") figNumber: String
-    ): Response<PriceHistoryResponse>
-
-    // ── In welchen Sets steckt dieses Teil / diese Figur? ──
-    //
-    // Beide Adressen beantwortet dieselbe Funktion (verwendendeSets), deshalb ein
-    // Modell. `accounts` ist das Blickfeld wie sonst, damit der Dialog dasselbe sagt
-    // wie die Liste, aus der man kommt.
-    @GET("api/v1/parts/{partNumber}/{colorId}/sets")
-    suspend fun getSetsMitTeil(
-        @Path("partNumber") partNumber: String,
-        @Path("colorId") colorId: Int,
-        @Query("accounts") accounts: String? = null,
-    ): Response<VerwendendeSetsResponse>
-
-    @GET("api/v1/minifigs/{figNumber}/sets")
-    suspend fun getSetsMitFigur(
-        @Path("figNumber") figNumber: String,
-        @Query("accounts") accounts: String? = null,
-    ): Response<VerwendendeSetsResponse>
-
-    // Parts acquisitions
-    @GET("api/v1/parts/{partNumber}/{colorId}/acquisitions")
-    suspend fun getPartAcquisitions(
-        @Path("partNumber") partNumber: String,
-        @Path("colorId") colorId: Int
-    ): Response<AcquisitionsResponse>
-
-    @PUT("api/v1/parts/{partNumber}/{colorId}/acquisitions/{id}")
-    suspend fun updatePartAcquisition(
-        @Path("partNumber") partNumber: String,
-        @Path("colorId") colorId: Int,
-        @Path("id") id: Int,
-        @Body body: UpdateAcquisitionRequest
-    ): Response<GenericResponse>
-
-    @DELETE("api/v1/parts/{partNumber}/{colorId}/acquisitions/{id}")
-    suspend fun deletePartAcquisition(
-        @Path("partNumber") partNumber: String,
-        @Path("colorId") colorId: Int,
-        @Path("id") id: Int
-    ): Response<DeleteWithQuantityResponse>
-
-    // Minifig acquisitions
-    @GET("api/v1/minifigs/{figNumber}/acquisitions")
-    suspend fun getFigAcquisitions(
-        @Path("figNumber") figNumber: String
-    ): Response<AcquisitionsResponse>
-
-    @PUT("api/v1/minifigs/{figNumber}/acquisitions/{id}")
-    suspend fun updateFigAcquisition(
-        @Path("figNumber") figNumber: String,
-        @Path("id") id: Int,
-        @Body body: UpdateAcquisitionRequest
-    ): Response<GenericResponse>
-
-    @DELETE("api/v1/minifigs/{figNumber}/acquisitions/{id}")
-    suspend fun deleteFigAcquisition(
-        @Path("figNumber") figNumber: String,
-        @Path("id") id: Int
-    ): Response<DeleteWithQuantityResponse>
-
-    @GET("api/v1/parts")
-    suspend fun getParts(
-        @Query("search") search: String? = null,
-        @Query("color") color: String? = null,
-        @Query("category") category: String? = null,
-        @Query("page") page: Int = 1,
-        @Query("page_size") pageSize: Int = 500,
-        @Query("set_number") setNumber: String? = null,
-        @Query("exclude_manual") excludeManual: String? = null,
-        @Query("accounts") accounts: String? = null,
-        // "0" = ohne Ersatzteile, "1" = nur Ersatzteile, null = alle.
-        // Dieselben drei Werte wie das Auswahlfeld der Webapp (parts-spare);
-        // der Server liest sie in utils/handlers/parts.ts.
-        @Query("spare") spare: String? = null,
-        // "1" holt zusaetzlich, in welchen Sets das Teil steckt. Kostet den
-        // Server eine eigene Abfrage — deshalb nur in der Tabellenansicht,
-        // genau wie in der Webapp (parts-view === 'table').
-        @Query("with_sets") withSets: String? = null,
-        /** Lagerort — eigener Parameter, nicht Teil der Suche (siehe Server). */
-        @Query("storage") storage: String? = null
-    ): Response<PartsResponse>
-
-    @GET("api/v1/parts/stats")
-    suspend fun getPartsStats(
-        @Query("accounts") accounts: String? = null
-    ): Response<PartsStatsResponse>
-
-    /**
-     * Startzustand des Servers — ohne Anmeldung, weil er gebraucht wird, bevor sich
-     * jemand anmelden kann.
-     */
-    @GET("api/v1/startup-status")
-    suspend fun getStartupStatus(): Response<ch.brickinventoryapp.data.model.StartupStatus>
-
-    /**
-     * Das globale Design des Servers — ohne Anmeldung: Anmelde- und
-     * Einrichtungsbildschirm sollen schon im richtigen Design erscheinen.
-     */
-    @GET("api/v1/settings/theme")
-    suspend fun getAppTheme(): Response<ch.brickinventoryapp.data.model.AppThemeResponse>
-
-    @GET("api/v1/parts/brick-colors")
-    suspend fun getBrickColors(): Response<BrickColorsResponse>
-
-    /**
-     * Die Filterliste Farbe — welche Farben im Bestand vorkommen, mit Anzahl. Nicht
-     * `brick-colors`: Das ist der ganze Farbkatalog für die Auswahl beim Erfassen.
-     */
-    @GET("api/v1/parts/colors")
-    suspend fun getPartsFilterColors(
-        @Query("accounts") accounts: String? = null
-    ): Response<PartsFilterColorsResponse>
-
-    /** Die Filterliste Kategorie — dieselbe Quelle wie in der Webapp. */
-    @GET("api/v1/parts/categories")
-    suspend fun getPartsCategories(
-        @Query("accounts") accounts: String? = null
-    ): Response<PartsCategoriesResponse>
-
     /**
      * „Kann ich das bauen?" — welche Teile einer Liste schon da sind.
      *
@@ -402,82 +416,13 @@ interface BrickApiService {
         @Query("condition") condition: String = "N",
     ): Response<PreisalarmResponse>
 
-    /**
-     * Die Farbe eines manuell erfassten Teils ändern: alte Farbe im Pfad (sie ist Teil
-     * der Kennung der Zeile), neue im Rumpf. `owner` ist der Besitzer der Karte, nicht
-     * der Betrachter — ohne ihn schriebe der Server in die Zeile des Aufrufers.
-     */
-    @PUT("api/v1/parts/{partNumber}/{colorId}/color")
-    suspend fun setPartColor(
-        @Path("partNumber") partNumber: String,
-        @Path("colorId") colorId: Int,
-        @Body request: TeilFarbeRequest,
-        @Query("owner") owner: Int? = null,
-    ): Response<TeilFarbeResponse>
-
-    // ── Lagerort ────────────────────────────────────────────────────────────
-    //
-    // Setzen trifft ALLE Zeilen des Teil-Farb-Paares bzw. des Sets im
-    // Schreibbereich: Dasselbe Teil steckt in mehreren Sets, und wer „Kiste 3"
-    // eintraegt, meint das Teil, nicht eine seiner Zeilen.
-
-    @PUT("api/v1/parts/{partNumber}/{colorId}/storage")
-    suspend fun setPartStorage(
-        @Path("partNumber") partNumber: String,
-        @Path("colorId") colorId: Int,
-        @Body request: LagerortRequest,
-    ): Response<LagerortResponse>
-
-    // Seit Migration 0024 traegt auch eine Minifigur einen Lagerort. Eigene
-    // Adresse, weil sie keine Farbe hat — sonst muesste die Route eine 0
-    // mitschleppen, die nichts bedeutet.
-    @PUT("api/v1/minifigs/{figNumber}/storage")
-    suspend fun setFigStorage(
-        @Path("figNumber") figNumber: String,
-        @Body request: LagerortRequest,
-    ): Response<LagerortResponse>
+    // ── Lagerort je Set (für Teile und Figuren siehe TeileApi) ──
 
     @PUT("api/v1/sets/{setNumber}/storage")
     suspend fun setSetStorage(
         @Path("setNumber") setNumber: String,
         @Body request: LagerortRequest,
     ): Response<LagerortResponse>
-
-    // ── Der Vorrat an Lagerorten ──
-    //
-    // Getrennt von getLagerorte(): Dort steht, was belegt ist (Filter), hier, was zur
-    // Wahl steht — ein neuer Ort ist wählbar und leer. `owner`: wessen Liste, beim Set
-    // des Enkels die seine.
-
-    @GET("api/v1/storage/locations")
-    suspend fun getLagerortVorrat(
-        @Query("owner") owner: String? = null,
-    ): Response<LagerortVorratResponse>
-
-    @POST("api/v1/storage/locations")
-    suspend fun legeLagerortAn(
-        @Body request: LagerortNameRequest,
-    ): Response<LagerortEintragResponse>
-
-    @PUT("api/v1/storage/locations/{id}")
-    suspend fun benenneLagerortUm(
-        @Path("id") id: Int,
-        @Body request: LagerortNameRequest,
-    ): Response<LagerortEintragResponse>
-
-    @DELETE("api/v1/storage/locations/{id}")
-    suspend fun loescheLagerort(
-        @Path("id") id: Int,
-    ): Response<LagerortResponse>
-
-    // Der Stern: der Lagerort, der beim Erfassen schon vorausgewählt ist.
-    // EIN Endpunkt fuer setzen und abschalten (id = null), weil es eine
-    // Einstellung mit genau einem Wert ist. Gelesen wird sie nicht hier,
-    // sondern als Feld `vorgabe` der Vorratsantwort darueber.
-    @PUT("api/v1/storage/default")
-    suspend fun setzeLagerortVorgabe(
-        @Body request: LagerortVorgabeRequest,
-    ): Response<LagerortVorgabeResponse>
 
     // ── Merkliste ──
     //
@@ -537,6 +482,173 @@ interface BrickApiService {
         @Body request: MerkpostenUebernahmeRequest,
     ): Response<MerkpostenUebernahmeResponse>
 
+    @POST("api/v1/sets/partslist-pdf")
+    suspend fun startPdfJob(
+        @Body body: okhttp3.RequestBody
+    ): retrofit2.Response<okhttp3.ResponseBody>
+
+    @GET("api/v1/sets/partslist-pdf/status/{jobId}")
+    suspend fun getPdfJobStatus(
+        @Path("jobId") jobId: String
+    ): retrofit2.Response<okhttp3.ResponseBody>
+
+    @GET("api/v1/sets/partslist-pdf/download/{jobId}")
+    suspend fun downloadPdf(
+        @Path("jobId") jobId: String
+    ): retrofit2.Response<okhttp3.ResponseBody>
+
+    @GET("api/v1/sets/{setNumber}/parts-list")
+    suspend fun getSetPartsList(
+        @Path("setNumber") setNumber: String
+    ): Response<PartsResponse>
+
+    @GET("api/v1/sets/{setNumber}/minifigs-list")
+    suspend fun getSetMinifigsList(
+        @Path("setNumber") setNumber: String
+    ): Response<MinifigsResponse>
+
+    @GET("api/v1/sets/exists/{setNumber}")
+    suspend fun getSetExists(
+        @Path("setNumber") setNumber: String
+    ): Response<ch.brickinventoryapp.data.model.SetExistsResponse>
+
+    @GET("api/v1/sets/barcode/{barcode}")
+    suspend fun getBarcodeSet(
+        @Path("barcode") barcode: String
+    ): Response<BarcodeResponse>
+
+    /**
+     * Set oder einzelne Kaufpreise in ein anderes Konto verschieben; `acquisition_ids`
+     * leer = das ganze Set. Was mitwandert, entscheidet der Server (utils/setMove.ts).
+     */
+    @POST("api/v1/sets/{setNumber}/move")
+    suspend fun moveSet(
+        @Path("setNumber") setNumber: String,
+        @Body body: MoveSetRequest
+    ): Response<MoveSetResponse>
+
+    @POST("api/v1/admin/trigger-csv-sync")
+    suspend fun triggerCsvSync(): Response<GenericAdminResponse>
+
+    @POST("api/v1/admin/reimport-instructions")
+    suspend fun reimportInstructions(): Response<GenericAdminResponse>
+}
+
+/** Teile und Figuren, Farben, Lagerorte, Standard-Zustand (TeileRepository). */
+interface TeileApi : BestandsInhaltApi {
+
+    // ── In welchen Sets steckt dieses Teil / diese Figur? ──
+    //
+    // Beide Adressen beantwortet dieselbe Funktion (verwendendeSets), deshalb ein
+    // Modell. `accounts` ist das Blickfeld wie sonst, damit der Dialog dasselbe sagt
+    // wie die Liste, aus der man kommt.
+    @GET("api/v1/parts/{partNumber}/{colorId}/sets")
+    suspend fun getSetsMitTeil(
+        @Path("partNumber") partNumber: String,
+        @Path("colorId") colorId: Int,
+        @Query("accounts") accounts: String? = null,
+    ): Response<VerwendendeSetsResponse>
+
+    @GET("api/v1/minifigs/{figNumber}/sets")
+    suspend fun getSetsMitFigur(
+        @Path("figNumber") figNumber: String,
+        @Query("accounts") accounts: String? = null,
+    ): Response<VerwendendeSetsResponse>
+
+    @GET("api/v1/parts/stats")
+    suspend fun getPartsStats(
+        @Query("accounts") accounts: String? = null
+    ): Response<PartsStatsResponse>
+
+    @GET("api/v1/parts/brick-colors")
+    suspend fun getBrickColors(): Response<BrickColorsResponse>
+
+    /**
+     * Die Filterliste Farbe — welche Farben im Bestand vorkommen, mit Anzahl. Nicht
+     * `brick-colors`: Das ist der ganze Farbkatalog für die Auswahl beim Erfassen.
+     */
+    @GET("api/v1/parts/colors")
+    suspend fun getPartsFilterColors(
+        @Query("accounts") accounts: String? = null
+    ): Response<PartsFilterColorsResponse>
+
+    /** Die Filterliste Kategorie — dieselbe Quelle wie in der Webapp. */
+    @GET("api/v1/parts/categories")
+    suspend fun getPartsCategories(
+        @Query("accounts") accounts: String? = null
+    ): Response<PartsCategoriesResponse>
+
+    /**
+     * Die Farbe eines manuell erfassten Teils ändern: alte Farbe im Pfad (sie ist Teil
+     * der Kennung der Zeile), neue im Rumpf. `owner` ist der Besitzer der Karte, nicht
+     * der Betrachter — ohne ihn schriebe der Server in die Zeile des Aufrufers.
+     */
+    @PUT("api/v1/parts/{partNumber}/{colorId}/color")
+    suspend fun setPartColor(
+        @Path("partNumber") partNumber: String,
+        @Path("colorId") colorId: Int,
+        @Body request: TeilFarbeRequest,
+        @Query("owner") owner: Int? = null,
+    ): Response<TeilFarbeResponse>
+
+    // ── Lagerort ────────────────────────────────────────────────────────────
+    //
+    // Setzen trifft ALLE Zeilen des Teil-Farb-Paares bzw. des Sets im
+    // Schreibbereich: Dasselbe Teil steckt in mehreren Sets, und wer „Kiste 3"
+    // eintraegt, meint das Teil, nicht eine seiner Zeilen.
+
+    @PUT("api/v1/parts/{partNumber}/{colorId}/storage")
+    suspend fun setPartStorage(
+        @Path("partNumber") partNumber: String,
+        @Path("colorId") colorId: Int,
+        @Body request: LagerortRequest,
+    ): Response<LagerortResponse>
+
+    // Seit Migration 0024 traegt auch eine Minifigur einen Lagerort. Eigene
+    // Adresse, weil sie keine Farbe hat — sonst muesste die Route eine 0
+    // mitschleppen, die nichts bedeutet.
+    @PUT("api/v1/minifigs/{figNumber}/storage")
+    suspend fun setFigStorage(
+        @Path("figNumber") figNumber: String,
+        @Body request: LagerortRequest,
+    ): Response<LagerortResponse>
+
+    // ── Der Vorrat an Lagerorten ──
+    //
+    // Getrennt von getLagerorte(): Dort steht, was belegt ist (Filter), hier, was zur
+    // Wahl steht — ein neuer Ort ist wählbar und leer. `owner`: wessen Liste, beim Set
+    // des Enkels die seine.
+
+    @GET("api/v1/storage/locations")
+    suspend fun getLagerortVorrat(
+        @Query("owner") owner: String? = null,
+    ): Response<LagerortVorratResponse>
+
+    @POST("api/v1/storage/locations")
+    suspend fun legeLagerortAn(
+        @Body request: LagerortNameRequest,
+    ): Response<LagerortEintragResponse>
+
+    @PUT("api/v1/storage/locations/{id}")
+    suspend fun benenneLagerortUm(
+        @Path("id") id: Int,
+        @Body request: LagerortNameRequest,
+    ): Response<LagerortEintragResponse>
+
+    @DELETE("api/v1/storage/locations/{id}")
+    suspend fun loescheLagerort(
+        @Path("id") id: Int,
+    ): Response<LagerortResponse>
+
+    // Der Stern: der Lagerort, der beim Erfassen schon vorausgewählt ist.
+    // EIN Endpunkt fuer setzen und abschalten (id = null), weil es eine
+    // Einstellung mit genau einem Wert ist. Gelesen wird sie nicht hier,
+    // sondern als Feld `vorgabe` der Vorratsantwort darueber.
+    @PUT("api/v1/storage/default")
+    suspend fun setzeLagerortVorgabe(
+        @Body request: LagerortVorgabeRequest,
+    ): Response<LagerortVorgabeResponse>
+
     /** Welche Lagerorte es gibt und was darin liegt — Sets UND Teile. */
     @GET("api/v1/storage")
     suspend fun getLagerorte(
@@ -592,46 +704,6 @@ interface BrickApiService {
         @Query("owner") owner: Int? = null
     ): Response<GenericResponse>
 
-    @GET("api/v1/finance/parts-valuation")
-    suspend fun getPartsValuation(
-        @Query("accounts") accounts: String? = null
-    ): Response<PartsValuationResponse>
-
-    @GET("api/v1/finance/minifigs-valuation")
-    suspend fun getMinifigsValuation(
-        @Query("accounts") accounts: String? = null
-    ): Response<FigsValuationResponse>
-
-    @GET("api/v1/finance/pnl")
-    suspend fun getPnl(
-        @Query("accounts") accounts: String? = null
-    ): Response<PnlResponse>
-
-    @POST("api/v1/sets/partslist-pdf")
-    suspend fun startPdfJob(
-        @Body body: okhttp3.RequestBody
-    ): retrofit2.Response<okhttp3.ResponseBody>
-
-    @GET("api/v1/sets/partslist-pdf/status/{jobId}")
-    suspend fun getPdfJobStatus(
-        @Path("jobId") jobId: String
-    ): retrofit2.Response<okhttp3.ResponseBody>
-
-    @GET("api/v1/sets/partslist-pdf/download/{jobId}")
-    suspend fun downloadPdf(
-        @Path("jobId") jobId: String
-    ): retrofit2.Response<okhttp3.ResponseBody>
-
-    @GET("api/v1/sets/{setNumber}/parts-list")
-    suspend fun getSetPartsList(
-        @Path("setNumber") setNumber: String
-    ): Response<PartsResponse>
-
-    @GET("api/v1/sets/{setNumber}/minifigs-list")
-    suspend fun getSetMinifigsList(
-        @Path("setNumber") setNumber: String
-    ): Response<MinifigsResponse>
-
     /**
      * Die manuell erfassten Teile, mit Suchtext und Lagerort: Der Bildschirm hat ein
      * Suchfeld über manuellen und Set-Teilen, und beide sollen ihm folgen. Gefiltert
@@ -654,46 +726,92 @@ interface BrickApiService {
         @Query("search") search: String? = null
     ): Response<ch.brickinventoryapp.data.model.ManualFigsResponse>
 
-    @GET("api/v1/catalog/year-verteilung")
-    suspend fun getCatalogYearVerteilung(
-        @Query("q") q: String? = null,
-        @Query("theme_id") themeId: Int? = null,
-        @Query("sort") sort: String? = null
-    ): Response<ch.brickinventoryapp.data.model.CatalogYearVerteilungResponse>
-
-    @GET("api/v1/sets/exists/{setNumber}")
-    suspend fun getSetExists(
-        @Path("setNumber") setNumber: String
-    ): Response<ch.brickinventoryapp.data.model.SetExistsResponse>
-
     @GET("api/v1/minifigs/stats")
     suspend fun getMinifigStats(
         @Query("accounts") accounts: String? = null
     ): Response<ch.brickinventoryapp.data.model.MinifigStatsResponse>
 
-    @GET("api/v1/finance/valuation")
-    suspend fun getValuation(
-        @Query("accounts") accounts: String? = null
-    ): Response<ValuationResponse>
+    @GET("api/v1/settings/default-condition")
+    suspend fun getDefaultCondition(): Response<DefaultConditionResponse>
 
-    @GET("api/v1/minifigs")
-    suspend fun getMinifigs(
-        @Query("source") source: String? = null,
-        @Query("set_number") setNumber: String? = null,
-        @Query("accounts") accounts: String? = null,
-        @Query("search") search: String? = null
-    ): Response<MinifigsResponse>
+    // User-level default condition (each user can override).
+    // Muss über /api/v1/ laufen (Bearer-Token) — der frühere
+    // /api/settings/...-Pfad war session-only (requireLogin) und schlug mit
+    // Token still fehl, sodass der in der App gesetzte Default nie ankam.
+    @POST("api/v1/settings/user/default-condition")
+    suspend fun setUserDefaultCondition(
+        @Body body: Map<String, String>
+    ): Response<GenericAdminResponse>
 
-    @GET("api/v1/sets/barcode/{barcode}")
-    suspend fun getBarcodeSet(
-        @Path("barcode") barcode: String
-    ): Response<BarcodeResponse>
+    // Admin-level global default
+    @POST("api/v1/admin/default-condition")
+    suspend fun setDefaultCondition(
+        @Body body: Map<String, String>
+    ): Response<GenericAdminResponse>
+}
 
-    @GET("api/v1/finance/portfolio-history")
-    suspend fun getPortfolioHistory(
-        @Query("period") period: String = "week",
-        @Query("accounts") accounts: String? = null
-    ): Response<PortfolioHistoryResponse>
+/** Käufe je Set, Teil und Figur sowie der Haushalt (HaushaltRepository). */
+interface HaushaltApi {
+
+    // Kaufpreis-Historie
+    @GET("api/v1/sets/{setNumber}/acquisitions")
+    suspend fun getAcquisitions(
+        @Path("setNumber") setNumber: String
+    ): Response<AcquisitionsResponse>
+
+    @PUT("api/v1/sets/{setNumber}/acquisitions/{acqId}")
+    suspend fun updateAcquisition(
+        @Path("setNumber") setNumber: String,
+        @Path("acqId") acqId: Int,
+        @Body body: UpdateAcquisitionRequest
+    ): Response<GenericResponse>
+
+    @DELETE("api/v1/sets/{setNumber}/acquisitions/{acqId}")
+    suspend fun deleteAcquisition(
+        @Path("setNumber") setNumber: String,
+        @Path("acqId") acqId: Int
+    ): Response<GenericResponse>
+
+    // Parts acquisitions
+    @GET("api/v1/parts/{partNumber}/{colorId}/acquisitions")
+    suspend fun getPartAcquisitions(
+        @Path("partNumber") partNumber: String,
+        @Path("colorId") colorId: Int
+    ): Response<AcquisitionsResponse>
+
+    @PUT("api/v1/parts/{partNumber}/{colorId}/acquisitions/{id}")
+    suspend fun updatePartAcquisition(
+        @Path("partNumber") partNumber: String,
+        @Path("colorId") colorId: Int,
+        @Path("id") id: Int,
+        @Body body: UpdateAcquisitionRequest
+    ): Response<GenericResponse>
+
+    @DELETE("api/v1/parts/{partNumber}/{colorId}/acquisitions/{id}")
+    suspend fun deletePartAcquisition(
+        @Path("partNumber") partNumber: String,
+        @Path("colorId") colorId: Int,
+        @Path("id") id: Int
+    ): Response<DeleteWithQuantityResponse>
+
+    // Minifig acquisitions
+    @GET("api/v1/minifigs/{figNumber}/acquisitions")
+    suspend fun getFigAcquisitions(
+        @Path("figNumber") figNumber: String
+    ): Response<AcquisitionsResponse>
+
+    @PUT("api/v1/minifigs/{figNumber}/acquisitions/{id}")
+    suspend fun updateFigAcquisition(
+        @Path("figNumber") figNumber: String,
+        @Path("id") id: Int,
+        @Body body: UpdateAcquisitionRequest
+    ): Response<GenericResponse>
+
+    @DELETE("api/v1/minifigs/{figNumber}/acquisitions/{id}")
+    suspend fun deleteFigAcquisition(
+        @Path("figNumber") figNumber: String,
+        @Path("id") id: Int
+    ): Response<DeleteWithQuantityResponse>
 
     // ── Haushalt: Konten verknüpfen ───────────────────────────────────────────
     //
@@ -723,165 +841,80 @@ interface BrickApiService {
     /** Konten des Haushalts — für Kontofilter, Kontoauswahl und Verschieben. */
     @GET("api/v1/sets/household-members")
     suspend fun getHouseholdMembers(): Response<HouseholdMembersResponse>
+}
+
+/** Preise, Bewertungen, Gewinn und Verlust, Verlauf, Kennzahlen (FinanzenRepository). */
+interface FinanzenApi {
+
+    // Kein currency-Parameter: Die Währung bestimmt der Server aus der
+    // Nutzereinstellung. Ein eigener Startwert traf den Cache der eingestellten
+    // Währung nicht, und die Detailansicht zeigte keinen Marktpreis, wo Finanzen und
+    // Kachel einen hatten.
+    @GET("api/v1/sets/{setNumber}/price")
+    suspend fun getSetPrice(
+        @Path("setNumber") setNumber: String
+    ): Response<SetPriceResponse>
+
+    // Auch hier ohne currency: Diese Route hat den Parameter serverseitig
+    // nie ausgewertet — der Vorgabewert "CHF" hier (gegen "EUR" beim Preis!)
+    // war totes Gewicht und hat die Verwirrung nur vergrössert.
+    @GET("api/v1/sets/{setNumber}/price-history")
+    suspend fun getSetPriceHistory(
+        @Path("setNumber") setNumber: String
+    ): Response<PriceHistoryResponse>
 
     /**
-     * Set oder einzelne Kaufpreise in ein anderes Konto verschieben; `acquisition_ids`
-     * leer = das ganze Set. Was mitwandert, entscheidet der Server (utils/setMove.ts).
+     * Preisverlauf eines manuell erfassten Teils, je Zustand. Dieselbe Antwortform wie
+     * beim Set, deshalb dasselbe Modell; die Set-Felder bleiben auf ihren Vorgaben.
      */
-    @POST("api/v1/sets/{setNumber}/move")
-    suspend fun moveSet(
-        @Path("setNumber") setNumber: String,
-        @Body body: MoveSetRequest
-    ): Response<MoveSetResponse>
+    @GET("api/v1/parts/{partNumber}/{colorId}/price-history")
+    suspend fun getPartPriceHistory(
+        @Path("partNumber") partNumber: String,
+        @Path("colorId") colorId: Int
+    ): Response<PriceHistoryResponse>
 
-    @GET("api/v1/settings")
-    suspend fun getSettings(): Response<SettingsResponse>
+    @GET("api/v1/minifigs/{figNumber}/price-history")
+    suspend fun getFigPriceHistory(
+        @Path("figNumber") figNumber: String
+    ): Response<PriceHistoryResponse>
 
-    @PUT("api/v1/settings")
-    suspend fun updateSettings(
-        @Body body: Map<String, String>
-    ): Response<GenericResponse>
+    @GET("api/v1/finance/parts-valuation")
+    suspend fun getPartsValuation(
+        @Query("accounts") accounts: String? = null
+    ): Response<PartsValuationResponse>
+
+    @GET("api/v1/finance/minifigs-valuation")
+    suspend fun getMinifigsValuation(
+        @Query("accounts") accounts: String? = null
+    ): Response<FigsValuationResponse>
+
+    @GET("api/v1/finance/pnl")
+    suspend fun getPnl(
+        @Query("accounts") accounts: String? = null
+    ): Response<PnlResponse>
+
+    @GET("api/v1/finance/valuation")
+    suspend fun getValuation(
+        @Query("accounts") accounts: String? = null
+    ): Response<ValuationResponse>
+
+    @GET("api/v1/finance/portfolio-history")
+    suspend fun getPortfolioHistory(
+        @Query("period") period: String = "week",
+        @Query("accounts") accounts: String? = null
+    ): Response<PortfolioHistoryResponse>
 
     @GET("api/v1/stats")
     suspend fun getStats(
         @Query("accounts") accounts: String? = null
     ): Response<StatsResponse>
 
-    @GET("api/v1/auth/me")
-    suspend fun getMe(): Response<MeResponse>
-
-    // ── Angemeldete Geraete ──────────────────────────────────────────────────
-    // Beide Adressen gab es schon; sie waren nur sitzungsgebunden und damit
-    // fuer die App nicht erreichbar. Seit der Token-Verwaltung nehmen sie
-    // Sitzung ODER Bearer-Token (requireLoginOrToken), wie der Rest von /api/v1.
-    @GET("api/v1/settings/tokens")
-    suspend fun getTokens(): Response<TokensResponse>
-
-    @DELETE("api/v1/settings/tokens/{tokenId}")
-    suspend fun revokeToken(@Path("tokenId") tokenId: String): Response<GenericResponse>
-
-    // ── Admin / Monitoring ────────────────────────────────────────────────────
-    @GET("api/v1/admin/jobs")
-    suspend fun getJobs(): Response<JobsResponse>
-
-    /**
-     * Den Zeitplan eines Jobs ändern, in einer der beiden Formen, die der Server
-     * liest:
-     *
-     *   { name: <schluessel>, time: "HH:MM" }   tägliche Jobs
-     *   { name: "priceJob",   minutes: <n> }    der Preis-Job
-     *
-     * Eine Map, weil der Server am vorhandenen Feld unterscheidet.
-     */
-    @POST("api/v1/admin/job-schedule")
-    suspend fun setJobSchedule(@Body body: Map<String, @JvmSuppressWildcards Any>): Response<GenericAdminResponse>
-
-    /**
-     * Fehlende Katalogbilder einreihen. Nicht redownloadMissingImages: Das holt die
-     * Bilder des Bestands.
-     */
-    @POST("api/v1/admin/catalog-images")
-    suspend fun queueCatalogImages(): Response<GenericAdminResponse>
-
-    /**
-     * Das globale Design umstellen — nur für Verwalter, damit es nicht nur am Rechner
-     * geht.
-     */
-    @POST("api/v1/settings/admin/theme")
-    suspend fun setAppTheme(@Body body: Map<String, String>): Response<GenericAdminResponse>
-
-    @GET("api/v1/admin/brickset-queue")
-    suspend fun getBricksetQueue(): Response<BricksetQueueResponse>
-
-    @POST("api/v1/admin/brickset-queue/{setNumber}/retry")
-    suspend fun retryBricksetEntry(
-        @Path("setNumber") setNumber: String
-    ): Response<GenericAdminResponse>
-
-    @DELETE("api/v1/admin/brickset-queue/{setNumber}")
-    suspend fun deleteBricksetEntry(
-        @Path("setNumber") setNumber: String
-    ): Response<GenericAdminResponse>
-
-    @GET("api/v1/admin/cache-stats")
-    suspend fun getCacheStats(): Response<CacheStatsResponse>
-
-    @GET("api/v1/admin/cache-ttl")
-    suspend fun getCacheTtl(): Response<CacheTtlResponse>
-
-    @POST("api/v1/admin/cache-ttl")
-    suspend fun setCacheTtl(
-        @Body body: Map<String, String>
-    ): Response<GenericAdminResponse>
-
-    /**
-     * Den Preis-Cache leeren; mit `all=true` auch Teilmengen und Katalog. Global und
-     * nur für Verwalter: `price_cache` gehört niemandem, und jeder Neuaufbau kostet
-     * Anfragen aus dem gemeinsamen Tageskontingent.
-     */
-    @POST("api/v1/admin/cache-clear")
-    suspend fun clearCache(
-        @Body body: Map<String, Boolean> = emptyMap()
-    ): Response<GenericAdminResponse>
-
-    @GET("api/v1/settings/default-condition")
-    suspend fun getDefaultCondition(): Response<DefaultConditionResponse>
-
-    // User-level default condition (each user can override).
-    // Muss über /api/v1/ laufen (Bearer-Token) — der frühere
-    // /api/settings/...-Pfad war session-only (requireLogin) und schlug mit
-    // Token still fehl, sodass der in der App gesetzte Default nie ankam.
-    @POST("api/v1/settings/user/default-condition")
-    suspend fun setUserDefaultCondition(
-        @Body body: Map<String, String>
-    ): Response<GenericAdminResponse>
-
-    // Admin-level global default
-    @POST("api/v1/admin/default-condition")
-    suspend fun setDefaultCondition(
-        @Body body: Map<String, String>
-    ): Response<GenericAdminResponse>
-
-    // Der globale Standard-Zustand steht unter getGlobalDefaultCondition()
-    // (api/v1/settings/default-condition).
-
-    @GET("api/v1/admin/api-limits")
-    suspend fun getApiLimits(): Response<ApiLimitsResponse>
-
-    @PUT("api/v1/admin/api-limits")
-    suspend fun setApiLimits(
-        @Body body: Map<String, Int>
-    ): Response<GenericAdminResponse>
-
-    @POST("api/v1/admin/trigger-csv-sync")
-    suspend fun triggerCsvSync(): Response<GenericAdminResponse>
-
-    @POST("api/v1/admin/reimport-instructions")
-    suspend fun reimportInstructions(): Response<GenericAdminResponse>
-
     @POST("api/v1/admin/trigger-price-job")
     suspend fun triggerPriceJob(): Response<GenericAdminResponse>
+}
 
-    @POST("api/v1/admin/redownload-missing-images")
-    suspend fun redownloadMissingImages(): Response<GenericAdminResponse>
-
-    // ── Katalog ──────────────────────────────────────────────────────────────
-    @GET("api/v1/catalog/meta")
-    suspend fun getCatalogMeta(): Response<CatalogMetaResponse>
-
-    @GET("api/v1/catalog/sets")
-    suspend fun getCatalogSets(
-        @Query("q") q: String? = null,
-        @Query("theme_id") themeId: Int? = null,
-        @Query("year_from") yearFrom: Int? = null,
-        @Query("year_to") yearTo: Int? = null,
-        @Query("sort") sort: String = "year_desc",
-        @Query("page") page: Int = 1,
-        @Query("limit") limit: Int = 60
-    ): Response<CatalogSetsResponse>
-
-    @GET("api/v1/catalog/sets/{setNumber}")
-    suspend fun getCatalogSetDetail(@Path("setNumber") setNumber: String): Response<CatalogSetDetailResponse>
+/** Gutscheine im eigenen Profil (GutscheineRepository). */
+interface GutscheineApi {
 
     // ── Gutscheine (LEGO-Geschenkkarten im eigenen Profil) ──
     //
@@ -935,5 +968,5 @@ interface BrickApiService {
     // Eine Methode fuer `GET /vouchers/{id}/pdf` steht hier mit Absicht NICHT:
     // Das PDF holt der PdfViewerScreen selbst ueber seine Adresse, mit dem
     // angemeldeten Client der App. Siehe gutscheinPdfAdresse() in
-    // ui/viewmodel/GutscheinViewModel.kt.
+    // ui/viewmodel/GutscheinAdressen.kt.
 }

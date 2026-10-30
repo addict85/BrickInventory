@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.data.repository
 
-import ch.brickinventoryapp.data.api.BrickApiService
+import ch.brickinventoryapp.data.api.FinanzenApi
 import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.model.*
 import kotlinx.coroutines.Dispatchers
@@ -21,9 +21,9 @@ import javax.inject.Singleton
  */
 @Singleton
 class FinanzenRepository @Inject constructor(
-    api: BrickApiService,
+    api: FinanzenApi,
     cache: ResponseCache,
-) : RepoBasis(api, cache) {
+) : RepoBasis<FinanzenApi>(api, cache) {
 
     suspend fun getSetPrice(setNumber: String): Result<SetPriceResponse> =
         safeCall { api.getSetPrice(setNumber) }

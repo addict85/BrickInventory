@@ -1,29 +1,10 @@
 package ch.brickinventoryapp.ui.screens
 
 /*
- * ═══════════════════════════════════════════════════════════════════════════
- *  NICHT ÄNDERN OHNE ZU LESEN: Autofokus
- * ═══════════════════════════════════════════════════════════════════════════
- *
- *  Der Scanner stellte in dieser Datei schon MEHRFACH nicht mehr scharf. Es
- *  waren jedes Mal dieselben zwei Fehler:
- *
- *  1. CONTROL_AF_MODE_CONTINUOUS_PICTURE muss an BEIDEN Use Cases stehen —
- *     am Preview UND an der ImageAnalysis. CameraX führt die Konfigurationen
- *     aller gebundenen Use Cases zu EINEM Repeating-Request zusammen; steht
- *     der Modus nur an einem, entscheidet je nach Gerät die andere
- *     Konfiguration mit, und das Bild bleibt unscharf. Der Code sieht dabei
- *     völlig richtig aus — das ist die Tücke.
- *
- *  2. KEIN periodisches startFocusAndMetering ("Fokus-Pump"). Ein im Takt
- *     laufender Aufruf zwingt die Kamera immer wieder in eine neue Messung,
- *     der Fokus wandert dauernd. Tap-to-Focus im Touch-Listener ist in
- *     Ordnung — eine Schleife, ein Timer oder ein delay() davor nicht.
- *
- *  Beides prüft CameraFocusConfigTest in app/src/test/. Schlägt der Test
- *  fehl, ist eine dieser Regeln verletzt — nicht den Test anpassen, sondern
- *  den Code.
- * ═══════════════════════════════════════════════════════════════════════════
+ * Autofokus: CONTROL_AF_MODE_CONTINUOUS_PICTURE an Preview UND ImageAnalysis, weil
+ * CameraX alle Use Cases zu einem Request zusammenführt; kein periodisches
+ * startFocusAndMetering, das lässt den Fokus wandern. Beides prüft
+ * CameraFocusConfigTest — bei Rot den Code richten, nicht den Test.
  */
 
 import ch.brickinventoryapp.ui.theme.Formen
@@ -83,11 +64,15 @@ fun parseQrPayload(raw: String): QrLoginPayload? {
 fun SetupScreen(
     currentUrl: String,
     onSave: (url: String, klartextBestaetigt: Boolean) -> Unit,
-    onQrScanned: ((url: String, token: String) -> Unit)? = null
+    onQrScanned: ((url: String, token: String, klartextBestaetigt: Boolean) -> Unit)? = null,
+    nutzerCa: Boolean = false,
+    onNutzerCa: (Boolean) -> Unit = {},
 ) {
     var url          by rememberSaveable { mutableStateOf(currentUrl) }
     var showScanner  by rememberSaveable { mutableStateOf(false) }
     var scanError    by remember { mutableStateOf<String?>(null) }
+    // Ein QR-Code kann von jedem stammen: Die Adresse wird erst nach einem Ja übernommen.
+    var qrVorschlag  by remember { mutableStateOf<QrLoginPayload?>(null) }
     // Klartext zu einem öffentlich aussehenden Host nur nach ausdrücklicher
     // Bestätigung (NetworkPolicy.isCleartextAllowed).
     val klartextHost = NetworkPolicy.klartextHost(url)
@@ -108,8 +93,7 @@ fun SetupScreen(
                 showScanner = false
                 val payload = parseQrPayload(raw)
                 if (payload != null) {
-                    url = payload.url
-                    onQrScanned?.invoke(payload.url, payload.token)
+                    qrVorschlag = payload
                 } else {
                     scanError = invalidQrMsg
                 }
@@ -117,6 +101,30 @@ fun SetupScreen(
             onDismiss = { showScanner = false }
         )
         return
+    }
+
+    qrVorschlag?.let { vorschlag ->
+        val klartext = NetworkPolicy.klartextNachAussen(vorschlag.url)
+        AlertDialog(
+            onDismissRequest = { qrVorschlag = null },
+            title = { Text(stringResource(R.string.setup_qr_titel)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
+                    Text(stringResource(R.string.setup_qr_text, vorschlag.url))
+                    if (klartext) Text(stringResource(R.string.setup_qr_klartext), color = MaterialTheme.colorScheme.error)
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    qrVorschlag = null
+                    url = vorschlag.url
+                    onQrScanned?.invoke(vorschlag.url, vorschlag.token, NetworkPolicy.klartextHost(vorschlag.url) != null)
+                }) { Text(stringResource(R.string.setup_qr_uebernehmen)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { qrVorschlag = null }) { Text(stringResource(R.string.common_cancel)) }
+            },
+        )
     }
 
     Column(
@@ -202,6 +210,23 @@ fun SetupScreen(
                         Spacer(Modifier.width(Abstaende.klein))
                         Text(stringResource(R.string.setup_url_klartext_bestaetigen, klartextHost),
                             style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+                // Vor der Anmeldung gibt es die Einstellungen noch nicht; ohne diesen
+                // Schalter käme ein Server mit eigener CA nie bis zum Anmelden.
+                if (url.trim().lowercase().startsWith("https://")) {
+                    Row(
+                        Modifier.fillMaxWidth().toggleable(value = nutzerCa, role = Role.Switch,
+                            onValueChange = onNutzerCa),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text(stringResource(R.string.settings_nutzer_ca), style = MaterialTheme.typography.bodyMedium)
+                            Text(stringResource(R.string.settings_nutzer_ca_hint), style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Spacer(Modifier.width(Abstaende.klein))
+                        Switch(checked = nutzerCa, onCheckedChange = null)
                     }
                 }
                 Spacer(Modifier.height(Abstaende.gross))

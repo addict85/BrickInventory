@@ -3,20 +3,10 @@ package ch.brickinventoryapp.ui
 import ch.brickinventoryapp.data.model.PriceChartData
 
 /**
- * Rechnen für das Preisverlauf-Diagramm — ohne Compose, damit testbar (wie
- * ui/CatalogYearMath.kt). In einem Canvas-Block wären die Fallen nur am Gerät zu
- * sehen:
- *
- * 1. Führende Nullen. Der Server füllt kürzere Reihen vorne mit 0 auf, damit alle
- *    dieselbe x-Achse haben; 0 heisst „kein Wert“, nicht „Preis null“. Gezeichnet
- *    ergäbe sie einen Kurssturz, den es nie gab. `firstRealIndex` sagt je Reihe,
- *    ab wo echte Werte stehen.
- *
- * 2. Die x-Achse kommt vom Datum, nicht vom Index: Gebrauchtpreise setzen oft
- *    später ein als Neupreise, und über die volle Breite gestreckt lägen Punkte
- *    aus verschiedenen Monaten übereinander.
- *
- * Dieselben Regeln wie in der Webapp (public/js/07-admin.js, priceChartSVG).
+ * Rechnen für das Preisdiagramm, ohne Compose und damit prüfbar. Die vom Server
+ * vorne aufgefüllten Nullen heissen „kein Wert“ und werden nicht gezeichnet; die
+ * x-Achse folgt dem Datum, nicht dem Index. Dieselben Regeln wie im Web
+ * (public/js/07-admin.js, priceChartSVG).
  */
 
 /** Ein gezeichneter Punkt: Tag als Zahl (Tage seit 1970) und Preis. */
@@ -40,7 +30,33 @@ data class ChartBounds(
     fun yFraction(value: Double): Float = (1.0 - (value - minValue) / valueSpan).toFloat()
 }
 
+/** Was TalkBack je Linie sagt: Zeitraum, Anfangs- und Endwert, Tief und Hoch. */
+data class LinienZusammenfassung(
+    val zustand: String,
+    val von: String,
+    val bis: String,
+    val anfang: Double,
+    val ende: Double,
+    val tief: Double,
+    val hoch: Double,
+)
+
 object PriceChartMath {
+
+    /**
+     * Die Beschreibung des Diagramms je gezeichneter Linie — eine Zeichenfläche
+     * hat sonst keine Semantik, und TalkBack übersprang den Preisverlauf.
+     */
+    fun zusammenfassung(lines: List<ChartLine>): List<LinienZusammenfassung> = lines.map { l ->
+        val erst = l.points.minBy { it.day }
+        val letzt = l.points.maxBy { it.day }
+        LinienZusammenfassung(l.condition, tagText(erst.day), tagText(letzt.day), erst.value, letzt.value,
+            l.points.minOf { it.value }, l.points.maxOf { it.value })
+    }
+
+    /** Tage seit 1970 → "31.1.2026", dieselbe Schreibweise wie formatDay(). */
+    fun tagText(day: Long): String =
+        java.time.LocalDate.ofEpochDay(day).let { "${it.dayOfMonth}.${it.monthValue}.${it.year}" }
 
     /**
      * ISO-Tag ("2026-01-31") in Tage seit 1970. Bewusst ohne java.time-Parsing
@@ -74,15 +90,9 @@ object PriceChartMath {
     }
 
     /**
-     * Gemeinsame Skala über ALLE Linien.
-     *
-     * Bewusst gemeinsam und nicht je Linie: Der interessante Vergleich ist der
-     * Abstand zwischen Neu- und Gebrauchtpreis und wie er sich entwickelt;
-     * getrennte Skalen machen genau das unsichtbar.
-     *
-     * Der Rand von 15 % verhindert, dass die Linie am oberen oder unteren Rand
-     * klebt; sind alle Werte gleich, wird stattdessen um 10 % des Wertes
-     * aufgespannt (sonst wäre die Spanne 0 und die Linie läge im Nichts).
+     * Gemeinsame Skala über alle Linien, weil der Abstand zwischen Neu- und
+     * Gebrauchtpreis der interessante Vergleich ist. 15 % Rand, damit keine Linie am
+     * Rand klebt; gleiche Werte spannen 10 % des Wertes auf.
      */
     fun bounds(lines: List<ChartLine>): ChartBounds? {
         val pts = lines.flatMap { it.points }

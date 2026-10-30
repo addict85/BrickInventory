@@ -4,18 +4,9 @@ import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 
 /**
- * Netzwerk-Regeln für den OkHttp-Interceptor.
- *
- * 1. Ob der Bearer-Token angehängt wird, entscheidet der Vergleich von Scheme,
- *    Host und Port der geparsten URL — ein String-Präfix wie
- *    `startsWith(serverUrl)` liesse "https://brick.example.com.angreifer.tld/…"
- *    als eigenen Server durch.
- *
- * 2. Klartext: Weil die Server-URL vom Nutzer kommt, lässt sich das per
- *    Network-Security-Config nicht auf private Adressen einschränken (Android
- *    kennt dort keine Wildcards für RFC1918). Deshalb hier: http nur zu privaten
- *    Adressen; zu öffentlichen Hosts wird die Anfrage abgebrochen, statt den Token
- *    im Klartext übers Internet zu senden.
+ * Netzregeln des Interceptors. Der Token geht nur an dieselbe Herkunft (Schema,
+ * Host, Port), nie per String-Präfix. Klartext nur zu privaten Adressen, weil die
+ * Network-Security-Config keine RFC1918-Wildcards kennt.
  */
 object NetworkPolicy {
 
@@ -100,6 +91,41 @@ object NetworkPolicy {
         val url = serverUrl.trim().toHttpUrlOrNull() ?: return false
         return !url.isHttps && !isPrivateHost(url.host)
     }
+
+    /**
+     * Schema, Host und Port als ein Text — die Herkunft, an die ein Token
+     * gebunden ist. Ein Token gilt nur für den Server, der ihn ausgab.
+     */
+    fun herkunft(serverUrl: String): String? {
+        val url = serverUrl.trim().trimEnd('/').toHttpUrlOrNull() ?: return null
+        return "${url.scheme}://${url.host.lowercase()}:${url.port}"
+    }
+
+    /** Beide Adressen zeigen auf denselben Server; eine leere ist keiner. */
+    fun gleicheHerkunft(a: String, b: String): Boolean {
+        val ha = herkunft(a) ?: return false
+        return ha == herkunft(b)
+    }
+
+    private fun istLoopback(host: String): Boolean {
+        val h = host.lowercase().trim('[', ']')
+        return h == "localhost" || h == "::1" || h.startsWith("127.")
+    }
+
+    /**
+     * Ein Passwort über http in einem Netz, in dem dieser Server nie eingerichtet
+     * oder bestätigt wurde, braucht eine Rückfrage: Im fremden WLAN kann
+     * „http://nas:3000“ ein anderer Rechner sein. Ohne Kennung des Netzes
+     * ([netz] null) ist es immer ein unbekanntes.
+     */
+    fun anmeldungBrauchtNetzBestaetigung(serverUrl: String, netz: String?, bekannt: Set<String>): Boolean {
+        val url = serverUrl.trim().toHttpUrlOrNull() ?: return false
+        if (url.isHttps || istLoopback(url.host)) return false
+        return netz == null || netzEintrag(serverUrl, netz) !in bekannt
+    }
+
+    /** Der gemerkte Eintrag „dieser Server in diesem Netz“. */
+    fun netzEintrag(serverUrl: String, netz: String): String = "${herkunft(serverUrl)}|$netz"
 
     /** Ist der Host eine numerische IPv4/IPv6-Adresse (kein Name)? */
     fun isIpLiteral(host: String): Boolean {

@@ -1,5 +1,9 @@
 package ch.brickinventoryapp
 
+import ch.brickinventoryapp.data.api.ApiJson
+import ch.brickinventoryapp.data.model.FigValuationItem
+import ch.brickinventoryapp.data.model.PartValuationItem
+import org.junit.Assert.assertEquals
 import org.junit.Test
 
 /**
@@ -57,11 +61,14 @@ class ManuelleKachelTest {
         // Einzelpreis. Wer einmal fuer 2.- und einmal fuer 8.- gekauft hat,
         // saehe dort 8.- statt 5.-. Der Server rechnet es richtig
         // (utils/handlers/shared.ts) — die App las das Feld nur nicht ein.
-        val modelle = code(read("data/model/FinanzModels.kt"))
-        val treffer = Regex("""@SerialName\("avg_purchase_price"\)""").findAll(modelle).count()
-        assert(treffer == 2) {
-            "Erwartet: das Feld in PartValuationItem UND FigValuationItem, gefunden $treffer"
-        }
+        // Ausgeführt mit dem Json der App. Gegenprobe (29.10.2026, gemessen): in
+        // FigValuationItem @SerialName("avg_purchase_price") entfernt → rot.
+        val teil = ApiJson.decodeFromString(PartValuationItem.serializer(),
+            """{"part_number":"3001","unit_price":8.0,"avg_purchase_price":5.0}""")
+        val figur = ApiJson.decodeFromString(FigValuationItem.serializer(),
+            """{"fig_number":"sw0001","unit_price":8.0,"avg_purchase_price":5.0}""")
+        assertEquals(5.0, teil.avgPurchasePrice ?: 0.0, 0.0)
+        assertEquals(5.0, figur.avgPurchasePrice ?: 0.0, 0.0)
     }
 
     @Test

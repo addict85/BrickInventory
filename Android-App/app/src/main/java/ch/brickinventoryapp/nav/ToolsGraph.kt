@@ -275,6 +275,7 @@ fun NavGraphBuilder.toolsGraph(
         ) { backStackEntry ->
             val pdfUrl   = java.net.URLDecoder.decode(backStackEntry.arguments?.getString("url")   ?: "", "UTF-8")
             val pdfTitle = java.net.URLDecoder.decode(backStackEntry.arguments?.getString("title") ?: "", "UTF-8")
+            if (ch.brickinventoryapp.ui.viewmodel.zeigtGutscheine(pdfUrl)) ch.brickinventoryapp.ui.components.Sichtschutz()
             PdfViewerScreen(
                 pdfUrl = pdfUrl,
                 title  = pdfTitle,

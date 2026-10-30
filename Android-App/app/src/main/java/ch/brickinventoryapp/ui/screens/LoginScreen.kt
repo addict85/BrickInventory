@@ -28,18 +28,10 @@ import ch.brickinventoryapp.util.passwortZuKurz
 import ch.brickinventoryapp.ui.theme.Abstaende
 
 /**
- * Anmelden, ein Konto anlegen, einen Link zum Zurücksetzen anfordern — wie die
- * Webapp (`showPanel('login'|'register'|'forgot')` in public/js/01-core.js), damit
- * niemand für ein Konto oder ein vergessenes Passwort einen Browser braucht.
- *
- * Drei Formulare in einem Bildschirm statt drei Navigationszielen: Der
- * Zurück-Knopf des Geräts soll dasselbe bedeuten wie „Zurück zur Anmeldung“; mit
- * eigenen Zielen wären das zwei Wege, die auseinanderlaufen können.
- *
- * Das Setzen des neuen Passworts steht nicht hier: Der Link aus der E-Mail trägt
- * den Token und führt zur Weboberfläche des Servers. Ihn abzufangen bräuchte einen
- * Intent-Filter auf eine Adresse, die jeder selbst einstellt und die deshalb nicht
- * im Manifest stehen kann. Der Hinweistext sagt das.
+ * Anmelden, Konto anlegen, Link zum Zurücksetzen anfordern — wie die Webapp. Drei
+ * Formulare in einem Bildschirm, damit der Zurück-Knopf „zurück zur Anmeldung“
+ * heisst. Das neue Passwort setzt die Weboberfläche: Den Link abzufangen bräuchte
+ * einen Intent-Filter auf eine Adresse, die jeder selbst einstellt.
  */
 @Composable
 fun LoginScreen(
@@ -56,13 +48,34 @@ fun LoginScreen(
     onFormular: (AnmeldeFormular) -> Unit,
     onRegistrieren: (String, String, String, String, String) -> Unit,
     onPasswortVergessen: (String) -> Unit,
-    onChangeServer: () -> Unit
+    onChangeServer: () -> Unit,
+    netzFrage: Boolean = false,
+    onNetzBestaetigt: (String, String, String?) -> Unit = { _, _, _ -> },
+    onNetzAbgelehnt: () -> Unit = {},
 ) {
     var username by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
     var showPw   by rememberSaveable { mutableStateOf(false) }
     var code     by rememberSaveable { mutableStateOf("") }
     val focusMgr = LocalFocusManager.current
+
+    // Das Passwort geht erst nach einem ausdrücklichen Ja hinaus (AnmeldungViewModel.login).
+    if (netzFrage) {
+        AlertDialog(
+            onDismissRequest = onNetzAbgelehnt,
+            icon = { Icon(Icons.Default.Warning, null) },
+            title = { Text(stringResource(R.string.login_netz_titel)) },
+            text = { Text(stringResource(R.string.login_netz_text, serverUrl)) },
+            confirmButton = {
+                TextButton(onClick = { onNetzBestaetigt(username, password, code.takeIf { codeNoetig }) }) {
+                    Text(stringResource(R.string.login_netz_trotzdem))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = onNetzAbgelehnt) { Text(stringResource(R.string.common_cancel)) }
+            },
+        )
+    }
 
     Box(
         modifier = Modifier.fillMaxSize(),

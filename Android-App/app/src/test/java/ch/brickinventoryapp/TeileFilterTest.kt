@@ -1,6 +1,18 @@
 package ch.brickinventoryapp
 
+import ch.brickinventoryapp.data.cache.ResponseCache
+import ch.brickinventoryapp.data.repository.SetsRepository
+import ch.brickinventoryapp.data.repository.TeileRepository
+import kotlinx.coroutines.runBlocking
+import org.junit.Assert.assertEquals
 import org.junit.Test
+
+/** Ein Repository gegen einen Testserver; [block] bekommt beides. */
+private fun <T> mitServer(block: (PfadServer, ResponseCache) -> T): T {
+    val pfade = PfadServer()
+    val ordner = java.io.File(System.getProperty("java.io.tmpdir"), "bim-filter-${System.nanoTime()}").apply { mkdirs() }
+    try { return block(pfade, ResponseCache { ordner }) } finally { pfade.server.shutdown(); ordner.deleteRecursively() }
+}
 
 /**
  * Der Teile-Reiter filtert nach Farbe und Kategorie — wie die Webapp.
@@ -27,28 +39,26 @@ import org.junit.Test
  * es dafuer nicht. Deshalb dieser Test — er haelt fest, dass die beiden Werte
  * auch WIRKLICH mitgeschickt werden.
  *
- * Der Test liest nur Quelltext: kein Geraet, kein Compose. Dass die Filter
- * aus dem Zustand mitreisen und die Scrollstelle vergessen, prüft TeileTest.
+ * Ausgeführt gegen einen Testserver: Was das Repository wirklich abruft. Dass
+ * die Filter aus dem Zustand mitreisen und die Scrollstelle vergessen, prüft
+ * TeileTest.
+ *
+ * Gegenprobe (29.10.2026, gemessen): in TeileRepository.getPartsFilterColors
+ * `accounts` nicht weitergereicht → rot „die App ruft beide Filterlisten …“.
  */
 class TeileFilterTest {
 
-    private fun read(rel: String) =
-        java.io.File("src/main/java/ch/brickinventoryapp/$rel").readText()
-    private fun code(s: String) = s.lines()
-        .joinToString("\n") { if (it.trim().startsWith("//") || it.trim().startsWith("*")) "" else it }
-
     @Test
-    fun `die App ruft beide Filterlisten`() {
-        val api = code(read("data/api/BrickApiService.kt"))
-        for (adresse in listOf("api/v1/parts/colors", "api/v1/parts/categories")) {
-            assert(api.contains("@GET(\"$adresse\")")) { "Die App ruft $adresse nicht" }
-        }
+    fun `die App ruft beide Filterlisten mit dem Blickfeld`() = mitServer { pfade, cache ->
         // Beide mit `accounts`: Sonst zaehlten sie im Haushalt anders als die
         // Liste darunter — genau der Fehler, den der Server dabei hatte.
-        val ausschnitt = api.substringAfter("api/v1/parts/colors").take(600)
-        assert(ausschnitt.contains("@Query(\"accounts\")")) {
-            "Die Farbliste reist ohne Blickfeld — im Haushalt zaehlt sie dann anders als die Liste"
+        val teile = TeileRepository(TestApi.fuer(pfade.server), cache)
+        runBlocking {
+            teile.getPartsFilterColors(accounts = "own")
+            teile.getPartsCategories(accounts = "own")
         }
+        assertEquals(listOf("GET /api/v1/parts/colors?accounts=own", "GET /api/v1/parts/categories?accounts=own"),
+            pfade.anfragen.toList())
     }
 }
 
@@ -71,11 +81,9 @@ class CsvAbbruchTest {
         .joinToString("\n") { if (it.trim().startsWith("//") || it.trim().startsWith("*")) "" else it }
 
     @Test
-    fun `die App kennt die Abbruch-Adresse`() {
-        val api = code(read("data/api/BrickApiService.kt"))
-        assert(api.contains("@POST(\"api/v1/sets/import/csv/cancel\")")) {
-            "Die App ruft die Abbruch-Adresse nicht"
-        }
+    fun `die App ruft die Abbruch-Adresse`() = mitServer { pfade, cache ->
+        runBlocking { SetsRepository(TestApi.fuer(pfade.server), cache).cancelCsvImport() }
+        assertEquals(listOf("POST /api/v1/sets/import/csv/cancel"), pfade.anfragen.toList())
     }
 
     @Test

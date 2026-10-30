@@ -28,6 +28,15 @@
     <string name="login_button">Anmelden</string>
     <string name="login_code">Code aus der Authenticator-App</string>
     <string name="login_code_hint">Oder einer deiner Wiederherstellungscodes</string>
+    <string name="settings_nutzer_ca">Der eigenen Zertifizierungsstelle vertrauen</string>
+    <string name="settings_nutzer_ca_hint">Für einen Server mit selbst ausgestelltem Zertifikat, dessen Zertifizierungsstelle auf diesem Gerät installiert ist. Sonst ausgeschaltet lassen: Eine installierte Zertifizierungsstelle kann jede Verbindung mitlesen.</string>
+    <string name="login_netz_titel">Anderes Netz als bei der Einrichtung</string>
+    <string name="login_netz_text">Dein Passwort ginge unverschlüsselt an %1$s. In diesem Netz kann die Adresse zu einem anderen Rechner gehören. Nur fortfahren, wenn du sicher bist, dass es dein Server ist.</string>
+    <string name="login_netz_trotzdem">Trotzdem anmelden</string>
+    <string name="setup_qr_titel">Diesen Server übernehmen?</string>
+    <string name="setup_qr_text">Der QR-Code zeigt auf:\n%1$s\n\nDie App sendet die Anmeldung nur dorthin. Nur fortfahren, wenn das dein Server ist.</string>
+    <string name="setup_qr_klartext">Die Verbindung ist unverschlüsselt — der Zugang geht im Klartext übers Netz.</string>
+    <string name="setup_qr_uebernehmen">Übernehmen und anmelden</string>
 
     <!-- ══════════════ CSV import banner ══════════════ -->
     <string name="csv_ok_count">%1$d OK</string>
@@ -43,6 +52,7 @@
     <string name="chart_no_history">Noch keine Verlaufsdaten</string>
     <string name="chart_summary">Portfoliowert, %1$s bis %2$s: von %3$s auf %4$s, Veränderung %5$s</string>
     <string name="chart_summary_no_change">Portfoliowert, %1$s bis %2$s: von %3$s auf %4$s</string>
+    <string name="price_chart_summary">Preisverlauf %1$s, %2$s bis %3$s: von %4$s auf %5$s, tiefster Wert %6$s, höchster %7$s</string>
     <string name="chart_period_week">Woche</string>
     <string name="chart_period_month">Monat</string>
     <string name="chart_period_year">Jahr</string>

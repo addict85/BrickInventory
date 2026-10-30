@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.data.repository
 
-import ch.brickinventoryapp.data.api.BrickApiService
+import ch.brickinventoryapp.data.api.HaushaltApi
 import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.model.*
 import kotlinx.coroutines.Dispatchers
@@ -20,9 +20,9 @@ import javax.inject.Singleton
  */
 @Singleton
 class HaushaltRepository @Inject constructor(
-    api: BrickApiService,
+    api: HaushaltApi,
     cache: ResponseCache,
-) : RepoBasis(api, cache) {
+) : RepoBasis<HaushaltApi>(api, cache) {
 
     // Parts acquisitions
     // ── Haushalt ──────────────────────────────────────────────────────────────

@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.data.repository
 
-import ch.brickinventoryapp.data.api.BrickApiService
+import ch.brickinventoryapp.data.api.GutscheineApi
 import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.model.*
 import ch.brickinventoryapp.data.api.Fehlerrumpf
@@ -11,19 +11,15 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Gutscheine — LEGO-Geschenkkarten im eigenen Profil, erreichbar über
- * `repo.gutscheine.…` (Aufteilung wie in RepoBasis.kt).
- *
- * Hier wird nichts zwischengespeichert: Der ResponseCache liegt auf der Platte,
- * und Nummer plus PIN sind alles, was zum Einlösen nötig ist — eine Liste davon
- * gehört nicht in eine Datei, die das Abmelden überlebt. Es kostet nichts: Die
- * Liste ist kurz und wird beim Öffnen des Profils geholt.
+ * Gutscheine — LEGO-Geschenkkarten im eigenen Profil. Nichts wird
+ * zwischengespeichert: Der ResponseCache liegt auf der Platte, und Nummer plus PIN
+ * gehören nicht in eine Datei, die das Abmelden überlebt.
  */
 @Singleton
 class GutscheineRepository @Inject constructor(
-    api: BrickApiService,
+    api: GutscheineApi,
     cache: ResponseCache,
-) : RepoBasis(api, cache) {
+) : RepoBasis<GutscheineApi>(api, cache) {
 
     suspend fun liste(): Result<GutscheinListe> =
         safeCall { api.getGutscheine() }
@@ -38,13 +34,9 @@ class GutscheineRepository @Inject constructor(
         safeCall { api.loescheGutschein(id) }
 
     /**
-     * Das Guthaben bei LEGO abfragen.
-     *
-     * Ist die Abfrage gesperrt (Code `guthaben_abstand` oder `guthaben_botschutz`),
-     * braucht der Durchgang über alle Karten `grund` und `wartenSek` aus dem Rumpf;
-     * safeCall behielte nur Satz und Code. Deshalb wird diese Antwort zu einer
-     * gewöhnlichen mit success=false. Andere Fehler (502: die Gegenseite schwieg)
-     * bleiben Fehler.
+     * Das Guthaben bei LEGO abfragen. Eine gesperrte Abfrage wird zu success=false,
+     * weil der Durchgang über alle Karten `grund` und `wartenSek` aus dem Rumpf
+     * braucht; andere Fehler bleiben Fehler.
      */
     suspend fun guthaben(id: Int): Result<GuthabenAntwort> = safeCall {
         val antwort = api.frageGuthabenAb(id)
@@ -85,14 +77,9 @@ class GutscheineRepository @Inject constructor(
                 teil,
                 alsTeil(nummer), alsTeil(pin), alsTeil(betrag), alsTeil(waehrung),
             )
-            // ── Warum die 422 hier umgebogen wird ──
-            //
-            // Bei 422 hat der Server das PDF gelesen, aber nicht genug gefunden, und legt in
-            // den Rumpf, was er lesen konnte — das braucht die Oberfläche zum Vorbelegen (wie
-            // die Webapp). safeCall holt aus einem Fehlerrumpf nur Satz und Code, `gelesen`
-            // ginge verloren. Statt seine Transportbehandlung zu verdoppeln, wird die Antwort
-            // zu einer erfolgreichen: Der Transport hat geklappt, `success:false` sagt der
-            // Oberfläche, woran sie ist.
+            // Bei 422 hat der Server das PDF gelesen, aber nicht genug gefunden; was er
+            // lesen konnte, braucht die Oberfläche zum Vorbelegen. safeCall behielte nur
+            // Satz und Code, deshalb wird die Antwort hier zu success=false.
             if (antwort.code() == 422) {
                 val roh = antwort.errorBody()?.string()
                 val geparst = roh?.let {
