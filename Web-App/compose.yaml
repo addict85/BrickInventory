@@ -81,10 +81,15 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    ports:
-      # Hinter einem Reverse-Proxy APP_BIND=127.0.0.1 setzen: Dann ist Port 3000
-      # nur noch über den Proxy (mit TLS) erreichbar, nicht im Klartext im LAN.
-      - "${APP_BIND:-0.0.0.0}:3000:3000"
+    # Kein veröffentlichter Port: Von aussen geht es nur über Caddy (HTTPS).
+    #
+    # BEWUSSTE AUSNAHME Klartext (z. B. ohne Namen/IP für Caddy, zum Testen):
+    # die drei Zeilen einkommentieren und in .env COOKIE_SECURE=0 und
+    # APP_BASE_URL=http://… setzen. Passwort, Sitzung und App-Token gehen dann
+    # lesbar durchs LAN; „unbegrenzt“ beim QR-Code und Passkeys gibt es dann
+    # nicht (README.md, „Ohne HTTPS“).
+    # ports:
+    #   - "${APP_BIND:-127.0.0.1}:3000:3000"
     volumes:
       # EIN Volume genügt. Set-, Teile- und Minifiguren-Bilder liegen unter
       # data/images/ (siehe utils/appPaths.ts) und sind damit von ./data
@@ -102,6 +107,10 @@ services:
       # Abschnitt 10 — die Dateien einmal von Hand nach ./data/images/sets/
       # verschieben, danach kann der Ordner weg.
       - ./data:/app/data
+      # Caddys CA, nur lesend. Der Entrypoint kopiert daraus allein das
+      # öffentliche Wurzelzertifikat nach CA_ZERTIFIKAT; die Schlüssel daneben
+      # sind nur für root lesbar, der Server läuft als brickinv.
+      - ./caddy/data/caddy/pki/authorities/local:/caddy-ca:ro
     environment:
 
       # ── PFLICHT: in .env setzen (Vorlage: .env.example) ──────────────────────
@@ -111,14 +120,16 @@ services:
       SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET in .env setzen, siehe .env.example}
 
       # ── App ──────────────────────────────────────────────────────────────────
-      # Adresse, unter der der Server von aussen erreichbar ist. Nötig für
-      # Passwort-vergessen-Mails und den QR-Code der App (siehe README.md).
-      # APP_BASE_URL: https://lego.example.org
-      # Wem X-Forwarded-For geglaubt wird: nur ausdrücklich genannten Adressen.
-      # Leer heisst Loopback — richtig ohne Proxy, denn über den Port oben sieht
-      # der Server die echte Client-Adresse. Ein Proxy im Netz unten bekommt eine
-      # feste Adresse (z. B. 172.28.73.10), und genau die steht dann in .env.
-      TRUST_PROXY: ${TRUST_PROXY:-}
+      # Adresse, unter der der Server von aussen erreichbar ist: Mails, QR-Code,
+      # Passkeys. Ohne Angabe https://BRICK_HOST — die Adresse von Caddy.
+      APP_BASE_URL: ${APP_BASE_URL:-https://${BRICK_HOST}}
+      # Wem X-Forwarded-For und X-Forwarded-Proto geglaubt wird: genau Caddy
+      # (feste Adresse unten). Erst damit weiss der Server, dass die Anfrage
+      # über TLS kam (Cookie mit Secure, HSTS).
+      TRUST_PROXY: ${TRUST_PROXY:-172.28.73.10}
+      # Das Wurzelzertifikat der CA (kopiert vom Entrypoint) für /ca.crt und
+      # den Fingerabdruck im QR-Code.
+      CA_ZERTIFIKAT: /tmp/ca/root.crt
       # PORT: 3000
       # NODE_ENV: production
       # NODE_OPTIONS: "--max-old-space-size=384"
@@ -159,6 +170,45 @@ services:
       start_period: 20s
     networks:
       - brickinventory-net
+
+  # ── Caddy — HTTPS vor der App ────────────────────────────────────────────────
+  #
+  # TLS mit eigener CA (`tls internal`) für BRICK_HOST aus .env, einen Namen
+  # (nas.local) oder eine IP-Adresse. Port 443 für HTTPS, Port 80 leitet um und
+  # liefert nur /ca.crt im Klartext. Das Wurzelzertifikat liegt danach unter
+  # ./caddy/data/caddy/pki/authorities/local/root.crt und kommt auf die Geräte
+  # (UPGRADE.md, Abschnitt 14).
+  caddy:
+    # Fest per Digest wie pgweb; Renovate schlägt neue Fassungen vor.
+    image: caddy:2.11.7-alpine@sha256:e70b164da81ef698b3ad19af799ea6086ce6d9e48ed4079eb9fe26f6fbf14ee5
+    container_name: brickinventory-caddy
+    restart: unless-stopped
+    # Caddy läuft als root im Container und braucht nur die Ports unter 1024.
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+    cap_add: [NET_BIND_SERVICE]
+    read_only: true
+    tmpfs:
+      - /tmp
+    depends_on:
+      - app
+    environment:
+      BRICK_HOST: ${BRICK_HOST:?BRICK_HOST in .env setzen (Name oder IP des Servers) - siehe UPGRADE.md}
+      BRICK_BASE_URL: ${APP_BASE_URL:-https://${BRICK_HOST}}
+    ports:
+      - "${HTTPS_BIND:-0.0.0.0}:443:443"
+      - "${HTTPS_BIND:-0.0.0.0}:80:80"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # CA (Wurzel und Schlüssel) und Zertifikate. Mitsichern: Geht die CA
+      # verloren, muss jedes Gerät das neue Wurzelzertifikat bekommen.
+      - ./caddy/data:/data
+      - ./caddy/config:/config
+    networks:
+      brickinventory-net:
+        # Genau diese Adresse steht in TRUST_PROXY der App.
+        ipv4_address: 172.28.73.10
 
   # ── pgweb — Datenbank im Browser ansehen (OPTIONAL) ──────────────────────────
   #

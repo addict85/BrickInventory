@@ -25,7 +25,10 @@ export function bearerToken(req: any): string | null {
 const OEFFENTLICH: ReadonlyArray<readonly [string, RegExp]> = [
   ['GET', /^\/settings\/theme$/],
   ['GET', /^\/auth\/(me|registration-status)$/],
-  ['POST', /^\/auth\/(login|logout|qr-login|register|forgot-password|reset-password|serverbeweis)$/],
+  // token-rotieren prüft selbst: Ein unbegrenzter Token nach der Pflichtfrist
+  // gilt nur noch dort, und das kann der Eingang nicht wissen.
+  ['POST', /^\/auth\/(login|logout|qr-login|register|forgot-password|reset-password|serverbeweis|token-rotieren)$/],
+  ['POST', /^\/auth\/passkey\/anmelden(\/optionen)?$/],
 ];
 
 /** Eingang zu /api/v1: Sitzung oder Bearer-Token, ausser für OEFFENTLICH. */
@@ -38,7 +41,7 @@ export async function anmeldungAmEingang(req: Request, res: Response, next: Next
     return next();
   }
   const uid = await resolveUserId(req).catch(meldeUndLiefere('eingang:resolveUserId', null));
-  if (!uid) return sendeFehler(req, res, 401, 'nicht_angemeldet');
+  if (!uid) return sendeFehler(req, res, 401, req.tokenAbsage ?? 'nicht_angemeldet');
   req.tokenUserId = uid;
   next();
 }
@@ -52,7 +55,7 @@ export function requireToken(req: any, res: any, next: any) {
     return next();
   }
   const token = bearerToken(req);
-  validateToken(token).then(user => {
+  validateToken(token, { ip: req.ip }).then(user => {
     if (!user) return sendeFehler(req, res, 401, 'token_ungueltig');
     req.apiUser = user;
     next();

@@ -16,6 +16,14 @@ const VORGABEN: Record<ApiName, number> = { bricklink: 4000, rebrickable: REBRIC
  */
 export const ANTEIL_JE_KONTO = 0.25;
 
+/**
+ * Anteil aller Nicht-Verwalter zusammen. Vier Konten zu je einem Viertel
+ * leerten sonst das ganze Kontingent; die andere Hälfte bleibt Verwaltern und
+ * dem Hintergrund (Katalogabgleich). Gezählt in der Zeile `konto = -1`.
+ */
+export const ANTEIL_ALLE_KONTEN = 0.5;
+const ALLE_KONTEN = -1;
+
 const heute = () => new Date().toISOString().slice(0, 10);
 
 export async function getLimitForApi(apiName: ApiName): Promise<number> {
@@ -23,10 +31,11 @@ export async function getLimitForApi(apiName: ApiName): Promise<number> {
 }
 
 const grenzeJeKonto = (limit: number) => Math.max(1, Math.ceil(limit * ANTEIL_JE_KONTO));
+const grenzeAlleKonten = (limit: number) => Math.max(1, Math.ceil(limit * ANTEIL_ALLE_KONTEN));
 
 /**
  * Einen Aufruf zählen, wenn das Kontingent es zulässt — gesamt und, bei einer
- * Anfrage eines Nicht-Verwalters, je Konto. Atomar: Das Upsert erhöht nur unter
+ * Anfrage eines Nicht-Verwalters, für alle Konten zusammen und je Konto. Atomar: Das Upsert erhöht nur unter
  * der Grenze, und scheitert die Grenze des Kontos, fällt auch die Gesamtzählung zurück.
  */
 export async function checkAndIncrementRateLimit(apiName: ApiName, _vorgabe?: number) {
@@ -46,7 +55,8 @@ export async function checkAndIncrementRateLimit(apiName: ApiName, _vorgabe?: nu
     const gesamt = await zaehle(tx, 0, limit);
     if (gesamt === null) return { allowed: false, count: limit, limit, remaining: 0 };
     if (konto && !konto.verwalter) {
-      const eigen = await zaehle(tx, konto.id, grenzeJeKonto(limit));
+      const alle = await zaehle(tx, ALLE_KONTEN, grenzeAlleKonten(limit));
+      const eigen = alle === null ? null : await zaehle(tx, konto.id, grenzeJeKonto(limit));
       if (eigen === null) throw Object.assign(new Error('kontingent_je_konto'), { kontoVoll: true });
     }
     return { allowed: true, count: gesamt, limit, remaining: limit - gesamt };
@@ -76,8 +86,12 @@ export async function kontingentFrei(apiName: ApiName) {
   const s = await getRateLimitStatus(apiName);
   const konto = aktuellesKonto();
   if (!konto || konto.verwalter || s.remaining <= 0) return { allowed: s.remaining > 0, limit: s.limit };
-  const z = await db.get('SELECT anzahl FROM api_aufrufe WHERE tag = $1 AND api = $2 AND konto = $3', [s.date, apiName, konto.id]);
-  return { allowed: Number(z?.anzahl || 0) < grenzeJeKonto(s.limit), limit: s.limit };
+  const z = await db.all<{ konto: number; anzahl: number }>(
+    'SELECT konto, anzahl FROM api_aufrufe WHERE tag = $1 AND api = $2 AND konto IN ($3, $4)',
+    [s.date, apiName, konto.id, ALLE_KONTEN]);
+  const stand = (k: number) => Number(z.find(r => Number(r.konto) === k)?.anzahl || 0);
+  return { allowed: stand(konto.id) < grenzeJeKonto(s.limit) && stand(ALLE_KONTEN) < grenzeAlleKonten(s.limit),
+           limit: s.limit };
 }
 
 /** Den heutigen Zähler eines Dienstes zurücksetzen (Verwalter, „jetzt erneut versuchen“). */

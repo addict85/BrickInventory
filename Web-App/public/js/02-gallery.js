@@ -9,11 +9,12 @@ import { SCOPE_VIEWS, addScopeParam, scopeMode, scopeQuery, setScopeMode,
 import { setScrollLabel } from './15-scrollbar.js';
 import { loadParts } from './03-parts.js';
 import { loadFinance } from './04-finance.js';
-import { loadApiLimits, loadCacheStats, loadCacheTtl, loadHousehold, loadProfile, loadRateLimitStats, loadSettings, loadTokens, ladeAlarmUebersicht, ladeLagerortVerwaltung } from './05-settings.js';
+import { loadApiLimits, loadCacheStats, loadCacheTtl, loadHousehold, loadProfile, loadRateLimitStats, loadSettings, loadTokens, ladeTls, ladeAlarmUebersicht, ladeLagerortVerwaltung } from './05-settings.js';
 import { loadBrickColors, loadManualFigsTable, loadManualParts, loadMinifigs } from './06-minifigs.js';
 import { ladeGutscheine } from './17-gutscheine.js';
 import { geloeschtMitRueckgaengig, ladePapierkorb } from './20-papierkorb.js';
 import { ladeZweitenFaktor } from './21-zweiter-faktor.js';
+import { ladePasskeys } from './23-passkeys.js';
 import { _lastImportAt, confirmDelete, enrichGalleryWithPrices, jobPollTimer, ladeLagerorte, lagerortBlock, openModal, pollJobStatus, set_jobPollTimer, set_lastImportAt } from './07-admin.js';
 import { openAcqModal, renderAcqModalBody, renderAcquisitionSummary } from './13-acquisition-modals.js';
 import { ladeMerkliste, merklisteZuruecksetzen } from './16-merkliste.js';
@@ -169,13 +170,13 @@ export function bindTabs(){
 // Seite, von der man meist nur eine Rubrik sehen wollte. Jetzt holt jede
 // Sicht, was sie zeigt — dieselbe Regel wie in der Android-App.
 const SICHTEN = {
-  profil:     () => { loadSettings(); loadProfile(); ladeZweitenFaktor(); },
+  profil:     () => { loadSettings(); loadProfile(); ladeZweitenFaktor(); ladePasskeys(); },
   gutscheine: () => ladeGutscheine(),
   alarme:     () => ladeAlarmUebersicht(),
   lagerorte:  () => ladeLagerortVerwaltung(),
   haushalt:   () => loadHousehold(),
   daten:      () => ladePapierkorb(),
-  app:        () => loadTokens(),
+  app:        () => { loadTokens(); ladeTls(); },
 };
 
 /** Eine Sicht aus dem Menü öffnen. */

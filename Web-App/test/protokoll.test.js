@@ -10,6 +10,8 @@
  *      rot: dieselbe Prüfung (drei Meldungen statt einer)
  *   C  in jsonZeile() die Anfragekennung weggelassen → rot: „eine Zeile ist
  *      JSON mit Zeit, Stufe, Nachricht, Anfrage und Kontext“
+ *   D  in anfrageKennung() den Filter entfernt (jede Zeichenkette übernommen)
+ *      → rot: „X-Request-Id: nur harmlose Kennungen …“
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -70,4 +72,14 @@ test('Schreibfehler: sofort, dann je Minute gesammelt', async (t) => {
   m.uhr += 60_000; P.meldeSchreibfehler();
   assert.equal(meldungen().length, 2);
   assert.equal(meldungen()[1].nachricht, 'app_logs: 6 Zeile(n) nicht geschrieben', 'der Rest der Minute in einer Zeile');
+});
+
+test('X-Request-Id: nur harmlose Kennungen, sonst eine eigene', () => {
+  for (const gut of ['ab12', '3f6c1a2e-6e1b-4c55-9a5d-1b2c3d4e5f60', 'proxy.1:2_x']) assert.equal(P.anfrageKennung(gut), gut);
+  for (const boese of ['a\nwarn gefälscht', 'x'.repeat(65), '', 'a b', '"};', ['liste'], undefined]) {
+    const k = P.anfrageKennung(boese);
+    assert.notEqual(k, boese);
+    assert.match(k, /^[0-9a-z]{4,}$/, `eigene Kennung statt ${JSON.stringify(boese)}`);
+  }
+  assert.notEqual(P.anfrageKennung(''), P.anfrageKennung(''), 'eigene Kennungen zählen weiter');
 });

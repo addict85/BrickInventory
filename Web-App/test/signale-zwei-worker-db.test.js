@@ -217,7 +217,8 @@ test('Cache-Signale erreichen jeden Worker', { concurrency: 1, timeout: 180_000 
       assert.equal(offen.status, 200);
       assert.ok(offen.body.status && offen.body.startup, 'Der Ladebildschirm braucht den Startzustand');
       assert.equal(offen.body.db_pool, undefined, 'Pool-Zahlen ohne Anmeldung');
-      const frisch = (await hole(port, '/api/v1/auth/login', { methode: 'POST', body: { username: HAUPT, password: PASS } })).body.token;
+      // Scope `voll`: Verwalterrechte bekommt ein Token nur auf ausdrücklichen Wunsch.
+      const frisch = (await hole(port, '/api/v1/auth/login', { methode: 'POST', body: { username: HAUPT, password: PASS, scope: 'voll' } })).body.token;
       assert.equal((await hole(port, '/api/v1/settings/raw', { token: frisch })).status, 200, 'Vorbedingung: ein gültiger Token');
       assert.equal((await hole(port, '/api/v1/health', { token: frisch })).body.db_pool, undefined, 'Pool-Zahlen für jedes Konto');
       await db.run('UPDATE users SET is_admin = 1 WHERE id = $1', [ids[HAUPT]]);

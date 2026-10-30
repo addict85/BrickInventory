@@ -56,7 +56,13 @@ CREATE TABLE api_tokens (
   hard_expires_at timestamp with time zone,
   never_expires boolean NOT NULL DEFAULT false,
   label text,
+  scope text NOT NULL DEFAULT 'app'::text,
+  ip_bereich text,
+  rotiert_am timestamp with time zone NOT NULL DEFAULT now(),
+  vorgaenger text,
+  ersetzt_durch text,
   CONSTRAINT api_tokens_pkey PRIMARY KEY (token),
+  CONSTRAINT api_tokens_scope_check CHECK ((scope = ANY (ARRAY['app'::text, 'voll'::text]))),
   CONSTRAINT api_tokens_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 CREATE INDEX idx_api_tokens_expires ON api_tokens USING btree (expires_at) WHERE (expires_at IS NOT NULL);
@@ -505,6 +511,22 @@ CREATE TABLE parts_version_user (
   CONSTRAINT parts_version_user_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+CREATE TABLE passkeys (
+  id integer NOT NULL DEFAULT nextval('passkeys_id_seq'::regclass),
+  user_id integer NOT NULL,
+  credential_id text NOT NULL,
+  public_key bytea NOT NULL,
+  sign_count bigint NOT NULL DEFAULT 0,
+  transports text,
+  name text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  last_used timestamp with time zone,
+  CONSTRAINT passkeys_credential_id_key UNIQUE (credential_id),
+  CONSTRAINT passkeys_pkey PRIMARY KEY (id),
+  CONSTRAINT passkeys_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+CREATE INDEX idx_passkeys_konto ON passkeys USING btree (user_id);
+
 CREATE TABLE pdf_auftraege (
   id text NOT NULL,
   user_id integer NOT NULL,
@@ -898,6 +920,18 @@ CREATE TABLE wanted (
 );
 CREATE INDEX idx_wanted_user ON wanted USING btree (user_id, created_at DESC);
 CREATE TRIGGER wanted_setnummer BEFORE INSERT OR UPDATE OF set_number ON wanted FOR EACH ROW EXECUTE FUNCTION setnummer_normalisieren();
+
+CREATE TABLE webauthn_challenges (
+  challenge text NOT NULL,
+  user_id integer,
+  zweck text NOT NULL,
+  expires_at timestamp with time zone NOT NULL,
+  CONSTRAINT webauthn_challenges_pkey PRIMARY KEY (challenge),
+  CONSTRAINT webauthn_challenges_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  CONSTRAINT webauthn_challenges_zweck_check CHECK ((zweck = ANY (ARRAY['registrieren'::text, 'anmelden'::text, 'zweiter_faktor'::text])))
+);
+CREATE INDEX idx_webauthn_challenges_frist ON webauthn_challenges USING btree (expires_at);
+CREATE INDEX idx_webauthn_challenges_konto ON webauthn_challenges USING btree (user_id);
 
 CREATE TABLE wechselkurse (
   tag date NOT NULL,

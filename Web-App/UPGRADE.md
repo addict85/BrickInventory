@@ -378,3 +378,83 @@ Bereits geschützt und unverändert: PDF-Export
 - **Konto löschen** entfernt jetzt auch `data/uploads/<id>/` und
   `data/vouchers/<id>/`. Verwaiste Ordner früher gelöschter Konten bitte von
   Hand entfernen.
+
+## 14. HTTPS mit Caddy, Token-Scopes und Passkeys
+
+Die App ist nach aussen nur noch über **Caddy** (HTTPS) erreichbar; Port 3000
+wird nicht mehr veröffentlicht.
+
+### Umstieg
+
+1. In `.env` den Namen oder die IP-Adresse des Servers eintragen:
+   ```
+   echo BRICK_HOST=nas.example.lan >> .env
+   ```
+   Ohne `APP_BASE_URL` gilt `https://BRICK_HOST`. Wer `APP_BASE_URL` gesetzt
+   hat, stellt sie auf `https://…` um (bisher meist `http://…:3000`).
+2. Hatte `.env` `TRUST_PROXY` leer oder `APP_BIND` gesetzt: beides entfernen.
+   Ein eigener Reverse-Proxy auf einem anderen Rechner bleibt möglich — dann
+   `TRUST_PROXY` auf dessen Adresse und den Dienst `caddy` weglassen.
+3. `docker compose up -d --build`. Caddy legt beim ersten Start seine CA unter
+   `./caddy/data/` an (Wurzel 10 Jahre gültig). Port 443 und 80 müssen frei sein.
+4. Das Wurzelzertifikat auf die Geräte bringen (unten).
+5. Die Android-App einmal neu verknüpfen (QR-Code): Erst dann kennt sie den
+   Fingerabdruck und die https-Adresse. Bis dahin meldet sie sich mit dem
+   alten Token über `http://…:3000` an — die Adresse gibt es nicht mehr.
+
+`./caddy/` gehört in die Sicherung: Geht die CA verloren, legt Caddy eine neue
+an, und jedes Gerät braucht das neue Wurzelzertifikat und die App einen neuen
+QR-Code.
+
+### Das Wurzelzertifikat auf Geräte bringen
+
+Caddy legt es unter `./caddy/data/caddy/pki/authorities/local/root.crt` ab.
+Die Web-App bietet es unter `https://<BRICK_HOST>/ca.crt` an — auch über
+`http://<BRICK_HOST>/ca.crt`, weil ein Gerät es braucht, bevor es HTTPS
+vertraut. Vor dem Installieren den Fingerabdruck vergleichen; auf dem Server:
+
+```
+openssl x509 -in caddy/data/caddy/pki/authorities/local/root.crt -pubkey -noout \
+  | openssl pkey -pubin -outform der | openssl dgst -sha256 -binary | base64
+```
+
+Derselbe Wert steht in der Web-App unter Einstellungen → Sicherheit
+(„Server-Zertifikat“) und als `fp` im QR-Code der App.
+
+- **Windows:** Datei öffnen → „Zertifikat installieren“ → „Lokaler Computer“
+  → „Vertrauenswürdige Stammzertifizierungsstellen“.
+- **macOS:** Datei öffnen (Schlüsselbundverwaltung, System) → Zertifikat
+  doppelklicken → „Vertrauen: Immer vertrauen“.
+- **Linux:** `sudo cp brickinventory-ca.crt /usr/local/share/ca-certificates/ && sudo update-ca-certificates`;
+  Firefox hat einen eigenen Speicher (Einstellungen → Zertifikate → Importieren).
+- **Android:** Einstellungen → Sicherheit → Verschlüsselung & Anmeldedaten →
+  Zertifikat installieren → CA-Zertifikat. Für die BrickInventory-App nicht
+  nötig, nur für den Browser.
+- **iOS/iPadOS:** Datei in Safari laden → Einstellungen → Profil installieren;
+  danach Allgemein → Info → Zertifikatsvertrauenseinstellungen → einschalten.
+
+Das Wurzelzertifikat gilt auf dem Gerät für **jede** Adresse. Der Schlüssel
+dazu liegt nur in `./caddy/data/` (nur für root lesbar) — dieses Verzeichnis
+wie ein Passwort behandeln.
+
+### Tokens
+
+- Bestehende Tokens behalten ihre Rechte (Scope `voll`), laufen aber spätestens
+  **90 Tage nach dem Update** ab, wenn sie nicht benutzt werden; jede Nutzung
+  schiebt die Frist nach. Auch bisher „unbegrenzte“ Tokens bekommen diese Frist.
+- Neue Tokens haben ohne ausdrücklichen Wunsch Scope `app`: keine
+  Verwalterrechte, auch nicht für ein Verwalterkonto. QR-Codes geben immer
+  `app`. Verwalterfunktionen der App brauchen eine Anmeldung mit Passwort und
+  `scope: "voll"`.
+- `TOKEN_IDLE_DAYS=0` gibt es nicht mehr (Startfehler). „Unbegrenzt“ gibt es
+  nur beim QR-Code, nur über HTTPS, und der Token muss alle 60 Tage getauscht
+  werden (die App tut das selbst).
+- Die Geräteliste (Einstellungen → Konto) zeigt Scope, letzte Nutzung,
+  Adressbereich und Ablauf; jeder Eintrag ist einzeln widerrufbar.
+
+### Passkeys
+
+Passkeys lassen sich im Konto einrichten und auf der Anmeldeseite ohne
+Passwort benutzen; mit eingeschaltetem zweitem Faktor ersetzen sie den Code.
+Sie brauchen HTTPS und einen **Namen** in `APP_BASE_URL` (keine IP-Adresse);
+wechselt der Name, gelten die bisherigen Passkeys nicht mehr.
