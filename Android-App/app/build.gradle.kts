@@ -1,6 +1,3 @@
-import java.time.LocalDateTime
-import java.time.ZoneOffset
-import java.time.format.DateTimeFormatter
 import java.io.File
 
 plugins {
@@ -12,32 +9,41 @@ plugins {
     alias(libs.plugins.hilt)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.roborazzi)
 }
 
-// ── Automatische Versionierung ────────────────────────────────────────────────
-// Bei jedem Build wird die Version aus dem aktuellen Zeitpunkt erzeugt:
-//   versionName = "YYYY.MM.DD.HHMM"  (z. B. 2026.07.08.1430)
-//   versionCode = BASIS + Minuten seit 2020-01-01 UTC  (monoton steigend)
-// "xxxx" (HHMM) ist ein natürlich aufsteigender 4-stelliger Build-Stempel.
-//
-// Der Basis-Offset ist nötig, weil frühere Builds den festen versionCode
-// 20260708 (YYYYMMDD ≈ 20 Mio.) hatten. Ein reiner "Minuten seit 2020"-Wert
-// (~3,4 Mio.) wäre KLEINER → Android lehnt das Update als Downgrade ab
-// (INSTALL_FAILED_VERSION_DOWNGRADE). 100 Mio. liegt sicher darüber und lässt
-// bis weit über das Jahr 5000 Luft (Grenze: 2,1 Mrd.).
-val VERSION_CODE_BASE = 100_000_000L
-val buildClock: LocalDateTime = LocalDateTime.now()
+// Bildschirmfotos neben die Tests, damit sie als Referenz eingecheckt werden
+// können; bis dahin nimmt die CI nur auf (recordRoborazziDebug, android.yml).
+roborazzi {
+    outputDir.set(file("src/test/bildschirmfotos"))
+}
+
+// ── Version aus Git ───────────────────────────────────────────────────────────
+// Derselbe Stand ergibt dieselbe Version, egal wann gebaut wird:
+//   versionName = `git describe` am letzten Tag v* (ohne „v“), ohne Tag
+//                 „<Commits>-g<Kurzhash>“
+//   versionCode = VERSION_CODE_BASE + Anzahl Commits
+// Die Basis liegt über allen früheren, aus der Uhrzeit gebildeten Codes (100 Mio. +
+// Minuten seit 2020, Ende 2026 ≈ 103,6 Mio.), sonst lehnte Android das Update als
+// Downgrade ab. Ohne Git (Quell-Archiv) gilt der feste Rückfall.
+// Die CI braucht dafür die volle Historie (android.yml: fetch-depth: 0).
+val VERSION_CODE_BASE = 200_000_000
+fun git(vararg args: String): String? = runCatching {
+    val lauf = providers.exec {
+        commandLine("git", *args)
+        isIgnoreExitValue = true
+    }
+    if (lauf.result.get().exitValue == 0) lauf.standardOutput.asText.get().trim().ifEmpty { null } else null
+}.getOrNull()
+val commitAnzahl: Int? = git("rev-list", "--count", "HEAD")?.toIntOrNull()
 val generatedVersionName: String =
     (project.findProperty("buildVersionName") as String?)
-        ?: buildClock.format(DateTimeFormatter.ofPattern("yyyy.MM.dd.HHmm"))
+        ?: git("describe", "--tags", "--match", "v[0-9]*")?.removePrefix("v")
+        ?: commitAnzahl?.let { n -> "$n-g${git("rev-parse", "--short", "HEAD") ?: "0"}" }
+        ?: "0.0.0-ohne-git"
 val generatedVersionCode: Int =
     (project.findProperty("buildVersionCode") as String?)?.toIntOrNull()
-        ?: run {
-            val epoch2020 = LocalDateTime.of(2020, 1, 1, 0, 0)
-                .toEpochSecond(ZoneOffset.UTC)
-            val nowSec = buildClock.toEpochSecond(ZoneOffset.UTC)
-            (VERSION_CODE_BASE + (nowSec - epoch2020) / 60L).toInt()
-        }
+        ?: (VERSION_CODE_BASE + (commitAnzahl ?: 0))
 
 ksp {
     arg("dagger.fastInit", "enabled")
@@ -52,6 +58,8 @@ android {
     // returnDefaultValues lässt solche Aufrufe still ins Leere laufen.
     testOptions {
         unitTests.isReturnDefaultValues = true
+        // Robolectric liest Ressourcen, Schriften und Manifest der App.
+        unitTests.isIncludeAndroidResources = true
     }
 
     namespace  = "ch.brickinventoryapp"
@@ -167,14 +175,12 @@ android {
     }
 
     lint {
-        // Lint LÄUFT auf Release-Builds — nur bricht sie den Build nicht ab.
-        //
-        // Vorher stand hier checkReleaseBuilds = false: Damit war die Prüfung
-        // genau dort abgeschaltet, wo sie zählt, und Befunde tauchten nirgends
-        // auf. abortOnError = false erzeugt den Report weiterhin
-        // (build/reports/lint-results-release.html), ohne den Build zu blockieren.
+        // Lint läuft auf Release-Builds und bricht bei einem Fehler ab: Ein
+        // Befund der Stufe Error ist kein Bericht, sondern ein Mangel. Warnungen
+        // zählt tools/lint-zaehlen.py gegen eine Obergrenze. Keine Baseline —
+        // was gemeldet wird, wird behoben.
         checkReleaseBuilds = true
-        abortOnError = false
+        abortOnError = true
         warningsAsErrors = false
     }
 
@@ -233,14 +239,9 @@ configurations.configureEach {
 }
 
 // ── Feste Version für Debug-Builds ────────────────────────────────────────────
-// versionCode/-Name werden oben aus LocalDateTime.now() erzeugt. Für Release
-// ist das gewollt (monoton steigend, kein Downgrade beim Update), für Debug
-// bedeutet es aber: Die Manifest-Tasks sind bei JEDEM Build "out of date",
-// auch wenn sich nichts geändert hat — Gradle kann nichts wiederverwenden.
-//
-// Über buildTypes { debug { … } } liesse sich nur ein versionNameSuffix
-// setzen, nicht der Name selbst; der wechselte dann weiterhin minütlich.
-// Die Variant-API überschreibt beide Felder.
+// versionCode/-Name kommen oben aus Git und wechseln mit jedem Commit; für Debug
+// hiesse das: Die Manifest-Tasks wären nach jedem Commit "out of date". Die
+// Variant-API überschreibt beide Felder (ein versionNameSuffix reichte nicht).
 //
 // versionCode = 1 liegt bewusst weit unter VERSION_CODE_BASE, damit ein
 // Debug-Build nie versehentlich als Update über eine installierte
@@ -432,4 +433,20 @@ dependencies {
     implementation(libs.accompanist.permissions)
 
     debugImplementation(libs.androidx.ui.tooling)
+
+    // Startbildschirm-Widget (widget/).
+    implementation(libs.glance.appwidget)
+    implementation(libs.glance.material3)
+
+    // Oberflächentests auf der JVM: Robolectric, Compose-Testregel samt
+    // Barrierefreiheitsprüfung (ATF) und Roborazzi für die Bildschirmfotos.
+    testImplementation(platform(libs.androidx.compose.bom))
+    testImplementation(libs.robolectric)
+    testImplementation(libs.androidx.test.ext.junit)
+    testImplementation(libs.androidx.ui.test.junit4)
+    testImplementation(libs.androidx.ui.test.junit4.accessibility)
+    testImplementation(libs.roborazzi)
+    testImplementation(libs.roborazzi.compose)
+    testImplementation(libs.roborazzi.junit.rule)
+    debugImplementation(libs.androidx.ui.test.manifest)
 }

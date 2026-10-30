@@ -193,7 +193,7 @@ fun GalleryScreen(
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = TextAlign.Center)
-                        Button(onClick = onRefresh, shape = Formen.knopf) { Text(stringResource(R.string.gallery_retry)) }
+                        Button(onClick = onRefresh, shape = Formen.knopf) { Text(stringResource(R.string.common_retry)) }
                     }
                     GalerieAnzeige.LEER -> GalerieHinweis {
                         Image(painterResource(R.drawable.ic_logo), null, Modifier.size(64.dp))

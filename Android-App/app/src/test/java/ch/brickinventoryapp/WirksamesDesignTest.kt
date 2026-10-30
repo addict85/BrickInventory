@@ -41,6 +41,20 @@ class WirksamesDesignTest {
         assertEquals(Darstellung("werkbank", false), darstellung("werkbank", dunkelNachSystem = true, systemDunkel = true))
     }
 
+    // Gegenprobe (30.10.2026, gemessen): in darstellung() `sdk >= SYSTEMFARBEN_AB_SDK`
+    // entfernt → rot (Android 11); `dynamisch ||` entfernt → rot (Werkbank dunkel).
+    @Test
+    fun `Systemfarben gelten erst ab Android 12 und haben immer eine dunkle Fassung`() {
+        assertEquals(Darstellung("classic", false, systemfarben = false),
+            darstellung("classic", dunkelNachSystem = true, systemDunkel = false, systemfarben = true, sdk = 30))
+        assertEquals(Darstellung("classic", false, systemfarben = true),
+            darstellung("classic", dunkelNachSystem = true, systemDunkel = false, systemfarben = true, sdk = 31))
+        assertEquals(Darstellung("werkbank", true, systemfarben = true),
+            darstellung("werkbank", dunkelNachSystem = true, systemDunkel = true, systemfarben = true, sdk = 34))
+        assertEquals("Ohne Wahl kein Dunkel, auch mit Systemfarben", Darstellung("brick", false, systemfarben = true),
+            darstellung("brick", dunkelNachSystem = false, systemDunkel = true, systemfarben = true, sdk = 34))
+    }
+
     @Test
     fun `ohne gespeicherte Wahl folgt die App dem System`() {
         assertTrue(dunkelNachSystemGilt(null))
@@ -56,9 +70,9 @@ class WirksamesDesignTest {
     fun `MainActivity zeichnet das wirksame Design`() {
         val src = Quellen.ohneKommentare(Quellen.lies("MainActivity.kt"))
         assertTrue("MainActivity nutzt darstellung() nicht — die Wahl bliebe ohne Wirkung",
-            Regex("""darstellung\(theme,\s*dunkel,\s*isSystemInDarkTheme\(\)\)""").containsMatchIn(src))
+            Regex("""darstellung\(theme,\s*dunkel,\s*isSystemInDarkTheme\(\),\s*systemfarben,\s*android\.os\.Build\.VERSION\.SDK_INT\)""").containsMatchIn(src))
         assertTrue("MainActivity reicht die dunkle Fassung nicht ans Theme",
-            Regex("""(\w+) = darstellung\(theme,[^\n]*\n\s*BrickInventoryManagerTheme\(theme\s*=\s*\1\.design,\s*dunkel\s*=\s*\1\.dunkel\)""").containsMatchIn(src))
+            Regex("""(\w+) = darstellung\(theme,[^\n]*\n\s*BrickInventoryManagerTheme\(theme\s*=\s*\1\.design,\s*dunkel\s*=\s*\1\.dunkel,\s*systemfarben\s*=\s*\1\.systemfarben\)""").containsMatchIn(src))
     }
 
     /**

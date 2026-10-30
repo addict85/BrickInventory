@@ -28,6 +28,7 @@ private class GeraeteZugang(
     override fun token(): String { bereit(); return prefs.authTokenState.value.orEmpty() }
     override fun tokenHerkunft(): String? { bereit(); return prefs.tokenHerkunftState.value }
     override fun klartextHosts(): Set<String> { bereit(); return prefs.klartextHostsState.value.orEmpty() }
+    override fun klartextErlaubt(): Boolean { bereit(); return prefs.klartextErlaubt() }
     override fun netz(): String = runCatching {
         (ctx.getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as? android.net.ConnectivityManager)
             ?.activeNetwork?.toString()
@@ -42,16 +43,22 @@ private fun vertrauen(ks: java.security.KeyStore?): javax.net.ssl.X509ExtendedTr
 
 /**
  * System-CAs nach network_security_config (ohne Nutzer-CAs), dazu der
- * AndroidCAStore samt Nutzer-CAs für die ausdrückliche Einstellung.
+ * AndroidCAStore samt Nutzer-CAs für die ausdrückliche Einstellung; darüber das
+ * Pinning des eigenen Servers (util/ServerVertrauen.kt).
  */
-private var gemeinsamesVertrauen: ch.brickinventoryapp.util.WahlVertrauen? = null
+private var gemeinsamesVertrauen: ch.brickinventoryapp.util.PinVertrauen? = null
 
 @Synchronized
-private fun serverVertrauen(prefs: PreferencesManager): ch.brickinventoryapp.util.WahlVertrauen =
-    gemeinsamesVertrauen ?: ch.brickinventoryapp.util.WahlVertrauen(
-        system = vertrauen(null),
-        mitNutzer = lazy { vertrauen(java.security.KeyStore.getInstance("AndroidCAStore").apply { load(null) }) },
-        nutzerErlaubt = { prefs.nutzerCaErlaubt() },
+private fun serverVertrauen(prefs: PreferencesManager, frage: ch.brickinventoryapp.util.ZertifikatsFrage): ch.brickinventoryapp.util.PinVertrauen =
+    gemeinsamesVertrauen ?: ch.brickinventoryapp.util.PinVertrauen(
+        kette = ch.brickinventoryapp.util.WahlVertrauen(
+            system = vertrauen(null),
+            mitNutzer = lazy { vertrauen(java.security.KeyStore.getInstance("AndroidCAStore").apply { load(null) }) },
+            nutzerErlaubt = { prefs.nutzerCaErlaubt() },
+        ),
+        pins = prefs,
+        eigenerServer = { ch.brickinventoryapp.util.pinSchluessel(prefs.serverUrlState.value.orEmpty()) },
+        frage = frage,
     ).also { gemeinsamesVertrauen = it }
 
 /** API-, Bild- und SSE-Client: derselbe Wächter (ServerWaechter.kt), eigene Zeitgrenzen. */
@@ -62,6 +69,8 @@ internal fun buildInterceptorClient(
     ctx: android.content.Context,
     /** Wohin ein Versionshinweis geht; nur der API-Client meldet. */
     meldungen: ch.brickinventoryapp.data.MeldungsKanal? = null,
+    /** Wartet auf die Entscheidung über ein unbekanntes Zertifikat. */
+    frage: ch.brickinventoryapp.util.ZertifikatsFrage,
 ): OkHttpClient {
     val versionsMeldung: ((VersionsHinweis) -> Unit)? = meldungen?.let { kanal ->
         { hinweis: VersionsHinweis ->
@@ -87,7 +96,7 @@ internal fun buildInterceptorClient(
                         .getString(ch.brickinventoryapp.R.string.lang_code))
             }))
         .apply {
-            val tm = serverVertrauen(prefs)
+            val tm = serverVertrauen(prefs, frage)
             val tls = javax.net.ssl.SSLContext.getInstance("TLS").apply { init(null, arrayOf(tm), null) }
             sslSocketFactory(tls.socketFactory, tm)
         }

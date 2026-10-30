@@ -9,16 +9,16 @@ import kotlinx.serialization.Serializable
  */
 
 /**
- * Anmeldung mit Zugangsdaten. `neverExpires`: Die App bekommt einen Token ohne
- * Ablaufdatum, weil er ihr einziger Ausweis ist; ungenutzt verfällt er trotzdem
- * (TOKEN_IDLE_DAYS, Vorgabe 90 Tage).
+ * Anmeldung mit Zugangsdaten. `neverExpires`: Über https bekommt die App einen
+ * Token ohne Ablaufdatum, weil er ihr einziger Ausweis ist; ungenutzt verfällt er
+ * trotzdem (TOKEN_IDLE_DAYS). Über http nie (AdminRepository.login).
  */
 @Serializable
 data class LoginRequest(
     val username: String,
     val password: String,
     val label: String = "Android App",
-    @SerialName("never_expires") val neverExpires: Boolean = true,
+    @SerialName("never_expires") val neverExpires: Boolean = false,
     /** Code des zweiten Faktors — nur, wenn der Server danach gefragt hat. */
     val code: String? = null,
 )

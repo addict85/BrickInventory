@@ -28,6 +28,8 @@ interface Zugangslage {
     /** Die Herkunft, an die der Token gebunden ist; null bei Altbestand ohne Bindung. */
     fun tokenHerkunft(): String?
     fun klartextHosts(): Set<String>
+    /** Der Expertenschalter „Klartext erlauben“; aus, so geht nur https hinaus. */
+    fun klartextErlaubt(): Boolean
     /** Kennung des aktiven Netzes; ein WLAN-Wechsel ergibt eine neue. */
     fun netz(): String
 }
@@ -89,11 +91,12 @@ class ServerWaechter(
         }
 
         val ausgehend = reqBuilder.build()
-        if (!NetworkPolicy.isCleartextAllowed(ausgehend.url, lage.klartextHosts())) {
+        if (!NetworkPolicy.isCleartextAllowed(ausgehend.url, lage.klartextHosts(), lage.klartextErlaubt())) {
             throw IOException(
                 "Unverschlüsselte Verbindung zu ${ausgehend.url.host} abgebrochen — " +
-                    "bitte https verwenden, eine Adresse im lokalen Netz, oder den Server " +
-                    "in der Einrichtung ausdrücklich für Klartext bestätigen."
+                    if (lage.klartextErlaubt()) "bitte https verwenden, eine Adresse im lokalen Netz, oder " +
+                        "den Server in der Einrichtung ausdrücklich für Klartext bestätigen."
+                    else "bitte https verwenden. Klartext erlaubt nur der Expertenschalter in den Einstellungen."
             )
         }
 

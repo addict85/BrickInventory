@@ -368,11 +368,25 @@ internal fun ergaenzeRollen(s: ColorScheme, dunkel: Boolean): ColorScheme {
     )
 }
 
+/**
+ * [systemfarben]: Material You — Farben vom System, Formen und Schrift vom
+ * Design. Die Diagramme nehmen dann die Rollen des Schemas, damit ihre Farben
+ * zur Fläche passen; die Statusfarben bleiben, weil Gewinn grün bleiben muss.
+ */
 @Composable
-fun BrickInventoryManagerTheme(theme: String = "classic", dunkel: Boolean = false, content: @Composable () -> Unit) {
+fun BrickInventoryManagerTheme(
+    theme: String = "classic", dunkel: Boolean = false, systemfarben: Boolean = false,
+    content: @Composable () -> Unit,
+) {
     val isBrick = theme == "brick"
-    val colors = remember(theme, dunkel) { farbschema(theme, dunkel) }
-    val chartColors = if (dunkel && hatDunkleFassung(theme)) dunkleRollen(theme).let {
+    val kontext = androidx.compose.ui.platform.LocalContext.current
+    val dynamisch = systemfarben && android.os.Build.VERSION.SDK_INT >= SYSTEMFARBEN_AB_SDK
+    val colors = remember(theme, dunkel, dynamisch) {
+        if (dynamisch) systemSchema(kontext, dunkel) else farbschema(theme, dunkel)
+    }
+    val chartColors = if (dynamisch) ChartColors(colors.primary, colors.tertiary, linie = colors.primary,
+        raster = colors.outlineVariant, gedaempft = colors.onSurfaceVariant)
+    else if (dunkel && hatDunkleFassung(theme)) dunkleRollen(theme).let {
         ChartColors(Color(it.chartNeu), Color(it.chartGebraucht), linie = Color(it.chartNeu),
             raster = Color(it.chartRaster), gedaempft = Color(it.chartGedaempft))
     } else when (theme) {
@@ -393,7 +407,10 @@ fun BrickInventoryManagerTheme(theme: String = "classic", dunkel: Boolean = fals
             raster = Color(0xFFE4E8EF), gedaempft = Color(0xFF6A7280))
         else -> ChartColors(ChartNewClassic, ChartUsedClassic)
     }
-    val statusFarben = statusFarbenFuer(theme, dunkel)
+    // Dunkle Systemfarben unter einem Design ohne dunkle Fassung: die dunklen
+    // Statusfarben von classic, sonst stünde Dunkelgrün auf dunklem Grund.
+    val statusFarben = if (dynamisch && dunkel && !hatDunkleFassung(theme)) statusFarbenFuer("classic", true)
+                       else statusFarbenFuer(theme, dunkel)
     val steinDekor = if (dunkel && isBrick) dunkleSteinDekor().let { SteinDekor(Color(it.noppen), Color(it.schiefer), Color(it.aufSchiefer)) }
                      else SteinDekor(SlateBlueNoppe, SlateBlue, Color.White)
     CompositionLocalProvider(
@@ -412,3 +429,8 @@ fun BrickInventoryManagerTheme(theme: String = "classic", dunkel: Boolean = fals
         )
     }
 }
+
+/** Nur ab Android 12 aufrufen ([SYSTEMFARBEN_AB_SDK]); das prüft der Aufrufer. */
+@android.annotation.SuppressLint("NewApi")
+private fun systemSchema(kontext: android.content.Context, dunkel: Boolean): ColorScheme =
+    if (dunkel) dynamicDarkColorScheme(kontext) else dynamicLightColorScheme(kontext)

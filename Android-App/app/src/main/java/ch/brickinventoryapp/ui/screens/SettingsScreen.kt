@@ -1,6 +1,8 @@
 package ch.brickinventoryapp.ui.screens
 
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.Role
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.ui.semantics.semantics
 import ch.brickinventoryapp.ui.theme.Formen
 import ch.brickinventoryapp.ui.theme.AppKarte
@@ -138,6 +140,24 @@ fun SettingsScreen(
                 )
             }
 
+            // Material You: zusätzlich zu den sechs Designs, je Gerät. Erst ab
+            // Android 12 gibt es Systemfarben; darunter fehlt der Schalter ganz.
+            if (android.os.Build.VERSION.SDK_INT >= ch.brickinventoryapp.ui.theme.SYSTEMFARBEN_AB_SDK) {
+                val systemfarben by app.systemfarben.collectAsStateWithLifecycle()
+                Row(
+                    Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                        .toggleable(value = systemfarben, role = Role.Switch, onValueChange = { app.setSystemfarben(it) }),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(stringResource(R.string.settings_systemfarben), style = MaterialTheme.typography.bodyMedium)
+                        Text(stringResource(R.string.settings_systemfarben_hint), style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Switch(checked = systemfarben, onCheckedChange = null)
+                }
+            }
+
             // Die Linie trennt, was SOFORT wirkt (Sprache), von dem, was der
             // Knopf darunter speichert. Ohne sie stuenden vier Wahlmoeglichkeiten
             // da, von denen drei erst spaeter gelten — und niemand saehe, welche.
@@ -229,11 +249,14 @@ fun SettingsScreen(
         // Die Serveradresse ist eine Einstellung wie Währung und Sprache, keine Handlung
         // an der laufenden Sitzung.
         val nutzerCa by app.nutzerCa.collectAsStateWithLifecycle()
+        val klartext by app.klartextErlaubt.collectAsStateWithLifecycle()
         ServerCard(
             serverUrl = appState.serverUrl,
             onWechseln = onServerWechseln,
             nutzerCa = nutzerCa,
             onNutzerCa = { app.setNutzerCa(it) },
+            klartext = klartext,
+            onKlartext = { app.setKlartextErlaubt(it) },
         )
 
         UpdateCard(
@@ -319,7 +342,10 @@ internal fun SettingsCard(
  * Betrieb) ist das der Unterschied zu falschen Daten.
  */
 @Composable
-private fun ServerCard(serverUrl: String, onWechseln: () -> Unit, nutzerCa: Boolean, onNutzerCa: (Boolean) -> Unit) {
+private fun ServerCard(
+    serverUrl: String, onWechseln: () -> Unit, nutzerCa: Boolean, onNutzerCa: (Boolean) -> Unit,
+    klartext: Boolean, onKlartext: (Boolean) -> Unit,
+) {
     SettingsCard(title = stringResource(R.string.main_menu_change_server), icon = Icons.Default.Cloud) {
         Text(
             serverUrl.ifBlank { "—" },
@@ -346,6 +372,8 @@ private fun ServerCard(serverUrl: String, onWechseln: () -> Unit, nutzerCa: Bool
             }
             Switch(checked = nutzerCa, onCheckedChange = onNutzerCa)
         }
+        // Derselbe Schalter wie in der Einrichtung, mit derselben Warnung.
+        KlartextSchalter(klartext, onKlartext)
     }
 }
 
