@@ -49,6 +49,9 @@ import coil3.request.crossfade
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.components.Bewegt
 import ch.brickinventoryapp.ui.components.SkelettRaster
+import ch.brickinventoryapp.ui.components.FehlerHinweis
+import ch.brickinventoryapp.ui.components.KeinTrefferHinweis
+import ch.brickinventoryapp.ui.components.ZustandsHinweis
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -169,15 +172,23 @@ fun PartsScreen(
         )
 
         ch.brickinventoryapp.ui.components.OfflineHinweis(partsState.teileOfflineStand)
-        if (isLoading && parts.isEmpty() && manualParts.isEmpty()) {
+        val teileGefiltert = searchQuery.isNotBlank() || Filterzahl.teile(householdMembers, scopeMode, lagerorte,
+            lagerModus, partsState.partsSpare, partsState.partsColorFilter, partsState.partsCategoryFilter) > 0
+        val anzeige = ladeanzeige(parts.isNotEmpty() || manualParts.isNotEmpty(), isLoading, partsState.partsFehler, teileGefiltert)
+        if (anzeige == Ladeanzeige.LAEDT) {
             SkelettRaster(GridCells.Adaptive(110.dp), kachelHoehe = 164.dp, abstand = Abstaende.klein)
-        } else if (parts.isEmpty() && manualParts.isEmpty()) {
+        } else if (anzeige == Ladeanzeige.FEHLER) {
+            ZustandsHinweis { FehlerHinweis(partsState.partsFehler, onRefresh) }
+        } else if (anzeige != Ladeanzeige.LISTE) {
             Box(Modifier.fillMaxSize(), Alignment.Center) {
                 // Die Kennzahlen meinen die ganze Sammlung — auch bei einer Suche ohne Treffer.
                 if (stats != null) Box(Modifier.align(Alignment.TopStart).padding(Abstaende.mittel)) { TeileKennzahlen(stats) }
                 Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                    Icon(ImageVector.vectorResource(R.drawable.ic_parts_bricks), null, Modifier.size(40.dp), tint = Color.Unspecified)
-                    Text(stringResource(R.string.parts_none), fontWeight = FontWeight.SemiBold)
+                    if (anzeige == Ladeanzeige.KEINE_TREFFER) KeinTrefferHinweis()
+                    else {
+                        Icon(ImageVector.vectorResource(R.drawable.ic_parts_bricks), null, Modifier.size(40.dp), tint = Color.Unspecified)
+                        Text(stringResource(R.string.parts_none), fontWeight = FontWeight.SemiBold)
+                    }
                 }
             }
         } else {
@@ -408,7 +419,7 @@ fun PartCard(part: Part, serverUrl: String, imageLoader: ImageLoader,
                     shape = Formen.marke,
                     modifier = Modifier.align(Alignment.TopEnd).padding(Abstaende.winzig)
                 ) {
-                    Text("${qty}×", Modifier.padding(horizontal = Abstaende.winzig, vertical = 1.dp),
+                    Text(mengeAusSet(qty), Modifier.padding(horizontal = Abstaende.winzig, vertical = 1.dp),
                         color = MaterialTheme.colorScheme.onPrimary,
                         style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                 }

@@ -321,7 +321,7 @@ fun ManuelleKachel(
                     // „N×" auf einer Kachel aus einem Set. Das ist keine Laune,
                     // sondern die Regel der Webapp — `man-tile` traegt dort ein
                     // `qbadge` mit ×N, `part-card` ein `part-qty` mit N×.
-                    Text("×$menge", Modifier.padding(horizontal = Abstaende.winzig, vertical = 1.dp),
+                    Text(ch.brickinventoryapp.ui.mengeManuell(menge), Modifier.padding(horizontal = Abstaende.winzig, vertical = 1.dp),
                         color = MaterialTheme.colorScheme.onPrimary,
                         style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                 }

@@ -54,6 +54,8 @@ internal class Teile(
     /** Filterwechsel: Die gemerkte Scrollstelle zeigt auf eine andere Liste. */
     private val vergissScroll: () -> Unit,
     private val suchPause: Long = 350,
+    /** Der Satz zum Fehler, der in der leeren Liste stehen bleibt (wie in der Galerie). */
+    private val beschreibeFehler: (Result.Error) -> String = { it.message },
 ) {
     private val _state = MutableStateFlow(PartsUiState())
     val state: StateFlow<PartsUiState> = _state.asStateFlow()
@@ -68,7 +70,7 @@ internal class Teile(
         teileJob?.cancel()
         teileJob = scope.launch {
             if (entprellt) delay(suchPause)
-            _state.update { it.copy(partsLoading = true) }
+            _state.update { it.copy(partsLoading = true, partsFehler = null) }
             // Nach dem Entprellen gelesen: Der zuletzt gestartete Auftrag soll
             // den NEUESTEN Text sehen.
             val st = _state.value
@@ -100,7 +102,7 @@ internal class Teile(
                     }
                 }
                 is Result.Error -> {
-                    _state.update { it.copy(partsLoading = false) }
+                    _state.update { it.copy(partsLoading = false, partsFehler = beschreibeFehler(r)) }
                     meldeFehler(r)
                 }
             }
@@ -178,7 +180,7 @@ internal class Teile(
         figurenJob?.cancel()
         figurenJob = scope.launch {
             if (entprellt) delay(suchPause)
-            _state.update { it.copy(minifigsLoading = true) }
+            _state.update { it.copy(minifigsLoading = true, minifigsFehler = null) }
             val suche = _state.value.minifigsQuery.ifBlank { null }
             when (val r = quelle.figuren(suche)) {
                 is Result.Success -> {
@@ -189,7 +191,7 @@ internal class Teile(
                 }
                 is Result.Error -> {
                     meldeFehler(r)
-                    _state.update { it.copy(minifigsLoading = false) }
+                    _state.update { it.copy(minifigsLoading = false, minifigsFehler = beschreibeFehler(r)) }
                 }
             }
         }

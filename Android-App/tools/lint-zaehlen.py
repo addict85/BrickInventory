@@ -9,13 +9,9 @@ XML-Bericht, und der liegt als Artefakt in einer Ablage, die der Proxy dieser
 Entwicklungsumgebung mit 403 abweist. Damit war die Zahl nicht handhabbar —
 sie sagte, DASS etwas da ist, nicht was zu tun waere.
 
-Dazu kommt, dass Lint hier ausdruecklich nichts erzwingt:
-
-    app/build.gradle.kts   abortOnError     = false
-    app/build.gradle.kts   warningsAsErrors = false
-
-Das ist richtig so (ein Lint-Befund soll den Bau nicht abbrechen), heisst aber
-auch: Es gab nichts, was ein Anwachsen bemerkt.
+Lint bricht nur bei Fehlern ab (app/build.gradle.kts: abortOnError = true,
+warningsAsErrors = false). Ein Anwachsen der Warnungen bemerkt erst dieses
+Werkzeug.
 
 ── Warum keine Baseline ────────────────────────────────────────────────────
 

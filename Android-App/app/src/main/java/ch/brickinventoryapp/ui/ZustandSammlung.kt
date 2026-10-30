@@ -85,6 +85,8 @@ data class PartsUiState(
      */
     val partsCategoryFilter: String = "",
     val partsLoading: Boolean = false,
+    /** Warum die Teile nicht kamen; null, solange nichts scheiterte. */
+    val partsFehler: String? = null,
     /** Teileliste aus dem Plattenspeicher: Zeitpunkt der Ablage, sonst null. */
     val teileOfflineStand: Long? = null,
     val minifigs: List<Minifig> = emptyList(),
@@ -94,6 +96,7 @@ data class PartsUiState(
     val minifigStats: ch.brickinventoryapp.data.model.MinifigStats =
         ch.brickinventoryapp.data.model.MinifigStats(),
     val minifigsLoading: Boolean = false,
+    val minifigsFehler: String? = null,
     /** Figurenliste aus dem Plattenspeicher: Zeitpunkt der Ablage, sonst null. */
     val figurenOfflineStand: Long? = null,
     /**
@@ -118,6 +121,8 @@ data class PartsUiState(
 data class SetDetailUiState(
     val setDetail: SetItem? = null,
     val setDetailLoading: Boolean = false,
+    /** Ohne Detail und ohne Vorschau aus der Galerie bliebe sonst der Kringel stehen. */
+    val setDetailFehler: String? = null,
     val setPrice: SetPriceResponse? = null,
     val setPriceLoading: Boolean = false,
     // Die ganze Antwort statt einzelner Felder: Sie trägt seit der

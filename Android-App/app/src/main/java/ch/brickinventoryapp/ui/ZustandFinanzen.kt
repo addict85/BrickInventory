@@ -17,6 +17,8 @@ data class FinanceUiState(
      * das fremde Ladeanzeigen beendete.
      */
     val valuationLoading: Boolean = false,
+    /** Warum die Bewertung nicht kam; ohne sie zeigte der Reiter „keine Preisdaten“. */
+    val valuationFehler: String? = null,
     val historyLoading: Boolean = false,
     val historyPeriodChangePct: Double? = null,
     val historyPoints: List<ChartPoint> = emptyList(),
@@ -52,6 +54,8 @@ data class FinanceUiState(
 data class GutscheinUiState(
     val gutscheine: List<ch.brickinventoryapp.data.model.Gutschein> = emptyList(),
     val laedt: Boolean = false,
+    /** Warum die Liste nicht kam; sonst stünde „keine Gutscheine“ da. */
+    val fehler: String? = null,
     /** ids, deren PIN gerade im Klartext steht. */
     val pinSichtbar: Set<Int> = emptySet(),
     /** Der Gutschein, der gerade bearbeitet wird; null = neuer Eintrag. */

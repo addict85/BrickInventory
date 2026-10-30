@@ -29,7 +29,7 @@ val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "ap
 class PreferencesManager @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val tresor: TokenVerschluesselung,
-) : Anmeldeablage, ch.brickinventoryapp.data.cache.CacheBesitzer {
+) : Anmeldeablage, ch.brickinventoryapp.data.cache.CacheBesitzer, ch.brickinventoryapp.util.PinAblage {
     companion object {
         /**
          * Der synchron lesbare Spiegel des Designs — eigene Datei, damit er
@@ -49,6 +49,12 @@ class PreferencesManager @Inject constructor(
         const val APP_THEME_SPIEGEL = "app_theme"
         const val SPRACHE_SPIEGEL = "sprache"
         const val NUTZER_CA = "nutzer_ca"
+        /** Gesetzt, sobald die Vorgabe „Nutzer-CAs aus“ einmal angewandt wurde. */
+        const val NUTZER_CA_AUS_ANGEWANDT = "nutzer_ca_aus_angewandt"
+        const val KLARTEXT_EXPERTE = "klartext_experte"
+        const val KLARTEXT_EXPERTE_UEBERNOMMEN = "klartext_experte_uebernommen"
+        const val PIN_PRAEFIX = "pin:"
+        const val SYSTEMFARBEN = "systemfarben"
 
         /**
          * In welchen Netzen darf das Vorwärmen der Vorschaubilder holen? Auf dem Gerät,
@@ -252,6 +258,7 @@ class PreferencesManager @Inject constructor(
         prefsScope.launch {
             uebernimmAltenKlartextHost()
             uebernimmAltenCaStand()
+            uebernimmKlartextStand()
             spiegle(context.dataStore.data.map { it[KLARTEXT_HOSTS] ?: emptySet() }, _klartextHosts)
         }
     }
@@ -405,10 +412,44 @@ class PreferencesManager @Inject constructor(
         designSpiegel.edit().putBoolean(NUTZER_CA, an).apply()
     }
 
-    /** Einmalig vor dem ersten Verbindungsaufbau (der Latch wartet darauf); siehe nutzerCaVorgabe. */
-    private suspend fun uebernimmAltenCaStand() {
-        if (designSpiegel.contains(NUTZER_CA)) return
-        setzeNutzerCa(ch.brickinventoryapp.util.nutzerCaVorgabe(context.dataStore.data.first()[SERVER_URL] ?: ""))
+    /**
+     * Einmalig vor dem ersten Verbindungsaufbau (der Latch wartet darauf): Nutzer-CAs
+     * aus, auch wenn sie vorher an waren. Wer sie braucht, wird beim ersten
+     * TLS-Fehler gefragt (ZertifikatsFrage) — eine stille Erlaubnis aus einer
+     * älteren Fassung soll nicht weiter gelten.
+     */
+    private fun uebernimmAltenCaStand() {
+        if (designSpiegel.getBoolean(NUTZER_CA_AUS_ANGEWANDT, false)) return
+        designSpiegel.edit().putBoolean(NUTZER_CA, false).putBoolean(NUTZER_CA_AUS_ANGEWANDT, true).commit()
+    }
+
+    /**
+     * Expertenschalter: Klartext (http) zum eigenen Server. Synchron, weil der
+     * Wächter ihn je Anfrage liest. Vorgabe aus; wer schon über http eingerichtet
+     * ist, behält ihn (NetworkPolicy.klartextVorgabe), sonst sperrte das Update ihn aus.
+     */
+    fun klartextErlaubt(): Boolean = designSpiegel.getBoolean(KLARTEXT_EXPERTE, false)
+    fun setzeKlartextErlaubt(an: Boolean) {
+        designSpiegel.edit().putBoolean(KLARTEXT_EXPERTE, an).apply()
+    }
+
+    private suspend fun uebernimmKlartextStand() {
+        if (designSpiegel.getBoolean(KLARTEXT_EXPERTE_UEBERNOMMEN, false)) return
+        val an = ch.brickinventoryapp.util.NetworkPolicy.klartextVorgabe(context.dataStore.data.first()[SERVER_URL] ?: "")
+        designSpiegel.edit().putBoolean(KLARTEXT_EXPERTE, an).putBoolean(KLARTEXT_EXPERTE_UEBERNOMMEN, true).commit()
+    }
+
+    // Pins je Host und Port (util/ServerVertrauen.kt). commit statt apply: Der
+    // nächste Handshake folgt sofort und liest von hier.
+    override fun pin(schluessel: String): String? = designSpiegel.getString(PIN_PRAEFIX + schluessel, null)
+    override fun merkePin(schluessel: String, fingerabdruck: String) {
+        designSpiegel.edit().putString(PIN_PRAEFIX + schluessel, fingerabdruck).commit()
+    }
+
+    /** Material You statt der Farben des Designs; je Gerät, wirkt ab Android 12. */
+    fun systemfarben(): Boolean = designSpiegel.getBoolean(SYSTEMFARBEN, false)
+    fun setzeSystemfarben(an: Boolean) {
+        designSpiegel.edit().putBoolean(SYSTEMFARBEN, an).apply()
     }
 
     fun setzeDunkelNachSystem(an: Boolean) {

@@ -3,6 +3,7 @@
    <configuration>
       <verify-metadata>true</verify-metadata>
       <verify-signatures>false</verify-signatures>
+      <keyring-format>armored</keyring-format>
    </configuration>
    <components>
       <component group="androidx.activity" name="activity" version="1.13.0">

@@ -193,7 +193,7 @@ fun GalleryScreen(
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = TextAlign.Center)
-                        Button(onClick = onRefresh, shape = Formen.knopf) { Text(stringResource(R.string.gallery_retry)) }
+                        Button(onClick = onRefresh, shape = Formen.knopf) { Text(stringResource(R.string.common_retry)) }
                     }
                     GalerieAnzeige.LEER -> GalerieHinweis {
                         Image(painterResource(R.drawable.ic_logo), null, Modifier.size(64.dp))
@@ -483,7 +483,8 @@ fun SetCard(
                             // Unten Platz für Zustands- und Besitzer-Etiketten, damit sie das Bild
                             // nicht verdecken; ContentScale.Fit rückt es nach oben statt es zu
                             // beschneiden.
-                            modifier = Modifier.fillMaxSize().padding(bottom = 44.dp)
+                            modifier = ch.brickinventoryapp.ui.components.gemeinsamesBild(set.setNumber)
+                                .fillMaxSize().padding(bottom = 44.dp)
                                 .then(if (isBrick) Modifier else Modifier.clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))),
                             contentScale = ContentScale.Fit
                         )
