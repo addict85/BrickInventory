@@ -194,6 +194,9 @@ class AppViewModel @Inject constructor(
         return viewModelScope.launch {
             prefs.clearSession()
             repo.clearCache()
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                runCatching { ch.brickinventoryapp.util.raeumeVertraulichePdfsAuf(ctx.cacheDir) }
+            }
             // Speicher zuerst, sonst schreibt Coil beim nächsten Treffer wieder auf die Platte.
             try {
                 imageLoader.memoryCache?.clear()

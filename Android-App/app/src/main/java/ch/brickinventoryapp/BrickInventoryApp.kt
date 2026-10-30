@@ -25,6 +25,8 @@ class BrickInventoryApp : Application(), Configuration.Provider {
         // Ein Klartext-Token älterer Fassungen einmalig verschlüsselt ablegen, im
         // Hintergrund: Der Lesepfad kommt auch ohne Übernahme an das alte Token.
         kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+            // Gutschein-PDFs eines abgebrochenen Laufs: Das Verlassen des Betrachters kam nie.
+            runCatching { ch.brickinventoryapp.util.raeumeVertraulichePdfsAuf(cacheDir) }
             runCatching { preferencesManager.uebernehmeAltesToken() }
             // Den Preisalarm-Abruf wieder einplanen: Zurückgesetzte App-Daten oder ein
             // „Force Stop“ verwerfen die Aufträge, der Schalter stünde sonst auf „an“
