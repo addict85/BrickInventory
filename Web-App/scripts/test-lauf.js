@@ -7,7 +7,7 @@
  * Mehrere Chromium nebeneinander reissen auf schwachen Rechnern die Fristen.
  *
  *   TEST_DATABASE_URL  Basis; ohne sie laufen die Tests ohne Datenbank
- *   TEST_PARALLEL      gleichzeitige Testdateien (Vorgabe: Kerne, höchstens 8)
+ *   TEST_PARALLEL      gleichzeitige Testdateien (Vorgabe: doppelte Kernzahl, höchstens 8)
  *   --seriell          alles nacheinander auf der Basis-Datenbank, wie früher
  *   weitere Argumente  Testdateien statt test/*.test.js
  */
@@ -52,7 +52,8 @@ async function main() {
   const istBrowser = (/** @type {string} */ f) =>
     /CHROME_BIN|helpers\/app-browser/.test(fs.readFileSync(path.resolve(ROOT, f), 'utf8'));
   const browser = dateien.filter(istBrowser), uebrige = dateien.filter(f => !istBrowser(f));
-  const n = Math.max(1, Number(process.env.TEST_PARALLEL) || Math.min(os.availableParallelism(), 8));
+  // Doppelt so viele wie Kerne: Viele Dateien warten auf die Datenbank oder Zeitgeber.
+  const n = Math.max(1, Number(process.env.TEST_PARALLEL) || Math.min(2 * os.availableParallelism(), 8));
 
   const basis = process.env.TEST_DATABASE_URL;
   /** @type {Record<string, string>} */
