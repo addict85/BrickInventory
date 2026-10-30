@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.ui.screens
 
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
 import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
@@ -77,8 +79,10 @@ fun LoginScreen(
         )
     }
 
+    // Rollbar: Auf einem kleinen Telefon, mit offener Tastatur oder grosser Schrift
+    // läge der Anmeldeknopf sonst unerreichbar unter dem Rand.
     Box(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
         contentAlignment = Alignment.Center
     ) {
         Column(

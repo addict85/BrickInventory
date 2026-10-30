@@ -13,6 +13,7 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
 import ch.brickinventoryapp.data.model.Gutschein
@@ -42,7 +43,9 @@ import org.robolectric.annotation.GraphicsMode
  *
  * Gegenproben — in CI zu messen (hier gibt es kein Android):
  *   (a) im Anmeldeknopf `onLogin(password, username, …)` vertauscht → rot
- *       „anmelden reicht Name und Passwort weiter“
+ *       „anmelden reicht Name und Passwort weiter“; ebenso das verticalScroll
+ *       im LoginScreen entfernt (der Knopf läge auf dem kleinen Robolectric-
+ *       Schirm unerreichbar unter dem Rand)
  *   (b) der Plus-Knopf ohne Beschreibung → ATF rot in „die Menge aendern …“
  *   (c) AddSetDialog übergibt die Anzahl fest als 1 → rot „ein Set erfassen …“
  *   (d) Gutschein-PIN immer sichtbar → rot „ein Gutschein zeigt den PIN …“
@@ -83,7 +86,10 @@ class AblaufTest {
         }
         compose.onNodeWithText(ctx.getString(R.string.login_username)).performTextInput("marco")
         compose.onNodeWithText(ctx.getString(R.string.login_password)).performTextInput("geheim")
-        compose.onNode(hasText(ctx.getString(R.string.login_button)) and hasClickAction()).performClick()
+        // Wie ein Mensch: erst hinrollen, dann tippen. Der Knopf liegt auf einem
+        // kleinen Bildschirm unter dem Rand.
+        compose.onNode(hasText(ctx.getString(R.string.login_button)) and hasClickAction())
+            .performScrollTo().performClick()
         assertEquals(Triple("marco", "geheim", null), gesendet)
     }
 
