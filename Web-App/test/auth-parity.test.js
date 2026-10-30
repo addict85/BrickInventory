@@ -386,8 +386,11 @@ test('ungenutzte App-Tokens verfallen, aktive nicht', () => {
     'Die Regel gilt NUR für Tokens ohne Ablaufdatum — die anderen deckt die erste Abfrage ab');
   assert.match(utils, /COALESCE\(last_used, created_at\)/,
     'Ohne COALESCE wären Zeilen ohne last_used für immer ausgenommen — ausgerechnet die ältesten');
-  assert.match(utils, /if \(TOKEN_IDLE_DAYS > 0\)/,
-    '0 muss die Regel abschalten können');
+  // „Nie“ gibt es seit Migration 0080 nicht mehr: Ohne Ablauf nur je Gerät,
+  // über HTTPS und mit Rotation (token-scope-rotation-db).
+  const { ladeKonfig } = require('./helpers/sources').buildAndRequire()('utils/konfig.js');
+  assert.throws(() => ladeKonfig({ TOKEN_IDLE_DAYS: '0' }), /TOKEN_IDLE_DAYS/,
+    'TOKEN_IDLE_DAYS=0 darf die Frist nicht mehr abschalten');
 
   // db.run() liefert { changes, lastID } — nicht rowCount. Vorher stand hier
   // r?.rowCount, die Zahl war deshalb immer 0 und die Meldung des Aufräumjobs

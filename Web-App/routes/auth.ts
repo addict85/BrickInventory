@@ -123,7 +123,8 @@ router.post('/login', async (req, res) => {
     // steht in utils/auth.ts, nicht hier.
     // `token_info` beschreibt den Token (Scope, Ablauf); `never_expires` bleibt
     // für ältere Clients und ist bei einer Passwortanmeldung immer false.
-    res.json({ success: true, ...(token ? { token, token_info: await tokenAngaben(token) } : {}), never_expires: false,
+    res.json({ success: true, ...(token ? { token } : {}), ...(token ? { token_info: await tokenAngaben(token) } : {}),
+      never_expires: false,
       user: { id: user.id, username: user.username, is_admin: flaggeGesetzt(user.is_admin),
       // Nur beim automatisch generierten Default-Admin-Passwort gesetzt (siehe
       // db/database.ts) — der Client fordert dann zur Passwortaenderung auf.

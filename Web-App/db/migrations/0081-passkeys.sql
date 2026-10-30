@@ -22,3 +22,4 @@ CREATE TABLE webauthn_challenges (
   expires_at TIMESTAMPTZ NOT NULL
 );
 CREATE INDEX idx_webauthn_challenges_frist ON webauthn_challenges (expires_at);
+CREATE INDEX idx_webauthn_challenges_konto ON webauthn_challenges (user_id);
