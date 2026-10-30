@@ -12,6 +12,10 @@
  *      EUR) zurückgesetzt → rot: „ohne Kontowährung gilt die der Installation“
  *   D  kachelWerte() in gewinnVerlust.ts nicht angehängt → rot: „die Kachel
  *      kommt fertig vom Server“
+ *   E  (30.10.) in computePartsValuation hasCost wieder `acqs.length > 0` →
+ *      rot: „nur ein Kaufpreis in EUR: keine G&V“ (Teil: kauf 0, pnl 21000 statt null)
+ *   F  (30.10.) dasselbe in computeMinifigsValuation → rot: „nur ein
+ *      Kaufpreis in EUR: keine G&V“ (Figur: kauf 0, pnl 40000 statt null)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -48,6 +52,7 @@ test('Rappen erst am Ende, Währungen ehrlich', { concurrency: 1 }, async (t) =>
   try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }
 
   const NAME = `geld-${process.pid}`, SN = `GW${process.pid}-1`;
+  const TEIL_EUR = `gwe${process.pid}`, TEIL_CHF = `gwc${process.pid}`, FIG = `gwf${process.pid}`;
   await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, NAME + '-2']]);
   const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
   const ohne = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME + '-2'])).id;
@@ -55,6 +60,8 @@ test('Rappen erst am Ende, Währungen ehrlich', { concurrency: 1 }, async (t) =>
   t.after(async () => {
     await db.run('DELETE FROM users WHERE id = ANY($1)', [[uid, ohne]]);
     await db.run('DELETE FROM price_cache WHERE set_number=$1', [SN]);
+    await db.run('DELETE FROM part_price_cache WHERE part_number = ANY($1)', [[TEIL_EUR, TEIL_CHF]]);
+    await db.run('DELETE FROM minifig_price_cache WHERE fig_number=$1', [FIG]);
     if (globalVorher) await db.run(`UPDATE global_settings SET value=$1 WHERE key='currency'`, [globalVorher.value]);
     else await db.run(`DELETE FROM global_settings WHERE key='currency'`);
     await db.pool.end().catch(() => {});
@@ -90,6 +97,34 @@ test('Rappen erst am Ende, Währungen ehrlich', { concurrency: 1 }, async (t) =>
     assert.equal(zeile.kachel_pnl_pct, 20.3);
     assert.equal(typeof zeile.pnl_prozent, 'number');
     assert.equal(r.totals.kaufpreise_fremde_waehrung, 1);
+  });
+
+  await t.test('nur ein Kaufpreis in EUR: keine G&V statt Tausender-Prozent', async () => {
+    const { haeltTeil, haeltFigur } = require('./helpers/bestand');
+    await haeltTeil(db, uid, TEIL_EUR, { colorId: 5, preis: 1 });
+    await haeltTeil(db, uid, TEIL_CHF, { colorId: 5, preis: 0.1 });
+    await haeltFigur(db, uid, FIG, { preis: 3 });
+    await db.run(`UPDATE part_acquisitions SET currency='EUR' WHERE user_id=$1 AND part_number=$2`, [uid, TEIL_EUR]);
+    await db.run(`UPDATE minifig_acquisitions SET currency='EUR' WHERE user_id=$1 AND fig_number=$2`, [uid, FIG]);
+    for (const nr of [TEIL_EUR, TEIL_CHF])
+      await db.run(`INSERT INTO part_price_cache (part_number, color_id, condition, currency_code, avg_price, qty_avg_price)
+                    VALUES ($1,5,'N','CHF',2.1,2.1)`, [nr]);
+    await db.run(`INSERT INTO minifig_price_cache (fig_number, condition, currency_code, avg_price) VALUES ($1,'N','CHF',4)`, [FIG]);
+    const { computePartsValuation, computeMinifigsValuation } = _req('utils/financeCalc.js');
+    const teile = await computePartsValuation(uid, [uid]);
+    const figuren = await computeMinifigsValuation(uid, [uid]);
+    const sicht = (z) => z && { markt: z.avg_price, kauf: z.purchase_price, pnl: z.pnl_prozent };
+    assert.deepEqual({
+      eur: sicht(teile.parts.find(z => z.part_number === TEIL_EUR)),
+      chf: sicht(teile.parts.find(z => z.part_number === TEIL_CHF)),
+      figur: sicht(figuren.figs.find(z => z.fig_number === FIG)),
+      fremd: [teile.kaufpreise_fremde_waehrung, figuren.kaufpreise_fremde_waehrung],
+    }, {
+      eur: { markt: 2.1, kauf: null, pnl: null },
+      chf: { markt: 2.1, kauf: 0.1, pnl: 2000 },
+      figur: { markt: 4, kauf: null, pnl: null },
+      fremd: [1, 1],
+    });
   });
 
   await t.test('mehrere Zeilen eines Sets: mengengewichtet, sonst der Kaufpreis', () => {

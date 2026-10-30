@@ -326,12 +326,10 @@ async function computeMinifigsValuation(viewerId: number, ids: Blickfeld) {
     const totalQty = acqs.length ? valued.quantity : qty;
     // Kaufpreis ebenfalls mengengewichtet; ohne Erfassungen die Stammzeile.
     const acqPurchase = acqs.length ? weightedPurchase(rows) : null;
-    // Kaufpreis: aus den Erfassungen, 0 wenn keiner bekannt
-    // Genau das bleibt, nur ohne zweite Spalte: Migration 0035 garantiert
-    // eine Erfassung, also ist hasCost weiter wahr, und der Anzeigewert wird
-    // hier gebildet statt gespeichert.
-    // Ausführlich: docs/begruendungen/utils/finance/bewertung.ts.md#computeminifigsvaluation-hascost
-    const hasCost = acqs.length > 0;
+    // Ein Kaufpreis gilt nur, wenn eine Erfassung einen in der Kontowährung
+    // trägt. Fremde Währung und „kein Preis bekannt“ zählten sonst als 0, und
+    // die G&V stand bei Zehntausenden Prozent; wie bei Sets heisst das „—“.
+    const hasCost = acqPurchase != null;
     const purchasePrice = acqPurchase ?? 0;
     return { ...fig, ...priceData,
       condition: valued.by_condition.some(b => b.condition === 'U') ? 'U' : 'N',
@@ -433,8 +431,8 @@ async function computePartsValuation(viewerId: number, ids: Blickfeld) {
     const unitVal = valued.unit_price ?? 0;
     const totalQty = acqs.length ? valued.quantity : qty;
     const acqPurchase = acqs.length ? weightedPurchase(rows) : null;
-    // Kaufpreis wie bei den Figuren darueber (Migration 0035).
-    const hasCost = acqs.length > 0;
+    // Kaufpreis wie bei den Figuren darüber.
+    const hasCost = acqPurchase != null;
     const purchasePrice = acqPurchase ?? 0;
     return {
       id:           part.id,
