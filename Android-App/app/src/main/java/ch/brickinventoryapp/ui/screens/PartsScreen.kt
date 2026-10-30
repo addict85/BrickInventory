@@ -419,7 +419,7 @@ fun PartCard(part: Part, serverUrl: String, imageLoader: ImageLoader,
                     shape = Formen.marke,
                     modifier = Modifier.align(Alignment.TopEnd).padding(Abstaende.winzig)
                 ) {
-                    Text("${qty}×", Modifier.padding(horizontal = Abstaende.winzig, vertical = 1.dp),
+                    Text(mengeAusSet(qty), Modifier.padding(horizontal = Abstaende.winzig, vertical = 1.dp),
                         color = MaterialTheme.colorScheme.onPrimary,
                         style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                 }

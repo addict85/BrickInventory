@@ -1,5 +1,8 @@
 package ch.brickinventoryapp
 
+import ch.brickinventoryapp.ui.mengeAusSet
+import ch.brickinventoryapp.ui.mengeManuell
+import org.junit.Assert.assertEquals
 import org.junit.Test
 
 /**
@@ -57,32 +60,33 @@ class MengePlaketteTest {
      * wirklich benutzen. Ohne das zweite koennte eine der beiden wieder eine
      * eigene Kachel bauen, und der Test bliebe still.
      */
+    // Gegenprobe (30.10.2026, gemessen): mengeManuell() auf "$menge×" gestellt →
+    // rot „manuell erfasst steht das Zeichen VOR der Zahl …“.
     @Test
-    fun `manuell erfasste Kacheln schreiben das Zeichen VOR die Zahl`() {
-        val gemeinsam = code(read("ui/screens/ManualItemComposables.kt"))
-        assert(gemeinsam.contains("Text(\"×\$menge\"")) {
-            "ManuelleKachel schreibt die Menge nicht wie das qbadge der Webapp (×N)"
+    fun `manuell erfasst steht das Zeichen VOR der Zahl, aus einem Set dahinter`() {
+        assertEquals("×3", mengeManuell(3))
+        assertEquals("3×", mengeAusSet(3))
+    }
+
+    /**
+     * Die Schreibweise selbst prüft der Test darüber; hier nur, dass alle vier
+     * Kacheln sie benutzen. Ohne das könnte eine wieder eine eigene bauen.
+     */
+    @Test
+    fun `alle Kacheln holen die Plakette von derselben Stelle`() {
+        assert(code(read("ui/screens/ManualItemComposables.kt")).contains("mengeManuell(menge)")) {
+            "ManuelleKachel schreibt die Menge wieder selbst"
         }
         for ((datei, wer) in listOf(
             "ui/screens/PartsScreen.kt" to "ManualPartTile",
             "ui/screens/MinifigsScreen.kt" to "ManualFigTile",
         )) {
-            assert(code(read(datei)).contains("ManuelleKachel(")) {
+            val src = code(read(datei))
+            assert(src.contains("ManuelleKachel(")) {
                 "$wer baut seine Kachel wieder selbst statt ManuelleKachel zu rufen — " +
                     "dann laufen die beiden Ansichten wieder auseinander"
             }
-        }
-    }
-
-    @Test
-    fun `Kacheln aus einem Set schreiben das Zeichen HINTER die Zahl`() {
-        val teile = code(read("ui/screens/PartsScreen.kt"))
-        assert(teile.contains("Text(\"\${qty}×\"")) {
-            "PartCard schreibt die Menge nicht wie part-qty der Webapp (N×)"
-        }
-        val figuren = code(read("ui/screens/MinifigsScreen.kt"))
-        assert(figuren.contains("Text(\"\$qty×\"")) {
-            "MinifigCard schreibt die Menge nicht wie ihr Zwilling PartCard (N×)"
+            assert(src.contains("Text(mengeAusSet(qty)")) { "$datei schreibt die Set-Plakette wieder selbst" }
         }
     }
 

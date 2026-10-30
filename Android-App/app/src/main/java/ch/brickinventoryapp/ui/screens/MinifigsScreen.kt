@@ -391,7 +391,7 @@ fun MinifigCard(fig: Minifig, serverUrl: String, imageLoader: ImageLoader,
                         // Die Menge-Plakette: „×N“ auf einer manuell erfassten Kachel, „N×“ auf
                         // einer Kachel aus einem Set — die Regel der Webapp (`man-tile` mit
                         // `qbadge` ×N, `part-card` mit `part-qty` N×).
-                        Text("$qty×", Modifier.padding(horizontal = 5.dp, vertical = Abstaende.haar),
+                        Text(mengeAusSet(qty), Modifier.padding(horizontal = 5.dp, vertical = Abstaende.haar),
                             color = MaterialTheme.colorScheme.onPrimary,
                             style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                     }
