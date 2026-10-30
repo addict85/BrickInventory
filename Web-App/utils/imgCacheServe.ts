@@ -95,22 +95,18 @@ export async function liefereAusCache(opts: {
  * löschen — sonst wächst data/img_proxy_cache unbegrenzt.
  * Ausführlich: docs/begruendungen/routes/imgProxy.ts.md#startimgcachecleanup
  */
-export function startImgCacheCleanup() {
-  const lauf = () => {
-    const cacheDir = path.join(APP_ROOT, 'data', 'img_proxy_cache');
-    fs.readdir(cacheDir, (err, files) => {
-      if (err) return;
-      const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
-      for (const f of files) {
-        const p = path.join(cacheDir, f);
-        fs.stat(p, (e, st) => {
-          // atime UND mtime: Wird das Dateisystem mit noatime eingehängt (in
-          // Containern verbreitet), bleibt atime auf dem Erstellungszeitpunkt
-          // stehen — dann entscheidet mtime, und beides muss alt sein.
-          if (!e && st.isFile() && st.atimeMs < cutoff && st.mtimeMs < cutoff) fs.unlink(p, () => {});
-        });
-      }
-    });
-  };
-  return setInterval(lauf, 24 * 60 * 60 * 1000).unref();
+export async function raeumeBildCacheAuf(): Promise<number> {
+  const cacheDir = path.join(APP_ROOT, 'data', 'img_proxy_cache');
+  const files = await fs.promises.readdir(cacheDir).catch(() => [] as string[]);
+  const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
+  let weg = 0;
+  for (const f of files) {
+    const p = path.join(cacheDir, f);
+    const st = await fs.promises.stat(p).catch(() => null);
+    // atime UND mtime: Wird das Dateisystem mit noatime eingehängt (in
+    // Containern verbreitet), bleibt atime auf dem Erstellungszeitpunkt
+    // stehen — dann entscheidet mtime, und beides muss alt sein.
+    if (st?.isFile() && st.atimeMs < cutoff && st.mtimeMs < cutoff && await fs.promises.unlink(p).then(() => true, () => false)) weg++;
+  }
+  return weg;
 }

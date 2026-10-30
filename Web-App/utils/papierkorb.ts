@@ -151,7 +151,7 @@ export async function leerePapierkorb(uids: number[]): Promise<number> {
   return r.changes ?? 0;
 }
 
-/** Einträge nach Ablauf der Frist entfernen (stündlich, Primär-Worker). */
+/** Einträge nach Ablauf der Frist entfernen (stündlich, Auftrag 'aufraeumen'). */
 export async function raeumePapierkorbAuf(): Promise<number> {
   const r = await db.run(
     'DELETE FROM papierkorb WHERE geloescht_am < NOW() - make_interval(days => $1)', [AUFBEWAHRUNG_TAGE]);

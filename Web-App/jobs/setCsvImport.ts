@@ -7,7 +7,7 @@ import { AuftragUnterbrochen, type AuftragsKontext } from './auftragsWorker';
 
 /**
  * Der CSV-Import von Sets als Auftrag. Nach jedem Set stehen Fortschritt und
- * Ergebnisse in csv_import_jobs; ein Neustart setzt dort fort. `current` ist
+ * Ergebnisse in import_stand; ein Neustart setzt dort fort. `current` ist
  * nur gesetzt, solange ein Set gebucht wird — steht es nach einem Absturz noch
  * da, ist ungewiss, ob dieses Set gebucht wurde. Es wird dann nicht noch einmal
  * gebucht, sondern als Warnung gemeldet.

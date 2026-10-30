@@ -172,7 +172,7 @@ export function ladeKonfig(env: Umgebung = process.env): Konfig {
     mailKonsoleMitToken: env.MAIL_KONSOLE_MIT_TOKEN?.trim() === '1',
     bildUserAgent: env.IMG_USER_AGENT?.trim() || null,
     csvZeileFristMs: ganzzahl(env, 'CSV_ZEILE_FRIST_MS', 120_000, 1, 86_400_000, f),
-    auftragParallel: ganzzahl(env, 'AUFTRAG_PARALLEL', 2, 1, 64, f),
+    auftragParallel: ganzzahl(env, 'AUFTRAG_PARALLEL', 4, 1, 64, f),
     auftragFristSek: ganzzahl(env, 'AUFTRAG_FRIST_SEK', 300, 1, 86_400, f),
   };
   if (f.length) throw new KonfigFehler(f);

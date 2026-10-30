@@ -184,8 +184,8 @@ test('Drosselung und fehlendes Bild werden unterschieden', { concurrency: 1 }, a
     });
 
     await t.test('404 wird dagegen gemerkt', async () => {
-      // Frisches Modul: Die Pause aus dem vorigen Teilschritt gilt sonst weiter.
-      delete require.cache[require.resolve(path.join(ROOT, 'dist', 'jobs', 'imageQueue.js'))];
+      // Die Pause aus dem vorigen Teilschritt steht in der Datenbank und gilt sonst weiter.
+      await db.run(`DELETE FROM auftrag_pausen WHERE art = 'bildbedarf'`);
       const IQ = _req('jobs/imageQueue.js');
       antwort = 404; versuche = 0;
       await fuellen();

@@ -376,7 +376,7 @@ export function setCsvZeilen(text: string): { rows: ImportZeile[]; uebersprungen
 }
 
 /**
- * Startet den Set-Import als Auftrag im Primär-Worker (jobs/setCsvImport.ts);
+ * Startet den Set-Import als Auftrag für den Job-Prozess (jobs/setCsvImport.ts);
  * ein laufender Import desselben Kontos wird abgebrochen.
  */
 export async function setCsvImportStarten(userId: number, text: string) {

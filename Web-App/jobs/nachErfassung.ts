@@ -1,6 +1,6 @@
 /**
  * Was nach dem Erfassen eines Sets nachgezogen wird. Es läuft als Auftrag
- * (utils/auftraege.ts) im Primär-Worker: Ein Neustart verliert nichts, und
+ * (utils/auftraege.ts) im Job-Prozess: Ein Neustart verliert nichts, und
  * scheitert der Import von Teilen oder Figuren, wiederholt der Worker ihn.
  * Die Anreicherungen danach sind Beiwerk mit eigenen Kontingenten; sie melden
  * ihren Fehler und lassen den Auftrag nicht scheitern.
@@ -11,7 +11,7 @@ import { downloadSetInstructions } from '../utils/instructions';
 import { logAndContinue } from '../utils/httpError';
 import * as db from '../db/database';
 import { getSetInfo as bricksetSetInfo } from '../clients/brickset';
-import { enqueue, requestRun } from './instructionQueue';
+import { anleitungEinreihen } from '../utils/anleitungsAuftrag';
 import { refreshPriceForSet } from './priceJob';
 import { enrichSetParts, enrichSetMinifigs, downloadSetImages } from './partsCatalogEnrich';
 
@@ -30,8 +30,7 @@ async function zieheNach(setNumber: string, userId: number, art: NacharbeitArt):
     await refreshPriceForSet(setNumber, userId).catch(melde('preis'));
     await downloadSetInstructions(setNumber).catch(melde('anleitung'));
   } else {
-    await enqueue(setNumber).catch(melde('anleitung-einreihen'));
-    await requestRun().catch(melde('anleitung-anstossen'));
+    await anleitungEinreihen(setNumber).catch(melde('anleitung-einreihen'));
   }
   await enrichSetParts(setNumber).catch(melde('teile-anreichern'));
   await enrichSetMinifigs(setNumber).catch(melde('figuren-anreichern'));

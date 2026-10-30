@@ -7,12 +7,12 @@
 //
 
 import https from 'https';
-import * as db from '../db/database';
 import { getGlobalSetting } from '../utils/settings';
 import { checkAndIncrementRateLimit } from '../utils/apiKontingent';
-import { fehlertext } from '../utils/httpError';
+import { fehlertext, meldeUndLiefere } from '../utils/httpError';
 import { alsAbrufFehler } from './abrufFehler';
 import { mitVersion } from '../utils/setNummer';
+import { bricksetVormerken, bricksetAusWiedervorlage, BRICKSET_HOECHSTENS } from '../utils/bricksetAuftrag';
 
 const BASE = 'https://brickset.com/api/v3.asmx';
 
@@ -110,40 +110,24 @@ function checkStatus(status: number, body: string, label: string) {
   return status === 200;
 }
 
-const MAX_QUOTA_RETRIES = 30;
 
-// Enqueue for next-day retry due to quota exhaustion
-// Returns false if max retries exceeded (entry removed, use fallback)
 /**
+ * Zur Wiedervorlage vormerken (utils/bricksetAuftrag.ts); false, wenn das Set
+ * schon zu oft vorgemerkt war — dann gilt die Ausweichquelle.
  * @param {string} setNumber
  * @param {string|null} errorMsg
- * @param {boolean} [soon] Heute erneut versuchen statt morgen. Für vorübergehende
+ * @param {boolean} [soon] Bald erneut versuchen statt zur Tageszeit. Für vorübergehende
  *        Fehler der Gegenseite (5xx) — die haben mit dem Tageskontingent nichts
  *        zu tun, und einen Tag zu warten ist dafür sinnlos lang.
  */
 async function enqueueRetry(setNumber: string, errorMsg: string | null = null, soon = false) {
-  const when = new Date();
-  if (!soon) when.setDate(when.getDate() + 1);
-  const retryDate = when.toISOString().slice(0, 10);
-
-  const existing = await db.get(
-    `SELECT attempts FROM brickset_retry_queue WHERE set_number = $1`, [setNumber]
-  ).catch(() => null);
-  const attempts = (existing?.attempts || 0) + 1;
-
-  if (attempts > MAX_QUOTA_RETRIES) {
-    await ausRetryWarteschlange(setNumber).catch(() => {});
-    console.log(`[brickset] ${setNumber}: ${MAX_QUOTA_RETRIES} quota retries exceeded — removed from queue, using fallback`);
+  const { versuch, vorgemerkt } = await bricksetVormerken(setNumber, errorMsg || 'Quota exceeded', soon)
+    .catch(meldeUndLiefere('brickset:vormerken', { versuch: 0, vorgemerkt: true }));
+  if (!vorgemerkt) {
+    console.log(`[brickset] ${setNumber}: ${BRICKSET_HOECHSTENS} quota retries exceeded — removed from queue, using fallback`);
     return false;
   }
-
-  await db.run(
-    `INSERT INTO brickset_retry_queue (set_number, retry_after, attempts, last_error)
-     VALUES ($1, $2, $3, $4)
-     ON CONFLICT (set_number) DO UPDATE SET retry_after=$2, attempts=$3, last_error=$4`,
-    [setNumber, retryDate, attempts, errorMsg || 'Quota exceeded']
-  ).catch(() => {});
-  console.log(`[brickset] ${setNumber} eingereiht für ${retryDate} (Versuch ${attempts}/${MAX_QUOTA_RETRIES}): ${errorMsg || 'Quota exceeded'}`);
+  console.log(`[brickset] ${setNumber} eingereiht (Versuch ${versuch}/${BRICKSET_HOECHSTENS}): ${errorMsg || 'Quota exceeded'}`);
   return true;
 }
 
@@ -162,7 +146,7 @@ async function checkRateLimit(setNumber: string) {
 
 /** Dieses Set aus der Brickset-Wiederholungsliste nehmen. */
 export async function ausRetryWarteschlange(setNumber: string) {
-  return db.run('DELETE FROM brickset_retry_queue WHERE set_number = $1', [setNumber]);
+  return bricksetAusWiedervorlage(setNumber);
 }
 
 // Remove from queue when a non-quota error occurs — no point retrying

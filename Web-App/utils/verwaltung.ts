@@ -119,14 +119,6 @@ export function setsOhneAnleitung(): Promise<{ set_number: string }[]> {
     `);
 }
 
-export function anleitungenErledigt(): Promise<any> {
-  return db.get(`SELECT COUNT(*) as c FROM instruction_queue WHERE status='done'`);
-}
-
-export function anleitungenGescheitert(): Promise<any> {
-  return db.get(`SELECT COUNT(*) as c FROM instruction_queue WHERE status='failed'`);
-}
-
 // ── Protokoll ────────────────────────────────────────────────────────────────
 
 export function protokollSeit(minuten: number): Promise<{ id: number; level: string; message: string; logged_at: Date }[]> {
@@ -137,42 +129,6 @@ export function protokollSeit(minuten: number): Promise<{ id: number; level: str
        ORDER BY logged_at ASC
        LIMIT 5000`,
     [minuten]
-  );
-}
-
-// ── Brickset-Warteschlange ───────────────────────────────────────────────────
-
-export function bricksetWarteschlange(): Promise<any[]> {
-  return db.all(
-    `SELECT q.set_number, q.retry_after, q.attempts, q.last_error, q.created_at,
-            c.name
-     -- Der KATALOG, nicht die sets-Tabelle: Die Warteschlange ist
-     -- kontouebergreifend, und ein LEFT JOIN auf sets traf im Haushalt je
-     -- Konto eine Zeile — derselbe Eintrag erschien dann mehrfach. Mit
-     -- set_catalog ist es genau eine.
-     -- (Keine Gegenstriche: Der Kommentar steht in einem Template-Literal.)
-     FROM brickset_retry_queue q
-     LEFT JOIN set_catalog c ON c.set_number = q.set_number
-     ORDER BY q.retry_after ASC, q.set_number ASC`
-  );
-}
-
-/** Setzt den Eintrag auf heute, damit der nächste Durchgang ihn mitnimmt. */
-export async function bricksetHeuteWiederholen(sn: string): Promise<void> {
-  await db.run(
-    `UPDATE brickset_retry_queue SET retry_after = CURRENT_DATE WHERE set_number = $1`, [sn]
-  );
-}
-
-export function bricksetWartend(): Promise<any> {
-  return db.get(
-    `SELECT COUNT(*) as c FROM brickset_retry_queue`
-  );
-}
-
-export function bricksetFaellig(): Promise<any> {
-  return db.get(
-    `SELECT COUNT(*) as c FROM brickset_retry_queue WHERE retry_after <= CURRENT_DATE`
   );
 }
 

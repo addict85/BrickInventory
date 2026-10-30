@@ -25,8 +25,6 @@ export const LOCKS = {
   TEILE_KATALOG:      79,
   /** Bestandszeile je Nutzer (utils/txLock.ts) — zweiter Wert: hashtext('<user_id>|<schlüssel>'). */
   INVENTAR:           61,
-  /** Brickset-Wiedervorlage. */
-  BRICKSET_RETRY:     11223344,
   /** Vorschaubilder des Bild-Proxys. */
   PROXY_THUMBS:       918273645,
   /** Schema-Initialisierung — genau ein Prozess migriert. */

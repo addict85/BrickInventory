@@ -71,7 +71,7 @@ test('CSV-Import als Auftrag', { concurrency: 1 }, async (t) => {
   const nacharbeit = (uid) => db.all(
     `SELECT nutzlast->>'set_number' AS sn, nutzlast->>'art' AS art FROM auftraege
       WHERE art = 'nacharbeit' AND user_id = $1 ORDER BY id`, [uid]);
-  const stand = () => db.get('SELECT status, done, results, current FROM csv_import_jobs WHERE user_id=$1', [a]);
+  const stand = () => db.get('SELECT status, done, results, current FROM import_stand WHERE user_id=$1', [a]);
   const bisFertig = async () => {
     for (let i = 0; i < 200; i++) { const s = await stand(); if (s?.status === 'done') return s; await warte(25); }
     return stand();
@@ -107,7 +107,7 @@ test('CSV-Import als Auftrag', { concurrency: 1 }, async (t) => {
       // als verwaist markiert, der Auftrag steht auf 'laeuft' mit abgelaufener Frist.
       await jobSet(a, { status: 'error', total: 3, done: 1, current: 'r2', error: 'unterbrochen',
                         results: JSON.stringify([{ set_number: 'r1', success: true, action: 'added' }]), run_id: lauf });
-      await db.run(`INSERT INTO auftraege (art, nutzlast, user_id, status, versuche, next_run_at)
+      await db.run(`INSERT INTO auftraege (art, nutzlast, user_id, status, versuche, frist_bis)
                     VALUES ('csv_import', $1, $2, 'laeuft', 1, NOW() - INTERVAL '1 minute')`,
         [JSON.stringify({ user_id: a, lauf, rows }), a]);
       const s = await bisFertig();

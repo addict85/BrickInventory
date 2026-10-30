@@ -1,7 +1,7 @@
 /**
  * /api/v1/sets/partslist-pdf — asynchrone PDF-Erzeugung. Die Route stellt
  * einen Auftrag ein (utils/auftraege.ts); Bilder holt und zeichnet der
- * Primär-Worker (jobs/pdfErzeugung.ts) in einem eigenen Faden.
+ * Job-Prozess (jobs/pdfErzeugung.ts) in einem eigenen Faden.
  * Ausführlich: docs/begruendungen/routes/api_v1/pdf.ts.md#abschnitt
  */
 import express from 'express';
@@ -10,7 +10,8 @@ import { requireToken } from './middleware';
 import { registerSse } from '../../utils/sseRegistry';
 import _pdfFs from 'fs/promises';
 import _fsSync from 'fs';
-import { liesAuftrag, loescheAuftrag, PDF_KANAL, gueltigeAuftragsKennung, pdfDateiPfad, pdfAuftragStarten } from '../../utils/pdfAuftraege';
+import { liesAuftrag, loescheAuftrag, pdfSchluessel, gueltigeAuftragsKennung, pdfDateiPfad, pdfAuftragStarten } from '../../utils/pdfAuftraege';
+import { AUFTRAG_STAND_KANAL } from '../../utils/auftraege';
 import { listen, unlisten } from '../../utils/pgNotify';
 import { sendeFehler, fehlerText, antwortSprache } from '../../utils/fehlerTexte';
 const router = express.Router();
@@ -116,8 +117,8 @@ router.get('/sets/partslist-pdf/stream/:jobId', requireToken, async (req: Authed
     send({ status: job.status, error: job.error || null });
     if (isDone(job.status)) cleanup();
   };
-  const onStatus = (nutzlast?: string) => { if (!nutzlast || nutzlast === jobId) return pruefe(); };
-  listen(PDF_KANAL, onStatus);
+  const onStatus = (nutzlast?: string) => { if (!nutzlast || nutzlast === pdfSchluessel(jobId)) return pruefe(); };
+  listen(AUFTRAG_STAND_KANAL, onStatus);
 
   // 3) Rückfall, falls ein Signal während einer Verbindungsstörung verloren geht.
   const fallback = setInterval(pruefe, 15000);
@@ -127,7 +128,7 @@ router.get('/sets/partslist-pdf/stream/:jobId', requireToken, async (req: Authed
   function cleanup() {
     if (closed) return;
     closed = true;
-    unlisten(PDF_KANAL, onStatus);
+    unlisten(AUFTRAG_STAND_KANAL, onStatus);
     clearInterval(fallback);
     clearInterval(heartbeat);
     unregisterSse();

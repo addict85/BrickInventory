@@ -35,17 +35,9 @@ test('Haushaltswährung', { concurrency: 1 }, async (t) => {
   await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1, $2), ($2, $3)', [ids[0], ids[1], ids[2]]);
   for (const id of ids)
     await db.run(`INSERT INTO user_settings (user_id, key, value) VALUES ($1, 'currency', 'EUR')`, [id]);
-  // Ein echter Wechsel stösst den Preis-Job an. Ohne Zugangsdaten endet er
-  // sofort, statt mit fremden Testdaten BrickLink zu fragen.
-  const zugang = await db.get(`SELECT value FROM global_settings WHERE key = 'bricklink_consumer_key'`);
-  await db.run(`DELETE FROM global_settings WHERE key = 'bricklink_consumer_key'`);
+  // Ein echter Wechsel zieht den geplanten Preis-Auftrag vor; ausgeführt wird er hier nicht.
   t.after(async () => {
-    // Der angestossene Lauf endet am fehlenden Schlüssel, plant aber den
-    // nächsten — ohne stop() hielte dessen Timer den Testprozess offen.
-    await new Promise(r => setTimeout(r, 200));
-    _req('jobs/priceJob.js').stop();
-    if (zugang) await db.run(`INSERT INTO global_settings (key, value) VALUES ('bricklink_consumer_key', $1)
-                              ON CONFLICT (key) DO UPDATE SET value = $1`, [zugang.value]);
+    await db.run(`DELETE FROM auftraege WHERE art = 'preise'`);
     await db.run('DELETE FROM users WHERE id = ANY($1)', [ids]);
     await db.pool.end().catch(() => {});
   });

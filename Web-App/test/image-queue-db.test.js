@@ -106,9 +106,7 @@ test('die Anfrage notiert, der Job legt ab', { concurrency: 1 }, async (t) => {
       // erhöht, nachdem die CPU-Ursachen behoben waren). Der Test liest sie
       // dort, statt eine Zahl zu wiederholen, die sich ändern darf — die REGEL
       // ist „nicht alles auf einmal", nicht „genau fünf".
-      const stapel = parseInt(
-        (fs.readFileSync(path.join(ROOT, 'jobs', 'imageQueue.ts'), 'utf8')
-          .match(/const STAPEL = (\d+)/) || [])[1] || '0');
+      const stapel = IQ.STAPEL;
       assert.ok(stapel > 0, 'STAPEL nicht auffindbar');
       const vorher = geladen;
       const n1 = (await IQ._arbeiteStapel()).gesamt;
@@ -325,9 +323,9 @@ test('der Job meldet auch reine Übersprünge', () => {
   // Und der Takt darf sie nicht verschweigen: Die Bedingung vor der Ausgabe
   // darf an keiner Zahl hängen, die bei reinen Übersprüngen null ist.
   const q = fs.readFileSync(path.join(ROOT, 'jobs', 'imageQueue.ts'), 'utf8');
-  const i = q.indexOf('const takt = async');
+  const i = q.indexOf('async function bildbedarfAbarbeiten');
   assert.ok(i > 0, 'Kein Takt');
-  const fn = q.slice(i, q.indexOf('\n  };', i)).replace(/\/\/[^\n]*/g, '');
+  const fn = q.slice(i, q.indexOf('\n}\n', i)).replace(/\/\/[^\n]*/g, '');
   assert.doesNotMatch(fn, /if \(e\.geholt/,
     'Gemeldet wird nur bei geladenen Bildern — ein Durchgang mit lauter ' +
     'Übersprüngen bleibt unsichtbar');
@@ -391,9 +389,9 @@ test('der Puffer wird in JEDEM Arbeitsprozess weggeschrieben', () => {
   //
   // initImageQueue() läuft in JEDEM Prozess (aufgerufen aus db/database.ts) —
   // dort gehört der Takt hin.
-  const q = fs.readFileSync(path.join(ROOT, 'jobs', 'imageQueue.ts'), 'utf8');
+  const q = fs.readFileSync(path.join(ROOT, 'utils', 'bildbedarf.ts'), 'utf8');
   const init = q.slice(q.indexOf('export async function initImageQueue'),
-                       q.indexOf('export function merkeGebraucht'));
+                       q.indexOf('export async function loescheVerfallene'));
   assert.match(init, /setInterval\([\s\S]{0,80}schreibePuffer/,
     'Das Wegschreiben steht nicht in initImageQueue() — dann läuft es nur dort, ' +
     'wo start() aufgerufen wird, also nur im Primärprozess');

@@ -15,7 +15,7 @@ import { fetchMissingBlIds } from '../utils/partsImport';
 import { getRbKey, httpsGetRobust } from '../clients/rebrickable';
 import { fehlertext, logAndContinue, meldeUndLiefere, ohneFehlendeDatei } from '../utils/httpError';
 import { merkeBlFarbnummer, blFarbnummerAus } from '../utils/blZuordnung';
-import { liesZustand, setzeZustand } from '../utils/laufzustand';
+import { liesZustand, setzeZustand, loescheZustand } from '../utils/laufzustand';
 import fs from 'fs';
 import path from 'path';
 import * as monitor from '../utils/jobMonitor';
@@ -228,11 +228,11 @@ async function run() {
     } catch(e) {
       log(`CSV sync failed: ${fehlertext(e)}`);
       // Ohne Katalog ist die App trotzdem benutzbar; ohne diese Meldung bliebe
-      // der Startbildschirm stehen, bis die Oberfläche nach drei Minuten aufgibt.
-      // Der nächste Start (oder der Tageslauf) versucht es erneut.
+      // der Startbildschirm stehen. Den nächsten Versuch plant der Auftrag
+      // (Wartezeit mit Backoff), darum wird der Fehler weitergereicht.
       const s0 = { ready: true, step: 'Katalog nicht geladen', progress: TOTAL_STEPS, total: TOTAL_STEPS };
       await meldeStartZustand(s0);
-      return; // Don't try BL mapping if CSV sync failed
+      throw e;
     }
   }
 
@@ -277,4 +277,14 @@ async function run() {
   }
 }
 
-export { run };
+/**
+ * Der Auftrag 'csv_sync' (geplant, utils/zeitplan.ts). Der Lauf beim Start
+ * lädt nur, wenn heute noch nicht geladen wurde; der tägliche und der von
+ * Hand angestossene laden immer.
+ */
+async function csvAbgleich(n: Record<string, unknown>): Promise<void> {
+  if (!n.beimStart) await loescheZustand(SYNC_KEY);
+  await run();
+}
+
+export { run, csvAbgleich };

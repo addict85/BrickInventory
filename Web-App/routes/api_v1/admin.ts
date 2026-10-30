@@ -16,23 +16,47 @@ import { vergissFehlend } from '../../utils/imageMisses';
 import { SET_IMAGES_DIR } from '../../utils/appPaths';
 import { getGlobalSetting, setGlobalSetting } from '../../utils/settings';
 import { sendeFehler } from '../../utils/fehlerTexte';
-import { setzeAusloeser } from '../../utils/laufzustand';
-import * as pgNotify from '../../utils/pgNotify';
 import { letzteEintraege } from '../../utils/verwaltungsprotokoll';
 import { cacheStatistik, cachesLeeren, bricksetLimitGesetzt, anleitungenNeuEinreihen, preisJobStand, preisJobJetzt,
          fehlendeBilderNachladen, bricksetWiederholen, bricksetEntfernen, jobZeitplanSetzen, jobUebersicht,
-         bildProbe, preisProbe, katalogBilderEinreihen } from '../../utils/dienste/verwaltung';
+         bildProbe, preisProbe, katalogBilderEinreihen, katalogAbgleichJetzt, bricksetListe } from '../../utils/dienste/verwaltung';
+import { auftragsUebersicht, auftragAbbrechen, auftragWiederholen, auftragsArtJetzt, auftragsArtLeeren } from '../../utils/dienste/hintergrund';
 const router = express.Router();
 
 
+// ── Hintergrundarbeiten: die Auftragstabelle (utils/dienste/hintergrund.ts) ──
+router.get('/admin/auftraege', requireApiAdmin, async (req: AuthedRequest, res) => {
+  try {
+    res.json(await auftragsUebersicht({ status: typeof req.query.status === 'string' ? req.query.status : undefined,
+                                        art: typeof req.query.art === 'string' ? req.query.art : undefined }));
+  } catch (e) { handleRouteError(res, e, undefined, req); }
+});
+
+router.post('/admin/auftraege/:id/abbrechen', requireApiAdmin, async (req: AuthedRequest, res) => {
+  try { res.json(await auftragAbbrechen(pfadParam(req, 'id'))); }
+  catch (e) { handleRouteError(res, e, undefined, req); }
+});
+
+router.post('/admin/auftraege/:id/wiederholen', requireApiAdmin, async (req: AuthedRequest, res) => {
+  try { res.json(await auftragWiederholen(pfadParam(req, 'id'))); }
+  catch (e) { handleRouteError(res, e, undefined, req); }
+});
+
+router.post('/admin/auftraege/art/:art/jetzt', requireApiAdmin, async (req: AuthedRequest, res) => {
+  try { res.json(await auftragsArtJetzt(pfadParam(req, 'art'))); }
+  catch (e) { handleRouteError(res, e, undefined, req); }
+});
+
+router.delete('/admin/auftraege/art/:art', requireApiAdmin, async (req: AuthedRequest, res) => {
+  try { res.json(await auftragsArtLeeren(pfadParam(req, 'art'))); }
+  catch (e) { handleRouteError(res, e, undefined, req); }
+});
+
 // ── POST /api/v1/admin/trigger-csv-sync — manually trigger CSV sync ──────────
 router.post('/admin/trigger-csv-sync', requireApiAdmin, async (_req: AuthedRequest, res) => {
-  // Signal primary worker via DB flag (same pattern as instruction queue trigger)
+  // Der geplante Auftrag wird jetzt fällig; läuft er schon, bleibt es bei dem einen Lauf.
   try {
-    await setzeAusloeser('csv_sync_trigger');
-    // Weckt den Primary-Worker sofort. Der Eintrag oben bleibt die belastbare
-    // Quelle — ohne Signal liefe er erst beim nächsten Verbindungsaufbau an.
-    await pgNotify.notify('csv_sync_trigger');
+    await katalogAbgleichJetzt();
     res.json({ success: true, message: 'CSV-Sync wird gestartet…' });
   } catch (e) { handleRouteError(res, e, undefined, _req); }
 });
@@ -283,7 +307,7 @@ router.get('/admin/logs', requireApiAdmin, async (req: AuthedRequest, res) => {
 });
 
 router.get('/admin/brickset-queue', requireApiAdmin, async (_req: AuthedRequest, res) => {
-  const rows = await verwaltung.bricksetWarteschlange().catch(meldeUndLiefere('verwaltung:bricksetWarteschlange', []));
+  const rows = await bricksetListe().catch(meldeUndLiefere('verwaltung:bricksetWarteschlange', []));
   res.json({ success: true, count: rows.length, entries: rows });
 });
 

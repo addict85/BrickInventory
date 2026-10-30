@@ -45,10 +45,7 @@ const ERLAUBT = new Map([
   ['all',   'wie get.'],
   ['run',   'db/database und drei Jobs: „ausfuehren". In den Jobs ist es der Einstieg, ' +
             'in der Datenbank die Anweisung — gleicher Begriff, kein gemeinsamer Gegenstand.'],
-  ['start', 'drei Jobs, jeder startet SEINEN Job. Gleicher Name, gleiche Bedeutung, ' +
-            'verschiedene Gegenstaende.'],
   ['log',   'drei Jobs, jeder schreibt mit seinem eigenen Praefix.'],
-  ['scheduleNext', 'zwei Jobs, jeder plant SEINEN naechsten Lauf.'],
   ['getSetInfo',   'clients/brickset und clients/rebrickable — dieselbe Frage an ZWEI ' +
                    'verschiedene Dienste. Der Dateiname sagt, welcher gemeint ist.'],
   ['httpsGet',     'clients/bricklink und clients/brickset — jeder mit der Signatur seines ' +

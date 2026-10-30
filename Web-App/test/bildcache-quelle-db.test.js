@@ -61,7 +61,7 @@ test('Bildquellen kommen aus dem Katalog, nicht vom Client', { concurrency: 1 },
   const jobId = neueJobId();
   const aufraeumen = async () => {
     await db.run('DELETE FROM part_color_catalog WHERE part_number LIKE $1', [`${T}%`]);
-    await db.run('DELETE FROM pdf_auftraege WHERE id = $1', [jobId]);
+    await db.run('DELETE FROM auftraege WHERE schluessel = $1', [`pdf:${jobId}`]);
     require('node:fs').rmSync(pdfDateiPfad(jobId), { force: true });
   };
   await aufraeumen();

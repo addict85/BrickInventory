@@ -13,7 +13,7 @@ import { buildSetsCsv } from '../utils/setService';
 import { buildPartsCsv, buildFigsCsv } from '../utils/bestandExport';
 import { buildMerklisteCsv } from '../utils/merkliste';
 import { buildPreisalarmeCsv } from '../utils/preisalarm';
-import { DAILY_JOBS } from '../utils/jobsteuerung';
+import { DAILY_JOBS } from '../utils/zeitplan';
 import { quellePruefen, bricksetLimitGesetzt, zeitplanNeuPlanen } from '../utils/dienste/verwaltung';
 import { zugaengeDesKontos, zugaengeLoeschen, andereSitzungenBeenden, mussPasswortAendern, profil } from '../utils/konten';
 import { resolveUserId, escapeLike, requireLoginOrToken, nutzerId, angemeldeteNutzerId, istVerwalter, nutzerName, hashToken, leereTokenCache } from '../utils/auth';

@@ -106,11 +106,9 @@ test('der Bildserver wird schonend abgefragt', { concurrency: 1 }, async (t) => 
     });
 
     await t.test('höchstens 30 Anfragen je Minute', () => {
-      // Die Rate ergibt sich aus Stapelgrösse und Takt; beide stehen in der
-      // Quelle, damit der Test keine Zahl wiederholt, die sich ändern darf.
-      const src = fs.readFileSync(path.join(ROOT, 'jobs', 'imageQueue.ts'), 'utf8');
-      const stapel = parseInt((src.match(/const STAPEL = (\d+)/) || [])[1]);
-      const takt   = parseInt((src.match(/const TAKT_MS = ([\d_]+)/) || [])[1].replace(/_/g, ''));
+      // Die Rate ergibt sich aus Stapelgrösse und Takt; beide kommen aus dem
+      // Modul, damit der Test keine Zahl wiederholt, die sich ändern darf.
+      const { STAPEL: stapel, TAKT_MS: takt } = _req('jobs/imageQueue.js');
       assert.ok(stapel > 0 && takt > 0, 'STAPEL oder TAKT_MS nicht auffindbar');
       const jeMinute = stapel * (60_000 / takt);
       assert.ok(jeMinute <= 30,

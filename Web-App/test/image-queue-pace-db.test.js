@@ -77,11 +77,8 @@ const db = _req('db/database.js');
 const IQ = _req('jobs/imageQueue.js');
 const { SET_IMAGES_DIR } = _req('utils/appPaths.js');
 
-/** Stapelgrösse und Deckel aus der Quelle lesen — der Test wiederholt keine Zahl. */
-const src = fs.readFileSync(path.join(ROOT, 'jobs', 'imageQueue.ts'), 'utf8');
-const STAPEL = parseInt((src.match(/const STAPEL = (\d+)/) || [])[1], 10);
-const DECKEL = parseInt(
-  (src.match(/const DURCHGANG_MAX_NOTIZEN = ([\d_]+)/) || [])[1].replace(/_/g, ''), 10);
+/** Stapelgrösse und Deckel aus dem Modul — der Test wiederholt keine Zahl. */
+const { STAPEL, DURCHGANG_MAX_NOTIZEN: DECKEL } = IQ;
 
 const angelegt = [];
 /** Bild UND Vorschau hinlegen — der Job hat für diese Notiz nichts zu tun. */

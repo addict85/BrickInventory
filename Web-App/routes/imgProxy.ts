@@ -107,8 +107,8 @@ export async function bildDurchreichen(req: Request, res: Response) {
   const wantThumb = req.query.thumb === '1';
   // gen=0: Die ANFRAGE rechnet nichts. Statt die Verkleinerung sofort
   // anzustossen, hinterlässt sie eine Notiz — abgearbeitet wird sie vom
-  // Hintergrund-Job (jobs/imageQueue.ts), gedrosselt und nur auf dem
-  // Primärprozess.
+  // Auftrag 'bildbedarf' (jobs/imageQueue.ts), gedrosselt und nur im
+  // Job-Prozess.
   // Ausführlich: docs/begruendungen/routes/imgProxy.ts.md#bilddurchreichen-darferzeugen
   const darfErzeugen = req.query.gen !== '0';
   const setAusUrl = () => setNummerAusBildAdresse(String(url || ''));

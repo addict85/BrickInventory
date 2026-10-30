@@ -3,17 +3,16 @@ import crypto from 'crypto';
 import fsp from 'fs/promises';
 import { PDF_JOB_DIR } from './appPaths';
 import * as db from '../db/database';
-import { notify } from './pgNotify';
-import { logAndContinue, meldeUndLiefere, meldeUndWeiter, ohneFehlendeDatei } from './httpError';
+import { meldeUndLiefere, meldeUndWeiter, ohneFehlendeDatei } from './httpError';
 import { stelleAuftragEin } from './auftraege';
 import { mitVersion } from './setNummer';
 
 /**
- * Status der PDF-Aufträge. Er steht in der Datenbank, damit jeder
- * Arbeitsprozess denselben Stand sieht; ein NOTIFY auf PDF_KANAL weckt die
- * Statusströme sofort, auch wenn der Auftrag in einem anderen Prozess läuft.
+ * PDF-Aufträge sind Aufträge der Art 'pdf' mit dem Schlüssel `pdf:<Kennung>`;
+ * Status, Fehler und Wartezeit stehen dort (Fortschritt), und jeder
+ * Statuswechsel weckt die Statusströme über AUFTRAG_STAND_KANAL.
  */
-export const PDF_KANAL = 'pdf_auftrag';
+export const pdfSchluessel = (id: string) => `pdf:${id}`;
 
 /**
  * Vom Server erzeugt: `${Date.now()}-${12 Hex-Zeichen}`. Alles andere wird
@@ -36,41 +35,37 @@ export type PdfAuftrag = {
   etaSeconds?: number | null;
 };
 
+/** offen und laeuft heissen für die Oberfläche 'running'; abgebrochen ist ein Fehler. */
+const STATUS: Record<string, PdfAuftrag['status']> = { offen: 'running', laeuft: 'running', erledigt: 'done' };
+
 export async function liesAuftrag(id: string): Promise<PdfAuftrag | null> {
   const z = await db.get(
-    'SELECT status, fehler, user_id, fehlende_bilder, eta_sekunden FROM pdf_auftraege WHERE id = $1', [id]);
-  return z ? { status: z.status, error: z.fehler ?? null, user_id: Number(z.user_id),
-               missingImages: z.fehlende_bilder ?? null, etaSeconds: z.eta_sekunden ?? null } : null;
-}
-
-export async function schreibeAuftrag(id: string, a: PdfAuftrag): Promise<void> {
-  await db.run(
-    `INSERT INTO pdf_auftraege (id, user_id, status, fehler, fehlende_bilder, eta_sekunden, aktualisiert)
-     VALUES ($1, $2, $3, $4, $5, $6, NOW())
-     ON CONFLICT (id) DO UPDATE SET status = EXCLUDED.status, fehler = EXCLUDED.fehler,
-       fehlende_bilder = COALESCE(EXCLUDED.fehlende_bilder, pdf_auftraege.fehlende_bilder),
-       eta_sekunden = COALESCE(EXCLUDED.eta_sekunden, pdf_auftraege.eta_sekunden), aktualisiert = NOW()`,
-    [id, a.user_id, a.status, a.error, a.missingImages ?? null, a.etaSeconds ?? null]);
-  await notify(PDF_KANAL, id);
+    `SELECT status, fehler, user_id, fortschritt FROM auftraege
+      WHERE art = 'pdf' AND schluessel = $1 ORDER BY id DESC LIMIT 1`, [pdfSchluessel(id)]);
+  return z ? { status: STATUS[z.status] ?? 'error', error: z.status === 'erledigt' ? null : z.fehler ?? null,
+               user_id: Number(z.user_id), missingImages: z.fortschritt?.fehlendeBilder ?? null,
+               etaSeconds: z.fortschritt?.etaSekunden ?? null } : null;
 }
 
 /** Laufende Aufträge eines Kontos; ein hängengebliebener zählt nach `ttlMs` nicht mehr. */
 export async function laufendeAuftraege(uid: number, ttlMs: number): Promise<number> {
   const z = await db.get(
-    `SELECT COUNT(*)::int AS n FROM pdf_auftraege
-      WHERE user_id = $1 AND status = 'running' AND aktualisiert > NOW() - make_interval(secs => $2)`,
-    [uid, ttlMs / 1000]);
+    `SELECT COUNT(*)::int AS n FROM auftraege
+      WHERE art = 'pdf' AND user_id = $1 AND status IN ('offen', 'laeuft')
+        AND erstellt > NOW() - make_interval(secs => $2)`, [uid, ttlMs / 1000]);
   return z?.n ?? 0;
 }
 
 export async function loescheAuftrag(id: string): Promise<void> {
-  await db.run('DELETE FROM pdf_auftraege WHERE id = $1', [id]);
+  await db.run(`DELETE FROM auftraege WHERE art = 'pdf' AND schluessel = $1 AND status <> 'laeuft'`, [pdfSchluessel(id)]);
 }
 
-/** Alte Aufträge entfernen; @returns ihre Kennungen, damit die PDF-Dateien mitgehen */
+/** Beendete Aufträge nach `ttlMs` entfernen; @returns ihre Kennungen, damit die PDF-Dateien mitgehen */
 export async function raeumeAuftraegeAuf(ttlMs: number): Promise<string[]> {
   const rows = await db.all(
-    'DELETE FROM pdf_auftraege WHERE aktualisiert < NOW() - make_interval(secs => $1) RETURNING id', [ttlMs / 1000]);
+    `DELETE FROM auftraege WHERE art = 'pdf' AND status IN ('erledigt', 'fehler', 'abgebrochen')
+        AND aktualisiert < NOW() - make_interval(secs => $1)
+     RETURNING substr(schluessel, 5) AS id`, [ttlMs / 1000]);
   return rows.map((r: { id: string }) => r.id);
 }
 
@@ -78,7 +73,6 @@ export async function raeumeAuftraegeAuf(ttlMs: number): Promise<string[]> {
 export const PDF_JOB_TTL = 10 * 60 * 1000;
 /** Gleichzeitig laufende PDF-Aufträge je Benutzer: Ein Auftrag lädt hunderte Bilder nach. */
 export const MAX_JOBS_PRO_BENUTZER = 2;
-const PDF_CLEANUP_MS = 60 * 60 * 1000;
 
 /** Kennung aus Zeit und kryptografischem Zufall: nicht erratbar, aber sortierbar. */
 export function neueJobId(): string {
@@ -99,13 +93,6 @@ export async function cleanOldPdfJobs() {
   }
 }
 
-/** Stündliches Aufräumen, nur im Primary (startup/backgroundJobs.ts). */
-export function startPdfJobCleanup() {
-  cleanOldPdfJobs().catch(logAndContinue('pdf:aufraeumen'));
-  const t = setInterval(() => { cleanOldPdfJobs().catch(logAndContinue('pdf:aufraeumen')); }, PDF_CLEANUP_MS);
-  t.unref?.();
-  return t;
-}
 
 /**
  * Wie viele Bilder der beteiligten Sets lokal noch fehlen — daran hängt die
@@ -145,8 +132,8 @@ export async function pdfAuftragStarten(uid: number, sets: Array<{ set_number?: 
   // Bildangaben des Clients gehen nicht in den Auftrag: Die Bilder kommen aus dem Katalog (jobs/pdfErzeugung.ts).
   const ohneBilder = parts.map(p => ({ ...p, image_url: undefined, image_local: undefined }));
   const missingImages = await fehlendeBilder(sets, parts);
-  await schreibeAuftrag(jobId, { status: 'running', error: null, missingImages,
-    etaSeconds: Math.max(3, Math.round(missingImages) + 3), user_id: uid });
-  await stelleAuftragEin('pdf', { job_id: jobId, user_id: uid, sets, parts: ohneBilder }, { userId: uid, maxVersuche: 2 });
+  await stelleAuftragEin('pdf', { job_id: jobId, user_id: uid, sets, parts: ohneBilder }, {
+    userId: uid, maxVersuche: 2, schluessel: pdfSchluessel(jobId),
+    fortschritt: { fehlendeBilder: missingImages, etaSekunden: Math.max(3, Math.round(missingImages) + 3) } });
   return { jobId };
 }

@@ -69,12 +69,8 @@ async function emitJobStatus(userId: number) {
   } catch (_) { /* Fortschritt geht notfalls über den Nachzieh-Timer im Stream */ }
   // Über Prozessgrenzen hinweg signalisieren.
   //
-  // csvImportBus ist ein prozesslokaler EventEmitter — im Cluster sieht ihn nur
-  // der Worker, der den Import ausführt. Ein Client, dessen SSE-Verbindung in
-  // einem ANDEREN Worker liegt, bekam davon nichts mit; deshalb gab es einen
-  // 10-Sekunden-Poller auf die Datenbank, dauerhaft, pro offener Verbindung.
-  // LISTEN/NOTIFY erledigt genau das, wofür der Poller da war — und die
-  // Infrastruktur dafür steht bereits (utils/pgNotify.ts).
+  // csvImportBus ist prozesslokal; der Import läuft im Job-Prozess, der
+  // SSE-Strom im Web-Prozess. Das NOTIFY trägt den Fortschritt hinüber.
   pgNotify.notify('csv_import_progress', String(userId)).catch(logAndContinue('import-auftrag:notify'));
 }
 
@@ -87,11 +83,11 @@ async function jobGet(userId: number) {
   // Absturz), schreibt niemand mehr. „running" bliebe sonst stehen und sperrte
   // jeden weiteren Import. Ein Set braucht höchstens gut vier Minuten.
   await db.run(
-    `UPDATE csv_import_jobs SET status = 'error', current = NULL, error = $2, updated_at = NOW()
+    `UPDATE import_stand SET status = 'error', current = NULL, error = $2, updated_at = NOW()
       WHERE user_id = $1 AND status IN ('running', 'pending')
         AND updated_at < NOW() - make_interval(mins => $3)`,
     [userId, fehlerText('import_unterbrochen', 'de'), VERWAIST_MIN]);
-  const row = await db.get('SELECT * FROM csv_import_jobs WHERE user_id = $1', [userId]);
+  const row = await db.get('SELECT * FROM import_stand WHERE user_id = $1', [userId]);
   if (!row) return null;
   return { ...row, results: row.results || [] };
 }
@@ -126,7 +122,7 @@ async function jobSet(userId: number, fields: Record<string, unknown>) {
   const colList    = keys.join(', ');
   const valPlaces  = keys.map((_, i) => `$${i + 2}`).join(', ');
   await db.run(
-    `INSERT INTO csv_import_jobs (user_id, ${colList}, updated_at)
+    `INSERT INTO import_stand (user_id, ${colList}, updated_at)
      VALUES ($1, ${valPlaces}, NOW())
      ON CONFLICT (user_id) DO UPDATE SET ${setClauses}, updated_at = NOW()`,
     [userId, ...values]
@@ -143,7 +139,7 @@ async function jobUpdate(userId: number, fields: Record<string, unknown>, lauf?:
   const values = keys.map(k => fields[k]);
   const setClauses = keys.map((k, i) => `${k} = $${i + 2}`).join(', ');
   const r = await db.run(
-    `UPDATE csv_import_jobs SET ${setClauses}, updated_at = NOW()
+    `UPDATE import_stand SET ${setClauses}, updated_at = NOW()
       WHERE user_id = $1${lauf ? ` AND run_id = $${keys.length + 2} AND status = 'running'` : ''}`,
     lauf ? [userId, ...values, lauf] : [userId, ...values]
   );
@@ -159,7 +155,7 @@ async function jobUpdate(userId: number, fields: Record<string, unknown>, lauf?:
 async function setzeImportFort(userId: number, lauf: string):
     Promise<{ results: ImportErgebnis[]; current: string | null } | null> {
   const z = await db.get(
-    `UPDATE csv_import_jobs SET status = 'running', error = NULL, updated_at = NOW()
+    `UPDATE import_stand SET status = 'running', error = NULL, updated_at = NOW()
       WHERE user_id = $1 AND run_id = $2 AND status IN ('running', 'error')
       RETURNING results, current`, [userId, lauf]);
   return z ? { results: Array.isArray(z.results) ? z.results : [], current: z.current ?? null } : null;

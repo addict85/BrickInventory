@@ -73,7 +73,7 @@ test('Teile- und Figurenbilder landen in getrennten Ordnern', async (t) => {
   assert.equal(await downloadImage(cdn, NUM, 0, 'part'), `/images/parts/${NUM}_0.png`);
   assert.ok(fs.existsSync(path.join(PART_IMAGES_DIR, `${NUM}_0.png`)), 'Teilebild nicht im Teileordner');
   // Der einzige Aufruf für Figuren sitzt im Bild-Hintergrundlauf.
-  assert.match(read('startup/bildNachlauf.ts'), /downloadImage\(f\.image_url, f\.fig_number, 0, 'minifig'\)/,
+  assert.match(read('jobs/bildNachlauf.ts'), /downloadImage\(f\.image_url, f\.fig_number, 0, 'minifig'\)/,
     'Der Figuren-Download muss die Art mitgeben — sonst landen Figuren wieder bei den Teilen');
 });
 

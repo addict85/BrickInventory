@@ -1,31 +1,57 @@
 /**
- * Die drei Nachläufe, die beim Start einmalig aufräumen.
+ * Was der Job-Prozess bei jedem Start einmal nachholt — je Schritt ein
+ * Auftrag 'nachlauf' (startup/jobsProzess.ts), damit ein Fehler wiederholt
+ * wird und in der Verwaltung zu sehen ist.
  * Ausführlich: docs/begruendungen/jobs/startNachlaeufe.ts.md#abschnitt
  */
 import * as db from '../db/database';
 import { downloadSetImage } from '../utils/setImages';
 import { generateThumb } from '../utils/thumbs';
-import { enqueue, processNext } from './instructionQueue';
+import { anleitungEinreihen } from '../utils/anleitungsAuftrag';
+import { verschluesseleAltbestand } from '../utils/geheimnisAltbestand';
+import { verschluesseleGutscheinAltbestand } from '../utils/gutscheinDateien';
+import * as catalogSync from './catalogSync';
+import * as purchasePriceBackfill from './purchasePriceBackfill';
 import { APP_ROOT, IMAGES_DIR } from '../utils/appPaths';
 import { fehlertext, logAndContinue, meldeUndLiefere } from '../utils/httpError';
 
-/** Sets ohne Anleitung in die Warteschlange stellen. */
+/**
+ * Sets ohne Anleitung einreihen — nicht, wenn ein Abruf noch wartet oder in
+ * den letzten Tagen schon ohne Ergebnis lief (erledigte Aufträge bleiben
+ * sieben Tage, gescheiterte dreissig stehen; danach wird es wieder versucht).
+ */
 async function anleitungenNachtragen(): Promise<void> {
-  try {
-    const missing = await db.all(
-      `SELECT DISTINCT s.set_number FROM sets s
-       WHERE NOT EXISTS (
-         SELECT 1 FROM shared_instructions si WHERE si.set_number = s.set_number
-       ) AND NOT EXISTS (
-         SELECT 1 FROM instruction_queue iq WHERE iq.set_number = s.set_number AND iq.status IN ('pending','done')
-       )`
-    ).catch(meldeUndLiefere('nachlauf:missing', []));
-    if (missing.length) {
-      console.log(`[instr-queue] Enqueueing ${missing.length} sets missing instructions`);
-      for (const { set_number } of missing) await enqueue(set_number).catch(logAndContinue('nachlauf:enqueue'));
-      processNext();
-    }
-  } catch (e) { console.error('[instr-queue startup]', fehlertext(e)); }
+  const missing = await db.all(
+    `SELECT DISTINCT s.set_number FROM sets s
+     WHERE NOT EXISTS (SELECT 1 FROM shared_instructions si WHERE si.set_number = s.set_number)
+       AND NOT EXISTS (SELECT 1 FROM auftraege a WHERE a.schluessel = 'anleitung:' || s.set_number
+                         AND a.status IN ('offen', 'laeuft', 'erledigt'))`);
+  if (missing.length) console.log(`[instr-queue] Enqueueing ${missing.length} sets missing instructions`);
+  for (const { set_number } of missing) await anleitungEinreihen(set_number);
+}
+
+/** Geheimnisse aus der Zeit vor der Verschlüsselung (utils/geheimnis.ts). */
+async function geheimnisseVerschluesseln(): Promise<void> {
+  const n = await verschluesseleAltbestand() + await verschluesseleGutscheinAltbestand();
+  if (n) console.log(`[geheimnis] ${n} Geheimnisse nachträglich verschlüsselt`);
+}
+
+/** Die Schritte und ihr Abstand zum Start in Sekunden: Beim Start hat der Katalog Vorrang. */
+export const NACHLAEUFE = {
+  geheimnisse:  { nachSekunden: 0,  lauf: geheimnisseVerschluesseln },
+  vorschauen:   { nachSekunden: 0,  lauf: () => vorschaubilderNachtragen() },
+  katalog:      { nachSekunden: 10, lauf: () => catalogSync.syncAllMissing() },
+  anleitungen:  { nachSekunden: 15, lauf: anleitungenNachtragen },
+  set_bilder:   { nachSekunden: 45, lauf: () => setBilderNachladen() },
+  kaufpreise:   { nachSekunden: 45, lauf: () => purchasePriceBackfill.run() },
+} as const;
+export type Nachlauf = keyof typeof NACHLAEUFE;
+
+/** Der Bearbeiter des Auftrags 'nachlauf'. */
+export async function nachlauf(n: Record<string, unknown>): Promise<void> {
+  const schritt = String(n.schritt);
+  if (!Object.hasOwn(NACHLAEUFE, schritt)) throw new Error(`unbekannter Nachlauf ${schritt}`);
+  await NACHLAEUFE[schritt as Nachlauf].lauf();
 }
 
 /** Fehlende Set-Bilder vom CDN holen. */

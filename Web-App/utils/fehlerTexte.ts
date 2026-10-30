@@ -184,6 +184,7 @@ export const FEHLER = {
   job_nicht_gefunden:          { de: 'Job nicht gefunden oder abgelaufen',
                                  en: 'Job not found, or it has expired' },
   unbekannter_job:             { de: 'Unbekannter Job', en: 'Unknown job' },
+  auftrag_nicht_aenderbar:     { de: 'Diesen Auftrag gibt es nicht oder er ist schon beendet', en: 'This job does not exist or has already finished' },
 
   // ── Gutscheine (LEGO-Geschenkkarten im eigenen Profil) ───────────────────
   //
