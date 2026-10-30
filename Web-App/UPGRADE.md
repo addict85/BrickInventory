@@ -378,3 +378,61 @@ Bereits geschützt und unverändert: PDF-Export
 - **Konto löschen** entfernt jetzt auch `data/uploads/<id>/` und
   `data/vouchers/<id>/`. Verwaiste Ordner früher gelöschter Konten bitte von
   Hand entfernen.
+
+## 14. Ein Web- und ein Job-Prozess; Hintergrundarbeit als Aufträge
+
+**Was sich ändert**
+
+- Der Server startet keinen Cluster mehr (ein Worker je Kern, Primärwahl über
+  eine Datenbanksperre). Stattdessen gibt es **zwei Rollen**, gewählt mit
+  `ROLLE`: `web` beantwortet Anfragen, `jobs` arbeitet die Hintergrundarbeit
+  ab, `beides` (Vorgabe) tut beides in einem Prozess.
+- `compose.yaml` startet dafür den Dienst `app` mit `ROLLE: web` und einen
+  neuen Dienst **`jobs`** aus demselben Bau mit `ROLLE: jobs`. Beide hängen
+  `./data` ein; der Dienst `jobs` hat keinen Port.
+- **Alle Hintergrundarbeit steht als Auftrag in der Tabelle `auftraege`**:
+  Preise, Anleitungen, Brickset-Wiedervorlage, Bilder, PDF, CSV-Import,
+  Katalogabgleich, Aufräumen. Zeitpläne (täglich 03:00 Katalog, Preise im
+  eingestellten Intervall, stündliches und tägliches Aufräumen) sind
+  geplante Aufträge mit einem Termin. Die Verwaltung zeigt sie unter
+  „Monitoring → Hintergrundarbeiten“ mit Abbrechen, Wiederholen, Jetzt und
+  Leeren.
+- `WEB_WORKERS` wird nicht mehr ausgewertet. Steht es noch in der eigenen
+  `compose.yaml`, meldet der Start einen Hinweis; die Zeile kann weg.
+
+**Was beim Update geschieht**
+
+- Migration 0080 erweitert `auftraege` (Spalten `faellig_ab`, `frist_bis`,
+  `gestartet`, `fortschritt`, Status `abgebrochen`) und legt
+  `auftrag_pausen` an.
+- Migration 0081 übernimmt die alten Warteschlangen und entfernt sie:
+  - `instruction_queue` → Aufträge `anleitung` (wartende, erledigte und
+    gescheiterte);
+  - `brickset_retry_queue` → Aufträge `brickset`, fällig um 04:00 des
+    vorgemerkten Tages, Versuchszähler übernommen;
+  - `pdf_auftraege` → der Status steht im PDF-Auftrag; ein PDF, das während
+    des Updates lief, endet als Fehler und wird neu angefordert;
+  - `csv_import_jobs` heisst jetzt `import_stand` (Importstand je Konto,
+    keine Warteschlange).
+  `image_wanted` bleibt: Es ist der Bildbedarf (Daten), abgearbeitet von
+  einem einzigen Auftrag `bildbedarf`.
+- Migriert wird wie bisher nur einmal unter einer Datenbanksperre: Starten
+  `app` und `jobs` gleichzeitig, wartet der zweite.
+
+**Was zu tun ist**
+
+1. Eine eigene `compose.yaml` mit der neuen vergleichen und den Dienst `jobs`
+   übernehmen. Was beim Dienst `app` zusätzlich gesetzt ist (`DATA_KEY`, `TZ`,
+   `ERFASSUNG_ZEITZONE`, `PG_*`, `IMG_USER_AGENT`), gehört beim Dienst `jobs`
+   genauso hin — sonst entschlüsselt er die gespeicherten API-Schlüssel nicht
+   oder rechnet in einer anderen Zeitzone.
+2. `docker compose up -d --build`. Danach unter „Monitoring“ prüfen, dass
+   keine Warnung „Kein Job-Prozess meldet sich“ steht.
+3. Wer bewusst nur einen Container betreiben will, lässt `jobs` weg und setzt
+   bei `app` `ROLLE: beides` (oder lässt `ROLLE` ganz weg).
+
+**Zurück auf die alte Fassung**
+
+Die alten Tabellen sind nach Migration 0081 entfernt. Eine Rückkehr geht nur
+über die Sicherung, die der Server vor offenen Migrationen anlegt
+(Abschnitt 5).

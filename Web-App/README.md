@@ -56,11 +56,20 @@ postgres psql -U brickinventory -c "ALTER USER brickinventory PASSWORD
 'neues-passwort'"`, dann `DB_PASSWORD` in `.env` setzen und `docker compose up
 -d` ausführen.
 
+### Web- und Job-Prozess
+`compose.yaml` startet zwei Dienste aus demselben Bau: `app` (`ROLLE: web`)
+beantwortet Anfragen, `jobs` (`ROLLE: jobs`) arbeitet die Hintergrundarbeit
+ab — Preise, Anleitungen, Bilder, PDF, Importe, Katalogabgleich, Aufräumen.
+Alles davon steht als Auftrag in der Tabelle `auftraege`, auch die Zeitpläne;
+„Monitoring → Hintergrundarbeiten“ zeigt sie samt Fehlern und lässt sie
+abbrechen, wiederholen oder vorziehen. Ohne Compose (`npm start`) gilt
+`ROLLE=beides`: ein Prozess für alles. Ein Update von einer Fassung mit
+Cluster beschreibt UPGRADE.md, Abschnitt 14.
+
 ### DB-Pool-Größe anpassen
-Normalerweise **nicht nötig**: Die App rechnet `min(15, 80 / Anzahl Worker)`
-selbst aus; `WEB_WORKERS: 0` heisst „ein Worker je Kern, mindestens zwei",
-und mit derselben Zahl rechnet der Pool. Nur wenn die PostgreSQL-Instanz ein abweichendes `max_connections`
-hat, in `compose.yaml`:
+Normalerweise **nicht nötig**: Jeder Prozess hält höchstens 15 Verbindungen,
+`app` und `jobs` zusammen also 30. Nur wenn die PostgreSQL-Instanz ein
+kleines `max_connections` hat, in `compose.yaml` (bei beiden Diensten):
 ```yaml
 environment:
   PG_POOL_MAX: 40   # mehr parallele Verbindungen
