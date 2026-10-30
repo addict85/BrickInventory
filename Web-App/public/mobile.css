@@ -66,12 +66,12 @@
   .ubadge .ubadge-name { display: none; }
   .ubadge .ubadge-ico  { display: inline-block; width: 20px; height: 20px; }
 
-  /* Erfassen-Leiste: Hauptknopf und Import-Menü in einer Reihe; das Menü
-     klappt rechtsbündig auf, damit es nicht über den Rand ragt. */
-  .erfassen-leiste { flex-wrap: wrap; }
+  /* Erfassen-Leiste: Hauptknopf und Import-Menü nebeneinander; das Menü
+     klappt über die volle Breite der Leiste auf, egal wo der Knopf steht. */
+  .erfassen-leiste { flex-wrap: wrap; position: relative; }
   .erfassen-leiste .btn.bp { flex: 1 1 auto; justify-content: center; }
-  .erfassen-leiste .import-menue { flex: 0 0 auto; }
-  .import-klappe { left: auto; right: 0; }
+  .erfassen-leiste .import-menue { flex: 0 0 auto; position: static; }
+  .import-klappe { left: 0; right: 0; min-width: 0; }
 
   /* Kachel: Jahr und Thema in einer Zeile, die Plaketten darunter. */
   .smeta { flex-direction: column; align-items: flex-start; gap: 4px; }

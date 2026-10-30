@@ -47,13 +47,15 @@ const LAYOUT = (telefon) => `(() => {
   const fest = (e) => { for (let x = e; x; x = x.parentElement) { const s = getComputedStyle(x); if (s.position === 'fixed' || s.position === 'sticky' || (s.position === 'absolute' && s.zIndex !== 'auto')) return x; } return null; };
   const funde = [];
 
-  // 1. Waagrechter Überlauf der Seite.
+  // 1. Waagrechter Überlauf: die Seite selbst, und Elemente über den Fensterrand
+  //    (auch wenn ein Vorfahr sie abschneidet — dann fehlt ein Stück). Nur
+  //    Rollbereiche dürfen breiter sein.
   const breite = document.documentElement.clientWidth;
-  if (document.documentElement.scrollWidth > breite + 1) {
-    const zu = [...wurzel.querySelectorAll('*')].filter(e => sichtbar(e) && e.getBoundingClientRect().right > breite + 1
-      && ![...(function* () { for (let x = e.parentElement; x; x = x.parentElement) yield x; })()].some(x => /auto|scroll|hidden|clip/.test(getComputedStyle(x).overflowX)));
-    funde.push('Überlauf ' + (document.documentElement.scrollWidth - breite) + ' px: ' + zu.slice(0, 3).map(name).join(', '));
-  }
+  const rollt = (e) => { for (let x = e.parentElement; x; x = x.parentElement) if (/auto|scroll/.test(getComputedStyle(x).overflowX)) return true; return false; };
+  const zu = [...wurzel.querySelectorAll('*')].filter(e => { const r = e.getBoundingClientRect();
+    return r.width > 2 && (r.right > breite + 1 || r.left < -1) && sichtbar(e) && !rollt(e); });
+  if (document.documentElement.scrollWidth > breite + 1 || zu.length)
+    funde.push('Überlauf ' + Math.max(0, document.documentElement.scrollWidth - breite) + ' px: ' + zu.slice(0, 3).map(name).join(', '));
 
   // 2. Bedienelemente: Tippziele und Überlappung.
   const SEL = 'a[href], button, input:not([type=hidden]), select, textarea, summary, [role=button], [role=tab], [tabindex]:not([tabindex="-1"])';
