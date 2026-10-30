@@ -6,7 +6,9 @@
  *   A  in 0052 den Trigger auf storage_locations weggelassen → rot: „ein
  *      umbenannter Lagerort entwertet die Zusammenfassung“
  *   B  in ensureFresh den Vergleich des Katalogstands entfernt → rot: „ein
- *      geänderter Teilename entwertet sie ebenso“
+ *      geänderter Teilename entwertet sie ebenso“ (seit Migration 0079: „ein
+ *      geänderter Teilename ist sofort nachgezogen“, siehe
+ *      teile-katalog-inkrementell-db.test.js)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -50,12 +52,11 @@ test('Teile-Zusammenfassung: Stand', { concurrency: 1 }, async (t) => {
       assert.equal(z.storage, 'Regal B');
     });
 
-    await t.test('ein geänderter Teilename entwertet sie ebenso', async () => {
+    await t.test('ein geänderter Teilename ist sofort nachgezogen', async () => {
       await PS.rebuildNow(uid);
       assert.equal(await PS.ensureFresh(uid, { strict: true }), true, 'Vorbedingung: frisch');
       await db.run(`UPDATE part_catalog SET part_name = 'Neuer Name' WHERE part_number = $1`, [TEIL]);
-      assert.equal(await PS.ensureFresh(uid, { strict: true }), false);
-      await PS.rebuildNow(uid);
+      assert.equal(await PS.ensureFresh(uid, { strict: true }), true, 'der Nachzug läuft in ensureFresh');
       assert.equal((await db.get('SELECT part_name FROM parts_summary WHERE user_id=$1', [uid])).part_name, 'Neuer Name');
     });
   } finally {

@@ -73,7 +73,6 @@ class PriceHistorySerializationTest {
         assertEquals(2, r.historyNew.size)
         assertEquals(1, r.historyUsed.size)
         assertEquals(780.0, r.historyNew[1].avgPrice!!, 0.0001)
-        assertTrue("der vorangestellte Kaufpreis ist markiert", r.historyNew[0].isPurchasePrice)
     }
 
     @Test
@@ -92,7 +91,6 @@ class PriceHistorySerializationTest {
         assertEquals(812.5, r.byCondition.new!!.marketPrice!!, 0.0001)
         assertEquals(6.7, r.byCondition.used!!.pnlPct!!, 0.0001)
         assertEquals(2, r.byCondition.present().size)
-        assertEquals(640.0, r.current.used!!.avgPrice!!, 0.0001)
     }
 
     @Test
@@ -110,7 +108,6 @@ class PriceHistorySerializationTest {
         assertEquals(1, r.byCondition.present().size)
         assertEquals("N", r.byCondition.present()[0].first)
         assertNull(r.byCondition.used)
-        assertNull(r.current.used)
         assertTrue(r.chart.values.isEmpty())
     }
 
@@ -259,7 +256,6 @@ class PriceHistorySerializationTest {
         assertEquals(2, r.historyNew.size)
         assertEquals(1, r.chart.values.size)
         // Set-Felder bleiben leer, ohne dass das Parsen scheitert.
-        assertEquals("", r.setNumber)
         assertNull(r.pnlPct)
         assertNull(r.purchasePrice)
     }

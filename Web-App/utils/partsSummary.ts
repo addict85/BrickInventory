@@ -10,16 +10,54 @@ import * as db from '../db/database';
 import * as lockNamespaces from './lockNamespaces';
 
 
-/** Stand der Rohdaten dieses Kontos und des gemeinsamen Katalogs. */
-async function currentVersion(userId: number): Promise<{ v: number; katalog: number }> {
+/** Stand der Rohdaten dieses Kontos, und ob Katalogänderungen offen sind (Migration 0079). */
+async function currentVersion(userId: number): Promise<{ v: number; katalogOffen: boolean }> {
   const r = await db.get(
     `SELECT (SELECT v FROM parts_version_user WHERE user_id = $1) AS v,
-            (SELECT v FROM parts_katalog_stand WHERE id = 1) AS katalog`, [userId]);
-  return { v: parseInt(r?.v) || 0, katalog: parseInt(r?.katalog) || 0 };
+            EXISTS (SELECT 1 FROM parts_katalog_offen) AS katalog_offen`, [userId]);
+  return { v: parseInt(r?.v) || 0, katalogOffen: !!r?.katalog_offen };
+}
+
+/**
+ * Die Zeilen der Zusammenfassung eines Kontos ($1), wahlweise nur für die
+ * Gruppen (BrickLink-Nummer) in $2 — dieselbe Abfrage für den vollen Aufbau
+ * und das Nachziehen nach einer Katalogänderung.
+ */
+function zusammenfassungEinfuegen(nurGruppen: boolean): string {
+  return `
+      INSERT INTO parts_summary (user_id, part_key, color_id, part_number, bl_part_number,
+        part_name, color_name, color_hex, category_name, image_url, image_local,
+        is_spare, total_quantity, in_sets, storage)
+      SELECT p.user_id,
+             -- Gruppiert wird nach der BrickLink-Nummer, soweit eine abweicht.
+             ${blNummerSql('p.part_number')},
+             p.color_id,
+             MIN(p.part_number), MIN(${blNummerSql('p.part_number')}),
+             MIN(pc.part_name), MIN(pcc.color_name), MIN(pcc.color_hex), MIN(pc.category_name),
+             MIN(pcc.image_url), MIN(pcc.image_local),
+             -- Ersatzteil ist eine Angabe der Setliste; dasselbe Teil kann in
+             -- einem Set Ersatz und im nächsten Pflicht sein.
+             MAX(COALESCE(tm_k.is_spare, 0)),
+             SUM(${teilmengeAus('p', 'part')} * ${mengeAus('sm', 1)}),
+             STRING_AGG(DISTINCT p.set_number, ','),
+             -- Alle Lagerorte der Gruppe, nicht einer: Dasselbe Teil liegt aus
+             -- mehreren Sets in verschiedenen Kisten.
+             NULLIF(STRING_AGG(DISTINCT lo.name, ', '), '')
+        FROM parts p
+        ${mengeJoin('p', 'sm', '= $1')}
+        ${teilmengeJoin('p', 'part', 'tm', '= $1')}
+        ${blJoin('p.part_number', 'part')}
+        LEFT JOIN storage_locations lo ON lo.id = p.storage_id
+        LEFT JOIN part_catalog pc ON pc.part_number = p.part_number
+        LEFT JOIN part_color_catalog pcc ON pcc.part_number = p.part_number
+                                        AND pcc.color_id    = p.color_id
+       WHERE p.user_id = $1 AND COALESCE(p.source, 'set') <> 'manual'${nurGruppen ? `
+         AND ${blNummerSql('p.part_number')} = ANY($2)` : ''}
+       GROUP BY p.user_id, ${blNummerSql('p.part_number')}, p.color_id`;
 }
 
 /** Baut die Zusammenfassung eines Nutzers neu auf. */
-export async function rebuild(userId: number, version?: { v: number; katalog: number }): Promise<void> {
+export async function rebuild(userId: number, version?: { v: number }): Promise<void> {
   const stand = version ?? await currentVersion(userId);
   // Ob DIESER Aufruf gebaut hat. Der Block unten verlaesst die Transaktion
   // vorzeitig, wenn ein anderer Arbeiter die Sperre haelt — dann hat hier
@@ -38,69 +76,12 @@ export async function rebuild(userId: number, version?: { v: number; katalog: nu
     }
 
     await tx.run('DELETE FROM parts_summary WHERE user_id = $1', [userId]);
+    await tx.run(zusammenfassungEinfuegen(false), [userId]);
     await tx.run(`
-      INSERT INTO parts_summary (user_id, part_key, color_id, part_number, bl_part_number,
-        part_name, color_name, color_hex, category_name, image_url, image_local,
-        is_spare, total_quantity, in_sets, storage)
-      SELECT p.user_id,
-             -- Der Gruppierungsschluessel ist die BrickLink-Nummer, soweit es
-             -- eine abweichende gibt. Sie stand bis Migration 0037 als
-             -- Spalte bl_part_number an der Bestandszeile — je Konto,
-             -- nachkopiert aus rb_bl_mapping. Jetzt kommt sie aus
-             -- bl_zuordnung, einmal je Teil (utils/blZuordnung.ts).
-             -- (Keine Gegenstriche um den Spaltennamen: Der Kommentar steht
-             -- in einem Template-Literal, und ein Gegenstrich beendet es.)
-             ${blNummerSql('p.part_number')},
-             p.color_id,
-             MIN(p.part_number), MIN(${blNummerSql('p.part_number')}),
-             -- Beschreibung aus den Katalogen (Migration 0034): Name und
-             -- Kategorie haengen am Teil, Farbbezeichnung und Bild an der
-             -- Farbe. In parts stand beides je Konto neu.
-             MIN(pc.part_name), MIN(pcc.color_name), MIN(pcc.color_hex), MIN(pc.category_name),
-             MIN(pcc.image_url), MIN(pcc.image_local),
-             -- is_spare gehoert zur TEILELISTE eines Sets, nicht zum Teil:
-             -- derselbe Stein ist in einem Set Ersatzteil und im naechsten
-             -- Pflichtteil. MAX() wie vorher, weil die Gruppe mehrere Sets
-             -- zusammenfasst; je (Set, Teil, Farbe) ist der Wert eindeutig
-             -- (Primaerschluessel von set_parts_catalog).
-             MAX(COALESCE(tm_k.is_spare, 0)),
-             -- Der zweite Faktor ist die Zahl der Exemplare DES SETS. Hier
-             -- stand COALESCE(s.quantity, 1); die Spalte ist mit Migration
-             -- 0036 weg. Die gruppierte Form (mengeJoin) und nicht die
-             -- Unterabfrage, weil dieser Aufbau ueber 171'000 Teilezeilen
-             -- laeuft — eine Unterabfrage je Zeile waeren 171'000
-             -- Indexzugriffe statt EINER Gruppierung plus Hash-Join.
-             -- Der erste Faktor ist die Stückzahl der Bestandszeile. Hier
-             -- stand p.quantity; Migration 0038 hat die Spalte geloescht.
-             SUM(${teilmengeAus('p', 'part')} * ${mengeAus('sm', 1)}),
-             STRING_AGG(DISTINCT p.set_number, ','),
-             -- Lagerort: STRING_AGG statt MIN, wie in der Live-Abfrage
-             -- (utils/handlers/parts.ts). Dieselbe Gruppe fasst dasselbe Teil
-             -- aus mehreren Sets zusammen, und die koennen in verschiedenen
-             -- Kisten liegen. MIN() zeigte eine davon und verschwiege die
-             -- andere — so, dass es wie eine vollstaendige Antwort aussieht.
-             -- Der Name kommt aus dem Vorrat (Migration 0031: die Zeile
-             -- traegt eine ID). Die Spalte HIER bleibt Text, und das ist kein
-             -- Rueckfall: Sie ist ein berechnetes Etikett ueber mehrere
-             -- Zeilen, kein Verweis — ein einzelner koennte „Kiste 3,
-             -- Regal A" gar nicht ausdruecken.
-             NULLIF(STRING_AGG(DISTINCT lo.name, ', '), '')
-        FROM parts p
-        ${mengeJoin('p', 'sm', '= $1')}
-        ${teilmengeJoin('p', 'part', 'tm', '= $1')}
-        ${blJoin('p.part_number', 'part')}
-        LEFT JOIN storage_locations lo ON lo.id = p.storage_id
-        LEFT JOIN part_catalog pc ON pc.part_number = p.part_number
-        LEFT JOIN part_color_catalog pcc ON pcc.part_number = p.part_number
-                                        AND pcc.color_id    = p.color_id
-       WHERE p.user_id = $1 AND COALESCE(p.source, 'set') <> 'manual'
-       GROUP BY p.user_id, ${blNummerSql('p.part_number')}, p.color_id`,
-      [userId]);
-    await tx.run(`
-      INSERT INTO parts_summary_state (user_id, built_version, katalog_stand, built_at)
-      VALUES ($1, $2, $3, NOW())
-      ON CONFLICT (user_id) DO UPDATE SET built_version = $2, katalog_stand = $3, built_at = NOW()`,
-      [userId, stand.v, stand.katalog]);
+      INSERT INTO parts_summary_state (user_id, built_version, built_at)
+      VALUES ($1, $2, NOW())
+      ON CONFLICT (user_id) DO UPDATE SET built_version = $2, built_at = NOW()`,
+      [userId, stand.v]);
     gebaut = true;
   });
 
@@ -123,7 +104,7 @@ let _letzteAnalyse = 0;
 /** Laufende Neuaufbauten je Nutzer — verhindert Mehrfachläufe. */
 const _rebuilding = new Map<number, Promise<void>>();
 
-function rebuildInBackground(userId: number, v: { v: number; katalog: number }) {
+function rebuildInBackground(userId: number, v: { v: number }) {
   if (_rebuilding.has(userId)) return;
   const p = rebuild(userId, v)
     .catch(e => console.error('[partsSummary] Hintergrundaufbau:', e.message))
@@ -152,9 +133,12 @@ export async function ensureFresh(userId: number | number[], opts?: { strict?: b
   try {
     const [v, state] = await Promise.all([
       currentVersion(userId as number),
-      db.get('SELECT built_version, katalog_stand FROM parts_summary_state WHERE user_id = $1', [userId]).catch(meldeUndLiefere('teile-zsf:get', null)),
+      db.get('SELECT built_version FROM parts_summary_state WHERE user_id = $1', [userId]).catch(meldeUndLiefere('teile-zsf:get', null)),
     ]);
-    if (state && parseInt(state.built_version) === v.v && parseInt(state.katalog_stand) === v.katalog) return true;
+    // Offene Katalogänderungen zuerst nachziehen; hält ein anderer Prozess
+    // die Sperre, ist der Stand in diesem Moment nicht gesichert.
+    const katalogNachgezogen = !v.katalogOffen || (await katalogEinmalNachziehen()) !== null;
+    if (state && parseInt(state.built_version) === v.v && katalogNachgezogen) return true;
 
     rebuildInBackground(userId, v);
 
@@ -171,6 +155,58 @@ export async function ensureFresh(userId: number | number[], opts?: { strict?: b
     console.error('[partsSummary]', e.message);
     return false;
   }
+}
+
+/** Ein Nachzug je Prozess: Die Konten eines Haushalts fragen gleichzeitig. */
+let _nachzug: ReturnType<typeof zieheKatalogNach> | null = null;
+function katalogEinmalNachziehen() {
+  _nachzug ??= zieheKatalogNach().finally(() => { _nachzug = null; });
+  return _nachzug;
+}
+
+/** Ab so vielen geänderten Nummern auf einmal (CSV-Katalogabgleich) baut jedes Konto neu. */
+const KATALOG_EINZELN_BIS = 5000;
+
+/**
+ * Offene Katalogänderungen (Migration 0079) in die Zusammenfassungen ziehen:
+ * je Konto nur die Gruppen, die eine geänderte Nummer enthalten — vorher wie
+ * nachher, denn eine neue BrickLink-Zuordnung verschiebt ein Teil in eine
+ * andere Gruppe. Konten ohne Zusammenfassung bleiben unberührt.
+ * @returns null, wenn ein anderer Prozess gerade nachzieht
+ */
+export async function zieheKatalogNach(): Promise<{ konten: number; gruppen: number } | null> {
+  return db.transaction(async (tx) => {
+    const frei = await tx.get('SELECT pg_try_advisory_xact_lock($1, 0) AS ok', [lockNamespaces.LOCKS.TEILE_KATALOG]);
+    if (!frei?.ok) return null;
+    // DELETE … RETURNING nimmt nur, was schon festgeschrieben ist; was danach
+    // eintrifft, bleibt für den nächsten Lauf stehen.
+    const nummern = [...new Set((await tx.all<{ nummer: string }>('DELETE FROM parts_katalog_offen RETURNING nummer'))
+      .map(r => r.nummer))];
+    if (!nummern.length) return { konten: 0, gruppen: 0 };
+    if (nummern.length > KATALOG_EINZELN_BIS) {
+      const r = await tx.run('DELETE FROM parts_summary_state');
+      return { konten: r?.changes ?? 0, gruppen: -1 };
+    }
+    const betroffen = await tx.all<{ user_id: number; part_key: string }>(`
+      SELECT DISTINCT p.user_id, ${blNummerSql('p.part_number')} AS part_key
+        FROM parts p
+        ${blJoin('p.part_number', 'part')}
+        JOIN parts_summary_state st ON st.user_id = p.user_id
+       WHERE COALESCE(p.source, 'set') <> 'manual'
+         AND (p.part_number = ANY($1) OR ${blNummerSql('p.part_number')} = ANY($1))
+      UNION
+      SELECT user_id, part_key FROM parts_summary WHERE part_key = ANY($1) OR part_number = ANY($1)`, [nummern]);
+    const jeKonto = new Map<number, string[]>();
+    for (const b of betroffen) jeKonto.set(b.user_id, [...(jeKonto.get(b.user_id) ?? []), b.part_key]);
+    for (const [uid, gruppen] of jeKonto) {
+      // Dieselbe Sperre wie rebuild(): Ein laufender Neuaufbau dieses Kontos
+      // wird abgewartet, damit er nicht mit älterem Katalog überschreibt.
+      await tx.get('SELECT pg_advisory_xact_lock($1, $2)', [lockNamespaces.LOCKS.TEILE_SUMMARY, uid]);
+      await tx.run('DELETE FROM parts_summary WHERE user_id = $1 AND part_key = ANY($2)', [uid, gruppen]);
+      await tx.run(zusammenfassungEinfuegen(true), [uid, gruppen]);
+    }
+    return { konten: jeKonto.size, gruppen: betroffen.length };
+  });
 }
 
 /**

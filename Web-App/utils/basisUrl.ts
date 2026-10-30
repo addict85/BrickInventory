@@ -3,14 +3,11 @@
  * erreichen ist.
  * Ausführlich: docs/begruendungen/utils/basisUrl.ts.md#basisurl
  */
+import { konfig } from './konfig';
 
 /** Die konfigurierte Adresse ohne abschliessenden Schraegstrich — oder null. */
 export function basisUrl(): string | null {
-  const roh = process.env.APP_BASE_URL;
-  if (!roh) return null;
-  const sauber = roh.replace(/\/+$/, '');
-  // Eine Variable, die nur aus Schraegstrichen besteht, ist keine Adresse.
-  return sauber || null;
+  return konfig().appBaseUrl;
 }
 
 /**

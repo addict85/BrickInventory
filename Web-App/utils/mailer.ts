@@ -10,6 +10,7 @@
 // Jetzt direkt aus utils/settings statt ueber routes/settings: Der Umweg war
 // ein Durchreichen (routes/settings exportiert den Helfer nur weiter) und
 // genau die Kante, die test/schichten.test.js meldete.
+import { konfig } from './konfig';
 import { getGlobalSetting } from './settings';
 import { ausTabelle } from './validate';
 import { fehlertext } from './httpError';
@@ -49,7 +50,7 @@ async function getFrom() {
  * Container-Log, und ein Reset-Link ist ein Zugang zum Konto. NODE_ENV taugt
  * dafür nicht: „development" steht schnell einmal auf einem echten Server.
  */
-export function linkFuerKonsole(text?: string, schalter = process.env.MAIL_KONSOLE_MIT_TOKEN): string | null {
+export function linkFuerKonsole(text?: string, schalter = konfig().mailKonsoleMitToken ? '1' : undefined): string | null {
   const url = (text || '').match(/https?:\/\/\S+/)?.[0];
   if (!url) return null;
   return schalter === '1' ? url : url.replace(/([?&]token=)[^&#\s]+/g, '$1…');

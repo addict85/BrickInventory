@@ -34,8 +34,8 @@ test('und keine Abhängigkeit braucht sie', () => {
   //   2. die Pakete mit Install-Skript sind bekannt und harmlos
   const lock = JSON.parse(fs.readFileSync(path.join(ROOT, 'package-lock.json'), 'utf8'));
   const withScript = Object.entries(lock.packages || {})
-    // Der leere Schlüssel ist das Projekt selbst — sein postinstall ist
-    // scripts/bump-version.js und hat mit nativen Erweiterungen nichts zu tun.
+    // Der leere Schlüssel ist das Projekt selbst; es hat kein Install-Skript
+    // (test/version.test.js).
     .filter(([k, v]) => k && v.hasInstallScript)
     .map(([k]) => k.replace(/^.*node_modules\//, ''));
 

@@ -43,7 +43,9 @@ Commit-Nachrichten, Kommentare, Testnamen und Oberflächentexte sind Deutsch.
 ## Prüfen vor dem Push
 
 - `npm test` im Verzeichnis `Web-App/` braucht eine Test-Datenbank
-  (`TEST_DATABASE_URL`, `REQUIRE_DB=1`) und läuft seriell.
+  (`TEST_DATABASE_URL`, `REQUIRE_DB=1`) und läuft parallel, jede Testdatei auf
+  einer eigenen Kopie einer Vorlage-Datenbank (`scripts/test-lauf.js`);
+  `npm run test:seriell` läuft wie früher nacheinander.
 - Während eines Volllaufs **keine Dateien ändern**: Viele Wächter lesen den
   Arbeitsbaum, ein halbfertiger Stand ergibt falsche Fehlschläge.
 - Ein roter Lauf ist erst dann ein Ausrutscher, wenn der Test einzeln grün

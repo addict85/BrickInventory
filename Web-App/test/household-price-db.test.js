@@ -62,6 +62,9 @@ test('das Hauptkonto sieht Marktpreis und Verlauf eines Unterkonto-Sets',
   await db.run(`INSERT INTO account_links (main_user_id,sub_user_id) VALUES ($1,$2) ON CONFLICT DO NOTHING`, [hauptId, subId]);
   await db.run(`INSERT INTO user_settings (user_id,key,value) VALUES ($1,'currency','CHF')
                 ON CONFLICT (user_id,key) DO UPDATE SET value='CHF'`, [hauptId]);
+  // Im Haushalt gilt eine Währung (utils/household.ts) — auch für das Unterkonto.
+  await db.run(`INSERT INTO user_settings (user_id,key,value) VALUES ($1,'currency','CHF')
+                ON CONFLICT (user_id,key) DO UPDATE SET value='CHF'`, [subId]);
 
   await db.run(`DELETE FROM sets WHERE set_number=$1`, [SET]);
   await db.run(`DELETE FROM price_history WHERE set_number=$1`, [SET]);

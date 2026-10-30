@@ -172,6 +172,12 @@ function katalogDesSets(setNumber: string): Promise<KatalogTeil[]> {
  * Bild stimmen; die Bilder holt danach ein Auftrag.
  * @param anreichern füllt den Katalog des Sets (jobs/partsCatalogEnrich, über utils/nacharbeit)
  */
+/**
+ * Die Teileliste eines Sets kommt ungeblättert; die Seitenangaben stehen
+ * trotzdem da, weil die App sie mit der Teileliste des Bestands teilt.
+ */
+const eineSeite = (n: number) => ({ total: n, page: 1, page_size: n });
+
 export async function teilelisteDesSets(setNum: string, anreichern: (sn: string) => Promise<unknown>) {
   const n = mitVersion(setNum), bare = ohneVersion(n);
   const invId = await neuestesInventar(setNum);
@@ -200,7 +206,7 @@ export async function teilelisteDesSets(setNum: string, anreichern: (sn: string)
       color_hex: r.color.rgb || null, rb_image_url: r.part.part_img_url || null,
       total_quantity: r.quantity, is_spare: !!r.is_spare }));
   }
-  if (!teile.length) return { parts: [], source: 'not_found' };
+  if (!teile.length) return { parts: [], source: 'not_found', ...eineSeite(0) };
 
   const katalog = new Map<string, KatalogTeil>();
   const merke = (zeilen: KatalogTeil[]) => { for (const r of zeilen) katalog.set(`${r.part_number}|${r.color_id}`, r); };
@@ -232,7 +238,7 @@ export async function teilelisteDesSets(setNum: string, anreichern: (sn: string)
   }
   await stelleAuftragEin('bilder', { set_number: setNum }, { schluessel: `bilder:${n}`, maxVersuche: 3 })
     .catch(logAndContinue(`sets:bilder einstellen ${setNum}`));
-  return { parts: [...zeilen.values()], source };
+  return { parts: [...zeilen.values()], source, ...eineSeite(zeilen.size) };
 }
 
 /**
@@ -243,7 +249,10 @@ export async function figurenlisteDesSets(setNum: string) {
   const n = mitVersion(setNum), bare = ohneVersion(n);
   const ausgabe = (f: { fig_number: string; fig_name?: string | null; quantity?: number | null; image_url?: string | null }) => ({
     fig_number: f.fig_number, fig_name: f.fig_name || f.fig_number, quantity: f.quantity || 1,
-    total_quantity: f.quantity || 1, image_url: proxyImageUrl(f.image_url) });
+    total_quantity: f.quantity || 1, image_url: proxyImageUrl(f.image_url),
+    // Dieselbe Form wie eine Figur des Bestands; die Liste hängt an keinem
+    // Konto, also ohne Zustände und Besitzer.
+    source: 'set', conditions: [] as string[], owners: [] as unknown[] });
 
   const katalog = await figurenAusKatalog(setNum);
   if (katalog.length) return { figs: katalog.map(ausgabe), source: 'catalog' };
@@ -291,7 +300,8 @@ export async function setPreis(uid: number, blickfeld: number[], sn: string) {
     const cond = await resolveSetCondition(blickfeld, sn);
     const pd = await fetchPrice(sn, cond, guideType, currency, ttlHours);
     return { set_number: sn, currency, min_price: pd.min_price, avg_price: pd.avg_price,
-      max_price: pd.max_price, qty_avg_price: pd.qty_avg_price, from_cache: pd.from_cache };
+      max_price: pd.max_price, qty_avg_price: pd.qty_avg_price, from_cache: pd.from_cache,
+      no_price: !!(pd as { no_price?: boolean }).no_price };
   } catch (e) {
     meldeUndWeiter('sets:preis', e);
     return { set_number: sn, currency, min_price: null, avg_price: null, max_price: null, qty_avg_price: null, no_price: true };

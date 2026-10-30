@@ -1,3 +1,4 @@
+import { konfig } from './konfig';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -18,7 +19,7 @@ function schluesselDatei(): string {
 /** 32 Byte aus DATA_KEY (base64) oder der Schlüsseldatei; fehlt beides, wird die Datei angelegt. */
 export function datenSchluessel(): Buffer {
   if (geladen) return geladen;
-  const env = (process.env.DATA_KEY || '').trim();
+  const env = konfig().datenSchluessel;
   if (env) {
     const k = Buffer.from(env, 'base64');
     if (k.length !== 32) throw new Error('DATA_KEY muss 32 Byte als base64 sein (openssl rand -base64 32)');

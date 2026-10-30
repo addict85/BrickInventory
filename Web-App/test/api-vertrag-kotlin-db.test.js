@@ -4,7 +4,8 @@
  *
  * Geprüft wird strenger als die App: null in einem nicht-nullbaren Feld
  * zählt, auch wenn coerceInputValues es zur Laufzeit auf den Standardwert
- * setzt. Genau dort verbog sich der Vertrag bisher still.
+ * setzt — und ebenso ein FEHLENDES Feld mit Standardwert. Ausnahmen stehen
+ * mit Grund in FEHLEN_ERLAUBT (scripts/kotlin-vertrag.js).
  *
  * Der Bestand ist so angelegt, dass die Listen nicht leer sind: ein Set mit
  * Teilen und Figur, ein manuelles Teil, eine manuelle Figur, Merkliste,
@@ -21,6 +22,13 @@
  *   B  in SetItem (SetModels.kt) ein Pflichtfeld `gibtEsNicht: String`
  *      ergänzt → rot: „fehlt (SetItem, Pflichtfeld)"
  *   C  MIN_GEPRUEFT auf 58 gesetzt → rot: „so viele Routen geprüft"
+ * Am 30.10. gemessen:
+ *   D  in utils/dienste/sets.ts `...eineSeite(…)` aus der Teileliste
+ *      entfernt → rot: „passt zum Kotlin-Modell“ nennt
+ *      parts-list.total/page/page_size: fehlt (PartsResponse, Standardwert)
+ *   E  in FEHLEN_ERLAUBT den Schlüssel für themes verbogen und einen
+ *      erfundenen ergänzt → rot: „passt zum Kotlin-Modell“ (/api/v1/sets.themes
+ *      fehlt) und „jede erlaubte Lücke gibt es noch“
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -36,7 +44,7 @@ const APP = path.join(ROOT, '..', 'Android-App', 'app', 'src', 'main', 'java', '
 const _req = require('./helpers/sources').buildAndRequire();
 const { routerEinhaengungen } = require('./helpers/sources');
 const { haeltSet, haeltTeil, haeltFigur } = require('./helpers/bestand');
-const { kotlinModelle, apiRouten, pruefe } = require(path.join(ROOT, 'scripts', 'kotlin-vertrag.js'));
+const { kotlinModelle, apiRouten, pruefe, FEHLEN_ERLAUBT } = require(path.join(ROOT, 'scripts', 'kotlin-vertrag.js'));
 const db = _req('db/database.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 
@@ -196,7 +204,7 @@ test('die Antworten passen zu den Kotlin-Modellen', { concurrency: 1, timeout: 1
     let json; try { json = JSON.parse(text); } catch { status.push(`${r.pfad}: ${antwort.status} kein JSON`); continue; }
     if (antwort.status !== 200) { status.push(`${r.pfad}: ${antwort.status} ${text.slice(0, 120)}`); continue; }
     geprueft++;
-    abweichungen.push(...pruefe(json, { art: 'klasse', name: r.typ, nullbar: false }, modelle, r.pfad));
+    abweichungen.push(...pruefe(json, { art: 'klasse', name: r.typ, nullbar: false }, modelle, r.pfad, { route: r.pfad }));
     for (const [k, v] of Object.entries(json)) if (Array.isArray(v) && v.length === 0) leer.push(`${r.pfad} .${k}`);
   }
 
@@ -204,6 +212,14 @@ test('die Antworten passen zu den Kotlin-Modellen', { concurrency: 1, timeout: 1
   await t.test('so viele Routen geprüft', () =>
     assert.ok(geprueft >= MIN_GEPRUEFT, `nur ${geprueft} Routen geprüft, erwartet mindestens ${MIN_GEPRUEFT}`));
   await t.test('passt zum Kotlin-Modell', () => assert.deepEqual(abweichungen, []));
+  await t.test('jede erlaubte Lücke gibt es noch', () => {
+    const tot = [...FEHLEN_ERLAUBT.keys()].filter((k) => {
+      const [route, feld] = k.split(' ');
+      const [klasse, name] = feld.split('.');
+      return !routen.some(r => r.pfad === route) || !modelle.get(klasse)?.felder.some(f => f.json === name);
+    });
+    assert.deepEqual(tot, [], 'Eine Ausnahme ohne Route oder Feld verdeckt nichts mehr');
+  });
   await t.test('keine Liste ist unbemerkt leer', () =>
     assert.deepEqual(leer.filter(l => !LEER_ERLAUBT.has(l)), [], 'Eine leere Liste prüft kein einziges Feld'));
   t.diagnostic(`geprüft: ${geprueft}`);

@@ -70,6 +70,8 @@ test('Teile-Preise stehen unter EINER Nummer', { concurrency: 1 }, async (t) => 
   await db.run(`DELETE FROM users WHERE username=$1`, [NUTZER]);
   await db.run(`INSERT INTO users (username,password_hash) VALUES ($1,'x')`, [NUTZER]);
   const uid = (await db.get(`SELECT id FROM users WHERE username=$1`, [NUTZER])).id;
+  // Kontowährung wie die abgefragte: Eine andere würde umgerechnet (Migration 0077).
+  await db.run(`INSERT INTO user_settings (user_id,key,value) VALUES ($1,'currency',$2)`, [uid, WAEHRUNG]);
   // Die Zuordnung steht seit Migration 0037 in bl_zuordnung (art, rb_id, bl_id).
   await db.run(`INSERT INTO bl_zuordnung (art, rb_id, bl_id) VALUES ('part',$1,$2)
                 ON CONFLICT (art, rb_id) DO UPDATE SET bl_id = EXCLUDED.bl_id`, [RB, BL]);

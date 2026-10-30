@@ -3,6 +3,7 @@ import { zieheNach, ladeSetBilder, type NacharbeitArt } from './nachErfassung';
 import { erzeugePdf, pdfAufgegeben, type PdfNutzlast } from './pdfErzeugung';
 import { fuehreCsvImportAus, csvImportAufgegeben, type CsvNutzlast } from './setCsvImport';
 import type { AuftragsArt } from '../utils/auftraege';
+import { kursauftrag } from '../utils/wechselkurse';
 
 /** Welche Art wie bearbeitet wird. Die Nutzlast hat der Einsteller geschrieben. */
 const BEARBEITER: Bearbeitertabelle = {
@@ -18,6 +19,7 @@ const BEARBEITER: Bearbeitertabelle = {
     ausfuehren: (n, k) => fuehreCsvImportAus(n as unknown as CsvNutzlast, k),
     aufgegeben: (n, fehler) => csvImportAufgegeben(n as unknown as CsvNutzlast, fehler),
   },
+  wechselkurse: { ausfuehren: () => kursauftrag() },
 };
 
 let _worker: ReturnType<typeof erzeugeWorker> | null = null;

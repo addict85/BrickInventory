@@ -21,7 +21,7 @@ import {
   ladeTeilepreiseVor, ladeFigurenpreiseVor,
   type Blickfeld,
 } from './preise';
-import { ladeSetErfassungen } from './abfragen';
+import { ladeSetErfassungen, kaufpreisSpalten, zaehle } from './abfragen';
 import { schaetzeFigurenpreis } from '../marketPrice';
 import { withOwners } from '../handlers/shared';
 import { blJoin, blNummerSql } from '../blZuordnung';
@@ -43,13 +43,11 @@ async function loadManualAcquisitions(uid: Blickfeld, kind: 'part' | 'fig', waeh
   const rows = await db.all(
     kind === 'part'
       ? `SELECT id, part_number, color_id, quantity,
-                CASE WHEN currency = $2 THEN unit_price END AS unit_price, currency, price_estimated,
-                (currency <> $2 AND unit_price IS NOT NULL) AS kaufpreis_fremd,
+                ${kaufpreisSpalten('unit_price', '$2')}, currency, price_estimated,
                 COALESCE(condition,'N') AS condition, created_at
            FROM part_acquisitions WHERE user_id = ANY($1) ORDER BY created_at ASC, id ASC`
       : `SELECT id, fig_number, quantity,
-                CASE WHEN currency = $2 THEN unit_price END AS unit_price, currency, price_estimated,
-                (currency <> $2 AND unit_price IS NOT NULL) AS kaufpreis_fremd,
+                ${kaufpreisSpalten('unit_price', '$2')}, currency, price_estimated,
                 COALESCE(condition,'N') AS condition, created_at
            FROM minifig_acquisitions WHERE user_id = ANY($1) ORDER BY created_at ASC, id ASC`,
     [uids, waehrung]
@@ -98,7 +96,7 @@ async function computeSetsValuation(viewerId: number, ids: Blickfeld) {
        ${mengeJoin('s', 'sm', '= ANY($1)')}
       WHERE s.user_id = ANY($1)`, [uids]);
   if (!sets.length) return { currency, condition: defaultCondition, guide_type: guideType, ttl_hours: ttlHours,
-    ttl_stunden: Number(ttlHours) || 24, kaufpreise_fremde_waehrung: 0, sets: [], totals: { min:'0.00', avg:'0.00', max:'0.00', qty_avg:'0.00' } };
+    ttl_stunden: Number(ttlHours) || 24, kaufpreise_fremde_waehrung: 0, kaufpreise_umgerechnet: 0, sets: [], totals: { min:'0.00', avg:'0.00', max:'0.00', qty_avg:'0.00' } };
 
   // Batch-Prefetch: Katalog-Flags, Preiscache (beide Zustände) und ALLE
   // Erfassungen in je einer Query — sonst wäre das eine Abfrage je Set.
@@ -235,7 +233,8 @@ async function computeSetsValuation(viewerId: number, ids: Blickfeld) {
     ttl_stunden: Number(ttlHours) || 24,
     // Kaufpreise in einer anderen Währung fehlen in den Summen (Kurse gibt es
     // keine); die Zahl sagt, wie viele es sind, statt sie still wegzulassen.
-    kaufpreise_fremde_waehrung: acqRows.filter(a => a.kaufpreis_fremd).length,
+    kaufpreise_fremde_waehrung: zaehle(acqRows, 'kaufpreis_fremd'),
+    kaufpreise_umgerechnet: zaehle(acqRows, 'kaufpreis_umgerechnet'),
     sets: results,
     totals: { min: aufRappen(zMin).toFixed(2), avg: aufRappen(zAvg).toFixed(2), max: aufRappen(zMax).toFixed(2), qty_avg: aufRappen(zQtyAvg).toFixed(2) },
   };
@@ -276,7 +275,7 @@ async function computeMinifigsValuation(viewerId: number, ids: Blickfeld) {
       ${blJoin('m.fig_number', 'fig', 'blzf')}
       LEFT JOIN minifigs_catalog mc ON mc.fig_number = m.fig_number
      WHERE m.user_id = ANY($1) AND m.source='manual'`, [uids]);
-  if (!manualFigs.length) return { currency, figs: [], total_value: '0.00', kaufpreise_fremde_waehrung: 0 };
+  if (!manualFigs.length) return { currency, figs: [], total_value: '0.00', kaufpreise_fremde_waehrung: 0, kaufpreise_umgerechnet: 0 };
 
   const acqByFig = await loadManualAcquisitions(uids, 'fig', String(currency));
   const figVorrat = await ladeFigurenpreiseVor(
@@ -348,7 +347,8 @@ async function computeMinifigsValuation(viewerId: number, ids: Blickfeld) {
   const results = await withOwnerNames(uids, await parallelLimit(tasks, 5));
   const total = results.reduce((s, r) => s + (inZehntel4(r.total_value) ?? 0), 0);
   return { currency, figs: results, total_value: aufRappen(total).toFixed(2),
-           kaufpreise_fremde_waehrung: fremdeKaufpreise(acqByFig) };
+           kaufpreise_fremde_waehrung: fremdeKaufpreise(acqByFig),
+           kaufpreise_umgerechnet: zaehle([...acqByFig.values()].flat(), 'kaufpreis_umgerechnet') };
 }
 
 // ── GET /api/finance/minifigs-valuation ───────────────────────────────────────
@@ -386,7 +386,7 @@ async function computePartsValuation(viewerId: number, ids: Blickfeld) {
                                       AND pcc.color_id    = p.color_id
      WHERE p.user_id = ANY($1) AND p.source = 'manual'`, [uids]);
 
-  if (!manualParts.length) return { currency, parts: [], total_value: '0.00', kaufpreise_fremde_waehrung: 0 };
+  if (!manualParts.length) return { currency, parts: [], total_value: '0.00', kaufpreise_fremde_waehrung: 0, kaufpreise_umgerechnet: 0 };
 
   // Die BrickLink-Nummern aller Teile in zwei Abfragen statt in 2×N — siehe
   // ladeBlNummernVor(). Der Schlüssel muss zeichengleich der sein, mit dem
@@ -476,7 +476,8 @@ async function computePartsValuation(viewerId: number, ids: Blickfeld) {
   // `condition` faellt aus der Huelle weg.
   // Ausführlich: docs/begruendungen/utils/finance/bewertung.ts.md#computepartsvaluation-2
   return { currency, parts: results, total_value: aufRappen(total).toFixed(2),
-           kaufpreise_fremde_waehrung: fremdeKaufpreise(acqByPart) };
+           kaufpreise_fremde_waehrung: fremdeKaufpreise(acqByPart),
+           kaufpreise_umgerechnet: zaehle([...acqByPart.values()].flat(), 'kaufpreis_umgerechnet') };
 }
 
 /** Zustände eines manuellen Eintrags aus den Erfassungen; ohne Erfassung „Neu“ (wie conditionsFromAcquisitions()). */

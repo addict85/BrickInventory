@@ -184,7 +184,7 @@ fun ScopeFilterChip(
 // Ergebnis auf" und meldete „Unresolved reference 'invoke'".
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun OwnerBadges(owners: List<HouseholdMember>, modifier: Modifier = Modifier) {
+fun OwnerBadges(owners: List<ch.brickinventoryapp.data.model.KontoName>, modifier: Modifier = Modifier) {
     if (owners.isEmpty()) return
     // FlowRow statt Row: Zwei Besitzer mit langen Namen sind breiter als die Kachel,
     // in einer Row schöben sich die Etiketten übereinander. FlowRow bricht um, damit

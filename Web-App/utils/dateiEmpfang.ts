@@ -2,6 +2,7 @@
  * Dateien entgegennehmen — die Grenzen stehen an EINER Stelle.
  * Ausführlich: docs/begruendungen/utils/dateiEmpfang.ts.md#abschnitt
  */
+import { konfig } from './konfig';
 import multer from 'multer';
 import fs from 'fs';
 import path from 'path';
@@ -68,8 +69,7 @@ export function inhaltPasstZuTyp(datei: string, mime: string): boolean {
  * sich eine Platte.
  */
 export function uploadKontingentBytes(): number {
-  const mb = Number(process.env.UPLOAD_KONTINGENT_MB);
-  return (Number.isFinite(mb) && mb > 0 ? mb : 2048) * 1024 * 1024;
+  return konfig().uploadKontingentMb * 1024 * 1024;
 }
 
 export function belegterPlatz(ordner: string): number {

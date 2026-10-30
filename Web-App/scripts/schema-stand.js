@@ -77,7 +77,7 @@ async function schemaText(db) {
 
 const BASIS = path.join(__dirname, '..', 'db', 'basis.sql');
 /** Startdaten, die eine neue Installation braucht; alles andere bleibt leer. */
-const BASIS_DATEN = ['global_settings', 'gutschein_guthaben_schranke', 'parts_katalog_stand', 'schema_migrations'];
+const BASIS_DATEN = ['global_settings', 'gutschein_guthaben_schranke', 'schema_migrations'];
 
 /**
  * db/basis.sql aus einer fertig migrierten Datenbank schreiben: Schema und

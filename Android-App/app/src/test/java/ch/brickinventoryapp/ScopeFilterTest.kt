@@ -17,8 +17,8 @@ import org.junit.Test
  */
 class ScopeFilterTest {
 
-    private fun m(id: Int, name: String, self: Boolean = false, tiefe: Int = 1) =
-        HouseholdMember(id, name, self, tiefe)
+    private fun m(id: Int, name: String, self: Boolean = false) =
+        HouseholdMember(id, name, self)
 
     @Test
     fun `ohne Unterkonten gibt es nichts zu waehlen`() {
@@ -58,9 +58,9 @@ class ScopeFilterTest {
         // tiefe = 2 — eingerückt sähe das nach einer Rangordnung aus, die es
         // nicht mehr gibt.
         val opts = ScopeFilter.options(
-            listOf(m(1, "eltern", self = true, tiefe = 0),
-                   m(2, "kind", tiefe = 1),
-                   m(3, "enkel", tiefe = 2)),
+            listOf(m(1, "eltern", self = true),
+                   m(2, "kind"),
+                   m(3, "enkel")),
             "Alle", "Eigene")
         assertEquals(
             listOf("all" to "Alle", "own" to "Eigene", "2" to "kind", "3" to "enkel"),
@@ -71,7 +71,7 @@ class ScopeFilterTest {
     fun `eine fehlende Stufe rueckt nicht ins Nichts`() {
         // Auch ein unerwarteter Wert (0 bei einem Unterkonto) ändert nichts am Namen.
         val opts = ScopeFilter.options(
-            listOf(m(1, "ich", self = true, tiefe = 0), m(2, "lea", tiefe = 0)),
+            listOf(m(1, "ich", self = true), m(2, "lea")),
             "Alle", "Eigene")
         assertEquals("lea", opts.last().second)
     }

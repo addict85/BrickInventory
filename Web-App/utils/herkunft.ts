@@ -7,6 +7,7 @@
  */
 import type { Request, Response, NextFunction } from 'express';
 import { sendeFehler } from './fehlerTexte';
+import { konfig } from './konfig';
 
 const LESEND = new Set(['GET', 'HEAD', 'OPTIONS']);
 
@@ -23,7 +24,8 @@ function eigeneHosts(req: Request): Set<string> {
   const hosts = new Set<string>();
   const kopf = String(req.headers.host || '').toLowerCase();
   if (kopf) hosts.add(kopf);
-  const basis = process.env.APP_BASE_URL ? hostVon(process.env.APP_BASE_URL) : null;
+  const adresse = konfig().appBaseUrl;
+  const basis = adresse ? hostVon(adresse) : null;
   if (basis) hosts.add(basis);
   return hosts;
 }

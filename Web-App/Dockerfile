@@ -86,7 +86,7 @@ WORKDIR /app
 # unterschiedliche Abhängigkeiten enthalten; ein Fehler aus einem transitiven
 # Update wäre nicht reproduzierbar gewesen.
 COPY package.json package-lock.json ./
-# scripts/ vor der Installation kopieren, damit der postinstall-Bump das Skript findet
+# scripts/ für die Bauschritte (build-ts, version, build-frontend).
 COPY scripts/ ./scripts/
 # npm ci statt npm install: installiert exakt die Lockfile und bricht ab, wenn
 # package.json und Lockfile auseinanderlaufen — statt die Lockfile stillschweigend
@@ -124,15 +124,14 @@ COPY startup/ ./startup/
 # ganz) erwischte; deren .ts landeten im Laufzeit-Image. Mit einem eigenen
 # Ausgabeverzeichnis stellt sich die Frage nicht mehr: Ins Runtime-Stage geht
 # nur dist/, die Quellen bleiben im Build-Stage zurück.
-RUN node scripts/build-ts.js --outdir dist
+# Die Version kommt als Build-Argument (docker-publish.yml); im Kontext liegt
+# kein .git. Ohne Argument steht „unbekannt“ in dist/version.json.
+ARG APP_VERSION=
+RUN APP_VERSION="$APP_VERSION" node scripts/build-ts.js --outdir dist
 
 # Frontend minifizieren: js/*.js, i18n.js + styles.css werden im Build-Stage komprimiert
 # (~50-60% kleiner vor gzip). Die Quelldateien im Repo bleiben lesbar.
 COPY public/ ./public/
-# Version stempeln, nachdem public/ vorhanden ist: aktualisiert package.json,
-# die Cache-Busting-Query (?v=…) in index.html und den Build-Text. Dadurch
-# entspricht die Version dem Build-Zeitpunkt (YYYY.MM.DD.HHMM).
-RUN node scripts/bump-version.js
 # Frontend bündeln statt Datei für Datei zu minifizieren.
 #
 # VORHER lieferte index.html zwölf einzelne <script>-Tags aus (i18n.js +
@@ -158,8 +157,7 @@ RUN node scripts/build-frontend.js \
 # devDependencies entfernen, BEVOR node_modules ins Laufzeit-Image geht.
 #
 # Muss nach allen Build-Schritten stehen: esbuild wird bis hierher gebraucht.
-# --ignore-scripts, weil prune sonst erneut den postinstall-Hook auslöst; der
-# Versionsstempel ist zu diesem Zeitpunkt längst gesetzt.
+# --ignore-scripts: Installationsskripte der Pakete liefen schon bei npm ci.
 RUN npm prune --omit=dev --ignore-scripts && npm cache clean --force
 
 # ── Runtime Stage ──────────────────────────────────────────────────────────────
@@ -181,18 +179,15 @@ RUN addgroup -S brickinv && adduser -S brickinv -G brickinv
 # bereinigt (siehe oben). Damit liegen esbuild, typescript, jsdom und tsx NICHT
 # im Laufzeit-Image.
 #
-# Ein zweites `npm ci --omit=dev` an dieser Stelle wäre der naheliegende Weg
-# gewesen und war der erste Versuch — er schlägt fehl: `npm ci` führt den
-# postinstall-Hook aus (scripts/bump-version.js), und scripts/ wird in dieses
-# Stage nie kopiert. Selbst mit --ignore-scripts kostete es einen zweiten
-# vollständigen Registry-Durchlauf: auf schwacher Hardware rund 45 Sekunden für
-# Pakete, die eine Stage weiter oben schon installiert sind.
+# Kein zweites `npm ci --omit=dev` hier: Es kostete einen weiteren
+# Registry-Durchlauf (auf schwacher Hardware rund 45 Sekunden) für Pakete, die
+# eine Stage weiter oben schon installiert sind.
 COPY --from=builder /app/node_modules ./node_modules
 # Der komplette transpilierte Baum in einem Rutsch: dist/server.js, dist/db/,
 # dist/routes/ (inkl. api_v1/), dist/utils/ und dist/jobs/. Ein einziges COPY
 # statt fünf — und keine Chance mehr, ein Verzeichnis zu vergessen.
 COPY --from=builder /app/dist ./dist/
-# package.json aus dem Build-Stage übernehmen (enthält die gestempelte Version)
+# package.json aus dem Build-Stage übernehmen; die Version steht in dist/version.json
 COPY --from=builder /app/package.json ./package.json
 # public/ kommt minifiziert aus dem Build-Stage
 COPY --from=builder /app/public ./public/

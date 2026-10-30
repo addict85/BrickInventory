@@ -5,6 +5,7 @@ import {
 } from '../utils/auftraege';
 import { listen, unlisten } from '../utils/pgNotify';
 import { fehlertext, logAndContinue } from '../utils/httpError';
+import { konfig } from '../utils/konfig';
 
 /** Was ein Bearbeiter vom Worker bekommt. */
 export interface AuftragsKontext {
@@ -41,8 +42,8 @@ export type Bearbeitertabelle = Partial<Record<AuftragsArt, Bearbeiter>>;
  */
 function erzeugeWorker(bearbeiter: Bearbeitertabelle, o: WorkerOptionen = {}) {
   const arten = Object.keys(bearbeiter);
-  const parallel = Math.max(1, o.parallel ?? (Number(process.env.AUFTRAG_PARALLEL) || 2));
-  const fristSek = o.fristSek ?? (Number(process.env.AUFTRAG_FRIST_SEK) || 300);
+  const parallel = Math.max(1, o.parallel ?? konfig().auftragParallel);
+  const fristSek = o.fristSek ?? konfig().auftragFristSek;
   const laufend = new Map<string, { a: AuftragsZeile; fertig: Promise<void> }>();
   let beendet = false, gestartet = false, pumpt = false;
   const zeitgeber: NodeJS.Timeout[] = [];

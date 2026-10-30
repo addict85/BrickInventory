@@ -4,9 +4,11 @@
  */
 import path from 'path';
 import fs from 'fs';
+import { konfig } from './konfig';
 
 function findRoot(): string {
-  if (process.env.APP_ROOT) return path.resolve(process.env.APP_ROOT);
+  const wurzel = konfig().appRoot;
+  if (wurzel) return path.resolve(wurzel);
   let dir = __dirname;
   for (let i = 0; i < 6; i++) {
     if (fs.existsSync(path.join(dir, 'package.json'))) return dir;

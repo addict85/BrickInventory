@@ -10,7 +10,7 @@ import { notify } from './pgNotify';
 export const AUFTRAG_KANAL = 'auftraege';
 
 /** Was im Baum als Auftrag läuft; der Worker kennt für jede Art einen Bearbeiter. */
-export type AuftragsArt = 'nacharbeit' | 'bilder' | 'pdf' | 'csv_import';
+export type AuftragsArt = 'nacharbeit' | 'bilder' | 'pdf' | 'csv_import' | 'wechselkurse';
 
 export interface AuftragsZeile {
   id: string;
