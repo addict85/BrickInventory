@@ -361,7 +361,7 @@ class PreferencesManager @Inject constructor(
 
     suspend fun saveLanguage(lang: String) {
         context.dataStore.edit { it[LANGUAGE] = lang }
-        designSpiegel.edit().putString(SPRACHE_SPIEGEL, lang).apply()
+        designSpiegel.edit { putString(SPRACHE_SPIEGEL, lang) }
     }
 
     /**
@@ -373,7 +373,7 @@ class PreferencesManager @Inject constructor(
 
     suspend fun spracheNachziehen(): String {
         val lang = language.first()
-        designSpiegel.edit().putString(SPRACHE_SPIEGEL, lang).apply()
+        designSpiegel.edit { putString(SPRACHE_SPIEGEL, lang) }
         return lang
     }
     suspend fun saveAppTheme(theme: String) {
@@ -385,7 +385,7 @@ class PreferencesManager @Inject constructor(
             // Und in den synchron lesbaren Spiegel, siehe gemerktesDesign().
             // Beides an EINER Stelle, damit die zwei Ablagen nicht
             // auseinanderlaufen koennen.
-            designSpiegel.edit().putString(APP_THEME_SPIEGEL, theme).apply()
+            designSpiegel.edit { putString(APP_THEME_SPIEGEL, theme) }
         }
     }
 
@@ -410,7 +410,7 @@ class PreferencesManager @Inject constructor(
      */
     fun nutzerCaErlaubt(): Boolean = designSpiegel.getBoolean(NUTZER_CA, false)
     fun setzeNutzerCa(an: Boolean) {
-        designSpiegel.edit().putBoolean(NUTZER_CA, an).apply()
+        designSpiegel.edit { putBoolean(NUTZER_CA, an) }
     }
 
     /**
@@ -454,7 +454,7 @@ class PreferencesManager @Inject constructor(
     }
 
     fun setzeDunkelNachSystem(an: Boolean) {
-        designSpiegel.edit().putBoolean(DUNKEL_NACH_SYSTEM, an).apply()
+        designSpiegel.edit { putBoolean(DUNKEL_NACH_SYSTEM, an) }
     }
     suspend fun clearSession() {
         _authTokenState.value = ""
