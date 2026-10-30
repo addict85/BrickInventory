@@ -26,7 +26,7 @@ type JobHttpResult = { status: number; body: string };
 // vorher landete beides im selben Ordner "part_images", was den Namen für die
 // Hälfte des Inhalts falsch machte.
 import { bildEndung, dateiTeil, zielImOrdner, ladeBild } from '../utils/bildDatei';
-import { ERLAUBTE_BILD_HOSTS } from '../utils/fremdeAdressen';
+import { ERLAUBTE_BILD_HOSTS, pfadSegment, nummernListe } from '../utils/fremdeAdressen';
 import { setzeZustand } from '../utils/laufzustand';
 import * as db from '../db/database';
 import https from 'https';
@@ -166,7 +166,7 @@ async function enrichSetParts(setNumber: string) {
     // Step 2: Fetch all parts for this set from API
 
     const apiParts: any = {}; // key: "part_num|color_id"
-    let url = `https://rebrickable.com/api/v3/lego/sets/${n}/parts/?page_size=500&inc_part_details=1`;
+    let url = `https://rebrickable.com/api/v3/lego/sets/${pfadSegment(n)}/parts/?page_size=500&inc_part_details=1`;
     while (url) {
       const data = await apiGet(url, rbKey);
       if (!data) break;
@@ -193,7 +193,7 @@ async function enrichSetParts(setNumber: string) {
       const BATCH = 500;
       for (let i = 0; i < missingBl.length; i += BATCH) {
         const batch = missingBl.slice(i, i + BATCH);
-        const blUrl = `https://rebrickable.com/api/v3/lego/parts/?part_nums=${batch.join(',')}&page_size=500`;
+        const blUrl = `https://rebrickable.com/api/v3/lego/parts/?part_nums=${nummernListe(batch)}&page_size=500`;
         const blData = await apiGet(blUrl, rbKey);
         if (!blData) continue;
         for (const part of (blData.results || [])) {
@@ -252,7 +252,7 @@ async function enrichSetParts(setNumber: string) {
 
   if (!parseInt(existingFigs?.c || 0)) {
     const figsData = await apiGet(
-      `https://rebrickable.com/api/v3/lego/sets/${n}/minifigs/?page_size=100`,
+      `https://rebrickable.com/api/v3/lego/sets/${pfadSegment(n)}/minifigs/?page_size=100`,
       rbKey
     );
     if (figsData?.results?.length) {
@@ -503,7 +503,7 @@ async function enrichSetMinifigs(setNumber: string) {
     const BATCH = 500;
     for (let i = 0; i < needsBl.length; i += BATCH) {
       const batch = needsBl.slice(i, i + BATCH);
-      const url = `https://rebrickable.com/api/v3/lego/parts/?part_nums=${batch.join(',')}&page_size=500`;
+      const url = `https://rebrickable.com/api/v3/lego/parts/?part_nums=${nummernListe(batch)}&page_size=500`;
       const data = await apiGet(url, rbKey);
       if (!data) continue;
       for (const p of (data.results || [])) {

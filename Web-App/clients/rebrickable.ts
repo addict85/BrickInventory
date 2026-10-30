@@ -18,7 +18,7 @@ import { neuestesInventar } from '../utils/rbInventar';
 import { mitVersion } from '../utils/setNummer';
 import { getGlobalSetting } from '../utils/settings';
 import { ERLAUBTE_DOWNLOAD_HOSTS, hostErlaubt, naechsteUmleitung,
-         UMLEITUNGS_GRENZE } from '../utils/fremdeAdressen';
+         UMLEITUNGS_GRENZE, pfadSegment } from '../utils/fremdeAdressen';
 
 const BASE = 'https://rebrickable.com/api/v3';
 
@@ -150,7 +150,7 @@ const themeCache = new Map();
 async function getThemeName(themeId: number | string) {
   if (!themeId) return null;
   if (themeCache.has(themeId)) return themeCache.get(themeId);
-  try { const d = await rbGet(`/lego/themes/${themeId}/`); const name = d?.name||null; themeCache.set(themeId, name); return name; }
+  try { const d = await rbGet(`/lego/themes/${pfadSegment(themeId)}/`); const name = d?.name||null; themeCache.set(themeId, name); return name; }
   catch (_) { return null; }
 }
 
@@ -162,7 +162,7 @@ async function getSetInfo(setNumber: string) {
   // Erfassen den echten Namen im Katalog. Nachgefragt wird höchstens täglich.
   if (cached?.name && cached.name !== `Set ${n}`) return cached;
   if (cached?.name && cached.fetched_at && Date.now() - new Date(cached.fetched_at).getTime() < 86_400_000) return null;
-  const data = await rbGet(`/lego/sets/${n}/`);
+  const data = await rbGet(`/lego/sets/${pfadSegment(n)}/`);
   if (!data) {
     const hasKey = !!(await getRbKey());
     await db.run('INSERT INTO catalog_cache (set_number, name, is_gear) VALUES ($1,$2,$3) ON CONFLICT (set_number) DO UPDATE SET is_gear=$3, fetched_at=NOW()',
@@ -230,7 +230,7 @@ async function getAllSetPartsApi(setNumber: string) {
   const key = await getRbKey();
   if (!key) throw new Error('Rebrickable API Key nicht konfiguriert.');
   const allParts: any[] = [];
-  let url = `${BASE}/lego/sets/${n}/parts/?page_size=500&inc_part_details=1`;
+  let url = `${BASE}/lego/sets/${pfadSegment(n)}/parts/?page_size=500&inc_part_details=1`;
   let pages = 0;
   while (url && pages++ < 40) {
     if (!await consumeRebrickableDaily()) {
@@ -266,7 +266,7 @@ async function getAllSetPartsApi(setNumber: string) {
 async function scrapeInstructions(setNumber: string) {
   const n = mitVersion(setNumber);
   try {
-    const { status, body } = await httpsGetRobust(`https://rebrickable.com/sets/${n}/`, { 'User-Agent': 'Mozilla/5.0', 'Accept': 'text/html' }, 8000);
+    const { status, body } = await httpsGetRobust(`https://rebrickable.com/sets/${pfadSegment(n)}/`, { 'User-Agent': 'Mozilla/5.0', 'Accept': 'text/html' }, 8000);
     if (status !== 200) return [];
     const found: any[] = [];
     for (const re of [/href="(https?:\/\/[^"]*lego\.com[^"]*\.pdf[^"]*)"/gi, /href="(https?:\/\/cdn\.rebrickable\.com\/media\/instructions[^"]+\.pdf[^"]*)"/gi, /href="(https?:\/\/assets\.lego\.com[^"]*\.pdf[^"]*)"/gi]) {
@@ -366,7 +366,7 @@ async function getSetMinifigs(setNumber: string) {
     // Use background limiter — this is called from background jobs
     await rebrickableBackgroundLimiter.waitForSlot();
     const { status, body } = await httpsGetRobust(
-      `${BASE}/lego/sets/${n}/minifigs/?page_size=100`,
+      `${BASE}/lego/sets/${pfadSegment(n)}/minifigs/?page_size=100`,
       { Authorization: `key ${key}` }, 30000
     );
     if (status !== 200) return [];
@@ -388,7 +388,7 @@ async function getSetMinifigs(setNumber: string) {
 // ── Single minifig lookup ─────────────────────────────────────────────────────
 async function getMinifigInfo(figNumber: string) {
   try {
-    const data = await rbGet(`/lego/minifigs/${figNumber}/`);
+    const data = await rbGet(`/lego/minifigs/${pfadSegment(figNumber)}/`);
     if (!data) return null;
     return {
       fig_number: data.set_num || figNumber,
@@ -438,7 +438,7 @@ async function getMinifigParts(figNumber: string) {
   try {
     await rebrickableLimiter.waitForSlot();
     const { status, body } = await httpsGetRobust(
-      `${BASE}/lego/minifigs/${encodeURIComponent(figNumber)}/parts/?page_size=200&inc_part_details=1`,
+      `${BASE}/lego/minifigs/${pfadSegment(figNumber)}/parts/?page_size=200&inc_part_details=1`,
       { Authorization: `key ${key}` }, 30000
     );
     if (status !== 200) return [];
@@ -551,7 +551,7 @@ async function blTeilZuRb(blId: string): Promise<string | null> {
   // Bei den meisten Teilen benutzen beide Dienste dieselbe Nummer. Dann
   // liefert /lego/parts/{nr}/ den Treffer, und external_ids bestaetigt ihn —
   // aus einer VERMUTUNG („die Nummern sind wohl gleich") wird eine Abbildung.
-  const direkt = await rbGet(`/lego/parts/${encodeURIComponent(blId)}/`).catch(() => null);
+  const direkt = await rbGet(`/lego/parts/${pfadSegment(blId)}/`).catch(() => null);
   if (direkt && traegtBlNummer(direkt, blId)) return String(direkt.part_num);
 
   // ── Weg 2: der Filter, mit Gegenpruefung ────────────────────────────────

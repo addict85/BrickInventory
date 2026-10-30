@@ -6,6 +6,7 @@ import { downloadFile, scrapeInstructions, sleep, httpsGetRobust } from '../clie
 import * as brickset from '../clients/brickset';
 import { meldeUndWeiter, fehlertext, logAndContinue, meldeUndLiefere } from './httpError';
 import { mitVersion, ohneVersion } from './setNummer';
+import { pfadSegment } from './fremdeAdressen';
 
 /**
  * Bauanleitungen beschaffen: Rebrickable → Brickset → BrickLink-Designer →
@@ -103,7 +104,7 @@ export async function loescheAnleitungen(setNumber: string) {
  * @returns null, wenn dort nichts liegt
  */
 async function brickinstructionsFund(n: string) {
-  const baseNum = ohneVersion(n);
+  const baseNum = pfadSegment(ohneVersion(n));
   const folder  = String(Math.floor(parseInt(baseNum) / 1000) * 1000).padStart(5, '0');
   const baseUrl = `https://lego.brickinstructions.com/instructions/${folder}/${baseNum}`;
   const pageUrl = `https://lego.brickinstructions.com/lego_instructions/set/${baseNum}/`;
@@ -189,7 +190,7 @@ async function downloadSetInstructions(setNumber: string,
   if (!instrList.length && bricksetSucceededEmpty) {
     try {
       const baseNum  = ohneVersion(n);
-      const bdpUrl   = `https://bdpinstructions.s3.amazonaws.com/${baseNum}.pdf`;
+      const bdpUrl   = `https://bdpinstructions.s3.amazonaws.com/${pfadSegment(baseNum)}.pdf`;
       const safeBase = n.replace(/[^a-z0-9-]/gi, '_');
       const pdfName  = `${safeBase}_bdp.pdf`;
       const instrDir = INSTRUCTIONS_DIR;

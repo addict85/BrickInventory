@@ -7,6 +7,7 @@ import { getAllSetParts, type RbSetTeil } from '../clients/rebrickable';
 import { fehlertext, logAndContinue, meldeUndWeiter } from './httpError';
 import { getGlobalSetting } from '../utils/settings';
 import { mitVersion } from './setNummer';
+import { nummernListe } from './fremdeAdressen';
 import { merkeBlNummer, merkeBlNummern, merkeBlNummerUnveraendert } from './blZuordnung';
 import { merkeSetTeile, type SetTeilZeile } from './katalogPflege';
 import { stelleAuftragEin } from './auftraege';
@@ -137,7 +138,7 @@ async function fetchMissingBlIds() {
       if (!await consumeRebrickableDaily()) break;
       await rebrickableBackgroundLimiter.waitForSlot();
       const batch: string[] = missing.slice(i, i + BATCH).map(r => r.part_number);
-      const result = await holeSeite(`https://rebrickable.com/api/v3/lego/parts/?part_nums=${batch.join(',')}&page_size=500`, rbKey);
+      const result = await holeSeite(`https://rebrickable.com/api/v3/lego/parts/?part_nums=${nummernListe(batch)}&page_size=500`, rbKey);
       if (result.status === 429) {
         await new Promise(r => setTimeout(r, parseThrottleWait(result.body)));
         i -= BATCH; continue;

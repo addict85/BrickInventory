@@ -99,3 +99,20 @@ export function naechsteUmleitung(
       gefiltert[k] = v;
   return { url: ziel.href, kopfzeilen: gefiltert };
 }
+
+/**
+ * Ein Wert als genau EIN Pfadsegment einer fremden Adresse. Setnummern und
+ * Teilenummern kommen teils aus Anfragen; roh eingesetzt würden „/", „?" oder
+ * „.." den Pfad bei Rebrickable oder S3 verlassen. Punktsegmente bleiben auch
+ * kodiert welche (URL-Standard), deshalb werfen sie.
+ */
+export function pfadSegment(wert: string | number): string {
+  const s = String(wert);
+  if (!s || /^\.+$/.test(s)) throw new Error(`Ungültiges Pfadsegment: „${s.slice(0, 40)}"`);
+  return encodeURIComponent(s);
+}
+
+/** Mehrere Nummern für einen Anfrageparameter wie `part_nums=a,b`. */
+export function nummernListe(werte: readonly unknown[]): string {
+  return werte.map(w => encodeURIComponent(String(w))).join(',');
+}
