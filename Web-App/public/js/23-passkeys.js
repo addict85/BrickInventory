@@ -22,14 +22,14 @@ const mitIds = (liste) => (liste || []).map(c => ({ ...c, id: zuPuffer(c.id) }))
 export const passkeysMoeglich = () => !!(window.PublicKeyCredential && window.isSecureContext && navigator.credentials);
 
 async function erzeuge(o) {
-  const c = await navigator.credentials.create({ publicKey: {
+  const c = /** @type {PublicKeyCredential} */ (await navigator.credentials.create({ publicKey: {
     ...o, challenge: zuPuffer(o.challenge), user: { ...o.user, id: zuPuffer(o.user.id) },
-    excludeCredentials: mitIds(o.excludeCredentials) } });
+    excludeCredentials: mitIds(o.excludeCredentials) } }));
+  const r = /** @type {AuthenticatorAttestationResponse} */ (c.response);
   return { id: c.id, rawId: zuText(c.rawId), type: c.type, clientExtensionResults: c.getClientExtensionResults(),
     authenticatorAttachment: c.authenticatorAttachment ?? undefined,
-    response: { clientDataJSON: zuText(c.response.clientDataJSON),
-      attestationObject: zuText(c.response.attestationObject),
-      transports: c.response.getTransports ? c.response.getTransports() : [] } };
+    response: { clientDataJSON: zuText(r.clientDataJSON), attestationObject: zuText(r.attestationObject),
+      transports: r.getTransports ? r.getTransports() : [] } };
 }
 
 /** Eine Anmeldeantwort für `zweck` holen; null, wenn abgebrochen. */
@@ -37,15 +37,17 @@ async function bestaetige(zweck) {
   const o = await api('POST', '/v1/auth/passkey/anmelden/optionen', { zweck });
   if (!o?.success) { toast(o?.error || tRaw('settings.error'), 'error'); return null; }
   const p = o.optionen;
+  /** @type {PublicKeyCredential} */
   let c;
   try {
-    c = await navigator.credentials.get({ publicKey: { ...p, challenge: zuPuffer(p.challenge),
-      allowCredentials: mitIds(p.allowCredentials) } });
+    c = /** @type {PublicKeyCredential} */ (await navigator.credentials.get({ publicKey: { ...p,
+      challenge: zuPuffer(p.challenge), allowCredentials: mitIds(p.allowCredentials) } }));
   } catch { toast(tRaw('pk.abgebrochen'), 'info'); return null; }
+  const r = /** @type {AuthenticatorAssertionResponse} */ (c.response);
   return { id: c.id, rawId: zuText(c.rawId), type: c.type, clientExtensionResults: c.getClientExtensionResults(),
-    response: { clientDataJSON: zuText(c.response.clientDataJSON),
-      authenticatorData: zuText(c.response.authenticatorData), signature: zuText(c.response.signature),
-      ...(c.response.userHandle ? { userHandle: zuText(c.response.userHandle) } : {}) } };
+    response: { clientDataJSON: zuText(r.clientDataJSON),
+      authenticatorData: zuText(r.authenticatorData), signature: zuText(r.signature),
+      ...(r.userHandle ? { userHandle: zuText(r.userHandle) } : {}) } };
 }
 
 // ── Anmeldeseite ─────────────────────────────────────────────────────────────
@@ -78,7 +80,7 @@ export async function ladePasskeys() {
   const f = flaeche();
   if (!f) return;
   const d = await api('GET', '/v1/auth/passkeys');
-  if (!d?.success) { f.innerHTML = `<div class="voucher-leer">${t('settings.error')}</div>`; return; }
+  if (!d?.success || !Array.isArray(d.passkeys)) { f.innerHTML = `<div class="voucher-leer">${t('settings.error')}</div>`; return; }
   const liste = d.passkeys.length
     ? `<div class="tw"><table class="dt"><thead><tr><th>${t('pk.col.name')}</th><th>${t('tokens.col.created')}</th>
         <th>${t('tokens.col.last_used')}</th><th>${t('users.col.actions')}</th></tr></thead><tbody>${

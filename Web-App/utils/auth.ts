@@ -600,6 +600,11 @@ function nutzerName(req: Request): string | null {
   return req.session?.username ?? (req as any).apiUser?.username ?? null;
 }
 
+/** Kam die Anfrage mit einer Browser-Sitzung (nicht mit einem Token)? Für Schritte, die nur dort gehen. */
+function perSitzung(req: Request): boolean {
+  return !!req.session?.userId;
+}
+
 function istVerwalter(req: Request): boolean {
   if (req.session?.isAdmin) return true;
   return !!(req as any).apiUser?.is_admin;
@@ -849,7 +854,7 @@ async function purgeExpiredTokens() {
 
 export {
   validateToken, invalidateToken, leereTokenCache, horcheAufTokenWiderruf, flaggeGesetzt, resolveUserId, requireLoginOrToken, nutzerId, angemeldeteNutzerId, istVerwalter, nutzerName, hashToken, deleteToken,
-  verifiziereEmailToken,
+  verifiziereEmailToken, perSitzung,
   revokeAllTokens, revokeAllSessions, beendeAndereZugaenge, purgeExpiredTokens, loginOrTokenGuard, TOKEN_IDLE_DAYS,
   pruefeToken, rotiereToken, rotationFaellig, rotationPflicht, ipBereich, UNBEGRENZT,
   laufzeitTage,

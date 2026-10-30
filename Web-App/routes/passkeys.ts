@@ -4,7 +4,7 @@
  */
 import express from 'express';
 import { handleRouteError, pfadParam } from '../utils/httpError';
-import { requireLoginOrToken, angemeldeteNutzerId, assertLoginAllowed, establishSession, flaggeGesetzt } from '../utils/auth';
+import { requireLoginOrToken, angemeldeteNutzerId, assertLoginAllowed, establishSession, flaggeGesetzt, perSitzung } from '../utils/auth';
 import { bestaetigePasswort } from '../utils/passwortBestaetigung';
 import { ipThrottle } from '../utils/loginLimiter';
 import { sendeFehler } from '../utils/fehlerTexte';
@@ -29,7 +29,7 @@ router.get('/passkeys', requireLoginOrToken, async (req, res) => {
 // Eine erbeutete Sitzung oder ein Token allein soll keinen dauerhaften Zugang prägen.
 router.post('/passkey/registrieren/optionen', requireLoginOrToken, async (req, res) => {
   try {
-    if (!req.session?.userId) return sendeFehler(req, res, 403, 'nur_mit_sitzung');
+    if (!perSitzung(req)) return sendeFehler(req, res, 403, 'nur_mit_sitzung');
     const uid = angemeldeteNutzerId(req);
     if (!await bestaetigePasswort(req, res, uid, req.body?.password)) return;
     const konto = await K.kontoKurz(uid);
@@ -41,7 +41,7 @@ router.post('/passkey/registrieren/optionen', requireLoginOrToken, async (req, r
 
 router.post('/passkey/registrieren', requireLoginOrToken, async (req, res) => {
   try {
-    if (!req.session?.userId) return sendeFehler(req, res, 403, 'nur_mit_sitzung');
+    if (!perSitzung(req)) return sendeFehler(req, res, 403, 'nur_mit_sitzung');
     const neu = await P.registrierungPruefen(angemeldeteNutzerId(req), req.body?.antwort, passkeyName(req.body?.name));
     if (!neu) return sendeFehler(req, res, 400, 'passkey_ungueltig');
     res.json({ success: true, passkey: neu });
