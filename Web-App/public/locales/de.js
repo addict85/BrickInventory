@@ -689,6 +689,8 @@ window.I18N_DE = {
   'finance.sum': 'Summe',
   'finance.price_missing_n': 'Marktpreis fehlt für {n} Positionen',
   'finance.price_missing_n_one': 'Marktpreis fehlt für {n} Position',
+  'finance.fremde_waehrung_n': '{n} Kaufpreise in anderer Währung nicht eingerechnet',
+  'finance.fremde_waehrung_n_one': '{n} Kaufpreis in anderer Währung nicht eingerechnet',
   'finance.range': 'Spanne {min} – {max}',
   'finance.stat.pnl': 'Gesamt G&V',
   'finance.not_loaded': 'Preise noch nicht geladen',

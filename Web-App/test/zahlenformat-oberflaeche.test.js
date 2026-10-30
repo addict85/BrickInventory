@@ -18,7 +18,8 @@ const SET = { set_number: '10300-1', name: 'Zeitmaschine', year: 2022, theme: 'I
 const ANTWORTEN = {
   '/v1/sets': { success: true, sets: [SET], total: 1, themes: [] },
   '/v1/finance/pnl': { success: true, currency: 'EUR', sets: [
-    { set_number: '10300-1', quantity: 1, current_price: 411.9, pnl_pct: 51.1, baseline_price: 272.5 }], totals: {} },
+    { set_number: '10300-1', quantity: 1, current_price: 411.9, pnl_pct: 51.1, baseline_price: 272.5,
+      kachel_preis: 411.9, kachel_pnl_pct: 51.1 }], totals: {} },
 };
 
 for (const [sprache, browser, preis, guv] of [['de', 'de-DE', '411,90 €', '+51,1 %'], ['en', 'en-GB', '€411.90', '+51.1%']]) {

@@ -18,6 +18,7 @@ export function ladeSetErfassungen(uids: number[], waehrung: string): Promise<an
   return db.all(
     `SELECT id, set_number, quantity,
             CASE WHEN currency = $2 THEN purchase_price END AS purchase_price,
+            (currency <> $2 AND purchase_price IS NOT NULL) AS kaufpreis_fremd,
             currency, price_estimated,
             COALESCE(condition, 'N') AS condition, created_at
        FROM set_acquisitions

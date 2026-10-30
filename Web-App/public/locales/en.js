@@ -676,6 +676,8 @@ window.I18N_EN = {
   'finance.sum': 'Total',
   'finance.price_missing_n': 'Market price missing for {n} items',
   'finance.price_missing_n_one': 'Market price missing for {n} item',
+  'finance.fremde_waehrung_n': '{n} purchase prices in another currency not included',
+  'finance.fremde_waehrung_n_one': '{n} purchase price in another currency not included',
   'finance.range': 'Range {min} – {max}',
   'finance.stat.pnl': 'Total P&L',
   'finance.not_loaded': 'Prices not yet loaded',

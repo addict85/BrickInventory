@@ -28,11 +28,11 @@ function antworten({ mitPreis }) {
     '/v1/finance/valuation': { success: true, currency: 'EUR',
       totals: { min: mitPreis ? '650' : '0', avg: String(setPreis), max: mitPreis ? '760' : '0' },
       sets: [
-        { set_number: '10294-1', name: 'Titanic', quantity: 1, purchase_price: 629, avg_price: setPreis, total_avg: String(setPreis),
-          acquisitions: [{ id: 1, condition: 'N', quantity: 1, purchase_price: 629, avg_price: setPreis || null }],
+        { set_number: '10294-1', name: 'Titanic', quantity: 1, purchase_price: 629, avg_price: setPreis, total_avg: String(setPreis), wert_gesamt: setPreis,
+          acquisitions: [{ id: 1, condition: 'N', quantity: 1, purchase_price: 629, avg_price: setPreis || null, wert_gesamt: setPreis }],
           ...(mitPreis ? {} : { error: '10294-1 — kein BrickLink-Preis gefunden' }) },
-        { set_number: '42143-1', name: 'Ferrari', quantity: 1, purchase_price: 399, avg_price: 0, total_avg: '0',
-          acquisitions: [{ id: 2, condition: 'N', quantity: 1, purchase_price: 399 }], error: 'kein Preis' },
+        { set_number: '42143-1', name: 'Ferrari', quantity: 1, purchase_price: 399, avg_price: 0, total_avg: '0', wert_gesamt: 0,
+          acquisitions: [{ id: 2, condition: 'N', quantity: 1, purchase_price: 399, wert_gesamt: 0 }], error: 'kein Preis' },
       ] },
     '/v1/finance/parts-valuation': { success: true, currency: 'EUR', total_value: '0',
       parts: [{ part_number: '3001', part_name: 'Brick 2 x 4', color_name: 'Red', quantity: 7, purchase_price: 9.99, avg_price: 0,
@@ -41,7 +41,7 @@ function antworten({ mitPreis }) {
       figs: [{ fig_number: 'fig-1', fig_name: 'Chewbacca', quantity: 1, avg_price: 0, acquisitions: [] }] },
     '/v1/finance/pnl': { success: true, currency: 'EUR', sets: [],
       totals: { purchase: '1097.93', sets_purchase: '1028.00', parts_purchase: '69.93', figs_purchase: '0.00',
-                grand_total: String(setPreis), pnl_pct: mitPreis ? 11.3 : null,
+                grand_total: String(setPreis), pnl_pct: mitPreis ? 11.3 : null, pnl_prozent: mitPreis ? 11.3 : null,
                 pnl_purchase: mitPreis ? '629.00' : '0.00', pnl_current: mitPreis ? '700.00' : '0.00' } },
   };
 }
