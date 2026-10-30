@@ -32,9 +32,7 @@ function lauf(dateien, n, env) {
   const vorlader = env.TEST_DB_VORLAGE ? ['--require', path.join(ROOT, 'test', 'helpers', 'eigene-db.js')] : [];
   return new Promise((fertig) => {
     const p = spawn(process.execPath,
-      // --test-force-exit: Eine Datei, deren Tests fertig sind, deren Prozess aber
-      // an einem offenen Handle (Chrome, Pool) hängt, hielte sonst den Lauf auf.
-      [...vorlader, '--test', `--test-concurrency=${n}`, '--test-timeout=60000', '--test-force-exit', ...dateien],
+      [...vorlader, '--test', `--test-concurrency=${n}`, '--test-timeout=60000', ...dateien],
       { cwd: ROOT, stdio: 'inherit', env: { ...process.env, ...env } });
     p.on('exit', (code) => fertig(code ?? 1));
   });
