@@ -20,6 +20,8 @@ import { resolveUserId, escapeLike, requireLoginOrToken, nutzerId, angemeldeteNu
 import { bearerToken } from './api_v1/middleware';
 import { sendMail, testSmtp } from '../utils/mailer';
 import { sendeFehler } from '../utils/fehlerTexte';
+import { tlsStand } from '../utils/tlsWurzel';
+import { konfig } from '../utils/konfig';
 
 // ── Öffentlich: aktuelles App-Design — vor router.use(requireLogin), denn
 // Anmelde- und Startbildschirm brauchen es; es verrät nichts über Konten.
@@ -61,6 +63,9 @@ router.get('/tokens', requireLoginOrToken, async (req: LoggedInRequest, res) => 
       expires_at:   t.expires_at,
       hard_expires_at: t.hard_expires_at,
       never_expires: !t.expires_at,
+      scope:        t.scope,
+      ip_bereich:   t.ip_bereich,
+      rotiert_am:   t.rotiert_am,
       aktuell:      t.token === eigenerHash,
     }))});
   } catch (e) { handleRouteError(res, e, undefined, req); }
@@ -89,6 +94,19 @@ router.post('/sessions/andere-beenden', requireLogin, async (req: LoggedInReques
 });
 
 router.use(requireLogin);
+
+/**
+ * GET /api/v1/settings/tls — der Fingerabdruck der internen CA zum Abgleich
+ * von Hand; derselbe Wert steht als `fp` im QR-Code der App.
+ */
+router.get('/tls', async (req, res) => {
+  try {
+    const stand = await tlsStand();
+    res.json({ success: true, https: konfig().hinterTls,
+      ...(stand ? { fp: stand.fp, fp_hex: stand.fp_hex, subject: stand.subject,
+                    gueltig_bis: stand.gueltig_bis, download: '/ca.crt' } : { fp: null }) });
+  } catch (e) { handleRouteError(res, e, undefined, req); }
+});
 
 // GET /api/settings ist ENTFERNT
 // Sie lieferte GENAU DASSELBE wie GET /raw achtzig Zeilen weiter unten —

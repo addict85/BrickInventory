@@ -38,6 +38,10 @@ export interface Konfig {
   csvZeileFristMs: number;
   auftragParallel: number;
   auftragFristSek: number;
+  /** Wurzelzertifikat der internen CA (Caddy), PEM; null: keine eigene CA. */
+  caZertifikat: string | null;
+  /** APP_BASE_URL beginnt mit https:// — der Server steht hinter TLS. */
+  hinterTls: boolean;
 }
 
 /** Vorgaben, die auch andere Module nennen (utils/sitzungsFrist.ts). */
@@ -60,7 +64,7 @@ export const VARIABLEN = [
   'PG_POOL_MAX', 'PG_POOL_MIN', 'PG_IDLE_MS', 'PG_CONN_MS', 'PG_STMT_MS', 'ADMIN_PASSWORD',
   'APP_BASE_URL', 'APP_ROOT', 'APP_VERSION', 'DATA_KEY', 'ERFASSUNG_ZEITZONE', 'TZ',
   'PRICE_HISTORY_KEEP_DAYS', 'UPLOAD_KONTINGENT_MB', 'MAIL_KONSOLE_MIT_TOKEN', 'IMG_USER_AGENT',
-  'CSV_ZEILE_FRIST_MS', 'AUFTRAG_PARALLEL', 'AUFTRAG_FRIST_SEK',
+  'CSV_ZEILE_FRIST_MS', 'AUFTRAG_PARALLEL', 'AUFTRAG_FRIST_SEK', 'CA_ZERTIFIKAT',
 ] as const;
 
 /** Liest eine ganze Zahl in [min, max]; leer heisst Vorgabe. */
@@ -135,7 +139,7 @@ export function ladeKonfig(env: Umgebung = process.env): Konfig {
     cookieSecure: schalter(env, 'COOKIE_SECURE', f),
     sitzungLeerlaufMin: ganzzahl(env, 'SESSION_IDLE_MINUTES', VORGABE.sitzungLeerlaufMin, 1, 525_600, f),
     sitzungHoechstStd: ganzzahl(env, 'SESSION_MAX_HOURS', VORGABE.sitzungHoechstStd, 1, 87_600, f),
-    tokenLeerlaufTage: ganzzahl(env, 'TOKEN_IDLE_DAYS', 90, 0, 36_500, f),
+    tokenLeerlaufTage: ganzzahl(env, 'TOKEN_IDLE_DAYS', 90, 1, 36_500, f),
     webWorkers: ganzzahl(env, 'WEB_WORKERS', 0, 0, 256, f),
     pgPoolMax,
     pgPoolMin: ganzzahl(env, 'PG_POOL_MIN', 2, 0, 1000, f),
@@ -156,9 +160,20 @@ export function ladeKonfig(env: Umgebung = process.env): Konfig {
     csvZeileFristMs: ganzzahl(env, 'CSV_ZEILE_FRIST_MS', 120_000, 1, 86_400_000, f),
     auftragParallel: ganzzahl(env, 'AUFTRAG_PARALLEL', 2, 1, 64, f),
     auftragFristSek: ganzzahl(env, 'AUFTRAG_FRIST_SEK', 300, 1, 86_400, f),
+    caZertifikat: env.CA_ZERTIFIKAT?.trim() || null,
+    hinterTls: !!basis && /^https:\/\//i.test(basis),
   };
   if (f.length) throw new KonfigFehler(f);
   return k;
+}
+
+/**
+ * Das Sitzungscookie nur über TLS: in Produktion und immer, wenn APP_BASE_URL
+ * mit https:// beginnt (hinter Caddy). COOKIE_SECURE=0 ist die bewusste
+ * Ausnahme für einen Betrieb ohne TLS.
+ */
+export function cookieSicher(k: Konfig): boolean {
+  return k.cookieSecure ?? (k.produktion || k.hinterTls);
 }
 
 let _signatur: string | null = null;

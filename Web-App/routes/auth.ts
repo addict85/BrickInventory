@@ -7,7 +7,9 @@ import bcrypt from 'bcryptjs';
 import * as K from '../utils/konten';
 import { meldeHaushaltsaenderung } from '../utils/household';
 import { handleRouteError, logAndContinue, meldeUndWeiter, fehlerCode, fehlertext, pfadParam } from '../utils/httpError';
-import { hashToken, pruefeAnmeldedaten, createToken, validateToken, assertLoginAllowed, establishSession, revokeAllTokens, revokeAllSessions, beendeAndereZugaenge, deleteToken, BCRYPT_ROUNDS, USERNAME_RE, EMAIL_RE, requireLoginOrToken, nutzerId, angemeldeteNutzerId, appTokenOhneAblauf, passwortZuKurz, flaggeGesetzt, leereTokenCache, laufzeitTage } from '../utils/auth';
+import { hashToken, pruefeAnmeldedaten, createToken, pruefeToken, assertLoginAllowed, establishSession, revokeAllTokens, revokeAllSessions, beendeAndereZugaenge, deleteToken, BCRYPT_ROUNDS, USERNAME_RE, EMAIL_RE, requireLoginOrToken, nutzerId, angemeldeteNutzerId, passwortZuKurz, flaggeGesetzt, leereTokenCache, laufzeitTage, rotiereToken, rotationFaellig, UNBEGRENZT, UEBERLAPPUNG_MS } from '../utils/auth';
+import type { TokenScope } from '../utils/auth';
+import { tlsStand } from '../utils/tlsWurzel';
 import { ipThrottle, bestaetigungGesperrt, bestaetigungFehlgeschlagen, bestaetigungGelungen } from '../utils/loginLimiter';
 import { bestaetigePasswort } from '../utils/passwortBestaetigung';
 import crypto from 'crypto';
@@ -42,22 +44,36 @@ function tokenLabel(roh: unknown, vorgabe: string): string {
   return text ? Array.from(text).slice(0, LABEL_MAX).join('') : vorgabe;
 }
 
+/** Der gewünschte Geltungsbereich; alles ausser „voll“ ist `app`. */
+function tokenScope(roh: unknown): TokenScope { return roh === 'voll' ? 'voll' : 'app'; }
+
+/**
+ * Was die App über ihren Token wissen muss, in jeder Antwort gleich geformt.
+ * `expires_at` ist die frühere der beiden Fristen, `null` nur bei „unbegrenzt“.
+ */
+async function tokenAngaben(klartext: string) {
+  const z = await K.tokenStand(hashToken(klartext));
+  return z ? { scope: z.scope, expires_at: z.expires_at, hard_expires_at: z.hard_expires_at,
+               never_expires: flaggeGesetzt(z.never_expires), rotiert_am: z.rotiert_am } : null;
+}
+
 /**
  * POST /api/v1/auth/login — die EINE Anmeldung, fuer Webapp und App.
  * Ausführlich: docs/begruendungen/routes/auth.ts.md#post-login
  */
 router.post('/login', async (req, res) => {
-  const { username, password, label, never_expires, code: zweiterCode, ohne_token } = req.body;
+  const { username, password, label, never_expires, code: zweiterCode, ohne_token, scope, passkey } = req.body;
   try {
     // Form des Namens, Brute-Force-Sperre, Passwortvergleich, die
     // Konto-Vorbedingungen und der zweite Faktor stehen in utils/auth.ts.
-    const pruefung = await pruefeAnmeldedaten(req, username, password, zweiterCode);
+    const pruefung = await pruefeAnmeldedaten(req, username, password, zweiterCode, passkey);
     if (!pruefung.ok) {
-      const { status, code, vars, unverified, zweiterFaktor } = pruefung.absage;
+      const { status, code, vars, unverified, zweiterFaktor, passkey: mitPasskey } = pruefung.absage;
       // `zweiter_faktor` sagt dem Client: Codefeld zeigen und erneut senden.
+      // `passkey`: Statt des Codes geht auch ein Passkey (Feld `passkey` beim erneuten Senden).
       if (zweiterFaktor) {
         return res.status(status).json({
-          success: false, code, zweiter_faktor: true,
+          success: false, code, zweiter_faktor: true, ...(mitPasskey ? { passkey: true } : {}),
           error: fehlerText(code, antwortSprache(req), vars),
         });
       }
@@ -93,7 +109,8 @@ router.post('/login', async (req, res) => {
     // Die Webapp arbeitet nur mit dem httpOnly-Cookie: Ein Token im Browser
     // wäre per eingeschleustem Skript auslesbar und gälte über die Sitzung hinaus.
     if (ohne_token !== true) try {
-      token = await createToken(user.id, tokenLabel(label, 'webapp-session'), dauerhaft);
+      token = await createToken(user.id, tokenLabel(label, 'webapp-session'), dauerhaft, null,
+                                { scope: tokenScope(scope), ip: req.ip });
     } catch (e) {
       console.warn('[login] Token konnte nicht gespeichert werden:', fehlertext(e));
       if (dauerhaft)
@@ -104,7 +121,9 @@ router.post('/login', async (req, res) => {
     // App-Token eine gleitende Frist traegt, ist das nur noch dann ein Token
     // ohne Ablauf, wenn die Frist ganz abgeschaltet ist. Die Regel dafuer
     // steht in utils/auth.ts, nicht hier.
-    res.json({ success: true, ...(token ? { token } : {}), never_expires: dauerhaft && appTokenOhneAblauf(),
+    // `token_info` beschreibt den Token (Scope, Ablauf); `never_expires` bleibt
+    // für ältere Clients und ist bei einer Passwortanmeldung immer false.
+    res.json({ success: true, ...(token ? { token, token_info: await tokenAngaben(token) } : {}), never_expires: false,
       user: { id: user.id, username: user.username, is_admin: flaggeGesetzt(user.is_admin),
       // Nur beim automatisch generierten Default-Admin-Passwort gesetzt (siehe
       // db/database.ts) — der Client fordert dann zur Passwortaenderung auf.
@@ -136,28 +155,57 @@ router.post('/logout', async (req, res) => {
 router.get('/me', async (req, res) => {
   const auth = String(req.headers.authorization || '');
   const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;
+  const ungueltig = (code: 'token_ungueltig' | 'token_rotation_noetig') =>
+    res.status(401).json({ success: false, loggedIn: false, user: null,
+      code, error: fehlerText(code, antwortSprache(req)) });
   try {
     if (req.session?.userId) {
       const user = await K.kontoKurz(req.session.userId);
       if (user) return res.json({ success: true, loggedIn: true,
         user: { id: user.id, username: user.username, is_admin: flaggeGesetzt(user.is_admin) } });
     }
-    const u = token ? await validateToken(token) : null;
-    if (u) return res.json({ success: true, loggedIn: true,
-      user: { id: u.user_id, username: u.username, is_admin: flaggeGesetzt(u.is_admin) },
-      token_expires: u.expires_at, token_last_used: u.last_used });
-    if (token) return res.status(401).json({ success: false, loggedIn: false, user: null,
-      code: 'token_ungueltig', error: fehlerText('token_ungueltig', antwortSprache(req)) });
+    const p = token ? await pruefeToken(token, { ip: req.ip }) : { nutzer: null };
+    const u = p.nutzer;
+    if (u) {
+      const faellig = rotationFaellig(u);
+      if (faellig) res.setHeader('X-Token-Rotation', 'faellig');
+      // is_admin ist das Recht DIESES Tokens: bei Scope `app` immer false.
+      return res.json({ success: true, loggedIn: true,
+        user: { id: u.user_id, username: u.username, is_admin: flaggeGesetzt(u.is_admin) },
+        token_expires: u.expires_at, token_last_used: u.last_used,
+        token_info: { scope: u.scope, expires_at: u.expires_at, hard_expires_at: u.hard_expires_at ?? null,
+                      never_expires: flaggeGesetzt(u.never_expires), rotiert_am: u.rotiert_am,
+                      rotation_faellig: faellig } });
+    }
+    if (token) return ungueltig('grund' in p && p.grund ? p.grund : 'token_ungueltig');
     res.json({ success: true, loggedIn: false, user: null });
   } catch (e) {
     // Wer hier scheitert, ist eben nicht angemeldet — die Anmeldemaske ist die
-    // richtige Antwort, keine Fehlerseite. Mit vorgelegtem Token gilt aber
-    // dasselbe wie oben: Die App soll es merken.
+    // richtige Antwort, keine Fehlerseite. Mit vorgelegtem Token soll es die App merken.
     meldeUndWeiter('auth:me', e);
-    if (token) return res.status(401).json({ success: false, loggedIn: false, user: null,
-      code: 'token_ungueltig', error: fehlerText('token_ungueltig', antwortSprache(req)) });
+    if (token) return ungueltig('token_ungueltig');
     res.json({ success: true, loggedIn: false, user: null });
   }
+});
+
+/**
+ * POST /api/v1/auth/token-rotieren — den vorgelegten Token gegen einen neuen
+ * tauschen. Öffentlich am Eingang, weil ein unbegrenzter Token nach der
+ * Pflichtfrist nur noch hier gilt; die Prüfung steht deshalb hier.
+ */
+router.post('/token-rotieren', ipThrottle('token-rotieren', 120, 60 * 60 * 1000), async (req, res) => {
+  const auth = String(req.headers.authorization || '');
+  const alt = auth.startsWith('Bearer ') ? auth.slice(7) : '';
+  try {
+    if (!alt || !(await pruefeToken(alt, { ip: req.ip, zweck: 'rotation' })).nutzer)
+      return sendeFehler(req, res, 401, 'token_ungueltig');
+    const t = await rotiereToken(alt, req.ip);
+    if (!t) return sendeFehler(req, res, 401, 'token_ungueltig');
+    res.json({ success: true, token: t.token,
+      token_info: { scope: t.scope, expires_at: t.expires_at, hard_expires_at: t.hard_expires_at,
+                    never_expires: t.never_expires, rotiert_am: t.rotiert_am, rotation_faellig: false },
+      alt_gueltig_bis: t.alt_gueltig_bis, ueberlappung_sek: UEBERLAPPUNG_MS / 1000 });
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 /**
@@ -173,8 +221,8 @@ router.post('/token-create', requireLogin, async (req, res) => {
     const userId = angemeldeteNutzerId(req);
     if (!await bestaetigePasswort(req, res, userId, req.body?.password)) return;
     const label = tokenLabel(req.body?.label, 'Android App');
-    const neu = await createToken(userId, label, true);
-    res.json({ success: true, token: neu, label, never_expires: appTokenOhneAblauf() });
+    const neu = await createToken(userId, label, true, null, { scope: tokenScope(req.body?.scope), ip: req.ip });
+    res.json({ success: true, token: neu, label, never_expires: false, token_info: await tokenAngaben(neu) });
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
@@ -587,14 +635,22 @@ router.post('/qr-token', requireLogin, async (req, res) => {
     // Client, der das Feld gar nicht kennt, verhaelt sich damit unveraendert.
     // Ausführlich: docs/begruendungen/routes/auth.ts.md#post-qr-token-tage
     const tage = laufzeitTage(req.body?.gueltigkeit);
+    // „Unbegrenzt“ nur, wenn die App den Server über HTTPS erreicht: Ohne TLS
+    // ginge ein Token ohne Ablauf im Klartext durchs Netz.
+    if (tage === UNBEGRENZT && !/^https:\/\//i.test(basis))
+      return sendeFehler(req, res, 400, 'unbegrenzt_nur_https');
     const nonce = crypto.randomBytes(32).toString('base64url');
     await K.legeQrTokenAn(hashToken(nonce), nutzerId(req), new Date(Date.now() + QR_TTL_MS), tage);
     // `token_days`: was tatsaechlich gespeichert wurde, nicht was gewuenscht
     // war. Ein unbekannter Wert wird zu null, und die Oberflaeche soll die
     // Frist nennen koennen, die wirklich gilt.
     // Ausführlich: docs/begruendungen/routes/auth.ts.md#post-qr-token-2
+    // `fp` nur zu einer https-Adresse: Die App pinnt damit die Wurzel der
+    // internen CA. Ohne lesbare CA-Datei (fremder Proxy, öffentliches
+    // Zertifikat) fehlt es, und die App vertraut dem System.
+    const fp = /^https:\/\//i.test(basis) ? (await tlsStand())?.fp ?? null : null;
     res.json({ success: true, token: `bim:${nonce}`, expires_in: QR_TTL_MS / 1000,
-      token_days: tage, url: basis });
+      token_days: tage, url: basis, ...(fp ? { fp } : {}) });
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
@@ -617,20 +673,13 @@ router.post('/qr-login', ipThrottle('qr-login', 30, 60 * 60 * 1000), async (req,
     const blocked = assertLoginAllowed(user);
     if (blocked) return sendeFehler(req, res, blocked.status, blocked.code);
 
-    await establishSession(req, {
-      userId:   parseInt(user.id),
-      username: user.username,
-      isAdmin:  flaggeGesetzt(user.is_admin),
-    });
-    // Bearer-Token für die Android-App — dauerhaft, wie bei der Anmeldung
-    // per Passwort aus der App. Dasselbe INSERT stand hier von Hand.
-    // Die Laufzeit kommt aus der ZEILE, nicht aus der Anfrage — siehe
-    // /qr-token oben. `token_days` ist NULL, wenn nichts gewaehlt wurde oder
-    // die Nonce von einem aelteren Stand stammt; dann bleibt es bei der
-    // Gleitfrist.
-    const bearerToken = await createToken(user.id, 'qr-login', true, claimed.token_days ?? null);
-    res.json({ success: true, token: bearerToken, username: user.username, isAdmin: flaggeGesetzt(user.is_admin), userId: user.id,
-      user: { id: user.id, username: user.username } });
+    // Keine Sitzung: Die App arbeitet mit dem Token, und eine Sitzung trüge die
+    // vollen Rechte des Kontos an Scope `app` vorbei. Die Laufzeit kommt aus
+    // der Zeile der Nonce, nicht aus der Anfrage (siehe /qr-token).
+    const bearerToken = await createToken(user.id, 'qr-login', true, claimed.token_days ?? null,
+                                          { scope: 'app', ip: req.ip });
+    res.json({ success: true, token: bearerToken, username: user.username, isAdmin: false, userId: user.id,
+      user: { id: user.id, username: user.username }, token_info: await tokenAngaben(bearerToken) });
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
@@ -795,6 +844,9 @@ router.post('/serverbeweis', ipThrottle('serverbeweis', 120, 60 * 60 * 1000), as
       beweis: crypto.createHmac('sha256', zeile.token).update(nonce).digest('hex') });
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
+
+// Passkeys: eigene Datei, dieselbe Adresse /api/v1/auth.
+router.use(require('./passkeys') as typeof import('./passkeys'));
 
 // CJS-kompatibler Export: module.exports bleibt der Router selbst,
 // mit den intern/von jobs/ genutzten Funktionen als Properties (wie zuvor).

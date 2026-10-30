@@ -9,7 +9,7 @@ import { konfig } from './startup/konfigPruefen';
 type WildcardRequest = Request<{ pfad: string[] }>;
 // Protokoll zuerst: Ab hier ist jede console-Zeile eine JSON-Zeile auf
 // stdout/stderr und geht nach app_logs, sobald der Pool steht.
-import { installiereProtokoll, protokollInDieDatenbank, leereProtokoll, anfrageKontext } from './utils/protokoll';
+import { installiereProtokoll, protokollInDieDatenbank, leereProtokoll, anfrageKontext, anfrageKennung } from './utils/protokoll';
 installiereProtokoll();
 
 // Prevent worker crashes from unhandled promise rejections
@@ -224,14 +224,10 @@ app.use((require('./utils/herkunft') as typeof import('./utils/herkunft')).nurEi
   }, appFassungPruefen);
 }
 
-// Jede Anfrage bekommt eine kurze Kennung, die in allen Logzeilen dieser
-// Anfrage erscheint (utils/protokoll.ts). Ein vom Reverse-Proxy gesetzter
-// X-Request-Id-Header wird übernommen, damit sich Proxy- und App-Log
-// zusammenführen lassen.
-let _ridSeq = 0;
+// Jede Anfrage bekommt eine kurze Kennung für alle ihre Logzeilen; die des
+// Proxys nur, wenn sie die Prüfung in utils/protokoll.ts besteht.
 app.use((req, res, next) => {
-  const incoming = String(req.headers['x-request-id'] || '').slice(0, 32);
-  const rid = incoming || (_ridSeq = (_ridSeq + 1) % 100000).toString(36).padStart(4, '0');
+  const rid = anfrageKennung(req.headers['x-request-id']);
   res.setHeader('X-Request-Id', rid);
   anfrageKontext.run({ rid }, () => next());
 });
@@ -302,7 +298,7 @@ app.use(session({
     sameSite: 'lax',
     // Cookie nur über HTTPS senden. Default: in Produktion aktiv; per
     // COOKIE_SECURE=0 abschaltbar, falls (ausnahmsweise) ohne TLS betrieben.
-    secure: konfig().cookieSecure ?? konfig().produktion,
+    secure: (require('./utils/konfig') as typeof import('./utils/konfig')).cookieSicher(konfig()),
   }
 }));
 app.use(sitzungsHoechstdauer());
@@ -318,6 +314,8 @@ const { IMG_PROXY_PFAD } = require('./utils/images') as typeof import('./utils/i
 
 // Eigene und geteilte Anleitungen unter /data/ — samt Pfad- und Besitzerprüfung.
 app.use(require('./routes/datenDateien') as typeof import('./routes/datenDateien'));
+// Wurzelzertifikat der internen CA (öffentlich, routes/zertifikat.ts).
+app.use(require('./routes/zertifikat') as typeof import('./routes/zertifikat'));
 const { safeDataPath } = require('./utils/datenPfad') as typeof import('./utils/datenPfad');
 // Bild-Proxy: eigene Datei (routes/imgProxy.ts).
 //

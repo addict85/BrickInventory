@@ -1,6 +1,7 @@
 import { randomUUID } from 'crypto';
 import * as db from '../db/database';
 import { notify } from './pgNotify';
+import { imNamenVon } from './anfrageKonto';
 
 /**
  * Die dauerhafte Auftragstabelle (Migration 0066): Einstellen geht aus jedem
@@ -112,4 +113,16 @@ export async function raeumeErledigteAuf(): Promise<number> {
       WHERE (status = 'erledigt' AND aktualisiert < NOW() - INTERVAL '7 days')
          OR (status = 'fehler'   AND aktualisiert < NOW() - INTERVAL '30 days')`);
   return r?.changes ?? 0;
+}
+
+/**
+ * Einen Auftrag im Namen des Kontos ausführen, das ihn eingestellt hat. Sonst
+ * zählte ein CSV-Import eines Unterkontos als Hintergrund und umginge dessen
+ * Anteil am Fremdkontingent (utils/apiKontingent.ts). Die Rolle gilt, wie sie
+ * jetzt ist, nicht wie beim Einstellen.
+ */
+export async function imNamenDesAuftrags<T>(a: Pick<AuftragsZeile, 'user_id'>, f: () => Promise<T>): Promise<T> {
+  if (a.user_id == null) return f();
+  const u = await db.get<{ is_admin: number | boolean }>('SELECT is_admin FROM users WHERE id = $1', [a.user_id]);
+  return imNamenVon({ apiUser: { user_id: a.user_id, is_admin: u?.is_admin === true || Number(u?.is_admin) === 1 ? 1 : 0 } }, f);
 }
