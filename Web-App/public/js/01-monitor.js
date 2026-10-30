@@ -140,10 +140,10 @@ export async function loadMonitor() {
       const sc = schedules?.[k];
       if (!sc) return '';
       if (sc.type === 'daily') {
-        return `<input type="time" class="job-sched-input" value="${esc(sc.time)}" title="${t('monitor.sched.daily_hint')}" data-change="saveJobTime" data-arg="${esc(k)}" data-stil="font-size:var(--fs-1);padding:2px 5px;border:1px solid var(--bdr);border-radius:6px;background:var(--sur);color:var(--txt)">`;
+        return `<input type="time" class="job-sched-input" value="${esc(sc.time)}" title="${t('monitor.sched.daily_hint')}" aria-label="${t('monitor.sched.daily_hint')}" data-change="saveJobTime" data-arg="${esc(k)}" data-stil="font-size:var(--fs-1);padding:2px 5px;border:1px solid var(--bdr);border-radius:6px;background:var(--sur);color:var(--txt)">`;
       }
       if (sc.type === 'interval') {
-        return `<span data-stil="display:inline-flex;align-items:center;gap:3px;font-size:var(--fs-1);color:var(--mut)" title="${t('monitor.sched.interval_hint')}"><input inputmode="numeric" type="number" min="5" class="job-sched-input" value="${esc(sc.minutes)}" data-change="saveJobMinutes" data-arg="${esc(k)}" data-stil="width:54px;font-size:var(--fs-1);padding:2px 5px;border:1px solid var(--bdr);border-radius:6px;background:var(--sur);color:var(--txt)"> ${t('monitor.sched.min')}</span>`;
+        return `<span data-stil="display:inline-flex;align-items:center;gap:3px;font-size:var(--fs-1);color:var(--mut)" title="${t('monitor.sched.interval_hint')}"><input inputmode="numeric" type="number" min="5" class="job-sched-input" aria-label="${t('monitor.sched.interval_hint')}" value="${esc(sc.minutes)}" data-change="saveJobMinutes" data-arg="${esc(k)}" data-stil="width:54px;font-size:var(--fs-1);padding:2px 5px;border:1px solid var(--bdr);border-radius:6px;background:var(--sur);color:var(--txt)"> ${t('monitor.sched.min')}</span>`;
       }
       return '';
     };

@@ -130,8 +130,8 @@ function zeile(w) {
          erste Entwurf gescheitert — dieselbe Falle wie in
          utils/handlers/parts.ts, wo derselbe Hinweis steht. -->
     <div class="mk-zeile" tabindex="0" role="button" data-click="oeffneMerkpostenDetail" data-arg="${arg}">
-      <div class="ca"><button class="delbtn" data-click="merkpostenLoeschenStop" tabindex="-1" aria-hidden="true" data-arg="${arg}"
-           title="${esc(tRaw('wanted.remove'))}" aria-label="${esc(tRaw('wanted.remove'))}">${TRASH_ICON_SVG}</button></div>
+      <div class="ca"><span class="delbtn" data-click="merkpostenLoeschenStop" aria-hidden="true" data-arg="${arg}"
+           title="${esc(tRaw('wanted.remove'))}">${TRASH_ICON_SVG}</span></div>
       ${bild}
       <div class="mk-text">
         <div class="mk-titel">${titel}</div>

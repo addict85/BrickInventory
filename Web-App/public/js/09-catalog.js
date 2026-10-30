@@ -374,7 +374,7 @@ function catCard(s){
       <div class="snum">${esc(s.set_number)}</div>
       <div class="sname">${esc(s.name)||'—'}</div>
       <div class="smeta">
-        <span data-stil="font-size:var(--fs-0)">${s.year||'—'}${themeShort?' · '+esc(themeShort.substring(0,14)):''}</span>
+        <span class="smeta-text"${themeShort ? ` title="${esc(themeShort)}"` : ''}>${s.year||'—'}${themeShort?' · '+esc(themeShort):''}</span>
         <div data-stil="display:flex;gap:3px;align-items:center;flex-wrap:wrap">
           ${s.num_parts?`<span class="qbadge">${PARTS_ICON_SVG}${s.num_parts.toLocaleString(locale())}</span>`:''}
           ${ownedBadge}

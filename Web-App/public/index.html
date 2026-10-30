@@ -102,6 +102,7 @@
   <symbol id="i-runter" viewBox="0 0 24 24"><path d="M12 5v14M5 12l7 7 7-7"/></symbol>
   <symbol id="i-raster" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/></symbol>
   <symbol id="i-pause" viewBox="0 0 24 24"><path d="M9 5v14M15 5v14"/></symbol>
+  <symbol id="i-aufklappen" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
 </svg>
 
 <!-- import-detail-panel removed — clicking bar reopens overlay -->
@@ -280,14 +281,8 @@
   <rect x="29" y="86" width="42" height="5" rx="1" fill="#e5e7eb"/>
   <rect x="80" y="78" width="16" height="13" rx="2" fill="#f5a800"/>
   <text x="88" y="88" text-anchor="middle" font-family="Arial,sans-serif" font-weight="800" font-size="9" fill="#3b2600">6+</text>
-</svg><p class="marke">BrickInventory <span>Manager</span></p></div>
+</svg><p class="marke">BrickInventory <span>Manager</span></p><span class="kopf-sicht" id="kopf-sicht" hidden></span></div>
     <div class="hright">
-      <div class="hstats">
-        <div class="hs"><span class="v" id="hs-sets">—</span><span class="l" data-i18n="header.sets">Sets</span></div>
-        <div class="hs"><span class="v" id="hs-parts">—</span><span class="l" data-i18n="nav.parts">Teile</span></div>
-        <div class="hs"><span class="v" id="hs-minifigs">—</span><span class="l" data-i18n="header.minifigs">Minifiguren</span></div>
-        <div class="hs"><span class="v" id="hs-instr">—</span><span class="l" data-i18n="header.instr">Anleitungen</span></div>
-      </div>
       <!-- Inline CSV import progress -->
       <div id="global-import-bar" class="import-leiste" data-stil="display:none">
         <span class="schrift-1"><svg class="ico" aria-hidden="true"><use href="#i-set"/></svg></span>
@@ -389,18 +384,24 @@
       </div>
 
       <div class="brick-stats">
-        <div class="bstat bstat-slate"><div class="bstat-l" data-i18n="brick.stat_sets">Sets gesamt</div><div class="bstat-v" id="bstat-sets">—</div></div>
+        <div class="bstat bstat-slate"><div class="bstat-l" data-i18n="brick.stat_sets">Sets</div><div class="bstat-v" id="bstat-sets">—</div></div>
         <div class="bstat bstat-petrol"><div class="bstat-l" data-i18n="nav.parts">Teile</div><div class="bstat-v" id="bstat-parts">—</div></div>
         <div class="bstat bstat-light"><div class="bstat-l" data-i18n="nav.minifigs">Minifiguren</div><div class="bstat-v" id="bstat-minifigs">—</div></div>
+        <div class="bstat bstat-slate"><div class="bstat-l" data-i18n="header.instr">Anleitungen</div><div class="bstat-v" id="bstat-instr">—</div></div>
       </div>
 
       <!-- Inhalt zuerst: Erfassen ist eine Handlung, kein Dauerformular.
            Das Formular steht im Dialog #add-set-modal. -->
       <div class="erfassen-leiste">
         <button class="btn bp" type="button" data-click="oeffneErfassen" data-arg="set"><svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg><span data-i18n="gallery.add.title">Set hinzufügen</span></button>
-        <label for="csv-file" class="btn bs zeiger"><svg class="ico" aria-hidden="true"><use href="#i-import"/></svg><span>CSV</span><input type="file" id="csv-file" aria-label="CSV-Datei" data-i18n="import.csv_file" data-i18n-attr="aria-label" accept=".csv" class="datei-versteckt" data-change="startSetCsvImport" /></label>
-        <a class="btn bs" id="btn-set-csv-template" href="#" data-i18n="gallery.template" data-ico="datei">Vorlage</a>
-        <label class="btn bs zeiger" title="BrickLink-Wanted-Liste (.xml)"><span data-wanted-icon="1"></span><span data-i18n="wanted.pick_short">BrickLink XML</span><input type="file" id="wanted-xml-set" aria-label="BrickLink-Wanted-Liste" data-i18n="wanted.pick" data-i18n-attr="aria-label" accept=".xml,text/xml,application/xml" class="datei-versteckt" data-change="wantedXmlGewaehlt" data-art="set" /></label>
+        <details class="import-menue">
+          <summary class="btn bs"><svg class="ico" aria-hidden="true"><use href="#i-datei"/></svg><span data-i18n="import.menu">Importieren</span><svg class="ico import-pfeil" aria-hidden="true"><use href="#i-aufklappen"/></svg></summary>
+          <div class="import-klappe">
+            <label for="csv-file" class="import-eintrag zeiger"><svg class="ico" aria-hidden="true"><use href="#i-datei"/></svg><span data-i18n="import.csv_read">CSV-Datei einlesen</span><input type="file" id="csv-file" aria-label="CSV-Datei" data-i18n="import.csv_file" data-i18n-attr="aria-label" accept=".csv" class="datei-versteckt" data-change="startSetCsvImport" /></label>
+            <a class="import-eintrag" id="btn-set-csv-template" href="#" data-i18n="import.template_download" data-ico="import">CSV-Vorlage herunterladen</a>
+            <label class="import-eintrag zeiger"><span data-wanted-icon="1"></span><span data-i18n="import.bricklink_xml">BrickLink-Wanted-Liste (XML) einlesen</span><input type="file" id="wanted-xml-set" aria-label="BrickLink-Wanted-Liste" data-i18n="wanted.pick" data-i18n-attr="aria-label" accept=".xml,text/xml,application/xml" class="datei-versteckt" data-change="wantedXmlGewaehlt" data-art="set" /></label>
+          </div>
+        </details>
       </div>
 
       <!-- Suche/Filter/Sortierung — BEWUSST unter der Erfassen-Box statt im
@@ -562,16 +563,21 @@
         <div class="sammlung-wahl" role="tablist" aria-label="Sammlung" data-i18n-attr="aria-label" data-i18n="nav.collection"><button type="button" role="tab" aria-selected="false" data-click="oeffneReiter" data-arg="gallery"><svg class="ico" aria-hidden="true"><use href="#i-set"/></svg><span data-i18n="header.sets">Sets</span></button><button type="button" role="tab" aria-selected="true" data-click="oeffneReiter" data-arg="parts"><svg class="ico" aria-hidden="true"><use href="#i-teil"/></svg><span data-i18n="nav.parts">Teile</span></button><button type="button" role="tab" aria-selected="false" data-click="oeffneReiter" data-arg="minifigs"><svg class="ico" aria-hidden="true"><use href="#i-figur"/></svg><span data-i18n="nav.minifigs">Minifiguren</span></button></div>
       </div>
       <div class="brick-stats" id="parts-stats-bar">
-        <div class="bstat bstat-slate"><div class="bstat-l" data-i18n="parts.stat.total_label">Teile total</div><div class="bstat-v" id="ps-total">—</div></div>
+        <div class="bstat bstat-slate"><div class="bstat-l" data-i18n="parts.stat.total_label">Teile gesamt</div><div class="bstat-v" id="ps-total">—</div></div>
         <div class="bstat bstat-petrol"><div class="bstat-l" data-i18n="parts.stat.unique">Unique Teile</div><div class="bstat-v" id="ps-unique">—</div></div>
         <div class="bstat bstat-light"><div class="bstat-l" data-i18n="parts.stat.colors">Farben</div><div class="bstat-v" id="ps-colors">—</div></div>
       </div>
       <!-- ── Manuell erfasste Teile — vor den Set-Teilen ──────────────────── -->
       <div class="erfassen-leiste">
         <button class="btn bp" type="button" data-click="oeffneErfassen" data-arg="part"><svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg><span data-i18n="parts.add_title">Teil hinzufügen</span></button>
-        <label for="part-csv-file" class="btn bs zeiger"><svg class="ico" aria-hidden="true"><use href="#i-import"/></svg><span>CSV</span><input type="file" id="part-csv-file" aria-label="CSV-Datei" data-i18n="import.csv_file" data-i18n-attr="aria-label" accept=".csv,.txt" class="datei-versteckt" data-change="importPartsCsv" /></label>
-        <a class="btn bs" id="btn-csv-template" href="#" data-i18n="gallery.template" data-ico="datei">Vorlage</a>
-        <label class="btn bs zeiger" title="BrickLink-Wanted-Liste (.xml)"><span data-wanted-icon="1"></span><span data-i18n="wanted.pick_short">BrickLink XML</span><input type="file" id="wanted-xml-part" aria-label="BrickLink-Wanted-Liste" data-i18n="wanted.pick" data-i18n-attr="aria-label" accept=".xml,text/xml,application/xml" class="datei-versteckt" data-change="wantedXmlGewaehlt" data-art="part" /></label>
+        <details class="import-menue">
+          <summary class="btn bs"><svg class="ico" aria-hidden="true"><use href="#i-datei"/></svg><span data-i18n="import.menu">Importieren</span><svg class="ico import-pfeil" aria-hidden="true"><use href="#i-aufklappen"/></svg></summary>
+          <div class="import-klappe">
+            <label for="part-csv-file" class="import-eintrag zeiger"><svg class="ico" aria-hidden="true"><use href="#i-datei"/></svg><span data-i18n="import.csv_read">CSV-Datei einlesen</span><input type="file" id="part-csv-file" aria-label="CSV-Datei" data-i18n="import.csv_file" data-i18n-attr="aria-label" accept=".csv,.txt" class="datei-versteckt" data-change="importPartsCsv" /></label>
+            <a class="import-eintrag" id="btn-csv-template" href="#" data-i18n="import.template_download" data-ico="import">CSV-Vorlage herunterladen</a>
+            <label class="import-eintrag zeiger"><span data-wanted-icon="1"></span><span data-i18n="import.bricklink_xml">BrickLink-Wanted-Liste (XML) einlesen</span><input type="file" id="wanted-xml-part" aria-label="BrickLink-Wanted-Liste" data-i18n="wanted.pick" data-i18n-attr="aria-label" accept=".xml,text/xml,application/xml" class="datei-versteckt" data-change="wantedXmlGewaehlt" data-art="part" /></label>
+          </div>
+        </details>
       </div>
         <div class="csv-status" id="part-csv-status" data-stil="display:none"></div>
         <!-- mp stats hidden, kept for JS -->
@@ -644,7 +650,7 @@
       </div>
 
       <!-- Stats (farbig, wie Galerie) -->
-      <div class="brick-stats" data-stil="grid-template-columns:repeat(2,1fr)">
+      <div class="brick-stats">
         <div class="bstat bstat-slate"><div class="bstat-l" data-i18n="figs.stat.types">Figurtypen</div><div class="bstat-v" id="mf-unique">—</div></div>
         <div class="bstat bstat-petrol"><div class="bstat-l" data-i18n="figs.stat.total_qty">Gesamtmenge</div><div class="bstat-v" id="mf-total">—</div></div>
       </div>
@@ -653,9 +659,14 @@
       <!-- ── Manuell erfasste Minifiguren — grosse Box wie bei Teilen ──────── -->
       <div class="erfassen-leiste">
         <button class="btn bp" type="button" data-click="oeffneErfassen" data-arg="fig"><svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg><span data-i18n="figs.add_title">Minifigur hinzufügen</span></button>
-        <label for="fig-csv-file" class="btn bs zeiger"><svg class="ico" aria-hidden="true"><use href="#i-import"/></svg><span>CSV</span><input type="file" id="fig-csv-file" aria-label="CSV-Datei" data-i18n="import.csv_file" data-i18n-attr="aria-label" accept=".csv,.txt" class="datei-versteckt" data-change="importFigsCsv" /></label>
-        <a class="btn bs" id="btn-fig-csv-template" href="#" data-i18n="gallery.template" data-ico="datei">Vorlage</a>
-        <label class="btn bs zeiger" title="BrickLink-Wanted-Liste (.xml)"><span data-wanted-icon="1"></span><span data-i18n="wanted.pick_short">BrickLink XML</span><input type="file" id="wanted-xml-fig" aria-label="BrickLink-Wanted-Liste" data-i18n="wanted.pick" data-i18n-attr="aria-label" accept=".xml,text/xml,application/xml" class="datei-versteckt" data-change="wantedXmlGewaehlt" data-art="fig" /></label>
+        <details class="import-menue">
+          <summary class="btn bs"><svg class="ico" aria-hidden="true"><use href="#i-datei"/></svg><span data-i18n="import.menu">Importieren</span><svg class="ico import-pfeil" aria-hidden="true"><use href="#i-aufklappen"/></svg></summary>
+          <div class="import-klappe">
+            <label for="fig-csv-file" class="import-eintrag zeiger"><svg class="ico" aria-hidden="true"><use href="#i-datei"/></svg><span data-i18n="import.csv_read">CSV-Datei einlesen</span><input type="file" id="fig-csv-file" aria-label="CSV-Datei" data-i18n="import.csv_file" data-i18n-attr="aria-label" accept=".csv,.txt" class="datei-versteckt" data-change="importFigsCsv" /></label>
+            <a class="import-eintrag" id="btn-fig-csv-template" href="#" data-i18n="import.template_download" data-ico="import">CSV-Vorlage herunterladen</a>
+            <label class="import-eintrag zeiger"><span data-wanted-icon="1"></span><span data-i18n="import.bricklink_xml">BrickLink-Wanted-Liste (XML) einlesen</span><input type="file" id="wanted-xml-fig" aria-label="BrickLink-Wanted-Liste" data-i18n="wanted.pick" data-i18n-attr="aria-label" accept=".xml,text/xml,application/xml" class="datei-versteckt" data-change="wantedXmlGewaehlt" data-art="fig" /></label>
+          </div>
+        </details>
       </div>
         <div class="csv-status" id="fig-csv-status" data-stil="display:none"></div>
 
@@ -708,7 +719,7 @@
         <div class="diagramm-kopf">
           <div class="bereich-titel ohne-abstand-u" data-i18n="finance.chart.label">Wertentwicklung Portfolio</div>
           <div class="diagramm-werte">
-            <div class="text-klein"><span data-i18n="finance.market_label">Ø Marktpreis</span>: <span class="wert-primaer" id="portfolio-current">—</span></div>
+            <div class="text-klein"><span data-i18n="finance.market_label">Marktwert</span>: <span class="wert-primaer" id="portfolio-current">—</span></div>
             <span id="portfolio-pnl"></span>
           </div>
           <span id="portfolio-purchase" data-stil="display:none"></span>
@@ -736,8 +747,8 @@
       <!-- Kennzahlen: der Einstand steht immer da, Gesamtwert und G&V nur mit Marktpreisen. -->
       <div class="fgrid" id="fin-sum">
         <div class="fstat"><div class="flbl" data-i18n="finance.stat.purchase">Einstand</div><div class="fval" id="fin-einstand">—</div><div class="fsub" id="fin-einstand-sub" data-i18n="finance.stat.purchase_hint">Summe der Kaufpreise</div></div>
-        <div class="fstat hi"><div class="flbl" data-i18n="finance.stat.value">Gesamtwert (Ø Marktpreis)</div><div class="fval" id="fin-wert">—</div><div class="fsub" id="fin-wert-sub"></div></div>
-        <div class="fstat" id="fin-stat-pnl" data-stil="display:none"><div class="flbl" data-i18n="finance.stat.pnl">Gesamt G&amp;V</div><div class="fval" id="fin-total-pnl">—</div><div class="fsub" id="fin-pnl-sub"></div></div>
+        <div class="fstat hi"><div class="flbl" data-i18n="finance.stat.value">Marktwert</div><div class="fval" id="fin-wert">—</div><div class="fsub" id="fin-wert-sub"></div></div>
+        <div class="fstat" id="fin-stat-pnl"><div class="flbl" data-i18n="finance.stat.pnl">G&amp;V</div><div class="fval" id="fin-total-pnl">—</div><div class="fsub" id="fin-pnl-sub"></div></div>
       </div>
       <!-- Kategoriefilter — dieselben vier Chips wie im Finanzen-Reiter der
            Android-App (FinanceSections.financeCategoryFilter). Additiv, und
@@ -1381,15 +1392,15 @@
       <!-- Daten exportieren: für alle Nutzer sichtbar -->
 
         <div class="ssec full">
-          <div class="trenner-oben">
-            <div class="stit zeile mittig luecke-6"><svg width="18" height="18" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" class="nicht-schrumpfen"><rect x="18" y="38" width="84" height="68" rx="3" fill="#e63329"/><polygon points="18,38 30,20 102,20 102,38" fill="#cc2a21"/><polygon points="102,20 118,30 118,86 102,106" fill="#b5231c"/><ellipse cx="43" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="37" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="43" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="58" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="52" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="58" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="73" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="67" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="73" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="88" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="82" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="88" cy="17" rx="6" ry="3" fill="#b5231c"/><rect x="24" y="54" width="72" height="40" rx="2" fill="#fff"/><rect x="29" y="58" width="46" height="15" rx="2" fill="#f5a800"/><text x="52" y="69" text-anchor="middle" font-family="Arial,sans-serif" font-weight="800" font-size="11" fill="#3b2600">BIM</text></svg> <span data-i18n="settings.data_export_title">Daten exportieren / importieren</span></div>
+          <div>
+            <div class="stit" data-i18n="settings.data_export_title" data-ico="export">Daten exportieren / importieren</div>
 
 
             <p class="hinweis-absatz">
               <span data-i18n="settings.data_zip_hint">Sets, manuell erfasste Teile, Minifiguren, die Merkliste und die Preisalarme als ZIP mit 5 CSV-Dateien exportieren — diese können danach über den entsprechenden CSV-Importer (Reiter Sets/Teile/Minifiguren/Merkliste bzw. Einstellungen → Preisalarme) wieder importiert werden.</span>
             </p>
             <div class="zeile luecke-10 umbruch mittig abstand-u-1">
-              <a class="btn bs" href="/api/v1/settings/export/data" data-i18n="settings.data_zip_btn" data-ico="set">Sets, Teile, Minifiguren, Merkliste &amp; Alarme exportieren (ZIP)</a>
+              <a class="btn bs" href="/api/v1/settings/export/data" data-i18n="settings.data_zip_btn" data-ico="export">Sets, Teile, Minifiguren, Merkliste &amp; Alarme exportieren (ZIP)</a>
             </div>
 
             <!-- ── Die BrickLink-Wanted-Liste ist UMGEZOGEN (19.10.) ───────
@@ -1407,14 +1418,14 @@
               <span data-i18n="settings.rb_list_hint">Alle Sets im Rebrickable-Listenformat exportieren (Spalten „Set Number,Quantity“), um sie unter „My Sets → Add via List“ bei Rebrickable zu importieren.</span>
             </p>
             <div class="zeile luecke-10 umbruch mittig">
-              <a class="btn bs zeile-inline" href="/api/v1/sets/export/rebrickable"><svg width="16" height="16" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" class="nicht-schrumpfen"><rect x="18" y="38" width="84" height="68" rx="3" fill="#e63329"/><polygon points="18,38 30,20 102,20 102,38" fill="#cc2a21"/><polygon points="102,20 118,30 118,86 102,106" fill="#b5231c"/><ellipse cx="43" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="37" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="43" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="58" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="52" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="58" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="73" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="67" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="73" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="88" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="82" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="88" cy="17" rx="6" ry="3" fill="#b5231c"/><rect x="24" y="54" width="72" height="40" rx="2" fill="#fff"/><rect x="29" y="58" width="46" height="15" rx="2" fill="#f5a800"/><text x="52" y="69" text-anchor="middle" font-family="Arial,sans-serif" font-weight="800" font-size="11" fill="#3b2600">BIM</text></svg> <span data-i18n="settings.export_rb">Sets für Rebrickable exportieren</span></a>
+              <a class="btn bs" href="/api/v1/sets/export/rebrickable" data-i18n="settings.export_rb" data-ico="export">Sets für Rebrickable exportieren</a>
             </div>
           </div>
         </div>
 
         <!-- Papierkorb: gelöschte Sets, manuelle Teile und Figuren (utils/papierkorb.ts) -->
         <div class="ssec full">
-          <div class="trenner-oben">
+          <div>
             <div class="stit" data-i18n="trash.title" data-ico="loeschen">Papierkorb</div>
             <p class="hinweis-absatz" data-i18n="trash.hint">Gelöschte Sets, manuell erfasste Teile und Minifiguren bleiben 30 Tage hier und lassen sich zurückholen. Danach werden sie endgültig entfernt.</p>
             <div id="papierkorb-liste" class="papierkorb-liste"></div>
@@ -1655,7 +1666,7 @@
     <div class="erfassen-raster">
       <div class="fg"><label for="add-num" data-i18n="gallery.add.number">Set-Nummer</label><input inputmode="numeric" type="text" id="add-num" data-erstfokus placeholder="z. B. 75192" data-i18n="gallery.add.number_ph" data-i18n-attr="placeholder" /></div>
       <div class="fg"><label for="add-qty" data-i18n="gallery.add.qty">Anzahl</label><input inputmode="numeric" type="number" id="add-qty" value="1" min="1" /></div>
-      <div class="fg"><label for="add-price" data-i18n="gallery.add.price">Kaufpreis (optional)</label><input inputmode="decimal" type="number" id="add-price" placeholder="z. B. 79.99" data-i18n="gallery.add.price_ph" data-i18n-attr="placeholder" step="0.01" min="0" /></div>
+      <div class="fg"><label for="add-price" data-i18n="gallery.add.price">Kaufpreis (optional)</label><input inputmode="decimal" type="number" id="add-price" placeholder="z. B. 79,99" data-i18n="gallery.add.price_ph" data-i18n-attr="placeholder" step="0.01" min="0" /></div>
       <div class="fg"><label for="add-condition" data-i18n="common.condition">Zustand</label><select class="auswahl-kompakt" id="add-condition"><option value="N" data-i18n="common.condition_new">Neu</option><option value="U" data-i18n="common.condition_used">Gebraucht</option></select></div>
       <!-- Kontoauswahl: nur im Haushalt sichtbar (siehe loadHouseholdMembers) -->
       <div class="fg" id="add-owner-box" data-stil="display:none"><label for="add-owner" data-i18n="household.for_account">Für Konto</label><select class="auswahl-kompakt" id="add-owner"></select></div>

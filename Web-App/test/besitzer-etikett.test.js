@@ -39,10 +39,10 @@ test('das Set des Kindes trägt seinen Namen, ein geteiltes beide', async () => 
   } finally { w.close(); }
 });
 
-test('die Kopfzahl heisst Anleitungen', async () => {
+test('die Kennzahl heisst Anleitungen', async () => {
   const { w, d } = await oeffneOberflaeche({});
   try {
-    const l = d.getElementById('hs-instr').parentElement.querySelector('.l');
+    const l = d.getElementById('bstat-instr').parentElement.querySelector('.bstat-l');
     assert.equal(l.textContent, 'Anleitungen');
   } finally { w.close(); }
 });

@@ -14,6 +14,8 @@
  *      (fünfmal „fehlt“; 28.10.)
  *   D  G&V-Betrag wieder als Gesamtwert − Einstand → rot: „mit Marktpreisen“
  *      (−397.93 neben +11.3 %; 28.10.)
+ *   F  die G&V-Kachel wieder ohne Preise ausgeblendet (display none) → rot:
+ *      „ohne Marktpreise“ („G&V-Kachel verschwindet“; 30.10.)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -58,7 +60,10 @@ test('ohne Marktpreise: Einstand oben und in den Summen, Hinweis statt „—“
   try {
     assert.match(zahl(text(d.getElementById('fin-einstand'))), /1097\.93/, 'Einstand fehlt oben');
     assert.equal(text(d.getElementById('fin-wert')), 'Marktpreis fehlt für 4 Positionen');
-    assert.equal(d.getElementById('fin-stat-pnl').style.display, 'none', 'G&V ohne Marktpreis');
+    // Die G&V-Kachel bleibt stehen (die Reihe springt nicht) und sagt, was fehlt.
+    assert.notEqual(d.getElementById('fin-stat-pnl').style.display, 'none', 'G&V-Kachel verschwindet');
+    assert.equal(text(d.getElementById('fin-total-pnl')), '—');
+    assert.equal(text(d.getElementById('fin-pnl-sub')), 'Braucht Kauf- und Marktpreise');
     const setsFuss = d.querySelector('[data-fin-art="sets"] tfoot');
     assert.match(zahl(text(setsFuss)), /1028\.00/, 'Die Summenzeile der Sets zeigt den Einstand nicht');
     const summe = d.querySelector('.dt-summe tfoot');

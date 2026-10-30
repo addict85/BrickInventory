@@ -44,7 +44,7 @@
 @media (max-width: 640px) {
 
   /* ─ Grundgerüst ─────────────────────────────────────────────────────── */
-  main { padding: .75rem .6rem 5rem; }        /* unten Luft für den Daumen */
+  main { padding: .75rem 16px 5rem; }         /* 16 px Rand; unten Luft für den Daumen */
 
   header {
     padding: 0 .75rem;
@@ -53,6 +53,10 @@
   }
   header .logo span,
   .brand-sub          { display: none; }      /* Wortmarke kürzen */
+  header .logo .kopf-sicht:not([hidden]) { display: block; }
+  /* Mit Seitenname nur Logo und Name: Beide Wörter zusammen wären abgeschnitten. */
+  header .logo:has(.kopf-sicht:not([hidden])) .marke { display: none; }
+  header .logo .kopf-sicht::before { content: none; }
   /* Gekürzt wird der NAME, nicht der Knopf: Seit der Namenszug der
      Menüknopf ist (17.10.), hängen die drei Striche im selben Element.
      Stand die Breitengrenze weiter am Knopf, schnitt sie auf dem Telefon als
@@ -62,14 +66,12 @@
   .ubadge .ubadge-name { display: none; }
   .ubadge .ubadge-ico  { display: inline-block; width: 20px; height: 20px; }
 
-  /* Erfassen-Leiste: der Hauptknopf über die ganze Breite, darunter die
-     Nebenknöpfe MIT Beschriftung — drei gleich aussehende Symbole (Import,
-     Vorlage, XML) liessen sich nicht auseinanderhalten. */
+  /* Erfassen-Leiste: Hauptknopf und Import-Menü in einer Reihe; das Menü
+     klappt rechtsbündig auf, damit es nicht über den Rand ragt. */
   .erfassen-leiste { flex-wrap: wrap; }
-  .erfassen-leiste .btn.bp { flex: 1 1 100%; justify-content: center; }
-  /* auto statt 0: Ein Knopf ist so breit wie sein Wort — „BrickLink XML“
-     wurde sonst abgeschnitten; reicht die Zeile nicht, bricht sie um. */
-  .erfassen-leiste .btn.bs { flex: 1 1 auto; min-width: 0; justify-content: center; padding-left: 8px; padding-right: 8px; font-size: var(--fs-2); }
+  .erfassen-leiste .btn.bp { flex: 1 1 auto; justify-content: center; }
+  .erfassen-leiste .import-menue { flex: 0 0 auto; }
+  .import-klappe { left: auto; right: 0; }
 
   /* Kachel: Jahr und Thema in einer Zeile, die Plaketten darunter. */
   .smeta { flex-direction: column; align-items: flex-start; gap: 4px; }
@@ -180,8 +182,9 @@
   }
   /* 44 px ist das Mass für einen Fingertipp (Apple HIG, WCAG 2.5.5). Die
      kleinen Varianten bleiben am Desktop klein; am Telefon gilt es für alle. */
-  .btn-sm, .vb, .period-btn, .ubadge-knopf, .sammlung-wahl button { min-height: 44px; }
-  .vb, .btn-sm, .ubadge-knopf { min-width: 44px; }
+  .btn, .btn-sm, .vb, .v-btn, .period-btn, .ubadge-knopf, .sammlung-wahl button, .umenu-item,
+  details > summary, .import-menue > summary, #tab-profil .btn, .acq-loeschen { min-height: 44px; }
+  .vb, .v-btn, .btn-sm, .ubadge-knopf, .acq-loeschen { min-width: 44px; }
   /* Häkchen: 22 px gezeichnet, aber 44 px Tippfläche am Kästchen selbst — auch
      ohne Beschriftung. Das Kästchen malen zwei Hintergrundschichten in die Mitte;
      der negative Rand hält den Platz im Layout bei 22 px.
@@ -208,6 +211,8 @@
   .man-tile:has(> .ca) { padding-top: 52px; }
   .mk-zeile { padding-right: 56px; }
   .ibox a[href], a.schrift-1[href] { display: inline-flex; align-items: center; min-height: 44px; }
+  /* Lange Beschriftungen brechen um, statt über den Rand zu ragen. */
+  .ssec .btn { white-space: normal; }
   /* Ein Häkchen in seiner Beschriftung: Die ganze Zeile ist die Tippfläche. */
   label:has(> input[type="checkbox"]), label:has(> input[type="radio"]) { min-height: 44px; display: flex; align-items: center; }
 
@@ -304,8 +309,11 @@
   }
   .fin-fuss-wert { font-size: var(--fs-3); }
   .dt-fin tfoot { display: block; }
+  /* Der Grund der Summenzeile liegt auf der ganzen Zeile, nicht nur hinter den Zahlen. */
   .dt-fin tfoot tr { display: flex; justify-content: space-between; align-items: flex-end; gap: .75rem;
-                     background: none; border: none; padding: .3rem .7rem; }
+                     background: var(--b50); border: none; border-radius: 8px; padding: .5rem .7rem; }
+  .dt-fin tfoot td, .dt-summe tfoot td { background: transparent !important; }
+  .dt-summe tfoot tr { background: var(--b50); }
   .dt-fin tfoot td { display: block; border: none; padding: 0 !important; text-align: left !important; }
   .dt-fin tfoot td:empty { display: none; }
   .dt-fin tfoot td::before { content: none; }
@@ -381,13 +389,11 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 @media (max-width: 640px) {
 
-  /* Die drei Kennzahlen als waagrecht rollende Reihe: untereinander füllten
-     sie den ersten Bildschirm, bevor ein Set zu sehen war. */
-  [data-theme="brick"] .brick-stats { display: flex; gap: .6rem; overflow-x: auto; scroll-snap-type: x mandatory;
-    padding-bottom: 4px; scrollbar-width: none; }
-  [data-theme="brick"] .brick-stats::-webkit-scrollbar { display: none; }
-  [data-theme="brick"] .bstat { flex: 0 0 auto; min-width: 9.5rem; scroll-snap-align: start; padding: 10px 14px; }
-  [data-theme="brick"] .bstat .bstat-v { font-size: var(--fs-5); }
+  /* Kennzahlen (alle Designs) kompakt in zwei Spalten: untereinander füllten
+     sie den ersten Bildschirm; eine rollende Reihe versteckte die Hälfte. */
+  .brick-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; margin-bottom: var(--sp-4); }
+  .bstat { padding: 8px 12px; }
+  .bstat .bstat-v { font-size: var(--fs-5); }
 
   /* Die Pills des Stein-Designs werden unten zur Leiste wie in den anderen. */
   [data-theme="brick"] nav {

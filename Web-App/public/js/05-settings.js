@@ -827,7 +827,7 @@ export async function ladeAlarmUebersicht() {
         <div data-stil="font-size:var(--fs-1);color:var(--mut)">${esc(a.name || '')}</div>
       </div>
       <span data-stil="font-size:var(--fs-1);white-space:nowrap">${esc(richtung)}</span>
-      <input inputmode="decimal" type="number" step="0.01" min="0.01" value="${a.schwelle}"
+      <input inputmode="decimal" type="number" step="0.01" min="0.01" value="${a.schwelle}" aria-label="${esc(tRaw('detail.alert_price'))} ${esc(a.set_number)}"
              data-change="aendereAlarmSchwelle" data-arg="${esc(schluessel)}" data-val="1"
              data-click="stopEvent"
              data-stil="width:90px;border:1px solid var(--bdr);border-radius:6px;padding:3px 7px;font-size:var(--fs-3);background:var(--sur);color:var(--txt)" />
@@ -837,6 +837,7 @@ export async function ladeAlarmUebersicht() {
         <span data-stil="font-size:var(--fs-0);color:var(--mut);white-space:nowrap">${esc(stand)}</span>
       </div>
       <button class="btn bs btn-sm" data-click="loescheAlarm" data-arg="${esc(schluessel)}"
+              aria-label="${esc(tRaw('common.delete'))}: ${esc(a.set_number)}" title="${esc(tRaw('common.delete'))}"
               data-arg2="${esc(a.set_number)}" data-stil="padding:2px 8px">${ico('loeschen')}</button>
     </div>`;
   }).join('');
@@ -921,7 +922,7 @@ export async function ladeLagerortVerwaltung() {
     const wie = n ? t('storage.belegt', { sets: n.sets, teile: n.teile, figuren: n.figuren ?? 0 })
                   : esc(tRaw('storage.leer'));
     return `<div data-stil="display:contents">
-      <span data-stil="padding:4px 0;border-bottom:1px solid var(--bdr);display:flex;align-items:center"><input type="text" maxlength="60" value="${esc(o.name)}"
+      <span data-stil="padding:4px 0;border-bottom:1px solid var(--bdr);display:flex;align-items:center"><input type="text" maxlength="60" value="${esc(o.name)}" aria-label="${esc(tRaw('detail.storage'))}"
              data-change="benenneLagerortUm" data-arg="${o.id}" data-val="1"
              data-stil="width:100%;border:1px solid var(--bdr);border-radius:6px;padding:3px 7px;font-size:var(--fs-3);background:var(--sur);color:var(--txt)" /></span>
       <span data-stil="padding:4px 0;border-bottom:1px solid var(--bdr);display:flex;align-items:center;font-size:var(--fs-1);color:var(--mut);white-space:nowrap;justify-content:flex-end">${wie}</span>
@@ -931,6 +932,7 @@ export async function ladeLagerortVerwaltung() {
               aria-label="${esc(tRaw(o.id === vorgabeId ? 'storage.default_is' : 'storage.default_set'))}"
               aria-pressed="${o.id === vorgabeId ? 'true' : 'false'}">${ico(o.id === vorgabeId ? 'stern-voll' : 'merkliste')}</button></span>
       <span data-stil="padding:4px 0;border-bottom:1px solid var(--bdr);display:flex;align-items:center"><button class="btn bs btn-sm" data-click="loescheLagerort" data-arg="${o.id}"
+              aria-label="${esc(tRaw('common.delete'))}: ${esc(o.name)}" title="${esc(tRaw('common.delete'))}"
               data-arg2="${esc(o.name)}" data-stil="padding:2px 8px">${ico('loeschen')}</button></span>
     </div>`;
   }).join('') + `</div>`;
