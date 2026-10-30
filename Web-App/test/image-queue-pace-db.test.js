@@ -1,4 +1,8 @@
 /**
+ * @einzeln: Im parallelen Lauf brach zweimal der Test-Läufer selbst beim
+ * Lesen der Ausgabe dieser Datei ab („Unable to deserialize cloned data“);
+ * einzeln nie. Ursache in Node ungeklärt, deshalb nacheinander.
+ *
  * Die Taktung des Bild-Hintergrundjobs — und wer sie von aussen sehen kann.
  *
  * ── Marcos Log (Nachtrag 121) ───────────────────────────────────────────────
