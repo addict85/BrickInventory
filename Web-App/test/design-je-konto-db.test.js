@@ -8,7 +8,7 @@
  *   - POST /settings/user/theme setzt das eigene Design; leer löscht es, dann
  *     folgt das Konto wieder der Vorgabe (auch einem späteren Wechsel).
  *   - Ein unbekanntes Design wird abgewiesen.
- *   - /settings/raw (die App liest dort app_theme) nennt das wirksame Design.
+ *   - /settings/raw und GET /api/v1/settings (App) nennen das wirksame Design.
  *   - Die ausgelieferte index.html trägt das Design des Kontos, ohne Konto
  *     die Vorgabe — auch für „noppe“ (vorher kannte sie nur classic/brick).
  *
@@ -20,6 +20,8 @@
  *      Vorgabe“ (/settings/raw: app_theme ''), „unbekanntes Design abgewiesen“
  *   D  in indexHtml wieder ALLOWED = ['classic', 'brick'] → rot: „index.html“
  *      (classic statt noppe)
+ *   E  (30.10.) GET /api/v1/settings wieder mit getGlobalSetting('app_theme')
+ *      → rot: „App mit Token“ (noppe statt werkbank)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -58,7 +60,7 @@ test('Design je Konto', { concurrency: 1 }, async (t) => {
   });
 
   const sitzung = {};
-  const { base } = testServer(_req, { sitzung, routen: { '/api/v1/settings': 'routes/settings.js' }, t });
+  const { base } = testServer(_req, { sitzung, routen: { '/api/v1/settings': 'routes/settings.js', '/api/v1': 'routes/api_v1/index.js' }, t });
   const hole = async (pfad, o = {}) => (await fetch(base + '/api/v1/settings' + pfad, o)).json();
   const setze = (theme) => hole('/user/theme', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ theme }) });
   const als = (uid) => { if (uid) sitzung.userId = uid; else delete sitzung.userId; };
@@ -82,8 +84,9 @@ test('Design je Konto', { concurrency: 1 }, async (t) => {
   await t.test('App mit Token: dasselbe Design wie im Browser', async () => {
     als(null);
     const token = await _req('utils/auth.js').createToken(ids[0], 'Prüfung', true);
-    const r = await hole('/theme', { headers: { Authorization: `Bearer ${token}` } });
-    assert.equal(r.theme, 'werkbank');
+    const mitToken = { headers: { Authorization: `Bearer ${token}` } };
+    assert.equal((await hole('/theme', mitToken)).theme, 'werkbank');
+    assert.equal((await hole('', mitToken)).settings?.app_theme, 'werkbank', 'GET /api/v1/settings nennt die Vorgabe');
   });
 
   await t.test('unbekanntes Design abgewiesen', async () => {

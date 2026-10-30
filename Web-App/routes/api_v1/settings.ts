@@ -11,7 +11,7 @@ import { requireToken } from './middleware';
 import { householdStatus, createInvite, redeemInvite, unlink, verwerfeGetrennt } from '../../utils/household';
 import { setUserSetting, deleteUserSetting, nutzerStandardZustand, globalDefaultCondition } from '../../utils/settings';
 import { profil } from '../../utils/konten';
-import { getGlobalSetting, readSettings, getSetting } from '../../utils/settings';
+import { readSettings, getSetting, designFuer } from '../../utils/settings';
 import { bestaetigePasswort } from '../../utils/passwortBestaetigung';
 import { sendHaushaltVerknuepftMail } from '../../utils/mailer';
 import { sendeFehler } from '../../utils/fehlerTexte';
@@ -49,8 +49,9 @@ router.get('/settings', requireToken, async (req: AuthedRequest, res) => {
   // steht in utils/settings.ts, damit sie nicht neben dem Webapp-Weg ein
   // zweites Mal existiert (Etappe 6).
   settings['effective_condition'] = await nutzerStandardZustand(uid);
-  // Globales App-Design (vom Admin gesetzt) — die App wendet es an
-  settings['app_theme'] = await getGlobalSetting('app_theme') || 'classic';
+  // Das wirksame Design des Kontos, wie /settings/theme: Mit der Vorgabe des
+  // Verwalters überschrieb dieser Abruf das eigene Design in der App.
+  settings['app_theme'] = (await designFuer(uid)).theme;
   res.json({ success:true, settings });
 });
 
