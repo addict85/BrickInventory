@@ -143,6 +143,12 @@ class AppViewModel @Inject constructor(
         viewModelScope.launch {
             prefs.currency.collect { cur -> sitzung.aendere { it.copy(currency = cur) } }
         }
+        // Jede Änderung des Designs landet im Spiegel des Geräts — ob sie aus /settings,
+        // /settings/theme oder der Wahl im Konto kommt. Beim Kontowechsel ist es damit
+        // das Design des neuen Kontos, nach dem Abmelden die Vorgabe.
+        viewModelScope.launch {
+            sitzung.state.map { it.appTheme }.distinctUntilChanged().collect { prefs.saveAppTheme(it) }
+        }
         // Eine Währung, die der Server nennt, gilt beim nächsten Start schon vor
         // der ersten Antwort; drop(1) lässt den gemerkten Startwert aus.
         viewModelScope.launch {
@@ -196,6 +202,8 @@ class AppViewModel @Inject constructor(
             sitzung.abgemeldet()
             blickfeldDienst.zuruecksetzen()
             _csvImportState.value = CsvImportUiState()
+            // Das Design des Kontos gilt nicht mehr; ohne Token liefert der Server die Vorgabe.
+            loadAppTheme()
         }
     }
 
@@ -214,22 +222,19 @@ class AppViewModel @Inject constructor(
     /** Das Design merken, damit der nächste Kaltstart schon darin anfängt. */
     fun loadSettings() {
         viewModelScope.launch {
-            sitzung.ladeEinstellungen(repo.admin)?.let { prefs.saveAppTheme(it) }
+            sitzung.ladeEinstellungen(repo.admin)
         }
     }
 
     /**
-     * Das Design vor der Anmeldung über die öffentliche Adresse holen. Ohne
-     * Meldung im Fehlerfall: Dann bleibt das gemerkte, und das ist richtig.
+     * Das Design über /settings/theme: angemeldet das des Kontos, sonst die
+     * Vorgabe. Ohne Meldung im Fehlerfall: Dann bleibt das gemerkte.
      */
     private fun loadAppTheme() {
         viewModelScope.launch {
             if (prefs.serverUrlJetzt().isBlank()) return@launch
             val r = repo.admin.getAppTheme()
-            if (r is Result.Success && r.data.success) {
-                sitzung.aendere { it.copy(appTheme = r.data.theme) }
-                prefs.saveAppTheme(r.data.theme)
-            }
+            if (r is Result.Success && r.data.success) sitzung.aendere { it.copy(appTheme = r.data.theme) }
         }
     }
 

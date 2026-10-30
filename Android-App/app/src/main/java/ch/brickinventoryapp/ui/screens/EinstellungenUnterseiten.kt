@@ -188,6 +188,7 @@ fun KontoUnterseite(
     LaunchedEffect(Unit) { konto.ladeProfil() }
     LaunchedEffect(Unit) { konto.ladeGeraete() }
     LaunchedEffect(Unit) { konto.ladeZweitenFaktor() }
+    LaunchedEffect(Unit) { konto.ladeDesign() }
     Unterseite(stringResource(R.string.konto_title), snackbarHostState, onZurueck) {
         KontoCard(
             kontoZustand = kontoZustand,
@@ -195,6 +196,7 @@ fun KontoUnterseite(
             onPasswort = { alt, neu -> konto.aenderePasswort(alt, neu) { vm.logout() } },
             onMeldungWeg = { konto.kontoMeldungWeg() },
         )
+        DesignCard(design = kontoZustand.design, onWahl = { konto.waehleDesign(it) })
         ZweiterFaktorCard(
             zfZustand = zfZustand,
             onEinrichten = { konto.richteZweitenFaktorEin(it) },

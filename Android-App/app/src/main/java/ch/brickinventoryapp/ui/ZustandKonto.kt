@@ -14,6 +14,21 @@ data class KontoUiState(
     val speichert: Boolean = false,
     val meldung: String? = null,
     val fehler: String? = null,
+    /** Null, solange nicht geladen oder der Server kein Design je Konto kennt. */
+    val design: DesignWahl? = null,
+)
+
+/** Das Design des Kontos: wirksam, die Vorgabe des Verwalters und die eigene Wahl (null = Vorgabe). */
+data class DesignWahl(val wirksam: String, val vorgabe: String, val eigenes: String?)
+
+/** Die Designs mit ihrem Namen — dieselbe Liste wie ERLAUBTE_DESIGNS und DESIGNS auf dem Server. */
+val DESIGN_NAMEN: List<Pair<String, Int>> = listOf(
+    "classic" to ch.brickinventoryapp.R.string.monitoring_theme_classic,
+    "brick" to ch.brickinventoryapp.R.string.monitoring_theme_brick,
+    "werkbank" to ch.brickinventoryapp.R.string.monitoring_theme_werkbank,
+    "farbfaecher" to ch.brickinventoryapp.R.string.monitoring_theme_farbfaecher,
+    "noppe" to ch.brickinventoryapp.R.string.monitoring_theme_noppe,
+    "hochglanz" to ch.brickinventoryapp.R.string.monitoring_theme_hochglanz,
 )
 
 /** Zweiter Faktor im Konto: Stand, laufende Einrichtung, frische Codes. */

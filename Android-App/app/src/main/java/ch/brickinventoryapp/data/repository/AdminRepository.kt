@@ -143,8 +143,12 @@ class AdminRepository @Inject constructor(
     /** Startzustand des Servers — ohne Anmeldung. */
     suspend fun getStartupStatus(): Result<StartupStatus> = safeCall { api.getStartupStatus() }
 
-    /** Das globale Design — ohne Anmeldung. Siehe AdminApi.getAppTheme. */
+    /** Das wirksame Design: mit Token das des Kontos, sonst die Vorgabe. Siehe AdminApi.getAppTheme. */
     suspend fun getAppTheme(): Result<AppThemeResponse> = safeCall { api.getAppTheme() }
+
+    /** Eigenes Design setzen; "" stellt auf die Vorgabe des Verwalters zurück. */
+    suspend fun setzeEigenesDesign(theme: String): Result<AppThemeResponse> =
+        safeCall { api.setzeEigenesDesign(mapOf("theme" to theme)) }
 
     suspend fun updateSettings(currency: String, condition: String): Result<GenericResponse> =
         safeCall { api.updateSettings(mapOf("currency" to currency, "price_condition" to condition)) }

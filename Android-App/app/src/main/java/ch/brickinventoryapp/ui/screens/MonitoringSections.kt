@@ -292,14 +292,7 @@ fun CacheAndLimitsSection(vm: AppViewModel, onSnack: (String) -> Unit = {}) {
                 horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
                 verticalArrangement = Arrangement.spacedBy(Abstaende.klein),
             ) {
-                for ((wert, text) in listOf(
-                    "classic" to R.string.monitoring_theme_classic,
-                    "brick" to R.string.monitoring_theme_brick,
-                    "werkbank" to R.string.monitoring_theme_werkbank,
-                    "farbfaecher" to R.string.monitoring_theme_farbfaecher,
-                    "noppe" to R.string.monitoring_theme_noppe,
-                    "hochglanz" to R.string.monitoring_theme_hochglanz,
-                )) {
+                for ((wert, text) in ch.brickinventoryapp.ui.DESIGN_NAMEN) {
                     FilterChip(
                         selected = appState.appTheme == wert,
                         onClick = {

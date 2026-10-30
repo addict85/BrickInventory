@@ -659,6 +659,8 @@
     <string name="konto_password_hint">All access tokens of this account are revoked — including this app. You will have to sign in again.</string>
     <string name="konto_password_changed">Password changed. Please sign in again.</string>
     <string name="konto_password_button">Change password</string>
+    <string name="konto_design_hint">Applies to this account on every device.</string>
+    <string name="konto_design_vorgabe">Default: %1$s</string>
 
     <!-- ══════════════ CSV upload ══════════════ -->
     <string name="csv_upload_title">Import CSV</string>

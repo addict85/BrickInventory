@@ -282,9 +282,8 @@ const C = {
   'POST /api/v1/wanted/import/csv': 'nur-v1',
   'POST /api/v1/alerts/import/csv': 'nur-v1',
   'POST /api/v1/wanted-list/import/xml': 'nur-web',
-  // Eigenes Design des Kontos (Profil); die App liest das Ergebnis über
-  // /settings/theme und /settings, setzen kann sie es noch nicht.
-  'POST /api/v1/settings/user/theme': 'nur-web',
+  // Eigenes Design des Kontos: Profil der Webapp und Konto-Bildschirm der App.
+  'POST /api/v1/settings/user/theme': 'nur-v1',
 
   // ── Gutscheine ───────────────────────────────────────────────────────────
   //

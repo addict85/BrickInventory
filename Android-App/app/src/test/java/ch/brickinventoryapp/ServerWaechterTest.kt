@@ -40,6 +40,8 @@ import java.util.concurrent.atomic.AtomicInteger
  *      wird auf den Server samt Pfad umgeschrieben“
  *   G  eigeneKoepfe() nicht aufgerufen → rot „der eigene Server bekommt Sprache
  *      und Fassung“
+ *   H  (30.10.2026) /settings/theme vom Token ausgenommen (`mitToken` falsch für
+ *      Pfade auf "/settings/theme") → rot „das Design des Kontos wird mit Token geholt“
  */
 class ServerWaechterTest {
 
@@ -131,6 +133,13 @@ class ServerWaechterTest {
         hole(client(Lage(basis()), api = false), basis() + "/images/sets/1.jpg")
         assertEquals("Bearer $TOKEN", anfragenAn("/images/").single().second)
         assertEquals(1, abgelaufen.get())
+    }
+
+    /** Ohne Token lieferte der Server die Vorgabe statt des Designs dieses Kontos. */
+    @Test
+    fun `das Design des Kontos wird mit Token geholt`() {
+        hole(client(Lage(basis())), "http://localhost:3000/api/v1/settings/theme")
+        assertEquals("Bearer $TOKEN", anfragenAn("/api/v1/settings/theme").single().second)
     }
 
     @Test

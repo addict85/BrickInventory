@@ -645,6 +645,8 @@
     <string name="konto_password_hint">Alle Zugänge dieses Kontos werden verworfen — auch diese App. Du musst dich danach neu anmelden.</string>
     <string name="konto_password_changed">Passwort geändert. Bitte melde dich neu an.</string>
     <string name="konto_password_button">Passwort ändern</string>
+    <string name="konto_design_hint">Gilt für dieses Konto auf allen Geräten.</string>
+    <string name="konto_design_vorgabe">Vorgabe: %1$s</string>
 
     <!-- ══════════════ CSV hochladen ══════════════ -->
     <string name="csv_upload_title">CSV importieren</string>

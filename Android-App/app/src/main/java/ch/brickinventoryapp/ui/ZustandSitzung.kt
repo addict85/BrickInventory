@@ -28,7 +28,7 @@ data class AppUiState(
     val priceCondition: String = "N",
     val defaultPriceCondition: String = "N", // server-side default condition for new items (N=New, U=Used)
     val userDefaultCondition: String? = null, // null = use global default
-    val appTheme: String = "classic", // global vom Admin gewähltes App-Design
+    val appTheme: String = "classic", // wirksames Design: eigenes des Kontos, sonst die Vorgabe
     /**
      * Startzustand des Servers, solange er nicht `ready` meldet; sonst null. Der erste
      * Start einer Neuinstallation dauert Minuten, und statt einer Netzmeldung zeigt

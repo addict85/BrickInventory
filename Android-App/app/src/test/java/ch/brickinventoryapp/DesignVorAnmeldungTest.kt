@@ -143,13 +143,17 @@ class DesignVorAnmeldungTest {
         }
     }
 
+    /**
+     * Sonst gilt Stufe eins nur fuer den Weg, der zufaellig zuletzt lief. Seit das
+     * Design je Konto gilt, kommt es auf drei Wegen (/settings, /settings/theme, Wahl
+     * im Konto); gemerkt wird an EINER Stelle, die jede Aenderung der Sitzung sieht.
+     * Gegenprobe (30.10.2026, gemessen): das Sammeln entfernt → rot.
+     */
     @Test
-    fun `beide Wege merken sich das Ergebnis`() {
-        // Sonst gilt Stufe eins nur fuer den Weg, der zufaellig zuletzt lief.
+    fun `jede Aenderung des Designs wird gemerkt`() {
         val s = code(read("ui/AppViewModel.kt"))
-        val treffer = Regex("""prefs\.saveAppTheme\(""").findAll(s).count()
-        assert(treffer >= 2) {
-            "Nur $treffer Stelle(n) merken sich das Design — erwartet: /settings UND /settings/theme"
+        assert(Regex("""sitzung\.state\.map \{ it\.appTheme \}[^\n]*\.collect \{ prefs\.saveAppTheme\(it\) \}""").containsMatchIn(s)) {
+            "Das Design wird nicht aus der Sitzung gemerkt — eine Wahl im Konto ueberlebte den Kaltstart nicht"
         }
     }
 }

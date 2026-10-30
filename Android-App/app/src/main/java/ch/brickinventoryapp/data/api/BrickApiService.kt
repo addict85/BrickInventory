@@ -147,11 +147,15 @@ interface AdminApi {
     suspend fun getStartupStatus(): Response<ch.brickinventoryapp.data.model.StartupStatus>
 
     /**
-     * Das globale Design des Servers — ohne Anmeldung: Anmelde- und
-     * Einrichtungsbildschirm sollen schon im richtigen Design erscheinen.
+     * Das Design — ohne Anmeldung die Vorgabe des Verwalters (Anmeldebildschirm),
+     * mit Token das des Kontos. Der ServerWaechter hängt den Token an.
      */
     @GET("api/v1/settings/theme")
     suspend fun getAppTheme(): Response<ch.brickinventoryapp.data.model.AppThemeResponse>
+
+    /** Eigenes Design des Kontos; "" heisst „Vorgabe des Verwalters“. */
+    @POST("api/v1/settings/user/theme")
+    suspend fun setzeEigenesDesign(@Body body: Map<String, String>): Response<ch.brickinventoryapp.data.model.AppThemeResponse>
 
     @GET("api/v1/catalog/year-verteilung")
     suspend fun getCatalogYearVerteilung(

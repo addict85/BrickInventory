@@ -51,7 +51,7 @@ data class UserSettings(
     @SerialName("default_price_condition") val defaultPriceCondition: String = "N",
     @SerialName("user_default_condition") val userDefaultCondition: String? = null,
     @SerialName("effective_condition") val effectiveCondition: String = "N", // resolved: user→global→'N'
-    @SerialName("app_theme") val appTheme: String = "classic" // global vom Admin gewähltes Design
+    @SerialName("app_theme") val appTheme: String = "classic" // wirksames Design des Kontos
 )
 
 /**
@@ -73,9 +73,19 @@ data class StartupStatus(
     val sub: String? = null,
 )
 
-/** Antwort von GET /api/v1/settings/theme — die einzige Adresse ohne Anmeldung. */
+/**
+ * GET /api/v1/settings/theme (auch ohne Anmeldung) und POST …/user/theme. Mit
+ * Token ist [theme] das wirksame Design des Kontos: [eigenes], sonst die
+ * [vorgabe] des Verwalters. Ältere Server kennen nur [theme].
+ */
 @Serializable
-data class AppThemeResponse(val success: Boolean = false, val theme: String = "classic")
+data class AppThemeResponse(
+    val success: Boolean = false,
+    val theme: String = "classic",
+    val vorgabe: String? = null,
+    val eigenes: String? = null,
+    val error: String? = null,
+)
 
 @Serializable
 data class SettingsResponse(

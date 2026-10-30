@@ -7,8 +7,11 @@ import ch.brickinventoryapp.data.MeldungsKanal
 import ch.brickinventoryapp.data.model.ProfilAenderung
 import ch.brickinventoryapp.data.repository.AdminRepository
 import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.ui.DesignWahl
 import ch.brickinventoryapp.ui.GeraeteUiState
 import ch.brickinventoryapp.ui.KontoUiState
+import ch.brickinventoryapp.ui.Sitzung
+import ch.brickinventoryapp.ui.setzeDesign
 import ch.brickinventoryapp.ui.ZweiterFaktorUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -29,6 +32,7 @@ class KontoViewModel @Inject constructor(
     private val admin: AdminRepository,
     private val texte: Texte,
     meldungen: MeldungsKanal,
+    private val sitzung: Sitzung,
 ) : ViewModel() {
 
     private val _kontoState = MutableStateFlow(KontoUiState())
@@ -105,6 +109,37 @@ class KontoViewModel @Inject constructor(
             }
         }
     }
+
+    // ── Design des Kontos ────────────────────────────────────────────────────
+
+    /** Mit Token liefert /settings/theme das Design DIESES Kontos samt Vorgabe. */
+    fun ladeDesign() {
+        viewModelScope.launch {
+            val r = admin.getAppTheme()
+            if (r is Result.Success && r.data.success) _kontoState.update { it.copy(design = designWahl(r.data)) }
+        }
+    }
+
+    /**
+     * Eigenes Design wählen; "" heisst Vorgabe des Verwalters. Die Antwort nennt
+     * das wirksame Design, und das gilt sofort in der ganzen App.
+     */
+    fun waehleDesign(eigenes: String) {
+        viewModelScope.launch {
+            when (val r = admin.setzeEigenesDesign(eigenes)) {
+                is Result.Success ->
+                    if (r.data.success) {
+                        sitzung.setzeDesign(r.data.theme)
+                        _kontoState.update { it.copy(design = designWahl(r.data), fehler = null) }
+                    } else _kontoState.update { it.copy(fehler = r.data.error ?: texte.text(R.string.err_generic)) }
+                is Result.Error -> _kontoState.update { it.copy(fehler = texte.meldung(r)) }
+            }
+        }
+    }
+
+    /** Ohne `vorgabe` ist der Server älter und kennt kein Design je Konto: dann keine Auswahl. */
+    private fun designWahl(a: ch.brickinventoryapp.data.model.AppThemeResponse) =
+        a.vorgabe?.let { DesignWahl(a.theme, it, a.eigenes) }
 
     /** Meldung/Fehler der Kontokarte wegräumen, wenn der Nutzer weitertippt. */
     fun kontoMeldungWeg() = _kontoState.update { it.copy(meldung = null, fehler = null) }

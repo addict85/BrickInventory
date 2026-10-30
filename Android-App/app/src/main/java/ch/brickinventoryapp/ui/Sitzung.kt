@@ -36,9 +36,12 @@ class Sitzung @Inject constructor() {
      */
     val abmeldungen: SharedFlow<Unit> = _abmeldungen.asSharedFlow()
 
-    /** Der Server bleibt eingetragen — abgemeldet heisst nicht „anderer Server“. */
+    /**
+     * Der Server bleibt eingetragen — abgemeldet heisst nicht „anderer Server“.
+     * Das Design bleibt, bis die Vorgabe des Servers da ist; sonst blitzte „classic“ auf.
+     */
     fun abgemeldet() {
-        _state.update { AppUiState(serverUrl = it.serverUrl) }
+        _state.update { AppUiState(serverUrl = it.serverUrl, appTheme = it.appTheme) }
         _abmeldungen.tryEmit(Unit)
     }
 }
@@ -64,6 +67,9 @@ internal suspend fun Sitzung.ladeEinstellungen(admin: ch.brickinventoryapp.data.
         }
         is ch.brickinventoryapp.data.repository.Result.Error -> null
     }
+
+/** Das wirksame Design, z. B. nach einer Wahl im Konto; das AppViewModel merkt es sich für den Kaltstart. */
+internal fun Sitzung.setzeDesign(theme: String) = aendere { it.copy(appTheme = theme) }
 
 /**
  * Ein gescheiterter QR-Anlauf, während die App schon angemeldet ist, ist kein
