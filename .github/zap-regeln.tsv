@@ -1,0 +1,8 @@
+10020	FAIL	(Anti-Clickjacking-Kopf fehlt)
+10021	FAIL	(X-Content-Type-Options fehlt)
+10038	FAIL	(Content-Security-Policy fehlt)
+10098	FAIL	(Cross-Domain-Fehlkonfiguration)
+10010	FAIL	(Cookie ohne HttpOnly)
+10054	FAIL	(Cookie ohne SameSite)
+10035	IGNORE	(HSTS: der Lauf spricht http, HSTS setzt der Server nur hinter TLS)
+10011	IGNORE	(Cookie ohne Secure: der Lauf spricht http)

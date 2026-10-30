@@ -237,3 +237,28 @@ test('jede Action ist per Commit-SHA festgelegt', () => {
   }
   assert.deepEqual(lose, [], 'Ein Tag lässt sich umhängen; nur ein SHA ist fest. Nicht per Commit-SHA festgelegt:');
 });
+
+// Gegenproben (am 30.10.2026 gemessen): `security-events: write` auf die
+// oberste Ebene gezogen → rot „security-events: write darf nur der CodeQL-Job
+// haben“; die Kotlin-Zeile der
+// Matrix entfernt → rot „CodeQL prüft java-kotlin nicht“.
+test('der Sicherheitslauf prüft Code, Abhängigkeiten, Image und den laufenden Server', () => {
+  const roh = fs.readFileSync(path.join(ECHTER_ORT, 'sicherheit.yml'), 'utf8');
+  const yml = roh.split('\n').filter(z => !z.trimStart().startsWith('#')).join('\n');
+  const oben = yml.slice(0, yml.indexOf('\njobs:'));
+  assert.match(oben, /\npermissions:\n  contents: read\n/, 'oben nur contents: read');
+  const schreibend = [...yml.matchAll(/security-events:\s*write/g)].length;
+  assert.equal(schreibend, 1, 'security-events: write darf nur der CodeQL-Job haben');
+  const codeql = yml.slice(yml.indexOf('\n  codeql:'), yml.indexOf('\n  trivy:'));
+  assert.match(codeql, /security-events:\s*write/, 'nur der CodeQL-Job darf Befunde hochladen');
+  for (const sprache of ['javascript-typescript', 'java-kotlin'])
+    assert.match(codeql, new RegExp(`sprache: ${sprache}\\b`), `CodeQL prüft ${sprache} nicht`);
+  const trivy = yml.slice(yml.indexOf('\n  trivy:'), yml.indexOf('\n  zap:'));
+  assert.match(trivy, /scan-type: fs/);
+  assert.match(trivy, /scan-type: image/);
+  const zap = yml.slice(yml.indexOf('\n  zap:'));
+  assert.match(zap, /action-baseline@[0-9a-f]{40}/);
+  assert.match(zap, /NODE_ENV: production/, 'ZAP prüft nicht den Server, wie er im Betrieb läuft');
+  assert.match(zap, /docker_name: \S+@sha256:[0-9a-f]{64}/, 'das ZAP-Image ist nicht per Digest festgelegt');
+  assert.ok(fs.existsSync(path.join(WURZEL, '.github', 'zap-regeln.tsv')), 'die ZAP-Regeln fehlen');
+});
