@@ -28,6 +28,7 @@ import org.junit.Test
  *   A  setNumber nicht aus dem SavedStateHandle, sondern "" → alle vier rot,
  *      zuerst „das Set kommt aus dem SavedStateHandle …“
  *   B  in updateQuantity() das Melden entfernt → rot „eine geänderte Menge …“
+ *      (30.10. nach dem Angleichen der Nachlade-Antwort erneut gemessen)
  *   C  in beiAenderung() den Vergleich der Setnummer weggelassen → rot „ein
  *      geänderter Kauf eines anderen Sets lädt hier nichts“
  *   D  den Alarme-Zweig in beiAenderung() entfernt → rot „ein gespeicherter
@@ -91,6 +92,10 @@ class SetDetailViewModelTest {
         val vm = vm()
         vm.ladeAlles()
         geladen(vm)
+        // Nach dem PUT hat der Server 3; das Nachladen nach der Meldung muss
+        // dieselbe Zahl liefern, sonst überschreibt es die 3 vor der Prüfung.
+        pfade.antworten["/api/v1/sets/75192-1"] =
+            """{"success":true,"quantity":3,"set":{"set_number":"75192-1","name":"Falke","quantity":3}}"""
         val liste = t.gemeldet(1) {
             // Gewünscht 5, der Server deckelt auf 3 (fremde Exemplare lassen sich
             // nicht wegnehmen): Es gilt seine Zahl, nicht die eigene Annahme.
