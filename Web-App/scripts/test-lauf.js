@@ -49,8 +49,10 @@ async function main() {
     console.log(`[test-lauf] seriell, ${Math.round((Date.now() - start) / 1000)} s`);
     process.exit(code);
   }
+  // Einzeln laufen Browser-Tests und Dateien mit der Marke `@einzeln`: Sie
+  // teilen etwas ausserhalb ihrer Datenbank, etwa eine Datei unter data/.
   const istBrowser = (/** @type {string} */ f) =>
-    /CHROME_BIN|helpers\/app-browser/.test(fs.readFileSync(path.resolve(ROOT, f), 'utf8'));
+    /CHROME_BIN|helpers\/app-browser|@einzeln\b/.test(fs.readFileSync(path.resolve(ROOT, f), 'utf8'));
   const browser = dateien.filter(istBrowser), uebrige = dateien.filter(f => !istBrowser(f));
   // Doppelt so viele wie Kerne: Viele Dateien warten auf die Datenbank oder Zeitgeber.
   const n = Math.max(1, Number(process.env.TEST_PARALLEL) || Math.min(2 * os.availableParallelism(), 8));
@@ -81,7 +83,7 @@ async function main() {
   } finally {
     if (admin) { await raeumeAuf(admin, vorlage, true).catch(() => {}); await admin.end(); }
   }
-  console.log(`[test-lauf] ${uebrige.length} Dateien zu ${n} parallel, ${browser.length} Browser-Dateien einzeln, `
+  console.log(`[test-lauf] ${uebrige.length} Dateien zu ${n} parallel, ${browser.length} Dateien einzeln (Browser, @einzeln), `
     + `${Math.round((Date.now() - start) / 1000)} s`);
   process.exit(code);
 }
