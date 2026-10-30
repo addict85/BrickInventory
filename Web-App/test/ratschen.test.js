@@ -110,7 +110,8 @@ test('stille Faenge werden weniger, nie mehr', () => {
   // ueber meldeUndWeiter. Die Schranke zieht nach, wie die Regel es vorsieht.
   // 29.10.2026: 41 — die übrigen Fänge melden über logAndContinue/meldeUndWeiter.
   // 30.10.2026: 39 (Schichtumbau: die Routenfänge stehen gemeldet in den Diensten).
-  const SCHRANKE = 39;
+  // 30.10.2026: 36 (Protokoll: Schreibfehler nach app_logs werden gezählt und gemeldet).
+  const SCHRANKE = 36;
   const ist = zaehle(STILLE_FAENGE);
   assert.ok(ist <= SCHRANKE,
     `${ist} stille Faenge, erlaubt sind ${SCHRANKE}. Ein neuer \`catch {}\` ` +
