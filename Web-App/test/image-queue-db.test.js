@@ -439,8 +439,10 @@ test('die Anfrage rechnet nichts mehr, sie notiert nur', () => {
   assert.match(px, /if \(darfErzeugen\) queueThumb\(cacheFile, thumbFile\); else notiere\(\);/,
     'Im gen=0-Fall wird weiter sofort verkleinert statt notiert');
   // Und die Notiz braucht die Setnummer — ohne sie weiss der Job nicht, wohin.
-  assert.match(px, /media\\\/sets\\\/\(\[\^\/\?#\]\+\?\)/,
+  assert.match(px, /const setAusUrl = \(\) => setNummerAusBildAdresse\(/,
     'Die Setnummer wird nicht aus der Adresse gelesen');
+  assert.equal(_req('routes/imgProxy.js').setNummerAusBildAdresse('https://cdn.rebrickable.com/media/sets/10294-1.jpg'),
+    '10294-1', 'Die Setnummer wird nicht aus der Adresse gelesen');
 
   // Der Job läuft nur auf dem Primärprozess — sonst rechnen wieder alle vier.
   // Siehe oben (Nachtrag 139): echter Import statt spätem require().
