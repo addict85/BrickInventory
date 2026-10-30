@@ -50,7 +50,7 @@ fun AcquisitionManagementScreen(
     vm: KaeufeViewModel,
     type: String,           // "set" | "part" | "fig"
     id: String,             // setNumber / partNumber / figNumber
-    colorId: Int = 0,
+    colorId: Int = ch.brickinventoryapp.data.model.KEINE_FARBE,
     title: String,
     onBack: () -> Unit
 ) {

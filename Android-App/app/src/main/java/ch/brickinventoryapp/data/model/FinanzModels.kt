@@ -126,7 +126,7 @@ data class PartValuationItem(
     @SerialName("part_number") val partNumber: String = "",
     @SerialName("bl_part_number") val blPartNumber: String? = null,
     @SerialName("part_name") val partName: String? = null,
-    @SerialName("color_id") val colorId: Int = 0,
+    @SerialName("color_id") val colorId: Int = KEINE_FARBE,
     @SerialName("color_name") val colorName: String? = null,
     @SerialName("color_hex") val colorHex: String? = null,
     val quantity: Int = 1,

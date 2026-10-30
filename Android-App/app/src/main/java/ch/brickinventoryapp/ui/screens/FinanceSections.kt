@@ -102,7 +102,7 @@ fun LazyListScope.financeFigRows(figsValuation: FigsValuationResponse?, showFigs
             ManualFinanceRow(
                 imageUrl = figImg,
                 imageLoader = imageLoader,
-                onClick = { onManualClick("fig", fig.figNumber, 0, fig.figName) },
+                onClick = { onManualClick("fig", fig.figNumber, ch.brickinventoryapp.data.model.KEINE_FARBE, fig.figName) },
                 title = fig.figName ?: fig.figNumber,
                 blId = fig.blFigNumber ?: fig.figNumber,
                 quantity = zeile.menge,

@@ -2,6 +2,7 @@ package ch.brickinventoryapp.ui.viewmodel
 
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.alarm.Alarmeingabe
+import ch.brickinventoryapp.data.model.KEINE_FARBE
 import ch.brickinventoryapp.data.model.UpdateAcquisitionRequest
 import ch.brickinventoryapp.data.repository.FinanzenRepository
 import ch.brickinventoryapp.data.repository.HaushaltRepository
@@ -43,10 +44,10 @@ class KaeufeViewModel @Inject constructor(
 
     // ── Laden ────────────────────────────────────────────────────────────────
 
-    fun loadAcquisitions(setNumber: String) = lade("set", setNumber, 0)
+    fun loadAcquisitions(setNumber: String) = lade("set", setNumber, KEINE_FARBE)
 
     /** Käufe und Preisverlauf eines manuellen Teils ("part") oder einer Figur ("fig"). */
-    fun loadManualAcquisitions(type: String, id: String, colorId: Int = 0) {
+    fun loadManualAcquisitions(type: String, id: String, colorId: Int = KEINE_FARBE) {
         lade(type, id, colorId)
         loadManualPriceHistory(type, id, colorId)
     }
@@ -73,7 +74,7 @@ class KaeufeViewModel @Inject constructor(
         }
     }
 
-    fun loadManualPriceHistory(type: String, id: String, colorId: Int = 0) {
+    fun loadManualPriceHistory(type: String, id: String, colorId: Int = KEINE_FARBE) {
         viewModelScope.launch {
             _manDetailState.update { it.copy(priceHistoryLoading = true) }
             val r = if (type == "fig") finanzen.getFigPriceHistory(id) else finanzen.getPartPriceHistory(id, colorId)

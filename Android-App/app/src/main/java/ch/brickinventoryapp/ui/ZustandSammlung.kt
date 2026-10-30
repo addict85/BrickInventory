@@ -157,7 +157,7 @@ data class ManualItemDetailUiState(
     // Identifiziert das aktuell geöffnete Element
     val itemType: String = "",       // "part" | "fig"
     val itemId: String = "",         // part_number oder fig_number
-    val colorId: Int = 0,
+    val colorId: Int = ch.brickinventoryapp.data.model.KEINE_FARBE,
     // `newQuantity` stand hier — die Gesamtmenge nach dem Loeschen einer
     // Erfassung. Gelesen wurde sie nie, und sie wird auch nicht gebraucht: Die
     // angezeigte Menge folgt der SUMME der Erfassungen
@@ -178,7 +178,7 @@ data class SetItemUiState(
     /** "part" oder "fig"; null heisst: der Dialog ist zu. */
     val art: String? = null,
     val nummer: String = "",
-    val colorId: Int = 0,
+    val colorId: Int = ch.brickinventoryapp.data.model.KEINE_FARBE,
     val laedt: Boolean = false,
     val kopf: BestandteilKopf? = null,
     val sets: List<VerwendendesSet> = emptyList(),

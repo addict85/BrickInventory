@@ -147,12 +147,16 @@ class TeileRepository @Inject constructor(
     suspend fun getBrickColors(): Result<BrickColorsResponse> =
         safeCall { api.getBrickColors() }
 
-    suspend fun addPart(partNumber: String, colorId: Int = 0, colorName: String? = null, colorHex: String? = null,
+    /** Ohne Farbe KEINE_FARBE, nie 0 (Schwarz); Name und Code gehören dann nicht dazu. */
+    suspend fun addPart(partNumber: String, colorId: Int = KEINE_FARBE, colorName: String? = null, colorHex: String? = null,
                          quantity: Int = 1, unitPrice: Double? = null,
                          condition: String? = null, ownerUserId: Int? = null,
-                         storage: String? = null): Result<AddPartResponse> =
-        safeCall { api.addPart(AddPartRequest(partNumber, colorId, colorName, colorHex, quantity,
+                         storage: String? = null): Result<AddPartResponse> {
+        val ohne = colorId == KEINE_FARBE
+        return safeCall { api.addPart(AddPartRequest(partNumber, colorId, colorName.takeUnless { ohne },
+                                              colorHex.takeUnless { ohne }, quantity,
                                               unitPrice, condition, ownerUserId, storage)) }
+    }
 
     /** @param owner Besitzer der Karte; null = eigenes Konto. */
     suspend fun updatePart(partNumber: String, colorId: Int, quantity: Int, unitPrice: Double?, condition: String? = null, owner: Int? = null): Result<GenericResponse> =
@@ -172,8 +176,8 @@ class TeileRepository @Inject constructor(
     suspend fun setPartColor(partNumber: String, colorId: Int, neueFarbe: Int,
                              farbName: String? = null, farbHex: String? = null,
                              owner: Int? = null): Result<TeilFarbeResponse> =
-        safeCall { api.setPartColor(partNumber, colorId,
-                                    TeilFarbeRequest(neueFarbe, farbName, farbHex), owner) }
+        safeCall { api.setPartColor(partNumber, colorId, TeilFarbeRequest(neueFarbe,
+            farbName.takeUnless { neueFarbe == KEINE_FARBE }, farbHex.takeUnless { neueFarbe == KEINE_FARBE }), owner) }
 
     suspend fun addMinifig(figNumber: String, blFigNumber: String? = null, quantity: Int = 1,
                            unitPrice: Double? = null, condition: String? = null,
