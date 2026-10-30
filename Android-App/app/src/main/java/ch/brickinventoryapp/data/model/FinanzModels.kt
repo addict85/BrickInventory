@@ -115,6 +115,8 @@ data class PriceHistoryResponse(
     @SerialName("by_condition") val byCondition: PriceByCondition = PriceByCondition(),
     val chart: PriceChartData = PriceChartData(),
     @SerialName("pnl_pct") val pnlPct: String? = null,
+    /** pnl_pct als Zahl — die App liest diese, der Text bleibt für ältere Clients. */
+    @SerialName("pnl_prozent") val pnlProzent: Double? = null,
     @SerialName("purchase_price") val purchasePrice: Double? = null,
 )
 
@@ -142,7 +144,10 @@ data class PartValuationItem(
     @SerialName("qty_avg_price") val qtyAvgPrice: Double? = null,
     @SerialName("avg_price") val avgPrice: Double? = null,
     @SerialName("pnl_pct") val pnlPct: String? = null,
+    @SerialName("pnl_prozent") val pnlProzent: Double? = null,
     @SerialName("display_value") val displayValue: String? = null,
+    /** display_value als Zahl: Marktwert des ganzen Eintrags, vom Server auf Rappen gerundet. */
+    @SerialName("wert_gesamt") val wertGesamt: Double? = null,
     val condition: String? = null,
     /** Alle erfassten Zustände — je einer eine Plakette (siehe SetItem). */
     val conditions: List<String> = emptyList(),
@@ -191,6 +196,8 @@ data class PartsValuationResponse(
     val currency: String = "EUR",
     val parts: List<PartValuationItem> = emptyList(),
     @SerialName("total_value") val totalValue: String = "0.00",
+    /** Erfassungen mit Kaufpreis in einer anderen Währung — in keiner Summe enthalten. */
+    @SerialName("kaufpreise_fremde_waehrung") val kaufpreiseFremdeWaehrung: Int = 0,
     val error: String? = null
 )
 
@@ -218,7 +225,10 @@ data class FigValuationItem(
     @SerialName("qty_avg_price") val qtyAvgPrice: Double? = null,
     @SerialName("avg_price") val avgPrice: Double? = null,
     @SerialName("pnl_pct") val pnlPct: String? = null,
+    @SerialName("pnl_prozent") val pnlProzent: Double? = null,
     @SerialName("display_value") val displayValue: String? = null,
+    /** display_value als Zahl: Marktwert des ganzen Eintrags, vom Server auf Rappen gerundet. */
+    @SerialName("wert_gesamt") val wertGesamt: Double? = null,
     val condition: String? = null,
     /** Alle erfassten Zustände — je einer eine Plakette (siehe SetItem). */
     val conditions: List<String> = emptyList(),
@@ -246,6 +256,7 @@ data class FigsValuationResponse(
     val currency: String = "EUR",
     val figs: List<FigValuationItem> = emptyList(),
     @SerialName("total_value") val totalValue: String = "0.00",
+    @SerialName("kaufpreise_fremde_waehrung") val kaufpreiseFremdeWaehrung: Int = 0,
     val error: String? = null
 )
 
@@ -254,6 +265,12 @@ data class PnlTotals(
     val purchase: String = "0.00",
     val current: String = "0.00",
     @SerialName("pnl_pct") val pnlPct: String? = null,
+    @SerialName("pnl_prozent") val pnlProzent: Double? = null,
+    /**
+     * Kaufpreise in einer anderen Währung als der des Kontos, über Sets, Teile und
+     * Figuren. Sie fehlen in allen Summen (Kurse gibt es keine); die Zahl sagt wie viele.
+     */
+    @SerialName("kaufpreise_fremde_waehrung") val kaufpreiseFremdeWaehrung: Int = 0,
     @SerialName("sets_purchase") val setsPurchase: String? = null,
     @SerialName("parts_purchase") val partsPurchase: String? = null,
     @SerialName("figs_purchase") val figsPurchase: String? = null,
@@ -274,6 +291,15 @@ data class PnlSetZeile(
     @SerialName("baseline_price") val baselinePrice: Double? = null,
     @SerialName("pnl_pct") val pnlPct: String? = null,
     @SerialName("baseline_pnl_pct") val baselinePnlPct: String? = null,
+    @SerialName("pnl_betrag") val pnlBetrag: Double? = null,
+    @SerialName("pnl_prozent") val pnlProzent: Double? = null,
+    @SerialName("baseline_pnl_prozent") val baselinePnlProzent: Double? = null,
+    /**
+     * Betrag und G&V der Galeriekachel, fertig vom Server (utils/setValue.ts,
+     * kachelWerte) — im Haushalt nach Menge gewichtet. Steht in jeder Zeile des Sets.
+     */
+    @SerialName("kachel_preis") val kachelPreis: Double? = null,
+    @SerialName("kachel_pnl_pct") val kachelPnlPct: Double? = null,
 )
 
 @Serializable
@@ -302,6 +328,9 @@ data class ValuationSet(
     // Marktpreis ist seit der Preisumstellung avg_price, nicht der
     // mengengewichtete Schnitt — total_avg ist die passende Summe dazu.
     @SerialName("total_avg") val totalAvg: String? = null,
+    /** total_avg als Zahl. */
+    @SerialName("wert_gesamt") val wertGesamt: Double? = null,
+    @SerialName("pnl_prozent") val pnlProzent: Double? = null,
     // Mengengewichteter Kaufpreis über die Erfassungen (Server berechnet ihn).
     @SerialName("purchase_price") val purchasePrice: Double? = null,
     @SerialName("from_cache") val fromCache: Boolean = true,
@@ -332,7 +361,9 @@ data class ValuationAcquisition(
     @SerialName("purchase_price") val purchasePrice: Double? = null,
     @SerialName("avg_price") val avgPrice: Double? = null,
     @SerialName("total_avg") val totalAvg: String? = null,
+    @SerialName("wert_gesamt") val wertGesamt: Double? = null,
     @SerialName("pnl_pct") val pnlPct: String? = null,
+    @SerialName("pnl_prozent") val pnlProzent: Double? = null,
     @SerialName("created_at") val createdAt: String? = null,
     /** Eigentümer DIESER Zeile — im Haushalt können es mehrere sein. */
     @SerialName("owner_user_id") val ownerUserId: Int? = null,
@@ -351,6 +382,9 @@ data class ValuationResponse(
     val success: Boolean,
     val currency: String = "EUR",
     val condition: String = "N",
+    /** Gültigkeit der Preise im Zwischenspeicher, in Stunden. */
+    @SerialName("ttl_stunden") val ttlStunden: Int? = null,
+    @SerialName("kaufpreise_fremde_waehrung") val kaufpreiseFremdeWaehrung: Int = 0,
     val sets: List<ValuationSet> = emptyList(),
     val totals: Totals = Totals(),
     val error: String? = null

@@ -225,7 +225,7 @@ fun LazyListScope.setDetailInstructionsSection(
  * `fmtPrice`, `fmtDate` und `serverUrl` kommen als Parameter aus
  * SetDetailScreen(), damit die Währung an einer Stelle aufgelöst wird.
  */
-fun LazyListScope.setDetailPriceSection(set: SetItem, detailState: SetDetailUiState, price: SetPriceResponse?, history: PriceHistoryResponse?, pnlPct: String?, currency: String, isBrick: Boolean, fmtPrice: (Double?) -> String) {
+fun LazyListScope.setDetailPriceSection(set: SetItem, detailState: SetDetailUiState, price: SetPriceResponse?, history: PriceHistoryResponse?, pnlPct: Double?, currency: String, isBrick: Boolean, fmtPrice: (Double?) -> String) {
     // ── Price section ──────────────────────────────────────────────────
     if (price != null && !price.noPrice || detailState.setPriceLoading) {
         item {
@@ -245,7 +245,7 @@ fun LazyListScope.setDetailPriceSection(set: SetItem, detailState: SetDetailUiSt
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary
                         )
-                        val pct = pnlPct?.toDoubleOrNull()
+                        val pct = pnlPct
                         if (pct != null) {
                             Spacer(Modifier.height(Abstaende.winzig))
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {

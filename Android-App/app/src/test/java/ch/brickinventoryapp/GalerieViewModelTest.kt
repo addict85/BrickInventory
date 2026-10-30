@@ -38,6 +38,8 @@ import org.junit.Test
  *      die Liste → je rot „erfasste Teile laden die Kennzahlen …“
  *   F  vergissScroll auf "parts" statt "gallery" → rot „ein Filterwechsel
  *      vergisst die Rollposition der Galerie und nur sie“
+ *   G  (30.10.2026) kachelPreise() ohne kachel_preis/kachel_pnl_pct → rot „die
+ *      Kennzahlen bringen Preis und G&V …“ (800,0 statt 812,5)
  *   G  in loadStats() ladePreise() entfernt → rot „die Kennzahlen bringen
  *      Preis und G&V …“
  */
@@ -62,7 +64,8 @@ class GalerieViewModelTest {
                 {"set_number":"75192-1","name":"Falke","used_count":0},{"set_number":"10294-1","name":"Titanic"}]}""",
             "/api/v1/stats" to """{"success":true,"stats":{"total_sets":2}}""",
             "/api/v1/finance/pnl" to """{"success":true,"currency":"CHF","totals":{},"sets":[
-                {"set_number":"75192-1","quantity":1,"current_price":800,"baseline_price":700,"pnl_pct":"14.3","baseline_pnl_pct":"14.3"}]}""",
+                {"set_number":"75192-1","quantity":1,"current_price":800,"baseline_price":700,"pnl_pct":"14.3","baseline_pnl_pct":"14.3",
+                 "kachel_preis":812.5,"kachel_pnl_pct":16.1}]}""",
             "/api/v1/sets/10294-1" to """{"success":true}""",
         )
         t = TestDienste(pfade.server)
@@ -80,8 +83,8 @@ class GalerieViewModelTest {
         val vm = vm()
         vm.loadStats()
         TestApi.warteBis("Preise da") { vm.preise.value.containsKey("75192-1") }
-        assertEquals(800.0, vm.preise.value["75192-1"]?.marktpreis ?: -1.0, 1e-9)
-        assertEquals(14.3, vm.preise.value["75192-1"]?.pnlPct ?: -1.0, 1e-9)
+        assertEquals(812.5, vm.preise.value["75192-1"]?.betrag ?: -1.0, 1e-9)
+        assertEquals(16.1, vm.preise.value["75192-1"]?.pnlPct ?: -1.0, 1e-9)
     }
 
     @Test

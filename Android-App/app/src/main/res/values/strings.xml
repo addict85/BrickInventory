@@ -252,6 +252,10 @@
     <string name="finance_load_prompt">→ Load prices</string>
     <string name="finance_total_pnl">Total P&amp;L  %1$s</string>
     <string name="finance_parts_extra">incl. parts &amp; minifigures: %1$s</string>
+    <plurals name="finance_fremde_waehrung">
+        <item quantity="one">%1$d purchase price in another currency not included</item>
+        <item quantity="other">%1$d purchase prices in another currency not included</item>
+    </plurals>
     <string name="finance_avg_label">Ø Average</string>
     <string name="finance_filter_all">All</string>
     <string name="finance_filter_sets">Sets</string>

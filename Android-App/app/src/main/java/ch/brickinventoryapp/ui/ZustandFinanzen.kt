@@ -96,6 +96,18 @@ data class GutscheinUiState(
 )
 
 /**
+ * Die Summe der Gutscheine, nur bei EINER Währung: Beträge verschiedener
+ * Währungen ergäben eine Zahl, die richtig aussieht und keine ist. In
+ * BigDecimal, weil die App diese Summe selbst bildet und 0.1 + 0.2 als Double
+ * nicht 0.3 ist.
+ */
+fun gutscheinSumme(gutscheine: List<ch.brickinventoryapp.data.model.Gutschein>): Pair<java.math.BigDecimal, String>? {
+    val waehrung = gutscheine.map { it.currency }.distinct().singleOrNull() ?: return null
+    return gutscheine.fold(java.math.BigDecimal.ZERO) { s, g -> s + java.math.BigDecimal.valueOf(g.amount) }
+        .setScale(2, java.math.RoundingMode.HALF_UP) to waehrung
+}
+
+/**
  * Der Stand eines Laufs über alle Karten: Bei einer Abfrage je 30 Sekunden dauert
  * er Minuten, deshalb zählt er mit und nennt die Restzeit.
  */
