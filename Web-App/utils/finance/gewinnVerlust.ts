@@ -10,7 +10,7 @@ import { valueSet, valueAcquisitionRows, weightedPurchase, entwicklungProzent, k
 import { effectiveCondition } from './zustand';
 import { computeMinifigsValuation, computePartsValuation } from './bewertung';
 import type { Blickfeld } from './preise';
-import { ladeSetErfassungen } from './abfragen';
+import { ladeSetErfassungen, zaehle } from './abfragen';
 import { aufRappen, inZehntel4, summeAus } from '../geld';
 
 // ── GET /api/finance/parts-valuation ─────────────────────────────────────────────
@@ -194,8 +194,10 @@ async function computePnl(viewerId: number, ids: Blickfeld) {
     totals: {
       purchase: totalPurchase.toFixed(2), current: totalCurrent.toFixed(2), pnl_pct: totalPnlPct,
       pnl_prozent: totalPnlPct === null ? null : Number(totalPnlPct),
-      kaufpreise_fremde_waehrung: acqRows.filter(a => a.kaufpreis_fremd).length
+      kaufpreise_fremde_waehrung: zaehle(acqRows, 'kaufpreis_fremd')
         + (partsVal.kaufpreise_fremde_waehrung ?? 0) + (figsVal.kaufpreise_fremde_waehrung ?? 0),
+      kaufpreise_umgerechnet: zaehle(acqRows, 'kaufpreis_umgerechnet')
+        + (partsVal.kaufpreise_umgerechnet ?? 0) + (figsVal.kaufpreise_umgerechnet ?? 0),
       // Kauf- und Marktwert der Posten, über die pnl_pct rechnet. Ein Betrag
       // neben der Prozentzahl muss aus denselben Posten kommen — aus allen
       // gerechnet zählte jeder Posten ohne Marktpreis als Verlust.

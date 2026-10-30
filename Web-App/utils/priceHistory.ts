@@ -2,7 +2,7 @@
  * Preisverlauf eines Sets — die EINE Umsetzung für Webapp und Android-API.
  * Ausführlich: docs/begruendungen/utils/priceHistory.ts.md#abschnitt
  */
-import { inKontowaehrung, kontowaehrungJoin } from './acquisitions';
+import { kaufpreisIn } from './finance/abfragen';
 import * as db from '../db/database';
 import { resolveSetCondition, resolveBlColorId, resolveBlPartNumber } from './financeCalc';
 import { asIds } from './household';
@@ -19,6 +19,10 @@ import { entwicklungProzent } from './setValue';
 export function zustaendeFuerVerlauf(belegt: string[], rueckfall: string[]): string[] {
   return belegt.length ? belegt : rueckfall;
 }
+
+/** Mengengewichteter Schnitt über die Zeilen, in denen `k` einen Preis hat. */
+const mittelUeber = (k: string) =>
+  `SUM(${k} * quantity) FILTER (WHERE ${k} IS NOT NULL)::numeric / NULLIF(SUM(quantity) FILTER (WHERE ${k} IS NOT NULL), 0)`;
 
 /** Ein Punkt im Verlauf. */
 export interface PricePoint {
@@ -83,7 +87,7 @@ export async function getSetPriceHistory(uid: number | number[], setNumber: stri
             to_char(COALESCE(a.created_at, s.added_at), 'YYYY-MM-DD') AS added_day
        FROM sets s
        LEFT JOIN LATERAL (
-         SELECT purchase_price, created_at FROM set_acquisitions
+         SELECT ${kaufpreisIn('purchase_price', '$3')} AS purchase_price, created_at FROM set_acquisitions
           WHERE user_id = s.user_id AND set_number = s.set_number
           ORDER BY created_at ASC, id ASC LIMIT 1
        ) a ON true
@@ -91,7 +95,7 @@ export async function getSetPriceHistory(uid: number | number[], setNumber: stri
       -- Bei mehreren Besitzern im Haushalt zählt die ÄLTESTE Erfassung —
       -- derselbe Massstab wie innerhalb eines Kontos.
       ORDER BY COALESCE(a.created_at, s.added_at) ASC LIMIT 1`,
-    [uids, setNumber]
+    [uids, setNumber, currency]
   );
 
   const hasCost = set?.purchase_price != null;   // 0 zählt als erfasst
@@ -129,16 +133,14 @@ export async function getSetPriceHistory(uid: number | number[], setNumber: stri
   // Prozentangabe daneben wäre gegen nichts gerechnet.
   // Ausführlich: docs/begruendungen/utils/priceHistory.ts.md#getsetpricehistory-acqbycond
   const acqByCond = await db.all(
-    `SELECT condition,
-            SUM(purchase_price * quantity) FILTER (WHERE purchase_price IS NOT NULL AND ${inKontowaehrung('set_acquisitions')})::numeric
-              / NULLIF(SUM(quantity) FILTER (WHERE purchase_price IS NOT NULL AND ${inKontowaehrung('set_acquisitions')}), 0) AS avg_purchase,
-            SUM(quantity) AS qty
-       FROM set_acquisitions ${kontowaehrungJoin('set_acquisitions')}
-      -- Über ALLE Haushalts-Besitzer verdichtet — dieselbe Mengengewichtung,
-      -- die auch die Bewertung im Haushalt anwendet.
-      WHERE set_acquisitions.user_id = ANY($1) AND set_number=$2
+    `SELECT condition, ${mittelUeber('k')} AS avg_purchase, SUM(quantity) AS qty
+       FROM (SELECT condition, quantity, ${kaufpreisIn('purchase_price', '$3')} AS k
+               FROM set_acquisitions
+              -- Über ALLE Haushalts-Besitzer verdichtet — dieselbe Mengengewichtung,
+              -- die auch die Bewertung im Haushalt anwendet.
+              WHERE user_id = ANY($1) AND set_number = $2) e
       GROUP BY condition`,
-    [uids, setNumber]
+    [uids, setNumber, currency]
   );
 
   const byCondition: Record<string, any> = {};
@@ -219,13 +221,12 @@ export async function conditionRows(
   // Eigener Schlüssel: Erfassungen tragen die Rebrickable-Nummer, der Cache
   // oben die BrickLink-Nummer.
   const acqRows = await db.all(
-    `SELECT condition,
-            SUM(unit_price * quantity) FILTER (WHERE unit_price IS NOT NULL AND ${inKontowaehrung(acqTable)})::numeric
-              / NULLIF(SUM(quantity) FILTER (WHERE unit_price IS NOT NULL AND ${inKontowaehrung(acqTable)}), 0) AS avg_purchase
-       FROM ${acqTable} ${kontowaehrungJoin(acqTable)}
-      WHERE ${acqKeySql} AND ${acqTable}.user_id = ANY($${acqKeyVals.length + 1})
+    `SELECT condition, ${mittelUeber('k')} AS avg_purchase
+       FROM (SELECT condition, quantity, ${kaufpreisIn('unit_price', `$${acqKeyVals.length + 2}`)} AS k
+               FROM ${acqTable}
+              WHERE ${acqKeySql} AND user_id = ANY($${acqKeyVals.length + 1})) e
       GROUP BY condition`,
-    [...acqKeyVals, uids]
+    [...acqKeyVals, uids, currency]
   );
 
   const out: Record<string, any> = {};

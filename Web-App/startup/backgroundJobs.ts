@@ -20,6 +20,7 @@ import { logAndContinue, meldeUndLiefere } from '../utils/httpError';
 import { startImgCacheCleanup } from '../utils/imgCacheServe';
 import { startPdfJobCleanup } from '../utils/pdfAuftraege';
 import { starteAuftragsWorker } from '../jobs/auftraegeStarten';
+import { planeKursabruf } from '../utils/wechselkurse';
 
 /**
  * Was nach dem Start im Hintergrund anläuft — ausschliesslich im Primär-Worker.
@@ -35,6 +36,8 @@ export async function starteHintergrundlaeufe(): Promise<void> {
   // Die Auftragstabelle (Nacharbeit, Bilder, PDF, CSV-Import); was vor einem
   // Neustart offen war, läuft hier weiter.
   starteAuftragsWorker();
+  // Wechselkurse der EZB: heute einmal, danach plant jeder Lauf den nächsten Tag.
+  planeKursabruf().catch(logAndContinue('wechselkurse:einplanen'));
 
   // Abgelaufene API-Tokens aufräumen.
   //
