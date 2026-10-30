@@ -10,8 +10,6 @@
     "typecheck": "tsc --noEmit",
     "typecheck:strict": "node scripts/check-noimplicitany.js",
     "coverage": "node scripts/coverage-map.js",
-    "version:bump": "node scripts/bump-version.js",
-    "postinstall": "node scripts/bump-version.js",
     "check-contract": "node scripts/check-api-contract.js",
     "loadtest": "node scripts/loadtest.js",
     "diagnose-image": "node scripts/diagnose-image.js",

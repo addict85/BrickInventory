@@ -206,6 +206,11 @@ if (OUTDIR) {
   // noch braucht, soll es im Bauprotokoll stehen und nicht stillschweigend
   // verschwinden.
   if (weg.length) console.log(`[build-ts] ${weg.length} verwaiste Datei(en) entfernt: ${weg.join(', ')}`);
+  // Die Version gehört zum Bau, nicht in den Arbeitsbaum (scripts/version.js).
+  const { bauVersion, schreibe } = require('./version');
+  const version = bauVersion();
+  schreibe(OUTDIR, version);
+  console.log(`[build-ts] Version ${version}`);
 }
 
 console.log('[build-ts] Fertig.');
