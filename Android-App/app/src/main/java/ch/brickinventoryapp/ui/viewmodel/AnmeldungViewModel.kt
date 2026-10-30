@@ -6,6 +6,8 @@ import ch.brickinventoryapp.data.Anmeldeablage
 import ch.brickinventoryapp.data.Netzkennung
 import ch.brickinventoryapp.data.model.RegisterRequest
 import ch.brickinventoryapp.data.repository.KontoRepository
+import ch.brickinventoryapp.data.model.TOKEN_SCOPE_APP
+import ch.brickinventoryapp.data.model.TOKEN_SCOPE_VOLL
 import ch.brickinventoryapp.data.repository.Result
 import ch.brickinventoryapp.ui.AnmeldeFormular
 import ch.brickinventoryapp.ui.AnmeldeUiState
@@ -71,13 +73,14 @@ class AnmeldungViewModel @Inject constructor(
                 netz?.let { ablage.merkeNetz(NetworkPolicy.netzEintrag(url, it)) }
             }
             _anmeldeState.update { it.copy(netzFrage = false, loginLaeuft = true, loginError = null) }
-            when (val r = konto.login(url, username, password, code?.trim()?.takeIf { it.isNotEmpty() })) {
+            val scope = if (_anmeldeState.value.vollerZugriff) TOKEN_SCOPE_VOLL else TOKEN_SCOPE_APP
+            when (val r = konto.login(url, username, password, code?.trim()?.takeIf { it.isNotEmpty() }, scope)) {
                 is Result.Success -> when {
                     // Erstes Mal nur das Codefeld zeigen; mit Code den Satz des Servers.
                     r.data.zweiterFaktor -> _anmeldeState.update { it.copy(codeNoetig = true, loginLaeuft = false,
                         loginError = if (code.isNullOrBlank()) null else r.data.error) }
                     r.data.success && r.data.token != null -> {
-                        angemeldet(r.data.token, r.data.user?.username ?: username, r.data.user?.isAdmin == true)
+                        angemeldet(r.data.token, r.data.user?.username ?: username, r.data.verwalter)
                         _anmeldeState.update { it.copy(codeNoetig = false, loginLaeuft = false) }
                     }
                     else -> _anmeldeState.update {
@@ -88,6 +91,9 @@ class AnmeldungViewModel @Inject constructor(
             }
         }
     }
+
+    /** Das Häkchen „mit Verwalterrechten“ im Anmeldeformular. */
+    fun setzeVollerZugriff(an: Boolean) = _anmeldeState.update { it.copy(vollerZugriff = an) }
 
     /** Die Rückfrage verneint: Es geht nichts hinaus. */
     fun netzFrageVerwerfen() {
@@ -109,7 +115,7 @@ class AnmeldungViewModel @Inject constructor(
             when (val r = konto.qrLogin(token)) {
                 is Result.Success ->
                     if (r.data.success && r.data.token != null) {
-                        angemeldet(r.data.token, r.data.user?.username ?: "", r.data.user?.isAdmin == true)
+                        angemeldet(r.data.token, r.data.user?.username ?: "", r.data.verwalter)
                         _anmeldeState.update { it.copy(loginLaeuft = false) }
                     } else qrGescheitert(r.data.error ?: text(R.string.err_qr_login_failed))
                 is Result.Error -> qrGescheitert(meldung(r))

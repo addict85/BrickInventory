@@ -7,6 +7,7 @@ import ch.brickinventoryapp.data.MeldungsKanal
 import ch.brickinventoryapp.data.model.ProfilAenderung
 import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.ui.model.alsGeraet
 import ch.brickinventoryapp.ui.DesignWahl
 import ch.brickinventoryapp.ui.GeraeteUiState
 import ch.brickinventoryapp.ui.KontoUiState
@@ -151,7 +152,7 @@ class KontoViewModel @Inject constructor(
             _geraeteState.update { it.copy(laedt = true, fehler = null) }
             when (val r = konto.getTokens()) {
                 is Result.Success ->
-                    if (r.data.success) _geraeteState.update { it.copy(laedt = false, geraete = r.data.tokens, fehler = null) }
+                    if (r.data.success) _geraeteState.update { it.copy(laedt = false, geraete = r.data.tokens.map { it.alsGeraet() }, fehler = null) }
                     else _geraeteState.update { it.copy(laedt = false, fehler = r.data.error) }
                 is Result.Error -> _geraeteState.update { it.copy(laedt = false, fehler = texte.meldung(r)) }
             }
@@ -163,7 +164,8 @@ class KontoViewModel @Inject constructor(
             _geraeteState.update { it.copy(laedt = true, fehler = null) }
             when (val r = konto.revokeToken(tokenId)) {
                 is Result.Success -> {
-                    _snackbar.value = texte.text(R.string.tokens_revoked)
+                    // deleted = 0: schon weg (anderes Gerät war schneller) — die Liste stimmt danach wieder.
+                    _snackbar.value = texte.text(if (r.data.deleted > 0) R.string.tokens_revoked else R.string.tokens_already_gone)
                     ladeGeraete()
                 }
                 is Result.Error -> _geraeteState.update { it.copy(laedt = false, fehler = texte.meldung(r)) }
@@ -186,7 +188,7 @@ class KontoViewModel @Inject constructor(
             if (andere.isEmpty()) { _snackbar.value = texte.text(R.string.tokens_no_others); return@launch }
             _geraeteState.update { it.copy(laedt = true, fehler = null) }
             var weg = 0
-            for (g in andere) if (konto.revokeToken(g.tokenId) is Result.Success) weg++
+            for (g in andere) if (((konto.revokeToken(g.tokenId) as? Result.Success)?.data?.deleted ?: 0) > 0) weg++
             _snackbar.value = texte.menge(R.plurals.tokens_revoked_n, weg, weg)
             ladeGeraete()
         }

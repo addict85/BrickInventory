@@ -320,7 +320,7 @@ internal fun GeraeteCard(
                         Column(Modifier.weight(1f)) {
                             Row(verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                Text(g.label ?: "—", fontWeight = FontWeight.SemiBold)
+                                Text(g.bezeichnung, fontWeight = FontWeight.SemiBold)
                                 if (g.aktuell) Surface(
                                     shape = Formen.chip,
                                     color = MaterialTheme.colorScheme.primaryContainer,
@@ -330,12 +330,22 @@ internal fun GeraeteCard(
                                         color = MaterialTheme.colorScheme.onPrimaryContainer,
                                         modifier = Modifier.padding(horizontal = 6.dp, vertical = Abstaende.haar))
                                 }
+                                // Ein Zugang mit Verwalterrechten soll in der Liste auffallen.
+                                if (g.vollerZugriff) Surface(
+                                    shape = Formen.chip,
+                                    color = MaterialTheme.colorScheme.tertiaryContainer,
+                                ) {
+                                    Text(stringResource(R.string.tokens_full_access),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = Abstaende.haar))
+                                }
                             }
                             Text(
                                 stringResource(R.string.tokens_row_hint,
-                                    fmtDatum(g.createdAt) ?: "—",
-                                    fmtDatum(g.lastUsed) ?: stringResource(R.string.tokens_unused),
-                                    if (g.neverExpires) stringResource(R.string.tokens_never) else (fmtDatum(g.expiresAt) ?: "—")),
+                                    fmtDatum(g.angelegt) ?: "—",
+                                    fmtDatum(g.zuletztBenutzt) ?: stringResource(R.string.tokens_unused),
+                                    g.laeuftAb?.let { fmtDatum(it) ?: "—" } ?: stringResource(R.string.tokens_never)),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
@@ -372,7 +382,7 @@ internal fun GeraeteCard(
         onDismissRequest = { fragt = null },
         title = { Text(stringResource(R.string.tokens_revoke_title)) },
         text = { Text(stringResource(R.string.tokens_revoke_text,
-            zustand.geraete.firstOrNull { it.tokenId == zuEntwerten }?.label ?: "—")) },
+            zustand.geraete.firstOrNull { it.tokenId == zuEntwerten }?.bezeichnung ?: "—")) },
         confirmButton = {
             TextButton(onClick = { fragt = null; onRevoke(zuEntwerten) }) {
                 Text(stringResource(R.string.tokens_revoke_confirm),

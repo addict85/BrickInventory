@@ -206,6 +206,14 @@ class PreferencesManager @Inject constructor(
      * einem Konto, und er wechselt bei jeder Anmeldung — schon in dem Moment,
      * in dem der Interceptor ihn liest, nicht erst nach dem Benutzernamen.
      */
+    override suspend fun kontoBereich(): String? {
+        val server = serverUrlJetzt().trim().trimEnd('/')
+        val token = tokenJetzt()
+        if (server.isBlank() || token.isBlank()) return null
+        val name = username.first()
+        return "$server\n" + name.ifBlank { token }
+    }
+
     override suspend fun cacheBereich(): String? {
         val server = serverUrlJetzt().trim().trimEnd('/')
         val token = tokenJetzt()

@@ -38,6 +38,19 @@ interface Zugangslage {
 const val PLATZHALTER_BASIS = "http://localhost:3000/"
 
 /**
+ * Der Tausch des Tokens, von aussen gesehen (data/TokenTausch). [faellig]
+ * wartet nicht — die Anfrage ist gelungen; [noetig] tauscht und liefert den
+ * neuen Token, damit die abgewiesene Anfrage einmal wiederholt werden kann.
+ */
+interface Rotationsanlass {
+    fun faellig(alterToken: String)
+    fun noetig(alterToken: String): String?
+}
+
+/** Pfad des Tauschs selbst: Seine Antwort löst keinen weiteren aus. */
+private const val ROTATIONS_PFAD = "/api/v1/auth/token-rotieren"
+
+/**
  * Token, Sprache und Klartextregel für alle Anfragen an den eigenen Server.
  *
  * Ein 401 meldet die abgelaufene Sitzung nur, wenn der Token tatsächlich an einen
@@ -53,6 +66,7 @@ class ServerWaechter(
     private val versionsMeldung: ((VersionsHinweis) -> Unit)? = null,
     /** Weitere Köpfe nur für den eigenen Server (die Anzeigesprache, ServerClient.kt). */
     private val eigeneKoepfe: (original: Request, ziel: Request.Builder) -> Unit = { _, _ -> },
+    private val rotation: Rotationsanlass? = null,
 ) : Interceptor {
 
     private val versionGemeldet = AtomicBoolean(false)
@@ -115,6 +129,22 @@ class ServerWaechter(
                 antwort = chain.proceed(nachfass)
                 tokenMitgeschickt = true
             }
+        }
+
+        val rotierbar = rotation != null && tokenMitgeschickt && unserServer &&
+            !ausgehend.url.encodedPath.endsWith(ROTATIONS_PFAD)
+        if (rotierbar && antwort.code == 401) {
+            val code = runCatching { Fehlerrumpf.lies(antwort.peekBody(16_384).string()).code }.getOrNull()
+            val gesendet = ausgehend.header("Authorization")?.removePrefix("Bearer ")?.trim().orEmpty()
+            if (code == "token_rotation_noetig") rotation!!.noetig(gesendet)?.let { neu ->
+                // Der neue Token ist gespeichert; diese Anfrage geht einmal mit ihm.
+                antwort.close()
+                val wieder = ausgehend.newBuilder().header("Authorization", "Bearer $neu").build()
+                pruefeServer(chain, wieder, serverUrl, unserServer)
+                antwort = chain.proceed(wieder)
+            }
+        } else if (rotierbar && antwort.header("X-Token-Rotation") == "faellig") {
+            ausgehend.header("Authorization")?.removePrefix("Bearer ")?.trim()?.let { rotation!!.faellig(it) }
         }
 
         if (antwort.code == 401 && tokenMitgeschickt && unserServer) sitzungAbgelaufen()

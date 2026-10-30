@@ -125,6 +125,12 @@ data class AnmeldeUiState(
     val laeuft: Boolean = false,
     /** Der Server verlangt beim Anmelden den Code des zweiten Faktors. */
     val codeNoetig: Boolean = false,
+    /**
+     * Mit Verwalterrechten anmelden (Token-Scope "voll"). Aus, bis man es
+     * ankreuzt: Ein Telefon geht leichter verloren als ein Rechner, und die
+     * Verwaltung braucht man dort selten.
+     */
+    val vollerZugriff: Boolean = false,
     /** Läuft die ANMELDUNG (nicht Registrieren oder „Passwort vergessen")? */
     val loginLaeuft: Boolean = false,
     /**

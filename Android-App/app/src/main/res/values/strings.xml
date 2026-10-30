@@ -610,6 +610,10 @@
     <string name="tokens_none">No access tokens.</string>
     <string name="tokens_reload">Refresh</string>
     <string name="tokens_current">this device</string>
+    <string name="login_full_access">Sign in with administrator rights</string>
+    <string name="login_full_access_hint">Only for administration on this device. Without it, the app works without administrator rights.</string>
+    <string name="tokens_full_access">full access</string>
+    <string name="tokens_already_gone">This device was already signed out.</string>
     <string name="tokens_never">never</string>
     <string name="tokens_unused">never used</string>
     <string name="tokens_row_hint">Signed in %1$s · last used %2$s · expires %3$s</string>

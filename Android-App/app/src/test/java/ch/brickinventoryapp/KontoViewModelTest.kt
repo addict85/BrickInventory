@@ -30,6 +30,10 @@ import java.io.File
  *    Passwortwechsel wird abgemeldet" rot.
  *  - In zweiterFaktor() `erfolgText` nicht mehr gemeldet: „der bestätigte
  *    zweite Faktor zeigt die Codes" rot an der Meldung.
+ *  - (30.10.2026) In alsGeraet() `.minOrNull()` → `.maxOrNull()`: „die
+ *    Geräteliste zeigt Vollzugriff und die frühere Frist" rot (2027 statt 2026);
+ *    `deleted` beim Zählen nicht beachtet: „ein schon entwertetes Gerät zählt
+ *    nicht“ rot (m…:1 statt m…:0).
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class KontoViewModelTest {
@@ -73,8 +77,8 @@ class KontoViewModelTest {
         warteBis("Liste") { vm.geraeteState.value.geraete.size == 3 && !vm.geraeteState.value.laedt }
         server.takeRequest()
 
-        server.enqueue(antwort("""{"success":true}"""))
-        server.enqueue(antwort("""{"success":true}"""))
+        server.enqueue(antwort("""{"success":true,"deleted":1}"""))
+        server.enqueue(antwort("""{"success":true,"deleted":1}"""))
         server.enqueue(antwort(geraete(aktuellDabei = true)))
         vm.entwerteAndereGeraete()
         warteBis("neu geladen") { server.requestCount == 4 && !vm.geraeteState.value.laedt }
@@ -83,6 +87,39 @@ class KontoViewModelTest {
         assertTrue("Entwertet: $entwertet", entwertet.any { it.endsWith("b2") } && entwertet.any { it.endsWith("c3") })
         assertFalse(entwertet.any { it.endsWith("a1") })
         assertEquals("m${R.plurals.tokens_revoked_n}:2", kanal.fluss.value)
+    }
+
+    @Test
+    fun `die Geräteliste zeigt Vollzugriff und die frühere Frist`() {
+        server.enqueue(antwort("""{"success":true,"tokens":[
+            {"token_prefix":"abcd1234","token_id":"abcd1234abcd1234","label":"Rechner","created_at":"2026-01-01T00:00:00Z",
+             "last_used":null,"expires_at":"2027-03-01T00:00:00Z","hard_expires_at":"2026-12-01T00:00:00Z",
+             "never_expires":false,"scope":"voll","ip_bereich":"192.168.1.0/24","rotiert_am":null,"aktuell":false},
+            {"token_prefix":"ffff0000","token_id":"ffff0000ffff0000","label":"","created_at":"2026-01-01T00:00:00Z",
+             "last_used":null,"expires_at":null,"hard_expires_at":null,"never_expires":true,"scope":"app",
+             "ip_bereich":null,"rotiert_am":"2026-10-01T00:00:00Z","aktuell":true}]}"""))
+        vm.ladeGeraete()
+        warteBis("Liste") { vm.geraeteState.value.geraete.size == 2 }
+        val (voll, eigen) = vm.geraeteState.value.geraete
+        assertTrue(voll.vollerZugriff)
+        assertEquals("2026-12-01T00:00:00Z", voll.laeuftAb)
+        assertEquals("192.168.1.0/24", voll.ipBereich)
+        assertFalse(eigen.vollerZugriff)
+        assertEquals("unbegrenzt", null, eigen.laeuftAb)
+        assertEquals("—", eigen.bezeichnung)
+    }
+
+    @Test
+    fun `ein schon entwertetes Gerät zählt nicht`() {
+        server.enqueue(antwort(geraete(aktuellDabei = true)))
+        vm.ladeGeraete()
+        warteBis("Liste") { vm.geraeteState.value.geraete.size == 3 && !vm.geraeteState.value.laedt }
+        server.enqueue(antwort("""{"success":true,"deleted":0}"""))
+        server.enqueue(antwort("""{"success":true,"deleted":0}"""))
+        server.enqueue(antwort(geraete(aktuellDabei = true)))
+        vm.entwerteAndereGeraete()
+        warteBis("neu geladen") { server.requestCount == 4 && !vm.geraeteState.value.laedt }
+        assertEquals("m${R.plurals.tokens_revoked_n}:0", kanal.fluss.value)
     }
 
     @Test

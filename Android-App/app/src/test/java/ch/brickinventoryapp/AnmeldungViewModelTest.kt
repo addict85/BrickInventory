@@ -96,13 +96,33 @@ class AnmeldungViewModelTest {
 
     @Test
     fun `eine Anmeldung leert die Filter, legt den Token ab und meldet die Sitzung`() {
-        pfade.antworten["/api/v1/auth/login"] = """{"success":true,"token":"abc","user":{"id":1,"username":"marco","is_admin":true}}"""
+        pfade.antworten["/api/v1/auth/login"] = """{"success":true,"token":"abc","user":{"id":1,"username":"marco","is_admin":true},
+            "token_info":{"scope":"voll","never_expires":false}}"""
         val vm = vm()
+        vm.setzeVollerZugriff(true)
         vm.login("marco", "geheim")
         TestApi.warteBis("angemeldet") { t.sitzung.state.value.isLoggedIn }
         assertEquals(listOf("filter-leer", "token:abc", "name:marco"), ablage.protokoll)
+        assertTrue(pfade.koerper.single(), "\"scope\":\"voll\"" in pfade.koerper.single())
         assertTrue(t.sitzung.state.value.isAdmin)
         assertFalse(vm.anmeldeState.value.loginLaeuft)
+    }
+
+    /**
+     * Ohne das Häkchen ein Token mit Scope "app": Das Kontorecht allein macht in
+     * der App keinen Verwalter, der Server wiese dessen Aufrufe mit 403 ab.
+     * Gegenprobe (30.10.2026, gemessen): in AnmeldungViewModel `r.data.verwalter`
+     * → `r.data.user?.isAdmin == true` → rot „Verwalterkonto ohne Häkchen …“.
+     */
+    @Test
+    fun `Verwalterkonto ohne Häkchen meldet sich ohne Verwalterrechte an`() {
+        pfade.antworten["/api/v1/auth/login"] = """{"success":true,"token":"abc","user":{"id":1,"username":"marco","is_admin":true},
+            "token_info":{"scope":"app","never_expires":false}}"""
+        val vm = vm()
+        vm.login("marco", "geheim")
+        TestApi.warteBis("angemeldet") { t.sitzung.state.value.isLoggedIn }
+        assertTrue(pfade.koerper.single(), "\"scope\":\"app\"" in pfade.koerper.single())
+        assertFalse(t.sitzung.state.value.isAdmin)
     }
 
     @Test

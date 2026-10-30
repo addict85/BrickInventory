@@ -67,7 +67,7 @@ class Offlineablage(
     private val uhr: () -> Long = System::currentTimeMillis,
 ) {
     @Inject constructor(bestand: LokalerBestand, ausgang: Ausgang, besitzer: CacheBesitzer, planer: AusgangPlaner) :
-        this(bestand, ausgang, bereichQuelle = { besitzer.cacheBereich()?.let { ResponseCache.bereichsName(it) } }, planer = planer)
+        this(bestand, ausgang, bereichQuelle = { besitzer.kontoBereich()?.let { ResponseCache.bereichsName(it) } }, planer = planer)
 
     private val aktuell = MutableStateFlow<String?>(null)
     private val _ereignisse = MutableSharedFlow<Abgleichsereignis>(extraBufferCapacity = 16)

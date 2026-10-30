@@ -71,7 +71,14 @@ interface KontoApi {
     suspend fun getTokens(): Response<TokensResponse>
 
     @DELETE("api/v1/settings/tokens/{tokenId}")
-    suspend fun revokeToken(@Path("tokenId") tokenId: String): Response<GenericResponse>
+    suspend fun revokeToken(@Path("tokenId") tokenId: String): Response<TokenWiderruf>
+
+    /**
+     * Den Token tauschen (Rotation). Der alte geht ausdrücklich mit, weil der
+     * Tausch auch dann laufen muss, wenn er gerade erst ersetzt wurde (data/TokenTausch).
+     */
+    @POST("api/v1/auth/token-rotieren")
+    suspend fun tokenRotieren(@Header("Authorization") bearer: String): Response<TokenRotation>
 
     /**
      * Das Design — ohne Anmeldung die Vorgabe des Verwalters (Anmeldebildschirm),

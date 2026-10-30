@@ -52,7 +52,7 @@ data class ZweiterFaktorUiState(
  */
 data class GeraeteUiState(
     val laedt: Boolean = false,
-    val geraete: List<ch.brickinventoryapp.data.model.AppToken> = emptyList(),
+    val geraete: List<ch.brickinventoryapp.ui.model.GeraetAnsicht> = emptyList(),
     /** Meldung des Servers oder der Verbindung; null = nichts zu sagen. */
     val fehler: String? = null,
 )

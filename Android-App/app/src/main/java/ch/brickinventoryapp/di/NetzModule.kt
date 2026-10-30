@@ -34,9 +34,10 @@ object NetzModule {
         sessionExpired: ch.brickinventoryapp.data.SessionExpiredSignal,
         meldungen: ch.brickinventoryapp.data.MeldungsKanal,
         frage: ch.brickinventoryapp.util.ZertifikatsFrage,
+        tausch: ch.brickinventoryapp.data.TokenTausch,
     ): OkHttpClient =
         buildInterceptorClient(prefs, isApiClient = true, sessionExpired = sessionExpired, ctx = context,
-            meldungen = meldungen, frage = frage)
+            meldungen = meldungen, frage = frage, rotation = tausch)
 
     /**
      * Der Client für die Selbstaktualisierung — bewusst blank: Server, Bearer-Token
@@ -257,8 +258,10 @@ object NetzModule {
         prefs: PreferencesManager,
         sessionExpired: ch.brickinventoryapp.data.SessionExpiredSignal,
         frage: ch.brickinventoryapp.util.ZertifikatsFrage,
+        tausch: ch.brickinventoryapp.data.TokenTausch,
     ): OkHttpClient =
-        buildInterceptorClient(prefs, isApiClient = true, sessionExpired = sessionExpired, ctx = context, frage = frage)
+        buildInterceptorClient(prefs, isApiClient = true, sessionExpired = sessionExpired, ctx = context, frage = frage,
+            rotation = tausch)
             .newBuilder()
             .readTimeout(0, TimeUnit.SECONDS)
             .pingInterval(20, TimeUnit.SECONDS)

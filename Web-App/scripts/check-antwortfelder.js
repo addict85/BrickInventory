@@ -53,10 +53,6 @@ const ERLAUBT = new Map([
   ['token_expires', 'API-Token-Verwaltung'], ['token_last_used', 'API-Token-Verwaltung'],
   ['instruction', 'Einzelanleitung; die Liste kommt über instructions'],
   ['missingImages', 'PDF-Job: die Oberfläche zeigt etaSeconds, nicht die Zahl'],
-  // Token-Angaben für die Android-App (Scope, Ablauf, Rotation). Die App liest
-  // sie nach ihrem Umbau; dann gehören diese drei Einträge wieder weg.
-  ['token_info', 'Android-App, Umbau ausstehend'], ['alt_gueltig_bis', 'Android-App, Umbau ausstehend'],
-  ['ueberlappung_sek', 'Android-App, Umbau ausstehend'],
 ]);
 
 /** Technische Umschläge, die in fast jeder Antwort stehen. */

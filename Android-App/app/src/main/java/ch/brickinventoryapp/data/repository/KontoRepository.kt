@@ -33,9 +33,10 @@ class KontoRepository @Inject constructor(
      * Einen Token ohne Ablauf nur über https: Im Klartext kann ihn jeder im WLAN
      * mitlesen, und dann soll er wenigstens verfallen.
      */
-    suspend fun login(serverUrl: String, username: String, password: String, code: String? = null): Result<LoginResponse> =
+    suspend fun login(serverUrl: String, username: String, password: String, code: String? = null,
+                      scope: String = TOKEN_SCOPE_APP): Result<LoginResponse> =
         safeCall {
-            val antwort = api.login(LoginRequest(username, password, code = code,
+            val antwort = api.login(LoginRequest(username, password, code = code, scope = scope,
                 neverExpires = ch.brickinventoryapp.util.NetworkPolicy.istHttps(serverUrl)))
             if (antwort.code() == 401) {
                 val geparst = antwort.errorBody()?.string()?.let {
@@ -86,8 +87,12 @@ class KontoRepository @Inject constructor(
 
     suspend fun getTokens(): Result<TokensResponse> = safeCall { api.getTokens() }
 
-    suspend fun revokeToken(tokenId: String): Result<GenericResponse> =
+    suspend fun revokeToken(tokenId: String): Result<TokenWiderruf> =
         safeCall { api.revokeToken(tokenId) }
+
+    /** Den Token tauschen; [alterToken] geht ausdrücklich mit (siehe data/TokenTausch). */
+    suspend fun tokenRotieren(alterToken: String): Result<TokenRotation> =
+        safeCall { api.tokenRotieren("Bearer $alterToken") }
 
     suspend fun getSettings(): Result<SettingsResponse> =
         safeCall { api.getSettings() }
