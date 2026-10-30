@@ -15,6 +15,7 @@ import { purgeAltePreise } from '../utils/priceHistory';
 import { purgeExpiredTokens } from '../utils/auth';
 import { raeumeAnmeldezaehlerAuf } from '../utils/loginLimiter';
 import { verschluesseleAltbestand } from '../utils/geheimnisAltbestand';
+import { verschluesseleGutscheinAltbestand } from '../utils/gutscheinDateien';
 import { raeumePapierkorbAuf } from '../utils/papierkorb';
 import { logAndContinue, meldeUndLiefere } from '../utils/httpError';
 import { startImgCacheCleanup } from '../utils/imgCacheServe';
@@ -55,6 +56,9 @@ export async function starteHintergrundlaeufe(): Promise<void> {
   verschluesseleAltbestand()
     .then(n => { if (n) console.log(`[geheimnis] ${n} Geheimnisse nachträglich verschlüsselt`); })
     .catch(logAndContinue('geheimnis:altbestand'));
+  verschluesseleGutscheinAltbestand()
+    .then(n => { if (n) console.log(`[geheimnis] ${n} Gutschein-PDFs nachträglich verschlüsselt`); })
+    .catch(logAndContinue('geheimnis:gutschein-pdfs'));
 
   // Abgelaufene Anmeldezähler (utils/loginLimiter.ts).
   {

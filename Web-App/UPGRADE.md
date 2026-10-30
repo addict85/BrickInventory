@@ -356,7 +356,7 @@ Bereits geschützt und unverändert: PDF-Export
 > `/images/…` bekommen ohne `Authorization`-Header ab sofort eine 401.
 > Siehe den Abschnitt am Ende dieser Datei bzw. den separaten Änderungsauftrag.
 
-## 13. Datenbankpasswort und TRUST_PROXY
+## 13. Datenbankpasswort, TRUST_PROXY und verschlüsselte Gutscheine
 
 - **`DB_PASSWORD` ist Pflicht.** `compose.yaml` hat keinen Ersatzwert mehr, und
   mit dem alten Beispielpasswort `brickinventory_secret` verweigert der Server
@@ -372,3 +372,9 @@ Bereits geschützt und unverändert: PDF-Export
   genau diese kommt in `.env`. Das Netz `brickinventory-net` hat dafür jetzt
   das feste Subnetz `172.28.73.0/24`; bei einer Fehlermeldung zum Netz einmal
   `docker compose down` und wieder `up -d`.
+- **Gutschein-PDFs** unter `data/vouchers/` werden beim ersten Start einmalig
+  mit dem Datenschlüssel (`data/.datenschluessel` oder `DATA_KEY`) verschlüsselt.
+  Eine Sicherung von `data/` ohne diesen Schlüssel kann sie nicht mehr lesen.
+- **Konto löschen** entfernt jetzt auch `data/uploads/<id>/` und
+  `data/vouchers/<id>/`. Verwaiste Ordner früher gelöschter Konten bitte von
+  Hand entfernen.

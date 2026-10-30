@@ -71,5 +71,38 @@ export function entschluessele(wert: string | null | undefined): string | null {
   }
 }
 
+/** Kennung verschlüsselter Dateien; ein PDF beginnt nie so. */
+const DATEI_KOPF = Buffer.from('BIENC1\n', 'ascii');
+
+export function istVerschluesselterPuffer(daten: Buffer): boolean {
+  return daten.subarray(0, DATEI_KOPF.length).equals(DATEI_KOPF);
+}
+
+/** Eine Datei mit AES-256-GCM: Kopf, IV, Tag, Inhalt. */
+export function verschluesselePuffer(daten: Buffer): Buffer {
+  if (istVerschluesselterPuffer(daten)) return daten;
+  const iv = crypto.randomBytes(12);
+  const c = crypto.createCipheriv('aes-256-gcm', datenSchluessel(), iv);
+  const inhalt = Buffer.concat([c.update(daten), c.final()]);
+  return Buffer.concat([DATEI_KOPF, iv, c.getAuthTag(), inhalt]);
+}
+
+/**
+ * Entschlüsseln; eine Datei aus der Zeit davor kommt unverändert zurück.
+ * Passt der Schlüssel nicht oder wurde die Datei verändert, gibt es null.
+ */
+export function entschluesselePuffer(daten: Buffer): Buffer | null {
+  if (!istVerschluesselterPuffer(daten)) return daten;
+  try {
+    const roh = daten.subarray(DATEI_KOPF.length);
+    const d = crypto.createDecipheriv('aes-256-gcm', datenSchluessel(), roh.subarray(0, 12));
+    d.setAuthTag(roh.subarray(12, 28));
+    return Buffer.concat([d.update(roh.subarray(28)), d.final()]);
+  } catch {
+    console.warn('⚠️ [geheimnis] Eine verschlüsselte Datei passt nicht zum Datenschlüssel (data/.datenschluessel oder DATA_KEY).');
+    return null;
+  }
+}
+
 /** Nur für Tests: den geladenen Schlüssel vergessen. */
 export function _vergissSchluessel() { geladen = null; }

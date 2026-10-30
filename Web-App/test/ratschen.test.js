@@ -158,7 +158,7 @@ test('reine Quelltext-Tests werden weniger, nie mehr', () => {
   // (routen-bewacht ging in api-eingang-db auf, das den echten Server fragt).
   // 30.10.2026: 92 — acht Dateien prüfen jetzt Verhalten (Erfassungen, Summen,
   // Mengen-Echo, Preisverlauf, Figurenschätzung, LISTEN/NOTIFY, CSV, Katalogbilder).
-  const SCHRANKE = 92;
+  const SCHRANKE = 91;
   const alle = fs.readdirSync(__dirname).filter(n => n.endsWith('.test.js')).length;
   assert.ok(alle >= 300, `Nur ${alle} Testdateien gefunden — greift die Suche noch?`);
   const ist = reineQuelltextTests();

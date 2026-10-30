@@ -18,6 +18,7 @@ import { requireApiAdmin } from './api_v1/middleware';
 import { sendeFehler, fehlerText, antwortSprache } from '../utils/fehlerTexte';
 import { basisUrl, hinweisOhneBasisUrl } from '../utils/basisUrl';
 import * as zf from '../utils/zweiterFaktor';
+import { loescheKontoDateien } from '../utils/gutscheinDateien';
 
 // „Angemeldet" gibt es nur noch in EINER Fassung
 // Sechs vermeintlich fehlende Funktionen, EINE Ursache: dieselbe Regel in zwei
@@ -372,6 +373,8 @@ router.delete('/users/:id', requireAdmin, async (req, res) => {
     // KEINEN Fremdschluessel auf users — die offene Sitzung des geloeschten …
     // Ausführlich: docs/begruendungen/routes/auth.ts.md#delete-users-id
     await revokeAllSessions(targetId);
+    // Eigene Anleitungen und Gutschein-PDFs gehören zum Konto; liegen blieben sie ohne Besitzer.
+    await loescheKontoDateien(targetId);
     // Und der Token-Cache, der die geloeschten Zeilen sonst noch bis zu 60
     // Sekunden bedient.
     leereTokenCache();
