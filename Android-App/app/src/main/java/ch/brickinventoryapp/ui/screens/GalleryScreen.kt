@@ -47,7 +47,6 @@ import ch.brickinventoryapp.ui.theme.steinTon
 import ch.brickinventoryapp.ui.theme.BrickStudCap
 import ch.brickinventoryapp.ui.theme.NoppenReihe
 import ch.brickinventoryapp.ui.theme.SteinKantenVerlauf
-import ch.brickinventoryapp.ui.theme.SlateBlueNoppe
 import ch.brickinventoryapp.ui.theme.NoppenMass
 import ch.brickinventoryapp.util.fmtInt
 import ch.brickinventoryapp.util.fmtMoney
@@ -564,7 +563,7 @@ fun SetCard(
         if (isBrick) NoppenReihe(
             mass = NoppenMass.Stein,
             modifier = Modifier.align(Alignment.TopStart),
-            farbe = SlateBlueNoppe,
+            farbe = ch.brickinventoryapp.ui.theme.LocalSteinDekor.current.noppen,
         )
     }
 

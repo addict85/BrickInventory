@@ -62,7 +62,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { baueCss, baueKotlin, QUELLE, ZIEL_CSS, ZIEL_KT } =
+const { baueCss, baueKotlin, baueKotlinDunkel, QUELLE, ZIEL_CSS, ZIEL_KT, ZIEL_DUNKEL_KT } =
   require('../scripts/generate-design-tokens.js');
 
 // BAUM, nicht ROOT: In jeder anderen Testdatei dieses Ordners heisst `ROOT`
@@ -115,7 +115,11 @@ test('die erzeugten Dateien stimmen mit shared/design-tokens.json ueberein', () 
   // Android-Build kein Node kennt und DesignTokens.kt sonst gar nicht haette.
   // Damit sie trotzdem nicht von Hand gepflegt werden, wird hier dieselbe
   // Rechnung nochmals angestellt und verglichen.
-  for (const [datei, erwartet] of [[ZIEL_CSS, baueCss(DATEN)], [ZIEL_KT, baueKotlin(DATEN)]]) {
+  // DunkelTokens.kt seit dem 30.10.: vorher eine Abschrift, die nur ein Kotlin-Test
+  // gegen die Quelle hielt — und der läuft nur, wenn sich die App ändert.
+  // Gegenprobe (30.10., gemessen): dort "txt" von Hand auf #e6e9ee → rot.
+  for (const [datei, erwartet] of [[ZIEL_CSS, baueCss(DATEN)], [ZIEL_KT, baueKotlin(DATEN)],
+                                   [ZIEL_DUNKEL_KT, baueKotlinDunkel(DATEN)]]) {
     const ist = fs.readFileSync(datei, 'utf8');
     assert.equal(ist, erwartet,
       `${path.relative(BAUM, datei)} weicht von shared/design-tokens.json ab.\n` +

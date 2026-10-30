@@ -288,6 +288,11 @@ val LocalChartColors = staticCompositionLocalOf {
     ChartColors(new = ChartNewClassic, used = ChartUsedClassic)
 }
 
+/** Farben der Stein-Dekoration (Noppen, Schieferkachel) — hell oder dunkel, siehe dunkleSteinDekor(). */
+data class SteinDekor(val noppen: Color, val schiefer: Color, val aufSchiefer: Color)
+
+val LocalSteinDekor = staticCompositionLocalOf { SteinDekor(SlateBlueNoppe, SlateBlue, Color.White) }
+
 /**
  * Die dunkle Fassung eines Designs aus den Tokens (DunkelTokens.kt). Dieselbe
  * Zuordnung wie WerkbankColors, nur mit den Markenfarben des Designs.
@@ -389,6 +394,8 @@ fun BrickInventoryManagerTheme(theme: String = "classic", dunkel: Boolean = fals
         else -> ChartColors(ChartNewClassic, ChartUsedClassic)
     }
     val statusFarben = statusFarbenFuer(theme, dunkel)
+    val steinDekor = if (dunkel && isBrick) dunkleSteinDekor().let { SteinDekor(Color(it.noppen), Color(it.schiefer), Color(it.aufSchiefer)) }
+                     else SteinDekor(SlateBlueNoppe, SlateBlue, Color.White)
     CompositionLocalProvider(
         LocalIsBrickTheme provides isBrick,
         LocalIsFarbfaecherTheme provides (theme == "farbfaecher"),
@@ -396,6 +403,7 @@ fun BrickInventoryManagerTheme(theme: String = "classic", dunkel: Boolean = fals
         LocalIstGlanz provides (theme == "hochglanz"),
         LocalChartColors  provides chartColors,
         LocalStatusFarben provides statusFarben,
+        LocalSteinDekor provides steinDekor,
     ) {
         MaterialTheme(
             colorScheme = colors,

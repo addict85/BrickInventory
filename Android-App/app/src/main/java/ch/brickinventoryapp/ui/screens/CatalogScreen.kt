@@ -43,7 +43,6 @@ import ch.brickinventoryapp.ui.CatalogYearMath
 import ch.brickinventoryapp.ui.theme.BrickStudCap
 import ch.brickinventoryapp.ui.theme.NoppenReihe
 import ch.brickinventoryapp.ui.theme.SteinKantenVerlauf
-import ch.brickinventoryapp.ui.theme.SlateBlueNoppe
 import ch.brickinventoryapp.ui.theme.NoppenMass
 import ch.brickinventoryapp.ui.theme.LocalIsBrickTheme
 import ch.brickinventoryapp.ui.theme.LocalIsNoppeTheme
@@ -560,7 +559,7 @@ fun CatalogSetCard(
         if (isBrick) NoppenReihe(
             mass = NoppenMass.Stein,
             modifier = Modifier.align(Alignment.TopStart),
-            farbe = SlateBlueNoppe,
+            farbe = ch.brickinventoryapp.ui.theme.LocalSteinDekor.current.noppen,
         )
     }
 }

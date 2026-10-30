@@ -4,6 +4,7 @@ import ch.brickinventoryapp.ui.theme.DunkelTokens
 import ch.brickinventoryapp.ui.theme.argb
 import ch.brickinventoryapp.ui.theme.dunkelToken
 import ch.brickinventoryapp.ui.theme.dunkleRollen
+import ch.brickinventoryapp.ui.theme.dunkleSteinDekor
 import ch.brickinventoryapp.ui.theme.hatDunkleFassung
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
@@ -16,30 +17,26 @@ import java.io.File
  * Die dunkle Fassung je Design kommt aus denselben Tokens wie im Web
  * (shared/design-tokens.json, Abschnitt `dunkel`), und ihre Rollen sind lesbar.
  *
+ * Dass DunkelTokens.kt die Quelle wiedergibt, prüft seit dem 30.10. der
+ * Generator selbst: Web-App/test/design-abschrift.test.js vergleicht die Datei
+ * mit baueKotlinDunkel() („erzeugt = Quelle“). Der Wert-für-Wert-Vergleich, der
+ * hier für die Abschrift stand, ist damit entfallen.
+ *
  * Gegenproben (29.10.2026, gemessen gegen ui/theme/DunkelTokens.kt):
- *   A  in der Basis "txt" auf "#e6e9ee" geändert → rot „jeder Wert gleicht der
- *      gemeinsamen Quelle“
  *   B  den Eintrag "farbfaecher" umbenannt → rot „jedes Design der Quelle hat
- *      seine dunkle Fassung“ und „jeder Wert gleicht der gemeinsamen Quelle“
+ *      seine dunkle Fassung“
  *   C  in dunkelToken() `erbt` nicht aufgelöst → rot „hochglanz erbt die Farben
  *      von noppe“ und die drei Prüfungen der Rollen (b600 fehlt, es greift classic)
  *   D  outline auf s400 statt s500 → rot „Rahmen heben sich mit 3 zu 1 ab“
  *   E  onPrimary auf "txt" statt "auf-primaer" → rot „Text auf Flächen ist lesbar“
+ * Gegenproben (30.10.2026, gemessen mit kt-b2/bau.sh gegen DunkleRollen.kt):
+ *   F  dunkleSteinDekor() mit den hellen Noppen (#6d94b8) → rot „die
+ *      Stein-Dekoration wird im Dunkeln dunkel“
+ *   G  die Schrift auf der Schieferkachel weiss gelassen → rot ebenda
  */
 class DunkelTokensTest {
 
     private val quelle = JSONObject(File("../../shared/design-tokens.json").readText()).getJSONObject("dunkel")
-
-    private fun JSONObject.alsMap(): Map<String, String> = keys().asSequence().associateWith { getString(it) }
-
-    @Test
-    fun `jeder Wert gleicht der gemeinsamen Quelle`() {
-        assertEquals(quelle.getJSONObject("basis").alsMap(), DunkelTokens.basis)
-        val designs = quelle.getJSONObject("designs")
-        for (name in designs.keys()) {
-            assertEquals("Design $name", designs.getJSONObject(name).alsMap(), DunkelTokens.designs[name])
-        }
-    }
 
     @Test
     fun `jedes Design der Quelle hat seine dunkle Fassung`() {
@@ -100,5 +97,22 @@ class DunkelTokensTest {
             assertTrue(d, Kontrast.luminanz(r.background.toInt()) < 0.05)
             assertTrue(d, Kontrast.luminanz(r.onSurface.toInt()) > 0.7)
         }
+    }
+
+    /**
+     * Wie [data-dunkel] im Web: Noppen und Schieferkachel aus der dunklen Fassung.
+     * Fest eingesetzt blieben die hellen Töne von „brick“ auch im Dunkeln stehen.
+     */
+    @Test
+    fun `die Stein-Dekoration wird im Dunkeln dunkel`() {
+        val hell = JSONObject(File("../../shared/design-tokens.json").readText())
+            .getJSONObject("designs").getJSONObject("brick")
+        val d = dunkleSteinDekor()
+        assertEquals(argb(dunkelToken("brick", "b400")!!), d.noppen)
+        assertTrue("Die Noppen sind im Dunkeln dunkler als hell",
+            Kontrast.luminanz(d.noppen.toInt()) < Kontrast.luminanz(argb(hell.getString("b400")).toInt()))
+        val karte = dunkleRollen("brick").surface
+        assertTrue("Die Noppen heben sich von der Karte ab", k(d.noppen, karte) >= Kontrast.RAHMEN)
+        assertTrue("Schrift auf der Schieferkachel lesbar", k(d.aufSchiefer, d.schiefer) >= 4.5)
     }
 }
