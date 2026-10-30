@@ -609,12 +609,13 @@ test('Menge zählt: die Zeilensumme ist Preis × Menge', () => {
   assert.equal(rows[0].total_avg, '150.00');
 });
 
-test('ohne erfassten Kaufpreis keine Prozentangabe — 0 dagegen schon', () => {
+test('ohne erfassten Kaufpreis keine Prozentangabe — und bei 0 auch nicht', () => {
   const rows = valueAcquisitionRows(SN, [acq(1, 'N', 1, null), acq(2, 'N', 1, 0)],
     prices(50, 20));
   assert.equal(rows[0].purchase_price, null, 'nicht erfasst bleibt null, nicht 0');
   assert.equal(rows[0].pnl_pct, null, 'gegen nichts gerechnet ergibt keine Zahl');
-  assert.notEqual(rows[1].pnl_pct, null, 'ein geschenktes Exemplar (0) hat eine Entwicklung');
+  assert.equal(rows[1].purchase_price, 0, 'ein Geschenk ist erfasst: 0, nicht null');
+  assert.equal(rows[1].pnl_pct, null, 'gegen 0 gerechnet gibt es keine Prozentzahl');
 });
 
 test('fehlt der Preis eines Zustands, springt der andere ein', () => {
@@ -646,8 +647,9 @@ test('Zeilensummen und Set-Stückpreis passen zusammen', () => {
     'Stückpreis × Menge = Gesamtwert (so rechnen Webapp und Android)');
 });
 
-test('Kaufpreis 0 ergibt eine Zahl, keinen Sprung ins Unendliche', () => {
-  assert.equal(pnlPct(0, 50), (50 / 0.01 * 100).toFixed(1));
+test('Kaufpreis 0 ergibt keine Prozentzahl, keinen Sprung ins Unendliche', () => {
+  assert.equal(pnlPct(0, 50), null);
+  assert.equal(pnlPct(40, 50), '25.0');
   assert.equal(pnlPct(null, 50), null);
   assert.equal(pnlPct(50, null), null);
 });

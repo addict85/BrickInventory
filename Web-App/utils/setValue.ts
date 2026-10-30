@@ -128,8 +128,16 @@ export async function getSetValue(
 // dem Marktpreis IHRES Zustands da (valueSet() verdichtet auf einen Stückpreis).
 // Ausführlich: docs/begruendungen/utils/setValue.ts.md#pnl-eps
 
-/** Nenner-Untergrenze: Kaufpreis 0 (Geschenk) ergäbe sonst keine Steigerung. */
-export const PNL_EPS = 0.01;
+/**
+ * Entwicklung in Prozent gegen den Kaufpreis — die eine Regel für Sets, Teile,
+ * Figuren, Kachel und Verlauf. null ohne Kauf- oder Marktpreis und bei
+ * Kaufpreis 0: Gegen ein Geschenk gibt es keine Prozentzahl (gegen 0,01
+ * gerechnet stand dort „+327.600 %“). Die Oberflächen zeigen „Geschenk“.
+ */
+export function entwicklungProzent(kauf: number | null | undefined, markt: number | null | undefined): number | null {
+  if (kauf == null || !(kauf > 0) || markt == null || !(markt > 0)) return null;
+  return (markt - kauf) / kauf * 100;
+}
 
 /** Wie pnlPct, als Zahl mit einer Stelle — für die Felder, die eine Zahl führen. */
 export function pnlProzent(purchase: number | null, market: number | null): number | null {
@@ -139,8 +147,7 @@ export function pnlProzent(purchase: number | null, market: number | null): numb
 
 /** Prozentuale Entwicklung — null, wenn Kaufpreis oder Marktpreis fehlt. */
 export function pnlPct(purchase: number | null, market: number | null): string | null {
-  if (purchase == null || !(market != null && market > 0)) return null;
-  return ((market - purchase) / Math.max(purchase, PNL_EPS) * 100).toFixed(1);
+  return entwicklungProzent(purchase, market)?.toFixed(1) ?? null;
 }
 
 export interface AcquisitionValueRow {
@@ -244,7 +251,8 @@ export function kachelWerte(zeilen: KachelQuelle[]): Map<string, { kachel_preis:
       pct = t == null ? null : Number(t);
     } else {
       const basis = gewichtet('baseline_price');
-      pct = basis != null && markt > 0 ? Math.round((markt - basis) / Math.max(basis, PNL_EPS) * 1000) / 10 : null;
+      const e = entwicklungProzent(basis, markt);
+      pct = e == null ? null : Math.round(e * 10) / 10;
     }
     const kauf = gewichtet('purchase_price');
     aus.set(nr, { kachel_preis: markt > 0 ? aufRappen(inZehntel4(markt) ?? 0) : (kauf != null ? aufRappen(inZehntel4(kauf) ?? 0) : null),

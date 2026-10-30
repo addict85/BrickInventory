@@ -8,6 +8,7 @@ import { resolveSetCondition, resolveBlColorId, resolveBlPartNumber } from './fi
 import { asIds } from './household';
 import { buildChart } from './chartData';
 import { blNummerVon } from './blZuordnung';
+import { entwicklungProzent } from './setValue';
 
 /**
  * Welche Zustaende gehoeren ins Diagramm?
@@ -120,11 +121,7 @@ export async function getSetPriceHistory(uid: number | number[], setNumber: stri
   const baselinePrice = hasCost ? purchasePrice : firstHistPrice;
   const baselineHas   = hasCost || firstHistPrice > 0;
   const currentPrice  = parseFloat(String((condition === 'U' ? current.U : current.N)?.avg_price || 0));
-  // Kaufpreis 0 gegen eine sehr kleine Zahl rechnen, sonst wäre die Steigerung
-  // nicht berechenbar.
-  const pnlPct = (baselineHas && currentPrice > 0)
-    ? ((currentPrice - baselinePrice) / Math.max(baselinePrice, 0.01) * 100).toFixed(1)
-    : null;
+  const pnlPct = baselineHas ? entwicklungProzent(baselinePrice, currentPrice)?.toFixed(1) ?? null : null;
 
   // Marktpreis und Entwicklung JE ZUSTAND
   // Eine Zeile erscheint nur, wenn für diesen Zustand auch eine Erfassung
@@ -149,15 +146,13 @@ export async function getSetPriceHistory(uid: number | number[], setNumber: stri
     const acq = acqByCond.find((r: any) => (r.condition || 'N') === cond);
     if (!acq) continue;                       // kein Kaufpreis-Eintrag → keine Zeile
     const market = parseFloat(String((cond === 'N' ? current.N : current.U)?.avg_price || 0)) || null;
-    const base   = parseFloat(String(acq.avg_purchase || 0));
+    // null = kein Kaufpreis erfasst, 0 = Geschenk; beides ohne Prozentangabe.
+    const base   = acq.avg_purchase == null ? null : parseFloat(String(acq.avg_purchase));
+    const e = entwicklungProzent(base, market);
     byCondition[cond] = {
       market_price: market,
-      purchase_price: base > 0 ? base : null,
-      // Ohne Kaufpreis oder ohne Marktpreis keine Prozentangabe — eine Zahl
-      // gegen 0 gerechnet wäre bedeutungslos.
-      pnl_pct: (base > 0 && market)
-        ? parseFloat(((market - base) / base * 100).toFixed(1))
-        : null,
+      purchase_price: base,
+      pnl_pct: e == null ? null : parseFloat(e.toFixed(1)),
     };
   }
 
@@ -238,11 +233,12 @@ export async function conditionRows(
     const acq = acqRows.find((r: any) => (r.condition || 'N') === cond);
     if (!acq) continue;                       // kein Kaufpreis-Eintrag → keine Zeile
     const market = parseFloat(String(cacheRows.find((r: any) => r.condition === cond)?.avg_price || 0)) || null;
-    const base   = parseFloat(String(acq.avg_purchase || 0));
+    const base   = acq.avg_purchase == null ? null : parseFloat(String(acq.avg_purchase));
+    const e = entwicklungProzent(base, market);
     out[cond] = {
       market_price: market,
-      purchase_price: base > 0 ? base : null,
-      pnl_pct: (base > 0 && market) ? parseFloat(((market - base) / base * 100).toFixed(1)) : null,
+      purchase_price: base,
+      pnl_pct: e == null ? null : parseFloat(e.toFixed(1)),
     };
   }
   return out;

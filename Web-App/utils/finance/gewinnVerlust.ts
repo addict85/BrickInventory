@@ -6,7 +6,7 @@
 import * as db from '../../db/database';
 import { asIds } from '../household';
 import { getSetting, getGlobalSetting } from '../settings';
-import { valueSet, valueAcquisitionRows, weightedPurchase, PNL_EPS, kachelWerte } from '../setValue';
+import { valueSet, valueAcquisitionRows, weightedPurchase, entwicklungProzent, kachelWerte } from '../setValue';
 import { effectiveCondition } from './zustand';
 import { computeMinifigsValuation, computePartsValuation } from './bewertung';
 import type { Blickfeld } from './preise';
@@ -132,11 +132,11 @@ async function computePnl(viewerId: number, ids: Blickfeld) {
     const purchasePrice = acqPurchase ?? 0;
     const qty = qtyMap.get(set.set_number) || set.quantity || 1;
     const pnlAbs = hasCost ? (currentPrice - purchasePrice) * qty : null;
-    const pnlPct = (hasCost && currentPrice > 0) ? ((currentPrice - purchasePrice) / Math.max(purchasePrice, PNL_EPS)) * 100 : null;
+    const pnlPct = hasCost ? entwicklungProzent(purchasePrice, currentPrice) : null;
     // First price recorded = baseline if no purchase_price (0 zählt als erfasst)
     const baselineHas = hasCost || firstHistMap.has(set.set_number);
     const baselinePrice = hasCost ? purchasePrice : (firstHistMap.get(set.set_number) ?? null);
-    const baselinePnlPct = (baselineHas && currentPrice > 0) ? ((currentPrice - (baselinePrice ?? 0)) / Math.max(baselinePrice ?? 0, PNL_EPS)) * 100 : null;
+    const baselinePnlPct = baselineHas ? entwicklungProzent(baselinePrice, currentPrice) : null;
     return {
       set_number: set.set_number, name: set.name, year: set.year,
       image_local: set.image_local, image_url: set.image_url,
@@ -167,7 +167,7 @@ async function computePnl(viewerId: number, ids: Blickfeld) {
     const currentPrice = parseFloat(p.avg_price || 0);
     const hasCost = p.purchase_price != null;
     const purchasePrice = parseFloat(p.purchase_price || 0);
-    const pnlPct = (hasCost && currentPrice > 0) ? ((currentPrice - purchasePrice) / Math.max(purchasePrice, PNL_EPS)) * 100 : null;
+    const pnlPct = hasCost ? entwicklungProzent(purchasePrice, currentPrice) : null;
     return { purchase_price: purchasePrice, current_price: currentPrice, quantity: qty, pnl_pct: pnlPct?.toFixed(1) ?? null };
   });
   const figsResults = figsVal.figs.map(f => {
@@ -175,7 +175,7 @@ async function computePnl(viewerId: number, ids: Blickfeld) {
     const currentPrice = parseFloat(f.avg_price || 0);
     const hasCost = f.purchase_price != null;
     const purchasePrice = parseFloat(f.purchase_price || 0);
-    const pnlPct = (hasCost && currentPrice > 0) ? ((currentPrice - purchasePrice) / Math.max(purchasePrice, PNL_EPS)) * 100 : null;
+    const pnlPct = hasCost ? entwicklungProzent(purchasePrice, currentPrice) : null;
     return { purchase_price: purchasePrice, current_price: currentPrice, quantity: qty, pnl_pct: pnlPct?.toFixed(1) ?? null };
   });
 

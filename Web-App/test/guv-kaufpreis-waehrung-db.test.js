@@ -9,7 +9,7 @@
  *      alte Schnitt mit COALESCE(…, 0)) → rot: „nur in EUR erfasst: Kaufpreis
  *      unbekannt“
  *   B  ein Kaufpreis 0 als fehlend gelesen (`… || null`) → rot: „ein
- *      erfasster Preis 0 zählt“
+ *      erfasster Preis 0 zählt“ (purchase_price null statt 0)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -82,9 +82,12 @@ test('G&V: ein Kaufpreis, in der Anzeigewährung', { concurrency: 1 }, async (t)
   });
 
   await t.test('ein erfasster Preis 0 zählt', () => {
+    // Bekannt und 0 (Geschenk): der Betrag zählt, eine Prozentzahl gibt es
+    // nicht — siehe geschenk-guv-db.test.js.
     const z = zeile(NR.null);
     assert.equal(z.purchase_price, 0);
-    assert.notEqual(z.pnl_pct, null);
+    assert.equal(z.pnl_abs, '120.00');
+    assert.equal(z.pnl_pct, null);
   });
 
   await t.test('die Summe des Kaufpreises lässt das Unbekannte weg', () => {
