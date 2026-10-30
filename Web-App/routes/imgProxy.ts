@@ -111,11 +111,7 @@ export async function bildDurchreichen(req: Request, res: Response) {
   // Primärprozess.
   // Ausführlich: docs/begruendungen/routes/imgProxy.ts.md#bilddurchreichen-darferzeugen
   const darfErzeugen = req.query.gen !== '0';
-  /** Setnummer aus einer Rebrickable-Set-Adresse, sonst null. */
-  const setAusUrl = () => {
-    const m = /\/media\/sets\/([^/?#]+?)\.(?:jpg|jpeg|png|webp)/i.exec(String(url || ''));
-    return m ? m[1] : null;
-  };
+  const setAusUrl = () => setNummerAusBildAdresse(String(url || ''));
   const notiere = () => {
     const sn = setAusUrl();
     if (sn) nacharbeit().bildVormerken(String(url), sn);
@@ -350,3 +346,17 @@ function registerImgProxy(app: Express) {
 }
 
 export { registerImgProxy };
+
+/**
+ * Setnummer aus einer Rebrickable-Set-Adresse, sonst null. Das geladene Bild
+ * wird unter dieser Nummer für alle Konten abgelegt; deshalb zählt nur der
+ * ganze Pfad ohne Anfrageteil, sonst legte `…/parts/x.png?/media/sets/10294-1.jpg`
+ * ein fremdes Bild als Set ab.
+ */
+export function setNummerAusBildAdresse(adresse: string): string | null {
+  let u: URL;
+  try { u = new URL(adresse); } catch { return null; }
+  if (u.protocol !== 'https:' || u.hostname !== 'cdn.rebrickable.com' || u.search || u.hash) return null;
+  const m = /^\/media\/sets\/([A-Za-z0-9-]{1,40})\.(?:jpg|jpeg|png|webp)$/i.exec(u.pathname);
+  return m?.[1] ?? null;
+}

@@ -21,7 +21,8 @@ export function starteBildNachlauf(): void {
          WHERE image_url IS NOT NULL AND image_local IS NULL`
       ).catch(meldeUndLiefere('bild-nachlauf:sets', []));
       // Manuell erfasste Teile mit fehlendem lokalen Bild — im selben Job
-      // dauerhaft in den lokalen Cache laden (statt nur über den Proxy).
+      // dauerhaft in den lokalen Cache laden (statt nur über den Proxy). Nur
+      // geprüfte Adressen (bild_von IS NULL): Die Datei gilt für alle Konten.
       // Ausführlich: docs/begruendungen/server.ts.md#electprimaryworker-manualparts
       const manualParts = await db.all(
         `SELECT DISTINCT pcc.part_number, pcc.color_id, pcc.image_url
@@ -29,13 +30,13 @@ export function starteBildNachlauf(): void {
            JOIN parts p ON p.part_number = pcc.part_number
                        AND p.color_id    = pcc.color_id
                        AND p.source      = 'manual'
-          WHERE pcc.image_url IS NOT NULL AND pcc.image_local IS NULL`
+          WHERE pcc.image_url IS NOT NULL AND pcc.image_local IS NULL AND pcc.bild_von IS NULL`
       ).catch(meldeUndLiefere('bild-nachlauf:manualParts', []));
       // Minifiguren — ALLE, nicht nur manuell erfasste.
       // Ausführlich: docs/begruendungen/server.ts.md#electprimaryworker-figstofetch
       const figsToFetch = await db.all(
         `SELECT mc.fig_number, mc.image_url FROM minifigs_catalog mc
-          WHERE mc.image_url IS NOT NULL AND mc.image_local IS NULL
+          WHERE mc.image_url IS NOT NULL AND mc.image_local IS NULL AND mc.bild_von IS NULL
             AND EXISTS (SELECT 1 FROM minifigs m WHERE m.fig_number = mc.fig_number)
           ORDER BY mc.fig_number`
       ).catch(meldeUndLiefere('bild-nachlauf:figsToFetch', []));
