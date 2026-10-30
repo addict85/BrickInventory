@@ -381,7 +381,10 @@ async function getSet(userId: Blickfeld, setNumber: string) {
               (SELECT NULLIF(string_agg(DISTINCT lo.name, ', '), '')
                  FROM sets d
                  JOIN storage_locations lo ON lo.id = d.storage_id
-                WHERE d.user_id = ANY($1) AND d.set_number = s.set_number) AS storage
+                WHERE d.user_id = ANY($1) AND d.set_number = s.set_number) AS storage,
+              -- Besitzer wie in getSets(); withOwners() macht daraus Plaketten.
+              (SELECT array_agg(DISTINCT e.user_id ORDER BY e.user_id)
+                 FROM sets e WHERE e.user_id = ANY($1) AND e.set_number = s.set_number) AS owner_ids
          FROM sets s
          LEFT JOIN set_catalog c ON c.set_number = s.set_number
         WHERE s.user_id = ANY($1) AND s.set_number = $2
@@ -408,7 +411,9 @@ async function getSet(userId: Blickfeld, setNumber: string) {
     }),
     Promise.resolve(fuerSet(setNumber, set.name)),
   ]);
-  return { ...set, ...agg,
+  const { owner_ids, ...ohneIds } = set;
+  const [mitBesitzern] = await withOwners(uids, [uids.length > 1 ? { ...ohneIds, owner_ids } : ohneIds]);
+  return { ...mitBesitzern, ...agg,
     bricklink,
     preisvergleich_url: preisvergleich,
     image_local: resolveImageLocal(set.image_local),

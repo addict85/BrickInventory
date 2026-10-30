@@ -280,7 +280,7 @@ fun ManuelleKachel(
     menge: Int,
     zustaende: List<String>,
     zustand: String?,
-    besitzer: List<ch.brickinventoryapp.data.model.HouseholdMember>,
+    besitzer: List<ch.brickinventoryapp.data.model.KontoName>,
     preis: Double?,
     waehrung: String,
     onEdit: () -> Unit,

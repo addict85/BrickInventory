@@ -40,7 +40,7 @@ async function token() {
     let fehler;
     try {
       const a = await fetch(BASE + r.pfad, { headers: { Authorization: `Bearer ${t}` } });
-      fehler = a.ok ? pruefe(await a.json(), { art: 'klasse', name: r.typ ?? '', nullbar: false }, modelle, '$')
+      fehler = a.ok ? pruefe(await a.json(), { art: 'klasse', name: r.typ ?? '', nullbar: false }, modelle, '$', { route: r.pfad })
                     : [`HTTP ${a.status}`];
     } catch (e) { fehler = [`Anfrage fehlgeschlagen: ${e instanceof Error ? e.message : String(e)}`]; }
     if (fehler.length) {
