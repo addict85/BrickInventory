@@ -18,7 +18,7 @@ import java.io.File
  * Gegenproben (29.10.2026, gemessen): SCHRANKE auf 62 → rot mit 63 Dateien;
  * eine zusätzliche Testdatei, die nur Quellen.lies() aufruft → rot mit 64.
  * Stände: 82 vor dem Schnitt des MainViewModels (307ee28), 77 bei 8f4f9d3,
- * 62 seit FinanzZeilenGleichTest die Zeilenwahl ausführt.
+ * 61 seit FinanzZeilenGleichTest und ClientRendersOnlyTest die Finanzwahl ausführen.
  */
 class QuelltextRatscheTest {
 
@@ -27,7 +27,7 @@ class QuelltextRatscheTest {
 
     @Test
     fun `reine Quelltext-Tests werden weniger, nie mehr`() {
-        val SCHRANKE = 62
+        val SCHRANKE = 61
         val alle = File("src/test/java/ch/brickinventoryapp").listFiles { f -> f.name.endsWith("Test.kt") }.orEmpty()
         assert(alle.size >= 100) { "Nur ${alle.size} Testdateien gefunden — greift die Suche noch?" }
         val nur = alle.filter { it.name != "QuelltextRatscheTest.kt" }.filter {

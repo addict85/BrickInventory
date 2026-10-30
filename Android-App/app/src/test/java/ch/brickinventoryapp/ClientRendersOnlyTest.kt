@@ -1,5 +1,11 @@
 package ch.brickinventoryapp
 
+import ch.brickinventoryapp.data.model.PartsValuationResponse
+import ch.brickinventoryapp.data.model.PnlResponse
+import ch.brickinventoryapp.data.model.PnlTotals
+import ch.brickinventoryapp.data.model.ValuationResponse
+import ch.brickinventoryapp.ui.finanzSummen
+import org.junit.Assert.assertEquals
 import org.junit.Test
 
 /**
@@ -71,13 +77,21 @@ class ClientRendersOnlyTest {
         }
     }
 
+    /**
+     * Seit dem 30.10. ausgeführt: finanzSummen() (ui/Finanzzeilen.kt) wählt den
+     * Gesamtwert, beide Kopfkarten rufen sie. Gegenprobe (gemessen): dort
+     * grand_total übergangen → rot (0.20 statt 4894.77).
+     */
     @Test
     fun `der Gesamtwert kommt vom Server`() {
+        val summen = finanzSummen(ValuationResponse(success = true), PartsValuationResponse(success = true, totalValue = "0.20"),
+            null, PnlResponse(success = true, totals = PnlTotals(grandTotal = "4894.77")))
+        assertEquals(0, java.math.BigDecimal("4894.77").compareTo(summen.gesamt))
         val sections = java.io.File(
             "src/main/java/ch/brickinventoryapp/ui/screens/FinanceSections.kt").readText()
-        assert(sections.contains("pnl?.totals?.grandTotal")) {
-            "Der Gesamtwert wird nicht mehr vom Server gelesen — dann rechnet ihn " +
-                "die App wieder selbst, und die Webapp tut dasselbe auf ihre Art."
+        assert(Regex("""finanzSummen\(valuation, partsValuation, figsValuation, pnl\)""").findAll(sections).count() == 2) {
+            "Eine Kopfkarte liest den Gesamtwert nicht mehr über finanzSummen() — dann rechnet " +
+                "sie ihn wieder selbst, und die Webapp tut dasselbe auf ihre Art."
         }
         // Das Modellfeld muss es geben, sonst liest der Ausdruck oben ins Leere.
         // Alle Modelldateien (Nachtrag 155): Vorher stand hier ein Dateiname,
