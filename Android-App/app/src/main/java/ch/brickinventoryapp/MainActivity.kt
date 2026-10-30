@@ -123,8 +123,8 @@ class MainActivity : ComponentActivity() {
             // und darüber die ganze App rekomponiert.
             val theme by vm.appTheme.collectAsStateWithLifecycle()
             val dunkel by vm.dunkelNachSystem.collectAsStateWithLifecycle()
-            val darstellung = darstellung(theme, dunkel, isSystemInDarkTheme())
-            BrickInventoryManagerTheme(theme = darstellung.design, dunkel = darstellung.dunkel) {
+            val sicht = darstellung(theme, dunkel, isSystemInDarkTheme())
+            BrickInventoryManagerTheme(theme = sicht.design, dunkel = sicht.dunkel) {
                 BrickInventoryManagerApp(vm, katalogVm, gutscheinVm, imageLoader)
             }
         }

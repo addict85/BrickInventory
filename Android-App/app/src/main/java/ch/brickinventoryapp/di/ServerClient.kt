@@ -64,7 +64,7 @@ internal fun buildInterceptorClient(
     meldungen: ch.brickinventoryapp.data.MeldungsKanal? = null,
 ): OkHttpClient {
     val versionsMeldung: ((VersionsHinweis) -> Unit)? = meldungen?.let { kanal ->
-        { hinweis ->
+        { hinweis: VersionsHinweis ->
             kanal.fluss.value = ch.brickinventoryapp.util.LanguageManager.localizedContext(ctx).getString(
                 if (hinweis == VersionsHinweis.APP_ZU_ALT) ch.brickinventoryapp.R.string.api_app_zu_alt
                 else ch.brickinventoryapp.R.string.api_server_zu_alt)

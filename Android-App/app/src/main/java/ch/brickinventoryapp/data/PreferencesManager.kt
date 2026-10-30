@@ -235,6 +235,14 @@ class PreferencesManager @Inject constructor(
         }
     }
 
+    // Synchron lesbarer Spiegel des Designs (SharedPreferences): setContent() läuft
+    // vor dem ersten DataStore-Wert, und das erste Bild entstünde sonst im
+    // Standard-Design. Der DataStore bleibt führend. Vor
+    // init, weil die Übernahme dort im Hintergrund schon darauf zugreift.
+    private val designSpiegel by lazy {
+        context.getSharedPreferences(DESIGN_SPIEGEL_DATEI, Context.MODE_PRIVATE)
+    }
+
     init {
         // Der Nachlauf aus dem DataStore: für den Kaltstart und für Änderungen,
         // die nicht über die save-Funktionen kamen (Übernahme eines alten Tokens).
@@ -371,13 +379,6 @@ class PreferencesManager @Inject constructor(
             // auseinanderlaufen koennen.
             designSpiegel.edit().putString(APP_THEME_SPIEGEL, theme).apply()
         }
-    }
-
-    // Synchron lesbarer Spiegel des Designs (SharedPreferences): setContent() läuft
-    // vor dem ersten DataStore-Wert, und das erste Bild entstünde sonst im
-    // Standard-Design. Der DataStore bleibt führend.
-    private val designSpiegel by lazy {
-        context.getSharedPreferences(DESIGN_SPIEGEL_DATEI, Context.MODE_PRIVATE)
     }
 
     /**

@@ -17,7 +17,7 @@ import org.junit.Test
  *   A  in darstellung() das `&& systemDunkel` entfernt → rot „mit Wahl dunkel
  *      nur bei dunklem System, im selben Design“
  *   B  `?: true` → `?: false` → rot „ohne gespeicherte Wahl folgt die App dem System"
- *   C  MainActivity ohne `dunkel = darstellung.dunkel` → rot „MainActivity
+ *   C  MainActivity ohne `dunkel = sicht.dunkel` → rot „MainActivity
  *      zeichnet das wirksame Design“
  *   D  installSplashScreen() hinter super.onCreate() → rot „der Start blitzt nicht weiss auf"
  *   E  `&& hatDunkleFassung(design)` entfernt → rot „Werkbank bleibt, wie es ist“
@@ -58,7 +58,7 @@ class WirksamesDesignTest {
         assertTrue("MainActivity nutzt darstellung() nicht — die Wahl bliebe ohne Wirkung",
             Regex("""darstellung\(theme,\s*dunkel,\s*isSystemInDarkTheme\(\)\)""").containsMatchIn(src))
         assertTrue("MainActivity reicht die dunkle Fassung nicht ans Theme",
-            Regex("""BrickInventoryManagerTheme\(theme\s*=\s*darstellung\.design,\s*dunkel\s*=\s*darstellung\.dunkel\)""").containsMatchIn(src))
+            Regex("""(\w+) = darstellung\(theme,[^\n]*\n\s*BrickInventoryManagerTheme\(theme\s*=\s*\1\.design,\s*dunkel\s*=\s*\1\.dunkel\)""").containsMatchIn(src))
     }
 
     /**
