@@ -1,26 +1,16 @@
 /**
  * Der nachgefüllte Marktpreis gilt dem Zustand DIESER Erfassung.
  *
- * ── Marcos Befund (Nachtrag 146) ────────────────────────────────────────────
- * „Wenn ich bei der Minifigur einen zweiten Preis mit einem anderen Zustand
- * erfasse, z.B. gebraucht, wird der Marktpreis dieses Zustands nicht angezeigt.
- * Der Preis ist ebenfalls identisch, wenn ich das Feld leer lasse. Es sieht so
- * aus, als würde der Preis vom anderen Zustand übernommen."
+ * Wird das Kaufpreisfeld geleert, füllt der Erfassungsdienst den Marktpreis
+ * nach. Teile und Minifiguren liessen den Zustand der Zeile früher fallen und
+ * leiteten einen aus ALLEN Erfassungen ab; eine Gebraucht-Zeile bekam so den
+ * Preis des Sammelzustands.
  *
- * ── Was los war ─────────────────────────────────────────────────────────────
- * Wird das Kaufpreisfeld geleert, füllt `resolvePrice()` den Marktpreis nach.
- * Der Aufrufer reicht dafür seit Nachtrag 68 den Zustand DIESER Zeile durch:
- *
- *     p = await cfg.resolvePrice(uid, keys, cond);
- *
- * Die SETS-Fassung nimmt ihn entgegen. Teile und Minifiguren deklarierten den
- * dritten Parameter nicht und liessen ihn fallen. Beide leiteten stattdessen
- * einen Zustand aus ALLEN Erfassungen des Eintrags ab — eine Regel, die nicht
- * stimmen KANN, sobald zwei Erfassungen verschiedene Zustände haben.
- *
- * Folge: Die Gebraucht-Zeile bekam den Preis des Sammelzustands, und ein
- * Marktpreis für „Gebraucht" wurde nie ermittelt — deshalb blieb die Zeile im
- * Detailfenster leer.
+ * Gegenproben (am 30.10.2026 gemessen):
+ *   A  in utils/dienste/erfassungen.ts den Zustand an resolvePrice durch null
+ *      ersetzt → rot bei „set“ (100 statt 60)
+ *   B  in ARTEN.part.resolvePrice cond nicht weitergegeben → rot bei „part“
+ *      (100 statt 60); „set“ bleibt grün
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -28,57 +18,58 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { ohneKommentare } = require('./helpers/sources');
 
-test('alle drei Erfassungsarten reichen den Zustand an resolvePrice durch', () => {
-  const src = fs.readFileSync(
-    path.join(__dirname, '..', 'routes', 'api_v1', 'acquisitions.ts'), 'utf8');
+process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
+process.env.WEB_WORKERS = '1';
+const _req = require('./helpers/sources').buildAndRequire();
 
-  // Der Aufrufer gibt ihn mit — ohne das ist alles Weitere sinnlos.
-  assert.match(src, /cfg\.resolvePrice\(uid, keys, cond\)/,
-    'Der Zustand der Zeile wird nicht mehr durchgereicht (Nachtrag 68)');
-
-  // Und jede Fassung muss ihn annehmen UND weitergeben.
-  const faelle = [
-    [/resolvePrice: \(uid, \[sn\], cond\) =>/, 'Sets'],
-    [/resolvePrice: \(uid, \[pn, cid\], cond\) =>[\s\S]{0,160}?getCurrentPartMarketPrice\(pn, cid, uid, cond\)/, 'Teile'],
-    [/resolvePrice: async \(uid, \[fn\], cond\) =>[\s\S]{0,400}?getCurrentFigMarketPrice\([^)]*cond\)/, 'Minifiguren'],
-  ];
-  for (const [muster, name] of faelle) {
-    assert.match(src, muster,
-      `${name}: Der Zustand der Zeile wird verworfen. Dann bekommt eine ` +
-      'Gebraucht-Erfassung den Preis des Sammelzustands — und für ihren ' +
-      'eigenen Zustand wird nie einer ermittelt.');
+test('ein geleerter Kaufpreis wird im Zustand der Zeile nachgefüllt', { concurrency: 1 }, async (t) => {
+  const db = _req('db/database.js');
+  try { await db.initSchema(); }
+  catch (e) {
+    if (process.env.REQUIRE_DB === '1')
+      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
+    t.skip('Test-DB nicht erreichbar'); return;
   }
-});
-
-test('die Preisermittler nehmen einen Zustand entgegen', () => {
-  // Sonst wäre das Durchreichen oben wirkungslos.
-  const mf = fs.readFileSync(path.join(__dirname, '..', 'utils', 'marketPrice.ts'), 'utf8');
-  const pt = fs.readFileSync(path.join(__dirname, '..', 'utils', 'marketPrice.ts'), 'utf8');
-
-  // Auf den PARAMETER geprüft, nicht auf seine Schreibweise: Ob dort
-  // `condition = null` oder `condition: string | null = null` steht, ist eine
-  // Frage der Typannotation und ändert an der Zusicherung nichts. Der Wortlaut
-  // stand hier fest und wurde beim Einschalten von strictNullChecks rot,
-  // obwohl sich am Verhalten nichts geändert hatte — dieselbe Sorte Test, die
-  // in Nachtrag 118 eine Sicherheitslücke festgeschrieben hat.
-  const nimmtZustand = (src, name) => {
-    const i = src.indexOf(`function ${name}(`);
-    assert.ok(i >= 0, `${name} gibt es nicht mehr`);
-    const kopf = src.slice(i, src.indexOf(')', i) + 1);
-    assert.match(kopf, /\bcondition\b/,
-      `${name} nimmt keinen Zustand mehr entgegen: ${kopf}`);
-    assert.match(kopf, /condition[^,)]*=\s*null/,
-      `${name} muss den Zustand mit Vorgabe null annehmen, damit Aufrufer ` +
-      `ihn weglassen dürfen: ${kopf}`);
+  const mc = await db.pool.connect();
+  try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }
+  const { erfassungAendern } = _req('utils/dienste/erfassungen.js');
+  const P = process.pid;
+  const NAME = `zustandpreis-${P}`, SN = `${P}9-1`, PN = `zp${P}`, FN = `fig-zp${P}`;
+  const weg = async () => {
+    await db.run('DELETE FROM users WHERE username = $1', [NAME]);
+    await db.run('DELETE FROM price_cache WHERE set_number = $1', [SN]);
+    await db.run('DELETE FROM part_price_cache WHERE part_number = $1', [PN]);
+    await db.run('DELETE FROM minifig_price_cache WHERE fig_number = $1', [FN]);
   };
-  nimmtZustand(mf, 'getCurrentFigMarketPrice');
-  nimmtZustand(pt, 'getCurrentPartMarketPrice');
+  await weg();
+  t.after(async () => { await weg().catch(() => {}); await db.pool.end().catch(() => {}); });
 
-  // Und der übergebene muss Vorrang haben vor dem abgeleiteten.
-  assert.match(mf, /let effCond = condition;/,
-    'Der übergebene Zustand hat keinen Vorrang mehr');
-  assert.match(pt, /const effCond\s*=\s*condition \|\|/,
-    'Der übergebene Zustand hat keinen Vorrang mehr');
+  const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
+  await db.run(`INSERT INTO user_settings (user_id, key, value) VALUES ($1,'currency','CHF')`, [uid]);
+  // Neu 100, Gebraucht 60 — in allen drei Zwischenspeichern.
+  for (const [z, preis] of [['N', 100], ['U', 60]]) {
+    await db.run(`INSERT INTO price_cache (set_number, condition, currency_code, avg_price) VALUES ($1,$2,'CHF',$3)`, [SN, z, preis]);
+    await db.run(`INSERT INTO part_price_cache (part_number, color_id, condition, currency_code, avg_price) VALUES ($1,77,$2,'CHF',$3)`, [PN, z, preis]);
+    await db.run(`INSERT INTO minifig_price_cache (fig_number, condition, currency_code, avg_price) VALUES ($1,$2,'CHF',$3)`, [FN, z, preis]);
+  }
+  await db.run('INSERT INTO sets (user_id, set_number) VALUES ($1,$2)', [uid, SN]);
+  await db.run(`INSERT INTO parts (user_id, part_number, color_id, source) VALUES ($1,$2,77,'manual')`, [uid, PN]);
+  await db.run(`INSERT INTO minifigs (user_id, fig_number, source) VALUES ($1,$2,'manual')`, [uid, FN]);
+  const zeile = async (sql, p) => (await db.get(sql + ` VALUES ($1,$2,1,10,'N','CHF') RETURNING id`, p)).id;
+  const faelle = [
+    ['set', 'set_acquisitions', 'purchase_price', [SN],
+      await zeile('INSERT INTO set_acquisitions (user_id, set_number, quantity, purchase_price, condition, currency)', [uid, SN])],
+    ['part', 'part_acquisitions', 'unit_price', [PN, 77],
+      await db.get(`INSERT INTO part_acquisitions (user_id, part_number, color_id, quantity, unit_price, condition, currency)
+                    VALUES ($1,$2,77,1,10,'N','CHF') RETURNING id`, [uid, PN]).then(r => r.id)],
+    ['fig', 'minifig_acquisitions', 'unit_price', [FN],
+      await zeile('INSERT INTO minifig_acquisitions (user_id, fig_number, quantity, unit_price, condition, currency)', [uid, FN])],
+  ];
+  for (const [art, tabelle, spalte, keys, id] of faelle) {
+    await erfassungAendern(art, uid, id, keys, { [spalte]: '', condition: 'U' });
+    const z = await db.get(`SELECT ${spalte}::float AS preis, price_estimated, condition FROM ${tabelle} WHERE id = $1`, [id]);
+    assert.deepEqual(z, { preis: 60, price_estimated: true, condition: 'U' }, art);
+  }
 });
 
 test('die Schätzung legt je Zustand einen eigenen Eintrag ab', () => {

@@ -53,12 +53,6 @@ function routen() {
     for (const m of s.matchAll(/router\.(get|post|put|delete|patch)\(\s*['`]([^'`]*)['`]/g)) {
       raus.add(`${m[1].toUpperCase()} ${(praefix + m[2]).replace(/\/\//g, '/')}`);
     }
-    // registerAcquisitionRoutes() erzeugt <routeBase> und <routeBase>/:<idParam>
-    for (const m of s.matchAll(/routeBase:\s*'([^']+)'[\s\S]{0,120}?idParam:\s*'(\w+)'/g)) {
-      const basis = praefix + m[1];
-      for (const me of ['GET', 'POST']) raus.add(`${me} ${basis}`);
-      for (const me of ['PUT', 'DELETE']) raus.add(`${me} ${basis}/:${m[2]}`);
-    }
   }
   return [...raus].map(z => { const [me, ...r] = z.split(' '); return [me, r.join(' ')]; });
 }

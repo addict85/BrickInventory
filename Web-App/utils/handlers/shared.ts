@@ -3,6 +3,7 @@ import { inKontowaehrung, kontowaehrungJoin } from '../acquisitions';
 import { istErsatzteil } from '../validate';
 import { asIds } from '../household';
 import { teilmengeJoin, teilmengeAus } from '../bestandsmenge';
+import { KEINE_FARBE } from '../validate';
 
 /**
  * Was alle drei Domänen brauchen: Seitengrössen, Zustandsableitung aus
@@ -33,8 +34,6 @@ function clampPageSize(value: any, fallback: number): number {
   return Math.min(MAX_PAGE_SIZE, Math.max(1, parseInt(String(value)) || fallback));
 }
 
-/** Manuell erfasste Teile (eigene Ansicht neben den Set-Teilen).
- *  Von /api/parts/manual UND /api/v1/parts/manual genutzt (Parität). */
 /**
  * Eine Anzahl, wie sie aus der Datenbank kommt.
  * Ausführlich: docs/begruendungen/utils/handlers/shared.ts.md#zaehlwert
@@ -46,10 +45,7 @@ type Zaehlwert = number | string | null | undefined;
  * Ausführlich: docs/begruendungen/utils/handlers/shared.ts.md#conditionfromacquisitions
  */
 function conditionFromAcquisitions(acqCount: Zaehlwert, usedCount: Zaehlwert) {
-  // parseInt wie in der Schwesterfunktion unten. Vorher stand hier
-  // `usedCount > 0` — das ging nur ueber die JS-Umwandlung gut, weil COUNT(*)
-  // als "2" ankommt. Nachgemessen und gleichwertig fuer alles, was hier
-  // ankommt: "2"/2 -> wahr, "0"/0/null/undefined -> falsch. Der Typ hat die …
+  // COUNT(*) kommt als Text ("2"); parseInt wie in der Schwesterfunktion.
   // Ausführlich: docs/begruendungen/utils/handlers/shared.ts.md#conditionfromacquisitions-acq
   const acq  = parseInt(String(acqCount ?? ''))  || 0;
   const used = parseInt(String(usedCount ?? '')) || 0;
@@ -79,14 +75,6 @@ function conditionsFromAcquisitions(acqCount: Zaehlwert, usedCount: Zaehlwert): 
 /**
  * Angezeigter Zustand manuell erfasster Teile und Minifiguren.
  * Ausführlich: docs/begruendungen/utils/handlers/shared.ts.md#abschnitt-2
- * @param {'part'|'fig'} kind
- */
-/**
- * `rows` ist `any[]` und nicht `any[] | null`: Beide Aufrufstellen
- * (handlers/minifigs.ts, handlers/parts.ts) reichen das Ergebnis eines
- * `db.all(...).map(...)` herein, also immer ein Array. Die Abfrage
- * `!rows?.length` im Rumpf bleibt trotzdem stehen — sie kostet nichts und
- * faengt den leeren Fall, auf den es ihr eigentlich ankommt.
  */
 async function applyManualCondition(userId: unknown, rows: any[], kind: 'part' | 'fig') {
   // Blickfeld statt einer einzelnen ID: Ein Hauptkonto sieht (und ändert)
@@ -98,7 +86,7 @@ async function applyManualCondition(userId: unknown, rows: any[], kind: 'part' |
 
   const isPart = kind === 'part';
   const keyOf = (r: any) => isPart
-    ? `${r.part_number}|${r.color_id || 0}`
+    ? `${r.part_number}|${r.color_id ?? KEINE_FARBE}`
     : String(r.fig_number);
 
   const acq = await db.all(
@@ -123,7 +111,7 @@ async function applyManualCondition(userId: unknown, rows: any[], kind: 'part' |
   );
 
   const byKey = new Map<string, any>(acq.map((a: any) => [
-    isPart ? `${a.part_number}|${a.color_id || 0}` : String(a.fig_number),
+    isPart ? `${a.part_number}|${a.color_id ?? KEINE_FARBE}` : String(a.fig_number),
     a,
   ] as [string, any]));
 
@@ -147,13 +135,6 @@ async function applyManualCondition(userId: unknown, rows: any[], kind: 'part' |
   });
 }
 
-/** Kopf-/Übersichts-Statistik — von /api/settings/stats UND /api/v1/stats
- *  genutzt (Parität). Superset der historischen Felder beider Routen;
- *  total_parts ist ein Alias von total_pieces (v1-Altbestand). */
-/**
- * Besitzer-Namen an Zeilen hängen, die eine `user_id` tragen.
- * Ausführlich: docs/begruendungen/utils/handlers/shared.ts.md#abschnitt-3
- */
 /**
  * Besitzer-Plaketten anhaengen — fuer EINZELNE Zeilen (`user_id`) und fuer
  * GRUPPIERTE (`owner_ids`).
@@ -222,12 +203,8 @@ export interface BestandteilAntwort {
 const SUCHSPALTEN = new Set(['part_number', 'color_id', 'fig_number']);
 
 /**
- * Die Felder, die das Teil/die Figur selbst beschreiben — je Tabelle andere.
- *
- * `minifigs` hat keine Farbe und keine Kategorie; damit beide Zweige DIESELBE
- * Antwortform liefern, stehen sie dort als feste NULL im Ausdruck. Sonst
- * müssten die beiden Oberflächen zwei Formen unterscheiden, und genau daran
- * laufen in diesem Projekt Dinge auseinander.
+ * Die Felder, die Teil bzw. Figur beschreiben. Figuren haben weder Farbe noch
+ * Kategorie; dort stehen feste NULL, damit beide Zweige dieselbe Form liefern.
  */
 const KOPFFELDER = {
   parts: `x.part_number AS nummer, MAX(pc.part_name) AS name,
@@ -259,12 +236,7 @@ const KATALOGJOIN = {
 
 const SCHLUESSELSPALTE = { parts: 'x.part_number', minifigs: 'x.fig_number' } as const;
 
-/**
- * Die Bestandsart je Tabelle — fuer teilmengeJoin/teilmengeAus
- * (utils/bestandsmenge.ts). Dieselbe Bauart wie KOPFFELDER und
- * KATALOGJOIN darueber: Diese Abfrage bedient beide Tabellen in EINER
- * Form, und was sich unterscheidet, steht in einer Zuordnung.
- */
+/** Die Bestandsart je Tabelle für teilmengeJoin/teilmengeAus — wie KOPFFELDER eine Zuordnung. */
 const ART = { parts: 'part', minifigs: 'fig' } as const;
 
 async function verwendendeSets(
@@ -331,11 +303,8 @@ async function verwendendeSets(
     owner_user_id: parseInt(r.owner_user_id, 10),
   }));
 
-  // Der Kopf entsteht aus DENSELBEN Zeilen — keine zweite Abfrage, die etwas
-  // anderes sagen könnte als die Liste darunter. Das Bild wird von der ersten
-  // Zeile genommen, die eines hat: Nicht jede Set-Zeile trägt ein Bild, und
-  // ein leerer Rahmen im Dialog wäre schlechter als das Bild aus dem
-  // Nachbarset — es ist dasselbe Teil.
+  // Der Kopf entsteht aus denselben Zeilen wie die Liste; das Bild von der
+  // ersten Zeile, die eines hat (es ist dasselbe Teil).
   const erste = rows[0] as any;
   const mitBild = (rows as any[]).find(r => r.teil_image_local || r.teil_image_url);
   const item: BestandteilKopf | null = erste ? {

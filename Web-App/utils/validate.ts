@@ -62,10 +62,16 @@ export function bestandsMenge(value: unknown, min = 0, max = 100_000): number {
   return +roh;
 }
 
-/** Farb-ID: nicht-negative Ganzzahl. */
-export function colorId(value: any): number {
-  const n = parseInt(String(value ?? '0'), 10);
-  return Number.isFinite(n) && n >= 0 ? n : 0;
+/**
+ * Rebrickables „[No Color/Any Color]“. Dort ist 0 Schwarz; eine fehlende Farbe
+ * darf deshalb nie zu 0 werden (Migration 0071).
+ */
+export const KEINE_FARBE = 9999;
+
+/** Farb-ID: nicht-negative Ganzzahl; leer, unlesbar oder negativ heisst KEINE_FARBE. */
+export function colorId(value: unknown): number {
+  const roh = String(value ?? '').trim();
+  return /^\d{1,6}$/.test(roh) ? Number(roh) : KEINE_FARBE;
 }
 
 /** Hex-Farbcode ohne führendes '#'. Ungültige Werte werden verworfen, nicht abgelehnt. */
@@ -123,12 +129,13 @@ export function istErsatzteil(value: unknown): boolean {
 }
 
 /**
- * Dieselbe Lesart wie [istErsatzteil], aber als SQL-Ausdruck.
- * Ausführlich: docs/begruendungen/utils/validate.ts.md#ersatzteilsql
+ * Ersatzteil als SQL-Ausdruck. Seit Migration 0075 ist is_spare in jeder
+ * Tabelle 0 oder 1 (CHECK); die Schreibweisen kennt nur noch istErsatzteil()
+ * für Eingaben wie die Rebrickable-CSV.
  * @param spalte Spaltenname, bereits vertrauenswuerdig — es ist NIE ein Wert
  */
 export function ersatzteilSql(spalte: string): string {
-  return `LOWER(TRIM(${spalte}::text)) IN ('1','t','true','y','yes')`;
+  return `(${spalte} = 1)`;
 }
 
 /**

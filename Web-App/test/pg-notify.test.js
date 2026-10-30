@@ -9,12 +9,21 @@
  * Der Eintrag in global_settings bleibt die belastbare Quelle — NOTIFY ist
  * flüchtig, wer im Moment des Signals nicht verbunden ist, bekommt es nie.
  * Deshalb ruft pgNotify jeden Handler beim (Wieder-)Verbinden einmal auf.
+ *
+ * Gegenproben (am 30.10.2026 gemessen):
+ *   A  in connect() die Aufhol-Schleife über _handlers entfernt → rot:
+ *      „beim Verbinden fragt der Handler einmal von sich aus“
+ *   B  quoteIdent() lässt jeden Namen durch → rot: „ein Kanalname mit
+ *      Leerzeichen wird abgewiesen“ (danach hängt der Lauf am ungültigen Kanal)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
+process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
+process.env.WEB_WORKERS = '1';
+const _req = require('./helpers/sources').buildAndRequire();
 const ROOT = path.join(__dirname, '..');
 const NOTIFY = fs.readFileSync(path.join(ROOT, 'utils', 'pgNotify.ts'), 'utf8');
 const SERVER = require('./helpers/sources').startQuelle();
@@ -31,13 +40,39 @@ test('die beiden Trigger-Poller sind weg', () => {
   assert.match(SCHED,  /listen\('job_reschedule_trigger'/, 'Reschedule-Trigger hängt nicht an LISTEN');
 });
 
-test('verpasste Signale werden beim Verbinden nachgeholt', () => {
-  // Der Kern der Sache: NOTIFY ist flüchtig. Ohne diesen Schritt bliebe ein
-  // Trigger, der während einer Trennung gesetzt wurde, für immer liegen.
-  assert.match(NOTIFY, /for \(const hs of _handlers\.values\(\)\)/,
-    'Beim Verbinden muss jeder Handler einmal von sich aus prüfen');
-  assert.match(NOTIFY, /LISTEN \$\{quoteIdent\(channel\)\}/,
-    'Kanäle müssen nach dem Reconnect erneut abonniert werden');
+test('verpasste Signale werden beim Verbinden nachgeholt', { concurrency: 1 }, async (t) => {
+  const db = _req('db/database.js');
+  try { await db.get('SELECT 1'); }
+  catch (e) {
+    if (process.env.REQUIRE_DB === '1')
+      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
+    t.skip('Test-DB nicht erreichbar'); return;
+  }
+  const pgNotify = _req('utils/pgNotify.js');
+  t.after(async () => { await pgNotify.close(); await db.pool.end().catch(() => {}); });
+  const KANAL = `ae_probe_${process.pid}`;
+  const bekommen = [];
+  const warte = async (n) => {
+    for (let i = 0; i < 100 && bekommen.length < n; i++) await new Promise(r => setTimeout(r, 50));
+  };
+
+  assert.throws(() => pgNotify.listen('kein kanal', () => {}), /Ungültiger Kanalname/,
+    'ein Kanalname mit Leerzeichen wird abgewiesen');
+
+  pgNotify.listen(KANAL, (nutzlast) => { bekommen.push(nutzlast ?? null); });
+  await warte(1);
+  assert.deepEqual(bekommen, [null], 'beim Verbinden fragt der Handler einmal von sich aus');
+
+  await pgNotify.notify(KANAL, 'hallo');
+  await warte(2);
+  assert.deepEqual(bekommen, [null, 'hallo'], 'das Signal kommt an');
+
+  // Die lauschende Verbindung abreissen: Ein Signal in der Lücke ginge
+  // verloren, deshalb holt der Handler beim Wiederverbinden nach.
+  await db.run(`SELECT pg_terminate_backend(pid) FROM pg_stat_activity
+                 WHERE pid <> pg_backend_pid() AND query LIKE $1`, [`LISTEN "${KANAL}"%`]);
+  await warte(3);
+  assert.deepEqual(bekommen, [null, 'hallo', null], 'nach dem Wiederverbinden holt der Handler nach');
 });
 
 test('die Handler prüfen den Datenbankeintrag, nicht die Nutzlast', () => {
@@ -58,11 +93,7 @@ test('die Handler prüfen den Datenbankeintrag, nicht die Nutzlast', () => {
   }
 });
 
-test('Kanalnamen werden validiert, nicht interpoliert', () => {
-  // LISTEN/NOTIFY-Kanäle sind Bezeichner und können nicht gebunden werden —
-  // deshalb muss der Name geprüft werden, bevor er in die Anweisung geht.
-  assert.match(NOTIFY, /function quoteIdent/, 'Bezeichnerprüfung fehlt');
-  assert.match(NOTIFY, /\^\[a-z_\]\[a-z0-9_\]\*\$/i, 'zu lasche Prüfung');
+test('beim Senden wird der Kanal gebunden, nicht eingesetzt', () => {
   assert.match(NOTIFY, /pg_notify\(\$1, \$2\)/,
     'Beim Senden lässt sich der Kanal binden — dort gehört kein String-Bau hin');
 });
@@ -75,9 +106,20 @@ test('eigene Verbindung, mit gedeckeltem Reconnect', () => {
 });
 
 test('jeder Sender löst auch ein Signal aus', () => {
-  const admin = fs.readFileSync(path.join(ROOT, 'routes', 'api_v1', 'admin.ts'), 'utf8');
-  const settings = fs.readFileSync(path.join(ROOT, 'routes', 'settings.ts'), 'utf8');
-  assert.match(admin, /notify\('csv_sync_trigger'\)/, 'CSV-Sync-Auslöser sendet kein Signal');
-  assert.match(admin, /notify\('job_reschedule_trigger'\)/, 'Reschedule-Auslöser (admin) sendet kein Signal');
-  assert.match(settings, /notify\('job_reschedule_trigger'\)/, 'Reschedule-Auslöser (settings) sendet kein Signal');
+  // Wer einen Auslöser in die Datenbank schreibt, weckt die Empfänger auch per
+  // NOTIFY — sonst liegt der Eintrag bis zum nächsten Verbindungsaufbau. Gesucht
+  // wird in allen Quellen, damit ein umgezogener Sender nicht aus der Liste fällt.
+  // Gegenprobe (29.10.2026): pgNotify.notify('job_reschedule_trigger') in
+  // utils/dienste/verwaltung.ts entfernt → rot.
+  const { alleQuellen } = require('./helpers/sources');
+  const sender = [];
+  for (const rel of alleQuellen()) {
+    const src = fs.readFileSync(path.join(ROOT, rel), 'utf8');
+    for (const m of src.matchAll(/setzeAusloeser\(\s*'(\w+)'/g)) {
+      sender.push(m[1]);
+      assert.match(src, new RegExp(`notify\\('${m[1]}'`), `${rel}: Auslöser ${m[1]} sendet kein Signal`);
+    }
+  }
+  assert.ok(sender.includes('csv_sync_trigger') && sender.includes('job_reschedule_trigger'),
+    `Die bekannten Auslöser wurden nicht gefunden (${sender.join(', ')}) — Suche veraltet?`);
 });

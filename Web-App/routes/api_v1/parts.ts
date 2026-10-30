@@ -3,8 +3,10 @@ import express from 'express';
 import { handleRouteError } from '../../utils/httpError';
 import { requireToken } from './middleware';
 import { scopeIds, parseScopeMode, resolveWriteTarget } from '../../utils/household';
-import { getBlColorMap, getManualParts, getOwnedQuantities, getParts, getPartsColors, getPartsStats } from '../../utils/handlers/parts';
-import { addManualPart, getPartColorList, updateManualPart } from '../../utils/manuelleTeile';
+import { getBlColorMap, getManualParts, getOwnedQuantities, getParts, getPartsColors, getPartsStats, getPartsCategories } from '../../utils/handlers/parts';
+import { csvEmpfang } from '../../utils/dateiEmpfang';
+import { csvImportAntwort } from '../../utils/csvExport';
+import { addManualPart, getPartColorList, updateManualPart, importiereTeileCsv } from '../../utils/manuelleTeile';
 import { getSetting } from '../../utils/settings';
 import { getPartPriceHistory } from '../../utils/priceHistory';
 import { einzelwert } from '../../utils/validate';
@@ -24,6 +26,24 @@ router.get('/parts', requireToken, async (req: AuthedRequest, res) => {
     // page_size: der TATSÄCHLICH verwendete Wert, nicht der angefragte.
     // Ausführlich: docs/begruendungen/routes/api_v1/parts.ts.md#get-parts
     res.json({ success: true, page: parseInt(String(req.query.page||1)), ...result });
+  } catch (e) { handleRouteError(res, e, undefined, req); }
+});
+
+// ── GET /api/v1/parts/categories — Kategorien im Blickfeld ──────────────────
+router.get('/parts/categories', requireToken, async (req: AuthedRequest, res) => {
+  try {
+    // Dasselbe Blickfeld wie die Farbliste, sonst filtern zwei Listen derselben
+    // Ansicht über verschiedene Konten.
+    const uids = await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts));
+    res.json({ success: true, categories: await getPartsCategories(uids) });
+  } catch (e) { handleRouteError(res, e, undefined, req); }
+});
+
+// ── POST /api/v1/parts/import/csv ───────────────────────────────────────────
+router.post('/parts/import/csv', requireToken, csvEmpfang.single('file'), async (req: AuthedRequest & { file?: { buffer: Buffer } }, res) => {
+  if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
+  try {
+    csvImportAntwort(res, await importiereTeileCsv(req.apiUser.user_id, req.file.buffer.toString('utf-8')));
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
@@ -57,7 +77,7 @@ router.put('/parts/:partNumber/:colorId', requireToken, async (req: AuthedReques
     // Antwort 200 {"success":true}.
     const besitzer = await resolveWriteTarget(req.apiUser.user_id, req.query.owner);
     if (besitzer === null) return sendeFehler(req, res, 403, 'kein_zugriff_konto');
-    await updateManualPart(besitzer, String(req.params.partNumber), parseInt(String(req.params.colorId)), req.body);
+    await updateManualPart(besitzer, String(req.params.partNumber), V.colorId(req.params.colorId), req.body);
     res.json({ success: true });
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
@@ -70,9 +90,8 @@ router.put('/parts/:partNumber/:colorId/color', requireToken, async (req: Authed
   try {
     const besitzer = await resolveWriteTarget(req.apiUser.user_id, req.query.owner);
     if (besitzer === null) return sendeFehler(req, res, 403, 'kein_zugriff_konto');
-    // Die neue Farbe muss DASTEHEN. V.colorId() macht aus fehlend/unsinnig
-    // eine 0, und 0 ist eine Farbe („ohne Angabe") — beim Korrigieren wäre
-    // das ein stilles Leeren mit Erfolgsmeldung.
+    // Die neue Farbe muss dastehen: V.colorId() machte aus fehlend „keine
+    // Farbe“, und beim Korrigieren wäre das ein stilles Leeren mit Erfolgsmeldung.
     const roh = req.body?.color_id;
     const neueFarbe = parseInt(String(roh ?? ''), 10);
     if (roh === undefined || roh === null || String(roh).trim() === ''
@@ -81,7 +100,7 @@ router.put('/parts/:partNumber/:colorId/color', requireToken, async (req: Authed
     }
     const ergebnis = await aendereTeilFarbe(
       besitzer, String(req.params.partNumber),
-      parseInt(String(req.params.colorId)) || 0,
+      V.colorId(req.params.colorId),
       neueFarbe,
       { color_name: V.optionalText(req.body?.color_name, 100),
         color_hex:  V.optionalHex(req.body?.color_hex) });
@@ -100,7 +119,7 @@ router.delete('/parts/:partNumber/:colorId', requireToken, async (req: AuthedReq
     // erlaubt ist, entscheidet der Server über canWriteFor() — nie der Client.
     const besitzer = await resolveWriteTarget(req.apiUser.user_id, req.query.owner);
     if (besitzer === null) return sendeFehler(req, res, 403, 'kein_zugriff_konto');
-    const geloescht = await loescheTeil(besitzer, String(req.params.partNumber), parseInt(String(req.params.colorId)));
+    const geloescht = await loescheTeil(besitzer, String(req.params.partNumber), V.colorId(req.params.colorId));
     if (geloescht === null) return sendeFehler(req, res, 404, 'teil_nicht_manuell');
     res.json({ success: true, papierkorb: [geloescht] });
   } catch (e) { handleRouteError(res, e, undefined, req); }
@@ -143,7 +162,7 @@ router.put('/parts/:partNumber/:colorId/storage', requireToken, async (req: Auth
   try {
     const ort = normalisiereLagerort(req.body?.storage);
     const n = await setzeLagerort('part', await writableIds(req.apiUser.user_id),
-      [String(req.params.partNumber), String(parseInt(String(req.params.colorId)) || 0)], ort);
+      [String(req.params.partNumber), String(V.colorId(req.params.colorId))], ort);
     res.json({ success: true, storage: ort, changed: n });
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
@@ -188,7 +207,7 @@ router.get('/parts/:partNumber/:colorId/price-history', requireToken, async (req
     const uid = req.apiUser.user_id;
     const currency = await getSetting(uid, 'currency', 'EUR');
     const data = await getPartPriceHistory(
-      await scopeIds(uid, parseScopeMode(req.query.accounts)), einzelwert(req.params.partNumber), parseInt(String(req.params.colorId)) || 0, currency);
+      await scopeIds(uid, parseScopeMode(req.query.accounts)), einzelwert(req.params.partNumber), V.colorId(req.params.colorId), currency);
     res.json({ success: true, ...data });
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
@@ -203,7 +222,7 @@ router.get('/parts/:partNumber/:colorId/sets', requireToken, async (req: AuthedR
     const uids = await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts));
     const { item, sets } = await verwendendeSets(uids, 'parts', {
       part_number: einzelwert(req.params.partNumber),
-      color_id: parseInt(String(req.params.colorId)) || 0,
+      color_id: V.colorId(req.params.colorId),
     });
     res.json({ success: true, item, sets });
   } catch (e) { handleRouteError(res, e, undefined, req); }

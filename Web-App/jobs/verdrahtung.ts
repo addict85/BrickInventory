@@ -5,6 +5,7 @@
  * ihn erkennen.
  */
 import { verdrahteNacharbeit } from '../utils/nacharbeit';
+import { verdrahteJobsteuerung } from '../utils/jobsteuerung';
 import { meldeUndWeiter } from '../utils/httpError';
 
 function verdrahte(): void {
@@ -14,6 +15,20 @@ function verdrahte(): void {
     },
     preisFuerSetHolen: (sn, uid, zustand) => require('../jobs/priceJob').refreshPriceForSet(sn, uid, zustand),
     bildVormerken: (url, sn) => require('../jobs/imageQueue').merkeGebraucht(url, sn),
+    setTeileAnreichern: (sn) => require('../jobs/partsCatalogEnrich').enrichSetParts(sn),
+    figurenAnreichern: (sn) => require('../jobs/partsCatalogEnrich').enrichSetMinifigs(sn),
+    setBilderLaden: (sn) => require('../jobs/partsCatalogEnrich').downloadSetImages(sn),
+  });
+  verdrahteJobsteuerung({
+    anleitungEinreihen: (sn) => require('../jobs/instructionQueue').enqueue(sn),
+    anleitungenOffen: () => require('../jobs/instructionQueue').offeneAuftraege(),
+    anleitungenLaufAnfordern: () => require('../jobs/instructionQueue').requestRun(),
+    preisJobStatus: () => require('../jobs/priceJob').getJobStatus(),
+    preisJobJetzt: () => require('../jobs/priceJob').triggerNow(),
+    bilderJeMinute: () => require('../jobs/imageQueue').anfragenJeMinute(),
+    fehlendeBilderNachladen: () => require('../jobs/partsCatalogEnrich').redownloadMissingImages(),
+    bricksetWarteschlange: (sofort) => require('../jobs/bricksetRetry').processRetryQueue(sofort),
+    zeitplanNeu: () => require('../jobs/dailyScheduler').rescheduleAll(),
   });
 }
 

@@ -23,10 +23,9 @@
  * und holte damit denselben Satz zweimal ueber die Leitung — ein Abruf des
  * dortigen Tageskontingents fuer nichts.
  *
- * ── Warum das ein Verhaltenstest ist ────────────────────────────────────────
- * Die Aussage ist „eine unter der blanken Nummer abgelegte Zeile wird
- * gefunden". Am Quelltext waere nur zu sehen, dass alle dieselbe Funktion
- * rufen — nicht, dass die das Richtige sucht.
+ * Seit Migration 0074 legt die Datenbank jede Set-Nummer mit Versionsanhang
+ * ab; es gibt nur noch einen Kandidaten. Die Aussage bleibt: Eine blank
+ * geschriebene Nummer wird gefunden, gleich wie der Aufrufer sie schreibt.
  *
  * Gegenproben (durchgefuehrt): siehe unten am jeweiligen Teilschritt.
  *
@@ -43,7 +42,7 @@ process.env.WEB_WORKERS = '1';
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
-const { neuestesInventar, inventarKandidaten } = _req('utils/rbInventar.js');
+const { neuestesInventar } = _req('utils/rbInventar.js');
 
 test('ein Inventar wird unter beiden Schreibweisen gefunden', { concurrency: 1 }, async (t) => {
   try { await db.initSchema(); }
@@ -62,11 +61,12 @@ test('ein Inventar wird unter beiden Schreibweisen gefunden', { concurrency: 1 }
   await aufraeumen();
 
   try {
-    // 1. Nur unter der BLANKEN Nummer abgelegt — genau der Fall, den die
-    //    beiden Abweichler verfehlten.
-    //    Gegenprobe: den zweiten Kandidaten in inventarNachKandidaten auf den
-    //    ersten gesetzt (die alte parts.ts-Bildung) → dieser Teilschritt rot.
+    // 1. BLANK geschrieben: Die Datenbank legt die Nummer mit Anhang ab.
+    //    Gegenprobe (30.10.2026): Trigger rb_inventories_setnummer entfernt
+    //    → rot („wird mit Versionsanhang abgelegt“: 9xxxxxx statt 9xxxxxx-1).
     await db.run('INSERT INTO rb_inventories (id, set_num, version) VALUES ($1,$2,1)', [idBlank, NR]);
+    assert.equal((await db.get('SELECT set_num FROM rb_inventories WHERE id = $1', [idBlank])).set_num, `${NR}-1`,
+      'Eine blank geschriebene Nummer wird mit Versionsanhang abgelegt');
     assert.equal(await neuestesInventar(NR), idBlank,
       'Eine unter der blanken Nummer abgelegte Zeile wird nicht gefunden');
     assert.equal(await neuestesInventar(`${NR}-1`), idBlank,
@@ -76,15 +76,6 @@ test('ein Inventar wird unter beiden Schreibweisen gefunden', { concurrency: 1 }
     await db.run('INSERT INTO rb_inventories (id, set_num, version) VALUES ($1,$2,2)', [idMitV, `${NR}-1`]);
     assert.equal(await neuestesInventar(NR), idMitV);
 
-    // 3. Die Kandidatenregel selbst: zwei VERSCHIEDENE Namen, sonst ist das
-    //    `OR set_num=$2` sinnlos. Genau daran krankte parts.ts.
-    //    Gegenprobe: Regel auf die alte parts.ts-Fassung zurueckgestellt
-    //    → dieser Teilschritt rot ('9999-1' zweimal).
-    assert.deepEqual(inventarKandidaten('9999'),   ['9999-1', '9999']);
-    assert.deepEqual(inventarKandidaten('9999-1'), ['9999-1', '9999']);
-    assert.deepEqual(inventarKandidaten('75192-2'), ['75192-2', '75192']);
-    const [a, b] = inventarKandidaten('9999');
-    assert.notEqual(a, b, 'Zwei gleiche Kandidaten fragen zweimal dasselbe');
   } finally {
     await aufraeumen();
     await db.pool.end();

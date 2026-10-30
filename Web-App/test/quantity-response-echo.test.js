@@ -21,15 +21,22 @@
  * Oberfläche liest es nie.
  *
  * Gegenprobe (durchgeführt): in 02-gallery.js `const echt = qty` gesetzt →
- * der Webapp-Teilschritt wird rot.
+ * der Webapp-Teilschritt wird rot. Am 30.10.2026 gemessen: in
+ * routes/api_v1/sets.ts `...(r || {})` aus der PUT-Antwort entfernt → rot:
+ * „die Route liefert die Menge“ (undefined statt 3).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
+process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
+process.env.WEB_WORKERS = '1';
 const ROOT = path.join(__dirname, '..');
 const { ohneKommentare } = require('./helpers/sources');
+const _req = require('./helpers/sources').buildAndRequire();
+const { testServer } = require('./helpers/server');
+const { haeltSet } = require('./helpers/bestand');
 
 test('die Webapp übernimmt die Menge aus der Antwort', () => {
   const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'public/js/02-gallery.js'), 'utf8'));
@@ -44,43 +51,28 @@ test('die Webapp übernimmt die Menge aus der Antwort', () => {
     'Der gemerkte Stand darf nicht die GESENDETE Zahl sein, sondern die bestätigte');
 });
 
-test('die Route liefert die Menge überhaupt mit', () => {
-  // Ohne diese Prüfung könnte das Feld serverseitig verschwinden, und die
-  // beiden Clients fielen still auf ihre eigene Annahme zurück — der Rückfall
-  // ist absichtlich lautlos, damit ein älterer Server keine Fehlermeldung
-  // erzeugt. Genau deshalb braucht es hier eine Prüfung.
-  const v1 = ohneKommentare(fs.readFileSync(path.join(ROOT, 'routes/api_v1/sets.ts'), 'utf8'));
-  const route = v1.slice(v1.indexOf("router.put('/sets/:setNumber'"),
-                         v1.indexOf("router.delete('/sets/:setNumber'"));
-  assert.match(route, /const r = await updateSet\(/, 'Die Antwort von updateSet wird verworfen');
-  assert.match(route, /\.\.\.\(r \|\| \{\}\)/, 'Sie wird nicht in die Antwort übernommen');
-
-  const sets = ohneKommentare(require('./helpers/sources').setKernQuelle());
-  // Seit Nachtrag 131 liegt updateSet in utils/setService.ts; die Route, die
-  // früher den Ausschnitt begrenzte, steht in einer anderen Datei. Begrenzt
-  // wird jetzt am Ende der Funktion selbst.
-  const anfang = sets.indexOf('async function updateSet');
-  const fn = sets.slice(anfang, sets.indexOf('\n}', anfang));
-  assert.match(fn, /return \{ quantity: /,
-    'updateSet gibt die Gesamtmenge nicht zurück');
-  // Die Abfrage steht seit Migration 0036 in utils/bestandsmenge.ts — hier
-  // stand sie dreimal ausgeschrieben. Geprueft wird deshalb zweistufig: Der
-  // Aufruf nennt das Blickfeld, und der Helfer macht daraus ein `= ANY($1)`.
-  // Ohne den zweiten Teil koennte die Funktion dort still eine einzelne
-  // Konto-ID einsetzen und diese Regel bliebe gruen.
-  assert.match(fn, /mengeSummeSql\('blickfeld'\)/,
-    'Die zurückgegebene Menge muss über das Blickfeld summiert sein — eine ' +
-    'einzelne Kontozeile wäre wieder die alte Verwechslung');
-  // Stufe zwei: Was der Helfer daraus macht.
-  const bm = ohneKommentare(
-    require('node:fs').readFileSync(
-      require('node:path').join(__dirname, '..', 'utils/bestandsmenge.ts'), 'utf8'));
-  const summe = require('./helpers/sources').abschnitt(
-    bm, 'export function mengeSummeSql', '\n}', 'mengeSummeSql in bestandsmenge.ts');
-  assert.match(summe, /'blickfeld' \? '= ANY\(\$1\)'/,
-    'mengeSummeSql(\'blickfeld\') summiert nicht über eine Kontenliste — dann ' +
-    'nennt der Aufruf oben ein Blickfeld, das es in der Abfrage nicht gibt');
-  assert.match(summe, /JOIN sets s/,
-    'Ohne den JOIN auf sets zählt eine Erfassung ohne Bestandszeile mit — etwa ' +
-    'eine, die beim Verschieben zurückgeblieben ist');
+test('die Route liefert die Menge überhaupt mit', { concurrency: 1 }, async (t) => {
+  // Ohne das Feld fielen beide Clients still auf ihre eigene Annahme zurück —
+  // der Rückfall ist absichtlich lautlos. Die Menge kommt aus updateSet(),
+  // summiert über das Blickfeld.
+  const db = _req('db/database.js');
+  try { await db.initSchema(); }
+  catch (e) {
+    if (process.env.REQUIRE_DB === '1')
+      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
+    t.skip('Test-DB nicht erreichbar'); return;
+  }
+  const mc = await db.pool.connect();
+  try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }
+  const NAME = `mengenecho-${process.pid}`, SN = `${process.pid}5-1`;
+  await db.run('DELETE FROM users WHERE username=$1', [NAME]);
+  const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
+  t.after(async () => { await db.run('DELETE FROM users WHERE id=$1', [uid]).catch(() => {}); await db.pool.end().catch(() => {}); });
+  await haeltSet(db, uid, SN, 2);
+  const { base } = testServer(_req, { sitzung: { userId: uid }, apiNutzer: { user_id: uid, is_admin: 0 },
+                                     routen: { '/api/v1': 'routes/api_v1/index.js' }, t });
+  const setze = async (quantity) => (await fetch(`${base}/api/v1/sets/${SN}`, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ quantity }) })).json();
+  assert.equal((await setze(3)).quantity, 3, 'die Route liefert die Menge');
+  assert.equal((await setze(1)).quantity, 1, 'auch nach dem Verringern');
 });

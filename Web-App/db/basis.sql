@@ -147,9 +147,53 @@ CREATE FUNCTION public.erfassung_waehrung() RETURNS trigger
     AS $$
 BEGIN
   IF NEW.currency IS NULL THEN
-    NEW.currency := COALESCE(
-      (SELECT value FROM user_settings WHERE user_id = NEW.user_id AND key = 'currency'), 'EUR');
+    NEW.currency := konto_waehrung(NEW.user_id);
   END IF;
+  RETURN NEW;
+END $$;
+
+--
+-- Name: konto_waehrung(integer); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.konto_waehrung(uid integer) RETURNS text
+    LANGUAGE sql STABLE
+    AS $$
+  SELECT COALESCE(
+    (SELECT NULLIF(value, '') FROM user_settings WHERE user_id = uid AND key = 'currency'),
+    (SELECT NULLIF(value, '') FROM global_settings WHERE key = 'currency'),
+    'EUR')
+$$;
+
+--
+-- Name: set_nummer_mit_version(text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.set_nummer_mit_version(n text) RETURNS text
+    LANGUAGE sql IMMUTABLE
+    AS $_$ SELECT CASE WHEN n IS NULL OR n ~ '-[0-9]+$' THEN n ELSE n || '-1' END $_$;
+
+--
+-- Name: setnum_normalisieren(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.setnum_normalisieren() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  NEW.set_num := set_nummer_mit_version(NEW.set_num);
+  RETURN NEW;
+END $$;
+
+--
+-- Name: setnummer_normalisieren(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.setnummer_normalisieren() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  NEW.set_number := set_nummer_mit_version(NEW.set_number);
   RETURN NEW;
 END $$;
 
@@ -323,7 +367,8 @@ CREATE TABLE public.catalog_cache (
     image_url text,
     is_gear integer DEFAULT 0,
     bl_type text,
-    fetched_at timestamp with time zone DEFAULT now()
+    fetched_at timestamp with time zone DEFAULT now(),
+    CONSTRAINT catalog_cache_setnummer_mit_version CHECK ((set_number ~ '-[0-9]+$'::text))
 );
 
 --
@@ -438,7 +483,8 @@ CREATE TABLE public.instructions (
     url text NOT NULL,
     description text,
     local_path text,
-    downloaded_at timestamp with time zone DEFAULT now()
+    downloaded_at timestamp with time zone DEFAULT now(),
+    CONSTRAINT instructions_setnummer_mit_version CHECK ((set_number ~ '-[0-9]+$'::text))
 );
 
 --
@@ -526,7 +572,7 @@ CREATE TABLE public.minifig_price_cache (
     id integer NOT NULL,
     fig_number text NOT NULL,
     condition text DEFAULT 'U'::text NOT NULL,
-    currency_code text DEFAULT 'EUR'::text NOT NULL,
+    currency_code text NOT NULL,
     avg_price numeric(12,4),
     qty_avg_price numeric(12,4),
     fetched_at timestamp with time zone DEFAULT now(),
@@ -563,7 +609,7 @@ CREATE TABLE public.minifig_price_history (
     id integer NOT NULL,
     fig_number text NOT NULL,
     condition text DEFAULT 'U'::text NOT NULL,
-    currency_code text DEFAULT 'EUR'::text NOT NULL,
+    currency_code text NOT NULL,
     avg_price numeric(12,4),
     qty_avg_price numeric(12,4),
     recorded_at timestamp with time zone DEFAULT now() NOT NULL,
@@ -603,6 +649,7 @@ CREATE TABLE public.minifigs (
     fig_number text NOT NULL,
     source text DEFAULT 'set'::text,
     storage_id integer,
+    CONSTRAINT minifigs_setnummer_mit_version CHECK ((set_number ~ '-[0-9]+$'::text)),
     CONSTRAINT minifigs_source_check CHECK ((source = ANY (ARRAY['set'::text, 'manual'::text])))
 );
 
@@ -680,7 +727,7 @@ CREATE TABLE public.part_acquisitions (
     id integer NOT NULL,
     user_id integer NOT NULL,
     part_number text NOT NULL,
-    color_id integer DEFAULT 0 NOT NULL,
+    color_id integer DEFAULT 9999 NOT NULL,
     quantity integer DEFAULT 1 NOT NULL,
     unit_price numeric(12,4),
     condition text DEFAULT 'N'::text NOT NULL,
@@ -751,7 +798,7 @@ CREATE TABLE public.part_price_cache (
     part_number text NOT NULL,
     color_id integer DEFAULT 0 NOT NULL,
     condition text DEFAULT 'U'::text NOT NULL,
-    currency_code text DEFAULT 'EUR'::text NOT NULL,
+    currency_code text NOT NULL,
     avg_price numeric(12,4),
     qty_avg_price numeric(12,4),
     fetched_at timestamp with time zone DEFAULT now(),
@@ -787,7 +834,7 @@ CREATE TABLE public.part_price_history (
     part_number text NOT NULL,
     color_id integer DEFAULT 0 NOT NULL,
     condition text DEFAULT 'U'::text NOT NULL,
-    currency_code text DEFAULT 'EUR'::text NOT NULL,
+    currency_code text NOT NULL,
     avg_price numeric(12,4),
     qty_avg_price numeric(12,4),
     recorded_at timestamp with time zone DEFAULT now() NOT NULL,
@@ -823,10 +870,11 @@ CREATE TABLE public.parts (
     user_id integer NOT NULL,
     set_number text,
     part_number text NOT NULL,
-    color_id integer,
+    color_id integer DEFAULT 9999 NOT NULL,
     source text DEFAULT 'set'::text,
     storage_id integer,
     added_at timestamp with time zone DEFAULT now(),
+    CONSTRAINT parts_setnummer_mit_version CHECK ((set_number ~ '-[0-9]+$'::text)),
     CONSTRAINT parts_source_check CHECK ((source = ANY (ARRAY['set'::text, 'manual'::text])))
 );
 
@@ -874,10 +922,11 @@ CREATE TABLE public.parts_summary (
     category_name text,
     image_url text,
     image_local text,
-    is_spare integer DEFAULT 0,
+    is_spare integer DEFAULT 0 NOT NULL,
     total_quantity bigint DEFAULT 0,
     in_sets text,
-    storage text
+    storage text,
+    CONSTRAINT parts_summary_ersatzteil_null_eins CHECK ((is_spare = ANY (ARRAY[0, 1])))
 );
 
 --
@@ -932,7 +981,8 @@ CREATE TABLE public.price_alerts (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     CONSTRAINT price_alerts_currency_code_iso CHECK ((currency_code ~ '^[A-Z]{3}$'::text)),
     CONSTRAINT price_alerts_richtung CHECK ((richtung = ANY (ARRAY['unter'::text, 'ueber'::text]))),
-    CONSTRAINT price_alerts_schwelle CHECK ((schwelle > (0)::numeric))
+    CONSTRAINT price_alerts_schwelle CHECK ((schwelle > (0)::numeric)),
+    CONSTRAINT price_alerts_setnummer_mit_version CHECK ((set_number ~ '-[0-9]+$'::text))
 );
 
 --
@@ -943,7 +993,7 @@ CREATE TABLE public.price_cache (
     id integer NOT NULL,
     set_number text NOT NULL,
     condition text DEFAULT 'N'::text NOT NULL,
-    currency_code text DEFAULT 'EUR'::text NOT NULL,
+    currency_code text NOT NULL,
     min_price numeric(12,4),
     avg_price numeric(12,4),
     max_price numeric(12,4),
@@ -983,7 +1033,7 @@ CREATE TABLE public.price_history (
     id integer NOT NULL,
     set_number text NOT NULL,
     condition text DEFAULT 'N'::text NOT NULL,
-    currency_code text DEFAULT 'EUR'::text NOT NULL,
+    currency_code text NOT NULL,
     avg_price numeric(12,4),
     qty_avg_price numeric(12,4),
     min_price numeric(12,4),
@@ -1058,7 +1108,8 @@ CREATE TABLE public.rb_colors (
 CREATE TABLE public.rb_inventories (
     id integer NOT NULL,
     set_num text,
-    version integer
+    version integer,
+    CONSTRAINT rb_inventories_setnummer_mit_version CHECK ((set_num ~ '-[0-9]+$'::text))
 );
 
 --
@@ -1100,8 +1151,9 @@ CREATE TABLE public.rb_inventory_parts (
     part_num text NOT NULL,
     color_id integer,
     quantity integer,
-    is_spare text,
-    img_url text
+    is_spare integer DEFAULT 0 NOT NULL,
+    img_url text,
+    CONSTRAINT rb_inventory_parts_ersatzteil_null_eins CHECK ((is_spare = ANY (ARRAY[0, 1])))
 );
 
 --
@@ -1192,6 +1244,7 @@ CREATE TABLE public.set_acquisitions (
     CONSTRAINT set_acquisitions_currency_iso CHECK ((currency ~ '^[A-Z]{3}$'::text)),
     CONSTRAINT set_acquisitions_menge_positiv CHECK ((quantity > 0)),
     CONSTRAINT set_acquisitions_purchase_price_nicht_negativ CHECK ((purchase_price >= (0)::numeric)),
+    CONSTRAINT set_acquisitions_setnummer_mit_version CHECK ((set_number ~ '-[0-9]+$'::text)),
     CONSTRAINT set_acquisitions_zustand CHECK ((condition = ANY (ARRAY['N'::text, 'U'::text])))
 );
 
@@ -1227,22 +1280,43 @@ CREATE TABLE public.set_catalog (
     image_url text,
     image_local text,
     brickset_id integer,
-    updated_at timestamp with time zone DEFAULT now()
+    updated_at timestamp with time zone DEFAULT now(),
+    CONSTRAINT set_catalog_setnummer_mit_version CHECK ((set_number ~ '-[0-9]+$'::text))
 );
 
 --
--- Name: set_minifigs_catalog; Type: TABLE; Schema: public; Owner: -
+-- Name: set_figuren; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.set_minifigs_catalog (
+CREATE TABLE public.set_figuren (
     set_number text NOT NULL,
     fig_number text NOT NULL,
-    fig_name text,
-    quantity integer DEFAULT 1,
-    image_url text,
-    image_local text,
-    updated_at timestamp with time zone DEFAULT now()
+    quantity integer DEFAULT 1 NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT set_figuren_menge_positiv CHECK ((quantity > 0)),
+    CONSTRAINT set_figuren_setnummer_mit_version CHECK ((set_number ~ '-[0-9]+$'::text))
 );
+
+--
+-- Name: set_minifigs_catalog; Type: VIEW; Schema: public; Owner: -
+--
+
+CREATE VIEW public.set_minifigs_catalog AS
+ SELECT f.set_number,
+    f.fig_number,
+        CASE
+            WHEN (mc.name_von IS NULL) THEN mc.fig_name
+            ELSE NULL::text
+        END AS fig_name,
+    f.quantity,
+        CASE
+            WHEN (mc.bild_von IS NULL) THEN mc.image_url
+            ELSE NULL::text
+        END AS image_url,
+    mc.image_local,
+    f.updated_at
+   FROM (public.set_figuren f
+     LEFT JOIN public.minifigs_catalog mc ON ((mc.fig_number = f.fig_number)));
 
 --
 -- Name: set_teile; Type: TABLE; Schema: public; Owner: -
@@ -1252,9 +1326,11 @@ CREATE TABLE public.set_teile (
     set_number text NOT NULL,
     part_number text NOT NULL,
     color_id integer NOT NULL,
-    is_spare integer DEFAULT 0,
+    is_spare integer DEFAULT 0 NOT NULL,
     quantity integer DEFAULT 1,
-    updated_at timestamp with time zone DEFAULT now()
+    updated_at timestamp with time zone DEFAULT now(),
+    CONSTRAINT set_teile_ersatzteil_null_eins CHECK ((is_spare = ANY (ARRAY[0, 1]))),
+    CONSTRAINT set_teile_setnummer_mit_version CHECK ((set_number ~ '-[0-9]+$'::text))
 );
 
 --
@@ -1294,6 +1370,37 @@ CREATE VIEW public.set_parts_catalog AS
      LEFT JOIN public.part_color_catalog pcc ON (((pcc.part_number = t.part_number) AND (pcc.color_id = t.color_id))));
 
 --
+-- Name: set_stamm; Type: VIEW; Schema: public; Owner: -
+--
+
+CREATE VIEW public.set_stamm AS
+ SELECT n.set_number,
+    COALESCE(NULLIF(sc.name, ('Set '::text || n.set_number)), rb.name, NULLIF(cc.name, ('Set '::text || n.set_number)), sc.name, cc.name) AS name,
+    COALESCE(sc.year, NULLIF(rb.year, 0), cc.year) AS year,
+    COALESCE(sc.theme, th.name, cc.theme) AS theme,
+    COALESCE(sc.pieces, rb.num_parts, cc.pieces) AS pieces,
+    sc.minifigs,
+    COALESCE(sc.image_url, NULLIF(rb.set_img_url, ''::text), cc.image_url) AS image_url,
+    sc.image_local,
+        CASE
+            WHEN (sc.set_number IS NOT NULL) THEN 'set_catalog'::text
+            WHEN (rb.set_num IS NOT NULL) THEN 'rb_sets'::text
+            ELSE 'catalog_cache'::text
+        END AS herkunft
+   FROM ((((( SELECT set_catalog.set_number
+           FROM public.set_catalog
+        UNION
+         SELECT rb_sets.set_num
+           FROM public.rb_sets
+        UNION
+         SELECT catalog_cache.set_number
+           FROM public.catalog_cache) n
+     LEFT JOIN public.set_catalog sc ON ((sc.set_number = n.set_number)))
+     LEFT JOIN public.rb_sets rb ON ((rb.set_num = n.set_number)))
+     LEFT JOIN public.rb_themes th ON ((th.id = rb.theme_id)))
+     LEFT JOIN public.catalog_cache cc ON ((cc.set_number = n.set_number)));
+
+--
 -- Name: sets; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1303,7 +1410,8 @@ CREATE TABLE public.sets (
     set_number text NOT NULL,
     added_at timestamp with time zone DEFAULT now(),
     updated_at timestamp with time zone DEFAULT now(),
-    storage_id integer
+    storage_id integer,
+    CONSTRAINT sets_setnummer_mit_version CHECK ((set_number ~ '-[0-9]+$'::text))
 );
 
 --
@@ -1499,7 +1607,7 @@ CREATE TABLE public.vouchers (
     number text NOT NULL,
     pin text,
     amount numeric(12,2) NOT NULL,
-    currency text DEFAULT 'CHF'::text NOT NULL,
+    currency text NOT NULL,
     pdf_path text,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
@@ -1535,7 +1643,8 @@ CREATE TABLE public.wanted (
     user_id integer NOT NULL,
     set_number text NOT NULL,
     condition text DEFAULT 'N'::text NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT wanted_setnummer_mit_version CHECK ((set_number ~ '-[0-9]+$'::text))
 );
 
 --
@@ -2146,11 +2255,11 @@ ALTER TABLE ONLY public.set_catalog
     ADD CONSTRAINT set_catalog_pkey PRIMARY KEY (set_number);
 
 --
--- Name: set_minifigs_catalog set_minifigs_catalog_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: set_figuren set_figuren_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.set_minifigs_catalog
-    ADD CONSTRAINT set_minifigs_catalog_pkey PRIMARY KEY (set_number, fig_number);
+ALTER TABLE ONLY public.set_figuren
+    ADD CONSTRAINT set_figuren_pkey PRIMARY KEY (set_number, fig_number);
 
 --
 -- Name: set_teile set_teile_pkey; Type: CONSTRAINT; Schema: public; Owner: -
@@ -2505,7 +2614,7 @@ CREATE INDEX idx_parts_color_id ON public.parts USING btree (user_id, color_id);
 -- Name: idx_parts_eindeutig; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX idx_parts_eindeutig ON public.parts USING btree (user_id, COALESCE(set_number, ''::text), part_number, COALESCE(color_id, 0));
+CREATE UNIQUE INDEX idx_parts_eindeutig ON public.parts USING btree (user_id, COALESCE(set_number, ''::text), part_number, color_id);
 
 --
 -- Name: idx_parts_gruppe; Type: INDEX; Schema: public; Owner: -
@@ -2682,16 +2791,10 @@ CREATE UNIQUE INDEX idx_set_acq_erfassungstag ON public.set_acquisitions USING b
 CREATE INDEX idx_set_catalog_bild_stamm ON public.set_catalog USING btree (public.bild_stamm(image_local)) WHERE (image_local IS NOT NULL);
 
 --
--- Name: idx_set_minifigs_catalog_bild_stamm; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_set_figuren_fig; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_set_minifigs_catalog_bild_stamm ON public.set_minifigs_catalog USING btree (public.bild_stamm(image_local)) WHERE (image_local IS NOT NULL);
-
---
--- Name: idx_set_minifigs_fig; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_set_minifigs_fig ON public.set_minifigs_catalog USING btree (fig_number);
+CREATE INDEX idx_set_figuren_fig ON public.set_figuren USING btree (fig_number);
 
 --
 -- Name: idx_sets_setnum; Type: INDEX; Schema: public; Owner: -
@@ -2754,6 +2857,18 @@ CREATE UNIQUE INDEX storage_locations_konto_name ON public.storage_locations USI
 CREATE UNIQUE INDEX users_email_lower ON public.users USING btree (lower(email));
 
 --
+-- Name: catalog_cache catalog_cache_setnummer; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER catalog_cache_setnummer BEFORE INSERT OR UPDATE OF set_number ON public.catalog_cache FOR EACH ROW EXECUTE FUNCTION public.setnummer_normalisieren();
+
+--
+-- Name: instructions instructions_setnummer; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER instructions_setnummer BEFORE INSERT OR UPDATE OF set_number ON public.instructions FOR EACH ROW EXECUTE FUNCTION public.setnummer_normalisieren();
+
+--
 -- Name: minifig_acquisitions minifig_acquisitions_tag; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -2764,6 +2879,12 @@ CREATE TRIGGER minifig_acquisitions_tag BEFORE INSERT OR UPDATE ON public.minifi
 --
 
 CREATE TRIGGER minifig_acquisitions_waehrung BEFORE INSERT OR UPDATE ON public.minifig_acquisitions FOR EACH ROW EXECUTE FUNCTION public.erfassung_waehrung();
+
+--
+-- Name: minifigs minifigs_setnummer; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER minifigs_setnummer BEFORE INSERT OR UPDATE OF set_number ON public.minifigs FOR EACH ROW EXECUTE FUNCTION public.setnummer_normalisieren();
 
 --
 -- Name: part_acquisitions part_acquisitions_tag; Type: TRIGGER; Schema: public; Owner: -
@@ -2778,6 +2899,30 @@ CREATE TRIGGER part_acquisitions_tag BEFORE INSERT OR UPDATE ON public.part_acqu
 CREATE TRIGGER part_acquisitions_waehrung BEFORE INSERT OR UPDATE ON public.part_acquisitions FOR EACH ROW EXECUTE FUNCTION public.erfassung_waehrung();
 
 --
+-- Name: parts parts_setnummer; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER parts_setnummer BEFORE INSERT OR UPDATE OF set_number ON public.parts FOR EACH ROW EXECUTE FUNCTION public.setnummer_normalisieren();
+
+--
+-- Name: price_alerts price_alerts_setnummer; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER price_alerts_setnummer BEFORE INSERT OR UPDATE OF set_number ON public.price_alerts FOR EACH ROW EXECUTE FUNCTION public.setnummer_normalisieren();
+
+--
+-- Name: rb_inventories rb_inventories_setnummer; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER rb_inventories_setnummer BEFORE INSERT OR UPDATE OF set_num ON public.rb_inventories FOR EACH ROW EXECUTE FUNCTION public.setnum_normalisieren();
+
+--
+-- Name: set_acquisitions set_acquisitions_setnummer; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER set_acquisitions_setnummer BEFORE INSERT OR UPDATE OF set_number ON public.set_acquisitions FOR EACH ROW EXECUTE FUNCTION public.setnummer_normalisieren();
+
+--
 -- Name: set_acquisitions set_acquisitions_tag; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -2788,6 +2933,30 @@ CREATE TRIGGER set_acquisitions_tag BEFORE INSERT OR UPDATE ON public.set_acquis
 --
 
 CREATE TRIGGER set_acquisitions_waehrung BEFORE INSERT OR UPDATE ON public.set_acquisitions FOR EACH ROW EXECUTE FUNCTION public.erfassung_waehrung();
+
+--
+-- Name: set_catalog set_catalog_setnummer; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER set_catalog_setnummer BEFORE INSERT OR UPDATE OF set_number ON public.set_catalog FOR EACH ROW EXECUTE FUNCTION public.setnummer_normalisieren();
+
+--
+-- Name: set_figuren set_figuren_setnummer; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER set_figuren_setnummer BEFORE INSERT OR UPDATE OF set_number ON public.set_figuren FOR EACH ROW EXECUTE FUNCTION public.setnummer_normalisieren();
+
+--
+-- Name: set_teile set_teile_setnummer; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER set_teile_setnummer BEFORE INSERT OR UPDATE OF set_number ON public.set_teile FOR EACH ROW EXECUTE FUNCTION public.setnummer_normalisieren();
+
+--
+-- Name: sets sets_setnummer; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER sets_setnummer BEFORE INSERT OR UPDATE OF set_number ON public.sets FOR EACH ROW EXECUTE FUNCTION public.setnummer_normalisieren();
 
 --
 -- Name: bl_zuordnung trg_bump_parts_katalog; Type: TRIGGER; Schema: public; Owner: -
@@ -2872,6 +3041,18 @@ CREATE TRIGGER trg_bump_parts_version_upd AFTER UPDATE ON public.sets REFERENCIN
 --
 
 CREATE TRIGGER trg_bump_parts_version_upd AFTER UPDATE ON public.storage_locations REFERENCING OLD TABLE AS alt NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION public.bump_parts_version_lagerort_upd();
+
+--
+-- Name: vouchers vouchers_waehrung; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER vouchers_waehrung BEFORE INSERT OR UPDATE ON public.vouchers FOR EACH ROW EXECUTE FUNCTION public.erfassung_waehrung();
+
+--
+-- Name: wanted wanted_setnummer; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER wanted_setnummer BEFORE INSERT OR UPDATE OF set_number ON public.wanted FOR EACH ROW EXECUTE FUNCTION public.setnummer_normalisieren();
 
 --
 -- Name: account_link_invites account_link_invites_main_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
@@ -3191,7 +3372,7 @@ INSERT INTO public.gutschein_guthaben_schranke (id, letzter_abruf, sperre_bis) V
 -- Data for Name: parts_katalog_stand; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-INSERT INTO public.parts_katalog_stand (id, v) VALUES (1, 4);
+INSERT INTO public.parts_katalog_stand (id, v) VALUES (1, 7);
 
 --
 -- Data for Name: schema_migrations; Type: TABLE DATA; Schema: public; Owner: -
@@ -3265,6 +3446,12 @@ INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0067-bild-stamm
 INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0068-praefix-indizes.sql', '2026-10-29 21:59:58.856414+00');
 INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0069-konten-pruefen.sql', '2026-10-29 22:00:41.797626+00');
 INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0070-erfassungstag.sql', '2026-10-29 22:31:52.718465+00');
+INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0071-keine-farbe.sql', '2026-10-30 00:08:55.73921+00');
+INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0072-figuren-stamm.sql', '2026-10-30 00:08:55.756402+00');
+INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0073-waehrung-vorgabe.sql', '2026-10-30 00:08:55.775002+00');
+INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0074-setnummer-mit-version.sql', '2026-10-30 00:08:55.78054+00');
+INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0075-ersatzteil-null-eins.sql', '2026-10-30 00:08:55.79535+00');
+INSERT INTO public.schema_migrations (name, applied_at) VALUES ('0076-set-stamm.sql', '2026-10-30 00:08:55.812847+00');
 
 --
 -- PostgreSQL database dump complete

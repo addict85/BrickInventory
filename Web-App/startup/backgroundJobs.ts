@@ -17,8 +17,8 @@ import { raeumeAnmeldezaehlerAuf } from '../utils/loginLimiter';
 import { verschluesseleAltbestand } from '../utils/geheimnisAltbestand';
 import { raeumePapierkorbAuf } from '../utils/papierkorb';
 import { logAndContinue, meldeUndLiefere } from '../utils/httpError';
-import { startImgCacheCleanup } from '../routes/imgProxy';
-import { startPdfJobCleanup } from '../routes/api_v1/pdf';
+import { startImgCacheCleanup } from '../utils/imgCacheServe';
+import { startPdfJobCleanup } from '../utils/pdfAuftraege';
 import { starteAuftragsWorker } from '../jobs/auftraegeStarten';
 
 /**
@@ -76,7 +76,7 @@ export async function starteHintergrundlaeufe(): Promise<void> {
   // Bild-Cache aufräumen — hier statt in registerImgProxy(), weil das in
   // JEDEM Worker läuft: Vorher legte jeder Prozess sein eigenes tägliches
   // Intervall an und ging das ganze Cache-Verzeichnis durch. Siehe
-  // startImgCacheCleanup() in routes/imgProxy.ts.
+  // startImgCacheCleanup() in utils/imgCacheServe.ts.
   startImgCacheCleanup();
 
   // PDF-Aufträge aufräumen — aus demselben Grund hier: Vorher hing das

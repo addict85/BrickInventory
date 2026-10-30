@@ -2,7 +2,7 @@ import * as db from '../../db/database';
 import { resolveImageLocal } from '../images';
 import { asIds } from '../household';
 import type { BlickfeldEingabe } from '../household';
-import { istErsatzteil, ersatzteilSql } from '../validate';
+import { istErsatzteil, ersatzteilSql, colorId } from '../validate';
 import { ensureFresh } from '../partsSummary';
 // Direkt aus utils/partsImport, nicht ueber routes/parts: Die Route hat die
 // Funktion selbst nur importiert und weiterexportiert (Object.assign am
@@ -16,8 +16,8 @@ import { clampPageSize, applyManualCondition, withOwners, MAX_PAGE_SIZE, UNPAGED
 import { meldeUndWeiter, logAndContinue, meldeUndLiefere } from '../../utils/httpError';
 import { farbkarte as blFarbkarte } from '../financeCalc';
 import { getGlobalSetting } from '../../utils/settings';
-import { neuestesInventar, inventarKandidaten } from '../rbInventar';
-import { beideSchreibweisen } from '../setNummer';
+import { neuestesInventar } from '../rbInventar';
+import { mitVersion, ohneVersion } from '../setNummer';
 import { merkeBlFarbnummer, blFarbnummerAus, blJoin, blNummerSql } from '../blZuordnung';
 import { mengeJoin, mengeAus, teilmengeJoin, teilmengeAus } from '../bestandsmenge';
 
@@ -100,8 +100,8 @@ function teileFilter(uids: number[], query: any) {
   let pi = 2;
 
   if (set_number) {
-    where += ` AND (p.set_number = $${pi} OR p.set_number = $${pi+1})`;
-    params.push(...beideSchreibweisen(set_number)); pi += 2;
+    where += ` AND p.set_number = $${pi++}`;
+    params.push(mitVersion(set_number));
   }
   // Farbe, Kategorie und Name stehen in den Katalogen (Aliase pc/pcc aus
   // katalogJoin), das Ersatzteilkennzeichen in der Setliste (tm_k aus
@@ -155,8 +155,8 @@ function teileFilter(uids: number[], query: any) {
  * Ausführlich: docs/begruendungen/utils/handlers/parts.ts.md#teileersatzquelle
  */
 async function teileErsatzquelle(set_number: string) {
-    // Beide Schreibweisen (mit und ohne Versionsanhang), aus EINER Regel.
-    const [n, alt] = inventarKandidaten(set_number);
+    // Rebrickable kennt manche Sets nur ohne Versionsanhang.
+    const n = mitVersion(set_number), alt = ohneVersion(n);
     const invId = await neuestesInventar(set_number).catch(meldeUndLiefere('teile:neuestesInventar', null));
     if (invId) {
       const csvParts = await db.all(`
@@ -380,12 +380,8 @@ async function getParts(userId: Blickfeld, query: any = {}) {
   // HashAggregate und ist bei 171'000 Zeilen gemessen rund 2,7× schneller …
   // Ausführlich: docs/begruendungen/utils/handlers/parts.ts.md#getparts-excludesmanual
   const excludesManual = query.exclude_manual === '1' || query.exclude_manual === true;
-  // `storage` ist wie `set_number` ausgenommen: Die Zusammenfassung kennt den
-  // Lagerort nur VERDICHTET („Kiste 3, Regal B" fuer ein Teil aus zwei Sets)
-  // und koennte danach nicht filtern, ohne die Gruppe falsch zu treffen. Wer
-  // nach einem Ort filtert, will die Zeilen dieses Ortes — dafuer ist die
-  // Live-Abfrage sowohl passend als auch schnell genug, denn der Filter macht
-  // die Menge klein.
+  // Mit Set- oder Lagerortfilter die Live-Abfrage: Die Zusammenfassung kennt
+  // den Lagerort nur verdichtet, und der Filter macht die Menge ohnehin klein.
   if (excludesManual && !set_number && !query.storage) {
     const summary = await tryPartsSummary(uids, { color, category, search, spare, page, page_size, withSets, ordnung: query.ordnung });
     if (summary) return summary;
@@ -752,7 +748,7 @@ async function getManualParts(userId: Blickfeld, viewerId: number,
       SELECT a.unit_price, a.condition
         FROM part_acquisitions a
        WHERE a.user_id = t.user_id AND a.part_number = t.part_number
-         AND COALESCE(a.color_id, 0) = COALESCE(t.color_id, 0)
+         AND a.color_id = t.color_id
        ORDER BY a.created_at DESC, a.id DESC
        LIMIT 1
     ) neu ON TRUE
@@ -767,7 +763,7 @@ async function getManualParts(userId: Blickfeld, viewerId: number,
       const preise: Map<string, number> = await marktpreiseAusCacheFuerTeile(mitZustand, viewerId)
         .catch(() => new Map<string, number>());
       const mitPreis = mitZustand.map((t: any) =>
-        ({ ...t, avg_price: preise.get(`${t.part_number}|${t.color_id ?? 0}`) ?? null }));
+        ({ ...t, avg_price: preise.get(`${t.part_number}|${t.color_id}`) ?? null }));
       return withOwners(uids, mitPreis);
     });
 }
@@ -793,7 +789,7 @@ export async function getOwnedQuantities(
   for (const t of teile || []) {
     const num = String(t?.part_number ?? '').trim();
     if (!num) continue;
-    const farbe = parseInt(String(t?.color_id ?? 0)) || 0;
+    const farbe = colorId(t?.color_id);
     const key = `${num}|${farbe}`;
     if (gesehen.has(key)) continue;
     gesehen.add(key);
@@ -810,7 +806,7 @@ export async function getOwnedQuantities(
   // Ausführlich: docs/begruendungen/utils/handlers/parts.ts.md#getownedquantities-rows
   const rows = await db.all(
     `SELECT p.part_number,
-            COALESCE(p.color_id, 0)                                   AS color_id,
+            p.color_id,
             -- teilmengeAus() traegt die Fallunterscheidung schon in sich:
             -- manuell → Summe der Erfassungen, Set → Katalogzahl. Die
             -- CASE-Verzweigung hier bleibt trotzdem, weil sie etwas
@@ -825,15 +821,15 @@ export async function getOwnedQuantities(
        ${mengeJoin('p', 'sm', '= ANY($1)')}
        ${teilmengeJoin('p', 'part')}
        JOIN unnest($2::text[], $3::int[]) AS g(part_number, color_id)
-         ON g.part_number = p.part_number AND g.color_id = COALESCE(p.color_id, 0)
+         ON g.part_number = p.part_number AND g.color_id = p.color_id
       WHERE p.user_id = ANY($1)
-      GROUP BY p.part_number, COALESCE(p.color_id, 0)`,
+      GROUP BY p.part_number, p.color_id`,
     [uids, nums, farben]
   );
 
   const out: Record<string, { gesamt: number; lose: number }> = {};
   for (const r of rows || []) {
-    out[`${r.part_number}|${parseInt(r.color_id) || 0}`] =
+    out[`${r.part_number}|${r.color_id}`] =
       { gesamt: parseInt(r.gesamt) || 0, lose: parseInt(r.lose) || 0 };
   }
 

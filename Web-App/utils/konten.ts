@@ -144,3 +144,31 @@ export function tokenNachKennung(kennung: string): Promise<{ token: string } | u
         AND (hard_expires_at IS NULL OR hard_expires_at > NOW())
       LIMIT 1`, [kennung]);
 }
+
+export interface Zugang { token: string; label: string | null; created_at: Date; last_used: Date | null; hard_expires_at: Date | null; expires_at: Date | null }
+
+/**
+ * Die Zugänge (App-Token) eines Kontos. expires_at ist die frühere der beiden
+ * Fristen — gleitend und fest —, also der Tag, an dem das Gerät ausgesperrt wird.
+ */
+export function zugaengeDesKontos(uid: number): Promise<Zugang[]> {
+  return db.all<Zugang>(
+    `SELECT token, label, created_at, last_used, hard_expires_at, LEAST(expires_at, hard_expires_at) AS expires_at
+       FROM api_tokens WHERE user_id = $1 ORDER BY created_at DESC`, [uid]);
+}
+
+/** Zugänge entwerten, deren Kennung mit `praefix` beginnt (LIKE-sicher übergeben). */
+export async function zugaengeLoeschen(uid: number, praefix: string): Promise<number> {
+  return (await db.run("DELETE FROM api_tokens WHERE user_id = $1 AND token LIKE $2 ESCAPE '\\'", [uid, praefix + '%'])).changes;
+}
+
+/** Alle Browser-Sitzungen des Kontos ausser der eigenen beenden. */
+export async function andereSitzungenBeenden(uid: number, eigeneSid: string): Promise<number> {
+  return (await db.run("DELETE FROM user_sessions WHERE sess::jsonb->>'userId' = $1 AND sid <> $2", [String(uid), eigeneSid])).changes;
+}
+
+/** Muss das Konto sein Passwort beim nächsten Mal ändern? (Erststart mit Vorgabepasswort.) */
+export async function mussPasswortAendern(uid: number): Promise<boolean> {
+  const r = await db.get<{ must_change_password: number | boolean | null }>('SELECT must_change_password FROM users WHERE id = $1', [uid]);
+  return r?.must_change_password === 1 || r?.must_change_password === true;
+}

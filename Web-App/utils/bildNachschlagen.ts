@@ -10,14 +10,14 @@ import { meldeUndLiefere } from './httpError';
 const _cache = new Map<string, { url: string | null; at: number }>();
 const CACHE_MS = 10 * 60 * 1000;
 
-/** Die Bildtabellen in der Reihenfolge, in der sie gefragt werden. */
+/**
+ * Die Bildtabellen in der Reihenfolge, in der sie gefragt werden. Figurenbilder
+ * stehen seit Migration 0072 nur noch in minifigs_catalog.
+ */
 const ABFRAGE = `
   SELECT url FROM (
     (SELECT image_url AS url, 1 AS r FROM part_color_catalog
       WHERE image_local IS NOT NULL AND bild_stamm(image_local) = $1 AND image_url IS NOT NULL AND bild_von IS NULL LIMIT 1)
-    UNION ALL
-    (SELECT image_url, 2 FROM set_minifigs_catalog
-      WHERE image_local IS NOT NULL AND bild_stamm(image_local) = $1 AND image_url IS NOT NULL LIMIT 1)
     UNION ALL
     (SELECT image_url, 3 FROM minifigs_catalog
       WHERE image_local IS NOT NULL AND bild_stamm(image_local) = $1 AND image_url IS NOT NULL LIMIT 1)

@@ -9,10 +9,10 @@
  */
 import { cdnImageLimiter, rebrickableBackgroundLimiter as rebrickableLimiter, consumeRebrickableDaily, parseThrottleWait as ptw } from '../utils/rateLimiter';
 import { meldeUndWeiter, fehlertext, logAndContinue, meldeUndLiefere, ohneFehlendeDatei } from '../utils/httpError';
-import { neuestesInventar, inventarKandidaten } from '../utils/rbInventar';
-import { mitVersion, ohneVersion } from '../utils/setNummer';
+import { neuestesInventar } from '../utils/rbInventar';
+import { mitVersion } from '../utils/setNummer';
 import { merkeBlNummer } from '../utils/blZuordnung';
-import { merkeTeil, merkeTeilFarbe, merkeSetTeil, setzeTeilBildLokal } from '../utils/katalogPflege';
+import { merkeTeil, merkeTeilFarbe, merkeSetTeil, setzeTeilBildLokal, merkeFiguren, merkeSetFiguren, setzeFigurBildLokal } from '../utils/katalogPflege';
 import { getRbKey, downloadFile } from '../clients/rebrickable';
 // Pfade zentral auflösen — __dirname zeigt seit dem dist/-Build nicht mehr
 // auf die Wurzel. Siehe utils/appPaths.ts.
@@ -36,6 +36,7 @@ import * as monitor from '../utils/jobMonitor';
 import { PART_IMAGES_DIR, MINIFIG_IMAGES_DIR, SET_IMAGES_DIR } from '../utils/appPaths';
 import { LOCKS } from '../utils/lockNamespaces';
 import { generateThumb } from '../utils/thumbs';
+import { KEINE_FARBE } from '../utils/validate';
 
 /** Ohne Browser-Kennung und Referer weist das Rebrickable-CDN Bildabrufe ab. */
 const BILD_KOPFZEILEN = {
@@ -109,10 +110,7 @@ async function downloadImage(
 }
 
 async function enrichSetParts(setNumber: string) {
-  // n und alt sind dieselben zwei Kandidaten, unter denen auch das Inventar
-  // gesucht wird — set_parts_catalog und set_minifigs_catalog fuehren die
-  // Nummer in beiden Schreibweisen.
-  const [n, alt] = inventarKandidaten(setNumber);
+  const n = mitVersion(setNumber);
 
   // Step 1: Check if all CSV parts are already in catalog with image_url
   const invId = await neuestesInventar(setNumber).catch(meldeUndLiefere('teile-enrich:neuestesInventar', null));
@@ -122,7 +120,7 @@ async function enrichSetParts(setNumber: string) {
     `SELECT ip.part_num, ip.color_id, ip.quantity
      FROM rb_inventory_parts ip
      WHERE ip.inventory_id = $1
-       AND (ip.is_spare IS NULL OR ip.is_spare IN ('f','false','False','0',''))`,
+       AND ip.is_spare = 0`,
     [invId]
   );
   if (!csvParts.length) return;
@@ -131,8 +129,8 @@ async function enrichSetParts(setNumber: string) {
     // Ohne bl_part_number: Die Spalte ist mit Migration 0037 weg, und
     // gelesen wurde sie hier nur, um sie gleich wieder zurueckzuschreiben.
     `SELECT part_number, color_id, image_url, image_local
-     FROM set_parts_catalog WHERE set_number=$1 OR set_number=$2`,
-    [n, alt]
+     FROM set_parts_catalog WHERE set_number = $1`,
+    [n]
   );
   const catalogMap: any = {};
   for (const r of catalogRows) catalogMap[`${r.part_number}|${r.color_id}`] = r;
@@ -239,8 +237,8 @@ async function enrichSetParts(setNumber: string) {
       // Ohne Rebrickable-Antwort kein Name — die Teilenummer gehört nicht als geprüfter Name in den Katalog.
       const melde = logAndContinue('katalog:setteil');
       await merkeTeil(p.part_num, info.part_name).catch(melde);
-      await merkeTeilFarbe(p.part_num, p.color_id||0, info.color_name, info.color_hex, info.image_url).catch(melde);
-      await merkeSetTeil(n, p.part_num, p.color_id||0, p.quantity||1, 0).catch(melde);
+      await merkeTeilFarbe(p.part_num, p.color_id ?? KEINE_FARBE, info.color_name, info.color_hex, info.image_url).catch(melde);
+      await merkeSetTeil(n, p.part_num, p.color_id ?? KEINE_FARBE, p.quantity||1, 0).catch(melde);
       // Refresh catalogMap
       catalogMap[key] = { image_url: info.image_url||null, image_local: null };
     }
@@ -248,8 +246,8 @@ async function enrichSetParts(setNumber: string) {
 
   // Fetch minifigs — always refresh from API if catalog is empty
   const existingFigs = await db.get(
-    'SELECT COUNT(*) AS c FROM set_minifigs_catalog WHERE set_number=$1 OR set_number=$2',
-    [n, alt]
+    'SELECT COUNT(*) AS c FROM set_minifigs_catalog WHERE set_number = $1',
+    [n]
   ).catch(meldeUndLiefere('teile-enrich:existingFigs', null));
 
   if (!parseInt(existingFigs?.c || 0)) {
@@ -258,20 +256,13 @@ async function enrichSetParts(setNumber: string) {
       rbKey
     );
     if (figsData?.results?.length) {
-      for (const item of figsData.results) {
-        // API fields: set_num, set_name, quantity, set_img_url
-        await db.run(
-          `INSERT INTO set_minifigs_catalog (set_number, fig_number, fig_name, quantity, image_url)
-           VALUES ($1,$2,$3,$4,$5)
-           ON CONFLICT (set_number, fig_number) DO UPDATE SET
-             fig_name  = COALESCE(EXCLUDED.fig_name, set_minifigs_catalog.fig_name),
-             quantity  = EXCLUDED.quantity,
-             image_url = COALESCE(EXCLUDED.image_url, set_minifigs_catalog.image_url),
-             updated_at = NOW()`,
-          [n, item.set_num, item.set_name||item.set_num, item.quantity||1, item.set_img_url||null]
-        ).catch((e: Error) => console.error('[parts-enrich] minifig insert error:', e.message));
-      }
-      
+      // Felder der API: set_num (Figur), set_name, quantity, set_img_url.
+      type RbFigur = { set_num: string; set_name?: string; quantity?: number; set_img_url?: string };
+      const figs: RbFigur[] = figsData.results;
+      await merkeFiguren(figs.map(f => ({ figNumber: f.set_num, figName: f.set_name || null, imageUrl: f.set_img_url || null })))
+        .catch(logAndContinue('teile-enrich:figuren merken'));
+      await merkeSetFiguren(n, figs.map(f => ({ figNumber: f.set_num, quantity: f.quantity })))
+        .catch(logAndContinue('teile-enrich:setfiguren merken'));
     }
     // No minifigs = normal for Technic/City sets without figures
   } else {
@@ -285,7 +276,6 @@ const _downloadLocks = new Map();
 
 async function downloadSetImages(setNumber: string, waitIfBusy = false) {
   const n   = mitVersion(setNumber);
-  const alt = ohneVersion(n);
 
   // If already downloading this set, wait for it to finish then return
   if (_downloadLocks.has(n)) {
@@ -341,13 +331,13 @@ async function downloadSetImages(setNumber: string, waitIfBusy = false) {
     const [needsParts, needsFigs] = await Promise.all([
       db.all(
         `SELECT part_number AS id, color_id, image_url, 'part' AS kind FROM set_parts_catalog
-         WHERE (set_number=$1 OR set_number=$2) AND image_url IS NOT NULL AND image_local IS NULL`,
-        [n, alt]
+         WHERE set_number = $1 AND image_url IS NOT NULL AND image_local IS NULL`,
+        [n]
       ),
       db.all(
         `SELECT fig_number AS id, 0 AS color_id, image_url, 'fig' AS kind FROM set_minifigs_catalog
-         WHERE (set_number=$1 OR set_number=$2) AND image_url IS NOT NULL AND image_local IS NULL`,
-        [n, alt]
+         WHERE set_number = $1 AND image_url IS NOT NULL AND image_local IS NULL`,
+        [n]
       )
     ]);
 
@@ -396,11 +386,7 @@ async function downloadSetImages(setNumber: string, waitIfBusy = false) {
       }
 
       if (p.kind === 'fig') {
-        await db.run(
-          `UPDATE set_minifigs_catalog SET image_local=$1
-           WHERE (set_number=$2 OR set_number=$3) AND fig_number=$4`,
-          [rel, n, alt, p.id]
-        ).catch(logAndContinue('teile-enrich:ok'));
+        await setzeFigurBildLokal(p.id, rel).catch(logAndContinue('teile-enrich:figurbild'));
       } else {
         await setzeTeilBildLokal(p.id, p.color_id, rel).catch(logAndContinue('katalog:teilbild'));
       }
@@ -445,15 +431,14 @@ async function downloadSetImages(setNumber: string, waitIfBusy = false) {
 // Enrich all minifigs for a set in one batch
 async function enrichSetMinifigs(setNumber: string) {
   const n   = mitVersion(setNumber);
-  const alt = ohneVersion(n);
   const rbKey = await getRbKey();
   if (!rbKey) return;
 
   // Get all minifigs for this set
   const figs = await db.all(
     `SELECT fig_number, quantity FROM set_minifigs_catalog
-     WHERE set_number=$1 OR set_number=$2`,
-    [n, alt]
+     WHERE set_number = $1`,
+    [n]
   ).catch(meldeUndLiefere('teile-enrich:figs', []));
   if (!figs.length) return;
 
@@ -484,7 +469,7 @@ async function enrichSetMinifigs(setNumber: string) {
       `SELECT ip.part_num, ip.color_id, ip.quantity
        FROM rb_inventory_parts ip
        WHERE ip.inventory_id = $1
-         AND (ip.is_spare IS NULL OR ip.is_spare IN ('f','false','False','0',''))`,
+         AND ip.is_spare = 0`,
       [invId]
     ).catch(meldeUndLiefere('teile-enrich:parts', []));
 
@@ -545,7 +530,7 @@ async function enrichSetMinifigs(setNumber: string) {
       // einmal je Teil in bl_zuordnung, nicht je Set-Teile-Zeile. Die
       // Schleife weiter oben hat sie dort schon gemerkt (merkeBlNummer);
       // finalBlMap wird nur noch fuer die Antwort an den Aufrufer gebraucht.
-      await merkeSetTeil(figNum, p.part_num, p.color_id||0, p.quantity||1, 0).catch(logAndContinue('katalog:figurteil'));
+      await merkeSetTeil(figNum, p.part_num, p.color_id ?? KEINE_FARBE, p.quantity||1, 0).catch(logAndContinue('katalog:figurteil'));
     }
   }
   
@@ -700,8 +685,7 @@ async function _redownloadMissingImages() {
           // Liste MUSS zu den Tabellen passen, die die Spalte wirklich haben,
           // und das tat sie nicht mehr:
           // Ausführlich: docs/begruendungen/jobs/partsCatalogEnrich.ts.md#redownloadmissingimages
-          for (const tbl of ['set_parts_catalog', 'set_minifigs_catalog',
-                             'part_color_catalog', 'minifigs_catalog', 'set_catalog']) {
+          for (const tbl of ['part_color_catalog', 'minifigs_catalog', 'set_catalog']) {
             await db.run(`UPDATE ${tbl} SET image_local=NULL WHERE image_local=$1`, [m.image_local])
               .catch(logAndContinue(`img-redl:leeren ${tbl}`));
           }

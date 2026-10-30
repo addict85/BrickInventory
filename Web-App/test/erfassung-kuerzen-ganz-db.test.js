@@ -17,7 +17,7 @@ const assert = require('node:assert/strict');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
-const { updateManualPart } = _req('routes/parts.js');
+const { updateManualPart } = _req('utils/manuelleTeile.js');
 
 const NAME = `kuerzen_${process.pid}`, TEIL = '3001kz';
 

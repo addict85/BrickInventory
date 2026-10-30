@@ -7,6 +7,8 @@ import { logAndContinue, meldeUndWeiter } from '../utils/httpError';
 import { schreibeAuftrag, pdfDateiPfad } from '../utils/pdfAuftraege';
 import { downloadImage, downloadSetImages } from './partsCatalogEnrich';
 import { zeichnePdfImFaden, type PdfSet, type PdfTeil } from './pdfZeichnen';
+import { KEINE_FARBE } from '../utils/validate';
+import { merkeFigurBildAdresse, setzeFigurBildLokal } from '../utils/katalogPflege';
 
 /**
  * Ein PDF-Auftrag aus der Auftragstabelle: fehlende Bilder holen, dann im
@@ -28,8 +30,7 @@ async function figurenOhneAdresse(parts: PdfTeil[]) {
       const info = await getMinifigInfo(p.part_number);
       if (!info?.image_url) continue;
       p.image_url = info.image_url;
-      await db.run(`UPDATE set_minifigs_catalog SET image_url=$1 WHERE fig_number=$2 AND image_url IS NULL`,
-        [info.image_url, p.part_number]).catch(logAndContinue('pdf:figurbild merken'));
+      await merkeFigurBildAdresse(p.part_number, info.image_url).catch(logAndContinue('pdf:figurbild merken'));
     } catch (e) { meldeUndWeiter('pdf:figurbild holen', e); }
   }
 }
@@ -41,12 +42,12 @@ async function bilderAusKatalog(parts: PdfTeil[]) {
       `SELECT part_number, color_id, image_local FROM set_parts_catalog
         WHERE part_number = ANY($1) AND image_local IS NOT NULL`, [teile]);
     const m = new Map<string, string>(frisch.map(r => [`${r.part_number}|${r.color_id}`, r.image_local] as [string, string]));
-    for (const p of parts) if (!istFigur(p) && m.has(`${p.part_number}|${p.color_id || 0}`)) p.image_local = m.get(`${p.part_number}|${p.color_id || 0}`)!;
+    for (const p of parts) if (!istFigur(p) && m.has(`${p.part_number}|${p.color_id ?? KEINE_FARBE}`)) p.image_local = m.get(`${p.part_number}|${p.color_id ?? KEINE_FARBE}`)!;
   }
   const figuren = [...new Set(parts.filter(istFigur).map(p => p.part_number))];
   if (!figuren.length) return;
   const frisch = await db.all(
-    `SELECT fig_number, image_local FROM set_minifigs_catalog
+    `SELECT fig_number, image_local FROM minifigs_catalog
       WHERE fig_number = ANY($1) AND image_local IS NOT NULL`, [figuren]);
   const m = new Map<string, string>(frisch.map(r => [r.fig_number, r.image_local] as [string, string]));
   for (const p of parts.filter(istFigur)) {
@@ -61,8 +62,7 @@ async function bilderAusKatalog(parts: PdfTeil[]) {
       const da = await fsp.access(path.join(MINIFIG_IMAGES_DIR, name)).then(() => true, () => false);
       if (!da) continue;
       p.image_local = `/images/minifigs/${name}`;
-      await db.run(`UPDATE set_minifigs_catalog SET image_local=$1 WHERE fig_number=$2`, [p.image_local, p.part_number])
-        .catch(logAndContinue('pdf:figurbild pfad merken'));
+      await setzeFigurBildLokal(p.part_number, p.image_local).catch(logAndContinue('pdf:figurbild pfad merken'));
       break;
     }
   }
@@ -83,7 +83,7 @@ async function erzeugePdf(n: PdfNutzlast): Promise<void> {
   for (const p of parts.filter(p => !p.image_local && p.image_url)) {
     const cdn = cdnAdresse(p.image_url!);
     if (!/^https?:\/\//.test(cdn)) continue;
-    const lokal = await downloadImage(cdn, p.part_number, p.color_id || 0, 'part').catch(logAndContinue(`pdf:bild ${p.part_number}`));
+    const lokal = await downloadImage(cdn, p.part_number, p.color_id ?? KEINE_FARBE, 'part').catch(logAndContinue(`pdf:bild ${p.part_number}`));
     if (lokal) p.image_local = lokal;
   }
   const mitBild = parts.filter(p => p.image_local).length;

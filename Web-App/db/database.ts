@@ -149,13 +149,14 @@ function getPoolStats() {
  * Ausführlich: docs/begruendungen/db/database.ts.md#dbschnittstelle
  */
 export interface DbSchnittstelle {
-  all(sql: string, params?: any[]): Promise<any[]>;
-  get(sql: string, params?: any[]): Promise<any>;
+  /** T beschreibt die Zeile; ohne Angabe bleibt sie untypisiert (Altbestand). */
+  all<T = any>(sql: string, params?: unknown[]): Promise<T[]>;
+  get<T = any>(sql: string, params?: unknown[]): Promise<T | undefined>;
   run(sql: string, params?: any[]): Promise<{ changes: number | null; lastID: any }>;
   exec(sql: string): Promise<any>;
 }
 
-async function all(sql: string, params: any[] = []): Promise<any[]> {
+async function all<T = any>(sql: string, params: unknown[] = []): Promise<T[]> {
   return queryWithRetry(async () => {
     const { rows } = await pool.query(sql, params);
     return rows;
@@ -167,7 +168,7 @@ async function all(sql: string, params: any[] = []): Promise<any[]> {
  * Replaces: db.prepare(sql).get(...params)
  */
 /** Erste Zeile einer Abfrage, oder undefined. Zum Typ siehe all(). */
-async function get(sql: string, params: any[] = []): Promise<any> {
+async function get<T = any>(sql: string, params: unknown[] = []): Promise<T | undefined> {
   return queryWithRetry(async () => {
     const { rows } = await pool.query(sql, params);
     return rows[0];
@@ -212,8 +213,8 @@ async function transaction<T>(fn: (tx: DbSchnittstelle) => Promise<T>): Promise<
     await client.query('BEGIN');
     // Provide a client-bound db interface for the transaction
     const txDb: DbSchnittstelle = {
-      all:  (sql: string, p?: any[]) => client.query(sql, p).then(r => r.rows),
-      get:  (sql: string, p?: any[]) => client.query(sql, p).then(r => r.rows[0]),
+      all:  <T = any>(sql: string, p?: unknown[]) => client.query(sql, p).then(r => r.rows as T[]),
+      get:  <T = any>(sql: string, p?: unknown[]) => client.query(sql, p).then(r => r.rows[0] as T | undefined),
       run:  (sql: string, p?: any[]) => client.query(sql, p).then(r => ({ changes: r.rowCount, lastID: (r.rows?.[0] as any)?.id })),
       exec: (sql: string)            => client.query(sql),
     };

@@ -1,6 +1,8 @@
 import fs from 'fs';
 import { queueThumb } from './proxyThumbs';
 import { vorDem, ohneFehlendeDatei } from '../utils/httpError';
+import path from 'path';
+import { APP_ROOT } from './appPaths';
 
 /**
  * Ein Bild aus dem Platten-Cache ausliefern, falls es dort liegt.
@@ -86,4 +88,29 @@ export async function liefereAusCache(opts: {
   } catch (_) { /* Cache-Miss oder Fehler — normal weiterladen */ }
 
   return false;
+}
+
+/**
+ * Img-Proxy-Cache aufräumen: Dateien, die 30 Tage nicht angefasst wurden,
+ * löschen — sonst wächst data/img_proxy_cache unbegrenzt.
+ * Ausführlich: docs/begruendungen/routes/imgProxy.ts.md#startimgcachecleanup
+ */
+export function startImgCacheCleanup() {
+  const lauf = () => {
+    const cacheDir = path.join(APP_ROOT, 'data', 'img_proxy_cache');
+    fs.readdir(cacheDir, (err, files) => {
+      if (err) return;
+      const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
+      for (const f of files) {
+        const p = path.join(cacheDir, f);
+        fs.stat(p, (e, st) => {
+          // atime UND mtime: Wird das Dateisystem mit noatime eingehängt (in
+          // Containern verbreitet), bleibt atime auf dem Erstellungszeitpunkt
+          // stehen — dann entscheidet mtime, und beides muss alt sein.
+          if (!e && st.isFile() && st.atimeMs < cutoff && st.mtimeMs < cutoff) fs.unlink(p, () => {});
+        });
+      }
+    });
+  };
+  return setInterval(lauf, 24 * 60 * 60 * 1000).unref();
 }

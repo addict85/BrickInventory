@@ -3,10 +3,13 @@
  * Ausführlich: docs/begruendungen/utils/setValue.ts.md#abschnitt
  */
 import * as db from '../db/database';
+import { inZehntel4, aufRappen, alsText } from './geld';
 
 export interface SetValue {
   /** Gewichteter Stückpreis — das, was Kachel und Detailansicht zeigen. */
   unit_price: number | null;
+  /** Derselbe Stückpreis ungerundet, in Zehntausendsteln: Summen rechnen damit, nicht mit dem gerundeten. */
+  unit_z: number | null;
   /** Gesamtwert aller Exemplare — das, was in die Summen eingeht. */
   total: number | null;
   /** Gesamtstückzahl, über die gewichtet wurde. */
@@ -83,28 +86,24 @@ export function valueSet(
   const byCond = new Map<'N' | 'U', number>();
   for (const r of rows) byCond.set(r.condition, (byCond.get(r.condition) || 0) + r.quantity);
 
-  let total = 0, quantity = 0, priced = 0;
+  let totalZ = 0, quantity = 0, priced = 0;
   const by_condition: SetValue['by_condition'] = [];
 
   for (const [condition, qty] of byCond) {
     const unit = priceFor(prices, setNumber, condition);
     by_condition.push({ condition, quantity: qty, unit_price: unit });
     quantity += qty;
-    if (unit !== null) { total += unit * qty; priced += qty; }
+    const z = inZehntel4(unit);
+    if (z !== null) { totalZ += z * qty; priced += qty; }
   }
 
   // Kein einziger Zustand hat einen Preis → kein Wert, nicht 0. Eine 0 würde
   // in den Summen wie ein bekannter Wert von null Franken aussehen.
-  if (priced === 0) return { unit_price: null, total: null, quantity, by_condition };
+  if (priced === 0) return { unit_price: null, unit_z: null, total: null, quantity, by_condition };
 
-  return {
-    // Gewichtet über die BEPREISTEN Stück, damit ein fehlender Preis den
-    // Stückpreis nicht nach unten zieht.
-    unit_price: Math.round((total / priced) * 100) / 100,
-    total: Math.round(total * 100) / 100,
-    quantity,
-    by_condition,
-  };
+  // Gewichtet über die BEPREISTEN Stück, damit ein fehlender Preis den
+  // Stückpreis nicht nach unten zieht. Gerundet wird erst hier.
+  return { unit_price: aufRappen(totalZ / priced), unit_z: totalZ / priced, total: aufRappen(totalZ), quantity, by_condition };
 }
 
 /**
@@ -125,19 +124,18 @@ export async function getSetValue(
   return valueSet(setNumber, acqs, prices, 'N', 1);
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// Eine Zeile JE KAUFPREIS — für die Finanztabelle
-// ═══════════════════════════════════════════════════════════════════════════
-/**
- * valueSet() oben verdichtet auf EINEN Stückpreis je Set. Die Finanztabelle
- * zeigt seit hardened-90 aber eine Zeile je Kaufpreis-Erfassung: Ein Set mit
- * einem Kaufpreis für „Neu" und einem für „Gebraucht" steht dort mit zwei
- * Zeilen, jede mit dem Marktpreis IHRES Zustands.
- * Ausführlich: docs/begruendungen/utils/setValue.ts.md#pnl-eps
- */
+// ── Eine Zeile je Kaufpreis — für die Finanztabelle: Jede Erfassung steht mit
+// dem Marktpreis IHRES Zustands da (valueSet() verdichtet auf einen Stückpreis).
+// Ausführlich: docs/begruendungen/utils/setValue.ts.md#pnl-eps
 
 /** Nenner-Untergrenze: Kaufpreis 0 (Geschenk) ergäbe sonst keine Steigerung. */
 export const PNL_EPS = 0.01;
+
+/** Wie pnlPct, als Zahl mit einer Stelle — für die Felder, die eine Zahl führen. */
+export function pnlProzent(purchase: number | null, market: number | null): number | null {
+  const t = pnlPct(purchase, market);
+  return t === null ? null : Number(t);
+}
 
 /** Prozentuale Entwicklung — null, wenn Kaufpreis oder Marktpreis fehlt. */
 export function pnlPct(purchase: number | null, market: number | null): string | null {
@@ -153,7 +151,11 @@ export interface AcquisitionValueRow {
   purchase_price: number | null;
   avg_price: number | null;
   total_avg: string | null;
+  /** total_avg als Zahl. */
+  wert_gesamt: number | null;
   pnl_pct: string | null;
+  /** pnl_pct als Zahl. */
+  pnl_prozent: number | null;
   created_at: any;
 }
 
@@ -185,8 +187,10 @@ export function valueAcquisitionRows(
       quantity,
       purchase_price: purchase,
       avg_price: unit,
-      total_avg: unit != null ? (unit * quantity).toFixed(2) : null,
+      total_avg: unit != null ? alsText(aufRappen((inZehntel4(unit) ?? 0) * quantity)) : null,
+      wert_gesamt: unit != null ? aufRappen((inZehntel4(unit) ?? 0) * quantity) : null,
       pnl_pct: pnlPct(purchase, unit),
+      pnl_prozent: pnlProzent(purchase, unit),
       created_at: a.created_at ?? null,
     };
   });
@@ -204,4 +208,47 @@ export function weightedPurchase(rows: AcquisitionValueRow[]): number | null {
   const qty = withCost.reduce((s, r) => s + r.quantity, 0);
   if (!qty) return null;
   return withCost.reduce((s, r) => s + (r.purchase_price as number) * r.quantity, 0) / qty;
+}
+
+export interface KachelQuelle {
+  set_number: string; quantity: number; current_price: number | null;
+  purchase_price: number | null; baseline_price: number | null;
+  pnl_pct: string | null; baseline_pnl_pct: string | null;
+}
+
+/**
+ * Betrag und G&V der Galeriekachel je Set. Im Haushalt hat ein Set mehrere
+ * Zeilen (je Besitzer); dann zählt der nach Menge gewichtete Basispreis, weil
+ * „irgendeine Zeile“ je nach Reihenfolge eine andere Prozentzahl ergäbe. Der
+ * Betrag ist der Marktpreis, sonst der gewichtete Kaufpreis.
+ */
+export function kachelWerte(zeilen: KachelQuelle[]): Map<string, { kachel_preis: number | null; kachel_pnl_pct: number | null }> {
+  const jeSet = new Map<string, KachelQuelle[]>();
+  for (const z of zeilen) jeSet.set(z.set_number, [...(jeSet.get(z.set_number) || []), z]);
+  const aus = new Map<string, { kachel_preis: number | null; kachel_pnl_pct: number | null }>();
+  for (const [nr, zs] of jeSet) {
+    const markt = Number(zs[0]?.current_price) || 0;
+    const gewichtet = (feld: 'baseline_price' | 'purchase_price') => {
+      let summe = 0, menge = 0;
+      for (const z of zs) {
+        const b = z[feld];
+        if (b == null) continue;
+        const m = Math.max(1, Number(z.quantity) || 1);
+        summe += Number(b) * m; menge += m;
+      }
+      return menge > 0 ? summe / menge : null;
+    };
+    let pct: number | null;
+    if (zs.length === 1) {
+      const t = zs[0]!.baseline_pnl_pct || zs[0]!.pnl_pct;
+      pct = t == null ? null : Number(t);
+    } else {
+      const basis = gewichtet('baseline_price');
+      pct = basis != null && markt > 0 ? Math.round((markt - basis) / Math.max(basis, PNL_EPS) * 1000) / 10 : null;
+    }
+    const kauf = gewichtet('purchase_price');
+    aus.set(nr, { kachel_preis: markt > 0 ? aufRappen(inZehntel4(markt) ?? 0) : (kauf != null ? aufRappen(inZehntel4(kauf) ?? 0) : null),
+                  kachel_pnl_pct: pct });
+  }
+  return aus;
 }

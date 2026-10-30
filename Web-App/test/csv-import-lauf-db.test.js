@@ -56,13 +56,13 @@ test('CSV-Import: keine Doppelbuchung', { concurrency: 1 }, async (t) => {
   const NAME = `csvlauf-${process.pid}`;
   await db.run('DELETE FROM users WHERE username=$1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
-  const { base } = testServer(_req, { sitzung: { userId: uid }, routen: { '/api/sets': 'routes/sets.js' }, t });
+  const { base } = testServer(_req, { sitzung: { userId: uid }, routen: { '/api/v1': 'routes/api_v1/index.js' }, t });
   const worker = _req('jobs/auftraegeStarten.js').starteAuftragsWorker({ arten: ['csv_import'], taktMs: 50 });
 
   const importiere = async (zeilen) => {
     const fd = new FormData();
     fd.append('file', new Blob(['set_number,quantity\n' + zeilen.map(z => `${z},1`).join('\n')]), 'import.csv');
-    const r = await fetch(`${base}/api/sets/import/csv`, { method: 'POST', body: fd });
+    const r = await fetch(`${base}/api/v1/sets/import/csv`, { method: 'POST', body: fd });
     assert.equal(r.status, 200, await r.text());
   };
   const auftrag = () => db.get('SELECT status, done, results FROM csv_import_jobs WHERE user_id=$1', [uid]);

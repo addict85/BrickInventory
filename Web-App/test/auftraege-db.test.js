@@ -119,7 +119,7 @@ test('Auftragstabelle', { concurrency: 1 }, async (t) => {
       await db.run('DELETE FROM users WHERE username=$1', [NAME]);
       const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
       const pdfA = _req('utils/pdfAuftraege.js');
-      const jobId = _req('routes/api_v1/pdf.js').neueJobId();
+      const jobId = _req('utils/pdfAuftraege.js').neueJobId();
       const w = _req('jobs/auftraegeStarten.js').starteAuftragsWorker({ arten: ['pdf'], taktMs: 50 });
       try {
         await pdfA.schreibeAuftrag(jobId, { status: 'running', error: null, user_id: uid });

@@ -11,7 +11,7 @@ import * as db from '../../db/database';
 import { asIds } from '../household';
 import { getSetting, getGlobalSetting } from '../settings';
 import { resolveImageLocal, proxyImageUrl } from '../images';
-import { valueSet, valueAcquisitionRows, weightedPurchase, pnlPct as calcPnlPct } from '../setValue';
+import { valueSet, valueAcquisitionRows, weightedPurchase, pnlPct as calcPnlPct, pnlProzent } from '../setValue';
 import { mitVersion } from '../setNummer';
 import { effectiveCondition } from './zustand';
 import { mengeJoin, mengeAus } from '../bestandsmenge';
@@ -26,6 +26,8 @@ import { schaetzeFigurenpreis } from '../marketPrice';
 import { withOwners } from '../handlers/shared';
 import { blJoin, blNummerSql } from '../blZuordnung';
 import { teilmengeJoin, teilmengeAus } from '../bestandsmenge';
+import { KEINE_FARBE } from '../validate';
+import { aufRappen, inZehntel4 } from '../geld';
 
 /**
  * Erfassungen manueller Teile bzw. Minifiguren, gruppiert nach Eintrag.
@@ -42,34 +44,38 @@ async function loadManualAcquisitions(uid: Blickfeld, kind: 'part' | 'fig', waeh
     kind === 'part'
       ? `SELECT id, part_number, color_id, quantity,
                 CASE WHEN currency = $2 THEN unit_price END AS unit_price, currency, price_estimated,
+                (currency <> $2 AND unit_price IS NOT NULL) AS kaufpreis_fremd,
                 COALESCE(condition,'N') AS condition, created_at
            FROM part_acquisitions WHERE user_id = ANY($1) ORDER BY created_at ASC, id ASC`
       : `SELECT id, fig_number, quantity,
                 CASE WHEN currency = $2 THEN unit_price END AS unit_price, currency, price_estimated,
+                (currency <> $2 AND unit_price IS NOT NULL) AS kaufpreis_fremd,
                 COALESCE(condition,'N') AS condition, created_at
            FROM minifig_acquisitions WHERE user_id = ANY($1) ORDER BY created_at ASC, id ASC`,
     [uids, waehrung]
   ).catch(meldeUndLiefere('bewertung:rows', []));
   const out = new Map<string, any[]>();
   for (const r of rows) {
-    const key = kind === 'part' ? `${r.part_number}|${r.color_id || 0}` : String(r.fig_number);
+    const key = kind === 'part' ? `${r.part_number}|${r.color_id ?? KEINE_FARBE}` : String(r.fig_number);
     const list = out.get(key);
     if (list) list.push(r); else out.set(key, [r]);
   }
   return out;
 }
 
+/** Wie viele Kaufpreise in einer anderen Währung erfasst sind (und deshalb fehlen). */
+function fremdeKaufpreise(jeEintrag: Map<string, Array<{ kaufpreis_fremd?: boolean }>>): number {
+  let n = 0;
+  for (const zeilen of jeEintrag.values()) n += zeilen.filter(z => z.kaufpreis_fremd).length;
+  return n;
+}
+
 // ── Compute the price valuation for all of a user's sets ────────────────────
 // Shared by the session route (/finance/valuation) and the token API
 // (/api/v1/finance/valuation) so the logic exists exactly once.
 async function computeSetsValuation(viewerId: number, ids: Blickfeld) {
-  // ZWEI Grössen, bewusst getrennt:
-  //   viewerId — wessen EINSTELLUNGEN gelten (Währung, Cache-Dauer, Preisart)
-  //   ids      — WESSEN DATEN gerechnet werden (Blickfeld, ggf. gefiltert)
-  //
-  // Sie fallen auseinander, sobald der Kontofilter auf „Unterkonten" steht:
-  // Dann enthält ids das fragende Konto gar nicht. Die Einstellungen mit
-  // ids[0] zu holen hiesse dort, die Währung eines Kindes zu benutzen.
+  // viewerId bestimmt die Einstellungen, ids die gerechneten Daten: Mit dem
+  // Filter „Unterkonten“ fehlt das fragende Konto in ids.
   const uids = asIds(ids);
   const [currency, ttlHours, guideType] = await Promise.all([
     getSetting(viewerId, 'currency', 'EUR'),
@@ -91,18 +97,16 @@ async function computeSetsValuation(viewerId: number, ids: Blickfeld) {
        LEFT JOIN set_catalog c ON c.set_number = s.set_number
        ${mengeJoin('s', 'sm', '= ANY($1)')}
       WHERE s.user_id = ANY($1)`, [uids]);
-  if (!sets.length) return { currency, condition: defaultCondition, guide_type: guideType, ttl_hours: ttlHours, sets: [], totals: { min:'0.00', avg:'0.00', max:'0.00', qty_avg:'0.00' } };
+  if (!sets.length) return { currency, condition: defaultCondition, guide_type: guideType, ttl_hours: ttlHours,
+    ttl_stunden: Number(ttlHours) || 24, kaufpreise_fremde_waehrung: 0, sets: [], totals: { min:'0.00', avg:'0.00', max:'0.00', qty_avg:'0.00' } };
 
   // Batch-Prefetch: Katalog-Flags, Preiscache (beide Zustände) und ALLE
   // Erfassungen in je einer Query — sonst wäre das eine Abfrage je Set.
   const ttl = Math.max(1, parseInt(String(ttlHours)));
   const setNumbers = sets.map(s => s.set_number);
   const [catRows, cacheRows, acqRows] = await Promise.all([
-    // mitVersion(): catalog_cache wird von clients/bricklink.ts unter der
-    // Nummer MIT Anhang gefuellt, price_cache dagegen unter der, die der
-    // Aufrufer mitgibt. Die beiden Tabellen haben also VERSCHIEDENE
-    // Schluesselgewohnheiten — deshalb wird hier normalisiert und in der
-    // Abfrage darunter nicht.
+    // catalog_cache führt Nummern mit Versionsanhang (Migration 0074),
+    // price_cache unter der Schreibweise des Aufrufers.
     db.all('SELECT set_number, is_gear, bl_type, fetched_at FROM catalog_cache WHERE set_number = ANY($1)',
            [setNumbers.map(mitVersion)]),
     db.all(
@@ -199,9 +203,12 @@ async function computeSetsValuation(viewerId: number, ids: Blickfeld) {
       avg_price: unitAvg,
       max_price: weighted('max_price'),
       qty_avg_price: weighted('qty_avg_price'),
-      total_avg:     (unitAvg * qty).toFixed(2),
-      total_qty_avg: (weighted('qty_avg_price') * qty).toFixed(2),
+      // Aus dem ungerundeten Stückpreis: 120,3333 × 2 ist 240,67, nicht 240,66.
+      total_avg:     aufRappen((valued.unit_z ?? 0) * qty).toFixed(2),
+      wert_gesamt:   aufRappen((valued.unit_z ?? 0) * qty),
+      total_qty_avg: aufRappen((inZehntel4(weighted('qty_avg_price')) ?? 0) * qty).toFixed(2),
       pnl_pct: calcPnlPct(purchase, unitAvg),
+      pnl_prozent: pnlProzent(purchase, unitAvg),
       acquisitions: rows,
       from_cache: anyPrice ? !!anyPrice.from_cache : true,
       is_fallback: anyPrice ? !!anyPrice.is_fallback : false,
@@ -213,11 +220,24 @@ async function computeSetsValuation(viewerId: number, ids: Blickfeld) {
   });
 
   const results = await parallelLimit(tasks, 5);
-  let totalMin=0, totalAvg=0, totalMax=0, totalQtyAvg=0;
-  for (const r of results) { const q=r.quantity||1; totalMin+=(r.min_price||0)*q; totalAvg+=(r.avg_price||0)*q; totalMax+=(r.max_price||0)*q; totalQtyAvg+=(r.qty_avg_price||0)*q; }
+  // Summen aus den Zeilenwerten, gerundet erst am Schluss.
+  let zMin = 0, zMax = 0, zQtyAvg = 0, zAvg = 0;
+  for (const r of results) {
+    const q = r.quantity || 1;
+    zMin += (inZehntel4(r.min_price) ?? 0) * q;
+    zMax += (inZehntel4(r.max_price) ?? 0) * q;
+    zQtyAvg += (inZehntel4(r.qty_avg_price) ?? 0) * q;
+    zAvg += inZehntel4(r.total_avg) ?? 0;
+  }
   return {
-    currency, condition: defaultCondition, guide_type: guideType, ttl_hours: ttlHours, sets: results,
-    totals: { min:totalMin.toFixed(2), avg:totalAvg.toFixed(2), max:totalMax.toFixed(2), qty_avg:totalQtyAvg.toFixed(2) },
+    currency, condition: defaultCondition, guide_type: guideType, ttl_hours: ttlHours,
+    // Dieselbe Angabe als Zahl; ttl_hours bleibt für ältere Clients Text.
+    ttl_stunden: Number(ttlHours) || 24,
+    // Kaufpreise in einer anderen Währung fehlen in den Summen (Kurse gibt es
+    // keine); die Zahl sagt, wie viele es sind, statt sie still wegzulassen.
+    kaufpreise_fremde_waehrung: acqRows.filter(a => a.kaufpreis_fremd).length,
+    sets: results,
+    totals: { min: aufRappen(zMin).toFixed(2), avg: aufRappen(zAvg).toFixed(2), max: aufRappen(zMax).toFixed(2), qty_avg: aufRappen(zQtyAvg).toFixed(2) },
   };
 }
 
@@ -225,13 +245,8 @@ async function computeSetsValuation(viewerId: number, ids: Blickfeld) {
 // Shared by the session route (/finance/minifigs-valuation) and the token API
 // (/api/v1/finance/minifigs-valuation) so the logic exists exactly once.
 async function computeMinifigsValuation(viewerId: number, ids: Blickfeld) {
-  // ZWEI Grössen, bewusst getrennt:
-  //   viewerId — wessen EINSTELLUNGEN gelten (Währung, Cache-Dauer, Preisart)
-  //   ids      — WESSEN DATEN gerechnet werden (Blickfeld, ggf. gefiltert)
-  //
-  // Sie fallen auseinander, sobald der Kontofilter auf „Unterkonten" steht:
-  // Dann enthält ids das fragende Konto gar nicht. Die Einstellungen mit
-  // ids[0] zu holen hiesse dort, die Währung eines Kindes zu benutzen.
+  // viewerId bestimmt die Einstellungen, ids die gerechneten Daten: Mit dem
+  // Filter „Unterkonten“ fehlt das fragende Konto in ids.
   const uids = asIds(ids);
   const [currency, ttlHours] = await Promise.all([
     getSetting(viewerId, 'currency', 'EUR'),
@@ -261,20 +276,15 @@ async function computeMinifigsValuation(viewerId: number, ids: Blickfeld) {
       ${blJoin('m.fig_number', 'fig', 'blzf')}
       LEFT JOIN minifigs_catalog mc ON mc.fig_number = m.fig_number
      WHERE m.user_id = ANY($1) AND m.source='manual'`, [uids]);
-  if (!manualFigs.length) return { currency, figs: [], total_value: '0.00' };
+  if (!manualFigs.length) return { currency, figs: [], total_value: '0.00', kaufpreise_fremde_waehrung: 0 };
 
   const acqByFig = await loadManualAcquisitions(uids, 'fig', String(currency));
   const figVorrat = await ladeFigurenpreiseVor(
     manualFigs.filter(f => f.bl_fig_number).map(f => String(f.bl_fig_number)), String(currency), ttlHours);
 
   const tasks = manualFigs.map(fig => async () => {
-    // Marktpreis kommt immer live von BrickLink (globaler, geteilter Preiscache
-    // mit TTL — analog zu Sets). Preis/Stk bzw. Kaufpreis beeinflussen nur die
-    // G&V-Basis, nicht mehr den angezeigten Marktpreis/aktuellen Wert.
-    //
-    // NEU: je vorkommendem Zustand ein Preis. Vorher gab es genau einen — und
-    // sobald EINE Erfassung gebraucht war, wurde auch das neu gekaufte
-    // Exemplar mit dem Gebrauchtpreis bewertet.
+    // Marktpreis je vorkommendem Zustand (geteilter Preiscache wie bei Sets):
+    // Ein neu gekauftes Exemplar bekommt den Neupreis, auch wenn ein anderes gebraucht ist.
     const key  = String(fig.fig_number);
     const acqs = acqByFig.get(key) || [];
     // Der Zustand des STUECKS, nicht der Preisabfrage.
@@ -332,23 +342,21 @@ async function computeMinifigsValuation(viewerId: number, ids: Blickfeld) {
       avg_price: unitVal, qty_avg_price: unitVal,
       purchase_price: hasCost ? purchasePrice : null,
       pnl_pct: hasCost ? calcPnlPct(purchasePrice, unitVal) : null,
-      total_value: (unitVal * totalQty).toFixed(4), display_value: (unitVal * totalQty).toFixed(2) };
+      pnl_prozent: hasCost ? pnlProzent(purchasePrice, unitVal) : null,
+      wert_gesamt: aufRappen((valued.unit_z ?? 0) * totalQty),
+      total_value: ((valued.unit_z ?? 0) * totalQty / 10000).toFixed(4), display_value: aufRappen((valued.unit_z ?? 0) * totalQty).toFixed(2) };
   });
 
   const results = await withOwnerNames(uids, await parallelLimit(tasks, 5));
-  const total = results.reduce((s, r) => s + parseFloat(r.total_value || 0), 0);
-  return { currency, figs: results, total_value: total.toFixed(2) };
+  const total = results.reduce((s, r) => s + (inZehntel4(r.total_value) ?? 0), 0);
+  return { currency, figs: results, total_value: aufRappen(total).toFixed(2),
+           kaufpreise_fremde_waehrung: fremdeKaufpreise(acqByFig) };
 }
 
 // ── GET /api/finance/minifigs-valuation ───────────────────────────────────────
 async function computePartsValuation(viewerId: number, ids: Blickfeld) {
-  // ZWEI Grössen, bewusst getrennt:
-  //   viewerId — wessen EINSTELLUNGEN gelten (Währung, Cache-Dauer, Preisart)
-  //   ids      — WESSEN DATEN gerechnet werden (Blickfeld, ggf. gefiltert)
-  //
-  // Sie fallen auseinander, sobald der Kontofilter auf „Unterkonten" steht:
-  // Dann enthält ids das fragende Konto gar nicht. Die Einstellungen mit
-  // ids[0] zu holen hiesse dort, die Währung eines Kindes zu benutzen.
+  // viewerId bestimmt die Einstellungen, ids die gerechneten Daten: Mit dem
+  // Filter „Unterkonten“ fehlt das fragende Konto in ids.
   const uids = asIds(ids);
   const [currency, ttlHours] = await Promise.all([
     getSetting(viewerId, 'currency', 'EUR'),
@@ -380,7 +388,7 @@ async function computePartsValuation(viewerId: number, ids: Blickfeld) {
                                       AND pcc.color_id    = p.color_id
      WHERE p.user_id = ANY($1) AND p.source = 'manual'`, [uids]);
 
-  if (!manualParts.length) return { currency, parts: [], total_value: '0.00' };
+  if (!manualParts.length) return { currency, parts: [], total_value: '0.00', kaufpreise_fremde_waehrung: 0 };
 
   // Die BrickLink-Nummern aller Teile in zwei Abfragen statt in 2×N — siehe
   // ladeBlNummernVor(). Der Schlüssel muss zeichengleich der sein, mit dem
@@ -389,17 +397,12 @@ async function computePartsValuation(viewerId: number, ids: Blickfeld) {
 
   const acqByPart = await loadManualAcquisitions(uids, 'part', String(currency));
   const teilVorrat = await ladeTeilepreiseVor(manualParts.map(p => ({
-    partNumber: String(p.bl_part_number || p.part_number), rbColorId: p.color_id || 0 })), String(currency), ttlHours);
+    partNumber: String(p.bl_part_number || p.part_number), rbColorId: p.color_id ?? KEINE_FARBE })), String(currency), ttlHours);
 
   const tasks = manualParts.map(part => async () => {
-    // Marktpreis kommt immer live von BrickLink (globaler, geteilter Preiscache
-    // mit TTL — analog zu Sets). Preis/Stk bzw. Kaufpreis beeinflussen nur die
-    // G&V-Basis, nicht mehr den angezeigten Marktpreis/aktuellen Wert.
-    //
-    // NEU: je vorkommendem Zustand ein Preis, danach mengengewichtet
-    // zusammengefasst — wie bei Sets (utils/setValue.ts). Vorher entschied ein
-    // einzelner Zustand über den Wert ALLER Exemplare.
-    const key    = `${part.part_number}|${part.color_id || 0}`;
+    // Marktpreis je vorkommendem Zustand, mengengewichtet zusammengefasst wie
+    // bei Sets (utils/setValue.ts).
+    const key    = `${part.part_number}|${part.color_id ?? KEINE_FARBE}`;
     const acqs   = acqByPart.get(key) || [];
     // Der Zustand des STUECKS, nicht der Preisabfrage.
     // Ausführlich: docs/begruendungen/utils/finance/bewertung.ts.md#computepartsvaluation-conds
@@ -410,7 +413,7 @@ async function computePartsValuation(viewerId: number, ids: Blickfeld) {
     for (const cond of conds) {
       let pd: any;
       try {
-        pd = await fetchPartPrice(part.bl_part_number || part.part_number, part.color_id || 0, cond, currency, ttlHours, teilVorrat);
+        pd = await fetchPartPrice(part.bl_part_number || part.part_number, part.color_id ?? KEINE_FARBE, cond, currency, ttlHours, teilVorrat);
       } catch (e: any) {
         pd = { avg_price: 0, qty_avg_price: 0, error: e.message };
       }
@@ -449,12 +452,8 @@ async function computePartsValuation(viewerId: number, ids: Blickfeld) {
       quantity:     qty,
       image_url:    part.image_url,
       image_local:  part.image_local,
-      // Der Einzelpreis der NEUESTEN Erfassung. Hier stand part.unit_price —
-      // die Abschrift an der Bestandszeile, die Migration 0035 geloescht hat.
-      // loadManualAcquisitions() ordnet aufsteigend nach created_at, also ist
-      // der letzte Eintrag der neueste. Die Webapp nimmt ohnehin
-      // avg_purchase_price zuerst (06-minifigs.js) und dieses Feld nur als
-      // Rueckfall.
+      // Einzelpreis der neuesten Erfassung (die Liste ist nach created_at
+      // aufsteigend); die Webapp nimmt ihn nur als Rückfall.
       unit_price:   acqs.length ? (acqs[acqs.length - 1].unit_price ?? null) : null,
       purchase_price: hasCost ? purchasePrice : null,
       condition:    valued.by_condition.some(b => b.condition === 'U') ? 'U' : 'N',
@@ -462,30 +461,27 @@ async function computePartsValuation(viewerId: number, ids: Blickfeld) {
       // Eine Zeile je Kaufpreis — wie bei Sets.
       acquisitions: rows,
       pnl_pct:      hasCost ? calcPnlPct(purchasePrice, unitVal) : null,
+      pnl_prozent:  hasCost ? pnlProzent(purchasePrice, unitVal) : null,
       ...priceData,
       // Nach ...priceData, damit der gewichtete Wert den Einzelpreis des
       // zuletzt geholten Zustands überschreibt und nicht umgekehrt.
       avg_price:    unitVal,
       qty_avg_price: unitVal,
-      total_value:  (unitVal * totalQty).toFixed(4),
-      display_value: (unitVal * totalQty).toFixed(2),
+      total_value:  ((valued.unit_z ?? 0) * totalQty / 10000).toFixed(4),
+      display_value: aufRappen((valued.unit_z ?? 0) * totalQty).toFixed(2),
+      wert_gesamt:  aufRappen((valued.unit_z ?? 0) * totalQty),
     };
   });
 
   const results = await withOwnerNames(uids, await parallelLimit(tasks, 5));
-  const total = results.reduce((sum, r) => sum + parseFloat(r.total_value || 0), 0);
+  const total = results.reduce((sum, r) => sum + (inZehntel4(r.total_value) ?? 0), 0);
   // `condition` faellt aus der Huelle weg.
   // Ausführlich: docs/begruendungen/utils/finance/bewertung.ts.md#computepartsvaluation-2
-  return { currency, parts: results, total_value: total.toFixed(2) };
+  return { currency, parts: results, total_value: aufRappen(total).toFixed(2),
+           kaufpreise_fremde_waehrung: fremdeKaufpreise(acqByPart) };
 }
 
-/**
- * Zustände eines manuellen Eintrags — aus den Erfassungen.
- *
- * Ohne Erfassungen „Neu“: Den gespeicherten Wert der Stammzeile, der hier
- * einmal der Rueckfall war, gibt es seit Migration 0035 nicht mehr. Dieselbe
- * Regel wie conditionsFromAcquisitions() in utils/handlers/shared.ts.
- */
+/** Zustände eines manuellen Eintrags aus den Erfassungen; ohne Erfassung „Neu“ (wie conditionsFromAcquisitions()). */
 function conditionsOf(acqs: any[]): ('N' | 'U')[] {
   if (!acqs?.length) return ['N'];
   const set = new Set(acqs.map(a => (a.condition === 'U' ? 'U' : 'N')));
@@ -493,12 +489,8 @@ function conditionsOf(acqs: any[]): ('N' | 'U')[] {
 }
 
 /**
- * Besitzer-Namen an Bewertungszeilen hängen — nur im Haushalt.
- *
- * Manuell erfasste Teile und Minifiguren werden bewusst NICHT verdichtet: Zwei
- * Konten mit demselben Teil sind zwei Bestände mit eigener Menge und eigenem
- * Kaufpreis. Ohne die Plakette sähe die Finanztabelle wie eine doppelte Zeile
- * aus.
+ * Besitzer-Namen an Bewertungszeilen hängen — nur im Haushalt. Manuelle
+ * Einträge zweier Konten bleiben getrennte Zeilen; die Plakette unterscheidet sie.
  */
 async function withOwnerNames(uids: number[], rows: any[]): Promise<any[]> {
   // Reicht durch: utils/handlers/shared.ts -> withOwners() beantwortet

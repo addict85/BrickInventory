@@ -62,7 +62,7 @@ test('eine Mengenerhöhung am Unterkonto-Set landet im eigenen Konto',
   const { base, srv } = testServer(_req, {
     sitzung: { userId: hauptId },
     apiNutzer: { user_id: hauptId, is_admin: 0 },
-    routen: { '/api/sets': 'routes/sets.js', '/api/v1': 'routes/api_v1/index.js' },
+    routen: { '/api/v1': 'routes/api_v1/index.js' },
     t,
   });
 

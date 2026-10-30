@@ -90,7 +90,7 @@ test('Farb- und Kategorienliste sehen im Haushalt denselben Bestand',
     const { base } = testServer(_req, {
       sitzung: { userId: haupt },
       apiNutzer: { user_id: haupt, is_admin: 0 },
-      routen: { '/api/v1/parts': 'routes/parts.js', '/api/v1': 'routes/api_v1/index.js' },
+      routen: { '/api/v1': 'routes/api_v1/index.js' },
       t,
     });
     const hole = async (pfad) => (await fetch(base + pfad)).json();

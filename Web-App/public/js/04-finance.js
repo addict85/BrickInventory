@@ -180,7 +180,7 @@ export async function loadFinance(){
   // erklärt, bleibt der einfache Schnitt (avg): derselbe Wert, auf dem auch die
   // Bewertung und die Entwicklung beruhen.
   // Ohne vergleichbaren Posten keine G&V — auch nicht die vom letzten Filter.
-  const gesamtGuv = pnlData.success ? pnlData.totals?.pnl_pct : null;
+  const gesamtGuv = pnlData.success ? pnlData.totals?.pnl_prozent : null;
 
   // ── Teile & Minifiguren: einzeln auflisten, analog zur Sets-Tabelle ─────────
   // (fliesst bereits in "extra"/Gesamtsumme oben ein — hier zusätzlich transparent
@@ -222,8 +222,8 @@ export async function loadFinance(){
     const purchase = acq
       ? (acq.purchase_price!=null ? parseFloat(acq.purchase_price) : null)
       : (it.purchase_price!=null ? parseFloat(it.purchase_price) : null);
-    const total = acq ? parseFloat(acq.total_avg||0) : parseFloat(it.display_value||0);
-    const pnl = acq ? acq.pnl_pct : it.pnl_pct;
+    const total = acq ? (acq.wert_gesamt ?? 0) : (it.wert_gesamt ?? 0);
+    const pnl = acq ? acq.pnl_prozent : it.pnl_prozent;
     const art = it.fig_number ? 'figur' : 'teil';
     const img = it.image_local||it.image_url ? bildTag({ src: imgUrl(thumbUrl(it.image_local||it.image_url)||it.image_local||it.image_url, true), orig: imgUrl(it.image_url||''), alt: '', ph: art }) : `<span class="bild-ph" aria-hidden="true">${platzhalterInhalt(art)}</span>`;
     // Der frühere dritte Parameter onclickAttr wurde von keinem Aufrufer
@@ -311,11 +311,11 @@ export async function loadFinance(){
     const qty      = acq ? acq.quantity : s.quantity;
     const purchase = acq ? acq.purchase_price : s.purchase_price;
     const market   = acq ? acq.avg_price : s.avg_price;
-    const total    = acq ? acq.total_avg : s.total_avg;
+    const total    = acq ? acq.wert_gesamt : s.wert_gesamt;
     // G&V je Zeile vom Server (gegen den Kaufpreis DIESER Erfassung). Ohne
     // Erfassungen bleibt der bisherige Wert aus der G&V-Antwort.
-    const pnl      = acq ? acq.pnl_pct
-                         : (s.pnl_pct ?? _pnlCache[s.set_number]?.pnl_pct);
+    const pnl      = acq ? acq.pnl_prozent
+                         : (s.pnl_prozent ?? _pnlCache[s.set_number]?.pnl_pct);
     const dateSrc  = acq ? acq.created_at : s.added_at;
     // Die Fehlermeldung steht im Status-Symbol (Tooltip), nicht in der Summe:
     // Dort brach sie die Spalte fünfzeilig um.
@@ -355,6 +355,7 @@ export async function loadFinance(){
   if(G('portfolio-current')) G('portfolio-current').textContent = fmtN(grandTotal, cur);
   loadPortfolioChart();
   zeigeKennzahlen({ einstand: einstand.alle, wert: grandTotal, guv: gesamtGuv, ohnePreis, cur,
+    fremdeWaehrung: pnlData?.totals?.kaufpreise_fremde_waehrung || 0,
     guvKauf: parseFloat(pnlData?.totals?.pnl_purchase) || 0, guvMarkt: parseFloat(pnlData?.totals?.pnl_current) || 0,
                     min: parseFloat(d.totals.min||0) + extra, max: parseFloat(d.totals.max||0) + extra });
   // Nichts erfasst: ein Leerzustand statt Tabellen, die fünfmal „Preis fehlt“ melden.
@@ -415,10 +416,14 @@ function summenZellen(kauf, wert, cur, luecke) {
  * und G&V nur, wenn es Marktpreise gibt — sonst sagt die Kachel, für wie
  * viele Positionen der Preis fehlt, statt „—“ zu zeigen.
  */
-function zeigeKennzahlen({ einstand, wert, guv, ohnePreis, cur, min, max, guvKauf = 0, guvMarkt = 0 }) {
+function zeigeKennzahlen({ einstand, wert, guv, ohnePreis, cur, min, max, guvKauf = 0, guvMarkt = 0, fremdeWaehrung = 0 }) {
   G('fin-sum').dataset.geladen = '1';
   G('fin-sum').removeAttribute('aria-busy');
   G('fin-einstand').textContent = einstand > 0 ? fmtN(einstand, cur) : '—';
+  // Kaufpreise in anderer Währung zählt der Server nicht mit (keine Kurse);
+  // die Zahl dazu steht unter der Summe statt still zu fehlen.
+  G('fin-einstand-sub').textContent = fremdeWaehrung > 0
+    ? tRaw('finance.fremde_waehrung_n', { n: fremdeWaehrung }) : tRaw('finance.stat.purchase_hint');
   const fehlt = ohnePreis > 0 ? tRaw('finance.price_missing_n', { n: ohnePreis }) : '';
   if (wert > 0) {
     G('fin-wert').textContent = fmtN(wert, cur);

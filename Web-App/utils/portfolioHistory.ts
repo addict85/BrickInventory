@@ -1,15 +1,16 @@
+import * as dbStandard from '../db/database';
+import { getSetting as getSettingStandard } from './settings';
 import { baueDiagrammdaten } from './portfolio/diagrammdaten';
 import { rekonstruiereKurve } from './portfolio/kurve';
 import { DEFAULT_PRICE_CONDITION } from './financeCalc';
 /**
- * `db` und `getSetting` kommen HEREIN statt importiert zu werden — die Datei
- * war so schon vor dieser Aenderung ohne Datenbank pruefbar. Der Typ schreibt
- * den Ausschnitt aus, der tatsaechlich benutzt wird.
+ * `db` und `getSetting` lassen sich hereingeben, damit die Rechnung ohne
+ * Datenbank prüfbar bleibt; ohne Angabe gelten Datenbank und Einstellungen.
  */
 async function getPortfolioHistory(
   viewerId: number, ids: number[], period: string,
-  db: { all(sql: string, params?: any[]): Promise<any[]>; get(sql: string, params?: any[]): Promise<any> },
-  getSetting: (userId: number, key: string, fallback?: any) => Promise<any>,
+  db: { all(sql: string, params?: any[]): Promise<any[]>; get(sql: string, params?: any[]): Promise<any> } = dbStandard,
+  getSetting: (userId: number, key: string, fallback?: any) => Promise<any> = getSettingStandard,
 ) {
   // viewerId = wessen Einstellungen gelten, ids = wessen Daten gerechnet
   // werden. Steht der Kontofilter auf „Unterkonten", enthält ids das fragende

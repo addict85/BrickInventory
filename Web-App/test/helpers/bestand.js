@@ -193,7 +193,7 @@ async function haeltFigur(db, userId, figNumber, opt = {}) {
     [userId, setNumber, figNumber, quelle, opt.storageId ?? null]);
   if (setNumber) {
     await db.run(
-      `INSERT INTO set_minifigs_catalog (set_number, fig_number, quantity)
+      `INSERT INTO set_figuren (set_number, fig_number, quantity)
        VALUES ($1,$2,$3)
        ON CONFLICT (set_number, fig_number) DO UPDATE SET quantity = $3`,
       [setNumber, figNumber, menge]);

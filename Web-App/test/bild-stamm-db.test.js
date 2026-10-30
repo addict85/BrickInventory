@@ -55,13 +55,14 @@ test('Bildadresse über den Dateinamen-Stamm', { concurrency: 1 }, async (t) => 
         return (await tx.all(`EXPLAIN ${CDN_ABFRAGE.replaceAll('$1', `'${P}_4'`)}`))
           .map(z => z['QUERY PLAN']).join('\n');
       });
-      for (const ix of ['idx_part_color_catalog_bild_stamm', 'idx_set_minifigs_catalog_bild_stamm',
+      // set_minifigs_catalog ist seit Migration 0072 eine Sicht auf minifigs_catalog.
+      for (const ix of ['idx_part_color_catalog_bild_stamm',
                         'idx_minifigs_catalog_bild_stamm', 'idx_set_catalog_bild_stamm'])
         assert.ok(plan.includes(ix), `${ix} fehlt im Plan:\n${plan}`);
       // Nicht nur durchlaufen, sondern über den Stamm gesucht: Ohne Suchschlüssel
       // läse der Planer bei abgeschaltetem Seq Scan den Teilindex ganz.
       const gesucht = plan.match(/Index Cond: \(regexp_replace\(regexp_replace\(image_local/g) || [];
-      assert.equal(gesucht.length, 4, `nicht jede Tabelle sucht über den Stamm:\n${plan}`);
+      assert.equal(gesucht.length, 3, `nicht jede Tabelle sucht über den Stamm:\n${plan}`);
     });
   } finally {
     await db.run('DELETE FROM part_color_catalog WHERE part_number=$1', [P]);

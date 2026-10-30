@@ -96,8 +96,8 @@ test('Lagerort beim Erfassen — gegen echte Datenbank', async (t) => {
   }
   await seed();
   const setService = _req('utils/setService.js');
-  const teile      = _req('routes/parts.js');
-  const figuren    = _req('routes/minifigs.js');
+  const teile      = _req('utils/manuelleTeile.js');
+  const figuren    = _req('utils/manuelleFiguren.js');
   const merkliste  = _req('utils/merkliste.js');
   const L          = _req('utils/lagerort.js');
 

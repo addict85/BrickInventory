@@ -77,11 +77,15 @@ function dateien(wurzel, endungen, aus) {
   return out;
 }
 
-/** Schlüssel der obersten Ebene aus allen res.json({…}) einer Quelle. */
+/**
+ * Schlüssel der obersten Ebene aus allen res.json({…}) einer Quelle — und aus
+ * `return { success: true, … }`: So geben die Dienste in utils/dienste/ die
+ * Antwort zurück, die eine Route unverändert weiterreicht.
+ */
 /** @param {string} s */
 function antwortSchluessel(s) {
   const gefunden = new Set();
-  const re = /res\.json\(\s*\{/g;
+  const re = /res\.json\(\s*\{|return\s*\{(?=\s*success:\s*true)/g;
   while (re.exec(s) !== null) {
     let tiefe = 1, i = re.lastIndex;
     while (i < s.length && tiefe > 0) {

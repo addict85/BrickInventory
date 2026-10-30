@@ -68,7 +68,7 @@ export async function importiereTeile(setNumber: string, userId: number): Promis
           [userId, n, teile, farben]);
         await tx.run(
           `DELETE FROM parts WHERE user_id=$1 AND set_number=$2 AND source='set'
-              AND (part_number, COALESCE(color_id, 0)) NOT IN (SELECT * FROM unnest($3::text[], $4::int[]))`,
+              AND (part_number, color_id) NOT IN (SELECT * FROM unnest($3::text[], $4::int[]))`,
           [userId, n, teile, farben]);
         await merkeSetTeile(n, zeilen, tx);
         await merkeBlNummern('part', zeilen.map(z => ({ rbId: z.partNumber, blId: z.blNummer ?? '' })), tx);

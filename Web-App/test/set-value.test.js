@@ -98,11 +98,16 @@ test('by_condition weist die Zusammensetzung aus', () => {
 });
 
 test('qty_avg_price wird für Set-Preise nirgends mehr gelesen', () => {
-  // routes/sets.ts arbeitet ausschliesslich mit Set-Preisen — dort darf der
-  // Bezeichner gar nicht mehr vorkommen.
-  const sets = require('./helpers/sources').setKernQuelle();
+  // Der Set-Kern arbeitet ausschliesslich mit Set-Preisen — dort darf der
+  // Bezeichner nicht vorkommen. Ausnahme ist setPreis(): Die Preis-Antwort der
+  // App führt das Feld qty_avg_price und reicht es nur durch.
+  const roh = require('./helpers/sources').setKernQuelle();
+  const von = roh.indexOf('export async function setPreis');
+  const bis = roh.indexOf('export async function rebrickableListe');
+  assert.ok(von > 0 && bis > von, 'setPreis() nicht gefunden');
+  const sets = roh.slice(0, von) + roh.slice(bis);
   assert.equal((sets.match(/qty_avg_price/g) || []).length, 0,
-    'routes/sets.ts: Set-Preise müssen über avg_price laufen');
+    'Set-Kern: Set-Preise müssen über avg_price laufen');
 
   // Der Abschnitt zu routes/finance.ts ist entfallen: Die Datei gibt es nicht
   // mehr. Ihr Router trug NULL Routen und war trotzdem unter /api/finance
@@ -113,7 +118,7 @@ test('qty_avg_price wird für Set-Preise nirgends mehr gelesen', () => {
 });
 
 test('die Sortierung "hat einen Preis vor passendem Zustand" ist überall weg', () => {
-  for (const f of ['routes/sets.ts']) {
+  for (const f of ['utils/dienste/sets.ts', 'routes/api_v1/sets.ts']) {
     const src = fs.readFileSync(path.join(ROOT, f), 'utf8');
     assert.doesNotMatch(src, /ORDER BY \(qty_avg_price[^)]*\) DESC, \(condition/,
       `${f}: Diese Sortierung liefert für ein neues Set den Gebraucht-Preis`);
@@ -155,7 +160,7 @@ test('Fallback zwischen den Zuständen bleibt — aber in der richtigen Reihenfo
   // Der angefragte Zustand gewinnt, wenn er einen Preis hat. Der andere kommt
   // nur zum Zug, wenn dort keiner steht. Genau umgekehrt war der gemeldete
   // Fehler: „hat einen Preis" schlug „passender Zustand".
-  for (const f of ['routes/sets.ts']) {
+  for (const f of ['utils/dienste/sets.ts', 'utils/financeCalc.ts']) {
     const src = fs.readFileSync(path.join(ROOT, f), 'utf8');
     for (const m of src.matchAll(/SELECT[\s\S]{0,240}?FROM price_cache[\s\S]{0,260}?`/g)) {
       const q = m[0];
@@ -286,7 +291,7 @@ test('KEINE Abfrage stellt mehr "hat einen Preis" vor "passender Zustand"', () =
   // Sie steckte an fünf Stellen; vier waren beim ersten Anlauf behoben, die
   // fünfte (der P&L-Pfad in financeCalc.ts) speist aber genau die Anzeige in
   // Galerie und Detail-Dialog — dort blieb der Gebraucht-Preis stehen.
-  const files = ['routes/sets.ts', 'routes/api_v1/sets.ts',
+  const files = ['utils/dienste/sets.ts', 'routes/api_v1/sets.ts',
                  'utils/financeCalc.ts', 'utils/portfolioHistory.ts'];
   for (const f of files) {
     const src = fs.readFileSync(path.join(ROOT, f), 'utf8')
@@ -321,7 +326,7 @@ test('die Finanz-Ansicht zeigt avg_price als Marktpreis', () => {
   // nicht: Dort zeigte die als „Marktpreis" beschriftete Spalte qty_avg_price,
   // und die Total-Spalte rechnete damit.
   const fin = fs.readFileSync(path.join(ROOT, 'public', 'js', '04-finance.js'), 'utf8');
-  assert.match(fin, /const total\s*=\s*acq \? acq\.total_avg : s\.total_avg;/,
+  assert.match(fin, /const total\s*=\s*acq \? acq\.wert_gesamt : s\.wert_gesamt;/,
     'Die Total-Spalte muss über avg_price laufen, nicht über qty_avg');
   assert.match(fin, /parseFloat\(d\.totals\.avg\|\|0\)/,
     'Die Summen sind als „Ø Marktpreis" beschriftet und müssen totals.avg nehmen');
@@ -520,9 +525,11 @@ test('Bewertung und Anzeige benutzen dieselbe Zustandsregel', () => {
 test('es gibt einen Diagnose-Endpunkt für Preise', () => {
   const admin = fs.readFileSync(path.join(ROOT, 'routes', 'api_v1', 'admin.ts'), 'utf8');
   assert.match(admin, /router\.get\('\/admin\/price-probe', requireApiAdmin/, 'Endpunkt fehlt');
-  assert.match(admin, /chosen_for_price/, 'Der gewählte Zustand gehört in die Antwort');
-  assert.match(admin, /price_cache: cacheRows/, 'Die Cache-Zeilen gehören dazu');
   assert.match(admin, /req\.query\.live === '1'/, 'Ein Live-Abruf gegen BrickLink muss möglich sein');
+  // Die Antwort baut der Dienst der Verwaltung.
+  const dienst = fs.readFileSync(path.join(ROOT, 'utils', 'dienste', 'verwaltung.ts'), 'utf8');
+  assert.match(dienst, /chosen_for_price/, 'Der gewählte Zustand gehört in die Antwort');
+  assert.match(dienst, /price_cache: cacheRows/, 'Die Cache-Zeilen gehören dazu');
 });
 
 test('die Verlaufs-Endpunkte liefern fertige Diagrammdaten', () => {

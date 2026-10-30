@@ -126,8 +126,8 @@ test('die Lagerort-Vorgabe gilt bei jeder Neuerfassung', { concurrency: 1 }, asy
     (await db.get('SELECT id FROM storage_locations WHERE user_id=$1 AND name=$2', [UID, name])).id;
 
   const { setzeVorgabe, ortFuerNeuerfassung } = _req('utils/lagerort.js');
-  const { addManualPart } = _req('routes/parts.js');
-  const { addManualFig }  = _req('routes/minifigs.js');
+  const { addManualPart } = _req('utils/manuelleTeile.js');
+  const { addManualFig }  = _req('utils/manuelleFiguren.js');
 
   await setzeVorgabe(UID, await ortId('Kiste 7'));
 

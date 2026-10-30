@@ -72,7 +72,7 @@ test('der geänderte Kaufpreis erreicht die Kachel — Webapp UND App',
   const { base, srv } = testServer(_req, {
     sitzung: { userId: uid },
     apiNutzer: { user_id: uid, is_admin: 0 },
-    routen: { '/api/sets': 'routes/sets.js', '/api/v1': 'routes/api_v1/index.js' },
+    routen: { '/api/v1': 'routes/api_v1/index.js' },
     t,
   });
 

@@ -4,6 +4,7 @@ import { lookupPart } from '../clients/rebrickable';
 import { meldeUndWeiter, meldeUndLiefere } from './httpError';
 import { merkeTeilFarbe, katalogTeil } from './katalogPflege';
 import { erfassungsTagSql } from './acquisitions';
+import { colorId } from './validate';
 
 /**
  * Die Farbe eines manuell erfassten Teils NACHTRÄGLICH ändern.
@@ -57,7 +58,7 @@ async function bildNachtragen(partNumber: string, farbe: number): Promise<BildQu
  * @param uid        Besitzer der Zeile — NICHT der Betrachter. Wer in wessen
  *                   Bestand schreiben darf, entscheidet resolveWriteTarget()
  *                   in der Route (utils/household.ts).
- * @param neueFarbe  Rebrickable-Farbnummer. 0 ist im Baum „ohne Angabe".
+ * @param neueFarbe  Rebrickable-Farbnummer; KEINE_FARBE (9999) heisst „ohne Angabe".
  */
 export async function aendereTeilFarbe(
   uid: number,
@@ -66,8 +67,8 @@ export async function aendereTeilFarbe(
   neueFarbe: number,
   angaben: { color_name?: string | null; color_hex?: string | null } = {},
 ): Promise<FarbWechsel> {
-  const alt = Number(alteFarbe) || 0;
-  const neu = Number(neueFarbe) || 0;
+  const alt = colorId(alteFarbe);
+  const neu = colorId(neueFarbe);
 
   // Farbbezeichnung und Farbcode: rb_colors zuerst, weil der Katalog für alle
   // Konten gilt; die Angaben des Aufrufers füllen nur, was dort fehlt.
@@ -79,7 +80,7 @@ export async function aendereTeilFarbe(
   const wechsel = await db.transaction(async (tx: DbSchnittstelle): Promise<Omit<FarbWechsel, 'bild'>> => {
     const quelle = await tx.get(
       `SELECT id, storage_id FROM parts
-        WHERE user_id = $1 AND part_number = $2 AND COALESCE(color_id, 0) = $3
+        WHERE user_id = $1 AND part_number = $2 AND color_id = $3
           AND source = 'manual'`,
       [uid, partNumber, alt]);
     if (!quelle) {
@@ -102,7 +103,7 @@ export async function aendereTeilFarbe(
 
     const ziel = await tx.get(
       `SELECT id, storage_id FROM parts
-        WHERE user_id = $1 AND part_number = $2 AND COALESCE(color_id, 0) = $3
+        WHERE user_id = $1 AND part_number = $2 AND color_id = $3
           AND source = 'manual'`,
       [uid, partNumber, neu]);
 

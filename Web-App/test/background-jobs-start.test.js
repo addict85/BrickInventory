@@ -45,11 +45,11 @@ Module.prototype.require = function (name) {
       k === 'enqueue' ? async () => {} : t[k] });
   if (/jobs[/\\]imageQueue(\.js)?$/.test(name))
     return new Proxy(m, { get: (t, k) => k === 'start' ? merke('imageQueue') : t[k] });
-  if (/routes[/\\]imgProxy(\.js)?$/.test(name))
+  if (/utils[/\\]imgCacheServe(\.js)?$/.test(name))
     return new Proxy(m, { get: (t, k) => k === 'startImgCacheCleanup' ? merke('imgCacheCleanup') : t[k] });
   if (/jobs[/\\]auftraegeStarten(\.js)?$/.test(name))
     return new Proxy(m, { get: (t, k) => k === 'starteAuftragsWorker' ? merke('auftragsWorker') : t[k] });
-  if (/api_v1[/\\]pdf(\.js)?$/.test(name))
+  if (/utils[/\\]pdfAuftraege(\.js)?$/.test(name))
     return new Proxy(m, { get: (t, k) => k === 'startPdfJobCleanup' ? merke('pdfJobCleanup') : t[k] });
 
   // ── Auch die GESTAFFELTEN Laeufe abfangen (Nachtrag) ─────────────────────

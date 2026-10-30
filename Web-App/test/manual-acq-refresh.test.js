@@ -43,7 +43,7 @@ test('die Erfassungsliste wird in BEIDE Richtungen nachgeladen', () => {
 test('eine Mengenerhöhung legt auch ohne bestehende Erfassung eine Zeile an', () => {
   // `delta > 0 && acqs.length > 0` liess Altbestände ohne Erfassungszeile
   // stumm liegen: Die Menge stieg, die Liste blieb leer.
-  for (const f of ['routes/parts.ts', 'routes/minifigs.ts']) {
+  for (const f of ['utils/manuelleTeile.ts', 'utils/manuelleFiguren.ts']) {
     const src = strip(read(f));
     assert.doesNotMatch(src, /delta > 0 && acqs\.length > 0/,
       `${f}: ohne bestehende Erfassung passiert beim Erhöhen nichts`);
@@ -115,7 +115,7 @@ test('die Tagesregel steht an genau einer Stelle', () => {
     'Der Zustand der Tageszeile darf sich beim Aufstocken nicht mehr ändern');
 
   // Und kein Anlege-Pfad schreibt mehr direkt in eine Erfassungstabelle.
-  for (const f of ['routes/parts.ts', 'routes/minifigs.ts', 'routes/sets.ts']) {
+  for (const f of ['utils/manuelleTeile.ts', 'utils/manuelleFiguren.ts', 'routes/api_v1/sets.ts', 'utils/dienste/sets.ts']) {
     const src = strip(read(f));
     assert.doesNotMatch(src, /INSERT INTO (part|minifig|set)_acquisitions/,
       `${f}: Erfassungen gehören über recordAcquisitionForDay geschrieben`);
@@ -140,18 +140,18 @@ test('der Anlege-Pfad erzeugt keinen Zustand, den der Bearbeiten-Pfad ablehnt', 
   // findSameDayAcquisition('set', … mehr. Geprüft wird die Regel, nicht die
   // Schreibweise: Der gemeinsame Helfer wird gerufen, und jede Elementart ist
   // in der Konfiguration hinterlegt.
-  const fab = read('routes/api_v1/acquisitions.ts');
+  const fab = read('utils/dienste/erfassungen.ts');
   // Dies ist eine MUSTERregel: Sie faengt eine geloeschte Zeile. Dass der
   // Weg wirklich lebt, laeuft in test/verdrahtung-laeuft-db.test.js —
   // beides zusammen, nicht eines statt des anderen.
-  assert.match(fab, /findSameDayAcquisition\(\s*cfg\.kind\s*,/,
-    'routes/api_v1/acquisitions.ts: die Kollisionsprüfung muss über den gemeinsamen Helfer laufen');
+  assert.match(fab, /findSameDayAcquisition\(\s*art\s*,/,
+    'utils/dienste/erfassungen.ts: die Kollisionsprüfung muss über den gemeinsamen Helfer laufen');
   for (const kind of ['set', 'part', 'fig']) {
-    assert.match(fab, new RegExp(`kind:\\s*'${kind}'`),
+    assert.match(fab, new RegExp(`\\b${kind}: \\{`),
       `Elementart '${kind}' fehlt in der Konfiguration — dann liefe ihre Tagesprüfung ins Leere`);
   }
-  for (const f of ['routes/sets.ts', 'routes/parts.ts', 'routes/minifigs.ts',
-                   'routes/api_v1/acquisitions.ts']) {
+  for (const f of ['routes/api_v1/sets.ts', 'utils/manuelleTeile.ts', 'utils/manuelleFiguren.ts',
+                   'routes/api_v1/acquisitions.ts', 'utils/dienste/erfassungen.ts']) {
     assert.doesNotMatch(strip(read(f)), /SELECT id FROM \w+_acquisitions WHERE[\s\S]{0,160}created_at[^\n]*::date/,
       `${f}: keine eigene Kopie der Tagesprüfung`);
   }
@@ -317,7 +317,7 @@ test('kein stiller Fehler mehr auf Bestandstabellen', () => {
   const TABELLEN = ['sets', 'parts', 'minifigs', 'set_acquisitions',
                     'part_acquisitions', 'minifig_acquisitions', 'instructions'];
   const schreibt = new RegExp(`\\b(UPDATE|INSERT INTO|DELETE FROM)\\s+(${TABELLEN.join('|')})\\b`);
-  const dateien = ['routes/sets.ts', 'routes/parts.ts', 'routes/minifigs.ts',
+  const dateien = ['routes/api_v1/sets.ts', 'utils/dienste/sets.ts', 'utils/dienste/erfassungen.ts',
                    'utils/manuelleTeile.ts', 'utils/manuelleFiguren.ts',
                    'routes/api_v1/sets.ts', 'routes/api_v1/parts.ts',
                    'routes/api_v1/minifigs.ts', 'routes/api_v1/acquisitions.ts',

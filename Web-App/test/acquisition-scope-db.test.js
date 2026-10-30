@@ -5,7 +5,7 @@
  * „Wenn ich den Kaufpreis im Kaufpreis-Dialog anpasse (Android oder Webapp),
  * wird er nicht gespeichert. In der Webapp kommt die Meldung Not found."
  * Sein Server-Log zeigte zwei 404 aus derselben Wurzel:
- *   routes/sets.js:1225            → „Not found"
+ *   routes/sets.js:1225            → „Not found" (heute utils/dienste/erfassungen.ts)
  *   routes/api_v1/acquisitions.js  → „Erfassung nicht gefunden"
  *
  * Ursache: Beide Wege suchten die Zeile mit `WHERE id=$1 AND user_id=$2` und
@@ -79,7 +79,6 @@ test('das Hauptkonto kann den Kaufpreis einer Unterkonto-Erfassung ändern',
       req.apiUser = { user_id: userId, is_admin: 0 };
       next();
     });
-    app.use('/api/sets', _req('routes/sets.js'));
     app.use('/api/v1', _req('routes/api_v1/index.js'));
     return app;
   };

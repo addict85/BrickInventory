@@ -4,46 +4,26 @@
  * der Check liegt in der Middleware statt in jedem Handler.
  */
 import express from 'express';
-import {  DATA_DIR } from '../../utils/appPaths';
+import fs from 'fs';
+import path from 'path';
 import * as verwaltung from '../../utils/verwaltung';
-import { fehlertext, handleRouteError, meldeUndWeiter, logAndContinue, meldeUndLiefere, ohneFehlendeDatei } from '../../utils/httpError';
+import { handleRouteError, meldeUndLiefere, pfadParam } from '../../utils/httpError';
 import { requireApiAdmin } from './middleware';
-import { PDF_JOB_DIR } from '../../utils/appPaths';
-import { fetchPrice } from '../../utils/financeCalc';
-import { getLimitForApi, getRateLimitStatus, setzeKontingentZurueck } from '../../utils/apiKontingent';
-import { katalogEintrag, ohneBricklinkPreis } from '../../utils/setNummer';
-import { scrapeInstructionsFromFallback, loescheAnleitungen } from '../../utils/instructions';
-import { imgProxyFailures } from '../../utils/imgProxyStats';
+import { getLimitForApi } from '../../utils/apiKontingent';
 import { proxyCachePathFor } from '../../utils/images';
 import { ERLAUBTE_BILD_HOSTS, hostErlaubt } from '../../utils/fremdeAdressen';
 import { vergissFehlend } from '../../utils/imageMisses';
-import { clearCatalogCache, clearSubsetsCache, getPriceGuide, getCacheStats } from '../../clients/bricklink';
-import { enqueue, offeneAuftraege } from '../../jobs/instructionQueue';
-import { getJobStatus, triggerNow } from '../../jobs/priceJob';
 import { SET_IMAGES_DIR } from '../../utils/appPaths';
-import { anfragenJeMinute } from '../../jobs/imageQueue';
-import { DAILY_JOBS } from '../../jobs/dailyScheduler';
-import { getGlobalSetting, getSetting, setGlobalSetting } from '../../utils/settings';
-import { ausRetryWarteschlange } from '../../clients/brickset';
+import { getGlobalSetting, setGlobalSetting } from '../../utils/settings';
 import { sendeFehler } from '../../utils/fehlerTexte';
-import { liesZustand, setzeAusloeser } from '../../utils/laufzustand';
-import fs from 'fs';
-import path from 'path';
-import * as enrich from '../../jobs/partsCatalogEnrich';
-import * as monitor from '../../utils/jobMonitor';
-import https2 from 'https';
+import { setzeAusloeser } from '../../utils/laufzustand';
 import * as pgNotify from '../../utils/pgNotify';
-import * as bricksetRetry from '../../jobs/bricksetRetry';
-import * as instructionQueue from '../../jobs/instructionQueue';
-import * as dailyScheduler from '../../jobs/dailyScheduler';
 import { letzteEintraege } from '../../utils/verwaltungsprotokoll';
+import { cacheStatistik, cachesLeeren, bricksetLimitGesetzt, anleitungenNeuEinreihen, preisJobStand, preisJobJetzt,
+         fehlendeBilderNachladen, bricksetWiederholen, bricksetEntfernen, jobZeitplanSetzen, jobUebersicht,
+         bildProbe, preisProbe, katalogBilderEinreihen } from '../../utils/dienste/verwaltung';
 const router = express.Router();
 
-/**
- * Wie lange ein gemeldeter Betrieb ohne neues Lebenszeichen gilt.
- * Ausführlich: docs/begruendungen/routes/api_v1/admin.ts.md#job-frisch-ms
- */
-const JOB_FRISCH_MS = 3 * 60_000;
 
 // ── POST /api/v1/admin/trigger-csv-sync — manually trigger CSV sync ──────────
 router.post('/admin/trigger-csv-sync', requireApiAdmin, async (_req: AuthedRequest, res) => {
@@ -64,21 +44,9 @@ router.get('/admin/protokoll', requireApiAdmin, async (req: AuthedRequest, res) 
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
-router.get('/admin/cache-stats', requireApiAdmin, async (_req: AuthedRequest, res) => {
-  try {
-    const [stats, stale, rlBL, rlRB, rlBS] = await Promise.all([
-      getCacheStats().catch(() => ({})),
-      verwaltung.veraltetePreise().catch(meldeUndLiefere('verwaltung:veraltetePreise', null)),
-      getRateLimitStatus('bricklink').catch(() => ({ count:0, limit:0 })),
-      getRateLimitStatus('rebrickable').catch(() => ({ count:0, limit:0 })),
-      getRateLimitStatus('brickset').catch(() => ({ count:0, limit:0 })),
-    ]);
-    // db_pool kommt aus der Webapp-Fassung mit, die hier aufgeht (Etappe 7).
-    // Ohne das Feld verlöre die Überwachungsseite die Pool-Anzeige.
-    res.json({ success:true, ...stats, price_stale: parseInt(stale?.c||0),
-      rate_limits: { bricklink: rlBL, rebrickable: rlRB, brickset: rlBS },
-      db_pool: verwaltung.getPoolStats() });
-  } catch (e) { handleRouteError(res, e, undefined, _req); }
+router.get('/admin/cache-stats', requireApiAdmin, async (req: AuthedRequest, res) => {
+  try { res.json(await cacheStatistik()); }
+  catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 // GET /api/v1/admin/image-diag/:setNumber
@@ -116,13 +84,8 @@ router.get('/admin/image-diag/:setNumber', requireApiAdmin, async (req: AuthedRe
       }
     }
 
-    // 3b. Gilt das Bild als fehlend — und warum?
-    //
-    // ── Die Lücke, die Marco aufgehalten hat ──────────────────
-    // Der Endpunkt sollte „warum fehlt das Bild für Set X?" in EINER Antwort
-    // beantworten. Ausgerechnet die Tabelle, die den Abruf VERHINDERT, sah er
-    // nicht an. Steht dort ein Eintrag, ist jede andere Auskunft hier
-    // gegenstandslos: Es wird gar nicht erst versucht.
+    // 3b. Gilt das Bild als fehlend? Ein Eintrag dort verhindert jeden Abruf
+    // und macht die übrigen Auskünfte gegenstandslos.
     const merker = await verwaltung.fehlanzeigeDesSets(sn).catch(meldeUndLiefere('verwaltung:fehlanzeigeDesSets', null));
     const vorschauMerker = await verwaltung.fehlanzeigeDerVorschau(safe).catch(meldeUndLiefere('verwaltung:fehlanzeigeDerVorschau', null));
 
@@ -188,10 +151,7 @@ router.post('/admin/forget-image-misses', requireApiAdmin, async (req: AuthedReq
  */
 router.post('/admin/cache-clear', requireApiAdmin, async (req: AuthedRequest, res) => {
   try {
-    await verwaltung.leerePreisCache();
-    if (req.body?.all) {
-      await clearSubsetsCache(); await clearCatalogCache();
-    }
+    await cachesLeeren(!!req.body?.all);
     res.json({ success: true, message: req.body?.all ? 'Alle Caches geleert' : 'Preis-Cache geleert' });
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
@@ -255,15 +215,7 @@ router.put('/admin/api-limits', requireApiAdmin, async (req: AuthedRequest, res)
       const newLimit = parseInt(brickset);
       const oldLimit = parseInt(await getGlobalSetting('api_limit_brickset') || '100');
       setGlobalSetting('api_limit_brickset', String(newLimit));
-      // If limit was increased and quota is available, trigger retry queue
-      if (newLimit > oldLimit) {
-        const rl = await getRateLimitStatus('brickset').catch(meldeUndLiefere('verwaltung:getRateLimitStatus', null));
-        const remaining = rl ? Math.max(0, newLimit - (rl.count || 0)) : 0;
-        if (remaining > 0) {
-          console.log(`[brickset] Limit increased ${oldLimit}→${newLimit}, ${remaining} calls available — triggering retry queue`);
-          setImmediate(() => bricksetRetry.processRetryQueue(true).catch(logAndContinue('verwaltung:processRetryQueue')));
-        }
-      }
+      await bricksetLimitGesetzt(oldLimit, newLimit);
     }
     res.json({ success:true });
   } catch (e) { handleRouteError(res, e, undefined, req); }
@@ -272,48 +224,26 @@ router.put('/admin/api-limits', requireApiAdmin, async (req: AuthedRequest, res)
 // Admin: job monitoring
 // ── GET /api/v1/admin/brickset-queue — list retry queue entries ───────────────
 // ── POST /api/v1/admin/reimport-instructions — enqueue all sets missing instructions ─
-router.post('/admin/reimport-instructions', requireApiAdmin, async (_req: AuthedRequest, res) => {
+router.post('/admin/reimport-instructions', requireApiAdmin, async (req: AuthedRequest, res) => {
   try {
-    // Find all sets across all users that have no instruction
-    const missing = await verwaltung.setsOhneAnleitung();
-    if (!missing.length) return res.json({ success: true, enqueued: 0, message: 'Alle Sets haben bereits Anleitungen' });
-
-    // Delete existing queue entries for these sets so they get re-tried fresh
-    let enqueued = 0;
-    for (const { set_number } of missing) {
-      await loescheAnleitungen(set_number).catch(logAndContinue('verwaltung:loescheAnleitungen'));
-      await enqueue(set_number).catch(logAndContinue('verwaltung:enqueue'));
-      enqueued++;
-    }
-    // Der Primary-Worker holt sich die Arbeit über das Flag (Poll alle 3 s).
-    // Ein zusätzlicher direkter processNext() stand hier „falls dies der
-    // Primary ist" — processNext() kannte den Primary aber gar nicht und lief
-    // deshalb in JEDEM Worker, der die Anfrage bearbeitet hat.
-    await instructionQueue.requestRun();
-    console.log(`[admin] Reimport instructions: ${enqueued} sets enqueued`);
+    const enqueued = await anleitungenNeuEinreihen();
+    if (!enqueued) return res.json({ success: true, enqueued: 0, message: 'Alle Sets haben bereits Anleitungen' });
     res.json({ success: true, enqueued });
-  } catch (e) { handleRouteError(res, e, undefined, _req); }
+  } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
-// ── POST /api/v1/admin/trigger-price-job ──────────────────────────────────────
-// Startet den Preis-Aktualisierungs-Job. Eigener Admin-Endpoint (requireApiAdmin
-// = Session ODER Bearer-Token), damit auch die Android-App ihn auslösen kann —
-// /api/finance/job-trigger akzeptiert nur Session-Cookies.
 /**
  * GET /api/v1/admin/job-status — Stand des Preis-Jobs samt Kontingent.
  * Ausführlich: docs/begruendungen/routes/api_v1/admin.ts.md#get-admin-job-status
  */
-router.get('/admin/job-status', requireApiAdmin, async (_req: AuthedRequest, res) => {
-  try {
-    res.json({ success: true, job: getJobStatus(), rate_limit: await getRateLimitStatus('bricklink') });
-  } catch (e) { handleRouteError(res, e, undefined, _req); }
+router.get('/admin/job-status', requireApiAdmin, async (req: AuthedRequest, res) => {
+  try { res.json(await preisJobStand()); }
+  catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
-router.post('/admin/trigger-price-job', requireApiAdmin, async (_req: AuthedRequest, res) => {
-  try {
-    const started = await triggerNow();
-    res.json({ success: true, started });
-  } catch (e) { handleRouteError(res, e, undefined, _req); }
+router.post('/admin/trigger-price-job', requireApiAdmin, async (req: AuthedRequest, res) => {
+  try { res.json({ success: true, started: await preisJobJetzt() }); }
+  catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 /**
@@ -322,66 +252,7 @@ router.post('/admin/trigger-price-job', requireApiAdmin, async (_req: AuthedRequ
  */
 router.post('/admin/catalog-images', requireApiAdmin, async (req: AuthedRequest, res) => {
   try {
-    const alleErneut = req.body?.alle_erneut === true;
-    const zuVergessen = await (alleErneut
-      ? verwaltung.setFehlanzeigen()
-      : verwaltung.setFehlanzeigenOhne404()
-    ).catch(meldeUndLiefere('verwaltung:zuVergessen', []));
-    const verworfen = zuVergessen.length
-      ? await vergissFehlend(zuVergessen.map(r => r.cache_key))
-      : 0;
-    // Was schon fertig ist, wird nicht wieder eingereiht
-    // Er hatte recht, und die Begründung, die ich früher dafür notiert
-    // habe, war zu kurz gedacht: Ich wollte 25 000 einzelne Dateizugriffe in
-    // einer Anfrage vermeiden — richtig — und habe daraus geschlossen, gar …
-    // Ausführlich: docs/begruendungen/routes/api_v1/admin.ts.md#post-admin-catalog-images-fs
-        let vorhanden: Set<string> = new Set();
-    try {
-      const namen = new Set<string>(fs.readdirSync(SET_IMAGES_DIR));
-      // FERTIG heisst: Original UND Vorschau. Fehlt die Vorschau, gehört das
-      // Set weiter in die Warteschlange — der Job holt sie dann nach, ohne
-      // erneut zu laden.
-      for (const n of namen) {
-        if (!n.endsWith('_thumb.jpg')) continue;
-        const basis = n.slice(0, -'_thumb.jpg'.length);
-        if (namen.has(`${basis}.jpg`)) vorhanden.add(basis);
-      }
-    } catch (_) { /* Ordner noch leer — dann ist nichts fertig */ }
-
-    const kandidaten = await verwaltung.katalogBildKandidaten();
-
-    // Dieselbe Namensregel wie in downloadSetImage() — sonst verglichen wir
-    // Setnummern mit Dateinamen und fänden nie eine Übereinstimmung.
-    const dateiname = (sn: string) => String(sn).replace(/[^a-z0-9-]/gi, '_');
-    const offenSets: string[] = [];
-    const offenUrls: string[] = [];
-    for (const k of kandidaten) {
-      if (vorhanden.has(dateiname(k.set_num))) continue;
-      offenSets.push(k.set_num);
-      offenUrls.push(k.set_img_url);
-    }
-
-    let neuEingereiht = 0;
-    if (offenUrls.length) {
-      const r = await verwaltung.reiheKatalogBilderEin(offenUrls, offenSets);
-      neuEingereiht = r?.n ?? 0;
-    }
-    const offen = await verwaltung.offeneBildauftraege();
-    // Wie lange das dauert — die Zahl der Aufträge allein sagt es nicht, und
-    // „Stunden oder Tage?" ist die erste Frage, die sich stellt. Die Rate kommt
-    // aus dem Job selbst, damit sie nicht an zwei Stellen gepflegt wird.
-    const proMinute = anfragenJeMinute() || 30;
-    res.json({
-      success: true,
-      queued:  neuEingereiht,
-      pending: offen?.n ?? 0,
-      // Für die Rückmeldung: So viele waren schon fertig und blieben aussen vor.
-      skipped: kandidaten.length - offenUrls.length,
-      // Zurückgenommene Fehlanzeigen — ohne die Zahl bliebe unklar, warum
-      // plötzlich wieder Bilder anstehen, die zuletzt als fehlend galten.
-      verworfen,
-      dauer_minuten: Math.ceil((offen?.n ?? 0) / proMinute),
-    });
+    res.json(await katalogBilderEinreihen(req.body?.alle_erneut === true));
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
@@ -389,12 +260,11 @@ router.post('/admin/catalog-images', requireApiAdmin, async (req: AuthedRequest,
 // Lädt Bilder neu, die laut DB (image_local) heruntergeladen sind, deren Datei
 // aber physisch fehlt. Läuft im Hintergrund; Fortschritt erscheint im Monitoring
 // unter „Bild-Download (CDN)".
-router.post('/admin/redownload-missing-images', requireApiAdmin, async (_req: AuthedRequest, res) => {
-  try {
-        // Nicht awaiten — kann je nach Kataloggröße lange dauern.
-    enrich.redownloadMissingImages().catch(logAndContinue('verwaltung:bilder nachladen'));
-    res.json({ success: true, started: true });
-  } catch (e) { handleRouteError(res, e, undefined, _req); }
+router.post('/admin/redownload-missing-images', requireApiAdmin, async (req: AuthedRequest, res) => {
+  // Nicht abwarten: Das kann je nach Katalog lange dauern; der Fortschritt
+  // erscheint in der Überwachung unter „Bild-Download (CDN)“.
+  try { fehlendeBilderNachladen(); res.json({ success: true, started: true }); }
+  catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 // Nutzerverwaltung: NUR unter /api/v1/auth/users
@@ -419,224 +289,21 @@ router.get('/admin/brickset-queue', requireApiAdmin, async (_req: AuthedRequest,
 
 // ── POST /api/v1/admin/brickset-queue/:setNumber/retry — retry single entry now ─
 router.post('/admin/brickset-queue/:setNumber/retry', requireApiAdmin, async (req: AuthedRequest, res) => {
-  const sn = req.params.setNumber;
-  // Reset retry_after to today so processRetryQueue picks it up immediately
-  await verwaltung.bricksetHeuteWiederholen(String(sn)).catch(logAndContinue('verwaltung:bricksetHeuteWiederholen'));
-  // Temporarily reset today's rate limit counter so the retry goes through even if limit reached
-  await setzeKontingentZurueck('brickset').catch(logAndContinue('brickset:kontingent zurücksetzen'));
-  // Trigger queue processing immediately
-  setImmediate(() => bricksetRetry.processRetryQueue(true).catch(logAndContinue('verwaltung:processRetryQueue')));
+  const sn = pfadParam(req, 'setNumber');
+  await bricksetWiederholen(sn);
   res.json({ success: true, set_number: sn });
 });
 
 // ── DELETE /api/v1/admin/brickset-queue/:setNumber — remove + trigger fallback ─
 router.delete('/admin/brickset-queue/:setNumber', requireApiAdmin, async (req: AuthedRequest, res) => {
-  const sn = String(req.params.setNumber ?? '');
-  await ausRetryWarteschlange(sn).catch(logAndContinue('verwaltung:ausRetryWarteschlange'));
-  // Trigger fallback directly — skip Brickset since that's why it was in the queue
-  setImmediate(async () => {
-    try {
-      await scrapeInstructionsFromFallback(sn).catch(logAndContinue('verwaltung:scrapeInstructionsFromFallback'));
-    } catch (e) { meldeUndWeiter('admin:anleitungen-nachschlagen', e); }
-  });
+  const sn = pfadParam(req, 'setNumber');
+  await bricksetEntfernen(sn);
   res.json({ success: true, set_number: sn });
 });
 
-router.get('/admin/jobs', requireApiAdmin, async (_req: AuthedRequest, res) => {
-    const jobs = await monitor.all(); // reads from PostgreSQL — shared across all cluster workers
-
-  // Enrich with live DB counts
-  const [pending, done, failed] = await Promise.all([
-    offeneAuftraege().catch(meldeUndLiefere('verwaltung:offeneAuftraege', 0)),
-    verwaltung.anleitungenErledigt().catch(meldeUndLiefere('verwaltung:anleitungenErledigt', null)),
-    verwaltung.anleitungenGescheitert().catch(meldeUndLiefere('verwaltung:anleitungenGescheitert', null)),
-  ]);
-  const blMapped = await verwaltung.zugeordneteTeile().catch(meldeUndLiefere('verwaltung:zugeordneteTeile', null));
-  const blTotal  = await verwaltung.bricklinkTeile().catch(meldeUndLiefere('verwaltung:bricklinkTeile', null));
-  const rbParts  = await verwaltung.rbTeile().catch(meldeUndLiefere('verwaltung:rbTeile', null));
-  const rbInvParts = await verwaltung.rbInventarTeile().catch(meldeUndLiefere('verwaltung:rbInventarTeile', null));
-  const lastSync = await liesZustand('rb_csv_last_sync');
-
-  // Enrich blIds job with live DB counts
-  const mappedC = parseInt(blMapped?.c||0);
-  const totalBl = parseInt(blTotal?.c||0);
-  if (totalBl > 0) {
-    jobs.blIds = {
-      ...jobs.blIds,
-      status:   mappedC < totalBl ? (jobs.blIds.status === 'running' ? 'running' : 'idle') : 'done',
-      progress: mappedC,
-      total:    totalBl,
-      sub:      mappedC < totalBl ? `${mappedC} / ${totalBl} gemappt` : `Alle ${totalBl} gemappt`
-    };
-  }
-
-  // Enrich instrQueue job with live DB counts
-  const pendingC = pending ?? 0;
-  const doneC    = parseInt(done?.c||0);
-  const failedC  = parseInt(failed?.c||0);
-  const totalC   = pendingC + doneC + failedC;
-  if (totalC > 0) {
-    const enriched = {
-      ...jobs.instrQueue,
-      status:   pendingC > 0 ? 'running' : 'done',
-      progress: doneC,
-      total:    totalC,
-      sub:      pendingC > 0 ? `${pendingC} ausstehend` : 'Alle erledigt'
-    };
-    jobs.instrQueue = enriched;
-  }
-
-  // Brickset retry queue
-  const bsRetry = await verwaltung.bricksetWartend().catch(meldeUndLiefere('verwaltung:bricksetWartend', null));
-  const bsRetryC = parseInt(bsRetry?.c || 0);
-  const bsRetryDue = await verwaltung.bricksetFaellig().catch(meldeUndLiefere('verwaltung:bricksetFaellig', null));
-  const bsRetryDueC = parseInt(bsRetryDue?.c || 0);
-  jobs.bricksetRetry = {
-    label:    'Brickset Retry Queue',
-    status:   bsRetryC === 0 ? 'done' : bsRetryDueC > 0 ? 'idle' : 'idle',
-    progress: 0,
-    total:    bsRetryC,
-    sub:      bsRetryC === 0
-      ? 'Keine ausstehenden Einträge'
-      : bsRetryDueC > 0
-        ? `${bsRetryDueC} Sets bereit zum Retry, ${bsRetryC - bsRetryDueC} warten`
-        : `${bsRetryC} Sets warten auf morgen`,
-    lastRun: null,
-  };
-
-  // img-dl: active download locks and pending images count
-  const [imgDlPending, imgDlDone, imgDlPendingFigs, imgDlPendingOwnFigs] = await Promise.all([
-    verwaltung.teilbilderOffen().catch(meldeUndLiefere('verwaltung:teilbilderOffen', null)),
-    verwaltung.teilbilderFertig().catch(meldeUndLiefere('verwaltung:teilbilderFertig', null)),
-    verwaltung.setFigurenbilderOffen().catch(meldeUndLiefere('verwaltung:setFigurenbilderOffen', null)),
-    // Minifiguren des Bestands legt der img-dl-Hintergrundlauf ebenfalls lokal
-    // ab; sie gehören deshalb in die offene Menge.
-    verwaltung.bestandsFigurenbilderOffen().catch(meldeUndLiefere('verwaltung:bestandsFigurenbilderOffen', null)),
-  ]);
-  const imgPending = parseInt(imgDlPending?.c||0) + parseInt(imgDlPendingFigs?.c||0)
-                   + parseInt(imgDlPendingOwnFigs?.c||0);
-  const imgDone    = parseInt(imgDlDone?.c||0);
-  // Aktiv laufende Downloads: über ALLE Batches/Worker summierter Zähler
-  // (imgDlAdd/-Sub in downloadSetImages) — nicht mehr der zuletzt gestartete
-  // Batch. Deckelung auf imgPending (real noch nicht gecachte Bilder) heilt
-  // einen evtl. verwaisten Zähler nach einem Worker-Crash selbst; bei 0 offenen
-  // Bildern wird der Zähler zurückgesetzt.
-  const imgDlJob   = await monitor.get('imgDl').catch(meldeUndLiefere('verwaltung:get', null));
-  let imgActive    = await monitor.imgDlPending().catch(meldeUndLiefere('verwaltung:imgDlPending', 0));
-  if (imgPending === 0 && imgActive > 0) { await monitor.imgDlReset().catch(logAndContinue('verwaltung:imgDlReset')); imgActive = 0; }
-  imgActive = Math.min(imgActive, imgPending);
-  const imgRunning = imgActive > 0;
-  // Manueller Re-Download fehlender Bilder (image_local gesetzt, Datei fehlt) —
-  // Status liegt in laufzustand.imgredl_status.
-  let reDl: any = null;
-  try {
-    const roh = await liesZustand('imgredl_status');
-    if (roh) reDl = JSON.parse(roh);
-  } catch (_) { reDl = null; }
-  // „laeuft" heisst auch hier: hat KUERZLICH etwas getan
-  // Der Zeitstempel dafuer wird laengst mitgeschrieben: _redlSetStatus() in
-  // jobs/partsCatalogEnrich.ts haengt an JEDEN Stand ein `at`. Gelesen wurde
-  // er nie.
-  // Ausführlich: docs/begruendungen/routes/api_v1/admin.ts.md#get-admin-jobs-seitredl
-  const seitReDl = typeof reDl?.at === 'number' ? Date.now() - reDl.at : null;
-  const reDlRunning = reDl?.running === true
-    && (seitReDl === null || seitReDl < JOB_FRISCH_MS);
-  const reDlSub = reDlRunning
-    ? (reDl.phase === 'scanning'
-        ? '↻ suche fehlende Bilder…'
-        : `↻ ${reDl.done || 0}/${reDl.total || 0} fehlende neu geladen`)
-    : null;
-  // Katalog-Bilder gehören in DIESE Kachel
-  // Er hat recht: Die Kachel zählte ausschliesslich Bilder des eigenen
-  // BESTANDES und meldete „Alle 62 170 Bilder gecacht", während der
-  // Hintergrund-Job gerade hunderte Katalogbilder nachlud. Der Titel verspricht …
-  // Ausführlich: docs/begruendungen/routes/api_v1/admin.ts.md#get-admin-jobs-katalogoffen
-  const katalogOffen = (await verwaltung.katalogBilderOffen().catch(meldeUndLiefere('verwaltung:katalogBilderOffen', null)))?.c ?? 0;
-  // „läuft" heisst: hat kürzlich etwas getan
-  // Die Kachel meldete „läuft", sobald die Warteschlange nicht leer war
-  // . Das ist keine Aussage über TÄTIGKEIT: Eine
-  // steckengebliebene Warteschlange sah genauso aus wie eine, die abgearbeitet …
-  // Ausführlich: docs/begruendungen/routes/api_v1/admin.ts.md#get-admin-jobs-letzterlauf
-  let letzterLauf: { zeit?: number } | null = null;
-  try {
-    const roh = await liesZustand('imgqueue_last_run');
-    if (roh) letzterLauf = JSON.parse(roh);
-  } catch (_) { letzterLauf = null; }
-  const seitLauf = letzterLauf?.zeit ? Date.now() - letzterLauf.zeit : null;
-  const jobLaeuft = seitLauf !== null && seitLauf < JOB_FRISCH_MS;
-  const katalogSub = katalogOffen > 0
-    ? `${katalogOffen} Katalog-Bilder in Warteschlange` +
-      (jobLaeuft ? '' : seitLauf === null ? ' · Job noch nicht gelaufen'
-                                          : ` · seit ${Math.round(seitLauf / 60_000)} min kein Durchgang`)
-    : null;
-
-  const bestandSub = imgRunning ? `${imgActive} Bilder werden geladen`
-              : imgPending > 0 ? `${imgPending} Bilder noch nicht gecacht`
-              : `Alle ${imgDone} Bilder gecacht`;
-  // „Bestand" ausdrücklich benennen, sobald daneben Katalogzahlen stehen —
-  // sonst lässt sich nicht sagen, worauf sich welche Zahl bezieht.
-  const imgBaseSub = katalogSub ? `Bestand: ${bestandSub} · ${katalogSub}` : bestandSub;
-  jobs.imgDl = {
-    label:    '📥 Bild-Download (CDN)',
-    // Läuft auch dann, wenn nur der Katalog-Job arbeitet — sonst stünde die
-    // Kachel auf „fertig", während sie gerade lädt.
-    status:   (imgRunning || reDlRunning || (katalogOffen > 0 && jobLaeuft)) ? 'running'
-              : (imgPending > 0 || katalogOffen > 0) ? 'idle' : 'done',
-    sub:      reDlSub ? `${imgBaseSub} · ${reDlSub}` : imgBaseSub,
-    // Der Balken bezieht die Warteschlange mit ein: Sonst stünde er auf 100 %,
-    // während noch hunderte Bilder ausstehen.
-    progress: imgDone,
-    total:    imgDone + imgPending + katalogOffen,
-    queue:    katalogOffen,
-    queueLastRun: letzterLauf?.zeit || null,
-    lastRun:  imgDlJob?.lastRun || null,
-    canRedownload: true,
-  };
-
-  // PDF jobs: count from filesystem
-  let pdfRunning = 0, pdfDone = 0;
-  try {
-    const _fs2 = require('fs'), _path2 = require('path');
-    const pdfFiles = _fs2.readdirSync(PDF_JOB_DIR).filter((f: string) => f.endsWith('.json'));
-    for (const f of pdfFiles) {
-      try {
-        const j = JSON.parse(_fs2.readFileSync(_path2.join(PDF_JOB_DIR, f), 'utf8'));
-        if (j.status === 'running') pdfRunning++;
-        else if (j.status === 'done') pdfDone++;
-      } catch (e) { meldeUndWeiter('admin:pdf-auftrag-lesen', e); }
-    }
-  } catch (e) { meldeUndWeiter('admin:auftragsordner-lesen', e); }
-  jobs.pdfJobs = {
-    label:   '📄 PDF-Jobs',
-    status:  pdfRunning > 0 ? 'running' : pdfDone > 0 ? 'idle' : 'done',
-    sub:     pdfRunning > 0 ? `${pdfRunning} PDF(s) werden erstellt`
-             : pdfDone > 0 ? `${pdfDone} PDF(s) bereit zum Download`
-             : 'Keine aktiven Jobs',
-    progress: 0,
-    total:    0,
-    lastRun:  null,
-  };
-
-  // Konfigurierte Zeitpläne für die Monitoring-UI:
-  // tägliche Jobs (HH:MM) + Preis-Job (Intervall in Minuten).
-  const schedules: any = {};
-  for (const dj of DAILY_JOBS) {
-    const zeit = await getGlobalSetting(`job_time_${dj.name}`);
-    schedules[dj.monitorKey] = { type: 'daily', time: zeit || dj.default };
-  }
-  const priceInt = await getGlobalSetting('price_job_interval_minutes');
-  schedules.priceJob = { type: 'interval', minutes: parseInt(priceInt || '60') };
-
-  res.json({
-    success: true,
-    jobs,
-    schedules,
-    db: {
-      instrQueue: { pending: pendingC, done: doneC, failed: failedC },
-      blMapping:  { mapped: parseInt(blMapped?.c||0), total: parseInt(blTotal?.c||0) },
-      csvCache:   { parts: parseInt(rbParts?.c||0), inventoryParts: parseInt(rbInvParts?.c||0), lastSync: lastSync || null },
-    }
-  });
+router.get('/admin/jobs', requireApiAdmin, async (req: AuthedRequest, res) => {
+  try { res.json(await jobUebersicht()); }
+  catch (e) { handleRouteError(res, e, undefined, req); }
 });
 
 // ── POST /api/v1/admin/job-schedule — Zeitplan eines Jobs ändern ──────────────
@@ -646,24 +313,7 @@ router.get('/admin/jobs', requireApiAdmin, async (_req: AuthedRequest, res) => {
 router.post('/admin/job-schedule', requireApiAdmin, async (req: AuthedRequest, res) => {
   try {
     const { name, time, minutes } = req.body || {};
-    const daily = DAILY_JOBS.find(j => j.monitorKey === name);
-    if (daily) {
-      const m = /^(\d{1,2}):(\d{2})$/.exec(String(time || '').trim());
-      if (!m || +(m[1] ?? '') > 23 || +(m[2] ?? '') > 59) {
-        return sendeFehler(req, res, 400, 'uhrzeit_ungueltig');
-      }
-      const norm = `${String(+(m[1] ?? '')).padStart(2, '0')}:${String(+(m[2] ?? '')).padStart(2, '0')}`;
-      setGlobalSetting(`job_time_${daily.name}`, norm);
-    } else if (name === 'priceJob') {
-      const min = Math.max(5, parseInt(minutes) || 60);
-      setGlobalSetting('price_job_interval_minutes', String(min));
-    } else {
-      return sendeFehler(req, res, 400, 'unbekannter_job');
-    }
-    // Sofort anwenden: Flag für den Primary-Worker + direkter Aufruf (falls dieser Prozess der Primary ist).
-    await setzeAusloeser('job_reschedule_trigger').catch(logAndContinue('verwaltung:setzeAusloeser'));
-    await pgNotify.notify('job_reschedule_trigger');
-    try { await dailyScheduler.rescheduleAll(); } catch (e) { meldeUndWeiter('admin:zeitplan-neu-planen', e); }
+    await jobZeitplanSetzen(name, time, minutes);
     res.json({ success: true });
   } catch (e) { handleRouteError(res, e, undefined, req); }
 });
@@ -689,14 +339,8 @@ router.get('/admin/img-probe', requireApiAdmin, async (req: AuthedRequest, res) 
     return sendeFehler(req, res, 400, 'url_ungueltig');
   }
 
-  // Dieselbe Host-Allowlist wie der Bild-Proxy.
-  //
-  // VORHER holte diese Route JEDE https-Adresse. Sie ist zwar Admin-geschützt,
-  // aber der Abruf läuft vom Server aus — also aus dem internen Netz heraus.
-  // Damit liesse sich von aussen prüfen, welche internen Hosts erreichbar sind
-  // und was sie antworten (Server-Side Request Forgery). Ein Diagnosewerkzeug
-  // für CDN-Bilder braucht das nicht: Es soll genau die Hosts erreichen, die
-  // der Proxy auch erreicht.
+  // Dieselben Hosts wie der Bild-Proxy: Der Abruf läuft aus dem internen
+  // Netz; jede Adresse zuzulassen wäre Server-Side Request Forgery.
   const ALLOWED_PROBE_HOSTS = ['cdn.rebrickable.com', 'rebrickable.com', 'images.brickset.com', 'www.bricklink.com', 'img.bricklink.com'];
   try {
     const host = new URL(url).hostname;
@@ -707,77 +351,7 @@ router.get('/admin/img-probe', requireApiAdmin, async (req: AuthedRequest, res) 
     return sendeFehler(req, res, 400, 'url_ungueltig');
   }
 
-    const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
-  const variants = [
-    { name: 'mit Referer',  headers: { 'User-Agent': UA, 'Referer': 'https://rebrickable.com/', 'Accept': 'image/*,*/*;q=0.8' } },
-    { name: 'ohne Referer', headers: { 'User-Agent': UA, 'Accept': 'image/*,*/*;q=0.8' } },
-    { name: 'nackt',        headers: {} },
-  ];
-
-  const probe = (v: any) => new Promise(resolve => {
-    const t0 = Date.now();
-    let settled = false;
-    const done = (o: any) => { if (!settled) { settled = true; resolve({ variant: v.name, ms: Date.now() - t0, ...o }); } };
-    const rq = https2.get(url, { family: 4, headers: v.headers }, (r) => {
-      let bytes = 0;
-      r.on('data', (c: Buffer) => { bytes += c.length; if (bytes > 65536) rq.destroy(); });
-      r.on('end',   () => done({ status: r.statusCode, content_type: r.headers['content-type'] || null,
-                                 content_length: r.headers['content-length'] || null,
-                                 // Liefert das CDN komprimiert, muss der Proxy die Kopfzeile
-                                 // weiterreichen — sonst hält der Browser die Bytes für ein JPEG.
-                                 content_encoding: r.headers['content-encoding'] || null,
-                                 transfer_encoding: r.headers['transfer-encoding'] || null,
-                                 bytes, server: r.headers['server'] || null, cf_ray: r.headers['cf-ray'] || null }));
-      r.on('close', () => done({ status: r.statusCode, content_type: r.headers['content-type'] || null, bytes, truncated: true }));
-    });
-    rq.on('error', (e: NodeJS.ErrnoException) => done({ error: e.message, code: e.code }));
-    // Ein Diagnosewert wie ein HTTP-Status, keine Meldung an den Nutzer: Die
-    // Monitoring-Ansicht zeigt ihn als Befund der Erreichbarkeitsprobe.
-    rq.setTimeout(10000, () => { rq.destroy(); done({ error: 'timeout' }); });
-  });
-
-  const results: any[] = [];
-  for (const v of variants) results.push(await probe(v));
-
-  // Liegt das Bild bereits im Plattencache?
-  const crypto = require('crypto'), fsp = fs.promises, pathm = require('path');
-  const key = crypto.createHash('sha1').update(url).digest('hex');
-  const dir = pathm.join(DATA_DIR, 'img_proxy_cache');
-  const cached = await fsp.stat(pathm.join(dir, key)).then((st: any) => ({ bytes: st.size })).catch(ohneFehlendeDatei('verwaltung:stat', null));
-  const thumb  = await fsp.stat(pathm.join(dir, key + '_thumb.jpg')).then((st: any) => ({ bytes: st.size })).catch(ohneFehlendeDatei('verwaltung:stat', null));
-
-  // Fehlerzähler des Proxys mitliefern — zeigt auf einen Blick, ob und woran
-  // Abrufe scheitern, ohne im Server-Log suchen zu müssen.
-  const failures = imgProxyFailures;
-  // Was würde der Proxy AUSLIEFERN? Ein Abruf durch dieselbe Kette wie im
-  // Bild-Proxy, aber statt zum Client gehen die ersten Bytes hierher — als Hex.
-  // Ausführlich: docs/begruendungen/routes/api_v1/admin.ts.md#get-admin-img-probe-head
-  const head = await new Promise(resolve => {
-    const rq = https2.get(url, { family: 4, headers: { 'User-Agent': UA, 'Accept': 'image/*,*/*;q=0.8',
-                                            'Accept-Encoding': 'identity' } }, (r: any) => {
-      const chunks: Buffer[] = []; let n = 0;
-      r.on('data', (c: Buffer) => { chunks.push(c); n += c.length; if (n >= 32) rq.destroy(); });
-      const fin = () => resolve({
-        status: r.statusCode,
-        content_encoding: r.headers['content-encoding'] || null,
-        first_bytes_hex: Buffer.concat(chunks).slice(0, 16).toString('hex').replace(/(..)/g, '$1 ').trim(),
-        looks_like: (() => {
-          const b = Buffer.concat(chunks);
-          if (b[0] === 0xFF && b[1] === 0xD8) return 'JPEG';
-          if (b[0] === 0x89 && b[1] === 0x50) return 'PNG';
-          if (b[0] === 0x1F && b[1] === 0x8B) return 'gzip (komprimiert!)';
-          if (b.slice(0, 5).toString().toLowerCase().startsWith('<')) return 'HTML/XML statt Bild';
-          return 'unbekannt';
-        })(),
-      });
-      r.on('end', fin); r.on('close', fin);
-    });
-    rq.on('error', (e: Error) => resolve({ error: e.message }));
-    rq.setTimeout(10000, () => { rq.destroy(); resolve({ error: 'timeout' }); });
-  });
-
-  res.json({ success: true, url, cache: { original: cached, thumb }, probes: results,
-             proxy_failures: failures, body_check: head });
+  res.json(await bildProbe(url));
 });
 /**
  * GET /api/v1/admin/price-probe?set=10290-1
@@ -791,64 +365,7 @@ router.get('/admin/price-probe', requireApiAdmin, async (req: AuthedRequest, res
   if (!setNumber) return sendeFehler(req, res, 400, 'parameter_set_fehlt');
   const uid = req.apiUser.user_id;
 
-  const [setRow, acqs, cacheRows, histRows, currRow, ttlRow] = await Promise.all([
-    verwaltung.probeSet(uid, setNumber),
-    verwaltung.probeErfassungen(uid, setNumber),
-    verwaltung.probePreisCache(setNumber),
-    verwaltung.probePreisVerlauf(setNumber),
-    verwaltung.probeWaehrung(uid).catch(meldeUndLiefere('verwaltung:probeWaehrung', null)),
-    getGlobalSetting('price_cache_ttl'),
-  ]);
-
-  // Welchen Zustand würde die Bewertung wählen? Dieselbe Regel wie
-  // conditionFromAcquisitions() in utils/handlers/shared.ts: Eine gebrauchte
-  // Erfassung genügt, sonst Neu.
-  // Ausführlich: docs/begruendungen/routes/api_v1/admin.ts.md#get-admin-price-probe-anyused
-  const anyUsed = acqs.some(a => a.condition === 'U');
-  const chosen = anyUsed ? 'U' : 'N';
-
-  const out: any = {
-    success: true,
-    set: setRow || null,
-    acquisitions: acqs,
-    condition_logic: {
-      any_acquisition_used: anyUsed,
-      chosen_for_price: chosen,
-      hinweis: 'Eine gebrauchte Erfassung macht das Set gebraucht, sonst ist es neu. '
-             + 'Der Zustand steht seit Migration 0032 nur in den Erfassungen; das Feld '
-             + 'mit dem gespeicherten Wert, das hier vorher stand, ist weggefallen. '
-             + 'Weicht "chosen_for_price" von der Anzeige ab, liegt der Fehler dort.',
-    },
-    currency: currRow?.value || 'EUR',
-    ttl_hours: parseInt(ttlRow || '24'),
-    price_cache: cacheRows,
-    price_history_last5: histRows,
-  };
-
-  // Dieselbe Währung wie die Bewertung (getSetting fällt auf die globale
-  // Vorgabe zurück, user_settings allein nicht) — sonst zeigte die Probe
-  // andere Cache-Zeilen als die, die Finanzen liest.
-  out.currency = await getSetting(uid, 'currency', 'EUR');
-  // „BrickLink kennt das Set nicht": Steht sie, liefert fetchPrice still 0.
-  const katalog = await katalogEintrag(setNumber);
-  out.katalog = katalog ? { ...katalog, gilt_als_unbekannt: ohneBricklinkPreis(katalog) } : null;
-  // Was Finanzen für den gewählten Zustand bekommt — genau dieser Aufruf.
-  try { out.finanzen_preis = await fetchPrice(setNumber, chosen, 'sold', out.currency, out.ttl_hours); }
-  catch (e) { out.finanzen_preis = { error: fehlertext(e) }; }
-
-  if (req.query.live === '1') {
-    const cur = out.currency;
-    out.live = {};
-    for (const cond of ['N', 'U']) {
-      try {
-        const g = await getPriceGuide(setNumber, cond, 'sold', cur);
-        out.live[cond] = { avg_price: g?.avg_price, qty_avg_price: g?.qty_avg_price,
-                           guide_used: g?.guide_used, guide_fallback: g?.guide_fallback || false };
-      } catch (e) { out.live[cond] = { error: fehlertext(e) }; }
-    }
-  }
-
-  res.json(out);
+  res.json(await preisProbe(uid, setNumber, req.query.live === '1'));
 });
 
 export default router;

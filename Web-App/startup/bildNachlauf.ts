@@ -6,6 +6,7 @@ import * as db from '../db/database';
 import { fehlertext, logAndContinue, meldeUndLiefere } from '../utils/httpError';
 import { generateThumb } from '../utils/thumbs';
 import { setzeTeilBildLokal, setzeFigurBildLokal } from '../utils/katalogPflege';
+import { KEINE_FARBE } from '../utils/validate';
 
 export function starteBildNachlauf(): void {
   const run = async () => {
@@ -61,14 +62,14 @@ export function starteBildNachlauf(): void {
         await tick();
       }
       for (const p of manualParts) {
-        const local = await enrich.downloadImage(p.image_url, p.part_number, p.color_id || 0, 'part').catch(meldeUndLiefere('bild-nachlauf:downloadImage', null));
+        const local = await enrich.downloadImage(p.image_url, p.part_number, p.color_id ?? KEINE_FARBE, 'part').catch(meldeUndLiefere('bild-nachlauf:downloadImage', null));
         if (local) {
           // In den Katalog (utils/katalogPflege.ts) — einmal fuer alle
           // Konten. Mit Protokoll, falls es scheitert: Das Bild liegt dann
           // auf der Platte, der Katalog zeigt aber nicht darauf. In der
           // Oberflaeche fehlt es weiterhin, und der naechste Start laedt es
           // erneut herunter.
-          await setzeTeilBildLokal(p.part_number, p.color_id || 0, local)
+          await setzeTeilBildLokal(p.part_number, p.color_id ?? KEINE_FARBE, local)
             .catch(logAndContinue(`bilder:teil ${p.part_number}`));
           // Fehlte bisher: Ohne diesen Aufruf blieb es bei der Originalgrösse,
           // dauerhaft — anders als bei Sets (downloadSetImages() oben), wo

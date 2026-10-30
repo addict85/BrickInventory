@@ -6,11 +6,12 @@
 import * as db from '../../db/database';
 import { asIds } from '../household';
 import { getSetting, getGlobalSetting } from '../settings';
-import { valueSet, valueAcquisitionRows, weightedPurchase, PNL_EPS } from '../setValue';
+import { valueSet, valueAcquisitionRows, weightedPurchase, PNL_EPS, kachelWerte } from '../setValue';
 import { effectiveCondition } from './zustand';
 import { computeMinifigsValuation, computePartsValuation } from './bewertung';
 import type { Blickfeld } from './preise';
 import { ladeSetErfassungen } from './abfragen';
+import { aufRappen, inZehntel4, summeAus } from '../geld';
 
 // ── GET /api/finance/parts-valuation ─────────────────────────────────────────────
 async function computePnl(viewerId: number, ids: Blickfeld) {
@@ -109,8 +110,9 @@ async function computePnl(viewerId: number, ids: Blickfeld) {
       };
       const cur  = valueSet(set.set_number, acqs, asPriceMap(cacheByKey), fallbackCond, set.quantity || 1);
       const hist = valueSet(set.set_number, acqs, asPriceMap(histByKey),  fallbackCond, set.quantity || 1);
-      if (cur.unit_price)  priceMap.set(set.set_number, cur.unit_price);
-      if (hist.unit_price) firstHistMap.set(set.set_number, hist.unit_price);
+      // Ungerundet weiterrechnen; gerundet wird erst in der Antwort.
+      if (cur.unit_z)  priceMap.set(set.set_number, cur.unit_z / 10000);
+      if (hist.unit_z) firstHistMap.set(set.set_number, hist.unit_z / 10000);
       // Kaufpreis ebenfalls aus den Erfassungen (nur die mit erfasstem Preis).
       const rows = valueAcquisitionRows(set.set_number, acqs, asPriceMap(cacheByKey));
       const purchase = weightedPurchase(rows);
@@ -140,11 +142,18 @@ async function computePnl(viewerId: number, ids: Blickfeld) {
       image_local: set.image_local, image_url: set.image_url,
       quantity: qty, current_price: currentPrice, purchase_price: hasCost ? purchasePrice : null,
       condition: setCondition, baseline_price: baselinePrice, added_at: set.added_at,
-      pnl_abs: pnlAbs?.toFixed(2) ?? null,
+      pnl_abs: pnlAbs === null ? null : aufRappen(inZehntel4(pnlAbs) ?? 0).toFixed(2),
       pnl_pct: pnlPct?.toFixed(1) ?? null,
       baseline_pnl_pct: baselinePnlPct?.toFixed(1) ?? null,
+      // Dieselben Angaben als Zahlen; die Textfelder bleiben für ältere Clients.
+      pnl_betrag: pnlAbs === null ? null : aufRappen(inZehntel4(pnlAbs) ?? 0),
+      pnl_prozent: pnlPct === null ? null : Number(pnlPct.toFixed(1)),
+      baseline_pnl_prozent: baselinePnlPct === null ? null : Number(baselinePnlPct.toFixed(1)),
     };
   });
+  // Die Galerie zeigt je Set EINE Kachel: Betrag und G&V fertig vom Server.
+  const kachel = kachelWerte(setResults);
+  const setZeilen = setResults.map(r => ({ ...r, ...kachel.get(r.set_number) }));
 
   // Manuell erfasste Teile und Minifiguren fliessen mit ihrem eigenen Kaufpreis
   // (bzw. dem Marktpreis als Ersatz) ebenfalls in die Finanzen-Gesamtsumme ein.
@@ -170,22 +179,23 @@ async function computePnl(viewerId: number, ids: Blickfeld) {
     return { purchase_price: purchasePrice, current_price: currentPrice, quantity: qty, pnl_pct: pnlPct?.toFixed(1) ?? null };
   });
 
-  // Portfolio totals — Sets + manuell erfasste Teile + Minifiguren zusammen
-  const totalPurchase =
-    setResults.reduce((s,r) => s + (r.purchase_price||0)*(r.quantity||1), 0) +
-    partsResults.reduce((s,r) => s + (r.purchase_price||0)*(r.quantity||1), 0) +
-    figsResults.reduce((s,r) => s + (r.purchase_price||0)*(r.quantity||1), 0);
-  const totalCurrent =
-    setResults.reduce((s,r) => s + (r.current_price||0)*(r.quantity||1), 0) +
-    partsResults.reduce((s,r) => s + (r.current_price||0)*(r.quantity||1), 0) +
-    figsResults.reduce((s,r) => s + (r.current_price||0)*(r.quantity||1), 0);
+  // Portfolio totals — Sets + manuell erfasste Teile + Minifiguren zusammen,
+  // in Zehntausendsteln summiert und erst am Ende auf Rappen gerundet.
+  const kauf = (rs: Array<{ purchase_price: number | null; quantity: number }>) =>
+    summeAus(rs.map(r => ({ preis: r.purchase_price || 0, menge: r.quantity || 1 })));
+  const totalPurchase = aufRappen((inZehntel4(kauf(setResults)) ?? 0) + (inZehntel4(kauf(partsResults)) ?? 0) + (inZehntel4(kauf(figsResults)) ?? 0));
+  const totalCurrent = summeAus([...setResults, ...partsResults, ...figsResults]
+    .map(r => ({ preis: r.current_price || 0, menge: r.quantity || 1 })));
   const vergleichbar = vergleichbareSummen([...setResults, ...partsResults, ...figsResults]);
   const totalPnlPct = gesamtGuvProzent([...setResults, ...partsResults, ...figsResults]);
 
   return {
-    currency, sets: setResults,
+    currency, sets: setZeilen,
     totals: {
       purchase: totalPurchase.toFixed(2), current: totalCurrent.toFixed(2), pnl_pct: totalPnlPct,
+      pnl_prozent: totalPnlPct === null ? null : Number(totalPnlPct),
+      kaufpreise_fremde_waehrung: acqRows.filter(a => a.kaufpreis_fremd).length
+        + (partsVal.kaufpreise_fremde_waehrung ?? 0) + (figsVal.kaufpreise_fremde_waehrung ?? 0),
       // Kauf- und Marktwert der Posten, über die pnl_pct rechnet. Ein Betrag
       // neben der Prozentzahl muss aus denselben Posten kommen — aus allen
       // gerechnet zählte jeder Posten ohne Marktpreis als Verlust.
@@ -196,9 +206,9 @@ async function computePnl(viewerId: number, ids: Blickfeld) {
        * Ausführlich: docs/begruendungen/utils/finance/gewinnVerlust.ts.md#computepnl-3
        */
       grand_total: totalCurrent.toFixed(2),
-      sets_purchase: setResults.reduce((s,r) => s + (r.purchase_price||0)*(r.quantity||1), 0).toFixed(2),
-      parts_purchase: partsResults.reduce((s,r) => s + (r.purchase_price||0)*(r.quantity||1), 0).toFixed(2),
-      figs_purchase: figsResults.reduce((s,r) => s + (r.purchase_price||0)*(r.quantity||1), 0).toFixed(2),
+      sets_purchase: kauf(setResults).toFixed(2),
+      parts_purchase: kauf(partsResults).toFixed(2),
+      figs_purchase: kauf(figsResults).toFixed(2),
     },
   };
 }

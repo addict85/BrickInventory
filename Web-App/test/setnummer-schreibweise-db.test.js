@@ -59,19 +59,12 @@ require.cache[blPfad].exports = Object.assign({}, echt, {
 });
 
 test('die Schreibweise einer Set-Nummer ist eine Regel', () => {
-  const { mitVersion, ohneVersion, beideSchreibweisen } = _req('utils/setNummer.js');
+  const { mitVersion, ohneVersion } = _req('utils/setNummer.js');
   assert.equal(mitVersion('10179'), '10179-1');
   assert.equal(mitVersion('10179-1'), '10179-1');
   assert.equal(mitVersion('75192-2'), '75192-2');
   assert.equal(ohneVersion('10179'), '10179');
   assert.equal(ohneVersion('75192-2'), '75192');
-  // Die beiden Kandidaten muessen VERSCHIEDEN sein, sonst fragt eine Abfrage
-  // zweimal dasselbe — genau daran krankten drei Fundstellen.
-  for (const eingabe of ['10179', '10179-1', '75192-2']) {
-    const [a, b] = beideSchreibweisen(eingabe);
-    assert.notEqual(a, b, `${eingabe}: zwei gleiche Kandidaten`);
-    assert.equal(a, mitVersion(eingabe));
-  }
 });
 
 test('der Katalog antwortet gleich, egal wie die Nummer geschrieben ist', { concurrency: 1 }, async (t) => {

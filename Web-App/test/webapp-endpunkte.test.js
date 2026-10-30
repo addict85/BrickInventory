@@ -64,9 +64,6 @@ function serverRouten() {
     if (!f.endsWith('.ts') || f === 'index.ts' || f === 'middleware.ts') continue;
     sammle(path.join(v1, f), '/api/v1');
   }
-  // registerAcquisitionRoutes() baut diese zur Laufzeit zusammen.
-  for (const basis of ['/sets/:X/acquisitions', '/parts/:X/:X/acquisitions', '/minifigs/:X/acquisitions'])
-    for (const verb of ['GET', 'POST', 'PUT', 'DELETE']) alle.add(`${verb} /api/v1${basis}/:X`);
   // Und die drei, die direkt in server.ts hängen.
   const srv = ohneKommentare(fs.readFileSync(path.join(ROOT, 'server.ts'), 'utf8'));
   for (const m of srv.matchAll(/app\.(get|post|put|delete)\(\s*'(\/api\/[^']+)'/g))

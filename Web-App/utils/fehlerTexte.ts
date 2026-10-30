@@ -328,12 +328,13 @@ export function antwortSprache(req: { headers?: Record<string, any> } | undefine
  * Einen Fehler WERFEN, der seinen Grund als Code traegt.
  * Ausführlich: docs/begruendungen/utils/fehlerTexte.ts.md#fehlerwerfen
  */
-export function fehlerWerfen(code: FehlerCode, status: number): never {
+export function fehlerWerfen(code: FehlerCode, status: number, vars?: Record<string, string | number>): never {
   // Die deutsche Fassung als `message`, damit ein Protokolleintrag lesbar
-  // bleibt; die Antwort an den Client entsteht aus `code`.
-  const e: any = new Error(fehlerText(code, 'de'));
+  // bleibt; die Antwort an den Client entsteht aus `code` und `vars`.
+  const e: any = new Error(fehlerText(code, 'de', vars));
   e.status = status;
   e.code = code;
+  if (vars) e.vars = vars;
   throw e;
 }
 

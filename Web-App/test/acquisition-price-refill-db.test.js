@@ -74,7 +74,7 @@ test('ein geleerter Kaufpreis wird aus dem Marktpreis gefüllt — Webapp UND Ap
   const { base, srv } = testServer(_req, {
     sitzung: { userId: hauptId },
     apiNutzer: { user_id: hauptId, is_admin: 0 },
-    routen: { '/api/sets': 'routes/sets.js', '/api/v1': 'routes/api_v1/index.js' },
+    routen: { '/api/v1': 'routes/api_v1/index.js' },
     t,
   });
 
