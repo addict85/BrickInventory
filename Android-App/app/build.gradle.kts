@@ -60,6 +60,16 @@ android {
         unitTests.isReturnDefaultValues = true
         // Robolectric liest Ressourcen, Schriften und Manifest der App.
         unitTests.isIncludeAndroidResources = true
+        // Der volle Stack im CI-Protokoll: Der Testbericht liegt als Artefakt, das
+        // aus der Entwicklungsumgebung nicht lesbar ist, und „NullPointerException
+        // at Datei:Zeile“ allein sagt nicht, wo es wirklich brach.
+        unitTests.all { test ->
+            test.testLogging {
+                exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+                showCauses = true
+                showStackTraces = true
+            }
+        }
     }
 
     namespace  = "ch.brickinventoryapp"

@@ -32,6 +32,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import org.robolectric.annotation.GraphicsMode
 
 /**
  * Die Kernabläufe als Oberflächentest auf der JVM (Robolectric): anmelden, Set
@@ -39,13 +40,17 @@ import org.robolectric.annotation.Config
  * Barrierefreiheitsprüfung (ATF): Ein Knopf ohne Beschriftung, ein zu kleines
  * Ziel oder zu wenig Kontrast lässt den Test scheitern.
  *
- * Gegenproben (nur in der CI messbar, hier gibt es kein Android): vorgesehen
- * sind (a) im Anmeldeknopf `onLogin(password, username, …)` vertauscht → rot
- * „anmelden reicht Name und Passwort weiter“, (b) der Plus-Knopf ohne
- * Beschreibung → ATF rot in „Menge ändern“. Ergebnis gehört in den Commit, der
- * die CI-Befunde nachträgt.
+ * Gegenproben — in CI zu messen (hier gibt es kein Android):
+ *   (a) im Anmeldeknopf `onLogin(password, username, …)` vertauscht → rot
+ *       „anmelden reicht Name und Passwort weiter“
+ *   (b) der Plus-Knopf ohne Beschreibung → ATF rot in „die Menge aendern …“
+ *   (c) AddSetDialog übergibt die Anzahl fest als 1 → rot „ein Set erfassen …“
+ *   (d) Gutschein-PIN immer sichtbar → rot „ein Gutschein zeigt den PIN …“
  */
 @RunWith(RobolectricTestRunner::class)
+// NATIVE wie bei den Bildschirmfotos: Die Kontrastprüfung des ATF liest ein
+// Bildschirmfoto, und im LEGACY-Grafikmodus von Robolectric gibt es keins.
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [35])
 class AblaufTest {
 
