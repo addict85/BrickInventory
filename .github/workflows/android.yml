@@ -42,6 +42,11 @@ on:
       - 'Android-App/**'
       - 'shared/**'
   workflow_dispatch:
+    inputs:
+      pruefsummen:
+        description: 'Prüfsummen der Gradle-Abhängigkeiten neu erzeugen (verification-metadata.xml als Artefakt)'
+        type: boolean
+        default: false
 
 # Ein neuer Push bricht einen noch laufenden Bau desselben Zweigs ab — sonst
 # stehen bei mehreren Pushes drei Läufe in der Schlange und der erste ist
@@ -52,6 +57,8 @@ concurrency:
 
 jobs:
   build:
+    # Ein Lauf nur für die Prüfsummen (Job `pruefsummen` unten) baut nicht mit.
+    if: ${{ !inputs.pruefsummen }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -694,3 +701,41 @@ jobs:
             echo "> Kein Zip: Ein Release-Anhang wird roh ausgeliefert. Der Link"
             echo "> bleibt ueber alle Builds derselbe und braucht kein GitHub-Konto."
           } >> "$GITHUB_STEP_SUMMARY"
+
+  # ── Prüfsummen der Abhängigkeiten ──────────────────────────────────────────
+  #
+  # gradle/verification-metadata.xml hält für jede Abhängigkeit die SHA-256
+  # fest; Gradle bricht ab, wenn ein Repository etwas anderes liefert. Erzeugen
+  # lässt sie sich nur mit Zugang zu dl.google.com, also hier. Nach jedem
+  # Versionssprung (Renovate) von Hand anstossen und die Datei aus dem Artefakt
+  # einchecken; der Bau oben scheitert bis dahin an der Prüfung.
+  pruefsummen:
+    if: github.event_name == 'workflow_dispatch' && inputs.pruefsummen
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: Android-App
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6
+        with:
+          distribution: temurin
+          java-version: '17'
+      - run: python3 tools/gradle-wrapper-pruefen.py gradle/wrapper/gradle-wrapper.properties
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6
+      # Dieselben Aufgaben wie der Bau oben: Nur was aufgelöst wird, bekommt
+      # eine Prüfsumme, und Lint holt eigene Pakete.
+      - name: Prüfsummen erzeugen
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon --write-verification-metadata sha256 \
+            testDebugUnitTest assembleRelease bundleRelease lintRelease
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: verification-metadata
+          path: Android-App/gradle/verification-metadata.xml
+          if-no-files-found: error
