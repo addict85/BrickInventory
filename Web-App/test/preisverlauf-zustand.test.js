@@ -1,68 +1,57 @@
 'use strict';
-const test = require('node:test');
-const assert = require('node:assert');
-const fs = require('node:fs');
-const path = require('node:path');
-
 /**
- * Der Preisverlauf zeigt nur Zustaende, zu denen es eine Erfassung gibt.
+ * Der Preisverlauf zeichnet nur Zustände, zu denen es eine Erfassung gibt.
  *
- * ── Marcos Befund ───────────────────────────────────────────────────────────
- * „Das gezeigte Teil hat nur einen Kaufpreis mit dem Zustand gebraucht.
- * Trotzdem wird im Preisverlauf auch eine Linie mit 'neu' angezeigt."
+ * Marco: „Das gezeigte Teil hat nur einen Kaufpreis mit dem Zustand gebraucht.
+ * Trotzdem wird im Preisverlauf auch eine Linie mit 'neu' angezeigt." Für Sets
+ * galt die Regel schon, für manuelle Teile und Figuren nicht. Geprüft wird am
+ * Verlauf einer Figur mit Preisen in beiden Zuständen und nur einer
+ * Gebraucht-Erfassung.
  *
- * ── Was der Fund war ────────────────────────────────────────────────────────
- * Nicht die fehlende Regel, sondern die HALB vorhandene: Fuer Sets stand sie
- * seit langem in getSetPriceHistory, mit ausfuehrlicher Begruendung. Fuer
- * manuell erfasste Teile und Minifiguren war derselbe Aufbau eine Funktion
- * weiter unten OHNE sie geschrieben. Eine Regel an zwei Orten, und nur einer
- * kannte sie — die wiederkehrende Fehlerart dieses Projekts.
- *
- * Der Test haelt fest, dass es bei EINEM Ort bleibt.
+ * Gegenproben (am 30.10.2026 gemessen):
+ *   A  in manualPriceHistory() wieder beide Zustände fest gezeichnet
+ *      (['N', 'U'] statt zustaendeFuerVerlauf) → rot: „nur Gebraucht wird
+ *      gezeichnet“
+ *   B  history_new auf die gezeichneten Zustände gekürzt → rot: „die
+ *      Rohdaten bleiben vollständig“
  */
+const test = require('node:test');
+const assert = require('node:assert/strict');
 
-const WURZEL = path.join(__dirname, '..');
+process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
+process.env.WEB_WORKERS = '1';
+const _req = require('./helpers/sources').buildAndRequire();
 
-/** Kommentare raus — sonst liest die Pruefung ihre eigene Begruendung. */
-function ohneKommentare(text) {
-  return text
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .split('\n').filter(z => !z.trim().startsWith('//')).join('\n');
-}
+test('ohne Erfassung kein Zustand im Diagramm, die Rohdaten bleiben', { concurrency: 1 }, async (t) => {
+  const db = _req('db/database.js');
+  try { await db.initSchema(); }
+  catch (e) {
+    if (process.env.REQUIRE_DB === '1')
+      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
+    t.skip('Test-DB nicht erreichbar'); return;
+  }
+  const mc = await db.pool.connect();
+  try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }
+  const { getMinifigPriceHistory, zustaendeFuerVerlauf } = _req('utils/priceHistory.js');
+  const NAME = `verlauf-${process.pid}`, FN = `fig-vl${process.pid}`;
+  const weg = async () => {
+    await db.run('DELETE FROM users WHERE username=$1', [NAME]);
+    await db.run('DELETE FROM minifig_price_history WHERE fig_number=$1', [FN]);
+  };
+  await weg();
+  t.after(async () => { await weg().catch(() => {}); await db.pool.end().catch(() => {}); });
+  const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
+  await db.run(`INSERT INTO minifigs (user_id, fig_number, source) VALUES ($1,$2,'manual')`, [uid, FN]);
+  await db.run(`INSERT INTO minifig_acquisitions (user_id, fig_number, quantity, unit_price, condition, currency)
+                VALUES ($1,$2,1,3,'U','CHF')`, [uid, FN]);
+  await db.run(`INSERT INTO minifig_price_history (fig_number, condition, currency_code, avg_price, recorded_at)
+                VALUES ($1,'N','CHF',5,'2026-10-01'), ($1,'U','CHF',4,'2026-10-01'), ($1,'U','CHF',4.5,'2026-10-02')`, [FN]);
 
-const quelle = ohneKommentare(
-  fs.readFileSync(path.join(WURZEL, 'utils', 'priceHistory.ts'), 'utf8'));
+  const v = await getMinifigPriceHistory([uid], FN, 'CHF');
+  assert.deepEqual(v.chart.values.map(s => s.name), ['U'], 'nur Gebraucht wird gezeichnet');
+  assert.equal(v.history_new.length, 1, 'die Rohdaten bleiben vollständig');
+  assert.equal(v.history_used.length, 2);
 
-test('die Regel steht an genau einer Stelle', () => {
-  const definitionen = quelle.match(/export function zustaendeFuerVerlauf\(/g) || [];
-  assert.strictEqual(definitionen.length, 1,
-    `zustaendeFuerVerlauf ist ${definitionen.length}-mal definiert — genau einmal gehoert sie dorthin`);
-});
-
-test('beide Verlaeufe fragen dieselbe Regel', () => {
-  // Zwei Aufrufe: einer fuer Sets (getSetPriceHistory), einer fuer manuell
-  // erfasste Teile und Figuren (manualPriceHistory).
-  const aufrufe = quelle.match(/zustaendeFuerVerlauf\(/g) || [];
-  // Die Definition zaehlt mit, deshalb drei.
-  assert.strictEqual(aufrufe.length, 3,
-    `zustaendeFuerVerlauf kommt ${aufrufe.length}-mal vor (Definition + zwei Aufrufe erwartet). ` +
-    'Fehlt einer, zeichnet der eine Verlauf Zustaende, die der andere weglaesst.');
-});
-
-test('kein Verlauf baut seine Reihen mehr an der Regel vorbei', () => {
-  // Genau das war der Fehler: buildChart bekam beide Zustaende fest
-  // aufgezaehlt, ohne zu fragen, ob es zu ihnen eine Erfassung gibt.
-  assert.doesNotMatch(quelle,
-    /buildChart\(\[\s*\{\s*name:\s*'N'/,
-    'Ein buildChart-Aufruf zaehlt die Zustaende wieder fest auf, statt ' +
-    'zustaendeFuerVerlauf zu fragen — dann erscheint eine Linie „neu" auch fuer ' +
-    'ein nur gebraucht gekauftes Teil.');
-});
-
-test('die Rohdaten bleiben vollstaendig', () => {
-  // Gefiltert wird, was GEZEICHNET wird. history_new/history_used sind die
-  // Rohdaten; sie stillschweigend zu kuerzen waere ein zweiter, unsichtbarer
-  // Eingriff in die Antwort.
-  assert.match(quelle, /history_new:\s*historyNew,\s*history_used:\s*historyUsed/,
-    'Die Rohreihen werden nicht mehr unveraendert mitgeliefert');
+  // Ohne jede Erfassung gilt der Rückfall: beide Zustände.
+  assert.deepEqual(zustaendeFuerVerlauf([], ['N', 'U']), ['N', 'U']);
 });

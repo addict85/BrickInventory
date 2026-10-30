@@ -1,86 +1,90 @@
 'use strict';
-const test = require('node:test');
-const assert = require('node:assert');
-const fs = require('node:fs');
-const path = require('node:path');
-
 /**
- * Ohne BrickLink-Nummer wird der Minifiguren-Preis aus den Teilen geschaetzt.
+ * Ohne BrickLink-Preis wird der Minifiguren-Preis aus den Teilen geschätzt.
  *
- * ── Marcos Frage ────────────────────────────────────────────────────────────
- * „Bitte noch pruefen, dass bei den Minifiguren der Preis ueber die einzelnen
- * Teile berechnet wird, sofern keine bl-Id vorhanden ist."
+ * Marco: „Bitte noch prüfen, dass bei den Minifiguren der Preis über die
+ * einzelnen Teile berechnet wird, sofern keine bl-Id vorhanden ist." Die Kette:
+ * ohne bl_fig_number wird die eigene Nummer bei BrickLink versucht; erst ohne
+ * Preis dort wird über die Teile geschätzt, im ermittelten Zustand; die
+ * Schätzung landet in Cache und Verlauf. BrickLink ist im Test nicht
+ * eingerichtet, die Preise stehen in den Zwischenspeichern.
  *
- * ── Was die Kette leisten muss ──────────────────────────────────────────────
- *  1. Ohne bl_fig_number wird die EIGENE Nummer bei BrickLink versucht — bei
- *     manuell erfassten Figuren (sw0001 &c.) stimmt sie meist ueberein. Fiele
- *     das weg, liefe die Schaetzung auch dort, wo BrickLink einen echten Preis
- *     hat: mehr Aufrufe, schlechterer Wert.
- *  2. Erst wenn BrickLink NICHTS liefert, wird ueber die Teile geschaetzt.
- *  3. Die Schaetzung landet in Cache und Verlauf — sonst kostet sie bei jedem
- *     Oeffnen der Finanzseite eine Preisabfrage JE TEIL.
- *
- * Jeder dieser drei Schritte ist schon einmal gerissen, ohne dass etwas
- * gescheitert waere: Es kam dann einfach kein Preis.
+ * Gegenproben (am 30.10.2026 gemessen):
+ *   A  in figMarktpreisMitHerkunft() nur [blFigNumber] versucht → rot: „die
+ *      eigene Nummer wird bei BrickLink versucht“
+ *   B  schaetzeFigurenpreis() mit festem 'N' statt effCond → rot: „im Zustand
+ *      der Anfrage“ (2 statt 3)
+ *   C  den Cache-Eintrag der Schätzung nicht mehr geschrieben → rot: „die
+ *      Schätzung wird zwischengespeichert“
  */
+const test = require('node:test');
+const assert = require('node:assert/strict');
 
-const WURZEL = path.join(__dirname, '..');
-const ohneKommentare = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '')
-  .split('\n').filter(z => !z.trim().startsWith('//') && !z.trim().startsWith('*')).join('\n');
+process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
+process.env.WEB_WORKERS = '1';
+const _req = require('./helpers/sources').buildAndRequire();
 
-const src = ohneKommentare(fs.readFileSync(path.join(WURZEL, 'utils', 'marketPrice.ts'), 'utf8'));
+test('Minifiguren-Preis: BrickLink zuerst, sonst aus den Teilen', { concurrency: 1 }, async (t) => {
+  const db = _req('db/database.js');
+  try { await db.initSchema(); }
+  catch (e) {
+    if (process.env.REQUIRE_DB === '1')
+      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
+    t.skip('Test-DB nicht erreichbar'); return;
+  }
+  const mc = await db.pool.connect();
+  try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }
+  const { figMarktpreisMitHerkunft } = _req('utils/marketPrice.js');
+  const P = process.pid, NAME = `schaetzung-${P}`;
+  const FA = `fig-sa${P}`, FB = `fig-sb${P}`, FC = `fig-sc${P}`, TA = `sa${P}`, TB = `sb${P}`;
+  const weg = async () => {
+    await db.run('DELETE FROM users WHERE username=$1', [NAME]);
+    await db.run('DELETE FROM minifig_price_cache WHERE fig_number = ANY($1)', [[FA, FB, FC]]);
+    await db.run('DELETE FROM minifig_price_history WHERE fig_number = ANY($1)', [[FA, FB, FC]]);
+    await db.run('DELETE FROM minifig_parts_cache WHERE fig_number = ANY($1)', [[FA, FB, FC]]);
+    await db.run('DELETE FROM part_price_cache WHERE part_number = ANY($1)', [[TA, TB]]);
+  };
+  await weg();
+  t.after(async () => { await weg().catch(() => {}); await db.pool.end().catch(() => {}); });
+  const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
+  await db.run(`INSERT INTO user_settings (user_id, key, value) VALUES ($1,'currency','CHF')`, [uid]);
 
-/** Der Abruf selbst, nicht die duenne Zahl-Huelle daneben. */
-function abruf() {
-  const i = src.indexOf('async function figMarktpreisMitHerkunft');
-  assert.ok(i > 0, 'Der Minifiguren-Preisabruf ist nicht mehr zu finden');
-  const j = src.indexOf('async function getCurrentFigMarketPrice', i);
-  assert.ok(j > i, 'Das Ende des Abrufs ist nicht zu bestimmen');
-  return src.slice(i, j);
-}
+  await t.test('die eigene Nummer wird bei BrickLink versucht', async () => {
+    await db.run(`INSERT INTO minifig_price_cache (fig_number, condition, currency_code, avg_price) VALUES ($1,'N','CHF',7)`, [FA]);
+    await db.run(`INSERT INTO minifig_parts_cache (fig_number, data) VALUES ($1,$2)`,
+      [FA, JSON.stringify([{ part_num: TA, color_id: 777, quantity: 1 }])]);
+    await db.run(`INSERT INTO part_price_cache (part_number, color_id, condition, currency_code, avg_price) VALUES ($1,777,'N','CHF',1)`, [TA]);
+    const r = await figMarktpreisMitHerkunft(FA, uid, null, 'N');
+    assert.deepEqual({ preis: r.preis, geschaetzt: r.geschaetzt }, { preis: 7, geschaetzt: false });
+  });
 
-test('ohne BrickLink-Nummer wird die eigene Nummer versucht', () => {
-  const fn = abruf();
-  assert.match(fn, /for \(const num of \[blFigNumber, figNumber\]\)/,
-    'Es werden nicht mehr beide Nummern versucht — ohne bl_fig_number bliebe ' +
-    'BrickLink ungefragt, obwohl die eigene Nummer dort meist existiert');
-  assert.match(fn, /if \(!num\) continue;/,
-    'Eine fehlende Nummer wird nicht uebersprungen — dann fragte der Abruf mit null');
-});
+  await t.test('ohne BrickLink-Preis wird aus den Teilen geschätzt, im Zustand der Anfrage', async () => {
+    await db.run(`INSERT INTO minifig_parts_cache (fig_number, data) VALUES ($1,$2)`,
+      [FB, JSON.stringify([{ part_num: TA, color_id: 777, quantity: 2 }, { part_num: TB, color_id: 777, quantity: 1 }])]);
+    await db.run(`INSERT INTO part_price_cache (part_number, color_id, condition, currency_code, avg_price)
+                  VALUES ($1,777,'U','CHF',1.5) ON CONFLICT DO NOTHING`, [TA]);
+    // Teil TA: Neu 1, Gebraucht 1.5; Teil TB ohne Preis → halbe Abdeckung.
+    const neu = await figMarktpreisMitHerkunft(FB, uid, null, 'N');
+    assert.deepEqual({ preis: neu.preis, geschaetzt: neu.geschaetzt, abdeckung: neu.abdeckung },
+      { preis: 2, geschaetzt: true, abdeckung: 0.5 });
+    const gebraucht = await figMarktpreisMitHerkunft(FB, uid, null, 'U');
+    assert.equal(gebraucht.preis, 3, 'im Zustand der Anfrage');
+  });
 
-test('die Schaetzung greift erst, wenn BrickLink nichts liefert', () => {
-  const fn = abruf();
-  const brickLink = fn.indexOf('fetchMinifigPrice');
-  const schaetzung = fn.indexOf('schaetzeFigurenpreis');
-  assert.ok(brickLink > 0 && schaetzung > 0,
-    'BrickLink-Abruf oder Teile-Schaetzung fehlt im Preisweg');
-  assert.ok(schaetzung > brickLink,
-    'Die Teile-Schaetzung steht VOR dem BrickLink-Abruf — dann schaetzt sie ' +
-    'auch dort, wo es einen echten Marktpreis gibt');
-  // Sie steht hinter der Schleife, nicht darin: In der Schleife liefe sie je
-  // Nummer einmal.
-  assert.match(fn, /\}\s*const schaetzung = await schaetzeFigurenpreis\(figNumber, userId, effCond\);/,
-    'Die Schaetzung steht nicht als Rueckfall hinter der Nummern-Schleife');
-});
+  await t.test('die Schätzung wird zwischengespeichert und fortgeschrieben', async () => {
+    const z = await db.all(`SELECT condition, avg_price::float AS preis, geschaetzt FROM minifig_price_cache
+                             WHERE fig_number = $1 ORDER BY condition`, [FB]);
+    assert.deepEqual(z, [{ condition: 'N', preis: 2, geschaetzt: true }, { condition: 'U', preis: 3, geschaetzt: true }],
+      'die Schätzung wird zwischengespeichert');
+    assert.equal((await db.get('SELECT COUNT(*)::int AS n FROM minifig_price_history WHERE fig_number=$1', [FB])).n, 2);
+    // Ohne Teilepreise bleibt der gespeicherte Wert: kein neuer Abruf je Teil.
+    await db.run('DELETE FROM part_price_cache WHERE part_number = $1', [TA]);
+    assert.equal((await figMarktpreisMitHerkunft(FB, uid, null, 'N')).preis, 2);
+  });
 
-test('die Schaetzung rechnet im ERMITTELTEN Zustand', () => {
-  const fn = abruf();
-  assert.match(fn, /schaetzeFigurenpreis\(figNumber, userId, effCond\)/,
-    'Die Schaetzung bekommt nicht den ermittelten Zustand — dann rechnete sie ' +
-    'im Standardzustand, und „neu" und „gebraucht" ergaeben wieder dasselbe');
-});
-
-test('die Schaetzung wird zwischengespeichert und fortgeschrieben', () => {
-  const i = src.indexOf('async function schaetzeFigurenpreis');
-  assert.ok(i > 0, 'schaetzeFigurenpreis ist nicht mehr zu finden');
-  const fn = src.slice(i, src.indexOf('\nasync function', i + 10));
-  // GELESEN: Ohne das kostete jeder Aufruf eine Preisabfrage je Teil.
-  assert.match(fn, /SELECT avg_price, abdeckung FROM minifig_price_cache/,
-    'Der Cache wird nicht mehr GELESEN — eine Figur mit fuenfzehn Teilen ' +
-    'kostet dann fuenfzehn Abfragen bei jedem Oeffnen der Finanzseite');
-  // GESCHRIEBEN: sonst steht im Detail-Dialog bei „Marktpreis" nur ein Strich.
-  assert.match(fn, /INSERT INTO minifig_price_cache/,
-    'Die Schaetzung wird nicht mehr gespeichert');
-  assert.match(fn, /priced === 0\) return null/,
-    'Eine Schaetzung ohne ein einziges bepreistes Teil gaebe 0 zurueck statt null');
+  await t.test('ohne ein bepreistes Teil gibt es keinen Preis, nicht 0', async () => {
+    await db.run(`INSERT INTO minifig_parts_cache (fig_number, data) VALUES ($1,$2)`,
+      [FC, JSON.stringify([{ part_num: TB, color_id: 777, quantity: 3 }])]);
+    assert.equal((await figMarktpreisMitHerkunft(FC, uid, null, 'N')).preis, null);
+  });
 });

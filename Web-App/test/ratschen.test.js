@@ -109,7 +109,8 @@ test('stille Faenge werden weniger, nie mehr', () => {
   // nicht (die Meldekette traegt ihr logAndContinue schon), zwei melden jetzt
   // ueber meldeUndWeiter. Die Schranke zieht nach, wie die Regel es vorsieht.
   // 29.10.2026: 41 — die übrigen Fänge melden über logAndContinue/meldeUndWeiter.
-  const SCHRANKE = 41;
+  // 30.10.2026: 39 (Schichtumbau: die Routenfänge stehen gemeldet in den Diensten).
+  const SCHRANKE = 39;
   const ist = zaehle(STILLE_FAENGE);
   assert.ok(ist <= SCHRANKE,
     `${ist} stille Faenge, erlaubt sind ${SCHRANKE}. Ein neuer \`catch {}\` ` +
@@ -124,8 +125,8 @@ test('stille Faenge werden weniger, nie mehr', () => {
 test('any wird weniger, nie mehr', () => {
   // GEMESSEN am 19.09.2026 nach Nachtrag 175: 398 Stellen. Es waren 402,
   // solange der Zaehler auch Kommentare las. 386 am 28.10.2026.
-  // 29.10.2026: 333.
-  const SCHRANKE = 333;
+  // 29.10.2026: 333. 30.10.2026: 288 (db.get<T>/db.all<T> statt any-Zeilen).
+  const SCHRANKE = 288;
   const ist = zaehle([/\bas any\b/g, /:\s*any\b/g]);
   assert.ok(ist <= SCHRANKE,
     `${ist}-mal \`any\`, erlaubt sind ${SCHRANKE}. Jedes davon schaltet den ` +
@@ -155,7 +156,9 @@ function reineQuelltextTests() {
 test('reine Quelltext-Tests werden weniger, nie mehr', () => {
   // GEMESSEN am 25.10.2026: 103 von 312 Testdateien; am 28.10.2026: 100
   // (routen-bewacht ging in api-eingang-db auf, das den echten Server fragt).
-  const SCHRANKE = 100;
+  // 30.10.2026: 92 — acht Dateien prüfen jetzt Verhalten (Erfassungen, Summen,
+  // Mengen-Echo, Preisverlauf, Figurenschätzung, LISTEN/NOTIFY, CSV, Katalogbilder).
+  const SCHRANKE = 92;
   const alle = fs.readdirSync(__dirname).filter(n => n.endsWith('.test.js')).length;
   assert.ok(alle >= 300, `Nur ${alle} Testdateien gefunden — greift die Suche noch?`);
   const ist = reineQuelltextTests();
@@ -238,8 +241,8 @@ test('kein Verweis auf „Nachtrag N" im Code', () => {
 test('der Kommentaranteil im Server sinkt, nie steigt', () => {
   // GEMESSEN am 28.10.2026: 33,4 % der nichtleeren Zeilen in server.ts,
   // routes/, utils/ und jobs/ (25.10.: 50,5 %, siehe CLAUDE.md).
-  // 29.10.2026: 32,44 %.
-  const SCHRANKE = 32.5;
+  // 29.10.2026: 32,44 %. 30.10.2026: 30,6 % (Kommentare der umgebauten Dateien gekürzt).
+  const SCHRANKE = 30.7;
   let zeilen = 0, kommentar = 0;
   for (const f of quellen().filter(f => /[\\/](routes|utils|jobs)[\\/]|[\\/]server\.ts$/.test(f))) {
     for (const z of fs.readFileSync(f, 'utf8').split('\n')) {
@@ -253,4 +256,29 @@ test('der Kommentaranteil im Server sinkt, nie steigt', () => {
   const anteil = Math.round(1000 * kommentar / zeilen) / 10;
   assert.ok(anteil <= SCHRANKE, `${anteil} % Kommentarzeilen, erlaubt sind ${SCHRANKE} %`);
   if (anteil < SCHRANKE - 0.5) console.log(`  ℹ Kommentaranteil: ${anteil} % (Schranke ${SCHRANKE}) — Schranke nachziehen`);
+});
+
+test('der Kommentaranteil der Tests sinkt, nie steigt', () => {
+  // Eigene Schranke: Testköpfe zählen ihre Gegenproben auf (CLAUDE.md), der
+  // Anteil liegt deshalb höher als im Server. Geschichte gehört auch hier in
+  // den Commit. GEMESSEN am 30.10.2026: 37,0 % in test/*.js und test/helpers/.
+  // Gegenprobe (30.10.2026): 300 Kommentarzeilen an eine Testdatei gehängt → rot.
+  const SCHRANKE = 37.0;
+  const dateien = [
+    ...fs.readdirSync(__dirname).filter(n => n.endsWith('.js')).map(n => path.join(__dirname, n)),
+    ...fs.readdirSync(path.join(__dirname, 'helpers')).filter(n => n.endsWith('.js')).map(n => path.join(__dirname, 'helpers', n)),
+  ];
+  let zeilen = 0, kommentar = 0;
+  for (const f of dateien) {
+    for (const z of fs.readFileSync(f, 'utf8').split('\n')) {
+      const t = z.trim();
+      if (!t) continue;
+      zeilen++;
+      if (t.startsWith('//') || t.startsWith('*') || t.startsWith('/*')) kommentar++;
+    }
+  }
+  assert.ok(zeilen > 20000, `nur ${zeilen} Zeilen gefunden — greift die Suche noch?`);
+  const anteil = Math.round(1000 * kommentar / zeilen) / 10;
+  assert.ok(anteil <= SCHRANKE, `${anteil} % Kommentarzeilen in den Tests, erlaubt sind ${SCHRANKE} %`);
+  if (anteil < SCHRANKE - 0.5) console.log(`  ℹ Kommentaranteil Tests: ${anteil} % (Schranke ${SCHRANKE}) — Schranke nachziehen`);
 });
