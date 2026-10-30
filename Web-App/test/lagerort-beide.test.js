@@ -22,7 +22,7 @@ const web  = rel => lies(path.join(WEB, rel));
 
 // Jeder Pfad in den Android-Baum AUSGESCHRIEBEN — test/baumbruecken.test.js
 // löst diese Brücken statisch auf und kann eine Variable nicht sehen.
-const KT_API    = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'data', 'api', 'BrickApiService.kt'));
+const KT_API    = require('../scripts/kotlin-vertrag.js').apiQuelltext(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'data', 'api'));
 const KT_SCOPE  = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'data', 'ScopeFilter.kt'));
 // Seit dem Schnitt des MainViewModels (28.10.2026) liegt der Lagerortfilter
 // in der Grundlage der Bereichs-ViewModels, die Verwaltung im

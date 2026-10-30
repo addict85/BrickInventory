@@ -179,10 +179,6 @@ class SetsRepository @Inject constructor(
     /** Laufenden CSV-Import abbrechen — siehe SetsApi.cancelCsvImport. */
     suspend fun cancelCsvImport(): Result<GenericAdminResponse> = safeCall { api.cancelCsvImport() }
 
-    suspend fun triggerCsvSync(): Result<GenericAdminResponse> = safeCall { api.triggerCsvSync() }
-
-    suspend fun reimportInstructions(): Result<GenericAdminResponse> = safeCall { api.reimportInstructions() }
-
     /** Download finished PDF — returns bytes */
     suspend fun downloadPdf(jobId: String): Result<ByteArray> {
         return try {
@@ -253,5 +249,4 @@ class SetsRepository @Inject constructor(
 
     suspend fun deleteAnleitung(setNumber: String, instrId: Int): Result<GenericResponse> =
         safeCall { api.deleteAnleitung(setNumber, instrId) }
-
 }

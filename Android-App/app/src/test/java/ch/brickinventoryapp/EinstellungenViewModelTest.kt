@@ -1,7 +1,8 @@
 package ch.brickinventoryapp
 
 import android.net.Uri
-import ch.brickinventoryapp.data.repository.AdminRepository
+import ch.brickinventoryapp.data.repository.KontoRepository
+import ch.brickinventoryapp.data.repository.VerwaltungRepository
 import ch.brickinventoryapp.data.repository.HaushaltRepository
 import ch.brickinventoryapp.data.repository.SetsRepository
 import ch.brickinventoryapp.data.repository.TeileRepository
@@ -51,7 +52,7 @@ class EinstellungenViewModelTest {
 
     private val keinLeser = object : DateiLeser { override suspend fun lies(uri: Uri): Pair<String?, ByteArray>? = null }
 
-    private fun vm() = t.merke(EinstellungenViewModel(t.dienste, AdminRepository(t.api, t.cache),
+    private fun vm() = t.merke(EinstellungenViewModel(t.dienste, KontoRepository(t.api, t.cache), VerwaltungRepository(t.api, t.cache),
         SetsRepository(t.api, t.cache), TeileRepository(t.api, t.cache), keinLeser))
 
     @Before

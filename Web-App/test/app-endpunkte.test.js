@@ -31,8 +31,10 @@ const path = require('node:path');
 
 const { routerEinhaengungen } = require('./helpers/sources');
 const ROOT = path.join(__dirname, '..');
+// Je Bereich eine Datei (data/api/); geprüft wird der ganze Ordner.
 const SERVICE = path.join(ROOT, '..', 'Android-App', 'app', 'src', 'main',
-  'java', 'ch', 'brickinventoryapp', 'data', 'api', 'BrickApiService.kt');
+  'java', 'ch', 'brickinventoryapp', 'data', 'api');
+const { apiQuelltext } = require('../scripts/kotlin-vertrag.js');
 
 function ohneKommentare(src) {
   return src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
@@ -99,10 +101,10 @@ function serverRouten() {
 test('jede Adresse der Android-App existiert auf dem Server', () => {
   // Kein Überspringen, wenn der Baum fehlt: Ein stiller Durchlauf wäre genau
   // die Prüfung, die nie etwas findet.
-  assert.ok(fs.existsSync(SERVICE), `BrickApiService.kt nicht gefunden unter ${SERVICE}`);
+  assert.ok(fs.existsSync(SERVICE), `App-Schnittstelle nicht gefunden unter ${SERVICE}`);
 
   const server = serverRouten();
-  const kt = ohneKommentare(fs.readFileSync(SERVICE, 'utf8'));
+  const kt = ohneKommentare(apiQuelltext(SERVICE));
   const aufrufe = [...kt.matchAll(/@(GET|POST|PUT|DELETE|PATCH)\(\s*"([^"]+)"\s*\)/g)]
     .map(m => ({ roh: `${m[1]} ${m[2]}`, norm: `${m[1]} ${form(m[2])}` }));
 

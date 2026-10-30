@@ -5,7 +5,7 @@ import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.R
 import ch.brickinventoryapp.alarm.Alarmeingabe
 import ch.brickinventoryapp.data.ScopeFilter
-import ch.brickinventoryapp.data.repository.AdminRepository
+import ch.brickinventoryapp.data.repository.KatalogRepository
 import ch.brickinventoryapp.data.repository.FinanzenRepository
 import ch.brickinventoryapp.data.repository.MERKLISTE_DEFAULT_SORT
 import ch.brickinventoryapp.data.repository.Result
@@ -35,7 +35,7 @@ import javax.inject.Inject
 class MerklisteViewModel @Inject constructor(
     dienste: AppDienste,
     private val sets: SetsRepository,
-    private val admin: AdminRepository,
+    private val katalogRepo: KatalogRepository,
     private val finanzen: FinanzenRepository,
     private val gemerkt: SavedStateHandle,
 ) : BereichsViewModel(dienste) {
@@ -193,7 +193,7 @@ class MerklisteViewModel @Inject constructor(
             _merkpostenDetailState.value = MerkpostenDetailUiState(setNumber = setNumber, laedt = true)
             if (_merklisteState.value.merkposten.isEmpty()) ladeMerkliste()
             loadPreisalarme(setNumber)
-            val katalog = (admin.getCatalogSetDetail(setNumber) as? Result.Success)
+            val katalog = (katalogRepo.getCatalogSetDetail(setNumber) as? Result.Success)
                 ?.data?.takeIf { it.success }?.set
             _merkpostenDetailState.update { it.copy(katalog = katalog) }
             val preise = (sets.getMerkpostenPreise(setNumber) as? Result.Success)

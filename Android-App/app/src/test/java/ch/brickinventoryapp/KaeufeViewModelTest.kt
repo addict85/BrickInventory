@@ -3,6 +3,7 @@ package ch.brickinventoryapp
 import ch.brickinventoryapp.data.repository.FinanzenRepository
 import ch.brickinventoryapp.data.repository.HaushaltRepository
 import ch.brickinventoryapp.data.repository.TeileRepository
+import ch.brickinventoryapp.data.repository.FigurenRepository
 import ch.brickinventoryapp.ui.Aenderung
 import ch.brickinventoryapp.ui.viewmodel.KaeufeViewModel
 import kotlinx.coroutines.Dispatchers
@@ -48,7 +49,7 @@ class KaeufeViewModelTest {
     private lateinit var t: TestDienste
 
     private fun vm() = t.merke(KaeufeViewModel(t.dienste, HaushaltRepository(t.api, t.cache),
-        FinanzenRepository(t.api, t.cache), TeileRepository(t.api, t.cache)))
+        FinanzenRepository(t.api, t.cache), TeileRepository(t.api, t.cache), FigurenRepository(t.api, t.cache)))
 
     @Before
     fun auf() {

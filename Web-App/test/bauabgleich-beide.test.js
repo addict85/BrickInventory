@@ -40,7 +40,7 @@ const web  = rel => lies(path.join(WEB, rel));
 // diese Datei prompt, als sie einen solchen Helfer hatte — und zu Recht:
 // Genau die unauflösbaren Brücken sind die, die beim nächsten Umbenennen
 // lautlos ins Leere zeigen.
-const KT_API   = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'data', 'api', 'BrickApiService.kt'));
+const KT_API   = ohneKommentare(require('../scripts/kotlin-vertrag.js').apiQuelltext(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'data', 'api')));
 const KT_FEAT  = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'ui', 'Teileliste.kt'));
 const KT_SCREEN= lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'PartsListScreen.kt'));
 const XML_EN   = lies(path.join(APP, 'res', 'values', 'strings.xml'));

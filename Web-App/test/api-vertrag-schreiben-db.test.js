@@ -158,7 +158,7 @@ test('die Schreibantworten passen zu den Kotlin-Modellen', { concurrency: 1, tim
   const basis = `http://127.0.0.1:${srv.address().port}`;
 
   const modelle = kotlinModelle(APP);
-  const routen = schreibRouten(path.join(APP, 'data', 'api', 'BrickApiService.kt'));
+  const routen = schreibRouten(path.join(APP, 'data', 'api'));
   const typJe = new Map(routen.map(r => [`${r.methode} ${r.pfad}`, r.typ]));
 
   /** Werte für die Platzhalter im Pfad; Schritte tragen neue nach. */

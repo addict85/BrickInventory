@@ -5,7 +5,7 @@ import ch.brickinventoryapp.R
 import ch.brickinventoryapp.data.SetAnleger
 import ch.brickinventoryapp.data.SetAnlegenSchritt
 import ch.brickinventoryapp.data.model.AddSetResponse
-import ch.brickinventoryapp.data.repository.AdminRepository
+import ch.brickinventoryapp.data.repository.KatalogRepository
 import ch.brickinventoryapp.data.repository.Fehlerart
 import ch.brickinventoryapp.data.repository.Result
 import ch.brickinventoryapp.data.repository.SetsRepository
@@ -35,7 +35,7 @@ import javax.inject.Inject
 class ErfassungViewModel @Inject constructor(
     dienste: AppDienste,
     private val sets: SetsRepository,
-    private val admin: AdminRepository,
+    private val katalog: KatalogRepository,
     private val anleger: SetAnleger,
 ) : BereichsViewModel(dienste) {
 
@@ -114,7 +114,7 @@ class ErfassungViewModel @Inject constructor(
                 erfassung.zeige(setNum, Pruefphase.BESTAND)
                 val ausListe = _barcodeState.value.source in setOf("partslist", "wanted")
                 if (!ausListe && zeigeVorhandenes(setNum)) return@launch
-                when (val r = admin.getCatalogSetDetail(setNum)) {
+                when (val r = katalog.getCatalogSetDetail(setNum)) {
                     is Result.Success -> {
                         val d = r.data.set
                         if (d == null) {

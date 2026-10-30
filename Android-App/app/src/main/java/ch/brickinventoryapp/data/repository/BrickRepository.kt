@@ -111,7 +111,7 @@ data class PdfJobStatus(val status: String, val etaSeconds: Int?)
 
 /**
  * Die Anlaufstelle zur Datenschicht, nur noch ein Haltepunkt: Die Funktionen
- * liegen in fünf Klassen nach Sachgebieten, und der Zugriff nennt das Gebiet mit
+ * liegen in Klassen nach Sachgebieten, und der Zugriff nennt das Gebiet mit
  * (`repo.sets.getSets(...)`, `repo.teile.getParts(...)`,
  * `repo.finanzen.getPnl(...)`). Keine Weiterreich-Fassade, weil die Klasse sonst
  * ihre 78 Mitglieder behielte.
@@ -121,8 +121,11 @@ class BrickRepository @Inject constructor(
     val sets: SetsRepository,
     val teile: TeileRepository,
     val finanzen: FinanzenRepository,
+    val figuren: FigurenRepository,
     val haushalt: HaushaltRepository,
-    val admin: AdminRepository,
+    val konto: KontoRepository,
+    val verwaltung: VerwaltungRepository,
+    val katalog: KatalogRepository,
     val gutscheine: GutscheineRepository,
     private val cache: ResponseCache,
 ) {

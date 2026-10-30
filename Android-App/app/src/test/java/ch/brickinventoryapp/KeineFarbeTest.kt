@@ -7,6 +7,7 @@ import ch.brickinventoryapp.data.model.KEINE_FARBE
 import ch.brickinventoryapp.data.model.Part
 import ch.brickinventoryapp.data.model.PartValuationItem
 import ch.brickinventoryapp.data.repository.TeileRepository
+import ch.brickinventoryapp.data.repository.FigurenRepository
 import ch.brickinventoryapp.ui.ManualItemDetailUiState
 import ch.brickinventoryapp.ui.Screen
 import ch.brickinventoryapp.ui.farbName
@@ -57,7 +58,7 @@ class KeineFarbeTest {
         pfade.server.shutdown()
     }
 
-    private fun vm() = t.merke(TeileViewModel(t.dienste, TeileRepository(t.api, t.cache), SavedStateHandle()))
+    private fun vm() = t.merke(TeileViewModel(t.dienste, TeileRepository(t.api, t.cache), FigurenRepository(t.api, t.cache), SavedStateHandle()))
 
     private fun koerperZu(methodeUndPfad: String): String {
         val i = pfade.anfragen.indexOfFirst { it == methodeUndPfad }

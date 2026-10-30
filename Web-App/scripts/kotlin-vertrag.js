@@ -1,7 +1,7 @@
 'use strict';
 /**
  * Der Vertrag mit der Android-App, gelesen aus ihrem eigenen Quelltext:
- * die @Serializable-Datenklassen und die GET-Routen aus BrickApiService.kt.
+ * die @Serializable-Datenklassen und die Routen aus data/api/ (je Bereich eine Datei).
  * Handgeschriebene Schemas liefen den Modellen hinterher; diese hier können
  * es nicht, weil sie aus ihnen entstehen.
  */
@@ -30,6 +30,16 @@ function kotlinDateien(dir) {
     else if (e.name.endsWith('.kt')) aus.push(p);
   }
   return aus;
+}
+
+/**
+ * Der Quelltext der App-Schnittstelle: eine Datei oder alle .kt eines Ordners —
+ * die App führt je Bereich eine Datei (data/api/), geprüft wird die Summe.
+ * @param {string} pfad @returns {string}
+ */
+function apiQuelltext(pfad) {
+  if (!fs.statSync(pfad).isDirectory()) return fs.readFileSync(pfad, 'utf8');
+  return kotlinDateien(pfad).sort().map(d => fs.readFileSync(d, 'utf8')).join('\n');
 }
 
 /** Kommentare und Zeichenketten so leeren, dass Positionen gleich bleiben. @param {string} src */
@@ -128,8 +138,8 @@ function kotlinModelle(wurzel) {
  * @returns {{ pfad: string, typ: string | null, anfrage: { name: string, pflicht: boolean }[] }[]}
  */
 function apiRouten(serviceDatei) {
-  const src = entschaerfe(fs.readFileSync(serviceDatei, 'utf8'));
-  const roh = fs.readFileSync(serviceDatei, 'utf8');
+  const roh = apiQuelltext(serviceDatei);
+  const src = entschaerfe(roh);
   /** @type {{ pfad: string, typ: string | null, anfrage: { name: string, pflicht: boolean }[] }[]} */
   const aus = [];
   for (const m of roh.matchAll(/@GET\("([^"]+)"\)/g)) {
@@ -153,8 +163,8 @@ function apiRouten(serviceDatei) {
  * @returns {{ methode: string, pfad: string, typ: string | null }[]}
  */
 function schreibRouten(serviceDatei) {
-  const src = entschaerfe(fs.readFileSync(serviceDatei, 'utf8'));
-  const roh = fs.readFileSync(serviceDatei, 'utf8');
+  const roh = apiQuelltext(serviceDatei);
+  const src = entschaerfe(roh);
   /** @type {{ methode: string, pfad: string, typ: string | null }[]} */
   const aus = [];
   for (const m of roh.matchAll(/@(POST|PUT|DELETE|PATCH)\("([^"]+)"\)/g)) {
@@ -233,4 +243,4 @@ const art = (w) => Array.isArray(w) ? 'Liste' : typeof w;
 /** @param {KTyp} t */
 const beschreibe = (t) => t.art === 'klasse' ? t.name : t.art;
 
-module.exports = { kotlinModelle, apiRouten, schreibRouten, pruefe, typ, FEHLEN_ERLAUBT };
+module.exports = { kotlinModelle, apiRouten, schreibRouten, pruefe, typ, FEHLEN_ERLAUBT, apiQuelltext };

@@ -4,7 +4,8 @@ import android.net.Uri
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.R
 import ch.brickinventoryapp.data.model.CsvArt
-import ch.brickinventoryapp.data.repository.AdminRepository
+import ch.brickinventoryapp.data.repository.KontoRepository
+import ch.brickinventoryapp.data.repository.VerwaltungRepository
 import ch.brickinventoryapp.data.repository.Result
 import ch.brickinventoryapp.data.repository.SetsRepository
 import ch.brickinventoryapp.data.repository.TeileRepository
@@ -36,7 +37,8 @@ internal const val CSV_MAX_BYTES = 15L * 1024 * 1024
 @HiltViewModel
 class EinstellungenViewModel @Inject constructor(
     dienste: AppDienste,
-    private val admin: AdminRepository,
+    private val konto: KontoRepository,
+    private val verwaltung: VerwaltungRepository,
     private val sets: SetsRepository,
     private val teile: TeileRepository,
     private val leser: DateiLeser,
@@ -53,7 +55,7 @@ class EinstellungenViewModel @Inject constructor(
     /** Eine andere Währung oder ein anderer Zustand ändert jeden Preis: alle Bestandsansichten neu. */
     fun saveSettings(currency: String, condition: String) {
         viewModelScope.launch {
-            when (val r = admin.updateSettings(currency, condition)) {
+            when (val r = konto.updateSettings(currency, condition)) {
                 is Result.Success -> {
                     _snackbar.value = text(R.string.vm_settings_saved)
                     dienste.sitzung.aendere { it.copy(currency = currency, priceCondition = condition) }
@@ -67,8 +69,8 @@ class EinstellungenViewModel @Inject constructor(
     /** Danach die Einstellungen neu: Der Server löst die wirksame Bedingung auf. */
     fun saveUserDefaultCondition(condition: String) {
         viewModelScope.launch {
-            when (val r = teile.setUserDefaultCondition(condition)) {
-                is Result.Success -> dienste.sitzung.ladeEinstellungen(admin)
+            when (val r = konto.setUserDefaultCondition(condition)) {
+                is Result.Success -> dienste.sitzung.ladeEinstellungen(konto)
                 is Result.Error -> _snackbar.value = meldungFuerSnackbar(r)?.let { text(R.string.vm_error, it) }
             }
         }
@@ -90,7 +92,7 @@ class EinstellungenViewModel @Inject constructor(
                 return@launch
             }
             val name = leser.name(uri) ?: "import.csv"
-            when (val r = admin.importiereCsv(art, name, bytes)) {
+            when (val r = verwaltung.importiereCsv(art, name, bytes)) {
                 is Result.Success ->
                     if (r.data.success) {
                         _csvHochladenState.value = CsvHochladenUiState(ergebnis = r.data)

@@ -109,12 +109,12 @@ class CatalogScrubberTest {
         // Die App kennt immer nur die geladenen Seiten. Welches Jahr an einer
         // Stelle liegt, weiss nur die Datenbank — und beide Oberflaechen sollen
         // dieselbe Antwort bekommen.
-        assert(f.contains("repo.admin.getCatalogYearVerteilung(")) {
+        assert(f.contains("repo.katalog.getCatalogYearVerteilung(")) {
             "Die App schaetzt die Jahreslage selbst — genau daran stand in der " +
                 "Webapp „1965\", waehrend Sets von 1999 erschienen"
         }
         // Mit denselben Filtern wie die Liste, sonst zeigt das Etikett daneben.
-        val i = f.indexOf("repo.admin.getCatalogYearVerteilung(")
+        val i = f.indexOf("repo.katalog.getCatalogYearVerteilung(")
         val aufruf = f.substring(i, minOf(i + 300, f.length))
         for (teil in listOf("q =", "themeId =", "sort =")) {
             assert(aufruf.contains(teil)) {

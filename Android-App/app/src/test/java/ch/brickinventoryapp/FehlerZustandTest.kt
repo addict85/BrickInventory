@@ -4,12 +4,13 @@ import android.net.Uri
 import androidx.lifecycle.SavedStateHandle
 import ch.brickinventoryapp.ui.viewmodel.DateiLeser
 import ch.brickinventoryapp.data.cache.ResponseCache
-import ch.brickinventoryapp.data.repository.AdminRepository
+import ch.brickinventoryapp.data.repository.KatalogRepository
 import ch.brickinventoryapp.data.repository.FinanzenRepository
 import ch.brickinventoryapp.data.repository.GutscheineRepository
 import ch.brickinventoryapp.data.repository.HaushaltRepository
 import ch.brickinventoryapp.data.repository.SetsRepository
 import ch.brickinventoryapp.data.repository.TeileRepository
+import ch.brickinventoryapp.data.repository.FigurenRepository
 import ch.brickinventoryapp.ui.Ladeanzeige
 import ch.brickinventoryapp.ui.ladeanzeige
 import ch.brickinventoryapp.ui.viewmodel.FinanzViewModel
@@ -76,7 +77,7 @@ class FehlerZustandTest {
 
     @Test
     fun `die Merkliste meldet den Fehler und vergisst ihn beim Neuladen`() {
-        val vm = t.merke(MerklisteViewModel(t.dienste, SetsRepository(t.api, t.cache), AdminRepository(t.api, t.cache),
+        val vm = t.merke(MerklisteViewModel(t.dienste, SetsRepository(t.api, t.cache), KatalogRepository(t.api, t.cache),
             FinanzenRepository(t.api, t.cache), SavedStateHandle()))
         vm.ladeMerkliste()
         TestApi.warteBis("Fehler") { vm.merklisteState.value.fehler != null }
@@ -102,7 +103,7 @@ class FehlerZustandTest {
 
     @Test
     fun `Teile und Figuren melden den Fehler je fuer sich`() {
-        val vm = t.merke(TeileViewModel(t.dienste, TeileRepository(t.api, t.cache), SavedStateHandle()))
+        val vm = t.merke(TeileViewModel(t.dienste, TeileRepository(t.api, t.cache), FigurenRepository(t.api, t.cache), SavedStateHandle()))
         vm.loadParts()
         TestApi.warteBis("Teilefehler") { vm.partsState.value.partsFehler != null }
         vm.loadMinifigs()

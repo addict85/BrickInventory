@@ -156,7 +156,7 @@ class AppViewModel @Inject constructor(
                     sitzung.aendere { it.copy(serverUrl = url, isLoggedIn = token.isNotBlank(), authToken = token) }
                     if (token.isNotBlank() && url.isNotBlank()) {
                         launch {
-                            val me = repo.admin.getMe()
+                            val me = repo.konto.getMe()
                             if (me is Result.Success) sitzung.aendere { it.copy(isAdmin = me.data.user?.isAdmin == true) }
                         }
                         nachAnmeldung()
@@ -254,7 +254,7 @@ class AppViewModel @Inject constructor(
 
     /** Einstellungen und Design des Kontos; das Design kommt von /settings/theme. */
     fun loadSettings() {
-        viewModelScope.launch { sitzung.ladeEinstellungen(repo.admin) }
+        viewModelScope.launch { sitzung.ladeEinstellungen(repo.konto) }
         loadAppTheme()
     }
 
@@ -265,7 +265,7 @@ class AppViewModel @Inject constructor(
     private fun loadAppTheme() {
         viewModelScope.launch {
             if (prefs.serverUrlJetzt().isBlank()) return@launch
-            val r = repo.admin.getAppTheme()
+            val r = repo.konto.getAppTheme()
             if (r is Result.Success && r.data.success) sitzung.aendere { it.copy(appTheme = r.data.theme) }
         }
     }
@@ -279,7 +279,7 @@ class AppViewModel @Inject constructor(
         viewModelScope.launch {
             if (prefs.serverUrlJetzt().isBlank()) return@launch
             while (true) {
-                val r = repo.admin.getStartupStatus()
+                val r = repo.verwaltung.getStartupStatus()
                 if (r !is Result.Success || r.data.ready) {
                     sitzung.aendere { it.copy(startupStatus = null) }
                     return@launch

@@ -76,10 +76,6 @@ class TeileRepository @Inject constructor(
                                storage: String? = null): Result<ManualPartsResponse> =
         safeCall { api.getManualParts(accounts, search, storage) }
 
-    suspend fun getManualMinifigs(accounts: String? = null,
-                                  search: String? = null): Result<ManualFigsResponse> =
-        safeCall { api.getManualMinifigs(accounts, search) }
-
     /**
      * „Kann ich das bauen?“ — welche Teile einer Liste schon da sind. Ohne
      * Zwischenspeicher wie getSetsMitTeil(): Die Antwort hängt an einer frei
@@ -94,10 +90,6 @@ class TeileRepository @Inject constructor(
     suspend fun setPartStorage(partNumber: String, colorId: Int, ort: String):
         Result<LagerortResponse> =
         safeCall { api.setPartStorage(partNumber, colorId, LagerortRequest(ort)) }
-
-    /** Dasselbe fuer eine Minifigur — sie hat keine Farbe (Migration 0024). */
-    suspend fun setFigStorage(figNumber: String, ort: String): Result<LagerortResponse> =
-        safeCall { api.setFigStorage(figNumber, LagerortRequest(ort)) }
 
     /**
      * Welche Lagerorte belegt sind. Ohne Zwischenspeicher: Die Liste ist klein und
@@ -140,10 +132,6 @@ class TeileRepository @Inject constructor(
                                accounts: String? = null): Result<VerwendendeSetsResponse> =
         safeCall { api.getSetsMitTeil(partNumber, colorId, accounts) }
 
-    suspend fun getSetsMitFigur(figNumber: String,
-                                accounts: String? = null): Result<VerwendendeSetsResponse> =
-        safeCall { api.getSetsMitFigur(figNumber, accounts) }
-
     suspend fun getBrickColors(): Result<BrickColorsResponse> =
         safeCall { api.getBrickColors() }
 
@@ -178,43 +166,4 @@ class TeileRepository @Inject constructor(
                              owner: Int? = null): Result<TeilFarbeResponse> =
         safeCall { api.setPartColor(partNumber, colorId, TeilFarbeRequest(neueFarbe,
             farbName.takeUnless { neueFarbe == KEINE_FARBE }, farbHex.takeUnless { neueFarbe == KEINE_FARBE }), owner) }
-
-    suspend fun addMinifig(figNumber: String, blFigNumber: String? = null, quantity: Int = 1,
-                           unitPrice: Double? = null, condition: String? = null,
-                           ownerUserId: Int? = null,
-                           storage: String? = null): Result<AddMinifigResponse> =
-        safeCall { api.addMinifig(AddMinifigRequest(figNumber, blFigNumber, quantity, unitPrice,
-                                                    condition, ownerUserId, storage)) }
-
-    /** @param owner Besitzer der Karte; null = eigenes Konto. */
-    suspend fun updateMinifig(figNumber: String, quantity: Int, unitPrice: Double?, blFigNumber: String? = null, condition: String? = null, owner: Int? = null): Result<GenericResponse> =
-        safeCall { api.updateMinifig(figNumber, UpdateManualItemRequest(quantity, unitPrice, blFigNumber, condition), owner) }
-
-    /** @param owner Besitzer der Karte; null = eigenes Konto. */
-    suspend fun deleteMinifig(figNumber: String, owner: Int? = null): Result<GenericResponse> =
-        safeCall { api.deleteMinifig(figNumber, owner) }
-
-    /**
-     * Set-Figuren der Übersicht; Suche beim Server wie im Web, weil er vor der
-     * Gruppierung über jede fig_name-Zeile sucht. Gecacht wird nur die ungefilterte
-     * Sicht, sonst wäre ein Suchergebnis nach dem Neustart die ganze Sammlung.
-     */
-    suspend fun getMinifigs(accounts: String? = null, search: String? = null): Result<MinifigsResponse> =
-        if (accounts == null && search.isNullOrBlank())
-            cached("minifigs", MinifigsResponse.serializer()) {
-                safeCall { api.getMinifigs(source = "set") }
-            }
-        else safeCall { api.getMinifigs(source = "set", accounts = accounts,
-                                        search = search?.ifBlank { null }) }
-
-    suspend fun getMinifigStats(accounts: String? = null): Result<ch.brickinventoryapp.data.model.MinifigStatsResponse> =
-        safeCall { api.getMinifigStats(accounts) }
-
-    suspend fun getDefaultCondition(): Result<DefaultConditionResponse> = safeCall { api.getDefaultCondition() }
-
-    // Admin-level: saves global default (Monitoring)
-    suspend fun setDefaultCondition(condition: String): Result<GenericAdminResponse> = safeCall { api.setDefaultCondition(mapOf("condition" to condition)) }
-
-    // User-level: saves per-user default (empty string = revert to global)
-    suspend fun setUserDefaultCondition(condition: String): Result<GenericAdminResponse> = safeCall { api.setUserDefaultCondition(mapOf("condition" to condition)) }
 }

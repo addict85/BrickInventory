@@ -78,7 +78,7 @@ test('1. die Webapp hat alle vier Filter', () => {
 test('2. die App hat dieselben vier', () => {
   // Der Weg zum Server: vier Anfrageparameter, dieselben Namen wie in der
   // Webapp und am Server.
-  const api = app('data/api/BrickApiService.kt');
+  const api = ohneKommentare(require('../scripts/kotlin-vertrag.js').apiQuelltext(path.join(APP, 'data/api')));
   const abschnitt = api.slice(api.indexOf('suspend fun getMerkliste('));
   for (const p of ['search', 'condition', 'sort', 'accounts']) {
     assert.match(abschnitt.slice(0, 600), new RegExp(`@Query\\("${p}"\\)`),

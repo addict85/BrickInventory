@@ -8,6 +8,7 @@ import ch.brickinventoryapp.data.ScopeFilter
 import ch.brickinventoryapp.data.model.KEINE_FARBE
 import ch.brickinventoryapp.data.repository.Result
 import ch.brickinventoryapp.data.repository.TeileRepository
+import ch.brickinventoryapp.data.repository.FigurenRepository
 import ch.brickinventoryapp.ui.Aenderung
 import ch.brickinventoryapp.ui.PartsUiState
 import ch.brickinventoryapp.ui.SetItemUiState
@@ -37,6 +38,7 @@ import javax.inject.Inject
 class TeileViewModel @Inject constructor(
     dienste: AppDienste,
     private val repo: TeileRepository,
+    private val figuren: FigurenRepository,
     private val gemerkt: SavedStateHandle,
 ) : BereichsViewModel(dienste) {
 
@@ -56,9 +58,9 @@ class TeileViewModel @Inject constructor(
             override suspend fun filterFarben() = repo.getPartsFilterColors(teileSicht)
             override suspend fun kategorien() = repo.getPartsCategories(teileSicht)
             override suspend fun alleFarben() = repo.getBrickColors()
-            override suspend fun figurKennzahlen() = repo.getMinifigStats(figurenSicht)
-            override suspend fun figuren(suche: String?) = repo.getMinifigs(figurenSicht, suche)
-            override suspend fun manuelleFiguren(suche: String?) = repo.getManualMinifigs(figurenSicht, suche)
+            override suspend fun figurKennzahlen() = figuren.getMinifigStats(figurenSicht)
+            override suspend fun figuren(suche: String?) = figuren.getMinifigs(figurenSicht, suche)
+            override suspend fun manuelleFiguren(suche: String?) = figuren.getManualMinifigs(figurenSicht, suche)
         },
         meldeFehler = { _snackbar.value = meldungFuerSnackbar(it) },
         vergissScroll = { dienste.scrollMemory.vergiss("parts") },
@@ -142,7 +144,7 @@ class TeileViewModel @Inject constructor(
                    unitPrice: Double? = null, condition: String? = null, ownerUserId: Int? = null,
                    storage: String? = null) {
         viewModelScope.launch {
-            when (val r = repo.addMinifig(figNumber.trim(), blFigNumber, quantity, unitPrice,
+            when (val r = figuren.addMinifig(figNumber.trim(), blFigNumber, quantity, unitPrice,
                                           condition, ownerUserId,
                                           storage?.trim()?.takeIf { it.isNotEmpty() })) {
                 is Result.Success ->
@@ -165,7 +167,7 @@ class TeileViewModel @Inject constructor(
     fun updateMinifig(figNumber: String, quantity: Int, unitPrice: Double?, blFigNumber: String? = null,
                       condition: String? = null, owner: Int? = null) =
         aendere(Aenderung.Figuren, text(R.string.vm_saved)) {
-            repo.updateMinifig(figNumber, quantity, unitPrice, blFigNumber, condition, owner).erfolg()
+            figuren.updateMinifig(figNumber, quantity, unitPrice, blFigNumber, condition, owner).erfolg()
         }
 
     fun deletePart(partNumber: String, colorId: Int, owner: Int? = null) =
@@ -175,7 +177,7 @@ class TeileViewModel @Inject constructor(
 
     fun deleteMinifig(figNumber: String, owner: Int? = null) =
         aendere(Aenderung.Figuren, text(R.string.vm_minifig_deleted)) {
-            repo.deleteMinifig(figNumber, owner).erfolg()
+            figuren.deleteMinifig(figNumber, owner).erfolg()
         }
 
     /**
@@ -225,7 +227,7 @@ class TeileViewModel @Inject constructor(
         _setItemState.value = SetItemUiState(art = art, nummer = nummer, colorId = colorId, laedt = true)
         viewModelScope.launch {
             val blick = scopeFor(if (art == "fig") ScopeFilter.View.MINIFIGS else ScopeFilter.View.PARTS)
-            val r = if (art == "fig") repo.getSetsMitFigur(nummer, blick)
+            val r = if (art == "fig") figuren.getSetsMitFigur(nummer, blick)
                     else              repo.getSetsMitTeil(nummer, colorId, blick)
             // Inzwischen ein anderes Teil geöffnet? Dann gehört die Antwort nicht mehr hierher.
             val jetzt = _setItemState.value

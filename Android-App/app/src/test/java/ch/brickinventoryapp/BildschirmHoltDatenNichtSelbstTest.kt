@@ -29,7 +29,7 @@ import java.io.File
  * und sollen ans Repository.
  *
  * Gegenprobe (durchgeführt): einen der entfernten Aufrufe
- * (`vm.repo.admin.getJobs()`) in MonitoringScreen.kt zurückgesetzt →
+ * (`vm.repo.verwaltung.getJobs()`) in MonitoringScreen.kt zurückgesetzt →
  * die erste Zusage wird rot und nennt Datei und Zeile.
  */
 class BildschirmHoltDatenNichtSelbstTest {

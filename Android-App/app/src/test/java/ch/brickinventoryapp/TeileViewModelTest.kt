@@ -3,6 +3,7 @@ package ch.brickinventoryapp
 import androidx.lifecycle.SavedStateHandle
 import ch.brickinventoryapp.data.ScopeFilter
 import ch.brickinventoryapp.data.repository.TeileRepository
+import ch.brickinventoryapp.data.repository.FigurenRepository
 import ch.brickinventoryapp.ui.Aenderung
 import ch.brickinventoryapp.ui.viewmodel.TeileViewModel
 import kotlinx.coroutines.Dispatchers
@@ -47,7 +48,7 @@ class TeileViewModelTest {
     private lateinit var t: TestDienste
 
     private fun vm(gemerkt: SavedStateHandle = SavedStateHandle(), t: TestDienste = this.t) =
-        t.merke(TeileViewModel(t.dienste, TeileRepository(t.api, t.cache), gemerkt))
+        t.merke(TeileViewModel(t.dienste, TeileRepository(t.api, t.cache), FigurenRepository(t.api, t.cache), gemerkt))
 
     @Before
     fun auf() {

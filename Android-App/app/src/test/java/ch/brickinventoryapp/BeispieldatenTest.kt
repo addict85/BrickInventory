@@ -1,11 +1,12 @@
 package ch.brickinventoryapp
 
 import androidx.lifecycle.SavedStateHandle
-import ch.brickinventoryapp.data.repository.AdminRepository
+import ch.brickinventoryapp.data.repository.KatalogRepository
 import ch.brickinventoryapp.data.repository.FinanzenRepository
 import ch.brickinventoryapp.data.repository.HaushaltRepository
 import ch.brickinventoryapp.data.repository.SetsRepository
 import ch.brickinventoryapp.data.repository.TeileRepository
+import ch.brickinventoryapp.data.repository.FigurenRepository
 import ch.brickinventoryapp.ui.viewmodel.DateiLeser
 import ch.brickinventoryapp.ui.viewmodel.FinanzViewModel
 import ch.brickinventoryapp.ui.viewmodel.GalerieViewModel
@@ -110,10 +111,10 @@ object Beispiele {
 
         fun galerie() = t.merke(GalerieViewModel(t.dienste, SetsRepository(t.api, t.cache),
             FinanzenRepository(t.api, t.cache), SavedStateHandle()))
-        fun teile() = t.merke(TeileViewModel(t.dienste, TeileRepository(t.api, t.cache), SavedStateHandle()))
+        fun teile() = t.merke(TeileViewModel(t.dienste, TeileRepository(t.api, t.cache), FigurenRepository(t.api, t.cache), SavedStateHandle()))
         fun finanzen() = t.merke(FinanzViewModel(t.dienste, FinanzenRepository(t.api, t.cache), SavedStateHandle()))
         fun merkliste() = t.merke(MerklisteViewModel(t.dienste, SetsRepository(t.api, t.cache),
-            AdminRepository(t.api, t.cache), FinanzenRepository(t.api, t.cache), SavedStateHandle()))
+            KatalogRepository(t.api, t.cache), FinanzenRepository(t.api, t.cache), SavedStateHandle()))
         fun setDetail() = t.merke(SetDetailViewModel(t.dienste, SetsRepository(t.api, t.cache),
             FinanzenRepository(t.api, t.cache), HaushaltRepository(t.api, t.cache),
             object : DateiLeser { override suspend fun lies(uri: android.net.Uri): Pair<String?, ByteArray>? = null },

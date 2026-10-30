@@ -5,6 +5,7 @@ import ch.brickinventoryapp.data.MeldungsKanal
 import ch.brickinventoryapp.data.repository.FinanzenRepository
 import ch.brickinventoryapp.data.repository.SetsRepository
 import ch.brickinventoryapp.data.repository.TeileRepository
+import ch.brickinventoryapp.data.repository.FigurenRepository
 import ch.brickinventoryapp.ui.viewmodel.GalerieViewModel
 import ch.brickinventoryapp.ui.viewmodel.TeileViewModel
 import kotlinx.coroutines.Dispatchers
@@ -150,7 +151,7 @@ class MeldungsKanalTest {
             galerie.deleteSet("75192-1")
             TestApi.warteBis("Meldung der Galerie") { t.meldungen.meldung.value != null }
             t.meldungen.fluss.value = null
-            val teile = t.merke(TeileViewModel(t.dienste, TeileRepository(t.api, t.cache), SavedStateHandle()))
+            val teile = t.merke(TeileViewModel(t.dienste, TeileRepository(t.api, t.cache), FigurenRepository(t.api, t.cache), SavedStateHandle()))
             teile.setzeTeilFarbe("3001", 5, 11)
             TestApi.warteBis("Meldung der Teile") { t.meldungen.meldung.value != null }
         } finally {

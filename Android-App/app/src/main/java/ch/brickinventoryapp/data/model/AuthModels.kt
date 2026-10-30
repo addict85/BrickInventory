@@ -11,7 +11,7 @@ import kotlinx.serialization.Serializable
 /**
  * Anmeldung mit Zugangsdaten. `neverExpires`: Über https bekommt die App einen
  * Token ohne Ablaufdatum, weil er ihr einziger Ausweis ist; ungenutzt verfällt er
- * trotzdem (TOKEN_IDLE_DAYS). Über http nie (AdminRepository.login).
+ * trotzdem (TOKEN_IDLE_DAYS). Über http nie (KontoRepository.login).
  */
 @Serializable
 data class LoginRequest(

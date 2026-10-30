@@ -2,6 +2,7 @@ package ch.brickinventoryapp
 
 import androidx.lifecycle.SavedStateHandle
 import ch.brickinventoryapp.data.repository.TeileRepository
+import ch.brickinventoryapp.data.repository.FigurenRepository
 import ch.brickinventoryapp.ui.viewmodel.TeileViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -71,7 +72,7 @@ class TeilFarbeAendernTest {
         pfade.server.shutdown()
     }
 
-    private fun vm() = t.merke(TeileViewModel(t.dienste, TeileRepository(t.api, t.cache), SavedStateHandle()))
+    private fun vm() = t.merke(TeileViewModel(t.dienste, TeileRepository(t.api, t.cache), FigurenRepository(t.api, t.cache), SavedStateHandle()))
     private val screen by lazy {
         Quellen.ohneKommentare(Quellen.lies("ui/screens/ManualItemDetailScreen.kt"))
     }

@@ -5,7 +5,7 @@ import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.R
 import ch.brickinventoryapp.data.MeldungsKanal
 import ch.brickinventoryapp.data.model.ProfilAenderung
-import ch.brickinventoryapp.data.repository.AdminRepository
+import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.data.repository.Result
 import ch.brickinventoryapp.ui.DesignWahl
 import ch.brickinventoryapp.ui.GeraeteUiState
@@ -29,7 +29,7 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class KontoViewModel @Inject constructor(
-    private val admin: AdminRepository,
+    private val konto: KontoRepository,
     private val texte: Texte,
     meldungen: MeldungsKanal,
     private val sitzung: Sitzung,
@@ -49,7 +49,7 @@ class KontoViewModel @Inject constructor(
     fun ladeProfil() {
         viewModelScope.launch {
             _kontoState.update { it.copy(laedt = true, fehler = null) }
-            when (val r = admin.getProfil()) {
+            when (val r = konto.getProfil()) {
                 is Result.Success -> _kontoState.update {
                     it.copy(laedt = false, profil = r.data.user,
                             fehler = if (r.data.user == null) r.data.error ?: texte.text(R.string.err_generic) else null)
@@ -72,7 +72,7 @@ class KontoViewModel @Inject constructor(
                 lastName = nachname.trim().ifBlank { null },
                 passwordCurrent = passwort?.ifBlank { null },
             )
-            when (val r = admin.updateProfil(aenderung)) {
+            when (val r = konto.updateProfil(aenderung)) {
                 is Result.Success ->
                     if (r.data.success) {
                         _kontoState.update { it.copy(speichert = false, meldung = texte.text(R.string.konto_saved)) }
@@ -95,7 +95,7 @@ class KontoViewModel @Inject constructor(
     fun aenderePasswort(aktuell: String, neu: String, abmelden: () -> Unit) {
         viewModelScope.launch {
             _kontoState.update { it.copy(speichert = true, fehler = null, meldung = null) }
-            when (val r = admin.changePassword(aktuell, neu)) {
+            when (val r = konto.changePassword(aktuell, neu)) {
                 is Result.Success ->
                     if (r.data.success) {
                         abmelden()
@@ -115,7 +115,7 @@ class KontoViewModel @Inject constructor(
     /** Mit Token liefert /settings/theme das Design DIESES Kontos samt Vorgabe. */
     fun ladeDesign() {
         viewModelScope.launch {
-            val r = admin.getAppTheme()
+            val r = konto.getAppTheme()
             if (r is Result.Success && r.data.success) _kontoState.update { it.copy(design = designWahl(r.data)) }
         }
     }
@@ -126,7 +126,7 @@ class KontoViewModel @Inject constructor(
      */
     fun waehleDesign(eigenes: String) {
         viewModelScope.launch {
-            when (val r = admin.setzeEigenesDesign(eigenes)) {
+            when (val r = konto.setzeEigenesDesign(eigenes)) {
                 is Result.Success ->
                     if (r.data.success) {
                         sitzung.setzeDesign(r.data.theme)
@@ -149,7 +149,7 @@ class KontoViewModel @Inject constructor(
     fun ladeGeraete() {
         viewModelScope.launch {
             _geraeteState.update { it.copy(laedt = true, fehler = null) }
-            when (val r = admin.getTokens()) {
+            when (val r = konto.getTokens()) {
                 is Result.Success ->
                     if (r.data.success) _geraeteState.update { it.copy(laedt = false, geraete = r.data.tokens, fehler = null) }
                     else _geraeteState.update { it.copy(laedt = false, fehler = r.data.error) }
@@ -161,7 +161,7 @@ class KontoViewModel @Inject constructor(
     fun entwerteGeraet(tokenId: String) {
         viewModelScope.launch {
             _geraeteState.update { it.copy(laedt = true, fehler = null) }
-            when (val r = admin.revokeToken(tokenId)) {
+            when (val r = konto.revokeToken(tokenId)) {
                 is Result.Success -> {
                     _snackbar.value = texte.text(R.string.tokens_revoked)
                     ladeGeraete()
@@ -186,7 +186,7 @@ class KontoViewModel @Inject constructor(
             if (andere.isEmpty()) { _snackbar.value = texte.text(R.string.tokens_no_others); return@launch }
             _geraeteState.update { it.copy(laedt = true, fehler = null) }
             var weg = 0
-            for (g in andere) if (admin.revokeToken(g.tokenId) is Result.Success) weg++
+            for (g in andere) if (konto.revokeToken(g.tokenId) is Result.Success) weg++
             _snackbar.value = texte.menge(R.plurals.tokens_revoked_n, weg, weg)
             ladeGeraete()
         }
@@ -194,25 +194,25 @@ class KontoViewModel @Inject constructor(
 
     // ── Zweiter Faktor ───────────────────────────────────────────────────────
 
-    fun ladeZweitenFaktor() = zweiterFaktor({ admin.zweiterFaktorStand() }) { s, d ->
+    fun ladeZweitenFaktor() = zweiterFaktor({ konto.zweiterFaktorStand() }) { s, d ->
         s.copy(aktiv = d.aktiv, codesUebrig = d.codesUebrig)
     }
 
-    fun richteZweitenFaktorEin(passwort: String) = zweiterFaktor({ admin.zweiterFaktorEinrichten(passwort) }) { s, d ->
+    fun richteZweitenFaktorEin(passwort: String) = zweiterFaktor({ konto.zweiterFaktorEinrichten(passwort) }) { s, d ->
         s.copy(geheimnis = d.geheimnis, otpauth = d.otpauth)
     }
 
     fun bestaetigeZweitenFaktor(code: String) =
-        zweiterFaktor({ admin.zweiterFaktorBestaetigen(code.trim()) }, R.string.zf_enabled) { s, d ->
+        zweiterFaktor({ konto.zweiterFaktorBestaetigen(code.trim()) }, R.string.zf_enabled) { s, d ->
         s.copy(aktiv = true, codesUebrig = d.codes.size, geheimnis = null, otpauth = null, codes = d.codes)
     }
 
-    fun erneuereZweiterFaktorCodes(code: String) = zweiterFaktor({ admin.zweiterFaktorNeueCodes(code.trim()) }) { s, d ->
+    fun erneuereZweiterFaktorCodes(code: String) = zweiterFaktor({ konto.zweiterFaktorNeueCodes(code.trim()) }) { s, d ->
         s.copy(codesUebrig = d.codes.size, codes = d.codes)
     }
 
     fun schalteZweitenFaktorAb(passwort: String, code: String) =
-        zweiterFaktor({ admin.zweiterFaktorAbschalten(passwort, code.trim()) }, R.string.zf_disabled) { _, _ ->
+        zweiterFaktor({ konto.zweiterFaktorAbschalten(passwort, code.trim()) }, R.string.zf_disabled) { _, _ ->
             ZweiterFaktorUiState(aktiv = false)
         }
 

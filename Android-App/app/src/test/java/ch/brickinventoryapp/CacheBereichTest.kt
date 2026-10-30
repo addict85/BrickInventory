@@ -2,7 +2,7 @@ package ch.brickinventoryapp
 
 import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.model.CatalogMetaResponse
-import ch.brickinventoryapp.data.repository.AdminRepository
+import ch.brickinventoryapp.data.repository.KatalogRepository
 import ch.brickinventoryapp.data.repository.Result
 import kotlinx.coroutines.test.runTest
 import okhttp3.mockwebserver.MockWebServer
@@ -17,7 +17,7 @@ import java.io.File
 /**
  * Der Antwort-Cache gehört Server und Sitzung: Nach einem Kontowechsel oder auf
  * einem anderen Server erscheinen offline nie die Daten eines anderen Kontos.
- * Fahrzeug ist AdminRepository.getCatalogMeta() mit echtem Testserver und
+ * Fahrzeug ist KatalogRepository.getCatalogMeta() mit echtem Testserver und
  * echter Platte; der Bereich kommt aus einer Variablen statt aus den Prefs.
  *
  * Gegenproben (28.10.2026, gemessen mit kotlinc gegen die Datenschicht):
@@ -43,7 +43,7 @@ class CacheBereichTest {
     /** Ein Bereich je Abfrage aus der Warteschlange, sonst der feste. */
     private val quelle: suspend () -> String? = { if (bereiche.isEmpty()) bereich else bereiche.removeFirst() }
 
-    private fun repo() = AdminRepository(TestApi.fuer(server),
+    private fun repo() = KatalogRepository(TestApi.fuer(server),
         ResponseCache(bereichQuelle = quelle, altlast = { alt }) { ordner })
 
     private fun antwort(jahr: Int) =
@@ -64,12 +64,12 @@ class CacheBereichTest {
         wurzel.deleteRecursively()
     }
 
-    private suspend fun fuellen(r: AdminRepository, jahr: Int) {
+    private suspend fun fuellen(r: KatalogRepository, jahr: Int) {
         server.enqueue(TestApi.antwort(antwort(jahr)))
         assertTrue(r.getCatalogMeta() is Result.Success)
     }
 
-    private suspend fun offlineJahr(r: AdminRepository): Int? {
+    private suspend fun offlineJahr(r: KatalogRepository): Int? {
         runCatching { server.shutdown() }
         return when (val x = r.getCatalogMeta()) {
             is Result.Success -> (x.data as CatalogMetaResponse).yearMin

@@ -1,7 +1,7 @@
 package ch.brickinventoryapp
 
 import ch.brickinventoryapp.data.Anmeldeablage
-import ch.brickinventoryapp.data.repository.AdminRepository
+import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.ui.viewmodel.AnmeldungViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -76,7 +76,7 @@ class AnmeldungViewModelTest {
             ch.brickinventoryapp.data.repository.TeileRepository(t.api, t.cache))
         val dienste = ch.brickinventoryapp.ui.viewmodel.AppDienste(t.sitzung, blickfeld, t.meldungen,
             NummernTexte, t.bestand, t.scrollMemory)
-        return t.merke(AnmeldungViewModel(dienste, AdminRepository(t.api, t.cache), ablage) { netz })
+        return t.merke(AnmeldungViewModel(dienste, KontoRepository(t.api, t.cache), ablage) { netz })
     }
 
     @Before

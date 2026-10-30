@@ -1,12 +1,6 @@
 package ch.brickinventoryapp.di
 
 import ch.brickinventoryapp.data.PreferencesManager
-import ch.brickinventoryapp.data.api.AdminApi
-import ch.brickinventoryapp.data.api.FinanzenApi
-import ch.brickinventoryapp.data.api.GutscheineApi
-import ch.brickinventoryapp.data.api.HaushaltApi
-import ch.brickinventoryapp.data.api.SetsApi
-import ch.brickinventoryapp.data.api.TeileApi
 import ch.brickinventoryapp.util.NetworkPolicy
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import dagger.Module
@@ -282,13 +276,4 @@ object NetzModule {
             .client(client)
             .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
             .build()
-
-    // Je Bereich eine Schnittstelle (data/api/BrickApiService.kt); jedes Repository
-    // bekommt nur seine. Ein Retrofit, ein Client — das Verhalten ist dasselbe.
-    @Provides @Singleton fun provideAdminApi(r: Retrofit): AdminApi = r.create(AdminApi::class.java)
-    @Provides @Singleton fun provideSetsApi(r: Retrofit): SetsApi = r.create(SetsApi::class.java)
-    @Provides @Singleton fun provideTeileApi(r: Retrofit): TeileApi = r.create(TeileApi::class.java)
-    @Provides @Singleton fun provideHaushaltApi(r: Retrofit): HaushaltApi = r.create(HaushaltApi::class.java)
-    @Provides @Singleton fun provideFinanzenApi(r: Retrofit): FinanzenApi = r.create(FinanzenApi::class.java)
-    @Provides @Singleton fun provideGutscheineApi(r: Retrofit): GutscheineApi = r.create(GutscheineApi::class.java)
 }

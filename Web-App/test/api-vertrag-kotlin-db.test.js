@@ -188,7 +188,7 @@ test('die Antworten passen zu den Kotlin-Modellen', { concurrency: 1, timeout: 1
   const basis = `http://127.0.0.1:${srv.address().port}`;
 
   const modelle = kotlinModelle(APP);
-  const routen = apiRouten(path.join(APP, 'data', 'api', 'BrickApiService.kt'));
+  const routen = apiRouten(path.join(APP, 'data', 'api'));
   const werte = { setNumber: SET, partNumber: TEIL, colorId: String(FARBE), figNumber: FIGUR };
 
   const abweichungen = [], leer = [], status = [];

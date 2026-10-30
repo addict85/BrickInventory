@@ -5,7 +5,7 @@ import ch.brickinventoryapp.R
 import ch.brickinventoryapp.data.Anmeldeablage
 import ch.brickinventoryapp.data.Netzkennung
 import ch.brickinventoryapp.data.model.RegisterRequest
-import ch.brickinventoryapp.data.repository.AdminRepository
+import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.data.repository.Result
 import ch.brickinventoryapp.ui.AnmeldeFormular
 import ch.brickinventoryapp.ui.AnmeldeUiState
@@ -28,7 +28,7 @@ import javax.inject.Inject
 @HiltViewModel
 class AnmeldungViewModel @Inject constructor(
     dienste: AppDienste,
-    private val admin: AdminRepository,
+    private val konto: KontoRepository,
     private val ablage: Anmeldeablage,
     private val netzkennung: Netzkennung,
 ) : BereichsViewModel(dienste) {
@@ -71,7 +71,7 @@ class AnmeldungViewModel @Inject constructor(
                 netz?.let { ablage.merkeNetz(NetworkPolicy.netzEintrag(url, it)) }
             }
             _anmeldeState.update { it.copy(netzFrage = false, loginLaeuft = true, loginError = null) }
-            when (val r = admin.login(url, username, password, code?.trim()?.takeIf { it.isNotEmpty() })) {
+            when (val r = konto.login(url, username, password, code?.trim()?.takeIf { it.isNotEmpty() })) {
                 is Result.Success -> when {
                     // Erstes Mal nur das Codefeld zeigen; mit Code den Satz des Servers.
                     r.data.zweiterFaktor -> _anmeldeState.update { it.copy(codeNoetig = true, loginLaeuft = false,
@@ -106,7 +106,7 @@ class AnmeldungViewModel @Inject constructor(
             _anmeldeState.update { it.copy(loginLaeuft = true, loginError = null) }
             if (fingerabdruck != null) pinSchluessel(serverUrl)?.let { ablage.merkePin(it, fingerabdruck) }
             richteEin(serverUrl, klartextBestaetigt, abmelden)
-            when (val r = admin.qrLogin(token)) {
+            when (val r = konto.qrLogin(token)) {
                 is Result.Success ->
                     if (r.data.success && r.data.token != null) {
                         angemeldet(r.data.token, r.data.user?.username ?: "", r.data.user?.isAdmin == true)
@@ -137,7 +137,7 @@ class AnmeldungViewModel @Inject constructor(
     /** Ohne Antwort bleibt der Link verborgen: Ein Knopf ins Leere ist schlechter als keiner. */
     fun pruefeRegistrierungOffen() {
         viewModelScope.launch {
-            when (val r = admin.getRegistrationStatus()) {
+            when (val r = konto.getRegistrationStatus()) {
                 is Result.Success -> _anmeldeState.update { it.copy(registrierungOffen = r.data.enabled) }
                 is Result.Error -> Unit
             }
@@ -162,7 +162,7 @@ class AnmeldungViewModel @Inject constructor(
                 // Die Sprache der Oberfläche steuert Bestätigungs-E-Mail und Kontoeinstellung.
                 language = text(R.string.lang_code),
             )
-            when (val r = admin.register(anfrage)) {
+            when (val r = konto.register(anfrage)) {
                 is Result.Success ->
                     if (r.data.success) {
                         // Ohne Mailversand wartet man sonst auf eine E-Mail, die nie kommt.
@@ -182,7 +182,7 @@ class AnmeldungViewModel @Inject constructor(
     fun passwortVergessen(email: String) {
         viewModelScope.launch {
             _anmeldeState.update { it.copy(laeuft = true, fehler = null, meldung = null) }
-            when (val r = admin.forgotPassword(email.trim())) {
+            when (val r = konto.forgotPassword(email.trim())) {
                 is Result.Success -> _anmeldeState.update {
                     it.copy(laeuft = false, meldung = r.data.message ?: text(R.string.forgot_done))
                 }
