@@ -137,6 +137,12 @@
     <string name="gallery_pieces_suffix"> parts</string>
     <string name="gallery_scan_barcode">Scan barcode</string>
     <string name="offline_stand">Offline – data as of %1$s</string>
+    <string name="offline_verworfen">Not applied: %1$s – %2$s</string>
+    <string name="offline_verworfen_ohne_grund">the server did not accept the change</string>
+    <plurals name="offline_ausgang">
+        <item quantity="one">Saved offline – %1$d change will be sent</item>
+        <item quantity="other">Saved offline – %1$d changes will be sent</item>
+    </plurals>
     <string name="gallery_add_set">Add set</string>
     <string name="gallery_add_set_title">Add set</string>
     <string name="gallery_set_number">Set number</string>

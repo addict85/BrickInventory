@@ -192,7 +192,8 @@ class ErfassungViewModel @Inject constructor(
             when (val r = sets.addSet(setNum, 1, purchasePrice, condition, ownerUserId,
                                       storage?.trim()?.takeIf { it.isNotEmpty() })) {
                 is Result.Success -> {
-                    _snackbar.value = text(
+                    // Offline gespeichert: Den Hinweis gibt der Ausgangsmelder, mit Zahl.
+                    if (!r.gepuffert) _snackbar.value = text(
                         if (r.data.katalogOffen) R.string.vm_set_added_no_catalog else R.string.vm_set_added, setNum)
                     dienste.bestand.melde(Aenderung.Sets)
                 }
@@ -233,7 +234,7 @@ class ErfassungViewModel @Inject constructor(
             val eingabe = setNumber.trim()
             // Nur für die Anzeige auf die Grundvariante; angelegt wird mit der Eingabe.
             val sn = if (eingabe.contains("-")) eingabe else "$eingabe-1"
-            val r = try {
+            val gestreamt = try {
                 erfassung.zeige(sn, Pruefphase.BESTAND)
                 var letzte: Result<AddSetResponse> = Result.Error("", art = Fehlerart.LEERE_ANTWORT)
                 anleger.anlegen(eingabe, quantity, purchasePrice, condition, ownerUserId,
@@ -244,6 +245,7 @@ class ErfassungViewModel @Inject constructor(
                             SetAnlegenSchritt.Bild -> erfassung.zeige(sn, Pruefphase.ANLEGEN_BILD)
                             SetAnlegenSchritt.FastFertig -> erfassung.zeige(sn, Pruefphase.ANLEGEN_ABSCHLUSS)
                             is SetAnlegenSchritt.Fertig -> letzte = Result.Success(schritt.ergebnis)
+                            SetAnlegenSchritt.KeineVerbindung -> letzte = Result.Error("", transient = true, art = Fehlerart.NETZ)
                             is SetAnlegenSchritt.Fehler -> letzte =
                                 if (schritt.meldung.isBlank()) Result.Error("", art = Fehlerart.NETZ)
                                 else Result.Success(AddSetResponse(success = false, error = schritt.meldung))
@@ -253,8 +255,15 @@ class ErfassungViewModel @Inject constructor(
             } finally {
                 erfassung.fertig()
             }
+            // Ohne Verbindung kein Ereignisstrom: dann der gewöhnliche Aufruf, der in
+            // den Ausgang geht, statt das Erfassen scheitern zu lassen.
+            val r = if (gestreamt is Result.Error && gestreamt.transient)
+                sets.addSet(eingabe, quantity, purchasePrice, condition, ownerUserId,
+                            storage?.trim()?.takeIf { it.isNotEmpty() })
+            else gestreamt
             when (r) {
                 is Result.Success -> when {
+                    r.gepuffert -> dienste.bestand.melde(Aenderung.Sets)
                     r.data.success && r.data.action == "exists" ->
                         _barcodeState.update { it.copy(gefundenesSet = r.data.setNumber ?: sn) }
                     r.data.success -> {

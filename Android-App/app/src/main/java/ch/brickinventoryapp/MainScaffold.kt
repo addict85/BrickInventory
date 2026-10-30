@@ -65,6 +65,8 @@ fun MainScaffold(
      * übersetzt.
      */
     onTabAngetippt: (Screen) -> Unit,
+    /** Offline gespeicherte Änderungen, die noch zum Server müssen; 0 blendet die Leiste aus. */
+    offeneAenderungen: Int = 0,
     content: @Composable () -> Unit
 ) {
     var showLogoutMenu by remember { mutableStateOf(false) }
@@ -263,6 +265,7 @@ fun MainScaffold(
                     }
                 }
                 Column(Modifier.weight(1f).fillMaxHeight()) {
+                    ch.brickinventoryapp.ui.components.AusgangLeiste(offeneAenderungen)
                     if (csvImport.running) {
                         CsvImportBanner(
                             done = csvImport.done, total = csvImport.total, current = csvImport.current,
@@ -295,6 +298,7 @@ fun ReiterGeruest(
     val state by vm.state.collectAsStateWithLifecycle()
     val selbstUpdate: UpdateViewModel = aktivitaetsViewModel()
     val updateZustand by selbstUpdate.updateState.collectAsStateWithLifecycle()
+    val offen by vm.offeneAenderungen.collectAsStateWithLifecycle()
     MainScaffold(
         title = titel,
         navController = navController,
@@ -312,6 +316,7 @@ fun ReiterGeruest(
         isAdmin = state.isAdmin,
         // Der stille Start-Test hat ein Ergebnis — hier bekommt es einen Ort.
         updateVerfuegbar = updateZustand.neuereFassung != null,
+        offeneAenderungen = offen,
         content = content
     )
 }

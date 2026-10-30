@@ -64,6 +64,7 @@ class AppViewModel @Inject constructor(
     val scrollMemory: ScrollMemory,
     /** Ein unbekanntes Zertifikat wartet auf Ja oder Nein (ZertifikatDialog). */
     val zertifikatsFrage: ch.brickinventoryapp.util.ZertifikatsFrage,
+    ausgangsmelder: Ausgangsmelder,
 ) : ViewModel() {
 
     // Der Zustand wird mit dem gemerkten Design geboren: appTheme unten nimmt
@@ -76,6 +77,9 @@ class AppViewModel @Inject constructor(
 
     private val _snackbar = meldungen.fluss
     val snackbar = meldungen.meldung
+
+    /** Offline gespeicherte Änderungen, die noch zum Server müssen — für die Leiste im Gerüst. */
+    val offeneAenderungen: StateFlow<Int> = ausgangsmelder.starte(viewModelScope)
     fun clearSnackbar() { _snackbar.value = null }
     fun showSnackbar(msg: String) { _snackbar.value = msg }
 

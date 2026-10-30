@@ -65,7 +65,9 @@ class ApiBereicheTest {
             FinanzenRepository::class to FinanzenApi::class.java, GutscheineRepository::class to GutscheineApi::class.java,
         )
         for ((repo, api) in erwartet) {
-            val typ = repo.java.constructors.single().parameterTypes.first()
+            // Mit Vorgabewert (Offlineablage) erzeugt Kotlin einen zweiten Konstruktor;
+            // der Bereich steht in beiden vorn.
+            val typ = repo.java.constructors.map { it.parameterTypes.first() }.distinct().single()
             assertEquals(repo.simpleName, api, typ)
         }
     }

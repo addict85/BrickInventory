@@ -1,6 +1,7 @@
 package ch.brickinventoryapp.data.repository
 
 import ch.brickinventoryapp.data.cache.ResponseCache
+import ch.brickinventoryapp.data.lokal.Offlineablage
 import ch.brickinventoryapp.data.model.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -20,11 +21,12 @@ import javax.inject.Singleton
  */
 sealed class Result<out T> {
     /**
-     * [stand] ist gesetzt, wenn die Daten aus dem Plattenspeicher kommen
+     * [stand] ist gesetzt, wenn die Daten aus der lokalen Ablage kommen
      * (Millisekunden seit 1970, Zeitpunkt der Ablage) — sonst sähe ein alter Stand aus
-     * wie ein frischer.
+     * wie ein frischer. [gepuffert]: Die Änderung liegt im Ausgang und geht raus,
+     * sobald der Server erreichbar ist; [data] ist dann ein Ersatz, keine Serverantwort.
      */
-    data class Success<T>(val data: T, val stand: Long? = null) : Result<T>() {
+    data class Success<T>(val data: T, val stand: Long? = null, val gepuffert: Boolean = false) : Result<T>() {
         val veraltet: Boolean get() = stand != null
     }
     // unauthorized = true bei HTTP 401: Der Token ist ungültig/abgelaufen. Von
@@ -128,8 +130,16 @@ class BrickRepository @Inject constructor(
     val katalog: KatalogRepository,
     val gutscheine: GutscheineRepository,
     private val cache: ResponseCache,
+    private val ablage: Offlineablage = Offlineablage.fluechtig(),
 ) {
 
-    /** Beim Abmelden aufrufen: Der Cache enthält Daten des angemeldeten Kontos. */
-    suspend fun clearCache() = cache.clear()
+    /**
+     * Beim Abmelden aufrufen: Platte, lokale Listen und Ausgang gehören dem
+     * angemeldeten Konto. Was noch im Ausgang wartet, geht dabei verloren — ein
+     * anderes Konto darf es nicht senden.
+     */
+    suspend fun clearCache() {
+        cache.clear()
+        ablage.leere()
+    }
 }

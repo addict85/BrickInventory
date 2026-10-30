@@ -121,6 +121,12 @@
     <string name="gallery_pieces_suffix"> Teile</string>
     <string name="gallery_scan_barcode">Barcode scannen</string>
     <string name="offline_stand">Offline – Stand von %1$s</string>
+    <string name="offline_verworfen">Nicht übernommen: %1$s – %2$s</string>
+    <string name="offline_verworfen_ohne_grund">der Server hat die Änderung nicht angenommen</string>
+    <plurals name="offline_ausgang">
+        <item quantity="one">Offline gespeichert – %1$d Änderung wird gesendet</item>
+        <item quantity="other">Offline gespeichert – %1$d Änderungen werden gesendet</item>
+    </plurals>
     <string name="gallery_add_set">Set hinzufügen</string>
     <string name="gallery_add_set_title">Set hinzufügen</string>
     <string name="gallery_set_number">Set-Nummer</string>

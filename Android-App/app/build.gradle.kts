@@ -391,6 +391,10 @@ dependencies {
     // Hilt — KSP (kein kapt mehr)
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
+    // Room: lokale Ablage und Ausgang für die Offline-Bearbeitung (data/lokal/room).
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    ksp(libs.androidx.room.compiler)
     implementation(libs.hilt.navigation.compose)
 
     // Network

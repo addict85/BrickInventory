@@ -4,4 +4,6 @@
      einmal anders stünde. -->
 <full-backup-content>
     <exclude domain="file" path="datastore" />
+    <!-- Lokale Ablage und Ausgang gehören zum angemeldeten Konto dieses Geräts. -->
+    <exclude domain="database" path="bestand.db" />
 </full-backup-content>

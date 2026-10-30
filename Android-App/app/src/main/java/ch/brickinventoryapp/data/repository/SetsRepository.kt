@@ -2,6 +2,11 @@ package ch.brickinventoryapp.data.repository
 
 import ch.brickinventoryapp.data.api.SetsApi
 import ch.brickinventoryapp.data.cache.ResponseCache
+import ch.brickinventoryapp.data.lokal.Bearbeitung
+import ch.brickinventoryapp.data.lokal.Faecher
+import ch.brickinventoryapp.data.lokal.Lokal
+import kotlinx.coroutines.flow.Flow
+import ch.brickinventoryapp.data.lokal.Offlineablage
 import ch.brickinventoryapp.data.model.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -23,11 +28,12 @@ import javax.inject.Singleton
 class SetsRepository @Inject constructor(
     api: SetsApi,
     cache: ResponseCache,
-) : RepoBasis<SetsApi>(api, cache) {
+    ablage: Offlineablage = Offlineablage.fluechtig(),
+) : RepoBasis<SetsApi>(api, cache, ablage) {
 
     /**
-     * Galerie-Seite vom Server — gefiltert, sortiert, paginiert. Gecacht wird nur die
-     * rohe erste Seite: Eine gefilterte Antwort unter demselben Schlüssel erschiene
+     * Galerie-Seite vom Server — gefiltert, sortiert, paginiert. Lokal abgelegt wird
+     * nur die ungefilterte Liste (Seite für Seite): Eine gefilterte Antwort erschiene
      * offline als der ganze Bestand.
      */
     suspend fun getSets(
@@ -44,10 +50,12 @@ class SetsRepository @Inject constructor(
         // Galerie zeigte je nach Cache-Zustand mal alles, mal eine Kiste.
         val ungefiltert = accounts == null && search.isNullOrBlank() && theme.isNullOrBlank() &&
             storage.isNullOrBlank() &&
-            (sort == null || sort == GALLERY_DEFAULT_SORT) && page == 1
+            (sort == null || sort == GALLERY_DEFAULT_SORT)
         return if (ungefiltert)
-            cached("sets", SetsResponse.serializer()) {
-                safeCall { api.getSets(null, null, null, sort, 1, pageSize) }
+            abgeglichen(Faecher.SETS, { it.sets },
+                { SetsResponse(success = true, count = it.size, sets = it, total = it.size) },
+                anhaengen = page > 1) {
+                safeCall { api.getSets(null, null, null, sort, page, pageSize) }
             }
         else safeCall { api.getSets(accounts, search?.ifBlank { null }, theme?.ifBlank { null }, sort, page, pageSize, storage?.ifBlank { null }) }
     }
@@ -68,16 +76,22 @@ class SetsRepository @Inject constructor(
 
     suspend fun addSet(setNumber: String, quantity: Int = 1, purchasePrice: Double? = null,
                        condition: String? = null, ownerUserId: Int? = null,
-                       storage: String? = null): Result<AddSetResponse> =
-        safeCall { api.addSet(AddSetRequest(setNumber, quantity, purchasePrice, condition,
-                                            ownerUserId, storage)) }
+                       storage: String? = null): Result<AddSetResponse> {
+        val anfrage = AddSetRequest(setNumber, quantity, purchasePrice, condition, ownerUserId, storage)
+        return schreibe(Bearbeitung.SetErfassen(anfrage),
+            { AddSetResponse(success = true, action = "gepuffert", setNumber = setNumber) }) {
+            safeCall { api.addSet(anfrage) }
+        }
+    }
 
     suspend fun updateQuantity(setNumber: String, quantity: Int, purchasePrice: Double? = null, condition: String? = null): Result<GenericResponse> =
         safeCall { api.updateSetQuantity(setNumber, UpdateQuantityRequest(quantity, null, purchasePrice, condition)) }
 
     /** Menge um [schritt] ändern; der Server rechnet unter Bestandssperre. */
     suspend fun aendereMengeUm(setNumber: String, schritt: Int): Result<GenericResponse> =
-        safeCall { api.updateSetQuantity(setNumber, UpdateQuantityRequest(quantityDelta = schritt)) }
+        schreibe(Bearbeitung.SetMenge(setNumber, schritt), { GenericResponse(success = true) }) {
+            safeCall { api.updateSetQuantity(setNumber, UpdateQuantityRequest(quantityDelta = schritt)) }
+        }
 
     // ── Merkliste ─────────────────────────────────────────────────────────
     //
@@ -85,13 +99,24 @@ class SetsRepository @Inject constructor(
     // man noch nicht hat — dieselbe Sache, andere Tabelle. Ein sechstes
     // Repository fuer vier Aufrufe waere mehr Apparat als Nutzen.
 
+    /** Lokal abgelegt wird nur die ungefilterte Liste — wie bei der Galerie. */
     suspend fun getMerkliste(search: String? = null, condition: String? = null,
                              sort: String? = null, accounts: String? = null): Result<MerklisteResponse> =
-        safeCall { api.getMerkliste(search, condition, sort, accounts) }
+        if (search.isNullOrBlank() && condition.isNullOrBlank() && accounts == null &&
+            (sort == null || sort == MERKLISTE_DEFAULT_SORT))
+            abgeglichen(Faecher.MERKLISTE, { it.merkposten }, { MerklisteResponse(success = true, merkposten = it) }) {
+                safeCall { api.getMerkliste(search, condition, sort, accounts) }
+            }
+        else safeCall { api.getMerkliste(search, condition, sort, accounts) }
 
     suspend fun legeMerkpostenAn(setNumber: String, condition: String,
-                             ownerUserId: Int? = null): Result<MerkpostenAntwort> =
-        safeCall { api.legeMerkpostenAn(MerkpostenRequest(setNumber, condition, ownerUserId)) }
+                             ownerUserId: Int? = null): Result<MerkpostenAntwort> {
+        val anfrage = MerkpostenRequest(setNumber, condition, ownerUserId)
+        return schreibe(Bearbeitung.MerkpostenAnlegen(anfrage), {
+            MerkpostenAntwort(success = true, warNeu = true,
+                merkposten = Merkposten(setNumber = setNumber, condition = condition, userId = ownerUserId ?: 0))
+        }) { safeCall { api.legeMerkpostenAn(anfrage) } }
+    }
 
     suspend fun verschiebeMerkposten(setNumber: String, condition: String,
                                  vonId: Int, zuId: Int): Result<MerkpostenInhaberAntwort> =
@@ -99,7 +124,9 @@ class SetsRepository @Inject constructor(
 
     suspend fun loescheMerkposten(setNumber: String, condition: String,
                               ownerUserId: Int? = null): Result<GenericResponse> =
-        safeCall { api.loescheMerkposten(setNumber, condition, ownerUserId) }
+        schreibe(Bearbeitung.MerkpostenLoeschen(setNumber, condition, ownerUserId), { GenericResponse(success = true) }) {
+            safeCall { api.loescheMerkposten(setNumber, condition, ownerUserId) }
+        }
 
     suspend fun getMerkpostenPreise(setNumber: String): Result<MerkpostenPreiseResponse> =
         safeCall { api.getMerkpostenPreise(setNumber) }
@@ -112,8 +139,12 @@ class SetsRepository @Inject constructor(
                                        MerkpostenUebernahmeRequest(quantity, purchasePrice,
                                                                erfasstAls, ownerUserId, storage)) }
 
+    /** Löschen nur online: Der Papierkorb des Servers entscheidet, was zurückkommt. */
     suspend fun deleteSet(setNumber: String): Result<GenericResponse> =
-        safeCall { api.deleteSet(setNumber) }
+        safeCall { api.deleteSet(setNumber) }.also { if (it is Result.Success) ablage.entferne(Faecher.SETS, setNumber) }
+
+    /** Die lokale Liste der Galerie (ungefiltert); sie ändert sich auch durch offline Bearbeitetes. */
+    fun beobachteSets(): Flow<Lokal<SetItem>> = ablage.beobachte(Faecher.SETS)
 
     suspend fun moveSet(setNumber: String, fromUserId: Int?, toUserId: Int,
                         acquisitionIds: List<Int>? = null): Result<MoveSetResponse> =

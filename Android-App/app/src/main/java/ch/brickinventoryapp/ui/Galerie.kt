@@ -4,6 +4,8 @@ import ch.brickinventoryapp.data.model.SetItem
 import ch.brickinventoryapp.data.model.SetsResponse
 import ch.brickinventoryapp.data.model.StatsResponse
 import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.data.lokal.Lokal
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -33,9 +35,28 @@ internal class Galerie(
     /** Filterwechsel: Die gemerkte Scrollstelle zeigt auf eine andere Liste. */
     private val vergissScroll: () -> Unit,
     private val suchPause: Long = 350,
+    /**
+     * Die lokale Liste (Room). Ohne Filter ist sie die Wahrheit der Anzeige: Was
+     * offline geändert wird, erscheint sofort, ohne auf den Server zu warten.
+     */
+    private val lokal: Flow<Lokal<SetItem>>? = null,
+    /** Gilt gerade keine Einschränkung (Suche, Thema, Sortierung, Konto, Lager)? */
+    private val ungefiltert: (GalleryUiState) -> Boolean = { false },
 ) {
     private val _state = MutableStateFlow(GalleryUiState())
     val state: StateFlow<GalleryUiState> = _state.asStateFlow()
+
+    init {
+        // Während einer Ladung nicht: Deren Antwort setzt die Liste ohnehin, und eine
+        // ältere lokale Liste dazwischen liesse sie kurz zurückspringen.
+        if (lokal != null) scope.launch {
+            lokal.collect { l ->
+                val g = _state.value
+                if (l.stand != null && !g.galleryLoading && ungefiltert(g))
+                    _state.update { it.copy(sets = l.liste) }
+            }
+        }
+    }
 
     // Filter-Generation: Eine späte Antwort eines alten Filters wird verworfen,
     // sonst hinge sie mit gemischtem Inhalt an der neuen Liste.
