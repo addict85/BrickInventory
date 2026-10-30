@@ -740,12 +740,6 @@ jobs:
             testDebugUnitTest assembleRelease bundleRelease lintRelease \
             || echo "::warning::Gradle meldete einen Fehler (Lint oder Test); die Prüfsummen sind trotzdem geschrieben."
           test -s gradle/verification-metadata.xml
-      # Zusätzlich gepackt im Protokoll: Wer die Artefaktablage nicht erreicht
-      # (abgeschottete Entwicklungsumgebung), holt die Datei von dort.
-      - name: Datei ins Protokoll
-        run: |
-          echo "VERIFIKATION-GZ-BASE64 $(gzip -9c gradle/verification-metadata.xml | base64 -w 0)"
-          sha256sum gradle/verification-metadata.xml
       # Auch nach einem roten Test: Gradle schreibt die Datei am Ende jedes
       # Laufs, und die Prüfsummen hängen nicht am Testergebnis.
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
@@ -754,3 +748,27 @@ jobs:
           name: verification-metadata
           path: Android-App/gradle/verification-metadata.xml
           if-no-files-found: error
+
+  # Checkt die erzeugte Datei auf dem Zweig des Laufs ein. Ein eigener Job,
+  # damit nur Code ohne Gradle-Plugins Schreibrecht hat; main bleibt aussen
+  # vor, dort kommt die Datei über den Merge an.
+  pruefsummen-einchecken:
+    needs: pruefsummen
+    if: github.event_name == 'workflow_dispatch' && inputs.pruefsummen && github.ref != 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: verification-metadata
+          path: Android-App/gradle
+      - name: Einchecken
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add Android-App/gradle/verification-metadata.xml
+          if git diff --cached --quiet; then echo "Prüfsummen unverändert."; exit 0; fi
+          git commit -m "Gradle-Prüfsummen erneuert (Lauf $GITHUB_RUN_ID)"
+          git push origin "HEAD:$GITHUB_REF_NAME"
