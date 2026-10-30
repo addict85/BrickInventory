@@ -149,8 +149,8 @@ test('manuelle Teile und Figuren: Liste und Bewertung sagen denselben Zustand',
     // neben dem `condition` je Stück, das etwas anderes meint — genau die
     // Verwechslung, aus der der Fehler oben entstand. Niemand hat es gelesen
     // (nachgesehen in beiden Clients).
-    assert.deepEqual(Object.keys(bewertung).sort(), ['currency', 'kaufpreise_fremde_waehrung', 'parts', 'total_value']);
-    assert.deepEqual(Object.keys(figBewertung).sort(), ['currency', 'figs', 'kaufpreise_fremde_waehrung', 'total_value']);
+    assert.deepEqual(Object.keys(bewertung).sort(), ['currency', 'kaufpreise_fremde_waehrung', 'kaufpreise_umgerechnet', 'parts', 'total_value']);
+    assert.deepEqual(Object.keys(figBewertung).sort(), ['currency', 'figs', 'kaufpreise_fremde_waehrung', 'kaufpreise_umgerechnet', 'total_value']);
   } finally {
     await db.run('DELETE FROM users WHERE username = $1', [NAME]).catch(() => {});
     await db.pool.end().catch(() => {});

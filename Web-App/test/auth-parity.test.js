@@ -379,7 +379,8 @@ test('ungenutzte App-Tokens verfallen, aktive nicht', () => {
   const utils = fs.readFileSync(path.join(ROOT, 'utils', 'auth.ts'), 'utf8');
 
   assert.match(utils, /const TOKEN_IDLE_DAYS/, 'Die Frist gehört an eine benannte Stelle');
-  assert.match(utils, /process\.env\.TOKEN_IDLE_DAYS/,
+  // TOKEN_IDLE_DAYS liest die zentrale Konfiguration (utils/konfig.ts).
+  assert.match(utils, /konfig\(\)\.tokenLeerlaufTage/,
     'Die Frist muss ohne Codeänderung anpassbar sein');
   assert.match(utils, /expires_at IS NULL/,
     'Die Regel gilt NUR für Tokens ohne Ablaufdatum — die anderen deckt die erste Abfrage ab');

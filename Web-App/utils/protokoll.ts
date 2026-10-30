@@ -32,7 +32,7 @@ const MAX_TEXT = 4000;
 const MELDE_ABSTAND_MS = 60_000;
 
 /** Eine Angabe als Text; grosse Objekte gekappt, bevor sie durch Puffer und DB wandern. */
-function alsText(a: unknown): string {
+function logText(a: unknown): string {
   if (typeof a === 'string') return a;
   if (a instanceof Error) return a.stack || a.message;
   try {
@@ -55,7 +55,7 @@ export function zerlege(args: unknown[]): { nachricht: string; kontext?: Record<
   if (teile.length > 1 && istKontext(letztes)) { kontext = letztes; teile.pop(); }
   const fehler = teile.find((t): t is Error => t instanceof Error);
   if (fehler) kontext = { ...kontext, fehler: { name: fehler.name, message: fehler.message, stack: fehler.stack } };
-  const nachricht = teile.map(t => t instanceof Error ? t.message : alsText(t)).join(' ').substring(0, MAX_TEXT);
+  const nachricht = teile.map(t => t instanceof Error ? t.message : logText(t)).join(' ').substring(0, MAX_TEXT);
   return kontext ? { nachricht, kontext } : { nachricht };
 }
 
@@ -138,7 +138,7 @@ export function installiereProtokoll(ausgabe: Ausgabe = PROZESS): () => void {
       (stufe === 'warn' || stufe === 'error' ? Z.ausgabe.err : Z.ausgabe.out)(zeile);
       // app_logs behält das bisherige Textformat; die Protokollansicht liest es so.
       const { nachricht, kontext } = zerlege(args);
-      const text = `[${pidTag}${rid ? '/' + rid : ''}] ${nachricht}${kontext ? ' ' + alsText(kontext) : ''}`;
+      const text = `[${pidTag}${rid ? '/' + rid : ''}] ${nachricht}${kontext ? ' ' + logText(kontext) : ''}`;
       Z.puffer.push({ level: name === 'log' ? 'log' : stufe, message: text.substring(0, MAX_TEXT) });
       // Ohne Pool (Start, Datenbank weg) wüchse der Puffer unbegrenzt; jede Zeile steht ohnehin auf stdout.
       if (Z.puffer.length > 500) Z.puffer.splice(0, Z.puffer.length - 500);

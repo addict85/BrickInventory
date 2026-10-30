@@ -203,24 +203,16 @@ test('der User-Agent nennt Ross und Reiter', () => {
   //
   // Geprüft wird deshalb am ÜBERSETZTEN Stand, nicht an der Quelle: Genau
   // zwischen beiden lag der Fehler.
+  // Die Version kommt seit dem Versionsumbau aus dist/version.json (scripts/version.js).
   const dist = path.join(ROOT, 'dist', 'utils', 'setImages.js');
   assert.ok(fs.existsSync(dist), 'dist/utils/setImages.js fehlt — erst bauen');
-  const dsrc = fs.readFileSync(dist, 'utf8');
-  const di = dsrc.indexOf('function bildUserAgent()');
-  const dfn = dsrc.slice(di, dsrc.indexOf('\n}', di) + 2);
-  const Module2 = require('node:module');
-  const modul = new Module2(dist);
-  modul.filename = dist;
-  modul.paths = Module2._nodeModulePaths(path.dirname(dist));
-  const ua = new Function('require', 'process', '__dirname', dfn + '; return bildUserAgent();')(
-    modul.require.bind(modul), { env: {} }, path.dirname(dist));
-  const echteVersion = require(path.join(ROOT, 'package.json')).version;
+  const ua = require(dist).bildUserAgent();
+  const echteVersion = JSON.parse(fs.readFileSync(path.join(ROOT, 'dist', 'version.json'), 'utf8')).version;
   assert.ok(ua.includes(echteVersion),
-    `User-Agent „${ua}" enthält die Version ${echteVersion} nicht — die ` +
-    'Auflösung von package.json greift aus dist/ heraus nicht');
+    `User-Agent „${ua}" enthält die gebaute Version ${echteVersion} nicht`);
   // Umschaltbar, weil sich von hier aus nicht ausprobieren lässt, wie der echte
   // Bildserver auf die neue Kennung reagiert.
-  assert.match(fn, /process\.env\.IMG_USER_AGENT/,
+  assert.match(fn, /konfig\(\)\.bildUserAgent/,
     'Ohne Umgebungsvariable liesse sich eine Fehlentscheidung nur durch einen ' +
     'neuen Build zurücknehmen');
   // Und die alte Tarnung darf nicht zurückkommen.
