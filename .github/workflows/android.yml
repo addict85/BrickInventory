@@ -731,11 +731,21 @@ jobs:
       - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6
       # Dieselben Aufgaben wie der Bau oben: Nur was aufgelöst wird, bekommt
       # eine Prüfsumme, und Lint holt eigene Pakete.
+      # Lint ist wie im Bau oben nur ein Befund (dort continue-on-error); hier
+      # zählt allein, dass jede Abhängigkeit einmal aufgelöst wurde.
       - name: Prüfsummen erzeugen
         run: |
           chmod +x gradlew
           ./gradlew --no-daemon --continue --write-verification-metadata sha256 \
-            testDebugUnitTest assembleRelease bundleRelease lintRelease
+            testDebugUnitTest assembleRelease bundleRelease lintRelease \
+            || echo "::warning::Gradle meldete einen Fehler (Lint oder Test); die Prüfsummen sind trotzdem geschrieben."
+          test -s gradle/verification-metadata.xml
+      # Zusätzlich gepackt im Protokoll: Wer die Artefaktablage nicht erreicht
+      # (abgeschottete Entwicklungsumgebung), holt die Datei von dort.
+      - name: Datei ins Protokoll
+        run: |
+          echo "VERIFIKATION-GZ-BASE64 $(gzip -9c gradle/verification-metadata.xml | base64 -w 0)"
+          sha256sum gradle/verification-metadata.xml
       # Auch nach einem roten Test: Gradle schreibt die Datei am Ende jedes
       # Laufs, und die Prüfsummen hängen nicht am Testergebnis.
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
