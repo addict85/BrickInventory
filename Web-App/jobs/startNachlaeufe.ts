@@ -1,9 +1,5 @@
-/**
- * Was der Job-Prozess bei jedem Start einmal nachholt — je Schritt ein
- * Auftrag 'nachlauf' (startup/jobsProzess.ts), damit ein Fehler wiederholt
- * wird und in der Verwaltung zu sehen ist.
- * Ausführlich: docs/begruendungen/jobs/startNachlaeufe.ts.md#abschnitt
- */
+/** Je Schritt ein Auftrag 'nachlauf', damit ein Fehler wiederholt wird und in
+ * der Verwaltung zu sehen ist. */
 import { anleitungenNachtragen, setBilderNachladen, vorschaubilderNachtragen } from '../src/katalog/bildlage';
 import { verschluesseleAltbestand } from '../src/konto/geheimnisAltbestand';
 import { verschluesseleGutscheinAltbestand } from '../src/gutscheine/gutscheinDateien';
@@ -27,7 +23,6 @@ const NACHLAEUFE = {
 } as const;
 type Nachlauf = keyof typeof NACHLAEUFE;
 
-/** Der Bearbeiter des Auftrags 'nachlauf'. */
 async function nachlauf(n: Record<string, unknown>): Promise<void> {
   const schritt = String(n.schritt);
   if (!Object.hasOwn(NACHLAEUFE, schritt)) throw new Error(`unbekannter Nachlauf ${schritt}`);

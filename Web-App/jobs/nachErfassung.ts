@@ -1,10 +1,6 @@
-/**
- * Was nach dem Erfassen eines Sets nachgezogen wird. Es läuft als Auftrag
- * (src/auftraege/auftraege.ts) im Job-Prozess: Ein Neustart verliert nichts, und
- * scheitert der Import von Teilen oder Figuren, wiederholt der Worker ihn.
- * Die Anreicherungen danach sind Beiwerk mit eigenen Kontingenten; sie melden
- * ihren Fehler und lassen den Auftrag nicht scheitern.
- */
+/** Als Auftrag im Job-Prozess: Ein Neustart verliert nichts, und ein
+ * gescheiterter Import von Teilen oder Figuren wird wiederholt. Die
+ * Anreicherungen danach melden ihren Fehler, ohne den Auftrag scheitern zu lassen. */
 import { importiereTeile, fetchMissingBlIds } from '../src/katalog/partsImport';
 import { importiereFiguren } from '../src/katalog/minifigsImport';
 import { downloadSetInstructions } from '../src/katalog/instructions';
@@ -38,7 +34,6 @@ async function zieheNach(setNumber: string, userId: number, art: NacharbeitArt):
   await downloadSetImages(setNumber).catch(melde('bilder'));
 }
 
-/** Die Bilder eines Sets, nachdem jemand seine Teileliste angesehen hat. */
 async function ladeSetBilder(setNumber: string): Promise<void> {
   await downloadSetImages(setNumber);
   await enrichSetMinifigs(setNumber);

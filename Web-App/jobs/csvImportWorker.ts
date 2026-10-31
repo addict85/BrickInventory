@@ -1,17 +1,11 @@
-/**
- * Eigener Prozess für den Katalog-Import aus den Rebrickable-CSV-Dateien
- * (gestartet von jobs/rebrickableCsvSync.ts). Die Arbeit macht
- * src/katalog/csvImport.ts; hier stehen Verbindung und Meldeweg zum Elternprozess.
- */
+/** Eigener Prozess für den Katalog-Import, damit der grosse Heap des Imports
+ * den Job-Prozess nicht trifft. Die Arbeit macht src/katalog/csvImport.ts. */
 import { Pool } from 'pg';
 import { fehlertext, logAndContinue } from '../src/infra/httpError';
 import { datenbankVerbindung } from '../src/infra/konfig';
 import { katalogImporte, parseCsvLine } from '../src/katalog/csvImport';
 
-/**
- * Nachricht an den Elternprozess.
- * Ausführlich: docs/begruendungen/jobs/csvImportWorker.ts.md#send
- */
+// Ausführlich: docs/begruendungen/jobs/csvImportWorker.ts.md#send
 function send(msg: Record<string, unknown>) {
   if (typeof process.send === 'function') process.send(msg);
   else console.error('[csv-worker] kein IPC-Kanal — Meldung verworfen:', JSON.stringify(msg).slice(0, 200));
