@@ -166,7 +166,14 @@ class TestDienste(server: MockWebServer, texte: Texte = NummernTexte) {
      * Bestandssignal laufen sonst weiter und stossen auf ein fehlendes Main.
      */
     fun aufraeumen() {
+        val jobs = erzeugt.mapNotNull { it.viewModelScope.coroutineContext[kotlinx.coroutines.Job] }
         erzeugt.forEach { it.viewModelScope.cancel() }
+        // Abbrechen allein reicht nicht: Eine Antwort, die schon unterwegs ist,
+        // beendet ihre Koroutine erst danach auf Main. Kommt sie nach resetMain(),
+        // wirft sie im gerade laufenden fremden Test.
+        kotlinx.coroutines.runBlocking {
+            kotlinx.coroutines.withTimeoutOrNull(5_000) { jobs.forEach { it.join() } }
+        }
         cacheDir.deleteRecursively()
     }
 }
