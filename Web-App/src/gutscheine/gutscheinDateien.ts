@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { DATA_DIR } from '../infra/appPaths';
 import { verschluesselePuffer, entschluesselePuffer, istVerschluesselterPuffer } from '../infra/geheimnis';
+import { ohneFehlendeDatei } from '../infra/httpError';
 
 /**
  * Gutschein-PDFs tragen Kartennummer und PIN im Klartext. Sie liegen deshalb
@@ -32,6 +33,12 @@ export async function schreibeGutscheinPdf(datei: string, pdf: Buffer): Promise<
 /** Entschlüsselt lesen; null, wenn der Schlüssel nicht passt. */
 export async function liesGutscheinPdf(datei: string): Promise<Buffer | null> {
   return entschluesselePuffer(await fs.promises.readFile(datei));
+}
+
+/** Für den Export: Fehlt oder klemmt die Datei, wird die Seite neu erzeugt — ohne den Export abzubrechen. */
+export async function liesGutscheinPdfOderNichts(datei: string | null): Promise<Buffer | null> {
+  if (!datei) return null;
+  return liesGutscheinPdf(datei).catch(ohneFehlendeDatei('gutschein:pdf lesen', null));
 }
 
 /** Klartext-PDFs aus der Zeit vor der Verschlüsselung einmal umwandeln (bei jedem Start, Verschlüsseltes bleibt). */

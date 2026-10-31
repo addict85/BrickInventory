@@ -10,9 +10,8 @@ import { fehlerAntwort, fehlertext, handleRouteError, logAndContinue, pfadParam 
 import { sendeFehler } from '../../src/infra/fehlerTexte';
 import { requireToken } from './middleware';
 import { scopeIds, parseScopeMode, resolveWriteTarget } from '../../src/haushalt/haushalt';
-import { legeMerkpostenAn, loescheMerkposten, verschiebeMerkposten, uebernimm, merkpostenVon } from '../../src/merkliste/merkliste';
+import { legeMerkpostenAn, loescheMerkposten, verschiebeMerkposten, uebernimm, merkpostenVon, preiseBeiderZustaende } from '../../src/merkliste/merkliste';
 import { getSetting } from '../../src/konto/settings';
-import { fetchPrice } from '../../src/finanzen/financeCalc';
 import { csvEmpfang, xmlEmpfang } from '../../src/infra/dateiEmpfang';
 import { csvZeilenAusAnfrage, csvImportAntwort, parseCsvDate } from '../../src/infra/csvExport';
 import { importiereWantedListe } from '../../src/merkliste/wantedListe';
@@ -93,21 +92,7 @@ router.delete('/wanted/:setNumber/:condition', requireToken, async (req: AuthedR
  */
 router.get('/wanted/:setNumber/preise', requireToken, async (req: AuthedRequest, res) => {
   const sn = pfadParam(req, 'setNumber');
-  const uid = req.apiUser.user_id;
-  const currency  = await getSetting(uid, 'currency', 'EUR');
-  const guideType = await getSetting(uid, 'price_guide_type', 'sold');
-  const ttlHours  = await getSetting(uid, 'price_cache_ttl', '24');
-  const current: Record<string, unknown> = {};
-  for (const c of ['N', 'U']) {
-    // Einzeln gefangen: Fuer ein Set, das BrickLink nicht kennt, soll der
-    // ANDERE Zustand trotzdem ankommen — und ein fehlender Preis ist kein
-    // Fehler, sondern ein Strich in der Anzeige.
-    try {
-      const pd = await fetchPrice(sn, c, guideType, currency, ttlHours);
-      current[c] = { condition: c, avg_price: pd.avg_price,
-                     min_price: pd.min_price, max_price: pd.max_price };
-    } catch { /* kein Preis fuer diesen Zustand */ }
-  }
+  const { currency, current } = await preiseBeiderZustaende(req.apiUser.user_id, sn);
   res.json({ success: true, set_number: sn, currency, current });
 });
 

@@ -38,7 +38,7 @@ import { registerSse } from '../../src/infra/sseRegistry';
 import { loginOrTokenGuard, angemeldeteNutzerId, istVerwalter } from '../../src/konto/http/anmeldung';
 import { csvImportBus, buildJobStatus, jobGet } from '../../src/auftraege/importAuftrag';
 import * as pgNotify from '../../db/pgNotify';
-import { APP_ROOT, DATA_DIR } from '../../src/infra/appPaths';
+import { DATA_DIR } from '../../src/infra/appPaths';
 const router = express.Router();
 
 // ── Feste Pfade VOR den Pfaden mit :setNumber ────────────────────────────────
@@ -567,13 +567,8 @@ router.post('/sets/:setNumber/instructions/upload', requireToken, vorDemUpload, 
 });
 
 router.delete('/sets/:setNumber/instructions/:instrId', requireToken, async (req, res) => {
-  const datei = await anleitungLoeschen(angemeldeteNutzerId(req), pfadParam(req, 'instrId'));
-  if (datei === false) return sendeFehler(req, res, 404, 'nicht_gefunden');
-  if (datei) {
-    // Aufräumen: Der Eintrag ist schon weg; eine liegen gebliebene Datei kostet nur Platz.
-    try { const fp = path.join(APP_ROOT, datei.slice(1)); if (fs.existsSync(fp)) fs.unlinkSync(fp); }
-    catch (e) { console.warn('[instructions] Datei konnte nicht gelöscht werden:', fehlertext(e)); }
-  }
+  if (!await anleitungLoeschen(angemeldeteNutzerId(req), pfadParam(req, 'instrId')))
+    return sendeFehler(req, res, 404, 'nicht_gefunden');
   res.json({ success: true });
 });
 

@@ -262,10 +262,10 @@ async function initSchema(): Promise<boolean> {
     await c.query(fs.readFileSync(path.join(__dirname, 'basis.sql'), 'utf8'));
     await c.query('COMMIT');
   } catch (e) {
-    await c.query('ROLLBACK').catch(() => {});
+    await c.query('ROLLBACK').catch((r: Error) => console.warn('[schema] ROLLBACK gescheitert:', r.message));
     throw e;
   } finally {
-    await c.end().catch(() => {});
+    await c.end().catch((r: Error) => console.warn('[schema] Verbindung schliessen:', r.message));
   }
   await legeAdminAn();
   console.log('✅ PostgreSQL schema ready');

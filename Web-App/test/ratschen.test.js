@@ -114,7 +114,9 @@ test('stille Faenge werden weniger, nie mehr', () => {
   // 30.10.2026: 32 (Cluster, Planer und eigene Warteschlangen entfallen).
   // 31.10.2026: 21 (Schichtumbau: Routen ohne try/catch, Repositories melden).
   // 31.10.2026: 12 (Wanted-Liste und CSV-Tausch melden über meldeUndLiefere/logAndContinue).
-  const SCHRANKE = 12;
+  // 31.10.2026: 2 (Abmeldung, Schema-Aufbau, Bildcache und Brickset melden; die
+  // beiden übrigen sind Rebrickable-Vermutungen, deren 404 die Antwort ist).
+  const SCHRANKE = 2;
   const ist = zaehle(STILLE_FAENGE);
   assert.ok(ist <= SCHRANKE,
     `${ist} stille Faenge, erlaubt sind ${SCHRANKE}. Ein neuer \`catch {}\` ` +

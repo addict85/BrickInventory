@@ -151,7 +151,7 @@ export async function ausRetryWarteschlange(setNumber: string) {
 
 // Remove from queue when a non-quota error occurs — no point retrying
 async function removeFromQueue(setNumber: string) {
-  await ausRetryWarteschlange(setNumber).catch(() => {});
+  await ausRetryWarteschlange(setNumber).catch(meldeUndLiefere('brickset:wiedervorlage', undefined));
   console.log(`[brickset] ${setNumber}: non-quota error — removed from retry queue, using fallback`);
 }
 
@@ -167,7 +167,7 @@ async function getSetInfo(setNumber: string) {
     const data = parseResponse(body);
     if (!data.sets?.length) return null;
     const s = data.sets[0];
-    await ausRetryWarteschlange(n).catch(() => {});
+    await ausRetryWarteschlange(n).catch(meldeUndLiefere('brickset:wiedervorlage', undefined));
     return { name:s.name||null, year:s.year||null, theme:s.theme||null, pieces:s.pieces||null, minifigs:s.minifigs||null, image_url:s.image?.imageURL||s.image?.thumbnailURL||null };
   } catch (e) {
     const f = alsAbrufFehler(e);

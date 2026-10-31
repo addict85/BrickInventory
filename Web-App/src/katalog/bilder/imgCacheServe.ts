@@ -102,7 +102,7 @@ export async function raeumeBildCacheAuf(): Promise<number> {
   let weg = 0;
   for (const f of files) {
     const p = path.join(cacheDir, f);
-    const st = await fs.promises.stat(p).catch(() => null);
+    const st = await fs.promises.stat(p).catch(ohneFehlendeDatei('img-cache:stat', null));
     // atime UND mtime: Wird das Dateisystem mit noatime eingehängt (in
     // Containern verbreitet), bleibt atime auf dem Erstellungszeitpunkt
     // stehen — dann entscheidet mtime, und beides muss alt sein.

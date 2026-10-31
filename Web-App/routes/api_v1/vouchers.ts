@@ -11,10 +11,10 @@ import { sendeFehler, fehlerText, antwortSprache, dateiFehler, type FehlerCode, 
 import { getGlobalSetting } from '../../src/konto/settings';
 import { landErlaubt, LAND_STANDARD } from '../../src/gutscheine/gutscheinGuthaben';
 import { frageGuthabenAb, ABSTAND_SEK } from '../../src/gutscheine/gutscheinGuthabenSchranke';
-import { VOUCHER_DIR, gutscheinDatei, schreibeGutscheinPdf, liesGutscheinPdf } from '../../src/gutscheine/gutscheinDateien';
+import { VOUCHER_DIR, gutscheinDatei, schreibeGutscheinPdf, liesGutscheinPdf, liesGutscheinPdfOderNichts } from '../../src/gutscheine/gutscheinDateien';
 import { requireToken } from './middleware';
 import { werteAusPdf, PdfZuGross } from '../../src/gutscheine/gutscheinPdf';
-import { verbindeGutscheine, seitenweiseLesen } from '../../src/gutscheine/gutscheinPdfSchreiben';
+import { verbindeGutscheine, seitenweiseLesen, seitenOderKeine } from '../../src/gutscheine/gutscheinPdfSchreiben';
 import type { ExportGutschein } from '../../src/gutscheine/gutscheinPdfSchreiben';
 
 import { gutscheineDesKontos, gutschein, gutscheinAnlegen, gutscheinErsetzen, gutscheinAendern,
@@ -162,9 +162,7 @@ router.post('/vouchers/pdf', requireToken, upload.single('file'), async (req: Au
   // traegt. Erst ab ZWEI ist es ein Stapel; bei einem bleibt alles wie
   // bisher — samt dem 422-Vertrag, auf dem beide Formulare stehen.
   // Ausführlich: docs/begruendungen/routes/api_v1/vouchers.ts.md#post-vouchers-pdf-seiten
-  let seiten: Awaited<ReturnType<typeof seitenweiseLesen>> = [];
-  // Teilergebnis: Ein Stapel, der sich nicht seitenweise lesen lässt, ist ein einzelner Gutschein.
-  try { seiten = await seitenweiseLesen(req.file.buffer); } catch { seiten = []; }
+  const seiten = await seitenOderKeine(req.file.buffer);
   if (seiten.length >= 2) return stapelAnlegen(req, res, seiten);
 
   // Scheitert das Auslesen (kaputtes PDF, Scan, fremdes Format), ist das
@@ -254,9 +252,7 @@ router.get('/vouchers/export/pdf', requireToken, async (req: AuthedRequest, res)
       // kein Abbruch: Dann wird die Seite erzeugt. Ein Export, der an einer
       // fehlenden Datei ganz scheitert, nimmt dem Nutzer auch die neunzehn
       // anderen Gutscheine.
-      const datei = gutscheinDatei(uid, z.pdf_path);
-      try { pdf = datei ? await liesGutscheinPdf(datei) : null; }
-      catch { pdf = null; }
+      pdf = await liesGutscheinPdfOderNichts(gutscheinDatei(uid, z.pdf_path));
     }
     gutscheine.push({ id: z.id, number: z.number, pin: z.pin,
                       amount: Number(z.amount), currency: z.currency, pdf });

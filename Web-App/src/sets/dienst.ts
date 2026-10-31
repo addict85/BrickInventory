@@ -3,7 +3,10 @@
  * Die Routen lesen die Anfrage, rufen hier und schreiben die Antwort; SQL,
  * Rebrickable und Aufträge stehen nur hier und darunter.
  */
-import { logAndContinue, meldeUndLiefere, meldeUndWeiter, vorDem, fehlertext } from '../infra/httpError';
+import { logAndContinue, meldeUndLiefere, meldeUndWeiter, vorDem, fehlertext, ohneFehlendeDatei } from '../infra/httpError';
+import fs from 'fs';
+import path from 'path';
+import { APP_ROOT } from '../infra/appPaths';
 import { stelleAuftragEin } from '../auftraege/dienst';
 import { resolveImageLocal, proxyImageUrl } from '../katalog/bilder/images';
 import { getSetting } from '../konto/settings';
@@ -295,14 +298,17 @@ export async function anleitungMerken(uid: number, sn: string, pfad: string, bes
  * auf sie zeigt; im Zweifel bleibt sie ebenfalls.
  * @returns der lokale Pfad, wenn die Datei jetzt gelöscht werden darf; false, wenn es die Zeile nicht gab
  */
-export async function anleitungLoeschen(uid: number, id: string): Promise<string | null | false> {
+export async function anleitungLoeschen(uid: number, id: string): Promise<boolean> {
   const instr = await repo.anleitungsPfad(id, uid);
   if (!instr) return false;
   await repo.loescheAnleitung(id, uid);
-  if (!instr.local_path?.startsWith('/data/uploads/')) return null;
+  if (!instr.local_path?.startsWith('/data/uploads/')) return true;
   const rest = await repo.anleitungsdateiBenutzt(instr.local_path)
     .catch(meldeUndLiefere('sets:anleitung-noch-benutzt', { ok: 1 }));
-  return rest ? null : instr.local_path;
+  // Der Eintrag ist schon weg; eine liegen gebliebene Datei kostet nur Platz.
+  if (!rest) await fs.promises.unlink(path.join(APP_ROOT, instr.local_path.slice(1)))
+    .catch(ohneFehlendeDatei('anleitung:datei-loeschen'));
+  return true;
 }
 
 // ── CSV-Import ───────────────────────────────────────────────────────────────

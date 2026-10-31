@@ -8,6 +8,7 @@ import {
 } from '@cantoo/pdf-lib';
 import { werteAusPdf, pdfText, textOperatoren } from './gutscheinPdf';
 import type { GutscheinWerte } from './gutscheinPdf';
+import { meldeUndLiefere } from '../infra/httpError';
 
 /**
  * Kodierungen, bei denen eine literale ASCII-Kette das druckt, was sie sagt.
@@ -309,6 +310,11 @@ export async function verbindeGutscheine(gutscheine: ExportGutschein[]):
   }
 
   return { daten: Buffer.from(await ziel.save()), befunde };
+}
+
+/** Für den Upload: Ein PDF, das sich nicht seitenweise lesen lässt, ist kein Stapel, sondern ein einzelner Gutschein. */
+export function seitenOderKeine(daten: Buffer): Promise<GutscheinWerte[]> {
+  return seitenweiseLesen(daten).catch(meldeUndLiefere('gutschein:seitenweise', []));
 }
 
 /**

@@ -64,10 +64,10 @@ async function connect() {
  * Ausführlich: docs/begruendungen/db/pgNotify.ts.md#retire
  */
 function retire(c: Client) {
-  try { c.removeAllListeners(); } catch (_) {}
+  c.removeAllListeners();
   // Ersatz-Zuhörer BEVOR irgendetwas anderes passiert: Ohne ihn wirft der
   // nächste 'error' des toten Clients und beendet den Prozess.
-  try { c.on('error', () => {}); } catch (_) {}
+  c.on('error', () => {});
   if (_client !== c) return;   // Nachzügler desselben Abrisses
   _client = null;
   scheduleReconnect();
@@ -150,7 +150,8 @@ export async function close() {
   _handlers.clear();
   _retryMs = 1000;
   if (c) {
-    try { c.removeAllListeners(); c.on('error', () => {}); } catch (_) {}
-    try { await c.end(); } catch (_) {}
+    c.removeAllListeners();
+    c.on('error', () => {});
+    await c.end().catch((e: Error) => console.warn('[pg-notify] Verbindung schliessen:', e.message));
   }
 }

@@ -6,6 +6,7 @@
  */
 import * as db from '../../db/database';
 import { einzelwert } from '../infra/validate';
+import { meldeUndLiefere } from '../infra/httpError';
 import type { FehlerCode } from '../infra/fehlerTexte';
 import * as repo from './repository/anmeldezaehler';
 
@@ -142,7 +143,7 @@ async function _clear(key: string): Promise<void> {
  * macht aus „İ" zwei Zeichen, PostgreSQL ein „i".
  */
 async function kontoKennung(username: unknown): Promise<string> {
-  const z = await repo.kontoZumNamen(einzelwert(username)).catch(() => null);
+  const z = await repo.kontoZumNamen(einzelwert(username)).catch(meldeUndLiefere('anmeldung:konto-kennung', null));
   if (z?.id) return `konto:${z.id}`;
   return z?.kennung ?? einzelwert(username).toLowerCase();
 }

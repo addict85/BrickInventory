@@ -8,11 +8,31 @@ import { findSetInScope } from '../sets/setAdd';
 import { loescheAlarm } from '../finanzen/preisalarm';
 import * as V from '../infra/validate';
 import { nutzerStandardZustand } from '../konto/settings';
-import { meldeUndWeiter } from '../infra/httpError';
+import { meldeUndWeiter, meldeUndLiefere } from '../infra/httpError';
 import { fuerSet } from '../finanzen/preisvergleich';
 import { resolveIfExists } from '../katalog/bilder/images';
 import { toCsv } from '../infra/csvExport';
 import * as repo from './repository/merkliste';
+import { getSetting } from '../konto/settings';
+import { fetchPrice } from '../finanzen/financeCalc';
+
+/**
+ * Die Marktpreise eines Merkpostens in beiden Zuständen, frisch geholt. Jeder
+ * Zustand für sich: Kennt BrickLink einen nicht, kommt der andere trotzdem,
+ * und ein fehlender Preis ist ein Strich in der Anzeige, kein Fehler.
+ */
+export async function preiseBeiderZustaende(uid: number, setNumber: string) {
+  const currency  = String(await getSetting(uid, 'currency', 'EUR'));
+  const guideType = String(await getSetting(uid, 'price_guide_type', 'sold'));
+  const ttlHours  = String(await getSetting(uid, 'price_cache_ttl', '24'));
+  const current: Record<string, { condition: string; avg_price: unknown; min_price: unknown; max_price: unknown }> = {};
+  for (const c of ['N', 'U']) {
+    const pd = await fetchPrice(setNumber, c, guideType, currency, ttlHours)
+      .catch(meldeUndLiefere(`merkliste:preis ${setNumber} ${c}`, null));
+    if (pd) current[c] = { condition: c, avg_price: pd.avg_price, min_price: pd.min_price, max_price: pd.max_price };
+  }
+  return { currency, current };
+}
 
 /** Ein Eintrag, wie ihn beide Oberflächen sehen. */
 export interface Merkposten {
