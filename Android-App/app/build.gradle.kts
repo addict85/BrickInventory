@@ -13,7 +13,8 @@ plugins {
 }
 
 // Bildschirmfotos neben die Tests, damit sie als Referenz eingecheckt werden
-// können; bis dahin nimmt die CI nur auf (recordRoborazziDebug, android.yml).
+// können. Die CI vergleicht gegen sie, sobald welche eingecheckt sind, und
+// nimmt sonst auf (android.yml, Schritt „Bildschirmfotos vergleichen oder aufnehmen?“).
 roborazzi {
     outputDir.set(file("src/test/bildschirmfotos"))
 }

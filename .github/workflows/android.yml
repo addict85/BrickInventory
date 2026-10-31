@@ -47,6 +47,10 @@ on:
         description: 'Prüfsummen der Gradle-Abhängigkeiten neu erzeugen (verification-metadata.xml als Artefakt)'
         type: boolean
         default: false
+      bildschirmfotos:
+        description: 'Bildschirmfotos neu aufnehmen und als Referenz einchecken (nicht auf main)'
+        type: boolean
+        default: false
 
 # Ein neuer Push bricht einen noch laufenden Bau desselben Zweigs ab — sonst
 # stehen bei mehreren Pushes drei Läufe in der Schlange und der erste ist
@@ -54,13 +58,13 @@ on:
 concurrency:
   # Ein Prüfsummenlauf hat eine eigene Gruppe: Er bricht den Bau desselben
   # Zweigs sonst ab (gemessen am 30.10.: Lauf 41005196874 abgebrochen).
-  group: android-${{ github.ref }}${{ inputs.pruefsummen && '-pruefsummen' || '' }}
+  group: android-${{ github.ref }}${{ inputs.pruefsummen && '-pruefsummen' || '' }}${{ inputs.bildschirmfotos && '-bildschirmfotos' || '' }}
   cancel-in-progress: true
 
 jobs:
   build:
-    # Ein Lauf nur für die Prüfsummen (Job `pruefsummen` unten) baut nicht mit.
-    if: ${{ !inputs.pruefsummen }}
+    # Ein Lauf nur für die Prüfsummen oder die Referenzbilder (Jobs unten) baut nicht mit.
+    if: ${{ !inputs.pruefsummen && !inputs.bildschirmfotos }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -161,6 +165,21 @@ jobs:
       - name: gradlew ausführbar machen
         run: chmod +x gradlew
 
+      # Bildschirmfotos: Liegen Referenzbilder im Repository, vergleicht der
+      # Testlauf gegen sie und wird bei einer Abweichung rot; sonst nimmt er nur
+      # auf. Eingecheckt werden sie mit workflow_dispatch bildschirmfotos=true
+      # (Jobs `bildschirmfotos` und `bildschirmfotos-einchecken` unten).
+      - name: Bildschirmfotos vergleichen oder aufnehmen?
+        id: fotos
+        run: |
+          if [ -n "$(git ls-files 'app/src/test/bildschirmfotos/*.png')" ]; then
+            echo "aufgabe=verifyRoborazziDebug" >> "$GITHUB_OUTPUT"
+            echo "Referenzbilder eingecheckt: verglichen wird."
+          else
+            echo "aufgabe=recordRoborazziDebug" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Bildschirmfotos::Keine Referenzbilder eingecheckt — nur aufgenommen. Einchecken: Workflow von Hand mit bildschirmfotos=true starten."
+          fi
+
       # Zuerst die Tests: rund fünfzig Testdateien, die in Sekunden laufen und
       # das meiste abfangen, bevor der lange Übersetzungslauf beginnt.
       - name: Unit-Tests
@@ -177,7 +196,7 @@ jobs:
         # Kotlin und hat stattdessen `test`.
         run: |
           set -o pipefail
-          ./gradlew --no-daemon testDebugUnitTest :core-model:test recordRoborazziDebug 2>&1 | tee "$RUNNER_TEMP/test.log"
+          ./gradlew --no-daemon testDebugUnitTest :core-model:test ${{ steps.fotos.outputs.aufgabe }} 2>&1 | tee "$RUNNER_TEMP/test.log"
 
       # Room schreibt das Schema beim Übersetzen nach core-data/schemas und lässt eine
       # Datei stehen, solange ihr Aufbau gleich bleibt. Steht danach etwas
@@ -520,14 +539,16 @@ jobs:
       # Jede neue Hauptversion laeuft auf node24 — die Laufzeit aendert sich
       # also nicht, es gibt hier keine Warnung zu beseitigen und auch keine
       # einzufangen.
-      # Roborazzi nimmt vorerst nur auf: Die Bilder sind die künftigen
-      # Referenzen. Verglichen wird erst, wenn sie eingecheckt sind.
+      # Aufgenommen (ohne Referenz) liegen die Bilder unter src/test; beim
+      # Vergleich legt Roborazzi Ist-Bild und Unterschied unter build/outputs ab.
       - name: Bildschirmfotos sichern
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: bildschirmfotos
-          path: Android-App/app/src/test/bildschirmfotos/
+          path: |
+            Android-App/app/src/test/bildschirmfotos/
+            Android-App/app/build/outputs/roborazzi/
           if-no-files-found: warn
           retention-days: 30
 
@@ -817,4 +838,66 @@ jobs:
           git add Android-App/gradle/verification-metadata.xml Android-App/gradle/verification-keyring.*
           if git diff --cached --quiet; then echo "Prüfsummen unverändert."; exit 0; fi
           git commit -m "Gradle-Prüfsummen erneuert (Lauf $GITHUB_RUN_ID)"
+          git push origin "HEAD:$GITHUB_REF_NAME"
+
+  # ── Referenzbilder für die Bildschirmfotos ──────────────────────────────────
+  # Wie die Prüfsummen: Aufnehmen kann nur ein Lauf mit Android-SDK, also die
+  # CI. Der erste Job nimmt mit Lesezugriff auf, der zweite checkt die Bilder
+  # auf dem Zweig ein — nie auf main, dort kommen sie über den Merge an.
+  bildschirmfotos:
+    if: github.event_name == 'workflow_dispatch' && inputs.bildschirmfotos
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: Android-App
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6
+        with:
+          distribution: temurin
+          java-version: '17'
+      - run: python3 tools/gradle-wrapper-pruefen.py gradle/wrapper/gradle-wrapper.properties
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6
+      # Alte Referenzen weg, damit ein umbenannter Fall keine Leiche hinterlässt.
+      - name: Bildschirmfotos aufnehmen
+        run: |
+          chmod +x gradlew
+          rm -f app/src/test/bildschirmfotos/*.png
+          ./gradlew --no-daemon :app:recordRoborazziDebug
+          anzahl=$(ls app/src/test/bildschirmfotos/*.png 2>/dev/null | wc -l)
+          echo "$anzahl Bilder aufgenommen."
+          test "$anzahl" -gt 0
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: bildschirmfotos-referenz
+          path: Android-App/app/src/test/bildschirmfotos/*.png
+          if-no-files-found: error
+
+  bildschirmfotos-einchecken:
+    needs: bildschirmfotos
+    if: github.event_name == 'workflow_dispatch' && inputs.bildschirmfotos && github.ref != 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Alte Referenzen entfernen
+        run: git rm -q --ignore-unmatch 'Android-App/app/src/test/bildschirmfotos/*.png'
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: bildschirmfotos-referenz
+          path: Android-App/app/src/test/bildschirmfotos
+      - name: Einchecken
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add Android-App/app/src/test/bildschirmfotos
+          if git diff --cached --quiet; then echo "Bildschirmfotos unverändert."; exit 0; fi
+          echo "## Bildschirmfotos" >> "$GITHUB_STEP_SUMMARY"
+          git diff --cached --stat >> "$GITHUB_STEP_SUMMARY"
+          git commit -m "Bildschirmfotos als Referenz eingecheckt (Lauf $GITHUB_RUN_ID)"
           git push origin "HEAD:$GITHUB_REF_NAME"
