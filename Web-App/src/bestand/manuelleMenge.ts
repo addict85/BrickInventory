@@ -1,10 +1,6 @@
-/**
- * Die Menge eines manuellen Teils oder einer manuellen Figur ändern — absolut
- * (`quantity`) oder relativ (`quantity_delta`), wie beim Set. Relativ ist der
- * Weg für Geräte, die offline sammeln: Zwei Geräte, die gleichzeitig „+1"
- * schicken, ergeben +2; eine absolute Menge aus einem veralteten Stand
- * überschriebe den anderen Zugang.
- */
+/** Relativ (`quantity_delta`) für Geräte, die offline sammeln: Zwei
+ * gleichzeitige „+1" ergeben +2, eine absolute Menge aus altem Stand
+ * überschriebe den anderen Zugang. */
 import { withInventoryLock, bestandsSchluessel } from '../../db/txLock';
 import { bestandsMenge } from '../infra/validate';
 import { fehlerWerfen } from '../infra/fehlerTexte';
@@ -18,10 +14,7 @@ const MINDESTENS = 1;
 
 export type Mengenwunsch = { absolut: number } | { delta: number };
 
-/**
- * Was die Anfrage an der Menge ändern will, geprüft; null, wenn sie die Menge
- * nicht nennt. quantity_delta gewinnt, wenn beides kommt.
- */
+/** quantity_delta gewinnt, wenn beides kommt. */
 export function mengenwunsch(body: { quantity?: unknown; quantity_delta?: unknown }): Mengenwunsch | null {
   if (body.quantity_delta !== undefined && body.quantity_delta !== null) {
     const delta = Number(body.quantity_delta);
@@ -35,13 +28,9 @@ export function mengenwunsch(body: { quantity?: unknown; quantity_delta?: unknow
 const ziel = (w: Mengenwunsch, bisher: number) =>
   'absolut' in w ? w.absolut : Math.max(MINDESTENS, bisher + w.delta);
 
-/**
- * Die Erfassungen auf die gewünschte Menge bringen: Ein Zugang wird eine
- * Erfassung zum Marktpreis, ein Abgang kürzt die neuesten zuerst. Gelesen und
- * gerechnet wird in der Bestandssperre, damit sich Web und App nicht überholen.
- * @param marktpreis wird VOR der Sperre und nur bei steigender Menge gefragt (Netzaufruf, Kontingent)
- * @returns die Menge danach
- */
+/** In der Bestandssperre gerechnet, damit sich Web und App nicht überholen.
+ * @param marktpreis wird VOR der Sperre und nur bei steigender Menge gefragt
+ * @returns die Menge danach */
 export async function passeManuelleMengeAn(art: ManuelleArt, uid: number, schluessel: (string | number)[],
                                             wunsch: Mengenwunsch, zustand: string,
                                             marktpreis: () => Promise<number | null>): Promise<number> {

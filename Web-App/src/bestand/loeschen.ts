@@ -1,27 +1,22 @@
-/**
- * Löschen heisst: erst in den Papierkorb, dann weg (src/bestand/papierkorb.ts).
- * Eine Stelle für das Einzel-Löschen von Teil und Figur und für „alles
- * löschen", damit alle drei Wege dieselben Zeilen mitnehmen.
- */
+/** Eine Stelle für Teil, Figur und „alles löschen", damit alle Wege dieselben
+ * Zeilen in den Papierkorb nehmen. */
 import * as db from '../../db/database';
 import { legeInPapierkorb } from './papierkorb';
 import { loescheManuellesTeil, loescheManuelleFigur } from './gemeinsam';
 import { deleteSet } from '../sets/abfragen';
 import * as repo from './repository/loeschen';
 
-/** Ein manuelles Teil samt Erfassungen. @returns die Papierkorb-id, oder null, wenn es keins gab */
 export async function loescheTeil(besitzer: number, pn: string, cid: number): Promise<number | null> {
   return db.transaction(async (tx) => {
     const id = await legeInPapierkorb(tx, 'teil', besitzer, pn, cid);
     const r = await loescheManuellesTeil(tx, besitzer, pn, cid);
     if (r.changes === 0) return null;
-    // Erfassungen mit: Die Finanzsummen lesen sie und zählten das Teil sonst weiter.
+    // Erfassungen mit: Die Finanzsummen zählten das Teil sonst weiter.
     await repo.loescheTeilErfassungen(tx, besitzer, pn, cid || 0);
     return id;
   });
 }
 
-/** Eine manuelle Minifigur samt Erfassungen. @returns die Papierkorb-id, oder null */
 export async function loescheFigur(besitzer: number, fn: string): Promise<number | null> {
   return db.transaction(async (tx) => {
     const id = await legeInPapierkorb(tx, 'figur', besitzer, fn);
@@ -32,12 +27,8 @@ export async function loescheFigur(besitzer: number, fn: string): Promise<number
   });
 }
 
-/**
- * Den ganzen eigenen Bestand in den Papierkorb: Sets (mit ihren Teilen und
- * Figuren), manuelle Teile, manuelle Figuren. Nur das EIGENE Konto — nie das
- * Blickfeld des Haushalts. Jedes Element einzeln, damit jedes einzeln
- * wiederherstellbar ist.
- */
+/** Nur das EIGENE Konto, nie das Blickfeld. Jedes Element einzeln, damit jedes
+ * einzeln wiederherstellbar ist. */
 export async function loescheAllesEigene(uid: number) {
   const sets = await repo.setsDesKontos(uid);
   const teile = await repo.manuelleTeileDesKontos(uid);

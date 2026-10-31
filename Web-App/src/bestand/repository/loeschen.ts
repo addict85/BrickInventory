@@ -1,8 +1,6 @@
 import type { DbSchnittstelle } from '../../../db/database';
 import * as db from '../../../db/database';
 
-/** Datenzugriff zum Löschen von Bestand. */
-
 export function loescheTeilErfassungen(tx: DbSchnittstelle, besitzer: number, partNumber: string, colorId: number) {
   return tx.run('DELETE FROM part_acquisitions WHERE user_id=$1 AND part_number=$2 AND color_id=$3', [besitzer, partNumber, colorId]);
 }

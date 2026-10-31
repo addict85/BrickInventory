@@ -1,23 +1,18 @@
 import * as db from '../../../db/database';
 import type { DbSchnittstelle } from '../../../db/database';
 
-/** Datenzugriff für Lagerorte: der Vorrat je Konto (storage_locations) und die Zuordnung an Bestandszeilen. */
-
 const TABELLEN = { set: 'sets', part: 'parts', fig: 'minifigs' } as const;
 export type LagerTabelle = keyof typeof TABELLEN;
 
-/** Die Schlüsselbedingung je Art, Platzhalter ab `$ab`. */
 const BEDINGUNG: Record<LagerTabelle, (ab: number) => string> = {
   set:  (ab) => `set_number = $${ab}`,
   part: (ab) => `part_number = $${ab} AND color_id = $${ab + 1}`,
   fig:  (ab) => `fig_number = $${ab}`,
 };
 
-/**
- * Die Zuordnung je ZEILE über den Namen im Vorrat ihres eigenen Kontos: Im
- * Haushalt kann derselbe Name in zwei Konten mit je eigener ID liegen.
- * Ausführlich: docs/begruendungen/src/bestand/lagerort.ts.md#setzelagerort-setzen
- */
+/** Über den Namen im Vorrat des EIGENEN Kontos: Im Haushalt kann derselbe Name
+ * in zwei Konten mit je eigener ID liegen.
+ * Ausführlich: docs/begruendungen/src/bestand/lagerort.ts.md#setzelagerort-setzen */
 export async function ordneOrtZu(dbh: DbSchnittstelle, art: LagerTabelle, besitzer: number[], ort: string | null,
                                  schluessel: string[]): Promise<number> {
   const r = await dbh.run(
@@ -29,7 +24,6 @@ export async function ordneOrtZu(dbh: DbSchnittstelle, art: LagerTabelle, besitz
   return r.changes ?? 0;
 }
 
-/** Welche dieser Konten die Zeile überhaupt haben. */
 export async function besitzerMitZeile(tx: DbSchnittstelle, art: LagerTabelle, besitzer: number[], schluessel: string[]): Promise<number[]> {
   const zeilen = await tx.all<{ user_id: number }>(
     `SELECT DISTINCT t.user_id FROM ${TABELLEN[art]} t
@@ -37,7 +31,6 @@ export async function besitzerMitZeile(tx: DbSchnittstelle, art: LagerTabelle, b
   return zeilen.map(b => parseInt(String(b.user_id)));
 }
 
-/** Einen Namen in den Vorrat dieser Konten aufnehmen, wo er fehlt. */
 export async function nimmOrtAuf(tx: DbSchnittstelle, ids: number[], ort: string): Promise<void> {
   await tx.run(
     `INSERT INTO storage_locations (user_id, name)
@@ -50,7 +43,7 @@ export function orteDerKonten(userIds: number[]) {
       WHERE user_id = ANY($1) ORDER BY lower(name)`, [userIds]);
 }
 
-/** Name ohne Gross/klein eindeutig je Konto; null, wenn es ihn schon gibt. */
+/** Ohne Gross/klein eindeutig je Konto; null, wenn es ihn schon gibt. */
 export function fuegeOrtEin(userId: number, name: string) {
   return db.get(`INSERT INTO storage_locations (user_id, name) VALUES ($1, $2)
      ON CONFLICT (user_id, lower(name)) DO NOTHING
@@ -74,7 +67,6 @@ export function schreibeOrtNamen(id: number, userId: number, name: string) {
   return db.run('UPDATE storage_locations SET name = $3 WHERE id = $1 AND user_id = $2', [id, userId, name]);
 }
 
-/** Wie viele Sets, Teile und Figuren dem Ort zugeordnet sind. */
 export function ortBelegung(userId: number, id: number) {
   return db.get(`SELECT (SELECT COUNT(*) FROM sets     WHERE user_id = $1 AND storage_id = $2)
           + (SELECT COUNT(*) FROM parts    WHERE user_id = $1 AND storage_id = $2)
@@ -85,7 +77,6 @@ export function entferneOrt(id: number, userId: number) {
   return db.run('DELETE FROM storage_locations WHERE id = $1 AND user_id = $2', [id, userId]);
 }
 
-/** Je Ortsname die Zahl der Sets, Teile und Figuren im Blickfeld. */
 export function orteMitBestand(uids: number[]) {
   return db.all(`SELECT ort,
             SUM(sets)::int    AS sets,
@@ -111,7 +102,7 @@ export function orteMitBestand(uids: number[]) {
       ORDER BY ort`, [uids]);
 }
 
-/** Der Ort aus der Einstellung „Vorgabe beim Erfassen", sofern es ihn noch gibt. */
+/** Sofern es den Ort noch gibt. */
 export function vorgabeOrt(userId: number, schluessel: string) {
   return db.get(`SELECT l.id, l.user_id, l.name
        FROM user_settings e

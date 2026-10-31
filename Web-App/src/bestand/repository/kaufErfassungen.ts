@@ -2,11 +2,8 @@ import * as db from '../../../db/database';
 import type { DbSchnittstelle } from '../../../db/database';
 import { erfassungsTagSql } from '../../../db/bestandsmenge';
 
-/**
- * Datenzugriff auf die drei Erfassungstabellen. Der Schlüssel des
- * eindeutigen Index (Migration 0070): Konto, Element, Tag, Zustand, Preis,
- * Schätzung, Währung — gleiche Käufe eines Tages sind eine Zeile.
- */
+/** Der eindeutige Index (Migration 0070): Konto, Element, Tag, Zustand, Preis,
+ * Schätzung, Währung — gleiche Käufe eines Tages sind eine Zeile. */
 export type ErfassungsArt = 'set' | 'part' | 'fig';
 
 const SHAPES = {
@@ -21,7 +18,8 @@ export const schluesselSpalten = (art: ErfassungsArt): readonly string[] => SHAP
 export type NeueErfassung = { menge: number; preis: number | null; zustand: string; geschaetzt: boolean;
   waehrung: string | null; am: string | null };
 
-/** Anlegen oder die gleiche Zeile des Tages aufstocken — in einer Anweisung, gegen den Index. @returns ob aufgestockt */
+/** In einer Anweisung gegen den Index, damit gleichzeitige Erfassungen sich
+ * addieren. @returns ob aufgestockt */
 export async function fuegeErfassungHinzu(dbh: DbSchnittstelle, art: ErfassungsArt, userId: number,
                                           schluessel: (string | number)[], e: NeueErfassung): Promise<boolean> {
   const shape = SHAPES[art];
@@ -40,7 +38,6 @@ export async function fuegeErfassungHinzu(dbh: DbSchnittstelle, art: ErfassungsA
 
 export type Merkmale = { zustand: string; preis: number | null; geschaetzt: boolean; waehrung: string | null };
 
-/** Eine andere Erfassung desselben Tages mit denselben Merkmalen, oder null. */
 export async function gleicheErfassungAmTag(dbh: DbSchnittstelle, art: ErfassungsArt, userId: number,
                                             schluessel: unknown[], tag: string, ausser: number, m: Merkmale): Promise<number | null> {
   const shape = SHAPES[art];
@@ -64,7 +61,6 @@ export function erfassungSperren(tx: DbSchnittstelle, art: ErfassungsArt, id: nu
   return tx.get(`SELECT *, (${erfassungsTagSql()})::text AS tag FROM ${SHAPES[art].table} WHERE id = $1 FOR UPDATE`, [id]);
 }
 
-/** Die Menge einer Erfassung in eine andere übernehmen und sie selbst entfernen. */
 export async function legeErfassungZusammen(tx: DbSchnittstelle, art: ErfassungsArt, von: number, nach: number, menge: number): Promise<void> {
   await tx.run(`UPDATE ${SHAPES[art].table} SET quantity = quantity + $1 WHERE id = $2`, [menge, nach]);
   await tx.run(`DELETE FROM ${SHAPES[art].table} WHERE id = $1`, [von]);
@@ -73,8 +69,6 @@ export async function legeErfassungZusammen(tx: DbSchnittstelle, art: Erfassungs
 export async function setzePreisGeschaetzt(tx: DbSchnittstelle, art: ErfassungsArt, id: number, preis: number): Promise<void> {
   await tx.run(`UPDATE ${SHAPES[art].table} SET ${SHAPES[art].price} = $1, price_estimated = true WHERE id = $2`, [preis, id]);
 }
-
-// ── Eine Erfassung ändern oder löschen (Kaufpreis-Dialog) ───────────────────
 
 export async function kontoDerErfassung(art: ErfassungsArt, id: number): Promise<number | null> {
   const r = await db.get<{ user_id: number }>(`SELECT user_id FROM ${SHAPES[art].table} WHERE id = $1`, [id]);
