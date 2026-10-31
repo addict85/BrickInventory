@@ -9,6 +9,7 @@ import type { AuthenticationResponseJSON, RegistrationResponseJSON, WebAuthnCred
 import { decodeClientDataJSON } from '@simplewebauthn/server/helpers';
 import * as repo from './repository/passkeys';
 import { basisUrl } from '../infra/basisUrl';
+import { androidHerkuenfte } from './androidApp';
 import { fehlertext } from '../infra/httpError';
 
 function abgewiesen(e: unknown): null {
@@ -111,7 +112,8 @@ export async function anmeldungPruefen(roh: unknown, zweck: 'anmelden' | 'zweite
   const k = await repo.schluessel(antwort.id, uid);
   if (!k) return null;
   const v = await verifyAuthenticationResponse({
-    response: antwort, expectedChallenge: challenge, expectedOrigin: rp.origin, expectedRPID: rp.rpID,
+    // Registriert wird nur im Browser; anmelden darf auch die eingetragene App.
+    response: antwort, expectedChallenge: challenge, expectedOrigin: [rp.origin, ...androidHerkuenfte()], expectedRPID: rp.rpID,
     credential: { id: antwort.id, publicKey: new Uint8Array(k.public_key), counter: Number(k.sign_count),
                   ...transporte(k.transports) },
     requireUserVerification: zweck === 'anmelden',

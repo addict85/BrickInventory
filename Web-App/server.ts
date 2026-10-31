@@ -43,6 +43,7 @@ import datenDateien = require('./routes/datenDateien');
 import apiV1Router = require('./routes/api_v1/index');
 import authRouter = require('./routes/auth');
 import zertifikatRouter = require('./routes/zertifikat');
+import wellKnownRouter = require('./routes/wellKnown');
 
 /** Benannt, weil `params` auf dem allgemeinen Request-Typ leer ist und der
  * erfasste Pfad sonst ein implizites `any`. */
@@ -225,6 +226,7 @@ app.use(sitzungsHoechstdauer());
 
 app.use(datenDateien);
 app.use(zertifikatRouter);
+app.use(wellKnownRouter);
 registerImgProxy(app);
 
 // EINE authentifizierte Route für alle Bilder: Eigene Uploads dürfen nicht

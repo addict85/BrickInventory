@@ -41,6 +41,9 @@ export interface Konfig {
   /** PEM; null: keine eigene CA. */
   caZertifikat: string | null;
   hinterTls: boolean;
+  /** SHA-256 der Signaturzertifikate der App, 64 Hex-Zeichen in Grossbuchstaben. */
+  androidZertifikate: string[];
+  androidPaket: string;
 }
 
 export type Rolle = 'web' | 'jobs' | 'beides';
@@ -66,6 +69,7 @@ export const VARIABLEN = [
   'APP_BASE_URL', 'APP_ROOT', 'APP_VERSION', 'DATA_KEY', 'ERFASSUNG_ZEITZONE', 'TZ',
   'PRICE_HISTORY_KEEP_DAYS', 'UPLOAD_KONTINGENT_MB', 'MAIL_KONSOLE_MIT_TOKEN', 'IMG_USER_AGENT',
   'CSV_ZEILE_FRIST_MS', 'AUFTRAG_PARALLEL', 'AUFTRAG_FRIST_SEK', 'CA_ZERTIFIKAT',
+  'PASSKEY_ANDROID_ZERTIFIKATE', 'PASSKEY_ANDROID_PAKET',
 ] as const;
 
 /** Steht sie noch in einer alten compose.yaml, sagt der Start es. */
@@ -105,6 +109,25 @@ function schalter(env: Umgebung, name: string, fehler: string[]): boolean | null
   if (roh === '0' || roh === 'false') return false;
   fehler.push(`${name}="${roh}" ist weder 1 noch 0`);
   return null;
+}
+
+/** Jeder Signaturschlüssel (eigener, Play App Signing, Debug) ergibt einen anderen
+ * Hash; welche Fassung die Nutzer eines Servers haben, weiss nur sein Betreiber.
+ * Leer: Der Server nimmt keine Passkey-Antwort einer App an. */
+function androidZertifikate(env: Umgebung, fehler: string[]): string[] {
+  const roh = env.PASSKEY_ANDROID_ZERTIFIKATE?.trim() || '';
+  const liste = roh ? roh.split(/[\s,;]+/).filter(Boolean) : [];
+  const hex = liste.map(f => f.replace(/:/g, '').toUpperCase());
+  const falsch = liste.filter((_, i) => !/^[0-9A-F]{64}$/.test(hex[i] ?? ''));
+  if (falsch.length) fehler.push(`PASSKEY_ANDROID_ZERTIFIKATE: ${falsch.join(', ')} ist kein SHA-256-Fingerabdruck (64 Hex-Zeichen)`);
+  return falsch.length ? [] : [...new Set(hex)];
+}
+
+function androidPaket(env: Umgebung, fehler: string[]): string {
+  const paket = env.PASSKEY_ANDROID_PAKET?.trim() || 'ch.brickinventoryapp';
+  if (/^[a-zA-Z]\w*(\.[a-zA-Z]\w*)+$/.test(paket)) return paket;
+  fehler.push(`PASSKEY_ANDROID_PAKET="${paket}" ist kein Paketname`);
+  return 'ch.brickinventoryapp';
 }
 
 /** Sicher genug, um in eine Verbindungsoption eingesetzt zu werden. */
@@ -171,6 +194,8 @@ export function ladeKonfig(env: Umgebung = process.env): Konfig {
     auftragFristSek: ganzzahl(env, 'AUFTRAG_FRIST_SEK', 300, 1, 86_400, f),
     caZertifikat: env.CA_ZERTIFIKAT?.trim() || null,
     hinterTls: !!basis && /^https:\/\//i.test(basis),
+    androidZertifikate: androidZertifikate(env, f),
+    androidPaket: androidPaket(env, f),
   };
   if (f.length) throw new KonfigFehler(f);
   return k;

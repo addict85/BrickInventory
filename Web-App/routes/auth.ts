@@ -47,10 +47,42 @@ async function tokenAngaben(klartext: string) {
                never_expires: z.never_expires, rotiert_am: z.rotiert_am } : null;
 }
 
+type Angemeldet = { id: number | string; username: string; is_admin: boolean; must_change_password?: boolean };
+
+/** Sitzung, Token und Antwort — derselbe Weg nach Passwort und Passkey. */
+async function angemeldetAntworten(req: Request, res: express.Response, user: Angemeldet, mitToken: boolean) {
+  const { label, never_expires, scope } = req.body ?? {};
+  const uid = Number(user.id);
+  // Neue Session-ID gegen Session Fixation, auch für die App; die Zeile verfällt.
+  await establishSession(req, {
+    userId:   uid,
+    username: user.username,
+    isAdmin:  user.is_admin,
+  });
+  // Ein Token, den die Datenbank nie sah, liefe im SSE-Kanal in ein 401.
+  const dauerhaft = never_expires === true;
+  let token: string | null = null;
+  // Die Webapp nur mit httpOnly-Cookie: Ein Token wäre per Skript auslesbar.
+  if (mitToken) try {
+    token = await createToken(uid, tokenLabel(label, 'webapp-session'), dauerhaft, null,
+                              { scope: tokenScope(scope), ip: req.ip });
+  } catch (e) {
+    console.warn('[login] Token konnte nicht gespeichert werden:', fehlertext(e));
+    if (dauerhaft)
+      return sendeFehler(req, res, 500, 'token_nicht_ausgestellt');
+  }
+  // `never_expires` nennt, was gilt: Mit gleitender Frist ist nichts unbegrenzt.
+  res.json({ success: true, ...(token ? { token } : {}), ...(token ? { token_info: await tokenAngaben(token) } : {}),
+    never_expires: false,
+    user: { id: user.id, username: user.username, is_admin: user.is_admin,
+    // Nur beim automatisch erzeugten Admin-Passwort gesetzt (db/database.ts).
+    mustChangePassword: user.must_change_password } });
+}
+
 /** Die EINE Anmeldung für Webapp und App, damit beide dieselben Regeln erfüllen.
  * Ausführlich: docs/begruendungen/routes/auth.ts.md#post-login */
 router.post('/login', async (req, res) => {
-  const { username, password, label, never_expires, code: zweiterCode, ohne_token, scope, passkey } = req.body;
+  const { username, password, code: zweiterCode, ohne_token, passkey } = req.body;
   const pruefung = await anmelden(req, username, password, zweiterCode, passkey);
   if (!pruefung.ok) {
     const { status, code, vars, unverified, zweiterFaktor, passkey: mitPasskey } = pruefung.absage;
@@ -70,35 +102,7 @@ router.post('/login', async (req, res) => {
     }
     return sendeFehler(req, res, status, code, vars);
   }
-  const user = pruefung.user;
-  // Session-ID erneuern gegen Session Fixation — auch für die App, die das
-  // Cookie nie zurückschickt; die Zeile verfällt von selbst.
-  await establishSession(req, {
-    userId:   parseInt(user.id),   // always int
-    username: user.username,
-    isAdmin:  user.is_admin,
-  });
-  // Scheitert das INSERT, geht KEIN Token hinaus: Ein Token, den die Datenbank
-  // nie gesehen hat, liefe im SSE-Kanal in ein 401.
-  const dauerhaft = never_expires === true;
-  let token: string | null = null;
-  // Die Webapp arbeitet nur mit dem httpOnly-Cookie: Ein Token im Browser
-  // wäre per eingeschleustem Skript auslesbar und gälte über die Sitzung hinaus.
-  if (ohne_token !== true) try {
-    token = await createToken(user.id, tokenLabel(label, 'webapp-session'), dauerhaft, null,
-                              { scope: tokenScope(scope), ip: req.ip });
-  } catch (e) {
-    console.warn('[login] Token konnte nicht gespeichert werden:', fehlertext(e));
-    if (dauerhaft)
-      return sendeFehler(req, res, 500, 'token_nicht_ausgestellt');
-  }
-  // `never_expires` nennt, was gilt, nicht was verlangt war: Mit gleitender
-  // Frist ist ein App-Token nur ohne Frist wirklich unbegrenzt.
-  res.json({ success: true, ...(token ? { token } : {}), ...(token ? { token_info: await tokenAngaben(token) } : {}),
-    never_expires: false,
-    user: { id: user.id, username: user.username, is_admin: user.is_admin,
-    // Nur beim automatisch erzeugten Admin-Passwort gesetzt (db/database.ts).
-    mustChangePassword: user.must_change_password } });
+  await angemeldetAntworten(req, res, pruefung.user as Angemeldet, ohne_token !== true);
 });
 
 /** Sitzung beenden UND Token entwerten, damit ein Aufruf beides wegräumt.
@@ -638,7 +642,7 @@ router.post('/passkey/anmelden/optionen', ipThrottle('passkey-optionen', 60, 60 
   res.json({ success: true, optionen });
 });
 
-/** Nur für den Browser: Es entsteht eine Sitzung, kein Token. */
+/** Die Sitzung für den Browser; einen Token nur auf `mit_token`, wie ihn die App braucht. */
 router.post('/passkey/anmelden', ipThrottle('passkey-anmelden', 30, 60 * 60 * 1000), async (req, res) => {
   const uid = await P.anmeldungPruefen(req.body?.antwort, 'anmelden');
   if (!uid) return sendeFehler(req, res, 401, 'passkey_ungueltig');
@@ -646,9 +650,7 @@ router.post('/passkey/anmelden', ipThrottle('passkey-anmelden', 30, 60 * 60 * 10
   if (!user) return sendeFehler(req, res, 401, 'passkey_ungueltig');
   const gesperrt = assertLoginAllowed(user);
   if (gesperrt) return sendeFehler(req, res, gesperrt.status, gesperrt.code);
-  await establishSession(req, { userId: user.id, username: user.username, isAdmin: user.is_admin });
-  res.json({ success: true, user: { id: user.id, username: user.username, is_admin: user.is_admin,
-    mustChangePassword: user.must_change_password } });
+  await angemeldetAntworten(req, res, user, req.body?.mit_token === true);
 });
 
 router.use(fehlerAntwort);
