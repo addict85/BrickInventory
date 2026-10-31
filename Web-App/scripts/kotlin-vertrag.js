@@ -107,13 +107,13 @@ function typ(roh) {
   return { art: 'klasse', name, nullbar };
 }
 
-/** Alle @Serializable-Klassen: Name → Felder. @param {string} wurzel @returns {KModelle} */
+/** Alle @Serializable-Klassen: Name → Felder. @param {string | string[]} wurzel @returns {KModelle} */
 function kotlinModelle(wurzel) {
   /** @type {KModelle} */
   const modelle = new Map();
   // Eine Wurzel oder mehrere: Seit der Aufteilung der App liegen die Modelle in
   // core-model, einige in core-data und app.
-  for (const datei of [].concat(wurzel).flatMap(kotlinDateien)) {
+  for (const datei of (Array.isArray(wurzel) ? wurzel : [wurzel]).flatMap((w) => kotlinDateien(w))) {
     const roh = fs.readFileSync(datei, 'utf8');
     const src = entschaerfe(roh);
     for (const m of src.matchAll(/@Serializable\s+(?:data\s+)?class\s+(\w+)\s*\(/g)) {
