@@ -7,7 +7,8 @@ import { meldeUndLiefere, fehlertext } from '../infra/httpError';
 import { csvGemeinsameFelder, csvZeilenAusAnfrage } from '../infra/csvExport';
 import * as db from '../../db/database';
 import { recordAcquisitionForDay } from '../bestand/acquisitions';
-import { withInventoryLock, bestandsSchluessel } from '../../db/txLock';
+import { mengenwunsch, passeManuelleMengeAn } from '../bestand/manuelleMenge';
+import * as repo from './repository/manuelleTeile';
 import { kaufpreisAusEingabe, manuellerKaufpreis } from '../finanzen/preisRegel';
 import { zustandFuerPreis } from '../konto/settings';
 import { resolvePartCondition, marktpreisMitHerkunft, getCurrentPartMarketPrice } from '../finanzen/marketPrice';
@@ -15,7 +16,6 @@ import { lookupPart } from '../../clients/rebrickable';
 import { farbliste, KEINE_FARBE } from '../katalog/farben';
 import { setzeLagerort, ortFuerNeuerfassung } from '../bestand/lagerort';
 import { merkeTeil, merkeTeilFarbe, katalogTeil } from '../katalog/katalogPflege';
-import { bestandsMenge } from '../infra/validate';
 import * as V0 from '../infra/validate';
 
 /** Farbauswahl beim Erfassen; Quelle und Notliste stehen in src/katalog/farben.ts. */
@@ -167,7 +167,7 @@ async function addManualPartIntern(uid: number, rawBody: any) {
     await resolveManualPartPurchase(uid, { partNumber: part_number, colorId: color_id, unitPrice: unit_price, condition });
   // Farbcode möglichst füllen: vom Client übergeben, sonst aus rb_colors ableiten
   // (sonst bleibt der Farbpunkt in der Oberfläche grau).
-  const rbFarbcode = (await db.get('SELECT rgb FROM rb_colors WHERE id=$1', [color_id]).catch(meldeUndLiefere('manuelle-teile:get', null)))?.rgb || null;
+  const rbFarbcode = await repo.rbFarbcode(color_id).catch(meldeUndLiefere('manuelle-teile:farbcode', null));
 
   // Beschreibung in den Katalog, Bestand in parts
   // Seit Migration 0034 trennt sich beides: Name, Farbbezeichnung, Farbcode,
@@ -178,24 +178,10 @@ async function addManualPartIntern(uid: number, rawBody: any) {
   await merkeTeilFarbe(part_number, color_id, null, rbFarbcode, gefunden?.image_url);
   await merkeTeilFarbe(part_number, color_id, color_name, color_hex, eingabe.bild, null, db, uid);
 
-  // Preis und Zustand nicht mehr an die Bestandszeile (Migration 0035) — sie
-  // stehen in der Erfassung, die recordAcquisitionForDay() gleich darunter
-  // anlegt. effectiveUnitPrice/effectivePurchasePrice werden dort ueber
-  // erfassungsPreis verwendet.
-  // Ohne Menge: Sie steht seit Migration 0038 nicht an der Zeile. Fuer ein
-  // manuelles Teil ist sie die Summe der Erfassungen, und die erste legt
-  // recordAcquisitionForDay() gleich darunter an.
-  await db.run(`
-    INSERT INTO parts (user_id, set_number, part_number, color_id, source)
-    VALUES ($1, NULL, $2, $3, 'manual') ON CONFLICT DO NOTHING`,
-    [uid, part_number, color_id]
-  );
-
-  // Gibt es das Teil schon, hat das INSERT oben nichts getan (ON CONFLICT DO
-  // NOTHING) — und das genuegt: Eine zweite Erfassung ist ein Zugang, kein
-  // Fehler, und sie addiert sich von selbst, weil die Stückzahl die SUMME der
-  // Erfassungen ist (Migration 0038). Hier stand dafuer ein eigenes …
+  // Preis, Zustand und Menge stehen in der Erfassung, nicht an der Zeile;
+  // gibt es die Zeile schon, ist die zweite Erfassung ein Zugang.
   // Ausführlich: docs/begruendungen/routes/parts.ts.md#addmanualpartintern-3
+  await repo.legeTeilManuellAn(uid, part_number, color_id);
   await recordAcquisitionForDay('part', uid, [part_number, color_id], {
     quantity, price: erfassungsPreis, geschaetzt,
     condition: effectiveCondition, createdAt: acquiredAt,
@@ -208,57 +194,21 @@ async function addManualPartIntern(uid: number, rawBody: any) {
   return { action: 'added', part_number, part_name, price_from_condition: preisAusZustand };
 }
 
-// Shared logic to update quantity and/or Preis/Stk (unit_price, which doubles
-// as the Kaufpreis baseline — same rule as when adding) of a manually captured
-// part. Used by both the session-based web route and the token-based API, so
-// the behaviour is implemented exactly once.
-export async function updateManualPart(uid: number, partNumber: string, colorId: number, body: any) {
-  // Der Zustand kommt aus der NEUESTEN Erfassung — an der Bestandszeile gibt
-  // es ihn seit Migration 0035 nicht mehr. Dieselbe Ordnung wie latestSql in
-  // routes/api_v1/acquisitions.ts.
-  const existing = await db.get(
-    `SELECT p.id,
-            (SELECT a.condition FROM part_acquisitions a
-              WHERE a.user_id = p.user_id AND a.part_number = p.part_number
-                AND a.color_id = p.color_id
-              ORDER BY a.created_at DESC, a.id DESC LIMIT 1) AS condition
-       FROM parts p
-      WHERE p.user_id=$1 AND p.part_number=$2 AND p.color_id=$3 AND p.source='manual'`,
-    [uid, partNumber, colorId]
-  );
+/**
+ * Menge (absolut oder als Schritt), Preis/Stk und Zustand eines manuellen
+ * Teils ändern — für Webapp und App derselbe Weg.
+ * @returns die Menge danach, wenn sie Teil der Anfrage war
+ */
+export async function updateManualPart(uid: number, partNumber: string, colorId: number, body: any): Promise<{ quantity?: number }> {
+  const existing = await repo.teilZeileMitZustand(uid, partNumber, colorId);
   if (!existing) { const e = Object.assign(new Error('Teil nicht gefunden oder nicht manuell hinzugefügt'), { status: 404 }); throw e; }
 
-  if (body.quantity !== undefined) {
-    const newQty = bestandsMenge(body.quantity, 1);
-    // Marktpreis VOR der Sperre holen (Netzaufruf) und nur, wenn die Menge
-    // steigt — das schont das BrickLink-Kontingent.
+  const raus: { quantity?: number } = {};
+  const wunsch = mengenwunsch(body);
+  if (wunsch) {
     const cond = await zustandFuerPreis(undefined, existing.condition, uid);
-    const bisher = (await db.get(
-      'SELECT COALESCE(SUM(quantity), 0)::int AS q FROM part_acquisitions WHERE user_id=$1 AND part_number=$2 AND color_id=$3',
-      [uid, partNumber, colorId]))?.q ?? 0;
-    const mp = newQty > bisher
-      ? await getCurrentPartMarketPrice(partNumber, colorId, uid, cond).catch(meldeUndLiefere('manuelle-teile:getCurrentPartMarketPrice', null)) : null;
-    // Unter der Bestandssperre: Lesen, Delta rechnen und Schreiben dürfen sich
-    // nicht mit einer gleichzeitigen Änderung (Web und App) überholen.
-    await withInventoryLock(uid, bestandsSchluessel('part', [partNumber, colorId]), async (tx) => {
-      const acqs = await tx.all('SELECT id, quantity, created_at FROM part_acquisitions WHERE user_id=$1 AND part_number=$2 AND color_id=$3 ORDER BY created_at DESC, id DESC',
-        [uid, partNumber, colorId]);
-      const currentTotal = acqs.reduce((s: number, r: any) => s + r.quantity, 0);
-      const delta = newQty - currentTotal;
-      if (delta > 0) {
-        await recordAcquisitionForDay('part', uid, [partNumber, colorId],
-          { quantity: delta, price: mp, condition: cond, geschaetzt: true }, tx);
-      } else if (delta < 0) {
-        let rem = -delta;
-        for (const a of acqs) {
-          if (rem <= 0) break;
-          const take = Math.min(a.quantity, rem);
-          if (take >= a.quantity) await tx.run('DELETE FROM part_acquisitions WHERE id=$1', [a.id]);
-          else await tx.run('UPDATE part_acquisitions SET quantity=quantity-$1 WHERE id=$2', [take, a.id]);
-          rem -= take;
-        }
-      }
-    });
+    raus.quantity = await passeManuelleMengeAn('part', uid, [partNumber, colorId], wunsch, cond,
+      () => getCurrentPartMarketPrice(partNumber, colorId, uid, cond));
   }
   if (body.unit_price !== undefined) {
     // Die Regel („leer heisst Marktpreis", Zustand gestaffelt) steht in
@@ -274,28 +224,13 @@ export async function updateManualPart(uid: number, partNumber: string, colorId:
     // (nie NULL, 0 heisst „nichts bekannt"), und den bildet jetzt die
     // Leseabfrage mit COALESCE(..., 0). In der Erfassung bedeutet 0 „fuer …
     // Ausführlich: docs/begruendungen/routes/parts.ts.md#updatemanualpart-3
-    await db.run(
-      `UPDATE part_acquisitions SET unit_price = NULLIF($1::numeric, 0)
-        WHERE id = (SELECT a.id FROM part_acquisitions a
-                     WHERE a.user_id=$2 AND a.part_number=$3
-                       AND a.color_id = $4
-                     ORDER BY a.created_at DESC, a.id DESC LIMIT 1)`,
-      [unitPrice, uid, partNumber, colorId]);
+    await repo.setzeTeilpreisNeueste(uid, partNumber, colorId, unitPrice);
   }
   if (body.condition !== undefined && body.condition !== null) {
     const cond = ['N','U'].includes(body.condition) ? body.condition : 'N';
-    // Ebenfalls in die neueste Erfassung. Das try/catch mit dem Hinweis
-    // „migration pending?" ist weg: Es deckte eine Zeit ab, in der die Spalte
-    // parts.condition noch fehlen konnte. Jetzt gibt es sie nicht mehr, und
-    // ein Fehlschlag soll nicht verschwiegen werden.
-    await db.run(
-      `UPDATE part_acquisitions SET condition=$1
-        WHERE id = (SELECT a.id FROM part_acquisitions a
-                     WHERE a.user_id=$2 AND a.part_number=$3
-                       AND a.color_id = $4
-                     ORDER BY a.created_at DESC, a.id DESC LIMIT 1)`,
-      [cond, uid, partNumber, colorId]);
+    await repo.setzeTeilzustandNeueste(uid, partNumber, colorId, cond);
   }
+  return raus;
 }
 
 /**
@@ -308,22 +243,12 @@ export async function getPartAcquisitions(uid: number[], partNumber: string, col
   // mit — sonst wüsste die Auswahl im Dialog nicht, worauf sie steht.
   //  Kein Rueckfall auf die Stammzeile mehr
   // Ausführlich: docs/begruendungen/routes/parts.ts.md#getpartacquisitions-2
-  return db.all(
-    `SELECT a.id, a.quantity, a.unit_price,
-            COALESCE(a.condition, 'N') AS condition, a.price_estimated, a.currency,
-            a.created_at, a.user_id AS owner_user_id
-     FROM part_acquisitions a
-     WHERE a.user_id = ANY($1) AND a.part_number=$2 AND a.color_id=$3
-     ORDER BY a.created_at ASC, a.id ASC`,
-    [uid, partNumber, V0.colorId(colorId)]
-  );
+  return repo.teilErfassungen(uid, partNumber, V0.colorId(colorId));
 }
 
 /** Die manuelle Bestandszeile eines Teils, falls es sie gibt. */
 export function manuellesTeil(uid: number, partNumber: string, colorId: number): Promise<{ id: number } | undefined> {
-  return db.get(
-    "SELECT id FROM parts WHERE user_id=$1 AND part_number=$2 AND color_id=$3 AND source='manual'",
-    [uid, partNumber, colorId]);
+  return repo.teilZeileManuell(uid, partNumber, colorId);
 }
 
 /**
@@ -364,14 +289,12 @@ export async function importiereTeileCsv(uid: number, text: string) {
       }
       // Katalog vor Bestand: lieber eine Beschreibung ohne Bestand als umgekehrt.
       // Name und Farbbezeichnung aus der Datei sind Eingaben dieses Kontos.
-      const colorHex = (await db.get<{ rgb: string | null }>('SELECT rgb FROM rb_colors WHERE id=$1', [colorId])
-        .catch(meldeUndLiefere('teile-csv:farbcode', undefined)))?.rgb || null;
+      const colorHex = await repo.rbFarbcode(colorId).catch(meldeUndLiefere('teile-csv:farbcode', null));
       if (eingetippt) await merkeTeil(partNumber, partName, null, db, uid);
       else await merkeTeil(partNumber, partName, categoryName);
       await merkeTeilFarbe(partNumber, colorId, null, colorHex, imageUrl);
       await merkeTeilFarbe(partNumber, colorId, colorName, null, null, null, db, uid);
-      await db.run(`INSERT INTO parts (user_id, set_number, part_number, color_id, source)
-        VALUES ($1, NULL, $2, $3, 'manual') ON CONFLICT DO NOTHING`, [uid, partNumber, colorId]);
+      await repo.legeTeilManuellAn(uid, partNumber, colorId);
       await recordAcquisitionForDay('part', uid, [partNumber, colorId], erfassung);
       added++;
       results.push({ part_number: partNumber, action: 'added' });

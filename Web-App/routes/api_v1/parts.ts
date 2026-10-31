@@ -66,8 +66,10 @@ router.put('/parts/:partNumber/:colorId', requireToken, async (req: AuthedReques
   // Antwort 200 {"success":true}.
   const besitzer = await resolveWriteTarget(req.apiUser.user_id, req.query.owner);
   if (besitzer === null) return sendeFehler(req, res, 403, 'kein_zugriff_konto');
-  await updateManualPart(besitzer, String(req.params.partNumber), V.colorId(req.params.colorId), req.body);
-  res.json({ success: true });
+  // Mit Mengenänderung trägt die Antwort die Menge danach (bei quantity_delta
+  // weiss der Client sie sonst nicht).
+  const r = await updateManualPart(besitzer, String(req.params.partNumber), V.colorId(req.params.colorId), req.body);
+  res.json({ success: true, ...r });
 });
 
 /**

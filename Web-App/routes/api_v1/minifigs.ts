@@ -37,8 +37,8 @@ router.put('/minifigs/:figNumber', requireToken, async (req: AuthedRequest, res)
   // Wie bei den Teilen: Ohne den Parameter das eigene Konto.
   const besitzer = await resolveWriteTarget(req.apiUser.user_id, req.query.owner);
   if (besitzer === null) return sendeFehler(req, res, 403, 'kein_zugriff_konto');
-  await updateManualFig(besitzer, pfadParam(req, 'figNumber'), req.body);
-  res.json({ success: true });
+  const r = await updateManualFig(besitzer, pfadParam(req, 'figNumber'), req.body);
+  res.json({ success: true, ...r });
 });
 
 /**

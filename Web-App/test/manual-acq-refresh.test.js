@@ -61,12 +61,12 @@ test('eine Mengenerhöhung legt auch ohne bestehende Erfassung eine Zeile an', (
 test('die LIFO-Reduktion entfernt die neueste Erfassung zuerst', () => {
   // Reihenfolge DESC ist die Voraussetzung dafür, dass beim Reduzieren der
   // HEUTIGE Eintrag zuerst schrumpft bzw. wegfällt.
-  for (const [f, table] of [['src/teile/manuelleTeile.ts', 'part_acquisitions'],
-                            ['src/figuren/manuelleFiguren.ts', 'minifig_acquisitions']]) {
-    const src = read(f);
-    assert.match(src, new RegExp(`FROM ${table} WHERE[^']*ORDER BY created_at DESC, id DESC`),
-      `${f}: ohne DESC würde beim Reduzieren die ÄLTESTE Erfassung zuerst abgebaut`);
-  }
+  // Teile und Figuren kürzen über denselben Weg (src/bestand/manuelleMenge.ts).
+  for (const f of ['src/teile/manuelleTeile.ts', 'src/figuren/manuelleFiguren.ts'])
+    assert.match(read(f), /passeManuelleMengeAn\(/, `${f}: kürzt nicht über den gemeinsamen Weg`);
+  assert.match(read('src/bestand/repository/manuelleMengen.ts'),
+    /function erfassungenNeuesteZuerst[\s\S]*?ORDER BY created_at DESC, id DESC/,
+    'ohne DESC würde beim Reduzieren die ÄLTESTE Erfassung zuerst abgebaut');
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -284,8 +284,6 @@ test('das Löschen eines manuellen Eintrags räumt die Kaufpreise mit ab', () =>
   // dauerhaft weitergezählt, und zwar unsichtbar: Keine Ansicht zeigt
   // verwaiste Erfassungen, es fällt nur als „die Summe stimmt nicht" auf.
   const stellen = [
-    ['src/teile/manuelleTeile.ts',    'DELETE FROM part_acquisitions'],
-    ['src/figuren/manuelleFiguren.ts',  'DELETE FROM minifig_acquisitions'],
     // Die beiden v1-Routen und „alles löschen" gehen über src/bestand/loeschen.ts.
     ['src/bestand/loeschen.ts',         'DELETE FROM part_acquisitions'],
     ['src/bestand/loeschen.ts',         'DELETE FROM minifig_acquisitions'],
