@@ -114,7 +114,7 @@ test('beide filtern am Server, nicht im Gerät', () => {
   // Seit Migration 0031 traegt die Zeile eine ID, der Name steht im Vorrat —
   // der Filter vergleicht deshalb `lo.name` statt `p.storage`. Die Aussage ist
   // dieselbe: Gefiltert wird am Server.
-  assert.match(web('src/teile/abfragen.ts'), /lo\.name = \$\$\{pi\+\+\}/,
+  assert.match(web('src/teile/repository/teileListe.ts'), /lo\.name = \$\$\{pi\+\+\}/,
     'Der Server filtert Teile nicht nach Lagerort');
   assert.match(web('src/sets/repository/sets.ts'), /s\.storage = \$\$\{params\.length\}/,
     'Der Server filtert Sets nicht nach Lagerort');

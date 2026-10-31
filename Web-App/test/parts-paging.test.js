@@ -161,7 +161,7 @@ test('die redundante Deduplizierung im Client ist weg', () => {
 
 test('getParts liefert die Seiteninformationen mit', () => {
   const h = require('./helpers/sources').handlerQuelle();
-  const ret = h.slice(h.indexOf('return { parts: partsResolved'), h.indexOf('return { parts: partsResolved') + 200);
+  const ret = h.slice(h.indexOf("return { parts, total, source: 'db'"), h.indexOf("return { parts, total, source: 'db'") + 200);
   assert.match(ret, /total/, 'ohne total weiss der Client nicht, wann Schluss ist');
 });
 
@@ -303,8 +303,7 @@ test('der Farbfilter vergleicht Namen — in beiden Abfragepfaden', () => {
   const h = require('./helpers/sources').handlerQuelle();
   // getParts steht mit Typannotation im Code — auf den Namen ohne Signatur
   // schneiden, sonst ist der Abschnitt leer und der Test prüft nichts.
-  const sum = h.slice(h.indexOf('async function tryPartsSummary'),
-                      h.indexOf('async function getParts(userId'));
+  const sum = require('./helpers/sources').funktionsRumpf(h, 'seiteAusZusammenfassung');
   assert.ok(sum.length > 100, 'Abschnitt nicht gefunden — Prüfung liefe ins Leere');
   assert.ok(sum.includes('cond.push(`color_name = $${params.length + 1}`)'),
     'Die Zusammenfassung muss über den Farbnamen filtern');
@@ -333,8 +332,7 @@ test('Kategorien werden über den Teilekatalog aufgelöst', () => {
 
   // Die Zusammenfassung löst seit dem 29.10. genauso über rb_parts auf; dass
   // beide Wege dasselbe liefern, prüft test/teile-kategorie-zusammenfassung-db.
-  const sum = h.slice(h.indexOf('async function tryPartsSummary'),
-                      h.indexOf('async function getParts(userId'));
+  const sum = require('./helpers/sources').funktionsRumpf(h, 'seiteAusZusammenfassung');
   assert.ok(sum.length > 100, 'Abschnitt nicht gefunden — Prüfung liefe ins Leere');
   assert.match(sum, /part_number IN \(SELECT rp\.part_num FROM rb_parts rp/,
     'Die Zusammenfassung muss die Kategorie ebenfalls über rb_parts auflösen');
@@ -365,13 +363,10 @@ test('beide Abfragewege deckeln page_size gleich', () => {
   // (SET_PARTS_MAX_PAGE_SIZE, weil die App sie in einem Stück holt), rechnet
   // der Pfad die Grenze selbst aus. Entscheidend bleibt, dass BEIDE Wege
   // dieselben zwei Grenzen kennen und keiner den Wert ungeprüft durchreicht.
-  const summary = h.slice(h.indexOf('async function tryPartsSummary'),
-                          h.indexOf('async function getPartsStats'));
-  assert.match(summary, /SET_PARTS_MAX_PAGE_SIZE : MAX_PAGE_SIZE/,
-    'Der Zusammenfassungs-Pfad kennt die Grenzen nicht');
-  assert.match(summary, /Math\.min\(obergrenze/,
-    'Der Zusammenfassungs-Pfad reicht page_size wieder ungeprüft durch');
-  const live = h.slice(h.indexOf('async function getParts(userId'), h.indexOf('async function getPartsStats'));
-  assert.match(live, /SET_PARTS_MAX_PAGE_SIZE : MAX_PAGE_SIZE/,
-    'Der Live-Pfad kennt die Grenzen nicht');
+  const { funktionsRumpf } = require('./helpers/sources');
+  const grenze = funktionsRumpf(h, 'seitengroesse');
+  assert.match(grenze, /SET_PARTS_MAX_PAGE_SIZE : MAX_PAGE_SIZE/, 'Die Seitengrösse kennt die Grenzen nicht');
+  assert.match(grenze, /Math\.min\(obergrenze/, 'page_size geht wieder ungeprüft durch');
+  assert.match(funktionsRumpf(h, 'tryPartsSummary'), /seitengroesse\(/, 'Der Zusammenfassungs-Pfad kennt die Grenzen nicht');
+  assert.match(funktionsRumpf(h, 'getParts'), /seitengroesse\(/, 'Der Live-Pfad kennt die Grenzen nicht');
 });

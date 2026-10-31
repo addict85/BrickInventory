@@ -202,7 +202,7 @@ test('auch die manuellen Listen können seitenweise', () => {
   // abgeschaltet statt befolgt; funktionsRumpf() schneidet deshalb an der
   // schliessenden Klammer (test/helpers/sources.js, dort steht die Lehre).
   const { funktionsRumpf } = require('./helpers/sources');
-  for (const [f, liste] of [['getManualParts', 'getManualParts'], ['getManualMinifigs', 'manuelleFigurenListe']]) {
+  for (const [f, liste] of [['getManualParts', 'manuelleTeile'], ['getManualMinifigs', 'manuelleFigurenListe']]) {
     assert.match(funktionsRumpf(H_SRC, f), /page_size/, `${f} kennt kein page_size`);
     const fn = funktionsRumpf(H_SRC, liste);
     assert.match(fn, /LIMIT \$\$\{params\.length - 1\} OFFSET \$\$\{params\.length\}/,

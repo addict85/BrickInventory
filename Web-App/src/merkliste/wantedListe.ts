@@ -3,7 +3,8 @@
  * Ausführlich: docs/begruendungen/src/merkliste/wantedListe.ts.md#abschnitt
  */
 import { blTeilZuRb, blFilterWirkungslos } from '../../clients/rebrickable';
-import * as db from '../../db/database';
+import * as repo from './repository/wantedListe';
+import { meldeUndLiefere } from '../infra/httpError';
 import { nutzerStandardZustand } from '../konto/settings';
 
 /** Die drei Arten, die diese Anwendung führt. */
@@ -173,10 +174,7 @@ export async function loeseLokalAuf(posten: WantedPosten[]): Promise<Aufloesung[
   const farben = [...new Set(posten.map(p => p.blFarbe).filter((f): f is number => f !== null))];
 
   const zuordnung = new Map<string, { rbId: string; sicherheit: Sicherheit }>();
-  for (const z of await db.all(
-    `SELECT art, rb_id, bl_id FROM bl_zuordnung
-      WHERE (bl_id = ANY($1) OR (bl_id IS NULL AND rb_id = ANY($1)))`, [nummern])
-    .catch(() => [])) {
+  for (const z of await repo.zuordnungen(nummern).catch(meldeUndLiefere('wanted:zuordnung', []))) {
     const schluessel = `${z.art}:${z.bl_id ?? z.rb_id}`;
     // Eine ausdrückliche Zuordnung gewinnt gegen einen NULL-Vermerk.
     const stufe: Sicherheit = z.bl_id ? 'zuordnung' : 'gleich_vermerkt';
@@ -188,17 +186,12 @@ export async function loeseLokalAuf(posten: WantedPosten[]): Promise<Aufloesung[
 
   // Stufe 3 je Art im eigenen Katalog.
   const katalog = new Set<string>();
-  for (const [art, sql] of [
-    ['part', 'SELECT part_number AS n FROM part_catalog WHERE part_number = ANY($1)'],
-    ['fig',  'SELECT fig_number AS n FROM minifigs_catalog WHERE fig_number = ANY($1)'],
-    ['set',  'SELECT set_number AS n FROM set_catalog WHERE set_number = ANY($1)'],
-  ] as const) {
-    for (const z of await db.all(sql, [nummern]).catch(() => [])) katalog.add(`${art}:${z.n}`);
+  for (const art of ['part', 'fig', 'set'] as const) {
+    for (const n of await repo.imKatalog(art, nummern).catch(meldeUndLiefere('wanted:katalog', []))) katalog.add(`${art}:${n}`);
   }
 
   const farbMap = new Map<number, { id: number; name: string | null; hex: string | null }>();
-  for (const z of await db.all(
-    'SELECT id, name, rgb, bl_color_id FROM rb_colors WHERE bl_color_id = ANY($1)', [farben]).catch(() => [])) {
+  for (const z of await repo.farbenZuBlFarben(farben).catch(meldeUndLiefere('wanted:farben', []))) {
     farbMap.set(Number(z.bl_color_id), {
       id: Number(z.id), name: z.name ?? null, hex: z.rgb ?? null,
     });
@@ -400,25 +393,14 @@ export async function beschreibePosten(
 
   if (teile.length) {
     const nummern = [...new Set(teile.map(t => t.nr))];
-    const zeilen = await db.all(`
-      SELECT p.part_number,
-             COALESCE(pc.part_name, rp.name)        AS name,
-             COALESCE(rp.part_img_url, '')          AS bild_allgemein
-        FROM (SELECT UNNEST($1::text[]) AS part_number) p
-        LEFT JOIN part_catalog pc ON pc.part_number = p.part_number
-        LEFT JOIN rb_parts     rp ON rp.part_num    = p.part_number`,
-      [nummern]).catch(() => []);
+    const zeilen = await repo.teileBeschreibung(nummern).catch(meldeUndLiefere('wanted:teile', []));
     const nachNummer = new Map(zeilen.map(z => [z.part_number, z]));
     // Die Farbbilder in EINER Abfrage: (Nummer, Farbe) als Paare.
     const paare = teile.filter(t => t.farbe !== null);
     const bilder = new Map<string, string>();
     if (paare.length) {
-      const farbZeilen = await db.all(`
-        SELECT part_number, color_id, COALESCE(image_local, image_url) AS bild
-          FROM part_color_catalog
-         WHERE (part_number, color_id) IN (
-                 SELECT UNNEST($1::text[]), UNNEST($2::int[]))`,
-        [paare.map(t => t.nr), paare.map(t => t.farbe)]).catch(() => []);
+      const farbZeilen = await repo.teilFarbbilder(paare.map(t => t.nr), paare.map(t => t.farbe as number))
+        .catch(meldeUndLiefere('wanted:farbbilder', []));
       for (const z of farbZeilen) if (z.bild) bilder.set(`${z.part_number}|${z.color_id}`, z.bild);
     }
     for (const t of teile) {
@@ -432,10 +414,8 @@ export async function beschreibePosten(
   }
 
   if (figuren.length) {
-    const zeilen = await db.all(
-      `SELECT fig_number, fig_name, COALESCE(image_local, image_url) AS bild
-         FROM minifigs_catalog WHERE fig_number = ANY($1)`,
-      [[...new Set(figuren.map(f => f.nr))]]).catch(() => []);
+    const zeilen = await repo.figurenBeschreibung([...new Set(figuren.map(f => f.nr))])
+      .catch(meldeUndLiefere('wanted:figuren', []));
     const nach = new Map(zeilen.map(z => [z.fig_number, z]));
     for (const f of figuren) {
       const z = nach.get(f.nr);
@@ -446,14 +426,7 @@ export async function beschreibePosten(
 
   if (sets.length) {
     const nummern = [...new Set(sets.map(x => x.nr))];
-    const zeilen = await db.all(`
-      SELECT s.set_number,
-             COALESCE(sc.name, rs.name)                                AS name,
-             COALESCE(sc.image_local, sc.image_url, rs.set_img_url)     AS bild
-        FROM (SELECT UNNEST($1::text[]) AS set_number) s
-        LEFT JOIN set_catalog sc ON sc.set_number = s.set_number
-        LEFT JOIN rb_sets     rs ON rs.set_num    = s.set_number`,
-      [nummern]).catch(() => []);
+    const zeilen = await repo.setsBeschreibung(nummern).catch(meldeUndLiefere('wanted:sets', []));
     const nach = new Map(zeilen.map(z => [z.set_number, z]));
     for (const x of sets) {
       const z = nach.get(x.nr);
@@ -559,9 +532,7 @@ async function farbenNachtragen(auf: Aufloesung[]): Promise<Aufloesung[]> {
   const offen = auf.filter(a => a.rbFarbe !== null && a.rbFarbName === null)
                    .map(a => a.rbFarbe as number);
   if (!offen.length) return auf;
-  const zeilen = await db.all(
-    'SELECT id, name, rgb FROM rb_colors WHERE id = ANY($1)', [[...new Set(offen)]])
-    .catch(() => []);
+  const zeilen = await repo.farben([...new Set(offen)]).catch(meldeUndLiefere('wanted:farbnamen', []));
   const nach = new Map(zeilen.map(z => [Number(z.id), z]));
   return auf.map(a => {
     if (a.rbFarbe === null || a.rbFarbName !== null) return a;

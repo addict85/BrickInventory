@@ -698,37 +698,7 @@ test('die Sparkline zeichnet avg_price, nicht qty_avg_price', () => {
     'Die alte, fehlerhafte Reihenfolge darf nicht mehr vorkommen');
 });
 
-test('parts_summary-Neuaufbau ist über eine Datenbank-Sperre vor Cluster-Workern geschützt', () => {
-  // Gemeldet: "duplicate key value violates unique constraint
-  // parts_summary_pkey" beim Hintergrundaufbau. Ursache: Der Server läuft im
-  // Cluster-Modus mit mehreren Worker-Prozessen (server.ts, cluster.fork());
-  // die In-Memory-Sperre (_rebuilding-Map) schützt nur INNERHALB eines
-  // Prozesses. Fragen zwei Worker fast gleichzeitig für denselben Nutzer an,
-  // können beide DELETE+INSERT ausführen — unter READ COMMITTED verpasst der
-  // zweite Workers DELETE die vom ersten gerade committeten neuen Zeilen
-  // (sie kamen nach Beginn seines Scans hinzu), sein anschliessender INSERT
-  // versucht dieselben Zeilen erneut anzulegen und verletzt den Primärschlüssel.
-  const src = fs.readFileSync(path.join(ROOT, 'src/teile/partsSummary.ts'), 'utf8');
-  const fn = src.slice(src.indexOf('export async function rebuild'),
-                       src.indexOf('export async function rebuild') + 3000);
-
-  // Auf die ART der Sperre geprüft, nicht auf die Zahl: Seit Nachtrag 149
-  // stehen alle Namensräume in src/infra/lockNamespaces.ts, und dass sie sich
-  // nicht überschneiden, prüft test/lock-namespaces-db.test.js gegen eine
-  // echte Datenbank. Hier zählt nur, dass die Sperre eine DATENBANK-Sperre ist
-  // — die alte In-Memory-Map schützte nur innerhalb eines Workers.
-  assert.match(fn, /pg_try_advisory_xact_lock\(/,
-    'Die Sperre muss prozessübergreifend in der Datenbank liegen, nicht nur im Node-Prozess');
-  assert.match(fn, /LOCKS\.TEILE_SUMMARY/,
-    'Der Namensraum gehört aus src/infra/lockNamespaces.ts, nicht eingetippt');
-  assert.match(fn, /if \(!lock\?\.ok\) \{\s*\/\//,
-    'Ohne die Sperre muss der Aufbau abgebrochen werden, statt zu kollidieren');
-  // Sperre muss VOR dem DELETE erworben werden, sonst nützt sie nichts.
-  const lockIdx = fn.indexOf('pg_try_advisory_xact_lock');
-  const deleteIdx = fn.indexOf('DELETE FROM parts_summary');
-  assert.ok(lockIdx > 0 && lockIdx < deleteIdx,
-    'Die Sperre muss vor dem DELETE erworben werden');
-});
+// Die Datenbank-Sperre des Neuaufbaus prüft test/teile-zusammenfassung-sperre-db.test.js.
 
 test('CDN-Anfragen erzwingen IPv4', () => {
   // Gemeldet: mehrere völlig unterschiedliche Set-Nummern liefen ALLE exakt

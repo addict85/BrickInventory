@@ -77,10 +77,10 @@ test('set_number und storage gehen bewusst an der Zusammenfassung vorbei', () =>
   // Geprüft wird auf beide Namen einzeln statt auf die ganze Zeile: Kommt ein
   // dritter Filter dazu, soll dieser Test nicht an der Reihenfolge scheitern.
   const h = require('./helpers/sources').handlerQuelle();
-  const zeile = /if \(excludesManual && ([^)]*)\)/.exec(h)?.[1] || '';
-  assert.ok(zeile.includes('!set_number'),
+  const zeile = /if \(filter\.ohneManuelle && ([^)]*)\)/.exec(h)?.[1] || '';
+  assert.ok(zeile.includes('!filter.set_number'),
     'Die Teile EINES Sets sind ein anderer Anwendungsfall — dort ist die Live-Abfrage passend und schnell genug');
-  assert.ok(zeile.includes('!query.storage'),
+  assert.ok(zeile.includes('!filter.storage'),
     'Der Lagerort steht in der Zusammenfassung nur verdichtet — ein Filter darauf träfe die Gruppe falsch');
 });
 
@@ -255,7 +255,7 @@ test('der Neuaufbau blockiert den Request nicht', () => {
   assert.doesNotMatch(fn, /await rebuild\(/,
     'ensureFresh darf nicht im Request aufbauen — genau das waren die drei Sekunden');
   assert.match(fn, /rebuildInBackground\(/, 'Der Aufbau muss in den Hintergrund');
-  assert.match(fn, /return !!state/,
+  assert.match(fn, /return state !== null/,
     'Veralteter Stand wird ausgeliefert; ohne jeden Stand übernimmt die Live-Abfrage');
 
   assert.match(src, /const _rebuilding = new Map/,
