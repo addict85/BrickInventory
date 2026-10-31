@@ -38,6 +38,7 @@ const ERWARTET_OFFEN = new Map([
   ['GET /api/v1/auth/registration-status', 'Ob Registrierung offen ist — vor dem Konto'],
   ['POST /api/v1/auth/forgot-password',  'Wer sein Passwort vergisst, kann sich nicht anmelden'],
   ['POST /api/v1/auth/reset-password',   'Dasselbe, zweiter Schritt'],
+  ['POST /api/v1/auth/passkey/anmelden/optionen', 'Die Anmeldung mit Passkey beginnt vor jedem Konto'],
   ['GET /api/v1/settings/theme',         'Das Design des Login-Bildschirms, vor jeder Anmeldung'],
   ['GET /api/v1/startup-status',         'Der Ladebildschirm vor der Anmeldung'],
   ['GET /api/v1/health',                 'Gesundheitsprüfung von compose.yaml'],

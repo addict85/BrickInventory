@@ -212,7 +212,7 @@ export async function unlink(uid: number, subUserId?: number | null, mainUserId?
 
 /** Den Hinweis auf eine getrennte Kette verwerfen (nur der eigene). */
 export async function verwerfeGetrennt(uid: number, subUserId: number) {
-  return { removed: await repo.verwerfeGetrennt(parseInt(String(uid)), parseInt(String(subUserId))) };
+  return { removed: await repo.loescheGetrenntHinweis(parseInt(String(uid)), parseInt(String(subUserId))) };
 }
 
 /** Zustand für die Einstellungen: Elternkonten, Unterkonten, offene Einladungen, Hinweise. */

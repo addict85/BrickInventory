@@ -78,7 +78,7 @@ export async function trenne(main: number | null, sub: number): Promise<number> 
   return r.changes ?? 0;
 }
 
-export async function verwerfeGetrennt(main: number, sub: number): Promise<number> {
+export async function loescheGetrenntHinweis(main: number, sub: number): Promise<number> {
   const r = await db.run('DELETE FROM household_former_links WHERE main_user_id = $1 AND sub_user_id = $2', [main, sub]);
   return r.changes ?? 0;
 }

@@ -761,7 +761,7 @@ function v1Routen() {
   };
   for (const f of fs.readdirSync(path.join(ROOT, 'routes/api_v1')).filter(f => f.endsWith('.ts')))
     lies(`routes/api_v1/${f}`, '/api/v1');
-  for (const f of ['settings', 'auth']) lies(`routes/${f}.ts`, `/api/v1/${f}`);
+  lies('routes/auth.ts', '/api/v1/auth');
   lies('server.ts', '');
   return gefunden.filter(([, p]) => p.startsWith('/api/v1'));
 }

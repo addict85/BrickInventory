@@ -115,7 +115,7 @@ test('keine unbegruendete Route auf beiden API-Oberflaechen', () => {
   // Selbstbeweis: Greift das Muster nicht mehr (umbenanntes `router`, andere
   // Schreibweise des Mountpunkts), waeren beide Mengen leer und der Test
   // gruen, ohne etwas geprueft zu haben.
-  assert.ok(web.size >= 40, `Nur ${web.size} Webapp-Routen gefunden — Muster veraltet?`);
+  assert.ok(web.size >= 30, `Nur ${web.size} Webapp-Routen gefunden — Muster veraltet?`);
   assert.ok(v1.size >= 80, `Nur ${v1.size} v1-Routen gefunden — Muster veraltet?`);
 
   // Beide Seiten ohne Praefix vergleichen: Seit dem Umzug haengen die
@@ -159,8 +159,8 @@ test('jeder Router haengt unter /api/v1', () => {
   const einhaengungen = webRouter();
   // Selbstbeweis: Findet das Muster keine Einhaengepunkte, prueft alles
   // darunter nichts und waere trotzdem gruen.
-  // Zwei: settings und auth. sets, parts und minifigs gingen in den v1-Router auf.
-  assert.ok(einhaengungen.length >= 2,
+  // Einer: auth. Einstellungen, Sets, Teile und Figuren gingen in den v1-Router auf.
+  assert.ok(einhaengungen.length >= 1,
     `Nur ${einhaengungen.length} Router-Einhaengepunkte in server.ts gefunden — Muster veraltet?`);
 
   const daneben = einhaengungen
