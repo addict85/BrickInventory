@@ -18,7 +18,7 @@ const KATALOG: Record<Art, string> = {
 };
 
 /** Welche der Nummern der eigene Katalog dieser Art führt. */
-export async function imKatalog(art: Art, nummern: string[]): Promise<string[]> {
+export async function nummernImKatalog(art: Art, nummern: string[]): Promise<string[]> {
   return (await db.all<{ n: string }>(KATALOG[art], [nummern])).map(z => z.n);
 }
 
@@ -29,7 +29,7 @@ export function farbenZuBlFarben(blFarben: number[]) {
     'SELECT id, name, rgb, bl_color_id FROM rb_colors WHERE bl_color_id = ANY($1)', [blFarben]);
 }
 
-export function farben(ids: number[]) {
+export function farbenZuIds(ids: number[]) {
   return db.all<Farbe>('SELECT id, name, rgb FROM rb_colors WHERE id = ANY($1)', [ids]);
 }
 

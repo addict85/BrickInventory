@@ -75,7 +75,7 @@ test('keine Funktion ohne einen einzigen Aufrufer', () => {
  *   db/migrate.ts: listMigrations                     versprach im Kommentar
  *                                                     eine Admin-Oberflaeche,
  *                                                     die es nicht gibt
- *   jobs/partsCatalogEnrich.ts: activeDownloads       Diagnosezaehler, kein Leser
+ *   src/katalog/teileAnreicherung.ts: activeDownloads       Diagnosezaehler, kein Leser
  *   src/sets/abfragen.ts: updateSetQuantity         ueberholte Zweitfassung
  *   src/infra/sseRegistry.ts: openSseCount                „fuer Diagnose und Tests",
  *                                                     kein Test benutzte sie

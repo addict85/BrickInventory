@@ -231,7 +231,7 @@ export async function computeMinifigsValuation(viewerId: number, ids: Blickfeld)
   // das gemeldet, sobald der Rueckfall weg war — ein Wert, den niemand mehr
   // liest, ist der beste Beleg dafuer, dass er nur den Fehler getragen hat.
   // Ausführlich: docs/begruendungen/src/finanzen/rechnung/bewertung.ts.md#computeminifigsvaluation-manualfigs
-  const manualFigs = await repo.manuelleFiguren(uids);
+  const manualFigs = await repo.manuelleFigurenZurBewertung(uids);
   if (!manualFigs.length) return { currency, figs: [], total_value: '0.00', kaufpreise_fremde_waehrung: 0, kaufpreise_umgerechnet: 0 };
 
   const acqByFig = await loadManualAcquisitions(uids, 'fig', String(currency));
@@ -321,7 +321,7 @@ export async function computePartsValuation(viewerId: number, ids: Blickfeld) {
   // Spalten ausgeschrieben, kein SELECT * — dieselbe Begruendung wie bei den
   // Figuren darueber. Die Beschreibung kommt aus den Katalogen (Migration
   // 0034), der Bestand aus parts.
-  const manualParts = await repo.manuelleTeile(uids);
+  const manualParts = await repo.manuelleTeileZurBewertung(uids);
 
   if (!manualParts.length) return { currency, parts: [], total_value: '0.00', kaufpreise_fremde_waehrung: 0, kaufpreise_umgerechnet: 0 };
 

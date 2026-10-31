@@ -39,7 +39,7 @@ function katalogWo(f: KatalogWahl, params: unknown[]): string {
 }
 
 /** Sets je Jahr; NULL-Jahre stehen bei absteigender Ordnung vorn wie in der Liste. */
-export function jahrVerteilung(f: KatalogWahl, absteigend: boolean) {
+export function setsJeJahrGefiltert(f: KatalogWahl, absteigend: boolean) {
   const params: unknown[] = [];
   return db.all<{ year: number | null; n: number }>(`SELECT rb.year, COUNT(*)::int AS n FROM rb_sets rb ${katalogWo(f, params)}
                   GROUP BY rb.year ORDER BY rb.year ${absteigend ? 'DESC NULLS FIRST' : 'ASC NULLS LAST'}`, params);
@@ -67,7 +67,7 @@ export async function katalogAnzahl(f: KatalogWahl): Promise<number> {
 }
 
 /** Eine Seite des Katalogs mit dem Besitz des Kontos; eine unbekannte Ordnung heisst „neueste zuerst“. */
-export function katalogSeite(userId: number, f: KatalogWahl, ordnung: unknown, limit: number, offset: number) {
+export function katalogZeilen(userId: number, f: KatalogWahl, ordnung: unknown, limit: number, offset: number) {
   // ausTabelle: ?sort=constructor darf keine geerbte Eigenschaft liefern.
   const sortSql = ausTabelle(ORDNUNGEN, ordnung, ORDNUNGEN.year_desc);
   const params: unknown[] = [userId];
@@ -83,7 +83,7 @@ export function katalogSeite(userId: number, f: KatalogWahl, ordnung: unknown, l
       LIMIT $${params.length - 1} OFFSET $${params.length}`, params);
 }
 
-export function katalogSet(userId: number, setNumber: string) {
+export function katalogZeile(userId: number, setNumber: string) {
   return db.get<KatalogSet>(
     `SELECT ${SET_SPALTEN}
        FROM rb_sets rb

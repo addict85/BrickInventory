@@ -1,6 +1,6 @@
 /**
  * Der Katalog aus den Rebrickable-CSV-Tabellen: Teile und Figuren eines
- * Inventars, Sets ohne Katalogeintrag, Teile ohne BrickLink-Nachsicht.
+ * Inventars, Sets ohne Katalogeintrag, das Farbbild manueller Teile.
  */
 import * as db from '../../../db/database';
 
@@ -52,16 +52,6 @@ export async function setsOhneTeilekatalog(grenze = 50): Promise<string[]> {
      WHERE c.set_number IS NULL AND s.set_num NOT LIKE 'fig-%'
      LIMIT $1`, [grenze]);
   return rows.map(r => r.set_num);
-}
-
-/** Erfasste Teile, für die noch keine BrickLink-Zuordnung nachgesehen wurde. */
-export async function teileOhneBlNachsicht(): Promise<string[]> {
-  const rows = await db.all<{ part_number: string }>(
-    `SELECT DISTINCT p.part_number FROM parts p
-      LEFT JOIN bl_zuordnung z ON z.art = 'part' AND z.rb_id = p.part_number
-      WHERE z.rb_id IS NULL
-      ORDER BY p.part_number`);
-  return rows.map(r => r.part_number);
 }
 
 /** Manuell erfasste Teile mit echter Farbe — für das Farbbild. */

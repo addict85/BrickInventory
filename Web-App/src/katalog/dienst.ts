@@ -110,7 +110,7 @@ async function waehle(f: KatalogFilter): Promise<repo.KatalogWahl> {
  * NULL-Jahre stehen bei absteigender Sortierung vorn wie in der Liste.
  */
 export async function jahrVerteilung(f: KatalogFilter, absteigend: boolean) {
-  return repo.jahrVerteilung(await waehle({ q: f.q, themeId: f.themeId }), absteigend);
+  return repo.setsJeJahrGefiltert(await waehle({ q: f.q, themeId: f.themeId }), absteigend);
 }
 
 /** Bereits heruntergeladenes Bild, egal welches Konto es geholt hat (samt Vorschau). */
@@ -120,7 +120,7 @@ const lokalesBild = (sn: string) => resolveIfExists(`/images/sets/${String(sn).r
 export async function katalogSeite(userId: number, f: KatalogFilter, sortRoh: unknown, page: number, limit: number) {
   const wahl = await waehle(f);
   const [total, sets] = await Promise.all([
-    repo.katalogAnzahl(wahl), repo.katalogSeite(userId, wahl, sortRoh, limit, (page - 1) * limit)]);
+    repo.katalogAnzahl(wahl), repo.katalogZeilen(userId, wahl, sortRoh, limit, (page - 1) * limit)]);
   const tree = await getThemeTree();
   // Fehlt ein Bild, holt es der Bild-Proxy beim Anzeigen; die Liste stösst
   // keine Bildarbeit an.
@@ -131,7 +131,7 @@ export async function katalogSeite(userId: number, f: KatalogFilter, sortRoh: un
 /** Ein Set des Katalogs mit Figurenzahl, BrickLink-Link und Preisvergleich; null, wenn unbekannt. */
 export async function katalogSet(userId: number, roh: string) {
   const n = mitVersion(roh.trim());
-  const set = await repo.katalogSet(userId, n);
+  const set = await repo.katalogZeile(userId, n);
   if (!set) return null;
   const invId = await neuestesInventar(n).catch(meldeUndLiefere('katalog:neuestesInventar', null));
   const m = invId ? await repo.figurenImInventar(invId)

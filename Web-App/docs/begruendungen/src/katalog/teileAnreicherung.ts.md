@@ -1,6 +1,6 @@
-# Begründungen zu `jobs/partsCatalogEnrich.ts`
+# Begründungen zu `src/katalog/teileAnreicherung.ts` (vormals `jobs/partsCatalogEnrich.ts`)
 
-Die ausführlichen Kommentare aus `jobs/partsCatalogEnrich.ts`, wörtlich. Im Code steht je
+Die ausführlichen Kommentare aus `src/katalog/teileAnreicherung.ts` (vormals `jobs/partsCatalogEnrich.ts`), wörtlich. Im Code steht je
 Stelle der erste Absatz und ein Verweis hierher. Neue Geschichte gehört in die
 Commit-Nachricht (siehe CLAUDE.md).
 

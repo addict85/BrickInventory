@@ -187,7 +187,7 @@ export async function loeseLokalAuf(posten: WantedPosten[]): Promise<Aufloesung[
   // Stufe 3 je Art im eigenen Katalog.
   const katalog = new Set<string>();
   for (const art of ['part', 'fig', 'set'] as const) {
-    for (const n of await repo.imKatalog(art, nummern).catch(meldeUndLiefere('wanted:katalog', []))) katalog.add(`${art}:${n}`);
+    for (const n of await repo.nummernImKatalog(art, nummern).catch(meldeUndLiefere('wanted:katalog', []))) katalog.add(`${art}:${n}`);
   }
 
   const farbMap = new Map<number, { id: number; name: string | null; hex: string | null }>();
@@ -532,7 +532,7 @@ async function farbenNachtragen(auf: Aufloesung[]): Promise<Aufloesung[]> {
   const offen = auf.filter(a => a.rbFarbe !== null && a.rbFarbName === null)
                    .map(a => a.rbFarbe as number);
   if (!offen.length) return auf;
-  const zeilen = await repo.farben([...new Set(offen)]).catch(meldeUndLiefere('wanted:farbnamen', []));
+  const zeilen = await repo.farbenZuIds([...new Set(offen)]).catch(meldeUndLiefere('wanted:farbnamen', []));
   const nach = new Map(zeilen.map(z => [Number(z.id), z]));
   return auf.map(a => {
     if (a.rbFarbe === null || a.rbFarbName !== null) return a;

@@ -2,25 +2,18 @@
  * Fehlende Bilder im Hintergrund laden — der geplante Auftrag 'bild_nachlauf'
  * (stündlich, der erste 30 s nach dem Start; src/auftraege/zeitplan.ts).
  */
-import { setsMitFehlendenKatalogbildern, manuelleTeileOhneBild, figurenOhneBild } from '../src/katalog/bildlage';
+import { bilderFuerNachlauf } from '../src/katalog/bildlage';
 import { logAndContinue, meldeUndLiefere } from '../src/infra/httpError';
 import { generateThumb } from '../src/katalog/bilder/thumbs';
 import { setzeTeilBildLokal, setzeFigurBildLokal } from '../src/katalog/katalogPflege';
 import { KEINE_FARBE } from '../src/infra/validate';
-import * as enrich from './partsCatalogEnrich';
+import * as enrich from '../src/katalog/teileAnreicherung';
 import * as monitor from '../src/auftraege/jobMonitor';
 import { AuftragUnterbrochen, type AuftragsKontext } from './auftragsWorker';
 
 async function bildNachlauf(k: AuftragsKontext): Promise<void> {
-  const sets = await setsMitFehlendenKatalogbildern().catch(meldeUndLiefere('bild-nachlauf:sets', []));
-  // Manuell erfasste Teile mit fehlendem lokalen Bild — im selben Job
-  // dauerhaft in den lokalen Cache laden (statt nur über den Proxy). Nur
-  // geprüfte Adressen (bild_von IS NULL): Die Datei gilt für alle Konten.
-  // Ausführlich: docs/begruendungen/server.ts.md#electprimaryworker-manualparts
-  const manualParts = await manuelleTeileOhneBild().catch(meldeUndLiefere('bild-nachlauf:manualParts', []));
-  // Minifiguren — ALLE, nicht nur manuell erfasste.
-  // Ausführlich: docs/begruendungen/server.ts.md#electprimaryworker-figstofetch
-  const figsToFetch = await figurenOhneBild().catch(meldeUndLiefere('bild-nachlauf:figsToFetch', []));
+  // Manuell erfasste Teile und alle Minifiguren laden dauerhaft in den lokalen Cache.
+  const { sets, teile: manualParts, figuren: figsToFetch } = await bilderFuerNachlauf();
   if (!sets.length && !manualParts.length && !figsToFetch.length) {
     await monitor.update('imgDl', { status: 'idle', sub: 'Alle Bilder gecacht', label: '📥 Bild-Download (CDN)' }).catch(logAndContinue('bild-nachlauf:Download'));
     return;

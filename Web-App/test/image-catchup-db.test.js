@@ -68,12 +68,12 @@ test('der Nachlauf erzeugt fehlende Vorschauen — auch für Set-Bilder',
   await db.run(`DELETE FROM set_catalog WHERE set_number=$1`, [name]);
   await haeltSet(db, uid, name, 1);
   // Der Bildpfad steht seit Migration 0033 im Katalog — und genau von dort
-  // sammelt der Nachlauf (jobs/partsCatalogEnrich.ts) die Pfade ein.
+  // sammelt der Nachlauf (src/katalog/teileAnreicherung.ts) die Pfade ein.
   await db.run(`INSERT INTO set_catalog (set_number, name, image_local) VALUES ($1,'Test',$2)`,
                [name, `/images/sets/${name}.jpg`]);
 
   try {
-    const { redownloadMissingImages } = _req('jobs/partsCatalogEnrich.js');
+    const { redownloadMissingImages } = _req('src/katalog/teileAnreicherung.js');
     const r = await redownloadMissingImages();
 
     assert.ok(r && typeof r.thumbs === 'number',
@@ -94,7 +94,7 @@ test('der Nachlauf erzeugt fehlende Vorschauen — auch für Set-Bilder',
 });
 
 test('der Pfad-Auflöser kennt alle drei Bildarten', () => {
-  const src = fs.readFileSync(path.join(ROOT, 'jobs/partsCatalogEnrich.ts'), 'utf8')
+  const src = fs.readFileSync(path.join(ROOT, 'src/katalog/teileAnreicherung.ts'), 'utf8')
     .split('\n').filter(l => !l.trim().startsWith('//') && !l.trim().startsWith('*')).join('\n');
   const fn = src.slice(src.indexOf('function _fsPathFromLocal'));
   for (const art of ['/images/parts/', '/images/minifigs/', '/images/sets/']) {

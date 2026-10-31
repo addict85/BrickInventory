@@ -350,7 +350,7 @@ function startQuelle() {
   const ROOT = path.join(__dirname, '..', '..');
   const dir = path.join(ROOT, 'startup');
   const teile = ['server.ts', 'jobs/bildNachlauf.ts', 'jobs/startNachlaeufe.ts', 'jobs/aufraeumen.ts',
-    'src/katalog/repository/bildlage.ts']
+    'src/katalog/bildlage.ts']
     .map(f => dienstQuelle(f));
   if (fs.existsSync(dir)) {
     for (const f of fs.readdirSync(dir).filter(x => x.endsWith('.ts'))) {

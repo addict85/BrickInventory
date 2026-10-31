@@ -75,7 +75,7 @@ test('Job-Sperren wirken über Prozessgrenzen', async (t) => {
   }
 
   await t.test('der Bilder-Nachlauf startet nicht zweimal', async () => {
-    const enrich = _req('jobs/partsCatalogEnrich.js');
+    const enrich = _req('src/katalog/teileAnreicherung.js');
     // Gegenprobe: ohne fremde Sperre läuft er durch (leerer Katalog → 0 fehlende).
     const frei = await enrich.redownloadMissingImages();
     assert.equal(frei.alreadyRunning, undefined,

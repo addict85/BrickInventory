@@ -33,7 +33,7 @@ const strip = s => require('./helpers/sources').ohneKommentare(s).replace(/(^|[^
 
 /** Alle Quelldateien, die Pfade schreiben könnten. */
 const SOURCES = ['server.ts', 'routes/api_v1/parts.ts', 'routes/api_v1/sets.ts', 'src/sets/dienst.ts', 'src/katalog/bilder/thumbs.ts',
-                 'routes/api_v1/pdf.ts', 'jobs/partsCatalogEnrich.ts', 'jobs/catalogSync.ts'];
+                 'routes/api_v1/pdf.ts', 'src/katalog/teileAnreicherung.ts', 'src/katalog/katalogAbgleich.ts'];
 
 test('keine Quelle schreibt mehr die alten Pfade', () => {
   for (const f of SOURCES) {
@@ -51,7 +51,7 @@ test('Teile- und Figurenbilder landen in getrennten Ordnern', async (t) => {
   // Am Verhalten: downloadImage() mit nachgestelltem https.get (ohne Netz).
   process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
   const _req = require('./helpers/sources').buildAndRequire();
-  const { downloadImage } = _req('jobs/partsCatalogEnrich.js');
+  const { downloadImage } = _req('src/katalog/teileAnreicherung.js');
   const { PART_IMAGES_DIR, MINIFIG_IMAGES_DIR } = _req('src/infra/appPaths.js');
   const https = require('node:https');
   const { Readable } = require('node:stream');

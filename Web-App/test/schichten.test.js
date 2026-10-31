@@ -357,25 +357,14 @@ const SQL_TEXT = /[`'"]\s*(?:SELECT|INSERT\s+INTO|UPDATE\s+\w+\s+(?:\w+\s+)?SET|
 const SQL_AUFRUF = /\b(?:db|tx|client|pool)\.(?:run|get|all|query|exec)\s*(?:<[^>]*>)?\(/;
 const hatSql = (rel) => { const s = quelltext(rel); return SQL_TEXT.test(s) || SQL_AUFRUF.test(s); };
 
-/**
- * Dateien, in denen Fachlogik und SQL noch zusammenstehen. Die Liste darf nur
- * kürzer werden: Wer eine Datei teilt, streicht ihre Zeile.
- */
-const SQL_NOCH_IM_DIENST = new Set([
-    'jobs/csvImportWorker.ts',
-    'jobs/partsCatalogEnrich.ts',
-]);
-
 test('SQL steht nur in Repositories und in db/', () => {
-  // Gegenprobe (31.10.2026): `await db.get('SELECT 1')` in src/haushalt/haushalt.ts
-  // → rot; die Zeile aus SQL_NOCH_IM_DIENST gestrichen, ohne die Datei zu teilen → rot.
+  // Ein Verbot, keine Ratsche mehr: Die Liste der Ausnahmen ist seit dem
+  // 31.10.2026 leer. Gegenproben (31.10.2026): `await db.get('SELECT 1')` in
+  // src/haushalt/haushalt.ts → rot; `'SELECT 1'` in jobs/aufraeumen.ts → rot.
   const dateien = tsUnter('src', 'jobs', 'clients', 'routes', 'startup').concat('server.ts');
   assert.ok(dateien.length > 150, `nur ${dateien.length} Dateien gefunden`);
-  const mitSql = dateien.filter(d => !istRepository(d) && hatSql(d));
-  const neu = mitSql.filter(d => !SQL_NOCH_IM_DIENST.has(d));
-  assert.deepEqual(neu, [], 'SQL gehört in das Repository des Bereichs (src/<bereich>/repository…).');
-  const erledigt = [...SQL_NOCH_IM_DIENST].filter(d => !mitSql.includes(d));
-  assert.deepEqual(erledigt, [], 'Diese Dateien sind frei von SQL — Zeile streichen.');
+  assert.deepEqual(dateien.filter(d => !istRepository(d) && hatSql(d)), [],
+    'SQL gehört in das Repository des Bereichs (src/<bereich>/repository…).');
   assert.ok(tsUnter('src').filter(istRepository).every(hatSql), 'ein Repository ohne SQL ist keines');
 });
 

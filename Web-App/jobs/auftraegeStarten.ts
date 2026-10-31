@@ -5,7 +5,7 @@ import { fuehreCsvImportAus, csvImportAufgegeben, type CsvNutzlast } from './set
 import { anleitungLaden } from './instructionQueue';
 import { bricksetNachlauf } from './bricksetRetry';
 import { bildbedarfAbarbeiten } from './imageQueue';
-import { redownloadMissingImages, downloadSetImages } from './partsCatalogEnrich';
+import { redownloadMissingImages, downloadSetImages } from '../src/katalog/teileAnreicherung';
 import { nachlauf } from './startNachlaeufe';
 import { csvAbgleich } from './rebrickableCsvSync';
 import { runPriceRefresh } from './priceJob';

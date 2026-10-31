@@ -261,7 +261,7 @@ export async function jobUebersicht() {
   } catch (_) { reDl = null; }
   // „laeuft" heisst auch hier: hat KUERZLICH etwas getan
   // Der Zeitstempel dafuer wird laengst mitgeschrieben: _redlSetStatus() in
-  // jobs/partsCatalogEnrich.ts haengt an JEDEN Stand ein `at`. Gelesen wurde
+  // src/katalog/teileAnreicherung.ts haengt an JEDEN Stand ein `at`. Gelesen wurde
   // er nie.
   // Ausführlich: docs/begruendungen/routes/api_v1/admin.ts.md#get-admin-jobs-seitredl
   const seitReDl = typeof reDl?.at === 'number' ? Date.now() - reDl.at : null;

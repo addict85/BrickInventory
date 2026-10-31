@@ -1,11 +1,10 @@
 import { getCurrentMarketPrice } from '../src/finanzen/marketPrice';
 import { setzeGeschaetztenPreis, setErfassungenOhnePreis, teilErfassungenOhnePreis, figurErfassungenOhnePreis } from '../src/bestand/acquisitions';
-import { manuelleFarbteile, ersetzeTeilfarbenbild } from '../src/katalog/csvKatalog';
+import { teilfarbenbilderNachtragen } from '../src/katalog/katalogAbgleich';
 // Die Marktpreise stehen seit dem Schichtumbau in src/finanzen/marketPrice.ts, bei
 // dem fuer Sets. Vorher musste dieser Job aus zwei ROUTEN importieren, um an
 // zwei Zahlen zu kommen.
 import { getCurrentFigMarketPrice, getCurrentPartMarketPrice } from '../src/finanzen/marketPrice';
-import { lookupPart } from '../clients/rebrickable';
 import { blAbrufNummer } from '../src/katalog/blZuordnung';
 import { fehlertext, meldeUndWeiter, meldeUndLiefere } from '../src/infra/httpError';
 import { sleep } from '../clients/rebrickable';
@@ -97,36 +96,12 @@ async function backfillFigurenErfassungen() {
   log(`Figuren-Erfassungen nachgetragen: ${done}/${rows.length}`);
 }
 
-// Einmalige Korrektur: Bild soll immer die tatsächlich gewählte Farbe zeigen.
-// Betrifft bestehende manuell erfasste Teile, deren Bild ursprünglich das
-// generische (oft falsch-farbige) Rebrickable-Standardbild verwendet hat.
-async function backfillPartImages() {
-  const rows = await manuelleFarbteile().catch(meldeUndLiefere('kaufpreis-nachtrag:rows', []));
-  if (!rows.length) return;
-  log(`Teile mit Farbbild zu prüfen: ${rows.length}`);
-  let done = 0;
-  for (const row of rows) {
-    try {
-      const info = await lookupPart(row.part_number, row.color_id);
-      if (info?.image_url) {
-        // In den Katalog (gilt für alle Konten) und überschreibend: Das generische
-        // Standardbild soll dem Bild der gewählten Farbe weichen.
-        await ersetzeTeilfarbenbild(row.part_number, row.color_id, info.image_url);
-        done++;
-      }
-    } catch (e) { meldeUndWeiter('kaufpreis-nachtrag:teilebild', e); }
-    await sleep(1500);
-  }
-  log(`Teile-Bilder aktualisiert: ${done}/${rows.length}`);
-}
-
-
 async function run() {
   log('Starte Migration bestehender Elemente ohne Kaufpreis…');
   await backfillAcquisitions().catch(e => log(`Erfassungen Fehler: ${e.message}`));
   await backfillFigurenErfassungen().catch(e => log(`Figuren-Erfassungen Fehler: ${e.message}`));
   await backfillTeileErfassungen().catch(e => log(`Teile-Erfassungen Fehler: ${e.message}`));
-  await backfillPartImages().catch(e => log(`Teile-Bilder Fehler: ${e.message}`));
+  await teilfarbenbilderNachtragen().catch(e => log(`Teile-Bilder Fehler: ${e.message}`));
   log('Migration abgeschlossen.');
 }
 

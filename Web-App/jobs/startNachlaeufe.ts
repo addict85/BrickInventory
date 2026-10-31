@@ -4,29 +4,11 @@
  * wird und in der Verwaltung zu sehen ist.
  * Ausführlich: docs/begruendungen/jobs/startNachlaeufe.ts.md#abschnitt
  */
-import fs from 'fs';
-import path from 'path';
-import { setsOhneAnleitungsabruf, setBilderOhneDatei, merkeSetBildLokal, lokaleKatalogbilder } from '../src/katalog/bildlage';
-import { downloadSetImage } from '../src/katalog/bilder/setImages';
-import { generateThumb } from '../src/katalog/bilder/thumbs';
-import { anleitungEinreihen } from '../src/auftraege/anleitungsAuftrag';
+import { anleitungenNachtragen, setBilderNachladen, vorschaubilderNachtragen } from '../src/katalog/bildlage';
 import { verschluesseleAltbestand } from '../src/konto/geheimnisAltbestand';
 import { verschluesseleGutscheinAltbestand } from '../src/gutscheine/gutscheinDateien';
-import * as catalogSync from './catalogSync';
+import * as catalogSync from '../src/katalog/katalogAbgleich';
 import * as purchasePriceBackfill from './purchasePriceBackfill';
-import { APP_ROOT, IMAGES_DIR } from '../src/infra/appPaths';
-import { fehlertext, logAndContinue, meldeUndLiefere } from '../src/infra/httpError';
-
-/**
- * Sets ohne Anleitung einreihen — nicht, wenn ein Abruf noch wartet oder in
- * den letzten Tagen schon ohne Ergebnis lief (erledigte Aufträge bleiben
- * sieben Tage, gescheiterte dreissig stehen; danach wird es wieder versucht).
- */
-async function anleitungenNachtragen(): Promise<void> {
-  const missing = await setsOhneAnleitungsabruf();
-  if (missing.length) console.log(`[instr-queue] Enqueueing ${missing.length} sets missing instructions`);
-  for (const set_number of missing) await anleitungEinreihen(set_number);
-}
 
 /** Geheimnisse aus der Zeit vor der Verschlüsselung (src/infra/geheimnis.ts). */
 async function geheimnisseVerschluesseln(): Promise<void> {
@@ -35,75 +17,22 @@ async function geheimnisseVerschluesseln(): Promise<void> {
 }
 
 /** Die Schritte und ihr Abstand zum Start in Sekunden: Beim Start hat der Katalog Vorrang. */
-export const NACHLAEUFE = {
+const NACHLAEUFE = {
   geheimnisse:  { nachSekunden: 0,  lauf: geheimnisseVerschluesseln },
-  vorschauen:   { nachSekunden: 0,  lauf: () => vorschaubilderNachtragen() },
+  vorschauen:   { nachSekunden: 0,  lauf: vorschaubilderNachtragen },
   katalog:      { nachSekunden: 10, lauf: () => catalogSync.syncAllMissing() },
   anleitungen:  { nachSekunden: 15, lauf: anleitungenNachtragen },
-  set_bilder:   { nachSekunden: 45, lauf: () => setBilderNachladen() },
+  set_bilder:   { nachSekunden: 45, lauf: setBilderNachladen },
   kaufpreise:   { nachSekunden: 45, lauf: () => purchasePriceBackfill.run() },
 } as const;
-export type Nachlauf = keyof typeof NACHLAEUFE;
+type Nachlauf = keyof typeof NACHLAEUFE;
 
 /** Der Bearbeiter des Auftrags 'nachlauf'. */
-export async function nachlauf(n: Record<string, unknown>): Promise<void> {
+async function nachlauf(n: Record<string, unknown>): Promise<void> {
   const schritt = String(n.schritt);
   if (!Object.hasOwn(NACHLAEUFE, schritt)) throw new Error(`unbekannter Nachlauf ${schritt}`);
   await NACHLAEUFE[schritt as Nachlauf].lauf();
 }
 
-/** Fehlende Set-Bilder vom CDN holen. */
-async function setBilderNachladen(): Promise<void> {
-  try {
-    // Der KATALOG: Bilder haengen an der Setnummer, nicht am Konto. Hier
-    // stand `FROM sets` mit DISTINCT — das brauchte es nur, weil dieselbe
-    // Setnummer je Konto einmal darin stand. Im Katalog ist sie es einmal.
-    const missing = await setBilderOhneDatei().catch(meldeUndLiefere('nachlauf:missing', []));
-    if (!missing.length) return;
-    console.log(`[set-img-bg] Downloading ${missing.length} missing set images…`);
-    for (const { set_number, image_url } of missing) {
-      const local = await downloadSetImage(image_url, set_number).catch(meldeUndLiefere('nachlauf:downloadSetImage', null));
-      if (local) {
-        // EINE Anweisung. Das UPDATE auf `sets`, das hier daneben stand, ist
-        // mit Migration 0033 weggefallen — und mit ihm der stille Fang am
-        // Katalog-Schreiber, der die wichtigere der beiden Haelften war.
-        await merkeSetBildLokal(set_number, local).catch(logAndContinue(`bilder:set ${set_number}`));
-        generateThumb(local).catch(logAndContinue('nachlauf:generateThumb'));
-      }
-      await new Promise(r => setTimeout(r, 300));
-    }
-    console.log(`[set-img-bg] Done`);
-  } catch (e) { console.error('[set-img-bg]', fehlertext(e)); }
-}
-
-/** Fehlende Vorschaubilder erzeugen. */
-async function vorschaubilderNachtragen(): Promise<void> {
-  try {
-    // Aus dem Katalog, nicht aus den Bestandstabellen: Dort stand dasselbe Bild je Konto einmal.
-    const paths = await lokaleKatalogbilder();
-    let generated = 0;
-    // Async statt existsSync: die Schleife läuft über ALLE Bilder von Sets
-    // und Teilen und lief direkt nach app.listen() — bei ein paar tausend
-    // Einträgen hat sie den Event-Loop sekundenlang blockiert, auch für
-    // die übersprungenen. fs.promises.access() gibt zwischen jeder Prüfung
-    // den Loop frei.
-    const exists = (fp: string) => fs.promises.access(fp).then(() => true, () => false);
-    for (const localPath of paths) {
-      let fsPath;
-      if      (localPath.startsWith('/images/')) fsPath = path.join(IMAGES_DIR, localPath.slice('/images/'.length));
-      else if (localPath.startsWith('/data/'))   fsPath = path.join(APP_ROOT, localPath.slice(1));
-      else continue;
-      const thumbPath = fsPath.replace(path.extname(fsPath), '_thumb.jpg');
-      if (await exists(thumbPath) || !(await exists(fsPath))) continue;
-      await generateThumb(localPath).catch(logAndContinue('nachlauf:generateThumb'));
-      generated++;
-      if (generated % 10 === 0) await new Promise(r => setTimeout(r, 10));
-    }
-    if (generated > 0) console.log(`  🖼️  ${generated} Thumbnails generiert`);
-  } catch (e) { console.error('Thumb gen error:', fehlertext(e)); }
-}
-
-// Abschliessender Export-Block wie in jedem anderen Job-Modul: In .ts erzeugt
-// module.exports keine benannten Exporte, und die Aufrufer importieren per
-// Namen (test/jobs-typescript.test.js wacht darüber).
-export { anleitungenNachtragen, setBilderNachladen, vorschaubilderNachtragen };
+export { NACHLAEUFE, nachlauf };
+export type { Nachlauf };

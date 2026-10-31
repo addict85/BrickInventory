@@ -18,7 +18,7 @@ import * as inhalt from './repository/setInhalt';
 
 /**
  * Teile eines Sets aus dem Katalog übernehmen — reine Katalogarbeit ohne
- * Route. Die Bilder lädt der Auftrag 'bilder' (jobs/partsCatalogEnrich);
+ * Route. Die Bilder lädt der Auftrag 'bilder' (src/katalog/teileAnreicherung);
  * image_local steht nur da, wo die Datei schon liegt.
  */
 

@@ -51,11 +51,6 @@ function log(msg: string) { console.log(`[rb-csv-sync] ${msg}`); }
 
 // ── Import CSVs into DB ───────────────────────────────────────────────────────
 
-// fetchBlIds() stand hier: der Batch-Abruf der BrickLink-Nummern über die
-// Rebrickable-API. Aufgerufen wurde er nirgends — diese Aufgabe erledigt
-// jobs/backfillBlPartNumbers.ts, das dieselbe Tabelle (rb_bl_mapping) füllt und
-// vom Tagesplaner gestartet wird. Entfallen.
-
 // ── Main run ──────────────────────────────────────────────────────────────────
 // ── CSV-Import-Helfer (Modulebene, damit auch der Skip-Zweig sie nutzen kann) ──
 // __dirname ist hier RICHTIG und darf nicht durch appPaths ersetzt werden:

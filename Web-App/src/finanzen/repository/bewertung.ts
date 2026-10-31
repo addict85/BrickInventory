@@ -55,7 +55,7 @@ export interface ManuelleFigur {
 }
 
 /** Manuell erfasste Figuren mit BrickLink-Nummer und Stückzahl aus den Erfassungen. */
-export function manuelleFiguren(uids: number[]) {
+export function manuelleFigurenZurBewertung(uids: number[]) {
   return db.all<ManuelleFigur>(`
     SELECT m.id, m.user_id, m.set_number, m.fig_number,
            ${blNummerSql('m.fig_number', 'blzf')} AS bl_fig_number,
@@ -77,7 +77,7 @@ export interface ManuellesTeil {
 }
 
 /** Manuell erfasste Teile mit Beschreibung aus den Katalogen und Stückzahl aus den Erfassungen. */
-export function manuelleTeile(uids: number[]) {
+export function manuelleTeileZurBewertung(uids: number[]) {
   return db.all<ManuellesTeil>(`
     SELECT p.id, p.user_id, p.set_number, p.part_number,
            ${blNummerSql('p.part_number')} AS bl_part_number,

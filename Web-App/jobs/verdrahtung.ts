@@ -19,8 +19,8 @@ function verdrahte(): void {
       import('../src/katalog/bilder/bildbedarf.js').then(b => b.merkeGebraucht(url, sn))
         .catch((e: unknown) => meldeUndWeiter('nacharbeit:bild-vormerken', e));
     },
-    setTeileAnreichern: async (sn) => (await import('../jobs/partsCatalogEnrich.js')).enrichSetParts(sn),
-    figurenAnreichern: async (sn) => (await import('../jobs/partsCatalogEnrich.js')).enrichSetMinifigs(sn),
+    setTeileAnreichern: async (sn) => (await import('../src/katalog/teileAnreicherung.js')).enrichSetParts(sn),
+    figurenAnreichern: async (sn) => (await import('../src/katalog/teileAnreicherung.js')).enrichSetMinifigs(sn),
     setBilderLaden: async (sn) => {
       const [{ stelleAuftragEin }, { mitVersion }] = await Promise.all([import('../src/auftraege/dienst.js'), import('../src/sets/setNummer.js')]);
       return stelleAuftragEin('bilder', { set_number: sn, nur_bilder: true },

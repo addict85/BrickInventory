@@ -42,7 +42,7 @@ export interface TeilZeile {
 export interface Seite { groesse: number; versatz: number; mitSets: boolean; ordnung: TeileOrdnung }
 
 /** Farben des Bestands (ohne manuelle Teile); Hex-Rückfall aus rb_colors. */
-export function farben(uids: number[], ausZusammenfassung: boolean) {
+export function farbenDesBestands(uids: number[], ausZusammenfassung: boolean) {
   type Farbe = { color_name: string | null; color_hex: string | null; unique_parts: number; total_quantity: number };
   if (ausZusammenfassung) return db.all<Farbe>(`
       SELECT ps.color_name, COALESCE(ps.color_hex, rc.rgb) AS color_hex,

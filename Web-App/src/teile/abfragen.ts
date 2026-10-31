@@ -46,7 +46,7 @@ export async function getPartsColors(userId: Blickfeld) {
   // mit der Set-Anzahl multipliziert.
   // strict: Kennzahlen müssen zwischen Webapp und App übereinstimmen — ein …
   // Ausführlich: docs/begruendungen/src/teile/abfragen.ts.md#getpartscolors
-  return repo.farben(uids, await ensureFresh(uids, { strict: true }));
+  return repo.farbenDesBestands(uids, await ensureFresh(uids, { strict: true }));
 }
 
 /** Der Filter der Oberflächen, mit Versionsanhang an der Setnummer. */
@@ -120,7 +120,7 @@ function seitengroesse(pageSize: unknown, mitSet: boolean): number {
 }
 
 /** Teilezeile für die Antwort: is_spare als echter Wahrheitswert, Bildpfad aufgelöst. */
-function alsAntwort(r: repo.TeilZeile) {
+function teilAlsAntwort(r: repo.TeilZeile) {
   // Das Kotlin-Modell führt is_spare als Boolean; ein '0' liesse die ganze Seite scheitern.
   return { ...r, total_quantity: parseInt(String(r.total_quantity)) || 0,
            is_spare: istErsatzteil(r.is_spare), image_local: resolveImageLocal(r.image_local) };
@@ -135,7 +135,7 @@ export async function tryPartsSummary(userId: Blickfeld, o: Record<string, unkno
   try {
     const { total, zeilen } = await repo.seiteAusZusammenfassung(uids, teileFilter(o),
       { groesse: size, versatz: (pg - 1) * size, mitSets: !!o.withSets, ordnung: repo.teileOrdnung(o.ordnung) });
-    return { parts: zeilen.map(alsAntwort), total, source: 'summary', page_size: size };
+    return { parts: zeilen.map(teilAlsAntwort), total, source: 'summary', page_size: size };
   } catch (e) {
     // Ein Rückfall, kein Fehler: Wie bei fehlender Frische übernimmt die Live-Abfrage.
     // Ausführlich: docs/begruendungen/src/teile/abfragen.ts.md#trypartssummary-countrow
@@ -165,7 +165,7 @@ export async function getParts(userId: Blickfeld, query: Record<string, unknown>
   // Sobald eine Erfassung „Gebraucht“ ist, gilt das Teil als gebraucht; ohne Erfassung 'N'.
   // Ausführlich: docs/begruendungen/src/teile/abfragen.ts.md#getparts-usedsql
   const gebrauchtJe = new Set(gebraucht.filter(r => Number(r.any_used) > 0).map(r => `${r.pid}|${r.color_id}`));
-  const parts = zeilen.map(p => ({ ...alsAntwort(p), total_quantity: p.total_quantity,
+  const parts = zeilen.map(p => ({ ...teilAlsAntwort(p), total_quantity: p.total_quantity,
     condition: gebrauchtJe.has(`${p.part_number}|${p.color_id}`) ? 'U' : 'N', image_url: p.image_url || null }));
 
   // Im Hintergrund fehlende BrickLink-Nummern nachladen; eine leere bl_id heisst „nachgesehen“.

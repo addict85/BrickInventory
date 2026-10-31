@@ -733,8 +733,8 @@ test('IPv4 wird an ALLEN ausgehenden HTTPS-Aufrufen erzwungen, nicht nur beim Bi
   // änderte: Wer eine tote Zweitfassung entfernt, senkt die Zahl. Geprüft wird
   // deshalb jetzt die REGEL — jeder ausgehende Aufruf trägt family: 4 —
   // unabhängig davon, wie viele es gerade sind.
-  const dateien = ['routes/imgProxy.ts', 'clients/rebrickable.ts', 'jobs/partsCatalogEnrich.ts',
-    'jobs/backfillBlPartNumbers.ts', 'jobs/rebrickableCsvSync.ts', 'clients/brickset.ts',
+  const dateien = ['routes/imgProxy.ts', 'clients/rebrickable.ts', 'src/katalog/teileAnreicherung.ts',
+    'jobs/rebrickableCsvSync.ts', 'clients/brickset.ts',
     'clients/bricklink.ts', 'src/verwaltung/dienst.ts', 'src/sets/dienst.ts'];
 
   const ohne = [];
@@ -753,7 +753,7 @@ test('IPv4 wird an ALLEN ausgehenden HTTPS-Aufrufen erzwungen, nicht nur beim Bi
       }
     }
   }
-  assert.ok(gefunden >= 8, `nur ${gefunden} ausgehende Aufrufe erkannt — das Muster greift nicht mehr`);
+  assert.ok(gefunden >= 7, `nur ${gefunden} ausgehende Aufrufe erkannt — das Muster greift nicht mehr`);
   assert.deepEqual(ohne, [], `ausgehende Aufrufe ohne family: 4:\n  ${ohne.join('\n  ')}`);
 });
 

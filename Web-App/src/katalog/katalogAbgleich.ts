@@ -1,26 +1,21 @@
-'use strict';
 /**
- * Populates shared set_parts_catalog and set_minifigs_catalog from CSV data
- * and downloads part images — runs in background after set import.
- * All data is user-independent and shared across all users.
+ * Den gemeinsamen Teile- und Figurenkatalog eines Sets aus den Rebrickable-CSV-
+ * Tabellen füllen und die Teilebilder laden; dazu das Farbbild manueller Teile.
+ * Alles hier gilt für alle Konten.
  */
-import { downloadFile } from '../clients/rebrickable';
-import { generateThumb } from '../src/katalog/bilder/thumbs';
-import { neuestesInventar } from '../src/katalog/rbInventar';
-import { mitVersion } from '../src/sets/setNummer';
-import { merkeTeil, merkeTeilFarbe, merkeSetTeil, setzeTeilBildLokal, merkeFiguren, merkeSetFiguren } from '../src/katalog/katalogPflege';
-import { logAndContinue, meldeUndLiefere } from '../src/infra/httpError';
-import { katalogBildstand, inventarTeileOhneErsatz, inventarFiguren, setsOhneTeilekatalog } from '../src/katalog/csvKatalog';
+import { downloadFile } from '../../clients/rebrickable';
+import { generateThumb } from './bilder/thumbs';
+import { neuestesInventar } from './rbInventar';
+import { mitVersion } from '../sets/setNummer';
+import { merkeTeil, merkeTeilFarbe, merkeSetTeil, setzeTeilBildLokal, merkeFiguren, merkeSetFiguren } from './katalogPflege';
+import { logAndContinue, meldeUndLiefere, meldeUndWeiter } from '../infra/httpError';
+import { katalogBildstand, inventarTeileOhneErsatz, inventarFiguren, setsOhneTeilekatalog, manuelleFarbteile, ersetzeTeilfarbenbild } from './repository/csvKatalog';
+import { lookupPart, sleep } from '../../clients/rebrickable';
 import path from 'path';
 import fs from 'fs';
-import { PART_IMAGES_DIR as IMG_DIR } from '../src/infra/appPaths';
-import { rebrickableBackgroundLimiter as rebrickableLimiter } from '../src/katalog/rateLimiter';
-import { KEINE_FARBE } from '../src/infra/validate';
-// Pfade zentral auflösen — __dirname zeigt seit dem dist/-Build nicht mehr
-// auf die Wurzel. Siehe src/infra/appPaths.ts.
-
-// Teilebilder — Figuren liegen getrennt (siehe src/infra/appPaths.ts).
-
+import { PART_IMAGES_DIR as IMG_DIR } from '../infra/appPaths';
+import { rebrickableBackgroundLimiter as rebrickableLimiter } from './rateLimiter';
+import { KEINE_FARBE } from '../infra/validate';
 async function syncSetCatalog(setNumber: string) {
   // Ohne Versionsanhang in der Eingabe ergab `alt` denselben Wert wie `n` —
   // die Abfrage unten fragte dann zweimal dasselbe, und die blanke Nummer
@@ -98,4 +93,26 @@ async function syncAllMissing() {
   for (const s of sets) await syncSetCatalog(s);
 }
 
-export { syncSetCatalog, syncAllMissing };
+/**
+ * Das Bild manueller Teile soll die gewählte Farbe zeigen, nicht das generische
+ * (oft falschfarbige) Standardbild von Rebrickable. Überschreibend, im Katalog.
+ */
+async function teilfarbenbilderNachtragen() {
+  const rows = await manuelleFarbteile().catch(meldeUndLiefere('kaufpreis-nachtrag:rows', []));
+  if (!rows.length) return;
+  console.log(`  [purchase-price-backfill] Teile mit Farbbild zu prüfen: ${rows.length}`);
+  let done = 0;
+  for (const row of rows) {
+    try {
+      const info = await lookupPart(row.part_number, row.color_id);
+      if (info?.image_url) {
+        await ersetzeTeilfarbenbild(row.part_number, row.color_id, info.image_url);
+        done++;
+      }
+    } catch (e) { meldeUndWeiter('kaufpreis-nachtrag:teilebild', e); }
+    await sleep(1500);
+  }
+  console.log(`  [purchase-price-backfill] Teile-Bilder aktualisiert: ${done}/${rows.length}`);
+}
+
+export { syncSetCatalog, syncAllMissing, teilfarbenbilderNachtragen };

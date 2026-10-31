@@ -113,7 +113,8 @@ test('stille Faenge werden weniger, nie mehr', () => {
   // 30.10.2026: 36 (Protokoll: Schreibfehler nach app_logs werden gezählt und gemeldet).
   // 30.10.2026: 32 (Cluster, Planer und eigene Warteschlangen entfallen).
   // 31.10.2026: 21 (Schichtumbau: Routen ohne try/catch, Repositories melden).
-  const SCHRANKE = 21;
+  // 31.10.2026: 12 (Wanted-Liste und CSV-Tausch melden über meldeUndLiefere/logAndContinue).
+  const SCHRANKE = 12;
   const ist = zaehle(STILLE_FAENGE);
   assert.ok(ist <= SCHRANKE,
     `${ist} stille Faenge, erlaubt sind ${SCHRANKE}. Ein neuer \`catch {}\` ` +
@@ -132,7 +133,8 @@ test('any wird weniger, nie mehr', () => {
   // 30.10.2026: 281 (Planer und Preis-Job-Zustand entfallen).
   // 31.10.2026: 270 (typisierte Repositories, Fehlerweg ohne any).
   // 31.10.2026: 256 (HTTP-Seite der Anmeldung, typisierte Repositories).
-  const SCHRANKE = 256;
+  // 31.10.2026: 233 (SQL aus allen Diensten und Aufträgen in typisierte Repositories).
+  const SCHRANKE = 233;
   const ist = zaehle([/\bas any\b/g, /:\s*any\b/g]);
   assert.ok(ist <= SCHRANKE,
     `${ist}-mal \`any\`, erlaubt sind ${SCHRANKE}. Jedes davon schaltet den ` +
