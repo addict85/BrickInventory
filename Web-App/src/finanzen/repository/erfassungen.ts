@@ -1,15 +1,8 @@
 import * as db from '../../../db/database';
 import { kaufpreisSpalten } from '../../../db/geldSql';
 
-/** Kauferfassungen für die Bewertung, in der Anzeigewährung. */
-
-/**
- * Alle Kauferfassungen fuer Sets im Blickfeld — aelteste zuerst.
- *
- * `id` als zweites Sortierkriterium, weil zwei Erfassungen denselben
- * Zeitstempel tragen koennen; ohne sie waere die Reihenfolge dem Zufall der
- * Datenbank ueberlassen.
- */
+/** `id` als zweites Sortierkriterium: Zwei Erfassungen können denselben
+ * Zeitstempel tragen. */
 export function ladeSetErfassungen(uids: number[], waehrung: string): Promise<any[]> {
   return db.all(
     `SELECT id, set_number, quantity,

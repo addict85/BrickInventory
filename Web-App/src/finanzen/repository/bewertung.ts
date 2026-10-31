@@ -3,8 +3,6 @@ import { kaufpreisSpalten } from '../../../db/geldSql';
 import { mengeJoin, mengeAus, teilmengeJoin, teilmengeAus } from '../../../db/bestandsmenge';
 import { blJoin, blNummerSql } from '../../../db/blZuordnungSql';
 
-/** Was die Bewertung liest: Sets, manuelle Teile und Figuren im Blickfeld samt ihren Erfassungen. */
-
 /** Eine Erfassung eines manuellen Teils oder einer Figur, Kaufpreis in der Kontowährung. */
 export interface ManuelleErfassung {
   id: number; part_number?: string; color_id?: number | null; fig_number?: string; quantity: number;
@@ -12,7 +10,6 @@ export interface ManuelleErfassung {
   price_estimated: boolean; condition: string; created_at: Date;
 }
 
-/** Erfassungen manueller Teile bzw. Figuren, älteste zuerst. */
 export function manuelleErfassungen(art: 'part' | 'fig', uids: number[], waehrung: string) {
   return db.all<ManuelleErfassung>(art === 'part'
     ? `SELECT id, part_number, color_id, quantity,
@@ -31,7 +28,7 @@ export interface BewertetesSet {
   image_local: string | null; image_url: string | null; added_at: Date | null;
 }
 
-/** Die Sets im Blickfeld; Kaufpreis und Zustand stehen in den Erfassungen. */
+/** Kaufpreis und Zustand stehen in den Erfassungen. */
 export function setsZurBewertung(uids: number[]) {
   return db.all<BewertetesSet>(`SELECT s.set_number, c.name, c.year,
             ${mengeAus('sm', 0)}::int AS quantity,
@@ -42,7 +39,7 @@ export function setsZurBewertung(uids: number[]) {
       WHERE s.user_id = ANY($1)`, [uids]);
 }
 
-/** Katalogmerkmale (Gear, BrickLink-Art) vieler Sets; die Nummern tragen den Versionsanhang. */
+/** Die Nummern tragen den Versionsanhang. */
 export function katalogMerkmale(setNumbers: string[]) {
   return db.all<{ set_number: string; is_gear: boolean; bl_type: string | null; fetched_at: Date | null }>(
     'SELECT set_number, is_gear, bl_type, fetched_at FROM catalog_cache WHERE set_number = ANY($1)', [setNumbers]);
@@ -54,7 +51,6 @@ export interface ManuelleFigur {
   fig_name: string | null; image_url: string | null; image_local: string | null;
 }
 
-/** Manuell erfasste Figuren mit BrickLink-Nummer und Stückzahl aus den Erfassungen. */
 export function manuelleFigurenZurBewertung(uids: number[]) {
   return db.all<ManuelleFigur>(`
     SELECT m.id, m.user_id, m.set_number, m.fig_number,
@@ -76,7 +72,6 @@ export interface ManuellesTeil {
   image_url: string | null; image_local: string | null;
 }
 
-/** Manuell erfasste Teile mit Beschreibung aus den Katalogen und Stückzahl aus den Erfassungen. */
 export function manuelleTeileZurBewertung(uids: number[]) {
   return db.all<ManuellesTeil>(`
     SELECT p.id, p.user_id, p.set_number, p.part_number,

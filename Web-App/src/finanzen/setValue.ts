@@ -1,33 +1,26 @@
-/**
- * Marktwert eines Sets aus den Erfassungen und den zustandsabhängigen Preisen.
- * Ausführlich: docs/begruendungen/src/finanzen/setValue.ts.md#abschnitt
- */
+/** Je Erfassung mit dem Preis ihres Zustands, weil gemischte Bestände sonst
+ * einen falschen Durchschnitt bekämen.
+ * Ausführlich: docs/begruendungen/src/finanzen/setValue.ts.md#abschnitt */
 import { inZehntel4, aufRappen, alsText } from '../infra/geld';
 import * as repo from './repository/setWert';
 
 export interface SetValue {
-  /** Gewichteter Stückpreis — das, was Kachel und Detailansicht zeigen. */
   unit_price: number | null;
-  /** Derselbe Stückpreis ungerundet, in Zehntausendsteln: Summen rechnen damit, nicht mit dem gerundeten. */
+  /** Ungerundet, in Zehntausendsteln: Summen rechnen damit, nicht mit dem gerundeten. */
   unit_z: number | null;
-  /** Gesamtwert aller Exemplare — das, was in die Summen eingeht. */
   total: number | null;
-  /** Gesamtstückzahl, über die gewichtet wurde. */
   quantity: number;
-  /** Je Zustand: Preis und Stückzahl — für Detailanzeige und Nachvollziehbarkeit. */
   by_condition: { condition: 'N' | 'U'; quantity: number; unit_price: number | null }[];
 }
 
-/** Numerischer Wert aus einer Postgres-NUMERIC-Spalte. `"0.00"` ergibt 0, nicht truthy. */
+/** `"0.00"` aus NUMERIC ergibt 0, nicht truthy. */
 function num(v: any): number {
   const n = parseFloat(v);
   return Number.isFinite(n) && n > 0 ? n : 0;
 }
 
-/**
- * avg_price je Zustand für mehrere Sets in EINER Abfrage.
- * @returns Map "setNumber|condition" → avg_price
- */
+/** In EINER Abfrage für viele Sets.
+ * @returns Map "setNumber|condition" → avg_price */
 export async function loadConditionPrices(
   setNumbers: string[], currency: string, ttlHours?: number
 ): Promise<Map<string, number>> {
@@ -39,7 +32,7 @@ export async function loadConditionPrices(
   const params: any[] = [list, currency];
   if (ttlHours) params.push(ttlHours);
 
-  // avg_price, NICHT qty_avg_price — siehe Modulkommentar.
+  // avg_price, NICHT qty_avg_price: BrickLinks angezeigter Preis.
   const rows = await repo.cachePreiseFuerSets(params, ttlClause);
 
   for (const r of rows) {
@@ -49,7 +42,6 @@ export async function loadConditionPrices(
   return out;
 }
 
-/** Preis für einen Zustand, mit Ausweichen auf den anderen. */
 function priceFor(prices: Map<string, number>, setNumber: string, cond: string): number | null {
   const want  = prices.get(`${setNumber}|${cond}`);
   if (want) return want;
@@ -57,12 +49,8 @@ function priceFor(prices: Map<string, number>, setNumber: string, cond: string):
   return other || null;
 }
 
-/**
- * Bewertet ein Set anhand seiner Erfassungen.
- *
- * @param acquisitions Erfassungen des Sets ({ quantity, condition }). Leer =
- *        keine Erfassungen; dann zählt fallbackCondition mit fallbackQuantity.
- */
+/** @param acquisitions Leer = keine Erfassungen; dann zählt fallbackCondition
+ *        mit fallbackQuantity. */
 export function valueSet(
   setNumber: string,
   acquisitions: { quantity: number; condition?: string | null }[],
@@ -92,53 +80,40 @@ export function valueSet(
     if (z !== null) { totalZ += z * qty; priced += qty; }
   }
 
-  // Kein einziger Zustand hat einen Preis → kein Wert, nicht 0. Eine 0 würde
-  // in den Summen wie ein bekannter Wert von null Franken aussehen.
+  // Kein Zustand hat einen Preis → kein Wert, nicht 0: Eine 0 sähe in den
+  // Summen aus wie ein bekannter Wert.
   if (priced === 0) return { unit_price: null, unit_z: null, total: null, quantity, by_condition };
 
-  // Gewichtet über die BEPREISTEN Stück, damit ein fehlender Preis den
-  // Stückpreis nicht nach unten zieht. Gerundet wird erst hier.
+  // Über die BEPREISTEN Stück, damit ein fehlender Preis den Stückpreis nicht
+  // nach unten zieht. Gerundet wird erst hier.
   return { unit_price: aufRappen(totalZ / priced), unit_z: totalZ / priced, total: aufRappen(totalZ), quantity, by_condition };
 }
 
-/**
- * Bequemlichkeitsfunktion für ein einzelnes Set: holt Erfassungen und Preise
- * selbst. Für Listen stattdessen loadConditionPrices() + valueSet() benutzen,
- * damit es bei einer Abfrage bleibt.
- */
+/** Für Listen loadConditionPrices() + valueSet(), damit es bei einer Abfrage bleibt. */
 export async function getSetValue(
   userId: number, setNumber: string, currency: string
 ): Promise<SetValue> {
-  // Nur noch EINE Abfrage. Hier stand daneben ein `SELECT quantity, condition
-  // FROM sets` für den Rückfall. Beides ist weggefallen:
-  // Ausführlich: docs/begruendungen/src/finanzen/setValue.ts.md#getsetvalue-acqs
   const acqs = await repo.setErfassungenZumWert(userId, setNumber);
   const prices = await loadConditionPrices([setNumber], currency);
   return valueSet(setNumber, acqs, prices, 'N', 1);
 }
 
-// ── Eine Zeile je Kaufpreis — für die Finanztabelle: Jede Erfassung steht mit
-// dem Marktpreis IHRES Zustands da (valueSet() verdichtet auf einen Stückpreis).
+// Jede Erfassung mit dem Marktpreis IHRES Zustands — für die Finanztabelle.
 // Ausführlich: docs/begruendungen/src/finanzen/setValue.ts.md#pnl-eps
 
-/**
- * Entwicklung in Prozent gegen den Kaufpreis — die eine Regel für Sets, Teile,
- * Figuren, Kachel und Verlauf. null ohne Kauf- oder Marktpreis und bei
+/** Die eine Regel für Sets, Teile, Figuren, Kachel und Verlauf. null bei
  * Kaufpreis 0: Gegen ein Geschenk gibt es keine Prozentzahl (gegen 0,01
- * gerechnet stand dort „+327.600 %“). Die Oberflächen zeigen „Geschenk“.
- */
+ * stand dort „+327.600 %"). */
 export function entwicklungProzent(kauf: number | null | undefined, markt: number | null | undefined): number | null {
   if (kauf == null || !(kauf > 0) || markt == null || !(markt > 0)) return null;
   return (markt - kauf) / kauf * 100;
 }
 
-/** Wie pnlPct, als Zahl mit einer Stelle — für die Felder, die eine Zahl führen. */
 export function pnlProzent(purchase: number | null, market: number | null): number | null {
   const t = pnlPct(purchase, market);
   return t === null ? null : Number(t);
 }
 
-/** Prozentuale Entwicklung — null, wenn Kaufpreis oder Marktpreis fehlt. */
 export function pnlPct(purchase: number | null, market: number | null): string | null {
   return entwicklungProzent(purchase, market)?.toFixed(1) ?? null;
 }
@@ -151,20 +126,13 @@ export interface AcquisitionValueRow {
   purchase_price: number | null;
   avg_price: number | null;
   total_avg: string | null;
-  /** total_avg als Zahl. */
   wert_gesamt: number | null;
   pnl_pct: string | null;
-  /** pnl_pct als Zahl. */
   pnl_prozent: number | null;
   created_at: any;
 }
 
-/**
- * Erfassungen einzeln bewerten.
- *
- * @param acquisitions Zeilen aus set_acquisitions
- * @param prices       Map "setNumber|condition" → avg_price (loadConditionPrices)
- */
+/** @param prices Map "setNumber|condition" → avg_price (loadConditionPrices) */
 export function valueAcquisitionRows(
   setNumber: string,
   acquisitions: any[],
@@ -173,10 +141,8 @@ export function valueAcquisitionRows(
   return (acquisitions || []).map(a => {
     const condition: 'N' | 'U' = (a.condition === 'U') ? 'U' : 'N';
     const quantity = Math.max(1, parseInt(String(a.quantity)) || 1);
-    // Sets führen den Kaufpreis als purchase_price, manuelle Teile und
-    // Minifiguren als unit_price — dieselbe Grösse unter zwei Namen. Beide
-    // hier zu lesen erspart je eine eigene Fassung dieser Funktion; die
-    // Android-App macht es mit `effectivePrice` genauso.
+    // purchase_price (Sets) und unit_price (manuell) sind dieselbe Grösse unter
+    // zwei Namen; beide lesen erspart je eine Fassung dieser Funktion.
     const raw = a.purchase_price ?? a.unit_price;
     const purchase = (raw === null || raw === undefined)
       ? null : (parseFloat(String(raw)) || 0);
@@ -196,13 +162,8 @@ export function valueAcquisitionRows(
   });
 }
 
-/**
- * Mengengewichteter Kaufpreis über die Erfassungen.
- *
- * Nur über die Zeilen MIT erfasstem Kaufpreis: Eine Erfassung ohne Preis zöge
- * den Schnitt sonst gegen null und liesse die Sammlung teurer erscheinen, als
- * sie war.
- */
+/** Nur über Zeilen MIT Kaufpreis: Eine Erfassung ohne Preis zöge den Schnitt
+ * sonst gegen null. */
 export function weightedPurchase(rows: AcquisitionValueRow[]): number | null {
   const withCost = (rows || []).filter(r => r.purchase_price != null);
   const qty = withCost.reduce((s, r) => s + r.quantity, 0);
@@ -216,12 +177,8 @@ export interface KachelQuelle {
   pnl_pct: string | null; baseline_pnl_pct: string | null;
 }
 
-/**
- * Betrag und G&V der Galeriekachel je Set. Im Haushalt hat ein Set mehrere
- * Zeilen (je Besitzer); dann zählt der nach Menge gewichtete Basispreis, weil
- * „irgendeine Zeile“ je nach Reihenfolge eine andere Prozentzahl ergäbe. Der
- * Betrag ist der Marktpreis, sonst der gewichtete Kaufpreis.
- */
+/** Im Haushalt zählt der nach Menge gewichtete Basispreis: „Irgendeine Zeile"
+ * ergäbe je nach Reihenfolge eine andere Prozentzahl. */
 export function kachelWerte(zeilen: KachelQuelle[]): Map<string, { kachel_preis: number | null; kachel_pnl_pct: number | null }> {
   const jeSet = new Map<string, KachelQuelle[]>();
   for (const z of zeilen) jeSet.set(z.set_number, [...(jeSet.get(z.set_number) || []), z]);

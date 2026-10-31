@@ -4,25 +4,20 @@ import { baueDiagrammdaten } from './portfolio/diagrammdaten';
 import { rekonstruiereKurve } from './portfolio/kurve';
 import { DEFAULT_PRICE_CONDITION } from './financeCalc';
 import * as repo from './repository/portfolioKurve';
-/**
- * `db` und `getSetting` lassen sich hereingeben, damit die Rechnung ohne
- * Datenbank prüfbar bleibt; ohne Angabe gelten Datenbank und Einstellungen.
- */
+/** `db` und `getSetting` lassen sich hereingeben, damit die Rechnung ohne
+ * Datenbank prüfbar bleibt. */
 export async function getPortfolioHistory(
   viewerId: number, ids: number[], period: string,
   db: { all(sql: string, params?: any[]): Promise<any[]>; get(sql: string, params?: any[]): Promise<any> } = dbStandard,
   getSetting: (userId: number, key: string, fallback?: any) => Promise<any> = getSettingStandard,
 ) {
-  // viewerId = wessen Einstellungen gelten, ids = wessen Daten gerechnet
-  // werden. Steht der Kontofilter auf „Unterkonten", enthält ids das fragende
-  // Konto gar nicht — die Währung dürfte dann nicht aus ids[0] kommen.
+  // Mit dem Filter „Unterkonten" enthält ids das fragende Konto nicht; die
+  // Währung darf dann nicht aus ids[0] kommen.
   const uids = Array.isArray(ids) ? ids.map(n => parseInt(String(n))) : [parseInt(String(ids))];
   const currency  = await getSetting(viewerId, 'currency', 'EUR');
   const condition = DEFAULT_PRICE_CONDITION;
 
-  // Ein Set, EINE Zeile — auch wenn zwei Konten es besitzen. Mengen addiert,
-  // Kaufpreis über alle Erfassungen des Haushalts gewichtet. Ohne die
-  // Gruppierung käme dasselbe Set zweimal in die Summe.
+  // Ein Set, EINE Zeile, auch bei zwei Besitzern — sonst käme es zweimal in die Summe.
   const sets = await repo.setsMitKaufsumme(uids);
   if (!sets.length) {
     return { success:true, currency, period, points:[], y_axis:[], period_change_pct:null, messpunkte:0 };
@@ -33,37 +28,20 @@ export async function getPortfolioHistory(
   const placeholders  = setNumbers.map((_: unknown, i: number) => `$${i+3}`).join(',');
   const purchaseTotal = sets.reduce((s: number, r: any) => s + parseFloat(r.purchase_price||0)*(r.quantity||1), 0);
 
-  // Date filter
   let dateFilter = '';
   if      (period==='week')  dateFilter = "AND recorded_at >= NOW() - INTERVAL '7 days'";
   else if (period==='month') dateFilter = "AND recorded_at >= NOW() - INTERVAL '30 days'";
   else if (period==='year')  dateFilter = "AND recorded_at >= NOW() - INTERVAL '365 days'";
-  // max = no filter
 
-  // Auflösung: IMMER pro Tag gruppieren (letzter Snapshot pro Tag).
-  // Früher wurden year/max hart auf Monats-Buckets gruppiert (DISTINCT ON Monat,
-  // letzter Snapshot). Bei wenig Daten kollabierte damit z.B. der ganze Juni zu
-  // einem Punkt am 30.6. — Jahr/Max starteten später als Monat und zeigten eine
-  // andere Veränderung. Jetzt wird täglich gruppiert und erst NACH dem Laden
-  // adaptiv auf Monate verdichtet, wenn es wirklich zu viele Punkte sind
-  // (> 120). Der erste Datenpunkt bleibt dabei immer exakt erhalten, sodass
-  // Monat/Jahr/Max bei kurzer Historie identische Kurven zeigen.
-
-  // Auflösung der Rekonstruktion (nicht des Schnappschuss-Wegs): Für Woche und
-  // Monat je Tag, für Jahr und Max je MONAT.
+  // Für Woche und Monat je Tag, für Jahr und Max je MONAT.
   // Ausführlich: docs/begruendungen/src/finanzen/portfolioHistory.ts.md#getportfoliohistory-monatsaufloesung
   let monatsAufloesung = period === 'year' || period === 'max';
   let bucketExpr = monatsAufloesung ? "'YYYY-MM'" : "'YYYY-MM-DD'";
 
-  // Die Kurve zeigt DEN HEUTIGEN BESTAND über die Zeit
-  // Er hat recht, und der Fehler steckte in der Bedeutung der Kurve. Sie zeigte
-  // „Wert dessen, was zu diesem Zeitpunkt erfasst WAR". Wer an einem Tag
-  // vierundzwanzig Sets einträgt, sieht dort einen Sprung — und die Prozentzahl …
+  // Die Kurve zeigt den HEUTIGEN Bestand über die Zeit: Sonst erschiene jedes
+  // Erfassen als Kurssprung.
   // Ausführlich: docs/begruendungen/src/finanzen/portfolioHistory.ts.md#kurve
 
-  // Die Rekonstruktion aus dem Preisverlauf steht in
-  // src/finanzen/portfolio/kurve.ts — sie ist der Kern und mit Abstand der grösste
-  // Teil dieser Funktion.
   const kurve = await rekonstruiereKurve({
     db, setNumbers, setQty, placeholders, dateFilter, bucketExpr,
     condition, currency, monatsAufloesung,
@@ -72,9 +50,8 @@ export async function getPortfolioHistory(
   monatsAufloesung = kurve.monatsAufloesung;
   const messpunkte = rawPoints.length;
 
-  // Bei Monatsauflösung ist die Kurve bereits verdichtet — die Beschriftung
-  // muss das wissen, sonst bekäme der erste Punkt ein Monatskürzel statt des
-  // genauen Datums und der letzte nicht mehr „heute".
+  // Die Beschriftung muss die Verdichtung kennen, sonst bekäme der erste Punkt
+  // ein Monatskürzel und der letzte nicht mehr „heute".
   let downsampled = monatsAufloesung;
   if (rawPoints.length > 120) {
     const byMonth = new Map();
@@ -84,7 +61,7 @@ export async function getPortfolioHistory(
     const monthly = [...byMonth.values()].map(p => ({
       ...p, day: p.month || p.day.slice(0,7)
     }));
-    // Ersten Original-Punkt exakt behalten (statt Monatsende des ersten Monats)
+    // Den ersten Punkt exakt behalten, damit alle Zeiträume beim selben Start beginnen.
     const first = rawPoints[0];
     if (monthly.length && monthly[0].fullDay !== first.fullDay) {
       monthly[0] = { ...first, day: first.month || first.day.slice(0,7) };
@@ -117,8 +94,6 @@ export async function getPortfolioHistory(
     return { success:true, currency, period, points:[], y_axis:[], period_change_pct:null, messpunkte:0 };
   }
 
-  // Achsen, Beschriftungen und Prozentänderung — reine Rechnung in
-  // src/finanzen/portfolio/diagrammdaten.ts.
   const { points, y_axis, period_change_pct, chart } = baueDiagrammdaten(rawPoints, currency, downsampled);
 
   return {
