@@ -1,34 +1,26 @@
-/**
- * Datenzugriff des Haushalts: Verknüpfungen (account_links), Einladungen und
- * die Hinweise auf getrennte Ketten.
- */
 import * as db from '../../db/database';
 import type { DbSchnittstelle } from '../../db/database';
 
 const zahl = (v: number | string) => parseInt(String(v));
 
-/** Die direkten Unterkonten, aufsteigend. */
 export async function unterkonten(id: number): Promise<number[]> {
   const rows = await db.all<{ sub_user_id: number | string }>(
     'SELECT sub_user_id FROM account_links WHERE main_user_id = $1 ORDER BY sub_user_id', [id]);
   return rows.map(r => zahl(r.sub_user_id));
 }
 
-/** Alle Elternkonten, aufsteigend. */
 export async function elternkonten(id: number): Promise<number[]> {
   const rows = await db.all<{ main_user_id: number | string }>(
     'SELECT main_user_id FROM account_links WHERE sub_user_id = $1 ORDER BY main_user_id', [id]);
   return rows.map(r => zahl(r.main_user_id));
 }
 
-/** Ist `sub` ein direktes Unterkonto von `main`? */
 export async function istVerknuepft(main: number, sub: number, d: DbSchnittstelle = db): Promise<boolean> {
   return !!(await d.get('SELECT 1 FROM account_links WHERE main_user_id = $1 AND sub_user_id = $2', [main, sub]));
 }
 
 export interface KontoName { id: number; username: string }
 
-/** Namen zu IDs; `ordnung` nach ID oder Benutzername. */
 export async function kontoNamen(ids: number[], ordnung: 'id' | 'username' = 'id'): Promise<KontoName[]> {
   const rows = await db.all<{ id: number | string; username: string }>(
     `SELECT id, username FROM users WHERE id = ANY($1) ORDER BY ${ordnung === 'id' ? 'id' : 'username'}`, [ids]);
@@ -40,7 +32,6 @@ export async function kontoName(id: number): Promise<string | null> {
   return r?.username ?? null;
 }
 
-/** Abgelaufene und verbrauchte Einladungen entsorgen. */
 export async function raeumeEinladungenAuf(): Promise<void> {
   await db.run('DELETE FROM account_link_invites WHERE expires_at < NOW() OR used_at IS NOT NULL');
 }
@@ -59,7 +50,6 @@ export async function belegeEinladung(tokenHash: string, sub: number): Promise<n
   return r ? zahl(r.main_user_id) : null;
 }
 
-/** Eine belegte Einladung wieder freigeben. */
 export async function gibEinladungFrei(tokenHash: string): Promise<void> {
   await db.run('UPDATE account_link_invites SET used_at = NULL, used_by = NULL WHERE token_hash = $1', [tokenHash]);
 }
@@ -102,7 +92,7 @@ export async function getrennteKetten(main: number): Promise<GetrennteKette[]> {
   return rows.map(g => ({ id: zahl(g.id), username: g.username, via: g.via ?? null }));
 }
 
-/** Erfassungstabellen je Art — feste Liste, damit nie ein Request-Wert in den Tabellennamen gerät. */
+/** Feste Liste, damit nie ein Request-Wert in den Tabellennamen gerät. */
 const ERFASSUNGEN = { set: 'set_acquisitions', part: 'part_acquisitions', fig: 'minifig_acquisitions' } as const;
 export type ErfassungsArt = keyof typeof ERFASSUNGEN;
 
