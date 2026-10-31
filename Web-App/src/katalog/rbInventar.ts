@@ -2,7 +2,7 @@
  * Das neueste Rebrickable-Inventar zu einer Nummer nachschlagen.
  * Ausführlich: docs/begruendungen/src/katalog/rbInventar.ts.md#abschnitt
  */
-import * as db from '../../db/database';
+import { inventarNachKandidaten } from './repository/katalogStamm';
 import { mitVersion } from '../sets/setNummer';
 
 /**
@@ -13,11 +13,7 @@ import { mitVersion } from '../sets/setNummer';
  * Quelle zurück. Wer das Zweite will, hängt sein eigenes `.catch(() => null)`
  * an; hier stünde sonst die Entscheidung für alle.
  */
-export async function inventarNachKandidaten(kandidaten: string[]): Promise<number | null> {
-  const row = await db.get<{ id: number }>(
-    'SELECT id FROM rb_inventories WHERE set_num = ANY($1) ORDER BY version DESC LIMIT 1', [kandidaten]);
-  return row ? row.id : null;
-}
+export { inventarNachKandidaten };
 
 /**
  * Das neueste Inventar eines Sets. rb_inventories führt Set-Nummern seit

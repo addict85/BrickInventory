@@ -3,7 +3,7 @@
  * Color]“; eine fehlende Farbe ist deshalb KEINE_FARBE und nie 0, sonst wird
  * aus „keine Angabe“ ein schwarzes Teil (Migration 0071).
  */
-import * as db from '../../db/database';
+import { geladeneFarben } from './repository/katalogStamm';
 import { getBrickColors } from '../../clients/rebrickable';
 import { meldeUndLiefere } from '../infra/httpError';
 import { KEINE_FARBE } from '../infra/validate';
@@ -34,10 +34,7 @@ const NOTLISTE: Farbe[] = [
 
 /** Die Farbauswahl beim Erfassen: geladene Tabelle, sonst Rebrickable, sonst die Notliste. */
 export async function farbliste(): Promise<Farbe[]> {
-  const geladen = await db.all<{ id: number; name: string; hex: string | null }>(
-    `SELECT id, name, NULLIF(rgb, '') AS hex FROM rb_colors
-      WHERE id >= 0 AND name IS NOT NULL ORDER BY id`)
-    .catch(meldeUndLiefere('farben:rb_colors', [] as Farbe[]));
+  const geladen = await geladeneFarben().catch(meldeUndLiefere('farben:rb_colors', [] as Farbe[]));
   if (geladen.length) return geladen;
   const abgerufen = await getBrickColors();
   if (abgerufen.length) return abgerufen;

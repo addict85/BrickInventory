@@ -1,9 +1,8 @@
-import * as db from '../../db/database';
 import { getGlobalSetting } from '../konto/settings';
 import { notify } from '../../db/pgNotify';
 import { type AuftragsArt } from './auftraege';
 import { AUFTRAG_KANAL } from './repository/auftraege';
-import { stelleAuftragEin } from './repository/auftraege';
+import { stelleAuftragEin, setzeFaelligkeit, zieheTerminVor, laeuftArt } from './repository/auftraege';
 
 /**
  * Zeitpläne als geplante Aufträge: Je geplanter Art steht genau ein offener
@@ -81,8 +80,7 @@ export async function planeAlle(): Promise<void> {
 
 /** Nach einer geänderten Uhrzeit oder einem neuen Intervall: den offenen Termin neu setzen. */
 export async function zeitplanGeaendert(art: AuftragsArt): Promise<void> {
-  await db.run(`UPDATE auftraege SET faellig_ab = $2, aktualisiert = NOW() WHERE schluessel = $1 AND status = 'offen'`,
-    [planSchluessel(art), await naechsterLauf(art)]);
+  await setzeFaelligkeit(planSchluessel(art), await naechsterLauf(art));
   await notify(AUFTRAG_KANAL, art);
 }
 
@@ -91,13 +89,8 @@ export async function zeitplanGeaendert(art: AuftragsArt): Promise<void> {
  * ergänzt (etwa `beimStart`). @returns false, wenn er gerade läuft
  */
 export async function ziehePlanVor(art: AuftragsArt, sekunden = 0, nutzlast: Record<string, unknown> = {}): Promise<boolean> {
-  const r = await db.run(
-    `UPDATE auftraege SET faellig_ab = LEAST(faellig_ab, NOW() + make_interval(secs => $2)),
-            nutzlast = nutzlast || $3::jsonb, aktualisiert = NOW()
-      WHERE schluessel = $1 AND status = 'offen'`, [planSchluessel(art), sekunden, JSON.stringify(nutzlast)]);
-  if ((r?.changes ?? 0) > 0) { await notify(AUFTRAG_KANAL, art); return true; }
-  const laeuft = await db.get(`SELECT 1 FROM auftraege WHERE art = $1 AND status = 'laeuft'`, [art]);
-  if (laeuft) return false;
+  if (await zieheTerminVor(planSchluessel(art), sekunden, nutzlast)) { await notify(AUFTRAG_KANAL, art); return true; }
+  if (await laeuftArt(art)) return false;
   await stelleAuftragEin(art, nutzlast, { schluessel: planSchluessel(art), nachSekunden: sekunden, maxVersuche: 3 });
   return true;
 }

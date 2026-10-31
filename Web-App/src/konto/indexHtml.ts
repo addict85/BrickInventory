@@ -7,8 +7,7 @@ import { meldeUndLiefere } from '../infra/httpError';
 import fs from 'fs';
 import {  PUBLIC_DIR } from '../infra/appPaths';
 import path from 'path';
-import * as db from '../../db/database';
-import { DESIGNS, designFuer } from './settings';
+import { DESIGNS, designFuer, nutzerEinstellungen } from './settings';
 import { getGlobalSetting } from './settings';
 import { stempleAssetsGecacht } from '../infra/assetStempel';
 
@@ -63,10 +62,9 @@ const LANGS = ['de', 'en'];
  */
 async function currentLang(userId?: number): Promise<string> {
   if (!userId) return 'de';
-  const row = await db.get(
-    "SELECT value FROM user_settings WHERE user_id = $1 AND key = 'language'",
-    [userId]).catch(meldeUndLiefere('index-html:row', null));
-  return LANGS.includes(row?.value) ? row.value : 'de';
+  // Nur die eigene Einstellung: Ohne sie gilt Deutsch, nicht eine globale Vorgabe.
+  const sprache = String((await nutzerEinstellungen(userId).catch(meldeUndLiefere<Record<string, string>>('index-html:row', {}))).language ?? 'de');
+  return LANGS.includes(sprache) ? sprache : 'de';
 }
 
 /**

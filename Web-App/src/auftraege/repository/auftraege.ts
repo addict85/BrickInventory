@@ -196,3 +196,23 @@ export async function meldeStand(z: { s: string; } | undefined): Promise<void> {
 export function wartezeitSek(versuch: number): number {
   return Math.min(3600, 30 * 2 ** Math.max(0, versuch - 1));
 }
+
+/** Den offenen Termin eines Schlüssels neu setzen. */
+export async function setzeFaelligkeit(schluessel: string, faelligAb: Date): Promise<void> {
+  await db.run(`UPDATE auftraege SET faellig_ab = $2, aktualisiert = NOW() WHERE schluessel = $1 AND status = 'offen'`,
+    [schluessel, faelligAb]);
+}
+
+/** Den offenen Termin höchstens bis in `sekunden` vorziehen und die Nutzlast ergänzen. @returns ob es ihn gab */
+export async function zieheTerminVor(schluessel: string, sekunden: number, nutzlast: Record<string, unknown>): Promise<boolean> {
+  const r = await db.run(
+    `UPDATE auftraege SET faellig_ab = LEAST(faellig_ab, NOW() + make_interval(secs => $2)),
+            nutzlast = nutzlast || $3::jsonb, aktualisiert = NOW()
+      WHERE schluessel = $1 AND status = 'offen'`, [schluessel, sekunden, JSON.stringify(nutzlast)]);
+  return (r.changes ?? 0) > 0;
+}
+
+/** Läuft gerade ein Auftrag dieser Art? */
+export async function laeuftArt(art: string): Promise<boolean> {
+  return !!(await db.get(`SELECT 1 FROM auftraege WHERE art = $1 AND status = 'laeuft'`, [art]));
+}

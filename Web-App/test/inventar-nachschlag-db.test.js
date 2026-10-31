@@ -110,7 +110,7 @@ test('der Inventar-Nachschlag steht nur an einer Stelle', () => {
   }
   // Gegenprobe: den alten SELECT in routes/api_v1/catalog.ts wieder
   // eingesetzt → rot.
-  assert.deepEqual(stellen, ['src/katalog/rbInventar.ts'],
+  assert.deepEqual(stellen, ['src/katalog/repository/katalogStamm.ts'],
     'Der Inventar-Nachschlag steht an mehr als einer Stelle — genau daran sind ' +
     'vier verschiedene Kandidatenregeln entstanden');
 });
