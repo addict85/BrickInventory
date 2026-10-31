@@ -13,7 +13,7 @@
  *       ohne Index   Seq Scan,    572 Buffer, 5,19  ms
  *       mit  Index   Index Scan,    4 Buffer, 0,041 ms   (3 MB)
  *
- *   sets nach set_number OHNE user_id (src/verwaltung/verwaltung.ts, Bilddiagnose):
+ *   sets nach set_number OHNE user_id (src/verwaltung/repository/verwaltung.ts, Bilddiagnose):
  *       Der vorhandene Index beginnt mit user_id, das diese Abfrage nicht
  *       nennt — sie las bisher die Sets aller Konten.
  *

@@ -6,7 +6,8 @@ import { recordAcquisitionForDay, erfassungsTagSql } from '../bestand/acquisitio
 import { withInventoryLock } from '../../db/txLock';
 import { downloadSetImage } from '../katalog/bilder/setImages';
 import { getCurrentMarketPrice } from '../finanzen/marketPrice';
-import { zustandFuerPreis, getSetting } from '../konto/settings';
+import { zustandFuerPreis } from '../konto/settings';
+import { getSetting } from '../konto/settings';
 import { deleteSetRows } from './abfragen';
 import { legeInPapierkorb } from '../bestand/papierkorb';
 import { toCsv } from '../infra/csvExport';
@@ -14,7 +15,7 @@ import { getSetInfo } from '../../clients/rebrickable';
 import * as brickset from '../../clients/brickset';
 import { getItemImageUrl } from '../../clients/bricklink';
 import { generateThumb } from '../katalog/bilder/thumbs';
-import { stelleAuftragEin } from '../auftraege/auftraege';
+import { stelleAuftragEin } from '../auftraege/dienst';
 import { normalisiereSetNummer, moeglicheSetNummer } from './setNummer';
 import { fehlerWerfen } from '../infra/fehlerTexte';
 import { setzeLagerort, ortFuerNeuerfassung } from '../bestand/lagerort';

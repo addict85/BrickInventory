@@ -4,7 +4,7 @@
  * (src/auftraege/auftraege.ts), damit ein Fehlschlag wiederholt wird und sichtbar bleibt.
  */
 import * as db from '../../db/database';
-import { stelleAuftragEin } from '../auftraege/auftraege';
+import { stelleAuftragEin } from '../auftraege/dienst';
 import { EZB_HISTORIE, EZB_TAGESKURSE, ezbAbruf, ersteZipDatei, historieLesen, tageskurseLesen,
          type Abruf, type Kurs } from '../../clients/ezb';
 

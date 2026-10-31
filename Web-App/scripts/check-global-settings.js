@@ -34,6 +34,7 @@ const ERLAUBT = new Map([
   ['db/database.ts', 'legt die Tabelle an und migriert sie'],
   ['jobs/csvImportWorker.ts', 'eigener Prozess mit eigenem Pool — kann utils/ nicht laden'],
   ['src/konto/settings.ts', 'DIE zentrale Stelle'],
+  ['src/konto/repository/einstellungen.ts', 'das SQL hinter settings.ts — nur dort aufgerufen'],
 ]);
 
 /**

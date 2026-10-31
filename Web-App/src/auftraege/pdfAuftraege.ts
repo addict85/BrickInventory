@@ -4,7 +4,7 @@ import fsp from 'fs/promises';
 import { PDF_JOB_DIR } from '../infra/appPaths';
 import * as db from '../../db/database';
 import { meldeUndLiefere, meldeUndWeiter, ohneFehlendeDatei } from '../infra/httpError';
-import { stelleAuftragEin } from './auftraege';
+import { stelleAuftragEin } from './repository/auftraege';
 import { mitVersion } from '../sets/setNummer';
 
 /**

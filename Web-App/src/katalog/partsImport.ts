@@ -10,7 +10,7 @@ import { mitVersion } from '../sets/setNummer';
 import { nummernListe } from '../infra/fremdeAdressen';
 import { merkeBlNummer, merkeBlNummern, merkeBlNummerUnveraendert } from './blZuordnung';
 import { merkeSetTeile, type SetTeilZeile } from './katalogPflege';
-import { stelleAuftragEin } from '../auftraege/auftraege';
+import { stelleAuftragEin } from '../auftraege/dienst';
 import * as monitor from '../auftraege/jobMonitor';
 import { rebrickableBackgroundLimiter, consumeRebrickableDaily, parseThrottleWait } from './rateLimiter';
 

@@ -9,7 +9,8 @@
 import { meldeUndLiefere } from '../../infra/httpError';
 import * as db from '../../../db/database';
 import { asIds } from '../../haushalt/haushalt';
-import { getSetting, getGlobalSetting } from '../../konto/settings';
+import { getGlobalSetting } from '../../konto/settings';
+import { getSetting } from '../../konto/settings';
 import { resolveImageLocal, proxyImageUrl } from '../../katalog/bilder/images';
 import { valueSet, valueAcquisitionRows, weightedPurchase, pnlPct as calcPnlPct, pnlProzent } from '../setValue';
 import { mitVersion } from '../../sets/setNummer';

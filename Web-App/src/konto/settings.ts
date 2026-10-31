@@ -2,16 +2,17 @@
 
 import { nacharbeit } from '../auftraege/nacharbeit';
 import * as db from '../../db/database';
+import * as repo from './repository/einstellungen';
 import { sperreHaushaltswaehrung } from '../../db/txLock';
 import { verschluessele, entschluessele, istVerschluesselt } from '../infra/geheimnis';
 import { fehlerWerfen } from '../infra/fehlerTexte';
+import { meldeUndLiefere } from '../infra/httpError';
 
 /** Konto-Einstellung mit Rückfall auf die globale, dann auf `fallback`. */
 export async function getSetting(userId: number, key: string, fallback?: any) {
-  const u = await db.get('SELECT value FROM user_settings WHERE user_id = $1 AND key = $2', [userId, key]);
-  if (u?.value) return u.value;
-  const g = await db.get('SELECT value FROM global_settings WHERE key = $1', [key]);
-  return klar(key, g?.value) || fallback;
+  const eigen = await repo.nutzerWert(userId, key);
+  if (eigen) return eigen;
+  return klar(key, await repo.globalerWert(key)) || fallback;
 }
 
 /** Geheime Werte liegen verschlüsselt (src/infra/geheimnis.ts); hier werden sie wieder lesbar. */
@@ -21,8 +22,8 @@ function klar(key: string, wert: string | null | undefined): string | null | und
 
 /** Nur die globale Einstellung (z. B. SMTP). */
 export async function getGlobalSetting(key: string, fallback: any = null) {
-  const g = await db.get('SELECT value FROM global_settings WHERE key = $1', [key]).catch(() => null);
-  return klar(key, g?.value) ?? fallback;
+  const g = await repo.globalerWert(key).catch(meldeUndLiefere(`einstellungen:${key}`, null));
+  return klar(key, g) ?? fallback;
 }
 
 // Was ein Konto selbst setzen darf. Die Werte landen ungeprüft in Seiten,
@@ -48,20 +49,8 @@ export async function setUserSetting(userId: number, key: string, value: any) {
   const regel = NUTZER_REGELN[key];
   if (regel && !regel(v)) fehlerWerfen('wert_ungueltig', 400);
   if (key === 'currency') return setzeHaushaltswaehrung(userId, v);
-  await db.run(
-    'INSERT INTO user_settings (user_id, key, value, updated_at) VALUES ($1, $2, $3, NOW()) ON CONFLICT (user_id, key) DO UPDATE SET value = $3, updated_at = NOW()',
-    [userId, key, v]
-  );
+  await repo.schreibeNutzerWert(userId, key, v);
 }
-
-/** Alle Konten, die über Verknüpfungen zusammenhängen, in beide Richtungen. */
-const VERBUND_SQL = `
-  WITH RECURSIVE verbund(id) AS (
-    SELECT $1::int
-    UNION
-    SELECT CASE WHEN l.main_user_id = v.id THEN l.sub_user_id ELSE l.main_user_id END
-      FROM account_links l JOIN verbund v ON v.id IN (l.main_user_id, l.sub_user_id))
-  SELECT id FROM verbund`;
 
 /**
  * Die Währung gilt für den ganzen Haushalt: Die Haushaltssicht summiert
@@ -71,14 +60,8 @@ const VERBUND_SQL = `
 async function setzeHaushaltswaehrung(userId: number, waehrung: string) {
   const vorher = await db.transaction(async (tx) => {
     await sperreHaushaltswaehrung(tx);
-    const alt = (await tx.get('SELECT value FROM user_settings WHERE user_id = $1 AND key = $2',
-      [userId, 'currency']))?.value ?? null;
-    const ids = (await tx.all(VERBUND_SQL, [userId])).map((r: { id: number }) => r.id);
-    await tx.run(
-      `INSERT INTO user_settings (user_id, key, value, updated_at)
-       SELECT id, 'currency', $2, NOW() FROM unnest($1::int[]) AS id
-       ON CONFLICT (user_id, key) DO UPDATE SET value = $2, updated_at = NOW()`,
-      [ids, waehrung]);
+    const alt = await repo.nutzerWert(userId, 'currency', tx);
+    await repo.setzeWaehrungFuer(tx, await repo.verbundeneKonten(tx, userId), waehrung);
     return alt;
   });
   if (vorher !== waehrung) {
@@ -92,14 +75,9 @@ async function setzeHaushaltswaehrung(userId: number, waehrung: string) {
  * Ausführlich: docs/begruendungen/src/konto/settings.ts.md#nutzerstandardzustand
  */
 export async function nutzerStandardZustand(userId: number): Promise<'N' | 'U'> {
-  const u = await db.get(
-    "SELECT value FROM user_settings WHERE user_id=$1 AND key='user_default_condition'", [userId]
-  ).catch(() => null);
-  if (u?.value === 'N' || u?.value === 'U') return u.value;
-  const g = await db.get(
-    "SELECT value FROM global_settings WHERE key='default_price_condition'"
-  ).catch(() => null);
-  return g?.value === 'U' ? 'U' : 'N';
+  const eigen = await repo.nutzerWert(userId, 'user_default_condition').catch(meldeUndLiefere('einstellungen:zustand', null));
+  if (eigen === 'N' || eigen === 'U') return eigen;
+  return globalDefaultCondition();
 }
 
 /**
@@ -121,10 +99,8 @@ export async function zustandFuerPreis(
 
 /** Der globale Standard-Zustand (Verwaltung), ohne Wert des Nutzers. */
 export async function globalDefaultCondition(): Promise<'N' | 'U'> {
-  const g = await db.get(
-    "SELECT value FROM global_settings WHERE key='default_price_condition'"
-  ).catch(() => null);
-  return g?.value === 'U' ? 'U' : 'N';
+  const g = await repo.globalerWert('default_price_condition').catch(meldeUndLiefere('einstellungen:standardzustand', null));
+  return g === 'U' ? 'U' : 'N';
 }
 
 /**
@@ -132,10 +108,7 @@ export async function globalDefaultCondition(): Promise<'N' | 'U'> {
  * Ausführlich: docs/begruendungen/src/konto/settings.ts.md#setglobalsetting
  */
 export async function setGlobalSetting(key: string, value: unknown) {
-  await db.run(
-    `INSERT INTO global_settings (key, value, updated_at) VALUES ($1, $2, NOW())
-     ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = NOW()`,
-    [key, SECRET_KEYS.has(key) ? verschluessele(String(value)) : String(value)]);
+  await repo.schreibeGlobalenWert(key, SECRET_KEYS.has(key) ? verschluessele(String(value)) : String(value));
 }
 
 /**
@@ -145,11 +118,9 @@ export async function setGlobalSetting(key: string, value: unknown) {
  */
 export async function verschluesseleGlobaleAltwerte(): Promise<number> {
   let n = 0;
-  for (const z of await db.all('SELECT key, value FROM global_settings WHERE key = ANY($1)', [[...SECRET_KEYS]])) {
+  for (const z of await repo.globaleWerte([...SECRET_KEYS])) {
     if (!z.value || istVerschluesselt(z.value)) continue;
-    const r = await db.run('UPDATE global_settings SET value = $1, updated_at = NOW() WHERE key = $2 AND value = $3',
-      [verschluessele(z.value), z.key, z.value]);
-    n += r?.changes || 0;
+    if (await repo.ersetzeGlobalenWert(z.key, z.value, verschluessele(z.value))) n++;
   }
   return n;
 }
@@ -157,12 +128,12 @@ export async function verschluesseleGlobaleAltwerte(): Promise<number> {
 /** Globale Einstellung entfernen — „fehlt“ ist etwas anderes als „leer“. */
 export async function deleteGlobalSetting(...keys: string[]) {
   if (keys.length === 0) return;
-  await db.run(`DELETE FROM global_settings WHERE key = ANY($1)`, [keys]);
+  await repo.loescheGlobaleWerte(keys);
 }
 
 /** Einstellung eines Kontos entfernen: Danach gilt die Vorgabe der Installation. */
 export async function deleteUserSetting(userId: number, key: string) {
-  await db.run('DELETE FROM user_settings WHERE user_id=$1 AND key=$2', [userId, key]);
+  await repo.loescheNutzerWert(userId, key);
 }
 
 // Einstellungen LESEN — eine Fassung fuer beide Oberflaechen
@@ -226,10 +197,7 @@ export function sanitizeGlobal(global: any, isAdmin: boolean) {
 
 /** Die gespeicherten Einstellungen eines Nutzers als Schlüssel-Wert-Paare. */
 export async function nutzerEinstellungen(userId: number): Promise<Record<string, any>> {
-  const werte: Record<string, any> = {};
-  (await db.all('SELECT key, value FROM user_settings WHERE user_id = $1', [userId]))
-    .forEach((r: any) => { werte[r.key] = r.value; });
-  return werte;
+  return Object.fromEntries((await repo.nutzerWerte(userId)).map(r => [r.key, r.value]));
 }
 
 /**
@@ -237,13 +205,8 @@ export async function nutzerEinstellungen(userId: number): Promise<Record<string
  * durch sanitizeGlobal(), darüber die des Nutzers.
  */
 export async function readSettings(userId: number, isAdmin: boolean) {
-  const raw: any = {};
-  (await db.all('SELECT key, value FROM global_settings')).forEach(r => { raw[r.key] = klar(r.key, r.value); });
-  const global = sanitizeGlobal(raw, !!isAdmin);
-  const user: any = {};
-  (await db.all('SELECT key, value FROM user_settings WHERE user_id = $1', [userId]))
-    .forEach(r => { user[r.key] = r.value; });
-  return { ...global, ...user };
+  const raw = Object.fromEntries((await repo.globaleWerte()).map(r => [r.key, klar(r.key, r.value)]));
+  return { ...sanitizeGlobal(raw, !!isAdmin), ...await nutzerEinstellungen(userId) };
 }
 
 /**
@@ -253,7 +216,7 @@ export async function readSettings(userId: number, isAdmin: boolean) {
  */
 export async function globaleWerteOhneGeheimnisse(): Promise<Record<string, string>> {
   const aus: Record<string, string> = {};
-  for (const r of await db.all<{ key: string; value: string }>('SELECT key, value FROM global_settings'))
+  for (const r of await repo.globaleWerte())
     if (!SECRET_KEYS.has(r.key)) aus[r.key] = r.value;
   return aus;
 }
@@ -265,15 +228,15 @@ export async function globaleWerteOhneGeheimnisse(): Promise<Record<string, stri
 export async function designFuer(userId?: number | null): Promise<{ theme: string; vorgabe: string; eigenes: string | null }> {
   const g = await getGlobalSetting('app_theme');
   const vorgabe = DESIGNS.includes(g) ? g : 'classic';
-  const u = userId ? await db.get("SELECT value FROM user_settings WHERE user_id = $1 AND key = 'app_theme'", [userId]) : null;
-  const eigenes = DESIGNS.includes(u?.value) ? u.value : null;
+  const u = userId ? await repo.nutzerWert(userId, 'app_theme') : null;
+  const eigenes = u && DESIGNS.includes(u) ? u : null;
   return { theme: eigenes ?? vorgabe, vorgabe, eigenes };
 }
 
 /** Eigenes Design setzen; leer oder null löscht die Zeile, dann gilt wieder die Vorgabe. */
 export async function setzeEigenesDesign(userId: number, theme: unknown): Promise<void> {
   const v = String(theme ?? '').trim();
-  if (!v) { await db.run("DELETE FROM user_settings WHERE user_id = $1 AND key = 'app_theme'", [userId]); return; }
+  if (!v) { await repo.loescheNutzerWert(userId, 'app_theme'); return; }
   await setUserSetting(userId, 'app_theme', v);
 }
 

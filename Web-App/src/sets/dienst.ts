@@ -5,7 +5,7 @@
  */
 import * as db from '../../db/database';
 import { logAndContinue, meldeUndLiefere, meldeUndWeiter, vorDem, fehlertext } from '../infra/httpError';
-import { stelleAuftragEin } from '../auftraege/auftraege';
+import { stelleAuftragEin } from '../auftraege/dienst';
 import { resolveImageLocal, proxyImageUrl } from '../katalog/bilder/images';
 import { getSetting } from '../konto/settings';
 import { normalizeSetNumber } from './setAdd';

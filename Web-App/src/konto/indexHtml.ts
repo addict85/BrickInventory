@@ -8,7 +8,8 @@ import fs from 'fs';
 import {  PUBLIC_DIR } from '../infra/appPaths';
 import path from 'path';
 import * as db from '../../db/database';
-import { getGlobalSetting, DESIGNS, designFuer } from './settings';
+import { DESIGNS, designFuer } from './settings';
+import { getGlobalSetting } from './settings';
 import { stempleAssetsGecacht } from '../infra/assetStempel';
 
 const INDEX_PATH = path.join(PUBLIC_DIR, 'index.html');

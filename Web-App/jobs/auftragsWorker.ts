@@ -1,8 +1,16 @@
 import { randomUUID } from 'crypto';
 import {
-  AUFTRAG_KANAL, belegeAuftrag, erledigt, fehlgeschlagen, gibZurueck, lebenszeichen, setzeFortschritt,
-  verschoben, imNamenDesAuftrags, type AuftragsArt, type AuftragsZeile, type Fortschritt,
+  AUFTRAG_KANAL, 
+  type AuftragsArt, type AuftragsZeile, type Fortschritt,
 } from '../src/auftraege/auftraege';
+import { imNamenDesAuftrags } from '../src/auftraege/dienst';
+import { gibZurueck } from '../src/auftraege/dienst';
+import { verschoben } from '../src/auftraege/dienst';
+import { fehlgeschlagen } from '../src/auftraege/dienst';
+import { erledigt } from '../src/auftraege/dienst';
+import { setzeFortschritt } from '../src/auftraege/dienst';
+import { lebenszeichen } from '../src/auftraege/dienst';
+import { belegeAuftrag } from '../src/auftraege/dienst';
 import { planeNaechsten, hatZeitplan } from '../src/auftraege/zeitplan';
 import { listen, unlisten } from '../db/pgNotify';
 import { fehlertext, logAndContinue } from '../src/infra/httpError';

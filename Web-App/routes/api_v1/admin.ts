@@ -6,7 +6,7 @@
 import express from 'express';
 import fs from 'fs';
 import path from 'path';
-import * as verwaltung from '../../src/verwaltung/verwaltung';
+import * as verwaltung from '../../src/verwaltung/dienst';
 import { fehlerAntwort, meldeUndLiefere, pfadParam } from '../../src/infra/httpError';
 import { requireApiAdmin } from './middleware';
 import { getLimitForApi } from '../../src/katalog/apiKontingent';
@@ -14,9 +14,10 @@ import { proxyCachePathFor } from '../../src/katalog/bilder/images';
 import { ERLAUBTE_BILD_HOSTS, hostErlaubt } from '../../src/infra/fremdeAdressen';
 import { vergissFehlend } from '../../src/katalog/bilder/imageMisses';
 import { SET_IMAGES_DIR } from '../../src/infra/appPaths';
-import { getGlobalSetting, setGlobalSetting } from '../../src/konto/settings';
+import { setGlobalSetting } from '../../src/konto/settings';
+import { getGlobalSetting } from '../../src/konto/settings';
 import { sendeFehler } from '../../src/infra/fehlerTexte';
-import { letzteEintraege } from '../../src/verwaltung/verwaltungsprotokoll';
+import { letzteEintraege } from '../../src/verwaltung/dienst';
 import { cacheStatistik, cachesLeeren, bricksetLimitGesetzt, anleitungenNeuEinreihen, preisJobStand, preisJobJetzt,
          fehlendeBilderNachladen, bricksetWiederholen, bricksetEntfernen, jobZeitplanSetzen, jobUebersicht,
          bildProbe, preisProbe, katalogBilderEinreihen, katalogAbgleichJetzt, bricksetListe } from '../../src/verwaltung/dienst';

@@ -4,7 +4,7 @@
  */
 
 import { meldeUndWeiter, logAndContinue, meldeUndLiefere } from '../infra/httpError';
-import { liesZustand, setzeZustand, zaehleZustand, zustaendeMitPraefix } from './laufzustand';
+import { liesZustand, setzeZustand, zaehleZustand, zustaendeMitPraefix } from './repository/laufzustand';
 
 const JOB_DEFAULTS: Record<string, any> = {
   csvImport:     { label: 'CSV-Import (Rebrickable)', status: 'idle', progress: 0, total: 6 },

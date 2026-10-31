@@ -1,5 +1,5 @@
-import * as db from '../../db/database';
-import { mengeSkalar } from '../sets/bestandsmenge';
+import * as db from '../../../db/database';
+import { mengeSkalar } from '../../sets/bestandsmenge';
 
 /**
  * Datenzugriff der Verwaltungsrouten (Überwachung, Bilddiagnose, Caches,
@@ -8,7 +8,7 @@ import { mengeSkalar } from '../sets/bestandsmenge';
  */
 
 /** Der Pool-Stand für die Überwachungsseite — die Route spricht db/ nicht selbst an. */
-export { getPoolStats } from '../../db/database';
+export { getPoolStats } from '../../../db/database';
 
 type Bildzeile = { image_url: string | null; image_local: string | null };
 export type KontoBildzeile = { user_id: number } & Bildzeile;

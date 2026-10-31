@@ -22,7 +22,7 @@ function verdrahte(): void {
     setTeileAnreichern: async (sn) => (await import('../jobs/partsCatalogEnrich.js')).enrichSetParts(sn),
     figurenAnreichern: async (sn) => (await import('../jobs/partsCatalogEnrich.js')).enrichSetMinifigs(sn),
     setBilderLaden: async (sn) => {
-      const [{ stelleAuftragEin }, { mitVersion }] = await Promise.all([import('../src/auftraege/auftraege.js'), import('../src/sets/setNummer.js')]);
+      const [{ stelleAuftragEin }, { mitVersion }] = await Promise.all([import('../src/auftraege/dienst.js'), import('../src/sets/setNummer.js')]);
       return stelleAuftragEin('bilder', { set_number: sn, nur_bilder: true },
         { schluessel: `bilder:${mitVersion(sn)}:nur`, maxVersuche: 3 });
     },

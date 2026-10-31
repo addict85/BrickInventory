@@ -1,6 +1,6 @@
 
 import { konfig } from '../src/infra/konfig';
-import { protokolliere } from '../src/verwaltung/verwaltungsprotokoll';
+import { protokolliere } from '../src/verwaltung/dienst';
 import express from 'express';
 const router  = express.Router();
 import bcrypt from 'bcryptjs';
@@ -16,7 +16,9 @@ import crypto from 'crypto';
 import { strictBool } from '../src/infra/validate';
 import { sendEmailGeaendertMail, sendPasswordResetMail, sendVerificationMail } from '../src/infra/mailer';
 import type { Request, Response } from 'express';
-import { getGlobalSetting, getSetting, setUserSetting } from '../src/konto/settings';
+import { setUserSetting } from '../src/konto/settings';
+import { getGlobalSetting } from '../src/konto/settings';
+import { getSetting } from '../src/konto/settings';
 import { requireApiAdmin } from './api_v1/middleware';
 import { sendeFehler, fehlerText, antwortSprache, alsDoppelt } from '../src/infra/fehlerTexte';
 import { basisUrl, hinweisOhneBasisUrl } from '../src/infra/basisUrl';

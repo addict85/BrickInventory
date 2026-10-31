@@ -1,6 +1,6 @@
 import * as db from '../../../db/database';
 import { logAndContinue, meldeUndLiefere } from '../../infra/httpError';
-import { stelleAuftragEin } from '../../auftraege/auftraege';
+import { stelleAuftragEin } from '../../auftraege/dienst';
 
 /**
  * Der Bildbedarf (Tabelle image_wanted): welche Set-Bilder gebraucht wurden

@@ -1,7 +1,7 @@
 /**
  * Protokoll der Verwalteraktionen an fremden Konten (Migration 0049).
  */
-import * as db from '../../db/database';
+import * as db from '../../../db/database';
 
 export type VerwalterAktion = 'konto_angelegt' | 'passwort_gesetzt' | 'zweiter_faktor_entfernt'
   | 'verwalter_ernannt' | 'verwalter_entzogen' | 'konto_geloescht';

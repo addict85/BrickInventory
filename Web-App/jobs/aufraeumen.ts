@@ -7,7 +7,7 @@ import { purgeExpiredTokens } from '../src/konto/auth';
 import { raeumeAnmeldezaehlerAuf } from '../src/konto/loginLimiter';
 import { raeumePapierkorbAuf } from '../src/bestand/papierkorb';
 import { cleanOldPdfJobs } from '../src/auftraege/pdfAuftraege';
-import { raeumeErledigteAuf } from '../src/auftraege/auftraege';
+import { raeumeErledigteAuf } from '../src/auftraege/dienst';
 import { purgeAltePreise } from '../src/finanzen/priceHistory';
 import { raeumeBildCacheAuf } from '../src/katalog/bilder/imgCacheServe';
 import { loescheVerfallene } from '../src/katalog/bilder/bildbedarf';

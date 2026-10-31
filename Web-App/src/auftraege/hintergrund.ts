@@ -4,8 +4,13 @@
  * fällig machen. Web-Oberfläche und App lesen dieselbe Antwort.
  */
 import * as db from '../../db/database';
-import { liesZustand } from './laufzustand';
-import { AUFTRAGS_ARTEN, brichAb, leereArt, wiederhole, zieheVor, beendePause, type AuftragsArt } from './auftraege';
+import { liesZustand } from './repository/laufzustand';
+import { AUFTRAGS_ARTEN, type AuftragsArt } from './auftraege';
+import { zieheVor } from './repository/auftraege';
+import { leereArt } from './repository/auftraege';
+import { wiederhole } from './repository/auftraege';
+import { brichAb } from './repository/auftraege';
+import { beendePause } from './repository/auftraege';
 import { hatZeitplan, planeNaechsten, ziehePlanVor } from './zeitplan';
 import { leereBildbedarf, offenerBildbedarf } from '../katalog/bilder/bildbedarf';
 import { fehlerWerfen } from '../infra/fehlerTexte';

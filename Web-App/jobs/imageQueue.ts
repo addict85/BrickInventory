@@ -7,7 +7,8 @@ import { grundFuer, istBekanntFehlend, merkeFehlend } from '../src/katalog/bilde
 import { generateThumb } from '../src/katalog/bilder/thumbs';
 import { SET_IMAGES_DIR } from '../src/infra/appPaths';
 import { setzeZustand } from '../src/auftraege/laufzustand';
-import { liesPause, pausiereArt } from '../src/auftraege/auftraege';
+import { pausiereArt } from '../src/auftraege/dienst';
+import { liesPause } from '../src/auftraege/dienst';
 import { STAPEL, TAKT_MS, NOTIZ_GILT_MS, merkeGebraucht, schreibePuffer, notiereBildbedarf, loescheVerfallene, initImageQueue,
          anfragenJeMinute } from '../src/katalog/bilder/bildbedarf';
 import { AuftragUnterbrochen, AuftragVerschieben, type AuftragsKontext } from './auftragsWorker';

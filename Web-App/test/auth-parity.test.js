@@ -151,8 +151,8 @@ test('Benutzernamen-Regel gilt für Login, Register UND Profil-Update', () => {
   const auth = fs.readFileSync(path.join(ROOT, 'routes/auth.ts'), 'utf8');
   const profile = auth.slice(auth.indexOf("router.put('/profile'"), auth.indexOf("router.get('/users'"));
   assert.match(profile, /USERNAME_RE\.test/, 'PUT /profile validiert den Benutzernamen nicht');
-  // Die Abfrage steht seit dem 28.10.2026 in src/konto/konten.ts.
-  const konten = fs.readFileSync(path.join(ROOT, 'src/konto/konten.ts'), 'utf8');
+  // Die Abfrage steht seit dem 28.10.2026 in src/konto/repository/konten.ts.
+  const konten = fs.readFileSync(path.join(ROOT, 'src/konto/repository/konten.ts'), 'utf8');
   assert.match(profile, /K\.nameVergeben\(username/, 'PUT /profile prüft den Namen nicht auf Eindeutigkeit');
   assert.match(konten.slice(konten.indexOf('function nameVergeben')), /LOWER\(username\) = LOWER\(\$1\)/,
     'PUT /profile muss case-insensitiv auf Eindeutigkeit prüfen — der Login vergleicht mit LOWER()');
@@ -183,7 +183,7 @@ test('QR-Login transportiert kein Passwort-Material mehr', () => {
   const qr = auth.slice(from, to);
   assert.doesNotMatch(qr, /password_hash/,
     'Der QR-Code darf den bcrypt-Hash nicht enthalten — er ist offline knackbar');
-  const konten = fs.readFileSync(path.join(ROOT, 'src/konto/konten.ts'), 'utf8');
+  const konten = fs.readFileSync(path.join(ROOT, 'src/konto/repository/konten.ts'), 'utf8');
   assert.match(qr, /K\.legeQrTokenAn\(/, 'QR-Login muss über eine serverseitige Nonce laufen');
   assert.match(qr, /K\.loeseQrTokenEin\(/, 'Die Nonce muss eingelöst werden');
   const einloesen = konten.slice(konten.indexOf('function loeseQrTokenEin'));
