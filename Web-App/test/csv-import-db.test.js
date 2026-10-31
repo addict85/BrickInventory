@@ -63,7 +63,7 @@ test('Katalog-Import tauscht, statt zu leeren', async (t) => {
   await db.run(`CREATE TABLE IF NOT EXISTS rb_colors (
     id INTEGER PRIMARY KEY, name TEXT, rgb TEXT, is_trans TEXT, bl_color_id INTEGER)`);
 
-  const DATA_DIR = _req('utils/appPaths.js').DATA_DIR;
+  const DATA_DIR = _req('src/infra/appPaths.js').DATA_DIR;
   fs.mkdirSync(DATA_DIR, { recursive: true });
 
   /** CSV-Datei erzeugen, wie sie der Download entpackt hinterlässt. */
@@ -153,7 +153,7 @@ test('Katalog-Import tauscht, statt zu leeren', async (t) => {
 });
 
 test('der CSV-Download hat ein Zeitlimit', () => {
-  const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'jobs', 'rebrickableCsvSync.ts'), 'utf8'));
+  const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'jobs/rebrickableCsvSync.ts'), 'utf8'));
   const dl = src.slice(src.indexOf('async function downloadToTmp'), src.indexOf('async function runWorker'));
   // Diese eine Prüfung liest Quelltext statt Verhalten: Ein echter Nachweis
   // bräuchte einen TLS-Server, der die Verbindung annimmt und dann schweigt.
@@ -166,7 +166,7 @@ test('der CSV-Download hat ein Zeitlimit', () => {
 });
 
 test('die entpackten Zwischendateien werden aufgeräumt', () => {
-  const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'jobs', 'rebrickableCsvSync.ts'), 'utf8'));
+  const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'jobs/rebrickableCsvSync.ts'), 'utf8'));
   const rw = src.slice(src.indexOf('async function runWorker'), src.indexOf('function importInWorker'));
   assert.match(rw, /finally\s*\{[\s\S]*unlink/,
     'ohne unlink im finally bleibt inventory_parts.csv.tmp (rund 1 GB) dauerhaft liegen');

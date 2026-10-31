@@ -16,7 +16,7 @@
  * das notify() entfernt → rot: „der Statusstrom meldet das Ende sofort“
  * (erst der 15-Sekunden-Rückfall hätte es gemeldet). Seit der Status im
  * Auftrag steht (Migration 0083) am 30.10.2026 wiederholt: in erledigt()
- * (utils/auftraege.ts) meldeStand() entfernt → rot: derselbe Test.
+ * (src/auftraege/auftraege.ts) meldeStand() entfernt → rot: derselbe Test.
  *
  * Voraussetzung: Test-DB (Inhalt wird geleert!) via TEST_DATABASE_URL.
  * Ohne DB: skip.
@@ -47,8 +47,8 @@ test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async (t) => 
     try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); }
   }
   const pdf = _req('routes/api_v1/pdf.js');
-  const auftraege = _req('utils/pdfAuftraege.js');
-  const { PDF_JOB_DIR } = _req('utils/appPaths.js');
+  const auftraege = _req('src/auftraege/pdfAuftraege.js');
+  const { PDF_JOB_DIR } = _req('src/infra/appPaths.js');
 
   for (const name of ['pdf_a', 'pdf_b']) await db.run('DELETE FROM users WHERE username = $1', [name]);
   await db.run("INSERT INTO users (username,password_hash,email_verified) VALUES ('pdf_a','x',1)");
@@ -56,10 +56,10 @@ test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async (t) => 
   const idA = (await db.get("SELECT id FROM users WHERE username='pdf_a'")).id;
   const idB = (await db.get("SELECT id FROM users WHERE username='pdf_b'")).id;
 
-  // Tokens liegen GEHASHT in der Tabelle (utils/auth.ts) — der Klartextpfad
+  // Tokens liegen GEHASHT in der Tabelle (src/konto/auth.ts) — der Klartextpfad
   // wurde bewusst entfernt. Der Test legt deshalb den Hash ab und schickt den
   // Klartext, genau wie ein echter Client.
-  const { hashToken } = _req('utils/auth.js');
+  const { hashToken } = _req('src/konto/auth.js');
   const tokenFuer = async (uid, label) => {
     const t = require('node:crypto').randomBytes(24).toString('hex');
     await db.run(
@@ -166,7 +166,7 @@ test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async (t) => 
       const start = Date.now();
       // Der Worker meldet das Ende über erledigt(); der Auftrag gehört hier dem Belegenden 'test'.
       const zeile = await db.get(`SELECT id FROM auftraege WHERE schluessel = $1`, [auftraege.pdfSchluessel(job)]);
-      setTimeout(() => _req('utils/auftraege.js').erledigt({ id: String(zeile.id), belegt_von: 'test' }), 300);
+      setTimeout(() => Object.assign({}, _req('src/auftraege/auftraege.js'), _req('src/auftraege/repository/auftraege.js')).erledigt({ id: String(zeile.id), belegt_von: 'test' }), 300);
       while (!text.includes('"done"') && Date.now() - start < 8000) {
         const { value, done } = await Promise.race([leser.read(),
           new Promise(f => setTimeout(() => f({ done: true }), 8000 - (Date.now() - start)))]);
@@ -191,7 +191,7 @@ test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async (t) => 
       await fs.unlink(path.join(PDF_JOB_DIR, f)).catch(() => {});
     }
     await db.run(`DELETE FROM auftraege WHERE art = 'pdf'`).catch(() => {});
-    await _req('utils/pgNotify.js').close().catch(() => {});
+    await _req('db/pgNotify.js').close().catch(() => {});
     await db.pool.end().catch(() => {});
   }
 });

@@ -114,7 +114,7 @@ test('die Portfolio-Kurve rechnet dasselbe wie die Vergleichsfassung', { concurr
   const c0 = await db.pool.connect();
   try { await _req('db/migrate.js').runMigrations(c0); } finally { c0.release(); }
 
-  const { getPortfolioHistory } = _req('utils/portfolioHistory.js');
+  const { getPortfolioHistory } = _req('src/finanzen/portfolioHistory.js');
   const getSetting = async (_u, k, d) => (k === 'currency' ? 'CHF' : d);
 
   await db.run("INSERT INTO users (username,password_hash) VALUES ('ph_a','x'),('ph_b','x')");
@@ -164,7 +164,7 @@ test('die Portfolio-Kurve rechnet dasselbe wie die Vergleichsfassung', { concurr
 
   // Die Mengen aus den Erfassungen (Migration 0036 hat sets.quantity
   // geloescht). Der JOIN auf `sets` ist dieselbe Einschraenkung wie in
-  // utils/bestandsmenge.ts: Eine Erfassung ohne Bestandszeile zaehlt nicht.
+  // db/bestandsmenge.ts: Eine Erfassung ohne Bestandszeile zaehlt nicht.
   const setsRows = await db.all(
     `SELECT s.set_number, COALESCE(SUM(a.quantity), 0)::int AS quantity
        FROM sets s
@@ -244,7 +244,7 @@ test('ein Preiseintrag je Set, Zustand, Währung und Tag', { concurrency: 1 }, a
     // gibt die Schnappschüsse nicht mehr, und Zeilen aus der Zeit davor sollen
     // von der Aufbewahrungsfrist wegkommen wie alles andere. Eine Ausnahme, die
     // nichts mehr schützt, hält nur noch Daten fest.
-    const { purgeAltePreise } = _req('utils/priceHistory.js');
+    const { purgeAltePreise } = _req('src/finanzen/priceHistory.js');
     await db2.run(`INSERT INTO price_history (set_number,condition,currency_code,avg_price,qty_avg_price,recorded_at)
                    VALUES ('88888-1','N','CHF',5,5, NOW() - INTERVAL '4000 days'),
                           ('__portfolio__1','N','CHF',7,7, NOW() - INTERVAL '4000 days')`);
@@ -257,7 +257,7 @@ test('ein Preiseintrag je Set, Zustand, Währung und Tag', { concurrency: 1 }, a
   });
 
   await t.test('PRICE_HISTORY_KEEP_DAYS=0 schaltet das Aufräumen ab', async () => {
-    const { purgeAltePreise } = _req('utils/priceHistory.js');
+    const { purgeAltePreise } = _req('src/finanzen/priceHistory.js');
     await db2.run(`INSERT INTO price_history (set_number,condition,currency_code,avg_price,qty_avg_price,recorded_at)
                    VALUES ('77777-1','N','CHF',5,5, NOW() - INTERVAL '4000 days')`);
     process.env.PRICE_HISTORY_KEEP_DAYS = '0';
@@ -273,7 +273,7 @@ test('der Mailer prüft Zertifikate, sofern es niemand ausdrücklich abschaltet'
   const fs = require('node:fs');
   const path = require('node:path');
   const { ROOT, ohneKommentare } = require('./helpers/sources');
-  const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'utils', 'mailer.ts'), 'utf8'));
+  const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'src/infra/mailer.ts'), 'utf8'));
 
   assert.doesNotMatch(src, /rejectUnauthorized:\s*false/,
     'Zertifikatsprüfung fest abgeschaltet — SMTP-Zugangsdaten und Rücksetz-Links gehen über eine ungeprüfte Verbindung');
@@ -285,8 +285,8 @@ test('der Mailer prüft Zertifikate, sofern es niemand ausdrücklich abschaltet'
   // Import übergeht smtp_* seit dem 29.10. absichtlich, der Export nimmt alle
   // Zeilen aus global_settings). Gegenprobe (29.10.2026): smtp_insecure_tls aus
   // der Liste von POST / entfernt → rot.
-  const settings = ohneKommentare(fs.readFileSync(path.join(ROOT, 'routes', 'settings.ts'), 'utf8'));
-  const speichern = settings.slice(settings.indexOf("router.post('/',"), settings.indexOf("router.post('/import'"));
-  assert.ok(speichern.length > 0, 'POST / in routes/settings.ts nicht gefunden');
+  const settings = ohneKommentare(fs.readFileSync(path.join(ROOT, 'routes/api_v1/settings.ts'), 'utf8'));
+  const speichern = settings.slice(settings.indexOf("router.post('/settings',"), settings.indexOf("router.post('/settings/import'"));
+  assert.ok(speichern.length > 0, 'POST / in routes/api_v1/settings.ts nicht gefunden');
   assert.match(speichern, /'smtp_insecure_tls'/, 'smtp_insecure_tls lässt sich über POST / nicht speichern');
 });

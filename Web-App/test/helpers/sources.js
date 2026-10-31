@@ -25,7 +25,7 @@ const ROOT = path.join(__dirname, '..', '..');
 const serverOnly = () => fs.readFileSync(path.join(ROOT, 'server.ts'), 'utf8');
 
 /** Nur routes/imgProxy.ts. Für Prüfungen, die ausschliesslich den Proxy betreffen. */
-const imgProxy = () => fs.readFileSync(path.join(ROOT, 'routes', 'imgProxy.ts'), 'utf8');
+const imgProxy = () => fs.readFileSync(path.join(ROOT, 'routes/imgProxy.ts'), 'utf8');
 
 /**
  * server.ts + routes/imgProxy.ts.
@@ -37,7 +37,7 @@ const imgProxy = () => fs.readFileSync(path.join(ROOT, 'routes', 'imgProxy.ts'),
 // ── Was `serverAll()` umfasst (Nachtrag 129) ────────────────────────────────
 // Der Bild-Proxy besteht seit dem Aufteilen von registerImgProxy() aus zwei
 // Dateien: routes/imgProxy.ts (Route, Cache, CDN-Abruf) und
-// utils/proxyThumbs.ts (Vorschau-Warteschlange, Sperre, Verkleinern). Prüfungen
+// src/katalog/bilder/proxyThumbs.ts (Vorschau-Warteschlange, Sperre, Verkleinern). Prüfungen
 // der Art „kommt X irgendwo im Server vor" müssen beide sehen — sonst werden
 // sie durch einen blossen Umzug rot, ohne dass sich etwas geändert hat.
 const serverAll = () => serverOnly() + '\n' + imgProxy() + '\n' + proxyThumbQuelle()
@@ -48,7 +48,7 @@ const serverAll = () => serverOnly() + '\n' + imgProxy() + '\n' + proxyThumbQuel
  *
  * ── Warum es diesen Helfer gibt (Nachtrag 171) ──────────────────────────────
  *
- * utils/financeCalc.ts trug 1529 Zeilen und drei Aufgaben. Seit der Trennung
+ * src/finanzen/financeCalc.ts trug 1529 Zeilen und drei Aufgaben. Seit der Trennung
  * liegen sie unter utils/finance/ (zustand, preise, bewertung, gewinnVerlust),
  * und financeCalc.ts reicht nur noch durch.
  *
@@ -63,15 +63,15 @@ const serverAll = () => serverOnly() + '\n' + imgProxy() + '\n' + proxyThumbQuel
  * weiter ueber denselben Stoff wie vorher — nur ist er jetzt sortiert.
  */
 const finanzQuelle = () => {
-  const ordner = path.join(ROOT, 'utils', 'finance');
-  const teile = [fs.readFileSync(path.join(ROOT, 'utils', 'financeCalc.ts'), 'utf8')];
+  const ordner = path.join(ROOT, 'src/finanzen/rechnung');
+  const teile = [fs.readFileSync(path.join(ROOT, 'src/finanzen/financeCalc.ts'), 'utf8')];
   for (const n of fs.readdirSync(ordner).filter(x => x.endsWith('.ts')).sort()) {
     teile.push(fs.readFileSync(path.join(ordner, n), 'utf8'));
   }
   // Selbstbeweis an der Quelle: Findet der Helfer die Module nicht mehr,
   // pruefen neunzehn Regeln nur noch die Fassade — und waeren still gruen.
   if (teile.length < 4) {
-    throw new Error(`finanzQuelle(): nur ${teile.length} Dateien gefunden — liegt utils/finance/ noch da?`);
+    throw new Error(`finanzQuelle(): nur ${teile.length} Dateien gefunden — liegt src/finanzen/rechnung/ noch da?`);
   }
   return teile.join('\n');
 };
@@ -136,12 +136,12 @@ function distIsFresh() {
   const distAt = newestMtime(dist, /\.js$/);
   if (!distAt) return false;
   let srcAt = fs.statSync(path.join(ROOT, 'server.ts')).mtimeMs;
-  for (const d of ['db', 'utils', 'routes', 'jobs', 'clients', 'startup']) {
+  for (const d of ['db', 'src', 'routes', 'jobs', 'clients', 'startup']) {
     srcAt = Math.max(srcAt, newestMtime(path.join(ROOT, d), /\.ts$/));
   }
   // Migrationen sind .sql und werden mitkopiert: Eine neue zählt wie eine
   // geänderte Quelle, eine gelöschte über die Zeit des Verzeichnisses.
-  const mig = path.join(ROOT, 'db', 'migrations');
+  const mig = path.join(ROOT, 'db/migrations');
   srcAt = Math.max(srcAt, newestMtime(mig, /\.sql$/), fs.existsSync(mig) ? fs.statSync(mig).mtimeMs : 0);
   return distAt >= srcAt;
 }
@@ -158,7 +158,7 @@ function buildAndRequire() {
   }
   // Wie server.ts: Die Nacharbeit aus utils/ (Nachzug, Preis, Bilder) läuft
   // über jobs/verdrahtung — ohne sie prüften Tests eine stumme Fassung.
-  require(path.join(ROOT, 'dist', 'jobs', 'verdrahtung.js')).verdrahte();
+  require(path.join(ROOT, 'dist', 'jobs/verdrahtung.js')).verdrahte();
   return rel => require(path.join(ROOT, 'dist', rel));
 }
 
@@ -237,7 +237,7 @@ module.exports.ohneKommentare = ohneKommentare;
  * ── Warum das ein Helfer ist (Nachtrag 129) ─────────────────────────────────
  *
  * Die Vorschau-Maschinerie des Proxys (Warteschlange, prozessübergreifende
- * Sperre, Verkleinern) ist aus routes/imgProxy.ts nach utils/proxyThumbs.ts
+ * Sperre, Verkleinern) ist aus routes/imgProxy.ts nach src/katalog/bilder/proxyThumbs.ts
  * gewandert. Ein Dutzend Prüfungen las bis dahin `routes/imgProxy.ts` und
  * meinte in Wahrheit „irgendwo im Vorschau-Weg des Proxys".
  *
@@ -250,10 +250,10 @@ function proxyThumbQuelle() {
   const path = require('path'), fs = require('fs');
   const ROOT = path.join(__dirname, '..', '..');
   return [
-    path.join(ROOT, 'routes', 'imgProxy.ts'),
-    path.join(ROOT, 'utils', 'proxyThumbs.ts'),
+    path.join(ROOT, 'routes/imgProxy.ts'),
+    path.join(ROOT, 'src/katalog/bilder/proxyThumbs.ts'),
     // Cache-Auslieferung, seit Nachtrag 135 eigene Datei.
-    path.join(ROOT, 'utils', 'imgCacheServe.ts'),
+    path.join(ROOT, 'src/katalog/bilder/imgCacheServe.ts'),
   ].map(p => fs.readFileSync(p, 'utf8')).join('\n');
 }
 module.exports.proxyThumbQuelle = proxyThumbQuelle;
@@ -284,12 +284,12 @@ module.exports.adminQuelle = adminQuelle;
 
 /**
  * Der Set-Kern: die Set-Routen samt dem, was daraus ausgelagert wurde
- * (routes/sets.ts ging in routes/api_v1/sets.ts und utils/dienste/sets.ts auf).
+ * (routes/sets.ts ging in routes/api_v1/sets.ts und src/sets/dienst.ts auf).
  *
  * ── Warum ein Helfer (Nachtrag 131) ─────────────────────────────────────────
  *
- * addSet, updateSet, buildSetsCsv und ihr Umfeld liegen in utils/setService.ts,
- * die Katalogarbeit in utils/partsImport.ts und utils/minifigsImport.ts. Ein
+ * addSet, updateSet, buildSetsCsv und ihr Umfeld liegen in src/sets/setService.ts,
+ * die Katalogarbeit in src/katalog/partsImport.ts und src/katalog/minifigsImport.ts. Ein
  * Dutzend Prüfungen las bis dahin `routes/sets.ts` und meinte „irgendwo im Weg,
  * auf dem ein Set entsteht oder sich ändert".
  *
@@ -301,11 +301,11 @@ function setKernQuelle() {
   const path = require('path'), fs = require('fs');
   const ROOT = path.join(__dirname, '..', '..');
   return [
-    ['routes', 'api_v1', 'sets.ts'],
-    ['utils', 'dienste', 'sets.ts'],
-    ['utils', 'setService.ts'],
-    ['utils', 'partsImport.ts'],
-    ['utils', 'minifigsImport.ts'],
+    ['routes/api_v1/sets.ts'],
+    ['src/sets/dienst.ts'],
+    ['src/sets/setService.ts'],
+    ['src/katalog/partsImport.ts'],
+    ['src/katalog/minifigsImport.ts'],
   ].map(p => fs.readFileSync(path.join(ROOT, ...p), 'utf8')).join('\n');
 }
 module.exports.setKernQuelle = setKernQuelle;
@@ -315,18 +315,20 @@ module.exports.setKernQuelle = setKernQuelle;
  *
  * ── Warum ein Helfer (Nachtrag 133) ─────────────────────────────────────────
  * utils/handlers.ts fasste Sets, Teile und Minifiguren in 1313 Zeilen zusammen
- * und liegt jetzt als utils/handlers/{shared,parts,sets,minifigs,stats}.ts.
+ * und liegt jetzt je Fachbereich: src/{sets,teile,figuren}/abfragen.ts,
+ * src/bestand/gemeinsam.ts und src/bestand/kennzahlen.ts.
  * Ein Dutzend Prüfungen las die alte Datei und meinte „irgendwo in den
  * Leseabfragen".
  *
  * Dieselbe Begründung wie bei proxyThumbQuelle(), adminQuelle() und
  * setKernQuelle(): den GEGENSTAND nennen, nicht den Ablageort.
  */
+const HANDLER_MODULE = ['src/bestand/gemeinsam', 'src/teile/abfragen', 'src/sets/abfragen',
+  'src/figuren/abfragen', 'src/bestand/kennzahlen'];
 function handlerQuelle() {
   const path = require('path'), fs = require('fs');
-  const dir = path.join(__dirname, '..', '..', 'utils', 'handlers');
-  return fs.readdirSync(dir).filter(f => f.endsWith('.ts'))
-    .map(f => fs.readFileSync(path.join(dir, f), 'utf8')).join('\n');
+  const wurzel = path.join(__dirname, '..', '..');
+  return HANDLER_MODULE.map(m => fs.readFileSync(path.join(wurzel, m + '.ts'), 'utf8')).join('\n');
 }
 module.exports.handlerQuelle = handlerQuelle;
 
@@ -336,8 +338,7 @@ module.exports.handlerQuelle = handlerQuelle;
  */
 function handlerModul(_req) {
   return Object.assign({},
-    ..._req && ['shared', 'parts', 'sets', 'minifigs', 'stats']
-      .map(d => _req(`utils/handlers/${d}.js`)));
+    ..._req && HANDLER_MODULE.map(m => _req(`${m}.js`)));
 }
 module.exports.handlerModul = handlerModul;
 
@@ -352,7 +353,8 @@ function startQuelle() {
   const path = require('path'), fs = require('fs');
   const ROOT = path.join(__dirname, '..', '..');
   const dir = path.join(ROOT, 'startup');
-  const teile = ['server.ts', 'jobs/bildNachlauf.ts', 'jobs/startNachlaeufe.ts', 'jobs/aufraeumen.ts']
+  const teile = ['server.ts', 'jobs/bildNachlauf.ts', 'jobs/startNachlaeufe.ts', 'jobs/aufraeumen.ts',
+    'src/katalog/repository/bildlage.ts']
     .map(f => fs.readFileSync(path.join(ROOT, f), 'utf8'));
   if (fs.existsSync(dir)) {
     for (const f of fs.readdirSync(dir).filter(x => x.endsWith('.ts'))) {
@@ -367,7 +369,7 @@ module.exports.startQuelle = startQuelle;
  * Die Portfolio-Kurve: Orchestrierung samt Rekonstruktion und Diagrammdaten.
  *
  * getPortfolioHistory() war 449 Zeilen und liegt seit Nachtrag 135 als
- * utils/portfolioHistory.ts + utils/portfolio/{kurve,diagrammdaten}.ts.
+ * src/finanzen/portfolioHistory.ts + src/finanzen/portfolio/{kurve,diagrammdaten}.ts.
  *
  * Sechster Helfer desselben Musters — siehe proxyThumbQuelle(): den GEGENSTAND
  * nennen, nicht den Ablageort.
@@ -375,8 +377,8 @@ module.exports.startQuelle = startQuelle;
 function portfolioQuelle() {
   const path = require('path'), fs = require('fs');
   const ROOT = path.join(__dirname, '..', '..');
-  const dir = path.join(ROOT, 'utils', 'portfolio');
-  const teile = [fs.readFileSync(path.join(ROOT, 'utils', 'portfolioHistory.ts'), 'utf8')];
+  const dir = path.join(ROOT, 'src/finanzen/portfolio');
+  const teile = [fs.readFileSync(path.join(ROOT, 'src/finanzen/portfolioHistory.ts'), 'utf8')];
   if (fs.existsSync(dir)) {
     for (const f of fs.readdirSync(dir).filter(x => x.endsWith('.ts'))) {
       teile.push(fs.readFileSync(path.join(dir, f), 'utf8'));
@@ -612,7 +614,7 @@ module.exports.einhaengung = einhaengung;
  * leerem Text GRUEN. Dort prueft der Test dann nichts mehr und sagt nichts.
  *
  * Genau so ist es in dieser Sitzung passiert: Beim Verschieben von
- * estimateFigPriceFromParts nach utils/marketPrice.ts zeigten mehrere Schnitte
+ * estimateFigPriceFromParts nach src/finanzen/marketPrice.ts zeigten mehrere Schnitte
  * ins Leere. Es fiel auf, WEIL dort `assert.match` stand. Mit `doesNotMatch`
  * waeren sie gruen geblieben.
  *
@@ -758,9 +760,9 @@ function v1Routen() {
     for (const m of s.matchAll(/(?:router|app)\.(get|post|put|patch|delete)\(\s*['"`]([^'"`]+)['"`]/g))
       gefunden.push([m[1].toUpperCase(), vorne + m[2]]);
   };
-  for (const f of fs.readdirSync(path.join(ROOT, 'routes', 'api_v1')).filter(f => f.endsWith('.ts')))
+  for (const f of fs.readdirSync(path.join(ROOT, 'routes/api_v1')).filter(f => f.endsWith('.ts')))
     lies(`routes/api_v1/${f}`, '/api/v1');
-  for (const f of ['settings', 'auth']) lies(`routes/${f}.ts`, `/api/v1/${f}`);
+  lies('routes/auth.ts', '/api/v1/auth');
   lies('server.ts', '');
   return gefunden.filter(([, p]) => p.startsWith('/api/v1'));
 }

@@ -24,7 +24,7 @@ const PDFKit = require('pdfkit');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 // ── APP_ROOT, nicht DATA_DIR ──────────────────────────────────────────────
 //
-// utils/appPaths kennt KEINE Umgebungsvariable DATA_DIR; es leitet
+// src/infra/appPaths kennt KEINE Umgebungsvariable DATA_DIR; es leitet
 // DATA_DIR = <APP_ROOT>/data ab und liest nur APP_ROOT. Mein erster Versuch
 // setzte DATA_DIR — wirkungslos, und der Lauf meldete drei „erzeugt" statt
 // „ersetzt/unveraendert/erzeugt", weil die Route die Dateien nicht fand.
@@ -144,7 +144,7 @@ test('Gutscheine: Export und Import über die echten Adressen', { concurrency: 1
   await t.test('2. der FREMDE Gutschein ist nicht dabei', async () => {
     // Ein Gutschein traegt Nummer und PIN. Im Export eines anderen Kontos
     // waere das die Weitergabe eines Zahlungsmittels.
-    const { seitenweiseLesen } = _req('utils/gutscheinPdfSchreiben.js');
+    const { seitenweiseLesen } = _req('src/gutscheine/gutscheinPdfSchreiben.js');
     const drin = (await seitenweiseLesen(pdf)).map(w => w.nummer);
     assert.ok(!drin.includes('9999999999999999999'),
       `Im eigenen Export steht die Karte eines fremden Kontos: ${drin.join(', ')}`);
@@ -152,7 +152,7 @@ test('Gutscheine: Export und Import über die echten Adressen', { concurrency: 1
   });
 
   await t.test('3. das exportierte PDF trägt den APP-Betrag, nicht den gedruckten', async () => {
-    const { seitenweiseLesen } = _req('utils/gutscheinPdfSchreiben.js');
+    const { seitenweiseLesen } = _req('src/gutscheine/gutscheinPdfSchreiben.js');
     const gelesen = await seitenweiseLesen(pdf);
     for (const k of KARTEN) {
       const w = gelesen.find(x => x.nummer === k.nr);
@@ -186,7 +186,7 @@ test('Gutscheine: Export und Import über die echten Adressen', { concurrency: 1
         [HAUPT, k.nr]);
       assert.ok(z, `${k.nr} kam nicht zurück`);
       assert.equal(Number(z.amount), k.app, `${k.nr}: ${z.amount} statt ${k.app}`);
-      assert.equal(_req('utils/geheimnis.js').entschluessele(z.pin), k.pin, `${k.nr}: PIN ${z.pin} statt ${k.pin}`);
+      assert.equal(_req('src/infra/geheimnis.js').entschluessele(z.pin), k.pin, `${k.nr}: PIN ${z.pin} statt ${k.pin}`);
     }
     // Und der von Hand erfasste, der nie ein PDF hatte.
     const ohne = await db.get(

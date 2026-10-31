@@ -57,7 +57,7 @@ test('Bildquellen kommen aus dem Katalog, nicht vom Client', { concurrency: 1 },
     t.skip('Test-DB nicht erreichbar'); return;
   }
   { const c = await db.pool.connect(); try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); } }
-  const { neueJobId, pdfDateiPfad } = _req('utils/pdfAuftraege.js');
+  const { neueJobId, pdfDateiPfad } = _req('src/auftraege/pdfAuftraege.js');
   const jobId = neueJobId();
   const aufraeumen = async () => {
     await db.run('DELETE FROM part_color_catalog WHERE part_number LIKE $1', [`${T}%`]);

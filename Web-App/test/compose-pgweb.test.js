@@ -142,7 +142,7 @@ test('TRUST_PROXY vertraut genau Caddy, das Netz hat ein festes Subnetz', () => 
   assert.equal(adresse, '172.28.73.10', 'Caddy hat keine feste Adresse');
   assert.match(app, /^\s*TRUST_PROXY:\s*\$\{TRUST_PROXY:-172\.28\.73\.10\}\s*$/m,
     'TRUST_PROXY nennt ohne Angabe nicht genau Caddy');
-  const { proxyVertrauen } = require('./helpers/sources').buildAndRequire()('utils/proxyVertrauen.js');
+  const { proxyVertrauen } = require('./helpers/sources').buildAndRequire()('src/infra/proxyVertrauen.js');
   assert.deepEqual(proxyVertrauen(adresse), ['172.28.73.10'], 'geglaubt wird genau Caddy, kein ganzes Netz');
   const netz = compose.slice(compose.indexOf('\nnetworks:'));
   assert.match(netz, /subnet:\s*172\.28\.73\.0\/24/, 'brickinventory-net hat kein festes Subnetz');

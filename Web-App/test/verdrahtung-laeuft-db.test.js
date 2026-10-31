@@ -127,7 +127,7 @@ test('die fünf Verdrahtungen über ihre echten Adressen', { concurrency: 1 }, a
   });
 
   await t.test('3. ein zu kurzes Passwort wird abgelehnt', async () => {
-    // passwortZuKurz() liegt in utils/auth.ts und gilt für Registrierung,
+    // passwortZuKurz() liegt in src/konto/auth.ts und gilt für Registrierung,
     // Anlegen durch den Admin und das Ändern. Zugesichert war bisher, dass
     // die Routen die Funktion NENNEN.
     await db.run(`INSERT INTO global_settings (key,value) VALUES ('registration_enabled','1')
@@ -140,7 +140,7 @@ test('die fünf Verdrahtungen über ihre echten Adressen', { concurrency: 1 }, a
     const b = await r.json().catch(() => ({}));
     assert.equal(r.status, 400, `Erwartet 400, bekam ${r.status}: ${JSON.stringify(b)}`);
     // Die Antwort traegt den uebersetzten SATZ, nicht den Schluessel — die
-    // Fehlersprache liegt zentral (utils/fehlerTexte.ts). Geprueft wird
+    // Fehlersprache liegt zentral (src/infra/fehlerTexte.ts). Geprueft wird
     // deshalb der Satz; er nennt die Zahl, auf die es ankommt.
     assert.match(String(b.error || ''), /mindestens 8 Zeichen/,
       `Abgelehnt wurde mit „${b.error}" — erwartet die Passwortlänge. Ein anderer ` +

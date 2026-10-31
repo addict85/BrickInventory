@@ -34,7 +34,7 @@
  *
  * ── Was hier NICHT geprueft wird ────────────────────────────────────────────
  *
- * addSet(): Die Huelle holt den Ort auf demselben Weg (utils/setService.ts),
+ * addSet(): Die Huelle holt den Ort auf demselben Weg (src/sets/setService.ts),
  * aber der Rumpf braucht Rebrickable, und in dieser Umgebung ist
  * rebrickable.com nicht erreichbar (ENOTFOUND). Geprueft ist deshalb
  * ortFuerNeuerfassung() selbst, mit genau den Werten, die addSet
@@ -81,7 +81,7 @@ const db   = _req('db/database.js');
 // Rebrickable vorgeben: Ohne Namen im Rumpf fragt addManualPart/addManualFig
 // den Katalog und danach notfalls Rebrickable. Hier geht es um den Lagerort,
 // nicht um den Namen — der Abruf soll nicht ueber das Netz greifen.
-const rbPfad = require.resolve(path.join(ROOT, 'dist', 'clients', 'rebrickable.js'));
+const rbPfad = require.resolve(path.join(ROOT, 'dist', 'clients/rebrickable.js'));
 // Erst laden, dann ersetzen: Vor dem require gibt es den Eintrag im
 // Zwischenspeicher nicht, und `require.cache[…].exports = …` lief auf
 // `undefined` (als Zuweisungsziel wird die linke Seite zuerst aufgeloest).
@@ -124,9 +124,9 @@ test('die Lagerort-Vorgabe gilt bei jeder Neuerfassung', { concurrency: 1 }, asy
   const ortId = async (name) =>
     (await db.get('SELECT id FROM storage_locations WHERE user_id=$1 AND name=$2', [UID, name])).id;
 
-  const { setzeVorgabe, ortFuerNeuerfassung } = _req('utils/lagerort.js');
-  const { addManualPart } = _req('utils/manuelleTeile.js');
-  const { addManualFig }  = _req('utils/manuelleFiguren.js');
+  const { setzeVorgabe, ortFuerNeuerfassung } = _req('src/bestand/lagerort.js');
+  const { addManualPart } = _req('src/teile/manuelleTeile.js');
+  const { addManualFig }  = _req('src/figuren/manuelleFiguren.js');
 
   await setzeVorgabe(UID, await ortId('Kiste 7'));
 
@@ -151,7 +151,7 @@ test('die Lagerort-Vorgabe gilt bei jeder Neuerfassung', { concurrency: 1 }, asy
 
   await t.test('ein Set wuerde sie ebenfalls bekommen', async () => {
     // Nicht durch addSet hindurch — siehe den Kopf. Geprueft ist der Wert, den
-    // die Huelle in utils/setService.ts aus demselben Aufruf erhaelt.
+    // die Huelle in src/sets/setService.ts aus demselben Aufruf erhaelt.
     assert.equal(await ortFuerNeuerfassung(UID, undefined), 'Kiste 7');
     assert.equal(await ortFuerNeuerfassung(UID, null), 'Kiste 7',
       'null kommt aus einem fehlenden Vorgabewert der Signatur und heisst ' +

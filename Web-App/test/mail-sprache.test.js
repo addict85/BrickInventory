@@ -38,7 +38,7 @@ const path = require('node:path');
 const { ROOT, ohneKommentare } = require('./helpers/sources');
 
 const lies = (rel) => ohneKommentare(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
-const MAILER = lies('utils/mailer.ts');
+const MAILER = lies('src/infra/mailer.ts');
 
 /** Der Rumpf einer Funktion — ab ihrem Kopf bis zur nächsten auf Spaltenanfang. */
 function rumpf(quelle, kopf) {
@@ -144,8 +144,8 @@ test('4. die Alarmmail trägt dieselbe Hülle wie die anderen', () => {
 
   // Und die Regel dahinter: Die GESTALTUNG steht im Mailer, nicht in der
   // Alarmlogik. Dort steht das WANN.
-  const alarm = lies('utils/preisalarm.ts');
+  const alarm = lies('src/finanzen/preisalarm.ts');
   assert.ok(!/<table|<p style/.test(alarm),
-    'In utils/preisalarm.ts steht wieder HTML — die Gestaltung gehört in utils/mailer.ts.');
+    'In src/finanzen/preisalarm.ts steht wieder HTML — die Gestaltung gehört in src/infra/mailer.ts.');
   assert.match(alarm, /baueAlarmMail\(/, 'preisalarm.ts benutzt die Vorlage nicht.');
 });

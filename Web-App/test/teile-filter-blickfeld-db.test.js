@@ -6,7 +6,7 @@
  * Der Teile-Reiter hat zwei Filterlisten uebereinander, beide mit Zaehlwerten,
  * beide ueber DERSELBEN Liste:
  *
- *     /api/v1/parts/colors      → utils/handlers/parts.ts, getPartsColors
+ *     /api/v1/parts/colors      → src/teile/abfragen.ts, getPartsColors
  *     /api/v1/parts/categories  → routes/parts.ts, inline
  *
  * Die erste las das Blickfeld (`accounts` → scopeIds), die zweite die eigene

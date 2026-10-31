@@ -76,7 +76,7 @@ test('Bewertung und Setmenge ohne Zeile-für-Zeile-Abfragen', { concurrency: 1 }
     await db.run(`INSERT INTO minifig_price_cache (fig_number, condition, currency_code, avg_price, qty_avg_price)
                   VALUES ($1, 'N', 'EUR', 4, 4)`, [nr + 'bl']);
   }
-  const { computePartsValuation, computeMinifigsValuation } = _req('utils/financeCalc.js');
+  const { computePartsValuation, computeMinifigsValuation } = _req('src/finanzen/financeCalc.js');
 
   await t.test('zwölf Teile, eine Abfrage auf den Teile-Cache', async () => {
     const m = await abfragen(/FROM part_price_cache/, () => computePartsValuation(uid, [uid]));
@@ -95,7 +95,7 @@ test('Bewertung und Setmenge ohne Zeile-für-Zeile-Abfragen', { concurrency: 1 }
   await t.test('die Setmenge liest nur die Erfassungen der gefragten Konten', async () => {
     await haeltSet(db, uid, `bw${ID}-1`, 2);
     for (let i = 0; i < 40; i++) await haeltSet(db, fremd, `bw${ID}x${i}-1`, 1);
-    const { mengeJoin, mengeAus } = _req('utils/bestandsmenge.js');
+    const { mengeJoin, mengeAus } = _req('db/bestandsmenge.js');
     const plan = await db.get(
       `EXPLAIN (ANALYZE, FORMAT JSON)
        SELECT s.set_number, ${mengeAus('sm', 0)} AS menge
@@ -119,7 +119,7 @@ test('Bewertung und Setmenge ohne Zeile-für-Zeile-Abfragen', { concurrency: 1 }
     for (const [preis, waehrung] of [[100, 'CHF'], [300, 'EUR']])
       await db.run(`INSERT INTO set_acquisitions (user_id, set_number, quantity, purchase_price, condition, currency)
                     VALUES ($1, $2, 1, $3, 'N', $4)`, [uid, SN, preis, waehrung]);
-    const { getSets } = _req('utils/handlers/sets.js');
+    const { getSets } = _req('src/sets/abfragen.js');
     const r = await getSets([uid], {});
     const zeile = (r.sets || r).find(z => z.set_number === SN);
     assert.ok(zeile, 'das Set fehlt in der Liste');

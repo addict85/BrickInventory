@@ -56,8 +56,8 @@ Module.prototype.require = function (name) {
 const _req = require('./helpers/sources').buildAndRequire();
 const { haeltSet } = require('./helpers/bestand');
 const db = _req('db/database.js');
-const { setUserSetting } = _req('utils/settings.js');
-const { addSet } = _req('utils/setService.js');
+const { setUserSetting } = _req('src/konto/settings.js');
+const { addSet } = _req('src/sets/setService.js');
 
 test('aufstocken ohne Zustandsangabe folgt dem Standard des Nutzers', { concurrency: 1 }, async (t) => {
   try { await db.initSchema(); }

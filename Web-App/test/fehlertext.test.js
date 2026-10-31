@@ -17,7 +17,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { fehlertext, fehlerCode } = require('./helpers/sources').buildAndRequire()('utils/httpError.js');
+const { fehlertext, fehlerCode } = require('./helpers/sources').buildAndRequire()('src/infra/httpError.js');
 
 test('fehlertext liefert nie "undefined"', () => {
   // Der Normalfall.

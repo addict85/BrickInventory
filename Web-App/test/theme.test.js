@@ -24,14 +24,14 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 const PUB = path.join(ROOT, 'public');
 const html = fs.readFileSync(path.join(PUB, 'index.html'), 'utf8');
-const settings = fs.readFileSync(path.join(ROOT, 'routes', 'settings.ts'), 'utf8');
+const settings = fs.readFileSync(path.join(ROOT, 'routes/api_v1/settings.ts'), 'utf8');
 const styles = fs.readFileSync(path.join(PUB, 'styles.css'), 'utf8');
 
 test('GET /api/settings/theme ist ohne Login erreichbar', () => {
-  const route = settings.indexOf("router.get('/theme'");
+  const route = settings.indexOf("router.get('/settings/theme'");
   // Auf den Zeilenanfang ankern: der Erklärkommentar über der Route erwähnt
   // router.use(requireLogin) ebenfalls, ein blosses indexOf träfe den Kommentar.
-  const gate = settings.search(/^router\.use\(requireLogin\);/m);
+  const gate = settings.search(/^router\.use\('\/settings', requireLogin\);/m);
   assert.ok(route > 0, '/theme-Route nicht gefunden');
   assert.ok(gate > 0, 'requireLogin-Gate nicht gefunden');
   assert.ok(
@@ -134,8 +134,8 @@ test('fuenf Listen nennen dieselben Designs', () => {
 
   const boot = liste(fs.readFileSync(path.join(PUB, 'js', '00-theme-boot.js'), 'utf8'),
     /var ALLOWED = \[([^\]]*)\]/, 'js/00-theme-boot.js');
-  const server = liste(fs.readFileSync(path.join(__dirname, '..', 'utils', 'settings.ts'), 'utf8'),
-    /const DESIGNS: readonly string\[\] = \[([^\]]*)\]/, 'utils/settings.ts');
+  const server = liste(fs.readFileSync(path.join(__dirname, '..', 'src/konto/settings.ts'), 'utf8'),
+    /const DESIGNS: readonly string\[\] = \[([^\]]*)\]/, 'src/konto/settings.ts');
   const app = liste(fs.readFileSync(path.join(__dirname, '..', '..', 'Android-App', 'app', 'src',
     'main', 'java', 'ch', 'brickinventoryapp', 'data', 'PreferencesManager.kt'), 'utf8'),
     /ERLAUBTE_DESIGNS = setOf\(([^)]*)\)/, 'PreferencesManager.kt');
@@ -158,7 +158,7 @@ test('jedes Theme unter public/themes/ deckt die Screens vor dem Login ab', () =
 });
 
 test('der Server setzt data-theme selbst — kein Sprung beim ersten Aufruf', () => {
-  const render = fs.readFileSync(path.join(ROOT, 'utils', 'indexHtml.ts'), 'utf8');
+  const render = fs.readFileSync(path.join(ROOT, 'src/konto/indexHtml.ts'), 'utf8');
   assert.match(render, /data-theme="\$\{theme\}"/,
     'renderIndexHtml() muss das Attribut in das <html>-Tag schreiben');
   assert.match(render, /invalidateTheme/,
@@ -178,14 +178,14 @@ test('der Server setzt data-theme selbst — kein Sprung beim ersten Aufruf', ()
   const catchAll = server.slice(at, at + 700);
   // Argument zugelassen: renderIndexHtml() bekommt seit der Aufteilung der
   // Übersetzungen die userId mit, um die passende Sprachdatei einzuhängen
-  // (siehe utils/indexHtml.ts). Geprüft wird weiterhin, DASS der Catch-all das
+  // (siehe src/konto/indexHtml.ts). Geprüft wird weiterhin, DASS der Catch-all das
   // gerenderte HTML ausliefert — nicht, mit welchen Argumenten.
   assert.match(catchAll, /renderIndexHtml\([^)]*\)/,
     'Der SPA-Catch-all muss das gerenderte HTML ausliefern');
   assert.match(catchAll, /sendFile/,
     'Bei einem Renderfehler muss die Datei unverändert ausgeliefert werden');
 
-  const settings = fs.readFileSync(path.join(ROOT, 'routes', 'settings.ts'), 'utf8');
+  const settings = fs.readFileSync(path.join(ROOT, 'routes/api_v1/settings.ts'), 'utf8');
   assert.match(settings, /invalidateTheme\(\)/,
     'Das Speichern eines Designs muss den Server-Cache verwerfen');
 });

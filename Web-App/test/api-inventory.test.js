@@ -58,9 +58,9 @@ function inventory() {
   for (const r of routerEinhaengungen())
     for (const [m, p] of scan(r.datei))
       eps.add(`${m} ${r.mount}${p === '/' ? '' : p}`);
-  for (const f of fs.readdirSync(path.join(ROOT, 'routes', 'api_v1')))
+  for (const f of fs.readdirSync(path.join(ROOT, 'routes/api_v1')))
     if (f.endsWith('.ts') && !['index.ts', 'middleware.ts'].includes(f))
-      for (const [m, p] of scan(path.join(ROOT, 'routes', 'api_v1', f)))
+      for (const [m, p] of scan(path.join(ROOT, 'routes/api_v1', f)))
         eps.add(`${m} /api/v1${p}`);
   return eps;
 }
@@ -104,7 +104,7 @@ const C = {
 
   // Nur /api/v1 — von beiden Clients (oder nur Android) genutzt
   // Etappe 6: zusammengelegt — nur noch die v1-Adresse, beide Clients rufen
-  // sie auf. Die Zustands-Auflösung selbst steht in utils/settings.ts.
+  // sie auf. Die Zustands-Auflösung selbst steht in src/konto/settings.ts.
   'GET /api/v1/stats': 'nur-v1',
   'GET /api/v1/settings/default-condition': 'nur-v1',
   'GET /api/v1/settings/user/default-condition': 'nur-v1',
@@ -138,7 +138,7 @@ const C = {
   'GET /api/v1/minifigs/:figNumber/price-history': 'nur-v1',
   // Detail-Dialog fuer Teile/Figuren AUS SETS (Marcos Wunsch): welche Sets
   // verwenden dieses Teil? Beide gehen durch DIESELBE Funktion
-  // (verwendendeSets in utils/handlers/shared.ts) — die alte Oberflaeche hat
+  // (verwendendeSets in src/bestand/gemeinsam.ts) — die alte Oberflaeche hat
   // dafuer nie etwas gehabt, es gibt also kein Gegenstueck zu paaren.
   'GET /api/v1/parts/:partNumber/:colorId/sets': 'nur-v1',
   'GET /api/v1/minifigs/:figNumber/sets': 'nur-v1',
@@ -225,7 +225,7 @@ const C = {
   'POST /api/v1/sets/:sn/move': 'paritaet',
   // Haushalt: Konten verknüpfen. Beide Wege, damit die App dieselben Regeln
   // bekommt — die Grenzen (kein Kreis, gleiche Währung im ganzen
-  // einziehenden Teilbaum) stehen in utils/household.ts, nicht in den
+  // einziehenden Teilbaum) stehen in src/haushalt/haushalt.ts, nicht in den
   // Routen. „Nur eine Stufe“ stand hier bis Nachtrag 173.
   'GET /api/v1/settings/household': 'nur-v1',
   'POST /api/v1/settings/household/invite': 'nur-v1',
@@ -264,7 +264,7 @@ const C = {
   // unter /api. GET /storage spannt Sets UND Teile und gehoert deshalb zu
   // keiner der beiden Familien allein.
   // Preisalarm (Nachtrag 176) — beide Oberflaechen. Ohne Kontofilter: Ein
-  // Alarm gehoert genau EINEM Konto (siehe utils/preisalarm.ts).
+  // Alarm gehoert genau EINEM Konto (siehe src/finanzen/preisalarm.ts).
   // Abholung der ausgeloesten Alarme (Nachtrag 177) — beide Oberflaechen.
   'GET /api/v1/alerts/pending': 'nur-v1',
   // Die UEBERSICHT ueber alle Alarme — beide Oberflaechen. Bewusst getrennt
@@ -327,14 +327,14 @@ const C = {
   'GET /api/v1/settings/einrichtung': 'nur-v1',
   'POST /api/v1/settings/einrichtung/fertig': 'nur-v1',
   'POST /api/v1/settings/quelle-testen': 'nur-v1',
-  // Zweiter Faktor (utils/zweiterFaktor.ts): nur unter v1, kein Alt-Pfad.
+  // Zweiter Faktor (src/konto/zweiterFaktor.ts): nur unter v1, kein Alt-Pfad.
   'GET /api/v1/auth/zweiter-faktor': 'nur-v1',
   'POST /api/v1/auth/zweiter-faktor/einrichten': 'nur-v1',
   'POST /api/v1/auth/zweiter-faktor/bestaetigen': 'nur-v1',
   'POST /api/v1/auth/zweiter-faktor/abschalten': 'nur-v1',
   'POST /api/v1/auth/zweiter-faktor/codes': 'nur-v1',
   'DELETE /api/v1/auth/users/:id/zweiter-faktor': 'nur-v1',
-  // Papierkorb (utils/papierkorb.ts): nur unter v1, kein Alt-Pfad daneben.
+  // Papierkorb (src/bestand/papierkorb.ts): nur unter v1, kein Alt-Pfad daneben.
   'GET /api/v1/papierkorb': 'nur-v1',
   'POST /api/v1/papierkorb/:id/wiederherstellen': 'nur-v1',
   'DELETE /api/v1/papierkorb/:id': 'nur-v1',

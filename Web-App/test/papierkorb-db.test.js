@@ -20,7 +20,7 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { haeltSet, haeltTeil, haeltFigur } = require('./helpers/bestand');
 const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
-const pk = _req('utils/papierkorb.js');
+const pk = _req('src/bestand/papierkorb.js');
 
 const SN = `99041-${process.pid}`, PN = `pk${process.pid}`, FN = `fig-pk-${process.pid}`;
 

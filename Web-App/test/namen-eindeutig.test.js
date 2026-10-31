@@ -5,9 +5,9 @@
  * `effectiveCondition` gab es ZWEIMAL, und die beiden beantworteten
  * verschiedene Fragen:
  *
- *     utils/financeCalc.ts   Welchen Zustand hat dieses SET?
+ *     src/finanzen/financeCalc.ts   Welchen Zustand hat dieses SET?
  *                            (die Erfassungen schlagen den gespeicherten Wert)
- *     utils/settings.ts      Welchen Standardzustand hat dieser NUTZER?
+ *     src/konto/settings.ts      Welchen Standardzustand hat dieser NUTZER?
  *                            (die Nutzereinstellung schlaegt den globalen)
  *
  * Genau diese Verwechslung — der Zustand eines Stuecks gegen die Vorgabe fuer
@@ -40,17 +40,17 @@ const ROOT = path.join(__dirname, '..');
 
 /** Name -> warum er mehrfach vorkommen darf. */
 const ERLAUBT = new Map([
-  ['get',   'db/database (eine Zeile holen) und utils/jobMonitor (einen Job-Stand holen) — ' +
+  ['get',   'db/database (eine Zeile holen) und src/auftraege/jobMonitor (einen Job-Stand holen) — ' +
             'dieselbe Sache, verschiedene Speicher.'],
   ['all',   'wie get.'],
   ['run',   'db/database und drei Jobs: „ausfuehren". In den Jobs ist es der Einstieg, ' +
             'in der Datenbank die Anweisung — gleicher Begriff, kein gemeinsamer Gegenstand.'],
   ['log',   'drei Jobs, jeder schreibt mit seinem eigenen Praefix.'],
-  ['getSetInfo',   'clients/brickset und clients/rebrickable — dieselbe Frage an ZWEI ' +
+  ['getSetInfo',   'clients/brickset und src/katalog/rebrickableKatalog — dieselbe Frage an ZWEI ' +
                    'verschiedene Dienste. Der Dateiname sagt, welcher gemeint ist.'],
   ['httpsGet',     'clients/bricklink und clients/brickset — jeder mit der Signatur seines ' +
                    'Dienstes (BrickLink braucht einen Authorization-Kopf, Brickset nicht).'],
-  ['schreibePuffer', 'jobs/imageQueue und utils/imageMisses — jeder schreibt SEINEN Puffer.'],
+  ['schreibePuffer', 'jobs/imageQueue und src/katalog/bilder/imageMisses — jeder schreibt SEINEN Puffer.'],
 ]);
 
 test('ein Funktionsname bedeutet eine Sache', () => {

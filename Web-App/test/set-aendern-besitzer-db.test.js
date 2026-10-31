@@ -27,7 +27,7 @@
  * <Aufrufer>` trifft keine Zeile. Kein Fehler, kein Hinweis — updateSet
  * meldete Erfolg.
  *
- * Das bleibt nicht bei der Plakette: effectiveCondition() (utils/financeCalc)
+ * Das bleibt nicht bei der Plakette: effectiveCondition() (src/finanzen/financeCalc)
  * entscheidet, zu welchem Zustand der Marktpreis geholt wird. Ein Set, das
  * der Haushalt als gebraucht fuehrt, wurde weiter als neu bewertet.
  *
@@ -93,7 +93,7 @@ test('Kaufpreis und Zustand landen im Konto des Besitzers', { concurrency: 1 }, 
     await db.run(`INSERT INTO set_acquisitions (user_id,set_number,quantity,purchase_price,condition)
                   VALUES ($1,$2,1,10,'N')`, [subId, SET]);
 
-    const { updateSet } = _req('utils/setService.js');
+    const { updateSet } = _req('src/sets/setService.js');
     // Die sets-Zeile traegt seit Migration 0032 nur noch Menge und Besitzer —
     // Kaufpreis und Zustand stehen in der Erfassung.
     const stand = async () => ({
@@ -140,7 +140,7 @@ test('die Menge geht bewusst auf das eigene Konto', () => {
   // ich diese erhoehe, soll es fuer meinen Account einen neuen Kaufpreis-
   // Eintrag erstellen." Der Mengen-Zweig weicht deshalb ABSICHTLICH vom
   // Besitzer ab. Das steht hier, damit es niemand „mit vereinheitlicht".
-  const src = fs.readFileSync(path.join(ROOT, 'utils', 'setService.ts'), 'utf8');
+  const src = fs.readFileSync(path.join(ROOT, 'src/sets/setService.ts'), 'utf8');
   const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/[^\n]*$/gm, '');
   assert.match(code, /adjustAcquisitionsToQuantity\(uid, sn/,
     'Die Mengenanpassung laeuft nicht mehr auf das eigene Konto — dann erhoeht ' +
@@ -180,7 +180,7 @@ test('die letzte Erfassung wird an genau einer Stelle beschrieben', () => {
       /UPDATE set_acquisitions SET[\s\S]{0,260}?ORDER BY created_at DESC, id DESC LIMIT 1/g))
       stellen.push(path.relative(ROOT, f));
   }
-  assert.deepEqual(stellen, ['utils/setService.ts'],
+  assert.deepEqual(stellen, ['src/sets/setService.ts'],
     'Die letzte Erfassung wird an mehr als einer Stelle beschrieben — genau so ' +
     'sind Preis und Zustand mit verschiedenen Konten auseinandergelaufen');
 });

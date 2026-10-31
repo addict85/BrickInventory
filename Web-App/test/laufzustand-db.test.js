@@ -21,7 +21,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
-const MIGRATION = fs.readFileSync(path.join(__dirname, '..', 'db', 'migrations', '0063-laufzustand.sql'), 'utf8');
+const MIGRATION = fs.readFileSync(path.join(__dirname, '..', 'db/migrations/0063-laufzustand.sql'), 'utf8');
 const SCHEMA = `probe0063_${process.pid}`;
 
 test('Laufzustand getrennt von der Konfiguration', { concurrency: 1 }, async (t) => {
@@ -65,7 +65,7 @@ test('Laufzustand getrennt von der Konfiguration', { concurrency: 1 }, async (t)
     }
   });
 
-  const jm = _req('utils/jobMonitor.js');
+  const jm = _req('src/auftraege/jobMonitor.js');
 
   await t.test('der Jobmonitor schreibt in laufzustand', async () => {
     await jm.update('probe', { status: 'running', progress: 3 });

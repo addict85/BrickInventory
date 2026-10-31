@@ -25,11 +25,11 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
-const { werteAusPdf, werteAusText, zahlLesen, pdfText } = _req('utils/gutscheinPdf.js');
+const { werteAusPdf, werteAusText, zahlLesen, pdfText } = _req('src/gutscheine/gutscheinPdf.js');
 // `require('pdfkit')` und NICHT ueber den Verzeichnispfad: pdfkit 0.20 hat
 // kein `main` mehr, nur noch `exports` — ein Pfad auf das Verzeichnis umgeht
 // die Aufloesung und scheitert. Der Baum macht es an seinen beiden eigenen
-// Stellen (routes/api_v1/pdf.ts, utils/instructions.ts) genauso.
+// Stellen (routes/api_v1/pdf.ts, src/katalog/instructions.ts) genauso.
 const PDFDocument = require('pdfkit');
 
 /** Ein PDF mit den uebergebenen Zeilen bauen — je Zeile ein Textoperator. */

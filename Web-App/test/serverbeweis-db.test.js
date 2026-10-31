@@ -18,7 +18,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const _req = require('./helpers/sources').buildAndRequire();
 const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
-const { createToken, hashToken } = _req('utils/auth.js');
+const { createToken, hashToken } = _req('src/konto/auth.js');
 
 test('Serverbeweis für Klartext-Verbindungen der App', { concurrency: 1 }, async (t) => {
   try { await db.initSchema(); }

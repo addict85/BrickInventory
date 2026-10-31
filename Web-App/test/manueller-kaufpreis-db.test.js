@@ -11,7 +11,7 @@
  *     Minifiguren: (fehlte)   ← dann stand NULL
  *
  * Bei den Teilen steht der Grund im Quelltext: „sonst zeigt das Kaufpreis-Feld
- * im Frontend dauerhaft den Marktpreis-Platzhalter". utils/financeCalc.ts liest
+ * im Frontend dauerhaft den Marktpreis-Platzhalter". src/finanzen/financeCalc.ts liest
  * beide Fälle unterschiedlich (`hasCost = … != null; // 0 zählt als erfasst`):
  * Eine Figur ohne ermittelbaren Marktpreis galt als „kein Kaufpreis erfasst",
  * ein Teil in derselben Lage als „0 erfasst". Derselbe Fix war bei den Teilen
@@ -24,7 +24,7 @@
  * in routes/minifigs.ts an EINER von DREI Stellen: bei der Zweiterfassung ja,
  * bei der Neuanlage nein, im CSV-Import nein.
  *
- * Beides ist jetzt eine Sache: utils/preisRegel.ts gibt `kaufpreis` (nie null)
+ * Beides ist jetzt eine Sache: src/finanzen/preisRegel.ts gibt `kaufpreis` (nie null)
  * und `erfassungsPreis` (null, wenn unbekannt) getrennt zurück, und keine
  * Schreibstelle rechnet mehr selbst.
  *
@@ -82,8 +82,8 @@ test('ohne Marktpreis: Anzeigewert 0, Erfassung NULL — bei Teil UND Figur',
   const uid = u.id;
 
   try {
-    const { addManualPart } = _req('utils/manuelleTeile.js');
-    const { addManualFig }  = _req('utils/manuelleFiguren.js');
+    const { addManualPart } = _req('src/teile/manuelleTeile.js');
+    const { addManualFig }  = _req('src/figuren/manuelleFiguren.js');
 
     // Namen mitgeben, damit kein Rebrickable-Nachschlag nötig ist. KEIN Preis
     // — darum geht es.
@@ -92,8 +92,8 @@ test('ohne Marktpreis: Anzeigewert 0, Erfassung NULL — bei Teil UND Figur',
 
     // Gelesen ueber die Listen, die auch die Oberflaechen benutzen — die
     // Spalten gibt es seit Migration 0035 nicht mehr (siehe den Kopf).
-    const { getManualParts }    = _req('utils/handlers/parts.js');
-    const { getManualMinifigs } = _req('utils/handlers/minifigs.js');
+    const { getManualParts }    = _req('src/teile/abfragen.js');
+    const { getManualMinifigs } = _req('src/figuren/abfragen.js');
     const teileListe = await getManualParts([uid], uid);
     const figListe   = await getManualMinifigs([uid], uid);
     const teil  = (Array.isArray(teileListe) ? teileListe : [])
@@ -112,7 +112,7 @@ test('ohne Marktpreis: Anzeigewert 0, Erfassung NULL — bei Teil UND Figur',
     assert.equal(Number(teil.purchase_price), 0,
       `Das Teil hat ${teil.purchase_price} statt 0 im Kaufpreis`);
     assert.equal(Number(figur.purchase_price), 0,
-      `Die Figur hat ${figur.purchase_price} statt 0 im Kaufpreis. utils/financeCalc.ts ` +
+      `Die Figur hat ${figur.purchase_price} statt 0 im Kaufpreis. src/finanzen/financeCalc.ts ` +
       'liest NULL als „kein Kaufpreis erfasst" und 0 als „0 erfasst" — die Figur ' +
       'verhielte sich damit anders als das Teil daneben.');
     assert.equal(figur.purchase_price === null, teil.purchase_price === null,

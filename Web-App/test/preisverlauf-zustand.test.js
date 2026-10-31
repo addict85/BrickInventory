@@ -31,7 +31,7 @@ test('ohne Erfassung kein Zustand im Diagramm, die Rohdaten bleiben', { concurre
   }
   const mc = await db.pool.connect();
   try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }
-  const { getMinifigPriceHistory, zustaendeFuerVerlauf } = _req('utils/priceHistory.js');
+  const { getMinifigPriceHistory, zustaendeFuerVerlauf } = _req('src/finanzen/priceHistory.js');
   const NAME = `verlauf-${process.pid}`, FN = `fig-vl${process.pid}`;
   const weg = async () => {
     await db.run('DELETE FROM users WHERE username=$1', [NAME]);

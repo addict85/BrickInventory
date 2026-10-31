@@ -44,7 +44,7 @@ let geladen = 0, verkleinert = 0;
 const echtesRequire = Module.prototype.require;
 Module.prototype.require = function (name) {
   const m = echtesRequire.apply(this, arguments);
-  // Seit Nachtrag 125 liegt downloadSetImage in utils/setImages.ts statt im
+  // Seit Nachtrag 125 liegt downloadSetImage in src/katalog/bilder/setImages.ts statt im
   // Router — der Abfang muss dorthin zeigen, sonst greift er ins Leere und
   // der Test misst still den echten Download.
   if (typeof name === 'string' && /setImages(\.js)?$/.test(name) && m && m.downloadSetImage) {
@@ -220,7 +220,7 @@ test('die Kachel „Bild-Download (CDN)" zeigt die Katalog-Warteschlange',
     // hoffen.
     await db.run(`DELETE FROM laufzustand WHERE schluessel='imgqueue_last_run'`);
     await db.run(`DELETE FROM laufzustand WHERE schluessel='imgredl_status'`);
-    await _req('utils/jobMonitor.js').imgDlReset().catch(() => {});
+    await _req('src/auftraege/jobMonitor.js').imgDlReset().catch(() => {});
     _req('jobs/imageQueue.js').letzterLauf.zeit = null;
     const ohneLauf = await kachel();
     assert.equal(ohneLauf.status, 'idle',
@@ -261,7 +261,7 @@ test('die Kachel „Bild-Download (CDN)" zeigt die Katalog-Warteschlange',
     // Fehlerklasse wie der Fehler, um den es hier geht.)
     await db.run(`DELETE FROM laufzustand WHERE schluessel='imgqueue_last_run'`);
     _req('jobs/imageQueue.js').letzterLauf.zeit = null;
-    await _req('utils/jobMonitor.js').imgDlReset().catch(() => {});
+    await _req('src/auftraege/jobMonitor.js').imgDlReset().catch(() => {});
     assert.notEqual((await kachel()).status, 'running',
       'Vorbedingung verletzt: Ohne Nachlauf darf hier kein Betrieb stehen');
 
@@ -322,7 +322,7 @@ test('der Job meldet auch reine Übersprünge', () => {
 
   // Und der Takt darf sie nicht verschweigen: Die Bedingung vor der Ausgabe
   // darf an keiner Zahl hängen, die bei reinen Übersprüngen null ist.
-  const q = fs.readFileSync(path.join(ROOT, 'jobs', 'imageQueue.ts'), 'utf8');
+  const q = fs.readFileSync(path.join(ROOT, 'jobs/imageQueue.ts'), 'utf8');
   const i = q.indexOf('async function bildbedarfAbarbeiten');
   assert.ok(i > 0, 'Kein Takt');
   const fn = q.slice(i, q.indexOf('\n}\n', i)).replace(/\/\/[^\n]*/g, '');
@@ -349,13 +349,13 @@ test('die Bild-Tabellen kommen aus einer MIGRATION, nicht aus initSchema', () =>
   // Nummerierte Migrationen laufen IMMER und werden EINZELN vermerkt. Genau
   // dafür gibt es sie; ich hatte den vorgesehenen Weg nicht benutzt.
   const mig = fs.readFileSync(
-    path.join(ROOT, 'db', 'migrations', '0009-bild-tabellen.sql'), 'utf8');
+    path.join(ROOT, 'db/migrations/0009-bild-tabellen.sql'), 'utf8');
   assert.match(mig, /CREATE TABLE IF NOT EXISTS image_wanted/, 'image_wanted fehlt in der Migration');
   assert.match(mig, /CREATE TABLE IF NOT EXISTS image_misses/, 'image_misses fehlt in der Migration');
 
   // Und NICHT mehr anderswo — zwei Stellen, die dasselbe anlegen, laufen
   // irgendwann auseinander.
-  for (const datei of ['db/database.ts', 'utils/imageMisses.ts', 'jobs/imageQueue.ts']) {
+  for (const datei of ['db/database.ts', 'src/katalog/bilder/imageMisses.ts', 'jobs/imageQueue.ts']) {
     const src = fs.readFileSync(path.join(ROOT, datei), 'utf8')
       .split('\n').filter(l => !l.trim().startsWith('//') && !l.trim().startsWith('--')).join('\n');
     assert.doesNotMatch(src, /CREATE TABLE IF NOT EXISTS image_(wanted|misses)/,
@@ -365,7 +365,7 @@ test('die Bild-Tabellen kommen aus einer MIGRATION, nicht aus initSchema', () =>
   // Die init-Funktionen laufen NACH Schema und Migrationen (sonst fehlt die
   // Tabelle beim Laden des Bestands) und in jedem Arbeitsprozess: Sie stehen in
   // startup/datenbank.ts hinter initSchemaOnce(), das jeder Prozess aufruft.
-  const vorbereitung = fs.readFileSync(path.join(ROOT, 'startup', 'datenbank.ts'), 'utf8');
+  const vorbereitung = fs.readFileSync(path.join(ROOT, 'startup/datenbank.ts'), 'utf8');
   const schema = vorbereitung.indexOf('await db.initSchemaOnce()');
   assert.ok(schema > 0 && vorbereitung.indexOf('await initImageMisses()') > schema,
     'initImageMisses() läuft vor den Migrationen — dann fehlt die Tabelle noch');
@@ -389,7 +389,7 @@ test('der Puffer wird in JEDEM Arbeitsprozess weggeschrieben', () => {
   //
   // initImageQueue() läuft in JEDEM Prozess (aufgerufen aus db/database.ts) —
   // dort gehört der Takt hin.
-  const q = fs.readFileSync(path.join(ROOT, 'utils', 'bildbedarf.ts'), 'utf8');
+  const q = fs.readFileSync(path.join(ROOT, 'src/katalog/bilder/bildbedarf.ts'), 'utf8');
   const init = q.slice(q.indexOf('export async function initImageQueue'),
                        q.indexOf('export async function loescheVerfallene'));
   assert.match(init, /setInterval\([\s\S]{0,80}schreibePuffer/,
@@ -397,7 +397,7 @@ test('der Puffer wird in JEDEM Arbeitsprozess weggeschrieben', () => {
     'wo start() aufgerufen wird, also nur im Primärprozess');
 
   // Und initImageQueue() muss tatsächlich überall laufen.
-  const dbInit = fs.readFileSync(path.join(ROOT, 'startup', 'datenbank.ts'), 'utf8');
+  const dbInit = fs.readFileSync(path.join(ROOT, 'startup/datenbank.ts'), 'utf8');
   // UMFORMULIERT in Nachtrag 155 — aus demselben Grund wie zwoelf Zeilen
   // tiefer bei start(), nur hatte diese Nachbarzusicherung den Fehler behalten:
   // Sie verlangte die Schreibweise `jobs/imageQueue').initImageQueue()`, also

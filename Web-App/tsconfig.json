@@ -11,7 +11,7 @@
   //
   // Abgeräumt wurden sie in Gruppen, ohne eine einzige Verhaltensentscheidung:
   //   • `res.statusCode` ist number|undefined — die sechs HTTP-Klienten
-  //     normalisieren jetzt auf `?? 0`, wie utils/partsImport.ts es im
+  //     normalisieren jetzt auf `?? 0`, wie src/katalog/partsImport.ts es im
   //     Fehlerfall ohnehin schon tat.
   //   • Zehn Funktionsköpfe mit `condition = null` bekamen den Typ, den ihre
   //     Aufrufer längst übergaben (string | null).
@@ -115,7 +115,7 @@
     // abgelehnten Versprechen auch `undefined`. In genau diesen Faellen stand
     // beim Nutzer „Fehler: undefined".
     //
-    // Abgeraeumt mit zwei Helfern in utils/httpError.ts — fehlertext() und
+    // Abgeraeumt mit zwei Helfern in src/infra/httpError.ts — fehlertext() und
     // fehlerCode() — plus clients/abrufFehler.ts fuer die angereicherten Fehler
     // der Abruf-Klienten (isQuota, isTransient, isCloudflare, detail). Deren
     // Verstaendigung war nirgends aufgeschrieben und funktionierte nur, weil
@@ -179,7 +179,7 @@
   },
   "include": [
     "server.ts",
-    "db/**/*", "utils/**/*", "routes/**/*", "jobs/**/*", "scripts/**/*",
+    "db/**/*", "src/**/*", "routes/**/*", "jobs/**/*", "scripts/**/*",
     "types/**/*"
   ],
   "exclude": ["node_modules", "public", "data", "dist"]

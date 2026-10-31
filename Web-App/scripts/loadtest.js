@@ -74,7 +74,7 @@ const db = require(path.join(ROOT, 'dist/db/database.js'));
 /**
  * Lesbarer Text eines gefangenen Fehlers.
  *
- * Bewusst eine eigene, kurze Fassung statt utils/httpError: Dieses Skript
+ * Bewusst eine eigene, kurze Fassung statt src/infra/httpError: Dieses Skript
  * laeuft als eigenstaendiges Werkzeug ueber `node`, ohne den Build — es kann
  * ein TypeScript-Modul gar nicht laden. Die Regel ist dieselbe: Ein geworfener
  * String oder ein Objekt ohne `message` soll nicht als „undefined" enden.
@@ -88,7 +88,7 @@ function fehlertext(e) {
   // den Typ auf `object` verengt und der kein `message` kennt.
   const m = e ? /** @type {any} */ (e).message : undefined;
   if (typeof m === 'string' && m) return m;
-  // `String([])` ist leer — siehe utils/httpError.ts, dort gefunden.
+  // `String([])` ist leer — siehe src/infra/httpError.ts, dort gefunden.
   return e === null || e === undefined ? 'Unbekannter Fehler' : (String(e) || 'Unbekannter Fehler');
 }
 
@@ -176,7 +176,7 @@ async function seed() {
   // Bewertung versucht für jedes Set einen Live-Abruf bei BrickLink. Genau das
   // ist beim ersten Lauf dieses Skripts passiert (Bewertung: 21 s statt 60 ms)
   // — gemessen wurde damit der Ausnahmefall, nicht der Alltag. EUR ist der
-  // Vorgabewert in utils/financeCalc.ts.
+  // Vorgabewert in src/finanzen/financeCalc.ts.
   await db.run(
     `INSERT INTO price_cache (set_number, condition, currency_code, min_price, avg_price, max_price, qty_avg_price, total_quantity)
      SELECT (10000+g)||'-1', c, 'EUR', 10+(g%300), 30+(g%500), 60+(g%800), 31+(g%500), 5
@@ -207,7 +207,7 @@ function buildApp() {
   app.use('/api/sets',     require(path.join(ROOT, 'dist/routes/sets.js')));
   app.use('/api/parts',    require(path.join(ROOT, 'dist/routes/parts.js')));
   app.use('/api/finance',  require(path.join(ROOT, 'dist/routes/finance.js')));
-  app.use('/api/settings', require(path.join(ROOT, 'dist/routes/settings.js')));
+  app.use('/api/settings', require(path.join(ROOT, 'dist/routes/api_v1/settings.js')));
   app.use('/api/minifigs', require(path.join(ROOT, 'dist/routes/minifigs.js')));
   return app;
 }

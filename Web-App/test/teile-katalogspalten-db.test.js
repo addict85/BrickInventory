@@ -80,7 +80,7 @@ const dbDa = async (t) => {
   }
 };
 
-const MIG_DIR = path.join(ROOT, 'db', 'migrations');
+const MIG_DIR = path.join(ROOT, 'db/migrations');
 const DATEI   = path.join(MIG_DIR, '0034-teile-und-minifiguren-stammdaten-im-katalog.sql');
 
 test('nach der ganzen Kette tragen parts und minifigs nur noch den Bestand',
@@ -176,7 +176,7 @@ test('die Teileliste liefert Beschreibung und Lagerort aus den Katalogen',
   await haeltTeil(db, uid, '3001', { setNumber: '75192-1', menge: 6, colorId: 4, storageId: ort.id });
   await haeltTeil(db, uid, '3002', { setNumber: '75192-1', menge: 2, colorId: 1 });
 
-  const handlers = _req('utils/handlers/parts.js');
+  const handlers = _req('src/teile/abfragen.js');
 
   // ── Die Beschreibung kommt an ────────────────────────────────────────────
   const alle = await handlers.getParts(uid, { exclude_manual: '1' });
@@ -252,7 +252,7 @@ test('die Figurenliste liefert Name und Bild aus minifigs_catalog',
     VALUES ('fig-000123','Chewbacca','http://cdn/chewie.png')`);
   await haeltFigur(db, uid, 'fig-000123', { setNumber: '75192-1', menge: 1 });
 
-  const handlers = _req('utils/handlers/minifigs.js');
+  const handlers = _req('src/figuren/abfragen.js');
   const liste = await handlers.getMinifigs(uid, {});
   const figs = liste.minifigs || liste.figs || liste;
   const f = (Array.isArray(figs) ? figs : []).find(x => x.fig_number === 'fig-000123');

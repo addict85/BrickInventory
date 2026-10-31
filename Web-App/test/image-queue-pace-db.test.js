@@ -56,7 +56,7 @@ let ladenSchlaegtFehl = false;
 const echtesRequire = Module.prototype.require;
 Module.prototype.require = function (name) {
   const m = echtesRequire.apply(this, arguments);
-  // Seit Nachtrag 125 liegt downloadSetImage in utils/setImages.ts statt im
+  // Seit Nachtrag 125 liegt downloadSetImage in src/katalog/bilder/setImages.ts statt im
   // Router — der Abfang muss dorthin zeigen, sonst greift er ins Leere und
   // der Test misst still den echten Download.
   if (typeof name === 'string' && /setImages(\.js)?$/.test(name) && m && m.downloadSetImage) {
@@ -79,7 +79,7 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { leereWarteschlange } = require('./helpers/bildwarteschlange');
 const db = _req('db/database.js');
 const IQ = _req('jobs/imageQueue.js');
-const { SET_IMAGES_DIR } = _req('utils/appPaths.js');
+const { SET_IMAGES_DIR } = _req('src/infra/appPaths.js');
 
 /** Stapelgrösse und Deckel aus dem Modul — der Test wiederholt keine Zahl. */
 const { STAPEL, DURCHGANG_MAX_NOTIZEN: DECKEL } = IQ;
@@ -362,7 +362,7 @@ test('ein ANDERER Prozess sieht, dass der Job gelaufen ist', { concurrency: 1 },
   // Wert, den der Elternprozess WIRKLICH benutzt. Es gibt also nichts zu setzen.
   execFileSync(process.execPath, ['-e', `
     const db = require(${JSON.stringify(path.join(ROOT, 'dist', 'db', 'database.js'))});
-    const IQ = require(${JSON.stringify(path.join(ROOT, 'dist', 'jobs', 'imageQueue.js'))});
+    const IQ = require(${JSON.stringify(path.join(ROOT, 'dist', 'jobs/imageQueue.js'))});
     (async () => {
       await db.initSchemaOnce();
       await IQ._taktDurchgang();
@@ -441,7 +441,7 @@ test('jeder Ausgang der Schleife hat einen Zähler', { concurrency: 1 }, async (
   // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung
   // und Nachstellung in helpers/bildwarteschlange.js.
   await leereWarteschlange(db);
-  const IM = _req('utils/imageMisses.js');
+  const IM = _req('src/katalog/bilder/imageMisses.js');
   fs.mkdirSync(SET_IMAGES_DIR, { recursive: true });
 
   await t.test('Notiz ohne Setnummer', async () => {

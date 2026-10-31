@@ -20,14 +20,14 @@ const KOTLIN_SCREENS = path.join(ROOT, '..', 'Android-App', 'app', 'src', 'main'
 
 // ── Punkt 1 ────────────────────────────────────────────────────────────────
 test('die Session-ID wird beim Anmelden erneuert', () => {
-  const auth = read('utils/auth.ts');
+  const auth = read('src/konto/auth.ts');
   assert.match(auth, /function establishSession/, 'Der gemeinsame Helfer fehlt');
   assert.match(auth, /req\.session\.regenerate\(/,
     'Ohne regenerate() behält der Browser die ID von vor dem Login (Session Fixation)');
   assert.match(auth, /req\.session\.save\(/,
     'Ohne save() wäre die neue ID bei einer unmittelbar folgenden Anfrage noch nicht gültig');
 
-  const routes = read('routes/auth.ts') + read('routes/passkeys.ts');
+  const routes = read('routes/auth.ts');
   // Drei Aufrufe: Login, Passkey-Anmeldung — und seit der Sitzungs-Bereinigung auch
   // /change-password. Dort werden erst ALLE Sitzungen des Kontos verworfen
   // (ein Passwortwechsel soll einen fremden Zugang beenden, nicht nur die
@@ -51,7 +51,7 @@ test('Rate-Limits zählen worker-übergreifend', () => {
   // CREATE-Anweisung ist inzwischen entfernt). Geprüft wird jetzt, was die
   // Implementierung tatsächlich zusichert: Zähler in der Datenbank, atomares
   // Hochzählen in einem Statement, Rückfall auf den Prozessspeicher.
-  const lim = read('utils/loginLimiter.ts');
+  const lim = read('src/konto/loginLimiter.ts');
   assert.match(lim, /rate_limit_attempts/, 'Der Zähler muss in der Datenbank liegen');
   assert.match(lim, /ON CONFLICT \(key\) DO UPDATE/,
     'Hochzählen und Fensterwechsel gehören in EIN Statement');
@@ -82,8 +82,8 @@ test('Listenansichten fordern Vorschaubilder an', () => {
 test('Teile- und Minifiguren-Preise lesen avg_price', () => {
   // routes/finance.ts ist entfallen: Der Router trug NULL Routen und war
   // trotzdem unter /api/finance eingehaengt (siehe server.ts).
-  for (const f of ['utils/manuelleFiguren.ts', 'utils/manuelleTeile.ts',
-                   'routes/api_v1/sets.ts', 'utils/dienste/sets.ts']) {
+  for (const f of ['src/figuren/manuelleFiguren.ts', 'src/teile/manuelleTeile.ts',
+                   'routes/api_v1/sets.ts', 'src/sets/dienst.ts']) {
     const src = read(f);
     // Lesende Zugriffe: kein qty_avg_price mehr. Schreibende (INSERT/VALUES)
     // und Feldnamen in Antwortobjekten bleiben — der Wert wird weiter gepflegt.
@@ -106,7 +106,7 @@ test('Preis-Vorhandensein hängt an avg_price', () => {
   // Teile und Minifiguren, je Haupt- und Rückfall-Zustand. Die gibt es nicht
   // mehr: Dieselbe Frage stand in dieser Datei an 22 Stellen, in drei
   // Fassungen, und widersprach dabei der Fassung in clients/bricklink.ts.
-  // Sie liegt jetzt einmal in utils/preisRegel.ts (siehe
+  // Sie liegt jetzt einmal in src/finanzen/preisRegel.ts (siehe
   // test/preisregel-db.test.js). Gezählt werden deshalb die Stellen, die sie
   // BENUTZEN — die Zahl bleibt die Zusicherung, dass keine davon verschwindet.
   assert.doesNotMatch(fc, /avg_price > 0 \|\| \w+\.qty_avg_price > 0/,
@@ -123,7 +123,7 @@ test('Preis-Vorhandensein hängt an avg_price', () => {
 
 test('kein Token reitet mehr in der Adresszeile', () => {
   // ── Woher dieser Test kommt ─────────────────────────────────────────────
-  // utils/auth.ts fuehrte eine Liste TOKEN_QUERY_ALLOWED: drei Pfade, auf
+  // src/konto/auth.ts fuehrte eine Liste TOKEN_QUERY_ALLOWED: drei Pfade, auf
   // denen `?token=` als Ausweis zaehlte. Begruendung war, dass <img src>,
   // EventSource und window.open() keine Kopfzeilen setzen koennen. Das stimmt
   // — nur hatte im ganzen Baum KEINER der drei Eintraege noch einen Nutzer:
@@ -138,7 +138,7 @@ test('kein Token reitet mehr in der Adresszeile', () => {
   // beiden zu pruefen reichte nicht — die Ausnahmeliste hier war jahrelang
   // gruen, WEIL nur ihr Vorhandensein geprueft wurde und nie ihr Nutzen.
   const { ohneKommentare, setKernQuelle, coreQuelle } = require('./helpers/sources');
-  const auth = ohneKommentare(read('utils/auth.ts'));
+  const auth = ohneKommentare(read('src/konto/auth.ts'));
 
   assert.doesNotMatch(auth, /TOKEN_QUERY_ALLOWED/,
     'Die Ausnahmeliste ist zurueck — damit auch der Sitzungstoken in der Adresszeile');
@@ -148,7 +148,7 @@ test('kein Token reitet mehr in der Adresszeile', () => {
 
   // ── Und die Aufrufer ──────────────────────────────────────────────────────
   //
-  // Nicht nach der blossen Zeichenkette `?token=` gesucht: utils/mailer.ts
+  // Nicht nach der blossen Zeichenkette `?token=` gesucht: src/infra/mailer.ts
   // baut damit die Links `/verify?token=` und `/reset-password?token=` fuer
   // die E-Mail. Das sind EIGENE, kurzlebige Token mit eigenen Handlern in
   // server.ts — kein Sitzungsausweis. Gesucht wird deshalb das Anhaengen
@@ -192,7 +192,7 @@ test('kein Token reitet mehr in der Adresszeile', () => {
   // umgehen koennte.
   const sets = setKernQuelle();
   assert.doesNotMatch(sets, /function requireLoginOrToken/,
-    'Keine zweite Fassung — sie umgeht die eine Regel in utils/auth.ts');
+    'Keine zweite Fassung — sie umgeht die eine Regel in src/konto/auth.ts');
   assert.match(sets, /loginOrTokenGuard\(\{ timeoutMs: 3000 \}\)/,
     'Das 3s-Zeitlimit muss bleiben: Während eines Imports ist 503 besser als eine hängende Verbindung');
 
@@ -257,7 +257,7 @@ test('den Preis-Cache leert nur, wer Administrator ist', () => {
   // verbrannte Kontingent). Der Import-Weg wurde übersehen — er sieht ja auch
   // nicht nach „Cache leeren" aus. Genau deshalb prüft dieser Test die REGEL
   // und nicht eine einzelne Route: Wer den Cache leert, braucht requireAdmin.
-  const dateien = ['routes/settings.ts', 'routes/api_v1/sets.ts',
+  const dateien = ['routes/api_v1/settings.ts', 'routes/api_v1/sets.ts',
                    'routes/api_v1/parts.ts', 'routes/api_v1/minifigs.ts', 'clients/bricklink.ts'];
   const treffer = [];
   for (const datei of dateien) {

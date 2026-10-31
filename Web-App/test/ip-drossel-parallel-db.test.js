@@ -24,7 +24,7 @@ process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 const _req = require('./helpers/sources').buildAndRequire();
 const AUTH = require('./helpers/sources').einhaengung('auth');
 const db = _req('db/database.js');
-const { ipThrottle } = _req('utils/loginLimiter.js');
+const { ipThrottle } = _req('src/konto/loginLimiter.js');
 const express = require(path.join(__dirname, '..', 'node_modules', 'express'));
 
 test.after(() => db.pool.end().catch(() => {}));

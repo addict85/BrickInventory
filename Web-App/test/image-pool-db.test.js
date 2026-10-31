@@ -53,7 +53,7 @@ test('eine Kachelwand kostet keine einzige Abfrage', { concurrency: 1 }, async (
     t.skip('Test-DB nicht erreichbar'); return;
   }
 
-  const IM = _req('utils/imageMisses.js');
+  const IM = _req('src/katalog/bilder/imageMisses.js');
   const IQ = _req('jobs/imageQueue.js');
   await IM.initImageMisses();
   await IQ.initImageQueue();
@@ -216,7 +216,7 @@ test('die Warteschlange hat einen Index auf dem Alter', () => {
   // Zeilen gleichgültig — mit 25 000 (nach „Katalogbilder holen") bedeutet jeder
   // Lauf sonst einen vollständigen Durchgang samt Sortierung.
   const mig = fs.readFileSync(
-    path.join(ROOT, 'db', 'migrations', '0010-image-wanted-index.sql'), 'utf8');
+    path.join(ROOT, 'db/migrations/0010-image-wanted-index.sql'), 'utf8');
   assert.match(mig, /CREATE INDEX IF NOT EXISTS idx_image_wanted_alter ON image_wanted \(requested_at\)/,
     'Der Index auf requested_at fehlt');
 });

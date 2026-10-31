@@ -8,7 +8,7 @@
  *      rot: „das Projekt hat kein Install-Skript“
  *   B  in scripts/version.js APP_VERSION nicht mehr gelesen → rot: „ein
  *      Build-Argument geht vor, sonst Git“
- *   C  in utils/appVersion.ts den Rückgriff auf dist/version.json entfernt →
+ *   C  in src/infra/appVersion.ts den Rückgriff auf dist/version.json entfernt →
  *      rot: „der Server meldet die gebaute Version“ („unbekannt“)
  */
 const test = require('node:test');
@@ -47,7 +47,7 @@ test('der Server meldet die gebaute Version', () => {
   const alt = process.env.APP_VERSION;
   delete process.env.APP_VERSION;
   try {
-    const { appVersion } = _req('utils/appVersion.js');
+    const { appVersion } = _req('src/infra/appVersion.js');
     assert.equal(appVersion(), gebaut);
     process.env.APP_VERSION = 'laufzeit-1';
     assert.equal(appVersion(), 'laufzeit-1', 'APP_VERSION zur Laufzeit geht vor');

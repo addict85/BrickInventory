@@ -60,7 +60,7 @@ test('Erststart über db/basis.sql', { concurrency: 1, timeout: 180_000 }, async
       JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = ANY(i.indkey)
       WHERE i.indrelid = 'rate_limit_attempts'::regclass AND i.indisprimary`);
     assert.equal(pk?.attname, 'key', 'die Anmeldezähler brauchen ihren Schlüssel als Primärschlüssel');
-    const dateien = fs.readdirSync(path.join(ROOT, 'db', 'migrations')).filter(f => f.endsWith('.sql')).sort();
+    const dateien = fs.readdirSync(path.join(ROOT, 'db/migrations')).filter(f => f.endsWith('.sql')).sort();
     const angewandt = (await db.all('SELECT name FROM schema_migrations')).map(r => r.name);
     assert.deepEqual(dateien.filter(f => !angewandt.includes(f)), [], 'nicht jede Migration gilt als angewandt');
   });

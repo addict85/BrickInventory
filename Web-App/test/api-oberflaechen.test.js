@@ -106,7 +106,7 @@ test('keine unbegruendete Route auf beiden API-Oberflaechen', () => {
   for (const r of webRouter()) for (const x of routenAus(r.datei, r.mount)) web.add(x);
 
   const v1 = new Set();
-  const v1Dir = path.join(ROOT, 'routes', 'api_v1');
+  const v1Dir = path.join(ROOT, 'routes/api_v1');
   for (const f of fs.readdirSync(v1Dir)) {
     if (!f.endsWith('.ts') || f === 'index.ts' || f === 'middleware.ts') continue;
     for (const x of routenAus(path.join(v1Dir, f), '/api')) v1.add(x);
@@ -115,7 +115,7 @@ test('keine unbegruendete Route auf beiden API-Oberflaechen', () => {
   // Selbstbeweis: Greift das Muster nicht mehr (umbenanntes `router`, andere
   // Schreibweise des Mountpunkts), waeren beide Mengen leer und der Test
   // gruen, ohne etwas geprueft zu haben.
-  assert.ok(web.size >= 40, `Nur ${web.size} Webapp-Routen gefunden — Muster veraltet?`);
+  assert.ok(web.size >= 30, `Nur ${web.size} Webapp-Routen gefunden — Muster veraltet?`);
   assert.ok(v1.size >= 80, `Nur ${v1.size} v1-Routen gefunden — Muster veraltet?`);
 
   // Beide Seiten ohne Praefix vergleichen: Seit dem Umzug haengen die
@@ -159,8 +159,8 @@ test('jeder Router haengt unter /api/v1', () => {
   const einhaengungen = webRouter();
   // Selbstbeweis: Findet das Muster keine Einhaengepunkte, prueft alles
   // darunter nichts und waere trotzdem gruen.
-  // Zwei: settings und auth. sets, parts und minifigs gingen in den v1-Router auf.
-  assert.ok(einhaengungen.length >= 2,
+  // Einer: auth. Einstellungen, Sets, Teile und Figuren gingen in den v1-Router auf.
+  assert.ok(einhaengungen.length >= 1,
     `Nur ${einhaengungen.length} Router-Einhaengepunkte in server.ts gefunden — Muster veraltet?`);
 
   const daneben = einhaengungen
@@ -236,14 +236,14 @@ test('auch die direkt angemeldeten Routen stehen unter /api/v1', () => {
       if (e.name.endsWith('.ts')) dateien.push(p);
     }
   };
-  for (const ordner of ['routes', 'utils', 'jobs'])
+  for (const ordner of ['routes', 'src', 'jobs'])
     lauf(path.join(ROOT, ordner));
   assert.ok(dateien.length >= 30, `Nur ${dateien.length} Serverdateien gefunden`);
 
   // ── Auch Anmeldungen ueber eine KONSTANTE ────────────────────────────────
   //
   // `app.get('/api/…')` war einmal die einzige Form. Seit der Bild-Proxy seine
-  // Adresse aus utils/images.ts bezieht (`app.get(IMG_PROXY_PFAD, …)`), findet
+  // Adresse aus src/katalog/bilder/images.ts bezieht (`app.get(IMG_PROXY_PFAD, …)`), findet
   // ein Muster, das nur Zeichenketten kennt, sie nicht mehr — und die Zahl
   // faellt von drei auf zwei, ohne dass eine Route verschwunden waere. Genau
   // dieselbe Blindheit, gegen die dieser Test geschrieben wurde, eine Ebene

@@ -102,7 +102,7 @@ test('2. die App hat dieselben vier', () => {
 
 test('3. beide Oberflächen bieten genau die Sortierungen an, die der Server kennt', () => {
   // ── Die Quelle der Wahrheit ───────────────────────────────────────────────
-  const server = ohneKommentare(fs.readFileSync(path.join(ROOT, 'utils/merkliste.ts'), 'utf8'));
+  const server = ohneKommentare(fs.readFileSync(path.join(ROOT, 'src/merkliste/merkliste.ts'), 'utf8'));
   const tabelle = server.slice(server.indexOf('const MERK_SORTS'), server.indexOf('};', server.indexOf('const MERK_SORTS')));
   const erlaubt = sortWerte(tabelle);
   assert.ok(erlaubt.length >= 5, `Nur ${erlaubt.length} Sortierwerte gefunden — Tabelle umbenannt?`);
@@ -130,7 +130,7 @@ test('4. die Vorgabe-Sortierung ist in allen drei Bäumen dieselbe', () => {
   // Sie entscheidet, ob der Chip in der App als „gesetzt" gezeichnet wird, und
   // ob die Webapp den Parameter überhaupt mitschickt. Drei verschiedene
   // Vorgaben hiessen: dieselbe Liste, drei Reihenfolgen.
-  const server = ohneKommentare(fs.readFileSync(path.join(ROOT, 'utils/merkliste.ts'), 'utf8'));
+  const server = ohneKommentare(fs.readFileSync(path.join(ROOT, 'src/merkliste/merkliste.ts'), 'utf8'));
   const ersteZeile = server.slice(server.indexOf('const MERK_SORTS')).split('\n')[1];
   assert.match(ersteZeile, /added_desc/, 'MERK_SORTS beginnt nicht mit added_desc');
 

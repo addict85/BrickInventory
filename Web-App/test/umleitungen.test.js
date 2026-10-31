@@ -17,7 +17,7 @@
  *  1. DER SCHLUESSEL WANDERTE MIT. Neun der zwoelf Aufrufer von
  *     httpsGetRobust schicken `Authorization: key <REBRICKABLE_API_KEY>`
  *     (rebrickable.ts 122/217/312/352/384, routes/parts.ts 125/149,
- *     utils/handlers/parts.ts 533, jobs/rebrickableCsvSync.ts 281). Der Kopf
+ *     src/teile/abfragen.ts 533, jobs/rebrickableCsvSync.ts 281). Der Kopf
  *     ging unveraendert an das Umleitungsziel.
  *  2. HTTPS -> HTTP war erlaubt (`protocol === 'https:' ? https : http`) —
  *     derselbe Schluessel im Klartext.
@@ -44,7 +44,7 @@ const _req = buildAndRequire();
 const {
   naechsteUmleitung, hostErlaubt, UMLEITUNGS_GRENZE,
   ERLAUBTE_BILD_HOSTS, ERLAUBTE_DOWNLOAD_HOSTS,
-} = _req('utils/fremdeAdressen.js');
+} = _req('src/infra/fremdeAdressen.js');
 
 const KOPF = { Authorization: 'key GEHEIM', 'User-Agent': 'test' };
 
@@ -125,13 +125,13 @@ test('die Host-Pruefung faellt nicht auf einen angehaengten Namen herein', () =>
  *                https://bdpinstructions.s3.amazonaws.com/11010.pdf
  *
  * Seitenweise, fuer jedes BDP-Set. Diese Adresse baut der Baum SELBST
- * (utils/instructions.ts, Rueckfall 2) und lehnte sie dann ab: Der Rueckfall
+ * (src/katalog/instructions.ts, Rueckfall 2) und lehnte sie dann ab: Der Rueckfall
  * konnte nie etwas holen, seit es ihn gibt.
  */
 test('der BDP-Eimer darf geholt werden — aber nur er', () => {
   assert.ok(hostErlaubt('https://bdpinstructions.s3.amazonaws.com/11010.pdf',
                         ERLAUBTE_DOWNLOAD_HOSTS),
-    'Der Rueckfall in utils/instructions.ts baut genau diese Adresse — sie hier ' +
+    'Der Rueckfall in src/katalog/instructions.ts baut genau diese Adresse — sie hier ' +
     'abzulehnen heisst, ihn bauen zu lassen und ins Leere laufen zu lassen');
 
   // ── Und NICHT der halbe Anbieter ─────────────────────────────────────────

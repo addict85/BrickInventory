@@ -1,9 +1,9 @@
-import type { Request, Response, NextFunction } from 'express';
+import type { Request, Response } from 'express';
 // Zuerst: Ein ungültiger Wert beendet den Start mit Meldung, bevor ein Modul ihn liest.
 import { konfig } from './startup/konfigPruefen';
 // Protokoll zuerst: Ab hier ist jede console-Zeile eine JSON-Zeile auf
 // stdout/stderr und geht nach app_logs, sobald der Pool steht.
-import { installiereProtokoll, protokollInDieDatenbank, leereProtokoll, anfrageKontext, anfrageKennung } from './utils/protokoll';
+import { installiereProtokoll, protokollInDieDatenbank, leereProtokoll, anfrageKontext, anfrageKennung } from './src/infra/protokoll';
 installiereProtokoll();
 
 import fs from 'fs';
@@ -13,35 +13,33 @@ import session from 'express-session';
 import compression from 'compression';
 import connectPgSimple from 'connect-pg-simple';
 import * as db from './db/database';
-import { fehlertext, logAndContinue, meldeUndWeiter, handleRouteError } from './utils/httpError';
-import { startVerbote, cookieSicher } from './utils/konfig';
+import { fehlertext, logAndContinue, meldeUndWeiter, fehlerAntwort } from './src/infra/httpError';
+import { startVerbote, cookieSicher } from './src/infra/konfig';
 import { bereiteDatenbankVor } from './startup/datenbank';
 import { starteJobs, stoppeJobs } from './startup/jobsProzess';
 import { verdrahte } from './jobs/verdrahtung';
-import { drossleBeruehren } from './utils/sitzungsBeruehrung';
-import { SITZUNG_LEERLAUF_SEK, sitzungsHoechstdauer } from './utils/sitzungsFrist';
-import { antwortAufDateiFehler, liefereDatei, sendeDatei } from './utils/dateiAusliefern';
-import { cdnFuerFehlendesBild } from './utils/bildNachschlagen';
-import { aktuellerStartZustand } from './utils/startZustand';
-import { merkeAnfrage } from './utils/anfrageKonto';
-import { proxyVertrauen, proxyHinweis } from './utils/proxyVertrauen';
-import { nurEigeneHerkunft } from './utils/herkunft';
-import { API_VERSION, API_MIN_APP, appFassungPruefen } from './utils/apiVersion';
-import { resolveUserId, istVerwalter, verifiziereEmailToken } from './utils/auth';
-import { PUBLIC_DIR } from './utils/appPaths';
-import { IMG_PROXY_PFAD } from './utils/images';
-import { safeDataPath } from './utils/datenPfad';
-import { generateThumb } from './utils/thumbs';
-import { closeAllSse } from './utils/sseRegistry';
-import { renderIndexHtml } from './utils/indexHtml';
-import * as pgNotify from './utils/pgNotify';
+import { drossleBeruehren } from './src/konto/sitzungsBeruehrung';
+import { SITZUNG_LEERLAUF_SEK, sitzungsHoechstdauer } from './src/konto/sitzungsFrist';
+import { antwortAufDateiFehler, liefereDatei, sendeDatei } from './src/infra/dateiAusliefern';
+import { cdnFuerFehlendesBild } from './src/katalog/bilder/bildNachschlagen';
+import { aktuellerStartZustand } from './src/infra/startZustand';
+import { merkeAnfrage } from './src/infra/anfrageKonto';
+import { proxyVertrauen, proxyHinweis } from './src/infra/proxyVertrauen';
+import { nurEigeneHerkunft } from './src/infra/herkunft';
+import { API_VERSION, API_MIN_APP, appFassungPruefen } from './src/infra/apiVersion';
+import { resolveUserId, istVerwalter, verifiziereEmailToken } from './src/konto/auth';
+import { PUBLIC_DIR } from './src/infra/appPaths';
+import { IMG_PROXY_PFAD } from './src/katalog/bilder/images';
+import { safeDataPath } from './src/infra/datenPfad';
+import { generateThumb } from './src/katalog/bilder/thumbs';
+import { closeAllSse } from './src/infra/sseRegistry';
+import { renderIndexHtml } from './src/konto/indexHtml';
+import * as pgNotify from './db/pgNotify';
 import { registerImgProxy } from './routes/imgProxy';
 import { anmeldungAmEingang } from './routes/api_v1/middleware';
 import datenDateien = require('./routes/datenDateien');
 import apiV1Router = require('./routes/api_v1/index');
-import settingsRouter = require('./routes/settings');
 import authRouter = require('./routes/auth');
-import passkeysRouter = require('./routes/passkeys');
 import zertifikatRouter = require('./routes/zertifikat');
 
 /**
@@ -152,7 +150,7 @@ app.use((req, res, next) => {
 // paar Anfragen den Heap füllen. Die PDF-Routen setzen ihr eigenes
 // (routes/api_v1/pdf.ts).
 app.use(express.json({ limit: '256kb' }));
-// Das Konto der Anfrage für Zähler tief unten (utils/apiKontingent.ts).
+// Das Konto der Anfrage für Zähler tief unten (src/katalog/apiKontingent.ts).
 app.use(merkeAnfrage);
 app.use(express.urlencoded({ extended: true, limit: '256kb' }));
 
@@ -163,7 +161,7 @@ app.use(express.urlencoded({ extended: true, limit: '256kb' }));
 app.use((req, _res, next) => { if (req.body === undefined) req.body = {}; next(); });
 
 // Hinter einem TLS-terminierenden Reverse-Proxy muss Express X-Forwarded-Proto
-// glauben, sonst setzt es das secure-Cookie nie. Wem genau: utils/proxyVertrauen.ts.
+// glauben, sonst setzt es das secure-Cookie nie. Wem genau: src/infra/proxyVertrauen.ts.
 if (konfig().produktion) {
   app.set('trust proxy', proxyVertrauen(konfig().trustProxy));
 }
@@ -194,7 +192,7 @@ app.use('/api', (_req, res, next) => {
 }, appFassungPruefen);
 
 // Jede Anfrage bekommt eine kurze Kennung für alle ihre Logzeilen; die des
-// Proxys nur, wenn sie die Prüfung in utils/protokoll.ts besteht.
+// Proxys nur, wenn sie die Prüfung in src/infra/protokoll.ts besteht.
 app.use((req, res, next) => {
   const rid = anfrageKennung(req.headers['x-request-id']);
   res.setHeader('X-Request-Id', rid);
@@ -220,7 +218,7 @@ const sitzungsSpeicher = new PgSession({
 });
 
 // Die Ablaufzeit der Sitzung wird gedrosselt geschrieben — die Messung und die
-// Begruendung stehen in utils/sitzungsBeruehrung.ts.
+// Begruendung stehen in src/konto/sitzungsBeruehrung.ts.
 drossleBeruehren(sitzungsSpeicher);
 
 app.use(session({
@@ -308,7 +306,7 @@ app.get('/images/*pfad', async (req: WildcardRequest, res: Response) => {
 
 app.use(express.static(PUBLIC_DIR, {
   // `index: false`: Sonst lieferte express.static die index.html für `/`
-  // selbst aus, am Renderer (utils/indexHtml.ts) vorbei.
+  // selbst aus, am Renderer (src/konto/indexHtml.ts) vorbei.
   // Ausführlich: docs/begruendungen/server.ts.md#lookupcdnformissingimage-2
   index: false,
   // Assets (Bilder, SVG, CSS/JS mit ?v=-Cache-Busting) dürfen lange gecacht werden.
@@ -356,9 +354,7 @@ app.get('/api/v1/health', async (req, res) => {
 // Ausführlich: docs/begruendungen/server.ts.md#abschnitt-7
 app.use('/api/v1',          anmeldungAmEingang);
 app.use('/api/v1',          apiV1Router);
-app.use('/api/v1/settings', settingsRouter);
 app.use('/api/v1/auth',     authRouter);
-app.use('/api/v1/auth',     passkeysRouter);
 
 // ── E-Mail Bestätigung: /verify?token=... ─────────────────────────────────────
 // Der Link kommt aus einer E-Mail: Die Antwort ist eine Seite, kein JSON.
@@ -379,7 +375,7 @@ app.get('/verify', async (req, res) => {
 app.get('/reset-password', async (_req, res) => {
   res.set('Cache-Control', 'no-cache');
   // Über den Renderer statt sendFile: sonst gingen die Assets ohne Stempel
-  // (utils/assetStempel.ts) und im Standarddesign hinaus.
+  // (src/infra/assetStempel.ts) und im Standarddesign hinaus.
   try {
     res.type('html').send(await renderIndexHtml());
   } catch {
@@ -397,7 +393,7 @@ app.use('/api', (_req, res) => res.status(404).json({ success: false, error: 'En
 app.get('/{*splat}', async (req, res) => {
   res.set('Cache-Control', 'no-cache');
   try {
-    // data-theme und die Sprachdatei setzt der Renderer (utils/indexHtml.ts);
+    // data-theme und die Sprachdatei setzt der Renderer (src/konto/indexHtml.ts);
     // ohne Sitzung gilt die Vorgabe.
     res.type('html').send(await renderIndexHtml(req.session?.userId));
   } catch {
@@ -409,7 +405,7 @@ app.get('/{*splat}', async (req, res) => {
 
 // Fängt synchron geworfene Fehler und next(err)-Aufrufe, die an den
 // Route-Catches vorbeikommen — loggt voll, antwortet generisch.
-app.use((err: unknown, req: Request, res: Response, _next: NextFunction) => { handleRouteError(res, err, undefined, req); });
+app.use(fehlerAntwort);
 return app;
 }
 

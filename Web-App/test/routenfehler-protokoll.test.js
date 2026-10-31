@@ -43,7 +43,7 @@ const assert = require('node:assert/strict');
 
 const { buildAndRequire } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { handleRouteError } = _req('utils/httpError.js');
+const { handleRouteError } = _req('src/infra/httpError.js');
 
 /** Ruft handleRouteError; liefert die eine Zeile samt Stufe (error/warn). */
 function protokolliereMitStufe(fehler, req) {

@@ -22,7 +22,7 @@ const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
 const { haeltSet, haeltTeil, haeltFigur } = require('./helpers/bestand');
 
-const MIGRATION = path.join(ROOT, 'db', 'migrations', '0058-fremdschluessel-und-pruefungen.sql');
+const MIGRATION = path.join(ROOT, 'db/migrations/0058-fremdschluessel-und-pruefungen.sql');
 const SCHLUESSEL = [['parts', 'parts_set_fk'], ['minifigs', 'minifigs_set_fk'],
   ['instructions', 'instructions_set_fk'], ['parts', 'parts_source_check'],
   ['minifigs', 'minifigs_source_check'], ['instruction_queue', 'instruction_queue_status_check'],

@@ -22,7 +22,7 @@
  * Die Lehre aus Nachtrag 53 lautete, nach zwei Funden derselben Klasse sofort
  * die ganze Familie durchzugehen. Genau das ist hier der Fall.
  *
- * Gegenprobe (durchgeführt): writableIds in utils/dienste/erfassungen.ts durch die eigene ID
+ * Gegenprobe (durchgeführt): writableIds in src/bestand/erfassungen.ts durch die eigene ID
  * ersetzt → „Set-Erfassung löschen" endet wieder in 404.
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL (Migrationen für account_links).

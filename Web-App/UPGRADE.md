@@ -104,7 +104,7 @@ Frontend-Bündel wanderten — jeder Nutzer lud dauerhaft die Sprache mit, die e
 nie sieht. Sie liegen jetzt in `public/locales/de.js` und `public/locales/en.js`.
 
 `index.html` bindet nur die aktive Sprache ein; welche das ist, entscheidet der
-Server anhand der gespeicherten Nutzersprache (`utils/indexHtml.ts`) — genauso
+Server anhand der gespeicherten Nutzersprache (`src/konto/indexHtml.ts`) — genauso
 wie beim Design. Ein Sprachwechsel lädt die zweite Datei zur Laufzeit nach.
 
 **Für dich heisst das:** Neue Übersetzungsschlüssel gehören in `public/locales/`,
@@ -209,7 +209,7 @@ der Regel, dass prune erst NACH dem Frontend-Build stehen darf.
 
 `compose.yaml` mountete bisher zusätzlich `./images:/app/public/images/sets`.
 Das war der alte Ablageort für Set-Bilder. Der Code schreibt seit dem Umbau auf
-`utils/appPaths.ts` nach `data/images/` — die Zeile blieb nur stehen und
+`src/infra/appPaths.ts` nach `data/images/` — die Zeile blieb nur stehen und
 erzeugte den Ordner `./images` neben `./data`.
 
 **Vorschaubilder liegen übrigens nicht in einem eigenen Unterordner.** Sie

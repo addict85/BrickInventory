@@ -201,7 +201,8 @@ test('die Prüfung hängt am Ende des Preislaufs, nicht an jedem Preisabruf', ()
   const fetchTeil = job.slice(i, job.indexOf('\n}', i));
   assert.doesNotMatch(fetchTeil, /pruefeSet/,
     'Die Prüfung hängt am einzelnen Preisabruf — dann meldet sie mehrfach je Lauf');
-  assert.match(job, /SELECT DISTINCT set_number FROM price_alerts/,
+  assert.match(job, /setsMitAlarm\(\)/, 'Es müssen nur die Sets geprüft werden, auf die jemand wartet');
+  assert.match(web('src/finanzen/repository/preisLauf.ts'), /SELECT DISTINCT set_number FROM price_alerts/,
     'Es müssen nur die Sets geprüft werden, auf die jemand wartet');
 });
 
@@ -286,7 +287,7 @@ test('die Marke kommt vom SERVER, nicht von der eigenen Uhr', () => {
   // Server darüber, ob eine Meldung doppelt kommt (Uhr geht nach) oder
   // verloren geht (sie geht vor). Beides fällt niemandem als Uhrenproblem
   // auf — man sieht nur eine Meldung zu viel oder keine.
-  assert.match(web('utils/preisalarm.ts'), /SELECT NOW\(\) AS jetzt/,
+  assert.match(web('src/finanzen/preisalarm.ts'), /SELECT NOW\(\) AS jetzt/,
     'Der Server reicht seinen Zeitpunkt nicht mit');
 
   const js = require('./helpers/sources').ohneKommentare(web('public/js/07-admin.js'));

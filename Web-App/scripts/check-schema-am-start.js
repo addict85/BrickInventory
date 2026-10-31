@@ -25,14 +25,15 @@
  * und `CREATE TABLE IF NOT EXISTS` meldet das nicht, es tut einfach nichts.
  *
  * ── Was geprüft wird, und was bewusst NICHT ─────────────────────────────────
- * Geprüft wird der ANFRAGEPFAD: `routes/` und `utils/handlers/`. Dort darf
+ * Geprüft wird der ANFRAGEPFAD: `routes/` und die Leseabfragen (`src/<bereich>/abfragen.ts`,
+ * `src/bestand/gemeinsam.ts`, `src/bestand/kennzahlen.ts`). Dort darf
  * keine Schema-Anweisung stehen (CREATE TABLE / CREATE INDEX / ALTER TABLE).
  *
  * Sicher ist das, weil `server.ts` `app.listen()` erst im `then()` von
  * `initSchemaOnce()` aufruft — wenn die erste Anfrage ankommt, steht das
  * Schema bereits.
  *
- * NICHT geprüft werden `jobs/` und `utils/partsSummary.ts`. Der erste Entwurf
+ * NICHT geprüft werden `jobs/` und `src/teile/partsSummary.ts`. Der erste Entwurf
  * dieser Prüfung verlangte „DDL nur unter db/" und meldete zwanzig weitere
  * Stellen — alle ausserhalb des Anfragepfads, keine davon der beschriebene
  * Fehler. Eine Regel, die zu weit greift, ist so wenig wert wie eine, die zu
@@ -58,7 +59,11 @@ const ROOT = path.join(__dirname, '..');
 /** Der Anfragepfad — hier wird geprüft. */
 const ANFRAGEPFAD = [
   'routes' + path.sep,
-  path.join('utils', 'handlers') + path.sep,
+  path.join('src', 'sets', 'abfragen.ts'),
+  path.join('src', 'teile', 'abfragen.ts'),
+  path.join('src', 'figuren', 'abfragen.ts'),
+  path.join('src', 'bestand', 'gemeinsam.ts'),
+  path.join('src', 'bestand', 'kennzahlen.ts'),
 ];
 
 /** Schema-Anweisungen. Nur in echtem SQL, nicht in Prosa. */
@@ -94,7 +99,8 @@ for (const teil of ANFRAGEPFAD) {
     console.error('prüft die Suche nichts und wäre trotzdem grün.');
     process.exit(1);
   }
-  sammle(verz, dateien);
+  if (fs.statSync(verz).isDirectory()) sammle(verz, dateien);
+  else dateien.push(verz);
 }
 
 // Untergrenze: Findet der Dateilauf zu wenig, wäre die Prüfung still grün.
@@ -123,7 +129,7 @@ for (const datei of dateien) {
 // grün, als in einer Gegenprobe „CREATE TABLE" zu „CREATE TABEL" verstümmelt
 // wurde: „CREATE INDEX" traf ja weiterhin. Ein Selbstbeweis, den eine kaputte
 // Hälfte besteht, beweist die andere Hälfte nicht.
-const migVerz = path.join(ROOT, 'db', 'migrations');
+const migVerz = path.join(ROOT, 'db/migrations');
 const bekannt = ohneKommentare(fs.readdirSync(migVerz).filter(f => f.endsWith('.sql'))
   .map(f => fs.readFileSync(path.join(migVerz, f), 'utf8')).join('\n'));
 
@@ -175,7 +181,7 @@ const DOPPELT_ERLAUBT = new Map([]);
 
 /** @type {string[]} */
 const alleQuellen = [];
-for (const teil of ['db', 'routes', 'utils', 'jobs', 'clients', 'scripts']) {
+for (const teil of ['db', 'routes', 'src', 'jobs', 'clients', 'scripts']) {
   const verz = path.join(ROOT, teil);
   if (fs.existsSync(verz)) sammleAlle(verz, alleQuellen);
 }

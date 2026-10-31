@@ -2,7 +2,7 @@
  * E-Mails im Design der Webapp.
  *
  * E-Mails kennen keine CSS-Variablen und kein externes Stylesheet — jeder Wert
- * muss direkt im Markup stehen. Die Paletten in utils/mailer.ts spiegeln
+ * muss direkt im Markup stehen. Die Paletten in src/infra/mailer.ts spiegeln
  * deshalb styles.css bzw. themes/brick.css. Ändert sich dort eine Farbe, muss
  * sie hier nachgezogen werden; dieser Test hält wenigstens fest, dass es
  * überhaupt zwei unterscheidbare Paletten gibt und sie angewendet werden.
@@ -15,7 +15,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
-const SRC = fs.readFileSync(path.join(ROOT, 'utils', 'mailer.ts'), 'utf8');
+const SRC = fs.readFileSync(path.join(ROOT, 'src/infra/mailer.ts'), 'utf8');
 const { pruefeParameter, funktionsKopf } = require('./helpers/sources');
 
 test('es gibt eine Palette je Design', () => {
@@ -32,18 +32,18 @@ test('es gibt eine Palette je Design', () => {
 test('das Design wird beim Versand geladen, nicht fest verdrahtet', () => {
   assert.match(SRC, /async function getMailTheme\(\)/, 'Loader fehlt');
   // Früher stand hier die SQL-Anweisung selbst. Seit alle Zugriffe auf
-  // global_settings über utils/settings.ts laufen, prüft der Test den Weg
+  // global_settings über src/konto/settings.ts laufen, prüft der Test den Weg
   // dorthin — die Aussage ist dieselbe: Das Design ist eine GLOBALE
   // Einstellung und darf nicht aus dem Prozess oder aus einer Konstanten
   // kommen.
   assert.match(SRC, /await getGlobalSetting\('app_theme'\)/,
     'Das Design ist eine globale Einstellung und muss von dort kommen');
-  // `'./settings'` ODER `'../utils/settings'`: Der Mailer ist mit Nachtrag 176
+  // `'./settings'` ODER `'../src/konto/settings'`: Der Mailer ist mit Nachtrag 176
   // von routes/ nach utils/ gezogen (er hatte nie eine Route), und damit
   // aenderte sich der RELATIVE Pfad auf dieselbe Datei. Geprueft ist die
   // Aussage — zentrale Fassung statt eigener Abfrage —, nicht die Anzahl der
   // Punkte davor.
-  assert.match(SRC, /import \{[^}]*getGlobalSetting[^}]*\} from '(?:\.\.\/utils\/)?\.?\/?settings'/,
+  assert.match(SRC, /import \{[^}]*getGlobalSetting[^}]*\} from '(?:\.\.\/)*(?:utils\/|konto\/)?settings'/,
     'und zwar über die zentrale Fassung, nicht über eine eigene Abfrage');
   // Bei jedem Zweifel classic — eine E-Mail darf nie am Design scheitern
   assert.match(SRC, /catch \(_\) \{ return MAIL_THEMES\.classic; \}/,

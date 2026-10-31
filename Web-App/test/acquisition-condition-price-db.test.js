@@ -7,7 +7,7 @@
  * Preis des Sammelzustands.
  *
  * Gegenproben (am 30.10.2026 gemessen):
- *   A  in utils/dienste/erfassungen.ts den Zustand an resolvePrice durch null
+ *   A  in src/bestand/erfassungen.ts den Zustand an resolvePrice durch null
  *      ersetzt → rot bei „set“ (100 statt 60)
  *   B  in ARTEN.part.resolvePrice cond nicht weitergegeben → rot bei „part“
  *      (100 statt 60); „set“ bleibt grün
@@ -31,7 +31,7 @@ test('ein geleerter Kaufpreis wird im Zustand der Zeile nachgefüllt', { concurr
   }
   const mc = await db.pool.connect();
   try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }
-  const { erfassungAendern } = _req('utils/dienste/erfassungen.js');
+  const { erfassungAendern } = _req('src/bestand/erfassungen.js');
   const P = process.pid;
   const NAME = `zustandpreis-${P}`, SN = `${P}9-1`, PN = `zp${P}`, FN = `fig-zp${P}`;
   const weg = async () => {
@@ -75,7 +75,7 @@ test('die Schätzung legt je Zustand einen eigenen Eintrag ab', () => {
   // Zwei Zustände = zwei Marktpreise. Lägen sie unter demselben Schlüssel,
   // überschriebe der eine den anderen und die zweite Zeile bliebe für immer
   // leer — genau Marcos Bild.
-  const mf = fs.readFileSync(path.join(__dirname, '..', 'utils', 'marketPrice.ts'), 'utf8');
+  const mf = fs.readFileSync(path.join(__dirname, '..', 'src/finanzen/marketPrice.ts'), 'utf8');
   const i = mf.indexOf('async function schaetzeFigurenpreis');
   const fn = mf.slice(i, mf.indexOf('\n}', i));
 
@@ -113,15 +113,21 @@ const { ohneKommentare } = require('./helpers/sources');
       else if (e.name.endsWith('.ts')) dateien.push(p);
     }
   })(path.join(ROOT, 'routes'));
-  for (const f of fs.readdirSync(path.join(ROOT, 'utils'))) {
-    if (f.endsWith('.ts')) dateien.push(path.join(ROOT, 'utils', f));
+  for (const d of ['src']) {
+    (function sammle(dir) {
+      for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+        const p = path.join(dir, e.name);
+        if (e.isDirectory()) sammle(p);
+        else if (e.name.endsWith('.ts')) dateien.push(p);
+      }
+    })(path.join(ROOT, d));
   }
 
   const treffer = [];
   for (const datei of dateien) {
     const code = ohneKommentare(fs.readFileSync(datei, 'utf8'));
     for (const fn of ['getCurrentFigMarketPrice', 'getCurrentPartMarketPrice']) {
-      const re = new RegExp(String.raw`(?<!function )${fn}\(([^)]*)\)`, 'g');
+      const re = new RegExp(String.raw`(?<!function )${fn}\(((?:[^()]|\([^()]*\))*)\)`, 'g');
       for (const m of code.matchAll(re)) {
         const args = m[1].split(',').map(a => a.trim()).filter(Boolean);
         if (args.length >= 4) continue;   // …, condition

@@ -22,7 +22,7 @@
  *   minifigs.bl_fig_number                 JE KONTO      Abschrift
  *
  * Dass die drei Abschriften genau das waren, stand im Baum selbst:
- * utils/partsImport.ts trug eine Funktion syncBlPartNumbers(), deren ganze
+ * src/katalog/partsImport.ts trug eine Funktion syncBlPartNumbers(), deren ganze
  * Aufgabe das Kopieren von rb_bl_mapping in die beiden anderen war.
  *
  * ── Was dieser Test prüft ───────────────────────────────────────────────────
@@ -84,7 +84,7 @@ const dbDa = async (t) => {
   }
 };
 
-const MIG_DIR = path.join(ROOT, 'db', 'migrations');
+const MIG_DIR = path.join(ROOT, 'db/migrations');
 const DATEI   = path.join(MIG_DIR, '0037-bricklink-nummern-in-einer-zuordnung.sql');
 
 test('nach der ganzen Kette stehen die Nummern nur in bl_zuordnung',
@@ -168,8 +168,8 @@ test('die Lesewege liefern die BrickLink-Nummer aus der Zuordnung',
   await db.run(`INSERT INTO bl_zuordnung (art,rb_id,bl_id) VALUES
                 ('part','3070b','3070'), ('fig','fig-9','sw9999')`);
 
-  const H = _req('utils/handlers/parts.js');
-  const M = _req('utils/handlers/minifigs.js');
+  const H = _req('src/teile/abfragen.js');
+  const M = _req('src/figuren/abfragen.js');
 
   const teile = await H.getManualParts([uid], uid);
   const teil = (Array.isArray(teile) ? teile : teile.parts || []).find(p => p.part_number === '3070b');
@@ -228,7 +228,7 @@ test('niemand schreibt eine BrickLink-Nummer mehr an eine Bestandszeile', () => 
       if (/\.(ts|js)$/.test(e.name)) dateien.push(p);
     }
   };
-  for (const teil of ['routes', 'utils', 'jobs', 'db', 'clients', 'scripts']) {
+  for (const teil of ['routes', 'src', 'jobs', 'db', 'clients', 'scripts']) {
     const v = path.join(ROOT, teil);
     if (fs.existsSync(v)) lauf(v);
   }
@@ -241,7 +241,7 @@ test('niemand schreibt eine BrickLink-Nummer mehr an eine Bestandszeile', () => 
 
   // Die drei Abschriften, und die alte Tabelle. parts_summary.bl_part_number
   // ist ausgenommen: Diese Tabelle ist ein Zwischenspeicher, sie hält den
-  // Gruppenschlüssel als fertige Spalte (utils/partsSummary.ts).
+  // Gruppenschlüssel als fertige Spalte (src/teile/partsSummary.ts).
   const muster = [
     ['setzt parts.bl_part_number',    /UPDATE\s+parts\s+SET\s+[^;`']*\bbl_part_number\s*=/i],
     ['setzt minifigs.bl_fig_number',  /UPDATE\s+minifigs\s+SET\s+[^;`']*\bbl_fig_number\s*=/i],
@@ -270,7 +270,7 @@ test('niemand schreibt eine BrickLink-Nummer mehr an eine Bestandszeile', () => 
   // Die Muster finden jetzt nichts — das ist der Punkt, sagt aber allein noch
   // nicht, dass sie etwas finden KOENNTEN. Also an erfundenen Zeilen
   // nachgewiesen, in genau der Form, die vorher im Baum stand (die ersten drei
-  // stehen so in utils/partsImport.ts und routes/minifigs.ts, Fassung vor 0037).
+  // stehen so in src/katalog/partsImport.ts und routes/minifigs.ts, Fassung vor 0037).
   const proben = [
     'UPDATE parts SET bl_part_number = m.bl_part_num FROM x',
     "UPDATE minifigs SET bl_fig_number=$1 WHERE id=$2",

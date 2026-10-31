@@ -34,7 +34,7 @@ require('./helpers/sources').buildAndRequire();
 
 const CHILD = `
 const http = require('http');
-const { streamFileToResponse } = require(${JSON.stringify(path.join(ROOT, 'dist/utils/httpError.js'))});
+const { streamFileToResponse } = require(${JSON.stringify(path.join(ROOT, 'dist/src/infra/httpError.js'))});
 process.on('uncaughtException', e => { console.log('CRASH:' + (e.code || e.message)); process.exit(7); });
 const srv = http.createServer((req, res) => {
   // Die Datei war da, als geprüft wurde — beim Öffnen ist sie weg.

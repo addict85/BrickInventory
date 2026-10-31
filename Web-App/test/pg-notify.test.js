@@ -20,9 +20,9 @@ const path = require('node:path');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 const _req = require('./helpers/sources').buildAndRequire();
 const ROOT = path.join(__dirname, '..');
-const NOTIFY = fs.readFileSync(path.join(ROOT, 'utils', 'pgNotify.ts'), 'utf8');
+const NOTIFY = fs.readFileSync(path.join(ROOT, 'db/pgNotify.ts'), 'utf8');
 test('kein Planer fragt mehr nach Auslösern', () => {
-  // Anstösse und Zeitpläne sind Aufträge (utils/zeitplan.ts); die alten
+  // Anstösse und Zeitpläne sind Aufträge (src/auftraege/zeitplan.ts); die alten
   // Auslöser-Einträge mit eigenem Kanal sind weg.
   const { alleQuellen } = require('./helpers/sources');
   const treffer = alleQuellen().filter(rel =>
@@ -38,7 +38,7 @@ test('verpasste Signale werden beim Verbinden nachgeholt', { concurrency: 1 }, a
       throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
     t.skip('Test-DB nicht erreichbar'); return;
   }
-  const pgNotify = _req('utils/pgNotify.js');
+  const pgNotify = _req('db/pgNotify.js');
   t.after(async () => { await pgNotify.close(); await db.pool.end().catch(() => {}); });
   const KANAL = `ae_probe_${process.pid}`;
   const bekommen = [];

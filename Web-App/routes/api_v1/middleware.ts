@@ -6,10 +6,10 @@
  * Admin-Endpoint den Check versehentlich weglassen kann (genau das war
  * bei /admin/cache-ttl passiert).
  */
-import { meldeUndLiefere } from '../../utils/httpError';
+import { meldeUndLiefere } from '../../src/infra/httpError';
 import type { Request, Response, NextFunction } from 'express';
-import { validateToken, resolveUserId } from '../../utils/auth';
-import { sendeFehler } from '../../utils/fehlerTexte';
+import { validateToken, resolveUserId } from '../../src/konto/auth';
+import { sendeFehler } from '../../src/infra/fehlerTexte';
 
 /** Extrahiert den Bearer-Token aus dem Authorization-Header (oder null). */
 export function bearerToken(req: any): string | null {

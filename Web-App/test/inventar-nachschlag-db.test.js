@@ -9,7 +9,7 @@
  *
  *   jobs/catalogSync, jobs/partsCatalogEnrich,
  *   clients/rebrickable, routes/api_v1/sets (2x)   '9999-1' ODER '9999'
- *   utils/handlers/parts.ts                        '9999-1' ODER '9999-1'
+ *   src/teile/abfragen.ts                        '9999-1' ODER '9999-1'
  *   routes/api_v1/catalog.ts                       nur '9999-1'
  *
  * Die beiden Abweichler finden eine Zeile, die unter der blanken Nummer
@@ -41,7 +41,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
-const { neuestesInventar } = _req('utils/rbInventar.js');
+const { neuestesInventar } = _req('src/katalog/rbInventar.js');
 
 test('ein Inventar wird unter beiden Schreibweisen gefunden', { concurrency: 1 }, async (t) => {
   try { await db.initSchema(); }
@@ -110,7 +110,7 @@ test('der Inventar-Nachschlag steht nur an einer Stelle', () => {
   }
   // Gegenprobe: den alten SELECT in routes/api_v1/catalog.ts wieder
   // eingesetzt → rot.
-  assert.deepEqual(stellen, ['utils/rbInventar.ts'],
+  assert.deepEqual(stellen, ['src/katalog/repository/katalogStamm.ts'],
     'Der Inventar-Nachschlag steht an mehr als einer Stelle — genau daran sind ' +
     'vier verschiedene Kandidatenregeln entstanden');
 });

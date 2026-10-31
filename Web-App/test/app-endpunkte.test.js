@@ -68,7 +68,7 @@ function serverRouten() {
   for (const r of routerEinhaengungen())
     for (const x of routenAus(r.datei, r.mount)) alle.add(x);
 
-  const v1 = path.join(ROOT, 'routes', 'api_v1');
+  const v1 = path.join(ROOT, 'routes/api_v1');
   for (const f of fs.readdirSync(v1)) {
     if (!f.endsWith('.ts') || f === 'index.ts' || f === 'middleware.ts') continue;
     for (const r of routenAus(path.join(v1, f), '/api/v1')) alle.add(r);

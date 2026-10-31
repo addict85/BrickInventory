@@ -3,7 +3,7 @@
  * Derselbe Operand zweimal — der Tippfehler, der sich am besten versteckt.
  *
  * ── Woher diese Prüfung kommt ───────────────────────────────────────────────
- * In utils/financeCalc.ts stand dieselbe Verwechslung an drei Formen:
+ * In src/finanzen/financeCalc.ts stand dieselbe Verwechslung an drei Formen:
  *
  *   achtmal   if (parseFloat(x.avg_price) > 0 || parseFloat(x.avg_price) > 0)
  *   sechsmal  qty_avg_price: parseFloat(x.avg_price)

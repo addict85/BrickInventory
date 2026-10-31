@@ -39,7 +39,7 @@ für eine Figurennummer.
 In welchen Sets steckt diese Figur?
 
 Gegenstück zu /api/v1/parts/:partNumber/:colorId/sets. Beide rufen dieselbe
-Funktion in utils/handlers/shared.ts auf — die Frage ist zweimal dieselbe,
+Funktion in src/bestand/gemeinsam.ts auf — die Frage ist zweimal dieselbe,
 nur Tabelle und Schlüssel wechseln. Zwei getrennte Abfragen waeren genau die
 Sorte Doppelung, die in diesem Projekt schon mehrfach auseinandergelaufen
 ist (zuletzt routes/minifigs.ts gegen routes/parts.ts).

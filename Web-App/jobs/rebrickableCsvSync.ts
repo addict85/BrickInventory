@@ -6,21 +6,17 @@
  *   colors.csv         — id, name, rgb, is_trans …
  * Ausführlich: docs/begruendungen/jobs/rebrickableCsvSync.ts.md#abschnitt
  */
-// Pfade zentral auflösen — __dirname zeigt seit dem dist/-Build nicht mehr
-// auf die Wurzel. Siehe utils/appPaths.ts.
-// Direkt aus utils/partsImport — siehe die Begruendung in
-// utils/handlers/parts.ts: routes/parts reicht die Funktion nur weiter.
-import { meldeStartZustand } from '../utils/startZustand';
-import { fetchMissingBlIds } from '../utils/partsImport';
+import { meldeStartZustand } from '../src/infra/startZustand';
+import { fetchMissingBlIds } from '../src/katalog/partsImport';
 import { getRbKey, httpsGetRobust } from '../clients/rebrickable';
-import { fehlertext, logAndContinue, meldeUndLiefere, ohneFehlendeDatei } from '../utils/httpError';
-import { merkeBlFarbnummer, blFarbnummerAus } from '../utils/blZuordnung';
-import { liesZustand, setzeZustand, loescheZustand } from '../utils/laufzustand';
+import { fehlertext, logAndContinue, meldeUndLiefere, ohneFehlendeDatei } from '../src/infra/httpError';
+import { merkeBlFarbnummer, blFarbnummerAus } from '../src/katalog/blZuordnung';
+import { liesZustand, setzeZustand, loescheZustand } from '../src/auftraege/laufzustand';
 import fs from 'fs';
 import path from 'path';
-import * as monitor from '../utils/jobMonitor';
+import * as monitor from '../src/auftraege/jobMonitor';
 import zlib2 from 'zlib';
-import { DATA_DIR } from '../utils/appPaths';
+import { DATA_DIR } from '../src/infra/appPaths';
 import { fork as _fork } from 'child_process';
 import { get } from 'https';
 
@@ -278,7 +274,7 @@ async function run() {
 }
 
 /**
- * Der Auftrag 'csv_sync' (geplant, utils/zeitplan.ts). Der Lauf beim Start
+ * Der Auftrag 'csv_sync' (geplant, src/auftraege/zeitplan.ts). Der Lauf beim Start
  * lädt nur, wenn heute noch nicht geladen wurde; der tägliche und der von
  * Hand angestossene laden immer.
  */

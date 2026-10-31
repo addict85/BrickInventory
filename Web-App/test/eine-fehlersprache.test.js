@@ -34,7 +34,7 @@ const ROOT = path.join(__dirname, '..');
  * Alle drei sind keine Meldungen an einen Menschen vor einem Bildschirm.
  */
 const ERLAUBT = {
-  'utils/finance/preise.ts':
+  'src/finanzen/rechnung/preise.ts':
     'Ein Merkmal des Preisergebnisses, an dem der Preis-Job „übersprungen" von „Fehler" ' +
     'unterscheidet — wird nirgends angezeigt.',
 };
@@ -45,7 +45,7 @@ const ERLAUBT = {
 // fuer jeden Eintrag, dass er wirklich einen Treffer verdeckt. Diese drei
 // taten es nicht:
 //
-//   utils/fehlerTexte.ts       „Die Tabelle selbst." — die Tabelle fuehrt
+//   src/infra/fehlerTexte.ts       „Die Tabelle selbst." — die Tabelle fuehrt
 //                              ihre Texte als `{ de: '…', en: '…' }`, nie als
 //                              `error: '…'`. Der Eintrag nahm ausgerechnet
 //                              die Datei mit ALLEN Fehlertexten von der
@@ -74,7 +74,7 @@ function tsDateien(dir, praefix = '') {
 test('keine Route verschickt einen festen Fehlersatz', () => {
   const dateien = [
     ...tsDateien(path.join(ROOT, 'routes')).map(([r, p]) => [r, p]),
-    ...tsDateien(path.join(ROOT, 'utils')).map(([r, p]) => ['' + r, p]),
+    ...tsDateien(path.join(ROOT, 'src')).map(([r, p]) => [r, p]),
     ...tsDateien(path.join(ROOT, 'jobs')).map(([r, p]) => [r, p]),
   ];
   assert.ok(dateien.length >= 30,
@@ -108,7 +108,7 @@ test('keine Route verschickt einen festen Fehlersatz', () => {
     }
   }
 
-  // Hier stand `utils/fehlerTexte.ts` mit der Begruendung „Die Tabelle
+  // Hier stand `src/infra/fehlerTexte.ts` mit der Begruendung „Die Tabelle
   // selbst." — und die Datei traf das Muster gar nicht: Sie fuehrt ihre Texte
   // als `{ de: '…', en: '…' }`, nie als `error: '…'`. Der Eintrag verbarg
   // also nichts, nahm aber ausgerechnet die Datei, in der ALLE Fehlertexte
@@ -127,7 +127,7 @@ test('keine Route verschickt einen festen Fehlersatz', () => {
 });
 
 test('jeder Eintrag der Tabelle hat beide Sprachen und dieselben Platzhalter', () => {
-  const src = fs.readFileSync(path.join(ROOT, 'utils', 'fehlerTexte.ts'), 'utf8');
+  const src = fs.readFileSync(path.join(ROOT, 'src/infra/fehlerTexte.ts'), 'utf8');
   const tabelle = src.slice(src.indexOf('export const FEHLER'), src.indexOf('} as const;'));
 
   const eintraege = [...tabelle.matchAll(

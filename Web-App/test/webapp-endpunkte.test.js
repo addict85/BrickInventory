@@ -59,7 +59,7 @@ function serverRouten() {
   // hier als Literal und wurde beim Zusammenlegen der API-Oberflaechen still
   // falsch — samt „ENOENT: routes/finance.ts". Siehe routerEinhaengungen().
   for (const r of routerEinhaengungen()) sammle(r.datei, r.mount);
-  const v1 = path.join(ROOT, 'routes', 'api_v1');
+  const v1 = path.join(ROOT, 'routes/api_v1');
   for (const f of fs.readdirSync(v1)) {
     if (!f.endsWith('.ts') || f === 'index.ts' || f === 'middleware.ts') continue;
     sammle(path.join(v1, f), '/api/v1');
@@ -177,7 +177,7 @@ const NUR_WEB = new Map([
    'Telefon, das sich selbst einen Code zum Abscannen anzeigt, hat niemand.'],
   ['/api/v1/auth/reset-password',
    'Setzt das Passwort mit dem Token aus der E-Mail. Der Link darin zeigt auf ' +
-   'die WEBSEITE (utils/mailer.ts: `${baseUrl}/reset-password?token=`), also ' +
+   'die WEBSEITE (src/infra/mailer.ts: `${baseUrl}/reset-password?token=`), also ' +
    'landet auch ein App-Nutzer dort. Was die App braucht, hat sie: ' +
    '/auth/forgot-password löst die Mail aus.'],
   ['/api/v1/auth/users',

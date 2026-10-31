@@ -38,7 +38,7 @@ test('ein bereits versorgtes Set löst keinen Abruf aus', async (t) => {
     t.skip('Test-DB nicht erreichbar'); return;
   }
 
-  const ins = _req('utils/instructions.js');
+  const ins = _req('src/katalog/instructions.js');
   const sn = '99999-1';
   await db.run('DELETE FROM shared_instructions WHERE set_number = $1', [sn]);
   await db.run(

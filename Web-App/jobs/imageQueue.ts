@@ -1,15 +1,16 @@
 import fs from 'fs';
 import path from 'path';
 import * as db from '../db/database';
-import { logAndContinue, meldeUndLiefere } from '../utils/httpError';
-import { downloadSetImage } from '../utils/setImages';
-import { grundFuer, istBekanntFehlend, merkeFehlend } from '../utils/imageMisses';
-import { generateThumb } from '../utils/thumbs';
-import { SET_IMAGES_DIR } from '../utils/appPaths';
-import { setzeZustand } from '../utils/laufzustand';
-import { liesPause, pausiereArt } from '../utils/auftraege';
+import { logAndContinue, meldeUndLiefere } from '../src/infra/httpError';
+import { downloadSetImage } from '../src/katalog/bilder/setImages';
+import { grundFuer, istBekanntFehlend, merkeFehlend } from '../src/katalog/bilder/imageMisses';
+import { generateThumb } from '../src/katalog/bilder/thumbs';
+import { SET_IMAGES_DIR } from '../src/infra/appPaths';
+import { setzeZustand } from '../src/auftraege/laufzustand';
+import { pausiereArt } from '../src/auftraege/dienst';
+import { liesPause } from '../src/auftraege/dienst';
 import { STAPEL, TAKT_MS, NOTIZ_GILT_MS, merkeGebraucht, schreibePuffer, notiereBildbedarf, loescheVerfallene, initImageQueue,
-         anfragenJeMinute } from '../utils/bildbedarf';
+         anfragenJeMinute } from '../src/katalog/bilder/bildbedarf';
 import { AuftragUnterbrochen, AuftragVerschieben, type AuftragsKontext } from './auftragsWorker';
 
 /**
@@ -18,7 +19,7 @@ import { AuftragUnterbrochen, AuftragVerschieben, type AuftragsKontext } from '.
  * Ausführlich: docs/begruendungen/jobs/imageQueue.ts.md#abschnitt
  */
 
-/** Abstand zwischen zwei Arbeitsschritten (siehe STAPEL in utils/bildbedarf.ts). */
+/** Abstand zwischen zwei Arbeitsschritten (siehe STAPEL in src/katalog/bilder/bildbedarf.ts). */
 const VERZOEGERUNG_MIN_MS = 500;
 const VERZOEGERUNG_MAX_MS = 1000;
 

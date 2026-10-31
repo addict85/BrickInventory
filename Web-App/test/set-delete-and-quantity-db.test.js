@@ -29,7 +29,7 @@
  * Der Test hält das fest, weil die Multiplikation an mehreren Stellen steht
  * (Kennzahlen, Teileliste, Minifigurenliste, Minifiguren-Kennzahlen) und in
  * dieser Reihe schon mehrfach eine davon vergessen wurde. Dazu die
- * Zusammenfassungstabelle (utils/partsSummary.ts), die vorberechnete Mengen
+ * Zusammenfassungstabelle (src/teile/partsSummary.ts), die vorberechnete Mengen
  * hält: Ihre Zähler-Trigger hängen an `parts` UND `sets` — fiele `sets` weg,
  * bliebe die Teilezahl nach einer Mengenänderung stehen, ohne dass irgendetwas
  * falsch aussähe.
@@ -86,7 +86,7 @@ test('die Mengen-Multiplikation steht an allen Stellen', () => {
   // Formel: Hier stand `COALESCE(s.quantity, ?1)`, und die Spalte ist mit
   // Migration 0036 weg. Die „1" ist dieselbe geblieben — sie heisst „Set
   // nicht im Bestand, Teil trotzdem zaehlen" und ist der zweite Parameter
-  // von mengeAus() (utils/bestandsmenge.ts).
+  // von mengeAus() (db/bestandsmenge.ts).
   const stellen = (h.match(/mengeAus\('sm', ?1\)/g) || []).length;
   assert.ok(stellen >= 3,
     `nur ${stellen} Stellen multiplizieren mit der Setanzahl — erwartet werden ` +

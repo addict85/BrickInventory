@@ -31,7 +31,7 @@ process.env.APP_BASE_URL = 'https://lego.test';
 
 const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
-const zf = _req('utils/zweiterFaktor.js');
+const zf = _req('src/konto/zweiterFaktor.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const session = require(path.join(ROOT, 'node_modules', 'express-session'));
 const pgSession = require(path.join(ROOT, 'node_modules', 'connect-pg-simple'))(session);
@@ -101,7 +101,7 @@ test('Passkeys', { concurrency: 1 }, async (t) => {
   }));
   app.use('/api/v1', _req('routes/api_v1/middleware.js').anmeldungAmEingang);
   app.use('/api/v1/auth', _req('routes/auth.js'));
-  app.use('/api/v1/auth', _req('routes/passkeys.js'));
+  app.use('/api/v1/auth', _req('routes/auth.js'));
   const srv = app.listen(0);
   const basis = `http://localhost:${srv.address().port}/api/v1/auth`;
   t.after(async () => {

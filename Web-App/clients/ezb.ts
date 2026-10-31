@@ -5,7 +5,7 @@
  * jede Bewertung.
  */
 import { inflateRawSync } from 'zlib';
-import { hostErlaubt } from '../utils/fremdeAdressen';
+import { hostErlaubt } from '../src/infra/fremdeAdressen';
 
 export const EZB_HISTORIE = 'https://www.ecb.europa.eu/stats/eurofxref/eurofxref-hist.zip';
 export const EZB_TAGESKURSE = 'https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml';

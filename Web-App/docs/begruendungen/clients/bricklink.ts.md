@@ -10,7 +10,7 @@ Commit-Nachricht (siehe CLAUDE.md).
 ```text
 Enthält die Antwort einen brauchbaren Preis?
 
-Die Regel steht in utils/preisRegel.ts — und zwar dieselbe, die beim LESEN
+Die Regel steht in src/finanzen/preisRegel.ts — und zwar dieselbe, die beim LESEN
 gilt. Vorher genügte hier ein qty_avg_price > 0; damit galt eine Antwort
 ohne avg_price als brauchbar, der Rückfall auf `stock` unterblieb, und der
 Leser meldete danach trotzdem „kein Preis". Die Begründung im Einzelnen

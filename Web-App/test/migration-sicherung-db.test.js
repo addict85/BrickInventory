@@ -1,5 +1,7 @@
 /**
  * Vor offenen Migrationen: Nutzerdaten sichern, ohne Zeitgrenze migrieren.
+ * @einzeln: legt eine Probe-Migration in dist/db/migrations, die jede parallel
+ * startende Datei beim Migrieren sähe.
  *
  * Eine Probe-Migration in dist/db/migrations bricht ab, wenn
  * statement_timeout nicht 0 ist; der Pool setzt 30 s für jede Verbindung.
@@ -43,7 +45,7 @@ test('Migrationen: Sicherung und Zeitgrenze', { concurrency: 1 }, async (t) => {
   const client = await db.pool.connect();
   await runMigrations(client);
   const vorher = new Set(await sicherungen());
-  const probe = path.join(DIST, 'db', 'migrations', PROBE);
+  const probe = path.join(DIST, 'db/migrations', PROBE);
 
   await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, ZWEIT]]);
   const anlegen = async (n) => (await db.get(

@@ -69,7 +69,7 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async (t) => {
     return;
   }
   await seed();
-  const W = _req('utils/merkliste.js');
+  const W = _req('src/merkliste/merkliste.js');
 
   await t.test('ein Merkposten ist KEIN Besitz', async () => {
     const a = await W.legeMerkpostenAn(U.opa, '75192-1', 'N');
@@ -202,7 +202,7 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async (t) => {
     // eigentliche Aussage unten. Er stand frueher im Notiz-Test, den es seit
     // dem Ausbau des Feldes (Migration 0022) nicht mehr gibt.
     await W.legeMerkpostenAn(U.enkel, '10276-1', 'N');
-    const P = _req('utils/preisalarm.js');
+    const P = _req('src/finanzen/preisalarm.js');
     await P.setzeAlarm(U.enkel, '10276-1', 'EUR',
       { richtung: 'unter', schwelle: 249, condition: 'U' });
     assert.equal((await P.alarmeFuer(U.enkel, '10276-1')).length, 1, 'Aufbau: Alarm fehlt');
@@ -222,7 +222,7 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async (t) => {
   });
 
   await t.test('die Übernahme eines Sets, das man schon hat, stockt NICHT auf', async () => {
-    // Dieselbe Regel wie beim Erfassen (utils/setAdd.ts): Schon im Blickfeld
+    // Dieselbe Regel wie beim Erfassen (src/sets/setAdd.ts): Schon im Blickfeld
     // heisst „Detail öffnen", nicht „Menge erhöhen". Sie darf nicht davon
     // abhängen, über welchen der vier Wege jemand kommt.
     const vorher = await mengeVon(db, U.opa, '75192-1');
@@ -326,7 +326,7 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async (t) => {
     const ORDNER = path.join(__dirname, '..', 'data', 'images', 'sets');
 
     // ZWEI Setnummern, und das ist kein Zufall: resolveIfExists() merkt sich
-    // ein „gibt es nicht" zehn Minuten lang (utils/images.ts). Dieselbe Nummer
+    // ein „gibt es nicht" zehn Minuten lang (src/katalog/bilder/images.ts). Dieselbe Nummer
     // erst ohne und dann mit Datei zu prüfen, prüfte den Cache statt die Regel.
     const ohneDatei = `wlimg${process.pid}a-1`;
     const mitDatei  = `wlimg${process.pid}b-1`;
@@ -378,7 +378,7 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async (t) => {
     //      bleibt" wird rot.
     //   c) Den `schon`-Zweig entfernt → „ein Merkposten, den das Ziel schon hat"
     //      wird rot (UNIQUE-Verletzung statt Zusammenführen).
-    const P = _req('utils/preisalarm.js');
+    const P = _req('src/finanzen/preisalarm.js');
     const sn = `wlmv${process.pid}-1`;
     await db.run(
       `INSERT INTO rb_sets (set_num, name, year, theme_id, num_parts, set_img_url)

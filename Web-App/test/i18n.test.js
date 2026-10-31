@@ -169,7 +169,7 @@ test('die Farbauswahl im Formular „Teil erfassen" zeigt deutsche Namen', () =>
 
 test('thumbUrl() rät nicht mehr selbst — vertraut der Server-Antwort wie Android', () => {
   // Gleicher Fehler und derselbe Fix wie in der Android-App
-  // (util/ImageUrls.kt, resolveThumbUrl()): utils/images.ts prüft bereits
+  // (util/ImageUrls.kt, resolveThumbUrl()): src/katalog/bilder/images.ts prüft bereits
   // serverseitig, ob "_thumb.jpg" existiert, und liefert je nachdem den
   // Thumb- oder den Original-Pfad. thumbUrl() konstruierte trotzdem seine
   // eigene "_thumb.jpg"-Adresse aus JEDEM lokalen Pfad — auch aus dem

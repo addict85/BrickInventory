@@ -14,7 +14,7 @@
  *   Bewertung    das leere Set mit ×1 bewertet — 20 CHF, die es nicht gibt
  *
  * Der letzte Punkt war der schlimmste: `set.quantity || 1` in
- * utils/financeCalc.ts macht aus einer Menge von 0 eine 1. Als Schutz gegen
+ * src/finanzen/financeCalc.ts macht aus einer Menge von 0 eine 1. Als Schutz gegen
  * NULL gedacht, trifft es den echten Wert 0 — und das Portfolio wuchs um ein
  * Set, das niemand mehr besitzt. Dieselbe Verwechslung steckt an achtzehn
  * Stellen in dieser Datei; sie einzeln zu reparieren hiesse, achtzehnmal
@@ -99,7 +99,7 @@ test('letzter Kaufpreis gelöscht → der Eintrag verschwindet ganz',
   });
 
   const H  = require('./helpers/sources').handlerModul(_req);
-  const FC = _req('utils/financeCalc.js');
+  const FC = _req('src/finanzen/financeCalc.js');
 
   try {
     const liste = await (await fetch(`${base}/api/v1/sets/${WEG}/acquisitions`)).json();

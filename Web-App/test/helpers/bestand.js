@@ -65,7 +65,7 @@ async function erfasse(db, userId, setNumber, menge, opt = {}) {
  * Die Stückzahl eines Sets, wie der Server sie seit Migration 0036 sieht.
  *
  * Ersetzt das `SELECT quantity FROM sets` der Zusicherungen. Der JOIN auf
- * `sets` ist dieselbe Einschränkung wie in utils/bestandsmenge.ts: Eine
+ * `sets` ist dieselbe Einschränkung wie in db/bestandsmenge.ts: Eine
  * Erfassung ohne Bestandszeile zählt nicht mit.
  *
  * @param konten eine Konto-ID oder eine Liste (dann über alle summiert)

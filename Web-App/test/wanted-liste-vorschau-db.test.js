@@ -112,7 +112,7 @@ const db = _req('db/database.js');
 // der Eintrag im require-Zwischenspeicher (dasselbe Vorgehen wie in
 // test/preis-schreibweg-db.test.js). Erst laden, dann ersetzen: Vor dem
 // require gibt es den Eintrag nicht.
-const rbPfad = require.resolve(path.join(__dirname, '..', 'dist', 'clients', 'rebrickable.js'));
+const rbPfad = require.resolve(path.join(__dirname, '..', 'dist', 'clients/rebrickable.js'));
 const echtRb = require(rbPfad);
 require.cache[rbPfad].exports = Object.assign({}, echtRb, {
   // 98765 heisst bei Rebrickable 12345 — eine ABWEICHENDE Nummer, wie sie nur
@@ -123,7 +123,7 @@ require.cache[rbPfad].exports = Object.assign({}, echtRb, {
   getMinifigInfo: async () => null,
 });
 const { importiereWantedListe, beschreibePosten, loeseLokalAuf, leseWantedListe } =
-  _req('utils/wantedListe.js');
+  _req('src/merkliste/wantedListe.js');
 
 test.after(async () => { await db.pool.end().catch(() => {}); });
 
@@ -424,7 +424,7 @@ test('Vorschau, Korrekturen und Farbübersetzung', { concurrency: 1 }, async (t)
     // grün (`pass 9 / fail 0`). Der Grund steckt im Bündler: esbuild macht
     // aus `import * as db from '../db/database'` ein
     // `__toESM(require(...))`, und das KOPIERT die Eigenschaften in ein neues
-    // Objekt. Die Funktion in utils/wantedListe.ts ruft also ihre eigene
+    // Objekt. Die Funktion in src/merkliste/wantedListe.ts ruft also ihre eigene
     // Kopie von `all`, nicht die hier ersetzte.
     //
     // `pool` ist dagegen ein Objekt, und die Kopie trägt dieselbe Referenz —

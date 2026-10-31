@@ -34,5 +34,5 @@ test('Verwalterkonto mit derselben Rundenzahl', async (t) => {
   try { await db.initSchema(); } finally { console.log = echt; }
   const admin = await db.get("SELECT password_hash FROM users WHERE username = 'admin'");
   assert.ok(admin, 'kein Verwalterkonto angelegt');
-  assert.equal(bcrypt.getRounds(admin.password_hash), _req('utils/auth.js').BCRYPT_ROUNDS);
+  assert.equal(bcrypt.getRounds(admin.password_hash), _req('src/konto/auth.js').BCRYPT_ROUNDS);
 });

@@ -114,9 +114,9 @@ test('beide filtern am Server, nicht im Gerät', () => {
   // Seit Migration 0031 traegt die Zeile eine ID, der Name steht im Vorrat —
   // der Filter vergleicht deshalb `lo.name` statt `p.storage`. Die Aussage ist
   // dieselbe: Gefiltert wird am Server.
-  assert.match(web('utils/handlers/parts.ts'), /lo\.name = \$\$\{pi\+\+\}/,
+  assert.match(web('src/teile/abfragen.ts'), /lo\.name = \$\$\{pi\+\+\}/,
     'Der Server filtert Teile nicht nach Lagerort');
-  assert.match(web('utils/handlers/sets.ts'), /s\.storage = \$\$\{params\.length\}/,
+  assert.match(web('src/sets/abfragen.ts'), /s\.storage = \$\$\{params\.length\}/,
     'Der Server filtert Sets nicht nach Lagerort');
 
   assert.match(web('public/js/14-scope.js'), /p\.set\('storage', m\)/,
@@ -180,9 +180,9 @@ test('die Längengrenze steht in beiden Fassungen gleich', () => {
   // LAGERORT_MAX_ZEICHEN setzt sie durch, der Fehlertext nennt sie, und die
   // beiden Eingabefelder begrenzen schon beim Tippen. Vier Orte, eine Zahl —
   // dasselbe Vorgehen wie bei PASSWORT_MIN_ZEICHEN.
-  const max = /LAGERORT_MAX_ZEICHEN = (\d+)/.exec(web('utils/lagerort.ts'))?.[1];
+  const max = /LAGERORT_MAX_ZEICHEN = (\d+)/.exec(web('src/bestand/lagerort.ts'))?.[1];
   assert.ok(max, 'LAGERORT_MAX_ZEICHEN nicht gefunden');
-  assert.ok(web('utils/fehlerTexte.ts').includes(`höchstens ${max} Zeichen`),
+  assert.ok(web('src/infra/fehlerTexte.ts').includes(`höchstens ${max} Zeichen`),
     `Der Fehlertext nennt eine andere Zahl als ${max}`);
   assert.ok(web('public/index.html').includes(`maxlength="${max}"`) ||
             web('public/js/07-admin.js').includes(`maxlength="${max}"`),
@@ -265,7 +265,7 @@ test('auch das TEIL kennt seine Besitzer — es war die letzte Lücke', () => {
   //
   // Sie kostet nichts: Die Set-Zeilen darunter tragen `owner_user_id` längst;
   // der Kopf verdichtet sie. Eine zweite Abfrage wäre eine zweite Wahrheit.
-  const geteilt = web('utils/handlers/shared.ts');
+  const geteilt = web('src/bestand/gemeinsam.ts');
   assert.match(geteilt, /owner_ids: number\[\];/,
     'Der Teil-Kopf führt keine Besitzer');
   assert.match(geteilt, /owner_ids:\s+\[\.\.\.new Set\(sets\.map\(s => s\.owner_user_id\)\)\]/,
@@ -294,7 +294,7 @@ test('beide bieten auswählen UND neu eintippen in EINEM Feld', () => {
   // Zeile keine ID), und beides laeuft deshalb in einer Transaktion in
   // setzeLagerort(). Gesucht wird jetzt die Anweisung selbst — die Aussage
   // bleibt, dass ein getippter Ort in den Vorrat kommt.
-  assert.match(web('utils/lagerort.ts'),
+  assert.match(web('src/bestand/lagerort.ts'),
     /INSERT INTO storage_locations \(user_id, name\)\s*\n\s*SELECT id, \$2 FROM users/,
     'Ein frisch getippter Ort landet nicht im Vorrat');
 });

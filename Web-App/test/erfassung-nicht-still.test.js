@@ -33,7 +33,7 @@ const path = require('node:path');
 
 test('kein stiller catch an einer Erfassung', () => {
   const ROOT = path.join(__dirname, '..');
-  const ordner = ['routes', 'utils', 'jobs'];
+  const ordner = ['routes', 'src', 'jobs'];
 
   /** @type {string[]} */
   const dateien = [];

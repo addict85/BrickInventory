@@ -30,7 +30,7 @@ Module.prototype.require = function (name) {
   // Kein Bildabruf und kein Nachzug: Der Test prüft den Katalog, nicht das Netz.
   if (typeof name === 'string' && /jobs[/\\]nachErfassung(\.js)?$/.test(name))
     return new Proxy(m, { get: (t, k) => (k === 'zieheNach' || k === 'zieheNachNeuanlage') ? () => {} : t[k] });
-  if (typeof name === 'string' && /utils[/\\]images(\.js)?$/.test(name))
+  if (typeof name === 'string' && /[/\\]images(\.js)?$/.test(name))
     return new Proxy(m, { get: (t, k) => k === 'downloadSetImage' ? async () => null : t[k] });
   return m;
 };
@@ -59,12 +59,12 @@ test('Katalogname bleibt bei fehlenden Quellen', { concurrency: 1 }, async (t) =
 
   try {
     await t.test('getSetInfo gibt den Platzhalter nicht als Treffer zurück', async () => {
-      const info = await _req('clients/rebrickable.js').getSetInfo(SN);
+      const info = await _req('src/katalog/rebrickableKatalog.js').getSetInfo(SN);
       assert.equal(info, null);
     });
 
     await t.test('erneutes Erfassen ohne Quellen lässt den Katalognamen stehen', async () => {
-      const r = await _req('utils/setService.js').addSet(SN, 1, uid, null, 10, 'N');
+      const r = await _req('src/sets/setService.js').addSet(SN, 1, uid, null, 10, 'N');
       assert.equal(r.action, 'added');
       const kat = await db.get('SELECT name, year FROM set_catalog WHERE set_number=$1', [SN]);
       assert.equal(kat.name, 'Titanic');
@@ -72,11 +72,11 @@ test('Katalogname bleibt bei fehlenden Quellen', { concurrency: 1 }, async (t) =
     });
 
     await t.test('eine Eingabe ohne Ziffer wird nicht als Set angelegt', async () => {
-      const { addSet } = _req('utils/setService.js');
+      const { addSet } = _req('src/sets/setService.js');
       await assert.rejects(addSet('abc', 1, uid, null, null, 'N'),
         (e) => e.status === 400 && e.code === 'setnummer_ungueltig');
       assert.equal(await db.get(`SELECT 1 FROM sets WHERE user_id=$1 AND set_number='abc-1'`, [uid]), undefined);
-      const { moeglicheSetNummer } = _req('utils/setNummer.js');
+      const { moeglicheSetNummer } = _req('src/sets/setNummer.js');
       for (const gut of ['10294-1', '928-1', 'comcon001-1', 'llca37-1', '5005358-2'])
         assert.ok(moeglicheSetNummer(gut), gut);
       for (const schlecht of ['abc-1', '-1', 'x'.repeat(21) + '1-1', '10294'])

@@ -50,7 +50,7 @@ test('der Nachlauf erzeugt fehlende Vorschauen — auch für Set-Bilder',
   }
 
   const { Jimp } = require(path.join(ROOT, 'node_modules', 'jimp'));
-  const { DATA_DIR } = _req('utils/appPaths.js');
+  const { DATA_DIR } = _req('src/infra/appPaths.js');
   const ordner = path.join(DATA_DIR, 'images', 'sets');
   fs.mkdirSync(ordner, { recursive: true });
 
@@ -105,7 +105,7 @@ test('der Pfad-Auflöser kennt alle drei Bildarten', () => {
 });
 
 test('beide Vorschau-Erzeuger melden Fehlschläge', () => {
-  for (const [datei, muster] of [['utils/thumbs.ts', /\[thumb\]/], ['utils/proxyThumbs.ts', /\[img-proxy\] Vorschau fehlgeschlagen/]]) {
+  for (const [datei, muster] of [['src/katalog/bilder/thumbs.ts', /\[thumb\]/], ['src/katalog/bilder/proxyThumbs.ts', /\[img-proxy\] Vorschau fehlgeschlagen/]]) {
     const src = fs.readFileSync(path.join(ROOT, datei), 'utf8');
     assert.ok(muster.test(src),
       `${datei}: ein Fehlschlag der Vorschau-Erzeugung bleibt still. Genau das hat den ` +

@@ -19,9 +19,9 @@ const { EventEmitter } = require('node:events');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 const _req = require('./helpers/sources').buildAndRequire();
-const bd = _req('utils/bildDatei.js');
+const bd = _req('src/katalog/bilder/bildDatei.js');
 const { downloadImage } = _req('jobs/partsCatalogEnrich.js');
-const { PART_IMAGES_DIR, DATA_DIR } = _req('utils/appPaths.js');
+const { PART_IMAGES_DIR, DATA_DIR } = _req('src/infra/appPaths.js');
 
 const CDN = 'https://cdn.rebrickable.com/media/parts/elements';
 const NUMMER = `bildtest${process.pid}`;

@@ -31,7 +31,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
-const { getMinifigPriceHistory } = _req('utils/priceHistory.js');
+const { getMinifigPriceHistory } = _req('src/finanzen/priceHistory.js');
 const { haeltFigur } = require('./helpers/bestand');
 
 test('der Figuren-Preisverlauf findet die Preise unter der BrickLink-Nummer', { concurrency: 1 }, async (t) => {

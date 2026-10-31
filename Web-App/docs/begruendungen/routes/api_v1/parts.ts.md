@@ -30,7 +30,7 @@ PUT /api/v1/parts/:partNumber/:colorId/color — die Farbe nachträglich ändern
 Marcos Bitte vom 19.10.: „Weiter möchte ich die Farbe nachträglich anpassen
 können für den Fall dass diese nicht korrekt geladen wurde." Begründung,
 Zusammenlegen und die Behandlung der Erfassungen stehen an einer Stelle:
-utils/teilFarbeAendern.ts.
+src/teile/teilFarbeAendern.ts.
 
 Eine eigene Adresse und nicht ein Feld in PUT /parts/:nr/:farbe: Dort IST
 die Farbe Teil der Adresse. Ein `color_id` im Körper derselben Anfrage
@@ -61,7 +61,7 @@ zur Ansicht, nicht zur Nutzlast.
 Preisverlauf eines manuell erfassten Teils, je Zustand getrennt.
 
 Gegenstück zu /api/finance/part-price-history — dieselbe Umsetzung
-(utils/priceHistory.ts), damit beide Clients dieselbe Antwort sehen. Vorher
+(src/finanzen/priceHistory.ts), damit beide Clients dieselbe Antwort sehen. Vorher
 gab es den Verlauf NUR für die Webapp; der Detail-Dialog der App zeigte
 deshalb weder Marktpreis je Zustand noch ein Diagramm.
 
@@ -80,7 +80,7 @@ Marcos Wunsch zum Detail-Dialog automatisch erfasster Teile: „Es soll
 angezeigt werden, welche Sets dieses Teil verwenden — inkl. Link, um den
 Detail-Dialog des Sets öffnen zu können."
 
-Die Abfrage steht in utils/handlers/shared.ts, weil die Figuren-Route
+Die Abfrage steht in src/bestand/gemeinsam.ts, weil die Figuren-Route
 daneben WORT FÜR WORT dieselbe ist (nur Tabelle und Schlüssel wechseln).
 
 Blickfeld, nicht eigenes Konto: Im Haushalt soll auch das Set des

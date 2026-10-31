@@ -60,7 +60,7 @@ test('beide Bildgrenzen sind gleich gross — Proxy UND lokaler Download', () =>
   //
   // Deshalb hängen die beiden Zahlen ab jetzt aneinander.
   const proxy = /const PROXY_CACHE_MAX_BYTES = (\d+) \* 1024 \* 1024;/.exec(code);
-  const setsSrc = fs.readFileSync(path.join(ROOT, 'utils/setImages.ts'), 'utf8');
+  const setsSrc = fs.readFileSync(path.join(ROOT, 'src/katalog/bilder/setImages.ts'), 'utf8');
   const lokal = /const SET_IMG_MAX_BYTES = (\d+) \* 1024 \* 1024;/.exec(setsSrc);
   assert.ok(proxy && lokal, 'eine der beiden Grenzen steht nicht mehr als benannte Konstante');
   assert.equal(Number(lokal[1]), Number(proxy[1]),
@@ -69,7 +69,7 @@ test('beide Bildgrenzen sind gleich gross — Proxy UND lokaler Download', () =>
 });
 
 test('der lokale Download bricht nicht mehr still ab', () => {
-  const setsSrc = fs.readFileSync(path.join(ROOT, 'utils/setImages.ts'), 'utf8');
+  const setsSrc = fs.readFileSync(path.join(ROOT, 'src/katalog/bilder/setImages.ts'), 'utf8');
   const i = setsSrc.indexOf('gelesen > SET_IMG_MAX_BYTES');
   assert.ok(i > 0, 'die Grössenprüfung im Download fehlt');
   assert.ok(/console\.error/.test(setsSrc.slice(i, i + 500)),

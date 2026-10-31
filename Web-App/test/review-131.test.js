@@ -85,7 +85,7 @@ test('Teile-Rückfallebene für fremde Sets', async (t) => {
 // ── Regeln ──────────────────────────────────────────────────────────────────
 
 test('Bilddownloads sind nach oben begrenzt', () => {
-  const src = quelle('utils', 'setImages.ts');
+  const src = quelle('src/katalog/bilder/setImages.ts');
   const fn  = src.slice(src.indexOf('async function downloadSetImage'));
   const ende = fn.indexOf('\n}\n');
   const körper = fn.slice(0, ende);
@@ -109,7 +109,7 @@ test('Schreib-Endpunkte ohne Anmeldung tragen eine Drossel', () => {
   // zusammengezogen ist: Die Drossel (checkLoginAllowed) sitzt jetzt IN dieser
   // Funktion, POST /login ruft nur noch sie auf. Ohne den Eintrag würde
   // ausgerechnet das Zusammenlegen als ungeschützter Endpunkt gemeldet.
-  const src = quelle('routes', 'auth.ts');
+  const src = quelle('routes/auth.ts');
   const stellen = [...src.matchAll(/router\.(post|put|delete)\('([^']+)'/g)];
   assert.ok(stellen.length >= 6, `nur ${stellen.length} Endpunkte gefunden — die Prüfung liefe ins Leere`);
 
@@ -144,12 +144,12 @@ test('Pfade werden an genau EINER Stelle normalisiert', () => {
 });
 
 test('die Barcode-Suche zählt ihre Rebrickable-Aufrufe', () => {
-  // Die Barcode-Suche (utils/dienste/sets.ts) fragt Rebrickable nur über
+  // Die Barcode-Suche (src/sets/dienst.ts) fragt Rebrickable nur über
   // rebrickableJson() — und das zählt und drosselt.
-  const dienst = quelle('utils', 'dienste', 'sets.ts');
+  const dienst = quelle('src/sets/dienst.ts');
   assert.match(dienst, /rebrickableJson\(/, 'die Barcode-Suche fragt Rebrickable nicht über den Client');
   assert.doesNotMatch(dienst, /https\.get\(/, 'eigener Abrufweg am Tageskontingent vorbei');
-  const client = quelle('clients', 'rebrickable.ts');
+  const client = quelle('clients/rebrickable.ts');
   const rbJson = client.slice(client.indexOf('async function rebrickableJson'), client.indexOf('function httpsGetRobust'));
   assert.match(rbJson, /consumeRebrickableDaily/, 'rebrickableJson zählt nicht mit');
   assert.match(rbJson, /waitForSlot/,            'rebrickableJson umgeht die Drossel');
@@ -157,7 +157,7 @@ test('die Barcode-Suche zählt ihre Rebrickable-Aufrufe', () => {
 
 test('CSV-Export entschärft Formeln, der eigene Import macht es rückgängig', () => {
   const { csvField, entschaerfe, entschaerfungRueckgaengig, csvZeilenBereinigen }
-    = _reqCsv('utils/csvExport.js');
+    = _reqCsv('src/infra/csvExport.js');
 
   // Ein Feld, das Excel beim Öffnen ausführen würde.
   assert.equal(entschaerfe('=HYPERLINK("http://x";"Klick")'), `'=HYPERLINK("http://x";"Klick")`);
@@ -192,8 +192,8 @@ test('alle drei CSV-Importwege entschärfen zurück', () => {
   // Importe ihn benutzen, zeigt test/csv-rundlauf-db.test.js.
   // Gegenprobe (29.10.2026): entschaerfungRueckgaengig in setCsvZeilen
   // weggelassen → rot („Sets: …“).
-  const { setCsvZeilen } = _reqCsv('utils/dienste/sets.js');
-  const { csvZeilenAusAnfrage } = _reqCsv('utils/csvExport.js');
+  const { setCsvZeilen } = _reqCsv('src/sets/dienst.js');
+  const { csvZeilenAusAnfrage } = _reqCsv('src/infra/csvExport.js');
   assert.equal(setCsvZeilen("set_number,quantity\n'-10001-1,1\n").rows[0].sn, '-10001-1',
     'Sets: ein hier erzeugter Export käme mit Hochkomma zurück');
   assert.equal(csvZeilenAusAnfrage("part_number,quantity\n'=X1,1\n").bereinigt[0].part_number, '=X1',

@@ -313,7 +313,7 @@ function bumpGroupCount(groupEl, add){
  * JavaScript WAHR ist — jedes Teil wäre als Ersatzteil markiert worden.
  *
  * Seit der Server die Schreibweisen an einer Stelle liest (istErsatzteil() in
- * utils/validate.ts), ist es ein echter Wahrheitswert und `p.is_spare` genügt.
+ * src/infra/validate.ts), ist es ein echter Wahrheitswert und `p.is_spare` genügt.
  */
 function ersatzteilPlakette(p){
   return p.is_spare ? `<span class="spare-tag">${esc(t('parts.spare_tag'))}</span>` : '';

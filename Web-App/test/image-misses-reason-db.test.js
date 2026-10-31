@@ -34,7 +34,7 @@ let versuche = 0;
 const echtesRequire = Module.prototype.require;
 Module.prototype.require = function (name) {
   const m = echtesRequire.apply(this, arguments);
-  // Seit Nachtrag 125 liegt downloadSetImage in utils/setImages.ts statt im
+  // Seit Nachtrag 125 liegt downloadSetImage in src/katalog/bilder/setImages.ts statt im
   // Router — der Abfang muss dorthin zeigen, sonst greift er ins Leere und
   // der Test misst still den echten Download.
   if (typeof name === 'string' && /setImages(\.js)?$/.test(name) && m && m.downloadSetImage) {
@@ -53,7 +53,7 @@ const { leereWarteschlange } = require('./helpers/bildwarteschlange');
 const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
 const IQ = _req('jobs/imageQueue.js');
-const IM = _req('utils/imageMisses.js');
+const IM = _req('src/katalog/bilder/imageMisses.js');
 
 const einreihen = async (sn) => {
   await db.run(`DELETE FROM image_wanted WHERE set_number = $1`, [sn]);
@@ -186,7 +186,7 @@ test('nur ein 404 heisst „das Bild gibt es nicht"', { concurrency: 1 }, async 
     const fs = require('node:fs');
     const { ohneKommentare } = require('./helpers/sources');
     const proxy = ohneKommentare(require('./helpers/sources').proxyThumbQuelle());
-    const job   = ohneKommentare(fs.readFileSync(path.join(ROOT, 'jobs', 'imageQueue.ts'), 'utf8'));
+    const job   = ohneKommentare(fs.readFileSync(path.join(ROOT, 'jobs/imageQueue.ts'), 'utf8'));
     assert.match(proxy, /statusCode === 404[\s\S]{0,200}merkeFehlend/,
       'Im Proxy hängt die Fehlanzeige nicht mehr am 404');
     assert.match(job, /info\.status === 404/,

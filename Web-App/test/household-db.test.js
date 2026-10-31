@@ -123,7 +123,7 @@ async function giveSet(uid, sn, qty, price, cond = 'N', day = null) {
      ON CONFLICT (set_number) DO NOTHING`, [sn, 'Set ' + sn]);
   // `cond` geht nur noch in die Erfassung — die sets-Zeile hat seit
   // Migration 0032 keine condition-Spalte mehr.
-  await _req('utils/acquisitions.js').recordAcquisitionForDay('set', uid, [sn], {
+  await _req('src/bestand/acquisitions.js').recordAcquisitionForDay('set', uid, [sn], {
     quantity: qty, price, condition: cond, createdAt: day,
   });
 }
@@ -143,7 +143,7 @@ test('Haushalt gegen echte Datenbank', async (t) => {
   await seed();
   await startApi();
 
-  const household = _req('utils/household.js');
+  const household = _req('src/haushalt/haushalt.js');
   const handlers  = require('./helpers/sources').handlerModul(_req);
 
   await t.test('Verknüpfen braucht beide Seiten und dieselbe Währung', async () => {

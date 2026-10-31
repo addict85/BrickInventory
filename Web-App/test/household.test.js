@@ -24,9 +24,9 @@ test('ein Konto verknüpft sich nicht mit sich selbst', () => {
 test('der Einladungscode steht nur als Hash in der Datenbank', () => {
   // Wie bei API-Tokens und QR-Anmeldecodes: Wer die Datenbank liest, soll
   // keine Einladung einlösen können.
-  const h = read('utils/household.ts');
+  const h = (read('src/haushalt/haushalt.ts') + read('src/haushalt/repository.ts'));
   assert.match(h, /createHash\('sha256'\)/);
-  assert.match(h, /VALUES \(\$1,\$2,\$3\)[\s\S]{0,120}hash\(code\)/,
+  assert.match(h, /legeEinladungAn\(hash\(code\)/,
     'Gespeichert wird der Hash, nicht der Code');
 
   const mig = read('db/migrations/0005-haushalt-kontoverknuepfung.sql');
@@ -36,7 +36,7 @@ test('der Einladungscode steht nur als Hash in der Datenbank', () => {
 });
 
 test('der Code wird atomar entwertet und bei Ablehnung wieder freigegeben', () => {
-  const h = read('utils/household.ts');
+  const h = (read('src/haushalt/haushalt.ts') + read('src/haushalt/repository.ts'));
   // Atomar: Nur die erste Anfrage bekommt eine Zeile zurück.
   assert.match(h, /UPDATE account_link_invites SET used_at = NOW\(\)[\s\S]{0,200}WHERE token_hash = \$1 AND used_at IS NULL AND expires_at > NOW\(\)[\s\S]{0,60}RETURNING main_user_id/);
   // Und wieder frei, wenn eine Regel greift — sonst wäre der Code nach einem
@@ -77,7 +77,7 @@ test('Schreibrechte kommen nie aus dem Gedächtnis', () => {
   // ohneKommentare() zuerst: Die BEGRÜNDUNG dieser Regel steht als Kommentar
   // in genau den beiden Funktionen und nennt dabei resolveHousehold() — ein
   // Test, der den rohen Text liest, schlägt an seiner eigenen Erklärung an.
-  const h = require('./helpers/sources').ohneKommentare(read('utils/household.ts'));
+  const h = require('./helpers/sources').ohneKommentare((read('src/haushalt/haushalt.ts') + read('src/haushalt/repository.ts')));
   for (const fn of ['canWriteFor', 'writableIds']) {
     const i = h.indexOf(`export async function ${fn}`);
     assert.ok(i > 0, `${fn} fehlt`);
@@ -85,7 +85,7 @@ test('Schreibrechte kommen nie aus dem Gedächtnis', () => {
     assert.doesNotMatch(rumpf, /resolveHousehold\(/,
       `${fn}() liest aus resolveHousehold() — dessen Antwort ist bis zu fünf ` +
       'Minuten alt und darf über keinen Schreibzugriff entscheiden');
-    assert.match(rumpf, /account_links|kinder\(/,
+    assert.match(rumpf, /account_links|kinder\(|repo\.istVerknuepft\(/,
       `${fn}() muss die Verknüpfungen frisch abfragen`);
   }
   assert.match(h, /if \(actor === owner\) return true;/,
@@ -95,7 +95,7 @@ test('Schreibrechte kommen nie aus dem Gedächtnis', () => {
 test('beide Seiten dürfen die Verknüpfung lösen', () => {
   // Ein Unterkonto, das nicht mehr mitmachen will, wäre sonst auf das
   // Wohlwollen des Hauptkontos angewiesen.
-  const h = read('utils/household.ts');
+  const h = (read('src/haushalt/haushalt.ts') + read('src/haushalt/repository.ts'));
   assert.match(h, /DELETE FROM account_links WHERE main_user_id = \$1 AND sub_user_id = \$2/);
   assert.match(h, /DELETE FROM account_links WHERE sub_user_id = \$1/);
 });
@@ -109,14 +109,11 @@ test('Webapp und App bekommen dieselben Endpunkte', () => {
   for (const fn of ['householdStatus', 'createInvite', 'redeemInvite', 'unlink']) {
     assert.ok(src.includes(fn), `routes/api_v1/settings.ts: ${fn} fehlt`);
   }
-  // Und die Zweitfassung darf nicht zurückkehren.
-  assert.doesNotMatch(read('routes/settings.ts'), /householdStatus|createInvite|redeemInvite/,
-    'routes/settings.ts hat wieder eigene Haushalts-Routen — dann existiert die Logik doppelt');
-  // Keine eigene Regel in der Route — sie stehen in utils/household.ts.
-  for (const f of ['routes/settings.ts', 'routes/api_v1/settings.ts']) {
-    assert.doesNotMatch(read(f), /account_links/,
-      `${f}: Routen dürfen nicht selbst gegen account_links abfragen`);
-  }
+  // Und die Zweitfassung darf nicht zurückkehren: jede Haushalts-Route genau einmal.
+  for (const pfad of ["'/settings/household'", "'/settings/household/invite'", "'/settings/household/redeem'", "'/settings/household/unlink'"])
+    assert.equal(src.split(pfad).length - 1, 1, `${pfad} steht nicht genau einmal in routes/api_v1/settings.ts`);
+  // Keine eigene Regel in der Route — sie stehen in src/haushalt/haushalt.ts.
+  assert.doesNotMatch(src, /account_links/, 'Routen dürfen nicht selbst gegen account_links abfragen');
 });
 
 test('die Oberfläche bietet Einladen und Einlösen jedem Konto an', () => {
@@ -142,7 +139,7 @@ test('der Kontofilter wird am Server in IDs übersetzt, nicht in der Oberfläche
   // Konto-IDs übersetzt — dadurch kennt ihn jede Zahl derselben Antwort
   // automatisch. Eine Kachelwand liesse sich clientseitig aussieben, die
   // Gesamtzahl darunter und die Bewertung im Finanzreiter nicht.
-  const h = read('utils/household.ts');
+  const h = (read('src/haushalt/haushalt.ts') + read('src/haushalt/repository.ts'));
   assert.match(h, /export async function scopeIds\(uid: number, mode: ScopeMode = 'all'\)/);
   assert.match(h, /if \(mode === 'own'\)  return \[id\];/);
   assert.match(h, /if \(mode === 'subs'\) return h\.memberIds\.filter\(m => m !== id\);/);
@@ -262,7 +259,7 @@ test('Verschieben läuft über die Tagesregel, nicht über UPDATE user_id', () =
   // („hier stand dafuer UPDATE sets SET quantity=$1"). Auf dem Rohtext meldete
   // die Regel genau diesen Erklärtext — gemessen. Dieselbe Falle wie bei der
   // Haushaltsregel weiter oben.
-  const mv = require('./helpers/sources').ohneKommentare(read('utils/setMove.ts'));
+  const mv = require('./helpers/sources').ohneKommentare(read('src/sets/setMove.ts'));
   assert.ok(mv.includes("recordAcquisitionForDay('set', toId, [sn]"),
     'Erfassungen müssen einzeln über den gemeinsamen Helfer wandern');
   assert.doesNotMatch(mv, /UPDATE set_acquisitions SET user_id/,
@@ -274,7 +271,7 @@ test('Verschieben läuft über die Tagesregel, nicht über UPDATE user_id', () =
   // Fehler. Also genau umgekehrt geprueft.
   assert.doesNotMatch(mv, /UPDATE\s+sets\s+SET[^;`']*\bquantity\s*=/,
     'Die Stückzahl eines Sets wird nicht mehr geschrieben — sie steht in ' +
-    'set_acquisitions und wird beim Lesen gerechnet (utils/bestandsmenge.ts)');
+    'set_acquisitions und wird beim Lesen gerechnet (db/bestandsmenge.ts)');
 
   // Der Wechsel des ganzen Sets liegt seit Nachtrag 74 in der v1-Fabrik.
   const src = read('routes/api_v1/sets.ts');
@@ -304,10 +301,10 @@ test('Schreiben in ein fremdes Konto verlangt die richtige Richtung', () => {
   // canWriteFor() prüft Hauptkonto → eigenes Unterkonto. „Steht im Blickfeld"
   // genügt NICHT: Ein Unterkonto darf nicht ins Nachbarkonto schreiben.
   //
-  // Die Auflösung liegt in utils/household.ts, nicht in den Routen: Drei
+  // Die Auflösung liegt in src/haushalt/haushalt.ts, nicht in den Routen: Drei
   // Kopien einer Rechteprüfung sind die Sorte Doppelung, bei der irgendwann
   // eine grosszügiger ist als die anderen.
-  const h = read('utils/household.ts');
+  const h = (read('src/haushalt/haushalt.ts') + read('src/haushalt/repository.ts'));
   assert.match(h, /export async function resolveWriteTarget/);
   assert.match(h, /return \(await canWriteFor\(actorId, target\)\) \? target : null;/);
   // Ohne Angabe bleibt es beim eigenen Konto — alles verhält sich wie bisher.
@@ -367,7 +364,7 @@ test('die Teile-Zusammenfassung trägt auch über mehrere Konten', () => {
 
   // Frisch ist die Sicht nur, wenn sie es für JEDES Konto ist — „zwei von drei
   // sind aktuell" ergäbe eine Summe aus frischen und alten Beständen.
-  const ps = read('utils/partsSummary.ts');
+  const ps = read('src/teile/partsSummary.ts');
   assert.match(ps, /const results = await Promise\.all\(ids\.map\(id => ensureFresh\(id, opts\)\)\);/);
   assert.match(ps, /return results\.every\(Boolean\);/);
 });
@@ -470,7 +467,7 @@ test('beim Verschieben wandert der Inhalt des Sets mit', () => {
   // ohneKommentare(): Die Kommentare in setMove.ts ZITIEREN entfernte
   // Anweisungen („hier stand dafuer UPDATE sets SET quantity=$1"), und die
   // verneinenden Zusicherungen unten meldeten genau diesen Erklärtext.
-  const mv = require('./helpers/sources').ohneKommentare(read('utils/setMove.ts'));
+  const mv = require('./helpers/sources').ohneKommentare(read('src/sets/setMove.ts'));
   for (const t of ['parts', 'minifigs', 'instructions']) {
     assert.ok(mv.includes(`INSERT INTO ${t}`), `${t} wandern nicht mit`);
   }
@@ -569,7 +566,7 @@ test('Verschieben geht NUR über den Kaufpreis', () => {
 test('auch manuelle Teile und Minifiguren wandern über den Kaufpreis', () => {
   // Dieselbe Regel für alle drei Arten. Ein manuell erfasstes Teil hat keinen
   // Inhalt — es wandern nur Menge und Erfassung.
-  const mv = read('utils/setMove.ts');
+  const mv = read('src/sets/setMove.ts');
   assert.match(mv, /export async function moveManualAcquisition/);
   assert.match(mv, /recordAcquisitionForDay\(kind, toId, keyValues/,
     'Auch hier gilt: eine Tageszeile je Konto');
@@ -579,7 +576,7 @@ test('auch manuelle Teile und Minifiguren wandern über den Kaufpreis', () => {
   // EINER Stelle geprüft statt an dreien, weil es nur noch eine gibt.
   // Teile und Figuren gehen über denselben Aufruf; die Art kommt aus der Tabelle.
   // Die Regel steht seit dem Schichtumbau im Dienst; die Route ruft ihn nur.
-  const f = 'utils/dienste/erfassungen.ts';
+  const f = 'src/bestand/erfassungen.ts';
   const src = read(f);
   assert.ok(src.includes('moveManualAcquisition(tx, art, keys, id, from, to)'), `${f}: Wechsel fehlt`);
   assert.match(src, /if \(to === null\) fehlerWerfen\('kein_schreibrecht', 403\)/,
@@ -595,7 +592,7 @@ test('der Absender eines Eigentümerwechsels kommt aus der ZEILE, nicht aus dem 
   // gefunden" — die Android-App machte es richtig (acq.ownerUserId), die
   // Webapp nicht. Die Erfassungs-ID ist eindeutig; wem sie gehört, weiss die
   // Datenbank besser als jeder Dialog.
-  const h = read('utils/household.ts');
+  const h = (read('src/haushalt/haushalt.ts') + read('src/haushalt/repository.ts'));
   assert.match(h, /export async function acquisitionMoveSource/,
     'Die Auflösung gehört an die eine Stelle, die „wessen Daten?" beantwortet');
   assert.match(h, /canWriteFor\(actorId, owner\)/,
@@ -608,12 +605,12 @@ test('der Absender eines Eigentümerwechsels kommt aus der ZEILE, nicht aus dem 
   // auseinanderlaufen, und mehrfach ist sie es auch. Seit dem Zusammenlegen
   // bedient die Fabrik beide Clients, also gibt es nur noch eine Stelle. Der
   // Test prüft dieselbe Regel, nur nicht mehr an vier Orten.
-  assert.ok(read('utils/dienste/erfassungen.ts').includes('acquisitionMoveSource(uid,'),
+  assert.ok(read('src/bestand/erfassungen.ts').includes('acquisitionMoveSource(uid,'),
     'Eigentümer-Zweig leitet den Absender nicht aus der Zeile ab');
   // … und keiner vertraut mehr einem mitgeschickten from_user_id. Das Muster
   // `from_user_id ?? uid` bleibt NUR in der /move-Route erlaubt
   // (mehrere IDs, ausdrücklich benannter Absender).
-  for (const f of ['utils/dienste/erfassungen.ts', 'routes/api_v1/acquisitions.ts']) {
+  for (const f of ['src/bestand/erfassungen.ts', 'routes/api_v1/acquisitions.ts']) {
     assert.ok(!read(f).includes('from_user_id ?? uid'),
       `${f}: der Eigentümer-Zweig darf den Request-Absender nicht übernehmen`);
   }
@@ -630,7 +627,7 @@ test('die App-Routen kennen den Eigentümerwechsel', () => {
   // las aber nur Menge, Preis und Zustand. Die Anfrage lief als LEERES Update
   // durch und antwortete success:true: Der Wechsel in der App war ein
   // stiller No-op, ohne Fehlermeldung und ohne Bewegung.
-  const v1 = read('utils/dienste/erfassungen.ts');
+  const v1 = read('src/bestand/erfassungen.ts');
   assert.match(v1, /body\.owner_user_id/,
     'Der Erfassungsdienst muss owner_user_id auswerten');
   assert.match(v1, /moveSetBetweenAccounts\(tx, String\(keys\[0\]\), from, to, \[id\]\)/,

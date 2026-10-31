@@ -39,7 +39,7 @@ process.env.APP_ROOT = SANDKASTEN;
 const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
 const { pdfText, werteAusPdf, PdfZuGross, STROM_MAX_BYTES, ENTPACKT_MAX_BYTES, STROEME_MAX } =
-  _req('utils/gutscheinPdf.js');
+  _req('src/gutscheine/gutscheinPdf.js');
 const { testServer } = require('./helpers/server');
 
 test.after(async () => {
@@ -135,7 +135,7 @@ async function zweiSchriften(inhalt) {
 }
 
 test('6. beim Ersetzen zählt die letzte Schrift VOR dem Operator', async () => {
-  const { ersetzeBetrag } = _req('utils/gutscheinPdfSchreiben.js');
+  const { ersetzeBetrag } = _req('src/gutscheine/gutscheinPdfSchreiben.js');
   const rest = 'BT /F1 12 Tf (5045076374450011166) Tj (PIN: 5225) Tj ET\n';
   const unsicher = await ersetzeBetrag(await zweiSchriften(
     'BT /F1 12 Tf (Karte) Tj /F9 14 Tf (im Wert von 400 CHF:) Tj ET\n' + rest), 250);

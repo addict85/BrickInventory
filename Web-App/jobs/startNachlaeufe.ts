@@ -4,16 +4,18 @@
  * wird und in der Verwaltung zu sehen ist.
  * Ausführlich: docs/begruendungen/jobs/startNachlaeufe.ts.md#abschnitt
  */
-import * as db from '../db/database';
-import { downloadSetImage } from '../utils/setImages';
-import { generateThumb } from '../utils/thumbs';
-import { anleitungEinreihen } from '../utils/anleitungsAuftrag';
-import { verschluesseleAltbestand } from '../utils/geheimnisAltbestand';
-import { verschluesseleGutscheinAltbestand } from '../utils/gutscheinDateien';
+import fs from 'fs';
+import path from 'path';
+import { setsOhneAnleitungsabruf, setBilderOhneDatei, merkeSetBildLokal, lokaleKatalogbilder } from '../src/katalog/bildlage';
+import { downloadSetImage } from '../src/katalog/bilder/setImages';
+import { generateThumb } from '../src/katalog/bilder/thumbs';
+import { anleitungEinreihen } from '../src/auftraege/anleitungsAuftrag';
+import { verschluesseleAltbestand } from '../src/infra/geheimnisAltbestand';
+import { verschluesseleGutscheinAltbestand } from '../src/gutscheine/gutscheinDateien';
 import * as catalogSync from './catalogSync';
 import * as purchasePriceBackfill from './purchasePriceBackfill';
-import { APP_ROOT, IMAGES_DIR } from '../utils/appPaths';
-import { fehlertext, logAndContinue, meldeUndLiefere } from '../utils/httpError';
+import { APP_ROOT, IMAGES_DIR } from '../src/infra/appPaths';
+import { fehlertext, logAndContinue, meldeUndLiefere } from '../src/infra/httpError';
 
 /**
  * Sets ohne Anleitung einreihen — nicht, wenn ein Abruf noch wartet oder in
@@ -21,16 +23,12 @@ import { fehlertext, logAndContinue, meldeUndLiefere } from '../utils/httpError'
  * sieben Tage, gescheiterte dreissig stehen; danach wird es wieder versucht).
  */
 async function anleitungenNachtragen(): Promise<void> {
-  const missing = await db.all(
-    `SELECT DISTINCT s.set_number FROM sets s
-     WHERE NOT EXISTS (SELECT 1 FROM shared_instructions si WHERE si.set_number = s.set_number)
-       AND NOT EXISTS (SELECT 1 FROM auftraege a WHERE a.schluessel = 'anleitung:' || s.set_number
-                         AND a.status IN ('offen', 'laeuft', 'erledigt'))`);
+  const missing = await setsOhneAnleitungsabruf();
   if (missing.length) console.log(`[instr-queue] Enqueueing ${missing.length} sets missing instructions`);
-  for (const { set_number } of missing) await anleitungEinreihen(set_number);
+  for (const set_number of missing) await anleitungEinreihen(set_number);
 }
 
-/** Geheimnisse aus der Zeit vor der Verschlüsselung (utils/geheimnis.ts). */
+/** Geheimnisse aus der Zeit vor der Verschlüsselung (src/infra/geheimnis.ts). */
 async function geheimnisseVerschluesseln(): Promise<void> {
   const n = await verschluesseleAltbestand() + await verschluesseleGutscheinAltbestand();
   if (n) console.log(`[geheimnis] ${n} Geheimnisse nachträglich verschlüsselt`);
@@ -60,10 +58,7 @@ async function setBilderNachladen(): Promise<void> {
     // Der KATALOG: Bilder haengen an der Setnummer, nicht am Konto. Hier
     // stand `FROM sets` mit DISTINCT — das brauchte es nur, weil dieselbe
     // Setnummer je Konto einmal darin stand. Im Katalog ist sie es einmal.
-    const missing = await db.all(
-      `SELECT set_number, image_url FROM set_catalog
-       WHERE image_local IS NULL AND image_url IS NOT NULL LIMIT 500`
-    ).catch(meldeUndLiefere('nachlauf:missing', []));
+    const missing = await setBilderOhneDatei().catch(meldeUndLiefere('nachlauf:missing', []));
     if (!missing.length) return;
     console.log(`[set-img-bg] Downloading ${missing.length} missing set images…`);
     for (const { set_number, image_url } of missing) {
@@ -72,8 +67,7 @@ async function setBilderNachladen(): Promise<void> {
         // EINE Anweisung. Das UPDATE auf `sets`, das hier daneben stand, ist
         // mit Migration 0033 weggefallen — und mit ihm der stille Fang am
         // Katalog-Schreiber, der die wichtigere der beiden Haelften war.
-        await db.run(`UPDATE set_catalog SET image_local=$1 WHERE set_number=$2 AND image_local IS NULL`, [local, set_number])
-          .catch(logAndContinue(`bilder:set ${set_number}`));
+        await merkeSetBildLokal(set_number, local).catch(logAndContinue(`bilder:set ${set_number}`));
         generateThumb(local).catch(logAndContinue('nachlauf:generateThumb'));
       }
       await new Promise(r => setTimeout(r, 300));
@@ -85,14 +79,8 @@ async function setBilderNachladen(): Promise<void> {
 /** Fehlende Vorschaubilder erzeugen. */
 async function vorschaubilderNachtragen(): Promise<void> {
   try {
-    const fs   = require('fs');
-    const path = require('path');
-    const sets  = await db.all("SELECT image_local FROM set_catalog WHERE image_local IS NOT NULL");
-    // Aus part_color_catalog statt aus parts (Migration 0034): dasselbe
-    // Bild stand dort einmal je Konto, die Schleife lief es mehrfach ab.
-    const parts = await db.all("SELECT image_local FROM part_color_catalog WHERE image_local IS NOT NULL");
-    const figs  = await db.all("SELECT image_local FROM minifigs_catalog WHERE image_local IS NOT NULL");
-    const paths = [...sets, ...parts, ...figs].map((r: any) => r.image_local).filter(Boolean);
+    // Aus dem Katalog, nicht aus den Bestandstabellen: Dort stand dasselbe Bild je Konto einmal.
+    const paths = await lokaleKatalogbilder();
     let generated = 0;
     // Async statt existsSync: die Schleife läuft über ALLE Bilder von Sets
     // und Teilen und lief direkt nach app.listen() — bei ein paar tausend

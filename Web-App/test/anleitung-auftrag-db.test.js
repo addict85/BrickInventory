@@ -25,7 +25,7 @@ const abruf = { extern: false, fehler: null, aufrufe: 0 };
 const echtesRequire = Module.prototype.require;
 Module.prototype.require = function (name) {
   const m = echtesRequire.apply(this, arguments);
-  if (!/utils[/\\]instructions(\.js)?$/.test(name)) return m;
+  if (!/[/\\]instructions(\.js)?$/.test(name)) return m;
   return {
     ...m,
     anzahlAnleitungen: async () => 0,
@@ -48,7 +48,7 @@ test('Anleitungen als Auftrag', { concurrency: 1 }, async (t) => {
     t.skip('Test-DB nicht erreichbar'); return;
   }
   const Q = _req('jobs/instructionQueue.js');
-  const A = _req('utils/auftraege.js');
+  const A = Object.assign({}, _req('src/auftraege/auftraege.js'), _req('src/auftraege/repository/auftraege.js'));
   const { AuftragVerschieben } = _req('jobs/auftragsWorker.js');
   const pause = () => A.liesPause('anleitung');
   const inSek = async () => { const p = await pause(); return p ? Math.round((new Date(p.bis) - Date.now()) / 1000) : null; };
@@ -90,7 +90,7 @@ test('Anleitungen als Auftrag', { concurrency: 1 }, async (t) => {
 
   await t.test('hält ein anderer Prozess die Sperre, wird nichts abgerufen', async () => {
     await zuruecksetzen();
-    const { LOCKS } = _req('utils/lockNamespaces.js');
+    const { LOCKS } = _req('src/infra/lockNamespaces.js');
     const fremd = await db.pool.connect();
     await fremd.query('SELECT pg_advisory_lock($1, 0)', [LOCKS.ANLEITUNGS_QUEUE]);
     const vorher = abruf.aufrufe;
@@ -107,7 +107,7 @@ test('Anleitungen als Auftrag', { concurrency: 1 }, async (t) => {
 
   await t.test('ein Set steht nur einmal offen', async () => {
     await db.run(`DELETE FROM auftraege WHERE art = 'anleitung'`);
-    const E = _req('utils/anleitungsAuftrag.js');
+    const E = _req('src/auftraege/anleitungsAuftrag.js');
     await E.anleitungEinreihen('10005');
     await E.anleitungEinreihen('10005-1');
     assert.equal(await E.offeneAnleitungen(), 1, 'dasselbe Set (mit und ohne Version) zweimal eingereiht');

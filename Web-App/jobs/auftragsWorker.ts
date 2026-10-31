@@ -1,12 +1,20 @@
 import { randomUUID } from 'crypto';
 import {
-  AUFTRAG_KANAL, belegeAuftrag, erledigt, fehlgeschlagen, gibZurueck, lebenszeichen, setzeFortschritt,
-  verschoben, imNamenDesAuftrags, type AuftragsArt, type AuftragsZeile, type Fortschritt,
-} from '../utils/auftraege';
-import { planeNaechsten, hatZeitplan } from '../utils/zeitplan';
-import { listen, unlisten } from '../utils/pgNotify';
-import { fehlertext, logAndContinue } from '../utils/httpError';
-import { konfig } from '../utils/konfig';
+  type AuftragsArt, type AuftragsZeile, type Fortschritt,
+} from '../src/auftraege/auftraege';
+import { AUFTRAG_KANAL } from '../src/auftraege/dienst';
+import { imNamenDesAuftrags } from '../src/auftraege/dienst';
+import { gibZurueck } from '../src/auftraege/dienst';
+import { verschoben } from '../src/auftraege/dienst';
+import { fehlgeschlagen } from '../src/auftraege/dienst';
+import { erledigt } from '../src/auftraege/dienst';
+import { setzeFortschritt } from '../src/auftraege/dienst';
+import { lebenszeichen } from '../src/auftraege/dienst';
+import { belegeAuftrag } from '../src/auftraege/dienst';
+import { planeNaechsten, hatZeitplan } from '../src/auftraege/zeitplan';
+import { listen, unlisten } from '../db/pgNotify';
+import { fehlertext, logAndContinue } from '../src/infra/httpError';
+import { konfig } from '../src/infra/konfig';
 
 /** Was ein Bearbeiter vom Worker bekommt. */
 export interface AuftragsKontext {

@@ -10,7 +10,7 @@
  *      Kaufpreise werden addiert“ (duplicate key idx_set_acq_erfassungstag)
  *   B  in 0074 mit_version('sets') vor die abhängigen Tabellen gestellt → rot:
  *      „Teile des alten Sets bleiben“ (ON DELETE CASCADE nahm sie mit)
- *   C  im Teilefilter (utils/handlers/parts.ts) mitVersion() entfernt → rot:
+ *   C  im Teilefilter (src/teile/abfragen.ts) mitVersion() entfernt → rot:
  *      „der Filter findet das Set auch ohne Versionsanhang“
  *   D  in set_stamm den Platzhalter „Set …“ nicht ausgeblendet → rot:
  *      „ein Platzhalter ist kein Name“
@@ -28,7 +28,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
 const { haeltTeil } = require('./helpers/bestand');
-const MIG = (n) => fs.readFileSync(path.join(__dirname, '..', 'db', 'migrations', n), 'utf8');
+const MIG = (n) => fs.readFileSync(path.join(__dirname, '..', 'db/migrations', n), 'utf8');
 const PID = process.pid;
 
 test('Set-Nummern mit Version, ein Set-Stamm, Ersatzteil 0/1', { concurrency: 1 }, async (t) => {
@@ -104,12 +104,12 @@ test('Set-Nummern mit Version, ein Set-Stamm, Ersatzteil 0/1', { concurrency: 1 
     const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
     try {
       await haeltTeil(db, uid, 'SNF1', { setNumber: `F${PID}`, menge: 2, colorId: 4 });   // blank geschrieben
-      const { getParts } = _req('utils/handlers/parts.js');
+      const { getParts } = _req('src/teile/abfragen.js');
       for (const filter of [`F${PID}`, `F${PID}-1`]) {
         const r = await getParts([uid], { set_number: filter, page_size: 60 });
         assert.deepEqual((r.parts || []).map(p => p.part_number), ['SNF1'], `Filter ${filter}`);
       }
-      const { getMinifigs } = _req('utils/handlers/minifigs.js');
+      const { getMinifigs } = _req('src/figuren/abfragen.js');
       await db.run(`INSERT INTO minifigs (user_id, set_number, fig_number, source) VALUES ($1,$2,'SNFIG','set')`, [uid, `F${PID}`]);
       const f = await getMinifigs([uid], { set_number: `F${PID}` });
       assert.deepEqual((f.figs || f.minifigs || []).map(m => m.fig_number), ['SNFIG']);
@@ -137,7 +137,7 @@ test('Set-Nummern mit Version, ein Set-Stamm, Ersatzteil 0/1', { concurrency: 1 
         'ein Platzhalter ist kein Name');
       assert.deepEqual(await stamm(`${S}b-1`), { name: 'Eigener Name', year: 2021, herkunft: 'set_catalog' });
       assert.deepEqual(await stamm(`${S}c-1`), { name: 'Nur Cache', year: 2019, herkunft: 'catalog_cache' });
-      const { setInfo } = _req('utils/dienste/sets.js');
+      const { setInfo } = _req('src/sets/dienst.js');
       assert.equal((await setInfo(`${S}c`))?.name, 'Nur Cache', 'setInfo liest set_stamm, auch ohne Versionsanhang');
     } finally { await weg(); }
   });

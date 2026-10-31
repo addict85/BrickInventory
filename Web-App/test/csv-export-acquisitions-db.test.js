@@ -98,7 +98,7 @@ test('Sets-Export: eine Zeile je Erfassung, ohne Erfassung die Set-Zeile',
               ($1,'0002-1',4,20.00,'U', NOW() - INTERVAL '1 day'),
               ($1,'0003-1',1,NULL,'N', NOW())`, [uid]);
 
-    const csv = await _req('utils/setService.js').buildSetsCsv(uid);
+    const csv = await _req('src/sets/setService.js').buildSetsCsv(uid);
     const r = zeilen(csv);
     const je = (sn) => r.filter(x => x.set_number === sn);
 
@@ -183,7 +183,7 @@ test('Sets-Export braucht EINE Abfrage, unabhaengig von der Anzahl Sets',
 
     let abfragen = 0;
     db.pool.query = (...args) => { abfragen++; return echtesQuery(...args); };
-    const csv = await _req('utils/setService.js').buildSetsCsv(uid);
+    const csv = await _req('src/sets/setService.js').buildSetsCsv(uid);
     db.pool.query = echtesQuery;
 
     assert.equal(zeilen(csv).length, 25, 'alle 25 Sets stehen im Export');
@@ -249,7 +249,7 @@ test('Minifiguren-Export: dieselbe Regel, dieselbe eine Abfrage',
 
     let abfragen = 0;
     db.pool.query = (...args) => { abfragen++; return echtesQuery(...args); };
-    const csv = await _req('utils/bestandExport.js').buildFigsCsv(uid);
+    const csv = await _req('src/bestand/bestandExport.js').buildFigsCsv(uid);
     db.pool.query = echtesQuery;
 
     const r = zeilen(csv);
@@ -346,7 +346,7 @@ test('Teile-Export: dieselbe Regel, dieselbe eine Abfrage',
 
     let abfragen = 0;
     db.pool.query = (...args) => { abfragen++; return echtesQuery(...args); };
-    const csv = await _req('utils/bestandExport.js').buildPartsCsv(uid);
+    const csv = await _req('src/bestand/bestandExport.js').buildPartsCsv(uid);
     db.pool.query = echtesQuery;
 
     const r = zeilen(csv);

@@ -17,15 +17,15 @@
  *   source='set'     wie viele im SET stecken → set_parts_catalog.quantity
  *                                               bzw. set_minifigs_catalog
  *
- * Beide waren Abschriften. GEMESSEN: utils/partsImport.ts schrieb denselben
+ * Beide waren Abschriften. GEMESSEN: src/katalog/partsImport.ts schrieb denselben
  * Wert in DERSELBEN Schleife nach `parts.quantity` UND nach
- * `set_parts_catalog.quantity`; utils/minifigsImport.ts wortgleich. Für die
- * manuellen Positionen war mengeNeuRechnen() in utils/bestandsmenge.ts der
+ * `set_parts_catalog.quantity`; src/katalog/minifigsImport.ts wortgleich. Für die
+ * manuellen Positionen war mengeNeuRechnen() in db/bestandsmenge.ts der
  * einzige Schreiber — und der rechnete nichts anderes als die Summe der
  * Erfassungen.
  *
  * Migration 0038 löscht beide Spalten. Die Fallunterscheidung steht einmal,
- * in utils/bestandsmenge.ts (teilmengeJoin/teilmengeAus), und wird von den
+ * in db/bestandsmenge.ts (teilmengeJoin/teilmengeAus), und wird von den
  * Lesestellen eingesetzt — dieselbe Bauart wie mengeJoin/mengeAus für die
  * Sets.
  *
@@ -97,7 +97,7 @@ const dbDa = async (t) => {
   }
 };
 
-const MIG_DIR = path.join(ROOT, 'db', 'migrations');
+const MIG_DIR = path.join(ROOT, 'db/migrations');
 const DATEI   = path.join(MIG_DIR, '0038-teilemengen-aus-katalog-und-erfassungen.sql');
 
 /** Frische Datenbank, Schema, alle Migrationen. */
@@ -184,7 +184,7 @@ test('niemand schreibt die Stückzahl eines Teils oder einer Figur mehr', () => 
       if (/\.(ts|js)$/.test(e.name)) dateien.push(p);
     }
   };
-  for (const teil of ['routes', 'utils', 'jobs', 'db', 'clients', 'scripts']) {
+  for (const teil of ['routes', 'src', 'jobs', 'db', 'clients', 'scripts']) {
     const v = path.join(ROOT, teil);
     if (fs.existsSync(v)) lauf(v);
   }
@@ -194,7 +194,7 @@ test('niemand schreibt die Stückzahl eines Teils oder einer Figur mehr', () => 
   // Zeilen ohne Kommentare: Ein Erklaertext, der eine Anweisung ZITIERT, ist
   // kein Schreibzugriff. Genau diese Falle hat in diesem Baum schon eine Regel
   // ihren eigenen Begruendungstext melden lassen — und die Kommentare in
-  // utils/setMove.ts und db/migrations/0038 zitieren die entfernten
+  // src/sets/setMove.ts und db/migrations/0038 zitieren die entfernten
   // Anweisungen woertlich.
   const codeZeilen = (txt) => txt.split('\n')
     .filter(z => { const t = z.trim(); return !(t.startsWith('//') || t.startsWith('*')
@@ -236,7 +236,7 @@ test('niemand schreibt die Stückzahl eines Teils oder einer Figur mehr', () => 
   // Die Muster finden jetzt nichts — das ist der Punkt, sagt aber allein noch
   // nicht, dass sie ueberhaupt etwas finden KOENNTEN. Also an Zeilen
   // nachgewiesen, die in genau dieser Form im Baum standen (die ersten drei
-  // woertlich aus utils/bestandsmenge.ts und utils/partsImport.ts, Fassung vor
+  // woertlich aus db/bestandsmenge.ts und src/katalog/partsImport.ts, Fassung vor
   // 0038).
   const proben = [
     ['UPDATE parts SET quantity = $1 WHERE user_id=$2', 'setzt parts'],
@@ -339,10 +339,10 @@ test('die Lesewege liefern die Stückzahl aus Katalog und Erfassungen',
   await db.run(`INSERT INTO minifig_acquisitions (user_id,fig_number,quantity,unit_price,condition)
                 VALUES ($1,'fig-m',2,9.00,'N')`, [haupt]);
 
-  const P = _req('utils/handlers/parts.js');
-  const M = _req('utils/handlers/minifigs.js');
-  const S = _req('utils/handlers/stats.js');
-  const SH = _req('utils/handlers/shared.js');
+  const P = _req('src/teile/abfragen.js');
+  const M = _req('src/figuren/abfragen.js');
+  const S = _req('src/bestand/kennzahlen.js');
+  const SH = _req('src/bestand/gemeinsam.js');
 
   // ── Kennzahlen, ein Konto ────────────────────────────────────────────────
   //
@@ -376,7 +376,7 @@ test('die Lesewege liefern die Stückzahl aus Katalog und Erfassungen',
     'Die Teileliste liest die manuelle Position nicht aus den Erfassungen');
   // Der Treiber liefert BIGINT als ZEICHENKETTE. Ohne den ::int-Cast haengt
   // der JSON-Typ daran, welcher Zweig geantwortet hat — genau dieser Fehler
-  // ist in utils/handlers/parts.ts schon einmal aufgeflogen.
+  // ist in src/teile/abfragen.ts schon einmal aufgeflogen.
   assert.equal(typeof zeileVon(liste, '3001').total_quantity, 'number',
     'total_quantity muss eine Zahl sein, keine Zeichenkette');
 
@@ -391,7 +391,7 @@ test('die Lesewege liefern die Stückzahl aus Katalog und Erfassungen',
     'Die Figuren-Kennzahl rechnet nicht mit');
   // getPartsStats zaehlt ABSICHTLICH nur Set-Teile — manuell erfasste haben in
   // der Oberflaeche ihren eigenen Bereich (der Filter steht in
-  // utils/partsSummary.ts und im Rueckfall darunter). Also 12, nicht 17. Diese
+  // src/teile/partsSummary.ts und im Rueckfall darunter). Also 12, nicht 17. Diese
   // Zahl ist hier kein Nebenbefund: Stuende 17, zaehlte die Kennzahl die
   // manuelle Position doppelt zum eigenen Bereich dazu, und zwar je nachdem,
   // ob die Zusammenfassung gerade frisch ist — genau der sporadische
@@ -448,7 +448,7 @@ test('die Lesewege liefern die Stückzahl aus Katalog und Erfassungen',
   // Sperre, kehrt stillschweigend zurueck („ein anderer baut gerade") und baut
   // nichts — GEMESSEN: parts_summary war danach LEER. rebuildNow() wartet auf
   // den laufenden Aufbau, statt daneben einen zweiten zu versuchen.
-  const { rebuildNow } = _req('utils/partsSummary.js');
+  const { rebuildNow } = _req('src/teile/partsSummary.js');
   await rebuildNow(haupt);
   const zus = await db.get(
     `SELECT total_quantity FROM parts_summary WHERE user_id=$1 AND part_number='3001'`,
@@ -464,9 +464,9 @@ test('die Lesewege liefern die Stückzahl aus Katalog und Erfassungen',
   // und ist Sache von test/bewertung-abfragen-db.test.js.
   // Beide Bewertungen rechnen NUR die manuellen Positionen — ein Set-Teil
   // wird ueber sein Set bewertet, nicht einzeln (die Bedingung
-  // `p.source = 'manual'` steht in utils/finance/bewertung.ts). Also auf die
+  // `p.source = 'manual'` steht in src/finanzen/rechnung/bewertung.ts). Also auf die
   // manuelle Position gesehen; deren Stueckzahl ist die Erfassungssumme.
-  const B = _req('utils/finance/bewertung.js');
+  const B = _req('src/finanzen/rechnung/bewertung.js');
   const bewP = await B.computePartsValuation(haupt, [haupt]);
   const bewZeile = (bewP.parts || []).find(x => x.part_number === '3070b');
   assert.ok(bewZeile,
@@ -483,9 +483,9 @@ test('die Lesewege liefern die Stückzahl aus Katalog und Erfassungen',
   assert.equal(Number(bewFig.quantity), 2,
     `Die Figuren-Bewertung liest 2, bekam ${bewFig.quantity}`);
 
-  const csvP = await _req('utils/bestandExport.js').buildPartsCsv(haupt);
+  const csvP = await _req('src/bestand/bestandExport.js').buildPartsCsv(haupt);
   assert.match(csvP, /3070b/, 'Der Teile-Export laesst die manuelle Position aus');
-  const csvM = await _req('utils/bestandExport.js').buildFigsCsv(haupt);
+  const csvM = await _req('src/bestand/bestandExport.js').buildFigsCsv(haupt);
   assert.match(csvM, /fig-m/, 'Der Figuren-Export laesst die manuelle Figur aus');
 
   // ── GEGENPROBE 1: die KATALOGZAHL ändern ────────────────────────────────
@@ -521,7 +521,7 @@ test('die Lesewege liefern die Stückzahl aus Katalog und Erfassungen',
   //
   // Eine manuelle Bestandszeile ohne Erfassung sollte es nicht geben
   // (Migration 0035 traegt fuer jede eine nach), aber sie darf die Liste
-  // nicht LEEREN — deshalb LEFT JOIN in utils/bestandsmenge.ts. Sie bedeutet
+  // nicht LEEREN — deshalb LEFT JOIN in db/bestandsmenge.ts. Sie bedeutet
   // dann null Stueck, nicht eines.
   await db.run(`DELETE FROM part_acquisitions WHERE user_id=$1 AND part_number='3070b'`,
     [haupt]);

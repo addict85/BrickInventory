@@ -50,7 +50,7 @@ async function warnungenVon(fn) {
 test('Preisalarm-Mail: der Knopf und sein Fehlen', async (t) => {
   // Frisch laden, damit der „einmal je Prozess"-Merker dieser Prüfung gehört
   // und nicht einem früheren Test.
-  const mailer = _req('utils/mailer.js');
+  const mailer = _req('src/infra/mailer.js');
   const vorher = process.env.APP_BASE_URL;
 
   await t.test('1. mit APP_BASE_URL trägt die Mail den Link', async () => {

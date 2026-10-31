@@ -5,7 +5,7 @@
  * ── Der Befund ──────────────────────────────────────────────────────────────
  *
  * Dieselbe Frage — „welche Zahl in diesem Text ist die Setnummer?" — wird
- * zweimal beantwortet: hier in `utils/produkttitel.ts` für Händlertitel, und
+ * zweimal beantwortet: hier in `src/katalog/produkttitel.ts` für Händlertitel, und
  * in Kotlin (`setNumberCandidates`) für die Texterkennung. Ein gemeinsamer
  * Aufruf geht nicht: Die App liest offline in der Kameraschleife.
  *
@@ -40,7 +40,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { setnummerKandidaten, GUETE } = _req('utils/produkttitel.js');
+const { setnummerKandidaten, GUETE } = _req('src/katalog/produkttitel.js');
 
 const ROOT = path.join(__dirname, '..');
 const KORPUS_DATEI = path.join(ROOT, '..', 'shared', 'setnummer-korpus.json');
@@ -111,7 +111,7 @@ test('die Güte-Reihenfolge steht in beiden Apps gleich', () => {
 });
 
 test('das Mengenwort-Muster steht in beiden Apps gleich', () => {
-  const ts = fs.readFileSync(path.join(ROOT, 'utils', 'produkttitel.ts'), 'utf8');
+  const ts = fs.readFileSync(path.join(ROOT, 'src/katalog/produkttitel.ts'), 'utf8');
   const mTs = ts.match(/const MENGENWORT = \/(.+)\/i;/);
   assert.ok(mTs, 'MENGENWORT in produkttitel.ts nicht gefunden');
 

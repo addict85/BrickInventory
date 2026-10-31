@@ -35,7 +35,7 @@ test('Erfassungstag in der Zeitzone der Installation', { concurrency: 1 }, async
       throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
     t.skip('Test-DB nicht erreichbar'); return;
   }
-  const { recordAcquisitionForDay } = _req('utils/acquisitions.js');
+  const { recordAcquisitionForDay } = _req('src/bestand/acquisitions.js');
   const NAME = `tagzone-${process.pid}`;
   const SN = `TZ${process.pid}-1`;
   await db.run('DELETE FROM users WHERE username=$1', [NAME]);

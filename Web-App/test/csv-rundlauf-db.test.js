@@ -55,11 +55,11 @@ test('CSV-Rundlauf: Export und Import passen zueinander', { concurrency: 1 }, as
   await db.run(`INSERT INTO set_acquisitions (user_id, set_number, quantity, purchase_price, condition, currency, created_at)
                 VALUES ($1,'RL10001-1',2,99.9,'U','CHF','2025-12-24T12:00:00Z')`, [A]);
 
-  const { buildPartsCsv, buildFigsCsv } = _req('utils/bestandExport.js');
-  const { buildSetsCsv } = _req('utils/setService.js');
-  const { importiereTeileCsv } = _req('utils/manuelleTeile.js');
-  const { importiereFigurenCsv } = _req('utils/manuelleFiguren.js');
-  const { setCsvZeilen } = _req('utils/dienste/sets.js');
+  const { buildPartsCsv, buildFigsCsv } = _req('src/bestand/bestandExport.js');
+  const { buildSetsCsv } = _req('src/sets/setService.js');
+  const { importiereTeileCsv } = _req('src/teile/manuelleTeile.js');
+  const { importiereFigurenCsv } = _req('src/figuren/manuelleFiguren.js');
+  const { setCsvZeilen } = _req('src/sets/dienst.js');
 
   const erfassungen = (tabelle, nummer, farbe, u) => db.all(
     `SELECT ${nummer}${farbe ? ', color_id' : ''}, quantity, ${tabelle === 'set_acquisitions' ? 'purchase_price' : 'unit_price'}::text AS preis,

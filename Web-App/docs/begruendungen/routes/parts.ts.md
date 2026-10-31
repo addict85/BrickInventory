@@ -107,7 +107,7 @@ enters a price it is used as both the current value override AND the
 purchase-price baseline for the G&V calculation; if left empty, the
 current BrickLink market price is used for both.
 rawBody ist `any` — so kommt es von Express, und so nehmen es auch die
-Validierer in utils/validate.ts entgegen. Der Gewinn liegt bei ihren
+Validierer in src/infra/validate.ts entgegen. Der Gewinn liegt bei ihren
 RUECKGABEN: V.colorId() gibt number, V.requireItemNumber() gibt string.
 Ein `unknown` hier waere strenger, aber jeder Feldzugriff muesste dann
 einzeln eingeengt werden, bevor der Validierer ihn ueberhaupt sieht.
@@ -154,7 +154,7 @@ Tageskontingent, fuer Daten, die dalagen.
 Der Import ist dabei nur der Auffaellige. Die Luecke war in DIESER
 Funktion, und sie gilt fuer jeden Weg, der ohne Namen hereinkommt —
 auch POST /api/v1/parts. Deshalb steht die Staffelung hier und nicht
-in utils/wantedListe.ts.
+in src/merkliste/wantedListe.ts.
 ```
 
 <a id="addmanualpartintern-recond"></a>
@@ -207,7 +207,7 @@ aus, steht lieber eine Beschreibung ohne Bestand da (unsichtbar, weil
 niemand das Teil hat) als ein Bestand ohne Beschreibung (eine Zeile ohne
 Namen in der Teileliste).
 
-Die beiden Upserts stehen in utils/katalogPflege.ts — derselbe Schreiber
+Die beiden Upserts stehen in src/katalog/katalogPflege.ts — derselbe Schreiber
 wie beim CSV-Import, beim Set-Import und beim Verschieben eines Sets.
 ```
 
@@ -243,7 +243,7 @@ lautlos.
 Jetzt ist die Reihenfolge umgekehrt und das Verschlucken weg: Geht das
 Angleichen schief, hat sich NICHTS geaendert, und der Fehler wird
 gemeldet. Die Spalte schreibt mengeNeuRechnen() danach aus den
-Erfassungen (utils/bestandsmenge.ts).
+Erfassungen (db/bestandsmenge.ts).
 ```
 
 <a id="updatemanualpart-2"></a>
@@ -267,7 +267,7 @@ heute".
 
 ```text
 Aufstocken der heutigen Zeile ODER eine neue anlegen — beides
-erledigt recordAcquisitionForDay (utils/acquisitions.ts). Vorher
+erledigt recordAcquisitionForDay (src/bestand/acquisitions.ts). Vorher
 stand die Tagesprüfung hier von Hand (`isToday_`) und galt nur an
 dieser einen Stelle; jetzt gilt sie überall gleich.
 Der Preis wird UNTEN geholt — erst muss der Zustand feststehen
@@ -275,10 +275,10 @@ Der Preis wird UNTEN geholt — erst muss der Zustand feststehen
 Zustand der neuen Erfassung folgt dem Teil selbst (bzw. dem
 User-Default), nicht hartkodiert 'N' — sonst bekäme ein als
 "Gebraucht" geführtes Teil bei jeder Mengen-Erhöhung eine
-"Neu"-Erfassung. Der Standard-Zustand kommt aus utils/settings.ts;
+"Neu"-Erfassung. Der Standard-Zustand kommt aus src/konto/settings.ts;
 lazy require wegen des Zyklus parts↔sets.
 Beim Erfassen gibt es keine Zustandseingabe — dieselbe Staffelung wie
-beim Bearbeiten, nur ohne den ersten Schritt (utils/settings.ts).
+beim Bearbeiten, nur ohne den ersten Schritt (src/konto/settings.ts).
 ```
 
 <a id="updatemanualpart-3"></a>
@@ -310,7 +310,7 @@ Used by both the standalone CSV download and the combined ZIP export in settings
 Hier stand `for (const p of parts) { await db.all(...) }` — bei 2000 manuell
 erfassten Teilen also 2001 Abfragen fuer einen Export. Die beiden
 ZWILLINGSFUNKTIONEN sind laengst umgestellt: buildFigsCsv (routes/minifigs.ts,
-FIGS_CSV_SQL) und buildSetsCsv (utils/setService.ts, SETS_CSV_SQL). Ihre
+FIGS_CSV_SQL) und buildSetsCsv (src/sets/setService.ts, SETS_CSV_SQL). Ihre
 Kommentare beschreiben genau diesen Umbau; die Teile blieben als einzige
 zurueck. Wieder eine Regel, die an zwei von drei Stellen gilt.
 

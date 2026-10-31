@@ -34,7 +34,7 @@ import { gibCheckOnLoad, gibZuruecksetzen } from './01-fortschritt.js';
 /** HTML-Escape für Textinhalte und doppelt-gequotete Attributwerte. */
 /**
  * Wie kurz ein Passwort hoechstens sein darf — dieselbe Zahl wie im Server
- * (PASSWORT_MIN_ZEICHEN in utils/auth.ts) und in der App.
+ * (PASSWORT_MIN_ZEICHEN in src/konto/auth.ts) und in der App.
  *
  * Sie steht hier ZUSAETZLICH und nicht statt dessen: Der Server ist die
  * Instanz, die es durchsetzt, der Browser der, der es dem Nutzer sagt, bevor
@@ -330,7 +330,7 @@ export function knopfBesetzt(btn, laeuft) {
  * noch. GEBAUT wird nur die neue.
  *
  * Die Begruendung in ganzer Laenge steht serverseitig bei den gleichnamigen
- * Konstanten in utils/images.ts.
+ * Konstanten in src/katalog/bilder/images.ts.
  */
 const IMG_PROXY = '/api/v1/img-proxy';
 const IMG_PROXY_ALT = '/api/img-proxy';
@@ -494,7 +494,7 @@ export function escHtmlAttr(v) {
  *
  * Vorher konstruierte diese Funktion aus JEDEM lokalen Pfad selbst eine
  * "_thumb.jpg"-Variante, unabhängig davon, ob diese Datei existiert.
- * `utils/images.ts` (Server, resolveImageLocal()) prüft das aber bereits: Es
+ * `src/katalog/bilder/images.ts` (Server, resolveImageLocal()) prüft das aber bereits: Es
  * liefert für `image_local` je nachdem den Thumb- ODER den Original-Pfad,
  * mit eigenem Existenz-Cache. Lieferte der Server den Original-Pfad, weil
  * die Vorschau (noch) fehlt, baute diese Funktion TROTZDEM ihre eigene
@@ -636,7 +636,7 @@ export async function api(method, path, body) {
   // ── Accept-Language: die Sprache, die gerade AUF DEM BILDSCHIRM steht ──────
   //
   // Der Server hat seine Fehlermeldungen in beiden Sprachen
-  // (utils/fehlerTexte.ts) und antwortet in der, die hier steht. Vorher waren
+  // (src/infra/fehlerTexte.ts) und antwortet in der, die hier steht. Vorher waren
   // alle 80 Meldungen deutsch — in einer sonst vollständig englischen
   // Oberfläche.
   //
@@ -1132,7 +1132,7 @@ function showApp(){ bindTabs(); plInit(); setTimeout(()=>{ gibCheckOnLoad(); }, 
   // ── Ein Fehler von mir, hier behoben ──────────────────────────────────────
   //
   // Der Knopf in der Mail zeigt seit dem 25.09. auf genau diese Adresse
-  // (utils/mailer.ts, baueAlarmMail) — nur hat sie niemand gelesen. Ich habe
+  // (src/infra/mailer.ts, baueAlarmMail) — nur hat sie niemand gelesen. Ich habe
   // den Link eingebaut, ohne zu pruefen, ob die Webapp ihn versteht; er
   // oeffnete bis hierher bloss die Startseite. Erst diese Zeilen machen ihn
   // wahr.

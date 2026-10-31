@@ -322,7 +322,7 @@ async function plFuelleBestand() {
   const frei = knopfBesetzt(b);
   // Das Blickfeld kommt aus DIESER Ansicht, nicht mehr aus dem Teile-Reiter.
   // `own` und `all` sind die Namen, die der Server ohnehin kennt
-  // (utils/household.ts, parseScopeMode) — die Wahl ist also nur eine andere
+  // (src/haushalt/haushalt.ts, parseScopeMode) — die Wahl ist also nur eine andere
   // Bedienung derselben Sache, kein zweiter Begriff daneben.
   const mitSubs = !!G('pl-bestand-subs')?.checked;
   const d = await api('POST', '/v1/parts/owned' + (mitSubs ? '' : '?accounts=own'),
@@ -574,7 +574,7 @@ async function plExportBricklink() {
   //
   // Sie werden genannt. Eine geratene Farbnummer ergibt eine gültige Datei,
   // die das falsche Teil bestellt — und das fällt erst auf, wenn das Paket da
-  // ist. Dieselbe Regel wie beim Import (utils/wantedListe.ts): Was sich
+  // ist. Dieselbe Regel wie beim Import (src/merkliste/wantedListe.ts): Was sich
   // nicht abbilden lässt, bleibt offen und wird gesagt.
   //
   // Minifiguren (Typ M) haben keine Farbe und sind deshalb nie betroffen.

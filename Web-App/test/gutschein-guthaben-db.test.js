@@ -37,8 +37,8 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
 const { testServer } = require('./helpers/server');
-const G = _req('utils/gutscheinGuthaben.js');
-const S = _req('utils/gutscheinGuthabenSchranke.js');
+const G = _req('src/gutscheine/gutscheinGuthaben.js');
+const S = _req('src/gutscheine/gutscheinGuthabenSchranke.js');
 
 test.after(async () => { await db.pool.end().catch(() => {}); });
 
@@ -350,7 +350,7 @@ test('Guthaben: die Route und die Schranke', { concurrency: 1 }, async (t) => {
     // meldete einen Leck, den es nicht gab — der Text enthielt eine Ziffernfolge,
     // die gar nicht mehr die PIN dieser Karte war. Die Zusicherung muss gegen
     // DEN Wert prüfen, den die Route an verdecke() gibt.
-    const pinJetzt = _req('utils/geheimnis.js').entschluessele(
+    const pinJetzt = _req('src/infra/geheimnis.js').entschluessele(
       (await db.get('SELECT pin FROM vouchers WHERE id=$1', [MIT_PIN])).pin);
     naechsteAntwort = antwort({ status: 500, text: `kaputt für ${NUMMER} mit ${pinJetzt}` });
     const r = await abfrage(srv.base, MIT_PIN);

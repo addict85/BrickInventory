@@ -33,7 +33,7 @@ test('gemeinsamer Takt über die Datenbank', { concurrency: 1 }, async (t) => {
   try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }
   t.after(() => db.pool.end().catch(() => {}));
 
-  const { RateLimiter } = _req('utils/rateLimiter.js');
+  const { RateLimiter } = _req('src/katalog/rateLimiter.js');
   const API = `test-${process.pid}`;
   const ABSTAND = 250;
   await db.run('DELETE FROM api_takt WHERE api = $1', [API]);

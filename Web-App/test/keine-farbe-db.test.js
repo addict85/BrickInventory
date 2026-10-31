@@ -1,6 +1,6 @@
 /**
  * „Keine Farbe“ ist 9999 wie bei Rebrickable, 0 bleibt Schwarz (Migration
- * 0071, utils/farben.ts). Geprüft werden die Migration auf Altdaten, das
+ * 0071, src/katalog/farben.ts). Geprüft werden die Migration auf Altdaten, das
  * Erfassen ohne Farbe, die Farbliste ohne Rebrickable und der Preisabruf.
  *
  * Gegenproben (am 29.10.2026 gemessen):
@@ -24,7 +24,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
-const MIGRATION = path.join(__dirname, '..', 'db', 'migrations', '0071-keine-farbe.sql');
+const MIGRATION = path.join(__dirname, '..', 'db/migrations/0071-keine-farbe.sql');
 
 test('keine Farbe ist 9999, 0 bleibt Schwarz', { concurrency: 1 }, async (t) => {
   try { await db.initSchema(); }
@@ -99,7 +99,7 @@ test('keine Farbe ist 9999, 0 bleibt Schwarz', { concurrency: 1 }, async (t) => 
   });
 
   await t.test('ein Teil ohne Farbe wird nicht schwarz', async () => {
-    const V = _req('utils/validate.js');
+    const V = _req('src/infra/validate.js');
     assert.equal(V.colorId(''), 9999);
     assert.equal(V.colorId(null), 9999);
     assert.equal(V.colorId('-1'), 9999);
@@ -109,7 +109,7 @@ test('keine Farbe ist 9999, 0 bleibt Schwarz', { concurrency: 1 }, async (t) => 
     await db.run('DELETE FROM users WHERE username=$1', [NAME]);
     const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
     try {
-      const { addManualPart } = _req('utils/manuelleTeile.js');
+      const { addManualPart } = _req('src/teile/manuelleTeile.js');
       await addManualPart(uid, { part_number: 'KF9', part_name: 'Probe', color_id: null, quantity: 2, unit_price: 1 });
       await addManualPart(uid, { part_number: 'KF9', part_name: 'Probe', color_id: 0, quantity: 1, unit_price: 1 });
       const zeilen = await db.all(`SELECT p.color_id, SUM(a.quantity)::int AS menge FROM parts p
@@ -122,7 +122,7 @@ test('keine Farbe ist 9999, 0 bleibt Schwarz', { concurrency: 1 }, async (t) => 
   });
 
   await t.test('die Farbliste kommt aus rb_colors, die Notliste führt nur echte Rebrickable-IDs', async () => {
-    const { farbliste } = _req('utils/farben.js');
+    const { farbliste } = _req('src/katalog/farben.js');
     const vorher = await db.all('SELECT id, name, rgb FROM rb_colors');
     try {
       await db.run('DELETE FROM rb_colors');
@@ -139,7 +139,7 @@ test('keine Farbe ist 9999, 0 bleibt Schwarz', { concurrency: 1 }, async (t) => 
   });
 
   await t.test('keine Farbe fragt BrickLink nach (Not Applicable)', async () => {
-    const { resolveBlColorId } = _req('utils/finance/preise.js');
+    const { resolveBlColorId } = _req('src/finanzen/rechnung/preise.js');
     assert.equal(await resolveBlColorId(9999), 0);
   });
 });

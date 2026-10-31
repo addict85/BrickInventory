@@ -410,7 +410,7 @@ async function openCatModal(setNumber){
   ];
   if (s.owned) rows.push([t('catalog.owned'), '×' + s.owned_quantity]);
   G('cat-m-det').innerHTML = rows.map(([k, v]) => detailZeile(k, esc(String(v)))).join('');
-  // Kauf-Link kommt fertig vom Server (utils/bricklinkLink.ts). Vorher wurde er
+  // Kauf-Link kommt fertig vom Server (src/katalog/bricklinkLink.ts). Vorher wurde er
   // hier aus der Rebrickable-Nummer gebaut und immer als Set verlinkt (S=…) —
   // für alles, was BrickLink als Gear oder Buch führt, war damit sowohl der
   // Parameter als auch die Nummer falsch (dort ohne "-1"-Suffix).

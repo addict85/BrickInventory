@@ -57,7 +57,7 @@ test('1. die Startseite ist auch ohne Pfad erreichbar', async () => {
   // Hier stand `break` beim ERSTEN Treffer. Das stimmte, solange genau eine
   // Route die Seite rendert. Seit /reset-password über denselben Renderer
   // geht (sonst gängen von dort die Assets OHNE Stempel hinaus, siehe
-  // utils/assetStempel.ts), findet die Suche den festen Pfad zuerst — und
+  // src/infra/assetStempel.ts), findet die Suche den festen Pfad zuerst — und
   // meldete einen 404 für `/`, obwohl der Catch-all heil war. Eine Prüfung,
   // die die falsche Route misst, ist schlimmer als keine: Sie sieht nach
   // einem Befund aus.
@@ -153,11 +153,11 @@ test('2. req.body ist immer ein Objekt, auch ohne passenden Parser', async () =>
  * Auf der Startseite fielen damit ZWEI Dinge aus:
  *
  *   • das serverseitig gesetzte `data-theme`. Genau dafuer gibt es
- *     utils/indexHtml.ts: Ohne den Wert startet ein frischer Browser im
+ *     src/konto/indexHtml.ts: Ohne den Wert startet ein frischer Browser im
  *     Standarddesign und springt nach dem Abgleich sichtbar um. Der Kopf
  *     jener Datei beschreibt diesen Sprung als geloest — auf `/` war er es
  *     nie.
- *   • der Dateistempel (utils/assetStempel.ts). Deshalb blieb die
+ *   • der Dateistempel (src/infra/assetStempel.ts). Deshalb blieb die
  *     Cache-Reparatur bei Marco wirkungslos: Sie kam an seiner Adresse gar
  *     nicht zum Einsatz.
  *

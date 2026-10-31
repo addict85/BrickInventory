@@ -69,7 +69,7 @@ const dbDa = async (t) => {
   }
 };
 
-const MIG_DIR = path.join(ROOT, 'db', 'migrations');
+const MIG_DIR = path.join(ROOT, 'db/migrations');
 const DATEI   = path.join(MIG_DIR, '0035-teilepreise-nur-in-erfassungen.sql');
 
 test('nach der ganzen Kette tragen parts und minifigs keinen Preis mehr',
@@ -157,8 +157,8 @@ test('die Listen liefern Preis und Zustand aus der neuesten Erfassung',
                 VALUES ($1,'fig-5',1,5.00,'N', NOW() - INTERVAL '2 days'),
                        ($1,'fig-5',2,7.50,'U', NOW())`, [uid]);
 
-  const H = _req('utils/handlers/parts.js');
-  const M = _req('utils/handlers/minifigs.js');
+  const H = _req('src/teile/abfragen.js');
+  const M = _req('src/figuren/abfragen.js');
 
   const teile = await H.getManualParts([uid], uid);
   const teil = (Array.isArray(teile) ? teile : teile.parts || []).find(p => p.part_number === '3002');
@@ -179,7 +179,7 @@ test('die Listen liefern Preis und Zustand aus der neuesten Erfassung',
 
   // ── Und ohne Preis bleibt der Anzeigewert 0, nicht leer ──────────────────
   //
-  // utils/preisRegel.ts unterscheidet die beiden Bedeutungen: In der Erfassung
+  // src/finanzen/preisRegel.ts unterscheidet die beiden Bedeutungen: In der Erfassung
   // heisst NULL „kein Preis bekannt", der Anzeigewert ist dann 0. Vor
   // Migration 0035 stand diese 0 in parts.purchase_price; jetzt bildet die
   // Leseabfrage sie.
@@ -197,5 +197,5 @@ test('die Listen liefern Preis und Zustand aus der neuesten Erfassung',
   assert.equal(ohnePreis.unit_price, null,
     'Ohne Preis muss unit_price leer sein — das ist die Aussage „nichts eingegeben"');
   assert.equal(Number(ohnePreis.purchase_price), 0,
-    'Der Anzeigewert muss 0 sein, nicht leer — siehe utils/preisRegel.ts');
+    'Der Anzeigewert muss 0 sein, nicht leer — siehe src/finanzen/preisRegel.ts');
 });

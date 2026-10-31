@@ -38,7 +38,7 @@ Abhaengigkeiten dieser Datei standen nicht an ihrem Kopf, und ein require()
 ohne Typdeklaration liefert `any`. In der Datei, die Schema, Migrationen und
 das Admin-Startpasswort verantwortet, ist das die falsche Stelle zum Sparen.
 
-NICHT gehoben: ../utils/partsSummary (Ladezyklus, Begruendung an der Stelle
+NICHT gehoben: ../src/teile/partsSummary (Ladezyklus, Begruendung an der Stelle
 selbst) und ../package.json — das ist keine Abhaengigkeit des Moduls,
 sondern ein Lesevorgang mit Rueckfall.
 ```
@@ -232,7 +232,7 @@ waere eine Stelle, an der jemand spaeter den falschen Helfer nimmt.
 ```text
 ── Ein Preiseintrag je Set, Zustand, Währung und TAG ───────────────────────
 
-Zwei Schreibwege (jobs/priceJob.ts beim Abruf, utils/financeCalc.ts) tragen
+Zwei Schreibwege (jobs/priceJob.ts beim Abruf, src/finanzen/financeCalc.ts) tragen
 `ON CONFLICT DO NOTHING` — die Tabelle hatte aber nur den Primärschlüssel
 auf id. Ohne passenden Unique-Index kann die Klausel nie greifen: Sie liest
 sich wie ein Schutz gegen Dubletten und ist keiner. Jede Preisabfrage legte
@@ -440,7 +440,7 @@ ergänzt.
 Alle drei mit EXPLAIN (ANALYZE, BUFFERS) an je 100'000 Zeilen nachgemessen.
 
  1. parts — der BrickLink-Rückfall in resolveBlPartNumber
-    (utils/financeCalc.ts). Er läuft EINMAL JE TEIL der Bewertung:
+    (src/finanzen/financeCalc.ts). Er läuft EINMAL JE TEIL der Bewertung:
         ohne Index   Seq Scan,   2479 Buffer, 10,1   ms
         mit  Index   Index Scan,    2 Buffer,  0,012 ms
     Bei 500 manuellen Teilen sind das rund fünf Sekunden allein hier.
@@ -473,7 +473,7 @@ rb_part_categories selbst braucht keinen Extra-Index: die Auflösung läuft übe
 den PRIMARY KEY (id), und die Tabelle ist mit ~65 Zeilen ohnehin winzig.
 Gemeinsame Zähler für Brute-Force- und Missbrauchsschutz. Vorher lagen sie
 im Prozessspeicher, womit bei N Cluster-Workern effektiv N×5 Versuche
-möglich waren (utils/loginLimiter.ts).
+möglich waren (src/konto/loginLimiter.ts).
 ```
 
 <a id="indizesundzusammenfassung-3"></a>
@@ -523,7 +523,7 @@ Was an seine Stelle tritt:
     Die Teileansicht (exclude_manual=1, ohne Set- und Lagerortfilter)
     liest die vorberechnete Zusammenfassung, und die traegt den
     Gruppenschluessel als fertige Spalte `part_key`
-    (utils/partsSummary.ts). Die Live-Abfrage bleibt fuer die Faelle, in
+    (src/teile/partsSummary.ts). Die Live-Abfrage bleibt fuer die Faelle, in
     denen ein Filter die Menge ohnehin klein macht.
 Der Ersatzindex steht in Migration 0037 und NICHT hier, aus demselben
 Grund wie idx_parts_category (Migration 0034): initSchema() laeuft nur
@@ -536,7 +536,7 @@ parts.bl_part_number, und Postgres entfernt abhaengige Indizes beim
 DROP COLUMN selbst.
 Vorberechnete Teile-Zusammenfassung inkl. Trigger zur Entwertung.
 
-require() ABSICHTLICH hier unten, nicht oben: utils/partsSummary importiert
+require() ABSICHTLICH hier unten, nicht oben: src/teile/partsSummary importiert
 (ueber Umwege) auf db/database zurueck. Ein Top-Level-Import schloesse den
 Ladezyklus, und dann waere eines der beiden Module beim Laden des anderen
 noch halb leer — ein Fehler, der sich erst zur Laufzeit und nur manchmal
@@ -556,7 +556,7 @@ GEMESSEN: Hier stand `require('../package.json')`. Aus dist/db/database.js
 loest Node das nach dist/package.json auf — eine Datei, die es nicht gibt.
 appVersion war damit IMMER 'unknown'.
 
-Dieselbe Falle ist in utils/appPaths.ts bereits beschrieben und geloest
+Dieselbe Falle ist in src/infra/appPaths.ts bereits beschrieben und geloest
 („dist/server.js sieht als __dirname das Verzeichnis dist/"): APP_ROOT geht
 nach oben, bis eine package.json auftaucht, und stimmt aus den Quellen wie
 aus dem Bau. Von dort wird sie jetzt gelesen.

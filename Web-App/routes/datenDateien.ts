@@ -3,11 +3,13 @@
  * (data/instructions/). Eigene Datei, damit ein Test die echten Handler
  * einhängen kann.
  */
+import { fehlerAntwort } from '../src/infra/httpError';
 import express, { Request, Response } from 'express';
-import { liefereDatei } from '../utils/dateiAusliefern';
-import { safeDataPath } from '../utils/datenPfad';
+import { liefereDatei } from '../src/infra/dateiAusliefern';
+import { safeDataPath } from '../src/infra/datenPfad';
 
-const { requireLoginOrToken, angemeldeteNutzerId } = require('../utils/auth') as typeof import('../utils/auth');
+import { requireLoginOrToken, angemeldeteNutzerId } from '../src/konto/auth';
+import { scopeIds } from '../src/haushalt/haushalt';
 
 type WildcardRequest = Request<{ pfad: string[] }>;
 const router = express.Router();
@@ -25,7 +27,6 @@ router.get('/data/uploads/*pfad', requireLoginOrToken, async (req: WildcardReque
   // Auch Verwalter lesen fremde Uploads (Rechnungen, Gutscheine) nicht: Die
   // Verwaltung der Konten braucht deren Inhalt nicht.
   if (besitzer !== userId) {
-    const { scopeIds } = require('../utils/household') as typeof import('../utils/household');
     const erlaubt = await scopeIds(userId).catch(() => [userId]);
     if (!erlaubt.includes(besitzer)) return res.status(403).send('Kein Zugriff');
   }
@@ -38,5 +39,7 @@ router.get('/data/instructions/*pfad', requireLoginOrToken, async (req: Wildcard
   if (!filePath) return res.status(404).send('Datei nicht gefunden');
   liefereDatei(res, filePath);
 });
+
+router.use(fehlerAntwort);
 
 export = router;

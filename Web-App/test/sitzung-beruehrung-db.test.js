@@ -14,7 +14,7 @@
  * Cluster-Worker teilen.
  *
  * Die Begründung, warum das Schreiben warten darf (und das Lesen nicht),
- * steht in utils/sitzungsBeruehrung.ts.
+ * steht in src/konto/sitzungsBeruehrung.ts.
  *
  * ── Warum der Test die Sitzung auch BENUTZT ─────────────────────────────────
  * Eine Drosselung, die zu viel drosselt, sieht in der Zählung besser aus und
@@ -38,7 +38,7 @@ process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 const { buildAndRequire, ohneKommentare } = require('./helpers/sources');
 const _req = buildAndRequire();
 const db = _req('db/database.js');
-const { drossleBeruehren } = _req('utils/sitzungsBeruehrung.js');
+const { drossleBeruehren } = _req('src/konto/sitzungsBeruehrung.js');
 const express   = require(path.join(ROOT, 'node_modules', 'express'));
 const session   = require(path.join(ROOT, 'node_modules', 'express-session'));
 const pgSession = require(path.join(ROOT, 'node_modules', 'connect-pg-simple'))(session);

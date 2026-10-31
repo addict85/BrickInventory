@@ -61,7 +61,7 @@ test('Preisalarm-Übersicht: eigene Alarme, mit Namen, änderbar, löschbar',
   const client = await db.pool.connect();
   try { await _req('db/migrate.js').runMigrations(client); } finally { client.release(); }
 
-  const { alleAlarme, setzeAlarm, loescheAlarm } = _req('utils/preisalarm.js');
+  const { alleAlarme, setzeAlarm, loescheAlarm } = _req('src/finanzen/preisalarm.js');
 
   for (const n of ['alarm_ich', 'alarm_fremd', 'alarm_kind'])
     await db.run('DELETE FROM users WHERE username = $1', [n]);

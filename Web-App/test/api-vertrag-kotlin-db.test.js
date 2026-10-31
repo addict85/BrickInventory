@@ -17,13 +17,13 @@
  * Die App las sie nur dank isLenient.
  *
  * Gegenproben (am 27.10. gemessen):
- *   A  in utils/handlers/sets.ts das ::int an used_count entfernt → rot:
+ *   A  in src/sets/abfragen.ts das ::int an used_count entfernt → rot:
  *      „passt zum Kotlin-Modell" nennt $.sets[0].used_count
  *   B  in SetItem (SetModels.kt) ein Pflichtfeld `gibtEsNicht: String`
  *      ergänzt → rot: „fehlt (SetItem, Pflichtfeld)"
  *   C  MIN_GEPRUEFT auf 58 gesetzt → rot: „so viele Routen geprüft"
  * Am 30.10. gemessen:
- *   D  in utils/dienste/sets.ts `...eineSeite(…)` aus der Teileliste
+ *   D  in src/sets/dienst.ts `...eineSeite(…)` aus der Teileliste
  *      entfernt → rot: „passt zum Kotlin-Modell“ nennt
  *      parts-list.total/page/page_size: fehlt (PartsResponse, Standardwert)
  *   E  in FEHLEN_ERLAUBT den Schlüssel für themes verbogen und einen
@@ -160,10 +160,10 @@ test('die Antworten passen zu den Kotlin-Modellen', { concurrency: 1, timeout: 1
   await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1, $2)', [oben, uid]);
   await db.run('INSERT INTO household_former_links (main_user_id, sub_user_id, via_user_id) VALUES ($1, $2, $3)',
     [uid, getrennt, sub]);
-  await _req('utils/auth.js').createToken(uid, 'Vertragsprobe');
+  await _req('src/konto/auth.js').createToken(uid, 'Vertragsprobe');
   // Hintergrundarbeiten: ein Auftrag mit Fortschritt und eine Pause, damit
   // /admin/auftraege keine leeren Listen liefert.
-  const auftrag = await _req('utils/auftraege.js').stelleAuftragEin('anleitung', { set_number: SET },
+  const auftrag = await _req('src/auftraege/repository/auftraege.js').stelleAuftragEin('anleitung', { set_number: SET },
     { schluessel: `vertrag-get:${process.pid}` });
   await db.run(`UPDATE auftraege SET fortschritt = '{"erledigt":1,"gesamt":3,"text":"Seiten"}'::jsonb WHERE id = $1`, [auftrag]);
   await db.run(`INSERT INTO auftrag_pausen (art, bis, grund) VALUES ('wechselkurse', NOW() + INTERVAL '1 hour', 'Vertrag')

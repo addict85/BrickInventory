@@ -35,7 +35,7 @@ test('Kategorie aus der Zusammenfassung', { concurrency: 1 }, async (t) => {
   const mc = await db.pool.connect();
   try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }
   const H = require('./helpers/sources').handlerModul(_req);
-  const PS = _req('utils/partsSummary.js');
+  const PS = _req('src/teile/partsSummary.js');
   const NAME = `kategorie-${process.pid}`;
   const SN = `KZ${process.pid}-1`;
   await db.run('DELETE FROM users WHERE username=$1', [NAME]);

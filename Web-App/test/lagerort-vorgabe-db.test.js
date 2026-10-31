@@ -18,7 +18,7 @@
  *   löschen    → die Vorgabe ist weg, nicht kaputt
  *
  * Genau das ist der Grund, aus dem die ID gespeichert wird und nicht der Name
- * (begründet in utils/lagerort.ts). Mit dem Namen bräuchte es an zwei weiteren
+ * (begründet in src/bestand/lagerort.ts). Mit dem Namen bräuchte es an zwei weiteren
  * Stellen Code, der mitzieht — und übersähe man eine, zeigte die Vorgabe auf
  * einen Ort, den die Auswahlliste nicht kennt. Diese Datei ist der Nachweis,
  * dass es dafür keinen Code braucht.
@@ -67,7 +67,7 @@ test('Lagerort-Vorgabe gegen echte Datenbank', async (t) => {
     return;
   }
   await seed();
-  const L = _req('utils/lagerort.js');
+  const L = _req('src/bestand/lagerort.js');
 
   const estrich = (await L.legeOrtAn(U.ich, 'Estrich')).ort;
   const keller  = (await L.legeOrtAn(U.ich, 'Keller')).ort;
@@ -148,7 +148,7 @@ test('Lagerort-Vorgabe gegen echte Datenbank', async (t) => {
       [U.ich, L.VORGABE_SCHLUESSEL]))?.value;
     assert.equal(rest, String(kiste.id),
       'Erwartet war die stumme, verwaiste Zeile — steht dort etwas anderes, ' +
-      'stimmt die Begruendung in utils/lagerort.ts nicht mehr');
+      'stimmt die Begruendung in src/bestand/lagerort.ts nicht mehr');
   });
 
   await t.test('der Stern laesst sich wieder abschalten', async () => {

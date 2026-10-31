@@ -49,9 +49,9 @@ test('Design je Konto', { concurrency: 1 }, async (t) => {
   const ids = [];
   for (const n of namen) ids.push((await db.get(`INSERT INTO users (username, password_hash, is_active) VALUES ($1, 'x', 1) RETURNING id`, [n])).id);
   const vorher = (await db.get(`SELECT value FROM global_settings WHERE key = 'app_theme'`))?.value ?? null;
-  const { setGlobalSetting } = _req('utils/settings.js');
+  const { setGlobalSetting } = _req('src/konto/settings.js');
   await setGlobalSetting('app_theme', 'noppe');
-  _req('utils/indexHtml.js').invalidateTheme();
+  _req('src/konto/indexHtml.js').invalidateTheme();
   t.after(async () => {
     await db.run('DELETE FROM users WHERE id = ANY($1)', [ids]).catch(() => {});
     if (vorher === null) await db.run(`DELETE FROM global_settings WHERE key = 'app_theme'`);
@@ -60,7 +60,7 @@ test('Design je Konto', { concurrency: 1 }, async (t) => {
   });
 
   const sitzung = {};
-  const { base } = testServer(_req, { sitzung, routen: { '/api/v1/settings': 'routes/settings.js', '/api/v1': 'routes/api_v1/index.js' }, t });
+  const { base } = testServer(_req, { sitzung, routen: { '/api/v1': 'routes/api_v1/index.js' }, t });
   const hole = async (pfad, o = {}) => (await fetch(base + '/api/v1/settings' + pfad, o)).json();
   const setze = (theme) => hole('/user/theme', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ theme }) });
   const als = (uid) => { if (uid) sitzung.userId = uid; else delete sitzung.userId; };
@@ -83,7 +83,7 @@ test('Design je Konto', { concurrency: 1 }, async (t) => {
 
   await t.test('App mit Token: dasselbe Design wie im Browser', async () => {
     als(null);
-    const token = await _req('utils/auth.js').createToken(ids[0], 'Prüfung', true);
+    const token = await _req('src/konto/auth.js').createToken(ids[0], 'Prüfung', true);
     const mitToken = { headers: { Authorization: `Bearer ${token}` } };
     assert.equal((await hole('/theme', mitToken)).theme, 'werkbank');
     assert.equal((await hole('', mitToken)).settings?.app_theme, 'werkbank', 'GET /api/v1/settings nennt die Vorgabe');
@@ -97,7 +97,7 @@ test('Design je Konto', { concurrency: 1 }, async (t) => {
   });
 
   await t.test('index.html: Design des Kontos, ohne Konto die Vorgabe', async () => {
-    const { renderIndexHtml } = _req('utils/indexHtml.js');
+    const { renderIndexHtml } = _req('src/konto/indexHtml.js');
     const designVon = (html) => /<html[^>]*\sdata-theme="([^"]+)"/.exec(html)?.[1];
     assert.equal(designVon(await renderIndexHtml(ids[0])), 'werkbank');
     assert.equal(designVon(await renderIndexHtml(ids[1])), 'noppe');

@@ -161,16 +161,16 @@ test('2. die Webapp hat keine eigene Meinung mehr zur Adresse', () => {
 
 test('3. eine Quelle fuer QR-Code, Mail-Knopf und Reset-Links', () => {
   // Der Kern von Marcos erstem Satz: EINE Adresse, nicht drei. Lesen darf sie
-  // nur utils/basisUrl.ts; wer process.env.APP_BASE_URL selbst anfasst, hat
+  // nur src/infra/basisUrl.ts; wer process.env.APP_BASE_URL selbst anfasst, hat
   // eine vierte Schreibweise begonnen.
-  // Die Variable liest utils/konfig.ts (appBaseUrl, ohne Schraegstrich am
+  // Die Variable liest src/infra/konfig.ts (appBaseUrl, ohne Schraegstrich am
   // Ende); basisUrl() ist der eine Weg dorthin.
-  const helfer = lies('utils/basisUrl.ts');
-  assert.match(helfer, /konfig\(\)\.appBaseUrl/, 'utils/basisUrl.ts liest die Konfiguration nicht.');
-  assert.match(lies('utils/konfig.ts'), /APP_BASE_URL\?\.trim\(\)\.replace\(\/\\\/\+\$\/, ''\)/,
+  const helfer = lies('src/infra/basisUrl.ts');
+  assert.match(helfer, /konfig\(\)\.appBaseUrl/, 'src/infra/basisUrl.ts liest die Konfiguration nicht.');
+  assert.match(lies('src/infra/konfig.ts'), /APP_BASE_URL\?\.trim\(\)\.replace\(\/\\\/\+\$\/, ''\)/,
     'Ein abschliessender Schraegstrich wird nicht entfernt.');
 
-  for (const datei of ['routes/auth.ts', 'utils/mailer.ts']) {
+  for (const datei of ['routes/auth.ts', 'src/infra/mailer.ts']) {
     const quelle = lies(datei);
     assert.ok(!/process\.env\.APP_BASE_URL/.test(quelle),
       `${datei} liest APP_BASE_URL selbst — das ist die Kopie, die auseinanderlaeuft.`);

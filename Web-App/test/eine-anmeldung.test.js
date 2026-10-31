@@ -111,7 +111,7 @@ test('kein Handler fragt die Sitzung selbst nach der Nutzerkennung', () => {
 
 test('kein Router bringt einen eigenen Wächter mit', () => {
   // Der zweite Teil desselben Befunds: routes/auth.ts DEFINIERTE requireLogin
-  // und requireAdmin selbst — sitzungsgebunden, während utils/auth.ts und
+  // und requireAdmin selbst — sitzungsgebunden, während src/konto/auth.ts und
   // routes/api_v1/middleware.ts längst token-fähige Fassungen hatten. Drei
   // Fassungen einer Regel, und die App konnte nur eine erfüllen.
   const dateien = routenDateien(ROUTES);
@@ -126,7 +126,7 @@ test('kein Router bringt einen eigenen Wächter mit', () => {
   }
   assert.deepEqual(eigene, [],
     'Diese Router definieren einen eigenen Anmelde-Wächter:\n  ' + eigene.join('\n  ') +
-    '\nEs gibt genau zwei: requireLoginOrToken (utils/auth.ts) und ' +
+    '\nEs gibt genau zwei: requireLoginOrToken (src/konto/auth.ts) und ' +
     'requireApiAdmin (routes/api_v1/middleware.ts). Beide nehmen Sitzung ODER ' +
     'Token. Eine dritte Fassung sperrt zuverlässig die App aus.');
 });

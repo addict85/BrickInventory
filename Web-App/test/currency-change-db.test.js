@@ -10,12 +10,12 @@
  *
  * Seit Nachtrag 28 stösst eine ECHTE Währungsänderung den Preis-Job an, der
  * den Cache im Hintergrund für die neue Währung füllt. Die Regel liegt in
- * setUserSetting() (utils/settings.ts) — der EINEN Schreibstelle für
+ * setUserSetting() (src/konto/settings.ts) — der EINEN Schreibstelle für
  * Benutzereinstellungen — und gilt damit für alle drei Wege: Webapp-Formular,
  * Einstellungs-Import und /api/v1.
  *
  * Geprüft wird VERHALTEN: Der Preis-Job ist ein geplanter Auftrag
- * (utils/zeitplan.ts); ein Anstoss zieht seinen Termin auf jetzt vor.
+ * (src/auftraege/zeitplan.ts); ein Anstoss zieht seinen Termin auf jetzt vor.
  * Erwartung:
  *   • Währung EUR → CHF        : der Termin ist jetzt fällig
  *   • dieselbe Währung nochmal : der Termin bleibt in der Zukunft (das Formular
@@ -53,7 +53,7 @@ test('eine echte Währungsänderung stösst den Preis-Job an, ein No-op-Speicher
   }
 
   // Beobachtet wird der Termin des geplanten Auftrags 'preise'.
-  const Z = _req('utils/zeitplan.js');
+  const Z = _req('src/auftraege/zeitplan.js');
   await db.run(`DELETE FROM auftraege WHERE art = 'preise'`);
   await Z.planeNaechsten('preise');
   const spaeter = () => db.run(`UPDATE auftraege SET faellig_ab = NOW() + INTERVAL '1 hour' WHERE art = 'preise' AND status = 'offen'`);
@@ -75,11 +75,11 @@ test('eine echte Währungsänderung stösst den Preis-Job an, ein No-op-Speicher
   const { base, srv } = testServer(_req, {
     sitzung: { userId: uid, username: USERNAME, isAdmin: false },
     apiNutzer: { user_id: uid },
-    routen: { '/api/settings': 'routes/settings.js', '/api/v1': 'routes/api_v1/index.js' },
+    routen: { '/api/v1': 'routes/api_v1/index.js' },
     t,
   });
 
-  const postWeb = (body) => fetch(`${base}/api/settings/`, {
+  const postWeb = (body) => fetch(`${base}/api/v1/settings`, {
     method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body),
   });
 

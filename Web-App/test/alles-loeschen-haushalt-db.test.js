@@ -128,7 +128,7 @@ test('Alles-Loeschen fasst die verknuepften Konten nicht an', async (t) => {
 test('accounts kann das Loesch-Blickfeld nur einschraenken, nie erweitern', () => {
   // Ein Blickfeld-Parameter, der etwas ÖFFNEN kann, wäre ein Zugriffsweg statt
   // einer Sicherung. Die Route schneidet deshalb gegen writableIds().
-  const src = fs.readFileSync(path.join(ROOT, 'routes', 'api_v1', 'sets.ts'), 'utf8');
+  const src = fs.readFileSync(path.join(ROOT, 'routes/api_v1/sets.ts'), 'utf8');
   const i = src.indexOf("router.delete('/sets/:setNumber'");
   assert.ok(i > 0, 'Löschroute nicht gefunden');
   const rumpf = src.slice(i, i + 900);
@@ -146,7 +146,7 @@ test('der Knopf überlässt die Auswahl dem Server', () => {
   const block = src.slice(i, src.indexOf('\n};', i));
   assert.match(block, /api\('DELETE','\/v1\/bestand'\)/, 'Der Knopf ruft DELETE /v1/bestand');
   assert.doesNotMatch(block, /\/v1\/sets/, 'Der Knopf listet und löscht wieder selbst');
-  const loeschen = fs.readFileSync(path.join(ROOT, 'utils', 'loeschen.ts'), 'utf8');
+  const loeschen = fs.readFileSync(path.join(ROOT, 'src/bestand/loeschen.ts'), 'utf8');
   assert.match(loeschen, /deleteSet\(\[uid\]/, 'Sets werden nur im EIGENEN Konto gelöscht');
 });
 

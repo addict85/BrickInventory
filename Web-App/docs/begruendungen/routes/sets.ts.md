@@ -63,7 +63,7 @@ hört darauf und schiebt ihn an die verbundenen Clients (Webapp + Android),
 ganz ohne Polling; der /status-Endpunkt bleibt als Rückfall.
 
 Der Datensatz, seine Form nach aussen und der Bus stehen seit dem 20.10. in
-utils/importAuftrag.ts — DIESELBE Stelle benutzt jetzt auch der
+src/auftraege/importAuftrag.ts — DIESELBE Stelle benutzt jetzt auch der
 Wanted-Listen-Import, damit er in denselben Balken läuft (Marcos Wunsch:
 „analog den Set-Importen"). Hier bleibt die HTTP-Oberfläche.
 ```
@@ -90,7 +90,7 @@ den realistischen Fall: ein paar Browser-Tabs plus die Android-App.
 
 Hier stand eine EIGENE Fassung von requireLoginOrToken, die ?token=
 bedingungslos akzeptierte. Der Bedarf ist echt — EventSource kann keine
-Kopfzeilen setzen —, die zweite Fassung war es nicht: utils/auth.ts pflegt
+Kopfzeilen setzen —, die zweite Fassung war es nicht: src/konto/auth.ts pflegt
 eine Liste der Pfade, auf denen ein Token in der URL reiten darf, und
 schreibt dazu „alles andere verlangt einen Authorization-Header". Genau das
 stimmte wegen dieser Datei nicht, ohne dass man es dort sieht.
@@ -256,7 +256,7 @@ erlaubte Ausgänge, jede andere Kombination wird abgelehnt statt geraten.
 Die DATEI erst löschen, wenn keine andere Zeile mehr darauf zeigt.
 
 Beim Verschieben eines Sets wird die Anleitungs-Zeile KOPIERT, der Pfad
-wörtlich übernommen (utils/setMove.ts) — zwei Konten teilen sich dann
+wörtlich übernommen (src/sets/setMove.ts) — zwei Konten teilen sich dann
 eine Datei. Vorher lag das Löschen VOR dem DELETE und fragte niemanden:
 Entfernte das eine Konto seine Anleitung, zeigte die Zeile des anderen
 ins Leere, und im Set-Detail stand ein Eintrag, der beim Klick 404 gibt.

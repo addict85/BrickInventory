@@ -1,44 +1,26 @@
 /**
  * Fehlende Bilder im Hintergrund laden — der geplante Auftrag 'bild_nachlauf'
- * (stündlich, der erste 30 s nach dem Start; utils/zeitplan.ts).
+ * (stündlich, der erste 30 s nach dem Start; src/auftraege/zeitplan.ts).
  */
-import * as db from '../db/database';
-import { logAndContinue, meldeUndLiefere } from '../utils/httpError';
-import { generateThumb } from '../utils/thumbs';
-import { setzeTeilBildLokal, setzeFigurBildLokal } from '../utils/katalogPflege';
-import { KEINE_FARBE } from '../utils/validate';
+import { setsMitFehlendenKatalogbildern, manuelleTeileOhneBild, figurenOhneBild } from '../src/katalog/bildlage';
+import { logAndContinue, meldeUndLiefere } from '../src/infra/httpError';
+import { generateThumb } from '../src/katalog/bilder/thumbs';
+import { setzeTeilBildLokal, setzeFigurBildLokal } from '../src/katalog/katalogPflege';
+import { KEINE_FARBE } from '../src/infra/validate';
 import * as enrich from './partsCatalogEnrich';
-import * as monitor from '../utils/jobMonitor';
+import * as monitor from '../src/auftraege/jobMonitor';
 import { AuftragUnterbrochen, type AuftragsKontext } from './auftragsWorker';
 
 async function bildNachlauf(k: AuftragsKontext): Promise<void> {
-  const sets = await db.all(
-    `SELECT DISTINCT set_number FROM set_parts_catalog
-     WHERE image_url IS NOT NULL AND image_local IS NULL
-     UNION
-     SELECT DISTINCT set_number FROM set_minifigs_catalog
-     WHERE image_url IS NOT NULL AND image_local IS NULL`
-  ).catch(meldeUndLiefere('bild-nachlauf:sets', []));
+  const sets = await setsMitFehlendenKatalogbildern().catch(meldeUndLiefere('bild-nachlauf:sets', []));
   // Manuell erfasste Teile mit fehlendem lokalen Bild — im selben Job
   // dauerhaft in den lokalen Cache laden (statt nur über den Proxy). Nur
   // geprüfte Adressen (bild_von IS NULL): Die Datei gilt für alle Konten.
   // Ausführlich: docs/begruendungen/server.ts.md#electprimaryworker-manualparts
-  const manualParts = await db.all(
-    `SELECT DISTINCT pcc.part_number, pcc.color_id, pcc.image_url
-       FROM part_color_catalog pcc
-       JOIN parts p ON p.part_number = pcc.part_number
-                   AND p.color_id    = pcc.color_id
-                   AND p.source      = 'manual'
-      WHERE pcc.image_url IS NOT NULL AND pcc.image_local IS NULL AND pcc.bild_von IS NULL`
-  ).catch(meldeUndLiefere('bild-nachlauf:manualParts', []));
+  const manualParts = await manuelleTeileOhneBild().catch(meldeUndLiefere('bild-nachlauf:manualParts', []));
   // Minifiguren — ALLE, nicht nur manuell erfasste.
   // Ausführlich: docs/begruendungen/server.ts.md#electprimaryworker-figstofetch
-  const figsToFetch = await db.all(
-    `SELECT mc.fig_number, mc.image_url FROM minifigs_catalog mc
-      WHERE mc.image_url IS NOT NULL AND mc.image_local IS NULL AND mc.bild_von IS NULL
-        AND EXISTS (SELECT 1 FROM minifigs m WHERE m.fig_number = mc.fig_number)
-      ORDER BY mc.fig_number`
-  ).catch(meldeUndLiefere('bild-nachlauf:figsToFetch', []));
+  const figsToFetch = await figurenOhneBild().catch(meldeUndLiefere('bild-nachlauf:figsToFetch', []));
   if (!sets.length && !manualParts.length && !figsToFetch.length) {
     await monitor.update('imgDl', { status: 'idle', sub: 'Alle Bilder gecacht', label: '📥 Bild-Download (CDN)' }).catch(logAndContinue('bild-nachlauf:Download'));
     return;
@@ -59,14 +41,14 @@ async function bildNachlauf(k: AuftragsKontext): Promise<void> {
     }
     if (k.beendet) throw new AuftragUnterbrochen();
   };
-  for (const { set_number } of sets) {
+  for (const set_number of sets) {
     await enrich.downloadSetImages(set_number).catch(e => console.warn(`[img-dl-bg] ${set_number}: ${e.message}`));
     await tick();
   }
   for (const p of manualParts) {
     const local = await enrich.downloadImage(p.image_url, p.part_number, p.color_id ?? KEINE_FARBE, 'part').catch(meldeUndLiefere('bild-nachlauf:downloadImage', null));
     if (local) {
-      // In den Katalog (utils/katalogPflege.ts) — einmal fuer alle
+      // In den Katalog (src/katalog/katalogPflege.ts) — einmal fuer alle
       // Konten. Mit Protokoll, falls es scheitert: Das Bild liegt dann
       // auf der Platte, der Katalog zeigt aber nicht darauf. In der
       // Oberflaeche fehlt es weiterhin, und der naechste Start laedt es

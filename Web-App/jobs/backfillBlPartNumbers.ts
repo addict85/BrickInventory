@@ -5,12 +5,12 @@
  * Uses GET /api/v3/lego/parts/?part_nums=a,b,c (batch of 500) instead of single calls.
  */
 
-import { merkeBlNummer } from '../utils/blZuordnung';
+import { merkeBlNummer } from '../src/katalog/blZuordnung';
 import { getRbKey } from '../clients/rebrickable';
-import { nummernListe } from '../utils/fremdeAdressen';
-import * as db from '../db/database';
+import { nummernListe } from '../src/infra/fremdeAdressen';
+import { teileOhneBlNachsicht } from '../src/katalog/csvKatalog';
 import https from 'https';
-import { rebrickableBackgroundLimiter as rebrickableLimiter, consumeRebrickableDaily, parseThrottleWait } from '../utils/rateLimiter';
+import { rebrickableBackgroundLimiter as rebrickableLimiter, consumeRebrickableDaily, parseThrottleWait } from '../src/katalog/rateLimiter';
 
 /** Ergebnis der handgebauten HTTPS-Aufrufe in dieser Datei. Ohne Typparameter
  *  leitet TypeScript bei `new Promise` `unknown` ab. */
@@ -52,15 +52,9 @@ async function run() {
   // 0037). Geprueft wird die ZEILE, nicht ihr Wert: leer heisst
   // nachgesehen und ohne abweichende Nummer, und das soll kein zweites
   // Nachladen ausloesen.
-  const parts = await db.all(
-    `SELECT DISTINCT p.part_number FROM parts p
-      LEFT JOIN bl_zuordnung z ON z.art = 'part' AND z.rb_id = p.part_number
-      WHERE z.rb_id IS NULL
-      ORDER BY p.part_number`
-  );
-  if (!parts.length) { console.log('[bl-backfill] Alle Teile sind nachgesehen'); return; }
+  const partNums = await teileOhneBlNachsicht();
+  if (!partNums.length) { console.log('[bl-backfill] Alle Teile sind nachgesehen'); return; }
 
-  const partNums = parts.map((p: any) => p.part_number);
   console.log(`[bl-backfill] Backfilling ${partNums.length} parts in batches of 500...`);
   const BATCH = 500;
   let updated = 0, skipped = 0;

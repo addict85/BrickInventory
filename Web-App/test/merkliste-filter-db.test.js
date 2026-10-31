@@ -118,7 +118,7 @@ test('Merkliste: Suche, Zustand, Sortierung, Inhaber', async (t) => {
     return;
   }
   await seed();
-  const M = _req('utils/merkliste.js');
+  const M = _req('src/merkliste/merkliste.js');
   const alle = [U.opa, U.enkel];
 
   await t.test('1. Ohne Filter bleibt alles, wie es war', async () => {
@@ -194,7 +194,7 @@ test('Merkliste: Suche, Zustand, Sortierung, Inhaber', async (t) => {
   await t.test('6. Der Inhaber ist das Blickfeld, kein eigener Parameter', async () => {
     // Genau so steht es in der Route: `accounts=` geht durch scopeIds() und
     // kommt als userIds herein. Eine zweite Stelle, die Konten auswählt, wäre
-    // die Doppelung, vor der utils/household.ts warnt.
+    // die Doppelung, vor der src/haushalt/haushalt.ts warnt.
     const nurEnkel = await M.merkpostenVon([U.enkel], undefined, 'EUR');
     assert.deepEqual(nummern(nurEnkel), ['75192-1/N']);
     const nurOpa = await M.merkpostenVon([U.opa], undefined, 'EUR');

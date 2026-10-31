@@ -44,7 +44,7 @@ und zwei Sets, eines davon mit gelöschtem Kaufpreis:
   Bewertung    das leere Set mit ×1 bewertet — 20 CHF, die es nicht gibt
 
 Der letzte Punkt ist der schlimmste: `set.quantity || 1` in
-utils/financeCalc.ts macht aus einer Menge von 0 eine 1. Als Schutz gegen
+src/finanzen/financeCalc.ts macht aus einer Menge von 0 eine 1. Als Schutz gegen
 NULL gedacht, trifft es hier den echten Wert 0 — und das Portfolio wuchs um
 ein Set, das niemand mehr besitzt.
 
@@ -73,12 +73,12 @@ in ihre Liste.
 
 ```text
 Die Stueckzahl der Bestandszeile aus den Erfassungen — und zwar ueber
-utils/bestandsmenge.ts, die einzige Stelle, die sie schreibt.
+db/bestandsmenge.ts, die einzige Stelle, die sie schreibt.
 
 Hier stand `cfg.parentQuantitySql`: je Elementart eine eigene Anweisung,
 dreimal dieselbe Rechnung. Daneben gab es SIEBEN weitere Schreibstellen,
 die die Spalte fortschrieben — und sie sind auseinandergelaufen (der Befund
-steht in utils/bestandsmenge.ts).
+steht in db/bestandsmenge.ts).
 ```
 
 <a id="withsetaggregate-ownerreq"></a>
@@ -114,7 +114,7 @@ es allein daran, dass ein bestehender Test den gemeinsamen Prüfer
 verlangte. Genau dafür sind solche Tests da.
 
 Geprüft wird mit demselben Helfer wie beim Anlegen
-(utils/acquisitions.ts), damit Anlegen und Bearbeiten nicht
+(src/bestand/acquisitions.ts), damit Anlegen und Bearbeiten nicht
 auseinanderlaufen können.
 ```
 
@@ -185,7 +185,7 @@ wurde nie ermittelt, also blieb die Zeile im Detailfenster leer.
 
 ```text
 cond mitgeben — siehe die Begründung bei den Teilen (Nachtrag 146).
-Die BL-Nummer-Abfrage steht in utils/blZuordnung.ts — sie wird auch vom
+Die BL-Nummer-Abfrage steht in src/katalog/blZuordnung.ts — sie wird auch vom
 Kaufpreis-Nachtrag gebraucht (jobs/purchasePriceBackfill.ts).
 
 Sie steht in einer eigenen Zeile und nicht im Aufruf: So ist sichtbar,

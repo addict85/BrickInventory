@@ -1,18 +1,16 @@
 /** /api/v1 — Dashboard-Statistiken und Endpoint-Übersicht. */
 import express from 'express';
-import { handleRouteError } from '../../utils/httpError';
+import { fehlerAntwort } from '../../src/infra/httpError';
 import { requireToken } from './middleware';
-import { scopeIds, parseScopeMode } from '../../utils/household';
-import { getStats } from '../../utils/handlers/stats';
+import { scopeIds, parseScopeMode } from '../../src/haushalt/haushalt';
+import { getStats } from '../../src/bestand/kennzahlen';
 const router = express.Router();
 
 router.get('/stats', requireToken, async (req: AuthedRequest, res) => {
-  try {
-    // Gemeinsamer Handler (auch /api/settings/stats): zählt jetzt auch die
-    // eigenen (hochgeladenen) Anleitungen mit und filtert Sets nicht mehr
-    // auf pieces IS NOT NULL — Parität zur Webapp.
-    res.json({ success: true, stats: await getStats(await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts))) });
-  } catch (e) { handleRouteError(res, e, undefined, req); }
+  // Gemeinsamer Handler (auch /api/settings/stats): zählt jetzt auch die
+  // eigenen (hochgeladenen) Anleitungen mit und filtert Sets nicht mehr
+  // auf pieces IS NOT NULL — Parität zur Webapp.
+  res.json({ success: true, stats: await getStats(await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts))) });
 });
 
 // Hinter requireToken: die Übersicht verrät ohne Auth die komplette API-Fläche.
@@ -32,5 +30,7 @@ router.get('/', requireToken, (_req: AuthedRequest, res) => res.json({
   }
 }));
 
+
+router.use(fehlerAntwort);
 
 export default router;

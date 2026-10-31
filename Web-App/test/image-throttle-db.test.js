@@ -42,7 +42,7 @@ let versuche = 0;
 const echtesRequire = Module.prototype.require;
 Module.prototype.require = function (name) {
   const m = echtesRequire.apply(this, arguments);
-  // Seit Nachtrag 125 liegt downloadSetImage in utils/setImages.ts statt im
+  // Seit Nachtrag 125 liegt downloadSetImage in src/katalog/bilder/setImages.ts statt im
   // Router — der Abfang muss dorthin zeigen, sonst greift er ins Leere und
   // der Test misst still den echten Download.
   if (typeof name === 'string' && /setImages(\.js)?$/.test(name) && m && m.downloadSetImage) {
@@ -84,13 +84,13 @@ test('eine hoffnungslose Vorschau wird nur EINMAL versucht', { concurrency: 1 },
   // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung
   // und Nachstellung in helpers/bildwarteschlange.js.
   await leereWarteschlange(db);
-  const { SET_IMAGES_DIR } = _req('utils/appPaths.js');
+  const { SET_IMAGES_DIR } = _req('src/infra/appPaths.js');
   const fsm = require('node:fs');
   fsm.mkdirSync(SET_IMAGES_DIR, { recursive: true });
   const P = `WB${process.pid}`;
   const datei = path.join(SET_IMAGES_DIR, `${P}_1.jpg`);
   fsm.writeFileSync(datei, 'x');            // Bild liegt, Vorschau unmöglich
-  const IM = _req('utils/imageMisses.js');
+  const IM = _req('src/katalog/bilder/imageMisses.js');
   const IQ = _req('jobs/imageQueue.js');
   await db.run(`DELETE FROM image_misses WHERE cache_key LIKE $1`, ['thumb:%' + P + '%']);
 
@@ -190,7 +190,7 @@ test('Drosselung und fehlendes Bild werden unterschieden', { concurrency: 1 }, a
       antwort = 404; versuche = 0;
       await fuellen();
       await IQ._arbeiteStapel();
-      await _req('utils/imageMisses.js')._schreibePuffer();
+      await _req('src/katalog/bilder/imageMisses.js')._schreibePuffer();
       assert.equal(versuche, 10, `${versuche} Versuche — bei 404 läuft der Stapel durch`);
       assert.equal(await gemerkt(), 10,
         'Fehlende Bilder werden nicht gemerkt — dann fragt der Job sie ewig neu');

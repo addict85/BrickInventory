@@ -35,8 +35,8 @@ process.env.CA_ZERTIFIKAT = CA;
 
 const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
-const { tlsStandAus } = _req('utils/tlsWurzel.js');
-const { ladeKonfig, cookieSicher } = _req('utils/konfig.js');
+const { tlsStandAus } = _req('src/infra/tlsWurzel.js');
+const { ladeKonfig, cookieSicher } = _req('src/infra/konfig.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const session = require(path.join(ROOT, 'node_modules', 'express-session'));
 const pgSession = require(path.join(ROOT, 'node_modules', 'connect-pg-simple'))(session);
@@ -82,7 +82,7 @@ test('/ca.crt, Einstellungen und QR-Code tragen denselben Fingerabdruck', { conc
     secret: process.env.SESSION_SECRET, resave: false, saveUninitialized: false }));
   app.use(_req('routes/zertifikat.js'));
   app.use('/api/v1', _req('routes/api_v1/middleware.js').anmeldungAmEingang);
-  app.use('/api/v1/settings', _req('routes/settings.js'));
+  app.use('/api/v1', _req('routes/api_v1/settings.js'));
   app.use('/api/v1/auth', _req('routes/auth.js'));
   const srv = app.listen(0);
   const basis = `http://localhost:${srv.address().port}`;

@@ -31,7 +31,7 @@ const _req = require('./helpers/sources').buildAndRequire();
 // seine Abhängigkeit, und nur ein Treffer im selben require-Cache-Eintrag
 // ersetzt sie wirksam.
 const { DIST } = require('./helpers/sources');
-const mwPath = require.resolve(path.join(DIST, 'routes', 'api_v1', 'middleware.js'));
+const mwPath = require.resolve(path.join(DIST, 'routes/api_v1', 'middleware.js'));
 require.cache[mwPath] = {
   id: mwPath, filename: mwPath, loaded: true,
   exports: { requireToken: (req, _res, next) => { req.apiUser = { user_id: 1 }; next(); } },
@@ -81,7 +81,7 @@ async function seed() {
   await db.run(`CREATE TABLE rb_inventory_minifigs (id SERIAL PRIMARY KEY, inventory_id INTEGER, fig_num TEXT, quantity INTEGER)`);
   // `sets` bleibt die einzige Attrappe. Die Setmenge steht seit Migration
   // 0036 in set_acquisitions, und die Katalogliste liest sie von dort
-  // (owned_quantity ueber utils/bestandsmenge.ts) — mit nur `sets`
+  // (owned_quantity ueber db/bestandsmenge.ts) — mit nur `sets`
   // antwortete sie 0 (gemessen: „expected 2, actual 0").
   //
   // Diese Tabelle wird deshalb ECHT benutzt und NICHT nachgebaut: Ihr

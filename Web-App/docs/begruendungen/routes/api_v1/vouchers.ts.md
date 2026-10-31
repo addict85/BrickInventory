@@ -209,7 +209,7 @@ hier einmal dazukommt, ohne dass jemand daran denken muss.
 Marcos Vorgabe: „Wenn alle Gutscheine exportiert werden sollen, ein PDF
 erstellen mit allen Gutscheinen."
 
-Die Arbeit steckt in utils/gutscheinPdfSchreiben.ts; diese Route tut, was
+Die Arbeit steckt in src/gutscheine/gutscheinPdfSchreiben.ts; diese Route tut, was
 eine Route tun soll: eigene Zeilen holen, Dateien dazulegen, ausliefern.
 
 ── Warum die Befunde in einen Kopf und nicht in den Rumpf ─────────────────
@@ -252,7 +252,7 @@ wenn der Browser vorher aufgibt.
 Stattdessen taktet die Oberflaeche: Sie ruft diese Route je Karte auf, und
 wenn sie 429 bekommt, wartet sie die gemeldeten `wartenSek` ab. Die Grenze
 bleibt dabei dort, wo sie hingehoert — auf dem Server
-(utils/gutscheinGuthabenSchranke.ts). Ein Client, der sich nicht taktet,
+(src/gutscheine/gutscheinGuthabenSchranke.ts). Ein Client, der sich nicht taktet,
 bekommt 429 und sonst nichts.
 
 ── Was NICHT gespeichert wird ──────────────────────────────────────────────

@@ -1,6 +1,6 @@
 /**
- * Die Schreib-/Löschwege in utils/settings.ts und der Auslöser in
- * utils/laufzustand.ts (seit Migration 0063 dort) gegen eine echte Datenbank.
+ * Die Schreib-/Löschwege in src/konto/settings.ts und der Auslöser in
+ * src/auftraege/repository/laufzustand.ts (seit Migration 0063 dort) gegen eine echte Datenbank.
  *
  * ── Warum dieser Test sein muss ─────────────────────────────────────────────
  * Der Auslöser und deleteGlobalSetting() sind beim Zentralisieren neu
@@ -35,8 +35,8 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
-const { getGlobalSetting, setGlobalSetting, deleteGlobalSetting } = _req('utils/settings.js');
-const { setzeZustand, liesZustand, loescheZustand } = _req('utils/laufzustand.js');
+const { getGlobalSetting, setGlobalSetting, deleteGlobalSetting } = _req('src/konto/settings.js');
+const { setzeZustand, liesZustand, loescheZustand } = _req('src/auftraege/repository/laufzustand.js');
 
 test('globale Einstellungen: schreiben, auslösen, löschen', { concurrency: 1 }, async (t) => {
   try { await db.initSchema(); }

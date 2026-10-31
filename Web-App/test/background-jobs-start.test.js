@@ -41,7 +41,7 @@ test('der Start des Job-Prozesses stellt alles als Auftrag ein', { concurrency: 
   const db = _req('db/database.js');
   t.after(async () => {
     await _req('startup/jobsProzess.js').stoppeJobs();
-    await _req('utils/pgNotify.js').close().catch(() => {});
+    await _req('db/pgNotify.js').close().catch(() => {});
     await db.pool.end().catch(() => {});
     Module.prototype.require = echtesRequire;
   });
@@ -58,7 +58,7 @@ test('der Start des Job-Prozesses stellt alles als Auftrag ein', { concurrency: 
   const plan = (art) => zeilen.find(z => z.schluessel === `plan:${art}`);
 
   await t.test('jede geplante Art hat einen Termin', () => {
-    for (const art of Object.keys(_req('utils/zeitplan.js').ZEITPLAENE))
+    for (const art of Object.keys(_req('src/auftraege/zeitplan.js').ZEITPLAENE))
       assert.ok(plan(art), `kein Termin für ${art}; da sind: ${zeilen.map(z => z.schluessel).join(', ')}`);
     assert.ok(plan('csv_sync').in_sek <= 0 && plan('csv_sync').nutzlast.beimStart, 'der Katalog wird beim Start sofort geprüft');
     assert.ok(plan('preise').in_sek <= 30, 'der Preis-Job läuft 30 s nach dem Start');

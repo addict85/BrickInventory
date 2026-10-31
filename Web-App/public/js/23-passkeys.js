@@ -3,7 +3,7 @@ import { t, tRaw } from '../i18n.js';
 import { ico, G, api, esc, toast } from './01-core.js';
 import { bestaetigeMitPasswort } from './07-admin.js';
 
-// ═══ Passkeys (Server: utils/passkeys.ts, routes/passkeys.ts) ═══════════════
+// ═══ Passkeys (Server: src/konto/passkeys.ts, routes/passkeys.ts) ═══════════════
 // Ohne Fremdskript: Der Server schickt die Optionen als JSON (Base64URL), der
 // Browser braucht ArrayBuffer — die Umwandlung in beide Richtungen steht hier.
 

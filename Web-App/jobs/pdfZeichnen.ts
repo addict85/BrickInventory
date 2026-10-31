@@ -3,7 +3,7 @@ import fsp from 'fs/promises';
 import fs from 'fs';
 import { Worker, isMainThread, parentPort, workerData } from 'worker_threads';
 import PDFDocument from 'pdfkit';
-import { IMAGES_DIR, resolveWebPath } from '../utils/appPaths';
+import { IMAGES_DIR, resolveWebPath } from '../src/infra/appPaths';
 
 /**
  * Die Teileliste als PDF zeichnen. pdfkit zeichnet synchron; bei tausenden

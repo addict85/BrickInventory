@@ -8,7 +8,7 @@
  *    vorhanden ist?"
  *
  * Fuers MAPPING lautete die Antwort nein: loeseLokalAuf() in
- * utils/wantedListe.ts loest zuerst lokal auf und fragt nur die offenen
+ * src/merkliste/wantedListe.ts loest zuerst lokal auf und fragt nur die offenen
  * Nummern nach (geprueft in test/wanted-liste-db.test.js).
  *
  * Fuer Name und Bild lautete sie JA. GEMESSEN am laufenden Server, mit einem
@@ -20,7 +20,7 @@
  *
  * lookupPart() macht im Betrieb ZWEI Abrufe (das Teil, dann das Farbbild),
  * jeder durch die Hintergrunddrossel mit 1,5 Sekunden Abstand
- * (utils/rateLimiter.ts). Bei einer Wanted-Liste mit 224 Posten sind das elf
+ * (src/katalog/rateLimiter.ts). Bei einer Wanted-Liste mit 224 Posten sind das elf
  * Minuten Warten und 448 Abrufe aus dem Tageskontingent — fuer Daten, die
  * dalagen. Nach der Aenderung: 0 Abrufe, 49 ms.
  *
@@ -89,7 +89,7 @@ const db   = _req('db/database.js');
 // `rb.lookupPart = …` liefe ins Leere — deshalb der Eintrag im
 // require-Zwischenspeicher (dasselbe Vorgehen wie in
 // test/preis-schreibweg-db.test.js).
-const rbPfad = require.resolve(path.join(ROOT, 'dist', 'clients', 'rebrickable.js'));
+const rbPfad = require.resolve(path.join(ROOT, 'dist', 'clients/rebrickable.js'));
 const echtRb = require(rbPfad);
 let abrufe = [];
 require.cache[rbPfad].exports = Object.assign({}, echtRb, {
@@ -150,8 +150,8 @@ test('der eigene Katalog wird vor Rebrickable gefragt', { concurrency: 1 }, asyn
                   ('fig-000123','Chewbacca','https://cdn.example/chewie.jpg'),
                   ('fig-000456','Luke',NULL)`);
 
-  const { addManualPart } = _req('utils/manuelleTeile.js');
-  const { addManualFig }  = _req('utils/manuelleFiguren.js');
+  const { addManualPart } = _req('src/teile/manuelleTeile.js');
+  const { addManualFig }  = _req('src/figuren/manuelleFiguren.js');
 
   /** Ein Teil anlegen und zaehlen, was dabei nach draussen ging. */
   const legeTeil = async (nr, farbe) => {

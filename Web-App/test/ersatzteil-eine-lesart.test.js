@@ -5,7 +5,7 @@
  * `is_spare` wurde an sechs Stellen gedeutet, mit vier verschiedenen
  * Vorstellungen davon, was „ja" heisst:
  *
- *   utils/handlers/parts.ts    true, 1, 't', 'true'
+ *   src/teile/abfragen.ts    true, 1, 't', 'true'
  *   routes/api_v1/sets.ts      true, 1, 't', 'true', 'True'   ← eine mehr
  *   routes/api_v1/sets.ts      r.is_spare ? 't' : 'f'         ← dritte Form
  *   routes/api_v1/sets.ts      Filter: 'f','false','False','0',''
@@ -22,7 +22,7 @@
  * `if (p.is_spare)` hätte JEDES Teil als Ersatzteil markiert.
  *
  * ── Was geprüft wird ────────────────────────────────────────────────────────
- * 1. Kein Modul ausser utils/validate.ts zählt die Schreibweisen selbst auf.
+ * 1. Kein Modul ausser src/infra/validate.ts zählt die Schreibweisen selbst auf.
  * 2. Die Antworten tragen einen echten Wahrheitswert (gegen die Datenbank
  *    gemessen, nicht aus dem Quelltext gelesen).
  */
@@ -51,7 +51,7 @@ function serverDateien() {
       else if (e.name.endsWith('.ts')) out.push(p);
     }
   };
-  for (const d of ['routes', 'utils', 'jobs', 'clients']) {
+  for (const d of ['routes', 'src', 'jobs', 'clients']) {
     const abs = path.join(ROOT, d);
     if (fs.existsSync(abs)) lauf(abs);
   }
@@ -78,20 +78,20 @@ test('die Schreibweisen werden nur an einer Stelle aufgezaehlt', () => {
   const gefunden = [];
   for (const datei of dateien) {
     const rel = path.relative(ROOT, datei).split(path.sep).join('/');
-    if (rel === 'utils/validate.ts') continue;   // DIE eine Stelle
+    if (rel === 'src/infra/validate.ts') continue;   // DIE eine Stelle
     const src = ohneKommentare(fs.readFileSync(datei, 'utf8'));
     if (verdaechtig.some(r => r.test(src))) gefunden.push(rel);
   }
   assert.deepEqual(gefunden, [],
     'Hier wird wieder selbst entschieden, was ein Ersatzteil ist:\n  ' +
     gefunden.join('\n  ') +
-    '\nDie Lesart steht in utils/validate.ts, istErsatzteil(). Sechs Fassungen ' +
+    '\nDie Lesart steht in src/infra/validate.ts, istErsatzteil(). Sechs Fassungen ' +
     'mit vier verschiedenen Bedeutungen waren der Grund, warum die ' +
     'Ersatzteil-Plakette jahrelang nicht gezeichnet wurde.');
 
   // Selbstbeweis: Der Helfer muss die Schreibweisen wirklich kennen — sonst
   // wäre die Prüfung oben grün, weil es nirgends mehr etwas zu finden gibt.
-  const helfer = fs.readFileSync(path.join(ROOT, 'utils', 'validate.ts'), 'utf8');
+  const helfer = fs.readFileSync(path.join(ROOT, 'src/infra/validate.ts'), 'utf8');
   const i = helfer.indexOf('export function istErsatzteil(');
   assert.ok(i > 0, 'istErsatzteil() fehlt');
   const rumpf = helfer.slice(i, helfer.indexOf('\n}', i));
@@ -128,7 +128,7 @@ test('die Antwort traegt einen echten Wahrheitswert', async (t) => {
   await haeltTeil(db, uid, '3001', { setNumber: '75192-1', menge: 10, colorId: 4 });
   await haeltTeil(db, uid, '3020', { setNumber: '75192-1', menge: 2, colorId: 0 });
 
-  const { getParts } = _req('utils/handlers/parts.js');
+  const { getParts } = _req('src/teile/abfragen.js');
   const parts = (await getParts([uid], { page_size: 60 })).parts || [];
   assert.equal(parts.length, 2, 'Vorlage');
   for (const p of parts) {

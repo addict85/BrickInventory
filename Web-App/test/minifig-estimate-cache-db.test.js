@@ -45,7 +45,7 @@ test('ein frischer Cache-Eintrag ersetzt die Neuberechnung', async (t) => {
     t.skip('Test-DB nicht erreichbar'); return;
   }
 
-  const mf = _req('utils/marketPrice.js');
+  const mf = _req('src/finanzen/marketPrice.js');
   const u = await neuerNutzer(db);
   const fig = 'fig-cache-test-01';
 
@@ -80,7 +80,7 @@ test('ein veralteter Eintrag wird übergangen', async (t) => {
     t.skip('Test-DB nicht erreichbar'); return;
   }
 
-  const mf = _req('utils/marketPrice.js');
+  const mf = _req('src/finanzen/marketPrice.js');
   const u = await neuerNutzer(db);
   const fig = 'fig-cache-test-02';
 
@@ -106,7 +106,7 @@ test('Cache und Verlauf werden beide beschrieben', () => {
   // UNIQUE nur den letzten Wert, der Verlauf die Vergangenheit fürs Diagramm.
   const fs = require('node:fs');
   const path = require('node:path');
-  const src = fs.readFileSync(path.join(__dirname, '..', 'utils', 'marketPrice.ts'), 'utf8');
+  const src = fs.readFileSync(path.join(__dirname, '..', 'src/finanzen/marketPrice.ts'), 'utf8');
   const i = src.indexOf('async function schaetzeFigurenpreis');
   const fn = src.slice(i, src.indexOf('\n}', i));
 

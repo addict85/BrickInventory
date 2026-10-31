@@ -95,7 +95,7 @@ test('Löschen einer Erfassung bestimmt Preis und Zustand der Elternzeile neu',
     // zugleich. Die Reihenfolge bleibt: ohne Bestandszeile gibt es keine
     // Elternangabe, auch wenn noch Erfassungen herumliegen sollten.
     if (!(await haltZeile(db, uid, SN))) return undefined;
-    const agg = await _req('utils/handlers/sets.js').getSetConditionAggregate([uid], SN);
+    const agg = await _req('src/sets/abfragen.js').getSetConditionAggregate([uid], SN);
     return { purchase_price: agg.avg_purchase_price, condition: agg.condition,
              quantity: await mengeVon(db, uid, SN) };
   };
@@ -142,7 +142,7 @@ test('Löschen einer Erfassung bestimmt Preis und Zustand der Elternzeile neu',
     //
     //    Vorher stand hier „Ohne Erfassungen ist die Menge 0". Genau diese 0
     //    war Marcos Fund: Ein Set mit Menge 0 blieb in Galerie, Statistik und
-    //    Bewertung sichtbar — und `quantity || 1` in utils/financeCalc.ts
+    //    Bewertung sichtbar — und `quantity || 1` in src/finanzen/financeCalc.ts
     //    machte daraus beim Rechnen wieder eine 1. Eine Menge von 0 ist auch
     //    kein Zustand, den jemand herstellen kann: Beide Mengenregler halten
     //    bei 1. Sie entstand ausschliesslich hier, und jetzt gar nicht mehr.

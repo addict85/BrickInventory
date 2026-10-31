@@ -51,7 +51,7 @@ try {
   process.env.SESSION_SECRET = 'test';
   db = _req('db/database.js');
   H  = require('./helpers/sources').handlerModul(_req);
-  PS = _req('utils/partsSummary.js');
+  PS = _req('src/teile/partsSummary.js');
 } catch (e) { skip = e.message; }
 
 const U = 990601;

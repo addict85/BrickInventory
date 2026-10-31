@@ -6,7 +6,7 @@
  * „Ich besitze das Set 2x wie kann es dann sein, dass Teile fehlen?"
  *
  * Weil die Stückzahl nirgends vorkam. Der Teile-Import legt je
- * (user_id, set_number) GENAU EINEN Satz Zeilen ab (utils/partsImport.ts:
+ * (user_id, set_number) GENAU EINEN Satz Zeilen ab (src/katalog/partsImport.ts:
  * erst DELETE, dann INSERT mit `part.quantity`) — wie oft jemand das Set
  * besitzt, steht ausschliesslich in `sets.quantity`. Der Abgleich summierte
  * aber blank über `parts.quantity`. Wer ein Set zweimal hatte, sah den Inhalt
@@ -38,7 +38,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
-const { getOwnedQuantities } = _req('utils/handlers/parts.js');
+const { getOwnedQuantities } = _req('src/teile/abfragen.js');
 const { haeltFigur, haeltSet, haeltTeil } = require('./helpers/bestand');
 
 let UID = 0;

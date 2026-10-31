@@ -24,7 +24,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { istVermutung, GEPRUEFT } = _req('utils/barcodeQuelle.js');
+const { istVermutung, GEPRUEFT } = _req('src/katalog/barcodeQuelle.js');
 
 test('geprüfte Wege sind keine Vermutung', () => {
   for (const quelle of ['catalog_cache', 'rebrickable-ean', 'brickset-ean',

@@ -341,7 +341,7 @@ function addCsvLog(text, ok){
 // ── Warum hier nur noch zwei Schritte stehen ────────────────────────────────
 // Der Dialog listete früher sechs Schritte: Set-Infos, Bild, Anleitungen,
 // Teile, Teilbilder, Preis. Davon wartet der Aufrufer heute nur noch auf die
-// ersten beiden — `addSet()` (utils/setService.ts) holt Set-Daten und Bild
+// ersten beiden — `addSet()` (src/sets/setService.ts) holt Set-Daten und Bild
 // synchron und schiebt alles Übrige in ein `setTimeout`, das erst nach der
 // Antwort läuft. Die vier hinteren Schritte konnten den Browser deshalb gar
 // nicht mehr erreichen:
@@ -508,7 +508,7 @@ export function initScopeSelects(members) {
   // dieselbe Frage genauer beantworten. Bei zwei Kindern war die Auswahl
   // damit fünf Zeilen lang, von denen eine nichts hinzufügte.
   //
-  // Der Server versteht `accounts=subs` weiterhin (utils/household.ts) — eine
+  // Der Server versteht `accounts=subs` weiterhin (src/haushalt/haushalt.ts) — eine
   // ältere App-Fassung auf einem Gerät schickt es sonst ins Leere.
   const subs = members.filter(m => !m.is_self);
   const opts = [
@@ -803,7 +803,7 @@ export function leereLagerortFeld(id) {
  *   - ein Formular, in dem jemand die vorbefuellte Vorgabe weggeraeumt hat,
  *   - ein Import, der von Lagerorten ueberhaupt nichts weiss.
  *
- * Seit ortFuerNeuerfassung() (utils/lagerort.ts) die Vorgabe auch
+ * Seit ortFuerNeuerfassung() (src/bestand/lagerort.ts) die Vorgabe auch
  * serverseitig einsetzt, ist das ein Unterschied: Die zweite Lage SOLL die
  * Vorgabe bekommen, die erste nicht. Ein leeres Feld sagt es deshalb
  * ausdruecklich, statt zu schweigen.
@@ -1083,7 +1083,7 @@ async function doAddSet(){
       handleSseEvent(ev, num);
       if(ev.step==='done' && ev.action==='exists'){
         // Set steht schon im Blickfeld — der Server hat NICHTS geschrieben
-        // (Marcos Festlegung, utils/setAdd.ts). Statt einer Meldung öffnet
+        // (Marcos Festlegung, src/sets/setAdd.ts). Statt einer Meldung öffnet
         // sich die Detailansicht, genau wie in der App.
         streamFertig();
         hideProgress();
@@ -1300,7 +1300,7 @@ function streamRequestForm(url, formData, onEvent){
 async function readSSE(res, onEvent, signal){
   // Antwortet der Server mit gewöhnlichem JSON statt einem Ereignisstrom, ist
   // die Sache schon entschieden — beim Erfassen etwa, wenn das Set bereits im
-  // Blickfeld steht (utils/setAdd.ts). Dann gibt es nichts zu verfolgen, und
+  // Blickfeld steht (src/sets/setAdd.ts). Dann gibt es nichts zu verfolgen, und
   // die eine Antwort wird wie ein einzelnes Ereignis durchgereicht. Ohne
   // diesen Zweig liefe der Leser über JSON-Text, fände keine `data:`-Zeile und
   // der Aufrufer bekäme nie ein Ereignis — die Anzeige bliebe hängen.

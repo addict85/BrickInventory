@@ -37,7 +37,7 @@ process.env.APP_BASE_URL = 'http://lego.test:3000';
 const { buildAndRequire } = require('./helpers/sources');
 const _req = buildAndRequire();
 const db   = _req('db/database.js');
-const auth = _req('utils/auth.js');
+const auth = _req('src/konto/auth.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const session = require(path.join(ROOT, 'node_modules', 'express-session'));
 const pgSession = require(path.join(ROOT, 'node_modules', 'connect-pg-simple'))(session);
@@ -70,7 +70,7 @@ test('Tokens mit Scope, Ablauf und Rotation', { concurrency: 1 }, async (t) => {
   }));
   app.use('/api/v1', _req('routes/api_v1/middleware.js').anmeldungAmEingang);
   app.use('/api/v1', _req('routes/api_v1/index.js'));
-  app.use('/api/v1/settings', _req('routes/settings.js'));
+  app.use('/api/v1', _req('routes/api_v1/settings.js'));
   app.use('/api/v1/auth', _req('routes/auth.js'));
   const srv = app.listen(0);
   const basis = `http://localhost:${srv.address().port}`;
@@ -245,7 +245,7 @@ test('Tokens mit Scope, Ablauf und Rotation', { concurrency: 1 }, async (t) => {
   });
 
   await t.test('Migration 0080: Bestand bekommt Scope voll und höchstens 90 Tage', async () => {
-    const sql = fs.readFileSync(path.join(ROOT, 'db', 'migrations', '0080-token-scope-rotation.sql'), 'utf8');
+    const sql = fs.readFileSync(path.join(ROOT, 'db/migrations/0080-token-scope-rotation.sql'), 'utf8');
     const c = await db.pool.connect();
     try {
       await c.query('BEGIN');

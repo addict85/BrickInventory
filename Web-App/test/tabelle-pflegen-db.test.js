@@ -48,7 +48,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const { buildAndRequire } = require('./helpers/sources');
 const _req = buildAndRequire();
 const db = _req('db/database.js');
-const { pflegeTabelle } = _req('utils/tabellePflegen.js');
+const { pflegeTabelle } = _req('db/tabellePflegen.js');
 
 /** Wann wurde die Tabelle zuletzt aufgeraeumt und vermessen? */
 async function stand(tabelle) {
@@ -133,7 +133,7 @@ test('Auffrischen nach Masseneinfuegen', { concurrency: 1 }, async (t) => {
   });
 
   await t.test('rebuild() frischt parts_summary auf', async () => {
-    const { rebuild } = _req('utils/partsSummary.js');
+    const { rebuild } = _req('src/teile/partsSummary.js');
     const nutzer = 90002;
     await db.run(`INSERT INTO users (id, username, password_hash) VALUES ($1, $2, 'x')
                   ON CONFLICT (id) DO NOTHING`, [nutzer, 'pflege-tester']);

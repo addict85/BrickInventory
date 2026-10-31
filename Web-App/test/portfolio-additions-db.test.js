@@ -33,7 +33,7 @@
  * gehaltenen Sets; das ist eine andere Kennzahl und wäre eine eigene
  * Entscheidung.
  *
- * Gegenprobe (durchgeführt): die Rückschreibung in utils/portfolioHistory.ts
+ * Gegenprobe (durchgeführt): die Rückschreibung in src/finanzen/portfolioHistory.ts
  * entfernt (Ersteintrag wieder am eigenen Tag statt am Anfang der Reihe) →
  * der erste Teilschritt wird rot, mit +264 % statt −0,18 %.
  *
@@ -73,7 +73,7 @@ test('die Portfolio-Prozentzahl misst Preise, nicht Zukäufe',
   const uid = (await db.get(`SELECT id FROM users WHERE username=$1`, [NUTZER])).id;
   await aufraeumen();
 
-  const { getPortfolioHistory } = _req('utils/portfolioHistory.js');
+  const { getPortfolioHistory } = _req('src/finanzen/portfolioHistory.js');
   const getSetting = async (_u, k, d) => (k === 'currency' ? 'CHF' : d);
   const kurve = async (period = 'week') =>
     getPortfolioHistory(uid, [uid], period, db, getSetting);

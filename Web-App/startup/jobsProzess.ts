@@ -1,13 +1,13 @@
 import fs from 'fs';
-import * as pgNotify from '../utils/pgNotify';
-import { HAUSHALT_KANAL, leereHaushaltCache } from '../utils/household';
-import { meldeStartZustand } from '../utils/startZustand';
-import { setzeZustand } from '../utils/laufzustand';
-import { logAndContinue, meldeUndWeiter } from '../utils/httpError';
-import { stelleAuftragEin } from '../utils/auftraege';
-import { planeAlle, ziehePlanVor } from '../utils/zeitplan';
-import { bildbedarfAnstossen, offenerBildbedarf } from '../utils/bildbedarf';
-import { planeKursabruf } from '../utils/wechselkurse';
+import * as pgNotify from '../db/pgNotify';
+import { HAUSHALT_KANAL, leereHaushaltCache } from '../src/haushalt/haushalt';
+import { meldeStartZustand } from '../src/infra/startZustand';
+import { setzeZustand } from '../src/auftraege/laufzustand';
+import { logAndContinue, meldeUndWeiter } from '../src/infra/httpError';
+import { stelleAuftragEin } from '../src/auftraege/dienst';
+import { planeAlle, ziehePlanVor } from '../src/auftraege/zeitplan';
+import { bildbedarfAnstossen, offenerBildbedarf } from '../src/katalog/bilder/bildbedarf';
+import { planeKursabruf } from '../src/finanzen/wechselkurse';
 import { starteAuftragsWorker, stoppeAuftragsWorker } from '../jobs/auftraegeStarten';
 import { NACHLAEUFE, type Nachlauf } from '../jobs/startNachlaeufe';
 

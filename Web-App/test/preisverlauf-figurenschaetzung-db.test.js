@@ -82,7 +82,7 @@ test('Preisverlauf je Tag und markierte Schätzungen', { concurrency: 1 }, async
   });
 
   await t.test('die Migration räumt doppelte Tagespunkte ab und behält den ersten', async () => {
-    const sql = fs.readFileSync(path.join(ROOT, 'db', 'migrations', '0056-preisverlauf-je-tag.sql'), 'utf8');
+    const sql = fs.readFileSync(path.join(ROOT, 'db/migrations/0056-preisverlauf-je-tag.sql'), 'utf8');
     const c = await db.pool.connect();
     try {
       await c.query('BEGIN');
@@ -107,7 +107,7 @@ test('Preisverlauf je Tag und markierte Schätzungen', { concurrency: 1 }, async
   await t.test('eine Schätzung im Cache gilt nicht als BrickLink-Preis', async () => {
     await db.run(`INSERT INTO minifig_price_cache (fig_number, condition, currency_code, avg_price, qty_avg_price, geschaetzt, abdeckung)
       VALUES ($1, 'N', 'EUR', 5, 5, TRUE, 0.5)`, [FIGUR]);
-    const { fetchMinifigPrice } = _req('utils/financeCalc.js');
+    const { fetchMinifigPrice } = _req('src/finanzen/financeCalc.js');
     const p = await fetchMinifigPrice(FIGUR, 'N', 'EUR', 24);
     assert.equal(Number(p.avg_price), 20);
     const zeile = await db.get('SELECT geschaetzt, abdeckung FROM minifig_price_cache WHERE fig_number = $1', [FIGUR]);
@@ -118,7 +118,7 @@ test('Preisverlauf je Tag und markierte Schätzungen', { concurrency: 1 }, async
   await t.test('die Schätzung trägt ihre Abdeckung', async () => {
     await db.run(`INSERT INTO minifig_price_cache (fig_number, condition, currency_code, avg_price, qty_avg_price, geschaetzt, abdeckung)
       VALUES ($1, 'N', 'EUR', 8, 8, TRUE, 0.75)`, [RBFIGUR]);
-    const { schaetzeFigurenpreis } = _req('utils/marketPrice.js');
+    const { schaetzeFigurenpreis } = _req('src/finanzen/marketPrice.js');
     const s = await schaetzeFigurenpreis(RBFIGUR, 0, 'N');
     assert.deepEqual(s, { preis: 8, abdeckung: 0.75 });
   });
