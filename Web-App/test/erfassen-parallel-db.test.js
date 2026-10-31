@@ -261,8 +261,8 @@ test('die Teileliste liefert, was sie meldet', () => {
   // ohne page_size absichtlich offen bleibt: Skripte und ältere App-Stände
   // holen darüber alles, und eine stille Grenze unterschlüge ihnen ab dem
   // Grenzwert Sets. Die Begründung steht einmal, in routes/api_v1/sets.ts.
-  const getSets = src.slice(src.indexOf('async function getSets'), src.indexOf('async function getSetConditionAggregate'));
-  assert.match(getSets, /if \(page_size\) \{/,
+  const getSets = src.slice(src.indexOf('async function setListe'));
+  assert.match(getSets, /if \(f\.seite\) \{/,
     'Die Set-Liste darf ohne page_size NICHT gedeckelt werden — Aufrufer ohne ' +
     'page_size (Skripte, ältere App-Stände) bekämen sonst stillschweigend weniger Sets');
 });

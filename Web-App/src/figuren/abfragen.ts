@@ -5,7 +5,7 @@ import { clampPageSize, applyManualCondition, withOwners, conditionFromAcquisiti
 import { mitVersion } from '../sets/setNummer';
 import { mengeJoin, mengeAus, teilmengeJoin, teilmengeAus } from '../../db/bestandsmenge';
 import { marktpreiseAusCacheFuerFiguren } from '../finanzen/marketPrice';
-import { blJoin, blNummerSql } from '../katalog/blZuordnung';
+import { blJoin, blNummerSql } from '../../db/blZuordnungSql';
 
 /**
  * Leseabfragen für Minifiguren.

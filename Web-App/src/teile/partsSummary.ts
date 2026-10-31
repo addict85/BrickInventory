@@ -4,7 +4,7 @@
  */
 import { meldeUndLiefere } from '../infra/httpError';
 import { mengeJoin, mengeAus } from '../../db/bestandsmenge';
-import { blJoin, blNummerSql } from '../katalog/blZuordnung';
+import { blJoin, blNummerSql } from '../../db/blZuordnungSql';
 import { teilmengeJoin, teilmengeAus } from '../../db/bestandsmenge';
 import * as db from '../../db/database';
 import * as lockNamespaces from '../infra/lockNamespaces';

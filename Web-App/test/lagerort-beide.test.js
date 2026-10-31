@@ -116,7 +116,7 @@ test('beide filtern am Server, nicht im Gerät', () => {
   // dieselbe: Gefiltert wird am Server.
   assert.match(web('src/teile/abfragen.ts'), /lo\.name = \$\$\{pi\+\+\}/,
     'Der Server filtert Teile nicht nach Lagerort');
-  assert.match(web('src/sets/abfragen.ts'), /s\.storage = \$\$\{params\.length\}/,
+  assert.match(web('src/sets/repository/sets.ts'), /s\.storage = \$\$\{params\.length\}/,
     'Der Server filtert Sets nicht nach Lagerort');
 
   assert.match(web('public/js/14-scope.js'), /p\.set\('storage', m\)/,

@@ -366,7 +366,6 @@ const SQL_NOCH_IM_DIENST = new Set([
     'jobs/imageQueue.ts',
     'jobs/partsCatalogEnrich.ts',
     'src/figuren/abfragen.ts',
-    'src/figuren/dienst.ts',
     'src/finanzen/marketPrice.ts',
     'src/finanzen/portfolio/kurve.ts',
     'src/finanzen/portfolioHistory.ts',
@@ -395,13 +394,8 @@ const SQL_NOCH_IM_DIENST = new Set([
     'src/katalog/rateLimiter.ts',
     'src/merkliste/merkliste.ts',
     'src/merkliste/wantedListe.ts',
-    'src/sets/abfragen.ts',
-    'src/sets/dienst.ts',
-    'src/sets/setAdd.ts',
-    'src/sets/setService.ts',
     'src/teile/abfragen.ts',
     'src/teile/partsSummary.ts',
-    'src/teile/teilFarbeAendern.ts',
     'src/verwaltung/dienst.ts',
 ]);
 

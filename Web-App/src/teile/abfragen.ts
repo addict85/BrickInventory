@@ -19,7 +19,8 @@ import { farbkarte as blFarbkarte } from '../finanzen/financeCalc';
 import { getGlobalSetting } from '../konto/settings';
 import { neuestesInventar } from '../katalog/rbInventar';
 import { mitVersion, ohneVersion } from '../sets/setNummer';
-import { merkeBlFarbnummer, blFarbnummerAus, blJoin, blNummerSql } from '../katalog/blZuordnung';
+import { merkeBlFarbnummer, blFarbnummerAus } from '../katalog/blZuordnung';
+import { blJoin, blNummerSql } from '../../db/blZuordnungSql';
 import { mengeJoin, mengeAus, teilmengeJoin, teilmengeAus } from '../../db/bestandsmenge';
 
 /**

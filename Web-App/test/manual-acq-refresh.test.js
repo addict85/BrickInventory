@@ -271,7 +271,7 @@ test('eine Mengenänderung läuft unter der Bestandssperre', () => {
   // stand sie ausgeschrieben. Was sie daraus macht, prueft
   // test/quantity-response-echo.test.js — diese Stelle prueft, dass der
   // Aufruf das BLICKFELD nennt und nicht ein einzelnes Konto.
-  assert.match(fn, /mengeSummeSql\('blickfeld'\)/,
+  assert.match(fn, /repo\.setMenge\(dbh, 'blickfeld', leseFeld/,
     'Die Ausgangsmenge muss über das Blickfeld summiert werden');
 });
 
