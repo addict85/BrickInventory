@@ -252,10 +252,7 @@ test('ein ausdrücklich angefragter Zustand schlägt die Erfassungs-Bewertung', 
   const iValue = fn.indexOf('getSetValue(userId, setNumber, currency)');
   assert.ok(iGuard > 0 && iValue > iGuard,
     'getSetValue darf einen angefragten Zustand nicht überstimmen');
-
-  // Und die Preisabfrage darunter muss den angefragten Zustand bevorzugen
-  assert.match(fn, /ORDER BY \(condition = \$2\) DESC LIMIT 1/,
-    'Der angefragte Zustand muss Vorrang haben');
+  // Den Vorrang des angefragten Zustands prüft test/figurenschaetzung-ablage-db.test.js.
 });
 
 test('manuelle Teile und Minifiguren nutzen dieselbe Zustandsregel wie Sets', () => {
@@ -433,15 +430,7 @@ test('die Teile-Schätzung landet in Cache und Verlauf', () => {
   const est = src.slice(src.indexOf('async function estimateFigPriceFromParts'),
                         src.indexOf('async function getCurrentFigMarketPrice'));
 
-  assert.match(est, /INSERT INTO minifig_price_cache[\s\S]{0,200}ON CONFLICT \(fig_number,condition,currency_code\)/,
-    'Die Schätzung muss im Preis-Cache landen');
-  assert.match(est, /INSERT INTO minifig_price_history[\s\S]{0,200}ON CONFLICT DO NOTHING/,
-    'Ohne Verlaufspunkt bleibt das Diagramm für immer leer');
-  // Je ZUSTAND ein Eintrag — sonst stünde derselbe Wert in beiden Zeilen.
-  assert.match(est, /VALUES \(\$1,\$2,\$3,\$4,\$4,TRUE,\$5\)/,
-    'fig_number, condition, currency gehören in den Schlüssel');
-  assert.match(est, /\[figNumber, cond, currency, total, abdeckung\]/,
-    'Geschrieben wird der geschätzte Wert im angefragten Zustand');
+  // Cache und Verlauf je Zustand prüft test/figurenschaetzung-ablage-db.test.js.
   // Nur mit echtem Preis: Ein Nullpunkt sähe im Diagramm aus wie ein Kurssturz.
   assert.match(est, /if \(priced === 0\) return null;/,
     'Ohne bepreiste Teile darf nichts geschrieben werden');

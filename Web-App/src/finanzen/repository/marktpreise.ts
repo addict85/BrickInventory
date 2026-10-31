@@ -1,0 +1,64 @@
+import * as db from '../../../db/database';
+
+/** Zwischengespeicherte Marktpreise (price_cache, part_/minifig_price_cache) und die Zustände der Erfassungen. */
+
+export type Zustand = 'N' | 'U';
+type Preiszeile = { avg_price: string | null; qty_avg_price: string | null; condition: Zustand };
+
+/** Der Setpreis im Wunschzustand, sonst im anderen — nur echte Preise über null. */
+export function setPreisAusCache(setNumber: string, zustand: string, waehrung: string) {
+  return db.get<{ avg_price: string }>(`SELECT avg_price FROM price_cache
+       WHERE set_number=$1 AND condition IN ('N','U') AND currency_code=$3 AND avg_price > 0
+       ORDER BY (condition = $2) DESC LIMIT 1`, [setNumber, zustand, waehrung]);
+}
+
+/** Wie viele Erfassungen ein Teil hat und ob eine davon gebraucht ist. */
+export function teilErfassungsZustand(userId: number, partNumber: string, colorId: number) {
+  return db.get<{ any_used: number | null; cnt: string }>(
+    "SELECT MAX(CASE WHEN condition='U' THEN 1 ELSE 0 END) AS any_used, COUNT(*) AS cnt FROM part_acquisitions WHERE user_id=$1 AND part_number=$2 AND color_id=$3",
+    [userId, partNumber, colorId]);
+}
+
+/** Dasselbe für eine Minifigur. */
+export function figurErfassungsZustand(userId: number, figNumber: string) {
+  return db.get<{ any_used: number | null; cnt: string }>(
+    "SELECT MAX(CASE WHEN condition='U' THEN 1 ELSE 0 END) AS any_used, COUNT(*) AS cnt FROM minifig_acquisitions WHERE user_id=$1 AND fig_number=$2",
+    [userId, figNumber]);
+}
+
+/** Frische Figurenpreise zu vielen Nummern in einer Abfrage. */
+export function figurenpreiseAusCache(nummern: string[], waehrung: string, ttlStunden: number) {
+  return db.all<Preiszeile & { fig_number: string }>(
+    `SELECT fig_number, condition, avg_price, qty_avg_price FROM minifig_price_cache
+      WHERE fig_number = ANY($1) AND currency_code = $2
+        AND fetched_at > NOW() - make_interval(hours => $3)`, [nummern, waehrung, ttlStunden]);
+}
+
+/** Frische Teilepreise zu vielen BrickLink-Nummern in einer Abfrage. */
+export function teilepreiseAusCache(nummern: string[], waehrung: string, ttlStunden: number) {
+  return db.all<Preiszeile & { part_number: string; color_id: number }>(
+    `SELECT part_number, color_id, condition, avg_price, qty_avg_price FROM part_price_cache
+      WHERE part_number = ANY($1) AND currency_code = $2
+        AND fetched_at > NOW() - make_interval(hours => $3)`, [nummern, waehrung, ttlStunden]);
+}
+
+/** Eine frische, aus Teilen geschätzte Figurenbewertung. */
+export function geschaetzterFigurenpreis(figNumber: string, zustand: string, waehrung: string, ttlStunden: number) {
+  return db.get<{ avg_price: string | null; abdeckung: string | null }>(
+    `SELECT avg_price, abdeckung FROM minifig_price_cache
+        WHERE fig_number = $1 AND condition = $2 AND currency_code = $3 AND geschaetzt
+          AND fetched_at > NOW() - make_interval(hours => $4)`, [figNumber, zustand, waehrung, ttlStunden]);
+}
+
+/** Eine Schätzung in Cache und Verlauf schreiben, beide als geschätzt markiert. */
+export function merkeGeschaetztenFigurenpreis(figNumber: string, zustand: string, waehrung: string, preis: number, abdeckung: number) {
+  return db.run(`INSERT INTO minifig_price_cache (fig_number, condition, currency_code, avg_price, qty_avg_price, geschaetzt, abdeckung)
+       VALUES ($1,$2,$3,$4,$4,TRUE,$5) ON CONFLICT (fig_number,condition,currency_code)
+       DO UPDATE SET avg_price=$4, qty_avg_price=$4, fetched_at=NOW(), geschaetzt=TRUE, abdeckung=$5`,
+  [figNumber, zustand, waehrung, preis, abdeckung]);
+}
+
+export function merkeGeschaetztenFigurenverlauf(figNumber: string, zustand: string, waehrung: string, preis: number, abdeckung: number) {
+  return db.run(`INSERT INTO minifig_price_history (fig_number, condition, currency_code, avg_price, qty_avg_price, geschaetzt, abdeckung)
+       VALUES ($1,$2,$3,$4,$4,TRUE,$5) ON CONFLICT DO NOTHING`, [figNumber, zustand, waehrung, preis, abdeckung]);
+}

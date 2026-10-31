@@ -5,7 +5,8 @@
  * Ausführlich: docs/begruendungen/src/finanzen/rechnung/preise.ts.md#abschnitt
  */
 
-import * as db from '../../../db/database';
+import type { DbSchnittstelle } from '../../../db/database';
+import * as repo from '../repository/preisCache';
 import { hatPreis } from '../preisRegel';
 import { asIds } from '../../haushalt/haushalt';
 import { checkAndIncrementRateLimit, kontingentFrei, getLimitForApi, getRateLimitStatus } from '../../katalog/apiKontingent';
@@ -44,21 +45,12 @@ type Stunden = string | number;
  * Ausführlich: docs/begruendungen/src/finanzen/rechnung/preise.ts.md#resolvesetcondition
  */
 export async function resolveSetCondition(
-  uid: number | number[], setNumber: string, dbh: { get: typeof db.get } = db,
+  uid: number | number[], setNumber: string, dbh?: Pick<DbSchnittstelle, 'get'>,
 ): Promise<'N' | 'U'> {
   // Blickfeld statt nackter ID: Das Set gehört oft einem Unterkonto. `dbh`:
   // Wer in einer Transaktion fragt, liest auch darin (priceForNewAcquisition).
-  const uids = asIds(uid as any);
-  const row = await dbh.get(
-    // Ohne s.condition (Migration 0032): Der Zustand steht in den Erfassungen,
-    // und effectiveCondition() liest ohnehin nur noch die beiden Zaehler.
-    `SELECT COUNT(a.id)                                 AS acq_count,
-            COUNT(a.id) FILTER (WHERE a.condition='U')  AS used_count
-       FROM sets s LEFT JOIN set_acquisitions a
-         ON a.user_id = s.user_id AND a.set_number = s.set_number
-      WHERE s.user_id = ANY($1) AND s.set_number=$2`,
-    [uids, setNumber]
-  ).catch(meldeUndLiefere('preise:row', null));
+  const row = await repo.setZustandsZaehler(asIds(uid), setNumber, dbh)
+    .catch(meldeUndLiefere('preise:row', null));
   return effectiveCondition(row);
 }
 
@@ -66,7 +58,6 @@ export async function resolveSetCondition(
 // der Gebrauchtpreis dem Wiederverkaufswert der Sammlung entspricht.
 export const DEFAULT_PRICE_CONDITION = 'U';
 
-export const PRICE_CACHE_COLS = 'set_number, condition, min_price, avg_price, max_price, qty_avg_price, fetched_at';
 
 /**
  * Wie lange ein Eintrag OHNE Preis (avg_price = 0) als endgültig gilt.
@@ -76,11 +67,7 @@ const ZERO_PRICE_TTL_HOURS = 6;
 
 /** Die Preiszeile aus dem Cache, sofern sie jung genug ist — die eine Stelle, die „frisch“ festlegt. */
 export async function preisAusCache(setNumber: string, condition: string, currency: string, ttlStunden: number) {
-  return db.get(
-    `SELECT ${PRICE_CACHE_COLS} FROM price_cache
-      WHERE set_number = $1 AND condition = $2 AND currency_code = $3
-        AND fetched_at > NOW() - make_interval(hours => $4)`,
-    [setNumber, condition, currency, ttlStunden]);
+  return repo.setPreisFrisch(setNumber, condition, currency, ttlStunden);
 }
 
 /** Ist der Cache-Eintrag brauchbar, oder soll neu geholt werden? */
@@ -115,20 +102,17 @@ export async function speicherePreis(setNumber: string, condition: string, curre
   // Auch eine Null-Antwort wird geschrieben. Sie ist die Auskunft „BrickLink
   // kennt hier keinen Preis" und haelt den naechsten Abruf zurueck; wie lange,
   // entscheidet cacheUsable().
-  await db.run(`INSERT INTO price_cache (set_number,condition,currency_code,min_price,avg_price,max_price,qty_avg_price,total_quantity,fetched_at)
-    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NOW()) ON CONFLICT (set_number,condition,currency_code) DO UPDATE SET min_price=$4,avg_price=$5,max_price=$6,qty_avg_price=$7,total_quantity=$8,fetched_at=NOW()`,
-    [setNumber, condition, currency, min, avg, max, qavg, qty]);
+  const preis = { min, avg, max, qavg, qty };
+  await repo.merkeSetPreis(setNumber, condition, currency, preis);
 
   // In den Verlauf nur, was auch ein Punkt in der Kurve waere. Die Bedingung
   // ist weiter als hatPreis() — absichtlich: Der Tages-Schnappschuss am Ende
   // des Jobs nimmt dieselbe (avg > 0 OR qty_avg > 0), und ein Verlauf mit zwei
   // Aufnahmeregeln haette Luecken, je nachdem wer geschrieben hat.
   if (avg > 0 || qavg > 0) {
-    await db.run(
-      'INSERT INTO price_history (set_number, condition, currency_code, avg_price, qty_avg_price, min_price, max_price) VALUES ($1,$2,$3,$4,$5,$6,$7) ON CONFLICT DO NOTHING',
-      [setNumber, condition, currency, avg, qavg, min, max]).catch(logAndContinue('preise:setverlauf schreiben'));
+    await repo.merkeSetVerlauf(setNumber, condition, currency, preis).catch(logAndContinue('preise:setverlauf schreiben'));
   }
-  return { min, avg, max, qavg, qty };
+  return preis;
 }
 
 export async function fetchPrice(setNumber: string, condition: string, guideType: string, currency: string, ttlHours: Stunden, pre: { catalog: Map<any, any>; cache: Map<string, any> } | null = null) {
@@ -193,7 +177,7 @@ export async function fetchPrice(setNumber: string, condition: string, guideType
   if (hatPreis(pd)) return { ...pd, condition_used: condition };
 
   const cachedFallback = await preisAusCache(setNumber, fallbackCondition, currency, ttl);
-  if (hatPreis(cachedFallback))
+  if (cachedFallback && hatPreis(cachedFallback))
     return { min_price: cachedFallback.min_price, avg_price: cachedFallback.avg_price, max_price: cachedFallback.max_price, qty_avg_price: cachedFallback.qty_avg_price, from_cache: true, condition_used: fallbackCondition, is_fallback: true };
 
   const rl2 = await kontingentFrei('bricklink');
@@ -261,7 +245,7 @@ export async function farbkarte(): Promise<Map<number, any>> {
   if (_farbkarte && jetzt - _farbkarte.zeit < NACHSCHLAG_TTL_MS) return _farbkarte.karte;
   if (_farbladung) return _farbladung;
   _farbladung = (async () => {
-    const rows = await db.all('SELECT id, bl_color_id FROM rb_colors WHERE bl_color_id IS NOT NULL');
+    const rows = await repo.blFarben();
     const karte = new Map<number, any>();
     for (const r of rows) karte.set(Number(r.id), r.bl_color_id);
     // Eine LEERE Tabelle wird NICHT gemerkt: Vor dem ersten Rebrickable-Abgleich
@@ -329,13 +313,7 @@ export async function ladeTeilepreiseVor(teile: { partNumber: string; rbColorId:
   }
   const vorrat = new Map<string, any>();
   if (!nummern.length) return vorrat;
-  const zeilen = await db.all(
-    `SELECT c.part_number, c.color_id, c.condition, c.avg_price, c.qty_avg_price
-       FROM part_price_cache c
-       JOIN unnest($1::text[], $2::int[]) AS k(nr, farbe)
-         ON c.part_number = k.nr AND c.color_id = k.farbe
-      WHERE c.currency_code = $3 AND c.fetched_at > NOW() - make_interval(hours => $4)`,
-    [nummern, farben, currency, ttl]);
+  const zeilen = await repo.teilepreiseFrisch(nummern, farben, currency, ttl);
   for (const z of zeilen) vorrat.set(`${z.part_number}|${z.color_id}|${z.condition}`, z);
   return vorrat;
 }
@@ -345,11 +323,7 @@ export async function ladeFigurenpreiseVor(figuren: string[], currency: string, 
   const ttl = Math.max(1, parseInt(String(ttlHours)));
   const vorrat = new Map<string, any>();
   if (!figuren.length) return vorrat;
-  const zeilen = await db.all(
-    `SELECT fig_number, condition, avg_price, qty_avg_price FROM minifig_price_cache
-      WHERE fig_number = ANY($1) AND currency_code = $2 AND NOT geschaetzt
-        AND fetched_at > NOW() - make_interval(hours => $3)`,
-    [[...new Set(figuren)], currency, ttl]);
+  const zeilen = await repo.figurenpreiseFrisch([...new Set(figuren)], currency, ttl);
   for (const z of zeilen) vorrat.set(`${z.fig_number}|${z.condition}`, z);
   return vorrat;
 }
@@ -369,9 +343,7 @@ export async function fetchPartPrice(partNumber: string, rbColorId: number, cond
 
   const readCache = async (cond: string) => vorrat
     ? (vorrat.get(`${blPartNumber}|${Number(colorId) || 0}|${cond}`) ?? null)
-    : db.get(
-      `SELECT avg_price, qty_avg_price FROM part_price_cache WHERE part_number=$1 AND color_id=$2 AND condition=$3 AND currency_code=$4 AND fetched_at > NOW() - make_interval(hours => $5)`,
-      [blPartNumber, colorId, cond, currency, ttl]);
+    : repo.teilpreisFrisch(blPartNumber, Number(colorId) || 0, cond, currency, ttl);
 
   // Frischer Cache-Treffer mit echtem Preis → fertig
   const cached = await readCache(condition);
@@ -410,18 +382,12 @@ export async function fetchPartPrice(partNumber: string, rbColorId: number, cond
       }
       const avg  = parseFloat(g?.avg_price || 0);
       const qavg = parseFloat(g?.qty_avg_price || 0);
-      await db.run(`INSERT INTO part_price_cache (part_number, color_id, condition, currency_code, avg_price, qty_avg_price, fetched_at)
-        VALUES ($1,$2,$3,$4,$5,$6,NOW()) ON CONFLICT (part_number,color_id,condition,currency_code)
-        DO UPDATE SET avg_price=$5, qty_avg_price=$6, fetched_at=NOW()`,
-        [blPartNumber, colorId || 0, cond, currency, avg, qavg]);
+      await repo.merkeTeilpreis(blPartNumber, Number(colorId) || 0, cond, currency, avg, qavg);
       // Verlaufspunkt mitschreiben — nur bei echtem Preis.
       // Ausführlich: docs/begruendungen/src/finanzen/rechnung/preise.ts.md#fetchpartprice-2
       if (avg > 0 || qavg > 0) {
-        await db.run(
-          `INSERT INTO part_price_history (part_number, color_id, condition, currency_code, avg_price, qty_avg_price)
-           VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT DO NOTHING`,
-          [blPartNumber, colorId || 0, cond, currency, avg, qavg]
-        ).catch(logAndContinue('preise:teileverlauf schreiben'));
+        await repo.merkeTeilVerlauf(blPartNumber, Number(colorId) || 0, cond, currency, avg, qavg)
+          .catch(logAndContinue('preise:teileverlauf schreiben'));
       }
       return { avg_price: avg, qty_avg_price: qavg, from_cache: false };
     } catch (e) {
@@ -469,9 +435,7 @@ export async function fetchMinifigPrice(figNumber: string, condition: string, cu
 
   const readCache = async (cond: string) => vorrat
     ? (vorrat.get(`${figNumber}|${cond}`) ?? null)
-    : db.get(
-      `SELECT avg_price, qty_avg_price FROM minifig_price_cache WHERE fig_number=$1 AND condition=$2 AND currency_code=$3 AND NOT geschaetzt AND fetched_at > NOW() - make_interval(hours => $4)`,
-      [figNumber, cond, currency, ttl]);
+    : repo.figurpreisFrisch(figNumber, cond, currency, ttl);
 
   const cached = await readCache(condition);
   if (hatPreis(cached))
@@ -502,18 +466,12 @@ export async function fetchMinifigPrice(figNumber: string, condition: string, cu
       }
       const avg  = parseFloat(g?.avg_price || 0);
       const qavg = parseFloat(g?.qty_avg_price || 0);
-      await db.run(`INSERT INTO minifig_price_cache (fig_number, condition, currency_code, avg_price, qty_avg_price)
-        VALUES ($1,$2,$3,$4,$5) ON CONFLICT (fig_number,condition,currency_code)
-        DO UPDATE SET avg_price=$4, qty_avg_price=$5, fetched_at=NOW(), geschaetzt=FALSE, abdeckung=NULL`,
-        [figNumber, cond, currency, avg, qavg]);
+      await repo.merkeFigurpreis(figNumber, cond, currency, avg, qavg);
       // Verlaufspunkt mitschreiben — nur bei echtem Preis.
       // Ausführlich: docs/begruendungen/src/finanzen/rechnung/preise.ts.md#fetchminifigprice
       if (avg > 0 || qavg > 0) {
-        await db.run(
-          `INSERT INTO minifig_price_history (fig_number, condition, currency_code, avg_price, qty_avg_price)
-           VALUES ($1,$2,$3,$4,$5) ON CONFLICT DO NOTHING`,
-          [figNumber, cond, currency, avg, qavg]
-        ).catch(logAndContinue('preise:figurverlauf schreiben'));
+        await repo.merkeFigurVerlauf(figNumber, cond, currency, avg, qavg)
+          .catch(logAndContinue('preise:figurverlauf schreiben'));
       }
       return { avg_price: avg, qty_avg_price: qavg, from_cache: false };
     } catch (e) {

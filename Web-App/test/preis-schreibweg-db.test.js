@@ -166,9 +166,9 @@ test('die Schreibregel steht nur an einer Stelle', () => {
     for (const m of code.matchAll(/INSERT INTO price_history[\s\S]{0,220}?(VALUES|SELECT)/g))
       if (m[1] === 'VALUES') verlaufSchreiber.push(rel);
   }
-  assert.deepEqual(cacheSchreiber, ['src/finanzen/rechnung/preise.ts'],
+  assert.deepEqual(cacheSchreiber, ['src/finanzen/repository/preisCache.ts'],
     'price_cache wird an mehr als einer Stelle beschrieben — genau daran sind die ' +
     'beiden Wege auseinandergelaufen');
-  assert.deepEqual(verlaufSchreiber, ['src/finanzen/rechnung/preise.ts'],
+  assert.deepEqual(verlaufSchreiber, ['src/finanzen/repository/preisCache.ts'],
     'Ein Verlaufspunkt wird an mehr als einer Stelle gesetzt');
 });

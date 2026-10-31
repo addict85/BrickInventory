@@ -71,21 +71,6 @@ test('ein geleerter Kaufpreis wird im Zustand der Zeile nachgefüllt', { concurr
   }
 });
 
-test('die Schätzung legt je Zustand einen eigenen Eintrag ab', () => {
-  // Zwei Zustände = zwei Marktpreise. Lägen sie unter demselben Schlüssel,
-  // überschriebe der eine den anderen und die zweite Zeile bliebe für immer
-  // leer — genau Marcos Bild.
-  const mf = fs.readFileSync(path.join(__dirname, '..', 'src/finanzen/marketPrice.ts'), 'utf8');
-  const i = mf.indexOf('async function schaetzeFigurenpreis');
-  const fn = mf.slice(i, mf.indexOf('\n}', i));
-
-  assert.match(fn, /INSERT INTO minifig_price_cache[\s\S]{0,200}?condition/,
-    'Der Cache-Eintrag trägt keinen Zustand');
-  assert.match(fn, /fetchPartPrice\([^)]*cond[^)]*\)/,
-    'Die Teilepreise werden nicht im Zustand dieser Schätzung geholt — dann ' +
-    'ergäben „Neu" und „Gebraucht" denselben Wert.');
-});
-
 test('jeder Marktpreis-Abruf bekommt einen Zustand mit', () => {
   // ── Zweimal dieselbe Lücke (Nachträge 146 und 147) ────────────────────────
   //

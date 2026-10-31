@@ -7,7 +7,8 @@
  */
 
 import { meldeUndLiefere } from '../../infra/httpError';
-import * as db from '../../../db/database';
+import * as repo from '../repository/bewertung';
+import { setPreiseFrisch } from '../repository/preisCache';
 import { asIds } from '../../haushalt/haushalt';
 import { getGlobalSetting } from '../../konto/settings';
 import { getSetting } from '../../konto/settings';
@@ -15,19 +16,16 @@ import { resolveImageLocal, proxyImageUrl } from '../../katalog/bilder/images';
 import { valueSet, valueAcquisitionRows, weightedPurchase, pnlPct as calcPnlPct, pnlProzent } from '../setValue';
 import { mitVersion } from '../../sets/setNummer';
 import { effectiveCondition } from './zustand';
-import { mengeJoin, mengeAus } from '../../../db/bestandsmenge';
 import {
-  DEFAULT_PRICE_CONDITION, PRICE_CACHE_COLS, parallelLimit,
+  DEFAULT_PRICE_CONDITION, parallelLimit,
   fetchPrice, fetchPartPrice, fetchMinifigPrice, ladeBlNummernVor,
   ladeTeilepreiseVor, ladeFigurenpreiseVor,
   type Blickfeld,
 } from './preise';
-import { kaufpreisSpalten, zaehle } from './abfragen';
+import { zaehle } from './abfragen';
 import { ladeSetErfassungen } from '../repository/erfassungen';
 import { schaetzeFigurenpreis } from '../marketPrice';
 import { withOwners } from '../../bestand/gemeinsam';
-import { blJoin, blNummerSql } from '../../../db/blZuordnungSql';
-import { teilmengeJoin, teilmengeAus } from '../../../db/bestandsmenge';
 import { KEINE_FARBE } from '../../infra/validate';
 import { aufRappen, inZehntel4 } from '../../infra/geld';
 
@@ -41,20 +39,9 @@ async function loadManualAcquisitions(uid: Blickfeld, kind: 'part' | 'fig', waeh
   // Blickfeld: Ein Hauptkonto bewertet den ganzen Haushalt. Die Währung ist
   // beim Verknüpfen erzwungen gleich (src/haushalt/haushalt.ts) — sonst summierte
   // diese Rechnung zwei Währungen, ohne dass man es der Zahl ansähe.
-  const uids = asIds(uid as any);
-  const rows = await db.all(
-    kind === 'part'
-      ? `SELECT id, part_number, color_id, quantity,
-                ${kaufpreisSpalten('unit_price', '$2')}, currency, price_estimated,
-                COALESCE(condition,'N') AS condition, created_at
-           FROM part_acquisitions WHERE user_id = ANY($1) ORDER BY created_at ASC, id ASC`
-      : `SELECT id, fig_number, quantity,
-                ${kaufpreisSpalten('unit_price', '$2')}, currency, price_estimated,
-                COALESCE(condition,'N') AS condition, created_at
-           FROM minifig_acquisitions WHERE user_id = ANY($1) ORDER BY created_at ASC, id ASC`,
-    [uids, waehrung]
-  ).catch(meldeUndLiefere('bewertung:rows', []));
-  const out = new Map<string, any[]>();
+  const rows = await repo.manuelleErfassungen(kind, asIds(uid), waehrung)
+    .catch(meldeUndLiefere('bewertung:rows', []));
+  const out = new Map<string, repo.ManuelleErfassung[]>();
   for (const r of rows) {
     const key = kind === 'part' ? `${r.part_number}|${r.color_id ?? KEINE_FARBE}` : String(r.fig_number);
     const list = out.get(key);
@@ -84,19 +71,9 @@ export async function computeSetsValuation(viewerId: number, ids: Blickfeld) {
   ]);
   const defaultCondition = DEFAULT_PRICE_CONDITION;
 
-  const sets = await db.all(
-    // Kaufpreis und Zustand stehen seit Migration 0032 NUR in den Erfassungen
-    // (set_acquisitions), eine Zeile je Kauf. Der frühere Rückfall auf
-    // s.purchase_price/s.condition ist weg: Die Migration hat für jede
-    // Set-Zeile eine Erfassung nachgetragen und prüft das auch nach, und alle …
-    // Ausführlich: docs/begruendungen/src/finanzen/rechnung/bewertung.ts.md#computesetsvaluation
-    `SELECT s.set_number, c.name, c.year,
-            ${mengeAus('sm', 0)}::int AS quantity,
-            c.image_local, c.image_url, s.added_at
-       FROM sets s
-       LEFT JOIN set_catalog c ON c.set_number = s.set_number
-       ${mengeJoin('s', 'sm', '= ANY($1)')}
-      WHERE s.user_id = ANY($1)`, [uids]);
+  // Kaufpreis und Zustand stehen seit Migration 0032 nur in den Erfassungen.
+  // Ausführlich: docs/begruendungen/src/finanzen/rechnung/bewertung.ts.md#computesetsvaluation
+  const sets = await repo.setsZurBewertung(uids);
   if (!sets.length) return { currency, condition: defaultCondition, guide_type: guideType, ttl_hours: ttlHours,
     ttl_stunden: Number(ttlHours) || 24, kaufpreise_fremde_waehrung: 0, kaufpreise_umgerechnet: 0, sets: [], totals: { min:'0.00', avg:'0.00', max:'0.00', qty_avg:'0.00' } };
 
@@ -107,12 +84,8 @@ export async function computeSetsValuation(viewerId: number, ids: Blickfeld) {
   const [catRows, cacheRows, acqRows] = await Promise.all([
     // catalog_cache führt Nummern mit Versionsanhang (Migration 0074),
     // price_cache unter der Schreibweise des Aufrufers.
-    db.all('SELECT set_number, is_gear, bl_type, fetched_at FROM catalog_cache WHERE set_number = ANY($1)',
-           [setNumbers.map(mitVersion)]),
-    db.all(
-      `SELECT ${PRICE_CACHE_COLS} FROM price_cache
-       WHERE set_number = ANY($1) AND currency_code = $2 AND fetched_at > NOW() - make_interval(hours => $3)`,
-      [setNumbers, currency, ttl]),
+    repo.katalogMerkmale(setNumbers.map(mitVersion)),
+    setPreiseFrisch(setNumbers, String(currency), ttl),
     ladeSetErfassungen(uids, String(currency)),
   ]);
   const pre = {
@@ -258,25 +231,7 @@ export async function computeMinifigsValuation(viewerId: number, ids: Blickfeld)
   // das gemeldet, sobald der Rueckfall weg war — ein Wert, den niemand mehr
   // liest, ist der beste Beleg dafuer, dass er nur den Fehler getragen hat.
   // Ausführlich: docs/begruendungen/src/finanzen/rechnung/bewertung.ts.md#computeminifigsvaluation-manualfigs
-  const manualFigs = await db.all(`
-    SELECT m.id, m.user_id, m.set_number, m.fig_number,
-           -- Die BrickLink-Nummer aus der Zuordnung (Migration 0037); hier
-           -- stand m.bl_fig_number, eine Abschrift je Konto.
-           ${blNummerSql('m.fig_number', 'blzf')} AS bl_fig_number,
-           -- Die Stückzahl aus den Erfassungen (Migration 0038); hier stand
-           -- m.quantity. Nur manuelle Figuren, siehe die Bedingung unten.
-           ${teilmengeAus('m', 'fig')} AS quantity,
-           m.source, m.storage_id,
-           -- unit_price, purchase_price und condition sind mit Migration 0035
-           -- weg. Die Bewertung rechnet ohnehin aus den ERFASSUNGEN
-           -- (loadManualAcquisitions oben) — die drei Spalten waren eine
-           -- Abschrift der letzten davon.
-           mc.fig_name, mc.image_url, mc.image_local
-      FROM minifigs m
-      ${teilmengeJoin('m', 'fig')}
-      ${blJoin('m.fig_number', 'fig', 'blzf')}
-      LEFT JOIN minifigs_catalog mc ON mc.fig_number = m.fig_number
-     WHERE m.user_id = ANY($1) AND m.source='manual'`, [uids]);
+  const manualFigs = await repo.manuelleFiguren(uids);
   if (!manualFigs.length) return { currency, figs: [], total_value: '0.00', kaufpreise_fremde_waehrung: 0, kaufpreise_umgerechnet: 0 };
 
   const acqByFig = await loadManualAcquisitions(uids, 'fig', String(currency));
@@ -366,27 +321,7 @@ export async function computePartsValuation(viewerId: number, ids: Blickfeld) {
   // Spalten ausgeschrieben, kein SELECT * — dieselbe Begruendung wie bei den
   // Figuren darueber. Die Beschreibung kommt aus den Katalogen (Migration
   // 0034), der Bestand aus parts.
-  const manualParts = await db.all(`
-    SELECT p.id, p.user_id, p.set_number, p.part_number,
-           -- Die BrickLink-Nummer aus der Zuordnung (Migration 0037); hier
-           -- stand p.bl_part_number, eine Abschrift je Konto.
-           ${blNummerSql('p.part_number')} AS bl_part_number,
-           p.color_id,
-           -- Wie bei den Figuren darueber (Migration 0038).
-           ${teilmengeAus('p', 'part')} AS quantity,
-           p.source,
-           p.storage_id, p.added_at,
-           -- Preise und Zustand: siehe die Figuren-Bewertung darueber
-           -- (Migration 0035).
-           pc.part_name, pc.category_name,
-           pcc.color_name, pcc.color_hex, pcc.image_url, pcc.image_local
-      FROM parts p
-      ${teilmengeJoin('p', 'part')}
-      ${blJoin('p.part_number', 'part')}
-      LEFT JOIN part_catalog pc ON pc.part_number = p.part_number
-      LEFT JOIN part_color_catalog pcc ON pcc.part_number = p.part_number
-                                      AND pcc.color_id    = p.color_id
-     WHERE p.user_id = ANY($1) AND p.source = 'manual'`, [uids]);
+  const manualParts = await repo.manuelleTeile(uids);
 
   if (!manualParts.length) return { currency, parts: [], total_value: '0.00', kaufpreise_fremde_waehrung: 0, kaufpreise_umgerechnet: 0 };
 
@@ -454,7 +389,7 @@ export async function computePartsValuation(viewerId: number, ids: Blickfeld) {
       image_local:  part.image_local,
       // Einzelpreis der neuesten Erfassung (die Liste ist nach created_at
       // aufsteigend); die Webapp nimmt ihn nur als Rückfall.
-      unit_price:   acqs.length ? (acqs[acqs.length - 1].unit_price ?? null) : null,
+      unit_price:   acqs.at(-1)?.unit_price ?? null,
       purchase_price: hasCost ? purchasePrice : null,
       condition:    valued.by_condition.some(b => b.condition === 'U') ? 'U' : 'N',
       conditions:   valued.by_condition.map(b => b.condition),

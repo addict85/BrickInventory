@@ -1,4 +1,4 @@
-import * as db from '../../db/database';
+import * as repo from './repository/marktpreise';
 import { nacharbeit } from '../auftraege/nacharbeit';
 import { getSetValue } from './setValue';
 import { nutzerStandardZustand as userDefaultCondition } from '../konto/settings';
@@ -16,9 +16,7 @@ import { KEINE_FARBE } from '../infra/validate';
  */
 export async function getCurrentMarketPrice(setNumber: string, userId: number, condition: string | null = null) {
   try {
-    const currencyRow = await db.get('SELECT value FROM user_settings WHERE user_id=$1 AND key=$2', [userId, 'currency']);
-    const globalCurrency = await getGlobalSetting('currency');
-    const currency = currencyRow?.value || globalCurrency || 'EUR';
+    const currency = String(await getSetting(userId, 'currency', 'EUR'));
     // Effective condition: parameter → user setting → global setting → 'N'
     const effectiveCond = condition || await userDefaultCondition(userId).catch(()=>DEFAULT_PRICE_CONDITION);
     // condition als Hinweis mitgeben: Beim Anlegen eines neuen Sets existieren
@@ -36,13 +34,8 @@ export async function getCurrentMarketPrice(setNumber: string, userId: number, c
     }
 
     // Angefragter Zustand zuerst; der andere nur, wenn dort kein Preis steht.
-    const cached = await db.get(
-      `SELECT avg_price FROM price_cache
-       WHERE set_number=$1 AND condition IN ('N','U') AND currency_code=$3 AND avg_price > 0
-       ORDER BY (condition = $2) DESC LIMIT 1`,
-      [setNumber, effectiveCond, currency]
-    );
-    const price = parseFloat(cached?.avg_price || 0);
+    const cached = await repo.setPreisAusCache(setNumber, effectiveCond, currency);
+    const price = parseFloat(cached?.avg_price ?? '0');
     return price > 0 ? price : null;
   } catch (_) { return null; }
 }
@@ -53,12 +46,8 @@ export async function getCurrentMarketPrice(setNumber: string, userId: number, c
 /** Zustand eines Teils für den Preis: 'U' sobald eine Erfassung gebraucht ist, sonst 'N'; ohne Erfassung der Standard. */
 export async function resolvePartCondition(userId: number, partNumber: string, colorId: number) {
   try {
-    const row = await db.get(
-      "SELECT MAX(CASE WHEN condition='U' THEN 1 ELSE 0 END) AS any_used, COUNT(*) AS cnt FROM part_acquisitions WHERE user_id=$1 AND part_number=$2 AND color_id=$3",
-      // parseInt entfaellt: colorId ist bereits eine Zahl (V.colorId gibt
-      // number zurueck). parseInt(5) ging nur ueber den Umweg ueber "5".
-      [userId, partNumber, colorId]);
-    if (row && parseInt(row.cnt) > 0) return parseInt(row.any_used) > 0 ? 'U' : 'N';
+    const row = await repo.teilErfassungsZustand(userId, partNumber, colorId);
+    if (row && parseInt(row.cnt) > 0) return Number(row.any_used) > 0 ? 'U' : 'N';
   } catch (e) { meldeUndWeiter('teile:zustand-ermitteln', e); }
   try { return await userDefaultCondition(userId); }
   catch (_) { return DEFAULT_PRICE_CONDITION; }
@@ -89,12 +78,8 @@ export async function marktpreiseAusCacheFuerFiguren(
     [f.bl_fig_number, f.fig_number].filter(Boolean).map(String)))];
   if (!schluessel.length) return treffer;
 
-  const zeilen = await db.all(
-    `SELECT fig_number, condition, avg_price, qty_avg_price FROM minifig_price_cache
-      WHERE fig_number = ANY($1) AND currency_code = $2
-        AND fetched_at > NOW() - make_interval(hours => $3)`,
-    [schluessel, currency, ttl],
-  ).catch(meldeUndLiefere('marktpreis:zeilen', []));
+  const zeilen = await repo.figurenpreiseAusCache(schluessel, String(currency), ttl)
+    .catch(meldeUndLiefere('marktpreis:zeilen', []));
 
   const cache = new Map<string, number>();
   for (const z of zeilen) {
@@ -157,12 +142,8 @@ export async function marktpreiseAusCacheFuerTeile(
 
   const nummern = [...new Set([...auflösung.values()].map(a => a.nummer))];
   if (!nummern.length) return treffer;
-  const zeilen = await db.all(
-    `SELECT part_number, color_id, condition, avg_price, qty_avg_price FROM part_price_cache
-      WHERE part_number = ANY($1) AND currency_code = $2
-        AND fetched_at > NOW() - make_interval(hours => $3)`,
-    [nummern, currency, ttl],
-  ).catch(meldeUndLiefere('marktpreis:zeilen', []));
+  const zeilen = await repo.teilepreiseAusCache(nummern, String(currency), ttl)
+    .catch(meldeUndLiefere('marktpreis:zeilen', []));
 
   const cache = new Map<string, number>();
   for (const z of zeilen) {
@@ -238,12 +219,8 @@ export async function schaetzeFigurenpreis(figNumber: string, userId: number, co
     // danach den BrickLink-Preis JE TEIL. Eine Minifigur mit fünfzehn Teilen …
     // Ausführlich: docs/begruendungen/src/finanzen/marketPrice.ts.md#estimatefigpricefromparts-ttl
     const ttl = Math.max(1, parseInt(await getGlobalSetting('price_cache_ttl', '24')));
-    const cached = await db.get(
-      `SELECT avg_price, abdeckung FROM minifig_price_cache
-        WHERE fig_number = $1 AND condition = $2 AND currency_code = $3 AND geschaetzt
-          AND fetched_at > NOW() - make_interval(hours => $4)`,
-      [figNumber, cond0, currency, ttl]
-    ).catch(meldeUndLiefere('marktpreis:cached', null));
+    const cached = await repo.geschaetzterFigurenpreis(figNumber, cond0, currency, ttl)
+      .catch(meldeUndLiefere('marktpreis:cached', null));
     const zwischengespeichert = parseFloat(String(cached?.avg_price || 0));
     if (zwischengespeichert > 0)
       return { preis: zwischengespeichert, abdeckung: cached?.abdeckung != null ? parseFloat(String(cached.abdeckung)) : null };
@@ -282,19 +259,12 @@ export async function schaetzeFigurenpreis(figNumber: string, userId: number, co
     // fetchMinifigPrice liest nur unmarkierte Zeilen, die Anzeige kennzeichnet sie.
     // Ausführlich: docs/begruendungen/src/finanzen/marketPrice.ts.md#estimatefigpricefromparts-2
     const abdeckung = Math.round(priced / parts.length * 1000) / 1000;
-    await db.run(
-      `INSERT INTO minifig_price_cache (fig_number, condition, currency_code, avg_price, qty_avg_price, geschaetzt, abdeckung)
-       VALUES ($1,$2,$3,$4,$4,TRUE,$5) ON CONFLICT (fig_number,condition,currency_code)
-       DO UPDATE SET avg_price=$4, qty_avg_price=$4, fetched_at=NOW(), geschaetzt=TRUE, abdeckung=$5`,
-      [figNumber, cond, currency, total, abdeckung]
-    ).catch(e => console.warn(`[minifig-price-estimate] Cache ${figNumber}: ${e.message}`));
+    await repo.merkeGeschaetztenFigurenpreis(figNumber, cond, currency, total, abdeckung)
+      .catch(e => console.warn(`[minifig-price-estimate] Cache ${figNumber}: ${e.message}`));
     // Wie beim echten Abruf: ON CONFLICT DO NOTHING, und nur mit echtem Preis —
     // ein Nullpunkt sähe im Diagramm aus wie ein Kurssturz.
-    await db.run(
-      `INSERT INTO minifig_price_history (fig_number, condition, currency_code, avg_price, qty_avg_price, geschaetzt, abdeckung)
-       VALUES ($1,$2,$3,$4,$4,TRUE,$5) ON CONFLICT DO NOTHING`,
-      [figNumber, cond, currency, total, abdeckung]
-    ).catch(logAndContinue('marktpreis:figurverlauf schreiben'));
+    await repo.merkeGeschaetztenFigurenverlauf(figNumber, cond, currency, total, abdeckung)
+      .catch(logAndContinue('marktpreis:figurverlauf schreiben'));
 
     return { preis: total, abdeckung };
   } catch (e) {
@@ -316,10 +286,8 @@ export async function figMarktpreisMitHerkunft(figNumber: string, userId: number
     let effCond = condition;
     if (!effCond) {
       try {
-        const row = await db.get(
-          "SELECT MAX(CASE WHEN condition='U' THEN 1 ELSE 0 END) AS any_used, COUNT(*) AS cnt FROM minifig_acquisitions WHERE user_id=$1 AND fig_number=$2",
-          [userId, figNumber]);
-        if (row && parseInt(row.cnt) > 0) effCond = parseInt(row.any_used) > 0 ? 'U' : 'N';
+        const row = await repo.figurErfassungsZustand(userId, figNumber);
+        if (row && parseInt(row.cnt) > 0) effCond = Number(row.any_used) > 0 ? 'U' : 'N';
       } catch (e) { meldeUndWeiter('minifiguren:zustand-ermitteln', e); }
       if (!effCond) { try { effCond = await userDefaultCondition(userId); } catch (_) { effCond = DEFAULT_PRICE_CONDITION; } }
     }
