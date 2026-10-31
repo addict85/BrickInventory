@@ -207,7 +207,7 @@ function buildApp() {
   app.use('/api/sets',     require(path.join(ROOT, 'dist/routes/sets.js')));
   app.use('/api/parts',    require(path.join(ROOT, 'dist/routes/parts.js')));
   app.use('/api/finance',  require(path.join(ROOT, 'dist/routes/finance.js')));
-  app.use('/api/settings', require(path.join(ROOT, 'dist/routes/settings.js')));
+  app.use('/api/settings', require(path.join(ROOT, 'dist/routes/api_v1/settings.js')));
   app.use('/api/minifigs', require(path.join(ROOT, 'dist/routes/minifigs.js')));
   return app;
 }

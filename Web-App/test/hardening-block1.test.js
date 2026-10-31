@@ -27,7 +27,7 @@ test('die Session-ID wird beim Anmelden erneuert', () => {
   assert.match(auth, /req\.session\.save\(/,
     'Ohne save() wäre die neue ID bei einer unmittelbar folgenden Anfrage noch nicht gültig');
 
-  const routes = read('routes/auth.ts') + read('routes/passkeys.ts');
+  const routes = read('routes/auth.ts');
   // Drei Aufrufe: Login, Passkey-Anmeldung — und seit der Sitzungs-Bereinigung auch
   // /change-password. Dort werden erst ALLE Sitzungen des Kontos verworfen
   // (ein Passwortwechsel soll einen fremden Zugang beenden, nicht nur die
@@ -257,7 +257,7 @@ test('den Preis-Cache leert nur, wer Administrator ist', () => {
   // verbrannte Kontingent). Der Import-Weg wurde übersehen — er sieht ja auch
   // nicht nach „Cache leeren" aus. Genau deshalb prüft dieser Test die REGEL
   // und nicht eine einzelne Route: Wer den Cache leert, braucht requireAdmin.
-  const dateien = ['routes/settings.ts', 'routes/api_v1/sets.ts',
+  const dateien = ['routes/api_v1/settings.ts', 'routes/api_v1/sets.ts',
                    'routes/api_v1/parts.ts', 'routes/api_v1/minifigs.ts', 'clients/bricklink.ts'];
   const treffer = [];
   for (const datei of dateien) {

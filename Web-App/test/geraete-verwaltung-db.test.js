@@ -30,7 +30,7 @@ process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 const { buildAndRequire, einhaengung } = require('./helpers/sources');
 const _req = buildAndRequire();
 const AUTH     = einhaengung('auth');
-const SETTINGS = einhaengung('settings');
+const SETTINGS = '/api/v1/settings';
 const db = _req('db/database.js');
 const express   = require(path.join(ROOT, 'node_modules', 'express'));
 const session   = require(path.join(ROOT, 'node_modules', 'express-session'));
@@ -63,7 +63,7 @@ test('Zugänge auflisten und aussperren — über Sitzung UND über Token',
     secret: process.env.SESSION_SECRET, resave: false, saveUninitialized: false,
   }));
   app.use(AUTH,     _req('routes/auth.js'));
-  app.use(SETTINGS, _req('routes/settings.js'));
+  app.use('/api/v1', _req('routes/api_v1/settings.js'));
   const srv = app.listen(0);
   const basis = `http://localhost:${srv.address().port}`;
 

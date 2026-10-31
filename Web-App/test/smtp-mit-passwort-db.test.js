@@ -48,7 +48,7 @@ test('SMTP nur mit Passwort', { concurrency: 1 }, async (t) => {
     await db.pool.end().catch(() => {});
   });
   const { base } = testServer(_req, { sitzung: { userId: uid, isAdmin: true },
-    routen: { '/api/v1/settings': 'routes/settings.js' }, t });
+    routen: { '/api/v1': 'routes/api_v1/settings.js' }, t });
   const speichern = (body) => fetch(`${base}/api/v1/settings`, { method: 'POST',
     headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
     .then(async r => ({ status: r.status, body: await r.json() }));

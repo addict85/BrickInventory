@@ -60,7 +60,7 @@ test('Design je Konto', { concurrency: 1 }, async (t) => {
   });
 
   const sitzung = {};
-  const { base } = testServer(_req, { sitzung, routen: { '/api/v1/settings': 'routes/settings.js', '/api/v1': 'routes/api_v1/index.js' }, t });
+  const { base } = testServer(_req, { sitzung, routen: { '/api/v1': 'routes/api_v1/index.js' }, t });
   const hole = async (pfad, o = {}) => (await fetch(base + '/api/v1/settings' + pfad, o)).json();
   const setze = (theme) => hole('/user/theme', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ theme }) });
   const als = (uid) => { if (uid) sitzung.userId = uid; else delete sitzung.userId; };

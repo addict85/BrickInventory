@@ -24,14 +24,14 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 const PUB = path.join(ROOT, 'public');
 const html = fs.readFileSync(path.join(PUB, 'index.html'), 'utf8');
-const settings = fs.readFileSync(path.join(ROOT, 'routes/settings.ts'), 'utf8');
+const settings = fs.readFileSync(path.join(ROOT, 'routes/api_v1/settings.ts'), 'utf8');
 const styles = fs.readFileSync(path.join(PUB, 'styles.css'), 'utf8');
 
 test('GET /api/settings/theme ist ohne Login erreichbar', () => {
-  const route = settings.indexOf("router.get('/theme'");
+  const route = settings.indexOf("router.get('/settings/theme'");
   // Auf den Zeilenanfang ankern: der Erklärkommentar über der Route erwähnt
   // router.use(requireLogin) ebenfalls, ein blosses indexOf träfe den Kommentar.
-  const gate = settings.search(/^router\.use\(requireLogin\);/m);
+  const gate = settings.search(/^router\.use\('\/settings', requireLogin\);/m);
   assert.ok(route > 0, '/theme-Route nicht gefunden');
   assert.ok(gate > 0, 'requireLogin-Gate nicht gefunden');
   assert.ok(
@@ -185,7 +185,7 @@ test('der Server setzt data-theme selbst — kein Sprung beim ersten Aufruf', ()
   assert.match(catchAll, /sendFile/,
     'Bei einem Renderfehler muss die Datei unverändert ausgeliefert werden');
 
-  const settings = fs.readFileSync(path.join(ROOT, 'routes/settings.ts'), 'utf8');
+  const settings = fs.readFileSync(path.join(ROOT, 'routes/api_v1/settings.ts'), 'utf8');
   assert.match(settings, /invalidateTheme\(\)/,
     'Das Speichern eines Designs muss den Server-Cache verwerfen');
 });

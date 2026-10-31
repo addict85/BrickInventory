@@ -82,7 +82,7 @@ test('/ca.crt, Einstellungen und QR-Code tragen denselben Fingerabdruck', { conc
     secret: process.env.SESSION_SECRET, resave: false, saveUninitialized: false }));
   app.use(_req('routes/zertifikat.js'));
   app.use('/api/v1', _req('routes/api_v1/middleware.js').anmeldungAmEingang);
-  app.use('/api/v1/settings', _req('routes/settings.js'));
+  app.use('/api/v1', _req('routes/api_v1/settings.js'));
   app.use('/api/v1/auth', _req('routes/auth.js'));
   const srv = app.listen(0);
   const basis = `http://localhost:${srv.address().port}`;

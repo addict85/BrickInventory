@@ -109,14 +109,11 @@ test('Webapp und App bekommen dieselben Endpunkte', () => {
   for (const fn of ['householdStatus', 'createInvite', 'redeemInvite', 'unlink']) {
     assert.ok(src.includes(fn), `routes/api_v1/settings.ts: ${fn} fehlt`);
   }
-  // Und die Zweitfassung darf nicht zurückkehren.
-  assert.doesNotMatch(read('routes/settings.ts'), /householdStatus|createInvite|redeemInvite/,
-    'routes/settings.ts hat wieder eigene Haushalts-Routen — dann existiert die Logik doppelt');
+  // Und die Zweitfassung darf nicht zurückkehren: jede Haushalts-Route genau einmal.
+  for (const pfad of ["'/settings/household'", "'/settings/household/invite'", "'/settings/household/redeem'", "'/settings/household/unlink'"])
+    assert.equal(src.split(pfad).length - 1, 1, `${pfad} steht nicht genau einmal in routes/api_v1/settings.ts`);
   // Keine eigene Regel in der Route — sie stehen in src/haushalt/haushalt.ts.
-  for (const f of ['routes/settings.ts', 'routes/api_v1/settings.ts']) {
-    assert.doesNotMatch(read(f), /account_links/,
-      `${f}: Routen dürfen nicht selbst gegen account_links abfragen`);
-  }
+  assert.doesNotMatch(src, /account_links/, 'Routen dürfen nicht selbst gegen account_links abfragen');
 });
 
 test('die Oberfläche bietet Einladen und Einlösen jedem Konto an', () => {

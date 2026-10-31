@@ -75,11 +75,11 @@ test('eine echte Währungsänderung stösst den Preis-Job an, ein No-op-Speicher
   const { base, srv } = testServer(_req, {
     sitzung: { userId: uid, username: USERNAME, isAdmin: false },
     apiNutzer: { user_id: uid },
-    routen: { '/api/settings': 'routes/settings.js', '/api/v1': 'routes/api_v1/index.js' },
+    routen: { '/api/v1': 'routes/api_v1/index.js' },
     t,
   });
 
-  const postWeb = (body) => fetch(`${base}/api/settings/`, {
+  const postWeb = (body) => fetch(`${base}/api/v1/settings`, {
     method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body),
   });
 

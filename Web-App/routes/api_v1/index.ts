@@ -25,7 +25,7 @@ router.use(acquisitionsRouter); // Kaufpreis-Erfassungen für Sets/Teile/Figuren
 router.use(partsRouter);
 router.use(minifigsRouter);
 router.use(financeRouter);
-router.use(settingsRouter);
+router.use(settingsRouter);     // /settings — Einstellungen, Zugänge, Haushalt
 router.use(adminRouter);
 router.use(catalogRouter);      // /catalog/* — Rebrickable-Katalog (Browsen/Suchen)
 router.use(wantedRouter);     // /wanted — Merkliste (eigene Tabelle, siehe 0021)

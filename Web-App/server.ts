@@ -39,9 +39,7 @@ import { registerImgProxy } from './routes/imgProxy';
 import { anmeldungAmEingang } from './routes/api_v1/middleware';
 import datenDateien = require('./routes/datenDateien');
 import apiV1Router = require('./routes/api_v1/index');
-import settingsRouter = require('./routes/settings');
 import authRouter = require('./routes/auth');
-import passkeysRouter = require('./routes/passkeys');
 import zertifikatRouter = require('./routes/zertifikat');
 
 /**
@@ -356,9 +354,7 @@ app.get('/api/v1/health', async (req, res) => {
 // Ausführlich: docs/begruendungen/server.ts.md#abschnitt-7
 app.use('/api/v1',          anmeldungAmEingang);
 app.use('/api/v1',          apiV1Router);
-app.use('/api/v1/settings', settingsRouter);
 app.use('/api/v1/auth',     authRouter);
-app.use('/api/v1/auth',     passkeysRouter);
 
 // ── E-Mail Bestätigung: /verify?token=... ─────────────────────────────────────
 // Der Link kommt aus einer E-Mail: Die Antwort ist eine Seite, kein JSON.
