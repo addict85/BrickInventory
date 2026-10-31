@@ -20,3 +20,12 @@ export function zaehleBildwuensche() {
 export function loescheAlleBildwuensche() {
   return db.run('DELETE FROM image_wanted');
 }
+
+export function entnimmBildwuensche(gueltigMs: string, anzahl: number) {
+  return db.all<{ url: string; set_number: string | null }>(
+    `DELETE FROM image_wanted
+      WHERE url IN (SELECT url FROM image_wanted
+                     WHERE requested_at > NOW() - ($1 || ' milliseconds')::interval
+                     ORDER BY requested_at ASC LIMIT $2)
+      RETURNING url, set_number`, [gueltigMs, anzahl]);
+}

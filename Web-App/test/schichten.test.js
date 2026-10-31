@@ -363,7 +363,6 @@ const hatSql = (rel) => { const s = quelltext(rel); return SQL_TEXT.test(s) || S
  */
 const SQL_NOCH_IM_DIENST = new Set([
     'jobs/csvImportWorker.ts',
-    'jobs/imageQueue.ts',
     'jobs/partsCatalogEnrich.ts',
     'src/finanzen/marketPrice.ts',
     'src/finanzen/preisalarm.ts',

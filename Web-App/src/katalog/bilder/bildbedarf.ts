@@ -79,3 +79,11 @@ export async function offenerBildbedarf(): Promise<number> {
 export async function leereBildbedarf(): Promise<number> {
   return (await repo.loescheAlleBildwuensche())?.changes ?? 0;
 }
+
+/**
+ * Die ältesten noch gültigen Wünsche nehmen — herausgenommen in einem
+ * Schritt, damit zwei Läufe nicht dieselben Bilder holen.
+ */
+export function nimmBildwuensche(gueltigMs: number, anzahl: number): Promise<{ url: string; set_number: string | null }[]> {
+  return repo.entnimmBildwuensche(String(gueltigMs), anzahl);
+}
