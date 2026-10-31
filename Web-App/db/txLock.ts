@@ -57,4 +57,20 @@ async function mitSitzungsSperre<T>(schluessel: number, lauf: () => Promise<T>, 
   } finally { client.release(); }
 }
 
-export { withInventoryLock, bestandsSchluessel, sperreHaushaltswaehrung, mitSitzungsSperre };
+/**
+ * Eine Sitzungssperre für eine ganze Laufzeit belegen.
+ * @returns Freigabe, oder null wenn ein anderer Prozess sie hält
+ */
+async function belegeSitzungsSperre(schluessel: number): Promise<(() => Promise<void>) | null> {
+  const client = await db.pool.connect();
+  try {
+    const { rows } = await client.query('SELECT pg_try_advisory_lock($1, 0) AS ok', [schluessel]);
+    if (!rows[0]?.ok) { client.release(); return null; }
+  } catch (e) { client.release(); throw e; }
+  return async () => {
+    try { await client.query('SELECT pg_advisory_unlock($1, 0)', [schluessel]); }
+    finally { client.release(); }
+  };
+}
+
+export { withInventoryLock, bestandsSchluessel, sperreHaushaltswaehrung, mitSitzungsSperre, belegeSitzungsSperre };

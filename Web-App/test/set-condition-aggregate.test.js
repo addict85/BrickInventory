@@ -666,7 +666,7 @@ test('genau EINE Zustandsauflösung für Einzelsets — resolveSetCondition', ()
   // Hauptaccount fragt den Zustand eines Sets ab, das einem Unterkonto gehört.
   pruefeParameter(fc, 'resolveSetCondition', ['uid', 'setNumber'],
     'der gemeinsame Helfer fehlt');
-  assert.match(fc, /resolveSetCondition,\n\};/, 'Der Helfer muss exportiert sein');
+  assert.match(fc, /export async function resolveSetCondition\(/, 'Der Helfer muss exportiert sein');
 
   // Beide Aufrufer müssen ihn tatsächlich importieren, nicht eine eigene
   // Abfrage danebenstellen.

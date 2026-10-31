@@ -11,7 +11,7 @@ import { fehlerWerfen } from '../infra/fehlerTexte';
 // (settings.ts kennt nur db und httpError), und `await import('./settings')`
 // verlangt unter moduleResolution node16 die Dateiendung — eine Schreibweise,
 // die im Baum sonst nirgends steht.
-import { setUserSetting } from '../konto/settings';
+import { setUserSetting, deleteUserSetting } from '../konto/settings';
 
 /**
  * Wie lang ein Lagerortname höchstens sein darf.
@@ -318,21 +318,14 @@ export async function ortFuerNeuerfassung(
  */
 export async function setzeVorgabe(userId: number, id: number | null): Promise<Lagerort | null> {
   if (id === null) {
-    await db.run('DELETE FROM user_settings WHERE user_id = $1 AND key = $2',
-                 [userId, VORGABE_SCHLUESSEL]);
+    await deleteUserSetting(userId, VORGABE_SCHLUESSEL);
     return null;
   }
   const ort = await db.get(
     'SELECT id, user_id, name FROM storage_locations WHERE id = $1 AND user_id = $2',
     [id, userId]);
   if (!ort) fehlerWerfen('lagerort_unbekannt', 404);
-  // Geschrieben wird ueber setUserSetting() und NICHT mit einer eigenen
-  // Anweisung: Die erste Fassung hatte das INSERT … ON CONFLICT hier stehen,
-  // mit der Begruendung, ein Import von settings.ts koenne einen Kreis
-  // schaffen. Beides war falsch — einen Kreis gibt es nicht (settings.ts
-  // kennt diese Datei nicht), und test/sql-kerne.test.js hat die Kopie
-  // gemeldet: „keine SQL-Anweisung steht in mehr als einer Datei". Zu Recht,
-  // denn der Zugriff auf user_settings gehoert dorthin, wo er schon steht.
+  // Über die Einstellungen des Kontos, nicht mit eigener Anweisung: user_settings gehört dorthin.
   await setUserSetting(userId, VORGABE_SCHLUESSEL, String(id));
   return { id: parseInt(String(ort.id)), user_id: userId, name: ort.name };
 }

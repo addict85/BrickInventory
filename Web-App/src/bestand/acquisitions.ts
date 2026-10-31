@@ -202,3 +202,5 @@ export async function setzeGeschaetztenPreis(kind: AcquisitionKind, id: number, 
     return true;
   });
 }
+
+export { setErfassungenOhnePreis, teilErfassungenOhnePreis, figurErfassungenOhnePreis } from './repository/nachtrag';

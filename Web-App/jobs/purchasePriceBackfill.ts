@@ -1,5 +1,6 @@
 import { getCurrentMarketPrice } from '../src/finanzen/marketPrice';
-import { setzeGeschaetztenPreis } from '../src/bestand/acquisitions';
+import { setzeGeschaetztenPreis, setErfassungenOhnePreis, teilErfassungenOhnePreis, figurErfassungenOhnePreis } from '../src/bestand/acquisitions';
+import { manuelleFarbteile, ersetzeTeilfarbenbild } from '../src/katalog/csvKatalog';
 // Die Marktpreise stehen seit dem Schichtumbau in src/finanzen/marketPrice.ts, bei
 // dem fuer Sets. Vorher musste dieser Job aus zwei ROUTEN importieren, um an
 // zwei Zahlen zu kommen.
@@ -8,7 +9,6 @@ import { lookupPart } from '../clients/rebrickable';
 import { blAbrufNummer } from '../src/katalog/blZuordnung';
 import { fehlertext, meldeUndWeiter, meldeUndLiefere } from '../src/infra/httpError';
 import { sleep } from '../clients/rebrickable';
-import * as db from '../db/database';
 'use strict';
 
 // One-time (idempotent) background migration: fills purchase_price for
@@ -31,12 +31,7 @@ function log(msg: string) {
  * Ausführlich: docs/begruendungen/jobs/purchasePriceBackfill.ts.md#backfillacquisitions
  */
 async function backfillAcquisitions() {
-  const rows = await db.all(
-    `SELECT id, user_id, set_number, condition
-       FROM set_acquisitions
-      WHERE purchase_price IS NULL
-      ORDER BY id ASC`
-  ).catch(meldeUndLiefere('kaufpreis-nachtrag:rows', []));
+  const rows = await setErfassungenOhnePreis().catch(meldeUndLiefere('kaufpreis-nachtrag:rows', []));
   if (!rows.length) return;
   log(`Erfassungen ohne Kaufpreis: ${rows.length}`);
 
@@ -76,12 +71,7 @@ async function backfillAcquisitions() {
  * Ausführlich: docs/begruendungen/jobs/purchasePriceBackfill.ts.md#backfillteileerfassungen
  */
 async function backfillTeileErfassungen() {
-  const rows = await db.all(
-    `SELECT id, user_id, part_number, color_id, condition
-       FROM part_acquisitions
-      WHERE unit_price IS NULL
-      ORDER BY id ASC`
-  ).catch(meldeUndLiefere('kaufpreis-nachtrag:rows', []));
+  const rows = await teilErfassungenOhnePreis().catch(meldeUndLiefere('kaufpreis-nachtrag:rows', []));
   if (!rows.length) return;
   log(`Teile-Erfassungen ohne Kaufpreis: ${rows.length}`);
   let done = 0;
@@ -99,12 +89,7 @@ async function backfillTeileErfassungen() {
 }
 
 async function backfillFigurenErfassungen() {
-  const rows = await db.all(
-    `SELECT id, user_id, fig_number, condition
-       FROM minifig_acquisitions
-      WHERE unit_price IS NULL
-      ORDER BY id ASC`
-  ).catch(meldeUndLiefere('kaufpreis-nachtrag:rows', []));
+  const rows = await figurErfassungenOhnePreis().catch(meldeUndLiefere('kaufpreis-nachtrag:rows', []));
   if (!rows.length) return;
   log(`Figuren-Erfassungen ohne Kaufpreis: ${rows.length}`);
   let done = 0;
@@ -131,9 +116,7 @@ async function backfillFigurenErfassungen() {
 // Betrifft bestehende manuell erfasste Teile, deren Bild ursprünglich das
 // generische (oft falsch-farbige) Rebrickable-Standardbild verwendet hat.
 async function backfillPartImages() {
-  const rows = await db.all(
-    "SELECT id, part_number, color_id FROM parts WHERE source='manual' AND color_id IS NOT NULL AND color_id != 0 ORDER BY id ASC"
-  ).catch(meldeUndLiefere('kaufpreis-nachtrag:rows', []));
+  const rows = await manuelleFarbteile().catch(meldeUndLiefere('kaufpreis-nachtrag:rows', []));
   if (!rows.length) return;
   log(`Teile mit Farbbild zu prüfen: ${rows.length}`);
   let done = 0;
@@ -149,12 +132,7 @@ async function backfillPartImages() {
         // Ueberschreibend (nicht COALESCE): Genau das ist der Zweck dieses
         // Nachtrags — ein generisches, oft falschfarbiges Standardbild soll
         // durch das Bild der tatsaechlich gewaehlten Farbe ersetzt werden.
-        await db.run(`
-          INSERT INTO part_color_catalog (part_number, color_id, image_url)
-          VALUES ($1, $2, $3)
-          ON CONFLICT (part_number, color_id) DO UPDATE
-            SET image_url = EXCLUDED.image_url, bild_von = NULL, updated_at = NOW()`,
-          [row.part_number, row.color_id, info.image_url]);
+        await ersetzeTeilfarbenbild(row.part_number, row.color_id, info.image_url);
         done++;
       }
     } catch (e) { meldeUndWeiter('kaufpreis-nachtrag:teilebild', e); }

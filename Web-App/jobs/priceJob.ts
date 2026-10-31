@@ -1,6 +1,7 @@
 'use strict';
 
-import { kontingentFrei, speicherePreis, cacheUsable, preisAusCache, parallelLimit } from '../src/finanzen/financeCalc';
+import { kontingentFrei, speicherePreis, cacheUsable, preisAusCache, parallelLimit, bestandsPlaetze, merklistenPlaetze,
+  erfassteZustaende, gewuenschteZustaende, schreibeTagesstand, setsMitAlarm } from '../src/finanzen/financeCalc';
 import { meldeUndWeiter, fehlertext, meldeUndLiefere, logAndContinue } from '../src/infra/httpError';
 import { liesZustand, setzeZustand } from '../src/auftraege/laufzustand';
 import { AuftragVerschieben, type AuftragsKontext } from './auftragsWorker';
@@ -8,7 +9,7 @@ import { getGlobalSetting } from '../src/konto/settings';
 import { getSetting } from '../src/konto/settings';
 import { ohneBricklinkPreis } from '../src/sets/setNummer';
 import { katalogEintrag, getPriceGuide } from '../src/katalog/bricklinkPreise';
-import * as db from '../db/database';
+import { belegeSitzungsSperre } from '../db/txLock';
 import * as monitor from '../src/auftraege/jobMonitor';
 import { LOCKS } from '../src/infra/lockNamespaces';
 import { pruefeSet } from '../src/finanzen/preisalarm';
@@ -30,27 +31,17 @@ const PRICE_JOB_LOCK = LOCKS.PREIS_JOB;
  * @returns Freigabefunktion, oder null wenn anderswo bereits ein Lauf läuft
  */
 async function acquireRunLock(): Promise<(() => Promise<void>) | null> {
-  let client;
-  try { client = await db.pool.connect(); }
+  let freigabe: (() => Promise<void>) | null;
+  try { freigabe = await belegeSitzungsSperre(PRICE_JOB_LOCK); }
   catch (e) {
     // Ohne Verbindung keine Sperre — dann lieber laufen als gar nicht
     // aktualisieren; im eigenen Prozess schützt die Exklusivität der Art.
     log(`Sperre nicht verfügbar (${fehlertext(e)}) — Lauf ohne prozessübergreifenden Schutz`);
     return async () => {};
   }
-  try {
-    const { rows } = await client.query('SELECT pg_try_advisory_lock($1, 0) AS ok', [PRICE_JOB_LOCK]);
-    if (!rows[0]?.ok) { client.release(); return null; }
-  } catch (e) {
-    client.release();
-    log(`Sperre nicht verfügbar (${fehlertext(e)}) — Lauf ohne prozessübergreifenden Schutz`);
-    return async () => {};
-  }
-  return async () => {
-    try { await client.query('SELECT pg_advisory_unlock($1, 0)', [PRICE_JOB_LOCK]); }
-    catch (e) { log(`Sperre konnte nicht freigegeben werden: ${fehlertext(e)}`); }
-    finally { client.release(); }
-  };
+  if (!freigabe) return null;
+  const f = freigabe;
+  return () => f().catch(e => log(`Sperre konnte nicht freigegeben werden: ${fehlertext(e)}`));
 }
 
 function log(msg: string) {
@@ -122,9 +113,8 @@ async function runPriceRefresh(k?: AuftragsKontext) {
     // den Cache nur, es holt nichts. Das Merkposten-Detail zeigte deshalb „—",
     // und der Preisverlauf blieb leer, weil nie jemand einen Punkt schrieb.
     // Ausführlich: docs/begruendungen/jobs/priceJob.ts.md#runpricerefresh-eigene
-    const eigene = await db.all('SELECT DISTINCT user_id, set_number FROM sets');
-    const gewuenschte = await db.all(
-      'SELECT DISTINCT user_id, set_number FROM wanted').catch(meldeUndLiefere('preis-job:gewuenschte', []));
+    const eigene = await bestandsPlaetze();
+    const gewuenschte = await merklistenPlaetze().catch(meldeUndLiefere('preis-job:gewuenschte', []));
     const allSets = [...eigene, ...(gewuenschte || [])]
       .filter((r, i, a) => a.findIndex(x =>
         x.user_id === r.user_id && x.set_number === r.set_number) === i)
@@ -180,24 +170,7 @@ async function runPriceRefresh(k?: AuftragsKontext) {
     // Daily snapshot: copy all price_cache entries to price_history (once per day)
     log('Writing daily price_history snapshot from price_cache...');
     try {
-      const inserted = await db.run(`
-        INSERT INTO price_history (set_number, condition, currency_code, avg_price, qty_avg_price, min_price, max_price, recorded_at)
-        SELECT set_number, condition, currency_code, avg_price, qty_avg_price, min_price, max_price, NOW()
-        FROM price_cache
-        WHERE (avg_price > 0 OR qty_avg_price > 0)
-          AND NOT EXISTS (
-            SELECT 1 FROM price_history ph
-            WHERE ph.set_number = price_cache.set_number
-              AND ph.condition = price_cache.condition
-              AND ph.currency_code = price_cache.currency_code
-              AND ph.recorded_at::date = CURRENT_DATE
-          ) ON CONFLICT DO NOTHING
-      `);
-      // Mit ZAHL: Die Meldung stand vorher ohne sie da, obwohl das Ergebnis
-      // in `inserted` schon bereitlag — ungenutzt. Ob der Schnappschuss 0
-      // oder 5000 Zeilen geschrieben hat, war damit aus dem Log nicht zu
-      // erkennen. Gefunden von noUnusedLocals.
-      log(`Daily snapshot: ${inserted.changes} price history entries inserted`);
+      log(`Daily snapshot: ${await schreibeTagesstand()} price history entries inserted`);
     } catch(e) { log(`Daily snapshot error: ${fehlertext(e)}`); }
 
     // Preisalarme
@@ -206,10 +179,9 @@ async function runPriceRefresh(k?: AuftragsKontext) {
     // Eine Pruefung dort liefe pro Lauf tausendfach und meldete dieselbe …
     // Ausführlich: docs/begruendungen/jobs/priceJob.ts.md#runpricerefresh-2
     try {
-      const wartende = await db.all(
-        'SELECT DISTINCT set_number FROM price_alerts').catch(meldeUndLiefere('preis-job:wartende', []));
+      const wartende = await setsMitAlarm().catch(meldeUndLiefere('preis-job:wartende', []));
       let gemeldet = 0;
-      for (const z of wartende || []) gemeldet += await pruefeSet(String(z.set_number));
+      for (const sn of wartende) gemeldet += await pruefeSet(sn);
       if (wartende?.length) log(`Preisalarm: ${wartende.length} Sets geprueft, ${gemeldet} gemeldet`);
     } catch (e) { log(`Preisalarm error: ${fehlertext(e)}`); }
 
@@ -234,12 +206,9 @@ async function zustaendeJeSet(userId: number, setNumbers: string[],
   const ergebnis = new Map<string, string[]>();
   if (!setNumbers.length) return ergebnis;
 
-  // Der Typ steht an jeder Abfrage, weil `db.all(...).catch(() => [])` eine
-  // Union aus any[] und never[] ergibt — darauf verliert .map() sein Ergebnis
-  // nach unknown[], und die Zusage oben wäre nicht mehr einlösbar.
   type ZustandsZeile = { set_number: string; c?: string | null };
-  const sammle = async (sql: string): Promise<Map<string, Set<string>>> => {
-    const zeilen: ZustandsZeile[] = await db.all(sql, [userId, setNumbers]).catch(meldeUndLiefere('preis-job:all', []));
+  const sammle = async (abfrage: Promise<ZustandsZeile[]>): Promise<Map<string, Set<string>>> => {
+    const zeilen = await abfrage.catch(meldeUndLiefere('preis-job:all', []));
     const m = new Map<string, Set<string>>();
     for (const r of zeilen) {
       if (!m.has(r.set_number)) m.set(r.set_number, new Set<string>());
@@ -248,13 +217,8 @@ async function zustaendeJeSet(userId: number, setNumbers: string[],
     return m;
   };
 
-  const erfasst = await sammle(
-    `SELECT set_number, COALESCE(condition,'N') AS c
-       FROM set_acquisitions WHERE user_id=$1 AND set_number = ANY($2)
-      GROUP BY set_number, COALESCE(condition,'N')`);
-  const gewuenscht = await sammle(
-    `SELECT DISTINCT set_number, COALESCE(condition,'N') AS c
-       FROM wanted WHERE user_id=$1 AND set_number = ANY($2)`);
+  const erfasst = await sammle(erfassteZustaende(userId, setNumbers));
+  const gewuenscht = await sammle(gewuenschteZustaende(userId, setNumbers));
 
   for (const sn of setNumbers) {
     // Ohne Erfassung ist der Hinweis die einzige Quelle: Die Erfassung des
