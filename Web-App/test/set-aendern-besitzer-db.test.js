@@ -27,7 +27,7 @@
  * <Aufrufer>` trifft keine Zeile. Kein Fehler, kein Hinweis — updateSet
  * meldete Erfolg.
  *
- * Das bleibt nicht bei der Plakette: effectiveCondition() (utils/financeCalc)
+ * Das bleibt nicht bei der Plakette: effectiveCondition() (src/finanzen/financeCalc)
  * entscheidet, zu welchem Zustand der Marktpreis geholt wird. Ein Set, das
  * der Haushalt als gebraucht fuehrt, wurde weiter als neu bewertet.
  *

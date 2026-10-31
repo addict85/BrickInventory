@@ -458,7 +458,7 @@ test('API-Parität Webapp ↔ Android', async (t) => {
   });
 
   await t.test('Preisverlauf Teil und Minifigur: gleiche Form wie beim Set', async () => {
-    // Alle drei Arten teilen sich utils/priceHistory.ts. Geprüft wird deshalb,
+    // Alle drei Arten teilen sich src/finanzen/priceHistory.ts. Geprüft wird deshalb,
     // dass sie dieselben FELDER liefern — läuft eine Art aus der Form, fällt
     // es hier auf, auch ohne zweite Route zum Vergleichen.
     const felder = ['currency', 'by_condition', 'history_new', 'history_used', 'chart'];

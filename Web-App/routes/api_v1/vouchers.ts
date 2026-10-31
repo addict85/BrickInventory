@@ -9,17 +9,17 @@ import multer from 'multer';
 import { handleRouteError, ohneFehlendeDatei } from '../../src/infra/httpError';
 import { sendeFehler, fehlerText, antwortSprache, dateiFehler, type FehlerCode } from '../../src/infra/fehlerTexte';
 import { getGlobalSetting } from '../../src/konto/settings';
-import { verdecke, landErlaubt, LAND_STANDARD } from '../../utils/gutscheinGuthaben';
-import { frageGuthabenAb, ABSTAND_SEK } from '../../utils/gutscheinGuthabenSchranke';
-import { VOUCHER_DIR, gutscheinDatei, schreibeGutscheinPdf, liesGutscheinPdf } from '../../utils/gutscheinDateien';
+import { verdecke, landErlaubt, LAND_STANDARD } from '../../src/gutscheine/gutscheinGuthaben';
+import { frageGuthabenAb, ABSTAND_SEK } from '../../src/gutscheine/gutscheinGuthabenSchranke';
+import { VOUCHER_DIR, gutscheinDatei, schreibeGutscheinPdf, liesGutscheinPdf } from '../../src/gutscheine/gutscheinDateien';
 import { requireToken } from './middleware';
-import { werteAusPdf, PdfZuGross } from '../../utils/gutscheinPdf';
-import { verbindeGutscheine, seitenweiseLesen } from '../../utils/gutscheinPdfSchreiben';
-import type { ExportGutschein } from '../../utils/gutscheinPdfSchreiben';
+import { werteAusPdf, PdfZuGross } from '../../src/gutscheine/gutscheinPdf';
+import { verbindeGutscheine, seitenweiseLesen } from '../../src/gutscheine/gutscheinPdfSchreiben';
+import type { ExportGutschein } from '../../src/gutscheine/gutscheinPdfSchreiben';
 
 import { gutscheineDesKontos, gutschein, gutscheinAnlegen, gutscheinErsetzen, gutscheinAendern,
-         gutscheinPdfMerken, gutscheinLoeschen, guthabenMerken } from '../../utils/dienste/gutscheine';
-import type { GutscheinZeile } from '../../utils/dienste/gutscheine';
+         gutscheinPdfMerken, gutscheinLoeschen, guthabenMerken } from '../../src/gutscheine/dienst';
+import type { GutscheinZeile } from '../../src/gutscheine/dienst';
 
 const router = express.Router();
 type AuthedRequest = express.Request & { apiUser: { user_id: number } };
@@ -245,7 +245,7 @@ router.post('/vouchers/pdf', requireToken, upload.single('file'), async (req: Au
 // Ausführlich: docs/begruendungen/routes/api_v1/vouchers.ts.md#abschnitt-2
 
 // ── GET /api/v1/vouchers/export/pdf — alle Gutscheine in EIN PDF ────────────
-/** Das PDF baut utils/gutscheinPdfSchreiben.ts; die Route holt die eigenen Zeilen und liefert aus. */
+/** Das PDF baut src/gutscheine/gutscheinPdfSchreiben.ts; die Route holt die eigenen Zeilen und liefert aus. */
 router.get('/vouchers/export/pdf', requireToken, async (req: AuthedRequest, res) => {
   try {
     const uid = req.apiUser.user_id;

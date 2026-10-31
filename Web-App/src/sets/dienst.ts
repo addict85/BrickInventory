@@ -12,7 +12,7 @@ import { normalizeSetNumber } from './setAdd';
 import { istErsatzteil, ersatzteilSql } from '../infra/validate';
 import { istVermutung } from '../../utils/barcodeQuelle';
 import { setnummerKandidaten } from '../../utils/produkttitel';
-import { fetchPrice, resolveSetCondition } from '../../utils/financeCalc';
+import { fetchPrice, resolveSetCondition } from '../finanzen/financeCalc';
 import { neuestesInventar } from '../../utils/rbInventar';
 import { mitVersion, ohneVersion } from './setNummer';
 import { figurenAusKatalog } from '../../utils/minifigsImport';

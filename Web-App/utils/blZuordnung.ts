@@ -65,7 +65,7 @@ export async function blNummerVon(art: BlArt, rbId: string): Promise<string | nu
 
 // Zwei Fragen, die nicht dasselbe sind
 // Der Unterschied ist nicht Geschmack, er ist GEMESSEN: Als es nur die erste
-// Form gab, fiel das Vorladen in utils/finance/preise.ts aus. Dort merkt sich
+// Form gab, fiel das Vorladen in src/finanzen/rechnung/preise.ts aus. Dort merkt sich
 // ein Nachschlagwerk die Antworten, und es merkt bewusst keine Fehlschlaege …
 // Ausführlich: docs/begruendungen/utils/blZuordnung.ts.md#abschnitt-2
 

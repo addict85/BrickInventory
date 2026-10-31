@@ -1,6 +1,6 @@
 'use strict';
 
-import { kontingentFrei, speicherePreis, cacheUsable, preisAusCache, parallelLimit } from '../utils/financeCalc';
+import { kontingentFrei, speicherePreis, cacheUsable, preisAusCache, parallelLimit } from '../src/finanzen/financeCalc';
 import { meldeUndWeiter, fehlertext, meldeUndLiefere, logAndContinue } from '../src/infra/httpError';
 import { liesZustand, setzeZustand } from '../utils/laufzustand';
 import { AuftragVerschieben, type AuftragsKontext } from './auftragsWorker';
@@ -10,7 +10,7 @@ import * as db from '../db/database';
 import * as monitor from '../utils/jobMonitor';
 import { getPriceGuide } from '../clients/bricklink';
 import { LOCKS } from '../src/infra/lockNamespaces';
-import { pruefeSet } from '../utils/preisalarm';
+import { pruefeSet } from '../src/finanzen/preisalarm';
 
 /**
  * Was der letzte Lauf hinterliess, für /admin/job-status: Der Job läuft im
@@ -60,14 +60,14 @@ function log(msg: string) {
 }
 
 // forceTtlHours ist `string | number`: dieselbe Herkunft wie in
-// utils/financeCalc.ts — getGlobalSetting() liefert eine Zeichenkette,
+// src/finanzen/financeCalc.ts — getGlobalSetting() liefert eine Zeichenkette,
 // andere Aufrufer eine Zahl.
 async function fetchAndCachePrice(setNumber: string, condition: string, guideType: string,
                                   currency: string, forceTtlHours?: string | number) {
   if (ohneBricklinkPreis(await katalogEintrag(setNumber))) return 'skipped_gear';
 
   const ttl = Math.max(1, parseInt(String(forceTtlHours ?? '')));
-  // Dieselbe Frisch-Regel wie im Anfrageweg (utils/financeCalc.ts). Hier stand
+  // Dieselbe Frisch-Regel wie im Anfrageweg (src/finanzen/financeCalc.ts). Hier stand
   // vorher `SELECT 1 ... fetched_at > ttl` — das erklaerte auch eine
   // Null-Zeile fuer die volle Laufzeit fuer frisch, waehrend der Anfrageweg
   // es nach sechs Stunden erneut versucht. cacheUsable() kennt beide Faelle.

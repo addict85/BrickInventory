@@ -73,7 +73,7 @@ test('Gutschein-PDFs verschlüsselt, Kontodateien gehen mit dem Konto', { concur
     apiNutzer: { user_id: adminId, is_admin: 1 }, routen: { [AUTH]: 'routes/auth.js' }, t });
 
   const original = await gutscheinPdf();
-  const { werteAusPdf } = _req('utils/gutscheinPdf.js');
+  const { werteAusPdf } = _req('src/gutscheine/gutscheinPdf.js');
   /** Was jemand mit der Datei allein aus ihr liest. */
   const lesbar = (daten) => { try { return werteAusPdf(daten); } catch { return {}; } };
   assert.equal(lesbar(original).pin, PIN, 'Vorbedingung: die PIN ist aus dem PDF lesbar');
@@ -95,7 +95,7 @@ test('Gutschein-PDFs verschlüsselt, Kontodateien gehen mit dem Konto', { concur
   await t.test('der Klartext-Altbestand wird beim Start verschlüsselt', async () => {
     const alt = path.join(vouchers, '999999.pdf');
     fs.writeFileSync(alt, original);
-    const { verschluesseleGutscheinAltbestand, liesGutscheinPdf } = _req('utils/gutscheinDateien.js');
+    const { verschluesseleGutscheinAltbestand, liesGutscheinPdf } = _req('src/gutscheine/gutscheinDateien.js');
     assert.ok(await verschluesseleGutscheinAltbestand() >= 1);
     assert.notEqual(lesbar(fs.readFileSync(alt)).pin, PIN, 'der Altbestand bleibt Klartext');
     assert.ok((await liesGutscheinPdf(alt)).equals(original));

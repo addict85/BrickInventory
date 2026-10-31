@@ -114,7 +114,7 @@ test('die Portfolio-Kurve rechnet dasselbe wie die Vergleichsfassung', { concurr
   const c0 = await db.pool.connect();
   try { await _req('db/migrate.js').runMigrations(c0); } finally { c0.release(); }
 
-  const { getPortfolioHistory } = _req('utils/portfolioHistory.js');
+  const { getPortfolioHistory } = _req('src/finanzen/portfolioHistory.js');
   const getSetting = async (_u, k, d) => (k === 'currency' ? 'CHF' : d);
 
   await db.run("INSERT INTO users (username,password_hash) VALUES ('ph_a','x'),('ph_b','x')");
@@ -244,7 +244,7 @@ test('ein Preiseintrag je Set, Zustand, Währung und Tag', { concurrency: 1 }, a
     // gibt die Schnappschüsse nicht mehr, und Zeilen aus der Zeit davor sollen
     // von der Aufbewahrungsfrist wegkommen wie alles andere. Eine Ausnahme, die
     // nichts mehr schützt, hält nur noch Daten fest.
-    const { purgeAltePreise } = _req('utils/priceHistory.js');
+    const { purgeAltePreise } = _req('src/finanzen/priceHistory.js');
     await db2.run(`INSERT INTO price_history (set_number,condition,currency_code,avg_price,qty_avg_price,recorded_at)
                    VALUES ('88888-1','N','CHF',5,5, NOW() - INTERVAL '4000 days'),
                           ('__portfolio__1','N','CHF',7,7, NOW() - INTERVAL '4000 days')`);
@@ -257,7 +257,7 @@ test('ein Preiseintrag je Set, Zustand, Währung und Tag', { concurrency: 1 }, a
   });
 
   await t.test('PRICE_HISTORY_KEEP_DAYS=0 schaltet das Aufräumen ab', async () => {
-    const { purgeAltePreise } = _req('utils/priceHistory.js');
+    const { purgeAltePreise } = _req('src/finanzen/priceHistory.js');
     await db2.run(`INSERT INTO price_history (set_number,condition,currency_code,avg_price,qty_avg_price,recorded_at)
                    VALUES ('77777-1','N','CHF',5,5, NOW() - INTERVAL '4000 days')`);
     process.env.PRICE_HISTORY_KEEP_DAYS = '0';

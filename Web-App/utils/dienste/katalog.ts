@@ -6,7 +6,7 @@ import * as db from '../../db/database';
 import { meldeUndLiefere } from '../../src/infra/httpError';
 import { resolveIfExists } from '../images';
 import { resolveOne, resolveViaApi } from '../bricklinkLink';
-import { fuerSet } from '../preisvergleich';
+import { fuerSet } from '../../src/finanzen/preisvergleich';
 import { downloadSetImage } from '../setImages';
 import { ausTabelle } from '../../src/infra/validate';
 import { neuestesInventar } from '../rbInventar';

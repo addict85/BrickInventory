@@ -53,7 +53,7 @@ const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
 const { getManualParts }    = _req('src/teile/abfragen.js');
 const { getManualMinifigs } = _req('src/figuren/abfragen.js');
-const { computePartsValuation, computeMinifigsValuation } = _req('utils/financeCalc.js');
+const { computePartsValuation, computeMinifigsValuation } = _req('src/finanzen/financeCalc.js');
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const { haeltFigur, haeltTeil } = require('./helpers/bestand');
 

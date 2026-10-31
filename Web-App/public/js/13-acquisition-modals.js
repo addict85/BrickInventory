@@ -481,7 +481,7 @@ export async function openManDetail(type, id, colorId) {
   if (type === 'part') fuelleFarbwahl(_manItem.colorId).catch(() => {});
 
   // Verlauf nachladen. Derselbe Renderer wie beim Set — die Endpunkte liefern
-  // dieselbe Diagrammstruktur (utils/chartData.ts), also braucht es hier keine
+  // dieselbe Diagrammstruktur (src/finanzen/chartData.ts), also braucht es hier keine
   // zweite Zeichenlogik.
   const histUrl = type === 'fig'
     ? `/v1/minifigs/${encodeURIComponent(id)}/price-history`

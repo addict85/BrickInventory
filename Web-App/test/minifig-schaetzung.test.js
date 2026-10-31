@@ -33,7 +33,7 @@ test('Minifiguren-Preis: BrickLink zuerst, sonst aus den Teilen', { concurrency:
   }
   const mc = await db.pool.connect();
   try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }
-  const { figMarktpreisMitHerkunft } = _req('utils/marketPrice.js');
+  const { figMarktpreisMitHerkunft } = _req('src/finanzen/marketPrice.js');
   const P = process.pid, NAME = `schaetzung-${P}`;
   const FA = `fig-sa${P}`, FB = `fig-sb${P}`, FC = `fig-sc${P}`, TA = `sa${P}`, TB = `sb${P}`;
   const weg = async () => {

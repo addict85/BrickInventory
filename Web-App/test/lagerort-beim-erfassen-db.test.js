@@ -97,7 +97,7 @@ test('Lagerort beim Erfassen — gegen echte Datenbank', async (t) => {
   const setService = _req('src/sets/setService.js');
   const teile      = _req('src/teile/manuelleTeile.js');
   const figuren    = _req('src/figuren/manuelleFiguren.js');
-  const merkliste  = _req('utils/merkliste.js');
+  const merkliste  = _req('src/merkliste/merkliste.js');
   const L          = _req('src/bestand/lagerort.js');
 
   await t.test('1. Ein Set kommt mit seinem Lagerort in die Galerie', async () => {

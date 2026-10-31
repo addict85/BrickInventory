@@ -232,7 +232,7 @@ waere eine Stelle, an der jemand spaeter den falschen Helfer nimmt.
 ```text
 ── Ein Preiseintrag je Set, Zustand, Währung und TAG ───────────────────────
 
-Zwei Schreibwege (jobs/priceJob.ts beim Abruf, utils/financeCalc.ts) tragen
+Zwei Schreibwege (jobs/priceJob.ts beim Abruf, src/finanzen/financeCalc.ts) tragen
 `ON CONFLICT DO NOTHING` — die Tabelle hatte aber nur den Primärschlüssel
 auf id. Ohne passenden Unique-Index kann die Klausel nie greifen: Sie liest
 sich wie ein Schutz gegen Dubletten und ist keiner. Jede Preisabfrage legte
@@ -440,7 +440,7 @@ ergänzt.
 Alle drei mit EXPLAIN (ANALYZE, BUFFERS) an je 100'000 Zeilen nachgemessen.
 
  1. parts — der BrickLink-Rückfall in resolveBlPartNumber
-    (utils/financeCalc.ts). Er läuft EINMAL JE TEIL der Bewertung:
+    (src/finanzen/financeCalc.ts). Er läuft EINMAL JE TEIL der Bewertung:
         ohne Index   Seq Scan,   2479 Buffer, 10,1   ms
         mit  Index   Index Scan,    2 Buffer,  0,012 ms
     Bei 500 manuellen Teilen sind das rund fünf Sekunden allein hier.

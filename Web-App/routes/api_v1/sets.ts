@@ -18,13 +18,13 @@ import { moveSetBetweenAccounts } from '../../src/sets/setMove';
 import { normalisiereLagerort, setzeLagerort, lagerorte,
          orteVon, legeOrtAn, benenneOrtUm, loescheOrt,
          vorgabeVon, setzeVorgabe } from '../../src/bestand/lagerort';
-import { alarmeFuer, alleAlarme, ausgeloesteSeit, loescheAlarm, setzeAlarm, alarmeAusCsv } from '../../utils/preisalarm';
+import { alarmeFuer, alleAlarme, ausgeloesteSeit, loescheAlarm, setzeAlarm, alarmeAusCsv } from '../../src/finanzen/preisalarm';
 import { csvEmpfang, inhaltPasstZuTyp, uploadKontingentBytes, belegterPlatz } from '../../src/infra/dateiEmpfang';
 import { sendCsv, uebersprungenHinweis } from '../../src/infra/csvExport';
 import { withInventoryLock } from '../../db/txLock';
 import { addSet, updateSet } from '../../src/sets/setService';
 import { deleteSet, getSet, getSets } from '../../src/sets/abfragen';
-import { getSetPriceHistory } from '../../utils/priceHistory';
+import { getSetPriceHistory } from '../../src/finanzen/priceHistory';
 import { einzelwert, ausTabelle } from '../../src/infra/validate';
 import * as V from '../../src/infra/validate';
 import { mitVersion, normalisiereSetNummer, moeglicheSetNummer } from '../../src/sets/setNummer';
@@ -312,7 +312,7 @@ router.get('/sets/:setNumber/price', requireToken, async (req: AuthedRequest, re
 router.get('/sets/:setNumber/price-history', requireToken, async (req: AuthedRequest, res) => {
   try {
     // Dieselbe Umsetzung wie /api/finance/price-history — siehe
-    // utils/priceHistory.ts.
+    // src/finanzen/priceHistory.ts.
     // Ausführlich: docs/begruendungen/routes/api_v1/sets.ts.md#get-sets-setnumber-price-history-uid
     const uid = req.apiUser.user_id;
     const sn  = String(req.params.setNumber);

@@ -11,7 +11,7 @@ import { downloadSetImage } from '../utils/setImages';
 import { generateThumb } from '../utils/thumbs';
 import { anleitungEinreihen } from '../utils/anleitungsAuftrag';
 import { verschluesseleAltbestand } from '../src/infra/geheimnisAltbestand';
-import { verschluesseleGutscheinAltbestand } from '../utils/gutscheinDateien';
+import { verschluesseleGutscheinAltbestand } from '../src/gutscheine/gutscheinDateien';
 import * as catalogSync from './catalogSync';
 import * as purchasePriceBackfill from './purchasePriceBackfill';
 import { APP_ROOT, IMAGES_DIR } from '../src/infra/appPaths';

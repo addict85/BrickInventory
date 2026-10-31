@@ -144,8 +144,8 @@ test('4. die Alarmmail trägt dieselbe Hülle wie die anderen', () => {
 
   // Und die Regel dahinter: Die GESTALTUNG steht im Mailer, nicht in der
   // Alarmlogik. Dort steht das WANN.
-  const alarm = lies('utils/preisalarm.ts');
+  const alarm = lies('src/finanzen/preisalarm.ts');
   assert.ok(!/<table|<p style/.test(alarm),
-    'In utils/preisalarm.ts steht wieder HTML — die Gestaltung gehört in src/infra/mailer.ts.');
+    'In src/finanzen/preisalarm.ts steht wieder HTML — die Gestaltung gehört in src/infra/mailer.ts.');
   assert.match(alarm, /baueAlarmMail\(/, 'preisalarm.ts benutzt die Vorlage nicht.');
 });

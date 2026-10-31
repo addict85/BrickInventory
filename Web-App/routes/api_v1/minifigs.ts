@@ -6,7 +6,7 @@ import { scopeIds, parseScopeMode, resolveWriteTarget, writableIds } from '../..
 import { getManualMinifigs, getMinifigStats, getMinifigs } from '../../src/figuren/abfragen';
 import { addManualFig, updateManualFig, importiereFigurenCsv } from '../../src/figuren/manuelleFiguren';
 import { getSetting } from '../../src/konto/settings';
-import { getMinifigPriceHistory } from '../../utils/priceHistory';
+import { getMinifigPriceHistory } from '../../src/finanzen/priceHistory';
 import { einzelwert } from '../../src/infra/validate';
 import { verwendendeSets } from '../../src/bestand/gemeinsam';
 import { sendeFehler } from '../../src/infra/fehlerTexte';

@@ -69,7 +69,7 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async (t) => {
     return;
   }
   await seed();
-  const W = _req('utils/merkliste.js');
+  const W = _req('src/merkliste/merkliste.js');
 
   await t.test('ein Merkposten ist KEIN Besitz', async () => {
     const a = await W.legeMerkpostenAn(U.opa, '75192-1', 'N');
@@ -202,7 +202,7 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async (t) => {
     // eigentliche Aussage unten. Er stand frueher im Notiz-Test, den es seit
     // dem Ausbau des Feldes (Migration 0022) nicht mehr gibt.
     await W.legeMerkpostenAn(U.enkel, '10276-1', 'N');
-    const P = _req('utils/preisalarm.js');
+    const P = _req('src/finanzen/preisalarm.js');
     await P.setzeAlarm(U.enkel, '10276-1', 'EUR',
       { richtung: 'unter', schwelle: 249, condition: 'U' });
     assert.equal((await P.alarmeFuer(U.enkel, '10276-1')).length, 1, 'Aufbau: Alarm fehlt');
@@ -378,7 +378,7 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async (t) => {
     //      bleibt" wird rot.
     //   c) Den `schon`-Zweig entfernt → „ein Merkposten, den das Ziel schon hat"
     //      wird rot (UNIQUE-Verletzung statt Zusammenführen).
-    const P = _req('utils/preisalarm.js');
+    const P = _req('src/finanzen/preisalarm.js');
     const sn = `wlmv${process.pid}-1`;
     await db.run(
       `INSERT INTO rb_sets (set_num, name, year, theme_id, num_parts, set_img_url)

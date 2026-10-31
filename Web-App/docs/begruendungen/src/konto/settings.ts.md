@@ -58,7 +58,7 @@ Standard nicht verdrängen.
 
 ── Warum der Name nicht mehr nutzerStandardZustand heisst ─────────────────────
 
-So hiess sie, und so heisst auch utils/financeCalc.ts -> nutzerStandardZustand.
+So hiess sie, und so heisst auch src/finanzen/financeCalc.ts -> nutzerStandardZustand.
 Die beiden beantworten aber VERSCHIEDENE Fragen:
 
     financeCalc   Welchen Zustand hat dieses SET?
@@ -70,7 +70,7 @@ Genau diese Verwechslung — der Zustand eines Stuecks gegen die Vorgabe fuer
 den Preis — hat in diesem Baum bisher ACHT Fehler erzeugt. Und der Name
 stoerte schon aktiv: DREI Dateien mussten den Import umbenennen, um an
 ihrer eigenen lokalen `nutzerStandardZustand` vorbeizukommen
-(utils/marketPrice.ts, routes/parts.ts, routes/minifigs.ts, jeweils mit
+(src/finanzen/marketPrice.ts, routes/parts.ts, routes/minifigs.ts, jeweils mit
 einem Kommentar „Alias wegen der lokalen effectiveCondition"). Ein Name,
 um den herum drei Dateien ausweichen muessen, ist der falsche Name.
 

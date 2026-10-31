@@ -21,7 +21,7 @@
  *
  * ── Warum das kein erfundenes Risiko ist ────────────────────────────────────
  * Genau dieser Fall ist in dieser Sitzung eingetreten: Beim Verschieben von
- * estimateFigPriceFromParts nach utils/marketPrice.ts zeigten mehrere Schnitte
+ * estimateFigPriceFromParts nach src/finanzen/marketPrice.ts zeigten mehrere Schnitte
  * ins Leere. Sie fielen auf, WEIL dort `assert.match` stand. Haette an einer
  * dieser Stellen `doesNotMatch` gestanden, waere sie gruen geblieben — und
  * niemand haette gemerkt, dass sie seither nichts mehr prueft.

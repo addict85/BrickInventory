@@ -1,7 +1,7 @@
 /**
  * /api/v1/wanted — die Merkliste.
  *
- * Die Regeln stehen in utils/merkliste.ts, nicht hier. Diese Datei tut das,
+ * Die Regeln stehen in src/merkliste/merkliste.ts, nicht hier. Diese Datei tut das,
  * was eine Route tun soll: Blickfeld bestimmen, Schreibrecht prüfen, Fehler
  * übersetzen.
  */
@@ -10,13 +10,13 @@ import { fehlertext, handleRouteError, logAndContinue, pfadParam } from '../../s
 import { sendeFehler } from '../../src/infra/fehlerTexte';
 import { requireToken } from './middleware';
 import { scopeIds, parseScopeMode, resolveWriteTarget } from '../../src/haushalt/haushalt';
-import { legeMerkpostenAn, loescheMerkposten, verschiebeMerkposten, uebernimm, merkpostenVon } from '../../utils/merkliste';
+import { legeMerkpostenAn, loescheMerkposten, verschiebeMerkposten, uebernimm, merkpostenVon } from '../../src/merkliste/merkliste';
 import { getSetting } from '../../src/konto/settings';
-import { fetchPrice } from '../../utils/financeCalc';
+import { fetchPrice } from '../../src/finanzen/financeCalc';
 import { csvEmpfang, xmlEmpfang } from '../../src/infra/dateiEmpfang';
 import { csvZeilenAusAnfrage, csvImportAntwort, parseCsvDate } from '../../src/infra/csvExport';
-import { importiereWantedListe } from '../../utils/wantedListe';
-import type { Korrektur } from '../../utils/wantedListe';
+import { importiereWantedListe } from '../../src/merkliste/wantedListe';
+import type { Korrektur } from '../../src/merkliste/wantedListe';
 import { merkeBlNummer } from '../../utils/blZuordnung';
 import { starteAuftrag, meldeAuftrag, beendeAuftrag, istAbgebrochen } from '../../utils/importAuftrag';
 import { addManualPart } from '../../src/teile/manuelleTeile';
@@ -123,7 +123,7 @@ router.get('/wanted/:setNumber/preise', requireToken, async (req: AuthedRequest,
 /**
  * Den Merkposten in die Galerie übernehmen.
  *
- * Die Regel steht in utils/merkliste.ts:uebernimm() — sie ruft addSet(),
+ * Die Regel steht in src/merkliste/merkliste.ts:uebernimm() — sie ruft addSet(),
  * die eine Wahrheit fürs Erfassen, und räumt danach Eintrag und Preisalarm
  * weg (Marcos Festlegung). Hier bleibt nur, wer schreiben darf.
  */
@@ -185,7 +185,7 @@ router.post('/wanted/import/csv', requireToken, csvEmpfang.single('file'),
  * Die Vorschau ist die VORGABE
  * Ohne `schreiben=1` wird NICHTS angelegt. Das ist nicht Vorsicht um ihrer
  * selbst willen: Die Abbildung BrickLink → Rebrickable hat drei
- * Sicherheitsstufen (siehe utils/wantedListe.ts), und die dritte ist eine …
+ * Sicherheitsstufen (siehe src/merkliste/wantedListe.ts), und die dritte ist eine …
  * Ausführlich: docs/begruendungen/routes/api_v1/wanted.ts.md#post-wanted-list-import-xml
  */
 router.post('/wanted-list/import/xml', requireToken, xmlEmpfang.single('file'),
@@ -211,7 +211,7 @@ router.post('/wanted-list/import/xml', requireToken, xmlEmpfang.single('file'),
       if (!/<INVENTORY[\s>]/i.test(xml))
         return sendeFehler(req, res, 422, 'keine_wanted_liste');
 
-      // Die Anleger gibt diese Schicht herein, damit utils/wantedListe.ts sie
+      // Die Anleger gibt diese Schicht herein, damit src/merkliste/wantedListe.ts sie
       // in Tests ersetzen kann.
       // Korrekturen aus der Vorschau
       // Als FELD der Multipart-Anfrage und nicht als Abfrageparameter: Bei 224
@@ -268,7 +268,7 @@ router.post('/wanted-list/import/xml', requireToken, xmlEmpfang.single('file'),
         ueberRebrickable: String(req.query.rebrickable ?? '') === '1',
         ...(korrekturen ? { korrekturen } : {}),
         // Eine von Hand eingetragene Nummer wird gemerkt — Begründung an der
-        // Aufrufstelle in utils/wantedListe.ts.
+        // Aufrufstelle in src/merkliste/wantedListe.ts.
         merkeNummer: (art, rbId, blId) => merkeBlNummer(art, rbId, blId),
         // Nur wenn jemand zusieht: Ohne Strom ist der Rückruf gar nicht
         // gesetzt, und der Kern spart sich das Zusammenbauen der Meldungen.

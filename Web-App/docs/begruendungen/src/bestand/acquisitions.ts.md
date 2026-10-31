@@ -67,7 +67,7 @@ wurde.
 
 Preis: mengengewichtet gemittelt, wenn beide einen haben — dieselbe
 Rechnung, mit der die Zeilen später ohnehin verdichtet werden
-(utils/setValue.ts). Hat nur einer einen Preis, gilt dieser; hat keiner
+(src/finanzen/setValue.ts). Hat nur einer einen Preis, gilt dieser; hat keiner
 einen, bleibt die Zeile ohne Preis.
 
 ── Warum an einer Stelle ───────────────────────────────────────────────────

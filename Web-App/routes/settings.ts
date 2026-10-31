@@ -11,8 +11,8 @@ import { setUserSetting, setGlobalSetting, getGlobalSetting, SECRET_KEYS, isMask
 import { DESIGNS, designFuer, setzeEigenesDesign } from '../src/konto/settings';
 import { buildSetsCsv } from '../src/sets/setService';
 import { buildPartsCsv, buildFigsCsv } from '../src/bestand/bestandExport';
-import { buildMerklisteCsv } from '../utils/merkliste';
-import { buildPreisalarmeCsv } from '../utils/preisalarm';
+import { buildMerklisteCsv } from '../src/merkliste/merkliste';
+import { buildPreisalarmeCsv } from '../src/finanzen/preisalarm';
 import { DAILY_JOBS } from '../utils/zeitplan';
 import { quellePruefen, bricksetLimitGesetzt, zeitplanNeuPlanen } from '../utils/dienste/verwaltung';
 import { zugaengeDesKontos, zugaengeLoeschen, andereSitzungenBeenden, mussPasswortAendern, profil } from '../src/konto/konten';

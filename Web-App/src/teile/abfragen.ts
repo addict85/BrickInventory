@@ -14,7 +14,7 @@ import type { RbSetTeil } from '../../clients/rebrickable';
 import { getAllSetParts, getRbKey, httpsGetRobust } from '../../clients/rebrickable';
 import { clampPageSize, applyManualCondition, withOwners, MAX_PAGE_SIZE, UNPAGED_LIMIT, SET_PARTS_MAX_PAGE_SIZE } from '../bestand/gemeinsam';
 import { meldeUndWeiter, logAndContinue, meldeUndLiefere } from '../infra/httpError';
-import { farbkarte as blFarbkarte } from '../../utils/financeCalc';
+import { farbkarte as blFarbkarte } from '../finanzen/financeCalc';
 import { getGlobalSetting } from '../konto/settings';
 import { neuestesInventar } from '../../utils/rbInventar';
 import { mitVersion, ohneVersion } from '../sets/setNummer';
@@ -30,7 +30,7 @@ import { mengeJoin, mengeAus, teilmengeJoin, teilmengeAus } from '../sets/bestan
 /** Ein Blickfeld: eine Konto-ID oder die Liste aus scopeIds(); asIds() macht eine Liste daraus. */
 import type { BlickfeldEingabe as Blickfeld } from '../haushalt/haushalt';
 import * as httpError from '../infra/httpError';
-import { marktpreiseAusCacheFuerTeile } from '../../utils/marketPrice';
+import { marktpreiseAusCacheFuerTeile } from '../finanzen/marketPrice';
 
 /** Farbliste des Teilebestands (ohne manuelle Positionen — die haben eine
  *  eigene Ansicht). Hex-Fallback aus rb_colors für Teile ohne eigenen Wert.
@@ -599,7 +599,7 @@ async function getPartsStats(userId: Blickfeld) {
 }
 
 async function getBlColorMap() {
-  // Zuerst die Datenbank über farbkarte() (utils/financeCalc.ts), die die Karte
+  // Zuerst die Datenbank über farbkarte() (src/finanzen/financeCalc.ts), die die Karte
   // zehn Minuten merkt.
   const karte = await blFarbkarte();
   if (karte.size > 0) {
@@ -696,7 +696,7 @@ async function getManualParts(userId: Blickfeld, viewerId: number,
            -- acquisitions.ts).
            --
            -- Die beiden Bedeutungen bleiben unterschieden, so wie
-           -- utils/preisRegel.ts sie ausschreibt: unit_price ist der
+           -- src/finanzen/preisRegel.ts sie ausschreibt: unit_price ist der
            -- eingegebene Preis und darf leer sein, purchase_price ist der
            -- ANZEIGEWERT und ist nie leer (0 heisst „nichts bekannt").
            neu.unit_price,
@@ -759,7 +759,7 @@ async function getManualParts(userId: Blickfeld, viewerId: number,
       // Der Marktpreis gehoert dazu — dieselbe Luecke wie bei den manuellen
       // Figuren, dieselbe Begruendung: Der Detailbildschirm der App liest ihn
       // aus `avg_price`, diese Liste fuehrt nur Bestandsspalten. Nur aus dem
-      // Cache, EINE Abfrage fuer die ganze Liste (utils/marketPrice.ts).
+      // Cache, EINE Abfrage fuer die ganze Liste (src/finanzen/marketPrice.ts).
       const preise: Map<string, number> = await marktpreiseAusCacheFuerTeile(mitZustand, viewerId)
         .catch(() => new Map<string, number>());
       const mitPreis = mitZustand.map((t: any) =>

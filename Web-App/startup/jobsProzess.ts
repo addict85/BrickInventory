@@ -7,7 +7,7 @@ import { logAndContinue, meldeUndWeiter } from '../src/infra/httpError';
 import { stelleAuftragEin } from '../utils/auftraege';
 import { planeAlle, ziehePlanVor } from '../utils/zeitplan';
 import { bildbedarfAnstossen, offenerBildbedarf } from '../utils/bildbedarf';
-import { planeKursabruf } from '../utils/wechselkurse';
+import { planeKursabruf } from '../src/finanzen/wechselkurse';
 import { starteAuftragsWorker, stoppeAuftragsWorker } from '../jobs/auftraegeStarten';
 import { NACHLAEUFE, type Nachlauf } from '../jobs/startNachlaeufe';
 

@@ -1,7 +1,7 @@
 import { resolveOne } from '../../utils/bricklinkLink';
 import { inKontowaehrung, kontowaehrungJoin } from '../bestand/acquisitions';
 import { meldeUndWeiter, meldeUndLiefere } from '../infra/httpError';
-import { fuerSet } from '../../utils/preisvergleich';
+import { fuerSet } from '../finanzen/preisvergleich';
 import * as db from '../../db/database';
 import type { DbSchnittstelle } from '../../db/database';
 import { resolveImageLocal } from '../../utils/images';

@@ -123,7 +123,7 @@ require.cache[rbPfad].exports = Object.assign({}, echtRb, {
   getMinifigInfo: async () => null,
 });
 const { importiereWantedListe, beschreibePosten, loeseLokalAuf, leseWantedListe } =
-  _req('utils/wantedListe.js');
+  _req('src/merkliste/wantedListe.js');
 
 test.after(async () => { await db.pool.end().catch(() => {}); });
 
@@ -424,7 +424,7 @@ test('Vorschau, Korrekturen und Farbübersetzung', { concurrency: 1 }, async (t)
     // grün (`pass 9 / fail 0`). Der Grund steckt im Bündler: esbuild macht
     // aus `import * as db from '../db/database'` ein
     // `__toESM(require(...))`, und das KOPIERT die Eigenschaften in ein neues
-    // Objekt. Die Funktion in utils/wantedListe.ts ruft also ihre eigene
+    // Objekt. Die Funktion in src/merkliste/wantedListe.ts ruft also ihre eigene
     // Kopie von `all`, nicht die hier ersetzte.
     //
     // `pool` ist dagegen ein Objekt, und die Kopie trägt dieselbe Referenz —

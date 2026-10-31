@@ -10,8 +10,8 @@ import { recordAcquisitionForDay } from '../bestand/acquisitions';
 import { withInventoryLock, bestandsSchluessel } from '../../db/txLock';
 import {  getMinifigInfo } from '../../clients/rebrickable';
 import { zustandFuerPreis } from '../konto/settings';
-import { figMarktpreisMitHerkunft, getCurrentFigMarketPrice } from '../../utils/marketPrice';
-import { kaufpreisAusEingabe, manuellerKaufpreis } from '../../utils/preisRegel';
+import { figMarktpreisMitHerkunft, getCurrentFigMarketPrice } from '../finanzen/marketPrice';
+import { kaufpreisAusEingabe, manuellerKaufpreis } from '../finanzen/preisRegel';
 import { setzeLagerort, ortFuerNeuerfassung } from '../bestand/lagerort';
 import { merkeFigur, katalogFigur } from '../../utils/katalogPflege';
 import { merkeBlNummer, blJoin, blNummerSql } from '../../utils/blZuordnung';
@@ -31,9 +31,9 @@ import * as V from '../infra/validate';
 // Ausführlich: docs/begruendungen/routes/minifigs.ts.md#resolvemanualfigpurchase
 async function resolveManualFigPurchase(uid: number, { figNumber, blFigNumber = null, unitPrice = null, condition = null }:
   { figNumber: string; blFigNumber?: string | null; unitPrice?: any; condition?: string | null }) {
-  // Dieselbe Regel wie bei den Teilen — siehe utils/preisRegel.ts. Vorher
+  // Dieselbe Regel wie bei den Teilen — siehe src/finanzen/preisRegel.ts. Vorher
   // fehlte hier das `?? 0`: Eine Figur ohne ermittelbaren Marktpreis bekam
-  // NULL, ein Teil in derselben Lage eine 0, und utils/financeCalc.ts liest
+  // NULL, ein Teil in derselben Lage eine 0, und src/finanzen/financeCalc.ts liest
   // das als „kein Kaufpreis erfasst" gegen „0 erfasst".
   const r = await manuellerKaufpreis(uid, { unitPrice, condition },
     (zustand) => figMarktpreisMitHerkunft(figNumber, uid, blFigNumber || null, zustand));
@@ -241,7 +241,7 @@ async function updateManualFig(uid: number, figNumber: string, body: any) {
       [figNumber]);
   }
   if (body.unit_price !== undefined) {
-    // Siehe utils/preisRegel.ts — dieselbe Regel wie bei den Teilen.
+    // Siehe src/finanzen/preisRegel.ts — dieselbe Regel wie bei den Teilen.
     // purchasePrice wird nicht ausgepackt — siehe updateManualPart in
     // routes/parts.ts: Er war der Anzeigewert der Bestandszeile.
     const { unitPrice } = await kaufpreisAusEingabe(

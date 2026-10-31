@@ -7,7 +7,7 @@
 //
 
 import crypto from 'crypto';
-import { hatPreis } from '../utils/preisRegel';
+import { hatPreis } from '../src/finanzen/preisRegel';
 import https from 'https';
 import * as db from '../db/database';
 import { getGlobalSetting } from '../src/konto/settings';

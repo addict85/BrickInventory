@@ -253,7 +253,7 @@ export const FEHLER = {
   guthaben_pin_fehlt:          { de: 'Für die Abfrage braucht es die PIN der Karte.',
                                  en: 'The card PIN is required for the balance query.' },
   // {sek} statt einer festen Zahl: Die Grenze steht in
-  // utils/gutscheinGuthabenSchranke.ts, und zwei Zahlen fuer eine Regel laufen
+  // src/gutscheine/gutscheinGuthabenSchranke.ts, und zwei Zahlen fuer eine Regel laufen
   // auseinander.
   guthaben_abstand:            { de: 'Es wird höchstens eine Karte alle {sek} Sekunden '
                                    + 'abgefragt. Bitte noch {warten} Sekunden warten.',

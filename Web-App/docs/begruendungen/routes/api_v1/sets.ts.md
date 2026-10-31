@@ -103,7 +103,7 @@ GET /api/v1/alerts/pending?since=<ISO> — was seit dann ausgeloest hat.
 Der Weg, auf dem beide Oberflaechen von einer Meldung erfahren, ohne dass
 der Server schieben muss. Die Begruendung — warum kein Firebase, warum `now`
 mitkommt, warum ein erster Aufruf ohne `since` nichts liefert — steht an
-ausgeloesteSeit() in utils/preisalarm.ts.
+ausgeloesteSeit() in src/finanzen/preisalarm.ts.
 
 Ohne Kontofilter, wie die uebrigen Alarm-Routen: Ein Alarm gehoert genau
 EINEM Konto.
@@ -313,7 +313,7 @@ statt sein lokales Kürzel zu raten.
 
 ```text
 Dieselbe Umsetzung wie /api/finance/price-history — siehe
-utils/priceHistory.ts.
+src/finanzen/priceHistory.ts.
 
 VORHER standen hier rund fünfzig Zeilen, die die Webapp-Route Wort für
 Wort wiederholten: dieselbe Abfrage auf price_history, dasselbe

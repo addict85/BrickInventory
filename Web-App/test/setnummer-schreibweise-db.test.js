@@ -87,7 +87,7 @@ test('der Katalog antwortet gleich, egal wie die Nummer geschrieben ist', { conc
        ON CONFLICT (set_number) DO UPDATE SET bl_type='NONE', is_gear=1`, [MITV, `Set ${MITV}`]);
 
     const { fetchAndCachePrice } = _req('jobs/priceJob.js');
-    const { fetchPrice } = _req('utils/financeCalc.js');
+    const { fetchPrice } = _req('src/finanzen/financeCalc.js');
 
     // Gegenprobe: in src/sets/setNummer.ts das mitVersion() aus katalogEintrag()
     // entfernt -> die Zeile mit „ohne Versionsanhang" wird rot.

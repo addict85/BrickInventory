@@ -4,7 +4,7 @@ import { asIds } from '../haushalt/haushalt';
 import { clampPageSize, applyManualCondition, withOwners, conditionFromAcquisitions, conditionsFromAcquisitions } from '../bestand/gemeinsam';
 import { mitVersion } from '../sets/setNummer';
 import { mengeJoin, mengeAus, teilmengeJoin, teilmengeAus } from '../sets/bestandsmenge';
-import { marktpreiseAusCacheFuerFiguren } from '../../utils/marketPrice';
+import { marktpreiseAusCacheFuerFiguren } from '../finanzen/marketPrice';
 import { blJoin, blNummerSql } from '../../utils/blZuordnung';
 
 /**
@@ -258,7 +258,7 @@ async function getManualMinifigs(userId: number | number[], viewerId: number,
             m.source, m.storage_id,
             -- Preis und Zustand aus der NEUESTEN Erfassung (Migration 0035).
             -- Die beiden Bedeutungen bleiben unterschieden, so wie
-            -- utils/preisRegel.ts sie ausschreibt: unit_price ist der
+            -- src/finanzen/preisRegel.ts sie ausschreibt: unit_price ist der
             -- eingegebene Preis und darf leer sein, purchase_price ist der
             -- ANZEIGEWERT und ist nie leer.
             neu.unit_price,
@@ -287,7 +287,7 @@ async function getManualMinifigs(userId: number | number[], viewerId: number,
   // Der Marktpreis gehoert dazu
   // NUR aus dem Cache, in EINER Abfrage fuer die ganze Liste: Ein Live-Abruf
   // je Eintrag waere genau der Zustand, von dem der Umzug weg von der
-  // Bewertung wegfuehren sollte. Siehe utils/marketPrice.ts.
+  // Bewertung wegfuehren sollte. Siehe src/finanzen/marketPrice.ts.
   // Ausführlich: docs/begruendungen/src/figuren/abfragen.ts.md#getmanualminifigs-preise
   const preise = await marktpreiseAusCacheFuerFiguren(mitZustand, viewerId)
     .catch(() => new Map<string, number>());

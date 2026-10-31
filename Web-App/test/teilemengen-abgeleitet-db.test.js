@@ -464,9 +464,9 @@ test('die Lesewege liefern die Stückzahl aus Katalog und Erfassungen',
   // und ist Sache von test/bewertung-abfragen-db.test.js.
   // Beide Bewertungen rechnen NUR die manuellen Positionen — ein Set-Teil
   // wird ueber sein Set bewertet, nicht einzeln (die Bedingung
-  // `p.source = 'manual'` steht in utils/finance/bewertung.ts). Also auf die
+  // `p.source = 'manual'` steht in src/finanzen/rechnung/bewertung.ts). Also auf die
   // manuelle Position gesehen; deren Stueckzahl ist die Erfassungssumme.
-  const B = _req('utils/finance/bewertung.js');
+  const B = _req('src/finanzen/rechnung/bewertung.js');
   const bewP = await B.computePartsValuation(haupt, [haupt]);
   const bewZeile = (bewP.parts || []).find(x => x.part_number === '3070b');
   assert.ok(bewZeile,

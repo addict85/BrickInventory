@@ -367,7 +367,7 @@ export async function gutscheinKopieren(id, feld) {
  * stimmt schon" — also eine Warnung davor, dass alles in Ordnung ist. Der
  * Fehler lag nicht in dieser Anzeige, sondern eine Schicht tiefer: „stimmte
  * schon" und „liess sich nicht ersetzen" trugen dieselbe Art. Seit es
- * 'stimmte_schon' gibt (utils/gutscheinPdfSchreiben.ts), zählt `offen` nur
+ * 'stimmte_schon' gibt (src/gutscheine/gutscheinPdfSchreiben.ts), zählt `offen` nur
  * noch das, was wirklich offen ist — und das sagt die Meldung.
  */
 async function gutscheineExportieren() {
@@ -433,7 +433,7 @@ async function gutscheineExportieren() {
 //
 // ── Warum die OBERFLÄCHE taktet und nicht der Server ───────────────────────
 //
-// Die Grenze selbst steht auf dem Server (utils/gutscheinGuthabenSchranke.ts)
+// Die Grenze selbst steht auf dem Server (src/gutscheine/gutscheinGuthabenSchranke.ts)
 // und gilt dort für alle Benutzer und alle Arbeitsprozesse — hier wird sie
 // nicht nachgebaut, sondern BEFOLGT: Kommt 429 mit `wartenSek`, wartet diese
 // Schleife die Zeit ab und fragt dieselbe Karte erneut.

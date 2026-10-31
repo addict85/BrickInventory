@@ -93,7 +93,7 @@ purchase_price, der Marktpreis liegt in minifig_price_cache.
 
 NUR aus dem Cache, in EINER Abfrage fuer die ganze Liste: Ein Live-Abruf
 je Eintrag waere genau der Zustand, von dem der Umzug weg von der
-Bewertung wegfuehren sollte. Siehe utils/marketPrice.ts.
+Bewertung wegfuehren sollte. Siehe src/finanzen/marketPrice.ts.
 
 `viewerId` und nicht uids[0]: Die Waehrung ist die Einstellung des
 FRAGENDEN. Im Haushalt mit Kontofilter „Unterkonten" enthaelt uids das

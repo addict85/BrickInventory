@@ -5,7 +5,7 @@ import { scopeIds, writableIds } from '../haushalt/haushalt';
 import { recordAcquisitionForDay, erfassungsTagSql } from '../bestand/acquisitions';
 import { withInventoryLock } from '../../db/txLock';
 import { downloadSetImage } from '../../utils/setImages';
-import { getCurrentMarketPrice } from '../../utils/marketPrice';
+import { getCurrentMarketPrice } from '../finanzen/marketPrice';
 import { zustandFuerPreis, getSetting } from '../konto/settings';
 import { deleteSetRows } from './abfragen';
 import { legeInPapierkorb } from '../bestand/papierkorb';
@@ -20,7 +20,7 @@ import { fehlerWerfen } from '../infra/fehlerTexte';
 import { setzeLagerort, ortFuerNeuerfassung } from '../bestand/lagerort';
 import { mengeSummeSql } from './bestandsmenge';
 import { bestandsMenge } from '../infra/validate';
-import { resolveSetCondition } from '../../utils/financeCalc';
+import { resolveSetCondition } from '../finanzen/financeCalc';
 
 /**
  * Sets anlegen, ändern und ausgeben — der Kern hinter den Set-Routen.
@@ -31,7 +31,7 @@ import { resolveSetCondition } from '../../utils/financeCalc';
 // Erfassungen ab und spiegelte ihn nach sets.condition. Mit Migration 0032 ist
 // die Spalte weg — damit entfällt nicht nur die Spiegelung, sondern auch der
 // Grund, sie nach jeder Mengenänderung aufzufrischen. Wer den Zustand braucht,
-// leitet ihn beim Lesen ab (utils/finance/zustand.ts, effectiveCondition).
+// leitet ihn beim Lesen ab (src/finanzen/rechnung/zustand.ts, effectiveCondition).
 
 // `unknown`, weil der Rumpf mit String(input) genau das abfaengt — hier
 // kommen Formularfelder und CSV-Zellen an, nicht garantierte Zeichenketten.

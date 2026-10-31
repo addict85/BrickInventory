@@ -72,7 +72,7 @@ test('der Server liefert den Gesamtwert', () => {
   // addieren — die Prüfung oben wäre dann nicht erfüllbar.
   const fc = require('./helpers/sources').finanzQuelle();
   assert.match(fc, /grand_total: totalCurrent\.toFixed\(2\)/,
-    'utils/financeCalc.ts liefert keinen Gesamtwert mehr — dann rechnen ihn ' +
+    'src/finanzen/financeCalc.ts liefert keinen Gesamtwert mehr — dann rechnen ihn ' +
     'beide Clients wieder selbst, jeder auf seine Art.');
 
   const fin = ohneKommentare(fs.readFileSync(path.join(ROOT, 'public', 'js', '04-finance.js'), 'utf8'));

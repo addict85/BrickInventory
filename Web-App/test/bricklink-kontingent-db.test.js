@@ -70,7 +70,7 @@ test('BrickLink-Kontingent je HTTP-Aufruf', { concurrency: 1 }, async (t) => {
   const zugang = ['bricklink_consumer_key', 'bricklink_consumer_secret', 'bricklink_token', 'bricklink_token_secret'];
   const alterZugang = await db.all('SELECT key, value FROM global_settings WHERE key = ANY($1)', [zugang]);
   for (const k of zugang) await setze(k, 'test');
-  const { fetchPrice } = _req('utils/financeCalc.js');
+  const { fetchPrice } = _req('src/finanzen/financeCalc.js');
   t.after(async () => {
     await setze('api_limit_bricklink', vorher?.value ?? '4000');
     await db.run('DELETE FROM global_settings WHERE key = ANY($1)', [zugang]);

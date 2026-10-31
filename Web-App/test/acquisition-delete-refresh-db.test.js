@@ -142,7 +142,7 @@ test('Löschen einer Erfassung bestimmt Preis und Zustand der Elternzeile neu',
     //
     //    Vorher stand hier „Ohne Erfassungen ist die Menge 0". Genau diese 0
     //    war Marcos Fund: Ein Set mit Menge 0 blieb in Galerie, Statistik und
-    //    Bewertung sichtbar — und `quantity || 1` in utils/financeCalc.ts
+    //    Bewertung sichtbar — und `quantity || 1` in src/finanzen/financeCalc.ts
     //    machte daraus beim Rechnen wieder eine 1. Eine Menge von 0 ist auch
     //    kein Zustand, den jemand herstellen kann: Beide Mengenregler halten
     //    bei 1. Sie entstand ausschliesslich hier, und jetzt gar nicht mehr.

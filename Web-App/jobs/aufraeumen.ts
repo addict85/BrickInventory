@@ -8,7 +8,7 @@ import { raeumeAnmeldezaehlerAuf } from '../src/konto/loginLimiter';
 import { raeumePapierkorbAuf } from '../src/bestand/papierkorb';
 import { cleanOldPdfJobs } from '../utils/pdfAuftraege';
 import { raeumeErledigteAuf } from '../utils/auftraege';
-import { purgeAltePreise } from '../utils/priceHistory';
+import { purgeAltePreise } from '../src/finanzen/priceHistory';
 import { raeumeBildCacheAuf } from '../utils/imgCacheServe';
 import { loescheVerfallene } from '../utils/bildbedarf';
 import { fehlertext } from '../src/infra/httpError';

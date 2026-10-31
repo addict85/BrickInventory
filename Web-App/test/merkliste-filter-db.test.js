@@ -118,7 +118,7 @@ test('Merkliste: Suche, Zustand, Sortierung, Inhaber', async (t) => {
     return;
   }
   await seed();
-  const M = _req('utils/merkliste.js');
+  const M = _req('src/merkliste/merkliste.js');
   const alle = [U.opa, U.enkel];
 
   await t.test('1. Ohne Filter bleibt alles, wie es war', async () => {

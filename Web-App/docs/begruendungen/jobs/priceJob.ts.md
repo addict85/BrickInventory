@@ -123,7 +123,7 @@ Hier stand die Regel vorher ein ZWEITES Mal (Erfassungen, sonst
 sets-Zeile, sonst DEFAULT_PRICE_CONDITION) — und diese Fassung kannte
 die Merkliste nicht. Ein Merkposten hat weder Erfassung noch sets-Zeile,
 fiel also auf den Vorgabewert durch, und der ist 'U'
-(utils/finance/preise.ts). Gemessen hiess das: JEDER Merkposten wurde als
+(src/finanzen/rechnung/preise.ts). Gemessen hiess das: JEDER Merkposten wurde als
 GEBRAUCHT geholt — auch der auf ein neues Set. Der Preisverlauf im
 Merkposten-Detail füllte sich damit für den falschen Zustand, und für den
 gewünschten blieb er leer.
@@ -188,7 +188,7 @@ Liste mit einem Eintrag.
   Merkposten     die gewünschten Zustände — sie treten IMMER hinzu
   sonst      'N'
 
-Seit der zustandsabhängigen Bewertung (utils/setValue.ts) braucht ein Set mit
+Seit der zustandsabhängigen Bewertung (src/finanzen/setValue.ts) braucht ein Set mit
 einem neuen UND einem gebrauchten Exemplar BEIDE Preise im Cache. Vorher holte
 der Job immer nur einen Zustand und wich nur dann auf den anderen aus, wenn
 der erste gar keinen Preis lieferte — bei gemischten Sets fehlte damit dauerhaft

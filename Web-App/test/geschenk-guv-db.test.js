@@ -7,10 +7,10 @@
  * Vorher stand gegen eine Untergrenze von 0,01 gerechnet „+327.600 %“ da.
  *
  * Gegenproben (am 30.10.2026 gemessen):
- *   A  in entwicklungProzent() (utils/setValue.ts) die Bedingung `!(kauf > 0)`
+ *   A  in entwicklungProzent() (src/finanzen/setValue.ts) die Bedingung `!(kauf > 0)`
  *      entfernt und durch `Math.max(kauf, 0.01)` im Nenner ersetzt → rot:
  *      „Set“, „Kachel“, „Preisverlauf“, „Teil und Figur“ (pnl_pct 1200000.0)
- *   B  in conditionRows() (utils/priceHistory.ts) wieder
+ *   B  in conditionRows() (src/finanzen/priceHistory.ts) wieder
  *      `purchase_price: base > 0 ? base : null` → rot: „Teil und Figur“
  *      (by_condition.N.purchase_price null statt 0)
  *
@@ -64,7 +64,7 @@ test('Kaufpreis 0 ist ein Geschenk: Betrag ja, Prozent nein', { concurrency: 1 }
   await haeltTeil(db, uid, TEIL, { colorId: FARBE, menge: 10, preis: 0 });
   await haeltFigur(db, uid, FIGUR, { menge: 1, preis: 0 });
 
-  const { computePnl } = _req('utils/financeCalc.js');
+  const { computePnl } = _req('src/finanzen/financeCalc.js');
   const pnl = await computePnl(uid, [uid]);
 
   await t.test('Set', () => {
@@ -84,7 +84,7 @@ test('Kaufpreis 0 ist ein Geschenk: Betrag ja, Prozent nein', { concurrency: 1 }
   });
 
   await t.test('Preisverlauf', async () => {
-    const { getSetPriceHistory } = _req('utils/priceHistory.js');
+    const { getSetPriceHistory } = _req('src/finanzen/priceHistory.js');
     const v = await getSetPriceHistory([uid], SET, 'CHF');
     assert.equal(v.purchase_price, 0);
     assert.equal(v.pnl_pct, null);
@@ -95,12 +95,12 @@ test('Kaufpreis 0 ist ein Geschenk: Betrag ja, Prozent nein', { concurrency: 1 }
   });
 
   await t.test('Teil und Figur', async () => {
-    const { getPartPriceHistory, getMinifigPriceHistory } = _req('utils/priceHistory.js');
+    const { getPartPriceHistory, getMinifigPriceHistory } = _req('src/finanzen/priceHistory.js');
     const teil = await getPartPriceHistory([uid], TEIL, FARBE, 'CHF');
     assert.deepEqual(teil.by_condition.N, { market_price: 0.4, purchase_price: 0, pnl_pct: null });
     const figur = await getMinifigPriceHistory([uid], FIGUR, 'CHF');
     assert.deepEqual(figur.by_condition.N, { market_price: 6, purchase_price: 0, pnl_pct: null });
-    const { valueAcquisitionRows } = _req('utils/setValue.js');
+    const { valueAcquisitionRows } = _req('src/finanzen/setValue.js');
     const [zeile] = valueAcquisitionRows(TEIL, [{ id: 1, condition: 'N', quantity: 10, unit_price: 0 }],
       new Map([[`${TEIL}|N`, 0.4]]));
     assert.equal(zeile.purchase_price, 0);

@@ -239,10 +239,10 @@ test('ein ausdrücklich angefragter Zustand schlägt die Erfassungs-Bewertung', 
   // nicht mehr). Sie fiel damit auf 'N' zurück und lieferte den
   // Neupreis, obwohl „Gebraucht" angefragt war. Der berechnete effectiveCond
   // wurde nur im unerreichbaren Rückfall darunter benutzt.
-  // Fundort seit Nachtrag 125: utils/marketPrice.ts. Die Funktion hatte sieben
+  // Fundort seit Nachtrag 125: src/finanzen/marketPrice.ts. Die Funktion hatte sieben
   // Aufrufer, von denen keiner sie importieren konnte, solange sie im Router
   // lag. Die AUSSAGE dieser Prüfung ist unverändert.
-  const raw = fs.readFileSync(path.join(ROOT, 'utils/marketPrice.ts'), 'utf8');
+  const raw = fs.readFileSync(path.join(ROOT, 'src/finanzen/marketPrice.ts'), 'utf8');
   const fn = raw.slice(raw.indexOf('async function getCurrentMarketPrice'));
   assert.match(fn, /if \(!condition\) \{/,
     'Die Erfassungs-Bewertung darf nur ohne ausdrücklichen Zustand greifen');
@@ -300,11 +300,11 @@ test('ein manuell erfasstes Teil bekommt Marktpreis und Erfassung', () => {
   // Detailansicht und Zustandsregel mit den Erfassungen arbeiten.
   // ── Zwei Dateien, ein Korpus ─────────────────────────────────────────────
   // Seit dem Schichtumbau steht die DEFINITION von getCurrentPartMarketPrice in
-  // utils/marketPrice.ts, waehrend die AUFRUFER in routes/parts.ts geblieben
+  // src/finanzen/marketPrice.ts, waehrend die AUFRUFER in routes/parts.ts geblieben
   // sind. Die Regel „jeder Aufruf traegt den Zustand" gilt fuer die Aufrufer —
   // sie muss also ueber beide Dateien gehen. Nur eine zu lesen hiesse, die
   // Haelfte der Aufrufstellen nicht anzusehen.
-  const src = fs.readFileSync(path.join(ROOT, 'utils/marketPrice.ts'), 'utf8')
+  const src = fs.readFileSync(path.join(ROOT, 'src/finanzen/marketPrice.ts'), 'utf8')
             + '\n' + fs.readFileSync(path.join(ROOT, 'src/teile/manuelleTeile.ts'), 'utf8');
   const fn = src.slice(src.indexOf('async function addManualPart'),
                        src.indexOf('async function updateManualPart'));
@@ -346,7 +346,7 @@ test('ein manuell erfasstes Teil bekommt Marktpreis und Erfassung', () => {
   //
   // Hier stand die Umrechnung wörtlich: `effectivePurchasePrice > 0 ? … : null`.
   // Sie ist inzwischen dorthin gewandert, wo der Preis entsteht
-  // (utils/preisRegel.ts liefert `erfassungsPreis` fertig), und der Test wurde
+  // (src/finanzen/preisRegel.ts liefert `erfassungsPreis` fertig), und der Test wurde
   // rot, obwohl die Regel weiter gilt — genau der Fehler, den der Absatz über
   // getCurrentPartMarketPrice zwanzig Zeilen weiter oben schon einmal
   // beschreibt. Zweimal dieselbe Lehre in einer Datei.
@@ -356,11 +356,11 @@ test('ein manuell erfasstes Teil bekommt Marktpreis und Erfassung', () => {
   // enthält. Ohne das zweite genügte ein Feld dieses Namens.
   assert.match(fn, /price: erfassungsPreis/,
     'Die Erfassung nimmt nicht den Preis, der ohne Marktpreis NULL ist ' +
-    '(utils/preisRegel.ts, erfassungsPreis) — in der Erfassung hiesse eine 0 ' +
+    '(src/finanzen/preisRegel.ts, erfassungsPreis) — in der Erfassung hiesse eine 0 ' +
     '„für null Franken gekauft"');
-  const regel = fs.readFileSync(path.join(ROOT, 'utils/preisRegel.ts'), 'utf8');
+  const regel = fs.readFileSync(path.join(ROOT, 'src/finanzen/preisRegel.ts'), 'utf8');
   assert.match(regel, /erfassungsPreis:\s*kaufpreis > 0 \? kaufpreis : null/,
-    'utils/preisRegel.ts wandelt die 0 der Stammzeile nicht mehr in NULL für die Erfassung');
+    'src/finanzen/preisRegel.ts wandelt die 0 der Stammzeile nicht mehr in NULL für die Erfassung');
   assert.match(fn, /condition: effectiveCondition/, 'Die Erfassung braucht den Zustand');
 });
 
@@ -370,7 +370,7 @@ test('der Minifiguren-Marktpreis fragt BrickLink auch ohne separate BL-Nummer', 
   // eigene Nummer mit der BrickLink-Nummer überein. Der Abruf wurde
   // übersprungen, die Teile-Schätzung übernahm, und die liefert ohne
   // Teile-Zusammensetzung von Rebrickable nichts: gar kein Preis.
-  const src = fs.readFileSync(path.join(ROOT, 'utils/marketPrice.ts'), 'utf8');
+  const src = fs.readFileSync(path.join(ROOT, 'src/finanzen/marketPrice.ts'), 'utf8');
   // Der Abruf heisst seit Nachtrag 167 figMarktpreisMitHerkunft: Er liefert
   // neben dem Preis den Zustand, aus dem dieser stammt. getCurrentFigMarketPrice
   // steht als duenne Huelle daneben und gibt nur die Zahl weiter — geprueft
@@ -422,13 +422,13 @@ test('die Teile-Schätzung landet in Cache und Verlauf', () => {
   // obwohl Kaufpreise in beiden Zuständen erfasst waren.
   //
   // Marktpreis-Zeile und Diagramm lesen minifig_price_cache bzw.
-  // minifig_price_history (utils/priceHistory.ts). Ein echter BrickLink-Abruf
+  // minifig_price_history (src/finanzen/priceHistory.ts). Ein echter BrickLink-Abruf
   // schreibt beide (fetchMinifigPrice); der Schätzpfad rechnete nur und legte
   // nichts ab — für genau diese Figuren blieb dort für immer alles leer.
   // Zwei Dateien, ein Korpus — dieselbe Begruendung wie weiter oben: Die
-  // Schaetzung steht seit dem Schichtumbau in utils/marketPrice.ts, der
+  // Schaetzung steht seit dem Schichtumbau in src/finanzen/marketPrice.ts, der
   // Erfassungsweg (recordAcquisitionForDay) ist in der Route geblieben.
-  const src = fs.readFileSync(path.join(ROOT, 'utils/marketPrice.ts'), 'utf8')
+  const src = fs.readFileSync(path.join(ROOT, 'src/finanzen/marketPrice.ts'), 'utf8')
             + '\n' + fs.readFileSync(path.join(ROOT, 'src/figuren/manuelleFiguren.ts'), 'utf8');
   const est = src.slice(src.indexOf('async function estimateFigPriceFromParts'),
                         src.indexOf('async function getCurrentFigMarketPrice'));
@@ -528,7 +528,7 @@ test('neue Sets holen den richtigen Zustand, nicht den Standard', () => {
 
   // Und getCurrentMarketPrice muss ihn beim Anlegen mitgeben — genau an der
   // Stelle, wo die Zeile noch nicht existiert.
-  const preis = fs.readFileSync(path.join(ROOT, 'utils/marketPrice.ts'), 'utf8');
+  const preis = fs.readFileSync(path.join(ROOT, 'src/finanzen/marketPrice.ts'), 'utf8');
   assert.match(preis, /preisFuerSetHolen\(setNumber, userId, condition\)/,
     'getCurrentMarketPrice muss den angefragten Zustand als Hinweis übergeben');
 });
@@ -619,9 +619,9 @@ test('der Preisverlauf-Graph benutzt den Zustand DES SETS, nicht den globalen St
   assert.match(fn, /getSetPriceHistory\(await scopeIds\(uid, parseScopeMode\(req\.query\.accounts\)\), sn, currency\)/,
     'Die Route muss den gemeinsamen Helfer benutzen — mit Blickfeld');
   assert.doesNotMatch(fn, /FROM price_history/,
-    'Die Abfrage gehört in utils/priceHistory.ts, nicht in die Route');
+    'Die Abfrage gehört in src/finanzen/priceHistory.ts, nicht in die Route');
 
-  const helper = fs.readFileSync(path.join(ROOT, 'utils/priceHistory.ts'), 'utf8');
+  const helper = fs.readFileSync(path.join(ROOT, 'src/finanzen/priceHistory.ts'), 'utf8');
   assert.match(helper, /const condition = await resolveSetCondition\(uids, setNumber\);/,
     'Der Helfer muss den Zustand über resolveSetCondition() auflösen');
 });
@@ -648,12 +648,12 @@ test('Android-API: Marktpreis benutzt den Zustand des Sets, nicht den globalen S
                                  src.indexOf("router.get('/sets/:setNumber'", src.indexOf("price-history")));
   assert.doesNotMatch(historyRoute, /const condition = DEFAULT_PRICE_CONDITION;/,
     'Auch der Verlauf darf nicht mehr den globalen Standard nehmen');
-  // Seit der Zusammenführung teilt sich diese Route utils/priceHistory.ts mit
+  // Seit der Zusammenführung teilt sich diese Route src/finanzen/priceHistory.ts mit
   // der Webapp — die rund fünfzig Zeilen, die dort standen, waren eine Kopie.
   assert.match(historyRoute, /getSetPriceHistory\(await scopeIds\(uid, parseScopeMode\(req\.query\.accounts\)\), sn, currency\)/,
     'Der Verlauf muss den gemeinsamen Helfer benutzen');
   assert.doesNotMatch(historyRoute, /FROM price_history/,
-    'Die Abfrage gehört in utils/priceHistory.ts, nicht in die Route');
+    'Die Abfrage gehört in src/finanzen/priceHistory.ts, nicht in die Route');
 });
 
 test('genau EINE Zustandsauflösung für Einzelsets — resolveSetCondition', () => {
@@ -671,8 +671,8 @@ test('genau EINE Zustandsauflösung für Einzelsets — resolveSetCondition', ()
   // Beide Aufrufer müssen ihn tatsächlich importieren, nicht eine eigene
   // Abfrage danebenstellen.
   // Die Verlaufsrouten rufen ihn nur noch mittelbar auf — über
-  // utils/priceHistory.ts, das sich Webapp und Android teilen.
-  const helper = fs.readFileSync(path.join(ROOT, 'utils/priceHistory.ts'), 'utf8');
+  // src/finanzen/priceHistory.ts, das sich Webapp und Android teilen.
+  const helper = fs.readFileSync(path.join(ROOT, 'src/finanzen/priceHistory.ts'), 'utf8');
   // UMFORMULIERT in Nachtrag 143: Geprüft wurde die Importzeile WÖRTLICH.
   // Seit dem Fix für die BrickLink-Schlüssel holt priceHistory.ts aus derselben
   // Datei zwei weitere Namen — die Zeile lautet jetzt
@@ -680,7 +680,7 @@ test('genau EINE Zustandsauflösung für Einzelsets — resolveSetCondition', ()
   // und die Prüfung wurde rot, ohne dass sich ihre Aussage geändert hätte.
   // Es zählt, DASS der gemeinsame Helfer von dort kommt.
   assert.match(helper, /import \{[^}]*\bresolveSetCondition\b[^}]*\} from '\.\/financeCalc';/,
-    'utils/priceHistory.ts muss den gemeinsamen Helfer benutzen');
+    'src/finanzen/priceHistory.ts muss den gemeinsamen Helfer benutzen');
 
   // Die Preis-Route der Android-API löst weiterhin selbst auf (sie holt einen
   // Preis, keinen Verlauf) — genau ein Vorkommen.

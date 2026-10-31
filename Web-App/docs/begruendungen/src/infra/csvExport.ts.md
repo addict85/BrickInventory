@@ -145,7 +145,7 @@ dieser Baum an einem Dutzend Stellen bekaempft — hier steht sie jetzt einmal.
  menge     Ziffern aus dem Feld; nichts Brauchbares heisst EINS, nicht null —
            eine importierte Zeile ohne Menge ist ein Stueck, kein Nichts.
  preis     Leer heisst NULL (nicht 0): „kein Preis eingegeben". Was daraus
-           wird, entscheidet utils/preisRegel.ts.
+           wird, entscheidet src/finanzen/preisRegel.ts.
  erfasstAm Ueber parseCsvDate — siehe oben.
  zustand   Grossgeschrieben, damit „n" wie „N" gilt.
 ```

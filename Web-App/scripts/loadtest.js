@@ -176,7 +176,7 @@ async function seed() {
   // Bewertung versucht für jedes Set einen Live-Abruf bei BrickLink. Genau das
   // ist beim ersten Lauf dieses Skripts passiert (Bewertung: 21 s statt 60 ms)
   // — gemessen wurde damit der Ausnahmefall, nicht der Alltag. EUR ist der
-  // Vorgabewert in utils/financeCalc.ts.
+  // Vorgabewert in src/finanzen/financeCalc.ts.
   await db.run(
     `INSERT INTO price_cache (set_number, condition, currency_code, min_price, avg_price, max_price, qty_avg_price, total_quantity)
      SELECT (10000+g)||'-1', c, 'EUR', 10+(g%300), 30+(g%500), 60+(g%800), 31+(g%500), 5

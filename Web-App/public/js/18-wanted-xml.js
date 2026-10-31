@@ -388,7 +388,7 @@ function zeile(p, i) {
   // Korrektur (wantedKorrekturWert vergleicht mit dem Bericht).
   //
   // Nicht bearbeitbar bleiben Bild, Name, BrickLink-Nummer und Ergebnis — die
-  // Begründung steht am Typ `Korrektur` in utils/wantedListe.ts.
+  // Begründung steht am Typ `Korrektur` in src/merkliste/wantedListe.ts.
   // `breit` wegen des Platzhalters „Marktpreis": In 72px stand dort „Marktpr"
   // — am Bildschirm gesehen.
   const feld = (name, wert, extra = '', breit = 72) =>

@@ -337,13 +337,13 @@ test('Preisalarme: Rundlauf über die echten Adressen', { concurrency: 1 }, asyn
       `${body.errors} Fehler gemeldet statt 3: ${JSON.stringify(body.results)}`);
     assert.equal(body.added, 1, `${body.added} angelegt statt 1`);
     // Der Zustand „X" darf NICHT in der Tabelle stehen. Die Datenbank hätte
-    // ihn genommen; nur pruefeEingabe() in utils/preisalarm.ts weist ihn ab.
+    // ihn genommen; nur pruefeEingabe() in src/finanzen/preisalarm.ts weist ihn ab.
     assert.equal((await db.get(
       `SELECT COUNT(*)::int c FROM price_alerts WHERE user_id=$1 AND condition NOT IN ('N','U')`,
       [HAUPT])).c, 0,
       'Ein Alarm mit einem anderen Zustand als N oder U ist in der Tabelle gelandet. ' +
       'Die Tabelle hat darauf KEINE CHECK — das fängt allein die Prüfung in ' +
-      'utils/preisalarm.ts, und die bekommt man nur über setzeAlarm().');
+      'src/finanzen/preisalarm.ts, und die bekommt man nur über setzeAlarm().');
     assert.equal((await db.get('SELECT COUNT(*)::int c FROM price_alerts WHERE user_id=$1',
       [HAUPT])).c, 1, 'Eine unbrauchbare Zeile ist trotzdem in der Tabelle gelandet');
     // Und der fremde Alarm steht unberuehrt da — ein Import schreibt nur im

@@ -71,7 +71,7 @@ Erfassung 'U', Marktpreis U=20 / N=100:
 jobs/priceJob.ts (conditionsNeededFor) fragte an derselben Stelle schon
 immer zuerst die Erfassungen. Jetzt beide ueber resolveSetCondition().
 
-Lazy require: utils/financeCalc auf Modulebene ergaebe einen Zyklus —
+Lazy require: src/finanzen/financeCalc auf Modulebene ergaebe einen Zyklus —
 dasselbe Muster wie in utils/rateLimiter.ts.
 ```
 

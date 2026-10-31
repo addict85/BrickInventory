@@ -116,7 +116,7 @@ Sie war reiner Text — als einzige. Die Bestaetigungs- und die Reset-Mail
 laufen seit jeher durch emailTemplate() und tragen das eingestellte Design;
 die Alarmmail entstand im Preislauf und hat diesen Weg nie genommen.
 
-── Warum sie hier steht und nicht in utils/preisalarm.ts ───────────────────
+── Warum sie hier steht und nicht in src/finanzen/preisalarm.ts ───────────────────
 
 Dort steht das WANN — die Hysterese, der Merker, der Uebergang. Hier steht
 das WIE. Genau diese Trennung nennt pruefeSet() schon in seinem Kommentar

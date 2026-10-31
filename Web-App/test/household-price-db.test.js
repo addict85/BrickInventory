@@ -16,7 +16,7 @@
  * schon; es kam nur nie an.
  *
  * Der gemeinsame Helfer ist bewusst der Fix-Ort (Marcos Wunsch: Webapp und
- * App teilen dieselbe Logik): utils/priceHistory.ts nimmt jetzt das Blickfeld,
+ * App teilen dieselbe Logik): src/finanzen/priceHistory.ts nimmt jetzt das Blickfeld,
  * ALLE sechs Aufrufer (Webapp + v1, Sets/Teile/Minifiguren) reichen
  * scopeIds() durch.
  *

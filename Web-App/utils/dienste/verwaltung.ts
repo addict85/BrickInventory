@@ -11,7 +11,7 @@ import * as db from '../../db/database';
 import { naechsteUhrzeit, taeglicheUhrzeit } from '../zeitplan';
 import { DATA_DIR, PDF_JOB_DIR, SET_IMAGES_DIR } from '../../src/infra/appPaths';
 import { fehlertext, meldeUndWeiter, logAndContinue, meldeUndLiefere, ohneFehlendeDatei } from '../../src/infra/httpError';
-import { fetchPrice } from '../financeCalc';
+import { fetchPrice } from '../../src/finanzen/financeCalc';
 import { getRateLimitStatus, setzeKontingentZurueck } from '../apiKontingent';
 import { katalogEintrag, ohneBricklinkPreis } from '../../src/sets/setNummer';
 import { loescheAnleitungen } from '../instructions';

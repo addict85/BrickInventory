@@ -61,7 +61,7 @@ zur Ansicht, nicht zur Nutzlast.
 Preisverlauf eines manuell erfassten Teils, je Zustand getrennt.
 
 Gegenstück zu /api/finance/part-price-history — dieselbe Umsetzung
-(utils/priceHistory.ts), damit beide Clients dieselbe Antwort sehen. Vorher
+(src/finanzen/priceHistory.ts), damit beide Clients dieselbe Antwort sehen. Vorher
 gab es den Verlauf NUR für die Webapp; der Detail-Dialog der App zeigte
 deshalb weder Marktpreis je Zustand noch ein Diagramm.
 

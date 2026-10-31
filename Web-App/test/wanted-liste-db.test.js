@@ -35,7 +35,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
-const { leseWantedListe, loeseLokalAuf, importiereWantedListe } = _req('utils/wantedListe.js');
+const { leseWantedListe, loeseLokalAuf, importiereWantedListe } = _req('src/merkliste/wantedListe.js');
 
 test.after(async () => { await db.pool.end().catch(() => {}); });
 
@@ -56,7 +56,7 @@ test('1. jeder Posten wird einzeln gelesen, nicht die Datei als Ganzes', () => {
   // Der Fehler, den dieser Fall ausschliesst: ein Muster über die GANZE Datei
   // legen. Dann gewinnt der erste Treffer je Feld, und aus 224 Posten wird
   // einer. Genau diese Form hat in diesem Baum schon zweimal etwas falsch
-  // gemacht (siehe seitenweiseLesen in utils/gutscheinPdfSchreiben.ts).
+  // gemacht (siehe seitenweiseLesen in src/gutscheine/gutscheinPdfSchreiben.ts).
   const xml = liste(
     item('P', '41879', 7),
     item('P', '973pb4536c01', 36, 2),
@@ -227,7 +227,7 @@ test('die lokale Auflösung trennt Abbildung von Vermutung', { concurrency: 1 },
  * ── Gegenproben (am 19.10. GEMESSEN, Zahlen abgeschrieben) ──────────────────
  *
  * Ausgangslage, dieselbe Datei, derselbe Aufruf: `# pass 17 / # fail 0`.
- * Jede Gegenprobe ist EINE Änderung in utils/wantedListe.ts, danach wieder
+ * Jede Gegenprobe ist EINE Änderung in src/merkliste/wantedListe.ts, danach wieder
  * zurückgenommen (die Datei wurde gegen ihre Sicherung verglichen).
  *
  *   A  die alte Fassung des Schreibwegs: `a.farbeOffen` aus der Abbruch-

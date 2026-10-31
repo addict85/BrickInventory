@@ -84,7 +84,7 @@ test('gebrauchtes Set ohne Gebraucht-Preis: Neu-Preis wird geholt', { concurrenc
   await db.run(`INSERT INTO price_cache (set_number, condition, currency_code, min_price, avg_price, max_price, qty_avg_price, total_quantity, fetched_at)
                 VALUES ($1,'U','EUR',0,0,0,0,0,NOW()), ($1,'N','EUR',90,99,105,98,3,NOW() - INTERVAL '3 days')`, [SET]);
 
-  const { computeSetsValuation } = _req('utils/financeCalc.js');
+  const { computeSetsValuation } = _req('src/finanzen/financeCalc.js');
   abrufe = [];
   const zeile = (await computeSetsValuation(uid, [uid])).sets.find(s => s.set_number === SET);
   assert.ok(zeile, 'Set fehlt in der Bewertung');
@@ -116,7 +116,7 @@ test('„BrickLink kennt das Set nicht" gilt nur eine Weile', { concurrency: 1 }
   await aufraeumen();
   t.after(aufraeumen);
   const uid = await konto(NAME, SET);
-  const { computeSetsValuation } = _req('utils/financeCalc.js');
+  const { computeSetsValuation } = _req('src/finanzen/financeCalc.js');
   const bewerte = async () => (await computeSetsValuation(uid, [uid])).sets.find(s => s.set_number === SET);
 
   // Frisch markiert: kein Abruf, kein Preis, und der Grund steht dabei.

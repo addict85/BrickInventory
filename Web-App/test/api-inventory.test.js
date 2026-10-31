@@ -263,7 +263,7 @@ const C = {
   // unter /api. GET /storage spannt Sets UND Teile und gehoert deshalb zu
   // keiner der beiden Familien allein.
   // Preisalarm (Nachtrag 176) — beide Oberflaechen. Ohne Kontofilter: Ein
-  // Alarm gehoert genau EINEM Konto (siehe utils/preisalarm.ts).
+  // Alarm gehoert genau EINEM Konto (siehe src/finanzen/preisalarm.ts).
   // Abholung der ausgeloesten Alarme (Nachtrag 177) — beide Oberflaechen.
   'GET /api/v1/alerts/pending': 'nur-v1',
   // Die UEBERSICHT ueber alle Alarme — beide Oberflaechen. Bewusst getrennt

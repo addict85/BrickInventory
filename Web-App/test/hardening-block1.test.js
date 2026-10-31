@@ -106,7 +106,7 @@ test('Preis-Vorhandensein hängt an avg_price', () => {
   // Teile und Minifiguren, je Haupt- und Rückfall-Zustand. Die gibt es nicht
   // mehr: Dieselbe Frage stand in dieser Datei an 22 Stellen, in drei
   // Fassungen, und widersprach dabei der Fassung in clients/bricklink.ts.
-  // Sie liegt jetzt einmal in utils/preisRegel.ts (siehe
+  // Sie liegt jetzt einmal in src/finanzen/preisRegel.ts (siehe
   // test/preisregel-db.test.js). Gezählt werden deshalb die Stellen, die sie
   // BENUTZEN — die Zahl bleibt die Zusicherung, dass keine davon verschwindet.
   assert.doesNotMatch(fc, /avg_price > 0 \|\| \w+\.qty_avg_price > 0/,

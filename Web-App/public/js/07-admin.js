@@ -112,7 +112,7 @@ export async function enrichGalleryWithPrices(){
   if(!pnl.success) return;
   set_pnlCache({});
   // Betrag und G&V der Kachel rechnet der Server (kachel_preis,
-  // kachel_pnl_pct in /finance/pnl, utils/setValue.ts kachelWerte); im
+  // kachel_pnl_pct in /finance/pnl, src/finanzen/setValue.ts kachelWerte); im
   // Haushalt tragen alle Zeilen eines Sets dieselben Werte.
   for(const s of pnl.sets){
     if(!_pnlCache[s.set_number]) _pnlCache[s.set_number] = { price: s.kachel_preis, pnl_pct: s.kachel_pnl_pct };
@@ -215,7 +215,7 @@ function sparklineSVG(data, width=260, height=44){
  * Marktpreis und Entwicklung je Zustand in den Detail-Dialog schreiben.
  *
  * Eine Zeile erscheint nur für Zustände, zu denen eine Erfassung existiert —
- * der Server entscheidet das (by_condition, siehe utils/priceHistory.ts) und
+ * der Server entscheidet das (by_condition, siehe src/finanzen/priceHistory.ts) und
  * liefert gar keinen Eintrag für die anderen. Damit taucht eine neue Zeile
  * automatisch auf, sobald ein Kaufpreis in diesem Zustand erfasst wird: Nach
  * jedem Speichern wird diese Abfrage erneut geladen.
@@ -464,7 +464,7 @@ document.addEventListener('keydown', (e) => {
 });
 
 export function priceChartSVG(data, uid = String(Math.random()).slice(2, 8), breite = 700) {
-  // Erwartet die fertigen Diagrammdaten des Servers (utils/chartData.ts):
+  // Erwartet die fertigen Diagrammdaten des Servers (src/finanzen/chartData.ts):
   //   { values: [ { name, values: [{x, y}], firstRealIndex } ], x: [...] }
   const NAMES  = { N: t('common.condition_new'), U: t('common.condition_used') };
   // Farben aus dem Design; var() greift in inline-SVG auch in stroke und stop-color.

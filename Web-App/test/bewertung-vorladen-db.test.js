@@ -76,7 +76,7 @@ test('Bewertung und Setmenge ohne Zeile-für-Zeile-Abfragen', { concurrency: 1 }
     await db.run(`INSERT INTO minifig_price_cache (fig_number, condition, currency_code, avg_price, qty_avg_price)
                   VALUES ($1, 'N', 'EUR', 4, 4)`, [nr + 'bl']);
   }
-  const { computePartsValuation, computeMinifigsValuation } = _req('utils/financeCalc.js');
+  const { computePartsValuation, computeMinifigsValuation } = _req('src/finanzen/financeCalc.js');
 
   await t.test('zwölf Teile, eine Abfrage auf den Teile-Cache', async () => {
     const m = await abfragen(/FROM part_price_cache/, () => computePartsValuation(uid, [uid]));

@@ -8,7 +8,7 @@
  *    vorhanden ist?"
  *
  * Fuers MAPPING lautete die Antwort nein: loeseLokalAuf() in
- * utils/wantedListe.ts loest zuerst lokal auf und fragt nur die offenen
+ * src/merkliste/wantedListe.ts loest zuerst lokal auf und fragt nur die offenen
  * Nummern nach (geprueft in test/wanted-liste-db.test.js).
  *
  * Fuer Name und Bild lautete sie JA. GEMESSEN am laufenden Server, mit einem

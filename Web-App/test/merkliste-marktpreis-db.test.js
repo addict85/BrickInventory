@@ -84,7 +84,7 @@ test('Merkliste: Marktpreis aus dem Cache', async (t) => {
     return;
   }
   await seed();
-  const M = _req('utils/merkliste.js');
+  const M = _req('src/merkliste/merkliste.js');
 
   await t.test('1. Der Preis kommt als Zahl an', async () => {
     // Dass er das tut, liegt am Typ-Leser in db/database.ts (NACHGEMESSEN,

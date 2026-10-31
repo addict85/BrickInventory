@@ -8,7 +8,7 @@
  *   • `hasUsablePrice()` in clients/bricklink.ts entschied, ob nach einer
  *     erfolglosen `sold`-Abfrage noch `stock` versucht wird — und liess
  *     `qty_avg_price > 0` genügen.
- *   • `fetchPrice()` in utils/financeCalc.ts erkennt einen Preis nur bei
+ *   • `fetchPrice()` in src/finanzen/financeCalc.ts erkennt einen Preis nur bei
  *     `avg_price > 0` an, weil genau dieses Feld die Clients anzeigen.
  *
  * Antwortet BrickLink also mit avg_price = 0 und qty_avg_price > 0 — bei
@@ -43,7 +43,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
-const { hatPreis } = _req('utils/preisRegel.js');
+const { hatPreis } = _req('src/finanzen/preisRegel.js');
 
 test('die Preisregel gilt an jeder Stelle gleich', { concurrency: 1 }, async (t) => {
   try { await db.initSchema(); }
@@ -76,7 +76,7 @@ test('die Preisregel gilt an jeder Stelle gleich', { concurrency: 1 }, async (t)
     await db.run(
       `INSERT INTO price_cache (set_number,condition,currency_code,min_price,avg_price,max_price,qty_avg_price,total_quantity,fetched_at)
        VALUES ($1,'N','EUR',10,0,20,12.34,5,NOW())`, [SN]);
-    const { fetchPrice } = _req('utils/financeCalc.js');
+    const { fetchPrice } = _req('src/finanzen/financeCalc.js');
     const pd = await fetchPrice(SN, 'N', 'sold', 'EUR', '24');
     assert.ok(pd.no_price === true || Number(pd.avg_price) > 0,
       'fetchPrice gibt eine Zeile heraus, die keinen anzeigbaren Preis trägt: ' +
@@ -139,7 +139,7 @@ test('die Preisregel gilt an jeder Stelle gleich', { concurrency: 1 }, async (t)
     await db.run(
       `INSERT INTO part_price_cache (part_number,color_id,condition,currency_code,avg_price,qty_avg_price,fetched_at)
        VALUES ($1,0,'N','EUR',5,7,NOW())`, [PN]);
-    const { fetchPartPrice } = _req('utils/financeCalc.js');
+    const { fetchPartPrice } = _req('src/finanzen/financeCalc.js');
     const teil = await fetchPartPrice(PN, 0, 'N', 'EUR', '24');
     await db.run(`DELETE FROM part_price_cache WHERE part_number=$1`, [PN]).catch(() => {});
     assert.equal(Number(teil.avg_price), 5);
@@ -153,7 +153,7 @@ test('die Preisregel gilt an jeder Stelle gleich', { concurrency: 1 }, async (t)
     const fs = require('node:fs');
     const path = require('node:path');
     const ROOT = path.join(__dirname, '..');
-    for (const rel of ['utils/financeCalc.ts', 'clients/bricklink.ts']) {
+    for (const rel of ['src/finanzen/financeCalc.ts', 'clients/bricklink.ts']) {
       const src = fs.readFileSync(path.join(ROOT, rel), 'utf8')
         .split('\n').filter(z => !z.trim().startsWith('//') && !z.trim().startsWith('*')).join('\n');
       // Beide Schreibweisen. Die erste Fassung dieser Regel prüfte nur die

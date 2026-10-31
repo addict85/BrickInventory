@@ -1,9 +1,9 @@
-import { getCurrentMarketPrice } from '../utils/marketPrice';
+import { getCurrentMarketPrice } from '../src/finanzen/marketPrice';
 import { setzeGeschaetztenPreis } from '../src/bestand/acquisitions';
-// Die Marktpreise stehen seit dem Schichtumbau in utils/marketPrice.ts, bei
+// Die Marktpreise stehen seit dem Schichtumbau in src/finanzen/marketPrice.ts, bei
 // dem fuer Sets. Vorher musste dieser Job aus zwei ROUTEN importieren, um an
 // zwei Zahlen zu kommen.
-import { getCurrentFigMarketPrice, getCurrentPartMarketPrice } from '../utils/marketPrice';
+import { getCurrentFigMarketPrice, getCurrentPartMarketPrice } from '../src/finanzen/marketPrice';
 import { lookupPart } from '../clients/rebrickable';
 import { blAbrufNummer } from '../utils/blZuordnung';
 import { fehlertext, meldeUndWeiter, meldeUndLiefere } from '../src/infra/httpError';

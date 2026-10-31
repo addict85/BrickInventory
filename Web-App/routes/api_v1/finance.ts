@@ -2,9 +2,9 @@
 import express from 'express';
 import { handleRouteError } from '../../src/infra/httpError';
 import { requireToken } from './middleware';
-import { getPortfolioHistory } from '../../utils/portfolioHistory';
+import { getPortfolioHistory } from '../../src/finanzen/portfolioHistory';
 import { scopeIds, parseScopeMode } from '../../src/haushalt/haushalt';
-import { computeMinifigsValuation, computePartsValuation, computePnl, computeSetsValuation } from '../../utils/financeCalc';
+import { computeMinifigsValuation, computePartsValuation, computePnl, computeSetsValuation } from '../../src/finanzen/financeCalc';
 import { einzelwert } from '../../src/infra/validate';
 const router = express.Router();
 

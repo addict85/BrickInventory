@@ -309,7 +309,7 @@ export function schliesseUebernahme() {
 /**
  * Schritt 2: tun.
  *
- * Die Regel steht am Server (utils/merkliste.ts): Er ruft addSet() — die
+ * Die Regel steht am Server (src/merkliste/merkliste.ts): Er ruft addSet() — die
  * eine Wahrheit fürs Erfassen — und räumt danach Eintrag UND Preisalarm weg.
  *
  * Der ZUSTAND geht zweimal mit, und das ist Absicht: Im Pfad steht der des
@@ -393,7 +393,7 @@ export async function oeffneMerkpostenDetail(arg) {
   G('mk-m-det').innerHTML = zeilen(w);
   G('mk-m-bricklink').style.display = 'none';
   // Der Preisvergleich ist SOFORT da: Er hängt am Merkposten, nicht am Katalog
-  // (utils/merkliste.ts). Ein Set, das rb_sets nicht kennt, beantwortet
+  // (src/merkliste/merkliste.ts). Ein Set, das rb_sets nicht kennt, beantwortet
   // /catalog/sets/:nr mit 404 — dann blieb dieser Knopf aus, obwohl die
   // Adresse aus der Setnummer allein zu bilden ist.
   zeigeAdresse('mk-m-vergleich', w.preisvergleich_url);

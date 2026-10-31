@@ -574,7 +574,7 @@ async function plExportBricklink() {
   //
   // Sie werden genannt. Eine geratene Farbnummer ergibt eine gültige Datei,
   // die das falsche Teil bestellt — und das fällt erst auf, wenn das Paket da
-  // ist. Dieselbe Regel wie beim Import (utils/wantedListe.ts): Was sich
+  // ist. Dieselbe Regel wie beim Import (src/merkliste/wantedListe.ts): Was sich
   // nicht abbilden lässt, bleibt offen und wird gesagt.
   //
   // Minifiguren (Typ M) haben keine Farbe und sind deshalb nie betroffen.

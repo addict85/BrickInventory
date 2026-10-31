@@ -144,7 +144,7 @@ test('Gutscheine: Export und Import über die echten Adressen', { concurrency: 1
   await t.test('2. der FREMDE Gutschein ist nicht dabei', async () => {
     // Ein Gutschein traegt Nummer und PIN. Im Export eines anderen Kontos
     // waere das die Weitergabe eines Zahlungsmittels.
-    const { seitenweiseLesen } = _req('utils/gutscheinPdfSchreiben.js');
+    const { seitenweiseLesen } = _req('src/gutscheine/gutscheinPdfSchreiben.js');
     const drin = (await seitenweiseLesen(pdf)).map(w => w.nummer);
     assert.ok(!drin.includes('9999999999999999999'),
       `Im eigenen Export steht die Karte eines fremden Kontos: ${drin.join(', ')}`);
@@ -152,7 +152,7 @@ test('Gutscheine: Export und Import über die echten Adressen', { concurrency: 1
   });
 
   await t.test('3. das exportierte PDF trägt den APP-Betrag, nicht den gedruckten', async () => {
-    const { seitenweiseLesen } = _req('utils/gutscheinPdfSchreiben.js');
+    const { seitenweiseLesen } = _req('src/gutscheine/gutscheinPdfSchreiben.js');
     const gelesen = await seitenweiseLesen(pdf);
     for (const k of KARTEN) {
       const w = gelesen.find(x => x.nummer === k.nr);

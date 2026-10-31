@@ -18,7 +18,7 @@ Marcos Befund vom 19.10., nach dem Import mehrerer BrickLink-Wanted-Listen:
  können für den Fall dass diese nicht korrekt geladen wurde."
 
 Der Import legt die Farbe seit dem Fix nicht mehr falsch an (siehe
-utils/wantedListe.ts) — aber Marcos BESTEHENDER Bestand trägt die falschen
+src/merkliste/wantedListe.ts) — aber Marcos BESTEHENDER Bestand trägt die falschen
 Farben schon. Ohne diesen Weg bliebe ihm nur Löschen und neu Erfassen, und
 damit wäre die Erfassungshistorie weg (Kaufpreise, Daten).
 

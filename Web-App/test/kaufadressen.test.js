@@ -15,7 +15,7 @@
  *
  * Der Preisvergleich kommt aus demselben Grund von dort: Seine Adresse stand
  * bisher an genau EINER Stelle im Baum (dem Vergleichsbildschirm der App).
- * Ohne utils/preisvergleich.ts waeren daraus vier geworden — Webapp und App,
+ * Ohne src/finanzen/preisvergleich.ts waeren daraus vier geworden — Webapp und App,
  * je Set-Detail und Vergleich.
  *
  * Der dritte Test unten ist der Waechter dafuer: Baut irgendwann doch wieder
@@ -27,7 +27,7 @@ const assert = require('node:assert/strict');
 const fs     = require('node:fs');
 const path   = require('node:path');
 
-const P = require('./helpers/sources').buildAndRequire()('utils/preisvergleich.js');
+const P = require('./helpers/sources').buildAndRequire()('src/finanzen/preisvergleich.js');
 
 test('die Suchadresse maskiert, was hineingeht', () => {
   const u = P.suchUrl('LEGO 75192 Millennium Falcon');
@@ -62,7 +62,7 @@ test('die Variante faellt weg, der Name kommt dazu', () => {
 });
 
 test('die Adresse des Preisvergleichs steht genau an EINER Stelle je Seite', () => {
-  // Der Waechter. Server: nur utils/preisvergleich.ts. App: nur der
+  // Der Waechter. Server: nur src/finanzen/preisvergleich.ts. App: nur der
   // Vergleichsbildschirm (der mit freiem Suchtext arbeitet und deshalb keine
   // Set-Adresse vom Server holen kann) — das Set-Detail nimmt die Adresse
   // aus der Antwort.
@@ -92,7 +92,7 @@ test('die Adresse des Preisvergleichs steht genau an EINER Stelle je Seite', () 
   assert.deepEqual(treffer.sort(), [
     path.join('Android-App', 'app', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'ComparisonScreen.kt'),
     path.join('Web-App', 'test', 'kaufadressen.test.js'),
-    path.join('Web-App', 'utils/preisvergleich.ts'),
+    path.join('Web-App', 'src/finanzen/preisvergleich.ts'),
   ].sort(),
     'Die Adresse des Preisvergleichs steht an einer weiteren Stelle. Entweder '
     + 'kommt sie dort vom Server (Set-Detail: preisvergleich_url), oder der '

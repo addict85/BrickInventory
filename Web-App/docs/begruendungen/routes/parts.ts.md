@@ -154,7 +154,7 @@ Tageskontingent, fuer Daten, die dalagen.
 Der Import ist dabei nur der Auffaellige. Die Luecke war in DIESER
 Funktion, und sie gilt fuer jeden Weg, der ohne Namen hereinkommt —
 auch POST /api/v1/parts. Deshalb steht die Staffelung hier und nicht
-in utils/wantedListe.ts.
+in src/merkliste/wantedListe.ts.
 ```
 
 <a id="addmanualpartintern-recond"></a>

@@ -35,7 +35,7 @@ test('Preise stehen unter der BrickLink-Nummer, Erfassungen unter der Rebrickabl
     t.skip('Test-DB nicht erreichbar'); return;
   }
 
-  const ph = _req('utils/priceHistory.js');
+  const ph = _req('src/finanzen/priceHistory.js');
   const u = await db.get(
     `INSERT INTO users (username, password_hash) VALUES ('t_'||floor(random()*1e9),'x') RETURNING id`);
   // Kontowährung wie die abgefragte: Eine andere würde umgerechnet (Migration 0077).

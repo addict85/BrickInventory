@@ -21,7 +21,7 @@ import { requireApiAdmin } from './api_v1/middleware';
 import { sendeFehler, fehlerText, antwortSprache } from '../src/infra/fehlerTexte';
 import { basisUrl, hinweisOhneBasisUrl } from '../src/infra/basisUrl';
 import * as zf from '../src/konto/zweiterFaktor';
-import { loescheKontoDateien } from '../utils/gutscheinDateien';
+import { loescheKontoDateien } from '../src/gutscheine/gutscheinDateien';
 
 // „Angemeldet" gibt es nur noch in EINER Fassung
 // Sechs vermeintlich fehlende Funktionen, EINE Ursache: dieselbe Regel in zwei

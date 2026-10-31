@@ -44,7 +44,7 @@ und zwei Sets, eines davon mit gelöschtem Kaufpreis:
   Bewertung    das leere Set mit ×1 bewertet — 20 CHF, die es nicht gibt
 
 Der letzte Punkt ist der schlimmste: `set.quantity || 1` in
-utils/financeCalc.ts macht aus einer Menge von 0 eine 1. Als Schutz gegen
+src/finanzen/financeCalc.ts macht aus einer Menge von 0 eine 1. Als Schutz gegen
 NULL gedacht, trifft es hier den echten Wert 0 — und das Portfolio wuchs um
 ein Set, das niemand mehr besitzt.
 

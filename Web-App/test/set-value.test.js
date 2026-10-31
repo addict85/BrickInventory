@@ -1,5 +1,5 @@
 /**
- * Marktwert eines Sets je Zustand (utils/setValue.ts).
+ * Marktwert eines Sets je Zustand (src/finanzen/setValue.ts).
  *
  * Gemeldet an 10290-1: angezeigt CHF 92.68, obwohl das Set nur eine
  * Neu-Erfassung hat und BrickLink für Neu einen Avg Price von US$ 148.72
@@ -25,7 +25,7 @@ const { execFileSync } = require('node:child_process');
 const ROOT = path.join(__dirname, '..');
 // Nach dist/ bauen statt in-place — siehe helpers/sources.js.
 const _req = require('./helpers/sources').buildAndRequire();
-const { valueSet } = _req('utils/setValue.js');
+const { valueSet } = _req('src/finanzen/setValue.js');
 
 const SN = '10290-1';
 const prices = (n, u) => {
@@ -112,7 +112,7 @@ test('qty_avg_price wird für Set-Preise nirgends mehr gelesen', () => {
   // Der Abschnitt zu routes/finance.ts ist entfallen: Die Datei gibt es nicht
   // mehr. Ihr Router trug NULL Routen und war trotzdem unter /api/finance
   // eingehaengt; die Preisrechnung selbst liegt seit Etappe 5 in
-  // utils/financeCalc.ts. Die Regel „Set-Preise ueber avg_price" wird deshalb
+  // src/finanzen/financeCalc.ts. Die Regel „Set-Preise ueber avg_price" wird deshalb
   // dort geprueft, wo die Abfragen heute stehen — utils/ und routes/api_v1/,
   // siehe die Pruefung „KEINE Abfrage stellt mehr …" weiter unten.
 });
@@ -140,7 +140,7 @@ test("guide_type ist überall 'sold', nicht 'stock'", () => {
   // 'sold' = tatsächlich erzielte Preise der letzten sechs Monate.
   // 'stock' wären eingestellte Angebote, also auch das, was niemand zahlt.
   for (const f of ['clients/bricklink.ts', 'routes/api_v1/sets.ts',
-                   'utils/financeCalc.ts', 'jobs/priceJob.ts']) {
+                   'src/finanzen/financeCalc.ts', 'jobs/priceJob.ts']) {
     const src = fs.readFileSync(path.join(ROOT, f), 'utf8');
     const code = src.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
     // 'stock' ist als RÜCKFALL erlaubt (kein Verkauf in sechs Monaten), aber
@@ -160,7 +160,7 @@ test('Fallback zwischen den Zuständen bleibt — aber in der richtigen Reihenfo
   // Der angefragte Zustand gewinnt, wenn er einen Preis hat. Der andere kommt
   // nur zum Zug, wenn dort keiner steht. Genau umgekehrt war der gemeldete
   // Fehler: „hat einen Preis" schlug „passender Zustand".
-  for (const f of ['src/sets/dienst.ts', 'utils/financeCalc.ts']) {
+  for (const f of ['src/sets/dienst.ts', 'src/finanzen/financeCalc.ts']) {
     const src = fs.readFileSync(path.join(ROOT, f), 'utf8');
     for (const m of src.matchAll(/SELECT[\s\S]{0,240}?FROM price_cache[\s\S]{0,260}?`/g)) {
       const q = m[0];
@@ -237,7 +237,7 @@ test("ohne Verkauf in sechs Monaten wird auf 'stock' ausgewichen", () => {
   // avg_price = 0 — 'sold' allein hiesse dort dauerhaft kein Marktpreis.
   const bl = fs.readFileSync(path.join(ROOT, 'clients/bricklink.ts'), 'utf8');
   // Frueher stand hier `/function hasUsablePrice/` — ein Name. Die Pruefung
-  // heisst inzwischen hatPreis() und liegt in utils/preisRegel.ts, weil sie
+  // heisst inzwischen hatPreis() und liegt in src/finanzen/preisRegel.ts, weil sie
   // DIESELBE sein muss wie beim Lesen: Solange der Torwaechter hier weiter war
   // als der Leser dort, unterblieb der Rueckfall auf 'stock' fuer genau die
   // Artikel, fuer die er gebaut wurde (siehe test/preisregel-db.test.js).
@@ -275,7 +275,7 @@ test('ein gecachter Null-Preis blockiert den Rückfall nicht dauerhaft', () => {
   //
   // Vorher stand die Reihenfolge hier als indexOf() auf zwei ausgeschriebenen
   // parseFloat-Ausdrücken. Beide gibt es nicht mehr — die Regel liegt in
-  // utils/preisRegel.ts. Die Aussage bleibt und wird jetzt an der Regel selbst
+  // src/finanzen/preisRegel.ts. Die Aussage bleibt und wird jetzt an der Regel selbst
   // gemessen: Der Treffer mit Preis kommt vor dem Zweig ohne.
   const idxOk   = fc.indexOf('if (hatPreis(cached))');
   const idxZero = fc.indexOf('cached && !hatPreis(cached)');
@@ -292,7 +292,7 @@ test('KEINE Abfrage stellt mehr "hat einen Preis" vor "passender Zustand"', () =
   // fünfte (der P&L-Pfad in financeCalc.ts) speist aber genau die Anzeige in
   // Galerie und Detail-Dialog — dort blieb der Gebraucht-Preis stehen.
   const files = ['src/sets/dienst.ts', 'routes/api_v1/sets.ts',
-                 'utils/financeCalc.ts', 'utils/portfolioHistory.ts'];
+                 'src/finanzen/financeCalc.ts', 'src/finanzen/portfolioHistory.ts'];
   for (const f of files) {
     const src = fs.readFileSync(path.join(ROOT, f), 'utf8')
       .replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
@@ -316,7 +316,7 @@ test('der P&L-Pfad wählt je Set nach dessen eigenem Zustand', () => {
     'Ohne avg_price im SELECT greift die Auswertung ins Leere');
 
   // Das Ausweichen auf den anderen Zustand lebt jetzt an EINER Stelle.
-  const sv = fs.readFileSync(path.join(ROOT, 'utils/setValue.ts'), 'utf8');
+  const sv = fs.readFileSync(path.join(ROOT, 'src/finanzen/setValue.ts'), 'utf8');
   assert.match(sv, /const want\s*=\s*prices\.get\(`\$\{setNumber\}\|\$\{cond\}`\);\s*\n\s*if \(want\) return want;/,
     'Der andere Zustand darf nur einspringen, wenn der eigene keinen Preis hat');
 });
@@ -358,7 +358,7 @@ test('Finanzen: Kaufpreis statt zweiter Marktpreis-Spalte', () => {
   // gewandert — sie wird jetzt über dieselben Zeilen gerechnet, die auch in
   // der Tabelle stehen. Damit kann Zeilensumme und Kopfzahl nicht mehr
   // auseinanderlaufen.
-  const sv = fs.readFileSync(path.join(ROOT, 'utils/setValue.ts'), 'utf8');
+  const sv = fs.readFileSync(path.join(ROOT, 'src/finanzen/setValue.ts'), 'utf8');
   assert.match(sv, /withCost\.reduce\(\(s, r\) => s \+ \(r\.purchase_price as number\) \* r\.quantity, 0\) \/ qty/,
     'Der Kaufpreis muss mengengewichtet gemittelt werden: 2x100 + 1x160 ergibt 120, nicht 130');
   assert.match(sv, /r\.purchase_price != null/,
@@ -539,7 +539,7 @@ test('die Verlaufs-Endpunkte liefern fertige Diagrammdaten', () => {
   // priceChartSVG(), Android hätte dieselbe Rechnung ein zweites Mal
   // gebraucht. Genau dieses Muster ist in diesem Projekt schon mehrfach
   // auseinandergelaufen (Zustandsauflösung, Bild-Allowlist, Verlaufsroute).
-  const cd = fs.readFileSync(path.join(ROOT, 'utils/chartData.ts'), 'utf8');
+  const cd = fs.readFileSync(path.join(ROOT, 'src/finanzen/chartData.ts'), 'utf8');
   assert.match(cd, /export function buildChart/, 'Der gemeinsame Bauer fehlt');
   assert.match(cd, /byDay\.has\(day\) \? byDay\.get\(day\)! : 0/,
     'Leere Positionen müssen mit 0 aufgefüllt werden');
@@ -547,9 +547,9 @@ test('die Verlaufs-Endpunkte liefern fertige Diagrammdaten', () => {
     'Ohne diesen Index kann ein Renderer die aufgefüllten Nullen nicht überspringen');
 
   // Alle drei Verlaufs-Endpunkte müssen ihn benutzen.
-  const ph = fs.readFileSync(path.join(ROOT, 'utils/priceHistory.ts'), 'utf8');
+  const ph = fs.readFileSync(path.join(ROOT, 'src/finanzen/priceHistory.ts'), 'utf8');
   // Teile- und Minifiguren-Verlauf sind seit hardened-96 ebenfalls in
-  // utils/priceHistory.ts (die Android-Routen brauchen dieselbe Antwort) — sie
+  // src/finanzen/priceHistory.ts (die Android-Routen brauchen dieselbe Antwort) — sie
   // teilen sich dort EINEN Aufbau, deshalb steht buildChart zweimal in der
   // Datei: einmal für Sets, einmal für beide manuellen Arten.
   //
@@ -558,7 +558,7 @@ test('die Verlaufs-Endpunkte liefern fertige Diagrammdaten', () => {
   // liegen) statt eines festen Arrays. Ein Test, der `buildChart([` verlangt,
   // hätte diese Verbesserung verhindert, ohne etwas Zusätzliches zu sichern.
   const uses = (ph.match(/buildChart\(/g) || []).length;
-  assert.equal(uses, 2, `${uses} statt 2 buildChart-Aufrufe in utils/priceHistory.ts`);
+  assert.equal(uses, 2, `${uses} statt 2 buildChart-Aufrufe in src/finanzen/priceHistory.ts`);
   // Die frueher hier geprueste routes/finance.ts gibt es nicht mehr (Router
   // ohne eine einzige Route). Die Regel gilt weiter, nur fuer die Datei, in der
   // die Verlaufs-Routen HEUTE stehen: Ein Adapter baut keine Diagrammdaten.
@@ -577,7 +577,7 @@ test('die Verlaufs-Endpunkte liefern fertige Diagrammdaten', () => {
 // ═══════════════════════════════════════════════════════════════════════════
 // Eine Zeile je Kaufpreis (hardened-90)
 // ═══════════════════════════════════════════════════════════════════════════
-const { valueAcquisitionRows, weightedPurchase, pnlPct } = _req('utils/setValue.js');
+const { valueAcquisitionRows, weightedPurchase, pnlPct } = _req('src/finanzen/setValue.js');
 
 const acq = (id, cond, qty, price, day) => ({
   id, condition: cond, quantity: qty, purchase_price: price,

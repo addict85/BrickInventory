@@ -49,7 +49,7 @@ const ROOT = path.join(__dirname, '..');
  *     ausgelagerter Serverstart ist. Siehe die Ordnerliste unten.
  *   • Vier ECHTE Faelle: die Marktpreise fuer Teile und Figuren, die
  *     Preisschaetzung aus Einzelteilen und die Rebrickable-Teileabfrage. Sie
- *     stehen jetzt in utils/marketPrice.ts (bei dem fuer Sets, wo sie
+ *     stehen jetzt in src/finanzen/marketPrice.ts (bei dem fuer Sets, wo sie
  *     hingehoerten) bzw. in clients/rebrickable.ts.
  *
  * Bleibt die Liste leer, ist das die Aussage. Wird ein Eintrag noetig, gehoert

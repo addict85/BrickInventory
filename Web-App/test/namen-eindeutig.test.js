@@ -5,7 +5,7 @@
  * `effectiveCondition` gab es ZWEIMAL, und die beiden beantworteten
  * verschiedene Fragen:
  *
- *     utils/financeCalc.ts   Welchen Zustand hat dieses SET?
+ *     src/finanzen/financeCalc.ts   Welchen Zustand hat dieses SET?
  *                            (die Erfassungen schlagen den gespeicherten Wert)
  *     src/konto/settings.ts      Welchen Standardzustand hat dieser NUTZER?
  *                            (die Nutzereinstellung schlaegt den globalen)

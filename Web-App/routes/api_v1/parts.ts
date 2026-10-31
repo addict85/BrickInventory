@@ -8,7 +8,7 @@ import { csvEmpfang } from '../../src/infra/dateiEmpfang';
 import { csvImportAntwort } from '../../src/infra/csvExport';
 import { addManualPart, getPartColorList, updateManualPart, importiereTeileCsv } from '../../src/teile/manuelleTeile';
 import { getSetting } from '../../src/konto/settings';
-import { getPartPriceHistory } from '../../utils/priceHistory';
+import { getPartPriceHistory } from '../../src/finanzen/priceHistory';
 import { einzelwert } from '../../src/infra/validate';
 import * as V from '../../src/infra/validate';
 import { aendereTeilFarbe } from '../../src/teile/teilFarbeAendern';

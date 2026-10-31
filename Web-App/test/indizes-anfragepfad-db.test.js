@@ -4,7 +4,7 @@
  * ── Was gemessen wurde ──────────────────────────────────────────────────────
  * EXPLAIN (ANALYZE, BUFFERS) an je 100'000 Zeilen:
  *
- *   parts, BL-Rückfall in resolveBlPartNumber (utils/financeCalc.ts) —
+ *   parts, BL-Rückfall in resolveBlPartNumber (src/finanzen/financeCalc.ts) —
  *   läuft einmal je Teil der Bewertung:
  *       ohne Index   Seq Scan,   2479 Buffer, 10,1   ms
  *       mit  Index   Index Scan,    2 Buffer,  0,012 ms   (Teilindex, 8 KB)

@@ -37,8 +37,8 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
 const { testServer } = require('./helpers/server');
-const G = _req('utils/gutscheinGuthaben.js');
-const S = _req('utils/gutscheinGuthabenSchranke.js');
+const G = _req('src/gutscheine/gutscheinGuthaben.js');
+const S = _req('src/gutscheine/gutscheinGuthabenSchranke.js');
 
 test.after(async () => { await db.pool.end().catch(() => {}); });
 

@@ -10,7 +10,7 @@ import { findSameDayAcquisition, erfassungsTagSql } from './acquisitions';
 import { meldeUndLiefere } from '../infra/httpError';
 import { withInventoryLock, bestandsSchluessel } from '../../db/txLock';
 import { moveSetBetweenAccounts, moveManualAcquisition } from '../sets/setMove';
-import { getCurrentMarketPrice, getCurrentPartMarketPrice, getCurrentFigMarketPrice } from '../../utils/marketPrice';
+import { getCurrentMarketPrice, getCurrentPartMarketPrice, getCurrentFigMarketPrice } from '../finanzen/marketPrice';
 import { deleteSetRows, withSetAggregate } from '../sets/abfragen';
 import { loescheManuellesTeil, loescheManuelleFigur } from './gemeinsam';
 import { fehlerWerfen } from '../infra/fehlerTexte';

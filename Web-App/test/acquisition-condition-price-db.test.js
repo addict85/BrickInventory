@@ -75,7 +75,7 @@ test('die Schätzung legt je Zustand einen eigenen Eintrag ab', () => {
   // Zwei Zustände = zwei Marktpreise. Lägen sie unter demselben Schlüssel,
   // überschriebe der eine den anderen und die zweite Zeile bliebe für immer
   // leer — genau Marcos Bild.
-  const mf = fs.readFileSync(path.join(__dirname, '..', 'utils/marketPrice.ts'), 'utf8');
+  const mf = fs.readFileSync(path.join(__dirname, '..', 'src/finanzen/marketPrice.ts'), 'utf8');
   const i = mf.indexOf('async function schaetzeFigurenpreis');
   const fn = mf.slice(i, mf.indexOf('\n}', i));
 

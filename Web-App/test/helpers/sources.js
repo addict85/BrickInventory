@@ -48,7 +48,7 @@ const serverAll = () => serverOnly() + '\n' + imgProxy() + '\n' + proxyThumbQuel
  *
  * ── Warum es diesen Helfer gibt (Nachtrag 171) ──────────────────────────────
  *
- * utils/financeCalc.ts trug 1529 Zeilen und drei Aufgaben. Seit der Trennung
+ * src/finanzen/financeCalc.ts trug 1529 Zeilen und drei Aufgaben. Seit der Trennung
  * liegen sie unter utils/finance/ (zustand, preise, bewertung, gewinnVerlust),
  * und financeCalc.ts reicht nur noch durch.
  *
@@ -63,15 +63,15 @@ const serverAll = () => serverOnly() + '\n' + imgProxy() + '\n' + proxyThumbQuel
  * weiter ueber denselben Stoff wie vorher — nur ist er jetzt sortiert.
  */
 const finanzQuelle = () => {
-  const ordner = path.join(ROOT, 'utils/finance');
-  const teile = [fs.readFileSync(path.join(ROOT, 'utils/financeCalc.ts'), 'utf8')];
+  const ordner = path.join(ROOT, 'src/finanzen/rechnung');
+  const teile = [fs.readFileSync(path.join(ROOT, 'src/finanzen/financeCalc.ts'), 'utf8')];
   for (const n of fs.readdirSync(ordner).filter(x => x.endsWith('.ts')).sort()) {
     teile.push(fs.readFileSync(path.join(ordner, n), 'utf8'));
   }
   // Selbstbeweis an der Quelle: Findet der Helfer die Module nicht mehr,
   // pruefen neunzehn Regeln nur noch die Fassade — und waeren still gruen.
   if (teile.length < 4) {
-    throw new Error(`finanzQuelle(): nur ${teile.length} Dateien gefunden — liegt utils/finance/ noch da?`);
+    throw new Error(`finanzQuelle(): nur ${teile.length} Dateien gefunden — liegt src/finanzen/rechnung/ noch da?`);
   }
   return teile.join('\n');
 };
@@ -368,7 +368,7 @@ module.exports.startQuelle = startQuelle;
  * Die Portfolio-Kurve: Orchestrierung samt Rekonstruktion und Diagrammdaten.
  *
  * getPortfolioHistory() war 449 Zeilen und liegt seit Nachtrag 135 als
- * utils/portfolioHistory.ts + utils/portfolio/{kurve,diagrammdaten}.ts.
+ * src/finanzen/portfolioHistory.ts + src/finanzen/portfolio/{kurve,diagrammdaten}.ts.
  *
  * Sechster Helfer desselben Musters — siehe proxyThumbQuelle(): den GEGENSTAND
  * nennen, nicht den Ablageort.
@@ -376,8 +376,8 @@ module.exports.startQuelle = startQuelle;
 function portfolioQuelle() {
   const path = require('path'), fs = require('fs');
   const ROOT = path.join(__dirname, '..', '..');
-  const dir = path.join(ROOT, 'utils/portfolio');
-  const teile = [fs.readFileSync(path.join(ROOT, 'utils/portfolioHistory.ts'), 'utf8')];
+  const dir = path.join(ROOT, 'src/finanzen/portfolio');
+  const teile = [fs.readFileSync(path.join(ROOT, 'src/finanzen/portfolioHistory.ts'), 'utf8')];
   if (fs.existsSync(dir)) {
     for (const f of fs.readdirSync(dir).filter(x => x.endsWith('.ts'))) {
       teile.push(fs.readFileSync(path.join(dir, f), 'utf8'));
@@ -613,7 +613,7 @@ module.exports.einhaengung = einhaengung;
  * leerem Text GRUEN. Dort prueft der Test dann nichts mehr und sagt nichts.
  *
  * Genau so ist es in dieser Sitzung passiert: Beim Verschieben von
- * estimateFigPriceFromParts nach utils/marketPrice.ts zeigten mehrere Schnitte
+ * estimateFigPriceFromParts nach src/finanzen/marketPrice.ts zeigten mehrere Schnitte
  * ins Leere. Es fiel auf, WEIL dort `assert.match` stand. Mit `doesNotMatch`
  * waeren sie gruen geblieben.
  *

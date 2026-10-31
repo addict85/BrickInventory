@@ -56,7 +56,7 @@ Was der EIGENE Katalog ueber ein Teil weiss — Name, Kategorie, Bild.
    vorhanden ist?"
 
 Fuers MAPPING lautete die Antwort nein: loeseLokalAuf() in
-utils/wantedListe.ts loest zuerst lokal auf und fragt nur die offenen
+src/merkliste/wantedListe.ts loest zuerst lokal auf und fragt nur die offenen
 Nummern nach. Fuer Name und Bild lautete sie JA, und zwar GEMESSEN am
 laufenden Server: addManualPartIntern() fragte lookupPart(), sobald kein
 Name mitkam — auch bei Teil 3001 in Farbe 4, das mit Namen UND Farbbild im

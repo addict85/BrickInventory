@@ -12,7 +12,7 @@ import { runPriceRefresh } from './priceJob';
 import { bildNachlauf } from './bildNachlauf';
 import { aufraeumen, aufraeumenTaeglich } from './aufraeumen';
 import type { AuftragsArt } from '../utils/auftraege';
-import { kursauftrag } from '../utils/wechselkurse';
+import { kursauftrag } from '../src/finanzen/wechselkurse';
 
 /**
  * Welche Art wie bearbeitet wird. Die Nutzlast hat der Einsteller geschrieben.

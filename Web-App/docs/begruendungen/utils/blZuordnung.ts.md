@@ -85,7 +85,7 @@ Zwei Fragen, die nicht dasselbe sind
   „Mit welcher Nummer frage ich BrickLink?"      → blAbrufNummer, die wirksame
 
 Der Unterschied ist nicht Geschmack, er ist GEMESSEN: Als es nur die erste
-Form gab, fiel das Vorladen in utils/finance/preise.ts aus. Dort merkt sich
+Form gab, fiel das Vorladen in src/finanzen/rechnung/preise.ts aus. Dort merkt sich
 ein Nachschlagwerk die Antworten, und es merkt bewusst keine Fehlschlaege
 (ein Teil ohne Uebersetzung soll beim naechsten Mal wieder gefragt werden,
 damit ein Nachtrag-Job nicht zehn Minuten uebersehen wird). Eine leere bl_id
@@ -105,7 +105,7 @@ Bedeutungen passte. Jetzt sind sie getrennt, und zwar ausdruecklich.
 ```text
 Dasselbe fuer viele Nummern, in EINER Abfrage.
 
-Der Grund steht in utils/finance/preise.ts: Dort wurde gemessen, dass die
+Der Grund steht in src/finanzen/rechnung/preise.ts: Dort wurde gemessen, dass die
 Einzelabfrage bei 50 Teilen 50 Mal lief.
 
 @returns Abbildung rb_id → wirksame Nummer, fuer JEDE vorhandene Zeile —

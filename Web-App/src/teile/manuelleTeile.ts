@@ -8,9 +8,9 @@ import { csvGemeinsameFelder, csvZeilenAusAnfrage } from '../infra/csvExport';
 import * as db from '../../db/database';
 import { recordAcquisitionForDay } from '../bestand/acquisitions';
 import { withInventoryLock, bestandsSchluessel } from '../../db/txLock';
-import { kaufpreisAusEingabe, manuellerKaufpreis } from '../../utils/preisRegel';
+import { kaufpreisAusEingabe, manuellerKaufpreis } from '../finanzen/preisRegel';
 import { zustandFuerPreis } from '../konto/settings';
-import { resolvePartCondition, marktpreisMitHerkunft, getCurrentPartMarketPrice } from '../../utils/marketPrice';
+import { resolvePartCondition, marktpreisMitHerkunft, getCurrentPartMarketPrice } from '../finanzen/marketPrice';
 import { lookupPart } from '../../clients/rebrickable';
 import { farbliste, KEINE_FARBE } from '../../utils/farben';
 import { setzeLagerort, ortFuerNeuerfassung } from '../bestand/lagerort';
@@ -27,7 +27,7 @@ const getPartColorList = farbliste;
  */
 async function resolveManualPartPurchase(uid: number, { partNumber, colorId, unitPrice = null, condition = null }:
   { partNumber: string; colorId: number; unitPrice?: any; condition?: string | null }) {
-  // Die Regel steht in utils/preisRegel.ts — dort auch, warum ohne Marktpreis
+  // Die Regel steht in src/finanzen/preisRegel.ts — dort auch, warum ohne Marktpreis
   // eine 0 in der Stammzeile steht und NULL in der Erfassung. Hier bleibt nur,
   // was ein TEIL anders macht als eine Figur: der Schluessel der Abfrage.
   const r = await manuellerKaufpreis(uid, { unitPrice, condition },
@@ -262,7 +262,7 @@ async function updateManualPart(uid: number, partNumber: string, colorId: number
   }
   if (body.unit_price !== undefined) {
     // Die Regel („leer heisst Marktpreis", Zustand gestaffelt) steht in
-    // utils/preisRegel.ts — sie galt vorher zeichengleich hier und in
+    // src/finanzen/preisRegel.ts — sie galt vorher zeichengleich hier und in
     // routes/minifigs.ts. Hier bleibt nur, was sich unterscheidet: welche
     // Marktpreis-Abfrage und welche Tabelle.
     const { unitPrice } = await kaufpreisAusEingabe(
