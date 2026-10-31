@@ -1,6 +1,6 @@
 import fsp from 'fs/promises';
 import path from 'path';
-import * as db from '../db/database';
+import { teilbilder, figurenbilder } from '../src/katalog/bildlage';
 import { MINIFIG_IMAGES_DIR } from '../src/infra/appPaths';
 import { getMinifigInfo } from '../clients/rebrickable';
 import { logAndContinue, meldeUndWeiter } from '../src/infra/httpError';
@@ -34,9 +34,7 @@ export async function bilderAusKatalog(parts: PdfTeil[]): Promise<void> {
   for (const p of parts) { p.image_url = null; p.image_local = null; }
   const teile = [...new Set(parts.filter(p => !istFigur(p)).map(p => String(p.part_number)))];
   if (teile.length) {
-    const zeilen = await db.all<{ part_number: string; color_id: number; image_local: string | null; image_url: string | null }>(
-      `SELECT part_number, color_id, image_local, CASE WHEN bild_von IS NULL THEN image_url END AS image_url
-         FROM part_color_catalog WHERE part_number = ANY($1)`, [teile]);
+    const zeilen = await teilbilder(teile);
     const m = new Map(zeilen.map(r => [`${r.part_number}|${r.color_id}`, r] as const));
     for (const p of parts.filter(p => !istFigur(p))) {
       const z = m.get(`${p.part_number}|${p.color_id ?? KEINE_FARBE}`);
@@ -45,9 +43,7 @@ export async function bilderAusKatalog(parts: PdfTeil[]): Promise<void> {
   }
   const figuren = [...new Set(parts.filter(istFigur).map(p => String(p.part_number)))];
   if (!figuren.length) return;
-  const zeilen = await db.all<{ fig_number: string; image_local: string | null; image_url: string | null }>(
-    `SELECT fig_number, image_local, CASE WHEN bild_von IS NULL THEN image_url END AS image_url
-       FROM minifigs_catalog WHERE fig_number = ANY($1)`, [figuren]);
+  const zeilen = await figurenbilder(figuren);
   const m = new Map(zeilen.map(r => [r.fig_number, r] as const));
   for (const p of parts.filter(istFigur)) {
     const z = m.get(String(p.part_number));

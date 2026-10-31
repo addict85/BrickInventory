@@ -1,4 +1,4 @@
-import * as db from '../db/database';
+import { fuelleSetLuecken } from '../src/katalog/bildlage';
 import { getSetInfo } from '../clients/brickset';
 import { downloadSetInstructions, anzahlAnleitungen } from '../src/katalog/instructions';
 import { getLimitForApi, getRateLimitStatus } from '../src/finanzen/financeCalc';
@@ -31,14 +31,7 @@ async function bricksetNachlauf(n: Record<string, unknown>): Promise<void> {
   const info = await getSetInfo(sn);
   if (info) {
     // Nur Lücken im Katalog füllen; scheitert es, bleibt das Set namenlos — darum mit Protokoll.
-    await db.run(
-      `UPDATE set_catalog SET
-        name    = COALESCE(name, $1),    year     = COALESCE(year, $2),
-        theme   = COALESCE(theme, $3),   pieces   = COALESCE(pieces, $4),
-        minifigs = COALESCE(minifigs, $5)
-       WHERE set_number = $6`,
-      [info.name, info.year, info.theme, info.pieces, info.minifigs, sn]
-    ).catch(logAndContinue(`brickset-nachlauf:set ${sn}`));
+    await fuelleSetLuecken(sn, info).catch(logAndContinue(`brickset-nachlauf:set ${sn}`));
     console.log(`[brickset] Retry OK: ${sn}`);
   }
   if (await anzahlAnleitungen(sn) === 0) {

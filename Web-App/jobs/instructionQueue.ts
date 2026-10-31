@@ -5,7 +5,7 @@
  * einer Cloudflare-Sperre 5, 10, 15, 20 Minuten und dann bis zum nächsten Tag.
  * Ausführlich: docs/begruendungen/jobs/instructionQueue.ts.md#db
  */
-import * as db from '../db/database';
+import { mitSitzungsSperre } from '../db/txLock';
 import { downloadSetInstructions, letzterAbrufWarExtern, anzahlAnleitungen, scrapeInstructionsFromFallback } from '../src/katalog/instructions';
 import { fehlertext } from '../src/infra/httpError';
 import { alsAbrufFehler } from '../clients/abrufFehler';
@@ -35,14 +35,10 @@ function naechsterTag(jetzt = new Date()): Date {
  * Sperre, wartet dieser Auftrag einen Takt (auf eigener Verbindung, weil
  * Advisory-Locks an der Sitzung hängen).
  */
-async function mitSperre<T>(lauf: () => Promise<T>): Promise<T> {
-  const client = await db.pool.connect();
-  try {
-    const { rows } = await client.query('SELECT pg_try_advisory_lock($1, 0) AS ok', [LOCKS.ANLEITUNGS_QUEUE]);
-    if (!rows[0]?.ok) throw new AuftragVerschieben(new Date(Date.now() + TAKT_NACH_ABRUF_MS), 'Anleitungen laufen in einem anderen Prozess');
-    try { return await lauf(); }
-    finally { await client.query('SELECT pg_advisory_unlock($1, 0)', [LOCKS.ANLEITUNGS_QUEUE]); }
-  } finally { client.release(); }
+function mitSperre<T>(lauf: () => Promise<T>): Promise<T> {
+  return mitSitzungsSperre(LOCKS.ANLEITUNGS_QUEUE, lauf, () => {
+    throw new AuftragVerschieben(new Date(Date.now() + TAKT_NACH_ABRUF_MS), 'Anleitungen laufen in einem anderen Prozess');
+  });
 }
 
 async function meldeMonitor(setNumber: string): Promise<void> {

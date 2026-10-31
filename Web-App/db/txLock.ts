@@ -43,4 +43,18 @@ async function sperreHaushaltswaehrung(tx: DbSchnittstelle): Promise<void> {
   await tx.run("SELECT pg_advisory_xact_lock(hashtext('haushalt-waehrung'))");
 }
 
-export { withInventoryLock, bestandsSchluessel, sperreHaushaltswaehrung };
+/**
+ * Eine Sitzungssperre auf eigener Verbindung (Advisory-Locks hängen an der
+ * Sitzung); ist sie belegt, entscheidet `belegt`, was geschieht.
+ */
+async function mitSitzungsSperre<T>(schluessel: number, lauf: () => Promise<T>, belegt: () => never): Promise<T> {
+  const client = await db.pool.connect();
+  try {
+    const { rows } = await client.query('SELECT pg_try_advisory_lock($1, 0) AS ok', [schluessel]);
+    if (!rows[0]?.ok) belegt();
+    try { return await lauf(); }
+    finally { await client.query('SELECT pg_advisory_unlock($1, 0)', [schluessel]); }
+  } finally { client.release(); }
+}
+
+export { withInventoryLock, bestandsSchluessel, sperreHaushaltswaehrung, mitSitzungsSperre };

@@ -9,7 +9,7 @@ import { importiereTeile, fetchMissingBlIds } from '../src/katalog/partsImport';
 import { importiereFiguren } from '../src/katalog/minifigsImport';
 import { downloadSetInstructions } from '../src/katalog/instructions';
 import { logAndContinue } from '../src/infra/httpError';
-import * as db from '../db/database';
+import { fuelleSetLuecken } from '../src/katalog/bildlage';
 import { getSetInfo as bricksetSetInfo } from '../clients/brickset';
 import { anleitungEinreihen } from '../src/auftraege/anleitungsAuftrag';
 import { refreshPriceForSet } from './priceJob';
@@ -42,10 +42,7 @@ async function zieheNach(setNumber: string, userId: number, art: NacharbeitArt):
 async function bricksetMetadaten(setNumber: string): Promise<void> {
   const bs = await bricksetSetInfo(setNumber);
   if (!bs) return;
-  await db.run(
-    `UPDATE set_catalog SET name=COALESCE(name,$1), year=COALESCE(year,$2), theme=COALESCE(theme,$3),
-            pieces=COALESCE(pieces,$4), minifigs=COALESCE(minifigs,$5) WHERE set_number=$6`,
-    [bs.name, bs.year, bs.theme, bs.pieces, bs.minifigs, setNumber]);
+  await fuelleSetLuecken(setNumber, bs);
 }
 
 /** Die Bilder eines Sets, nachdem jemand seine Teileliste angesehen hat. */
