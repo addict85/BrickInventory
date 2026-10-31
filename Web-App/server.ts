@@ -38,6 +38,7 @@ import { renderIndexHtml } from './src/konto/indexHtml';
 import * as pgNotify from './db/pgNotify';
 import { registerImgProxy } from './routes/imgProxy';
 import { anmeldungAmEingang } from './routes/api_v1/middleware';
+import { idempotenz } from './src/idempotenz/http/middleware';
 import datenDateien = require('./routes/datenDateien');
 import apiV1Router = require('./routes/api_v1/index');
 import authRouter = require('./routes/auth');
@@ -354,6 +355,7 @@ app.get('/api/v1/health', async (req, res) => {
 // Der Schutz je Route bleibt als zweite Linie und kostet keinen zweiten Abruf.
 // Ausführlich: docs/begruendungen/server.ts.md#abschnitt-7
 app.use('/api/v1',          anmeldungAmEingang);
+app.use('/api/v1',          idempotenz);
 app.use('/api/v1',          apiV1Router);
 app.use('/api/v1/auth',     authRouter);
 
