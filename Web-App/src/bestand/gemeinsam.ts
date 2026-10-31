@@ -2,7 +2,7 @@ import * as db from '../../db/database';
 import { inKontowaehrung, kontowaehrungJoin } from './acquisitions';
 import { istErsatzteil } from '../infra/validate';
 import { asIds } from '../haushalt/haushalt';
-import { teilmengeJoin, teilmengeAus } from '../sets/bestandsmenge';
+import { teilmengeJoin, teilmengeAus } from '../../db/bestandsmenge';
 import { KEINE_FARBE } from '../infra/validate';
 
 /**

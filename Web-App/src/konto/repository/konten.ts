@@ -5,7 +5,6 @@ import * as db from '../../../db/database';
  * Die Routen in routes/auth.ts prüfen Eingaben und Rechte und schreiben die
  * Antwort; was in der Datenbank geschieht, steht hier an einer Stelle.
  */
-
 export type KontoKurz = { id: number; username: string; is_admin: number };
 
 export function kontoKurz(id: number): Promise<KontoKurz | undefined> {

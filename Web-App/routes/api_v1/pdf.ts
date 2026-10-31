@@ -11,7 +11,7 @@ import { registerSse } from '../../src/infra/sseRegistry';
 import _pdfFs from 'fs/promises';
 import _fsSync from 'fs';
 import { liesAuftrag, loescheAuftrag, pdfSchluessel, gueltigeAuftragsKennung, pdfDateiPfad, pdfAuftragStarten } from '../../src/auftraege/pdfAuftraege';
-import { AUFTRAG_STAND_KANAL } from '../../src/auftraege/auftraege';
+import { AUFTRAG_STAND_KANAL } from '../../src/auftraege/dienst';
 import { listen, unlisten } from '../../db/pgNotify';
 import { sendeFehler, fehlerText, antwortSprache } from '../../src/infra/fehlerTexte';
 const router = express.Router();

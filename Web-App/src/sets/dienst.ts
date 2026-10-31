@@ -16,7 +16,7 @@ import { fetchPrice, resolveSetCondition } from '../finanzen/financeCalc';
 import { neuestesInventar } from '../katalog/rbInventar';
 import { mitVersion, ohneVersion } from './setNummer';
 import { figurenAusKatalog } from '../katalog/minifigsImport';
-import { mengeSkalar } from './bestandsmenge';
+import { mengeSkalar } from '../../db/bestandsmenge';
 import { blJoin, blNummerSql } from '../katalog/blZuordnung';
 import { csvEinlesen, entschaerfungRueckgaengig, parseCsvDate, uebersprungenHinweis } from '../infra/csvExport';
 import { jobGet, jobSet, jobUpdate, emitJobStatus } from '../auftraege/importAuftrag';

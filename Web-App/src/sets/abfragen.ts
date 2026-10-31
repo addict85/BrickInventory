@@ -9,7 +9,7 @@ import { asIds } from '../haushalt/haushalt';
 import { clampPageSize, conditionFromAcquisitions, conditionsFromAcquisitions, withOwners } from '../bestand/gemeinsam';
 import { ausTabelle } from '../infra/validate';
 import { anleitungenZuSet, anleitungenZusammenlegen } from '../katalog/instructions';
-import { mengeJoin, mengeAus } from './bestandsmenge';
+import { mengeJoin, mengeAus } from '../../db/bestandsmenge';
 import { legeInPapierkorb } from '../bestand/papierkorb';
 
 /**
@@ -86,7 +86,7 @@ export async function getSets(userId: Blickfeld, query: any = {}) {
                MIN(c.pieces) AS pieces, MIN(c.minifigs) AS minifigs,
                -- Die Menge kommt aus den ERFASSUNGEN (Migration 0036 hat
                -- sets.quantity geloescht). Die gruppierte Quelle haengt
-               -- src/sets/bestandsmenge.ts an — hier stand SUM(s.quantity).
+               -- db/bestandsmenge.ts an — hier stand SUM(s.quantity).
                SUM(${mengeAus('sm', 0)})::int AS quantity,
                MIN(c.image_url) AS image_url, MIN(c.image_local) AS image_local,
                MIN(s.added_at) AS added_at,

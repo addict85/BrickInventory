@@ -95,7 +95,7 @@ test('Bewertung und Setmenge ohne Zeile-für-Zeile-Abfragen', { concurrency: 1 }
   await t.test('die Setmenge liest nur die Erfassungen der gefragten Konten', async () => {
     await haeltSet(db, uid, `bw${ID}-1`, 2);
     for (let i = 0; i < 40; i++) await haeltSet(db, fremd, `bw${ID}x${i}-1`, 1);
-    const { mengeJoin, mengeAus } = _req('src/sets/bestandsmenge.js');
+    const { mengeJoin, mengeAus } = _req('db/bestandsmenge.js');
     const plan = await db.get(
       `EXPLAIN (ANALYZE, FORMAT JSON)
        SELECT s.set_number, ${mengeAus('sm', 0)} AS menge

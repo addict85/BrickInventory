@@ -1,11 +1,10 @@
 import * as db from '../../../db/database';
 import { randomUUID } from 'node:crypto';
 import { notify } from '../../../db/pgNotify';
-import { AuftragsArt, Einstellen, AUFTRAG_KANAL, SPALTEN, AuftragsZeile, alsZeile, Belegung, Fortschritt, AUFTRAG_STAND_KANAL, meldeStand, wartezeitSek, Pause, AuftragsStatus } from '../auftraege';
+import type { AuftragsArt, Einstellen, AuftragsZeile, Belegung, Fortschritt, Pause, AuftragsStatus } from '../auftraege';
 import { imNamenVon } from '../../infra/anfrageKonto';
 
 /** @returns die Kennung, oder null, wenn derselbe Auftrag schon offen steht */
-
 export async function stelleAuftragEin(art: AuftragsArt, nutzlast: Record<string, unknown>,
   o: Einstellen = {}): Promise<string | null> {
   const z = await db.get(
@@ -24,7 +23,6 @@ export async function stelleAuftragEin(art: AuftragsArt, nutzlast: Record<string
  * pausierte Art wartet; von einer exklusiven läuft höchstens einer.
  * SKIP LOCKED: Zwei Worker greifen nie dieselbe Zeile.
  */
-
 export async function belegeAuftrag(arten: readonly string[], fristSek: number,
   belegtVon: string = randomUUID(),
   exklusiv: readonly string[] = []): Promise<AuftragsZeile | null> {
@@ -46,7 +44,6 @@ export async function belegeAuftrag(arten: readonly string[], fristSek: number,
   return z ? alsZeile(z) : null;
 }
 /** Frist verlängern. @returns false, wenn der Auftrag nicht mehr diesem Lauf gehört (auch: abgebrochen) */
-
 export async function lebenszeichen(a: Belegung, fristSek: number): Promise<boolean> {
   const r = await db.run(
     `UPDATE auftraege SET frist_bis = NOW() + make_interval(secs => $3), aktualisiert = NOW()
@@ -54,7 +51,6 @@ export async function lebenszeichen(a: Belegung, fristSek: number): Promise<bool
   return (r?.changes ?? 0) > 0;
 }
 /** Den Stand für die Anzeige setzen; zählt zugleich als Lebenszeichen. */
-
 export async function setzeFortschritt(a: Belegung, f: Fortschritt, fristSek: number): Promise<boolean> {
   const z = await db.get(
     `UPDATE auftraege SET fortschritt = $3, frist_bis = NOW() + make_interval(secs => $4), aktualisiert = NOW()
@@ -64,7 +60,6 @@ export async function setzeFortschritt(a: Belegung, f: Fortschritt, fristSek: nu
   return !!z;
 }
 /** PDF und CSV tragen ganze Listen; erledigt braucht die niemand mehr. */
-
 export async function erledigt(a: Belegung): Promise<boolean> {
   const z = await db.get(
     `UPDATE auftraege SET status = 'erledigt', belegt_von = NULL, fehler = NULL, frist_bis = NULL, aktualisiert = NOW(),
@@ -75,7 +70,6 @@ export async function erledigt(a: Belegung): Promise<boolean> {
   return !!z;
 }
 /** @returns true, wenn es der letzte Versuch war und der Auftrag jetzt 'fehler' ist */
-
 export async function fehlgeschlagen(a: AuftragsZeile, fehler: string): Promise<boolean> {
   const endgueltig = a.versuche >= a.max_versuche;
   const z = await db.get(
@@ -91,7 +85,6 @@ export async function fehlgeschlagen(a: AuftragsZeile, fehler: string): Promise<
  * Versuch nicht, bleibt die Zahl der Versuche, wie sie vor dem Belegen war.
  * @returns true, wenn der Versuch zählte und es der letzte war (dann 'fehler')
  */
-
 export async function verschoben(a: AuftragsZeile, bis: Date, grund: string, zaehlt: boolean): Promise<boolean> {
   const endgueltig = zaehlt && a.versuche >= a.max_versuche;
   const z = await db.get(
@@ -103,7 +96,6 @@ export async function verschoben(a: AuftragsZeile, bis: Date, grund: string, zae
   return endgueltig && !!z;
 }
 /** Beim Herunterfahren zurückgeben: sofort wieder fällig, der Versuch zählt nicht. */
-
 export async function gibZurueck(a: Belegung): Promise<void> {
   await db.run(
     `UPDATE auftraege SET status = 'offen', versuche = GREATEST(versuche - 1, 0), belegt_von = NULL,
@@ -111,7 +103,6 @@ export async function gibZurueck(a: Belegung): Promise<void> {
       WHERE id = $1 AND belegt_von = $2 AND status = 'laeuft'`, [a.id, a.belegt_von]);
 }
 /** Erledigte und abgebrochene nach sieben, gescheiterte nach dreissig Tagen entfernen. */
-
 export async function raeumeErledigteAuf(): Promise<number> {
   const r = await db.run(
     `DELETE FROM auftraege
@@ -123,7 +114,6 @@ export async function liesPause(art: AuftragsArt): Promise<Pause | null> {
   return (await db.get('SELECT art, bis, grund, stufe FROM auftrag_pausen WHERE art = $1', [art])) ?? null;
 }
 /** Ohne `stufe` bleibt die bisherige; sie zählt wiederholte Drosselungen (Cloudflare). */
-
 export async function pausiereArt(art: AuftragsArt, bis: Date, grund: string, stufe?: number): Promise<void> {
   await db.run(
     `INSERT INTO auftrag_pausen (art, bis, grund, stufe) VALUES ($1, $2, $3, COALESCE($4, 0))
@@ -136,7 +126,6 @@ export async function beendePause(art: AuftragsArt): Promise<void> {
 }
 // ── Für die Verwaltung ───────────────────────────────────────────────────────
 /** Einen offenen oder laufenden Auftrag abbrechen; ein laufender hört bei seinem nächsten Lebenszeichen auf. */
-
 export async function brichAb(id: string): Promise<AuftragsZeile | null> {
   const z = await db.get(
     `UPDATE auftraege SET status = 'abgebrochen', frist_bis = NULL, aktualisiert = NOW(),
@@ -146,7 +135,6 @@ export async function brichAb(id: string): Promise<AuftragsZeile | null> {
   return z ? alsZeile(z) : null;
 }
 /** Einen gescheiterten oder abgebrochenen Auftrag neu einstellen, mit allen Versuchen. */
-
 export async function wiederhole(id: string): Promise<boolean> {
   const r = await db.run(
     `UPDATE auftraege a SET status = 'offen', versuche = 0, fehler = NULL, faellig_ab = NOW(), belegt_von = NULL,
@@ -157,14 +145,12 @@ export async function wiederhole(id: string): Promise<boolean> {
   return (r?.changes ?? 0) > 0;
 }
 /** Offene Aufträge einer Art entfernen; ein geplanter Termin bleibt. @returns wie viele */
-
 export async function leereArt(art: AuftragsArt): Promise<number> {
   const r = await db.run(
     `DELETE FROM auftraege WHERE art = $1 AND status = 'offen' AND (schluessel IS NULL OR schluessel NOT LIKE 'plan:%')`, [art]);
   return r?.changes ?? 0;
 }
 /** Offene Aufträge einer Art (oder eines Schlüssels) jetzt fällig machen. @returns wie viele */
-
 export async function zieheVor(art: AuftragsArt, schluessel?: string): Promise<number> {
   const r = await db.run(
     `UPDATE auftraege SET faellig_ab = NOW(), aktualisiert = NOW()
@@ -173,7 +159,6 @@ export async function zieheVor(art: AuftragsArt, schluessel?: string): Promise<n
   return r?.changes ?? 0;
 }
 /** Wie viele Aufträge einer Art in welchem Status stehen. */
-
 export async function zaehleArt(art: AuftragsArt): Promise<Record<AuftragsStatus, number>> {
   const zeilen = await db.all<{ status: AuftragsStatus; n: number; }>(
     'SELECT status, COUNT(*)::int AS n FROM auftraege WHERE art = $1 GROUP BY status', [art]);
@@ -187,9 +172,27 @@ export async function zaehleArt(art: AuftragsArt): Promise<Record<AuftragsStatus
  * Anteil am Fremdkontingent (src/katalog/apiKontingent.ts). Die Rolle gilt, wie sie
  * jetzt ist, nicht wie beim Einstellen.
  */
-
 export async function imNamenDesAuftrags<T>(a: Pick<AuftragsZeile, 'user_id'>, f: () => Promise<T>): Promise<T> {
   if (a.user_id == null) return f();
   const u = await db.get<{ is_admin: number | boolean; }>('SELECT is_admin FROM users WHERE id = $1', [a.user_id]);
   return imNamenVon({ apiUser: { user_id: a.user_id, is_admin: u?.is_admin === true || Number(u?.is_admin) === 1 ? 1 : 0 } }, f);
+}
+/**
+ * Die Auftragstabelle (Migrationen 0066, 0080): jede Hintergrundarbeit als
+ * Zeile. Einstellen geht aus jedem Prozess, abgearbeitet wird im Job-Prozess
+ * (jobs/auftragsWorker.ts). Das NOTIFY weckt ihn sofort; geht es verloren,
+ * findet ihn sein Takt.
+ */
+export const AUFTRAG_KANAL = 'auftraege';
+/** Ein Auftrag hat seinen Stand geändert; die Nutzlast ist sein Schlüssel oder seine Kennung. */
+export const AUFTRAG_STAND_KANAL = 'auftrag_stand';
+export const SPALTEN = 'id, art, nutzlast, user_id, schluessel, status, versuche, max_versuche, belegt_von, fehler';
+export const alsZeile = (z: any): AuftragsZeile => ({ ...z, id: String(z.id) });
+/** Ein Statuswechsel weckt, wer auf den Auftrag wartet (z. B. den PDF-Statusstrom). */
+export async function meldeStand(z: { s: string; } | undefined): Promise<void> {
+  if (z) await notify(AUFTRAG_STAND_KANAL, z.s);
+}
+/** Wartezeit vor dem nächsten Versuch: 30 s, verdoppelt je Versuch, höchstens eine Stunde. */
+export function wartezeitSek(versuch: number): number {
+  return Math.min(3600, 30 * 2 ** Math.max(0, versuch - 1));
 }

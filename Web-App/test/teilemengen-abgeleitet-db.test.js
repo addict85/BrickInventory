@@ -20,12 +20,12 @@
  * Beide waren Abschriften. GEMESSEN: src/katalog/partsImport.ts schrieb denselben
  * Wert in DERSELBEN Schleife nach `parts.quantity` UND nach
  * `set_parts_catalog.quantity`; src/katalog/minifigsImport.ts wortgleich. Für die
- * manuellen Positionen war mengeNeuRechnen() in src/sets/bestandsmenge.ts der
+ * manuellen Positionen war mengeNeuRechnen() in db/bestandsmenge.ts der
  * einzige Schreiber — und der rechnete nichts anderes als die Summe der
  * Erfassungen.
  *
  * Migration 0038 löscht beide Spalten. Die Fallunterscheidung steht einmal,
- * in src/sets/bestandsmenge.ts (teilmengeJoin/teilmengeAus), und wird von den
+ * in db/bestandsmenge.ts (teilmengeJoin/teilmengeAus), und wird von den
  * Lesestellen eingesetzt — dieselbe Bauart wie mengeJoin/mengeAus für die
  * Sets.
  *
@@ -236,7 +236,7 @@ test('niemand schreibt die Stückzahl eines Teils oder einer Figur mehr', () => 
   // Die Muster finden jetzt nichts — das ist der Punkt, sagt aber allein noch
   // nicht, dass sie ueberhaupt etwas finden KOENNTEN. Also an Zeilen
   // nachgewiesen, die in genau dieser Form im Baum standen (die ersten drei
-  // woertlich aus src/sets/bestandsmenge.ts und src/katalog/partsImport.ts, Fassung vor
+  // woertlich aus db/bestandsmenge.ts und src/katalog/partsImport.ts, Fassung vor
   // 0038).
   const proben = [
     ['UPDATE parts SET quantity = $1 WHERE user_id=$2', 'setzt parts'],
@@ -521,7 +521,7 @@ test('die Lesewege liefern die Stückzahl aus Katalog und Erfassungen',
   //
   // Eine manuelle Bestandszeile ohne Erfassung sollte es nicht geben
   // (Migration 0035 traegt fuer jede eine nach), aber sie darf die Liste
-  // nicht LEEREN — deshalb LEFT JOIN in src/sets/bestandsmenge.ts. Sie bedeutet
+  // nicht LEEREN — deshalb LEFT JOIN in db/bestandsmenge.ts. Sie bedeutet
   // dann null Stueck, nicht eines.
   await db.run(`DELETE FROM part_acquisitions WHERE user_id=$1 AND part_number='3070b'`,
     [haupt]);

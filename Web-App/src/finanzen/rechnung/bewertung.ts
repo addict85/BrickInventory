@@ -15,7 +15,7 @@ import { resolveImageLocal, proxyImageUrl } from '../../katalog/bilder/images';
 import { valueSet, valueAcquisitionRows, weightedPurchase, pnlPct as calcPnlPct, pnlProzent } from '../setValue';
 import { mitVersion } from '../../sets/setNummer';
 import { effectiveCondition } from './zustand';
-import { mengeJoin, mengeAus } from '../../sets/bestandsmenge';
+import { mengeJoin, mengeAus } from '../../../db/bestandsmenge';
 import {
   DEFAULT_PRICE_CONDITION, PRICE_CACHE_COLS, parallelLimit,
   fetchPrice, fetchPartPrice, fetchMinifigPrice, ladeBlNummernVor,
@@ -26,7 +26,7 @@ import { ladeSetErfassungen, kaufpreisSpalten, zaehle } from './abfragen';
 import { schaetzeFigurenpreis } from '../marketPrice';
 import { withOwners } from '../../bestand/gemeinsam';
 import { blJoin, blNummerSql } from '../../katalog/blZuordnung';
-import { teilmengeJoin, teilmengeAus } from '../../sets/bestandsmenge';
+import { teilmengeJoin, teilmengeAus } from '../../../db/bestandsmenge';
 import { KEINE_FARBE } from '../../infra/validate';
 import { aufRappen, inZehntel4 } from '../../infra/geld';
 

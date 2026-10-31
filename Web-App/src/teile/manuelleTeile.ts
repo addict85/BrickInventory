@@ -155,7 +155,7 @@ async function addManualPartIntern(uid: number, rawBody: any) {
     // Kein Nachrechnen mehr: Die Stückzahl steht seit Migration 0038
     // nicht an der Zeile. Hier stand mengeNeuRechnen(), das sie aus den
     // Erfassungen ableitete und SCHRIEB — jetzt rechnet sie das Lesen
-    // (src/sets/bestandsmenge.ts, teilmengeJoin/teilmengeAus).
+    // (db/bestandsmenge.ts, teilmengeJoin/teilmengeAus).
 
     return { action: 'updated', part_number };
   }

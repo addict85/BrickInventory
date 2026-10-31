@@ -243,7 +243,7 @@ lautlos.
 Jetzt ist die Reihenfolge umgekehrt und das Verschlucken weg: Geht das
 Angleichen schief, hat sich NICHTS geaendert, und der Fehler wird
 gemeldet. Die Spalte schreibt mengeNeuRechnen() danach aus den
-Erfassungen (src/sets/bestandsmenge.ts).
+Erfassungen (db/bestandsmenge.ts).
 ```
 
 <a id="updatemanualpart-2"></a>

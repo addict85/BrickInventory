@@ -6,7 +6,6 @@ import * as db from '../../../db/database';
  * dort nur Konfiguration liegt — ein Export, eine Sicherung oder ein Blick in
  * die Einstellungen zeigt dann keine Zwischenstände von Jobs (Migration 0063).
  */
-
 export async function liesZustand(schluessel: string): Promise<string | null> {
   const z = await db.get('SELECT wert FROM laufzustand WHERE schluessel = $1', [schluessel]);
   return z ? String(z.wert) : null;

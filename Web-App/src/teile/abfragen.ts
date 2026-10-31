@@ -20,7 +20,7 @@ import { getGlobalSetting } from '../konto/settings';
 import { neuestesInventar } from '../katalog/rbInventar';
 import { mitVersion, ohneVersion } from '../sets/setNummer';
 import { merkeBlFarbnummer, blFarbnummerAus, blJoin, blNummerSql } from '../katalog/blZuordnung';
-import { mengeJoin, mengeAus, teilmengeJoin, teilmengeAus } from '../sets/bestandsmenge';
+import { mengeJoin, mengeAus, teilmengeJoin, teilmengeAus } from '../../db/bestandsmenge';
 
 /**
  * Leseabfragen für Teile — inklusive der Ausweichebenen (CSV-Zwischenspeicher,

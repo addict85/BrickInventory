@@ -101,7 +101,7 @@ in diesem Baum schon passiert — der Lagerort verschwand so aus der
 Set-Detailansicht (handlers/sets.ts).
 
 Die Menge kommt nicht mehr von hier: Migration 0036 hat die Spalte
-geloescht, sie wird aus den Erfassungen gerechnet (src/sets/bestandsmenge.ts).
+geloescht, sie wird aus den Erfassungen gerechnet (db/bestandsmenge.ts).
 Hier sind die Erfassungen gleich darunter ohnehin zur Hand — die Summe
 steht in `all`.
 ```

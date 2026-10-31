@@ -5,7 +5,6 @@
  * - 429 response: {"detail": "Request was throttled. Expected available in X seconds."}
  * - On 429: parse wait time from response and back off
  */
-
 export class RateLimiter {
   maxRequests: number;
   windowMs: number;

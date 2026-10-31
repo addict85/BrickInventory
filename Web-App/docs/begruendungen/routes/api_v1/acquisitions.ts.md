@@ -73,12 +73,12 @@ in ihre Liste.
 
 ```text
 Die Stueckzahl der Bestandszeile aus den Erfassungen — und zwar ueber
-src/sets/bestandsmenge.ts, die einzige Stelle, die sie schreibt.
+db/bestandsmenge.ts, die einzige Stelle, die sie schreibt.
 
 Hier stand `cfg.parentQuantitySql`: je Elementart eine eigene Anweisung,
 dreimal dieselbe Rechnung. Daneben gab es SIEBEN weitere Schreibstellen,
 die die Spalte fortschrieben — und sie sind auseinandergelaufen (der Befund
-steht in src/sets/bestandsmenge.ts).
+steht in db/bestandsmenge.ts).
 ```
 
 <a id="withsetaggregate-ownerreq"></a>

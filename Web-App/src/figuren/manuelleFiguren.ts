@@ -119,7 +119,7 @@ async function addManualFigIntern(uid: number, body: any) {
     // Erfassungsdatum. Gleicher Fehler wie zuvor bei den manuellen Teilen.
     // Die Menge wird NICHT hier fortgeschrieben: Die Erfassung unten ist die
     // Wahrheit, und mengeNeuRechnen() leitet die Spalte daraus ab
-    // (src/sets/bestandsmenge.ts). Hier stand `quantity = quantity + $1`.
+    // (db/bestandsmenge.ts). Hier stand `quantity = quantity + $1`.
     const re = await resolveManualFigPurchase(uid, {
       figNumber: num, blFigNumber: blNum, unitPrice: unit_price, condition,
     });
@@ -135,7 +135,7 @@ async function addManualFigIntern(uid: number, body: any) {
     // Kein Nachrechnen mehr: Die Stückzahl steht seit Migration 0038
     // nicht an der Zeile. Hier stand mengeNeuRechnen(), das sie aus den
     // Erfassungen ableitete und SCHRIEB — jetzt rechnet sie das Lesen
-    // (src/sets/bestandsmenge.ts, teilmengeJoin/teilmengeAus).
+    // (db/bestandsmenge.ts, teilmengeJoin/teilmengeAus).
 
     return { action: 'updated', fig_number: num };
   }

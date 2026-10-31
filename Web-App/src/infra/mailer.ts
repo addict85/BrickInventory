@@ -492,7 +492,6 @@ export interface AlarmMailDaten {
  * Einmal sagen, warum der Knopf fehlt.
  * Ausführlich: docs/begruendungen/src/infra/mailer.ts.md#bauealarmmail
  */
-
 export async function baueAlarmMail(d: AlarmMailDaten): Promise<{ subject: string; text: string; html: string }> {
   const theme = await getMailTheme();
   const de = d.lang !== 'en';

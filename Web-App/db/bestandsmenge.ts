@@ -1,6 +1,6 @@
 /**
  * Die Stückzahl eines Sets — abgeleitet, nicht gespeichert.
- * Ausführlich: docs/begruendungen/src/sets/bestandsmenge.ts.md#abschnitt
+ * Ausführlich: docs/begruendungen/db/bestandsmenge.ts.md#abschnitt
  */
 
 /**
@@ -25,7 +25,7 @@ export function mengeSkalar(bezug: string): string {
 
 /**
  * Stückzahl als gruppierte JOIN-Quelle, fuer Abfragen ueber viele Zeilen.
- * Ausführlich: docs/begruendungen/src/sets/bestandsmenge.ts.md#mengejoin
+ * Ausführlich: docs/begruendungen/db/bestandsmenge.ts.md#mengejoin
  * @param bezug Alias der Zeile, zu der die Menge gehoert.
  * @param alias Name der JOIN-Quelle; der Aufrufer liest daraus `<alias>.menge`.
  * @param konten Bedingung auf das Konto, z. B. `= ANY($1)`. Ohne sie summiert
@@ -44,7 +44,7 @@ export function mengeJoin(bezug: string, alias = 'sm', konten?: string): string 
 
 /**
  * Die Mengenspalte zur JOIN-Quelle aus [mengeJoin].
- * Ausführlich: docs/begruendungen/src/sets/bestandsmenge.ts.md#mengeaus
+ * Ausführlich: docs/begruendungen/db/bestandsmenge.ts.md#mengeaus
  * @param fehlt Was gilt, wenn es keine Erfassung gibt. 0 fuer eine Stueckzahl,
  */
 export function mengeAus(alias = 'sm', fehlt: 0 | 1 = 0): string {
@@ -53,7 +53,7 @@ export function mengeAus(alias = 'sm', fehlt: 0 | 1 = 0): string {
 
 /**
  * Die Stückzahl eines Sets über ein ganzes BLICKFELD, als fertige Abfrage.
- * Ausführlich: docs/begruendungen/src/sets/bestandsmenge.ts.md#mengesummesql
+ * Ausführlich: docs/begruendungen/db/bestandsmenge.ts.md#mengesummesql
  * @param konten 'eines' für eine Konto-ID, 'blickfeld' für eine Liste.
  */
 export function mengeSummeSql(konten: 'eines' | 'blickfeld'): string {
@@ -64,8 +64,8 @@ export function mengeSummeSql(konten: 'eines' | 'blickfeld'): string {
              AND a.set_number = $2`;
 }
 
-import * as db from '../../db/database';
-import { colorId } from '../infra/validate';
+import * as db from './database';
+import { colorId } from '../src/infra/validate';
 
 /**
  * Was ein Leser bzw. Schreiber hier können muss, und nicht mehr. `any` wäre
@@ -77,7 +77,7 @@ type Schreiber = { get: (sql: string, params?: unknown[]) => Promise<any> };
 
 /**
  * Die Stückzahl EINER Set-Zeile — als Zahl, nicht als SQL-Schnipsel.
- * Ausführlich: docs/begruendungen/src/sets/bestandsmenge.ts.md#mengedessets
+ * Ausführlich: docs/begruendungen/db/bestandsmenge.ts.md#mengedessets
  */
 export async function mengeDesSets(
   userId: number,
@@ -93,7 +93,7 @@ export async function mengeDesSets(
 
 // Richtig, und es war ein ZWISCHENSTAND mit Ansage: Die Spalte trug ZWEI
 // Bedeutungen, und deshalb ging sie nicht mit sets.quantity zusammen weg.
-// Ausführlich: docs/begruendungen/src/sets/bestandsmenge.ts.md#bestandsart
+// Ausführlich: docs/begruendungen/db/bestandsmenge.ts.md#bestandsart
 
 /** Welcher Bestand. Sets stehen hier nicht: ihre Spalte ist seit 0036 weg. */
 export type Bestandsart = 'part' | 'fig';
@@ -123,7 +123,7 @@ const ART = {
 
 /**
  * Die beiden JOIN-Quellen fuer die Stückzahl einer Bestandszeile.
- * Ausführlich: docs/begruendungen/src/sets/bestandsmenge.ts.md#teilmengejoin
+ * Ausführlich: docs/begruendungen/db/bestandsmenge.ts.md#teilmengejoin
  * @param bezug Alias der Bestandszeile, z. B. `p` oder `m`
  * @param alias Grundname; angelegt werden `<alias>_e` (Erfassungen) und
  * @param konten wie bei mengeJoin: schränkt die Erfassungen auf das Blickfeld ein
@@ -150,7 +150,7 @@ export function teilmengeJoin(bezug: string, art: Bestandsart, alias = 'tm', kon
 
 /**
  * Die Stückzahl der Bestandszeile — die Fallunterscheidung selbst.
- * Ausführlich: docs/begruendungen/src/sets/bestandsmenge.ts.md#teilmengeaus
+ * Ausführlich: docs/begruendungen/db/bestandsmenge.ts.md#teilmengeaus
  */
 export function teilmengeAus(bezug: string, _art: Bestandsart, alias = 'tm'): string {
   return `CASE WHEN COALESCE(${bezug}.source, 'set') = 'manual'
@@ -160,7 +160,7 @@ export function teilmengeAus(bezug: string, _art: Bestandsart, alias = 'tm'): st
 
 /**
  * Die Stückzahl EINER manuellen Position — als Zahl, nicht als Schnipsel.
- * Ausführlich: docs/begruendungen/src/sets/bestandsmenge.ts.md#mengederposition
+ * Ausführlich: docs/begruendungen/db/bestandsmenge.ts.md#mengederposition
  */
 export async function mengeDerPosition(
   art: Bestandsart,

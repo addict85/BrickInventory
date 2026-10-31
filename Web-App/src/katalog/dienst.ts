@@ -11,7 +11,7 @@ import { downloadSetImage } from './bilder/setImages';
 import { ausTabelle } from '../infra/validate';
 import { neuestesInventar } from './rbInventar';
 import { mitVersion } from '../sets/setNummer';
-import { mengeJoin, mengeAus } from '../sets/bestandsmenge';
+import { mengeJoin, mengeAus } from '../../db/bestandsmenge';
 import { nacharbeit } from '../auftraege/nacharbeit';
 
 // ── Theme-Baum-Cache ─────────────────────────────────────────────────────────

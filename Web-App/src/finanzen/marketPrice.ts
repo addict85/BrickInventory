@@ -14,7 +14,6 @@ import { KEINE_FARBE } from '../infra/validate';
  * Der aktuelle Marktpreis eines Sets.
  * Ausführlich: docs/begruendungen/src/finanzen/marketPrice.ts.md#getcurrentmarketprice
  */
-
 export async function getCurrentMarketPrice(setNumber: string, userId: number, condition: string | null = null) {
   try {
     const currencyRow = await db.get('SELECT value FROM user_settings WHERE user_id=$1 AND key=$2', [userId, 'currency']);

@@ -5,7 +5,6 @@ import * as db from '../../../db/database';
  * Bilder, die es beim CDN nicht gibt — EINMAL gemerkt, für alle Prozesse.
  * Ausführlich: docs/begruendungen/src/katalog/bilder/imageMisses.ts.md#erneut-pruefen-ms
  */
-
 const ERNEUT_PRUEFEN_MS = 7 * 24 * 60 * 60 * 1000;
 
 /**

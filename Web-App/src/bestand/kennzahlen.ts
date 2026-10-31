@@ -2,14 +2,13 @@ import { meldeUndLiefere } from '../infra/httpError';
 import * as db from '../../db/database';
 import { asIds } from '../haushalt/haushalt';
 import { getGlobalSetting } from '../konto/settings';
-import { mengeJoin, mengeAus, teilmengeJoin, teilmengeAus } from '../sets/bestandsmenge';
+import { mengeJoin, mengeAus, teilmengeJoin, teilmengeAus } from '../../db/bestandsmenge';
 
 /**
  * Die Kennzahlen der Übersichtsseite — spannen über alle drei Domänen und
  * gehören deshalb in keine davon.
  * Ausführlich: docs/begruendungen/src/bestand/kennzahlen.ts.md#getstats
  */
-
 export async function getStats(userId: number | number[]) {
   // Blickfeld statt einer einzelnen ID: Ein Hauptkonto sieht (und ändert)
   // auch die Daten seiner Unterkonten, alle anderen nur ihre eigenen. Die

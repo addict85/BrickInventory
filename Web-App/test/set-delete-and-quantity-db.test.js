@@ -86,7 +86,7 @@ test('die Mengen-Multiplikation steht an allen Stellen', () => {
   // Formel: Hier stand `COALESCE(s.quantity, ?1)`, und die Spalte ist mit
   // Migration 0036 weg. Die „1" ist dieselbe geblieben — sie heisst „Set
   // nicht im Bestand, Teil trotzdem zaehlen" und ist der zweite Parameter
-  // von mengeAus() (src/sets/bestandsmenge.ts).
+  // von mengeAus() (db/bestandsmenge.ts).
   const stellen = (h.match(/mengeAus\('sm', ?1\)/g) || []).length;
   assert.ok(stellen >= 3,
     `nur ${stellen} Stellen multiplizieren mit der Setanzahl — erwartet werden ` +

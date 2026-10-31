@@ -2,7 +2,6 @@
  * Der Finanzteil — eine Tuer fuer alle Aufrufstellen.
  * Ausführlich: docs/begruendungen/src/finanzen/financeCalc.ts.md#abschnitt
  */
-
 export {
   DEFAULT_PRICE_CONDITION, PRICE_CACHE_COLS,
   speicherePreis, cacheUsable, preisAusCache,

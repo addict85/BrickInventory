@@ -123,7 +123,7 @@ export async function moveSetBetweenAccounts(
     // Keine Mengenaenderung hier: Die Erfassungen wandern gleich darunter, und
     // mengeNeuRechnen() leitet die Spalte daraus ab. Hier stand
     // `quantity = quantity + $1` — die zweite Schreibrichtung, siehe
-    // src/sets/bestandsmenge.ts.
+    // db/bestandsmenge.ts.
   } else {
     // Stammdaten mitnehmen (Name, Jahr, Bild …) — sie beschreiben das Set,
     // nicht das Exemplar, und ein erneuter Katalogabruf wäre unnötig.
@@ -218,7 +218,7 @@ export async function moveManualAcquisition(
 
   if (dst) {
     // Keine Mengenaenderung hier: Die Erfassung wandert gleich darunter, und
-    // mengeNeuRechnen() leitet die Spalte daraus ab (src/sets/bestandsmenge.ts).
+    // mengeNeuRechnen() leitet die Spalte daraus ab (db/bestandsmenge.ts).
   } else if (isPart) {
     // Nur noch Menge und Nummer
     // Die Beschreibung — Name, Farbe, Bild — stand hier einmal mit in der
@@ -257,7 +257,7 @@ export async function moveManualAcquisition(
   // Kein Nachrechnen mehr: Die Stückzahl steht seit Migration 0038
   // nicht an der Zeile. Hier stand mengeNeuRechnen(), das sie aus den
   // Erfassungen ableitete und SCHRIEB — jetzt rechnet sie das Lesen
-  // (src/sets/bestandsmenge.ts, teilmengeJoin/teilmengeAus).
+  // (db/bestandsmenge.ts, teilmengeJoin/teilmengeAus).
 
   if (remaining > 0) {
     return { quantity: movingQty, merged: !!dst, source_emptied: false };

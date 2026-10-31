@@ -16,7 +16,7 @@ import { loescheManuellesTeil, loescheManuelleFigur } from './gemeinsam';
 import { fehlerWerfen } from '../infra/fehlerTexte';
 import type { FehlerCode } from '../infra/fehlerTexte';
 import { blAbrufNummer } from '../katalog/blZuordnung';
-import { mengeDesSets, mengeDerPosition } from '../sets/bestandsmenge';
+import { mengeDesSets, mengeDerPosition } from '../../db/bestandsmenge';
 import { bestandsMenge } from '../infra/validate';
 
 export type ErfassungsArt = 'set' | 'part' | 'fig';

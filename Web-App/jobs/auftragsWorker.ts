@@ -1,8 +1,8 @@
 import { randomUUID } from 'crypto';
 import {
-  AUFTRAG_KANAL, 
   type AuftragsArt, type AuftragsZeile, type Fortschritt,
 } from '../src/auftraege/auftraege';
+import { AUFTRAG_KANAL } from '../src/auftraege/dienst';
 import { imNamenDesAuftrags } from '../src/auftraege/dienst';
 import { gibZurueck } from '../src/auftraege/dienst';
 import { verschoben } from '../src/auftraege/dienst';

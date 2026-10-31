@@ -19,7 +19,7 @@ import { stelleAuftragEin } from '../auftraege/dienst';
 import { normalisiereSetNummer, moeglicheSetNummer } from './setNummer';
 import { fehlerWerfen } from '../infra/fehlerTexte';
 import { setzeLagerort, ortFuerNeuerfassung } from '../bestand/lagerort';
-import { mengeSummeSql } from './bestandsmenge';
+import { mengeSummeSql } from '../../db/bestandsmenge';
 import { bestandsMenge } from '../infra/validate';
 import { resolveSetCondition } from '../finanzen/financeCalc';
 
@@ -223,7 +223,7 @@ async function addSetIntern(setNumber: string, quantity: number, userId: number,
       // Erst die Erfassung, dann die Menge daraus
       // Jetzt schreibt nur noch die Erfassung. Die Menge ist seit Migration
       // 0036 keine Spalte mehr — sie wird beim LESEN aus den Erfassungen
-      // gerechnet (src/sets/bestandsmenge.ts).
+      // gerechnet (db/bestandsmenge.ts).
       // Ausführlich: docs/begruendungen/src/sets/setService.ts.md#addsetintern-2
       await recordAcquisition(userId, normalized, quantity, reAddPrice, zustand, tx, reAddGeschaetzt, null, erfasstAm);
     });
@@ -399,7 +399,7 @@ export async function updateSet(uid: number, sn: string, body: any) {
         papierkorb = await legeInPapierkorb(tx, 'set', uid, sn);
         await deleteSetRows(tx, [uid], sn);
       } else {
-        // Die Erfassungen SIND die Menge (src/sets/bestandsmenge.ts).
+        // Die Erfassungen SIND die Menge (db/bestandsmenge.ts).
         await adjustAcquisitionsToQuantity(uid, sn, eigenZiel, tx, plan);
       }
     });
@@ -462,7 +462,7 @@ const SETS_CSV_SQL = `
          -- unerwarteten Lage nicht ganz ausfaellt.
          -- COALESCE(..., 0) und nicht NULL: Eine Set-Zeile ohne Erfassung
          -- bedeutet null Exemplare — dieselbe Lesart wie in
-         -- src/sets/bestandsmenge.ts (mengeAus mit 0). Ein leeres Feld im Export
+         -- db/bestandsmenge.ts (mengeAus mit 0). Ein leeres Feld im Export
          -- hiesse „keine Angabe", und das ist eine andere Aussage.
          COALESCE(a.quantity, 0) AS quantity,
          a.purchase_price AS purchase_price,

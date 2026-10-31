@@ -98,7 +98,7 @@ Preis und Zustand nicht mehr an die Bestandszeile (Migration 0035) — sie
 stehen in der Erfassung, die recordAcquisitionForDay() gleich darunter
 anlegt.
 Menge 0: Sie entsteht aus der Erfassung, die recordAcquisitionForDay()
-weiter unten anlegt (src/sets/bestandsmenge.ts).
+weiter unten anlegt (db/bestandsmenge.ts).
 Ohne bl_fig_number: Die BrickLink-Nummer steht seit Migration 0037 in
 bl_zuordnung, einmal je Figur und ohne Konto. Eingegeben wird sie
 weiterhin hier — sie landet nur woanders.

@@ -26,7 +26,7 @@ Anzahl der besessenen Exemplare.
 
 `s.quantity` ist hier KEINE Tabellenspalte mehr — die ist mit Migration
 0036 weg. `s` ist in beiden Zweigen von `setsFrom` eine Unterabfrage, und
-deren Mengenspalte heisst `quantity` (aus src/sets/bestandsmenge.ts). Diese
+deren Mengenspalte heisst `quantity` (aus db/bestandsmenge.ts). Diese
 Sortierung bleibt dadurch wörtlich stehen, und das ist Absicht: Der Name
 nach aussen soll sich nicht ändern, nur seine Herkunft.
 

@@ -1,6 +1,6 @@
 import * as db from '../../db/database';
 import { notify } from '../../db/pgNotify';
-import { AUFTRAG_KANAL } from './auftraege';
+import { AUFTRAG_KANAL } from './repository/auftraege';
 import { zieheVor } from './repository/auftraege';
 import { beendePause } from './repository/auftraege';
 import { naechsteUhrzeit, taeglicheUhrzeit } from './zeitplan';

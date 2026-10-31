@@ -1,7 +1,8 @@
 import * as db from '../../db/database';
 import { getGlobalSetting } from '../konto/settings';
 import { notify } from '../../db/pgNotify';
-import { AUFTRAG_KANAL, type AuftragsArt } from './auftraege';
+import { type AuftragsArt } from './auftraege';
+import { AUFTRAG_KANAL } from './repository/auftraege';
 import { stelleAuftragEin } from './repository/auftraege';
 
 /**

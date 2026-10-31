@@ -3,9 +3,9 @@
  * Ausführlich: docs/begruendungen/src/teile/partsSummary.ts.md#abschnitt
  */
 import { meldeUndLiefere } from '../infra/httpError';
-import { mengeJoin, mengeAus } from '../sets/bestandsmenge';
+import { mengeJoin, mengeAus } from '../../db/bestandsmenge';
 import { blJoin, blNummerSql } from '../katalog/blZuordnung';
-import { teilmengeJoin, teilmengeAus } from '../sets/bestandsmenge';
+import { teilmengeJoin, teilmengeAus } from '../../db/bestandsmenge';
 import * as db from '../../db/database';
 import * as lockNamespaces from '../infra/lockNamespaces';
 

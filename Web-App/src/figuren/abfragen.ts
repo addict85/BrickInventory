@@ -3,7 +3,7 @@ import { resolveImageLocal } from '../katalog/bilder/images';
 import { asIds } from '../haushalt/haushalt';
 import { clampPageSize, applyManualCondition, withOwners, conditionFromAcquisitions, conditionsFromAcquisitions } from '../bestand/gemeinsam';
 import { mitVersion } from '../sets/setNummer';
-import { mengeJoin, mengeAus, teilmengeJoin, teilmengeAus } from '../sets/bestandsmenge';
+import { mengeJoin, mengeAus, teilmengeJoin, teilmengeAus } from '../../db/bestandsmenge';
 import { marktpreiseAusCacheFuerFiguren } from '../finanzen/marketPrice';
 import { blJoin, blNummerSql } from '../katalog/blZuordnung';
 

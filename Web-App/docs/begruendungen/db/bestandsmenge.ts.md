@@ -1,6 +1,6 @@
-# Begründungen zu `src/sets/bestandsmenge.ts`
+# Begründungen zu `db/bestandsmenge.ts`
 
-Die ausführlichen Kommentare aus `src/sets/bestandsmenge.ts`, wörtlich. Im Code steht je
+Die ausführlichen Kommentare aus `db/bestandsmenge.ts`, wörtlich. Im Code steht je
 Stelle der erste Absatz und ein Verweis hierher. Neue Geschichte gehört in die
 Commit-Nachricht (siehe CLAUDE.md).
 

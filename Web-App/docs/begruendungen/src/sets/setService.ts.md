@@ -257,7 +257,7 @@ Befund steht im Kommentar darueber).
 
 Jetzt schreibt nur noch die Erfassung. Die Menge ist seit Migration
 0036 keine Spalte mehr — sie wird beim LESEN aus den Erfassungen
-gerechnet (src/sets/bestandsmenge.ts).
+gerechnet (db/bestandsmenge.ts).
 
 Hier folgte aussserdem ein UPDATE auf sets.purchase_price („Preis der
 letzten Erfassung"). Die Spalte ist mit Migration 0032 weg;
@@ -296,7 +296,7 @@ viele, steht in den Erfassungen — die Spalte ist mit Migration 0036 weg.
 
 Hier stand ein `DO UPDATE SET quantity=sets.quantity+EXCLUDED.quantity`:
 die zweite Schreibrichtung, an der die Zahlen auseinandergelaufen sind
-(der Befund steht in src/sets/bestandsmenge.ts). DO NOTHING statt DO
+(der Befund steht in db/bestandsmenge.ts). DO NOTHING statt DO
 UPDATE — gibt es die Zeile schon, ist nichts zu tun.
 ```
 
