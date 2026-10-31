@@ -1,8 +1,5 @@
-/**
- * /api/v1/papierkorb — gelöschte Sets, manuelle Teile und Figuren der
- * letzten 30 Tage (src/bestand/papierkorb.ts). Sichtbar ist, was der Aufrufer
- * schreiben darf: das eigene Konto und, als Hauptkonto, die Unterkonten.
- */
+/** Sichtbar ist, was der Aufrufer schreiben darf: das eigene Konto und, als
+ * Hauptkonto, die Unterkonten. */
 import express from 'express';
 import { fehlerAntwort } from '../../src/infra/httpError';
 import { sendeFehler } from '../../src/infra/fehlerTexte';
@@ -33,7 +30,6 @@ router.delete('/papierkorb/:id', requireToken, async (req: AuthedRequest, res) =
   res.json({ success: true });
 });
 
-// Den ganzen EIGENEN Bestand in den Papierkorb — „Alle meine Daten löschen".
 router.delete('/bestand', requireToken, async (req: AuthedRequest, res) => {
   res.json({ success: true, ...(await loescheAllesEigene(req.apiUser.user_id)) });
 });
