@@ -6,6 +6,7 @@ import ch.brickinventoryapp.data.model.*
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
 import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.json.JsonObject
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -28,25 +29,42 @@ class KontoRepository @Inject constructor(
      * Verlangt der Server den zweiten Faktor, antwortet er mit 401 und
      * `zweiter_faktor: true`. Das wird hier zu einer gewöhnlichen Antwort mit
      * success=false umgebogen (wie GutscheineRepository.guthaben), sonst gingen
-     * Kennzeichen und Satz in safeCall verloren.
+     * Kennzeichen und Satz in safeCall verloren. [passkey] ersetzt den Code.
      *
      * Einen Token ohne Ablauf nur über https: Im Klartext kann ihn jeder im WLAN
      * mitlesen, und dann soll er wenigstens verfallen.
      */
     suspend fun login(serverUrl: String, username: String, password: String, code: String? = null,
-                      scope: String = TOKEN_SCOPE_APP): Result<LoginResponse> =
-        safeCall {
-            val antwort = api.login(LoginRequest(username, password, code = code, scope = scope,
-                neverExpires = ch.brickinventoryapp.util.NetworkPolicy.istHttps(serverUrl)))
+                      scope: String = TOKEN_SCOPE_APP, passkey: JsonObject? = null): Result<Anmeldeantwort> {
+        var wege = ZweiterFaktorWege()
+        val r = safeCall {
+            val https = ch.brickinventoryapp.util.NetworkPolicy.istHttps(serverUrl)
+            val antwort = if (passkey != null)
+                api.loginMitPasskey(PasskeyLoginRequest(username, password, passkey, scope = scope, neverExpires = https))
+            else api.login(LoginRequest(username, password, code = code, scope = scope, neverExpires = https))
             if (antwort.code() == 401) {
-                val geparst = antwort.errorBody()?.string()?.let {
-                    runCatching { nachsichtigesJson.decodeFromString<LoginResponse>(it) }.getOrNull()
-                }
+                val rumpf = antwort.errorBody()?.string()
+                val geparst = rumpf?.let { runCatching { nachsichtigesJson.decodeFromString<LoginResponse>(it) }.getOrNull() }
+                rumpf?.let { runCatching { nachsichtigesJson.decodeFromString<ZweiterFaktorWege>(it) }.getOrNull() }?.let { wege = it }
                 if (geparst?.zweiterFaktor == true) retrofit2.Response.success(geparst) else antwort
             } else antwort
         }
+        return when (r) {
+            is Result.Success -> Result.Success(Anmeldeantwort(r.data, wege.passkey), stand = r.stand, gepuffert = r.gepuffert)
+            is Result.Error -> r
+        }
+    }
 
     private val nachsichtigesJson = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+
+    /** Die Optionen für den Credential Manager; [zweck] wie PASSKEY_ANMELDEN. */
+    suspend fun passkeyOptionen(zweck: String): Result<PasskeyOptionen> =
+        safeCall { api.passkeyOptionen(PasskeyOptionenAnfrage(zweck)) }
+
+    /** Ohne Passwort; derselbe Token wie bei [login], mit denselben Regeln für den Ablauf. */
+    suspend fun passkeyAnmelden(serverUrl: String, antwort: JsonObject, scope: String = TOKEN_SCOPE_APP): Result<LoginResponse> =
+        safeCall { api.passkeyAnmelden(PasskeyAnmeldung(antwort, scope = scope,
+            neverExpires = ch.brickinventoryapp.util.NetworkPolicy.istHttps(serverUrl))) }
 
     suspend fun qrLogin(token: String): Result<LoginResponse> =
         safeCall { api.qrLogin(ch.brickinventoryapp.data.model.QrLoginRequest(token)) }
@@ -112,3 +130,7 @@ class KontoRepository @Inject constructor(
     // User-level: saves per-user default (empty string = revert to global)
     suspend fun setUserDefaultCondition(condition: String): Result<GenericAdminResponse> = safeCall { api.setUserDefaultCondition(mapOf("condition" to condition)) }
 }
+
+/** Die Antwort auf [KontoRepository.login]; [passkeyStattCode], wenn der Server beim
+ * zweiten Faktor auch einen Passkey nimmt. */
+data class Anmeldeantwort(val antwort: LoginResponse, val passkeyStattCode: Boolean = false)

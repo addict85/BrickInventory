@@ -17,6 +17,15 @@ interface KontoApi {
     @POST("api/v1/auth/qr-login")
     suspend fun qrLogin(@Body request: QrLoginRequest): Response<LoginResponse>
 
+    @POST("api/v1/auth/login")
+    suspend fun loginMitPasskey(@Body request: PasskeyLoginRequest): Response<LoginResponse>
+
+    @POST("api/v1/auth/passkey/anmelden/optionen")
+    suspend fun passkeyOptionen(@Body request: PasskeyOptionenAnfrage): Response<PasskeyOptionen>
+
+    @POST("api/v1/auth/passkey/anmelden")
+    suspend fun passkeyAnmelden(@Body request: PasskeyAnmeldung): Response<LoginResponse>
+
     @POST("api/v1/auth/logout")
     suspend fun logout(): Response<GenericResponse>
 

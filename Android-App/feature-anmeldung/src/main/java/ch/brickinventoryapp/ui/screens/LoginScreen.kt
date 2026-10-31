@@ -58,6 +58,10 @@ fun LoginScreen(
     onNetzAbgelehnt: () -> Unit = {},
     vollerZugriff: Boolean = false,
     onVollerZugriff: (Boolean) -> Unit = {},
+    /** null: kein Passkey-Knopf (etwa in Vorschau und Test). */
+    onPasskey: (() -> Unit)? = null,
+    passkeyStattCode: Boolean = false,
+    onPasskeyStattCode: (String, String) -> Unit = { _, _ -> },
 ) {
     var username by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
@@ -148,7 +152,9 @@ fun LoginScreen(
                             registrierungOffen = registrierungOffen,
                             focusMgr = focusMgr,
                             onLogin = onLogin, onFormular = onFormular,
-                            vollerZugriff = vollerZugriff, onVollerZugriff = onVollerZugriff)
+                            vollerZugriff = vollerZugriff, onVollerZugriff = onVollerZugriff,
+                            onPasskey = onPasskey,
+                            onPasskeyStattCode = onPasskeyStattCode.takeIf { passkeyStattCode && onPasskey != null })
 
                         AnmeldeFormular.REGISTRIEREN -> RegistrierFelder(
                             laeuft = kontoLaeuft, meldung = kontoMeldung, fehler = kontoFehler,
@@ -229,6 +235,8 @@ private fun AnmeldeFelder(
     onFormular: (AnmeldeFormular) -> Unit,
     vollerZugriff: Boolean,
     onVollerZugriff: (Boolean) -> Unit,
+    onPasskey: (() -> Unit)?,
+    onPasskeyStattCode: ((String, String) -> Unit)?,
 ) {
     Text(
         stringResource(R.string.login_title),
@@ -309,6 +317,24 @@ private fun AnmeldeFelder(
         laeuft = isLoading,
         aktiv = username.isNotBlank() && password.isNotBlank() && (!codeNoetig || code.isNotBlank())
     ) { onLogin(username, password, code.takeIf { codeNoetig }) }
+
+    // Statt des Codes: Name und Passwort von oben gehen mit, der Passkey ersetzt nur den Code.
+    if (codeNoetig && onPasskeyStattCode != null) {
+        OutlinedButton(onClick = { onPasskeyStattCode(username, password) },
+            enabled = !isLoading && username.isNotBlank() && password.isNotBlank(),
+            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp), shape = Formen.knopf) {
+            Icon(Icons.Default.Fingerprint, null, Modifier.size(18.dp))
+            Spacer(Modifier.width(Abstaende.klein))
+            Text(stringResource(R.string.login_passkey_statt_code))
+        }
+    } else if (!codeNoetig && onPasskey != null) {
+        OutlinedButton(onClick = onPasskey, enabled = !isLoading,
+            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp), shape = Formen.knopf) {
+            Icon(Icons.Default.Fingerprint, null, Modifier.size(18.dp))
+            Spacer(Modifier.width(Abstaende.klein))
+            Text(stringResource(R.string.login_passkey))
+        }
+    }
 
     // Der Registrier-Link erscheint NUR bei einem ausdruecklichen `true`.
     // `null` heisst „noch nicht gefragt" oder „der Server hat nicht

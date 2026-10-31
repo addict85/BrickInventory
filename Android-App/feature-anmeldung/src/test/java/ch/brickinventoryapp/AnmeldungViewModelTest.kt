@@ -2,6 +2,9 @@ package ch.brickinventoryapp
 
 import ch.brickinventoryapp.data.Anmeldeablage
 import ch.brickinventoryapp.data.repository.KontoRepository
+import ch.brickinventoryapp.ressourcen.R
+import ch.brickinventoryapp.ui.PasskeyAbfrage
+import ch.brickinventoryapp.ui.PasskeyErgebnis
 import ch.brickinventoryapp.ui.viewmodel.AnmeldungViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -41,6 +44,14 @@ import org.junit.Test
  *      QR-Code mit Fingerabdruck pinnt vor der ersten Anfrage“
  *   J  (30.10.2026) LoginRequest wieder mit festem neverExpires = true → rot
  *      „ein Token ohne Ablauf nur ueber https“ (http-Teil)
+ *   K  (31.10.2026) PasskeyAnmeldung mit mitToken = false → rot „mit Passkey
+ *      anmelden legt den Token ab …“
+ *   L  (31.10.2026) Abgebrochen wie KeinPasskey mit Satz → rot „ein
+ *      abgebrochener Passkey-Dialog …“
+ *   M  (31.10.2026) ZweiterFaktorWege im KontoRepository nicht gelesen → rot
+ *      „der zweite Faktor nimmt den Passkey …“ (Knopf fehlt)
+ *   N  (31.10.2026) passkeyStattCode() reicht den Passkey nicht an login() →
+ *      rot „der zweite Faktor nimmt den Passkey …“ (kein passkey im Rumpf)
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class AnmeldungViewModelTest {
@@ -133,6 +144,7 @@ class AnmeldungViewModelTest {
         vm.login("marco", "geheim")
         TestApi.warteBis("Codefeld") { vm.anmeldeState.value.codeNoetig }
         assertNull("Ohne eingegebenen Code ist das kein Fehler", vm.anmeldeState.value.loginError)
+        assertFalse("Ohne `passkey: true` kein Passkey-Knopf", vm.anmeldeState.value.passkeyStattCode)
 
         vm.login("marco", "geheim", code = "123456")
         TestApi.warteBis("Satz des Servers") { vm.anmeldeState.value.loginError != null }
@@ -261,5 +273,83 @@ class AnmeldungViewModelTest {
         vm.netzFrageVerwerfen()
         assertFalse(vm.anmeldeState.value.netzFrage)
         assertTrue(pfade.anfragenAn("/auth/login").isEmpty())
+    }
+
+    /** Schreibt mit, welche Optionen ankamen, und antwortet mit [ergebnis]. */
+    private class FakePasskey(val ergebnis: PasskeyErgebnis) : PasskeyAbfrage {
+        val optionen = mutableListOf<String>()
+        override suspend fun hole(optionenJson: String): PasskeyErgebnis { optionen += optionenJson; return ergebnis }
+    }
+
+    private val passkeyAntwort = PasskeyErgebnis.Antwort("""{"id":"pk1","response":{"clientDataJSON":"cd"}}""")
+    private val optionenRumpf = """{"success":true,"optionen":{"challenge":"ch-123","rpId":"brick.example.org"}}"""
+
+    @Test
+    fun `mit Passkey anmelden legt den Token ab wie das Passwort`() {
+        pfade.antworten["/api/v1/auth/passkey/anmelden/optionen"] = optionenRumpf
+        pfade.antworten["/api/v1/auth/passkey/anmelden"] = """{"success":true,"token":"pk-token","user":{"id":1,"username":"marco","is_admin":true},
+            "token_info":{"scope":"voll","never_expires":true}}"""
+        ablage.url = "https://brick.example.org"
+        val fake = FakePasskey(passkeyAntwort)
+        val vm = vm()
+        vm.setzeVollerZugriff(true)
+        vm.passkeyAnmelden(fake)
+        TestApi.warteBis("angemeldet") { t.sitzung.state.value.isLoggedIn }
+        assertEquals(listOf("filter-leer", "token:pk-token", "name:marco"), ablage.protokoll)
+        assertTrue(fake.optionen.single(), "\"challenge\":\"ch-123\"" in fake.optionen.single())
+        val rumpf = pfade.koerper[pfade.anfragen.indexOf("POST /api/v1/auth/passkey/anmelden")]
+        assertTrue(rumpf, "\"mit_token\":true" in rumpf && "\"id\":\"pk1\"" in rumpf && "\"scope\":\"voll\"" in rumpf)
+        assertTrue(rumpf, "\"never_expires\":true" in rumpf)
+        assertTrue(pfade.koerper.first(), "\"zweck\":\"anmelden\"" in pfade.koerper.first())
+        assertTrue(t.sitzung.state.value.isAdmin)
+    }
+
+    @Test
+    fun `ein abgebrochener Passkey-Dialog sendet nichts und meldet keinen Fehler`() {
+        pfade.antworten["/api/v1/auth/passkey/anmelden/optionen"] = optionenRumpf
+        val vm = vm()
+        vm.passkeyAnmelden(FakePasskey(PasskeyErgebnis.Abgebrochen))
+        TestApi.warteBis("Optionen geholt") { pfade.anfragenAn("optionen").isNotEmpty() && !vm.anmeldeState.value.loginLaeuft }
+        assertNull(vm.anmeldeState.value.loginError)
+        assertTrue(pfade.anfragen.toString(), pfade.anfragen.none { it == "POST /api/v1/auth/passkey/anmelden" })
+        assertFalse(t.sitzung.state.value.isLoggedIn)
+    }
+
+    @Test
+    fun `ohne Passkey auf dem Geraet oder ohne Domain sagt die Anmeldung warum`() {
+        pfade.antworten["/api/v1/auth/passkey/anmelden/optionen"] = optionenRumpf
+        val vm = vm()
+        vm.passkeyAnmelden(FakePasskey(PasskeyErgebnis.KeinPasskey))
+        TestApi.warteBis("Satz") { vm.anmeldeState.value.loginError != null }
+        assertEquals("t${R.string.login_passkey_keiner}", vm.anmeldeState.value.loginError)
+
+        pfade.antworten["/api/v1/auth/passkey/anmelden/optionen"] = """{"success":false,"error":"Passkeys brauchen eine Domain"}"""
+        pfade.codes["/api/v1/auth/passkey/anmelden/optionen"] = 503
+        val fake = FakePasskey(passkeyAntwort)
+        vm.passkeyAnmelden(fake)
+        // NummernTexte.meldung() gibt „fehler“: Der Satz kommt aus der Fehlerschicht wie beim Passwort.
+        TestApi.warteBis("Fehler des Servers") { vm.anmeldeState.value.loginError == "fehler" }
+        assertTrue("Ohne Optionen wird der Credential Manager nicht gefragt", fake.optionen.isEmpty())
+    }
+
+    @Test
+    fun `der zweite Faktor nimmt den Passkey, wenn der Server ihn anbietet, mit Name und Passwort`() {
+        pfade.antworten["/api/v1/auth/login"] = """{"success":false,"zweiter_faktor":true,"passkey":true,"error":"Code fehlt"}"""
+        pfade.codes["/api/v1/auth/login"] = 401
+        pfade.antworten["/api/v1/auth/passkey/anmelden/optionen"] = optionenRumpf
+        val vm = vm()
+        vm.login("marco", "geheim")
+        TestApi.warteBis("Codefeld") { vm.anmeldeState.value.codeNoetig }
+        assertTrue("Der Server bietet den Passkey an", vm.anmeldeState.value.passkeyStattCode)
+
+        pfade.codes.remove("/api/v1/auth/login")
+        pfade.antworten["/api/v1/auth/login"] = """{"success":true,"token":"abc","user":{"id":1,"username":"marco"}}"""
+        vm.passkeyStattCode("marco", "geheim", FakePasskey(passkeyAntwort))
+        TestApi.warteBis("angemeldet") { t.sitzung.state.value.isLoggedIn }
+        val optionen = pfade.koerper[pfade.anfragen.indexOf("POST /api/v1/auth/passkey/anmelden/optionen")]
+        assertTrue(optionen, "\"zweck\":\"zweiter_faktor\"" in optionen)
+        val rumpf = pfade.koerper[pfade.anfragen.lastIndexOf("POST /api/v1/auth/login")]
+        assertTrue(rumpf, "\"passkey\":{\"id\":\"pk1\"" in rumpf && "\"password\":\"geheim\"" in rumpf && "\"code\"" !in rumpf)
+        assertFalse(vm.anmeldeState.value.passkeyStattCode)
     }
 }
