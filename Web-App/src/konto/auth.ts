@@ -61,14 +61,6 @@ export interface KontoZustand {
   [k: string]: unknown;
 }
 
-/**
- * Tokens werden seit diesem Stand NUR als SHA-256-Hash gespeichert — bei
- * einem DB-Leak sind die Klartext-Tokens damit nicht direkt verwendbar.
- * Es werden ausschliesslich Hashes gespeichert und gesucht:
- * der Lookup fällt auf Klartext zurück und upgraded die Zeile in-place
- * auf den Hash. Der Client (Android/Webapp/QR) erhält weiterhin den
- * Klartext-Token — nur die DB-Seite ist gehasht.
- */
 /** @param {string} token @returns {string} SHA-256-Hex */
 export function hashToken(token: string): string {
   return crypto.createHash('sha256').update(token).digest('hex');
@@ -551,10 +543,6 @@ export function nutzerId(req: Request): number | null {
 }
 
 /**
- * Ist dieser Anfragende ein Verwalter? — Sitzung ODER Bearer-Token.
- * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#abschnitt-3
- */
-/**
  * Wie [nutzerId], aber fuer Handler, die HINTER einem Waechter stehen.
  * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#angemeldetenutzerid
  */
@@ -725,12 +713,6 @@ export async function deleteToken(token: string): Promise<void> {
   invalidateToken(token);
 }
 
-/**
- * Alle Tokens eines Nutzers verwerfen.
- * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#abschnitt-5
- * @param {number} userId
- * @returns {Promise<void>}
- */
 /**
  * Alle offenen BROWSER-SITZUNGEN eines Kontos beenden.
  * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#revokeallsessions

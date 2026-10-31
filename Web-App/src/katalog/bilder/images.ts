@@ -27,10 +27,6 @@ function _evictOldest(map: Map<any, any>, n: number) {
   }
 }
 
-/**
- * Liefert den _thumb.jpg-Pfad, falls das Thumbnail existiert — sonst das
- * Original. Unterstützt /data/… (Laufzeit-Daten) und /images/… (public/).
- */
 /** @param {string|null|undefined} localPath @returns {string|null|undefined} */
 export function resolveImageLocal(localPath: string | null | undefined) {
   if (!localPath) return localPath;
@@ -72,10 +68,6 @@ export function istProxyPfad(src: string): boolean {
   return src.startsWith(IMG_PROXY_PFAD) || src.startsWith(IMG_PROXY_PFAD_ALT);
 }
 
-/**
- * Externe Bild-URLs ggf. über den Server-Proxy leiten: Nur die Rebrickable-CDN
- * braucht serverseitige Header (Hotlink-Schutz); alles andere lädt direkt.
- */
 /** @param {string|null|undefined} url @returns {string|null} */
 export function proxyImageUrl(url: string | null | undefined) {
   if (!url) return null;

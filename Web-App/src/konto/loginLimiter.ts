@@ -197,10 +197,6 @@ async function _clear(key: string): Promise<void> {
 }
 
 /**
- * Vor der Passwortprüfung aufrufen.
- * @returns {Promise<string|null>} Sperr-Meldung oder null
- */
-/**
  * Name und E-Mail desselben Kontos zählen gemeinsam — sonst gälte jede Grenze
  * doppelt. Unbekannte Namen zählen unter sich selbst.
  *

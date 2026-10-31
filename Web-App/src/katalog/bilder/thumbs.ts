@@ -12,10 +12,6 @@ import { isDecodable } from './imageGuard';
 const THUMB_SIZE = 200;
 
 /**
- * Generate thumbnail for a local image file.
- * Returns the relative web path of the thumbnail, or null on failure.
- */
-/**
  * Das Bild auf THUMB_SIZE bringen und als JPEG schreiben.
  *
  * Erst sharp, bei einem Ladefehler Jimp. „Ladefehler" heisst: Die native

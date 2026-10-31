@@ -16,10 +16,6 @@ import { pfadSegment } from '../infra/fremdeAdressen';
  */
 
 /**
- * Setbild in den lokalen Cache holen.
- * Ausführlich: docs/begruendungen/src/katalog/instructions.ts.md#abschnitt-2
- */
-/**
  * @param info bekommt den HTTP-Status der letzten Antwort: Nur ein 404 heisst
  *   „gibt es nicht"; ein 403 ist Drosselung und darf kein Bild aussperren.
  */

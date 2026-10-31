@@ -168,12 +168,6 @@ function katalogDesSets(setNumber: string): Promise<KatalogTeil[]> {
 }
 
 /**
- * Die Teile eines Sets ohne Ersatzteile: aus der geladenen Rebrickable-CSV,
- * sonst über die API. Fehlt der Katalog, wird er erst ergänzt, damit Name und
- * Bild stimmen; die Bilder holt danach ein Auftrag.
- * @param anreichern füllt den Katalog des Sets (jobs/partsCatalogEnrich, über src/auftraege/nacharbeit)
- */
-/**
  * Die Teileliste eines Sets kommt ungeblättert; die Seitenangaben stehen
  * trotzdem da, weil die App sie mit der Teileliste des Bestands teilt.
  */

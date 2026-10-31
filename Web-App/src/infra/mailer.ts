@@ -157,10 +157,6 @@ const LOGO_HTML = `
 // ── E-Mail-Template: blau/weiss, analog Webapp ────────────────────────────────
 
 /**
- * Farbpalette je Design.
- * Ausführlich: docs/begruendungen/src/infra/mailer.ts.md#mailtheme
- */
-/**
  * Ein Mail-Design. ABGELEITET aus MAIL_THEMES.classic, nicht danebengeschrieben:
  * Eine zweite Aufzaehlung der neun Felder waere eine zweite Wahrheit, die beim
  * naechsten neuen Feld still veraltet.
