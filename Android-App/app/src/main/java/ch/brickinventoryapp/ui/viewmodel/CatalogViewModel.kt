@@ -105,7 +105,7 @@ class CatalogViewModel @Inject constructor(
 
     fun loadCatalogMeta() {
         viewModelScope.launch {
-            when (val r = retryOnNetwork { repo.admin.getCatalogMeta() }) {
+            when (val r = retryOnNetwork { repo.katalog.getCatalogMeta() }) {
                 is Result.Success -> if (r.data.success) _catalogState.update {
                     it.copy(
                         themes = r.data.themes, yearMin = r.data.yearMin, yearMax = r.data.yearMax
@@ -134,7 +134,7 @@ class CatalogViewModel @Inject constructor(
             ladeJahrVerteilung(gen)
             val s = _catalogState.value
             val r = retryOnNetwork(maxAttempts = CATALOG_RETRIES, delayMs = CATALOG_RETRY_DELAY_MS) {
-                repo.admin.getCatalogSets(
+                repo.katalog.getCatalogSets(
                     q = s.query.ifBlank { null }, themeId = s.themeId,
                     yearFrom = s.year, yearTo = s.year, sort = s.sort, page = 1
                 )
@@ -169,7 +169,7 @@ class CatalogViewModel @Inject constructor(
         _catalogState.update { it.copy(loadingPages = it.loadingPages + seite) }
         viewModelScope.launch {
             val r = retryOnNetwork(maxAttempts = CATALOG_RETRIES, delayMs = CATALOG_RETRY_DELAY_MS) {
-                repo.admin.getCatalogSets(
+                repo.katalog.getCatalogSets(
                     q = s.query.ifBlank { null }, themeId = s.themeId,
                     yearFrom = s.year, yearTo = s.year, sort = s.sort, page = seite
                 )
@@ -197,7 +197,7 @@ class CatalogViewModel @Inject constructor(
     private fun ladeJahrVerteilung(gen: Int) {
         viewModelScope.launch {
             val s = _catalogState.value
-            val r = repo.admin.getCatalogYearVerteilung(
+            val r = repo.katalog.getCatalogYearVerteilung(
                 q = s.query.ifBlank { null }, themeId = s.themeId, sort = s.sort)
             if (gen != catalogGeneration) return@launch
             if (r is Result.Success && r.data.success) {
@@ -260,7 +260,7 @@ class CatalogViewModel @Inject constructor(
         catalogDetailJob?.cancel()
         catalogDetailJob = viewModelScope.launch {
             _catalogState.update { it.copy(detailLoading = true, detail = null) }
-            when (val r = retryOnNetwork(maxAttempts = CATALOG_RETRIES, delayMs = CATALOG_RETRY_DELAY_MS) { repo.admin.getCatalogSetDetail(setNumber) }) {
+            when (val r = retryOnNetwork(maxAttempts = CATALOG_RETRIES, delayMs = CATALOG_RETRY_DELAY_MS) { repo.katalog.getCatalogSetDetail(setNumber) }) {
                 is Result.Success -> {
                     if (r.data.success && r.data.set != null)
                         _catalogState.update { it.copy(detailLoading = false, detail = r.data.set) }

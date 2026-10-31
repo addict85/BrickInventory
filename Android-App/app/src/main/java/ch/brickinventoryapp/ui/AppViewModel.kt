@@ -5,6 +5,7 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.R
+import ch.brickinventoryapp.ui.model.alsAnsicht
 import ch.brickinventoryapp.data.CsvImportSseClient
 import ch.brickinventoryapp.data.MeldungsKanal
 import ch.brickinventoryapp.data.PreferencesManager
@@ -64,6 +65,7 @@ class AppViewModel @Inject constructor(
     val scrollMemory: ScrollMemory,
     /** Ein unbekanntes Zertifikat wartet auf Ja oder Nein (ZertifikatDialog). */
     val zertifikatsFrage: ch.brickinventoryapp.util.ZertifikatsFrage,
+    ausgangsmelder: Ausgangsmelder,
 ) : ViewModel() {
 
     // Der Zustand wird mit dem gemerkten Design geboren: appTheme unten nimmt
@@ -76,6 +78,9 @@ class AppViewModel @Inject constructor(
 
     private val _snackbar = meldungen.fluss
     val snackbar = meldungen.meldung
+
+    /** Offline gespeicherte Änderungen, die noch zum Server müssen — für die Leiste im Gerüst. */
+    val offeneAenderungen: StateFlow<Int> = ausgangsmelder.starte(viewModelScope)
     fun clearSnackbar() { _snackbar.value = null }
     fun showSnackbar(msg: String) { _snackbar.value = msg }
 
@@ -156,7 +161,7 @@ class AppViewModel @Inject constructor(
                     sitzung.aendere { it.copy(serverUrl = url, isLoggedIn = token.isNotBlank(), authToken = token) }
                     if (token.isNotBlank() && url.isNotBlank()) {
                         launch {
-                            val me = repo.admin.getMe()
+                            val me = repo.konto.getMe()
                             if (me is Result.Success) sitzung.aendere { it.copy(isAdmin = me.data.user?.isAdmin == true) }
                         }
                         nachAnmeldung()
@@ -254,7 +259,7 @@ class AppViewModel @Inject constructor(
 
     /** Einstellungen und Design des Kontos; das Design kommt von /settings/theme. */
     fun loadSettings() {
-        viewModelScope.launch { sitzung.ladeEinstellungen(repo.admin) }
+        viewModelScope.launch { sitzung.ladeEinstellungen(repo.konto) }
         loadAppTheme()
     }
 
@@ -265,7 +270,7 @@ class AppViewModel @Inject constructor(
     private fun loadAppTheme() {
         viewModelScope.launch {
             if (prefs.serverUrlJetzt().isBlank()) return@launch
-            val r = repo.admin.getAppTheme()
+            val r = repo.konto.getAppTheme()
             if (r is Result.Success && r.data.success) sitzung.aendere { it.copy(appTheme = r.data.theme) }
         }
     }
@@ -279,12 +284,12 @@ class AppViewModel @Inject constructor(
         viewModelScope.launch {
             if (prefs.serverUrlJetzt().isBlank()) return@launch
             while (true) {
-                val r = repo.admin.getStartupStatus()
+                val r = repo.verwaltung.getStartupStatus()
                 if (r !is Result.Success || r.data.ready) {
                     sitzung.aendere { it.copy(startupStatus = null) }
                     return@launch
                 }
-                sitzung.aendere { it.copy(startupStatus = r.data) }
+                sitzung.aendere { it.copy(startupStatus = r.data.alsAnsicht()) }
                 delay(2000)
             }
         }

@@ -5,6 +5,8 @@ import ch.brickinventoryapp.data.model.FigsValuationResponse
 import ch.brickinventoryapp.data.model.Gutschein
 import ch.brickinventoryapp.data.model.PartsValuationResponse
 import ch.brickinventoryapp.data.model.PnlResponse
+import ch.brickinventoryapp.data.model.PnlTotals
+import ch.brickinventoryapp.ui.model.alsAnsicht
 import ch.brickinventoryapp.data.model.PriceHistoryResponse
 import ch.brickinventoryapp.data.model.ValuationResponse
 import ch.brickinventoryapp.ui.figurZeilen
@@ -89,18 +91,18 @@ class FinanzZahlenTest {
     @Test
     fun `ohne grand_total addiert die App exakt`() {
         val teile = PartsValuationResponse(success = true, totalValue = "0.20")
-        val ohne = finanzSummen(bewertung, teile, null, PnlResponse(success = true))
+        val ohne = finanzSummen(bewertung, teile, null, PnlResponse(success = true, totals = PnlTotals(purchase = "0.00", current = "0.00")))
         assertEquals(0, BigDecimal("0.30").compareTo(ohne.gesamt))
         assertEquals(0, BigDecimal("0.20").compareTo(ohne.teileUndFiguren))
         val mit = finanzSummen(bewertung, teile, null, ApiJson.decodeFromString(PnlResponse.serializer(),
-            """{"success": true, "totals": {"grand_total": "4894.77"}}"""))
+            """{"success": true, "totals": {"purchase": "4000.00", "current": "4894.77", "grand_total": "4894.77"}}"""))
         assertEquals(0, BigDecimal("4894.77").compareTo(mit.gesamt))
     }
 
     @Test
     fun `fremde Kaufpreise zaehlt pnl ueber alle drei Arten`() {
         val pnl = ApiJson.decodeFromString(PnlResponse.serializer(), """{"success": true,
-            "totals": {"pnl_pct": "-50.0", "pnl_prozent": 12.5, "kaufpreise_fremde_waehrung": 4},
+            "totals": {"purchase": "100.00", "current": "112.50", "pnl_pct": "-50.0", "pnl_prozent": 12.5, "kaufpreise_fremde_waehrung": 4},
             "sets": [{"set_number": "1-1", "pnl_abs": "9.00", "pnl_betrag": 9.0, "pnl_prozent": 3.4,
                       "baseline_pnl_prozent": 3.4}]}""")
         assertEquals(4, fremdeKaufpreise(bewertung, null, null, pnl))
@@ -118,9 +120,9 @@ class FinanzZahlenTest {
 
     @Test
     fun `Gutscheine in zwei Waehrungen ergeben keine Summe`() {
-        val chf = listOf(Gutschein(id = 1, amount = 0.1), Gutschein(id = 2, amount = 0.2))
+        val chf = listOf(Gutschein(id = 1, amount = 0.1), Gutschein(id = 2, amount = 0.2)).map { it.alsAnsicht() }
         assertEquals(BigDecimal("0.30") to "CHF", gutscheinSumme(chf))
-        assertNull(gutscheinSumme(chf + Gutschein(id = 3, amount = 5.0, currency = "EUR")))
+        assertNull(gutscheinSumme(chf + Gutschein(id = 3, amount = 5.0, currency = "EUR").alsAnsicht()))
         assertNull(gutscheinSumme(emptyList()))
     }
 }

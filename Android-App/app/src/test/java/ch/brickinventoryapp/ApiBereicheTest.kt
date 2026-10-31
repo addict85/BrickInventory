@@ -1,15 +1,22 @@
 package ch.brickinventoryapp
 
-import ch.brickinventoryapp.data.api.AdminApi
-import ch.brickinventoryapp.data.api.BestandsInhaltApi
 import ch.brickinventoryapp.data.api.BrickApiService
+import ch.brickinventoryapp.data.api.FigurenAbfrageApi
+import ch.brickinventoryapp.data.api.FigurenApi
 import ch.brickinventoryapp.data.api.FinanzenApi
 import ch.brickinventoryapp.data.api.GutscheineApi
 import ch.brickinventoryapp.data.api.HaushaltApi
+import ch.brickinventoryapp.data.api.KatalogApi
+import ch.brickinventoryapp.data.api.KontoApi
 import ch.brickinventoryapp.data.api.SetsApi
+import ch.brickinventoryapp.data.api.TeileAbfrageApi
 import ch.brickinventoryapp.data.api.TeileApi
-import ch.brickinventoryapp.data.repository.AdminRepository
+import ch.brickinventoryapp.data.api.VerwaltungApi
+import ch.brickinventoryapp.data.repository.FigurenRepository
 import ch.brickinventoryapp.data.repository.FinanzenRepository
+import ch.brickinventoryapp.data.repository.KatalogRepository
+import ch.brickinventoryapp.data.repository.KontoRepository
+import ch.brickinventoryapp.data.repository.VerwaltungRepository
 import ch.brickinventoryapp.data.repository.GutscheineRepository
 import ch.brickinventoryapp.data.repository.HaushaltRepository
 import ch.brickinventoryapp.data.repository.SetsRepository
@@ -35,21 +42,32 @@ import retrofit2.Retrofit
  *      genau einem Bereich“
  *   C  `: BestandsInhaltApi` an SetsApi entfernt → übersetzt nicht mehr
  *      (SetsRepository ruft getParts) — die Vererbung trägt
+ *
+ * Seit der Teilung in neun Bereiche (30.10.2026, gemessen):
+ *   D  KatalogRepository mit `api: KontoApi` → übersetzt nicht (unresolved reference
+ *      'getCatalogSets' …) — der Bereich ist im Typ, nicht nur im Namen
+ *   E  getMinifigs zusätzlich in FigurenApi → rot „jede Adresse steht in genau einem
+ *      Bereich“ (Doppelt deklariert: {getMinifigs=2})
  */
 class ApiBereicheTest {
 
-    private val bereiche = listOf(AdminApi::class, SetsApi::class, TeileApi::class, HaushaltApi::class,
-        FinanzenApi::class, GutscheineApi::class, BestandsInhaltApi::class)
+    private val bereiche = listOf(KontoApi::class, VerwaltungApi::class, KatalogApi::class, SetsApi::class,
+        TeileApi::class, FigurenApi::class, HaushaltApi::class, FinanzenApi::class, GutscheineApi::class,
+        TeileAbfrageApi::class, FigurenAbfrageApi::class)
 
     @Test
     fun `jedes Repository sieht nur seinen Bereich`() {
         val erwartet = mapOf(
-            AdminRepository::class to AdminApi::class.java, SetsRepository::class to SetsApi::class.java,
+            KontoRepository::class to KontoApi::class.java, VerwaltungRepository::class to VerwaltungApi::class.java,
+            KatalogRepository::class to KatalogApi::class.java, FigurenRepository::class to FigurenApi::class.java,
+            SetsRepository::class to SetsApi::class.java,
             TeileRepository::class to TeileApi::class.java, HaushaltRepository::class to HaushaltApi::class.java,
             FinanzenRepository::class to FinanzenApi::class.java, GutscheineRepository::class to GutscheineApi::class.java,
         )
         for ((repo, api) in erwartet) {
-            val typ = repo.java.constructors.single().parameterTypes.first()
+            // Mit Vorgabewert (Offlineablage) erzeugt Kotlin einen zweiten Konstruktor;
+            // der Bereich steht in beiden vorn.
+            val typ = repo.java.constructors.map { it.parameterTypes.first() }.distinct().single()
             assertEquals(repo.simpleName, api, typ)
         }
     }

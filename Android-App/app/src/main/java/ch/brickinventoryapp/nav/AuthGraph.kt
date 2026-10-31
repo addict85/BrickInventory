@@ -123,6 +123,8 @@ fun NavGraphBuilder.authGraph(
                 netzFrage = anmeldung.netzFrage,
                 onNetzBestaetigt = { user, pw, code -> anmeldungVm.login(user, pw, code, netzBestaetigt = true) },
                 onNetzAbgelehnt = { anmeldungVm.netzFrageVerwerfen() },
+                vollerZugriff = anmeldung.vollerZugriff,
+                onVollerZugriff = { anmeldungVm.setzeVollerZugriff(it) },
                 onFormular = { anmeldungVm.zeigeAnmeldeFormular(it) },
                 onRegistrieren = { u, e, v, n, pw -> anmeldungVm.registriere(u, e, v, n, pw) },
                 onPasswortVergessen = { anmeldungVm.passwortVergessen(it) },

@@ -33,7 +33,7 @@ async function token() {
 (async () => {
   const t = await token();
   const modelle = kotlinModelle(APP);
-  const routen = apiRouten(path.join(APP, 'data', 'api', 'BrickApiService.kt'))
+  const routen = apiRouten(path.join(APP, 'data', 'api'))
     .filter(r => r.typ && modelle.has(r.typ) && !r.pfad.includes('{') && !r.anfrage.some(q => q.pflicht));
   let falsch = 0;
   for (const r of routen) {

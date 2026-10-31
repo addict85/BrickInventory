@@ -54,5 +54,5 @@ data class MerkpostenDetailUiState(
     val preise: ch.brickinventoryapp.data.model.MerkpostenPreiseResponse? = null,
     val laedt: Boolean = false,
     /** Die Preisalarme dieses Sets — dieselben wie im Set-Detail. */
-    val preisalarme: List<ch.brickinventoryapp.data.model.Preisalarm> = emptyList(),
+    val preisalarme: List<ch.brickinventoryapp.ui.model.PreisalarmAnsicht> = emptyList(),
 )

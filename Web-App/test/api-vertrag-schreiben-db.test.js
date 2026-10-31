@@ -158,17 +158,20 @@ test('die Schreibantworten passen zu den Kotlin-Modellen', { concurrency: 1, tim
   const basis = `http://127.0.0.1:${srv.address().port}`;
 
   const modelle = kotlinModelle(APP);
-  const routen = schreibRouten(path.join(APP, 'data', 'api', 'BrickApiService.kt'));
+  const routen = schreibRouten(path.join(APP, 'data', 'api'));
   const typJe = new Map(routen.map(r => [`${r.methode} ${r.pfad}`, r.typ]));
 
   /** Werte für die Platzhalter im Pfad; Schritte tragen neue nach. */
   const w = { setNumber: SET, partNumber: TEIL, colorId: String(FARBE), figNumber: FIGUR };
   const erst = async (sql, werte) => (await db.get(sql, werte));
 
-  /** @type {{ m: string, p: string, body?: any, form?: () => Promise<FormData>|FormData, q?: string, als?: object, davor?: () => Promise<void>, danach?: (j: any) => Promise<void>|void }[]} */
+  /** @type {{ m: string, p: string, body?: any, form?: () => Promise<FormData>|FormData, q?: string, kopf?: () => object, als?: object, davor?: () => Promise<void>, danach?: (j: any) => Promise<void>|void }[]} */
   const SCHRITTE = [
     // ── Anmeldung und Konto ───────────────────────────────────────────────
-    { m: 'POST', p: '/api/v1/auth/login', body: { username: NAME, password: PASS, label: 'Vertrag', never_expires: true } },
+    { m: 'POST', p: '/api/v1/auth/login', body: { username: NAME, password: PASS, label: 'Vertrag', never_expires: true },
+      danach: (j) => { w.appToken = j.token; } },
+    // Der Tausch nimmt den Token aus der Kopfzeile, nicht die Sitzung des Tests.
+    { m: 'POST', p: '/api/v1/auth/token-rotieren', kopf: () => ({ Authorization: 'Bearer ' + w.appToken }) },
     { m: 'POST', p: '/api/v1/auth/qr-login', davor: async () => {
         const nonce = 'vertrag' + process.pid + Date.now();
         await db.run(`INSERT INTO qr_login_tokens (token, user_id, expires_at) VALUES ($1, $2, NOW() + INTERVAL '5 minutes')`,
@@ -319,6 +322,15 @@ test('die Schreibantworten passen zu den Kotlin-Modellen', { concurrency: 1, tim
     { m: 'POST', p: '/api/v1/admin/brickset-queue/{setNumber}/retry', davor: async () => { w.setNumber = SET2; } },
     { m: 'DELETE', p: '/api/v1/admin/brickset-queue/{setNumber}' },
 
+    // ── Hintergrundarbeiten (Auftragstabelle) ─────────────────────────────
+    { m: 'POST', p: '/api/v1/admin/auftraege/{id}/abbrechen', davor: async () => {
+        w.id = String(await _req('utils/auftraege.js').stelleAuftragEin('anleitung', { set_number: SET },
+          { schluessel: `vertrag:${process.pid}:${Date.now()}` }));
+      } },
+    { m: 'POST', p: '/api/v1/admin/auftraege/{id}/wiederholen' },
+    { m: 'POST', p: '/api/v1/admin/auftraege/art/{art}/jetzt', davor: async () => { w.art = 'anleitung'; } },
+    { m: 'DELETE', p: '/api/v1/admin/auftraege/art/{art}' },
+
     // ── Zum Schluss: Passwort ändern (verwirft alle Token), abmelden ──────
     { m: 'POST', p: '/api/v1/auth/change-password', body: { current: PASS, newPassword: PASS + 'x' } },
     { m: 'POST', p: '/api/v1/auth/logout' },
@@ -338,6 +350,7 @@ test('die Schreibantworten passen zu den Kotlin-Modellen', { concurrency: 1, tim
     const init = { method: s.m, signal: AbortSignal.timeout(15_000) };
     if (s.form) init.body = await s.form();
     else if (body !== undefined) { init.body = JSON.stringify(body); init.headers = { 'Content-Type': 'application/json' }; }
+    if (s.kopf) init.headers = { ...(init.headers || {}), ...s.kopf() };
     let antwort;
     try { antwort = await fetch(basis + pfad + (q ? '?' + q : ''), init); }
     catch (e) { status.push(`${schluessel}: ${e.name}`); als = { id: uid, name: NAME, admin: true }; continue; }

@@ -1,6 +1,7 @@
 package ch.brickinventoryapp
 
 import ch.brickinventoryapp.data.model.ChartPoint
+import ch.brickinventoryapp.ui.model.alsAnsicht
 import ch.brickinventoryapp.ui.diagrammZusammenfassung
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -19,7 +20,7 @@ import org.junit.Test
  */
 class DiagrammZusammenfassungTest {
 
-    private fun p(label: String, wert: Double) = ChartPoint(xLabel = label, value = wert)
+    private fun p(label: String, wert: Double) = ChartPoint(xLabel = label, value = wert).alsAnsicht()
 
     @Test
     fun `ein einzelner Punkt ist kein Verlauf`() {

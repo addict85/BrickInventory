@@ -2,7 +2,7 @@ package ch.brickinventoryapp
 
 import ch.brickinventoryapp.data.api.Fehlerrumpf
 import ch.brickinventoryapp.data.cache.ResponseCache
-import ch.brickinventoryapp.data.repository.AdminRepository
+import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.data.repository.Fehlerart
 import ch.brickinventoryapp.data.repository.GutscheineRepository
 import ch.brickinventoryapp.data.repository.Result
@@ -48,7 +48,7 @@ class FehlercodeTest {
         cacheDir.deleteRecursively()
     }
 
-    private fun admin() = AdminRepository(TestApi.fuer(server), ResponseCache { cacheDir })
+    private fun admin() = KontoRepository(TestApi.fuer(server), ResponseCache { cacheDir })
     private fun gutscheine() = GutscheineRepository(TestApi.fuer(server), ResponseCache { cacheDir })
 
     private fun fehler(r: Result<*>): Result.Error {

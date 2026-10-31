@@ -62,8 +62,8 @@ class GalerieViewModelTest {
         pfade = PfadServer(
             "/api/v1/sets" to """{"success":true,"total":2,"sets":[
                 {"set_number":"75192-1","name":"Falke","used_count":0},{"set_number":"10294-1","name":"Titanic"}]}""",
-            "/api/v1/stats" to """{"success":true,"stats":{"total_sets":2}}""",
-            "/api/v1/finance/pnl" to """{"success":true,"currency":"CHF","totals":{},"sets":[
+            "/api/v1/stats" to """{"success":true,"stats":{"total_sets":2,"total_quantity":2,"total_pieces":0,"total_instructions":0,"total_parts":0,"total_minifigs":0}}""",
+            "/api/v1/finance/pnl" to """{"success":true,"currency":"CHF","totals":{"purchase":"0.00","current":"0.00"},"sets":[
                 {"set_number":"75192-1","quantity":1,"current_price":800,"baseline_price":700,"pnl_pct":"14.3","baseline_pnl_pct":"14.3",
                  "kachel_preis":812.5,"kachel_pnl_pct":16.1}]}""",
             "/api/v1/sets/10294-1" to """{"success":true}""",

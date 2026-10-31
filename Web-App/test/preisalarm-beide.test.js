@@ -17,7 +17,7 @@ const lies = p => fs.readFileSync(p, 'utf8');
 const web  = rel => lies(path.join(WEB, rel));
 
 // Jeder Pfad in den Android-Baum AUSGESCHRIEBEN — siehe test/baumbruecken.test.js.
-const KT_API    = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'data', 'api', 'BrickApiService.kt'));
+const KT_API    = require('../scripts/kotlin-vertrag.js').apiQuelltext(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'data', 'api'));
 // Seit dem Schnitt des MainViewModels (28.10.2026): das entprellte Speichern
 // in Preisalarmeingabe.kt, gehalten vom SetDetailViewModel.
 const KT_FEAT   = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'ui', 'Preisalarmeingabe.kt'));

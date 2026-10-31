@@ -139,7 +139,7 @@ const PAPIERKORB =
 const ZWEITER_FAKTOR =
   'Den zweiten Faktor eines ANDEREN Kontos zurücksetzen gehört zur ' +
   'Nutzerverwaltung, und die steht absichtlich nur in der Webapp ' +
-  '(BrickApiService.kt, Abschnitt Server-Protokoll).';
+  '(VerwaltungApi.kt, Abschnitt Server-Protokoll).';
 
 const EINRICHTUNG =
   'Der Einrichtungs-Assistent richtet den SERVER ein (Startpasswort, ' +
@@ -164,27 +164,7 @@ const NUR_WEB = new Map([
   ['/api/v1/admin/protokoll',
    'Protokoll der Verwalteraktionen an fremden Konten. Diese Aktionen ' +
    '(Passwort setzen, Rolle, Löschen) gibt es absichtlich nur in der ' +
-   'Webapp (BrickApiService.kt nennt den Grund), also auch ihr Protokoll.'],
-  ['/api/v1/admin/auftraege',
-   'Die Hintergrundarbeiten (Auftragstabelle) zeigt die Webapp seit dem ' +
-   'Umbau auf Aufträge; die App bekommt dieselbe Ansicht im nächsten ' +
-   'Android-Stand (Beschreibung im Bericht dieses Umbaus, 30.10.2026).'],
-  ['/api/v1/admin/auftraege/:X/abbrechen',
-   'Die Hintergrundarbeiten (Auftragstabelle) zeigt die Webapp seit dem ' +
-   'Umbau auf Aufträge; die App bekommt dieselbe Ansicht im nächsten ' +
-   'Android-Stand (Beschreibung im Bericht dieses Umbaus, 30.10.2026).'],
-  ['/api/v1/admin/auftraege/:X/wiederholen',
-   'Die Hintergrundarbeiten (Auftragstabelle) zeigt die Webapp seit dem ' +
-   'Umbau auf Aufträge; die App bekommt dieselbe Ansicht im nächsten ' +
-   'Android-Stand (Beschreibung im Bericht dieses Umbaus, 30.10.2026).'],
-  ['/api/v1/admin/auftraege/art/:X/jetzt',
-   'Die Hintergrundarbeiten (Auftragstabelle) zeigt die Webapp seit dem ' +
-   'Umbau auf Aufträge; die App bekommt dieselbe Ansicht im nächsten ' +
-   'Android-Stand (Beschreibung im Bericht dieses Umbaus, 30.10.2026).'],
-  ['/api/v1/admin/auftraege/art/:X',
-   'Die Hintergrundarbeiten (Auftragstabelle) zeigt die Webapp seit dem ' +
-   'Umbau auf Aufträge; die App bekommt dieselbe Ansicht im nächsten ' +
-   'Android-Stand (Beschreibung im Bericht dieses Umbaus, 30.10.2026).'],
+   'Webapp (VerwaltungApi.kt nennt den Grund), also auch ihr Protokoll.'],
   ['/api/v1/admin/job-status',
    'Stand des Preis-Jobs samt BrickLink-Kontingent. Die App zeigt BEIDES ' +
    'schon: den Fortschritt über /admin/jobs (jobMonitor, mit progress/total) ' +
@@ -202,7 +182,7 @@ const NUR_WEB = new Map([
    '/auth/forgot-password löst die Mail aus.'],
   ['/api/v1/auth/users',
    'Nutzerverwaltung. ABSICHTLICH nicht in der App — die Begründung steht in ' +
-   'BrickApiService.kt: sie gehört an den Rechner, nicht auf ein Telefon.'],
+   'VerwaltungApi.kt: sie gehört an den Rechner, nicht auf ein Telefon.'],
   ['/api/v1/auth/users/:X',        'Nutzer löschen — siehe /auth/users.'],
   ['/api/v1/auth/users/:X/admin',  'Verwalterrecht umschalten — siehe /auth/users.'],
   ['/api/v1/auth/users/:X/password', 'Fremdes Passwort zurücksetzen — siehe /auth/users.'],
@@ -227,7 +207,7 @@ const NUR_WEB = new Map([
    'Retrofit: Der PdfViewerScreen bekommt die ADRESSE ' +
    '(gutscheinExportAdresse() in ui/GutscheinFeature.kt) und laedt sie mit ' +
    'dem angemeldeten Client der App — genau wie beim einzelnen Gutschein-PDF, ' +
-   'zu dem in BrickApiService.kt steht, warum dort keine Methode liegt. ' +
+   'zu dem in GutscheineApi.kt steht, warum dort keine Methode liegt. ' +
    'Dieses Muster sieht die Messung oben nicht, weil sie @GET/@POST sucht. ' +
    'Was bleibt: Die Befunde in der Kopfzeile (welcher Betrag ersetzt wurde ' +
    'und welcher nicht) liest nur die Webapp; im Betrachter steht das PDF, ' +
@@ -296,10 +276,11 @@ const NUR_WEB = new Map([
 
 test('was nur die Webapp kann, hat einen Grund', () => {
   const SERVICE = path.join(ROOT, '..', 'Android-App', 'app', 'src', 'main',
-    'java', 'ch', 'brickinventoryapp', 'data', 'api', 'BrickApiService.kt');
-  assert.ok(fs.existsSync(SERVICE), `BrickApiService.kt nicht gefunden unter ${SERVICE}`);
+    'java', 'ch', 'brickinventoryapp', 'data', 'api');
+  assert.ok(fs.existsSync(SERVICE), `App-Schnittstelle nicht gefunden unter ${SERVICE}`);
+  const { apiQuelltext } = require('../scripts/kotlin-vertrag.js');
 
-  const appPfade = new Set([...ohneKommentare(fs.readFileSync(SERVICE, 'utf8'))
+  const appPfade = new Set([...ohneKommentare(apiQuelltext(SERVICE))
     .matchAll(/@(?:GET|POST|PUT|DELETE|PATCH)\(\s*"([^"]+)"\s*\)/g)]
     // Retrofit schreibt `{setNumber}`, Express `:setNumber` — beides wird zu
     // `:X`. form() oben kennt nur die Express-Form; ohne diesen Schritt galten

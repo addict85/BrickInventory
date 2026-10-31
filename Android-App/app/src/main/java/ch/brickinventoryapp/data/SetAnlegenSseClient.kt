@@ -111,6 +111,12 @@ class SetAnlegenSseClient @Inject constructor(
                 }
                 close()
             }
+        } catch (e: java.net.UnknownHostException) {
+            trySend(SetAnlegenSchritt.KeineVerbindung); close()
+        } catch (e: java.net.ConnectException) {
+            // Nur diese beiden: Die Anfrage kam nie an, ein zweiter Versuch über den
+            // Ausgang kann nichts doppelt anlegen. Ein Abbruch mitten im Strom schon.
+            trySend(SetAnlegenSchritt.KeineVerbindung); close()
         } catch (e: Exception) {
             trySend(SetAnlegenSchritt.Fehler(e.message ?: ""))
             close()

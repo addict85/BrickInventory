@@ -1,26 +1,37 @@
 package ch.brickinventoryapp.ui.viewmodel
 
 import android.net.Uri
+import ch.brickinventoryapp.ui.model.alsAnsicht
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
+import ch.brickinventoryapp.ui.model.alsAnsicht
 import ch.brickinventoryapp.R
 import ch.brickinventoryapp.alarm.Alarmeingabe
+import ch.brickinventoryapp.ui.model.alsAnsicht
 import ch.brickinventoryapp.data.model.GenericResponse
 import ch.brickinventoryapp.data.repository.FinanzenRepository
+import ch.brickinventoryapp.ui.model.alsAnsicht
 import ch.brickinventoryapp.data.repository.HaushaltRepository
 import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.ui.model.alsAnsicht
 import ch.brickinventoryapp.data.repository.SetsRepository
 import ch.brickinventoryapp.ui.Aenderung
+import ch.brickinventoryapp.ui.model.alsAnsicht
 import ch.brickinventoryapp.ui.Preisalarmeingabe
 import ch.brickinventoryapp.ui.SetDetailUiState
+import ch.brickinventoryapp.ui.model.alsAnsicht
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
+import ch.brickinventoryapp.ui.model.alsAnsicht
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import ch.brickinventoryapp.ui.model.alsAnsicht
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import ch.brickinventoryapp.ui.model.alsAnsicht
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import ch.brickinventoryapp.ui.model.alsAnsicht
 import javax.inject.Inject
 
 /**
@@ -127,7 +138,7 @@ class SetDetailViewModel @Inject constructor(
     fun loadPreisalarme(setNumber: String) {
         viewModelScope.launch {
             val r = sets.getPreisalarme(setNumber)
-            val alarme = (r as? Result.Success)?.data?.takeIf { it.success }?.alerts ?: emptyList()
+            val alarme = (r as? Result.Success)?.data?.takeIf { it.success }?.alerts?.map { it.alsAnsicht() } ?: emptyList()
             _setDetailState.update { it.copy(preisalarme = alarme) }
         }
     }

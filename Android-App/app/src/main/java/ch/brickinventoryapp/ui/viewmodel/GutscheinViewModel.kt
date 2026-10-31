@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.R
 import ch.brickinventoryapp.data.MeldungsKanal
 import ch.brickinventoryapp.data.model.GutscheinAntwort
+import ch.brickinventoryapp.ui.model.alsAnsicht
 import ch.brickinventoryapp.data.model.GutscheinRequest
 import ch.brickinventoryapp.data.repository.GutscheineRepository
 import ch.brickinventoryapp.data.repository.Result
@@ -46,7 +47,7 @@ class GutscheinViewModel @Inject constructor(
     private suspend fun lade() {
         _state.update { it.copy(laedt = true, fehler = null) }
         when (val r = repo.liste()) {
-            is Result.Success -> _state.update { it.copy(gutscheine = r.data.vouchers, laedt = false) }
+            is Result.Success -> _state.update { it.copy(gutscheine = r.data.vouchers.map { v -> v.alsAnsicht() }, laedt = false) }
             is Result.Error -> {
                 _state.update { it.copy(laedt = false, fehler = texte.meldung(r)) }
                 _snackbar.value = texte.meldungFuerSnackbar(r)

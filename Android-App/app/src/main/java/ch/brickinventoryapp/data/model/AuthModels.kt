@@ -11,7 +11,7 @@ import kotlinx.serialization.Serializable
 /**
  * Anmeldung mit Zugangsdaten. `neverExpires`: Über https bekommt die App einen
  * Token ohne Ablaufdatum, weil er ihr einziger Ausweis ist; ungenutzt verfällt er
- * trotzdem (TOKEN_IDLE_DAYS). Über http nie (AdminRepository.login).
+ * trotzdem (TOKEN_IDLE_DAYS). Über http nie (KontoRepository.login).
  */
 @Serializable
 data class LoginRequest(
@@ -21,6 +21,36 @@ data class LoginRequest(
     @SerialName("never_expires") val neverExpires: Boolean = false,
     /** Code des zweiten Faktors — nur, wenn der Server danach gefragt hat. */
     val code: String? = null,
+    /**
+     * "app" ohne Verwalterrechte, "voll" mit. Immer ausdrücklich: Volle Rechte
+     * auf einem Telefon sind eine Entscheidung, keine Vorgabe (LoginScreen).
+     */
+    val scope: String = TOKEN_SCOPE_APP,
+)
+
+const val TOKEN_SCOPE_APP = "app"
+const val TOKEN_SCOPE_VOLL = "voll"
+
+/** Was ein Token darf und wie lange — Teil von Anmeldung, /auth/me und Rotation. */
+@Serializable
+data class TokenInfo(
+    val scope: String,
+    @SerialName("expires_at") val expiresAt: String? = null,
+    @SerialName("hard_expires_at") val hardExpiresAt: String? = null,
+    @SerialName("never_expires") val neverExpires: Boolean,
+    @SerialName("rotiert_am") val rotiertAm: String? = null,
+    /** Nur in /auth/me und der Rotation; die Anmeldung liefert einen frischen Token. */
+    @SerialName("rotation_faellig") val rotationFaellig: Boolean = false,
+)
+
+/** Antwort auf POST /api/v1/auth/token-rotieren. Der alte Token gilt noch [ueberlappungSek]. */
+@Serializable
+data class TokenRotation(
+    val success: Boolean,
+    val token: String? = null,
+    @SerialName("token_info") val tokenInfo: TokenInfo? = null,
+    @SerialName("alt_gueltig_bis") val altGueltigBis: String? = null,
+    @SerialName("ueberlappung_sek") val ueberlappungSek: Int? = null,
 )
 
 @Serializable
@@ -34,7 +64,14 @@ data class LoginResponse(
     val error: String? = null,
     /** Passwort stimmt, der Server verlangt den Code aus der Authenticator-App. */
     @SerialName("zweiter_faktor") val zweiterFaktor: Boolean = false,
-)
+    @SerialName("token_info") val tokenInfo: TokenInfo? = null,
+) {
+    /**
+     * Das wirksame Verwalterrecht: Kontorecht UND ein Token mit vollem Scope.
+     * Mit Scope "app" antwortet der Server auf Verwalteradressen mit 403.
+     */
+    val verwalter: Boolean get() = user?.isAdmin == true && tokenInfo?.scope == TOKEN_SCOPE_VOLL
+}
 
 @Serializable
 data class User(
@@ -109,6 +146,12 @@ data class AppToken(
     @SerialName("expires_at") val expiresAt: String? = null,
     @SerialName("never_expires") val neverExpires: Boolean = false,
     val aktuell: Boolean = false,
+    @SerialName("token_prefix") val tokenPrefix: String? = null,
+    @SerialName("hard_expires_at") val hardExpiresAt: String? = null,
+    /** "app" oder "voll" — in der Geräteliste sichtbar, damit ein voller Zugang auffällt. */
+    val scope: String? = null,
+    @SerialName("ip_bereich") val ipBereich: String? = null,
+    @SerialName("rotiert_am") val rotiertAm: String? = null,
 )
 
 @Serializable
@@ -121,8 +164,16 @@ data class TokensResponse(
 @Serializable
 data class MeResponse(
     val success: Boolean,
-    val user: User? = null
+    /** user.isAdmin ist hier das wirksame Recht DIESES Tokens (Scope "app" → false). */
+    val user: User? = null,
+    @SerialName("token_expires") val tokenExpires: String? = null,
+    @SerialName("token_last_used") val tokenLastUsed: String? = null,
+    @SerialName("token_info") val tokenInfo: TokenInfo? = null,
 )
+
+/** Antwort auf DELETE /api/v1/settings/tokens/:id — wie viele Zugänge entwertet wurden. */
+@Serializable
+data class TokenWiderruf(val success: Boolean, val deleted: Int = 0)
 
 // ── Konto anlegen und Passwort vergessen ────────────────────────────────────
 //

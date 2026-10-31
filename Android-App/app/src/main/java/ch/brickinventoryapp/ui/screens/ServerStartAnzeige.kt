@@ -20,7 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.R
-import ch.brickinventoryapp.data.model.StartupStatus
+import ch.brickinventoryapp.ui.model.StartzustandAnsicht
 import ch.brickinventoryapp.ui.theme.Abstaende
 
 /**
@@ -37,7 +37,7 @@ import ch.brickinventoryapp.ui.theme.Abstaende
  *         diese Anzeige gar nicht erst.
  */
 @Composable
-fun ServerStartAnzeige(status: StartupStatus, modifier: Modifier = Modifier) {
+fun ServerStartAnzeige(status: StartzustandAnsicht, modifier: Modifier = Modifier) {
     Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(
             Modifier.padding(Abstaende.riesig),
@@ -52,13 +52,13 @@ fun ServerStartAnzeige(status: StartupStatus, modifier: Modifier = Modifier) {
             )
             // Der Schritt kommt fertig uebersetzt vom Server — dieselbe
             // Zeichenkette, die die Webapp anzeigt.
-            status.step?.takeIf { it.isNotBlank() }?.let {
+            status.schritt?.takeIf { it.isNotBlank() }?.let {
                 Text(it, style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center)
             }
-            if (status.total > 0) {
-                val anteil = status.progress.toFloat() / status.total
+            val anteil = status.anteil
+            if (anteil != null) {
                 LinearProgressIndicator(
                     progress = { anteil },
                     modifier = Modifier.fillMaxWidth().height(6.dp).clip(MaterialTheme.shapes.small),
@@ -72,7 +72,7 @@ fun ServerStartAnzeige(status: StartupStatus, modifier: Modifier = Modifier) {
                     modifier = Modifier.fillMaxWidth().height(6.dp).clip(MaterialTheme.shapes.small),
                 )
             }
-            status.sub?.takeIf { it.isNotBlank() }?.let {
+            status.unterschritt?.takeIf { it.isNotBlank() }?.let {
                 Text(it, style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }

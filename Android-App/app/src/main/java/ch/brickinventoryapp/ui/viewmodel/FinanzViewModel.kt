@@ -1,18 +1,25 @@
 package ch.brickinventoryapp.ui.viewmodel
 
 import androidx.lifecycle.SavedStateHandle
+import ch.brickinventoryapp.ui.model.alsAnsicht
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.data.ScopeFilter
+import ch.brickinventoryapp.ui.model.alsAnsicht
 import ch.brickinventoryapp.data.repository.FinanzenRepository
 import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.ui.model.alsAnsicht
 import ch.brickinventoryapp.ui.Aenderung
 import ch.brickinventoryapp.ui.FinanceUiState
+import ch.brickinventoryapp.ui.model.alsAnsicht
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
+import ch.brickinventoryapp.ui.model.alsAnsicht
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import ch.brickinventoryapp.ui.model.alsAnsicht
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import ch.brickinventoryapp.ui.model.alsAnsicht
 import javax.inject.Inject
 
 /**
@@ -72,8 +79,8 @@ class FinanzViewModel @Inject constructor(
                 is Result.Success -> _financeState.update { it.copy(
                     historyLoading         = false,
                     historyPeriodChangePct = r.data.periodChangePct,
-                    historyPoints          = r.data.points,
-                    historyYAxis           = r.data.yAxis) }
+                    historyPoints          = r.data.points.map { it.alsAnsicht() },
+                    historyYAxis           = r.data.yAxis.map { it.alsAnsicht() }) }
                 is Result.Error -> _financeState.update { it.copy(historyLoading = false) }
             }
         }

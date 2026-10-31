@@ -23,4 +23,6 @@ sealed class SetAnlegenSchritt {
     data class Fertig(val ergebnis: AddSetResponse) : SetAnlegenSchritt()
     /** Leere Meldung: Die Verbindung brach ab — ein Netzfehler, kein Satz des Servers. */
     data class Fehler(val meldung: String) : SetAnlegenSchritt()
+    /** Keine Verbindung zustande gekommen — die Anfrage hat den Server nie erreicht. */
+    object KeineVerbindung : SetAnlegenSchritt()
 }

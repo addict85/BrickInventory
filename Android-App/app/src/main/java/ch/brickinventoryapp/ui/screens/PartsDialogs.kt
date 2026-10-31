@@ -31,8 +31,8 @@ import ch.brickinventoryapp.data.model.Part
 import ch.brickinventoryapp.data.model.PartsStats
 import ch.brickinventoryapp.data.model.PartValuationItem
 import ch.brickinventoryapp.data.model.Acquisition
-import ch.brickinventoryapp.data.model.BrickColor
-import ch.brickinventoryapp.data.model.KEINE_FARBE
+import ch.brickinventoryapp.ui.model.FarbeAnsicht
+import ch.brickinventoryapp.ui.model.OHNE_FARBE
 import ch.brickinventoryapp.ui.ohneKeineFarbe
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -46,7 +46,7 @@ import ch.brickinventoryapp.ui.theme.Abstaende
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddPartDialog(
-    colors: List<BrickColor> = emptyList(),
+    colors: List<FarbeAnsicht> = emptyList(),
     onDismiss: () -> Unit,
     onAdd: (String, Int, String?, String?, Int, Double?, String?, Int?, String?) -> Unit,
     defaultCondition: String = "N",
@@ -60,7 +60,7 @@ fun AddPartDialog(
     var partNumber by rememberSaveable { mutableStateOf("") }
     var quantity   by rememberSaveable { mutableStateOf("1") }
     var unitPrice  by rememberSaveable { mutableStateOf("") }
-    var selectedColor by remember { mutableStateOf<BrickColor?>(null) }
+    var selectedColor by remember { mutableStateOf<FarbeAnsicht?>(null) }
     var colorMenuExpanded by rememberSaveable { mutableStateOf(false) }
     var condition  by rememberSaveable { mutableStateOf(defaultCondition) }
     // Schluessel ist die Vorgabe — dieselbe Begruendung wie im Galerie-Dialog:
@@ -80,7 +80,7 @@ fun AddPartDialog(
             // Entscheidung und keine Formalie; sie gehoert an eine Stelle.
             val w = erfassungsWerte(quantity, unitPrice, condition, owner, householdMembers)
             onAdd(
-                partNumber, selectedColor?.id ?: KEINE_FARBE, selectedColor?.name, selectedColor?.hex,
+                partNumber, selectedColor?.id ?: OHNE_FARBE, selectedColor?.name, selectedColor?.hex,
                 w.anzahl, w.preis, w.zustand, w.besitzer,
                 lagerort.trim().takeIf { it.isNotEmpty() }
             )

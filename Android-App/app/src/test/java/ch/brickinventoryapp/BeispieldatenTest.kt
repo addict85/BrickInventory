@@ -1,11 +1,12 @@
 package ch.brickinventoryapp
 
 import androidx.lifecycle.SavedStateHandle
-import ch.brickinventoryapp.data.repository.AdminRepository
+import ch.brickinventoryapp.data.repository.KatalogRepository
 import ch.brickinventoryapp.data.repository.FinanzenRepository
 import ch.brickinventoryapp.data.repository.HaushaltRepository
 import ch.brickinventoryapp.data.repository.SetsRepository
 import ch.brickinventoryapp.data.repository.TeileRepository
+import ch.brickinventoryapp.data.repository.FigurenRepository
 import ch.brickinventoryapp.ui.viewmodel.DateiLeser
 import ch.brickinventoryapp.ui.viewmodel.FinanzViewModel
 import ch.brickinventoryapp.ui.viewmodel.GalerieViewModel
@@ -76,7 +77,7 @@ object Beispiele {
             {"set_number":"75192-1","name":"Millennium Falcon","year":2017,"theme":"Star Wars","quantity":1,"num_parts":7541},
             {"set_number":"10294-1","name":"Titanic","year":2021,"theme":"Icons","quantity":2,"num_parts":9090},
             {"set_number":"21318-1","name":"Baumhaus","year":2019,"theme":"Ideas","quantity":1,"num_parts":3036}]}""",
-        "/api/v1/stats" to """{"success":true,"stats":{"total_sets":3,"total_quantity":4,"total_pieces":28757}}""",
+        "/api/v1/stats" to """{"success":true,"stats":{"total_sets":3,"total_quantity":4,"total_pieces":28757,"total_instructions":2,"total_parts":0,"total_minifigs":5}}""",
         "/api/v1/finance/pnl" to """{"success":true,"currency":"CHF","totals":{"purchase":"1450.00","current":"1712.40","pnl_prozent":18.1},"sets":[
             {"set_number":"75192-1","quantity":1,"current_price":812.5,"baseline_price":700,"pnl_pct":"16.1","kachel_preis":812.5,"kachel_pnl_pct":16.1}]}""",
         "/api/v1/finance/valuation" to """{"success":true,"currency":"CHF","sets":[
@@ -110,10 +111,10 @@ object Beispiele {
 
         fun galerie() = t.merke(GalerieViewModel(t.dienste, SetsRepository(t.api, t.cache),
             FinanzenRepository(t.api, t.cache), SavedStateHandle()))
-        fun teile() = t.merke(TeileViewModel(t.dienste, TeileRepository(t.api, t.cache), SavedStateHandle()))
+        fun teile() = t.merke(TeileViewModel(t.dienste, TeileRepository(t.api, t.cache), FigurenRepository(t.api, t.cache), SavedStateHandle()))
         fun finanzen() = t.merke(FinanzViewModel(t.dienste, FinanzenRepository(t.api, t.cache), SavedStateHandle()))
         fun merkliste() = t.merke(MerklisteViewModel(t.dienste, SetsRepository(t.api, t.cache),
-            AdminRepository(t.api, t.cache), FinanzenRepository(t.api, t.cache), SavedStateHandle()))
+            KatalogRepository(t.api, t.cache), FinanzenRepository(t.api, t.cache), SavedStateHandle()))
         fun setDetail() = t.merke(SetDetailViewModel(t.dienste, SetsRepository(t.api, t.cache),
             FinanzenRepository(t.api, t.cache), HaushaltRepository(t.api, t.cache),
             object : DateiLeser { override suspend fun lies(uri: android.net.Uri): Pair<String?, ByteArray>? = null },

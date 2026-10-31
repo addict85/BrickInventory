@@ -8,6 +8,7 @@ import ch.brickinventoryapp.data.repository.FinanzenRepository
 import ch.brickinventoryapp.data.repository.HaushaltRepository
 import ch.brickinventoryapp.data.repository.Result
 import ch.brickinventoryapp.data.repository.TeileRepository
+import ch.brickinventoryapp.data.repository.FigurenRepository
 import ch.brickinventoryapp.ui.Aenderung
 import ch.brickinventoryapp.ui.ManualItemDetailUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -35,6 +36,7 @@ class KaeufeViewModel @Inject constructor(
     private val haushalt: HaushaltRepository,
     private val finanzen: FinanzenRepository,
     private val teile: TeileRepository,
+    private val figuren: FigurenRepository,
 ) : BereichsViewModel(dienste) {
 
     private val _manDetailState = MutableStateFlow(ManualItemDetailUiState())
@@ -191,7 +193,7 @@ class KaeufeViewModel @Inject constructor(
         lagerJob?.cancel()
         lagerJob = viewModelScope.launch {
             delay(Alarmeingabe.RUHE_MS)
-            val r = if (type == "fig") teile.setFigStorage(id, ort) else teile.setPartStorage(id, farbe, ort)
+            val r = if (type == "fig") figuren.setFigStorage(id, ort) else teile.setPartStorage(id, farbe, ort)
             when (r) {
                 is Result.Success -> {
                     if (!r.data.success) { _snackbar.value = r.data.error ?: ""; return@launch }

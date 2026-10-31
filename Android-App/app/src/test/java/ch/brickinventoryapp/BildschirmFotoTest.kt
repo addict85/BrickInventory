@@ -9,7 +9,8 @@ import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.data.SetAnlegenSchritt
 import ch.brickinventoryapp.data.SetAnleger
 import ch.brickinventoryapp.data.model.Gutschein
-import ch.brickinventoryapp.data.repository.AdminRepository
+import ch.brickinventoryapp.ui.model.alsAnsicht
+import ch.brickinventoryapp.data.repository.KatalogRepository
 import ch.brickinventoryapp.data.repository.SetsRepository
 import ch.brickinventoryapp.ui.AnmeldeFormular
 import ch.brickinventoryapp.ui.GutscheinUiState
@@ -92,7 +93,7 @@ class BildschirmFotoTest(private val design: String, private val dunkel: Boolean
     }
 
     private fun erfassung() = welt.t.merke(ErfassungViewModel(welt.t.dienste, SetsRepository(welt.t.api, welt.t.cache),
-        AdminRepository(welt.t.api, welt.t.cache), object : SetAnleger {
+        KatalogRepository(welt.t.api, welt.t.cache), object : SetAnleger {
             override fun anlegen(setNumber: String, quantity: Int, purchasePrice: Double?, condition: String?,
                                  ownerUserId: Int?, storage: String?): Flow<SetAnlegenSchritt> = emptyFlow()
         }))
@@ -160,8 +161,8 @@ class BildschirmFotoTest(private val design: String, private val dunkel: Boolean
     @Test
     fun einstellungen() {
         val gutscheine = GutscheinUiState(gutscheine = listOf(
-            Gutschein(id = 1, number = "6061 2345 6789", pin = "4711", amount = 50.0, currency = "CHF"),
-            Gutschein(id = 2, number = "6061 9876 5432", amount = 20.0, currency = "CHF")))
+            Gutschein(id = 1, number = "6061 2345 6789", pin = "4711", amount = 50.0, currency = "CHF").alsAnsicht(),
+            Gutschein(id = 2, number = "6061 9876 5432", amount = 20.0, currency = "CHF").alsAnsicht()))
         foto("einstellungen") {
             androidx.compose.foundation.layout.Column {
                 KlartextSchalter(an = false, onAendern = {})

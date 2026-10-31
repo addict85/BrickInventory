@@ -161,6 +161,14 @@ test('die Antworten passen zu den Kotlin-Modellen', { concurrency: 1, timeout: 1
   await db.run('INSERT INTO household_former_links (main_user_id, sub_user_id, via_user_id) VALUES ($1, $2, $3)',
     [uid, getrennt, sub]);
   await _req('utils/auth.js').createToken(uid, 'Vertragsprobe');
+  // Hintergrundarbeiten: ein Auftrag mit Fortschritt und eine Pause, damit
+  // /admin/auftraege keine leeren Listen liefert.
+  const auftrag = await _req('utils/auftraege.js').stelleAuftragEin('anleitung', { set_number: SET },
+    { schluessel: `vertrag-get:${process.pid}` });
+  await db.run(`UPDATE auftraege SET fortschritt = '{"erledigt":1,"gesamt":3,"text":"Seiten"}'::jsonb WHERE id = $1`, [auftrag]);
+  await db.run(`INSERT INTO auftrag_pausen (art, bis, grund) VALUES ('wechselkurse', NOW() + INTERVAL '1 hour', 'Vertrag')
+                ON CONFLICT (art) DO UPDATE SET bis = EXCLUDED.bis, grund = EXCLUDED.grund`);
+  aufraeumen.push([`DELETE FROM auftraege WHERE id = $1`, [auftrag]], [`DELETE FROM auftrag_pausen WHERE grund = 'Vertrag'`, []]);
   await haeltSet(db, uid, SET, 2, { preis: 49.9 });
   await haeltTeil(db, uid, TEIL, { setNumber: SET, colorId: FARBE, menge: 4 });
   await haeltTeil(db, uid, TEIL, { colorId: FARBE, menge: 3 });
@@ -188,7 +196,7 @@ test('die Antworten passen zu den Kotlin-Modellen', { concurrency: 1, timeout: 1
   const basis = `http://127.0.0.1:${srv.address().port}`;
 
   const modelle = kotlinModelle(APP);
-  const routen = apiRouten(path.join(APP, 'data', 'api', 'BrickApiService.kt'));
+  const routen = apiRouten(path.join(APP, 'data', 'api'));
   const werte = { setNumber: SET, partNumber: TEIL, colorId: String(FARBE), figNumber: FIGUR };
 
   const abweichungen = [], leer = [], status = [];

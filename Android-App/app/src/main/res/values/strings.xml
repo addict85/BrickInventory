@@ -137,6 +137,12 @@
     <string name="gallery_pieces_suffix"> parts</string>
     <string name="gallery_scan_barcode">Scan barcode</string>
     <string name="offline_stand">Offline – data as of %1$s</string>
+    <string name="offline_verworfen">Not applied: %1$s – %2$s</string>
+    <string name="offline_verworfen_ohne_grund">the server did not accept the change</string>
+    <plurals name="offline_ausgang">
+        <item quantity="one">Saved offline – %1$d change will be sent</item>
+        <item quantity="other">Saved offline – %1$d changes will be sent</item>
+    </plurals>
     <string name="gallery_add_set">Add set</string>
     <string name="gallery_add_set_title">Add set</string>
     <string name="gallery_set_number">Set number</string>
@@ -604,6 +610,10 @@
     <string name="tokens_none">No access tokens.</string>
     <string name="tokens_reload">Refresh</string>
     <string name="tokens_current">this device</string>
+    <string name="login_full_access">Sign in with administrator rights</string>
+    <string name="login_full_access_hint">Only for administration on this device. Without it, the app works without administrator rights.</string>
+    <string name="tokens_full_access">full access</string>
+    <string name="tokens_already_gone">This device was already signed out.</string>
     <string name="tokens_never">never</string>
     <string name="tokens_unused">never used</string>
     <string name="tokens_row_hint">Signed in %1$s · last used %2$s · expires %3$s</string>
@@ -865,4 +875,46 @@
     <string name="widget_heute">Today</string>
     <string name="widget_gesamt">Overall</string>
     <string name="widget_leer">Open the app once to load the figures.</string>
+    <!-- Hintergrundarbeiten (Auftragstabelle), Namen wie monitor.* in der Webapp -->
+    <string name="art_nacharbeit">Follow-up after adding a set</string>
+    <string name="art_bilder">Images of a set</string>
+    <string name="art_pdf">PDF parts list</string>
+    <string name="art_csv_import">CSV import of sets</string>
+    <string name="art_wechselkurse">Exchange rates (ECB)</string>
+    <string name="art_anleitung">Load instructions</string>
+    <string name="art_brickset">Brickset retry</string>
+    <string name="art_bildbedarf">Load catalog images</string>
+    <string name="art_bilder_neu_laden">Reload missing images</string>
+    <string name="art_nachlauf">Start-up follow-up</string>
+    <string name="art_csv_sync">Rebrickable catalog</string>
+    <string name="art_preise">Update prices</string>
+    <string name="art_bild_nachlauf">Image download (CDN)</string>
+    <string name="art_aufraeumen">Clean-up (hourly)</string>
+    <string name="art_aufraeumen_taeglich">Clean-up (daily)</string>
+    <string name="hintergrund_titel">Background jobs</string>
+    <string name="hintergrund_kein_prozess">No job process reports in — is the “jobs” service running?</string>
+    <string name="hintergrund_pause">%1$s paused until %2$s: %3$s</string>
+    <string name="hintergrund_leer">No open or failed jobs</string>
+    <string name="hintergrund_offen">open</string>
+    <string name="hintergrund_laeuft">running</string>
+    <string name="hintergrund_fehler">failed</string>
+    <string name="hintergrund_abgebrochen">cancelled</string>
+    <string name="hintergrund_geplant">scheduled for %1$s</string>
+    <string name="hintergrund_faellig">due from %1$s</string>
+    <string name="hintergrund_versuch">attempt %1$d of %2$d</string>
+    <string name="hintergrund_jetzt">Now</string>
+    <string name="hintergrund_leeren">Clear</string>
+    <string name="hintergrund_wiederholen">Retry</string>
+    <plurals name="hintergrund_geleert">
+        <item quantity="one">%1$d job removed</item>
+        <item quantity="other">%1$d jobs removed</item>
+    </plurals>
+    <plurals name="hintergrund_bildbedarf">
+        <item quantity="one">%1$d image queued</item>
+        <item quantity="other">%1$d images queued</item>
+    </plurals>
+    <string name="hintergrund_abgebrochen_ok">Job cancelled</string>
+    <string name="hintergrund_wiederholt_ok">Job will be retried</string>
+    <string name="hintergrund_gestartet">%1$s is starting</string>
+    <string name="hintergrund_nichts_gestartet">%1$s: nothing to start</string>
 </resources>

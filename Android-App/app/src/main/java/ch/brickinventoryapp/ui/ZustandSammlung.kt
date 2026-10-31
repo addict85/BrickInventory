@@ -111,7 +111,7 @@ data class PartsUiState(
      */
     val minifigsView: String = "grid",
     val partsStats: PartsStats? = null,
-    val partsColors: List<BrickColor> = emptyList(),
+    val partsColors: List<ch.brickinventoryapp.ui.model.FarbeAnsicht> = emptyList(),
 )
 
 /**
@@ -137,7 +137,7 @@ data class SetDetailUiState(
      * geladen, weil sie zum Konto gehören: Zwei Personen mit demselben Set haben
      * verschiedene Alarme.
      */
-    val preisalarme: List<ch.brickinventoryapp.data.model.Preisalarm> = emptyList(),
+    val preisalarme: List<ch.brickinventoryapp.ui.model.PreisalarmAnsicht> = emptyList(),
     val acquisitions: List<ch.brickinventoryapp.data.model.Acquisition> = emptyList(),
     /**
      * Summenzeile der Erfassungen — vom Server gerechnet, nicht hier.

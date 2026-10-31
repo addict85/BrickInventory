@@ -115,7 +115,8 @@ const C = {
   // Cache-Dauer, Preis-Job und der globale Standard-Zustand standen je einmal
   // unter /api/settings bzw. /api/finance und einmal unter /api/v1/admin.
   'GET /api/v1/admin/job-status': 'nur-v1',
-  // Die Auftragstabelle in der Verwaltung („Hintergrundarbeiten"); die App folgt.
+  // Die Auftragstabelle in der Verwaltung („Hintergrundarbeiten"): Webapp und
+  // App (Monitoring, VerwaltungApi.getAuftraege) rufen sie beide.
   'GET /api/v1/admin/auftraege': 'nur-v1',
   'POST /api/v1/admin/auftraege/:id/abbrechen': 'nur-v1',
   'POST /api/v1/admin/auftraege/:id/wiederholen': 'nur-v1',

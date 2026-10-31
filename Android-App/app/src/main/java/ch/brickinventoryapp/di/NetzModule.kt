@@ -1,12 +1,6 @@
 package ch.brickinventoryapp.di
 
 import ch.brickinventoryapp.data.PreferencesManager
-import ch.brickinventoryapp.data.api.AdminApi
-import ch.brickinventoryapp.data.api.FinanzenApi
-import ch.brickinventoryapp.data.api.GutscheineApi
-import ch.brickinventoryapp.data.api.HaushaltApi
-import ch.brickinventoryapp.data.api.SetsApi
-import ch.brickinventoryapp.data.api.TeileApi
 import ch.brickinventoryapp.util.NetworkPolicy
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import dagger.Module
@@ -40,9 +34,10 @@ object NetzModule {
         sessionExpired: ch.brickinventoryapp.data.SessionExpiredSignal,
         meldungen: ch.brickinventoryapp.data.MeldungsKanal,
         frage: ch.brickinventoryapp.util.ZertifikatsFrage,
+        tausch: ch.brickinventoryapp.data.TokenTausch,
     ): OkHttpClient =
         buildInterceptorClient(prefs, isApiClient = true, sessionExpired = sessionExpired, ctx = context,
-            meldungen = meldungen, frage = frage)
+            meldungen = meldungen, frage = frage, rotation = tausch)
 
     /**
      * Der Client für die Selbstaktualisierung — bewusst blank: Server, Bearer-Token
@@ -263,8 +258,10 @@ object NetzModule {
         prefs: PreferencesManager,
         sessionExpired: ch.brickinventoryapp.data.SessionExpiredSignal,
         frage: ch.brickinventoryapp.util.ZertifikatsFrage,
+        tausch: ch.brickinventoryapp.data.TokenTausch,
     ): OkHttpClient =
-        buildInterceptorClient(prefs, isApiClient = true, sessionExpired = sessionExpired, ctx = context, frage = frage)
+        buildInterceptorClient(prefs, isApiClient = true, sessionExpired = sessionExpired, ctx = context, frage = frage,
+            rotation = tausch)
             .newBuilder()
             .readTimeout(0, TimeUnit.SECONDS)
             .pingInterval(20, TimeUnit.SECONDS)
@@ -282,13 +279,4 @@ object NetzModule {
             .client(client)
             .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
             .build()
-
-    // Je Bereich eine Schnittstelle (data/api/BrickApiService.kt); jedes Repository
-    // bekommt nur seine. Ein Retrofit, ein Client — das Verhalten ist dasselbe.
-    @Provides @Singleton fun provideAdminApi(r: Retrofit): AdminApi = r.create(AdminApi::class.java)
-    @Provides @Singleton fun provideSetsApi(r: Retrofit): SetsApi = r.create(SetsApi::class.java)
-    @Provides @Singleton fun provideTeileApi(r: Retrofit): TeileApi = r.create(TeileApi::class.java)
-    @Provides @Singleton fun provideHaushaltApi(r: Retrofit): HaushaltApi = r.create(HaushaltApi::class.java)
-    @Provides @Singleton fun provideFinanzenApi(r: Retrofit): FinanzenApi = r.create(FinanzenApi::class.java)
-    @Provides @Singleton fun provideGutscheineApi(r: Retrofit): GutscheineApi = r.create(GutscheineApi::class.java)
 }
