@@ -4,8 +4,10 @@ import ch.brickinventoryapp.data.api.FigurenApi
 import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.lokal.Bearbeitung
 import ch.brickinventoryapp.data.lokal.Faecher
+import ch.brickinventoryapp.data.lokal.Lokal
 import ch.brickinventoryapp.data.lokal.Offlineablage
 import ch.brickinventoryapp.data.model.*
+import kotlinx.coroutines.flow.Flow
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
 import kotlinx.serialization.decodeFromString
@@ -34,6 +36,10 @@ class FigurenRepository @Inject constructor(
             }
         else safeCall { api.getMinifigs(source = "set", accounts = accounts,
                                         search = search?.ifBlank { null }) }
+
+    /** Die lokalen Listen (ungefiltert), wie TeileRepository.beobachteTeile. */
+    fun beobachteFiguren(): Flow<Lokal<Minifig>> = ablage.beobachte(Faecher.FIGUREN)
+    fun beobachteManuelleFiguren(): Flow<Lokal<FigValuationItem>> = ablage.beobachte(Faecher.MANUELLE_FIGUREN)
 
     suspend fun getManualMinifigs(accounts: String? = null,
                                   search: String? = null): Result<ManualFigsResponse> =

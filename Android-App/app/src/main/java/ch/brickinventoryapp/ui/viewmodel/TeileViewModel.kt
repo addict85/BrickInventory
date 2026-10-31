@@ -14,7 +14,9 @@ import ch.brickinventoryapp.ui.PartsUiState
 import ch.brickinventoryapp.ui.SetItemUiState
 import ch.brickinventoryapp.ui.Teile
 import ch.brickinventoryapp.ui.TeileAbfrage
+import ch.brickinventoryapp.ui.TeileLokal
 import ch.brickinventoryapp.ui.TeileQuelle
+import ch.brickinventoryapp.ui.model.alsAnsicht
 import ch.brickinventoryapp.ui.retryOnNetwork
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
@@ -65,6 +67,12 @@ class TeileViewModel @Inject constructor(
         meldeFehler = { _snackbar.value = meldungFuerSnackbar(it) },
         vergissScroll = { dienste.scrollMemory.vergiss("parts") },
         beschreibeFehler = { meldung(it) },
+        lokal = TeileLokal(repo.beobachteTeile(), repo.beobachteManuelleTeile(),
+            figuren.beobachteFiguren(), figuren.beobachteManuelleFiguren()),
+        teileEingeschraenkt = {
+            scopeFor(ScopeFilter.View.PARTS) != null || !lagerFor(ScopeFilter.View.PARTS).isNullOrBlank()
+        },
+        figurenEingeschraenkt = { scopeFor(ScopeFilter.View.MINIFIGS) != null },
     )
     val partsState: StateFlow<PartsUiState> = teile.state
 
@@ -234,7 +242,7 @@ class TeileViewModel @Inject constructor(
             if (jetzt.art != art || jetzt.nummer != nummer || jetzt.colorId != colorId) return@launch
             when (r) {
                 is Result.Success -> _setItemState.update {
-                    it.copy(laedt = false, kopf = r.data.item, sets = r.data.sets,
+                    it.copy(laedt = false, kopf = r.data.item?.alsAnsicht(), sets = r.data.sets.map { s -> s.alsAnsicht() },
                             fehler = if (r.data.success) null else r.data.error)
                 }
                 is Result.Error -> _setItemState.update { it.copy(laedt = false, fehler = meldung(r)) }

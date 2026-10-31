@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.ui
 
-import ch.brickinventoryapp.data.model.JahrAnzahl
+import ch.brickinventoryapp.ui.model.JahrAnzahlAnsicht
 import kotlin.math.roundToInt
 
 /**
@@ -54,7 +54,7 @@ object CatalogYearMath {
      *         Stelle noch nicht geladen ist
      */
     fun jahrFuer(
-        anteil: Float, total: Int, verteilung: List<JahrAnzahl>,
+        anteil: Float, total: Int, verteilung: List<JahrAnzahlAnsicht>,
         geladen: (Int) -> Int?
     ): Int? = geladen(nummerAus(anteil, total)) ?: jahrAnPosition(anteil, total, verteilung)
 
@@ -69,7 +69,7 @@ object CatalogYearMath {
      *
      * @return das Jahr, oder null wenn es nichts zu zeigen gibt
      */
-    fun jahrAnPosition(anteil: Float, total: Int, verteilung: List<JahrAnzahl>): Int? {
+    fun jahrAnPosition(anteil: Float, total: Int, verteilung: List<JahrAnzahlAnsicht>): Int? {
         if (verteilung.isEmpty() || total <= 0) return null
         var nummer = nummerAus(anteil, total)
         for (eintrag in verteilung) {

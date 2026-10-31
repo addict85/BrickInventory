@@ -1,5 +1,9 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.model.kontoOptionen
+import ch.brickinventoryapp.ui.model.KontoAnsicht
+import ch.brickinventoryapp.ui.model.LagerortAnsicht
+import ch.brickinventoryapp.ui.model.MitgliedAnsicht
 import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -17,8 +21,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ch.brickinventoryapp.R
 import ch.brickinventoryapp.data.ScopeFilter
-import ch.brickinventoryapp.data.model.HouseholdMember
-import ch.brickinventoryapp.data.model.Lagerort
 import ch.brickinventoryapp.ui.theme.Abstaende
 
 /**
@@ -40,7 +42,7 @@ import ch.brickinventoryapp.ui.theme.Abstaende
  */
 @Composable
 fun ScopeFilterZeile(
-    members: List<HouseholdMember>,
+    members: List<MitgliedAnsicht>,
     current: String,
     onSelect: (String) -> Unit,
     // ── Der Lagerortfilter steht daneben, nicht darunter ──
@@ -49,7 +51,7 @@ fun ScopeFilterZeile(
     // nebeneinander sieht man beide Antworten auf einen Blick, wie in der Webapp
     // (public/index.html, scope-* und storage-* in einer Zeile). Vorgaben, damit
     // Bildschirme, die nur den Kontofilter brauchen, unverändert aufrufen können.
-    lagerorte: List<Lagerort> = emptyList(),
+    lagerorte: List<LagerortAnsicht> = emptyList(),
     lagerAktuell: String = "",
     onLagerSelect: (String) -> Unit = {},
 ) {
@@ -82,7 +84,7 @@ fun ScopeFilterZeile(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LagerortFilterChip(
-    orte: List<Lagerort>,
+    orte: List<LagerortAnsicht>,
     current: String,
     onSelect: (String) -> Unit,
     modifier: Modifier = Modifier,
@@ -129,12 +131,12 @@ fun LagerortFilterChip(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ScopeFilterChip(
-    members: List<HouseholdMember>,
+    members: List<MitgliedAnsicht>,
     current: String,
     onSelect: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val options = ScopeFilter.options(
+    val options = kontoOptionen(
         members,
         labelAll  = stringResource(R.string.household_scope_all),
         labelOwn  = stringResource(R.string.household_scope_own),
@@ -184,7 +186,7 @@ fun ScopeFilterChip(
 // Ergebnis auf" und meldete „Unresolved reference 'invoke'".
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun OwnerBadges(owners: List<ch.brickinventoryapp.data.model.KontoName>, modifier: Modifier = Modifier) {
+fun OwnerBadges(owners: List<KontoAnsicht>, modifier: Modifier = Modifier) {
     if (owners.isEmpty()) return
     // FlowRow statt Row: Zwei Besitzer mit langen Namen sind breiter als die Kachel,
     // in einer Row schöben sich die Etiketten übereinander. FlowRow bricht um, damit
@@ -219,7 +221,7 @@ fun OwnerBadges(owners: List<ch.brickinventoryapp.data.model.KontoName>, modifie
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OwnerPicker(
-    members: List<HouseholdMember>,
+    members: List<MitgliedAnsicht>,
     selected: Int?,
     onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier,

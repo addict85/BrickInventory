@@ -3,7 +3,8 @@ package ch.brickinventoryapp.ui.viewmodel
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import ch.brickinventoryapp.data.model.CatalogSetItem
+import ch.brickinventoryapp.ui.model.KatalogSetAnsicht
+import ch.brickinventoryapp.ui.model.alsAnsicht
 import ch.brickinventoryapp.data.repository.BrickRepository
 import ch.brickinventoryapp.data.repository.Result
 import ch.brickinventoryapp.ui.CatalogUiState
@@ -108,7 +109,7 @@ class CatalogViewModel @Inject constructor(
             when (val r = retryOnNetwork { repo.katalog.getCatalogMeta() }) {
                 is Result.Success -> if (r.data.success) _catalogState.update {
                     it.copy(
-                        themes = r.data.themes, yearMin = r.data.yearMin, yearMax = r.data.yearMax
+                        themes = r.data.themes.map { t -> t.alsAnsicht() }, yearMin = r.data.yearMin, yearMax = r.data.yearMax
                     )
                 }
                 is Result.Error -> { /* Meta ist optional — Filter bleiben leer, Liste geht trotzdem */ }
@@ -143,7 +144,7 @@ class CatalogViewModel @Inject constructor(
             when (r) {
                 is Result.Success -> {
                     if (r.data.success) _catalogState.update {
-                        it.copy(isLoading = false, loadedPages = mapOf(1 to r.data.sets),
+                        it.copy(isLoading = false, loadedPages = mapOf(1 to r.data.sets.map { s -> s.alsAnsicht() }),
                                 total = r.data.total)
                     } else _catalogState.update { it.copy(isLoading = false, error = r.data.error) }
                 }
@@ -180,7 +181,7 @@ class CatalogViewModel @Inject constructor(
                 when (r) {
                     is Result.Success ->
                         if (r.data.success) st.copy(loadingPages = ohne,
-                            loadedPages = st.loadedPages + (seite to r.data.sets),
+                            loadedPages = st.loadedPages + (seite to r.data.sets.map { s -> s.alsAnsicht() }),
                             total = if (r.data.total > 0) r.data.total else st.total)
                         else st.copy(loadingPages = ohne)
                     is Result.Error -> st.copy(loadingPages = ohne)
@@ -204,7 +205,7 @@ class CatalogViewModel @Inject constructor(
                 // Jahrgaenge OHNE Jahr wegwerfen — genau wie die Webapp es tut.
                 // Ihre Zahl bleibt in `total` enthalten; siehe
                 // CatalogYearMath.jahrAnPosition.
-                _catalogState.update { it.copy(jahrVerteilung = r.data.years.filter { j -> j.year != null }) }
+                _catalogState.update { it.copy(jahrVerteilung = r.data.years.filter { j -> j.year != null }.map { j -> j.alsAnsicht() }) }
             }
         }
     }
@@ -263,7 +264,7 @@ class CatalogViewModel @Inject constructor(
             when (val r = retryOnNetwork(maxAttempts = CATALOG_RETRIES, delayMs = CATALOG_RETRY_DELAY_MS) { repo.katalog.getCatalogSetDetail(setNumber) }) {
                 is Result.Success -> {
                     if (r.data.success && r.data.set != null)
-                        _catalogState.update { it.copy(detailLoading = false, detail = r.data.set) }
+                        _catalogState.update { it.copy(detailLoading = false, detail = r.data.set?.alsAnsicht()) }
                     else {
                         _catalogState.update { it.copy(detailLoading = false) }
                         _snackbar.value = r.data.error ?: text(R.string.err_set_not_found)
@@ -286,7 +287,7 @@ class CatalogViewModel @Inject constructor(
         // Das „besitze ich“-Abzeichen sofort setzen, ohne neu zu laden — über alle
         // geladenen Seiten, weil die Kachel auf jeder stehen kann.
         _catalogState.update { st ->
-            val markiere: (CatalogSetItem) -> CatalogSetItem = {
+            val markiere: (KatalogSetAnsicht) -> KatalogSetAnsicht = {
                 if (it.setNumber == setNumber)
                     it.copy(owned = true, ownedQuantity = it.ownedQuantity + quantity) else it
             }

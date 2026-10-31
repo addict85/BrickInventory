@@ -1,5 +1,6 @@
 package ch.brickinventoryapp
 
+import ch.brickinventoryapp.ui.model.SetAnsicht
 import ch.brickinventoryapp.data.lokal.Lokal
 import ch.brickinventoryapp.data.model.SetItem
 import ch.brickinventoryapp.data.model.SetsResponse
@@ -26,7 +27,7 @@ class GalerieLokalTest {
 
     private fun set(nr: Int, menge: Int = 1) = SetItem(setNumber = "$nr-1", quantity = menge)
 
-    private fun kurz(l: List<SetItem>) = l.map { "${it.setNumber}x${it.quantity}" }
+    private fun kurz(l: List<SetAnsicht>) = l.map { "${it.setNumber}x${it.quantity}" }
 
     @Test
     fun `ohne Filter folgt die Galerie der lokalen Liste, mit Filter nicht`() = runTest {

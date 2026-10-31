@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.model.MerkpostenAnsicht
+import ch.brickinventoryapp.ui.model.MitgliedAnsicht
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.*
@@ -29,7 +31,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.R
 import androidx.compose.ui.unit.dp
-import ch.brickinventoryapp.data.model.Merkposten
 import ch.brickinventoryapp.data.repository.MERKLISTE_DEFAULT_SORT
 import ch.brickinventoryapp.ui.viewmodel.MerklisteViewModel
 import ch.brickinventoryapp.ui.theme.Abstaende
@@ -50,7 +51,7 @@ import androidx.compose.material.icons.filled.Alarm
  * gebraucht und bei zwei Konten dastehen; mit der Nummer allein verlöre Compose
  * die Zuordnung.
  */
-private fun merkpostenSchluessel(w: Merkposten) = "${w.setNumber}|${w.condition}|${w.userId}"
+private fun merkpostenSchluessel(w: MerkpostenAnsicht) = "${w.setNumber}|${w.condition}|${w.userId}"
 
 @Composable
 fun MerklisteScreen(
@@ -221,7 +222,7 @@ fun MerklisteScreen(
  */
 @Composable
 internal fun UebernahmeDialog(
-    merkposten: Merkposten,
+    merkposten: MerkpostenAnsicht,
     /** Vorrat an Lagerorten — leer heisst: es gibt noch keine, dann wird getippt. */
     lagerorte: List<String> = emptyList(),
     /** Der vorausgewählte Lagerort (Stern in den Einstellungen). Leer heisst: keine Vorgabe. */
@@ -285,7 +286,7 @@ internal fun UebernahmeDialog(
  */
 @Composable
 private fun MerkpostenErfassenDialog(
-    householdMembers: List<ch.brickinventoryapp.data.model.HouseholdMember>,
+    householdMembers: List<MitgliedAnsicht>,
     defaultCondition: String,
     onDismiss: () -> Unit,
     onAnlegen: (String, String, Int?) -> Unit,
@@ -355,7 +356,7 @@ internal fun ZustandsWahl(gewaehlt: String, onWahl: (String) -> Unit) {
 
 @Composable
 private fun MerkpostenZeile(
-    w: Merkposten, serverUrl: String, imageLoader: coil3.ImageLoader,
+    w: MerkpostenAnsicht, serverUrl: String, imageLoader: coil3.ImageLoader,
     onOeffnen: () -> Unit,
 ) {
     // Die ganze Karte öffnet das Detail — wie die Kachel in der Galerie. Sie

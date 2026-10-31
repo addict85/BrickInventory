@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.model.KatalogDetailAnsicht
+import ch.brickinventoryapp.ui.model.MitgliedAnsicht
 import ch.brickinventoryapp.ui.theme.Formen
 import android.content.Intent
 import android.net.Uri
@@ -23,7 +25,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.R
 import ch.brickinventoryapp.util.NumericInput
-import ch.brickinventoryapp.data.model.CatalogSetDetail
 import ch.brickinventoryapp.util.BrickLinkUrls
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.semantics.Role
@@ -50,13 +51,13 @@ import androidx.compose.material.icons.filled.ViewInAr
 @Composable
 fun CatalogDetailScreen(
     setNumber: String,
-    detail: CatalogSetDetail?,
+    detail: KatalogDetailAnsicht?,
     isLoading: Boolean,
     imageLoader: ImageLoader,
     serverUrl: String,
     defaultCondition: String = "N",
     /** Mitglieder des Haushalts — die Kontowahl blendet sich ohne sie selbst aus. */
-    householdMembers: List<ch.brickinventoryapp.data.model.HouseholdMember> = emptyList(),
+    householdMembers: List<MitgliedAnsicht> = emptyList(),
     /** Vorrat an Lagerorten fuer den Erfassungsdialog. */
     lagerorte: List<String> = emptyList(),
     /** Der vorausgewählte Lagerort (Stern in den Einstellungen). Leer heisst: keine Vorgabe. */
@@ -294,7 +295,7 @@ internal fun CatalogDetailRow(label: String, value: String) {
 private fun CatalogAddDialog(
     setName: String,
     defaultCondition: String,
-    householdMembers: List<ch.brickinventoryapp.data.model.HouseholdMember>,
+    householdMembers: List<MitgliedAnsicht>,
     /** Vorrat an Lagerorten — leer heisst: es gibt noch keine, dann wird getippt. */
     lagerorte: List<String>,
     /** Der vorausgewählte Lagerort (Stern in den Einstellungen). Leer heisst: keine Vorgabe. */
@@ -372,7 +373,7 @@ private fun MerkpostenDialog(
     setName: String,
     defaultCondition: String,
     /** Konten des Haushalts — ohne Unterkonten blendet sich die Wahl selbst aus. */
-    householdMembers: List<ch.brickinventoryapp.data.model.HouseholdMember>,
+    householdMembers: List<MitgliedAnsicht>,
     onDismiss: () -> Unit,
     onWish: (String, String, String, Int?) -> Unit,
 ) {

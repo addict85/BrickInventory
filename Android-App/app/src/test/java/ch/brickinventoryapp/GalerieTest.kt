@@ -1,5 +1,6 @@
 package ch.brickinventoryapp
 
+import ch.brickinventoryapp.ui.model.alsAnsicht
 import ch.brickinventoryapp.data.model.SetItem
 import ch.brickinventoryapp.data.model.SetsResponse
 import ch.brickinventoryapp.data.model.StatsResponse
@@ -153,7 +154,7 @@ class GalerieTest {
 
     @Test
     fun `geladene Sets bleiben stehen, auch wenn das Neuladen scheitert`() {
-        val st = GalleryUiState(sets = listOf(set(1)), galleryFehler = "Netz")
+        val st = GalleryUiState(sets = listOf(set(1).alsAnsicht()), galleryFehler = "Netz")
         assertEquals(GalerieAnzeige.LISTE, galerieAnzeige(st, gefiltert = false))
     }
 

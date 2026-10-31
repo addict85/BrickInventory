@@ -4,9 +4,11 @@ import ch.brickinventoryapp.data.api.TeileApi
 import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.lokal.Bearbeitung
 import ch.brickinventoryapp.data.lokal.Faecher
+import ch.brickinventoryapp.data.lokal.Lokal
 import ch.brickinventoryapp.data.lokal.Offlineablage
 import ch.brickinventoryapp.data.model.*
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.Json
@@ -57,6 +59,10 @@ class TeileRepository @Inject constructor(
                                      spare = spare?.ifBlank { null },
                                      withSets = withSets?.ifBlank { null },
                                      storage = storage?.ifBlank { null }) }
+
+    /** Die lokalen Listen (ungefiltert); sie ändern sich auch durch offline Bearbeitetes. */
+    fun beobachteTeile(): Flow<Lokal<Part>> = ablage.beobachte(Faecher.TEILE)
+    fun beobachteManuelleTeile(): Flow<Lokal<PartValuationItem>> = ablage.beobachte(Faecher.MANUELLE_TEILE)
 
     suspend fun getPartsStats(accounts: String? = null): Result<PartsStatsResponse> =
         safeCall { api.getPartsStats(accounts) }

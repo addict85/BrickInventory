@@ -109,6 +109,9 @@ class SetsRepository @Inject constructor(
             }
         else safeCall { api.getMerkliste(search, condition, sort, accounts) }
 
+    /** Die lokale Merkliste (ungefiltert), wie beobachteSets. */
+    fun beobachteMerkliste(): Flow<Lokal<Merkposten>> = ablage.beobachte(Faecher.MERKLISTE)
+
     suspend fun legeMerkpostenAn(setNumber: String, condition: String,
                              ownerUserId: Int? = null): Result<MerkpostenAntwort> {
         val anfrage = MerkpostenRequest(setNumber, condition, ownerUserId)

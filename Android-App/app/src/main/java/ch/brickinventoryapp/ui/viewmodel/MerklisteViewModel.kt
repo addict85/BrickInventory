@@ -4,37 +4,26 @@ import androidx.lifecycle.SavedStateHandle
 import ch.brickinventoryapp.ui.model.alsAnsicht
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.R
-import ch.brickinventoryapp.ui.model.alsAnsicht
 import ch.brickinventoryapp.alarm.Alarmeingabe
 import ch.brickinventoryapp.data.ScopeFilter
-import ch.brickinventoryapp.ui.model.alsAnsicht
 import ch.brickinventoryapp.data.repository.KatalogRepository
 import ch.brickinventoryapp.data.repository.FinanzenRepository
-import ch.brickinventoryapp.ui.model.alsAnsicht
 import ch.brickinventoryapp.data.repository.MERKLISTE_DEFAULT_SORT
 import ch.brickinventoryapp.data.repository.Result
-import ch.brickinventoryapp.ui.model.alsAnsicht
 import ch.brickinventoryapp.data.repository.SetsRepository
 import ch.brickinventoryapp.ui.Aenderung
-import ch.brickinventoryapp.ui.model.alsAnsicht
 import ch.brickinventoryapp.ui.MerklisteUiState
 import ch.brickinventoryapp.ui.MerkpostenDetailUiState
-import ch.brickinventoryapp.ui.model.alsAnsicht
 import ch.brickinventoryapp.ui.Preisalarmeingabe
 import dagger.hilt.android.lifecycle.HiltViewModel
-import ch.brickinventoryapp.ui.model.alsAnsicht
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
-import ch.brickinventoryapp.ui.model.alsAnsicht
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import ch.brickinventoryapp.ui.model.alsAnsicht
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import ch.brickinventoryapp.ui.model.alsAnsicht
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import ch.brickinventoryapp.ui.model.alsAnsicht
 
 /**
  * Merkliste und Merkposten-Detail — was man haben möchte, getrennt vom Besitz.
@@ -66,6 +55,22 @@ class MerklisteViewModel @Inject constructor(
     // wartenden Abruf ab, geladen wird erst nach der Pause.
     private var suchJob: Job? = null
 
+    init {
+        // Ohne Filter folgt die Liste der lokalen Ablage (Room), wie die Galerie:
+        // Offline Angelegtes oder Gelöschtes steht sofort da. Nicht während einer
+        // Ladung — deren Antwort setzt die Liste ohnehin.
+        viewModelScope.launch {
+            sets.beobachteMerkliste().collect { l ->
+                val f = _merklisteState.value
+                if (l.stand != null && !f.laedt && ungefiltert(f))
+                    _merklisteState.update { it.copy(merkposten = l.liste.map { m -> m.alsAnsicht() }) }
+            }
+        }
+    }
+
+    private fun ungefiltert(f: MerklisteUiState) = f.query.isBlank() && f.zustandFilter.isBlank() &&
+        (f.sortierung.isBlank() || f.sortierung == MERKLISTE_DEFAULT_SORT) && scopeFor(ScopeFilter.View.MERKLISTE) == null
+
     private val alarmEingabe = Preisalarmeingabe(
         scope = viewModelScope, sets = sets,
         melde = { _snackbar.value = it },
@@ -88,7 +93,7 @@ class MerklisteViewModel @Inject constructor(
             )
             when (r) {
                 is Result.Success ->
-                    _merklisteState.update { it.copy(merkposten = r.data.merkposten, laedt = false) }
+                    _merklisteState.update { it.copy(merkposten = r.data.merkposten.map { m -> m.alsAnsicht() }, laedt = false) }
                 is Result.Error -> {
                     _merklisteState.update { it.copy(laedt = false, fehler = meldung(r)) }
                     _snackbar.value = meldungFuerSnackbar(r)?.let { text(R.string.vm_error, it) }
@@ -207,13 +212,13 @@ class MerklisteViewModel @Inject constructor(
             loadPreisalarme(setNumber)
             val katalog = (katalogRepo.getCatalogSetDetail(setNumber) as? Result.Success)
                 ?.data?.takeIf { it.success }?.set
-            _merkpostenDetailState.update { it.copy(katalog = katalog) }
+            _merkpostenDetailState.update { it.copy(katalog = katalog?.alsAnsicht()) }
             val preise = (sets.getMerkpostenPreise(setNumber) as? Result.Success)
                 ?.data?.takeIf { it.success }
-            _merkpostenDetailState.update { it.copy(preise = preise) }
+            _merkpostenDetailState.update { it.copy(preise = preise?.alsAnsicht()) }
             val historie = (finanzen.getSetPriceHistory(setNumber) as? Result.Success)
                 ?.data?.takeIf { it.success }
-            _merkpostenDetailState.update { it.copy(historie = historie, laedt = false) }
+            _merkpostenDetailState.update { it.copy(historie = historie?.alsAnsicht(), laedt = false) }
         }
     }
 

@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.ui
 
-import ch.brickinventoryapp.data.model.*
+import ch.brickinventoryapp.ui.model.*
 
 /**
  * Die Merkliste — was man haben möchte, getrennt vom Besitz. Eigener Zustand statt
@@ -8,7 +8,7 @@ import ch.brickinventoryapp.data.model.*
  * Feld im Haupt-Zustand rekomponierte bei jedem Laden den ganzen Baum.
  */
 data class MerklisteUiState(
-    val merkposten: List<ch.brickinventoryapp.data.model.Merkposten> = emptyList(),
+    val merkposten: List<MerkpostenAnsicht> = emptyList(),
     val laedt: Boolean = false,
     /** Der Grund, warum die Liste nicht kam; null, solange nichts scheiterte. */
     val fehler: String? = null,
@@ -43,16 +43,16 @@ data class MerkpostenDetailUiState(
      */
     val setNumber: String? = null,
     /** Thema, Teile, Minifiguren, BrickLink, Preisvergleich. */
-    val katalog: ch.brickinventoryapp.data.model.CatalogSetDetail? = null,
+    val katalog: KatalogDetailAnsicht? = null,
     /** Der VERLAUF. Die aktuellen Preise stehen in [preise] — siehe dort. */
-    val historie: ch.brickinventoryapp.data.model.PriceHistoryResponse? = null,
+    val historie: PreisverlaufAnsicht? = null,
     /**
      * Die aktuellen Marktpreise, frisch geholt. Getrennt von [historie], weil sie aus
      * einer anderen Quelle kommen und früher da sind: Der Verlauf liest nur
      * price_cache, diese Antwort füllt ihn — so stehen die Preise sofort da.
      */
-    val preise: ch.brickinventoryapp.data.model.MerkpostenPreiseResponse? = null,
+    val preise: MerkpostenPreiseAnsicht? = null,
     val laedt: Boolean = false,
     /** Die Preisalarme dieses Sets — dieselben wie im Set-Detail. */
-    val preisalarme: List<ch.brickinventoryapp.ui.model.PreisalarmAnsicht> = emptyList(),
+    val preisalarme: List<PreisalarmAnsicht> = emptyList(),
 )

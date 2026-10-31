@@ -1,7 +1,7 @@
 package ch.brickinventoryapp
 
+import ch.brickinventoryapp.ui.model.SetAnsicht
 import ch.brickinventoryapp.data.model.PnlSetZeile
-import ch.brickinventoryapp.data.model.SetItem
 import ch.brickinventoryapp.ui.KachelPreis
 import ch.brickinventoryapp.ui.kachelBetrag
 import ch.brickinventoryapp.ui.kachelPreise
@@ -61,10 +61,10 @@ class KachelPreisTest {
 
     @Test
     fun `der Marktpreis geht vor, sonst der gewichtete Kaufpreis`() {
-        val set = SetItem(setNumber = "1-1", avgPurchasePrice = 40.0, maxPurchasePrice = 60.0)
+        val set = SetAnsicht(setNumber = "1-1", avgPurchasePrice = 40.0, maxPurchasePrice = 60.0)
         assertEquals(55.0, kachelBetrag(set, KachelPreis(55.0, 37.5)) ?: -1.0, 1e-9)
         assertEquals(40.0, kachelBetrag(set, KachelPreis(0.0, null)) ?: -1.0, 1e-9)
         assertEquals(40.0, kachelBetrag(set, null) ?: -1.0, 1e-9)
-        assertNull(kachelBetrag(SetItem(setNumber = "2-1"), null))
+        assertNull(kachelBetrag(SetAnsicht(setNumber = "2-1"), null))
     }
 }

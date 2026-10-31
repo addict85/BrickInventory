@@ -132,34 +132,18 @@ class BildschirmHoltDatenNichtSelbstTest {
     /**
      * Bildschirme sehen UI-Modelle (ui/model), keine Server-Modelle: Ein neues
      * Feld oder eine andere Nullbarkeit im DTO soll im Repository oder ViewModel
-     * auffallen, nicht in einem Composable. Noch nicht umgestellt sind die
-     * Dateien in [NOCH_MIT_SERVERMODELL]; die Liste darf nur kürzer werden.
-     * Gegenprobe (30.10.2026, gemessen): in GutscheineCard.kt wieder
+     * auffallen, nicht in einem Composable. Seit dem 31.10.2026 ohne Ausnahme.
+     * Gegenprobe (31.10.2026, gemessen): in GutscheineCard.kt wieder
      * `import ch.brickinventoryapp.data.model.Gutschein` → rot, nennt die Datei.
      */
     @Test
-    fun `kein Bildschirm kennt die Server-Modelle, ausser den noch nicht umgestellten`() {
-        val mitModell = listOf("ui/screens", "ui/components").flatMap { Quellen.unter(it.substringAfter("ui/")) }
-            .filter { "data.model" in Quellen.ohneKommentare(it.readText()) }
-            .map { it.name }.toSortedSet()
-        assert(Quellen.unter("screens").size >= 40) { "Bildschirme nicht gefunden — Muster veraltet?" }
-        val neu = mitModell - NOCH_MIT_SERVERMODELL
-        assert(neu.isEmpty()) {
-            "Diese Bildschirme greifen auf data.model zu: $neu — UI-Modell aus ui/model nehmen, " +
+    fun `kein Bildschirm kennt die Server-Modelle`() {
+        val bildschirme = listOf("screens", "components", "dialogs").flatMap { Quellen.unter(it) }
+        assert(bildschirme.size >= 50) { "Bildschirme nicht gefunden — Muster veraltet?" }
+        val mitModell = bildschirme.filter { "data.model" in Quellen.ohneKommentare(it.readText()) }.map { it.name }
+        assert(mitModell.isEmpty()) {
+            "Diese Bildschirme greifen auf data.model zu: $mitModell — UI-Modell aus ui/model nehmen, " +
                 "die Abbildung gehört ins ViewModel."
         }
-        val erledigt = NOCH_MIT_SERVERMODELL - mitModell
-        assert(erledigt.isEmpty()) { "Schon umgestellt, bitte aus der Liste streichen: $erledigt" }
-    }
-
-    private companion object {
-        /** 27 am 30.10.2026 (Stand 4e9148e), jetzt 18. Nur kürzer werden lassen. */
-        val NOCH_MIT_SERVERMODELL = sortedSetOf(
-            "AcquisitionManagementScreen.kt", "CatalogDetailScreen.kt", "CatalogScreen.kt", "Filterblatt.kt",
-            "FinanceSections.kt", "GalleryScreen.kt", "HouseholdComposables.kt", "ManualItemComposables.kt",
-            "MerklisteScreen.kt", "MerkpostenDetailScreen.kt", "MinifigsScreen.kt", "MonitoringScreen.kt",
-            "MonitoringSections.kt", "PartsDialogs.kt", "PartsScreen.kt", "SetDetailComponents.kt",
-            "SetDetailScreen.kt", "SetDetailSections.kt",
-        )
     }
 }

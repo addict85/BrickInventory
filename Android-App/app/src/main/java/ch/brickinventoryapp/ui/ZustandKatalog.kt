@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.ui
 
-import ch.brickinventoryapp.data.model.*
+import ch.brickinventoryapp.ui.model.*
 
 /**
  * Katalog-Zustand — eigener Flow (wie SetDetail/CsvImport): Suche und
@@ -17,7 +17,7 @@ data class CatalogUiState(
      * Seite, die gerade sichtbar wird — vorwärts wie rückwärts; was noch fehlt, steht
      * als Platzhalter.
      */
-    val loadedPages: Map<Int, List<CatalogSetItem>> = emptyMap(),
+    val loadedPages: Map<Int, List<KatalogSetAnsicht>> = emptyMap(),
     val loadingPages: Set<Int> = emptySet(),
     val total: Int = 0,
     /**
@@ -42,7 +42,7 @@ data class CatalogUiState(
     val year: Int? = null,
     val sort: String = "year_desc",
     // Meta
-    val themes: List<CatalogTheme> = emptyList(),
+    val themes: List<KatalogThemaAnsicht> = emptyList(),
     val yearMin: Int? = null,
     val yearMax: Int? = null,
     /**
@@ -51,8 +51,8 @@ data class CatalogUiState(
      * CatalogYearMath), wie in der Webapp. Jahrgänge ohne Jahr sind schon weggeworfen,
      * ebenfalls wie dort.
      */
-    val jahrVerteilung: List<ch.brickinventoryapp.data.model.JahrAnzahl> = emptyList(),
+    val jahrVerteilung: List<JahrAnzahlAnsicht> = emptyList(),
     // Detail
-    val detail: CatalogSetDetail? = null,
+    val detail: KatalogDetailAnsicht? = null,
     val detailLoading: Boolean = false,
 )

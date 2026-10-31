@@ -4,22 +4,16 @@ import androidx.lifecycle.SavedStateHandle
 import ch.brickinventoryapp.ui.model.alsAnsicht
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.data.ScopeFilter
-import ch.brickinventoryapp.ui.model.alsAnsicht
 import ch.brickinventoryapp.data.repository.FinanzenRepository
 import ch.brickinventoryapp.data.repository.Result
-import ch.brickinventoryapp.ui.model.alsAnsicht
 import ch.brickinventoryapp.ui.Aenderung
 import ch.brickinventoryapp.ui.FinanceUiState
-import ch.brickinventoryapp.ui.model.alsAnsicht
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
-import ch.brickinventoryapp.ui.model.alsAnsicht
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import ch.brickinventoryapp.ui.model.alsAnsicht
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import ch.brickinventoryapp.ui.model.alsAnsicht
 import javax.inject.Inject
 
 /**
@@ -51,7 +45,7 @@ class FinanzViewModel @Inject constructor(
             val konto = scopeFor(ScopeFilter.View.FINANCE)
             when (val r = finanzen.getValuation(konto)) {
                 is Result.Success -> {
-                    _financeState.update { it.copy(valuation = r.data, valuationLoading = false) }
+                    _financeState.update { it.copy(valuation = r.data.alsAnsicht(), valuationLoading = false) }
                     // Die Währung des Kontos kommt mit der Bewertung; das
                     // AppViewModel merkt sie sich für den nächsten Start.
                     dienste.sitzung.aendere { it.copy(currency = r.data.currency) }
@@ -62,11 +56,11 @@ class FinanzViewModel @Inject constructor(
                 }
             }
             (finanzen.getPartsValuation(konto) as? Result.Success)
-                ?.let { r -> _financeState.update { it.copy(partsValuation = r.data) } }
+                ?.let { r -> _financeState.update { it.copy(partsValuation = r.data.alsAnsicht()) } }
             (finanzen.getMinifigsValuation(konto) as? Result.Success)
-                ?.let { r -> _financeState.update { it.copy(figsValuation = r.data) } }
+                ?.let { r -> _financeState.update { it.copy(figsValuation = r.data.alsAnsicht()) } }
             (finanzen.getPnl(konto) as? Result.Success)
-                ?.let { r -> _financeState.update { it.copy(pnl = r.data) } }
+                ?.let { r -> _financeState.update { it.copy(pnl = r.data.alsAnsicht()) } }
         }
     }
 

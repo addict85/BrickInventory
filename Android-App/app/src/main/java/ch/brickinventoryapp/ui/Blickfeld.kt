@@ -5,6 +5,8 @@ import ch.brickinventoryapp.data.ScopeFilter
 import ch.brickinventoryapp.data.repository.HaushaltRepository
 import ch.brickinventoryapp.data.repository.Result
 import ch.brickinventoryapp.data.repository.TeileRepository
+import ch.brickinventoryapp.ui.model.alsAnsicht
+import ch.brickinventoryapp.ui.model.kontoOptionen
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -84,8 +86,8 @@ class Blickfeld @Inject constructor(
      */
     suspend fun ladeMitglieder() {
         val r = haushalt.getHouseholdMembers() as? Result.Success ?: return
-        val mitglieder = r.data.members
-        val erlaubt = ScopeFilter.options(mitglieder, "", "").map { it.first }
+        val mitglieder = r.data.members.map { it.alsAnsicht() }
+        val erlaubt = kontoOptionen(mitglieder, "", "").map { it.first }
         _konten.update { st ->
             st.copy(
                 householdMembers = mitglieder,
@@ -100,21 +102,21 @@ class Blickfeld @Inject constructor(
     suspend fun ladeLagerorte() {
         val r = teile.getLagerorte(kontoFuer(ScopeFilter.View.GALLERY))
         val orte = (r as? Result.Success)?.data?.takeIf { it.success }?.orte ?: return
-        _lager.update { it.copy(orte = orte) }
+        _lager.update { it.copy(orte = orte.map { o -> o.alsAnsicht() }) }
     }
 
     /** Der Vorrat der Besitzer eines Sets — Vorschläge im Lagerortfeld. */
     suspend fun ladeVorrat(besitzer: List<Int>) {
         val r = teile.getLagerortVorrat(besitzer.takeIf { it.isNotEmpty() }?.joinToString(","))
         val orte = (r as? Result.Success)?.data?.takeIf { it.success }?.orte ?: return
-        _lager.update { it.copy(vorrat = orte) }
+        _lager.update { it.copy(vorrat = orte.map { o -> o.alsAnsicht() }) }
     }
 
     /** Die eigenen Orte samt Vorgabe — für Erfassen und Verwaltung. */
     suspend fun ladeEigeneLagerorte() {
         val r = teile.getLagerortVorrat(null)
         val antwort = (r as? Result.Success)?.data?.takeIf { it.success } ?: return
-        _lager.update { it.copy(eigene = antwort.orte, vorgabe = antwort.vorgabe) }
+        _lager.update { it.copy(eigene = antwort.orte.map { o -> o.alsAnsicht() }, vorgabe = antwort.vorgabe?.alsAnsicht()) }
     }
 
     /**

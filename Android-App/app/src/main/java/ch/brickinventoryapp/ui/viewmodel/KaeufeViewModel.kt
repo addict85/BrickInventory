@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui.viewmodel
 
+import ch.brickinventoryapp.ui.model.alsAnsicht
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.alarm.Alarmeingabe
 import ch.brickinventoryapp.data.model.KEINE_FARBE
@@ -69,7 +70,7 @@ class KaeufeViewModel @Inject constructor(
             }
             when (r) {
                 is Result.Success -> _manDetailState.update {
-                    it.copy(acquisitions = r.data.acquisitions, acquisitionTotals = r.data.totals, isLoading = false)
+                    it.copy(acquisitions = r.data.acquisitions.map { a -> a.alsAnsicht() }, acquisitionTotals = r.data.totals.alsAnsicht(), isLoading = false)
                 }
                 is Result.Error -> _manDetailState.update { it.copy(isLoading = false) }
             }
@@ -81,7 +82,7 @@ class KaeufeViewModel @Inject constructor(
             _manDetailState.update { it.copy(priceHistoryLoading = true) }
             val r = if (type == "fig") finanzen.getFigPriceHistory(id) else finanzen.getPartPriceHistory(id, colorId)
             when (r) {
-                is Result.Success -> _manDetailState.update { it.copy(priceHistory = r.data, priceHistoryLoading = false) }
+                is Result.Success -> _manDetailState.update { it.copy(priceHistory = r.data.alsAnsicht(), priceHistoryLoading = false) }
                 is Result.Error -> _manDetailState.update { it.copy(priceHistoryLoading = false) }
             }
         }

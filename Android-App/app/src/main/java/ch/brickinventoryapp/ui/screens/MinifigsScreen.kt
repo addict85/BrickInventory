@@ -1,5 +1,10 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.erfassungsWerte
+import ch.brickinventoryapp.ui.model.FigurAnsicht
+import ch.brickinventoryapp.ui.model.FigurenKennzahlenAnsicht
+import ch.brickinventoryapp.ui.model.ManuelleFigurAnsicht
+import ch.brickinventoryapp.ui.model.MitgliedAnsicht
 import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.semantics.Role
@@ -20,9 +25,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import ch.brickinventoryapp.data.model.Minifig
 import ch.brickinventoryapp.util.fmtInt
-import ch.brickinventoryapp.data.model.FigValuationItem
 import ch.brickinventoryapp.util.fmtDatum
 import ch.brickinventoryapp.util.rememberTileImageWithFallback
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -229,7 +232,7 @@ fun MinifigsScreen(
 
 /** Die Kennzahlen der Minifiguren — erste Zeile des Rasters, sie rollt mit. */
 @Composable
-private fun FigurenKennzahlen(minifigStats: ch.brickinventoryapp.data.model.MinifigStats) {
+private fun FigurenKennzahlen(minifigStats: FigurenKennzahlenAnsicht) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
         // Zahlen vom Server (getMinifigStats): Aus der Liste gerechnet fehlten
         // die manuell erfassten Figuren, die hier ausgefiltert sind.
@@ -240,10 +243,10 @@ private fun FigurenKennzahlen(minifigStats: ch.brickinventoryapp.data.model.Mini
 }
 
 @Composable
-fun ManualFigTile(fig: FigValuationItem, serverUrl: String, imageLoader: ImageLoader,
+fun ManualFigTile(fig: ManuelleFigurAnsicht, serverUrl: String, imageLoader: ImageLoader,
                   waehrung: String, onEdit: () -> Unit) {
     // Vorschaubild mit Rückfall auf volle Auflösung — siehe
-    // util/ImageUrls.kt, rememberTileImageWithFallback().
+    // util/BildRueckfall.kt, rememberTileImageWithFallback().
     val (bild, onBildFehler) =
         rememberTileImageWithFallback(serverUrl, fig.imageLocal, fig.imageUrl, fullViaProxy = true)
     // Alles Weitere steht in ManuelleKachel (ManualItemComposables.kt), die auch die
@@ -271,7 +274,7 @@ fun AddMinifigDialog(
     onAdd: (String, String?, Int, Double?, String?, Int?, String?) -> Unit,
     defaultCondition: String = "N",
     /** Konten des Haushalts — ohne Unterkonten bleibt die Auswahl verborgen. */
-    householdMembers: List<ch.brickinventoryapp.data.model.HouseholdMember> = emptyList(),
+    householdMembers: List<MitgliedAnsicht> = emptyList(),
     /** Vorrat an Lagerorten — leer heisst: es gibt noch keine, dann wird getippt. */
     lagerorte: List<String> = emptyList(),
     /** Der vorausgewählte Lagerort (Stern in den Einstellungen). Leer heisst: keine Vorgabe. */
@@ -344,7 +347,7 @@ fun AddMinifigDialog(
 }
 
 @Composable
-fun MinifigCard(fig: Minifig, serverUrl: String, imageLoader: ImageLoader,
+fun MinifigCard(fig: FigurAnsicht, serverUrl: String, imageLoader: ImageLoader,
                 onClick: (() -> Unit)? = null) {
     val qty = fig.totalQuantity ?: fig.quantity
 
@@ -359,7 +362,7 @@ fun MinifigCard(fig: Minifig, serverUrl: String, imageLoader: ImageLoader,
         Column {
             Box(Modifier.fillMaxWidth().height(110.dp)) {
                 // Vorschaubild mit Rückfall auf volle Auflösung — siehe
-                // util/ImageUrls.kt, rememberTileImageWithFallback().
+                // util/BildRueckfall.kt, rememberTileImageWithFallback().
                 val (figImg, onFigImgError) = rememberTileImageWithFallback(serverUrl, fig.imageLocal, fig.imageUrl, fullViaProxy = true)
                 if (figImg != null) {
                     AsyncImage(
@@ -445,7 +448,7 @@ fun MinifigCard(fig: Minifig, serverUrl: String, imageLoader: ImageLoader,
  * konstant.
  */
 @Composable
-fun MinifigTableRow(fig: Minifig, serverUrl: String, imageLoader: ImageLoader,
+fun MinifigTableRow(fig: FigurAnsicht, serverUrl: String, imageLoader: ImageLoader,
                     onClick: (() -> Unit)? = null) {
     val (bildUrl, onFehler) = rememberTileImageWithFallback(
         serverUrl, fig.imageLocal, fig.imageUrl, fullViaProxy = true)

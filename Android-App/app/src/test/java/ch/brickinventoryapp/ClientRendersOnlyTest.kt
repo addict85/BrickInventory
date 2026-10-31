@@ -1,5 +1,6 @@
 package ch.brickinventoryapp
 
+import ch.brickinventoryapp.ui.model.alsAnsicht
 import ch.brickinventoryapp.data.model.PartsValuationResponse
 import ch.brickinventoryapp.data.model.PnlResponse
 import ch.brickinventoryapp.data.model.PnlTotals
@@ -84,8 +85,9 @@ class ClientRendersOnlyTest {
      */
     @Test
     fun `der Gesamtwert kommt vom Server`() {
-        val summen = finanzSummen(ValuationResponse(success = true), PartsValuationResponse(success = true, totalValue = "0.20"),
-            null, PnlResponse(success = true, totals = PnlTotals(purchase = "0.00", current = "0.00", grandTotal = "4894.77")))
+        val summen = finanzSummen(ValuationResponse(success = true).alsAnsicht(),
+            PartsValuationResponse(success = true, totalValue = "0.20").alsAnsicht(),
+            null, PnlResponse(success = true, totals = PnlTotals(purchase = "0.00", current = "0.00", grandTotal = "4894.77")).alsAnsicht())
         assertEquals(0, java.math.BigDecimal("4894.77").compareTo(summen.gesamt))
         val sections = java.io.File(
             "src/main/java/ch/brickinventoryapp/ui/screens/FinanceSections.kt").readText()

@@ -5,7 +5,7 @@ import ch.brickinventoryapp.data.model.FigValuationItem
 import ch.brickinventoryapp.data.model.ManualFigsResponse
 import ch.brickinventoryapp.data.model.ManualPartsResponse
 import ch.brickinventoryapp.data.model.Minifig
-import ch.brickinventoryapp.data.model.MinifigStats
+import ch.brickinventoryapp.ui.model.FigurenKennzahlenAnsicht
 import ch.brickinventoryapp.data.model.MinifigStatsResponse
 import ch.brickinventoryapp.data.model.MinifigsResponse
 import ch.brickinventoryapp.data.model.Part
@@ -138,7 +138,7 @@ class TeileTest {
         assertFalse(t.state.value.minifigsLoading)
         advanceUntilIdle()
         assertEquals(listOf("sw0001"), t.state.value.minifigs.map { it.figNumber })
-        assertEquals(MinifigStats(), t.state.value.minifigStats)
+        assertEquals(FigurenKennzahlenAnsicht(), t.state.value.minifigStats)
     }
 
     @Test

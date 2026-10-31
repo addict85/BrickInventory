@@ -1,5 +1,8 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.model.BricksetEintragAnsicht
+import ch.brickinventoryapp.ui.model.KontingentAnsicht
+import ch.brickinventoryapp.ui.model.ZeitplanAnsicht
 import ch.brickinventoryapp.ui.theme.Formen
 import ch.brickinventoryapp.ui.theme.AppKarte
 import ch.brickinventoryapp.ui.theme.LocalStatusFarben
@@ -18,7 +21,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ch.brickinventoryapp.data.PreferencesManager
-import ch.brickinventoryapp.data.model.*
+import ch.brickinventoryapp.ui.model.*
 import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.R
 import ch.brickinventoryapp.util.fmtUhrzeit
@@ -45,7 +48,7 @@ import ch.brickinventoryapp.ui.theme.Abstaende
  * Kotlin dateiweit gilt.
  */
 internal fun BricksetQueueRow(
-    entry: BricksetQueueEntry,
+    entry: BricksetEintragAnsicht,
     onRetry: (String) -> Unit,
     onDelete: (String) -> Unit
 ) {
@@ -467,7 +470,7 @@ private fun CacheStatCell(label: String, value: String) {
 @Composable
 private fun RateLimitRow(
     label: String,
-    rl: RateLimit,
+    rl: KontingentAnsicht,
     editValue: String?,
     onEdit: (String) -> Unit
 ) {
@@ -672,7 +675,7 @@ internal fun ProtokollSection(mon: MonitoringViewModel) {
 @Composable
 fun ZeitplanZeile(
     jobKey: String,
-    plan: ch.brickinventoryapp.data.model.JobSchedule,
+    plan: ZeitplanAnsicht,
     mon: ch.brickinventoryapp.ui.viewmodel.MonitoringViewModel,
     onSnack: (String) -> Unit,
 ) {

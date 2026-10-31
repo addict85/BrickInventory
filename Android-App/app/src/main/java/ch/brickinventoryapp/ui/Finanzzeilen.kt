@@ -1,13 +1,13 @@
 package ch.brickinventoryapp.ui
 
-import ch.brickinventoryapp.data.model.FigValuationItem
-import ch.brickinventoryapp.data.model.FigsValuationResponse
-import ch.brickinventoryapp.data.model.PartValuationItem
-import ch.brickinventoryapp.data.model.PartsValuationResponse
-import ch.brickinventoryapp.data.model.PnlResponse
-import ch.brickinventoryapp.data.model.ValuationAcquisition
-import ch.brickinventoryapp.data.model.ValuationResponse
-import ch.brickinventoryapp.data.model.ValuationSet
+import ch.brickinventoryapp.ui.model.BewertungAnsicht
+import ch.brickinventoryapp.ui.model.BewertungSetAnsicht
+import ch.brickinventoryapp.ui.model.BewertungsKaufAnsicht
+import ch.brickinventoryapp.ui.model.FigurenBewertungAnsicht
+import ch.brickinventoryapp.ui.model.GewinnAnsicht
+import ch.brickinventoryapp.ui.model.ManuelleFigurAnsicht
+import ch.brickinventoryapp.ui.model.ManuellesTeilAnsicht
+import ch.brickinventoryapp.ui.model.TeileBewertungAnsicht
 import java.math.BigDecimal
 
 /**
@@ -31,13 +31,13 @@ data class FinanzZeile(
  * ihres Zustands. Sonst eine Karte für den Eintrag (die einzige Erfassung oder
  * keine).
  */
-private fun <T> jeKaufpreis(eintraege: List<T>, erfassungen: (T) -> List<ValuationAcquisition>) =
+private fun <T> jeKaufpreis(eintraege: List<T>, erfassungen: (T) -> List<BewertungsKaufAnsicht>) =
     eintraege.flatMap { e ->
         val a = erfassungen(e)
         if (a.size > 1) a.map { e to it } else listOf(e to a.firstOrNull())
     }
 
-fun setZeilen(sets: List<ValuationSet>): List<Pair<ValuationSet, FinanzZeile>> =
+fun setZeilen(sets: List<BewertungSetAnsicht>): List<Pair<BewertungSetAnsicht, FinanzZeile>> =
     jeKaufpreis(sets) { it.acquisitions }.map { (s, acq) ->
         s to FinanzZeile(
             schluessel = "${s.setNumber}#${acq?.id ?: 0}",
@@ -50,14 +50,14 @@ fun setZeilen(sets: List<ValuationSet>): List<Pair<ValuationSet, FinanzZeile>> =
         )
     }
 
-fun teilZeilen(parts: List<PartValuationItem>): List<Pair<PartValuationItem, FinanzZeile>> =
+fun teilZeilen(parts: List<ManuellesTeilAnsicht>): List<Pair<ManuellesTeilAnsicht, FinanzZeile>> =
     jeKaufpreis(parts) { it.acquisitions }.map { (p, acq) ->
         p to FinanzZeile("part_${p.id}#${acq?.id ?: 0}", acq?.quantity ?: p.quantity,
             acq?.wertGesamt ?: p.wertGesamt, acq?.purchasePrice ?: p.purchasePrice,
             acq?.condition, acq?.pnlProzent ?: p.pnlProzent)
     }
 
-fun figurZeilen(figs: List<FigValuationItem>): List<Pair<FigValuationItem, FinanzZeile>> =
+fun figurZeilen(figs: List<ManuelleFigurAnsicht>): List<Pair<ManuelleFigurAnsicht, FinanzZeile>> =
     jeKaufpreis(figs) { it.acquisitions }.map { (f, acq) ->
         f to FinanzZeile("fig_${f.id}#${acq?.id ?: 0}", acq?.quantity ?: f.quantity,
             acq?.wertGesamt ?: f.wertGesamt, acq?.purchasePrice ?: f.purchasePrice,
@@ -76,7 +76,7 @@ private fun betrag(text: String?): BigDecimal = text?.trim()?.toBigDecimalOrNull
  * addiert die App die drei Serversummen — in BigDecimal, weil 0.1 + 0.2 als
  * Double nicht 0.3 ist und die Summe sonst neben der Kopfkachel abwiche.
  */
-fun finanzSummen(valuation: ValuationResponse, parts: PartsValuationResponse?, figs: FigsValuationResponse?, pnl: PnlResponse?): FinanzSummen {
+fun finanzSummen(valuation: BewertungAnsicht, parts: TeileBewertungAnsicht?, figs: FigurenBewertungAnsicht?, pnl: GewinnAnsicht?): FinanzSummen {
     val sets = betrag(valuation.totals.avg)
     val teile = betrag(parts?.totalValue)
     val figuren = betrag(figs?.totalValue)
@@ -88,7 +88,7 @@ fun finanzSummen(valuation: ValuationResponse, parts: PartsValuationResponse?, f
  * Wie viele Kaufpreise in einer anderen Währung fehlen. /finance/pnl zählt über
  * alle drei Arten; ohne diese Antwort die Zahlen der drei Bewertungen.
  */
-fun fremdeKaufpreise(valuation: ValuationResponse?, parts: PartsValuationResponse?, figs: FigsValuationResponse?, pnl: PnlResponse?): Int =
+fun fremdeKaufpreise(valuation: BewertungAnsicht?, parts: TeileBewertungAnsicht?, figs: FigurenBewertungAnsicht?, pnl: GewinnAnsicht?): Int =
     pnl?.totals?.kaufpreiseFremdeWaehrung
         ?: ((valuation?.kaufpreiseFremdeWaehrung ?: 0) + (parts?.kaufpreiseFremdeWaehrung ?: 0) +
             (figs?.kaufpreiseFremdeWaehrung ?: 0))
