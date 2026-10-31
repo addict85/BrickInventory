@@ -184,7 +184,8 @@ jobs:
           geaendert=$(git status --porcelain -- app/schemas)
           if [ -n "$geaendert" ]; then
             echo "::error title=Room-Schema::Das Schema der Datenbank weicht vom eingecheckten ab — Fassung erhöhen, Migration schreiben, Datei einchecken:%0A$geaendert"
-            git diff -- app/schemas | head -80
+            git diff -- app/schemas > "$RUNNER_TEMP/schema.diff"
+            head -80 "$RUNNER_TEMP/schema.diff"
             exit 1
           fi
 
