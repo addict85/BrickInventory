@@ -2,12 +2,9 @@ import * as db from '../../../db/database';
 import { mengeJoin, mengeAus, teilmengeJoin, teilmengeAus } from '../../../db/bestandsmenge';
 import { blJoin, blNummerSql } from '../../../db/blZuordnungSql';
 
-/**
- * Leseabfragen der Teileliste: aus der Zusammenfassung (parts_summary) oder live
- * aus parts samt Katalogen. Beide Wege liefern dieselbe Form.
- */
+/** Beide Wege (Zusammenfassung und live) liefern dieselbe Form, damit die
+ * Oberflächen nicht wissen müssen, woher die Zeilen kommen. */
 
-/** Was die Oberflächen filtern; die Setnummer kommt mit Versionsanhang. */
 export interface TeileFilter {
   color?: string | null; category?: string | number | null; search?: string | null;
   spare?: '0' | '1' | null; set_number?: string | null; storage?: string | null; ohneManuelle?: boolean;
@@ -25,12 +22,11 @@ function ordnungSql(o: TeileOrdnung, sp: { farbe: string; name: string; menge: s
   return `${sp.farbe} ASC, ${sp.name} ASC`;
 }
 
-/** Suche über Teilenummer, Name und BrickLink-Nummer; `pi` ist der Platzhalter für `%text%`. */
+/** `pi` ist der Platzhalter für `%text%`. */
 function teileSuche(nummer: string, name: string, blNummer: string, pi: number) {
   return `(${nummer} ILIKE $${pi} OR ${name} ILIKE $${pi} OR ${blNummer} ILIKE $${pi})`;
 }
 
-/** Eine Zeile der Teileliste, wie sie die Datenbank liefert. */
 export interface TeilZeile {
   part_number: string; bl_part_number: string; part_name: string | null; color_id: number;
   color_name: string | null; color_hex: string | null; category_name: string | null;
@@ -40,7 +36,6 @@ export interface TeilZeile {
 
 export interface Seite { groesse: number; versatz: number; mitSets: boolean; ordnung: TeileOrdnung }
 
-/** Farben des Bestands (ohne manuelle Teile); Hex-Rückfall aus rb_colors. */
 export function farbenDesBestands(uids: number[], ausZusammenfassung: boolean) {
   type Farbe = { color_name: string | null; color_hex: string | null; unique_parts: number; total_quantity: number };
   if (ausZusammenfassung) return db.all<Farbe>(`
@@ -67,7 +62,6 @@ export function farbenDesBestands(uids: number[], ausZusammenfassung: boolean) {
     GROUP BY pcc.color_name, COALESCE(pcc.color_hex, rc.rgb) ORDER BY total_quantity DESC`, [uids]);
 }
 
-/** Eine Seite aus der Zusammenfassung; im Haushalt über part_key verdichtet. */
 export async function seiteAusZusammenfassung(uids: number[], f: TeileFilter, s: Seite) {
   const cond: string[] = ['user_id = ANY($1)'];
   const params: unknown[] = [uids];
@@ -117,7 +111,6 @@ export async function seiteAusZusammenfassung(uids: number[], f: TeileFilter, s:
   return { total: anzahl?.c ?? 0, zeilen };
 }
 
-/** WHERE-Klausel und Parameter der Live-Abfrage. */
 function teileWo(uids: number[], f: TeileFilter) {
   let where = 'p.user_id = ANY($1)';
   const params: unknown[] = [uids];
@@ -148,11 +141,8 @@ function teileWo(uids: number[], f: TeileFilter) {
   return { where, params, pi };
 }
 
-/**
- * Die Live-Seite: je BrickLink-Nummer und Farbe eine Zeile über alle Sets.
- * Mit Setfilter ohne Set-Menge, denn dort geht es um die Teile EINES Sets.
- * Ausführlich: docs/begruendungen/src/teile/abfragen.ts.md#getparts-joinclause
- */
+/** Mit Setfilter ohne Set-Menge, denn dort geht es um die Teile EINES Sets.
+ * Ausführlich: docs/begruendungen/src/teile/abfragen.ts.md#getparts-joinclause */
 export async function seiteLive(uids: number[], f: TeileFilter, s: Seite) {
   const { where, params, pi } = teileWo(uids, f);
   // ::int: Der JSON-Typ von total_quantity darf nicht vom Zweig abhängen.
@@ -200,7 +190,6 @@ export async function seiteLive(uids: number[], f: TeileFilter, s: Seite) {
   return { total: anzahl?.c ?? 0, zeilen };
 }
 
-/** Manuelle Teile mit einer Gebraucht-Erfassung, je BrickLink-Nummer und Farbe. */
 export function gebrauchteManuelle(uids: number[]) {
   return db.all<{ pid: string; color_id: number; any_used: number }>(
     `SELECT ${blNummerSql('p.part_number')} AS pid, p.color_id,
@@ -212,7 +201,6 @@ export function gebrauchteManuelle(uids: number[]) {
      GROUP BY ${blNummerSql('p.part_number')}, p.color_id`, [uids]);
 }
 
-/** Gibt es ein Teil, zu dem noch nie eine BrickLink-Nummer nachgesehen wurde? */
 export async function hatUngeseheneBlNummer(uids: number[]): Promise<boolean> {
   return !!(await db.get(
     `SELECT 1 FROM parts p
@@ -220,7 +208,6 @@ export async function hatUngeseheneBlNummer(uids: number[]): Promise<boolean> {
      WHERE p.user_id = ANY($1) AND m.rb_id IS NULL LIMIT 1`, [uids]));
 }
 
-/** Die Teileliste eines Inventars aus den CSV-Tabellen, in der Form der Teileliste. */
 export function inventarAlsTeile(inventarId: number, setNumber: string) {
   return db.all<TeilZeile>(`
         SELECT ip.part_num AS part_number,
@@ -239,7 +226,6 @@ export function inventarAlsTeile(inventarId: number, setNumber: string) {
         WHERE ip.inventory_id = $1`, [inventarId, setNumber]);
 }
 
-/** Kategorien mit Zahl und Menge; die Kategorie aus dem Katalog, sonst aus rb_parts. */
 export function kategorien(uids: number[], ausZusammenfassung: boolean) {
   type Kategorie = { category_name: string | null; label: string; unique_parts: number; total_quantity: number };
   const kategorie = (spalte: string, nummer: string) => `
@@ -272,7 +258,6 @@ export function kategorien(uids: number[], ausZusammenfassung: boolean) {
     ${gruppe('pc.category_name')}`, [uids]);
 }
 
-/** Kennzahlen der Set-Teile; manuell erfasste haben ihren eigenen Bereich. */
 export async function kennzahlen(uids: number[], ausZusammenfassung: boolean) {
   type Roh = { unique_parts: string | number | null; unique_colors: string | number | null; total_parts: string | number | null };
   const r = ausZusammenfassung
@@ -294,7 +279,6 @@ export async function kennzahlen(uids: number[], ausZusammenfassung: boolean) {
   return { unique_parts: zahl(r.unique_parts), unique_colors: zahl(r.unique_colors), total_parts: zahl(r.total_parts) };
 }
 
-/** Eine manuell erfasste Teilezeile; Preis und Zustand aus der neuesten Erfassung. */
 export interface ManuellesTeil {
   id: number; user_id: number; part_number: string; bl_part_number: string; part_name: string | null;
   color_id: number; color_name: string | null; color_hex: string | null; category_name: string | null;
@@ -302,7 +286,6 @@ export interface ManuellesTeil {
   purchase_price: string; source: string; condition: string; storage: string | null; created_at: Date;
 }
 
-/** Manuell erfasste Teile; Suche und Lagerort wie in der Set-Teileliste. */
 export function manuelleTeile(uids: number[], f: { search?: string | null; storage?: string | null },
                               seite: { groesse: number; versatz: number } | null) {
   const params: unknown[] = [uids];
@@ -357,10 +340,7 @@ export function manuelleTeile(uids: number[], f: { search?: string | null; stora
 
 type Bestand = { gesamt: number; lose: number };
 
-/**
- * Bestand je (Teil, Farbe): gesamt samt Set-Faktor, lose nur aus manuellen
- * Erfassungen. Ersatzteile zählen mit — sie liegen in der Schachtel.
- */
+/** gesamt samt Set-Faktor, lose nur aus manuellen Erfassungen. */
 export function besitzteTeile(uids: number[], nummern: string[], farbIds: number[]) {
   return db.all<Bestand & { part_number: string; color_id: number }>(
     `SELECT p.part_number,
@@ -380,7 +360,6 @@ export function besitzteTeile(uids: number[], nummern: string[], farbIds: number
       GROUP BY p.part_number, p.color_id`, [uids, nummern, farbIds]);
 }
 
-/** Dasselbe für Minifiguren, die als Teil einer Liste gefragt werden. */
 export function besitzteFiguren(uids: number[], nummern: string[]) {
   return db.all<Bestand & { part_number: string }>(
     `SELECT m.fig_number                                                AS part_number,
