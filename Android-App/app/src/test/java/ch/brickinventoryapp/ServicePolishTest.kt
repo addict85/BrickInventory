@@ -1,5 +1,6 @@
 package ch.brickinventoryapp
 
+import ch.brickinventoryapp.ressourcen.R
 import org.junit.Test
 
 /**
@@ -12,7 +13,12 @@ import org.junit.Test
 class ServicePolishTest {
 
     private fun read(rel: String): String {
-        val f = java.io.File("src/main/$rel")
+        // Quellen und Ressourcen über alle Module; das Manifest liegt in app/.
+        val f = when {
+            rel.startsWith("java/ch/brickinventoryapp/") -> java.io.File(Quellen.wurzel, rel.removePrefix("java/ch/brickinventoryapp/"))
+            rel.startsWith("res/") -> java.io.File(Quellen.res, rel.removePrefix("res/"))
+            else -> java.io.File(Quellen.projekt, "app/src/main/$rel")
+        }
         assert(f.exists()) { "Datei nicht gefunden: $rel" }
         return f.readText()
     }
@@ -85,7 +91,7 @@ class ServicePolishTest {
 
     @Test
     fun `Benachrichtigungen benutzen das monochrome Status-Icon`() {
-        assert(java.io.File("src/main/res/drawable/ic_stat_brick.xml").exists()) {
+        assert(java.io.File(Quellen.res, "drawable/ic_stat_brick.xml").exists()) {
             "drawable/ic_stat_brick.xml fehlt"
         }
         for (rel in listOf(

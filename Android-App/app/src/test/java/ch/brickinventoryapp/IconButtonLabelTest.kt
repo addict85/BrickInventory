@@ -33,7 +33,7 @@ class IconButtonLabelTest {
     // erhoehen".
 
     private fun screens(): List<java.io.File> =
-        java.io.File("src/main/java/ch/brickinventoryapp")
+        Quellen.wurzel
             .walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
             .also {
                 // Untergrenze (Nachtrag 118): ein leerer Dateilauf lässt jede
@@ -75,8 +75,8 @@ class IconButtonLabelTest {
     fun `die Beschriftungen liegen in beiden Sprachen vor`() {
         // Ein fehlender Eintrag in values-de führt nicht zum Fehler, sondern
         // still zum englischen Text — genau die Sorte Lücke, die niemand meldet.
-        val en = java.io.File("src/main/res/values/strings.xml").readText()
-        val de = java.io.File("src/main/res/values-de/strings.xml").readText()
+        val en = java.io.File(Quellen.res, "values/strings.xml").readText()
+        val de = java.io.File(Quellen.res, "values-de/strings.xml").readText()
         val namen = listOf(
             "cd_search_clear", "cd_password_show", "cd_password_hide", "cd_set_menu",
             "cd_qty_increase", "cd_qty_decrease", "cd_edit_cache_ttl", "cd_edit_limits",

@@ -199,8 +199,7 @@ test('ein neu angelegtes Set wird in beiden Routen gleich beantwortet',
     //
     // Verglichen wird gegen die ECHTEN Antworten von oben, nicht gegen eine
     // abgeschriebene Liste.
-    const ktPfad = path.join(ROOT, '..', 'Android-App', 'app', 'src', 'main',
-      'java', 'ch', 'brickinventoryapp', 'data', 'model', 'SetModels.kt');
+    const ktPfad = path.join(__dirname, '..', '..', 'Android-App', 'core-model', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'data', 'model', 'SetModels.kt');
     const kt = ohneKommentare(require('node:fs').readFileSync(ktPfad, 'utf8'));
     const ab = kt.indexOf('data class AddSetResponse(');
     assert.ok(ab >= 0, 'data class AddSetResponse nicht gefunden — Muster veraltet?');

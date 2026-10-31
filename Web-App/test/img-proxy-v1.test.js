@@ -30,7 +30,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
-const APP = path.join(ROOT, '..', 'Android-App', 'app', 'src', 'main');
+const { ANDROID, quellwurzeln } = require('./helpers/android');
 const NEU = '/api/v1/img-proxy';
 const ALT = '/api/img-proxy';
 
@@ -97,17 +97,16 @@ test('gebaut wird nur noch die neue Adresse', () => {
  * Eine eigene Erkennung wäre dort toter Code.
  */
 test('die App baut die neue Adresse und nirgends die alte', () => {
-  const wurzel = path.join(APP, 'java');
   const dateien = [];
   const lauf = (d) => {
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
       const p = path.join(d, e.name);
       if (e.isDirectory()) { lauf(p); continue; }
       if (e.name.endsWith('.kt'))
-        dateien.push([path.relative(wurzel, p), ohneKommentare(fs.readFileSync(p, 'utf8'))]);
+        dateien.push([path.relative(ANDROID, p), ohneKommentare(fs.readFileSync(p, 'utf8'))]);
     }
   };
-  lauf(wurzel);
+  for (const w of quellwurzeln()) lauf(w);
   assert.ok(dateien.length >= 60, `Nur ${dateien.length} Kotlin-Dateien gefunden`);
 
   const urls = dateien.find(([rel]) => rel.endsWith('ImageUrls.kt'));

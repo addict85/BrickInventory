@@ -136,8 +136,7 @@ test('fuenf Listen nennen dieselben Designs', () => {
     /var ALLOWED = \[([^\]]*)\]/, 'js/00-theme-boot.js');
   const server = liste(fs.readFileSync(path.join(__dirname, '..', 'src/konto/settings.ts'), 'utf8'),
     /const DESIGNS: readonly string\[\] = \[([^\]]*)\]/, 'src/konto/settings.ts');
-  const app = liste(fs.readFileSync(path.join(__dirname, '..', '..', 'Android-App', 'app', 'src',
-    'main', 'java', 'ch', 'brickinventoryapp', 'data', 'PreferencesManager.kt'), 'utf8'),
+  const app = liste(fs.readFileSync(path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'data', 'PreferencesManager.kt'), 'utf8'),
     /ERLAUBTE_DESIGNS = setOf\(([^)]*)\)/, 'PreferencesManager.kt');
 
   assert.deepEqual(boot, erwartet, 'ALLOWED im Boot-Skript weicht von den Dateien ab');

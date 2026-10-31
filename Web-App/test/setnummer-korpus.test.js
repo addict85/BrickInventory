@@ -44,10 +44,8 @@ const { setnummerKandidaten, GUETE } = _req('src/katalog/produkttitel.js');
 
 const ROOT = path.join(__dirname, '..');
 const KORPUS_DATEI = path.join(ROOT, '..', 'shared', 'setnummer-korpus.json');
-const KOTLIN = path.join(ROOT, '..', 'Android-App', 'app', 'src', 'main', 'java',
-  'ch', 'brickinventoryapp', 'ui', 'screens', 'BarcodeScannerScreen.kt');
-const KOTLIN_TEST = path.join(ROOT, '..', 'Android-App', 'app', 'src', 'test', 'java',
-  'ch', 'brickinventoryapp', 'SetnummerKorpusTest.kt');
+const KOTLIN = path.join(__dirname, '..', '..', 'Android-App', 'feature-sammlung', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'BarcodeScannerScreen.kt');
+const KOTLIN_TEST = path.join(__dirname, '..', '..', 'Android-App', 'feature-sammlung', 'src', 'test', 'java', 'ch', 'brickinventoryapp', 'SetnummerKorpusTest.kt');
 
 const korpus = JSON.parse(fs.readFileSync(KORPUS_DATEI, 'utf8')).faelle;
 

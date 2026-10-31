@@ -17,7 +17,7 @@ import ch.brickinventoryapp.nav.toolsGraph
 import ch.brickinventoryapp.ui.*
 import ch.brickinventoryapp.ui.screens.*
 import coil3.ImageLoader
-import ch.brickinventoryapp.R
+import ch.brickinventoryapp.ressourcen.R
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.Lifecycle

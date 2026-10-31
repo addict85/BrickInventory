@@ -14,10 +14,9 @@
  */
 const path = require('path');
 const { kotlinModelle, apiRouten, pruefe } = require('./kotlin-vertrag');
+const { quellwurzeln } = require('../test/helpers/android');
 
 const BASE = process.env.BASE_URL || 'http://localhost:3000';
-const APP = path.join(__dirname, '..', '..', 'Android-App', 'app', 'src', 'main', 'java', 'ch', 'brickinventoryapp');
-
 async function token() {
   if (process.env.TOKEN) return process.env.TOKEN;
   const { USERNAME, PASSWORD } = process.env;
@@ -32,8 +31,8 @@ async function token() {
 
 (async () => {
   const t = await token();
-  const modelle = kotlinModelle(APP);
-  const routen = apiRouten(path.join(APP, 'data', 'api'))
+  const modelle = kotlinModelle(quellwurzeln());
+  const routen = apiRouten(path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'data', 'api'))
     .filter(r => r.typ && modelle.has(r.typ) && !r.pfad.includes('{') && !r.anfrage.some(q => q.pflicht));
   let falsch = 0;
   for (const r of routen) {

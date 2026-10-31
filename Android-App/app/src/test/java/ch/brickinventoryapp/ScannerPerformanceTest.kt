@@ -27,9 +27,9 @@ class ScannerPerformanceTest {
     // letzteOcr und textRecognizer.process() stehen ausschliesslich in der
     // Analyse-Datei, ihre Reihenfolge zueinander aendert das Voranstellen nicht.
     private val src: String by lazy {
-        val w = "src/main/java/ch/brickinventoryapp/ui/screens/"
-        java.io.File(w + "BarcodeScannerScreen.kt").readText() + "\n" +
-            java.io.File(w + "BarcodeAnalyzer.kt").readText()
+        val w = "ui/screens/"
+        java.io.File(Quellen.wurzel, w + "BarcodeScannerScreen.kt").readText() + "\n" +
+            java.io.File(Quellen.wurzel, w + "BarcodeAnalyzer.kt").readText()
     }
     private fun code(s: String) = s.lines()
         .joinToString("\n") { if (it.trim().startsWith("//") || it.trim().startsWith("*")) "" else it }

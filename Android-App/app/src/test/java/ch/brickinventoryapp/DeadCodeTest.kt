@@ -42,7 +42,7 @@ class DeadCodeTest {
 
     @Test
     fun `jede Textressource wird benutzt`() {
-        val en = java.io.File("src/main/res/values/strings.xml").readText()
+        val en = java.io.File(Quellen.res, "values/strings.xml").readText()
         val schluessel = Regex("""<string name="([^"]+)"""").findAll(en)
             .map { it.groupValues[1] }.toSet()
         assert(schluessel.size > 300) { "Nur ${schluessel.size} Texte gefunden — Muster veraltet?" }
@@ -62,10 +62,10 @@ class DeadCodeTest {
         // hinschreibt.
         val verwendung = buildString {
             Quellen.alle().forEach { append(Quellen.ohneKommentare(it.readText())).append('\n') }
-            java.io.File("src/main/res").walkTopDown()
+            Quellen.res.walkTopDown()
                 .filter { it.isFile && it.extension == "xml" && !it.name.startsWith("strings") }
                 .forEach { append(ohneXmlKommentare(it.readText())).append('\n') }
-            append(ohneXmlKommentare(java.io.File("src/main/AndroidManifest.xml").readText()))
+            append(ohneXmlKommentare(Quellen.manifest.readText()))
         }
         assert(verwendung.length > 100_000) { "Zu wenig Quelltext gelesen — Pfad veraltet?" }
 

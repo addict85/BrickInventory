@@ -37,7 +37,7 @@ class BildschirmHoltDatenNichtSelbstTest {
     private val bildschirmOrdner = listOf("ui/screens", "ui/dialogs", "ui/components")
 
     private fun dateien(): List<File> = bildschirmOrdner
-        .map { File("src/main/java/ch/brickinventoryapp/$it") }
+        .map { File(Quellen.wurzel, "$it") }
         .filter { it.exists() }
         .flatMap { it.walkTopDown().filter { f -> f.isFile && f.extension == "kt" }.toList() }
 
@@ -70,7 +70,7 @@ class BildschirmHoltDatenNichtSelbstTest {
 
     @Test
     fun `das Monitoring hat ein eigenes ViewModel und der Bildschirm benutzt es`() {
-        val vmDatei = File("src/main/java/ch/brickinventoryapp/ui/viewmodel/MonitoringViewModel.kt")
+        val vmDatei = File(Quellen.wurzel, "ui/viewmodel/MonitoringViewModel.kt")
         assert(vmDatei.exists()) { "MonitoringViewModel.kt gibt es nicht (mehr)" }
         val vm = ohneKommentare(vmDatei.readText())
 
@@ -94,7 +94,7 @@ class BildschirmHoltDatenNichtSelbstTest {
         }
 
         for (rel in listOf("ui/screens/MonitoringScreen.kt", "ui/screens/MonitoringSections.kt")) {
-            val src = ohneKommentare(File("src/main/java/ch/brickinventoryapp/$rel").readText())
+            val src = ohneKommentare(File(Quellen.wurzel, "$rel").readText())
             assert(src.contains("hiltViewModel()")) { "$rel haengt das ViewModel nicht ein" }
             assert(src.contains("mon.state.collectAsStateWithLifecycle()")) {
                 "$rel liest den Zustand nicht mit dem Lebenszyklus — bei einer " +
@@ -107,7 +107,7 @@ class BildschirmHoltDatenNichtSelbstTest {
     fun `jeder Zugriff auf den Monitoring-Zustand trifft ein Feld das es gibt`() {
         // Der Ersatz fuer den fehlenden Compiler — dieselbe Pruefung wie in
         // ScreenViewModelWiringTest, hier fuer die neue Zustandsklasse.
-        val vm = File("src/main/java/ch/brickinventoryapp/ui/viewmodel/MonitoringViewModel.kt").readText()
+        val vm = File(Quellen.wurzel, "ui/viewmodel/MonitoringViewModel.kt").readText()
         val i = vm.indexOf("data class MonitoringUiState(")
         assert(i >= 0) { "MonitoringUiState nicht gefunden" }
         var tiefe = 0
@@ -121,7 +121,7 @@ class BildschirmHoltDatenNichtSelbstTest {
 
         val fehler = mutableListOf<String>()
         for (rel in listOf("ui/screens/MonitoringScreen.kt", "ui/screens/MonitoringSections.kt")) {
-            val src = ohneKommentare(File("src/main/java/ch/brickinventoryapp/$rel").readText())
+            val src = ohneKommentare(File(Quellen.wurzel, "$rel").readText())
             for (m in Regex("""\bmonState\.(\w+)""").findAll(src)) {
                 if (m.groupValues[1] !in felder) fehler += "$rel: monState.${m.groupValues[1]}"
             }

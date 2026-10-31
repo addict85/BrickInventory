@@ -43,16 +43,17 @@ import org.robolectric.annotation.GraphicsMode
 
 /**
  * Bildschirmfotos der Hauptbildschirme mit Beispieldaten (Beispiele), je in
- * drei Designs, hell und dunkel, auf Telefon und Tablet. Vorerst wird nur
- * aufgenommen (recordRoborazziDebug); verglichen wird, sobald die Bilder aus der
- * CI als Referenz eingecheckt sind.
+ * drei Designs, hell und dunkel, auf Telefon und Tablet. Liegen Referenzbilder
+ * in src/test/bildschirmfotos, vergleicht die CI gegen sie (verifyRoborazziDebug),
+ * sonst nimmt sie auf; eingecheckt werden sie per Workflow (bildschirmfotos=true).
  *
  * Die Einstellungen selbst holen AppViewModel und UpdateViewModel über Hilt;
  * hier stehen deshalb ihre Bausteine (Klartext-Schalter, Gutscheine).
  *
- * Gegenprobe: Ein Foto, das nichts vergleicht, kann nicht rot werden. Sie folgt,
- * wenn die Referenzbilder eingecheckt sind und `verifyRoborazziDebug` läuft;
- * bis dahin prüft BeispieldatenTest, dass die Bilder Inhalt zeigen.
+ * Gegenprobe: Ein Foto, das nichts vergleicht, kann nicht rot werden. Sie ist
+ * erst mit eingecheckten Referenzen möglich (eine Farbe in Theme.kt ändern →
+ * verifyRoborazziDebug rot) und hier ohne Android-SDK nicht messbar; bis dahin
+ * prüft BeispieldatenTest, dass die Bilder Inhalt zeigen.
  */
 @RunWith(ParameterizedRobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)

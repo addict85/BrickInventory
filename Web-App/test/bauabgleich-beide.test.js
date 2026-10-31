@@ -20,7 +20,6 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const WEB = path.join(__dirname, '..');
-const APP = path.join(WEB, '..', 'Android-App', 'app', 'src', 'main');
 const { ohneKommentare } = require('./helpers/sources');
 // Kommentare ABSTREIFEN, und zwar hier schon beim Lesen.
 //
@@ -40,11 +39,11 @@ const web  = rel => lies(path.join(WEB, rel));
 // diese Datei prompt, als sie einen solchen Helfer hatte — und zu Recht:
 // Genau die unauflösbaren Brücken sind die, die beim nächsten Umbenennen
 // lautlos ins Leere zeigen.
-const KT_API   = ohneKommentare(require('../scripts/kotlin-vertrag.js').apiQuelltext(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'data', 'api')));
-const KT_FEAT  = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'ui', 'Teileliste.kt'));
-const KT_SCREEN= lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'PartsListScreen.kt'));
-const XML_EN   = lies(path.join(APP, 'res', 'values', 'strings.xml'));
-const XML_DE   = lies(path.join(APP, 'res', 'values-de', 'strings.xml'));
+const KT_API   = ohneKommentare(require('../scripts/kotlin-vertrag.js').apiQuelltext(path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'data', 'api')));
+const KT_FEAT  = lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-teile', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'Teileliste.kt'));
+const KT_SCREEN= lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-teile', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'PartsListScreen.kt'));
+const XML_EN   = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-ressourcen', 'src', 'main', 'res', 'values', 'strings.xml'));
+const XML_DE   = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-ressourcen', 'src', 'main', 'res', 'values-de', 'strings.xml'));
 
 const ROUTE = '/parts/owned';
 

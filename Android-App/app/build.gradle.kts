@@ -13,7 +13,8 @@ plugins {
 }
 
 // Bildschirmfotos neben die Tests, damit sie als Referenz eingecheckt werden
-// können; bis dahin nimmt die CI nur auf (recordRoborazziDebug, android.yml).
+// können. Die CI vergleicht gegen sie, sobald welche eingecheckt sind, und
+// nimmt sonst auf (android.yml, Schritt „Bildschirmfotos vergleichen oder aufnehmen?“).
 roborazzi {
     outputDir.set(file("src/test/bildschirmfotos"))
 }
@@ -48,9 +49,6 @@ val generatedVersionCode: Int =
 ksp {
     arg("dagger.fastInit", "enabled")
     arg("dagger.hilt.android.internal.disableAndroidSuperclassValidation", "true")
-    // Room legt hier das Schema je Fassung ab; eingecheckt, damit eine Migration
-    // gegen die frühere Fassung geprüft werden kann (BestandMigrationTest).
-    arg("room.schemaLocation", "$projectDir/schemas")
 }
 
 android {
@@ -195,6 +193,10 @@ android {
         checkReleaseBuilds = true
         abortOnError = true
         warningsAsErrors = false
+        // Ein Lauf hier prüft alle Module mit, als wären sie eins: Ressourcen aus
+        // core-ressourcen gelten als benutzt, wenn ein Bereich sie liest, und der
+        // Bericht bleibt die eine Datei, die tools/lint-zaehlen.py zählt.
+        checkDependencies = true
     }
 
     packaging {
@@ -348,6 +350,21 @@ androidComponents {
 
 
 dependencies {
+    // Die App setzt zusammen: Navigation, Hilt-Einstieg, Widget. Alles andere
+    // liegt in den Modulen darunter.
+    implementation(project(":core-model"))
+    implementation(project(":core-ressourcen"))
+    implementation(project(":core-data"))
+    implementation(project(":core-ui"))
+    implementation(project(":core-zustand"))
+    implementation(project(":feature-anmeldung"))
+    implementation(project(":feature-katalog"))
+    implementation(project(":feature-sammlung"))
+    implementation(project(":feature-teile"))
+    implementation(project(":feature-finanzen"))
+    implementation(project(":feature-konto"))
+    implementation(project(":feature-verwaltung"))
+    testImplementation(project(":core-testing"))
     implementation(libs.androidx.core.ktx)
     // Startbild statt weissem Fenster beim Kaltstart (MainActivity.installSplashScreen).
     implementation(libs.androidx.core.splashscreen)
@@ -394,10 +411,6 @@ dependencies {
     // Hilt — KSP (kein kapt mehr)
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
-    // Room: lokale Ablage und Ausgang für die Offline-Bearbeitung (data/lokal/room).
-    implementation(libs.androidx.room.runtime)
-    implementation(libs.androidx.room.ktx)
-    ksp(libs.androidx.room.compiler)
     implementation(libs.hilt.navigation.compose)
 
     // Network

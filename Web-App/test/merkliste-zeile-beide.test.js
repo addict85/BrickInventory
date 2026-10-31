@@ -37,11 +37,9 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { ROOT, ohneKommentare } = require('./helpers/sources');
+const { androidDatei } = require('./helpers/android');
 
-// Als EIN Pfad und nicht als acht Segmente: test/baumbruecken.test.js zaehlt
-// die Bruecken zwischen den beiden Baeumen und will sie lesen koennen — ein
-// variables Segment nimmt ihr die Sicht. Sie hat diese Zeile prompt gemeldet.
-const APP = path.join(ROOT, '../Android-App/app/src/main/java/ch/brickinventoryapp');
+// Die App-Quellen über alle Module: androidDatei() meldet eine fehlende Datei mit Namen.
 
 /** Der Rumpf einer Funktion — ab ihrem Namen bis zur nächsten auf Spaltenanfang. */
 function rumpf(quelle, kopf, ende = /\n(?:@Composable|(?:private |internal |export )?(?:async )?fun(?:ction)? )/) {
@@ -53,7 +51,7 @@ function rumpf(quelle, kopf, ende = /\n(?:@Composable|(?:private |internal |expo
 }
 
 const web = (rel) => ohneKommentare(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
-const app = (rel) => ohneKommentare(fs.readFileSync(path.join(APP, rel), 'utf8'));
+const app = (rel) => ohneKommentare(fs.readFileSync(androidDatei(rel), 'utf8'));
 
 test('1. die Merklisten-ZEILE trägt keinen Übernahme-Knopf mehr', () => {
   // Er ist nicht verschwunden, sondern umgezogen: Das Merkposten-Detail hat

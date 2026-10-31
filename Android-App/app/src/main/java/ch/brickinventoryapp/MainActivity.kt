@@ -37,7 +37,10 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import coil3.ImageLoader
 import androidx.compose.foundation.Image
 import androidx.compose.ui.res.painterResource
-import ch.brickinventoryapp.R
+import androidx.compose.runtime.CompositionLocalProvider
+import ch.brickinventoryapp.ressourcen.R
+import ch.brickinventoryapp.ui.components.LocalAppFassung
+import ch.brickinventoryapp.util.AppFassung
 import ch.brickinventoryapp.ui.viewmodel.CatalogViewModel
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -126,18 +129,23 @@ class MainActivity : ComponentActivity() {
             val systemfarben by vm.systemfarben.collectAsStateWithLifecycle()
             val sicht = darstellung(theme, dunkel, isSystemInDarkTheme(), systemfarben, android.os.Build.VERSION.SDK_INT)
             BrickInventoryManagerTheme(theme = sicht.design, dunkel = sicht.dunkel, systemfarben = sicht.systemfarben) {
-                BrickInventoryManagerApp(vm, katalogVm, gutscheinVm, imageLoader)
-                // Über allem: Ein unbekanntes Zertifikat kann jeder Abruf treffen.
-                val zertifikat by vm.zertifikatsFrage.offen.collectAsStateWithLifecycle()
-                val nutzerCa by vm.nutzerCa.collectAsStateWithLifecycle()
-                zertifikat?.let { frage ->
-                    ch.brickinventoryapp.ui.components.ZertifikatDialog(
-                        frage = frage,
-                        nutzerCaAn = nutzerCa,
-                        onVertrauen = vm::zertifikatVertrauen,
-                        onNutzerCa = { vm.setNutzerCa(true); vm.zertifikatsFrage.verwerfen() },
-                        onAbbrechen = vm.zertifikatsFrage::verwerfen,
-                    )
+                // Die Fassung kennt nur dieses Modul; die Bereiche lesen sie hier.
+                CompositionLocalProvider(
+                    LocalAppFassung provides AppFassung(BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE),
+                ) {
+                    BrickInventoryManagerApp(vm, katalogVm, gutscheinVm, imageLoader)
+                    // Über allem: Ein unbekanntes Zertifikat kann jeder Abruf treffen.
+                    val zertifikat by vm.zertifikatsFrage.offen.collectAsStateWithLifecycle()
+                    val nutzerCa by vm.nutzerCa.collectAsStateWithLifecycle()
+                    zertifikat?.let { frage ->
+                        ch.brickinventoryapp.ui.components.ZertifikatDialog(
+                            frage = frage,
+                            nutzerCaAn = nutzerCa,
+                            onVertrauen = vm::zertifikatVertrauen,
+                            onNutzerCa = { vm.setNutzerCa(true); vm.zertifikatsFrage.verwerfen() },
+                            onAbbrechen = vm.zertifikatsFrage::verwerfen,
+                        )
+                    }
                 }
             }
         }

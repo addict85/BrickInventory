@@ -99,7 +99,7 @@ class KnopfBreiteTest {
 
     @Test
     fun `kein Knopf versteckt seine Beschriftung hinter dem Kreisel`() {
-        val dateien = java.io.File("src/main/java/ch/brickinventoryapp")
+        val dateien = Quellen.wurzel
             .walkTopDown().filter { it.extension == "kt" }.toList()
         // Untergrenze: ein leerer Dateilauf liesse die Pruefung stillschweigend
         // bestehen.

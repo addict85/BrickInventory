@@ -38,7 +38,8 @@ const fs = require('fs');
 const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
-const ANDROID = path.join(ROOT, '..', 'Android-App', 'app', 'src');
+// Alle Module der App; ihre build-Ordner fallen unten heraus.
+const ANDROID = path.join(ROOT, '..', 'Android-App');
 
 /** Stellen, an denen die Wiederholung Absicht ist. Jede mit Grund. */
 const ERLAUBT = new Map([

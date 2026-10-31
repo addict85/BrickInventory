@@ -32,7 +32,7 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import ch.brickinventoryapp.MainActivity
-import ch.brickinventoryapp.R
+import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.PreferencesManager
 import ch.brickinventoryapp.data.api.ApiJson
 import ch.brickinventoryapp.data.repository.FinanzenRepository

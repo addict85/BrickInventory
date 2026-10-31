@@ -81,7 +81,7 @@ class WirksamesDesignTest {
      */
     @Test
     fun `der Start blitzt nicht weiss auf`() {
-        val res = java.io.File("src/main/res")
+        val res = Quellen.res
         val nacht = java.io.File(res, "values-night/themes.xml")
         assertTrue("values-night/themes.xml fehlt", nacht.isFile)
         assertTrue("Das Nacht-Theme erbt wieder von einem hellen",
@@ -89,7 +89,7 @@ class WirksamesDesignTest {
         assertTrue("values-night/colors.xml setzt keinen eigenen Fensterhintergrund",
             java.io.File(res, "values-night/colors.xml").readText().contains("fenster_hintergrund"))
 
-        val manifest = java.io.File("src/main/AndroidManifest.xml").readText()
+        val manifest = Quellen.manifest.readText()
         assertTrue("Die Activity startet nicht im SplashScreen-Theme",
             manifest.contains("@style/Theme.BrickInventoryManager.Start"))
 
