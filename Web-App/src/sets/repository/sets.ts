@@ -3,8 +3,6 @@ import { ausTabelle } from '../../infra/validate';
 import type { DbSchnittstelle } from '../../../db/database';
 import * as db from '../../../db/database';
 
-/** Datenzugriff auf Sets und Set-Stammdaten. */
-
 /** Das eigene Konto gewinnt, wenn mehrere Konten das Set halten. */
 export function setImBlickfeld(ids: number[], setNumber: string, viewerId: number) {
   return db.get(`SELECT set_number, user_id FROM sets
@@ -16,14 +14,14 @@ export function setImBlickfeld(ids: number[], setNumber: string, viewerId: numbe
       LIMIT 1`, [ids, setNumber, viewerId]);
 }
 
-/** Der angefragte Zustand gewinnt, wenn er einen Preis hat; der andere nur, wo keiner steht. */
+/** Der angefragte Zustand gewinnt, wenn er einen Preis hat. */
 export function marktpreisAusCache(dbh: DbSchnittstelle, setNumber: string, currency: string, zustand: string) {
   return dbh.get(`SELECT avg_price FROM price_cache
      WHERE set_number=$1 AND currency_code=$2 AND condition IN ('N','U') AND avg_price > 0
      ORDER BY (condition = $3) DESC LIMIT 1`, [setNumber, currency, zustand]);
 }
 
-/** Rückfall, wenn der Cache leer ist (CSV-Import ohne Kontingent): der jüngste Preis im Verlauf. */
+/** Rückfall, wenn der Cache leer ist (CSV-Import ohne Kontingent). */
 export function marktpreisAusVerlauf(dbh: DbSchnittstelle, setNumber: string, currency: string, zustand: string) {
   return dbh.get(`SELECT avg_price FROM price_history
         WHERE set_number=$1 AND currency_code=$2 AND condition IN ('N','U') AND avg_price > 0
@@ -74,13 +72,12 @@ export function schreibeInNeuesteSetErfassung(wert: number | string | null, owne
                               ORDER BY created_at DESC, id DESC LIMIT 1)`, [wert, ownerId, setNumber]);
 }
 
-/** Die eigene Zeile gewinnt — sonst entschiede die Tabellenreihenfolge. */
 export function setZeileImSchreibfeld(wids: number[], setNumber: string, uid: number) {
   return db.get(`SELECT id, user_id FROM sets WHERE user_id = ANY($1) AND set_number=$2
       ORDER BY (user_id = $3) DESC, id ASC LIMIT 1`, [wids, setNumber, uid]);
 }
 
-/** Eine eigene Zeile, wenn das Set bisher nur einem anderen Konto des Blickfelds gehörte. */
+/** Gehörte das Set bisher nur einem anderen Konto, braucht das eigene eine Zeile. */
 export function uebernimmSetZeile(tx: DbSchnittstelle, uid: number, leseFeld: number[], setNumber: string) {
   return tx.run(`INSERT INTO sets (user_id, set_number)
            SELECT $1, set_number
@@ -95,15 +92,12 @@ export function zustandNeuesteSetErfassung(ownerId: number, setNumber: string) {
           ORDER BY created_at DESC, id DESC LIMIT 1`, [ownerId, setNumber]);
 }
 
-/** Menge eines Sets aus den Erfassungen: über das Blickfeld (ids = Liste) oder ein Konto. */
 export async function setMenge(dbh: Pick<DbSchnittstelle, 'get'>, konten: 'eines' | 'blickfeld', ids: number | number[], setNumber: string): Promise<number> {
   return (await dbh.get<{ q: number }>(mengeSummeSql(konten), [ids, setNumber]))?.q ?? 0;
 }
 
-// Shared logic to build the Sets CSV export content. Used by both the
-// standalone CSV download and the combined ZIP export in settings.js.
-// Eine Zeile pro Erfassung, damit Kaufpreis, Zustand und Datum je Kauf erhalten
-// bleiben und beim Re-Import 1:1 wiederhergestellt werden. Sets ohne Erfassungen …
+// Eine Zeile je Erfassung, damit Kaufpreis, Zustand und Datum beim Re-Import
+// 1:1 zurückkommen.
 // Ausführlich: docs/begruendungen/src/sets/setService.ts.md#sets-csv-sql
 const SETS_CSV_SQL = `
   SELECT s.set_number,
@@ -132,21 +126,16 @@ export function setsFuerCsv(uid: number) {
   return db.all(SETS_CSV_SQL, [uid]);
 }
 
-/**
- * Sortierschlüssel der Galerie. Whitelist statt Interpolation: Der Wert kommt
- * aus einem <select> im Client und darf niemals ungeprüft in die Abfrage.
- */
+/** Whitelist statt Interpolation: Der Wert kommt aus einem <select> und darf
+ * nie ungeprüft in die Abfrage. */
 const SET_SORTS = {
   added_desc: 's.added_at DESC',
   added_asc:  's.added_at ASC',
   name_asc:   's.name ASC NULLS LAST',
   num_asc:    's.set_number ASC',
   year_desc:  's.year DESC NULLS LAST',
-  // Nur noch aus den Erfassungen: Der zweite Operand war sets.purchase_price,
-  // den es seit Migration 0032 nicht mehr gibt.
   price_desc: 'COALESCE(a.max_purchase_price, 0) DESC',
   price_asc:  'COALESCE(a.max_purchase_price, 0) ASC',
-  // Anzahl der besessenen Exemplare.
   // Ausführlich: docs/begruendungen/src/sets/abfragen.ts.md#set-sorts-2
   qty_desc:   's.quantity DESC, s.added_at DESC',
   qty_asc:    's.quantity ASC, s.added_at DESC',
@@ -155,23 +144,16 @@ const SET_SORTS = {
 export type SetFilter = { search?: unknown; theme?: unknown; storage?: unknown; sort?: unknown;
   seite: { groesse: number; versatz: number } | null; themen: boolean };
 
-/**
- * Die Setliste im Blickfeld: eine Seite, die Gesamtzahl (nur mit Seite) und
- * die Themen (nur auf der ersten Seite). Mehrere Konten werden je Set
- * zusammengefasst; der Lagerort beschreibt das Exemplar und wird deshalb
- * aufgezählt statt gewählt.
- */
+/** Mehrere Konten werden je Set zusammengefasst; der Lagerort beschreibt das
+ * Exemplar und wird deshalb aufgezählt statt gewählt. */
 export async function setListe(uids: number[], f: SetFilter) {
   const SET_COLS = ['set_number','name','year','theme','pieces','minifigs','quantity',
                     'image_local','image_url','added_at','storage']
                    .map(c => `s.${c}`).join(', ');
   const { search, theme, sort, storage } = f;
 
-  // Ein Set, EINE Zeile
-  // Im Haushalt besitzen womöglich zwei Kinder dasselbe Set. Es soll trotzdem
-  // nur einmal erscheinen — mit der Summe der Mengen und den Kaufpreisen aller
-  // Besitzer. Zwei Zeilen mit demselben Bild und Namen lesen sich wie ein …
-  // Ausführlich: docs/begruendungen/src/sets/abfragen.ts.md#getsets-setsfrom
+  // Ein Set, EINE Zeile, auch wenn zwei Kinder es besitzen: Zwei Zeilen mit
+  // demselben Bild lesen sich wie ein Fehler.
   const setsFrom = uids.length > 1
     ? `(SELECT s.set_number,
                MIN(c.name) AS name, MIN(c.year) AS year, MIN(c.theme) AS theme,
@@ -222,11 +204,8 @@ export async function setListe(uids: number[], f: SetFilter) {
           ${mengeJoin('s', 'sm', '= ANY($1)')}
          WHERE s.user_id = ANY($1)
          GROUP BY s.set_number) s`
-    // Auch ohne Haushalt eine Unterabfrage, und zwar NUR wegen des Lagerorts:
-    // Alles darunter (Filter `s.storage = $n`, Sortierung, Ausgabe) erwartet
-    // den NAMEN in einer Spalte namens `storage` — die Tabelle traegt seit
-    // Migration 0031 aber die ID. `s.*` plus die aufgeloeste Spalte liefert …
-    // Ausführlich: docs/begruendungen/src/sets/abfragen.ts.md#getsets
+    // Unterabfrage nur wegen des Lagerorts: Alles darunter erwartet den NAMEN in
+    // `storage`, die Tabelle trägt die ID.
     : `(SELECT s.id, s.user_id, s.set_number,
                ${mengeAus('sm', 0)}::int AS quantity,
                s.added_at, s.updated_at, s.storage_id,
@@ -238,14 +217,11 @@ export async function setListe(uids: number[], f: SetFilter) {
           LEFT JOIN storage_locations lo ON lo.id = s.storage_id
           ${mengeJoin('s', 'sm', '= ANY($1)')}) s`;
   const SET_OWNER_COL = uids.length > 1 ? ', s.owner_ids' : '';
-  // Ohne Gruppierung filtert die WHERE-Klausel wie bisher; mit Gruppierung hat
-  // die Unterabfrage bereits gefiltert.
   const where = uids.length > 1 ? [] : ['s.user_id = ANY($1)'];
   const params: any[] = [uids];
   if (theme) { params.push(theme); where.push(`s.theme = $${params.length}`); }
-  // Lagerort als eigener Filter, nicht als Teil der Volltextsuche: „Kiste 3"
-  // soll genau die Sets in Kiste 3 zeigen und nicht zusaetzlich jedes Set,
-  // dessen Name zufaellig „Kiste" enthaelt.
+  // Eigener Filter statt Volltext: „Kiste 3" soll nicht jedes Set mit „Kiste"
+  // im Namen zeigen.
   if (storage) {
     params.push(String(storage));
     where.push(`s.storage = $${params.length}`);
@@ -257,11 +233,10 @@ export async function setListe(uids: number[], f: SetFilter) {
                  OR LOWER(COALESCE(s.theme,'')) LIKE $${i} OR COALESCE(s.year,0)::text LIKE $${i})`);
   }
   const whereSql = where.length ? where.join(' AND ') : 'TRUE';
-  // ausTabelle: siehe src/infra/validate — ein direkter Zugriff liefert auch
-  // geerbte Eigenschaften, und die haette `|| SET_SORTS.added_desc` durchgelassen.
+  // ausTabelle: Ein direkter Zugriff liefert auch geerbte Eigenschaften.
   const orderSql = ausTabelle(SET_SORTS, sort, SET_SORTS.added_desc);
 
-  // Ohne page_size bleibt die Set-Liste UNBEGRENZT.
+  // Ohne page_size bleibt die Liste UNBEGRENZT.
   // Ausführlich: docs/begruendungen/src/sets/abfragen.ts.md#getsets-limitsql
   const listParams = [...params];
   let limitSql = '';
@@ -270,15 +245,9 @@ export async function setListe(uids: number[], f: SetFilter) {
     limitSql = ` LIMIT $${listParams.length - 1} OFFSET $${listParams.length}`;
   }
 
-  // Die Anleitungen werden ERST für die geladene Seite geholt (siehe unten) —
-  // dafür braucht es die Setnummern der Seite, also läuft die Set-Abfrage
-  // zuerst und die übrigen danach parallel.
-  // Ausführlich: docs/begruendungen/src/sets/abfragen.ts.md#getsets-2
+  // Die Set-Abfrage zuerst: Die Anleitungen brauchen die Setnummern der Seite.
   const [sets, countRow, themeRows] = await Promise.all([
-    // Vorher: drei korrelierte Subqueries pro Zeile, also drei Index-Scans auf
-    // set_acquisitions je Set. Jetzt ein einziger gruppierter Scan, per
-    // LEFT JOIN angehängt — identisches Ergebnis, eine Grössenordnung weniger
-    // Arbeit ab ein paar hundert Sets.
+    // Ein gruppierter Scan per LEFT JOIN statt drei korrelierter Subqueries je Zeile.
     db.all(`SELECT ${SET_COLS}${SET_OWNER_COL},
       a.max_purchase_price, a.avg_purchase_price, a.letzter_kauf,
       COALESCE(a.acq_count, 0)::int AS acq_count, COALESCE(a.used_count, 0)::int AS used_count
@@ -303,11 +272,9 @@ export async function setListe(uids: number[], f: SetFilter) {
       WHERE ${whereSql} ORDER BY ${orderSql}${limitSql}`, listParams),
     f.seite ? db.get(`SELECT COUNT(*)::int AS c FROM ${setsFrom} WHERE ${whereSql}`, params)
               : Promise.resolve(null),
-    // Themenliste für das Auswahlfeld. Muss aus ALLEN Sets kommen, nicht aus
-    // der geladenen Seite — sonst schrumpft das Auswahlfeld beim Paginieren.
-    // Nur bei der ersten Seite nötig; Folgeseiten sparen die Abfrage.
+    // Aus ALLEN Sets, sonst schrumpft das Auswahlfeld beim Blättern; nur auf der
+    // ersten Seite.
     f.themen
-      // `theme` steht seit Migration 0033 im Katalog — deshalb der JOIN.
       ? db.all(`SELECT DISTINCT c.theme AS theme
                   FROM sets s JOIN set_catalog c ON c.set_number = s.set_number
                  WHERE s.user_id = ANY($1) AND c.theme IS NOT NULL AND c.theme <> ''
@@ -317,7 +284,6 @@ export async function setListe(uids: number[], f: SetFilter) {
   return { sets, countRow, themeRows };
 }
 
-/** Nur zu Sets, die ein Konto des Blickfelds hält. */
 export function geteilteAnleitungen(setNummern: string[], uids: number[]) {
   return db.all(`SELECT si.* FROM shared_instructions si
                 WHERE si.set_number = ANY($1)
@@ -337,7 +303,7 @@ export function setErfassungsKennzahlen(uids: number[], setNumber: string) {
     " FROM set_acquisitions WHERE user_id = ANY($1) AND set_number=$2", [uids, setNumber]);
 }
 
-/** Menge und Lagerort über das Blickfeld; die eigene Zeile gewinnt. */
+/** Die eigene Zeile gewinnt. */
 export function setDetailZeile(uids: number[], setNumber: string, eigenes: number | undefined) {
   return db.get(`SELECT s.id, s.user_id, s.set_number, s.added_at, s.updated_at, s.storage_id,
               -- Beide Listen ausgeschrieben, kein s.*: Auf einer Datenbank
@@ -381,7 +347,6 @@ export function besitzerDesSets(tx: DbSchnittstelle, uids: number[], setNumber: 
   return tx.all('SELECT user_id FROM sets WHERE user_id = ANY($1) AND set_number = $2', [uids, setNumber]);
 }
 
-/** Set samt Teilen, Figuren und Erfassungen in diesen Konten. */
 export async function entferneSetZeilen(tx: DbSchnittstelle, uids: number[], setNumber: string): Promise<void> {
   await tx.run('DELETE FROM sets WHERE user_id = ANY($1) AND set_number = $2', [uids, setNumber]);
   await tx.run('DELETE FROM parts WHERE user_id = ANY($1) AND set_number = $2', [uids, setNumber]);
