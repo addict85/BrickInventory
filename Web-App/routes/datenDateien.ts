@@ -3,6 +3,7 @@
  * (data/instructions/). Eigene Datei, damit ein Test die echten Handler
  * einhängen kann.
  */
+import { fehlerAntwort } from '../src/infra/httpError';
 import express, { Request, Response } from 'express';
 import { liefereDatei } from '../src/infra/dateiAusliefern';
 import { safeDataPath } from '../src/infra/datenPfad';
@@ -38,5 +39,7 @@ router.get('/data/instructions/*pfad', requireLoginOrToken, async (req: Wildcard
   if (!filePath) return res.status(404).send('Datei nicht gefunden');
   liefereDatei(res, filePath);
 });
+
+router.use(fehlerAntwort);
 
 export = router;

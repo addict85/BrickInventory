@@ -336,6 +336,29 @@ export function antwortSprache(req: { headers?: Record<string, any> } | undefine
 }
 
 /**
+ * Ein Fachfehler: Code und Status reisen mit, der Satz entsteht erst in der
+ * Antwort (handleRouteError) in der Sprache des Anfragenden.
+ */
+export class Fachfehler extends Error {
+  constructor(readonly code: FehlerCode, readonly status: number, readonly vars?: Record<string, string | number>) {
+    super(fehlerText(code, 'de', vars));
+    this.name = 'Fachfehler';
+  }
+}
+
+/**
+ * Für `.catch()`: eine verletzte Eindeutigkeit (Postgres 23505) als Fachfehler,
+ * alles andere unverändert weiter. Zwei gleichzeitige Anlagen sind eine
+ * Nutzereingabe, kein Serverfehler.
+ */
+export function alsDoppelt(code: FehlerCode, status = 409): (e: unknown) => never {
+  return (e: unknown) => {
+    if ((e as { code?: unknown } | null)?.code === '23505') throw new Fachfehler(code, status);
+    throw e;
+  };
+}
+
+/**
  * Einen Fehler WERFEN, der seinen Grund als Code traegt.
  * Ausführlich: docs/begruendungen/src/infra/fehlerTexte.ts.md#fehlerwerfen
  */
@@ -350,11 +373,7 @@ export function fehlerWerfen(code: FehlerCode, status: number, vars?: Record<str
 export function dateiFehler(code: FehlerCode, status: number, vars?: Record<string, string | number>): Error {
   // Die deutsche Fassung als `message`, damit ein Protokolleintrag lesbar
   // bleibt; die Antwort an den Client entsteht aus `code` und `vars`.
-  const e: any = new Error(fehlerText(code, 'de', vars));
-  e.status = status;
-  e.code = code;
-  if (vars) e.vars = vars;
-  return e;
+  return new Fachfehler(code, status, vars);
 }
 
 /** Der Text zu einem Code, mit eingesetzten Platzhaltern. */

@@ -6,10 +6,10 @@ import express from 'express';
 import fs from 'fs';
 import path from 'path';
 import multer from 'multer';
-import { handleRouteError, ohneFehlendeDatei } from '../../src/infra/httpError';
-import { sendeFehler, fehlerText, antwortSprache, dateiFehler, type FehlerCode } from '../../src/infra/fehlerTexte';
+import { fehlerAntwort, ohneFehlendeDatei } from '../../src/infra/httpError';
+import { sendeFehler, fehlerText, antwortSprache, dateiFehler, type FehlerCode, alsDoppelt } from '../../src/infra/fehlerTexte';
 import { getGlobalSetting } from '../../src/konto/settings';
-import { verdecke, landErlaubt, LAND_STANDARD } from '../../src/gutscheine/gutscheinGuthaben';
+import { landErlaubt, LAND_STANDARD } from '../../src/gutscheine/gutscheinGuthaben';
 import { frageGuthabenAb, ABSTAND_SEK } from '../../src/gutscheine/gutscheinGuthabenSchranke';
 import { VOUCHER_DIR, gutscheinDatei, schreibeGutscheinPdf, liesGutscheinPdf } from '../../src/gutscheine/gutscheinDateien';
 import { requireToken } from './middleware';
@@ -101,22 +101,18 @@ function pruefeWerte(roh: { number?: unknown; pin?: unknown; amount?: unknown; c
 
 // ── GET /api/v1/vouchers — die eigenen Gutscheine ───────────────────────────
 router.get('/vouchers', requireToken, async (req: AuthedRequest, res) => {
-  try {
-    res.json({ success: true, vouchers: (await gutscheineDesKontos(req.apiUser.user_id)).map(fuerAussen) });
-  } catch (e) { handleRouteError(res, e, undefined, req); }
+  res.json({ success: true, vouchers: (await gutscheineDesKontos(req.apiUser.user_id)).map(fuerAussen) });
 });
 
 // ── POST /api/v1/vouchers — manuell anlegen ─────────────────────────────────
 router.post('/vouchers', requireToken, async (req: AuthedRequest, res) => {
-  try {
-    const w = pruefeWerte(req.body || {});
-    if (!w.ok) return sendeFehler(req, res, 400, w.code);
-    // Keine Zeile heisst „war schon da“ — als Erfolg gemeldet, sähe der Nutzer
-    // beim zweiten Anlegen nichts passieren.
-    const zeile = await gutscheinAnlegen(req.apiUser.user_id, w);
-    if (!zeile) return sendeFehler(req, res, 409, 'gutschein_existiert');
-    res.json({ success: true, voucher: fuerAussen(zeile) });
-  } catch (e) { handleRouteError(res, e, undefined, req); }
+  const w = pruefeWerte(req.body || {});
+  if (!w.ok) return sendeFehler(req, res, 400, w.code);
+  // Keine Zeile heisst „war schon da“ — als Erfolg gemeldet, sähe der Nutzer
+  // beim zweiten Anlegen nichts passieren.
+  const zeile = await gutscheinAnlegen(req.apiUser.user_id, w);
+  if (!zeile) return sendeFehler(req, res, 409, 'gutschein_existiert');
+  res.json({ success: true, voucher: fuerAussen(zeile) });
 });
 
 /**
@@ -159,83 +155,82 @@ async function stapelAnlegen(
 // gegen das Ausgelesene. Damit deckt dieselbe Route vier Faelle ab:
 // Ausführlich: docs/begruendungen/routes/api_v1/vouchers.ts.md#post-vouchers-pdf
 router.post('/vouchers/pdf', requireToken, upload.single('file'), async (req: AuthedRequest, res) => {
-  try {
-    if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
+  if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
 
-    // Zuerst die Frage: Wie viele Gutscheine stehen in dieser Datei?
-    // Seitenweise gelesen, weil ein Sammel-PDF je Seite einen Gutschein
-    // traegt. Erst ab ZWEI ist es ein Stapel; bei einem bleibt alles wie
-    // bisher — samt dem 422-Vertrag, auf dem beide Formulare stehen.
-    // Ausführlich: docs/begruendungen/routes/api_v1/vouchers.ts.md#post-vouchers-pdf-seiten
-    let seiten: Awaited<ReturnType<typeof seitenweiseLesen>> = [];
-    try { seiten = await seitenweiseLesen(req.file.buffer); } catch { seiten = []; }
-    if (seiten.length >= 2) return stapelAnlegen(req, res, seiten);
+  // Zuerst die Frage: Wie viele Gutscheine stehen in dieser Datei?
+  // Seitenweise gelesen, weil ein Sammel-PDF je Seite einen Gutschein
+  // traegt. Erst ab ZWEI ist es ein Stapel; bei einem bleibt alles wie
+  // bisher — samt dem 422-Vertrag, auf dem beide Formulare stehen.
+  // Ausführlich: docs/begruendungen/routes/api_v1/vouchers.ts.md#post-vouchers-pdf-seiten
+  let seiten: Awaited<ReturnType<typeof seitenweiseLesen>> = [];
+  // Teilergebnis: Ein Stapel, der sich nicht seitenweise lesen lässt, ist ein einzelner Gutschein.
+  try { seiten = await seitenweiseLesen(req.file.buffer); } catch { seiten = []; }
+  if (seiten.length >= 2) return stapelAnlegen(req, res, seiten);
 
-    // Scheitert das Auslesen (kaputtes PDF, Scan, fremdes Format), ist das
-    // kein Fehler der Anfrage — es bleibt bei dem, was der Nutzer mitschickt.
-    // Ist das ueberhaupt ein PDF? Multer prueft den gemeldeten Medientyp, und
-    // der ist eine BEHAUPTUNG des Klienten — eine Textdatei mit …
-    // Ausführlich: docs/begruendungen/routes/api_v1/vouchers.ts.md#post-vouchers-pdf-istpdf
-    const istPdf = req.file.buffer.subarray(0, 5).toString('latin1') === '%PDF-';
-    // Auch mit getippten Werten nicht: Die Datei wird als .pdf abgelegt und
-    // später mit application/pdf ausgeliefert.
-    if (!istPdf) return sendeFehler(req, res, 422, 'pdf_unlesbar');
+  // Scheitert das Auslesen (kaputtes PDF, Scan, fremdes Format), ist das
+  // kein Fehler der Anfrage — es bleibt bei dem, was der Nutzer mitschickt.
+  // Ist das ueberhaupt ein PDF? Multer prueft den gemeldeten Medientyp, und
+  // der ist eine BEHAUPTUNG des Klienten — eine Textdatei mit …
+  // Ausführlich: docs/begruendungen/routes/api_v1/vouchers.ts.md#post-vouchers-pdf-istpdf
+  const istPdf = req.file.buffer.subarray(0, 5).toString('latin1') === '%PDF-';
+  // Auch mit getippten Werten nicht: Die Datei wird als .pdf abgelegt und
+  // später mit application/pdf ausgeliefert.
+  if (!istPdf) return sendeFehler(req, res, 422, 'pdf_unlesbar');
 
-    let gelesen: ReturnType<typeof werteAusPdf>;
-    let lesefehler = !istPdf;
-    try { gelesen = werteAusPdf(req.file.buffer); }
-    catch (e) {
-      // Eine Entpackbombe wird auch mit getippten Werten nicht abgelegt: Der
-      // Export gäbe sie später an pdf-lib, das ohne Grenze entpackt.
-      if (e instanceof PdfZuGross) return sendeFehler(req, res, 422, 'pdf_unlesbar');
-      lesefehler = true; gelesen = { nummer: null, pin: null, betrag: null, waehrung: null };
-    }
+  let gelesen: ReturnType<typeof werteAusPdf>;
+  let lesefehler = !istPdf;
+  try { gelesen = werteAusPdf(req.file.buffer); }
+  catch (e) {
+    // Eine Entpackbombe wird auch mit getippten Werten nicht abgelegt: Der
+    // Export gäbe sie später an pdf-lib, das ohne Grenze entpackt.
+    if (e instanceof PdfZuGross) return sendeFehler(req, res, 422, 'pdf_unlesbar');
+    lesefehler = true; gelesen = { nummer: null, pin: null, betrag: null, waehrung: null };
+  }
 
-    const zusammen = {
-      number:   req.body?.number   ?? gelesen.nummer,
-      pin:      req.body?.pin      ?? gelesen.pin,
-      amount:   req.body?.amount   ?? gelesen.betrag,
-      currency: req.body?.currency ?? gelesen.waehrung,
-    };
-    const w = pruefeWerte(zusammen);
-    if (!w.ok) {
-      // Drei Absagen, weil der Nutzer bei jeder etwas anderes tun muss:
-      // kein PDF, nichts lesbar, oder ein Feld fehlt.
-      const nichtsGetippt = !req.body?.number && !req.body?.pin && !req.body?.amount;
-      const nichtsGelesen = gelesen.nummer == null && gelesen.betrag == null;
-      const code: FehlerCode =
-        lesefehler ? 'pdf_unlesbar'
-        : (nichtsGelesen && nichtsGetippt) ? 'kein_gutschein_im_pdf'
-        : w.code;
-      // 422 und nicht 400: Die Anfrage war in Ordnung, nur das PDF hat nicht
-      // hergegeben, was gebraucht wird. `gelesen` geht mit zurueck, damit die
-      // Oberflaeche die Felder vorbelegen kann, die sehr wohl da waren.
-      return res.status(422).json({
-        success: false, code, error: fehlerText(code, antwortSprache(req)),
-        gelesen: { number: gelesen.nummer, pin: gelesen.pin, amount: gelesen.betrag, currency: gelesen.waehrung },
-      });
-    }
-
-    const z = await gutscheinAnlegen(req.apiUser.user_id, w);
-    if (!z) return sendeFehler(req, res, 409, 'gutschein_existiert');
-
-    const dir = path.join(VOUCHER_DIR, String(req.apiUser.user_id));
-    // Der Dateiname kommt aus der id, NICHT aus dem hochgeladenen Namen: Ein
-    // Name vom Klienten ist eine Behauptung und muesste gegen Pfadanteile
-    // geprueft werden. Die id ist eine Zahl aus der eigenen Datenbank.
-    const datei = `${z.id}.pdf`;
-    await schreibeGutscheinPdf(path.join(dir, datei), req.file.buffer);
-    const relPfad = `${req.apiUser.user_id}/${datei}`;
-    await gutscheinPdfMerken(req.apiUser.user_id, z.id, relPfad);
-
-    res.json({
-      success: true,
-      voucher: fuerAussen({ ...z, pdf_path: relPfad }),
-      // Was aus dem PDF kam — damit die Oberflaeche sagen kann „diese Werte
-      // habe ich gelesen" statt den Nutzer raten zu lassen, ob sie stimmen.
+  const zusammen = {
+    number:   req.body?.number   ?? gelesen.nummer,
+    pin:      req.body?.pin      ?? gelesen.pin,
+    amount:   req.body?.amount   ?? gelesen.betrag,
+    currency: req.body?.currency ?? gelesen.waehrung,
+  };
+  const w = pruefeWerte(zusammen);
+  if (!w.ok) {
+    // Drei Absagen, weil der Nutzer bei jeder etwas anderes tun muss:
+    // kein PDF, nichts lesbar, oder ein Feld fehlt.
+    const nichtsGetippt = !req.body?.number && !req.body?.pin && !req.body?.amount;
+    const nichtsGelesen = gelesen.nummer == null && gelesen.betrag == null;
+    const code: FehlerCode =
+      lesefehler ? 'pdf_unlesbar'
+      : (nichtsGelesen && nichtsGetippt) ? 'kein_gutschein_im_pdf'
+      : w.code;
+    // 422 und nicht 400: Die Anfrage war in Ordnung, nur das PDF hat nicht
+    // hergegeben, was gebraucht wird. `gelesen` geht mit zurueck, damit die
+    // Oberflaeche die Felder vorbelegen kann, die sehr wohl da waren.
+    return res.status(422).json({
+      success: false, code, error: fehlerText(code, antwortSprache(req)),
       gelesen: { number: gelesen.nummer, pin: gelesen.pin, amount: gelesen.betrag, currency: gelesen.waehrung },
     });
-  } catch (e) { handleRouteError(res, e, undefined, req); }
+  }
+
+  const z = await gutscheinAnlegen(req.apiUser.user_id, w);
+  if (!z) return sendeFehler(req, res, 409, 'gutschein_existiert');
+
+  const dir = path.join(VOUCHER_DIR, String(req.apiUser.user_id));
+  // Der Dateiname kommt aus der id, NICHT aus dem hochgeladenen Namen: Ein
+  // Name vom Klienten ist eine Behauptung und muesste gegen Pfadanteile
+  // geprueft werden. Die id ist eine Zahl aus der eigenen Datenbank.
+  const datei = `${z.id}.pdf`;
+  await schreibeGutscheinPdf(path.join(dir, datei), req.file.buffer);
+  const relPfad = `${req.apiUser.user_id}/${datei}`;
+  await gutscheinPdfMerken(req.apiUser.user_id, z.id, relPfad);
+
+  res.json({
+    success: true,
+    voucher: fuerAussen({ ...z, pdf_path: relPfad }),
+    // Was aus dem PDF kam — damit die Oberflaeche sagen kann „diese Werte
+    // habe ich gelesen" statt den Nutzer raten zu lassen, ob sie stimmen.
+    gelesen: { number: gelesen.nummer, pin: gelesen.pin, amount: gelesen.betrag, currency: gelesen.waehrung },
+  });
 });
 
 // Die beiden Sammelwege stehen VOR den :id-Wegen
@@ -247,44 +242,41 @@ router.post('/vouchers/pdf', requireToken, upload.single('file'), async (req: Au
 // ── GET /api/v1/vouchers/export/pdf — alle Gutscheine in EIN PDF ────────────
 /** Das PDF baut src/gutscheine/gutscheinPdfSchreiben.ts; die Route holt die eigenen Zeilen und liefert aus. */
 router.get('/vouchers/export/pdf', requireToken, async (req: AuthedRequest, res) => {
-  try {
-    const uid = req.apiUser.user_id;
-    const zeilen = await gutscheineDesKontos(uid, 'aelteste');
-    if (!zeilen.length) return sendeFehler(req, res, 404, 'keine_gutscheine');
+  const uid = req.apiUser.user_id;
+  const zeilen = await gutscheineDesKontos(uid, 'aelteste');
+  if (!zeilen.length) return sendeFehler(req, res, 404, 'keine_gutscheine');
 
-    const gutscheine: ExportGutschein[] = [];
-    for (const z of zeilen) {
-      let pdf: Buffer | null = null;
-      if (z.pdf_path) {
-        // Fehlt die Datei (von Hand geloescht, Band nicht eingebunden), ist das
-        // kein Abbruch: Dann wird die Seite erzeugt. Ein Export, der an einer
-        // fehlenden Datei ganz scheitert, nimmt dem Nutzer auch die neunzehn
-        // anderen Gutscheine.
-        const datei = gutscheinDatei(uid, z.pdf_path);
-        try { pdf = datei ? await liesGutscheinPdf(datei) : null; }
-        catch { pdf = null; }
-      }
-      gutscheine.push({ id: z.id, number: z.number, pin: z.pin,
-                        amount: Number(z.amount), currency: z.currency, pdf });
+  const gutscheine: ExportGutschein[] = [];
+  for (const z of zeilen) {
+    let pdf: Buffer | null = null;
+    if (z.pdf_path) {
+      // Fehlt die Datei (von Hand geloescht, Band nicht eingebunden), ist das
+      // kein Abbruch: Dann wird die Seite erzeugt. Ein Export, der an einer
+      // fehlenden Datei ganz scheitert, nimmt dem Nutzer auch die neunzehn
+      // anderen Gutscheine.
+      const datei = gutscheinDatei(uid, z.pdf_path);
+      try { pdf = datei ? await liesGutscheinPdf(datei) : null; }
+      catch { pdf = null; }
     }
+    gutscheine.push({ id: z.id, number: z.number, pin: z.pin,
+                      amount: Number(z.amount), currency: z.currency, pdf });
+  }
 
-    const { daten, befunde } = await verbindeGutscheine(gutscheine);
-    const tag = new Date().toISOString().slice(0, 10);
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition',
-      `attachment; filename="brickinventory-gutscheine-${tag}.pdf"`);
-    // JSON in einem Kopf, base64: ASCII-sicher, damit ein Umlaut im Grund die
-    // Kopfzeile nicht zerlegt.
-    res.setHeader('X-Gutschein-Befunde',
-      Buffer.from(JSON.stringify(befunde), 'utf-8').toString('base64'));
-    res.setHeader('Access-Control-Expose-Headers', 'X-Gutschein-Befunde');
-    res.end(daten);
-  } catch (e) { handleRouteError(res, e, undefined, req); }
+  const { daten, befunde } = await verbindeGutscheine(gutscheine);
+  const tag = new Date().toISOString().slice(0, 10);
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition',
+    `attachment; filename="brickinventory-gutscheine-${tag}.pdf"`);
+  // JSON in einem Kopf, base64: ASCII-sicher, damit ein Umlaut im Grund die
+  // Kopfzeile nicht zerlegt.
+  res.setHeader('X-Gutschein-Befunde',
+    Buffer.from(JSON.stringify(befunde), 'utf-8').toString('base64'));
+  res.setHeader('Access-Control-Expose-Headers', 'X-Gutschein-Befunde');
+  res.end(daten);
 });
 
 // ── PUT /api/v1/vouchers/:id — aendern ──────────────────────────────────────
 router.put('/vouchers/:id', requireToken, async (req: AuthedRequest, res) => {
-  try {
     const id = Number(req.params.id);
     if (!Number.isInteger(id)) return sendeFehler(req, res, 400, 'id_ungueltig');
     const alt = await gutschein(req.apiUser.user_id, id);
@@ -300,58 +292,50 @@ router.put('/vouchers/:id', requireToken, async (req: AuthedRequest, res) => {
     }, { nullBetragErlaubt: req.body?.amount === undefined });
     if (!w.ok) return sendeFehler(req, res, 400, w.code);
 
-    const zeile = await gutscheinAendern(req.apiUser.user_id, id, w);
-    if (!zeile) return sendeFehler(req, res, 404, 'nicht_gefunden');
-    res.json({ success: true, voucher: fuerAussen(zeile) });
-  } catch (e) {
     // Die UNIQUE-Bedingung schlaegt zu, wenn jemand eine Karte auf die Nummer
     // einer anderen umschreibt. Das ist eine Nutzereingabe, kein Serverfehler.
-    if ((e as { code?: string })?.code === '23505') return sendeFehler(req, res, 409, 'gutschein_existiert');
-    handleRouteError(res, e, undefined, req);
-  }
+    const zeile = await gutscheinAendern(req.apiUser.user_id, id, w).catch(alsDoppelt('gutschein_existiert'));
+    if (!zeile) return sendeFehler(req, res, 404, 'nicht_gefunden');
+    res.json({ success: true, voucher: fuerAussen(zeile) });
 });
 
 // ── DELETE /api/v1/vouchers/:id — loeschen ──────────────────────────────────
 router.delete('/vouchers/:id', requireToken, async (req: AuthedRequest, res) => {
-  try {
-    const id = Number(req.params.id);
-    if (!Number.isInteger(id)) return sendeFehler(req, res, 400, 'id_ungueltig');
-    const pdfPfad = await gutscheinLoeschen(req.apiUser.user_id, id);
-    if (pdfPfad === undefined) return sendeFehler(req, res, 404, 'nicht_gefunden');
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) return sendeFehler(req, res, 400, 'id_ungueltig');
+  const pdfPfad = await gutscheinLoeschen(req.apiUser.user_id, id);
+  if (pdfPfad === undefined) return sendeFehler(req, res, 404, 'nicht_gefunden');
 
-    // Erst die Zeile, dann die Datei: Eine verwaiste Datei ist besser als
-    // eine Zeile, die ins Leere zeigt.
-    if (pdfPfad) {
-      const p = gutscheinDatei(req.apiUser.user_id, pdfPfad);
-      if (p) await fs.promises.unlink(p).catch(() => { /* schon weg: in Ordnung */ });
-    }
-    res.json({ success: true });
-  } catch (e) { handleRouteError(res, e, undefined, req); }
+  // Erst die Zeile, dann die Datei: Eine verwaiste Datei ist besser als
+  // eine Zeile, die ins Leere zeigt.
+  if (pdfPfad) {
+    const p = gutscheinDatei(req.apiUser.user_id, pdfPfad);
+    if (p) await fs.promises.unlink(p).catch(() => { /* schon weg: in Ordnung */ });
+  }
+  res.json({ success: true });
 });
 
 // ── GET /api/v1/vouchers/:id/pdf — anzeigen oder (?download=1) herunterladen;
 // beides ist dieselbe Datei, nur Content-Disposition unterscheidet sich.
 router.get('/vouchers/:id/pdf', requireToken, async (req: AuthedRequest, res) => {
-  try {
-    const id = Number(req.params.id);
-    if (!Number.isInteger(id)) return sendeFehler(req, res, 400, 'id_ungueltig');
-    const zeile = await gutschein(req.apiUser.user_id, id);
-    if (!zeile?.pdf_path) return sendeFehler(req, res, 404, 'nicht_gefunden');
-    const datei = gutscheinDatei(req.apiUser.user_id, zeile.pdf_path);
-    const pdf = datei ? await liesGutscheinPdf(datei).catch(ohneFehlendeDatei('gutschein:pdf lesen', null)) : null;
-    if (!pdf) return sendeFehler(req, res, 404, 'nicht_gefunden');
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) return sendeFehler(req, res, 400, 'id_ungueltig');
+  const zeile = await gutschein(req.apiUser.user_id, id);
+  if (!zeile?.pdf_path) return sendeFehler(req, res, 404, 'nicht_gefunden');
+  const datei = gutscheinDatei(req.apiUser.user_id, zeile.pdf_path);
+  const pdf = datei ? await liesGutscheinPdf(datei).catch(ohneFehlendeDatei('gutschein:pdf lesen', null)) : null;
+  if (!pdf) return sendeFehler(req, res, 404, 'nicht_gefunden');
 
-    res.type('application/pdf');
-    const alsDownload = String(req.query.download ?? '') === '1';
-    // Der Dateiname fuer den Nutzer traegt die Kartennummer — beim
-    // Herunterladen mehrerer Gutscheine heissen sie sonst alle „12.pdf".
-    res.setHeader('Content-Disposition',
-      `${alsDownload ? 'attachment' : 'inline'}; filename="gutschein-${zeile.number}.pdf"`);
-    // Ein Gutschein gehoert in keinen Zwischenspeicher, den sich jemand
-    // teilt — und auch nicht in den des Browsers, laenger als noetig.
-    res.setHeader('Cache-Control', 'private, no-store');
-    res.end(pdf);
-  } catch (e) { handleRouteError(res, e, undefined, req); }
+  res.type('application/pdf');
+  const alsDownload = String(req.query.download ?? '') === '1';
+  // Der Dateiname fuer den Nutzer traegt die Kartennummer — beim
+  // Herunterladen mehrerer Gutscheine heissen sie sonst alle „12.pdf".
+  res.setHeader('Content-Disposition',
+    `${alsDownload ? 'attachment' : 'inline'}; filename="gutschein-${zeile.number}.pdf"`);
+  // Ein Gutschein gehoert in keinen Zwischenspeicher, den sich jemand
+  // teilt — und auch nicht in den des Browsers, laenger als noetig.
+  res.setHeader('Cache-Control', 'private, no-store');
+  res.end(pdf);
 });
 
 // EINE Route, auch fuer „alle abfragen"
@@ -360,70 +344,58 @@ router.get('/vouchers/:id/pdf', requireToken, async (req: AuthedRequest, res) =>
 // 30 Sekunden ueber ALLE Benutzer. Eine Sammelroute muesste diese Wartezeit …
 // Ausführlich: docs/begruendungen/routes/api_v1/vouchers.ts.md#post-vouchers-id-guthaben
 router.post('/vouchers/:id/guthaben', requireToken, async (req: AuthedRequest, res) => {
-  try {
-    const id = Number(req.params.id);
-    if (!Number.isInteger(id)) return sendeFehler(req, res, 400, 'id_ungueltig');
-    const alt = await gutschein(req.apiUser.user_id, id);
-    if (!alt) return sendeFehler(req, res, 404, 'nicht_gefunden');
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) return sendeFehler(req, res, 400, 'id_ungueltig');
+  const alt = await gutschein(req.apiUser.user_id, id);
+  if (!alt) return sendeFehler(req, res, 404, 'nicht_gefunden');
 
-    // Ohne PIN gibt es keine Antwort — LEGO fragt beides ab. Das VOR der
-    // Schranke pruefen: Ein Aufruf, der nicht stattfinden kann, soll den
-    // einen Platz je 30 Sekunden nicht verbrauchen.
-    if (!alt.pin) return sendeFehler(req, res, 400, 'guthaben_pin_fehlt');
+  // Ohne PIN gibt es keine Antwort — LEGO fragt beides ab. Das VOR der
+  // Schranke pruefen: Ein Aufruf, der nicht stattfinden kann, soll den
+  // einen Platz je 30 Sekunden nicht verbrauchen.
+  if (!alt.pin) return sendeFehler(req, res, 400, 'guthaben_pin_fehlt');
 
-    // Das Ausgabeland: EINE Einstellung fuer die ganze Installation („fuer
-    // alle"), nicht je Nutzer. Eine Karte gilt nur im Shop ihres
-    // Ausgabelandes, und das Land geht als Adresse und als Keks mit.
-    const land = String(await getGlobalSetting('gutschein_land', LAND_STANDARD) || LAND_STANDARD);
-    if (!landErlaubt(land)) return sendeFehler(req, res, 400, 'guthaben_land_ungueltig');
+  // Das Ausgabeland: EINE Einstellung fuer die ganze Installation („fuer
+  // alle"), nicht je Nutzer. Eine Karte gilt nur im Shop ihres
+  // Ausgabelandes, und das Land geht als Adresse und als Keks mit.
+  const land = String(await getGlobalSetting('gutschein_land', LAND_STANDARD) || LAND_STANDARD);
+  if (!landErlaubt(land)) return sendeFehler(req, res, 400, 'guthaben_land_ungueltig');
 
-    let ergebnis;
-    try {
-      ergebnis = await frageGuthabenAb(alt.number, alt.pin, { locale: land });
-    } catch (e) {
-      // Ein Fehler der Gegenseite ist KEIN Serverfehler: Der Mensch, der
-      // gerade auf den Knopf gedrueckt hat, soll lesen, was los war —
-      // handleRouteError machte daraus ein nichtssagendes 500.
-      // Ausführlich: docs/begruendungen/routes/api_v1/vouchers.ts.md#post-vouchers-id-guthaben-grund
-      const grund = verdecke(String((e as Error)?.message || e), alt.number, alt.pin);
-      console.warn(`[guthaben] Abfrage gescheitert (Gutschein ${id}): ${grund}`);
-      return res.status(502).json({
-        success: false, code: 'guthaben_fehlgeschlagen',
-        error: fehlerText('guthaben_fehlgeschlagen', antwortSprache(req), { grund }),
-      });
-    }
+  // Ein Fehler der Gegenseite kommt als Fachfehler 502 mit lesbarem Grund
+  // (frageGuthabenAb); Ausführlich: docs/begruendungen/routes/api_v1/vouchers.ts.md#post-vouchers-id-guthaben-grund
+  const ergebnis = await frageGuthabenAb(alt.number, alt.pin, { locale: land });
 
-    if (ergebnis.art === 'gesperrt') {
-      const botschutz = ergebnis.grund === 'botschutz';
-      const code: FehlerCode = botschutz ? 'guthaben_botschutz' : 'guthaben_abstand';
-      const vars = botschutz
-        ? { min: Math.ceil(ergebnis.wartenSek / 60) }
-        : { sek: ABSTAND_SEK, warten: ergebnis.wartenSek };
-      // Eigenes json() statt sendeFehler(): `wartenSek` muss MIT in die
-      // Antwort, denn danach taktet sich die Oberflaeche (siehe oben).
-      // sendeFehler schickt nur success/error/code.
-      return res.status(429).json({
-        success: false, code, error: fehlerText(code, antwortSprache(req), vars),
-        grund: ergebnis.grund, wartenSek: ergebnis.wartenSek,
-      });
-    }
-
-    const g = ergebnis.guthaben;
-    // Die Waehrung der Gegenseite gewinnt — sie gehoert zur Karte. Nur wenn
-    // sie unbrauchbar ist, bleibt die bisherige stehen: Eine leere oder
-    // kaputte Angabe duerfte sonst `currency` zerstoeren, und die Summe in
-    // der Liste rechnet nur, wenn alle Gutscheine dieselbe Waehrung tragen.
-    const waehrung = /^[A-Z]{3}$/.test(g.waehrung) ? g.waehrung : alt.currency;
-    const zeile = await guthabenMerken(req.apiUser.user_id, id, g.betrag, waehrung);
-    if (!zeile) return sendeFehler(req, res, 404, 'nicht_gefunden');
-    res.json({
-      success: true, voucher: fuerAussen(zeile),
-      angezeigt: g.angezeigt,
-      // Damit die Oberflaeche es SAGEN kann: Eine stillschweigend geaenderte
-      // Waehrung waere eine geaenderte Summe ohne Hinweis.
-      waehrung_geaendert: waehrung !== alt.currency,
+  if (ergebnis.art === 'gesperrt') {
+    const botschutz = ergebnis.grund === 'botschutz';
+    const code: FehlerCode = botschutz ? 'guthaben_botschutz' : 'guthaben_abstand';
+    const vars = botschutz
+      ? { min: Math.ceil(ergebnis.wartenSek / 60) }
+      : { sek: ABSTAND_SEK, warten: ergebnis.wartenSek };
+    // Eigenes json() statt sendeFehler(): `wartenSek` muss MIT in die
+    // Antwort, denn danach taktet sich die Oberflaeche (siehe oben).
+    // sendeFehler schickt nur success/error/code.
+    return res.status(429).json({
+      success: false, code, error: fehlerText(code, antwortSprache(req), vars),
+      grund: ergebnis.grund, wartenSek: ergebnis.wartenSek,
     });
-  } catch (e) { handleRouteError(res, e, undefined, req); }
+  }
+
+  const g = ergebnis.guthaben;
+  // Die Waehrung der Gegenseite gewinnt — sie gehoert zur Karte. Nur wenn
+  // sie unbrauchbar ist, bleibt die bisherige stehen: Eine leere oder
+  // kaputte Angabe duerfte sonst `currency` zerstoeren, und die Summe in
+  // der Liste rechnet nur, wenn alle Gutscheine dieselbe Waehrung tragen.
+  const waehrung = /^[A-Z]{3}$/.test(g.waehrung) ? g.waehrung : alt.currency;
+  const zeile = await guthabenMerken(req.apiUser.user_id, id, g.betrag, waehrung);
+  if (!zeile) return sendeFehler(req, res, 404, 'nicht_gefunden');
+  res.json({
+    success: true, voucher: fuerAussen(zeile),
+    angezeigt: g.angezeigt,
+    // Damit die Oberflaeche es SAGEN kann: Eine stillschweigend geaenderte
+    // Waehrung waere eine geaenderte Summe ohne Hinweis.
+    waehrung_geaendert: waehrung !== alt.currency,
+  });
 });
+
+router.use(fehlerAntwort);
 
 export = router;

@@ -8,6 +8,21 @@ export const ITEM_NUMBER_RE = /^[A-Za-z0-9][A-Za-z0-9._/-]{0,63}$/;
 
 import { fehlerWerfen } from './fehlerTexte';
 
+/** JSON aus einer Eingabe; null, wenn es keines ist (die Route antwortet dann 400). */
+export function jsonOderNull(text: string): { wert: unknown } | null {
+  try { return { wert: JSON.parse(text) }; } catch { return null; }
+}
+
+/** Eine Adresse als URL; null, wenn sie sich nicht lesen lässt. */
+export function urlOderNull(text: string): URL | null {
+  try { return new URL(text); } catch { return null; }
+}
+
+/** Einmal dekodiert, wenn das geht — sonst der Text, wie er kam. */
+export function einmalDekodiert(text: string): string {
+  try { return decodeURIComponent(text); } catch { return text; }
+}
+
 function fail(msg: string): never {
   const e: any = new Error(msg);
   e.status = 400;

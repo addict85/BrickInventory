@@ -1,4 +1,5 @@
 import fs from 'fs';
+import type { Request, Response, NextFunction } from 'express';
 import { konfig } from './konfig';
 import { sendeFehler } from './fehlerTexte';
 import { FEHLER, fehlerText, antwortSprache, dateiFehler } from './fehlerTexte';
@@ -128,7 +129,15 @@ function vorDem(s: string, trenner: string): string {
   return s.split(trenner)[0] ?? '';
 }
 
-export { handleRouteError, logAndContinue, meldeUndWeiter, meldeUndLiefere, ohneFehlendeDatei, fehlertext, fehlerCode, pfadParam, vorDem };
+/**
+ * Der Fehlerweg der Router: Was ein Handler wirft, wird hier zur Antwort.
+ * Express 5 reicht auch abgelehnte Promises hierher; ein try/catch je Route braucht es nicht.
+ */
+function fehlerAntwort(e: unknown, req: Request, res: Response, _next: NextFunction): void {
+  handleRouteError(res, e, undefined, req);
+}
+
+export { fehlerAntwort, handleRouteError, logAndContinue, meldeUndWeiter, meldeUndLiefere, ohneFehlendeDatei, fehlertext, fehlerCode, pfadParam, vorDem };
 
 /**
  * Eine Datei an die Antwort streamen — mit Fehlerbehandlung.

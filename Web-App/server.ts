@@ -1,4 +1,4 @@
-import type { Request, Response, NextFunction } from 'express';
+import type { Request, Response } from 'express';
 // Zuerst: Ein ungültiger Wert beendet den Start mit Meldung, bevor ein Modul ihn liest.
 import { konfig } from './startup/konfigPruefen';
 // Protokoll zuerst: Ab hier ist jede console-Zeile eine JSON-Zeile auf
@@ -13,7 +13,7 @@ import session from 'express-session';
 import compression from 'compression';
 import connectPgSimple from 'connect-pg-simple';
 import * as db from './db/database';
-import { fehlertext, logAndContinue, meldeUndWeiter, handleRouteError } from './src/infra/httpError';
+import { fehlertext, logAndContinue, meldeUndWeiter, fehlerAntwort } from './src/infra/httpError';
 import { startVerbote, cookieSicher } from './src/infra/konfig';
 import { bereiteDatenbankVor } from './startup/datenbank';
 import { starteJobs, stoppeJobs } from './startup/jobsProzess';
@@ -405,7 +405,7 @@ app.get('/{*splat}', async (req, res) => {
 
 // Fängt synchron geworfene Fehler und next(err)-Aufrufe, die an den
 // Route-Catches vorbeikommen — loggt voll, antwortet generisch.
-app.use((err: unknown, req: Request, res: Response, _next: NextFunction) => { handleRouteError(res, err, undefined, req); });
+app.use(fehlerAntwort);
 return app;
 }
 

@@ -5,7 +5,7 @@
  * Ausführlich: docs/begruendungen/routes/api_v1/pdf.ts.md#abschnitt
  */
 import express from 'express';
-import { streamFileToResponse, meldeUndWeiter, meldeUndLiefere, ohneFehlendeDatei, pfadParam } from '../../src/infra/httpError';
+import { fehlerAntwort, streamFileToResponse, meldeUndWeiter, meldeUndLiefere, ohneFehlendeDatei, pfadParam } from '../../src/infra/httpError';
 import { requireToken } from './middleware';
 import { registerSse } from '../../src/infra/sseRegistry';
 import _pdfFs from 'fs/promises';
@@ -163,5 +163,7 @@ router.get('/sets/partslist-pdf/download/:jobId', requireToken, async (req: Auth
     loescheAuftrag(jobId).catch((e: unknown) => meldeUndWeiter('pdf:auftrag-loeschen', e));
   }, req);
 });
+
+router.use(fehlerAntwort);
 
 export default router;

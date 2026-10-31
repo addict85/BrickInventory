@@ -20,6 +20,7 @@ import zlib from 'zlib';
 import { nacharbeit } from '../src/auftraege/nacharbeit';
 import { ERLAUBTE_BILD_HOSTS, hostErlaubt } from '../src/infra/fremdeAdressen';
 
+import { einmalDekodiert, urlOderNull } from '../src/infra/validate';
 /**
  * Obergrenze für den Bild-Zwischenspeicher des Proxys.
  * Ausführlich: docs/begruendungen/routes/imgProxy.ts.md#proxy-cache-max-bytes
@@ -93,7 +94,8 @@ export async function bildDurchreichen(req: Request, res: Response) {
   let url = String(req.query.url || '');
   if (!url || !url.startsWith('https://')) return res.status(400).end();
   // Rebrickable API sometimes returns pre-encoded URLs — decode once to fix double-encoding
-  try { const decoded = decodeURIComponent(url); if (decoded.startsWith('https://')) url = decoded; } catch(_) {}
+  const decoded = einmalDekodiert(url);
+  if (decoded.startsWith('https://')) url = decoded;
   // Nur bekannte Bild-CDNs (src/infra/fremdeAdressen.ts, wie der Dateidownload).
   // Eine unlesbare Adresse ist ebenfalls 403: „holt der Server nicht“.
   if (!hostErlaubt(url, ERLAUBTE_BILD_HOSTS)) return res.status(403).end();
@@ -354,9 +356,8 @@ export { registerImgProxy };
  * ein fremdes Bild als Set ab.
  */
 export function setNummerAusBildAdresse(adresse: string): string | null {
-  let u: URL;
-  try { u = new URL(adresse); } catch { return null; }
-  if (u.protocol !== 'https:' || u.hostname !== 'cdn.rebrickable.com' || u.search || u.hash) return null;
+  const u = urlOderNull(adresse);
+  if (!u || u.protocol !== 'https:' || u.hostname !== 'cdn.rebrickable.com' || u.search || u.hash) return null;
   const m = /^\/media\/sets\/([A-Za-z0-9-]{1,40})\.(?:jpg|jpeg|png|webp)$/i.exec(u.pathname);
   return m?.[1] ?? null;
 }
