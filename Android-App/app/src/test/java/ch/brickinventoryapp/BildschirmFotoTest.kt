@@ -3,6 +3,7 @@ package ch.brickinventoryapp
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.test.ComposeTimeoutException
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onRoot
 import androidx.test.core.app.ApplicationProvider
@@ -79,14 +80,18 @@ class BildschirmFotoTest(private val design: String, private val dunkel: Boolean
     @After
     fun zu() = welt.close()
 
-    private fun foto(name: String, bereit: () -> Boolean = { true }, inhalt: @Composable () -> Unit) {
+    private fun foto(name: String, bereit: () -> Boolean = { true }, zustand: () -> Any? = { null },
+                     inhalt: @Composable () -> Unit) {
         RuntimeEnvironment.setQualifiers(GERAETE.getValue(geraet))
         compose.setContent {
             BrickInventoryManagerTheme(theme = design, dunkel = dunkel) {
                 Surface(color = MaterialTheme.colorScheme.background) { inhalt() }
             }
         }
-        compose.waitUntil(10_000) { bereit() }
+        // Läuft die Frist ab, soll die Meldung den Zustand nennen (etwa einen
+        // Ladefehler) statt nur „Condition still not satisfied“.
+        try { compose.waitUntil(10_000) { bereit() } }
+        catch (e: ComposeTimeoutException) { throw AssertionError("$name nicht bereit nach 10 s: ${zustand()}", e) }
         compose.waitForIdle()
         val hell = if (dunkel) "dunkel" else "hell"
         compose.onRoot().captureRoboImage("src/test/bildschirmfotos/${name}_${design}_${hell}_$geraet.png")
@@ -109,7 +114,7 @@ class BildschirmFotoTest(private val design: String, private val dunkel: Boolean
     @Test
     fun setDetail() {
         val vm = welt.setDetail()
-        foto("set-detail", { vm.setDetailState.value.setDetail != null }) {
+        foto("set-detail", { vm.setDetailState.value.setDetail != null }, { vm.setDetailState.value }) {
             SetDetailScreen(setNumber = Beispiele.SET, vm = vm, serverUrl = "", imageLoader = bilder,
                 onBack = {}, onDelete = {})
         }
