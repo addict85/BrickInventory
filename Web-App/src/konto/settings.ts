@@ -2,6 +2,7 @@
 
 import { nacharbeit } from '../auftraege/nacharbeit';
 import * as db from '../../db/database';
+import { sperreHaushaltswaehrung } from '../../db/txLock';
 import { verschluessele, entschluessele, istVerschluesselt } from '../infra/geheimnis';
 import { fehlerWerfen } from '../infra/fehlerTexte';
 
@@ -62,8 +63,6 @@ const VERBUND_SQL = `
       FROM account_links l JOIN verbund v ON v.id IN (l.main_user_id, l.sub_user_id))
   SELECT id FROM verbund`;
 
-/** Sperre für Währung und Verknüpfung: Beide prüfen bzw. ändern dieselbe Regel. */
-const HAUSHALT_WAEHRUNG_SPERRE = "SELECT pg_advisory_xact_lock(hashtext('haushalt-waehrung'))";
 
 /**
  * Die Währung gilt für den ganzen Haushalt: Die Haushaltssicht summiert
@@ -72,7 +71,7 @@ const HAUSHALT_WAEHRUNG_SPERRE = "SELECT pg_advisory_xact_lock(hashtext('haushal
  */
 async function setzeHaushaltswaehrung(userId: number, waehrung: string) {
   const vorher = await db.transaction(async (tx) => {
-    await tx.run(HAUSHALT_WAEHRUNG_SPERRE);
+    await sperreHaushaltswaehrung(tx);
     const alt = (await tx.get('SELECT value FROM user_settings WHERE user_id = $1 AND key = $2',
       [userId, 'currency']))?.value ?? null;
     const ids = (await tx.all(VERBUND_SQL, [userId])).map((r: { id: number }) => r.id);
@@ -167,7 +166,7 @@ async function deleteUserSetting(userId: number, key: string) {
   await db.run('DELETE FROM user_settings WHERE user_id=$1 AND key=$2', [userId, key]);
 }
 
-export { WAEHRUNGEN, HAUSHALT_WAEHRUNG_SPERRE, getSetting, getGlobalSetting, setGlobalSetting, deleteGlobalSetting, setUserSetting, deleteUserSetting, nutzerStandardZustand, globalDefaultCondition, zustandFuerPreis };
+export { WAEHRUNGEN, getSetting, getGlobalSetting, setGlobalSetting, deleteGlobalSetting, setUserSetting, deleteUserSetting, nutzerStandardZustand, globalDefaultCondition, zustandFuerPreis };
 
 // Einstellungen LESEN — eine Fassung fuer beide Oberflaechen
 //  Warum das hierher gehoert (Marcos Vorgabe: „die beiden Apps sollen gleich

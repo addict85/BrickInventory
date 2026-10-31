@@ -4,7 +4,10 @@
  */
 import { logAndContinue, meldeUndLiefere } from '../infra/httpError';
 import * as db from '../../db/database';
-import { HAUSHALT_WAEHRUNG_SPERRE, getSetting } from '../konto/settings';
+import { sperreHaushaltswaehrung } from '../../db/txLock';
+import { getSetting } from '../konto/settings';
+import * as repo from './repository';
+import type { ErfassungsArt } from './repository';
 import { fehlerWerfen } from '../infra/fehlerTexte';
 import * as pgNotify from '../../db/pgNotify';
 import crypto from 'crypto';
@@ -51,11 +54,7 @@ export function meldeHaushaltsaenderung(): void {
  * Die direkten Unterkonten. Rechte und Sicht gehen bewusst nicht weiter:
  * Jedes Konto im Blickfeld hat selbst einer Einladung DIESES Kontos zugestimmt.
  */
-async function kinder(id: number): Promise<number[]> {
-  const rows = await db.all(
-    'SELECT sub_user_id FROM account_links WHERE main_user_id = $1 ORDER BY sub_user_id', [id]);
-  return rows.map((r: { sub_user_id: number | string }) => parseInt(String(r.sub_user_id)));
-}
+const kinder = repo.unterkonten;
 
 export async function resolveHousehold(uid: number): Promise<Household> {
   const id = parseInt(String(uid));
@@ -65,15 +64,8 @@ export async function resolveHousehold(uid: number): Promise<Household> {
   if (treffer && Date.now() - treffer.zeit < HAUSHALT_TTL_MS)
     return { ...treffer.wert, memberIds: [...treffer.wert.memberIds], elternIds: [...treffer.wert.elternIds] };
 
-  const [unten, eltern] = await Promise.all([
-    kinder(id),
-    db.all('SELECT main_user_id FROM account_links WHERE sub_user_id = $1 ORDER BY main_user_id', [id]),
-  ]);
-  const haushalt: Household = {
-    memberIds: [id, ...unten],
-    isMain: unten.length > 0,
-    elternIds: eltern.map((r: { main_user_id: number | string }) => parseInt(String(r.main_user_id))),
-  };
+  const [unten, eltern] = await Promise.all([kinder(id), repo.elternkonten(id)]);
+  const haushalt: Household = { memberIds: [id, ...unten], isMain: unten.length > 0, elternIds: eltern };
   if (_haushalte.size >= HAUSHALT_MAX) _haushalte.clear();
   _haushalte.set(id, { wert: haushalt, zeit: Date.now() });
   return { ...haushalt, memberIds: [...haushalt.memberIds], elternIds: [...haushalt.elternIds] };
@@ -88,8 +80,7 @@ export async function canWriteFor(actorId: number, ownerId: number): Promise<boo
   const actor = parseInt(String(actorId));
   const owner = parseInt(String(ownerId));
   if (actor === owner) return true;
-  return !!(await db.get(
-    'SELECT 1 FROM account_links WHERE main_user_id = $1 AND sub_user_id = $2', [actor, owner]));
+  return repo.istVerknuepft(actor, owner);
 }
 
 /** IDs, für die `uid` SCHREIBEN darf — eigene plus direkte Unterkonten, frisch. */
@@ -105,18 +96,11 @@ export async function writableIds(uid: number): Promise<number[]> {
 export async function householdMembers(uid: number) {
   const h = await resolveHousehold(uid);
   const self = parseInt(String(uid));
-  const rows = await db.all(
-    'SELECT id, username FROM users WHERE id = ANY($1) ORDER BY id', [h.memberIds]
-  );
+  const rows = await repo.kontoNamen(h.memberIds);
   return h.memberIds
-    .map(id => rows.find((r: any) => parseInt(r.id) === id))
-    .filter(Boolean)
-    .map((r: any) => ({
-      id: parseInt(r.id),
-      username: r.username,
-      is_self: parseInt(r.id) === self,
-      tiefe: parseInt(r.id) === self ? 0 : 1,
-    }));
+    .map(id => rows.find(r => r.id === id))
+    .filter((r): r is repo.KontoName => !!r)
+    .map(r => ({ id: r.id, username: r.username, is_self: r.id === self, tiefe: r.id === self ? 0 : 1 }));
 }
 
 /** SHA-256 wie bei API-Tokens und QR-Codes — im Klartext steht der Code nirgends. */
@@ -139,15 +123,10 @@ export async function createInvite(uid: number) {
   // Jedes Konto darf einladen, auch eines, das selbst Unterkonto ist
   // (Marcos Festlegung): Ein Zwischenkonto ist Vater UND Kind.
   // Vorher stand hier eine Absage für diesen Fall.
-  await db.run(
-    `DELETE FROM account_link_invites WHERE expires_at < NOW() OR used_at IS NOT NULL`
-  ).catch(logAndContinue('haushalt:id'));
+  await repo.raeumeEinladungenAuf().catch(logAndContinue('haushalt:id'));
 
   const code = crypto.randomBytes(24).toString('base64url');
-  await db.run(
-    'INSERT INTO account_link_invites (token_hash, main_user_id, expires_at) VALUES ($1,$2,$3)',
-    [hash(code), id, new Date(Date.now() + INVITE_TTL_MS)]
-  );
+  await repo.legeEinladungAn(hash(code), id, new Date(Date.now() + INVITE_TTL_MS));
   return { code, expires_in: INVITE_TTL_MS / 1000 };
 }
 
@@ -162,19 +141,11 @@ export async function redeemInvite(uid: number, code: string) {
   }
   const th = hash(code.trim());
 
-  const claimed = await db.get(
-    `UPDATE account_link_invites SET used_at = NOW(), used_by = $2
-      WHERE token_hash = $1 AND used_at IS NULL AND expires_at > NOW()
-      RETURNING main_user_id`,
-    [th, subId]
-  ).catch(meldeUndLiefere('haushalt:claimed', null));
-  if (!claimed) return { fehler: 'einladungscode_abgelaufen' as const };
+  const mainId = await repo.belegeEinladung(th, subId).catch(meldeUndLiefere('haushalt:claimed', null));
+  if (mainId === null) return { fehler: 'einladungscode_abgelaufen' as const };
 
-  const mainId = parseInt(claimed.main_user_id);
   const release = async () => {
-    await db.run(
-      'UPDATE account_link_invites SET used_at = NULL, used_by = NULL WHERE token_hash = $1', [th]
-    ).catch(logAndContinue('haushalt:release'));
+    await repo.gibEinladungFrei(th).catch(logAndContinue('haushalt:release'));
   };
 
   if (mainId === subId) {
@@ -186,10 +157,7 @@ export async function redeemInvite(uid: number, code: string) {
   // entschieden, und ein fuenf Minuten alter Stand koennte einen Kreis
   // durchlassen, den eine gleichzeitige Einloesung gerade erst moeglich
   // gemacht hat.
-  const [schonDa, umgekehrt] = await Promise.all([
-    db.get('SELECT 1 FROM account_links WHERE main_user_id = $1 AND sub_user_id = $2', [mainId, subId]),
-    db.get('SELECT 1 FROM account_links WHERE main_user_id = $1 AND sub_user_id = $2', [subId, mainId]),
-  ]);
+  const [schonDa, umgekehrt] = await Promise.all([repo.istVerknuepft(mainId, subId), repo.istVerknuepft(subId, mainId)]);
   if (schonDa) {
     await release();
     return { fehler: 'konto_bereits_verknuepft' as const };
@@ -206,18 +174,14 @@ export async function redeemInvite(uid: number, code: string) {
   // Währungswechsel (setUserSetting), damit keiner zwischen Prüfung und
   // Verknüpfung durchrutscht.
   const ungleich = await db.transaction(async (tx) => {
-    await tx.run(HAUSHALT_WAEHRUNG_SPERRE);
+    await sperreHaushaltswaehrung(tx);
     const [curMain, curSub] = await Promise.all([
       getSetting(mainId, 'currency', 'EUR'),
       getSetting(subId, 'currency', 'EUR'),
     ]);
     if (String(curMain) !== String(curSub))
       return { haupt: String(curMain), unter: String(curSub) };
-    await tx.run(
-      'INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1,$2) ON CONFLICT DO NOTHING',
-      [mainId, subId]);
-    await tx.run('DELETE FROM household_former_links WHERE main_user_id = $1 AND sub_user_id = $2',
-      [mainId, subId]);
+    await repo.verknuepfe(tx, mainId, subId);
     return null;
   });
   if (ungleich) {
@@ -225,8 +189,8 @@ export async function redeemInvite(uid: number, code: string) {
     return { fehler: 'waehrung_ungleich' as const, vars: ungleich };
   }
   meldeHaushaltsaenderung();
-  const main = await db.get('SELECT username FROM users WHERE id = $1', [mainId]).catch(meldeUndLiefere('haushalt:get', null));
-  return { linked_to: { id: mainId, username: main?.username || String(mainId) } };
+  const name = await repo.kontoName(mainId).catch(meldeUndLiefere('haushalt:get', null));
+  return { linked_to: { id: mainId, username: name || String(mainId) } };
 }
 
 /**
@@ -239,25 +203,16 @@ export async function redeemInvite(uid: number, code: string) {
 export async function unlink(uid: number, subUserId?: number | null, mainUserId?: number | null) {
   const id = parseInt(String(uid));
   const gesetzt = (v: unknown) => v != null && String(v) !== '';
-  let r;
-  if (gesetzt(subUserId)) {
-    r = await db.run('DELETE FROM account_links WHERE main_user_id = $1 AND sub_user_id = $2',
-      [id, parseInt(String(subUserId))]);
-  } else if (gesetzt(mainUserId)) {
-    r = await db.run('DELETE FROM account_links WHERE main_user_id = $1 AND sub_user_id = $2',
-      [parseInt(String(mainUserId)), id]);
-  } else {
-    r = await db.run('DELETE FROM account_links WHERE sub_user_id = $1', [id]);
-  }
+  const removed = gesetzt(subUserId) ? await repo.trenne(id, parseInt(String(subUserId)))
+    : gesetzt(mainUserId) ? await repo.trenne(parseInt(String(mainUserId)), id)
+    : await repo.trenne(null, id);
   meldeHaushaltsaenderung();
-  return { removed: (r as any)?.changes ?? 0 };
+  return { removed };
 }
 
 /** Den Hinweis auf eine getrennte Kette verwerfen (nur der eigene). */
 export async function verwerfeGetrennt(uid: number, subUserId: number) {
-  const r = await db.run('DELETE FROM household_former_links WHERE main_user_id = $1 AND sub_user_id = $2',
-    [parseInt(String(uid)), parseInt(String(subUserId))]);
-  return { removed: (r as any)?.changes ?? 0 };
+  return { removed: await repo.verwerfeGetrennt(parseInt(String(uid)), parseInt(String(subUserId))) };
 }
 
 /** Zustand für die Einstellungen: Elternkonten, Unterkonten, offene Einladungen, Hinweise. */
@@ -266,20 +221,12 @@ export async function householdStatus(uid: number) {
   const h = await resolveHousehold(id);
   const members = await householdMembers(id);
   const [eltern, openInvites, currency, getrennt] = await Promise.all([
-    db.all('SELECT id, username FROM users WHERE id = ANY($1) ORDER BY username', [h.elternIds]),
-    db.get(
-      `SELECT COUNT(*)::int AS n FROM account_link_invites
-        WHERE main_user_id = $1 AND used_at IS NULL AND expires_at > NOW()`, [id]
-    ).catch(() => ({ n: 0 })),
+    repo.kontoNamen(h.elternIds, 'username'),
+    repo.offeneEinladungen(id).catch(meldeUndLiefere('haushalt:einladungen', 0)),
     getSetting(id, 'currency', 'EUR'),
-    db.all(
-      `SELECT f.sub_user_id AS id, u.username, v.username AS via
-         FROM household_former_links f
-         JOIN users u ON u.id = f.sub_user_id
-         LEFT JOIN users v ON v.id = f.via_user_id
-        WHERE f.main_user_id = $1 ORDER BY u.username`, [id]),
+    repo.getrennteKetten(id),
   ]);
-  const elternListe = eltern.map((e: any) => ({ id: parseInt(e.id), username: e.username }));
+  const elternListe = eltern;
   return {
     is_main: h.isMain,
     is_sub: elternListe.length > 0,
@@ -289,8 +236,8 @@ export async function householdStatus(uid: number) {
     linked_to: elternListe[0] ?? null,
     sub_accounts: members.filter(m => !m.is_self),
     blickfeld: members,
-    open_invites: openInvites?.n ?? 0,
-    former_links: getrennt.map((g: any) => ({ id: parseInt(g.id), username: g.username, via: g.via ?? null })),
+    open_invites: openInvites,
+    former_links: getrennt,
   };
 }
 
@@ -372,13 +319,6 @@ export async function resolveWriteTarget(
   return (await canWriteFor(actorId, target)) ? target : null;
 }
 
-/** Erfassungstabellen je Art — Whitelist, damit nie ein Request-Wert in den
- *  Tabellennamen gerät. */
-const ACQ_TABLES = {
-  set:  'set_acquisitions',
-  part: 'part_acquisitions',
-  fig:  'minifig_acquisitions',
-} as const;
 
 /**
  * Absender eines Eigentümerwechsels aus der ERFASSUNGSZEILE ermitteln.
@@ -386,14 +326,10 @@ const ACQ_TABLES = {
  * @throws mit e.status 404 (Zeile existiert nicht) oder 403 (keine Richtung)
  */
 export async function acquisitionMoveSource(
-  actorId: number, kind: keyof typeof ACQ_TABLES, acqId: number
+  actorId: number, kind: ErfassungsArt, acqId: number
 ): Promise<number> {
-  const row = await db.get(
-    `SELECT user_id FROM ${ACQ_TABLES[kind]} WHERE id = $1`, [acqId]);
-  if (!row) {
-    fehlerWerfen('kaufpreis_nicht_gefunden', 404);
-  }
-  const owner = parseInt(String(row.user_id));
+  const owner = await repo.besitzerDerErfassung(kind, acqId);
+  if (owner === null) fehlerWerfen('kaufpreis_nicht_gefunden', 404);
   if (!(await canWriteFor(actorId, owner))) {
     fehlerWerfen('kein_schreibrecht', 403);
   }

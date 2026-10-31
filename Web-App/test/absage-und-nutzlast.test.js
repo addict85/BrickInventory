@@ -36,7 +36,7 @@ const lies = rel => fs.readFileSync(path.join(WEB, rel), 'utf8');
  */
 
 test('Absagen aus src/haushalt/haushalt.ts heissen fehler, nicht code', () => {
-  const quelle = lies('src/haushalt/haushalt.ts');
+  const quelle = (lies('src/haushalt/haushalt.ts') + lies('src/haushalt/repository.ts'));
   // `code` ist in dieser Datei ein NUTZLAST-Name: der Einladungscode selbst.
   // Eine Absage darf ihn deshalb nicht belegen.
   const absagen = [...quelle.matchAll(/return \{ (\w+): '([a-z_]+)' as const/g)];
@@ -78,7 +78,7 @@ test('jeder Fehlercode aus src/haushalt/haushalt.ts steht in der Texttabelle', (
   // Selbst mit getrennten Feldern kippt fehlerText() in ein 500, sobald ein
   // Code in FEHLER fehlt: Es liest `eintrag[sprache]` ohne zu pruefen, ob es
   // den Eintrag gibt. Ein Tippfehler im Code reicht.
-  const codes = [...lies('src/haushalt/haushalt.ts')
+  const codes = [...(lies('src/haushalt/haushalt.ts') + lies('src/haushalt/repository.ts'))
     .matchAll(/return \{ fehler: '([a-z_]+)' as const/g)].map(m => m[1]);
   assert.ok(codes.length >= 5, `Nur ${codes.length} Fehlercodes — greift die Suche noch?`);
 

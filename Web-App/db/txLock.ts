@@ -38,4 +38,9 @@ function bestandsSchluessel(kind: 'set' | 'part' | 'fig', keys: unknown[]): stri
   return kind === 'set' ? String(keys[0]) : `${kind}:${keys.join(':')}`;
 }
 
-export { withInventoryLock, bestandsSchluessel };
+/** Sperre für Haushaltswährung und Verknüpfung: Beide prüfen bzw. ändern dieselbe Regel. */
+async function sperreHaushaltswaehrung(tx: DbSchnittstelle): Promise<void> {
+  await tx.run("SELECT pg_advisory_xact_lock(hashtext('haushalt-waehrung'))");
+}
+
+export { withInventoryLock, bestandsSchluessel, sperreHaushaltswaehrung };
