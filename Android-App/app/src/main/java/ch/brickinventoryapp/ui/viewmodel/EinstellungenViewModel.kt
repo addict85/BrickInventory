@@ -97,7 +97,7 @@ class EinstellungenViewModel @Inject constructor(
             when (val r = verwaltung.importiereCsv(art.alsDaten(), name, bytes)) {
                 is Result.Success ->
                     if (r.data.success) {
-                        _csvHochladenState.value = CsvHochladenUiState(ergebnis = r.data)
+                        _csvHochladenState.value = CsvHochladenUiState(ergebnis = r.data.alsAnsicht())
                         dienste.bestand.melde(when (art) {
                             CsvImportArt.MERKLISTE -> Aenderung.Merkliste
                             CsvImportArt.PREISALARME -> Aenderung.Alarme

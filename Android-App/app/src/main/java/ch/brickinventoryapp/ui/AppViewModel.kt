@@ -12,7 +12,7 @@ import ch.brickinventoryapp.data.PreferencesManager
 import ch.brickinventoryapp.data.SessionExpiredSignal
 import ch.brickinventoryapp.data.cache.VorschauSpeicher
 import ch.brickinventoryapp.data.cache.VorschauVorwaermer
-import ch.brickinventoryapp.data.model.CsvImportStatus
+import ch.brickinventoryapp.ui.model.CsvImportStandAnsicht
 import ch.brickinventoryapp.data.repository.BrickRepository
 import ch.brickinventoryapp.data.repository.Result
 import ch.brickinventoryapp.service.CsvImportService
@@ -354,7 +354,7 @@ class AppViewModel @Inject constructor(
                         when (event) {
                             is CsvImportSseClient.Event.Status -> {
                                 backoffMs = 5_000L
-                                handleCsvStatus(event.status)
+                                handleCsvStatus(event.status.alsAnsicht())
                             }
                             is CsvImportSseClient.Event.Failed -> { sseFailed = true }
                         }
@@ -387,19 +387,19 @@ class AppViewModel @Inject constructor(
         }
     }
 
-    private suspend fun handleCsvStatus(s: CsvImportStatus) {
+    private suspend fun handleCsvStatus(s: CsvImportStandAnsicht) {
         // Vor dem Überschreiben entscheiden — danach wäre „vorher" schon der
         // neue Zustand. Die Regel steht prüfbar in CsvUebergang.kt.
         val folge = csvFolge(warVorherAktiv = _csvImportState.value.running, status = s.status)
         if (folge == CsvFolge.DIENST_STARTEN) CsvImportService.start(ctx)
         _csvImportState.value = CsvImportUiState(
             running = importLaeuft(s.status),
-            done    = s.done ?: 0,
-            total   = s.total ?: 0,
+            done    = s.done,
+            total   = s.total,
             current = s.current,
-            ok      = s.ok ?: 0,
-            warn    = s.warn ?: 0,
-            err     = s.err ?: 0
+            ok      = s.ok,
+            warn    = s.warn,
+            err     = s.err
         )
         when (folge) {
             CsvFolge.NACHLADEN -> finishCsvImport()
@@ -434,7 +434,7 @@ class AppViewModel @Inject constructor(
             val token = prefs.tokenJetzt()
             if (token.isBlank() || url.isBlank()) return
             val resp = repo.sets.getCsvImportStatus(url, token)
-            if (resp is Result.Success) handleCsvStatus(resp.data)
+            if (resp is Result.Success) handleCsvStatus(resp.data.alsAnsicht())
         } catch (_: Exception) {}
     }
 }

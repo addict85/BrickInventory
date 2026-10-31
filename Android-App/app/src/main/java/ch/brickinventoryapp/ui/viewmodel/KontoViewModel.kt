@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui.viewmodel
 
+import ch.brickinventoryapp.ui.model.alsAnsicht
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.R
@@ -52,7 +53,7 @@ class KontoViewModel @Inject constructor(
             _kontoState.update { it.copy(laedt = true, fehler = null) }
             when (val r = konto.getProfil()) {
                 is Result.Success -> _kontoState.update {
-                    it.copy(laedt = false, profil = r.data.user,
+                    it.copy(laedt = false, profil = r.data.user?.alsAnsicht(),
                             fehler = if (r.data.user == null) r.data.error ?: texte.text(R.string.err_generic) else null)
                 }
                 is Result.Error -> _kontoState.update { it.copy(laedt = false, fehler = texte.meldung(r)) }

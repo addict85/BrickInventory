@@ -78,7 +78,7 @@ class MonitoringViewModel @Inject constructor(
         _verwaltungState.update { it.copy(protokollLaden = true, protokollMinuten = minuten, fehler = null) }
         when (val r = repo.verwaltung.getProtokoll(minuten)) {
             is Result.Success -> _verwaltungState.update {
-                it.copy(protokollLaden = false, protokoll = r.data.logs,
+                it.copy(protokollLaden = false, protokoll = r.data.logs.map { it.alsAnsicht() },
                         fehler = if (r.data.success) null else r.data.error)
             }
             is Result.Error -> _verwaltungState.update { it.copy(protokollLaden = false, fehler = texte.meldung(r)) }

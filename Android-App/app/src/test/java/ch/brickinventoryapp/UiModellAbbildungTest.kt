@@ -2,11 +2,16 @@ package ch.brickinventoryapp
 
 import ch.brickinventoryapp.data.model.ChartPoint
 import ch.brickinventoryapp.data.model.CsvArt
+import ch.brickinventoryapp.data.model.CsvImportStatus
+import ch.brickinventoryapp.data.model.HouseholdStatusResponse
+import ch.brickinventoryapp.data.model.KontoName
+import ch.brickinventoryapp.data.model.Profil
 import ch.brickinventoryapp.data.model.Gutschein
 import ch.brickinventoryapp.data.model.KEINE_FARBE
 import ch.brickinventoryapp.data.model.Preisalarm
 import ch.brickinventoryapp.data.model.StartupStatus
 import ch.brickinventoryapp.ui.model.CsvImportArt
+import ch.brickinventoryapp.ui.model.KontoAnsicht
 import ch.brickinventoryapp.ui.model.OHNE_FARBE
 import ch.brickinventoryapp.ui.model.alsAnsicht
 import ch.brickinventoryapp.ui.model.alsDaten
@@ -31,6 +36,8 @@ import org.junit.Test
  *      den Klassenordner → rot „URI is not hierarchical“; mit der Liste grün
  *   E  „TeileAnsichten“ aus Beispielfueller.ABBILDUNGSDATEIEN gestrichen → rot
  *      „jede Datei mit Abbildungen steht in der Liste“ und „Nur 48 Abbildungen“
+ *   F  in Profil.alsAnsicht `emailVerified == 1` → `== 0` → rot „Profil, Haushalt
+ *      und CSV-Stand …“; elternkonten aus `parents` → rot „ohne parents gilt linked_to“
  */
 class UiModellAbbildungTest {
 
@@ -60,6 +67,17 @@ class UiModellAbbildungTest {
         val p = ChartPoint(xLabel = "1. Okt", value = 12.5, yFrac = 0.25).alsAnsicht()
         assertEquals(Triple("1. Okt", 12.5, 0.25), Triple(p.xLabel, p.value, p.yFrac))
         assertEquals(KEINE_FARBE, OHNE_FARBE)
+    }
+
+    @Test
+    fun `Profil, Haushalt und CSV-Stand sind für die Oberfläche aufbereitet`() {
+        assertTrue(Profil(id = 1, username = "m", emailVerified = 1).alsAnsicht().emailBestaetigt)
+        assertFalse("0 heisst unbestätigt", Profil(id = 1, username = "m", emailVerified = 0).alsAnsicht().emailBestaetigt)
+        val altesFeld = HouseholdStatusResponse(linkedTo = KontoName(7, "haupt")).alsAnsicht()
+        assertEquals("ohne parents gilt linked_to", listOf(KontoAnsicht(7, "haupt")), altesFeld.elternkonten)
+        val stand = CsvImportStatus(status = "running", current = "75192-1").alsAnsicht()
+        assertEquals(listOf(0, 0, 0, 0, 0), listOf(stand.total, stand.done, stand.ok, stand.warn, stand.err))
+        assertEquals("running", stand.status)
     }
 
     /**
@@ -97,7 +115,7 @@ class UiModellAbbildungTest {
         val EIGENE_REGELN = setOf("Auftrag", "AuftraegeResponse")
         /** Bewusst umbenannt oder abgeleitet; geprüft in den Einzeltests oben. */
         val OHNE_GEGENSTUECK = sortedSetOf(
-            "Preisalarm.getUnter", "StartupStatus.getAnteil", "StartupStatus.getBereit", "StartupStatus.getFortschritt",
+            "Preisalarm.getUnter", "Profil.getEmailBestaetigt", "StartupStatus.getAnteil", "StartupStatus.getBereit", "StartupStatus.getFortschritt",
             "StartupStatus.getGesamt", "StartupStatus.getSchritt", "StartupStatus.getUnterschritt",
         )
     }

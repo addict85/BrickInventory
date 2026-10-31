@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui.viewmodel
 
+import ch.brickinventoryapp.ui.model.alsAnsicht
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.R
 import ch.brickinventoryapp.data.repository.HaushaltRepository
@@ -34,7 +35,7 @@ class HaushaltViewModel @Inject constructor(
         viewModelScope.launch {
             _householdState.update { it.copy(isLoading = true, message = null) }
             when (val r = haushalt.getHousehold()) {
-                is Result.Success -> _householdState.update { it.copy(isLoading = false, status = r.data, inviteCode = null) }
+                is Result.Success -> _householdState.update { it.copy(isLoading = false, status = r.data.alsAnsicht(), inviteCode = null) }
                 is Result.Error -> _householdState.update { it.copy(isLoading = false, message = meldung(r)) }
             }
         }

@@ -21,7 +21,7 @@ object Beispielfueller {
      */
     val ABBILDUNGSDATEIEN = listOf(
         "EinzelAnsichten", "FinanzAnsichten", "HaushaltAnsichten", "HintergrundAnsichten",
-        "KatalogAnsichten", "PreisAnsichten", "SetAnsichten", "TeileAnsichten", "VerwaltungAnsichten",
+        "KatalogAnsichten", "KontoAnsichten", "PreisAnsichten", "SetAnsichten", "TeileAnsichten", "VerwaltungAnsichten",
     )
 
     /** Alle `alsAnsicht(<data.model.X>)` der Dateien in [ABBILDUNGSDATEIEN]. */

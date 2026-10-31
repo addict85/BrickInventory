@@ -10,7 +10,7 @@ import ch.brickinventoryapp.data.model.*
  */
 data class KontoUiState(
     val laedt: Boolean = false,
-    val profil: ch.brickinventoryapp.data.model.Profil? = null,
+    val profil: ch.brickinventoryapp.ui.model.ProfilAnsicht? = null,
     val speichert: Boolean = false,
     val meldung: String? = null,
     val fehler: String? = null,
@@ -60,7 +60,7 @@ data class GeraeteUiState(
 /** Zustand der Haushalts-Karte in den Einstellungen. */
 data class HouseholdUiState(
     val isLoading: Boolean = false,
-    val status: ch.brickinventoryapp.data.model.HouseholdStatusResponse? = null,
+    val status: ch.brickinventoryapp.ui.model.HaushaltStatusAnsicht? = null,
     /** Zuletzt erzeugter Einladungscode — nur bis zum Verlassen der Ansicht. */
     val inviteCode: String? = null,
     /** Meldung des Servers (Währung weicht ab, schon verknüpft, zweite Stufe). */
@@ -78,7 +78,7 @@ data class HouseholdUiState(
  */
 data class VerwaltungUiState(
     val protokollLaden: Boolean = false,
-    val protokoll: List<ch.brickinventoryapp.data.model.ProtokollZeile> = emptyList(),
+    val protokoll: List<ch.brickinventoryapp.ui.model.ProtokollZeileAnsicht> = emptyList(),
     /** Zeitspanne des Protokolls in Minuten — der Server begrenzt auf 2880. */
     val protokollMinuten: Int = 15,
     val fehler: String? = null,
@@ -94,7 +94,7 @@ data class CsvHochladenUiState(
     val laeuft: Boolean = false,
     /** Welche Art gerade hochgeladen wird — fuer die Anzeige am richtigen Knopf. */
     val art: ch.brickinventoryapp.ui.model.CsvImportArt? = null,
-    val ergebnis: ch.brickinventoryapp.data.model.CsvImportErgebnis? = null,
+    val ergebnis: ch.brickinventoryapp.ui.model.CsvErgebnisAnsicht? = null,
     val fehler: String? = null,
 )
 

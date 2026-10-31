@@ -84,10 +84,10 @@ internal fun KontoCard(
                 // Der Server setzt die Bestaetigung zurueck, wenn die Adresse
                 // wechselt. Der Hinweis sagt, WARUM hier plotzlich „nicht
                 // bestaetigt" steht, statt es unkommentiert anzuzeigen.
-                supportingText = if (profil.emailVerified != 1) {
+                supportingText = if (!profil.emailBestaetigt) {
                     { Text(stringResource(R.string.konto_email_unverified)) }
                 } else null,
-                isError = profil.emailVerified != 1,
+                isError = !profil.emailBestaetigt,
                 modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.knopf,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email))
             Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
