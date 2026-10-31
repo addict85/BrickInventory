@@ -144,7 +144,7 @@ function gibToggle() {
  * und daraus wurde 322-mal „undefined – aktualisiert".
  *
  * Die Platzhalter sind weg (beendeAuftrag bekommt jetzt echte Zeilen, siehe
- * utils/importAuftrag.ts), aber die Schranke bleibt: Eine Zeile, die nichts
+ * src/auftraege/importAuftrag.ts), aber die Schranke bleibt: Eine Zeile, die nichts
  * benennt, sagt dem Betrachter nichts und kostet ihn das Vertrauen in die
  * uebrigen. Die ZAEHLUNG darueber ist davon unberuehrt — sie kommt aus
  * `s.ok`/`s.warn`/`s.err` und nicht von hier.
@@ -204,7 +204,7 @@ export function gibStart() {
   // angehängte `?token=` war der Sitzungstoken selbst; er hätte im
   // Reverse-Proxy-Protokoll und im Browserverlauf gestanden. Den „Bearer-Fall"
   // ohne Cookie gibt es hier nicht: `webToken` entsteht erst nach der
-  // Anmeldung, die das Cookie setzt. Siehe utils/auth.ts.
+  // Anmeldung, die das Cookie setzt. Siehe src/konto/auth.ts.
   const url = '/api/v1/sets/import/csv/stream';
 
   if (typeof EventSource !== 'undefined') {

@@ -27,7 +27,7 @@ const ROOT    = path.resolve(__dirname, '..');
 // Eintrag hier, entsteht kein dist/clients/ — und JEDER Import darauf läuft
 // beim Start ins Leere. Genau daran wäre der Umzug fast gescheitert.
 // 'startup' seit Nachtrag 134 (die Staffel der Hintergrundläufe).
-const SRC_DIRS = ['db', 'utils', 'routes', 'jobs', 'clients', 'startup'];
+const SRC_DIRS = ['db', 'src', 'routes', 'jobs', 'clients', 'startup'];
 /**
  * Fassung für den npx-Rückfall.
  *
@@ -206,6 +206,11 @@ if (OUTDIR) {
   // noch braucht, soll es im Bauprotokoll stehen und nicht stillschweigend
   // verschwinden.
   if (weg.length) console.log(`[build-ts] ${weg.length} verwaiste Datei(en) entfernt: ${weg.join(', ')}`);
+  // Die Version gehört zum Bau, nicht in den Arbeitsbaum (scripts/version.js).
+  const { bauVersion, schreibe } = require('./version');
+  const version = bauVersion();
+  schreibe(OUTDIR, version);
+  console.log(`[build-ts] Version ${version}`);
 }
 
 console.log('[build-ts] Fertig.');

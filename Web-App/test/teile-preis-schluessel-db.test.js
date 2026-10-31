@@ -6,7 +6,7 @@
  * nahm es so, wie der Aufrufer sie mitbrachte. Und die drei Aufrufer bringen
  * Verschiedenes mit:
  *
- *   utils/financeCalc.ts:878   part.bl_part_number || part.part_number → BL
+ *   src/finanzen/financeCalc.ts:878   part.bl_part_number || part.part_number → BL
  *   routes/parts.ts:224        partNumber                              → RB
  *   routes/minifigs.ts:203     blPartNum                               → BL
  *
@@ -17,7 +17,7 @@
  * BrickLink. Und getPartPriceHistory suchte unter der BrickLink-Nummer, fand
  * also nur die Hälfte.
  *
- * Der Kommentar in utils/priceHistory.ts behauptete den einen Schlüsselraum
+ * Der Kommentar in src/finanzen/priceHistory.ts behauptete den einen Schlüsselraum
  * bereits („werden unter der BRICKLINK-Teilenummer geschrieben"). Für die
  * Farbe stimmte er, für die Nummer nicht.
  *
@@ -39,12 +39,11 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
-const { fetchPartPrice } = _req('utils/financeCalc.js');
-const { getPartPriceHistory } = _req('utils/priceHistory.js');
+const { fetchPartPrice } = _req('src/finanzen/financeCalc.js');
+const { getPartPriceHistory } = _req('src/finanzen/priceHistory.js');
 const { haeltTeil } = require('./helpers/bestand');
 
 test('Teile-Preise stehen unter EINER Nummer', { concurrency: 1 }, async (t) => {
@@ -70,6 +69,8 @@ test('Teile-Preise stehen unter EINER Nummer', { concurrency: 1 }, async (t) => 
   await db.run(`DELETE FROM users WHERE username=$1`, [NUTZER]);
   await db.run(`INSERT INTO users (username,password_hash) VALUES ($1,'x')`, [NUTZER]);
   const uid = (await db.get(`SELECT id FROM users WHERE username=$1`, [NUTZER])).id;
+  // Kontowährung wie die abgefragte: Eine andere würde umgerechnet (Migration 0077).
+  await db.run(`INSERT INTO user_settings (user_id,key,value) VALUES ($1,'currency',$2)`, [uid, WAEHRUNG]);
   // Die Zuordnung steht seit Migration 0037 in bl_zuordnung (art, rb_id, bl_id).
   await db.run(`INSERT INTO bl_zuordnung (art, rb_id, bl_id) VALUES ('part',$1,$2)
                 ON CONFLICT (art, rb_id) DO UPDATE SET bl_id = EXCLUDED.bl_id`, [RB, BL]);
@@ -121,7 +122,7 @@ test('Teile-Preise stehen unter EINER Nummer', { concurrency: 1 }, async (t) => 
     // nur in parts.bl_part_number und nicht in rb_bl_mapping — der Zustand,
     // aus dem der Nachtrag-Job von selbst nie wieder herausfand. Mit Migration
     // 0037 gibt es die zweite Quelle nicht, also auch nicht die Lücke zwischen
-    // beiden (die Begründung steht in utils/finance/preise.ts).
+    // beiden (die Begründung steht in src/finanzen/rechnung/preise.ts).
     //
     // Was stattdessen geprüft wird, ist der Fall, der BLEIBT: ein Teil ohne
     // jede Zuordnung. Dann muss der Cache unter der REBRICKABLE-Nummer

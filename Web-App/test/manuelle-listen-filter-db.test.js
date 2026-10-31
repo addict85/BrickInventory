@@ -66,7 +66,6 @@ const test   = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { haeltFigur, haeltTeil } = require('./helpers/bestand');
@@ -117,8 +116,8 @@ test('Suchtext und Lagerort treffen auch die manuell erfassten Listen',
   await haeltFigur(db, UID, 'fig-000123', { menge: 1 });
   await haeltFigur(db, UID, 'fig-000456', { menge: 2 });
 
-  const teile   = _req('utils/handlers/parts.js');
-  const figuren = _req('utils/handlers/minifigs.js');
+  const teile   = _req('src/teile/abfragen.js');
+  const figuren = _req('src/figuren/abfragen.js');
   const nummern = async (opt) =>
     (await teile.getManualParts([UID], UID, opt)).map(p => String(p.part_number)).sort();
   const figNummern = async (opt) =>

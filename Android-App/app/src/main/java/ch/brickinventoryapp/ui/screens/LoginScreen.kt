@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.ui.screens
 
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
 import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
@@ -9,6 +11,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.ui.semantics.Role
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
@@ -52,6 +56,8 @@ fun LoginScreen(
     netzFrage: Boolean = false,
     onNetzBestaetigt: (String, String, String?) -> Unit = { _, _, _ -> },
     onNetzAbgelehnt: () -> Unit = {},
+    vollerZugriff: Boolean = false,
+    onVollerZugriff: (Boolean) -> Unit = {},
 ) {
     var username by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
@@ -77,8 +83,10 @@ fun LoginScreen(
         )
     }
 
+    // Rollbar: Auf einem kleinen Telefon, mit offener Tastatur oder grosser Schrift
+    // läge der Anmeldeknopf sonst unerreichbar unter dem Rand.
     Box(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
         contentAlignment = Alignment.Center
     ) {
         Column(
@@ -139,7 +147,8 @@ fun LoginScreen(
                             isLoading = isLoading, error = error,
                             registrierungOffen = registrierungOffen,
                             focusMgr = focusMgr,
-                            onLogin = onLogin, onFormular = onFormular)
+                            onLogin = onLogin, onFormular = onFormular,
+                            vollerZugriff = vollerZugriff, onVollerZugriff = onVollerZugriff)
 
                         AnmeldeFormular.REGISTRIEREN -> RegistrierFelder(
                             laeuft = kontoLaeuft, meldung = kontoMeldung, fehler = kontoFehler,
@@ -218,6 +227,8 @@ private fun AnmeldeFelder(
     focusMgr: androidx.compose.ui.focus.FocusManager,
     onLogin: (String, String, String?) -> Unit,
     onFormular: (AnmeldeFormular) -> Unit,
+    vollerZugriff: Boolean,
+    onVollerZugriff: (Boolean) -> Unit,
 ) {
     Text(
         stringResource(R.string.login_title),
@@ -280,6 +291,18 @@ private fun AnmeldeFelder(
     }
 
     if (error != null) FormularMeldung(error, fehler = true)
+
+    // Ohne Häkchen ein Token ohne Verwalterrechte, auch für ein Verwalterkonto.
+    Row(verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth().toggleable(value = vollerZugriff, role = Role.Checkbox,
+            onValueChange = onVollerZugriff)) {
+        Checkbox(checked = vollerZugriff, onCheckedChange = null)
+        Column(Modifier.padding(start = 8.dp)) {
+            Text(stringResource(R.string.login_full_access), style = MaterialTheme.typography.bodyMedium)
+            Text(stringResource(R.string.login_full_access_hint), style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
 
     LadeKnopf(
         stringResource(R.string.login_button),

@@ -30,7 +30,6 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.WEB_WORKERS = '1';
 
 const express = require('express');
 const _req = require('./helpers/sources').buildAndRequire();
@@ -71,7 +70,7 @@ test('Import ohne Preis hinterlässt dasselbe wie Erfassen ohne Preis', { concur
     assert.equal(ergebnis.added, 1, `Es wurde nichts angelegt: ${JSON.stringify(ergebnis)}`);
 
     // Derselbe Fall von Hand, ueber dieselbe Route wie die Webapp.
-    const { addManualPart } = _req('utils/manuelleTeile.js');
+    const { addManualPart } = _req('src/teile/manuelleTeile.js');
     await addManualPart(uid, { part_number: VON_HAND, part_name: 'Testteil', color_id: 0, quantity: 3 });
 
     // ── Gelesen aus der ERFASSUNG ─────────────────────────────────────────

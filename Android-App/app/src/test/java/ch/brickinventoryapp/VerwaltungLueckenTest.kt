@@ -3,7 +3,7 @@ package ch.brickinventoryapp
 import ch.brickinventoryapp.data.api.ApiJson
 import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.model.JobsResponse
-import ch.brickinventoryapp.data.repository.AdminRepository
+import ch.brickinventoryapp.data.repository.VerwaltungRepository
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -47,7 +47,7 @@ class VerwaltungLueckenTest {
     fun `die App ruft alle drei Adressen`() {
         val pfade = PfadServer()
         try {
-            val admin = AdminRepository(TestApi.fuer(pfade.server),
+            val admin = VerwaltungRepository(TestApi.fuer(pfade.server),
                 ResponseCache { java.io.File(System.getProperty("java.io.tmpdir"), "bim-verwaltung") })
             runBlocking {
                 admin.setJobSchedule("prices", zeit = "07:05")

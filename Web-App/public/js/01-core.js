@@ -34,7 +34,7 @@ import { gibCheckOnLoad, gibZuruecksetzen } from './01-fortschritt.js';
 /** HTML-Escape für Textinhalte und doppelt-gequotete Attributwerte. */
 /**
  * Wie kurz ein Passwort hoechstens sein darf — dieselbe Zahl wie im Server
- * (PASSWORT_MIN_ZEICHEN in utils/auth.ts) und in der App.
+ * (PASSWORT_MIN_ZEICHEN in src/konto/auth.ts) und in der App.
  *
  * Sie steht hier ZUSAETZLICH und nicht statt dessen: Der Server ist die
  * Instanz, die es durchsetzt, der Browser der, der es dem Nutzer sagt, bevor
@@ -330,7 +330,7 @@ export function knopfBesetzt(btn, laeuft) {
  * noch. GEBAUT wird nur die neue.
  *
  * Die Begruendung in ganzer Laenge steht serverseitig bei den gleichnamigen
- * Konstanten in utils/images.ts.
+ * Konstanten in src/katalog/bilder/images.ts.
  */
 const IMG_PROXY = '/api/v1/img-proxy';
 const IMG_PROXY_ALT = '/api/img-proxy';
@@ -494,7 +494,7 @@ export function escHtmlAttr(v) {
  *
  * Vorher konstruierte diese Funktion aus JEDEM lokalen Pfad selbst eine
  * "_thumb.jpg"-Variante, unabhängig davon, ob diese Datei existiert.
- * `utils/images.ts` (Server, resolveImageLocal()) prüft das aber bereits: Es
+ * `src/katalog/bilder/images.ts` (Server, resolveImageLocal()) prüft das aber bereits: Es
  * liefert für `image_local` je nachdem den Thumb- ODER den Original-Pfad,
  * mit eigenem Existenz-Cache. Lieferte der Server den Original-Pfad, weil
  * die Vorschau (noch) fehlt, baute diese Funktion TROTZDEM ihre eigene
@@ -563,9 +563,24 @@ export function observeLazyImages(root) {
 }
 /** Anzeigedauer je Art in ms. */
 const TOAST_DAUER = { success: 3500, info: 5000, error: 9000 };
+/** @type {WeakMap<Element, {schluessel: string, anzahl: number, frist: any}>} */
+const _toastStand = new WeakMap();
 /** @param {{text: string, fn: () => any}} [aktion] Knopf in der Meldung, z. B. „Rückgängig" */
 export function toast(msg, type='info', aktion) {
-  const c = G('toasts'), el = document.createElement('div');
+  const c = G('toasts');
+  // Dieselbe Meldung noch einmal: zählen statt stapeln, und die Frist beginnt neu.
+  const schluessel = `${type}|${String(msg ?? '')}`;
+  const gleich = aktion ? null : [...c.children].find(x => _toastStand.get(x)?.schluessel === schluessel);
+  if (gleich) {
+    const stand = _toastStand.get(gleich);
+    stand.anzahl++;
+    const zahl = /** @type {HTMLElement} */ (gleich.querySelector('.toast-anzahl'));
+    zahl.textContent = `×${stand.anzahl}`; zahl.hidden = false;
+    clearTimeout(stand.frist);
+    stand.frist = setTimeout(() => gleich.remove(), TOAST_DAUER[type] ?? 4500);
+    return /** @type {HTMLElement} */ (gleich);
+  }
+  const el = document.createElement('div');
   el.className=`toast ${type}`;
   if (type === 'error') el.setAttribute('role', 'alert');
   // textContent statt innerHTML: msg enthält regelmässig Server-Fehlermeldungen
@@ -575,7 +590,9 @@ export function toast(msg, type='info', aktion) {
   icon.innerHTML = ico({ success: 'ok', error: 'fehler' }[type] || 'info');
   const text = document.createElement('span');
   text.textContent = String(msg ?? '');
-  el.append(icon, text);
+  const anzahl = document.createElement('span');
+  anzahl.className = 'toast-anzahl'; anzahl.hidden = true;
+  el.append(icon, text, anzahl);
   if (aktion) {
     const knopf = document.createElement('button');
     knopf.type = 'button';
@@ -589,7 +606,7 @@ export function toast(msg, type='info', aktion) {
   // sie keine Karte verdeckt.
   el.addEventListener('click', e => { if (e.target === el || !(/** @type {Element} */ (e.target)).closest('button')) el.remove(); });
   c.appendChild(el);
-  setTimeout(() => el.remove(), Math.max(aktion ? 9000 : 0, TOAST_DAUER[type] ?? 4500));
+  _toastStand.set(el, { schluessel, anzahl: 1, frist: setTimeout(() => el.remove(), Math.max(aktion ? 9000 : 0, TOAST_DAUER[type] ?? 4500)) });
   return el;
 }
 /**
@@ -619,7 +636,7 @@ export async function api(method, path, body) {
   // ── Accept-Language: die Sprache, die gerade AUF DEM BILDSCHIRM steht ──────
   //
   // Der Server hat seine Fehlermeldungen in beiden Sprachen
-  // (utils/fehlerTexte.ts) und antwortet in der, die hier steht. Vorher waren
+  // (src/infra/fehlerTexte.ts) und antwortet in der, die hier steht. Vorher waren
   // alle 80 Meldungen deutsch — in einer sonst vollständig englischen
   // Oberfläche.
   //
@@ -746,6 +763,15 @@ function meldeSitzungBeendet(path) {
 export function fmtN(v,cur){
   if(!v||v==0) return '—';
   return new Intl.NumberFormat(locale(),{style:'currency',currency:cur||CURRENCY||'EUR',minimumFractionDigits:2}).format(v);
+}
+/** Ein erfasster Kaufpreis von 0 ist ein Geschenk; fehlt er (null), ist er unbekannt. */
+export function istGeschenk(kauf){
+  return kauf !== null && kauf !== undefined && String(kauf).trim() !== '' && Number(kauf) === 0;
+}
+/** Betrag, bei dem 0 ein Wert ist (Kaufpreis): „0,00 €“ statt „—“. */
+export function fmtGeld(v, cur){
+  if (v === null || v === undefined || String(v).trim() === '' || !Number.isFinite(Number(v))) return '—';
+  return Number(v) === 0 ? new Intl.NumberFormat(locale(),{style:'currency',currency:cur||CURRENCY||'EUR',minimumFractionDigits:2}).format(0) : fmtN(v, cur);
 }
 /**
  * Prozent in der Form der Oberfläche (de-DE „+51,1 %“, en-GB „+51.1%“), damit
@@ -1106,7 +1132,7 @@ function showApp(){ bindTabs(); plInit(); setTimeout(()=>{ gibCheckOnLoad(); }, 
   // ── Ein Fehler von mir, hier behoben ──────────────────────────────────────
   //
   // Der Knopf in der Mail zeigt seit dem 25.09. auf genau diese Adresse
-  // (utils/mailer.ts, baueAlarmMail) — nur hat sie niemand gelesen. Ich habe
+  // (src/infra/mailer.ts, baueAlarmMail) — nur hat sie niemand gelesen. Ich habe
   // den Link eingebaut, ohne zu pruefen, ob die Webapp ihn versteht; er
   // oeffnete bis hierher bloss die Startseite. Erst diese Zeilen machen ihn
   // wahr.
@@ -1184,6 +1210,8 @@ async function doLogin(){
   // Zweiter Faktor verlangt: Codefeld zeigen und dort weitermachen.
   if(d.zweiter_faktor){
     G('lc-zeile').style.display=''; G('lc').value=''; G('lc').focus();
+    // Hat das Konto Passkeys, geht einer statt des Codes (js/23-passkeys.js).
+    G('lc-passkey').hidden=!d.passkey;
     G('lerr').textContent=d.error||''; G('lerr').style.display=code?'block':'none';
     return;
   }

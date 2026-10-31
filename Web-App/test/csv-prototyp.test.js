@@ -7,7 +7,7 @@ const assert = require('node:assert/strict');
  * ── Der Befund ──────────────────────────────────────────────────────────────
  *
  * `npm audit` meldet fuer csv-parse: „Prototype replacement still reachable via
- * columns path". utils/csvExport.ts benutzte `columns: true` — damit wird jede
+ * columns path". src/infra/csvExport.ts benutzte `columns: true` — damit wird jede
  * Kopfspalte zu einem Objektschluessel, `__proto__` eingeschlossen. Die CSV
  * kommt vom Benutzer (Import von Sets, Teilen, Minifiguren), der Pfad ist also
  * erreichbar.
@@ -29,7 +29,7 @@ const assert = require('node:assert/strict');
 /** Den Einleser so aufrufen, wie der Import es tut. */
 function einlesen(csv) {
   const { parse } = require('csv-parse/sync');
-  // Dieselbe Konfiguration wie utils/csvExport.ts — inklusive der Filterung.
+  // Dieselbe Konfiguration wie src/infra/csvExport.ts — inklusive der Filterung.
   const GEFAEHRLICH = new Set(['__proto__', 'constructor', 'prototype']);
   return parse(csv, {
     columns: (kopf) => kopf.map(n => {
@@ -74,7 +74,7 @@ test('der Einleser im Baum benutzt denselben Filter', () => {
   // bindet sie an die echte Datei — sonst pruefte der Test sich selbst.
   const fs = require('node:fs');
   const path = require('node:path');
-  const roh = fs.readFileSync(path.join(__dirname, '..', 'utils', 'csvExport.ts'), 'utf8');
+  const roh = fs.readFileSync(path.join(__dirname, '..', 'src/infra/csvExport.ts'), 'utf8');
   // Kommentare zuerst weg. Ohne diesen Schritt meldete die Regel ihre eigene
   // BEGRUENDUNG: Der Kommentar an der Stelle erklaert, warum `columns: true`
   // dort nicht mehr stehen darf — und nennt es dabei. Dieselbe Falle ist in
@@ -83,7 +83,7 @@ test('der Einleser im Baum benutzt denselben Filter', () => {
   const quelle = roh.replace(/\/\*[\s\S]*?\*\//g, '')
     .split('\n').filter(z => !/^\s*\/\//.test(z)).join('\n');
   assert.ok(!/columns:\s*true/.test(quelle),
-    'utils/csvExport.ts steht wieder auf `columns: true` — dann ist der Pfad ' +
+    'src/infra/csvExport.ts steht wieder auf `columns: true` — dann ist der Pfad ' +
     'offen, den npm audit meldet.');
   assert.match(quelle, /GEFAEHRLICHE_SPALTEN = new Set\(\['__proto__', 'constructor', 'prototype'\]\)/,
     'Die Liste der gefaehrlichen Spaltennamen weicht von der hier geprueften ab');

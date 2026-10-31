@@ -14,7 +14,7 @@ const path   = require('node:path');
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { pdfBildPfad } = _req('jobs/pdfZeichnen.js');
-const { IMAGES_DIR, DATA_DIR } = _req('utils/appPaths.js');
+const { IMAGES_DIR, DATA_DIR } = _req('src/infra/appPaths.js');
 
 test('ein Teilebild aus dem Bildordner wird gelesen', () => {
   assert.equal(pdfBildPfad({ image_local: '/images/parts/3001_4.png' }),

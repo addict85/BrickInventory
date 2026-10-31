@@ -1,7 +1,7 @@
 package ch.brickinventoryapp
 
 import ch.brickinventoryapp.data.Anmeldeablage
-import ch.brickinventoryapp.data.repository.AdminRepository
+import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.ui.viewmodel.AnmeldungViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -37,6 +37,10 @@ import org.junit.Test
  *      Klartext-Login in einem fremden Netz fragt erst nach“
  *   H  richteEin() merkt das Netz nicht → rot „im Netz der Einrichtung fragt
  *      die Anmeldung nicht nach“
+ *   I  (30.10.2026) merkePin() in loginWithQrToken() nach qrLogin() → rot „ein
+ *      QR-Code mit Fingerabdruck pinnt vor der ersten Anfrage“
+ *   J  (30.10.2026) LoginRequest wieder mit festem neverExpires = true → rot
+ *      „ein Token ohne Ablauf nur ueber https“ (http-Teil)
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class AnmeldungViewModelTest {
@@ -52,6 +56,7 @@ class AnmeldungViewModelTest {
         override suspend fun bestaetigeKlartext(host: String) { protokoll += "klartext:$host" }
         override suspend fun bekannteNetze() = netze.toSet()
         override suspend fun merkeNetz(eintrag: String) { netze += eintrag; protokoll += "netz:$eintrag" }
+        override fun merkePin(schluessel: String, fingerabdruck: String) { protokoll += "pin:$schluessel=$fingerabdruck" }
     }
 
     /** Das Netz, in dem das Gerät gerade hängt. */
@@ -71,7 +76,7 @@ class AnmeldungViewModelTest {
             ch.brickinventoryapp.data.repository.TeileRepository(t.api, t.cache))
         val dienste = ch.brickinventoryapp.ui.viewmodel.AppDienste(t.sitzung, blickfeld, t.meldungen,
             NummernTexte, t.bestand, t.scrollMemory)
-        return t.merke(AnmeldungViewModel(dienste, AdminRepository(t.api, t.cache), ablage) { netz })
+        return t.merke(AnmeldungViewModel(dienste, KontoRepository(t.api, t.cache), ablage) { netz })
     }
 
     @Before
@@ -91,13 +96,33 @@ class AnmeldungViewModelTest {
 
     @Test
     fun `eine Anmeldung leert die Filter, legt den Token ab und meldet die Sitzung`() {
-        pfade.antworten["/api/v1/auth/login"] = """{"success":true,"token":"abc","user":{"id":1,"username":"marco","is_admin":true}}"""
+        pfade.antworten["/api/v1/auth/login"] = """{"success":true,"token":"abc","user":{"id":1,"username":"marco","is_admin":true},
+            "token_info":{"scope":"voll","never_expires":false}}"""
         val vm = vm()
+        vm.setzeVollerZugriff(true)
         vm.login("marco", "geheim")
         TestApi.warteBis("angemeldet") { t.sitzung.state.value.isLoggedIn }
         assertEquals(listOf("filter-leer", "token:abc", "name:marco"), ablage.protokoll)
+        assertTrue(pfade.koerper.single(), "\"scope\":\"voll\"" in pfade.koerper.single())
         assertTrue(t.sitzung.state.value.isAdmin)
         assertFalse(vm.anmeldeState.value.loginLaeuft)
+    }
+
+    /**
+     * Ohne das Häkchen ein Token mit Scope "app": Das Kontorecht allein macht in
+     * der App keinen Verwalter, der Server wiese dessen Aufrufe mit 403 ab.
+     * Gegenprobe (30.10.2026, gemessen): in AnmeldungViewModel `r.data.verwalter`
+     * → `r.data.user?.isAdmin == true` → rot „Verwalterkonto ohne Häkchen …“.
+     */
+    @Test
+    fun `Verwalterkonto ohne Häkchen meldet sich ohne Verwalterrechte an`() {
+        pfade.antworten["/api/v1/auth/login"] = """{"success":true,"token":"abc","user":{"id":1,"username":"marco","is_admin":true},
+            "token_info":{"scope":"app","never_expires":false}}"""
+        val vm = vm()
+        vm.login("marco", "geheim")
+        TestApi.warteBis("angemeldet") { t.sitzung.state.value.isLoggedIn }
+        assertTrue(pfade.koerper.single(), "\"scope\":\"app\"" in pfade.koerper.single())
+        assertFalse(t.sitzung.state.value.isAdmin)
     }
 
     @Test
@@ -124,6 +149,30 @@ class AnmeldungViewModelTest {
         TestApi.warteBis("Antwort") { pfade.anfragenAn("qr-login").isNotEmpty() && !vm.anmeldeState.value.loginLaeuft }
         assertNull(vm.anmeldeState.value.loginError)
         assertEquals("Derselbe Server: keine Abmeldung", "url:https://server", ablage.protokoll.first())
+    }
+
+    @Test
+    fun `ein QR-Code mit Fingerabdruck pinnt vor der ersten Anfrage`() {
+        val fp = java.util.Base64.getEncoder().encodeToString(ByteArray(32) { 7 })
+        pfade.antworten["/api/v1/auth/qr-login"] = """{"success":true,"token":"abc","user":{"id":1,"username":"marco"}}"""
+        val vm = vm()
+        vm.loginWithQrToken("https://brick.example.org/", "bim:x", fingerabdruck = fp)
+        TestApi.warteBis("angemeldet") { t.sitzung.state.value.isLoggedIn }
+        assertEquals("pin:brick.example.org:443=$fp", ablage.protokoll.first())
+    }
+
+    @Test
+    fun `ein Token ohne Ablauf nur ueber https`() {
+        pfade.antworten["/api/v1/auth/login"] = """{"success":true,"token":"abc","user":{"id":1,"username":"marco"}}"""
+        ablage.url = "http://localhost:3000"
+        vm().login("marco", "geheim")
+        TestApi.warteBis("http-Anmeldung") { pfade.anfragenAn("/auth/login").size == 1 }
+        assertTrue(pfade.koerper.last(), pfade.koerper.last().contains("\"never_expires\":false"))
+
+        ablage.url = "https://brick.example.org"
+        vm().login("marco", "geheim")
+        TestApi.warteBis("https-Anmeldung") { pfade.anfragenAn("/auth/login").size == 2 }
+        assertTrue(pfade.koerper.last(), pfade.koerper.last().contains("\"never_expires\":true"))
     }
 
     @Test

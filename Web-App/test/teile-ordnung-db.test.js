@@ -31,7 +31,7 @@ process.env.SESSION_SECRET = 'test';
 const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
 const H = require('./helpers/sources').handlerModul(_req);
-const PS = _req('utils/partsSummary.js');
+const PS = _req('src/teile/partsSummary.js');
 
 const U = 990611, U2 = 990612;
 

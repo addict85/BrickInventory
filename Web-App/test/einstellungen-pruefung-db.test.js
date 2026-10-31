@@ -18,7 +18,6 @@ const assert = require('node:assert/strict');
 const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
@@ -45,7 +44,7 @@ test('Einstellungen: Prüfung der Werte und Export je Rolle', { concurrency: 1 }
     const app = express();
     app.use(express.json());
     app.use((req, _res, next) => { req.session = { userId: uid, isAdmin }; next(); });
-    app.use('/api/v1/settings', _req('routes/settings.js'));
+    app.use('/api/v1', _req('routes/api_v1/settings.js'));
     return app.listen(0);
   };
   const nutzer = appFuer(false), verwalter = appFuer(true);

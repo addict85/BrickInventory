@@ -44,7 +44,6 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.WEB_WORKERS = '1';
 
 const { buildAndRequire, loadTranslations, ohneKommentare } = require('./helpers/sources');
 const _req = buildAndRequire();
@@ -62,7 +61,7 @@ test('Preisalarm-Übersicht: eigene Alarme, mit Namen, änderbar, löschbar',
   const client = await db.pool.connect();
   try { await _req('db/migrate.js').runMigrations(client); } finally { client.release(); }
 
-  const { alleAlarme, setzeAlarm, loescheAlarm } = _req('utils/preisalarm.js');
+  const { alleAlarme, setzeAlarm, loescheAlarm } = _req('src/finanzen/preisalarm.js');
 
   for (const n of ['alarm_ich', 'alarm_fremd', 'alarm_kind'])
     await db.run('DELETE FROM users WHERE username = $1', [n]);

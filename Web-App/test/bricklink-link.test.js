@@ -1,5 +1,5 @@
 /**
- * BrickLink-Link-Auflösung für Katalog-Sets (utils/bricklinkLink.ts).
+ * BrickLink-Link-Auflösung für Katalog-Sets (src/katalog/bricklinkLink.ts).
  *
  * Der Katalog steht auf Rebrickable-Daten und hat den Kauf-Link bisher direkt
  * aus rb_sets.set_num gebaut — immer als Set (`?S=75192-1`). Für alles, was
@@ -19,7 +19,7 @@ const { execFileSync } = require('node:child_process');
 const ROOT = path.join(__dirname, '..');
 // Nach dist/ bauen statt in-place — siehe helpers/sources.js.
 const _req = require('./helpers/sources').buildAndRequire();
-const { withVariant, bareNumber, buildUrl, searchUrl } = _req('utils/bricklinkLink.js');
+const { withVariant, bareNumber, buildUrl, searchUrl } = _req('src/katalog/bricklinkLink.js');
 
 test('withVariant ergänzt den Rebrickable-Suffix', () => {
   assert.equal(withVariant('75192'), '75192-1');

@@ -21,7 +21,6 @@ const test   = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { haeltFigur, haeltSet, haeltTeil } = require('./helpers/bestand');
@@ -55,7 +54,7 @@ test('Set verschieben', { concurrency: 1 }, async (t) => {
     try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }
   }
 
-  const { moveSetBetweenAccounts } = _req('utils/setMove.js');
+  const { moveSetBetweenAccounts } = _req('src/sets/setMove.js');
 
   await db.run("INSERT INTO users (username,password_hash) VALUES ('mv_a','x'),('mv_b','x')");
   const [a, b] = (await db.all('SELECT id FROM users ORDER BY id')).map(r => r.id);

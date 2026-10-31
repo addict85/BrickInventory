@@ -18,8 +18,8 @@ const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const session = require(path.join(ROOT, 'node_modules', 'express-session'));
-const { sitzungsHoechstdauer } = _req('utils/sitzungsFrist.js');
-const { establishSession } = _req('utils/auth.js');
+const { sitzungsHoechstdauer } = _req('src/konto/sitzungsFrist.js');
+const { establishSession } = _req('src/konto/auth.js');
 
 const warte = (ms) => new Promise(r => setTimeout(r, ms));
 
@@ -40,11 +40,12 @@ test('Höchstdauer der Webapp-Sitzung', async (t) => {
   const { srv, base } = testApp(600);
   t.after(() => new Promise(r => srv.close(r)));
   const r = await fetch(base + '/anmelden', { method: 'POST' });
+  const anmeldung = await r.json();   // die Sitzung steht erst nach dem letzten Byte im Speicher
   const keks = r.headers.get('set-cookie').split(';')[0];
   const wer = async () => (await (await fetch(base + '/wer', { headers: { cookie: keks } })).json()).userId;
 
   await t.test('die Anmeldung setzt den Zeitpunkt', async () => {
-    const { am } = await r.json();
+    const { am } = anmeldung;
     assert.ok(typeof am === 'number' && Math.abs(Date.now() - am) < 5_000);
   });
 

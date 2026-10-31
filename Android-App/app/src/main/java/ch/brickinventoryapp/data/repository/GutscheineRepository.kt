@@ -2,6 +2,9 @@ package ch.brickinventoryapp.data.repository
 
 import ch.brickinventoryapp.data.api.GutscheineApi
 import ch.brickinventoryapp.data.cache.ResponseCache
+import ch.brickinventoryapp.data.lokal.Bearbeitung
+import ch.brickinventoryapp.data.lokal.Faecher
+import ch.brickinventoryapp.data.lokal.Offlineablage
 import ch.brickinventoryapp.data.model.*
 import ch.brickinventoryapp.data.api.Fehlerrumpf
 import okhttp3.MediaType.Companion.toMediaType
@@ -11,18 +14,20 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Gutscheine — LEGO-Geschenkkarten im eigenen Profil. Nichts wird
- * zwischengespeichert: Der ResponseCache liegt auf der Platte, und Nummer plus PIN
- * gehören nicht in eine Datei, die das Abmelden überlebt.
+ * Gutscheine — LEGO-Geschenkkarten im eigenen Profil. Lokal abgelegt wird die
+ * Liste ohne PIN und nur mit den letzten vier Ziffern der Nummer: Offline reicht
+ * „welcher Gutschein, wie viel“; Nummer plus PIN wären Geld auf der Platte.
  */
 @Singleton
 class GutscheineRepository @Inject constructor(
     api: GutscheineApi,
     cache: ResponseCache,
-) : RepoBasis<GutscheineApi>(api, cache) {
+    ablage: Offlineablage = Offlineablage.fluechtig(),
+) : RepoBasis<GutscheineApi>(api, cache, ablage) {
 
     suspend fun liste(): Result<GutscheinListe> =
-        safeCall { api.getGutscheine() }
+        abgeglichen(Faecher.GUTSCHEINE, { l -> l.vouchers.map { ohneGeheimnis(it) } },
+            { GutscheinListe(success = true, vouchers = it) }) { safeCall { api.getGutscheine() } }
 
     suspend fun anlegen(request: GutscheinRequest): Result<GutscheinAntwort> =
         safeCall { api.legeGutscheinAn(request) }
@@ -103,12 +108,17 @@ class GutscheineRepository @Inject constructor(
      */
     private val nachsichtigesJson = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
 
-    private companion object {
+    companion object {
+        /** Was offline von einem Gutschein bleibt: keine PIN, von der Nummer die letzten vier Ziffern. */
+        fun ohneGeheimnis(g: Gutschein): Gutschein =
+            g.copy(number = if (g.number.length > 4) "…" + g.number.takeLast(4) else g.number, pin = null)
+
         /** Die Codes, unter denen der Server eine Guthabenabfrage zurückstellt. */
-        val GUTHABEN_GESPERRT = setOf("guthaben_abstand", "guthaben_botschutz")
+        private val GUTHABEN_GESPERRT = setOf("guthaben_abstand", "guthaben_botschutz")
     }
 
     /** Leer heisst „nicht mitschicken" — siehe die Begruendung bei ausPdf(). */
     private fun alsTeil(wert: String?): okhttp3.RequestBody? =
         wert?.trim()?.takeIf { it.isNotEmpty() }?.toRequestBody("text/plain".toMediaType())
+
 }

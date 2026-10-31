@@ -281,8 +281,8 @@ class VorschauAblageTest {
         // Klasse, und eine Schleifenvariable, die eine Methode verdeckt, ist
         // die Sorte Stolperstein, die erst beim naechsten Bearbeiten zubeisst.
         for (ruf in listOf(
-            "repo.sets.getSets(", "repo.teile.getParts(", "repo.teile.getMinifigs(",
-            "repo.teile.getManualParts(", "repo.teile.getManualMinifigs(",
+            "repo.sets.getSets(", "repo.teile.getParts(", "repo.figuren.getMinifigs(",
+            "repo.teile.getManualParts(", "repo.figuren.getManualMinifigs(",
         )) {
             assert(fe.contains(ruf)) {
                 "Der Reiter hinter $ruf wird nicht mehr vorgewaermt — " +

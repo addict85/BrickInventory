@@ -22,7 +22,6 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.WEB_WORKERS = '1';
 
 // addSetWithDate gestellt: Jeder Aufruf wird gezählt und wartet auf `freigabe`.
 const aufrufe = [];
@@ -32,7 +31,7 @@ const Module = require('node:module');
 const _echtesRequire = Module.prototype.require;
 Module.prototype.require = function (name) {
   const m = _echtesRequire.apply(this, arguments);
-  if (typeof name === 'string' && /utils[/\\]setService(\.js)?$/.test(name))
+  if (typeof name === 'string' && /[/\\]setService(\.js)?$/.test(name))
     return new Proxy(m, { get: (t, k) => k !== 'addSetWithDate' ? t[k] : async (sn) => {
       aufrufe.push(sn);
       await freigabe;
@@ -66,13 +65,13 @@ test('CSV-Import als Auftrag', { concurrency: 1 }, async (t) => {
   };
   const a = await konto(`csvauftrag-a-${process.pid}`);
   const b = await konto(`csvauftrag-b-${process.pid}`);
-  const { stelleAuftragEin } = _req('utils/auftraege.js');
-  const { jobSet } = _req('utils/importAuftrag.js');
+  const { stelleAuftragEin } = Object.assign({}, _req('src/auftraege/auftraege.js'), _req('src/auftraege/repository/auftraege.js'));
+  const { jobSet } = _req('src/auftraege/importAuftrag.js');
   const worker = _req('jobs/auftraegeStarten.js').starteAuftragsWorker({ arten: ['csv_import'], taktMs: 50 });
   const nacharbeit = (uid) => db.all(
     `SELECT nutzlast->>'set_number' AS sn, nutzlast->>'art' AS art FROM auftraege
       WHERE art = 'nacharbeit' AND user_id = $1 ORDER BY id`, [uid]);
-  const stand = () => db.get('SELECT status, done, results, current FROM csv_import_jobs WHERE user_id=$1', [a]);
+  const stand = () => db.get('SELECT status, done, results, current FROM import_stand WHERE user_id=$1', [a]);
   const bisFertig = async () => {
     for (let i = 0; i < 200; i++) { const s = await stand(); if (s?.status === 'done') return s; await warte(25); }
     return stand();
@@ -90,7 +89,7 @@ test('CSV-Import als Auftrag', { concurrency: 1 }, async (t) => {
       assert.deepEqual(aufrufe, ['76001-1'], 'der Import steckt im ersten Set');
 
       const SN = `7${process.pid % 10000}-1`;
-      const r = await _req('utils/setService.js').addSet(SN, 1, b, null, 10, 'N');
+      const r = await _req('src/sets/setService.js').addSet(SN, 1, b, null, 10, 'N');
       assert.equal(r.action, 'added');
       assert.deepEqual(await nacharbeit(b), [{ sn: SN, art: 'neu' }]);
 
@@ -108,7 +107,7 @@ test('CSV-Import als Auftrag', { concurrency: 1 }, async (t) => {
       // als verwaist markiert, der Auftrag steht auf 'laeuft' mit abgelaufener Frist.
       await jobSet(a, { status: 'error', total: 3, done: 1, current: 'r2', error: 'unterbrochen',
                         results: JSON.stringify([{ set_number: 'r1', success: true, action: 'added' }]), run_id: lauf });
-      await db.run(`INSERT INTO auftraege (art, nutzlast, user_id, status, versuche, next_run_at)
+      await db.run(`INSERT INTO auftraege (art, nutzlast, user_id, status, versuche, frist_bis)
                     VALUES ('csv_import', $1, $2, 'laeuft', 1, NOW() - INTERVAL '1 minute')`,
         [JSON.stringify({ user_id: a, lauf, rows }), a]);
       const s = await bisFertig();
@@ -120,7 +119,7 @@ test('CSV-Import als Auftrag', { concurrency: 1 }, async (t) => {
   } finally {
     loslassen();
     await worker.stoppe(0);
-    await _req('utils/pgNotify.js').close();
+    await _req('db/pgNotify.js').close();
     await db.run('DELETE FROM users WHERE id = ANY($1)', [[a, b]]);
     for (const z of vorher) await db.run('INSERT INTO global_settings (key, value) VALUES ($1,$2) ON CONFLICT (key) DO UPDATE SET value=$2', [z.key, z.value]);
     await db.pool.end().catch(() => {});

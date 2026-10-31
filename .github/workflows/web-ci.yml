@@ -75,7 +75,8 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # Regulär rund 12 Minuten, davon 6 für die Browser-Dateien nacheinander.
+    timeout-minutes: 30
 
     # Die Datei lag frueher IN Web-App/ und ging davon aus, dass das das
     # Wurzelverzeichnis ist. Vom Repositoriums-Wurzelverzeichnis aus muss jeder
@@ -115,6 +116,10 @@ jobs:
       # Kein Cluster im Test: Die Sperr-Suiten stellen mehrere Worker selbst
       # nach, indem sie eigene Verbindungen aufmachen.
       WEB_WORKERS: '1'
+      # npm test (scripts/test-lauf.js) gibt jeder Testdatei eine eigene Kopie
+      # der Vorlage-Datenbank; vier zugleich passen zu den vier Kernen des
+      # Runners und bleiben unter max_connections=100 des Dienstes.
+      TEST_PARALLEL: '4'
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7

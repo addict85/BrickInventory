@@ -6,7 +6,7 @@
  * Der Teile-Reiter hat zwei Filterlisten uebereinander, beide mit Zaehlwerten,
  * beide ueber DERSELBEN Liste:
  *
- *     /api/v1/parts/colors      → utils/handlers/parts.ts, getPartsColors
+ *     /api/v1/parts/colors      → src/teile/abfragen.ts, getPartsColors
  *     /api/v1/parts/categories  → routes/parts.ts, inline
  *
  * Die erste las das Blickfeld (`accounts` → scopeIds), die zweite die eigene
@@ -34,7 +34,6 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { testServer } = require('./helpers/server');

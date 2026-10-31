@@ -47,7 +47,6 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 const DB_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.DATABASE_URL = DB_URL;
-process.env.WEB_WORKERS = '1';
 
 // Nach dist/ bauen statt in-place — siehe helpers/sources.js.
 const _req = require('./helpers/sources').buildAndRequire();
@@ -105,7 +104,7 @@ async function seed() {
   // kann. Aufgefallen ist es nie, weil der ganze Test ohne Postgres
   // übersprungen wird.
   await db.run(`INSERT INTO api_tokens (token, user_id, label) VALUES ($1, $2, 'parity') ON CONFLICT DO NOTHING`,
-    [_req('utils/auth.js').hashToken(TOKEN), USER.id]);
+    [_req('src/konto/auth.js').hashToken(TOKEN), USER.id]);
 
   // Sets: eines mit gemischten Erfassungen (Zustand-Aggregat!), eines ohne
   await haeltSet(db, USER.id, '75192-1', 0, { egalWennDa: true });  // Menge 0: die Erfassung dahinter traegt sie
@@ -459,7 +458,7 @@ test('API-Parität Webapp ↔ Android', async (t) => {
   });
 
   await t.test('Preisverlauf Teil und Minifigur: gleiche Form wie beim Set', async () => {
-    // Alle drei Arten teilen sich utils/priceHistory.ts. Geprüft wird deshalb,
+    // Alle drei Arten teilen sich src/finanzen/priceHistory.ts. Geprüft wird deshalb,
     // dass sie dieselben FELDER liefern — läuft eine Art aus der Form, fällt
     // es hier auf, auch ohne zweite Route zum Vergleichen.
     const felder = ['currency', 'by_condition', 'history_new', 'history_used', 'chart'];

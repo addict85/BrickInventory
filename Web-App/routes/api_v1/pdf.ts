@@ -1,18 +1,19 @@
 /**
  * /api/v1/sets/partslist-pdf — asynchrone PDF-Erzeugung. Die Route stellt
- * einen Auftrag ein (utils/auftraege.ts); Bilder holt und zeichnet der
- * Primär-Worker (jobs/pdfErzeugung.ts) in einem eigenen Faden.
+ * einen Auftrag ein (src/auftraege/auftraege.ts); Bilder holt und zeichnet der
+ * Job-Prozess (jobs/pdfErzeugung.ts) in einem eigenen Faden.
  * Ausführlich: docs/begruendungen/routes/api_v1/pdf.ts.md#abschnitt
  */
 import express from 'express';
-import { streamFileToResponse, meldeUndWeiter, meldeUndLiefere, ohneFehlendeDatei, pfadParam } from '../../utils/httpError';
+import { fehlerAntwort, streamFileToResponse, meldeUndWeiter, meldeUndLiefere, ohneFehlendeDatei, pfadParam } from '../../src/infra/httpError';
 import { requireToken } from './middleware';
-import { registerSse } from '../../utils/sseRegistry';
+import { registerSse } from '../../src/infra/sseRegistry';
 import _pdfFs from 'fs/promises';
 import _fsSync from 'fs';
-import { liesAuftrag, loescheAuftrag, PDF_KANAL, gueltigeAuftragsKennung, pdfDateiPfad, pdfAuftragStarten } from '../../utils/pdfAuftraege';
-import { listen, unlisten } from '../../utils/pgNotify';
-import { sendeFehler, fehlerText, antwortSprache } from '../../utils/fehlerTexte';
+import { liesAuftrag, loescheAuftrag, pdfSchluessel, gueltigeAuftragsKennung, pdfDateiPfad, pdfAuftragStarten } from '../../src/auftraege/pdfAuftraege';
+import { AUFTRAG_STAND_KANAL } from '../../src/auftraege/dienst';
+import { listen, unlisten } from '../../db/pgNotify';
+import { sendeFehler, fehlerText, antwortSprache } from '../../src/infra/fehlerTexte';
 const router = express.Router();
 
 // Eigenes Body-Limit: Der Export schickt die ganze Teileliste als JSON; die
@@ -89,7 +90,7 @@ router.get('/sets/partslist-pdf/stream/:jobId', requireToken, async (req: Authed
   res.flushHeaders?.();
 
   // Anmelden, damit das Herunterfahren diesen Strom beenden kann
-  // (utils/sseRegistry.ts) — sonst wartet httpServer.close() auf ihn.
+  // (src/infra/sseRegistry.ts) — sonst wartet httpServer.close() auf ihn.
   const unregisterSse = registerSse(res);
 
   let closed = false;
@@ -116,8 +117,8 @@ router.get('/sets/partslist-pdf/stream/:jobId', requireToken, async (req: Authed
     send({ status: job.status, error: job.error || null });
     if (isDone(job.status)) cleanup();
   };
-  const onStatus = (nutzlast?: string) => { if (!nutzlast || nutzlast === jobId) return pruefe(); };
-  listen(PDF_KANAL, onStatus);
+  const onStatus = (nutzlast?: string) => { if (!nutzlast || nutzlast === pdfSchluessel(jobId)) return pruefe(); };
+  listen(AUFTRAG_STAND_KANAL, onStatus);
 
   // 3) Rückfall, falls ein Signal während einer Verbindungsstörung verloren geht.
   const fallback = setInterval(pruefe, 15000);
@@ -127,7 +128,7 @@ router.get('/sets/partslist-pdf/stream/:jobId', requireToken, async (req: Authed
   function cleanup() {
     if (closed) return;
     closed = true;
-    unlisten(PDF_KANAL, onStatus);
+    unlisten(AUFTRAG_STAND_KANAL, onStatus);
     clearInterval(fallback);
     clearInterval(heartbeat);
     unregisterSse();
@@ -155,12 +156,14 @@ router.get('/sets/partslist-pdf/download/:jobId', requireToken, async (req: Auth
   res.setHeader('Content-Disposition', 'attachment; filename="teileliste.pdf"');
   // streamFileToResponse statt rohem pipe(): Zwischen existsSync oben und dem
   // Öffnen hier kann cleanOldPdfJobs (10-Minuten-TTL) die Datei entfernen —
-  // ein Lesestrom-Fehler ohne Zuhörer beendet den Prozess (utils/httpError.ts).
+  // ein Lesestrom-Fehler ohne Zuhörer beendet den Prozess (src/infra/httpError.ts).
   // Aufgeräumt wird nur bei VOLLSTÄNDIGER Auslieferung.
   streamFileToResponse(res, pdfPath, () => {
     _pdfFs.unlink(pdfPath).catch(ohneFehlendeDatei('pdf:datei loeschen'));
     loescheAuftrag(jobId).catch((e: unknown) => meldeUndWeiter('pdf:auftrag-loeschen', e));
   }, req);
 });
+
+router.use(fehlerAntwort);
 
 export default router;

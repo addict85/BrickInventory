@@ -77,7 +77,7 @@ test('keine Rebrickable-Farbnummer wandert als BrickLink-Farbe hinaus', () => {
 
 test('Posten ohne bekannte BrickLink-Farbe gehen nicht mit — und werden genannt', () => {
   const js = quelle();
-  // Dieselbe Regel wie beim Import (utils/wantedListe.ts): Was sich nicht
+  // Dieselbe Regel wie beim Import (src/merkliste/wantedListe.ts): Was sich nicht
   // abbilden lässt, bleibt draussen und wird GESAGT. Stillschweigend
   // auszulassen wäre fast so schlecht wie zu raten — die Teile fehlen dann in
   // der Bestellung, und es fällt beim Zählen auf.

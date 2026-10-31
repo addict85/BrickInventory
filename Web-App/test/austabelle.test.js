@@ -16,7 +16,7 @@ const fs     = require('fs');
 const path   = require('path');
 
 const ROOT = path.join(__dirname, '..');
-const { ausTabelle } = require(path.join(ROOT, 'dist', 'utils', 'validate.js'));
+const { ausTabelle } = require(path.join(ROOT, 'dist', 'src/infra/validate.js'));
 
 const TABELLE = { year_desc: 'rb.year DESC', name_asc: 'rb.name ASC' };
 
@@ -62,8 +62,8 @@ test('ohne Vorgabe kommt undefined statt eines geerbten Werts', () => {
 // ── Die drei Fundstellen: kein direkter Tabellenzugriff mehr ────────────────
 
 const STELLEN = [
-  ['utils/dienste/katalog.ts', 'SORTS',              /SORTS\s*\[/],
-  ['utils/handlers/sets.ts',   'SET_SORTS',          /SET_SORTS\s*\[/],
+  ['src/katalog/dienst.ts', 'SORTS',              /SORTS\s*\[/],
+  ['src/sets/abfragen.ts',   'SET_SORTS',          /SET_SORTS\s*\[/],
   ['routes/api_v1/sets.ts',    'INSTR_EXT_BY_MIME',  /INSTR_EXT_BY_MIME\s*\[/],
 ];
 

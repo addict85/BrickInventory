@@ -16,7 +16,6 @@ const assert = require('node:assert/strict');
 const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { testServer } = require('./helpers/server');
@@ -49,7 +48,7 @@ test('SMTP nur mit Passwort', { concurrency: 1 }, async (t) => {
     await db.pool.end().catch(() => {});
   });
   const { base } = testServer(_req, { sitzung: { userId: uid, isAdmin: true },
-    routen: { '/api/v1/settings': 'routes/settings.js' }, t });
+    routen: { '/api/v1': 'routes/api_v1/settings.js' }, t });
   const speichern = (body) => fetch(`${base}/api/v1/settings`, { method: 'POST',
     headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
     .then(async r => ({ status: r.status, body: await r.json() }));

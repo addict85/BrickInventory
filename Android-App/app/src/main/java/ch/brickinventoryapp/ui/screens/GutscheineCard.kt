@@ -22,7 +22,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.R
-import ch.brickinventoryapp.data.model.Gutschein
+import ch.brickinventoryapp.ui.model.GutscheinAnsicht
 import ch.brickinventoryapp.ui.GutscheinUiState
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.util.NumericInput
@@ -57,6 +57,8 @@ fun GutscheineCard(
     onGuthabenAlle: () -> Unit,
     /** Den laufenden Durchgang anhalten. */
     onGuthabenAbbrechen: () -> Unit,
+    /** Die Liste nach einem Ladefehler neu holen. */
+    onErneut: () -> Unit,
 ) {
     // Die gewählte Datei lebt nur im Formular — eine Uri ist eine Berechtigung dieses
     // Bildschirms, kein Datum des Kontos. rememberSaveable, weil sie eine Wahl des
@@ -136,7 +138,9 @@ fun GutscheineCard(
         // Behalten, und die App kann Dateien nicht speichern oder weitergeben (NUR_WEB in
         // test/webapp-endpunkte.test.js).
 
-        if (zustand.gutscheine.isEmpty() && !zustand.laedt) {
+        if (zustand.gutscheine.isEmpty() && !zustand.laedt && zustand.fehler != null) {
+            ch.brickinventoryapp.ui.components.FehlerHinweis(zustand.fehler, onErneut)
+        } else if (zustand.gutscheine.isEmpty() && !zustand.laedt) {
             Text(
                 stringResource(R.string.vouchers_empty),
                 style = MaterialTheme.typography.bodySmall,
@@ -285,7 +289,7 @@ fun GutscheineCard(
  */
 @Composable
 private fun GutscheinZeile(
-    g: Gutschein,
+    g: GutscheinAnsicht,
     pinSichtbar: Boolean,
     onPinSchalten: () -> Unit,
     onBearbeiten: () -> Unit,

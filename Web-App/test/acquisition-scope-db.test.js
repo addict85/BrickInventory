@@ -5,7 +5,7 @@
  * „Wenn ich den Kaufpreis im Kaufpreis-Dialog anpasse (Android oder Webapp),
  * wird er nicht gespeichert. In der Webapp kommt die Meldung Not found."
  * Sein Server-Log zeigte zwei 404 aus derselben Wurzel:
- *   routes/sets.js:1225            → „Not found" (heute utils/dienste/erfassungen.ts)
+ *   routes/sets.js:1225            → „Not found" (heute src/bestand/erfassungen.ts)
  *   routes/api_v1/acquisitions.js  → „Erfassung nicht gefunden"
  *
  * Ursache: Beide Wege suchten die Zeile mit `WHERE id=$1 AND user_id=$2` und
@@ -36,7 +36,6 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { haeltSet } = require('./helpers/bestand');

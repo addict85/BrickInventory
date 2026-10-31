@@ -46,7 +46,7 @@ POST /api/v1/auth/login — die EINE Anmeldung, fuer Webapp und App.
 Es gab zwei: diese hier (Sitzung, Cookie) und /api/v1/auth/login (Token).
 Sie beantworten dieselbe Frage und unterschieden sich nur darin, WAS sie
 zurueckgeben — und genau das hat sie zweimal auseinanderlaufen lassen (siehe
-pruefeAnmeldedaten in utils/auth.ts).
+pruefeAnmeldedaten in src/konto/auth.ts).
 
 Zusammenlegen geht, weil der Sitzungs-Login SCHON IMMER auch einen Token
 ausgestellt hat: Die Webapp braucht ihn fuer EventSource, das keine
@@ -150,7 +150,7 @@ die Folge und nicht der Anlass.
 ```text
 ── Warum die Sitzungen enden muessen ──────────────────────────────────
 
-istVerwalter() (utils/auth.ts) fragt ZUERST `req.session.isAdmin`. Das
+istVerwalter() (src/konto/auth.ts) fragt ZUERST `req.session.isAdmin`. Das
 steht seit dem Anmelden fest und wird nie nachgefuehrt. Ein Entzug wirkte
 damit auf den BROWSER gar nicht: Wer sein Fenster offen liess, blieb
 Verwalter — das Sitzungs-Cookie hat kein maxAge, gilt also bis zum
@@ -199,7 +199,7 @@ Store läuft auf `user_sessions` (server.ts, tableName). to_regclass
 lieferte damit immer NULL und das DELETE lief NIE — ein Administrator
 konnte das Passwort eines übernommenen Kontos zurücksetzen, und die
 offene Sitzung des Angreifers blieb bestehen. Beide Schritte laufen
-jetzt über die zentralen Helfer in utils/auth.ts, ohne Rückfall.
+jetzt über die zentralen Helfer in src/konto/auth.ts, ohne Rückfall.
 ```
 
 <a id="delete-users-id"></a>
@@ -367,7 +367,7 @@ fest.
 
 Sie hatte keinen Aufrufer, und das stand seit Nachtrag 154 als Kommentar
 genau hier: „Gefahrlos umzustellen, weil die Route KEINEN Aufrufer hat: Der
-Link in der Verifikationsmail zeigt auf /verify (utils/mailer.ts), das
+Link in der Verifikationsmail zeigt auf /verify (src/infra/mailer.ts), das
 Frontend ruft sie nicht auf und die Android-App auch nicht."
 
 Damals wurde ihre Antwortform berichtigt und sie stehengelassen. Das ist

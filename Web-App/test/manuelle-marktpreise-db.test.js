@@ -42,7 +42,7 @@ const { buildAndRequire, handlerModul } = require('./helpers/sources');
 const _req = buildAndRequire();
 const db = _req('db/database.js');
 const H  = handlerModul(_req);
-const MF = _req('utils/handlers/minifigs.js');
+const MF = _req('src/figuren/abfragen.js');
 const { haeltFigur, haeltTeil } = require('./helpers/bestand');
 
 const U = 990701;

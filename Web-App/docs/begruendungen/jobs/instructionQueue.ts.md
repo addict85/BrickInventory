@@ -88,7 +88,7 @@ Hier stand ein setInterval(…, 3000), das `instr_queue_trigger` abfragte.
 NACHGEMESSEN im Leerlauf: 9 Abfragen in 30 Sekunden, also rund 28'800 am
 Tag, die praktisch immer nichts finden.
 
-Genau diese Zahl steht im Kopf von utils/pgNotify.ts als Begründung
+Genau diese Zahl steht im Kopf von db/pgNotify.ts als Begründung
 dafür, dass es das Modul gibt — es hat zwei solche Schleifen abgelöst
 (csv_sync_trigger, job_reschedule_trigger). Diese dritte war übrig
 geblieben. Nebenbei wirkt der Auslöser jetzt sofort statt bis zu drei

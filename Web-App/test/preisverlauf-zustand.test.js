@@ -19,7 +19,6 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.WEB_WORKERS = '1';
 const _req = require('./helpers/sources').buildAndRequire();
 
 test('ohne Erfassung kein Zustand im Diagramm, die Rohdaten bleiben', { concurrency: 1 }, async (t) => {
@@ -32,7 +31,7 @@ test('ohne Erfassung kein Zustand im Diagramm, die Rohdaten bleiben', { concurre
   }
   const mc = await db.pool.connect();
   try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }
-  const { getMinifigPriceHistory, zustaendeFuerVerlauf } = _req('utils/priceHistory.js');
+  const { getMinifigPriceHistory, zustaendeFuerVerlauf } = _req('src/finanzen/priceHistory.js');
   const NAME = `verlauf-${process.pid}`, FN = `fig-vl${process.pid}`;
   const weg = async () => {
     await db.run('DELETE FROM users WHERE username=$1', [NAME]);

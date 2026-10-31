@@ -38,7 +38,6 @@ const crypto = require('node:crypto');
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
-process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
@@ -122,7 +121,16 @@ test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async (t) => {
 
   const alsNutzer = async (id, admin = false) => {
     const r = await fetch(`${basis}/einloggen/${id}/${admin ? 1 : 0}`);
-    return (r.headers.get('set-cookie') || '').split(';')[0];
+    // Erst den Rumpf ganz lesen: express-session hält das letzte Byte zurück,
+    // bis die Sitzung gespeichert ist; fetch() kehrt schon mit den Kopfzeilen zurück.
+    const rumpf = await r.text();
+    const keks = (r.headers.get('set-cookie') || '').split(';')[0];
+    // Trägt die Sitzung nicht, wären alle folgenden Fälle nur 401 — dann hier die Ursache nennen.
+    const probe = await fetch(`${basis}/api/v1/vouchers`, { headers: { cookie: keks } });
+    if (!r.ok || !keks || probe.status !== 200)
+      assert.fail(`Anmeldung als ${id} trägt nicht: ${r.status} ${rumpf}, Keks ${keks ? 'da' : 'fehlt'}, `
+        + `Probe ${probe.status} ${await probe.text()}`);
+    return keks;
   };
   const hole = (pfad, keks, opts = {}) =>
     fetch(basis + pfad, { ...opts, headers: { cookie: keks, ...(opts.headers || {}) } });
@@ -340,7 +348,7 @@ test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async (t) => {
       // ist genau hier belegt: kein zweiter Router, kein zweiter Pfad — nur
       // ein anderer Ausweis an derselben Tuer.
       // Die Tabelle haelt den SHA-256-Hex des Tokens, nicht den Klartext —
-      // der Klartext existiert nur beim Klienten (siehe utils/auth.ts). Ein
+      // der Klartext existiert nur beim Klienten (siehe src/konto/auth.ts). Ein
       // Test, der den Klartext einfuegt, prueft nichts.
       const alsHash = t => crypto.createHash('sha256').update(t).digest('hex');
       await db.run(

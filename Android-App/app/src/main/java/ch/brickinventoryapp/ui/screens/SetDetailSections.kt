@@ -471,7 +471,8 @@ fun LazyListScope.setDetailHeroImage(
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
         ) {
             if (imageUrl != null) {
-                AsyncImage(
+                ch.brickinventoryapp.ui.components.GemeinsamesBild(set.setNumber) { bild ->
+                    AsyncImage(
                     model = coil3.request.ImageRequest.Builder(LocalContext.current)
                         .data(imageUrl)
                         .memoryCacheKeyExtra("retry", detailRetry.intValue.toString())
@@ -487,13 +488,14 @@ fun LazyListScope.setDetailHeroImage(
                             }
                         }
                     },
-                    modifier = Modifier
+                    modifier = bild
                         .fillMaxWidth()
                         .height(200.dp)
                         .clip(Formen.chip)
                         .clickable(role = Role.Button) { onZoom() },
                     contentScale = ContentScale.Fit
                 )
+                }
             } else {
                 Box(
                     Modifier
@@ -529,7 +531,7 @@ fun LazyListScope.setDetailHeroImage(
  */
 fun LazyListScope.setDetailAlarmSection(
     setNumber: String,
-    alarme: List<ch.brickinventoryapp.data.model.Preisalarm>,
+    alarme: List<ch.brickinventoryapp.ui.model.PreisalarmAnsicht>,
     currency: String,
     onSetze: (setNumber: String, richtung: String, roh: String, zustand: String) -> Unit,
 ) {

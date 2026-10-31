@@ -56,6 +56,4 @@ class FinanzenRepository @Inject constructor(
         if (accounts == null)
             cached("stats", StatsResponse.serializer()) { safeCall { api.getStats() } }
         else safeCall { api.getStats(accounts) }
-
-    suspend fun triggerPriceJob(): Result<GenericAdminResponse> = safeCall { api.triggerPriceJob() }
 }

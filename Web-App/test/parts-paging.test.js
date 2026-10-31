@@ -264,11 +264,11 @@ test('die Verkleinerung lässt keine Anfrage warten', () => {
     'Ohne Obergrenze laufen beliebig viele Verkleinerungen gleichzeitig');
   assert.match(server, /function queueThumb/, 'Warteschlange fehlt');
   // Im Ausliefer-Pfad darf nicht auf die Verkleinerung gewartet werden.
-  // Dieser Pfad IST seit Nachtrag 135 utils/imgCacheServe.ts — vorher ein
+  // Dieser Pfad IST seit Nachtrag 135 src/katalog/bilder/imgCacheServe.ts — vorher ein
   // grosszügig geschnittenes Stück des Route-Rumpfs, was nach dem Umzug ins
   // Leere zeigte.
   const proxy = fs.readFileSync(
-    path.join(ROOT, 'utils', 'imgCacheServe.ts'), 'utf8');
+    path.join(ROOT, 'src/katalog/bilder/imgCacheServe.ts'), 'utf8');
   assert.doesNotMatch(proxy, /await makeProxyThumb/,
     'Eine wartende Anfrage reiht 150 ms je Bild aneinander');
   assert.match(proxy, /queueThumb\(cacheFile, thumbFile\)/,
@@ -317,7 +317,7 @@ test('Kategorien werden über den Teilekatalog aufgelöst', () => {
   // 'Unknown', wenn die Set-Teile-Antwort kein part_cat_id mitliefert. Das ist
   // bei /sets/{id}/parts/ die Regel: Das eingebettete part-Objekt führt das
   // Feld meist nicht. Die Filterliste zeigte deshalb nur einen Eintrag.
-  // Die Liste steht seit dem 29.10. in utils/handlers/parts.ts
+  // Die Liste steht seit dem 29.10. in src/teile/abfragen.ts
   // (getPartsCategories), einmal für Zusammenfassung und Live-Abfrage.
   const parts = require('./helpers/sources').handlerQuelle();
   assert.match(parts, /LEFT JOIN rb_parts rp ON rp\.part_num = \$\{nummer\}/,

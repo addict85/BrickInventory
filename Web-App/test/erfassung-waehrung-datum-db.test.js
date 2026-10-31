@@ -16,7 +16,6 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.WEB_WORKERS = '1';
 
 const Module = require('node:module');
 const _echtesRequire = Module.prototype.require;
@@ -49,7 +48,7 @@ test('Erfassungen: Kontowährung und CSV-Datum', { concurrency: 1 }, async (t) =
   for (const [w, p] of [['EUR', 500], ['CHF', 800]])
     await db.run(`INSERT INTO price_cache (set_number,condition,currency_code,avg_price,qty_avg_price,total_quantity)
                   VALUES ($1,'N',$2,$3,$3,3)`, [SN, w, p]);
-  const { updateSet, addSetWithDate } = _req('utils/setService.js');
+  const { updateSet, addSetWithDate } = _req('src/sets/setService.js');
 
   try {
     await t.test('die Mengenerhöhung nimmt den Preis in der Kontowährung', async () => {

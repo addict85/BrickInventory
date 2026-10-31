@@ -8,6 +8,10 @@
  * oder sie steht mit Grund in AUSGELASSEN. Eine neue Route ohne beides macht
  * den Test rot.
  *
+ * Fehlende Felder MIT Standardwert zählen hier nicht (anders als bei den
+ * GET-Routen): GenericResponse und GenericAdminResponse sind Sammeltypen für
+ * Dutzende Routen, jedes ihrer Felder gilt nur für einige.
+ *
  * Die Schritte laufen in einer festen Reihenfolge, weil sie aufeinander
  * aufbauen (anlegen → ändern → löschen) und die Sitzung zwischen drei Konten
  * wechselt (Haushalt einladen und beitreten).
@@ -154,21 +158,24 @@ test('die Schreibantworten passen zu den Kotlin-Modellen', { concurrency: 1, tim
   const basis = `http://127.0.0.1:${srv.address().port}`;
 
   const modelle = kotlinModelle(APP);
-  const routen = schreibRouten(path.join(APP, 'data', 'api', 'BrickApiService.kt'));
+  const routen = schreibRouten(path.join(APP, 'data', 'api'));
   const typJe = new Map(routen.map(r => [`${r.methode} ${r.pfad}`, r.typ]));
 
   /** Werte für die Platzhalter im Pfad; Schritte tragen neue nach. */
   const w = { setNumber: SET, partNumber: TEIL, colorId: String(FARBE), figNumber: FIGUR };
   const erst = async (sql, werte) => (await db.get(sql, werte));
 
-  /** @type {{ m: string, p: string, body?: any, form?: () => Promise<FormData>|FormData, q?: string, als?: object, davor?: () => Promise<void>, danach?: (j: any) => Promise<void>|void }[]} */
+  /** @type {{ m: string, p: string, body?: any, form?: () => Promise<FormData>|FormData, q?: string, kopf?: () => object, als?: object, davor?: () => Promise<void>, danach?: (j: any) => Promise<void>|void }[]} */
   const SCHRITTE = [
     // ── Anmeldung und Konto ───────────────────────────────────────────────
-    { m: 'POST', p: '/api/v1/auth/login', body: { username: NAME, password: PASS, label: 'Vertrag', never_expires: true } },
+    { m: 'POST', p: '/api/v1/auth/login', body: { username: NAME, password: PASS, label: 'Vertrag', never_expires: true },
+      danach: (j) => { w.appToken = j.token; } },
+    // Der Tausch nimmt den Token aus der Kopfzeile, nicht die Sitzung des Tests.
+    { m: 'POST', p: '/api/v1/auth/token-rotieren', kopf: () => ({ Authorization: 'Bearer ' + w.appToken }) },
     { m: 'POST', p: '/api/v1/auth/qr-login', davor: async () => {
         const nonce = 'vertrag' + process.pid + Date.now();
         await db.run(`INSERT INTO qr_login_tokens (token, user_id, expires_at) VALUES ($1, $2, NOW() + INTERVAL '5 minutes')`,
-          [_req('utils/auth.js').hashToken(nonce), uid]);
+          [_req('src/konto/auth.js').hashToken(nonce), uid]);
         w.qr = 'bim:' + nonce;
       }, body: () => ({ token: w.qr }) },
     { m: 'POST', p: '/api/v1/auth/register', davor: async () => {
@@ -179,7 +186,7 @@ test('die Schreibantworten passen zu den Kotlin-Modellen', { concurrency: 1, tim
     { m: 'POST', p: '/api/v1/auth/zweiter-faktor/einrichten', body: { password: PASS },
       danach: (j) => { w.geheimnis = j.geheimnis; } },
     { m: 'POST', p: '/api/v1/auth/zweiter-faktor/bestaetigen', body: () => {
-        const zf = _req('utils/zweiterFaktor.js');
+        const zf = _req('src/konto/zweiterFaktor.js');
         return { code: zf.hotp(zf.ausBase32(w.geheimnis), zf.zeitschritt()) };
       }, danach: (j) => { w.codes = j.codes; } },
     { m: 'POST', p: '/api/v1/auth/zweiter-faktor/codes', body: () => ({ code: w.codes[0] }),
@@ -196,7 +203,7 @@ test('die Schreibantworten passen zu den Kotlin-Modellen', { concurrency: 1, tim
     { m: 'POST', p: '/api/v1/settings/user/theme', body: { theme: '' },
       danach: (j) => { assert.deepEqual([j.theme, j.eigenes], ['classic', null]); } },
     { m: 'DELETE', p: '/api/v1/settings/tokens/{tokenId}', davor: async () => {
-        await _req('utils/auth.js').createToken(uid, 'Zum Entwerten');
+        await _req('src/konto/auth.js').createToken(uid, 'Zum Entwerten');
         w.tokenId = (await erst(`SELECT substring(token, 1, 16) AS t FROM api_tokens WHERE user_id = $1 AND label = 'Zum Entwerten'`, [uid])).t;
       } },
 
@@ -315,6 +322,15 @@ test('die Schreibantworten passen zu den Kotlin-Modellen', { concurrency: 1, tim
     { m: 'POST', p: '/api/v1/admin/brickset-queue/{setNumber}/retry', davor: async () => { w.setNumber = SET2; } },
     { m: 'DELETE', p: '/api/v1/admin/brickset-queue/{setNumber}' },
 
+    // ── Hintergrundarbeiten (Auftragstabelle) ─────────────────────────────
+    { m: 'POST', p: '/api/v1/admin/auftraege/{id}/abbrechen', davor: async () => {
+        w.id = String(await _req('src/auftraege/repository/auftraege.js').stelleAuftragEin('anleitung', { set_number: SET },
+          { schluessel: `vertrag:${process.pid}:${Date.now()}` }));
+      } },
+    { m: 'POST', p: '/api/v1/admin/auftraege/{id}/wiederholen' },
+    { m: 'POST', p: '/api/v1/admin/auftraege/art/{art}/jetzt', davor: async () => { w.art = 'anleitung'; } },
+    { m: 'DELETE', p: '/api/v1/admin/auftraege/art/{art}' },
+
     // ── Zum Schluss: Passwort ändern (verwirft alle Token), abmelden ──────
     { m: 'POST', p: '/api/v1/auth/change-password', body: { current: PASS, newPassword: PASS + 'x' } },
     { m: 'POST', p: '/api/v1/auth/logout' },
@@ -334,6 +350,7 @@ test('die Schreibantworten passen zu den Kotlin-Modellen', { concurrency: 1, tim
     const init = { method: s.m, signal: AbortSignal.timeout(15_000) };
     if (s.form) init.body = await s.form();
     else if (body !== undefined) { init.body = JSON.stringify(body); init.headers = { 'Content-Type': 'application/json' }; }
+    if (s.kopf) init.headers = { ...(init.headers || {}), ...s.kopf() };
     let antwort;
     try { antwort = await fetch(basis + pfad + (q ? '?' + q : ''), init); }
     catch (e) { status.push(`${schluessel}: ${e.name}`); als = { id: uid, name: NAME, admin: true }; continue; }
@@ -344,7 +361,8 @@ test('die Schreibantworten passen zu den Kotlin-Modellen', { concurrency: 1, tim
     gelaufen.add(schluessel);
     const typ = typJe.get(schluessel);
     if (typ && modelle.has(typ))
-      abweichungen.push(...pruefe(json, { art: 'klasse', name: typ, nullbar: false }, modelle, schluessel));
+      abweichungen.push(...pruefe(json, { art: 'klasse', name: typ, nullbar: false }, modelle, schluessel,
+        { standardwerte: false }));
     if (s.danach) await s.danach(json);
     dauer.push([Date.now() - start, schluessel]);
   }

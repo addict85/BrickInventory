@@ -1,5 +1,9 @@
 # Obergrenze fuer die Lint-Warnungen.
-24
+0
+# VORHERSAGE, eingetragen VOR dem Lauf (30.10.2026): 0. Lauf 41126901892 zaehlte
+# 31; behoben bzw. mit Grund unterdrueckt (app/lint.xml, @Suppress, tools:ignore)
+# sind alle gemeldeten Gruppen. Zeigt der naechste Lauf mehr, ist es ein neuer
+# Befund: beheben, nicht die Grenze heben.
 # NACHGEMESSEN hochgesetzt von 25, und zwar OHNE Vorhersage — ich hatte den
 # Befund nicht erwartet (Lauf 37649940049, Android-App auf claude/pdf-zoom).
 #

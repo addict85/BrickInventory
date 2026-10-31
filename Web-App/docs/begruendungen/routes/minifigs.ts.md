@@ -98,7 +98,7 @@ Preis und Zustand nicht mehr an die Bestandszeile (Migration 0035) — sie
 stehen in der Erfassung, die recordAcquisitionForDay() gleich darunter
 anlegt.
 Menge 0: Sie entsteht aus der Erfassung, die recordAcquisitionForDay()
-weiter unten anlegt (utils/bestandsmenge.ts).
+weiter unten anlegt (db/bestandsmenge.ts).
 Ohne bl_fig_number: Die BrickLink-Nummer steht seit Migration 0037 in
 bl_zuordnung, einmal je Figur und ohne Konto. Eingegeben wird sie
 weiterhin hier — sie landet nur woanders.
@@ -126,7 +126,7 @@ heute".
 
 ```text
 Aufstocken der heutigen Zeile ODER eine neue anlegen — beides
-erledigt recordAcquisitionForDay (utils/acquisitions.ts). Die
+erledigt recordAcquisitionForDay (src/bestand/acquisitions.ts). Die
 Tagesprüfung stand hier von Hand und galt nur an dieser Stelle.
 
 existing.bl_fig_number statt newBlNum: newBlNum wird erst NACH
@@ -147,7 +147,7 @@ zweiten Zeile gab es aber nur die erste, also kam deren Preis heraus.
 Nachtrag 146 hat dasselbe für das BEARBEITEN behoben. Das ERFASSEN
 hatte ich dabei übersehen; es sind zwei getrennte Wege.
 Beim Erfassen gibt es keine Zustandseingabe — dieselbe Staffelung wie
-beim Bearbeiten, nur ohne den ersten Schritt (utils/settings.ts).
+beim Bearbeiten, nur ohne den ersten Schritt (src/konto/settings.ts).
 ```
 
 <a id="abschnitt-3"></a>

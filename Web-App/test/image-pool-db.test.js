@@ -41,7 +41,6 @@ const fs = require('node:fs');
 
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
@@ -54,7 +53,7 @@ test('eine Kachelwand kostet keine einzige Abfrage', { concurrency: 1 }, async (
     t.skip('Test-DB nicht erreichbar'); return;
   }
 
-  const IM = _req('utils/imageMisses.js');
+  const IM = _req('src/katalog/bilder/imageMisses.js');
   const IQ = _req('jobs/imageQueue.js');
   await IM.initImageMisses();
   await IQ.initImageQueue();
@@ -86,7 +85,8 @@ test('eine Kachelwand kostet keine einzige Abfrage', { concurrency: 1 }, async (
     await t.test('das Wegschreiben bündelt', async () => {
       const vorher = abfragen;
       await IQ._schreibePuffer();
-      assert.ok(abfragen - vorher <= 2,
+      // Eine Anweisung für alle Notizen; dazu der Abarbeiter-Auftrag und sein NOTIFY.
+      assert.ok(abfragen - vorher <= 3,
         `${abfragen - vorher} Abfragen zum Wegschreiben von 60 Notizen — das muss ` +
         'ein Statement sein, sonst ist nur die Stelle verschoben');
       const n = (await db.get(
@@ -216,7 +216,7 @@ test('die Warteschlange hat einen Index auf dem Alter', () => {
   // Zeilen gleichgültig — mit 25 000 (nach „Katalogbilder holen") bedeutet jeder
   // Lauf sonst einen vollständigen Durchgang samt Sortierung.
   const mig = fs.readFileSync(
-    path.join(ROOT, 'db', 'migrations', '0010-image-wanted-index.sql'), 'utf8');
+    path.join(ROOT, 'db/migrations/0010-image-wanted-index.sql'), 'utf8');
   assert.match(mig, /CREATE INDEX IF NOT EXISTS idx_image_wanted_alter ON image_wanted \(requested_at\)/,
     'Der Index auf requested_at fehlt');
 });

@@ -18,7 +18,7 @@
  * Belegt wird alles an PDFs, die hier erzeugt werden. NICHT belegt ist Marcos
  * echtes LEGO-PDF: Es liegt nicht im Baum (und darf nicht hinein — das
  * Verzeichnis ist öffentlich, und auf der Karte stehen Nummer und PIN). Was
- * darüber bekannt ist, steht in utils/gutscheinPdf.ts, gemessen am 06.10.
+ * darüber bekannt ist, steht in src/gutscheine/gutscheinPdf.ts, gemessen am 06.10.
  *
  * Deshalb ist die NACHPRÜFUNG Teil der Sache und nicht Zierde: ersetzeBetrag()
  * liest sein eigenes Ergebnis zurück und gibt `null`, wenn nicht genau der
@@ -70,9 +70,9 @@ const PDFKit = require('pdfkit');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { werteAusPdf } = _req('utils/gutscheinPdf.js');
+const { werteAusPdf } = _req('src/gutscheine/gutscheinPdf.js');
 const { ersetzeBetrag, verbindeGutscheine, seitenweiseLesen, markeText, markeLesen } =
-  _req('utils/gutscheinPdfSchreiben.js');
+  _req('src/gutscheine/gutscheinPdfSchreiben.js');
 const PL = require('@cantoo/pdf-lib');
 
 /** Eine eingebettete Schrift — damit entsteht eine Identity-H-Teilmenge. */

@@ -15,7 +15,7 @@ const test   = require('node:test');
 const assert = require('node:assert/strict');
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { linkFuerKonsole } = _req('utils/mailer.js');
+const { linkFuerKonsole } = _req('src/infra/mailer.js');
 
 const TEXT = 'Hallo,\n\nhier zurücksetzen:\nhttps://lego.example.org/reset?token=abcdef0123456789\n\nGruss';
 

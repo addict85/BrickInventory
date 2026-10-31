@@ -374,7 +374,7 @@ function catCard(s){
       <div class="snum">${esc(s.set_number)}</div>
       <div class="sname">${esc(s.name)||'—'}</div>
       <div class="smeta">
-        <span data-stil="font-size:var(--fs-0)">${s.year||'—'}${themeShort?' · '+esc(themeShort.substring(0,14)):''}</span>
+        <span class="smeta-text"${themeShort ? ` title="${esc(themeShort)}"` : ''}>${s.year||'—'}${themeShort?' · '+esc(themeShort):''}</span>
         <div data-stil="display:flex;gap:3px;align-items:center;flex-wrap:wrap">
           ${s.num_parts?`<span class="qbadge">${PARTS_ICON_SVG}${s.num_parts.toLocaleString(locale())}</span>`:''}
           ${ownedBadge}
@@ -410,7 +410,7 @@ async function openCatModal(setNumber){
   ];
   if (s.owned) rows.push([t('catalog.owned'), '×' + s.owned_quantity]);
   G('cat-m-det').innerHTML = rows.map(([k, v]) => detailZeile(k, esc(String(v)))).join('');
-  // Kauf-Link kommt fertig vom Server (utils/bricklinkLink.ts). Vorher wurde er
+  // Kauf-Link kommt fertig vom Server (src/katalog/bricklinkLink.ts). Vorher wurde er
   // hier aus der Rebrickable-Nummer gebaut und immer als Set verlinkt (S=…) —
   // für alles, was BrickLink als Gear oder Buch führt, war damit sowohl der
   // Parameter als auch die Nummer falsch (dort ohne "-1"-Suffix).

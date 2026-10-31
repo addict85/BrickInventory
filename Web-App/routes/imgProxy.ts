@@ -3,23 +3,24 @@
  * Ausführlich: docs/begruendungen/routes/imgProxy.ts.md#abschnitt
  */
 import path from 'path';
-import { APP_ROOT, PUBLIC_DIR } from '../utils/appPaths';
+import { APP_ROOT, PUBLIC_DIR } from '../src/infra/appPaths';
 import fs from 'fs';
-import { resolveUserId } from '../utils/auth';
-import { streamFileToResponse, vorDem, ohneFehlendeDatei } from '../utils/httpError';
-import { queueThumb } from '../utils/proxyThumbs';
-import { liefereAusCache } from '../utils/imgCacheServe';
-import { imgProxyFailures } from '../utils/imgProxyStats';
-import { istBekanntFehlend, merkeFehlend } from '../utils/imageMisses';
-import { IMG_PROXY_PFAD, IMG_PROXY_PFAD_ALT } from '../utils/images';
+import { resolveUserId } from '../src/konto/auth';
+import { streamFileToResponse, vorDem, ohneFehlendeDatei } from '../src/infra/httpError';
+import { queueThumb } from '../src/katalog/bilder/proxyThumbs';
+import { liefereAusCache } from '../src/katalog/bilder/imgCacheServe';
+import { imgProxyFailures } from '../src/katalog/bilder/imgProxyStats';
+import { istBekanntFehlend, merkeFehlend } from '../src/katalog/bilder/imageMisses';
+import { IMG_PROXY_PFAD, IMG_PROXY_PFAD_ALT } from '../src/katalog/bilder/images';
 import type { Request, Response, Express } from 'express';
 import type { OutgoingHttpHeaders } from 'http';
 import crypto from 'crypto';
 import https from 'https';
 import zlib from 'zlib';
-import { nacharbeit } from '../utils/nacharbeit';
-import { ERLAUBTE_BILD_HOSTS, hostErlaubt } from '../utils/fremdeAdressen';
+import { nacharbeit } from '../src/auftraege/nacharbeit';
+import { ERLAUBTE_BILD_HOSTS, hostErlaubt } from '../src/infra/fremdeAdressen';
 
+import { einmalDekodiert, urlOderNull } from '../src/infra/validate';
 /**
  * Obergrenze für den Bild-Zwischenspeicher des Proxys.
  * Ausführlich: docs/begruendungen/routes/imgProxy.ts.md#proxy-cache-max-bytes
@@ -32,14 +33,14 @@ const _imgNegCache = new Map();
 /** Laufende Nummer für Temp-Dateien des Bild-Proxys (siehe tmpFile unten). */
 let _tmpSeq = 0;
 
-// Fehlgeschlagene Abrufe zählt utils/imgProxyStats.ts (GET /api/v1/admin/img-probe):
+// Fehlgeschlagene Abrufe zählt src/katalog/bilder/imgProxyStats.ts (GET /api/v1/admin/img-probe):
 // Ohne Zähler war „Bilder erscheinen teilweise nicht“ nicht einzugrenzen.
 
 /**
  * Verbindungs-Pool für CDN-Abrufe.
  * Ausführlich: docs/begruendungen/routes/imgProxy.ts.md#cdnagent
  */
-const _cdnAgent = new (require('https').Agent)({
+const _cdnAgent = new https.Agent({
   keepAlive: true,
   maxSockets: 32,
   maxFreeSockets: 16,
@@ -51,7 +52,7 @@ const _cdnAgent = new (require('https').Agent)({
 });
 
 // Die Vorschau-Maschinerie (Warteschlange, prozessübergreifende Sperre,
-// Verkleinern) liegt in utils/proxyThumbs.ts.
+// Verkleinern) liegt in src/katalog/bilder/proxyThumbs.ts.
 
 /**
  * 200 mit Platzhalter statt 404: Den Platzhalter zeigen beide Oberflächen
@@ -93,8 +94,9 @@ export async function bildDurchreichen(req: Request, res: Response) {
   let url = String(req.query.url || '');
   if (!url || !url.startsWith('https://')) return res.status(400).end();
   // Rebrickable API sometimes returns pre-encoded URLs — decode once to fix double-encoding
-  try { const decoded = decodeURIComponent(url); if (decoded.startsWith('https://')) url = decoded; } catch(_) {}
-  // Nur bekannte Bild-CDNs (utils/fremdeAdressen.ts, wie der Dateidownload).
+  const decoded = einmalDekodiert(url);
+  if (decoded.startsWith('https://')) url = decoded;
+  // Nur bekannte Bild-CDNs (src/infra/fremdeAdressen.ts, wie der Dateidownload).
   // Eine unlesbare Adresse ist ebenfalls 403: „holt der Server nicht“.
   if (!hostErlaubt(url, ERLAUBTE_BILD_HOSTS)) return res.status(403).end();
   // Disk-Cache: jedes CDN-Bild wird serverseitig nur einmal geholt.
@@ -107,15 +109,11 @@ export async function bildDurchreichen(req: Request, res: Response) {
   const wantThumb = req.query.thumb === '1';
   // gen=0: Die ANFRAGE rechnet nichts. Statt die Verkleinerung sofort
   // anzustossen, hinterlässt sie eine Notiz — abgearbeitet wird sie vom
-  // Hintergrund-Job (jobs/imageQueue.ts), gedrosselt und nur auf dem
-  // Primärprozess.
+  // Auftrag 'bildbedarf' (jobs/imageQueue.ts), gedrosselt und nur im
+  // Job-Prozess.
   // Ausführlich: docs/begruendungen/routes/imgProxy.ts.md#bilddurchreichen-darferzeugen
   const darfErzeugen = req.query.gen !== '0';
-  /** Setnummer aus einer Rebrickable-Set-Adresse, sonst null. */
-  const setAusUrl = () => {
-    const m = /\/media\/sets\/([^/?#]+?)\.(?:jpg|jpeg|png|webp)/i.exec(String(url || ''));
-    return m ? m[1] : null;
-  };
+  const setAusUrl = () => setNummerAusBildAdresse(String(url || ''));
   const notiere = () => {
     const sn = setAusUrl();
     if (sn) nacharbeit().bildVormerken(String(url), sn);
@@ -123,7 +121,7 @@ export async function bildDurchreichen(req: Request, res: Response) {
   const thumbFile = cacheFile + '_thumb.jpg';
 
   // Cache-Treffer (Original oder Verkleinerung) — in
-  // utils/imgCacheServe.ts. `true` heisst: beantwortet, hier ist Schluss.
+  // src/katalog/bilder/imgCacheServe.ts. `true` heisst: beantwortet, hier ist Schluss.
   if (await liefereAusCache({
     res, req, cacheFile, thumbFile, wantThumb, darfErzeugen, notiere, streamFileToResponse,
   })) return;
@@ -350,3 +348,16 @@ function registerImgProxy(app: Express) {
 }
 
 export { registerImgProxy };
+
+/**
+ * Setnummer aus einer Rebrickable-Set-Adresse, sonst null. Das geladene Bild
+ * wird unter dieser Nummer für alle Konten abgelegt; deshalb zählt nur der
+ * ganze Pfad ohne Anfrageteil, sonst legte `…/parts/x.png?/media/sets/10294-1.jpg`
+ * ein fremdes Bild als Set ab.
+ */
+export function setNummerAusBildAdresse(adresse: string): string | null {
+  const u = urlOderNull(adresse);
+  if (!u || u.protocol !== 'https:' || u.hostname !== 'cdn.rebrickable.com' || u.search || u.hash) return null;
+  const m = /^\/media\/sets\/([A-Za-z0-9-]{1,40})\.(?:jpg|jpeg|png|webp)$/i.exec(u.pathname);
+  return m?.[1] ?? null;
+}

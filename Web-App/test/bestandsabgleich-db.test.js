@@ -17,7 +17,6 @@ const assert = require('node:assert/strict');
 const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
@@ -81,8 +80,8 @@ test('Bestandsabgleich gegen echte Datenbank', async (t) => {
     return;
   }
   await seed();
-  const { getOwnedQuantities, BESTAND_MAX_TEILE } = _req('utils/handlers/parts.js');
-  const household = _req('utils/household.js');
+  const { getOwnedQuantities, BESTAND_MAX_TEILE } = _req('src/teile/abfragen.js');
+  const household = _req('src/haushalt/haushalt.js');
 
   await t.test('zählt je Teil UND Farbe, nicht je Teilenummer', async () => {
     const b = await getOwnedQuantities([U.ich], [

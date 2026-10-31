@@ -36,7 +36,6 @@ const Module = require('node:module');
 
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.WEB_WORKERS = '1';
 
 // Den Bild-Download abfangen, BEVOR die Routen geladen werden: Sie holen ihn
 // über ein spätes require(). null = das CDN hat kein Bild.
@@ -44,7 +43,7 @@ let versuche = 0;
 const echtesRequire = Module.prototype.require;
 Module.prototype.require = function (name) {
   const m = echtesRequire.apply(this, arguments);
-  // Seit Nachtrag 125 liegt downloadSetImage in utils/setImages.ts statt im
+  // Seit Nachtrag 125 liegt downloadSetImage in src/katalog/bilder/setImages.ts statt im
   // Router — der Abfang muss dorthin zeigen, sonst greift er ins Leere und
   // der Test misst still den echten Download.
   if (typeof name === 'string' && /setImages(\.js)?$/.test(name) && m && m.downloadSetImage) {
@@ -117,7 +116,7 @@ test('bildlose Sets werden nicht immer wieder beim CDN gesucht',
       // je Bild leerte den Verbindungspool). Das Wissen wandert im Takt in die
       // Tabelle und von dort in die anderen Prozesse; hier wird beides von Hand
       // angestossen, um den frischen Prozess nachzustellen.
-      const IM = _req('utils/imageMisses.js');
+      const IM = _req('src/katalog/bilder/imageMisses.js');
       IM.merkeFehlend('set:' + PRAEFIX + '_probe');
       await IM._schreibePuffer();
       IM._leereVordergrund();
@@ -132,7 +131,7 @@ test('bildlose Sets werden nicht immer wieder beim CDN gesucht',
     await t.test('ein Bild, das es gibt, wird nicht gemerkt', async () => {
       // Gegenrichtung: Sonst wäre der Test auch grün, wenn pauschal alles als
       // fehlend gälte — und kein Bild würde je geladen.
-      const IM = _req('utils/imageMisses.js');
+      const IM = _req('src/katalog/bilder/imageMisses.js');
       IM._leereVordergrund();
       assert.equal(IM.istBekanntFehlend('set:gibt-es-nicht-in-der-tabelle'), false);
     });

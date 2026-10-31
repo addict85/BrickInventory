@@ -5,21 +5,18 @@
 // Folgen: Wer sie importierte, importierte scheinbar einen Router, und die
 // Kreise, die daraus entstanden, wurden mit späten `require()` umgangen.
 //
-import { rebrickableLimiter, consumeRebrickableDaily, rebrickableDailyStatus, parseThrottleWait } from '../utils/rateLimiter';
-import { istErsatzteil, KEINE_FARBE } from '../utils/validate';
+import { rebrickableLimiter, consumeRebrickableDaily, rebrickableDailyStatus, parseThrottleWait } from '../src/katalog/rateLimiter';
+import { KEINE_FARBE } from '../src/infra/validate';
 
 import https from 'https';
-import http from 'http';
 import path from 'path';
 import fs from 'fs';
-import * as db from '../db/database';
-import { rebrickableBackgroundLimiter } from '../utils/rateLimiter';
-import { fehlertext, meldeUndLiefere } from '../utils/httpError';
-import { neuestesInventar } from '../utils/rbInventar';
-import { mitVersion } from '../utils/setNummer';
-import { getGlobalSetting } from '../utils/settings';
+import { rebrickableBackgroundLimiter } from '../src/katalog/rateLimiter';
+import { fehlertext, meldeUndLiefere } from '../src/infra/httpError';
+import { mitVersion } from '../src/sets/setNummer';
+import { getGlobalSetting } from '../src/konto/settings';
 import { ERLAUBTE_DOWNLOAD_HOSTS, hostErlaubt, naechsteUmleitung,
-         UMLEITUNGS_GRENZE } from '../utils/fremdeAdressen';
+         UMLEITUNGS_GRENZE, pfadSegment } from '../src/infra/fremdeAdressen';
 
 const BASE = 'https://rebrickable.com/api/v3';
 
@@ -81,8 +78,8 @@ function httpsGetRobust(url: string, headers: Record<string, string> = {}, timeo
     const attempt = (u: string, kopf: Record<string, string>) => {
       attempts++;
       let parsed; try { parsed = new URL(u); } catch (e) { return reject(new Error('Invalid URL: ' + u)); }
-      const lib = parsed.protocol === 'https:' ? https : http;
-      const req = lib.get({ hostname: parsed.hostname, path: parsed.pathname + parsed.search,
+      if (parsed.protocol !== 'https:') return reject(new Error('Nur https: ' + u));
+      const req = https.get({ hostname: parsed.hostname, path: parsed.pathname + parsed.search,
         headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36', ...kopf } }, res => {
         req.setTimeout(0);
         if (res.statusCode === 301 || res.statusCode === 302) {
@@ -151,87 +148,24 @@ const themeCache = new Map();
 async function getThemeName(themeId: number | string) {
   if (!themeId) return null;
   if (themeCache.has(themeId)) return themeCache.get(themeId);
-  try { const d = await rbGet(`/lego/themes/${themeId}/`); const name = d?.name||null; themeCache.set(themeId, name); return name; }
+  try { const d = await rbGet(`/lego/themes/${pfadSegment(themeId)}/`); const name = d?.name||null; themeCache.set(themeId, name); return name; }
   catch (_) { return null; }
 }
 
-async function getSetInfo(setNumber: string) {
-  const n = mitVersion(setNumber);
-  const cached = await db.get('SELECT * FROM catalog_cache WHERE set_number = $1', [n]);
-  // "Set <Nummer>" ist ein Platzhalter (BrickLink-Typprüfung, Rebrickable-404)
-  // und kein Name. Als Treffer zurückgegeben, überschrieb er beim nächsten
-  // Erfassen den echten Namen im Katalog. Nachgefragt wird höchstens täglich.
-  if (cached?.name && cached.name !== `Set ${n}`) return cached;
-  if (cached?.name && cached.fetched_at && Date.now() - new Date(cached.fetched_at).getTime() < 86_400_000) return null;
-  const data = await rbGet(`/lego/sets/${n}/`);
-  if (!data) {
-    const hasKey = !!(await getRbKey());
-    await db.run('INSERT INTO catalog_cache (set_number, name, is_gear) VALUES ($1,$2,$3) ON CONFLICT (set_number) DO UPDATE SET is_gear=$3, fetched_at=NOW()',
-      [n, `Set ${n}`, hasKey ? 1 : 0]);
-    return null;
-  }
-  const theme = await getThemeName(data.theme_id);
-  const row = { set_number:n, name:data.name||null, year:data.year||null, theme:theme||null, pieces:data.num_parts||null, image_url:data.set_img_url||null, is_gear:0 };
-  await db.run('INSERT INTO catalog_cache (set_number,name,year,theme,pieces,image_url,is_gear) VALUES ($1,$2,$3,$4,$5,$6,0) ON CONFLICT (set_number) DO UPDATE SET name=$2,year=$3,theme=$4,pieces=$5,image_url=$6,is_gear=0',
-    [n, row.name, row.year, row.theme, row.pieces, row.image_url]);
-  return row;
+/** Die Stammdaten eines Sets; null, wenn Rebrickable es nicht kennt. */
+async function holeSet(nummer: string): Promise<any> {
+  return rbGet(`/lego/sets/${pfadSegment(nummer)}/`);
 }
 
-async function getAllSetPartsFromCsv(setNumber: string) {
-  const db = require('../db/database');
-  const invId = await neuestesInventar(setNumber).catch(() => null);
-  if (!invId) return null;
-
-  const parts = await db.all(
-    `SELECT ip.part_num, ip.color_id, ip.quantity, ip.is_spare, ip.img_url,
-            p.name, p.part_img_url,
-            c.name as color_name, c.rgb as color_rgb,
-            m.bl_id AS bl_part_num
-     FROM rb_inventory_parts ip
-     LEFT JOIN rb_parts p ON p.part_num = ip.part_num
-     LEFT JOIN rb_colors c ON c.id = ip.color_id
-     LEFT JOIN bl_zuordnung  m ON m.art = 'part' AND m.rb_id = ip.part_num
-     WHERE ip.inventory_id = $1`,
-    [invId]
-  ).catch(()=>[]);
-
-  if (!parts.length) return null;
-  return parts.map((p: any) => ({
-    part: {
-      part_num:     p.part_num,
-      name:         p.name || p.part_num,
-      part_img_url: p.part_img_url || p.img_url || null,
-      external_ids: { BrickLink: p.bl_part_num && p.bl_part_num !== p.part_num ? [p.bl_part_num] : [] }
-    },
-    color: {
-      id:   p.color_id,
-      name: p.color_name || '',
-      rgb:  p.color_rgb || null
-    },
-    quantity:  p.quantity,
-    // Vorher eine eigene Aufzaehlung — die 'true' KLEINGESCHRIEBEN nicht
-    // kannte, waehrend die Teileliste daneben es tat.
-    is_spare:  istErsatzteil(p.is_spare)
-  }));
-}
-
-async function getAllSetParts(setNumber: string) {
-  // Try local CSV data first (fast, no API quota used)
-  const csvParts = await getAllSetPartsFromCsv(setNumber);
-  if (csvParts) {
-    return csvParts;
-  }
-  return getAllSetPartsApi(setNumber);
-}
-
-async function getAllSetPartsApi(setNumber: string) {
-  const n = mitVersion(setNumber);
-  const cached = await db.get('SELECT data FROM subsets_cache WHERE set_number = $1', [n]);
-  if (cached) { try { return JSON.parse(cached.data); } catch (_) {} }
+/**
+ * Die Teileliste eines Sets über die API, seitenweise. `verweigert`: Rebrickable
+ * antwortete 403 (Set unbekannt oder kein Zugriff) — das soll der Aufrufer merken.
+ */
+async function holeSetTeile(n: string): Promise<{ teile: any[]; verweigert: boolean }> {
   const key = await getRbKey();
   if (!key) throw new Error('Rebrickable API Key nicht konfiguriert.');
   const allParts: any[] = [];
-  let url = `${BASE}/lego/sets/${n}/parts/?page_size=500&inc_part_details=1`;
+  let url: string | null = `${BASE}/lego/sets/${pfadSegment(n)}/parts/?page_size=500&inc_part_details=1`;
   let pages = 0;
   while (url && pages++ < 40) {
     if (!await consumeRebrickableDaily()) {
@@ -242,32 +176,24 @@ async function getAllSetPartsApi(setNumber: string) {
     let status, body;
     try { ({ status, body } = await httpsGetRobust(url, { Authorization: `key ${key}` }, 60000)); }
     catch (e) { console.error(`  Parts page ${pages} failed: ${fehlertext(e)}`); break; }
-    if (status === 404 || status === 403) {
-      if (status === 403) {
-        console.log(`  Parts HTTP 403 for ${n} — set not found or access denied, skipping`);
-        // Cache empty result so we don't retry on every reimport
-        await db.run('INSERT INTO subsets_cache (set_number, data) VALUES ($1,$2) ON CONFLICT (set_number) DO UPDATE SET data=$2, fetched_at=NOW()',
-          [n, '[]']);
-      }
-      break;
+    if (status === 403) {
+      console.log(`  Parts HTTP 403 for ${n} — set not found or access denied, skipping`);
+      return { teile: allParts, verweigert: true };
     }
+    if (status === 404) break;
     if (status !== 200) { console.error(`  Parts HTTP ${status}`); break; }
     let data; try { data = JSON.parse(body); } catch (e) { break; }
     allParts.push(...(data.results || []));
     url = data.next || null;
     if (url) await sleep(500);
   }
-  if (allParts.length > 0) {
-    await db.run('INSERT INTO subsets_cache (set_number, data) VALUES ($1,$2) ON CONFLICT (set_number) DO UPDATE SET data=$2, fetched_at=NOW()',
-      [n, JSON.stringify(allParts)]);
-  }
-  return allParts;
+  return { teile: allParts, verweigert: false };
 }
 
 async function scrapeInstructions(setNumber: string) {
   const n = mitVersion(setNumber);
   try {
-    const { status, body } = await httpsGetRobust(`https://rebrickable.com/sets/${n}/`, { 'User-Agent': 'Mozilla/5.0', 'Accept': 'text/html' }, 8000);
+    const { status, body } = await httpsGetRobust(`https://rebrickable.com/sets/${pfadSegment(n)}/`, { 'User-Agent': 'Mozilla/5.0', 'Accept': 'text/html' }, 8000);
     if (status !== 200) return [];
     const found: any[] = [];
     for (const re of [/href="(https?:\/\/[^"]*lego\.com[^"]*\.pdf[^"]*)"/gi, /href="(https?:\/\/cdn\.rebrickable\.com\/media\/instructions[^"]+\.pdf[^"]*)"/gi, /href="(https?:\/\/assets\.lego\.com[^"]*\.pdf[^"]*)"/gi]) {
@@ -287,7 +213,13 @@ async function scrapeInstructions(setNumber: string) {
   } catch (_) { return []; }
 }
 
-async function downloadFile(url: string, destPath: string) {
+/**
+ * Obergrenze je Datei. Eine Bauanleitung hat selten über 150 MB; ohne Grenze
+ * füllte ein Server, der endlos sendet, die Platte. Abgebrochen wird im Strom.
+ */
+export const DOWNLOAD_MAX_BYTES = 300 * 1024 * 1024;
+
+async function downloadFile(url: string, destPath: string, maxBytes = DOWNLOAD_MAX_BYTES) {
   if (fs.existsSync(destPath)) return true;
   fs.mkdirSync(path.dirname(destPath), { recursive: true });
   // Warum der Host hier geprueft wird, und zwar bei JEDEM Sprung
@@ -295,7 +227,8 @@ async function downloadFile(url: string, destPath: string) {
   // Bild-Cache — und von dort liefert der Server es an jeden angemeldeten
   // Nutzer aus. Ein ungeprueftes Umleitungsziel wie http://127.0.0.1:5432/ …
   // Ausführlich: docs/begruendungen/clients/rebrickable.ts.md#downloadfile
-  if (!hostErlaubt(url, ERLAUBTE_DOWNLOAD_HOSTS)) {
+  // Nur https: Im Klartext könnte jeder auf dem Weg die Datei austauschen.
+  if (!url.startsWith('https://') || !hostErlaubt(url, ERLAUBTE_DOWNLOAD_HOSTS)) {
     console.warn(`[download] Adresse nicht in der Liste erlaubter Hosts: ${url.substring(0, 120)}`);
     return false;
   }
@@ -308,8 +241,8 @@ async function downloadFile(url: string, destPath: string) {
     const attempt = (u: string, kopf: Record<string, string>, redirects = 0) => {
       if (redirects > UMLEITUNGS_GRENZE) return resolve(false);
       let parsed; try { parsed = new URL(u); } catch (_) { return resolve(false); }
-      const lib = parsed.protocol === 'https:' ? https : http;
-      const req = lib.get(u, { family: 4, headers: kopf }, res => {
+      if (parsed.protocol !== 'https:') return resolve(false);
+      const req = https.get(u, { family: 4, headers: kopf }, res => {
         if (res.statusCode===301||res.statusCode===302) {
           res.resume();
           // Dieselbe Regel wie in httpsGetRobust — hier zusaetzlich mit der
@@ -319,12 +252,22 @@ async function downloadFile(url: string, destPath: string) {
           return attempt(weiter.url, weiter.kopfzeilen, redirects + 1);
         }
         if (res.statusCode !== 200) { res.resume(); return resolve(false); }
+        if (Number(res.headers['content-length']) > maxBytes) { res.destroy(); return resolve(false); }
         // Stream directly to file — avoids buffering large PDFs in memory
         const out = fs.createWriteStream(destPath);
-        let size = 0;
-        res.on('data', chunk => { size += chunk.length; });
+        let size = 0, zuGross = false;
+        res.on('data', chunk => {
+          size += chunk.length;
+          if (size > maxBytes && !zuGross) {
+            zuGross = true;
+            console.warn(`[download] Abgebrochen nach ${maxBytes} Byte: ${u.substring(0, 120)}`);
+            res.unpipe(out); res.destroy(); out.destroy();
+            fs.unlink(destPath, () => {}); resolve(false);
+          }
+        });
         res.pipe(out);
         out.on('finish', () => {
+          if (zuGross) return;
           if (size < 100) { fs.unlink(destPath, () => {}); return resolve(false); }
           resolve(true);
         });
@@ -350,7 +293,7 @@ async function getSetMinifigs(setNumber: string) {
     // Use background limiter — this is called from background jobs
     await rebrickableBackgroundLimiter.waitForSlot();
     const { status, body } = await httpsGetRobust(
-      `${BASE}/lego/sets/${n}/minifigs/?page_size=100`,
+      `${BASE}/lego/sets/${pfadSegment(n)}/minifigs/?page_size=100`,
       { Authorization: `key ${key}` }, 30000
     );
     if (status !== 200) return [];
@@ -372,7 +315,7 @@ async function getSetMinifigs(setNumber: string) {
 // ── Single minifig lookup ─────────────────────────────────────────────────────
 async function getMinifigInfo(figNumber: string) {
   try {
-    const data = await rbGet(`/lego/minifigs/${figNumber}/`);
+    const data = await rbGet(`/lego/minifigs/${pfadSegment(figNumber)}/`);
     if (!data) return null;
     return {
       fig_number: data.set_num || figNumber,
@@ -405,49 +348,39 @@ async function getBrickColors() {
   } catch (_) { return []; }
 }
 
-// ── Get the parts that make up a minifig (used to estimate a market price via
-// its constituent parts when no direct BrickLink minifig number is known) ────
-// Global, shared cache (analog subsets_cache for sets) since this data rarely
-// changes and Rebrickable's API is rate-limited.
-async function getMinifigParts(figNumber: string) {
-  const cached = await db.get('SELECT data FROM minifig_parts_cache WHERE fig_number = $1', [figNumber]).catch(() => null);
-  if (cached) { try { return JSON.parse(cached.data); } catch (_) {} }
-
+/**
+ * Die Teile einer Minifigur über die API; null, wenn es keine Antwort gibt
+ * (kein Schlüssel, Tageslimit, Fehler) — das soll nicht gemerkt werden.
+ */
+async function holeFigurTeile(figNumber: string): Promise<any[] | null> {
   const key = await getRbKey();
-  if (!key) return [];
+  if (!key) return null;
   if (!await consumeRebrickableDaily()) {
     console.error(`[rebrickable] Tageslimit (${(await rebrickableDailyStatus()).limit}/Tag) erreicht — Minifig-Teile für ${figNumber} übersprungen`);
-    return [];
+    return null;
   }
   try {
     await rebrickableLimiter.waitForSlot();
     const { status, body } = await httpsGetRobust(
-      `${BASE}/lego/minifigs/${encodeURIComponent(figNumber)}/parts/?page_size=200&inc_part_details=1`,
+      `${BASE}/lego/minifigs/${pfadSegment(figNumber)}/parts/?page_size=200&inc_part_details=1`,
       { Authorization: `key ${key}` }, 30000
     );
-    if (status !== 200) return [];
+    if (status !== 200) return null;
     const data = JSON.parse(body);
-    const parts = (data.results || []).map((r: RbSetTeil) => ({
+    return (data.results || []).map((r: RbSetTeil) => ({
       part_num:  r.part?.part_num || null,
       color_id:  r.color?.id ?? 0,
       quantity:  r.quantity || 1,
       bl_part_num: r.part?.external_ids?.BrickLink?.[0] || null,
     })).filter((p: { part_num?: string | null }) => p.part_num);
-
-    await db.run(
-      'INSERT INTO minifig_parts_cache (fig_number, data, fetched_at) VALUES ($1,$2,NOW()) ON CONFLICT (fig_number) DO UPDATE SET data=$2, fetched_at=NOW()',
-      [figNumber, JSON.stringify(parts)]
-    ).catch(() => {});
-
-    return parts;
-  } catch (_) { return []; }
+  } catch (e) { return meldeUndLiefere(`rebrickable:figurteile ${figNumber}`, null)(e); }
 }
 
 
 /**
  * ── Warum lookupPart hier steht und nicht mehr in routes/parts.ts ───────────
  * Es ist eine reine Rebrickable-Abfrage: getRbKey(), httpsGetRobust() und die
- * Hintergrunddrossel — alles aus dieser Datei bzw. utils/rateLimiter, nichts
+ * Hintergrunddrossel — alles aus dieser Datei bzw. src/katalog/rateLimiter, nichts
  * aus der Route. Es lag dort, weil die HTTP-Route dort steht, die es ausloest;
  * gebraucht wurde es aber auch von jobs/purchasePriceBackfill.ts, und der
  * musste dafuer aus einer ROUTE importieren.
@@ -535,7 +468,7 @@ async function blTeilZuRb(blId: string): Promise<string | null> {
   // Bei den meisten Teilen benutzen beide Dienste dieselbe Nummer. Dann
   // liefert /lego/parts/{nr}/ den Treffer, und external_ids bestaetigt ihn —
   // aus einer VERMUTUNG („die Nummern sind wohl gleich") wird eine Abbildung.
-  const direkt = await rbGet(`/lego/parts/${encodeURIComponent(blId)}/`).catch(() => null);
+  const direkt = await rbGet(`/lego/parts/${pfadSegment(blId)}/`).catch(() => null);
   if (direkt && traegtBlNummer(direkt, blId)) return String(direkt.part_num);
 
   // ── Weg 2: der Filter, mit Gegenpruefung ────────────────────────────────
@@ -560,6 +493,6 @@ async function pruefeRebrickableZugang(): Promise<void> {
   await rbGet('/lego/themes/', { page_size: 1 });
 }
 
-export { rebrickableJson, pruefeRebrickableZugang, lookupPart, getSetInfo, getAllSetParts, downloadFile, scrapeInstructions,
-  getSetMinifigs, getMinifigInfo, getBrickColors, getRbKey, sleep, httpsGetRobust, getMinifigParts,
+export { rebrickableJson, pruefeRebrickableZugang, lookupPart, holeSet, holeSetTeile, holeFigurTeile, getThemeName, downloadFile, scrapeInstructions,
+  getSetMinifigs, getMinifigInfo, getBrickColors, getRbKey, sleep, httpsGetRobust,
   blTeilZuRb, blFilterWirkungslos };

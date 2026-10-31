@@ -45,7 +45,6 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { testServer } = require('./helpers/server');
@@ -89,7 +88,7 @@ test('der geänderte Kaufpreis erreicht die Kachel — Webapp UND App',
   // `SELECT purchase_price FROM sets` — die gespiegelte Spalte, die es seit
   // Migration 0032 nicht mehr gibt.
   const kachel = async () =>
-    (await _req('utils/handlers/sets.js').getSetConditionAggregate([uid], SN)).avg_purchase_price;
+    (await _req('src/sets/abfragen.js').getSetConditionAggregate([uid], SN)).avg_purchase_price;
 
   try {
     for (const [name, pfad] of [

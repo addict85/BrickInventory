@@ -34,7 +34,6 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { testServer } = require('./helpers/server');
@@ -130,7 +129,7 @@ test('ein geleerter Kaufpreis wird aus dem Marktpreis gefüllt — Webapp UND Ap
       // Und die Kachel oben — dort stand Marcos Strich. Sie rechnet seit
       // Migration 0032 aus den Erfassungen; der Bestand hat hier zwei (7.30
       // gebraucht, 12.55 neu, je ein Exemplar), der Mittelwert ist 9.925.
-      const kachel = await _req('utils/handlers/sets.js')
+      const kachel = await _req('src/sets/abfragen.js')
         .getSetConditionAggregate([subId], SN);
       assert.equal(kachel.avg_purchase_price, 9.925,
         `${name}: die Kachel muss den gefüllten Preis mitrechnen, keinen Strich zeigen`);

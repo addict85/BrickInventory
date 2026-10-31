@@ -195,8 +195,9 @@ async function generateQrCode() {
     // Falsches zu zeigen, das sich anstandslos scannen laesst.
     const serverUrl = d.url;
 
-    // Full payload: server URL + token
-    const qrData = JSON.stringify({ url: serverUrl, token: d.token });
+    // Mit `fp` (Fingerabdruck der CA-Wurzel) pinnt die App das Zertifikat;
+    // der Server schickt ihn nur zu einer https-Adresse.
+    const qrData = JSON.stringify({ url: serverUrl, token: d.token, ...(d.fp ? { fp: d.fp } : {}) });
     // Clear and render QR code
     container.innerHTML = '';
     if (typeof QRCode !== 'undefined') {
@@ -281,12 +282,14 @@ export async function loadTokens() {
   if (!d.tokens.length) { ziel.innerHTML = `<p data-stil="color:var(--mut)">${t('tokens.none')}</p>`; return; }
   ziel.innerHTML = `<div class="tw"><table class="dt"><thead><tr>
       <th>${t('tokens.col.label')}</th><th>${t('tokens.col.created')}</th>
-      <th>${t('tokens.col.last_used')}</th><th>${t('tokens.col.expires')}</th>
-      <th>${t('users.col.actions')}</th></tr></thead><tbody>${
+      <th>${t('tokens.col.last_used')}</th><th>${t('tokens.col.scope')}</th><th>${t('tokens.col.ip')}</th>
+      <th>${t('tokens.col.expires')}</th><th>${t('users.col.actions')}</th></tr></thead><tbody>${
     d.tokens.map(tk => `<tr>
       <td><strong>${esc(tk.label || '—')}</strong>${tk.aktuell ? ` <span class="rb ra">${t('tokens.current')}</span>` : ''}</td>
       <td>${tokenDatum(tk.created_at)}</td>
       <td>${tokenDatum(tk.last_used)}</td>
+      <td>${tk.scope === 'voll' ? t('tokens.scope.voll') : t('tokens.scope.app')}</td>
+      <td>${esc(tk.ip_bereich || '—')}</td>
       <td>${tk.never_expires ? t('tokens.never') : tokenDatum(tk.expires_at)}${
         // Plakette „fest": Ohne sie stuenden beide Fristen als dasselbe Datum
         // da, und sie bedeuten Verschiedenes. Die gleitende rueckt bei jeder
@@ -296,6 +299,28 @@ export async function loadTokens() {
         `<button class="btn bd btn-sm" data-click="revokeToken" data-arg="${esc(tk.token_id)}" data-arg2="${esc(tk.label || '')}" aria-label="${esc(tRaw('common.delete'))}">${ico('loeschen')}</button>`}</td>
     </tr>`).join('')
   }</tbody></table></div>`;
+}
+
+/**
+ * Der Fingerabdruck der CA-Wurzel zum Abgleich von Hand — derselbe Wert steht
+ * als `fp` im QR-Code. Ohne interne CA (fremder Proxy) steht nur, ob HTTPS gilt.
+ */
+export async function ladeTls() {
+  const ziel = G('tls-flaeche');
+  if (!ziel) return;
+  const d = await api('GET', '/v1/settings/tls');
+  if (!d?.success) { ziel.innerHTML = `<p class="hinweis-absatz">${esc(d?.error || t('settings.error'))}</p>`; return; }
+  if (!d.fp) {
+    ziel.innerHTML = `<p class="hinweis-absatz">${d.https ? t('tls.ohne_ca') : t('tls.ohne_https')}</p>`;
+    return;
+  }
+  ziel.innerHTML = `<p class="hinweis-absatz">${t('tls.hint')}</p>
+    <div class="text-klein">${t('tls.subject')}: ${esc(d.subject)}<br>${t('tls.valid_until')}: ${esc(tokenDatum(d.gueltig_bis))}</div>
+    <div class="text-klein abstand-o-075">${t('tls.fp_sha256')}</div>
+    <code id="tls-fp-hex" data-stil="user-select:all;word-break:break-all;font-size:var(--fs-2)">${esc(d.fp_hex)}</code>
+    <div class="text-klein abstand-o-075">${t('tls.fp_base64')}</div>
+    <code id="tls-fp" data-stil="user-select:all;word-break:break-all;font-size:var(--fs-2)">${esc(d.fp)}</code>
+    <div class="abstand-o-075"><a class="btn bs btn-sm" href="${esc(d.download)}" download>${t('tls.download')}</a></div>`;
 }
 
 async function revokeToken(tokenId, label) {
@@ -827,7 +852,7 @@ export async function ladeAlarmUebersicht() {
         <div data-stil="font-size:var(--fs-1);color:var(--mut)">${esc(a.name || '')}</div>
       </div>
       <span data-stil="font-size:var(--fs-1);white-space:nowrap">${esc(richtung)}</span>
-      <input inputmode="decimal" type="number" step="0.01" min="0.01" value="${a.schwelle}"
+      <input inputmode="decimal" type="number" step="0.01" min="0.01" value="${a.schwelle}" aria-label="${esc(tRaw('detail.alert_price'))} ${esc(a.set_number)}"
              data-change="aendereAlarmSchwelle" data-arg="${esc(schluessel)}" data-val="1"
              data-click="stopEvent"
              data-stil="width:90px;border:1px solid var(--bdr);border-radius:6px;padding:3px 7px;font-size:var(--fs-3);background:var(--sur);color:var(--txt)" />
@@ -837,6 +862,7 @@ export async function ladeAlarmUebersicht() {
         <span data-stil="font-size:var(--fs-0);color:var(--mut);white-space:nowrap">${esc(stand)}</span>
       </div>
       <button class="btn bs btn-sm" data-click="loescheAlarm" data-arg="${esc(schluessel)}"
+              aria-label="${esc(tRaw('common.delete'))}: ${esc(a.set_number)}" title="${esc(tRaw('common.delete'))}"
               data-arg2="${esc(a.set_number)}" data-stil="padding:2px 8px">${ico('loeschen')}</button>
     </div>`;
   }).join('');
@@ -915,13 +941,13 @@ export async function ladeLagerortVerwaltung() {
                  `<div data-stil="display:grid;grid-template-columns:minmax(0,1fr) max-content max-content max-content;align-items:center;column-gap:8px">` +
                  orte.map(o => {
     const n = belegung.get(o.name);
-    // Figuren stehen EIGEN da, nicht bei den Teilesorten (utils/lagerort.ts):
+    // Figuren stehen EIGEN da, nicht bei den Teilesorten (src/bestand/lagerort.ts):
     // „18 Teilesorten" hiesse sonst mal 18 Teilesorten und mal 12 plus 6
     // Figuren, und niemand koennte der Zahl ansehen, was gemeint ist.
     const wie = n ? t('storage.belegt', { sets: n.sets, teile: n.teile, figuren: n.figuren ?? 0 })
                   : esc(tRaw('storage.leer'));
     return `<div data-stil="display:contents">
-      <span data-stil="padding:4px 0;border-bottom:1px solid var(--bdr);display:flex;align-items:center"><input type="text" maxlength="60" value="${esc(o.name)}"
+      <span data-stil="padding:4px 0;border-bottom:1px solid var(--bdr);display:flex;align-items:center"><input type="text" maxlength="60" value="${esc(o.name)}" aria-label="${esc(tRaw('detail.storage'))}"
              data-change="benenneLagerortUm" data-arg="${o.id}" data-val="1"
              data-stil="width:100%;border:1px solid var(--bdr);border-radius:6px;padding:3px 7px;font-size:var(--fs-3);background:var(--sur);color:var(--txt)" /></span>
       <span data-stil="padding:4px 0;border-bottom:1px solid var(--bdr);display:flex;align-items:center;font-size:var(--fs-1);color:var(--mut);white-space:nowrap;justify-content:flex-end">${wie}</span>
@@ -931,6 +957,7 @@ export async function ladeLagerortVerwaltung() {
               aria-label="${esc(tRaw(o.id === vorgabeId ? 'storage.default_is' : 'storage.default_set'))}"
               aria-pressed="${o.id === vorgabeId ? 'true' : 'false'}">${ico(o.id === vorgabeId ? 'stern-voll' : 'merkliste')}</button></span>
       <span data-stil="padding:4px 0;border-bottom:1px solid var(--bdr);display:flex;align-items:center"><button class="btn bs btn-sm" data-click="loescheLagerort" data-arg="${o.id}"
+              aria-label="${esc(tRaw('common.delete'))}: ${esc(o.name)}" title="${esc(tRaw('common.delete'))}"
               data-arg2="${esc(o.name)}" data-stil="padding:2px 8px">${ico('loeschen')}</button></span>
     </div>`;
   }).join('') + `</div>`;

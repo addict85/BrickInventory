@@ -2,7 +2,7 @@
  * Ein neues Exemplar bekommt den Zustand, den das Set WIRKLICH hat.
  *
  * ── Der Fehler, den das verhindert ──────────────────────────────────────────
- * utils/setService.ts → priceForNewAcquisition() las
+ * src/sets/setService.ts → priceForNewAcquisition() las
  *
  *     SELECT condition FROM sets WHERE user_id=$1 AND set_number=$2
  *
@@ -45,7 +45,6 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.WEB_WORKERS = '1';
 
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
@@ -91,7 +90,7 @@ test('ein neues Exemplar folgt den Erfassungen, nicht dem gespeicherten Wert', {
                     VALUES ($1,$2,'EUR',$3,$3,$3,$3,5,NOW())
                     ON CONFLICT (set_number,condition,currency_code) DO UPDATE SET avg_price=$3`, [SET, c, p]);
 
-    const { updateSet } = _req('utils/setService.js');
+    const { updateSet } = _req('src/sets/setService.js');
     await updateSet(uid, SET, { quantity: 2 });
 
     const erf = await db.all(

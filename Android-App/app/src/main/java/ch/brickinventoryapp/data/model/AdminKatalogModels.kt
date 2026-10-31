@@ -215,3 +215,64 @@ data class CatalogSetDetailResponse(
     val set: CatalogSetDetail? = null,
     val error: String? = null
 )
+
+// ── Hintergrundarbeiten (Auftragstabelle, /api/v1/admin/auftraege) ────────────
+//
+// Ohne Standardwerte, wo der Server das Feld immer liefert: Fehlt eines, soll
+// das beim Lesen auffallen statt still als 0 oder leer zu erscheinen.
+
+@Serializable
+data class AuftraegeResponse(
+    val success: Boolean,
+    val auftraege: List<Auftrag>,
+    val zusammenfassung: List<AuftragZaehler>,
+    val pausen: List<AuftragPause>,
+    val bildbedarf: Int,
+    @SerialName("job_prozess") val jobProzess: JobProzess,
+)
+
+@Serializable
+data class Auftrag(
+    val id: String,
+    val art: String,
+    val status: String,
+    val versuche: Int,
+    @SerialName("max_versuche") val maxVersuche: Int,
+    @SerialName("faellig_ab") val faelligAb: String?,
+    @SerialName("frist_bis") val fristBis: String?,
+    val gestartet: String?,
+    val erstellt: String?,
+    val aktualisiert: String?,
+    val fortschritt: AuftragFortschritt?,
+    val fehler: String?,
+    @SerialName("user_id") val userId: Int?,
+    val geplant: Boolean,
+    @SerialName("set_number") val setNumber: String?,
+)
+
+/** Jeder Auftrag füllt, was er kann; alles ist freiwillig. */
+@Serializable
+data class AuftragFortschritt(val erledigt: Int? = null, val gesamt: Int? = null, val text: String? = null)
+
+@Serializable
+data class AuftragZaehler(val art: String, val status: String, val anzahl: Int)
+
+@Serializable
+data class AuftragPause(val art: String, val bis: String?, val grund: String?)
+
+/** Lebenszeichen des Job-Prozesses; [laeuft] false heisst: niemand arbeitet die Aufträge ab. */
+@Serializable
+data class JobProzess(
+    val lebenszeichen: String?,
+    @SerialName("alter_sekunden") val alterSekunden: Int?,
+    val laeuft: Boolean,
+)
+
+@Serializable
+data class AuftragAenderung(val success: Boolean, val id: String, val status: String)
+
+@Serializable
+data class AuftragsArtStart(val success: Boolean, val art: String, val gestartet: Boolean)
+
+@Serializable
+data class AuftragsArtLeerung(val success: Boolean, val art: String, val entfernt: Int)

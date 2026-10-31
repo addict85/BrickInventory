@@ -30,7 +30,6 @@ const { after } = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { haeltSet } = require('./helpers/bestand');
@@ -78,9 +77,9 @@ test('Kopfzeile und Galerie zaehlen dieselben Sets', async (t) => {
   await haeltSet(db, kind, '75192-1', 1);
   await haeltSet(db, kind, '21318-1', 1);
 
-  const { scopeIds } = _req('utils/household.js');
-  const { getStats } = _req('utils/handlers/stats.js');
-  const { getSets } = _req('utils/handlers/sets.js');
+  const { scopeIds } = _req('src/haushalt/haushalt.js');
+  const { getStats } = _req('src/bestand/kennzahlen.js');
+  const { getSets } = _req('src/sets/abfragen.js');
 
   for (const modus of ['all', 'own']) {
     const uids = await scopeIds(haupt, modus);

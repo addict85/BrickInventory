@@ -7,7 +7,7 @@ import { loadParts } from './03-parts.js';
 import { loadManualFigsTable, loadManualParts, loadMinifigs } from './06-minifigs.js';
 
 // ═══ Papierkorb (Einstellungen → Daten) ═════════════════════════════════════
-// Der Server legt beim Löschen einen Schnappschuss ab (utils/papierkorb.ts);
+// Der Server legt beim Löschen einen Schnappschuss ab (src/bestand/papierkorb.ts);
 // hier wird er angezeigt, zurückgeholt oder endgültig entfernt.
 
 const ICON = { set: 'set', teil: 'teil', figur: 'figur' };

@@ -31,8 +31,10 @@
 <data-extraction-rules>
     <cloud-backup>
         <exclude domain="file" path="datastore" />
+        <exclude domain="database" path="bestand.db" />
     </cloud-backup>
     <device-transfer>
         <exclude domain="file" path="datastore" />
+        <exclude domain="database" path="bestand.db" />
     </device-transfer>
 </data-extraction-rules>

@@ -1,4 +1,7 @@
 /**
+ * @einzeln: schreibt data/<tabelle>.csv.tmp, das die andere CSV-Import-Datei
+ * ebenfalls benutzt; parallel räumte die eine der anderen die Datei weg.
+ *
  * Zwei gleichzeitige Katalog-Importe derselben Tabelle — gegen echte Datenbank.
  *
  * ── Warum es diese Datei gibt ───────────────────────────────────────────────
@@ -32,7 +35,6 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
@@ -48,7 +50,7 @@ test('zwei gleichzeitige Importe derselben Tabelle kollidieren nicht',
   }
 
   const { TASKS } = _req('jobs/csvImportWorker.js');
-  const DATA_DIR = _req('utils/appPaths.js').DATA_DIR;
+  const DATA_DIR = _req('src/infra/appPaths.js').DATA_DIR;
 
   await db.run(`CREATE TABLE IF NOT EXISTS rb_colors (
     id INTEGER PRIMARY KEY, name TEXT, rgb TEXT, is_trans TEXT, bl_color_id INTEGER)`);

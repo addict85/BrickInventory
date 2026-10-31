@@ -64,7 +64,7 @@ fun ManualItemDetailScreen(
     teile: TeileViewModel,
     type: String,          // "part" | "fig"
     id: String,            // partNumber / figNumber
-    colorId: Int = ch.brickinventoryapp.data.model.KEINE_FARBE,
+    colorId: Int = ch.brickinventoryapp.ui.model.OHNE_FARBE,
     /** Aus der Navigation — bis die Bewertung geladen ist, steht er in der Leiste. */
     fallbackTitle: String,
     imageLoader: ImageLoader,

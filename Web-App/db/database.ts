@@ -12,8 +12,9 @@ import path from 'path';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { Client } from 'pg';
-import { LOCKS } from '../utils/lockNamespaces';
-import { fehlerCode, meldeUndWeiter, logAndContinue } from '../utils/httpError';
+import { LOCKS } from '../src/infra/lockNamespaces';
+import { fehlerCode, meldeUndWeiter, logAndContinue } from '../src/infra/httpError';
+import { konfig, datenbankVerbindung } from '../src/infra/konfig';
 
 // Warum diese acht jetzt oben stehen
 // Sie standen als require() in den Funktionsruempfen. Node haelt Module im
@@ -21,33 +22,32 @@ import { fehlerCode, meldeUndWeiter, logAndContinue } from '../utils/httpError';
 // Abhaengigkeiten dieser Datei standen nicht an ihrem Kopf, und ein require() …
 // Ausführlich: docs/begruendungen/db/database.ts.md#abschnitt-2
 
-// NUMERIC kommt als Zahl zurück, nicht als Zeichenkette
-// Seit db/migrations/0007 liegen alle Geldbeträge als NUMERIC in der Datenbank
-// statt als REAL — sonst rechnet Postgres in 32-Bit-Gleitkomma, und die Summe
-// aus 1000 Beträgen à 0.07 ergibt 69.99974 statt 70.00.
+// NUMERIC kommt als Zahl zurück, nicht als Zeichenkette: Geldspalten sind
+// NUMERIC(12,4), also höchstens 10^12 Zehntausendstel — weit unter 2^53, ein
+// double trifft jeden Wert so genau, dass Math.round(n * 10^4) ihn zurückgibt.
+// Gerechnet wird in src/infra/geld.ts in Zehntausendsteln, nie mit dem double selbst.
 // Ausführlich: docs/begruendungen/db/database.ts.md#abschnitt-3
 pgTypes.setTypeParser(pgTypes.builtins.NUMERIC, (v: any) => (v === null ? null : parseFloat(v)));
 
 // ── Connection pool ───────────────────────────────────────────────────────────
-// Jeder Worker hat einen eigenen Pool; zusammen müssen sie unter
-// max_connections bleiben, mit Luft für Werkzeuge.
-const { workerZahl, poolJeWorker } = require('../utils/workerZahl') as typeof import('../utils/workerZahl');
-const MAX_PER_WORKER = poolJeWorker(workerZahl());
+// Höchstens zwei Prozesse (web und jobs) mit je 15 Verbindungen: weit unter
+// max_connections, mit Luft für Werkzeuge und den CSV-Importprozess.
+const VORGABE_POOL = 15;
 
+const K = konfig();
 const POOL_CONFIG = {
-  max:                    parseInt(process.env.PG_POOL_MAX    || String(MAX_PER_WORKER)),
-  min:                    parseInt(process.env.PG_POOL_MIN    || '2'),
-  idleTimeoutMillis:      parseInt(process.env.PG_IDLE_MS     || '30000'),
-  connectionTimeoutMillis:parseInt(process.env.PG_CONN_MS     || '30000'),
-  // Über die Verbindungsoptionen statt je Anfrage: statement_timeout, und die
-  // Zeitzone, in der der Trigger erfassung_tag() den Tag eines Kaufs bildet.
-  options:                `-c statement_timeout=${parseInt(process.env.PG_STMT_MS || '30000')}`
-                        + ` -c brickinventory.zeitzone=${(require('../utils/konfig') as typeof import('../utils/konfig')).erfassungsZeitzone()}`,
+  max:                    K.pgPoolMax ?? VORGABE_POOL,
+  min:                    K.pgPoolMin,
+  idleTimeoutMillis:      K.pgIdleMs,
+  connectionTimeoutMillis:K.pgConnMs,
+  // Über die Verbindungsoptionen statt je Anfrage. Die Zeitzone des
+  // Erfassungstags steht in der Datenbank (schreibeErfassungsZeitzone).
+  options:                `-c statement_timeout=${K.pgStmtMs}`,
   keepAlive:              true,
   keepAliveInitialDelayMillis: 10000,
 };
 
-const baseConfig = (require('../utils/konfig') as typeof import('../utils/konfig')).datenbankVerbindung();
+const baseConfig = datenbankVerbindung();
 
 const pool = new Pool({ ...baseConfig, ...POOL_CONFIG });
 
@@ -287,12 +287,12 @@ async function legeAdminAn() {
     // oben importiert statt per require() geholt wurde: Solange hashSync `any`
     // war, prueft niemand sein Argument. Ein Fehler war es nicht — der Zweig
     // ist durch dieselbe Bedingung geschuetzt —, beweisbar war es aber auch nicht.
-    const envPasswort = process.env.ADMIN_PASSWORD || '';
+    const envPasswort = konfig().adminPasswort;
     const useEnvPassword = envPasswort !== '';
     const plainPassword = useEnvPassword
       ? envPasswort
       : crypto.randomBytes(15).toString('base64url'); // 20 Zeichen, URL-sicher
-    // 12 wie BCRYPT_ROUNDS in utils/auth.ts: Mit weniger Runden antwortete ein
+    // 12 wie BCRYPT_ROUNDS in src/konto/auth.ts: Mit weniger Runden antwortete ein
     // Fehlversuch gegen „admin“ messbar schneller und verriet das Konto.
     const hash = bcrypt.hashSync(plainPassword, 12);
     await pool.query(
@@ -323,8 +323,8 @@ async function legeAdminAn() {
 }
 
 // initSchemaOnce: Erststart und Migrationen unter einem Advisory-Lock
-// (LOCKS.SCHEMA_INIT), damit im Cluster genau ein Worker das Schema anfasst.
-// Die anderen warten blockierend und finden danach alles vor.
+// (LOCKS.SCHEMA_INIT): Starten web und jobs zugleich, migriert genau einer;
+// der andere wartet blockierend und findet danach alles vor.
 async function initSchemaOnce() {
   const LOCK_ID = LOCKS.SCHEMA_INIT;
   const client = await pool.connect();
@@ -336,12 +336,24 @@ async function initSchemaOnce() {
     // Vor offenen Migrationen eine Kopie der Nutzerdaten — nicht bei einer
     // eben angelegten, leeren Datenbank.
     const applied = await runMigrations(client, { sichern: !neu && !alt });
+    await schreibeErfassungsZeitzone(client);
     if (applied.length) console.log(`✅ ${applied.length} Migration(en) angewandt`);
     else if (!neu) console.log('✅ Schema aktuell — keine offenen Migrationen');
   } finally {
     await client.query(`SELECT pg_advisory_unlock(${LOCK_ID})`).catch(logAndContinue('db:pg_advisory_unlock'));
     client.release();
   }
+}
+
+/**
+ * Die konfigurierte Zeitzone für den Trigger erfassung_tag() (Migration
+ * 0078) — in der Datenbank, damit jede Verbindung denselben Tag rechnet.
+ */
+async function schreibeErfassungsZeitzone(client: import('pg').ClientBase): Promise<void> {
+  await client.query(
+    `INSERT INTO global_settings (key, value) VALUES ('erfassung_zeitzone', $1)
+     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
+     WHERE global_settings.value IS DISTINCT FROM EXCLUDED.value`, [konfig().erfassungZeitzone]);
 }
 
 /** Bestehende Datenbank, deren jüngste Migration aus der Zeit vor ALTBESTAND_BIS stammt. */

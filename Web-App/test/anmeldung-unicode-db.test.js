@@ -20,7 +20,6 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
-process.env.WEB_WORKERS = '1';
 
 const { buildAndRequire, einhaengung } = require('./helpers/sources');
 const _req = buildAndRequire();
@@ -53,7 +52,7 @@ test('Unicode-Schreibweisen derselben Adresse', { concurrency: 1 }, async (t) =>
     await db.run('DELETE FROM users WHERE id = $1', [uid]);
     await db.pool.end().catch(() => {});
   });
-  const { pruefeAnmeldedaten } = _req('utils/auth.js');
+  const { pruefeAnmeldedaten } = _req('src/konto/auth.js');
 
   await t.test('nach fünf Fehlversuchen ist auch die Unicode-Schreibweise gesperrt', async () => {
     const anfrage = { ip: '203.0.113.9', socket: {}, headers: {} };

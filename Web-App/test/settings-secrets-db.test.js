@@ -39,7 +39,6 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
@@ -71,7 +70,7 @@ const VERWALTUNG = {
  * GENAU DER ZUSTAND, vor dem der Absatz oben warnt: eine Prüfung, die die eine
  * Stelle sichert, die man gerade repariert hat.
  *
- * Jetzt kommen die Kandidaten aus routes/settings.ts selbst: jede GET-Route.
+ * Jetzt kommen die Kandidaten aus routes/api_v1/settings.ts selbst: jede GET-Route.
  * Eine neue Leseroute ist damit von selbst mitgeprüft.
  *
  * AUSGENOMMEN sind die Wege, die absichtlich etwas anderes tun — mit Grund.
@@ -79,11 +78,17 @@ const VERWALTUNG = {
  * gefunden, die Geheimnisse herausgibt.
  */
 const AUSGENOMMEN = new Map([
+  ['/', 'Die Sicht der App: nur die Felder aus APP_FELDER (Währung, Zustand, ' +
+        'Cache-Dauer), keine globalen Schlüssel.'],
+  ['/default-condition', 'Gibt genau einen Wert heraus (den globalen Standard-Zustand).'],
+  ['/user/default-condition', 'Gibt genau einen Wert heraus (den Zustand des Kontos).'],
+  ['/household', 'Konten des Haushalts und offene Einladungen, keine Einstellungen.'],
   ['/export', 'Die Konfigurations-Sicherung lässt Geheimnisse ganz weg statt sie ' +
               'zu maskieren; für Nicht-Verwalter enthält sie gar keine globalen ' +
               'Werte (test/einstellungen-pruefung-db.test.js).'],
   ['/export/data', 'ZIP mit Sets/Teilen/Minifiguren als CSV — enthält gar keine ' +
                    'Einstellungen und liefert kein JSON.'],
+  ['/tls', 'Gibt den öffentlichen Fingerabdruck der CA heraus, keine Einstellungen.'],
   ['/theme', 'Gibt genau einen Wert heraus (den Designnamen) und ist bewusst ' +
              'ohne Login erreichbar, damit der Login-Bildschirm passt.'],
   ['/tokens', 'Listet App-Token, keine Einstellungen. Die Token selbst stehen ' +
@@ -95,13 +100,13 @@ const AUSGENOMMEN = new Map([
 
 function leserouten() {
   const quelle = require('node:fs').readFileSync(
-    require('node:path').join(__dirname, '..', 'routes', 'settings.ts'), 'utf8')
+    require('node:path').join(__dirname, '..', 'routes/api_v1/settings.ts'), 'utf8')
     .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
-  const gefunden = [...quelle.matchAll(/router\.get\(\s*'([^']+)'/g)].map(m => m[1]);
+  const gefunden = [...quelle.matchAll(/router\.get\(\s*'\/settings([^']*)'/g)].map(m => m[1] || '/');
   // Selbstbeweis: Griffe das Muster nicht, wäre die Liste leer und der Test
   // grün, ohne eine einzige Route angesehen zu haben.
   assert.ok(gefunden.length >= 4,
-    `Nur ${gefunden.length} GET-Routen in routes/settings.ts gefunden — Muster veraltet?`);
+    `Nur ${gefunden.length} GET-Routen in routes/api_v1/settings.ts gefunden — Muster veraltet?`);
   const veraltet = [...AUSGENOMMEN.keys()].filter(p => !gefunden.includes(p));
   assert.deepEqual(veraltet, [],
     'Diese Ausnahmen beschreiben keine Route mehr — streichen: ' + veraltet.join(', '));
@@ -144,7 +149,7 @@ test('Einstellungen geben Geheimnisse nie im Klartext heraus', { concurrency: 1 
       req.session = { userId: uid, isAdmin };
       next();
     });
-    app.use('/api/v1/settings', _req('routes/settings.js'));
+    app.use('/api/v1', _req('routes/api_v1/settings.js'));
     return app;
   };
   const srvUser  = appFuer(false).listen(0);

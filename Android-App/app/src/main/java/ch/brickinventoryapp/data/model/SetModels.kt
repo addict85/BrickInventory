@@ -57,7 +57,7 @@ data class SetItem(
      * Besitzer im Haushalt — nur bei mehreren Konten im Blickfeld. Im Einzelkonto wäre
      * es Rauschen; im Haushalt verschiebt man ohne sie das falsche Exemplar.
      */
-    val owners: List<HouseholdMember> = emptyList(),
+    val owners: List<KontoName> = emptyList(),
     @SerialName("max_purchase_price") val maxPurchasePrice: Double? = null,
     /** Mengengewichteter Kaufpreis über die Erfassungen (Server rechnet ihn). */
     @SerialName("avg_purchase_price") val avgPurchasePrice: Double? = null,

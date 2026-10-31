@@ -8,7 +8,7 @@
  *     [login]  Token konnte nicht gespeichert werden:
  *              column "sliding" of relation "api_tokens" does not exist
  *     [auth:me] column t.sliding does not exist
- *     [route-error] 500: at async createToken (dist/utils/auth.js:267)
+ *     [route-error] 500: at async createToken (dist/src/konto/auth.js:267)
  *
  * Die ANMELDUNG war kaputt — auch der QR-Login, denn er geht durch dieselbe
  * Funktion. Die Spalte war als `ALTER TABLE … ADD COLUMN IF NOT EXISTS` in

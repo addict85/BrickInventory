@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.ui.screens
 
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -12,7 +14,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.R
-import ch.brickinventoryapp.data.model.Preisalarm
 import coil3.ImageLoader
 import ch.brickinventoryapp.ui.AppViewModel
 import ch.brickinventoryapp.ui.viewmodel.EinstellungenViewModel
@@ -51,7 +52,8 @@ private fun Unterseite(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text(titel, maxLines = 1) },
+                // Überschrift der Unterseite: Vorleseprogramme springen dorthin.
+                title = { Text(titel, maxLines = 1, modifier = Modifier.semantics { heading() }) },
                 navigationIcon = {
                     IconButton(onClick = onZurueck) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack,
@@ -115,6 +117,7 @@ fun GutscheineUnterseite(
             onExportieren = { gvm.oeffneGutscheinExport() },
             onGuthabenAlle = { gvm.frageAlleGuthabenAb() },
             onGuthabenAbbrechen = { gvm.guthabenLaufAbbrechen() },
+            onErneut = { gvm.ladeGutscheine() },
         )
     }
 }

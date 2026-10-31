@@ -1,7 +1,7 @@
 'use strict';
 /**
  * Der Vertrag mit der Android-App, gelesen aus ihrem eigenen Quelltext:
- * die @Serializable-Datenklassen und die GET-Routen aus BrickApiService.kt.
+ * die @Serializable-Datenklassen und die Routen aus data/api/ (je Bereich eine Datei).
  * Handgeschriebene Schemas liefen den Modellen hinterher; diese hier können
  * es nicht, weil sie aus ihnen entstehen.
  */
@@ -30,6 +30,16 @@ function kotlinDateien(dir) {
     else if (e.name.endsWith('.kt')) aus.push(p);
   }
   return aus;
+}
+
+/**
+ * Der Quelltext der App-Schnittstelle: eine Datei oder alle .kt eines Ordners —
+ * die App führt je Bereich eine Datei (data/api/), geprüft wird die Summe.
+ * @param {string} pfad @returns {string}
+ */
+function apiQuelltext(pfad) {
+  if (!fs.statSync(pfad).isDirectory()) return fs.readFileSync(pfad, 'utf8');
+  return kotlinDateien(pfad).sort().map(d => fs.readFileSync(d, 'utf8')).join('\n');
 }
 
 /** Kommentare und Zeichenketten so leeren, dass Positionen gleich bleiben. @param {string} src */
@@ -128,8 +138,8 @@ function kotlinModelle(wurzel) {
  * @returns {{ pfad: string, typ: string | null, anfrage: { name: string, pflicht: boolean }[] }[]}
  */
 function apiRouten(serviceDatei) {
-  const src = entschaerfe(fs.readFileSync(serviceDatei, 'utf8'));
-  const roh = fs.readFileSync(serviceDatei, 'utf8');
+  const roh = apiQuelltext(serviceDatei);
+  const src = entschaerfe(roh);
   /** @type {{ pfad: string, typ: string | null, anfrage: { name: string, pflicht: boolean }[] }[]} */
   const aus = [];
   for (const m of roh.matchAll(/@GET\("([^"]+)"\)/g)) {
@@ -153,8 +163,8 @@ function apiRouten(serviceDatei) {
  * @returns {{ methode: string, pfad: string, typ: string | null }[]}
  */
 function schreibRouten(serviceDatei) {
-  const src = entschaerfe(fs.readFileSync(serviceDatei, 'utf8'));
-  const roh = fs.readFileSync(serviceDatei, 'utf8');
+  const roh = apiQuelltext(serviceDatei);
+  const src = entschaerfe(roh);
   /** @type {{ methode: string, pfad: string, typ: string | null }[]} */
   const aus = [];
   for (const m of roh.matchAll(/@(POST|PUT|DELETE|PATCH)\("([^"]+)"\)/g)) {
@@ -167,14 +177,33 @@ function schreibRouten(serviceDatei) {
 }
 
 /**
+ * Felder, die eine Route absichtlich weglässt, obwohl das Modell sie kennt.
+ * Schlüssel: "<Route> <Klasse>.<Feld>". Jeder Eintrag braucht einen Grund;
+ * alles andere, was fehlt, ist ein Fehler — auch mit Standardwert, denn der
+ * Standardwert überdeckt sonst still, dass der Server ein Feld vergisst.
+ * @type {Map<string, string>}
+ */
+const FEHLEN_ERLAUBT = new Map([
+  ['/api/v1/sets SetsResponse.themes',
+   'kommt nur mit der ersten Seite eines geblätterten Abrufs; ohne sie behält die App ihre Liste'],
+  ['/api/v1/parts/manual PartValuationItem.acquisitions',
+   'die Liste führt keine Erfassungen; die Detailansicht lädt sie über /acquisitions'],
+  ['/api/v1/minifigs/manual FigValuationItem.acquisitions',
+   'die Liste führt keine Erfassungen; die Detailansicht lädt sie über /acquisitions'],
+]);
+
+/**
  * Passt `wert` zum Kotlin-Typ? Liefert die Abweichungen als Text.
  * Strenger als die App selbst: null in einem nicht-nullbaren Feld zählt
- * auch dann, wenn coerceInputValues es zur Laufzeit auf den Standard setzt —
- * genau diese stille Verbiegung soll hier auffallen.
+ * auch dann, wenn coerceInputValues es zur Laufzeit auf den Standard setzt,
+ * und ein fehlendes Feld auch dann, wenn es einen Standardwert hat.
  * @param {unknown} wert @param {KTyp} t @param {KModelle} modelle @param {string} [ort]
+ * @param {{ route?: string, standardwerte?: boolean }} [o] `route` für
+ *   FEHLEN_ERLAUBT; `standardwerte: false` meldet nur fehlende Pflichtfelder.
  * @returns {string[]}
  */
-function pruefe(wert, t, modelle, ort = '$') {
+function pruefe(wert, t, modelle, ort = '$', o = {}) {
+  const { route = '', standardwerte = true } = o;
   if (wert === null || wert === undefined) return t.nullbar ? [] : [`${ort}: null statt ${beschreibe(t)}`];
   switch (t.art) {
     case 'string':  return typeof wert === 'string' ? [] : [`${ort}: ${art(wert)} statt String`];
@@ -183,10 +212,10 @@ function pruefe(wert, t, modelle, ort = '$') {
     case 'number':  return typeof wert === 'number' ? [] : [`${ort}: ${art(wert)} statt Double`];
     case 'liste':
       if (!Array.isArray(wert)) return [`${ort}: ${art(wert)} statt Liste`];
-      return wert.flatMap((w, i) => pruefe(w, t.element ?? { art: 'klasse', nullbar: true }, modelle, `${ort}[${i}]`));
+      return wert.flatMap((w, i) => pruefe(w, t.element ?? { art: 'klasse', nullbar: true }, modelle, `${ort}[${i}]`, o));
     case 'karte':
       if (typeof wert !== 'object' || Array.isArray(wert)) return [`${ort}: ${art(wert)} statt Map`];
-      return Object.entries(wert).flatMap(([k, w]) => pruefe(w, t.wert ?? { art: 'klasse', nullbar: true }, modelle, `${ort}.${k}`));
+      return Object.entries(wert).flatMap(([k, w]) => pruefe(w, t.wert ?? { art: 'klasse', nullbar: true }, modelle, `${ort}.${k}`, o));
     case 'klasse': {
       const m = modelle.get(t.name ?? '');
       if (!m) return [];                                     // Any, JsonElement, Unit …
@@ -196,8 +225,12 @@ function pruefe(wert, t, modelle, ort = '$') {
       const obj = /** @type {Record<string, unknown>} */ (wert);
       for (const f of m.felder) {
         const da = Object.prototype.hasOwnProperty.call(obj, f.json);
-        if (!da) { if (!f.hatDefault && !f.typ.nullbar) aus.push(`${ort}.${f.json}: fehlt (${t.name}, Pflichtfeld)`); continue; }
-        aus.push(...pruefe(obj[f.json], f.typ, modelle, `${ort}.${f.json}`));
+        if (!da) {
+          if (!f.typ.nullbar && (standardwerte || !f.hatDefault) && !FEHLEN_ERLAUBT.has(`${route} ${t.name}.${f.json}`))
+            aus.push(`${ort}.${f.json}: fehlt (${t.name}, ${f.hatDefault ? 'Standardwert' : 'Pflichtfeld'})`);
+          continue;
+        }
+        aus.push(...pruefe(obj[f.json], f.typ, modelle, `${ort}.${f.json}`, o));
       }
       return aus;
     }
@@ -210,4 +243,4 @@ const art = (w) => Array.isArray(w) ? 'Liste' : typeof w;
 /** @param {KTyp} t */
 const beschreibe = (t) => t.art === 'klasse' ? t.name : t.art;
 
-module.exports = { kotlinModelle, apiRouten, schreibRouten, pruefe, typ };
+module.exports = { kotlinModelle, apiRouten, schreibRouten, pruefe, typ, FEHLEN_ERLAUBT, apiQuelltext };

@@ -33,11 +33,10 @@ const crypto = require('node:crypto');
 
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
 const db   = _req('db/database.js');
-const { verifiziereEmailToken, hashToken } = _req('utils/auth.js');
+const { verifiziereEmailToken, hashToken } = _req('src/konto/auth.js');
 
 async function dbReachable() {
   try { await db.get('SELECT 1 AS ok'); return true; } catch { return false; }

@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.ui
 
-import ch.brickinventoryapp.data.model.ChartPoint
+import ch.brickinventoryapp.ui.model.DiagrammPunkt
 
 /**
  * Was TalkBack über das Wertdiagramm sagt: von wann bis wann, Anfangs- und
@@ -20,7 +20,7 @@ data class DiagrammZusammenfassung(
  * Veränderung kommt vom Server, wenn er sie schickt — dieselbe Zahl, die die
  * Plakette zeigt; nur ohne sie wird aus Anfang und Ende gerechnet.
  */
-fun diagrammZusammenfassung(punkte: List<ChartPoint>, veraenderungServer: Double?): DiagrammZusammenfassung? {
+fun diagrammZusammenfassung(punkte: List<DiagrammPunkt>, veraenderungServer: Double?): DiagrammZusammenfassung? {
     if (punkte.size < 2) return null
     val anfang = punkte.first().value
     val ende = punkte.last().value

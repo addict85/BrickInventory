@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Für Android 11 und älter dasselbe wie data_extraction_rules.xml: Der
+     Datastore mit dem Token verlässt das Gerät nicht, auch wenn allowBackup
+     einmal anders stünde. -->
+<full-backup-content>
+    <exclude domain="file" path="datastore" />
+    <!-- Lokale Ablage und Ausgang gehören zum angemeldeten Konto dieses Geräts. -->
+    <exclude domain="database" path="bestand.db" />
+</full-backup-content>

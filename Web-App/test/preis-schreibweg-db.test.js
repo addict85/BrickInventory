@@ -4,7 +4,7 @@
  * ── Der Fehler, den das verhindert ──────────────────────────────────────────
  * Die Schreibregel „erst in price_cache, dann — wenn ein Preis drinsteht —
  * als Punkt in price_history" stand dreimal da: einmal im Anfrageweg
- * (utils/financeCalc.ts → fetchPrice → tryFetch) und zweimal im Nachtjob
+ * (src/finanzen/financeCalc.ts → fetchPrice → tryFetch) und zweimal im Nachtjob
  * (jobs/priceJob.ts, Hauptweg und Zustands-Rueckfall). Die dritte Fassung war
  * eine gekuerzte.
  *
@@ -54,7 +54,6 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.WEB_WORKERS = '1';
 
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
@@ -63,7 +62,7 @@ const db = _req('db/database.js');
 // BrickLink vorgeben, BEVOR financeCalc/priceJob getPriceGuide herausziehen.
 // esbuild exportiert ueber Getter, ein `bl.getPriceGuide = …` liefe ins
 // Leere — deshalb wird der Eintrag im require-Zwischenspeicher ersetzt.
-const blPfad = require.resolve(path.join(ROOT, 'dist', 'clients', 'bricklink.js'));
+const blPfad = require.resolve(path.join(ROOT, 'dist', 'src/katalog/bricklinkPreise.js'));
 const echt = require(blPfad);
 let abrufe = [];
 require.cache[blPfad].exports = Object.assign({}, echt, {
@@ -115,7 +114,7 @@ test('ein BrickLink-Preis wird auf einem Weg weggeschrieben', { concurrency: 1 }
       `Zweiter Lauf hat ${abrufe.length - nachLauf1} zusaetzliche BrickLink-Abrufe gekostet`);
 
     // 2. Derselbe Fall ueber den Anfrageweg hinterlaesst dasselbe.
-    const { fetchPrice } = _req('utils/financeCalc.js');
+    const { fetchPrice } = _req('src/finanzen/financeCalc.js');
     abrufe = [];
     await fetchPrice(WEG, 'N', 'sold', 'EUR', 24);
     const abrufeWeg = abrufe.length;
@@ -167,9 +166,9 @@ test('die Schreibregel steht nur an einer Stelle', () => {
     for (const m of code.matchAll(/INSERT INTO price_history[\s\S]{0,220}?(VALUES|SELECT)/g))
       if (m[1] === 'VALUES') verlaufSchreiber.push(rel);
   }
-  assert.deepEqual(cacheSchreiber, ['utils/finance/preise.ts'],
+  assert.deepEqual(cacheSchreiber, ['src/finanzen/rechnung/preise.ts'],
     'price_cache wird an mehr als einer Stelle beschrieben — genau daran sind die ' +
     'beiden Wege auseinandergelaufen');
-  assert.deepEqual(verlaufSchreiber, ['utils/finance/preise.ts'],
+  assert.deepEqual(verlaufSchreiber, ['src/finanzen/rechnung/preise.ts'],
     'Ein Verlaufspunkt wird an mehr als einer Stelle gesetzt');
 });

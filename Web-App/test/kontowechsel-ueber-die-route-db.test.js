@@ -25,7 +25,7 @@
  *
  * ── Was hier läuft ─────────────────────────────────────────────────────────
  *
- * Die drei Arten gehen durch DENSELBEN Dienst (utils/dienste/erfassungen.ts) und
+ * Die drei Arten gehen durch DENSELBEN Dienst (src/bestand/erfassungen.ts) und
  * dieselbe Umsetzung (moveManualAcquisition bzw. moveSetBetweenAccounts).
  * Geprüft werden alle drei über ihre echten Adressen, dazu die beiden
  * Abweisungen, die bisher nur als Muster zugesichert waren:
@@ -45,7 +45,6 @@ const test   = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');

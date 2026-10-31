@@ -9,7 +9,7 @@
  *
  * Geprüft wurde diese Reihenfolge bisher an drei Stellen im Quelltext
  * (test/img-proxy.test.js, test/parts-paging.test.js, test/thumb-atomic.test.js)
- * — jede sucht nach einem Muster in utils/imgCacheServe.ts. Das fängt, dass
+ * — jede sucht nach einem Muster in src/katalog/bilder/imgCacheServe.ts. Das fängt, dass
  * jemand die Grössenprüfung LÖSCHT. Es fängt nicht, dass sie danebengreift:
  * ein `<` statt `<=`, eine vertauschte Reihenfolge der beiden Zweige, ein
  * `return` ohne `true`. Genau solche Fehler sind in diesem Modul schon
@@ -26,7 +26,7 @@ const os     = require('node:os');
 const path   = require('node:path');
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { liefereAusCache } = _req('utils/imgCacheServe.js');
+const { liefereAusCache } = _req('src/katalog/bilder/imgCacheServe.js');
 
 /** Ein res, das nur festhält, was mit ihm geschehen ist. */
 function attrappeRes() {

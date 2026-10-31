@@ -13,7 +13,6 @@ const assert = require('node:assert/strict');
 const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.WEB_WORKERS = '1';
 delete process.env.ADMIN_PASSWORD;
 
 const _req = require('./helpers/sources').buildAndRequire();
@@ -35,5 +34,5 @@ test('Verwalterkonto mit derselben Rundenzahl', async (t) => {
   try { await db.initSchema(); } finally { console.log = echt; }
   const admin = await db.get("SELECT password_hash FROM users WHERE username = 'admin'");
   assert.ok(admin, 'kein Verwalterkonto angelegt');
-  assert.equal(bcrypt.getRounds(admin.password_hash), _req('utils/auth.js').BCRYPT_ROUNDS);
+  assert.equal(bcrypt.getRounds(admin.password_hash), _req('src/konto/auth.js').BCRYPT_ROUNDS);
 });

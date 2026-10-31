@@ -50,7 +50,7 @@ const { buildAndRequire, ohneKommentare } = require('./helpers/sources');
 const { haeltSet } = require('./helpers/bestand');
 const _req = buildAndRequire();
 const db = _req('db/database.js');
-const { getSet, getSets } = _req('utils/handlers/sets.js');
+const { getSet, getSets } = _req('src/sets/abfragen.js');
 
 test('Anleitungen: der Server sagt, welche selbst hochgeladen ist',
   { concurrency: 1 }, async (t) => {

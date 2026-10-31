@@ -40,7 +40,7 @@ const web  = rel => lies(path.join(WEB, rel));
 // diese Datei prompt, als sie einen solchen Helfer hatte — und zu Recht:
 // Genau die unauflösbaren Brücken sind die, die beim nächsten Umbenennen
 // lautlos ins Leere zeigen.
-const KT_API   = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'data', 'api', 'BrickApiService.kt'));
+const KT_API   = ohneKommentare(require('../scripts/kotlin-vertrag.js').apiQuelltext(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'data', 'api')));
 const KT_FEAT  = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'ui', 'Teileliste.kt'));
 const KT_SCREEN= lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'PartsListScreen.kt'));
 const XML_EN   = lies(path.join(APP, 'res', 'values', 'strings.xml'));
@@ -113,7 +113,7 @@ test('beide fragen ihr Blickfeld an DIESER Stelle', () => {
   //
   // Jetzt hat die Teileliste ihre eigene Wahl, in beiden Oberflächen dieselbe:
   // ohne Haken `accounts=own`, mit Haken der ganze Haushalt. Die Namen sind
-  // weiterhin die des Servers (utils/household.ts, parseScopeMode) — es ist
+  // weiterhin die des Servers (src/haushalt/haushalt.ts, parseScopeMode) — es ist
   // dieselbe Sache, nur an der richtigen Stelle bedient.
   const js = web('public/js/08-init.js');
   assert.match(js, /pl-bestand-subs/, 'Der Webapp fehlt die Wahl „Unterkonten mit einbeziehen"');

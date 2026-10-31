@@ -19,7 +19,7 @@
 
 (function () {
   var KEY = 'bim_theme';
-  // Muss mit DESIGNS in utils/settings.ts uebereinstimmen — eine
+  // Muss mit DESIGNS in src/konto/settings.ts uebereinstimmen — eine
   // Pruefung haelt beide zusammen (theme.test.js).
   var ALLOWED = ['classic', 'brick', 'werkbank', 'farbfaecher', 'noppe', 'hochglanz'];
 
@@ -79,7 +79,7 @@
     return val;
   }
 
-  // 0) Hat der Server data-theme schon gesetzt (utils/indexHtml.ts), ist das
+  // 0) Hat der Server data-theme schon gesetzt (src/konto/indexHtml.ts), ist das
   //    der autoritative Wert zum Zeitpunkt des Ladens. Dann nur noch den Cache
   //    nachführen — kein Anwenden, kein Abgleich, also weder ein sichtbarer
   //    Sprung noch eine zusätzliche Anfrage pro Seitenaufruf.

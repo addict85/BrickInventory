@@ -38,10 +38,10 @@ const ohneKommentare = s => s
   .replace(/(^|[^:])\/\/[^\n]*/g, '$1');
 
 test('beide Vorschau-Erzeuger schreiben über eine temporäre Datei', () => {
-  // Fundort seit Nachtrag 129: utils/proxyThumbs.ts.
-  for (const datei of ['utils/proxyThumbs.ts', 'utils/thumbs.ts']) {
+  // Fundort seit Nachtrag 129: src/katalog/bilder/proxyThumbs.ts.
+  for (const datei of ['src/katalog/bilder/proxyThumbs.ts', 'src/katalog/bilder/thumbs.ts']) {
     const src = ohneKommentare(lies(datei));
-    // Seit Nachtrag 118 schreibt utils/thumbs.ts über verkleinern() (sharp,
+    // Seit Nachtrag 118 schreibt src/katalog/bilder/thumbs.ts über verkleinern() (sharp,
     // mit Jimp als Rückfall); der Bild-Proxy hat weiterhin seinen eigenen
     // Jimp-Aufruf. Geprüft wird deshalb die AUSSAGE — geschrieben wird auf den
     // temporären Namen — statt einer bestimmten Bibliothek.
@@ -56,10 +56,10 @@ test('beide Vorschau-Erzeuger schreiben über eine temporäre Datei', () => {
 test('eine unbrauchbar kleine Vorschau wird verworfen statt ausgeliefert', () => {
   // Diese Prüfung gehört zur AUSLIEFERUNG, nicht zur Erzeugung: Sie steht
   // weiterhin in routes/imgProxy.ts. (Beim Umzug in Nachtrag 129 hatte ich sie
-  // per Massenersetzung mit auf utils/proxyThumbs.ts umgebogen — zum dritten
+  // per Massenersetzung mit auf src/katalog/bilder/proxyThumbs.ts umgebogen — zum dritten
   // Mal in dieser Reihe eine zu breite Ersetzung.)
-  // Fundort seit Nachtrag 135: utils/imgCacheServe.ts (die Auslieferung).
-  const src = ohneKommentare(lies('utils/imgCacheServe.ts'));
+  // Fundort seit Nachtrag 135: src/katalog/bilder/imgCacheServe.ts (die Auslieferung).
+  const src = ohneKommentare(lies('src/katalog/bilder/imgCacheServe.ts'));
   assert.ok(/tst0\.size < 200/.test(src),
     'Altbestände aus der Zeit vor dem atomaren Schreiben müssen abgefangen werden');
   assert.ok(/unlink\(thumbFile\)/.test(src),

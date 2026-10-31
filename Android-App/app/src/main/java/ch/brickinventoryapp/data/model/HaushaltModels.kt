@@ -25,8 +25,17 @@ data class HouseholdMember(
     val id: Int = 0,
     val username: String = "",
     @SerialName("is_self") val isSelf: Boolean = false,
-    /** 0 = eigenes Konto, 1 = Unterkonto. Ältere Server schickten tiefere Stufen. */
-    val tiefe: Int = 1,
+)
+
+/**
+ * Ein Konto nur mit Namen — Besitzer-Plakette oder Elternkonto. Der Server
+ * schickt hier kein `is_self`: Die Zeile beschreibt fremde Konten oder eine
+ * Besitzliste, nicht die Kontoauswahl.
+ */
+@Serializable
+data class KontoName(
+    val id: Int = 0,
+    val username: String = "",
 )
 
 @Serializable
@@ -41,16 +50,16 @@ data class HouseholdStatusResponse(
     @SerialName("is_main") val isMain: Boolean = false,
     @SerialName("is_sub")  val isSub: Boolean = false,
     val currency: String = "",
-    @SerialName("linked_to") val linkedTo: HouseholdMember? = null,
+    @SerialName("linked_to") val linkedTo: KontoName? = null,
     /** Alle Elternkonten; ein älterer Server schickt nur [linkedTo]. */
-    val parents: List<HouseholdMember> = emptyList(),
+    val parents: List<KontoName> = emptyList(),
     @SerialName("sub_accounts") val subAccounts: List<HouseholdMember> = emptyList(),
     @SerialName("open_invites") val openInvites: Int = 0,
     /** Konten, die nur über eine Kette sichtbar waren und es nicht mehr sind. */
     @SerialName("former_links") val formerLinks: List<GetrenntesKonto> = emptyList(),
     val error: String? = null,
 ) {
-    val elternkonten: List<HouseholdMember>
+    val elternkonten: List<KontoName>
         get() = parents.ifEmpty { listOfNotNull(linkedTo) }
 }
 

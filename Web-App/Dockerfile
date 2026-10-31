@@ -86,7 +86,7 @@ WORKDIR /app
 # unterschiedliche Abhängigkeiten enthalten; ein Fehler aus einem transitiven
 # Update wäre nicht reproduzierbar gewesen.
 COPY package.json package-lock.json ./
-# scripts/ vor der Installation kopieren, damit der postinstall-Bump das Skript findet
+# scripts/ für die Bauschritte (build-ts, version, build-frontend).
 COPY scripts/ ./scripts/
 # npm ci statt npm install: installiert exakt die Lockfile und bricht ab, wenn
 # package.json und Lockfile auseinanderlaufen — statt die Lockfile stillschweigend
@@ -100,14 +100,14 @@ COPY scripts/ ./scripts/
 RUN npm ci
 
 # ── TypeScript → JavaScript ────────────────────────────────────────────────────
-# server.ts, db/, utils/, routes/ und jobs/ werden von esbuild pro Datei
+# server.ts, db/, src/, routes/ und jobs/ werden von esbuild pro Datei
 # (kein Bundle) nach .js transpiliert. Nur public/ bleibt JavaScript.
 # Kein tsc-Build nötig: Typprüfung läuft separat via `npm run typecheck`;
 # esbuild strippt hier nur die Typen (schnell, deterministisch).
 COPY server.ts ./
 COPY db/     ./db/
 COPY jobs/   ./jobs/
-COPY utils/  ./utils/
+COPY src/    ./src/
 COPY routes/ ./routes/
 # clients/ seit Nachtrag 126 (rebrickable, brickset — API-Clients ohne Routen).
 # Fehlt das COPY hier, entsteht kein dist/clients/ und der Server findet beim
@@ -124,15 +124,14 @@ COPY startup/ ./startup/
 # ganz) erwischte; deren .ts landeten im Laufzeit-Image. Mit einem eigenen
 # Ausgabeverzeichnis stellt sich die Frage nicht mehr: Ins Runtime-Stage geht
 # nur dist/, die Quellen bleiben im Build-Stage zurück.
-RUN node scripts/build-ts.js --outdir dist
+# Die Version kommt als Build-Argument (docker-publish.yml); im Kontext liegt
+# kein .git. Ohne Argument steht „unbekannt“ in dist/version.json.
+ARG APP_VERSION=
+RUN APP_VERSION="$APP_VERSION" node scripts/build-ts.js --outdir dist
 
 # Frontend minifizieren: js/*.js, i18n.js + styles.css werden im Build-Stage komprimiert
 # (~50-60% kleiner vor gzip). Die Quelldateien im Repo bleiben lesbar.
 COPY public/ ./public/
-# Version stempeln, nachdem public/ vorhanden ist: aktualisiert package.json,
-# die Cache-Busting-Query (?v=…) in index.html und den Build-Text. Dadurch
-# entspricht die Version dem Build-Zeitpunkt (YYYY.MM.DD.HHMM).
-RUN node scripts/bump-version.js
 # Frontend bündeln statt Datei für Datei zu minifizieren.
 #
 # VORHER lieferte index.html zwölf einzelne <script>-Tags aus (i18n.js +
@@ -158,8 +157,7 @@ RUN node scripts/build-frontend.js \
 # devDependencies entfernen, BEVOR node_modules ins Laufzeit-Image geht.
 #
 # Muss nach allen Build-Schritten stehen: esbuild wird bis hierher gebraucht.
-# --ignore-scripts, weil prune sonst erneut den postinstall-Hook auslöst; der
-# Versionsstempel ist zu diesem Zeitpunkt längst gesetzt.
+# --ignore-scripts: Installationsskripte der Pakete liefen schon bei npm ci.
 RUN npm prune --omit=dev --ignore-scripts && npm cache clean --force
 
 # ── Runtime Stage ──────────────────────────────────────────────────────────────
@@ -170,6 +168,10 @@ WORKDIR /app
 
 # su-exec for privilege dropping
 RUN apk add --no-cache su-exec
+# Zur Laufzeit startet nur `node`; npm, corepack und yarn des Basis-Images
+# brächten fremde Pakete mit eigenen Lücken ins Image (Trivy).
+RUN rm -rf /usr/local/lib/node_modules /usr/local/bin/npm /usr/local/bin/npx \
+           /usr/local/bin/corepack /usr/local/bin/yarn /usr/local/bin/yarnpkg /opt/yarn-*
 
 RUN addgroup -S brickinv && adduser -S brickinv -G brickinv
 
@@ -177,18 +179,15 @@ RUN addgroup -S brickinv && adduser -S brickinv -G brickinv
 # bereinigt (siehe oben). Damit liegen esbuild, typescript, jsdom und tsx NICHT
 # im Laufzeit-Image.
 #
-# Ein zweites `npm ci --omit=dev` an dieser Stelle wäre der naheliegende Weg
-# gewesen und war der erste Versuch — er schlägt fehl: `npm ci` führt den
-# postinstall-Hook aus (scripts/bump-version.js), und scripts/ wird in dieses
-# Stage nie kopiert. Selbst mit --ignore-scripts kostete es einen zweiten
-# vollständigen Registry-Durchlauf: auf schwacher Hardware rund 45 Sekunden für
-# Pakete, die eine Stage weiter oben schon installiert sind.
+# Kein zweites `npm ci --omit=dev` hier: Es kostete einen weiteren
+# Registry-Durchlauf (auf schwacher Hardware rund 45 Sekunden) für Pakete, die
+# eine Stage weiter oben schon installiert sind.
 COPY --from=builder /app/node_modules ./node_modules
 # Der komplette transpilierte Baum in einem Rutsch: dist/server.js, dist/db/,
-# dist/routes/ (inkl. api_v1/), dist/utils/ und dist/jobs/. Ein einziges COPY
+# dist/routes/ (inkl. api_v1/), dist/src/ und dist/jobs/. Ein einziges COPY
 # statt fünf — und keine Chance mehr, ein Verzeichnis zu vergessen.
 COPY --from=builder /app/dist ./dist/
-# package.json aus dem Build-Stage übernehmen (enthält die gestempelte Version)
+# package.json aus dem Build-Stage übernehmen; die Version steht in dist/version.json
 COPY --from=builder /app/package.json ./package.json
 # public/ kommt minifiziert aus dem Build-Stage
 COPY --from=builder /app/public ./public/
@@ -200,8 +199,8 @@ RUN chmod +x docker-entrypoint.sh
 ENV NODE_ENV=production
 ENV PORT=3000
 ENV NODE_OPTIONS="--max-old-space-size=384"
-# Workers: 0 = auto-detect CPU count (recommended). Set to 1 to disable clustering.
-ENV WEB_WORKERS=0
+# Ein Prozess für Web und Jobs; compose.yaml teilt sie mit ROLLE=web und ROLLE=jobs.
+ENV ROLLE=beides
 
 # ── Datenbank ─────────────────────────────────────────────────────────────────
 ENV PGHOST=postgres
@@ -212,16 +211,8 @@ ENV PGUSER=brickinventory
 ENV PGDATABASE=brickinventory
 
 # ── DB-Verbindungspool ────────────────────────────────────────────────────────
-# PG_POOL_MAX ist bewusst NICHT mehr gesetzt.
-#
-# VORHER stand hier 20 — und überschrieb damit die Berechnung in
-# db/database.ts, die max. 15 pro Worker und höchstens 80 insgesamt vorsieht.
-# Auf einem Achtkerner (WEB_WORKERS=0 → 8 Worker) ergab die Vorgabe
-# 8 × 20 = 160 gleichzeitige Verbindungen; Postgres' Standard liegt bei 100.
-# Die sorgfältige Formel im Code war damit wirkungslos.
-#
-# Ohne die Variable rechnet die App selbst: min(15, 80 / Anzahl Worker).
-# Wer sie doch braucht, setzt sie in compose.yaml — dann bewusst und sichtbar.
+# PG_POOL_MAX ist bewusst nicht gesetzt: Die Vorgabe in db/database.ts (15 je
+# Prozess) reicht für Web und Jobs. Wer sie ändert, setzt sie sichtbar in compose.yaml.
 ENV PG_POOL_MIN=2
 ENV PG_IDLE_MS=30000
 ENV PG_CONN_MS=5000

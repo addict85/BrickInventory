@@ -1,6 +1,6 @@
 package ch.brickinventoryapp
 
-import ch.brickinventoryapp.data.repository.AdminRepository
+import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.ui.DesignWahl
 import ch.brickinventoryapp.ui.ladeEinstellungen
 import ch.brickinventoryapp.ui.setzeDesign
@@ -25,7 +25,7 @@ import org.junit.Test
  * Gegenproben (30.10.2026, gemessen mit kt-b2/bau.sh):
  *   A  in KontoViewModel.waehleDesign() `sitzung.setzeDesign(…)` entfernt → rot
  *      „die Wahl gilt sofort in der ganzen App“ (classic statt noppe)
- *   B  in AdminRepository.setzeEigenesDesign den Schlüssel "design" statt
+ *   B  in KontoRepository.setzeEigenesDesign den Schlüssel "design" statt
  *      "theme" → rot „die Wahl geht an den Server …“
  *   C  in designWahl() `vorgabe ?: theme` statt `vorgabe?.let` → rot „ein
  *      älterer Server ohne Vorgabe zeigt keine Auswahl“
@@ -52,7 +52,7 @@ class DesignJeKontoTest {
         pfade.server.shutdown()
     }
 
-    private fun vm() = t.merke(KontoViewModel(AdminRepository(t.api, t.cache), NummernTexte, t.meldungen, t.sitzung))
+    private fun vm() = t.merke(KontoViewModel(KontoRepository(t.api, t.cache), NummernTexte, t.meldungen, t.sitzung))
 
     @Test
     fun `das Konto zeigt Vorgabe und eigenes Design`() {
@@ -96,7 +96,7 @@ class DesignJeKontoTest {
     fun `die Einstellungen ueberschreiben das Design des Kontos nicht`() {
         pfade.antworten["/api/v1/settings"] = """{"success":true,"settings":{"currency":"CHF","app_theme":"classic"}}"""
         t.sitzung.setzeDesign("noppe")
-        runBlocking { t.sitzung.ladeEinstellungen(AdminRepository(t.api, t.cache)) }
+        runBlocking { t.sitzung.ladeEinstellungen(KontoRepository(t.api, t.cache)) }
         assertEquals("CHF", t.sitzung.state.value.currency)
         assertEquals("noppe", t.sitzung.state.value.appTheme)
     }

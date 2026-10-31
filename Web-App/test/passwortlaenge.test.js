@@ -41,7 +41,7 @@ const ROOT = path.join(__dirname, '..');
 const read = f => fs.readFileSync(path.join(ROOT, f), 'utf8');
 const { buildAndRequire, ohneKommentare } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { PASSWORT_MIN_ZEICHEN, passwortZuKurz } = _req('utils/auth.js');
+const { PASSWORT_MIN_ZEICHEN, passwortZuKurz } = _req('src/konto/auth.js');
 
 // Ausgeschrieben statt ueber eine Schleifenvariable zusammengesetzt — siehe
 // test/baumbruecken.test.js, das diese Bruecken statisch aufloest.
@@ -119,7 +119,7 @@ test('die Fehlermeldung nennt dieselbe Zahl wie die Regel', () => {
   // also wird er hier an sie gebunden. Ein Text, der acht verspricht, waehrend
   // der Server zwoelf verlangt, ist eine eigene Art von Fehler: Der Nutzer
   // probiert, was dort steht, und bekommt trotzdem eine Absage.
-  const serverText = read('utils/fehlerTexte.ts');
+  const serverText = read('src/infra/fehlerTexte.ts');
   const eintrag = serverText.slice(serverText.indexOf('passwort_zu_kurz:'),
                                   serverText.indexOf('aktuelles_passwort_erforderlich'));
   assert.ok(eintrag.includes(String(PASSWORT_MIN_ZEICHEN)),

@@ -36,11 +36,10 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
-const { zustandFuerPreis, setGlobalSetting, setUserSetting } = _req('utils/settings.js');
+const { zustandFuerPreis, setGlobalSetting, setUserSetting } = _req('src/konto/settings.js');
 
 test('Zustand für den Marktpreis: Eingabe → Bestand → Standard', { concurrency: 1 }, async (t) => {
   try { await db.initSchema(); }

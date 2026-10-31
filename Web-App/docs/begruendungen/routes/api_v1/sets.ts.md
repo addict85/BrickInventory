@@ -24,7 +24,7 @@ Client.
 
 Hier ist die Antwort ausdrücklich: `exists: true|false`, und die Regel
 (Normalisierung der Nummer, Blickfeld des Haushalts) steht in
-utils/setAdd.ts — dieselbe Funktion, die auch die Erfassungs-Routen
+src/sets/setAdd.ts — dieselbe Funktion, die auch die Erfassungs-Routen
 benutzen. Sonst könnte die Vorabfrage etwas anderes sagen als das Erfassen
 danach tut.
 
@@ -57,7 +57,7 @@ Diese Route hatte ihren eigenen Abrufweg, der am Tageskontingent
 vorbeilief: Ein einziger Scan konnte bis zu acht Aufrufe auslösen (die
 EAN-Suche, je Treffer ein Detailabruf, dazu zwei in enrichResult) — alle
 ungezählt. Das Kontingent wurde erst clusterweit gemacht (siehe
-utils/rateLimiter.ts); dies war die letzte Tür daneben. Ist es erschöpft,
+src/katalog/rateLimiter.ts); dies war die letzte Tür daneben. Ist es erschöpft,
 liefert rbGet null, und die Route nimmt denselben Weg wie bei einem
 fehlgeschlagenen Abruf.
 ```
@@ -73,7 +73,7 @@ Der Titel ist Fliesstext eines Händlers. Hier stand `match(/(\d{4,6})/)`
 „LEGO City 2023 Feuerwehrstation 60320" gewann das JAHR, und die
 Antwort ging als gültige Setnummer an die App.
 
-Jetzt liefert utils/produkttitel.ts geordnete Kandidaten (Teilezahlen
+Jetzt liefert src/katalog/produkttitel.ts geordnete Kandidaten (Teilezahlen
 und Jahre aussortiert), und der KATALOG entscheidet, welcher davon
 wirklich ein Set ist. Nur eine lokale Abfrage je Kandidat — sie kostet
 nichts am Tageskontingent.
@@ -103,7 +103,7 @@ GET /api/v1/alerts/pending?since=<ISO> — was seit dann ausgeloest hat.
 Der Weg, auf dem beide Oberflaechen von einer Meldung erfahren, ohne dass
 der Server schieben muss. Die Begruendung — warum kein Firebase, warum `now`
 mitkommt, warum ein erster Aufruf ohne `since` nichts liefert — steht an
-ausgeloesteSeit() in utils/preisalarm.ts.
+ausgeloesteSeit() in src/finanzen/preisalarm.ts.
 
 Ohne Kontofilter, wie die uebrigen Alarm-Routen: Ein Alarm gehoert genau
 EINEM Konto.
@@ -209,7 +209,7 @@ GET /api/v1/storage — welche Lagerorte es gibt und was darin liegt.
 Liegt in dieser Datei und nicht in einer eigenen: Die Antwort spannt Sets
 UND Teile, gehoert also zu keiner der beiden Familien allein. Sie hier
 anzuhaengen ist die kleinere Unsauberkeit, als eine Routendatei fuer einen
-einzigen Endpunkt aufzumachen — und utils/lagerort.ts traegt die Regeln
+einzigen Endpunkt aufzumachen — und src/bestand/lagerort.ts traegt die Regeln
 ohnehin.
 ```
 
@@ -313,7 +313,7 @@ statt sein lokales Kürzel zu raten.
 
 ```text
 Dieselbe Umsetzung wie /api/finance/price-history — siehe
-utils/priceHistory.ts.
+src/finanzen/priceHistory.ts.
 
 VORHER standen hier rund fünfzig Zeilen, die die Webapp-Route Wort für
 Wort wiederholten: dieselbe Abfrage auf price_history, dasselbe
@@ -333,7 +333,7 @@ Server und App müssen gemeinsam ausgerollt werden.
 Set löschen — standardmässig im ganzen SCHREIB-Blickfeld.
 
 Im Haushalt fasst die Galerie dieselbe Setnummer zu EINER Kachel zusammen
-(utils/handlers/sets.ts gruppiert nach set_number). Wer diese Kachel löscht,
+(src/sets/abfragen.ts gruppiert nach set_number). Wer diese Kachel löscht,
 meint alle Exemplare dahinter — deshalb writableIds().
 
 ── Warum es jetzt eingrenzbar ist ──────────────────────────────────────────

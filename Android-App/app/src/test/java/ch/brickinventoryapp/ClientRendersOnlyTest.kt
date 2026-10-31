@@ -85,7 +85,7 @@ class ClientRendersOnlyTest {
     @Test
     fun `der Gesamtwert kommt vom Server`() {
         val summen = finanzSummen(ValuationResponse(success = true), PartsValuationResponse(success = true, totalValue = "0.20"),
-            null, PnlResponse(success = true, totals = PnlTotals(grandTotal = "4894.77")))
+            null, PnlResponse(success = true, totals = PnlTotals(purchase = "0.00", current = "0.00", grandTotal = "4894.77")))
         assertEquals(0, java.math.BigDecimal("4894.77").compareTo(summen.gesamt))
         val sections = java.io.File(
             "src/main/java/ch/brickinventoryapp/ui/screens/FinanceSections.kt").readText()

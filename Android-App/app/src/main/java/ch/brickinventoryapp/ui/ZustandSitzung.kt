@@ -35,7 +35,7 @@ data class AppUiState(
      * die Anmeldung dann einen Fortschrittsbalken wie die Webapp. null heisst: durch
      * oder gar nicht erreichbar.
      */
-    val startupStatus: ch.brickinventoryapp.data.model.StartupStatus? = null,
+    val startupStatus: ch.brickinventoryapp.ui.model.StartzustandAnsicht? = null,
     val language: String = "system",
 )
 
@@ -125,6 +125,12 @@ data class AnmeldeUiState(
     val laeuft: Boolean = false,
     /** Der Server verlangt beim Anmelden den Code des zweiten Faktors. */
     val codeNoetig: Boolean = false,
+    /**
+     * Mit Verwalterrechten anmelden (Token-Scope "voll"). Aus, bis man es
+     * ankreuzt: Ein Telefon geht leichter verloren als ein Rechner, und die
+     * Verwaltung braucht man dort selten.
+     */
+    val vollerZugriff: Boolean = false,
     /** Läuft die ANMELDUNG (nicht Registrieren oder „Passwort vergessen")? */
     val loginLaeuft: Boolean = false,
     /**

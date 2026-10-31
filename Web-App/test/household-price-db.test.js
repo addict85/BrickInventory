@@ -16,7 +16,7 @@
  * schon; es kam nur nie an.
  *
  * Der gemeinsame Helfer ist bewusst der Fix-Ort (Marcos Wunsch: Webapp und
- * App teilen dieselbe Logik): utils/priceHistory.ts nimmt jetzt das Blickfeld,
+ * App teilen dieselbe Logik): src/finanzen/priceHistory.ts nimmt jetzt das Blickfeld,
  * ALLE sechs Aufrufer (Webapp + v1, Sets/Teile/Minifiguren) reichen
  * scopeIds() durch.
  *
@@ -32,7 +32,6 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { testServer } = require('./helpers/server');
@@ -62,6 +61,9 @@ test('das Hauptkonto sieht Marktpreis und Verlauf eines Unterkonto-Sets',
   await db.run(`INSERT INTO account_links (main_user_id,sub_user_id) VALUES ($1,$2) ON CONFLICT DO NOTHING`, [hauptId, subId]);
   await db.run(`INSERT INTO user_settings (user_id,key,value) VALUES ($1,'currency','CHF')
                 ON CONFLICT (user_id,key) DO UPDATE SET value='CHF'`, [hauptId]);
+  // Im Haushalt gilt eine Währung (src/haushalt/haushalt.ts) — auch für das Unterkonto.
+  await db.run(`INSERT INTO user_settings (user_id,key,value) VALUES ($1,'currency','CHF')
+                ON CONFLICT (user_id,key) DO UPDATE SET value='CHF'`, [subId]);
 
   await db.run(`DELETE FROM sets WHERE set_number=$1`, [SET]);
   await db.run(`DELETE FROM price_history WHERE set_number=$1`, [SET]);

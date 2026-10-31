@@ -58,7 +58,7 @@ function alleRouten() {
   // geworden — samt „ENOENT: routes/finance.ts". Siehe routerEinhaengungen().
   for (const r of routerEinhaengungen())
     out.push(...routenAus(r.datei, r.mount));
-  const v1 = path.join(ROOT, 'routes', 'api_v1');
+  const v1 = path.join(ROOT, 'routes/api_v1');
   for (const f of fs.readdirSync(v1)) {
     if (!f.endsWith('.ts') || f === 'index.ts' || f === 'middleware.ts') continue;
     out.push(...routenAus(path.join(v1, f), '/api/v1'));

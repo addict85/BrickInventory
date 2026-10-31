@@ -20,7 +20,6 @@ const test   = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
 const db   = _req('db/database.js');
@@ -141,7 +140,7 @@ test('Geldbeträge sind exakt', { concurrency: 1 }, async (t) => {
     // hat ihn mit Typumwandlungen umgeschrieben, und ON CONFLICT fände ihn
     // danach nicht mehr — also in der Fassung der Migration neu anlegen.
     const mig = require('node:fs').readFileSync(
-      require('node:path').join(__dirname, '..', 'db', 'migrations', '0070-erfassungstag.sql'), 'utf8');
+      require('node:path').join(__dirname, '..', 'db/migrations/0070-erfassungstag.sql'), 'utf8');
     const index = /CREATE UNIQUE INDEX idx_set_acq_erfassungstag[^;]+;/.exec(mig);
     assert.ok(index, 'Tagesindex in 0070 nicht gefunden');
     await db.run('DROP INDEX IF EXISTS idx_set_acq_erfassungstag');
@@ -206,7 +205,7 @@ test('das Erst-Passwort geht nicht durch den Log-Abfänger', () => {
   const fs = require('node:fs');
   const path = require('node:path');
   const { ROOT, ohneKommentare } = require('./helpers/sources');
-  const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'db', 'database.ts'), 'utf8'));
+  const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'db/database.ts'), 'utf8'));
 
   // Der Abfänger in server.ts schreibt JEDE console-Zeile nach app_logs, und
   // der Admin-Log-Viewer gibt sie 48 Stunden lang wieder aus. Das Passwort des

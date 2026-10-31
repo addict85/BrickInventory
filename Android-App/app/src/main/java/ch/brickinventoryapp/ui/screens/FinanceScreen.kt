@@ -30,6 +30,7 @@ import coil3.ImageLoader
 import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.components.LeerSymbol
+import ch.brickinventoryapp.ui.components.Ladezustand
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -76,19 +77,23 @@ fun FinanceScreen(
     fun fmtPrice(v: String?): String = ch.brickinventoryapp.util.fmtMoneyOrDash(v, currencyCode)
     fun fmtWert(v: Double?): String = v?.let { ch.brickinventoryapp.util.fmtMoney(it, currencyCode) } ?: "—"
 
-    if (isLoading && valuation == null) {
-        Box(Modifier.fillMaxSize(), Alignment.Center) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(Abstaende.mittel)) {
-                CircularProgressIndicator()
-                Text(stringResource(R.string.finance_loading), style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        }
-        return
-    }
+    // Ohne Bewertung: laden, gescheitert (mit Grund und neuem Versuch) oder
+    // wirklich keine Preise — vorher sah ein Fehler aus wie „keine Preisdaten“.
     if (valuation == null) {
-        Box(Modifier.fillMaxSize(), Alignment.Center) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(Abstaende.gross)) {
+        Ladezustand(
+            anzeige = ladeanzeige(hatInhalt = false, laedt = isLoading, fehler = financeState.valuationFehler, gefiltert = false),
+            fehler = financeState.valuationFehler,
+            onErneut = onRefresh,
+            laedt = {
+                Box(Modifier.fillMaxSize(), Alignment.Center) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(Abstaende.mittel)) {
+                        CircularProgressIndicator()
+                        Text(stringResource(R.string.finance_loading), style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            },
+            leer = {
                 LeerSymbol(Icons.Default.Savings, 48.dp)
                 Text(stringResource(R.string.finance_no_data), fontWeight = FontWeight.SemiBold)
                 Button(onClick = onRefresh, shape = Formen.knopf) {
@@ -96,8 +101,8 @@ fun FinanceScreen(
                     Spacer(Modifier.width(6.dp))
                     Text(stringResource(R.string.finance_load_prices))
                 }
-            }
-        }
+            },
+        ) {}
         return
     }
 

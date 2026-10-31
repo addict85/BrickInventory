@@ -1,6 +1,6 @@
 package ch.brickinventoryapp
 
-import ch.brickinventoryapp.data.repository.AdminRepository
+import ch.brickinventoryapp.data.repository.VerwaltungRepository
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -23,7 +23,7 @@ import org.junit.Test
  * Die Abfrage läuft gegen einen Testserver; die Auswertung im AppViewModel
  * und die Anzeige lesen Quelltext (Gerät und Compose fehlen hier).
  *
- * Gegenprobe (29.10.2026, gemessen): in AdminApi `@GET("api/v1/startup-status")`
+ * Gegenprobe (29.10.2026, gemessen): in VerwaltungApi `@GET("api/v1/startup-status")`
  * auf "…/startstatus" → rot „die App fragt den Startzustand ab“.
  */
 class ServerStartTest {
@@ -34,7 +34,7 @@ class ServerStartTest {
         .joinToString("\n") { if (it.trim().startsWith("//") || it.trim().startsWith("*")) "" else it }
 
     @Test
-    fun `die App fragt den Startzustand ab`() = mitRepo(::AdminRepository) { pfade, admin ->
+    fun `die App fragt den Startzustand ab`() = mitRepo(::VerwaltungRepository) { pfade, admin ->
         runBlocking { admin.getStartupStatus() }
         assertEquals(listOf("GET /api/v1/startup-status"), pfade.anfragen.toList())
     }

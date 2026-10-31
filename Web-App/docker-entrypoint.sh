@@ -8,7 +8,7 @@ set -e
 # erscheint."
 #
 # Die erste Zeile des Servers steht unmittelbar nach den Importen
-# (`[cluster] Primary … starting N workers`), und console.log schreibt synchron
+# (`[start] Prozess …, Rolle …`), und console.log schreibt synchron
 # nach stdout. Wer minutenlang nichts sieht, sieht also nicht einen langsamen
 # Server — er sieht ein Skript, das VOR dem Server laeuft und dabei schweigt.
 #
@@ -17,7 +17,7 @@ set -e
 echo "[entrypoint] Datenverzeichnisse werden vorbereitet …"
 
 # Verzeichnisse der neuen Ordnung. instructions/shared und part_images sind
-# entfallen (siehe utils/appPaths.ts).
+# entfallen (siehe src/infra/appPaths.ts).
 mkdir -p \
   /app/data/instructions \
   /app/data/uploads \
@@ -26,7 +26,7 @@ mkdir -p \
   /app/data/images/minifigs
 
 # public/ gehoert nicht mehr dazu: Bilder liegen jetzt unter data/images/
-# (siehe utils/appPaths.ts). public/ ist damit wieder read-only Build-Inhalt.
+# (siehe src/infra/appPaths.ts). public/ ist damit wieder read-only Build-Inhalt.
 
 # ── Der Eigentuemerwechsel ist ein REPARATURSCHRITT, kein Startschritt ───────
 #
@@ -135,7 +135,24 @@ case "${BRICKINV_CHOWN:-auto}" in
     ;;
 esac
 
-echo "[entrypoint] Server wird gestartet."
+# ── Wurzelzertifikat der internen CA (Caddy) ────────────────────────────────
+# Caddy legt seine Dateien nur für root lesbar ab; der Server läuft als
+# brickinv. Kopiert wird nur das öffentliche Zertifikat, nie ein Schlüssel.
+# Beim ersten Start legt Caddy die CA womöglich erst nach uns an — dann holt
+# eine Schleife im Hintergrund die Kopie bis zu zwei Minuten lang nach.
+CA_QUELLE=/caddy-ca/root.crt
+kopiereCa() {
+  [ -f "$CA_QUELLE" ] || return 1
+  mkdir -p "$(dirname "$CA_ZERTIFIKAT")" \
+    && cp "$CA_QUELLE" "$CA_ZERTIFIKAT.neu" && chmod 644 "$CA_ZERTIFIKAT.neu" \
+    && mv "$CA_ZERTIFIKAT.neu" "$CA_ZERTIFIKAT"
+}
+if [ -n "$CA_ZERTIFIKAT" ] && [ -d /caddy-ca ] && ! kopiereCa; then
+  echo "[entrypoint] Wurzelzertifikat der CA noch nicht da — wird nachgeholt, sobald Caddy es anlegt."
+  ( i=0; while [ "$i" -lt 120 ]; do kopiereCa && exit 0; sleep 1; i=$((i+1)); done ) &
+fi
+
+echo "[entrypoint] Server wird gestartet (Rolle ${ROLLE:-beides})."
 
 # Drop to brick user and start
 # dist/server.js statt server.js: Der Build schreibt seit der Umstellung nach

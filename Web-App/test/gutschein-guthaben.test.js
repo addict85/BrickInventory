@@ -19,7 +19,7 @@ const fs     = require('node:fs');
 const path   = require('node:path');
 
 const _req = require('./helpers/sources').buildAndRequire();
-const G = _req('utils/gutscheinGuthaben.js');
+const G = _req('src/gutscheine/gutscheinGuthaben.js');
 
 const NUMMER = '5045076374450011166';
 const PIN    = '5225';
@@ -287,7 +287,7 @@ test('Guthaben-Abfrage', async (t) => {
       .matchAll(/<option value="([^"]+)"/g)].map(m => m[1]);
     assert.deepEqual(werte, [...G.LAENDER],
       'Das Auswahlfeld in public/index.html und LAENDER in ' +
-      'utils/gutscheinGuthaben.ts sagen Verschiedenes.');
+      'src/gutscheine/gutscheinGuthaben.ts sagen Verschiedenes.');
     assert.ok(G.LAENDER.includes(G.LAND_STANDARD),
       'Der Standardwert muss selbst auf der Liste stehen');
   });

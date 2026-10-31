@@ -2,7 +2,7 @@ package ch.brickinventoryapp
 
 import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.model.CatalogMetaResponse
-import ch.brickinventoryapp.data.repository.AdminRepository
+import ch.brickinventoryapp.data.repository.KatalogRepository
 import ch.brickinventoryapp.data.repository.Fehlerart
 import ch.brickinventoryapp.data.repository.Result
 import kotlinx.coroutines.test.runTest
@@ -18,7 +18,7 @@ import java.io.File
  * und sagt dann, dass er es ist.
  *
  * `RepoBasis.cached()` mit echtem Server (MockWebServer) und echtem
- * Plattenspeicher; AdminRepository.getCatalogMeta() ist nur das Vehikel.
+ * Plattenspeicher; KatalogRepository.getCatalogMeta() ist nur das Vehikel.
  *
  * Gegenproben (am 28.10.2026 gemessen, kotlinc gegen die Datenschicht):
  *   A  die alte Regel zurück („bei jedem Fehler ausser 401 die Platte“) →
@@ -33,7 +33,7 @@ import java.io.File
 class RepoCacheRueckfallTest {
 
     private lateinit var server: MockWebServer
-    private lateinit var repo: AdminRepository
+    private lateinit var repo: KatalogRepository
     private lateinit var cacheDir: File
 
     /** Eine gueltige Katalog-Antwort mit erkennbarer Jahreszahl. */
@@ -46,7 +46,7 @@ class RepoCacheRueckfallTest {
         server.start()
         cacheDir = File(System.getProperty("java.io.tmpdir"), "bim-cache-${System.nanoTime()}")
         cacheDir.mkdirs()
-        repo = AdminRepository(TestApi.fuer(server), ResponseCache { cacheDir })
+        repo = KatalogRepository(TestApi.fuer(server), ResponseCache { cacheDir })
     }
 
     @After

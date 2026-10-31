@@ -60,7 +60,7 @@ test('Passwort bestätigen', { concurrency: 1 }, async (t) => {
   };
 
   await t.test('ein Token prägt keinen weiteren', async () => {
-    const token = await _req('utils/auth.js').createToken(uid, 'Probe');
+    const token = await _req('src/konto/auth.js').createToken(uid, 'Probe');
     const r = await post(ohneSitzung, '/token-create', { password: PASS }, { Authorization: `Bearer ${token}` });
     assert.equal(r.status, 403, JSON.stringify(r.body));
     assert.equal(r.body.code, 'nur_mit_sitzung');

@@ -7,6 +7,7 @@
  *      Drosseln teilen sich den Takt“
  *   B  im UPDATE von warteAufTakt GREATEST(api_takt.naechster, …) durch
  *      clock_timestamp() ersetzt → rot: derselbe Test
+ *   (30.10.2026 mit der Prüfung „nicht vor k Takten“ erneut gemessen: A und B rot)
  *
  * Getrennte Instanzen stehen hier für getrennte Prozesse: Sie teilen nichts
  * ausser der Datenbank, genau wie ein Web-Worker und der Hintergrundprozess.
@@ -17,7 +18,6 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
@@ -33,7 +33,7 @@ test('gemeinsamer Takt über die Datenbank', { concurrency: 1 }, async (t) => {
   try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }
   t.after(() => db.pool.end().catch(() => {}));
 
-  const { RateLimiter } = _req('utils/rateLimiter.js');
+  const { RateLimiter } = _req('src/katalog/rateLimiter.js');
   const API = `test-${process.pid}`;
   const ABSTAND = 250;
   await db.run('DELETE FROM api_takt WHERE api = $1', [API]);
@@ -44,12 +44,14 @@ test('gemeinsamer Takt über die Datenbank', { concurrency: 1 }, async (t) => {
     const a = new RateLimiter(1, 0, { api: API, abstandMs: ABSTAND });
     const b = new RateLimiter(1, 0, { api: API, abstandMs: ABSTAND });
     const zeiten = [];
-    await Promise.all([a, b, a, b, a, b].map(d => d.waitForSlot().then(() => zeiten.push(Date.now()))));
+    const start = Date.now();
+    await Promise.all([a, b, a, b, a, b].map(d => d.waitForSlot().then(() => zeiten.push(Date.now() - start))));
     zeiten.sort((x, y) => x - y);
-    const abstaende = zeiten.slice(1).map((z, i) => z - zeiten[i]);
-    // Etwas Spiel für Timer-Ungenauigkeit; ohne Takt lägen die Abstände bei 0.
-    assert.ok(abstaende.every(d => d >= ABSTAND - 40),
-      `Abstände zu klein: ${abstaende.join(', ')} ms`);
+    // Der k-te Durchlass kommt nicht vor k Takten. Spätes Aufwachen unter Last
+    // ist erlaubt; Abstände zwischen Aufwachzeiten wären es nicht, weil ein
+    // verspäteter Teilnehmer den Abstand zum nächsten pünktlichen verkürzt.
+    const zufrueh = zeiten.filter((z, k) => z < k * ABSTAND - 40);
+    assert.deepEqual(zufrueh, [], `Durchlässe nach Start: ${zeiten.join(', ')} ms`);
   });
 
   await db.run('DELETE FROM api_takt WHERE api = $1', [API]);

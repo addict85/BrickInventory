@@ -14,7 +14,6 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { haeltSet, haeltTeil } = require('./helpers/bestand');
@@ -72,8 +71,8 @@ test('Lagerort gegen echte Datenbank', async (t) => {
     return;
   }
   await seed();
-  const L = _req('utils/lagerort.js');
-  const household = _req('utils/household.js');
+  const L = _req('src/bestand/lagerort.js');
+  const household = _req('src/haushalt/haushalt.js');
   const schreibbar = await household.writableIds(U.ich);
 
   await t.test('ein Teil liegt an EINEM Ort, nicht je Set an einem', async () => {

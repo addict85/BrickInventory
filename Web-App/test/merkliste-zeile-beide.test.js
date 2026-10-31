@@ -184,7 +184,7 @@ test('4. die Abfrage der manuellen Teile liefert den Lagerort überhaupt', () =>
   const ohneSql = (q) => q.split('\n')
     .map(z => z.trim().startsWith('--') ? '' : z).join('\n');
   const quelle = ohneSql(ohneKommentare(
-    fs.readFileSync(path.join(ROOT, 'utils/handlers/parts.ts'), 'utf8')));
+    fs.readFileSync(path.join(ROOT, 'src/teile/abfragen.ts'), 'utf8')));
   const fn = rumpf(quelle, 'function getManualParts(', /\n(?:export )?(?:async )?function /);
   assert.match(fn, /\bstorage\b/,
     'getManualParts() liest die Spalte storage nicht — die Zeile im Dialog bliebe leer.');

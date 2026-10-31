@@ -5,7 +5,7 @@
  * Setnummer zu einer Kachel zusammen. Bei mehreren Zeilen wird nach Menge
  * gewichtet (über baseline_price), bei einer bleibt der Wert des Servers.
  * Seit kachel_preis und kachel_pnl_pct rechnet das der Server
- * (utils/setValue.ts kachelWerte); Web und App zeigen nur an.
+ * (src/finanzen/setValue.ts kachelWerte); Web und App zeigen nur an.
  *
  * Gegenproben (am 29.10.2026 gemessen):
  *   A  in kachelWerte() bei mehreren Zeilen die letzte statt der gewichteten
@@ -21,7 +21,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { kachelWerte } = _req('utils/setValue.js');
+const { kachelWerte } = _req('src/finanzen/setValue.js');
 const kachel = (zeilen, nr) => kachelWerte(zeilen.map(z => ({ purchase_price: null, pnl_pct: null, ...z }))).get(nr);
 
 test('mehrere Besitzer: der Kachelpreis wird nach Menge gewichtet', () => {

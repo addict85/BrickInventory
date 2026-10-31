@@ -32,7 +32,11 @@ class ErrorMessageLayerTest {
         "data/repository/TeileRepository.kt",
         "data/repository/FinanzenRepository.kt",
         "data/repository/HaushaltRepository.kt",
-        "data/repository/AdminRepository.kt",
+        "data/repository/FigurenRepository.kt",
+        "data/repository/KontoRepository.kt",
+        "data/repository/VerwaltungRepository.kt",
+        "data/repository/KatalogRepository.kt",
+        "data/repository/GutscheineRepository.kt",
         "data/CsvImportSseClient.kt",
     )
 

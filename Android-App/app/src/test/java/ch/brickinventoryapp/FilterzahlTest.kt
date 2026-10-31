@@ -24,7 +24,7 @@ import org.junit.Test
 class FilterzahlTest {
 
     private val haushalt = listOf(
-        HouseholdMember(id = 1, username = "marco", isSelf = true, tiefe = 0),
+        HouseholdMember(id = 1, username = "marco", isSelf = true),
         HouseholdMember(id = 2, username = "kind"),
     )
     private val orte = listOf(Lagerort("Keller", sets = 3), Lagerort("Estrich", teile = 2))

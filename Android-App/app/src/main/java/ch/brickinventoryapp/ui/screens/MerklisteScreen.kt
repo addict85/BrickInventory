@@ -7,6 +7,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import ch.brickinventoryapp.ui.components.Bewegt
+import ch.brickinventoryapp.ui.components.HinweisText
+import ch.brickinventoryapp.ui.components.KeinTrefferHinweis
+import ch.brickinventoryapp.ui.components.Ladezustand
+import ch.brickinventoryapp.ui.ladeanzeige
+import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Add
@@ -140,23 +145,19 @@ fun MerklisteScreen(
             }
 
             Column(Modifier.fillMaxSize().padding(horizontal = Abstaende.mittel)) {
-                when {
-                    zustand.laedt && zustand.merkposten.isEmpty() ->
-                        Box(Modifier.fillMaxWidth().padding(Abstaende.riesig), Alignment.Center) { CircularProgressIndicator() }
-
-                    zustand.merkposten.isEmpty() ->
-                        Box(Modifier.fillMaxWidth().padding(Abstaende.riesig), Alignment.Center) {
-                            // Zwei Leermeldungen: „Noch keine Merkposten“ sagt etwas über die
-                            // Liste, „nichts gefunden“ über den Filter. Sonst sähe eine Suche ohne
-                            // Treffer wie eine geleerte Merkliste aus.
-                            val gefiltert = zustand.query.isNotBlank() ||
-                                zustand.zustandFilter.isNotBlank() ||
-                                scopeModus != ch.brickinventoryapp.data.ScopeFilter.ALL
-                            Text(stringResource(if (gefiltert) R.string.wanted_no_results else R.string.wanted_empty),
-                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-
-                    else -> LazyColumn(
+                // Zwei Leermeldungen: „Noch keine Merkposten“ sagt etwas über die
+                // Liste, „nichts gefunden“ über den Filter; ein Ladefehler eine dritte.
+                val gefiltert = zustand.query.isNotBlank() ||
+                    zustand.zustandFilter.isNotBlank() ||
+                    scopeModus != ch.brickinventoryapp.data.ScopeFilter.ALL
+                Ladezustand(
+                    anzeige = ladeanzeige(zustand.merkposten.isNotEmpty(), zustand.laedt, zustand.fehler, gefiltert),
+                    fehler = zustand.fehler,
+                    onErneut = { vm.ladeMerkliste() },
+                    leer = { HinweisText(Icons.Default.BookmarkBorder, stringResource(R.string.wanted_empty)) },
+                    keineTreffer = { KeinTrefferHinweis(stringResource(R.string.wanted_no_results)) },
+                ) {
+                    LazyColumn(
                         verticalArrangement = Arrangement.spacedBy(Abstaende.klein),
                         // Platz fuer die Knoepfe: Ohne ihn verdeckt der grosse die
                         // letzte Zeile — dieselbe Vorsorge wie in der Galerie.

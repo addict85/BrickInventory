@@ -1,27 +1,40 @@
 package ch.brickinventoryapp
 
 import androidx.lifecycle.SavedStateHandle
+import ch.brickinventoryapp.ui.model.alsAnsicht
 import ch.brickinventoryapp.data.api.ApiJson
 import ch.brickinventoryapp.data.model.BrickColor
+import ch.brickinventoryapp.ui.model.alsAnsicht
 import ch.brickinventoryapp.data.model.KEINE_FARBE
 import ch.brickinventoryapp.data.model.Part
+import ch.brickinventoryapp.ui.model.alsAnsicht
 import ch.brickinventoryapp.data.model.PartValuationItem
 import ch.brickinventoryapp.data.repository.TeileRepository
+import ch.brickinventoryapp.ui.model.alsAnsicht
+import ch.brickinventoryapp.data.repository.FigurenRepository
 import ch.brickinventoryapp.ui.ManualItemDetailUiState
+import ch.brickinventoryapp.ui.model.alsAnsicht
 import ch.brickinventoryapp.ui.Screen
 import ch.brickinventoryapp.ui.farbName
+import ch.brickinventoryapp.ui.model.alsAnsicht
 import ch.brickinventoryapp.ui.ohneKeineFarbe
 import ch.brickinventoryapp.ui.viewmodel.TeileViewModel
+import ch.brickinventoryapp.ui.model.alsAnsicht
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import ch.brickinventoryapp.ui.model.alsAnsicht
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
+import ch.brickinventoryapp.ui.model.alsAnsicht
 import org.junit.After
 import org.junit.Assert.assertEquals
+import ch.brickinventoryapp.ui.model.alsAnsicht
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import ch.brickinventoryapp.ui.model.alsAnsicht
 import org.junit.Before
 import org.junit.Test
+import ch.brickinventoryapp.ui.model.alsAnsicht
 
 /**
  * „Keine Farbe“ ist 9999 wie auf dem Server (utils/validate.ts, KEINE_FARBE);
@@ -57,7 +70,7 @@ class KeineFarbeTest {
         pfade.server.shutdown()
     }
 
-    private fun vm() = t.merke(TeileViewModel(t.dienste, TeileRepository(t.api, t.cache), SavedStateHandle()))
+    private fun vm() = t.merke(TeileViewModel(t.dienste, TeileRepository(t.api, t.cache), FigurenRepository(t.api, t.cache), SavedStateHandle()))
 
     private fun koerperZu(methodeUndPfad: String): String {
         val i = pfade.anfragen.indexOfFirst { it == methodeUndPfad }
@@ -92,7 +105,7 @@ class KeineFarbeTest {
     @Test
     fun `9999 heisst keine Farbe, 0 bleibt Schwarz`() {
         val liste = listOf(BrickColor(KEINE_FARBE, "[No Color/Any Color]"), BrickColor(0, "Black", "05131D"),
-                           BrickColor(4, "Red", "C91A09"))
+                           BrickColor(4, "Red", "C91A09")).map { it.alsAnsicht() }
         assertEquals(listOf(0, 4), ohneKeineFarbe(liste).map { it.id })
         assertEquals("keine", farbName(liste, KEINE_FARBE, "[No Color/Any Color]", "keine"))
         assertEquals("Black", farbName(liste, 0, null, "keine"))

@@ -9,7 +9,7 @@
  *      alte Schnitt mit COALESCE(…, 0)) → rot: „nur in EUR erfasst: Kaufpreis
  *      unbekannt“
  *   B  ein Kaufpreis 0 als fehlend gelesen (`… || null`) → rot: „ein
- *      erfasster Preis 0 zählt“
+ *      erfasster Preis 0 zählt“ (purchase_price null statt 0)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -17,7 +17,6 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
@@ -62,7 +61,7 @@ test('G&V: ein Kaufpreis, in der Anzeigewährung', { concurrency: 1 }, async (t)
     await db.pool.end().catch(() => {});
   });
 
-  const { computePnl } = _req('utils/financeCalc.js');
+  const { computePnl } = _req('src/finanzen/financeCalc.js');
   const pnl = await computePnl(uid, [uid]);
   const zeile = (nr) => pnl.sets.find(s => s.set_number === nr);
   assert.equal(pnl.currency, 'CHF');
@@ -82,9 +81,12 @@ test('G&V: ein Kaufpreis, in der Anzeigewährung', { concurrency: 1 }, async (t)
   });
 
   await t.test('ein erfasster Preis 0 zählt', () => {
+    // Bekannt und 0 (Geschenk): der Betrag zählt, eine Prozentzahl gibt es
+    // nicht — siehe geschenk-guv-db.test.js.
     const z = zeile(NR.null);
     assert.equal(z.purchase_price, 0);
-    assert.notEqual(z.pnl_pct, null);
+    assert.equal(z.pnl_abs, '120.00');
+    assert.equal(z.pnl_pct, null);
   });
 
   await t.test('die Summe des Kaufpreises lässt das Unbekannte weg', () => {

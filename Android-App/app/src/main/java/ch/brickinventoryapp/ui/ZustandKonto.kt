@@ -52,7 +52,7 @@ data class ZweiterFaktorUiState(
  */
 data class GeraeteUiState(
     val laedt: Boolean = false,
-    val geraete: List<ch.brickinventoryapp.data.model.AppToken> = emptyList(),
+    val geraete: List<ch.brickinventoryapp.ui.model.GeraetAnsicht> = emptyList(),
     /** Meldung des Servers oder der Verbindung; null = nichts zu sagen. */
     val fehler: String? = null,
 )
@@ -93,7 +93,7 @@ data class VerwaltungUiState(
 data class CsvHochladenUiState(
     val laeuft: Boolean = false,
     /** Welche Art gerade hochgeladen wird — fuer die Anzeige am richtigen Knopf. */
-    val art: ch.brickinventoryapp.data.model.CsvArt? = null,
+    val art: ch.brickinventoryapp.ui.model.CsvImportArt? = null,
     val ergebnis: ch.brickinventoryapp.data.model.CsvImportErgebnis? = null,
     val fehler: String? = null,
 )
@@ -145,6 +145,6 @@ data class UpdateUiState(
  * gebe keine Alarme.
  */
 data class AlarmUebersichtUiState(
-    val alarme: List<ch.brickinventoryapp.data.model.Preisalarm> = emptyList(),
+    val alarme: List<ch.brickinventoryapp.ui.model.PreisalarmAnsicht> = emptyList(),
     val geladen: Boolean = false,
 )

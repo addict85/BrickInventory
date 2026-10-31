@@ -1,28 +1,29 @@
 /**
  * /api/v1/wanted — die Merkliste.
  *
- * Die Regeln stehen in utils/merkliste.ts, nicht hier. Diese Datei tut das,
+ * Die Regeln stehen in src/merkliste/merkliste.ts, nicht hier. Diese Datei tut das,
  * was eine Route tun soll: Blickfeld bestimmen, Schreibrecht prüfen, Fehler
  * übersetzen.
  */
 import express from 'express';
-import { fehlertext, handleRouteError, logAndContinue, pfadParam } from '../../utils/httpError';
-import { sendeFehler } from '../../utils/fehlerTexte';
+import { fehlerAntwort, fehlertext, handleRouteError, logAndContinue, pfadParam } from '../../src/infra/httpError';
+import { sendeFehler } from '../../src/infra/fehlerTexte';
 import { requireToken } from './middleware';
-import { scopeIds, parseScopeMode, resolveWriteTarget } from '../../utils/household';
-import { legeMerkpostenAn, loescheMerkposten, verschiebeMerkposten, uebernimm, merkpostenVon } from '../../utils/merkliste';
-import { getSetting } from '../../utils/settings';
-import { fetchPrice } from '../../utils/financeCalc';
-import { csvEmpfang, xmlEmpfang } from '../../utils/dateiEmpfang';
-import { csvZeilenAusAnfrage, csvImportAntwort, parseCsvDate } from '../../utils/csvExport';
-import { importiereWantedListe } from '../../utils/wantedListe';
-import type { Korrektur } from '../../utils/wantedListe';
-import { merkeBlNummer } from '../../utils/blZuordnung';
-import { starteAuftrag, meldeAuftrag, beendeAuftrag, istAbgebrochen } from '../../utils/importAuftrag';
-import { addManualPart } from '../../utils/manuelleTeile';
-import { addManualFig } from '../../utils/manuelleFiguren';
-import { addSet } from '../../utils/setService';
+import { scopeIds, parseScopeMode, resolveWriteTarget } from '../../src/haushalt/haushalt';
+import { legeMerkpostenAn, loescheMerkposten, verschiebeMerkposten, uebernimm, merkpostenVon } from '../../src/merkliste/merkliste';
+import { getSetting } from '../../src/konto/settings';
+import { fetchPrice } from '../../src/finanzen/financeCalc';
+import { csvEmpfang, xmlEmpfang } from '../../src/infra/dateiEmpfang';
+import { csvZeilenAusAnfrage, csvImportAntwort, parseCsvDate } from '../../src/infra/csvExport';
+import { importiereWantedListe } from '../../src/merkliste/wantedListe';
+import type { Korrektur } from '../../src/merkliste/wantedListe';
+import { merkeBlNummer } from '../../src/katalog/blZuordnung';
+import { starteAuftrag, meldeAuftrag, beendeAuftrag, istAbgebrochen } from '../../src/auftraege/importAuftrag';
+import { addManualPart } from '../../src/teile/manuelleTeile';
+import { addManualFig } from '../../src/figuren/manuelleFiguren';
+import { addSet } from '../../src/sets/setService';
 
+import { jsonOderNull } from '../../src/infra/validate';
 const router = express.Router();
 type AuthedRequest = express.Request & { apiUser: { user_id: number } };
 
@@ -31,19 +32,17 @@ type AuthedRequest = express.Request & { apiUser: { user_id: number } };
  * Ausführlich: docs/begruendungen/routes/api_v1/wanted.ts.md#get-wanted
  */
 router.get('/wanted', requireToken, async (req: AuthedRequest, res) => {
-  try {
-    const ids = await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts));
-    // Die Waehrung des LESERS: Der Marktpreis in der Liste steht in der
-    // Waehrung, in der er alles andere sieht. price_cache ist je Waehrung
-    // verschluesselt, deshalb gehoert sie in die Abfrage und nicht daneben.
-    const waehrung = await getSetting(req.apiUser.user_id, 'currency', 'EUR');
-    const merkposten = await merkpostenVon(ids, undefined, waehrung, {
-      suche:      req.query.search,
-      zustand:    req.query.condition,
-      sortierung: req.query.sort,
-    });
-    res.json({ success: true, merkposten });
-  } catch (e) { handleRouteError(res, e, undefined, req); }
+  const ids = await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts));
+  // Die Waehrung des LESERS: Der Marktpreis in der Liste steht in der
+  // Waehrung, in der er alles andere sieht. price_cache ist je Waehrung
+  // verschluesselt, deshalb gehoert sie in die Abfrage und nicht daneben.
+  const waehrung = await getSetting(req.apiUser.user_id, 'currency', 'EUR');
+  const merkposten = await merkpostenVon(ids, undefined, waehrung, {
+    suche:      req.query.search,
+    zustand:    req.query.condition,
+    sortierung: req.query.sort,
+  });
+  res.json({ success: true, merkposten });
 });
 
 /**
@@ -55,12 +54,10 @@ router.get('/wanted', requireToken, async (req: AuthedRequest, res) => {
 router.post('/wanted', requireToken, async (req: AuthedRequest, res) => {
   const { set_number, condition, owner_user_id } = req.body;
   if (!set_number) return sendeFehler(req, res, 400, 'set_number_erforderlich');
-  try {
-    const owner = await resolveWriteTarget(req.apiUser.user_id, owner_user_id);
-    if (owner === null) return sendeFehler(req, res, 403, 'kein_schreibrecht');
-    const { merkposten, war_neu } = await legeMerkpostenAn(owner, set_number, condition);
-    res.json({ success: true, war_neu, merkposten });
-  } catch (e) { handleRouteError(res, e, undefined, req); }
+  const owner = await resolveWriteTarget(req.apiUser.user_id, owner_user_id);
+  if (owner === null) return sendeFehler(req, res, 403, 'kein_schreibrecht');
+  const { merkposten, war_neu } = await legeMerkpostenAn(owner, set_number, condition);
+  res.json({ success: true, war_neu, merkposten });
 });
 
 /**
@@ -68,14 +65,12 @@ router.post('/wanted', requireToken, async (req: AuthedRequest, res) => {
  * Ausführlich: docs/begruendungen/routes/api_v1/wanted.ts.md#put-wanted-setnumber-condition-inhaber
  */
 router.put('/wanted/:setNumber/:condition/inhaber', requireToken, async (req: AuthedRequest, res) => {
-  try {
-    const von = await resolveWriteTarget(req.apiUser.user_id, req.body?.owner_user_id);
-    const zu  = await resolveWriteTarget(req.apiUser.user_id, req.body?.neuer_inhaber);
-    if (von === null || zu === null) return sendeFehler(req, res, 403, 'kein_schreibrecht');
-    const r = await verschiebeMerkposten(von, pfadParam(req, 'setNumber'),
-                                     pfadParam(req, 'condition'), zu);
-    res.json({ success: true, ...r, owner_user_id: zu });
-  } catch (e) { handleRouteError(res, e, undefined, req); }
+  const von = await resolveWriteTarget(req.apiUser.user_id, req.body?.owner_user_id);
+  const zu  = await resolveWriteTarget(req.apiUser.user_id, req.body?.neuer_inhaber);
+  if (von === null || zu === null) return sendeFehler(req, res, 403, 'kein_schreibrecht');
+  const r = await verschiebeMerkposten(von, pfadParam(req, 'setNumber'),
+                                   pfadParam(req, 'condition'), zu);
+  res.json({ success: true, ...r, owner_user_id: zu });
 });
 
 /**
@@ -86,12 +81,10 @@ router.put('/wanted/:setNumber/:condition/inhaber', requireToken, async (req: Au
  * 75192" wäre mehrdeutig.
  */
 router.delete('/wanted/:setNumber/:condition', requireToken, async (req: AuthedRequest, res) => {
-  try {
-    const owner = await resolveWriteTarget(req.apiUser.user_id, req.query.owner_user_id);
-    if (owner === null) return sendeFehler(req, res, 403, 'kein_schreibrecht');
-    const weg = await loescheMerkposten(owner, pfadParam(req, 'setNumber'), pfadParam(req, 'condition'));
-    res.json({ success: true, geloescht: weg });
-  } catch (e) { handleRouteError(res, e, undefined, req); }
+  const owner = await resolveWriteTarget(req.apiUser.user_id, req.query.owner_user_id);
+  if (owner === null) return sendeFehler(req, res, 403, 'kein_schreibrecht');
+  const weg = await loescheMerkposten(owner, pfadParam(req, 'setNumber'), pfadParam(req, 'condition'));
+  res.json({ success: true, geloescht: weg });
 });
 
 /**
@@ -100,41 +93,37 @@ router.delete('/wanted/:setNumber/:condition', requireToken, async (req: AuthedR
  */
 router.get('/wanted/:setNumber/preise', requireToken, async (req: AuthedRequest, res) => {
   const sn = pfadParam(req, 'setNumber');
-  try {
-    const uid = req.apiUser.user_id;
-    const currency  = await getSetting(uid, 'currency', 'EUR');
-    const guideType = await getSetting(uid, 'price_guide_type', 'sold');
-    const ttlHours  = await getSetting(uid, 'price_cache_ttl', '24');
-    const current: Record<string, unknown> = {};
-    for (const c of ['N', 'U']) {
-      // Einzeln gefangen: Fuer ein Set, das BrickLink nicht kennt, soll der
-      // ANDERE Zustand trotzdem ankommen — und ein fehlender Preis ist kein
-      // Fehler, sondern ein Strich in der Anzeige.
-      try {
-        const pd = await fetchPrice(sn, c, guideType, currency, ttlHours);
-        current[c] = { condition: c, avg_price: pd.avg_price,
-                       min_price: pd.min_price, max_price: pd.max_price };
-      } catch { /* kein Preis fuer diesen Zustand */ }
-    }
-    res.json({ success: true, set_number: sn, currency, current });
-  } catch (e) { handleRouteError(res, e, undefined, req); }
+  const uid = req.apiUser.user_id;
+  const currency  = await getSetting(uid, 'currency', 'EUR');
+  const guideType = await getSetting(uid, 'price_guide_type', 'sold');
+  const ttlHours  = await getSetting(uid, 'price_cache_ttl', '24');
+  const current: Record<string, unknown> = {};
+  for (const c of ['N', 'U']) {
+    // Einzeln gefangen: Fuer ein Set, das BrickLink nicht kennt, soll der
+    // ANDERE Zustand trotzdem ankommen — und ein fehlender Preis ist kein
+    // Fehler, sondern ein Strich in der Anzeige.
+    try {
+      const pd = await fetchPrice(sn, c, guideType, currency, ttlHours);
+      current[c] = { condition: c, avg_price: pd.avg_price,
+                     min_price: pd.min_price, max_price: pd.max_price };
+    } catch { /* kein Preis fuer diesen Zustand */ }
+  }
+  res.json({ success: true, set_number: sn, currency, current });
 });
 
 /**
  * Den Merkposten in die Galerie übernehmen.
  *
- * Die Regel steht in utils/merkliste.ts:uebernimm() — sie ruft addSet(),
+ * Die Regel steht in src/merkliste/merkliste.ts:uebernimm() — sie ruft addSet(),
  * die eine Wahrheit fürs Erfassen, und räumt danach Eintrag und Preisalarm
  * weg (Marcos Festlegung). Hier bleibt nur, wer schreiben darf.
  */
 router.post('/wanted/:setNumber/:condition/uebernehmen', requireToken, async (req: AuthedRequest, res) => {
-  try {
-    const owner = await resolveWriteTarget(req.apiUser.user_id, req.body?.owner_user_id);
-    if (owner === null) return sendeFehler(req, res, 403, 'kein_schreibrecht');
-    const r = await uebernimm(req.apiUser.user_id, owner,
-      pfadParam(req, 'setNumber'), pfadParam(req, 'condition'), req.body ?? {});
-    res.json({ success: true, ...r });
-  } catch (e) { handleRouteError(res, e, undefined, req); }
+  const owner = await resolveWriteTarget(req.apiUser.user_id, req.body?.owner_user_id);
+  if (owner === null) return sendeFehler(req, res, 403, 'kein_schreibrecht');
+  const r = await uebernimm(req.apiUser.user_id, owner,
+    pfadParam(req, 'setNumber'), pfadParam(req, 'condition'), req.body ?? {});
+  res.json({ success: true, ...r });
 });
 
 // ── POST /api/v1/wanted/import/csv — eine Merkliste einlesen ────────────────
@@ -145,39 +134,37 @@ router.post('/wanted/:setNumber/:condition/uebernehmen', requireToken, async (re
 router.post('/wanted/import/csv', requireToken, csvEmpfang.single('file'),
   async (req: AuthedRequest & { file?: { buffer: Buffer } }, res) => {
     if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
-    try {
-      const owner = await resolveWriteTarget(req.apiUser.user_id, req.body?.owner_user_id);
-      if (owner === null) return sendeFehler(req, res, 403, 'kein_schreibrecht');
+    const owner = await resolveWriteTarget(req.apiUser.user_id, req.body?.owner_user_id);
+    if (owner === null) return sendeFehler(req, res, 403, 'kein_schreibrecht');
 
-      const { records, bereinigt, uebersprungen } =
-        csvZeilenAusAnfrage(req.file.buffer.toString('utf-8'));
+    const { records, bereinigt, uebersprungen } =
+      csvZeilenAusAnfrage(req.file.buffer.toString('utf-8'));
 
-      let added = 0, updated = 0, errors = 0;
-      const results: any[] = [];
+    let added = 0, updated = 0, errors = 0;
+    const results: any[] = [];
 
-      for (const row of bereinigt) {
-        // Object.values(row)[0] als letzter Rueckfall: eine Datei ohne
-        // Kopfzeile, bei der die erste Spalte die Setnummer ist. Dieselbe
-        // Nachsicht wie beim Minifiguren-Import.
-        const setNumber = String(row.set_number || row['Setnummer'] || row['set_num']
-                                 || Object.values(row)[0] || '').trim();
-        if (!setNumber) continue;
+    for (const row of bereinigt) {
+      // Object.values(row)[0] als letzter Rueckfall: eine Datei ohne
+      // Kopfzeile, bei der die erste Spalte die Setnummer ist. Dieselbe
+      // Nachsicht wie beim Minifiguren-Import.
+      const setNumber = String(row.set_number || row['Setnummer'] || row['set_num']
+                               || Object.values(row)[0] || '').trim();
+      if (!setNumber) continue;
 
-        const condition = String(row.condition || row['zustand'] || row['Zustand'] || '').trim();
-        const am = parseCsvDate(row.created_at || row['aufgenommen_am'] || row['Auf der Liste seit']);
+      const condition = String(row.condition || row['zustand'] || row['Zustand'] || '').trim();
+      const am = parseCsvDate(row.created_at || row['aufgenommen_am'] || row['Auf der Liste seit']);
 
-        try {
-          const { war_neu } = await legeMerkpostenAn(owner, setNumber, condition, am);
-          if (war_neu) { added++; results.push({ set_number: setNumber, action: 'added' }); }
-          else         { updated++; results.push({ set_number: setNumber, action: 'exists' }); }
-        } catch (e: any) {
-          errors++;
-          results.push({ set_number: setNumber, action: 'error', error: e?.message });
-        }
+      try {
+        const { war_neu } = await legeMerkpostenAn(owner, setNumber, condition, am);
+        if (war_neu) { added++; results.push({ set_number: setNumber, action: 'added' }); }
+        else         { updated++; results.push({ set_number: setNumber, action: 'exists' }); }
+      } catch (e: any) {
+        errors++;
+        results.push({ set_number: setNumber, action: 'error', error: e?.message });
       }
+    }
 
-      csvImportAntwort(res, { added, updated, errors, records, results, uebersprungen });
-    } catch (e) { handleRouteError(res, e, undefined, req); }
+    csvImportAntwort(res, { added, updated, errors, records, results, uebersprungen });
   });
 
 // ── POST /api/v1/wanted-list/import/xml — BrickLink-Wanted-Liste ────────────
@@ -185,7 +172,7 @@ router.post('/wanted/import/csv', requireToken, csvEmpfang.single('file'),
  * Die Vorschau ist die VORGABE
  * Ohne `schreiben=1` wird NICHTS angelegt. Das ist nicht Vorsicht um ihrer
  * selbst willen: Die Abbildung BrickLink → Rebrickable hat drei
- * Sicherheitsstufen (siehe utils/wantedListe.ts), und die dritte ist eine …
+ * Sicherheitsstufen (siehe src/merkliste/wantedListe.ts), und die dritte ist eine …
  * Ausführlich: docs/begruendungen/routes/api_v1/wanted.ts.md#post-wanted-list-import-xml
  */
 router.post('/wanted-list/import/xml', requireToken, xmlEmpfang.single('file'),
@@ -211,7 +198,7 @@ router.post('/wanted-list/import/xml', requireToken, xmlEmpfang.single('file'),
       if (!/<INVENTORY[\s>]/i.test(xml))
         return sendeFehler(req, res, 422, 'keine_wanted_liste');
 
-      // Die Anleger gibt diese Schicht herein, damit utils/wantedListe.ts sie
+      // Die Anleger gibt diese Schicht herein, damit src/merkliste/wantedListe.ts sie
       // in Tests ersetzen kann.
       // Korrekturen aus der Vorschau
       // Als FELD der Multipart-Anfrage und nicht als Abfrageparameter: Bei 224
@@ -221,11 +208,9 @@ router.post('/wanted-list/import/xml', requireToken, xmlEmpfang.single('file'),
       let korrekturen: Korrektur[] | undefined;
       const rohKorr = (req.body as { korrekturen?: unknown } | undefined)?.korrekturen;
       if (typeof rohKorr === 'string' && rohKorr.trim() !== '') {
-        let geparst: unknown;
-        try { geparst = JSON.parse(rohKorr); }
-        catch { return sendeFehler(req, res, 400, 'korrekturen_ungueltig'); }
-        if (!Array.isArray(geparst)) return sendeFehler(req, res, 400, 'korrekturen_ungueltig');
-        korrekturen = geparst as Korrektur[];
+        const geparst = jsonOderNull(rohKorr);
+        if (!geparst || !Array.isArray(geparst.wert)) return sendeFehler(req, res, 400, 'korrekturen_ungueltig');
+        korrekturen = geparst.wert as Korrektur[];
       }
 
       // Der Fortschritt als STROM
@@ -268,7 +253,7 @@ router.post('/wanted-list/import/xml', requireToken, xmlEmpfang.single('file'),
         ueberRebrickable: String(req.query.rebrickable ?? '') === '1',
         ...(korrekturen ? { korrekturen } : {}),
         // Eine von Hand eingetragene Nummer wird gemerkt — Begründung an der
-        // Aufrufstelle in utils/wantedListe.ts.
+        // Aufrufstelle in src/merkliste/wantedListe.ts.
         merkeNummer: (art, rbId, blId) => merkeBlNummer(art, rbId, blId),
         // Nur wenn jemand zusieht: Ohne Strom ist der Rückruf gar nicht
         // gesetzt, und der Kern spart sich das Zusammenbauen der Meldungen.
@@ -368,5 +353,7 @@ router.post('/wanted-list/import/xml', requireToken, xmlEmpfang.single('file'),
       handleRouteError(res, e, undefined, req);
     }
   });
+
+router.use(fehlerAntwort);
 
 export default router;

@@ -27,7 +27,6 @@ const assert = require('node:assert/strict');
 const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { haeltSet } = require('./helpers/bestand');
@@ -62,7 +61,7 @@ test('Lagerort-Vorrat gegen echte Datenbank', { concurrency: 1 }, async (t) => {
     return;
   }
   await seed();
-  const L = _req('utils/lagerort.js');
+  const L = _req('src/bestand/lagerort.js');
 
   await t.test('anlegen, und dasselbe zweimal anlegen ist kein zweiter Eintrag', async () => {
     const a = await L.legeOrtAn(U.opa, 'Regal A');

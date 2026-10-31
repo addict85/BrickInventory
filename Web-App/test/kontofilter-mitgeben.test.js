@@ -121,7 +121,7 @@ test('jeder Abruf hinter dem Kontofilter gibt den Kontofilter mit', () => {
    * nächsten neuen Endpunkt still veraltet.
    */
   function kontenbewusst() {
-    const wurzel = path.join(__dirname, '..', 'routes', 'api_v1');
+    const wurzel = path.join(__dirname, '..', 'routes/api_v1');
     const menge = new Set();
     for (const f of fs.readdirSync(wurzel)) {
       if (!f.endsWith('.ts') || f === 'index.ts' || f === 'middleware.ts') continue;

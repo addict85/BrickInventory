@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.ui.screens
 
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import ch.brickinventoryapp.util.fmtDatum
 import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.R
@@ -87,7 +89,8 @@ fun SetDetailScreen(
                         set?.name ?: setNumber,
                         fontWeight = FontWeight.SemiBold,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.semantics { heading() },
                     )
                 },
                 navigationIcon = {
@@ -117,9 +120,13 @@ fun SetDetailScreen(
     ) { padding ->
 
         if (set == null) {
-            Box(Modifier.fillMaxSize().padding(padding), Alignment.Center) {
-                CircularProgressIndicator()
-            }
+            // Ohne Detail und ohne Vorschau: laden oder gescheitert — nie ein Kringel ohne Ende.
+            val fehler = detailState.setDetailFehler
+            if (fehler != null && !detailState.setDetailLoading) {
+                ch.brickinventoryapp.ui.components.ZustandsHinweis(Modifier.padding(padding)) {
+                    ch.brickinventoryapp.ui.components.FehlerHinweis(fehler) { vm.loadSetDetail(setNumber) }
+                }
+            } else ch.brickinventoryapp.ui.components.LadeKreis(Modifier.padding(padding))
             return@Scaffold
         }
 

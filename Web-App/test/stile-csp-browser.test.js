@@ -111,9 +111,9 @@ test('Stile unter style-src ohne unsafe-inline', { concurrency: 1, timeout: 180_
   const server = starte(t, process.execPath, [path.join(ROOT, 'dist', 'server.js')], {
     cwd: ROOT,
     env: { ...process.env, DATABASE_URL: URL_DB, SESSION_SECRET: 'stile-test-geheimnis-lang-genug-1234',
-           PORT: String(port), WEB_WORKERS: '1', TRUST_PROXY: 'false' },
+           PORT: String(port), TRUST_PROXY: 'false' },
   });
-  for (let i = 0; i < 240 && !/is PRIMARY|Startup complete/.test(server.log()); i++) await warte(250);
+  for (let i = 0; i < 240 && !/localhost:\d+|Startup complete/.test(server.log()); i++) await warte(250);
   for (let i = 0; i < 40 && (await fetch(`http://127.0.0.1:${port}/api/v1/`).catch(() => null)) === null; i++) await warte(250);
   const csp = (await fetch(`http://127.0.0.1:${port}/`)).headers.get('content-security-policy') || '';
   assert.match(csp, /style-src 'self'(;|$)/, `Die CSP erlaubt Inline-Stile: ${csp}`);

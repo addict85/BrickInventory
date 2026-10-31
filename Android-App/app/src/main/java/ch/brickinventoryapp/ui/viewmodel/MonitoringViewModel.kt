@@ -8,6 +8,8 @@ import ch.brickinventoryapp.data.model.JobStatus
 import ch.brickinventoryapp.data.repository.BrickRepository
 import ch.brickinventoryapp.data.repository.Result
 import ch.brickinventoryapp.ui.VerwaltungUiState
+import ch.brickinventoryapp.ui.model.alsAnsicht
+import ch.brickinventoryapp.R
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -51,6 +53,13 @@ data class MonitoringUiState(
  * Keine Texte hier: Die Funktionen sagen, was passiert ist; den Satz wählt die
  * Anzeige, wie in FehlerTexte.kt.
  */
+/** Die Hintergrundarbeiten (Auftragstabelle); [fehler] ist der Satz des Servers, etwa bei 403 oder 409. */
+data class HintergrundUiState(
+    val laedt: Boolean = false,
+    val ansicht: ch.brickinventoryapp.ui.model.HintergrundAnsicht? = null,
+    val fehler: String? = null,
+)
+
 @HiltViewModel
 class MonitoringViewModel @Inject constructor(
     private val repo: BrickRepository,
@@ -66,7 +75,7 @@ class MonitoringViewModel @Inject constructor(
 
     suspend fun ladeProtokoll(minuten: Int = _verwaltungState.value.protokollMinuten) {
         _verwaltungState.update { it.copy(protokollLaden = true, protokollMinuten = minuten, fehler = null) }
-        when (val r = repo.admin.getProtokoll(minuten)) {
+        when (val r = repo.verwaltung.getProtokoll(minuten)) {
             is Result.Success -> _verwaltungState.update {
                 it.copy(protokollLaden = false, protokoll = r.data.logs,
                         fehler = if (r.data.success) null else r.data.error)
@@ -75,9 +84,48 @@ class MonitoringViewModel @Inject constructor(
         }
     }
 
+    private val _hintergrund = MutableStateFlow(HintergrundUiState())
+    val hintergrund = _hintergrund.asStateFlow()
+
+    suspend fun ladeHintergrund() {
+        _hintergrund.update { it.copy(laedt = true) }
+        when (val r = repo.verwaltung.getAuftraege()) {
+            is Result.Success -> _hintergrund.update { HintergrundUiState(ansicht = r.data.alsAnsicht()) }
+            is Result.Error -> _hintergrund.update { it.copy(laedt = false, fehler = texte.meldung(r)) }
+        }
+    }
+
+    /**
+     * Abbrechen, wiederholen, starten, leeren: Das Ergebnis ist der Satz für die
+     * Meldung — bei 409 der des Servers, denn nur er weiss, warum der Auftrag
+     * inzwischen nicht mehr passt. Danach wird die Liste neu geholt, so oder so.
+     */
+    suspend fun brichAuftragAb(id: String): String =
+        nachAuftrag(repo.verwaltung.brichAuftragAb(id)) { texte.text(R.string.hintergrund_abgebrochen_ok) }
+
+    suspend fun wiederholeAuftrag(id: String): String =
+        nachAuftrag(repo.verwaltung.wiederholeAuftrag(id)) { texte.text(R.string.hintergrund_wiederholt_ok) }
+
+    suspend fun starteAuftragsArt(art: String, name: String): String =
+        nachAuftrag(repo.verwaltung.starteAuftragsArt(art)) {
+            texte.text(if (it.gestartet) R.string.hintergrund_gestartet else R.string.hintergrund_nichts_gestartet, name)
+        }
+
+    suspend fun leereAuftragsArt(art: String): String =
+        nachAuftrag(repo.verwaltung.leereAuftragsArt(art)) { texte.menge(R.plurals.hintergrund_geleert, it.entfernt, it.entfernt) }
+
+    private suspend fun <T> nachAuftrag(r: Result<T>, erfolg: (T) -> String): String {
+        val satz = when (r) {
+            is Result.Success -> erfolg(r.data)
+            is Result.Error -> texte.meldung(r)
+        }
+        ladeHintergrund()
+        return satz
+    }
+
     suspend fun ladeJobs() {
         _state.update { it.copy(aktualisiert = true) }
-        val r = repo.admin.getJobs()
+        val r = repo.verwaltung.getJobs()
         _state.update {
             if (r is Result.Success)
                 it.copy(jobs = r.data.jobs, jobSchedules = r.data.schedules, aktualisiert = false)
@@ -87,7 +135,7 @@ class MonitoringViewModel @Inject constructor(
 
     suspend fun ladeWarteschlange() {
         _state.update { it.copy(queueLoading = true) }
-        val r = repo.admin.getBricksetQueue()
+        val r = repo.verwaltung.getBricksetQueue()
         _state.update {
             if (r is Result.Success) it.copy(queue = r.data.entries, queueLoading = false)
             else it.copy(queueLoading = false)
@@ -96,7 +144,7 @@ class MonitoringViewModel @Inject constructor(
 
     /** Wiederholt einen hängengebliebenen Eintrag; lädt die Liste danach neu. */
     suspend fun wiederholeEintrag(setNummer: String): Boolean {
-        val ok = repo.admin.retryBricksetEntry(setNummer) is Result.Success
+        val ok = repo.verwaltung.retryBricksetEntry(setNummer) is Result.Success
         if (ok) ladeWarteschlange()
         return ok
     }
@@ -108,21 +156,21 @@ class MonitoringViewModel @Inject constructor(
      */
     suspend fun entferneEintrag(setNummer: String): Boolean {
         _state.update { it.copy(queue = it.queue.filter { e -> e.setNumber != setNummer }) }
-        val ok = repo.admin.deleteBricksetEntry(setNummer) is Result.Success
+        val ok = repo.verwaltung.deleteBricksetEntry(setNummer) is Result.Success
         if (!ok) ladeWarteschlange()
         return ok
     }
 
     /** Anleitungen neu einlesen; zurück kommt die Zahl der eingereihten Sets, sonst null. */
     suspend fun leseAnleitungenNeuEin(): Int? =
-        (repo.sets.reimportInstructions() as? Result.Success)?.data?.enqueued
+        (repo.verwaltung.reimportInstructions() as? Result.Success)?.data?.enqueued
 
-    suspend fun starteCsvAbgleich(): Boolean = repo.sets.triggerCsvSync() is Result.Success
+    suspend fun starteCsvAbgleich(): Boolean = repo.verwaltung.triggerCsvSync() is Result.Success
 
-    suspend fun startePreislauf(): Boolean = repo.finanzen.triggerPriceJob() is Result.Success
+    suspend fun startePreislauf(): Boolean = repo.verwaltung.triggerPriceJob() is Result.Success
 
     suspend fun ladeFehlendeBilderNach(): Boolean =
-        repo.admin.redownloadMissingImages() is Result.Success
+        repo.verwaltung.redownloadMissingImages() is Result.Success
 
     /**
      * Cache-Zahlen, API-Grenzwerte, Cache-Dauer und Vorgabe-Zustand in einem Zug —
@@ -130,22 +178,22 @@ class MonitoringViewModel @Inject constructor(
      * der Zustandsänderungen aber unbestimmt.
      */
     suspend fun ladeCacheUndGrenzen() {
-        (repo.admin.getCacheStats() as? Result.Success)?.let { r ->
+        (repo.verwaltung.getCacheStats() as? Result.Success)?.let { r ->
             _state.update { it.copy(cacheStats = r.data) }
         }
-        (repo.admin.getApiLimits() as? Result.Success)?.let { r ->
+        (repo.verwaltung.getApiLimits() as? Result.Success)?.let { r ->
             _state.update { it.copy(apiLimits = r.data.limits) }
         }
-        (repo.admin.getCacheTtl() as? Result.Success)?.let { r ->
+        (repo.verwaltung.getCacheTtl() as? Result.Success)?.let { r ->
             _state.update { it.copy(cacheTtl = r.data.ttl) }
         }
-        (repo.teile.getDefaultCondition() as? Result.Success)?.let { r ->
+        (repo.konto.getDefaultCondition() as? Result.Success)?.let { r ->
             _state.update { it.copy(vorgabeZustand = r.data.condition) }
         }
     }
 
     suspend fun setzeCacheDauer(stunden: Int): Boolean {
-        val ok = repo.admin.setCacheTtl(stunden) is Result.Success
+        val ok = repo.verwaltung.setCacheTtl(stunden) is Result.Success
         if (ok) _state.update { it.copy(cacheTtl = stunden.toString()) }
         return ok
     }
@@ -155,7 +203,7 @@ class MonitoringViewModel @Inject constructor(
      * nichts zeigte, dass etwas passiert ist.
      */
     suspend fun leereCache(alles: Boolean): Boolean {
-        val ok = repo.admin.clearCache(alles) is Result.Success
+        val ok = repo.verwaltung.clearCache(alles) is Result.Success
         if (ok) ladeCacheUndGrenzen()
         return ok
     }
@@ -165,14 +213,14 @@ class MonitoringViewModel @Inject constructor(
      * „07:05“, mindestens fünf Minuten): Es soll dastehen, was gilt.
      */
     suspend fun setzeJobZeitplan(name: String, zeit: String? = null, minuten: Int? = null): Boolean {
-        val ok = repo.admin.setJobSchedule(name, zeit, minuten) is Result.Success
+        val ok = repo.verwaltung.setJobSchedule(name, zeit, minuten) is Result.Success
         if (ok) ladeJobs()
         return ok
     }
 
     /** Fehlende KATALOGbilder einreihen — nicht die des Bestands daneben. */
     suspend fun reiheKatalogbilderEin(): Boolean =
-        repo.admin.queueCatalogImages() is Result.Success
+        repo.verwaltung.queueCatalogImages() is Result.Success
 
     /**
      * Das globale Design umstellen. `loadSettings()` beim Aufrufer zieht den neuen
@@ -184,21 +232,21 @@ class MonitoringViewModel @Inject constructor(
      * nicht; dort war das wirksame Design zugleich die Vorgabe.
      */
     suspend fun ladeDesignVorgabe() {
-        (repo.admin.getAppTheme() as? Result.Success)?.let { r ->
+        (repo.konto.getAppTheme() as? Result.Success)?.let { r ->
             if (r.data.success) _state.update { it.copy(vorgabeDesign = r.data.vorgabe ?: r.data.theme) }
         }
     }
 
     suspend fun setzeDesign(theme: String): Boolean {
-        val ok = repo.admin.setAppTheme(theme) is Result.Success
+        val ok = repo.verwaltung.setAppTheme(theme) is Result.Success
         if (ok) _state.update { it.copy(vorgabeDesign = theme) }
         return ok
     }
 
     suspend fun setzeGrenzwerte(rebrickable: Int, bricklink: Int, brickset: Int): Boolean {
-        val ok = repo.admin.setApiLimits(rebrickable, bricklink, brickset) is Result.Success
+        val ok = repo.verwaltung.setApiLimits(rebrickable, bricklink, brickset) is Result.Success
         if (ok) {
-            (repo.admin.getApiLimits() as? Result.Success)?.let { r ->
+            (repo.verwaltung.getApiLimits() as? Result.Success)?.let { r ->
                 _state.update { it.copy(apiLimits = r.data.limits) }
             }
         }
@@ -213,7 +261,7 @@ class MonitoringViewModel @Inject constructor(
     suspend fun setzeVorgabeZustand(zustand: String): Boolean {
         val vorher = _state.value.vorgabeZustand
         _state.update { it.copy(vorgabeZustand = zustand) }
-        val ok = repo.teile.setDefaultCondition(zustand) is Result.Success
+        val ok = repo.verwaltung.setDefaultCondition(zustand) is Result.Success
         if (!ok) _state.update { it.copy(vorgabeZustand = vorher) }
         return ok
     }

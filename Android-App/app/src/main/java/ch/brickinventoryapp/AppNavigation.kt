@@ -169,6 +169,9 @@ fun BrickInventoryManagerApp(
     }
 
     val activity = androidx.compose.ui.platform.LocalContext.current
+    // Der gemeinsame Raum für Elementübergänge (Galerie → Set-Detail); das
+    // vorhersagbare Zurück spielt denselben Übergang rückwärts.
+    ch.brickinventoryapp.ui.components.UebergangsRahmen {
     NavHost(navController, startDestination = startDest) {
         // Die Ziele liegen in nav/*.kt. state/manDetailState werden nicht übergeben: Der
         // NavHost-Builder läuft nur einmal, ein durchgereichter Wert bliebe die
@@ -180,5 +183,6 @@ fun BrickInventoryManagerApp(
         catalogGraph(vm, katalog, navController, imageLoader, bottomNavItems, snackbarHostState)
         toolsGraph(vm, gutscheine, navController, imageLoader, bottomNavItems, snackbarHostState, activity,
             financeListState, partsListState, settingsScrollState)
+    }
     }
 }

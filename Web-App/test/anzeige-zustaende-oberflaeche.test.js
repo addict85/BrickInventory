@@ -15,7 +15,7 @@
  *   - Das Konto wählt ein eigenes Design oder die Vorgabe des Verwalters.
  *
  * Gegenproben (am 29.10.2026 gemessen):
- *   A  fmtBig wieder mit „k“ → rot: „Kopfleiste ohne k“ („1.3k“)
+ *   A  fmtBig wieder mit „k“ → rot: „Kennzahlen ohne k“ („1.3k“)
  *   B  in portfolioChartSVG wieder px(i) nach Index → rot: „Zeitachse“
  *      (Abstand Tag gleich Abstand Monat); schoeneTeilung durch fünf gleiche
  *      Teile ersetzt → rot: „1-2-5“ (4'219 …)
@@ -33,12 +33,12 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { oeffneOberflaeche, reiter, sicht, warte, takt } = require('./helpers/oberflaeche');
 
-test('Kopfleiste ohne k: 1300 Teile stehen als volle Zahl da', async () => {
+test('Kennzahlen ohne k: 1300 Teile stehen als volle Zahl da', async () => {
   const { w, d } = await oeffneOberflaeche({
     '/v1/stats': { success: true, stats: { total_sets: 14, total_parts: 1300, total_minifigs: 19, total_instructions: 0 } } });
   try {
-    await warte(() => d.getElementById('hs-parts').textContent !== '—');
-    const text = d.getElementById('hs-parts').textContent;
+    await warte(() => d.getElementById('bstat-parts').textContent !== '—');
+    const text = d.getElementById('bstat-parts').textContent;
     assert.doesNotMatch(text, /k$/i);
     assert.match(text, /^1.300$/);
   } finally { w.close(); }
@@ -73,7 +73,7 @@ test('Wertdiagramm: Teilung nach 1-2-5, echte Zeitachse, Monatsnamen', async () 
     assert.ok(x.length >= 3, `nur ${x.length} Beschriftungen an der Zeitachse`);
     assert.ok(x.every(t => /^[A-Za-zäÄ]{3,4}\.? \d{2}$/.test(t)), `uneinheitlich: ${x.join(' | ')}`);
     // Zwischen den letzten beiden Punkten liegt ein Tag, davor ein Monat.
-    const cx = [...svg.querySelectorAll('circle')].map(c => +c.getAttribute('cx'));
+    const cx = JSON.parse(svg.dataset.punkte).map(p => p.x);
     const tag = cx[13] - cx[12], monat = cx[12] - cx[11];
     assert.ok(monat > 10 * tag, `Zeitachse: ein Tag ${tag.toFixed(1)}, ein Monat ${monat.toFixed(1)}`);
   } finally { w.close(); }

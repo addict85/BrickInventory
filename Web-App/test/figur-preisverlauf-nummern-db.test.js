@@ -28,11 +28,10 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
-const { getMinifigPriceHistory } = _req('utils/priceHistory.js');
+const { getMinifigPriceHistory } = _req('src/finanzen/priceHistory.js');
 const { haeltFigur } = require('./helpers/bestand');
 
 test('der Figuren-Preisverlauf findet die Preise unter der BrickLink-Nummer', { concurrency: 1 }, async (t) => {
@@ -61,6 +60,8 @@ test('der Figuren-Preisverlauf findet die Preise unter der BrickLink-Nummer', { 
   await db.run(`DELETE FROM users WHERE username=$1`, [NUTZER]);
   await db.run(`INSERT INTO users (username,password_hash) VALUES ($1,'x')`, [NUTZER]);
   const uid = (await db.get(`SELECT id FROM users WHERE username=$1`, [NUTZER])).id;
+  // Kontowährung wie die abgefragte: Eine andere würde umgerechnet (Migration 0077).
+  await db.run(`INSERT INTO user_settings (user_id,key,value) VALUES ($1,'currency',$2)`, [uid, WAEHRUNG]);
 
   try {
     // Die Figur trägt eine ABWEICHENDE BrickLink-Nummer — der Fall, für den

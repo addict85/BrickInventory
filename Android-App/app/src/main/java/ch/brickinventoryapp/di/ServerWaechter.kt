@@ -28,12 +28,27 @@ interface Zugangslage {
     /** Die Herkunft, an die der Token gebunden ist; null bei Altbestand ohne Bindung. */
     fun tokenHerkunft(): String?
     fun klartextHosts(): Set<String>
+    /** Der Expertenschalter „Klartext erlauben“; aus, so geht nur https hinaus. */
+    fun klartextErlaubt(): Boolean
     /** Kennung des aktiven Netzes; ein WLAN-Wechsel ergibt eine neue. */
     fun netz(): String
 }
 
 /** Platzhalter, auf den Retrofit gebaut ist; der Wächter schreibt ihn auf den Server um. */
 const val PLATZHALTER_BASIS = "http://localhost:3000/"
+
+/**
+ * Der Tausch des Tokens, von aussen gesehen (data/TokenTausch). [faellig]
+ * wartet nicht — die Anfrage ist gelungen; [noetig] tauscht und liefert den
+ * neuen Token, damit die abgewiesene Anfrage einmal wiederholt werden kann.
+ */
+interface Rotationsanlass {
+    fun faellig(alterToken: String)
+    fun noetig(alterToken: String): String?
+}
+
+/** Pfad des Tauschs selbst: Seine Antwort löst keinen weiteren aus. */
+private const val ROTATIONS_PFAD = "/api/v1/auth/token-rotieren"
 
 /**
  * Token, Sprache und Klartextregel für alle Anfragen an den eigenen Server.
@@ -51,6 +66,7 @@ class ServerWaechter(
     private val versionsMeldung: ((VersionsHinweis) -> Unit)? = null,
     /** Weitere Köpfe nur für den eigenen Server (die Anzeigesprache, ServerClient.kt). */
     private val eigeneKoepfe: (original: Request, ziel: Request.Builder) -> Unit = { _, _ -> },
+    private val rotation: Rotationsanlass? = null,
 ) : Interceptor {
 
     private val versionGemeldet = AtomicBoolean(false)
@@ -89,11 +105,12 @@ class ServerWaechter(
         }
 
         val ausgehend = reqBuilder.build()
-        if (!NetworkPolicy.isCleartextAllowed(ausgehend.url, lage.klartextHosts())) {
+        if (!NetworkPolicy.isCleartextAllowed(ausgehend.url, lage.klartextHosts(), lage.klartextErlaubt())) {
             throw IOException(
                 "Unverschlüsselte Verbindung zu ${ausgehend.url.host} abgebrochen — " +
-                    "bitte https verwenden, eine Adresse im lokalen Netz, oder den Server " +
-                    "in der Einrichtung ausdrücklich für Klartext bestätigen."
+                    if (lage.klartextErlaubt()) "bitte https verwenden, eine Adresse im lokalen Netz, oder " +
+                        "den Server in der Einrichtung ausdrücklich für Klartext bestätigen."
+                    else "bitte https verwenden. Klartext erlaubt nur der Expertenschalter in den Einstellungen."
             )
         }
 
@@ -112,6 +129,22 @@ class ServerWaechter(
                 antwort = chain.proceed(nachfass)
                 tokenMitgeschickt = true
             }
+        }
+
+        val rotierbar = rotation != null && tokenMitgeschickt && unserServer &&
+            !ausgehend.url.encodedPath.endsWith(ROTATIONS_PFAD)
+        if (rotierbar && antwort.code == 401) {
+            val code = runCatching { Fehlerrumpf.lies(antwort.peekBody(16_384).string()).code }.getOrNull()
+            val gesendet = ausgehend.header("Authorization")?.removePrefix("Bearer ")?.trim().orEmpty()
+            if (code == "token_rotation_noetig") rotation!!.noetig(gesendet)?.let { neu ->
+                // Der neue Token ist gespeichert; diese Anfrage geht einmal mit ihm.
+                antwort.close()
+                val wieder = ausgehend.newBuilder().header("Authorization", "Bearer $neu").build()
+                pruefeServer(chain, wieder, serverUrl, unserServer)
+                antwort = chain.proceed(wieder)
+            }
+        } else if (rotierbar && antwort.header("X-Token-Rotation") == "faellig") {
+            ausgehend.header("Authorization")?.removePrefix("Bearer ")?.trim()?.let { rotation!!.faellig(it) }
         }
 
         if (antwort.code == 401 && tokenMitgeschickt && unserServer) sitzungAbgelaufen()

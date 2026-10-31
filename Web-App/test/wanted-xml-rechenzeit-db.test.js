@@ -20,12 +20,11 @@ const test   = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
-const { leseWantedListe } = _req('utils/wantedListe.js');
-const { XML_MAX_BYTES } = _req('utils/dateiEmpfang.js');
+const { leseWantedListe } = _req('src/merkliste/wantedListe.js');
+const { XML_MAX_BYTES } = _req('src/infra/dateiEmpfang.js');
 const { testServer } = require('./helpers/server');
 
 test.after(async () => { await db.pool.end().catch(() => {}); });

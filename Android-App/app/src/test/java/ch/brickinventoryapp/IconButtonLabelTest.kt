@@ -95,6 +95,9 @@ class IconButtonLabelTest {
         // dass man sie antippen kann.
         val ohneRolle = mutableListOf<String>()
         for (f in screens()) {
+            // Glance (Startbildschirm-Widget) kennt keine Rolle: Dort wird daraus eine
+            // RemoteViews-Fläche, die der Launcher selbst als antippbar ansagt.
+            if (f.readText().contains("import androidx.glance.")) continue
             // Importzeilen leeren statt entfernen: die Zeilennummern bleiben stimmig.
             val s = f.readText().lines().joinToString("\n") { if (it.startsWith("import ")) "" else it }
             Regex("""\.clickable(\((?:[^()]|\([^()]*\))*\))?""").findAll(s).forEach { m ->

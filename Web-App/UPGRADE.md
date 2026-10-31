@@ -104,7 +104,7 @@ Frontend-Bündel wanderten — jeder Nutzer lud dauerhaft die Sprache mit, die e
 nie sieht. Sie liegen jetzt in `public/locales/de.js` und `public/locales/en.js`.
 
 `index.html` bindet nur die aktive Sprache ein; welche das ist, entscheidet der
-Server anhand der gespeicherten Nutzersprache (`utils/indexHtml.ts`) — genauso
+Server anhand der gespeicherten Nutzersprache (`src/konto/indexHtml.ts`) — genauso
 wie beim Design. Ein Sprachwechsel lädt die zweite Datei zur Laufzeit nach.
 
 **Für dich heisst das:** Neue Übersetzungsschlüssel gehören in `public/locales/`,
@@ -209,7 +209,7 @@ der Regel, dass prune erst NACH dem Frontend-Build stehen darf.
 
 `compose.yaml` mountete bisher zusätzlich `./images:/app/public/images/sets`.
 Das war der alte Ablageort für Set-Bilder. Der Code schreibt seit dem Umbau auf
-`utils/appPaths.ts` nach `data/images/` — die Zeile blieb nur stehen und
+`src/infra/appPaths.ts` nach `data/images/` — die Zeile blieb nur stehen und
 erzeugte den Ordner `./images` neben `./data`.
 
 **Vorschaubilder liegen übrigens nicht in einem eigenen Unterordner.** Sie
@@ -355,3 +355,164 @@ Bereits geschützt und unverändert: PDF-Export
 > **Die Android-App braucht dafür eine Anpassung.** Coil-Bildanfragen an
 > `/images/…` bekommen ohne `Authorization`-Header ab sofort eine 401.
 > Siehe den Abschnitt am Ende dieser Datei bzw. den separaten Änderungsauftrag.
+
+## 13. Datenbankpasswort, TRUST_PROXY und verschlüsselte Gutscheine
+
+- **`DB_PASSWORD` ist Pflicht.** `compose.yaml` hat keinen Ersatzwert mehr, und
+  mit dem alten Beispielpasswort `brickinventory_secret` verweigert der Server
+  in Produktion den Start. Bestehende Datenbank umstellen:
+  ```
+  docker compose exec postgres psql -U brickinventory -c "ALTER USER brickinventory PASSWORD 'neues-passwort'"
+  echo DB_PASSWORD=neues-passwort >> .env
+  docker compose up -d
+  ```
+- **`TRUST_PROXY=docker` gibt es nicht mehr.** Erlaubt sind nur feste Adressen
+  oder kleine Netze; ohne Angabe gilt Loopback. Ein Reverse-Proxy im
+  Compose-Netz bekommt eine feste Adresse (`ipv4_address: 172.28.73.10`) und
+  genau diese kommt in `.env`. Das Netz `brickinventory-net` hat dafür jetzt
+  das feste Subnetz `172.28.73.0/24`; bei einer Fehlermeldung zum Netz einmal
+  `docker compose down` und wieder `up -d`.
+- **Gutschein-PDFs** unter `data/vouchers/` werden beim ersten Start einmalig
+  mit dem Datenschlüssel (`data/.datenschluessel` oder `DATA_KEY`) verschlüsselt.
+  Eine Sicherung von `data/` ohne diesen Schlüssel kann sie nicht mehr lesen.
+- **Konto löschen** entfernt jetzt auch `data/uploads/<id>/` und
+  `data/vouchers/<id>/`. Verwaiste Ordner früher gelöschter Konten bitte von
+  Hand entfernen.
+
+## 14. HTTPS mit Caddy, Token-Scopes und Passkeys
+
+Die App ist nach aussen nur noch über **Caddy** (HTTPS) erreichbar; Port 3000
+wird nicht mehr veröffentlicht.
+
+### Umstieg
+
+1. In `.env` den Namen oder die IP-Adresse des Servers eintragen:
+   ```
+   echo BRICK_HOST=nas.example.lan >> .env
+   ```
+   Ohne `APP_BASE_URL` gilt `https://BRICK_HOST`. Wer `APP_BASE_URL` gesetzt
+   hat, stellt sie auf `https://…` um (bisher meist `http://…:3000`).
+2. Hatte `.env` `TRUST_PROXY` leer oder `APP_BIND` gesetzt: beides entfernen.
+   Ein eigener Reverse-Proxy auf einem anderen Rechner bleibt möglich — dann
+   `TRUST_PROXY` auf dessen Adresse und den Dienst `caddy` weglassen.
+3. `docker compose up -d --build`. Caddy legt beim ersten Start seine CA unter
+   `./caddy/data/` an (Wurzel 10 Jahre gültig). Port 443 und 80 müssen frei sein.
+4. Das Wurzelzertifikat auf die Geräte bringen (unten).
+5. Die Android-App einmal neu verknüpfen (QR-Code): Erst dann kennt sie den
+   Fingerabdruck und die https-Adresse. Bis dahin meldet sie sich mit dem
+   alten Token über `http://…:3000` an — die Adresse gibt es nicht mehr.
+
+`./caddy/` gehört in die Sicherung: Geht die CA verloren, legt Caddy eine neue
+an, und jedes Gerät braucht das neue Wurzelzertifikat und die App einen neuen
+QR-Code.
+
+### Das Wurzelzertifikat auf Geräte bringen
+
+Caddy legt es unter `./caddy/data/caddy/pki/authorities/local/root.crt` ab.
+Die Web-App bietet es unter `https://<BRICK_HOST>/ca.crt` an — auch über
+`http://<BRICK_HOST>/ca.crt`, weil ein Gerät es braucht, bevor es HTTPS
+vertraut. Vor dem Installieren den Fingerabdruck vergleichen; auf dem Server:
+
+```
+openssl x509 -in caddy/data/caddy/pki/authorities/local/root.crt -pubkey -noout \
+  | openssl pkey -pubin -outform der | openssl dgst -sha256 -binary | base64
+```
+
+Derselbe Wert steht in der Web-App unter Einstellungen → Sicherheit
+(„Server-Zertifikat“) und als `fp` im QR-Code der App.
+
+- **Windows:** Datei öffnen → „Zertifikat installieren“ → „Lokaler Computer“
+  → „Vertrauenswürdige Stammzertifizierungsstellen“.
+- **macOS:** Datei öffnen (Schlüsselbundverwaltung, System) → Zertifikat
+  doppelklicken → „Vertrauen: Immer vertrauen“.
+- **Linux:** `sudo cp brickinventory-ca.crt /usr/local/share/ca-certificates/ && sudo update-ca-certificates`;
+  Firefox hat einen eigenen Speicher (Einstellungen → Zertifikate → Importieren).
+- **Android:** Einstellungen → Sicherheit → Verschlüsselung & Anmeldedaten →
+  Zertifikat installieren → CA-Zertifikat. Für die BrickInventory-App nicht
+  nötig, nur für den Browser.
+- **iOS/iPadOS:** Datei in Safari laden → Einstellungen → Profil installieren;
+  danach Allgemein → Info → Zertifikatsvertrauenseinstellungen → einschalten.
+
+Das Wurzelzertifikat gilt auf dem Gerät für **jede** Adresse. Der Schlüssel
+dazu liegt nur in `./caddy/data/` (nur für root lesbar) — dieses Verzeichnis
+wie ein Passwort behandeln.
+
+### Tokens
+
+- Bestehende Tokens behalten ihre Rechte (Scope `voll`), laufen aber spätestens
+  **90 Tage nach dem Update** ab, wenn sie nicht benutzt werden; jede Nutzung
+  schiebt die Frist nach. Auch bisher „unbegrenzte“ Tokens bekommen diese Frist.
+- Neue Tokens haben ohne ausdrücklichen Wunsch Scope `app`: keine
+  Verwalterrechte, auch nicht für ein Verwalterkonto. QR-Codes geben immer
+  `app`. Verwalterfunktionen der App brauchen eine Anmeldung mit Passwort und
+  `scope: "voll"`.
+- `TOKEN_IDLE_DAYS=0` gibt es nicht mehr (Startfehler). „Unbegrenzt“ gibt es
+  nur beim QR-Code, nur über HTTPS, und der Token muss alle 60 Tage getauscht
+  werden (die App tut das selbst).
+- Die Geräteliste (Einstellungen → Konto) zeigt Scope, letzte Nutzung,
+  Adressbereich und Ablauf; jeder Eintrag ist einzeln widerrufbar.
+
+### Passkeys
+
+Passkeys lassen sich im Konto einrichten und auf der Anmeldeseite ohne
+Passwort benutzen; mit eingeschaltetem zweitem Faktor ersetzen sie den Code.
+Sie brauchen HTTPS und einen **Namen** in `APP_BASE_URL` (keine IP-Adresse);
+wechselt der Name, gelten die bisherigen Passkeys nicht mehr.
+
+## 15. Ein Web- und ein Job-Prozess; Hintergrundarbeit als Aufträge
+
+**Was sich ändert**
+
+- Der Server startet keinen Cluster mehr (ein Worker je Kern, Primärwahl über
+  eine Datenbanksperre). Stattdessen gibt es **zwei Rollen**, gewählt mit
+  `ROLLE`: `web` beantwortet Anfragen, `jobs` arbeitet die Hintergrundarbeit
+  ab, `beides` (Vorgabe) tut beides in einem Prozess.
+- `compose.yaml` startet dafür den Dienst `app` mit `ROLLE: web` und einen
+  neuen Dienst **`jobs`** aus demselben Bau mit `ROLLE: jobs`. Beide hängen
+  `./data` ein; der Dienst `jobs` hat keinen Port.
+- **Alle Hintergrundarbeit steht als Auftrag in der Tabelle `auftraege`**:
+  Preise, Anleitungen, Brickset-Wiedervorlage, Bilder, PDF, CSV-Import,
+  Katalogabgleich, Aufräumen. Zeitpläne (täglich 03:00 Katalog, Preise im
+  eingestellten Intervall, stündliches und tägliches Aufräumen) sind
+  geplante Aufträge mit einem Termin. Die Verwaltung zeigt sie unter
+  „Monitoring → Hintergrundarbeiten“ mit Abbrechen, Wiederholen, Jetzt und
+  Leeren.
+- `WEB_WORKERS` wird nicht mehr ausgewertet. Steht es noch in der eigenen
+  `compose.yaml`, meldet der Start einen Hinweis; die Zeile kann weg.
+
+**Was beim Update geschieht**
+
+- Migration 0082 erweitert `auftraege` (Spalten `faellig_ab`, `frist_bis`,
+  `gestartet`, `fortschritt`, Status `abgebrochen`) und legt
+  `auftrag_pausen` an.
+- Migration 0083 übernimmt die alten Warteschlangen und entfernt sie:
+  - `instruction_queue` → Aufträge `anleitung` (wartende, erledigte und
+    gescheiterte);
+  - `brickset_retry_queue` → Aufträge `brickset`, fällig um 04:00 des
+    vorgemerkten Tages, Versuchszähler übernommen;
+  - `pdf_auftraege` → der Status steht im PDF-Auftrag; ein PDF, das während
+    des Updates lief, endet als Fehler und wird neu angefordert;
+  - `csv_import_jobs` heisst jetzt `import_stand` (Importstand je Konto,
+    keine Warteschlange).
+  `image_wanted` bleibt: Es ist der Bildbedarf (Daten), abgearbeitet von
+  einem einzigen Auftrag `bildbedarf`.
+- Migriert wird wie bisher nur einmal unter einer Datenbanksperre: Starten
+  `app` und `jobs` gleichzeitig, wartet der zweite.
+
+**Was zu tun ist**
+
+1. Eine eigene `compose.yaml` mit der neuen vergleichen und den Dienst `jobs`
+   übernehmen. Was beim Dienst `app` zusätzlich gesetzt ist (`DATA_KEY`, `TZ`,
+   `ERFASSUNG_ZEITZONE`, `PG_*`, `IMG_USER_AGENT`, `APP_BASE_URL`), gehört beim
+   Dienst `jobs` genauso hin — sonst entschlüsselt er die gespeicherten API-Schlüssel nicht
+   oder rechnet in einer anderen Zeitzone.
+2. `docker compose up -d --build`. Danach unter „Monitoring“ prüfen, dass
+   keine Warnung „Kein Job-Prozess meldet sich“ steht.
+3. Wer bewusst nur einen Container betreiben will, lässt `jobs` weg und setzt
+   bei `app` `ROLLE: beides` (oder lässt `ROLLE` ganz weg).
+
+**Zurück auf die alte Fassung**
+
+Die alten Tabellen sind nach Migration 0083 entfernt. Eine Rückkehr geht nur
+über die Sicherung, die der Server vor offenen Migrationen anlegt
+(Abschnitt 5).

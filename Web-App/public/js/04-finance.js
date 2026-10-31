@@ -1,9 +1,9 @@
 import { ladeAnzeige, listeLadefehler } from './01-bausteine.js';
 import { registerActions } from './00-registry.js';
 import { colorName, locale, t, tRaw} from '../i18n.js';
-import { fmtDatum, bildTag, platzhalterInhalt, leerZustand, ico, CURRENCY, G, api, esc, escJs, escUrl, fmtN, imgUrl, thumbUrl, toast } from './01-core.js';
+import { fmtDatum, fmtGeld, bildTag, platzhalterInhalt, leerZustand, ico, CURRENCY, G, api, esc, escJs, escUrl, fmtN, imgUrl, thumbUrl, toast } from './01-core.js';
 import { scopeMode, scopeQuery } from './14-scope.js';
-import { PARTS_ICON_SVG, _pnlCache, condBadges, ownerBadges, pnlBadge } from './02-gallery.js';
+import { _pnlCache, condBadges, ownerBadges, pnlBadge } from './02-gallery.js';
 import { loadCacheStats } from './05-settings.js';
 import { diagrammBreite, openModal, portfolioChartSVG, zeitpunkt } from './07-admin.js';
 
@@ -23,7 +23,8 @@ G('btn-clr').onclick=async()=>{ await api('POST','/v1/admin/cache-clear'); toast
 let _chartPeriod  = 'max';
 function setChartPeriod(period){
   _chartPeriod = period;
-  document.querySelectorAll('.period-btn').forEach(b => {
+  // Nur die Zeitraum-Knöpfe: Die Filterchips darunter tragen dieselbe Klasse.
+  document.querySelectorAll('.zeitraum-wahl .period-btn').forEach(b => {
     b.classList.toggle('active', b.dataset.period === period);
   });
   loadPortfolioChart();
@@ -32,13 +33,15 @@ function setChartPeriod(period){
 /** Zuletzt gezeichnete Kurve — beim Drehen des Telefons neu in der neuen Breite. */
 let _letzteKurve = null;
 let _kurveBreite = 0;
+/** Einstand und Währung der Kennzahlen — die Bezugslinie im Wertdiagramm. */
+let _einstand = 0, _waehrung = '';
 window.addEventListener('resize', () => {
   const el = G('portfolio-chart');
   if (!_letzteKurve || !el?.querySelector('svg')) return;
   const b = diagrammBreite(el);
   if (Math.abs(b - _kurveBreite) < 24) return;
   _kurveBreite = b;
-  el.innerHTML = portfolioChartSVG(_letzteKurve, _chartPeriod, b);
+  el.innerHTML = portfolioChartSVG(_letzteKurve, _chartPeriod, b, _einstand, _waehrung || CURRENCY);
 });
 
 async function loadPortfolioChart(){
@@ -54,6 +57,9 @@ async function loadPortfolioChart(){
   // dann einen künstlichen Startwert, und die Linie behauptete Stillstand.
   const messpunkte = d.messpunkte ?? d.points?.length ?? 0;
   _letzteKurve = null;
+  // Ohne jeden Verlauf („Max“ leer) gibt es keinen Zeitraum zu wählen.
+  const ganzLeer = (!d.points?.length || messpunkte < 2) && _chartPeriod === 'max';
+  /** @type {NodeListOf<HTMLButtonElement>} */ (document.querySelectorAll('.zeitraum-wahl .period-btn')).forEach(b => { b.disabled = ganzLeer; });
   if(!d.points?.length || messpunkte < 2){
     el.innerHTML = diagrammLeer();
     const pnlLeer = G('portfolio-pnl');
@@ -78,7 +84,7 @@ async function loadPortfolioChart(){
   }));
   _letzteKurve = finalChartData;
   _kurveBreite = diagrammBreite(el);
-  el.innerHTML = portfolioChartSVG(finalChartData, _chartPeriod, _kurveBreite);
+  el.innerHTML = portfolioChartSVG(finalChartData, _chartPeriod, _kurveBreite, _einstand, cur);
 
   // P&L: use server-computed period_change_pct (compares period start vs current)
   const pnlEl = G('portfolio-pnl');
@@ -233,10 +239,10 @@ export async function loadFinance(){
       <td class="fin-name"><span class="fin-name-text">${label}${acq?` ${condBadge(acq.condition)}`:''} ${ownerBadges(it)}</span><span class="fin-unter">×${qty}</span></td>
       <td class="fin-detail zahl"><span class="qbadge">×${qty}</span></td>
       <td class="fin-detail fin-datum">${acq?.created_at?fmtDatum(acq.created_at):''}</td>
-      <td class="fin-detail price-cell zahl">${purchase!=null?fmtN(purchase,cur):'<span class="text-mut">—</span>'}</td>
+      <td class="fin-detail price-cell zahl">${purchase!=null?fmtGeld(purchase,cur):'<span class="text-mut">—</span>'}</td>
       <td class="fin-detail price-cell zahl">${current>0?geschaetztMarke(it, fmtN(current,cur)):'<span class="text-mut">—</span>'}</td>
-      <td class="fin-wert price-total zahl">${fmtN(total,cur)}</td>
-      <td class="fin-guv zahl">${pnl!=null?pnlBadge(pnl):'<span class="text-mut">—</span>'}</td>
+      <td class="fin-wert price-total zahl">${total > 0 ? fmtN(total,cur) : '<span class="text-mut">—</span>'}</td>
+      <td class="fin-guv zahl">${pnlBadge(pnl, purchase)||'<span class="text-mut">—</span>'}</td>
       <td class="fin-status"></td>
     </tr>`;
   }
@@ -264,7 +270,7 @@ export async function loadFinance(){
   // Die vierte Spalte war ein reiner Platzhalter, damit die Preisspalten an
   // derselben Stelle wie in der Sets-Tabelle beginnen. Sie trägt jetzt dasselbe
   // wie dort: das Erfassungsdatum der Zeile.
-  const pmTableHead = `<thead><tr><th></th><th>${t('col.name')}</th><th class="zahl">${t('detail.qty')}</th><th>${t('detail.added')}</th><th class="zahl">${t('detail.purchase_price')}</th><th class="zahl">${t('detail.market_price')}</th><th class="zahl">${t('finance.grand.total')}</th><th class="zahl">${t('finance.total_pnl')}</th><th title="${esc(t('finance.price_status'))}"><span class="vh">${esc(t('finance.price_status'))}</span></th></tr></thead>`;
+  const pmTableHead = `<thead><tr><th></th><th>${t('col.name')}</th><th class="zahl">${t('detail.qty')}</th><th>${t('detail.added')}</th><th class="zahl">${t('detail.purchase_price')}</th><th class="zahl">${t('detail.market_price')}</th><th class="zahl">${t('finance.grand.value')}</th><th class="zahl">${t('finance.total_pnl')}</th><th title="${esc(t('finance.price_status'))}"><span class="vh">${esc(t('finance.price_status'))}</span></th></tr></thead>`;
   // Die Summen liefert der Server (`total_value`) — Android liest sie seit jeher
   // von dort. Hier wurde stattdessen über `display_value` addiert; heute kommt
   // dasselbe heraus, aber sobald der Server Zeilen ohne Preis anders behandelt,
@@ -274,12 +280,12 @@ export async function loadFinance(){
   const pmFoot = (kauf, total) => `<tfoot><tr><td colspan="4" class="fin-fuss-l">${t('finance.sum')}</td>${summenZellen(kauf, total, cur, 1)}<td colspan="2"></td></tr></tfoot>`;
   const partsSectionHtml = partsItems.length ? `
     <div class="tw abstand-o-125" data-fin-art="parts">
-      <div class="ctitle fin-abschnitt">${PARTS_ICON_SVG} ${t('parts.manual_section')}</div>
+      <div class="ctitle fin-abschnitt">${ico('teil')} ${t('parts.manual_section')}</div>
       <table class="dt dt-fin">${pmColgroup}${pmTableHead}<tbody>${partsRows}</tbody>${pmFoot(einstand.parts, partsTotal)}</table>
     </div>` : '';
   const figsSectionHtml = figsItems.length ? `
     <div class="tw abstand-o-125" data-fin-art="figs">
-      <div class="ctitle fin-abschnitt">${t('finance.figs_section')}</div>
+      <div class="ctitle fin-abschnitt">${ico('figur')} ${t('finance.figs_section')}</div>
       <table class="dt dt-fin">${pmColgroup}${pmTableHead}<tbody>${figsRows}</tbody>${pmFoot(einstand.figs, figsTotal)}</table>
     </div>` : '';
 
@@ -325,10 +331,10 @@ export async function loadFinance(){
     <td class="fin-name">${esc(s.name)||'—'}${acq?` ${condBadge(acq.condition)}`:''} ${ownerBadges(s)}<span class="fin-unter">${esc(s.set_number)}${s.year?` · ${s.year}`:''} · ×${qty}</span></td><td class="fin-detail">${s.year||'—'}</td>
     <td class="fin-detail zahl"><span class="qbadge">×${qty}</span></td>
     <td class="fin-detail fin-datum">${dateSrc?fmtDatum(dateSrc):'—'}</td>
-    <td class="fin-detail price-cell zahl">${purchase!=null?fmtN(purchase,cur):'—'}</td>
+    <td class="fin-detail price-cell zahl">${purchase!=null?fmtGeld(purchase,cur):'—'}</td>
     <td class="fin-detail zahl ${s.error?'':'price-cell'}">${s.error?`<span class="fin-fehlt" title="${esc(t('finance.price_failed'))}: ${esc(s.error)}">${t('finance.price_missing_short')}</span>`:fmtN(market,cur)}</td>
     <td class="fin-wert zahl ${s.error?'':'price-total'}">${s.error?'<span class="text-mut">—</span>':fmtN(total,cur)}</td>
-    <td class="fin-guv zahl">${pnl!=null?pnlBadge(pnl):'<span class="text-mut">—</span>'}</td>
+    <td class="fin-guv zahl">${pnlBadge(pnl, purchase)||'<span class="text-mut">—</span>'}</td>
     <td class="fin-status">${priceStatusBadge(s)}</td>
   </tr>`;
   }
@@ -353,6 +359,7 @@ export async function loadFinance(){
   window._finPartsExtra = extra;
   window._finGrandTotal  = grandTotal; // used by chart to scale last point
   if(G('portfolio-current')) G('portfolio-current').textContent = fmtN(grandTotal, cur);
+  _einstand = einstand.alle; _waehrung = cur;
   loadPortfolioChart();
   zeigeKennzahlen({ einstand: einstand.alle, wert: grandTotal, guv: gesamtGuv, ohnePreis, cur,
     fremdeWaehrung: pnlData?.totals?.kaufpreise_fremde_waehrung || 0,
@@ -376,7 +383,7 @@ export async function loadFinance(){
         <tfoot>${summenZeile(t('finance.grand.total'), einstand.alle, grandTotal)}</tfoot>
       </table>
     </div>`;
-  G('fin-tbl').innerHTML=`<div class="tw" data-fin-art="sets"><table class="dt dt-fin"><colgroup><col class="sp-60"><col class="sp-90"><col class="sp-250"><col class="sp-55"><col class="sp-70"><col class="sp-90"><col class="sp-110"><col class="sp-110"><col class="sp-110"><col class="sp-80"><col class="sp-40"></colgroup><thead><tr><th></th><th>Nr.</th><th>${t('col.name')}</th><th>${t('detail.year')}</th><th class="zahl">${t('detail.qty')}</th><th>${t('detail.added')}</th><th class="zahl">${t('detail.purchase_price')}</th><th class="zahl">${t('detail.market_price')}</th><th class="zahl">${t('finance.grand.total')}</th><th class="zahl">${t('finance.total_pnl')}</th><th title="${esc(t('finance.price_status'))}"><span class="vh">${esc(t('finance.price_status'))}</span></th></tr></thead><tbody>${rows}</tbody><tfoot><tr><td colspan="6" class="fin-fuss-l">${t('finance.sum')}</td>${summenZellen(einstand.sets, setsQtyAvg, cur, 1)}<td colspan="2"></td></tr></tfoot></table></div>${partsSectionHtml}${figsSectionHtml}${grandTotalHtml}`;
+  G('fin-tbl').innerHTML=`<div class="tw" data-fin-art="sets"><div class="ctitle fin-abschnitt">${ico('set')} ${t('finance.filter.sets')}</div><table class="dt dt-fin"><colgroup><col class="sp-60"><col class="sp-90"><col class="sp-250"><col class="sp-55"><col class="sp-70"><col class="sp-90"><col class="sp-110"><col class="sp-110"><col class="sp-110"><col class="sp-80"><col class="sp-40"></colgroup><thead><tr><th></th><th>Nr.</th><th>${t('col.name')}</th><th>${t('detail.year')}</th><th class="zahl">${t('detail.qty')}</th><th>${t('detail.added')}</th><th class="zahl">${t('detail.purchase_price')}</th><th class="zahl">${t('detail.market_price')}</th><th class="zahl">${t('finance.grand.value')}</th><th class="zahl">${t('finance.total_pnl')}</th><th title="${esc(t('finance.price_status'))}"><span class="vh">${esc(t('finance.price_status'))}</span></th></tr></thead><tbody>${rows}</tbody><tfoot><tr><td colspan="6" class="fin-fuss-l">${t('finance.sum')}</td>${summenZellen(einstand.sets, setsQtyAvg, cur, 1)}<td colspan="2"></td></tr></tfoot></table></div>${partsSectionHtml}${figsSectionHtml}${grandTotalHtml}`;
   // Der Filter ueberlebt das Neuzeichnen. Ohne diesen Aufruf stuenden nach
   // jedem „Preise laden" wieder alle drei Abschnitte da, waehrend die Chips
   // daneben weiter eine Auswahl anzeigen — die Anzeige waere dann eine
@@ -435,11 +442,14 @@ function zeigeKennzahlen({ einstand, wert, guv, ohnePreis, cur, min, max, guvKau
     else G('fin-wert').textContent = '—';
     G('fin-wert-sub').textContent = '';
   }
-  G('fin-stat-pnl').style.display = guv != null && wert > 0 ? '' : 'none';
-  if (guv != null) {
+  // Die Kachel bleibt stehen, damit die Reihe nicht springt; ohne Preise mit Hinweis.
+  if (guv != null && wert > 0) {
     G('fin-total-pnl').innerHTML = pnlBadge(guv);
     // Betrag und Prozent aus denselben Posten (mit Kauf- UND Marktpreis).
     G('fin-pnl-sub').textContent = guvKauf > 0 ? `${guvMarkt >= guvKauf ? '+' : '−'}${fmtN(Math.abs(guvMarkt - guvKauf), cur)}` : '';
+  } else {
+    G('fin-total-pnl').textContent = '—';
+    G('fin-pnl-sub').textContent = tRaw('finance.pnl_needs_prices');
   }
 }
 

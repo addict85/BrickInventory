@@ -193,7 +193,7 @@ fun GalleryScreen(
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = TextAlign.Center)
-                        Button(onClick = onRefresh, shape = Formen.knopf) { Text(stringResource(R.string.gallery_retry)) }
+                        Button(onClick = onRefresh, shape = Formen.knopf) { Text(stringResource(R.string.common_retry)) }
                     }
                     GalerieAnzeige.LEER -> GalerieHinweis {
                         Image(painterResource(R.drawable.ic_logo), null, Modifier.size(64.dp))
@@ -458,7 +458,8 @@ fun SetCard(
                 if (istNoppe) BrickStudCap(color = steinTon(position), glanz = istGlanz)
                 Box(Modifier.fillMaxWidth().height(if (isBrick) 142.dp else 170.dp)) {
                     if (imageUrl != null) {
-                        AsyncImage(
+                        ch.brickinventoryapp.ui.components.GemeinsamesBild(set.setNumber) { bild ->
+                            AsyncImage(
                             model = ImageRequest.Builder(ctx).data(imageUrl)
                                 .memoryCacheKeyExtra("retry", retryNonce.toString())
                                 .crossfade(true).build(),
@@ -483,10 +484,12 @@ fun SetCard(
                             // Unten Platz für Zustands- und Besitzer-Etiketten, damit sie das Bild
                             // nicht verdecken; ContentScale.Fit rückt es nach oben statt es zu
                             // beschneiden.
-                            modifier = Modifier.fillMaxSize().padding(bottom = 44.dp)
+                            modifier = bild
+                                .fillMaxSize().padding(bottom = 44.dp)
                                 .then(if (isBrick) Modifier else Modifier.clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))),
                             contentScale = ContentScale.Fit
                         )
+                        }
                     } else {
                         Box(Modifier.fillMaxSize(), Alignment.Center) {
                             Image(painterResource(R.drawable.ic_logo), null, Modifier.size(56.dp))

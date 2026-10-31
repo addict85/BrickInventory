@@ -65,11 +65,10 @@ const test   = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
 const db   = _req('db/database.js');
-const { recordAcquisitionForDay, findSameDayAcquisition } = _req('utils/acquisitions.js');
+const { recordAcquisitionForDay, findSameDayAcquisition } = _req('src/bestand/acquisitions.js');
 
 test.after(async () => { await db.pool.end().catch(() => {}); });
 

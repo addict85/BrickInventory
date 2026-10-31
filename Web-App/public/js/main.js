@@ -51,6 +51,7 @@ import './19-bricklink-xml.js';
 import './20-papierkorb.js';
 import './21-zweiter-faktor.js';
 import './22-einrichtung.js';
+import './23-passkeys.js';
 
 // ── Start ────────────────────────────────────────────────────────────────────
 // Erst NACH der Auswertung aller Module. Vorher lag der Aufruf im Rumpf von

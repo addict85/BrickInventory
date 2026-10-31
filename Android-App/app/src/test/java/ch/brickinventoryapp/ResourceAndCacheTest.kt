@@ -103,6 +103,24 @@ class ResourceAndCacheTest {
         }
     }
 
+    /**
+     * Derselbe Commit ergibt dieselbe Version; die CI holt dafür die ganze
+     * Historie. Gegenprobe (30.10.2026, gemessen): `fetch-depth: 0` aus
+     * android.yml entfernt → rot; `LocalDateTime.now()` zurück → rot.
+     */
+    @Test
+    fun `die Version kommt aus Git, nicht aus der Uhr`() {
+        val src = code(java.io.File("build.gradle.kts").readText())
+        assert(src.contains("git(\"rev-list\", \"--count\", \"HEAD\")") && src.contains("\"describe\", \"--tags\"")) {
+            "versionCode/-Name kommen nicht aus Git"
+        }
+        assert(!src.contains("LocalDateTime.now()")) { "Die Version hängt wieder an der Bauzeit" }
+        val bau = Quellen.workflow().substringAfter("  build:").substringBefore("  release:")
+        assert(Regex("""actions/checkout@\S+.*\n\s+with:\n\s+fetch-depth: 0""").containsMatchIn(bau)) {
+            "Der Bau-Job klont flach: Jeder Bau wäre Commit Nummer 1"
+        }
+    }
+
     // ── CSV-Status: ein Pfad ─────────────────────────────────────────────────
 
     @Test

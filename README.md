@@ -93,19 +93,18 @@ Log** geschrieben (`docker compose logs app`) — oder vorab über
 Vor dem ersten Start lohnen zwei weitere Werte in einer `.env` neben
 `compose.yaml`:
 
-- `DB_PASSWORD` — sonst gilt das öffentlich bekannte Beispielpasswort der
-  Datenbank. Der Server warnt beim Start, solange es gilt. Eine bestehende
-  Datenbank behält ihr Passwort; dann den bisherigen Wert eintragen.
+- `DB_PASSWORD` — Pflicht. Ohne startet `docker compose` nicht, und mit dem
+  alten Beispielpasswort `brickinventory_secret` verweigert der Server den
+  Start. Eine bestehende Datenbank behält ihr Passwort; dann den bisherigen
+  Wert eintragen (oder ändern, siehe `Web-App/UPGRADE.md`).
 - `APP_BIND=127.0.0.1` — wenn ein Reverse-Proxy (Caddy, nginx, Traefik) davor
   steht. Port 3000 ist dann nur noch auf dem Rechner selbst erreichbar und
   nicht am Proxy vorbei im ganzen Netz.
-- `TRUST_PROXY=<Adresse>` — wenn dieser Proxy auf dem Rechner selbst läuft
-  (nicht im Compose-Netz). Seine Verbindungen kommen dann über das
-  Docker-Gateway (meist `172.17.0.1` oder `172.18.0.1`), und ohne die Angabe
-  gelten alle Clients als dieselbe Adresse: Fünf Fehlversuche eines Fremden
-  sperrten sonst den Inhaber aus. Der Server warnt beim ersten solchen Aufruf
-  und nennt die Adresse. Für einen Proxy im Compose-Netz gibt `compose.yaml`
-  `TRUST_PROXY=docker` schon vor; ohne Docker glaubt der Server nur Loopback.
+- `TRUST_PROXY=<Adresse>` — die feste Adresse dieses Proxys, sonst gelten alle
+  Clients als dieselbe Adresse (Anmeldesperre, Drosseln). Im Compose-Netz
+  bekommt der Proxy eine feste Adresse aus `172.28.73.0/24`, etwa
+  `172.28.73.10`. Ohne Angabe glaubt der Server nur Loopback; einem ganzen
+  Netz (früher `docker`) glaubt er nicht mehr.
 
 ### Auf dem Raspberry Pi
 

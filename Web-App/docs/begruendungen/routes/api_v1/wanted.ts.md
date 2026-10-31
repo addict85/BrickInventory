@@ -64,7 +64,7 @@ Beide Richtungen muessen erlaubt sein, sonst schoebe ein Enkel den Merkposten
 des Grossvaters zu sich — oder seinen eigenen dorthin, wo er nichts zu
 schreiben hat. resolveWriteTarget() prueft genau diese Richtung.
 
-Die Regel selbst steht in utils/merkliste.ts (verschiebeMerkposten): Das
+Die Regel selbst steht in src/merkliste/merkliste.ts (verschiebeMerkposten): Das
 Aufnahmedatum bleibt, der Preisalarm zieht mit, und ein Merkposten, den das
 Zielkonto schon hat, wird zusammengefuehrt statt verdoppelt.
 ```
@@ -124,7 +124,7 @@ Nachsicht wie beim Teile- und Minifiguren-Import, aus demselben Grund: Die
 Datei kommt aus Excel zurück, nicht aus dem Export.
 
 Fehlt der Zustand, entscheidet NICHT diese Route, sondern zustandOder() in
-utils/merkliste.ts — also die Einstellung des Kontos. Eine Vorgabe 'N' hier
+src/merkliste/merkliste.ts — also die Einstellung des Kontos. Eine Vorgabe 'N' hier
 wäre eine zweite Wahrheit über denselben Standardwert.
 
 ── Das Datum durch parseCsvDate ────────────────────────────────────────────
@@ -151,7 +151,7 @@ Marcos vierter Punkt.
 
 Ohne `schreiben=1` wird NICHTS angelegt. Das ist nicht Vorsicht um ihrer
 selbst willen: Die Abbildung BrickLink → Rebrickable hat drei
-Sicherheitsstufen (siehe utils/wantedListe.ts), und die dritte ist eine
+Sicherheitsstufen (siehe src/merkliste/wantedListe.ts), und die dritte ist eine
 Vermutung. Wer 224 Posten hochlädt, soll vorher lesen, wie viele davon auf
 einer Vermutung beruhen und wie viele offen bleiben — und dann entscheiden.
 
@@ -197,7 +197,7 @@ test/wanted-liste-route-db.test.js.
 ```text
 ── Die Anleger gibt DIESE Schicht herein ─────────────────────────────
 
-utils/wantedListe.ts darf nicht aus routes/ einfuehren
+src/merkliste/wantedListe.ts darf nicht aus routes/ einfuehren
 (test/schichten.test.js, Ausnahmeliste leer). Hier ist der Ort, der
 beide Seiten kennen darf: eine Route, die andere Routen kennt.
 
@@ -268,7 +268,7 @@ Der Strom oben versorgt den Tab, der die Datei geschickt hat. Der
 Auftragsdatensatz hier versorgt ALLE ANDEREN: die Android-App zeigt
 ihren Balken auf jedem Reiter, die Webapp ihren im Kopf, und auch eine
 zweite Browser-Sitzung desselben Kontos sieht ihn — der Datensatz
-hängt am Konto, nicht an dieser Anfrage (utils/importAuftrag.ts).
+hängt am Konto, nicht an dieser Anfrage (src/auftraege/importAuftrag.ts).
 
 NUR beim echten Schreiben: Eine Vorschau ändert nichts, und ein
 Balken „Import läuft" für eine Vorschau wäre eine Lüge in drei
@@ -283,7 +283,7 @@ addSet nimmt die Setnummer zuerst und erwartet dazu einen
 Fortschrittsmelder (hier null: niemand sieht zu) und einen
 Kaufpreis. Der ist seit dem 21.10. MAXPRICE aus der Datei —
 Marcos Entscheidung; die Begründung samt der alten, falschen
-steht in utils/wantedListe.ts bei den Anlegern.
+steht in src/merkliste/wantedListe.ts bei den Anlegern.
 
 Je Stück, nicht für die ganze Menge: Dasselbe meint `purchasePrice`
 in addSet (der Rückfall dort ist getCurrentMarketPrice, und der

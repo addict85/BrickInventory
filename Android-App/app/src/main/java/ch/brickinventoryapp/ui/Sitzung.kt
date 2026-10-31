@@ -52,8 +52,8 @@ class Sitzung @Inject constructor() {
  * Design nicht: /settings nennt in app_theme die Vorgabe des Verwalters, das
  * des Kontos kommt von /settings/theme (AppViewModel.loadAppTheme).
  */
-internal suspend fun Sitzung.ladeEinstellungen(admin: ch.brickinventoryapp.data.repository.AdminRepository) {
-    val r = admin.getSettings()
+internal suspend fun Sitzung.ladeEinstellungen(konto: ch.brickinventoryapp.data.repository.KontoRepository) {
+    val r = konto.getSettings()
     if (r is ch.brickinventoryapp.data.repository.Result.Success) {
         val e = r.data.settings
         aendere { it.copy(

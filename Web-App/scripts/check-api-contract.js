@@ -33,14 +33,14 @@ async function token() {
 (async () => {
   const t = await token();
   const modelle = kotlinModelle(APP);
-  const routen = apiRouten(path.join(APP, 'data', 'api', 'BrickApiService.kt'))
+  const routen = apiRouten(path.join(APP, 'data', 'api'))
     .filter(r => r.typ && modelle.has(r.typ) && !r.pfad.includes('{') && !r.anfrage.some(q => q.pflicht));
   let falsch = 0;
   for (const r of routen) {
     let fehler;
     try {
       const a = await fetch(BASE + r.pfad, { headers: { Authorization: `Bearer ${t}` } });
-      fehler = a.ok ? pruefe(await a.json(), { art: 'klasse', name: r.typ ?? '', nullbar: false }, modelle, '$')
+      fehler = a.ok ? pruefe(await a.json(), { art: 'klasse', name: r.typ ?? '', nullbar: false }, modelle, '$', { route: r.pfad })
                     : [`HTTP ${a.status}`];
     } catch (e) { fehler = [`Anfrage fehlgeschlagen: ${e instanceof Error ? e.message : String(e)}`]; }
     if (fehler.length) {

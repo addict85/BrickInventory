@@ -40,7 +40,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const { buildAndRequire } = require('./helpers/sources');
 const _req = buildAndRequire();
 const db = _req('db/database.js');
-const hh = _req('utils/household.js');
+const hh = _req('src/haushalt/haushalt.js');
 
 const HAUPT = 990501, UNTER = 990502;
 

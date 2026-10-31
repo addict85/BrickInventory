@@ -6,7 +6,9 @@
  *   A  in 0052 den Trigger auf storage_locations weggelassen → rot: „ein
  *      umbenannter Lagerort entwertet die Zusammenfassung“
  *   B  in ensureFresh den Vergleich des Katalogstands entfernt → rot: „ein
- *      geänderter Teilename entwertet sie ebenso“
+ *      geänderter Teilename entwertet sie ebenso“ (seit Migration 0079: „ein
+ *      geänderter Teilename ist sofort nachgezogen“, siehe
+ *      teile-katalog-inkrementell-db.test.js)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -14,7 +16,6 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
@@ -29,7 +30,7 @@ test('Teile-Zusammenfassung: Stand', { concurrency: 1 }, async (t) => {
   }
   const mc = await db.pool.connect();
   try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }
-  const PS = _req('utils/partsSummary.js');
+  const PS = _req('src/teile/partsSummary.js');
   const NAME = `stand-${process.pid}`, SN = `31170-${process.pid % 1000}`, TEIL = `stand${process.pid}`;
   await db.run('DELETE FROM users WHERE username=$1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
@@ -50,12 +51,11 @@ test('Teile-Zusammenfassung: Stand', { concurrency: 1 }, async (t) => {
       assert.equal(z.storage, 'Regal B');
     });
 
-    await t.test('ein geänderter Teilename entwertet sie ebenso', async () => {
+    await t.test('ein geänderter Teilename ist sofort nachgezogen', async () => {
       await PS.rebuildNow(uid);
       assert.equal(await PS.ensureFresh(uid, { strict: true }), true, 'Vorbedingung: frisch');
       await db.run(`UPDATE part_catalog SET part_name = 'Neuer Name' WHERE part_number = $1`, [TEIL]);
-      assert.equal(await PS.ensureFresh(uid, { strict: true }), false);
-      await PS.rebuildNow(uid);
+      assert.equal(await PS.ensureFresh(uid, { strict: true }), true, 'der Nachzug läuft in ensureFresh');
       assert.equal((await db.get('SELECT part_name FROM parts_summary WHERE user_id=$1', [uid])).part_name, 'Neuer Name');
     });
   } finally {

@@ -10,6 +10,8 @@ import ch.brickinventoryapp.data.model.*
 data class MerklisteUiState(
     val merkposten: List<ch.brickinventoryapp.data.model.Merkposten> = emptyList(),
     val laedt: Boolean = false,
+    /** Der Grund, warum die Liste nicht kam; null, solange nichts scheiterte. */
+    val fehler: String? = null,
     // ── Der Filter ──
     //
     // Drei Werte hier; der vierte, der Inhaber, steht wie in jeder Ansicht in
@@ -52,5 +54,5 @@ data class MerkpostenDetailUiState(
     val preise: ch.brickinventoryapp.data.model.MerkpostenPreiseResponse? = null,
     val laedt: Boolean = false,
     /** Die Preisalarme dieses Sets — dieselben wie im Set-Detail. */
-    val preisalarme: List<ch.brickinventoryapp.data.model.Preisalarm> = emptyList(),
+    val preisalarme: List<ch.brickinventoryapp.ui.model.PreisalarmAnsicht> = emptyList(),
 )

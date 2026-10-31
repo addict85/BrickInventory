@@ -32,12 +32,11 @@ const { after } = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { haeltFigur, haeltSet, haeltTeil } = require('./helpers/bestand');
 const db = _req('db/database.js');
-const { verwendendeSets } = _req('utils/handlers/shared.js');
+const { verwendendeSets } = _req('src/bestand/gemeinsam.js');
 
 async function erreichbar() {
   try { await db.get('SELECT 1'); return true; } catch { return false; }

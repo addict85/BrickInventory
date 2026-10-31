@@ -139,4 +139,10 @@ class ResponseCache internal constructor(
 fun interface CacheBesitzer {
     /** Null, solange kein Server oder kein Token hinterlegt ist. */
     suspend fun cacheBereich(): String?
+
+    /**
+     * Server und Konto, ohne den Token: Der wechselt beim Tausch (Rotation), und
+     * Room-Ablage samt Ausgang müssen das überleben. Null wie [cacheBereich].
+     */
+    suspend fun kontoBereich(): String? = cacheBereich()
 }

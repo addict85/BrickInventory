@@ -1,5 +1,5 @@
 /**
- * `global_settings` wird über utils/settings.ts angefasst.
+ * `global_settings` wird über src/konto/settings.ts angefasst.
  *
  * Der Wächter selbst steht in scripts/check-global-settings.js — dort mit der
  * Bestandsliste und der ausführlichen Begründung. Dieser Test ruft ihn im

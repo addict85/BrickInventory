@@ -85,6 +85,8 @@ data class PartsUiState(
      */
     val partsCategoryFilter: String = "",
     val partsLoading: Boolean = false,
+    /** Warum die Teile nicht kamen; null, solange nichts scheiterte. */
+    val partsFehler: String? = null,
     /** Teileliste aus dem Plattenspeicher: Zeitpunkt der Ablage, sonst null. */
     val teileOfflineStand: Long? = null,
     val minifigs: List<Minifig> = emptyList(),
@@ -94,6 +96,7 @@ data class PartsUiState(
     val minifigStats: ch.brickinventoryapp.data.model.MinifigStats =
         ch.brickinventoryapp.data.model.MinifigStats(),
     val minifigsLoading: Boolean = false,
+    val minifigsFehler: String? = null,
     /** Figurenliste aus dem Plattenspeicher: Zeitpunkt der Ablage, sonst null. */
     val figurenOfflineStand: Long? = null,
     /**
@@ -108,7 +111,7 @@ data class PartsUiState(
      */
     val minifigsView: String = "grid",
     val partsStats: PartsStats? = null,
-    val partsColors: List<BrickColor> = emptyList(),
+    val partsColors: List<ch.brickinventoryapp.ui.model.FarbeAnsicht> = emptyList(),
 )
 
 /**
@@ -118,6 +121,8 @@ data class PartsUiState(
 data class SetDetailUiState(
     val setDetail: SetItem? = null,
     val setDetailLoading: Boolean = false,
+    /** Ohne Detail und ohne Vorschau aus der Galerie bliebe sonst der Kringel stehen. */
+    val setDetailFehler: String? = null,
     val setPrice: SetPriceResponse? = null,
     val setPriceLoading: Boolean = false,
     // Die ganze Antwort statt einzelner Felder: Sie trägt seit der
@@ -132,7 +137,7 @@ data class SetDetailUiState(
      * geladen, weil sie zum Konto gehören: Zwei Personen mit demselben Set haben
      * verschiedene Alarme.
      */
-    val preisalarme: List<ch.brickinventoryapp.data.model.Preisalarm> = emptyList(),
+    val preisalarme: List<ch.brickinventoryapp.ui.model.PreisalarmAnsicht> = emptyList(),
     val acquisitions: List<ch.brickinventoryapp.data.model.Acquisition> = emptyList(),
     /**
      * Summenzeile der Erfassungen — vom Server gerechnet, nicht hier.

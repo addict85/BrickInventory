@@ -15,7 +15,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const DATEI = path.join(__dirname, '..', 'db', 'schema-stand.sql');
+const DATEI = path.join(__dirname, '..', 'db/schema-stand.sql');
 
 /**
  * Der Text der Schemadatei aus einer verbundenen Datenbank.
@@ -75,9 +75,9 @@ async function schemaText(db) {
   return teile.join('\n').replace(/public\./g, '') + '\n';
 }
 
-const BASIS = path.join(__dirname, '..', 'db', 'basis.sql');
+const BASIS = path.join(__dirname, '..', 'db/basis.sql');
 /** Startdaten, die eine neue Installation braucht; alles andere bleibt leer. */
-const BASIS_DATEN = ['global_settings', 'gutschein_guthaben_schranke', 'parts_katalog_stand', 'schema_migrations'];
+const BASIS_DATEN = ['global_settings', 'gutschein_guthaben_schranke', 'schema_migrations'];
 
 /**
  * db/basis.sql aus einer fertig migrierten Datenbank schreiben: Schema und
@@ -120,7 +120,6 @@ async function main() {
   await admin.query(`CREATE DATABASE ${name}`);
   const ziel = new URL(basis); ziel.pathname = '/' + name;
   process.env.DATABASE_URL = ziel.toString();
-  process.env.WEB_WORKERS = '1';
   const db = require(path.join(__dirname, '..', 'dist', 'db', 'database.js'));
   try {
     await db.initSchemaOnce();

@@ -14,7 +14,6 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
@@ -42,7 +41,7 @@ test('Mengenänderung ohne verlorene Zugänge', { concurrency: 1 }, async (t) =>
     await db.run('DELETE FROM price_cache WHERE set_number = $1', [SN]);
     await db.pool.end().catch(() => {});
   });
-  const { updateSet } = _req('utils/setService.js');
+  const { updateSet } = _req('src/sets/setService.js');
 
   await t.test('zwei gleichzeitige +1 ergeben +2', async () => {
     await haeltSet(db, uid, SN, 2, { preis: 40 });

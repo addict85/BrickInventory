@@ -1,7 +1,7 @@
 package ch.brickinventoryapp
 
 import androidx.lifecycle.SavedStateHandle
-import ch.brickinventoryapp.data.repository.AdminRepository
+import ch.brickinventoryapp.data.repository.KatalogRepository
 import ch.brickinventoryapp.data.repository.FinanzenRepository
 import ch.brickinventoryapp.data.repository.SetsRepository
 import ch.brickinventoryapp.ui.Aenderung
@@ -42,7 +42,7 @@ class MerklisteViewModelTest {
     private lateinit var t: TestDienste
 
     private fun vm(gemerkt: SavedStateHandle = SavedStateHandle(), t: TestDienste = this.t) = t.merke(MerklisteViewModel(
-        t.dienste, SetsRepository(t.api, t.cache), AdminRepository(t.api, t.cache),
+        t.dienste, SetsRepository(t.api, t.cache), KatalogRepository(t.api, t.cache),
         FinanzenRepository(t.api, t.cache), gemerkt))
 
     @Before

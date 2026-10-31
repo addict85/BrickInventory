@@ -1,5 +1,8 @@
 package ch.brickinventoryapp
 
+import ch.brickinventoryapp.data.api.ApiJson
+import ch.brickinventoryapp.data.model.SetItem
+import org.junit.Assert.assertEquals
 import org.junit.Test
 
 /**
@@ -48,16 +51,14 @@ class PurchasePriceDisplayTest {
             .orEmpty().sortedBy { it.name }
             .joinToString("\n") { it.readText() }
 
+    // Gegenprobe (30.10.2026, gemessen): anzeigeKaufpreis auf maxPurchasePrice
+    // gestellt → rot „die Anzeigeregel steht im Modell …“.
     @Test
     fun `die Anzeigeregel steht im Modell und bevorzugt den Durchschnitt`() {
+        val set = ApiJson.decodeFromString(SetItem.serializer(),
+            """{"set_number":"75192-1","avg_purchase_price":712.5,"max_purchase_price":800,"purchase_price":99}""")
+        assertEquals("Der mengengewichtete Wert, nie der alte gespiegelte", 712.5, set.anzeigeKaufpreis!!, 1e-9)
         val m = code(modelle())
-        assert(m.contains("val anzeigeKaufpreis")) {
-            "Die Anzeigeregel fehlt im Modell — dann schreibt sie jede Ansicht selbst, " +
-                "und genau so entstehen unterschiedliche Werte in App und Webapp"
-        }
-        assert(m.contains("get() = avgPurchasePrice")) {
-            "Die Anzeigeregel muss den mengengewichteten Wert nehmen"
-        }
         // Umgedrehte Richtung, siehe Kopfkommentar: Das Feld darf nicht zurück.
         //
         // Geprüft wird der Kopf von SetItem, nicht die ganze Modelldatei:

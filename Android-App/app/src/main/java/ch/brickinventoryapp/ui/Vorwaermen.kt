@@ -42,7 +42,7 @@ internal suspend fun bildAdressenDerSammlung(repo: BrickRepository, blickfeld: B
         seite++
     }
 
-    val figuren = repo.teile.getMinifigs(blickfeld.kontoFuer(ScopeFilter.View.MINIFIGS))
+    val figuren = repo.figuren.getMinifigs(blickfeld.kontoFuer(ScopeFilter.View.MINIFIGS))
     if (figuren is Result.Success) {
         figuren.data.figs.mapTo(roh) { resolveThumbUrl(basis, it.imageLocal, it.imageUrl) }
     }
@@ -50,7 +50,7 @@ internal suspend fun bildAdressenDerSammlung(repo: BrickRepository, blickfeld: B
     if (mTeile is Result.Success) {
         mTeile.data.parts.mapTo(roh) { resolveThumbUrl(basis, it.imageLocal, it.imageUrl) }
     }
-    val mFiguren = repo.teile.getManualMinifigs(blickfeld.kontoFuer(ScopeFilter.View.MINIFIGS))
+    val mFiguren = repo.figuren.getManualMinifigs(blickfeld.kontoFuer(ScopeFilter.View.MINIFIGS))
     if (mFiguren is Result.Success) {
         mFiguren.data.figs.mapTo(roh) { resolveThumbUrl(basis, it.imageLocal, it.imageUrl) }
     }

@@ -2,7 +2,7 @@
  * Nach dem Verschieben eines Sets hat JEDER Bestandteil im Zielkonto sein Bild.
  *
  * ── Der Befund, der zu diesem Test führte ───────────────────────────────────
- * copyContents() in utils/setMove.ts kopiert Teile, Minifiguren und
+ * copyContents() in src/sets/setMove.ts kopiert Teile, Minifiguren und
  * Anleitungen ins Zielkonto. Die Teile wurden mit 14 Spalten kopiert, die
  * Minifiguren mit 7 — und die einzige, die dabei WIRKLICH fehlte, war
  * `image_local`.
@@ -28,12 +28,11 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { haeltFigur, haeltSet, haeltTeil } = require('./helpers/bestand');
 const db = _req('db/database.js');
-const { moveSetBetweenAccounts } = _req('utils/setMove.js');
+const { moveSetBetweenAccounts } = _req('src/sets/setMove.js');
 
 test('ein verschobenes Set nimmt die Bildpfade aller Bestandteile mit', { concurrency: 1 }, async (t) => {
   try { await db.initSchema(); }

@@ -2,6 +2,9 @@ package ch.brickinventoryapp.data.repository
 
 import ch.brickinventoryapp.data.api.TeileApi
 import ch.brickinventoryapp.data.cache.ResponseCache
+import ch.brickinventoryapp.data.lokal.Bearbeitung
+import ch.brickinventoryapp.data.lokal.Faecher
+import ch.brickinventoryapp.data.lokal.Offlineablage
 import ch.brickinventoryapp.data.model.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -23,7 +26,8 @@ import javax.inject.Singleton
 class TeileRepository @Inject constructor(
     api: TeileApi,
     cache: ResponseCache,
-) : RepoBasis<TeileApi>(api, cache) {
+    ablage: Offlineablage = Offlineablage.fluechtig(),
+) : RepoBasis<TeileApi>(api, cache, ablage) {
 
     suspend fun getParts(search: String? = null, color: String? = null,
                          category: String? = null, page: Int = 1,
@@ -45,7 +49,7 @@ class TeileRepository @Inject constructor(
         if (search.isNullOrBlank() && color == null && category == null && page == 1 &&
             accounts == null && spare.isNullOrBlank() && withSets.isNullOrBlank() &&
             storage.isNullOrBlank())
-            cached("parts", PartsResponse.serializer()) {
+            abgeglichen(Faecher.TEILE, { it.parts }, { PartsResponse(success = true, total = it.size, parts = it) }) {
                 safeCall { api.getParts(null, null, null, 1, pageSize = 500, excludeManual = "1") }
             }
         else safeCall { api.getParts(search, color, category, page, pageSize = 500,
@@ -74,11 +78,11 @@ class TeileRepository @Inject constructor(
      */
     suspend fun getManualParts(accounts: String? = null, search: String? = null,
                                storage: String? = null): Result<ManualPartsResponse> =
-        safeCall { api.getManualParts(accounts, search, storage) }
-
-    suspend fun getManualMinifigs(accounts: String? = null,
-                                  search: String? = null): Result<ManualFigsResponse> =
-        safeCall { api.getManualMinifigs(accounts, search) }
+        if (accounts == null && search.isNullOrBlank() && storage.isNullOrBlank())
+            abgeglichen(Faecher.MANUELLE_TEILE, { it.parts }, { ManualPartsResponse(success = true, parts = it) }) {
+                safeCall { api.getManualParts(accounts, search, storage) }
+            }
+        else safeCall { api.getManualParts(accounts, search, storage) }
 
     /**
      * „Kann ich das bauen?“ — welche Teile einer Liste schon da sind. Ohne
@@ -94,10 +98,6 @@ class TeileRepository @Inject constructor(
     suspend fun setPartStorage(partNumber: String, colorId: Int, ort: String):
         Result<LagerortResponse> =
         safeCall { api.setPartStorage(partNumber, colorId, LagerortRequest(ort)) }
-
-    /** Dasselbe fuer eine Minifigur — sie hat keine Farbe (Migration 0024). */
-    suspend fun setFigStorage(figNumber: String, ort: String): Result<LagerortResponse> =
-        safeCall { api.setFigStorage(figNumber, LagerortRequest(ort)) }
 
     /**
      * Welche Lagerorte belegt sind. Ohne Zwischenspeicher: Die Liste ist klein und
@@ -140,10 +140,6 @@ class TeileRepository @Inject constructor(
                                accounts: String? = null): Result<VerwendendeSetsResponse> =
         safeCall { api.getSetsMitTeil(partNumber, colorId, accounts) }
 
-    suspend fun getSetsMitFigur(figNumber: String,
-                                accounts: String? = null): Result<VerwendendeSetsResponse> =
-        safeCall { api.getSetsMitFigur(figNumber, accounts) }
-
     suspend fun getBrickColors(): Result<BrickColorsResponse> =
         safeCall { api.getBrickColors() }
 
@@ -153,14 +149,21 @@ class TeileRepository @Inject constructor(
                          condition: String? = null, ownerUserId: Int? = null,
                          storage: String? = null): Result<AddPartResponse> {
         val ohne = colorId == KEINE_FARBE
-        return safeCall { api.addPart(AddPartRequest(partNumber, colorId, colorName.takeUnless { ohne },
-                                              colorHex.takeUnless { ohne }, quantity,
-                                              unitPrice, condition, ownerUserId, storage)) }
+        val anfrage = AddPartRequest(partNumber, colorId, colorName.takeUnless { ohne },
+            colorHex.takeUnless { ohne }, quantity, unitPrice, condition, ownerUserId, storage)
+        return schreibe(Bearbeitung.TeilErfassen(anfrage),
+            { AddPartResponse(success = true, action = "gepuffert", partNumber = partNumber) }) {
+            safeCall { api.addPart(anfrage) }
+        }
     }
 
     /** @param owner Besitzer der Karte; null = eigenes Konto. */
     suspend fun updatePart(partNumber: String, colorId: Int, quantity: Int, unitPrice: Double?, condition: String? = null, owner: Int? = null): Result<GenericResponse> =
-        safeCall { api.updatePart(partNumber, colorId, UpdateManualItemRequest(quantity, unitPrice, condition = condition), owner) }
+        UpdateManualItemRequest(quantity, unitPrice, condition = condition).let { anfrage ->
+            schreibe(Bearbeitung.TeilAendern(partNumber, colorId, anfrage, owner), { GenericResponse(success = true) }) {
+                safeCall { api.updatePart(partNumber, colorId, anfrage, owner) }
+            }
+        }
 
     /** @param owner Besitzer der Karte; null = eigenes Konto. */
     suspend fun deletePart(partNumber: String, colorId: Int, owner: Int? = null): Result<GenericResponse> =
@@ -178,43 +181,4 @@ class TeileRepository @Inject constructor(
                              owner: Int? = null): Result<TeilFarbeResponse> =
         safeCall { api.setPartColor(partNumber, colorId, TeilFarbeRequest(neueFarbe,
             farbName.takeUnless { neueFarbe == KEINE_FARBE }, farbHex.takeUnless { neueFarbe == KEINE_FARBE }), owner) }
-
-    suspend fun addMinifig(figNumber: String, blFigNumber: String? = null, quantity: Int = 1,
-                           unitPrice: Double? = null, condition: String? = null,
-                           ownerUserId: Int? = null,
-                           storage: String? = null): Result<AddMinifigResponse> =
-        safeCall { api.addMinifig(AddMinifigRequest(figNumber, blFigNumber, quantity, unitPrice,
-                                                    condition, ownerUserId, storage)) }
-
-    /** @param owner Besitzer der Karte; null = eigenes Konto. */
-    suspend fun updateMinifig(figNumber: String, quantity: Int, unitPrice: Double?, blFigNumber: String? = null, condition: String? = null, owner: Int? = null): Result<GenericResponse> =
-        safeCall { api.updateMinifig(figNumber, UpdateManualItemRequest(quantity, unitPrice, blFigNumber, condition), owner) }
-
-    /** @param owner Besitzer der Karte; null = eigenes Konto. */
-    suspend fun deleteMinifig(figNumber: String, owner: Int? = null): Result<GenericResponse> =
-        safeCall { api.deleteMinifig(figNumber, owner) }
-
-    /**
-     * Set-Figuren der Übersicht; Suche beim Server wie im Web, weil er vor der
-     * Gruppierung über jede fig_name-Zeile sucht. Gecacht wird nur die ungefilterte
-     * Sicht, sonst wäre ein Suchergebnis nach dem Neustart die ganze Sammlung.
-     */
-    suspend fun getMinifigs(accounts: String? = null, search: String? = null): Result<MinifigsResponse> =
-        if (accounts == null && search.isNullOrBlank())
-            cached("minifigs", MinifigsResponse.serializer()) {
-                safeCall { api.getMinifigs(source = "set") }
-            }
-        else safeCall { api.getMinifigs(source = "set", accounts = accounts,
-                                        search = search?.ifBlank { null }) }
-
-    suspend fun getMinifigStats(accounts: String? = null): Result<ch.brickinventoryapp.data.model.MinifigStatsResponse> =
-        safeCall { api.getMinifigStats(accounts) }
-
-    suspend fun getDefaultCondition(): Result<DefaultConditionResponse> = safeCall { api.getDefaultCondition() }
-
-    // Admin-level: saves global default (Monitoring)
-    suspend fun setDefaultCondition(condition: String): Result<GenericAdminResponse> = safeCall { api.setDefaultCondition(mapOf("condition" to condition)) }
-
-    // User-level: saves per-user default (empty string = revert to global)
-    suspend fun setUserDefaultCondition(condition: String): Result<GenericAdminResponse> = safeCall { api.setUserDefaultCondition(mapOf("condition" to condition)) }
 }

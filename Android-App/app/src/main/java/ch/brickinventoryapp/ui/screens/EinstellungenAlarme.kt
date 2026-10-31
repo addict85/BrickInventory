@@ -19,7 +19,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.R
-import ch.brickinventoryapp.data.model.Preisalarm
+import ch.brickinventoryapp.ui.model.PreisalarmAnsicht
 import ch.brickinventoryapp.util.NumericInput
 import ch.brickinventoryapp.util.resolveThumbUrl
 import coil3.ImageLoader
@@ -45,7 +45,7 @@ internal fun PreisalarmeCard(
     // Die Rueckfrage haelt die ZEILE fest, nicht nur ein Ja/Nein: Der Text
     // nennt das Set, und beim Bestaetigen braucht es beide Teile des
     // Schluessels (Set und Zustand).
-    var fragtLoeschen by remember { mutableStateOf<Preisalarm?>(null) }
+    var fragtLoeschen by remember { mutableStateOf<PreisalarmAnsicht?>(null) }
 
     LaunchedEffect(Unit) { vm.ladeAlarmUebersicht() }
 

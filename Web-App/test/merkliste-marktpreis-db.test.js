@@ -35,7 +35,6 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
@@ -85,7 +84,7 @@ test('Merkliste: Marktpreis aus dem Cache', async (t) => {
     return;
   }
   await seed();
-  const M = _req('utils/merkliste.js');
+  const M = _req('src/merkliste/merkliste.js');
 
   await t.test('1. Der Preis kommt als Zahl an', async () => {
     // Dass er das tut, liegt am Typ-Leser in db/database.ts (NACHGEMESSEN,

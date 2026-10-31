@@ -11,10 +11,12 @@
  *   D  (27.10.) Standard wieder mit uniquelocal → rot: „Heimnetz-Rechner vertraut"
  *   E  (27.10.) Ausnahme für bekannte Adressen entfernt → rot: „der Inhaber
  *      kommt von seiner bekannten Adresse weiter herein"
- *   F  (27.10.) die Gateway-Ausnahme (x.y.0.1) entfernt → rot: „Docker-Gateway vertraut"
  *   G  (27.10.) app.disable('x-powered-by') entfernt → rot: „verrät X-Powered-By"
  *   J  (29.10.) Standard ohne TRUST_PROXY wieder das Docker-Netz → rot:
  *      „ohne TRUST_PROXY dem Docker-Netz vertraut: 172.18.0.2"
+ *   K  (30.10.) proxyVertrauen nimmt wieder „docker" (172.16/12 ohne Gateway)
+ *      an → rot: „angenommen: docker"; Präfixgrenze in proxyEintragGueltig
+ *      entfernt → rot: „angenommen: 172.16.0.0/12"
  *   H  (28.10.) kontoKennung() liefert wieder den rohen Namen → rot: „Name
  *      und E-Mail zählen gemeinsam" (und der Zähler je Konto fehlt)
  *   I  (28.10.) wartezeitSekunden() fest auf 1 s → rot: „Sperre je
@@ -36,8 +38,8 @@ const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
 const AUTH = require('./helpers/sources').einhaengung('auth');
 const db = _req('db/database.js');
-const { proxyVertrauen } = _req('utils/proxyVertrauen.js');
-const { MAX_ATTEMPTS, wartezeitSekunden } = _req('utils/loginLimiter.js');
+const { proxyVertrauen } = _req('src/infra/proxyVertrauen.js');
+const { MAX_ATTEMPTS, wartezeitSekunden } = _req('src/konto/loginLimiter.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const bcrypt  = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 
@@ -84,14 +86,17 @@ test('proxyVertrauen: wem X-Forwarded-For geglaubt wird', () => {
     assert.equal(vertraut(undefined, eigen), true, `${eigen} ist der eigene Proxy`);
   for (const netz of ['172.18.0.2', '172.31.255.1', 'fd00::5'])
     assert.equal(vertraut(undefined, netz), false, `ohne TRUST_PROXY dem Docker-Netz vertraut: ${netz}`);
-  // TRUST_PROXY=docker (Vorgabe in compose.yaml): das Docker-Netz, aber nicht
-  // dessen Gateway — über docker-proxy kommen dort die Clients selbst herein.
-  for (const eigen of ['127.0.0.1', '::1', '172.18.0.2', '172.31.255.1', '::ffff:172.20.3.4', 'fd00::5'])
-    assert.equal(vertraut('docker', eigen), true, `docker: ${eigen} ist der eigene Proxy`);
-  for (const gateway of ['172.17.0.1', '172.18.0.1', '::ffff:172.18.0.1', 'fd00::1'])
-    assert.equal(vertraut('docker', gateway), false, `Docker-Gateway vertraut: ${gateway}`);
-  for (const fremd of ['203.0.113.5', '192.168.1.10', '10.1.2.3', '172.32.0.2'])
-    assert.equal(vertraut('docker', fremd), false, `docker: ${fremd} vertraut`);
+  // Eine feste Proxy-Adresse im Compose-Netz: genau diese, nicht ihre Nachbarn
+  // und nicht das Gateway, über das Clients selbst hereinkommen.
+  assert.equal(vertraut('172.28.73.10', '172.28.73.10'), true, 'der eingetragene Proxy');
+  assert.equal(vertraut('172.28.73.10', '::ffff:172.28.73.10'), true, 'auch in der IPv6-Hülle');
+  for (const nachbar of ['172.28.73.11', '172.28.73.1', '172.18.0.2', '127.0.0.1'])
+    assert.equal(vertraut('172.28.73.10', nachbar), false, `nicht eingetragen und doch vertraut: ${nachbar}`);
+  // Ganze Netze, Hop-Zahlen und Freibriefe verweigern den Start.
+  for (const falsch of ['docker', 'true', '1', '2', '172.16.0.0/12', '10.0.0.0/8', '0.0.0.0/0', '::/0',
+                        'fd00::/8', 'uniquelocal', 'proxy.example.org', '192.168.1.5/33', '172.28.73.10, docker'])
+    assert.throws(() => proxyVertrauen(falsch), /TRUST_PROXY enthält/, `angenommen: ${falsch}`);
+  assert.deepEqual(proxyVertrauen('172.28.73.10, 192.168.1.0/24 fd00::7'), ['172.28.73.10', '192.168.1.0/24', 'fd00::7']);
   for (const fremd of ['203.0.113.5', '8.8.8.8', '2001:db8::1'])
     assert.equal(vertraut(undefined, fremd), false, `öffentliche Adresse vertraut: ${fremd}`);
   // Rechner im Heimnetz geben ihre Adresse nicht selbst an.
@@ -101,7 +106,6 @@ test('proxyVertrauen: wem X-Forwarded-For geglaubt wird', () => {
   assert.equal(vertraut('false', '127.0.0.1'), false);
   assert.equal(vertraut('203.0.113.5', '203.0.113.5'), true);
   assert.equal(vertraut('203.0.113.5', '127.0.0.1'), false);
-  assert.equal(vertraut('1', '203.0.113.5'), true);
 });
 
 test('Sperre je Benutzername gilt über alle Adressen', { concurrency: 1 }, async (t) => {
@@ -179,7 +183,7 @@ test('server.ts: TRUST_PROXY=false — X-Forwarded-For wird ignoriert', { concur
   const srv = spawn(process.execPath, [path.join(ROOT, 'dist', 'server.js')], {
     cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'],
     env: { ...process.env, DATABASE_URL: URL_DB, SESSION_SECRET: 'sperre-test-geheimnis-lang-genug-1234',
-           PORT: String(port), WEB_WORKERS: '1', NODE_ENV: 'production', TRUST_PROXY: 'false' },
+           PORT: String(port), NODE_ENV: 'production', TRUST_PROXY: 'false' },
   });
   let log = '';
   srv.stdout.on('data', d => { log += d; });
@@ -198,7 +202,7 @@ test('server.ts: TRUST_PROXY=false — X-Forwarded-For wird ignoriert', { concur
       })).status;
     } catch { return 0; }
   };
-  for (let i = 0; i < 240 && !/is PRIMARY|Startup complete/.test(log); i++) await warte(250);
+  for (let i = 0; i < 240 && !/localhost:\d+|Startup complete/.test(log); i++) await warte(250);
   for (let i = 0; i < 40 && (await fetch(`http://127.0.0.1:${port}/api/v1/`).catch(() => null)) === null; i++) await warte(250);
   assert.equal((await fetch(`http://127.0.0.1:${port}/api/v1/`)).headers.get('x-powered-by'), null,
     'Der Server verrät X-Powered-By');

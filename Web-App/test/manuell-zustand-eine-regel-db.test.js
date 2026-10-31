@@ -51,9 +51,9 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
-const { getManualParts }    = _req('utils/handlers/parts.js');
-const { getManualMinifigs } = _req('utils/handlers/minifigs.js');
-const { computePartsValuation, computeMinifigsValuation } = _req('utils/financeCalc.js');
+const { getManualParts }    = _req('src/teile/abfragen.js');
+const { getManualMinifigs } = _req('src/figuren/abfragen.js');
+const { computePartsValuation, computeMinifigsValuation } = _req('src/finanzen/financeCalc.js');
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const { haeltFigur, haeltTeil } = require('./helpers/bestand');
 
@@ -149,8 +149,8 @@ test('manuelle Teile und Figuren: Liste und Bewertung sagen denselben Zustand',
     // neben dem `condition` je Stück, das etwas anderes meint — genau die
     // Verwechslung, aus der der Fehler oben entstand. Niemand hat es gelesen
     // (nachgesehen in beiden Clients).
-    assert.deepEqual(Object.keys(bewertung).sort(), ['currency', 'kaufpreise_fremde_waehrung', 'parts', 'total_value']);
-    assert.deepEqual(Object.keys(figBewertung).sort(), ['currency', 'figs', 'kaufpreise_fremde_waehrung', 'total_value']);
+    assert.deepEqual(Object.keys(bewertung).sort(), ['currency', 'kaufpreise_fremde_waehrung', 'kaufpreise_umgerechnet', 'parts', 'total_value']);
+    assert.deepEqual(Object.keys(figBewertung).sort(), ['currency', 'figs', 'kaufpreise_fremde_waehrung', 'kaufpreise_umgerechnet', 'total_value']);
   } finally {
     await db.run('DELETE FROM users WHERE username = $1', [NAME]).catch(() => {});
     await db.pool.end().catch(() => {});

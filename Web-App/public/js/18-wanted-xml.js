@@ -49,7 +49,7 @@ let _bericht = null;
  * Das ist nicht nur Kosmetik. Der zweite Schritt SCHREIBT, und er schreibt
  * über recordAcquisitionForDay() — eine zweite Anfrage mit derselben Datei
  * legt für denselben Tag keine zweite Erfassung an, sondern ADDIERT auf die
- * bestehende (idx_part_acq_tag_merkmale, utils/acquisitions.ts). Zwei Klicks auf
+ * bestehende (idx_part_acq_tag_merkmale, src/bestand/acquisitions.ts). Zwei Klicks auf
  * „Jetzt in den Bestand übernehmen" hätten also die doppelte Stückzahl
  * ergeben, und zwar lautlos: Beide Antworten melden Erfolg.
  *
@@ -388,7 +388,7 @@ function zeile(p, i) {
   // Korrektur (wantedKorrekturWert vergleicht mit dem Bericht).
   //
   // Nicht bearbeitbar bleiben Bild, Name, BrickLink-Nummer und Ergebnis — die
-  // Begründung steht am Typ `Korrektur` in utils/wantedListe.ts.
+  // Begründung steht am Typ `Korrektur` in src/merkliste/wantedListe.ts.
   // `breit` wegen des Platzhalters „Marktpreis": In 72px stand dort „Marktpr"
   // — am Bildschirm gesehen.
   const feld = (name, wert, extra = '', breit = 72) =>

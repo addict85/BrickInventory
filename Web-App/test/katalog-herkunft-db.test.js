@@ -21,7 +21,6 @@ const assert = require('node:assert/strict');
 const path   = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.WEB_WORKERS = '1';
 
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
@@ -29,7 +28,7 @@ const db   = _req('db/database.js');
 
 // Rebrickable vorgeben, bevor die Routen die Funktionen herausziehen (wie in
 // test/katalog-vor-rebrickable-db.test.js).
-const rbPfad = require.resolve(path.join(ROOT, 'dist', 'clients', 'rebrickable.js'));
+const rbPfad = require.resolve(path.join(ROOT, 'dist', 'clients/rebrickable.js'));
 const echtRb = require(rbPfad);
 let abrufe = [];
 require.cache[rbPfad].exports = Object.assign({}, echtRb, {
@@ -67,8 +66,8 @@ test('der gemeinsame Katalog', { concurrency: 1 }, async (t) => {
     `INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [name])).id;
   const A = await neu('anna'), B = await neu('bruno');
 
-  const { addManualPart } = _req('utils/manuelleTeile.js');
-  const { addManualFig }  = _req('utils/manuelleFiguren.js');
+  const { addManualPart } = _req('src/teile/manuelleTeile.js');
+  const { addManualFig }  = _req('src/figuren/manuelleFiguren.js');
   const teil = (nr) => db.get(
     `SELECT pc.part_name, pc.name_von, pcc.image_url, pcc.bild_von
        FROM part_catalog pc LEFT JOIN part_color_catalog pcc

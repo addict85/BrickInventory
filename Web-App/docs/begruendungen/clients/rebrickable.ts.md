@@ -45,7 +45,7 @@ einen fremden Host bekam damit den Schluessel, und eine Umleitung
 von https auf http gab ihn im Klartext preis (die
 Bibliothekswahl eine Zeile hoeher liess beides zu).
 
-Die Regel dafuer steht in utils/fremdeAdressen.ts, gemeinsam mit
+Die Regel dafuer steht in src/infra/fremdeAdressen.ts, gemeinsam mit
 der des Dateidownloads darunter: Obergrenze, kein Downgrade,
 Geheimnisse beim Hostwechsel abwerfen.
 
@@ -132,7 +132,7 @@ Feld abgetastet, und genau das verlangt `unknown` auch.
 
 Zwei Gestalten, weil Rebrickable sie beide liefert: Bei Teilen ist
 external_ids.BrickLink ein Feld von Nummern (so liest es
-utils/partsImport.ts), bei Farben steckt es eine Ebene tiefer in `ext_ids`
-(so liest es utils/blZuordnung.ts). Beide Schreibweisen stehen im Baum
+src/katalog/partsImport.ts), bei Farben steckt es eine Ebene tiefer in `ext_ids`
+(so liest es src/katalog/blZuordnung.ts). Beide Schreibweisen stehen im Baum
 belegt, also fragt diese Pruefung beide.
 ```

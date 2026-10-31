@@ -123,10 +123,8 @@ data class PartsResponse(
 
 @Serializable
 data class PartsStats(
-    @SerialName("unique_combinations") val uniqueCombinations: Int = 0,
     @SerialName("unique_parts") val uniqueParts: Int = 0,
     @SerialName("unique_colors") val uniqueColors: Int = 0,
-    @SerialName("unique_categories") val uniqueCategories: Int = 0,
     @SerialName("total_parts") val totalParts: Int = 0
 )
 
@@ -140,7 +138,7 @@ data class Minifig(
     /** Alle erfassten Zustände — je einer eine Plakette (siehe SetItem). */
     val conditions: List<String> = emptyList(),
     /** Besitzer im Haushalt — siehe SetItem.owners. */
-    val owners: List<HouseholdMember> = emptyList(),
+    val owners: List<KontoName> = emptyList(),
     /** Mengengewichteter Kaufpreis über die Erfassungen. */
     @SerialName("avg_purchase_price") val avgPurchasePrice: Double? = null,
     @SerialName("fig_name")   val figName: String? = null,

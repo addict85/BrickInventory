@@ -16,7 +16,7 @@
 import { detailZeile, ladeAnzeige } from './01-bausteine.js';
 import { registerActions } from './00-registry.js';
 import { colorName, locale, t, tRaw } from '../i18n.js';
-import { fmtDatum, bildTag, platzhalterInhalt, ico, escHex, CURRENCY, G, ME, api, esc, escJs, escUrl, fmtN, fullUrl, hexZiffern, imgUrl, thumbUrl, toast } from './01-core.js';
+import { fmtDatum, fmtGeld, bildTag, platzhalterInhalt, ico, escHex, CURRENCY, G, ME, api, esc, escJs, escUrl, fmtN, fullUrl, hexZiffern, imgUrl, thumbUrl, toast } from './01-core.js';
 import { allSets, applySetAggregate, closeModal, curSet, loadGallery, pnlBadge, updateGalleryPrices } from './02-gallery.js';
 import { loadFinance } from './04-finance.js';
 import { deleteManualFig, deleteManualPart, loadBrickColors, loadManualFigsTable, loadManualParts, manualFigsCache, manualPartsCache, updateManualFig, updateManualPart } from './06-minifigs.js';
@@ -112,39 +112,38 @@ export function renderAcqModalBody(sn, acqs, totals) {
     const priceVal = a.purchase_price != null ? parseFloat(a.purchase_price) : '';
     html += `<tr data-stil="border-bottom:1px solid var(--bdr)" id="acq-row-${a.id}">
       <td data-stil="padding:6px 6px">
-        <input inputmode="numeric" type="number" min="1" value="${a.quantity}"
+        <input inputmode="numeric" type="number" min="1" value="${a.quantity}" aria-label="${esc(tRaw('detail.qty'))}"
           data-blur="acqSave" data-arg="${esc(sn)}" data-arg2="${a.id}" data-arg3="qty" data-val="1"
           data-keydown="blurOnEnter"
           data-stil="width:48px;text-align:center;border:1px solid var(--bdr);border-radius:6px;padding:4px 6px;font-size:var(--fs-3);font-weight:700;background:var(--sur);color:var(--txt)" />
       </td>
       <td data-stil="padding:6px 8px;white-space:nowrap">
-        <input type="date" value="${dateIso}"
+        <input type="date" value="${dateIso}" aria-label="${esc(tRaw('detail.added'))}"
           data-change="acqSave" data-arg="${esc(sn)}" data-arg2="${a.id}" data-arg3="date" data-val="1"
           data-stil="border:1px solid var(--bdr);border-radius:6px;padding:3px 6px;font-size:var(--fs-2);background:var(--sur);color:var(--txt)" />
       </td>
       <td data-stil="padding:6px 4px;text-align:center">
-        <select data-change="acqSave" data-arg="${esc(sn)}" data-arg2="${a.id}" data-arg3="cond" data-val="1"
+        <select aria-label="${esc(tRaw('common.condition'))}" data-change="acqSave" data-arg="${esc(sn)}" data-arg2="${a.id}" data-arg3="cond" data-val="1"
           data-stil="font-size:var(--fs-2);border:1px solid var(--bdr);border-radius:6px;padding:3px 6px;background:var(--sur);color:var(--txt)">
           <option value="N" ${a.condition!=='U'?'selected':''}>${t('common.condition_new')}</option>
           <option value="U" ${a.condition==='U'?'selected':''}>${t('common.condition_used')}</option>
         </select>
       </td>
       <td data-stil="padding:6px 8px;text-align:right">
-        <input type="text" inputmode="decimal" value="${priceVal}"
+        <input type="text" inputmode="decimal" value="${priceVal}" aria-label="${esc(tRaw('detail.purchase_price'))}"
           data-blur="acqSave" data-arg="${esc(sn)}" data-arg2="${a.id}" data-arg3="price" data-val="1"
           data-keydown="blurOnEnter"
           data-stil="width:84px;text-align:right;border:1px solid var(--bdr);border-radius:6px;padding:4px 8px;font-size:var(--fs-3);font-weight:600;background:var(--sur);color:var(--txt)" />
       </td>
       ${_householdMembers.length > 1 ? `<td data-stil="padding:6px 4px">
-        <select data-change="acqSave" data-arg="${esc(sn)}" data-arg2="${a.id}" data-arg3="owner" data-val="1"
+        <select aria-label="${esc(tRaw('household.owner'))}" data-change="acqSave" data-arg="${esc(sn)}" data-arg2="${a.id}" data-arg3="owner" data-val="1"
           data-stil="font-size:var(--fs-2);border:1px solid var(--bdr);border-radius:6px;padding:3px 6px;background:var(--sur);color:var(--txt)">
           ${_householdMembers.map(m => `<option value="${m.id}"${m.id === (a.owner_user_id ?? _acqOwnerId) ? ' selected' : ''}>${esc(m.username)}</option>`).join('')}
         </select>
       </td>` : ''}
       <td data-stil="padding:6px 4px;text-align:center">
-        <button data-click="acqDelete" data-arg="${esc(sn)}" data-arg2="${a.id}"
-          data-stil="background:none;border:none;cursor:pointer;font-size:var(--fs-4);color:var(--r500);padding:2px 4px;border-radius:4px;line-height:1"
-          title="${t('gallery.delete.title')}">${ico('loeschen')}</button>
+        <button class="acq-loeschen" data-click="acqDelete" data-arg="${esc(sn)}" data-arg2="${a.id}"
+          title="${t('gallery.delete.title')}" aria-label="${t('gallery.delete.title')}">${ico('loeschen')}</button>
       </td>
     </tr>`;
   });
@@ -152,7 +151,7 @@ export function renderAcqModalBody(sn, acqs, totals) {
   html += `</tbody></table></div>`;
 
   // Summenzeile: Der Server rechnet sie (acquisitionTotals in
-  // utils/acquisitions.ts) und liefert sie als `totals` mit. Vorher stand die
+  // src/bestand/acquisitions.ts) und liefert sie als `totals` mit. Vorher stand die
   // Rechnung hier und noch dreimal woanders — zweimal in dieser Datei, zweimal
   // in der App, und mit verschiedenen Preisfeldern.
   html += acqSummary(totals);
@@ -294,7 +293,7 @@ async function acqDelete(sn, id) {
  */
 export function erfassungsPreis(a, betrag) {
   if (betrag == null) return '';
-  const zahl = `<strong>${fmtN(betrag, a.currency || CURRENCY)}</strong>`;
+  const zahl = `<strong>${fmtGeld(betrag, a.currency || CURRENCY)}</strong>`;
   if (!a.price_estimated) return zahl;
   const hinweis = esc(tRaw('acq.geschaetzt'));
   return `<span title="${hinweis}"><span role="img" aria-label="${hinweis}">≈</span> ${zahl}</span>`;
@@ -395,15 +394,15 @@ export async function openManDetail(type, id, colorId) {
   const totalQty = ad?.totals?.priced_rows !== undefined && acqs.length
     ? ad.totals.quantity : item.quantity;
   rows.push(detailZeile(t('detail.qty'), `
-    <button class="btn bs btn-sm" data-click="manQtyChange" data-arg="-1" data-stil="font-size:var(--fs-4);padding:2px 8px;line-height:1">−</button>
-    <input inputmode="numeric" type="number" id="man-det-qty" min="1" value="${totalQty}" data-stil="width:46px;text-align:center;border:1px solid var(--bdr);border-radius:6px;padding:2px;font-weight:600" data-change="manQtySave" />
-    <button class="btn bs btn-sm" data-click="manQtyChange" data-arg="1" data-stil="font-size:var(--fs-4);padding:2px 8px;line-height:1">+</button>
+    <button class="btn bs btn-sm" data-click="manQtyChange" data-arg="-1" aria-label="${esc(tRaw('detail.qty_less'))}" data-stil="font-size:var(--fs-4);padding:2px 8px;line-height:1">−</button>
+    <input inputmode="numeric" type="number" id="man-det-qty" min="1" aria-label="${esc(tRaw('detail.qty'))}" value="${totalQty}" data-stil="width:46px;text-align:center;border:1px solid var(--bdr);border-radius:6px;padding:2px;font-weight:600" data-change="manQtySave" />
+    <button class="btn bs btn-sm" data-click="manQtyChange" data-arg="1" aria-label="${esc(tRaw('detail.qty_more'))}" data-stil="font-size:var(--fs-4);padding:2px 8px;line-height:1">+</button>
   `, { wertStil: 'display:flex;align-items:center;gap:6px' }));
 
   // BrickLink-Nr (minifigs only, editable)
   if (type === 'fig') {
     rows.push(detailZeile('BrickLink-Nr.', `
-      <input type="text" value="${esc(item.bl_fig_number||'')}" placeholder="z.B. sw0001" data-stil="width:110px;text-align:right;border:1px solid var(--bdr);border-radius:6px;padding:2px 6px"
+      <input type="text" value="${esc(item.bl_fig_number||'')}" placeholder="z.B. sw0001" aria-label="BrickLink-Nr." data-stil="width:110px;text-align:right;border:1px solid var(--bdr);border-radius:6px;padding:2px 6px"
         data-blur="saveManualFigBl" data-arg="${esc(id)}" data-arg2="${item?.user_id||''}" />
     `));
   }
@@ -425,7 +424,7 @@ export async function openManDetail(type, id, colorId) {
   if (type === 'part') {
     const swatch = `<span id="man-farb-punkt" data-stil="display:inline-block;width:12px;height:12px;border-radius:50%;border:1px solid rgba(0,0,0,.15);vertical-align:middle;flex:0 0 auto" data-farbe="${escHex(item.color_hex, 'var(--s300)')}"></span>`;
     rows.push(detailZeile(t('parts.color_label'), `${swatch}
-      <select id="man-farb-wahl" data-stil="max-width:150px;border:1px solid var(--bdr);border-radius:6px;padding:2px 4px;font-size:var(--fs-2)"
+      <select id="man-farb-wahl" aria-label="${esc(tRaw('parts.color_label'))}" data-stil="max-width:150px;border:1px solid var(--bdr);border-radius:6px;padding:2px 4px;font-size:var(--fs-2)"
         data-change="speichereTeilFarbe" data-part="${escJs(id)}" data-color="${_manItem.colorId}"
         data-owner="${esc(item?.user_id ?? '')}">
         <option value="${_manItem.colorId}">${esc(item.color_name || tRaw('parts.no_color_dash'))}</option>
@@ -482,7 +481,7 @@ export async function openManDetail(type, id, colorId) {
   if (type === 'part') fuelleFarbwahl(_manItem.colorId).catch(() => {});
 
   // Verlauf nachladen. Derselbe Renderer wie beim Set — die Endpunkte liefern
-  // dieselbe Diagrammstruktur (utils/chartData.ts), also braucht es hier keine
+  // dieselbe Diagrammstruktur (src/finanzen/chartData.ts), also braucht es hier keine
   // zweite Zeichenlogik.
   const histUrl = type === 'fig'
     ? `/v1/minifigs/${encodeURIComponent(id)}/price-history`
@@ -650,7 +649,7 @@ export async function openSetItemDetail(type, id, colorId) {
   // Shuttle"), ohne Bild und ohne gemeinsame Kante; bei mehreren Sets stand
   // jeder Name woanders.
   //
-  // Die Bilder liefert der Server je Set bereits mit (utils/handlers/shared.ts,
+  // Die Bilder liefert der Server je Set bereits mit (src/bestand/gemeinsam.ts,
   // verwendendeSets → image_local/image_url) — sie wurden hier nur nie
   // benutzt. Die Adresse entsteht genauso wie in 04-finance.js: Vorschau, wenn
   // es eine gibt, sonst das Original; `data-orig` traegt die volle Aufloesung
@@ -769,7 +768,7 @@ async function fuelleFarbwahl(aktuell) {
  *
  * Was dabei in der Datenbank passiert — Umziehen oder Zusammenlegen, und was
  * mit den Erfassungen geschieht — steht an einer Stelle:
- * utils/teilFarbeAendern.ts.
+ * src/teile/teilFarbeAendern.ts.
  *
  * Danach wird der Dialog mit der NEUEN Farbe neu geöffnet. Die Farbe ist Teil
  * der Kennung des Eintrags (Adresse: /parts/:nr/:farbe); ohne das zeigte der
@@ -789,7 +788,7 @@ async function speichereTeilFarbe() {
     `/v1/parts/${encodeURIComponent(nummer)}/${alt}/color${owner ? `?owner=${encodeURIComponent(owner)}` : ''}`,
     { color_id: neu, color_name: wahl?.dataset.name || null, color_hex: wahl?.dataset.hex || null });
   if (!d?.success) { toast(d?.error || tRaw('settings.error'), 'error'); return; }
-  // `bild` sagt, woher das Bild der neuen Farbe kommt (utils/teilFarbeAendern.ts).
+  // `bild` sagt, woher das Bild der neuen Farbe kommt (src/teile/teilFarbeAendern.ts).
   // null heisst: keines gefunden — dann steht nach dem Neuöffnen der
   // Platzhalter da, und genau das war Marcos Befund. Die Meldung sagt es,
   // statt ihn ein zweites Mal vor einem leeren Platz stehen zu lassen.
@@ -963,13 +962,13 @@ function renderManAcqBody(type, id, colorId, acqs, totals) {
     const t_ = type, i_ = id, c_ = colorId, ai_ = a.id;
     html += `<tr data-stil="border-bottom:1px solid var(--bdr)">
       <td data-stil="padding:6px 6px">
-        <input inputmode="numeric" type="number" min="1" value="${a.quantity}"
+        <input inputmode="numeric" type="number" min="1" value="${a.quantity}" aria-label="${esc(tRaw('detail.qty'))}"
           data-blur="manAcqSave" data-arg="${esc(t_)}" data-arg2="${i_}" data-arg3="${c_}" data-arg4="${ai_}" data-arg5="qty" data-val="1"
           data-keydown="blurOnEnter"
           data-stil="width:48px;text-align:center;border:1px solid var(--bdr);border-radius:6px;padding:4px 6px;font-size:var(--fs-3);font-weight:700;background:var(--sur);color:var(--txt)" />
       </td>
       <td data-stil="padding:6px 8px;white-space:nowrap">
-        <input type="date" value="${dateIso}"
+        <input type="date" value="${dateIso}" aria-label="${esc(tRaw('detail.added'))}"
           data-change="manAcqSave" data-arg="${esc(t_)}" data-arg2="${i_}" data-arg3="${c_}" data-arg4="${ai_}" data-arg5="date" data-val="1"
           data-stil="border:1px solid var(--bdr);border-radius:6px;padding:3px 6px;font-size:var(--fs-2);background:var(--sur);color:var(--txt)" />
       </td>
@@ -981,7 +980,7 @@ function renderManAcqBody(type, id, colorId, acqs, totals) {
         </select>
       </td>
       <td data-stil="padding:6px 8px;text-align:right">
-        <input type="text" inputmode="decimal" value="${priceVal}"
+        <input type="text" inputmode="decimal" value="${priceVal}" aria-label="${esc(tRaw('detail.purchase_price'))}"
           data-blur="manAcqSave" data-arg="${esc(t_)}" data-arg2="${i_}" data-arg3="${c_}" data-arg4="${ai_}" data-arg5="price" data-val="1"
           data-keydown="blurOnEnter"
           data-stil="width:84px;text-align:right;border:1px solid var(--bdr);border-radius:6px;padding:4px 8px;font-size:var(--fs-3);font-weight:600;background:var(--sur);color:var(--txt)" />
@@ -1016,7 +1015,7 @@ async function manAcqSave(type, id, colorId, acqId, field, value) {
     else if (field==='owner') {
       // Eigentümerwechsel = Verschieben genau dieser Kaufpreis-Zeile. Ein
       // manuell erfasstes Teil hat keinen Inhalt — es wandern nur Menge und
-      // Erfassung (utils/setMove.ts, moveManualAcquisition). KEIN
+      // Erfassung (src/sets/setMove.ts, moveManualAcquisition). KEIN
       // from_user_id: Den Absender ermittelt der Server aus der Zeile selbst
       // (acquisitionMoveSource) — hier stand der Betrachter, siehe acqSave().
       body.owner_user_id = parseInt(value);

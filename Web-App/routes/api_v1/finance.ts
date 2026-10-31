@@ -1,46 +1,38 @@
 /** /api/v1/finance — Bewertungen, PnL, Portfolio-Historie (Logik in ../finance). */
 import express from 'express';
-import { handleRouteError } from '../../utils/httpError';
+import { fehlerAntwort } from '../../src/infra/httpError';
 import { requireToken } from './middleware';
-import { getPortfolioHistory } from '../../utils/portfolioHistory';
-import { scopeIds, parseScopeMode } from '../../utils/household';
-import { computeMinifigsValuation, computePartsValuation, computePnl, computeSetsValuation } from '../../utils/financeCalc';
-import { einzelwert } from '../../utils/validate';
+import { getPortfolioHistory } from '../../src/finanzen/portfolioHistory';
+import { scopeIds, parseScopeMode } from '../../src/haushalt/haushalt';
+import { computeMinifigsValuation, computePartsValuation, computePnl, computeSetsValuation } from '../../src/finanzen/financeCalc';
+import { einzelwert } from '../../src/infra/validate';
 const router = express.Router();
 
 // ── FINANCE ───────────────────────────────────────────────────────────────────
 router.get('/finance/valuation', requireToken, async (req: AuthedRequest, res) => {
-  try {
-    const data = await computeSetsValuation(req.apiUser.user_id, await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts)));
-    // Kein `rate_limit` mehr in dieser Antwort
-    // Gekostet hat er drei Datenbankabfragen JE AUFRUF (gemessen, nicht
-    // geschätzt: getRateLimitStatus holt Zähler, Datum und Grenze einzeln) —
-    // bei jedem Öffnen des Finanzreiters und nach jedem Erfassen, weil …
-    // Ausführlich: docs/begruendungen/routes/api_v1/finance.ts.md#get-finance-valuation
-    res.json({ success:true, total_value: data.totals.qty_avg, ...data });
-  } catch (e) { handleRouteError(res, e, undefined, req); }
+  const data = await computeSetsValuation(req.apiUser.user_id, await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts)));
+  // Kein `rate_limit` mehr in dieser Antwort
+  // Gekostet hat er drei Datenbankabfragen JE AUFRUF (gemessen, nicht
+  // geschätzt: getRateLimitStatus holt Zähler, Datum und Grenze einzeln) —
+  // bei jedem Öffnen des Finanzreiters und nach jedem Erfassen, weil …
+  // Ausführlich: docs/begruendungen/routes/api_v1/finance.ts.md#get-finance-valuation
+  res.json({ success:true, total_value: data.totals.qty_avg, ...data });
 });
 
 // ── Same computation as the webapp (routes/finance.js) — implemented once ────
 router.get('/finance/parts-valuation', requireToken, async (req: AuthedRequest, res) => {
-  try {
-    const data = await computePartsValuation(req.apiUser.user_id, await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts)));
-    res.json({ success: true, ...data });
-  } catch (e) { handleRouteError(res, e, undefined, req); }
+  const data = await computePartsValuation(req.apiUser.user_id, await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts)));
+  res.json({ success: true, ...data });
 });
 
 router.get('/finance/minifigs-valuation', requireToken, async (req: AuthedRequest, res) => {
-  try {
-    const data = await computeMinifigsValuation(req.apiUser.user_id, await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts)));
-    res.json({ success: true, ...data });
-  } catch (e) { handleRouteError(res, e, undefined, req); }
+  const data = await computeMinifigsValuation(req.apiUser.user_id, await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts)));
+  res.json({ success: true, ...data });
 });
 
 router.get('/finance/pnl', requireToken, async (req: AuthedRequest, res) => {
-  try {
-    const data = await computePnl(req.apiUser.user_id, await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts)));
-    res.json({ success: true, ...data });
-  } catch (e) { handleRouteError(res, e, undefined, req); }
+  const data = await computePnl(req.apiUser.user_id, await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts)));
+  res.json({ success: true, ...data });
 });
 
 // ── PORTFOLIO HISTORY — uses shared util (identical to webapp) ───────────────
@@ -52,11 +44,11 @@ router.get('/finance/portfolio-history', requireToken, async (req: AuthedRequest
   // gegen drei Literale, nichts landet in SQL), wuerde aber unveraendert in der
   // Antwort zurueckgegeben. Derselbe Helfer wie im Anmeldezaehler.
   const period = einzelwert(req.query.period, 'week');
-  try {
-    const result = await getPortfolioHistory(uid, await scopeIds(uid, parseScopeMode(req.query.accounts)), period);
-    res.json(result);
-  } catch (e) { handleRouteError(res, e, undefined, req); }
+  const result = await getPortfolioHistory(uid, await scopeIds(uid, parseScopeMode(req.query.accounts)), period);
+  res.json(result);
 });
 
+
+router.use(fehlerAntwort);
 
 export default router;

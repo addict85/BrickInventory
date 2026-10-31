@@ -70,9 +70,11 @@ test('kein Text steht in beiden Sprachen unübersetzt', () => {
   // lauten. Jeder Eintrag ist eine Entscheidung, keine Nachsicht.
   const gewolltGleich = new Set([
     'catalog.sort.name', 'col.name', 'col.sets', 'currency.eur',
+    // „Passkey“ und „Name“ heissen in beiden Sprachen so.
+    'pk.title', 'pk.col.name',
     // „Filter“ heisst in beiden Sprachen so.
     'common.filter',
-    'finance.filter.sets', 'finance.grand.total', 'finance.period.max',
+    'finance.filter.sets', 'finance.period.max',
     'gallery.sort.name', 'header.sets', 'log.auto', 'monitor.api.bricklink',
     'monitor.api.brickset', 'monitor.api.rebrickable',
     'settings.users_admin_badge', 'users.admin_badge', 'users.role.admin',
@@ -167,7 +169,7 @@ test('die Farbauswahl im Formular „Teil erfassen" zeigt deutsche Namen', () =>
 
 test('thumbUrl() rät nicht mehr selbst — vertraut der Server-Antwort wie Android', () => {
   // Gleicher Fehler und derselbe Fix wie in der Android-App
-  // (util/ImageUrls.kt, resolveThumbUrl()): utils/images.ts prüft bereits
+  // (util/ImageUrls.kt, resolveThumbUrl()): src/katalog/bilder/images.ts prüft bereits
   // serverseitig, ob "_thumb.jpg" existiert, und liefert je nachdem den
   // Thumb- oder den Original-Pfad. thumbUrl() konstruierte trotzdem seine
   // eigene "_thumb.jpg"-Adresse aus JEDEM lokalen Pfad — auch aus dem

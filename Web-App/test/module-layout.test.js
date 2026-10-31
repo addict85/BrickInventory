@@ -137,7 +137,7 @@ test('clients/ enthält keine Routen und wird trotzdem gebaut', () => {
 test('keine Zyklen über echte import-Anweisungen', () => {
   // ── Warum das eine eigene Prüfung verdient (Nachtrag 127) ─────────────────
   //
-  // Beim Auslagern der Anleitungs-Kette nach utils/instructions.ts habe ich
+  // Beim Auslagern der Anleitungs-Kette nach src/katalog/instructions.ts habe ich
   // selbst einen Kreis erzeugt: instructions braucht den Brickset-Client, und
   // der Client holte am Ende seiner Wiederholungsschlange Anleitungen nach.
   //
@@ -236,7 +236,7 @@ test('das Grundschema wird dort gesucht, wo es zur Laufzeit liegt', () => {
   // das Laufzeit-Image enthält nur dist/. Die .sql-Dateien landen dort, weil
   // scripts/build-ts.js sie ausdrücklich mitkopiert (ASSET_EXT); gesucht werden
   // müssen sie deshalb neben dem übersetzten Modul, also über __dirname.
-  const dbSrc = ohneKommentare(fs.readFileSync(path.join(ROOT, 'db', 'database.ts'), 'utf8'));
+  const dbSrc = ohneKommentare(fs.readFileSync(path.join(ROOT, 'db/database.ts'), 'utf8'));
   const laden = dbSrc.slice(dbSrc.indexOf('async function initSchema'), dbSrc.indexOf('async function initSchema') + 1200);
   assert.match(laden, /path\.join\(__dirname, 'basis\.sql'\)/,
     'initSchema() sucht db/basis.sql nicht über __dirname — im Container liegt die Datei in ' +
@@ -248,13 +248,13 @@ test('das Grundschema wird dort gesucht, wo es zur Laufzeit liegt', () => {
   assert.match(build, /ASSET_EXT\s*=\s*\[[^\]]*'\.sql'/,
     'Das Bauskript kopiert keine .sql-Dateien mehr nach dist/ — dann fehlt das ' +
     'Grundschema im Container');
-  assert.ok(fs.existsSync(path.join(ROOT, 'db', 'basis.sql')), 'db/basis.sql fehlt');
+  assert.ok(fs.existsSync(path.join(ROOT, 'db/basis.sql')), 'db/basis.sql fehlt');
 });
 
 test('jedes späte require() zeigt auf eine Datei, die es gibt', () => {
   // ── Ein echter Laufzeitfehler beim Umzug (Nachtrag 131) ──────────────────
   //
-  // Beim Auslagern von addSet nach utils/setService.ts wanderte
+  // Beim Auslagern von addSet nach src/sets/setService.ts wanderte
   //
   //     require('./parts').fetchMissingBlIds()
   //

@@ -24,7 +24,7 @@ process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { testServer } = require('./helpers/server');
-const { DATA_DIR } = _req('utils/appPaths.js');
+const { DATA_DIR } = _req('src/infra/appPaths.js');
 const db = _req('db/database.js');
 const SET = '99073-1', NAME = `anl_hoch_${process.pid}`;
 const PDF = Buffer.from('%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n');

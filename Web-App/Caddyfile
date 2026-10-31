@@ -1,0 +1,46 @@
+# Caddy vor der App: HTTPS mit eigener CA für BRICK_HOST aus .env.
+# Siehe README.md (HTTPS) und UPGRADE.md, Abschnitt 14.
+{
+	# Keine Verwaltungsschnittstelle: Die Konfiguration ändert sich nur mit
+	# dieser Datei und einem Neustart.
+	admin off
+	# Die Umleitung auf https steht unten selbst, weil /ca.crt ausgenommen ist.
+	auto_https disable_redirects
+	# Caddy soll die CA nicht in den Container-Truststore eintragen.
+	skip_install_trust
+	# Ein Gerät, das per IP-Adresse kommt, schickt keinen Namen (SNI).
+	default_sni {$BRICK_HOST}
+	pki {
+		ca local {
+			name "BrickInventory"
+		}
+	}
+}
+
+https://{$BRICK_HOST} {
+	# Die Wurzel signiert die Blätter selbst und steht damit in der Kette, die
+	# Caddy ausliefert: Die App pinnt genau sie (QR-Code, `fp`). Ein
+	# Zwischenzertifikat lebt hier nur 7 Tage und brächte keine Trennung — sein
+	# Schlüssel liegt im selben Volume wie der der Wurzel.
+	tls {
+		issuer internal {
+			sign_with_root
+		}
+	}
+	reverse_proxy app:3000 {
+		# Eine eigene Kennung je Anfrage; die des Clients wird ersetzt.
+		header_up X-Request-Id {http.request.uuid}
+	}
+	header -Server
+}
+
+http:// {
+	# Nur das Wurzelzertifikat gibt es im Klartext: Ein Gerät braucht es, bevor
+	# es HTTPS vertraut. Abgleichen am Fingerabdruck (Einstellungen der App).
+	handle /ca.crt {
+		reverse_proxy app:3000
+	}
+	handle {
+		redir {$BRICK_BASE_URL}{uri} 308
+	}
+}

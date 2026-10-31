@@ -2,7 +2,10 @@ package ch.brickinventoryapp
 
 import ch.brickinventoryapp.data.api.BrickApiService
 import ch.brickinventoryapp.data.cache.ResponseCache
-import ch.brickinventoryapp.data.repository.AdminRepository
+import ch.brickinventoryapp.data.repository.FigurenRepository
+import ch.brickinventoryapp.data.repository.KatalogRepository
+import ch.brickinventoryapp.data.repository.KontoRepository
+import ch.brickinventoryapp.data.repository.VerwaltungRepository
 import ch.brickinventoryapp.data.repository.BrickRepository
 import ch.brickinventoryapp.data.repository.FinanzenRepository
 import ch.brickinventoryapp.data.repository.GutscheineRepository
@@ -98,7 +101,10 @@ class MonitoringViewModelVerhaltenTest {
             teile = TeileRepository(api, cache),
             finanzen = FinanzenRepository(api, cache),
             haushalt = HaushaltRepository(api, cache),
-            admin = AdminRepository(api, cache),
+            figuren = FigurenRepository(api, cache),
+            konto = KontoRepository(api, cache),
+            verwaltung = VerwaltungRepository(api, cache),
+            katalog = KatalogRepository(api, cache),
             gutscheine = GutscheineRepository(api, cache),
             cache = cache,
         ), NummernTexte)

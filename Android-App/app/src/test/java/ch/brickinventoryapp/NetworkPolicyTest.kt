@@ -72,14 +72,14 @@ class NetworkPolicyTest {
             "http://brick.fritz.box:3000/api/v1/sets",
             "http://server.lan:3000/api/v1/sets",
         ).forEach {
-            assertTrue("$it muss erlaubt sein", NetworkPolicy.isCleartextAllowed(it.toHttpUrl()))
+            assertTrue("$it muss erlaubt sein", NetworkPolicy.isCleartextAllowed(it.toHttpUrl(), experte = true))
         }
     }
 
     @Test
     fun `nur oeffentliche IP-Adressen werden im Klartext blockiert`() {
         assertFalse("Bearer-Token darf nicht im Klartext an eine öffentliche IP",
-            NetworkPolicy.isCleartextAllowed("http://8.8.8.8/api/v1/sets".toHttpUrl()))
+            NetworkPolicy.isCleartextAllowed("http://8.8.8.8/api/v1/sets".toHttpUrl(), experte = true))
         assertTrue(NetworkPolicy.isCleartextAllowed("https://8.8.8.8/api/v1/sets".toHttpUrl()))
     }
 
@@ -103,9 +103,30 @@ class NetworkPolicyTest {
     }
 
     @Test
-    fun `http im lokalen Netz ist erlaubt`() {
-        assertTrue(NetworkPolicy.isCleartextAllowed("http://192.168.1.50:3000/api/v1/sets".toHttpUrl()))
-        assertTrue(NetworkPolicy.isCleartextAllowed("http://localhost:3000/api/v1/sets".toHttpUrl()))
+    fun `http im lokalen Netz ist mit dem Expertenschalter erlaubt`() {
+        assertTrue(NetworkPolicy.isCleartextAllowed("http://192.168.1.50:3000/api/v1/sets".toHttpUrl(), experte = true))
+        assertTrue(NetworkPolicy.isCleartextAllowed("http://localhost:3000/api/v1/sets".toHttpUrl(), experte = true))
+    }
+
+    // Gegenprobe (30.10.2026, gemessen): in isCleartextAllowed die Zeile
+    // `if (!experte) return false` entfernt → rot.
+    @Test
+    fun `ohne Expertenschalter geht kein Klartext hinaus, auch nicht ins Heimnetz`() {
+        listOf("http://192.168.1.50:3000/x", "http://nas:3000/x", "http://localhost:3000/x").forEach {
+            assertFalse(it, NetworkPolicy.isCleartextAllowed(it.toHttpUrl()))
+            assertFalse(it, NetworkPolicy.isCleartextAllowed(it.toHttpUrl(), setOf("nas", "localhost", "192.168.1.50")))
+        }
+        assertTrue(NetworkPolicy.isCleartextAllowed("https://nas:3000/x".toHttpUrl()))
+    }
+
+    // Gegenprobe (30.10.2026, gemessen): klartextVorgabe() immer false → rot.
+    @Test
+    fun `nach dem Update behaelt nur ein http-Altbestand den Klartext`() {
+        assertTrue(NetworkPolicy.klartextVorgabe(" HTTP://nas:3000"))
+        assertFalse(NetworkPolicy.klartextVorgabe("https://brick.example.org"))
+        assertFalse("Eine Neuinstallation beginnt ohne", NetworkPolicy.klartextVorgabe(""))
+        assertTrue(NetworkPolicy.istHttps("https://nas:8443"))
+        assertFalse(NetworkPolicy.istHttps("http://nas:3000"))
     }
 
     // Gegenprobe (am 27.10. mit kotlinc gemessen): in isCleartextAllowed wieder
@@ -113,11 +134,11 @@ class NetworkPolicyTest {
     @Test
     fun `ein oeffentlicher Name im Klartext nur nach Bestaetigung genau dieses Hosts`() {
         val url = "http://brick.example.com/api/v1/sets".toHttpUrl()
-        assertFalse(NetworkPolicy.isCleartextAllowed(url))
-        assertFalse(NetworkPolicy.isCleartextAllowed(url, setOf("anderer.example.com")))
-        assertTrue(NetworkPolicy.isCleartextAllowed(url, setOf("brick.example.com")))
+        assertFalse(NetworkPolicy.isCleartextAllowed(url, experte = true))
+        assertFalse(NetworkPolicy.isCleartextAllowed(url, setOf("anderer.example.com"), experte = true))
+        assertTrue(NetworkPolicy.isCleartextAllowed(url, setOf("brick.example.com"), experte = true))
         // Eine öffentliche IP bleibt gesperrt, auch bestätigt.
-        assertFalse(NetworkPolicy.isCleartextAllowed("http://8.8.8.8/x".toHttpUrl(), setOf("8.8.8.8")))
+        assertFalse(NetworkPolicy.isCleartextAllowed("http://8.8.8.8/x".toHttpUrl(), setOf("8.8.8.8"), experte = true))
     }
 
     @Test

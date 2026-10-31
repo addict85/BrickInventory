@@ -17,7 +17,6 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
@@ -31,7 +30,7 @@ test('Bildadresse über den Dateinamen-Stamm', { concurrency: 1 }, async (t) => 
   }
   const mc = await db.pool.connect();
   try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }
-  const { cdnFuerFehlendesBild, CDN_ABFRAGE } = _req('utils/bildNachschlagen.js');
+  const { cdnFuerFehlendesBild, CDN_ABFRAGE } = _req('src/katalog/bilder/bildNachschlagen.js');
   const P = `bst${process.pid}`;
   await db.run(`INSERT INTO part_color_catalog (part_number, color_id, image_url, image_local)
                 VALUES ($1, 4, 'https://cdn.rebrickable.com/media/parts/x.png', $2)`, [P, `/images/parts/${P}_4.png`]);

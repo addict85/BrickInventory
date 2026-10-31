@@ -16,7 +16,6 @@ const assert = require('node:assert/strict');
 const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.WEB_WORKERS = '1';
 
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
@@ -45,8 +44,8 @@ test('Anmeldesperre unter gleichzeitigen Versuchen', { concurrency: 1 }, async (
     await db.run('DELETE FROM users WHERE id = $1', [uid]);
     await db.pool.end().catch(() => {});
   });
-  const { pruefeAnmeldedaten } = _req('utils/auth.js');
-  const lim = _req('utils/loginLimiter.js');
+  const { pruefeAnmeldedaten } = _req('src/konto/auth.js');
+  const lim = _req('src/konto/loginLimiter.js');
 
   await t.test('20 gleichzeitige Fehlversuche, höchstens 5 Prüfungen', async () => {
     const anfrage = { ip: '203.0.113.7', socket: {}, headers: {} };

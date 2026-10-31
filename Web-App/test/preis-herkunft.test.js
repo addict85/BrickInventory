@@ -44,11 +44,11 @@ test('beide Preisabrufe geben die Herkunft mit', () => {
   // ── Ein Fundort statt zwei ───────────────────────────────────────────────
   // Die beiden Preisabrufe standen in routes/parts.ts und routes/minifigs.ts —
   // dieselbe Frage, zweimal beantwortet, und dieser Test las folgerichtig
-  // zweimal. Seit dem Schichtumbau stehen BEIDE in utils/marketPrice.ts, beim
+  // zweimal. Seit dem Schichtumbau stehen BEIDE in src/finanzen/marketPrice.ts, beim
   // Marktpreis der Sets. Zwei Vorkommen in EINER Datei sind jetzt der richtige
   // Nachweis; ihre Zahl steht ausdruecklich da, damit das Verschwinden eines
   // der beiden auffaellt.
-  const src = lies('utils', 'marketPrice.ts');
+  const src = lies('src/finanzen/marketPrice.ts');
   const treffer = [...src.matchAll(
     /ausZustand: priceData\?\.is_fallback \? \(priceData\.condition_used \|\| null\) : null/g)];
   assert.equal(treffer.length, 2,
@@ -80,10 +80,10 @@ test('der Rueckfall wird in beiden Preisabrufen markiert', () => {
 });
 
 test('die Herkunft erreicht beide Antworten', () => {
-  for (const datei of ['manuelleTeile.ts', 'manuelleFiguren.ts']) {
-    const src = lies('utils', datei);
+  for (const datei of ['src/teile/manuelleTeile.ts', 'src/figuren/manuelleFiguren.ts']) {
+    const src = lies(datei);
     assert.match(src, /price_from_condition: preisAusZustand/,
-      `utils/${datei} liefert die Herkunft nicht aus — dann kann keine ` +
+      `${datei} liefert die Herkunft nicht aus — dann kann keine ` +
       'Oberflaeche sie zeigen');
   }
 });
@@ -91,7 +91,7 @@ test('die Herkunft erreicht beide Antworten', () => {
 test('eine eingetippte Zahl fragt gar nicht erst nach dem Markt', () => {
   // Sonst stuende ein Herkunftshinweis an einem Preis, den der Mensch selbst
   // eingegeben hat — und daneben ein ueberfluessiger BrickLink-Aufruf.
-  const regel = lies('utils', 'preisRegel.ts');
+  const regel = lies('src/finanzen/preisRegel.ts');
   assert.match(regel, /const markt = unitPrice !== null \? null : await marktpreis\(zustand\)/,
     'Der Marktpreis wird auch bei eigener Eingabe geholt');
   assert.match(regel, /preisAusZustand: \(kaufpreis > 0 && markt\?\.ausZustand\) \? markt\.ausZustand : null/,

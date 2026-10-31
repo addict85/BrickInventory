@@ -68,11 +68,11 @@ fun NavGraphBuilder.authGraph(
             // Momentaufnahme vom Aufbau des Graphen (der NavHost-Builder läuft nur einmal).
             val anmeldungVm: AnmeldungViewModel = aktivitaetsViewModel()
             val state by anmeldungVm.state.collectAsStateWithLifecycle()
-            val nutzerCa by vm.nutzerCa.collectAsStateWithLifecycle()
+            val klartextErlaubt by vm.klartextErlaubt.collectAsStateWithLifecycle()
             SetupScreen(
                 currentUrl = state.serverUrl,
-                nutzerCa = nutzerCa,
-                onNutzerCa = { vm.setNutzerCa(it) },
+                klartextErlaubt = klartextErlaubt,
+                onKlartextErlaubt = { vm.setKlartextErlaubt(it) },
                 // Ein anderer Server meldet über den vollen Weg der App ab, bevor die
                 // neue Adresse gilt (AnmeldungViewModel.saveServerUrl).
                 onSave = { url, klartextBestaetigt ->
@@ -83,8 +83,9 @@ fun NavGraphBuilder.authGraph(
                 },
                 // Erst nach der Bestätigung im Einrichtungsbildschirm; die Anmeldung
                 // springt nach Erfolg in die Galerie.
-                onQrScanned = { url, token, klartextBestaetigt ->
-                    anmeldungVm.loginWithQrToken(url, token, klartextBestaetigt, abmelden = { vm.logout().join() })
+                onQrScanned = { qr, klartextBestaetigt ->
+                    anmeldungVm.loginWithQrToken(qr.url, qr.token, klartextBestaetigt,
+                        abmelden = { vm.logout().join() }, fingerabdruck = qr.fingerabdruck)
                     navController.navigate(Screen.Login.route) {
                         popUpTo(Screen.Setup.route) { inclusive = true }
                     }
@@ -122,6 +123,8 @@ fun NavGraphBuilder.authGraph(
                 netzFrage = anmeldung.netzFrage,
                 onNetzBestaetigt = { user, pw, code -> anmeldungVm.login(user, pw, code, netzBestaetigt = true) },
                 onNetzAbgelehnt = { anmeldungVm.netzFrageVerwerfen() },
+                vollerZugriff = anmeldung.vollerZugriff,
+                onVollerZugriff = { anmeldungVm.setzeVollerZugriff(it) },
                 onFormular = { anmeldungVm.zeigeAnmeldeFormular(it) },
                 onRegistrieren = { u, e, v, n, pw -> anmeldungVm.registriere(u, e, v, n, pw) },
                 onPasswortVergessen = { anmeldungVm.passwortVergessen(it) },

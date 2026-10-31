@@ -26,7 +26,7 @@ process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 const _req = require('./helpers/sources').buildAndRequire();
 const AUTH = require('./helpers/sources').einhaengung('auth');
 const db = _req('db/database.js');
-const zf = _req('utils/zweiterFaktor.js');
+const zf = _req('src/konto/zweiterFaktor.js');
 const express   = require(path.join(ROOT, 'node_modules', 'express'));
 const session   = require(path.join(ROOT, 'node_modules', 'express-session'));
 const pgSession = require(path.join(ROOT, 'node_modules', 'connect-pg-simple'))(session);
@@ -94,7 +94,7 @@ test('Anmeldung mit zweitem Faktor — durchgespielt', { concurrency: 1 }, async
   /** Ein Code, der zum aktuellen Geheimnis passt — wahlweise einen Schritt versetzt. */
   const codeFuer = async (name, versatz = 0) => {
     const z = await db.get('SELECT f.geheimnis FROM zweiter_faktor f JOIN users u ON u.id = f.user_id WHERE u.username = $1', [name]);
-    return zf.hotp(zf.ausBase32(_req('utils/geheimnis.js').entschluessele(z.geheimnis)), zf.zeitschritt() + versatz);
+    return zf.hotp(zf.ausBase32(_req('src/infra/geheimnis.js').entschluessele(z.geheimnis)), zf.zeitschritt() + versatz);
   };
   /** Einrichten bis aktiv; gibt den Token und die Wiederherstellungscodes zurück. */
   const einrichten = async (name) => {

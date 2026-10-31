@@ -19,8 +19,8 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.*
-import ch.brickinventoryapp.data.model.ChartPoint
-import ch.brickinventoryapp.data.model.ChartYAxis
+import ch.brickinventoryapp.ui.model.DiagrammAchse
+import ch.brickinventoryapp.ui.model.DiagrammPunkt
 import ch.brickinventoryapp.R
 import ch.brickinventoryapp.ui.diagrammZusammenfassung
 import ch.brickinventoryapp.util.fmtMoney
@@ -30,8 +30,8 @@ import ch.brickinventoryapp.ui.theme.Abstaende
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PortfolioChart(
-    points: List<ChartPoint>,
-    yAxis: List<ChartYAxis>,
+    points: List<DiagrammPunkt>,
+    yAxis: List<DiagrammAchse>,
     currency: String,
     isLoading: Boolean,
     selectedPeriod: String,

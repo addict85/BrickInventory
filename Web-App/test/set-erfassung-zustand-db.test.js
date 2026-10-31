@@ -35,7 +35,6 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.WEB_WORKERS = '1';
 
 // Der Nachzug nach dem Erfassen (jobs/nachErfassung.ts) wird abgefangen.
 //
@@ -57,8 +56,8 @@ Module.prototype.require = function (name) {
 const _req = require('./helpers/sources').buildAndRequire();
 const { haeltSet } = require('./helpers/bestand');
 const db = _req('db/database.js');
-const { setUserSetting } = _req('utils/settings.js');
-const { addSet } = _req('utils/setService.js');
+const { setUserSetting } = _req('src/konto/settings.js');
+const { addSet } = _req('src/sets/setService.js');
 
 test('aufstocken ohne Zustandsangabe folgt dem Standard des Nutzers', { concurrency: 1 }, async (t) => {
   try { await db.initSchema(); }

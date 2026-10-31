@@ -32,10 +32,10 @@ services:
     environment:
       POSTGRES_DB:       brickinventory
       POSTGRES_USER:     brickinventory
-      # Für eine NEUE Installation ein eigenes Passwort in .env setzen
-      # (DB_PASSWORD=…). Eine bestehende Datenbank behält ihr Passwort —
-      # dann DB_PASSWORD weglassen oder auf das bisherige setzen.
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-brickinventory_secret}
+      # Pflicht: DB_PASSWORD in .env (z. B. `openssl rand -base64 24`). Eine
+      # bestehende Datenbank behält ihr Passwort; das alte Beispielpasswort
+      # weist der Server beim Start ab (UPGRADE.md, Abschnitt 13).
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD in .env setzen - siehe UPGRADE.md}
     command: postgres -c max_connections=200 -c shared_buffers=128MB
     # Der Entrypoint des Images läuft als root: Er legt $PGDATA an (chmod 700),
     # richtet die Eigentümer per find/chown und wechselt mit gosu zu postgres.
@@ -81,13 +81,18 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    ports:
-      # Hinter einem Reverse-Proxy APP_BIND=127.0.0.1 setzen: Dann ist Port 3000
-      # nur noch über den Proxy (mit TLS) erreichbar, nicht im Klartext im LAN.
-      - "${APP_BIND:-0.0.0.0}:3000:3000"
+    # Kein veröffentlichter Port: Von aussen geht es nur über Caddy (HTTPS).
+    #
+    # BEWUSSTE AUSNAHME Klartext (z. B. ohne Namen/IP für Caddy, zum Testen):
+    # die drei Zeilen einkommentieren und in .env COOKIE_SECURE=0 und
+    # APP_BASE_URL=http://… setzen. Passwort, Sitzung und App-Token gehen dann
+    # lesbar durchs LAN; „unbegrenzt“ beim QR-Code und Passkeys gibt es dann
+    # nicht (README.md, „Ohne HTTPS“).
+    # ports:
+    #   - "${APP_BIND:-127.0.0.1}:3000:3000"
     volumes:
       # EIN Volume genügt. Set-, Teile- und Minifiguren-Bilder liegen unter
-      # data/images/ (siehe utils/appPaths.ts) und sind damit von ./data
+      # data/images/ (siehe src/infra/appPaths.ts) und sind damit von ./data
       # miterfasst — inklusive der Vorschaubilder, die als <name>_thumb.jpg
       # NEBEN dem Original liegen, nicht in einem eigenen Unterordner.
       #
@@ -102,49 +107,50 @@ services:
       # Abschnitt 10 — die Dateien einmal von Hand nach ./data/images/sets/
       # verschieben, danach kann der Ordner weg.
       - ./data:/app/data
+      # Caddys CA, nur lesend. Der Entrypoint kopiert daraus allein das
+      # öffentliche Wurzelzertifikat nach CA_ZERTIFIKAT; die Schlüssel daneben
+      # sind nur für root lesbar, der Server läuft als brickinv.
+      - ./caddy/data/caddy/pki/authorities/local:/caddy-ca:ro
     environment:
 
-      # ── PFLICHT: vor dem ersten Start ändern ─────────────────────────────────
-      # Eigenen Zufallswert eintragen, z. B.:  openssl rand -base64 48
-      # Der Server verweigert in Produktion den Start, wenn dieser Beispielwert
-      # stehen bleibt oder der Wert kürzer als 32 Zeichen ist.
-      SESSION_SECRET: change-me-to-a-long-random-string
+      # ── PFLICHT: in .env setzen (Vorlage: .env.example) ──────────────────────
+      # Eigenen Zufallswert, z. B.:  openssl rand -base64 48
+      # Ohne Wert startet Compose nicht; der Server verweigert einen Wert unter
+      # 32 Zeichen.
+      SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET in .env setzen, siehe .env.example}
 
       # ── App ──────────────────────────────────────────────────────────────────
-      # Adresse, unter der der Server von aussen erreichbar ist. Nötig für
-      # Passwort-vergessen-Mails und den QR-Code der App (siehe README.md).
-      # APP_BASE_URL: https://lego.example.org
-      # Wem X-Forwarded-For geglaubt wird. „docker" = einem Proxy im Docker-Netz
-      # (nicht dessen Gateway); ohne Angabe glaubte der Server nur Loopback.
-      # In .env überschreibbar: „false" ohne Proxy davor, sonst seine Adresse,
-      # etwa das Gateway für einen Proxy auf dem Rechner selbst (README.md).
-      TRUST_PROXY: ${TRUST_PROXY:-docker}
+      # Adresse, unter der der Server von aussen erreichbar ist: Mails, QR-Code,
+      # Passkeys. Ohne Angabe https://BRICK_HOST — die Adresse von Caddy.
+      APP_BASE_URL: ${APP_BASE_URL:-https://${BRICK_HOST}}
+      # Wem X-Forwarded-For und X-Forwarded-Proto geglaubt wird: genau Caddy
+      # (feste Adresse unten). Erst damit weiss der Server, dass die Anfrage
+      # über TLS kam (Cookie mit Secure, HSTS).
+      TRUST_PROXY: ${TRUST_PROXY:-172.28.73.10}
+      # Das Wurzelzertifikat der CA (kopiert vom Entrypoint) für /ca.crt und
+      # den Fingerabdruck im QR-Code.
+      CA_ZERTIFIKAT: /tmp/ca/root.crt
       # PORT: 3000
       # NODE_ENV: production
       # NODE_OPTIONS: "--max-old-space-size=384"
 
-      # ── Cluster / Worker ─────────────────────────────────────────────────────
-      # Anzahl paralleler Node.js-Prozesse.
-      # 0 = automatisch (Anzahl CPU-Kerne, mind. 2) — empfohlen für Produktion.
-      # 1 = kein Clustering (nützlich zum Debuggen oder auf schwacher Hardware).
-      WEB_WORKERS: 0
+      # ── Rolle ────────────────────────────────────────────────────────────────
+      # Dieser Dienst beantwortet nur Anfragen; die Hintergrundarbeit macht der
+      # Dienst `jobs` unten aus demselben Image.
+      ROLLE: web
 
       # ── Datenbank-Verbindung ─────────────────────────────────────────────────
       # PGHOST:     postgres
       # PGPORT:     5432
       # PGUSER:     brickinventory
-      PGPASSWORD: ${DB_PASSWORD:-brickinventory_secret}
+      PGPASSWORD: ${DB_PASSWORD:?DB_PASSWORD in .env setzen - siehe UPGRADE.md}
       # PGDATABASE: brickinventory
 
       # ── DB-Verbindungspool ───────────────────────────────────────────────────
-      # Maximale gleichzeitige DB-Verbindungen pro Worker-Prozess.
-      # Gesamtverbindungen = PG_POOL_MAX × WEB_WORKERS (oder CPU-Kerne).
-      # Beispiel: 4 Worker × 20 = 80 Verbindungen — PostgreSQL max_connections
-      # prüfen (Standard: 100). Bei Bedarf PG_POOL_MAX reduzieren.
-      # PG_POOL_MAX bewusst nicht gesetzt: db/database.ts rechnet
-      # min(15, 80 / Anzahl Worker) selbst aus. Nur setzen, wenn die Postgres-
-      # Instanz ein abweichendes max_connections hat.
-      # PG_POOL_MAX: 20
+      # Höchste Zahl gleichzeitiger Verbindungen je Prozess (Vorgabe 15; app
+      # und jobs zusammen also 30). Nur setzen, wenn die Postgres-Instanz ein
+      # kleines max_connections hat.
+      # PG_POOL_MAX: 15
       # PG_POOL_MIN:  2      # Immer warm gehaltene Verbindungen
       # PG_IDLE_MS:   30000  # Idle-Timeout in ms (Standard: 30 s)
       # PG_CONN_MS:   5000   # Verbindungs-Timeout in ms (Standard: 5 s)
@@ -159,6 +165,91 @@ services:
       start_period: 20s
     networks:
       - brickinventory-net
+
+  # ── Hintergrundarbeit ────────────────────────────────────────────────────────
+  # Derselbe Bau wie `app`, aber ROLLE=jobs: arbeitet die Auftragstabelle ab
+  # (Preise, Bilder, Anleitungen, Importe, Zeitpläne) und nimmt keine Anfragen
+  # an. Beim Beenden gibt er laufende Aufträge zurück; der nächste Start setzt
+  # sie fort. Die Migrationen macht, wer zuerst startet — der andere wartet.
+  jobs:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: brickinventory-jobs
+    restart: unless-stopped
+    init: true
+    # Dieselben Rechte wie `app` (siehe dort): der Entrypoint richtet ./data ein.
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+    cap_add: [CHOWN, DAC_OVERRIDE, SETUID, SETGID]
+    read_only: true
+    tmpfs:
+      - /tmp
+    depends_on:
+      postgres:
+        condition: service_healthy
+    # Bilder, Anleitungen, PDFs und der Schlüssel für gespeicherte Geheimnisse
+    # (data/.datenschluessel) liegen dort, wo auch `app` sie sucht.
+    volumes:
+      - ./data:/app/data
+    environment:
+      ROLLE: jobs
+      PGPASSWORD: ${DB_PASSWORD:?DB_PASSWORD in .env setzen - siehe UPGRADE.md}
+      # Für Links in Mails (Preisalarm), die der Job-Prozess verschickt.
+      APP_BASE_URL: ${APP_BASE_URL:-https://${BRICK_HOST}}
+      # Wer bei `app` DATA_KEY, TZ, ERFASSUNG_ZEITZONE oder PG_* setzt, setzt
+      # sie hier gleich. TRUST_PROXY und CA_ZERTIFIKAT braucht er nicht: Er
+      # nimmt keine Anfragen an und liefert kein Zertifikat aus.
+    # Lebenszeichen statt HTTP: Der Prozess schreibt alle 30 s eine Datei in /tmp.
+    healthcheck:
+      test: ["CMD", "node", "-e",
+        "const t = require('fs').statSync('/tmp/brickinventory-jobs.lebt').mtimeMs; process.exit(Date.now() - t < 120000 ? 0 : 1)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - brickinventory-net
+
+  # ── Caddy — HTTPS vor der App ────────────────────────────────────────────────
+  #
+  # TLS mit eigener CA (`tls internal`) für BRICK_HOST aus .env, einen Namen
+  # (nas.local) oder eine IP-Adresse. Port 443 für HTTPS, Port 80 leitet um und
+  # liefert nur /ca.crt im Klartext. Das Wurzelzertifikat liegt danach unter
+  # ./caddy/data/caddy/pki/authorities/local/root.crt und kommt auf die Geräte
+  # (UPGRADE.md, Abschnitt 14).
+  caddy:
+    # Fest per Digest wie pgweb; Renovate schlägt neue Fassungen vor.
+    image: caddy:2.11.7-alpine@sha256:e70b164da81ef698b3ad19af799ea6086ce6d9e48ed4079eb9fe26f6fbf14ee5
+    container_name: brickinventory-caddy
+    restart: unless-stopped
+    # Caddy läuft als root im Container und braucht nur die Ports unter 1024.
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+    cap_add: [NET_BIND_SERVICE]
+    read_only: true
+    tmpfs:
+      - /tmp
+    depends_on:
+      - app
+    environment:
+      BRICK_HOST: ${BRICK_HOST:?BRICK_HOST in .env setzen (Name oder IP des Servers) - siehe UPGRADE.md}
+      BRICK_BASE_URL: ${APP_BASE_URL:-https://${BRICK_HOST}}
+    ports:
+      - "${HTTPS_BIND:-0.0.0.0}:443:443"
+      - "${HTTPS_BIND:-0.0.0.0}:80:80"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # CA (Wurzel und Schlüssel) und Zertifikate. Mitsichern: Geht die CA
+      # verloren, muss jedes Gerät das neue Wurzelzertifikat bekommen.
+      - ./caddy/data:/data
+      - ./caddy/config:/config
+    networks:
+      brickinventory-net:
+        # Genau diese Adresse steht in TRUST_PROXY der App.
+        ipv4_address: 172.28.73.10
 
   # ── pgweb — Datenbank im Browser ansehen (OPTIONAL) ──────────────────────────
   #
@@ -184,9 +275,9 @@ services:
   #     Dann im lokalen Browser http://localhost:8081 öffnen.
   #   • Nach getaner Arbeit wieder herunterfahren (Befehl oben).
   pgweb:
-    # Feste Version: Ein Werkzeug mit Zugang zur ganzen Datenbank soll nicht
-    # unbemerkt durch ein neues „latest" ersetzt werden.
-    image: sosedoff/pgweb:0.17.0
+    # Fest per Digest: Ein Werkzeug mit Zugang zur ganzen Datenbank soll nicht
+    # unbemerkt durch ein umgehängtes Tag ersetzt werden.
+    image: sosedoff/pgweb:0.17.0@sha256:a5256d416e2e8b92d69a4459058e3eca33a9f075d8325491644411d0bc3bd70b
     container_name: brickinventory-pgweb
     # Ein Webserver auf Port 8081 braucht keine Capability.
     security_opt:
@@ -201,7 +292,7 @@ services:
       # Dieselben Zugangsdaten wie oben beim Dienst `postgres`. Wer sie dort
       # ändert, muss sie hier mitändern — der Verbindungsstring ist die einzige
       # Stelle, an der pgweb sie erfährt.
-      PGWEB_DATABASE_URL: postgres://brickinventory:${DB_PASSWORD:-brickinventory_secret}@postgres:5432/brickinventory?sslmode=disable
+      PGWEB_DATABASE_URL: postgres://brickinventory:${DB_PASSWORD:?DB_PASSWORD in .env setzen - siehe UPGRADE.md}@postgres:5432/brickinventory?sslmode=disable
     # --readonly erlaubt ausschliesslich lesende Abfragen. Zum Nachsehen ist
     # das die richtige Voreinstellung; für Reparaturen die Zeile auskommentieren
     # und den Dienst neu starten. Lieber bewusst freischalten als versehentlich
@@ -213,5 +304,11 @@ services:
       - brickinventory-net
 
 networks:
+  # Festes Netz: Ein Reverse-Proxy davor bekommt darin eine feste Adresse
+  # (ipv4_address: 172.28.73.10), und TRUST_PROXY nennt genau diese. Ein
+  # ganzes Docker-Netz zu vertrauen liesse jeden Container darin Adressen fälschen.
   brickinventory-net:
     driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.73.0/24

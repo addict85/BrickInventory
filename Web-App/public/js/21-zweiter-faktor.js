@@ -4,7 +4,7 @@ import { ico, G, api, esc, toast } from './01-core.js';
 import { confirmDelete, bestaetigeMitPasswort } from './07-admin.js';
 import { loadUsers } from './05-settings.js';
 
-// ═══ Zweiter Faktor im Profil (Server: utils/zweiterFaktor.ts) ══════════════
+// ═══ Zweiter Faktor im Profil (Server: src/konto/zweiterFaktor.ts) ══════════════
 // Ablauf: Passwort → QR-Code und Schlüssel → Code bestätigen → die zehn
 // Wiederherstellungscodes einmal zeigen. Danach: abschalten oder neue Codes.
 

@@ -12,7 +12,7 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 const _req = require('./helpers/sources').buildAndRequire();
-const { gesamtGuvProzent } = _req('utils/finance/gewinnVerlust.js');
+const { gesamtGuvProzent } = _req('src/finanzen/rechnung/gewinnVerlust.js');
 
 test('Gesamt-G&V nur über Posten mit Kauf- UND Marktpreis', () => {
   assert.equal(gesamtGuvProzent([{ purchase_price: 100, current_price: 0, quantity: 1 }]), null,

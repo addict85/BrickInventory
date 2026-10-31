@@ -8,7 +8,7 @@
  *    möchte ich die Farbe nachträglich anpassen können für den Fall dass diese
  *    nicht korrekt geladen wurde."
  *
- * Der Import erfindet seit dem 19.10. keine Farbe mehr (utils/wantedListe.ts).
+ * Der Import erfindet seit dem 19.10. keine Farbe mehr (src/merkliste/wantedListe.ts).
  * Marcos BESTEHENDER Bestand trägt die falschen Farben aber schon — dieser Weg
  * ist der, auf dem er sie geradezieht, OHNE die Erfassungshistorie zu
  * verlieren. Löschen und neu erfassen wäre der Preis dafür gewesen.
@@ -93,7 +93,6 @@ const test   = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');

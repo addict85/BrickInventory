@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <string name="app_name">BrickInventory Manager</string>
     <!-- Die Sprachkennung DIESER Ressourcen. Wird an den Server geschickt
          (Registrierung: Sprache der Bestaetigungs-E-Mail und des neuen Kontos).
@@ -75,7 +75,8 @@
     <string name="chart_period_max">Max</string>
 
     <!-- ══════════════ Comparison screen ══════════════ -->
-    <string name="comparison_search_placeholder">e.g. 75192-1 or barcode</string>
+    <!-- „75192-1“ ist eine Setnummer, kein Bereich: kein Gedankenstrich. -->
+    <string name="comparison_search_placeholder" tools:ignore="TypographyDashes">e.g. 75192-1 or barcode</string>
     <string name="comparison_search">Search</string>
     <string name="comparison_scan_new">New</string>
     <string name="comparison_scan">Scan</string>
@@ -128,7 +129,6 @@
     <string name="gallery_empty_hint">Add your first set by its number or scan the barcode on the box.</string>
     <string name="gallery_add_first">Add your first set</string>
     <string name="gallery_load_failed">Your collection could not be loaded</string>
-    <string name="gallery_retry">Try again</string>
     <string name="gallery_refresh">Refresh</string>
     <string name="gallery_no_results">No results for “%1$s”</string>
     <string name="gallery_quantity_badge">×%1$d</string>
@@ -137,10 +137,16 @@
     <string name="gallery_pieces_suffix"> parts</string>
     <string name="gallery_scan_barcode">Scan barcode</string>
     <string name="offline_stand">Offline – data as of %1$s</string>
+    <string name="offline_verworfen">Not applied: %1$s – %2$s</string>
+    <string name="offline_verworfen_ohne_grund">the server did not accept the change</string>
+    <plurals name="offline_ausgang">
+        <item quantity="one">Saved offline – %1$d change will be sent</item>
+        <item quantity="other">Saved offline – %1$d changes will be sent</item>
+    </plurals>
     <string name="gallery_add_set">Add set</string>
     <string name="gallery_add_set_title">Add set</string>
     <string name="gallery_set_number">Set number</string>
-    <string name="gallery_set_number_placeholder">e.g. 75192-1 or 75192</string>
+    <string name="gallery_set_number_placeholder" tools:ignore="TypographyDashes">e.g. 75192-1 or 75192</string>
     <string name="gallery_purchase_price">Purchase price (optional)</string>
     <string name="gallery_add">Add</string>
 
@@ -604,6 +610,10 @@
     <string name="tokens_none">No access tokens.</string>
     <string name="tokens_reload">Refresh</string>
     <string name="tokens_current">this device</string>
+    <string name="login_full_access">Sign in with administrator rights</string>
+    <string name="login_full_access_hint">Only for administration on this device. Without it, the app works without administrator rights.</string>
+    <string name="tokens_full_access">full access</string>
+    <string name="tokens_already_gone">This device was already signed out.</string>
     <string name="tokens_never">never</string>
     <string name="tokens_unused">never used</string>
     <string name="tokens_row_hint">Signed in %1$s · last used %2$s · expires %3$s</string>
@@ -839,4 +849,72 @@
         <item quantity="other">Set up · %d recovery codes left</item>
     </plurals>
     <string name="acq_preis_geschaetzt">Estimated: market price, not the amount paid</string>
+    <string name="setup_qr_pin">The code also names the server\'s certificate. The app will accept only that one.</string>
+    <string name="setup_klartext_gesperrt">Unencrypted connections (http) are switched off. Use https, or turn on the expert switch below.</string>
+    <string name="klartext_experte_titel">Expert: allow unencrypted connections (http)</string>
+    <string name="klartext_experte_warnung">Only for a server in your home network without https. Anyone on the same Wi-Fi can read your access token and use your account. The app then never asks for an access without expiry.</string>
+    <string name="settings_systemfarben">System colours (Material You)</string>
+    <string name="settings_systemfarben_hint">Colours from your wallpaper instead of the design\'s colours. Shapes and fonts stay.</string>
+    <string name="zert_titel_erstkontakt">Trust this server?</string>
+    <string name="zert_titel_unbekannt">Unknown certificate</string>
+    <string name="zert_titel_geaendert">The server\'s certificate has changed</string>
+    <string name="zert_text_erstkontakt">This is the first encrypted connection to %1$s. Compare the fingerprint with the one the server shows (web app, settings). Afterwards the app accepts only this certificate.</string>
+    <string name="zert_text_unbekannt">The certificate of %1$s was not issued by a known authority – it is self-issued or comes from your own authority. That is normal for a server at home, but it could also be someone in between. Only trust it if the fingerprint matches the one the server shows.</string>
+    <string name="zert_text_geaendert">%1$s shows a different certificate than the one you confirmed. That happens when the server gets a new key – or when someone is listening in between. Nothing has been sent. Only accept it if you changed the server yourself.</string>
+    <string name="zert_fingerabdruck">Fingerprint (SHA-256)</string>
+    <string name="zert_bisher">Previously confirmed</string>
+    <string name="zert_vertrauen">Trust this certificate</string>
+    <string name="zert_vertrauen_neu">Accept the new certificate</string>
+    <string name="zert_nutzer_ca">Use an authority installed on this device instead</string>
+    <string name="common_load_failed">Could not be loaded</string>
+    <string name="common_retry">Try again</string>
+    <string name="common_no_results">Nothing found</string>
+    <string name="common_no_results_hint">Loosen the search or the filter.</string>
+    <string name="widget_titel">Collection</string>
+    <string name="widget_wert">Value</string>
+    <string name="widget_heute">Today</string>
+    <string name="widget_gesamt">Overall</string>
+    <string name="widget_leer">Open the app once to load the figures.</string>
+    <!-- Hintergrundarbeiten (Auftragstabelle), Namen wie monitor.* in der Webapp -->
+    <string name="art_nacharbeit">Follow-up after adding a set</string>
+    <string name="art_bilder">Images of a set</string>
+    <string name="art_pdf">PDF parts list</string>
+    <string name="art_csv_import">CSV import of sets</string>
+    <string name="art_wechselkurse">Exchange rates (ECB)</string>
+    <string name="art_anleitung">Load instructions</string>
+    <string name="art_brickset">Brickset retry</string>
+    <string name="art_bildbedarf">Load catalog images</string>
+    <string name="art_bilder_neu_laden">Reload missing images</string>
+    <string name="art_nachlauf">Start-up follow-up</string>
+    <string name="art_csv_sync">Rebrickable catalog</string>
+    <string name="art_preise">Update prices</string>
+    <string name="art_bild_nachlauf">Image download (CDN)</string>
+    <string name="art_aufraeumen">Clean-up (hourly)</string>
+    <string name="art_aufraeumen_taeglich">Clean-up (daily)</string>
+    <string name="hintergrund_titel">Background jobs</string>
+    <string name="hintergrund_kein_prozess">No job process reports in — is the “jobs” service running?</string>
+    <string name="hintergrund_pause">%1$s paused until %2$s: %3$s</string>
+    <string name="hintergrund_leer">No open or failed jobs</string>
+    <string name="hintergrund_offen">open</string>
+    <string name="hintergrund_laeuft">running</string>
+    <string name="hintergrund_fehler">failed</string>
+    <string name="hintergrund_abgebrochen">cancelled</string>
+    <string name="hintergrund_geplant">scheduled for %1$s</string>
+    <string name="hintergrund_faellig">due from %1$s</string>
+    <string name="hintergrund_versuch">attempt %1$d of %2$d</string>
+    <string name="hintergrund_jetzt">Now</string>
+    <string name="hintergrund_leeren">Clear</string>
+    <string name="hintergrund_wiederholen">Retry</string>
+    <plurals name="hintergrund_geleert">
+        <item quantity="one">%1$d job removed</item>
+        <item quantity="other">%1$d jobs removed</item>
+    </plurals>
+    <plurals name="hintergrund_bildbedarf">
+        <item quantity="one">%1$d image queued</item>
+        <item quantity="other">%1$d images queued</item>
+    </plurals>
+    <string name="hintergrund_abgebrochen_ok">Job cancelled</string>
+    <string name="hintergrund_wiederholt_ok">Job will be retried</string>
+    <string name="hintergrund_gestartet">%1$s is starting</string>
+    <string name="hintergrund_nichts_gestartet">%1$s: nothing to start</string>
 </resources>

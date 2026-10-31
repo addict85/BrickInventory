@@ -24,7 +24,6 @@ const test   = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
 const db   = _req('db/database.js');
@@ -44,7 +43,6 @@ async function haltenAls(fremder, ns) {
   };
 }
 
-const QUEUE_LOCK = 56;
 const REDL_LOCK  = 57;
 
 test('Job-Sperren wirken über Prozessgrenzen', async (t) => {
@@ -75,66 +73,6 @@ test('Job-Sperren wirken über Prozessgrenzen', async (t) => {
     const mc = await db.pool.connect();
     try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }
   }
-
-  const queue = _req('jobs/instructionQueue.js');
-
-  /**
-   * Einen Eintrag vorbereiten, dessen Bearbeitung OHNE Netzaufruf auskommt:
-   * Liegt die Anleitung schon in shared_instructions, hakt processNext() die
-   * Zeile nur ab. Damit prüft der Test die Sperre und nicht Brickset.
-   */
-  async function eintragVorbereiten(sn) {
-    await db.run('DELETE FROM instruction_queue');
-    await db.run('DELETE FROM shared_instructions');
-    await db.run(`INSERT INTO instruction_queue (set_number, status) VALUES ($1,'pending')`, [sn]);
-    await db.run(
-      `INSERT INTO shared_instructions (set_number, url, description) VALUES ($1,$2,'x')`,
-      [sn, `https://example.invalid/${sn}.pdf`]);
-  }
-  const status = async (sn) =>
-    (await db.get('SELECT status FROM instruction_queue WHERE set_number=$1', [sn]))?.status;
-
-  await t.test('Gegenprobe: ohne fremde Sperre wird der Eintrag abgearbeitet', async () => {
-    await eintragVorbereiten('10280-1');
-    await queue.processNext();
-    assert.equal(await status('10280-1'), 'done',
-      'processNext() hat den Eintrag nicht abgehakt — der Rest dieser Suite prüft dann nichts');
-  });
-
-  await t.test('hält ein anderer Worker die Sperre, rührt processNext() nichts an', async () => {
-    await eintragVorbereiten('10277-1');
-    const freigeben = await haltenAls('zweiter Worker', QUEUE_LOCK);
-    try {
-      await queue.processNext();
-      assert.equal(await status('10277-1'), 'pending',
-        'zwei Worker haben denselben Eintrag gezogen — die Anleitung würde doppelt geholt');
-    } finally { await freigeben(); }
-  });
-
-  await t.test('die Cloudflare-Pause gilt prozessübergreifend, nicht nur im blockierten Worker', async () => {
-    await eintragVorbereiten('10290-1');
-    await db.run(
-      `INSERT INTO laufzustand (schluessel, wert) VALUES ('instr_queue_block', $1)
-       ON CONFLICT (schluessel) DO UPDATE SET wert = $1`,
-      [JSON.stringify({ until: Date.now() + 10 * 60 * 1000, retries: 1 })]);
-    try {
-      await queue.processNext();
-      assert.equal(await status('10290-1'), 'pending',
-        'Backoff missachtet — ein zweiter Worker läuft in die nächste Cloudflare-Sperre');
-    } finally {
-      await db.run(`DELETE FROM laufzustand WHERE schluessel='instr_queue_block'`);
-    }
-  });
-
-  await t.test('requestRun() setzt nur das Flag, arbeitet aber nichts ab', async () => {
-    await eintragVorbereiten('10283-1');
-    await db.run(`DELETE FROM laufzustand WHERE schluessel='instr_queue_trigger'`);
-    await queue.requestRun();
-    const flag = await db.get(`SELECT wert AS value FROM laufzustand WHERE schluessel='instr_queue_trigger'`);
-    assert.ok(flag?.value, 'kein Trigger gesetzt — der Primary erfährt nie von der Arbeit');
-    assert.equal(await status('10283-1'), 'pending',
-      'requestRun() hat selbst abgearbeitet — dann läuft die Queue wieder im Request-Worker');
-  });
 
   await t.test('der Bilder-Nachlauf startet nicht zweimal', async () => {
     const enrich = _req('jobs/partsCatalogEnrich.js');

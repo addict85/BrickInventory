@@ -16,7 +16,7 @@
  *     50x SELECT bl_part_num FROM rb_bl_mapping WHERE …     ← einzeln statt ANY
  *     50x SELECT bl_part_number FROM parts WHERE …          ← dito, dazu ohne Index
  *
- * Abhilfe in utils/financeCalc.ts: die Farbtabelle als Ganzes merken
+ * Abhilfe in src/finanzen/financeCalc.ts: die Farbtabelle als Ganzes merken
  * (farbkarte), die Teilenummern einer Bewertung vorladen (ladeBlNummernVor)
  * und in db/database.ts der Teilindex idx_parts_blnum.
  *
@@ -43,7 +43,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const { buildAndRequire } = require('./helpers/sources');
 const _req = buildAndRequire();
 const db = _req('db/database.js');
-const fc = _req('utils/financeCalc.js');
+const fc = _req('src/finanzen/financeCalc.js');
 const { haeltTeil } = require('./helpers/bestand');
 
 const UID = 990101;
@@ -113,7 +113,7 @@ test('Teile-Bewertung: kein Nachschlag je Teil', async (t) => {
     //
     // Es ist nur noch EINE Einzelabfrage, nicht zwei: Der Rückfall auf
     // `parts.bl_part_number` ist mit Migration 0037 weg, weil es die zweite
-    // Quelle nicht mehr gibt (die Begründung steht in utils/finance/preise.ts).
+    // Quelle nicht mehr gibt (die Begründung steht in src/finanzen/rechnung/preise.ts).
     assert.equal(wieOft(/FROM bl_zuordnung WHERE art=\$1 AND rb_id=\$2/), 0,
       'die Zuordnung wurde einzeln gefragt — das Vorladen (ladeBlNummernVor) greift nicht');
 

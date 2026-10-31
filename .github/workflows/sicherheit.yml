@@ -1,0 +1,187 @@
+# Sicherheitsprüfungen: CodeQL (Web und App), Trivy (Abhängigkeiten und
+# Image) und ein ZAP-Baseline-Lauf gegen einen hier gestarteten Server.
+# `npm audit --omit=dev` läuft als eigener Schritt in web-ci.yml.
+#
+# Jede Prüfung ist ein eigener Job: Ein Befund in einem Teil soll die
+# anderen nicht verdecken. Bedrohungsmodell: docs/SICHERHEIT.md.
+name: Sicherheit
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  # Wöchentlich auch ohne Änderung: Neue Lücken in alten Abhängigkeiten
+  # erscheinen, ohne dass sich der Code bewegt.
+  schedule:
+    - cron: '17 4 * * 1'
+  workflow_dispatch:
+
+concurrency:
+  group: sicherheit-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  codeql:
+    name: CodeQL (${{ matrix.sprache }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - sprache: javascript-typescript
+            bau: none
+          - sprache: java-kotlin
+            bau: manual
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: JDK einrichten
+        if: matrix.bau == 'manual'
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Gradle-Prüfsumme gegen die amtliche
+        if: matrix.bau == 'manual'
+        working-directory: Android-App
+        run: python3 tools/gradle-wrapper-pruefen.py gradle/wrapper/gradle-wrapper.properties
+
+      - name: Gradle einrichten
+        if: matrix.bau == 'manual'
+        uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6
+
+      - uses: github/codeql-action/init@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
+        with:
+          languages: ${{ matrix.sprache }}
+          build-mode: ${{ matrix.bau }}
+          queries: security-extended
+
+      # Kotlin braucht einen echten Übersetzungslauf, sonst sieht CodeQL nichts:
+      # ohne Build-Cache (sonst kommt compileKotlin FROM-CACHE) und mit dem
+      # Übersetzer im Gradle-Prozess, den CodeQL mitschneidet.
+      - name: App übersetzen
+        if: matrix.bau == 'manual'
+        working-directory: Android-App
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon --no-build-cache --rerun-tasks \
+            -Pkotlin.compiler.execution.strategy=in-process assembleDebug
+
+      - uses: github/codeql-action/analyze@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
+        with:
+          category: /language:${{ matrix.sprache }}
+
+  trivy:
+    name: Trivy (Abhängigkeiten und Image)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      # Lockfiles im ganzen Baum: Web-App/package-lock.json und die
+      # Gradle-Abhängigkeiten der App. Nur behebbare Lücken ab „high“ sind rot.
+      - name: Abhängigkeiten im Dateisystem
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+
+      - name: Image bauen
+        run: docker build -t brickinventory:sicherheit Web-App
+
+      - name: Image
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: image
+          image-ref: brickinventory:sicherheit
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+          # Trivy ist vom ersten Schritt schon eingerichtet.
+          skip-setup-trivy: true
+
+  zap:
+    name: ZAP-Baseline
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: Web-App
+    services:
+      postgres:
+        image: postgres:18-alpine@sha256:10a5c69a83035ab5239f5620d708520e8b28f5aa1f2b20143e6024532edadfb5
+        env:
+          POSTGRES_USER: zap
+          POSTGRES_PASSWORD: zap-nur-im-lauf
+          POSTGRES_DB: zap
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U zap -d zap"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: '26'
+          cache: npm
+          cache-dependency-path: Web-App/package-lock.json
+
+      - name: Bauen
+        run: |
+          npm ci
+          npm run build
+
+      # Wie im Betrieb: NODE_ENV=production (Startverbote, Cookies, CSP).
+      # Das Protokoll geht in eine Datei, damit ein Fehlstart lesbar ist.
+      - name: Server starten
+        env:
+          NODE_ENV: production
+          PORT: '3000'
+          WEB_WORKERS: '1'
+          DATABASE_URL: postgres://zap:zap-nur-im-lauf@localhost:5432/zap
+          SESSION_SECRET: zap-lauf-geheimnis-lang-genug-fuer-den-start
+          ADMIN_PASSWORD: zap-lauf-verwalter-passwort
+        run: |
+          nohup node dist/server.js > "$RUNNER_TEMP/server.log" 2>&1 &
+          for i in $(seq 1 90); do
+            if curl -fsS http://localhost:3000/api/v1/health > /dev/null; then echo "Server bereit nach ${i}x2 s"; exit 0; fi
+            sleep 2
+          done
+          echo "::error title=Server startet nicht::$(tail -c 1500 "$RUNNER_TEMP/server.log" | tr '\n' ' ')"
+          exit 1
+
+      # Passiver Lauf ohne Anmeldung. -I: Warnungen allein machen den Lauf
+      # nicht rot; was ihn rot macht, steht in .github/zap-regeln.tsv.
+      - name: ZAP-Baseline
+        uses: zaproxy/action-baseline@de8ad967d3548d44ef623df22cf95c3b0baf8b25 # v0.15.0
+        with:
+          target: http://localhost:3000
+          docker_name: zaproxy/zap-stable:2.17.0@sha256:030d3df57735dacbb83464854758e674dd9ad01d79d12a129a8e58b1fd384238
+          rules_file_name: .github/zap-regeln.tsv
+          cmd_options: '-I'
+          fail_action: true
+          allow_issue_writing: false
+          artifact_name: zap-bericht
+
+      - name: Serverprotokoll bei Fehlschlag
+        if: failure()
+        run: |
+          [ -f "$RUNNER_TEMP/server.log" ] || exit 0
+          echo "::error title=Serverprotokoll::$(tail -c 3000 "$RUNNER_TEMP/server.log" | tr '\n' '~' | sed 's/%/%25/g; s/~/%0A/g')"

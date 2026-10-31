@@ -326,7 +326,7 @@ der BrickLink-Antwort liegt. Wie beim Bild-Proxy gilt: erst messen.
 
 ```text
 Welchen Zustand würde die Bewertung wählen? Dieselbe Regel wie
-conditionFromAcquisitions() in utils/handlers/shared.ts: Eine gebrauchte
+conditionFromAcquisitions() in src/bestand/gemeinsam.ts: Eine gebrauchte
 Erfassung genügt, sonst Neu.
 
 Die Probe zeigte hier zweimal eine überholte Regel — erst „nur

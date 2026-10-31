@@ -62,19 +62,28 @@ object NetworkPolicy {
     }
 
     /**
-     * Darf diese Anfrage unverschlüsselt rausgehen?
-     *
-     * Eine öffentliche IP über http nie. Ein öffentlich aussehender NAME nur,
-     * wenn der Nutzer genau diesen Host in der Einrichtung bestätigt hat — ein
-     * Heimnetz-Name kann öffentlich aussehen (brick.meinname.ch), darum kein
-     * hartes Verbot, aber auch kein stilles Durchlassen mehr.
+     * Darf diese Anfrage unverschlüsselt rausgehen? Ohne [experte] nie: Im WLAN
+     * liest jeder den Token mit. Mit dem Expertenschalter ins Heimnetz; eine
+     * öffentliche IP nie, ein öffentlich aussehender NAME nur, wenn genau dieser
+     * Host in der Einrichtung bestätigt wurde (brick.meinname.ch kann Heimnetz sein).
      */
-    fun isCleartextAllowed(url: HttpUrl, bestaetigt: Set<String> = emptySet()): Boolean {
+    fun isCleartextAllowed(url: HttpUrl, bestaetigt: Set<String> = emptySet(), experte: Boolean = false): Boolean {
         if (url.isHttps) return true
+        if (!experte) return false
         if (isPrivateHost(url.host)) return true
         if (isIpLiteral(url.host)) return false
         return url.host.lowercase() in bestaetigt
     }
+
+    /** Ist die Adresse verschlüsselt? Nur dann bietet die App einen Token ohne Ablauf an. */
+    fun istHttps(serverUrl: String): Boolean = serverUrl.trim().toHttpUrlOrNull()?.isHttps == true
+
+    /**
+     * Der Expertenschalter beim ersten Start mit dieser Regel: an nur für den, der
+     * schon über http eingerichtet ist — sonst wäre er nach dem Update ausgesperrt.
+     */
+    fun klartextVorgabe(serverUrlBeimUpdate: String): Boolean =
+        serverUrlBeimUpdate.trim().lowercase().startsWith("http://")
 
     /** Der Host, den die Einrichtung bestätigen lassen muss — oder null. */
     fun klartextHost(serverUrl: String): String? {

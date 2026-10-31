@@ -15,6 +15,8 @@ interface Anmeldeablage {
     suspend fun bestaetigeKlartext(host: String)
     suspend fun bekannteNetze(): Set<String>
     suspend fun merkeNetz(eintrag: String)
+    /** Pin aus dem QR-Code (util/ServerVertrauen.kt), vor dem ersten Kontakt. */
+    fun merkePin(schluessel: String, fingerabdruck: String)
 }
 
 /**

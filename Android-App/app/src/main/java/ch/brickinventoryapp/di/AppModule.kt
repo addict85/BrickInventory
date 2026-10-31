@@ -46,6 +46,21 @@ object AppModule {
     @Provides
     fun provideCacheBesitzer(p: ch.brickinventoryapp.data.PreferencesManager): ch.brickinventoryapp.data.cache.CacheBesitzer = p
 
+    /**
+     * Der Tausch des Tokens. Provider statt direkt: Das Konto-Repository hängt am
+     * api-Client, und der braucht diesen Tausch — ohne den Umweg ein Kreis.
+     */
+    @Provides
+    @javax.inject.Singleton
+    fun provideTokenTausch(
+        p: ch.brickinventoryapp.data.PreferencesManager,
+        konto: javax.inject.Provider<ch.brickinventoryapp.data.repository.KontoRepository>,
+    ): ch.brickinventoryapp.data.TokenTausch = ch.brickinventoryapp.data.TokenTausch(
+        token = { p.tokenJetzt() },
+        speichere = { p.saveAuthToken(it) },
+        rotiere = { konto.get().tokenRotieren(it) },
+    )
+
     @Provides
     fun provideSetAnleger(c: ch.brickinventoryapp.data.SetAnlegenSseClient): ch.brickinventoryapp.data.SetAnleger = c
 

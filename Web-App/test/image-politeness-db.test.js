@@ -32,7 +32,6 @@ const Module = require('node:module');
 
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.WEB_WORKERS = '1';
 
 // Zeitpunkte und Gleichzeitigkeit der Downloads mitschreiben.
 const zeiten = [];
@@ -41,7 +40,7 @@ let gleichzeitig = 0, maxGleichzeitig = 0;
 const echtesRequire = Module.prototype.require;
 Module.prototype.require = function (name) {
   const m = echtesRequire.apply(this, arguments);
-  // Seit Nachtrag 125 liegt downloadSetImage in utils/setImages.ts statt im
+  // Seit Nachtrag 125 liegt downloadSetImage in src/katalog/bilder/setImages.ts statt im
   // Router — der Abfang muss dorthin zeigen, sonst greift er ins Leere und
   // der Test misst still den echten Download.
   if (typeof name === 'string' && /setImages(\.js)?$/.test(name) && m && m.downloadSetImage) {
@@ -107,11 +106,9 @@ test('der Bildserver wird schonend abgefragt', { concurrency: 1 }, async (t) => 
     });
 
     await t.test('höchstens 30 Anfragen je Minute', () => {
-      // Die Rate ergibt sich aus Stapelgrösse und Takt; beide stehen in der
-      // Quelle, damit der Test keine Zahl wiederholt, die sich ändern darf.
-      const src = fs.readFileSync(path.join(ROOT, 'jobs', 'imageQueue.ts'), 'utf8');
-      const stapel = parseInt((src.match(/const STAPEL = (\d+)/) || [])[1]);
-      const takt   = parseInt((src.match(/const TAKT_MS = ([\d_]+)/) || [])[1].replace(/_/g, ''));
+      // Die Rate ergibt sich aus Stapelgrösse und Takt; beide kommen aus dem
+      // Modul, damit der Test keine Zahl wiederholt, die sich ändern darf.
+      const { STAPEL: stapel, TAKT_MS: takt } = _req('jobs/imageQueue.js');
       assert.ok(stapel > 0 && takt > 0, 'STAPEL oder TAKT_MS nicht auffindbar');
       const jeMinute = stapel * (60_000 / takt);
       assert.ok(jeMinute <= 30,
@@ -148,7 +145,7 @@ test('auch reine Vorschau-Arbeit wird gebremst', { concurrency: 1 }, async (t) =
   // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung
   // und Nachstellung in helpers/bildwarteschlange.js.
   await leereWarteschlange(db);
-  const { SET_IMAGES_DIR } = _req('utils/appPaths.js');
+  const { SET_IMAGES_DIR } = _req('src/infra/appPaths.js');
   fs.mkdirSync(SET_IMAGES_DIR, { recursive: true });
   const P = `NT${process.pid}`;
   const dateien = [];
@@ -186,7 +183,7 @@ test('der User-Agent nennt Ross und Reiter', () => {
   // aller Möglichkeiten: Sie sagt nicht, wer wir sind, und ein „Browser", der
   // tausende Bilder ohne die üblichen Begleitanfragen holt, fällt einer
   // Heuristik gerade dadurch auf.
-  const src = fs.readFileSync(path.join(ROOT, 'utils', 'setImages.ts'), 'utf8');
+  const src = fs.readFileSync(path.join(ROOT, 'src/katalog/bilder/setImages.ts'), 'utf8');
   const i = src.indexOf('function bildUserAgent()');
   assert.ok(i > 0, 'Keine eigene Funktion für den User-Agent');
   const fn = src.slice(i, src.indexOf('\n}', i));
@@ -203,24 +200,16 @@ test('der User-Agent nennt Ross und Reiter', () => {
   //
   // Geprüft wird deshalb am ÜBERSETZTEN Stand, nicht an der Quelle: Genau
   // zwischen beiden lag der Fehler.
-  const dist = path.join(ROOT, 'dist', 'utils', 'setImages.js');
-  assert.ok(fs.existsSync(dist), 'dist/utils/setImages.js fehlt — erst bauen');
-  const dsrc = fs.readFileSync(dist, 'utf8');
-  const di = dsrc.indexOf('function bildUserAgent()');
-  const dfn = dsrc.slice(di, dsrc.indexOf('\n}', di) + 2);
-  const Module2 = require('node:module');
-  const modul = new Module2(dist);
-  modul.filename = dist;
-  modul.paths = Module2._nodeModulePaths(path.dirname(dist));
-  const ua = new Function('require', 'process', '__dirname', dfn + '; return bildUserAgent();')(
-    modul.require.bind(modul), { env: {} }, path.dirname(dist));
-  const echteVersion = require(path.join(ROOT, 'package.json')).version;
+  // Die Version kommt seit dem Versionsumbau aus dist/version.json (scripts/version.js).
+  const dist = path.join(ROOT, 'dist', 'src/katalog/bilder/setImages.js');
+  assert.ok(fs.existsSync(dist), 'dist/src/katalog/bilder/setImages.js fehlt — erst bauen');
+  const ua = require(dist).bildUserAgent();
+  const echteVersion = JSON.parse(fs.readFileSync(path.join(ROOT, 'dist', 'version.json'), 'utf8')).version;
   assert.ok(ua.includes(echteVersion),
-    `User-Agent „${ua}" enthält die Version ${echteVersion} nicht — die ` +
-    'Auflösung von package.json greift aus dist/ heraus nicht');
+    `User-Agent „${ua}" enthält die gebaute Version ${echteVersion} nicht`);
   // Umschaltbar, weil sich von hier aus nicht ausprobieren lässt, wie der echte
   // Bildserver auf die neue Kennung reagiert.
-  assert.match(fn, /process\.env\.IMG_USER_AGENT/,
+  assert.match(fn, /konfig\(\)\.bildUserAgent/,
     'Ohne Umgebungsvariable liesse sich eine Fehlentscheidung nur durch einen ' +
     'neuen Build zurücknehmen');
   // Und die alte Tarnung darf nicht zurückkommen.

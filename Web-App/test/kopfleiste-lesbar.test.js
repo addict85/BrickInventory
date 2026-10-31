@@ -278,8 +278,10 @@ test('jeder Text in einer gestrichenen Kopfleiste ist lesbar', () => {
   // Die REGEL in styles.css bleibt stehen, und das ist Absicht:
   // themes/brick.css faerbt `header .abadge` eigens um, und die
   // Benutzerverwaltung zeigt dieselbe Plakette weiter an.
-  assert.equal(stellen.length, 6,
-    `${stellen.length} Stellen abgeleitet statt sechs: ` +
+  // Und auf FÜNF am 30.10.: Die Kennzahlen (.hs .v, .hs .l) stehen in jedem
+  // Design als Kacheln im Inhalt; dazu kam der Seitenname (.kopf-sicht).
+  assert.equal(stellen.length, 5,
+    `${stellen.length} Stellen abgeleitet statt fünf: ` +
     stellen.map(s => s.sel).join(', ') + ' — greift die Ableitung noch?');
   assert.equal(stellen.filter(s => s.eigenerGrund).length, 3,
     'Die Stellen mit eigenem Grund sind nicht mehr drei — greift die Ableitung noch?');
@@ -327,7 +329,8 @@ test('jeder Text in einer gestrichenen Kopfleiste ist lesbar', () => {
       if (v < 4.5) schwach.push(`${design}: "${stelle}" steht bei ${v.toFixed(2)}:1`);
     }
   }
-  assert.ok(geprueft >= 10,
+  // 8 seit dem 30.10.: Die Kennzahlen stehen nicht mehr in der Kopfleiste.
+  assert.ok(geprueft >= 8,
     `Nur ${geprueft} Paare geprueft — loesen die Farbwerte noch auf?`);
   assert.deepEqual(schwach, [],
     'Diese Texte in der Kopfleiste stehen zu schwach (noetig 4.5:1). ' +

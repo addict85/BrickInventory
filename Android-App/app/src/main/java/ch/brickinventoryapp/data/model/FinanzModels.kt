@@ -27,8 +27,6 @@ data class PriceHistoryPoint(
     @SerialName("avg_price") val avgPrice: Double? = null,
     @SerialName("min_price") val minPrice: Double? = null,
     @SerialName("max_price") val maxPrice: Double? = null,
-    /** Nur beim vorangestellten Kaufpreis gesetzt (Server: is_purchase_price). */
-    @SerialName("is_purchase_price") val isPurchasePrice: Boolean = false,
 )
 
 /** Ein Punkt der fertigen Diagrammdaten des Servers (utils/chartData.ts). */
@@ -97,21 +95,17 @@ data class CurrentByCondition(
 
 /**
  * Antwort von /api/v1/sets/:setNumber/price-history: beide Zustände getrennt
- * (history_new/history_used), fertige Diagrammdaten (`chart`), aktuelle Preise
- * (`current`) und Marktpreis/Entwicklung je Zustand (`by_condition`). Die x-Achse
+ * (history_new/history_used), fertige Diagrammdaten (`chart`) und
+ * Marktpreis/Entwicklung je Zustand (`by_condition`). Die x-Achse
  * rechnet der Server (utils/chartData.ts), damit nicht jeder Client seine eigene
  * hat.
  */
 @Serializable
 data class PriceHistoryResponse(
     val success: Boolean,
-    @SerialName("set_number") val setNumber: String = "",
     val currency: String = "",
-    /** Zustand des Bestandes ('N'/'U') — worauf sich pnl_pct bezieht. */
-    val condition: String = "N",
     @SerialName("history_new")  val historyNew: List<PriceHistoryPoint> = emptyList(),
     @SerialName("history_used") val historyUsed: List<PriceHistoryPoint> = emptyList(),
-    val current: CurrentByCondition = CurrentByCondition(),
     @SerialName("by_condition") val byCondition: PriceByCondition = PriceByCondition(),
     val chart: PriceChartData = PriceChartData(),
     @SerialName("pnl_pct") val pnlPct: String? = null,
@@ -158,7 +152,7 @@ data class PartValuationItem(
      */
     @SerialName("user_id") val userId: Int? = null,
     /** Besitzer im Haushalt — siehe SetItem.owners. */
-    val owners: List<HouseholdMember> = emptyList(),
+    val owners: List<KontoName> = emptyList(),
     /**
      * Eine Zeile je Kaufpreis — dieselbe Form wie bei Sets. Leer, solange
      * es keine Erfassungen gibt (Altbestand); dann bleibt es bei der
@@ -195,7 +189,7 @@ data class PartsValuationResponse(
     val success: Boolean,
     val currency: String = "EUR",
     val parts: List<PartValuationItem> = emptyList(),
-    @SerialName("total_value") val totalValue: String = "0.00",
+    @SerialName("total_value") val totalValue: String,
     /** Erfassungen mit Kaufpreis in einer anderen Währung — in keiner Summe enthalten. */
     @SerialName("kaufpreise_fremde_waehrung") val kaufpreiseFremdeWaehrung: Int = 0,
     val error: String? = null
@@ -239,7 +233,7 @@ data class FigValuationItem(
      */
     @SerialName("user_id") val userId: Int? = null,
     /** Besitzer im Haushalt — siehe SetItem.owners. */
-    val owners: List<HouseholdMember> = emptyList(),
+    val owners: List<KontoName> = emptyList(),
     /**
      * Eine Zeile je Kaufpreis — dieselbe Form wie bei Sets. Leer, solange
      * es keine Erfassungen gibt (Altbestand); dann bleibt es bei der
@@ -255,15 +249,15 @@ data class FigsValuationResponse(
     val success: Boolean,
     val currency: String = "EUR",
     val figs: List<FigValuationItem> = emptyList(),
-    @SerialName("total_value") val totalValue: String = "0.00",
+    @SerialName("total_value") val totalValue: String,
     @SerialName("kaufpreise_fremde_waehrung") val kaufpreiseFremdeWaehrung: Int = 0,
     val error: String? = null
 )
 
 @Serializable
 data class PnlTotals(
-    val purchase: String = "0.00",
-    val current: String = "0.00",
+    val purchase: String,
+    val current: String,
     @SerialName("pnl_pct") val pnlPct: String? = null,
     @SerialName("pnl_prozent") val pnlProzent: Double? = null,
     /**
@@ -306,7 +300,7 @@ data class PnlSetZeile(
 data class PnlResponse(
     val success: Boolean,
     val currency: String = "EUR",
-    val totals: PnlTotals = PnlTotals(),
+    val totals: PnlTotals,
     val sets: List<PnlSetZeile> = emptyList(),
     val error: String? = null
 )
@@ -390,14 +384,18 @@ data class ValuationResponse(
     val error: String? = null
 )
 
+/**
+ * Die Zahlen im Kopf der Galerie. Ohne Standardwerte: Der Server liefert alle
+ * sechs immer; fehlt eine, soll das beim Lesen auffallen statt als 0 zu stehen.
+ */
 @Serializable
 data class DashboardStats(
-    @SerialName("total_sets") val totalSets: Int = 0,
-    @SerialName("total_quantity") val totalQuantity: Int = 0,
-    @SerialName("total_pieces") val totalPieces: Int = 0,
-    @SerialName("total_instructions") val totalInstructions: Int = 0,
-    @SerialName("total_parts") val totalParts: Int = 0,
-    @SerialName("total_minifigs") val totalMinifigs: Int = 0,
+    @SerialName("total_sets") val totalSets: Int,
+    @SerialName("total_quantity") val totalQuantity: Int,
+    @SerialName("total_pieces") val totalPieces: Int,
+    @SerialName("total_instructions") val totalInstructions: Int,
+    @SerialName("total_parts") val totalParts: Int,
+    @SerialName("total_minifigs") val totalMinifigs: Int,
 )
 
 @Serializable

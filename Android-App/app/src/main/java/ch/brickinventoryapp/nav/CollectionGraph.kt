@@ -109,7 +109,9 @@ fun NavGraphBuilder.collectionGraph(
                     navController.navigate(Screen.SetDetail.createRoute(found))
                 }
             }
+            val ziel = this
             ReiterGeruest(stringResource(R.string.nav_gallery), vm, navController, bottomNavItems, snackbarHostState) {
+                ch.brickinventoryapp.ui.components.MitZiel(ziel) {
                 GalleryScreen(
                     vm = galerieVm,
                     erfassung = erfassung,
@@ -118,6 +120,7 @@ fun NavGraphBuilder.collectionGraph(
                     onSetClick = { navController.navigate(Screen.SetDetail.createRoute(it)) },
                     gridState = galleryGridState
                 )
+                }
             }
         }
         composable(
@@ -140,6 +143,7 @@ fun NavGraphBuilder.collectionGraph(
                 galerie.sets.find { it.setNumber == setNumber }
             }
             val detailVm: SetDetailViewModel = hiltViewModel()
+            ch.brickinventoryapp.ui.components.MitZiel(this) {
             SetDetailScreen(
                 setNumber = setNumber,
                 vm = detailVm,
@@ -158,6 +162,7 @@ fun NavGraphBuilder.collectionGraph(
                     navController.navigate(Screen.PdfViewer.createRoute(url, title))
                 }
             )
+            }
         }
         composable(Screen.Parts.route) {
             // Zustand INNERHALB des Ziels lesen — als Parameter wäre es eine

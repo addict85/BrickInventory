@@ -42,7 +42,7 @@ test('Grenzen beim Hochladen', { concurrency: 1, timeout: 180_000 }, async (t) =
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username, password_hash, is_active) VALUES ($1,'x',1) RETURNING id`, [NAME])).id;
   await db.run('INSERT INTO sets (user_id, set_number) VALUES ($1,$2)', [uid, SN]);
-  const token = await _req('utils/auth.js').createToken(uid, 'Prüfung', true);
+  const token = await _req('src/konto/auth.js').createToken(uid, 'Prüfung', true);
   t.after(async () => {
     await db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {});
     await db.pool.end().catch(() => {});
@@ -52,7 +52,7 @@ test('Grenzen beim Hochladen', { concurrency: 1, timeout: 180_000 }, async (t) =
   const srv = spawn(process.execPath, [path.join(ROOT, 'dist', 'server.js')], {
     cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'],
     env: { ...process.env, DATABASE_URL: URL_DB, SESSION_SECRET: 'upload-test-geheimnis-lang-genug-1234',
-           PORT: String(port), WEB_WORKERS: '1', TRUST_PROXY: 'false' },
+           PORT: String(port), TRUST_PROXY: 'false' },
   });
   let log = '';
   srv.stdout.on('data', d => { log += d; });
@@ -62,7 +62,7 @@ test('Grenzen beim Hochladen', { concurrency: 1, timeout: 180_000 }, async (t) =
     for (let i = 0; i < 40 && srv.exitCode === null && srv.signalCode === null; i++) await warte(100);
     if (srv.exitCode === null && srv.signalCode === null) srv.kill('SIGKILL');
   });
-  for (let i = 0; i < 240 && !/is PRIMARY|Startup complete/.test(log); i++) await warte(250);
+  for (let i = 0; i < 240 && !/localhost:\d+|Startup complete/.test(log); i++) await warte(250);
   for (let i = 0; i < 40 && (await fetch(`http://127.0.0.1:${port}/api/v1/health`).catch(() => null)) === null; i++) await warte(250);
 
   const sende = async (pfad, inhalt, typ, name) => {

@@ -20,7 +20,6 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.WEB_WORKERS = '1';
 process.env.CSV_ZEILE_FRIST_MS = '150';
 
 // addSetWithDate gestellt: Jeder Aufruf wird gezählt und dauert `dauer` ms.
@@ -30,7 +29,7 @@ const Module = require('node:module');
 const _echtesRequire = Module.prototype.require;
 Module.prototype.require = function (name) {
   const m = _echtesRequire.apply(this, arguments);
-  if (typeof name === 'string' && /utils[/\\]setService(\.js)?$/.test(name))
+  if (typeof name === 'string' && /[/\\]setService(\.js)?$/.test(name))
     return new Proxy(m, { get: (t, k) => k !== 'addSetWithDate' ? t[k] : async (sn) => {
       aufrufe.push(sn);
       await new Promise(r => setTimeout(r, dauer));
@@ -65,7 +64,7 @@ test('CSV-Import: keine Doppelbuchung', { concurrency: 1 }, async (t) => {
     const r = await fetch(`${base}/api/v1/sets/import/csv`, { method: 'POST', body: fd });
     assert.equal(r.status, 200, await r.text());
   };
-  const auftrag = () => db.get('SELECT status, done, results FROM csv_import_jobs WHERE user_id=$1', [uid]);
+  const auftrag = () => db.get('SELECT status, done, results FROM import_stand WHERE user_id=$1', [uid]);
   const bisFertig = async () => {
     for (let i = 0; i < 100; i++) { const a = await auftrag(); if (a?.status !== 'running') return a; await warte(50); }
     return auftrag();
@@ -97,7 +96,7 @@ test('CSV-Import: keine Doppelbuchung', { concurrency: 1 }, async (t) => {
     });
   } finally {
     await worker.stoppe(0);
-    await _req('utils/pgNotify.js').close();
+    await _req('db/pgNotify.js').close();
     await db.run('DELETE FROM users WHERE id=$1', [uid]);
     await db.pool.end().catch(() => {});
   }

@@ -43,7 +43,7 @@ const fs = require('node:fs');
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
-// Seit der QR-Code die Adresse des Servers traegt (utils/basisUrl.ts), ist
+// Seit der QR-Code die Adresse des Servers traegt (src/infra/basisUrl.ts), ist
 // APP_BASE_URL eine VORBEDINGUNG der Route: Ohne sie sagt sie mit 503 ab,
 // damit kein Code mit der Browseradresse hinausgeht. Diese Datei prueft etwas
 // anderes — hier wird die Vorbedingung nur erfuellt, nicht geprueft. Das tut
@@ -54,7 +54,7 @@ const { buildAndRequire, einhaengung, ohneKommentare } = require('./helpers/sour
 const _req = buildAndRequire();
 const AUTH = einhaengung('auth');
 const db = _req('db/database.js');
-const auth = _req('utils/auth.js');
+const auth = _req('src/konto/auth.js');
 const express   = require(path.join(ROOT, 'node_modules', 'express'));
 const session   = require(path.join(ROOT, 'node_modules', 'express-session'));
 const pgSession = require(path.join(ROOT, 'node_modules', 'connect-pg-simple'))(session);
@@ -195,7 +195,7 @@ test('QR-Zugang: die Laufzeit waehlt der Erzeuger, nicht der Einloeser',
     //
     // Auch `constructor`: Ein direkter Zugriff auf die Tabelle lieferte dafuer
     // die geerbte Object-Funktion — wahrheitswertig, und damit waere sie als
-    // Tageszahl an die Datenbank gegangen (ausTabelle, utils/validate).
+    // Tageszahl an die Datenbank gegangen (ausTabelle, src/infra/validate).
     for (const unsinn of ['99m', 'constructor', '__proto__', 999999]) {
       const r = await ruf('/qr-token', { method: 'POST', headers: { cookie: keks },
         body: { gueltigkeit: unsinn, password: PASS } });
@@ -247,7 +247,7 @@ test('QR-Zugang: die Oberflaeche waehlt beim ERZEUGEN, nicht beim Einloesen', ()
   // gebraucht, BEVOR die Seite den Server nach etwas fragt. Also wird die
   // Deckung hier gemessen statt behauptet. Eine Wahl, die der Server nicht
   // kennt, waere im Markup sichtbar und in der Wirkung nichts.
-  const serverListe = ohneKommentare(fs.readFileSync(path.join(ROOT, 'utils/auth.ts'), 'utf8'))
+  const serverListe = ohneKommentare(fs.readFileSync(path.join(ROOT, 'src/konto/auth.ts'), 'utf8'))
     .split('const TOKEN_LAUFZEITEN')[1].split('};')[0]
     .match(/'(\w+)':/g).map(x => x.replace(/'|:/g, ''));
   const markupListe = [...html.matchAll(/<option value="(\w+)" data-i18n="qr\.validity_/g)]

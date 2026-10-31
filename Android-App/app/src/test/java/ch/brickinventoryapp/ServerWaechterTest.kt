@@ -40,6 +40,8 @@ import java.util.concurrent.atomic.AtomicInteger
  *      wird auf den Server samt Pfad umgeschrieben“
  *   G  eigeneKoepfe() nicht aufgerufen → rot „der eigene Server bekommt Sprache
  *      und Fassung“
+ *   I  (30.10.2026) lage.klartextErlaubt() nicht an isCleartextAllowed()
+ *      weitergereicht → rot „ohne Expertenschalter erreicht keine Klartext-Anfrage …“
  *   H  (30.10.2026) /settings/theme vom Token ausgenommen (`mitToken` falsch für
  *      Pfade auf "/settings/theme") → rot „das Design des Kontos wird mit Token geholt“
  */
@@ -56,11 +58,13 @@ class ServerWaechterTest {
         var url: String,
         var tokens: ArrayDeque<String> = ArrayDeque(listOf(TOKEN)),
         var herkunft: String? = null,
+        var klartext: Boolean = true,
     ) : Zugangslage {
         override fun serverUrl() = url
         override fun token(): String = if (tokens.size > 1) tokens.removeFirst() else tokens.first()
         override fun tokenHerkunft() = herkunft
         override fun klartextHosts() = emptySet<String>()
+        override fun klartextErlaubt() = klartext
         override fun netz() = "heim"
     }
 
@@ -212,6 +216,17 @@ class ServerWaechterTest {
         } catch (e: IOException) {
             assertTrue(e.message.orEmpty().contains("8.8.8.8"))
         }
+    }
+
+    @Test
+    fun `ohne Expertenschalter erreicht keine Klartext-Anfrage den Server`() {
+        try {
+            hole(client(Lage(basis(), klartext = false)), "http://localhost:3000/api/v1/sets")
+            fail("Ohne Expertenschalter darf nichts im Klartext hinaus")
+        } catch (e: IOException) {
+            assertTrue(e.message.orEmpty(), e.message.orEmpty().contains("Expertenschalter"))
+        }
+        assertEquals(0, server.requestCount)
     }
 
     private companion object { const val TOKEN = "geheim-0123" }

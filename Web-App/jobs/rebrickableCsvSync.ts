@@ -6,21 +6,17 @@
  *   colors.csv         — id, name, rgb, is_trans …
  * Ausführlich: docs/begruendungen/jobs/rebrickableCsvSync.ts.md#abschnitt
  */
-// Pfade zentral auflösen — __dirname zeigt seit dem dist/-Build nicht mehr
-// auf die Wurzel. Siehe utils/appPaths.ts.
-// Direkt aus utils/partsImport — siehe die Begruendung in
-// utils/handlers/parts.ts: routes/parts reicht die Funktion nur weiter.
-import { meldeStartZustand } from '../utils/startZustand';
-import { fetchMissingBlIds } from '../utils/partsImport';
+import { meldeStartZustand } from '../src/infra/startZustand';
+import { fetchMissingBlIds } from '../src/katalog/partsImport';
 import { getRbKey, httpsGetRobust } from '../clients/rebrickable';
-import { fehlertext, logAndContinue, meldeUndLiefere, ohneFehlendeDatei } from '../utils/httpError';
-import { merkeBlFarbnummer, blFarbnummerAus } from '../utils/blZuordnung';
-import { liesZustand, setzeZustand } from '../utils/laufzustand';
+import { fehlertext, logAndContinue, meldeUndLiefere, ohneFehlendeDatei } from '../src/infra/httpError';
+import { merkeBlFarbnummer, blFarbnummerAus } from '../src/katalog/blZuordnung';
+import { liesZustand, setzeZustand, loescheZustand } from '../src/auftraege/laufzustand';
 import fs from 'fs';
 import path from 'path';
-import * as monitor from '../utils/jobMonitor';
+import * as monitor from '../src/auftraege/jobMonitor';
 import zlib2 from 'zlib';
-import { DATA_DIR } from '../utils/appPaths';
+import { DATA_DIR } from '../src/infra/appPaths';
 import { fork as _fork } from 'child_process';
 import { get } from 'https';
 
@@ -138,7 +134,7 @@ async function runWorker(task: string, stepNum: number, stepLabel: string, filen
 
 function importInWorker(task: string, stepNum: number, stepLabel: string) {
   return new Promise((resolve, reject) => {
-    const worker = _fork(_workerPath, [], { env: process.env, silent: false });
+    const worker = _fork(_workerPath, [], { silent: false });
     worker.on('message', (msg: any) => {
       if (msg.type === 'progress') {
         const sub = msg.pct != null ? `${msg.pct}%` : null;
@@ -228,11 +224,11 @@ async function run() {
     } catch(e) {
       log(`CSV sync failed: ${fehlertext(e)}`);
       // Ohne Katalog ist die App trotzdem benutzbar; ohne diese Meldung bliebe
-      // der Startbildschirm stehen, bis die Oberfläche nach drei Minuten aufgibt.
-      // Der nächste Start (oder der Tageslauf) versucht es erneut.
+      // der Startbildschirm stehen. Den nächsten Versuch plant der Auftrag
+      // (Wartezeit mit Backoff), darum wird der Fehler weitergereicht.
       const s0 = { ready: true, step: 'Katalog nicht geladen', progress: TOTAL_STEPS, total: TOTAL_STEPS };
       await meldeStartZustand(s0);
-      return; // Don't try BL mapping if CSV sync failed
+      throw e;
     }
   }
 
@@ -277,4 +273,14 @@ async function run() {
   }
 }
 
-export { run };
+/**
+ * Der Auftrag 'csv_sync' (geplant, src/auftraege/zeitplan.ts). Der Lauf beim Start
+ * lädt nur, wenn heute noch nicht geladen wurde; der tägliche und der von
+ * Hand angestossene laden immer.
+ */
+async function csvAbgleich(n: Record<string, unknown>): Promise<void> {
+  if (!n.beimStart) await loescheZustand(SYNC_KEY);
+  await run();
+}
+
+export { run, csvAbgleich };

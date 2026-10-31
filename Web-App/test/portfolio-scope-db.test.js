@@ -33,7 +33,6 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { haeltSet } = require('./helpers/bestand');
@@ -83,8 +82,8 @@ test('die Portfoliokurve folgt dem gewählten Konto', { concurrency: 1 }, async 
     }
   }
 
-  const { getPortfolioHistory } = _req('utils/portfolioHistory.js');
-  const { getSetting } = _req('utils/settings.js');
+  const { getPortfolioHistory } = _req('src/finanzen/portfolioHistory.js');
+  const { getSetting } = _req('src/konto/settings.js');
   const kurve = async (uids) => {
     // Betrachter ist IMMER das Hauptkonto — genau darum geht es.
     const r = await getPortfolioHistory(hauptId, uids, 'week', db, getSetting);

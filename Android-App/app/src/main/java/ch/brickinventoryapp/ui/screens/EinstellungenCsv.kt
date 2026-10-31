@@ -36,7 +36,7 @@ import kotlinx.coroutines.launch
 @Composable
 internal fun CsvImportCard(
     csvZustand: ch.brickinventoryapp.ui.CsvHochladenUiState,
-    onDatei: (ch.brickinventoryapp.data.model.CsvArt, android.net.Uri) -> Unit,
+    onDatei: (ch.brickinventoryapp.ui.model.CsvImportArt, android.net.Uri) -> Unit,
     onSchliessen: () -> Unit,
 ) {
     // Welche Art beim Antippen gemeint war — der Dateiauswahl-Vertrag liefert nur den
@@ -44,7 +44,7 @@ internal fun CsvImportCard(
     // eine fremde Anwendung, währenddessen darf das System diesen Vorgang beenden;
     // fiele der Wert auf SETS zurück, landete eine Teile-Datei in der falschen Tabelle
     // (BildschirmZustandTest).
-    var gewaehlteArt by rememberSaveable { mutableStateOf(ch.brickinventoryapp.data.model.CsvArt.SETS) }
+    var gewaehlteArt by rememberSaveable { mutableStateOf(ch.brickinventoryapp.ui.model.CsvImportArt.SETS) }
     val auswahl = androidx.activity.compose.rememberLauncherForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.OpenDocument()
     ) { uri -> if (uri != null) onDatei(gewaehlteArt, uri) }
@@ -69,11 +69,11 @@ internal fun CsvImportCard(
             modifier = Modifier.fillMaxWidth()
         ) {
             listOf(
-                ch.brickinventoryapp.data.model.CsvArt.SETS to R.string.csv_upload_sets,
-                ch.brickinventoryapp.data.model.CsvArt.TEILE to R.string.csv_upload_parts,
-                ch.brickinventoryapp.data.model.CsvArt.MINIFIGUREN to R.string.csv_upload_figs,
-                ch.brickinventoryapp.data.model.CsvArt.MERKLISTE to R.string.csv_upload_wanted,
-                ch.brickinventoryapp.data.model.CsvArt.PREISALARME to R.string.csv_upload_alerts,
+                ch.brickinventoryapp.ui.model.CsvImportArt.SETS to R.string.csv_upload_sets,
+                ch.brickinventoryapp.ui.model.CsvImportArt.TEILE to R.string.csv_upload_parts,
+                ch.brickinventoryapp.ui.model.CsvImportArt.MINIFIGUREN to R.string.csv_upload_figs,
+                ch.brickinventoryapp.ui.model.CsvImportArt.MERKLISTE to R.string.csv_upload_wanted,
+                ch.brickinventoryapp.ui.model.CsvImportArt.PREISALARME to R.string.csv_upload_alerts,
             ).forEach { (art, textId) ->
                 OutlinedButton(
                     onClick = { gewaehlteArt = art; auswahl.launch(typen) },

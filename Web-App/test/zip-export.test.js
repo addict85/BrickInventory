@@ -43,7 +43,7 @@ const assert = require('node:assert/strict');
 const path = require('node:path');
 const { PassThrough } = require('node:stream');
 
-/** Baut ein Archiv wie routes/settings.ts und gibt die Bytes zurück. */
+/** Baut ein Archiv wie routes/api_v1/settings.ts und gibt die Bytes zurück. */
 function zippen(dateien) {
   const { ZipArchive } = require('archiver');
   return new Promise((fertig, fehler) => {
@@ -72,7 +72,7 @@ test('archiver ist aus CommonJS heraus benutzbar', () => {
   // wertlos wie gar keiner.
   const mod = require('archiver');
   assert.equal(typeof mod.ZipArchive, 'function',
-    'archiver exportiert kein ZipArchive mehr — routes/settings.ts baut darauf. ' +
+    'archiver exportiert kein ZipArchive mehr — routes/api_v1/settings.ts baut darauf. ' +
     'Vor 8.x hiess derselbe Weg archiver(\'zip\', opts).');
   const a = new mod.ZipArchive({ zlib: { level: 9 } });
   for (const m of ['append', 'pipe', 'finalize', 'on']) {

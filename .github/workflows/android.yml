@@ -79,7 +79,12 @@ jobs:
       HAT_SCHLUESSEL: ${{ secrets.KEYSTORE_BASE64 != '' }}
 
     steps:
+      # Volle Historie samt Tags: versionCode zählt die Commits, versionName
+      # kommt aus `git describe` (app/build.gradle.kts). Flach geklont wäre
+      # jeder Bau Commit Nummer 1.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
 
       # JDK 17 — passt zu sourceCompatibility/targetCompatibility und jvmTarget
       # im app/build.gradle.kts. Verlangt AGP eine neuere Fassung, steht das
@@ -169,7 +174,7 @@ jobs:
         # Web-Workflow.
         run: |
           set -o pipefail
-          ./gradlew --no-daemon testDebugUnitTest 2>&1 | tee "$RUNNER_TEMP/test.log"
+          ./gradlew --no-daemon testDebugUnitTest recordRoborazziDebug 2>&1 | tee "$RUNNER_TEMP/test.log"
 
       # ── Was rot war, als ANNOTATION ─────────────────────────────────────────
       #
@@ -495,6 +500,17 @@ jobs:
       # Jede neue Hauptversion laeuft auf node24 — die Laufzeit aendert sich
       # also nicht, es gibt hier keine Warnung zu beseitigen und auch keine
       # einzufangen.
+      # Roborazzi nimmt vorerst nur auf: Die Bilder sind die künftigen
+      # Referenzen. Verglichen wird erst, wenn sie eingecheckt sind.
+      - name: Bildschirmfotos sichern
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: bildschirmfotos
+          path: Android-App/app/src/test/bildschirmfotos/
+          if-no-files-found: warn
+          retention-days: 30
+
       - name: Testberichte sichern
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
@@ -736,17 +752,20 @@ jobs:
       - name: Prüfsummen erzeugen
         run: |
           chmod +x gradlew
-          ./gradlew --no-daemon --continue --write-verification-metadata sha256 \
-            testDebugUnitTest assembleRelease bundleRelease lintRelease \
+          ./gradlew --no-daemon --continue --write-verification-metadata sha256,pgp --export-keys \
+            testDebugUnitTest recordRoborazziDebug assembleRelease bundleRelease lintRelease \
             || echo "::warning::Gradle meldete einen Fehler (Lint oder Test); die Prüfsummen sind trotzdem geschrieben."
           test -s gradle/verification-metadata.xml
+          test -s gradle/verification-keyring.keys
       # Auch nach einem roten Test: Gradle schreibt die Datei am Ende jedes
       # Laufs, und die Prüfsummen hängen nicht am Testergebnis.
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         if: ${{ !cancelled() }}
         with:
           name: verification-metadata
-          path: Android-App/gradle/verification-metadata.xml
+          path: |
+            Android-App/gradle/verification-metadata.xml
+            Android-App/gradle/verification-keyring.*
           if-no-files-found: error
 
   # Checkt die erzeugte Datei auf dem Zweig des Laufs ein. Ein eigener Job,
@@ -764,11 +783,18 @@ jobs:
         with:
           name: verification-metadata
           path: Android-App/gradle
+      # Vor dem Einchecken: Was ist neu, was fällt weg, wo änderte sich eine
+      # Prüfsumme bei gleicher Fassung? Letzteres darf nie still durchgehen.
+      - name: Änderungen zusammenfassen
+        run: |
+          git show HEAD:Android-App/gradle/verification-metadata.xml > "$RUNNER_TEMP/alt.xml" 2>/dev/null || true
+          python3 Android-App/tools/pruefsummen-vergleich.py "$RUNNER_TEMP/alt.xml" \
+            Android-App/gradle/verification-metadata.xml >> "$GITHUB_STEP_SUMMARY"
       - name: Einchecken
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add Android-App/gradle/verification-metadata.xml
+          git add Android-App/gradle/verification-metadata.xml Android-App/gradle/verification-keyring.*
           if git diff --cached --quiet; then echo "Prüfsummen unverändert."; exit 0; fi
           git commit -m "Gradle-Prüfsummen erneuert (Lauf $GITHUB_RUN_ID)"
           git push origin "HEAD:$GITHUB_REF_NAME"

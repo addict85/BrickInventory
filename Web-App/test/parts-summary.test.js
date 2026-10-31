@@ -1,5 +1,5 @@
 /**
- * Vorberechnete Teile-Zusammenfassung (utils/partsSummary.ts).
+ * Vorberechnete Teile-Zusammenfassung (src/teile/partsSummary.ts).
  *
  * Die Teileansicht gruppiert 171'000 parts-Zeilen nach Teil und Farbe. Diese
  * Gruppierung lief bei JEDEM Seitenaufruf neu — auch nach der Umstellung auf
@@ -28,7 +28,7 @@ const DB_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhos
 // ── Statische Prüfungen (immer) ────────────────────────────────────────────
 test('die Entwertung hängt an einem Trigger, nicht an Aufrufen', () => {
   // Die Trigger stehen seit 0052 in einer Migration, nicht mehr im Code.
-  const src = fs.readFileSync(path.join(ROOT, 'db', 'migrations', '0052-teilezusammenfassung-stand.sql'), 'utf8');
+  const src = fs.readFileSync(path.join(ROOT, 'db/migrations/0052-teilezusammenfassung-stand.sql'), 'utf8');
   assert.match(src, /FOR EACH STATEMENT/,
     'Zeilen-Trigger würden bei einem CSV-Import 171 000 Mal feuern');
   for (const tbl of ['parts', 'sets']) {
@@ -57,7 +57,7 @@ test('die Live-Abfrage bleibt als Rückfallebene erhalten', () => {
   const h = require('./helpers/sources').handlerQuelle();
   assert.match(h, /if \(summary\) return summary;/,
     'Ohne Rückfall wäre ein Fehler beim Aufbau ein Totalausfall der Ansicht');
-  const src = fs.readFileSync(path.join(ROOT, 'utils', 'partsSummary.ts'), 'utf8');
+  const src = fs.readFileSync(path.join(ROOT, 'src/teile/partsSummary.ts'), 'utf8');
   assert.match(src, /return false;/, 'ensureFresh muss Misserfolg melden können');
 });
 
@@ -93,7 +93,7 @@ const _req = require('./helpers/sources').buildAndRequire();
   process.env.SESSION_SECRET = 'test';
   db = _req('db/database.js');
   H  = require('./helpers/sources').handlerModul(_req);
-  PS = _req('utils/partsSummary.js');
+  PS = _req('src/teile/partsSummary.js');
 } catch (e) { skip = e.message; }
 
 test('Zusammenfassung stimmt mit der Live-Abfrage überein und veraltet nicht',
@@ -140,6 +140,10 @@ test('Zusammenfassung stimmt mit der Live-Abfrage überein und veraltet nicht',
   await haeltTeil(db, U, '3001', { setNumber: 'A-1', menge: 3, colorId: 5 });
   await haeltTeil(db, U, '3001', { setNumber: 'B-1', menge: 4, colorId: 5 });
   await haeltTeil(db, U, '3002', { setNumber: 'A-1', menge: 1, colorId: 1 });
+  // Die Setliste für 3003 steht schon jetzt im Katalog; unten kommt nur die
+  // Bestandszeile dazu (eine Katalogänderung zöge die Gruppe sofort nach).
+  await db.run(`INSERT INTO set_teile (set_number, part_number, color_id, quantity) VALUES ('A-1','3003',2,9)
+                ON CONFLICT (set_number, part_number, color_id) DO UPDATE SET quantity = 9`);
 
   // Seit dem Fix baut ensureFresh() NICHT mehr im Request auf. Der erste
   // Zugriff eines Nutzers ohne Zusammenfassung wird deshalb aus der
@@ -158,7 +162,7 @@ test('Zusammenfassung stimmt mit der Live-Abfrage überein und veraltet nicht',
     'die Set-Menge muss in die Teilemenge eingehen');
 
   // Änderung an parts → Trigger → nächster Lesezugriff baut neu auf
-  await haeltTeil(db, U, '3003', { setNumber: 'A-1', menge: 9, colorId: 2 });
+  await db.run(`INSERT INTO parts (user_id, set_number, part_number, color_id, source) VALUES ($1,'A-1','3003',2,'set')`, [U]);
   // Der Lesezugriff darf jetzt NICHT mehr blockieren: Er liefert den alten
   // Stand und stösst den Aufbau nur an. Erst danach stimmen die Zahlen wieder.
   const stale = await H.getParts(U, { exclude_manual: '1', page: 1, page_size: 50 });
@@ -169,7 +173,7 @@ test('Zusammenfassung stimmt mit der Live-Abfrage überein und veraltet nicht',
 
   // Änderung an der SETMENGE → ebenfalls. Sie steht seit Migration 0036 in
   // der Erfassung, nicht mehr in sets.quantity — und deshalb hängt der
-  // Entwertungs-Trigger jetzt auch an set_acquisitions (utils/partsSummary.ts).
+  // Entwertungs-Trigger jetzt auch an set_acquisitions (src/teile/partsSummary.ts).
   // Ohne ihn bliebe die Zahl hier stehen und sähe dabei plausibel aus.
   await db.run("UPDATE set_acquisitions SET quantity=3 WHERE user_id=$1 AND set_number='B-1'", [U]);
   await PS.rebuildNow(U);
@@ -244,7 +248,7 @@ test('der Neuaufbau blockiert den Request nicht', () => {
   // vollen Aufbau — an 380 Sets gemessen gut drei Sekunden, in denen die
   // Kachelwand leer blieb. Manuell erfasste Teile erschienen sofort, weil sie
   // über eine eigene Abfrage ohne Zusammenfassung laufen.
-  const src = fs.readFileSync(path.join(ROOT, 'utils', 'partsSummary.ts'), 'utf8');
+  const src = fs.readFileSync(path.join(ROOT, 'src/teile/partsSummary.ts'), 'utf8');
   const fn = src.slice(src.indexOf('export async function ensureFresh'),
                        src.indexOf('export async function rebuildNow'));
   assert.ok(fn.length > 0, 'ensureFresh nicht gefunden');
@@ -265,7 +269,7 @@ test('Kennzahlen benutzen keinen veralteten Stand', () => {
   // Während eines Hintergrund-Neuaufbaus las der eine aus der Zusammenfassung
   // und der andere live — die Paritätsprüfung schlug dadurch reproduzierbar
   // fehl. Mit strict weichen beide gemeinsam auf die Live-Abfrage aus.
-  const ps = fs.readFileSync(path.join(ROOT, 'utils', 'partsSummary.ts'), 'utf8');
+  const ps = fs.readFileSync(path.join(ROOT, 'src/teile/partsSummary.ts'), 'utf8');
   assert.match(ps, /opts\?: \{ strict\?: boolean \}/, 'strict-Variante fehlt');
   assert.match(ps, /if \(opts\?\.strict\) return false;/,
     'Ein veralteter Stand muss unter strict abgelehnt werden');

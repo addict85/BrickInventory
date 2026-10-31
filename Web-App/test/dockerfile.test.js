@@ -34,8 +34,8 @@ test('und keine Abhängigkeit braucht sie', () => {
   //   2. die Pakete mit Install-Skript sind bekannt und harmlos
   const lock = JSON.parse(fs.readFileSync(path.join(ROOT, 'package-lock.json'), 'utf8'));
   const withScript = Object.entries(lock.packages || {})
-    // Der leere Schlüssel ist das Projekt selbst — sein postinstall ist
-    // scripts/bump-version.js und hat mit nativen Erweiterungen nichts zu tun.
+    // Der leere Schlüssel ist das Projekt selbst; es hat kein Install-Skript
+    // (test/version.test.js).
     .filter(([k, v]) => k && v.hasInstallScript)
     .map(([k]) => k.replace(/^.*node_modules\//, ''));
 
@@ -71,4 +71,12 @@ test('Basis-Images stehen per Digest fest', () => {
       if (!/@sha256:[0-9a-f]{64}/.test(m[2])) lose.push(`${name}: ${m[1]}${m[2]}`);
   assert.ok([...quellen.Dockerfile.matchAll(/^FROM /gm)].length >= 2, 'FROM-Zeilen nicht gefunden');
   assert.deepEqual(lose, []);
+});
+
+// Gegenprobe (30.10.2026): die rm-Zeile im Laufzeit-Stage entfernt → rot.
+test('das Laufzeit-Image trägt kein npm, corepack oder yarn', () => {
+  const df = fs.readFileSync(path.join(ROOT, 'Dockerfile'), 'utf8');
+  const laufzeit = df.split(/^FROM /m).pop().split('\n').filter(l => !l.trim().startsWith('#')).join('\n');
+  for (const pfad of ['/usr/local/lib/node_modules', '/usr/local/bin/npm', '/usr/local/bin/corepack', '/opt/yarn-'])
+    assert.ok(laufzeit.includes(pfad), `${pfad} bleibt im Laufzeit-Image`);
 });

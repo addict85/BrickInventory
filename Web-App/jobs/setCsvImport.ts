@@ -1,12 +1,13 @@
-import { addSetWithDate, nacharbeitEinstellen } from '../utils/setService';
-import { emitJobStatus, jobUpdate, setzeImportFort, type ImportErgebnis } from '../utils/importAuftrag';
-import { fehlertext } from '../utils/httpError';
-import { fehlerText } from '../utils/fehlerTexte';
+import { konfig } from '../src/infra/konfig';
+import { addSetWithDate, nacharbeitEinstellen } from '../src/sets/setService';
+import { emitJobStatus, jobUpdate, setzeImportFort, type ImportErgebnis } from '../src/auftraege/importAuftrag';
+import { fehlertext } from '../src/infra/httpError';
+import { fehlerText } from '../src/infra/fehlerTexte';
 import { AuftragUnterbrochen, type AuftragsKontext } from './auftragsWorker';
 
 /**
  * Der CSV-Import von Sets als Auftrag. Nach jedem Set stehen Fortschritt und
- * Ergebnisse in csv_import_jobs; ein Neustart setzt dort fort. `current` ist
+ * Ergebnisse in import_stand; ein Neustart setzt dort fort. `current` ist
  * nur gesetzt, solange ein Set gebucht wird — steht es nach einem Absturz noch
  * da, ist ungewiss, ob dieses Set gebucht wurde. Es wird dann nicht noch einmal
  * gebucht, sondern als Warnung gemeldet.
@@ -15,7 +16,7 @@ export type CsvZeile = { sn: string; qty: number; purchasePrice: number | null; 
 export interface CsvNutzlast { user_id: number; lauf: string; rows: CsvZeile[] }
 
 /** Wie lange ein Set beim Import dauern darf, bevor die Zeile als Warnung endet. */
-const zeilenFrist = () => Number(process.env.CSV_ZEILE_FRIST_MS) || 120_000;
+const zeilenFrist = () => konfig().csvZeileFristMs;
 
 async function importiereZeile(z: CsvZeile, userId: number): Promise<ImportErgebnis> {
   for (let versuch = 1; ; versuch++) {

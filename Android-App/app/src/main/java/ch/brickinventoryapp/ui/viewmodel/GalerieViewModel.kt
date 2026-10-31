@@ -49,6 +49,11 @@ class GalerieViewModel @Inject constructor(
         meldeFehler = { _snackbar.value = meldungFuerSnackbar(it) },
         beschreibeFehler = { meldung(it) },
         vergissScroll = { dienste.scrollMemory.vergiss("gallery") },
+        lokal = sets.beobachteSets(),
+        ungefiltert = { g ->
+            g.galleryQuery.isBlank() && g.galleryTheme.isBlank() && g.gallerySort == GALLERY_DEFAULT_SORT &&
+                scopeFor(ScopeFilter.View.GALLERY) == null && lagerFor(ScopeFilter.View.GALLERY).isNullOrBlank()
+        },
     )
     val galleryState: StateFlow<GalleryUiState> = galerie.state
 

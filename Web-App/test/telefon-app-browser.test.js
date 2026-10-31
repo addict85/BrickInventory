@@ -10,9 +10,10 @@
  *   - Teile und Minifiguren: Am Telefon nennt „Sammlung“ in der Leiste die
  *     offene Ansicht („Teile“); am Rechner wie am Telefon wechselt der
  *     Umschalter auf der Seite, die Leiste hat nur „Sammlung“.
- *   - Teile: zwölf Teile in zwölf Farben stehen in einem Raster (höchstens
- *     zehn Zeilen statt 24); die Filter liegen hinter dem Knopf „Filter“ und
- *     sind geöffnet gleich breit.
+ *   - Teile: ein Raster; jede Farbe beginnt mit einer Überschrift über die
+ *     volle Breite (seit 30.10., UX-Prüfung), ihre Teile stehen darunter in
+ *     einer Reihe; die Filter liegen hinter dem Knopf „Filter“ und sind
+ *     geöffnet gleich breit.
  *   - Merkliste: Nummer, Zustand, „Auf die Merkliste“ und CSV sind gleich
  *     hoch und stehen am Rechner auf einer Linie.
  *   - Set-Detail: „Löschen“ steht hinter „Weitere Aktionen“; die drei Felder
@@ -44,8 +45,9 @@
  *      „Teile und Minifiguren in der Leiste auffindbar“ („Sammlung“);
  *      (29.10.) `.ntab.ntab-sammlung{display:none}` aus styles.css entfernt
  *      → rot: am Rechner wieder zwei Navigationen (teile: true)
- *   F  (29.10.) .parts-list{display:grid…} aus styles.css entfernt → rot: „Teile:
- *      ein Raster, Filter als Blatt“ (24 Zeilen); Klasse filterleiste an der
+ *   F  (29.10.; 30.10. mit Farbüberschrift über die volle Breite) .parts-list
+ *      ohne display:grid → rot: „Teile: ein Raster, Filter als Blatt“ (breit:
+ *      12); Klasse filterleiste an der
  *      Teile-Filterzeile entfernt → rot („Die Auswahlfelder stehen offen da“)
  *   G  (29.10.) .merk-erfassen > .btn{height:38px…} entfernt → rot:
  *      „Merkliste: Erfassen-Zeile bündig“ (Knopf 34 px, CSV 39 px, versetzt)
@@ -218,12 +220,16 @@ test('Telefon', { concurrency: 1, timeout: 240_000 }, async (t) => {
     await reiter('parts');
     await bis(`document.querySelectorAll('#parts-main .part-card:not(.skelett)').length === 12`, 'zwölf Teile');
     const raster = await b.auswerten(`(() => {
-      const kacheln = [...document.querySelectorAll('#parts-main .group-hd, #parts-main .part-card')];
-      const zeilen = new Set(kacheln.map(k => Math.round(k.getBoundingClientRect().top)));
-      return { kacheln: kacheln.length, zeilen: zeilen.size };
+      const liste = document.querySelector('#parts-main .parts-list').getBoundingClientRect();
+      const gruppen = [...document.querySelectorAll('#parts-main .parts-group')];
+      return { gruppen: gruppen.length,
+        schmal: gruppen.filter(g => g.querySelector('.group-hd').getBoundingClientRect().width < liste.width - 1).length,
+        zerstreut: gruppen.filter(g => new Set([...g.querySelectorAll('.part-card')].map(k => Math.round(k.getBoundingClientRect().top))).size > 1).length,
+        breit: [...document.querySelectorAll('#parts-main .part-card')].filter(k => k.getBoundingClientRect().width > liste.width * 0.6).length };
     })()`);
-    assert.equal(raster.kacheln, 24);
-    assert.ok(raster.zeilen <= 10, `${raster.zeilen} Zeilen für 12 Teile in 12 Farben`);
+    assert.equal(raster.gruppen, 12);
+    assert.deepEqual({ schmal: raster.schmal, zerstreut: raster.zerstreut, breit: raster.breit }, { schmal: 0, zerstreut: 0, breit: 0 },
+      'Farbüberschrift nicht über die volle Breite, oder die Teile stehen nicht im Raster');
     const sichtbar = (id) => `document.getElementById('${id}').getClientRects().length > 0`;
     assert.equal(await b.auswerten(sichtbar('parts-spare')), false, 'Die Auswahlfelder stehen offen da');
     await b.auswerten(`document.querySelector('#tab-parts .filter-knopf').click(); true`);

@@ -24,7 +24,7 @@
  *
  * ── Warum die echte Funktion und kein Nachbau ───────────────────────────────
  *
- * Geprueft wird `liefereDatei()` aus utils/dateiAusliefern.ts — genau die
+ * Geprueft wird `liefereDatei()` aus src/infra/dateiAusliefern.ts — genau die
  * Funktion, die server.ts fuer die Anleitungen und die Uploads benutzt. Ein
  * nachgebauter Callback im Test wuerde beweisen, dass der NACHBAU stimmt.
  *
@@ -38,7 +38,7 @@ const os     = require('node:os');
 const path   = require('node:path');
 const express = require('express');
 
-const { liefereDatei } = require('./helpers/sources').buildAndRequire()('utils/dateiAusliefern.js');
+const { liefereDatei } = require('./helpers/sources').buildAndRequire()('src/infra/dateiAusliefern.js');
 
 const DATEI = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'anleitung-')), 'BI-3004.pdf');
 fs.writeFileSync(DATEI, Buffer.alloc(5000, 7));

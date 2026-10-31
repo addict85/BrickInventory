@@ -2,7 +2,7 @@
  * Rechteentzug und Kontoloeschung muessen die offene Sitzung erreichen.
  *
  * ── Woher das kommt ─────────────────────────────────────────────────────────
- * istVerwalter() (utils/auth.ts) fragt ZUERST `req.session.isAdmin`. Der Wert
+ * istVerwalter() (src/konto/auth.ts) fragt ZUERST `req.session.isAdmin`. Der Wert
  * steht seit dem Anmelden fest und wurde nie nachgefuehrt:
  *
  *   PUT /users/:id/admin  schrieb nur `UPDATE users SET is_admin`.
@@ -23,7 +23,7 @@
  * Der Kern der Sache ist eine ZEILE in user_sessions, die verschwinden muss.
  * Ein quelltextlesender Test koennte nur pruefen, dass irgendwo
  * `revokeAllSessions` steht — und genau diese Funktion hat schon einmal in die
- * falsche Tabelle geschrieben (siehe ihren Kommentar in utils/auth.ts: sie
+ * falsche Tabelle geschrieben (siehe ihren Kommentar in src/konto/auth.ts: sie
  * suchte `session` statt `user_sessions`, das DELETE lief nie, und die Pruefung
  * darauf blieb gruen). Hier wird deshalb nachgesehen, ob die Zeile weg ist.
  *

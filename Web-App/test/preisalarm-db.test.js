@@ -18,7 +18,6 @@ const assert = require('node:assert/strict');
 const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.WEB_WORKERS = '1';
 
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
@@ -72,7 +71,7 @@ test('Preisalarm gegen echte Datenbank', async (t) => {
   // TypeScript übersetzt `export { sendMail }` zu einem Getter auf dem
   // Modulobjekt, und eine Zuweisung darauf tut nichts. Der Test lief gegen den
   // echten Versand, zählte null Meldungen — und die Ursache stand nirgends.
-  const A = _req('utils/preisalarm.js');
+  const A = _req('src/finanzen/preisalarm.js');
   let versandt = [];
   let versandFehler = null;
   const versende = async (m) => {

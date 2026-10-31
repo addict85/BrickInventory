@@ -22,15 +22,23 @@ function chrome() {
 
 const freierPort = () => new Promise(r => { const s = net.createServer().listen(0, () => { const p = s.address().port; s.close(() => r(p)); }); });
 
-function starte(t, bin, args, opt) {
+/**
+ * Mit `detached` bekommt das Programm eine eigene Prozessgruppe, und das Ende
+ * trifft die ganze Gruppe: Chromes Kindprozesse erben sonst die Ausgabe-Pipes
+ * und halten den Testprozess nach einem SIGKILL offen.
+ */
+function starte(t, bin, args, opt = {}) {
   const p = spawn(bin, args, { stdio: ['ignore', 'pipe', 'pipe'], ...opt });
   let log = '';
   p.stdout.on('data', d => { log += d; });
   p.stderr.on('data', d => { log += d; });
+  const ende = (signal) => {
+    try { if (opt.detached) process.kill(-p.pid, signal); else p.kill(signal); } catch { /* schon weg */ }
+  };
   t.after(async () => {
-    p.kill('SIGTERM');
+    ende('SIGTERM');
     for (let i = 0; i < 40 && p.exitCode === null && p.signalCode === null; i++) await warte(100);
-    if (p.exitCode === null && p.signalCode === null) p.kill('SIGKILL');
+    ende('SIGKILL');
   });
   return { p, log: () => log };
 }
@@ -101,15 +109,17 @@ async function starteApp(t, opt = {}) {
   const server = starte(t, process.execPath, [path.join(ROOT, 'dist', 'server.js')], {
     cwd: ROOT,
     env: { ...process.env, DATABASE_URL: URL_DB, SESSION_SECRET: 'app-test-geheimnis-lang-genug-1234',
-           PORT: String(port), WEB_WORKERS: '1', TRUST_PROXY: 'false' },
+           PORT: String(port), TRUST_PROXY: 'false' },
   });
-  for (let i = 0; i < 240 && !/is PRIMARY|Startup complete/.test(server.log()); i++) await warte(250);
+  for (let i = 0; i < 240 && !/localhost:\d+|Startup complete/.test(server.log()); i++) await warte(250);
   for (let i = 0; i < 40 && (await fetch(`http://127.0.0.1:${port}/api/v1/`).catch(() => null)) === null; i++) await warte(250);
 
   const profil = fs.mkdtempSync(path.join(os.tmpdir(), 'app-browser-'));
-  t.after(() => fs.rmSync(profil, { recursive: true, force: true }));
   const browser = starte(t, bin, ['--headless=new', '--no-sandbox', '--disable-gpu', '--remote-debugging-port=0',
-    `--user-data-dir=${profil}`, '--window-size=1280,900', 'about:blank'], {});
+    `--user-data-dir=${profil}`, '--window-size=1280,900', 'about:blank'], { detached: true });
+  // Erst nach Chromes Ende löschen: t.after läuft in Registrierreihenfolge, und
+  // ein Hook, der wirft, lässt die folgenden aus — Chrome liefe dann weiter.
+  t.after(() => { try { fs.rmSync(profil, { recursive: true, force: true, maxRetries: 5 }); } catch { /* tmp räumt das System */ } });
   // Bis 30 s, weil der Start im CI-Läufer länger dauern kann. Endet Chrome
   // vorher, bricht der Helfer gleich ab und zeigt Chromes eigene Ausgabe.
   let wsUrl = null;
@@ -122,6 +132,14 @@ async function starteApp(t, opt = {}) {
   t.after(() => b.schliessen());
   await b.tab('Runtime.enable');
   await b.tab('Page.enable');
+  // Jede 401 ab dem Start: Wirft die Oberfläche später zur Anmeldung zurück,
+  // nennt der Test damit die Anfrage, die die Sitzung beendet hat.
+  const abgewiesen = [];
+  await b.tab('Network.enable');
+  b.hoerer.push((d) => {
+    if (d.method === 'Network.responseReceived' && d.params.response.status === 401)
+      abgewiesen.push(d.params.response.url.replace(/^https?:\/\/[^/]+/, ''));
+  });
   if (opt.abfangen?.length) {
     await b.tab('Fetch.enable', { patterns: opt.abfangen.map(a => ({ urlPattern: a.muster, requestStage: 'Request' })) });
     b.hoerer.push((d) => {
@@ -164,7 +182,7 @@ async function starteApp(t, opt = {}) {
     if (document.querySelector('.ntab[data-tab="settings"]')?.classList.contains('active')) return true;
     const g = document.getElementById('gallery');
     return !!g && g.children.length > 0 && !g.querySelector('.skelett-raster'); })()`, 'Start abgeschlossen');
-  return { b, bis, warte, port, uid, db };
+  return { b, bis, warte, port, uid, db, abgewiesen };
 }
 
 module.exports = { starteApp, warte };

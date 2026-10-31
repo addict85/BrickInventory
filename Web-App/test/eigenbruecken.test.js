@@ -25,7 +25,7 @@
  *
  * ── Was hier geprueft wird und was nicht ────────────────────────────────────
  * Erkannt werden zwei Formen:
- *   read('utils/auth.ts')            — eine Zeichenkette mit Ordner und Endung
+ *   read('src/konto/auth.ts')            — eine Zeichenkette mit Ordner und Endung
  *   path.join(ROOT, 'utils', 'x.ts') — Segmente, alle als Literal
  * Pfade mit einem variablen Segment sind nicht aufloesbar; sie werden GEZAEHLT
  * und gemeldet, nicht uebergangen — eine Pruefung, die verschweigt, was sie
@@ -77,7 +77,7 @@ function existiertQuelle(rel) {
 }
 
 /** Ordner, die es im Web-Baum wirklich gibt — alles andere ist kein Pfad von hier. */
-const ORDNER = ['routes', 'utils', 'jobs', 'clients', 'db', 'startup', 'public', 'scripts', 'types'];
+const ORDNER = ['routes', 'src', 'jobs', 'clients', 'db', 'startup', 'public', 'scripts', 'types'];
 
 test('kein Test liest eine Quelldatei, die es nicht gibt', () => {
   const dateien = fs.readdirSync(__dirname).filter(f => f.endsWith('.test.js')).sort();
@@ -102,7 +102,7 @@ test('kein Test liest eine Quelldatei, die es nicht gibt', () => {
   for (const datei of dateien) {
     const src = ohneKommentare(fs.readFileSync(path.join(__dirname, datei), 'utf8'));
 
-    // ── Form 1: 'utils/auth.ts' als eine Zeichenkette ──────────────────────
+    // ── Form 1: 'src/konto/auth.ts' als eine Zeichenkette ──────────────────────
     for (const m of src.matchAll(/['"]((?:[\w.-]+\/)+[\w.-]+)['"]/g)) {
       const p = m[1];
       if (!QUELLE.test(p)) continue;
@@ -111,7 +111,7 @@ test('kein Test liest eine Quelldatei, die es nicht gibt', () => {
       if (!existiertQuelle(p)) kaputt.push(`${datei}: ${p}`);
     }
 
-    // ── Form 2: path.join(ROOT, 'utils', 'auth.ts') ────────────────────────
+    // ── Form 2: path.join(ROOT, 'src/konto/auth.ts') ────────────────────────
     for (const m of src.matchAll(/path\.join\(\s*ROOT\s*,([^)]*)\)/g)) {
       const roh = m[1].split(',').map(s => s.trim()).filter(Boolean);
       const segmente = roh.map(s => /^['"]([^'"]*)['"]$/.exec(s)?.[1]);

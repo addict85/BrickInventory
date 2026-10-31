@@ -55,7 +55,6 @@ const test   = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.WEB_WORKERS = '1';
 
 const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
@@ -159,7 +158,7 @@ test('Merkliste: Rundlauf über die echten Adressen', { concurrency: 1 }, async 
 
   const srv = testServer(_req, {
     sitzung: { userId: HAUPT }, apiNutzer: { user_id: HAUPT, is_admin: 0 },
-    routen: { '/api/v1': 'routes/api_v1/index.js', '/api/v1/settings': 'routes/settings.js' }, t,
+    routen: { '/api/v1': 'routes/api_v1/index.js' }, t,
   });
 
   let csvText = '';
@@ -279,7 +278,7 @@ test('Merkliste: Rundlauf über die echten Adressen', { concurrency: 1 }, async 
 
   await t.test('6. eine Datei ohne Zustandsspalte nimmt die Vorgabe des Kontos', async () => {
     // Nicht diese Route entscheidet den Standardzustand, sondern
-    // zustandOder() in utils/merkliste.ts — also die Einstellung des Kontos.
+    // zustandOder() in src/merkliste/merkliste.ts — also die Einstellung des Kontos.
     // Geprueft wird, dass die Route ihn NICHT selbst setzt: Auf 'U' gestellt,
     // muss eine Zeile ohne Zustand als 'U' landen.
     await db.run(`INSERT INTO user_settings (user_id, key, value) VALUES ($1,'user_default_condition','U')
