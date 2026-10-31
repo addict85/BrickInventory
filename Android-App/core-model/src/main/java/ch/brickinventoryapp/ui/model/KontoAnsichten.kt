@@ -19,7 +19,7 @@ data class ProfilAnsicht(
     val emailBestaetigt: Boolean,
 )
 
-fun Profil.alsAnsicht() = ProfilAnsicht(id, username, email, firstName, lastName, emailBestaetigt = emailVerified == 1)
+fun Profil.alsAnsicht() = ProfilAnsicht(id, username, email, firstName, lastName, emailBestaetigt = emailVerified)
 
 /** Ein früher verknüpftes Konto, dessen Trennung noch bestätigt werden kann. */
 data class GetrenntesKontoAnsicht(val id: Int, val username: String, val via: String?)

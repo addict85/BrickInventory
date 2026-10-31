@@ -6,17 +6,12 @@ import { BCRYPT_ROUNDS, leereTokenCache, revokeAllSessions, revokeAllTokens } fr
 
 export { aendereProfil, aktivesKontoNachEmail, andereSitzungenBeenden, emailVergeben, kontoExistiert, kontoKurz, kontoNachRuecksetzToken, kontoVoll, legeQrTokenAn, loescheKonto, loeseQrTokenEin, mussPasswortAendern, nameOderEmailVergeben, nameVergeben, raeumeQrTokensAuf, setzeRuecksetzToken, tokenNachKennung, tokenStand, zugaengeDesKontos, zugaengeLoeschen } from './repository/konten';
 
-/** Die eine Stelle, an der BOOLEAN als 0/1 hinausgeht: Die App liest
- * email_verified als Zahl. */
-const alsApiZahl = (ja: boolean): 0 | 1 => (ja ? 1 : 0);
-
 export async function kontenListe() {
-  return (await repo.alleKonten()).map(k => ({ ...k, is_admin: alsApiZahl(k.is_admin) }));
+  return repo.alleKonten();
 }
 
 export async function profil(id: number) {
-  const p = await repo.profilZeile(id);
-  return p && { ...p, email_verified: alsApiZahl(p.email_verified) };
+  return repo.profilZeile(id);
 }
 
 const hashe = (passwort: unknown) => bcrypt.hash(String(passwort), BCRYPT_ROUNDS);

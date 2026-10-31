@@ -1,34 +1,17 @@
 /**
- * Jede GET-Route der App gegen ihr Kotlin-Modell — gelesen aus dem
- * App-Quelltext (scripts/kotlin-vertrag.js), nicht abgeschrieben.
- *
- * Geprüft wird strenger als die App: null in einem nicht-nullbaren Feld
- * zählt, auch wenn coerceInputValues es zur Laufzeit auf den Standardwert
- * setzt — und ebenso ein FEHLENDES Feld mit Standardwert. Ausnahmen stehen
- * mit Grund in FEHLEN_ERLAUBT (scripts/kotlin-vertrag.js).
- *
- * Der Bestand ist so angelegt, dass die Listen nicht leer sind: ein Set mit
+ * Jede GET-Route der App gegen ihren Vertrag (src/infra/vertrag/): echte
+ * Antworten auf einem Bestand, in dem keine Liste leer ist — ein Set mit
  * Teilen und Figur, ein manuelles Teil, eine manuelle Figur, Merkliste,
- * Lagerort, Gutschein, Preisalarm, Preise im Cache.
+ * Lagerort, Gutschein, Preisalarm, Preise im Cache. Dass die Kotlin-Modelle
+ * zum Vertrag passen, prüft vertrag-kotlin.test.js.
  *
- * Gefunden beim ersten Lauf: used_count (/sets), quantity und total_quantity
- * (/minifigs), unique_parts und total_quantity (/parts/categories) kamen als
- * Zeichenkette — COUNT und SUM liefern bigint, pg gibt das als Text heraus.
- * Die App las sie nur dank isLenient.
- *
- * Gegenproben (am 27.10. gemessen):
- *   A  in src/sets/abfragen.ts das ::int an used_count entfernt → rot:
- *      „passt zum Kotlin-Modell" nennt $.sets[0].used_count
- *   B  in SetItem (SetModels.kt) ein Pflichtfeld `gibtEsNicht: String`
- *      ergänzt → rot: „fehlt (SetItem, Pflichtfeld)"
- *   C  MIN_GEPRUEFT auf 58 gesetzt → rot: „so viele Routen geprüft"
- * Am 30.10. gemessen:
- *   D  in src/sets/dienst.ts `...eineSeite(…)` aus der Teileliste
- *      entfernt → rot: „passt zum Kotlin-Modell“ nennt
- *      parts-list.total/page/page_size: fehlt (PartsResponse, Standardwert)
- *   E  in FEHLEN_ERLAUBT den Schlüssel für themes verbogen und einen
- *      erfundenen ergänzt → rot: „passt zum Kotlin-Modell“ (/api/v1/sets.themes
- *      fehlt) und „jede erlaubte Lücke gibt es noch“
+ * Gegenproben (31.10.2026 gemessen):
+ *   A  in src/sets/repository/sets.ts das ::int an used_count entfernt → rot:
+ *      „jede Route antwortet“ (/api/v1/sets: 500 vertrag_verletzt, Text statt
+ *      Zahl) und „so viele Routen geprüft“
+ *   B  MIN_GEPRUEFT auf 59 gesetzt → rot: „so viele Routen geprüft“
+ *   C  in src/sets/dienst.ts `...eineSeite(…)` aus der Teileliste entfernt →
+ *      rot: „jede Route antwortet“ (parts-list: 500 vertrag_verletzt)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -43,8 +26,8 @@ const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
 const { routerEinhaengungen } = require('./helpers/sources');
 const { haeltSet, haeltTeil, haeltFigur } = require('./helpers/bestand');
-const { kotlinModelle, apiRouten, pruefe, FEHLEN_ERLAUBT } = require(path.join(ROOT, 'scripts', 'kotlin-vertrag.js'));
-const { quellwurzeln } = require('./helpers/android');
+const { apiRouten } = require(path.join(ROOT, 'scripts', 'kotlin-vertrag.js'));
+const { vertragZu } = require('./helpers/vertrag');
 const db = _req('db/database.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 
@@ -69,9 +52,9 @@ const ZUSATZ = new Map([
   ['/api/v1/alerts/pending', 'since=2000-01-01T00:00:00Z'],
 ]);
 /** Mindestens so viele Routen werden wirklich geprüft — damit die Zahl nicht still sinkt. */
-const MIN_GEPRUEFT = 57;
+const MIN_GEPRUEFT = 58;
 
-test('die Antworten passen zu den Kotlin-Modellen', { concurrency: 1, timeout: 120_000 }, async (t) => {
+test('die Antworten der App-Routen halten ihren Vertrag', { concurrency: 1, timeout: 120_000 }, async (t) => {
   try { await db.initSchema(); }
   catch (e) {
     if (process.env.REQUIRE_DB === '1')
@@ -195,14 +178,14 @@ test('die Antworten passen zu den Kotlin-Modellen', { concurrency: 1, timeout: 1
   t.after(() => new Promise(r => srv.close(r)));
   const basis = `http://127.0.0.1:${srv.address().port}`;
 
-  const modelle = kotlinModelle(quellwurzeln());
   const routen = apiRouten(path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'data', 'api'));
   const werte = { setNumber: SET, partNumber: TEIL, colorId: String(FARBE), figNumber: FIGUR };
 
   const abweichungen = [], leer = [], status = [];
   let geprueft = 0;
   for (const r of routen) {
-    if (!r.typ || !modelle.has(r.typ) || AUSGELASSEN.has(r.pfad)) continue;
+    const vertrag = vertragZu(_req, 'GET', r.pfad);
+    if (!vertrag?.antwort || AUSGELASSEN.has(r.pfad)) continue;
     const pfad = r.pfad.replace(/\{(\w+)\}/g, (_, n) => encodeURIComponent(werte[n] ?? `<${n}>`));
     if (pfad.includes('%3C')) { status.push(`${r.pfad}: kein Wert für einen Platzhalter`); continue; }
     const anfrage = [...r.anfrage.filter(q => q.pflicht).map(q => `${q.name}=60`), ZUSATZ.get(r.pfad)]
@@ -212,22 +195,15 @@ test('die Antworten passen zu den Kotlin-Modellen', { concurrency: 1, timeout: 1
     let json; try { json = JSON.parse(text); } catch { status.push(`${r.pfad}: ${antwort.status} kein JSON`); continue; }
     if (antwort.status !== 200) { status.push(`${r.pfad}: ${antwort.status} ${text.slice(0, 120)}`); continue; }
     geprueft++;
-    abweichungen.push(...pruefe(json, { art: 'klasse', name: r.typ, nullbar: false }, modelle, r.pfad, { route: r.pfad }));
+    const geprueft_ = vertrag.antwort.safeParse(json);
+    if (!geprueft_.success) abweichungen.push(...geprueft_.error.issues.map(i => `${r.pfad} $.${i.path.join('.')}: ${i.message}`));
     for (const [k, v] of Object.entries(json)) if (Array.isArray(v) && v.length === 0) leer.push(`${r.pfad} .${k}`);
   }
 
   await t.test('jede Route antwortet', () => assert.deepEqual(status, []));
   await t.test('so viele Routen geprüft', () =>
     assert.ok(geprueft >= MIN_GEPRUEFT, `nur ${geprueft} Routen geprüft, erwartet mindestens ${MIN_GEPRUEFT}`));
-  await t.test('passt zum Kotlin-Modell', () => assert.deepEqual(abweichungen, []));
-  await t.test('jede erlaubte Lücke gibt es noch', () => {
-    const tot = [...FEHLEN_ERLAUBT.keys()].filter((k) => {
-      const [route, feld] = k.split(' ');
-      const [klasse, name] = feld.split('.');
-      return !routen.some(r => r.pfad === route) || !modelle.get(klasse)?.felder.some(f => f.json === name);
-    });
-    assert.deepEqual(tot, [], 'Eine Ausnahme ohne Route oder Feld verdeckt nichts mehr');
-  });
+  await t.test('passt zum Vertrag', () => assert.deepEqual(abweichungen, []));
   await t.test('keine Liste ist unbemerkt leer', () =>
     assert.deepEqual(leer.filter(l => !LEER_ERLAUBT.has(l)), [], 'Eine leere Liste prüft kein einziges Feld'));
   t.diagnostic(`geprüft: ${geprueft}`);

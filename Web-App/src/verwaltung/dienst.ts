@@ -48,9 +48,9 @@ export async function quellePruefen(quelle: string) {
 }
 
 export async function cacheStatistik() {
-  const leer = { count: 0, limit: 0 };
+  const leer = { count: 0, limit: 0, remaining: 0 };
   const [stats, stale, rlBL, rlRB, rlBS] = await Promise.all([
-    getCacheStats().catch(meldeUndLiefere('verwaltung:getCacheStats', {})),
+    getCacheStats().catch(meldeUndLiefere('verwaltung:getCacheStats', { prices: 0, subsets: 0, catalog: 0 })),
     verwaltung.veraltetePreise().catch(meldeUndLiefere('verwaltung:veraltetePreise', null)),
     getRateLimitStatus('bricklink').catch(meldeUndLiefere('verwaltung:kontingent', leer)),
     getRateLimitStatus('rebrickable').catch(meldeUndLiefere('verwaltung:kontingent', leer)),

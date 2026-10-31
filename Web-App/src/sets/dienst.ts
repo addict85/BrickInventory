@@ -203,7 +203,7 @@ export async function figurenlisteDesSets(setNum: string) {
     fig_number: f.fig_number, fig_name: f.fig_name || f.fig_number, quantity: f.quantity || 1,
     total_quantity: f.quantity || 1, image_url: proxyImageUrl(f.image_url),
     // Dieselbe Form wie eine Figur des Bestands, ohne Zustände und Besitzer.
-    source: 'set', conditions: [] as string[], owners: [] as unknown[] });
+    source: 'set', conditions: [] as string[], owners: [] as { id: number; username: string }[] });
 
   const katalog = await figurenAusKatalog(setNum);
   if (katalog.length) return { figs: katalog.map(ausgabe), source: 'catalog' };

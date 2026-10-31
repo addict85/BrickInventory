@@ -44,6 +44,8 @@ import java.util.concurrent.atomic.AtomicInteger
  *      weitergereicht → rot „ohne Expertenschalter erreicht keine Klartext-Anfrage …“
  *   H  (30.10.2026) /settings/theme vom Token ausgenommen (`mitToken` falsch für
  *      Pfade auf "/settings/theme") → rot „das Design des Kontos wird mit Token geholt“
+ *   J  (31.10.2026) im Wächter die Meldung über versionsHinweis() entfernt → rot „ein
+ *      Server mit hoeherer Mindestfassung meldet App zu alt …“ (leere Liste statt APP_ZU_ALT)
  */
 class ServerWaechterTest {
 
@@ -176,6 +178,26 @@ class ServerWaechterTest {
         val r = server.takeRequest()
         assertEquals("de", r.getHeader("Accept-Language"))
         assertEquals(ch.brickinventoryapp.util.APP_API_VERSION.toString(), r.getHeader("X-App-Api"))
+    }
+
+    @Test
+    fun `ein Server mit hoeherer Mindestfassung meldet App zu alt statt eines Lesefehlers`() {
+        // So antwortet der Server einer alten App: 426 samt beiden Fassungen im Kopf.
+        val neuer = (ch.brickinventoryapp.util.APP_API_VERSION + 1).toString()
+        server.dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest) = MockResponse().setResponseCode(426)
+                .setHeader("X-Api-Version", neuer).setHeader("X-Api-Min-App", neuer)
+                .setBody("""{"success":false,"error":"App zu alt","code":"app_zu_alt"}""")
+        }
+        val hinweise = Collections.synchronizedList(mutableListOf<ch.brickinventoryapp.util.VersionsHinweis>())
+        val c = OkHttpClient.Builder()
+            .addInterceptor(ServerWaechter(Lage(basis(), tokens = ArrayDeque(listOf(""))), true, BeweisSpeicher(),
+                sitzungAbgelaufen = { abgelaufen.incrementAndGet() }, versionsMeldung = { hinweise += it }))
+            .readTimeout(2, TimeUnit.SECONDS).build()
+        assertEquals(426, hole(c, basis() + "/api/v1/auth/profile"))
+        assertEquals(426, hole(c, basis() + "/api/v1/sets"))
+        assertEquals("einmal gemeldet, nicht je Anfrage", listOf(ch.brickinventoryapp.util.VersionsHinweis.APP_ZU_ALT), hinweise.toList())
+        assertEquals(0, abgelaufen.get())
     }
 
     @Test

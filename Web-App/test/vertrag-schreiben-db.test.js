@@ -1,16 +1,13 @@
 /**
- * Jede SCHREIBENDE Route der App gegen ihr Kotlin-Modell.
+ * Jede SCHREIBENDE Route der App gegen ihren Vertrag (src/infra/vertrag/):
+ * Antwort und, wo der Vertrag eine nennt, die Eingabe.
  *
- * Gegenstück zu api-vertrag-kotlin-db (dort die GET-Routen). Die App liest
+ * Gegenstück zu vertrag-lesen-db (dort die GET-Routen). Die App liest
  * ohne coerceInputValues: Ein null in einem nicht-nullbaren Feld ist dort ein
  * Fehler — und bei einer Schreibantwort hiesse das „gescheitert", obwohl
  * gespeichert wurde. Deshalb läuft hier jede Route der App einmal echt durch,
  * oder sie steht mit Grund in AUSGELASSEN. Eine neue Route ohne beides macht
- * den Test rot.
- *
- * Fehlende Felder MIT Standardwert zählen hier nicht (anders als bei den
- * GET-Routen): GenericResponse und GenericAdminResponse sind Sammeltypen für
- * Dutzende Routen, jedes ihrer Felder gilt nur für einige.
+ * den Test rot. Ob die Kotlin-Modelle zum Vertrag passen, prüft vertrag-kotlin.
  *
  * Die Schritte laufen in einer festen Reihenfolge, weil sie aufeinander
  * aufbauen (anlegen → ändern → löschen) und die Sitzung zwischen drei Konten
@@ -18,8 +15,8 @@
  *
  * Gegenproben (am 27.10. gemessen):
  *   A  in routes/api_v1/sets.ts PUT /storage/default mit `success: null` →
- *      rot: „passt zum Kotlin-Modell" nennt
- *      PUT /api/v1/storage/default.success: null statt boolean
+ *      rot (31.10.2026): „jeder Schritt antwortet mit 200“ (500 vertrag_verletzt,
+ *      Antwort success) und „jede schreibende Route ist geprüft …“
  *   B  einen Schritt aus SCHRITTE entfernt (PUT /api/v1/vouchers/{id}) → rot:
  *      „jede schreibende Route ist geprüft oder begründet ausgelassen"
  *   C  in AUSGELASSEN einen Pfad ergänzt, den die App nicht kennt → rot:
@@ -44,8 +41,8 @@ const db = _req('db/database.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const bcrypt  = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const PDFDocument = require('pdfkit');
-const { kotlinModelle, schreibRouten, pruefe } = require(path.join(ROOT, 'scripts', 'kotlin-vertrag.js'));
-const { quellwurzeln } = require('./helpers/android');
+const { schreibRouten } = require(path.join(ROOT, 'scripts', 'kotlin-vertrag.js'));
+const { vertragZu } = require('./helpers/vertrag');
 
 const NAME = `kschreib_${process.pid}`, PASS = 'VertragsPasswort1!';
 const SET = '99075-1', SET2 = '99076-1', TEIL = '3001ks', FARBE = 5, FARBE2 = 1, FIGUR = 'ks0001';
@@ -81,7 +78,7 @@ function formular(inhalt, typ, name, felder = {}) {
   return f;
 }
 
-test('die Schreibantworten passen zu den Kotlin-Modellen', { concurrency: 1, timeout: 180_000 }, async (t) => {
+test('die Schreibantworten der App halten ihren Vertrag', { concurrency: 1, timeout: 180_000 }, async (t) => {
   try { await db.initSchema(); }
   catch (e) {
     if (process.env.REQUIRE_DB === '1')
@@ -157,9 +154,7 @@ test('die Schreibantworten passen zu den Kotlin-Modellen', { concurrency: 1, tim
   t.after(() => new Promise(r => srv.close(r)));
   const basis = `http://127.0.0.1:${srv.address().port}`;
 
-  const modelle = kotlinModelle(quellwurzeln());
   const routen = schreibRouten(path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'data', 'api'));
-  const typJe = new Map(routen.map(r => [`${r.methode} ${r.pfad}`, r.typ]));
 
   /** Werte für die Platzhalter im Pfad; Schritte tragen neue nach. */
   const w = { setNumber: SET, partNumber: TEIL, colorId: String(FARBE), figNumber: FIGUR };
@@ -359,17 +354,19 @@ test('die Schreibantworten passen zu den Kotlin-Modellen', { concurrency: 1, tim
     let json; try { json = JSON.parse(text); } catch { status.push(`${schluessel}: ${antwort.status} kein JSON`); continue; }
     if (antwort.status !== 200) { status.push(`${schluessel}: ${antwort.status} ${text.slice(0, 160)}`); continue; }
     gelaufen.add(schluessel);
-    const typ = typJe.get(schluessel);
-    if (typ && modelle.has(typ))
-      abweichungen.push(...pruefe(json, { art: 'klasse', name: typ, nullbar: false }, modelle, schluessel,
-        { standardwerte: false }));
+    const vertrag = vertragZu(_req, s.m, s.p);
+    if (!vertrag?.antwort) abweichungen.push(`${schluessel}: kein Vertrag`);
+    else {
+      const r = vertrag.antwort.safeParse(json);
+      if (!r.success) abweichungen.push(...r.error.issues.map(i => `${schluessel} $.${i.path.join('.')}: ${i.message}`));
+    }
     if (s.danach) await s.danach(json);
     dauer.push([Date.now() - start, schluessel]);
   }
   if (process.env.VERTRAG_DAUER) console.error(dauer.sort((a, b) => b[0] - a[0]).slice(0, 5));
 
   await t.test('jeder Schritt antwortet mit 200', () => assert.deepEqual(status, []));
-  await t.test('passt zum Kotlin-Modell', () => assert.deepEqual(abweichungen, []));
+  await t.test('passt zum Vertrag', () => assert.deepEqual(abweichungen, []));
   await t.test('jede schreibende Route ist geprüft oder begründet ausgelassen', () => {
     const offen = routen.map(r => `${r.methode} ${r.pfad}`)
       .filter(k => !gelaufen.has(k) && !AUSGELASSEN.has(k));

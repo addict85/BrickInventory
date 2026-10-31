@@ -11,7 +11,9 @@ import { liesAuftrag, loescheAuftrag, pdfSchluessel, gueltigeAuftragsKennung, pd
 import { AUFTRAG_STAND_KANAL } from '../../src/auftraege/dienst';
 import { listen, unlisten } from '../../db/pgNotify';
 import { sendeFehler, fehlerText, antwortSprache } from '../../src/infra/fehlerTexte';
-const router = express.Router();
+import { vertragsRouter } from '../../src/infra/vertrag/pruefen';
+import type { Antwort } from '../../src/infra/vertrag';
+const router = vertragsRouter();
 
 // Eigenes Body-Limit: Der Export schickt die ganze Teileliste als JSON; die
 // Ausnahme vom serverweiten Limit gilt nur hier.
@@ -33,7 +35,7 @@ async function pdfJobReadFor(id: string, userId: number) {
   if (job.user_id !== userId) return null;
   return job;
 }
-router.post('/sets/partslist-pdf', requireToken, async (req: AuthedRequest, res) => {
+router.post('/sets/partslist-pdf', requireToken, async (req: AuthedRequest, res: Antwort<'POST /api/v1/sets/partslist-pdf'>) => {
   const uid = req.apiUser.user_id;
   const { sets = [], parts = [] } = req.body;
   if (!parts.length) return sendeFehler(req, res, 400, 'keine_teile');
@@ -53,7 +55,7 @@ router.post('/sets/partslist-pdf', requireToken, async (req: AuthedRequest, res)
   res.json({ success: true, jobId: r.jobId });
 });
 
-router.get('/sets/partslist-pdf/status/:jobId', requireToken, async (req: AuthedRequest, res) => {
+router.get('/sets/partslist-pdf/status/:jobId', requireToken, async (req: AuthedRequest, res: Antwort<'GET /api/v1/sets/partslist-pdf/status/:jobId'>) => {
   if (!validJobId(String(req.params.jobId))) return sendeFehler(req, res, 400, 'job_id_ungueltig');
   const job = await pdfJobReadFor(pfadParam(req, 'jobId'), req.apiUser.user_id);
   if (!job) return sendeFehler(req, res, 404, 'job_nicht_gefunden');

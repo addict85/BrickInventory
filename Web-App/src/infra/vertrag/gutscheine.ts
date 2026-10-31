@@ -1,0 +1,65 @@
+import { z } from 'zod';
+import { type Route, zeit } from './grund';
+import { GenericResponse } from './gemeinsam';
+
+export const GelesenerGutschein = z.looseObject({
+  number: z.string().nullable().optional(),
+  pin: z.string().nullable().optional(),
+  amount: z.number().nullable().optional(),
+  currency: z.string().nullable().optional(),
+});
+
+export const Gutschein = z.looseObject({
+  id: z.number().int(),
+  number: z.string(),
+  pin: z.string().nullable().optional(),
+  amount: z.number(),
+  currency: z.string(),
+  hat_pdf: z.boolean(),
+  created_at: zeit.nullable().optional(),
+  updated_at: zeit.nullable().optional(),
+  guthaben_geprueft_am: zeit.nullable().optional(),
+});
+
+export const GuthabenAntwort = z.looseObject({
+  success: z.boolean().optional(),
+  voucher: Gutschein.nullable().optional(),
+  angezeigt: z.string().nullable().optional(),
+  waehrung_geaendert: z.boolean().optional(),
+  grund: z.string().nullable().optional(),
+  wartenSek: z.number().int().nullable().optional(),
+  error: z.string().nullable().optional(),
+  code: z.string().nullable().optional(),
+});
+
+export const GutscheinStapel = z.looseObject({
+  added: z.number().int().optional(),
+  updated: z.number().int().optional(),
+  errors: z.number().int().optional(),
+  total: z.number().int().optional(),
+});
+
+export const GutscheinAntwort = z.looseObject({
+  success: z.boolean().optional(),
+  voucher: Gutschein.nullable().optional(),
+  mehrere: GutscheinStapel.nullable().optional(),
+  gelesen: GelesenerGutschein.nullable().optional(),
+  error: z.string().nullable().optional(),
+  code: z.string().nullable().optional(),
+});
+
+export const GutscheinListe = z.looseObject({
+  success: z.boolean(),
+  vouchers: z.array(Gutschein),
+});
+
+export const routen = {
+  'GET /api/v1/vouchers': { antwort: GutscheinListe },
+  'POST /api/v1/vouchers': { antwort: GutscheinAntwort },
+  'PUT /api/v1/vouchers/:id': { antwort: GutscheinAntwort },
+  'DELETE /api/v1/vouchers/:id': { antwort: GenericResponse },
+  'POST /api/v1/vouchers/pdf': { antwort: GutscheinAntwort },
+  'POST /api/v1/vouchers/:id/guthaben': { antwort: GuthabenAntwort },
+  'GET /api/v1/vouchers/:id/pdf': { art: 'pdf' },
+  'GET /api/v1/vouchers/export/pdf': { art: 'pdf' },
+} satisfies Record<string, Route>;

@@ -64,8 +64,9 @@ test('keine SQL-Anweisung steht in mehr als einer Datei', () => {
   assert.ok(dateien.length >= 60,
     `Nur ${dateien.length} Quelldateien gefunden — die Suche greift nicht mehr`);
 
-  // Anweisungen aus Zeichenketten holen, Leerraum vereinheitlichen.
-  const sql = /(['"`])((?:SELECT|INSERT|UPDATE|DELETE)\s[\s\S]*?)\1/g;
+  // Anweisungen aus Zeichenketten holen, Leerraum vereinheitlichen. Ein
+  // Routenschlüssel des API-Vertrags ('DELETE /api/v1/…') ist kein SQL.
+  const sql = /(['"`])((?:SELECT|INSERT|UPDATE|DELETE)\s(?!\/)[\s\S]*?)\1/g;
   const wo = new Map();
   let gefunden = 0;
   for (const f of dateien) {

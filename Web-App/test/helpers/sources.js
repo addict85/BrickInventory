@@ -78,6 +78,8 @@ function distIsFresh() {
 }
 
 function buildAndRequire() {
+  // Jede Antwort einer Route mit Vertrag läuft in Tests durch ihr Schema (src/infra/vertrag/pruefen.ts).
+  process.env.VERTRAG_PRUEFEN ??= '1';
   if (!_built) {
     if (!distIsFresh()) {
       const { execFileSync } = require('node:child_process');

@@ -243,12 +243,8 @@ data class Profil(
     val email: String? = null,
     @SerialName("first_name") val firstName: String? = null,
     @SerialName("last_name") val lastName: String? = null,
-    /**
-     * Ist die E-Mail-Adresse bestätigt? `Int`, weil der Server je nach Treiber 0/1
-     * oder true/false liefert und eine 0 als Boolean nicht deserialisiert; gelesen als
-     * `== 1`.
-     */
-    @SerialName("email_verified") val emailVerified: Int = 0,
+    /** Ist die E-Mail-Adresse bestätigt? Seit API-Fassung 2 ein Wahrheitswert. */
+    @SerialName("email_verified") val emailVerified: Boolean = false,
 )
 
 @Serializable

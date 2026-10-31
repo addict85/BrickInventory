@@ -1,13 +1,14 @@
-import express from 'express';
 import { fehlerAntwort } from '../../src/infra/httpError';
 import { requireToken } from './middleware';
 import { getPortfolioHistory } from '../../src/finanzen/portfolioHistory';
 import { scopeIds, parseScopeMode } from '../../src/haushalt/haushalt';
 import { computeMinifigsValuation, computePartsValuation, computePnl, computeSetsValuation } from '../../src/finanzen/financeCalc';
 import { einzelwert } from '../../src/infra/validate';
-const router = express.Router();
+import { vertragsRouter } from '../../src/infra/vertrag/pruefen';
+import type { Antwort } from '../../src/infra/vertrag';
+const router = vertragsRouter();
 
-router.get('/finance/valuation', requireToken, async (req: AuthedRequest, res) => {
+router.get('/finance/valuation', requireToken, async (req: AuthedRequest, res: Antwort<'GET /api/v1/finance/valuation'>) => {
   const data = await computeSetsValuation(req.apiUser.user_id, await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts)));
   // Kein `rate_limit` in der Antwort: Er kostete drei Abfragen je Aufruf und
   // steht in der Überwachung.
@@ -15,22 +16,22 @@ router.get('/finance/valuation', requireToken, async (req: AuthedRequest, res) =
   res.json({ success:true, total_value: data.totals.qty_avg, ...data });
 });
 
-router.get('/finance/parts-valuation', requireToken, async (req: AuthedRequest, res) => {
+router.get('/finance/parts-valuation', requireToken, async (req: AuthedRequest, res: Antwort<'GET /api/v1/finance/parts-valuation'>) => {
   const data = await computePartsValuation(req.apiUser.user_id, await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts)));
   res.json({ success: true, ...data });
 });
 
-router.get('/finance/minifigs-valuation', requireToken, async (req: AuthedRequest, res) => {
+router.get('/finance/minifigs-valuation', requireToken, async (req: AuthedRequest, res: Antwort<'GET /api/v1/finance/minifigs-valuation'>) => {
   const data = await computeMinifigsValuation(req.apiUser.user_id, await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts)));
   res.json({ success: true, ...data });
 });
 
-router.get('/finance/pnl', requireToken, async (req: AuthedRequest, res) => {
+router.get('/finance/pnl', requireToken, async (req: AuthedRequest, res: Antwort<'GET /api/v1/finance/pnl'>) => {
   const data = await computePnl(req.apiUser.user_id, await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts)));
   res.json({ success: true, ...data });
 });
 
-router.get('/finance/portfolio-history', requireToken, async (req: AuthedRequest, res) => {
+router.get('/finance/portfolio-history', requireToken, async (req: AuthedRequest, res: Antwort<'GET /api/v1/finance/portfolio-history'>) => {
   const uid    = req.apiUser.user_id;
   // einzelwert(): ?period=a&period=b kommt als Array an und ginge sonst
   // unverändert in die Antwort zurück.

@@ -1,0 +1,201 @@
+import { z } from 'zod';
+import { KontoName, zeit } from './grund';
+
+export const BestandteilKopf = z.looseObject({
+  nummer: z.string(),
+  name: z.string().nullable().optional(),
+  color_id: z.number().int().nullable().optional(),
+  color_name: z.string().nullable().optional(),
+  color_hex: z.string().nullable().optional(),
+  category_name: z.string().nullable().optional(),
+  image_local: z.string().nullable().optional(),
+  image_url: z.string().nullable().optional(),
+  is_spare: z.boolean(),
+  storage: z.string().nullable().optional(),
+  owner_ids: z.array(z.number().int()),
+  total_quantity: z.number().int(),
+});
+
+export const BrickLinkRef = z.looseObject({
+  type: z.string(),
+  number: z.string(),
+  url: z.string().nullable().optional(),
+  exact: z.boolean(),
+  resolved: z.boolean(),
+});
+
+export const CsvImportErgebnis = z.looseObject({
+  success: z.boolean(),
+  skipped: z.number().int().optional(),
+  skipped_hint: z.string().optional(),
+  total: z.number().int().optional(),
+  added: z.number().int().optional(),
+  imported: z.number().int().optional(),
+  updated: z.number().int().optional(),
+  errors: z.number().int().optional(),
+  error: z.string().nullable().optional(),
+});
+
+export const ValuationAcquisition = z.looseObject({
+  id: z.number().int(),
+  condition: z.string(),
+  quantity: z.number().int(),
+  purchase_price: z.number().nullable().optional(),
+  avg_price: z.number().nullable().optional(),
+  total_avg: z.string().nullable().optional(),
+  wert_gesamt: z.number().nullable().optional(),
+  pnl_pct: z.string().nullable().optional(),
+  pnl_prozent: z.number().nullable().optional(),
+  created_at: zeit.nullable().optional(),
+  owner_user_id: z.number().int().nullable().optional(),
+});
+
+export const FigValuationItem = z.looseObject({
+  id: z.number().int().nullable().optional(),
+  fig_number: z.string(),
+  bl_fig_number: z.string().nullable().optional(),
+  fig_name: z.string().nullable().optional(),
+  quantity: z.number().int(),
+  image_url: z.string().nullable().optional(),
+  image_local: z.string().nullable().optional(),
+  unit_price: z.number().nullable().optional(),
+  purchase_price: z.number().nullable().optional(),
+  avg_purchase_price: z.number().nullable().optional(),
+  qty_avg_price: z.number().nullable().optional(),
+  avg_price: z.number().nullable().optional(),
+  pnl_pct: z.string().nullable().optional(),
+  pnl_prozent: z.number().nullable().optional(),
+  display_value: z.string().nullable().optional(),
+  wert_gesamt: z.number().nullable().optional(),
+  condition: z.string().nullable().optional(),
+  conditions: z.array(z.string()),
+  user_id: z.number().int().nullable().optional(),
+  /** Nur im Haushalt (withOwners); allein gibt es keine Besitzer zu nennen. */
+  owners: z.array(KontoName).optional(),
+  acquisitions: z.array(ValuationAcquisition),
+  storage: z.string().nullable().optional(),
+});
+
+export const GenericAdminResponse = z.looseObject({
+  success: z.boolean(),
+  error: z.string().nullable().optional(),
+  enqueued: z.number().int().optional(),
+});
+
+export const SetAggregate = z.looseObject({
+  set_number: z.string().optional(),
+  condition: z.string().nullable().optional(),
+  acq_count: z.number().int().nullable().optional(),
+  used_count: z.number().int().nullable().optional(),
+  conditions: z.array(z.string()).optional(),
+  max_purchase_price: z.number().nullable().optional(),
+  avg_purchase_price: z.number().nullable().optional(),
+});
+
+export const GenericResponse = z.looseObject({
+  success: z.boolean(),
+  error: z.string().nullable().optional(),
+  set: SetAggregate.nullable().optional(),
+  parts: z.number().int().nullable().optional(),
+  minifigs: z.number().int().nullable().optional(),
+  source_emptied: z.boolean().optional(),
+  quantity: z.number().int().nullable().optional(),
+});
+
+export const Minifig = z.looseObject({
+  fig_number: z.string(),
+  condition: z.string().nullable().optional(),
+  conditions: z.array(z.string()),
+  /** Nur im Haushalt (withOwners); allein gibt es keine Besitzer zu nennen. */
+  owners: z.array(KontoName).optional(),
+  avg_purchase_price: z.number().nullable().optional(),
+  fig_name: z.string().nullable().optional(),
+  quantity: z.number().int(),
+  total_quantity: z.number().int().nullable().optional(),
+  image_url: z.string().nullable().optional(),
+  image_local: z.string().nullable().optional(),
+  source: z.string(),
+  set_added_at: zeit.nullable().optional(),
+});
+
+export const MinifigsResponse = z.looseObject({
+  success: z.boolean(),
+  /** Gesamtzahl bei /minifigs, Herkunft der Liste bei den Figuren eines Sets. */
+  total: z.number().int().optional(),
+  source: z.string().optional(),
+  figs: z.array(Minifig),
+  error: z.string().nullable().optional(),
+});
+
+export const Part = z.looseObject({
+  part_number: z.string(),
+  bl_part_number: z.string().nullable().optional(),
+  part_name: z.string().nullable().optional(),
+  color_id: z.number().int(),
+  bl_color_id: z.number().int().nullable().optional(),
+  color_name: z.string().nullable().optional(),
+  color_hex: z.string().nullable().optional(),
+  category_name: z.string().nullable().optional(),
+  image_url: z.string().nullable().optional(),
+  image_local: z.string().nullable().optional(),
+  total_quantity: z.number().int(),
+  in_sets: z.string().nullable().optional(),
+  is_spare: z.boolean(),
+});
+
+export const PartValuationItem = z.looseObject({
+  id: z.number().int().nullable().optional(),
+  part_number: z.string(),
+  bl_part_number: z.string().nullable().optional(),
+  part_name: z.string().nullable().optional(),
+  color_id: z.number().int(),
+  color_name: z.string().nullable().optional(),
+  color_hex: z.string().nullable().optional(),
+  quantity: z.number().int(),
+  image_url: z.string().nullable().optional(),
+  image_local: z.string().nullable().optional(),
+  unit_price: z.number().nullable().optional(),
+  purchase_price: z.number().nullable().optional(),
+  avg_purchase_price: z.number().nullable().optional(),
+  qty_avg_price: z.number().nullable().optional(),
+  avg_price: z.number().nullable().optional(),
+  pnl_pct: z.string().nullable().optional(),
+  pnl_prozent: z.number().nullable().optional(),
+  display_value: z.string().nullable().optional(),
+  wert_gesamt: z.number().nullable().optional(),
+  condition: z.string().nullable().optional(),
+  conditions: z.array(z.string()),
+  user_id: z.number().int().nullable().optional(),
+  /** Nur im Haushalt (withOwners); allein gibt es keine Besitzer zu nennen. */
+  owners: z.array(KontoName).optional(),
+  acquisitions: z.array(ValuationAcquisition),
+  storage: z.string().nullable().optional(),
+});
+
+export const PartsResponse = z.looseObject({
+  success: z.boolean(),
+  total: z.number().int(),
+  page: z.number().int(),
+  page_size: z.number().int(),
+  parts: z.array(Part),
+  error: z.string().nullable().optional(),
+});
+
+export const VerwendendesSet = z.looseObject({
+  set_number: z.string(),
+  set_name: z.string().nullable().optional(),
+  quantity: z.number().int(),
+  image_local: z.string().nullable().optional(),
+  image_url: z.string().nullable().optional(),
+  owner_user_id: z.number().int(),
+});
+
+export const VerwendendeSetsResponse = z.looseObject({
+  success: z.boolean(),
+  item: BestandteilKopf.nullable().optional(),
+  sets: z.array(VerwendendesSet),
+  error: z.string().nullable().optional(),
+});
+
+/** Löschen legt in den Papierkorb; die Kennungen holen es zurück. */
+export const InDenPapierkorb = GenericResponse.extend({ papierkorb: z.array(z.number().int()) });

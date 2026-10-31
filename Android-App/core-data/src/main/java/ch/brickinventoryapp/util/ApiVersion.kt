@@ -6,7 +6,7 @@ package ch.brickinventoryapp.util
  * der er noch zusammenarbeitet (X-Api-Min-App). Erhöht wird die Zahl nur bei
  * einer Änderung, die alte Gegenstücke bricht.
  */
-const val APP_API_VERSION = 1
+const val APP_API_VERSION = 2
 
 enum class VersionsHinweis { APP_ZU_ALT, SERVER_ZU_ALT }
 

@@ -17,8 +17,10 @@ import type { ExportGutschein } from '../../src/gutscheine/gutscheinPdfSchreiben
 import { gutscheineDesKontos, gutschein, gutscheinAnlegen, gutscheinErsetzen, gutscheinAendern,
          gutscheinPdfMerken, gutscheinLoeschen, guthabenMerken } from '../../src/gutscheine/dienst';
 import type { GutscheinZeile } from '../../src/gutscheine/dienst';
+import { vertragsRouter } from '../../src/infra/vertrag/pruefen';
+import type { Antwort } from '../../src/infra/vertrag';
 
-const router = express.Router();
+const router = vertragsRouter();
 type AuthedRequest = express.Request & { apiUser: { user_id: number } };
 
 /** Nur PDF: Ausgelesen wird nur Text, ein Foto könnte der Server nicht lesen. */
@@ -74,11 +76,11 @@ function pruefeWerte(roh: { number?: unknown; pin?: unknown; amount?: unknown; c
   return { ok: true, number, pin: pinRoh || null, amount, currency };
 }
 
-router.get('/vouchers', requireToken, async (req: AuthedRequest, res) => {
+router.get('/vouchers', requireToken, async (req: AuthedRequest, res: Antwort<'GET /api/v1/vouchers'>) => {
   res.json({ success: true, vouchers: (await gutscheineDesKontos(req.apiUser.user_id)).map(fuerAussen) });
 });
 
-router.post('/vouchers', requireToken, async (req: AuthedRequest, res) => {
+router.post('/vouchers', requireToken, async (req: AuthedRequest, res: Antwort<'POST /api/v1/vouchers'>) => {
   const w = pruefeWerte(req.body || {});
   if (!w.ok) return sendeFehler(req, res, 400, w.code);
   // Keine Zeile heisst „war schon da" — als Erfolg sähe der Nutzer nichts passieren.
@@ -118,7 +120,7 @@ async function stapelAnlegen(
 
 // EIN Weg für beide Apps: Mitgeschickte Felder gewinnen gegen das Ausgelesene.
 // Ausführlich: docs/begruendungen/routes/api_v1/vouchers.ts.md#post-vouchers-pdf
-router.post('/vouchers/pdf', requireToken, upload.single('file'), async (req: AuthedRequest, res) => {
+router.post('/vouchers/pdf', requireToken, upload.single('file'), async (req: AuthedRequest, res: Antwort<'POST /api/v1/vouchers/pdf'>) => {
   if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
 
   // Erst ab ZWEI Seiten ein Stapel; bei einem bleibt der 422-Vertrag der Formulare.
@@ -214,7 +216,7 @@ router.get('/vouchers/export/pdf', requireToken, async (req: AuthedRequest, res)
   res.end(daten);
 });
 
-router.put('/vouchers/:id', requireToken, async (req: AuthedRequest, res) => {
+router.put('/vouchers/:id', requireToken, async (req: AuthedRequest, res: Antwort<'PUT /api/v1/vouchers/:id'>) => {
     const id = Number(req.params.id);
     if (!Number.isInteger(id)) return sendeFehler(req, res, 400, 'id_ungueltig');
     const alt = await gutschein(req.apiUser.user_id, id);
@@ -237,7 +239,7 @@ router.put('/vouchers/:id', requireToken, async (req: AuthedRequest, res) => {
     res.json({ success: true, voucher: fuerAussen(zeile) });
 });
 
-router.delete('/vouchers/:id', requireToken, async (req: AuthedRequest, res) => {
+router.delete('/vouchers/:id', requireToken, async (req: AuthedRequest, res: Antwort<'DELETE /api/v1/vouchers/:id'>) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) return sendeFehler(req, res, 400, 'id_ungueltig');
   const pdfPfad = await gutscheinLoeschen(req.apiUser.user_id, id);
@@ -274,7 +276,7 @@ router.get('/vouchers/:id/pdf', requireToken, async (req: AuthedRequest, res) =>
 // Keine Sammelroute: höchstens ein Abruf je 30 Sekunden über ALLE Benutzer,
 // eine Sammelroute müsste diese Wartezeit verstecken.
 // Ausführlich: docs/begruendungen/routes/api_v1/vouchers.ts.md#post-vouchers-id-guthaben
-router.post('/vouchers/:id/guthaben', requireToken, async (req: AuthedRequest, res) => {
+router.post('/vouchers/:id/guthaben', requireToken, async (req: AuthedRequest, res: Antwort<'POST /api/v1/vouchers/:id/guthaben'>) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) return sendeFehler(req, res, 400, 'id_ungueltig');
   const alt = await gutschein(req.apiUser.user_id, id);
