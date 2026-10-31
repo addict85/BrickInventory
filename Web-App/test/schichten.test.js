@@ -365,7 +365,6 @@ const SQL_NOCH_IM_DIENST = new Set([
     'jobs/csvImportWorker.ts',
     'jobs/imageQueue.ts',
     'jobs/partsCatalogEnrich.ts',
-    'src/figuren/abfragen.ts',
     'src/finanzen/marketPrice.ts',
     'src/finanzen/portfolio/kurve.ts',
     'src/finanzen/portfolioHistory.ts',
