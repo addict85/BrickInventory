@@ -1,5 +1,8 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.model.ManuellesTeilAnsicht
+import ch.brickinventoryapp.ui.model.TeilAnsicht
+import ch.brickinventoryapp.ui.model.TeileKennzahlenAnsicht
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import ch.brickinventoryapp.ui.theme.Formen
@@ -34,9 +37,6 @@ import ch.brickinventoryapp.R
 import ch.brickinventoryapp.ui.viewmodel.TeileViewModel
 import ch.brickinventoryapp.ui.*
 import androidx.compose.ui.res.stringResource
-import ch.brickinventoryapp.data.model.Part
-import ch.brickinventoryapp.data.model.PartsStats
-import ch.brickinventoryapp.data.model.PartValuationItem
 import ch.brickinventoryapp.ui.model.FarbeAnsicht
 import ch.brickinventoryapp.util.rememberTileImageWithFallback
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -331,7 +331,7 @@ fun PartsScreen(
 
 /** Die Kennzahlen der Teile — erste Zeile des Rasters, sie rollt mit. */
 @Composable
-private fun TeileKennzahlen(stats: PartsStats) {
+private fun TeileKennzahlen(stats: TeileKennzahlenAnsicht) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
         GalleryStatChip("${stats.uniqueParts}", stringResource(R.string.parts_stat_types))
         GalleryStatChip("${stats.uniqueColors}", stringResource(R.string.parts_stat_colors))
@@ -340,7 +340,7 @@ private fun TeileKennzahlen(stats: PartsStats) {
 }
 
 @Composable
-fun ManualPartTile(part: PartValuationItem, serverUrl: String, imageLoader: ImageLoader,
+fun ManualPartTile(part: ManuellesTeilAnsicht, serverUrl: String, imageLoader: ImageLoader,
                    waehrung: String, onEdit: () -> Unit) {
     val farbe = remember(part.colorHex) {
         part.colorHex?.let {
@@ -374,7 +374,7 @@ fun ManualPartTile(part: PartValuationItem, serverUrl: String, imageLoader: Imag
 }
 
 @Composable
-fun PartCard(part: Part, serverUrl: String, imageLoader: ImageLoader,
+fun PartCard(part: TeilAnsicht, serverUrl: String, imageLoader: ImageLoader,
              onClick: (() -> Unit)? = null) {
     val ctx = LocalContext.current
     val qty = part.totalQuantity.takeIf { it > 0 } ?: 1
@@ -474,7 +474,7 @@ fun SectionHeader(text: String) {
  * das tut er nur in dieser Ansicht (TeileQuelle in ui/Teile.kt).
  */
 @Composable
-fun PartTableRow(part: Part, serverUrl: String, imageLoader: ImageLoader,
+fun PartTableRow(part: TeilAnsicht, serverUrl: String, imageLoader: ImageLoader,
                  onClick: (() -> Unit)? = null) {
     val farbe = remember(part.colorHex) {
         part.colorHex?.let {

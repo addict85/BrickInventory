@@ -1,5 +1,9 @@
 package ch.brickinventoryapp
 
+import org.junit.Assert.assertEquals
+import ch.brickinventoryapp.ui.model.MitgliedAnsicht
+import ch.brickinventoryapp.ui.erfassungsWerte
+import ch.brickinventoryapp.ui.ErfassungsWerte
 import org.junit.Test
 
 /**
@@ -74,17 +78,10 @@ class AddPathOwnerTest {
     }
 
     /**
-     * ── Nachtrag 140: die Regel steht jetzt an einer Stelle ─────────────────
-     *
-     * „Ohne Haushalt geht KEIN Eigentümer mit" stand in beiden manuellen
-     * Dialogen wörtlich als `if (householdMembers.size > 1) owner else null` —
-     * zusammen mit drei weiteren Umrechnungen, die dort ebenfalls doppelt
-     * standen. Sie sind nach `erfassungsWerte()` gewandert
-     * (ManualItemComposables.kt).
-     *
-     * Geprüft wird deshalb beides: dass die Dialoge die Umrechnung benutzen,
-     * und dass sie die Regel enthält. Nur das erste wäre zu wenig — eine
-     * Funktion dieses Namens könnte alles Mögliche tun.
+     * Die Umrechnung der Eingaben steht an einer Stelle (erfassungsWerte, Nachtrag
+     * 140): Die Dialoge benutzen sie (Struktur), und sie wird hier ausgeführt.
+     * Gegenprobe (31.10.2026, gemessen): in erfassungsWerte `haushalt.size > 1` →
+     * `haushalt.size > 0` → rot „ohne Haushalt geht kein Eigentuemer mit“.
      */
     @Test
     fun `ohne Haushalt geht kein Eigentuemer mit`() {
@@ -93,18 +90,13 @@ class AddPathOwnerTest {
                 "$datei rechnet die Eingaben wieder selbst um statt über erfassungsWerte()"
             }
         }
-        val gemeinsam = code(read("ui/screens/ManualItemComposables.kt"))
-        assert(gemeinsam.contains("if (haushalt.size > 1) besitzer else null")) {
-            "erfassungsWerte() schickt den Eigentümer auch ohne Haushalt mit — dann " +
-                "überschreibt die App eine Server-Vorgabe mit einer ID, die niemand gewählt hat"
-        }
-        // Und die beiden anderen Entscheidungen derselben Umrechnung, jede eine
-        // eigene Aussage über eine leere Eingabe. Die Notiz stand hier als
-        // dritte; sie ist mit Migration 0022 ausgebaut.
-        assert(gemeinsam.contains("anzahl.toIntOrNull() ?: 1")) { "leere Anzahl heisst 1, nicht 0" }
-        assert(gemeinsam.contains("preis.replace(',', '.')")) {
-            "das Komma der deutschen Tastatur muss zum Punkt werden, sonst kommt beim " +
-                "Server keine Zahl an"
-        }
+        val allein = listOf(MitgliedAnsicht(id = 1, username = "ich", isSelf = true))
+        val haushalt = allein + MitgliedAnsicht(id = 7, username = "lea")
+        assertEquals("ohne Haushalt überschriebe die App eine Server-Vorgabe mit einer ID, die niemand gewählt hat",
+            ErfassungsWerte(anzahl = 1, preis = 2.5, zustand = "U", besitzer = null),
+            erfassungsWerte(anzahl = "", preis = "2,50", zustand = "U", besitzer = 7, haushalt = allein))
+        assertEquals(ErfassungsWerte(anzahl = 3, preis = null, zustand = "N", besitzer = 7),
+            erfassungsWerte(anzahl = "3", preis = "", zustand = "N", besitzer = 7, haushalt = haushalt))
     }
+
 }

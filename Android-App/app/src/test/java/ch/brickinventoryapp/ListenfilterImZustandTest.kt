@@ -1,5 +1,15 @@
 package ch.brickinventoryapp
 
+import org.junit.Assert.assertTrue
+import kotlinx.coroutines.test.setMain
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.Dispatchers
+import ch.brickinventoryapp.ui.viewmodel.TeileViewModel
+import ch.brickinventoryapp.data.repository.TeileRepository
+import ch.brickinventoryapp.data.repository.FigurenRepository
+import ch.brickinventoryapp.data.ScopeFilter
+import androidx.lifecycle.SavedStateHandle
 import org.junit.Test
 
 /**
@@ -80,6 +90,42 @@ class ListenfilterImZustandTest {
         }
     }
 
+    /**
+     * Ausgeführt: Erste Seite, Nachladen und der Abschnitt der manuellen Teile
+     * tragen Blickfeld und Suchtext (TeileViewModel gegen einen Testserver).
+     * Gegenprobe (31.10.2026, gemessen): in TeileViewModel.manuelleTeile
+     * `teileSicht` → `null` → rot „… ohne accounts=own“.
+     */
+    @Test
+    fun `erste Seite, Nachladen und manuelle Teile tragen Blickfeld und Suchtext`() {
+        Dispatchers.setMain(UnconfinedTestDispatcher())
+        val pfade = PfadServer(
+            "/api/v1/parts" to """{"success":true,"total":900,"parts":[{"part_number":"3001"}]}""",
+            "/api/v1/parts/manual" to """{"success":true,"parts":[{"part_number":"3002"}]}""")
+        val t = TestDienste(pfade.server)
+        try {
+            val vm = t.merke(TeileViewModel(t.dienste, TeileRepository(t.api, t.cache),
+                FigurenRepository(t.api, t.cache), SavedStateHandle(mapOf("teile_suche" to "Stein"))))
+            vm.setScope(ScopeFilter.View.PARTS, "own")
+            // Seite 1 zieht die manuellen Teile nach; erst danach blättern, sonst
+            // bricht das Nachladen diesen Abruf ab.
+            TestApi.warteBis("manuelle Teile") { vm.partsState.value.manualParts != null }
+            vm.loadParts(page = 2)
+            TestApi.warteBis("zweite Seite") { pfade.anfragenAn("page=2").isNotEmpty() }
+            val abrufe = pfade.anfragenAn("GET /api/v1/parts?") + pfade.anfragenAn("GET /api/v1/parts/manual")
+            assertTrue("Keine zwei Seiten: $abrufe", abrufe.count { it.startsWith("GET /api/v1/parts?") } >= 2)
+            for (a in abrufe) for (teil in listOf("accounts=own", "search=Stein")) assertTrue("$a ohne $teil", teil in a)
+        } finally {
+            t.aufraeumen()
+            Dispatchers.resetMain()
+            pfade.server.shutdown()
+        }
+    }
+
+    /**
+     * Als Struktur: Das Vorwärmen (ui/Vorwaermen.kt) holt die Teileliste
+     * ebenfalls und ist im JVM-Bau nicht übersetzbar — sein Aufruf nennt beides.
+     */
     @Test
     fun `jeder Abruf der Teileliste fuehrt Blickfeld und Suchtext mit`() {
         val aufruf = "repo.teile.getParts("

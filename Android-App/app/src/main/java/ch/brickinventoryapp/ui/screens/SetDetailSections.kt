@@ -6,6 +6,10 @@ package ch.brickinventoryapp.ui.screens
  * Inhalte darin sind Composables.
  */
 
+import ch.brickinventoryapp.ui.model.KaufAnsicht
+import ch.brickinventoryapp.ui.model.PreisverlaufAnsicht
+import ch.brickinventoryapp.ui.model.SetAnsicht
+import ch.brickinventoryapp.ui.model.SetPreisAnsicht
 import ch.brickinventoryapp.ui.theme.Formen
 import android.content.Intent
 import android.net.Uri
@@ -39,10 +43,6 @@ import coil3.request.ImageRequest
 import coil3.request.crossfade
 import ch.brickinventoryapp.util.NumericInput
 import ch.brickinventoryapp.R
-import ch.brickinventoryapp.data.model.Acquisition
-import ch.brickinventoryapp.data.model.PriceHistoryResponse
-import ch.brickinventoryapp.data.model.SetItem
-import ch.brickinventoryapp.data.model.SetPriceResponse
 import ch.brickinventoryapp.ui.viewmodel.SetDetailViewModel
 import ch.brickinventoryapp.ui.*
 import ch.brickinventoryapp.ui.SetDetailUiState
@@ -68,7 +68,7 @@ import ch.brickinventoryapp.ui.theme.Abstaende
  * Anleitung, weil sie den Weg trägt, eine erste hinzuzufügen.
  */
 fun LazyListScope.setDetailInstructionsSection(
-    set: SetItem, detailState: SetDetailUiState, serverUrl: String,
+    set: SetAnsicht, detailState: SetDetailUiState, serverUrl: String,
     onOpenPdf: (url: String, title: String) -> Unit,
     onAnleitungWaehlen: () -> Unit,
     onAnleitungLoeschen: (Int) -> Unit,
@@ -224,7 +224,7 @@ fun LazyListScope.setDetailInstructionsSection(
  * `fmtPrice`, `fmtDate` und `serverUrl` kommen als Parameter aus
  * SetDetailScreen(), damit die Währung an einer Stelle aufgelöst wird.
  */
-fun LazyListScope.setDetailPriceSection(set: SetItem, detailState: SetDetailUiState, price: SetPriceResponse?, history: PriceHistoryResponse?, pnlPct: Double?, currency: String, isBrick: Boolean, fmtPrice: (Double?) -> String) {
+fun LazyListScope.setDetailPriceSection(set: SetAnsicht, detailState: SetDetailUiState, price: SetPreisAnsicht?, history: PreisverlaufAnsicht?, pnlPct: Double?, currency: String, isBrick: Boolean, fmtPrice: (Double?) -> String) {
     // ── Price section ──────────────────────────────────────────────────
     if (price != null && !price.noPrice || detailState.setPriceLoading) {
         item {
@@ -301,7 +301,7 @@ fun LazyListScope.setDetailPriceSection(set: SetItem, detailState: SetDetailUiSt
 }
 
 /** Stammdaten: Nummer, Menge (änderbar), Erfassungsdatum. */
-fun LazyListScope.setDetailDetailsSection(set: SetItem, setNumber: String, vm: SetDetailViewModel, acquisitions: List<Acquisition>, currency: String, fmtDate: (String?) -> String, onNavigateToAcqMgmt: (type: String, id: String, colorId: Int, title: String) -> Unit) {
+fun LazyListScope.setDetailDetailsSection(set: SetAnsicht, setNumber: String, vm: SetDetailViewModel, acquisitions: List<KaufAnsicht>, currency: String, fmtDate: (String?) -> String, onNavigateToAcqMgmt: (type: String, id: String, colorId: Int, title: String) -> Unit) {
     // ── Set details section ────────────────────────────────────────────
     item {
         SectionCard(title = stringResource(R.string.detail_section_details)) {
@@ -388,7 +388,7 @@ fun LazyListScope.setDetailDetailsSection(set: SetItem, setNumber: String, vm: S
 }
 
 /** Die prominenten Wert-Kacheln des Stein-Designs. */
-fun LazyListScope.setDetailValueTiles(set: SetItem, price: SetPriceResponse?, isBrick: Boolean, fmtPrice: (Double?) -> String) {
+fun LazyListScope.setDetailValueTiles(set: SetAnsicht, price: SetPreisAnsicht?, isBrick: Boolean, fmtPrice: (Double?) -> String) {
     // ── Stein-Design: prominente Wert-Kacheln (wie im Mockup) ──────────
     if (isBrick) {
         item {
@@ -420,7 +420,7 @@ fun LazyListScope.setDetailValueTiles(set: SetItem, price: SetPriceResponse?, is
 }
 
 /** Kennzahl-Chips: Jahr, Teile, Minifiguren, Thema. */
-fun LazyListScope.setDetailStatChips(set: SetItem) {
+fun LazyListScope.setDetailStatChips(set: SetAnsicht) {
     // ── Quick-stat chips ───────────────────────────────────────────────
     item {
         val labelYear     = stringResource(R.string.detail_year)
@@ -448,7 +448,7 @@ fun LazyListScope.setDetailStatChips(set: SetItem) {
 
 /** Das grosse Set-Bild samt Nachladeversuch und Zoom-Auslöser. */
 fun LazyListScope.setDetailHeroImage(
-    set: SetItem,
+    set: SetAnsicht,
     imageUrl: String?,
     imageLoader: ImageLoader,
     /**

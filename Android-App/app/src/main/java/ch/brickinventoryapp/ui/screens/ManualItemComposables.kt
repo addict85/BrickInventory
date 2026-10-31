@@ -1,5 +1,8 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.model.KaufAnsicht
+import ch.brickinventoryapp.ui.model.KontoAnsicht
+import ch.brickinventoryapp.ui.model.MitgliedAnsicht
 import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -32,7 +35,6 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ch.brickinventoryapp.R
-import ch.brickinventoryapp.data.model.Acquisition
 import ch.brickinventoryapp.util.fmtMoney
 import ch.brickinventoryapp.ui.theme.LocalIsBrickTheme
 import ch.brickinventoryapp.ui.theme.BrickSage
@@ -49,7 +51,7 @@ import ch.brickinventoryapp.ui.theme.Abstaende
 
 @Composable
 fun AcquisitionSummarySection(
-    acquisitions: List<Acquisition>,
+    acquisitions: List<KaufAnsicht>,
     currency: String,
     onEditPrices: () -> Unit
 ) {
@@ -193,36 +195,6 @@ fun ManuelleKachelFuss(preis: Double?, waehrung: String) {
 }
 
 /**
- * Die vier Eingaben, wie der Server sie braucht — eine Umrechnung für beide
- * Dialoge: Eine leere Anzahl heisst eins, das Komma der deutschen Tastatur wird
- * zum Punkt, und ohne Haushalt geht kein Besitzer mit, damit der Server beim
- * eigenen Konto bleibt.
- */
-data class ErfassungsWerte(
-    val anzahl: Int,
-    val preis: Double?,
-    val zustand: String,
-    val besitzer: Int?,
-)
-
-/**
- * @param haushalt Die Konten des Haushalts — bei hoechstens einem geht KEIN
- *                 Besitzer mit.
- */
-fun erfassungsWerte(
-    anzahl: String,
-    preis: String,
-    zustand: String,
-    besitzer: Int?,
-    haushalt: List<ch.brickinventoryapp.data.model.HouseholdMember>,
-): ErfassungsWerte = ErfassungsWerte(
-    anzahl = anzahl.toIntOrNull() ?: 1,
-    preis = preis.replace(',', '.').toDoubleOrNull(),
-    zustand = zustand,
-    besitzer = if (haushalt.size > 1) besitzer else null,
-)
-
-/**
  * Anzahl, Kaufpreis und Zustand — was jede manuelle Erfassung hat, ob Teil oder
  * Figur; eine Fassung, damit beide Dialoge gleich aussehen. Der Zustand bleibt
  * beim Aufrufer in `rememberSaveable`, damit er eine Drehung übersteht. Die Nummer
@@ -280,7 +252,7 @@ fun ManuelleKachel(
     menge: Int,
     zustaende: List<String>,
     zustand: String?,
-    besitzer: List<ch.brickinventoryapp.data.model.KontoName>,
+    besitzer: List<KontoAnsicht>,
     preis: Double?,
     waehrung: String,
     onEdit: () -> Unit,

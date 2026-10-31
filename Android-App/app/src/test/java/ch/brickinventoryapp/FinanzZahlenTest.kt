@@ -52,7 +52,7 @@ class FinanzZahlenTest {
               "wert_gesamt": 240.67, "pnl_pct": "-50.0", "pnl_prozent": 20.3}]},
           {"set_number": "75192-1", "quantity": 1, "total_avg": "999.99", "wert_gesamt": 812.5,
            "purchase_price": 700.0, "pnl_prozent": 16.1, "acquisitions": []}
-        ]}""")
+        ]}""").alsAnsicht()
 
     @Test
     fun `jede Erfassung zeigt ihren eigenen Wert und ihre G&V als Zahl`() {
@@ -70,12 +70,12 @@ class FinanzZahlenTest {
         val teile = ApiJson.decodeFromString(PartsValuationResponse.serializer(), """{
             "success": true, "total_value": "0.20", "kaufpreise_fremde_waehrung": 2,
             "parts": [{"id": 3, "part_number": "3001", "quantity": 4, "display_value": "999.99",
-                       "wert_gesamt": 1.2, "purchase_price": 0.25, "pnl_pct": "-50.0", "pnl_prozent": 20.0}]}""")
+                       "wert_gesamt": 1.2, "purchase_price": 0.25, "pnl_pct": "-50.0", "pnl_prozent": 20.0}]}""").alsAnsicht()
         val figuren = ApiJson.decodeFromString(FigsValuationResponse.serializer(), """{
             "success": true, "total_value": "0.00", "kaufpreise_fremde_waehrung": 1,
             "figs": [{"id": 5, "fig_number": "sw0001", "display_value": "999.99", "wert_gesamt": 30.0,
                       "acquisitions": [{"id": 9, "condition": "U", "quantity": 1, "purchase_price": 20.0,
-                                        "wert_gesamt": 30.0, "pnl_prozent": 50.0}]}]}""")
+                                        "wert_gesamt": 30.0, "pnl_prozent": 50.0}]}]}""").alsAnsicht()
         val t = teilZeilen(teile.parts).single().second
         assertEquals(1.2, t.wert!!, 0.0)
         assertEquals(20.0, t.pnlProzent!!, 0.0)
@@ -90,12 +90,12 @@ class FinanzZahlenTest {
 
     @Test
     fun `ohne grand_total addiert die App exakt`() {
-        val teile = PartsValuationResponse(success = true, totalValue = "0.20")
-        val ohne = finanzSummen(bewertung, teile, null, PnlResponse(success = true, totals = PnlTotals(purchase = "0.00", current = "0.00")))
+        val teile = PartsValuationResponse(success = true, totalValue = "0.20").alsAnsicht()
+        val ohne = finanzSummen(bewertung, teile, null, PnlResponse(success = true, totals = PnlTotals(purchase = "0.00", current = "0.00")).alsAnsicht())
         assertEquals(0, BigDecimal("0.30").compareTo(ohne.gesamt))
         assertEquals(0, BigDecimal("0.20").compareTo(ohne.teileUndFiguren))
         val mit = finanzSummen(bewertung, teile, null, ApiJson.decodeFromString(PnlResponse.serializer(),
-            """{"success": true, "totals": {"purchase": "4000.00", "current": "4894.77", "grand_total": "4894.77"}}"""))
+            """{"success": true, "totals": {"purchase": "4000.00", "current": "4894.77", "grand_total": "4894.77"}}""").alsAnsicht())
         assertEquals(0, BigDecimal("4894.77").compareTo(mit.gesamt))
     }
 
@@ -104,7 +104,7 @@ class FinanzZahlenTest {
         val pnl = ApiJson.decodeFromString(PnlResponse.serializer(), """{"success": true,
             "totals": {"purchase": "100.00", "current": "112.50", "pnl_pct": "-50.0", "pnl_prozent": 12.5, "kaufpreise_fremde_waehrung": 4},
             "sets": [{"set_number": "1-1", "pnl_abs": "9.00", "pnl_betrag": 9.0, "pnl_prozent": 3.4,
-                      "baseline_pnl_prozent": 3.4}]}""")
+                      "baseline_pnl_prozent": 3.4}]}""").alsAnsicht()
         assertEquals(4, fremdeKaufpreise(bewertung, null, null, pnl))
         assertEquals(12.5, pnl.totals.pnlProzent!!, 0.0)
         assertEquals(9.0, pnl.sets.single().pnlBetrag!!, 0.0)

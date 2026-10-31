@@ -3,7 +3,6 @@ package ch.brickinventoryapp.data
 import android.content.Context
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
-import ch.brickinventoryapp.data.model.HouseholdMember
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -61,28 +60,6 @@ object ScopeFilter {
      */
     fun asQuery(value: String?): String? =
         if (value.isNullOrBlank() || value == ALL) null else value
-
-    /**
-     * Die Einträge der Auswahl: Alle Konten, Eigene, dann jedes Unterkonto namentlich
-     * — jeder Nachfahre, eingerückt nach Stufe wie in der Webapp, und ein Eintrag
-     * meint immer genau ein Konto. Der Server versteht `accounts=subs` weiter, für
-     * ältere Fassungen der App.
-     *
-     * @return Paare aus (Wert, Beschriftung); leer, wenn es nichts zu wählen gibt —
-     *         dann bleibt die Auswahl verborgen.
-     */
-    fun options(
-        members: List<HouseholdMember>,
-        labelAll: String, labelOwn: String,
-    ): List<Pair<String, String>> {
-        if (members.size < 2) return emptyList()
-        val subs = members.filter { !it.isSelf }
-        return buildList {
-            add(ALL to labelAll)
-            add("own" to labelOwn)
-            subs.forEach { add(it.id.toString() to it.username) }
-        }
-    }
 
     // ═══ Lagerortfilter — je Ansicht, wie der Kontofilter ═══
     //

@@ -1,5 +1,9 @@
 package ch.brickinventoryapp
 
+import kotlinx.coroutines.runBlocking
+import ch.brickinventoryapp.data.model.MerkpostenRequest
+import ch.brickinventoryapp.data.lokal.Offlineablage
+import ch.brickinventoryapp.data.lokal.Bearbeitung
 import androidx.lifecycle.SavedStateHandle
 import ch.brickinventoryapp.data.repository.KatalogRepository
 import ch.brickinventoryapp.data.repository.FinanzenRepository
@@ -33,6 +37,9 @@ import org.junit.Test
  *      Übernahme meldet Merkliste und Sets“
  *   D  im Preisalarm das Nachladen der Alarme des offenen Postens entfernt →
  *      rot „ein Preisalarm im Merkposten wird entprellt gespeichert …“
+ *   E  (31.10.2026) im init-Sammler die Bedingung `ungefiltert(f)` entfernt →
+ *      rot „mit Suchtext bleibt die Serverantwort stehen“
+ *   F  (31.10.2026) den init-Sammler entfernt → rot „offline gelöscht“ (Zeitüberschreitung)
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class MerklisteViewModelTest {
@@ -124,5 +131,27 @@ class MerklisteViewModelTest {
         }
         assertEquals("Nur die letzte Eingabe wird gespeichert", 1, pfade.anfragenAn("PUT /api/v1/sets/10294-1/alert").size)
         assertEquals(500.0, vm.merkpostenDetailState.value.preisalarme.single().schwelle, 0.0)
+    }
+
+    @Test
+    fun `ohne Filter folgt die Liste der Ablage, mit Suchtext nicht`() {
+        val ablage = Offlineablage.fluechtig()
+        val vm = t.merke(MerklisteViewModel(t.dienste, SetsRepository(t.api, t.cache, ablage),
+            KatalogRepository(t.api, t.cache), FinanzenRepository(t.api, t.cache), SavedStateHandle()))
+        vm.ladeMerkliste()
+        TestApi.warteBis("Liste geladen") { vm.merklisteState.value.merkposten.isNotEmpty() }
+        val abrufe = pfade.anfragenAn("GET /api/v1/wanted").size
+
+        runBlocking { ablage.wendeAn(Bearbeitung.MerkpostenLoeschen("10294-1", "N", 1)) }
+        TestApi.warteBis("offline gelöscht") { vm.merklisteState.value.merkposten.isEmpty() }
+        assertEquals("ohne neuen Abruf", abrufe, pfade.anfragenAn("GET /api/v1/wanted").size)
+
+        vm.setzeMerklisteSuche("10294")
+        uhr.advanceTimeBy(400)
+        TestApi.warteBis("Suche geladen") { vm.merklisteState.value.merkposten.isNotEmpty() }
+        runBlocking { ablage.wendeAn(Bearbeitung.MerkpostenAnlegen(MerkpostenRequest("99999-1", "N", 1))) }
+        uhr.advanceTimeBy(100)
+        assertEquals("mit Suchtext bleibt die Serverantwort stehen", listOf("10294-1"),
+            vm.merklisteState.value.merkposten.map { it.setNumber })
     }
 }

@@ -1,8 +1,8 @@
 package ch.brickinventoryapp
 
-import ch.brickinventoryapp.data.model.PriceChartData
-import ch.brickinventoryapp.data.model.PriceChartPoint
-import ch.brickinventoryapp.data.model.PriceChartSeries
+import ch.brickinventoryapp.ui.model.PreisDiagrammAnsicht
+import ch.brickinventoryapp.ui.model.PreisPunktAnsicht
+import ch.brickinventoryapp.ui.model.PreisReiheAnsicht
 import ch.brickinventoryapp.ui.PriceChartMath
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -33,16 +33,16 @@ import org.junit.Test
 class PriceChartMathTest {
 
     private fun series(name: String, first: Int, vararg pts: Pair<String, Double>) =
-        PriceChartSeries(
+        PreisReiheAnsicht(
             name = name,
-            values = pts.map { PriceChartPoint(it.first, it.second) },
+            values = pts.map { PreisPunktAnsicht(it.first, it.second) },
             firstRealIndex = first
         )
 
     @Test
     fun `aufgefuellte Nullen vor firstRealIndex werden nicht gezeichnet`() {
         // Gebraucht setzt erst am dritten Messpunkt ein.
-        val chart = PriceChartData(
+        val chart = PreisDiagrammAnsicht(
             values = listOf(
                 series("N", 0, "2026-01-01" to 100.0, "2026-02-01" to 110.0, "2026-03-01" to 120.0),
                 series("U", 2, "2026-01-01" to 0.0, "2026-02-01" to 0.0, "2026-03-01" to 80.0),
@@ -60,7 +60,7 @@ class PriceChartMathTest {
     fun `eine 0 nach firstRealIndex zaehlt ebenfalls als kein Wert`() {
         // Der Server füllt nur vorne auf — eine 0 mittendrin wäre ein Preis von
         // null Franken, den es nicht gibt. Sicherheitshalber trotzdem raus.
-        val chart = PriceChartData(
+        val chart = PreisDiagrammAnsicht(
             values = listOf(series("N", 0, "2026-01-01" to 100.0, "2026-02-01" to 0.0)),
             x = listOf("2026-01-01", "2026-02-01")
         )
@@ -69,7 +69,7 @@ class PriceChartMathTest {
 
     @Test
     fun `eine Reihe ganz ohne echte Werte faellt weg`() {
-        val chart = PriceChartData(
+        val chart = PreisDiagrammAnsicht(
             values = listOf(
                 series("N", 0, "2026-01-01" to 100.0),
                 series("U", 1, "2026-01-01" to 0.0),
@@ -86,7 +86,7 @@ class PriceChartMathTest {
         // Zwei Reihen unterschiedlicher Länge: Der gemeinsame letzte Tag muss
         // bei beiden an derselben Stelle landen, der spätere Beginn der
         // zweiten Reihe weiter rechts.
-        val chart = PriceChartData(
+        val chart = PreisDiagrammAnsicht(
             values = listOf(
                 series("N", 0, "2026-01-01" to 100.0, "2026-07-01" to 110.0),
                 series("U", 1, "2026-01-01" to 0.0, "2026-07-01" to 80.0),
@@ -111,7 +111,7 @@ class PriceChartMathTest {
     fun `beide Reihen teilen sich eine Skala`() {
         // Der interessante Vergleich ist der ABSTAND zwischen Neu und
         // Gebraucht; getrennte Skalen machen genau den unsichtbar.
-        val chart = PriceChartData(
+        val chart = PreisDiagrammAnsicht(
             values = listOf(
                 series("N", 0, "2026-01-01" to 200.0),
                 series("U", 0, "2026-01-01" to 100.0),
@@ -128,7 +128,7 @@ class PriceChartMathTest {
     @Test
     fun `alle Werte gleich ergibt trotzdem eine brauchbare Spanne`() {
         // Sonst wäre die Spanne 0 und die Division im Zeichencode undefiniert.
-        val chart = PriceChartData(
+        val chart = PreisDiagrammAnsicht(
             values = listOf(series("N", 0, "2026-01-01" to 50.0, "2026-02-01" to 50.0)),
             x = listOf("2026-01-01", "2026-02-01")
         )
@@ -139,9 +139,9 @@ class PriceChartMathTest {
 
     @Test
     fun `leere Daten ergeben nichts zu zeichnen`() {
-        assertTrue(PriceChartMath.buildLines(PriceChartData()).isEmpty())
+        assertTrue(PriceChartMath.buildLines(PreisDiagrammAnsicht()).isEmpty())
         assertNull(PriceChartMath.bounds(emptyList()))
-        assertNull(PriceChartMath.axisRange(PriceChartData()))
+        assertNull(PriceChartMath.axisRange(PreisDiagrammAnsicht()))
     }
 
     @Test
@@ -150,14 +150,14 @@ class PriceChartMathTest {
         assertEquals("31.1.2026", PriceChartMath.formatDay("2026-01-31T10:00:00Z"))
         assertEquals("kaputt", PriceChartMath.formatDay("kaputt"))
         val range = PriceChartMath.axisRange(
-            PriceChartData(x = listOf("2026-01-01", "2026-02-01", "2026-03-01")))
+            PreisDiagrammAnsicht(x = listOf("2026-01-01", "2026-02-01", "2026-03-01")))
         assertEquals("2026-01-01" to "2026-03-01", range)
     }
 
     @Test
     fun `die Beschreibung nennt je Linie Zeitraum, Anfang, Ende, Tief und Hoch`() {
         // Ungeordnet geliefert: Anfang und Ende richten sich nach dem Tag.
-        val chart = PriceChartData(
+        val chart = PreisDiagrammAnsicht(
             values = listOf(
                 series("N", 0, "2026-03-01" to 120.0, "2026-01-01" to 100.0, "2026-02-01" to 90.0),
                 series("U", 1, "2026-01-01" to 0.0, "2026-02-01" to 70.0, "2026-03-01" to 80.0),

@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.data.lokal.room
 
+import androidx.room.ColumnInfo
 import androidx.room.Dao
 import androidx.room.Database
 import androidx.room.Entity
@@ -9,7 +10,10 @@ import androidx.room.PrimaryKey
 import androidx.room.Query
 import androidx.room.RoomDatabase
 import androidx.room.Transaction
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import kotlinx.coroutines.flow.Flow
+import java.util.UUID
 
 /**
  * Eine Zeile einer lokalen Liste. [inhalt] ist das Server-Modell als JSON:
@@ -29,7 +33,10 @@ data class BestandZeile(
 @Entity(tableName = "bestand_stand", primaryKeys = ["bereich", "art"])
 data class BestandStand(val bereich: String, val art: String, val stand: Long)
 
-/** Ein Posten des Ausgangs; [id] steigt und ist die Reihenfolge des Sendens. */
+/**
+ * Ein Posten des Ausgangs; [id] steigt und ist die Reihenfolge des Sendens.
+ * [schluessel] ist der Idempotency-Key des Postens (seit Fassung 2).
+ */
 @Entity(tableName = "ausgang", indices = [Index("bereich")])
 data class AusgangZeile(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -37,6 +44,7 @@ data class AusgangZeile(
     val bearbeitung: String,
     val erstellt: Long,
     val versuche: Int = 0,
+    @ColumnInfo(defaultValue = "''") val schluessel: String,
 )
 
 @Dao
@@ -108,15 +116,33 @@ interface AusgangDao {
 }
 
 /**
- * Version 1. Wer das Schema ändert, schreibt eine Migration: Der Ausgang trägt
- * Änderungen, die es nur hier gibt — ein destruktiver Neuanfang verlöre sie.
+ * Wer das Schema ändert, erhöht die Fassung, schreibt eine Migration und checkt
+ * das Schema aus app/schemas ein: Der Ausgang trägt Änderungen, die es nur hier
+ * gibt — ein destruktiver Neuanfang verlöre sie (BestandMigrationTest).
  */
-@Database(entities = [BestandZeile::class, BestandStand::class, AusgangZeile::class], version = 1, exportSchema = false)
+@Database(entities = [BestandZeile::class, BestandStand::class, AusgangZeile::class], version = 2, exportSchema = true)
 abstract class BestandDatenbank : RoomDatabase() {
     abstract fun bestand(): BestandDao
     abstract fun ausgang(): AusgangDao
 
     companion object {
         const val NAME = "bestand.db"
+
+        /** Alle Migrationen, in der Reihenfolge der Fassungen. */
+        val MIGRATIONEN: Array<Migration> = arrayOf(MIGRATION_1_2)
+    }
+}
+
+/**
+ * 1 → 2: Jeder wartende Posten bekommt seinen Idempotency-Key. Einer, der vor
+ * dem Update schon einmal gesendet wurde, trug keinen; ab jetzt hat er einen
+ * festen, damit seine weiteren Versuche beim Server nur einmal wirken.
+ */
+val MIGRATION_1_2 = object : Migration(1, 2) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `ausgang` ADD COLUMN `schluessel` TEXT NOT NULL DEFAULT ''")
+        val ids = mutableListOf<Long>()
+        db.query("SELECT id FROM `ausgang`").use { c -> while (c.moveToNext()) ids += c.getLong(0) }
+        for (id in ids) db.execSQL("UPDATE `ausgang` SET `schluessel` = ? WHERE id = ?", arrayOf<Any>(UUID.randomUUID().toString(), id))
     }
 }

@@ -1,13 +1,14 @@
 package ch.brickinventoryapp.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
-import ch.brickinventoryapp.data.model.ApiLimits
-import ch.brickinventoryapp.data.model.BricksetQueueEntry
-import ch.brickinventoryapp.data.model.CacheStatsResponse
-import ch.brickinventoryapp.data.model.JobStatus
 import ch.brickinventoryapp.data.repository.BrickRepository
 import ch.brickinventoryapp.data.repository.Result
 import ch.brickinventoryapp.ui.VerwaltungUiState
+import ch.brickinventoryapp.ui.model.ApiGrenzenAnsicht
+import ch.brickinventoryapp.ui.model.BricksetEintragAnsicht
+import ch.brickinventoryapp.ui.model.CacheKennzahlenAnsicht
+import ch.brickinventoryapp.ui.model.JobZustandAnsicht
+import ch.brickinventoryapp.ui.model.ZeitplanAnsicht
 import ch.brickinventoryapp.ui.model.alsAnsicht
 import ch.brickinventoryapp.R
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -22,17 +23,17 @@ import javax.inject.Inject
  * `rememberSaveable`.
  */
 data class MonitoringUiState(
-    val jobs: Map<String, JobStatus> = emptyMap(),
+    val jobs: Map<String, JobZustandAnsicht> = emptyMap(),
     /**
      * Zeitplan je Job, mit derselben Antwort wie `jobs` (`schedules`): damit die App
      * zeigt, wann ein Job das nächste Mal läuft, und es ändern kann.
      */
-    val jobSchedules: Map<String, ch.brickinventoryapp.data.model.JobSchedule> = emptyMap(),
-    val queue: List<BricksetQueueEntry> = emptyList(),
+    val jobSchedules: Map<String, ZeitplanAnsicht> = emptyMap(),
+    val queue: List<BricksetEintragAnsicht> = emptyList(),
     val queueLoading: Boolean = false,
     val aktualisiert: Boolean = false,
-    val cacheStats: CacheStatsResponse? = null,
-    val apiLimits: ApiLimits? = null,
+    val cacheStats: CacheKennzahlenAnsicht? = null,
+    val apiLimits: ApiGrenzenAnsicht? = null,
     val cacheTtl: String = "24",
     val vorgabeZustand: String = "N",
     /** Das Design, das der Verwalter allen vorgibt — nicht das eigene des Kontos. */
@@ -128,7 +129,8 @@ class MonitoringViewModel @Inject constructor(
         val r = repo.verwaltung.getJobs()
         _state.update {
             if (r is Result.Success)
-                it.copy(jobs = r.data.jobs, jobSchedules = r.data.schedules, aktualisiert = false)
+                it.copy(jobs = r.data.jobs.mapValues { j -> j.value.alsAnsicht() },
+                    jobSchedules = r.data.schedules.mapValues { z -> z.value.alsAnsicht() }, aktualisiert = false)
             else it.copy(aktualisiert = false)
         }
     }
@@ -137,7 +139,7 @@ class MonitoringViewModel @Inject constructor(
         _state.update { it.copy(queueLoading = true) }
         val r = repo.verwaltung.getBricksetQueue()
         _state.update {
-            if (r is Result.Success) it.copy(queue = r.data.entries, queueLoading = false)
+            if (r is Result.Success) it.copy(queue = r.data.entries.map { e -> e.alsAnsicht() }, queueLoading = false)
             else it.copy(queueLoading = false)
         }
     }
@@ -179,10 +181,10 @@ class MonitoringViewModel @Inject constructor(
      */
     suspend fun ladeCacheUndGrenzen() {
         (repo.verwaltung.getCacheStats() as? Result.Success)?.let { r ->
-            _state.update { it.copy(cacheStats = r.data) }
+            _state.update { it.copy(cacheStats = r.data.alsAnsicht()) }
         }
         (repo.verwaltung.getApiLimits() as? Result.Success)?.let { r ->
-            _state.update { it.copy(apiLimits = r.data.limits) }
+            _state.update { it.copy(apiLimits = r.data.limits.alsAnsicht()) }
         }
         (repo.verwaltung.getCacheTtl() as? Result.Success)?.let { r ->
             _state.update { it.copy(cacheTtl = r.data.ttl) }
@@ -247,7 +249,7 @@ class MonitoringViewModel @Inject constructor(
         val ok = repo.verwaltung.setApiLimits(rebrickable, bricklink, brickset) is Result.Success
         if (ok) {
             (repo.verwaltung.getApiLimits() as? Result.Success)?.let { r ->
-                _state.update { it.copy(apiLimits = r.data.limits) }
+                _state.update { it.copy(apiLimits = r.data.limits.alsAnsicht()) }
             }
         }
         return ok

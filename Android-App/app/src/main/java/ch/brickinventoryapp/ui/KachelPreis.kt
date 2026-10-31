@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.ui
 
+import ch.brickinventoryapp.ui.model.SetAnsicht
 import ch.brickinventoryapp.data.model.PnlSetZeile
-import ch.brickinventoryapp.data.model.SetItem
 import java.math.BigDecimal
 import java.math.RoundingMode
 
@@ -44,5 +44,5 @@ private fun kachelPreisVorServer(z: List<PnlSetZeile>): KachelPreis {
 }
 
 /** Der Betrag auf der Kachel: der des Servers, sonst der mengengewichtete Kaufpreis des Sets. */
-fun kachelBetrag(set: SetItem, preis: KachelPreis?): Double? =
+fun kachelBetrag(set: SetAnsicht, preis: KachelPreis?): Double? =
     preis?.betrag?.takeIf { it > 0 } ?: set.avgPurchasePrice ?: set.maxPurchasePrice

@@ -79,8 +79,8 @@ class SetsRepository @Inject constructor(
                        storage: String? = null): Result<AddSetResponse> {
         val anfrage = AddSetRequest(setNumber, quantity, purchasePrice, condition, ownerUserId, storage)
         return schreibe(Bearbeitung.SetErfassen(anfrage),
-            { AddSetResponse(success = true, action = "gepuffert", setNumber = setNumber) }) {
-            safeCall { api.addSet(anfrage) }
+            { AddSetResponse(success = true, action = "gepuffert", setNumber = setNumber) }) { schluessel ->
+            safeCall { api.addSet(anfrage, schluessel) }
         }
     }
 
@@ -89,8 +89,8 @@ class SetsRepository @Inject constructor(
 
     /** Menge um [schritt] ändern; der Server rechnet unter Bestandssperre. */
     suspend fun aendereMengeUm(setNumber: String, schritt: Int): Result<GenericResponse> =
-        schreibe(Bearbeitung.SetMenge(setNumber, schritt), { GenericResponse(success = true) }) {
-            safeCall { api.updateSetQuantity(setNumber, UpdateQuantityRequest(quantityDelta = schritt)) }
+        schreibe(Bearbeitung.SetMenge(setNumber, schritt), { GenericResponse(success = true) }) { schluessel ->
+            safeCall { api.updateSetQuantity(setNumber, UpdateQuantityRequest(quantityDelta = schritt), schluessel) }
         }
 
     // ── Merkliste ─────────────────────────────────────────────────────────
@@ -109,13 +109,16 @@ class SetsRepository @Inject constructor(
             }
         else safeCall { api.getMerkliste(search, condition, sort, accounts) }
 
+    /** Die lokale Merkliste (ungefiltert), wie beobachteSets. */
+    fun beobachteMerkliste(): Flow<Lokal<Merkposten>> = ablage.beobachte(Faecher.MERKLISTE)
+
     suspend fun legeMerkpostenAn(setNumber: String, condition: String,
                              ownerUserId: Int? = null): Result<MerkpostenAntwort> {
         val anfrage = MerkpostenRequest(setNumber, condition, ownerUserId)
         return schreibe(Bearbeitung.MerkpostenAnlegen(anfrage), {
             MerkpostenAntwort(success = true, warNeu = true,
                 merkposten = Merkposten(setNumber = setNumber, condition = condition, userId = ownerUserId ?: 0))
-        }) { safeCall { api.legeMerkpostenAn(anfrage) } }
+        }) { schluessel -> safeCall { api.legeMerkpostenAn(anfrage, schluessel) } }
     }
 
     suspend fun verschiebeMerkposten(setNumber: String, condition: String,
@@ -124,8 +127,8 @@ class SetsRepository @Inject constructor(
 
     suspend fun loescheMerkposten(setNumber: String, condition: String,
                               ownerUserId: Int? = null): Result<GenericResponse> =
-        schreibe(Bearbeitung.MerkpostenLoeschen(setNumber, condition, ownerUserId), { GenericResponse(success = true) }) {
-            safeCall { api.loescheMerkposten(setNumber, condition, ownerUserId) }
+        schreibe(Bearbeitung.MerkpostenLoeschen(setNumber, condition, ownerUserId), { GenericResponse(success = true) }) { schluessel ->
+            safeCall { api.loescheMerkposten(setNumber, condition, ownerUserId, schluessel) }
         }
 
     suspend fun getMerkpostenPreise(setNumber: String): Result<MerkpostenPreiseResponse> =

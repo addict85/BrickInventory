@@ -174,11 +174,19 @@ data class AddSetResponse(
 )
 
 @Serializable
+@OptIn(ExperimentalSerializationApi::class)
 data class UpdateManualItemRequest(
     val quantity: Int,
     @SerialName("unit_price") val unitPrice: Double? = null,
     @SerialName("bl_fig_number") val blFigNumber: String? = null,
-    val condition: String? = null // "N" = New/Neu, "U" = Used/Gebraucht
+    val condition: String? = null, // "N" = New/Neu, "U" = Used/Gebraucht
+    /**
+     * Der Schritt zur neuen Menge, wenn die bisherige bekannt war. Steht neben
+     * [quantity]: Ein Server, der das Feld kennt, zählt damit wie bei den Sets;
+     * einer, der es nicht kennt, übergeht es und nimmt die Menge.
+     */
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    @SerialName("quantity_delta") val quantityDelta: Int? = null,
 )
 
 @Serializable

@@ -50,9 +50,10 @@ class RoomAusgang @Inject constructor(private val db: BestandDatenbank) : Ausgan
 
     override fun anzahl(bereich: String) = dao.anzahl(bereich)
 
-    override suspend fun einreihen(bereich: String, bearbeitung: Bearbeitung, jetzt: Long) =
+    override suspend fun einreihen(bereich: String, bearbeitung: Bearbeitung, jetzt: Long, schluessel: String) =
         dao.fuegeEin(AusgangZeile(bereich = bereich,
-            bearbeitung = ApiJson.encodeToString(Bearbeitung.serializer(), bearbeitung), erstellt = jetzt))
+            bearbeitung = ApiJson.encodeToString(Bearbeitung.serializer(), bearbeitung), erstellt = jetzt,
+            schluessel = schluessel))
 
     override suspend fun alle(bereich: String) = dao.alle(bereich).mapNotNull { lies(it) }
 
@@ -71,6 +72,6 @@ class RoomAusgang @Inject constructor(private val db: BestandDatenbank) : Ausgan
 
     private suspend fun lies(z: AusgangZeile): Ausgangsposten? =
         runCatching { ApiJson.decodeFromString(Bearbeitung.serializer(), z.bearbeitung) }.getOrNull()
-            ?.let { Ausgangsposten(z.id, it, z.erstellt, z.versuche) }
+            ?.let { Ausgangsposten(z.id, it, z.erstellt, z.versuche, z.schluessel) }
             ?: run { dao.entferne(z.id); null }
 }

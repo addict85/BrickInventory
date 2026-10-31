@@ -1,5 +1,9 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.erfassungsWerte
+import ch.brickinventoryapp.ui.model.ManuellesTeilAnsicht
+import ch.brickinventoryapp.ui.model.MitgliedAnsicht
+import ch.brickinventoryapp.ui.model.TeileKennzahlenAnsicht
 import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -27,10 +31,6 @@ import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.graphics.vector.ImageVector
 import ch.brickinventoryapp.R
 import androidx.compose.ui.res.stringResource
-import ch.brickinventoryapp.data.model.Part
-import ch.brickinventoryapp.data.model.PartsStats
-import ch.brickinventoryapp.data.model.PartValuationItem
-import ch.brickinventoryapp.data.model.Acquisition
 import ch.brickinventoryapp.ui.model.FarbeAnsicht
 import ch.brickinventoryapp.ui.model.OHNE_FARBE
 import ch.brickinventoryapp.ui.ohneKeineFarbe
@@ -51,7 +51,7 @@ fun AddPartDialog(
     onAdd: (String, Int, String?, String?, Int, Double?, String?, Int?, String?) -> Unit,
     defaultCondition: String = "N",
     /** Konten des Haushalts — ohne Unterkonten bleibt die Auswahl verborgen. */
-    householdMembers: List<ch.brickinventoryapp.data.model.HouseholdMember> = emptyList(),
+    householdMembers: List<MitgliedAnsicht> = emptyList(),
     /** Vorrat an Lagerorten — leer heisst: es gibt noch keine, dann wird getippt. */
     lagerorte: List<String> = emptyList(),
     /** Der vorausgewählte Lagerort (Stern in den Einstellungen). Leer heisst: keine Vorgabe. */

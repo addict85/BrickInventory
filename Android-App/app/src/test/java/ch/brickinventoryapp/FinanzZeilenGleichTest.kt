@@ -1,8 +1,8 @@
 package ch.brickinventoryapp
 
-import ch.brickinventoryapp.data.model.FigValuationItem
-import ch.brickinventoryapp.data.model.PartValuationItem
-import ch.brickinventoryapp.data.model.ValuationAcquisition
+import ch.brickinventoryapp.ui.model.BewertungsKaufAnsicht
+import ch.brickinventoryapp.ui.model.ManuelleFigurAnsicht
+import ch.brickinventoryapp.ui.model.ManuellesTeilAnsicht
 import ch.brickinventoryapp.ui.figurZeilen
 import ch.brickinventoryapp.ui.teilZeilen
 import org.junit.Assert.assertEquals
@@ -58,10 +58,10 @@ class FinanzZeilenGleichTest {
     fun `beide Aufrufstellen reichen den Kaufpreis durch`() {
         // Die Erfassung geht vor dem Eintrag: Bei mehreren Kaeufen hat jede Zeile
         // ihren eigenen Kaufpreis, genau wie bei den Sets.
-        val kaeufe = listOf(ValuationAcquisition(id = 1, purchasePrice = 120.0),
-                            ValuationAcquisition(id = 2, purchasePrice = 80.0))
-        val teil = PartValuationItem(id = 1, partNumber = "3001", purchasePrice = 150.0, acquisitions = kaeufe)
-        val figur = FigValuationItem(id = 2, figNumber = "sw0001", purchasePrice = 150.0, acquisitions = kaeufe)
+        val kaeufe = listOf(BewertungsKaufAnsicht(id = 1, purchasePrice = 120.0),
+                            BewertungsKaufAnsicht(id = 2, purchasePrice = 80.0))
+        val teil = ManuellesTeilAnsicht(id = 1, partNumber = "3001", purchasePrice = 150.0, acquisitions = kaeufe)
+        val figur = ManuelleFigurAnsicht(id = 2, figNumber = "sw0001", purchasePrice = 150.0, acquisitions = kaeufe)
         assertEquals(listOf(120.0, 80.0), teilZeilen(listOf(teil)).map { it.second.kaufpreis })
         assertEquals(listOf(120.0, 80.0), figurZeilen(listOf(figur)).map { it.second.kaufpreis })
         assertEquals(listOf(150.0), teilZeilen(listOf(teil.copy(acquisitions = emptyList()))).map { it.second.kaufpreis })

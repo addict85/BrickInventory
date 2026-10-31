@@ -10,6 +10,7 @@ import ch.brickinventoryapp.data.lokal.Sendeergebnis
 import ch.brickinventoryapp.data.lokal.SpeicherAusgang
 import ch.brickinventoryapp.data.lokal.SpeicherBestand
 import ch.brickinventoryapp.data.lokal.einordnen
+import ch.brickinventoryapp.data.lokal.einordnenLoeschen
 import ch.brickinventoryapp.data.repository.Fehlerart
 import ch.brickinventoryapp.data.repository.Result
 import kotlinx.coroutines.CompletableDeferred
@@ -39,6 +40,10 @@ import java.util.Collections
  *      Sitzung verwirft nichts“
  *   E  in Abgleich.verwirf die Meldung weggelassen → rot „eine Ablehnung verwirft
  *      und meldet“
+ *   (F und G gemessen am 31.10.2026)
+ *   F  in Abgleich.lauf `p.schluessel` → `java.util.UUID.randomUUID().toString()`
+ *      → rot „Die Wiederholung trägt denselben Schlüssel“
+ *   G  in einordnenLoeschen die 404-Ausnahme entfernt → rot „beim Löschen …“
  */
 class AusgangAbgleichTest {
 
@@ -46,9 +51,11 @@ class AusgangAbgleichTest {
 
     private class Sender(val antwort: (Bearbeitung) -> Sendeergebnis = { Sendeergebnis.Angenommen }) : Bearbeitungssender {
         val gesendet: MutableList<Bearbeitung> = Collections.synchronizedList(mutableListOf())
+        val schluessel: MutableList<String> = Collections.synchronizedList(mutableListOf())
         var bremse: CompletableDeferred<Unit>? = null
-        override suspend fun sende(b: Bearbeitung): Sendeergebnis {
+        override suspend fun sende(b: Bearbeitung, schluessel: String): Sendeergebnis {
             gesendet += b
+            this.schluessel += schluessel
             bremse?.await()
             return antwort(b)
         }
@@ -81,6 +88,8 @@ class AusgangAbgleichTest {
         netz = true
         assertEquals(Abgleichsergebnis.FERTIG, Abgleich(a, s).sende())
         assertEquals("Wiederholt wird derselbe Posten, dann die übrigen", listOf(1, 1, 2, 3), nummern(s))
+        assertEquals("Die Wiederholung trägt denselben Schlüssel, die übrigen je einen eigenen",
+            listOf(true, false, false), s.schluessel.zipWithNext { x, y -> x == y })
     }
 
     @Test
@@ -127,6 +136,15 @@ class AusgangAbgleichTest {
         assertEquals(Sendeergebnis.Abgelehnt("nein", 400), einordnen(Result.Error("nein", httpCode = 400)))
         assertEquals("2xx ohne Rumpf ist angekommen",
             Sendeergebnis.Angenommen, einordnen(Result.Error("", art = Fehlerart.LEERE_ANTWORT)))
+    }
+
+    @Test
+    fun `beim Löschen ist „gibt es nicht mehr“ angekommen, anderes nicht`() {
+        assertEquals(Sendeergebnis.Angenommen, einordnenLoeschen(Result.Error("weg", httpCode = 404)))
+        assertEquals(Sendeergebnis.Abgelehnt("nein", 403), einordnenLoeschen(Result.Error("nein", httpCode = 403)))
+        assertEquals(Sendeergebnis.Spaeter, einordnenLoeschen(Result.Error("", transient = true, art = Fehlerart.NETZ)))
+        assertEquals("ausserhalb des Löschens bleibt 404 eine Ablehnung",
+            Sendeergebnis.Abgelehnt("weg", 404), einordnen(Result.Error("weg", httpCode = 404)))
     }
 
     @Test

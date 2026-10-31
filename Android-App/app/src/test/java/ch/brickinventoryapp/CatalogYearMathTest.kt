@@ -1,6 +1,6 @@
 package ch.brickinventoryapp
 
-import ch.brickinventoryapp.data.model.JahrAnzahl
+import ch.brickinventoryapp.ui.model.JahrAnzahlAnsicht
 import ch.brickinventoryapp.ui.CatalogYearMath
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -36,9 +36,9 @@ class CatalogYearMathTest {
 
     /** Neueste zuerst — dieselbe Reihenfolge, in der die Liste steht. */
     private val VERTEILUNG = listOf(
-        JahrAnzahl(2024, 90),
-        JahrAnzahl(2010, 7),
-        JahrAnzahl(1965, 3),
+        JahrAnzahlAnsicht(2024, 90),
+        JahrAnzahlAnsicht(2010, 7),
+        JahrAnzahlAnsicht(1965, 3),
     )
     private val TOTAL = 100
 

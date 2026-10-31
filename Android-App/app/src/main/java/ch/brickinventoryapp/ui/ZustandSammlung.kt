@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.ui
 
-import ch.brickinventoryapp.data.model.*
+import ch.brickinventoryapp.ui.model.*
 
 /**
  * Galerie: Liste, Filter, Blätterstand und Kennzahlen. Eigener Fluss, weil sich
@@ -8,7 +8,7 @@ import ch.brickinventoryapp.data.model.*
  * AppUiState zeichneten bei jedem Blättern alle anderen mit.
  */
 data class GalleryUiState(
-    val sets: List<SetItem> = emptyList(),
+    val sets: List<SetAnsicht> = emptyList(),
     /**
      * Galerie-Filter — ausgewertet wird er auf dem Server, wie in der Webapp.
      * Hier steht nur, was gerade eingestellt ist, damit die Oberfläche es
@@ -35,7 +35,7 @@ data class GalleryUiState(
     val galleryFehler: String? = null,
     /** Liste aus dem Plattenspeicher statt vom Server: Zeitpunkt der Ablage, sonst null. */
     val offlineStand: Long? = null,
-    val stats: DashboardStats? = null,
+    val stats: KennzahlenAnsicht? = null,
 )
 
 /**
@@ -44,14 +44,14 @@ data class GalleryUiState(
  * liest.
  */
 data class PartsUiState(
-    val parts: List<Part> = emptyList(),
+    val parts: List<TeilAnsicht> = emptyList(),
     /**
      * Die manuell erfassten Teile aus /api/v1/parts/manual, derselben Quelle wie die
      * Webapp — nicht aus der Bewertung, die dafür samt Marktpreisen geladen werden
      * müsste. null heisst „noch nicht geladen“, leer „keine vorhanden“: Die
      * Wiederherstellung der Rollposition wartet auf die Liste, auch wenn sie leer ist.
      */
-    val manualParts: List<ch.brickinventoryapp.data.model.PartValuationItem>? = null,
+    val manualParts: List<ManuellesTeilAnsicht>? = null,
     val partsTotal: Int = 0,
     val partsPage: Int = 1,
     /**
@@ -75,8 +75,8 @@ data class PartsUiState(
      * Die beiden Filterlisten des Reiters — Farbe und Kategorie, mit Anzahl
      * (/parts/colors und /parts/categories, wie in der Webapp).
      */
-    val partsFilterColors: List<ch.brickinventoryapp.data.model.PartsFilterColor> = emptyList(),
-    val partsCategories: List<ch.brickinventoryapp.data.model.PartsCategory> = emptyList(),
+    val partsFilterColors: List<FilterFarbeAnsicht> = emptyList(),
+    val partsCategories: List<KategorieAnsicht> = emptyList(),
     /** Gewaehlte Farbe; "" = alle. Der Wert reist als `color=` mit. */
     val partsColorFilter: String = "",
     /**
@@ -89,12 +89,11 @@ data class PartsUiState(
     val partsFehler: String? = null,
     /** Teileliste aus dem Plattenspeicher: Zeitpunkt der Ablage, sonst null. */
     val teileOfflineStand: Long? = null,
-    val minifigs: List<Minifig> = emptyList(),
+    val minifigs: List<FigurAnsicht> = emptyList(),
     /** Die manuell erfassten Figuren — siehe manualParts, null wie dort. */
-    val manualFigs: List<ch.brickinventoryapp.data.model.FigValuationItem>? = null,
+    val manualFigs: List<ManuelleFigurAnsicht>? = null,
     /** Kennzahlen der Kacheln — vom Server, nicht aus der (gefilterten) Liste. */
-    val minifigStats: ch.brickinventoryapp.data.model.MinifigStats =
-        ch.brickinventoryapp.data.model.MinifigStats(),
+    val minifigStats: FigurenKennzahlenAnsicht = FigurenKennzahlenAnsicht(),
     val minifigsLoading: Boolean = false,
     val minifigsFehler: String? = null,
     /** Figurenliste aus dem Plattenspeicher: Zeitpunkt der Ablage, sonst null. */
@@ -110,8 +109,8 @@ data class PartsUiState(
      * Im Zustand, damit die Ansicht beim Zurücknavigieren dieselbe ist.
      */
     val minifigsView: String = "grid",
-    val partsStats: PartsStats? = null,
-    val partsColors: List<ch.brickinventoryapp.ui.model.FarbeAnsicht> = emptyList(),
+    val partsStats: TeileKennzahlenAnsicht? = null,
+    val partsColors: List<FarbeAnsicht> = emptyList(),
 )
 
 /**
@@ -119,32 +118,31 @@ data class PartsUiState(
  * neu, was AppUiState liest, obwohl nur SetDetailScreen sie braucht.
  */
 data class SetDetailUiState(
-    val setDetail: SetItem? = null,
+    val setDetail: SetAnsicht? = null,
     val setDetailLoading: Boolean = false,
     /** Ohne Detail und ohne Vorschau aus der Galerie bliebe sonst der Kringel stehen. */
     val setDetailFehler: String? = null,
-    val setPrice: SetPriceResponse? = null,
+    val setPrice: SetPreisAnsicht? = null,
     val setPriceLoading: Boolean = false,
     // Die ganze Antwort statt einzelner Felder: Sie trägt seit der
     // Server-Umstellung beide Verlaufsreihen, die fertigen Diagrammdaten, die
     // aktuellen Preise und die Bewertung je Zustand. Einzeln herausgezogen
     // müsste jedes neue Feld hier UND in loadSetPriceHistory nachgeführt
     // werden — die Antwort ist bereits das Modell.
-    val priceHistory: PriceHistoryResponse? = null,
+    val priceHistory: PreisverlaufAnsicht? = null,
     val priceHistoryLoading: Boolean = false,
     /**
      * Preisalarme dieses Sets, höchstens zwei (neu und gebraucht). Getrennt vom Set
      * geladen, weil sie zum Konto gehören: Zwei Personen mit demselben Set haben
      * verschiedene Alarme.
      */
-    val preisalarme: List<ch.brickinventoryapp.ui.model.PreisalarmAnsicht> = emptyList(),
-    val acquisitions: List<ch.brickinventoryapp.data.model.Acquisition> = emptyList(),
+    val preisalarme: List<PreisalarmAnsicht> = emptyList(),
+    val acquisitions: List<KaufAnsicht> = emptyList(),
     /**
      * Summenzeile der Erfassungen — vom Server gerechnet, nicht hier.
      * Die Ansicht zeigt sie nur an; die Regel steht in utils/acquisitions.ts.
      */
-    val acquisitionTotals: ch.brickinventoryapp.data.model.AcquisitionTotals =
-        ch.brickinventoryapp.data.model.AcquisitionTotals(),
+    val acquisitionTotals: KaufSummenAnsicht = KaufSummenAnsicht(),
     val acquisitionsLoading: Boolean = false,
 )
 
@@ -154,22 +152,21 @@ data class SetDetailUiState(
  * häufig vorkommen) nicht die gesamte App rekomponieren.
  */
 data class ManualItemDetailUiState(
-    val acquisitions: List<ch.brickinventoryapp.data.model.Acquisition> = emptyList(),
+    val acquisitions: List<KaufAnsicht> = emptyList(),
     /** Summenzeile vom Server — siehe SetDetailUiState.acquisitionTotals. */
-    val acquisitionTotals: ch.brickinventoryapp.data.model.AcquisitionTotals =
-        ch.brickinventoryapp.data.model.AcquisitionTotals(),
+    val acquisitionTotals: KaufSummenAnsicht = KaufSummenAnsicht(),
     val isLoading: Boolean = false,
     // Identifiziert das aktuell geöffnete Element
     val itemType: String = "",       // "part" | "fig"
     val itemId: String = "",         // part_number oder fig_number
-    val colorId: Int = ch.brickinventoryapp.data.model.KEINE_FARBE,
+    val colorId: Int = OHNE_FARBE,
     // `newQuantity` stand hier — die Gesamtmenge nach dem Loeschen einer
     // Erfassung. Gelesen wurde sie nie, und sie wird auch nicht gebraucht: Die
     // angezeigte Menge folgt der SUMME der Erfassungen
     // (ManualItemDetailScreen), und die laedt deleteManualAcquisition()
     // unmittelbar danach neu.
     /** Marktpreis je Zustand und Verlauf — dieselbe Antwortform wie beim Set. */
-    val priceHistory: PriceHistoryResponse? = null,
+    val priceHistory: PreisverlaufAnsicht? = null,
     val priceHistoryLoading: Boolean = false,
 )
 
@@ -183,10 +180,10 @@ data class SetItemUiState(
     /** "part" oder "fig"; null heisst: der Dialog ist zu. */
     val art: String? = null,
     val nummer: String = "",
-    val colorId: Int = ch.brickinventoryapp.data.model.KEINE_FARBE,
+    val colorId: Int = OHNE_FARBE,
     val laedt: Boolean = false,
-    val kopf: BestandteilKopf? = null,
-    val sets: List<VerwendendesSet> = emptyList(),
+    val kopf: BestandteilKopfAnsicht? = null,
+    val sets: List<VerwendendesSetAnsicht> = emptyList(),
     val fehler: String? = null,
 ) {
     val offen: Boolean get() = art != null

@@ -5,6 +5,8 @@ import ch.brickinventoryapp.data.model.SetsResponse
 import ch.brickinventoryapp.data.model.StatsResponse
 import ch.brickinventoryapp.data.repository.Result
 import ch.brickinventoryapp.data.lokal.Lokal
+import ch.brickinventoryapp.ui.model.SetAnsicht
+import ch.brickinventoryapp.ui.model.alsAnsicht
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -53,7 +55,7 @@ internal class Galerie(
             lokal.collect { l ->
                 val g = _state.value
                 if (l.stand != null && !g.galleryLoading && ungefiltert(g))
-                    _state.update { it.copy(sets = l.liste) }
+                    _state.update { it.copy(sets = l.liste.map { s -> s.alsAnsicht() }) }
             }
         }
     }
@@ -74,7 +76,7 @@ internal class Galerie(
             if (gen != galleryGeneration) return@launch
             when (r) {
                 is Result.Success -> _state.update {
-                    it.copy(sets = r.data.sets, galleryTotal = r.data.total, galleryPage = 1,
+                    it.copy(sets = r.data.sets.map { s -> s.alsAnsicht() }, galleryTotal = r.data.total, galleryPage = 1,
                         // Der Server schickt die Themen nur mit Seite 1; eine
                         // leere Liste räumte die Auswahl sonst leer.
                         galleryThemes = if (r.data.themes.isNotEmpty()) r.data.themes else it.galleryThemes,
@@ -112,7 +114,7 @@ internal class Galerie(
                 is Result.Success -> _state.update {
                     // Auch der Server kann bei gleichen Sortierwerten Überschneidungen liefern.
                     val vorhanden = it.sets.mapTo(HashSet()) { s -> s.setNumber }
-                    val neue = r.data.sets.filterNot { s -> s.setNumber in vorhanden }
+                    val neue = r.data.sets.filterNot { s -> s.setNumber in vorhanden }.map { s -> s.alsAnsicht() }
                     it.copy(galleryLoadingMore = false, sets = it.sets + neue,
                         galleryTotal = r.data.total, galleryPage = next)
                 }
@@ -145,7 +147,7 @@ internal class Galerie(
     fun ladeKennzahlen() {
         scope.launch {
             val r = holeKennzahlen()
-            if (r is Result.Success) _state.update { it.copy(stats = r.data.stats) }
+            if (r is Result.Success) _state.update { it.copy(stats = r.data.stats?.alsAnsicht()) }
         }
     }
 
@@ -154,7 +156,7 @@ internal class Galerie(
         _state.update { st -> st.copy(sets = st.sets.filterNot { it.setNumber == setNumber }) }
 
     /** Ein Set in der geladenen Liste ändern, ohne die Liste neu zu holen. */
-    fun aendereSet(setNumber: String, aenderung: (SetItem) -> SetItem) =
+    fun aendereSet(setNumber: String, aenderung: (SetAnsicht) -> SetAnsicht) =
         _state.update { st -> st.copy(sets = st.sets.map { if (it.setNumber == setNumber) aenderung(it) else it }) }
 
     /** Gemerkte Filter übernehmen, ohne zu laden — das tut der Bildschirm beim Betreten. */

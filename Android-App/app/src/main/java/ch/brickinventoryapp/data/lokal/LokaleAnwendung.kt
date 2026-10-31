@@ -4,6 +4,7 @@ import ch.brickinventoryapp.data.model.FigValuationItem
 import ch.brickinventoryapp.data.model.Merkposten
 import ch.brickinventoryapp.data.model.PartValuationItem
 import ch.brickinventoryapp.data.model.SetItem
+import ch.brickinventoryapp.data.model.UpdateManualItemRequest
 
 /**
  * Wie eine Bearbeitung die lokale Liste ändert, bevor der Server sie gesehen
@@ -52,8 +53,11 @@ internal object LokaleAnwendung {
         }
         is Bearbeitung.TeilAendern -> liste.map {
             if (it.partNumber == b.partNumber && it.colorId == b.colorId && (b.besitzer == null || it.userId == b.besitzer))
-                it.copy(quantity = b.anfrage.quantity, unitPrice = b.anfrage.unitPrice ?: it.unitPrice)
+                it.copy(quantity = neueMenge(it.quantity, b.anfrage), unitPrice = b.anfrage.unitPrice ?: it.unitPrice)
             else it
+        }
+        is Bearbeitung.TeilLoeschen -> liste.filterNot {
+            it.partNumber == b.partNumber && it.colorId == b.colorId && (b.besitzer == null || it.userId == b.besitzer)
         }
         else -> liste
     }
@@ -68,11 +72,21 @@ internal object LokaleAnwendung {
         }
         is Bearbeitung.FigurAendern -> liste.map {
             if (it.figNumber == b.figNumber && (b.besitzer == null || it.userId == b.besitzer))
-                it.copy(quantity = b.anfrage.quantity, unitPrice = b.anfrage.unitPrice ?: it.unitPrice)
+                it.copy(quantity = neueMenge(it.quantity, b.anfrage), unitPrice = b.anfrage.unitPrice ?: it.unitPrice)
             else it
+        }
+        is Bearbeitung.FigurLoeschen -> liste.filterNot {
+            it.figNumber == b.figNumber && (b.besitzer == null || it.userId == b.besitzer)
         }
         else -> liste
     }
+
+    /**
+     * Mit Schritt zählt die Änderung auf das, was die Liste jetzt zeigt — auch
+     * wenn eine neuere Serverantwort darunterliegt. Ohne Schritt gilt die Menge.
+     */
+    private fun neueMenge(bisher: Int, a: UpdateManualItemRequest) =
+        a.quantityDelta?.let { bisher + it } ?: a.quantity
 
     fun merkSchluessel(m: Merkposten) = "${m.setNumber}|${m.condition}|${m.userId}"
 }

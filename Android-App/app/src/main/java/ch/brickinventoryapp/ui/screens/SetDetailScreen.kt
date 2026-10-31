@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.model.SetAnsicht
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import ch.brickinventoryapp.util.fmtDatum
@@ -35,7 +36,7 @@ fun SetDetailScreen(
     setNumber: String,
     vm: SetDetailViewModel,
     /** Das Set aus der geladenen Galerie — sofort sichtbar, bis das Detail da ist. */
-    vorschau: ch.brickinventoryapp.data.model.SetItem? = null,
+    vorschau: SetAnsicht? = null,
     serverUrl: String,
     // Die AsyncImage-Aufrufe brauchen diesen Loader: Coils Standard-Loader hängt den
     // Bearer-Token nicht an (den setzt nur der Client aus di/NetzModule.kt), und der

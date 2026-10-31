@@ -150,7 +150,8 @@ interface TeileApi : TeileAbfrageApi {
 
     @POST("api/v1/parts")
     suspend fun addPart(
-        @Body request: AddPartRequest
+        @Body request: AddPartRequest,
+        @Header("Idempotency-Key") schluessel: String? = null,
     ): Response<AddPartResponse>
 
     @PUT("api/v1/parts/{partNumber}/{colorId}")
@@ -159,7 +160,8 @@ interface TeileApi : TeileAbfrageApi {
         @Path("colorId") colorId: Int,
         @Body request: UpdateManualItemRequest,
         // Wessen Karte gemeint war — siehe deletePart.
-        @Query("owner") owner: Int? = null
+        @Query("owner") owner: Int? = null,
+        @Header("Idempotency-Key") schluessel: String? = null,
     ): Response<GenericResponse>
 
     @DELETE("api/v1/parts/{partNumber}/{colorId}")
@@ -168,7 +170,8 @@ interface TeileApi : TeileAbfrageApi {
         @Path("colorId") colorId: Int,
         // Wessen Karte gemeint war. null = eigenes Konto (Verhalten wie
         // bisher); ob ein fremdes erlaubt ist, entscheidet der Server.
-        @Query("owner") owner: Int? = null
+        @Query("owner") owner: Int? = null,
+        @Header("Idempotency-Key") schluessel: String? = null,
     ): Response<GenericResponse>
 
     /**

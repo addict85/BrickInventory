@@ -57,4 +57,34 @@ class UiModellAbbildungTest {
         assertEquals(Triple("1. Okt", 12.5, 0.25), Triple(p.xLabel, p.value, p.yFrac))
         assertEquals(KEINE_FARBE, OHNE_FARBE)
     }
+
+    /**
+     * Jede Abbildung `alsAnsicht()` in ui/model, gegen ein Server-Modell, in dem
+     * jedes Feld einen eigenen Wert trägt: Jedes Feld der Ansicht mit gleichem
+     * Namen kommt unverändert an, verschachtelte Ansichten und Listen ebenso.
+     * Getter ohne Gegenstück stehen in [OHNE_GEGENSTUECK] und sind oben einzeln geprüft.
+     */
+    @Test
+    fun `jede Abbildung trägt jedes gleichnamige Feld unverändert`() {
+        val abbildungen = Beispielfueller.abbildungen().filter { it.parameterTypes[0].simpleName !in EIGENE_REGELN }
+        assertTrue("Nur ${abbildungen.size} Abbildungen gefunden — Suche veraltet?", abbildungen.size >= 50)
+        val ohne = sortedSetOf<String>()
+        var verglichen = 0
+        for (m in abbildungen) {
+            val dto = Beispielfueller.fuelle(m.parameterTypes[0])
+            verglichen += Beispielfueller.vergleiche(dto, m.invoke(null, dto), m.parameterTypes[0].simpleName, ohne)
+        }
+        assertTrue("nur $verglichen Felder verglichen", verglichen >= 300)
+        assertEquals("Getter ohne Gegenstück im Server-Modell", OHNE_GEGENSTUECK, ohne)
+    }
+
+    private companion object {
+        /** Abbildungen mit eigener Regel (Status als Aufzählung), geprüft in HintergrundarbeitenTest. */
+        val EIGENE_REGELN = setOf("Auftrag", "AuftraegeResponse")
+        /** Bewusst umbenannt oder abgeleitet; geprüft in den Einzeltests oben. */
+        val OHNE_GEGENSTUECK = sortedSetOf(
+            "Preisalarm.getUnter", "StartupStatus.getAnteil", "StartupStatus.getBereit", "StartupStatus.getFortschritt",
+            "StartupStatus.getGesamt", "StartupStatus.getSchritt", "StartupStatus.getUnterschritt",
+        )
+    }
 }

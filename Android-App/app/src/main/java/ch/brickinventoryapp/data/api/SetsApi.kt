@@ -94,13 +94,15 @@ interface SetsApi : TeileAbfrageApi, FigurenAbfrageApi {
 
     @POST("api/v1/sets")
     suspend fun addSet(
-        @Body request: AddSetRequest
+        @Body request: AddSetRequest,
+        @Header("Idempotency-Key") schluessel: String? = null,
     ): Response<AddSetResponse>
 
     @PUT("api/v1/sets/{setNumber}")
     suspend fun updateSetQuantity(
         @Path("setNumber") setNumber: String,
-        @Body request: UpdateQuantityRequest
+        @Body request: UpdateQuantityRequest,
+        @Header("Idempotency-Key") schluessel: String? = null,
     ): Response<GenericResponse>
 
     @DELETE("api/v1/sets/{setNumber}")
@@ -179,6 +181,7 @@ interface SetsApi : TeileAbfrageApi, FigurenAbfrageApi {
     @POST("api/v1/wanted")
     suspend fun legeMerkpostenAn(
         @Body request: MerkpostenRequest,
+        @Header("Idempotency-Key") schluessel: String? = null,
     ): Response<MerkpostenAntwort>
 
     /**
@@ -197,6 +200,7 @@ interface SetsApi : TeileAbfrageApi, FigurenAbfrageApi {
         @Path("setNumber") setNumber: String,
         @Path("condition") condition: String,
         @Query("owner_user_id") ownerUserId: Int? = null,
+        @Header("Idempotency-Key") schluessel: String? = null,
     ): Response<GenericResponse>
 
     /**

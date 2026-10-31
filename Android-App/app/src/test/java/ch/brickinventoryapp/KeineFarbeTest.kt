@@ -4,37 +4,26 @@ import androidx.lifecycle.SavedStateHandle
 import ch.brickinventoryapp.ui.model.alsAnsicht
 import ch.brickinventoryapp.data.api.ApiJson
 import ch.brickinventoryapp.data.model.BrickColor
-import ch.brickinventoryapp.ui.model.alsAnsicht
 import ch.brickinventoryapp.data.model.KEINE_FARBE
 import ch.brickinventoryapp.data.model.Part
-import ch.brickinventoryapp.ui.model.alsAnsicht
 import ch.brickinventoryapp.data.model.PartValuationItem
 import ch.brickinventoryapp.data.repository.TeileRepository
-import ch.brickinventoryapp.ui.model.alsAnsicht
 import ch.brickinventoryapp.data.repository.FigurenRepository
 import ch.brickinventoryapp.ui.ManualItemDetailUiState
-import ch.brickinventoryapp.ui.model.alsAnsicht
 import ch.brickinventoryapp.ui.Screen
 import ch.brickinventoryapp.ui.farbName
-import ch.brickinventoryapp.ui.model.alsAnsicht
 import ch.brickinventoryapp.ui.ohneKeineFarbe
 import ch.brickinventoryapp.ui.viewmodel.TeileViewModel
-import ch.brickinventoryapp.ui.model.alsAnsicht
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
-import ch.brickinventoryapp.ui.model.alsAnsicht
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
-import ch.brickinventoryapp.ui.model.alsAnsicht
 import org.junit.After
 import org.junit.Assert.assertEquals
-import ch.brickinventoryapp.ui.model.alsAnsicht
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
-import ch.brickinventoryapp.ui.model.alsAnsicht
 import org.junit.Before
 import org.junit.Test
-import ch.brickinventoryapp.ui.model.alsAnsicht
 
 /**
  * „Keine Farbe“ ist 9999 wie auf dem Server (utils/validate.ts, KEINE_FARBE);

@@ -52,10 +52,21 @@ sealed class Bearbeitung {
         override val ziel get() = anfrage.partNumber
     }
 
-    /** Teile und Figuren kennt der Server nur mit absoluter Menge; der Letzte gewinnt. */
+    /**
+     * Die Anfrage trägt die neue Menge und, wenn die bisherige bekannt war, den
+     * Schritt dorthin: Ein Server mit quantity_delta zählt zwei Geräte zusammen,
+     * einer ohne nimmt die Menge — dann gewinnt wie früher der Letzte.
+     */
     @Serializable @SerialName("teil_aendern")
     data class TeilAendern(val partNumber: String, val colorId: Int, val anfrage: UpdateManualItemRequest,
                            val besitzer: Int?) : Bearbeitung() {
+        override val art get() = Bestandsart.MANUELLE_TEILE
+        override val ziel get() = partNumber
+    }
+
+    /** Löschen wartet wie jede Änderung; was der Server schon nicht mehr kennt, gilt als gelöscht. */
+    @Serializable @SerialName("teil_loeschen")
+    data class TeilLoeschen(val partNumber: String, val colorId: Int, val besitzer: Int?) : Bearbeitung() {
         override val art get() = Bestandsart.MANUELLE_TEILE
         override val ziel get() = partNumber
     }
@@ -69,6 +80,12 @@ sealed class Bearbeitung {
     @Serializable @SerialName("figur_aendern")
     data class FigurAendern(val figNumber: String, val anfrage: UpdateManualItemRequest,
                             val besitzer: Int?) : Bearbeitung() {
+        override val art get() = Bestandsart.MANUELLE_FIGUREN
+        override val ziel get() = figNumber
+    }
+
+    @Serializable @SerialName("figur_loeschen")
+    data class FigurLoeschen(val figNumber: String, val besitzer: Int?) : Bearbeitung() {
         override val art get() = Bestandsart.MANUELLE_FIGUREN
         override val ziel get() = figNumber
     }

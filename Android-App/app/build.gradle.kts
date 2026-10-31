@@ -48,6 +48,9 @@ val generatedVersionCode: Int =
 ksp {
     arg("dagger.fastInit", "enabled")
     arg("dagger.hilt.android.internal.disableAndroidSuperclassValidation", "true")
+    // Room legt hier das Schema je Fassung ab; eingecheckt, damit eine Migration
+    // gegen die frühere Fassung geprüft werden kann (BestandMigrationTest).
+    arg("room.schemaLocation", "$projectDir/schemas")
 }
 
 android {

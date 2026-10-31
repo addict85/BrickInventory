@@ -1,5 +1,8 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.model.kontoOptionen
+import ch.brickinventoryapp.ui.model.LagerortAnsicht
+import ch.brickinventoryapp.ui.model.MitgliedAnsicht
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -38,8 +41,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.R
 import ch.brickinventoryapp.data.ScopeFilter
-import ch.brickinventoryapp.data.model.HouseholdMember
-import ch.brickinventoryapp.data.model.Lagerort
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.Formen
 
@@ -138,8 +139,8 @@ fun FilterWahl(text: String, gewaehlt: Boolean, onClick: () -> Unit) {
 
 /** Kontofilter als Abschnitt — nur, wenn es im Haushalt etwas zu wählen gibt. */
 @Composable
-fun KontoFilterAbschnitt(members: List<HouseholdMember>, current: String, onSelect: (String) -> Unit) {
-    val optionen = ScopeFilter.options(
+fun KontoFilterAbschnitt(members: List<MitgliedAnsicht>, current: String, onSelect: (String) -> Unit) {
+    val optionen = kontoOptionen(
         members,
         labelAll = stringResource(R.string.household_scope_all),
         labelOwn = stringResource(R.string.household_scope_own),
@@ -153,7 +154,7 @@ fun KontoFilterAbschnitt(members: List<HouseholdMember>, current: String, onSele
 
 /** Lagerortfilter als Abschnitt — nur, wenn irgendwo ein Ort erfasst ist. */
 @Composable
-fun LagerortFilterAbschnitt(orte: List<Lagerort>, current: String, onSelect: (String) -> Unit) {
+fun LagerortFilterAbschnitt(orte: List<LagerortAnsicht>, current: String, onSelect: (String) -> Unit) {
     if (orte.isEmpty()) return
     val wert = if (orte.any { it.ort == current }) current else ""
     FilterAbschnitt(stringResource(R.string.detail_storage)) {

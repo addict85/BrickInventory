@@ -1,5 +1,9 @@
 package ch.brickinventoryapp
 
+import org.junit.Assert.assertTrue
+import org.junit.Assert.assertEquals
+import ch.brickinventoryapp.util.resolveThumbUrl
+import ch.brickinventoryapp.util.resolveFullUrl
 import org.junit.Test
 
 /**
@@ -17,6 +21,9 @@ import org.junit.Test
  * durch resolveThumbUrl()/resolveFullUrl() (oder eine gleichwertige, bereits
  * server-aufgelöste Quelle wie ui/Teileliste.kt) läuft — nie direkt aus
  * einem `.imageUrl`-Feld ohne Auflösung.
+ *
+ * Gegenprobe (31.10.2026, gemessen): in resolveImageUrl die volle Auflösung
+ * ohne Proxy (`imageUrl` direkt) → rot „resolveImageUrl-Helfer existiert …“.
  */
 class NoDirectCdnAccessTest {
 
@@ -47,7 +54,7 @@ class NoDirectCdnAccessTest {
         for (rel in screensWithOwnResolution) {
             val fn = code(read(rel))
             // rememberTileImageWithFallback() zählt ebenfalls (Nachtrag 38):
-            // Der Helfer in util/ImageUrls.kt ruft intern resolveThumbUrl()
+            // Der Helfer in util/BildRueckfall.kt ruft intern resolveThumbUrl()
             // bzw. resolveFullUrl() auf — ein Screen, der ihn benutzt, geht
             // also gerade NICHT am Proxy vorbei. GalleryScreen tut genau das
             // und wurde hier trotzdem beanstandet, weil nur der wörtliche
@@ -63,28 +70,14 @@ class NoDirectCdnAccessTest {
 
     @Test
     fun `resolveImageUrl-Helfer existiert und deckt beide Fälle ab`() {
-        val src = read("util/ImageUrls.kt")
-        assert(src.contains("fun resolveThumbUrl")) { "resolveThumbUrl fehlt" }
-        assert(src.contains("fun resolveFullUrl")) { "resolveFullUrl fehlt" }
-        // CDN-Adressen MÜSSEN über den Server-Proxy laufen, nicht direkt.
-        //
-        // Geprüft wird die KONSTANTE, nicht die Adresse: Sie ist mit der
-        // API-Zusammenlegung nach /api/v1/img-proxy gezogen (Nachtrag 162),
-        // und ein Test, der die Zeichenkette abschreibt, faellt bei jedem
-        // Umzug — oder, schlimmer, bleibt gruen, waehrend er auf eine Adresse
-        // prueft, die es nicht mehr gibt.
-        assert(src.contains("${'$'}IMG_PROXY?url=")) {
-            "Die Auflösung muss externe Adressen über den Server-Proxy schicken"
+        // Externe Adressen laufen über den Server-Proxy, lokal abgelegte Bilder
+        // kommen direkt vom eigenen Server und gehen vor.
+        val cdn = "https://cdn.rebrickable.com/media/sets/75192-1.jpg"
+        for (adresse in listOf(resolveThumbUrl("http://nas", null, cdn), resolveFullUrl("http://nas", null, cdn))) {
+            assertTrue(adresse, adresse!!.startsWith("http://nas/api/v1/img-proxy?url="))
         }
-        assert(src.contains("const val IMG_PROXY = \"/api/v1/img-proxy\"")) {
-            "Die Proxy-Adresse steht nicht mehr als Konstante da — dann steht sie " +
-                "wieder mehrfach im Baum"
-        }
-        // Lokale Server-Pfade dürfen NICHT proxy-gewickelt werden (unnötig,
-        // sie kommen bereits vom eigenen Server über express.static).
-        assert(src.contains("imageLocal != null ->")) {
-            "Lokal abgelegte Bilder müssen weiterhin bevorzugt werden"
-        }
+        assertEquals("http://nas/images/sets/75192-1.jpg", resolveThumbUrl("http://nas", "/images/sets/75192-1.jpg", cdn))
+        assertEquals("http://nas/images/sets/75192-1.jpg", resolveFullUrl("http://nas", "/images/sets/75192-1.jpg", cdn))
     }
 
     @Test

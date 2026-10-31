@@ -1,5 +1,9 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.model.KennzahlenAnsicht
+import ch.brickinventoryapp.ui.model.LagerortAnsicht
+import ch.brickinventoryapp.ui.model.MitgliedAnsicht
+import ch.brickinventoryapp.ui.model.SetAnsicht
 import ch.brickinventoryapp.ui.theme.Formen
 import ch.brickinventoryapp.ui.theme.AppKarte
 import androidx.compose.foundation.Image
@@ -38,7 +42,6 @@ import androidx.compose.ui.focus.focusRequester
 import ch.brickinventoryapp.R
 import ch.brickinventoryapp.ui.viewmodel.GalerieViewModel
 import ch.brickinventoryapp.ui.*
-import ch.brickinventoryapp.data.model.SetItem
 import ch.brickinventoryapp.ui.theme.LocalIsBrickTheme
 import ch.brickinventoryapp.ui.theme.LocalIsNoppeTheme
 import ch.brickinventoryapp.ui.theme.LocalIstGlanz
@@ -68,7 +71,6 @@ import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.components.LeerSymbol
 import ch.brickinventoryapp.ui.components.Bewegt
 import ch.brickinventoryapp.ui.components.SkelettRaster
-import ch.brickinventoryapp.data.model.DashboardStats
 
 @OptIn(ExperimentalMaterial3Api::class, FlowPreview::class)
 @Composable
@@ -302,7 +304,7 @@ fun GalleryScreen(
 
 /** Die Kennzahlen der Sammlung — erste Zeile des Rasters, sie rollt mit. */
 @Composable
-private fun GalerieKennzahlen(stats: DashboardStats) {
+private fun GalerieKennzahlen(stats: KennzahlenAnsicht) {
     LazyRow(
         horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
         modifier = Modifier.fillMaxWidth()
@@ -327,8 +329,8 @@ private fun GalerieKennzahlen(stats: DashboardStats) {
  */
 @Composable
 private fun GalerieFilterBlatt(
-    members: List<ch.brickinventoryapp.data.model.HouseholdMember>, konto: String, onKonto: (String) -> Unit,
-    orte: List<ch.brickinventoryapp.data.model.Lagerort>, lager: String, onLager: (String) -> Unit,
+    members: List<MitgliedAnsicht>, konto: String, onKonto: (String) -> Unit,
+    orte: List<LagerortAnsicht>, lager: String, onLager: (String) -> Unit,
     themen: List<String>, thema: String, onThema: (String) -> Unit,
     sortierung: String, onSortierung: (String) -> Unit,
     onSchliessen: () -> Unit,
@@ -400,7 +402,7 @@ fun GalleryStatChip(value: String, label: String) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SetCard(
-    set: SetItem,
+    set: SetAnsicht,
     serverUrl: String,
     imageLoader: ImageLoader,
     onClick: (String) -> Unit,
@@ -416,7 +418,7 @@ fun SetCard(
     val ctx = LocalContext.current
     // Vorschaubild über den Server, mit Rückfall auf die volle Auflösung, solange die
     // `_thumb`-Datei fehlt (nach einem CSV-Import erzeugt der Server sie nachträglich)
-    // — wie data-orig in der Webapp; siehe util/ImageUrls.kt.
+    // — wie data-orig in der Webapp; siehe util/BildRueckfall.kt.
     val (imageUrl, onImageError) = rememberTileImageWithFallback(serverUrl, set.imageLocal, set.imageUrl)
 
     // Einmaliger, verzögerter Wiederholversuch nach einem Ladefehler: Direkt nach dem
@@ -592,7 +594,7 @@ fun AddSetDialog(
     onAdd: (String, Int, Double?, String?, Int?, String?) -> Unit,
     defaultCondition: String = "N",
     /** Konten des Haushalts — ohne Unterkonten bleibt die Auswahl verborgen. */
-    householdMembers: List<ch.brickinventoryapp.data.model.HouseholdMember> = emptyList(),
+    householdMembers: List<MitgliedAnsicht> = emptyList(),
     /** Vorrat an Lagerorten — leer heisst: es gibt noch keine, dann wird getippt. */
     lagerorte: List<String> = emptyList(),
     /**

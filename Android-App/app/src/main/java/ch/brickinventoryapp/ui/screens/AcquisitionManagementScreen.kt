@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.model.KaufAnsicht
 import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.semantics.Role
@@ -32,7 +33,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.R
-import ch.brickinventoryapp.data.model.Acquisition
 import ch.brickinventoryapp.ui.viewmodel.KaeufeViewModel
 import ch.brickinventoryapp.util.fmtMoney
 import ch.brickinventoryapp.util.NumericInput
@@ -238,7 +238,7 @@ fun AcquisitionManagementScreen(
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
 private fun AcquisitionManagementRow(
-    acquisition: Acquisition,
+    acquisition: KaufAnsicht,
     currency: String,
     onSave: (price: Double?, cond: String?, qty: Int?, date: String?) -> Unit,
     onDelete: () -> Unit

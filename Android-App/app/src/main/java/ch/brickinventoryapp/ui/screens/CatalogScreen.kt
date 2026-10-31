@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.model.JahrAnzahlAnsicht
+import ch.brickinventoryapp.ui.model.KatalogSetAnsicht
 import ch.brickinventoryapp.ui.components.SkelettRaster
 import ch.brickinventoryapp.ui.theme.Formen
 import ch.brickinventoryapp.ui.theme.AppKarte
@@ -32,7 +34,6 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ch.brickinventoryapp.R
-import ch.brickinventoryapp.data.model.CatalogSetItem
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.flow.collectLatest
 import ch.brickinventoryapp.ui.CatalogUiState
@@ -296,7 +297,7 @@ private fun YearScrubber(
     /** Stelle in der Liste, an der die Anzeige gerade steht (0 .. total-1). */
     listenNummer: Int,
     total: Int,
-    verteilung: List<ch.brickinventoryapp.data.model.JahrAnzahl>,
+    verteilung: List<JahrAnzahlAnsicht>,
     /** Jahr der Kachel an einer laufenden Nummer — null, wenn nicht geladen. */
     jahrGeladen: (Int) -> Int?,
     /** Ziehen: zu dieser Stelle rollen. Laeuft waehrend der Bewegung, nicht erst am Ende. */
@@ -445,7 +446,7 @@ internal fun sortLabel(sort: String): String = when (sort) {
 
 @Composable
 fun CatalogSetCard(
-    set: CatalogSetItem,
+    set: KatalogSetAnsicht,
     imageLoader: ImageLoader,
     serverUrl: String,
     onClick: (String) -> Unit,

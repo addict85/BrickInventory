@@ -7,12 +7,12 @@ package ch.brickinventoryapp.ui.screens
  * eintragen.
  */
 
+import ch.brickinventoryapp.ui.model.BewertungAnsicht
+import ch.brickinventoryapp.ui.model.FigurenBewertungAnsicht
+import ch.brickinventoryapp.ui.model.GewinnAnsicht
+import ch.brickinventoryapp.ui.model.TeileBewertungAnsicht
 import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.foundation.lazy.LazyListScope
-import ch.brickinventoryapp.data.model.FigsValuationResponse
-import ch.brickinventoryapp.data.model.PartsValuationResponse
-import ch.brickinventoryapp.data.model.PnlResponse
-import ch.brickinventoryapp.data.model.ValuationResponse
 import coil3.ImageLoader
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
@@ -45,7 +45,7 @@ import ch.brickinventoryapp.ui.theme.Abstaende
  * aus. Die Signatur verlangt den Nicht-Null-Typ, statt im Rumpf `?.` einzustreuen
  * — das hiesse „darf fehlen“ statt „ist hier immer da“.
  */
-fun LazyListScope.financeGrandTotal(valuation: ValuationResponse, partsValuation: PartsValuationResponse?, figsValuation: FigsValuationResponse?, pnl: PnlResponse?, fmtPrice: (String?) -> String) {
+fun LazyListScope.financeGrandTotal(valuation: BewertungAnsicht, partsValuation: TeileBewertungAnsicht?, figsValuation: FigurenBewertungAnsicht?, pnl: GewinnAnsicht?, fmtPrice: (String?) -> String) {
         // ── Gesamt-Total: Sets + manuell erfasste Teile + Minifiguren ───────────
         item {
             // Alle Summanden vom Server; die eigene Addition nur für ältere Server (finanzSummen).
@@ -81,7 +81,7 @@ fun LazyListScope.financeGrandTotal(valuation: ValuationResponse, partsValuation
 }
 
 /** Manuell erfasste Minifiguren, einzeln aufgelistet. */
-fun LazyListScope.financeFigRows(figsValuation: FigsValuationResponse?, showFigs: Boolean, serverUrl: String, imageLoader: ImageLoader, fmtPrice: (String?) -> String, fmtWert: (Double?) -> String, onManualClick: (type: String, id: String, colorId: Int, name: String?) -> Unit) {
+fun LazyListScope.financeFigRows(figsValuation: FigurenBewertungAnsicht?, showFigs: Boolean, serverUrl: String, imageLoader: ImageLoader, fmtPrice: (String?) -> String, fmtWert: (Double?) -> String, onManualClick: (type: String, id: String, colorId: Int, name: String?) -> Unit) {
     // ── Manuell erfasste Minifiguren — einzeln auflisten, analog zu den Sets ─
     val figsItems = figsValuation?.figs ?: emptyList()
     if (figsItems.isNotEmpty() && showFigs) {
@@ -122,7 +122,7 @@ fun LazyListScope.financeFigRows(figsValuation: FigsValuationResponse?, showFigs
 }
 
 /** Manuell erfasste Teile, einzeln aufgelistet. */
-fun LazyListScope.financePartRows(partsValuation: PartsValuationResponse?, showParts: Boolean, serverUrl: String, imageLoader: ImageLoader, fmtPrice: (String?) -> String, fmtWert: (Double?) -> String, onManualClick: (type: String, id: String, colorId: Int, name: String?) -> Unit) {
+fun LazyListScope.financePartRows(partsValuation: TeileBewertungAnsicht?, showParts: Boolean, serverUrl: String, imageLoader: ImageLoader, fmtPrice: (String?) -> String, fmtWert: (Double?) -> String, onManualClick: (type: String, id: String, colorId: Int, name: String?) -> Unit) {
     // ── Manuell erfasste Teile — einzeln auflisten, analog zu den Sets ─────
     val partsItems = partsValuation?.parts ?: emptyList()
     if (partsItems.isNotEmpty() && showParts) {
@@ -167,7 +167,7 @@ fun LazyListScope.financePartRows(partsValuation: PartsValuationResponse?, showP
 }
 
 /** Eine vollständige Karte JE KAUFPREIS — siehe die Begründung im Rumpf. */
-fun LazyListScope.financeSetRows(valuation: ValuationResponse, showSets: Boolean, serverUrl: String, imageLoader: ImageLoader, fmtWert: (Double?) -> String, onSetClick: (String) -> Unit) {
+fun LazyListScope.financeSetRows(valuation: BewertungAnsicht, showSets: Boolean, serverUrl: String, imageLoader: ImageLoader, fmtWert: (Double?) -> String, onSetClick: (String) -> Unit) {
     // Section header
     if (showSets) {
     item {
@@ -301,7 +301,7 @@ private fun KategorieChip(
 }
 
 /** Die Kennzahl-Karten über der Liste. */
-fun LazyListScope.financeSummaryCards(valuation: ValuationResponse, partsValuation: PartsValuationResponse?, figsValuation: FigsValuationResponse?, pnl: PnlResponse?, fmtPrice: (String?) -> String) {
+fun LazyListScope.financeSummaryCards(valuation: BewertungAnsicht, partsValuation: TeileBewertungAnsicht?, figsValuation: FigurenBewertungAnsicht?, pnl: GewinnAnsicht?, fmtPrice: (String?) -> String) {
     item {
         Card(
             modifier = Modifier.fillMaxWidth(),

@@ -176,6 +176,18 @@ jobs:
           set -o pipefail
           ./gradlew --no-daemon testDebugUnitTest recordRoborazziDebug 2>&1 | tee "$RUNNER_TEMP/test.log"
 
+      # Room schreibt das Schema beim Übersetzen nach app/schemas und lässt eine
+      # Datei stehen, solange ihr Aufbau gleich bleibt. Steht danach etwas
+      # anderes da als eingecheckt, fehlt eine Fassung samt Migration.
+      - name: Room-Schema eingecheckt?
+        run: |
+          geaendert=$(git status --porcelain -- app/schemas)
+          if [ -n "$geaendert" ]; then
+            echo "::error title=Room-Schema::Das Schema der Datenbank weicht vom eingecheckten ab — Fassung erhöhen, Migration schreiben, Datei einchecken:%0A$geaendert"
+            git diff -- app/schemas | head -80
+            exit 1
+          fi
+
       # ── Was rot war, als ANNOTATION ─────────────────────────────────────────
       #
       # Warum das noetig ist: Zweimal hintereinander war der Lauf rot, und die

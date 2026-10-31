@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.ui
 
-import ch.brickinventoryapp.data.model.PriceChartData
+import ch.brickinventoryapp.ui.model.PreisDiagrammAnsicht
 
 /**
  * Rechnen für das Preisdiagramm, ohne Compose und damit prüfbar. Die vom Server
@@ -78,7 +78,7 @@ object PriceChartMath {
      * Verworfen werden: die aufgefüllten Nullen vor `firstRealIndex`, danach
      * jeder Punkt ohne Preis (y <= 0) und jede Reihe, die dann leer ist.
      */
-    fun buildLines(chart: PriceChartData?): List<ChartLine> {
+    fun buildLines(chart: PreisDiagrammAnsicht?): List<ChartLine> {
         val series = chart?.values ?: return emptyList()
         return series.mapNotNull { s ->
             val start = s.firstRealIndex.coerceIn(0, s.values.size)
@@ -124,7 +124,7 @@ object PriceChartMath {
     }
 
     /** Erster und letzter Tag der gemeinsamen Achse (für die Randbeschriftung). */
-    fun axisRange(chart: PriceChartData?): Pair<String, String>? {
+    fun axisRange(chart: PreisDiagrammAnsicht?): Pair<String, String>? {
         val x = chart?.x?.filter { it.isNotBlank() } ?: return null
         if (x.isEmpty()) return null
         return x.first() to x.last()

@@ -4,9 +4,11 @@ import ch.brickinventoryapp.data.api.TeileApi
 import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.lokal.Bearbeitung
 import ch.brickinventoryapp.data.lokal.Faecher
+import ch.brickinventoryapp.data.lokal.Lokal
 import ch.brickinventoryapp.data.lokal.Offlineablage
 import ch.brickinventoryapp.data.model.*
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.Json
@@ -57,6 +59,10 @@ class TeileRepository @Inject constructor(
                                      spare = spare?.ifBlank { null },
                                      withSets = withSets?.ifBlank { null },
                                      storage = storage?.ifBlank { null }) }
+
+    /** Die lokalen Listen (ungefiltert); sie ändern sich auch durch offline Bearbeitetes. */
+    fun beobachteTeile(): Flow<Lokal<Part>> = ablage.beobachte(Faecher.TEILE)
+    fun beobachteManuelleTeile(): Flow<Lokal<PartValuationItem>> = ablage.beobachte(Faecher.MANUELLE_TEILE)
 
     suspend fun getPartsStats(accounts: String? = null): Result<PartsStatsResponse> =
         safeCall { api.getPartsStats(accounts) }
@@ -152,22 +158,31 @@ class TeileRepository @Inject constructor(
         val anfrage = AddPartRequest(partNumber, colorId, colorName.takeUnless { ohne },
             colorHex.takeUnless { ohne }, quantity, unitPrice, condition, ownerUserId, storage)
         return schreibe(Bearbeitung.TeilErfassen(anfrage),
-            { AddPartResponse(success = true, action = "gepuffert", partNumber = partNumber) }) {
-            safeCall { api.addPart(anfrage) }
+            { AddPartResponse(success = true, action = "gepuffert", partNumber = partNumber) }) { schluessel ->
+            safeCall { api.addPart(anfrage, schluessel) }
         }
     }
 
-    /** @param owner Besitzer der Karte; null = eigenes Konto. */
-    suspend fun updatePart(partNumber: String, colorId: Int, quantity: Int, unitPrice: Double?, condition: String? = null, owner: Int? = null): Result<GenericResponse> =
-        UpdateManualItemRequest(quantity, unitPrice, condition = condition).let { anfrage ->
-            schreibe(Bearbeitung.TeilAendern(partNumber, colorId, anfrage, owner), { GenericResponse(success = true) }) {
-                safeCall { api.updatePart(partNumber, colorId, anfrage, owner) }
-            }
+    /**
+     * Die Menge reist auch als Schritt von der Menge, die die lokale Liste zeigt
+     * (UpdateManualItemRequest.quantityDelta).
+     *
+     * @param owner Besitzer der Karte; null = eigenes Konto.
+     */
+    suspend fun updatePart(partNumber: String, colorId: Int, quantity: Int, unitPrice: Double?, condition: String? = null, owner: Int? = null): Result<GenericResponse> {
+        val bisher = ablage.lies(Faecher.MANUELLE_TEILE)?.liste
+            ?.firstOrNull { it.partNumber == partNumber && it.colorId == colorId && (owner == null || it.userId == owner) }?.quantity
+        val anfrage = UpdateManualItemRequest(quantity, unitPrice, condition = condition, quantityDelta = bisher?.let { quantity - it })
+        return schreibe(Bearbeitung.TeilAendern(partNumber, colorId, anfrage, owner), { GenericResponse(success = true) }) { schluessel ->
+            safeCall { api.updatePart(partNumber, colorId, anfrage, owner, schluessel) }
         }
+    }
 
-    /** @param owner Besitzer der Karte; null = eigenes Konto. */
+    /** Auch offline: Das Teil verschwindet sofort aus der Liste, der Server erfährt es später. */
     suspend fun deletePart(partNumber: String, colorId: Int, owner: Int? = null): Result<GenericResponse> =
-        safeCall { api.deletePart(partNumber, colorId, owner) }
+        schreibe(Bearbeitung.TeilLoeschen(partNumber, colorId, owner), { GenericResponse(success = true) }) { schluessel ->
+            safeCall { api.deletePart(partNumber, colorId, owner, schluessel) }
+        }
 
     /**
      * Die Farbe eines manuell erfassten Teils nachträglich ändern.

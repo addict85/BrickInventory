@@ -1,5 +1,8 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.model.BricksetEintragAnsicht
+import ch.brickinventoryapp.ui.model.JobZustandAnsicht
+import ch.brickinventoryapp.ui.model.ZeitplanAnsicht
 import ch.brickinventoryapp.ui.theme.Formen
 import ch.brickinventoryapp.ui.theme.AppKarte
 import ch.brickinventoryapp.ui.theme.LocalStatusFarben
@@ -19,7 +22,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import ch.brickinventoryapp.data.model.*
+import ch.brickinventoryapp.ui.model.*
 import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.R
 import ch.brickinventoryapp.ui.AppViewModel
@@ -166,12 +169,12 @@ fun MonitoringScreen(vm: AppViewModel) {
 @Composable
 private fun JobCard(
     jobKey: String,
-    job: JobStatus,
+    job: JobZustandAnsicht,
     /** Zeitplan dieses Jobs, oder null — dann steht die Zeile nicht da. */
-    schedule: ch.brickinventoryapp.data.model.JobSchedule?,
+    schedule: ZeitplanAnsicht?,
     queueOpen: Boolean,
     queueLoading: Boolean,
-    queue: List<BricksetQueueEntry>,
+    queue: List<BricksetEintragAnsicht>,
     reimportMsg: String?,
     mon: MonitoringViewModel,
     onSnack: (String) -> Unit,

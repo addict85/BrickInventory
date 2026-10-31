@@ -22,7 +22,8 @@ sealed class Sendeergebnis {
 }
 
 fun interface Bearbeitungssender {
-    suspend fun sende(b: Bearbeitung): Sendeergebnis
+    /** [schluessel] geht als Idempotency-Key mit; er ist bei jeder Wiederholung derselbe. */
+    suspend fun sende(b: Bearbeitung, schluessel: String): Sendeergebnis
 }
 
 /**
@@ -34,6 +35,10 @@ fun einordnen(r: Result<*>): Sendeergebnis = when (r) {
     is Result.Success -> Sendeergebnis.Angenommen
     is Result.Error -> einordnenFehler(r)
 }
+
+/** Beim Löschen ist „gibt es nicht (mehr)“ das Ziel: Ein 404 ist angekommen, nicht abgelehnt. */
+fun einordnenLoeschen(r: Result<*>): Sendeergebnis =
+    if (r is Result.Error && r.httpCode == 404) Sendeergebnis.Angenommen else einordnen(r)
 
 private fun einordnenFehler(r: Result.Error): Sendeergebnis {
     if (r.art == Fehlerart.LEERE_ANTWORT) return Sendeergebnis.Angenommen
@@ -71,7 +76,7 @@ class Abgleich @Inject constructor(
     private suspend fun lauf(bereich: String, betroffen: MutableSet<Bestandsart>): Abgleichsergebnis {
         var p = ablage.ausgang.erster(bereich)
         while (p != null) {
-            when (val e = sender.sende(p.bearbeitung)) {
+            when (val e = sender.sende(p.bearbeitung, p.schluessel)) {
                 Sendeergebnis.Angenommen -> {
                     ablage.ausgang.entferne(p.id)
                     betroffen += p.bearbeitung.art
@@ -105,21 +110,34 @@ class Abgleich @Inject constructor(
     }
 }
 
-/** Sendet eine Bearbeitung mit genau der Anfrage, die online gegangen wäre. */
+/** Sendet eine Bearbeitung mit genau der Anfrage, die online gegangen wäre, samt ihrem Schlüssel. */
 class ServerSender @Inject constructor(
     private val sets: SetsApi,
     private val teile: TeileApi,
     private val figuren: FigurenApi,
 ) : Bearbeitungssender {
-    override suspend fun sende(b: Bearbeitung): Sendeergebnis = einordnen(when (b) {
-        is Bearbeitung.SetMenge ->
-            sicherAufrufen { sets.updateSetQuantity(b.setNumber, UpdateQuantityRequest(quantityDelta = b.schritt)) }
-        is Bearbeitung.SetErfassen -> sicherAufrufen { sets.addSet(b.anfrage) }
-        is Bearbeitung.MerkpostenAnlegen -> sicherAufrufen { sets.legeMerkpostenAn(b.anfrage) }
-        is Bearbeitung.MerkpostenLoeschen -> sicherAufrufen { sets.loescheMerkposten(b.setNumber, b.zustand, b.besitzer) }
-        is Bearbeitung.TeilErfassen -> sicherAufrufen { teile.addPart(b.anfrage) }
-        is Bearbeitung.TeilAendern -> sicherAufrufen { teile.updatePart(b.partNumber, b.colorId, b.anfrage, b.besitzer) }
-        is Bearbeitung.FigurErfassen -> sicherAufrufen { figuren.addMinifig(b.anfrage) }
-        is Bearbeitung.FigurAendern -> sicherAufrufen { figuren.updateMinifig(b.figNumber, b.anfrage, b.besitzer) }
-    })
+    override suspend fun sende(b: Bearbeitung, schluessel: String): Sendeergebnis = when (b) {
+        is Bearbeitung.SetMenge -> einordnen(sicherAufrufen {
+            sets.updateSetQuantity(b.setNumber, UpdateQuantityRequest(quantityDelta = b.schritt), schluessel)
+        })
+        is Bearbeitung.SetErfassen -> einordnen(sicherAufrufen { sets.addSet(b.anfrage, schluessel) })
+        is Bearbeitung.MerkpostenAnlegen -> einordnen(sicherAufrufen { sets.legeMerkpostenAn(b.anfrage, schluessel) })
+        is Bearbeitung.MerkpostenLoeschen -> einordnenLoeschen(sicherAufrufen {
+            sets.loescheMerkposten(b.setNumber, b.zustand, b.besitzer, schluessel)
+        })
+        is Bearbeitung.TeilErfassen -> einordnen(sicherAufrufen { teile.addPart(b.anfrage, schluessel) })
+        is Bearbeitung.TeilAendern -> einordnen(sicherAufrufen {
+            teile.updatePart(b.partNumber, b.colorId, b.anfrage, b.besitzer, schluessel)
+        })
+        is Bearbeitung.TeilLoeschen -> einordnenLoeschen(sicherAufrufen {
+            teile.deletePart(b.partNumber, b.colorId, b.besitzer, schluessel)
+        })
+        is Bearbeitung.FigurErfassen -> einordnen(sicherAufrufen { figuren.addMinifig(b.anfrage, schluessel) })
+        is Bearbeitung.FigurAendern -> einordnen(sicherAufrufen {
+            figuren.updateMinifig(b.figNumber, b.anfrage, b.besitzer, schluessel)
+        })
+        is Bearbeitung.FigurLoeschen -> einordnenLoeschen(sicherAufrufen {
+            figuren.deleteMinifig(b.figNumber, b.besitzer, schluessel)
+        })
+    }
 }

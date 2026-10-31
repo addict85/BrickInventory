@@ -4,34 +4,24 @@ import android.net.Uri
 import ch.brickinventoryapp.ui.model.alsAnsicht
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
-import ch.brickinventoryapp.ui.model.alsAnsicht
 import ch.brickinventoryapp.R
 import ch.brickinventoryapp.alarm.Alarmeingabe
-import ch.brickinventoryapp.ui.model.alsAnsicht
 import ch.brickinventoryapp.data.model.GenericResponse
 import ch.brickinventoryapp.data.repository.FinanzenRepository
-import ch.brickinventoryapp.ui.model.alsAnsicht
 import ch.brickinventoryapp.data.repository.HaushaltRepository
 import ch.brickinventoryapp.data.repository.Result
-import ch.brickinventoryapp.ui.model.alsAnsicht
 import ch.brickinventoryapp.data.repository.SetsRepository
 import ch.brickinventoryapp.ui.Aenderung
-import ch.brickinventoryapp.ui.model.alsAnsicht
 import ch.brickinventoryapp.ui.Preisalarmeingabe
 import ch.brickinventoryapp.ui.SetDetailUiState
-import ch.brickinventoryapp.ui.model.alsAnsicht
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
-import ch.brickinventoryapp.ui.model.alsAnsicht
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
-import ch.brickinventoryapp.ui.model.alsAnsicht
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import ch.brickinventoryapp.ui.model.alsAnsicht
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import ch.brickinventoryapp.ui.model.alsAnsicht
 import javax.inject.Inject
 
 /**
@@ -96,7 +86,7 @@ class SetDetailViewModel @Inject constructor(
         viewModelScope.launch {
             _setDetailState.update { it.copy(setDetailLoading = true, setDetailFehler = null) }
             when (val r = sets.getSetDetail(setNumber)) {
-                is Result.Success -> _setDetailState.update { it.copy(setDetail = r.data.set, setDetailLoading = false) }
+                is Result.Success -> _setDetailState.update { it.copy(setDetail = r.data.set?.alsAnsicht(), setDetailLoading = false) }
                 is Result.Error -> _setDetailState.update { it.copy(setDetailLoading = false, setDetailFehler = meldung(r)) }
             }
         }
@@ -106,7 +96,7 @@ class SetDetailViewModel @Inject constructor(
         viewModelScope.launch {
             _setDetailState.update { it.copy(setPriceLoading = true) }
             when (val r = finanzen.getSetPrice(setNumber)) {
-                is Result.Success -> _setDetailState.update { it.copy(setPrice = r.data, setPriceLoading = false) }
+                is Result.Success -> _setDetailState.update { it.copy(setPrice = r.data.alsAnsicht(), setPriceLoading = false) }
                 is Result.Error -> _setDetailState.update { it.copy(setPriceLoading = false) }
             }
         }
@@ -116,7 +106,7 @@ class SetDetailViewModel @Inject constructor(
         viewModelScope.launch {
             _setDetailState.update { it.copy(priceHistoryLoading = true) }
             when (val r = finanzen.getSetPriceHistory(setNumber)) {
-                is Result.Success -> _setDetailState.update { it.copy(priceHistory = r.data, priceHistoryLoading = false) }
+                is Result.Success -> _setDetailState.update { it.copy(priceHistory = r.data.alsAnsicht(), priceHistoryLoading = false) }
                 is Result.Error -> _setDetailState.update { it.copy(priceHistoryLoading = false) }
             }
         }
@@ -127,7 +117,7 @@ class SetDetailViewModel @Inject constructor(
             _setDetailState.update { it.copy(acquisitionsLoading = true) }
             when (val r = haushalt.getAcquisitions(setNumber)) {
                 is Result.Success -> _setDetailState.update {
-                    it.copy(acquisitions = r.data.acquisitions, acquisitionTotals = r.data.totals,
+                    it.copy(acquisitions = r.data.acquisitions.map { a -> a.alsAnsicht() }, acquisitionTotals = r.data.totals.alsAnsicht(),
                             acquisitionsLoading = false)
                 }
                 is Result.Error -> _setDetailState.update { it.copy(acquisitionsLoading = false) }

@@ -1,8 +1,8 @@
 package ch.brickinventoryapp
 
+import ch.brickinventoryapp.ui.model.LagerortAnsicht
+import ch.brickinventoryapp.ui.model.MitgliedAnsicht
 import ch.brickinventoryapp.data.ScopeFilter
-import ch.brickinventoryapp.data.model.HouseholdMember
-import ch.brickinventoryapp.data.model.Lagerort
 import ch.brickinventoryapp.data.repository.GALLERY_DEFAULT_SORT
 import ch.brickinventoryapp.ui.Filterzahl
 import org.junit.Assert.assertEquals
@@ -24,10 +24,10 @@ import org.junit.Test
 class FilterzahlTest {
 
     private val haushalt = listOf(
-        HouseholdMember(id = 1, username = "marco", isSelf = true),
-        HouseholdMember(id = 2, username = "kind"),
+        MitgliedAnsicht(id = 1, username = "marco", isSelf = true),
+        MitgliedAnsicht(id = 2, username = "kind"),
     )
-    private val orte = listOf(Lagerort("Keller", sets = 3), Lagerort("Estrich", teile = 2))
+    private val orte = listOf(LagerortAnsicht("Keller", sets = 3), LagerortAnsicht("Estrich", teile = 2))
 
     @Test
     fun `ohne Abweichung steht keine Zahl`() {
@@ -51,7 +51,7 @@ class FilterzahlTest {
     }
 
     @Test
-    fun `ein leerer Lagerort zaehlt nicht`() {
+    fun `ein leerer LagerortAnsicht zaehlt nicht`() {
         assertEquals(0, Filterzahl.lager(orte, "Garage"))
         assertEquals(1, Filterzahl.lager(orte, "Estrich"))
     }

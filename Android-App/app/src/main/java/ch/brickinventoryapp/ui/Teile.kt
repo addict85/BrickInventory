@@ -1,31 +1,31 @@
 package ch.brickinventoryapp.ui
 
+import ch.brickinventoryapp.data.lokal.Lokal
 import ch.brickinventoryapp.data.model.BrickColorsResponse
-import ch.brickinventoryapp.ui.model.alsAnsicht
+import ch.brickinventoryapp.data.model.FigValuationItem
 import ch.brickinventoryapp.data.model.ManualFigsResponse
 import ch.brickinventoryapp.data.model.ManualPartsResponse
-import ch.brickinventoryapp.ui.model.alsAnsicht
+import ch.brickinventoryapp.data.model.Minifig
 import ch.brickinventoryapp.data.model.MinifigStatsResponse
 import ch.brickinventoryapp.data.model.MinifigsResponse
-import ch.brickinventoryapp.ui.model.alsAnsicht
+import ch.brickinventoryapp.data.model.Part
+import ch.brickinventoryapp.data.model.PartValuationItem
 import ch.brickinventoryapp.data.model.PartsCategoriesResponse
 import ch.brickinventoryapp.data.model.PartsFilterColorsResponse
-import ch.brickinventoryapp.ui.model.alsAnsicht
 import ch.brickinventoryapp.data.model.PartsResponse
 import ch.brickinventoryapp.data.model.PartsStatsResponse
-import ch.brickinventoryapp.ui.model.alsAnsicht
 import ch.brickinventoryapp.data.repository.Result
-import kotlinx.coroutines.CoroutineScope
+import ch.brickinventoryapp.ui.model.FarbeAnsicht
+import ch.brickinventoryapp.ui.model.OHNE_FARBE
 import ch.brickinventoryapp.ui.model.alsAnsicht
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
-import ch.brickinventoryapp.ui.model.alsAnsicht
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import ch.brickinventoryapp.ui.model.alsAnsicht
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import ch.brickinventoryapp.ui.model.alsAnsicht
 import kotlinx.coroutines.launch
 
 /**
@@ -51,6 +51,18 @@ internal interface TeileQuelle {
 }
 
 /**
+ * Die lokalen Listen (Room) der vier ungefilterten Abrufe. Ohne Filter sind sie
+ * die Wahrheit der Anzeige wie in der Galerie: Was offline erfasst, geändert
+ * oder gelöscht wird, erscheint sofort.
+ */
+internal class TeileLokal(
+    val teile: Flow<Lokal<Part>>,
+    val manuelleTeile: Flow<Lokal<PartValuationItem>>,
+    val figuren: Flow<Lokal<Minifig>>,
+    val manuelleFiguren: Flow<Lokal<FigValuationItem>>,
+)
+
+/**
  * Zustand der Teile- und Figurenliste und wie er sich ändert — wie [Galerie]:
  * privater Fluss, benannte Methoden, Abrufe von aussen. Die Filter liest jeder
  * Lader aus dem Zustand, nie als Parameter: Sonst holte das Nachladen von
@@ -65,9 +77,47 @@ internal class Teile(
     private val suchPause: Long = 350,
     /** Der Satz zum Fehler, der in der leeren Liste stehen bleibt (wie in der Galerie). */
     private val beschreibeFehler: (Result.Error) -> String = { it.message },
+    private val lokal: TeileLokal? = null,
+    /** Schränken Konto oder Lagerort die Teile bzw. Figuren ein? Dann gilt nur der Server. */
+    private val teileEingeschraenkt: () -> Boolean = { true },
+    private val figurenEingeschraenkt: () -> Boolean = { true },
 ) {
     private val _state = MutableStateFlow(PartsUiState())
     val state: StateFlow<PartsUiState> = _state.asStateFlow()
+
+    init {
+        // Nur was Room für genau diese Ansicht hält, und nicht während einer
+        // Ladung: deren Antwort setzt die Liste ohnehin (wie Galerie.init).
+        if (lokal != null) {
+            folge(lokal.teile) { st, l ->
+                if (st.partsLoading || st.partsPage != 1 || !teileUngefiltert(st)) null
+                else st.copy(parts = l.map { it.alsAnsicht() })
+            }
+            folge(lokal.manuelleTeile) { st, l ->
+                if (st.partsQuery.isNotBlank() || teileEingeschraenkt()) null
+                else st.copy(manualParts = l.map { it.alsAnsicht() })
+            }
+            folge(lokal.figuren) { st, l ->
+                if (st.minifigsLoading || st.minifigsQuery.isNotBlank() || figurenEingeschraenkt()) null
+                else st.copy(minifigs = l.map { it.alsAnsicht() })
+            }
+            folge(lokal.manuelleFiguren) { st, l ->
+                if (st.minifigsQuery.isNotBlank() || figurenEingeschraenkt()) null
+                else st.copy(manualFigs = l.map { it.alsAnsicht() })
+            }
+        }
+    }
+
+    /** Eine nie geladene Liste (ohne Stand) leert nichts; null heisst: diese Ansicht nicht. */
+    private fun <T> folge(quelle: Flow<Lokal<T>>, neu: (PartsUiState, List<T>) -> PartsUiState?) {
+        scope.launch {
+            quelle.collect { l -> if (l.stand != null) _state.update { st -> neu(st, l.liste) ?: st } }
+        }
+    }
+
+    private fun teileUngefiltert(st: PartsUiState) =
+        st.partsQuery.isBlank() && st.partsColorFilter.isBlank() && st.partsCategoryFilter.isBlank() &&
+            st.partsSpare.isBlank() && st.partsView != "table" && !teileEingeschraenkt()
 
     // Ein neuer Auftrag bricht den alten ab: Eine langsame alte Antwort
     // überschriebe sonst eine neuere, und beim Tippen löscht jeder Tastendruck
@@ -96,7 +146,7 @@ internal class Teile(
                 is Result.Success -> {
                     _state.update {
                         it.copy(partsLoading = false,
-                            parts = if (seite == 1) r.data.parts else it.parts + r.data.parts,
+                            parts = r.data.parts.map { p -> p.alsAnsicht() }.let { neu -> if (seite == 1) neu else it.parts + neu },
                             partsTotal = r.data.total, partsPage = seite,
                             teileOfflineStand = if (seite == 1) r.stand else it.teileOfflineStand)
                     }
@@ -104,10 +154,10 @@ internal class Teile(
                         // Die manuellen Teile stehen als ein Abschnitt über der
                         // Liste, nicht seitenweise — und unter DEMSELBEN Suchfeld.
                         (quelle.manuelleTeile(abfrage.suche) as? Result.Success)
-                            ?.let { m -> _state.update { it.copy(manualParts = m.data.parts) } }
+                            ?.let { m -> _state.update { it.copy(manualParts = m.data.parts.map { p -> p.alsAnsicht() }) } }
                         // Kennzahlen sind Beiwerk: Ein Fehlschlag lässt die Liste stehen.
                         (quelle.teileKennzahlen() as? Result.Success)
-                            ?.let { s -> _state.update { it.copy(partsStats = s.data.stats) } }
+                            ?.let { s -> _state.update { it.copy(partsStats = s.data.stats?.alsAnsicht()) } }
                     }
                 }
                 is Result.Error -> {
@@ -159,9 +209,9 @@ internal class Teile(
     fun ladeFilter() {
         scope.launch {
             (quelle.filterFarben() as? Result.Success)?.data?.takeIf { it.success }
-                ?.let { d -> _state.update { it.copy(partsFilterColors = d.colors) } }
+                ?.let { d -> _state.update { it.copy(partsFilterColors = d.colors.map { c -> c.alsAnsicht() }) } }
             (quelle.kategorien() as? Result.Success)?.data?.takeIf { it.success }
-                ?.let { d -> _state.update { it.copy(partsCategories = d.categories) } }
+                ?.let { d -> _state.update { it.copy(partsCategories = d.categories.map { c -> c.alsAnsicht() }) } }
         }
     }
 
@@ -184,7 +234,7 @@ internal class Teile(
     fun ladeFiguren(entprellt: Boolean = false) {
         if (!entprellt) scope.launch {
             (quelle.figurKennzahlen() as? Result.Success)
-                ?.let { r -> _state.update { it.copy(minifigStats = r.data.stats) } }
+                ?.let { r -> _state.update { it.copy(minifigStats = r.data.stats.alsAnsicht()) } }
         }
         figurenJob?.cancel()
         figurenJob = scope.launch {
@@ -193,10 +243,10 @@ internal class Teile(
             val suche = _state.value.minifigsQuery.ifBlank { null }
             when (val r = quelle.figuren(suche)) {
                 is Result.Success -> {
-                    _state.update { it.copy(minifigs = r.data.figs, minifigsLoading = false,
+                    _state.update { it.copy(minifigs = r.data.figs.map { f -> f.alsAnsicht() }, minifigsLoading = false,
                         figurenOfflineStand = r.stand) }
                     (quelle.manuelleFiguren(suche) as? Result.Success)
-                        ?.let { m -> _state.update { it.copy(manualFigs = m.data.figs) } }
+                        ?.let { m -> _state.update { it.copy(manualFigs = m.data.figs.map { f -> f.alsAnsicht() }) } }
                 }
                 is Result.Error -> {
                     meldeFehler(r)
@@ -211,10 +261,10 @@ internal class Teile(
         ladeFiguren(entprellt = true)
     }
 
-    /** Abmelden: nichts vom vorigen Konto stehen lassen, laufende Abrufe verwerfen. */
     /** Gemerkte Filter und Ansichten übernehmen, ohne zu laden. */
     fun stelleFilterWieder(aenderung: (PartsUiState) -> PartsUiState) = _state.update(aenderung)
 
+    /** Abmelden: nichts vom vorigen Konto stehen lassen, laufende Abrufe verwerfen. */
     fun zuruecksetzen() {
         teileJob?.cancel()
         figurenJob?.cancel()
@@ -227,15 +277,15 @@ internal class Teile(
  * Die Auswahl führt „keine Farbe“ selbst, in der Sprache der App; sonst stünde
  * dieselbe Wahl zweimal da.
  */
-fun ohneKeineFarbe(farben: List<ch.brickinventoryapp.ui.model.FarbeAnsicht>) =
-    farben.filter { it.id != ch.brickinventoryapp.data.model.KEINE_FARBE }
+fun ohneKeineFarbe(farben: List<FarbeAnsicht>) =
+    farben.filter { it.id != OHNE_FARBE }
 
 /**
  * Der Name der heutigen Farbe: KEINE_FARBE heisst [keineFarbe], nie „Farbe
  * 9999“; sonst der Name aus der Liste, dann der gespeicherte. Null, wenn
  * keiner bekannt ist — dann nennt die Anzeige die Nummer.
  */
-fun farbName(farben: List<ch.brickinventoryapp.ui.model.FarbeAnsicht>, aktuell: Int,
+fun farbName(farben: List<FarbeAnsicht>, aktuell: Int,
              aktuellerName: String?, keineFarbe: String): String? =
-    if (aktuell == ch.brickinventoryapp.data.model.KEINE_FARBE) keineFarbe
+    if (aktuell == OHNE_FARBE) keineFarbe
     else farben.firstOrNull { it.id == aktuell }?.name ?: aktuellerName?.takeIf { it.isNotBlank() }

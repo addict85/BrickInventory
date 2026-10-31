@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.model.PreisDiagrammAnsicht
+import ch.brickinventoryapp.ui.model.PreisJeZustandAnsicht
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -52,8 +54,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import kotlinx.coroutines.launch
-import ch.brickinventoryapp.data.model.PriceChartData
-import ch.brickinventoryapp.data.model.PriceByCondition
 import ch.brickinventoryapp.ui.PriceChartMath
 import ch.brickinventoryapp.ui.*
 import ch.brickinventoryapp.ui.theme.LocalIsBrickTheme
@@ -147,7 +147,7 @@ internal fun DetailRow2(label: String, value: String) {
  * Zustands-Plaketten und --chart-new/--chart-used im Web.
  */
 @Composable
-fun PriceChart(chart: PriceChartData) {
+fun PriceChart(chart: PreisDiagrammAnsicht) {
     val lines  = remember(chart) { PriceChartMath.buildLines(chart) }
     val bounds = remember(lines) { PriceChartMath.bounds(lines) } ?: return
     if (lines.isEmpty()) return
@@ -278,7 +278,7 @@ fun PriceChart(chart: PriceChartData) {
  */
 @Composable
 fun MarketPriceByCondition(
-    byCondition: PriceByCondition,
+    byCondition: PreisJeZustandAnsicht,
     currency: String,
 ) {
     val rows = byCondition.present()
