@@ -21,8 +21,8 @@ data class FinanceUiState(
     val valuationFehler: String? = null,
     val historyLoading: Boolean = false,
     val historyPeriodChangePct: Double? = null,
-    val historyPoints: List<ChartPoint> = emptyList(),
-    val historyYAxis: List<ChartYAxis> = emptyList(),
+    val historyPoints: List<ch.brickinventoryapp.ui.model.DiagrammPunkt> = emptyList(),
+    val historyYAxis: List<ch.brickinventoryapp.ui.model.DiagrammAchse> = emptyList(),
     val historyPeriod: String = "week",
     /**
      * Welche Zeilenarten der Reiter zeigt: "sets", "parts", "figs". Im Zustand und
@@ -52,7 +52,7 @@ data class FinanceUiState(
  * Gutschein bleibt, was der Server schickt.
  */
 data class GutscheinUiState(
-    val gutscheine: List<ch.brickinventoryapp.data.model.Gutschein> = emptyList(),
+    val gutscheine: List<ch.brickinventoryapp.ui.model.GutscheinAnsicht> = emptyList(),
     val laedt: Boolean = false,
     /** Warum die Liste nicht kam; sonst stünde „keine Gutscheine“ da. */
     val fehler: String? = null,
@@ -105,7 +105,7 @@ data class GutscheinUiState(
  * BigDecimal, weil die App diese Summe selbst bildet und 0.1 + 0.2 als Double
  * nicht 0.3 ist.
  */
-fun gutscheinSumme(gutscheine: List<ch.brickinventoryapp.data.model.Gutschein>): Pair<java.math.BigDecimal, String>? {
+fun gutscheinSumme(gutscheine: List<ch.brickinventoryapp.ui.model.GutscheinAnsicht>): Pair<java.math.BigDecimal, String>? {
     val waehrung = gutscheine.map { it.currency }.distinct().singleOrNull() ?: return null
     return gutscheine.fold(java.math.BigDecimal.ZERO) { s, g -> s + java.math.BigDecimal.valueOf(g.amount) }
         .setScale(2, java.math.RoundingMode.HALF_UP) to waehrung

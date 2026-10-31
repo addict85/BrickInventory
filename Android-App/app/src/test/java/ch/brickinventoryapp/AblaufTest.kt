@@ -17,6 +17,7 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
 import ch.brickinventoryapp.data.model.Gutschein
+import ch.brickinventoryapp.ui.model.alsAnsicht
 import ch.brickinventoryapp.ui.AnmeldeFormular
 import ch.brickinventoryapp.ui.GutscheinUiState
 import ch.brickinventoryapp.ui.screens.AddSetDialog
@@ -122,7 +123,7 @@ class AblaufTest {
     @Test
     fun `ein Gutschein zeigt den PIN erst auf Wunsch`() {
         var zustand by mutableStateOf(GutscheinUiState(gutscheine = listOf(
-            Gutschein(id = 7, number = "6061 2345 6789", pin = "4711", amount = 50.0, currency = "CHF"))))
+            Gutschein(id = 7, number = "6061 2345 6789", pin = "4711", amount = 50.0, currency = "CHF").alsAnsicht())))
         zeige {
             GutscheineCard(
                 zustand = zustand, onFeld = { _, _, _, _ -> },

@@ -531,7 +531,7 @@ fun LazyListScope.setDetailHeroImage(
  */
 fun LazyListScope.setDetailAlarmSection(
     setNumber: String,
-    alarme: List<ch.brickinventoryapp.data.model.Preisalarm>,
+    alarme: List<ch.brickinventoryapp.ui.model.PreisalarmAnsicht>,
     currency: String,
     onSetze: (setNumber: String, richtung: String, roh: String, zustand: String) -> Unit,
 ) {

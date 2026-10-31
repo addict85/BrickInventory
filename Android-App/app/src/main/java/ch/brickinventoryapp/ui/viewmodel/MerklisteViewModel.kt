@@ -1,28 +1,40 @@
 package ch.brickinventoryapp.ui.viewmodel
 
 import androidx.lifecycle.SavedStateHandle
+import ch.brickinventoryapp.ui.model.alsAnsicht
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.R
+import ch.brickinventoryapp.ui.model.alsAnsicht
 import ch.brickinventoryapp.alarm.Alarmeingabe
 import ch.brickinventoryapp.data.ScopeFilter
+import ch.brickinventoryapp.ui.model.alsAnsicht
 import ch.brickinventoryapp.data.repository.KatalogRepository
 import ch.brickinventoryapp.data.repository.FinanzenRepository
+import ch.brickinventoryapp.ui.model.alsAnsicht
 import ch.brickinventoryapp.data.repository.MERKLISTE_DEFAULT_SORT
 import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.ui.model.alsAnsicht
 import ch.brickinventoryapp.data.repository.SetsRepository
 import ch.brickinventoryapp.ui.Aenderung
+import ch.brickinventoryapp.ui.model.alsAnsicht
 import ch.brickinventoryapp.ui.MerklisteUiState
 import ch.brickinventoryapp.ui.MerkpostenDetailUiState
+import ch.brickinventoryapp.ui.model.alsAnsicht
 import ch.brickinventoryapp.ui.Preisalarmeingabe
 import dagger.hilt.android.lifecycle.HiltViewModel
+import ch.brickinventoryapp.ui.model.alsAnsicht
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import ch.brickinventoryapp.ui.model.alsAnsicht
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import ch.brickinventoryapp.ui.model.alsAnsicht
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import ch.brickinventoryapp.ui.model.alsAnsicht
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import ch.brickinventoryapp.ui.model.alsAnsicht
 
 /**
  * Merkliste und Merkposten-Detail — was man haben möchte, getrennt vom Besitz.
@@ -208,7 +220,7 @@ class MerklisteViewModel @Inject constructor(
     fun loadPreisalarme(setNumber: String) {
         viewModelScope.launch {
             val r = sets.getPreisalarme(setNumber)
-            val alarme = (r as? Result.Success)?.data?.takeIf { it.success }?.alerts ?: emptyList()
+            val alarme = (r as? Result.Success)?.data?.takeIf { it.success }?.alerts?.map { it.alsAnsicht() } ?: emptyList()
             _merkpostenDetailState.update { if (it.setNumber == setNumber) it.copy(preisalarme = alarme) else it }
         }
     }

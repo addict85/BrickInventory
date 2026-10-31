@@ -35,7 +35,7 @@ data class AppUiState(
      * die Anmeldung dann einen Fortschrittsbalken wie die Webapp. null heisst: durch
      * oder gar nicht erreichbar.
      */
-    val startupStatus: ch.brickinventoryapp.data.model.StartupStatus? = null,
+    val startupStatus: ch.brickinventoryapp.ui.model.StartzustandAnsicht? = null,
     val language: String = "system",
 )
 

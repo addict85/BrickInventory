@@ -22,7 +22,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.R
-import ch.brickinventoryapp.data.model.Gutschein
+import ch.brickinventoryapp.ui.model.GutscheinAnsicht
 import ch.brickinventoryapp.ui.GutscheinUiState
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.util.NumericInput
@@ -289,7 +289,7 @@ fun GutscheineCard(
  */
 @Composable
 private fun GutscheinZeile(
-    g: Gutschein,
+    g: GutscheinAnsicht,
     pinSichtbar: Boolean,
     onPinSchalten: () -> Unit,
     onBearbeiten: () -> Unit,

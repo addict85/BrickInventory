@@ -26,8 +26,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.toColorInt
 import ch.brickinventoryapp.R
-import ch.brickinventoryapp.data.model.BrickColor
-import ch.brickinventoryapp.data.model.KEINE_FARBE
+import ch.brickinventoryapp.ui.model.FarbeAnsicht
+import ch.brickinventoryapp.ui.model.OHNE_FARBE
 import ch.brickinventoryapp.ui.farbName
 import ch.brickinventoryapp.ui.ohneKeineFarbe
 import ch.brickinventoryapp.ui.theme.Abstaende
@@ -37,7 +37,7 @@ import ch.brickinventoryapp.ui.theme.Formen
  * Die Farbe eines manuell erfassten Teils auswählen — zum Korrigieren, wenn sie
  * beim Import nicht richtig übernommen wurde.
  *
- * Nicht die Auswahl aus AddPartDialog: Die hält selbst ein `BrickColor?` („noch
+ * Nicht die Auswahl aus AddPartDialog: Die hält selbst ein `FarbeAnsicht?` („noch
  * nichts gewählt“ = null). Hier hat das Teil eine Farbe, sie ist nur falsch; die
  * aktuelle kommt deshalb von aussen und muss auch anzeigbar sein, wenn die Liste
  * sie nicht kennt. Dafür [aktuellerName] und [aktuellerHex]: Die Farbliste kommt
@@ -55,11 +55,11 @@ import ch.brickinventoryapp.ui.theme.Formen
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FarbWahlFeld(
-    farben: List<BrickColor>,
+    farben: List<FarbeAnsicht>,
     aktuell: Int,
     aktuellerName: String?,
     aktuellerHex: String?,
-    onWahl: (BrickColor) -> Unit,
+    onWahl: (FarbeAnsicht) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var offen by rememberSaveable { mutableStateOf(false) }
@@ -69,9 +69,9 @@ fun FarbWahlFeld(
     val keineFarbe = stringResource(R.string.parts_no_color)
     val name = farbName(farben, aktuell, aktuellerName, keineFarbe)
         ?: stringResource(R.string.parts_color_unknown, aktuell)
-    val hex = if (aktuell == KEINE_FARBE) null else farben.firstOrNull { it.id == aktuell }?.hex ?: aktuellerHex
+    val hex = if (aktuell == OHNE_FARBE) null else farben.firstOrNull { it.id == aktuell }?.hex ?: aktuellerHex
     // „Keine Farbe“ steht zur Wahl, damit sich eine falsch übernommene Farbe auch entfernen lässt.
-    val wahl = listOf(BrickColor(KEINE_FARBE, keineFarbe)) + ohneKeineFarbe(farben)
+    val wahl = listOf(FarbeAnsicht(OHNE_FARBE, keineFarbe, null)) + ohneKeineFarbe(farben)
 
     ExposedDropdownMenuBox(
         expanded = offen && farben.isNotEmpty(),

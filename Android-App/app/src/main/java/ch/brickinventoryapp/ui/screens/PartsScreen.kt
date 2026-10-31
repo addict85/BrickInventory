@@ -37,7 +37,7 @@ import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.data.model.Part
 import ch.brickinventoryapp.data.model.PartsStats
 import ch.brickinventoryapp.data.model.PartValuationItem
-import ch.brickinventoryapp.data.model.BrickColor
+import ch.brickinventoryapp.ui.model.FarbeAnsicht
 import ch.brickinventoryapp.util.rememberTileImageWithFallback
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox

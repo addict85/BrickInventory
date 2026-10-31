@@ -77,7 +77,7 @@ object Beispiele {
             {"set_number":"75192-1","name":"Millennium Falcon","year":2017,"theme":"Star Wars","quantity":1,"num_parts":7541},
             {"set_number":"10294-1","name":"Titanic","year":2021,"theme":"Icons","quantity":2,"num_parts":9090},
             {"set_number":"21318-1","name":"Baumhaus","year":2019,"theme":"Ideas","quantity":1,"num_parts":3036}]}""",
-        "/api/v1/stats" to """{"success":true,"stats":{"total_sets":3,"total_quantity":4,"total_pieces":28757}}""",
+        "/api/v1/stats" to """{"success":true,"stats":{"total_sets":3,"total_quantity":4,"total_pieces":28757,"total_instructions":2,"total_parts":0,"total_minifigs":5}}""",
         "/api/v1/finance/pnl" to """{"success":true,"currency":"CHF","totals":{"purchase":"1450.00","current":"1712.40","pnl_prozent":18.1},"sets":[
             {"set_number":"75192-1","quantity":1,"current_price":812.5,"baseline_price":700,"pnl_pct":"16.1","kachel_preis":812.5,"kachel_pnl_pct":16.1}]}""",
         "/api/v1/finance/valuation" to """{"success":true,"currency":"CHF","sets":[

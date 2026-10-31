@@ -1,22 +1,31 @@
 package ch.brickinventoryapp.ui
 
 import ch.brickinventoryapp.data.model.BrickColorsResponse
+import ch.brickinventoryapp.ui.model.alsAnsicht
 import ch.brickinventoryapp.data.model.ManualFigsResponse
 import ch.brickinventoryapp.data.model.ManualPartsResponse
+import ch.brickinventoryapp.ui.model.alsAnsicht
 import ch.brickinventoryapp.data.model.MinifigStatsResponse
 import ch.brickinventoryapp.data.model.MinifigsResponse
+import ch.brickinventoryapp.ui.model.alsAnsicht
 import ch.brickinventoryapp.data.model.PartsCategoriesResponse
 import ch.brickinventoryapp.data.model.PartsFilterColorsResponse
+import ch.brickinventoryapp.ui.model.alsAnsicht
 import ch.brickinventoryapp.data.model.PartsResponse
 import ch.brickinventoryapp.data.model.PartsStatsResponse
+import ch.brickinventoryapp.ui.model.alsAnsicht
 import ch.brickinventoryapp.data.repository.Result
 import kotlinx.coroutines.CoroutineScope
+import ch.brickinventoryapp.ui.model.alsAnsicht
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import ch.brickinventoryapp.ui.model.alsAnsicht
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import ch.brickinventoryapp.ui.model.alsAnsicht
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import ch.brickinventoryapp.ui.model.alsAnsicht
 import kotlinx.coroutines.launch
 
 /**
@@ -160,7 +169,7 @@ internal class Teile(
     fun ladeFarben() {
         scope.launch {
             (quelle.alleFarben() as? Result.Success)?.data?.takeIf { it.success }
-                ?.let { d -> _state.update { it.copy(partsColors = d.colors) } }
+                ?.let { d -> _state.update { it.copy(partsColors = d.colors.map { c -> c.alsAnsicht() }) } }
         }
     }
 
@@ -218,7 +227,7 @@ internal class Teile(
  * Die Auswahl führt „keine Farbe“ selbst, in der Sprache der App; sonst stünde
  * dieselbe Wahl zweimal da.
  */
-fun ohneKeineFarbe(farben: List<ch.brickinventoryapp.data.model.BrickColor>) =
+fun ohneKeineFarbe(farben: List<ch.brickinventoryapp.ui.model.FarbeAnsicht>) =
     farben.filter { it.id != ch.brickinventoryapp.data.model.KEINE_FARBE }
 
 /**
@@ -226,7 +235,7 @@ fun ohneKeineFarbe(farben: List<ch.brickinventoryapp.data.model.BrickColor>) =
  * 9999“; sonst der Name aus der Liste, dann der gespeicherte. Null, wenn
  * keiner bekannt ist — dann nennt die Anzeige die Nummer.
  */
-fun farbName(farben: List<ch.brickinventoryapp.data.model.BrickColor>, aktuell: Int,
+fun farbName(farben: List<ch.brickinventoryapp.ui.model.FarbeAnsicht>, aktuell: Int,
              aktuellerName: String?, keineFarbe: String): String? =
     if (aktuell == ch.brickinventoryapp.data.model.KEINE_FARBE) keineFarbe
     else farben.firstOrNull { it.id == aktuell }?.name ?: aktuellerName?.takeIf { it.isNotBlank() }

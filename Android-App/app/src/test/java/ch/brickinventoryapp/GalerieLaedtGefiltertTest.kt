@@ -52,7 +52,7 @@ class GalerieLaedtGefiltertTest {
         Dispatchers.setMain(UnconfinedTestDispatcher())
         val pfade = PfadServer("/api/v1/sets" to """{"success":true,"total":5,"sets":[
             {"set_number":"75192-1","name":"Falke"},{"set_number":"10294-1","name":"Titanic"}]}""",
-            "/api/v1/stats" to """{"success":true,"stats":{"total_sets":5}}""")
+            "/api/v1/stats" to """{"success":true,"stats":{"total_sets":5,"total_quantity":5,"total_pieces":0,"total_instructions":0,"total_parts":0,"total_minifigs":0}}""")
         val t = TestDienste(pfade.server)
         try {
             val gemerkt = SavedStateHandle(mapOf("galerie_suche" to "Falke",

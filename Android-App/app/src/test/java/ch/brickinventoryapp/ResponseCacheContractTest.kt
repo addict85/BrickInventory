@@ -55,7 +55,7 @@ class ResponseCacheContractTest {
 
     @Test
     fun `StatsResponse ueberlebt die Runde`() {
-        val raw = """{"success":true,"stats":{"total_sets":380,"total_pieces":243700}}"""
+        val raw = """{"success":true,"stats":{"total_sets":380,"total_quantity":400,"total_pieces":243700,"total_instructions":12,"total_parts":0,"total_minifigs":9}}"""
         val decoded = json.decodeFromString(StatsResponse.serializer(), raw)
         val round = json.decodeFromString(StatsResponse.serializer(),
             json.encodeToString(StatsResponse.serializer(), decoded))

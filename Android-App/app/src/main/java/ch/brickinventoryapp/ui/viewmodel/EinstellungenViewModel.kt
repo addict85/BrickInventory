@@ -3,7 +3,9 @@ package ch.brickinventoryapp.ui.viewmodel
 import android.net.Uri
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.R
-import ch.brickinventoryapp.data.model.CsvArt
+import ch.brickinventoryapp.ui.model.CsvImportArt
+import ch.brickinventoryapp.ui.model.alsAnsicht
+import ch.brickinventoryapp.ui.model.alsDaten
 import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.data.repository.VerwaltungRepository
 import ch.brickinventoryapp.data.repository.Result
@@ -78,7 +80,7 @@ class EinstellungenViewModel @Inject constructor(
 
     // ── CSV-Import ───────────────────────────────────────────────────────────
 
-    fun ladeCsvHoch(art: CsvArt, uri: Uri) {
+    fun ladeCsvHoch(art: CsvImportArt, uri: Uri) {
         viewModelScope.launch {
             _csvHochladenState.value = CsvHochladenUiState(laeuft = true, art = art)
             val bytes = leser.lies(uri)?.second
@@ -92,16 +94,16 @@ class EinstellungenViewModel @Inject constructor(
                 return@launch
             }
             val name = leser.name(uri) ?: "import.csv"
-            when (val r = verwaltung.importiereCsv(art, name, bytes)) {
+            when (val r = verwaltung.importiereCsv(art.alsDaten(), name, bytes)) {
                 is Result.Success ->
                     if (r.data.success) {
                         _csvHochladenState.value = CsvHochladenUiState(ergebnis = r.data)
                         dienste.bestand.melde(when (art) {
-                            CsvArt.MERKLISTE -> Aenderung.Merkliste
-                            CsvArt.PREISALARME -> Aenderung.Alarme
-                            CsvArt.TEILE -> Aenderung.Teile
-                            CsvArt.MINIFIGUREN -> Aenderung.Figuren
-                            CsvArt.SETS -> Aenderung.Sets
+                            CsvImportArt.MERKLISTE -> Aenderung.Merkliste
+                            CsvImportArt.PREISALARME -> Aenderung.Alarme
+                            CsvImportArt.TEILE -> Aenderung.Teile
+                            CsvImportArt.MINIFIGUREN -> Aenderung.Figuren
+                            CsvImportArt.SETS -> Aenderung.Sets
                         })
                     } else _csvHochladenState.value = CsvHochladenUiState(fehler = r.data.error ?: text(R.string.err_generic))
                 is Result.Error -> _csvHochladenState.value = CsvHochladenUiState(fehler = meldung(r))
@@ -119,7 +121,7 @@ class EinstellungenViewModel @Inject constructor(
         viewModelScope.launch {
             when (val r = sets.getAlleAlarme()) {
                 is Result.Success ->
-                    if (r.data.success) _alarmUebersicht.value = AlarmUebersichtUiState(alarme = r.data.alerts, geladen = true)
+                    if (r.data.success) _alarmUebersicht.value = AlarmUebersichtUiState(alarme = r.data.alerts.map { it.alsAnsicht() }, geladen = true)
                     else _snackbar.value = r.data.error
                 is Result.Error -> _snackbar.value = meldungFuerSnackbar(r)
             }

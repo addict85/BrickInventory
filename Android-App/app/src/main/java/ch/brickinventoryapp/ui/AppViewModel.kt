@@ -5,6 +5,7 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.R
+import ch.brickinventoryapp.ui.model.alsAnsicht
 import ch.brickinventoryapp.data.CsvImportSseClient
 import ch.brickinventoryapp.data.MeldungsKanal
 import ch.brickinventoryapp.data.PreferencesManager
@@ -288,7 +289,7 @@ class AppViewModel @Inject constructor(
                     sitzung.aendere { it.copy(startupStatus = null) }
                     return@launch
                 }
-                sitzung.aendere { it.copy(startupStatus = r.data) }
+                sitzung.aendere { it.copy(startupStatus = r.data.alsAnsicht()) }
                 delay(2000)
             }
         }
