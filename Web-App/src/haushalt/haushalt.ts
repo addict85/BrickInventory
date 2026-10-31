@@ -319,7 +319,6 @@ export async function resolveWriteTarget(
   return (await canWriteFor(actorId, target)) ? target : null;
 }
 
-
 /**
  * Absender eines Eigentümerwechsels aus der ERFASSUNGSZEILE ermitteln.
  * Ausführlich: docs/begruendungen/src/haushalt/haushalt.ts.md#acquisitionmovesource

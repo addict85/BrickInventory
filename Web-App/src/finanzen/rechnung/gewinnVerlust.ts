@@ -14,7 +14,7 @@ import { ladeSetErfassungen, zaehle } from './abfragen';
 import { aufRappen, inZehntel4, summeAus } from '../../infra/geld';
 
 // ── GET /api/finance/parts-valuation ─────────────────────────────────────────────
-async function computePnl(viewerId: number, ids: Blickfeld) {
+export async function computePnl(viewerId: number, ids: Blickfeld) {
   // ZWEI Grössen, bewusst getrennt:
   //   viewerId — wessen EINSTELLUNGEN gelten (Währung, Cache-Dauer, Preisart)
   //   ids      — WESSEN DATEN gerechnet werden (Blickfeld, ggf. gefiltert)
@@ -220,7 +220,7 @@ async function computePnl(viewerId: number, ids: Blickfeld) {
  * fehlender Marktpreis ist kein Wert 0; mitgezählt ergäbe er −100 %.
  * @returns null, wenn kein Posten beides hat
  */
-function gesamtGuvProzent(zeilen: GuvZeile[]): string | null {
+export function gesamtGuvProzent(zeilen: GuvZeile[]): string | null {
   const { kauf, markt } = vergleichbareSummen(zeilen);
   return kauf > 0 ? ((markt - kauf) / kauf * 100).toFixed(1) : null;
 }
@@ -228,7 +228,7 @@ function gesamtGuvProzent(zeilen: GuvZeile[]): string | null {
 type GuvZeile = { purchase_price: number | null; current_price: number; quantity: number };
 
 /** Kauf- und Marktwert der Posten, die beides haben. */
-function vergleichbareSummen(zeilen: GuvZeile[]): { kauf: number; markt: number } {
+export function vergleichbareSummen(zeilen: GuvZeile[]): { kauf: number; markt: number } {
   let kauf = 0, markt = 0;
   for (const z of zeilen) {
     const k = z.purchase_price || 0, m = z.current_price || 0, n = z.quantity || 1;
@@ -237,4 +237,3 @@ function vergleichbareSummen(zeilen: GuvZeile[]): { kauf: number; markt: number 
   return { kauf, markt };
 }
 
-export { computePnl, gesamtGuvProzent, vergleichbareSummen };

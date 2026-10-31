@@ -14,19 +14,19 @@ import { appVersion } from '../../infra/appVersion';
  * Obergrenze für das LOKAL gespeicherte Set-Bild.
  * Ausführlich: docs/begruendungen/src/katalog/bilder/setImages.ts.md#set-img-max-bytes
  */
-const SET_IMG_MAX_BYTES = 20 * 1024 * 1024;
+export const SET_IMG_MAX_BYTES = 20 * 1024 * 1024;
 
 /**
  * Der Ausweis, mit dem wir uns beim Bildserver melden.
  * Ausführlich: docs/begruendungen/src/katalog/bilder/setImages.ts.md#bilduseragent
  */
-function bildUserAgent(): string {
+export function bildUserAgent(): string {
   const eigener = konfig().bildUserAgent;
   if (eigener) return eigener;
   return `BrickInventoryManager/${appVersion()} (self-hosted; +https://github.com/brickinventory)`;
 }
 
-async function downloadSetImage(url: string, setNumber: string, info?: { status?: number }) {
+export async function downloadSetImage(url: string, setNumber: string, info?: { status?: number }) {
   if (!url) return null;
   try {
     const safe = setNumber.replace(/[^a-z0-9-]/gi, '_');
@@ -104,4 +104,3 @@ async function downloadSetImage(url: string, setNumber: string, info?: { status?
   }
 }
 
-export { downloadSetImage, bildUserAgent, SET_IMG_MAX_BYTES };

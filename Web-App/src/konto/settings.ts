@@ -7,7 +7,7 @@ import { verschluessele, entschluessele, istVerschluesselt } from '../infra/gehe
 import { fehlerWerfen } from '../infra/fehlerTexte';
 
 /** Konto-Einstellung mit Rückfall auf die globale, dann auf `fallback`. */
-async function getSetting(userId: number, key: string, fallback?: any) {
+export async function getSetting(userId: number, key: string, fallback?: any) {
   const u = await db.get('SELECT value FROM user_settings WHERE user_id = $1 AND key = $2', [userId, key]);
   if (u?.value) return u.value;
   const g = await db.get('SELECT value FROM global_settings WHERE key = $1', [key]);
@@ -20,7 +20,7 @@ function klar(key: string, wert: string | null | undefined): string | null | und
 }
 
 /** Nur die globale Einstellung (z. B. SMTP). */
-async function getGlobalSetting(key: string, fallback: any = null) {
+export async function getGlobalSetting(key: string, fallback: any = null) {
   const g = await db.get('SELECT value FROM global_settings WHERE key = $1', [key]).catch(() => null);
   return klar(key, g?.value) ?? fallback;
 }
@@ -28,9 +28,9 @@ async function getGlobalSetting(key: string, fallback: any = null) {
 // Was ein Konto selbst setzen darf. Die Werte landen ungeprüft in Seiten,
 // PDFs und Preisabfragen; eine Währung wie "<img …>" oder "XYZ" hätte sonst
 // jede Bewertung des Kontos stillschweigend auf null gesetzt.
-const WAEHRUNGEN = new Set(['CHF', 'EUR', 'USD', 'GBP', 'SEK', 'NOK', 'AUD', 'CAD', 'DKK']);
+export const WAEHRUNGEN = new Set(['CHF', 'EUR', 'USD', 'GBP', 'SEK', 'NOK', 'AUD', 'CAD', 'DKK']);
 /** Die Designs — dieselbe Liste wie ALLOWED in public/js/00-theme-boot.js (theme.test.js). */
-const DESIGNS: readonly string[] = ['classic', 'brick', 'werkbank', 'farbfaecher', 'noppe', 'hochglanz'];
+export const DESIGNS: readonly string[] = ['classic', 'brick', 'werkbank', 'farbfaecher', 'noppe', 'hochglanz'];
 const NUTZER_REGELN: Record<string, (v: string) => boolean> = {
   currency: v => WAEHRUNGEN.has(v),
   language: v => v === 'de' || v === 'en',
@@ -43,7 +43,7 @@ const NUTZER_REGELN: Record<string, (v: string) => boolean> = {
  * Konto-Einstellung schreiben — die eine Stelle für Formular, Import und /api/v1.
  * Ausführlich: docs/begruendungen/src/konto/settings.ts.md#setusersetting
  */
-async function setUserSetting(userId: number, key: string, value: any) {
+export async function setUserSetting(userId: number, key: string, value: any) {
   const v = String(value).trim();
   const regel = NUTZER_REGELN[key];
   if (regel && !regel(v)) fehlerWerfen('wert_ungueltig', 400);
@@ -62,7 +62,6 @@ const VERBUND_SQL = `
     SELECT CASE WHEN l.main_user_id = v.id THEN l.sub_user_id ELSE l.main_user_id END
       FROM account_links l JOIN verbund v ON v.id IN (l.main_user_id, l.sub_user_id))
   SELECT id FROM verbund`;
-
 
 /**
  * Die Währung gilt für den ganzen Haushalt: Die Haushaltssicht summiert
@@ -92,7 +91,7 @@ async function setzeHaushaltswaehrung(userId: number, waehrung: string) {
  * Der wirksame Erfassungs-Zustand eines Nutzers: eigener Wert → globaler Standard → 'N'.
  * Ausführlich: docs/begruendungen/src/konto/settings.ts.md#nutzerstandardzustand
  */
-async function nutzerStandardZustand(userId: number): Promise<'N' | 'U'> {
+export async function nutzerStandardZustand(userId: number): Promise<'N' | 'U'> {
   const u = await db.get(
     "SELECT value FROM user_settings WHERE user_id=$1 AND key='user_default_condition'", [userId]
   ).catch(() => null);
@@ -110,7 +109,7 @@ async function nutzerStandardZustand(userId: number): Promise<'N' | 'U'> {
  * @param bisher  Der bisherige Zustand des Bestands, falls vorhanden.
  * @param userId  Für den Standard, wenn beides fehlt.
  */
-async function zustandFuerPreis(
+export async function zustandFuerPreis(
   eingabe: unknown,
   bisher: string | null | undefined,
   userId: number,
@@ -121,7 +120,7 @@ async function zustandFuerPreis(
 }
 
 /** Der globale Standard-Zustand (Verwaltung), ohne Wert des Nutzers. */
-async function globalDefaultCondition(): Promise<'N' | 'U'> {
+export async function globalDefaultCondition(): Promise<'N' | 'U'> {
   const g = await db.get(
     "SELECT value FROM global_settings WHERE key='default_price_condition'"
   ).catch(() => null);
@@ -132,7 +131,7 @@ async function globalDefaultCondition(): Promise<'N' | 'U'> {
  * Globale Einstellung schreiben — die EINE Stelle dafuer.
  * Ausführlich: docs/begruendungen/src/konto/settings.ts.md#setglobalsetting
  */
-async function setGlobalSetting(key: string, value: unknown) {
+export async function setGlobalSetting(key: string, value: unknown) {
   await db.run(
     `INSERT INTO global_settings (key, value, updated_at) VALUES ($1, $2, NOW())
      ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = NOW()`,
@@ -144,7 +143,7 @@ async function setGlobalSetting(key: string, value: unknown) {
  * `AND value = $3`: Hat ein anderer Prozess die Zeile inzwischen neu
  * geschrieben, bleibt sie, wie sie ist.
  */
-async function verschluesseleGlobaleAltwerte(): Promise<number> {
+export async function verschluesseleGlobaleAltwerte(): Promise<number> {
   let n = 0;
   for (const z of await db.all('SELECT key, value FROM global_settings WHERE key = ANY($1)', [[...SECRET_KEYS]])) {
     if (!z.value || istVerschluesselt(z.value)) continue;
@@ -156,17 +155,15 @@ async function verschluesseleGlobaleAltwerte(): Promise<number> {
 }
 
 /** Globale Einstellung entfernen — „fehlt“ ist etwas anderes als „leer“. */
-async function deleteGlobalSetting(...keys: string[]) {
+export async function deleteGlobalSetting(...keys: string[]) {
   if (keys.length === 0) return;
   await db.run(`DELETE FROM global_settings WHERE key = ANY($1)`, [keys]);
 }
 
 /** Einstellung eines Kontos entfernen: Danach gilt die Vorgabe der Installation. */
-async function deleteUserSetting(userId: number, key: string) {
+export async function deleteUserSetting(userId: number, key: string) {
   await db.run('DELETE FROM user_settings WHERE user_id=$1 AND key=$2', [userId, key]);
 }
-
-export { WAEHRUNGEN, getSetting, getGlobalSetting, setGlobalSetting, deleteGlobalSetting, setUserSetting, deleteUserSetting, nutzerStandardZustand, globalDefaultCondition, zustandFuerPreis };
 
 // Einstellungen LESEN — eine Fassung fuer beide Oberflaechen
 //  Warum das hierher gehoert (Marcos Vorgabe: „die beiden Apps sollen gleich
@@ -177,7 +174,7 @@ export { WAEHRUNGEN, getSetting, getGlobalSetting, setGlobalSetting, deleteGloba
  * Schlüssel aus global_settings, deren WERT ein Geheimnis ist.
  * Ausführlich: docs/begruendungen/src/konto/settings.ts.md#secret-keys
  */
-const SECRET_KEYS = new Set([
+export const SECRET_KEYS = new Set([
   'bricklink_consumer_key', 'bricklink_consumer_secret',
   'bricklink_token', 'bricklink_token_secret',
   'brickset_api_key', 'rebrickable_api_key',
@@ -200,12 +197,12 @@ const MASK_CHAR = '\u2022';
  * Raten eines kurzen Schlüssels und verraten, ob zwei Installationen denselben
  * tragen. Leer bleibt leer — das ist „nicht gesetzt".
  */
-function maskSecret(value: string | null | undefined) {
+export function maskSecret(value: string | null | undefined) {
   return String(value ?? '') ? MASK_CHAR.repeat(12) : '';
 }
 
 /** Kam die ausgelieferte Maske unverändert zurück statt eines neuen Geheimnisses? */
-function isMaskedValue(value: string | null | undefined) {
+export function isMaskedValue(value: string | null | undefined) {
   return typeof value === 'string' && value.includes(MASK_CHAR);
 }
 
@@ -213,7 +210,7 @@ function isMaskedValue(value: string | null | undefined) {
  * Globale Werte für einen Client: Nicht-Verwalter sehen die Schlüssel nicht,
  * Verwalter bekommen Geheimnisse maskiert.
  */
-function sanitizeGlobal(global: any, isAdmin: boolean) {
+export function sanitizeGlobal(global: any, isAdmin: boolean) {
   const out: any = {};
   for (const [k, v] of Object.entries(global)) {
     if (SECRET_KEYS.has(k)) {
@@ -239,7 +236,7 @@ export async function nutzerEinstellungen(userId: number): Promise<Record<string
  * Einstellungen so, wie sie an einen Client gehen dürfen: globale Werte
  * durch sanitizeGlobal(), darüber die des Nutzers.
  */
-async function readSettings(userId: number, isAdmin: boolean) {
+export async function readSettings(userId: number, isAdmin: boolean) {
   const raw: any = {};
   (await db.all('SELECT key, value FROM global_settings')).forEach(r => { raw[r.key] = klar(r.key, r.value); });
   const global = sanitizeGlobal(raw, !!isAdmin);
@@ -254,20 +251,18 @@ async function readSettings(userId: number, isAdmin: boolean) {
  * Datei wird heruntergeladen und weitergegeben, Schlüssel trägt man beim
  * Wiederherstellen neu ein.
  */
-async function globaleWerteOhneGeheimnisse(): Promise<Record<string, string>> {
+export async function globaleWerteOhneGeheimnisse(): Promise<Record<string, string>> {
   const aus: Record<string, string> = {};
   for (const r of await db.all<{ key: string; value: string }>('SELECT key, value FROM global_settings'))
     if (!SECRET_KEYS.has(r.key)) aus[r.key] = r.value;
   return aus;
 }
 
-export { verschluesseleGlobaleAltwerte, SECRET_KEYS, maskSecret, isMaskedValue, sanitizeGlobal, readSettings, globaleWerteOhneGeheimnisse };
-
 // ── Design je Konto ─────────────────────────────────────────────────────────
 // Der Verwalter setzt die Vorgabe (global_settings.app_theme), ein Konto darf
 // sie in user_settings.app_theme überschreiben. Ohne eigene Zeile gilt die
 // Vorgabe — so folgen alle, die nichts gewählt haben, einem Wechsel des Verwalters.
-async function designFuer(userId?: number | null): Promise<{ theme: string; vorgabe: string; eigenes: string | null }> {
+export async function designFuer(userId?: number | null): Promise<{ theme: string; vorgabe: string; eigenes: string | null }> {
   const g = await getGlobalSetting('app_theme');
   const vorgabe = DESIGNS.includes(g) ? g : 'classic';
   const u = userId ? await db.get("SELECT value FROM user_settings WHERE user_id = $1 AND key = 'app_theme'", [userId]) : null;
@@ -276,10 +271,9 @@ async function designFuer(userId?: number | null): Promise<{ theme: string; vorg
 }
 
 /** Eigenes Design setzen; leer oder null löscht die Zeile, dann gilt wieder die Vorgabe. */
-async function setzeEigenesDesign(userId: number, theme: unknown): Promise<void> {
+export async function setzeEigenesDesign(userId: number, theme: unknown): Promise<void> {
   const v = String(theme ?? '').trim();
   if (!v) { await db.run("DELETE FROM user_settings WHERE user_id = $1 AND key = 'app_theme'", [userId]); return; }
   await setUserSetting(userId, 'app_theme', v);
 }
 
-export { DESIGNS, designFuer, setzeEigenesDesign };

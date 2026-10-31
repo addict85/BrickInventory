@@ -35,7 +35,7 @@ import { marktpreiseAusCacheFuerTeile } from '../finanzen/marketPrice';
 /** Farbliste des Teilebestands (ohne manuelle Positionen — die haben eine
  *  eigene Ansicht). Hex-Fallback aus rb_colors für Teile ohne eigenen Wert.
  *  Von /api/parts/colors UND /api/v1/parts/colors genutzt (Parität). */
-async function getPartsColors(userId: Blickfeld) {
+export async function getPartsColors(userId: Blickfeld) {
   // Blickfeld statt einer einzelnen ID: Ein Hauptkonto sieht (und ändert)
   // auch die Daten seiner Unterkonten, alle anderen nur ihre eigenen. Die
   // Liste kommt von scopeIds() in src/haushalt/haushalt.ts — hier wird sie nur
@@ -146,7 +146,6 @@ function teileFilter(uids: number[], query: any) {
     params.push(String(query.storage));
   }
 
-
   return { where, params, pi };
 }
 
@@ -232,7 +231,7 @@ function ordnungSql(o: TeileOrdnung, sp: { farbe: string; name: string; menge: s
   return `${sp.farbe} ASC, ${sp.name} ASC`;
 }
 
-async function tryPartsSummary(userId: Blickfeld, o: any) {
+export async function tryPartsSummary(userId: Blickfeld, o: any) {
   const uids = asIds(userId);
   // Seitenabfrage aus der Zusammenfassung; null heisst: Die Live-Abfrage
   // übernimmt. Sie ist je Konto gebaut, frisch nur, wenn alle Konten es sind.
@@ -327,7 +326,7 @@ async function tryPartsSummary(userId: Blickfeld, o: any) {
   };
 }
 
-async function getParts(userId: Blickfeld, query: any = {}) {
+export async function getParts(userId: Blickfeld, query: any = {}) {
   // Blickfeld statt einer einzelnen ID: Ein Hauptkonto sieht (und ändert)
   // auch die Daten seiner Unterkonten, alle anderen nur ihre eigenen. Die
   // Liste kommt von scopeIds() in src/haushalt/haushalt.ts — hier wird sie nur
@@ -523,7 +522,7 @@ async function getParts(userId: Blickfeld, query: any = {}) {
  * Aus der Zusammenfassung, wenn sie frisch ist; gezählt werden dann die Gruppen
  * der Teileliste (BrickLink-Nummer und Farbe), wie bei der Farbliste.
  */
-async function getPartsCategories(userId: Blickfeld) {
+export async function getPartsCategories(userId: Blickfeld) {
   const uids = asIds(userId);
   const kategorie = (spalte: string, nummer: string) => `
       LEFT JOIN rb_part_categories rc
@@ -557,7 +556,7 @@ async function getPartsCategories(userId: Blickfeld) {
     ${gruppe.replace('{k}', 'pc.category_name')}`, [uids]);
 }
 
-async function getPartsStats(userId: Blickfeld) {
+export async function getPartsStats(userId: Blickfeld) {
   // Blickfeld statt einer einzelnen ID: Ein Hauptkonto sieht (und ändert)
   // auch die Daten seiner Unterkonten, alle anderen nur ihre eigenen. Die
   // Liste kommt von scopeIds() in src/haushalt/haushalt.ts — hier wird sie nur
@@ -598,7 +597,7 @@ async function getPartsStats(userId: Blickfeld) {
   };
 }
 
-async function getBlColorMap() {
+export async function getBlColorMap() {
   // Zuerst die Datenbank über farbkarte() (src/finanzen/financeCalc.ts), die die Karte
   // zehn Minuten merkt.
   const karte = await blFarbkarte();
@@ -639,7 +638,7 @@ async function getBlColorMap() {
  *   getrennt von `userId`, das sagt, wessen DATEN gelesen werden.
  * @param search  Suchtext der Filterleiste. Siehe die Begruendung unten.
  */
-async function getManualParts(userId: Blickfeld, viewerId: number,
+export async function getManualParts(userId: Blickfeld, viewerId: number,
                               { page = 1, page_size = null, search = null, storage = null }: any = {}) {
   // Blickfeld statt einer einzelnen ID: Ein Hauptkonto sieht (und ändert)
   // auch die Daten seiner Unterkonten, alle anderen nur ihre eigenen. Die
@@ -767,8 +766,6 @@ async function getManualParts(userId: Blickfeld, viewerId: number,
       return withOwners(uids, mitPreis);
     });
 }
-
-export { getPartsColors, getPartsCategories, tryPartsSummary, getParts, getPartsStats, getBlColorMap, getManualParts };
 
 /**
  * Wie viele der angefragten Teile im Blickfeld tatsächlich vorhanden sind.

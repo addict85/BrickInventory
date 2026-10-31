@@ -18,7 +18,6 @@ export function registerSse(res: any): () => void {
   return () => { _offen.delete(res); };
 }
 
-
 /**
  * Alle offenen Ströme beenden. Aus dem Shutdown aufgerufen, BEVOR auf
  * `httpServer.close()` gewartet wird.

@@ -6,7 +6,7 @@
  * - On 429: parse wait time from response and back off
  */
 
-class RateLimiter {
+export class RateLimiter {
   maxRequests: number;
   windowMs: number;
   lastCall: number;
@@ -81,7 +81,7 @@ let taktGestoertBis = 0;
  * Ein einziges UPDATE schiebt den Zeitpunkt weiter — zwei Prozesse bekommen so
  * nie denselben Platz, ohne dass einer eine Sperre hält, während er wartet.
  */
-async function warteAufTakt(api: string, abstandMs: number): Promise<void> {
+export async function warteAufTakt(api: string, abstandMs: number): Promise<void> {
   if (Date.now() < taktGestoertBis) return;
   try {
     const r = await db.get(
@@ -110,16 +110,16 @@ function taktAussetzen(api: string, waitMs: number) {
 // zusammen. Die beiden Drosseln ordnen nur innerhalb des Prozesses; den
 // Abstand untereinander und zu den anderen Prozessen hält der gemeinsame Takt.
 const REBRICKABLE_TAKT = { api: 'rebrickable', abstandMs: 1000 };
-const rebrickableLimiter = new RateLimiter(1, 1500, REBRICKABLE_TAKT);
+export const rebrickableLimiter = new RateLimiter(1, 1500, REBRICKABLE_TAKT);
 // Secondary limiter: background enrichment jobs (parts catalog, BL IDs)
-const rebrickableBackgroundLimiter = new RateLimiter(1, 1500, REBRICKABLE_TAKT);
+export const rebrickableBackgroundLimiter = new RateLimiter(1, 1500, REBRICKABLE_TAKT);
 
 /**
  * Einen Rebrickable-Aufruf vom Tageskontingent abziehen.
  * Ausführlich: docs/begruendungen/src/katalog/rateLimiter.ts.md#consumerebrickabledaily
  * @returns true, wenn der Aufruf erlaubt ist (und gezählt wurde)
  */
-async function consumeRebrickableDaily(): Promise<boolean> {
+export async function consumeRebrickableDaily(): Promise<boolean> {
   const rl = await checkAndIncrementRateLimit('rebrickable').catch(meldeUndLiefere('takt:checkAndIncrementRateLimit', null));
   // Im Zweifel durchlassen: Ein Datenbankproblem darf nicht dazu führen, dass
   // gar nichts mehr geladen wird. Umgekehrte Abwägung als beim Login-Zähler —
@@ -129,7 +129,7 @@ async function consumeRebrickableDaily(): Promise<boolean> {
 }
 
 /** Stand des Rebrickable-Tageskontingents — für Meldungen und Anzeige. */
-async function rebrickableDailyStatus(): Promise<{ count: number; limit: number; remaining: number }> {
+export async function rebrickableDailyStatus(): Promise<{ count: number; limit: number; remaining: number }> {
   return getRateLimitStatus('rebrickable')
     .catch(() => ({ count: 0, limit: REBRICKABLE_DEFAULT_DAILY, remaining: 0 }));
 }
@@ -139,7 +139,7 @@ async function rebrickableDailyStatus(): Promise<{ count: number; limit: number;
  * Unlike RateLimiter (strict sequential), this allows 2 simultaneous downloads while
  * still throttling throughput to 1 new download per 1000ms.
  */
-class ConcurrentRateLimiter {
+export class ConcurrentRateLimiter {
   maxConcurrent: number;
   intervalMs: number;
   active: number;
@@ -196,13 +196,13 @@ class ConcurrentRateLimiter {
 }
 
 // CDN image limiter: 2 concurrent, 1 new per second
-const cdnImageLimiter = new ConcurrentRateLimiter(2, 1000);
+export const cdnImageLimiter = new ConcurrentRateLimiter(2, 1000);
 
 /**
  * Parse throttle wait time from Rebrickable 429 response body.
  * Response: {"detail": "Request was throttled. Expected available in 2 seconds."}
  */
-function parseThrottleWait(body: string) {
+export function parseThrottleWait(body: string) {
   try {
     const data = typeof body === 'string' ? JSON.parse(body) : body;
     const match = data?.detail?.match(/(\d+)\s*second/);
@@ -211,4 +211,4 @@ function parseThrottleWait(body: string) {
   return 5000; // default 5s
 }
 
-export { warteAufTakt, rebrickableLimiter, rebrickableBackgroundLimiter, consumeRebrickableDaily, rebrickableDailyStatus, cdnImageLimiter, RateLimiter, ConcurrentRateLimiter, parseThrottleWait, REBRICKABLE_DEFAULT_DAILY };
+export { REBRICKABLE_DEFAULT_DAILY };

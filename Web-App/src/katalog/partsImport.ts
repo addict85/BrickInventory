@@ -91,7 +91,7 @@ export async function importiereTeile(setNumber: string, userId: number): Promis
 }
 
 /** Wie importiereTeile(), aber ohne zu werfen — für die Route, die nur die Zahl zeigt. */
-async function importPartsForSet(setNumber: string, userId: number): Promise<number> {
+export async function importPartsForSet(setNumber: string, userId: number): Promise<number> {
   try {
     return await importiereTeile(setNumber, userId);
   } catch (e) {
@@ -117,7 +117,7 @@ function holeSeite(url: string, rbKey: string): Promise<{ status: number; body: 
  * Zeile mit leerer bl_id heisst „nachgesehen, keine abweichende Nummer" und
  * löst kein zweites Nachladen aus (merkeBlNummerUnveraendert).
  */
-async function fetchMissingBlIds() {
+export async function fetchMissingBlIds() {
   try {
     const rbKey = await getGlobalSetting('rebrickable_api_key');
     if (!rbKey) return;
@@ -166,4 +166,3 @@ async function fetchMissingBlIds() {
   } catch (e) { console.error('[bl-fetch] error:', fehlertext(e)); }
 }
 
-export { importPartsForSet, fetchMissingBlIds };

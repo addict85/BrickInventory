@@ -351,7 +351,6 @@ export async function buildPreisalarmeCsv(uid: number): Promise<string> {
       ORDER BY set_number, condition`,
     [uid]);
 
-
   return toCsv(['set_number', 'condition', 'richtung', 'schwelle', 'currency_code'],
     // schwelle kommt als NUMERIC, also als Zeichenkette aus dem Treiber. Ohne
     // das Umwandeln stand im Export „200.0000" statt „200" — richtig, aber

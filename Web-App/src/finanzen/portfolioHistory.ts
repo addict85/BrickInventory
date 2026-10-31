@@ -7,7 +7,7 @@ import { DEFAULT_PRICE_CONDITION } from './financeCalc';
  * `db` und `getSetting` lassen sich hereingeben, damit die Rechnung ohne
  * Datenbank prüfbar bleibt; ohne Angabe gelten Datenbank und Einstellungen.
  */
-async function getPortfolioHistory(
+export async function getPortfolioHistory(
   viewerId: number, ids: number[], period: string,
   db: { all(sql: string, params?: any[]): Promise<any[]>; get(sql: string, params?: any[]): Promise<any> } = dbStandard,
   getSetting: (userId: number, key: string, fallback?: any) => Promise<any> = getSettingStandard,
@@ -79,7 +79,6 @@ async function getPortfolioHistory(
   // „Wert dessen, was zu diesem Zeitpunkt erfasst WAR". Wer an einem Tag
   // vierundzwanzig Sets einträgt, sieht dort einen Sprung — und die Prozentzahl …
   // Ausführlich: docs/begruendungen/src/finanzen/portfolioHistory.ts.md#kurve
-
 
   // Die Rekonstruktion aus dem Preisverlauf steht in
   // src/finanzen/portfolio/kurve.ts — sie ist der Kern und mit Abstand der grösste
@@ -154,4 +153,3 @@ async function getPortfolioHistory(
   };
 }
 
-export { getPortfolioHistory };

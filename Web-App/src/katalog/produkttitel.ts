@@ -16,7 +16,7 @@ const MENGENWORT = /^\s*(?:x\s*)?(?:pcs?|pieces?|piece|teil(?:e|en)?|stück(?:e|
  * Stellenzahlen in absteigender Güte. Unbekannte Längen landen dahinter.
  * Muss mit `GUETE` in setNumberCandidates() (Kotlin) übereinstimmen.
  */
-const GUETE = [5, 4, 6, 7, 3];
+export const GUETE = [5, 4, 6, 7, 3];
 
 function gueteIndex(stellen: number): number {
   const i = GUETE.indexOf(stellen);
@@ -28,7 +28,7 @@ function gueteIndex(stellen: number): number {
  * @param titel Produkttitel, wie ihn eine Händlerdatenbank liefert
  * @returns Kandidaten in absteigender Güte; leer, wenn nichts übrig bleibt
  */
-function setnummerKandidaten(titel: string): string[] {
+export function setnummerKandidaten(titel: string): string[] {
   if (!titel) return [];
   const jahrGrenze = new Date().getFullYear() + 1;
 
@@ -76,4 +76,3 @@ function setnummerKandidaten(titel: string): string[] {
     .map(k => k.wert);
 }
 
-export { setnummerKandidaten, GUETE };

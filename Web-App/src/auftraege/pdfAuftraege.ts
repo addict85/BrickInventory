@@ -93,7 +93,6 @@ export async function cleanOldPdfJobs() {
   }
 }
 
-
 /**
  * Wie viele Bilder der beteiligten Sets lokal noch fehlen — daran hängt die
  * Wartezeit (etwa ein Bild je Sekunde). Ohne Sets zählen die Teile selbst.

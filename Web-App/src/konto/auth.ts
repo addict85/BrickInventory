@@ -70,7 +70,7 @@ export interface KontoZustand {
  * Klartext-Token — nur die DB-Seite ist gehasht.
  */
 /** @param {string} token @returns {string} SHA-256-Hex */
-function hashToken(token: string): string {
+export function hashToken(token: string): string {
   return crypto.createHash('sha256').update(token).digest('hex');
 }
 
@@ -80,7 +80,7 @@ function hashToken(token: string): string {
  * @param {string|undefined|null} token Der ROHE Token aus der URL, ungehasht.
  * @returns {Promise<{ok: boolean, grund?: string, userId?: number}>}
  */
-async function verifiziereEmailToken(token: unknown): Promise<{ ok: boolean; grund?: string; userId?: number }> {
+export async function verifiziereEmailToken(token: unknown): Promise<{ ok: boolean; grund?: string; userId?: number }> {
   // Leerstring und Whitespace zählen wie „nicht da" — sonst schlüge unten
   // der Hash eines leeren Strings in der DB auf, und das ist ein gültiger
   // SHA-256-Wert, der theoretisch in einer Zeile stehen könnte.
@@ -145,12 +145,12 @@ const tageSeit = (zeitpunkt: string | Date | null | undefined, jetzt: number): n
   zeitpunkt ? (jetzt - new Date(zeitpunkt).getTime()) / TAG_MS : 0;
 
 /** Sollte dieser Token getauscht werden? (Nur Hinweis, keine Sperre.) */
-function rotationFaellig(u: TokenBenutzer, jetzt = Date.now()): boolean {
+export function rotationFaellig(u: TokenBenutzer, jetzt = Date.now()): boolean {
   return tageSeit(u.rotiert_am, jetzt) >= ROTATION_FAELLIG_TAGE;
 }
 
 /** Gilt dieser Token nur noch für den Tausch? Betrifft allein „unbegrenzt". */
-function rotationPflicht(u: TokenBenutzer, jetzt = Date.now()): boolean {
+export function rotationPflicht(u: TokenBenutzer, jetzt = Date.now()): boolean {
   return flaggeGesetzt(u.never_expires) && tageSeit(u.rotiert_am, jetzt) >= ROTATION_PFLICHT_TAGE;
 }
 
@@ -158,7 +158,7 @@ function rotationPflicht(u: TokenBenutzer, jetzt = Date.now()): boolean {
  * Der grobe Adressbereich für die Geräteliste: IPv4 als /24, IPv6 als /48.
  * Genug, um ein fremdes Netz zu erkennen; die genaue Adresse wird nicht gespeichert.
  */
-function ipBereich(ip: string | null | undefined): string | null {
+export function ipBereich(ip: string | null | undefined): string | null {
   if (!ip) return null;
   const v4 = /^(?:::ffff:)?(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.\d{1,3}$/i.exec(ip);
   if (v4) return `${v4[1]}.${v4[2]}.${v4[3]}.0/24`;
@@ -179,7 +179,7 @@ export interface TokenPruefung { nutzer: TokenBenutzer | null; grund?: 'token_ro
  * `zweck: 'rotation'` lässt einen unbegrenzten Token auch nach der Pflichtfrist
  * durch — nur der Tausch selbst darf ihn dann noch benutzen.
  */
-async function pruefeToken(token: string | null | undefined,
+export async function pruefeToken(token: string | null | undefined,
                            o: { ip?: string | null | undefined; zweck?: 'nutzung' | 'rotation' } = {}): Promise<TokenPruefung> {
   if (!token) return { nutzer: null };
   const now = Date.now();
@@ -226,7 +226,7 @@ async function pruefeToken(token: string | null | undefined,
   return ergebnis(row);
 }
 
-async function validateToken(token: string | null | undefined,
+export async function validateToken(token: string | null | undefined,
                              o: { ip?: string | null | undefined; zweck?: 'nutzung' | 'rotation' } = {}): Promise<TokenBenutzer | null> {
   return (await pruefeToken(token, o)).nutzer;
 }
@@ -267,7 +267,7 @@ function _touchLastUsed(entry: CacheEintrag, ip?: string | null): void {
 }
 
 /** Beim Logout/Token-Löschen aufrufen, damit der Token sofort ungültig wird. */
-function invalidateToken(token: string | null | undefined): void {
+export function invalidateToken(token: string | null | undefined): void {
   if (!token) return;
   _tokenCache.delete(token);
 }
@@ -278,7 +278,7 @@ function invalidateToken(token: string | null | undefined): void {
  * Web-Prozess, und widerrufen wird nur dort; ein Signal an andere Prozesse
  * braucht es nicht (der Job-Prozess löscht nur abgelaufene Tokens).
  */
-function leereTokenCache(): void {
+export function leereTokenCache(): void {
   _tokenCache.clear();
 }
 
@@ -286,7 +286,7 @@ function leereTokenCache(): void {
  * Ist diese Datenbank-Flagge gesetzt?
  * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#flaggegesetzt
  */
-function flaggeGesetzt(wert: unknown): boolean {
+export function flaggeGesetzt(wert: unknown): boolean {
   return wert === true || wert == 1;
 }
 
@@ -304,7 +304,7 @@ function flaggeGesetzt(wert: unknown): boolean {
  * @param {any} req
  * @param {{userId:number, username:string, isAdmin:boolean}} data
  */
-function establishSession(req: Request, data: { userId: number; username: string; isAdmin: boolean }): Promise<void> {
+export function establishSession(req: Request, data: { userId: number; username: string; isAdmin: boolean }): Promise<void> {
   return new Promise((resolve, reject) => {
     if (!req.session?.regenerate) {   // z. B. in Tests ohne Session-Middleware
       // Bewusste Ausnahme, benannt statt weggedrueckt: Ohne
@@ -325,38 +325,38 @@ function establishSession(req: Request, data: { userId: number; username: string
 }
 
 /** Kostenfaktor für bcrypt.hash — überall derselbe (vorher 10 bzw. 12 gemischt). */
-const BCRYPT_ROUNDS = 12;
+export const BCRYPT_ROUNDS = 12;
 
 /**
  * Wie kurz ein Passwort hoechstens sein darf.
  * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#passwort-min-zeichen
  */
-const PASSWORT_MIN_ZEICHEN = 8;
+export const PASSWORT_MIN_ZEICHEN = 8;
 
 /**
  * Ist dieses Passwort zu kurz?
  * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#passwortzukurz
  * @param passwort  der Rohwert aus dem Anfragerumpf
  */
-function passwortZuKurz(passwort: unknown): boolean {
+export function passwortZuKurz(passwort: unknown): boolean {
   return String(passwort ?? '').length < PASSWORT_MIN_ZEICHEN;
 }
 
 /** Erlaubte Benutzernamen. Login und Register erzwangen das bereits, das Profil-Update nicht. */
-const USERNAME_RE = /^[A-Za-z0-9_.-]{3,32}$/;
+export const USERNAME_RE = /^[A-Za-z0-9_.-]{3,32}$/;
 
 /**
  * Erlaubte E-Mail-Adressen — dieselbe Prüfung wie bei der Registrierung.
  * Bewusst grob: Die Adresse wird ohnehin gegen die Datenbank geprüft, und
  * strengere Muster lehnen regelmässig gültige Adressen ab.
  */
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /**
  * Darf das als ANMELDENAME durchgehen?
  * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#isvalidloginidentifier
  */
-function isValidLoginIdentifier(value: unknown): boolean {
+export function isValidLoginIdentifier(value: unknown): boolean {
   const v = String(value || '');
   return USERNAME_RE.test(v) || (v.length <= 254 && EMAIL_RE.test(v));
 }
@@ -368,7 +368,7 @@ function isValidLoginIdentifier(value: unknown): boolean {
  *
  * @returns null = Login erlaubt
  */
-function assertLoginAllowed(user: KontoZustand):
+export function assertLoginAllowed(user: KontoZustand):
     { status: number; code: FehlerCode; unverified?: boolean } | null {
   if (user.is_active === 0 || user.is_active === false)
     return { status: 403, code: 'konto_deaktiviert' };
@@ -421,7 +421,7 @@ export type AnmeldeErgebnis =
  * @param password Klartext-Passwort aus dem Request.
  * @param code     Einmal- oder Wiederherstellungscode (src/konto/zweiterFaktor.ts).
  */
-async function pruefeAnmeldedaten(req: Request, username: unknown, password: unknown, code?: unknown,
+export async function pruefeAnmeldedaten(req: Request, username: unknown, password: unknown, code?: unknown,
                                   passkeyAntwort?: unknown): Promise<AnmeldeErgebnis> {
   // Die Absage traegt einen CODE und keinen Satz: Welche
   // Sprache der Anfragende sieht, weiss die Route.
@@ -481,7 +481,7 @@ async function pruefeAnmeldedaten(req: Request, username: unknown, password: unk
  * DELETE /api/settings/tokens/:tokenId alle Tokens des Nutzers auf einmal.
  * @param {string} s
  */
-function escapeLike(s: unknown): string { return String(s ?? '').replace(/([%_\\])/g, '\\$1'); }
+export function escapeLike(s: unknown): string { return String(s ?? '').replace(/([%_\\])/g, '\\$1'); }
 
 /**
  * Warum es hier KEINE Liste mehr gibt: ?token= zaehlt nirgends.
@@ -494,7 +494,7 @@ function escapeLike(s: unknown): string { return String(s ?? '').replace(/([%_\\
  * @param req Express-Request
  * @returns {Promise<number|null>} null wenn nicht authentifiziert
  */
-async function resolveUserId(req: Request): Promise<number | null> {
+export async function resolveUserId(req: Request): Promise<number | null> {
   if (req.session?.userId) return req.session.userId;
   const auth = req.headers.authorization || '';
   const token: string | null = auth.startsWith('Bearer ') ? auth.slice(7) : null;
@@ -519,7 +519,7 @@ async function resolveUserId(req: Request): Promise<number | null> {
  * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#loginortokenguard
  * @param opts.timeoutMs Antwortet nach dieser Zeit mit 503, statt zu warten.
  */
-function loginOrTokenGuard(opts: { timeoutMs?: number } = {}) {
+export function loginOrTokenGuard(opts: { timeoutMs?: number } = {}) {
   return async function requireLoginOrToken(req: Request, res: Response, next: NextFunction) {
     if (req.session?.userId || req.tokenUserId) return next();
     const timer = opts.timeoutMs
@@ -536,14 +536,14 @@ function loginOrTokenGuard(opts: { timeoutMs?: number } = {}) {
   };
 }
 
-const requireLoginOrToken = loginOrTokenGuard();
+export const requireLoginOrToken = loginOrTokenGuard();
 
 /**
  * Wer fragt hier? — Sitzung ODER Bearer-Token, EINE Antwort.
  * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#nutzerid
  * @returns Die Nutzerkennung als Zahl, oder null wenn niemand angemeldet ist.
  */
-function nutzerId(req: Request): number | null {
+export function nutzerId(req: Request): number | null {
   const roh = req.session?.userId ?? req.tokenUserId ?? (req as any).apiUser?.user_id;
   if (roh == null) return null;
   const n = Number(roh);
@@ -558,7 +558,7 @@ function nutzerId(req: Request): number | null {
  * Wie [nutzerId], aber fuer Handler, die HINTER einem Waechter stehen.
  * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#angemeldetenutzerid
  */
-function angemeldeteNutzerId(req: Request): number {
+export function angemeldeteNutzerId(req: Request): number {
   const id = nutzerId(req);
   if (id == null) {
     throw new Error('angemeldeteNutzerId ohne Anmeldung — die Route steht vor ihrem Waechter');
@@ -570,16 +570,16 @@ function angemeldeteNutzerId(req: Request): number {
  * Wie heisst der Anfragende? — Sitzung ODER Bearer-Token.
  * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#nutzername
  */
-function nutzerName(req: Request): string | null {
+export function nutzerName(req: Request): string | null {
   return req.session?.username ?? (req as any).apiUser?.username ?? null;
 }
 
 /** Kam die Anfrage mit einer Browser-Sitzung (nicht mit einem Token)? Für Schritte, die nur dort gehen. */
-function perSitzung(req: Request): boolean {
+export function perSitzung(req: Request): boolean {
   return !!req.session?.userId;
 }
 
-function istVerwalter(req: Request): boolean {
+export function istVerwalter(req: Request): boolean {
   if (req.session?.isAdmin) return true;
   return !!(req as any).apiUser?.is_admin;
 }
@@ -588,7 +588,7 @@ function istVerwalter(req: Request): boolean {
  * Der Wert, mit dem „unbegrenzt" in der Tageszahl steht.
  * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#unbegrenzt
  */
-const UNBEGRENZT = 0;
+export const UNBEGRENZT = 0;
 
 /**
  * Die WAEHLBAREN festen Laufzeiten eines QR-Zugangs, in Tagen.
@@ -611,7 +611,7 @@ const TOKEN_LAUFZEITEN: Record<string, number> = {
  * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#laufzeittage
  * @returns Tage, oder null fuer „keine feste Frist" (nichts gewaehlt, oder
  */
-function laufzeitTage(wahl: unknown): number | null {
+export function laufzeitTage(wahl: unknown): number | null {
   if (wahl === undefined || wahl === null || wahl === '') return null;
   return ausTabelle(TOKEN_LAUFZEITEN, String(wahl)) ?? null;
 }
@@ -630,7 +630,7 @@ export interface TokenOptionen {
  * @param festeTage  feste Höchstdauer; `UNBEGRENZT` (0) = ohne Ablauf, nur über HTTPS erlaubt
  *                   (prüft die Route) und dann mit Rotationspflicht.
  */
-async function createToken(userId: number, label = 'Android App', dauerhaft = false,
+export async function createToken(userId: number, label = 'Android App', dauerhaft = false,
                            festeTage: number | null = null, o: TokenOptionen = {}): Promise<string> {
   const token = crypto.randomBytes(32).toString('hex');
   const scope: TokenScope = o.scope === 'voll' ? 'voll' : 'app';
@@ -676,7 +676,7 @@ export interface Tausch {
  * dem alten (Antwort verloren) ersetzt den unbenutzten Nachfolger.
  * @returns null, wenn der alte Token nicht (mehr) gilt.
  */
-async function rotiereToken(alt: string, ip?: string | null): Promise<Tausch | null> {
+export async function rotiereToken(alt: string, ip?: string | null): Promise<Tausch | null> {
   const altHash = hashToken(alt);
   const neu = crypto.randomBytes(32).toString('hex');
   const neuHash = hashToken(neu);
@@ -719,7 +719,7 @@ async function rotiereToken(alt: string, ip?: string | null): Promise<Tausch | n
  * @param {string|null|undefined} token
  * @returns {Promise<void>}
  */
-async function deleteToken(token: string): Promise<void> {
+export async function deleteToken(token: string): Promise<void> {
   if (!token) return;
   await db.run('DELETE FROM api_tokens WHERE token = $1', [hashToken(token)]);
   invalidateToken(token);
@@ -735,7 +735,7 @@ async function deleteToken(token: string): Promise<void> {
  * Alle offenen BROWSER-SITZUNGEN eines Kontos beenden.
  * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#revokeallsessions
  */
-async function revokeAllSessions(userId: number): Promise<void> {
+export async function revokeAllSessions(userId: number): Promise<void> {
   await db.run("DELETE FROM user_sessions WHERE sess::jsonb->>'userId' = $1", [String(userId)]);
 }
 
@@ -744,7 +744,7 @@ async function revokeAllSessions(userId: number): Promise<void> {
  * Einschalten des zweiten Faktors: Ein Angreifer, der schon drin war, soll
  * nicht mit einem alten Token oder einer alten Sitzung drinbleiben.
  */
-async function beendeAndereZugaenge(userId: number, aktuellerToken: string | null, sitzungsId: string | null): Promise<void> {
+export async function beendeAndereZugaenge(userId: number, aktuellerToken: string | null, sitzungsId: string | null): Promise<void> {
   if (aktuellerToken) {
     await db.run('DELETE FROM api_tokens WHERE user_id = $1 AND token <> $2', [userId, hashToken(aktuellerToken)]);
   } else {
@@ -755,7 +755,7 @@ async function beendeAndereZugaenge(userId: number, aktuellerToken: string | nul
     [String(userId), sitzungsId]);
 }
 
-async function revokeAllTokens(userId: number): Promise<void> {
+export async function revokeAllTokens(userId: number): Promise<void> {
   // Ohne .catch(() => {}): Das Verwerfen aller Tokens ist ein Sicherheitsschritt
   // (Passwortwechsel, Zurücksetzen). Scheitert es still, meldet der Aufrufer
   // Erfolg, während die alten Tokens weitergelten — und der geleerte Cache
@@ -769,14 +769,14 @@ async function revokeAllTokens(userId: number): Promise<void> {
  * Ohne Ablauf gibt es nur die ausdrückliche Wahl „unbegrenzt“ je Gerät.
  * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#token-idle-days
  */
-const TOKEN_IDLE_DAYS = konfig().tokenLeerlaufTage;
+export const TOKEN_IDLE_DAYS = konfig().tokenLeerlaufTage;
 
 /**
  * Tokens aufräumen: abgelaufene, und solche, die zu lange ungenutzt sind.
  * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#purgeexpiredtokens
  * @returns {Promise<number>} Anzahl gelöschter Zeilen
  */
-async function purgeExpiredTokens() {
+export async function purgeExpiredTokens() {
   let entfernt = 0;
 
   // Altzeilen nachziehen, BEVOR geloescht wird
@@ -826,13 +826,3 @@ async function purgeExpiredTokens() {
   return entfernt;
 }
 
-export {
-  validateToken, invalidateToken, leereTokenCache, flaggeGesetzt, resolveUserId, requireLoginOrToken, nutzerId, angemeldeteNutzerId, istVerwalter, nutzerName, hashToken, deleteToken,
-  verifiziereEmailToken, perSitzung,
-  revokeAllTokens, revokeAllSessions, beendeAndereZugaenge, purgeExpiredTokens, loginOrTokenGuard, TOKEN_IDLE_DAYS,
-  pruefeToken, rotiereToken, rotationFaellig, rotationPflicht, ipBereich, UNBEGRENZT,
-  laufzeitTage,
-  assertLoginAllowed, pruefeAnmeldedaten, createToken, escapeLike, establishSession, BCRYPT_ROUNDS, USERNAME_RE,
-  PASSWORT_MIN_ZEICHEN, passwortZuKurz,
-  EMAIL_RE, isValidLoginIdentifier,
-};

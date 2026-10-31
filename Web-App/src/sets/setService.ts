@@ -35,7 +35,7 @@ import { resolveSetCondition } from '../finanzen/financeCalc';
 
 // `unknown`, weil der Rumpf mit String(input) genau das abfaengt — hier
 // kommen Formularfelder und CSV-Zellen an, nicht garantierte Zeichenketten.
-function sanitizeSetNumber(input: unknown) {
+export function sanitizeSetNumber(input: unknown) {
   return normalisiereSetNummer(input);
 }
 
@@ -88,7 +88,7 @@ async function priceForNewAcquisition(userId: number, setNumber: string, dbh: Db
 // Jede Erfassung (auch Re-Add desselben Sets) erzeugt eine Zeile in
 // set_acquisitions. Das ist seit Migration 0032 der einzige Ort für Kaufpreis
 // und Zustand — die Spiegelung nach sets.purchase_price/condition ist weg.
-async function recordAcquisition(userId: number, setNumber: string, quantity: number, purchasePrice: number | null, condition: string | null = null, dbh: DbSchnittstelle = db, geschaetzt = false,
+export async function recordAcquisition(userId: number, setNumber: string, quantity: number, purchasePrice: number | null, condition: string | null = null, dbh: DbSchnittstelle = db, geschaetzt = false,
                                  currency: string | null = null, createdAt: string | null = null) {
   // Der Zustand wurde von allen Aufrufern schon immer als 5. Argument
   // übergeben, aber bisher hier ignoriert (Signatur hatte nur 4 Parameter) —
@@ -156,7 +156,7 @@ export interface ErfassenOptionen { massenimport?: boolean }
 
 // CSV-Import: Das Datum geht in DIESELBE Erfassung, die angelegt wird — kein
 // nachträgliches UPDATE, das einen fremden Kauf desselben Tages umdatiert.
-async function addSetWithDate(setNumber: string, quantity: number, userId: number, purchasePrice: number | null,
+export async function addSetWithDate(setNumber: string, quantity: number, userId: number, purchasePrice: number | null,
                               condition: string | null, acquiredAt: string | null) {
   return addSet(setNumber, quantity, userId, null, purchasePrice, condition, null, acquiredAt, { massenimport: true });
 }
@@ -165,7 +165,7 @@ async function addSetWithDate(setNumber: string, quantity: number, userId: numbe
  * Ein Set erfassen — mit Lagerort, wenn einer mitkommt.
  * Ausführlich: docs/begruendungen/src/sets/setService.ts.md#addset
  */
-async function addSet(setNumber: string, quantity: number, userId: number,
+export async function addSet(setNumber: string, quantity: number, userId: number,
                       sendProgress: ((n: { step: string; set: string }) => void) | null,
                       purchasePrice: number | null, condition: string | null = null,
                       storage: string | null = null, erfasstAm: string | null = null,
@@ -333,7 +333,7 @@ async function schreibeInLetzteErfassung(
     [wert, ownerId, sn]);
 }
 
-async function updateSet(uid: number, sn: string, body: any) {
+export async function updateSet(uid: number, sn: string, body: any) {
   // SCHREIB-Blickfeld statt eigener ID (Marcos Bericht: „Wenn die
   // Anzahl eines Sets erhöht wird, das einem Unterkonto gehört, funktioniert
   // die ganze Logik mit dem Kaufpreis nicht und die Anzahl wird nicht
@@ -474,7 +474,7 @@ const SETS_CSV_SQL = `
    WHERE s.user_id = $1
    ORDER BY s.set_number ASC, a.created_at ASC, a.id ASC`;
 
-async function buildSetsCsv(uid: number) {
+export async function buildSetsCsv(uid: number) {
   // Der Rückfallweg bewahrt, was das frühere `.catch(() => [])` je Set leistete:
   // Fehlt set_acquisitions (Migration noch nicht gelaufen), kam dort weiterhin
   // die Set-Zeile heraus. Ein JOIN würde stattdessen die GANZE Abfrage
@@ -486,4 +486,3 @@ async function buildSetsCsv(uid: number) {
     rows.map((r: any) => ({ ...r, purchase_price: r.purchase_price ?? '' })));
 }
 
-export { addSet, updateSet, buildSetsCsv, recordAcquisition, sanitizeSetNumber, addSetWithDate };

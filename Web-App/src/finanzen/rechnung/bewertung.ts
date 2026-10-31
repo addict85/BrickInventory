@@ -71,7 +71,7 @@ function fremdeKaufpreise(jeEintrag: Map<string, Array<{ kaufpreis_fremd?: boole
 // ── Compute the price valuation for all of a user's sets ────────────────────
 // Shared by the session route (/finance/valuation) and the token API
 // (/api/v1/finance/valuation) so the logic exists exactly once.
-async function computeSetsValuation(viewerId: number, ids: Blickfeld) {
+export async function computeSetsValuation(viewerId: number, ids: Blickfeld) {
   // viewerId bestimmt die Einstellungen, ids die gerechneten Daten: Mit dem
   // Filter „Unterkonten“ fehlt das fragende Konto in ids.
   const uids = asIds(ids);
@@ -243,7 +243,7 @@ async function computeSetsValuation(viewerId: number, ids: Blickfeld) {
 // ── Compute valuation for all manually captured minifigs of a user ──────────
 // Shared by the session route (/finance/minifigs-valuation) and the token API
 // (/api/v1/finance/minifigs-valuation) so the logic exists exactly once.
-async function computeMinifigsValuation(viewerId: number, ids: Blickfeld) {
+export async function computeMinifigsValuation(viewerId: number, ids: Blickfeld) {
   // viewerId bestimmt die Einstellungen, ids die gerechneten Daten: Mit dem
   // Filter „Unterkonten“ fehlt das fragende Konto in ids.
   const uids = asIds(ids);
@@ -352,7 +352,7 @@ async function computeMinifigsValuation(viewerId: number, ids: Blickfeld) {
 }
 
 // ── GET /api/finance/minifigs-valuation ───────────────────────────────────────
-async function computePartsValuation(viewerId: number, ids: Blickfeld) {
+export async function computePartsValuation(viewerId: number, ids: Blickfeld) {
   // viewerId bestimmt die Einstellungen, ids die gerechneten Daten: Mit dem
   // Filter „Unterkonten“ fehlt das fragende Konto in ids.
   const uids = asIds(ids);
@@ -499,4 +499,3 @@ async function withOwnerNames(uids: number[], rows: any[]): Promise<any[]> {
   return withOwners(uids, rows);
 }
 
-export { computeSetsValuation, computeMinifigsValuation, computePartsValuation };

@@ -32,7 +32,7 @@ function _evictOldest(map: Map<any, any>, n: number) {
  * Original. Unterstützt /data/… (Laufzeit-Daten) und /images/… (public/).
  */
 /** @param {string|null|undefined} localPath @returns {string|null|undefined} */
-function resolveImageLocal(localPath: string | null | undefined) {
+export function resolveImageLocal(localPath: string | null | undefined) {
   if (!localPath) return localPath;
   const ext       = path.extname(localPath);
   const thumbPath = localPath.replace(ext, '_thumb.jpg');
@@ -63,12 +63,12 @@ function resolveImageLocal(localPath: string | null | undefined) {
  * Die Adresse des Bild-Proxys — an EINER Stelle.
  * Ausführlich: docs/begruendungen/src/katalog/bilder/images.ts.md#img-proxy-pfad
  */
-const IMG_PROXY_PFAD = '/api/v1/img-proxy';
+export const IMG_PROXY_PFAD = '/api/v1/img-proxy';
 /** Nur noch für Altbestand und ältere App-Fassungen — siehe oben. */
-const IMG_PROXY_PFAD_ALT = '/api/img-proxy';
+export const IMG_PROXY_PFAD_ALT = '/api/img-proxy';
 
 /** Trägt diese Adresse eine der beiden Proxy-Formen? */
-function istProxyPfad(src: string): boolean {
+export function istProxyPfad(src: string): boolean {
   return src.startsWith(IMG_PROXY_PFAD) || src.startsWith(IMG_PROXY_PFAD_ALT);
 }
 
@@ -77,7 +77,7 @@ function istProxyPfad(src: string): boolean {
  * braucht serverseitige Header (Hotlink-Schutz); alles andere lädt direkt.
  */
 /** @param {string|null|undefined} url @returns {string|null} */
-function proxyImageUrl(url: string | null | undefined) {
+export function proxyImageUrl(url: string | null | undefined) {
   if (!url) return null;
   if (url.startsWith('/')) return url;
   if (url.includes('rebrickable.com')) return `${IMG_PROXY_PFAD}?url=${encodeURIComponent(url)}`;
@@ -99,7 +99,7 @@ const _existsCache = new Map();
  * @param {string} publicRelPath z. B. "/images/sets/10283-1.jpg"
  * @returns {string|null}
  */
-function resolveIfExists(publicRelPath: string) {
+export function resolveIfExists(publicRelPath: string) {
   const hit = _existsCache.get(publicRelPath);
   if (hit && (hit.exists || Date.now() - hit.checkedAt < 10 * 60 * 1000))
     return hit.exists ? resolveImageLocal(publicRelPath) : null;
@@ -112,9 +112,6 @@ function resolveIfExists(publicRelPath: string) {
   _existsCache.set(publicRelPath, { exists, checkedAt: Date.now() });
   return exists ? resolveImageLocal(publicRelPath) : null;
 }
-
-export { resolveImageLocal, proxyImageUrl, resolveIfExists,
-         IMG_PROXY_PFAD, IMG_PROXY_PFAD_ALT, istProxyPfad };
 
 /**
  * Wo läge das Bild dieser CDN-Adresse im Proxy-Cache?

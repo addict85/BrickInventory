@@ -24,7 +24,7 @@ function figurenSuche(nummer: string, name: string, pi: number) {
  * Filter lagen hier schon serverseitig; ergänzt sind nur page/page_size.
  * Ohne page_size unverändertes Verhalten — die Android-App ruft so auf.
  */
-async function getMinifigs(userId: number | number[], { search, source, set_number, page = 1, page_size = null }: any = {}) {
+export async function getMinifigs(userId: number | number[], { search, source, set_number, page = 1, page_size = null }: any = {}) {
   // Blickfeld statt einer einzelnen ID: Ein Hauptkonto sieht (und ändert)
   // auch die Daten seiner Unterkonten, alle anderen nur ihre eigenen. Die
   // Liste kommt von scopeIds() in src/haushalt/haushalt.ts — hier wird sie nur
@@ -193,7 +193,7 @@ async function getMinifigs(userId: number | number[], { search, source, set_numb
  * Ausführlich: docs/begruendungen/src/figuren/abfragen.ts.md#getminifigstats
  * @param userId Blickfeld (scopeIds) oder eine einzelne ID
  */
-async function getMinifigStats(userId: number | number[]) {
+export async function getMinifigStats(userId: number | number[]) {
   const uids = asIds(userId as any);
   const row = await db.get(`
     SELECT COUNT(*)::int AS types,
@@ -221,7 +221,7 @@ async function getMinifigStats(userId: number | number[]) {
  * Manuell erfasste Minifiguren.
  * @param viewerId wessen Einstellungen gelten (Währung); `userId` sagt, wessen Daten.
  */
-async function getManualMinifigs(userId: number | number[], viewerId: number,
+export async function getManualMinifigs(userId: number | number[], viewerId: number,
                                  { page = 1, page_size = null, search = null }: any = {}) {
   // Blickfeld statt einer einzelnen ID: Ein Hauptkonto sieht (und ändert)
   // auch die Daten seiner Unterkonten, alle anderen nur ihre eigenen. Die
@@ -297,4 +297,3 @@ async function getManualMinifigs(userId: number | number[], viewerId: number,
   return withOwners(uids, mitPreis);
 }
 
-export { getMinifigs, getMinifigStats, getManualMinifigs };

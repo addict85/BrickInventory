@@ -16,7 +16,7 @@ const JOB_DEFAULTS: Record<string, any> = {
   bricksetRetry: { label: '🔄 Brickset Retry Queue',  status: 'done', progress: 0, total: 0 },
 };
 
-async function update(jobKey: string, patch: any) {
+export async function update(jobKey: string, patch: any) {
   const defaults = JOB_DEFAULTS[jobKey] || {};
   const value = JSON.stringify({ ...defaults, ...patch, lastRun: new Date().toISOString() });
   setzeZustand(`job_monitor_${jobKey}`, value).catch(e => console.error('[jobMonitor] update error:', e.message));
@@ -31,7 +31,7 @@ async function update(jobKey: string, patch: any) {
 // Monitoring nur der zuletzt gestartete Wert statt der Summe erschien.
 const IMGDL_PENDING_KEY = 'imgdl_pending_count';
 
-async function imgDlAdd(delta: number) {
+export async function imgDlAdd(delta: number) {
   const d = Math.round(Number(delta) || 0);
   if (!d) return;
   await zaehleZustand(IMGDL_PENDING_KEY, d).catch(e => console.error('[jobMonitor] imgDlAdd error:', e.message));
@@ -42,12 +42,12 @@ async function imgDlAdd(delta: number) {
   }
 }
 
-async function imgDlPending() {
+export async function imgDlPending() {
   const n = parseInt(await liesZustand(IMGDL_PENDING_KEY) || '0', 10);
   return Number.isFinite(n) ? Math.max(0, n) : 0;
 }
 
-async function imgDlReset() {
+export async function imgDlReset() {
   // Vorher ein reines UPDATE: Fehlt die Zeile, tat es nichts. Das war folgenlos,
   // weil imgDlPending() eine fehlende Zeile ohnehin als 0 liest — deshalb ist
   // das Anlegen durch setzeZustand() hier unschaedlich und der Zaehler
@@ -55,13 +55,13 @@ async function imgDlReset() {
   await setzeZustand(IMGDL_PENDING_KEY, 0).catch(logAndContinue('job-monitor:setzeZustand'));
 }
 
-async function get(jobKey: string) {
+export async function get(jobKey: string) {
   const roh = await liesZustand(`job_monitor_${jobKey}`);
   if (!roh) return JOB_DEFAULTS[jobKey] || null;
   try { return JSON.parse(roh); } catch(_) { return JOB_DEFAULTS[jobKey]; }
 }
 
-async function all() {
+export async function all() {
   const rows = await zustaendeMitPraefix('job_monitor_').catch(meldeUndLiefere('job-monitor:zustaendeMitPraefix', []));
   const result: Record<string, any> = { ...JOB_DEFAULTS };
   for (const row of rows) {
@@ -71,4 +71,3 @@ async function all() {
   return result;
 }
 
-export { update, get, all, imgDlAdd, imgDlPending, imgDlReset };

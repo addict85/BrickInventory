@@ -24,8 +24,7 @@ interface Zaehlerstand {
   seitLetztem: number;
 }
 
-
-const MAX_ATTEMPTS = 5;
+export const MAX_ATTEMPTS = 5;
 const WINDOW_MS    = 15 * 60 * 1000;
 
 /**
@@ -34,7 +33,7 @@ const WINDOW_MS    = 15 * 60 * 1000;
  * rät so nur noch rund 15 Mal je Viertelstunde; der Inhaber wartet bei ein,
  * zwei Vertippern dagegen Sekunden statt einer festen Sperre.
  */
-function wartezeitSekunden(fehlversuche: number): number {
+export function wartezeitSekunden(fehlversuche: number): number {
   if (fehlversuche < MAX_ATTEMPTS) return 0;
   return Math.min(2 ** (fehlversuche - MAX_ATTEMPTS), WINDOW_MS / 1000);
 }
@@ -42,7 +41,7 @@ function wartezeitSekunden(fehlversuche: number): number {
  * Fehlversuche je Adresse über ALLE Namen. Die Grenze je Konto lässt sonst
  * Password-Spraying zu: fünf Versuche gegen jedes Konto, unbegrenzt viele Konten.
  */
-const MAX_JE_ADRESSE = 30;
+export const MAX_JE_ADRESSE = 30;
 /** So lange gilt eine Adresse nach einer erfolgreichen Anmeldung als bekannt. */
 const BEKANNT_MIN  = 30 * 24 * 60;
 const WINDOW_MIN   = WINDOW_MS / 60000;
@@ -219,7 +218,7 @@ async function kontoKennung(username: unknown): Promise<string> {
   return z?.kennung ?? einzelwert(username).toLowerCase();
 }
 
-async function checkLoginAllowed(
+export async function checkLoginAllowed(
   req: Request, username: unknown,
 ): Promise<{ code: FehlerCode; vars: { minuten: number } } | null> {
   // Belegt den Versuch schon jetzt (siehe _reserviere); recordLoginFailure,
@@ -253,7 +252,7 @@ async function checkLoginAllowed(
 }
 
 /** Den belegten Versuch freigeben, ohne ihn zu zählen (etwa: Code fehlt noch). */
-async function gibAnmeldeplatzFrei(req: Request, username: unknown): Promise<void> {
+export async function gibAnmeldeplatzFrei(req: Request, username: unknown): Promise<void> {
   const kennung = await kontoKennung(username);
   await _freigeben(_key(req, kennung));
   await _freigeben(_nameKey(kennung));
@@ -261,7 +260,7 @@ async function gibAnmeldeplatzFrei(req: Request, username: unknown): Promise<voi
 }
 
 /** Nach einem fehlgeschlagenen Login aufrufen. */
-async function recordLoginFailure(req: Request, username: unknown): Promise<void> {
+export async function recordLoginFailure(req: Request, username: unknown): Promise<void> {
   const kennung = await kontoKennung(username);
   await _bump(_key(req, kennung), WINDOW_MIN);
   await _bump(_nameKey(kennung), WINDOW_MIN);
@@ -269,7 +268,7 @@ async function recordLoginFailure(req: Request, username: unknown): Promise<void
 }
 
 /** Nach einem erfolgreichen Login aufrufen. */
-async function recordLoginSuccess(req: Request, username: unknown): Promise<void> {
+export async function recordLoginSuccess(req: Request, username: unknown): Promise<void> {
   const kennung = await kontoKennung(username);
   await _clear(_key(req, kennung));
   await _clear(_nameKey(kennung));
@@ -283,7 +282,7 @@ async function recordLoginSuccess(req: Request, username: unknown): Promise<void
  * Abgelaufene Zähler löschen. Jeder unbekannte Name legt eine Zeile an; ohne
  * Aufräumen wüchse die Tabelle mit jedem Rateversuch.
  */
-async function raeumeAnmeldezaehlerAuf(): Promise<number> {
+export async function raeumeAnmeldezaehlerAuf(): Promise<number> {
   const r = await db.run(`
     DELETE FROM rate_limit_attempts
      WHERE COALESCE(last_at, first_at) < NOW() - CASE WHEN key LIKE 'login-bekannt|%'
@@ -326,7 +325,7 @@ async function _zaehle(key: string, windowMin: number): Promise<{ count: number;
  * /register, /forgot-password, /reset-password, /qr-login und /serverbeweis.
  * Auch abgewiesene Anfragen zählen mit; das Fenster verlängern sie nicht.
  */
-function ipThrottle(bucket: string, max: number, windowMs: number) {
+export function ipThrottle(bucket: string, max: number, windowMs: number) {
   const windowMin = windowMs / 60000;
   return async (req: Request, res: Response, next: NextFunction) => {
     const st = await _zaehle(`${bucket}|${_ipOf(req)}`, windowMin);
@@ -343,14 +342,11 @@ function ipThrottle(bucket: string, max: number, windowMs: number) {
  * aus nicht unbegrenzt raten können.
  */
 const _bestaetigungKey = (uid: number) => `passwort-bestaetigen|${uid}`;
-async function bestaetigungGesperrt(uid: number): Promise<{ code: FehlerCode; vars: { minuten: number } } | null> {
+export async function bestaetigungGesperrt(uid: number): Promise<{ code: FehlerCode; vars: { minuten: number } } | null> {
   // Belegt den Versuch wie checkLoginAllowed; Fehlgeschlagen/Gelungen geben ihn frei.
   const r = await _reserviere(_bestaetigungKey(uid), WINDOW_MIN, s => s.count + s.laufend < MAX_ATTEMPTS);
   return r.ok ? null : { code: 'zu_viele_fehlversuche', vars: { minuten: r.stand.waitMin } };
 }
-async function bestaetigungFehlgeschlagen(uid: number): Promise<void> { await _bump(_bestaetigungKey(uid), WINDOW_MIN); }
-async function bestaetigungGelungen(uid: number): Promise<void> { await _clear(_bestaetigungKey(uid)); }
+export async function bestaetigungFehlgeschlagen(uid: number): Promise<void> { await _bump(_bestaetigungKey(uid), WINDOW_MIN); }
+export async function bestaetigungGelungen(uid: number): Promise<void> { await _clear(_bestaetigungKey(uid)); }
 
-export { checkLoginAllowed, gibAnmeldeplatzFrei, recordLoginFailure, recordLoginSuccess, ipThrottle, MAX_ATTEMPTS, MAX_JE_ADRESSE, wartezeitSekunden,
-         raeumeAnmeldezaehlerAuf,
-         bestaetigungGesperrt, bestaetigungFehlgeschlagen, bestaetigungGelungen };

@@ -18,7 +18,6 @@ import { merkeBlNummer, blJoin, blNummerSql } from '../katalog/blZuordnung';
 import { bestandsMenge } from '../infra/validate';
 import * as V from '../infra/validate';
 
-
 // Fällt keine BrickLink-Minifigur-Nummer vor, wird der Marktpreis stattdessen
 // aus den einzelnen BrickLink-Teilepreisen der Minifigur zusammengesetzt
 // (Rebrickable liefert die Teile-Zusammensetzung + für Teile existiert eine
@@ -29,7 +28,7 @@ import * as V from '../infra/validate';
 // session-based web route (POST /api/minifigs) and the token-based API
 // (POST /api/v1/minifigs), so the behaviour is implemented exactly once.
 // Ausführlich: docs/begruendungen/routes/minifigs.ts.md#resolvemanualfigpurchase
-async function resolveManualFigPurchase(uid: number, { figNumber, blFigNumber = null, unitPrice = null, condition = null }:
+export async function resolveManualFigPurchase(uid: number, { figNumber, blFigNumber = null, unitPrice = null, condition = null }:
   { figNumber: string; blFigNumber?: string | null; unitPrice?: any; condition?: string | null }) {
   // Dieselbe Regel wie bei den Teilen — siehe src/finanzen/preisRegel.ts. Vorher
   // fehlte hier das `?? 0`: Eine Figur ohne ermittelbaren Marktpreis bekam
@@ -57,7 +56,7 @@ async function resolveManualFigPurchase(uid: number, { figNumber, blFigNumber = 
  * Bis zum 24.09. konnte eine Minifigur ueberhaupt keinen Lagerort tragen: Die
  * Spalte gab es nicht (Migration 0024).
  */
-async function addManualFig(uid: number, body: Record<string, unknown>) {
+export async function addManualFig(uid: number, body: Record<string, unknown>) {
   // Siehe addManualPart: ohne mitgegebenen Ort gilt Marcos Stern.
   const ort = await ortFuerNeuerfassung(uid, body?.storage);
   const ergebnis = await addManualFigIntern(uid, body);
@@ -181,7 +180,7 @@ async function addManualFigIntern(uid: number, body: any) {
 // as the Kaufpreis baseline — same rule as when adding) of a manually captured
 // minifig. Used by both the session-based web route and the token-based API,
 // so the behaviour is implemented exactly once.
-async function updateManualFig(uid: number, figNumber: string, body: any) {
+export async function updateManualFig(uid: number, figNumber: string, body: any) {
   // Der Zustand kommt aus der NEUESTEN Erfassung — an der Bestandszeile gibt
   // es ihn seit Migration 0035 nicht mehr. Dieselbe Ordnung wie latestSql in
   // routes/api_v1/acquisitions.ts. Die BrickLink-Nummer kommt seit Migration
@@ -272,7 +271,7 @@ async function updateManualFig(uid: number, figNumber: string, body: any) {
 }
 
 /** Wie getPartAcquisitions: `uid` ist das Blickfeld (Liste), das SQL fragt ANY($1). */
-async function getFigAcquisitions(uid: number[], figNumber: string) {
+export async function getFigAcquisitions(uid: number[], figNumber: string) {
   // Kein Rueckfall auf die Stammzeile mehr — siehe die Begruendung bei
   // getPartAcquisitions in routes/parts.ts (Migration 0035).
   return db.all(
@@ -287,7 +286,7 @@ async function getFigAcquisitions(uid: number[], figNumber: string) {
 }
 
 /** Die manuelle Bestandszeile einer Figur, falls es sie gibt. */
-function manuelleFigur(uid: number, figNumber: string): Promise<{ id: number } | undefined> {
+export function manuelleFigur(uid: number, figNumber: string): Promise<{ id: number } | undefined> {
   return db.get(
     "SELECT id FROM minifigs WHERE user_id=$1 AND fig_number=$2 AND source='manual'",
     [uid, figNumber]);
@@ -298,7 +297,7 @@ function manuelleFigur(uid: number, figNumber: string): Promise<{ id: number } |
  * quantity, unit_price, condition, acquired_at). Dieselbe Preisregel wie beim
  * Anlegen von Hand, samt Schätzung aus den Teilen.
  */
-async function importiereFigurenCsv(uid: number, text: string) {
+export async function importiereFigurenCsv(uid: number, text: string) {
   const { records, bereinigt, uebersprungen } = csvZeilenAusAnfrage(text);
   let added = 0, updated = 0, errors = 0;
   const results: Array<{ fig_number: string; action: string; fig_name?: string | null; error?: string }> = [];
@@ -346,4 +345,3 @@ async function importiereFigurenCsv(uid: number, text: string) {
   return { added, updated, errors, records, results, uebersprungen };
 }
 
-export { manuelleFigur, resolveManualFigPurchase, addManualFig, updateManualFig, getFigAcquisitions, importiereFigurenCsv };

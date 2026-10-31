@@ -14,7 +14,7 @@ import { fehlerText, antwortSprache } from '../infra/fehlerTexte';
 // Polling. Der bestehende /status-Endpoint bleibt als Fallback erhalten.
 import EventEmitter from 'events';
 import * as pgNotify from '../../db/pgNotify';
-const csvImportBus = new EventEmitter();
+export const csvImportBus = new EventEmitter();
 csvImportBus.setMaxListeners(0); // beliebig viele gleichzeitige Streams
 
 // Baut das Status-Objekt aus einem Job-Datensatz — gemeinsam genutzt von
@@ -23,7 +23,7 @@ csvImportBus.setMaxListeners(0); // beliebig viele gleichzeitige Streams
  * gezaehlt wird. `isWarning` trennt „hat nicht geklappt" von „ist eine
  * Anmerkung"; ohne die Unterscheidung stuende jede Anmerkung als Fehler da.
  */
-type ImportErgebnis = { success?: boolean; isWarning?: boolean; [k: string]: any };
+export type ImportErgebnis = { success?: boolean; isWarning?: boolean; [k: string]: any };
 
 /** Ein Auftragsdatensatz aus import_jobs, soweit buildJobStatus ihn liest. */
 type ImportAuftrag = {
@@ -36,7 +36,7 @@ type ImportAuftrag = {
 } | null | undefined;
 
 // /status (Polling-Fallback) und /stream (SSE).
-function buildJobStatus(job: ImportAuftrag, req?: any) {
+export function buildJobStatus(job: ImportAuftrag, req?: any) {
   if (!job || !job.status) {
     return { success: false, code: 'kein_import_laeuft',
              error: fehlerText('kein_import_laeuft', antwortSprache(req)) };
@@ -59,7 +59,7 @@ function buildJobStatus(job: ImportAuftrag, req?: any) {
 
 // Wird vom Import-Worker nach jedem jobUpdate aufgerufen: liest den frischen
 // Stand und feuert ihn an alle SSE-Listener dieses Users.
-async function emitJobStatus(userId: number) {
+export async function emitJobStatus(userId: number) {
   try {
     const job = await jobGet(userId);
     // Ohne Request: Diese Meldung geht an den Ereignisbus, nicht an eine
@@ -74,11 +74,10 @@ async function emitJobStatus(userId: number) {
   pgNotify.notify('csv_import_progress', String(userId)).catch(logAndContinue('import-auftrag:notify'));
 }
 
-
 /** Ohne Lebenszeichen seit so vielen Minuten gilt ein laufender Auftrag als verwaist. */
 export const VERWAIST_MIN = 10;
 
-async function jobGet(userId: number) {
+export async function jobGet(userId: number) {
   // Lief der Auftrag in einem Prozess, den es nicht mehr gibt (Neustart,
   // Absturz), schreibt niemand mehr. „running" bliebe sonst stehen und sperrte
   // jeden weiteren Import. Ein Set braucht höchstens gut vier Minuten.
@@ -114,7 +113,7 @@ function assertJobColumns(fields: Record<string, unknown>): string[] {
   return keys;
 }
 
-async function jobSet(userId: number, fields: Record<string, unknown>) {
+export async function jobSet(userId: number, fields: Record<string, unknown>) {
   const keys   = assertJobColumns(fields);
   const values = keys.map(k => fields[k]);
   // Build: INSERT ... ON CONFLICT (user_id) DO UPDATE SET k=$n, ...
@@ -133,7 +132,7 @@ async function jobSet(userId: number, fields: Record<string, unknown>) {
  * Mit `lauf` schreibt nur der Import, dessen Kennung noch eingetragen ist;
  * die Rückgabe sagt, ob er das noch ist. Ein abgelöster Lauf hört daran auf.
  */
-async function jobUpdate(userId: number, fields: Record<string, unknown>, lauf?: string): Promise<boolean> {
+export async function jobUpdate(userId: number, fields: Record<string, unknown>, lauf?: string): Promise<boolean> {
   if (!fields || !Object.keys(fields).length) return true;
   const keys   = assertJobColumns(fields);
   const values = keys.map(k => fields[k]);
@@ -146,13 +145,12 @@ async function jobUpdate(userId: number, fields: Record<string, unknown>, lauf?:
   return !lauf || (r?.changes ?? 0) > 0;
 }
 
-
 /**
  * Ein CSV-Lauf nimmt seine Zeile wieder auf — nach einem Neustart auch dann,
  * wenn jobGet() sie inzwischen als verwaist markiert hat. Abgebrochen oder von
  * einem neuen Lauf abgelöst, bleibt sie, wie sie ist (dann: null).
  */
-async function setzeImportFort(userId: number, lauf: string):
+export async function setzeImportFort(userId: number, lauf: string):
     Promise<{ results: ImportErgebnis[]; current: string | null } | null> {
   const z = await db.get(
     `UPDATE import_stand SET status = 'running', error = NULL, updated_at = NOW()
@@ -254,5 +252,3 @@ export async function istAbgebrochen(userId: number): Promise<boolean> {
   return !stand || stand.status !== 'running';
 }
 
-export { csvImportBus, buildJobStatus, emitJobStatus, jobGet, jobSet, jobUpdate, setzeImportFort };
-export type { ImportErgebnis };

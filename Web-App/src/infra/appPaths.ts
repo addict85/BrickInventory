@@ -21,35 +21,35 @@ function findRoot(): string {
 }
 
 /** Wurzelverzeichnis der Anwendung (enthält package.json, data/, public/). */
-const APP_ROOT = findRoot();
+export const APP_ROOT = findRoot();
 
 /** Laufzeitdaten — gemountetes Volume. Bilder, Uploads, Anleitungen, Caches. */
-const DATA_DIR = path.join(APP_ROOT, 'data');
+export const DATA_DIR = path.join(APP_ROOT, 'data');
 
 /** Ausgelieferte Frontend-Dateien. Im Image aus dem Build-Stage, read-only. */
-const PUBLIC_DIR = path.join(APP_ROOT, 'public');
+export const PUBLIC_DIR = path.join(APP_ROOT, 'public');
 
 /**
  * Heruntergeladene Set-, Teile- und Minifiguren-Bilder.
  * Ausführlich: docs/begruendungen/src/infra/appPaths.ts.md#images-dir
  */
-const IMAGES_DIR = path.join(DATA_DIR, 'images');
+export const IMAGES_DIR = path.join(DATA_DIR, 'images');
 
 /**
  * Bilder nach Art getrennt.
  * Ausführlich: docs/begruendungen/src/infra/appPaths.ts.md#set-images-dir
  */
-const SET_IMAGES_DIR     = path.join(IMAGES_DIR, 'sets');
-const PART_IMAGES_DIR    = path.join(IMAGES_DIR, 'parts');
-const MINIFIG_IMAGES_DIR = path.join(IMAGES_DIR, 'minifigs');
+export const SET_IMAGES_DIR     = path.join(IMAGES_DIR, 'sets');
+export const PART_IMAGES_DIR    = path.join(IMAGES_DIR, 'parts');
+export const MINIFIG_IMAGES_DIR = path.join(IMAGES_DIR, 'minifigs');
 
 /**
  * Geteilte Bauanleitungen (PDFs).
  * Ausführlich: docs/begruendungen/src/infra/appPaths.ts.md#instructions-dir
  */
-const INSTRUCTIONS_DIR = path.join(DATA_DIR, 'instructions');
+export const INSTRUCTIONS_DIR = path.join(DATA_DIR, 'instructions');
 /** Aufträge und Ergebnisse der PDF-Erzeugung. */
-const PDF_JOB_DIR = path.join(DATA_DIR, 'pdf-jobs');
+export const PDF_JOB_DIR = path.join(DATA_DIR, 'pdf-jobs');
 
 /**
  * Web-Pfad ("/data/…" oder "/images/…") in einen Dateisystempfad übersetzen.
@@ -58,7 +58,7 @@ const PDF_JOB_DIR = path.join(DATA_DIR, 'pdf-jobs');
  * @param {string} webPath z. B. "/data/part_images/3001_4.png"
  * @returns {string|null}
  */
-function resolveWebPath(webPath: string): string | null {
+export function resolveWebPath(webPath: string): string | null {
   if (!webPath) return null;
   if (webPath.startsWith('/data/'))   return path.join(APP_ROOT, webPath.slice(1));
   // "/images/sets/x.jpg" → <data>/images/sets/x.jpg (siehe IMAGES_DIR oben).
@@ -66,9 +66,3 @@ function resolveWebPath(webPath: string): string | null {
   return null;
 }
 
-
-export {
-  APP_ROOT, DATA_DIR, PUBLIC_DIR, IMAGES_DIR,
-  SET_IMAGES_DIR, PART_IMAGES_DIR, MINIFIG_IMAGES_DIR, INSTRUCTIONS_DIR, PDF_JOB_DIR,
-  resolveWebPath,
-};

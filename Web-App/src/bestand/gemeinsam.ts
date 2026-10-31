@@ -30,7 +30,7 @@ export const UNPAGED_LIMIT = 2000;
 export const SET_PARTS_MAX_PAGE_SIZE = 5000;
 
 /** page_size auf einen brauchbaren Wert bringen: mindestens 1, höchstens MAX. */
-function clampPageSize(value: any, fallback: number): number {
+export function clampPageSize(value: any, fallback: number): number {
   return Math.min(MAX_PAGE_SIZE, Math.max(1, parseInt(String(value)) || fallback));
 }
 
@@ -44,7 +44,7 @@ type Zaehlwert = number | string | null | undefined;
  * DIE Zustandsregel — für Sets, manuelle Teile und manuelle Minifiguren.
  * Ausführlich: docs/begruendungen/src/bestand/gemeinsam.ts.md#conditionfromacquisitions
  */
-function conditionFromAcquisitions(acqCount: Zaehlwert, usedCount: Zaehlwert) {
+export function conditionFromAcquisitions(acqCount: Zaehlwert, usedCount: Zaehlwert) {
   // COUNT(*) kommt als Text ("2"); parseInt wie in der Schwesterfunktion.
   // Ausführlich: docs/begruendungen/src/bestand/gemeinsam.ts.md#conditionfromacquisitions-acq
   const acq  = parseInt(String(acqCount ?? ''))  || 0;
@@ -60,7 +60,7 @@ function conditionFromAcquisitions(acqCount: Zaehlwert, usedCount: Zaehlwert) {
  * WELCHE Zustände hat der Eintrag — für die Plaketten auf der Kachel.
  * Ausführlich: docs/begruendungen/src/bestand/gemeinsam.ts.md#conditionsfromacquisitions
  */
-function conditionsFromAcquisitions(acqCount: Zaehlwert, usedCount: Zaehlwert): ('N' | 'U')[] {
+export function conditionsFromAcquisitions(acqCount: Zaehlwert, usedCount: Zaehlwert): ('N' | 'U')[] {
   const acq  = parseInt(String(acqCount ?? ''))  || 0;
   const used = parseInt(String(usedCount ?? '')) || 0;
   // Ohne Erfassungen die eine Plakette „Neu" — siehe die Begruendung in der
@@ -76,7 +76,7 @@ function conditionsFromAcquisitions(acqCount: Zaehlwert, usedCount: Zaehlwert): 
  * Angezeigter Zustand manuell erfasster Teile und Minifiguren.
  * Ausführlich: docs/begruendungen/src/bestand/gemeinsam.ts.md#abschnitt-2
  */
-async function applyManualCondition(userId: unknown, rows: any[], kind: 'part' | 'fig') {
+export async function applyManualCondition(userId: unknown, rows: any[], kind: 'part' | 'fig') {
   // Blickfeld statt einer einzelnen ID: Ein Hauptkonto sieht (und ändert)
   // auch die Daten seiner Unterkonten, alle anderen nur ihre eigenen. Die
   // Liste kommt von scopeIds() in src/haushalt/haushalt.ts — hier wird sie nur
@@ -140,7 +140,7 @@ async function applyManualCondition(userId: unknown, rows: any[], kind: 'part' |
  * GRUPPIERTE (`owner_ids`).
  * Ausführlich: docs/begruendungen/src/bestand/gemeinsam.ts.md#withowners
  */
-async function withOwners(uids: number[], rows: any[]) {
+export async function withOwners(uids: number[], rows: any[]) {
   if (uids.length < 2 || !rows?.length) return rows;
   const owners = await db.all('SELECT id, username FROM users WHERE id = ANY($1)', [uids]);
   const nameById = new Map<number, any>(owners.map((u: any) => [parseInt(u.id), u.username] as [number, any]));
@@ -239,7 +239,7 @@ const SCHLUESSELSPALTE = { parts: 'x.part_number', minifigs: 'x.fig_number' } as
 /** Die Bestandsart je Tabelle für teilmengeJoin/teilmengeAus — wie KOPFFELDER eine Zuordnung. */
 const ART = { parts: 'part', minifigs: 'fig' } as const;
 
-async function verwendendeSets(
+export async function verwendendeSets(
   uids: number[],
   tabelle: 'parts' | 'minifigs',
   schluessel: Record<string, string | number>,
@@ -328,9 +328,6 @@ async function verwendendeSets(
 
   return { item, sets };
 }
-
-export { clampPageSize, conditionFromAcquisitions, conditionsFromAcquisitions, applyManualCondition, withOwners, verwendendeSets };
-
 
 /**
  * Die manuell erfasste Stammzeile eines Teils bzw. einer Figur entfernen.

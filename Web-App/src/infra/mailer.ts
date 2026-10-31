@@ -62,7 +62,7 @@ export function linkFuerKonsole(text?: string, schalter = konfig().mailKonsoleMi
  * `html` und `text` sind optional, weil beide Aufrufwege vorkommen: Die
  * Konsolenausgabe unten liest `text`, der Versand schickt beides mit.
  */
-async function sendMail({ to, subject, html, text }: {
+export async function sendMail({ to, subject, html, text }: {
   to: string; subject: string; html?: string; text?: string;
 }) {
   const transporter = await getTransporter();
@@ -167,7 +167,7 @@ const LOGO_HTML = `
  */
 type MailTheme = typeof MAIL_THEMES.classic;
 
-const MAIL_THEMES = {
+export const MAIL_THEMES = {
   classic: {
     primary:  '#2563eb',   // --b600
     primaryD: '#1d4ed8',
@@ -196,7 +196,7 @@ const MAIL_THEMES = {
  * Aktuelles Design laden. Fällt bei jedem Zweifel auf `classic` zurück — eine
  * E-Mail soll nie am Design scheitern.
  */
-async function getMailTheme() {
+export async function getMailTheme() {
   try {
     const gespeichert = await getGlobalSetting('app_theme');
     // ausTabelle statt MAIL_THEMES[...]: Ein Indexzugriff mit einem Wert aus
@@ -210,7 +210,7 @@ async function getMailTheme() {
   } catch (_) { return MAIL_THEMES.classic; }
 }
 
-function emailTemplate(title: string, preheader: string, content: string, theme: MailTheme = MAIL_THEMES.classic) {
+export function emailTemplate(title: string, preheader: string, content: string, theme: MailTheme = MAIL_THEMES.classic) {
   return `<!DOCTYPE html>
 <html lang="de" xmlns="http://www.w3.org/1999/xhtml">
 <head>
@@ -326,7 +326,7 @@ const DIVIDER = `<table role="presentation" cellspacing="0" cellpadding="0" bord
 </table>`;
 
 // ── Bestätigungsmail ──────────────────────────────────────────────────────────
-async function sendVerificationMail(to: string, username: string, token: string, baseUrl: string, lang = 'de') {
+export async function sendVerificationMail(to: string, username: string, token: string, baseUrl: string, lang = 'de') {
   // Design beim Versand laden — es ist eine globale Einstellung und kann sich
   // zwischen zwei Mails geändert haben.
   const theme = await getMailTheme();
@@ -373,7 +373,7 @@ async function sendVerificationMail(to: string, username: string, token: string,
 }
 
 /** Hinweis an die BISHERIGE Adresse, dass das Konto eine neue bekommen hat. */
-async function sendEmailGeaendertMail(to: string, username: string, neueAdresse: string, lang = 'de') {
+export async function sendEmailGeaendertMail(to: string, username: string, neueAdresse: string, lang = 'de') {
   const theme = await getMailTheme();
   const L = lang === 'en' ? {
     subject: 'BrickInventory Manager — Your email address was changed',
@@ -399,7 +399,7 @@ async function sendEmailGeaendertMail(to: string, username: string, neueAdresse:
  * und schreibt danach den Bestand mit; wer nur eine Sitzung erbeutet hat, soll
  * das nicht unbemerkt einrichten können.
  */
-async function sendHaushaltVerknuepftMail(to: string, username: string, hauptkonto: string, lang = 'de') {
+export async function sendHaushaltVerknuepftMail(to: string, username: string, hauptkonto: string, lang = 'de') {
   const theme = await getMailTheme();
   const L = lang === 'en' ? {
     subject: 'BrickInventory Manager — Your account joined a household',
@@ -425,7 +425,7 @@ async function sendHaushaltVerknuepftMail(to: string, username: string, hauptkon
 // auf Englisch fuehrt. Die Bestaetigungsmail konnte es laengst (`lang`), die
 // Alarmmail liest die Sprache aus den Benutzereinstellungen; hier fehlte der …
 // Ausführlich: docs/begruendungen/src/infra/mailer.ts.md#sendpasswordresetmail
-async function sendPasswordResetMail(to: string, username: string, token: string,
+export async function sendPasswordResetMail(to: string, username: string, token: string,
                                      baseUrl: string, lang = 'de') {
   const theme = await getMailTheme();
   const url = `${baseUrl}/reset-password?token=${token}`;
@@ -470,12 +470,11 @@ async function sendPasswordResetMail(to: string, username: string, token: string
   });
 }
 
-
 // Sie war reiner Text — als einzige. Die Bestaetigungs- und die Reset-Mail
 // laufen seit jeher durch emailTemplate() und tragen das eingestellte Design;
 // die Alarmmail entstand im Preislauf und hat diesen Weg nie genommen.
 // Ausführlich: docs/begruendungen/src/infra/mailer.ts.md#alarmmaildaten
-interface AlarmMailDaten {
+export interface AlarmMailDaten {
   username: string;
   /** 'de' oder 'en' — die Sprache des EMPFAENGERS, nicht die des Servers. */
   lang: string;
@@ -494,7 +493,7 @@ interface AlarmMailDaten {
  * Ausführlich: docs/begruendungen/src/infra/mailer.ts.md#bauealarmmail
  */
 
-async function baueAlarmMail(d: AlarmMailDaten): Promise<{ subject: string; text: string; html: string }> {
+export async function baueAlarmMail(d: AlarmMailDaten): Promise<{ subject: string; text: string; html: string }> {
   const theme = await getMailTheme();
   const de = d.lang !== 'en';
   const geld = (n: number) => `${d.waehrung} ${n.toFixed(2)}`;
@@ -588,7 +587,7 @@ async function baueAlarmMail(d: AlarmMailDaten): Promise<{ subject: string; text
 }
 
 // ── SMTP-Verbindung testen ────────────────────────────────────────────────────
-async function testSmtp() {
+export async function testSmtp() {
   const transporter = await getTransporter();
   // Code statt Satz: testSmtp() kennt den Anfragenden nicht — die Route macht
   // mit sendeFehler() einen Satz daraus.
@@ -603,6 +602,4 @@ async function testSmtp() {
 
 // emailTemplate/getMailTheme mitexportieren: Damit lässt sich das Design einer
 // E-Mail prüfen, ohne eine zu versenden (test/mail-theme.test.js).
-export { sendMail, sendVerificationMail, sendEmailGeaendertMail, sendHaushaltVerknuepftMail, sendPasswordResetMail, testSmtp,
-         emailTemplate, getMailTheme, MAIL_THEMES, baueAlarmMail };
-export type { AlarmMailDaten };
+

@@ -339,6 +339,5 @@ export async function buildMerklisteCsv(uid: number): Promise<string> {
       ORDER BY w.created_at DESC, w.set_number, w.condition`,
     [uid]);
 
-
   return toCsv(['set_number', 'condition', 'created_at'], rows);
 }

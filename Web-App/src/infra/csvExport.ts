@@ -36,7 +36,7 @@ type ExpressJsonAntwort = {
  * Ein Feld gegen Formelausführung entschärfen.
  * Ausführlich: docs/begruendungen/src/infra/csvExport.ts.md#entschaerfe
  */
-function entschaerfe(s: string): string {
+export function entschaerfe(s: string): string {
   if (!FORMEL_START.test(s)) return s;
   if (/^-?\d+([.,]\d+)?$/.test(s)) return s;   // reine Zahl, auch negativ
   return "'" + s;
@@ -45,7 +45,7 @@ function entschaerfe(s: string): string {
 /** Gegenstück zu entschaerfe() für den Import. */
 // `unknown`: Die Werte kommen aus geparsten CSV-Zeilen, sind also nicht
 // zwingend Zeichenketten — der Rumpf prueft das als Erstes selbst.
-function entschaerfungRueckgaengig(v: unknown) {
+export function entschaerfungRueckgaengig(v: unknown) {
   if (typeof v !== 'string') return v;
   if (v.length > 1 && v[0] === "'" && FORMEL_START.test(v.slice(1))) return v.slice(1);
   return v;
@@ -58,7 +58,7 @@ function entschaerfungRueckgaengig(v: unknown) {
  * Minifiguren), damit ein hier erzeugter Export unverändert wieder eingelesen
  * werden kann.
  */
-function csvZeilenBereinigen(records: any[]): any[] {
+export function csvZeilenBereinigen(records: any[]): any[] {
   return records.map(row => {
     const out: any = {};
     for (const [k, v] of Object.entries(row)) out[k] = entschaerfungRueckgaengig(v);
@@ -66,14 +66,14 @@ function csvZeilenBereinigen(records: any[]): any[] {
   });
 }
 
-function csvField(v: unknown) {
+export function csvField(v: unknown) {
   if (v === null || v === undefined) return '';
   const s = entschaerfe(String(v));
   if (/[",\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
   return s;
 }
 
-function toCsv(headers: string[], rows: Record<string, unknown>[]) {
+export function toCsv(headers: string[], rows: Record<string, unknown>[]) {
   const lines = [headers.join(',')];
   for (const row of rows) {
     lines.push(headers.map((h: string) => csvField(row[h])).join(','));
@@ -81,7 +81,7 @@ function toCsv(headers: string[], rows: Record<string, unknown>[]) {
   return lines.join('\r\n') + '\r\n';
 }
 
-function sendCsv(res: ExpressAntwort, filename: string, headers: string[], rows: Record<string, unknown>[]) {
+export function sendCsv(res: ExpressAntwort, filename: string, headers: string[], rows: Record<string, unknown>[]) {
   const csv = toCsv(headers, rows);
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
   res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
@@ -91,15 +91,13 @@ function sendCsv(res: ExpressAntwort, filename: string, headers: string[], rows:
 // sendCsvText() ist mit seinen drei Aufrufern ENTFERNT.
 // Ausführlich: docs/begruendungen/src/infra/csvExport.ts.md#abschnitt
 
-export { csvField, toCsv, sendCsv, parseCsvDate, entschaerfe, entschaerfungRueckgaengig, csvZeilenBereinigen };
-
 /**
  * Datumsangabe aus einer CSV-Datei in ISO-Form (YYYY-MM-DD) bringen.
  * Ausführlich: docs/begruendungen/src/infra/csvExport.ts.md#parsecsvdate
  * @param {string|null|undefined} raw
  * @returns {string|null} ISO-Datum oder null, wenn nichts Brauchbares drinsteht
  */
-function parseCsvDate(raw: unknown) {
+export function parseCsvDate(raw: unknown) {
   const s = String(raw ?? '').trim();
   if (!s) return null;
 
@@ -125,7 +123,6 @@ function parseCsvDate(raw: unknown) {
   return null;
 }
 
-
 /**
  * CSV-Datei einlesen — fehlerhafte Zeilen überspringen statt alles abzubrechen.
  * Ausführlich: docs/begruendungen/src/infra/csvExport.ts.md#gefaehrliche-spalten
@@ -138,7 +135,7 @@ function parseCsvDate(raw: unknown) {
  */
 const GEFAEHRLICHE_SPALTEN = new Set(['__proto__', 'constructor', 'prototype']);
 
-function csvEinlesen(csvText: string): { records: any[]; delimiter: string; uebersprungen: number[] } {
+export function csvEinlesen(csvText: string): { records: any[]; delimiter: string; uebersprungen: number[] } {
   const text = String(csvText || '').replace(/^\uFEFF/, '');
   const firstLine = text.split('\n')[0] || '';
   const delimiter = firstLine.split(';').length > firstLine.split(',').length ? ';' : ',';
@@ -179,20 +176,18 @@ function csvEinlesen(csvText: string): { records: any[]; delimiter: string; uebe
  * Hinweistext zu übersprungenen Zeilen — oder null, wenn alles sauber war.
  * Höchstens zehn Zeilennummern, sonst wird die Meldung länger als hilfreich.
  */
-function uebersprungenHinweis(zeilen: number[]): string | null {
+export function uebersprungenHinweis(zeilen: number[]): string | null {
   if (!zeilen.length) return null;
   const liste = zeilen.slice(0, 10).join(', ');
   const rest  = zeilen.length > 10 ? ` und ${zeilen.length - 10} weitere` : '';
   return `${zeilen.length} Zeile(n) übersprungen (Zeile ${liste}${rest})`;
 }
 
-export { csvEinlesen, uebersprungenHinweis };
-
 /**
  * Die Felder, die JEDE Import-Zeile hat — mit allen Spaltennamen, die gelten.
  * Ausführlich: docs/begruendungen/src/infra/csvExport.ts.md#csvgemeinsamefelder
  */
-function csvGemeinsameFelder(row: any): {
+export function csvGemeinsameFelder(row: any): {
   menge: number;
   preis: number | null;
   erfasstAm: string | null;
@@ -216,7 +211,7 @@ function csvGemeinsameFelder(row: any): {
  * `records` bleibt getrennt von `bereinigt`, weil die Antwort `total` aus der
  * UNGEFILTERTEN Zahl bildet: Wie viele Zeilen standen in der Datei.
  */
-function csvZeilenAusAnfrage(text: string): {
+export function csvZeilenAusAnfrage(text: string): {
   records: any[]; bereinigt: any[]; uebersprungen: number[];
 } {
   // Krumme Zeilen ueberspringen statt abbrechen (csvEinlesen).
@@ -234,7 +229,7 @@ function csvZeilenAusAnfrage(text: string): {
  * Die Antwort beider Importe — an einer Stelle, damit beide Oberflaechen
  * dieselben Felder bekommen.
  */
-function csvImportAntwort(res: ExpressJsonAntwort, d: {
+export function csvImportAntwort(res: ExpressJsonAntwort, d: {
   added: number; updated: number; errors: number;
   records: any[]; results: any[]; uebersprungen: number[];
 }) {
@@ -246,4 +241,3 @@ function csvImportAntwort(res: ExpressJsonAntwort, d: {
   });
 }
 
-export { csvGemeinsameFelder, csvZeilenAusAnfrage, csvImportAntwort };

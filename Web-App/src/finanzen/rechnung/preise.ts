@@ -16,8 +16,6 @@ import { effectiveCondition } from './zustand';
 import { blAbrufNummer, blAbrufNummern } from '../../katalog/blZuordnung';
 import { KEINE_FARBE } from '../../infra/validate';
 
-
-
 /**
  * Die drei Fremd-Schnittstellen, deren Tagesbudget hier gezaehlt wird.
  * Ausführlich: docs/begruendungen/src/finanzen/rechnung/preise.ts.md#apiname
@@ -44,7 +42,7 @@ type Stunden = string | number;
  * Aufrufer ohne bereits geladene acq_count/used_count-Felder.
  * Ausführlich: docs/begruendungen/src/finanzen/rechnung/preise.ts.md#resolvesetcondition
  */
-async function resolveSetCondition(
+export async function resolveSetCondition(
   uid: number | number[], setNumber: string, dbh: { get: typeof db.get } = db,
 ): Promise<'N' | 'U'> {
   // Blickfeld statt nackter ID: Das Set gehört oft einem Unterkonto. `dbh`:
@@ -63,12 +61,11 @@ async function resolveSetCondition(
   return effectiveCondition(row);
 }
 
-
 // Vorgabezustand der Preisabfragen; der andere dient als Rückfall. 'U', weil
 // der Gebrauchtpreis dem Wiederverkaufswert der Sammlung entspricht.
-const DEFAULT_PRICE_CONDITION = 'U';
+export const DEFAULT_PRICE_CONDITION = 'U';
 
-const PRICE_CACHE_COLS = 'set_number, condition, min_price, avg_price, max_price, qty_avg_price, fetched_at';
+export const PRICE_CACHE_COLS = 'set_number, condition, min_price, avg_price, max_price, qty_avg_price, fetched_at';
 
 /**
  * Wie lange ein Eintrag OHNE Preis (avg_price = 0) als endgültig gilt.
@@ -77,7 +74,7 @@ const PRICE_CACHE_COLS = 'set_number, condition, min_price, avg_price, max_price
 const ZERO_PRICE_TTL_HOURS = 6;
 
 /** Die Preiszeile aus dem Cache, sofern sie jung genug ist — die eine Stelle, die „frisch“ festlegt. */
-async function preisAusCache(setNumber: string, condition: string, currency: string, ttlStunden: number) {
+export async function preisAusCache(setNumber: string, condition: string, currency: string, ttlStunden: number) {
   return db.get(
     `SELECT ${PRICE_CACHE_COLS} FROM price_cache
       WHERE set_number = $1 AND condition = $2 AND currency_code = $3
@@ -86,7 +83,7 @@ async function preisAusCache(setNumber: string, condition: string, currency: str
 }
 
 /** Ist der Cache-Eintrag brauchbar, oder soll neu geholt werden? */
-function cacheUsable(row: PreisZeile, ttlHours: number) {
+export function cacheUsable(row: PreisZeile, ttlHours: number) {
   if (!row) return false;
   // parseFloat(String(...)): avg_price ist eine numeric-Spalte, und der
   // pg-Treiber gibt numeric als Zeichenkette zurueck. Der Typ macht das
@@ -107,7 +104,7 @@ interface PreisFuehrer { min_price?: unknown; avg_price?: unknown; max_price?: u
  * Ausführlich: docs/begruendungen/src/finanzen/rechnung/preise.ts.md#speicherepreis
  * @returns die gelesenen Zahlen, damit der Aufrufer nicht erneut umwandeln muss
  */
-async function speicherePreis(setNumber: string, condition: string, currency: string, g: PreisFuehrer | null | undefined) {
+export async function speicherePreis(setNumber: string, condition: string, currency: string, g: PreisFuehrer | null | undefined) {
   const min  = parseFloat(String(g?.min_price     ?? 0)) || 0;
   const avg  = parseFloat(String(g?.avg_price     ?? 0)) || 0;
   const max  = parseFloat(String(g?.max_price     ?? 0)) || 0;
@@ -133,7 +130,7 @@ async function speicherePreis(setNumber: string, condition: string, currency: st
   return { min, avg, max, qavg, qty };
 }
 
-async function fetchPrice(setNumber: string, condition: string, guideType: string, currency: string, ttlHours: Stunden, pre: { catalog: Map<any, any>; cache: Map<string, any> } | null = null) {
+export async function fetchPrice(setNumber: string, condition: string, guideType: string, currency: string, ttlHours: Stunden, pre: { catalog: Map<any, any>; cache: Map<string, any> } | null = null) {
   // mitVersion() auch beim VORGELADENEN Weg: Die Karte wird unten aus
   // catalog_cache gefuellt, also unter derselben Schreibweise wie die Tabelle.
   const catalogRow = pre?.catalog
@@ -207,13 +204,12 @@ async function fetchPrice(setNumber: string, condition: string, guideType: strin
   throw new Error(`${setNumber} — kein BrickLink-Preis gefunden`);
 }
 
-async function parallelLimit<T>(tasks: (() => Promise<T>)[], limit: number) {
+export async function parallelLimit<T>(tasks: (() => Promise<T>)[], limit: number) {
   const results = new Array(tasks.length); let idx = 0;
   async function worker() { while (idx < tasks.length) { const i = idx++; const t = tasks[i]; if (t) results[i] = await t(); } }
   await Promise.all(Array.from({ length: Math.min(limit, tasks.length) }, worker));
   return results;
 }
-
 
 // Nachschlagewerk — zwei Übersetzungstabellen, die sich während einer
 // Bewertung nicht ändern
@@ -259,7 +255,7 @@ let _farbkarte: { karte: Map<number, any>; zeit: number } | null = null;
 // Bewerter träfen den kalten Speicher sonst gleichzeitig und lüden je selbst.
 let _farbladung: Promise<Map<number, any>> | null = null;
 /** Die Farbzuordnung Rebrickable → BrickLink als Map, für Bewertung und Teileliste. */
-async function farbkarte(): Promise<Map<number, any>> {
+export async function farbkarte(): Promise<Map<number, any>> {
   const jetzt = Date.now();
   if (_farbkarte && jetzt - _farbkarte.zeit < NACHSCHLAG_TTL_MS) return _farbkarte.karte;
   if (_farbladung) return _farbladung;
@@ -281,7 +277,7 @@ async function farbkarte(): Promise<Map<number, any>> {
  * Rebrickable-Farbe → BrickLink-Farbe. KEINE_FARBE ist bei BrickLink 0
  * („(Not Applicable)“); Rebrickables 0 ist Schwarz und geht über die Karte.
  */
-async function resolveBlColorId(rbColorId: number) {
+export async function resolveBlColorId(rbColorId: number) {
   if (rbColorId == null || rbColorId === KEINE_FARBE) return 0;
   try {
     const treffer = (await farbkarte()).get(Number(rbColorId));
@@ -298,7 +294,7 @@ const _blTeil = nachschlagwerk(async (partNumber: string) => {
   return await blAbrufNummer('part', partNumber);
 });
 
-async function resolveBlPartNumber(partNumber: string) {
+export async function resolveBlPartNumber(partNumber: string) {
   try {
     return (await _blTeil(partNumber)) ?? partNumber;
   } catch (_) { return partNumber; }
@@ -308,7 +304,7 @@ async function resolveBlPartNumber(partNumber: string) {
  * Die BrickLink-Nummern EINER Bewertung in zwei Abfragen vorladen.
  * Ausführlich: docs/begruendungen/src/finanzen/rechnung/preise.ts.md#ladeblnummernvor
  */
-async function ladeBlNummernVor(teilnummern: string[]): Promise<void> {
+export async function ladeBlNummernVor(teilnummern: string[]): Promise<void> {
   const offen = [...new Set(teilnummern.filter(Boolean).map(String))].filter(n => !_blTeil.kennt(n));
   if (!offen.length) return;
   // EINE Abfrage, nicht zwei: Der Rückfall über `parts.bl_part_number` ist mit
@@ -322,7 +318,7 @@ async function ladeBlNummernVor(teilnummern: string[]): Promise<void> {
  * sie an fetchPartPrice weiter; sonst fragte jedes Teil je Zustand einzeln.
  * Schlüssel wie in fetchPartPrice: BrickLink-Nummer|BrickLink-Farbe|Zustand.
  */
-async function ladeTeilepreiseVor(teile: { partNumber: string; rbColorId: number }[],
+export async function ladeTeilepreiseVor(teile: { partNumber: string; rbColorId: number }[],
                                   currency: string, ttlHours: Stunden): Promise<Map<string, any>> {
   const ttl = Math.max(1, parseInt(String(ttlHours)));
   const nummern: string[] = [], farben: number[] = [];
@@ -344,7 +340,7 @@ async function ladeTeilepreiseVor(teile: { partNumber: string; rbColorId: number
 }
 
 /** Wie ladeTeilepreiseVor, für Figuren — nur echte BrickLink-Preise. */
-async function ladeFigurenpreiseVor(figuren: string[], currency: string, ttlHours: Stunden): Promise<Map<string, any>> {
+export async function ladeFigurenpreiseVor(figuren: string[], currency: string, ttlHours: Stunden): Promise<Map<string, any>> {
   const ttl = Math.max(1, parseInt(String(ttlHours)));
   const vorrat = new Map<string, any>();
   if (!figuren.length) return vorrat;
@@ -363,7 +359,7 @@ async function ladeFigurenpreiseVor(figuren: string[], currency: string, ttlHour
  * übersetzt und dann für Cache, Abruf und Schreiben benutzt.
  * Ausführlich: docs/begruendungen/src/finanzen/rechnung/preise.ts.md#fetchpartprice
  * @param vorrat aus ladeTeilepreiseVor; fehlt ein Schlüssel, gibt es keinen frischen Eintrag. */
-async function fetchPartPrice(partNumber: string, rbColorId: number, condition: string, currency: string, ttlHours: Stunden,
+export async function fetchPartPrice(partNumber: string, rbColorId: number, condition: string, currency: string, ttlHours: Stunden,
                               vorrat: Map<string, any> | null = null) {
   const ttl = Math.max(1, parseInt(String(ttlHours)));
   const colorId = await resolveBlColorId(rbColorId);
@@ -465,7 +461,7 @@ async function fetchPartPrice(partNumber: string, rbColorId: number, condition: 
 // Gleiche Fallback-Logik wie fetchPartPrice: erst der gewünschte Zustand,
 // bei leerem Price Guide der jeweils andere ('U' ↔ 'N').
 /** @param vorrat aus ladeFigurenpreiseVor; fehlt ein Schlüssel, gibt es keinen frischen Eintrag. */
-async function fetchMinifigPrice(figNumber: string, condition: string, currency: string, ttlHours: Stunden,
+export async function fetchMinifigPrice(figNumber: string, condition: string, currency: string, ttlHours: Stunden,
                                  vorrat: Map<string, any> | null = null) {
   const ttl = Math.max(1, parseInt(String(ttlHours)));
   const fallbackCondition = condition === 'N' ? 'U' : 'N';
@@ -550,14 +546,4 @@ async function fetchMinifigPrice(figNumber: string, condition: string, currency:
   return { avg_price: 0, qty_avg_price: 0, from_cache: false, error: 'kein BrickLink-Preis gefunden' };
 }
 
-
-
-export {
-  DEFAULT_PRICE_CONDITION, PRICE_CACHE_COLS,
-  speicherePreis, cacheUsable, preisAusCache,
-  checkAndIncrementRateLimit, kontingentFrei, getLimitForApi, getRateLimitStatus,
-  fetchPrice, parallelLimit, resolveBlColorId, resolveBlPartNumber,
-  fetchPartPrice, fetchMinifigPrice, ladeTeilepreiseVor, ladeFigurenpreiseVor,
-  farbkarte, ladeBlNummernVor,
-  resolveSetCondition,
-};
+export { checkAndIncrementRateLimit, kontingentFrei, getLimitForApi, getRateLimitStatus };

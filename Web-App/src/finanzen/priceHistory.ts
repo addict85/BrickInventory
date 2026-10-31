@@ -316,7 +316,7 @@ async function preisNummernFuerFigur(_uid: number | number[], figNumber: string)
  * Ausführlich: docs/begruendungen/src/finanzen/priceHistory.ts.md#purgealtepreise
  * @returns Anzahl entfernter Zeilen
  */
-async function purgeAltePreise(): Promise<number> {
+export async function purgeAltePreise(): Promise<number> {
   const tage = konfig().preisverlaufTage;
   if (tage <= 0) return 0;
   const r = await db.run(
@@ -327,4 +327,3 @@ async function purgeAltePreise(): Promise<number> {
   return r?.changes || 0;
 }
 
-export { purgeAltePreise };

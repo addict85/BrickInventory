@@ -37,7 +37,7 @@ const PARTS_CSV_SQL = `
    WHERE p.user_id = $1 AND p.source = 'manual'
    ORDER BY pc.part_name ASC, p.part_number ASC, a.created_at ASC, a.id ASC`;
 
-async function buildPartsCsv(uid: number) {
+export async function buildPartsCsv(uid: number) {
   // Ohne zweite Abfrage als Rueckfall — siehe die Begruendung bei
   // PARTS_CSV_SQL. Scheitert sie, soll der Fehler sichtbar werden, statt eine
   // Abfrage zu versuchen, die auf geloeschte Spalten zeigt.
@@ -85,7 +85,7 @@ const FIGS_CSV_SQL = `
    WHERE f.user_id = $1 AND f.source = 'manual'
    ORDER BY mc.fig_name ASC, f.fig_number ASC, a.created_at ASC, a.id ASC`;
 
-async function buildFigsCsv(uid: number) {
+export async function buildFigsCsv(uid: number) {
   // Ohne zweite Abfrage als Rueckfall — sie zeigte auf f.unit_price und
   // f.condition, die Migration 0035 geloescht hat. Siehe buildPartsCsv oben.
   const acqRows = (await db.all(FIGS_CSV_SQL, [uid]))
@@ -99,4 +99,3 @@ async function buildFigsCsv(uid: number) {
     acqRows);
 }
 
-export { buildPartsCsv, buildFigsCsv };

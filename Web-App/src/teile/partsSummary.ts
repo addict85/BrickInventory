@@ -9,7 +9,6 @@ import { teilmengeJoin, teilmengeAus } from '../sets/bestandsmenge';
 import * as db from '../../db/database';
 import * as lockNamespaces from '../infra/lockNamespaces';
 
-
 /** Stand der Rohdaten dieses Kontos, und ob Katalogänderungen offen sind (Migration 0079). */
 async function currentVersion(userId: number): Promise<{ v: number; katalogOffen: boolean }> {
   const r = await db.get(

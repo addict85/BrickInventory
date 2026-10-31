@@ -19,13 +19,13 @@ import { bestandsMenge } from '../infra/validate';
 import * as V0 from '../infra/validate';
 
 /** Farbauswahl beim Erfassen; Quelle und Notliste stehen in src/katalog/farben.ts. */
-const getPartColorList = farbliste;
+export const getPartColorList = farbliste;
 
 /**
  * Preis/Stk, Kaufpreis und Zustand fuer ein manuell erfasstes Teil.
  * Ausführlich: docs/begruendungen/routes/parts.ts.md#resolvemanualpartpurchase
  */
-async function resolveManualPartPurchase(uid: number, { partNumber, colorId, unitPrice = null, condition = null }:
+export async function resolveManualPartPurchase(uid: number, { partNumber, colorId, unitPrice = null, condition = null }:
   { partNumber: string; colorId: number; unitPrice?: any; condition?: string | null }) {
   // Die Regel steht in src/finanzen/preisRegel.ts — dort auch, warum ohne Marktpreis
   // eine 0 in der Stammzeile steht und NULL in der Erfassung. Hier bleibt nur,
@@ -53,7 +53,7 @@ async function resolveManualPartPurchase(uid: number, { partNumber, colorId, uni
  * Ein Teil von Hand erfassen — mit Lagerort, wenn einer mitkommt.
  * Ausführlich: docs/begruendungen/routes/parts.ts.md#addmanualpart
  */
-async function addManualPart(uid: number, rawBody: Record<string, unknown>) {
+export async function addManualPart(uid: number, rawBody: Record<string, unknown>) {
     // ortFuerNeuerfassung statt normalisiereLagerort: Kommt kein Ort mit, gilt
   // Marcos Stern (die Begruendung samt Messung steht dort in src/bestand/lagerort.ts).
   const ort = await ortFuerNeuerfassung(uid, rawBody?.storage);
@@ -212,7 +212,7 @@ async function addManualPartIntern(uid: number, rawBody: any) {
 // as the Kaufpreis baseline — same rule as when adding) of a manually captured
 // part. Used by both the session-based web route and the token-based API, so
 // the behaviour is implemented exactly once.
-async function updateManualPart(uid: number, partNumber: string, colorId: number, body: any) {
+export async function updateManualPart(uid: number, partNumber: string, colorId: number, body: any) {
   // Der Zustand kommt aus der NEUESTEN Erfassung — an der Bestandszeile gibt
   // es ihn seit Migration 0035 nicht mehr. Dieselbe Ordnung wie latestSql in
   // routes/api_v1/acquisitions.ts.
@@ -302,7 +302,7 @@ async function updateManualPart(uid: number, partNumber: string, colorId: number
  * Erfassungen eines Teils — fuer den Kaufpreis-Dialog.
  * Ausführlich: docs/begruendungen/routes/parts.ts.md#getpartacquisitions
  */
-async function getPartAcquisitions(uid: number[], partNumber: string, colorId: string | number) {
+export async function getPartAcquisitions(uid: number[], partNumber: string, colorId: string | number) {
   // uid ist hier das BLICKFELD (Liste): Im Haushalt können die Kaufpreise
   // eines Teils mehreren Konten gehören, und je Zeile kommt der Eigentümer
   // mit — sonst wüsste die Auswahl im Dialog nicht, worauf sie steht.
@@ -320,7 +320,7 @@ async function getPartAcquisitions(uid: number[], partNumber: string, colorId: s
 }
 
 /** Die manuelle Bestandszeile eines Teils, falls es sie gibt. */
-function manuellesTeil(uid: number, partNumber: string, colorId: number): Promise<{ id: number } | undefined> {
+export function manuellesTeil(uid: number, partNumber: string, colorId: number): Promise<{ id: number } | undefined> {
   return db.get(
     "SELECT id FROM parts WHERE user_id=$1 AND part_number=$2 AND color_id=$3 AND source='manual'",
     [uid, partNumber, colorId]);
@@ -331,7 +331,7 @@ function manuellesTeil(uid: number, partNumber: string, colorId: number): Promis
  * quantity, unit_price, condition, acquired_at). Dieselbe Preisregel wie beim
  * Anlegen von Hand; eine fehlerhafte Zeile bricht den Rest nicht ab.
  */
-async function importiereTeileCsv(uid: number, text: string) {
+export async function importiereTeileCsv(uid: number, text: string) {
   const { records, bereinigt, uebersprungen } = csvZeilenAusAnfrage(text);
   let added = 0, updated = 0, errors = 0;
   const results: Array<{ part_number: string; action: string; error?: string }> = [];
@@ -383,4 +383,3 @@ async function importiereTeileCsv(uid: number, text: string) {
   return { added, updated, errors, records, results, uebersprungen };
 }
 
-export { manuellesTeil, getPartColorList, resolveManualPartPurchase, addManualPart, updateManualPart, getPartAcquisitions, importiereTeileCsv };

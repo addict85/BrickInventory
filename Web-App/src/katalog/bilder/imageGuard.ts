@@ -6,7 +6,7 @@ import { logAndContinue } from '../../infra/httpError';
 import fs from 'fs';
 
 /** Obergrenze in Pixeln (Breite × Höhe). 40 MP ≈ 160 MB Bitmap. */
-const MAX_PIXELS = 40_000_000;
+export const MAX_PIXELS = 40_000_000;
 
 /** So viele Bytes vom Dateianfang reichen für jeden hier unterstützten Header. */
 const HEADER_BYTES = 65536;
@@ -17,7 +17,7 @@ const HEADER_BYTES = 65536;
  * @param {Buffer} buf Die ersten Bytes der Datei
  * @returns {{width: number, height: number} | null}
  */
-function readDimensions(buf: Buffer) {
+export function readDimensions(buf: Buffer) {
   // ── PNG ───────────────────────────────────────────────────────────────────
   // Signatur (8 Byte) + IHDR-Chunk; Breite/Höhe stehen als 32-Bit-Big-Endian
   // an Offset 16 bzw. 20.
@@ -62,7 +62,7 @@ function readDimensions(buf: Buffer) {
  * @param {string} filePath Pfad zur Bilddatei
  * @returns {Promise<boolean>} false, wenn das Bild zu gross ist
  */
-async function isDecodable(filePath: string) {
+export async function isDecodable(filePath: string) {
   let fh;
   try {
     fh = await fs.promises.open(filePath, 'r');
@@ -95,4 +95,3 @@ async function isDecodable(filePath: string) {
   }
 }
 
-export { isDecodable, readDimensions, MAX_PIXELS };

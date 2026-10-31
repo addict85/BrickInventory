@@ -59,7 +59,7 @@ import type { BlickfeldEingabe as Blickfeld } from '../haushalt/haushalt';
  * Ohne page_size verhält sich die Funktion wie bisher und liefert alles. Die
  * Android-App ruft sie so auf und bleibt damit unverändert lauffähig.
  */
-async function getSets(userId: Blickfeld, query: any = {}) {
+export async function getSets(userId: Blickfeld, query: any = {}) {
   // Blickfeld statt einer einzelnen ID: Ein Hauptkonto sieht (und ändert)
   // auch die Daten seiner Unterkonten, alle anderen nur ihre eigenen. Die
   // Liste kommt von scopeIds() in src/haushalt/haushalt.ts — hier wird sie nur
@@ -304,7 +304,7 @@ async function getSets(userId: Blickfeld, query: any = {}) {
  * Zustands-Aggregat eines Sets aus seinen Erfassungen.
  * Ausführlich: docs/begruendungen/src/sets/abfragen.ts.md#getsetconditionaggregate
  */
-async function getSetConditionAggregate(userId: Blickfeld, setNumber: string) {
+export async function getSetConditionAggregate(userId: Blickfeld, setNumber: string) {
   // Blickfeld statt einer einzelnen ID: Ein Hauptkonto sieht (und ändert)
   // auch die Daten seiner Unterkonten, alle anderen nur ihre eigenen. Die
   // Liste kommt von scopeIds() in src/haushalt/haushalt.ts — hier wird sie nur
@@ -337,7 +337,7 @@ async function getSetConditionAggregate(userId: Blickfeld, setNumber: string) {
  * Hängt das neu berechnete Zustands-Aggregat an eine Antwort.
  * Ausführlich: docs/begruendungen/src/sets/abfragen.ts.md#withsetaggregate
  */
-async function withSetAggregate<T extends object>(userId: Blickfeld, setNumber: string, payload: T) {
+export async function withSetAggregate<T extends object>(userId: Blickfeld, setNumber: string, payload: T) {
   const uids = asIds(userId);
   // Die Abfrage auf sets.condition, die hier stand, ist mit Migration 0032
   // entfallen — samt der Spalte. Das Aggregat rechnet aus den Erfassungen.
@@ -345,7 +345,7 @@ async function withSetAggregate<T extends object>(userId: Blickfeld, setNumber: 
   return agg ? { ...payload, set: { set_number: setNumber, ...agg } } : payload;
 }
 
-async function getSet(userId: Blickfeld, setNumber: string) {
+export async function getSet(userId: Blickfeld, setNumber: string) {
   // Blickfeld statt einer einzelnen ID: Ein Hauptkonto sieht (und ändert)
   // auch die Daten seiner Unterkonten, alle anderen nur ihre eigenen. Die
   // Liste kommt von scopeIds() in src/haushalt/haushalt.ts — hier wird sie nur
@@ -424,14 +424,14 @@ async function getSet(userId: Blickfeld, setNumber: string) {
  * Die Zeilen, die zu EINEM Set-Exemplar eines Kontos gehören.
  * Ausführlich: docs/begruendungen/src/sets/abfragen.ts.md#deletesetrows
  */
-async function deleteSetRows(tx: DbSchnittstelle, uids: number[], setNumber: string) {
+export async function deleteSetRows(tx: DbSchnittstelle, uids: number[], setNumber: string) {
   await tx.run('DELETE FROM sets WHERE user_id = ANY($1) AND set_number = $2', [uids, setNumber]);
   await tx.run('DELETE FROM parts WHERE user_id = ANY($1) AND set_number = $2', [uids, setNumber]);
   await tx.run('DELETE FROM minifigs WHERE user_id = ANY($1) AND set_number = $2', [uids, setNumber]);
   await tx.run('DELETE FROM set_acquisitions WHERE user_id = ANY($1) AND set_number = $2', [uids, setNumber]);
 }
 
-async function deleteSet(userId: Blickfeld, setNumber: string) {
+export async function deleteSet(userId: Blickfeld, setNumber: string) {
   // Blickfeld statt einer einzelnen ID: Ein Hauptkonto sieht (und ändert)
   // auch die Daten seiner Unterkonten, alle anderen nur ihre eigenen. Die
   // Liste kommt von scopeIds() in src/haushalt/haushalt.ts — hier wird sie nur
@@ -455,5 +455,3 @@ async function deleteSet(userId: Blickfeld, setNumber: string) {
   });
 }
 
-
-export { getSets, getSetConditionAggregate, withSetAggregate, getSet, deleteSetRows, deleteSet };

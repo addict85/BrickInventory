@@ -13,7 +13,7 @@ import { LOCKS } from '../../infra/lockNamespaces';
  */
 
 /** Grösse der erzeugten Vorschau in Pixeln (Kantenlänge). */
-const PROXY_THUMB_SIZE = 200;
+export const PROXY_THUMB_SIZE = 200;
 
 // Jimp braucht gemessen rund 150 ms je Bild und belegt dabei den Event-Loop.
 // Eine Kachelwand mit 60 Minifiguren ergäbe neun Sekunden, in denen der Server
@@ -38,7 +38,7 @@ const THUMB_MAX_QUEUE = 40;
 let _thumbRunning = 0;
 const _thumbQueue: any[] = [];
 
-function queueThumb(srcFile: string, thumbFile: string) {
+export function queueThumb(srcFile: string, thumbFile: string) {
   if (_thumbInFlight.has(thumbFile)) return;
   // Gescheiterte Verkleinerungen nicht endlos wiederholen
   // Jimp kann webp nicht entpacken. Scheitert der Versuch, entsteht keine
@@ -55,7 +55,7 @@ function queueThumb(srcFile: string, thumbFile: string) {
   drainThumbQueue();
 }
 
-function drainThumbQueue() {
+export function drainThumbQueue() {
   while (_thumbRunning < THUMB_MAX_PARALLEL && _thumbQueue.length) {
     const [src, dst] = _thumbQueue.shift();
     _thumbRunning++;
@@ -74,7 +74,7 @@ const THUMB_LOCK_KEY = LOCKS.PROXY_THUMBS;
 /** Die Sperr-Verbindung. EINMAL aufgebaut, dann wiederverwendet. */
 let _sperrClient: any = null;
 
-async function mitVorschauSperre(arbeit: () => Promise<any>) {
+export async function mitVorschauSperre(arbeit: () => Promise<any>) {
     // NICHT aus dem Pool
   // Nicht die Bildarbeit scheiterte, sondern eine gewöhnliche Anfrage bekam
   // keine Verbindung mehr. Dasselbe Muster — nur dass
@@ -97,7 +97,7 @@ async function mitVorschauSperre(arbeit: () => Promise<any>) {
   }
 }
 
-async function makeProxyThumb(srcFile: string, thumbFile: string) {
+export async function makeProxyThumb(srcFile: string, thumbFile: string) {
   // Die Entdopplung liegt jetzt in queueThumb(); hier nur noch die Arbeit.
   const p = mitVorschauSperre(async () => {
     try {
@@ -136,4 +136,3 @@ async function makeProxyThumb(srcFile: string, thumbFile: string) {
   return p;
 }
 
-export { queueThumb, drainThumbQueue, mitVorschauSperre, makeProxyThumb, PROXY_THUMB_SIZE };

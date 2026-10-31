@@ -15,7 +15,7 @@ import { KEINE_FARBE } from '../infra/validate';
  * Ausführlich: docs/begruendungen/src/finanzen/marketPrice.ts.md#getcurrentmarketprice
  */
 
-async function getCurrentMarketPrice(setNumber: string, userId: number, condition: string | null = null) {
+export async function getCurrentMarketPrice(setNumber: string, userId: number, condition: string | null = null) {
   try {
     const currencyRow = await db.get('SELECT value FROM user_settings WHERE user_id=$1 AND key=$2', [userId, 'currency']);
     const globalCurrency = await getGlobalSetting('currency');
@@ -48,12 +48,11 @@ async function getCurrentMarketPrice(setNumber: string, userId: number, conditio
   } catch (_) { return null; }
 }
 
-
 // Marktpreise für Sets, Teile und Figuren stehen hier zusammen: eine Frage, eine Stelle.
 // Ausführlich: docs/begruendungen/src/finanzen/marketPrice.ts.md#abschnitt
 
 /** Zustand eines Teils für den Preis: 'U' sobald eine Erfassung gebraucht ist, sonst 'N'; ohne Erfassung der Standard. */
-async function resolvePartCondition(userId: number, partNumber: string, colorId: number) {
+export async function resolvePartCondition(userId: number, partNumber: string, colorId: number) {
   try {
     const row = await db.get(
       "SELECT MAX(CASE WHEN condition='U' THEN 1 ELSE 0 END) AS any_used, COUNT(*) AS cnt FROM part_acquisitions WHERE user_id=$1 AND part_number=$2 AND color_id=$3",
@@ -71,7 +70,7 @@ async function resolvePartCondition(userId: number, partNumber: string, colorId:
  * Abruf bei BrickLink.
  * Ausführlich: docs/begruendungen/src/finanzen/marketPrice.ts.md#marktpreiseauscachefuerfiguren
  */
-async function marktpreiseAusCacheFuerFiguren(
+export async function marktpreiseAusCacheFuerFiguren(
   figuren: Array<{ fig_number?: string | null; bl_fig_number?: string | null; condition?: string | null }>,
   viewerId: number,
 ): Promise<Map<string, number>> {
@@ -127,7 +126,7 @@ async function marktpreiseAusCacheFuerFiguren(
  * Dasselbe fuer manuell erfasste TEILE — siehe die Begruendung oben.
  * Ausführlich: docs/begruendungen/src/finanzen/marketPrice.ts.md#marktpreiseauscachefuerteile
  */
-async function marktpreiseAusCacheFuerTeile(
+export async function marktpreiseAusCacheFuerTeile(
   teile: Array<{ part_number?: string | null; bl_part_number?: string | null;
                  color_id?: number | null; condition?: string | null }>,
   viewerId: number,
@@ -189,7 +188,7 @@ async function marktpreiseAusCacheFuerTeile(
  * Marktpreis eines Teils SAMT Herkunft.
  * Ausführlich: docs/begruendungen/src/finanzen/marketPrice.ts.md#marktpreismitherkunft
  */
-async function marktpreisMitHerkunft(partNumber: string, colorId: number, userId: number, condition: string | null = null) {
+export async function marktpreisMitHerkunft(partNumber: string, colorId: number, userId: number, condition: string | null = null) {
   try {
     const currency  = await getSetting(userId, 'currency', 'EUR');
     const ttlHours  = 24;
@@ -216,13 +215,12 @@ async function marktpreisMitHerkunft(partNumber: string, colorId: number, userId
  * Marktpreis eines Teils als blosse Zahl — der Weg fuer alle, die die
  * Herkunft nicht brauchen. EINE Rechnung, zwei Sichten darauf.
  */
-async function getCurrentPartMarketPrice(partNumber: string, colorId: number, userId: number, condition: string | null = null) {
+export async function getCurrentPartMarketPrice(partNumber: string, colorId: number, userId: number, condition: string | null = null) {
   return (await marktpreisMitHerkunft(partNumber, colorId, userId, condition)).preis;
 }
 
-
 /** Geschätzter Figurenpreis als blosse Zahl — für Aufrufer ohne Abdeckung. */
-async function estimateFigPriceFromParts(figNumber: string, userId: number, condition = DEFAULT_PRICE_CONDITION) {
+export async function estimateFigPriceFromParts(figNumber: string, userId: number, condition = DEFAULT_PRICE_CONDITION) {
   return (await schaetzeFigurenpreis(figNumber, userId, condition))?.preis ?? null;
 }
 
@@ -230,7 +228,7 @@ async function estimateFigPriceFromParts(figNumber: string, userId: number, cond
  * Figurenpreis aus den Teilepreisen, samt Abdeckung: dem Anteil der Teile, die
  * einen Preis hatten. Die Abdeckung sagt, wie belastbar die Zahl ist.
  */
-async function schaetzeFigurenpreis(figNumber: string, userId: number, condition = DEFAULT_PRICE_CONDITION): Promise<{ preis: number; abdeckung: number | null } | null> {
+export async function schaetzeFigurenpreis(figNumber: string, userId: number, condition = DEFAULT_PRICE_CONDITION): Promise<{ preis: number; abdeckung: number | null } | null> {
   try {
     const currency = await getSetting(userId, 'currency', 'EUR');
     const cond0 = ['N','U'].includes(condition) ? condition : DEFAULT_PRICE_CONDITION;
@@ -310,7 +308,7 @@ async function schaetzeFigurenpreis(figNumber: string, userId: number, condition
  * Marktpreis einer Minifigur SAMT Herkunft — Zwilling zu
  * marktpreisMitHerkunft in routes/parts.ts, gleiche Begruendung dort.
  */
-async function figMarktpreisMitHerkunft(figNumber: string, userId: number, blFigNumber?: string | null, condition: string | null = null) {
+export async function figMarktpreisMitHerkunft(figNumber: string, userId: number, blFigNumber?: string | null, condition: string | null = null) {
   try {
     const currency = await getSetting(userId, 'currency', 'EUR');
     // Effektiver Zustand: eine "Gebraucht"-Erfassung genügt → 'U', sonst 'N';
@@ -356,13 +354,7 @@ async function figMarktpreisMitHerkunft(figNumber: string, userId: number, blFig
  * Marktpreis einer Minifigur als blosse Zahl — für alle, die die Herkunft
  * nicht brauchen. Zwilling zu getCurrentPartMarketPrice in routes/parts.ts.
  */
-async function getCurrentFigMarketPrice(figNumber: string, userId: number, blFigNumber?: string | null, condition: string | null = null) {
+export async function getCurrentFigMarketPrice(figNumber: string, userId: number, blFigNumber?: string | null, condition: string | null = null) {
   return (await figMarktpreisMitHerkunft(figNumber, userId, blFigNumber, condition)).preis;
 }
 
-export {
-  getCurrentMarketPrice,
-  resolvePartCondition, marktpreisMitHerkunft, getCurrentPartMarketPrice,
-  marktpreiseAusCacheFuerFiguren, marktpreiseAusCacheFuerTeile,
-  estimateFigPriceFromParts, schaetzeFigurenpreis, figMarktpreisMitHerkunft, getCurrentFigMarketPrice,
-};

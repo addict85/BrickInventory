@@ -52,7 +52,7 @@ async function verkleinern(quelle: string, ziel: string): Promise<void> {
   await bg.write(ziel as `${string}.${string}`, { quality: 80 });
 }
 
-async function generateThumb(localPath: string) {
+export async function generateThumb(localPath: string) {
   if (!localPath) return null;
 
   // localPath ist z. B. /images/sets/75192-1.jpg oder /images/parts/3001_4.png.
@@ -103,4 +103,3 @@ async function generateThumb(localPath: string) {
  * Generate thumbnails for a batch of local paths (background, non-blocking).
  */
 
-export { generateThumb };

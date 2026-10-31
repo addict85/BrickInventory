@@ -8,7 +8,7 @@ import type { FehlerCode } from './fehlerTexte';
  * Zentrale Fehlerbehandlung für Routen; Status aus `status`, sonst e.status || 500.
  * Ausführlich: docs/begruendungen/src/infra/httpError.ts.md#handlerouteerror
  */
-function handleRouteError(res: any, e: any, status?: number, req?: any) {
+export function handleRouteError(res: any, e: any, status?: number, req?: any) {
   e = alsUploadFehler(e);
   const code = status || e?.status || 500;
   // Die Anfrage gehört in die Zeile: Dieselbe Stelle bedient oft mehrere
@@ -59,7 +59,7 @@ function alsUploadFehler<T>(e: T): T | Error {
  * Ausführlich: docs/begruendungen/src/infra/httpError.ts.md#logandcontinue
  * @param kontext kurze Herkunftsangabe, z. B. 'parts:image_local'
  */
-function logAndContinue(kontext: string) {
+export function logAndContinue(kontext: string) {
   return (e: any) => {
     console.warn(`[weiter-trotz-fehler] ${kontext}:`, e?.message || e);
   };
@@ -70,7 +70,7 @@ function logAndContinue(kontext: string) {
  * wo der Aufrufer mit dem Wert weiterrechnet und der Fehler trotzdem eine
  * Spur hinterlassen soll.
  */
-function meldeUndLiefere<T>(kontext: string, ersatz: T) {
+export function meldeUndLiefere<T>(kontext: string, ersatz: T) {
   return (e: unknown): T => { logAndContinue(kontext)(e); return ersatz; };
 }
 
@@ -78,9 +78,9 @@ function meldeUndLiefere<T>(kontext: string, ersatz: T) {
  * Für das Aufräumen von Dateien: Eine schon fehlende Datei ist das Ziel, kein
  * Fehler; alles andere (Rechte, volle Platte) wird gemeldet.
  */
-function ohneFehlendeDatei(kontext: string): (e: unknown) => void;
-function ohneFehlendeDatei<T>(kontext: string, ersatz: T): (e: unknown) => T;
-function ohneFehlendeDatei<T>(kontext: string, ersatz?: T) {
+export function ohneFehlendeDatei(kontext: string): (e: unknown) => void;
+export function ohneFehlendeDatei<T>(kontext: string, ersatz: T): (e: unknown) => T;
+export function ohneFehlendeDatei<T>(kontext: string, ersatz?: T) {
   return (e: unknown): T | undefined => { if (fehlerCode(e) !== 'ENOENT') logAndContinue(kontext)(e); return ersatz; };
 }
 
@@ -88,7 +88,7 @@ function ohneFehlendeDatei<T>(kontext: string, ersatz?: T) {
  * Dasselbe fuer try/catch statt fuer .catch().
  * Ausführlich: docs/begruendungen/src/infra/httpError.ts.md#meldeundweiter
  */
-function meldeUndWeiter(kontext: string, e: unknown) {
+export function meldeUndWeiter(kontext: string, e: unknown) {
   logAndContinue(kontext)(e);
 }
 
@@ -96,7 +96,7 @@ function meldeUndWeiter(kontext: string, e: unknown) {
  * Der lesbare Text eines gefangenen Fehlers — egal was geworfen wurde.
  * Ausführlich: docs/begruendungen/src/infra/httpError.ts.md#fehlertext
  */
-function fehlertext(e: unknown): string {
+export function fehlertext(e: unknown): string {
   if (e instanceof Error && e.message) return e.message;
   if (typeof e === 'string' && e) return e;
   const m = e && typeof e === 'object' ? (e as { message?: unknown }).message : undefined;
@@ -109,7 +109,7 @@ function fehlertext(e: unknown): string {
 }
 
 /** Der Fehlercode einer Ausnahme (ENOENT, 23505 …), typsicher; ohne Code undefined. */
-function fehlerCode(e: unknown): string | undefined {
+export function fehlerCode(e: unknown): string | undefined {
   const c = (e as { code?: unknown } | null | undefined)?.code;
   return typeof c === 'string' || typeof c === 'number' ? String(c) : undefined;
 }
@@ -118,14 +118,14 @@ function fehlerCode(e: unknown): string | undefined {
  * Ein Routen-Parameter, den der Pfad garantiert (Express 5 typisiert ihn auch als string[]).
  * Ausführlich: docs/begruendungen/src/infra/httpError.ts.md#pfadparam
  */
-function pfadParam(req: { params: Record<string, string | string[] | undefined> },
+export function pfadParam(req: { params: Record<string, string | string[] | undefined> },
                    name: string): string {
   const wert = req.params[name];
   return Array.isArray(wert) ? wert.join('/') : (wert ?? '');
 }
 
 /** Der Teil vor dem ersten Trenner; split() liefert immer ein erstes Element, der Typprüfer weiss es nicht. */
-function vorDem(s: string, trenner: string): string {
+export function vorDem(s: string, trenner: string): string {
   return s.split(trenner)[0] ?? '';
 }
 
@@ -133,17 +133,15 @@ function vorDem(s: string, trenner: string): string {
  * Der Fehlerweg der Router: Was ein Handler wirft, wird hier zur Antwort.
  * Express 5 reicht auch abgelehnte Promises hierher; ein try/catch je Route braucht es nicht.
  */
-function fehlerAntwort(e: unknown, req: Request, res: Response, _next: NextFunction): void {
+export function fehlerAntwort(e: unknown, req: Request, res: Response, _next: NextFunction): void {
   handleRouteError(res, e, undefined, req);
 }
-
-export { fehlerAntwort, handleRouteError, logAndContinue, meldeUndWeiter, meldeUndLiefere, ohneFehlendeDatei, fehlertext, fehlerCode, pfadParam, vorDem };
 
 /**
  * Eine Datei an die Antwort streamen — mit Fehlerbehandlung.
  * @param req nur für die Sprache der Meldung; ohne ihn Deutsch.
  */
-function streamFileToResponse(res: any, filePath: string, onEnd?: () => void, req?: any) {
+export function streamFileToResponse(res: any, filePath: string, onEnd?: () => void, req?: any) {
   const stream = fs.createReadStream(filePath);
   stream.on('error', (e: NodeJS.ErrnoException) => {
     console.error(`[stream] ${filePath}: ${e?.code || e?.message}`);
@@ -164,4 +162,3 @@ function streamFileToResponse(res: any, filePath: string, onEnd?: () => void, re
   return stream;
 }
 
-export { streamFileToResponse };

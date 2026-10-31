@@ -10,7 +10,7 @@ import { mengeJoin, mengeAus, teilmengeJoin, teilmengeAus } from '../sets/bestan
  * Ausführlich: docs/begruendungen/src/bestand/kennzahlen.ts.md#getstats
  */
 
-async function getStats(userId: number | number[]) {
+export async function getStats(userId: number | number[]) {
   // Blickfeld statt einer einzelnen ID: Ein Hauptkonto sieht (und ändert)
   // auch die Daten seiner Unterkonten, alle anderen nur ihre eigenen. Die
   // Liste kommt von scopeIds() in src/haushalt/haushalt.ts — hier wird sie nur
@@ -60,4 +60,3 @@ async function getStats(userId: number | number[]) {
   };
 }
 
-export { getStats };

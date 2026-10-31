@@ -45,7 +45,7 @@ import { pfadSegment } from '../infra/fremdeAdressen';
  * Ausführlich: docs/begruendungen/src/katalog/instructions.ts.md#letzterabrufwarextern
  */
 let _letzterAbrufWarExtern = false;
-function letzterAbrufWarExtern(): boolean { return _letzterAbrufWarExtern; }
+export function letzterAbrufWarExtern(): boolean { return _letzterAbrufWarExtern; }
 
 // shared_instructions: zaehlen, lesen, loeschen
 // Diese drei Fragen standen ueber den Baum verstreut — die Zaehlung dreimal
@@ -115,7 +115,7 @@ async function brickinstructionsFund(n: string) {
   return { baseUrl, pageUrl, hdrs, erstesBild: probe.buffer };
 }
 
-async function scrapeInstructionsFromFallback(setNumber: string) {
+export async function scrapeInstructionsFromFallback(setNumber: string) {
   const n = mitVersion(setNumber);
   const existing = await anzahlAnleitungen(n);
   if (existing > 0) return existing;
@@ -160,7 +160,7 @@ async function scrapeInstructionsFromFallback(setNumber: string) {
 // routes/sets.ts) übergaben `null` — der 'instructions'-Schritt konnte den
 // Browser also gar nicht mehr erreichen. Ein Parameter, den jeder Aufrufer mit
 // null füllt, sagt dem Leser bloss eine Möglichkeit vor, die es nicht gibt.
-async function downloadSetInstructions(setNumber: string,
+export async function downloadSetInstructions(setNumber: string,
                                        eigenerTakt = false) {
   const n = mitVersion(setNumber);
 
@@ -288,5 +288,3 @@ async function buildImagePDF_fromBuffers(imgBuffers: Buffer[], destPath: string)
   });
 }
 
-
-export { downloadSetInstructions, scrapeInstructionsFromFallback, letzterAbrufWarExtern };
