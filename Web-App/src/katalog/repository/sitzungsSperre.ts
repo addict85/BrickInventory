@@ -1,8 +1,5 @@
-/**
- * Eine Sperre auf Sitzungsebene (pg_advisory_lock) über eine eigene, dauerhafte
- * Verbindung: Sie gilt über alle Prozesse und endet mit der Verbindung, falls
- * der Prozess abstürzt.
- */
+/** pg_advisory_lock auf eigener, dauerhafter Verbindung: Sie gilt über alle
+ * Prozesse und endet mit der Verbindung, falls der Prozess abstürzt. */
 export type SperrVerbindung = { query: (sql: string, werte?: unknown[]) => Promise<{ rows: Array<Record<string, unknown>> }> };
 
 export async function versucheSperre(client: SperrVerbindung, schluessel: number): Promise<boolean> {

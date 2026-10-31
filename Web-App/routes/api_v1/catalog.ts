@@ -1,7 +1,3 @@
-/**
- * /api/v1/catalog — Rebrickable-Katalog (Browsen/Suchen/Filtern aller Sets).
- * Die Abfragen stehen in src/katalog/dienst.ts.
- */
 import express from 'express';
 import { fehlerAntwort } from '../../src/infra/httpError';
 import { requireToken } from './middleware';
@@ -17,7 +13,6 @@ router.get('/catalog/meta', requireToken, async (_req: AuthedRequest, res) => {
   res.json({ success: true, ...await katalogMeta() }); 
 });
 
-/** Sets je Jahr mit den Filtern der Liste und in ihrer Reihenfolge. */
 router.get('/catalog/year-verteilung', requireToken, async (req: AuthedRequest, res) => {
   const years = await jahrVerteilung({ q: String(req.query.q || '').trim(), themeId: zahl(req.query.theme_id) },
     String(req.query.sort || '') !== 'year_asc');
@@ -39,8 +34,7 @@ router.get('/catalog/sets/:setNumber', requireToken, async (req: AuthedRequest, 
   res.json({ success: true, set });
 });
 
-// GET /api/v1/catalog/bricklink?sets=a,b,c — Links für eine ganze Katalogseite
-// aus einer Abfrage, ohne BrickLink-Aufruf.
+// Links für eine ganze Katalogseite aus einer Abfrage, ohne BrickLink-Aufruf.
 router.get('/catalog/bricklink', requireToken, async (req: AuthedRequest, res) => {
   const raw = String(req.query.sets || '').trim();
   if (!raw) { res.json({ success: true, links: {} }); return; }

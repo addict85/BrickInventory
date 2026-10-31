@@ -1,20 +1,8 @@
 /**
- * Build-Werkzeuge: eine Fassung, ein Weg.
- *
- * ── Woher der Test kommt ────────────────────────────────────────────────────
- * Die Build-Skripte riefen esbuild über `npx --yes esbuild@<Version>` auf. Das
- * stammte aus der Zeit vor der devDependency und hatte zwei Folgen:
- *
- *   • npx kostet pro Aufruf mehrere hundert Millisekunden Startzeit. Da
- *     build-ts.js esbuild EINMAL JE DATEI startete (58 Dateien), summierte sich
- *     das — auf einem Raspberry Pi so weit, dass neun Testdateien in die
- *     60-Sekunden-Grenze des Test-Runners liefen, ohne dass inhaltlich etwas
- *     falsch war.
- *   • Die fest verdrahtete Version konnte von der in package.json abweichen.
- *     Dann baute derselbe Befehl je nach Umgebung mit unterschiedlichen
- *     Fassungen.
- *
- * Beides ist behoben; dieser Test hält es fest.
+ * Build-Werkzeuge: eine Fassung, ein Weg. esbuild kommt aus der devDependency
+ * und läuft einmal für alle Dateien — npx je Datei riss auf schwacher Hardware
+ * die Zeitgrenze, und eine fest verdrahtete Version konnte von package.json
+ * abweichen.
  */
 const test   = require('node:test');
 const assert = require('node:assert/strict');
@@ -62,15 +50,9 @@ test('Tests bauen dist/ nicht neu, wenn es aktuell ist', () => {
 });
 
 test('das Runtime-Stage führt keine npm-Skripte aus', () => {
-  // ── Woher dieser Test kommt ─────────────────────────────────────────────
-  // Im Runtime-Stage stand kurzzeitig `npm ci --omit=dev`. Der Docker-Build
-  // brach damit ab: npm führt dabei den postinstall-Hook aus
-  // (scripts/bump-version.js), und scripts/ wird in dieses Stage nie kopiert —
-  // "Cannot find module '/app/scripts/bump-version.js'".
-  //
-  // Der Fehler ist nur im echten Docker-Build sichtbar, nicht in Typecheck oder
-  // Testsuite. Deshalb die Prüfung hier: Nach dem `FROM` des zweiten Stages
-  // darf kein npm-Befehl mehr stehen, der Skripte auslösen kann.
+  // Nach dem `FROM` des Runtime-Stages darf kein npm-Befehl stehen, der Skripte
+  // auslöst: scripts/ wird dorthin nicht kopiert, der Docker-Build bräche ab —
+  // sichtbar nur im echten Build, nicht in Typecheck oder Testsuite.
   const df = read('Dockerfile');
   const stages = df.split(/^FROM /m);
   assert.ok(stages.length >= 3, 'Der Dockerfile hat keine zwei Stages mehr');
@@ -80,9 +62,7 @@ test('das Runtime-Stage führt keine npm-Skripte aus', () => {
 });
 
 test('devDependencies landen nicht im Laufzeit-Image', () => {
-  // esbuild, typescript, jsdom und tsx werden nur zum Bauen gebraucht. Ohne
-  // Bereinigung wandern sie mit node_modules ins Image — unnötige Grösse und
-  // unnötige Angriffsfläche.
+  // Build-Werkzeuge gehören nicht ins Image: unnötige Grösse und Angriffsfläche.
   const df = read('Dockerfile');
   assert.match(df, /npm prune --omit=dev/,
     'Ohne prune enthält das übernommene node_modules auch die devDependencies');
@@ -92,15 +72,8 @@ test('devDependencies landen nicht im Laufzeit-Image', () => {
 });
 
 test('compose.yaml mountet nichts mehr nach public/', () => {
-  // ── Woher dieser Test kommt ─────────────────────────────────────────────
-  // Nach der Umstellung der Bildablage auf data/images/ (src/infra/appPaths.ts)
-  // blieb in compose.yaml die Zeile `./images:/app/public/images/sets` stehen.
-  // Der Code schrieb dort längst nicht mehr hin — der Ordner ./images blieb
-  // trotzdem neben ./data liegen und sah aus, als wäre die Umstellung nur halb
-  // passiert.
-  //
-  // Zweiter Grund: public/ ist seit dem dist/-Umbau reiner, unveränderlicher
-  // Build-Inhalt. Ein Schreib-Mount hinein hebelt das auf.
+  // Bilder liegen unter data/images/, und public/ ist unveränderlicher
+  // Build-Inhalt: Ein Schreib-Mount hinein hebelt das auf.
   const compose = read('compose.yaml');
   const mounts = [...compose.matchAll(/^\s*-\s*([^\s:#]+):([^\s:#]+)/gm)].map(m => m[2]);
   const intoPublic = mounts.filter(t => t.startsWith('/app/public'));
@@ -117,17 +90,8 @@ test('das Datenverzeichnis ist als einziges Volume der App gemountet', () => {
 });
 
 test('keine Build-Artefakte neben den TypeScript-Quellen', () => {
-  // ── Woher dieser Test kommt ─────────────────────────────────────────────
-  // Ein `node scripts/build-ts.js` OHNE --outdir schreibt die .js in-place —
-  // und genau das ist einmal passiert: 61 transpilierte Dateien lagen wieder
-  // neben ihren Quellen, nachweislich VERALTET (src/sets/setMove.js fehlte, der
-  // Lauf war also älter als hardened-109). Das ist mehr als Unordnung:
-  // server.ts lädt einige Module per require() ohne Endung, und die
-  // Node-Auflösung nimmt eine vorhandene .js vor der .ts — `npm run dev`
-  // konnte damit stillschweigend veralteten Code ausführen.
-  //
-  // Erzeugnisse gehören ausschliesslich nach dist/ (Build) und
-  // public/js/app.bundle.js (Frontend). Quellverzeichnisse bleiben rein.
+  // Erzeugnisse nur nach dist/ und public/js/app.bundle.js: Eine .js neben ihrer
+  // .ts gewinnt bei require() ohne Endung, und `npm run dev` liefe veralteten Code.
   const walk = (dir) => {
     const out = [];
     for (const e of fs.readdirSync(path.join(ROOT, dir), { withFileTypes: true })) {
@@ -147,20 +111,11 @@ test('keine Build-Artefakte neben den TypeScript-Quellen', () => {
     'löschen und mit `node scripts/build-ts.js --outdir dist` bauen');
 });
 
-// ═══════════════════════════════════════════════════════════════════════════
-// Typpakete müssen dieselbe Hauptversion beschreiben, die auch läuft
-// ═══════════════════════════════════════════════════════════════════════════
+// ── Typpakete beschreiben dieselbe Hauptversion, die auch läuft ─────────────
 /**
- * Der Anlass (Nachtrag 148): `express` stand auf ^4, `@types/express` auf ^5.
- * Beides für sich installierbar, npm meldet nichts — aber tsc prüfte den
- * ganzen Server gegen eine API, die so nicht ausgeliefert wird. Express 5 hat
- * unter anderem die Router- und Fehler-Signaturen geändert; eine Meldung, die
- * ausbleibt, weil der Typ sie in der ANDEREN Hauptversion erlaubt, ist eine
- * Prüfung, die stillschweigend nicht stattfindet.
- *
- * Geprüft werden die Pakete, bei denen Laufzeit und Typen getrennt gepflegt
- * werden. Die Regel ist bewusst auf die HAUPTVERSION beschränkt: Typpakete
- * ziehen in Neben- und Patchversionen eigenständig nach, das ist normal.
+ * Sonst prüft tsc gegen eine API, die so nicht ausgeliefert wird, und eine
+ * Meldung bleibt aus. Nur die HAUPTVERSION: Typpakete ziehen in Neben- und
+ * Patchversionen eigenständig nach.
  */
 test('@types/* beschreiben dieselbe Hauptversion wie das Paket selbst', () => {
   const pkg = JSON.parse(read('package.json'));
@@ -170,15 +125,9 @@ test('@types/* beschreiben dieselbe Hauptversion wie das Paket selbst', () => {
     return m ? m[1] : null;
   };
 
-  // ── Freibriefe ────────────────────────────────────────────────────────────
-  // Nicht jedes Typpaket zählt mit seiner Bibliothek mit: DefinitelyTyped
-  // erhöht die Hauptversion, wenn sich die Deklarationen ändern, nicht wenn die
-  // Bibliothek eine neue Fassung bekommt. Für diese beiden ist die aktuelle
-  // (und einzige) Fassung des Typpakets die richtige — nachgesehen am
-  // 28.08.2026, beide beschreiben die eingesetzte API.
-  //
-  // Ein Eintrag hier ist eine ENTSCHEIDUNG, kein Stummschalten: Wer ein Paket
-  // hinzufügt, muss begründen, warum die Nummern auseinanderlaufen dürfen.
+  // Freibriefe: DefinitelyTyped zählt die Hauptversion nach den Deklarationen,
+  // nicht nach der Bibliothek. Ein Eintrag ist eine ENTSCHEIDUNG mit Begründung,
+  // kein Stummschalten.
   const freibrief = {
     'archiver':          'Typpaket zählt eigenständig; 8.x ist die aktuelle Fassung für archiver 7',
     'connect-pg-simple': 'Typpaket steht seit Jahren auf 7.x, die Bibliothek bei 10 — DT zählt hier nicht mit',
@@ -197,8 +146,8 @@ test('@types/* beschreiben dieselbe Hauptversion wie das Paket selbst', () => {
     if (a && b && a !== b) abweichend.push(`${ziel} ${alle[ziel]} ↔ ${name} ${spanne}`);
   }
 
-  // Gegenrichtung: ein Freibrief für ein Paket, das es nicht mehr gibt, ist
-  // toter Ballast und verdeckt beim nächsten Mal die echte Frage.
+  // Ein Freibrief für ein Paket, das es nicht mehr gibt, verdeckt beim nächsten
+  // Mal die echte Frage.
   const verwaist = Object.keys(freibrief).filter(z => !(z in alle));
   assert.deepEqual(verwaist, [],
     'Freibrief ohne Paket — Eintrag entfernen: ' + verwaist.join(', '));
@@ -209,22 +158,11 @@ test('@types/* beschreiben dieselbe Hauptversion wie das Paket selbst', () => {
     'Typpaket und Paket in verschiedenen Hauptversionen:\n  ' + abweichend.join('\n  '));
 });
 
-// ═══════════════════════════════════════════════════════════════════════════
-// strictNullChecks bleibt an — und muss durchlaufen
-// ═══════════════════════════════════════════════════════════════════════════
+// ── strictNullChecks bleibt an — und muss durchlaufen ───────────────────────
 /**
- * Der Schalter war seit der TypeScript-Migration aus und wurde in Nachtrag 148
- * eingeschaltet, nachdem die letzten 93 Meldungen abgeräumt waren.
- *
- * Wieder auszuschalten ist eine Zeile — und beim nächsten Mal, wenn eine
- * Meldung im Weg steht, die naheliegendste. Die Prüfung hier hält beides fest:
- * dass der Schalter steht, UND dass tsc damit tatsächlich sauber ist. Der erste
- * Teil allein wäre wertlos: `strictNullChecks: true` mit zwanzig roten
- * Meldungen ist genau der Zustand, den die alte Begründung im tsconfig zu Recht
- * vermeiden wollte.
- *
- * Der Lauf dauert ein paar Sekunden. Das ist er wert: Er ist die einzige
- * Stelle, an der das Versprechen „tsc ist sauber" auch geprüft wird.
+ * Der Schalter allein wäre wertlos: `strictNullChecks: true` mit roten
+ * Meldungen ist kein Versprechen. Der Lauf dauert ein paar Sekunden und ist die
+ * einzige Stelle, an der „tsc ist sauber" geprüft wird.
  */
 test('tsconfig hat strictNullChecks an und tsc läuft sauber durch', { timeout: 120000 }, () => {
   // JSON mit Kommentaren — tsc erlaubt sie, JSON.parse nicht.
@@ -247,60 +185,11 @@ test('tsconfig hat strictNullChecks an und tsc läuft sauber durch', { timeout: 
     `tsc meldet ${fehler.length} Fehler (erste zehn oben)`);
 });
 
-// ═══════════════════════════════════════════════════════════════════════════
-// Der CI-Lauf ist die einzige Stelle, an der nichts Altes herumliegt
-// ═══════════════════════════════════════════════════════════════════════════
 /**
- * Der Anlass (Nachtrag 148/150): Eine Testdatei holte ein Modul aus dist/, das
- * es nach einer Aufteilung nicht mehr gab. Lokal blieb sie grün, weil in einem
- * gewachsenen dist/ noch eine alte Fassung lag — zehn Prüfungen liefen
- * monatelang nicht, ohne dass irgendwo etwas rot war.
- *
- * Dagegen hilft kein weiterer Test, sondern ein Lauf auf einem Rechner ohne
- * Vorgeschichte. Was hier geprüft wird, sind die drei Eigenschaften, ohne die
- * so ein Lauf wertlos wäre — und jede davon ist eine Zeile, die man beim
- * Umbauen des Workflows versehentlich verliert.
- *
- * ── Und wo die Datei liegt, war das Wichtigste ─────────────────────────────
- * Dieser Test zeigte auf `Web-App/.github/workflows/ci.yml` und war grün.
- * GitHub liest Workflows aber AUSSCHLIESSLICH aus `.github/workflows/` im
- * Wurzelverzeichnis; in einem Unterordner ist so eine Datei nur Text.
- * NACHGEMESSEN über die Actions-API: Das Repository kannte drei Workflows,
- * dieser war keiner davon — er ist nie gelaufen.
- *
- * Der Inhalt war also die ganze Zeit bewacht und der Lauf fand nie statt.
- * Dass eine Prüfung grün ist, sagt eben nur etwas über das, worauf sie zeigt.
- * Der Ort selbst wird jetzt in workflow-ort.test.js geprüft.
- */
-/**
- * Die Adresse der Test-Datenbank wird NIE ohne Rückfallwert gelesen.
- *
- * ── Der Befund ──────────────────────────────────────────────────────────────
- * 79 Testdateien setzen oben
- *
- *     process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://…'
- *
- * Genau EINE Stelle las die Variable ohne diesen Rückfall: das Kind-Skript in
- * image-queue-pace-db.test.js, das einen zweiten Prozess startet. Ist
- * TEST_DATABASE_URL nicht gesetzt — und in der Entwicklungsumgebung ist sie es
- * nicht —, bekam das Kind `undefined` und die Verbindung scheiterte.
- *
- * Der rote Untertest war dabei noch das Harmlose. Mehrfach beobachtet: Der
- * Lauf der ganzen Datei brach danach ab mit
- *
- *     Unable to deserialize cloned data due to invalid or unsupported version.
- *
- * Diese Meldung sagt nichts über die Ursache. Sichtbar war nur, dass die Datei
- * nach dem ersten Untertest aufhörte — 2 statt 13 Tests, und niemand sah,
- * welche elf fehlten.
- *
- * ── Warum als Regel und nicht als einzelne Reparatur ────────────────────────
- * Der Rückfallwert ist eine Regel, die 79-mal richtig und einmal falsch
- * dastand. Wer den nächsten Kindprozess baut, schreibt dieselbe Zeile ab.
- *
- * Kommentare raus, BEVOR gesucht wird: Die Erklärung an der reparierten Stelle
- * zitiert die falsche Zeile — ohne das meldete die Regel ihren eigenen
- * Erklärtext.
+ * Die Adresse der Test-Datenbank wird NIE ohne Rückfallwert gelesen: Ein
+ * Kindprozess ohne ihn bekam `undefined`, und der Lauf der Datei brach danach
+ * mit einer Meldung ab, die nichts über die Ursache sagt. Kommentare raus,
+ * BEVOR gesucht wird — sonst meldete die Regel ihren eigenen Erklärtext.
  */
 test('die Adresse der Test-Datenbank hat überall einen Rückfallwert', () => {
   const { ohneKommentare } = require('./helpers/sources');
@@ -325,55 +214,20 @@ test('die Adresse der Test-Datenbank hat überall einen Rückfallwert', () => {
 });
 
 /**
- * BEIDE Workflows sagen, was rot war — nicht nur einer.
- *
- * ── Der Anlass ──────────────────────────────────────────────────────────────
- * web-ci.yml schreibt seit Laengerem `::error::`-Annotationen, weil das rohe
- * Protokoll von aussen nicht zu holen ist (die Ablage liegt hinter einer
- * Weiterleitung, die der Proxy mit 403 abweist). android.yml tat das nicht.
- *
- * GEMESSEN an den Laeufen 80 und 81: Beide waren rot, und die einzige
- * Annotation lautete „Process completed with exit code 1". Die Ursache — ein
- * roter Test bzw. ein fehlender Import — war nur zu finden, indem das ganze
- * Protokoll gelesen wurde, zweimal.
- *
- * ── Warum als gemeinsame Regel ──────────────────────────────────────────────
- * „Zwei Apps, gleich gebaut" heisst auch: gleich diagnostizierbar. Eine Regel,
- * die nur den Web-Workflow prueft, laesst genau die Haelfte offen, die man
- * ohnehin schlechter untersuchen kann (Android laesst sich hier nicht bauen).
- *
- * Geprueft wird die WIRKUNG, nicht der Wortlaut: ein Mitschnitt, ein Schritt
- * fuer den Fehlerfall, Annotationen fuer BEIDE Ausgaenge (etwas ist rot / es
- * ist rot, ohne dass ein einzelner Test rot ist) und die Summenzeile.
+ * BEIDE Workflows sagen, was rot war: Ohne Annotationen ist die Ursache nur im
+ * ganzen Protokoll zu finden, das von aussen nicht zu holen ist. Geprüft wird
+ * die WIRKUNG — Mitschnitt, Schritt für den Fehlerfall, Annotationen für beide
+ * Ausgänge und die Summenzeile.
  */
 /**
- * Der pg-Klient in CI hat die Hauptversion des Dienstes — und sie steht EINMAL.
- *
- * ── Der Befund (Lauf 15, der erste, der auf main ueberhaupt lief) ───────────
- * Der Schritt hiess „PostgreSQL-Klienten bereitstellen" und tat
- *
- *     command -v pg_dump || apt-get install postgresql-client
- *
- * mit der Begruendung, auf ubuntu-latest seien die Klienten „in aller Regel
- * vorinstalliert; die Zeile stellt es sicher". Beides stimmte — und genau
- * deshalb griff es daneben: Der vorinstallierte Klient IST da, in Version 16,
- * waehrend der Dienst 18 ist. pg_dump verweigert das rundheraus:
- *
- *     pg_dump: error: aborting because of server version mismatch
- *     pg_dump: detail: server version: 18.6; pg_dump version: 16.15
- *
- * Vier rote Tests, alle in backup-restore-db. Der Sicherungsweg war damit
- * genauso ungeprueft wie vor seiner Einfuehrung, nur lauter.
- *
- * ── Was die Regel prueft ────────────────────────────────────────────────────
- * Nicht „steht die 18 da" — sondern dass die Zahl NICHT ZWEIMAL dasteht. Der
- * Schritt liest sie aus der Dienstdefinition im selben Workflow. Zwei Zahlen
- * fuer dieselbe Sache laufen auseinander, und diese hier tat es schon.
+ * Der pg-Klient in CI hat die Hauptversion des Dienstes, und die Zahl steht
+ * EINMAL: pg_dump verweigert eine ältere Fassung als der Server, und zwei
+ * Zahlen für dieselbe Sache laufen auseinander.
  */
 test('der pg-Klient in CI folgt der Version des Dienstes', () => {
   const yml = fs.readFileSync(path.join(ROOT, '..', '.github', 'workflows', 'web-ci.yml'), 'utf8');
 
-  // Selbstbeweis: Ohne Dienstdefinition prueft alles darunter nichts.
+  // Selbstbeweis: Ohne Dienstdefinition prüft alles darunter nichts.
   const dienst = yml.match(/image:\s*postgres:(\d+)/);
   assert.ok(dienst, 'Keine Postgres-Dienstdefinition im Workflow gefunden — Muster veraltet?');
 
@@ -386,8 +240,7 @@ test('der pg-Klient in CI folgt der Version des Dienstes', () => {
   assert.match(yml, /postgresql-client-\$\{haupt\}|postgresql-client-\$\{\{?\s*haupt/,
     'Der Schritt installiert keinen Klienten, dessen Version aus dem Dienst stammt');
 
-  // Und es muss auch NACHGESEHEN werden: Der Klient liegt neben dem alten,
-  // ohne PATH-Eintrag gewinnt weiterhin der vorinstallierte.
+  // Auch NACHSEHEN: Ohne PATH-Eintrag gewinnt der vorinstallierte Klient.
   assert.match(yml, /pg_dump --version \| grep/,
     'Nach der Installation wird nicht geprueft, ob pg_dump wirklich die richtige Version ist');
 });
@@ -402,10 +255,8 @@ test('beide Workflows melden, was rot war', () => {
       `${datei}: kein Mitschnitt des Testprotokolls`);
     assert.match(yml, /if:\s*failure\(\)/,
       `${datei}: kein Schritt, der im Fehlerfall laeuft`);
-    // Beide Ausgaenge: der erwartete (etwas ist rot) und der unerwartete
-    // (rot, ohne dass ein einzelner Test rot ist — ein Uebersetzungsfehler,
-    // ein Modul, das nicht laedt). Eine Diagnose, die nur den ersten abdeckt,
-    // schweigt genau dann, wenn etwas Unerwartetes passiert.
+    // Beide Ausgänge: etwas ist rot, oder es ist rot, ohne dass ein Test rot ist
+    // (Übersetzungsfehler, Modul lädt nicht) — sonst schweigt die Diagnose genau dann.
     const fehler = [...yml.matchAll(/::error title=/g)].length;
     assert.ok(fehler >= 2,
       `${datei}: nur ${fehler} Fehler-Annotation(en) — beide Ausgaenge muessen gemeldet werden`);

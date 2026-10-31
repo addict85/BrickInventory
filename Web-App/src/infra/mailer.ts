@@ -1,15 +1,5 @@
-/**
- * Mailversand — SMTP, Vorlagen, Themes.
- * Ausführlich: docs/begruendungen/src/infra/mailer.ts.md#abschnitt
- */
-//
-// Design: blau/weiss, wie die Webapp (--b600: #2563eb).
+// Ausführlich: docs/begruendungen/src/infra/mailer.ts.md#abschnitt
 
-// Zentraler Settings-Helfer — lokale Kopie entfernt.
-//
-// Jetzt direkt aus src/konto/settings statt ueber routes/settings: Der Umweg war
-// ein Durchreichen (routes/settings exportiert den Helfer nur weiter) und
-// genau die Kante, die test/schichten.test.js meldete.
 import nodemailer from 'nodemailer';
 import { konfig } from './konfig';
 import { getGlobalSetting } from '../konto/settings';
@@ -18,10 +8,7 @@ import { fehlertext } from './httpError';
 import { basisUrl, hinweisOhneBasisUrl } from './basisUrl';
 const getSetting = (key: string) => getGlobalSetting(key, '');
 
-/**
- * Verbindung zum Mailserver.
- * Ausführlich: docs/begruendungen/src/infra/mailer.ts.md#gettransporter
- */
+// Ausführlich: docs/begruendungen/src/infra/mailer.ts.md#gettransporter
 async function getTransporter() {
   const host   = await getSetting('smtp_host');
   const port   = parseInt(await getSetting('smtp_port') || '587');
@@ -44,24 +31,17 @@ async function getFrom() {
   return (await getSetting('smtp_from')) || 'BrickInventory Manager <noreply@brickinventory.local>';
 }
 
-/**
- * Der Link einer Mail für die Konsole — ohne Token, ausser mit dem eigenen
- * Schalter MAIL_KONSOLE_MIT_TOKEN=1. Die Konsole landet in app_logs und im
- * Container-Log, und ein Reset-Link ist ein Zugang zum Konto. NODE_ENV taugt
- * dafür nicht: „development" steht schnell einmal auf einem echten Server.
- */
+/** Ohne Token, ausser mit MAIL_KONSOLE_MIT_TOKEN=1: Die Konsole landet in
+ * app_logs, und ein Reset-Link ist ein Zugang zum Konto. NODE_ENV taugt dafür
+ * nicht — „development" steht schnell auf einem echten Server. */
 export function linkFuerKonsole(text?: string, schalter = konfig().mailKonsoleMitToken ? '1' : undefined): string | null {
   const url = (text || '').match(/https?:\/\/\S+/)?.[0];
   if (!url) return null;
   return schalter === '1' ? url : url.replace(/([?&]token=)[^&#\s]+/g, '$1…');
 }
 
-/**
- * Eine E-Mail verschicken — oder, ohne SMTP, auf der Konsole zeigen.
- *
- * `html` und `text` sind optional, weil beide Aufrufwege vorkommen: Die
- * Konsolenausgabe unten liest `text`, der Versand schickt beides mit.
- */
+/** Ohne SMTP auf der Konsole; `html` und `text` optional, weil die Konsole
+ * nur `text` liest. */
 export async function sendMail({ to, subject, html, text }: {
   to: string; subject: string; html?: string; text?: string;
 }) {
@@ -87,21 +67,12 @@ export async function sendMail({ to, subject, html, text }: {
   }
 }
 
-/**
- * Maskiert `&`, `<` und `>` fuer die Ausgabe in HTML.
- * Der Parameter ist `unknown` und nicht `string`: Hier laufen Werte aus der
- * Datenbank und aus Formularen hinein, und `String(s || '')` faengt genau das
- * ab. Ein `string`-Typ waere eine Behauptung ueber die Aufrufer, die dieser
- * Rumpf gar nicht braucht.
- */
+/** `unknown`: Hier laufen Werte aus Datenbank und Formularen hinein. */
 function esc(s: unknown) {
   return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-// ── Logo: HTML-Tabellen-Nachbau des Login-Seite-SVG ─────────────────────────
-// Das SVG der Login-Seite wird 1:1 als HTML-Tabellen nachgebaut,
-// da SVG in E-Mail-Clients (Outlook, Gmail) nicht gerendert wird.
-// Rot (#e63329) mit Noppen, weissem Label-Bereich, gelbem BIM-Badge.
+// Das Logo als HTML-Tabellen: Outlook und Gmail rendern kein SVG.
 const LOGO_HTML = `
 <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin:0 auto 18px">
   <tr><td>
@@ -153,13 +124,8 @@ const LOGO_HTML = `
   </td></tr>
 </table>`;
 
-// ── E-Mail-Template: blau/weiss, analog Webapp ────────────────────────────────
-
-/**
- * Ein Mail-Design. ABGELEITET aus MAIL_THEMES.classic, nicht danebengeschrieben:
- * Eine zweite Aufzaehlung der neun Felder waere eine zweite Wahrheit, die beim
- * naechsten neuen Feld still veraltet.
- */
+/** ABGELEITET aus MAIL_THEMES.classic: Eine zweite Aufzählung der Felder
+ * veraltete beim nächsten neuen Feld still. */
 type MailTheme = typeof MAIL_THEMES.classic;
 
 export const MAIL_THEMES = {
@@ -187,20 +153,12 @@ export const MAIL_THEMES = {
   },
 };
 
-/**
- * Aktuelles Design laden. Fällt bei jedem Zweifel auf `classic` zurück — eine
- * E-Mail soll nie am Design scheitern.
- */
+/** Bei jedem Zweifel `classic`: Eine Mail soll nie am Design scheitern. */
 export async function getMailTheme() {
   try {
     const gespeichert = await getGlobalSetting('app_theme');
-    // ausTabelle statt MAIL_THEMES[...]: Ein Indexzugriff mit einem Wert aus
-    // der Datenbank liefert auch GEERBTE Mitglieder — bei 'constructor' oder
-    // '__proto__' kaeme etwas Wahres zurueck, und der ||-Rueckfall griffe nie.
-    // Die Schreibroute (routes/settings.ts) prueft heute gegen eine
-    // Positivliste, es ist also nicht erreichbar; aber src/konto/indexHtml.ts
-    // prueft an der LESESTELLE, und das ist der Stand, auf den diese hier
-    // gehoert. Eine Absicherung drei Dateien entfernt ist keine dieser Stelle.
+    // ausTabelle: Ein Wert aus der Datenbank wie 'constructor' fände sonst ein
+    // geerbtes Mitglied, und der Rückfall griffe nie.
     return ausTabelle(MAIL_THEMES, gespeichert, MAIL_THEMES.classic);
   } catch (_) { return MAIL_THEMES.classic; }
 }
@@ -275,7 +233,7 @@ export function emailTemplate(title: string, preheader: string, content: string,
 </html>`;
 }
 
-// ── Button helper (Outlook-kompatibel via table) ───────────────────────────────
+// Tabellen statt flex: Outlook kennt kein flex.
 function emailBtn(url: string, text: string, theme: MailTheme = MAIL_THEMES.classic) {
   return `
   <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin:28px auto 12px">
@@ -299,11 +257,7 @@ function emailBtn(url: string, text: string, theme: MailTheme = MAIL_THEMES.clas
   </p>`;
 }
 
-// ── Info-Box (hellblau, wie .ibox in der Webapp) ──────────────────────────────
-/**
- * Hinweiskasten in der Mail.
- * Ausführlich: docs/begruendungen/src/infra/mailer.ts.md#infobox
- */
+// Ausführlich: docs/begruendungen/src/infra/mailer.ts.md#infobox
 function infoBox(text: string, theme: MailTheme = MAIL_THEMES.classic) {
   return `<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-bottom:20px">
     <tr>
@@ -315,15 +269,12 @@ function infoBox(text: string, theme: MailTheme = MAIL_THEMES.classic) {
   </table>`;
 }
 
-// ── Divider ───────────────────────────────────────────────────────────────────
 const DIVIDER = `<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin:20px 0">
   <tr><td style="height:1px;background:#e2e8f0;font-size:0;line-height:0">&nbsp;</td></tr>
 </table>`;
 
-// ── Bestätigungsmail ──────────────────────────────────────────────────────────
 export async function sendVerificationMail(to: string, username: string, token: string, baseUrl: string, lang = 'de') {
-  // Design beim Versand laden — es ist eine globale Einstellung und kann sich
-  // zwischen zwei Mails geändert haben.
+  // Beim Versand laden: Das Design kann sich zwischen zwei Mails geändert haben.
   const theme = await getMailTheme();
   const url = `${baseUrl}/verify?token=${token}`;
   const L = lang === 'en' ? {
@@ -367,7 +318,6 @@ export async function sendVerificationMail(to: string, username: string, token: 
   });
 }
 
-/** Hinweis an die BISHERIGE Adresse, dass das Konto eine neue bekommen hat. */
 export async function sendEmailGeaendertMail(to: string, username: string, neueAdresse: string, lang = 'de') {
   const theme = await getMailTheme();
   const L = lang === 'en' ? {
@@ -389,11 +339,8 @@ export async function sendEmailGeaendertMail(to: string, username: string, neueA
     html: emailTemplate(L.title, L.subject, `${L.html}${infoBox(L.note, theme)}`, theme) });
 }
 
-/**
- * Hinweis, dass das Konto einem Haushalt beigetreten ist. Das Hauptkonto liest
- * und schreibt danach den Bestand mit; wer nur eine Sitzung erbeutet hat, soll
- * das nicht unbemerkt einrichten können.
- */
+/** Das Hauptkonto liest danach den Bestand mit; wer nur eine Sitzung erbeutet
+ * hat, soll das nicht unbemerkt einrichten können. */
 export async function sendHaushaltVerknuepftMail(to: string, username: string, hauptkonto: string, lang = 'de') {
   const theme = await getMailTheme();
   const L = lang === 'en' ? {
@@ -415,10 +362,7 @@ export async function sendHaushaltVerknuepftMail(to: string, username: string, h
     html: emailTemplate(L.title, L.subject, `${L.html}${infoBox(L.note, theme)}`, theme) });
 }
 
-// Bis hierher: nein. Diese Mail war die einzige, die gar keine Sprache kannte
-// — sie ging IMMER auf Deutsch hinaus, auch an ein Konto, das die Oberflaeche
-// auf Englisch fuehrt. Die Bestaetigungsmail konnte es laengst (`lang`), die
-// Alarmmail liest die Sprache aus den Benutzereinstellungen; hier fehlte der …
+// In der Sprache des Kontos, wie die übrigen Mails.
 // Ausführlich: docs/begruendungen/src/infra/mailer.ts.md#sendpasswordresetmail
 export async function sendPasswordResetMail(to: string, username: string, token: string,
                                      baseUrl: string, lang = 'de') {
@@ -465,16 +409,14 @@ export async function sendPasswordResetMail(to: string, username: string, token:
   });
 }
 
-// Sie war reiner Text — als einzige. Die Bestaetigungs- und die Reset-Mail
-// laufen seit jeher durch emailTemplate() und tragen das eingestellte Design;
-// die Alarmmail entstand im Preislauf und hat diesen Weg nie genommen.
+// Durch emailTemplate() wie die übrigen Mails, damit sie das Design trägt.
 // Ausführlich: docs/begruendungen/src/infra/mailer.ts.md#alarmmaildaten
 export interface AlarmMailDaten {
   username: string;
-  /** 'de' oder 'en' — die Sprache des EMPFAENGERS, nicht die des Servers. */
+  /** Die Sprache des EMPFÄNGERS, nicht die des Servers. */
   lang: string;
   setNumber: string;
-  /** Der Name aus dem Katalog. Fehlt er, traegt die Mail die Nummer. */
+  /** Fehlt er, trägt die Mail die Nummer. */
   setName?: string | null;
   condition: string;
   richtung: 'unter' | 'ueber';
@@ -483,10 +425,7 @@ export interface AlarmMailDaten {
   waehrung: string;
 }
 
-/**
- * Einmal sagen, warum der Knopf fehlt.
- * Ausführlich: docs/begruendungen/src/infra/mailer.ts.md#bauealarmmail
- */
+// Ausführlich: docs/begruendungen/src/infra/mailer.ts.md#bauealarmmail
 export async function baueAlarmMail(d: AlarmMailDaten): Promise<{ subject: string; text: string; html: string }> {
   const theme = await getMailTheme();
   const de = d.lang !== 'en';
@@ -497,11 +436,8 @@ export async function baueAlarmMail(d: AlarmMailDaten): Promise<{ subject: strin
     ? (de ? 'unter' : 'below') : (de ? 'über' : 'above');
   const titel = d.setName || d.setNumber;
 
-  // Der Link ist OPTIONAL: Der Preislauf hat keine Anfrage, aus der sich der
-  // Host ableiten liesse. APP_BASE_URL ist dieselbe Quelle, die auch die
-  // Bestaetigungslinks benutzen (routes/auth.ts, getBaseUrl) — ist sie nicht
-  // gesetzt, bleibt die Mail ohne Knopf, statt auf einen geratenen Host zu
-  // zeigen.
+  // Der Link ist OPTIONAL: Der Preislauf hat keine Anfrage; ohne APP_BASE_URL
+  // bleibt die Mail ohne Knopf, statt auf einen geratenen Host zu zeigen.
   const basis = basisUrl();
   if (!basis) hinweisOhneBasisUrl('mailer',
     'die Preisalarm-Mail geht OHNE den Knopf „Set ansehen" hinaus. Der Preislauf hat keine Anfrage, aus der sich der Host ableiten liesse; ohne die Variable gaebe es nur einen geratenen Link.');
@@ -511,9 +447,7 @@ export async function baueAlarmMail(d: AlarmMailDaten): Promise<{ subject: strin
     ? `Preisalarm: ${d.setNumber} liegt ${richtung} ${geld(d.schwelle)}`
     : `Price alert: ${d.setNumber} is ${richtung} ${geld(d.schwelle)}`;
 
-  // Der Klartext bleibt Wort fuer Wort derselbe wie bisher. Er ist kein
-  // Abfallprodukt: Er geht als text/plain mit hinaus, und manche Programme
-  // zeigen nur ihn.
+  // Der Klartext geht als text/plain mit; manche Programme zeigen nur ihn.
   const text = de
     ? `Hallo ${d.username},\n\n` +
       `der Marktpreis für ${d.setNumber} (${zustand}) liegt bei ${geld(d.preis)} ` +
@@ -526,11 +460,8 @@ export async function baueAlarmMail(d: AlarmMailDaten): Promise<{ subject: strin
       `You get this once per crossing: it can only trigger again after the ` +
       `price has moved back to the other side.\n`;
 
-  // Die beiden Zahlen gross und nebeneinander: Marktpreis und Schwelle sind
-  // die einzige Frage, die diese Mail beantwortet. Eine Tabelle statt flex,
-  // weil Outlook kein flex kennt — dieselbe Bauweise wie emailBtn() und
-  // infoBox() darueber.
-  // Ausführlich: docs/begruendungen/src/infra/mailer.ts.md#bauealarmmail-zahlen
+  // Marktpreis und Schwelle gross nebeneinander — die einzige Frage dieser Mail.
+  // Tabelle statt flex wegen Outlook.
   const zahlen = `<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin:0 0 20px;table-layout:fixed">
     <tr>
       <td width="44%" style="width:44%;background:${theme.bg};border:1px solid ${theme.border};border-radius:8px;
@@ -580,11 +511,9 @@ export async function baueAlarmMail(d: AlarmMailDaten): Promise<{ subject: strin
   };
 }
 
-// ── SMTP-Verbindung testen ────────────────────────────────────────────────────
 export async function testSmtp() {
   const transporter = await getTransporter();
-  // Code statt Satz: testSmtp() kennt den Anfragenden nicht — die Route macht
-  // mit sendeFehler() einen Satz daraus.
+  // Code statt Satz: testSmtp() kennt den Anfragenden nicht.
   if (!transporter) return { success: false, code: 'smtp_nicht_konfiguriert' as const };
   try {
     await transporter.verify();
@@ -594,6 +523,5 @@ export async function testSmtp() {
   }
 }
 
-// emailTemplate/getMailTheme mitexportieren: Damit lässt sich das Design einer
-// E-Mail prüfen, ohne eine zu versenden (test/mail-theme.test.js).
+// Mitexportiert, damit sich das Design einer Mail ohne Versand prüfen lässt.
 

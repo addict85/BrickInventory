@@ -1,63 +1,38 @@
 
-// Small helper to build CSV text from rows of plain values, with correct
-// quoting/escaping for fields containing commas, quotes or newlines.
-// Used by the various "Export als CSV" endpoints so the exported files can
+// CSV mit richtigem Quoting, damit ein Export mit dem passenden Import
+// unverändert wieder eingelesen werden kann.
 import { parse } from 'csv-parse/sync';
-// be re-imported with the matching CSV importer (Sets / Teile / Minifiguren).
 
-/**
- * Zeichen, mit denen Tabellenprogramme eine Formel beginnen lassen.
- * Tabulator und Wagenrücklauf gehören dazu, weil Excel sie als Trennzeichen
- * liest und das folgende Feld dann wieder als Formel behandeln kann.
- */
+/** Tabulator und Wagenrücklauf gehören dazu: Excel liest sie als Trennzeichen
+ * und behandelt das folgende Feld wieder als Formel. */
 const FORMEL_START = /^[=+\-@\t\r]/;
 
-/**
- * Nur der Ausschnitt von Express' Response, den diese Datei braucht.
- *
- * Statt @types/express hereinzuziehen: Diese Datei kennt Express sonst nicht,
- * und ein Ausschnitt sagt genauer, was sie tut — Kopfzeilen setzen und senden.
- */
+/** Ein Ausschnitt statt @types/express: Er sagt genauer, was diese Datei tut. */
 type ExpressAntwort = {
   setHeader(name: string, value: string): void;
   send(body: string | Buffer): unknown;
 };
 
-/**
- * Derselbe Gedanke fuer die JSON-Antwort des Imports: nur `json`, weil nur das
- * gebraucht wird. Ein gemeinsamer Typ mit ExpressAntwort haette jeder der
- * beiden Funktionen Faehigkeiten angedichtet, die sie nicht benutzen.
- */
 type ExpressJsonAntwort = {
   json(body: unknown): unknown;
 };
 
-/**
- * Ein Feld gegen Formelausführung entschärfen.
- * Ausführlich: docs/begruendungen/src/infra/csvExport.ts.md#entschaerfe
- */
+// Ausführlich: docs/begruendungen/src/infra/csvExport.ts.md#entschaerfe
 export function entschaerfe(s: string): string {
   if (!FORMEL_START.test(s)) return s;
   if (/^-?\d+([.,]\d+)?$/.test(s)) return s;   // reine Zahl, auch negativ
   return "'" + s;
 }
 
-/** Gegenstück zu entschaerfe() für den Import. */
-// `unknown`: Die Werte kommen aus geparsten CSV-Zeilen, sind also nicht
-// zwingend Zeichenketten — der Rumpf prueft das als Erstes selbst.
+// `unknown`: Werte aus geparsten CSV-Zeilen sind nicht zwingend Zeichenketten.
 export function entschaerfungRueckgaengig(v: unknown) {
   if (typeof v !== 'string') return v;
   if (v.length > 1 && v[0] === "'" && FORMEL_START.test(v.slice(1))) return v.slice(1);
   return v;
 }
 
-/**
- * Alle Werte eingelesener CSV-Zeilen entschärfen-rückgängig machen.
- *
- * Gehört direkt hinter jedes parse() der drei Importwege (Sets, Teile,
- * Minifiguren), damit ein hier erzeugter Export unverändert wieder eingelesen
- * werden kann.
- */
+/** Hinter jedes parse() der Importwege, damit ein eigener Export unverändert
+ * wieder eingelesen wird. */
 export function csvZeilenBereinigen(records: any[]): any[] {
   return records.map(row => {
     const out: any = {};
@@ -88,33 +63,23 @@ export function sendCsv(res: ExpressAntwort, filename: string, headers: string[]
   res.send('\uFEFF' + csv); // BOM so Excel opens UTF-8 correctly
 }
 
-// sendCsvText() ist mit seinen drei Aufrufern ENTFERNT.
-// Ausführlich: docs/begruendungen/src/infra/csvExport.ts.md#abschnitt
-
-/**
- * Datumsangabe aus einer CSV-Datei in ISO-Form (YYYY-MM-DD) bringen.
- * Ausführlich: docs/begruendungen/src/infra/csvExport.ts.md#parsecsvdate
- * @param {string|null|undefined} raw
- * @returns {string|null} ISO-Datum oder null, wenn nichts Brauchbares drinsteht
- */
+/** @returns ISO-Datum oder null, wenn nichts Brauchbares drinsteht
+ * Ausführlich: docs/begruendungen/src/infra/csvExport.ts.md#parsecsvdate */
 export function parseCsvDate(raw: unknown) {
   const s = String(raw ?? '').trim();
   if (!s) return null;
 
-  // Bereits ISO — unverändert übernehmen
   let m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
   if (m) return `${m[1]}-${m[2]}-${m[3]}`;
 
-  // Tag zuerst, mit Punkt oder Schrägstrich
   m = /^(\d{1,2})[./](\d{1,2})[./](\d{2}|\d{4})$/.exec(s);
   if (m) {
     const day = parseInt((m[1] ?? '')), mon = parseInt((m[2] ?? ''));
     let year = parseInt((m[3] ?? ''));
     if ((m[3] ?? '').length === 2) year += year < 70 ? 2000 : 1900;
     if (day < 1 || day > 31 || mon < 1 || mon > 12) return null;
-    // Gegenprobe über ein echtes Datum: 31.02. gibt es nicht, die Prüfung auf
-    // 1–31 allein liesse es durch. Date rollt einen ungültigen Tag in den
-    // Folgemonat — kommt etwas anderes heraus als hineingegeben, war es falsch.
+    // Über ein echtes Datum prüfen: 31.02. gibt es nicht; Date rollt ihn in den
+    // Folgemonat, und das fällt hier auf.
     const probe = new Date(Date.UTC(year, mon - 1, day));
     if (probe.getUTCFullYear() !== year || probe.getUTCMonth() !== mon - 1 ||
         probe.getUTCDate() !== day) return null;
@@ -123,16 +88,8 @@ export function parseCsvDate(raw: unknown) {
   return null;
 }
 
-/**
- * CSV-Datei einlesen — fehlerhafte Zeilen überspringen statt alles abzubrechen.
- * Ausführlich: docs/begruendungen/src/infra/csvExport.ts.md#gefaehrliche-spalten
- * @param csvText Dateiinhalt (BOM darf drin sein)
- * @returns { records, delimiter, uebersprungen } — uebersprungen sind
- */
-/**
- * Spaltennamen, die kein Datenfeld sein koennen, sondern die Prototypenkette
- * treffen. Siehe die Begruendung an `columns:` unten.
- */
+/** Treffen die Prototypenkette statt eines Datenfelds.
+ * Ausführlich: docs/begruendungen/src/infra/csvExport.ts.md#gefaehrliche-spalten */
 const GEFAEHRLICHE_SPALTEN = new Set(['__proto__', 'constructor', 'prototype']);
 
 export function csvEinlesen(csvText: string): { records: any[]; delimiter: string; uebersprungen: number[] } {
@@ -142,10 +99,8 @@ export function csvEinlesen(csvText: string): { records: any[]; delimiter: strin
 
   const uebersprungen: number[] = [];
   const records = parse(text, {
-    // Warum die Kopfzeile gefiltert wird
-    // `columns: true` macht aus jeder Kopfspalte einen Objektschluessel. Heisst
-    // eine Spalte `__proto__`, `constructor` oder `prototype`, schreibt das
-    // Ergebnis in die Prototypenkette statt in den Datensatz — genau der Pfad, …
+    // Die Kopfzeile filtern: `columns: true` macht aus `__proto__` einen
+    // Schlüssel, der in die Prototypenkette schreibt.
     // Ausführlich: docs/begruendungen/src/infra/csvExport.ts.md#csveinlesen
     columns: (kopf: string[]) => kopf.map(name => {
       const rein = String(name || '').trim();
@@ -154,14 +109,13 @@ export function csvEinlesen(csvText: string): { records: any[]; delimiter: strin
     skip_empty_lines: true,
     trim: true,
     delimiter,
-    // Zeilen mit falscher Spaltenzahl nicht als Fehler behandeln …
+    // Krumme Zeilen und verirrte Anführungszeichen überspringen statt alles abzubrechen.
     relax_column_count: true,
-    // … und ein verirrtes Anführungszeichen mitten im Feld ebenfalls nicht.
     relax_quotes: true,
   });
 
-  // Zeilen ohne jeden Inhalt (alle Felder leer) gelten als übersprungen — das
-  // ist der Fall, den `relax_column_count` aus einer krummen Zeile macht.
+  // Zeilen ohne Inhalt gelten als übersprungen — das macht `relax_column_count`
+  // aus einer krummen Zeile.
   const brauchbar: any[] = [];
   records.forEach((r: any, i: number) => {
     const werte = Object.values(r).map(v => String(v ?? '').trim());
@@ -172,10 +126,7 @@ export function csvEinlesen(csvText: string): { records: any[]; delimiter: strin
   return { records: brauchbar, delimiter, uebersprungen };
 }
 
-/**
- * Hinweistext zu übersprungenen Zeilen — oder null, wenn alles sauber war.
- * Höchstens zehn Zeilennummern, sonst wird die Meldung länger als hilfreich.
- */
+/** Höchstens zehn Zeilennummern, sonst wird die Meldung länger als hilfreich. */
 export function uebersprungenHinweis(zeilen: number[]): string | null {
   if (!zeilen.length) return null;
   const liste = zeilen.slice(0, 10).join(', ');
@@ -183,10 +134,7 @@ export function uebersprungenHinweis(zeilen: number[]): string | null {
   return `${zeilen.length} Zeile(n) übersprungen (Zeile ${liste}${rest})`;
 }
 
-/**
- * Die Felder, die JEDE Import-Zeile hat — mit allen Spaltennamen, die gelten.
- * Ausführlich: docs/begruendungen/src/infra/csvExport.ts.md#csvgemeinsamefelder
- */
+// Ausführlich: docs/begruendungen/src/infra/csvExport.ts.md#csvgemeinsamefelder
 export function csvGemeinsameFelder(row: any): {
   menge: number;
   preis: number | null;
@@ -205,30 +153,20 @@ export function csvGemeinsameFelder(row: any): {
   };
 }
 
-/**
- * Datei einlesen, entschaerfen, zaehlen — der gleiche Anfang beider Importe.
- *
- * `records` bleibt getrennt von `bereinigt`, weil die Antwort `total` aus der
- * UNGEFILTERTEN Zahl bildet: Wie viele Zeilen standen in der Datei.
- */
+/** `records` bleibt getrennt von `bereinigt`: `total` nennt die Zeilen der Datei. */
 export function csvZeilenAusAnfrage(text: string): {
   records: any[]; bereinigt: any[]; uebersprungen: number[];
 } {
-  // Krumme Zeilen ueberspringen statt abbrechen (csvEinlesen).
   const gelesen = csvEinlesen(text);
   return {
     records: gelesen.records,
-    // Hochkomma vor Formelzeichen wieder entfernen — der eigene Export setzt es
-    // gegen Formelausfuehrung in Tabellenprogrammen.
+    // Das Hochkomma vor Formelzeichen setzt der eigene Export; hier kommt es weg.
     bereinigt: csvZeilenBereinigen(gelesen.records),
     uebersprungen: gelesen.uebersprungen,
   };
 }
 
-/**
- * Die Antwort beider Importe — an einer Stelle, damit beide Oberflaechen
- * dieselben Felder bekommen.
- */
+/** An einer Stelle, damit beide Oberflächen dieselben Felder bekommen. */
 export function csvImportAntwort(res: ExpressJsonAntwort, d: {
   added: number; updated: number; errors: number;
   records: any[]; results: any[]; uebersprungen: number[];

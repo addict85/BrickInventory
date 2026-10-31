@@ -24,62 +24,44 @@ import * as zf from '../src/konto/zweiterFaktor';
 import * as P from '../src/konto/passkeys';
 import { loescheKontoDateien } from '../src/gutscheine/gutscheinDateien';
 
-// „Angemeldet" gibt es nur noch in EINER Fassung
-// Sechs vermeintlich fehlende Funktionen, EINE Ursache: dieselbe Regel in zwei
-// Schreibweisen, und die App konnte nur die eine erfuellen. server.ts sagt an
-// der Stelle, wo diese Router eingehaengt werden, seit jeher voraus, was zu tun …
+// Ein Wächter für Sitzung UND Token: Die App hat keine Sitzung und war mit
+// einem reinen Sitzungswächter von Routen ausgesperrt.
 // Ausführlich: docs/begruendungen/routes/auth.ts.md#requirelogin
 const requireLogin = requireLoginOrToken;
 const requireAdmin = requireApiAdmin;
 
-/** Längstes Token-Label: Es steht in der Geräteliste, ein Name passt bequem hinein. */
+/** Das Label steht in der Geräteliste; ohne Grenze lägen dort beliebig lange Zeilen. */
 const LABEL_MAX = 100;
 
-/**
- * Das Label eines neuen Tokens aus der Anfrage. Ohne Grenze legte jede
- * Anmeldung beliebig lange Zeilen in api_tokens ab, und die Geräteliste zeigte
- * sie ungekürzt; Nicht-Text (Objekt, Liste) fällt auf die Vorgabe zurück.
- */
 function tokenLabel(roh: unknown, vorgabe: string): string {
   const text = typeof roh === 'string' ? roh.trim() : '';
   return text ? Array.from(text).slice(0, LABEL_MAX).join('') : vorgabe;
 }
 
-/** Der gewünschte Geltungsbereich; alles ausser „voll“ ist `app`. */
 function tokenScope(roh: unknown): TokenScope { return roh === 'voll' ? 'voll' : 'app'; }
 
-/**
- * Was die App über ihren Token wissen muss, in jeder Antwort gleich geformt.
- * `expires_at` ist die frühere der beiden Fristen, `null` nur bei „unbegrenzt“.
- */
+/** `expires_at` ist die frühere der beiden Fristen, `null` nur bei „unbegrenzt". */
 async function tokenAngaben(klartext: string) {
   const z = await K.tokenStand(hashToken(klartext));
   return z ? { scope: z.scope, expires_at: z.expires_at, hard_expires_at: z.hard_expires_at,
                never_expires: z.never_expires, rotiert_am: z.rotiert_am } : null;
 }
 
-/**
- * POST /api/v1/auth/login — die EINE Anmeldung, fuer Webapp und App.
- * Ausführlich: docs/begruendungen/routes/auth.ts.md#post-login
- */
+/** Die EINE Anmeldung für Webapp und App, damit beide dieselben Regeln erfüllen.
+ * Ausführlich: docs/begruendungen/routes/auth.ts.md#post-login */
 router.post('/login', async (req, res) => {
   const { username, password, label, never_expires, code: zweiterCode, ohne_token, scope, passkey } = req.body;
-  // Form des Namens, Brute-Force-Sperre, Passwortvergleich, die
-  // Konto-Vorbedingungen und der zweite Faktor stehen in src/konto/auth.ts.
   const pruefung = await anmelden(req, username, password, zweiterCode, passkey);
   if (!pruefung.ok) {
     const { status, code, vars, unverified, zweiterFaktor, passkey: mitPasskey } = pruefung.absage;
-    // `zweiter_faktor` sagt dem Client: Codefeld zeigen und erneut senden.
-    // `passkey`: Statt des Codes geht auch ein Passkey (Feld `passkey` beim erneuten Senden).
+    // `zweiter_faktor`: Codefeld zeigen und erneut senden (oder `passkey`).
     if (zweiterFaktor) {
       return res.status(status).json({
         success: false, code, zweiter_faktor: true, ...(mitPasskey ? { passkey: true } : {}),
         error: fehlerText(code, antwortSprache(req), vars),
       });
     }
-    // `unverified` haengt zusaetzlich dran — die Oberflaeche blendet daran
-    // das „E-Mail erneut senden?" ein. sendeFehler kennt das Feld nicht, es
-    // gehoert zu genau diesem einen Fall.
+    // `unverified` blendet „E-Mail erneut senden?" ein; sendeFehler kennt das Feld nicht.
     if (unverified) {
       return res.status(status).json({
         success: false, code, unverified: true,
@@ -89,21 +71,15 @@ router.post('/login', async (req, res) => {
     return sendeFehler(req, res, status, code, vars);
   }
   const user = pruefung.user;
-  // Session-ID erneuern (gegen Session Fixation) und erst dann fuellen.
-  // Auch fuer die App: Sie schickt das Cookie nie zurueck, die Zeile
-  // verfaellt von selbst — und einen Sonderfall weniger gibt es hier.
+  // Session-ID erneuern gegen Session Fixation — auch für die App, die das
+  // Cookie nie zurückschickt; die Zeile verfällt von selbst.
   await establishSession(req, {
     userId:   parseInt(user.id),   // always int
     username: user.username,
     isAdmin:  user.is_admin,
   });
-  // Scheitert das INSERT, wird der Token NICHT mitgeschickt. Vorher stand
-  // hier .catch(() => {}) — die Anmeldung galt als erfolgreich, der Client
-  // legte einen Token in den sessionStorage, den die Datenbank nie gesehen
-  // hatte, und der SSE-Kanal (`?token=…`) lief in ein 401. Ohne Token faellt
-  // der Browser auf die Cookie-Sitzung zurueck; die App kann ohne Token
-  // nichts anfangen und bekommt deshalb einen Fehler statt eines halben
-  // Erfolgs.
+  // Scheitert das INSERT, geht KEIN Token hinaus: Ein Token, den die Datenbank
+  // nie gesehen hat, liefe im SSE-Kanal in ein 401.
   const dauerhaft = never_expires === true;
   let token: string | null = null;
   // Die Webapp arbeitet nur mit dem httpOnly-Cookie: Ein Token im Browser
@@ -116,41 +92,29 @@ router.post('/login', async (req, res) => {
     if (dauerhaft)
       return sendeFehler(req, res, 500, 'token_nicht_ausgestellt');
   }
-  // `never_expires` sagt jetzt die Wahrheit statt der Absicht. Hier stand
-  // schlicht `dauerhaft` — also das, was der Client VERLANGT hatte. Seit der
-  // App-Token eine gleitende Frist traegt, ist das nur noch dann ein Token
-  // ohne Ablauf, wenn die Frist ganz abgeschaltet ist. Die Regel dafuer
-  // steht in src/konto/auth.ts, nicht hier.
-  // `token_info` beschreibt den Token (Scope, Ablauf); `never_expires` bleibt
-  // für ältere Clients und ist bei einer Passwortanmeldung immer false.
+  // `never_expires` nennt, was gilt, nicht was verlangt war: Mit gleitender
+  // Frist ist ein App-Token nur ohne Frist wirklich unbegrenzt.
   res.json({ success: true, ...(token ? { token } : {}), ...(token ? { token_info: await tokenAngaben(token) } : {}),
     never_expires: false,
     user: { id: user.id, username: user.username, is_admin: user.is_admin,
-    // Nur beim automatisch erzeugten Admin-Passwort gesetzt (db/database.ts);
-    // POST /change-password löscht es wieder.
+    // Nur beim automatisch erzeugten Admin-Passwort gesetzt (db/database.ts).
     mustChangePassword: user.must_change_password } });
 });
 
-/**
- * POST /api/v1/auth/logout — Sitzung beenden UND den Token entwerten.
- * Ausführlich: docs/begruendungen/routes/auth.ts.md#post-logout
- */
+/** Sitzung beenden UND Token entwerten, damit ein Aufruf beides wegräumt.
+ * Ausführlich: docs/begruendungen/routes/auth.ts.md#post-logout */
 router.post('/logout', async (req, res) => {
   const auth = String(req.headers.authorization || '');
-  // Fehler hier nur loggen: Die Abmeldung darf nicht daran scheitern, dass der
-  // Token nicht entsorgt werden konnte — aber schweigend uebergangen hiesse,
-  // dass genau der Fall unbemerkt bleibt, den der Absatz oben verhindern soll.
+  // Nur loggen: Die Abmeldung darf daran nicht scheitern, still bliebe der Fall
+  // aber unbemerkt.
   if (auth.startsWith('Bearer ')) await deleteToken(auth.slice(7)).catch(logAndContinue('logout:token entsorgen'));
-  // req.session.destroy gibt es nur mit Sitzungs-Middleware davor; die App
-  // ruft dieselbe Adresse ohne Cookie auf.
+  // destroy gibt es nur mit Sitzungs-Middleware; die App ruft ohne Cookie auf.
   if (req.session?.destroy) return req.session.destroy(() => res.json({ success: true }));
   res.json({ success: true });
 });
 
-/**
- * GET /api/v1/auth/me — wer bin ich? Sitzung ODER Token.
- * Ausführlich: docs/begruendungen/routes/auth.ts.md#get-me
- */
+/** Sitzung ODER Token; ohne Anmeldung 200 für den Browser, 401 bei Token.
+ * Ausführlich: docs/begruendungen/routes/auth.ts.md#get-me */
 router.get('/me', async (req, res) => {
   const auth = String(req.headers.authorization || '');
   const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;
@@ -179,19 +143,15 @@ router.get('/me', async (req, res) => {
     if (token) return ungueltig('grund' in p && p.grund ? p.grund : 'token_ungueltig');
     res.json({ success: true, loggedIn: false, user: null });
   } catch (e) {
-    // Wer hier scheitert, ist eben nicht angemeldet — die Anmeldemaske ist die
-    // richtige Antwort, keine Fehlerseite. Mit vorgelegtem Token soll es die App merken.
+    // Ohne Anmeldung ist die Anmeldemaske die richtige Antwort, keine Fehlerseite.
     meldeUndWeiter('auth:me', e);
     if (token) return ungueltig('token_ungueltig');
     res.json({ success: true, loggedIn: false, user: null });
   }
 });
 
-/**
- * POST /api/v1/auth/token-rotieren — den vorgelegten Token gegen einen neuen
- * tauschen. Öffentlich am Eingang, weil ein unbegrenzter Token nach der
- * Pflichtfrist nur noch hier gilt; die Prüfung steht deshalb hier.
- */
+/** Öffentlich, weil ein unbegrenzter Token nach der Pflichtfrist nur noch hier
+ * gilt; die Prüfung steht deshalb hier. */
 router.post('/token-rotieren', ipThrottle('token-rotieren', 120, 60 * 60 * 1000), async (req, res) => {
   const auth = String(req.headers.authorization || '');
   const alt = auth.startsWith('Bearer ') ? auth.slice(7) : '';
@@ -205,13 +165,8 @@ router.post('/token-rotieren', ipThrottle('token-rotieren', 120, 60 * 60 * 1000)
     alt_gueltig_bis: t.alt_gueltig_bis, ueberlappung_sek: UEBERLAPPUNG_MS / 1000 });
 });
 
-/**
- * POST /api/v1/auth/token-create — einen zusaetzlichen Token ausstellen.
- *
- * Nur aus einer Sitzung und mit dem Passwort: Sonst koennte sich ein erbeuteter
- * Token beliebig viele dauerhafte Nachfolger praegen, die einen Passwortwechsel
- * ueberleben muessten. Keiner der beiden Clients ruft das heute auf.
- */
+/** Nur aus einer Sitzung und mit Passwort: Sonst prägte ein erbeuteter Token
+ * beliebig viele dauerhafte Nachfolger. */
 router.post('/token-create', requireLogin, async (req, res) => {
   if (!req.session?.userId) return sendeFehler(req, res, 403, 'nur_mit_sitzung');
   const userId = angemeldeteNutzerId(req);
@@ -221,14 +176,12 @@ router.post('/token-create', requireLogin, async (req, res) => {
   res.json({ success: true, token: neu, label, never_expires: false, token_info: await tokenAngaben(neu) });
 });
 
-// GET /api/v1/auth/profile — get current user profile
 router.get('/profile', requireLogin, async (req, res) => {
   const user = await K.profil(nutzerId(req)!);
   if (!user) return res.status(404).json({ success: false });
   res.json({ success: true, user });
 });
 
-// PUT /api/v1/auth/profile — update current user profile
 router.put('/profile', requireLogin, async (req, res) => {
   const { username, email, first_name, last_name, password, password_current } = req.body;
   const user = await K.kontoVoll(nutzerId(req)!);
@@ -238,22 +191,17 @@ router.put('/profile', requireLogin, async (req, res) => {
   // übrigen Sitzungen und Token verworfen.
   if (password) return sendeFehler(req, res, 400, 'passwort_ueber_change_password');
 
-  // Benutzername: dieselbe Regex wie Login/Register — das Profil-Update hat
-  // sie vorher NICHT erzwungen. Ohne sie konnte man Leerzeichen setzen oder
-  // (schlimmer) die E-Mail-Adresse eines anderen Nutzers als Benutzernamen
-  // eintragen, weil der Login "username ODER email" case-insensitiv sucht.
+  // Dieselbe Regex wie Login/Register: Sonst liesse sich eine fremde E-Mail als
+  // Benutzername eintragen, und der Login sucht „username ODER email".
   if (username !== undefined && !USERNAME_RE.test(String(username || '')))
     return sendeFehler(req, res, 400, 'benutzername_ungueltig');
 
-  // Eindeutigkeit case-INsensitiv prüfen (der Login vergleicht mit LOWER()) —
-  // vorher konnten "Marco" und "marco" nebeneinander existieren und welcher
-  // beim Login trifft, war ohne ORDER BY undefiniert. Zusätzlich wird gegen
-  // die E-Mail-Spalte geprüft, weil der Login beide Felder akzeptiert.
+  // Case-insensitiv und auch gegen die E-Mail-Spalte, weil der Login mit LOWER()
+  // beide Felder vergleicht.
   if (username && username.toLowerCase() !== String(user.username || '').toLowerCase()) {
     if (await K.nameVergeben(username, user.id)) return sendeFehler(req, res, 400, 'benutzername_vergeben');
   }
 
-  // Check email uniqueness
   const emailChanged = email && email.toLowerCase() !== String(user.email || '').toLowerCase();
   if (emailChanged) {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
@@ -273,11 +221,11 @@ router.put('/profile', requireLogin, async (req, res) => {
     const token   = crypto.randomBytes(32).toString('hex');
     felder.email = email;
     felder.email_verified = user.is_admin;
-    // Nur der Hash landet in der DB — der Klartext geht ausschliesslich per Mail raus
+    // Nur der Hash in die DB, der Klartext geht ausschliesslich per Mail hinaus.
     felder.verification_token = hashToken(token);
     felder.token_expires = new Date(Date.now() + 24*60*60*1000);
     await K.aendereProfil(user.id, felder);
-    // Send verification mail to new email
+    // In der Sprache des Kontos, nicht in der Vorgabe.
     // Ausführlich: docs/begruendungen/routes/auth.ts.md#put-profile-emailsent
     let emailSent = false;
     const lang = String(await getSetting(user.id, 'language', 'de').catch(() => 'de'));
@@ -294,13 +242,11 @@ router.put('/profile', requireLogin, async (req, res) => {
   res.json({ success: true });
 });
 
-// Admin: list users
 router.get('/users', requireAdmin, async (_req, res) => {
   const users = await K.kontenListe();
   res.json({ success: true, users });
 });
 
-// Admin: create user
 router.post('/users', requireAdmin, async (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) return sendeFehler(req, res, 400, 'benutzername_passwort');
@@ -308,13 +254,12 @@ router.post('/users', requireAdmin, async (req, res) => {
     return sendeFehler(req, res, 400, 'benutzername_ungueltig');
   if (passwortZuKurz(password))
     return sendeFehler(req, res, 400, 'passwort_zu_kurz');
-  // Streng wie bei PUT /users/:id/admin: Die Zeichenkette "false" ist in
-    // JavaScript wahr und legte einen Verwalter an. Die Weboberfläche schickt
-    // is_admin; isAdmin bleibt für ältere Aufrufer lesbar.
+  // Streng: Die Zeichenkette "false" ist in JavaScript wahr und legte einen
+  // Verwalter an.
   const roh = req.body.is_admin ?? req.body.isAdmin;
   const alsVerwalter = roh === undefined ? false : strictBool(roh, 'is_admin');
-  // Wie jede andere Verwalteraktion an fremden Konten: Passwort bestätigen
-  // und protokollieren — eine erbeutete Sitzung soll keinen Verwalter anlegen.
+  // Passwort bestätigen und protokollieren — eine erbeutete Sitzung soll keinen
+  // Verwalter anlegen.
   const verwalter = angemeldeteNutzerId(req);
   if (!await bestaetigePasswort(req, res, verwalter, req.body?.admin_password)) return;
   const neu = await K.legeKontoAn(username, password, alsVerwalter).catch(alsDoppelt('benutzername_vergeben'));
@@ -324,11 +269,9 @@ router.post('/users', requireAdmin, async (req, res) => {
   res.json({ success: true });
 });
 
-// Admin: toggle admin role
 router.put('/users/:id/admin', requireAdmin, async (req, res) => {
   const targetId = parseInt(pfadParam(req, 'id'));
-  // Dieselbe strenge Prüfung wie auf der v1-Route — die Zeichenkette "false"
-  // ist in JavaScript wahr und meldete hier Erfolg, ohne Rechte zu entziehen.
+  // Streng: "false" ist in JavaScript wahr und entzöge sonst keine Rechte.
   const soll = strictBool(req.body.is_admin, 'is_admin');
   if (targetId === nutzerId(req) && !soll)
     return sendeFehler(req, res, 400, 'eigene_adminrolle');
@@ -338,19 +281,14 @@ router.put('/users/:id/admin', requireAdmin, async (req, res) => {
   if (!r) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
   if (r.geaendert) await protokolliere(angemeldeteNutzerId(req), targetId, soll ? 'verwalter_ernannt' : 'verwalter_entzogen');
 
-  // Warum die Sitzungen enden muessen
-  // istVerwalter() (src/konto/auth.ts) fragt ZUERST `req.session.isAdmin`. Das
-  // steht seit dem Anmelden fest und wird nie nachgefuehrt. Ein Entzug wirkte
-  // damit auf den BROWSER gar nicht: Wer sein Fenster offen liess, blieb …
+  // Sitzungen enden, weil istVerwalter() zuerst das nie nachgeführte
+  // `req.session.isAdmin` fragt; ein Entzug wirkte sonst im offenen Fenster nicht.
   // Ausführlich: docs/begruendungen/routes/auth.ts.md#put-users-id-admin
   res.json({ success: true });
 });
 
-// Admin: delete user
-/**
- * PUT /api/v1/auth/users/:id/password — Passwort eines anderen Nutzers setzen.
- * Ausführlich: docs/begruendungen/routes/auth.ts.md#put-users-id-password
- */
+/** Ohne aktuelles Passwort des Ziels, aber mit dem des Verwalters.
+ * Ausführlich: docs/begruendungen/routes/auth.ts.md#put-users-id-password */
 router.put('/users/:id/password', requireAdmin, async (req, res) => {
   const { password } = req.body || {};
   const targetId = parseInt(pfadParam(req, 'id'));
@@ -375,45 +313,30 @@ router.delete('/users/:id', requireAdmin, async (req, res) => {
   if (targetId !== nutzerId(req) && await K.kontoExistiert(targetId))
     await protokolliere(angemeldeteNutzerId(req), targetId, 'konto_geloescht');
   if (!await K.loescheKonto(targetId, nutzerId(req))) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden_oder_eigenes');
-  // Die Zeile ist weg, der Zugang war es nicht
-  // Die Bearer-Tokens gehen per ON DELETE CASCADE mit (Fremdschlüssel in db/basis.sql).
-  // user_sessions dagegen ist der Tabellenraum des Session-Stores und hat
-  // KEINEN Fremdschluessel auf users — die offene Sitzung des geloeschten …
+  // user_sessions hat keinen Fremdschlüssel auf users: Die offene Sitzung des
+  // gelöschten Kontos bliebe ohne diesen Aufruf gültig.
   // Ausführlich: docs/begruendungen/routes/auth.ts.md#delete-users-id
   await revokeAllSessions(targetId);
   // Eigene Anleitungen und Gutschein-PDFs gehören zum Konto; liegen blieben sie ohne Besitzer.
   await loescheKontoDateien(targetId);
-  // Und der Token-Cache, der die geloeschten Zeilen sonst noch bis zu 60
-  // Sekunden bedient.
+  // Der Token-Cache bediente gelöschte Zeilen sonst noch bis zu 60 Sekunden.
   leereTokenCache();
-  // Dasselbe fuer das Blickfeld: account_links haengt per ON DELETE CASCADE
-  // an users, die Zeilen sind also mit dem Konto verschwunden — OHNE dass
-  // src/haushalt/haushalt.ts davon erfaehrt, denn hier laeuft kein unlink().
-  // Ohne diesen Aufruf zeigte ein Hauptkonto sein geloeschtes Unterkonto
-  // noch bis zu fuenf Minuten im Blickfeld.
+  // account_links verschwindet per CASCADE, ohne dass der Haushalt davon
+  // erfährt; sonst bliebe das Unterkonto bis zu fünf Minuten im Blickfeld.
   meldeHaushaltsaenderung();
   res.json({ success: true });
 });
 
-// Change password
-// req als LoggedInRequest: Die Route haengt hinter requireLogin, also IST
-// session.userId gesetzt. Ohne diese Angabe meldete TypeScript an drei Stellen
-// "number | undefined ist nicht number" — und die naheliegende Antwort waere
-// dreimal `req.session.userId!` gewesen. Das haette die Meldung beseitigt und
-// die Pruefung gleich mit: Rutschte die Route eines Tages VOR requireLogin,
-// sagte niemand mehr etwas. Der Typ bindet die Zusicherung an die Middleware,
-// nicht an die Erinnerung des Naechsten. Begruendung: types/augmentations.d.ts.
+// LoggedInRequest statt `userId!`: Der Typ bindet die Zusicherung an die
+// Middleware (types/augmentations.d.ts).
 router.post('/change-password', requireLogin, async (req: LoggedInRequest, res) => {
   const { current, newPassword } = req.body;
   if (!current || !newPassword) return sendeFehler(req, res, 400, 'alle_felder_erforderlich');
-  // Die Kennung kommt aus dem gemeinsamen Helfer, nicht mehr aus der Sitzung:
-  // Seit der Waechter beide Ausweise nimmt, kann hier auch die App stehen.
+  // Über den gemeinsamen Helfer, weil hier auch die App stehen kann.
   const uid = nutzerId(req);
   if (uid == null) return sendeFehler(req, res, 401, 'nicht_angemeldet');
   if (!await bestaetigePasswort(req, res, uid, String(current))) return;
-  // NACH der Pruefung des alten Passworts: Wer das aktuelle nicht kennt, soll
-  // ueber das neue auch nichts erfahren — die Antwort fuer einen Fremden
-  // bleibt dieselbe.
+  // NACH der Prüfung des alten Passworts: Ein Fremder erfährt über das neue nichts.
   if (passwortZuKurz(newPassword)) return sendeFehler(req, res, 400, 'passwort_zu_kurz');
   // Beendet alle Zugänge, auch den eigenen; die Sitzung wird danach neu aufgebaut.
   await K.aendereEigenesPasswort(uid, newPassword);
@@ -425,12 +348,9 @@ router.post('/change-password', requireLogin, async (req: LoggedInRequest, res) 
 });
 
 
-/**
- * Die Adresse für Links in E-Mails. APP_BASE_URL zählt allein; ohne sie in
- * Produktion gibt es KEINE (null) — ein Link aus dem Host-Kopf liesse sich von
- * aussen auf eine fremde Seite lenken. Ausserhalb des Betriebs bleibt der Kopf
- * erlaubt, dort gibt es keinen Angreifer.
- */
+/** Ohne APP_BASE_URL in Produktion KEINE Adresse: Ein Link aus dem Host-Kopf
+ * liesse sich auf eine fremde Seite lenken. Ausserhalb des Betriebs gibt es
+ * keinen Angreifer. */
 function getBaseUrl(req: Request): string | null {
   const basis = basisUrl();
   if (basis) return basis;
@@ -443,26 +363,16 @@ function getBaseUrl(req: Request): string | null {
   return `${proto}://${host}`;
 }
 
-/** Reset-Links nur mit APP_BASE_URL — ausser ausserhalb des Betriebs, wo es keinen Angreifer gibt. */
 function resetLinkMoeglich(): boolean {
   return !!basisUrl() || !konfig().produktion;
 }
 
-//  QR-Login
-// VORHER: Der QR-Code enthielt den bcrypt-Hash des Nutzers (`h: password_hash`)
-// in einem base64-Payload, HMAC-signiert mit dem SESSION_SECRET. Der Kommentar
-// dort sagte „safe to include (can't reverse to plaintext)" — das stimmt fürs …
+// Der QR-Code trägt nur eine einmalige Nonce (SHA-256 in qr_login_tokens),
+// kein Geheimnis des Kontos.
 // Ausführlich: docs/begruendungen/routes/auth.ts.md#qr-ttl-ms
 const QR_TTL_MS = 5 * 60 * 1000;
 
-// qr_login_tokens wird beim Start in db/database.ts angelegt, nicht hier. An
-// dieser Stelle stand bis zuletzt ein zweites, zeichengleiches CREATE TABLE IF
-// NOT EXISTS, aufgerufen bei JEDER Token-Erzeugung und JEDER Einlösung — obwohl
-// der zentrale Kommentar dort das Gegenteil behauptet. Siehe die ausführliche
-// Begründung in routes/sets.ts an derselben Stelle.
-
 // ── Zweiter Faktor (src/konto/zweiterFaktor.ts) ─────────────────────────────────
-//
 // Einrichten und Abschalten verlangen das Passwort: Wer nur eine offene
 // Sitzung erbeutet, soll das Konto weder aussperren noch den Schutz abbauen.
 
@@ -514,60 +424,45 @@ router.delete('/users/:id/zweiter-faktor', requireAdmin, async (req, res) => {
   res.json({ success: true });
 });
 
-// POST /api/v1/auth/qr-token — Nonce erzeugen (nur für die eigene Session)
-//  POST statt GET
-// Diese Route LEGT ETWAS AN: eine QR-Login-Nonce, die fünf Minuten lang ein
-// Konto öffnet. Als GET war sie die einzige zustandsändernde Route im Baum, …
+// POST, weil die Route eine Nonce anlegt, die fünf Minuten ein Konto öffnet;
+// ein GET liesse sich von fremden Seiten auslösen.
 // Ausführlich: docs/begruendungen/routes/auth.ts.md#post-qr-token
 router.post('/qr-token', requireLogin, async (req, res) => {
   // Wie /token-create: Ein QR-Code eröffnet einen neuen, langlebigen Geräte-
   // zugang. Mit einem erbeuteten Token allein darf das nicht gehen.
   if (!req.session?.userId) return sendeFehler(req, res, 403, 'nur_mit_sitzung');
   if (!await bestaetigePasswort(req, res, angemeldeteNutzerId(req), req.body?.password)) return;
-  // Ohne Adresse kein Code
-  // Verweigern und nicht raten: Der QR-Code ist der einzige Ort im Baum, an
-  // dem eine falsche Adresse SPAETER auffaellt und nicht sofort. Er laesst
-  // sich scannen, die App verbindet sich im WLAN — und findet den Server …
+  // Ohne Adresse verweigern statt raten: Eine falsche Adresse im QR-Code fiele
+  // erst später in einem anderen Netz auf.
   // Ausführlich: docs/begruendungen/routes/auth.ts.md#post-qr-token-basis
   const basis = basisUrl();
   if (!basis) {
-    // Der Nutzer sieht die Absage in der Oberflaeche; der BETREIBER sieht
-    // sie sonst nirgends — eine abgelehnte Anfrage steht in keinem Protokoll.
+    // Der Betreiber sähe die Absage sonst in keinem Protokoll.
     hinweisOhneBasisUrl('auth:qr',
       'der QR-Code zur Verknuepfung der App laesst sich nicht erzeugen.');
     return sendeFehler(req, res, 503, 'qr_ohne_basis_url');
   }
-  // Abgelaufene/verbrauchte Nonces mitentsorgen — die Tabelle bleibt so klein.
   await K.raeumeQrTokensAuf().catch(logAndContinue('qr-token:aufräumen'));
-  // Wie lange soll der ZUGANG gelten, den dieser Code eroeffnet?
-  // Ein unbekannter Wert wird nicht abgewiesen, sondern zu „keine feste
-  // Frist" — dann gilt wie bisher allein die Gleitfrist. Ein aelterer
-  // Client, der das Feld gar nicht kennt, verhaelt sich damit unveraendert.
+  // Gewählt von der angemeldeten Sitzung, nicht im unangemeldeten /qr-login;
+  // unbekannt heisst „keine feste Frist", ältere Clients bleiben unverändert.
   // Ausführlich: docs/begruendungen/routes/auth.ts.md#post-qr-token-tage
   const tage = laufzeitTage(req.body?.gueltigkeit);
-  // „Unbegrenzt“ nur, wenn die App den Server über HTTPS erreicht: Ohne TLS
+  // „Unbegrenzt" nur, wenn die App den Server über HTTPS erreicht: Ohne TLS
   // ginge ein Token ohne Ablauf im Klartext durchs Netz.
   if (tage === UNBEGRENZT && !/^https:\/\//i.test(basis))
     return sendeFehler(req, res, 400, 'unbegrenzt_nur_https');
   const nonce = crypto.randomBytes(32).toString('base64url');
   await K.legeQrTokenAn(hashToken(nonce), nutzerId(req), new Date(Date.now() + QR_TTL_MS), tage);
-  // `token_days`: was tatsaechlich gespeichert wurde, nicht was gewuenscht
-  // war. Ein unbekannter Wert wird zu null, und die Oberflaeche soll die
-  // Frist nennen koennen, die wirklich gilt.
+  // `token_days` nennt, was gespeichert wurde, nicht was gewünscht war.
   // Ausführlich: docs/begruendungen/routes/auth.ts.md#post-qr-token-2
-  // `fp` nur zu einer https-Adresse: Die App pinnt damit die Wurzel der
-  // internen CA. Ohne lesbare CA-Datei (fremder Proxy, öffentliches
-  // Zertifikat) fehlt es, und die App vertraut dem System.
+  // `fp` nur zu https: Die App pinnt damit die Wurzel der internen CA; ohne
+  // lesbare CA-Datei vertraut sie dem System.
   const fp = /^https:\/\//i.test(basis) ? (await tlsStand())?.fp ?? null : null;
   res.json({ success: true, token: `bim:${nonce}`, expires_in: QR_TTL_MS / 1000,
     token_days: tage, url: basis, ...(fp ? { fp } : {}) });
 });
 
-// POST /api/v1/auth/qr-login — Nonce einlösen
-// ipThrottle wie bei register/forgot/reset: Der Endpunkt schreibt ohne
-// Anmeldung in die Datenbank. Die 32-Byte-Nonce ist nicht zu erraten, aber es
-// gab keinen Grund, ausgerechnet hier auf die Drossel zu verzichten — 30
-// Versuche pro Stunde reichen für jeden echten Anmeldevorgang.
+// Gedrosselt, weil der Endpunkt ohne Anmeldung in die Datenbank schreibt.
 router.post('/qr-login', ipThrottle('qr-login', 30, 60 * 60 * 1000), async (req, res) => {
   const { token } = req.body;
   if (typeof token !== 'string' || !token.startsWith('bim:'))
@@ -580,28 +475,24 @@ router.post('/qr-login', ipThrottle('qr-login', 30, 60 * 60 * 1000), async (req,
   const blocked = assertLoginAllowed(user);
   if (blocked) return sendeFehler(req, res, blocked.status, blocked.code);
 
-  // Keine Sitzung: Die App arbeitet mit dem Token, und eine Sitzung trüge die
-  // vollen Rechte des Kontos an Scope `app` vorbei. Die Laufzeit kommt aus
-  // der Zeile der Nonce, nicht aus der Anfrage (siehe /qr-token).
+  // Keine Sitzung: Sie trüge die vollen Rechte des Kontos an Scope `app` vorbei.
+  // Die Laufzeit kommt aus der Zeile der Nonce, nicht aus der Anfrage.
   const bearerToken = await createToken(user.id, 'qr-login', true, claimed.token_days ?? null,
                                         { scope: 'app', ip: req.ip });
   res.json({ success: true, token: bearerToken, username: user.username, isAdmin: false, userId: user.id,
     user: { id: user.id, username: user.username }, token_info: await tokenAngaben(bearerToken) });
 });
 
-// ── GET /api/v1/auth/registration-status — public, no auth required ─────────────
 router.get('/registration-status', async (_req, res) => {
   // Ohne lesbare Einstellung gilt die Registrierung als geschlossen.
   const wert = await getGlobalSetting('registration_enabled').catch(meldeUndLiefere('registrierung:status', null));
   res.json({ enabled: wert === '1' });
 });
 
-// ── POST /api/v1/auth/register ───────────────────────────────────────────────────
 router.post('/register', ipThrottle('register', 5, 60 * 60 * 1000), async (req, res) => {
   const { username, email, first_name, last_name, password, language } = req.body;
   const lang = ['de', 'en'].includes(language) ? language : 'de';
 
-  // Check if registration is enabled
   const regEnabled = await getGlobalSetting('registration_enabled');
   if (regEnabled === '0') return sendeFehler(req, res, 403, 'registrierung_deaktiviert');
 
@@ -609,8 +500,6 @@ router.post('/register', ipThrottle('register', 5, 60 * 60 * 1000), async (req, 
     return sendeFehler(req, res, 400, 'registrierung_felder');
   if (passwortZuKurz(password))
     return sendeFehler(req, res, 400, 'passwort_zu_kurz');
-  // Dieselben Muster wie überall sonst (src/konto/auth.ts) — hier standen zwei
-  // wortgleiche Kopien, und die E-Mail-Regex gab es damit dreimal im Projekt.
   if (!EMAIL_RE.test(email))
     return sendeFehler(req, res, 400, 'email_ungueltig');
   if (!USERNAME_RE.test(username))
@@ -620,12 +509,12 @@ router.post('/register', ipThrottle('register', 5, 60 * 60 * 1000), async (req, 
 
     const token  = crypto.randomBytes(32).toString('hex');
     const expires = new Date(Date.now() + 24 * 60 * 60 * 1000);
-    // verification_token wird — wie api_tokens — nur als SHA-256 gespeichert:
-    // Bei einem Datenbank-Leak wäre ein ausstehender Bestätigungslink sonst einlösbar.
+    // Nur als SHA-256: Bei einem Datenbank-Leak wäre ein ausstehender
+    // Bestätigungslink sonst einlösbar.
     const neuId = await K.registriere({ username, email, first_name, last_name, passwort: password,
       tokenHash: hashToken(token), bis: expires }).catch(alsDoppelt('benutzername_oder_email_vergeben'));
-    // Die gewählte Sprache steuert Oberfläche und E-Mails; ohne Protokoll bliebe
-    // unklar, warum ein frisches Konto in der falschen Sprache startet.
+    // Ohne Protokoll bliebe unklar, warum ein frisches Konto in der falschen
+    // Sprache startet.
     if (neuId) await setUserSetting(neuId, 'language', lang).catch(logAndContinue(`registrierung:sprache ${neuId}`));
 
     const basis = getBaseUrl(req);
@@ -645,55 +534,40 @@ router.post('/register', ipThrottle('register', 5, 60 * 60 * 1000), async (req, 
     });
 });
 
-// GET /api/v1/auth/verify ist ENTFERNT
-// Sie hatte keinen Aufrufer, und das stand als Kommentar
-// genau hier: „Gefahrlos umzustellen, weil die Route KEINEN Aufrufer hat: Der
-// Link in der Verifikationsmail zeigt auf /verify (src/infra/mailer.ts), das …
-// Ausführlich: docs/begruendungen/routes/auth.ts.md#post-forgot-password
-
-// ── POST /api/v1/auth/forgot-password ───────────────────────────────────────────
 router.post('/forgot-password', ipThrottle('forgot-password', 5, 60 * 60 * 1000), async (req, res) => {
   const { email } = req.body;
   if (!email) return sendeFehler(req, res, 400, 'email_erforderlich');
   // Ohne feste Adresse käme der Link aus dem Host-Header — wer den fälscht,
-  // bekäme den Reset-Code des Opfers zugeschickt. Vor der Nutzersuche, damit
-  // die Antwort nichts über die E-Mail verrät.
+  // bekäme den Reset-Code des Opfers. Vor der Nutzersuche, damit die Antwort
+  // nichts über die E-Mail verrät.
   if (!resetLinkMoeglich()) {
     hinweisOhneBasisUrl('passwort-reset', 'Passwort-vergessen-Mails werden nicht versendet.');
     return sendeFehler(req, res, 503, 'passwort_reset_nicht_eingerichtet');
   }
-  // LOWER auf beiden Seiten wie an JEDER anderen E-Mail-Suche (Login,
-  // Registrierung, Profil). Hier stand der einzige case-SENSITIVE Vergleich:
-  // Wer sich als "Marco@Example.CH" registriert hatte und im Formular
-  // "marco@example.ch" tippte, bekam "Falls die E-Mail existiert…" — und nie
-  // eine Mail. Durch die Anti-Enumeration-Antwort war das von aussen nicht
-  // von Erfolg zu unterscheiden; der Nutzer ist dauerhaft ausgesperrt.
+  // LOWER auf beiden Seiten wie bei jeder E-Mail-Suche; sonst bekäme eine anders
+  // geschriebene Adresse still nie eine Mail.
   const user = await K.aktivesKontoNachEmail(email);
-  // Always return success to prevent email enumeration
+  // Immer Erfolg, damit sich keine E-Mail-Adressen abfragen lassen.
   if (!user) return res.json({ success: true, message: 'Falls die E-Mail existiert, wurde ein Link gesendet.' });
 
   const token   = crypto.randomBytes(32).toString('hex');
   const expires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
-  // Nur der Hash in die DB — der Klartext geht ausschliesslich per Mail raus.
   await K.setzeRuecksetzToken(user.id, hashToken(token), expires);
 
-  // NICHT awaiten: Die Antwort ist in beiden Fällen wortgleich, aber das
-  // await machte sie messbar ungleich SCHNELL — bei unbekannter E-Mail kam
-  // sie sofort, bei bekannter erst nach dem SMTP-Versand (bis zu ~10 s laut
-  // den Timeouts in getTransporter). Damit liess sich trotz der neutralen …
+  // NICHT awaiten: Die Dauer des SMTP-Versands verriete sonst, ob die Adresse
+  // existiert. Auch die Sprache wird deshalb erst in der Kette geholt.
   // Ausführlich: docs/begruendungen/routes/auth.ts.md#post-forgot-password-2
   getSetting(user.id, 'language', 'de')
     .catch(() => 'de')
     .then((lang: unknown) => sendPasswordResetMail(
       // An die GESPEICHERTE Adresse: Die eingegebene passt per LOWER() auch
-      // als Unicode-Variante (Kelvin-K, „İ“) und kann ein fremdes Postfach sein.
+      // als Unicode-Variante (Kelvin-K, „İ") und kann ein fremdes Postfach sein.
       user.email ?? '', user.first_name || user.username, token, getBaseUrl(req)!, String(lang ?? 'de')))
     .catch((e: any) => console.error('[forgot-password] Mailversand fehlgeschlagen:', e?.message));
 
   res.json({ success: true, message: 'Falls die E-Mail existiert, wurde ein Link gesendet.' });
 });
 
-// ── POST /api/v1/auth/reset-password ────────────────────────────────────────────
 router.post('/reset-password', ipThrottle('reset-password', 10, 60 * 60 * 1000), async (req, res) => {
   const { token, password } = req.body;
   if (!token || !password) return sendeFehler(req, res, 400, 'token_passwort_erforderlich');
@@ -704,18 +578,10 @@ router.post('/reset-password', ipThrottle('reset-password', 10, 60 * 60 * 1000),
   res.json({ success: true, message: 'Passwort erfolgreich geändert.' });
 });
 
-// ── GET /api/v1/auth/check-token ist ENTFERNT ───────────────────────────────────
-// Sie sagte, ob ein Reset- oder Verifikations-Token noch gilt. Kein Aufrufer:
-// Die Reset-Seite schickt das neue Passwort direkt und wertet die Antwort aus,
-// statt vorher zu fragen. Nachgemessen ueber alle 169 Dateien beider Apps —
-// weder Webapp noch Android nennen sie.
 
-
-// Die App fragt das vor jedem Klartext-Zugang in einem neuen Netz: Im fremden
-// WLAN kann "http://nas:3000" auf einen anderen Rechner zeigen, und der
-// bekäme sonst den Token. Nur der echte Server kennt den Hash des Tokens und
-// kann die Zufallszahl damit unterschreiben; die Kennung (16 Stellen des
-// Hashs) verrät über den Token nichts.
+// Im fremden WLAN kann "http://nas:3000" auf einen anderen Rechner zeigen, der
+// sonst den Token bekäme. Nur der echte Server kennt den Hash und kann die
+// Zufallszahl damit unterschreiben; die Kennung verrät über den Token nichts.
 router.post('/serverbeweis', ipThrottle('serverbeweis', 120, 60 * 60 * 1000), async (req, res) => {
   const { kennung, nonce } = req.body ?? {};
   if (typeof kennung !== 'string' || !/^[0-9a-f]{16}$/.test(kennung)
@@ -727,10 +593,7 @@ router.post('/serverbeweis', ipThrottle('serverbeweis', 120, 60 * 60 * 1000), as
     beweis: crypto.createHmac('sha256', zeile.token).update(nonce).digest('hex') });
 });
 
-// CJS-kompatibler Export: module.exports bleibt der Router selbst,
-// mit den intern/von jobs/ genutzten Funktionen als Properties (wie zuvor).
 // ── Passkeys: Verwalten im Konto, Anmelden auf der Anmeldeseite ─────────────
-/** Längster Name eines Passkeys in der Liste. */
 const NAME_MAX = 60;
 const passkeyName = (roh: unknown) =>
   (typeof roh === 'string' && roh.trim() ? Array.from(roh.trim()).slice(0, NAME_MAX).join('') : 'Passkey');
@@ -740,8 +603,8 @@ router.get('/passkeys', requireLoginOrToken, async (req, res) => {
     passkeys: await P.passkeysDesKontos(angemeldeteNutzerId(req)) });
 });
 
-// Einen neuen Anmeldeweg anlegen verlangt das Passwort und eine Browser-Sitzung:
-// Eine erbeutete Sitzung oder ein Token allein soll keinen dauerhaften Zugang prägen.
+// Ein neuer Anmeldeweg verlangt Passwort und Browser-Sitzung: Eine erbeutete
+// Sitzung oder ein Token allein soll keinen dauerhaften Zugang prägen.
 router.post('/passkey/registrieren/optionen', requireLoginOrToken, async (req, res) => {
   if (!perSitzung(req)) return sendeFehler(req, res, 403, 'nur_mit_sitzung');
   const uid = angemeldeteNutzerId(req);
@@ -767,8 +630,7 @@ router.delete('/passkeys/:id', requireLoginOrToken, async (req, res) => {
   res.json({ success: true, deleted: await P.loeschePasskey(uid, id) ? 1 : 0 });
 });
 
-// Öffentlich (siehe OEFFENTLICH in routes/api_v1/middleware.ts). Die Drossel
-// begrenzt, wie viele Challenges eine Adresse anlegen kann.
+// Öffentlich; die Drossel begrenzt, wie viele Challenges eine Adresse anlegt.
 router.post('/passkey/anmelden/optionen', ipThrottle('passkey-optionen', 60, 60 * 60 * 1000), async (req, res) => {
   const zweck = req.body?.zweck === 'zweiter_faktor' ? 'zweiter_faktor' : 'anmelden';
   const optionen = await P.anmeldeOptionen(zweck);
@@ -776,7 +638,7 @@ router.post('/passkey/anmelden/optionen', ipThrottle('passkey-optionen', 60, 60 
   res.json({ success: true, optionen });
 });
 
-/** Anmelden ohne Passwort. Nur für den Browser: Es entsteht eine Sitzung, kein Token. */
+/** Nur für den Browser: Es entsteht eine Sitzung, kein Token. */
 router.post('/passkey/anmelden', ipThrottle('passkey-anmelden', 30, 60 * 60 * 1000), async (req, res) => {
   const uid = await P.anmeldungPruefen(req.body?.antwort, 'anmelden');
   if (!uid) return sendeFehler(req, res, 401, 'passkey_ungueltig');

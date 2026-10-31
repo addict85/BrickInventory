@@ -1,4 +1,3 @@
-/** /api/v1/parts — CRUD, Farben, Statistiken (Erfassungen: ./acquisitions.ts). */
 import express from 'express';
 import { fehlerAntwort } from '../../src/infra/httpError';
 import { requireToken } from './middleware';
@@ -19,15 +18,12 @@ import { writableIds } from '../../src/haushalt/haushalt';
 import { loescheTeil } from '../../src/bestand/loeschen';
 const router = express.Router();
 
-// ── PARTS ─────────────────────────────────────────────────────────────────────
 router.get('/parts', requireToken, async (req: AuthedRequest, res) => {
   const result = await getParts(await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts)), req.query);
   // page_size: der TATSÄCHLICH verwendete Wert, nicht der angefragte.
-  // Ausführlich: docs/begruendungen/routes/api_v1/parts.ts.md#get-parts
   res.json({ success: true, page: parseInt(String(req.query.page||1)), ...result });
 });
 
-// ── GET /api/v1/parts/categories — Kategorien im Blickfeld ──────────────────
 router.get('/parts/categories', requireToken, async (req: AuthedRequest, res) => {
   // Dasselbe Blickfeld wie die Farbliste, sonst filtern zwei Listen derselben
   // Ansicht über verschiedene Konten.
@@ -35,35 +31,28 @@ router.get('/parts/categories', requireToken, async (req: AuthedRequest, res) =>
   res.json({ success: true, categories: await getPartsCategories(uids) });
 });
 
-// ── POST /api/v1/parts/import/csv ───────────────────────────────────────────
 router.post('/parts/import/csv', requireToken, csvEmpfang.single('file'), async (req: AuthedRequest & { file?: { buffer: Buffer } }, res) => {
   if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
   csvImportAntwort(res, await importiereTeileCsv(req.apiUser.user_id, req.file.buffer.toString('utf-8')));
 });
 
-// ── GET /api/v1/parts/brick-colors — full brick color list for the add-part color picker (same logic as web app) ───────
 router.get('/parts/brick-colors', requireToken, async (_req: AuthedRequest, res) => {
   const colors = await getPartColorList();
   res.json({ success: true, colors });
 });
 
-// ── POST /api/v1/parts — add a single manual part (same logic as web app) ─────
 router.post('/parts', requireToken, async (req: AuthedRequest, res) => {
-  // Kontoauswahl beim Erfassen — wie in der Webapp. Ohne Angabe das eigene
-  // Konto; resolveWriteTarget prüft die RICHTUNG (Hauptkonto → eigenes
-  // Unterkonto), nicht bloss die Mitgliedschaft im Blickfeld.
+  // resolveWriteTarget prüft die RICHTUNG (Hauptkonto → eigenes Unterkonto),
+  // nicht bloss die Mitgliedschaft im Blickfeld.
   const owner = await resolveWriteTarget(req.apiUser.user_id, req.body?.owner_user_id);
   if (owner === null) return sendeFehler(req, res, 403, 'kein_schreibrecht');
   const result = await addManualPart(owner, req.body);
   res.json({ success: true, ...result });
 });
 
-// ── PUT /api/v1/parts/:partNumber/:colorId — edit quantity / Preis/Stk (same logic as web app)
 router.put('/parts/:partNumber/:colorId', requireToken, async (req: AuthedRequest, res) => {
-  // Wie beim Loeschen: Die Ansicht sagt, wessen Karte gemeint ist.
-  // NACHGEMESSEN — das Hauptkonto setzte auf der Karte des Kindes die Menge
-  // auf 99, und geaendert wurde die EIGENE Zeile: vorher 5|9, nachher 99|9,
-  // Antwort 200 {"success":true}.
+  // Die Ansicht sagt, wessen Karte gemeint ist; ohne Parameter änderte das
+  // Hauptkonto auf der Karte des Kindes die eigene Zeile.
   const besitzer = await resolveWriteTarget(req.apiUser.user_id, req.query.owner);
   if (besitzer === null) return sendeFehler(req, res, 403, 'kein_zugriff_konto');
   // Mit Mengenänderung trägt die Antwort die Menge danach (bei quantity_delta
@@ -72,15 +61,12 @@ router.put('/parts/:partNumber/:colorId', requireToken, async (req: AuthedReques
   res.json({ success: true, ...r });
 });
 
-/**
- * PUT /api/v1/parts/:partNumber/:colorId/color — die Farbe nachträglich ändern.
- * Ausführlich: docs/begruendungen/routes/api_v1/parts.ts.md#put-parts-partnumber-colorid-color
- */
+// Ausführlich: docs/begruendungen/routes/api_v1/parts.ts.md#put-parts-partnumber-colorid-color
 router.put('/parts/:partNumber/:colorId/color', requireToken, async (req: AuthedRequest, res) => {
   const besitzer = await resolveWriteTarget(req.apiUser.user_id, req.query.owner);
   if (besitzer === null) return sendeFehler(req, res, 403, 'kein_zugriff_konto');
-  // Die neue Farbe muss dastehen: V.colorId() machte aus fehlend „keine
-  // Farbe“, und beim Korrigieren wäre das ein stilles Leeren mit Erfolgsmeldung.
+  // Die neue Farbe muss dastehen: V.colorId() machte aus fehlend „keine Farbe",
+  // ein stilles Leeren mit Erfolgsmeldung.
   const roh = req.body?.color_id;
   const neueFarbe = parseInt(String(roh ?? ''), 10);
   if (roh === undefined || roh === null || String(roh).trim() === ''
@@ -96,10 +82,8 @@ router.put('/parts/:partNumber/:colorId/color', requireToken, async (req: Authed
   res.json({ success: true, ...ergebnis });
 });
 
-// ── DELETE /api/v1/parts/:partNumber/:colorId — delete a manual part ─────────
 router.delete('/parts/:partNumber/:colorId', requireToken, async (req: AuthedRequest, res) => {
-  // WESSEN Karte war gemeint? Ohne den Parameter das eigene Konto — also
-  // unverändert für jeden Client, der ihn nicht kennt.
+  // Ohne Parameter das eigene Konto — unverändert für Clients, die ihn nicht kennen.
   const besitzer = await resolveWriteTarget(req.apiUser.user_id, req.query.owner);
   if (besitzer === null) return sendeFehler(req, res, 403, 'kein_zugriff_konto');
   const geloescht = await loescheTeil(besitzer, String(req.params.partNumber), V.colorId(req.params.colorId));
@@ -107,34 +91,22 @@ router.delete('/parts/:partNumber/:colorId', requireToken, async (req: AuthedReq
   res.json({ success: true, papierkorb: [geloescht] });
 });
 
-// ── GET /api/v1/parts/bl-color-map — Rebrickable color_id → BrickLink color_id
 router.get('/parts/bl-color-map', requireToken, async (_req: AuthedRequest, res) => {
   const result = await getBlColorMap();
   res.json({ success: true, ...result });
 });
 
-// Manuell erfasste Teile — gleicher Handler wie /api/parts/manual (Parität;
-// bisher fehlte diese Information in der Android-API komplett).
-/**
- * POST /api/v1/parts/owned — „was davon habe ich schon?"
- * Nimmt die Teile EINER Teileliste entgegen und antwortet je Teil-Farb-Paar
- * mit zwei Zahlen: `gesamt` (alles im Blickfeld) und `lose` (nur, was nicht in
- * einem Set steckt). Welche gilt, entscheidet der Mensch — siehe die …
- * Ausführlich: docs/begruendungen/routes/api_v1/parts.ts.md#post-parts-owned
- */
+/** Je Teil-Farb-Paar `gesamt` (Blickfeld) und `lose` (nicht in einem Set);
+ * welche Zahl gilt, entscheidet der Mensch.
+ * Ausführlich: docs/begruendungen/routes/api_v1/parts.ts.md#post-parts-owned */
 router.post('/parts/owned', requireToken, async (req: AuthedRequest, res) => {
   const teile = Array.isArray(req.body?.teile) ? req.body.teile : [];
   const ids = await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts));
   res.json({ success: true, bestand: await getOwnedQuantities(ids, teile) });
 });
 
-/**
- * PUT /api/v1/parts/:partNumber/:colorId/storage — Lagerort setzen.
- * Trifft ALLE Zeilen des Teil-Farb-Paares im Schreibbereich: Dasselbe Teil
- * steckt in mehreren Sets und damit in mehreren Zeilen. Wer in der Ansicht
- * „Kiste 3" eintraegt, meint das Teil, nicht eine seiner Zeilen — und haette
- * sonst je Set einen eigenen Ort zu pflegen.
- */
+/** Trifft ALLE Zeilen des Teil-Farb-Paares: Wer „Kiste 3" einträgt, meint das
+ * Teil, nicht eine seiner Set-Zeilen. */
 router.put('/parts/:partNumber/:colorId/storage', requireToken, async (req: AuthedRequest, res) => {
   const ort = normalisiereLagerort(req.body?.storage);
   const n = await setzeLagerort('part', await writableIds(req.apiUser.user_id),
@@ -143,11 +115,8 @@ router.put('/parts/:partNumber/:colorId/storage', requireToken, async (req: Auth
 });
 
 router.get('/parts/manual', requireToken, async (req: AuthedRequest, res) => {
-  // NUR `search` wird durchgereicht, nicht req.query als Ganzes: Die Liste
-  // antwortet hier ohne Blaetterung (die Webapp zeigt alle manuellen Teile in
-  // einem Raster), und ein durchgereichtes page_size wuerde sie unbemerkt
-  // deckeln. Der Suchtext kommt aus derselben Filterleiste wie bei den
-  // Set-Teilen — die Begruendung steht an getManualParts.
+  // NUR `search`: Die Liste antwortet ohne Blätterung, ein durchgereichtes
+  // page_size deckelte sie unbemerkt.
   res.json({ success: true, parts: await getManualParts(
     await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts)),
     req.apiUser.user_id,
@@ -155,8 +124,6 @@ router.get('/parts/manual', requireToken, async (req: AuthedRequest, res) => {
 });
 
 router.get('/parts/colors', requireToken, async (req: AuthedRequest, res) => {
-  // Gemeinsamer Handler (auch /api/parts/colors): ohne manuelle Positionen,
-  // mit rb_colors-Hex-Fallback (Parität zur Webapp).
   res.json({ success:true, colors: await getPartsColors(await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts))) });
 });
 
@@ -166,11 +133,7 @@ router.get('/parts/stats', requireToken, async (req: AuthedRequest, res) => {
 });
 
 
-// ── GET /api/v1/parts/:partNumber/:colorId/price-history ─────────────────────
-/**
- * Preisverlauf eines manuell erfassten Teils, je Zustand getrennt.
- * Ausführlich: docs/begruendungen/routes/api_v1/parts.ts.md#get-parts-partnumber-colorid-price-history
- */
+// Ausführlich: docs/begruendungen/routes/api_v1/parts.ts.md#get-parts-partnumber-colorid-price-history
 router.get('/parts/:partNumber/:colorId/price-history', requireToken, async (req: AuthedRequest, res) => {
   const uid = req.apiUser.user_id;
   const currency = await getSetting(uid, 'currency', 'EUR');
@@ -179,11 +142,7 @@ router.get('/parts/:partNumber/:colorId/price-history', requireToken, async (req
   res.json({ success: true, ...data });
 });
 
-// ── GET /api/v1/parts/:partNumber/:colorId/sets ──────────────────────────────
-/**
- * In welchen Sets steckt dieses Teil?
- * Ausführlich: docs/begruendungen/routes/api_v1/parts.ts.md#get-parts-partnumber-colorid-sets
- */
+// Ausführlich: docs/begruendungen/routes/api_v1/parts.ts.md#get-parts-partnumber-colorid-sets
 router.get('/parts/:partNumber/:colorId/sets', requireToken, async (req: AuthedRequest, res) => {
   const uids = await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts));
   const { item, sets } = await verwendendeSets(uids, 'parts', {

@@ -3,8 +3,6 @@ import { blJoin, blNummerSql } from '../../../db/blZuordnungSql';
 import type { KatalogTeil, ListenTeil, SetStamm } from '../dienst';
 import * as db from '../../../db/database';
 
-/** Datenzugriff für Set-Stammdaten, Teile- und Figurenlisten eines Sets und eigene Anleitungen. */
-
 export function setStamm(setNumber: string) {
   return db.get<SetStamm>('SELECT name, year, theme, pieces, image_url, image_local FROM set_stamm WHERE set_number = $1', [setNumber]);
 }

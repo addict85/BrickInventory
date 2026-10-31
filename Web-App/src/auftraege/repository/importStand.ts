@@ -1,11 +1,7 @@
 import * as db from '../../../db/database';
 
-/** Datenzugriff auf import_stand: der Stand des CSV-Imports, eine Zeile je Konto. */
-
-/**
- * Ein Lauf, der seit `minuten` nicht geschrieben hat, gehört einem Prozess,
- * den es nicht mehr gibt; „running" sperrte sonst jeden weiteren Import.
- */
+/** Ein Lauf ohne Schreiben seit `minuten` gehört einem verschwundenen Prozess;
+ * „running" sperrte sonst jeden weiteren Import. */
 export async function markiereVerwaist(userId: number, fehler: string, minuten: number): Promise<void> {
   await db.run(
     `UPDATE import_stand SET status = 'error', current = NULL, error = $2, updated_at = NOW()
@@ -17,11 +13,8 @@ export function importStand(userId: number) {
   return db.get('SELECT * FROM import_stand WHERE user_id = $1', [userId]);
 }
 
-/**
- * Die Schlüssel landen als SPALTENNAMEN im Abfragetext, wo keine
- * Parameterbindung hilft — deshalb die Positivliste.
- * Ausführlich: docs/begruendungen/src/auftraege/importAuftrag.ts.md#job-columns
- */
+/** Die Schlüssel landen als SPALTENNAMEN im Abfragetext, wo keine Bindung
+ * hilft — deshalb die Positivliste. */
 const JOB_COLUMNS = new Set(['status', 'total', 'done', 'current', 'results', 'error', 'started_at', 'run_id']);
 
 function spalten(fields: Record<string, unknown>): string[] {
@@ -39,7 +32,7 @@ export async function schreibeImportStand(userId: number, fields: Record<string,
     [userId, ...keys.map(k => fields[k])]);
 }
 
-/** Mit `lauf` nur, solange dieser Lauf eingetragen ist und läuft. @returns geänderte Zeilen */
+/** Nur, solange dieser Lauf eingetragen ist und läuft. */
 export async function aendereImportStand(userId: number, fields: Record<string, unknown>, lauf?: string): Promise<number> {
   const keys = spalten(fields);
   const werte = [userId, ...keys.map(k => fields[k])];
@@ -50,7 +43,6 @@ export async function aendereImportStand(userId: number, fields: Record<string, 
   return r?.changes ?? 0;
 }
 
-/** Nach einem Neustart auch dann, wenn die Zeile inzwischen als verwaist markiert ist. */
 export function setzeLaufFort(userId: number, lauf: string) {
   return db.get(
     `UPDATE import_stand SET status = 'running', error = NULL, updated_at = NOW()

@@ -1,11 +1,7 @@
 import * as db from '../../../db/database';
 
-/**
- * Laufzeitzustand der Hintergrundarbeit: Jobmonitor, Zähler, Auslöser,
- * Stempel des letzten Laufs. Er steht getrennt von den Einstellungen, damit
- * dort nur Konfiguration liegt — ein Export, eine Sicherung oder ein Blick in
- * die Einstellungen zeigt dann keine Zwischenstände von Jobs (Migration 0063).
- */
+/** Getrennt von den Einstellungen, damit Export, Sicherung und Einstellungen
+ * keine Zwischenstände von Jobs zeigen. */
 export async function liesZustand(schluessel: string): Promise<string | null> {
   const z = await db.get('SELECT wert FROM laufzustand WHERE schluessel = $1', [schluessel]);
   return z ? String(z.wert) : null;
@@ -18,12 +14,11 @@ export async function setzeZustand(schluessel: string, wert: unknown): Promise<v
     [schluessel, String(wert)]);
 }
 
-/** Mehrere Einträge in einer Anweisung entfernen. */
 export async function loescheZustand(...schluessel: string[]): Promise<void> {
   if (schluessel.length) await db.run('DELETE FROM laufzustand WHERE schluessel = ANY($1)', [schluessel]);
 }
 
-/** Zähler atomar verschieben, nie unter 0 — eine Anweisung, die Zeilensperre serialisiert gleichzeitige Aufrufe. */
+/** Atomar, nie unter 0: Die Zeilensperre serialisiert gleichzeitige Aufrufe. */
 export async function zaehleZustand(schluessel: string, delta: number): Promise<void> {
   await db.run(
     `INSERT INTO laufzustand (schluessel, wert, aktualisiert) VALUES ($1, $2, NOW())

@@ -2,9 +2,7 @@ import type { DbSchnittstelle } from '../../../db/database';
 import * as db from '../../../db/database';
 import { inKontowaehrung, kontowaehrungJoin, teilmengeAus, teilmengeJoin } from '../../../db/bestandsmenge';
 
-/** Gemeinsame Abfragen der Teile- und Figurenlisten: Erfassungen je Position, Besitzer, verwendende Sets. */
-
-/** Je Position: Zahl der Erfassungen, davon gebraucht, und der mengengewichtete Kaufpreis in Kontowährung. */
+/** Kaufpreis mengengewichtet in Kontowährung. */
 export function erfassungsKennzahlen(art: 'part' | 'fig', uids: number[]) {
   return db.all(art === 'part'
     ? `SELECT part_number, color_id,
@@ -32,10 +30,8 @@ export function benutzerNamen(uids: number[]) {
 /** Spalten, über die gesucht werden darf. Siehe verwendendeSets(). */
 const SUCHSPALTEN = new Set(['part_number', 'color_id', 'fig_number']);
 
-/**
- * Die Felder, die Teil bzw. Figur beschreiben. Figuren haben weder Farbe noch
- * Kategorie; dort stehen feste NULL, damit beide Zweige dieselbe Form liefern.
- */
+/** Figuren haben weder Farbe noch Kategorie; feste NULL, damit beide Zweige
+ * dieselbe Form liefern. */
 const KOPFFELDER = {
   parts: `x.part_number AS nummer, MAX(pc.part_name) AS name,
           MAX(x.color_id) AS color_id, MAX(pcc.color_name) AS color_name,
@@ -50,10 +46,7 @@ const KOPFFELDER = {
           false AS is_spare, NULL::text AS storage`,
 } as const;
 
-/**
- * Die Katalog-JOINs je Tabelle.
- * Ausführlich: docs/begruendungen/src/bestand/gemeinsam.ts.md#katalogjoin
- */
+// Ausführlich: docs/begruendungen/src/bestand/gemeinsam.ts.md#katalogjoin
 const KATALOGJOIN = {
   parts: `LEFT JOIN part_catalog pc ON pc.part_number = x.part_number
           LEFT JOIN part_color_catalog pcc ON pcc.part_number = x.part_number
@@ -66,16 +59,12 @@ const KATALOGJOIN = {
 
 const SCHLUESSELSPALTE = { parts: 'x.part_number', minifigs: 'x.fig_number' } as const;
 
-/** Die Bestandsart je Tabelle für teilmengeJoin/teilmengeAus — wie KOPFFELDER eine Zuordnung. */
 const ART = { parts: 'part', minifigs: 'fig' } as const;
 
-/** Die Sets im Blickfeld, die dieses Teil bzw. diese Figur enthalten, mit dem Kopf der Position. */
 export async function setsMitBestandteil(uids: number[], tabelle: 'parts' | 'minifigs', schluessel: Record<string, string | number>) {
   const spalten = Object.keys(schluessel);
-  // Die Namen kommen aus Literalen der beiden Aufrufer, nie aus einer
-  // Anfrage. Die Schranke steht trotzdem: Ein künftiger Aufrufer soll hier
-  // nichts anderes einsetzen können, und ein Spaltenname lässt sich nicht
-  // als Parameter binden — er wird zwangsläufig in den Text eingefügt.
+  // Die Namen kommen aus Literalen, die Schranke steht trotzdem: Ein Spaltenname
+  // lässt sich nicht als Parameter binden.
   for (const sp of spalten) {
     if (!SUCHSPALTEN.has(sp)) throw new Error(`verwendendeSets: unerlaubte Spalte ${sp}`);
   }

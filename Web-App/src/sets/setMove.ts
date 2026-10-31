@@ -1,9 +1,6 @@
-/**
- * Ein Set (oder einzelne Kaufpreise davon) in ein anderes Konto des Haushalts
- * verschieben. Verschoben wird über die Erfassungen: Die Menge beider Konten
- * folgt daraus beim Lesen, hier wird keine Menge geschrieben.
- * Ausführlich: docs/begruendungen/src/sets/setMove.ts.md#abschnitt
- */
+/** Verschoben wird über die Erfassungen: Die Menge beider Konten folgt daraus
+ * beim Lesen, hier wird keine Menge geschrieben.
+ * Ausführlich: docs/begruendungen/src/sets/setMove.ts.md#abschnitt */
 import type { DbSchnittstelle } from '../../db/database';
 import { recordAcquisitionForDay } from '../bestand/acquisitions';
 import { fehlerWerfen } from '../infra/fehlerTexte';
@@ -16,16 +13,11 @@ export interface MoveResult {
   parts: number;
   minifigs: number;
   instructions: number;
-  /** true, wenn das Set beim Absender vollständig verschwunden ist. */
   source_emptied: boolean;
 }
 
-/**
- * Inhaltszeilen ins Zielkonto spiegeln, sofern dort noch keine liegen.
- * Nacheinander statt Promise.all: alle Abfragen laufen auf derselben
- * Transaktionsverbindung.
- * Ausführlich: docs/begruendungen/src/sets/setMove.ts.md#copycontents
- */
+/** Nacheinander statt Promise.all: alle Abfragen laufen auf derselben
+ * Transaktionsverbindung. */
 async function copyContents(tx: DbSchnittstelle, sn: string, fromId: number, toId: number) {
   const n = { parts: 0, minifigs: 0, instructions: 0 };
   for (const t of ['parts', 'minifigs', 'instructions'] as const)
@@ -33,10 +25,7 @@ async function copyContents(tx: DbSchnittstelle, sn: string, fromId: number, toI
   return n;
 }
 
-/**
- * @param acquisitionIds leer/undefined = das ganze Set; sonst nur diese
- *                       Kaufpreis-Zeilen (und die zugehörige Stückzahl)
- */
+/** @param acquisitionIds leer = das ganze Set; sonst nur diese Kaufpreis-Zeilen */
 export async function moveSetBetweenAccounts(
   tx: DbSchnittstelle, sn: string, fromId: number, toId: number, acquisitionIds?: number[]
 ): Promise<MoveResult> {
@@ -70,7 +59,6 @@ export async function moveSetBetweenAccounts(
   const counts = await copyContents(tx, sn, fromId, toId);
 
   // Teilverschiebung: Der Absender behält Exemplare und damit Set und Inhalt.
-  // Ausführlich: docs/begruendungen/src/sets/setMove.ts.md#movesetbetweenaccounts-2
   if (remaining > 0) {
     return { quantity: movingQty, acquisitions: wanted.length, merged: !!dst,
              ...counts, source_emptied: false };
@@ -80,11 +68,8 @@ export async function moveSetBetweenAccounts(
            ...counts, source_emptied: true };
 }
 
-/**
- * Wie beim Set: Verschoben wird über den KAUFPREIS, nicht über den Eintrag.
- * Was beim Absender bleibt, folgt aus seinen Erfassungen, nicht aus der Zeile.
- * Ausführlich: docs/begruendungen/src/sets/setMove.ts.md#movemanualacquisition
- */
+/** Über den KAUFPREIS, nicht über den Eintrag; was beim Absender bleibt, folgt
+ * aus seinen Erfassungen. */
 export async function moveManualAcquisition(
   tx: DbSchnittstelle, kind: 'part' | 'fig', keyValues: (string | number)[], acquisitionId: number,
   fromId: number, toId: number

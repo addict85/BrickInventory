@@ -253,13 +253,8 @@ test('kein Verweis auf „Nachtrag N" im Code', () => {
 });
 
 test('der Kommentaranteil im Server sinkt, nie steigt', () => {
-  // GEMESSEN am 28.10.2026: 33,4 % der nichtleeren Zeilen in server.ts,
-  // routes/, utils/ und jobs/ (25.10.: 50,5 %, siehe CLAUDE.md).
-  // 29.10.2026: 32,44 %. 30.10.2026: 30,6 % (Kommentare der umgebauten Dateien gekürzt).
-  // 30.10.2026: 30,0 % (Cluster, Planer und Warteschlangen entfallen).
-  // 31.10.2026: 29,8 % in server.ts, routes/, src/ und jobs/ (Schichtumbau).
-  // 31.10.2026: 28,5 % (SQL in Repositories, Kommentare der umgebauten Dienste gekürzt).
-  const SCHRANKE = 28.5;
+  // Gemessen 13,8 % in server.ts, routes/, src/, utils/ und jobs/; Schranke 13,8.
+  const SCHRANKE = 13.8;
   let zeilen = 0, kommentar = 0;
   for (const f of quellen().filter(f => /[\\/](routes|src|utils|jobs)[\\/]|[\\/]server\.ts$/.test(f))) {
     for (const z of fs.readFileSync(f, 'utf8').split('\n')) {
@@ -278,9 +273,9 @@ test('der Kommentaranteil im Server sinkt, nie steigt', () => {
 test('der Kommentaranteil der Tests sinkt, nie steigt', () => {
   // Eigene Schranke: Testköpfe zählen ihre Gegenproben auf (CLAUDE.md), der
   // Anteil liegt deshalb höher als im Server. Geschichte gehört auch hier in
-  // den Commit. GEMESSEN am 30.10.2026: 37,0 % in test/*.js und test/helpers/.
-  // Gegenprobe (30.10.2026): 300 Kommentarzeilen an eine Testdatei gehängt → rot.
-  const SCHRANKE = 36.4;
+  // den Commit. Gemessen 35,9 % in test/*.js und test/helpers/; Schranke 35,9.
+  // Gegenprobe: 300 Kommentarzeilen an eine Testdatei gehängt → rot.
+  const SCHRANKE = 35.9;
   const dateien = [
     ...fs.readdirSync(__dirname).filter(n => n.endsWith('.js')).map(n => path.join(__dirname, n)),
     ...fs.readdirSync(path.join(__dirname, 'helpers')).filter(n => n.endsWith('.js')).map(n => path.join(__dirname, 'helpers', n)),
@@ -318,4 +313,26 @@ test('jeder Verweis auf docs/begruendungen trifft Datei und Anker', () => {
   }
   assert.ok(n > 200, `nur ${n} Verweise gefunden — greift die Suche noch?`);
   assert.deepEqual(kaputt, []);
+});
+
+test('jedes Dokument unter docs/begruendungen wird vom Code erreicht', () => {
+  // Ein Dokument ohne Verweis ist Geschichte und gehört nach git, nicht in
+  // den Baum; eines, dessen Code umgezogen ist, zieht mit (Dateiname = Ort).
+  // Gegenprobe: docs/begruendungen/src/verwaist.ts.md angelegt → rot
+  // („src/verwaist.ts.md" in der Liste der unerreichten Dokumente).
+  const verwiesen = new Set();
+  for (const f of serverUndOberflaeche()) {
+    for (const m of fs.readFileSync(f, 'utf8').matchAll(/docs\/begruendungen\/([^\s#`'"]+\.md)#/g)) verwiesen.add(m[1]);
+  }
+  const wurzel = path.join(WEB, 'docs', 'begruendungen');
+  const dokumente = [];
+  (function lauf(d) {
+    for (const n of fs.readdirSync(d)) {
+      const p = path.join(d, n);
+      if (fs.statSync(p).isDirectory()) lauf(p);
+      else dokumente.push(path.relative(wurzel, p).split(path.sep).join('/'));
+    }
+  })(wurzel);
+  assert.ok(dokumente.length > 50, `nur ${dokumente.length} Dokumente gefunden — greift die Suche noch?`);
+  assert.deepEqual(dokumente.filter(d => !verwiesen.has(d)), []);
 });

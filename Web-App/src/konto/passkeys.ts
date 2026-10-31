@@ -1,8 +1,5 @@
-/**
- * Passkeys (WebAuthn) mit @simplewebauthn/server: registrieren, anmelden ohne
- * Passwort und als zweiter Faktor anstelle des TOTP-Codes. Tabellen in
- * Migration 0081.
- */
+/** Registrieren, anmelden ohne Passwort und als zweiter Faktor anstelle des
+ * TOTP-Codes. */
 import crypto from 'crypto';
 import {
   generateRegistrationOptions, verifyRegistrationResponse,
@@ -14,32 +11,27 @@ import * as repo from './repository/passkeys';
 import { basisUrl } from '../infra/basisUrl';
 import { fehlertext } from '../infra/httpError';
 
-/** Eine abgewiesene Antwort ist kein Serverfehler, aber ein Eintrag wert. */
 function abgewiesen(e: unknown): null {
   console.warn('[passkey] Antwort abgewiesen:', fehlertext(e));
   return null;
 }
 
-/** Die Antwort des Browsers in der Form, die die Prüfung erwartet — oder null. */
 function alsAntwort<T extends RegistrationResponseJSON | AuthenticationResponseJSON>(roh: unknown): T | null {
   const a = roh as { id?: unknown; response?: { clientDataJSON?: unknown } } | null;
   return a && typeof a.id === 'string' && typeof a.response?.clientDataJSON === 'string' ? roh as T : null;
 }
 
 type Transporte = NonNullable<WebAuthnCredential['transports']>;
-/** Die gespeicherte Liste als Feld, das ganz fehlt, wenn nichts gespeichert ist. */
 const transporte = (s: string | null): { transports?: Transporte } =>
   s ? { transports: s.split(',') as Transporte } : {};
 
 export type PasskeyZweck = 'registrieren' | 'anmelden' | 'zweiter_faktor';
 
-/** Wie lange eine Challenge gilt; der Browser-Dialog läuft höchstens so lange. */
+/** Der Browser-Dialog läuft höchstens so lange. */
 const CHALLENGE_MS = 5 * 60 * 1000;
 
-/**
- * RP-ID und Origin aus APP_BASE_URL. Ein Browser lässt WebAuthn nur für einen
- * Domänennamen zu, nicht für eine IP-Adresse; ohne Namen gibt es keine Passkeys.
- */
+/** Ein Browser lässt WebAuthn nur für einen Domänennamen zu, nicht für eine
+ * IP-Adresse; ohne Namen gibt es keine Passkeys. */
 export function vertrauenspartei(): { rpID: string; origin: string; rpName: string } | null {
   const basis = basisUrl();
   if (!basis) return null;
@@ -54,10 +46,7 @@ function merkeChallenge(challenge: string, zweck: PasskeyZweck, uid: number | nu
   return repo.speichereChallenge(hash(challenge), zweck, uid, new Date(Date.now() + CHALLENGE_MS));
 }
 
-/**
- * Die Challenge aus der Antwort einlösen — genau einmal. Eine wiederholte
- * Antwort findet ihre Zeile nicht mehr und wird abgewiesen.
- */
+/** Genau einmal: Eine wiederholte Antwort findet ihre Zeile nicht mehr. */
 async function loeseChallengeEin(clientDataJSON: unknown, zweck: PasskeyZweck, uid: number | null): Promise<string | null> {
   if (typeof clientDataJSON !== 'string') return null;
   let challenge: string;
@@ -65,7 +54,7 @@ async function loeseChallengeEin(clientDataJSON: unknown, zweck: PasskeyZweck, u
   return await repo.verbraucheChallenge(hash(challenge), zweck, uid) ? challenge : null;
 }
 
-/** Eine feste, nicht sprechende Kennung je Konto für den Authenticator. */
+/** Nicht sprechend: Der Authenticator soll keine Konto-ID speichern. */
 const nutzerKennung = (uid: number) => new Uint8Array(crypto.createHash('sha256').update(`bim:${uid}`).digest().subarray(0, 16));
 
 export async function registrierungsOptionen(uid: number, name: string) {
@@ -83,7 +72,6 @@ export async function registrierungsOptionen(uid: number, name: string) {
   return optionen;
 }
 
-/** @returns die neue Zeile, oder null, wenn Antwort, Challenge oder Herkunft nicht passen. */
 export async function registrierungPruefen(uid: number, roh: unknown, name: string): Promise<{ id: number; name: string } | null> {
   const rp = vertrauenspartei();
   const antwort = alsAntwort<RegistrationResponseJSON>(roh);
@@ -103,7 +91,7 @@ export async function anmeldeOptionen(zweck: 'anmelden' | 'zweiter_faktor') {
   const rp = vertrauenspartei();
   if (!rp) return null;
   // Leere allowCredentials: Der Browser bietet die auffindbaren Passkeys an,
-  // ohne dass der Server vorher sagt, welches Konto welche hat.
+  // ohne dass der Server verrät, welches Konto welche hat.
   const optionen = await generateAuthenticationOptions({
     rpID: rp.rpID, userVerification: zweck === 'anmelden' ? 'required' : 'preferred',
   });
@@ -111,12 +99,9 @@ export async function anmeldeOptionen(zweck: 'anmelden' | 'zweiter_faktor') {
   return optionen;
 }
 
-/**
- * Eine Anmeldeantwort prüfen. Ohne Passwort verlangt sie User Verification
- * (PIN, Biometrie) — sonst wäre der Passkey allein ein einziger Faktor.
- * @param uid beim zweiten Faktor das Konto, dessen Passwort schon stimmte.
- * @returns das Konto, oder null.
- */
+/** Ohne Passwort verlangt sie User Verification (PIN, Biometrie) — sonst wäre
+ * der Passkey allein ein einziger Faktor.
+ * @param uid beim zweiten Faktor das Konto, dessen Passwort schon stimmte. */
 export async function anmeldungPruefen(roh: unknown, zweck: 'anmelden' | 'zweiter_faktor', uid: number | null = null): Promise<number | null> {
   const rp = vertrauenspartei();
   const antwort = alsAntwort<AuthenticationResponseJSON>(roh);
@@ -137,5 +122,4 @@ export async function anmeldungPruefen(roh: unknown, zweck: 'anmelden' | 'zweite
 
 export const passkeysDesKontos = repo.desKontos;
 export const hatPasskeys = repo.hatWelche;
-/** @returns ob es den Passkey in diesem Konto gab */
 export const loeschePasskey = repo.loeschePasskeyZeile;

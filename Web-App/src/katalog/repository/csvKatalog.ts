@@ -1,10 +1,5 @@
-/**
- * Der Katalog aus den Rebrickable-CSV-Tabellen: Teile und Figuren eines
- * Inventars, Sets ohne Katalogeintrag, das Farbbild manueller Teile.
- */
 import * as db from '../../../db/database';
 
-/** Wie viele Teile eines Sets im Katalog stehen und wie viele davon ein lokales Bild haben. */
 export async function katalogBildstand(setNumber: string): Promise<{ total: number; mitBild: number }> {
   const r = await db.get<{ total: string; with_img: string }>(
     `SELECT COUNT(*) AS total, COUNT(image_local) AS with_img
@@ -17,7 +12,6 @@ export interface CsvTeil {
   color_name: string | null; color_hex: string | null; image_url: string | null; quantity: number; is_spare: boolean;
 }
 
-/** Die Teile eines Inventars ohne Ersatzteile, mit BrickLink-Nummer. */
 export async function inventarTeileOhneErsatz(inventarId: number): Promise<CsvTeil[]> {
   return db.all<CsvTeil>(
     `SELECT ip.part_num AS part_number,
@@ -34,7 +28,6 @@ export async function inventarTeileOhneErsatz(inventarId: number): Promise<CsvTe
        AND NOT ip.is_spare`, [inventarId]);
 }
 
-/** Die Minifiguren eines Inventars. */
 export async function inventarFiguren(inventarId: number): Promise<{ fig_number: string; quantity: number; fig_name: string | null; image_url: string | null }[]> {
   return db.all(
     `SELECT ip.part_num AS fig_number, ip.quantity,
@@ -44,7 +37,6 @@ export async function inventarFiguren(inventarId: number): Promise<{ fig_number:
      WHERE ip.inventory_id = $1 AND ip.part_num LIKE 'fig-%'`, [inventarId]);
 }
 
-/** Bis zu `grenze` Sets aus den CSV-Tabellen, die noch keinen Teilekatalog haben. */
 export async function setsOhneTeilekatalog(grenze = 50): Promise<string[]> {
   const rows = await db.all<{ set_num: string }>(
     `SELECT DISTINCT s.set_num FROM rb_sets s
@@ -54,12 +46,11 @@ export async function setsOhneTeilekatalog(grenze = 50): Promise<string[]> {
   return rows.map(r => r.set_num);
 }
 
-/** Manuell erfasste Teile mit echter Farbe — für das Farbbild. */
 export async function manuelleFarbteile(): Promise<{ id: number; part_number: string; color_id: number }[]> {
   return db.all("SELECT id, part_number, color_id FROM parts WHERE source='manual' AND color_id IS NOT NULL AND color_id != 0 ORDER BY id ASC");
 }
 
-/** Das Bild der gewählten Farbe setzen — überschreibend, das ist der Zweck. */
+/** Überschreibend — das ist der Zweck. */
 export async function ersetzeTeilfarbenbild(partNumber: string, colorId: number, url: string): Promise<void> {
   await db.run(`
     INSERT INTO part_color_catalog (part_number, color_id, image_url)

@@ -1,9 +1,5 @@
-/**
- * GET /ca.crt — das Wurzelzertifikat der internen CA zum Installieren auf
- * Geräten. Öffentlich: Es ist kein Geheimnis, und ein Gerät braucht es, bevor
- * es dem Server vertraut. Abgleichen lässt es sich am Fingerabdruck in den
- * Einstellungen oder auf dem Server (UPGRADE.md, Abschnitt 14).
- */
+/** Öffentlich: Das Wurzelzertifikat ist kein Geheimnis, und ein Gerät braucht
+ * es, bevor es dem Server vertraut. Abgleich über den Fingerabdruck. */
 import express from 'express';
 import { tlsStand } from '../src/infra/tlsWurzel';
 import { fehlerAntwort } from '../src/infra/httpError';

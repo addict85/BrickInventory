@@ -1,7 +1,5 @@
 import * as db from '../../../db/database';
 
-/** Gemeinsame Anleitungen je Set (shared_instructions) und der Takt der Anleitungsquellen. */
-
 export function zaehleAnleitungen(setNumber: string) {
   return db.get('SELECT COUNT(*) as c FROM shared_instructions WHERE set_number = $1', [setNumber]);
 }
@@ -10,7 +8,7 @@ export function anleitungenDesSets(setNumber: string) {
   return db.all('SELECT * FROM shared_instructions WHERE set_number = $1', [setNumber]);
 }
 
-/** Wie die Anmeldebremse: zählen und den Stand liefern, in einem Schritt. */
+/** Zählen und Stand liefern in einem Schritt, wie die Anmeldebremse. */
 export function zaehleQuellenAufruf(key: string) {
   return db.get(`INSERT INTO rate_limit_attempts (key, count, first_at, last_at) VALUES ($1, 1, NOW(), NOW())
      ON CONFLICT (key) DO UPDATE SET count = 1, first_at = NOW(), last_at = NOW()

@@ -1,12 +1,8 @@
-/**
- * Datenzugriff auf die Zwischenspeicher des Katalogs: catalog_cache (was
- * BrickLink zu einer Nummer kennt) und subsets_cache.
- */
 import * as db from '../../../db/database';
 
 export interface KatalogEintrag { is_gear?: boolean | null; bl_type?: string | null; fetched_at?: string | Date | null; }
 
-/** Unter der Schreibweise, unter der er abgelegt wird (mit Versionsnummer). */
+/** Mit Versionsanhang, wie er abgelegt wird. */
 export async function katalogEintragZu(nummer: string): Promise<KatalogEintrag | null> {
   return (await db.get<KatalogEintrag>('SELECT is_gear, bl_type, fetched_at FROM catalog_cache WHERE set_number = $1',
     [nummer])) ?? null;
@@ -14,7 +10,7 @@ export async function katalogEintragZu(nummer: string): Promise<KatalogEintrag |
 
 export type BricklinkArt = 'GEAR' | 'BOOK' | 'NONE';
 
-/** Was BrickLink zu einer Nummer führt; NONE heisst „kein Preis", mit Zeitstempel. */
+/** NONE heisst „kein Preis", mit Zeitstempel. */
 export async function merkeBricklinkArt(nummer: string, art: BricklinkArt): Promise<void> {
   if (art === 'NONE') {
     await db.run(`INSERT INTO catalog_cache (set_number, name, bl_type, is_gear) VALUES ($1,$2,$3,true)
@@ -25,13 +21,11 @@ export async function merkeBricklinkArt(nummer: string, art: BricklinkArt): Prom
   }
 }
 
-/** Ohne Nummer den ganzen Zwischenspeicher. */
 export async function leereSubsetsCache(nummer: string | null): Promise<void> {
   if (nummer) await db.run('DELETE FROM subsets_cache WHERE set_number = $1', [nummer]);
   else await db.run('DELETE FROM subsets_cache');
 }
 
-/** Ohne Nummer den ganzen Zwischenspeicher. */
 export async function leereKatalogCache(nummer: string | null): Promise<void> {
   if (nummer) await db.run('DELETE FROM catalog_cache WHERE set_number = $1', [nummer]);
   else await db.run('DELETE FROM catalog_cache');

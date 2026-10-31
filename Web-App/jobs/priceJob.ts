@@ -14,22 +14,16 @@ import * as monitor from '../src/auftraege/jobMonitor';
 import { LOCKS } from '../src/infra/lockNamespaces';
 import { pruefeSet } from '../src/finanzen/preisalarm';
 
-/**
- * Was der letzte Lauf hinterliess, für /admin/job-status: Der Job läuft im
- * Job-Prozess, gelesen wird im Web-Prozess — darum in laufzustand.
- */
+/** Der Job läuft im Job-Prozess, gelesen wird im Web-Prozess — darum in laufzustand. */
 export const PREIS_STAND = 'preis_job_stand';
-/** Die letzten Protokollzeilen dieses Prozesses; am Ende eines Laufs nach PREIS_STAND geschrieben. */
 const _log: string[] = [];
 
-/** Namensraum der prozessübergreifenden Sperre; alle Nummern stehen in src/infra/lockNamespaces.ts. */
 const PRICE_JOB_LOCK = LOCKS.PREIS_JOB;
 
-/**
- * Sperre über die ganze Laufzeit halten — auf einer EIGENEN Verbindung.
+/** Auf einer EIGENEN Verbindung über die ganze Laufzeit: Manuelle Auslöser
+ * laufen in anderen Prozessen, `state.running` sieht sie nicht.
  * Ausführlich: docs/begruendungen/jobs/priceJob.ts.md#acquirerunlock
- * @returns Freigabefunktion, oder null wenn anderswo bereits ein Lauf läuft
- */
+ * @returns Freigabefunktion, oder null wenn anderswo bereits ein Lauf läuft */
 async function acquireRunLock(): Promise<(() => Promise<void>) | null> {
   let freigabe: (() => Promise<void>) | null;
   try { freigabe = await belegeSitzungsSperre(PRICE_JOB_LOCK); }
@@ -51,18 +45,14 @@ function log(msg: string) {
   if (_log.length > 50) _log.length = 50;
 }
 
-// forceTtlHours ist `string | number`: dieselbe Herkunft wie in
-// src/finanzen/financeCalc.ts — getGlobalSetting() liefert eine Zeichenkette,
-// andere Aufrufer eine Zahl.
+// `string | number`: getGlobalSetting() liefert Text, andere Aufrufer eine Zahl.
 async function fetchAndCachePrice(setNumber: string, condition: string, guideType: string,
                                   currency: string, forceTtlHours?: string | number) {
   if (ohneBricklinkPreis(await katalogEintrag(setNumber))) return 'skipped_gear';
 
   const ttl = Math.max(1, parseInt(String(forceTtlHours ?? '')));
-  // Dieselbe Frisch-Regel wie im Anfrageweg (src/finanzen/financeCalc.ts). Hier stand
-  // vorher `SELECT 1 ... fetched_at > ttl` — das erklaerte auch eine
-  // Null-Zeile fuer die volle Laufzeit fuer frisch, waehrend der Anfrageweg
-  // es nach sechs Stunden erneut versucht. cacheUsable() kennt beide Faelle.
+  // Dieselbe Frisch-Regel wie im Anfrageweg: Auch eine Null-Zeile wird nach
+  // sechs Stunden erneut versucht.
   const vorhanden = await preisAusCache(setNumber, condition, currency, ttl);
   if (cacheUsable(vorhanden, ttl)) return 'skipped';
 
@@ -74,11 +64,8 @@ async function fetchAndCachePrice(setNumber: string, condition: string, guideTyp
   try { g = await getPriceGuide(setNumber, condition, guideType, currency); }
   catch (e) { log(`Error ${setNumber} (${condition}): ${fehlertext(e).substring(0,60)}`); return 'error'; }
 
-  // Die Antwort zum ANGEFRAGTEN Zustand immer wegschreiben, auch eine mit
-  // lauter Nullen: Sie ist es, die den naechsten Lauf zurueckhaelt. Vorher
-  // sprang der Rueckfall unten mit `return` heraus, sobald der andere Zustand
-  // einen Preis hatte — die Null-Zeile fehlte, und derselbe Set kostete
-  // jeden Lauf wieder zwei BrickLink-Abrufe.
+  // Auch eine Antwort mit lauter Nullen wird geschrieben: Sie hält den nächsten
+  // Lauf zurück, sonst kostete dasselbe Set jedes Mal zwei Abrufe.
   const p = await speicherePreis(setNumber, condition, currency, g);
 
   if (p.avg === 0 && p.qavg === 0) {
@@ -93,10 +80,7 @@ async function fetchAndCachePrice(setNumber: string, condition: string, guideTyp
   return 'updated';
 }
 
-/**
- * Ein Lauf als Auftrag 'preise' (geplant, src/auftraege/zeitplan.ts). Hält ein
- * anderer Prozess die Sperre, wird er eine Minute später neu versucht.
- */
+/** Hält ein anderer Prozess die Sperre, wird der Auftrag eine Minute später neu versucht. */
 async function runPriceRefresh(k?: AuftragsKontext) {
   const ck = await getGlobalSetting('bricklink_consumer_key', '');
   if (!ck) { log('BrickLink credentials not configured, skipping'); await merkeStand({}); return; }
@@ -108,10 +92,8 @@ async function runPriceRefresh(k?: AuftragsKontext) {
   const fortschritt = { current:0, total:0, set:null as string | null };
   monitor.update('priceJob', { status:'running', progress:0, total:0, sub:'Starte…', lastRun:new Date().toISOString() });
   try {
-    // Weil dieser Lauf bis hierher nur `sets` kannte. Ein Merkposten ist kein
-    // Bestand, hatte also nie einen Preis im Cache — und /price-history LIEST
-    // den Cache nur, es holt nichts. Das Merkposten-Detail zeigte deshalb „—",
-    // und der Preisverlauf blieb leer, weil nie jemand einen Punkt schrieb.
+    // Auch Merkposten: /price-history liest den Cache nur, und ohne diesen Lauf
+    // bliebe ihr Preisverlauf leer.
     // Ausführlich: docs/begruendungen/jobs/priceJob.ts.md#runpricerefresh-eigene
     const eigene = await bestandsPlaetze();
     const gewuenschte = await merklistenPlaetze().catch(meldeUndLiefere('preis-job:gewuenschte', []));
@@ -126,20 +108,15 @@ async function runPriceRefresh(k?: AuftragsKontext) {
     const byUser: any = {};
     for (const row of allSets) (byUser[row.user_id] = byUser[row.user_id] || []).push(row.set_number);
     for (const [userId, setNumbers] of Object.entries(byUser)) {
-      // Number(): Object.entries() gibt Schluessel als ZEICHENKETTEN zurueck,
-      // auch wenn sie aus row.user_id (einer Zahl) stammen. Postgres wuerde
-      // '7' fuer die integer-Spalte zwar umwandeln — auf genau diese
-      // Umwandlung wollen wir uns hier nicht verlassen.
+      // Number(): Object.entries() liefert Schlüssel als Zeichenketten.
       const currency  = await getSetting(Number(userId), 'currency', 'EUR');
       // 'sold' = tatsächlich erzielte Preise der letzten sechs Monate.
       const guideType = 'sold';
       const ttlHours  = (await getGlobalSetting('price_cache_ttl', '24')) || '24';
       const valid = (setNumbers as string[]).filter(sn => /^[a-zA-Z0-9]+-\d+$/.test(sn));
 
-      // Zustände je Set vorab bestimmen — drei Abfragen für den ganzen Nutzer,
-      // nicht drei je Set. Gemischte Sets brauchen beide Preise, reine nur
-      // einen; jeder überflüssige Abruf ginge auf das BrickLink-Tageskontingent.
-      // Ausführlich: docs/begruendungen/jobs/priceJob.ts.md#runpricerefresh-zustaende
+      // Drei Abfragen je Nutzer statt je Set; jeder überflüssige Abruf ginge auf
+      // das BrickLink-Tageskontingent.
       const zustaende = await zustaendeJeSet(Number(userId), valid);
 
       const tasks = valid.map(sn => async () => {
@@ -167,16 +144,13 @@ async function runPriceRefresh(k?: AuftragsKontext) {
     await merkeStand({ lastRun, lastDuration: dur, lastUpdated: updated, lastErrors: errors });
     monitor.update('priceJob', { status:'done', progress:fortschritt.total, total:fortschritt.total, sub:`${updated} aktualisiert, ${errors} Fehler — ${(dur/1000).toFixed(1)}s`, lastRun });
 
-    // Daily snapshot: copy all price_cache entries to price_history (once per day)
     log('Writing daily price_history snapshot from price_cache...');
     try {
       log(`Daily snapshot: ${await schreibeTagesstand()} price history entries inserted`);
     } catch(e) { log(`Daily snapshot error: ${fehlertext(e)}`); }
 
-    // Preisalarme
-    // Hier und nicht in fetchAndCachePrice(): Dort wird JE SET UND ZUSTAND
-    // geholt, oft auch ohne dass sich etwas geaendert hat (Cache-Treffer).
-    // Eine Pruefung dort liefe pro Lauf tausendfach und meldete dieselbe …
+    // Preisalarme hier und nicht je Abruf: Dort liefe die Prüfung tausendfach und
+    // meldete dasselbe mehrmals.
     // Ausführlich: docs/begruendungen/jobs/priceJob.ts.md#runpricerefresh-2
     try {
       const wartende = await setsMitAlarm().catch(meldeUndLiefere('preis-job:wartende', []));
@@ -185,22 +159,17 @@ async function runPriceRefresh(k?: AuftragsKontext) {
       if (wartende?.length) log(`Preisalarm: ${wartende.length} Sets geprueft, ${gemeldet} gemeldet`);
     } catch (e) { log(`Preisalarm error: ${fehlertext(e)}`); }
 
-    // Der Portfolio-Schnappschuss je Konto ist entfallen.
-    // Ausführlich: docs/begruendungen/jobs/priceJob.ts.md#abschnitt
-
   } catch (e) { log(`Fatal: ${fehlertext(e)}`); await merkeStand({}); throw e; }
   finally {
     await releaseLock();   // MUSS hier stehen: sonst blockiert ein abgestürzter
-                           // Lauf alle folgenden bis zum Neustart
   }
 }
 
-/**
- * Welche Preis-Zustände braucht dieser Nutzer für diese Sets?
+/** Gemischte Sets brauchen beide Preise, reine nur einen — eine Fassung für
+ * den Nachtlauf und das Erfassen.
  * Ausführlich: docs/begruendungen/jobs/priceJob.ts.md#zustaendejeset
- * @param hintCondition Zustand einer Erfassung, die es noch nicht GIBT (siehe
- * @returns Map mit einem Eintrag je übergebenem Set, nie leer je Eintrag
- */
+ * @param hintCondition Zustand einer Erfassung, die es noch nicht GIBT
+ * @returns Map mit einem Eintrag je übergebenem Set, nie leer je Eintrag */
 async function zustaendeJeSet(userId: number, setNumbers: string[],
                               hintCondition: string | null = null): Promise<Map<string, string[]>> {
   const ergebnis = new Map<string, string[]>();
@@ -231,11 +200,10 @@ async function zustaendeJeSet(userId: number, setNumbers: string[],
   return ergebnis;
 }
 
-/**
- * Derselbe Beschluss für ein EINZELNES Set — der Weg beim Erfassen.
+/** Beim Erfassen gibt es die Erfassung noch nicht; ohne den Hinweis fiele die
+ * Regel auf 'N' zurück.
  * Ausführlich: docs/begruendungen/jobs/priceJob.ts.md#conditionsneededfor
- * @returns {Promise<string[]>} z. B. ['N'], ['U'] oder ['N','U']
- */
+ * @returns z. B. ['N'], ['U'] oder ['N','U'] */
 async function conditionsNeededFor(setNumber: string, userId: number,
                                    hintCondition: string | null = null): Promise<string[]> {
   return (await zustaendeJeSet(userId, [setNumber], hintCondition)).get(setNumber) ?? ['N'];
@@ -247,10 +215,8 @@ async function refreshPriceForSet(setNumber: string, userId: number, hintConditi
   if (!ck) return;
   try {
     const currency  = await getSetting(userId, 'currency', 'EUR');
-    // 'sold' = tatsächlich erzielte Preise der letzten sechs Monate.
     const guideType = 'sold';
-    // Alle Zustände holen, die das Set tatsächlich führt — sonst fehlt bei
-    // gemischten Sets eine Hälfte der Bewertung.
+    // Alle Zustände, die das Set führt — sonst fehlt bei gemischten Sets eine Hälfte.
     const conditions = await conditionsNeededFor(setNumber, userId, hintCondition);
     log(`Immediate price fetch: ${setNumber} (${conditions.join('+')})`);
     for (const c of conditions) {
@@ -258,13 +224,12 @@ async function refreshPriceForSet(setNumber: string, userId: number, hintConditi
     }
     log(`Immediate price done: ${setNumber}`);
   } catch (e) {
-    // Suppress transient connection errors — they resolve on retry
+    // Verbindungsfehler lösen sich beim nächsten Versuch.
     const isConnErr = fehlertext(e).includes('timeout') || fehlertext(e).includes('terminated') || fehlertext(e).includes('connect');
     if (!isConnErr) log(`Immediate price failed for ${setNumber}: ${fehlertext(e).substring(0, 80)}`);
   }
 }
 
-/** Stand und Protokoll für die Verwaltung ablegen; fehlende Felder behalten ihren Wert. */
 async function merkeStand(neu: Record<string, unknown>): Promise<void> {
   const alt = await liesZustand(PREIS_STAND).then(r => (r ? JSON.parse(r) : {}), () => ({}));
   await setzeZustand(PREIS_STAND, JSON.stringify({ ...alt, ...neu, log: _log.slice(0, 15) }))

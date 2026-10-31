@@ -2,17 +2,12 @@ import { blJoin, blNummerSql } from '../../../db/blZuordnungSql';
 import { mengeAus, mengeJoin, teilmengeAus, teilmengeJoin } from '../../../db/bestandsmenge';
 import * as db from '../../../db/database';
 
-/** Die Figurenlisten im Blickfeld: alle Figuren je Quelle gruppiert, und die manuell erfassten. */
-
-/**
- * Volltextsuche über Figurennummer und Name.
- * Ausführlich: docs/begruendungen/src/figuren/abfragen.ts.md#figurensuche
- */
+// Ausführlich: docs/begruendungen/src/figuren/abfragen.ts.md#figurensuche
 function figurenSuche(nummer: string, name: string, pi: number) {
   return `(${nummer} ILIKE $${pi} OR ${name} ILIKE $${pi})`;
 }
 
-/** Je Figur und Quelle eine Zeile mit der Gesamtmenge; gezählt werden die Gruppen, sonst zählte eine Figur aus fünf Sets fünfmal. */
+/** Gezählt werden die Gruppen, sonst zählte eine Figur aus fünf Sets fünfmal. */
 export async function figurenGruppiert(uids: number[], f: { search?: string | null; source?: string | null; setNumber: string | null;
   seite: { groesse: number; versatz: number } | null }) {
   const { search, source } = f;
@@ -25,21 +20,18 @@ export async function figurenGruppiert(uids: number[], f: { search?: string | nu
   if (source === 'set')    where += " AND m.source = 'set'";
   if (source === 'manual') where += " AND m.source = 'manual'";
   if (search) {
-    // Der Figurenname steht seit Migration 0034 im Katalog; der Alias mc
-    // haengt an jeder Abfrage, die diese Bedingung benutzt.
+    // Der Figurenname steht im Katalog; der Alias mc hängt an jeder Abfrage, die
+    // diese Bedingung benutzt.
     where += ` AND ${figurenSuche('m.fig_number', 'mc.fig_name', pi)}`;
     params.push(`%${search}%`); pi++;
   }
-  // Je Figur und Quelle eine Zeile mit der Gesamtmenge (wie Teile); gezählt
-  // werden die Gruppen, sonst zählte eine Figur aus fünf Sets fünfmal.
   const figParams = [...params];
   let figLimit = '';
   if (f.seite) {
     figParams.push(f.seite.groesse, f.seite.versatz);
     figLimit = ` LIMIT $${figParams.length - 1} OFFSET $${figParams.length}`;
   }
-  // Die Zählung braucht keinen Join auf sets; kein Text im SQL, das
-  // test/gallery-paging.test.js kurz halten will.
+  // Die Zählung braucht keinen Join auf sets.
   const figCount = f.seite
     ? await db.get(`SELECT COUNT(*)::int AS c FROM (
          SELECT 1 FROM minifigs m
@@ -138,7 +130,6 @@ export async function figurenGruppiert(uids: number[], f: { search?: string | nu
 
 export async function manuelleFigurenListe(uids: number[], search: string | null | undefined, seite: { groesse: number; versatz: number } | null) {
   const params: any[] = [uids];
-  // Der Suchtext der Filterleiste wirkt auch hier (wie getManualParts);
   // Platzhalter vor LIMIT/OFFSET.
   let suche = '';
   if (search) {
@@ -151,9 +142,7 @@ export async function manuelleFigurenListe(uids: number[], search: string | null
     limit = ` LIMIT $${params.length - 1} OFFSET $${params.length}`;
   }
   const figs = await db.all(
-    // Spalten ausgeschrieben, kein m.*
-    // Name und Bild kommen seit Migration 0034 aus minifigs_catalog —
-    // sie haengen an der Figur, nicht am Konto, das sie besitzt.
+    // Name und Bild aus minifigs_catalog: Sie hängen an der Figur, nicht am Konto.
     // Ausführlich: docs/begruendungen/src/figuren/abfragen.ts.md#getmanualminifigs
     `SELECT m.id, m.user_id, m.set_number, m.fig_number,
             -- Die BrickLink-Nummer aus der Zuordnung (Migration 0037); hier
@@ -192,7 +181,6 @@ export async function manuelleFigurenListe(uids: number[], search: string | null
   return figs;
 }
 
-/** Je Figur: Erfassungen und davon gebrauchte — die Zustandsregel liest sie. */
 export function zustandszahlenManuellerFiguren(uids: number[]) {
   return db.all(`SELECT LOWER(TRIM(a.fig_number)) AS fkey,
             COUNT(*)::int AS acq_count,
@@ -202,7 +190,6 @@ export function zustandszahlenManuellerFiguren(uids: number[]) {
      GROUP BY LOWER(TRIM(a.fig_number))`, [uids]);
 }
 
-/** Sorten, Gesamtmenge und Aufteilung nach Quelle im Blickfeld. */
 export function figurenKennzahlen(uids: number[]) {
   return db.get(`
     SELECT COUNT(*)::int AS types,

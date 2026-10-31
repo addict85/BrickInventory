@@ -1,7 +1,3 @@
-/**
- * Papierkorb: Wer ein Set, ein manuelles Teil oder eine manuelle Figur
- * löscht, kann es 30 Tage lang zurückholen.
- */
 import type { DbSchnittstelle } from '../../db/database';
 import * as db from '../../db/database';
 import * as repo from './repository/papierkorb';
@@ -10,7 +6,6 @@ import type { PapierArt } from './repository/papierkorb';
 export type Art = PapierArt;
 export const AUFBEWAHRUNG_TAGE = 30;
 
-/** Die Menge eines Eintrags ist die Summe seiner gesicherten Erfassungen. */
 const ERFASSUNGEN: Record<Art, string> = {
   set: 'set_acquisitions', teil: 'part_acquisitions', figur: 'minifig_acquisitions',
 };
@@ -19,12 +14,9 @@ function parameter(art: Art, userId: number, nummer: string, farbeId: number | n
   return art === 'teil' ? [userId, nummer, farbeId] : [userId, nummer];
 }
 
-/**
- * Den Schnappschuss ablegen. Läuft in der Transaktion des Löschens, VOR den
- * DELETEs — scheitert das Ablegen, wird auch nicht gelöscht.
- *
- * @returns die id des Eintrags, oder null, wenn es keine Stammzeile gab
- */
+/** In der Transaktion des Löschens, VOR den DELETEs: Scheitert das Ablegen,
+ * wird auch nicht gelöscht.
+ * @returns die id des Eintrags, oder null, wenn es keine Stammzeile gab */
 export async function legeInPapierkorb(
   tx: DbSchnittstelle, art: Art, userId: number, nummer: string, farbeId: number | null = null,
 ): Promise<number | null> {
@@ -42,7 +34,6 @@ export interface PapierkorbEintrag {
   bezeichnung: string | null; anzahl: number; geloescht_am: string; endgueltig_am: string;
 }
 
-/** Die Einträge der Konten, die der Aufrufer schreiben darf — neueste zuerst. */
 export async function listePapierkorb(uids: number[]): Promise<PapierkorbEintrag[]> {
   const rows = await repo.eintraege(uids, AUFBEWAHRUNG_TAGE);
   return rows.map((r: PapierkorbEintrag & { zeilen?: Record<string, { quantity?: unknown }[]> }) => {
@@ -56,12 +47,8 @@ export type Wiederherstellung =
   | { ok: true; art: Art; nummer: string; user_id: number }
   | { ok: false; code: 'nicht_gefunden' | 'papierkorb_schon_vorhanden' };
 
-/**
- * Einen Eintrag zurückspielen und aus dem Papierkorb nehmen.
- *
- * Gibt es das Element inzwischen wieder (neu angelegt), greift ein
- * eindeutiger Index — dann wird nichts verändert und der Eintrag bleibt.
- */
+/** Gibt es das Element inzwischen wieder, greift ein eindeutiger Index — dann
+ * wird nichts verändert und der Eintrag bleibt. */
 export async function stelleWiederHer(uids: number[], id: number): Promise<Wiederherstellung> {
   try {
     return await db.transaction(async (tx): Promise<Wiederherstellung> => {
@@ -79,17 +66,14 @@ export async function stelleWiederHer(uids: number[], id: number): Promise<Wiede
   }
 }
 
-/** Einen Eintrag endgültig entfernen. @returns ob es ihn gab */
 export async function loescheEndgueltig(uids: number[], id: number): Promise<boolean> {
   return await repo.entferneEintragDesKontos(id, uids) > 0;
 }
 
-/** Den Papierkorb der Konten leeren. @returns Zahl der entfernten Einträge */
 export async function leerePapierkorb(uids: number[]): Promise<number> {
   return repo.entferneAlle(uids);
 }
 
-/** Einträge nach Ablauf der Frist entfernen (stündlich, Auftrag 'aufraeumen'). */
 export async function raeumePapierkorbAuf(): Promise<number> {
   return repo.entferneAeltere(AUFBEWAHRUNG_TAGE);
 }

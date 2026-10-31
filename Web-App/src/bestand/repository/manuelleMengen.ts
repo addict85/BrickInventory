@@ -1,10 +1,7 @@
 import * as db from '../../../db/database';
 import type { DbSchnittstelle } from '../../../db/database';
 
-/**
- * Die Erfassungen manueller Teile und Figuren als Menge: Die Stückzahl eines
- * manuellen Eintrags ist die Summe seiner Erfassungen (Migration 0038).
- */
+/** Die Stückzahl eines manuellen Eintrags ist die Summe seiner Erfassungen. */
 export type ManuelleArt = 'part' | 'fig';
 const ERF = { part: 'part_acquisitions', fig: 'minifig_acquisitions' } as const;
 const SCHLUESSEL = { part: 'part_number=$2 AND color_id=$3', fig: 'fig_number=$2' } as const;

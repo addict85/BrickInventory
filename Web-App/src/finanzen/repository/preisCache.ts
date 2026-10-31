@@ -1,19 +1,16 @@
 import * as db from '../../../db/database';
 import type { DbSchnittstelle } from '../../../db/database';
 
-/** Der Preiscache von Sets, Teilen und Figuren samt Verlauf, und die Farbzuordnung für BrickLink. */
-
 export const PRICE_CACHE_COLS = 'set_number, condition, min_price, avg_price, max_price, qty_avg_price, fetched_at';
 
-/** Eine Zeile aus price_cache; numeric kommt aus dem Treiber als Text. */
+/** numeric kommt aus dem Treiber als Text. */
 export interface SetPreiszeile {
   set_number: string; condition: string; min_price: string | null; avg_price: string | null;
   max_price: string | null; qty_avg_price: string | null; fetched_at: Date | null;
 }
-/** Eine Zeile aus part_/minifig_price_cache. */
 export interface Preiszeile { avg_price: string | null; qty_avg_price: string | null; condition: string }
 
-/** Erfassungszähler eines Sets im Blickfeld; `dbh` erlaubt das Lesen in einer offenen Transaktion. */
+/** `dbh` erlaubt das Lesen in einer offenen Transaktion. */
 export function setZustandsZaehler(uids: number[], setNumber: string, dbh: Pick<DbSchnittstelle, 'get'> = db) {
   return dbh.get<{ acq_count: string; used_count: string }>(
     `SELECT COUNT(a.id)                                 AS acq_count,
@@ -23,7 +20,6 @@ export function setZustandsZaehler(uids: number[], setNumber: string, dbh: Pick<
       WHERE s.user_id = ANY($1) AND s.set_number=$2`, [uids, setNumber]);
 }
 
-/** Die Preiszeile eines Sets, sofern sie jünger als `ttlStunden` ist. */
 export function setPreisFrisch(setNumber: string, condition: string, currency: string, ttlStunden: number) {
   return db.get<SetPreiszeile>(
     `SELECT ${PRICE_CACHE_COLS} FROM price_cache
@@ -31,7 +27,6 @@ export function setPreisFrisch(setNumber: string, condition: string, currency: s
         AND fetched_at > NOW() - make_interval(hours => $4)`, [setNumber, condition, currency, ttlStunden]);
 }
 
-/** Die frischen Preiszeilen vieler Sets in einer Abfrage. */
 export function setPreiseFrisch(setNumbers: string[], currency: string, ttlStunden: number) {
   return db.all<SetPreiszeile>(
     `SELECT ${PRICE_CACHE_COLS} FROM price_cache
@@ -41,7 +36,7 @@ export function setPreiseFrisch(setNumbers: string[], currency: string, ttlStund
 
 export interface SetPreis { min: number; avg: number; max: number; qavg: number; qty: number }
 
-/** Eine BrickLink-Antwort in den Cache schreiben — auch eine ohne Preis. */
+/** Auch eine Antwort ohne Preis: Sie hält den nächsten Abruf zurück. */
 export function merkeSetPreis(setNumber: string, condition: string, currency: string, p: SetPreis) {
   return db.run(`INSERT INTO price_cache (set_number,condition,currency_code,min_price,avg_price,max_price,qty_avg_price,total_quantity,fetched_at)
     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NOW()) ON CONFLICT (set_number,condition,currency_code) DO UPDATE SET min_price=$4,avg_price=$5,max_price=$6,qty_avg_price=$7,total_quantity=$8,fetched_at=NOW()`,
@@ -54,12 +49,10 @@ export function merkeSetVerlauf(setNumber: string, condition: string, currency: 
     [setNumber, condition, currency, p.avg, p.qavg, p.min, p.max]);
 }
 
-/** Rebrickable-Farbe → BrickLink-Farbe, soweit bekannt. */
 export function blFarben() {
   return db.all<{ id: number; bl_color_id: number }>('SELECT id, bl_color_id FROM rb_colors WHERE bl_color_id IS NOT NULL');
 }
 
-/** Frische Teilepreise zu (Nummer, Farbe)-Paaren in einer Abfrage. */
 export function teilepreiseFrisch(nummern: string[], farben: number[], currency: string, ttlStunden: number) {
   return db.all<Preiszeile & { part_number: string; color_id: number }>(
     `SELECT c.part_number, c.color_id, c.condition, c.avg_price, c.qty_avg_price
@@ -70,7 +63,7 @@ export function teilepreiseFrisch(nummern: string[], farben: number[], currency:
     [nummern, farben, currency, ttlStunden]);
 }
 
-/** Frische, echte (nicht geschätzte) Figurenpreise in einer Abfrage. */
+/** Nur echte, keine geschätzten. */
 export function figurenpreiseFrisch(figuren: string[], currency: string, ttlStunden: number) {
   return db.all<Preiszeile & { fig_number: string }>(
     `SELECT fig_number, condition, avg_price, qty_avg_price FROM minifig_price_cache

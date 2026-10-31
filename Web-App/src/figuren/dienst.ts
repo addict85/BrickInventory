@@ -1,7 +1,3 @@
-/**
- * Fachdienst Figuren: die Teile einer Figur aus der Rebrickable-CSV, mit
- * BrickLink-Nummern und Bildern aus dem gemeinsamen Katalog.
- */
 import { logAndContinue, meldeUndLiefere } from '../infra/httpError';
 import { inventarNachKandidaten } from '../katalog/rbInventar';
 import { nacharbeit } from '../auftraege/nacharbeit';
@@ -17,11 +13,8 @@ function katalog(figNumber: string): Promise<KatalogZeile[]> {
   return repo.katalogTeileDerFigur(figNumber);
 }
 
-/**
- * Teile einer Figur. Fehlen BrickLink-Nummern, wird vor der Antwort
- * angereichert (die ganze Setliste der Figur auf einmal, sonst die Figur);
- * die Bilder lädt danach ein Nachlauf.
- */
+/** Fehlen BrickLink-Nummern, wird vor der Antwort angereichert; die Bilder
+ * lädt danach ein Nachlauf, damit die Antwort nicht auf sie wartet. */
 export async function teileDerFigur(figNumber: string) {
   // Figuren haben keinen Versionsanhang, sondern ein 'fig-' davor.
   const invId = await inventarNachKandidaten([figNumber, figNumber.replace('fig-', '')])

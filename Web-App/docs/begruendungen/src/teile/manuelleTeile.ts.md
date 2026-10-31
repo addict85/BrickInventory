@@ -1,7 +1,9 @@
-# Begründungen zu `routes/parts.ts`
+# Begründungen zu `src/teile/manuelleTeile.ts`
 
-Die ausführlichen Kommentare aus `routes/parts.ts`, wörtlich. Im Code steht je
-Stelle der erste Absatz und ein Verweis hierher. Neue Geschichte gehört in die
+Die ausführlichen Kommentare, wörtlich aus `routes/parts.ts` übernommen; der Code
+steht heute in `src/teile/manuelleTeile.ts` (der CSV-Export in
+`src/bestand/repository/bestandExport.ts`). Im Code steht je Stelle der erste Absatz und
+ein Verweis hierher. Neue Geschichte gehört in die
 Commit-Nachricht (siehe CLAUDE.md).
 
 <a id="abschnitt"></a>

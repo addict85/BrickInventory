@@ -6,11 +6,8 @@ import * as zf from './zweiterFaktor';
 
 export type BestaetigungsAbsage = { status: number; code: FehlerCode; vars?: Record<string, string | number> };
 
-/**
- * Das aktuelle Passwort eines angemeldeten Kontos prüfen, mit Bremse je Konto.
- * Wer nur eine offene Sitzung oder ein App-Token erbeutet hat, kommt damit
- * nicht weiter. @returns null, wenn es stimmt, sonst die Absage
- */
+/** Mit Bremse je Konto: Wer eine Sitzung oder ein App-Token erbeutet hat,
+ * soll das Passwort nicht raten können. @returns null, wenn es stimmt */
 export async function pruefeBestaetigung(uid: number, passwort: unknown,
                                          zusatz: { zweiterFaktor?: unknown } = {}): Promise<BestaetigungsAbsage | null> {
   const gesperrt = await bestaetigungGesperrt(uid);
@@ -31,7 +28,7 @@ export async function pruefeBestaetigung(uid: number, passwort: unknown,
   return null;
 }
 
-/** Nur der Code des zweiten Faktors — mit derselben Bremse wie das Passwort. */
+/** Mit derselben Bremse wie das Passwort. */
 export async function pruefeCodeBestaetigung(uid: number, code: unknown): Promise<BestaetigungsAbsage | null> {
   const gesperrt = await bestaetigungGesperrt(uid);
   if (gesperrt) return { status: 429, ...gesperrt };

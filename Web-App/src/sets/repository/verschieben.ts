@@ -1,17 +1,12 @@
 import type { DbSchnittstelle } from '../../../db/database';
 
-/** Datenzugriff zum Verschieben eines Sets oder Kaufpreises zwischen Konten. */
-
 export type Inhalt = 'parts' | 'minifigs' | 'instructions';
 
 export async function hatInhalt(tx: DbSchnittstelle, tabelle: Inhalt, uid: number, sn: string): Promise<boolean> {
   return !!await tx.get(`SELECT 1 AS ok FROM ${tabelle} WHERE user_id=$1 AND set_number=$2 LIMIT 1`, [uid, sn]);
 }
 
-/**
- * Nur Schlüssel und Herkunft: Beschreibung, BrickLink-Nummer und Stückzahl
- * stehen im Katalog und hängen an keinem Konto.
- */
+/** Nur Schlüssel und Herkunft: Beschreibung und Stückzahl stehen im Katalog. */
 export async function kopiereInhalt(tx: DbSchnittstelle, tabelle: Inhalt, sn: string, von: number, nach: number): Promise<number> {
   const sql = {
     parts: `INSERT INTO parts (user_id, set_number, part_number, color_id, source)
@@ -54,7 +49,7 @@ export async function loescheSetErfassung(tx: DbSchnittstelle, id: number): Prom
   await tx.run('DELETE FROM set_acquisitions WHERE id=$1', [id]);
 }
 
-/** Das Set samt Inhalt beim Absender; manuelle Teile und Figuren bleiben. */
+/** Manuelle Teile und Figuren bleiben. */
 export async function entferneSet(tx: DbSchnittstelle, uid: number, sn: string): Promise<void> {
   for (const t of ['parts', 'minifigs'])
     await tx.run(`DELETE FROM ${t} WHERE user_id=$1 AND set_number=$2 AND COALESCE(source,'set') <> 'manual'`, [uid, sn]);
@@ -62,8 +57,6 @@ export async function entferneSet(tx: DbSchnittstelle, uid: number, sn: string):
   await tx.run('DELETE FROM set_acquisitions WHERE user_id=$1 AND set_number=$2', [uid, sn]);
   await tx.run('DELETE FROM sets WHERE user_id=$1 AND set_number=$2', [uid, sn]);
 }
-
-// ── Manuelle Teile und Figuren ──────────────────────────────────────────────
 
 export type Art = 'part' | 'fig';
 const TAB = { part: 'parts', fig: 'minifigs' } as const;

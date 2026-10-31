@@ -1,15 +1,11 @@
 import * as db from '../../../db/database';
 import type { DbSchnittstelle } from '../../../db/database';
 
-/**
- * Zähler der Anmeldebremse (rate_limit_attempts). Ein Zähler gilt ein Fenster
- * lang ab dem ersten Versuch; `laufend` zählt Prüfungen, die gerade laufen,
- * damit gleichzeitige Versuche die Grenze nicht gemeinsam überspringen.
- */
+/** `laufend` zählt Prüfungen, die gerade laufen, damit gleichzeitige Versuche
+ * die Grenze nicht gemeinsam überspringen. */
 
 export type ZaehlerZeile = { count: string; wait_min: string; seit: string };
 
-/** Nur ein Zähler, dessen Fenster noch offen ist. */
 export function lies(key: string, fensterMin: number) {
   return db.get<ZaehlerZeile>(
     `SELECT count, EXTRACT(EPOCH FROM (first_at + make_interval(mins => $2) - NOW()))/60 AS wait_min,
@@ -18,7 +14,6 @@ export function lies(key: string, fensterMin: number) {
       WHERE key = $1 AND first_at > NOW() - make_interval(mins => $2)`, [key, fensterMin]);
 }
 
-/** Ein Fehlversuch: zählt hoch, beginnt nach Ablauf des Fensters neu und gibt den Laufplatz frei. */
 export async function erhoehe(key: string, fensterMin: number): Promise<void> {
   await db.run(
     `INSERT INTO rate_limit_attempts (key, count, first_at, last_at) VALUES ($1, 1, NOW(), NOW())
@@ -35,7 +30,6 @@ export type Sperrstand = {
   count: string; laufend: string; abgelaufen: boolean; laufend_alt: boolean; wait_min: string; seit: string;
 };
 
-/** Legt den Zähler bei Bedarf an und sperrt ihn bis zum Ende der Transaktion. */
 export async function sperre(tx: DbSchnittstelle, key: string, fensterMin: number, laufendVerfallS: number): Promise<Sperrstand> {
   await tx.run(`INSERT INTO rate_limit_attempts (key, count, first_at, last_at, laufend)
                 VALUES ($1, 0, NOW(), NULL, 0) ON CONFLICT (key) DO NOTHING`, [key]);
@@ -48,7 +42,6 @@ export async function sperre(tx: DbSchnittstelle, key: string, fensterMin: numbe
        FROM rate_limit_attempts WHERE key = $1 FOR UPDATE`, [key, fensterMin, laufendVerfallS]))!;
 }
 
-/** @param neu das Fenster war abgelaufen und beginnt jetzt neu */
 export async function belegeLaufplatz(tx: DbSchnittstelle, key: string, laufend: number, neu: boolean): Promise<void> {
   await tx.run(
     `UPDATE rate_limit_attempts
@@ -66,7 +59,6 @@ export async function loescheZaehler(key: string): Promise<void> {
   await db.run('DELETE FROM rate_limit_attempts WHERE key = $1', [key]);
 }
 
-/** Die Kennung zählt je Konto: Name und E-Mail desselben Kontos teilen sich einen Zähler. */
 export function kontoZumNamen(name: string) {
   return db.get<{ kennung: string; id: number | null }>(`
     SELECT lower($1::text) AS kennung,
@@ -74,7 +66,6 @@ export function kontoZumNamen(name: string) {
              ORDER BY id LIMIT 1) AS id`, [name]);
 }
 
-/** Bekannte Paare (Adresse, Konto) gelten länger als ein Tag; alles andere verfällt nach einem Tag. */
 export async function raeumeAuf(bekanntMin: number): Promise<number> {
   return (await db.run(`
     DELETE FROM rate_limit_attempts
@@ -83,7 +74,6 @@ export async function raeumeAuf(bekanntMin: number): Promise<number> {
     [bekanntMin])).changes || 0;
 }
 
-/** Zählt eine Anfrage und liefert den neuen Stand in einem Schritt. */
 export async function zaehleHoch(key: string, fensterMin: number): Promise<{ count: string; wait_min: string }> {
   return (await db.get<{ count: string; wait_min: string }>(
     `INSERT INTO rate_limit_attempts (key, count, first_at, last_at) VALUES ($1, 1, NOW(), NOW())

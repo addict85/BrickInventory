@@ -3,13 +3,9 @@ import { pflegeTabelle } from '../../../db/tabellePflegen';
 import { LOCKS } from '../../infra/lockNamespaces';
 import { logAndContinue } from '../../infra/httpError';
 
-/**
- * Der Tausch einer Katalogtabelle über eine Schattentabelle — auf EINER
- * Verbindung, weil Sitzungssperre, Schatten und Transaktion an ihr hängen.
- * Tabellen- und Spaltennamen kommen nur aus dem Quelltext (src/katalog/csvImport.ts).
- */
+/** Auf EINER Verbindung, weil Sitzungssperre, Schatten und Transaktion an ihr
+ * hängen. Tabellen- und Spaltennamen kommen nur aus dem Quelltext. */
 
-/** Tabellenname → stabile 32-Bit-Zahl für den zweiten Sperrschlüssel. */
 function sperrschluessel(tabelle: string): number {
   let h = 0;
   for (let i = 0; i < tabelle.length; i++) h = (Math.imul(h, 31) + tabelle.charCodeAt(i)) | 0;
@@ -24,20 +20,19 @@ export async function gibTabelleFrei(c: PoolClient, tabelle: string): Promise<vo
   await c.query('SELECT pg_advisory_unlock($1, $2)', [LOCKS.CSV_IMPORT, sperrschluessel(tabelle)]);
 }
 
-/** Leerer Schatten mit Schlüsseln und Indizes — ON CONFLICT in den Blöcken braucht sie. */
+/** Mit Schlüsseln und Indizes: ON CONFLICT in den Blöcken braucht sie. */
 export async function legeSchattenAn(c: PoolClient, tabelle: string, schatten: string): Promise<void> {
   await c.query(`DROP TABLE IF EXISTS ${schatten}`);
   await c.query(`CREATE UNLOGGED TABLE ${schatten} (LIKE ${tabelle} INCLUDING ALL)`);
 }
 
-/** Ein Block Zeilen in den Schatten; ein abgewiesener Block bricht den Import ab. */
+/** Ein abgewiesener Block bricht den Import ab. */
 export async function fuegeBlockEin(c: PoolClient, schatten: string, spalten: string[], block: unknown[][], beiKonflikt: string): Promise<void> {
   const n = spalten.length;
   const platz = block.map((_, j) => '(' + spalten.map((_, k) => `$${j * n + k + 1}`).join(',') + ')').join(',');
   await c.query(`INSERT INTO ${schatten} (${spalten.join(',')}) VALUES ${platz} ${beiKonflikt}`, block.flat());
 }
 
-/** Den Bestand in einer Transaktion gegen den Schatten tauschen. */
 export async function tausche(c: PoolClient, tabelle: string, schatten: string, spalten: string[]): Promise<void> {
   await c.query('BEGIN');
   try {

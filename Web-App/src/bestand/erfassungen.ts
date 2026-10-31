@@ -1,8 +1,4 @@
-/**
- * Fachdienst Erfassungen: Ändern, Verschieben und Löschen eines Kaufpreises
- * für Sets, manuelle Teile und manuelle Figuren. Eine Regel für drei Arten,
- * damit Webapp und App nicht auseinanderlaufen.
- */
+/** Eine Regel für drei Arten, damit Webapp und App nicht auseinanderlaufen. */
 import * as repo from './repository/kaufErfassungen';
 import type { DbSchnittstelle } from '../../db/database';
 import { writableIds, acquisitionMoveSource, resolveWriteTarget } from '../haushalt/haushalt';
@@ -24,9 +20,8 @@ type Schluessel = Array<string | number>;
 
 interface Art {
   notFound: FehlerCode;
-  /** Marktpreis, wenn der Preis geleert wird — im Zustand dieser Zeile. */
+  /** Im Zustand dieser Zeile, wenn der Preis geleert wird. */
   resolvePrice: (uid: number, keys: Schluessel, cond: string | null) => Promise<number | null>;
-  /** Aufräumen, wenn nach dem Löschen keine Erfassung mehr übrig ist. */
   cleanupWhenEmpty: (tx: DbSchnittstelle, ownerId: number, keys: Schluessel) => Promise<unknown>;
 }
 
@@ -34,8 +29,8 @@ const ARTEN: Record<ErfassungsArt, Art> = {
   set: {
     notFound: 'erfassung_nicht_gefunden',
     resolvePrice: (uid, [sn], cond) => getCurrentMarketPrice(String(sn), uid, cond || null),
-    // Dieselben Zeilen wie beim ausdrücklichen Löschen: Teile und Figuren des
-    // Sets stünden sonst ohne Set in Teileliste und Finanzsummen.
+    // Wie beim ausdrücklichen Löschen: Teile und Figuren des Sets stünden sonst
+    // ohne Set in Teileliste und Finanzsummen.
     cleanupWhenEmpty: (tx, ownerId, [sn]) => deleteSetRows(tx, [ownerId], String(sn)),
   },
   part: {
@@ -54,19 +49,19 @@ const ARTEN: Record<ErfassungsArt, Art> = {
 
 interface Zeile { id: number; user_id: number; condition: string | null; preis: number | null; price_estimated: boolean; currency: string; tag: string }
 
-/** Besitzer einer Erfassung für den Sperrschlüssel; die Rechte prüft danach die Abfrage im Schreib-Blickfeld. */
+/** Nur für den Sperrschlüssel; die Rechte prüft danach die Abfrage im Schreib-Blickfeld. */
 async function besitzerDerZeile(art: ErfassungsArt, id: number, fallback: number): Promise<number> {
   return await repo.kontoDerErfassung(art, id) ?? fallback;
 }
 
-/** Stückzahl der Bestandszeile aus den Erfassungen: Zahl, 0 („leer“) oder null („keine Zeile“). */
+/** 0 heisst „leer", null „keine Zeile". */
 function mengeDesBestands(tx: DbSchnittstelle, art: ErfassungsArt, ownerId: number, keys: Schluessel) {
   return art === 'set'
     ? mengeDesSets(ownerId, String(keys[0]), tx).catch(meldeUndLiefere('erfassungen:mengeDesSets', null))
     : mengeDerPosition(art, ownerId, keys, tx).catch(meldeUndLiefere('erfassungen:mengeDerPosition', null));
 }
 
-/** Sucht die Zeile im Schreib-Blickfeld: Ein Unterkonto darf nicht rückwärts schreiben. */
+/** Schreib-Blickfeld: Ein Unterkonto darf nicht rückwärts schreiben. */
 async function zeileImSchreibfeld(tx: DbSchnittstelle, art: ErfassungsArt, uid: number, id: number, keys: Schluessel): Promise<Zeile> {
   const a = ARTEN[art];
   const z = await repo.erfassungImSchreibfeld(tx, art, id, await writableIds(uid), keys);
@@ -74,17 +69,12 @@ async function zeileImSchreibfeld(tx: DbSchnittstelle, art: ErfassungsArt, uid: 
   return z;
 }
 
-/** Bei Sets kommt das Zustands-Aggregat in die Antwort, sonst bleibt sie, wie sie ist. */
 async function antwort(art: ErfassungsArt, uid: number, keys: Schluessel, payload: Record<string, unknown>) {
   return art === 'set' ? withSetAggregate(uid, String(keys[0]), payload) : payload;
 }
 
 export interface Aenderung { quantity?: unknown; condition?: unknown; date?: unknown; owner_user_id?: unknown; [preis: string]: unknown }
 
-/**
- * Eine Erfassung ändern: Menge, Preis (leer heisst Marktpreis, dann
- * geschätzt), Zustand, Datum — oder den Besitzer im Haushalt.
- */
 export async function erfassungAendern(art: ErfassungsArt, uid: number, id: number, keys: Schluessel, body: Aenderung) {
   const a = ARTEN[art];
   const { quantity, condition, date } = body;
@@ -101,8 +91,8 @@ export async function erfassungAendern(art: ErfassungsArt, uid: number, id: numb
     return { success: true, from_user_id: from, to_user_id: to, ...moved };
   }
 
-  // Der Marktpreis-Rückfall fragt fremde Dienste — vor der Transaktion, sonst
-  // hielte ein Netzaufruf Sperre und Verbindung offen.
+  // Der Marktpreis-Rückfall vor der Transaktion, sonst hielte ein Netzaufruf
+  // Sperre und Verbindung offen.
   let priceVal: number | null = null;
   let preisGeschaetzt = false;
   if (rawPrice !== undefined) {
@@ -130,8 +120,7 @@ export async function erfassungAendern(art: ErfassungsArt, uid: number, id: numb
     const hatZustand = condition !== undefined && condition !== null;
     const zielZustand = hatZustand ? (['N', 'U'].includes(String(condition)) ? String(condition) : 'N') : (acq.condition || 'N');
     const zielGeschaetzt = rawPrice !== undefined ? (preisGeschaetzt && priceVal != null) : !!acq.price_estimated;
-    // Eine Zeile je Tag, Zustand, Preis, Herkunft und Währung — geprüft gegen
-    // die Werte nach dieser Änderung.
+    // Geprüft gegen die Werte NACH dieser Änderung.
     if (neuesDatum || rawPrice !== undefined || hatZustand) {
       const clash = await findSameDayAcquisition(art, ownerId, keys, neuesDatum || acq.tag, id, zielZustand, tx,
         { preis: rawPrice !== undefined ? priceVal : acq.preis, geschaetzt: zielGeschaetzt, waehrung: acq.currency });
@@ -152,7 +141,7 @@ export async function erfassungAendern(art: ErfassungsArt, uid: number, id: numb
   return antwort(art, uid, keys, { success: true });
 }
 
-/** Eine Erfassung löschen; ist danach nichts mehr da, geht die Bestandszeile mit. */
+/** Ist danach nichts mehr da, geht die Bestandszeile mit. */
 export async function erfassungLoeschen(art: ErfassungsArt, uid: number, id: number, keys: Schluessel) {
   const a = ARTEN[art];
   const besitzer = await besitzerDerZeile(art, id, uid);
@@ -167,7 +156,6 @@ export async function erfassungLoeschen(art: ErfassungsArt, uid: number, id: num
   return antwort(art, uid, keys, { success: true, new_quantity: menge ?? 0 });
 }
 
-/** Die Kaufpreise eines Sets im Blickfeld, je Zeile mit Besitzer. */
 export function setErfassungen(blickfeld: number[], setNumber: string) {
   return repo.setErfassungenImBlickfeld(blickfeld, setNumber);
 }

@@ -1,9 +1,6 @@
-/**
- * Kaufpreis-Erfassungen schreiben — für Sets, manuelle Teile und Minifiguren.
- *   Pro Tag, Element, Zustand, Preis und Währung gibt es genau EINE Zeile;
- *   gleiche Käufe eines Tages werden zusammengezählt.
- * Ausführlich: docs/begruendungen/src/bestand/acquisitions.ts.md#abschnitt
- */
+/** Pro Tag, Element, Zustand, Preis und Währung genau EINE Zeile: Gleiche
+ * Käufe eines Tages werden zusammengezählt.
+ * Ausführlich: docs/begruendungen/src/bestand/acquisitions.ts.md#abschnitt */
 import * as db from '../../db/database';
 import type { DbSchnittstelle } from '../../db/database';
 import { erfassungsTagSql } from '../../db/bestandsmenge';
@@ -14,14 +11,14 @@ export type AcquisitionKind = 'set' | 'part' | 'fig';
 
 export interface AcquisitionInput {
   quantity: number;
-  /** Kaufpreis pro Stück; null = nicht erfasst. */
+  /** null = nicht erfasst. */
   price?: number | null;
   condition?: string | null;
-  /** Tag der Erfassung (ISO). Fehlt er, zählt heute. */
+  /** Fehlt er, zählt heute. */
   createdAt?: string | null;
-  /** Der Preis ist ein eingesetzter Marktpreis, kein bezahlter Betrag. */
+  /** Ein eingesetzter Marktpreis, kein bezahlter Betrag. */
   geschaetzt?: boolean;
-  /** Währung des Preises; fehlt sie, setzt die Datenbank die des Kontos. */
+  /** Fehlt sie, setzt die Datenbank die des Kontos. */
   currency?: string | null;
 }
 
@@ -31,16 +28,9 @@ const num = (v: unknown): number | null => {
   return Number.isFinite(n) ? n : null;
 };
 
-/**
- * Erfassung anlegen — oder die des Tages im selben Zustand aufstocken.
- * Ausführlich: docs/begruendungen/src/bestand/acquisitions.ts.md#recordacquisitionforday
- * @param kind      'set' | 'part' | 'fig'
- * @param userId
- * @param keyValues Schlüsselwerte in der Reihenfolge von SHAPES[kind].keys
- * @param input     Menge, Preis, Zustand, Tag
+/** @param keyValues Schlüsselwerte in der Reihenfolge von SHAPES[kind].keys
  * @param dbh       Transaktions-Handle, falls der Aufrufer eines hat
- * @returns { merged } — true, wenn eine bestehende Zeile aufgestockt wurde
- */
+ * @returns { merged } — true, wenn eine bestehende Zeile aufgestockt wurde */
 export async function recordAcquisitionForDay(
   kind: AcquisitionKind,
   userId: number,
@@ -53,23 +43,16 @@ export async function recordAcquisitionForDay(
   const cond  = ['N', 'U'].includes(String(input.condition)) ? String(input.condition) : 'N';
   const geschaetzt = price != null && !!input.geschaetzt;
 
-  // Eine Anweisung statt Lesen-Rechnen-Schreiben: Zwei gleichzeitige
-  // Erfassungen (Web und App) addieren sich so, statt einander zu
-  // überschreiben. Zusammengelegt wird nur bei gleichem Preis, gleicher
-  // Herkunft und Währung — dann geht keine Information verloren.
+  // Eine Anweisung statt Lesen-Rechnen-Schreiben: Gleichzeitige Erfassungen
+  // addieren sich. Zusammengelegt nur bei gleichem Preis, Herkunft und Währung.
   const merged = await repo.fuegeErfassungHinzu(dbh, kind, userId, keyValues,
     { menge: qty, preis: price, zustand: cond, geschaetzt, waehrung: input.currency ?? null, am: input.createdAt || null });
   return { merged };
 }
 
-/**
- * Gibt es für diesen Tag und Zustand schon eine Erfassung — ausser der
- * angegebenen?
- * Ausführlich: docs/begruendungen/src/bestand/acquisitions.ts.md#findsamedayacquisition
- * @param excludeId die Erfassung, die gerade bearbeitet wird
+/** Damit eine Bearbeitung nicht am eindeutigen Tagesindex scheitert.
  * @param condition der Zustand, den die Zeile NACH der Bearbeitung hat
- * @returns die kollidierende id, oder null
- */
+ * @returns die kollidierende id, oder null */
 export async function findSameDayAcquisition(
   kind: AcquisitionKind,
   userId: number,
@@ -85,12 +68,7 @@ export async function findSameDayAcquisition(
     { zustand: cond, preis: num(merkmale.preis), geschaetzt: !!merkmale.geschaetzt, waehrung: merkmale.waehrung ?? null });
 }
 
-/**
- * Summenzeile einer Erfassungsliste: Stückzahl und Gesamtbetrag.
- * Ausführlich: docs/begruendungen/src/bestand/acquisitions.ts.md#acquisitiontotals
- * @param rows Zeilen aus einer der drei Erfassungstabellen
- * @returns {{quantity:number, amount:number|null, priced_rows:number}}
- */
+/** @returns {{quantity:number, amount:number|null, priced_rows:number}} */
 export function acquisitionTotals(rows: any[]): {
   quantity: number; amount: number | null; priced_rows: number;
 } {
@@ -98,9 +76,8 @@ export function acquisitionTotals(rows: any[]): {
   for (const r of rows || []) {
     const menge = Number(r?.quantity) || 0;
     quantity += menge;
-    // Ein Preis kann in der einen Tabelle purchase_price und in der anderen
-    // unit_price heissen — die Rückfallregel steht hier EINMAL statt in jedem
-    // Client.
+    // purchase_price oder unit_price je Tabelle — die Rückfallregel EINMAL statt
+    // in jedem Client.
     const roh = r?.purchase_price ?? r?.unit_price;
     const preis = roh === null || roh === undefined ? null : Number(roh);
     if (preis !== null && Number.isFinite(preis)) {
@@ -110,19 +87,15 @@ export function acquisitionTotals(rows: any[]): {
   }
   return {
     quantity,
-    // Auf zwei Stellen runden: Der Betrag ist eine Anzeigesumme, und
     // Gleitkomma liefert sonst 33.980000000000004.
     amount: priced ? Math.round(amount * 100) / 100 : null,
     priced_rows: priced,
   };
 }
 
-/**
- * Einen fehlenden Kaufpreis durch einen Marktpreis ersetzen — gekennzeichnet
- * als geschätzt. Gibt es am selben Tag schon eine gleiche Zeile, wandert die
- * Menge dorthin, statt am eindeutigen Index zu scheitern.
- * @returns true, wenn etwas geändert wurde
- */
+/** Gibt es am selben Tag schon eine gleiche Zeile, wandert die Menge dorthin,
+ * statt am eindeutigen Index zu scheitern.
+ * @returns true, wenn etwas geändert wurde */
 export async function setzeGeschaetztenPreis(kind: AcquisitionKind, id: number, preis: number): Promise<boolean> {
   return db.transaction(async (tx) => {
     const z = await repo.erfassungSperren(tx, kind, id);

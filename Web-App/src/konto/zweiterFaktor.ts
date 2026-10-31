@@ -1,8 +1,5 @@
-/**
- * Zweiter Faktor: Einmalcodes nach RFC 6238 (TOTP, SHA-1, 6 Stellen, 30 s) —
- * die Form, die jede Authenticator-App versteht. Ohne Fremdpaket, mit
- * node:crypto. Freiwillig je Konto; Tabellen in Migration 0042.
- */
+/** RFC 6238 (TOTP, SHA-1, 6 Stellen, 30 s): die Form, die jede
+ * Authenticator-App versteht. Ohne Fremdpaket, mit node:crypto. */
 import { verschluessele, entschluessele } from '../infra/geheimnis';
 import crypto from 'crypto';
 import * as db from '../../db/database';
@@ -37,7 +34,6 @@ export function ausBase32(s: string): Buffer {
   return Buffer.from(aus);
 }
 
-/** HOTP (RFC 4226) — TOTP ist HOTP mit der Zeit als Zähler. */
 export function hotp(schluessel: Buffer, zaehler: number, stellen = STELLEN): string {
   const z = Buffer.alloc(8);
   z.writeBigUInt64BE(BigInt(zaehler));
@@ -51,7 +47,7 @@ export function zeitschritt(jetztMs = Date.now()): number {
   return Math.floor(jetztMs / 1000 / SCHRITT_S);
 }
 
-/** Der Zeitschritt, zu dem der Code passt — oder null. Vergleich in konstanter Zeit. */
+/** Vergleich in konstanter Zeit. */
 export function passenderSchritt(geheimnis: string, code: string, jetztMs = Date.now()): number | null {
   if (!/^\d{6}$/.test(code)) return null;
   const schluessel = ausBase32(geheimnis);
@@ -69,7 +65,6 @@ export function otpauthAdresse(geheimnis: string, konto: string): string {
     `?secret=${geheimnis}&issuer=${encodeURIComponent(aussteller)}&algorithm=SHA1&digits=${STELLEN}&period=${SCHRITT_S}`;
 }
 
-/** Eingaben wie „ab12c-de34f" oder „AB12CDE34F" auf eine Form bringen. */
 function normiereCode(code: string): string {
   return code.toLowerCase().replace(/[^a-z0-9]/g, '');
 }
@@ -97,13 +92,12 @@ export async function stand(uid: number): Promise<{ aktiv: boolean; codes_uebrig
   return { aktiv: r.aktiv, codes_uebrig: r.uebrig };
 }
 
-/** Neues Geheimnis anlegen (noch nicht aktiv). @returns null, wenn der Faktor schon aktiv ist */
+/** Noch nicht aktiv. @returns null, wenn der Faktor schon aktiv ist */
 export async function beginneEinrichtung(uid: number): Promise<string | null> {
   const geheimnis = base32(crypto.randomBytes(20));
   return await repo.legeGeheimnisAn(uid, verschluessele(geheimnis)) ? geheimnis : null;
 }
 
-/** Einrichtung mit einem Code aus der App bestätigen. @returns die Wiederherstellungscodes, oder null */
 export async function bestaetigeEinrichtung(uid: number, code: string): Promise<string[] | null> {
   return db.transaction(async (tx) => {
     const z = await repo.unbestaetigtesGeheimnisSperren(tx, uid);
@@ -115,10 +109,7 @@ export async function bestaetigeEinrichtung(uid: number, code: string): Promise<
   });
 }
 
-/**
- * Einen Code beim Anmelden prüfen: sechsstelliger Einmalcode oder ein
- * Wiederherstellungscode. Beide gelten genau einmal.
- */
+/** Einmalcode und Wiederherstellungscode gelten genau einmal. */
 export async function pruefeCode(uid: number, code: unknown): Promise<'totp' | 'wiederherstellung' | null> {
   const eingabe = String(code ?? '').trim();
   if (!eingabe) return null;

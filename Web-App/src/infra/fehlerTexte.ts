@@ -1,15 +1,10 @@
-/**
- * Die Fehlermeldungen des Servers — an EINER Stelle, in beiden Sprachen.
- * Ausführlich: docs/begruendungen/src/infra/fehlerTexte.ts.md#sprache
- */
+/** Die Fehlermeldungen an EINER Stelle, in beiden Sprachen: Die Route kennt
+ * die Sprache des Anfragenden, der Dienst nicht.
+ * Ausführlich: docs/begruendungen/src/infra/fehlerTexte.ts.md#sprache */
 
-/** Die unterstützten Sprachen — dieselben zwei wie in beiden Oberflächen. */
 export type Sprache = 'de' | 'en';
 
-/**
- * Der Katalog.
- * Ausführlich: docs/begruendungen/src/infra/fehlerTexte.ts.md#fehler
- */
+// Ausführlich: docs/begruendungen/src/infra/fehlerTexte.ts.md#fehler
 export const FEHLER = {
   // ── Anmeldung und Konto ──────────────────────────────────────────────────
   nicht_angemeldet:            { de: 'Nicht angemeldet', en: 'Not signed in' },
@@ -105,11 +100,8 @@ export const FEHLER = {
   waehrung_ungleich:           {
     de: 'Beide Konten müssen dieselbe Währung verwenden (Hauptkonto: {haupt}, dieses Konto: {unter}).',
     en: 'Both accounts must use the same currency (main account: {haupt}, this account: {unter}).' },
-  // Die 60 steht hier AUSGESCHRIEBEN, weil fehlerWerfen() keine Platzhalter
-  // füllt. Sie ist damit die zweite Stelle neben LAGERORT_MAX_ZEICHEN in
-  // src/bestand/lagerort.ts — test/lagerort.test.js hält beide zusammen, damit aus
-  // „unvermeidbar“ nicht „auseinandergelaufen“ wird (dasselbe Vorgehen wie
-  // bei PASSWORT_MIN_ZEICHEN).
+  // Die 60 steht ausgeschrieben, weil fehlerWerfen() keine Platzhalter füllt;
+  // test/lagerort.test.js hält sie mit LAGERORT_MAX_ZEICHEN zusammen.
   lagerort_zu_lang:            {
     de: 'Der Lagerort ist zu lang (höchstens 60 Zeichen).',
     en: 'Storage location is too long (at most 60 characters).' },
@@ -122,10 +114,8 @@ export const FEHLER = {
   lagerort_unbekannt:          {
     de: 'Diesen Lagerort gibt es nicht (mehr).',
     en: 'That storage location does not exist (any more).' },
-  // Absichtlich eine ABSAGE statt eines stillen Leerens: Wer einen Ort
-  // loescht, in dem noch etwas liegt, wuerde sonst die Zuordnung von Sets
-  // verlieren, die er gar nicht im Blick hatte. Die Oberflaeche nennt die
-  // Anzahl und laesst ihn erst raeumen.
+  // Eine ABSAGE statt stillen Leerens: Sonst verlöre der Löschende Zuordnungen,
+  // die er nicht im Blick hatte.
   lagerort_in_benutzung:       {
     de: 'In diesem Lagerort liegt noch etwas — erst umräumen, dann löschen.',
     en: 'Something is still stored there — move it out before deleting.' },
@@ -154,10 +144,8 @@ export const FEHLER = {
                                  en: 'No set found for “{barcode}”. Please enter the set number manually.' },
   teil_nicht_manuell:          { de: 'Teil nicht gefunden oder nicht manuell hinzugefügt',
                                  en: 'Part not found, or not added manually' },
-  // Absichtlich eine ABSAGE statt der 0 aus V.colorId(): Beim Anlegen heisst
-  // „keine Angabe" zu Recht 0, beim KORRIGIEREN einer Farbe wäre dieselbe
-  // Umdeutung ein stilles Löschen der Farbe — und der Aufrufer bekäme
-  // „success" zu sehen.
+  // Eine ABSAGE statt der 0 aus V.colorId(): Beim Korrigieren wäre das ein
+  // stilles Löschen der Farbe mit „success".
   farbe_erforderlich:          { de: 'color_id erforderlich (die neue Farbe)',
                                  en: 'color_id is required (the new colour)' },
   minifig_nicht_manuell:       { de: 'Minifigur nicht gefunden oder nicht manuell hinzugefügt',
@@ -193,11 +181,9 @@ export const FEHLER = {
   unbekannter_job:             { de: 'Unbekannter Job', en: 'Unknown job' },
   auftrag_nicht_aenderbar:     { de: 'Diesen Auftrag gibt es nicht oder er ist schon beendet', en: 'This job does not exist or has already finished' },
 
-  // ── Gutscheine (LEGO-Geschenkkarten im eigenen Profil) ───────────────────
-  //
-  // `gutschein_existiert` ist der einzige davon, den der Nutzer auch bei
-  // richtiger Eingabe sieht: Die Tabelle laesst dieselbe Kartennummer je
-  // Konto nur einmal zu. Der Text sagt deshalb WARUM und nicht nur DASS.
+  // ── Gutscheine ───────────────────────────────────────────────────────────
+  // `gutschein_existiert` sieht der Nutzer auch bei richtiger Eingabe; der Text
+  // sagt deshalb WARUM.
   nummer_ungueltig:            { de: 'Ungültige Gutscheinnummer (nur Ziffern, 4–25 Stellen)',
                                  en: 'Invalid voucher number (digits only, 4–25 characters)' },
   pin_ungueltig:               { de: 'Ungültiger PIN (nur Ziffern, 3–10 Stellen)',
@@ -226,65 +212,48 @@ export const FEHLER = {
   papierkorb_schon_vorhanden:  { de: 'Wurde inzwischen neu angelegt — erst den neuen Eintrag löschen, dann wiederherstellen.',
                                  en: 'Has been added again since — delete the new entry first, then restore.' },
 
-  // ── Export und Import der Gutscheine (Marcos Liste, Stueck 3) ────────────
-  //
-  // `keine_gutscheine` ist kein Fehler des Nutzers, sondern eine Auskunft:
-  // Wer auf „exportieren" klickt, ohne einen Gutschein zu haben, soll das
-  // lesen und nicht ein leeres PDF bekommen.
+  // `keine_gutscheine` ist eine Auskunft: lieber das lesen als ein leeres PDF.
   keine_gutscheine:            { de: 'Es sind keine Gutscheine erfasst.',
                                  en: 'No vouchers have been added.' },
-  // Die Datei liess sich nicht als PDF oeffnen. Getrennt von
-  // `gutschein_unvollstaendig`: Dort war es ein PDF, nur ohne die Werte —
-  // zwei verschiedene Auskuenfte, und der Nutzer tut Verschiedenes.
+  // Getrennt von `gutschein_unvollstaendig`: Dort war es ein PDF ohne Werte —
+  // der Nutzer tut jeweils Verschiedenes.
   pdf_unlesbar:                { de: 'Die Datei liess sich nicht als PDF lesen.',
                                  en: 'The file could not be read as a PDF.' },
-  // Ein PDF ohne erkennbaren Gutschein. Der Text sagt, was zu tun ist —
-  // sonst sucht der Nutzer den Fehler bei sich.
+  // Der Text sagt, was zu tun ist — sonst sucht der Nutzer den Fehler bei sich.
   kein_gutschein_im_pdf:       { de: 'In diesem PDF war kein Gutschein zu erkennen. '
                                    + 'Bitte den Gutschein von Hand erfassen.',
                                  en: 'No voucher could be recognised in this PDF. '
                                    + 'Please add the voucher manually.' },
 
   // ── Guthaben-Abfrage bei LEGO ────────────────────────────────────────────
-  //
-  // Vier verschiedene Auskuenfte, und sie sind deshalb vier Codes: Der Nutzer
-  // tut bei jeder etwas anderes — PIN nachtragen, kurz warten, lange warten,
-  // oder es ist etwas kaputt und er kann nichts tun.
+  // Vier Codes, weil der Nutzer bei jedem etwas anderes tut.
   guthaben_pin_fehlt:          { de: 'Für die Abfrage braucht es die PIN der Karte.',
                                  en: 'The card PIN is required for the balance query.' },
-  // {sek} statt einer festen Zahl: Die Grenze steht in
-  // src/gutscheine/gutscheinGuthabenSchranke.ts, und zwei Zahlen fuer eine Regel laufen
-  // auseinander.
+  // {sek} statt fester Zahl: Zwei Zahlen für eine Regel laufen auseinander.
   guthaben_abstand:            { de: 'Es wird höchstens eine Karte alle {sek} Sekunden '
                                    + 'abgefragt. Bitte noch {warten} Sekunden warten.',
                                  en: 'At most one card is queried every {sek} seconds. '
                                    + 'Please wait another {warten} seconds.' },
-  // Der Bot-Schutz. Der Text sagt ZWEI Dinge: dass es nicht an der Karte
-  // liegt, und wie lange die Abfrage ruht — sonst drueckt der Nutzer weiter.
+  // Sagt, dass es nicht an der Karte liegt und wie lange die Abfrage ruht —
+  // sonst drückt der Nutzer weiter.
   guthaben_botschutz:          { de: 'LEGO hat die Abfrage abgewiesen (Bot-Schutz). '
                                    + 'Die Abfrage ruht noch {min} Minuten.',
                                  en: 'LEGO rejected the query (bot protection). '
                                    + 'The query is paused for another {min} minutes.' },
-  // {grund} ist der Text der Gegenseite — er laeuft vorher durch verdecke(),
-  // damit Kartennummer und PIN darin nicht stehen koennen.
+  // {grund} läuft vorher durch verdecke(): keine Kartennummer und PIN darin.
   guthaben_fehlgeschlagen:     { de: 'Das Guthaben liess sich nicht abfragen: {grund}',
                                  en: 'The balance could not be queried: {grund}' },
-  // Das Ausgabeland kommt aus den Einstellungen. Steht dort etwas, das nicht
-  // auf der Liste ist, wird NICHT gefragt: Aus dem Land wird eine Adresse
-  // gebaut.
+  // Aus dem Land wird eine Adresse gebaut; was nicht auf der Liste steht, wird
+  // nicht gefragt.
   guthaben_land_ungueltig:     { de: 'Das eingestellte Ausgabeland ist unbekannt. '
                                    + 'Bitte in den Einstellungen bei den Gutscheinen wählen.',
                                  en: 'The configured card country is unknown. '
                                    + 'Please choose one in the voucher settings.' },
 
-  // ── BrickLink-Wanted-Liste (Marcos Liste, Stueck 4) ──────────────────────
-  //
-  // Vor dem Zerlegen gesagt, nicht danach: „0 Posten gelesen" kann auch eine
-  // LEERE Liste bedeuten. Dass die Datei gar keine Wanted-Liste ist, ist eine
-  // andere Auskunft, und der Nutzer tut etwas anderes damit.
-  // Eine ABSAGE statt eines stillen „dann eben ohne Korrekturen": Wer in der
-  // Vorschau Farben und Nummern geradegezogen hat und den Bestand danach ohne
-  // sie bekommt, merkt es erst an den Karten — und hat die Arbeit zweimal.
+  // ── BrickLink-Wanted-Liste ───────────────────────────────────────────────
+  // „keine Wanted-Liste" ist eine andere Auskunft als „0 Posten". Unlesbare
+  // Korrekturen sind eine ABSAGE: Wer sie gemacht hat, merkte ihr Fehlen sonst
+  // erst an den Karten.
   korrekturen_ungueltig:       { de: 'Die Korrekturen sind nicht lesbar (kein gültiges JSON-Array).',
                                  en: 'The corrections could not be read (not a valid JSON array).' },
   keine_wanted_liste:          { de: 'Das ist keine BrickLink-Wanted-Liste '
@@ -332,19 +301,14 @@ export const FEHLER = {
 
 export type FehlerCode = keyof typeof FEHLER;
 
-/**
- * Welche Sprache will dieser Anfragende sehen?
- * Ausführlich: docs/begruendungen/src/infra/fehlerTexte.ts.md#antwortsprache
- */
+// Ausführlich: docs/begruendungen/src/infra/fehlerTexte.ts.md#antwortsprache
 export function antwortSprache(req: { headers?: Record<string, any> } | undefined): Sprache {
   const roh = String(req?.headers?.['accept-language'] || '').toLowerCase();
   return roh.startsWith('en') || roh.includes(',en') ? 'en' : 'de';
 }
 
-/**
- * Ein Fachfehler: Code und Status reisen mit, der Satz entsteht erst in der
- * Antwort (handleRouteError) in der Sprache des Anfragenden.
- */
+/** Code und Status reisen mit, der Satz entsteht erst in der Antwort in der
+ * Sprache des Anfragenden. */
 export class Fachfehler extends Error {
   constructor(readonly code: FehlerCode, readonly status: number, readonly vars?: Record<string, string | number>) {
     super(fehlerText(code, 'de', vars));
@@ -352,11 +316,8 @@ export class Fachfehler extends Error {
   }
 }
 
-/**
- * Für `.catch()`: eine verletzte Eindeutigkeit (Postgres 23505) als Fachfehler,
- * alles andere unverändert weiter. Zwei gleichzeitige Anlagen sind eine
- * Nutzereingabe, kein Serverfehler.
- */
+/** Zwei gleichzeitige Anlagen (23505) sind eine Nutzereingabe, kein
+ * Serverfehler; alles andere geht unverändert weiter. */
 export function alsDoppelt(code: FehlerCode, status = 409): (e: unknown) => never {
   return (e: unknown) => {
     if ((e as { code?: unknown } | null)?.code === '23505') throw new Fachfehler(code, status);
@@ -364,34 +325,23 @@ export function alsDoppelt(code: FehlerCode, status = 409): (e: unknown) => neve
   };
 }
 
-/**
- * Einen Fehler WERFEN, der seinen Grund als Code traegt.
- * Ausführlich: docs/begruendungen/src/infra/fehlerTexte.ts.md#fehlerwerfen
- */
+// Ausführlich: docs/begruendungen/src/infra/fehlerTexte.ts.md#fehlerwerfen
 export function fehlerWerfen(code: FehlerCode, status: number, vars?: Record<string, string | number>): never {
   throw dateiFehler(code, status, vars);
 }
 
-/**
- * Derselbe Fehler, aber zurückgegeben — für Rückrufe wie multers fileFilter,
- * die einen Fehler übergeben statt ihn zu werfen.
- */
+/** Für Rückrufe wie multers fileFilter, die einen Fehler übergeben statt ihn zu werfen. */
 export function dateiFehler(code: FehlerCode, status: number, vars?: Record<string, string | number>): Error {
-  // Die deutsche Fassung als `message`, damit ein Protokolleintrag lesbar
-  // bleibt; die Antwort an den Client entsteht aus `code` und `vars`.
+  // Deutsch als `message`, damit ein Protokolleintrag lesbar bleibt.
   return new Fachfehler(code, status, vars);
 }
 
-/** Der Text zu einem Code, mit eingesetzten Platzhaltern. */
 export function fehlerText(
   code: FehlerCode, sprache: Sprache = 'de', vars?: Record<string, string | number>,
 ): string {
   const eintrag = FEHLER[code];
-  // Warum hier gefragt wird, ob es den Eintrag gibt
-  // Eine Fehlermeldung ist das Letzte, was selbst noch abstuerzen darf. Der
-  // Code wird deshalb notfalls im Klartext durchgereicht: unschoen, aber
-  // lesbar — und er sagt dem Protokoll, welcher Eintrag fehlt.
-  // Ausführlich: docs/begruendungen/src/infra/fehlerTexte.ts.md#fehlertext
+  // Eine Fehlermeldung darf selbst nicht abstürzen: Ein fehlender Eintrag geht
+  // als Code im Klartext durch und nennt dem Protokoll, was fehlt.
   if (!eintrag) {
     console.error(`[fehlerTexte] Unbekannter Fehlercode: ${String(code)}`);
     return String(code);
@@ -403,12 +353,8 @@ export function fehlerText(
   return text;
 }
 
-/**
- * Die eine Art, einen Fehler zu beantworten.
- *
- * `error` ist ein fertiger Satz in der Sprache des Anfragenden; `code` steht
- * daneben, damit ein Client darauf reagieren kann, ohne Text zu vergleichen.
- */
+/** `code` steht neben dem Satz, damit ein Client reagieren kann, ohne Text zu
+ * vergleichen. */
 export function sendeFehler(
   req: any, res: any, status: number, code: FehlerCode, vars?: Record<string, string | number>,
 ): void {

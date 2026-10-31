@@ -1,8 +1,4 @@
-/**
- * Fachdienst „Hintergrundarbeiten" der Verwaltung: die Auftragstabelle lesen,
- * einzelne Aufträge abbrechen oder wiederholen, eine Art leeren oder jetzt
- * fällig machen. Web-Oberfläche und App lesen dieselbe Antwort.
- */
+/** Web-Oberfläche und App lesen dieselbe Antwort. */
 import { liesZustand } from './repository/laufzustand';
 import { AUFTRAGS_ARTEN, type AuftragsArt } from './auftraege';
 import { zieheVor, leereArt, wiederhole, brichAb, beendePause } from './dienst';
@@ -11,7 +7,6 @@ import { hatZeitplan, planeNaechsten, ziehePlanVor } from './zeitplan';
 import { leereBildbedarf, offenerBildbedarf } from '../katalog/bilder/bildbedarf';
 import { fehlerWerfen } from '../infra/fehlerTexte';
 
-/** Ohne Lebenszeichen seit so vielen Sekunden gilt der Job-Prozess als ausgefallen. */
 const LEBENSZEICHEN_GILT_SEK = 120;
 const STATUS = ['offen', 'laeuft', 'fehler', 'abgebrochen', 'erledigt'] as const;
 
@@ -20,11 +15,7 @@ function pruefeArt(art: string): AuftragsArt {
   return art as AuftragsArt;
 }
 
-/**
- * Die Übersicht: höchstens 200 Aufträge (laufende zuerst), die Zahl je Art und
- * Status, laufende Pausen, der offene Bildbedarf und ob ein Job-Prozess lebt.
- * Ohne Filter ohne erledigte; Nutzlasten bleiben draussen (sie tragen ganze Listen).
- */
+/** Nutzlasten bleiben draussen: Sie tragen ganze Listen. */
 export async function auftragsUebersicht(filter: { status?: string | undefined; art?: string | undefined } = {}) {
   const status = (filter.status ? filter.status.split(',') : ['offen', 'laeuft', 'fehler', 'abgebrochen'])
     .filter(s => (STATUS as readonly string[]).includes(s));
@@ -44,7 +35,7 @@ export async function auftragsUebersicht(filter: { status?: string | undefined; 
   };
 }
 
-/** Abbrechen; bei einer geplanten Art steht danach der nächste reguläre Termin an. */
+/** Bei einer geplanten Art steht danach der nächste reguläre Termin an. */
 export async function auftragAbbrechen(id: string) {
   const a = await brichAb(id);
   if (!a) fehlerWerfen('auftrag_nicht_aenderbar', 409);
@@ -57,14 +48,13 @@ export async function auftragWiederholen(id: string) {
   return { success: true, id, status: 'offen' };
 }
 
-/** Offene Aufträge einer Art verwerfen; geplante Termine bleiben. Beim Bildbedarf auch die Notizen. */
+/** Geplante Termine bleiben; beim Bildbedarf gehen auch die Notizen. */
 export async function auftragsArtLeeren(artRoh: string) {
   const art = pruefeArt(artRoh);
   const entfernt = await leereArt(art) + (art === 'bildbedarf' ? await leereBildbedarf() : 0);
   return { success: true, art, entfernt };
 }
 
-/** Eine Art jetzt fällig machen: den geplanten Lauf vorziehen oder die Wartenden samt Pause. */
 export async function auftragsArtJetzt(artRoh: string) {
   const art = pruefeArt(artRoh);
   await beendePause(art);

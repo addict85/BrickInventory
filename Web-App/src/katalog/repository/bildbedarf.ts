@@ -1,7 +1,5 @@
 import * as db from '../../../db/database';
 
-/** Gewünschte Katalogbilder (image_wanted): Adressen, die ein Client brauchte und die noch geholt werden. */
-
 export function merkeBildwuensche(urls: string[], sets: (string | null)[]) {
   return db.run(`INSERT INTO image_wanted (url, set_number)
        SELECT * FROM unnest($1::text[], $2::text[])

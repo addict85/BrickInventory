@@ -5,17 +5,12 @@ import { fehlertext } from '../src/infra/httpError';
 import { fehlerText } from '../src/infra/fehlerTexte';
 import { AuftragUnterbrochen, type AuftragsKontext } from './auftragsWorker';
 
-/**
- * Der CSV-Import von Sets als Auftrag. Nach jedem Set stehen Fortschritt und
- * Ergebnisse in import_stand; ein Neustart setzt dort fort. `current` ist
- * nur gesetzt, solange ein Set gebucht wird — steht es nach einem Absturz noch
- * da, ist ungewiss, ob dieses Set gebucht wurde. Es wird dann nicht noch einmal
- * gebucht, sondern als Warnung gemeldet.
- */
+/** Nach jedem Set steht der Stand in import_stand; ein Neustart setzt dort
+ * fort. Steht `current` nach einem Absturz noch da, ist ungewiss, ob das Set
+ * gebucht wurde — es wird nicht noch einmal gebucht, sondern gemeldet. */
 export type CsvZeile = { sn: string; qty: number; purchasePrice: number | null; condition: string | null; acquiredAt: string | null };
 export interface CsvNutzlast { user_id: number; lauf: string; rows: CsvZeile[] }
 
-/** Wie lange ein Set beim Import dauern darf, bevor die Zeile als Warnung endet. */
 const zeilenFrist = () => konfig().csvZeileFristMs;
 
 async function importiereZeile(z: CsvZeile, userId: number): Promise<ImportErgebnis> {
@@ -61,8 +56,8 @@ async function fuehreCsvImportAus(n: CsvNutzlast, k: AuftragsKontext): Promise<v
   for (let i = results.length; i < rows.length; i++) {
     if (k.beendet) throw new AuftragUnterbrochen();
     const z = rows[i]!;
-    // Abgebrochen, von einem neuen Lauf abgelöst oder an einen anderen Worker
-    // gegangen: hier aufhören, ohne in fremde Zeilen zu schreiben.
+    // Abgebrochen, abgelöst oder anderswo vergeben: aufhören, ohne in fremde
+    // Zeilen zu schreiben.
     if (!await k.lebenszeichen() || !await jobUpdate(userId, { current: z.sn }, lauf)) return;
     await emitJobStatus(userId);
     results.push(await importiereZeile(z, userId));
@@ -74,7 +69,7 @@ async function fuehreCsvImportAus(n: CsvNutzlast, k: AuftragsKontext): Promise<v
   console.log(`CSV import done: ${results.filter(r => r.success).length} ok, ${results.filter(r => !r.success).length} errors`);
 }
 
-/** Nach dem letzten Versuch: Die Statuszeile zeigt den Fehler, statt ewig zu laufen. */
+/** Die Statuszeile zeigt den Fehler, statt ewig zu laufen. */
 async function csvImportAufgegeben(n: CsvNutzlast, fehler: string): Promise<void> {
   console.error(`CSV import fatal error: ${fehler}`);
   await jobUpdate(Number(n.user_id), { status: 'error', error: fehler, current: null }, String(n.lauf));

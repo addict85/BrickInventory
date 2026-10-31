@@ -1,8 +1,3 @@
-/**
- * Die Version dieser Installation: APP_VERSION zur Laufzeit, sonst die beim
- * Bau geschriebene dist/version.json (scripts/version.js, aus Git oder dem
- * Build-Argument), sonst „unbekannt“.
- */
 import fs from 'fs';
 import path from 'path';
 import { konfig } from './konfig';

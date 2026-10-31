@@ -1,21 +1,9 @@
-/**
- * Setnummer aus einem PRODUKTTITEL lesen (UPCitemdb).
- * Ausführlich: docs/begruendungen/src/katalog/produkttitel.ts.md#abschnitt
- */
+// Ausführlich: docs/begruendungen/src/katalog/produkttitel.ts.md#abschnitt
 
-/**
- * Wörter, die eine Zahl als Mengenangabe ausweisen.
- *
- * Die deutschen Formen stehen mit Dativ-Plural da (`teil(?:e|en)?`): „1250
- * Steinen" rutschte durch, weil nur „Steine" abgedeckt war — und seit
- * dreistellige Zahlen zählen, fällt so etwas häufiger auf.
- */
+/** Die deutschen Formen mit Dativ-Plural: „1250 Steinen" rutschte sonst durch. */
 const MENGENWORT = /^\s*(?:x\s*)?(?:pcs?|pieces?|piece|teil(?:e|en)?|stück(?:e|en)?|stueck(?:e|en)?|stein(?:e|en)?|bricks?|parts?|element(?:e|en|s)?)\b/i;
 
-/**
- * Stellenzahlen in absteigender Güte. Unbekannte Längen landen dahinter.
- * Muss mit `GUETE` in setNumberCandidates() (Kotlin) übereinstimmen.
- */
+/** Muss mit `GUETE` in setNumberCandidates() (Kotlin) übereinstimmen. */
 export const GUETE = [5, 4, 6, 7, 3];
 
 function gueteIndex(stellen: number): number {
@@ -24,10 +12,7 @@ function gueteIndex(stellen: number): number {
   return i < 0 ? GUETE.length : i;
 }
 
-/**
- * @param titel Produkttitel, wie ihn eine Händlerdatenbank liefert
- * @returns Kandidaten in absteigender Güte; leer, wenn nichts übrig bleibt
- */
+/** @returns Kandidaten in absteigender Güte; leer, wenn nichts übrig bleibt */
 export function setnummerKandidaten(titel: string): string[] {
   if (!titel) return [];
   const jahrGrenze = new Date().getFullYear() + 1;
@@ -35,22 +20,20 @@ export function setnummerKandidaten(titel: string): string[] {
   type Kandidat = { wert: string; mitSuffix: boolean; mitRaute: boolean; jahr: boolean; guete: number };
   const gefunden: Kandidat[] = [];
 
-  // \d{3,7}: drei bis sieben Stellen. Die alte Fassung ging von vier bis
-  // sechs — sie sah weder die dreistelligen Altsets noch die siebenstelligen
+  // Drei bis sieben Stellen: dreistellige Altsets und siebenstellige
   // Bestellnummern grosser Sets.
   const muster = /(#\s*)?\b(\d{3,7})(-\d{1,2})?\b/g;
   let treffer: RegExpExecArray | null;
   while ((treffer = muster.exec(titel)) !== null) {
-    // treffer[2] ist durch das Muster garantiert, TypeScript weiss das unter
-    // noUncheckedIndexedAccess nicht — deshalb der ausdrückliche Ausstieg.
+    // Unter noUncheckedIndexedAccess weiss TypeScript nicht, dass das Muster
+    // treffer[2] garantiert.
     const ziffern = treffer[2];
     if (!ziffern) continue;
     const suffix = treffer[3] ?? '';
     const danach = titel.slice(treffer.index + treffer[0].length);
     if (MENGENWORT.test(danach)) continue;           // Regel 1: Teilezahl
     const zahl = parseInt(ziffern, 10);
-    // Mit Variantenzusatz ist es keine Jahreszahl mehr, sondern eine Setnummer
-    // in ihrer eindeutigen Schreibweise.
+    // Mit Variantenzusatz ist es keine Jahreszahl mehr, sondern eine Setnummer.
     const jahr = !suffix && ziffern.length === 4 && zahl >= 1949 && zahl <= jahrGrenze;
     gefunden.push({
       wert: ziffern + suffix,
@@ -64,8 +47,7 @@ export function setnummerKandidaten(titel: string): string[] {
   const eindeutig = gefunden.filter((k, i) =>
     gefunden.findIndex(a => a.wert === k.wert) === i);
 
-  // Regeln 2–6. Array.prototype.sort ist stabil, also bleibt bei Gleichstand
-  // die Reihenfolge im Titel erhalten.
+  // Array.prototype.sort ist stabil: Bei Gleichstand bleibt die Reihenfolge im Titel.
   return eindeutig
     .slice()
     .sort((a, b) =>

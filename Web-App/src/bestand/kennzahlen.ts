@@ -3,26 +3,16 @@ import { asIds } from '../haushalt/haushalt';
 import { getGlobalSetting } from '../konto/settings';
 import * as repo from './repository/kennzahlen';
 
-/**
- * Die Kennzahlen der Übersichtsseite — spannen über alle drei Domänen und
- * gehören deshalb in keine davon.
- * Ausführlich: docs/begruendungen/src/bestand/kennzahlen.ts.md#getstats
- */
+/** Spannen über alle drei Domänen und gehören deshalb in keine davon. */
 export async function getStats(userId: number | number[]) {
-  // Blickfeld statt einer einzelnen ID: Ein Hauptkonto sieht (und ändert)
-  // auch die Daten seiner Unterkonten, alle anderen nur ihre eigenen. Die
-  // Liste kommt von scopeIds() in src/haushalt/haushalt.ts — hier wird sie nur
-  // normalisiert, damit ältere Aufrufer mit einer nackten ID weiter gehen.
+  // asIds(), damit ältere Aufrufer mit einer nackten ID weiter gehen.
   const uids = asIds(userId);
   const [setsRow, instrRow, partsRow, minifigsRow, cur] = await Promise.all([
-    // COUNT(DISTINCT set_number), nicht COUNT(*).
+    // COUNT(DISTINCT set_number): Im Haushalt besitzen mehrere Konten dasselbe Set.
     // Ausführlich: docs/begruendungen/src/bestand/kennzahlen.ts.md#getstats-2
     repo.setZahlen(uids),
     repo.anleitungsZahlen(uids, uids),
-    // Der Faktor ist die Set-Menge aus den Erfassungen. `fehlt = 1`, weil er
-    // in einer MULTIPLIKATION steht: Ein Teil ohne Set-Zeile (manuell
-    // erfasst) zaehlt einfach, nicht null — dieselbe Lesart wie das
-    // frueherere COALESCE(s.quantity, 1).
+    // `fehlt = 1` in einer Multiplikation: Ein manuelles Teil ohne Set zählt einfach.
     repo.teileImBestand(uids),
     repo.figurenImBestand(uids),
     repo.waehrungImBlickfeld(uids),

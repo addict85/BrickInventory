@@ -1,7 +1,7 @@
 import * as db from '../../../db/database';
 import type { DbSchnittstelle } from '../../../db/database';
 
-/** Datenzugriff für den zweiten Faktor (Migration 0042). Das Geheimnis liegt verschlüsselt. */
+/** Das Geheimnis liegt verschlüsselt. */
 
 export async function ersetzeCodes(tx: DbSchnittstelle, uid: number, hashes: string[]): Promise<void> {
   await tx.run('DELETE FROM zweiter_faktor_codes WHERE user_id = $1', [uid]);
@@ -21,7 +21,7 @@ export async function faktorStand(uid: number): Promise<{ aktiv: boolean; uebrig
   return { aktiv: r?.aktiv === true, uebrig: Number(r?.uebrig ?? 0) };
 }
 
-/** Ein aktiver Faktor wird nicht überschrieben. @returns ob gespeichert wurde */
+/** Ein aktiver Faktor wird nicht überschrieben. */
 export async function legeGeheimnisAn(uid: number, verschluesselt: string | null): Promise<boolean> {
   const r = await db.run(
     `INSERT INTO zweiter_faktor (user_id, geheimnis) VALUES ($1, $2)

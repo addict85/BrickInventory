@@ -10,25 +10,20 @@ import { meldeUndWeiter, fehlertext, logAndContinue, meldeUndLiefere } from '../
 import { getMinifigParts } from '../katalog/rebrickableKatalog';
 import { KEINE_FARBE } from '../infra/validate';
 
-/**
- * Der aktuelle Marktpreis eines Sets.
- * Ausführlich: docs/begruendungen/src/finanzen/marketPrice.ts.md#getcurrentmarketprice
- */
+// Ausführlich: docs/begruendungen/src/finanzen/marketPrice.ts.md#getcurrentmarketprice
 export async function getCurrentMarketPrice(setNumber: string, userId: number, condition: string | null = null) {
   try {
     const currency = String(await getSetting(userId, 'currency', 'EUR'));
-    // Effective condition: parameter → user setting → global setting → 'N'
+    // Parameter → Nutzer → global → 'N'.
     const effectiveCond = condition || await userDefaultCondition(userId).catch(()=>DEFAULT_PRICE_CONDITION);
-    // condition als Hinweis mitgeben: Beim Anlegen eines neuen Sets existieren
-    // weder sets- noch set_acquisitions-Zeile schon, refreshPriceForSet könnte
-    // sonst nur den Standardzustand holen (siehe jobs/priceJob.ts).
+    // condition als Hinweis: Beim Anlegen gibt es noch keine Erfassung, aus der
+    // der Preislauf den Zustand ablesen könnte.
     await nacharbeit().preisFuerSetHolen(setNumber, userId, condition).catch(logAndContinue('marktpreis:preisFuerSetHolen'));
 
     // Ein ausdrücklich angefragter Zustand gilt genau so: Beim Anlegen gibt es
     // noch keine Erfassung, aus der getSetValue() ihn ableiten könnte.
     if (!condition) {
-      // Ohne ausdrücklichen Wunsch: Bewertung je Erfassung nach deren Zustand
-      // (src/finanzen/setValue.ts) — das ist der richtige Wert für eine Anzeige.
+      // Ohne ausdrücklichen Wunsch: Bewertung je Erfassung nach deren Zustand.
       const v = await getSetValue(userId, setNumber, currency);
       if (v.unit_price !== null) return v.unit_price;
     }
@@ -40,10 +35,10 @@ export async function getCurrentMarketPrice(setNumber: string, userId: number, c
   } catch (_) { return null; }
 }
 
-// Marktpreise für Sets, Teile und Figuren stehen hier zusammen: eine Frage, eine Stelle.
-// Ausführlich: docs/begruendungen/src/finanzen/marketPrice.ts.md#abschnitt
+// Marktpreise für Sets, Teile und Figuren an einer Stelle, damit die Zustandsregel
+// nicht je Art auseinanderläuft.
 
-/** Zustand eines Teils für den Preis: 'U' sobald eine Erfassung gebraucht ist, sonst 'N'; ohne Erfassung der Standard. */
+/** 'U' sobald eine Erfassung gebraucht ist; ohne Erfassung der Standard. */
 export async function resolvePartCondition(userId: number, partNumber: string, colorId: number) {
   try {
     const row = await repo.teilErfassungsZustand(userId, partNumber, colorId);
@@ -53,11 +48,8 @@ export async function resolvePartCondition(userId: number, partNumber: string, c
   catch (_) { return DEFAULT_PRICE_CONDITION; }
 }
 
-/**
- * Marktpreise fuer eine ganze LISTE — nur aus dem Cache, ohne einen einzigen
- * Abruf bei BrickLink.
- * Ausführlich: docs/begruendungen/src/finanzen/marketPrice.ts.md#marktpreiseauscachefuerfiguren
- */
+/** Nur aus dem Cache, ohne Abruf: Die Liste soll nicht auf BrickLink warten.
+ * Ausführlich: docs/begruendungen/src/finanzen/marketPrice.ts.md#marktpreiseauscachefuerfiguren */
 export async function marktpreiseAusCacheFuerFiguren(
   figuren: Array<{ fig_number?: string | null; bl_fig_number?: string | null; condition?: string | null }>,
   viewerId: number,
@@ -71,9 +63,8 @@ export async function marktpreiseAusCacheFuerFiguren(
   ]);
   const ttl = Math.max(1, parseInt(String(ttlRoh)));
 
-  // Beide Schreibweisen abfragen: fetchMinifigPrice() legt unter der
-  // BrickLink-Nummer ab, estimateFigPriceFromParts() unter der
-  // Rebrickable-Nummer. Welche eine Figur hat, weiss man erst an der Zeile.
+  // Beide Schreibweisen: fetchMinifigPrice() legt unter der BL-Nummer ab, die
+  // Schätzung unter der RB-Nummer.
   const schluessel = [...new Set(figuren.flatMap(f =>
     [f.bl_fig_number, f.fig_number].filter(Boolean).map(String)))];
   if (!schluessel.length) return treffer;
@@ -92,10 +83,8 @@ export async function marktpreiseAusCacheFuerFiguren(
     if (!nummer) continue;
     const zustand = f.condition === 'U' ? 'U' : 'N';
     const anders  = zustand === 'N' ? 'U' : 'N';
-    // Reihenfolge wie in der Bewertung: BrickLink-Nummer vor
-    // Rebrickable-Nummer, eigener Zustand vor dem anderen. Der Rueckfall auf
-    // den anderen Zustand ist derselbe wie in fetchMinifigPrice — BrickLink
-    // fuehrt zu vielen aelteren Figuren nur einen von beiden.
+    // Reihenfolge wie in der Bewertung; BrickLink führt zu vielen älteren Figuren
+    // nur einen der beiden Zustände.
     for (const k of [f.bl_fig_number, f.fig_number].filter(Boolean).map(String))
       for (const c of [zustand, anders]) {
         const wert = cache.get(`${k}|${c}`);
@@ -106,10 +95,7 @@ export async function marktpreiseAusCacheFuerFiguren(
   return treffer;
 }
 
-/**
- * Dasselbe fuer manuell erfasste TEILE — siehe die Begruendung oben.
- * Ausführlich: docs/begruendungen/src/finanzen/marketPrice.ts.md#marktpreiseauscachefuerteile
- */
+// Ausführlich: docs/begruendungen/src/finanzen/marketPrice.ts.md#marktpreiseauscachefuerteile
 export async function marktpreiseAusCacheFuerTeile(
   teile: Array<{ part_number?: string | null; bl_part_number?: string | null;
                  color_id?: number | null; condition?: string | null }>,
@@ -126,8 +112,7 @@ export async function marktpreiseAusCacheFuerTeile(
 
   await ladeBlNummernVor(teile.map(t => String(t.bl_part_number || t.part_number || '')));
 
-  // Je Teil die Schluessel bestimmen, mit denen fetchPartPrice geschrieben
-  // haette: uebersetzte Nummer, uebersetzte Farbe.
+  // Die Schlüssel, unter denen fetchPartPrice geschrieben hätte.
   const auflösung = new Map<string, { nummer: string; farbe: number }>();
   for (const t of teile) {
     const roh = String(t.bl_part_number || t.part_number || '');
@@ -164,25 +149,19 @@ export async function marktpreiseAusCacheFuerTeile(
   return treffer;
 }
 
-/**
- * Marktpreis eines Teils SAMT Herkunft.
- * Ausführlich: docs/begruendungen/src/finanzen/marketPrice.ts.md#marktpreismitherkunft
- */
+/** Mit Herkunft für die eine Stelle, die sie zeigt; alle anderen nehmen die Zahl.
+ * Ausführlich: docs/begruendungen/src/finanzen/marketPrice.ts.md#marktpreismitherkunft */
 export async function marktpreisMitHerkunft(partNumber: string, colorId: number, userId: number, condition: string | null = null) {
   try {
     const currency  = await getSetting(userId, 'currency', 'EUR');
     const ttlHours  = 24;
     const effCond   = condition || await resolvePartCondition(userId, partNumber, colorId);
     const priceData = await fetchPartPrice(partNumber, colorId, effCond, currency, ttlHours);
-    // avg_price statt qty_avg_price — dieselbe Begründung wie bei den Sets:
-    // der mengengewichtete Schnitt liegt unter BrickLinks "Avg Price", und
-    // "0.00" aus Postgres ist truthy und hätte avg_price verdeckt.
+    // avg_price wie bei den Sets: BrickLinks angezeigter Preis, und "0.00" ist truthy.
     const price = parseFloat(priceData?.avg_price || 0);
     if (!(price > 0)) return { preis: null, ausZustand: null };
-    // Der Rückfall wird übernommen, aber benannt
-    // Früher stand hier `if (priceData?.is_fallback) return null` —
-    // als Antwort auf Marcos Befund, dass der Zustand keinen Einfluss auf den
-    // Preis hat. Der Befund stimmte, die Folge war zu scharf: Marco meldete …
+    // Der Rückfall auf den anderen Zustand wird übernommen, aber benannt: Gar
+    // kein Preis war schlechter als ein gekennzeichneter.
     // Ausführlich: docs/begruendungen/src/finanzen/marketPrice.ts.md#marktpreismitherkunft-2
     return {
       preis: price,
@@ -191,33 +170,21 @@ export async function marktpreisMitHerkunft(partNumber: string, colorId: number,
   } catch (_) { return { preis: null, ausZustand: null }; }
 }
 
-/**
- * Marktpreis eines Teils als blosse Zahl — der Weg fuer alle, die die
- * Herkunft nicht brauchen. EINE Rechnung, zwei Sichten darauf.
- */
 export async function getCurrentPartMarketPrice(partNumber: string, colorId: number, userId: number, condition: string | null = null) {
   return (await marktpreisMitHerkunft(partNumber, colorId, userId, condition)).preis;
 }
 
-/** Geschätzter Figurenpreis als blosse Zahl — für Aufrufer ohne Abdeckung. */
 export async function estimateFigPriceFromParts(figNumber: string, userId: number, condition = DEFAULT_PRICE_CONDITION) {
   return (await schaetzeFigurenpreis(figNumber, userId, condition))?.preis ?? null;
 }
 
-/**
- * Figurenpreis aus den Teilepreisen, samt Abdeckung: dem Anteil der Teile, die
- * einen Preis hatten. Die Abdeckung sagt, wie belastbar die Zahl ist.
- */
+/** Die Abdeckung (Anteil der Teile mit Preis) sagt, wie belastbar die Zahl ist. */
 export async function schaetzeFigurenpreis(figNumber: string, userId: number, condition = DEFAULT_PRICE_CONDITION): Promise<{ preis: number; abdeckung: number | null } | null> {
   try {
     const currency = await getSetting(userId, 'currency', 'EUR');
     const cond0 = ['N','U'].includes(condition) ? condition : DEFAULT_PRICE_CONDITION;
 
-    // Erst im Cache nachsehen
-    // GESCHRIEBEN wurde er schon (unten, samt Verlaufspunkt) — GELESEN nie. Jeder
-    // Aufruf holte deshalb erneut die Teile-Zusammensetzung von Rebrickable und
-    // danach den BrickLink-Preis JE TEIL. Eine Minifigur mit fünfzehn Teilen …
-    // Ausführlich: docs/begruendungen/src/finanzen/marketPrice.ts.md#estimatefigpricefromparts-ttl
+    // Erst im Cache nachsehen: Sonst kostete jede Figur je Teil einen Abruf.
     const ttl = Math.max(1, parseInt(await getGlobalSetting('price_cache_ttl', '24')));
     const cached = await repo.geschaetzterFigurenpreis(figNumber, cond0, currency, ttl)
       .catch(meldeUndLiefere('marktpreis:cached', null));
@@ -231,9 +198,7 @@ export async function schaetzeFigurenpreis(figNumber: string, userId: number, co
       return null;
     }
 
-    // BrickLink-Nummern für Teile ohne external_ids in EINER Abfrage vorladen
-    // (statt pro Teil eine eigene Query — vermeidet N+1).
-    // Ausführlich: docs/begruendungen/src/finanzen/marketPrice.ts.md#estimatefigpricefromparts
+    // In EINER Abfrage statt je Teil.
     await ladeBlNummernVor(parts
       .filter((p: { bl_part_num?: string | null }) => !p.bl_part_num)
       .map((p: { part_num: string }) => p.part_num));
@@ -242,9 +207,8 @@ export async function schaetzeFigurenpreis(figNumber: string, userId: number, co
 
     let total = 0, priced = 0;
     for (const p of parts) {
-      // BrickLink-Nummer bevorzugt aus Rebrickables external_ids; sonst
-      // uebersetzt fetchPartPrice selbst (resolveBlPartNumber) und findet die
-      // Antwort im eben gefuellten Gedaechtnis.
+      // Sonst übersetzt fetchPartPrice selbst und findet die Antwort im eben
+      // gefüllten Gedächtnis.
       const blPartNum = p.bl_part_num || p.part_num;
       try {
         const priceData = await fetchPartPrice(blPartNum, p.color_id ?? KEINE_FARBE, cond, currency, 24);
@@ -255,14 +219,12 @@ export async function schaetzeFigurenpreis(figNumber: string, userId: number, co
     console.log(`[minifig-price-estimate] ${figNumber} (${cond}): ${priced}/${parts.length} Teile bepreist, geschätzt=${priced>0?total.toFixed(2):'—'}`);
     if (priced === 0) return null;
 
-    // Die Schätzung gehört in Cache und Verlauf, markiert als geschätzt:
-    // fetchMinifigPrice liest nur unmarkierte Zeilen, die Anzeige kennzeichnet sie.
-    // Ausführlich: docs/begruendungen/src/finanzen/marketPrice.ts.md#estimatefigpricefromparts-2
+    // In Cache und Verlauf, markiert als geschätzt: fetchMinifigPrice liest nur
+    // unmarkierte Zeilen, die Anzeige kennzeichnet sie.
     const abdeckung = Math.round(priced / parts.length * 1000) / 1000;
     await repo.merkeGeschaetztenFigurenpreis(figNumber, cond, currency, total, abdeckung)
       .catch(e => console.warn(`[minifig-price-estimate] Cache ${figNumber}: ${e.message}`));
-    // Wie beim echten Abruf: ON CONFLICT DO NOTHING, und nur mit echtem Preis —
-    // ein Nullpunkt sähe im Diagramm aus wie ein Kurssturz.
+    // Nur mit echtem Preis: Ein Nullpunkt sähe im Diagramm aus wie ein Kurssturz.
     await repo.merkeGeschaetztenFigurenverlauf(figNumber, cond, currency, total, abdeckung)
       .catch(logAndContinue('marktpreis:figurverlauf schreiben'));
 
@@ -273,16 +235,10 @@ export async function schaetzeFigurenpreis(figNumber: string, userId: number, co
   }
 }
 
-/**
- * Marktpreis einer Minifigur SAMT Herkunft — Zwilling zu
- * marktpreisMitHerkunft in routes/parts.ts, gleiche Begruendung dort.
- */
 export async function figMarktpreisMitHerkunft(figNumber: string, userId: number, blFigNumber?: string | null, condition: string | null = null) {
   try {
     const currency = await getSetting(userId, 'currency', 'EUR');
-    // Effektiver Zustand: eine "Gebraucht"-Erfassung genügt → 'U', sonst 'N';
-    // ohne Erfassungen der User-Default. fetchMinifigPrice fällt bei leerem
-    // Price Guide selbst auf den jeweils anderen Zustand zurück.
+    // Eine „Gebraucht"-Erfassung genügt für 'U'; ohne Erfassung der Standard.
     let effCond = condition;
     if (!effCond) {
       try {
@@ -291,16 +247,12 @@ export async function figMarktpreisMitHerkunft(figNumber: string, userId: number
       } catch (e) { meldeUndWeiter('minifiguren:zustand-ermitteln', e); }
       if (!effCond) { try { effCond = await userDefaultCondition(userId); } catch (_) { effCond = DEFAULT_PRICE_CONDITION; } }
     }
-    // BrickLink zuerst — und zwar auch OHNE separate bl_fig_number.
-    // Ausführlich: docs/begruendungen/src/finanzen/marketPrice.ts.md#figmarktpreismitherkunft
+    // BrickLink zuerst, auch ohne eigene bl_fig_number: Meist stimmt die eigene
+    // Nummer mit der BrickLink-Nummer überein.
     for (const num of [blFigNumber, figNumber]) {
       if (!num) continue;
       const priceData = await fetchMinifigPrice(num, effCond, currency, 24).catch(meldeUndLiefere('marktpreis:fetchMinifigPrice', null));
-      // Der Rueckfall wird uebernommen, aber benannt
-      // Die Antwort damals war `continue` — also gar kein Preis. Darauf kam
-      // Marcos naechster Befund: „Teilweise wird der Kaufpreis nicht direkt
-      // geladen." Beides ist dieselbe Tatsache von zwei Seiten: BrickLink …
-      // Ausführlich: docs/begruendungen/src/finanzen/marketPrice.ts.md#figmarktpreismitherkunft-price
+      // Der Rückfall wird übernommen, aber benannt — wie bei den Teilen.
       const price = parseFloat(priceData?.avg_price || 0);
       if (price > 0) return {
         preis: price,
@@ -309,18 +261,13 @@ export async function figMarktpreisMitHerkunft(figNumber: string, userId: number
       };
       if (num === blFigNumber && blFigNumber === figNumber) break;   // nicht doppelt fragen
     }
-    // Bei BrickLink nichts: über die Teile schätzen, im ermittelten Zustand.
-    // Ohne Herkunftsangabe — sie stammt nicht aus dem anderen Zustand.
+    // Ohne Herkunftsangabe: Die Schätzung stammt nicht aus dem anderen Zustand.
     const schaetzung = await schaetzeFigurenpreis(figNumber, userId, effCond);
     return { preis: schaetzung?.preis ?? null, ausZustand: null, geschaetzt: schaetzung != null,
              abdeckung: schaetzung?.abdeckung ?? null };
   } catch (_) { return { preis: null, ausZustand: null, geschaetzt: false }; }
 }
 
-/**
- * Marktpreis einer Minifigur als blosse Zahl — für alle, die die Herkunft
- * nicht brauchen. Zwilling zu getCurrentPartMarketPrice in routes/parts.ts.
- */
 export async function getCurrentFigMarketPrice(figNumber: string, userId: number, blFigNumber?: string | null, condition: string | null = null) {
   return (await figMarktpreisMitHerkunft(figNumber, userId, blFigNumber, condition)).preis;
 }

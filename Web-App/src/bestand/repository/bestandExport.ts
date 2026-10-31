@@ -1,11 +1,8 @@
 import * as db from '../../../db/database';
 import { erfassungsTagSql } from '../../../db/bestandsmenge';
 
-/** Die Zeilen der CSV-Exporte manueller Teile und Figuren: eine Zeile je Erfassung. */
-
-// Shared logic to build the Teile CSV export content (manuell erfasst only).
-// Used by both the standalone CSV download and the combined ZIP export in settings.js.
-// Ausführlich: docs/begruendungen/routes/parts.ts.md#parts-csv-sql
+// Eine Zeile je Erfassung in einer Abfrage statt einer je Teil.
+// Ausführlich: docs/begruendungen/src/teile/manuelleTeile.ts.md#parts-csv-sql
 const PARTS_CSV_SQL = `
   SELECT p.part_number,
          -- Die Menge der ERFASSUNG, ohne Rueckfall auf die Zeile: Migration
@@ -33,13 +30,8 @@ const PARTS_CSV_SQL = `
    WHERE p.user_id = $1 AND p.source = 'manual'
    ORDER BY pc.part_name ASC, p.part_number ASC, a.created_at ASC, a.id ASC`;
 
-// Shared logic to build the Minifiguren CSV export content (manuell erfasst only).
-// Used by both the standalone CSV download and the combined ZIP export in settings.js.
-// Dieselbe Bauart wie SETS_CSV_SQL in src/sets/setService.ts, aus demselben Grund:
-// Hier lief eine Abfrage JE MINIFIGUR. Auch die Falle ist dieselbe — zu einer
-// vorhandenen Erfassung OHNE Preis gehoert ein leeres Feld, nicht der Preis der
-// Figuren-Zeile. Entschieden wird deshalb an `a.id IS NULL`, nicht mit COALESCE
-// ueber die Werte.
+// Zu einer Erfassung OHNE Preis gehört ein leeres Feld, nicht der Preis der
+// Figuren-Zeile — deshalb `a.id IS NULL` statt COALESCE über die Werte.
 const FIGS_CSV_SQL = `
   SELECT f.fig_number,
          -- Die BrickLink-Nummer aus der Zuordnung (Migration 0037); hier

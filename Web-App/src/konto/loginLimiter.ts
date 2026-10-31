@@ -1,53 +1,39 @@
-/**
- * Brute-Force-Schutz für die Anmeldung und missbrauchsanfällige Routen. Die
- * Funktionen nehmen die Adresse als Wert; welche Adresse eine Anfrage hat,
- * entscheidet die HTTP-Schicht (src/konto/http/anmeldung.ts).
- * Ausführlich: docs/begruendungen/src/konto/loginLimiter.ts.md#abschnitt
- */
+/** Die Funktionen nehmen die Adresse als Wert; welche Adresse eine Anfrage
+ * hat, entscheidet die HTTP-Schicht.
+ * Ausführlich: docs/begruendungen/src/konto/loginLimiter.ts.md#abschnitt */
 import * as db from '../../db/database';
 import { einzelwert } from '../infra/validate';
 import { meldeUndLiefere } from '../infra/httpError';
 import type { FehlerCode } from '../infra/fehlerTexte';
 import * as repo from './repository/anmeldezaehler';
 
-/**
- * Typisiert, weil ein vertippter Feldname hier `undefined >= MAX_ATTEMPTS`
- * ergäbe — `false`, also keine Sperre.
- * Ausführlich: docs/begruendungen/src/konto/loginLimiter.ts.md#zaehlerstand
- */
+/** Typisiert, weil ein vertippter Feldname `undefined >= MAX_ATTEMPTS` ergäbe
+ * — `false`, also keine Sperre. */
 interface Zaehlerstand {
   count: number;
   waitMin: number;
-  /** Sekunden seit dem letzten Fehlversuch. */
   seitLetztem: number;
 }
 
 export const MAX_ATTEMPTS = 5;
 const WINDOW_MS    = 15 * 60 * 1000;
 
-/**
- * Wartezeit je KONTO über alle Adressen: ab dem fünften Fehlversuch 1 s, dann
- * jedes Mal doppelt so lang, höchstens das Fenster. Wer viele Adressen hat,
- * rät so nur noch rund 15 Mal je Viertelstunde; der Inhaber wartet bei ein,
- * zwei Vertippern dagegen Sekunden statt einer festen Sperre.
- */
+/** Je KONTO über alle Adressen, verdoppelnd: Wer viele Adressen hat, rät nur
+ * noch rund 15 Mal je Viertelstunde; der Inhaber wartet bei einem Vertipper
+ * Sekunden statt einer festen Sperre. */
 export function wartezeitSekunden(fehlversuche: number): number {
   if (fehlversuche < MAX_ATTEMPTS) return 0;
   return Math.min(2 ** (fehlversuche - MAX_ATTEMPTS), WINDOW_MS / 1000);
 }
-/**
- * Fehlversuche je Adresse über ALLE Namen. Die Grenze je Konto lässt sonst
- * Password-Spraying zu: fünf Versuche gegen jedes Konto, unbegrenzt viele Konten.
- */
+/** Über ALLE Namen: Die Grenze je Konto liesse sonst Password-Spraying zu. */
 export const MAX_JE_ADRESSE = 30;
-/** So lange gilt eine Adresse nach einer erfolgreichen Anmeldung als bekannt. */
 const BEKANNT_MIN  = 30 * 24 * 60;
 const WINDOW_MIN   = WINDOW_MS / 60000;
 /** Ein reservierter Platz, dessen Prüfung nie gemeldet wurde, verfällt danach. */
 const LAUFEND_VERFALL_S = 60;
 
 type Eintrag = { count: number; firstAt: number; lastAt: number | null; laufend: number };
-/** Rückfallebene, falls die Datenbank klemmt: Die Bremse soll dann nicht offen stehen. */
+/** Rückfall, falls die Datenbank klemmt: Die Bremse soll dann nicht offen stehen. */
 const _attempts = new Map<string, Eintrag>();
 
 // einzelwert(): Kommt der Name doppelt an, liefert Express ein Array.
@@ -65,7 +51,6 @@ function _prune() {
 const _restMin = (firstAt: number, windowMin: number, now = Date.now()) =>
   Math.max(1, Math.ceil((firstAt + windowMin * 60000 - now) / 60000));
 
-/** Zählerstand, oder null, wenn es keinen gibt oder sein Fenster abgelaufen ist. */
 async function _read(key: string, windowMin: number): Promise<Zaehlerstand | null> {
   try {
     const row = await repo.lies(key, windowMin);
@@ -93,11 +78,8 @@ async function _bump(key: string, windowMin: number): Promise<void> {
 
 type Stand = Zaehlerstand & { laufend: number };
 
-/**
- * Einen Platz für einen Versuch belegen, BEVOR geprüft wird — unter einer
- * Zeilensperre, damit gleichzeitige Versuche einander sehen. `erlaubt` sieht
- * Fehlversuche und laufende Versuche; sagt es nein, wird nichts belegt.
- */
+/** BEVOR geprüft wird, unter einer Zeilensperre, damit gleichzeitige Versuche
+ * einander sehen. */
 async function _reserviere(key: string, windowMin: number, erlaubt: (s: Stand) => boolean): Promise<{ ok: boolean; stand: Stand }> {
   try {
     return await db.transaction(async (tx) => {
@@ -114,7 +96,7 @@ async function _reserviere(key: string, windowMin: number, erlaubt: (s: Stand) =
       return { ok: true, stand };
     });
   } catch (_) {
-    // Rückfall im Prozessspeicher: Dort ist dieser Block ohne await atomar.
+    // Im Prozessspeicher ist dieser Block ohne await atomar.
     const now = Date.now();
     let e = _attempts.get(key);
     if (!e || now - e.firstAt > windowMin * 60000) { e = { count: 0, firstAt: now, lastAt: null, laufend: 0 }; _attempts.set(key, e); }
@@ -137,11 +119,9 @@ async function _clear(key: string): Promise<void> {
   catch (_) { _attempts.delete(key); }
 }
 
-/**
- * Name und E-Mail desselben Kontos zählen gemeinsam — sonst gälte jede Grenze
- * doppelt. Kleingeschrieben wird in PostgreSQL wie beim Login selbst: JavaScript
- * macht aus „İ" zwei Zeichen, PostgreSQL ein „i".
- */
+/** Name und E-Mail desselben Kontos zählen gemeinsam, sonst gälte jede Grenze
+ * doppelt. Kleinschreibung in PostgreSQL wie beim Login: JS macht aus „İ"
+ * zwei Zeichen. */
 async function kontoKennung(username: unknown): Promise<string> {
   const z = await repo.kontoZumNamen(einzelwert(username)).catch(meldeUndLiefere('anmeldung:konto-kennung', null));
   if (z?.id) return `konto:${z.id}`;
@@ -150,7 +130,8 @@ async function kontoKennung(username: unknown): Promise<string> {
 
 export type Sperre = { code: FehlerCode; vars: { minuten: number } };
 
-/** Belegt den Versuch; recordLoginFailure, recordLoginSuccess oder gibAnmeldeplatzFrei geben ihn frei. */
+/** Belegt den Versuch; recordLoginFailure, recordLoginSuccess oder
+ * gibAnmeldeplatzFrei geben ihn frei. */
 export async function checkLoginAllowed(ip: string, username: unknown): Promise<Sperre | null> {
   const kennung = await kontoKennung(username);
   const gesamt = await _reserviere(_adressKey(ip), WINDOW_MIN, s => s.count + s.laufend < MAX_JE_ADRESSE);
@@ -161,8 +142,8 @@ export async function checkLoginAllowed(ip: string, username: unknown): Promise<
     await _freigeben(_adressKey(ip));
     return { code: 'zu_viele_fehlversuche', vars: { minuten: adresse.stand.waitMin } };
   }
-  // Von einer Adresse, an der sich der Inhaber schon angemeldet hat, gilt nur
-  // die Sperre je Adresse — sonst liesse sich die Wartezeit gegen ihn richten.
+  // Von einer bekannten Adresse gilt nur die Sperre je Adresse — sonst liesse
+  // sich die Wartezeit gegen den Inhaber richten.
   if (await _read(_bekanntKey(ip, kennung), BEKANNT_MIN)) return null;
   let rest = 0;
   const konto = await _reserviere(_nameKey(kennung), WINDOW_MIN, s => {
@@ -178,7 +159,6 @@ export async function checkLoginAllowed(ip: string, username: unknown): Promise<
   return null;
 }
 
-/** Den belegten Versuch freigeben, ohne ihn zu zählen (etwa: Code fehlt noch). */
 export async function gibAnmeldeplatzFrei(ip: string, username: unknown): Promise<void> {
   const kennung = await kontoKennung(username);
   await _freigeben(_key(ip, kennung));
@@ -197,8 +177,8 @@ export async function recordLoginSuccess(ip: string, username: unknown): Promise
   const kennung = await kontoKennung(username);
   await _clear(_key(ip, kennung));
   await _clear(_nameKey(kennung));
-  // Nur freigeben, nicht löschen: Ein Erfolg nach vielen Fehlversuchen gegen
-  // andere Konten soll den Zähler der Adresse nicht zurücksetzen.
+  // Nur freigeben, nicht löschen: Ein Erfolg soll den Zähler der Adresse nach
+  // Fehlversuchen gegen andere Konten nicht zurücksetzen.
   await _freigeben(_adressKey(ip));
   await _bump(_bekanntKey(ip, kennung), BEKANNT_MIN);
 }
@@ -208,11 +188,8 @@ export async function raeumeAnmeldezaehlerAuf(): Promise<number> {
   return repo.raeumeAuf(BEKANNT_MIN);
 }
 
-/**
- * Eine Anfrage je Adresse zählen und den neuen Stand liefern — in einem
- * Schritt: Getrennt gelesen und gezählt kamen 25 gleichzeitige Anfragen durch,
- * obwohl nur 5 erlaubt waren. Abgewiesene zählen mit, verlängern aber nicht.
- */
+/** In einem Schritt: Getrennt gelesen und gezählt kamen gleichzeitige Anfragen
+ * durch. Abgewiesene zählen mit, verlängern aber nicht. */
 export async function zaehleAnfrage(bucket: string, ip: string, windowMs: number): Promise<{ count: number; waitMin: number }> {
   const key = `${bucket}|${ip}`;
   const windowMin = windowMs / 60000;
@@ -229,11 +206,8 @@ export async function zaehleAnfrage(bucket: string, ip: string, windowMs: number
   }
 }
 
-/**
- * Bestätigung des aktuellen Passworts in einer laufenden Sitzung. Gezählt je
- * KONTO, nicht je Adresse: Wer ein Token erbeutet hat, soll das Passwort auch
- * von wechselnden Adressen aus nicht unbegrenzt raten können.
- */
+/** Je KONTO, nicht je Adresse: Mit erbeutetem Token soll das Passwort auch von
+ * wechselnden Adressen aus nicht unbegrenzt zu raten sein. */
 const _bestaetigungKey = (uid: number) => `passwort-bestaetigen|${uid}`;
 
 export async function bestaetigungGesperrt(uid: number): Promise<Sperre | null> {

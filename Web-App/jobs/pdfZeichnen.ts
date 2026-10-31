@@ -5,14 +5,9 @@ import { Worker, isMainThread, parentPort, workerData } from 'worker_threads';
 import PDFDocument from 'pdfkit';
 import { IMAGES_DIR, resolveWebPath } from '../src/infra/appPaths';
 
-/**
- * Die Teileliste als PDF zeichnen. pdfkit zeichnet synchron; bei tausenden
- * Zeilen hielte das die Ereignisschleife des Prozesses sekundenlang an, und
- * im Prozess „beides“ beantwortet derselbe Prozess auch Anfragen. Darum läuft es in einem
- * worker_thread: Er braucht keine Datenbank, nur die Liste und die Bilddateien.
- */
+/** Im worker_thread: pdfkit zeichnet synchron und hielte bei tausenden Zeilen
+ * die Ereignisschleife an, die im Prozess „beides" auch Anfragen beantwortet. */
 
-/** Eine Zeile der Teileliste, soweit das PDF sie liest. */
 export type PdfTeil = {
   part_number: string;
   bl_part_number?: string | null;
@@ -27,11 +22,8 @@ export type PdfTeil = {
 };
 export type PdfSet = { set_number: string };
 
-/**
- * Die Bilddatei eines Teils auf der Platte, nur innerhalb des Bildordners.
- * Die Teileliste kommt vom Client; ein `image_local` wie `/data/uploads/7/…`
- * oder `/images/../../…` läse sonst fremde Dateien ins PDF.
- */
+/** Nur innerhalb des Bildordners: Die Liste kommt vom Client, ein `image_local`
+ * wie `/images/../../…` läse sonst fremde Dateien ins PDF. */
 function pdfBildPfad(p: PdfTeil): string | null {
   let src = p.image_local || p.image_url || '';
   const m = src.match(/\/api\/img-proxy\?url=(.+)/);
@@ -42,13 +34,11 @@ function pdfBildPfad(p: PdfTeil): string | null {
   return voll.startsWith(path.resolve(IMAGES_DIR) + path.sep) ? voll : null;
 }
 
-/** Fehlt ein Bild oder ist es kaputt, steht die Zeile ohne Bild da — das PDF entsteht trotzdem. */
+/** Fehlt ein Bild, steht die Zeile ohne Bild da — das PDF entsteht trotzdem. */
 const ohneBild = (): null => null;
 
-/**
- * Das PDF als Strom in die Datei — nicht als Puffer: Eine grosse Sammlung
- * ergibt viele Megabyte. Erst die fertige Datei bekommt ihren Namen.
- */
+/** Als Strom, nicht als Puffer: Eine grosse Sammlung ergibt viele Megabyte.
+ * Erst die fertige Datei bekommt ihren Namen. */
 async function buildPdf(sets: PdfSet[], parts: PdfTeil[], ziel: string): Promise<void> {
   const doc = new PDFDocument({ margin: 40, size: 'A4' });
   const teil = `${ziel}.teil`;
@@ -96,8 +86,7 @@ async function buildPdf(sets: PdfSet[], parts: PdfTeil[], ziel: string): Promise
     liste.sort((a, b) => (a.bl_part_number || a.part_number || '').localeCompare(b.bl_part_number || b.part_number || '', undefined, { numeric: true }));
   }
 
-  // Bilder je Farbgruppe vorladen und wieder freigeben: Im Speicher liegt nur
-  // eine Gruppe, nicht die ganze Sammlung.
+  // Je Farbgruppe vorladen und freigeben: Im Speicher liegt nur eine Gruppe.
   const bilder = new Map<string, Buffer | null>();
   const ladeBilder = async (gruppe: PdfTeil[]) => {
     bilder.clear();
@@ -139,7 +128,7 @@ async function buildPdf(sets: PdfSet[], parts: PdfTeil[], ziel: string): Promise
       const imgBuf = fp ? (bilder.get(fp) || null) : null;
       let imgOffset = 0;
       if (imgBuf) {
-        // Ein Bild, das pdfkit nicht lesen kann (kein PNG/JPEG), fällt weg; die Zeile bleibt.
+        // Ein Bild, das pdfkit nicht lesen kann, fällt weg; die Zeile bleibt.
         try { doc.image(imgBuf, startX, rowY, { width: 30, height: 30, fit: [30, 30] }); imgOffset = 36; }
         catch (e) { console.warn(`[PDF] Bild für ${p.part_number} unlesbar: ${(e as Error).message}`); }
       }
@@ -160,10 +149,8 @@ async function buildPdf(sets: PdfSet[], parts: PdfTeil[], ziel: string): Promise
 
 type FadenAuftrag = { art: 'pdf-zeichnen'; sets: PdfSet[]; parts: PdfTeil[]; ziel: string };
 
-/**
- * buildPdf() in einem eigenen Faden. Aus den TypeScript-Quellen (Entwicklung
- * mit tsx) gibt es keine .js-Datei für den Faden; dann wird hier gezeichnet.
- */
+/** Aus den TypeScript-Quellen (tsx) gibt es keine .js-Datei für den Faden;
+ * dann wird hier gezeichnet. */
 function zeichnePdfImFaden(sets: PdfSet[], parts: PdfTeil[], ziel: string): Promise<void> {
   if (__filename.endsWith('.ts')) return buildPdf(sets, parts, ziel);
   return new Promise((resolve, reject) => {
