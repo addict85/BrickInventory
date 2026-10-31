@@ -36,7 +36,7 @@ test('Hintergrundarbeiten in der Verwaltung', { concurrency: 1 }, async (t) => {
   const uid = (await db.get(`INSERT INTO users (username, password_hash, is_admin, is_active) VALUES ($1,'x',1,1) RETURNING id`, [NAME])).id;
   await db.run('DELETE FROM auftraege');
   const Z = _req('src/auftraege/zeitplan.js');
-  const A = _req('src/auftraege/auftraege.js');
+  const A = Object.assign({}, _req('src/auftraege/auftraege.js'), _req('src/auftraege/repository/auftraege.js'));
   t.after(async () => {
     await db.run('DELETE FROM auftraege');
     await db.run('DELETE FROM users WHERE id = $1', [uid]);

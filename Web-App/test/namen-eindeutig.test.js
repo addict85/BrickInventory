@@ -46,7 +46,7 @@ const ERLAUBT = new Map([
   ['run',   'db/database und drei Jobs: „ausfuehren". In den Jobs ist es der Einstieg, ' +
             'in der Datenbank die Anweisung — gleicher Begriff, kein gemeinsamer Gegenstand.'],
   ['log',   'drei Jobs, jeder schreibt mit seinem eigenen Praefix.'],
-  ['getSetInfo',   'clients/brickset und clients/rebrickable — dieselbe Frage an ZWEI ' +
+  ['getSetInfo',   'clients/brickset und src/katalog/rebrickableKatalog — dieselbe Frage an ZWEI ' +
                    'verschiedene Dienste. Der Dateiname sagt, welcher gemeint ist.'],
   ['httpsGet',     'clients/bricklink und clients/brickset — jeder mit der Signatur seines ' +
                    'Dienstes (BrickLink braucht einen Authorization-Kopf, Brickset nicht).'],

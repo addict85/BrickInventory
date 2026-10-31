@@ -126,8 +126,8 @@ test('die Sortierung "hat einen Preis vor passendem Zustand" ist überall weg', 
 });
 
 test('getPriceGuide holt ohne Angabe den Neupreis', () => {
-  // Fundort seit Nachtrag 131: clients/bricklink.ts (null Routen, nie montiert).
-  const src = fs.readFileSync(path.join(ROOT, 'clients/bricklink.ts'), 'utf8');
+  // Fundort: src/katalog/bricklinkPreise.ts (der Client fragt nur ab).
+  const src = fs.readFileSync(path.join(ROOT, 'src/katalog/bricklinkPreise.ts'), 'utf8');
   const { pruefeParameter, funktionsKopf } = require('./helpers/sources');
   pruefeParameter(src, 'getPriceGuide', ['setNumber', 'condition']);
   // Der Punkt ist die VORGABE, nicht der Rest des Kopfes: Mit 'U' landete der
@@ -139,7 +139,7 @@ test('getPriceGuide holt ohne Angabe den Neupreis', () => {
 test("guide_type ist überall 'sold', nicht 'stock'", () => {
   // 'sold' = tatsächlich erzielte Preise der letzten sechs Monate.
   // 'stock' wären eingestellte Angebote, also auch das, was niemand zahlt.
-  for (const f of ['clients/bricklink.ts', 'routes/api_v1/sets.ts',
+  for (const f of ['clients/bricklink.ts', 'src/katalog/bricklinkPreise.ts', 'routes/api_v1/sets.ts',
                    'src/finanzen/financeCalc.ts', 'jobs/priceJob.ts']) {
     const src = fs.readFileSync(path.join(ROOT, f), 'utf8');
     const code = src.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
@@ -235,7 +235,7 @@ test('der Preisjob holt alle Zustände, die ein Set tatsächlich führt', () => 
 test("ohne Verkauf in sechs Monaten wird auf 'stock' ausgewichen", () => {
   // BrickLink liefert für selten gehandelte Artikel eine Antwort mit
   // avg_price = 0 — 'sold' allein hiesse dort dauerhaft kein Marktpreis.
-  const bl = fs.readFileSync(path.join(ROOT, 'clients/bricklink.ts'), 'utf8');
+  const bl = fs.readFileSync(path.join(ROOT, 'src/katalog/bricklinkPreise.ts'), 'utf8');
   // Frueher stand hier `/function hasUsablePrice/` — ein Name. Die Pruefung
   // heisst inzwischen hatPreis() und liegt in src/finanzen/preisRegel.ts, weil sie
   // DIESELBE sein muss wie beim Lesen: Solange der Torwaechter hier weiter war
@@ -249,7 +249,7 @@ test("ohne Verkauf in sechs Monaten wird auf 'stock' ausgewichen", () => {
     "Rückfall auf 'stock' fehlt");
   assert.match(bl, /guide_used/, 'Es muss nachvollziehbar bleiben, woher der Wert kommt');
   // Reihenfolge: sold gewinnt, wenn es einen Preis hat
-  assert.match(bl, /if \(hasUsablePrice\(first\) \|\| guideType !== 'sold'\)/,
+  assert.match(bl, /if \(hatPreis\(first\) \|\| guideType !== 'sold'\)/,
     "'sold' muss Vorrang behalten, wenn dort ein Preis steht");
 
   const fc = require('./helpers/sources').finanzQuelle();

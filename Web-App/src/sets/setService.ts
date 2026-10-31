@@ -11,7 +11,7 @@ import { getSetting } from '../konto/settings';
 import { deleteSetRows } from './abfragen';
 import { legeInPapierkorb } from '../bestand/papierkorb';
 import { toCsv } from '../infra/csvExport';
-import { getSetInfo } from '../../clients/rebrickable';
+import { getSetInfo } from '../katalog/rebrickableKatalog';
 import * as brickset from '../../clients/brickset';
 import { getItemImageUrl } from '../../clients/bricklink';
 import { generateThumb } from '../katalog/bilder/thumbs';

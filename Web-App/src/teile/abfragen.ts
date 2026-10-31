@@ -11,7 +11,8 @@ import { ensureFresh } from './partsSummary';
 // Datei auf die aeusserste Schicht.
 import { fetchMissingBlIds } from '../katalog/partsImport';
 import type { RbSetTeil } from '../../clients/rebrickable';
-import { getAllSetParts, getRbKey, httpsGetRobust } from '../../clients/rebrickable';
+import { getRbKey, httpsGetRobust } from '../../clients/rebrickable';
+import { getAllSetParts } from '../katalog/rebrickableKatalog';
 import { clampPageSize, applyManualCondition, withOwners, MAX_PAGE_SIZE, UNPAGED_LIMIT, SET_PARTS_MAX_PAGE_SIZE } from '../bestand/gemeinsam';
 import { meldeUndWeiter, logAndContinue, meldeUndLiefere } from '../infra/httpError';
 import { farbkarte as blFarbkarte } from '../finanzen/financeCalc';

@@ -13,7 +13,8 @@ import { DATA_DIR, PDF_JOB_DIR, SET_IMAGES_DIR } from '../infra/appPaths';
 import { fehlertext, meldeUndWeiter, logAndContinue, meldeUndLiefere, ohneFehlendeDatei } from '../infra/httpError';
 import { fetchPrice } from '../finanzen/financeCalc';
 import { getRateLimitStatus, setzeKontingentZurueck } from '../katalog/apiKontingent';
-import { katalogEintrag, ohneBricklinkPreis } from '../sets/setNummer';
+import { ohneBricklinkPreis } from '../sets/setNummer';
+import { katalogEintrag, clearCatalogCache, clearSubsetsCache, getPriceGuide, getCacheStats } from '../katalog/bricklinkPreise';
 import { loescheAnleitungen } from '../katalog/instructions';
 import { imgProxyFailures } from '../katalog/bilder/imgProxyStats';
 import { vergissFehlend } from '../katalog/bilder/imageMisses';
@@ -29,7 +30,7 @@ import { anleitungEinreihen } from '../auftraege/anleitungsAuftrag';
 import { bricksetJetzt, bricksetZahlen } from '../auftraege/bricksetAuftrag';
 import { anfragenJeMinute, bildbedarfAnstossen } from '../katalog/bilder/bildbedarf';
 import { fehlerWerfen } from '../infra/fehlerTexte';
-import { clearCatalogCache, clearSubsetsCache, getPriceGuide, getCacheStats, pruefeBricklinkZugang } from '../../clients/bricklink';
+import { pruefeBricklinkZugang } from '../../clients/bricklink';
 import { ausRetryWarteschlange, pruefeBricksetZugang } from '../../clients/brickset';
 import { pruefeRebrickableZugang } from '../../clients/rebrickable';
 

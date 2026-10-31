@@ -48,7 +48,7 @@ test('Anleitungen als Auftrag', { concurrency: 1 }, async (t) => {
     t.skip('Test-DB nicht erreichbar'); return;
   }
   const Q = _req('jobs/instructionQueue.js');
-  const A = _req('src/auftraege/auftraege.js');
+  const A = Object.assign({}, _req('src/auftraege/auftraege.js'), _req('src/auftraege/repository/auftraege.js'));
   const { AuftragVerschieben } = _req('jobs/auftragsWorker.js');
   const pause = () => A.liesPause('anleitung');
   const inSek = async () => { const p = await pause(); return p ? Math.round((new Date(p.bis) - Date.now()) / 1000) : null; };

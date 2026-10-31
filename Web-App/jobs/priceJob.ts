@@ -6,10 +6,10 @@ import { liesZustand, setzeZustand } from '../src/auftraege/laufzustand';
 import { AuftragVerschieben, type AuftragsKontext } from './auftragsWorker';
 import { getGlobalSetting } from '../src/konto/settings';
 import { getSetting } from '../src/konto/settings';
-import { katalogEintrag, ohneBricklinkPreis } from '../src/sets/setNummer';
+import { ohneBricklinkPreis } from '../src/sets/setNummer';
+import { katalogEintrag, getPriceGuide } from '../src/katalog/bricklinkPreise';
 import * as db from '../db/database';
 import * as monitor from '../src/auftraege/jobMonitor';
-import { getPriceGuide } from '../clients/bricklink';
 import { LOCKS } from '../src/infra/lockNamespaces';
 import { pruefeSet } from '../src/finanzen/preisalarm';
 

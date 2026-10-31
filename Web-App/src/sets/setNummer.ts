@@ -43,17 +43,10 @@ export function ohneVersion(setNumber: string | number): string {
 //
 // Hier steht der LESER, nicht nur die Schreibweise: Die drei Stellen, die
 // „kennt BrickLink dafuer gar keinen Preis?" fragten, taten es mit
-// verschiedenen Schluesseln. Die Markierung schreibt clients/bricklink.ts
-// unter der Nummer MIT Anhang; zwei der drei suchten unter der rohen.
-import * as db from '../../db/database';
+// verschiedenen Schluesseln. Die Markierung schreibt der Preisführer
+// unter der Nummer MIT Anhang (src/katalog/bricklinkPreise.ts).
+import type { KatalogEintrag } from '../katalog/bricklinkPreise';
 
-export interface KatalogEintrag { is_gear?: number | null; bl_type?: string | null; fetched_at?: string | Date | null; }
-
-/** Der Katalog-Eintrag zu einem Set — unter der Schreibweise, unter der er abgelegt wird. */
-export async function katalogEintrag(setNumber: string): Promise<KatalogEintrag | null> {
-  return (await db.get<KatalogEintrag>('SELECT is_gear, bl_type, fetched_at FROM catalog_cache WHERE set_number = $1',
-                [mitVersion(setNumber)])) ?? null;
-}
 
 /**
  * Sagt der Katalog, dass es fuer dieses Set bei BrickLink gar keinen Preis

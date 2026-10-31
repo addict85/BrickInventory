@@ -47,7 +47,7 @@ const db = _req('db/database.js');
 // BrickLink vorgeben, BEVOR die Preiswege getPriceGuide herausziehen. Der
 // echte Client wirft in genau dieser Lage — hier wird nur MITGEZAEHLT, wie
 // oft ueberhaupt gefragt wird.
-const blPfad = require.resolve(path.join(ROOT, 'dist', 'clients/bricklink.js'));
+const blPfad = require.resolve(path.join(ROOT, 'dist', 'src/katalog/bricklinkPreise.js'));
 const echt = require(blPfad);
 let abrufe = [];
 require.cache[blPfad].exports = Object.assign({}, echt, {
@@ -157,6 +157,6 @@ test('die Schreibweise wird nirgends noch einmal ausgerechnet', () => {
   assert.deepEqual(eigene, ['src/sets/setNummer.ts'],
     'Die Schreibweise wird woanders noch einmal ausgerechnet — genau so laufen ' +
     'zwei Stellen auseinander, die dasselbe meinen');
-  assert.deepEqual(vorpruefer, ['src/sets/setNummer.ts'],
+  assert.deepEqual(vorpruefer, ['src/katalog/repository/katalogCache.ts'],
     'Der Katalog wird an mehr als einer Stelle gelesen');
 });

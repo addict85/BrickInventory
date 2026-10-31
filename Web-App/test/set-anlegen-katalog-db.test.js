@@ -59,7 +59,7 @@ test('Katalogname bleibt bei fehlenden Quellen', { concurrency: 1 }, async (t) =
 
   try {
     await t.test('getSetInfo gibt den Platzhalter nicht als Treffer zurück', async () => {
-      const info = await _req('clients/rebrickable.js').getSetInfo(SN);
+      const info = await _req('src/katalog/rebrickableKatalog.js').getSetInfo(SN);
       assert.equal(info, null);
     });
 

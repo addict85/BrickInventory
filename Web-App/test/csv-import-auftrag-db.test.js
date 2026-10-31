@@ -65,7 +65,7 @@ test('CSV-Import als Auftrag', { concurrency: 1 }, async (t) => {
   };
   const a = await konto(`csvauftrag-a-${process.pid}`);
   const b = await konto(`csvauftrag-b-${process.pid}`);
-  const { stelleAuftragEin } = _req('src/auftraege/auftraege.js');
+  const { stelleAuftragEin } = Object.assign({}, _req('src/auftraege/auftraege.js'), _req('src/auftraege/repository/auftraege.js'));
   const { jobSet } = _req('src/auftraege/importAuftrag.js');
   const worker = _req('jobs/auftraegeStarten.js').starteAuftragsWorker({ arten: ['csv_import'], taktMs: 50 });
   const nacharbeit = (uid) => db.all(

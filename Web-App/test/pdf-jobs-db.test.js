@@ -166,7 +166,7 @@ test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async (t) => 
       const start = Date.now();
       // Der Worker meldet das Ende über erledigt(); der Auftrag gehört hier dem Belegenden 'test'.
       const zeile = await db.get(`SELECT id FROM auftraege WHERE schluessel = $1`, [auftraege.pdfSchluessel(job)]);
-      setTimeout(() => _req('src/auftraege/auftraege.js').erledigt({ id: String(zeile.id), belegt_von: 'test' }), 300);
+      setTimeout(() => Object.assign({}, _req('src/auftraege/auftraege.js'), _req('src/auftraege/repository/auftraege.js')).erledigt({ id: String(zeile.id), belegt_von: 'test' }), 300);
       while (!text.includes('"done"') && Date.now() - start < 8000) {
         const { value, done } = await Promise.race([leser.read(),
           new Promise(f => setTimeout(() => f({ done: true }), 8000 - (Date.now() - start)))]);

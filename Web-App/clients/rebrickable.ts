@@ -6,15 +6,13 @@
 // Kreise, die daraus entstanden, wurden mit späten `require()` umgangen.
 //
 import { rebrickableLimiter, consumeRebrickableDaily, rebrickableDailyStatus, parseThrottleWait } from '../src/katalog/rateLimiter';
-import { istErsatzteil, KEINE_FARBE } from '../src/infra/validate';
+import { KEINE_FARBE } from '../src/infra/validate';
 
 import https from 'https';
 import path from 'path';
 import fs from 'fs';
-import * as db from '../db/database';
 import { rebrickableBackgroundLimiter } from '../src/katalog/rateLimiter';
 import { fehlertext, meldeUndLiefere } from '../src/infra/httpError';
-import { neuestesInventar } from '../src/katalog/rbInventar';
 import { mitVersion } from '../src/sets/setNummer';
 import { getGlobalSetting } from '../src/konto/settings';
 import { ERLAUBTE_DOWNLOAD_HOSTS, hostErlaubt, naechsteUmleitung,
@@ -154,82 +152,20 @@ async function getThemeName(themeId: number | string) {
   catch (_) { return null; }
 }
 
-async function getSetInfo(setNumber: string) {
-  const n = mitVersion(setNumber);
-  const cached = await db.get('SELECT * FROM catalog_cache WHERE set_number = $1', [n]);
-  // "Set <Nummer>" ist ein Platzhalter (BrickLink-Typprüfung, Rebrickable-404)
-  // und kein Name. Als Treffer zurückgegeben, überschrieb er beim nächsten
-  // Erfassen den echten Namen im Katalog. Nachgefragt wird höchstens täglich.
-  if (cached?.name && cached.name !== `Set ${n}`) return cached;
-  if (cached?.name && cached.fetched_at && Date.now() - new Date(cached.fetched_at).getTime() < 86_400_000) return null;
-  const data = await rbGet(`/lego/sets/${pfadSegment(n)}/`);
-  if (!data) {
-    const hasKey = !!(await getRbKey());
-    await db.run('INSERT INTO catalog_cache (set_number, name, is_gear) VALUES ($1,$2,$3) ON CONFLICT (set_number) DO UPDATE SET is_gear=$3, fetched_at=NOW()',
-      [n, `Set ${n}`, hasKey ? 1 : 0]);
-    return null;
-  }
-  const theme = await getThemeName(data.theme_id);
-  const row = { set_number:n, name:data.name||null, year:data.year||null, theme:theme||null, pieces:data.num_parts||null, image_url:data.set_img_url||null, is_gear:0 };
-  await db.run('INSERT INTO catalog_cache (set_number,name,year,theme,pieces,image_url,is_gear) VALUES ($1,$2,$3,$4,$5,$6,0) ON CONFLICT (set_number) DO UPDATE SET name=$2,year=$3,theme=$4,pieces=$5,image_url=$6,is_gear=0',
-    [n, row.name, row.year, row.theme, row.pieces, row.image_url]);
-  return row;
+/** Die Stammdaten eines Sets; null, wenn Rebrickable es nicht kennt. */
+async function holeSet(nummer: string): Promise<any> {
+  return rbGet(`/lego/sets/${pfadSegment(nummer)}/`);
 }
 
-async function getAllSetPartsFromCsv(setNumber: string) {
-  const invId = await neuestesInventar(setNumber).catch(() => null);
-  if (!invId) return null;
-
-  const parts = await db.all(
-    `SELECT ip.part_num, ip.color_id, ip.quantity, ip.is_spare, ip.img_url,
-            p.name, p.part_img_url,
-            c.name as color_name, c.rgb as color_rgb,
-            m.bl_id AS bl_part_num
-     FROM rb_inventory_parts ip
-     LEFT JOIN rb_parts p ON p.part_num = ip.part_num
-     LEFT JOIN rb_colors c ON c.id = ip.color_id
-     LEFT JOIN bl_zuordnung  m ON m.art = 'part' AND m.rb_id = ip.part_num
-     WHERE ip.inventory_id = $1`,
-    [invId]
-  ).catch(()=>[]);
-
-  if (!parts.length) return null;
-  return parts.map((p: any) => ({
-    part: {
-      part_num:     p.part_num,
-      name:         p.name || p.part_num,
-      part_img_url: p.part_img_url || p.img_url || null,
-      external_ids: { BrickLink: p.bl_part_num && p.bl_part_num !== p.part_num ? [p.bl_part_num] : [] }
-    },
-    color: {
-      id:   p.color_id,
-      name: p.color_name || '',
-      rgb:  p.color_rgb || null
-    },
-    quantity:  p.quantity,
-    // Vorher eine eigene Aufzaehlung — die 'true' KLEINGESCHRIEBEN nicht
-    // kannte, waehrend die Teileliste daneben es tat.
-    is_spare:  istErsatzteil(p.is_spare)
-  }));
-}
-
-async function getAllSetParts(setNumber: string) {
-  // Try local CSV data first (fast, no API quota used)
-  const csvParts = await getAllSetPartsFromCsv(setNumber);
-  if (csvParts) {
-    return csvParts;
-  }
-  return getAllSetPartsApi(setNumber);
-}
-
-async function getAllSetPartsApi(setNumber: string) {
-  const n = mitVersion(setNumber);
-  const cached = await db.get('SELECT data FROM subsets_cache WHERE set_number = $1', [n]);
-  if (cached) { try { return JSON.parse(cached.data); } catch (_) {} }
+/**
+ * Die Teileliste eines Sets über die API, seitenweise. `verweigert`: Rebrickable
+ * antwortete 403 (Set unbekannt oder kein Zugriff) — das soll der Aufrufer merken.
+ */
+async function holeSetTeile(n: string): Promise<{ teile: any[]; verweigert: boolean }> {
   const key = await getRbKey();
   if (!key) throw new Error('Rebrickable API Key nicht konfiguriert.');
   const allParts: any[] = [];
-  let url = `${BASE}/lego/sets/${pfadSegment(n)}/parts/?page_size=500&inc_part_details=1`;
+  let url: string | null = `${BASE}/lego/sets/${pfadSegment(n)}/parts/?page_size=500&inc_part_details=1`;
   let pages = 0;
   while (url && pages++ < 40) {
     if (!await consumeRebrickableDaily()) {
@@ -240,26 +176,18 @@ async function getAllSetPartsApi(setNumber: string) {
     let status, body;
     try { ({ status, body } = await httpsGetRobust(url, { Authorization: `key ${key}` }, 60000)); }
     catch (e) { console.error(`  Parts page ${pages} failed: ${fehlertext(e)}`); break; }
-    if (status === 404 || status === 403) {
-      if (status === 403) {
-        console.log(`  Parts HTTP 403 for ${n} — set not found or access denied, skipping`);
-        // Cache empty result so we don't retry on every reimport
-        await db.run('INSERT INTO subsets_cache (set_number, data) VALUES ($1,$2) ON CONFLICT (set_number) DO UPDATE SET data=$2, fetched_at=NOW()',
-          [n, '[]']);
-      }
-      break;
+    if (status === 403) {
+      console.log(`  Parts HTTP 403 for ${n} — set not found or access denied, skipping`);
+      return { teile: allParts, verweigert: true };
     }
+    if (status === 404) break;
     if (status !== 200) { console.error(`  Parts HTTP ${status}`); break; }
     let data; try { data = JSON.parse(body); } catch (e) { break; }
     allParts.push(...(data.results || []));
     url = data.next || null;
     if (url) await sleep(500);
   }
-  if (allParts.length > 0) {
-    await db.run('INSERT INTO subsets_cache (set_number, data) VALUES ($1,$2) ON CONFLICT (set_number) DO UPDATE SET data=$2, fetched_at=NOW()',
-      [n, JSON.stringify(allParts)]);
-  }
-  return allParts;
+  return { teile: allParts, verweigert: false };
 }
 
 async function scrapeInstructions(setNumber: string) {
@@ -420,19 +348,16 @@ async function getBrickColors() {
   } catch (_) { return []; }
 }
 
-// ── Get the parts that make up a minifig (used to estimate a market price via
-// its constituent parts when no direct BrickLink minifig number is known) ────
-// Global, shared cache (analog subsets_cache for sets) since this data rarely
-// changes and Rebrickable's API is rate-limited.
-async function getMinifigParts(figNumber: string) {
-  const cached = await db.get('SELECT data FROM minifig_parts_cache WHERE fig_number = $1', [figNumber]).catch(() => null);
-  if (cached) { try { return JSON.parse(cached.data); } catch (_) {} }
-
+/**
+ * Die Teile einer Minifigur über die API; null, wenn es keine Antwort gibt
+ * (kein Schlüssel, Tageslimit, Fehler) — das soll nicht gemerkt werden.
+ */
+async function holeFigurTeile(figNumber: string): Promise<any[] | null> {
   const key = await getRbKey();
-  if (!key) return [];
+  if (!key) return null;
   if (!await consumeRebrickableDaily()) {
     console.error(`[rebrickable] Tageslimit (${(await rebrickableDailyStatus()).limit}/Tag) erreicht — Minifig-Teile für ${figNumber} übersprungen`);
-    return [];
+    return null;
   }
   try {
     await rebrickableLimiter.waitForSlot();
@@ -440,22 +365,15 @@ async function getMinifigParts(figNumber: string) {
       `${BASE}/lego/minifigs/${pfadSegment(figNumber)}/parts/?page_size=200&inc_part_details=1`,
       { Authorization: `key ${key}` }, 30000
     );
-    if (status !== 200) return [];
+    if (status !== 200) return null;
     const data = JSON.parse(body);
-    const parts = (data.results || []).map((r: RbSetTeil) => ({
+    return (data.results || []).map((r: RbSetTeil) => ({
       part_num:  r.part?.part_num || null,
       color_id:  r.color?.id ?? 0,
       quantity:  r.quantity || 1,
       bl_part_num: r.part?.external_ids?.BrickLink?.[0] || null,
     })).filter((p: { part_num?: string | null }) => p.part_num);
-
-    await db.run(
-      'INSERT INTO minifig_parts_cache (fig_number, data, fetched_at) VALUES ($1,$2,NOW()) ON CONFLICT (fig_number) DO UPDATE SET data=$2, fetched_at=NOW()',
-      [figNumber, JSON.stringify(parts)]
-    ).catch(() => {});
-
-    return parts;
-  } catch (_) { return []; }
+  } catch (e) { return meldeUndLiefere(`rebrickable:figurteile ${figNumber}`, null)(e); }
 }
 
 
@@ -575,6 +493,6 @@ async function pruefeRebrickableZugang(): Promise<void> {
   await rbGet('/lego/themes/', { page_size: 1 });
 }
 
-export { rebrickableJson, pruefeRebrickableZugang, lookupPart, getSetInfo, getAllSetParts, downloadFile, scrapeInstructions,
-  getSetMinifigs, getMinifigInfo, getBrickColors, getRbKey, sleep, httpsGetRobust, getMinifigParts,
+export { rebrickableJson, pruefeRebrickableZugang, lookupPart, holeSet, holeSetTeile, holeFigurTeile, getThemeName, downloadFile, scrapeInstructions,
+  getSetMinifigs, getMinifigInfo, getBrickColors, getRbKey, sleep, httpsGetRobust,
   blTeilZuRb, blFilterWirkungslos };

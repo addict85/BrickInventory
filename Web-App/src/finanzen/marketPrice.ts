@@ -7,7 +7,7 @@ import { DEFAULT_PRICE_CONDITION, fetchPartPrice, fetchMinifigPrice, ladeBlNumme
          resolveBlPartNumber, resolveBlColorId } from './rechnung/preise';
 import { getSetting } from '../konto/settings';
 import { meldeUndWeiter, fehlertext, logAndContinue, meldeUndLiefere } from '../infra/httpError';
-import { getMinifigParts } from '../../clients/rebrickable';
+import { getMinifigParts } from '../katalog/rebrickableKatalog';
 import { KEINE_FARBE } from '../infra/validate';
 
 /**

@@ -46,7 +46,7 @@ test('Auftragstabelle', { concurrency: 1 }, async (t) => {
   }
   const mc = await db.pool.connect();
   try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }
-  const A = _req('src/auftraege/auftraege.js');
+  const A = Object.assign({}, _req('src/auftraege/auftraege.js'), _req('src/auftraege/repository/auftraege.js'));
   const { erzeugeWorker } = _req('jobs/auftragsWorker.js');
   // Nur Zeilen dieses Tests: eine eigene Art, die kein anderer Worker kennt.
   const ART = `test-${process.pid}`;

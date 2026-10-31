@@ -7,12 +7,9 @@
 //
 
 import crypto from 'crypto';
-import { hatPreis } from '../src/finanzen/preisRegel';
 import https from 'https';
-import * as db from '../db/database';
 import { getGlobalSetting } from '../src/konto/settings';
-import { alsAbrufFehler } from './abrufFehler';
-import { mitVersion, katalogEintrag, ohneBricklinkPreis, ohneVersion } from '../src/sets/setNummer';
+import { mitVersion } from '../src/sets/setNummer';
 import { checkAndIncrementRateLimit } from '../src/katalog/apiKontingent';
 
 const BASE = 'https://api.bricklink.com/api/store/v1';
@@ -121,95 +118,9 @@ function getItemImageUrl(setNumber: string) {
   return `https://img.bricklink.com/ItemImage/SN/0/${encodeURIComponent(n)}.png`;
 }
 
-/**
- * Enthält die Antwort einen brauchbaren Preis?
- * Ausführlich: docs/begruendungen/clients/bricklink.ts.md#hasusableprice
- */
-const hasUsablePrice = hatPreis;
-
-/**
- * Preisabfrage mit Rückfall von 'sold' auf 'stock'.
- * Ausführlich: docs/begruendungen/clients/bricklink.ts.md#getpriceguide
- */
-async function getPriceGuide(setNumber: string, condition = 'N', guideType = 'sold', currencyCode = 'EUR') {
-  const first = await getPriceGuideRaw(setNumber, condition, guideType, currencyCode);
-  if (hasUsablePrice(first) || guideType !== 'sold') {
-    return { ...first, guide_used: guideType };
-  }
-  // Kein Verkauf in sechs Monaten → aktuelle Angebote heranziehen.
-  try {
-    const alt = await getPriceGuideRaw(setNumber, condition, 'stock', currencyCode);
-    if (hasUsablePrice(alt)) return { ...alt, guide_used: 'stock', guide_fallback: true };
-  } catch (_) { /* Rückfall ist optional — dann bleibt es beim leeren Ergebnis */ }
-  return { ...first, guide_used: guideType };
-}
-
-// Vorgabe 'N': Ein Aufruf ohne expliziten Zustand hat vorher den
-// GEBRAUCHT-Preis geholt und im Cache abgelegt.
-async function getPriceGuideRaw(setNumber: string, condition = 'N', guideType = 'sold', currencyCode = 'EUR') {
-  const n = mitVersion(setNumber);
-  const bare = ohneVersion(n);
-  const params = { guide_type: guideType, new_or_used: condition, currency_code: currencyCode, vat: 'N' };
-  const cached = await katalogEintrag(n);
-  if (cached?.bl_type === 'GEAR') return await bricklinkRequest('GET', `/items/gear/${bare}/price`, params);
-  if (cached?.bl_type === 'BOOK') return await bricklinkRequest('GET', `/items/book/${bare}/price`, params);
-  if (ohneBricklinkPreis(cached)) throw new Error(`${n} — kein BrickLink-Preis verfügbar`);
-  try {
-    return await bricklinkRequest('GET', `/items/set/${n}/price`, params);
-  } catch (e) {
-    const f = alsAbrufFehler(e);
-    const code = f.detail?.meta?.code;
-    if (code === 404 || code === 400) {
-      // Try gear endpoint
-      try {
-        const result = await bricklinkRequest('GET', `/items/gear/${bare}/price`, params);
-        await db.run('INSERT INTO catalog_cache (set_number, name, bl_type, is_gear) VALUES ($1,$2,$3,0) ON CONFLICT (set_number) DO UPDATE SET bl_type=$3, is_gear=0', [n, `Set ${n}`, 'GEAR']);
-        return result;
-      } catch (e2) {
-        const f2 = alsAbrufFehler(e2);
-        if (f2.detail?.meta?.code !== 404 && f2.detail?.meta?.code !== 400) throw e2;
-        // Try book endpoint
-        try {
-          const result = await bricklinkRequest('GET', `/items/book/${bare}/price`, params);
-          await db.run('INSERT INTO catalog_cache (set_number, name, bl_type, is_gear) VALUES ($1,$2,$3,0) ON CONFLICT (set_number) DO UPDATE SET bl_type=$3, is_gear=0', [n, `Set ${n}`, 'BOOK']);
-          return result;
-        } catch (e3) {
-          const f3 = alsAbrufFehler(e3);
-          if (f3.detail?.meta?.code !== 404 && f3.detail?.meta?.code !== 400) throw e3;
-          await db.run('INSERT INTO catalog_cache (set_number, name, bl_type, is_gear) VALUES ($1,$2,$3,1) ON CONFLICT (set_number) DO UPDATE SET bl_type=$3, is_gear=1, fetched_at=NOW()', [n, `Set ${n}`, 'NONE']);
-          throw new Error(`${n} nicht auf BrickLink gefunden (Set/Gear/Book) — kein Preis`);
-        }
-      }
-    }
-    throw e;
-  }
-}
-
-/**
- * Zwischenspeicher leeren — ohne Setnummer den ganzen.
- * Ausführlich: docs/begruendungen/clients/bricklink.ts.md#clearsubsetscache
- */
-async function clearSubsetsCache(sn: string | null = null) {
-  if (sn) await db.run('DELETE FROM subsets_cache WHERE set_number = $1', [mitVersion(sn)]);
-  else await db.run('DELETE FROM subsets_cache');
-}
-/** Siehe clearSubsetsCache(): ohne Setnummer der ganze Zwischenspeicher. */
-async function clearCatalogCache(sn: string | null = null) {
-  if (sn) await db.run('DELETE FROM catalog_cache WHERE set_number = $1', [mitVersion(sn)]);
-  else await db.run('DELETE FROM catalog_cache');
-}
-async function getCacheStats() {
-  const [s, c, p] = await Promise.all([
-    db.get('SELECT COUNT(*) as c FROM subsets_cache'),
-    db.get('SELECT COUNT(*) as c FROM catalog_cache'),
-    db.get('SELECT COUNT(*) as c FROM price_cache'),
-  ]);
-  return { subsets: parseInt(s.c), catalog: parseInt(c.c), prices: parseInt(p.c) };
-}
-
 /** Ein kleiner signierter Abruf — für den Testknopf der Einrichtung. */
 async function pruefeBricklinkZugang(): Promise<void> {
   await bricklinkRequest('GET', '/colors/1');
 }
 
-export { pruefeBricklinkZugang, bricklinkRequest, getItemImageUrl, getPriceGuide, clearSubsetsCache, clearCatalogCache, getCacheStats };
+export { pruefeBricklinkZugang, bricklinkRequest, getItemImageUrl };

@@ -76,7 +76,7 @@ test('Tageskontingent je Konto', { concurrency: 1 }, async (t) => {
     await db.run("INSERT INTO users (username,password_hash,is_admin,is_active,email_verified) VALUES ('kontingent_kind','x',0,1,1)");
     const uid = (await db.get("SELECT id FROM users WHERE username = 'kontingent_kind'")).id;
     const { erzeugeWorker } = _req('jobs/auftragsWorker.js');
-    const { stelleAuftragEin } = _req('src/auftraege/auftraege.js');
+    const { stelleAuftragEin } = Object.assign({}, _req('src/auftraege/auftraege.js'), _req('src/auftraege/repository/auftraege.js'));
     const ergebnisse = [];
     const w = erzeugeWorker({ wechselkurse: { ausfuehren: async () => {
       for (let i = 0; i < 3; i++) ergebnisse.push((await k.checkAndIncrementRateLimit('brickset')).allowed);
