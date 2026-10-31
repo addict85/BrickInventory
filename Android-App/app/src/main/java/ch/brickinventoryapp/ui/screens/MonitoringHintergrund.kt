@@ -105,7 +105,7 @@ private fun AuftragZeile(a: AuftragAnsicht, onAbbrechen: () -> Unit, onWiederhol
             }
             a.fehler?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error) }
         }
-        if (a.abbrechbar) TextButton(onClick = onAbbrechen) { Text(stringResource(R.string.hintergrund_abbrechen)) }
+        if (a.abbrechbar) TextButton(onClick = onAbbrechen) { Text(stringResource(R.string.common_cancel)) }
         if (a.wiederholbar) TextButton(onClick = onWiederholen) { Text(stringResource(R.string.hintergrund_wiederholen)) }
     }
 }

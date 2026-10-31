@@ -904,7 +904,6 @@
     <string name="hintergrund_versuch">attempt %1$d of %2$d</string>
     <string name="hintergrund_jetzt">Now</string>
     <string name="hintergrund_leeren">Clear</string>
-    <string name="hintergrund_abbrechen">Cancel</string>
     <string name="hintergrund_wiederholen">Retry</string>
     <plurals name="hintergrund_geleert">
         <item quantity="one">%1$d job removed</item>

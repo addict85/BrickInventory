@@ -885,7 +885,6 @@
     <string name="hintergrund_versuch">Versuch %1$d von %2$d</string>
     <string name="hintergrund_jetzt">Jetzt</string>
     <string name="hintergrund_leeren">Leeren</string>
-    <string name="hintergrund_abbrechen">Abbrechen</string>
     <string name="hintergrund_wiederholen">Wiederholen</string>
     <plurals name="hintergrund_geleert">
         <item quantity="one">%1$d Auftrag entfernt</item>
