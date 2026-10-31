@@ -20,6 +20,9 @@ import java.io.File
  * Stände: 82 vor dem Schnitt des MainViewModels (307ee28), 77 bei 8f4f9d3,
  * 61 seit FinanzZeilenGleichTest und ClientRendersOnlyTest die Finanzwahl ausführen,
  * 59 seit MengePlaketteTest und PurchasePriceDisplayTest die Regel ausführen.
+ * 54 seit die Bildadressen, das Katalogmodell, erfassungsWerte und die Teilefilter
+ * ausgeführt werden (ThumbFallback-, NoDirectCdnAccess-, CatalogUsesLocalImages-,
+ * AddPathOwner-, ListenfilterImZustandTest).
  */
 class QuelltextRatscheTest {
 
@@ -28,7 +31,7 @@ class QuelltextRatscheTest {
 
     @Test
     fun `reine Quelltext-Tests werden weniger, nie mehr`() {
-        val SCHRANKE = 59
+        val SCHRANKE = 54
         val alle = File("src/test/java/ch/brickinventoryapp").listFiles { f -> f.name.endsWith("Test.kt") }.orEmpty()
         assert(alle.size >= 100) { "Nur ${alle.size} Testdateien gefunden — greift die Suche noch?" }
         val nur = alle.filter { it.name != "QuelltextRatscheTest.kt" }.filter {

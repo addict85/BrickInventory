@@ -1,5 +1,10 @@
 package ch.brickinventoryapp
 
+import org.junit.Assert.assertEquals
+import ch.brickinventoryapp.ui.model.alsAnsicht
+import ch.brickinventoryapp.data.model.CatalogSetItem
+import ch.brickinventoryapp.data.model.CatalogSetDetail
+import ch.brickinventoryapp.data.api.ApiJson
 import org.junit.Test
 
 /**
@@ -13,6 +18,9 @@ import org.junit.Test
  * Bilddatei bereits heruntergeladen haben, weil sie nach der Setnummer
  * benannt und nutzerunabhängig ist. Der Server prüft das jetzt und liefert
  * `image_local`, wenn die Datei existiert.
+ *
+ * Gegenprobe (31.10.2026, gemessen): in CatalogSetItem.alsAnsicht `imageLocal =
+ * null` → rot „Katalog-Modelle kennen image_local“.
  */
 class CatalogUsesLocalImagesTest {
 
@@ -26,45 +34,22 @@ class CatalogUsesLocalImagesTest {
         if (line.trim().startsWith("//")) "" else line
     }
 
-    /**
-     * Alle Modelldateien als EIN Text (Nachtrag 155).
-     *
-     * Vorher stand hier "data/model/Models.kt" — ein Dateiname. Die 92
-     * Datenklassen lagen in einer Datei mit 1158 Zeilen; beim Aufteilen nach
-     * Sachgebieten waeren alle Pruefungen hier rot geworden, obwohl sich an den
-     * Klassen nichts geaendert hat. Gemeint sind DIE MODELLE, nicht eine Datei.
-     */
-    private fun modelle(): String =
-        java.io.File("src/main/java/ch/brickinventoryapp/data/model")
-            .listFiles { f -> f.extension == "kt" }
-            .orEmpty().sortedBy { it.name }
-            .joinToString("\n") { it.readText() }
-
     @Test
     fun `Katalog-Modelle kennen image_local`() {
-        val src = modelle()
-        assert(src.contains("data class CatalogSetItem")) { "CatalogSetItem fehlt" }
-        // Fester Zeichen-Ausschnitt statt naiver Klammersuche: Das erste ")"
-        // nach dem Klassennamen gehört zur ERSTEN @SerialName-Annotation, nicht
-        // zum Ende der Klasse — eine Klammersuche träfe viel zu früh ab.
-        val itemStart = src.indexOf("data class CatalogSetItem")
-        val item = src.substring(itemStart, itemStart + 800)
-        assert(item.contains("""@SerialName("image_local")""")) {
-            "CatalogSetItem muss image_local kennen"
-        }
-
-        val detailStart = src.indexOf("data class CatalogSetDetail")
-        val detail = src.substring(detailStart, detailStart + 500)
-        assert(detail.contains("""@SerialName("image_local")""")) {
-            "CatalogSetDetail muss image_local kennen"
-        }
+        // Gelesen wird, was der Server schickt, und es kommt in der Ansicht an.
+        val item = ApiJson.decodeFromString(CatalogSetItem.serializer(),
+            """{"set_number": "75192-1", "image_local": "/images/sets/75192-1.jpg"}""").alsAnsicht()
+        assertEquals("/images/sets/75192-1.jpg", item.imageLocal)
+        val detail = ApiJson.decodeFromString(CatalogSetDetail.serializer(),
+            """{"set_number": "75192-1", "image_local": "/images/sets/75192-1_thumb.jpg"}""").alsAnsicht()
+        assertEquals("/images/sets/75192-1_thumb.jpg", detail.imageLocal)
     }
 
     @Test
     fun `Katalog-Bildschirme reichen das Feld durch, statt null zu erzwingen`() {
         val list = code(read("ui/screens/CatalogScreen.kt"))
         // rememberTileImageWithFallback(...) zählt ebenfalls (Nachtrag 42):
-        // Der Helfer in util/ImageUrls.kt ruft intern resolveThumbUrl() auf und
+        // Der Helfer in util/BildRueckfall.kt ruft intern resolveThumbUrl() auf und
         // ergänzt den Rückfall auf die volle Auflösung. Entscheidend ist, dass
         // set.imageLocal WEITERGEREICHT wird — nicht, über welchen der beiden
         // Wege. Der wörtliche Aufruf allein beanstandete sonst Bildschirme, die
