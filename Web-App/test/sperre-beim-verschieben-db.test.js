@@ -141,7 +141,10 @@ async function sperrZeilen(userId, scopeKey, erteilt) {
     `SELECT COUNT(*)::int AS c FROM pg_locks
       WHERE locktype = 'advisory' AND classid = $1::oid
         AND objid = hashtext($2)::oid AND objsubid = 2
-        AND granted = $3`,
+        AND granted = $3
+        -- pg_locks gilt für den ganzen Server; parallele Testdateien halten in
+        -- ihrer eigenen Datenbank dieselben Schlüssel.
+        AND database = (SELECT oid FROM pg_database WHERE datname = current_database())`,
     [...schluessel(userId, scopeKey), erteilt]);
   return Number(z.c);
 }
