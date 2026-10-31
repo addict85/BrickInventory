@@ -167,33 +167,6 @@ fun FinanceScreen(
     }
 }
 
-/**
- * Das Vorschaubild einer Finanzzeile — 52 dp, Rückfall auf das Logo. Eine Funktion
- * für die Set-Zeile (FinanceSections.kt) und die Zeile für manuelle Einträge, weil
- * beide in derselben Tabelle stehen und jede Abweichung sofort auffiele.
- */
-@Composable
-fun FinanzBild(imageUrl: String?, imageLoader: ImageLoader, beschreibung: String?) {
-    Surface(
-        shape = Formen.kachel,
-        color = MaterialTheme.colorScheme.surfaceVariant,
-        modifier = Modifier.size(52.dp)
-    ) {
-        if (imageUrl != null) {
-            AsyncImage(
-                model = imageUrl, imageLoader = imageLoader,
-                contentDescription = beschreibung,
-                modifier = Modifier.fillMaxSize().clip(Formen.kachel),
-                contentScale = ContentScale.Fit
-            )
-        } else {
-            Box(Modifier.fillMaxSize(), Alignment.Center) {
-                Image(painterResource(R.drawable.ic_logo), null, Modifier.size(36.dp))
-            }
-        }
-    }
-}
-
 @Composable
 fun ManualFinanceRow(
     imageUrl: String?,

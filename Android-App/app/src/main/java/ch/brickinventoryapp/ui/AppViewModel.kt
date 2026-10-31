@@ -1,6 +1,5 @@
 package ch.brickinventoryapp.ui
 
-import androidx.glance.appwidget.updateAll
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -66,6 +65,7 @@ class AppViewModel @Inject constructor(
     /** Ein unbekanntes Zertifikat wartet auf Ja oder Nein (ZertifikatDialog). */
     val zertifikatsFrage: ch.brickinventoryapp.util.ZertifikatsFrage,
     ausgangsmelder: Ausgangsmelder,
+    private val abmeldehaken: Abmeldehaken,
 ) : ViewModel() {
 
     // Der Zustand wird mit dem gemerkten Design geboren: appTheme unten nimmt
@@ -234,8 +234,7 @@ class AppViewModel @Inject constructor(
             } catch (_: Exception) { /* darf das Abmelden nie verhindern */ }
             // Das Widget zeigt sonst die Zahlen des abgemeldeten Kontos weiter.
             runCatching {
-                ch.brickinventoryapp.widget.WidgetAblage.leeren(ctx)
-                ch.brickinventoryapp.widget.SammlungsWidget().updateAll(ctx)
+                abmeldehaken.abgemeldet()
             }
             sitzung.abgemeldet()
             blickfeldDienst.zuruecksetzen()

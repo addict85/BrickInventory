@@ -38,7 +38,7 @@ import androidx.camera.core.resolutionselector.ResolutionStrategy
  * @param breite Bildbreite in Pixeln, z. B. 1920
  * @param hoehe  Bildhöhe in Pixeln, z. B. 1080
  */
-internal fun bildAnalyse(breite: Int, hoehe: Int): ImageAnalysis =
+fun bildAnalyse(breite: Int, hoehe: Int): ImageAnalysis =
     ImageAnalysis.Builder()
         .also { autofokusDauerhaft(it) }
         .setResolutionSelector(
@@ -64,7 +64,7 @@ internal fun bildAnalyse(breite: Int, hoehe: Int): ImageAnalysis =
  * beiden dieselbe Zeile ist.
  */
 @androidx.annotation.OptIn(ExperimentalCamera2Interop::class)
-internal fun autofokusDauerhaft(bauer: ImageAnalysis.Builder) {
+fun autofokusDauerhaft(bauer: ImageAnalysis.Builder) {
     Camera2Interop.Extender(bauer).setCaptureRequestOption(
         CaptureRequest.CONTROL_AF_MODE,
         CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE
@@ -73,7 +73,7 @@ internal fun autofokusDauerhaft(bauer: ImageAnalysis.Builder) {
 
 /** Dasselbe für die Vorschau — siehe [autofokusDauerhaft]. */
 @androidx.annotation.OptIn(ExperimentalCamera2Interop::class)
-internal fun autofokusDauerhaft(bauer: Preview.Builder) {
+fun autofokusDauerhaft(bauer: Preview.Builder) {
     Camera2Interop.Extender(bauer).setCaptureRequestOption(
         CaptureRequest.CONTROL_AF_MODE,
         CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE
@@ -98,7 +98,7 @@ internal fun autofokusDauerhaft(bauer: Preview.Builder) {
  * @param beiKamera bekommt die gebundene Kamera. Hier hängen die Aufrufer an, was
  *         nur sie betrifft.
  */
-internal fun kameraBinden(
+fun kameraBinden(
     ctx: Context,
     previewView: PreviewView,
     lifecycleOwner: LifecycleOwner,

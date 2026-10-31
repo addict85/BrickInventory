@@ -19,7 +19,7 @@ import ch.brickinventoryapp.data.repository.Result
  * Netzwerk oder DNS scheitern. `transient` setzt die Datenschicht in
  * RepoBasis; hier wird nicht an der Fehlermeldung geraten.
  */
-internal suspend fun <T> retryOnNetwork(
+suspend fun <T> retryOnNetwork(
     maxAttempts: Int = 10,
     delayMs: Long = 2000,
     call: suspend () -> Result<T>

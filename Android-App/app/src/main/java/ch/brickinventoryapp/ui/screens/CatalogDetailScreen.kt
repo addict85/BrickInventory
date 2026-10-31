@@ -281,15 +281,6 @@ fun CatalogDetailScreen(
     }
 }
 
-@Composable
-internal fun CatalogDetailRow(label: String, value: String) {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
-        Text(value, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.padding(start = Abstaende.gross))
-    }
-}
-
 /** Anzahl/Preis/Zustand abfragen — wie AddSetDialog, aber ohne Setnummern-Feld. */
 @Composable
 private fun CatalogAddDialog(

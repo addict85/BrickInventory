@@ -2,6 +2,7 @@ package ch.brickinventoryapp.ui
 
 import android.content.Context
 import ch.brickinventoryapp.data.ScopeFilter
+import ch.brickinventoryapp.data.ScopeFilterSpeicher
 import ch.brickinventoryapp.data.repository.HaushaltRepository
 import ch.brickinventoryapp.data.repository.Result
 import ch.brickinventoryapp.data.repository.TeileRepository
@@ -28,11 +29,11 @@ interface FilterAblage {
 class ScopeFilterAblage @Inject constructor(
     @param:ApplicationContext private val ctx: Context,
 ) : FilterAblage {
-    override suspend fun konto(view: ScopeFilter.View) = ScopeFilter.flow(ctx, view).first()
-    override suspend fun lager(view: ScopeFilter.View) = ScopeFilter.lagerFlow(ctx, view).first()
-    override suspend fun setzeKonto(view: ScopeFilter.View, wert: String) = ScopeFilter.set(ctx, view, wert)
-    override suspend fun setzeLager(view: ScopeFilter.View, wert: String) = ScopeFilter.setLager(ctx, view, wert)
-    override suspend fun allesVergessen() = ScopeFilter.resetAll(ctx)
+    override suspend fun konto(view: ScopeFilter.View) = ScopeFilterSpeicher.flow(ctx, view).first()
+    override suspend fun lager(view: ScopeFilter.View) = ScopeFilterSpeicher.lagerFlow(ctx, view).first()
+    override suspend fun setzeKonto(view: ScopeFilter.View, wert: String) = ScopeFilterSpeicher.set(ctx, view, wert)
+    override suspend fun setzeLager(view: ScopeFilter.View, wert: String) = ScopeFilterSpeicher.setLager(ctx, view, wert)
+    override suspend fun allesVergessen() = ScopeFilterSpeicher.resetAll(ctx)
 }
 
 /**

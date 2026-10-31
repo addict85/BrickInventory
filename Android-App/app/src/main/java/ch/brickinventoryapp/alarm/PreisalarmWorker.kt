@@ -43,6 +43,7 @@ class PreisalarmWorker(
     interface Zugang {
         fun repo(): BrickRepository
         fun prefs(): PreferencesManager
+        fun startziel(): ch.brickinventoryapp.data.Startziel
     }
 
     // erfolg=false heisst NUR „der Server war nicht erreichbar". Alles andere
@@ -152,6 +153,7 @@ class PreisalarmWorker(
                 ).apply { description = context.getString(R.string.alert_channel_desc) }
             )
 
+            val startziel = EntryPointAccessors.fromApplication(context, Zugang::class.java).startziel()
             val unter = context.getString(R.string.detail_alert_below)
             val ueber = context.getString(R.string.detail_alert_above)
             val nm = NotificationManagerCompat.from(context)
@@ -161,9 +163,9 @@ class PreisalarmWorker(
                 // CLEAR_TOP|SINGLE_TOP mit launchMode="singleTop": Eine laufende App bekommt den
                 // Intent in onNewIntent() statt einer zweiten Instanz. Ein requestCode je Set,
                 // sonst lieferte das System denselben PendingIntent und die ältere Meldung öffnete
-                // das falsche Set. Die Klasse direkt referenziert statt Class.forName(), damit R8
-                // sie ohne Keep-Regel behält.
-                val ziel = Intent(context, ch.brickinventoryapp.MainActivity::class.java).apply {
+                // das falsche Set. Die Klasse kommt als Klasse aus der App (Startziel), nicht als
+                // Name über Class.forName(), damit R8 sie ohne Keep-Regel behält.
+                val ziel = Intent(context, startziel.aktivitaet).apply {
                     flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
                     putExtra(EXTRA_SET, a.setNumber)
                 }

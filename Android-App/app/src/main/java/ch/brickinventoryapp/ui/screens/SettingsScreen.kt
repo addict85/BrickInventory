@@ -291,45 +291,6 @@ private fun Unterschrift(text: String) {
         modifier = Modifier.semantics { heading() })
 }
 
-
-
-/**
- * Der Rahmen einer Einstellungs-Rubrik. `internal`, weil die Karten in eigenen
- * Dateien ihn teilen — eine zweite Fassung sähe irgendwann anders aus.
- */
-@Composable
-internal fun SettingsCard(
-    title: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    content: @Composable ColumnScope.() -> Unit
-) {
-    AppKarte {
-        // Der Abstand zwischen den Kindern einer Karte steht einmal hier, damit jede Karte
-        // ihn bekommt, ohne dass jemand daran denkt.
-        Column(
-            Modifier.padding(Abstaende.gross),
-            verticalArrangement = Arrangement.spacedBy(Abstaende.klein),
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
-                modifier = Modifier.padding(bottom = Abstaende.mittel)
-            ) {
-                Icon(icon, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
-                Text(title.uppercase(),
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    letterSpacing = 0.8.sp,
-                    modifier = Modifier.semantics { heading() })
-            }
-            content()
-        }
-    }
-}
-
-
-
 /**
  * Selbstaktualisierung aus dem GitHub-Release: beim Start still prüfen, nie von
  * allein laden, und hier ein Knopf zum Nachsehen. Die laufende Fassung steht immer
@@ -390,7 +351,7 @@ private fun UpdateCard(
     val ctx = androidx.compose.ui.platform.LocalContext.current
     SettingsCard(title = stringResource(R.string.update_title), icon = Icons.Default.SystemUpdate) {
         Text(
-            stringResource(R.string.update_installed, ch.brickinventoryapp.BuildConfig.VERSION_NAME),
+            stringResource(R.string.update_installed, ch.brickinventoryapp.ui.components.LocalAppFassung.current.name),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -407,7 +368,7 @@ private fun UpdateCard(
             // Nur nach einer Pruefung: Vorher waere „aktuell" eine Aussage
             // ueber etwas, das niemand nachgesehen hat.
             updateZustand.geprueft -> Text(
-                stringResource(R.string.update_current, ch.brickinventoryapp.BuildConfig.VERSION_NAME),
+                stringResource(R.string.update_current, ch.brickinventoryapp.ui.components.LocalAppFassung.current.name),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

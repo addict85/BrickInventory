@@ -47,7 +47,7 @@ fun UpdateDialog(selbstUpdate: UpdateViewModel) {
         text = {
             Column {
                 Text(stringResource(R.string.update_dialog_text,
-                    neuere.versionName, ch.brickinventoryapp.BuildConfig.VERSION_NAME))
+                    neuere.versionName, ch.brickinventoryapp.ui.components.LocalAppFassung.current.name))
                 zustand.fortschritt?.let { p ->
                     Spacer(Modifier.height(Abstaende.mittel))
                     Text(stringResource(R.string.update_downloading, p),

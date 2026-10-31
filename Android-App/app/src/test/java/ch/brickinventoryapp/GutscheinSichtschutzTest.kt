@@ -36,7 +36,7 @@ class GutscheinSichtschutzTest {
 
     @Test
     fun `Gutscheinseite und Gutschein-PDF fordern den Sichtschutz an`() {
-        val seite = Quellen.funktion(Quellen.ohneKommentare(Quellen.lies("ui/screens/EinstellungenUnterseiten.kt")),
+        val seite = Quellen.funktion(Quellen.ohneKommentare(Quellen.lies("ui/screens/GutscheineUnterseite.kt")),
             "fun GutscheineUnterseite(")
         assertTrue("Die Gutscheinseite setzt keinen Sichtschutz", seite.contains("Sichtschutz()"))
         val graph = Quellen.ohneKommentare(Quellen.lies("nav/ToolsGraph.kt"))

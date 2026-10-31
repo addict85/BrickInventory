@@ -1,11 +1,5 @@
 package ch.brickinventoryapp.data
 
-import android.content.Context
-import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.core.stringPreferencesKey
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
-
 /**
  * Kontofilter des Haushalts, je Ansicht wie in der Webapp: In der Galerie den
  * Haushalt, in den Finanzen die eigenen Zahlen. Auf dem Gerät, weil es eine
@@ -26,33 +20,6 @@ object ScopeFilter {
 
     const val ALL = "all"
 
-    private fun prefKey(view: View) = stringPreferencesKey("scope_${view.key}")
-
-    fun flow(context: Context, view: View): Flow<String> =
-        context.dataStore.data.map { it[prefKey(view)] ?: ALL }
-
-    suspend fun set(context: Context, view: View, value: String) {
-        context.dataStore.edit { it[prefKey(view)] = value }
-    }
-
-    /**
-     * Kontofilter aller Ansichten bei jeder Anmeldung zurücksetzen: Ein überlebender
-     * Filter auf ein einzelnes Konto sähe nach dem Login aus, als sei die halbe
-     * Sammlung verschwunden. Innerhalb einer Sitzung bleibt die Wahl — wie in der
-     * Webapp.
-     */
-    suspend fun resetAll(context: Context) {
-        context.dataStore.edit { prefs ->
-            for (view in View.values()) {
-                prefs.remove(prefKey(view))
-                // Der Lagerortfilter haengt an derselben Begruendung und wird
-                // deshalb hier mit zurueckgesetzt — nicht in einem zweiten
-                // Aufruf, den jemand vergisst.
-                prefs.remove(lagerKey(view))
-            }
-        }
-    }
-
     /**
      * Wert für die Anfrage, `null` solange nicht gefiltert wird: Das hält die Adressen
      * kurz und trifft im Repository den Zweig, der in der Ablage zwischenspeichert —
@@ -60,24 +27,6 @@ object ScopeFilter {
      */
     fun asQuery(value: String?): String? =
         if (value.isNullOrBlank() || value == ALL) null else value
-
-    // ═══ Lagerortfilter — je Ansicht, wie der Kontofilter ═══
-    //
-    // In dieser Datei, weil er derselbe Gegenstand ist und dieselben Regeln teilt:
-    // gefiltert am Server, zurückgesetzt beim Anmelden. Wie in public/js/14-scope.js.
-
-    /** Ansichten mit einem Lagerortfilter. Nur Sets und Teile haben einen. */
-    private fun lagerKey(view: View) = stringPreferencesKey("lager_${view.key}")
-
-    /** Leerer Text = nicht gefiltert. */
-    fun lagerFlow(context: Context, view: View): Flow<String> =
-        context.dataStore.data.map { it[lagerKey(view)] ?: "" }
-
-    suspend fun setLager(context: Context, view: View, value: String) {
-        context.dataStore.edit {
-            if (value.isBlank()) it.remove(lagerKey(view)) else it[lagerKey(view)] = value
-        }
-    }
 
     /**
      * Wert für die Anfrage, `null` solange nicht gefiltert wird. Kein Sonderwert „ohne

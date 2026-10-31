@@ -21,16 +21,6 @@ data class KontoUiState(
 /** Das Design des Kontos: wirksam, die Vorgabe des Verwalters und die eigene Wahl (null = Vorgabe). */
 data class DesignWahl(val wirksam: String, val vorgabe: String, val eigenes: String?)
 
-/** Die Designs mit ihrem Namen — dieselbe Liste wie ERLAUBTE_DESIGNS und DESIGNS auf dem Server. */
-val DESIGN_NAMEN: List<Pair<String, Int>> = listOf(
-    "classic" to ch.brickinventoryapp.R.string.monitoring_theme_classic,
-    "brick" to ch.brickinventoryapp.R.string.monitoring_theme_brick,
-    "werkbank" to ch.brickinventoryapp.R.string.monitoring_theme_werkbank,
-    "farbfaecher" to ch.brickinventoryapp.R.string.monitoring_theme_farbfaecher,
-    "noppe" to ch.brickinventoryapp.R.string.monitoring_theme_noppe,
-    "hochglanz" to ch.brickinventoryapp.R.string.monitoring_theme_hochglanz,
-)
-
 /** Zweiter Faktor im Konto: Stand, laufende Einrichtung, frische Codes. */
 data class ZweiterFaktorUiState(
     val laedt: Boolean = false,
@@ -72,19 +62,6 @@ data class HouseholdUiState(
 )
 
 /**
- * Das Server-Protokoll — eigener Zustand für Verwalter: Es liest genau ein
- * Bildschirm. Der Name bleibt, weil die Klasse trägt, was ein Verwalter in der App
- * sieht.
- */
-data class VerwaltungUiState(
-    val protokollLaden: Boolean = false,
-    val protokoll: List<ch.brickinventoryapp.ui.model.ProtokollZeileAnsicht> = emptyList(),
-    /** Zeitspanne des Protokolls in Minuten — der Server begrenzt auf 2880. */
-    val protokollMinuten: Int = 15,
-    val fehler: String? = null,
-)
-
-/**
  * Eine CSV-Datei hochladen — getrennt vom Import-Fortschritt (CsvImportUiState):
  * Das Hochladen dauert Sekunden und endet mit einer Zahl, der Import läuft danach
  * auf dem Server weiter und meldet sich über seinen Kanal. Zwei Vorgänge mit
@@ -96,20 +73,6 @@ data class CsvHochladenUiState(
     val art: ch.brickinventoryapp.ui.model.CsvImportArt? = null,
     val ergebnis: ch.brickinventoryapp.ui.model.CsvErgebnisAnsicht? = null,
     val fehler: String? = null,
-)
-
-/**
- * CSV-Import-Fortschritt — eigener Fluss, weil er während eines Imports alle 1.5 s
- * wechselt; so zeichnet nur der Banner neu.
- */
-data class CsvImportUiState(
-    val running: Boolean = false,
-    val done: Int = 0,
-    val total: Int = 0,
-    val current: String? = null,
-    val ok: Int = 0,
-    val warn: Int = 0,
-    val err: Int = 0,
 )
 
 /**

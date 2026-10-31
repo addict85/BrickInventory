@@ -13,7 +13,7 @@ import ch.brickinventoryapp.data.repository.Fehlerart
  * in einem Sammelfall landen — wie bei
  * [ch.brickinventoryapp.data.repository.Result].
  */
-internal fun fehlerTextId(art: Fehlerart?): Int = when (art) {
+fun fehlerTextId(art: Fehlerart?): Int = when (art) {
     Fehlerart.NETZ               -> R.string.err_network
     Fehlerart.ZEIT               -> R.string.err_timeout
     Fehlerart.LEERE_ANTWORT      -> R.string.err_empty_response
@@ -31,7 +31,7 @@ internal fun fehlerTextId(art: Fehlerart?): Int = when (art) {
  * `meldung()` raten — und `getString()` wirft bei einem fehlenden Argument nicht
  * verlässlich, sondern liefert still einen falschen Text.
  */
-internal fun fehlerTextBrauchtCode(art: Fehlerart?): Boolean = art == Fehlerart.SERVER
+fun fehlerTextBrauchtCode(art: Fehlerart?): Boolean = art == Fehlerart.SERVER
 
 /**
  * Die technische Ursache anhängen — aber nur, wo der Satz allein nichts sagt.

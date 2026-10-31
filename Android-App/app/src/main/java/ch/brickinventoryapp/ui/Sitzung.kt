@@ -52,7 +52,7 @@ class Sitzung @Inject constructor() {
  * Design nicht: /settings nennt in app_theme die Vorgabe des Verwalters, das
  * des Kontos kommt von /settings/theme (AppViewModel.loadAppTheme).
  */
-internal suspend fun Sitzung.ladeEinstellungen(konto: ch.brickinventoryapp.data.repository.KontoRepository) {
+suspend fun Sitzung.ladeEinstellungen(konto: ch.brickinventoryapp.data.repository.KontoRepository) {
     val r = konto.getSettings()
     if (r is ch.brickinventoryapp.data.repository.Result.Success) {
         val e = r.data.settings
@@ -66,12 +66,12 @@ internal suspend fun Sitzung.ladeEinstellungen(konto: ch.brickinventoryapp.data.
 }
 
 /** Das wirksame Design, z. B. nach einer Wahl im Konto; das AppViewModel merkt es sich für den Kaltstart. */
-internal fun Sitzung.setzeDesign(theme: String) = aendere { it.copy(appTheme = theme) }
+fun Sitzung.setzeDesign(theme: String) = aendere { it.copy(appTheme = theme) }
 
 /**
  * Ein gescheiterter QR-Anlauf, während die App schon angemeldet ist, ist kein
  * Fehler: Der Scanner löste doppelt aus, der erste Anlauf hat den einmaligen
  * Token verbraucht und angemeldet. Gibt die Meldung zurück, oder null.
  */
-internal fun qrFehler(bereitsAngemeldet: Boolean, meldung: String): String? =
+fun qrFehler(bereitsAngemeldet: Boolean, meldung: String): String? =
     if (bereitsAngemeldet) null else meldung

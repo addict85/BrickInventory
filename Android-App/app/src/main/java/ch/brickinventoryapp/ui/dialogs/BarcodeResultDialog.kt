@@ -19,16 +19,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.*
-import ch.brickinventoryapp.nav.authGraph
-import ch.brickinventoryapp.nav.collectionGraph
-import ch.brickinventoryapp.nav.catalogGraph
-import ch.brickinventoryapp.nav.toolsGraph
 import ch.brickinventoryapp.ui.*
-import ch.brickinventoryapp.ui.AppUiState
 import ch.brickinventoryapp.ui.screens.*
-import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
-import ch.brickinventoryapp.ui.theme.LocalIsBrickTheme
-import ch.brickinventoryapp.ui.theme.Petrol
 import coil3.ImageLoader
 import coil3.util.DebugLogger
 import coil3.request.crossfade
@@ -51,7 +43,6 @@ import androidx.compose.ui.res.stringResource
 import javax.inject.Named
 import javax.inject.Inject
 import ch.brickinventoryapp.util.NumericInput
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.ui.viewmodel.ErfassungViewModel
 import ch.brickinventoryapp.ui.theme.Abstaende
 

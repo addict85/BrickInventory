@@ -23,7 +23,9 @@ const web  = rel => lies(path.join(WEB, rel));
 // Jeder Pfad in den Android-Baum AUSGESCHRIEBEN — test/baumbruecken.test.js
 // löst diese Brücken statisch auf und kann eine Variable nicht sehen.
 const KT_API    = require('../scripts/kotlin-vertrag.js').apiQuelltext(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'data', 'api'));
-const KT_SCOPE  = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'data', 'ScopeFilter.kt'));
+// Die Regeln des Filters (ScopeFilter) und seine Ablage im Gerät (ScopeFilterSpeicher).
+const KT_SCOPE  = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'data', 'ScopeFilter.kt'))
+                + lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'data', 'ScopeFilterSpeicher.kt'));
 // Seit dem Schnitt des MainViewModels (28.10.2026) liegt der Lagerortfilter
 // in der Grundlage der Bereichs-ViewModels, die Verwaltung im
 // EinstellungenViewModel und das Laden der eigenen Orte im Blickfeld.

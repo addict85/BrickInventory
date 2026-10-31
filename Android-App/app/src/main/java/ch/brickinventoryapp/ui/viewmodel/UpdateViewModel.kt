@@ -50,6 +50,7 @@ class UpdateViewModel @Inject constructor(
     @param:Named("update") private val updateHttpClient: OkHttpClient,
     private val texte: Texte,
     prefs: PreferencesManager,
+    private val fassung: ch.brickinventoryapp.util.AppFassung,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(UpdateUiState())
@@ -96,7 +97,7 @@ class UpdateViewModel @Inject constructor(
                     }
                     return@launch
                 }
-                val neuer = istNeuer(ch.brickinventoryapp.BuildConfig.VERSION_CODE, beschreibung.versionCode)
+                val neuer = istNeuer(fassung.code, beschreibung.versionCode)
                 _state.update {
                     it.copy(laedtPruefung = false, geprueft = true,
                         neuereFassung = if (neuer) beschreibung else null, fehler = null)

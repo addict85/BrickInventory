@@ -68,13 +68,12 @@ import ch.brickinventoryapp.util.NumericInput
 import ch.brickinventoryapp.util.fmtProzent
 import ch.brickinventoryapp.ui.theme.Abstaende
 
-// Aus SetDetailScreen.kt ausgelagert (Lesbarkeit): geteilte Detail-Composables,
-// Preis-Chart und Kaufpreis-Erfassungszeile. private→internal, damit der
-// Hauptscreen (gleiches Modul/Package) sie weiter nutzen kann.
+// Geteilte Detail-Composables, Preis-Chart und Kaufpreis-Erfassungszeile: Set-,
+// Merkposten-, Teile- und Finanzansicht zeigen sie gleich, darum in core-ui.
 // ── Shared composables ─────────────────────────────────────────────────────────
 
 @Composable
-internal fun StatChipV2(label: String, value: String) {
+fun StatChipV2(label: String, value: String) {
     Surface(
         shape = Formen.chip,
         color = MaterialTheme.colorScheme.surface,
@@ -101,7 +100,7 @@ internal fun StatChipV2(label: String, value: String) {
 }
 
 @Composable
-internal fun SectionCard(title: String, content: @Composable ColumnScope.() -> Unit) {
+fun SectionCard(title: String, content: @Composable ColumnScope.() -> Unit) {
     AppKarte(Modifier.padding(horizontal = Abstaende.gross, vertical = 5.dp)) {
         Column(Modifier.padding(horizontal = Abstaende.gross, vertical = 14.dp)) {
             Text(
@@ -118,7 +117,7 @@ internal fun SectionCard(title: String, content: @Composable ColumnScope.() -> U
 }
 
 @Composable
-internal fun DetailRow2(label: String, value: String) {
+fun DetailRow2(label: String, value: String) {
     Row(
         Modifier
             .fillMaxWidth()
@@ -353,7 +352,7 @@ fun PnlBadge(pct: Double) {
 }
 
 @Composable
-internal fun PriceStatCell(label: String, value: String) {
+fun PriceStatCell(label: String, value: String) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(value, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
         Text(label, style = MaterialTheme.typography.labelSmall,

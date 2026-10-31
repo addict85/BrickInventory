@@ -380,25 +380,6 @@ private fun GalerieHinweis(inhalt: @Composable ColumnScope.() -> Unit) {
     )
 }
 
-@Composable
-fun GalleryStatChip(value: String, label: String) {
-    Surface(
-        shape = Formen.chip,
-        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
-        tonalElevation = 0.dp
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)
-        ) {
-            Text(value, fontWeight = FontWeight.ExtraBold, style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onPrimaryContainer)
-            Text(label, style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f))
-        }
-    }
-}
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SetCard(
@@ -686,8 +667,6 @@ fun AddSetDialog(
         shape = Formen.chip
     )
 }
-
-
 
 /**
  * Beschriftung eines Sortierwerts; die Werte sind die des Servers (SET_SORTS),

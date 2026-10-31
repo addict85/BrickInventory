@@ -49,8 +49,12 @@ test('1. die Benachrichtigung trägt ein Ziel', () => {
     'Die Meldung sagt nicht, WELCHES Set sie meint.');
 
   // Die Klasse direkt, nicht ihr Name als Zeichenkette: Ein Name ist für R8
-  // kein Aufruf. Genau daran ist am 25.09. WorkDatabase_Impl gescheitert.
-  assert.match(w, /Intent\(context, ch\.brickinventoryapp\.MainActivity::class\.java\)/,
+  // kein Aufruf. Genau daran ist am 25.09. WorkDatabase_Impl gescheitert. Der
+  // Worker liegt in der Datenschicht; die App reicht ihre Activity als Klasse
+  // herein (Startziel in di/AppModule.kt).
+  assert.match(w, /Intent\(context, startziel\.aktivitaet\)/,
+    'Die Meldung öffnet nicht das Startziel der App.');
+  assert.match(app('di/AppModule.kt'), /Startziel\(MainActivity::class\.java\)/,
     'Das Ziel wird über einen Namen aufgelöst — R8 sieht darin keinen Aufruf.');
   assert.ok(!/Class\.forName/.test(w),
     'Class.forName() im Worker — dieselbe Falle wie bei WorkDatabase_Impl.');

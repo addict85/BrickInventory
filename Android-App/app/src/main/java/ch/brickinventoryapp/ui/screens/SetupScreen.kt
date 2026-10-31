@@ -50,7 +50,6 @@ import androidx.compose.foundation.selection.toggleable
 import androidx.compose.ui.semantics.Role
 import ch.brickinventoryapp.ui.theme.Abstaende
 
-
 @Composable
 fun SetupScreen(
     currentUrl: String,
@@ -227,42 +226,13 @@ fun SetupScreen(
         }
         Spacer(Modifier.height(Abstaende.gross))
         Text(
-            // Aus BuildConfig statt als Literal: versionName entsteht bei jedem Build
+            // Aus der App-Fassung statt als Literal: versionName entsteht bei jedem Build
             // (app/build.gradle.kts), ein fest eingetragener Stand veraltet unbemerkt.
-            stringResource(R.string.setup_build, ch.brickinventoryapp.BuildConfig.VERSION_NAME),
+            stringResource(R.string.setup_build, ch.brickinventoryapp.ui.components.LocalAppFassung.current.name),
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
             modifier = Modifier.align(Alignment.CenterHorizontally)
         )
-    }
-}
-
-/**
- * Der Expertenschalter für Klartext, in der Einrichtung und in den Einstellungen
- * derselbe: deutlich als Experte gekennzeichnet, mit dem Preis daneben.
- */
-@Composable
-fun KlartextSchalter(an: Boolean, onAendern: (Boolean) -> Unit, modifier: Modifier = Modifier) {
-    Surface(
-        modifier = modifier.fillMaxWidth().padding(top = Abstaende.mittel),
-        shape = Formen.leiste,
-        color = MaterialTheme.colorScheme.errorContainer.copy(alpha = if (an) 1f else 0.4f),
-    ) {
-        Row(
-            Modifier.fillMaxWidth().heightIn(min = 48.dp)
-                .toggleable(value = an, role = Role.Switch, onValueChange = onAendern)
-                .padding(Abstaende.mittel),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(Modifier.weight(1f)) {
-                Text(stringResource(R.string.klartext_experte_titel), style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onErrorContainer)
-                Text(stringResource(R.string.klartext_experte_warnung), style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onErrorContainer)
-            }
-            Spacer(Modifier.width(Abstaende.klein))
-            Switch(checked = an, onCheckedChange = null)
-        }
     }
 }
 
