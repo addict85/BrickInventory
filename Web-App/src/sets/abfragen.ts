@@ -47,17 +47,8 @@ const SET_SORTS = {
 import type { BlickfeldEingabe as Blickfeld } from '../haushalt/haushalt';
 
 /**
- * @param {number} userId
- * @param {{search?:string, theme?:string, sort?:string, page?:number,
- *          page_size?:number|null}} [query]
- *
- * Filtern und Sortieren liegen seit der Paginierung auf dem Server. Vorher
- * holte die Galerie alle Sets samt Anleitungen und filterte im Browser über
- * das komplette Array — was mit seitenweisem Laden nicht zusammengeht: ein
- * Filter hätte nur die bereits geladene Seite durchsucht.
- *
- * Ohne page_size verhält sich die Funktion wie bisher und liefert alles. Die
- * Android-App ruft sie so auf und bleibt damit unverändert lauffähig.
+ * Filtern und Sortieren auf dem Server, damit sie mit seitenweisem Laden
+ * zusammengehen. Ohne page_size alles — so ruft die Android-App.
  */
 export async function getSets(userId: Blickfeld, query: any = {}) {
   // Blickfeld statt einer einzelnen ID: Ein Hauptkonto sieht (und ändert)

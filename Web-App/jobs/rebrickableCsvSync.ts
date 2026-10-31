@@ -6,10 +6,6 @@
  *   colors.csv         — id, name, rgb, is_trans …
  * Ausführlich: docs/begruendungen/jobs/rebrickableCsvSync.ts.md#abschnitt
  */
-// Pfade zentral auflösen — __dirname zeigt seit dem dist/-Build nicht mehr
-// auf die Wurzel. Siehe src/infra/appPaths.ts.
-// Direkt aus src/katalog/partsImport — siehe die Begruendung in
-// src/teile/abfragen.ts: routes/parts reicht die Funktion nur weiter.
 import { meldeStartZustand } from '../src/infra/startZustand';
 import { fetchMissingBlIds } from '../src/katalog/partsImport';
 import { getRbKey, httpsGetRobust } from '../clients/rebrickable';

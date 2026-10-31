@@ -242,16 +242,8 @@ export async function householdStatus(uid: number) {
 }
 
 /**
- * Die IDs, mit denen gearbeitet wird — für Abfragen der Form
- * `user_id = ANY($1)`.
+ * 'all' | 'own' | 'subs' — oder die ID EINES Kontos des Haushalts (nur dieses).
  * Ausführlich: docs/begruendungen/src/haushalt/haushalt.ts.md#abschnitt-2
- */
-/**
- * 'all' | 'own' | 'subs' — oder die ID EINES Kontos des Haushalts.
- *
- * Der Filter zeigt „Alle Konten", „Eigene" und dann jedes Unterkonto
- * namentlich; für die einzelnen Konten reist deren ID mit, und sie meint immer
- * nur dieses eine Konto. 'subs' bleibt als Sammelposten (alle Unterkonten).
  */
 export type ScopeMode = 'all' | 'own' | 'subs' | number;
 

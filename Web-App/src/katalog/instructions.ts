@@ -20,22 +20,8 @@ import { pfadSegment } from '../infra/fremdeAdressen';
  * Ausführlich: docs/begruendungen/src/katalog/instructions.ts.md#abschnitt-2
  */
 /**
- * @param info Optionales Feld, in das der HTTP-Status der letzten Antwort
- *   geschrieben wird.
- *
- * ── Warum das nötig wurde ────────────────────────────────────
- * Die Funktion antwortet auf JEDEN Fehlschlag mit `null` — bei 404 („dieses
- * Bild gibt es nicht") ebenso wie bei 403 („du fragst zu schnell"). Der
- * Hintergrund-Job leitete daraus eine Fehlanzeige ab und sperrte das Bild für
- * sieben Tage.
- *
- * Bei einer Drosselung ist das falsch herum: Gerade dann sind die Bilder
- * vorhanden, und ausgerechnet der Ansturm, der die Drosselung auslöst, würde
- * hunderte davon dauerhaft aussperren. Der Bild-Proxy unterscheidet die beiden
- * Fälle längst (nur 404 wird gemerkt, 403 nicht) — der Job konnte es nicht,
- * weil ihm die Auskunft fehlte.
- *
- * Bestehende Aufrufer bleiben unberührt: Wer `info` weglässt, merkt nichts.
+ * @param info bekommt den HTTP-Status der letzten Antwort: Nur ein 404 heisst
+ *   „gibt es nicht"; ein 403 ist Drosselung und darf kein Bild aussperren.
  */
 // Direct brickinstructions.com fallback — used when Brickset quota is exhausted
 // and entry is manually deleted from retry queue
@@ -143,23 +129,9 @@ export async function scrapeInstructionsFromFallback(setNumber: string) {
 }
 
 /**
- * @param eigenerTakt Der Aufrufer sorgt selbst für den Abstand zwischen zwei
- *   Sets — dann entfallen die Pausen am Ende dieser Funktion.
- *
- *   Die Anleitungs-Warteschlange wartet nach jedem Set ohnehin 15 Sekunden.
- *   Die 5 Sekunden hier liefen davor, also 20 statt 15 — ohne dass irgendein
- *   Server dadurch besser geschont würde, denn der nächste Abruf kommt so oder
- *   so frühestens nach 15 Sekunden.
- *
- *   Für die beiden anderen Aufrufer (Set erfassen, Brickset-Wiederholung) gibt
- *   es KEINEN Takt darüber. Dort bleiben die Pausen; deshalb ein Schalter und
- *   kein Löschen.
+ * @param eigenerTakt Der Aufrufer hält selbst Abstand zwischen zwei Sets (die
+ *   Anleitungs-Warteschlange); dann entfallen die Pausen am Ende.
  */
-// Der frühere `sendProgress`-Parameter ist ersatzlos entfallen. NACHGEMESSEN:
-// alle vier Aufrufstellen (setService, instructionQueue, bricksetRetry,
-// routes/sets.ts) übergaben `null` — der 'instructions'-Schritt konnte den
-// Browser also gar nicht mehr erreichen. Ein Parameter, den jeder Aufrufer mit
-// null füllt, sagt dem Leser bloss eine Möglichkeit vor, die es nicht gibt.
 export async function downloadSetInstructions(setNumber: string,
                                        eigenerTakt = false) {
   const n = mitVersion(setNumber);

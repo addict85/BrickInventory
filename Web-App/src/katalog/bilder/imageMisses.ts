@@ -42,18 +42,8 @@ export async function initImageMisses(): Promise<void> {
 }
 
 /**
- * Ist für diesen Schlüssel kürzlich eine Fehlanzeige gekommen?
- *
- * Erst der Merker im Arbeitsspeicher, dann die Tabelle. Ein negatives Ergebnis
- * wird NICHT gemerkt — sonst müsste jede erfolgreiche Anfrage ihn wieder
- * aufräumen.
- */
-/**
- * Ist für diesen Schlüssel eine Fehlanzeige bekannt?
- *
- * SYNCHRON und ohne Datenbank — siehe die Begründung oben. Die Auskunft kann
- * höchstens ein Auffrisch-Intervall alt sein; für „dieses Bild gibt es nicht"
- * ist das folgenlos.
+ * Ist für diesen Schlüssel eine Fehlanzeige bekannt? Synchron und ohne
+ * Datenbank; die Auskunft ist höchstens ein Auffrisch-Intervall alt.
  */
 export function istBekanntFehlend(key: string): boolean {
   const vorne = _vorne.get(key);

@@ -112,7 +112,8 @@ test('stille Faenge werden weniger, nie mehr', () => {
   // 30.10.2026: 39 (Schichtumbau: die Routenfänge stehen gemeldet in den Diensten).
   // 30.10.2026: 36 (Protokoll: Schreibfehler nach app_logs werden gezählt und gemeldet).
   // 30.10.2026: 32 (Cluster, Planer und eigene Warteschlangen entfallen).
-  const SCHRANKE = 32;
+  // 31.10.2026: 21 (Schichtumbau: Routen ohne try/catch, Repositories melden).
+  const SCHRANKE = 21;
   const ist = zaehle(STILLE_FAENGE);
   assert.ok(ist <= SCHRANKE,
     `${ist} stille Faenge, erlaubt sind ${SCHRANKE}. Ein neuer \`catch {}\` ` +
@@ -129,7 +130,8 @@ test('any wird weniger, nie mehr', () => {
   // solange der Zaehler auch Kommentare las. 386 am 28.10.2026.
   // 29.10.2026: 333. 30.10.2026: 288 (db.get<T>/db.all<T> statt any-Zeilen).
   // 30.10.2026: 281 (Planer und Preis-Job-Zustand entfallen).
-  const SCHRANKE = 281;
+  // 31.10.2026: 270 (typisierte Repositories, Fehlerweg ohne any).
+  const SCHRANKE = 270;
   const ist = zaehle([/\bas any\b/g, /:\s*any\b/g]);
   assert.ok(ist <= SCHRANKE,
     `${ist}-mal \`any\`, erlaubt sind ${SCHRANKE}. Jedes davon schaltet den ` +
@@ -248,7 +250,8 @@ test('der Kommentaranteil im Server sinkt, nie steigt', () => {
   // routes/, utils/ und jobs/ (25.10.: 50,5 %, siehe CLAUDE.md).
   // 29.10.2026: 32,44 %. 30.10.2026: 30,6 % (Kommentare der umgebauten Dateien gekürzt).
   // 30.10.2026: 30,0 % (Cluster, Planer und Warteschlangen entfallen).
-  const SCHRANKE = 30.1;
+  // 31.10.2026: 29,9 % in server.ts, routes/, src/ und jobs/ (Schichtumbau).
+  const SCHRANKE = 29.9;
   let zeilen = 0, kommentar = 0;
   for (const f of quellen().filter(f => /[\\/](routes|src|utils|jobs)[\\/]|[\\/]server\.ts$/.test(f))) {
     for (const z of fs.readFileSync(f, 'utf8').split('\n')) {
@@ -269,7 +272,7 @@ test('der Kommentaranteil der Tests sinkt, nie steigt', () => {
   // Anteil liegt deshalb höher als im Server. Geschichte gehört auch hier in
   // den Commit. GEMESSEN am 30.10.2026: 37,0 % in test/*.js und test/helpers/.
   // Gegenprobe (30.10.2026): 300 Kommentarzeilen an eine Testdatei gehängt → rot.
-  const SCHRANKE = 37.0;
+  const SCHRANKE = 36.4;
   const dateien = [
     ...fs.readdirSync(__dirname).filter(n => n.endsWith('.js')).map(n => path.join(__dirname, n)),
     ...fs.readdirSync(path.join(__dirname, 'helpers')).filter(n => n.endsWith('.js')).map(n => path.join(__dirname, 'helpers', n)),
@@ -287,4 +290,24 @@ test('der Kommentaranteil der Tests sinkt, nie steigt', () => {
   const anteil = Math.round(1000 * kommentar / zeilen) / 10;
   assert.ok(anteil <= SCHRANKE, `${anteil} % Kommentarzeilen in den Tests, erlaubt sind ${SCHRANKE} %`);
   if (anteil < SCHRANKE - 0.5) console.log(`  ℹ Kommentaranteil Tests: ${anteil} % (Schranke ${SCHRANKE}) — Schranke nachziehen`);
+});
+
+test('jeder Verweis auf docs/begruendungen trifft Datei und Anker', () => {
+  // Die langen Begründungen liegen in docs/begruendungen/<datei>.md; der Code
+  // verweist mit „Ausführlich: …#anker". Beim Verschieben einer Datei wandert
+  // das Dokument mit — dieser Test hält Verweis und Ziel zusammen.
+  // Gegenprobe (31.10.2026): #post-tokens statt #get-tokens in
+  // routes/api_v1/settings.ts → rot.
+  const kaputt = [];
+  let n = 0;
+  for (const f of serverUndOberflaeche()) {
+    for (const m of fs.readFileSync(f, 'utf8').matchAll(/docs\/begruendungen\/([^\s#`'"]+\.md)#([\w-]+)/g)) {
+      n++;
+      const doc = path.join(WEB, 'docs', 'begruendungen', m[1]);
+      if (!fs.existsSync(doc)) { kaputt.push(`${path.relative(WEB, f)}: ${m[1]} fehlt`); continue; }
+      if (!fs.readFileSync(doc, 'utf8').includes(`<a id="${m[2]}"></a>`)) kaputt.push(`${path.relative(WEB, f)}: ${m[1]}#${m[2]}`);
+    }
+  }
+  assert.ok(n > 200, `nur ${n} Verweise gefunden — greift die Suche noch?`);
+  assert.deepEqual(kaputt, []);
 });
