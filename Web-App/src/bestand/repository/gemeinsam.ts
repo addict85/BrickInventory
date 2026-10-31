@@ -41,13 +41,13 @@ const KOPFFELDER = {
           MAX(x.color_id) AS color_id, MAX(pcc.color_name) AS color_name,
           MAX(pcc.color_hex) AS color_hex, MAX(pc.category_name) AS category_name,
           MAX(pcc.image_local) AS teil_image_local, MAX(pcc.image_url) AS teil_image_url,
-          MAX(COALESCE(spc.is_spare, 0)) AS is_spare,
+          bool_or(COALESCE(spc.is_spare, false)) AS is_spare,
           NULLIF(STRING_AGG(DISTINCT lo.name, ', '), '') AS storage`,
   minifigs: `x.fig_number AS nummer, MAX(mc.fig_name) AS name,
           NULL::int AS color_id, NULL::text AS color_name,
           NULL::text AS color_hex, NULL::text AS category_name,
           MAX(mc.image_local) AS teil_image_local, MAX(mc.image_url) AS teil_image_url,
-          0 AS is_spare, NULL::text AS storage`,
+          false AS is_spare, NULL::text AS storage`,
 } as const;
 
 /**

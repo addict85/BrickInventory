@@ -124,7 +124,7 @@ test('Zusammenfassung stimmt mit der Live-Abfrage überein und veraltet nicht',
     await db.run('DELETE FROM parts_summary_state WHERE user_id=$1', [U]);
   };
   await clean();
-  await db.run("INSERT INTO users (id,username,password_hash,is_admin) VALUES ($1,'psum','x',0) ON CONFLICT DO NOTHING", [U]);
+  await db.run("INSERT INTO users (id,username,password_hash,is_admin) VALUES ($1,'psum','x',false) ON CONFLICT DO NOTHING", [U]);
   // Zwei Sets, das zweite doppelt vorhanden — die Menge muss mitmultipliziert werden.
   await haeltSet(db, U, 'A-1', 1);
   await haeltSet(db, U, 'B-1', 2);
@@ -190,7 +190,7 @@ test('Zusammenfassung stimmt mit der Live-Abfrage überein und veraltet nicht',
   // — an 800 Sets / 60'000 Teilen rund 300 ms, ausgelöst von einer Änderung,
   // die mit diesen Daten nichts zu tun hat.
   const FREMD = 990502;
-  await db.run("INSERT INTO users (id,username,password_hash,is_admin) VALUES ($1,'psum2','x',0) ON CONFLICT DO NOTHING", [FREMD]);
+  await db.run("INSERT INTO users (id,username,password_hash,is_admin) VALUES ($1,'psum2','x',false) ON CONFLICT DO NOTHING", [FREMD]);
   await PS.rebuildNow(U);
   assert.equal(await PS.ensureFresh(U, { strict: true }), true,
     'Vorbedingung: die eigene Zusammenfassung ist frisch');
@@ -323,7 +323,7 @@ test('beide Pfade der Kennzahlen zählen DASSELBE — auch mit manuellen Teilen'
   await db.run('DELETE FROM parts_summary WHERE user_id=$1', [U]);
   await db.run('DELETE FROM parts_summary_state WHERE user_id=$1', [U]);
   await db.run(
-    "INSERT INTO users (id,username,password_hash,is_admin) VALUES ($1,'psum2','x',0) ON CONFLICT DO NOTHING", [U]);
+    "INSERT INTO users (id,username,password_hash,is_admin) VALUES ($1,'psum2','x',false) ON CONFLICT DO NOTHING", [U]);
   await haeltSet(db, U, 'A-1', 1);
   await haeltTeil(db, U, '3001', { setNumber: 'A-1', menge: 3, colorId: 5 });
   await haeltTeil(db, U, '9999', { menge: 11, colorId: 7 });

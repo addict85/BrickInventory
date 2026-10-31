@@ -51,8 +51,8 @@ test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async (t) => 
   const { PDF_JOB_DIR } = _req('src/infra/appPaths.js');
 
   for (const name of ['pdf_a', 'pdf_b']) await db.run('DELETE FROM users WHERE username = $1', [name]);
-  await db.run("INSERT INTO users (username,password_hash,email_verified) VALUES ('pdf_a','x',1)");
-  await db.run("INSERT INTO users (username,password_hash,email_verified) VALUES ('pdf_b','x',1)");
+  await db.run("INSERT INTO users (username,password_hash,email_verified) VALUES ('pdf_a','x',true)");
+  await db.run("INSERT INTO users (username,password_hash,email_verified) VALUES ('pdf_b','x',true)");
   const idA = (await db.get("SELECT id FROM users WHERE username='pdf_a'")).id;
   const idB = (await db.get("SELECT id FROM users WHERE username='pdf_b'")).id;
 

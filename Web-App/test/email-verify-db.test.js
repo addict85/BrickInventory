@@ -17,7 +17,7 @@
  * Ausgänge auf ?verified=1 bzw. ?verified=invalid abbildet.
  *
  * ── Gegenprobe (durchgeführt) ───────────────────────────────────────────────
- * In verifiziereEmailToken() wurde die Bedingung `AND email_verified = 0`
+ * In verifiziereEmailToken() wurde die Bedingung `AND NOT email_verified`
  * versuchsweise entfernt — der Riegel, der einen zweiten Klick auf denselben
  * Link verhindert. Ergebnis: „ein bereits verifiziertes Konto nimmt keinen
  * Token mehr an" wird rot. Riegel zurückgebaut, wieder 12 von 12 grün. Eine
@@ -137,7 +137,7 @@ test('E-Mail-Verifikation gegen echte Datenbank', async (t) => {
   });
 
   await t.test('ein bereits verifiziertes Konto nimmt keinen Token mehr an', async () => {
-    // Der Riegel ist `email_verified = 0` in der Abfrage. Fiele er weg, liesse
+    // Der Riegel ist `NOT email_verified` in der Abfrage. Fiele er weg, liesse
     // sich ein altes, nie benutztes Token später erneut einlösen.
     const u = await neuerNutzer('schondrin', { schonVerifiziert: true });
     const e = await verifiziereEmailToken(u.token);

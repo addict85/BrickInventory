@@ -14,7 +14,7 @@ export async function katalogBildstand(setNumber: string): Promise<{ total: numb
 
 export interface CsvTeil {
   part_number: string; bl_part_number: string; part_name: string | null; color_id: number | null;
-  color_name: string | null; color_hex: string | null; image_url: string | null; quantity: number; is_spare: unknown;
+  color_name: string | null; color_hex: string | null; image_url: string | null; quantity: number; is_spare: boolean;
 }
 
 /** Die Teile eines Inventars ohne Ersatzteile, mit BrickLink-Nummer. */
@@ -31,7 +31,7 @@ export async function inventarTeileOhneErsatz(inventarId: number): Promise<CsvTe
      LEFT JOIN rb_colors c ON c.id = ip.color_id
      LEFT JOIN bl_zuordnung  m ON m.art = 'part' AND m.rb_id = ip.part_num
      WHERE ip.inventory_id = $1
-       AND ip.is_spare = 0`, [inventarId]);
+       AND NOT ip.is_spare`, [inventarId]);
 }
 
 /** Die Minifiguren eines Inventars. */

@@ -61,7 +61,7 @@ test('Teile-Rückfallebene für fremde Sets', async (t) => {
     await db.run(`INSERT INTO rb_parts (part_num, name, part_img_url) VALUES ('3001','Brick 2x4','https://example.invalid/3001.png')`);
     await db.run(`INSERT INTO rb_colors (id, name, rgb) VALUES (4,'Red','C91A09')`);
     await db.run(`INSERT INTO rb_inventory_parts (inventory_id, part_num, color_id, quantity, is_spare)
-                  VALUES (1,'3001',4,6,0)`);
+                  VALUES (1,'3001',4,6,false)`);
 
     const r = await getParts([uid], { set_number: '10280-1' });
     assert.equal(r.source, 'csv_cache', `Quelle war ${r.source}`);

@@ -33,7 +33,7 @@ test('Einrichtungs-Assistent', { concurrency: 1 }, async (t) => {
 
   const name = `ew_${process.pid}`;
   const uid = (await db.get(
-    "INSERT INTO users (username, password_hash, is_admin, must_change_password) VALUES ($1,'x',1,1) RETURNING id", [name])).id;
+    "INSERT INTO users (username, password_hash, is_admin, must_change_password) VALUES ($1,'x',true,true) RETURNING id", [name])).id;
   const routen = { '/api/v1': 'routes/api_v1/settings.js' };
   const V = testServer(_req, { sitzung: { userId: uid, isAdmin: true }, apiNutzer: { user_id: uid, is_admin: 1 }, routen, t });
   const N = testServer(_req, { sitzung: { userId: uid, isAdmin: false }, apiNutzer: { user_id: uid, is_admin: 0 }, routen, t });
@@ -58,7 +58,7 @@ test('Einrichtungs-Assistent', { concurrency: 1 }, async (t) => {
 
     await t.test('eingerichtet: Schlüssel da, Passwort gesetzt → nicht mehr offen', async () => {
       await setze('rebrickable_api_key', 'abc');
-      await db.run('UPDATE users SET must_change_password = 0 WHERE id = $1', [uid]);
+      await db.run('UPDATE users SET must_change_password = false WHERE id = $1', [uid]);
       const r = await ruf(V, '/einrichtung');
       assert.equal(r.body.offen, false);
       assert.equal(r.body.quellen.rebrickable, true);

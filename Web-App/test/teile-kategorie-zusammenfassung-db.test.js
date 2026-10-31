@@ -46,7 +46,7 @@ test('Kategorie aus der Zusammenfassung', { concurrency: 1 }, async (t) => {
                 VALUES ('kz1', 'Eins', '98701'), ('kz2', 'Zwei', NULL), ('kz3', 'Drei', '98702')
                 ON CONFLICT (part_number) DO UPDATE SET category_name = EXCLUDED.category_name, name_von = NULL, kategorie_von = NULL`);
   await db.run(`INSERT INTO set_teile (set_number, part_number, color_id, quantity, is_spare)
-                VALUES ($1, 'kz1', 5, 4, 0), ($1, 'kz2', 5, 2, 1), ($1, 'kz3', 1, 3, 0)`, [SN]);
+                VALUES ($1, 'kz1', 5, 4, false), ($1, 'kz2', 5, 2, true), ($1, 'kz3', 1, 3, false)`, [SN]);
   await haeltSet(db, U, SN, 2);
   for (const [nr, farbe, menge] of [['kz1', 5, 4], ['kz2', 5, 2], ['kz3', 1, 3]])
     await haeltTeil(db, U, nr, { setNumber: SN, colorId: farbe, menge });

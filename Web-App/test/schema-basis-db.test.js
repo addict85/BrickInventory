@@ -66,7 +66,7 @@ test('Erststart über db/basis.sql', { concurrency: 1, timeout: 180_000 }, async
   });
 
   await t.test('eine bestehende Datenbank bleibt, wie sie ist', async () => {
-    await db.run(`UPDATE users SET is_active = 0 WHERE username = 'admin'`);
+    await db.run(`UPDATE users SET is_active = false WHERE username = 'admin'`);
     await db.run(`UPDATE global_settings SET value = '123' WHERE key = 'api_limit_bricklink'`);
     assert.equal(await db.initSchema(), false, 'die Basis wurde erneut eingespielt');
     await db.initSchemaOnce();

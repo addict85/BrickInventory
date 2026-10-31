@@ -5,18 +5,27 @@ import * as db from '../../../db/database';
  * Die Routen in routes/auth.ts prüfen Eingaben und Rechte und schreiben die
  * Antwort; was in der Datenbank geschieht, steht hier an einer Stelle.
  */
-export type KontoKurz = { id: number; username: string; is_admin: number };
+export type KontoKurz = { id: number; username: string; is_admin: boolean };
+
+/** Eine Zeile aus users, soweit Anmeldung und Profil sie lesen. */
+export interface Konto {
+  id: number; username: string; email: string | null; first_name: string | null; last_name: string | null;
+  password_hash: string; is_admin: boolean; is_active: boolean; email_verified: boolean;
+  must_change_password: boolean; created_at: Date; [spalte: string]: unknown;
+}
+export type Profil = Pick<Konto, 'id' | 'username' | 'email' | 'first_name' | 'last_name' | 'email_verified'>;
+export type KontoInListe = Pick<Konto, 'id' | 'username' | 'is_admin' | 'created_at'> & { zweiter_faktor: boolean };
 
 export function kontoKurz(id: number): Promise<KontoKurz | undefined> {
   return db.get('SELECT id, username, is_admin FROM users WHERE id = $1', [id]);
 }
 
-export function kontoVoll(id: number): Promise<any> {
-  return db.get('SELECT * FROM users WHERE id=$1', [id]);
+export function kontoVoll(id: number): Promise<Konto | undefined> {
+  return db.get<Konto>('SELECT * FROM users WHERE id=$1', [id]);
 }
 
-export function profil(id: number): Promise<any> {
-  return db.get('SELECT id, username, email, first_name, last_name, email_verified FROM users WHERE id=$1', [id]);
+export function profilZeile(id: number): Promise<Profil | undefined> {
+  return db.get<Profil>('SELECT id, username, email, first_name, last_name, email_verified FROM users WHERE id=$1', [id]);
 }
 
 /** Der Login sucht Name ODER E-Mail ohne Gross/klein — beides muss deshalb über beide Spalten eindeutig sein. */
@@ -42,8 +51,8 @@ export async function aendereProfil(id: number, felder: Record<string, unknown>)
     [...spalten.map(s => felder[s]), id]);
 }
 
-export function kontenListe(): Promise<any[]> {
-  return db.all(
+export function alleKonten(): Promise<KontoInListe[]> {
+  return db.all<KontoInListe>(
     `SELECT u.id, u.username, u.is_admin, u.created_at,
             EXISTS (SELECT 1 FROM zweiter_faktor z WHERE z.user_id = u.id AND z.aktiv) AS zweiter_faktor
        FROM users u ORDER BY u.id`);
@@ -52,16 +61,16 @@ export function kontenListe(): Promise<any[]> {
 /** @returns die neue Kennung, oder null, wenn der Name schon vergeben ist */
 export async function fuegeKontoEin(username: string, hash: string, verwalter: boolean): Promise<number | null> {
   const neu = await db.get('INSERT INTO users (username, password_hash, is_admin) VALUES ($1, $2, $3) RETURNING id',
-    [username, hash, verwalter ? 1 : 0]);
+    [username, hash, verwalter]);
   return neu ? neu.id : null;
 }
 
-export function verwalterVorher(id: number): Promise<{ is_admin: number } | undefined> {
+export function verwalterVorher(id: number): Promise<{ is_admin: boolean } | undefined> {
   return db.get('SELECT is_admin FROM users WHERE id = $1', [id]);
 }
 
 export async function setzeVerwalter(id: number, ja: boolean): Promise<void> {
-  await db.run('UPDATE users SET is_admin = $1 WHERE id = $2', [ja ? 1 : 0, id]);
+  await db.run('UPDATE users SET is_admin = $1 WHERE id = $2', [ja, id]);
 }
 
 /** @returns ob es das Konto gab */
@@ -71,7 +80,7 @@ export async function setzePasswortHash(id: number, hash: string): Promise<boole
 
 /** Eigenes Passwort geändert: auch die Aufforderung dazu ist erledigt. */
 export async function setzeEigenesPasswort(id: number, hash: string): Promise<void> {
-  await db.run('UPDATE users SET password_hash = $1, must_change_password = 0 WHERE id = $2', [hash, id]);
+  await db.run('UPDATE users SET password_hash = $1, must_change_password = false WHERE id = $2', [hash, id]);
 }
 
 export async function kontoExistiert(id: number): Promise<boolean> {
@@ -112,14 +121,14 @@ export async function nameOderEmailVergeben(username: string, email: string): Pr
 export async function registriereKonto(k: { username: string; email: string; first_name?: string | null | undefined;
   last_name?: string | null | undefined; hash: string; tokenHash: string; bis: Date }): Promise<number | null> {
   await db.run(
-    'INSERT INTO users (username, email, first_name, last_name, password_hash, is_admin, is_active, email_verified, verification_token, token_expires) VALUES ($1,$2,$3,$4,$5,0,1,0,$6,$7)',
+    'INSERT INTO users (username, email, first_name, last_name, password_hash, is_admin, is_active, email_verified, verification_token, token_expires) VALUES ($1,$2,$3,$4,$5,false,true,false,$6,$7)',
     [k.username, k.email, k.first_name || null, k.last_name || null, k.hash, k.tokenHash, k.bis]);
   const neu = await db.get('SELECT id FROM users WHERE LOWER(username) = LOWER($1)', [k.username]);
   return neu?.id ?? null;
 }
 
-export function aktivesKontoNachEmail(email: string): Promise<any> {
-  return db.get('SELECT * FROM users WHERE LOWER(email) = LOWER($1) AND is_active = 1', [email]);
+export function aktivesKontoNachEmail(email: string): Promise<Konto | undefined> {
+  return db.get<Konto>('SELECT * FROM users WHERE LOWER(email) = LOWER($1) AND is_active', [email]);
 }
 
 export async function setzeRuecksetzToken(id: number, hash: string, bis: Date): Promise<void> {
@@ -187,6 +196,6 @@ export async function andereSitzungenBeenden(uid: number, eigeneSid: string): Pr
 
 /** Muss das Konto sein Passwort beim nächsten Mal ändern? (Erststart mit Vorgabepasswort.) */
 export async function mussPasswortAendern(uid: number): Promise<boolean> {
-  const r = await db.get<{ must_change_password: number | boolean | null }>('SELECT must_change_password FROM users WHERE id = $1', [uid]);
-  return r?.must_change_password === 1 || r?.must_change_password === true;
+  const r = await db.get<{ must_change_password: boolean }>('SELECT must_change_password FROM users WHERE id = $1', [uid]);
+  return r?.must_change_password === true;
 }

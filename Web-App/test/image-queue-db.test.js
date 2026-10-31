@@ -153,7 +153,7 @@ test('die Kachel „Bild-Download (CDN)" zeigt die Katalog-Warteschlange',
 
   const NUTZER = `ka-${process.pid}`;
   await db.run(`DELETE FROM users WHERE username=$1`, [NUTZER]);
-  await db.run(`INSERT INTO users (username,password_hash,is_admin) VALUES ($1,'x',1)`, [NUTZER]);
+  await db.run(`INSERT INTO users (username,password_hash,is_admin) VALUES ($1,'x',true)`, [NUTZER]);
   const uid = (await db.get(`SELECT id FROM users WHERE username=$1`, [NUTZER])).id;
 
   const { base, srv } = testServer(_req, {

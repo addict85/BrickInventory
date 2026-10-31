@@ -33,7 +33,7 @@ test('Kürzen geht ganz oder gar nicht', { concurrency: 1 }, async (t) => {
 
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username, password_hash, is_active, email_verified)
-                             VALUES ($1, 'x', 1, 1) RETURNING id`, [NAME])).id;
+                             VALUES ($1, 'x', true, true) RETURNING id`, [NAME])).id;
   await db.run(`INSERT INTO parts (user_id, part_number, color_id, source) VALUES ($1, $2, 5, 'manual')`, [uid, TEIL]);
   const alt = (await db.get(`INSERT INTO part_acquisitions (user_id, part_number, color_id, quantity, created_at)
                              VALUES ($1, $2, 5, 3, NOW() - INTERVAL '3 days') RETURNING id`, [uid, TEIL])).id;

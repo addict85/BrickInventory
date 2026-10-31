@@ -1,7 +1,6 @@
 import * as db from '../../../db/database';
 import { mengeJoin, mengeAus, teilmengeJoin, teilmengeAus } from '../../../db/bestandsmenge';
 import { blJoin, blNummerSql } from '../../../db/blZuordnungSql';
-import { ersatzteilSql } from '../../infra/validate';
 
 /**
  * Leseabfragen der Teileliste: aus der Zusammenfassung (parts_summary) oder live
@@ -35,7 +34,7 @@ function teileSuche(nummer: string, name: string, blNummer: string, pi: number) 
 export interface TeilZeile {
   part_number: string; bl_part_number: string; part_name: string | null; color_id: number;
   color_name: string | null; color_hex: string | null; category_name: string | null;
-  image_url: string | null; image_local: string | null; is_spare: unknown;
+  image_url: string | null; image_local: string | null; is_spare: boolean;
   total_quantity: number | string; storage: string | null; in_sets?: string | null;
 }
 
@@ -83,7 +82,7 @@ export async function seiteAusZusammenfassung(uids: number[], f: TeileFilter, s:
     params.push(String(f.category));
   }
   if (f.spare === '0' || f.spare === '1') {
-    cond.push(`COALESCE(is_spare, 0) = $${params.length + 1}`); params.push(parseInt(f.spare));
+    cond.push(`is_spare = $${params.length + 1}`); params.push(f.spare === '1');
   }
   if (f.search) {
     cond.push(teileSuche('part_number', 'part_name', 'bl_part_number', params.length + 1));
@@ -95,7 +94,7 @@ export async function seiteAusZusammenfassung(uids: number[], f: TeileFilter, s:
     ? `MIN(part_number) AS part_number, MIN(bl_part_number) AS bl_part_number, color_id,
        MIN(part_name) AS part_name, MIN(color_name) AS color_name, MIN(color_hex) AS color_hex,
        MIN(category_name) AS category_name, MIN(image_url) AS image_url,
-       MIN(image_local) AS image_local, MAX(COALESCE(is_spare,0)) AS is_spare,
+       MIN(image_local) AS image_local, bool_or(is_spare) AS is_spare,
        SUM(total_quantity)::int AS total_quantity,
        NULLIF(STRING_AGG(DISTINCT storage, ', '), '') AS storage` +
       (s.mitSets ? ", STRING_AGG(DISTINCT in_sets, ',') AS in_sets" : '')
@@ -137,8 +136,8 @@ function teileWo(uids: number[], f: TeileFilter) {
     pi++; params.push(f.category);
   }
   // Ersatzteil ist eine Eigenschaft der Setliste; ohne Zeile dort keines.
-  if (f.spare === '0') where += ' AND COALESCE(tm_k.is_spare, 0) = 0';
-  if (f.spare === '1') where += ' AND COALESCE(tm_k.is_spare, 0) = 1';
+  if (f.spare === '0') where += ' AND NOT COALESCE(tm_k.is_spare, false)';
+  if (f.spare === '1') where += ' AND COALESCE(tm_k.is_spare, false)';
   if (f.ohneManuelle) where += " AND COALESCE(p.source,'set') <> 'manual'";
   if (f.search) {
     where += ` AND ${teileSuche('p.part_number', 'pc.part_name', blNummerSql('p.part_number'), pi)}`;
@@ -184,7 +183,7 @@ export async function seiteLive(uids: number[], f: TeileFilter, s: Seite) {
       MIN(pc.category_name) AS category_name,
       MIN(pcc.image_url)   AS image_url,
       MIN(pcc.image_local) AS image_local,
-      MAX(COALESCE(tm_k.is_spare, 0)) AS is_spare,
+      bool_or(COALESCE(tm_k.is_spare, false)) AS is_spare,
       -- Alle Lagerorte: Dasselbe Teil liegt aus verschiedenen Sets in verschiedenen Kisten.
       NULLIF(STRING_AGG(DISTINCT lo.name, ', '), '') AS storage,
       ${qtyExpr}          AS total_quantity${s.mitSets ? `,
@@ -230,7 +229,7 @@ export function inventarAlsTeile(inventarId: number, setNumber: string) {
                c.name AS color_name, c.rgb AS color_hex,
                NULL AS category_name,
                p.part_img_url AS image_url, NULL AS image_local,
-               ${ersatzteilSql('ip.is_spare')} AS is_spare,
+               ip.is_spare,
                ip.quantity AS total_quantity,
                $2 AS in_sets
         FROM rb_inventory_parts ip

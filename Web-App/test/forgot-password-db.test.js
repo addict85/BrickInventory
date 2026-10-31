@@ -68,7 +68,7 @@ test('forgot-password findet die E-Mail unabhängig von der Schreibweise',
   // Registrierung die Adresse (unverändert, wie eingegeben).
   await db.run(
     `INSERT INTO users (username, email, password_hash, is_admin, is_active, email_verified)
-     VALUES ($1, 'Forgot.Case@Example.CH', $2, 0, 1, 1)`,
+     VALUES ($1, 'Forgot.Case@Example.CH', $2, false, true, true)`,
     [USERNAME, hash]
   );
 
@@ -123,7 +123,7 @@ test('im Betrieb: Reset-Link nur mit APP_BASE_URL, nie aus dem Host-Header',
   await db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE 'forgot-password|%'`).catch(() => {});
   await db.run(
     `INSERT INTO users (username, email, password_hash, is_admin, is_active, email_verified)
-     VALUES ($1, 'forgot.host@example.ch', 'x', 0, 1, 1)`, [USERNAME]);
+     VALUES ($1, 'forgot.host@example.ch', 'x', false, true, true)`, [USERNAME]);
 
   const alt = { NODE_ENV: process.env.NODE_ENV, APP_BASE_URL: process.env.APP_BASE_URL, SMTP_HOST: process.env.SMTP_HOST };
   process.env.NODE_ENV = 'production';

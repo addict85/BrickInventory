@@ -41,7 +41,7 @@ test('Token-Label beim Anmelden', { concurrency: 1 }, async (t) => {
   try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); }
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username, password_hash, is_admin, is_active, email_verified)
-    VALUES ($1, $2, 0, 1, 1) RETURNING id`, [NAME, await bcrypt.hash(PASS, 4)])).id;
+    VALUES ($1, $2, false, true, true) RETURNING id`, [NAME, await bcrypt.hash(PASS, 4)])).id;
   t.after(async () => {
     await db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {});
     await db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE $1`, [`%${uid}%`]).catch(() => {});

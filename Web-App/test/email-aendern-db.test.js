@@ -54,7 +54,7 @@ test('E-Mail ändern', { concurrency: 1 }, async (t) => {
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (await db.get(
     `INSERT INTO users (username, email, password_hash, is_active, email_verified)
-     VALUES ($1, $2, $3, 1, 1) RETURNING id`,
+     VALUES ($1, $2, $3, true, true) RETURNING id`,
     [NAME, `${NAME}@alt.example`, await bcrypt.hash(PASS, 4)])).id;
   t.after(async () => {
     await db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {});

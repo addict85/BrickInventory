@@ -7,7 +7,7 @@ import * as db from '../../../db/database';
 
 export interface KatalogSet {
   set_number: string; name: string | null; year: number | null; theme: string | null;
-  pieces: number | null; image_url: string | null; is_gear: number; fetched_at?: string | Date | null;
+  pieces: number | null; image_url: string | null; is_gear: boolean; fetched_at?: string | Date | null;
 }
 
 export async function katalogSetZu(nummer: string): Promise<KatalogSet | undefined> {
@@ -17,12 +17,12 @@ export async function katalogSetZu(nummer: string): Promise<KatalogSet | undefin
 /** Rebrickable kennt die Nummer nicht: Platzhalter merken, damit höchstens täglich nachgefragt wird. */
 export async function merkeUnbekanntesSet(nummer: string, alsGear: boolean): Promise<void> {
   await db.run(`INSERT INTO catalog_cache (set_number, name, is_gear) VALUES ($1,$2,$3)
-    ON CONFLICT (set_number) DO UPDATE SET is_gear=$3, fetched_at=NOW()`, [nummer, `Set ${nummer}`, alsGear ? 1 : 0]);
+    ON CONFLICT (set_number) DO UPDATE SET is_gear=$3, fetched_at=NOW()`, [nummer, `Set ${nummer}`, alsGear]);
 }
 
 export async function merkeSet(s: Omit<KatalogSet, 'is_gear' | 'fetched_at'>): Promise<void> {
-  await db.run(`INSERT INTO catalog_cache (set_number,name,year,theme,pieces,image_url,is_gear) VALUES ($1,$2,$3,$4,$5,$6,0)
-    ON CONFLICT (set_number) DO UPDATE SET name=$2,year=$3,theme=$4,pieces=$5,image_url=$6,is_gear=0`,
+  await db.run(`INSERT INTO catalog_cache (set_number,name,year,theme,pieces,image_url,is_gear) VALUES ($1,$2,$3,$4,$5,$6,false)
+    ON CONFLICT (set_number) DO UPDATE SET name=$2,year=$3,theme=$4,pieces=$5,image_url=$6,is_gear=false`,
     [s.set_number, s.name, s.year, s.theme, s.pieces, s.image_url]);
 }
 
@@ -46,7 +46,7 @@ export async function merkeFigurenteile(figur: string, json: string): Promise<vo
 }
 
 export interface InventarTeil {
-  part_num: string; color_id: number; quantity: number; is_spare: unknown; img_url: string | null;
+  part_num: string; color_id: number; quantity: number; is_spare: boolean; img_url: string | null;
   name: string | null; part_img_url: string | null; color_name: string | null; color_rgb: string | null;
   bl_part_num: string | null;
 }

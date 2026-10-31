@@ -40,7 +40,7 @@ test('Idempotency-Key', { concurrency: 1, timeout: 180_000 }, async (t) => {
   const konto = async (name) => {
     await db.run('DELETE FROM users WHERE username = $1', [name]);
     const id = (await db.get(`INSERT INTO users (username, password_hash, is_active, email_verified)
-                              VALUES ($1, 'x', 1, 1) RETURNING id`, [name])).id;
+                              VALUES ($1, 'x', true, true) RETURNING id`, [name])).id;
     await db.run(`INSERT INTO parts (user_id, part_number, color_id, source) VALUES ($1, '3001id', 5, 'manual')`, [id]);
     await db.run(`INSERT INTO part_acquisitions (user_id, part_number, color_id, quantity) VALUES ($1, '3001id', 5, 2)`, [id]);
     return { id, token: await _req('src/konto/auth.js').createToken(id, 'Idempotenz-Probe') };

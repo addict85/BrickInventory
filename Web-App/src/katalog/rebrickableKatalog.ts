@@ -31,7 +31,7 @@ export async function getSetInfo(setNumber: string) {
   }
   const theme = await getThemeName(data.theme_id);
   const row = { set_number: n, name: data.name || null, year: data.year || null, theme: theme || null,
-                pieces: data.num_parts || null, image_url: data.set_img_url || null, is_gear: 0 };
+                pieces: data.num_parts || null, image_url: data.set_img_url || null, is_gear: false };
   await repo.merkeSet(row);
   return row;
 }

@@ -151,7 +151,7 @@ export function statusZahlen(art: AuftragsArt) {
 }
 /** Die Rolle, wie sie jetzt ist, nicht wie beim Einstellen. */
 export function kontoRolle(uid: number) {
-  return db.get<{ is_admin: number | boolean; }>('SELECT is_admin FROM users WHERE id = $1', [uid]);
+  return db.get<{ is_admin: boolean }>('SELECT is_admin FROM users WHERE id = $1', [uid]);
 }
 export const AUFTRAG_KANAL = 'auftraege';
 /** Ein Auftrag hat seinen Stand geändert; die Nutzlast ist sein Schlüssel oder seine Kennung. */

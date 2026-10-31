@@ -26,7 +26,7 @@ export type { TokenScope };
 export interface TokenBenutzer {
   user_id: number;
   username?: string;
-  is_admin?: number | boolean;
+  is_admin?: number;
   /** Die GLEITENDE Frist: „so lange ungenutzt" (siehe _touchLastUsed). */
   expires_at?: string | Date | null;
   /** Die FESTE Frist, falls beim QR-Code eine gewaehlt wurde. `null` = keine. */
@@ -50,10 +50,10 @@ interface CacheEintrag {
 
 /** Die Konto-Felder, die assertLoginAllowed tatsaechlich prueft. */
 export interface KontoZustand {
-  is_active?: number | boolean | null;
-  email_verified?: number | boolean | null;
+  is_active: boolean;
+  email_verified: boolean;
   email?: string | null;
-  is_admin?: number | boolean | null;
+  is_admin: boolean;
   [k: string]: unknown;
 }
 
@@ -116,7 +116,7 @@ export function rotationFaellig(u: TokenBenutzer, jetzt = Date.now()): boolean {
 
 /** Gilt dieser Token nur noch für den Tausch? Betrifft allein „unbegrenzt". */
 export function rotationPflicht(u: TokenBenutzer, jetzt = Date.now()): boolean {
-  return flaggeGesetzt(u.never_expires) && tageSeit(u.rotiert_am, jetzt) >= ROTATION_PFLICHT_TAGE;
+  return u.never_expires === true && tageSeit(u.rotiert_am, jetzt) >= ROTATION_PFLICHT_TAGE;
 }
 
 /**
@@ -168,7 +168,7 @@ export async function pruefeToken(token: string | null | undefined,
   if (!row) { _tokenCache.delete(token); return { nutzer: null }; }
   // Verwalterrecht nur mit Scope `voll`: An dieser einen Stelle entschieden,
   // sehen es alle Wächter (requireApiAdmin, istVerwalter, Kontingent) gleich.
-  row.is_admin = flaggeGesetzt(row.konto_is_admin) && row.scope === 'voll' ? 1 : 0;
+  row.is_admin = row.konto_is_admin && row.scope === 'voll' ? 1 : 0;
   if (row.vorgaenger) {
     await repo.beendeUeberlappung(row.vorgaenger, hashed);
     row.vorgaenger = null;
@@ -198,7 +198,7 @@ function _touchLastUsed(entry: CacheEintrag, ip?: string | null): void {
   const u = entry.user;
   const zuletzt = u.last_used ? new Date(u.last_used).getTime() : 0;
   const ziel = jetzt + TOKEN_IDLE_DAYS * TAG_MS;
-  const fristHinkt = flaggeGesetzt(u.sliding) && !!u.expires_at
+  const fristHinkt = u.sliding === true && !!u.expires_at
     && new Date(u.expires_at).getTime() < ziel - TAG_MS;
   if ((jetzt - zuletzt < TAG_MS && !fristHinkt) || entry.schreibt) return;
   entry.schreibt = true;
@@ -207,7 +207,7 @@ function _touchLastUsed(entry: CacheEintrag, ip?: string | null): void {
       // Den Cache mitziehen, sonst wiese der Treffer-Zweig einen gerade
       // erneuerten Token am alten Fristende einmal ab.
       u.last_used = new Date(jetzt);
-      if (fristHinkt || (flaggeGesetzt(u.sliding) && u.expires_at)) u.expires_at = new Date(ziel);
+      if (fristHinkt || (u.sliding === true && u.expires_at)) u.expires_at = new Date(ziel);
     })
     .catch(e => console.warn('[auth] last_used konnte nicht geschrieben werden:', e?.message || e))
     .finally(() => { entry.schreibt = false; });
@@ -226,14 +226,6 @@ export function invalidateToken(token: string | null | undefined): void {
  */
 export function leereTokenCache(): void {
   _tokenCache.clear();
-}
-
-/**
- * Ist diese Datenbank-Flagge gesetzt? Ältere Spalten sind 0/1, neuere boolean.
- * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#flaggegesetzt
- */
-export function flaggeGesetzt(wert: unknown): boolean {
-  return wert === true || wert == 1;
 }
 
 /** Kostenfaktor für bcrypt.hash — überall derselbe. */
@@ -273,9 +265,9 @@ export function isValidLoginIdentifier(value: unknown): boolean {
  */
 export function assertLoginAllowed(user: KontoZustand):
     { status: number; code: FehlerCode; unverified?: boolean } | null {
-  if (user.is_active === 0 || user.is_active === false)
+  if (!user.is_active)
     return { status: 403, code: 'konto_deaktiviert' };
-  if ((user.email_verified === 0 || user.email_verified === false) && user.email && !user.is_admin)
+  if (!user.email_verified && user.email && !user.is_admin)
     return { status: 403, code: 'email_nicht_bestaetigt', unverified: true };
   return null;
 }
@@ -454,7 +446,7 @@ export async function rotiereToken(alt: string, ip?: string | null): Promise<Tau
     const zeile = await repo.legeNachfolgerAn(tx, neuHash, altHash, z, TOKEN_IDLE_DAYS, ipBereich(ip));
     const vorher = await repo.befristeVorgaenger(tx, altHash, neuHash, UEBERLAPPUNG_MS / 1000);
     return { token: neu, scope: z.scope, expires_at: zeile!.expires_at, hard_expires_at: zeile!.hard_expires_at,
-             never_expires: flaggeGesetzt(z.never_expires), rotiert_am: zeile!.rotiert_am,
+             never_expires: z.never_expires, rotiert_am: zeile!.rotiert_am,
              alt_gueltig_bis: vorher!.expires_at };
   });
   if (ergebnis) leereTokenCache();

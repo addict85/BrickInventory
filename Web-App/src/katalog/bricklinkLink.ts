@@ -141,6 +141,6 @@ export async function resolveViaApi(setNumber: string): Promise<BlLink> {
     return toLink(n, null);
   }
 
-  await cache.merkeBlTyp(n, `Set ${n}`, found, found === 'NONE' ? 1 : 0).catch(logAndContinue('bl-link:probe'));
+  await cache.merkeBlTyp(n, `Set ${n}`, found, found === 'NONE').catch(logAndContinue('bl-link:probe'));
   return toLink(n, found);
 }

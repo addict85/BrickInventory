@@ -35,7 +35,7 @@ test('SMTP nur mit Passwort', { concurrency: 1 }, async (t) => {
   try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); }
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username, password_hash, is_admin, is_active, email_verified)
-    VALUES ($1, $2, 1, 1, 1) RETURNING id`, [NAME, bcrypt.hashSync(PASS, 4)])).id;
+    VALUES ($1, $2, true, true, true) RETURNING id`, [NAME, bcrypt.hashSync(PASS, 4)])).id;
   await db.run(`INSERT INTO global_settings (key, value) VALUES ('smtp_host', 'mail.alt.example')
                 ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`);
   const landVorher = (await db.get("SELECT value FROM global_settings WHERE key = 'gutschein_land'"))?.value;

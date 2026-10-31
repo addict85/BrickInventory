@@ -73,7 +73,7 @@ test('manuelle Teile und Figuren: Liste und Bewertung sagen denselben Zustand',
 
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   await db.run(
-    'INSERT INTO users (username,password_hash,is_active,email_verified) VALUES ($1,$2,1,1)',
+    'INSERT INTO users (username,password_hash,is_active,email_verified) VALUES ($1,$2,true,true)',
     [NAME, await bcrypt.hash('x', 4)]);
   const uid = (await db.get('SELECT id FROM users WHERE username=$1', [NAME])).id;
 

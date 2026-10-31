@@ -98,7 +98,7 @@ test('Web- und Job-Prozess', { concurrency: 1, timeout: 180_000 }, async (t) => 
   const NAME = `rollen_${process.pid}`, PASS = 'Passwort12345', MARKE = `rollen-${process.pid}`;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   await db.run(`DELETE FROM auftraege WHERE nutzlast->>'marke' = $1`, [MARKE]);
-  await db.get(`INSERT INTO users (username, password_hash, is_active, email_verified) VALUES ($1, $2, 1, 1) RETURNING id`,
+  await db.get(`INSERT INTO users (username, password_hash, is_active, email_verified) VALUES ($1, $2, true, true) RETURNING id`,
     [NAME, await bcrypt.hash(PASS, 4)]);
 
   const port = await freierPort(), jobsPort = await freierPort();

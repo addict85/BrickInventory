@@ -72,7 +72,7 @@ async function syncSetCatalog(setNumber: string) {
       const melde = logAndContinue('katalogSync:setteil');
       await merkeTeil(p.part_number, p.part_name).catch(melde);
       await merkeTeilFarbe(p.part_number, p.color_id ?? KEINE_FARBE, p.color_name, p.color_hex, p.image_url, imageLocal).catch(melde);
-      await merkeSetTeil(n, p.part_number, p.color_id ?? KEINE_FARBE, p.quantity||1, 0).catch(melde);
+      await merkeSetTeil(n, p.part_number, p.color_id ?? KEINE_FARBE, p.quantity||1, false).catch(melde);
     } else if (imageLocal) {
       await setzeTeilBildLokal(p.part_number, p.color_id ?? KEINE_FARBE, imageLocal).catch(logAndContinue('katalogSync:bild'));
     }

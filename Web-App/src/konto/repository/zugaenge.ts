@@ -13,7 +13,7 @@ export type TokenZeile = {
   user_id: number; expires_at: string | Date | null; hard_expires_at: string | Date | null;
   last_used: string | Date | null; sliding: boolean; never_expires: boolean; scope: TokenScope;
   rotiert_am: string | Date | null; vorgaenger: string | null; label: string | null; ip_bereich: string | null;
-  username: string; konto_is_admin: number; is_admin?: number;
+  username: string; konto_is_admin: boolean; is_admin?: number;
 };
 
 /** Beide Fristen in der Abfrage: Ein abgelaufener Token wird nie geliefert. */
@@ -165,12 +165,12 @@ export async function loescheUngenutzte(leerlaufTage: number): Promise<number> {
 /** Nur unbestätigte Konten mit gültiger Frist; der Token liegt als Hash vor. */
 export function kontoZuEmailToken(hash: string) {
   return db.get<{ id: number }>(
-    'SELECT id FROM users WHERE verification_token = $1 AND token_expires > NOW() AND email_verified = 0', [hash]);
+    'SELECT id FROM users WHERE verification_token = $1 AND token_expires > NOW() AND NOT email_verified', [hash]);
 }
 
 /** Token-Felder mit abräumen: Ein zweiter Klick meldet keinen zweiten Erfolg. */
 export async function bestaetigeEmail(id: number): Promise<void> {
-  await db.run('UPDATE users SET email_verified=1, verification_token=NULL, token_expires=NULL WHERE id=$1', [id]);
+  await db.run('UPDATE users SET email_verified=true, verification_token=NULL, token_expires=NULL WHERE id=$1', [id]);
 }
 
 /** Name ODER E-Mail ohne Gross/klein — so steht es über dem Anmeldefeld. */

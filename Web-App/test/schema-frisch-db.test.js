@@ -101,7 +101,7 @@ test('frische Datenbank', { concurrency: 1, timeout: 180_000 }, async (t) => {
 
   await t.test('ein Konto verschwindet ganz', async () => {
     const uid = (await db.get(`INSERT INTO users (username, password_hash, is_active, email_verified)
-                                VALUES ('frisch_loeschen', 'x', 1, 1) RETURNING id`)).id;
+                                VALUES ('frisch_loeschen', 'x', true, true) RETURNING id`)).id;
     await db.run(`INSERT INTO part_acquisitions (user_id, part_number, color_id, quantity, unit_price)
                   VALUES ($1, '3001', 5, 2, 0.12)`, [uid]);
     await db.run(`INSERT INTO minifig_acquisitions (user_id, fig_number, quantity, unit_price)

@@ -4,7 +4,7 @@
  */
 import * as db from '../../../db/database';
 
-export interface KatalogEintrag { is_gear?: number | null; bl_type?: string | null; fetched_at?: string | Date | null; }
+export interface KatalogEintrag { is_gear?: boolean | null; bl_type?: string | null; fetched_at?: string | Date | null; }
 
 /** Unter der Schreibweise, unter der er abgelegt wird (mit Versionsnummer). */
 export async function katalogEintragZu(nummer: string): Promise<KatalogEintrag | null> {
@@ -17,11 +17,11 @@ export type BricklinkArt = 'GEAR' | 'BOOK' | 'NONE';
 /** Was BrickLink zu einer Nummer führt; NONE heisst „kein Preis", mit Zeitstempel. */
 export async function merkeBricklinkArt(nummer: string, art: BricklinkArt): Promise<void> {
   if (art === 'NONE') {
-    await db.run(`INSERT INTO catalog_cache (set_number, name, bl_type, is_gear) VALUES ($1,$2,$3,1)
-      ON CONFLICT (set_number) DO UPDATE SET bl_type=$3, is_gear=1, fetched_at=NOW()`, [nummer, `Set ${nummer}`, art]);
+    await db.run(`INSERT INTO catalog_cache (set_number, name, bl_type, is_gear) VALUES ($1,$2,$3,true)
+      ON CONFLICT (set_number) DO UPDATE SET bl_type=$3, is_gear=true, fetched_at=NOW()`, [nummer, `Set ${nummer}`, art]);
   } else {
-    await db.run(`INSERT INTO catalog_cache (set_number, name, bl_type, is_gear) VALUES ($1,$2,$3,0)
-      ON CONFLICT (set_number) DO UPDATE SET bl_type=$3, is_gear=0`, [nummer, `Set ${nummer}`, art]);
+    await db.run(`INSERT INTO catalog_cache (set_number, name, bl_type, is_gear) VALUES ($1,$2,$3,false)
+      ON CONFLICT (set_number) DO UPDATE SET bl_type=$3, is_gear=false`, [nummer, `Set ${nummer}`, art]);
   }
 }
 
@@ -48,7 +48,7 @@ export function blTypenDerSets(setNummern: unknown[]) {
   return db.all('SELECT set_number, bl_type FROM catalog_cache WHERE set_number = ANY($1::text[])', [setNummern]);
 }
 
-export function merkeBlTyp(n: unknown, name: string, found: unknown, isGear: unknown) {
+export function merkeBlTyp(n: string, name: string, found: string, isGear: boolean) {
   return db.run(`INSERT INTO catalog_cache (set_number, name, bl_type, is_gear) VALUES ($1,$2,$3,$4)
      ON CONFLICT (set_number) DO UPDATE SET bl_type = $3, fetched_at = NOW()`, [n, name, found, isGear]);
 }

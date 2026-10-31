@@ -66,7 +66,7 @@ test('eine echte Währungsänderung stösst den Preis-Job an, ein No-op-Speicher
 
   const USERNAME = 'currencytest';
   await db.run(`DELETE FROM users WHERE username = $1`, [USERNAME]);
-  await db.run(`INSERT INTO users (username, password_hash, is_admin, is_active) VALUES ($1,'x',0,1)`, [USERNAME]);
+  await db.run(`INSERT INTO users (username, password_hash, is_admin, is_active) VALUES ($1,'x',false,true)`, [USERNAME]);
   const uid = (await db.get(`SELECT id FROM users WHERE username = $1`, [USERNAME])).id;
   await db.run(
     `INSERT INTO user_settings (user_id, key, value) VALUES ($1,'currency','EUR')

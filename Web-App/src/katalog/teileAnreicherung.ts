@@ -220,7 +220,7 @@ async function enrichSetParts(setNumber: string) {
       const melde = logAndContinue('katalog:setteil');
       await merkeTeil(p.part_num, info.part_name).catch(melde);
       await merkeTeilFarbe(p.part_num, p.color_id ?? KEINE_FARBE, info.color_name, info.color_hex, info.image_url).catch(melde);
-      await merkeSetTeil(n, p.part_num, p.color_id ?? KEINE_FARBE, p.quantity||1, 0).catch(melde);
+      await merkeSetTeil(n, p.part_num, p.color_id ?? KEINE_FARBE, p.quantity||1, false).catch(melde);
       // Refresh catalogMap
       catalogMap[key] = { image_url: info.image_url||null, image_local: null };
     }
@@ -475,7 +475,7 @@ async function enrichSetMinifigs(setNumber: string) {
       // einmal je Teil in bl_zuordnung, nicht je Set-Teile-Zeile. Die
       // Schleife weiter oben hat sie dort schon gemerkt (merkeBlNummer);
       // finalBlMap wird nur noch fuer die Antwort an den Aufrufer gebraucht.
-      await merkeSetTeil(figNum, p.part_num, p.color_id ?? KEINE_FARBE, p.quantity||1, 0).catch(logAndContinue('katalog:figurteil'));
+      await merkeSetTeil(figNum, p.part_num, p.color_id ?? KEINE_FARBE, p.quantity||1, false).catch(logAndContinue('katalog:figurteil'));
     }
   }
   

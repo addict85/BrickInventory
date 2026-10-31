@@ -54,7 +54,7 @@ test('der currency-Parameter der App übersteuert die Nutzereinstellung NICHT',
   const USERNAME = 'currency-param-test';
   const SET = '10307-1';
   await db.run(`DELETE FROM users WHERE username=$1`, [USERNAME]);
-  await db.run(`INSERT INTO users (username,password_hash,is_admin,is_active) VALUES ($1,'x',0,1)`, [USERNAME]);
+  await db.run(`INSERT INTO users (username,password_hash,is_admin,is_active) VALUES ($1,'x',false,true)`, [USERNAME]);
   const uid = (await db.get(`SELECT id FROM users WHERE username=$1`, [USERNAME])).id;
   await db.run(`INSERT INTO user_settings (user_id,key,value) VALUES ($1,'currency','CHF')
                 ON CONFLICT (user_id,key) DO UPDATE SET value='CHF'`, [uid]);

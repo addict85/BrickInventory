@@ -137,20 +137,15 @@ export function strictBool(value: any, feld = 'Wert'): boolean {
  * Ausführlich: docs/begruendungen/src/infra/validate.ts.md#istersatzteil
  */
 export function istErsatzteil(value: unknown): boolean {
+  return istJa(value);
+}
+
+/** Ja/Nein in den Schreibweisen fremder Daten (CSV, Anfrage); alles Unbekannte ist nein. */
+export function istJa(value: unknown): boolean {
   if (value === true || value === 1) return true;
   if (typeof value !== 'string') return false;
   const v = value.trim().toLowerCase();
   return v === '1' || v === 't' || v === 'true' || v === 'y' || v === 'yes';
-}
-
-/**
- * Ersatzteil als SQL-Ausdruck. Seit Migration 0075 ist is_spare in jeder
- * Tabelle 0 oder 1 (CHECK); die Schreibweisen kennt nur noch istErsatzteil()
- * für Eingaben wie die Rebrickable-CSV.
- * @param spalte Spaltenname, bereits vertrauenswuerdig — es ist NIE ein Wert
- */
-export function ersatzteilSql(spalte: string): string {
-  return `(${spalte} = 1)`;
 }
 
 /**

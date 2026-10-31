@@ -97,7 +97,7 @@ test('die Schreibantworten passen zu den Kotlin-Modellen', { concurrency: 1, tim
   const hash = await bcrypt.hash(PASS, 4);
   const anlegen = async (n, admin) => (await db.get(
     `INSERT INTO users (username, email, password_hash, is_admin, is_active, email_verified)
-     VALUES ($1, $2, $3, $4, 1, 1) RETURNING id`, [n, `${n}@example.org`, hash, admin ? 1 : 0])).id;
+     VALUES ($1, $2, $3, $4, true, true) RETURNING id`, [n, `${n}@example.org`, hash, admin ? 1 : 0])).id;
   const uid = await anlegen(NAME, true), sub = await anlegen(`${NAME}_sub`, false);
   const neu = await anlegen(`${NAME}_neu`, false);
   await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1, $2)', [uid, sub]);

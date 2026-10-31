@@ -8,7 +8,7 @@ import fs from 'fs';
 import path from 'path';
 import readline from 'readline';
 import type { Pool } from 'pg';
-import { istErsatzteil } from '../infra/validate';
+import { istJa } from '../infra/validate';
 import { logAndContinue } from '../infra/httpError';
 import { DATA_DIR } from '../infra/appPaths';
 import * as repo from './repository/csvTausch';
@@ -106,7 +106,7 @@ export function katalogImporte(pool: Pool, melde: (m: Meldung) => void) {
       // bl_color_id steht nicht im CSV, sie kommt aus der API — mitgeschrieben wäre sie nach jedem Tausch leer.
       cols: ['id', 'name', 'rgb', 'is_trans'],
       onConflict: 'ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name,rgb=EXCLUDED.rgb,is_trans=EXCLUDED.is_trans',
-      mapRow: c => [parseInt(sp(c, 0)) || 0, sp(c, 1), sp(c, 2), sp(c, 3) || 'f'],
+      mapRow: c => [parseInt(sp(c, 0)) || 0, sp(c, 1), sp(c, 2), istJa(sp(c, 3))],
     }),
     part_categories: tausch({
       tabelle: 'rb_part_categories', filename: 'part_categories.csv.gz', tmp: path.join(DATA_DIR, 'part_categories.csv.tmp'),
@@ -152,9 +152,9 @@ export function katalogImporte(pool: Pool, melde: (m: Meldung) => void) {
       tabelle: 'rb_inventory_parts', filename: 'inventory_parts.csv.gz', tmp: path.join(DATA_DIR, 'inventory_parts.csv.tmp'),
       cols: ['inventory_id', 'part_num', 'color_id', 'quantity', 'is_spare', 'img_url'],
       chunkSize: 50,
-      // Die Schreibweisen der Datei liest istErsatzteil(), damit es nur eine Lesart gibt.
+      // Ja/Nein der Datei ('t', 'True', '1' …) liest istJa(), damit es nur eine Lesart gibt.
       mapRow: c => [parseInt(sp(c, 0)) || 0, sp(c, 1), parseInt(sp(c, 2)) || 0, parseInt(sp(c, 3)) || 1,
-                    istErsatzteil(sp(c, 4)) ? 1 : 0, sp(c, 5)],
+                    istJa(sp(c, 4)), sp(c, 5)],
     }),
   };
 }

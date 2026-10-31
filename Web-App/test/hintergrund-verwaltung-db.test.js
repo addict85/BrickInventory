@@ -33,7 +33,7 @@ test('Hintergrundarbeiten in der Verwaltung', { concurrency: 1 }, async (t) => {
   }
   const NAME = `hgv_${process.pid}`;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
-  const uid = (await db.get(`INSERT INTO users (username, password_hash, is_admin, is_active) VALUES ($1,'x',1,1) RETURNING id`, [NAME])).id;
+  const uid = (await db.get(`INSERT INTO users (username, password_hash, is_admin, is_active) VALUES ($1,'x',true,true) RETURNING id`, [NAME])).id;
   await db.run('DELETE FROM auftraege');
   const Z = _req('src/auftraege/zeitplan.js');
   const A = Object.assign({}, _req('src/auftraege/auftraege.js'), _req('src/auftraege/dienst.js'));

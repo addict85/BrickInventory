@@ -83,16 +83,16 @@ test('die Antworten passen zu den Kotlin-Modellen', { concurrency: 1, timeout: 1
 
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username, email, password_hash, is_admin, is_active, email_verified)
-                             VALUES ($1, $2, 'x', 1, 1, 1) RETURNING id`, [NAME, `${NAME}@example.org`])).id;
+                             VALUES ($1, $2, 'x', true, true, true) RETURNING id`, [NAME, `${NAME}@example.org`])).id;
   await db.run('DELETE FROM users WHERE username = $1', [`${NAME}_sub`]);
   const sub = (await db.get(`INSERT INTO users (username, password_hash, is_active, email_verified)
-                             VALUES ($1, 'x', 1, 1) RETURNING id`, [`${NAME}_sub`])).id;
+                             VALUES ($1, 'x', true, true) RETURNING id`, [`${NAME}_sub`])).id;
   // Ein Elternkonto und ein getrenntes Konto, damit `parents` und
   // `former_links` der Haushaltsantwort nicht leer ankommen.
   const nebenkonto = async (zusatz) => {
     await db.run('DELETE FROM users WHERE username = $1', [`${NAME}_${zusatz}`]);
     return (await db.get(`INSERT INTO users (username, password_hash, is_active, email_verified)
-                          VALUES ($1, 'x', 1, 1) RETURNING id`, [`${NAME}_${zusatz}`])).id;
+                          VALUES ($1, 'x', true, true) RETURNING id`, [`${NAME}_${zusatz}`])).id;
   };
   const oben = await nebenkonto('oben'), getrennt = await nebenkonto('getrennt');
   // Globale Kataloge: nur entfernen, was dieser Test selbst angelegt hat.
@@ -140,7 +140,7 @@ test('die Antworten passen zu den Kotlin-Modellen', { concurrency: 1, timeout: 1
   await katalog(`INSERT INTO rb_inventories (id, set_num, version) VALUES (999074, $1, 1)`, [SET],
                 'DELETE FROM rb_inventories WHERE id = 999074', []);
   await katalog(`INSERT INTO rb_inventory_parts (id, inventory_id, part_num, color_id, quantity, is_spare)
-                 VALUES (999074, 999074, $1, $2, 4, 0)`, [TEIL, FARBE],
+                 VALUES (999074, 999074, $1, $2, 4, false)`, [TEIL, FARBE],
                 'DELETE FROM rb_inventory_parts WHERE id = 999074', []);
   await db.run(`INSERT INTO part_catalog (part_number, part_name, category_name) VALUES ($1, 'Stein 2x2', 'Steine')
                 ON CONFLICT DO NOTHING`, [TEIL]);

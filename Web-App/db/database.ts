@@ -295,10 +295,12 @@ async function legeAdminAn() {
     // 12 wie BCRYPT_ROUNDS in src/konto/auth.ts: Mit weniger Runden antwortete ein
     // Fehlversuch gegen „admin“ messbar schneller und verriet das Konto.
     const hash = bcrypt.hashSync(plainPassword, 12);
+    // '1' statt true: Auf einem Altbestand läuft das vor Migration 0085, dort
+    // sind die Spalten noch Zahlen. '1' nimmt BOOLEAN wie INTEGER an.
     await pool.query(
       `INSERT INTO users (username, password_hash, is_admin, is_active, email_verified, must_change_password)
-       VALUES ('admin', $1, 1, 1, 1, $2)`,
-      [hash, useEnvPassword ? 0 : 1]
+       VALUES ('admin', $1, '1', '1', '1', $2)`,
+      [hash, useEnvPassword ? '0' : '1']
     );
     if (useEnvPassword) {
       console.log('✅ Standard-Admin erstellt (Passwort aus ADMIN_PASSWORD).');

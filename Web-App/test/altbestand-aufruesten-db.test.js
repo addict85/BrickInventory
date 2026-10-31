@@ -118,7 +118,7 @@ test('Altbestand aufrüsten', { concurrency: 1, timeout: 300_000 }, async (t) =>
   });
 
   await t.test('die Datenschritte der Startstufen sind gelaufen', async () => {
-    assert.deepEqual(await db.get('SELECT is_active, email_verified FROM users WHERE id = 4711'), { is_active: 1, email_verified: 1 });
+    assert.deepEqual(await db.get('SELECT is_active, email_verified FROM users WHERE id = 4711'), { is_active: true, email_verified: true });
     const preise = await db.all(`SELECT (recorded_at AT TIME ZONE 'UTC')::date::text AS tag, avg_price::float AS preis
       FROM price_history WHERE set_number = '10300-1' ORDER BY recorded_at`);
     assert.deepEqual(preise, [{ tag: '2026-10-20', preis: 210 }, { tag: '2026-10-21', preis: 220 }]);

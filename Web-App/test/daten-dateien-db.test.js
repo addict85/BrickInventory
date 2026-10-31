@@ -48,7 +48,7 @@ test('Uploads: Haushalt ja, Fremde nein, %2F nie', { concurrency: 1 }, async (t)
   const ids = [];
   for (const n of NAMEN)
     ids.push((await db.get(`INSERT INTO users (username, password_hash, is_active, email_verified)
-                            VALUES ($1, 'x', 1, 1) RETURNING id`, [n])).id);
+                            VALUES ($1, 'x', true, true) RETURNING id`, [n])).id);
   const [H, U, F] = ids;
   await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1, $2)', [H, U]);
   for (const id of [H, U]) {
@@ -92,7 +92,7 @@ test('Uploads: Haushalt ja, Fremde nein, %2F nie', { concurrency: 1 }, async (t)
   });
 
   await t.test('auch ein Verwalter liest fremde Uploads nicht', async () => {
-    await db.run('UPDATE users SET is_admin = 1 WHERE id = $1', [F]);
+    await db.run('UPDATE users SET is_admin = true WHERE id = $1', [F]);
     assert.equal((await hole(F, `/data/uploads/${H}/a.pdf`, true)).status, 403,
       'Rechnungen und Gutscheine anderer gehen die Kontoverwaltung nichts an');
   });

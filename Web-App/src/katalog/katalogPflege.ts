@@ -100,11 +100,11 @@ export async function merkeSetTeil(
   partNumber: string,
   colorId: number | string | null | undefined,
   quantity: number,
-  isSpare: number = 0,
+  isSpare = false,
   dbh: Schreiber = db,
 ) {
   if (!setNumber || !partNumber) return;
-  await stamm.schreibeSetTeil(dbh, setNumber, partNumber, farbeLesen(colorId), quantity || 1, isSpare ? 1 : 0);
+  await stamm.schreibeSetTeil(dbh, setNumber, partNumber, farbeLesen(colorId), quantity || 1, isSpare);
 }
 
 /** Eine Zeile aus der Teileliste eines Sets, wie sie Rebrickable liefert. */
@@ -147,7 +147,7 @@ export async function merkeSetTeile(setNumber: string, zeilen: SetTeilZeile[], d
     if (a.isSpare === b.isSpare) return { ...a, quantity: a.quantity + b.quantity };
     return a.isSpare ? b : a;
   });
-  await stamm.schreibeSetTeile(dbh, setNumber, liste.map(z => z.partNumber), liste.map(z => z.colorId), liste.map(z => z.quantity || 1), liste.map(z => z.isSpare ? 1 : 0));
+  await stamm.schreibeSetTeile(dbh, setNumber, liste.map(z => z.partNumber), liste.map(z => z.colorId), liste.map(z => z.quantity || 1), liste.map(z => z.isSpare));
 }
 
 /** Name und Bild mehrerer Figuren aus einer geprüften Quelle, in einer Anweisung. */

@@ -73,7 +73,7 @@ test('/ca.crt, Einstellungen und QR-Code tragen denselben Fingerabdruck', { conc
   const client = await db.pool.connect();
   try { await _req('db/migrate.js').runMigrations(client); } finally { client.release(); }
   await db.run("DELETE FROM users WHERE username = 'tls_nutzer'");
-  await db.run("INSERT INTO users (username,password_hash,is_admin,is_active,email_verified) VALUES ('tls_nutzer',$1,0,1,1)",
+  await db.run("INSERT INTO users (username,password_hash,is_admin,is_active,email_verified) VALUES ('tls_nutzer',$1,false,true,true)",
     [await bcrypt.hash('richtigesPasswort1', 4)]);
 
   const app = express();

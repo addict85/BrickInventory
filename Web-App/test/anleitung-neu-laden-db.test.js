@@ -51,7 +51,7 @@ test('Anleitungen neu laden', { concurrency: 1 }, async (t) => {
   const ids = [];
   for (const n of NAMEN)
     ids.push((await db.get(`INSERT INTO users (username, password_hash, is_active, email_verified)
-                            VALUES ($1, 'x', 1, 1) RETURNING id`, [n])).id);
+                            VALUES ($1, 'x', true, true) RETURNING id`, [n])).id);
   await db.run(`INSERT INTO set_catalog (set_number, name, year, theme, pieces, minifigs)
                 VALUES ($1, 'Anleitungsprobe', 2024, 'Test', 10, 0) ON CONFLICT (set_number) DO NOTHING`, [SET]);
   await haeltSet(db, ids[0], SET, 1);

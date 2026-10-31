@@ -51,7 +51,7 @@ export function schreibeFigurKatalog(dbh: Schreiber, figNumber: string, name: un
       updated_at  = NOW()`, [figNumber, name, bild, wert4, wert5, wert6]);
 }
 
-export function schreibeSetTeil(dbh: Schreiber, setNumber: string, partNumber: string, colorId: unknown, quantity: unknown, isSpare: unknown) {
+export function schreibeSetTeil(dbh: Schreiber, setNumber: string, partNumber: string, colorId: number, quantity: number, isSpare: boolean) {
   return dbh.run(`
     INSERT INTO set_teile (set_number, part_number, color_id, quantity, is_spare)
     VALUES ($1, $2, $3, $4, $5)
@@ -84,7 +84,7 @@ export function schreibeTeilFarben(dbh: Schreiber, wert1: unknown, wert2: unknow
 export function schreibeSetTeile(dbh: Schreiber, setNumber: string, wert2: unknown, wert3: unknown, wert4: unknown, wert5: unknown) {
   return dbh.run(`
     INSERT INTO set_teile (set_number, part_number, color_id, quantity, is_spare)
-    SELECT $1, p, f, q, s FROM unnest($2::text[], $3::int[], $4::int[], $5::int[]) AS x(p, f, q, s)
+    SELECT $1, p, f, q, s FROM unnest($2::text[], $3::int[], $4::int[], $5::boolean[]) AS x(p, f, q, s)
     ON CONFLICT (set_number, part_number, color_id) DO UPDATE
       SET quantity = EXCLUDED.quantity, is_spare = EXCLUDED.is_spare, updated_at = NOW()`, [setNumber, wert2, wert3, wert4, wert5]);
 }

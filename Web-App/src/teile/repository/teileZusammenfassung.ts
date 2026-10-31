@@ -37,7 +37,7 @@ function zusammenfassungEinfuegen(nurGruppen: boolean): string {
              MIN(pcc.image_url), MIN(pcc.image_local),
              -- Ersatzteil ist eine Angabe der Setliste; dasselbe Teil kann in
              -- einem Set Ersatz und im nächsten Pflicht sein.
-             MAX(COALESCE(tm_k.is_spare, 0)),
+             bool_or(COALESCE(tm_k.is_spare, false)),
              SUM(${teilmengeAus('p', 'part')} * ${mengeAus('sm', 1)}),
              STRING_AGG(DISTINCT p.set_number, ','),
              -- Alle Lagerorte der Gruppe: Dasselbe Teil liegt aus mehreren Sets in verschiedenen Kisten.

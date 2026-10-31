@@ -45,7 +45,7 @@ export function ohneVersion(setNumber: string | number): string {
 // verschiedenen Schluesseln. Die Markierung schreibt der Preisführer
 // unter der Nummer MIT Anhang (src/katalog/bricklinkPreise.ts).
 /** Was der Katalog zu einer Nummer von BrickLink weiss (catalog_cache). */
-interface KatalogEintrag { is_gear?: number | null; bl_type?: string | null; fetched_at?: string | Date | null; }
+interface KatalogEintrag { is_gear?: boolean | null; bl_type?: string | null; fetched_at?: string | Date | null; }
 
 
 /**
@@ -54,7 +54,7 @@ interface KatalogEintrag { is_gear?: number | null; bl_type?: string | null; fet
  * und endet ohnehin im Fehler.
  */
 export function ohneBricklinkPreis(eintrag: KatalogEintrag | null | undefined, jetzt = Date.now()): boolean {
-  if (!(eintrag?.is_gear === 1 && eintrag?.bl_type === 'NONE')) return false;
+  if (!(eintrag?.is_gear === true && eintrag?.bl_type === 'NONE')) return false;
   // Nur eine Weile: Ein neues Set steht oft erst Tage nach dem Erscheinen im
   // BrickLink-Katalog. Ohne Frist bliebe es fuer immer ohne Marktpreis.
   const seit = eintrag.fetched_at ? new Date(eintrag.fetched_at).getTime() : NaN;

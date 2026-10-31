@@ -69,7 +69,7 @@ async function vorbereiten(t) {
   try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); }
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   UID = (await db.get(
-    'INSERT INTO users (username, email, password_hash, is_active, email_verified) VALUES ($1, $2, $3, 1, 1) RETURNING id',
+    'INSERT INTO users (username, email, password_hash, is_active, email_verified) VALUES ($1, $2, $3, true, true) RETURNING id',
     [NAME, `${NAME}@example.org`, await bcrypt.hash(PASS, 4)])).id;
   await zaehlerLeeren();
   return true;

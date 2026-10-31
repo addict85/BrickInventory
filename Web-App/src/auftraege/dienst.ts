@@ -101,5 +101,5 @@ export async function zaehleArt(art: AuftragsArt): Promise<Record<AuftragsStatus
 export async function imNamenDesAuftrags<T>(a: Pick<AuftragsZeile, 'user_id'>, f: () => Promise<T>): Promise<T> {
   if (a.user_id == null) return f();
   const u = await repo.kontoRolle(a.user_id);
-  return imNamenVon({ apiUser: { user_id: a.user_id, is_admin: u?.is_admin === true || Number(u?.is_admin) === 1 ? 1 : 0 } }, f);
+  return imNamenVon({ apiUser: { user_id: a.user_id, is_admin: u?.is_admin ? 1 : 0 } }, f);
 }

@@ -6,9 +6,28 @@
  */
 import bcrypt from 'bcryptjs';
 import * as repo from './repository/konten';
-import { BCRYPT_ROUNDS, flaggeGesetzt, leereTokenCache, revokeAllSessions, revokeAllTokens } from './auth';
+import { BCRYPT_ROUNDS, leereTokenCache, revokeAllSessions, revokeAllTokens } from './auth';
 
-export { aendereProfil, aktivesKontoNachEmail, andereSitzungenBeenden, emailVergeben, kontenListe, kontoExistiert, kontoKurz, kontoNachRuecksetzToken, kontoVoll, legeQrTokenAn, loescheKonto, loeseQrTokenEin, mussPasswortAendern, nameOderEmailVergeben, nameVergeben, profil, raeumeQrTokensAuf, setzeRuecksetzToken, tokenNachKennung, tokenStand, zugaengeDesKontos, zugaengeLoeschen } from './repository/konten';
+export { aendereProfil, aktivesKontoNachEmail, andereSitzungenBeenden, emailVergeben, kontoExistiert, kontoKurz, kontoNachRuecksetzToken, kontoVoll, legeQrTokenAn, loescheKonto, loeseQrTokenEin, mussPasswortAendern, nameOderEmailVergeben, nameVergeben, raeumeQrTokensAuf, setzeRuecksetzToken, tokenNachKennung, tokenStand, zugaengeDesKontos, zugaengeLoeschen } from './repository/konten';
+
+/**
+ * Die Antwortform der Konten — die eine Stelle, an der Ja/Nein der Datenbank
+ * (BOOLEAN) als 0/1 hinausgeht, wie vor der Umstellung der Spalten. Die App
+ * liest email_verified als Zahl; echte Wahrheitswerte kommen mit dem
+ * gemeinsamen API-Schema.
+ */
+const alsApiZahl = (ja: boolean): 0 | 1 => (ja ? 1 : 0);
+
+/** Alle Konten für die Verwaltung; is_admin als 0/1. */
+export async function kontenListe() {
+  return (await repo.alleKonten()).map(k => ({ ...k, is_admin: alsApiZahl(k.is_admin) }));
+}
+
+/** Das eigene Profil; email_verified als 0/1. */
+export async function profil(id: number) {
+  const p = await repo.profilZeile(id);
+  return p && { ...p, email_verified: alsApiZahl(p.email_verified) };
+}
 
 const hashe = (passwort: unknown) => bcrypt.hash(String(passwort), BCRYPT_ROUNDS);
 
@@ -60,7 +79,7 @@ export async function registriere(d: { username: string; email: string; first_na
 export async function setzeVerwalterRolle(uid: number, soll: boolean): Promise<{ geaendert: boolean } | null> {
   const vorher = await repo.verwalterVorher(uid);
   if (!vorher) return null;
-  const geaendert = flaggeGesetzt(vorher.is_admin) !== soll;
+  const geaendert = vorher.is_admin !== soll;
   await repo.setzeVerwalter(uid, soll);
   if (geaendert) {
     await revokeAllSessions(uid);

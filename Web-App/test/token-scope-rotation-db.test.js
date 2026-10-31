@@ -58,7 +58,7 @@ test('Tokens mit Scope, Ablauf und Rotation', { concurrency: 1 }, async (t) => {
   try { await _req('db/migrate.js').runMigrations(client); } finally { client.release(); }
 
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
-  await db.run('INSERT INTO users (username,password_hash,is_admin,is_active,email_verified) VALUES ($1,$2,1,1,1)',
+  await db.run('INSERT INTO users (username,password_hash,is_admin,is_active,email_verified) VALUES ($1,$2,true,true,true)',
     [NAME, await bcrypt.hash(PASS, 4)]);
   const uid = (await db.get('SELECT id FROM users WHERE username=$1', [NAME])).id;
 

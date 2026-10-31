@@ -82,7 +82,7 @@ test('1. ohne APP_BASE_URL kommt kein Code — und keine Nonce', { concurrency: 
 
   await db.run("DELETE FROM users WHERE username = 'qr_pruefling'");
   const nutzer = await db.get(
-    "INSERT INTO users (username,password_hash,is_admin,email_verified) VALUES ($1,$2,0,1) RETURNING id",
+    "INSERT INTO users (username,password_hash,is_admin,email_verified) VALUES ($1,$2,false,true) RETURNING id",
     ['qr_pruefling', require('bcryptjs').hashSync('qr-passwort-1', 4)]);
   // Aufraeumen UND den Pool schliessen, beides hier: Ohne das `end()` haelt
   // die offene Verbindung den Prozess am Leben, und `node --test` haengt nach

@@ -85,7 +85,7 @@ async function seed() {
   }
   // chef ist Administrator, opa ist Haupt-, enkel Unterkonto. Beides zusammen
   // stellt genau die zwei Durchgriffe her, die es hier NICHT geben darf.
-  await db.run("UPDATE users SET is_admin = 1 WHERE id = $1", [U.chef]);
+  await db.run("UPDATE users SET is_admin = true WHERE id = $1", [U.chef]);
   await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1,$2) ON CONFLICT DO NOTHING',
     [U.opa, U.enkel]);
 }

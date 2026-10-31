@@ -70,7 +70,7 @@ test('unbekannter Anmeldename kostet dieselbe Zeit wie ein falsches Passwort',
   const name = 'zeit_bekannt';
   await db.run('DELETE FROM users WHERE username = $1', [name]);
   await db.run(
-    'INSERT INTO users (username,password_hash,is_admin,is_active,email_verified) VALUES ($1,$2,0,1,1)',
+    'INSERT INTO users (username,password_hash,is_admin,is_active,email_verified) VALUES ($1,$2,false,true,true)',
     [name, await bcrypt.hash('richtigesPasswort1', BCRYPT_ROUNDS)]);
 
   try {

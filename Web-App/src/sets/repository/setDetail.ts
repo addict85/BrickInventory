@@ -1,6 +1,5 @@
 import { mengeSkalar } from '../../../db/bestandsmenge';
 import { blJoin, blNummerSql } from '../../../db/blZuordnungSql';
-import { ersatzteilSql } from '../../infra/validate';
 import type { KatalogTeil, ListenTeil, SetStamm } from '../dienst';
 import * as db from '../../../db/database';
 
@@ -48,7 +47,7 @@ export function inventarTeileDesSets(invId: number) {
          LEFT JOIN rb_colors     c ON c.id       = ip.color_id
          LEFT JOIN bl_zuordnung  m ON m.art = 'part' AND m.rb_id = ip.part_num
         WHERE ip.inventory_id = $1
-          AND NOT ${ersatzteilSql('ip.is_spare')}`, [invId]);
+          AND NOT ip.is_spare`, [invId]);
 }
 
 export function inventarFigurenDesSets(invId: number) {

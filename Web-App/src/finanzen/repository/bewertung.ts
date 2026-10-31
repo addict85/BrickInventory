@@ -44,7 +44,7 @@ export function setsZurBewertung(uids: number[]) {
 
 /** Katalogmerkmale (Gear, BrickLink-Art) vieler Sets; die Nummern tragen den Versionsanhang. */
 export function katalogMerkmale(setNumbers: string[]) {
-  return db.all<{ set_number: string; is_gear: number | null; bl_type: string | null; fetched_at: Date | null }>(
+  return db.all<{ set_number: string; is_gear: boolean; bl_type: string | null; fetched_at: Date | null }>(
     'SELECT set_number, is_gear, bl_type, fetched_at FROM catalog_cache WHERE set_number = ANY($1)', [setNumbers]);
 }
 

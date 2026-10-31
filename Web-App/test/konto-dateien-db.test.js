@@ -54,7 +54,7 @@ test('Gutschein-PDFs verschlüsselt, Kontodateien gehen mit dem Konto', { concur
 
   const ADMIN = 'kd-admin', ZIEL = 'kd-ziel', ADMIN_PW = 'verwalterPasswort1';
   await db.run('DELETE FROM users WHERE username IN ($1, $2)', [ADMIN, ZIEL]);
-  await db.run(`INSERT INTO users (username, password_hash, is_admin, is_active) VALUES ($1,$3,1,1), ($2,'x',0,1)`,
+  await db.run(`INSERT INTO users (username, password_hash, is_admin, is_active) VALUES ($1,$3,true,true), ($2,'x',false,true)`,
     [ADMIN, ZIEL, await bcrypt.hash(ADMIN_PW, 4)]);
   const adminId = (await db.get('SELECT id FROM users WHERE username=$1', [ADMIN])).id;
   const zielId  = (await db.get('SELECT id FROM users WHERE username=$1', [ZIEL])).id;

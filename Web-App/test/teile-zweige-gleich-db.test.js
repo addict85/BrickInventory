@@ -80,8 +80,8 @@ test('beide Wege der Teileliste liefern dieselben Typen', async (t) => {
     // 3002 ist das Ersatzteil, 3001 das gewoehnliche — dieselbe Belegung wie
     // vorher, als is_spare noch an der Bestandszeile stand.
     await db.run(`INSERT INTO set_teile (set_number,part_number,color_id,quantity,is_spare)
-                  VALUES ('Z-1','3001',5,3,0),
-                         ('Z-1','3002',1,1,1)
+                  VALUES ('Z-1','3001',5,3,false),
+                         ('Z-1','3002',1,1,true)
                   ON CONFLICT (set_number,part_number,color_id) DO UPDATE SET is_spare=EXCLUDED.is_spare`);
     // Name und Farbbezeichnung: Die Typpruefung unten vergleicht sie zwischen
     // den beiden Zweigen, also muessen sie gefuellt sein.

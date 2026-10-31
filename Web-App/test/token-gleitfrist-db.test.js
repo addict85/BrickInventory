@@ -66,7 +66,7 @@ test('das Ablaufdatum des App-Tokens gleitet mit der Benutzung',
 
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   await db.run(
-    'INSERT INTO users (username,password_hash,is_admin,is_active,email_verified) VALUES ($1,$2,0,1,1)',
+    'INSERT INTO users (username,password_hash,is_admin,is_active,email_verified) VALUES ($1,$2,false,true,true)',
     [NAME, await bcrypt.hash(PASS, 4)]);
   const uid = (await db.get('SELECT id FROM users WHERE username=$1', [NAME])).id;
 

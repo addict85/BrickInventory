@@ -12,7 +12,7 @@ export function teileDesInventars(inventarId: number) {
     `SELECT ip.part_num, ip.color_id, ip.quantity
      FROM rb_inventory_parts ip
      WHERE ip.inventory_id = $1
-       AND ip.is_spare = 0`, [inventarId]);
+       AND NOT ip.is_spare`, [inventarId]);
 }
 
 export function setTeileKatalog(setNumber: string) {

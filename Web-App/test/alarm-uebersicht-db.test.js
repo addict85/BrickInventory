@@ -66,15 +66,15 @@ test('Preisalarm-Übersicht: eigene Alarme, mit Namen, änderbar, löschbar',
   for (const n of ['alarm_ich', 'alarm_fremd', 'alarm_kind'])
     await db.run('DELETE FROM users WHERE username = $1', [n]);
   const ich = await db.get(
-    "INSERT INTO users (username,password_hash,is_admin,email_verified) VALUES ($1,'x',0,1) RETURNING id", ['alarm_ich']);
+    "INSERT INTO users (username,password_hash,is_admin,email_verified) VALUES ($1,'x',false,true) RETURNING id", ['alarm_ich']);
   const fremd = await db.get(
-    "INSERT INTO users (username,password_hash,is_admin,email_verified) VALUES ($1,'x',0,1) RETURNING id", ['alarm_fremd']);
+    "INSERT INTO users (username,password_hash,is_admin,email_verified) VALUES ($1,'x',false,true) RETURNING id", ['alarm_fremd']);
   // Ein Unterkonto im HAUSHALT. Genau daran ist die erste Fassung gescheitert:
   // Sie verband auf `s.user_id = a.user_id`, also streng das eigene Konto —
   // ein Set des Kindes galt damit als „gibt es nicht", obwohl die
   // Detailansicht es sehr wohl öffnet (sie fragt über scopeIds()).
   const kind = await db.get(
-    "INSERT INTO users (username,password_hash,is_admin,email_verified) VALUES ($1,'x',0,1) RETURNING id", ['alarm_kind']);
+    "INSERT INTO users (username,password_hash,is_admin,email_verified) VALUES ($1,'x',false,true) RETURNING id", ['alarm_kind']);
   await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1,$2)', [ich.id, kind.id]);
 
   t.after(async () => {

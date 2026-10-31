@@ -146,10 +146,13 @@ test('Set-Nummern mit Version, ein Set-Stamm, Ersatzteil 0/1', { concurrency: 1 
     const c = await db.pool.connect();
     try {
       await c.query('BEGIN');
-      // Stand vor 0075: Text in rb_inventory_parts, keine CHECK-Regeln.
-      for (const tab of ['rb_inventory_parts', 'set_teile', 'parts_summary'])
-        await c.query(`ALTER TABLE ${tab} DROP CONSTRAINT ${tab}_ersatzteil_null_eins, ALTER COLUMN is_spare DROP NOT NULL, ALTER COLUMN is_spare DROP DEFAULT`);
-      await c.query('ALTER TABLE rb_inventory_parts ALTER COLUMN is_spare TYPE text');
+      // Stand vor 0075 (und 0085): Text in rb_inventory_parts, Zahlen ohne CHECK-Regeln.
+      await c.query('DROP VIEW set_parts_catalog');
+      for (const tab of ['set_teile', 'parts_summary'])
+        await c.query(`ALTER TABLE ${tab} ALTER COLUMN is_spare DROP NOT NULL, ALTER COLUMN is_spare DROP DEFAULT,
+                         ALTER COLUMN is_spare TYPE integer USING is_spare::int`);
+      await c.query(`ALTER TABLE rb_inventory_parts ALTER COLUMN is_spare DROP NOT NULL, ALTER COLUMN is_spare DROP DEFAULT,
+                       ALTER COLUMN is_spare TYPE text`);
       const inv = 870000 + (PID % 10000);
       await c.query(`INSERT INTO rb_inventory_parts (inventory_id, part_num, color_id, quantity, is_spare)
                      VALUES ($1,'E1',1,1,'True'), ($1,'E2',1,1,'f'), ($1,'E3',1,1,NULL), ($1,'E4',1,1,'t')`, [inv]);

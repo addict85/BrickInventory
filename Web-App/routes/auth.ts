@@ -6,7 +6,7 @@ const router  = express.Router();
 import * as K from '../src/konto/konten';
 import { meldeHaushaltsaenderung } from '../src/haushalt/haushalt';
 import { fehlerAntwort, logAndContinue, meldeUndWeiter, fehlertext, pfadParam, meldeUndLiefere } from '../src/infra/httpError';
-import { hashToken, createToken, pruefeToken, assertLoginAllowed, revokeAllSessions, beendeAndereZugaenge, deleteToken, USERNAME_RE, EMAIL_RE, passwortZuKurz, flaggeGesetzt, leereTokenCache, laufzeitTage, rotiereToken, rotationFaellig, UNBEGRENZT, UEBERLAPPUNG_MS } from '../src/konto/auth';
+import { hashToken, createToken, pruefeToken, assertLoginAllowed, revokeAllSessions, beendeAndereZugaenge, deleteToken, USERNAME_RE, EMAIL_RE, passwortZuKurz, leereTokenCache, laufzeitTage, rotiereToken, rotationFaellig, UNBEGRENZT, UEBERLAPPUNG_MS } from '../src/konto/auth';
 import { perSitzung, anmelden, establishSession, requireLoginOrToken, nutzerId, angemeldeteNutzerId, ipThrottle, bestaetigePasswort, bestaetigeCode } from '../src/konto/http/anmeldung';
 import type { TokenScope } from '../src/konto/auth';
 import { tlsStand } from '../src/infra/tlsWurzel';
@@ -55,7 +55,7 @@ function tokenScope(roh: unknown): TokenScope { return roh === 'voll' ? 'voll' :
 async function tokenAngaben(klartext: string) {
   const z = await K.tokenStand(hashToken(klartext));
   return z ? { scope: z.scope, expires_at: z.expires_at, hard_expires_at: z.hard_expires_at,
-               never_expires: flaggeGesetzt(z.never_expires), rotiert_am: z.rotiert_am } : null;
+               never_expires: z.never_expires, rotiert_am: z.rotiert_am } : null;
 }
 
 /**
@@ -95,7 +95,7 @@ router.post('/login', async (req, res) => {
   await establishSession(req, {
     userId:   parseInt(user.id),   // always int
     username: user.username,
-    isAdmin:  flaggeGesetzt(user.is_admin),
+    isAdmin:  user.is_admin,
   });
   // Scheitert das INSERT, wird der Token NICHT mitgeschickt. Vorher stand
   // hier .catch(() => {}) — die Anmeldung galt als erfolgreich, der Client
@@ -125,11 +125,10 @@ router.post('/login', async (req, res) => {
   // für ältere Clients und ist bei einer Passwortanmeldung immer false.
   res.json({ success: true, ...(token ? { token } : {}), ...(token ? { token_info: await tokenAngaben(token) } : {}),
     never_expires: false,
-    user: { id: user.id, username: user.username, is_admin: flaggeGesetzt(user.is_admin),
-    // Nur beim automatisch generierten Default-Admin-Passwort gesetzt (siehe
-    // db/database.ts) — der Client fordert dann zur Passwortaenderung auf.
-    // Wird durch POST /change-password wieder geloescht.
-    mustChangePassword: !!(user.must_change_password === 1 || user.must_change_password === true) } });
+    user: { id: user.id, username: user.username, is_admin: user.is_admin,
+    // Nur beim automatisch erzeugten Admin-Passwort gesetzt (db/database.ts);
+    // POST /change-password löscht es wieder.
+    mustChangePassword: user.must_change_password } });
 });
 
 /**
@@ -162,7 +161,7 @@ router.get('/me', async (req, res) => {
     if (req.session?.userId) {
       const user = await K.kontoKurz(req.session.userId);
       if (user) return res.json({ success: true, loggedIn: true,
-        user: { id: user.id, username: user.username, is_admin: flaggeGesetzt(user.is_admin) } });
+        user: { id: user.id, username: user.username, is_admin: user.is_admin } });
     }
     const p = token ? await pruefeToken(token, { ip: req.ip }) : { nutzer: null };
     const u = p.nutzer;
@@ -171,10 +170,10 @@ router.get('/me', async (req, res) => {
       if (faellig) res.setHeader('X-Token-Rotation', 'faellig');
       // is_admin ist das Recht DIESES Tokens: bei Scope `app` immer false.
       return res.json({ success: true, loggedIn: true,
-        user: { id: u.user_id, username: u.username, is_admin: flaggeGesetzt(u.is_admin) },
+        user: { id: u.user_id, username: u.username, is_admin: u.is_admin === 1 },
         token_expires: u.expires_at, token_last_used: u.last_used,
         token_info: { scope: u.scope, expires_at: u.expires_at, hard_expires_at: u.hard_expires_at ?? null,
-                      never_expires: flaggeGesetzt(u.never_expires), rotiert_am: u.rotiert_am,
+                      never_expires: u.never_expires === true, rotiert_am: u.rotiert_am,
                       rotation_faellig: faellig } });
     }
     if (token) return ungueltig('grund' in p && p.grund ? p.grund : 'token_ungueltig');
@@ -273,7 +272,7 @@ router.put('/profile', requireLogin, async (req, res) => {
   if (emailChanged) {
     const token   = crypto.randomBytes(32).toString('hex');
     felder.email = email;
-    felder.email_verified = user.is_admin ? 1 : 0;
+    felder.email_verified = user.is_admin;
     // Nur der Hash landet in der DB — der Klartext geht ausschliesslich per Mail raus
     felder.verification_token = hashToken(token);
     felder.token_expires = new Date(Date.now() + 24*60*60*1000);
@@ -688,7 +687,7 @@ router.post('/forgot-password', ipThrottle('forgot-password', 5, 60 * 60 * 1000)
     .then((lang: unknown) => sendPasswordResetMail(
       // An die GESPEICHERTE Adresse: Die eingegebene passt per LOWER() auch
       // als Unicode-Variante (Kelvin-K, „İ“) und kann ein fremdes Postfach sein.
-      user.email, user.first_name || user.username, token, getBaseUrl(req)!, String(lang ?? 'de')))
+      user.email ?? '', user.first_name || user.username, token, getBaseUrl(req)!, String(lang ?? 'de')))
     .catch((e: any) => console.error('[forgot-password] Mailversand fehlgeschlagen:', e?.message));
 
   res.json({ success: true, message: 'Falls die E-Mail existiert, wurde ein Link gesendet.' });
@@ -785,9 +784,9 @@ router.post('/passkey/anmelden', ipThrottle('passkey-anmelden', 30, 60 * 60 * 10
   if (!user) return sendeFehler(req, res, 401, 'passkey_ungueltig');
   const gesperrt = assertLoginAllowed(user);
   if (gesperrt) return sendeFehler(req, res, gesperrt.status, gesperrt.code);
-  await establishSession(req, { userId: user.id, username: user.username, isAdmin: flaggeGesetzt(user.is_admin) });
-  res.json({ success: true, user: { id: user.id, username: user.username, is_admin: flaggeGesetzt(user.is_admin),
-    mustChangePassword: user.must_change_password === 1 || user.must_change_password === true } });
+  await establishSession(req, { userId: user.id, username: user.username, isAdmin: user.is_admin });
+  res.json({ success: true, user: { id: user.id, username: user.username, is_admin: user.is_admin,
+    mustChangePassword: user.must_change_password } });
 });
 
 router.use(fehlerAntwort);

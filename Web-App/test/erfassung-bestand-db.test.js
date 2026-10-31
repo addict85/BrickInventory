@@ -31,7 +31,7 @@ test('Erfassung und Bestand', { concurrency: 1 }, async (t) => {
 
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username, password_hash, is_active, email_verified)
-                             VALUES ($1, 'x', 1, 1) RETURNING id`, [NAME])).id;
+                             VALUES ($1, 'x', true, true) RETURNING id`, [NAME])).id;
   t.after(async () => {
     await db.run('DELETE FROM set_acquisitions WHERE user_id = $1', [uid]).catch(() => {});
     await db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {});

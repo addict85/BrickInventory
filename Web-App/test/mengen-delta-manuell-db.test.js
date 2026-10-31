@@ -33,7 +33,7 @@ test('quantity_delta für manuelle Teile und Figuren', { concurrency: 1 }, async
   try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username, password_hash, is_active, email_verified)
-                             VALUES ($1, 'x', 1, 1) RETURNING id`, [NAME])).id;
+                             VALUES ($1, 'x', true, true) RETURNING id`, [NAME])).id;
   await db.run(`INSERT INTO parts (user_id, part_number, color_id, source) VALUES ($1, $2, 5, 'manual')`, [uid, TEIL]);
   await db.run(`INSERT INTO part_acquisitions (user_id, part_number, color_id, quantity) VALUES ($1, $2, 5, 2)`, [uid, TEIL]);
   await db.run(`INSERT INTO minifigs (user_id, fig_number, source) VALUES ($1, $2, 'manual')`, [uid, FIGUR]);

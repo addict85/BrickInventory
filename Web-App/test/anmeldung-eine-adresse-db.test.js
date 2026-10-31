@@ -55,7 +55,7 @@ test('eine Adresse, zwei Ausweise — durchgespielt', { concurrency: 1 }, async 
   // die misst test/login-zeitgleich-db.test.js, und dort sind die echten
   // Kosten Teil der Aussage.
   await db.run(
-    'INSERT INTO users (username,password_hash,is_admin,is_active,email_verified) VALUES ($1,$2,1,1,1)',
+    'INSERT INTO users (username,password_hash,is_admin,is_active,email_verified) VALUES ($1,$2,true,true,true)',
     [NAME, await bcrypt.hash(PASS, 4)]);
   const uid = (await db.get('SELECT id FROM users WHERE username=$1', [NAME])).id;
 

@@ -89,7 +89,7 @@ test('Passkeys', { concurrency: 1 }, async (t) => {
   const ids = {};
   for (const n of ['pk_anna', 'pk_bert']) {
     await db.run('DELETE FROM users WHERE username = $1', [n]);
-    await db.run('INSERT INTO users (username,password_hash,is_admin,is_active,email_verified) VALUES ($1,$2,0,1,1)', [n, hash]);
+    await db.run('INSERT INTO users (username,password_hash,is_admin,is_active,email_verified) VALUES ($1,$2,false,true,true)', [n, hash]);
     ids[n] = (await db.get('SELECT id FROM users WHERE username=$1', [n])).id;
   }
 
