@@ -1,8 +1,6 @@
 import { mengeAus, mengeJoin, teilmengeAus, teilmengeJoin } from '../../../db/bestandsmenge';
 import * as db from '../../../db/database';
 
-/** Die Zahlen der Startseite über das Blickfeld (uids). */
-
 export function setZahlen(uids: number[]) {
   return db.get(`SELECT COUNT(DISTINCT s.set_number) AS total_sets,
                    COALESCE(SUM(${mengeAus()}), 0) AS total_quantity

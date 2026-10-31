@@ -1,7 +1,6 @@
-/**
- * Auslieferung der index.html mit bereits gesetztem data-theme.
- * Ausführlich: docs/begruendungen/src/konto/indexHtml.ts.md#abschnitt
- */
+/** data-theme schon im ausgelieferten HTML, damit die Seite nicht erst im
+ * Standarddesign aufblitzt.
+ * Ausführlich: docs/begruendungen/src/konto/indexHtml.ts.md#abschnitt */
 import { konfig } from '../infra/konfig';
 import { meldeUndLiefere } from '../infra/httpError';
 import fs from 'fs';
@@ -18,13 +17,10 @@ let _mtime = 0;
 let _theme: string | null = null;
 let _themeAt = 0;
 
-// Der Cache ist prozesslokal; gespeichert wird im Web-Prozess selbst, der ihn
-// dabei leert. Die kurze Lebensdauer deckt eine Änderung von aussen (Skript,
-// Wiederherstellung) ab — einfacher als LISTEN/NOTIFY für eine Einstellung,
-// die sich vielleicht einmal im Jahr ändert.
+// Prozesslokal; die kurze Lebensdauer deckt eine Änderung von aussen ab —
+// einfacher als LISTEN/NOTIFY für eine Einstellung, die sich selten ändert.
 const THEME_TTL_MS = 30_000;
 
-/** Beim Speichern eines neuen Designs aufrufen. */
 export function invalidateTheme() { _theme = null; }
 
 async function readIndex(): Promise<string> {
@@ -37,7 +33,7 @@ async function readIndex(): Promise<string> {
   return _html;
 }
 
-/** Angemeldet zählt das eigene Design; nur die Vorgabe liegt im Zwischenspeicher. */
+/** Nur die Vorgabe liegt im Zwischenspeicher; angemeldet zählt das eigene Design. */
 async function currentTheme(userId?: number): Promise<string> {
   if (userId) {
     const { eigenes } = await designFuer(userId);
@@ -51,15 +47,10 @@ async function currentTheme(userId?: number): Promise<string> {
   return gewaehlt;
 }
 
-/** Sprachen, für die eine Datei unter public/locales/ existiert. */
 const LANGS = ['de', 'en'];
 
-/**
- * Sprache des angemeldeten Nutzers. Ohne Session (Login-Seite) 'de'.
- * Ausführlich: docs/begruendungen/src/konto/indexHtml.ts.md#currentlang
- * @param {number|undefined} userId
- * @returns {Promise<string>}
- */
+/** Ohne Sitzung (Login-Seite) 'de'.
+ * Ausführlich: docs/begruendungen/src/konto/indexHtml.ts.md#currentlang */
 async function currentLang(userId?: number): Promise<string> {
   if (!userId) return 'de';
   // Nur die eigene Einstellung: Ohne sie gilt Deutsch, nicht eine globale Vorgabe.
@@ -67,12 +58,7 @@ async function currentLang(userId?: number): Promise<string> {
   return LANGS.includes(sprache) ? sprache : 'de';
 }
 
-/**
- * Liefert die index.html mit gesetztem data-theme auf dem <html>-Element und
- * der passenden Sprachdatei im <head>.
- * Ausführlich: docs/begruendungen/src/konto/indexHtml.ts.md#renderindexhtml
- * @param {number} [userId] Angemeldeter Nutzer, für die Sprachauswahl
- */
+// Ausführlich: docs/begruendungen/src/konto/indexHtml.ts.md#renderindexhtml
 export async function renderIndexHtml(userId?: number): Promise<string> {
   const html = await readIndex();
   try {
@@ -81,17 +67,15 @@ export async function renderIndexHtml(userId?: number): Promise<string> {
       ? html.replace(/(<html[^>]*\sdata-theme=")[^"]*(")/i, `$1${theme}$2`)
       : html.replace(/<html\b/i, `<html data-theme="${theme}"`);
 
-    // Sprachdatei austauschen. Das Attribut data-i18n-locale markiert das Tag,
-    // damit hier kein Skript-Pfad geraten werden muss.
+    // data-i18n-locale markiert das Tag, damit kein Skript-Pfad geraten werden muss.
     const lang = await currentLang(userId);
     if (lang !== 'de') {
       out = out.replace(/(<script src="\/locales\/)[a-z]{2}(\.js)/i, `$1${lang}$2`);
       out = out.replace(/(<html[^>]*\slang=")[^"]*(")/i, `$1${lang}$2`);
     }
 
-    // ZULETZT: Die Sprachdatei ist oben womoeglich ausgetauscht worden, und
-    // auch sie traegt einen `?v=`. Erst stempeln, dann tauschen hiesse, den
-    // Stempel der deutschen Datei an die englische zu haengen.
+    // ZULETZT stempeln: Sonst hinge der Stempel der deutschen Sprachdatei an der
+    // englischen.
     return stempleAssetsGecacht(out, PUBLIC_DIR);
   } catch (_) {
     return html;

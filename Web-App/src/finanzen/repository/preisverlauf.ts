@@ -1,7 +1,6 @@
 import * as db from '../../../db/database';
 import { kaufpreisIn, mittelUeber } from '../../../db/geldSql';
 
-/** Je Tag der letzte Eintrag. */
 export function tagespreiseDesSets(setNumber: string, currency: string, zustand: string) {
   return db.all(`SELECT DISTINCT ON (to_char(recorded_at, 'YYYY-MM-DD'))
             qty_avg_price, avg_price, min_price, max_price,
@@ -48,7 +47,7 @@ export function loescheAltenVerlauf(tage: string) {
 }
 
 
-/** Tagesweise verdichtete Reihe; `table` und `keySql` sind feste Ausdrücke der Aufrufer, keine Eingaben. */
+/** `table` und `keySql` sind feste Ausdrücke der Aufrufer, keine Eingaben. */
 export function manualSeries(table: string, keySql: string, keyVals: any[], currency: string, cond: 'N' | 'U') {
   return db.all(
     `SELECT DISTINCT ON (to_char(recorded_at, 'YYYY-MM-DD'))

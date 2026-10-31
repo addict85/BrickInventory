@@ -1,8 +1,3 @@
-/**
- * Was von Rebrickable gelesen und hier abgelegt wird: Set-Stammdaten
- * (catalog_cache), Teilelisten (subsets_cache), Figurenteile
- * (minifig_parts_cache) und die Teileliste eines Inventars aus den CSV-Tabellen.
- */
 import * as db from '../../../db/database';
 
 export interface KatalogSet {
@@ -14,7 +9,7 @@ export async function katalogSetZu(nummer: string): Promise<KatalogSet | undefin
   return db.get<KatalogSet>('SELECT * FROM catalog_cache WHERE set_number = $1', [nummer]);
 }
 
-/** Rebrickable kennt die Nummer nicht: Platzhalter merken, damit höchstens täglich nachgefragt wird. */
+/** Damit höchstens täglich nachgefragt wird. */
 export async function merkeUnbekanntesSet(nummer: string, alsGear: boolean): Promise<void> {
   await db.run(`INSERT INTO catalog_cache (set_number, name, is_gear) VALUES ($1,$2,$3)
     ON CONFLICT (set_number) DO UPDATE SET is_gear=$3, fetched_at=NOW()`, [nummer, `Set ${nummer}`, alsGear]);
@@ -26,7 +21,6 @@ export async function merkeSet(s: Omit<KatalogSet, 'is_gear' | 'fetched_at'>): P
     [s.set_number, s.name, s.year, s.theme, s.pieces, s.image_url]);
 }
 
-/** Die abgelegte Teileliste eines Sets (JSON), oder undefined. */
 export async function teilelisteAusCache(nummer: string): Promise<string | undefined> {
   return (await db.get<{ data: string }>('SELECT data FROM subsets_cache WHERE set_number = $1', [nummer]))?.data;
 }
@@ -51,7 +45,6 @@ export interface InventarTeil {
   bl_part_num: string | null;
 }
 
-/** Die Teile eines Inventars aus den Rebrickable-CSV-Tabellen, mit Farbe und BrickLink-Nummer. */
 export async function inventarTeile(inventarId: number): Promise<InventarTeil[]> {
   return db.all<InventarTeil>(
     `SELECT ip.part_num, ip.color_id, ip.quantity, ip.is_spare, ip.img_url,

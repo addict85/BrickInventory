@@ -1,7 +1,5 @@
-/**
- * Zentrale Auflösung der Anwendungspfade.
- * Ausführlich: docs/begruendungen/src/infra/appPaths.ts.md#abschnitt
- */
+/** Pfade an einer Stelle: __dirname zeigt aus dist/ an einen anderen Ort als
+ * aus den Quellen. */
 import path from 'path';
 import fs from 'fs';
 import { konfig } from './konfig';
@@ -20,48 +18,32 @@ function findRoot(): string {
   return path.resolve(__dirname, '..', '..');
 }
 
-/** Wurzelverzeichnis der Anwendung (enthält package.json, data/, public/). */
 export const APP_ROOT = findRoot();
 
-/** Laufzeitdaten — gemountetes Volume. Bilder, Uploads, Anleitungen, Caches. */
+/** Gemountetes Volume: Bilder, Uploads, Anleitungen, Caches. */
 export const DATA_DIR = path.join(APP_ROOT, 'data');
 
-/** Ausgelieferte Frontend-Dateien. Im Image aus dem Build-Stage, read-only. */
+/** Im Image aus dem Build-Stage, read-only. */
 export const PUBLIC_DIR = path.join(APP_ROOT, 'public');
 
-/**
- * Heruntergeladene Set-, Teile- und Minifiguren-Bilder.
- * Ausführlich: docs/begruendungen/src/infra/appPaths.ts.md#images-dir
- */
+/** Im Volume, nicht unter public/: Das Image ist read-only und wird beim
+ * Update ersetzt.
+ * Ausführlich: docs/begruendungen/src/infra/appPaths.ts.md#images-dir */
 export const IMAGES_DIR = path.join(DATA_DIR, 'images');
 
-/**
- * Bilder nach Art getrennt.
- * Ausführlich: docs/begruendungen/src/infra/appPaths.ts.md#set-images-dir
- */
+// Ausführlich: docs/begruendungen/src/infra/appPaths.ts.md#set-images-dir
 export const SET_IMAGES_DIR     = path.join(IMAGES_DIR, 'sets');
 export const PART_IMAGES_DIR    = path.join(IMAGES_DIR, 'parts');
 export const MINIFIG_IMAGES_DIR = path.join(IMAGES_DIR, 'minifigs');
 
-/**
- * Geteilte Bauanleitungen (PDFs).
- * Ausführlich: docs/begruendungen/src/infra/appPaths.ts.md#instructions-dir
- */
+// Ausführlich: docs/begruendungen/src/infra/appPaths.ts.md#instructions-dir
 export const INSTRUCTIONS_DIR = path.join(DATA_DIR, 'instructions');
-/** Aufträge und Ergebnisse der PDF-Erzeugung. */
 export const PDF_JOB_DIR = path.join(DATA_DIR, 'pdf-jobs');
 
-/**
- * Web-Pfad ("/data/…" oder "/images/…") in einen Dateisystempfad übersetzen.
- * Liefert null für alles andere — der Aufrufer entscheidet, was das heisst.
- *
- * @param {string} webPath z. B. "/data/part_images/3001_4.png"
- * @returns {string|null}
- */
+/** null für alles andere — der Aufrufer entscheidet, was das heisst. */
 export function resolveWebPath(webPath: string): string | null {
   if (!webPath) return null;
   if (webPath.startsWith('/data/'))   return path.join(APP_ROOT, webPath.slice(1));
-  // "/images/sets/x.jpg" → <data>/images/sets/x.jpg (siehe IMAGES_DIR oben).
   if (webPath.startsWith('/images/')) return path.join(IMAGES_DIR, webPath.slice('/images/'.length));
   return null;
 }

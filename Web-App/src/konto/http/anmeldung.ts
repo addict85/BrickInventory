@@ -1,9 +1,5 @@
-/**
- * Die HTTP-Seite der Anmeldung: Sitzung anlegen, Konto aus Cookie oder
- * Bearer-Token lesen, Wächter und Bremsen als Middleware. Die Regeln selbst
- * stehen in den Diensten (src/konto/auth.ts, loginLimiter.ts); hier wird nur
- * aus dem Request gelesen und in die Antwort geschrieben.
- */
+/** Hier wird nur aus dem Request gelesen und in die Antwort geschrieben; die
+ * Regeln stehen in src/konto/auth.ts und loginLimiter.ts. */
 import type { Request, Response, NextFunction } from 'express';
 import { pruefeToken, rotationFaellig, pruefeAnmeldedaten } from '../auth';
 import type { TokenPruefung, AnmeldeErgebnis } from '../auth';
@@ -12,27 +8,21 @@ import { pruefeBestaetigung, pruefeCodeBestaetigung } from '../passwortBestaetig
 import { sendeFehler } from '../../infra/fehlerTexte';
 import { meldeUndLiefere } from '../../infra/httpError';
 
-/**
- * Die Adresse, nach der die Bremsen zählen. req.ip statt X-Forwarded-For:
- * Express wertet den Kopf nur aus, wenn er von einem vertrauten Proxy kommt.
- * Ausführlich: docs/begruendungen/src/konto/loginLimiter.ts.md#ipof
- */
+/** req.ip statt X-Forwarded-For: Express wertet den Kopf nur aus, wenn er von
+ * einem vertrauten Proxy kommt.
+ * Ausführlich: docs/begruendungen/src/konto/loginLimiter.ts.md#ipof */
 export function adresse(req: Request): string {
   return req.ip || req.socket?.remoteAddress || '?';
 }
 
-/** Anmeldedaten prüfen, gezählt nach der Adresse dieser Anfrage. */
 export function anmelden(req: Request, username: unknown, password: unknown, code?: unknown,
                          passkeyAntwort?: unknown): Promise<AnmeldeErgebnis> {
   return pruefeAnmeldedaten({ ip: adresse(req) }, username, password, code, passkeyAntwort);
 }
 
-/**
- * Session-ID erneuern und danach die Anmeldedaten hineinschreiben (gegen
- * Session-Fixation); sofort speichern, damit eine unmittelbar folgende
+/** Neue Session-ID gegen Session-Fixation; sofort speichern, damit die nächste
  * Anfrage die neue ID schon kennt.
- * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#establishsession
- */
+ * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#establishsession */
 export function establishSession(req: Request, data: { userId: number; username: string; isAdmin: boolean }): Promise<void> {
   return new Promise((resolve, reject) => {
     if (!req.session?.regenerate) {
@@ -48,12 +38,9 @@ export function establishSession(req: Request, data: { userId: number; username:
   });
 }
 
-/**
- * Ermittelt die Kennung aus Session oder Bearer-Token. Abgelegt wird der ganze
- * Nutzer, nicht nur die Kennung: Sonst wüsste ein Handler zwar WER fragt,
- * aber nicht, ob es ein Verwalter ist.
- * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#resolveuserid
- */
+/** Der ganze Nutzer, nicht nur die Kennung: Sonst wüsste ein Handler nicht, ob
+ * es ein Verwalter ist. ?token= zählt nicht, nur der Authorization-Header.
+ * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#resolveuserid */
 export async function resolveUserId(req: Request): Promise<number | null> {
   if (req.session?.userId) return req.session.userId;
   const auth = req.headers.authorization || '';
@@ -69,11 +56,8 @@ export async function resolveUserId(req: Request): Promise<number | null> {
   return user ? user.user_id : null;
 }
 
-/**
- * Middleware: Session ODER Bearer-Token, setzt req.tokenUserId.
- * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#loginortokenguard
- * @param opts.timeoutMs Antwortet nach dieser Zeit mit 503, statt zu warten.
- */
+/** @param opts.timeoutMs Antwortet nach dieser Zeit mit 503: Der Fortschritts-
+ *   kanal soll bei voller Datenbank nicht stauen. */
 export function loginOrTokenGuard(opts: { timeoutMs?: number } = {}) {
   return async function requireLoginOrToken(req: Request, res: Response, next: NextFunction) {
     if (req.session?.userId || req.tokenUserId) return next();
@@ -93,10 +77,8 @@ export function loginOrTokenGuard(opts: { timeoutMs?: number } = {}) {
 
 export const requireLoginOrToken = loginOrTokenGuard();
 
-/**
- * Wer fragt hier? — Sitzung ODER Bearer-Token, EINE Antwort.
- * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#nutzerid
- */
+/** EINE Antwort für Sitzung und Token: Vorher stand die Frage in zwei Reihenfolgen.
+ * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#nutzerid */
 export function nutzerId(req: Request): number | null {
   const roh = req.session?.userId ?? req.tokenUserId ?? req.apiUser?.user_id;
   if (roh == null) return null;
@@ -104,11 +86,8 @@ export function nutzerId(req: Request): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-/**
- * Wie nutzerId, aber für Handler HINTER einem Wächter: Fehlt die Anmeldung,
- * ist die Verdrahtung falsch, nicht die Anfrage.
- * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#angemeldetenutzerid
- */
+/** Fehlt die Anmeldung hinter einem Wächter, ist die Verdrahtung falsch, nicht
+ * die Anfrage — besser als `nutzerId(req)!` überall. */
 export function angemeldeteNutzerId(req: Request): number {
   const id = nutzerId(req);
   if (id == null) {
@@ -117,15 +96,12 @@ export function angemeldeteNutzerId(req: Request): number {
   return id;
 }
 
-/**
- * Wie heisst der Anfragende? — Sitzung ODER Bearer-Token.
- * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#nutzername
- */
+/** Sitzung ODER Token: `req.session.username` ist bei Token-Anfragen undefined. */
 export function nutzerName(req: Request): string | null {
   return req.session?.username ?? req.apiUser?.username ?? null;
 }
 
-/** Kam die Anfrage mit einer Browser-Sitzung (nicht mit einem Token)? Für Schritte, die nur dort gehen. */
+/** Für Schritte, die nur mit Browser-Sitzung gehen. */
 export function perSitzung(req: Request): boolean {
   return !!req.session?.userId;
 }
@@ -135,10 +111,6 @@ export function istVerwalter(req: Request): boolean {
   return !!req.apiUser?.is_admin;
 }
 
-/**
- * Bremse je Adresse für /register, /forgot-password, /reset-password,
- * /qr-login und /serverbeweis.
- */
 export function ipThrottle(bucket: string, max: number, windowMs: number) {
   return async (req: Request, res: Response, next: NextFunction) => {
     const st = await zaehleAnfrage(bucket, adresse(req), windowMs);
@@ -148,7 +120,7 @@ export function ipThrottle(bucket: string, max: number, windowMs: number) {
   };
 }
 
-/** Aktuelles Passwort bestätigen; antwortet selbst, wenn es nicht stimmt. */
+/** Antwortet selbst, wenn es nicht stimmt. */
 export async function bestaetigePasswort(req: Request, res: Response, uid: number, passwort: unknown,
                                          zusatz: { zweiterFaktor?: unknown } = {}): Promise<boolean> {
   const absage = await pruefeBestaetigung(uid, passwort, zusatz);
@@ -156,7 +128,6 @@ export async function bestaetigePasswort(req: Request, res: Response, uid: numbe
   return !absage;
 }
 
-/** Nur den Code des zweiten Faktors bestätigen; antwortet selbst bei Absage. */
 export async function bestaetigeCode(req: Request, res: Response, uid: number, code: unknown): Promise<boolean> {
   const absage = await pruefeCodeBestaetigung(uid, code);
   if (absage) sendeFehler(req, res, absage.status, absage.code, absage.vars);

@@ -2,8 +2,6 @@ import { blJoin, blNummerSql } from '../../../db/blZuordnungSql';
 import type { FigurTeil, KatalogZeile } from '../dienst';
 import * as db from '../../../db/database';
 
-/** Die Teile einer Minifigur: aus dem eigenen Katalog oder aus dem Rebrickable-Inventar. */
-
 export function katalogTeileDerFigur(figNumber: string) {
   return db.all<KatalogZeile>(`SELECT c.part_number, c.color_id, ${blNummerSql('c.part_number')} AS bl_part_number, c.image_url, c.image_local
        FROM set_parts_catalog c ${blJoin('c.part_number', 'part')}

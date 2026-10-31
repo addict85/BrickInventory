@@ -1,8 +1,6 @@
 import * as db from '../../../db/database';
 
-/** Der nächste erlaubte Aufruf je API (Migration 0055) — über alle Prozesse. */
-
-/** Rückt den Takt in einem Schritt vor und liefert, wann dieser Aufruf dran ist. */
+/** In einem Schritt, damit zwei Prozesse nie denselben Platz bekommen. */
 export function belegeTakt(api: string, abstandMs: number) {
   return db.get(`INSERT INTO api_takt (api, naechster) VALUES ($1, clock_timestamp() + make_interval(secs => $2 / 1000.0))
        ON CONFLICT (api) DO UPDATE

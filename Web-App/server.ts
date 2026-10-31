@@ -1,8 +1,8 @@
 import type { Request, Response } from 'express';
 // Zuerst: Ein ungültiger Wert beendet den Start mit Meldung, bevor ein Modul ihn liest.
 import { konfig } from './startup/konfigPruefen';
-// Protokoll zuerst: Ab hier ist jede console-Zeile eine JSON-Zeile auf
-// stdout/stderr und geht nach app_logs, sobald der Pool steht.
+// Protokoll zuerst: Ab hier ist jede console-Zeile eine JSON-Zeile und geht
+// nach app_logs, sobald der Pool steht.
 import { installiereProtokoll, protokollInDieDatenbank, leereProtokoll, anfrageKontext, anfrageKennung } from './src/infra/protokoll';
 installiereProtokoll();
 
@@ -44,10 +44,8 @@ import apiV1Router = require('./routes/api_v1/index');
 import authRouter = require('./routes/auth');
 import zertifikatRouter = require('./routes/zertifikat');
 
-/**
- * Anfrage einer Wildcard-Route (`app.get('/images/*pfad', …)`).
- * Ausführlich: docs/begruendungen/server.ts.md#wildcardrequest
- */
+/** Benannt, weil `params` auf dem allgemeinen Request-Typ leer ist und der
+ * erfasste Pfad sonst ein implizites `any`. */
 type WildcardRequest = Request<{ pfad: string[] }>;
 
 process.on('unhandledRejection', (reason: unknown) => {
@@ -55,7 +53,7 @@ process.on('unhandledRejection', (reason: unknown) => {
 });
 process.on('uncaughtException', (err) => {
   // Danach ist der Prozesszustand ungewiss (halb offene Transaktionen):
-  // Protokoll leeren und beenden; den Neustart übernimmt Docker (restart: unless-stopped).
+  // beenden; den Neustart übernimmt Docker (restart: unless-stopped).
   console.error('[uncaughtException] Uncaught exception:', err.stack || err.message);
   void leereProtokoll();
   setTimeout(() => process.exit(1), 500).unref();
@@ -69,7 +67,6 @@ const PLATZHALTER_GEHEIMNISSE = [
   'brickinventory-manager-dev-secret',
 ];
 
-/** Das Sitzungsgeheimnis; in Produktion beendet ein fehlendes oder schwaches den Start. */
 function sitzungsGeheimnis(): string {
   const gesetzt = konfig().sessionSecret?.trim();
   if (!konfig().produktion) return gesetzt || 'brickinventory-manager-dev-secret';
@@ -81,7 +78,6 @@ function sitzungsGeheimnis(): string {
   return konfig().sessionSecret!;
 }
 
-/** Die Express-Anwendung — nur der Web-Prozess baut sie. */
 function baueApp(): express.Express {
 const app  = express();
 // Verrät nur, womit der Server gebaut ist — wer sucht, soll es nicht geschenkt bekommen.
@@ -92,8 +88,8 @@ app.use(compression({
   level: 6,
   threshold: 1024,
   filter: (req, res) => {
-    // SSE-Ströme NICHT komprimieren — sie müssen sofort rausgehen.
-    // Ausführlich: docs/begruendungen/server.ts.md#port
+    // SSE-Ströme NICHT komprimieren — sie müssen sofort hinaus. includes() statt
+    // Gleichheit, weil OkHttp `text/event-stream, */*` schickt.
     if (String(req.headers.accept || '').includes('text/event-stream')) return false;
     if (String(res.getHeader('Content-Type') || '').includes('text/event-stream')) return false;
     return compression.filter(req, res);
@@ -101,20 +97,16 @@ app.use(compression({
 }));
 
 // ── Security-Header ───────────────────────────────────────────────────────────
-// Handgerollt statt helmet: keine zusätzliche Dependency, und die CSP muss
-// ohnehin auf die App zugeschnitten sein. Weder Skript noch Stil dürfen inline
-// stehen; daneben schützen die Header gegen fremdes Framing (same-origin ist
-// für den eigenen PDF-Viewer erlaubt), MIME-Sniffing und fremde Quellen.
+// Handgerollt statt helmet: keine zusätzliche Abhängigkeit, und die CSP muss
+// ohnehin auf die App zugeschnitten sein.
 app.use((req, res, next) => {
   res.setHeader('X-Frame-Options', 'SAMEORIGIN');
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('Referrer-Policy', 'same-origin');
   res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
 
-  // HSTS, aber NUR über eine verschlüsselte Verbindung
-  // Ohne diesen Kopf geht die allererste Anfrage nach einem getippten
-  // "lego.bigolin.online" im Klartext hinaus — samt Cookie, wenn
-  // COOKIE_SECURE nicht gesetzt ist. Die Umleitung auf https kommt erst als …
+  // HSTS nur über eine verschlüsselte Verbindung; danach geht auch die erste
+  // getippte Anfrage nicht mehr samt Cookie im Klartext hinaus.
   // Ausführlich: docs/begruendungen/server.ts.md#port-uebertls
   const ueberTls = req.secure || req.headers['x-forwarded-proto'] === 'https';
   const hstsAlter = konfig().hstsMaxAge;   // Vorgabe ein Jahr, 0 schaltet ab
@@ -126,21 +118,18 @@ app.use((req, res, next) => {
     "default-src 'self'",
     // Ohne 'unsafe-inline': Alle Handler laufen über den Dispatcher in
     // js/11-actions.js, die CSP ist damit eine echte zweite Verteidigungslinie.
-    // Ausführlich: docs/begruendungen/server.ts.md#port-2
     "script-src 'self'",
-    // Schriften liegen unter public/vendor/fonts/; Stile setzt js/00-stile.js
-    // per CSSOM, das die CSP nicht betrifft.
+    // Stile setzt js/00-stile.js per CSSOM, das die CSP nicht betrifft.
     "style-src 'self'",
     "font-src 'self'",
-    // Ohne https:: Jede fremde Bildadresse geht durch den Bild-Proxy, und ein
-    // eingeschleustes <img src="https://fremd/?daten"> wäre sonst ein Kanal nach draussen.
+    // Ohne https:: Fremde Bilder gehen durch den Bild-Proxy, und ein eingeschleustes
+    // <img src="https://fremd/?daten"> wäre sonst ein Kanal nach draussen.
     "img-src 'self' data: blob:",
     "connect-src 'self'",
     "worker-src 'self' blob:",  // PDF.js-Worker (lokal /vendor/pdfjs, ggf. blob:)
     "frame-ancestors 'self'",  // eigener PDF-Viewer bettet same-origin PDFs per <iframe> ein
-    // Drei Wege, die default-src nicht abdeckt: Ein eingeschleustes Formular
-    // schickte Eingaben nach draussen, ein <base> lenkte relative Adressen um,
-    // <object>/<embed> lüden Plugins. Die App braucht keinen davon fremd.
+    // default-src deckt diese drei nicht ab: Formular nach draussen, <base> zum
+    // Umlenken, <object>/<embed> für Plugins.
     "form-action 'self'",
     "base-uri 'none'",
     "object-src 'none'",
@@ -148,33 +137,28 @@ app.use((req, res, next) => {
   next();
 });
 
-// Body-Grenze 256 KB: Ein grosses Limit überall liesse jeden Client mit ein
-// paar Anfragen den Heap füllen. Die PDF-Routen setzen ihr eigenes
-// (routes/api_v1/pdf.ts).
+// 256 KB: Ein grosses Limit überall liesse jeden Client den Heap füllen. Die
+// PDF-Routen setzen ihr eigenes.
 app.use(express.json({ limit: '256kb' }));
 // Das Konto der Anfrage für Zähler tief unten (src/katalog/apiKontingent.ts).
 app.use(merkeAnfrage);
 app.use(express.urlencoded({ extended: true, limit: '256kb' }));
 
-/**
- * `req.body` ist immer ein Objekt — die Zusicherung von Express 4, nachgebaut.
- * Ausführlich: docs/begruendungen/server.ts.md#abschnitt-2
- */
+/** Express 5 lässt `req.body` ohne Parser `undefined`; die Routen verlassen
+ * sich auf ein Objekt. */
 app.use((req, _res, next) => { if (req.body === undefined) req.body = {}; next(); });
 
-// Hinter einem TLS-terminierenden Reverse-Proxy muss Express X-Forwarded-Proto
-// glauben, sonst setzt es das secure-Cookie nie. Wem genau: src/infra/proxyVertrauen.ts.
+// Hinter einem TLS-terminierenden Proxy muss Express X-Forwarded-Proto
+// glauben, sonst setzt es das secure-Cookie nie (src/infra/proxyVertrauen.ts).
 if (konfig().produktion) {
   app.set('trust proxy', proxyVertrauen(konfig().trustProxy));
 }
-// Der Hinweis gilt immer: Ohne Vertrauen wird X-Forwarded-For auch ausserhalb
-// der Produktion verworfen, und genau das meldet er.
+// Auch ausserhalb der Produktion: Dort wird X-Forwarded-For ohne Vertrauen
+// verworfen, und genau das meldet er.
 app.use(proxyHinweis(konfig().trustProxy));
 
-// Doppelte Schrägstriche im Pfad zusammenfassen
-// `//api/img-proxy?url=…` trifft in Express NICHT auf `/api/img-proxy`. Die
-// Anfrage fällt stattdessen durch bis zum SPA-Catch-all und bekommt
-// index.html — mit **Status 200** und `text/html`. Im Browser ist das eine …
+// Doppelte Schrägstriche zusammenfassen: `//api/…` fiele sonst bis zum
+// SPA-Catch-all durch und bekäme index.html mit Status 200.
 // Ausführlich: docs/begruendungen/server.ts.md#abschnitt-3
 app.use((req, _res, next) => {
   if (req.url.startsWith('//') || req.url.includes('//', 1)) {
@@ -193,23 +177,24 @@ app.use('/api', (_req, res, next) => {
   next();
 }, appFassungPruefen);
 
-// Jede Anfrage bekommt eine kurze Kennung für alle ihre Logzeilen; die des
-// Proxys nur, wenn sie die Prüfung in src/infra/protokoll.ts besteht.
+// Eine kurze Kennung je Anfrage für alle ihre Logzeilen; die des Proxys nur,
+// wenn sie die Prüfung in src/infra/protokoll.ts besteht.
 app.use((req, res, next) => {
   const rid = anfrageKennung(req.headers['x-request-id']);
   res.setHeader('X-Request-Id', rid);
   anfrageKontext.run({ rid }, () => next());
 });
 
-// Sitzungen in PostgreSQL: Sie überleben einen Neustart des Web-Prozesses.
-// Die Tabelle legt das Schema an (createTableIfMissing: false), bevor der Server Anfragen annimmt.
+// In PostgreSQL, damit Sitzungen einen Neustart überleben. Die Tabelle legt
+// das Schema an, bevor der Server Anfragen annimmt.
 const PgSession = connectPgSimple(session);
 const sitzungsSpeicher = new PgSession({
   pool: db.pool,
   tableName: 'user_sessions',
   createTableIfMissing: false,
   pruneSessionInterval: 60 * 15,
-  // Die Leerlauf-Frist der Webapp-Sitzung; die Vorgabe der Bibliothek (ein Tag) war nie eine Entscheidung.
+  // Webapp-Sitzungen sollen nach ein paar Stunden Leerlauf enden; die Vorgabe
+  // der Bibliothek (ein Tag) war nie eine Entscheidung.
   // Ausführlich: docs/begruendungen/server.ts.md#sitzungsspeicher
   ttl: SITZUNG_LEERLAUF_SEK,
   errorLog: (err) => {
@@ -219,8 +204,7 @@ const sitzungsSpeicher = new PgSession({
   },
 });
 
-// Die Ablaufzeit der Sitzung wird gedrosselt geschrieben — die Messung und die
-// Begruendung stehen in src/konto/sitzungsBeruehrung.ts.
+// Gedrosselt geschrieben (src/konto/sitzungsBeruehrung.ts).
 drossleBeruehren(sitzungsSpeicher);
 
 app.use(session({
@@ -233,24 +217,20 @@ app.use(session({
     // Skripte fern, sameSite schützt vor CSRF.
     httpOnly: true,
     sameSite: 'lax',
-    // Cookie nur über HTTPS senden. Default: in Produktion aktiv; per
-    // COOKIE_SECURE=0 abschaltbar, falls (ausnahmsweise) ohne TLS betrieben.
+    // In Produktion nur über HTTPS; COOKIE_SECURE=0 für den Betrieb ohne TLS.
     secure: cookieSicher(konfig()),
   }
 }));
 app.use(sitzungsHoechstdauer());
 
-// Eigene und geteilte Anleitungen unter /data/ — samt Pfad- und Besitzerprüfung.
 app.use(datenDateien);
-// Wurzelzertifikat der internen CA (öffentlich, routes/zertifikat.ts).
 app.use(zertifikatRouter);
 registerImgProxy(app);
 
-// Alle Bilder: Sets, Teile, Minifiguren
-// EINE authentifizierte Route für den gesamten Baum unter data/images/.
+// EINE authentifizierte Route für alle Bilder: Eigene Uploads dürfen nicht
+// ohne Anmeldung hinaus.
 // Ausführlich: docs/begruendungen/server.ts.md#abschnitt-4
 app.get('/images/*pfad', async (req: WildcardRequest, res: Response) => {
-  // Session ODER Bearer-Token (Android) — läuft über den gemeinsamen Token-Cache
   const imgUserId = await resolveUserId(req);
   if (!imgUserId) return res.status(401).send('Nicht angemeldet');
 
@@ -258,8 +238,8 @@ app.get('/images/*pfad', async (req: WildcardRequest, res: Response) => {
   const filePath = safeDataPath('images', segments);
   if (!filePath) return res.status(404).send('Datei nicht gefunden');
 
-  // Privat, nicht public: Die Antwort hängt an einer Anmeldung und darf nicht
-  // in einem geteilten Zwischenspeicher (Reverse-Proxy, CDN) landen.
+  // private: Die Antwort hängt an einer Anmeldung und darf nicht in einen
+  // geteilten Zwischenspeicher. max-age=0, damit ein ersetztes Bild sofort gilt.
   // Ausführlich: docs/begruendungen/server.ts.md#lookupcdnformissingimage
   res.setHeader('Cache-Control', 'private, max-age=0');
 
@@ -267,21 +247,21 @@ app.get('/images/*pfad', async (req: WildcardRequest, res: Response) => {
     if (!err || res.headersSent) return;
 
     // Ein Fehler MIT eigener Zahl (416, 403) ist keine fehlende Datei: Die
-    // Ausweichwege unten suchen eine ANDERE Datei und verdeckten die Ursache.
+    // Ausweichwege unten suchten eine andere Datei und verdeckten die Ursache.
     if ((err as { status?: number }).status && (err as { status?: number }).status !== 404) {
       return antwortAufDateiFehler(res, err);
     }
 
-    // Fehlt eine Vorschau, liegt fast immer das Original daneben: Das geht
-    // sofort hinaus, statt auf die Erzeugung der Vorschau zu warten.
-    // Ausführlich: docs/begruendungen/server.ts.md#lookupcdnformissingimage-rohpfad
+    // Fehlt eine Vorschau, geht das danebenliegende Original sofort hinaus,
+    // statt auf die Erzeugung zu warten.
     const rohPfad = segments.join('/');
     const thumbTreffer = /_thumb(\.[^.]+)$/.exec(rohPfad);
     if (thumbTreffer) {
       const originalSegs = rohPfad.replace(/_thumb(\.[^.]+)$/, '$1').split('/').filter(Boolean);
       const originalPfad = safeDataPath('images', originalSegs);
       if (originalPfad && fs.existsSync(originalPfad)) {
-        // Fehlende Vorschau im HINTERGRUND nachziehen.
+        // Die Vorschau im Hintergrund nachziehen: Scheiterte sie beim Erfassen, gäbe
+        // es sonst keinen zweiten Anlauf.
         // Ausführlich: docs/begruendungen/server.ts.md#lookupcdnformissingimage-webpfadoriginal
         const webPfadOriginal = '/images/' + originalSegs.join('/');
         setImmediate(() => {
@@ -292,8 +272,8 @@ app.get('/images/*pfad', async (req: WildcardRequest, res: Response) => {
       }
     }
 
-    // Lokale Datei fehlt -> über den Bild-Proxy zur CDN-Adresse aus dem
-    // Katalog umleiten. Heilt Web und Android ohne Aufräumen in der Datenbank.
+    // Lokale Datei fehlt → über den Bild-Proxy zur CDN-Adresse aus dem Katalog.
+    // Heilt Web und Android ohne Aufräumen in der Datenbank.
     const webPath = '/images/' + segments.join('/');
     const cdn = await cdnFuerFehlendesBild(webPath);
     if (cdn && !res.headersSent) {
@@ -303,17 +283,12 @@ app.get('/images/*pfad', async (req: WildcardRequest, res: Response) => {
   });
 });
 
-// Kein express.static für /images mehr.
-// Ausführlich: docs/begruendungen/server.ts.md#abschnitt-5
-
 app.use(express.static(PUBLIC_DIR, {
   // `index: false`: Sonst lieferte express.static die index.html für `/`
   // selbst aus, am Renderer (src/konto/indexHtml.ts) vorbei.
-  // Ausführlich: docs/begruendungen/server.ts.md#lookupcdnformissingimage-2
   index: false,
-  // Assets (Bilder, SVG, CSS/JS mit ?v=-Cache-Busting) dürfen lange gecacht werden.
-  // index.html bekommt no-cache, damit Deploys sofort sichtbar sind — die
-  // versionierten Referenzen darin ziehen dann frische Assets nach.
+  // Assets mit ?v=-Stempel dürfen lange gecacht werden; index.html bekommt
+  // no-cache, damit Deploys sofort sichtbar sind.
   maxAge: '7d',
   setHeaders: (res, filePath) => {
     if (filePath.endsWith('index.html')) {
@@ -322,12 +297,9 @@ app.use(express.static(PUBLIC_DIR, {
   },
 }));
 
-// Die zwei Adressen, die VOR allem anderen antworten muessen
-// Sie stehen hier direkt und nicht in einem Router: Beide werden auch gefragt,
-// während der Job-Prozess den Katalog noch lädt.
-// Ausführlich: docs/begruendungen/server.ts.md#abschnitt-6
+// Direkt hier statt in einem Router: Beide werden gefragt, während Schema und
+// Migrationen noch laufen und der /api/v1-Router noch nicht steht.
 
-// Startzustand — ohne Anmeldung, wird VOR dem Login gebraucht.
 app.get('/api/v1/startup-status', async (_req, res) => {
   res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
   res.set('Pragma', 'no-cache');
@@ -335,12 +307,10 @@ app.get('/api/v1/startup-status', async (_req, res) => {
   res.json(await aktuellerStartZustand());
 });
 
-// Gesundheitscheck samt Verbindungspool — ohne Anmeldung (compose.yaml).
-// Der Startzustand ist öffentlich (der Ladebildschirm vor der Anmeldung
-// braucht ihn); Pool und Laufzeit verraten Last und Neustarts — nur für den
-// Verwalter.
+// Ohne Anmeldung (compose.yaml). Pool und Laufzeit verraten Last und
+// Neustarts — die nur für den Verwalter.
 app.get('/api/v1/health', async (req, res) => {
-  // Klemmt die Datenbank, bleibt der Bericht trotzdem erreichbar — nur ohne Details.
+  // Klemmt die Datenbank, bleibt der Bericht erreichbar — nur ohne Details.
   const verwalter = !!(await resolveUserId(req).catch(logAndContinue('health:anmeldung'))) && istVerwalter(req);
   const start = await aktuellerStartZustand();
   res.json({
@@ -350,35 +320,33 @@ app.get('/api/v1/health', async (req, res) => {
   });
 });
 
-// EIN Adressraum mit EINEM Eingang: anmeldungAmEingang verlangt Sitzung oder
-// Token für alles unter /api/v1 ausser den ausdrücklich öffentlichen Pfaden.
-// Der Schutz je Route bleibt als zweite Linie und kostet keinen zweiten Abruf.
+// EIN Eingang: anmeldungAmEingang verlangt Sitzung oder Token für alles unter
+// /api/v1 ausser den ausdrücklich öffentlichen Pfaden. Der Schutz je Route
+// bleibt als zweite Linie.
 // Ausführlich: docs/begruendungen/server.ts.md#abschnitt-7
 app.use('/api/v1',          anmeldungAmEingang);
 app.use('/api/v1',          idempotenz);
 app.use('/api/v1',          apiV1Router);
 app.use('/api/v1/auth',     authRouter);
 
-// ── E-Mail Bestätigung: /verify?token=... ─────────────────────────────────────
 // Der Link kommt aus einer E-Mail: Die Antwort ist eine Seite, kein JSON.
 app.get('/verify', async (req, res) => {
   try {
     const e = await verifiziereEmailToken(req.query.token);
     res.redirect(e.ok ? '/?verified=1' : '/?verified=invalid');
   } catch (e) {
-    // Ein Datenbankfehler darf dem Klickenden keine Fehlerseite zeigen — er
-    // kann nichts damit anfangen. Ins Protokoll gehört er trotzdem.
+    // Dem Klickenden keine Fehlerseite — er kann nichts damit anfangen. Ins
+    // Protokoll gehört der Fehler trotzdem.
     console.error('Verify error:', fehlertext(e));
     res.redirect('/?verified=invalid');
   }
 });
 
-// ── Passwort zurücksetzen: /reset-password?token=... ──────────────────────────
-// Explizit registriert damit location.pathname === '/reset-password' stimmt.
+// Ausdrücklich, damit location.pathname === '/reset-password' stimmt.
 app.get('/reset-password', async (_req, res) => {
   res.set('Cache-Control', 'no-cache');
   // Über den Renderer statt sendFile: sonst gingen die Assets ohne Stempel
-  // (src/infra/assetStempel.ts) und im Standarddesign hinaus.
+  // und im Standarddesign hinaus.
   try {
     res.type('html').send(await renderIndexHtml());
   } catch {
@@ -386,37 +354,32 @@ app.get('/reset-password', async (_req, res) => {
   }
 });
 
-// ── 404 für unbekannte API-Pfade ────────────────────────────────────────────
 // VOR dem SPA-Catch-all: Sonst bekäme ein Tippfehler im API-Pfad die
 // index.html mit 200, und die App meldete einen Serialisierungsfehler.
 app.use('/api', (_req, res) => res.status(404).json({ success: false, error: 'Endpoint nicht gefunden' }));
 
-// Die Schreibweise mit den geschweiften Klammern ist NICHT Geschmack.
+// '{*splat}' statt '/*splat': Express 5 verlangt einen Namen, und die
+// naheliegende Form träfe die Startseite `/` nicht.
 // Ausführlich: docs/begruendungen/server.ts.md#abschnitt-8
 app.get('/{*splat}', async (req, res) => {
   res.set('Cache-Control', 'no-cache');
   try {
-    // data-theme und die Sprachdatei setzt der Renderer (src/konto/indexHtml.ts);
-    // ohne Sitzung gilt die Vorgabe.
     res.type('html').send(await renderIndexHtml(req.session?.userId));
   } catch {
-    // Fällt das Rendern aus, bleibt die Datei unverändert ausgeliefert —
-    // js/00-theme-boot.js übernimmt dann wie bisher.
+    // Fällt das Rendern aus, geht die Datei unverändert hinaus —
+    // js/00-theme-boot.js übernimmt dann.
     res.sendFile('index.html', { root: PUBLIC_DIR });
   }
 });
 
-// Fängt synchron geworfene Fehler und next(err)-Aufrufe, die an den
-// Route-Catches vorbeikommen — loggt voll, antwortet generisch.
+// Für Fehler, die an den Route-Catches vorbeikommen: loggt voll, antwortet generisch.
 app.use(fehlerAntwort);
 return app;
 }
 
-/**
- * Geordnetes Herunterfahren: SSE-Ströme beenden (sie enden nie von selbst und
- * hielten close() auf), HTTP schliessen, laufende Aufträge zurückgeben, Pool zu.
- * Ausführlich: docs/begruendungen/server.ts.md#electprimaryworker-shutdown-timeout-ms
- */
+/** SSE-Ströme zuerst beenden: Sie enden nie von selbst und hielten close() auf.
+ * Ohne geordnetes Ende bräche jedes Deploy laufende Antworten ab.
+ * Ausführlich: docs/begruendungen/server.ts.md#electprimaryworker-shutdown-timeout-ms */
 const SHUTDOWN_TIMEOUT_MS = 8000;
 let _beendetWird = false;
 
@@ -451,10 +414,8 @@ async function herunterfahren(signal: string, httpServer: Server | null, jobs: b
   }
 }
 
-/**
- * Ein Prozess je Rolle (ROLLE=web|jobs|beides). Beide migrieren beim Start;
- * die Sperre in initSchemaOnce lässt genau einen arbeiten.
- */
+/** Ein Prozess je Rolle (ROLLE=web|jobs|beides). Beide migrieren; die Sperre
+ * in initSchemaOnce lässt genau einen arbeiten. */
 async function starte(): Promise<void> {
   const k = konfig();
   if (k.produktion) {

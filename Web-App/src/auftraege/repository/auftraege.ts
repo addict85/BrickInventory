@@ -2,12 +2,8 @@ import * as db from '../../../db/database';
 import { randomUUID } from 'node:crypto';
 import type { AuftragsArt, Einstellen, AuftragsZeile, Belegung, Fortschritt, Pause, AuftragsStatus } from '../auftraege';
 
-/**
- * Die Auftragstabelle (Migrationen 0066, 0080): jede Hintergrundarbeit als
- * Zeile. Hier nur das SQL; Wecken (NOTIFY), Wartezeiten und das Arbeiten im
- * Namen eines Kontos stehen im Dienst (src/auftraege/dienst.ts). Die
- * Statuswechsel liefern den Schlüssel, unter dem der Dienst den Stand meldet.
- */
+/** Hier nur das SQL; Wecken, Wartezeiten und das Arbeiten im Namen eines Kontos
+ * stehen im Dienst. */
 type Stand = { s: string } | undefined;
 
 /** @returns die Kennung, oder null, wenn derselbe Auftrag schon offen steht */
@@ -22,12 +18,8 @@ export async function fuegeAuftragEin(art: AuftragsArt, nutzlast: Record<string,
       o.nachSekunden ?? 0, o.faelligAb ?? null, o.fortschritt ? JSON.stringify(o.fortschritt) : null]);
   return z ? String(z.id) : null;
 }
-/**
- * Den nächsten fälligen Auftrag belegen. Ein 'laeuft' mit abgelaufener Frist
- * gehört einem Prozess, den es nicht mehr gibt, und wird neu vergeben. Eine
- * pausierte Art wartet; von einer exklusiven läuft höchstens einer.
- * SKIP LOCKED: Zwei Worker greifen nie dieselbe Zeile.
- */
+/** Ein 'laeuft' mit abgelaufener Frist gehört einem verschwundenen Prozess und
+ * wird neu vergeben. SKIP LOCKED: Zwei Worker greifen nie dieselbe Zeile. */
 export async function belegeAuftrag(arten: readonly string[], fristSek: number,
   belegtVon: string = randomUUID(),
   exklusiv: readonly string[] = []): Promise<AuftragsZeile | null> {
@@ -48,14 +40,13 @@ export async function belegeAuftrag(arten: readonly string[], fristSek: number,
     [belegtVon, fristSek, [...arten], [...exklusiv]]);
   return z ? alsZeile(z) : null;
 }
-/** Frist verlängern. @returns false, wenn der Auftrag nicht mehr diesem Lauf gehört (auch: abgebrochen) */
+/** @returns false, wenn der Auftrag nicht mehr diesem Lauf gehört (auch: abgebrochen) */
 export async function lebenszeichen(a: Belegung, fristSek: number): Promise<boolean> {
   const r = await db.run(
     `UPDATE auftraege SET frist_bis = NOW() + make_interval(secs => $3), aktualisiert = NOW()
       WHERE id = $1 AND belegt_von = $2 AND status = 'laeuft'`, [a.id, a.belegt_von, fristSek]);
   return (r?.changes ?? 0) > 0;
 }
-/** Den Stand für die Anzeige setzen; zählt zugleich als Lebenszeichen. */
 export function schreibeFortschritt(a: Belegung, f: Fortschritt, fristSek: number): Promise<Stand> {
   return db.get(
     `UPDATE auftraege SET fortschritt = $3, frist_bis = NOW() + make_interval(secs => $4), aktualisiert = NOW()
@@ -70,7 +61,6 @@ export function setzeErledigt(a: Belegung): Promise<Stand> {
       WHERE id = $1 AND belegt_von = $2 AND status = 'laeuft' RETURNING COALESCE(schluessel, id::text) AS s`,
     [a.id, a.belegt_von]);
 }
-/** Gescheitert: 'fehler' beim letzten Versuch, sonst wieder 'offen' nach `wartezeitSek`. */
 export function setzeFehlgeschlagen(a: Belegung, endgueltig: boolean, fehler: string, wartezeitSek: number): Promise<Stand> {
   return db.get(
     `UPDATE auftraege SET status = $3, fehler = $4, belegt_von = NULL, frist_bis = NULL, aktualisiert = NOW(),
@@ -86,14 +76,13 @@ export function setzeVerschoben(a: Belegung, endgueltig: boolean, bis: Date, gru
       WHERE id = $1 AND belegt_von = $2 AND status = 'laeuft' RETURNING COALESCE(schluessel, id::text) AS s`,
     [a.id, a.belegt_von, endgueltig ? 'fehler' : 'offen', grund.slice(0, 2000), bis, zaehlt]);
 }
-/** Beim Herunterfahren zurückgeben: sofort wieder fällig, der Versuch zählt nicht. */
+/** Der Versuch zählt nicht. */
 export async function gibZurueck(a: Belegung): Promise<void> {
   await db.run(
     `UPDATE auftraege SET status = 'offen', versuche = GREATEST(versuche - 1, 0), belegt_von = NULL,
             frist_bis = NULL, faellig_ab = NOW(), aktualisiert = NOW()
       WHERE id = $1 AND belegt_von = $2 AND status = 'laeuft'`, [a.id, a.belegt_von]);
 }
-/** Erledigte und abgebrochene nach sieben, gescheiterte nach dreissig Tagen entfernen. */
 export async function raeumeErledigteAuf(): Promise<number> {
   const r = await db.run(
     `DELETE FROM auftraege
@@ -104,7 +93,7 @@ export async function raeumeErledigteAuf(): Promise<number> {
 export async function liesPause(art: AuftragsArt): Promise<Pause | null> {
   return (await db.get('SELECT art, bis, grund, stufe FROM auftrag_pausen WHERE art = $1', [art])) ?? null;
 }
-/** Ohne `stufe` bleibt die bisherige; sie zählt wiederholte Drosselungen (Cloudflare). */
+/** `stufe` zählt wiederholte Drosselungen (Cloudflare). */
 export async function pausiereArt(art: AuftragsArt, bis: Date, grund: string, stufe?: number): Promise<void> {
   await db.run(
     `INSERT INTO auftrag_pausen (art, bis, grund, stufe) VALUES ($1, $2, $3, COALESCE($4, 0))
@@ -114,8 +103,7 @@ export async function pausiereArt(art: AuftragsArt, bis: Date, grund: string, st
 export async function loeschePause(art: AuftragsArt): Promise<void> {
   await db.run('DELETE FROM auftrag_pausen WHERE art = $1', [art]);
 }
-// ── Für die Verwaltung ───────────────────────────────────────────────────────
-/** Einen offenen oder laufenden Auftrag abbrechen; ein laufender hört bei seinem nächsten Lebenszeichen auf. */
+/** Ein laufender hört bei seinem nächsten Lebenszeichen auf. */
 export async function setzeAbgebrochen(id: string): Promise<AuftragsZeile | null> {
   const z = await db.get(
     `UPDATE auftraege SET status = 'abgebrochen', frist_bis = NULL, aktualisiert = NOW(),
@@ -123,7 +111,6 @@ export async function setzeAbgebrochen(id: string): Promise<AuftragsZeile | null
       WHERE id = $1 AND status IN ('offen', 'laeuft') RETURNING ${SPALTEN}`, [id]);
   return z ? alsZeile(z) : null;
 }
-/** Einen gescheiterten oder abgebrochenen Auftrag neu einstellen, mit allen Versuchen. */
 export async function stelleWiederEin(id: string): Promise<boolean> {
   const r = await db.run(
     `UPDATE auftraege a SET status = 'offen', versuche = 0, fehler = NULL, faellig_ab = NOW(), belegt_von = NULL,
@@ -132,13 +119,12 @@ export async function stelleWiederEin(id: string): Promise<boolean> {
         AND NOT EXISTS (SELECT 1 FROM auftraege o WHERE o.schluessel = a.schluessel AND o.status = 'offen')`, [id]);
   return (r?.changes ?? 0) > 0;
 }
-/** Offene Aufträge einer Art entfernen; ein geplanter Termin bleibt. @returns wie viele */
+/** Ein geplanter Termin bleibt. */
 export async function leereArt(art: AuftragsArt): Promise<number> {
   const r = await db.run(
     `DELETE FROM auftraege WHERE art = $1 AND status = 'offen' AND (schluessel IS NULL OR schluessel NOT LIKE 'plan:%')`, [art]);
   return r?.changes ?? 0;
 }
-/** Offene Aufträge einer Art (oder eines Schlüssels) jetzt fällig machen. @returns wie viele */
 export async function macheFaellig(art: AuftragsArt, schluessel?: string): Promise<number> {
   const r = await db.run(
     `UPDATE auftraege SET faellig_ab = NOW(), aktualisiert = NOW()
@@ -154,18 +140,15 @@ export function kontoRolle(uid: number) {
   return db.get<{ is_admin: boolean }>('SELECT is_admin FROM users WHERE id = $1', [uid]);
 }
 export const AUFTRAG_KANAL = 'auftraege';
-/** Ein Auftrag hat seinen Stand geändert; die Nutzlast ist sein Schlüssel oder seine Kennung. */
 export const AUFTRAG_STAND_KANAL = 'auftrag_stand';
 export const SPALTEN = 'id, art, nutzlast, user_id, schluessel, status, versuche, max_versuche, belegt_von, fehler';
 export const alsZeile = (z: any): AuftragsZeile => ({ ...z, id: String(z.id) });
 
-/** Den offenen Termin eines Schlüssels neu setzen. */
 export async function setzeFaelligkeit(schluessel: string, faelligAb: Date): Promise<void> {
   await db.run(`UPDATE auftraege SET faellig_ab = $2, aktualisiert = NOW() WHERE schluessel = $1 AND status = 'offen'`,
     [schluessel, faelligAb]);
 }
 
-/** Den offenen Termin höchstens bis in `sekunden` vorziehen und die Nutzlast ergänzen. @returns ob es ihn gab */
 export async function zieheTerminVor(schluessel: string, sekunden: number, nutzlast: Record<string, unknown>): Promise<boolean> {
   const r = await db.run(
     `UPDATE auftraege SET faellig_ab = LEAST(faellig_ab, NOW() + make_interval(secs => $2)),
@@ -174,12 +157,9 @@ export async function zieheTerminVor(schluessel: string, sekunden: number, nutzl
   return (r.changes ?? 0) > 0;
 }
 
-/** Läuft gerade ein Auftrag dieser Art? */
 export async function laeuftArt(art: string): Promise<boolean> {
   return !!(await db.get(`SELECT 1 FROM auftraege WHERE art = $1 AND status = 'laeuft'`, [art]));
 }
-
-// ── Brickset-Wiedervorlage (Art 'brickset', ein Auftrag je Set) ──────────────
 
 export async function hoechsterBricksetVersuch(schluessel: string): Promise<number> {
   const z = await db.get<{ v: number }>(
@@ -203,7 +183,7 @@ export async function loescheOffenen(schluessel: string): Promise<void> {
   await db.run(`DELETE FROM auftraege WHERE schluessel = $1 AND status = 'offen'`, [schluessel]);
 }
 
-/** Im Format der früheren Tabelle brickset_retry_queue. */
+/** Im Format der früheren Tabelle, damit die Oberfläche gleich bleibt. */
 export function bricksetWiedervorlage() {
   return db.all(
     `SELECT a.nutzlast->>'set_number' AS set_number, to_char(a.faellig_ab, 'YYYY-MM-DD') AS retry_after,
@@ -220,9 +200,8 @@ export function bricksetWartende() {
        FROM auftraege WHERE art = 'brickset' AND status IN ('offen', 'laeuft')`);
 }
 
-// ── Übersicht der Verwaltung ────────────────────────────────────────────────
+/** Ohne Nutzlast (sie trägt ganze Listen). */
 
-/** Ohne Nutzlast (sie trägt ganze Listen); laufende zuerst, höchstens 200. */
 export function auftragsListe(status: string[], art: string | null) {
   return db.all(
     `SELECT id::text AS id, art, status, versuche, max_versuche, faellig_ab, frist_bis, gestartet, erstellt,

@@ -2,8 +2,6 @@ import { erfassungsTagSql } from '../../../db/bestandsmenge';
 import type { DbSchnittstelle } from '../../../db/database';
 import * as db from '../../../db/database';
 
-/** Datenzugriff zum Umfärben eines manuellen Teils: Erfassungen und Bestandszeile wandern zur neuen Farbe. */
-
 export function rbFarbe(colorId: number) {
   return db.get('SELECT name, rgb FROM rb_colors WHERE id = $1', [colorId]);
 }
@@ -14,7 +12,6 @@ export function manuelleTeilzeileSperren(tx: DbSchnittstelle, uid: number, partN
           AND source = 'manual'`, [uid, partNumber, colorId]);
 }
 
-/** Erfassungen, die es in der neuen Farbe am selben Tag gleich schon gibt, dort aufstocken. */
 export function stockeGleicheErfassungenAuf(tx: DbSchnittstelle, uid: number, partNumber: string, alt: number, neu: number) {
   return tx.run(`UPDATE part_acquisitions z
           SET quantity = z.quantity + a.quantity

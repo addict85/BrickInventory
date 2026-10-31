@@ -1,25 +1,17 @@
-/**
- * Das Serverprotokoll: jede console-Zeile als eine JSON-Zeile auf stdout bzw.
- * stderr (Zeit, Stufe, Nachricht, Prozess, Anfrage, Kontext) — lesbar für
- * Docker, journald und Log-Sammler. Daneben gehen die Zeilen wie bisher nach
- * app_logs für die Protokollansicht der Verwaltung. Schlägt das Schreiben
- * dorthin fehl, wird gezählt und höchstens einmal je Minute gemeldet.
- */
+/** Jede console-Zeile als JSON-Zeile für Docker und Log-Sammler, daneben nach
+ * app_logs für die Verwaltung. Schreibfehler dorthin höchstens einmal je
+ * Minute melden. */
 import { AsyncLocalStorage } from 'async_hooks';
 import * as logs from './repository/appLogs';
 
-/** Kennung der laufenden Anfrage; server.ts setzt sie je Anfrage. */
 export const anfrageKontext = new AsyncLocalStorage<{ rid: string }>();
 
-/** Was von aussen als Kennung durchgeht: kein Leerraum, keine Steuer- oder Anführungszeichen. */
+/** Kein Leerraum, keine Steuer- oder Anführungszeichen. */
 const KENNUNG_RE = /^[A-Za-z0-9._:-]{1,64}$/;
 let _kennungFolge = 0;
 
-/**
- * Die Kennung einer Anfrage: die des Proxys (X-Request-Id), wenn sie harmlos
- * ist, sonst eine eigene. Ungefiltert könnte ein Client Zeilenumbrüche oder
- * fremde Kennungen ins Protokoll schreiben und Einträge vortäuschen.
- */
+/** Ungefiltert könnte ein Client Zeilenumbrüche oder fremde Kennungen ins
+ * Protokoll schreiben und Einträge vortäuschen. */
 export function anfrageKennung(roh: unknown): string {
   const wert = typeof roh === 'string' ? roh : '';
   if (KENNUNG_RE.test(wert)) return wert;
@@ -31,7 +23,7 @@ type Stufe = 'debug' | 'info' | 'warn' | 'error';
 const STUFEN: Stufe[] = ['debug', 'info', 'warn', 'error'];
 const LOG_STUFE: Record<Stufe | 'log', Stufe> = { log: 'info', debug: 'debug', info: 'info', warn: 'warn', error: 'error' };
 
-/** Wohin die Zeilen gehen; im Test ersetzt. */
+/** Im Test ersetzt. */
 export interface Ausgabe {
   out(zeile: string): void;
   err(zeile: string): void;
@@ -48,7 +40,7 @@ type Abfrager = logs.Abfrager;
 const MAX_TEXT = 4000;
 const MELDE_ABSTAND_MS = 60_000;
 
-/** Eine Angabe als Text; grosse Objekte gekappt, bevor sie durch Puffer und DB wandern. */
+/** Grosse Objekte gekappt, bevor sie durch Puffer und DB wandern. */
 function logText(a: unknown): string {
   if (typeof a === 'string') return a;
   if (a instanceof Error) return a.stack || a.message;
@@ -61,10 +53,6 @@ function logText(a: unknown): string {
 const istKontext = (a: unknown): a is Record<string, unknown> =>
   typeof a === 'object' && a !== null && !Array.isArray(a) && !(a instanceof Error);
 
-/**
- * Die Teile einer Zeile: Ein Objekt am Ende ist Kontext, ein Fehler wird
- * Kontext mit Stack; alles andere ergibt die Nachricht.
- */
 export function zerlege(args: unknown[]): { nachricht: string; kontext?: Record<string, unknown> } {
   const teile = [...args];
   let kontext: Record<string, unknown> | undefined;
@@ -89,14 +77,13 @@ interface Zustand {
 let Z: Zustand | null = null;
 const pidTag = String(process.pid).slice(-4);
 
-/** Eine Zeile für stdout: JSON, eine Zeile, Felder in fester Reihenfolge. */
+/** Felder in fester Reihenfolge. */
 export function jsonZeile(stufe: Stufe, args: unknown[], zeit: number, rid?: string): string {
   const { nachricht, kontext } = zerlege(args);
   return JSON.stringify({ zeit: new Date(zeit).toISOString(), stufe, nachricht, pid: process.pid,
     ...(rid ? { rid } : {}), ...(kontext ? { kontext } : {}) });
 }
 
-/** Fehlschläge beim Schreiben nach app_logs: sofort, wenn die letzte Meldung eine Minute her ist, sonst gesammelt. */
 function schreibfehler(anzahl: number, e: unknown): void {
   if (!Z) return;
   Z.fehlgeschlagen += anzahl;
@@ -108,7 +95,7 @@ function schreibfehler(anzahl: number, e: unknown): void {
   }
 }
 
-/** Die gesammelten Fehlschläge melden — direkt auf stderr, nicht über console (sonst wieder nach app_logs). */
+/** Direkt auf stderr, nicht über console — sonst wieder nach app_logs. */
 export function meldeSchreibfehler(): void {
   if (!Z) return;
   if (Z.meldeTimer) { clearTimeout(Z.meldeTimer); Z.meldeTimer = null; }
@@ -119,7 +106,6 @@ export function meldeSchreibfehler(): void {
   Z.zuletztGemeldet = Z.ausgabe.jetzt();
 }
 
-/** Gepufferte Zeilen nach app_logs schreiben. */
 export function leereProtokoll(): Promise<void> {
   if (!Z || !Z.pool || !Z.puffer.length) return Promise.resolve();
   const rows = Z.puffer.splice(0);
@@ -127,7 +113,6 @@ export function leereProtokoll(): Promise<void> {
     .then(() => undefined, (e: unknown) => schreibfehler(rows.length, e));
 }
 
-/** Ab hier gehen die Zeilen auch nach app_logs; Einträge älter als 48 Stunden werden alle 6 Stunden entfernt. */
 export function protokollInDieDatenbank(pool: Abfrager): void {
   if (!Z) return;
   Z.pool = pool;
@@ -138,10 +123,7 @@ export function protokollInDieDatenbank(pool: Abfrager): void {
   }, 6 * 60 * 60 * 1000).unref();
 }
 
-/**
- * console.log/info/warn/error/debug umleiten. Gibt eine Funktion zurück, die
- * den alten Zustand wiederherstellt (Tests).
- */
+/** Gibt eine Funktion zurück, die den alten Zustand wiederherstellt (Tests). */
 export function installiereProtokoll(ausgabe: Ausgabe = PROZESS): () => void {
   const alt = { log: console.log, debug: console.debug, info: console.info, warn: console.warn, error: console.error };
   Z = { ausgabe, pool: null, puffer: [], timer: null, fehlgeschlagen: 0, letzterFehler: '', zuletztGemeldet: -Infinity, meldeTimer: null };
@@ -156,7 +138,7 @@ export function installiereProtokoll(ausgabe: Ausgabe = PROZESS): () => void {
       const { nachricht, kontext } = zerlege(args);
       const text = `[${pidTag}${rid ? '/' + rid : ''}] ${nachricht}${kontext ? ' ' + logText(kontext) : ''}`;
       Z.puffer.push({ level: name === 'log' ? 'log' : stufe, message: text.substring(0, MAX_TEXT) });
-      // Ohne Pool (Start, Datenbank weg) wüchse der Puffer unbegrenzt; jede Zeile steht ohnehin auf stdout.
+      // Ohne Pool wüchse der Puffer unbegrenzt; jede Zeile steht ohnehin auf stdout.
       if (Z.puffer.length > 500) Z.puffer.splice(0, Z.puffer.length - 500);
       if (Z.timer) clearTimeout(Z.timer);
       Z.timer = setTimeout(() => { if (Z) Z.timer = null; void leereProtokoll(); }, 1500);

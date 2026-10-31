@@ -2,11 +2,8 @@ import * as db from '../../../db/database';
 import type { PoolClient } from 'pg';
 import { LOCKS } from '../../infra/lockNamespaces';
 
-/** Was die Anreicherung der Set-Kataloge und der Bilder-Nachlauf lesen und sperren. */
-
 export type InventarTeil = { part_num: string; color_id: number | null; quantity: number };
 
-/** Die Teile eines Inventars ohne Ersatzteile. */
 export function teileDesInventars(inventarId: number) {
   return db.all<InventarTeil>(
     `SELECT ip.part_num, ip.color_id, ip.quantity
@@ -21,7 +18,7 @@ export function setTeileKatalog(setNumber: string) {
      FROM set_parts_catalog WHERE set_number = $1`, [setNumber]);
 }
 
-/** Die Zuordnungen zu den Teilenummern; eine Zeile heisst „nachgesehen“, auch mit leerer bl_id. */
+/** Eine Zeile heisst „nachgesehen", auch mit leerer bl_id. */
 export function blZuordnungen(teilnummern: string[]) {
   return db.all<{ rb_id: string; bl_id: string | null }>(
     `SELECT rb_id, bl_id FROM bl_zuordnung
@@ -35,7 +32,6 @@ export async function figurenImSetkatalog(setNumber: string): Promise<number> {
 
 export type Bildwunsch = { id: string; color_id: number; image_url: string; kind: 'part' | 'fig' };
 
-/** Teile- und Figurenbilder eines Sets, die nur als Adresse vorliegen. */
 export async function bilderOhneDatei(setNumber: string): Promise<Bildwunsch[]> {
   const [teile, figuren] = await Promise.all([
     db.all<Bildwunsch>(
@@ -53,7 +49,6 @@ export function figurenDesSets(setNumber: string) {
     'SELECT fig_number, quantity FROM set_minifigs_catalog WHERE set_number = $1', [setNumber]);
 }
 
-/** Inventare zu Figurennummern, neueste Fassung zuerst. */
 export function inventareDerFiguren(figurnummern: string[]) {
   return db.all<{ set_num: string; id: number }>(
     `SELECT set_num, id FROM rb_inventories
@@ -61,7 +56,6 @@ export function inventareDerFiguren(figurnummern: string[]) {
      ORDER BY version DESC`, [figurnummern]);
 }
 
-/** Jede lokal abgelegte Bilddatei einmal, mit einer Adresse zum Neuladen. */
 export function lokaleBilderMitAdresse() {
   return db.all<{ image_local: string; image_url: string | null }>(
     `SELECT image_local, MAX(image_url) AS image_url FROM (
@@ -78,16 +72,15 @@ export function lokaleBilderMitAdresse() {
      GROUP BY image_local`);
 }
 
-/** Ein nicht wiederherstellbares Bild vergessen: Die Oberflächen fallen auf die CDN-Adresse zurück. */
+/** Ein nicht wiederherstellbares Bild wird hier geleert: Die Oberflächen fallen
+ * auf die CDN-Adresse zurück. */
 export const KATALOGE_MIT_BILD = ['part_color_catalog', 'minifigs_catalog', 'set_catalog'] as const;
 export function vergissLokalesBild(katalog: typeof KATALOGE_MIT_BILD[number], imageLocal: string) {
   return db.run(`UPDATE ${katalog} SET image_local=NULL WHERE image_local=$1`, [imageLocal]);
 }
 
-/**
- * Sitzungssperren auf einer eigenen Verbindung: Sperren und Freigeben müssen
- * auf derselben Sitzung laufen, über den Pool landeten sie auf verschiedenen.
- */
+/** Sperren und Freigeben müssen auf derselben Sitzung laufen; über den Pool
+ * landeten sie auf verschiedenen. */
 export function sperrVerbindung(): Promise<PoolClient> {
   return db.pool.connect();
 }

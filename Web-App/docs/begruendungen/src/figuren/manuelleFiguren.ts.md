@@ -1,7 +1,8 @@
-# Begründungen zu `routes/minifigs.ts`
+# Begründungen zu `src/figuren/manuelleFiguren.ts`
 
-Die ausführlichen Kommentare aus `routes/minifigs.ts`, wörtlich. Im Code steht je
-Stelle der erste Absatz und ein Verweis hierher. Neue Geschichte gehört in die
+Die ausführlichen Kommentare, wörtlich aus `routes/minifigs.ts` übernommen; der Code
+steht heute in `src/figuren/manuelleFiguren.ts`. Im Code steht je Stelle der erste Absatz und
+ein Verweis hierher. Neue Geschichte gehört in die
 Commit-Nachricht (siehe CLAUDE.md).
 
 <a id="abschnitt"></a>

@@ -1,9 +1,6 @@
 import * as db from '../../../db/database';
 
-/**
- * Die Bildtabellen in der Reihenfolge, in der sie gefragt werden. Figurenbilder
- * stehen seit Migration 0072 nur noch in minifigs_catalog.
- */
+/** Die Reihenfolge ist die der Abfrage; Figurenbilder stehen nur in minifigs_catalog. */
 export const CDN_ABFRAGE = `
   SELECT url FROM (
     (SELECT image_url AS url, 1 AS r FROM part_color_catalog
@@ -16,7 +13,6 @@ export const CDN_ABFRAGE = `
       WHERE image_local IS NOT NULL AND bild_stamm(image_local) = $1 AND image_url IS NOT NULL LIMIT 1)
   ) t ORDER BY r LIMIT 1`;
 
-/** Die CDN-Adresse zu einem Bildstamm, wo der Katalog eine kennt. */
 export function cdnZuBildstamm(stamm: string) {
   return db.get<{ url: string }>(CDN_ABFRAGE, [stamm]);
 }

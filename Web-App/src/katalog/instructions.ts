@@ -9,49 +9,29 @@ import { mitVersion, ohneVersion } from '../sets/setNummer';
 import { pfadSegment } from '../infra/fremdeAdressen';
 import * as repo from './repository/anleitungen';
 
-/**
- * Bauanleitungen beschaffen: Rebrickable → Brickset → BrickLink-Designer →
- * brickinstructions.com, und aus Bildseiten notfalls ein PDF bauen.
- * Ausführlich: docs/begruendungen/src/katalog/instructions.ts.md#abschnitt
- */
+/** Mehrere Quellen, weil keine allein alle Sets führt; aus Bildseiten notfalls
+ * ein PDF.
+ * Ausführlich: docs/begruendungen/src/katalog/instructions.ts.md#abschnitt */
 
-/**
- * @param info bekommt den HTTP-Status der letzten Antwort: Nur ein 404 heisst
- *   „gibt es nicht"; ein 403 ist Drosselung und darf kein Bild aussperren.
- */
-// Direct brickinstructions.com fallback — used when Brickset quota is exhausted
-// and entry is manually deleted from retry queue
-/**
- * Ob der letzte `downloadSetInstructions()`-Aufruf einen fremden Server
- * befragt hat.
- * Ausführlich: docs/begruendungen/src/katalog/instructions.ts.md#letzterabrufwarextern
- */
+/** Damit der Takt der Warteschlange nur nach echten Abrufen wartet.
+ * Ausführlich: docs/begruendungen/src/katalog/instructions.ts.md#letzterabrufwarextern */
 let _letzterAbrufWarExtern = false;
 export function letzterAbrufWarExtern(): boolean { return _letzterAbrufWarExtern; }
 
-// shared_instructions: zaehlen, lesen, loeschen
-// Diese drei Fragen standen ueber den Baum verstreut — die Zaehlung dreimal
-// (hier zweimal, jobs/bricksetRetry, jobs/instructionQueue), das Lesen zweimal
-// (routes/sets, src/sets/abfragen), das Loeschen zweimal (routes/sets, …
+// Zählen, lesen, löschen an einer Stelle statt verstreut.
 // Ausführlich: docs/begruendungen/src/katalog/instructions.ts.md#anzahlanleitungen
 
-/** Wie viele Anleitungen sind fuer dieses Set hinterlegt? */
 export async function anzahlAnleitungen(setNumber: string): Promise<number> {
   const r = await repo.zaehleAnleitungen(mitVersion(setNumber)).catch(meldeUndLiefere('anleitung:mitVersion', null));
   return parseInt(r?.c) || 0;
 }
 
-/** Die hinterlegten Anleitungen zu einem Set. */
 export async function anleitungenZuSet(setNumber: string) {
   return repo.anleitungenDesSets(mitVersion(setNumber)).catch(meldeUndLiefere('anleitung:mitVersion', []));
 }
 
-/**
- * Die Anleitungen eines Sets, wie ein Client sie sieht: erst die automatisch
- * importierten (shared_instructions), dann die selbst hochgeladenen
- * (instructions).
- * Ausführlich: docs/begruendungen/src/katalog/instructions.ts.md#anleitungenzusammenlegen
- */
+/** Erst die automatisch importierten, dann die selbst hochgeladenen.
+ * Ausführlich: docs/begruendungen/src/katalog/instructions.ts.md#anleitungenzusammenlegen */
 export function anleitungenZusammenlegen(geteilt: any[], eigene: any[]): any[] {
   return [
     ...geteilt.map(i => ({ ...i, is_manual: false })),
@@ -59,27 +39,18 @@ export function anleitungenZusammenlegen(geteilt: any[], eigene: any[]): any[] {
   ];
 }
 
-/**
- * Darf ein Konto die geteilten Anleitungen dieses Sets jetzt neu laden?
- * Einmal je Set und Tag für alle zusammen: Das Neuladen löscht die Anleitung
- * für alle und kostet Kontingent der Quellen. In EINER Anweisung, damit zwei
- * gleichzeitige Anfragen nicht beide durchkommen.
- */
+/** Einmal je Set und Tag für alle: Neuladen löscht für alle und kostet
+ * Kontingent. In EINER Anweisung, damit zwei Anfragen nicht beide durchkommen. */
 export async function anleitungNeuLadenErlaubt(setNumber: string): Promise<boolean> {
   const z = await repo.zaehleQuellenAufruf(`anleitung-neu|${mitVersion(setNumber)}`);
   return !!z;
 }
 
-/** Alle Anleitungen eines Sets entfernen (vor dem Neuholen). */
 export async function loescheAnleitungen(setNumber: string) {
   return repo.loescheAnleitungenDesSets(mitVersion(setNumber));
 }
 
-/**
- * Wo liegt dieses Set bei brickinstructions.com, und ist dort ueberhaupt etwas?
- * Ausführlich: docs/begruendungen/src/katalog/instructions.ts.md#brickinstructionsfund
- * @returns null, wenn dort nichts liegt
- */
+// Ausführlich: docs/begruendungen/src/katalog/instructions.ts.md#brickinstructionsfund
 async function brickinstructionsFund(n: string) {
   const baseNum = pfadSegment(ohneVersion(n));
   const folder  = String(Math.floor(parseInt(baseNum) / 1000) * 1000).padStart(5, '0');
@@ -117,19 +88,14 @@ export async function scrapeInstructionsFromFallback(setNumber: string) {
   return 0;
 }
 
-/**
- * @param eigenerTakt Der Aufrufer hält selbst Abstand zwischen zwei Sets (die
- *   Anleitungs-Warteschlange); dann entfallen die Pausen am Ende.
- */
+/** @param eigenerTakt Der Aufrufer hält selbst Abstand zwischen zwei Sets;
+ *   dann entfallen die Pausen am Ende. */
 export async function downloadSetInstructions(setNumber: string,
                                        eigenerTakt = false) {
   const n = mitVersion(setNumber);
 
-  // Wurde für DIESES Set überhaupt ein fremder Server befragt?
-  // Der Takt der Warteschlange (15 s) ist dazu da, Brickset und
-  // brickinstructions.com zu schonen. Er hing bisher am DURCHGANG, nicht am
-  // Abruf — und damit auch an Sets, die längst eine Anleitung haben und hier …
-  // Ausführlich: docs/begruendungen/src/katalog/instructions.ts.md#downloadsetinstructions
+  // Merken, ob ein fremder Server befragt wurde: Der Takt soll nicht an Sets
+  // hängen, die längst eine Anleitung haben.
   _letzterAbrufWarExtern = false;
 
   const existing = await anzahlAnleitungen(n);
@@ -142,13 +108,12 @@ export async function downloadSetInstructions(setNumber: string,
   if (!instrList.length) {
     const bsResult = await brickset.getInstructions(n).catch(() => ({ instructions: [], usesFallback: true }));
     instrList = bsResult.instructions || [];
-    // usesFallback=true means Brickset responded (success or non-quota error) with no instructions
-    // usesFallback=false means quota hit — stay in queue, don't use fallback yet
+    // usesFallback: Brickset hat geantwortet, ohne Anleitung; false heisst
+    // Kontingent erschöpft — dann in der Warteschlange bleiben.
     bricksetSucceededEmpty = bsResult.usesFallback && instrList.length === 0;
   }
 
-  // Fallback 2: BrickLink Designer Programme (bdpinstructions.s3.amazonaws.com)
-  // downloadFile streams directly to disk — no memory buffering for large PDFs
+  // downloadFile schreibt direkt auf die Platte — kein Puffer für grosse PDFs.
   if (!instrList.length && bricksetSucceededEmpty) {
     try {
       const baseNum  = ohneVersion(n);
@@ -211,7 +176,6 @@ export async function downloadSetInstructions(setNumber: string,
   return saved;
 }
 
-// BrickInstructions PDF helpers (unchanged — file system ops)
 async function collectAndBuildPDF(baseUrl: string, hdrs: Record<string, string>,
                                   firstPageBuf: Buffer, pdfDest: string,
                                   relPath: string, setNumber: string) {

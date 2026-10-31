@@ -1,9 +1,6 @@
-/**
- * Kopfzeile `Idempotency-Key` an schreibenden Anfragen unter /api/v1. Hängt
- * hinter der Anmeldung (der Schlüssel gilt je Konto) und vor den Routen.
- * Gespeichert wird die JSON-Antwort, BEVOR sie hinausgeht: Reisst die
- * Verbindung danach ab, findet die Wiederholung sie schon vor.
- */
+/** Hinter der Anmeldung (der Schlüssel gilt je Konto). Gespeichert wird,
+ * BEVOR die Antwort hinausgeht: Reisst die Verbindung ab, findet die
+ * Wiederholung sie schon vor. */
 import type { Request, Response, NextFunction } from 'express';
 import { nutzerId } from '../../konto/http/anmeldung';
 import { sendeFehler } from '../../infra/fehlerTexte';

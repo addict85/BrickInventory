@@ -1,11 +1,8 @@
 import * as db from '../../../db/database';
 import type { BlArt } from '../../../db/blZuordnungSql';
 
-/**
- * Datenzugriff auf bl_zuordnung. NULLIF(bl, rb) ist die EINE Schreibweise für
- * „keine abweichende Nummer" (Migration 0037); eine zweite Form hiesse zwei
- * Aussagen für dasselbe.
- */
+/** NULLIF(bl, rb) ist die EINE Schreibweise für „keine abweichende Nummer";
+ * eine zweite Form hiesse zwei Aussagen für dasselbe. */
 
 export async function schreibeBlNummer(art: BlArt, rbId: string, blId: string): Promise<void> {
   await db.run(
@@ -33,7 +30,7 @@ export async function abweichendeNummer(art: BlArt, rbId: string): Promise<strin
   return z?.bl_id || null;
 }
 
-/** Die wirksame Nummer; null nur, wenn es keine Zeile gibt (nie nachgesehen). */
+/** null nur, wenn es keine Zeile gibt (nie nachgesehen). */
 export async function wirksameNummer(art: BlArt, rbId: string): Promise<string | null> {
   const z = await db.get<{ nr: string }>(
     'SELECT COALESCE(bl_id, rb_id) AS nr FROM bl_zuordnung WHERE art=$1 AND rb_id=$2', [art, rbId]);

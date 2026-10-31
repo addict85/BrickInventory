@@ -11,21 +11,16 @@ import { KEINE_FARBE } from '../src/infra/validate';
 import { merkeFigurBildAdresse, setzeFigurBildLokal, setzeTeilBildLokal } from '../src/katalog/katalogPflege';
 import { normalisiereSetNummer, moeglicheSetNummer } from '../src/sets/setNummer';
 
-/**
- * Ein PDF-Auftrag aus der Auftragstabelle: fehlende Bilder holen, dann im
- * eigenen Faden zeichnen. Den Status für die Oberfläche liest
- * src/auftraege/pdfAuftraege.ts aus demselben Auftrag.
- */
+/** Erst fehlende Bilder holen, dann im eigenen Faden zeichnen. */
 export interface PdfNutzlast { job_id: string; user_id: number; sets: PdfSet[]; parts: PdfTeil[] }
 
 const istFigur = (p: PdfTeil) => !!p.is_fig || String(p.part_number).startsWith('fig-');
-/** Die CDN-Adresse hinter einer Proxy-Adresse. */
 const cdnAdresse = (url: string) => {
   const roh = url.match(/\/api\/img-proxy\?url=(.+)/)?.[1];
   return roh ? decodeURIComponent(roh) : url;
 };
 
-/** Bildquellen nur aus dem Katalog und dort nur geprüfte (src/katalog/bildlage.ts). */
+/** Nur geprüfte Bildquellen aus dem Katalog (src/katalog/bildlage.ts). */
 export const bilderAusKatalog = (parts: PdfTeil[]) => katalogbilder(parts, istFigur);
 
 async function figurenOhneAdresse(parts: PdfTeil[]) {
@@ -84,7 +79,6 @@ async function erzeugePdf(n: PdfNutzlast): Promise<void> {
   console.log(`[PDF job] ${jobId} fertig für Konto ${uid}`);
 }
 
-/** Nach dem letzten Versuch; den Fehler für die Oberfläche hält der Auftrag selbst. */
 async function pdfAufgegeben(n: PdfNutzlast, fehler: string): Promise<void> {
   console.error(`[PDF job] ${n.job_id} error:`, fehler);
 }

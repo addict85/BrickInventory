@@ -1,11 +1,7 @@
 'use strict';
-/**
- * Downloads Rebrickable CSV files daily and imports them into local DB tables.
- * CSVs used:
- *   parts.csv          — part_num, name, part_cat_id, part_url, part_img_url, print_of
- *   colors.csv         — id, name, rgb, is_trans …
- * Ausführlich: docs/begruendungen/jobs/rebrickableCsvSync.ts.md#abschnitt
- */
+/** Rebrickable-CSVs täglich laden: Der lokale Katalog spart je Anzeige einen
+ * API-Abruf und das Tageskontingent.
+ * Ausführlich: docs/begruendungen/jobs/rebrickableCsvSync.ts.md#abschnitt */
 import { meldeStartZustand } from '../src/infra/startZustand';
 import { fetchMissingBlIds } from '../src/katalog/partsImport';
 import { getRbKey, httpsGetRobust } from '../clients/rebrickable';
@@ -22,7 +18,6 @@ import { get } from 'https';
 
 const CSV_BASE = 'https://cdn.rebrickable.com/media/downloads/';
 
-/** Frist ohne empfangene Daten, nach der ein CSV-Download abgebrochen wird. */
 const DOWNLOAD_IDLE_MS = 60000;
 
 
@@ -30,44 +25,21 @@ function updateStatus(step: string, progress: number, _total: number, sub: strin
   const status = { ready: false, step, progress, total: TOTAL_STEPS, sub };
   void meldeStartZustand(status);
   monitor.update('csvImport', { status: 'running', progress, total: TOTAL_STEPS, sub, label: `CSV-Import: ${step}` });
-  // Only log step changes, not progress updates
   if (!sub && !step.includes('k)')) log(step);
 }
 const SYNC_KEY = 'rb_csv_last_sync';
 
 function log(msg: string) { console.log(`[rb-csv-sync] ${msg}`); }
 
-//  Schema
-// Hier stand ensureSchema(): sieben CREATE TABLE IF NOT EXISTS und vier
-// CREATE INDEX IF NOT EXISTS, ausgefuehrt bei jedem Start des Abgleichs.
-// Ausführlich: docs/begruendungen/jobs/rebrickableCsvSync.ts.md#abschnitt-2
 
-
-// ── Download & parse gzipped CSV ─────────────────────────────────────────────
-// Hier standen downloadCsv() und streamCsvToDB() — zwei vollständige
-// Zweitfassungen des CSV-Wegs samt eigener parseCsvLine(). Aufgerufen hat sie
-// niemand: Der Live-Weg läuft über downloadToTmp() und den geforkten
-// jobs/csvImportWorker.ts. Entfallen, damit es nur noch EINE Fassung gibt.
-
-// ── Import CSVs into DB ───────────────────────────────────────────────────────
-
-// ── Main run ──────────────────────────────────────────────────────────────────
-// ── CSV-Import-Helfer (Modulebene, damit auch der Skip-Zweig sie nutzen kann) ──
-// __dirname ist hier RICHTIG und darf nicht durch appPaths ersetzt werden:
-// Der Worker liegt neben dieser Datei, egal ob der Code aus den Quellen oder
-// aus dist/ läuft. Ein Pfad über die Wurzel würde bei laufendem dist/-Build
-// auf jobs/csvImportWorker.js zeigen — eine Datei, die dort nicht mehr liegt.
+// __dirname ist hier RICHTIG: Der Worker liegt neben dieser Datei, ob aus den
+// Quellen oder aus dist/; ein Pfad über die Wurzel träfe dort nichts.
 const _workerPath = path.join(__dirname, 'csvImportWorker.js');
 
-// Kontinuierlicher Gesamtfortschritt: jedes File belegt den Slice
-// [stepNum-1, stepNum] von TOTAL_STEPS. Innerhalb eines Files verteilt sich der
-// Fortschritt auf Download (0..DOWNLOAD_WEIGHT) und Import (DOWNLOAD_WEIGHT..1),
-// sodass der Balken NICHT pro File springt, sondern durchgehend waechst.
+// Jede Datei belegt einen Abschnitt von TOTAL_STEPS, damit der Balken
+// durchgehend wächst statt je Datei zu springen.
 const TOTAL_STEPS = 8;
 const DOWNLOAD_WEIGHT = 0.4;
-// `phase` ist KEINE Zahl — alle fuenf Aufrufstellen uebergeben 'download'
-// oder 'import', und die Zeile darunter vergleicht mit === gegen
-// 'download'. Der Pruefer hat meine erste Annahme korrigiert.
 function fileOverall(stepNum: number, phase: 'download' | 'import', pct: number) {
   const p = Math.max(0, Math.min(100, pct || 0)) / 100;
   const frac = phase === 'download'
@@ -76,16 +48,12 @@ function fileOverall(stepNum: number, phase: 'download' | 'import', pct: number)
   return (stepNum - 1) + frac;
 }
 
-// Download im Hauptprozess (Netzwerkzugriff), Import im Worker (isolierter Heap)
+// Download im Hauptprozess, Import im Worker (isolierter Heap).
 async function downloadToTmp(filename: string, stepLabel: string, stepNum: number) {
   const tmp = path.join(DATA_DIR, filename.replace('.gz', '.tmp'));
   await new Promise((resolve, reject) => {
-        // Zeitlimit: Ohne dieses blieb eine hängende CDN-Verbindung für immer
-    // stehen — und weil der Abgleich beim Erststart läuft, blieb die
-    // Startanzeige ewig auf „Lade…". Die API-Aufrufe weiter unten hatten seit
-    // jeher 30 s, dieser Weg nicht. Die Frist gilt je Datenpaket (setTimeout
-    // auf der Anfrage misst Untätigkeit), nicht für die Gesamtdauer — grosse
-    // Dateien dürfen also beliebig lange laden, solange etwas ankommt.
+        // Frist je Datenpaket, nicht für die Gesamtdauer: Eine hängende Verbindung
+        // hielt sonst die Startanzeige ewig auf „Lade…", grosse Dateien dürfen laden.
     const req = get(`${CSV_BASE}${filename}`, { family: 4 }, (res: import('http').IncomingMessage) => {
       if (res.statusCode !== 200) return reject(new Error(`HTTP ${res.statusCode} for ${filename}`));
       const totalBytes = parseInt(res.headers['content-length'] || '0', 10);
@@ -120,9 +88,7 @@ async function runWorker(task: string, stepNum: number, stepLabel: string, filen
   try {
     return await importInWorker(task, stepNum, stepLabel);
   } finally {
-    // Aufräumen — auch bei Abbruch. Vorher löschte NIEMAND die entpackten
-    // Zwischendateien: inventory_parts.csv.tmp liegt bei rund einem Gigabyte
-    // und blieb nach jedem Lauf dauerhaft in data/ stehen.
+    // Aufräumen — auch bei Abbruch: inventory_parts.csv.tmp ist rund ein Gigabyte.
     fs.promises.unlink(tmpFile).catch(ohneFehlendeDatei('rb-csv:unlink'));
   }
 }
@@ -136,7 +102,6 @@ function importInWorker(task: string, stepNum: number, stepLabel: string) {
         const rowInfo = msg.total > 0 ? ` (${(msg.total/1000).toFixed(0)}k)` : '';
         updateStatus(`${stepLabel}${rowInfo}`, fileOverall(stepNum, 'import', msg.pct != null ? msg.pct : 0), TOTAL_STEPS, sub);
       } else if (msg.type === 'done') {
-        // silent
       } else if (msg.type === 'error') {
         reject(new Error(msg.error));
       } else if (msg.type === 'complete') {
@@ -154,9 +119,7 @@ function importInWorker(task: string, stepNum: number, stepLabel: string) {
 const PART_CAT_KEY = 'rb_part_categories_last_sync';
 const CATALOG_EXTRAS_KEY = 'rb_catalog_extras_last_sync';
 
-// Themes + Inventar-Minifiguren nachziehen, wenn der Haupt-Sync heute schon
-// lief, diese Files aber noch fehlen (z.B. direkt nach dem Update auf die
-// Katalog-Version). Analog zu syncPartCategoriesDaily.
+// Nachziehen, wenn der Haupt-Sync heute schon lief, diese Dateien aber fehlen.
 async function syncCatalogExtrasDaily(today: string) {
   if (await liesZustand(CATALOG_EXTRAS_KEY) === today) return;
   try {
@@ -169,8 +132,7 @@ async function syncCatalogExtrasDaily(today: string) {
   }
 }
 
-// Stellt sicher, dass part_categories AUCH dann taeglich importiert wird, wenn der
-// Haupt-Sync heute bereits lief (z.B. weil das File nachtraeglich hinzugefuegt wurde).
+// Auch ohne Haupt-Sync täglich, falls die Datei nachträglich dazukam.
 async function syncPartCategoriesDaily(today: string) {
   if (await liesZustand(PART_CAT_KEY) === today) return;
   try {
@@ -183,18 +145,13 @@ async function syncPartCategoriesDaily(today: string) {
 }
 
 async function run() {
-  // Ensure temp directory exists
   fs.mkdirSync(DATA_DIR, { recursive: true });
 
-  // Check last sync date
   const lastSync = await liesZustand(SYNC_KEY);
   const today = new Date().toISOString().slice(0, 10);
   if (lastSync === today) {
     log(`Already synced today (${today}) — skipping CSV download`);
-    // part_categories dennoch taeglich sicherstellen (auch ohne Haupt-Sync).
     await syncPartCategoriesDaily(today);
-    // Themes + Inventar-Minifiguren nachziehen (fehlen sonst bis morgen,
-    // wenn der Haupt-Sync heute vor dem Update schon lief).
     await syncCatalogExtrasDaily(today);
     const s1 = { ready: true, step: 'Bereit (Cache)', progress: TOTAL_STEPS, total: TOTAL_STEPS };
     void meldeStartZustand(s1);
@@ -211,23 +168,19 @@ async function run() {
       await runWorker('inventory_minifigs',8, 'Inventar-Figuren laden...','inventory_minifigs.csv.gz');
 
       setzeZustand(SYNC_KEY, today);
-      // part_categories wurde in der Schleife importiert -> Tagesmarker mitsetzen.
       setzeZustand(PART_CAT_KEY, today);
-      // themes + inventory_minifigs ebenfalls in der Schleife importiert.
       setzeZustand(CATALOG_EXTRAS_KEY, today);
       log(`CSV sync complete for ${today}`);
     } catch(e) {
       log(`CSV sync failed: ${fehlertext(e)}`);
-      // Ohne Katalog ist die App trotzdem benutzbar; ohne diese Meldung bliebe
-      // der Startbildschirm stehen. Den nächsten Versuch plant der Auftrag
-      // (Wartezeit mit Backoff), darum wird der Fehler weitergereicht.
+      // Ohne Katalog ist die App benutzbar; ohne diese Meldung bliebe der
+      // Startbildschirm stehen. Den nächsten Versuch plant der Auftrag mit Backoff.
       const s0 = { ready: true, step: 'Katalog nicht geladen', progress: TOTAL_STEPS, total: TOTAL_STEPS };
       await meldeStartZustand(s0);
       throw e;
     }
   }
 
-  // Fetch missing BL IDs + sync bl_part_number via shared function
   try {
     await fetchMissingBlIds();
   } catch(e) { log(`fetchMissingBlIds error: ${fehlertext(e)}`); }
@@ -237,8 +190,7 @@ async function run() {
   monitor.update('csvImport', { status: 'done', progress: TOTAL_STEPS, total: TOTAL_STEPS, sub: null });
   log('Startup complete — server ready');
 
-  // Fetch BrickLink color mapping from Rebrickable API and cache in DB
-  // (not in CSV — only available via API)
+  // Die BrickLink-Farbzuordnung gibt es nur über die API, nicht als CSV.
   try {
     const key = await getRbKey().catch(meldeUndLiefere('rb-csv:getRbKey', null));
     if (key) {
@@ -268,11 +220,8 @@ async function run() {
   }
 }
 
-/**
- * Der Auftrag 'csv_sync' (geplant, src/auftraege/zeitplan.ts). Der Lauf beim Start
- * lädt nur, wenn heute noch nicht geladen wurde; der tägliche und der von
- * Hand angestossene laden immer.
- */
+/** Beim Start nur, wenn heute noch nicht geladen; der tägliche und der von
+ * Hand angestossene Lauf laden immer. */
 async function csvAbgleich(n: Record<string, unknown>): Promise<void> {
   if (!n.beimStart) await loescheZustand(SYNC_KEY);
   await run();

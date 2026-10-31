@@ -1,8 +1,5 @@
-/**
- * /api/v1/settings — Einstellungen, Zugänge, Haushalt, Export und Import.
- * Ein Router für den ganzen Pfad; die App liest GET / und den Haushalt, die
- * Webapp zusätzlich Design, Export und Verwaltung.
- */
+/** /api/v1/settings — ein Router für den ganzen Pfad, weil die Reihenfolge vor
+ * und nach router.use(requireLogin) hier an einer Stelle entschieden wird. */
 import express from 'express';
 import multer from 'multer';
 import { fehlerAntwort, logAndContinue } from '../../src/infra/httpError';
@@ -40,9 +37,8 @@ const router = express.Router();
 
 const requireLogin = requireLoginOrToken;
 
-// ── Öffentlich: aktuelles App-Design — vor router.use(requireLogin), denn
-// Anmelde- und Startbildschirm brauchen es; es verrät nichts über Konten.
-// Angemeldet gilt das Design des Kontos, sonst die Vorgabe des Verwalters.
+// Vor router.use(requireLogin): Anmelde- und Startbildschirm brauchen das
+// Design, und es verrät nichts über Konten.
 router.get('/settings/theme', async (req, res) => {
   const uid = await resolveUserId(req);
   res.set('Cache-Control', 'no-cache');
@@ -50,23 +46,14 @@ router.get('/settings/theme', async (req, res) => {
   res.json({ success: true, ...await designFuer(uid) });
 });
 
-// Angemeldete Geräte: Sitzung ODER Token
-// MUSS vor router.use(requireLogin) stehen — aus demselben Grund wie /theme
-// darüber, nur andersherum: Nicht weil gar keine Anmeldung nötig wäre,
-// sondern weil requireLogin NUR die Sitzung kennt. Die App hat keine; sie …
+// Vor router.use(requireLogin), weil requireLogin nur die Sitzung kennt und
+// die App ihre Zugänge mit Token verwaltet.
 // Ausführlich: docs/begruendungen/routes/api_v1/settings.ts.md#abschnitt
-/**
- * GET /api/v1/settings/tokens — die eigenen Zugänge auflisten.
- * Ausführlich: docs/begruendungen/routes/api_v1/settings.ts.md#get-tokens
- */
 router.get('/settings/tokens', requireLoginOrToken, async (req: LoggedInRequest, res) => {
   const eigener = bearerToken(req);
   const eigenerHash = eigener ? hashToken(eigener) : null;
-  // LEAST ueber beide Fristen: `expires_at` ist die gleitende („so lange
-  // ungenutzt"), `hard_expires_at` die feste, die beim QR-Code gewaehlt
-  // wurde. Was den Nutzer interessiert, ist der FRUEHERE der beiden — der
-  // Tag, an dem dieses Geraet ausgesperrt wird.
-  // Ausführlich: docs/begruendungen/routes/api_v1/settings.ts.md#get-tokens-tokens
+  // LEAST über beide Fristen: Den Nutzer interessiert der Tag, an dem dieses
+  // Gerät ausgesperrt wird.
   const tokens = await zugaengeDesKontos(angemeldeteNutzerId(req));
   res.json({ success: true, tokens: tokens.map(t => ({
     token_prefix: t.token.substring(0, 8),
@@ -84,10 +71,8 @@ router.get('/settings/tokens', requireLoginOrToken, async (req: LoggedInRequest,
   }))});
 });
 
-/**
- * DELETE /api/v1/settings/tokens/:tokenId — einen Zugang entwerten.
- * Ausführlich: docs/begruendungen/routes/api_v1/settings.ts.md#delete-tokens-tokenid
- */
+/** Die Zeile ist sofort weg, der Token-Cache gilt aber noch kurz nach.
+ * Ausführlich: docs/begruendungen/routes/api_v1/settings.ts.md#delete-tokens-tokenid */
 router.delete('/settings/tokens/:tokenId', requireLoginOrToken, async (req: LoggedInRequest, res) => {
   // escapeLike: ohne das löscht ein "%" als tokenId ALLE Tokens des Nutzers.
   const prefix = escapeLike(String(req.params.tokenId || '')).slice(0, 64);
@@ -97,19 +82,16 @@ router.delete('/settings/tokens/:tokenId', requireLoginOrToken, async (req: Logg
   res.json({ success: true, deleted: geloescht });
 });
 
-/** Die übrigen Browser-Sitzungen beenden; die eigene bleibt. */
 router.post('/settings/sessions/andere-beenden', requireLogin, async (req: LoggedInRequest, res) => {
   res.json({ success: true, deleted: await andereSitzungenBeenden(angemeldeteNutzerId(req), req.sessionID) });
 });
 
-/**
- * Was die App aus den Einstellungen liest — ausdrücklich aufgezählt.
- * Ausführlich: docs/begruendungen/routes/api_v1/settings.ts.md#app-felder
- */
+/** Ausdrücklich aufgezählt: Die App bekommt nur, was sie liest, keine globalen
+ * oder Verwalterfelder.
+ * Ausführlich: docs/begruendungen/routes/api_v1/settings.ts.md#app-felder */
 const APP_FELDER = ['currency', 'price_condition', 'price_cache_ttl',
                     'default_price_condition', 'user_default_condition'] as const;
 
-/** Vorgaben, falls weder global noch beim Nutzer etwas steht. */
 const APP_VORGABEN: Record<string, string> = {
   currency: 'EUR', price_condition: 'N', price_cache_ttl: '24',
   default_price_condition: 'N', user_default_condition: '',
@@ -117,22 +99,17 @@ const APP_VORGABEN: Record<string, string> = {
 
 router.get('/settings', requireToken, async (req: AuthedRequest, res) => {
   const uid = req.apiUser.user_id;
-  // readSettings() statt eigener Abfrage: Hier stand `SELECT … FROM
-  // user_settings` mit einer eigenen Vorgabeliste — und las damit die
-  // GLOBALEN Werte gar nicht. price_cache_ttl und default_price_condition
-  // sind aber global; die App bekam dauerhaft die fest verdrahtete 24 bzw.
-  // 'N', egal was der Verwalter eingestellt hatte.
+  // readSettings(), weil price_cache_ttl und default_price_condition global
+  // sind; eine eigene Abfrage las sie nicht.
   const alle = await readSettings(uid, false);
   const settings: Record<string, string> = {};
   for (const feld of APP_FELDER) {
     settings[feld] = alle[feld] ?? APP_VORGABEN[feld] ?? '';
   }
-  // Effektiver Zustand: eigener Wert → globaler Standard → 'N'. Die Regel
-  // steht in src/konto/settings.ts, damit sie nicht neben dem Webapp-Weg ein
-  // zweites Mal existiert (Etappe 6).
+  // Die Regel steht in src/konto/settings.ts, damit sie nicht neben dem
+  // Webapp-Weg ein zweites Mal existiert.
   settings['effective_condition'] = await nutzerStandardZustand(uid);
-  // Das wirksame Design des Kontos, wie /settings/theme: Mit der Vorgabe des
-  // Verwalters überschrieb dieser Abruf das eigene Design in der App.
+  // Das wirksame Design des Kontos, nicht die Vorgabe des Verwalters.
   settings['app_theme'] = (await designFuer(uid)).theme;
   res.json({ success:true, settings });
 });
@@ -143,8 +120,7 @@ router.put('/settings', requireToken, async (req: AuthedRequest, res) => {
   let updated = 0;
   for (const key of allowed) {
     if (req.body[key]!==undefined) {
-      // Zentrale Stelle — stösst bei einer ECHTEN Währungsänderung den
-      // Preis-Job an (Begründung in src/konto/settings.ts). Parität zur Webapp.
+      // Zentrale Stelle: Eine ECHTE Währungsänderung stösst den Preis-Job an.
       await setUserSetting(uid, key, String(req.body[key]));
       updated++;
     }
@@ -152,44 +128,31 @@ router.put('/settings', requireToken, async (req: AuthedRequest, res) => {
   res.json({ success:true, updated });
 });
 
-// GET /api/v1/settings/default-condition — der GLOBALE Default (Monitoring-UI).
-// Für den effektiven, benutzerspezifischen Wert: GET /settings (effective_condition).
+// Der GLOBALE Default; den effektiven liefert GET /settings (effective_condition).
 router.get('/settings/default-condition', requireToken, async (_req: AuthedRequest, res) => {
   res.json({ success: true, condition: await globalDefaultCondition() });
 });
 
-/**
- * GET /api/v1/settings/user/default-condition — der EFFEKTIVE Wert des
- * Nutzers, zum Vorbelegen der Erfassungsformulare.
- * Ausführlich: docs/begruendungen/routes/api_v1/settings.ts.md#get-settings-user-default-condition
- */
+// Ausführlich: docs/begruendungen/routes/api_v1/settings.ts.md#get-settings-user-default-condition
 router.get('/settings/user/default-condition', requireToken, async (req: AuthedRequest, res) => {
   res.json({ success: true, condition: await nutzerStandardZustand(req.apiUser.user_id) });
 });
 
-// POST /api/v1/settings/user/default-condition — benutzerspezifischer Default.
-// Token-authentifiziertes Pendant zu /api/settings/user/default-condition:
-// die Android-App lief vorher gegen den Session-Endpoint und scheiterte mit
-// Bearer-Token still an requireLogin.
 router.post('/settings/user/default-condition', requireToken, async (req: AuthedRequest, res) => {
   const condition = String(req.body?.condition ?? '');
   if (!['N','U',''].includes(condition)) return sendeFehler(req, res, 400, 'zustand_n_oder_u');
   if (condition === '') {
-    // Leeren → auf globalen Standard zurückfallen
     await deleteUserSetting(req.apiUser.user_id, 'user_default_condition');
   } else {
-    // setUserSetting() statt eigenem INSERT: Es soll GENAU EINE Schreibstelle
-    // für Benutzereinstellungen geben. Hier stand ein zweites,
-    // wortgleiches ON CONFLICT — harmlos, solange nichts dazukommt, aber die
-    // Regel gilt nur, wenn sie ausnahmslos gilt.
+    // setUserSetting(): GENAU EINE Schreibstelle für Benutzereinstellungen.
     await setUserSetting(req.apiUser.user_id, 'user_default_condition', condition);
   }
   res.json({ success: true, condition: condition || null });
 });
 
 // ── Haushalt: Konten verknüpfen ──────────────────────────────────────────────
-// Gegenstücke zu /api/settings/household*. Dieselbe Umsetzung
-// (src/haushalt/haushalt.ts), damit die App nicht ihre eigenen Regeln bekommt.
+// Dieselbe Umsetzung wie die Webapp (src/haushalt/haushalt.ts), damit die App
+// nicht ihre eigenen Regeln bekommt.
 router.get('/settings/household', requireToken, async (req: AuthedRequest, res) => {
   res.json({ success: true, ...(await householdStatus(req.apiUser.user_id)) });
 });
@@ -201,8 +164,8 @@ router.post('/settings/household/invite', requireToken, async (req: AuthedReques
 });
 
 // Mit Passwort: Das Hauptkonto liest und schreibt danach den Bestand dieses
-// Kontos, und das übersteht auch einen Passwortwechsel. Ein erbeutetes Token
-// allein soll das nicht einrichten können.
+// Kontos, auch über einen Passwortwechsel hinweg. Ein erbeutetes Token allein
+// soll das nicht einrichten können.
 router.post('/settings/household/redeem', requireToken, async (req: AuthedRequest, res) => {
   const uid = req.apiUser.user_id;
   if (!await bestaetigePasswort(req, res, uid, req.body?.password)) return;
@@ -231,22 +194,13 @@ router.post('/settings/household/former/dismiss', requireToken, async (req: Auth
 
 router.use('/settings', requireLogin);
 
-/**
- * GET /api/v1/settings/tls — der Fingerabdruck der internen CA zum Abgleich
- * von Hand; derselbe Wert steht als `fp` im QR-Code der App.
- */
+/** Zum Abgleich von Hand; derselbe Wert steht als `fp` im QR-Code der App. */
 router.get('/settings/tls', async (_req, res) => {
   const stand = await tlsStand();
   res.json({ success: true, https: konfig().hinterTls,
     ...(stand ? { fp: stand.fp, fp_hex: stand.fp_hex, subject: stand.subject,
                   gueltig_bis: stand.gueltig_bis, download: '/ca.crt' } : { fp: null }) });
 });
-
-// GET /api/settings ist ENTFERNT
-// Sie lieferte GENAU DASSELBE wie GET /raw achtzig Zeilen weiter unten —
-// beide riefen readSettings(userId, isAdmin) —, nur in einer anderen Huelle:
-// hier ausgebreitet (`{ success, ...settings }`), dort verschachtelt …
-// Ausführlich: docs/begruendungen/routes/api_v1/settings.ts.md#post
 
 router.post('/settings', async (req: LoggedInRequest, res) => {
   const uid = angemeldeteNutzerId(req);
@@ -255,15 +209,13 @@ router.post('/settings', async (req: LoggedInRequest, res) => {
     'price_cache_ttl','api_limit_rebrickable','api_limit_bricklink','api_limit_brickset',
     'registration_enabled','smtp_host','smtp_port','smtp_user','smtp_pass','smtp_from','smtp_secure','smtp_insecure_tls',
     'default_price_condition',
-    // Ausgabeland der Gutscheine: global für alle Konten, also nur vom
-    // Verwalter gesetzt; kein Geheimnis, lesen dürfen es alle.
+    // Global, also nur vom Verwalter gesetzt; kein Geheimnis, lesen dürfen es alle.
     'gutschein_land'];
   const userKeys = ['currency', 'language', 'user_default_condition'];
 
   if (istVerwalter(req)) {
-    // Mailserver nur mit Passwort umstellen: Wer eine Verwaltersitzung
-    // erbeutet, läse sonst alle künftigen Rücksetz-Mails mit. Gefragt wird
-    // nur bei einer echten Änderung, nicht beim Speichern der ganzen Seite.
+    // Mailserver nur mit Passwort umstellen: Wer eine Verwaltersitzung erbeutet,
+    // läse sonst alle künftigen Rücksetz-Mails mit. Nur bei echter Änderung.
     const smtpGeaendert: string[] = [];
     for (const key of globalKeys.filter(k => k.startsWith('smtp_'))) {
       const neu = req.body[key];
@@ -272,7 +224,6 @@ router.post('/settings', async (req: LoggedInRequest, res) => {
     }
     if (smtpGeaendert.length && !await bestaetigePasswort(req, res, uid, req.body.admin_password)) return;
 
-    // Check if brickset limit is being increased before saving
     const oldBricksetLimit = req.body.api_limit_brickset !== undefined
       ? parseInt(await getGlobalSetting('api_limit_brickset') || '100')
       : null;
@@ -290,26 +241,21 @@ router.post('/settings', async (req: LoggedInRequest, res) => {
   }
   for (const key of userKeys) {
     if (req.body[key] !== undefined) {
-      // Zentrale Stelle — stösst bei einer ECHTEN Währungsänderung den
-      // Preis-Job an (Begründung in src/konto/settings.ts).
+      // Zentrale Stelle: Eine ECHTE Währungsänderung stösst den Preis-Job an.
       await setUserSetting(uid, key, req.body[key]);
     }
   }
   res.json({ success: true });
 });
 
-// /raw — dieselben Werte wie `/`, nur unter `settings` verpackt. Die
-// Einstellungsseite lädt hierüber. Inhalt kommt aus readSettings(), damit die
-// Maskierung nicht an der Verpackung vorbeigeht (siehe dort).
+// Über readSettings(), damit die Maskierung nicht an der Verpackung vorbeigeht.
 router.get('/settings/raw', async (req: LoggedInRequest, res) => {
   res.json({ success: true, settings: await readSettings(angemeldeteNutzerId(req), istVerwalter(req)) });
 });
 
-// /cache-stats liegt seit Etappe 7 unter /api/v1/admin/cache-stats.
-
 router.get('/settings/export', async (req, res) => {
-  // Nur Verwalter bekommen die Installation mit: Der Import nimmt globale
-  // Werte ohnehin nur von ihnen an, und SMTP-Daten gehen ein Unterkonto nichts an.
+  // Nur Verwalter: Der Import nimmt globale Werte nur von ihnen an, und
+  // SMTP-Daten gehen ein Unterkonto nichts an.
   const global = istVerwalter(req) ? await globaleWerteOhneGeheimnisse() : {};
   const userSettings: any = await nutzerEinstellungen(nutzerId(req)!);
   res.setHeader('Content-Type', 'application/json');
@@ -317,17 +263,12 @@ router.get('/settings/export', async (req, res) => {
   res.json({ exported_at: new Date().toISOString(), exported_by: nutzerName(req), version: '3.0', global, user_settings: userSettings });
 });
 
-// ── GET /api/settings/export/data — Sets, Teile, Figuren, Merkliste und Alarme
-// als CSV in einem ZIP; dieselben CSV-Bauer wie die Einzelexporte.
 router.get('/settings/export/data', async (req: LoggedInRequest, res) => {
   // archiver 8 ist ein ES-Modul; aus CommonJS geht nur require(), kein Import.
   const { ZipArchive } = require('archiver');
   const uid = angemeldeteNutzerId(req);
 
-  // merkliste.csv kam dazu: „Merklisten sollen
-  // ebenfalls analog den anderen Seiten exportiert und importiert werden."
-  // Im SELBEN Archiv und nicht als eigene Route — die drei einzelnen
-  // /export/csv-Routen sind in diesem Baum ausdruecklich ENTFERNT worden …
+  // Alles im selben Archiv: Die Konfigurationsexporte können Bestandsdaten nicht tragen.
   // Ausführlich: docs/begruendungen/routes/api_v1/settings.ts.md#get-export-data
   const [setsCsv, partsCsv, figsCsv, merkCsv, alarmCsv] = await Promise.all([
     buildSetsCsv(uid), buildPartsCsv(uid), buildFigsCsv(uid), buildMerklisteCsv(uid),
@@ -359,12 +300,9 @@ router.post('/settings/import', importUpload.single('file'), async (req: LoggedI
   const globalKeys = ['bricklink_consumer_key','bricklink_consumer_secret','bricklink_token',
     'bricklink_token_secret','brickset_api_key','rebrickable_api_key','price_job_interval_minutes',
     'price_cache_ttl','api_limit_rebrickable','api_limit_bricklink','api_limit_brickset',
-    // smtp_* fehlen mit Absicht: Ein Mailserver wird nur im Formular und mit
-    // Passwort umgestellt (POST /). Eine Importdatei kommt von irgendwoher, und
-    // mit smtp_host + smtp_insecure_tls gingen Passwort und Rücksetz-Mails an
-    // einen fremden Server. Das SMTP-Passwort steht ohnehin in keinem Export.
+    // smtp_* fehlen mit Absicht: Eine Importdatei kommt von irgendwoher, und mit
+    // smtp_host + smtp_insecure_tls gingen Rücksetz-Mails an einen fremden Server.
     'registration_enabled', 'default_price_condition', 'gutschein_land',
-    // konfigurierbare Job-Zeiten aus dem Monitoring (job_time_<name>)
     ...DAILY_JOBS.map(j => `job_time_${j.name}`)];
   const userKeys = ['currency', 'user_default_condition'];
   const uid = angemeldeteNutzerId(req);
@@ -374,8 +312,7 @@ router.post('/settings/import', importUpload.single('file'), async (req: LoggedI
   if (config.global && istVerwalter(req)) {
     for (const key of globalKeys) {
       if (config.global[key] !== undefined) {
-        // Eine Datei aus einem älteren Export kann noch maskierte Werte
-        // enthalten — die dürfen die echten Schlüssel nicht überschreiben.
+        // Maskierte Werte aus älteren Exporten dürfen echte Schlüssel nicht überschreiben.
         if (SECRET_KEYS.has(key) && isMaskedValue(config.global[key])) continue;
         await setGlobalSetting(key, config.global[key]);
         imported++;
@@ -385,34 +322,27 @@ router.post('/settings/import', importUpload.single('file'), async (req: LoggedI
   if (config.user_settings) {
     for (const key of userKeys) {
       if (config.user_settings[key] !== undefined) {
-        // Zentrale Stelle — eine importierte Währungsänderung stösst den
-        // Preis-Job genauso an wie das Formular (src/konto/settings.ts).
+        // Zentrale Stelle: Eine importierte Währungsänderung stösst den Preis-Job an.
         await setUserSetting(uid, key, config.user_settings[key]);
         imported++;
       }
     }
   }
-  // Ohne Admin-Prüfung, denn der Router trägt nur requireLogin. Jedes Konto —
-  // auch ein Unterkonto im Haushalt — konnte damit eine Ein-Zeilen-Datei
-  // ({"user_settings":{"currency":"CHF"}}) hochladen und den Preis-Cache der
-  // GANZEN Installation leeren. Beliebig oft. Der nächste Bewertungslauf holt …
+  // Nur Verwalter: Sonst könnte jedes Konto per Ein-Zeilen-Datei den Preis-Cache
+  // der ganzen Installation leeren.
   // Ausführlich: docs/begruendungen/routes/api_v1/settings.ts.md#abschnitt-2
 
-  // Importierte Job-Zeiten / Preis-Intervall sofort übernehmen (Scheduler neu planen).
   if (istVerwalter(req)) await zeitplanNeuPlanen();
   const note = (istVerwalter(req) ? 'Globale + Benutzer-Einstellungen importiert' : 'Nur Benutzer-Einstellungen importiert')
     + (istVerwalter(req) && smtpUebergangen.length ? '; SMTP nicht übernommen — bitte im Formular setzen' : '');
   res.json({ success: true, imported, note, smtp_uebergangen: istVerwalter(req) ? smtpUebergangen : [] });
 });
 
-// SMTP Test-Endpoint
 router.post('/settings/smtp-test', async (req, res) => {
   if (!istVerwalter(req)) return sendeFehler(req, res, 403, 'nur_admins');
-  // First verify connection
   const verify = await testSmtp();
   if (!verify.success) return sendeFehler(req, res, 400, (verify as any).code);
 
-  // Determine recipient: use provided email, or look up admin's email from DB
   let to = (req.body.to || '').trim();
   if (!to) {
     to = (await profil(angemeldeteNutzerId(req)))?.email || '';
@@ -430,7 +360,6 @@ router.post('/settings/smtp-test', async (req, res) => {
   res.json(result);
 });
 
-// ── Einrichtung beim ersten Start (public/js/22-einrichtung.js) ─────────────
 // Offen, solange der Verwalter sie nicht abgeschlossen hat UND noch etwas
 // fehlt — eine eingerichtete Installation sieht den Assistenten nie.
 router.get('/settings/einrichtung', async (req, res) => {
@@ -454,17 +383,14 @@ router.post('/settings/einrichtung/fertig', async (req, res) => {
   res.json({ success: true });
 });
 
-// Testknopf je Quelle: prüft den GESPEICHERTEN Zugang mit einem kleinen Abruf.
+// Prüft den GESPEICHERTEN Zugang mit einem kleinen Abruf.
 router.post('/settings/quelle-testen', async (req, res) => {
   if (!istVerwalter(req)) return sendeFehler(req, res, 403, 'nur_admins');
   await quellePruefen(String(req.body?.quelle ?? ''));
   res.json({ success: true });
 });
 
-// GET /api/settings/admin/cache-ttl
-// Cache-Dauer liegt seit Etappe 7 unter /api/v1/admin/cache-ttl.
-
-// Eigenes Design des Kontos; leer heisst „Vorgabe des Verwalters“.
+// Leer heisst „Vorgabe des Verwalters".
 router.post('/settings/user/theme', async (req: LoggedInRequest, res) => {
   const uid = angemeldeteNutzerId(req);
   await setzeEigenesDesign(uid, req.body?.theme);
@@ -477,16 +403,11 @@ router.post('/settings/admin/theme', requireAdmin, async (req, res) => {
     return sendeFehler(req, res, 400, 'design_ungueltig');
   }
   setGlobalSetting('app_theme', theme);
-  // Der Wert steckt im serverseitig gerenderten <html data-theme> — Cache
-  // verwerfen, sonst liefert der Server bis zum Neustart das alte Design aus.
+  // Das Design steckt im serverseitig gerenderten <html data-theme>; ohne
+  // Verwerfen käme bis zum Neustart das alte.
   invalidateTheme();
   res.json({ success: true, theme });
 });
-
-// GET /api/settings/default-condition — readable by all authenticated users
-// GET /api/settings/admin/default-condition
-// Der globale Standard-Zustand liegt unter /api/v1/settings/default-condition
-// (lesen) und /api/v1/admin/default-condition (setzen) — Etappe 7.
 
 router.use(fehlerAntwort);
 

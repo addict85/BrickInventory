@@ -1,7 +1,5 @@
 import * as db from '../../../db/database';
 
-/** Abfragen der Portfolio-Kurve: Tageswerte aus Verlauf und Cache je Set und Menge. */
-
 export function tageswerteAusVerlauf(currency: string, condition: string, setNumbers: string[], mengen: number[], datumsFilter: string, bExpr: string) {
   return db.all(`WITH mengen AS MATERIALIZED (
        SELECT * FROM unnest($3::text[], $4::int[]) AS m(set_number, qty)

@@ -1,7 +1,5 @@
 import * as db from '../../../db/database';
 
-/** Geheimnisse aus der Zeit vor der Verschlüsselung: Gutschein-PINs und Schlüssel des zweiten Faktors. */
-
 export type Kandidat = { art: 'pin' | 'faktor'; k: number; v: string | null };
 
 export async function klartextKandidaten(): Promise<Kandidat[]> {

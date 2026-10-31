@@ -1,11 +1,7 @@
 import * as db from '../../../db/database';
 import { blJoin, blNummerSql } from '../../../db/blZuordnungSql';
 
-/**
- * Datenzugriff für manuell erfasste Minifiguren — Zwilling zu den Teilen
- * (src/teile/repository/manuelleTeile.ts). Die BrickLink-Nummer hängt an der
- * Figur (bl_zuordnung, Migration 0037), nicht am Exemplar.
- */
+/** Die BrickLink-Nummer hängt an der Figur (bl_zuordnung), nicht am Exemplar. */
 
 export function figurZeileManuell(uid: number, figNumber: string): Promise<{ id: number } | undefined> {
   return db.get("SELECT id FROM minifigs WHERE user_id=$1 AND fig_number=$2 AND source='manual'", [uid, figNumber]);

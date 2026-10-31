@@ -1,7 +1,4 @@
-/**
- * Fehlende Bilder im Hintergrund laden — der geplante Auftrag 'bild_nachlauf'
- * (stündlich, der erste 30 s nach dem Start; src/auftraege/zeitplan.ts).
- */
+/** Stündlich, der erste 30 s nach dem Start (src/auftraege/zeitplan.ts). */
 import { bilderFuerNachlauf } from '../src/katalog/bildlage';
 import { logAndContinue, meldeUndLiefere } from '../src/infra/httpError';
 import { generateThumb } from '../src/katalog/bilder/thumbs';
@@ -12,7 +9,6 @@ import * as monitor from '../src/auftraege/jobMonitor';
 import { AuftragUnterbrochen, type AuftragsKontext } from './auftragsWorker';
 
 async function bildNachlauf(k: AuftragsKontext): Promise<void> {
-  // Manuell erfasste Teile und alle Minifiguren laden dauerhaft in den lokalen Cache.
   const { sets, teile: manualParts, figuren: figsToFetch } = await bilderFuerNachlauf();
   if (!sets.length && !manualParts.length && !figsToFetch.length) {
     await monitor.update('imgDl', { status: 'idle', sub: 'Alle Bilder gecacht', label: '📥 Bild-Download (CDN)' }).catch(logAndContinue('bild-nachlauf:Download'));
@@ -41,19 +37,12 @@ async function bildNachlauf(k: AuftragsKontext): Promise<void> {
   for (const p of manualParts) {
     const local = await enrich.downloadImage(p.image_url, p.part_number, p.color_id ?? KEINE_FARBE, 'part').catch(meldeUndLiefere('bild-nachlauf:downloadImage', null));
     if (local) {
-      // In den Katalog (src/katalog/katalogPflege.ts) — einmal fuer alle
-      // Konten. Mit Protokoll, falls es scheitert: Das Bild liegt dann
-      // auf der Platte, der Katalog zeigt aber nicht darauf. In der
-      // Oberflaeche fehlt es weiterhin, und der naechste Start laedt es
-      // erneut herunter.
+      // Einmal für alle Konten in den Katalog; scheitert es, liegt das Bild zwar
+      // auf der Platte, die Oberfläche zeigt es aber nicht — darum mit Protokoll.
       await setzeTeilBildLokal(p.part_number, p.color_id ?? KEINE_FARBE, local)
         .catch(logAndContinue(`bilder:teil ${p.part_number}`));
-      // Fehlte bisher: Ohne diesen Aufruf blieb es bei der Originalgrösse,
-      // dauerhaft — anders als bei Sets (downloadSetImages() oben), wo
-      // die Vorschau schon immer angestossen wurde. Der einmalige
-      // Startup-Job weiter unten ("Generate missing thumbnails") hätte
-      // das irgendwann nachgeholt, aber erst beim NÄCHSTEN
-      // Server-Neustart — nicht wenn das Bild gerade frisch da ist.
+      // Die Vorschau gleich anstossen, sonst bliebe es bis zum nächsten Neustart
+      // bei der Originalgrösse.
       generateThumb(local).catch(logAndContinue('bild-nachlauf:generateThumb'));
     }
     await tick();
@@ -61,12 +50,9 @@ async function bildNachlauf(k: AuftragsKontext): Promise<void> {
   for (const f of figsToFetch) {
     const local = await enrich.downloadImage(f.image_url, f.fig_number, 0, 'minifig').catch(meldeUndLiefere('bild-nachlauf:downloadImage', null));
     if (local) {
-      // Eine Zeile, nicht mehr alle Zeilen dieser Figur ueber Nutzer
-      // und Quellen hinweg: Die Datei heisst nach der Nummer, und der
-      // Katalog fuehrt sie seit Migration 0034 genau einmal.
+      // Eine Zeile: Der Katalog führt die Figur seit Migration 0034 genau einmal.
       await setzeFigurBildLokal(f.fig_number, local)
         .catch(logAndContinue(`bilder:minifigur ${f.fig_number}`));
-      // Dieselbe fehlende Vorschau-Erzeugung wie bei den Teilen oben.
       generateThumb(local).catch(logAndContinue('bild-nachlauf:generateThumb'));
     }
     await tick();

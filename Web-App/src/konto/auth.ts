@@ -1,9 +1,6 @@
-/**
- * Anmeldung und Geräte-Tokens: Anmeldedaten prüfen, Tokens ausstellen,
- * prüfen, tauschen und widerrufen. Was am Request hängt (Sitzung, Kopfzeile,
- * Antwort), steht in src/konto/http/anmeldung.ts.
- * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#abschnitt
- */
+/** Anmeldung und Geräte-Tokens. Der Token-Cache spart je Anfrage zwei
+ * Datenbank-Rundläufe, weil die App beim Öffnen viele Anfragen parallel feuert.
+ * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#abschnitt */
 import { konfig } from '../infra/konfig';
 import * as db from '../../db/database';
 import crypto from 'crypto';
@@ -18,18 +15,15 @@ import type { TokenScope } from './repository/zugaenge';
 
 export type { TokenScope };
 
-/**
- * Typisiert, weil ein vertippter Feldname hier `undefined` liefert und
- * `undefined` in einer Sicherheitsprüfung still als „nein" durchgeht.
- * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#tokenbenutzer
- */
+/** Typisiert, weil ein vertippter Feldname `undefined` liefert und das in einer
+ * Sicherheitsprüfung still als „nein" durchgeht. */
 export interface TokenBenutzer {
   user_id: number;
   username?: string;
   is_admin?: number;
   /** Die GLEITENDE Frist: „so lange ungenutzt" (siehe _touchLastUsed). */
   expires_at?: string | Date | null;
-  /** Die FESTE Frist, falls beim QR-Code eine gewaehlt wurde. `null` = keine. */
+  /** Die FESTE Frist, falls beim QR-Code eine gewählt wurde. `null` = keine. */
   hard_expires_at?: string | Date | null;
   last_used?: string | Date | null;
   sliding?: boolean;
@@ -48,7 +42,6 @@ interface CacheEintrag {
   schreibt?: boolean;
 }
 
-/** Die Konto-Felder, die assertLoginAllowed tatsaechlich prueft. */
 export interface KontoZustand {
   is_active: boolean;
   email_verified: boolean;
@@ -61,11 +54,8 @@ export function hashToken(token: string): string {
   return crypto.createHash('sha256').update(token).digest('hex');
 }
 
-/**
- * E-Mail-Verifikation: den ROHEN Token aus der URL einlösen. Leer zählt wie
- * „nicht da" — der Hash eines leeren Strings ist ein gültiger SHA-256-Wert.
- * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#verifiziereemailtoken
- */
+/** Leer zählt wie „nicht da": Der Hash eines leeren Strings ist ein gültiger
+ * SHA-256-Wert. */
 export async function verifiziereEmailToken(token: unknown): Promise<{ ok: boolean; grund?: string; userId?: number }> {
   if (token === undefined || token === null || String(token).trim() === '') {
     return { ok: false, grund: 'fehlt' };
@@ -79,20 +69,16 @@ export async function verifiziereEmailToken(token: unknown): Promise<{ ok: boole
 const TOKEN_TTL_MS = 60 * 1000;       // Cache-Gültigkeit
 const TAG_MS = 86_400_000;
 
-/**
- * Rotation: Ab 30 Tagen seit dem letzten Tausch sagt jede Antwort
- * `X-Token-Rotation: faellig`. Ein unbegrenzter Token gilt nach 60 Tagen ohne
- * Tausch nur noch für den Tausch selbst — so stirbt eine gestohlene Kopie,
- * sobald das echte Gerät tauscht, und ein Gerät, das nie tauscht, fällt auf.
- */
+/** Ab 30 Tagen meldet jede Antwort die Rotation; ein unbegrenzter Token gilt
+ * nach 60 Tagen nur noch für den Tausch — so stirbt eine gestohlene Kopie,
+ * sobald das echte Gerät tauscht, und ein Gerät, das nie tauscht, fällt auf. */
 export const ROTATION_FAELLIG_TAGE = 30;
 export const ROTATION_PFLICHT_TAGE = 60;
-/** So lange gilt der alte Token nach dem Tausch noch, falls die Antwort verloren geht. */
+/** Falls die Antwort des Tauschs verloren geht. */
 export const UEBERLAPPUNG_MS = 5 * 60 * 1000;
 
 const _tokenCache = new Map<string, CacheEintrag>();
 
-// Bei einer Handvoll Nutzern reichen 200 Einträge.
 function _pruneCache() {
   if (_tokenCache.size <= 200) return;
   const cutoff = Date.now() - TOKEN_TTL_MS;
@@ -109,20 +95,16 @@ function fristErreicht(zeitpunkt: string | Date | null | undefined, jetzt: numbe
 const tageSeit = (zeitpunkt: string | Date | null | undefined, jetzt: number): number =>
   zeitpunkt ? (jetzt - new Date(zeitpunkt).getTime()) / TAG_MS : 0;
 
-/** Sollte dieser Token getauscht werden? (Nur Hinweis, keine Sperre.) */
 export function rotationFaellig(u: TokenBenutzer, jetzt = Date.now()): boolean {
   return tageSeit(u.rotiert_am, jetzt) >= ROTATION_FAELLIG_TAGE;
 }
 
-/** Gilt dieser Token nur noch für den Tausch? Betrifft allein „unbegrenzt". */
 export function rotationPflicht(u: TokenBenutzer, jetzt = Date.now()): boolean {
   return u.never_expires === true && tageSeit(u.rotiert_am, jetzt) >= ROTATION_PFLICHT_TAGE;
 }
 
-/**
- * Der grobe Adressbereich für die Geräteliste: IPv4 als /24, IPv6 als /48.
- * Genug, um ein fremdes Netz zu erkennen; die genaue Adresse wird nicht gespeichert.
- */
+/** /24 bzw. /48: genug, um ein fremdes Netz zu erkennen; die genaue Adresse
+ * wird nicht gespeichert. */
 export function ipBereich(ip: string | null | undefined): string | null {
   if (!ip) return null;
   const v4 = /^(?:::ffff:)?(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.\d{1,3}$/i.exec(ip);
@@ -136,14 +118,10 @@ export function ipBereich(ip: string | null | undefined): string | null {
   return `${teile.slice(0, 3).map(g => g.toLowerCase().replace(/^0+(?=.)/, '')).join(':')}::/48`;
 }
 
-/** Was eine Prüfung ergibt: der Nutzer, oder warum nicht. */
 export interface TokenPruefung { nutzer: TokenBenutzer | null; grund?: 'token_rotation_noetig' }
 
-/**
- * Validiert einen Bearer-Token. Nutzt den In-Memory-Cache; DB nur bei Miss.
- * `zweck: 'rotation'` lässt einen unbegrenzten Token auch nach der Pflichtfrist
- * durch — nur der Tausch selbst darf ihn dann noch benutzen.
- */
+/** `zweck: 'rotation'` lässt einen unbegrenzten Token auch nach der
+ * Pflichtfrist durch — nur für den Tausch selbst. */
 export async function pruefeToken(token: string | null | undefined,
                            o: { ip?: string | null | undefined; zweck?: 'nutzung' | 'rotation' } = {}): Promise<TokenPruefung> {
   if (!token) return { nutzer: null };
@@ -166,8 +144,8 @@ export async function pruefeToken(token: string | null | undefined,
   const hashed = hashToken(token);
   const row: TokenBenutzer | undefined = await repo.gueltigerToken(hashed);
   if (!row) { _tokenCache.delete(token); return { nutzer: null }; }
-  // Verwalterrecht nur mit Scope `voll`: An dieser einen Stelle entschieden,
-  // sehen es alle Wächter (requireApiAdmin, istVerwalter, Kontingent) gleich.
+  // Verwalterrecht nur mit Scope `voll`, an dieser einen Stelle entschieden,
+  // damit alle Wächter es gleich sehen.
   row.is_admin = row.konto_is_admin && row.scope === 'voll' ? 1 : 0;
   if (row.vorgaenger) {
     await repo.beendeUeberlappung(row.vorgaenger, hashed);
@@ -187,12 +165,9 @@ export async function validateToken(token: string | null | undefined,
   return (await pruefeToken(token, o)).nutzer;
 }
 
-/**
- * Letzte Nutzung, Adressbereich und Gleitfrist schreiben — höchstens einmal je
- * Tag und Token, und ohne den Anfrageweg aufzuhalten. Die Entscheidung fällt
- * am gelesenen Datensatz, nicht an einem Zähler je Prozess: so gilt der Tag
- * auch über mehrere Worker, und die WHERE-Klausel fängt den Wettlauf.
- */
+/** Höchstens einmal je Tag und Token, ohne den Anfrageweg aufzuhalten. Die
+ * Entscheidung fällt am gelesenen Datensatz, damit sie über mehrere Worker
+ * gilt; die WHERE-Klausel fängt den Wettlauf. */
 function _touchLastUsed(entry: CacheEintrag, ip?: string | null): void {
   const jetzt = Date.now();
   const u = entry.user;
@@ -213,28 +188,22 @@ function _touchLastUsed(entry: CacheEintrag, ip?: string | null): void {
     .finally(() => { entry.schreibt = false; });
 }
 
-/** Beim Logout/Token-Löschen aufrufen, damit der Token sofort ungültig wird. */
+/** Damit der Token sofort ungültig wird, nicht erst nach Ablauf des Caches. */
 export function invalidateToken(token: string | null | undefined): void {
   if (!token) return;
   _tokenCache.delete(token);
 }
 
-/**
- * Den ganzen Token-Cache verwerfen — für Löschungen ohne Klartext (die
- * Token-Verwaltung kennt nur den Hash-Anfang). Den Cache hält nur der
- * Web-Prozess, und widerrufen wird nur dort.
- */
+/** Für Löschungen ohne Klartext (die Token-Verwaltung kennt nur den
+ * Hash-Anfang). Den Cache hält nur der Web-Prozess. */
 export function leereTokenCache(): void {
   _tokenCache.clear();
 }
 
-/** Kostenfaktor für bcrypt.hash — überall derselbe. */
 export const BCRYPT_ROUNDS = 12;
 
-/**
- * Wie kurz ein Passwort hoechstens sein darf.
- * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#passwort-min-zeichen
- */
+/** Eine Konstante, damit alle Routen, die ein Passwort setzen, dieselbe Länge prüfen.
+ * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#passwort-min-zeichen */
 export const PASSWORT_MIN_ZEICHEN = 8;
 
 export function passwortZuKurz(passwort: unknown): boolean {
@@ -243,26 +212,20 @@ export function passwortZuKurz(passwort: unknown): boolean {
 
 export const USERNAME_RE = /^[A-Za-z0-9_.-]{3,32}$/;
 
-/**
- * Bewusst grob: Die Adresse wird ohnehin gegen die Datenbank geprüft, und
- * strengere Muster lehnen regelmässig gültige Adressen ab.
- */
+/** Bewusst grob: Die Adresse wird ohnehin gegen die Datenbank geprüft, und
+ * strengere Muster lehnen regelmässig gültige Adressen ab. */
 export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-/**
- * Darf das als ANMELDENAME durchgehen? Name oder E-Mail.
- * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#isvalidloginidentifier
- */
+/** Name ODER E-Mail, weil die Anmeldung in beiden Spalten sucht.
+ * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#isvalidloginidentifier */
 export function isValidLoginIdentifier(value: unknown): boolean {
   const v = String(value || '');
   return USERNAME_RE.test(v) || (v.length <= 254 && EMAIL_RE.test(v));
 }
 
-/**
- * Prüft die Konto-Vorbedingungen NACH erfolgreicher Passwortprüfung. Die
- * Absage kommt als CODE: Welche Sprache der Anfragende sieht, weiss die Route.
- * @returns null = Login erlaubt
- */
+/** Nach erfolgreicher Passwortprüfung. Die Absage kommt als CODE, weil die
+ * Route weiss, welche Sprache der Anfragende sieht.
+ * @returns null = Login erlaubt */
 export function assertLoginAllowed(user: KontoZustand):
     { status: number; code: FehlerCode; unverified?: boolean } | null {
   if (!user.is_active)
@@ -272,22 +235,19 @@ export function assertLoginAllowed(user: KontoZustand):
   return null;
 }
 
-/**
- * Für unbekannte Namen: bcrypt.compare() braucht dann dieselbe Zeit wie bei
- * einem echten Konto. Mit denselben Runden erzeugt, damit die Kosten gleich sind.
- */
+/** Für unbekannte Namen: bcrypt.compare() braucht dann dieselbe Zeit wie bei
+ * einem echten Konto, mit denselben Runden erzeugt. */
 const DUMMY_HASH = bcrypt.hashSync('nonexistent-account-placeholder', BCRYPT_ROUNDS);
 
-/** Absage an einen Anmeldeversuch — fertig zum Verschicken. */
 export interface AnmeldeAbsage {
   status: number;
   code: FehlerCode;
   vars?: Record<string, string | number>;
-  /** Nur bei unbestätigter E-Mail: Der Client blendet dann das Erneut-senden an. */
+  /** Der Client blendet dann „E-Mail erneut senden" ein. */
   unverified?: boolean;
   /** Passwort stimmt, es fehlt (oder scheiterte) der Code des zweiten Faktors. */
   zweiterFaktor?: boolean;
-  /** Das Konto hat Passkeys: Statt des Codes geht auch eine Passkey-Antwort. */
+  /** Statt des Codes geht auch eine Passkey-Antwort. */
   passkey?: boolean;
 }
 
@@ -295,15 +255,12 @@ export type AnmeldeErgebnis =
   | { ok: true; user: Record<string, any> }
   | { ok: false; absage: AnmeldeAbsage };
 
-/** Woher ein Versuch kommt — die Bremse zählt je Adresse. */
 export interface Herkunft { ip?: string | null }
 
-/**
- * Anmeldedaten prüfen — die einzige Stelle im Baum, an der das passiert.
+/** Die einzige Stelle, an der Anmeldedaten geprüft werden: Zwei Fassungen für
+ * Webapp und App waren schon einmal auseinandergelaufen.
  * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#pruefeanmeldedaten
- * @param username Benutzername ODER E-Mail-Adresse.
- * @param code     Einmal- oder Wiederherstellungscode (src/konto/zweiterFaktor.ts).
- */
+ * @param username Benutzername ODER E-Mail-Adresse. */
 export async function pruefeAnmeldedaten(herkunft: Herkunft, username: unknown, password: unknown, code?: unknown,
                                   passkeyAntwort?: unknown): Promise<AnmeldeErgebnis> {
   const absage = (status: number, code: FehlerCode,
@@ -324,7 +281,7 @@ export async function pruefeAnmeldedaten(herkunft: Herkunft, username: unknown, 
   if (gesperrt) return absage(429, gesperrt.code, gesperrt.vars);
 
   const user = await repo.kontoZurAnmeldung(name);
-  // Der Vergleich läuft auch ohne Treffer, gegen DUMMY_HASH (s. o.).
+  // Auch ohne Treffer, gegen DUMMY_HASH: gleiche Zeit für unbekannte Namen.
   const passtDasPasswort = await bcrypt.compare(String(password), user?.password_hash || DUMMY_HASH);
   if (!user || !passtDasPasswort) {
     await recordLoginFailure(ip, name);
@@ -355,24 +312,17 @@ export async function pruefeAnmeldedaten(herkunft: Herkunft, username: unknown, 
   return { ok: true, user };
 }
 
-/**
- * Escaped LIKE-Sonderzeichen. Ohne das löscht ein "%" als tokenId in
- * DELETE /api/settings/tokens/:tokenId alle Tokens des Nutzers auf einmal.
- */
+/** Ohne das löscht ein "%" als tokenId alle Tokens des Nutzers auf einmal. */
 export function escapeLike(s: unknown): string { return String(s ?? '').replace(/([%_\\])/g, '\\$1'); }
 
-/**
- * Der Wert, mit dem „unbegrenzt" in der Tageszahl steht.
- * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#unbegrenzt
- */
+/** 0, weil null schon „nichts gewählt, Gleitfrist" heisst und beide mit der
+ * Nonce in einem Feld reisen.
+ * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#unbegrenzt */
 export const UNBEGRENZT = 0;
 
-/**
- * Die WAEHLBAREN festen Laufzeiten eines QR-Zugangs, in Tagen. „unbegrenzt"
- * ist nicht die Vorgabe: Es nimmt die einzige selbsttätige Reissleine für ein
- * verlorenes Gerät weg (db/migrations/0017-token-unbegrenzt.sql).
- * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#token-laufzeiten
- */
+/** „unbegrenzt" ist nicht die Vorgabe: Es nimmt die einzige selbsttätige
+ * Reissleine für ein verlorenes Gerät weg.
+ * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#token-laufzeiten */
 const TOKEN_LAUFZEITEN: Record<string, number> = {
   '1m':  30,
   '2m':  60,
@@ -381,32 +331,22 @@ const TOKEN_LAUFZEITEN: Record<string, number> = {
   'unbegrenzt': UNBEGRENZT,
 };
 
-/**
- * Eine Laufzeit-Angabe aus einer Anfrage in Tage uebersetzen.
- * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#laufzeittage
- * @returns Tage, oder null fuer „keine feste Frist"
- */
+/** ausTabelle statt direktem Zugriff: 'constructor' lieferte sonst eine geerbte Funktion.
+ * @returns Tage, oder null für „keine feste Frist" */
 export function laufzeitTage(wahl: unknown): number | null {
   if (wahl === undefined || wahl === null || wahl === '') return null;
   return ausTabelle(TOKEN_LAUFZEITEN, String(wahl)) ?? null;
 }
 
-/** Zusätzliche Angaben zu einem neuen Token. */
 export interface TokenOptionen {
   /** Vorgabe `app`: Verwalterrechte gibt es nur auf ausdrücklichen Wunsch. */
   scope?: TokenScope;
-  /** Adresse der ausstellenden Anfrage, für die Geräteliste. */
   ip?: string | null | undefined;
 }
 
-/**
- * Einen Bearer-Token ausstellen.
- * @param dauerhaft  true = Gerätezugang mit Gleitfrist (App, QR); false = sieben
- *                   feste Tage — ein kurzlebiger Token gleitet nicht, Benutzung
- *                   durch einen Angreifer soll ihn nicht verlängern.
- * @param festeTage  feste Höchstdauer; `UNBEGRENZT` (0) = ohne Ablauf, nur über HTTPS erlaubt
- *                   (prüft die Route) und dann mit Rotationspflicht.
- */
+/** @param dauerhaft  true = Gerätezugang mit Gleitfrist; false = sieben feste
+ *                   Tage — Benutzung durch einen Angreifer soll ihn nicht verlängern.
+ * @param festeTage  `UNBEGRENZT` (0) = ohne Ablauf, nur über HTTPS und mit Rotationspflicht. */
 export async function createToken(userId: number, label = 'Android App', dauerhaft = false,
                            festeTage: number | null = null, o: TokenOptionen = {}): Promise<string> {
   const token = crypto.randomBytes(32).toString('hex');
@@ -418,7 +358,6 @@ export async function createToken(userId: number, label = 'Android App', dauerha
   return token;
 }
 
-/** Ergebnis eines Tauschs. */
 export interface Tausch {
   token: string;
   scope: TokenScope;
@@ -429,12 +368,10 @@ export interface Tausch {
   alt_gueltig_bis: Date;
 }
 
-/**
- * Einen Token gegen einen neuen tauschen. Der alte gilt danach höchstens noch
- * UEBERLAPPUNG_MS — bis zur ersten Nutzung des neuen. Ein zweiter Tausch mit
- * dem alten (Antwort verloren) ersetzt den unbenutzten Nachfolger.
- * @returns null, wenn der alte Token nicht (mehr) gilt.
- */
+/** Der alte gilt danach höchstens UEBERLAPPUNG_MS, bis zur ersten Nutzung des
+ * neuen; ein zweiter Tausch mit dem alten (Antwort verloren) ersetzt den
+ * unbenutzten Nachfolger.
+ * @returns null, wenn der alte Token nicht (mehr) gilt. */
 export async function rotiereToken(alt: string, ip?: string | null): Promise<Tausch | null> {
   const altHash = hashToken(alt);
   const neu = crypto.randomBytes(32).toString('hex');
@@ -459,48 +396,35 @@ export async function deleteToken(token: string): Promise<void> {
   invalidateToken(token);
 }
 
-/**
- * Alle offenen BROWSER-SITZUNGEN eines Kontos beenden.
- * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#revokeallsessions
- */
+/** In user_sessions, wo der Session-Store wirklich liegt.
+ * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#revokeallsessions */
 export async function revokeAllSessions(userId: number): Promise<void> {
   await repo.loescheSitzungenDesKontos(userId);
 }
 
-/**
- * Alle Zugänge eines Kontos ausser dem gerade benutzten beenden — nach dem
- * Einschalten des zweiten Faktors: Ein Angreifer, der schon drin war, soll
- * nicht mit einem alten Token oder einer alten Sitzung drinbleiben.
- */
+/** Nach dem Einschalten des zweiten Faktors: Wer schon drin war, soll nicht
+ * mit einem alten Token oder einer alten Sitzung drinbleiben. */
 export async function beendeAndereZugaenge(userId: number, aktuellerToken: string | null, sitzungsId: string | null): Promise<void> {
   await repo.loescheTokensDesKontos(userId, aktuellerToken ? hashToken(aktuellerToken) : null);
   leereTokenCache();
   await repo.loescheSitzungenDesKontos(userId, sitzungsId);
 }
 
-/**
- * Ohne Fang: Das Verwerfen aller Tokens ist ein Sicherheitsschritt
- * (Passwortwechsel, Zurücksetzen). Scheitert es still, meldet der Aufrufer
- * Erfolg, während die alten Tokens weitergelten.
- */
+/** Ohne Fang: ein Sicherheitsschritt. Scheitert er still, meldet der Aufrufer
+ * Erfolg, während die alten Tokens weitergelten. */
 export async function revokeAllTokens(userId: number): Promise<void> {
   await repo.loescheTokensDesKontos(userId);
   leereTokenCache();
 }
 
-/**
- * Tage ohne Nutzung, nach denen ein Gerätezugang verfällt (mindestens 1).
- * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#token-idle-days
- */
+/** Gerätezugänge haben kein festes Ende; diese Frist begrenzt, wie lange ein
+ * vergessenes Gerät gilt.
+ * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#token-idle-days */
 export const TOKEN_IDLE_DAYS = konfig().tokenLeerlaufTage;
 
-/**
- * Tokens aufräumen: abgelaufene, und solche, die zu lange ungenutzt sind.
- * Altzeilen ohne Ablaufdatum bekommen vorher ihre Gleitfrist, damit sie nach
+/** Altzeilen ohne Ablaufdatum bekommen vorher ihre Gleitfrist, damit sie nach
  * derselben Regel fallen wie neue.
- * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#purgeexpiredtokens
- * @returns Anzahl gelöschter Zeilen
- */
+ * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#purgeexpiredtokens */
 export async function purgeExpiredTokens() {
   const warn = (was: string) => (e: Error) => { console.warn(`[tokens] ${was}:`, e?.message || e); return 0; };
   const m = await repo.ziehAltzeilenNach(TOKEN_IDLE_DAYS).catch(warn('Altzeilen nachziehen'));

@@ -1,14 +1,11 @@
 import type { DbSchnittstelle } from '../../../db/database';
 import * as db from '../../../db/database';
 
-/** Die eine Zeile der Guthaben-Schranke (id 1): letzter Abruf und Sperre nach einer Drosselung. */
-
 export function legeSchrankeAn(tx: DbSchnittstelle) {
   return tx.run(`INSERT INTO gutschein_guthaben_schranke (id) VALUES (1)
        ON CONFLICT (id) DO NOTHING`);
 }
 
-/** Sekunden bis zum Ende der Sperre und bis zum nächsten erlaubten Abruf. */
 export function schrankenStand(tx: DbSchnittstelle, ABSTAND_SEK: number) {
   return tx.get(`SELECT CEIL(GREATEST(0, EXTRACT(EPOCH FROM (sperre_bis - NOW()))))::int
                 AS sperre_sek,

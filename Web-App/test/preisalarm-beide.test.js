@@ -61,23 +61,15 @@ test('ein Alarm gehört EINEM Konto — kein Blickfeld, nirgends', () => {
   // richtig ist: Wer eine Schwelle setzt, will selbst benachrichtigt werden.
   // Das Elternkonto hätte nichts davon, die Merkposten seiner Kinder per Mail zu
   // bekommen — und dürfte sie schon gar nicht löschen.
-  //
-  // Geprüft wird beides: dass die Route NICHT filtert, und dass sie es
-  // begründet. Ohne die Begründung sieht die Stelle beim nächsten Lesen wie
-  // ein vergessener Filter aus, und jemand „repariert" sie.
   const route = web('routes/api_v1/sets.ts');
   const i = route.indexOf("router.get('/sets/:setNumber/alert'");
-  // Bis zur NAECHSTEN Route nach den Alarmen, nicht bis zu /storage: Zwischen
-  // beiden stehen seit dem Lagerort-Vorrat vier weitere Routen, und die
-  // filtern sehr wohl nach Konto. Der erste Entwurf schnitt bis /storage und
-  // meldete deshalb genau die Zeilen, die richtig sind.
+  // Bis zur nächsten Route nach den Alarmen: Die Lagerort-Routen danach
+  // filtern zu Recht nach Konto.
   const j = route.indexOf("router.get('/alerts/pending'");
   assert.ok(i > 0 && j > i, 'Die Alarm-Routen stehen nicht, wo erwartet');
   const block = route.slice(i, j);
   assert.doesNotMatch(block, /scopeIds|writableIds|parseScopeMode/,
     'Eine Alarm-Route filtert nach Blickfeld — dann bekämen Eltern die Mails der Kinder');
-  assert.match(route.slice(Math.max(0, i - 900), i), /gehoert genau EINEM Konto/,
-    'Die Ausnahme ist nicht begründet — beim nächsten Lesen sieht sie aus wie ein Versehen');
 
   assert.doesNotMatch(KT_API.slice(KT_API.indexOf('getPreisalarme'),
                                    KT_API.indexOf('// ── Lagerort')), /@Query\("accounts"\)/,

@@ -5,28 +5,16 @@ import { mitVersion } from '../sets/setNummer';
 import { merkeFiguren, merkeSetFiguren } from './katalogPflege';
 import * as inhalt from './repository/setInhalt';
 
-/**
- * Minifiguren eines Sets aus dem Katalog übernehmen — reine Katalogarbeit
- * ohne Route, damit src/sets/setService.ts keinen Router importieren muss.
- */
-
-/**
- * Die Figuren eines Sets aus dem gemeinsamen Katalog.
- * Ausführlich: docs/begruendungen/src/katalog/minifigsImport.ts.md#figurenauskatalog
- */
+// Ausführlich: docs/begruendungen/src/katalog/minifigsImport.ts.md#figurenauskatalog
 export async function figurenAusKatalog(setNumber: string) {
   return inhalt.figurenDesSetkatalogs(mitVersion(setNumber)).catch((e: unknown) => { logAndContinue('minifiguren:katalog lesen')(e); return []; });
 }
 
 type Figur = { fig_number: string; fig_name: string; quantity: number; image_url: string | null };
 
-/**
- * Die Figuren eines Sets in den Bestand: Vorhandene Zeilen bleiben stehen
- * (mit Lagerort), neue kommen dazu, weggefallene gehen — alles in einer
- * Transaktion. Steht eine Figur mehrfach in der Liste, ist sie eine Zeile mit
- * der Summe als Katalogmenge (Bestandszeilen haben keine Menge, Migration 0038).
- * @returns die Zahl der Figuren; wirft bei Fehlern (der Auftrag wiederholt dann)
- */
+/** In einer Transaktion; vorhandene Zeilen behalten den Lagerort. Eine Figur,
+ * die mehrfach vorkommt, ist eine Zeile mit der Summe als Katalogmenge.
+ * @returns die Zahl der Figuren; wirft bei Fehlern (der Auftrag wiederholt dann) */
 export async function importiereFiguren(setNumber: string, userId: number): Promise<number> {
   const katalog = await figurenAusKatalog(mitVersion(setNumber));
   const roh: Figur[] = katalog.length
@@ -41,8 +29,8 @@ export async function importiereFiguren(setNumber: string, userId: number): Prom
   }
   const figs = [...jeNummer.values()];
   if (!figs.length) return 0;
-  // Aus dem Katalog gelesen, sind die Mengen schon zusammengefasst und die
-  // Zeilen da; neu geschrieben wird nur, was von der Quelle kam.
+  // Aus dem Katalog sind die Mengen schon zusammengefasst; geschrieben wird nur,
+  // was von der Quelle kam.
   const ausQuelle = !katalog.length;
   const nummern = figs.map(f => f.fig_number);
 

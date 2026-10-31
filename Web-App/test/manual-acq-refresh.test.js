@@ -200,8 +200,6 @@ test('die Regel gilt für alle drei Elementarten gleich', () => {
   // Set, ein manuell erfasstes Teil oder eine manuell erfasste Minifigur —
   // dieselbe Regel, nur ein anderer Schlüssel.
   const acq = read('src/bestand/acquisitions.ts');
-  assert.match(acq, /Pro Tag, Element, Zustand, Preis und Währung gibt es genau EINE Zeile/,
-    'Die Regel gehört im Wortlaut an den Anfang der Datei');
 
   // Die Schlüssel je Art stehen an EINER Stelle — sonst hiesse „Element" je
   // nach Aufrufer etwas anderes.

@@ -1,24 +1,15 @@
-/**
- * Bild-Helfer — zentrale Implementierung.
- * Ausführlich: docs/begruendungen/src/katalog/bilder/images.ts.md#abschnitt
- */
+// Ausführlich: docs/begruendungen/src/katalog/bilder/images.ts.md#abschnitt
 
 import fs from 'fs';
 import crypto from 'crypto';
 import { APP_ROOT, IMAGES_DIR } from '../../infra/appPaths';
 import path from 'path';
 
-// thumbFs → { exists, checkedAt }. Positive Treffer bleiben dauerhaft gültig
-// (Thumbs werden nie gelöscht, nur erzeugt); negative werden nach 10 Min
-// erneut geprüft, damit frisch generierte Thumbs erscheinen.
+// Positive Treffer bleiben gültig (Vorschauen werden nie gelöscht); negative
+// nach 10 Min neu prüfen, damit frisch erzeugte erscheinen.
 const _thumbCache = new Map();
 
-/**
- * Die ältesten n Einträge aus einer Map entfernen (Map hält die
- * Einfügereihenfolge, der erste Schlüssel ist also der älteste).
- * @param {Map<any, any>} map
- * @param {number} n
- */
+/** Map hält die Einfügereihenfolge: Der erste Schlüssel ist der älteste. */
 function _evictOldest(map: Map<any, any>, n: number) {
   let removed = 0;
   for (const k of map.keys()) {
@@ -27,14 +18,12 @@ function _evictOldest(map: Map<any, any>, n: number) {
   }
 }
 
-/** @param {string|null|undefined} localPath @returns {string|null|undefined} */
 export function resolveImageLocal(localPath: string | null | undefined) {
   if (!localPath) return localPath;
   const ext       = path.extname(localPath);
   const thumbPath = localPath.replace(ext, '_thumb.jpg');
   let thumbFs;
   if      (thumbPath.startsWith('/data/'))   thumbFs = path.join(APP_ROOT, thumbPath.slice(1));
-  // /images/… liegt seit der Umstellung unter data/images/ — siehe IMAGES_DIR.
   else if (thumbPath.startsWith('/images/')) thumbFs = path.join(IMAGES_DIR, thumbPath.slice('/images/'.length));
   else return localPath;
 
@@ -43,31 +32,22 @@ export function resolveImageLocal(localPath: string | null | undefined) {
     return hit.exists ? thumbPath : localPath;
 
   const exists = fs.existsSync(thumbFs);
-  // Verdrängung statt Kahlschlag.
-  // VORHER: _thumbCache.clear() — der komplette Cache flog weg, sobald die
-  // Grenze erreicht war. Genau danach prasselt für jede Katalogseite wieder
-  // die volle Ladung existsSync-Aufrufe herein, also ausgerechnet im Moment
-  // der höchsten Last. Jetzt fliegt das älteste Viertel raus; Map bewahrt die
-  // Einfügereihenfolge, die ersten Schlüssel sind damit die ältesten.
+  // Das älteste Viertel verdrängen statt alles zu leeren: Danach käme die volle
+  // Ladung existsSync ausgerechnet im Moment der höchsten Last.
   if (_thumbCache.size > 20000) _evictOldest(_thumbCache, 5000);
   _thumbCache.set(thumbFs, { exists, checkedAt: Date.now() });
   return exists ? thumbPath : localPath;
 }
 
-/**
- * Die Adresse des Bild-Proxys — an EINER Stelle.
- * Ausführlich: docs/begruendungen/src/katalog/bilder/images.ts.md#img-proxy-pfad
- */
+// Ausführlich: docs/begruendungen/src/katalog/bilder/images.ts.md#img-proxy-pfad
 export const IMG_PROXY_PFAD = '/api/v1/img-proxy';
-/** Nur noch für Altbestand und ältere App-Fassungen — siehe oben. */
+/** Nur noch für Altbestand und ältere App-Fassungen. */
 export const IMG_PROXY_PFAD_ALT = '/api/img-proxy';
 
-/** Trägt diese Adresse eine der beiden Proxy-Formen? */
 export function istProxyPfad(src: string): boolean {
   return src.startsWith(IMG_PROXY_PFAD) || src.startsWith(IMG_PROXY_PFAD_ALT);
 }
 
-/** @param {string|null|undefined} url @returns {string|null} */
 export function proxyImageUrl(url: string | null | undefined) {
   if (!url) return null;
   if (url.startsWith('/')) return url;
@@ -75,21 +55,13 @@ export function proxyImageUrl(url: string | null | undefined) {
   return url;
 }
 
-// _existsCache: analog zu _thumbCache oben, aber für die Existenz der
-// ORIGINAL-Datei — nötig für Aufrufer wie den Katalog, die (anders als
-// sets/parts/minifigs) KEINE gespeicherte image_local-Spalte in einer
-// Pro-Nutzer-Tabelle haben und die Existenz bei jeder Anfrage neu prüfen
-// müssen.
+// Für Aufrufer ohne gespeicherte image_local-Spalte (Katalog), die die
+// Existenz sonst bei jeder Anfrage neu prüften.
 const _existsCache = new Map();
 
-/**
- * Prüft (mit Cache), ob eine lokale Bilddatei existiert, und liefert bei
- * Treffer direkt den Thumb-bevorzugten Pfad über resolveImageLocal() —
- * sonst null.
+/** Liefert bei Treffer den Vorschau-bevorzugten Pfad, sonst null.
  * Ausführlich: docs/begruendungen/src/katalog/bilder/images.ts.md#resolveifexists
- * @param {string} publicRelPath z. B. "/images/sets/10283-1.jpg"
- * @returns {string|null}
- */
+ * @param publicRelPath z. B. "/images/sets/10283-1.jpg" */
 export function resolveIfExists(publicRelPath: string) {
   const hit = _existsCache.get(publicRelPath);
   if (hit && (hit.exists || Date.now() - hit.checkedAt < 10 * 60 * 1000))
@@ -104,10 +76,7 @@ export function resolveIfExists(publicRelPath: string) {
   return exists ? resolveImageLocal(publicRelPath) : null;
 }
 
-/**
- * Wo läge das Bild dieser CDN-Adresse im Proxy-Cache?
- * Ausführlich: docs/begruendungen/routes/imgProxy.ts.md#proxycachepathfor
- */
+// Ausführlich: docs/begruendungen/routes/imgProxy.ts.md#proxycachepathfor
 export function proxyCachePathFor(url: string): string | null {
   if (!url) return null;
   return path.join(APP_ROOT, 'data', 'img_proxy_cache',

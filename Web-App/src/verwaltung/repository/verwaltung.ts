@@ -1,21 +1,13 @@
 import * as db from '../../../db/database';
 import { mengeSkalar } from '../../../db/bestandsmenge';
 
-/**
- * Datenzugriff der Verwaltungsrouten (Überwachung, Bilddiagnose, Caches,
- * Warteschlangen, Preisprobe). routes/api_v1/admin.ts prüft Eingaben und
- * Rechte und schreibt die Antwort; was in der Datenbank geschieht, steht hier.
- */
-
-/** Der Pool-Stand für die Überwachungsseite — die Route spricht db/ nicht selbst an. */
+/** Die Route spricht db/ nicht selbst an. */
 export { getPoolStats } from '../../../db/database';
 
 type Bildzeile = { image_url: string | null; image_local: string | null };
 export type KontoBildzeile = { user_id: number } & Bildzeile;
 type Fehlanzeige = { checked_at: Date; reason: string | null };
 type Schluessel = { cache_key: string };
-
-// ── Preis-Cache ──────────────────────────────────────────────────────────────
 
 export function veraltetePreise(): Promise<any> {
   return db.get("SELECT COUNT(*) as c FROM price_cache WHERE fetched_at <= NOW() - INTERVAL '24 hours'");
@@ -25,9 +17,7 @@ export async function leerePreisCache(): Promise<void> {
   await db.run('DELETE FROM price_cache');
 }
 
-// ── Bilddiagnose und Fehlanzeigen ────────────────────────────────────────────
-
-/** Welche Konten das Set führen — die Bildspalten kommen aus dem Katalog, gleich für alle. */
+/** Die Bildspalten kommen aus dem Katalog, gleich für alle Konten. */
 export function bildZeilenDerKonten(sn: string): Promise<KontoBildzeile[]> {
   return db.all(
     `SELECT s.user_id, c.image_local, c.image_url
@@ -65,7 +55,7 @@ export function vorschauFehlanzeigen(): Promise<Schluessel[]> {
     `SELECT cache_key FROM image_misses WHERE cache_key LIKE 'thumb:%'`);
 }
 
-/** Ein 404 vom CDN bleibt vermerkt: Das Bild gibt es dort nicht, ein neuer Versuch ändert daran nichts. */
+/** Ein 404 vom CDN bleibt vermerkt: Ein neuer Versuch ändert daran nichts. */
 export function setFehlanzeigenOhne404(): Promise<Schluessel[]> {
   return db.all(
     `SELECT cache_key FROM image_misses
@@ -73,8 +63,6 @@ export function setFehlanzeigenOhne404(): Promise<Schluessel[]> {
               AND (reason IS NULL OR reason NOT LIKE '%404%')`
   );
 }
-
-// ── Katalogbilder ────────────────────────────────────────────────────────────
 
 export function katalogBildKandidaten(): Promise<{ set_num: string; set_img_url: string }[]> {
   return db.all(
@@ -84,7 +72,7 @@ export function katalogBildKandidaten(): Promise<{ set_num: string; set_img_url:
                            WHERE m.cache_key = 'set:' || rb.set_num)`);
 }
 
-/** Reiht die Adressen ein; zählt nur, was nicht schon wartete. */
+/** Zählt nur, was nicht schon wartete. */
 export function reiheKatalogBilderEin(urls: string[], sets: string[]): Promise<{ n: number } | undefined> {
   return db.get(
     `WITH neu AS (
@@ -105,9 +93,6 @@ export function katalogBilderOffen(): Promise<{ c: number } | undefined> {
     `SELECT COUNT(*)::int AS c FROM image_wanted`);
 }
 
-// ── Anleitungen ──────────────────────────────────────────────────────────────
-
-/** Über alle Konten: Sets, für die es noch keine gemeinsame Anleitung gibt. */
 export function setsOhneAnleitung(): Promise<{ set_number: string }[]> {
   return db.all(`
       SELECT DISTINCT s.set_number
@@ -118,8 +103,6 @@ export function setsOhneAnleitung(): Promise<{ set_number: string }[]> {
       ORDER BY s.set_number
     `);
 }
-
-// ── Protokoll ────────────────────────────────────────────────────────────────
 
 export function protokollSeit(minuten: number): Promise<{ id: number; level: string; message: string; logged_at: Date }[]> {
   return db.all(
@@ -132,12 +115,7 @@ export function protokollSeit(minuten: number): Promise<{ id: number; level: str
   );
 }
 
-// ── Kennzahlen der Job-Übersicht ─────────────────────────────────────────────
-
-/**
- * Nur Art 'part': Die Zuordnung trägt seit Migration 0037 auch Figuren, die
- * Kennzahl stellt aber nachgesehene Teile der Zahl der Teile gegenüber.
- */
+/** Nur Art 'part': Die Kennzahl stellt nachgesehene Teile der Zahl der Teile gegenüber. */
 export function zugeordneteTeile(): Promise<any> {
   return db.get(
     `SELECT COUNT(*) as c FROM bl_zuordnung WHERE art='part'`);
@@ -167,20 +145,15 @@ export function setFigurenbilderOffen(): Promise<any> {
   return db.get(`SELECT COUNT(*) as c FROM set_minifigs_catalog WHERE image_url IS NOT NULL AND image_local IS NULL`);
 }
 
-/**
- * Figurenbilder des Bestands: Das EXISTS hält die Menge bei dem, was der
- * Hintergrundlauf wirklich holt — Figuren, die jemand besitzt (siehe server.ts).
- * Sonst passt die offene Zahl nicht zum Fortschritt.
- */
+/** Das EXISTS hält die Menge bei dem, was der Hintergrundlauf wirklich holt,
+ * sonst passt die offene Zahl nicht zum Fortschritt. */
 export function bestandsFigurenbilderOffen(): Promise<any> {
   return db.get(`SELECT COUNT(*) as c FROM minifigs_catalog mc
              WHERE mc.image_url IS NOT NULL AND mc.image_local IS NULL
                AND EXISTS (SELECT 1 FROM minifigs m WHERE m.fig_number = mc.fig_number)`);
 }
 
-// ── Preisprobe ───────────────────────────────────────────────────────────────
-
-/** Die Menge kommt aus den Erfassungen — dieselbe Summe, die die Bewertung sieht. */
+/** Die Menge aus den Erfassungen — dieselbe Summe, die die Bewertung sieht. */
 export function probeSet(uid: number, setNumber: string): Promise<any> {
   return db.get(`SELECT s.set_number, ${mengeSkalar('s')} AS quantity
               FROM sets s WHERE s.user_id=$1 AND s.set_number=$2`, [uid, setNumber]);
@@ -210,7 +183,6 @@ export function letzterLaufDerArt() {
       WHERE art = 'preise' AND status IN ('offen', 'laeuft') ORDER BY status = 'laeuft' DESC, faellig_ab LIMIT 1`);
 }
 
-/** Offene Wiedervorlagen, die später fällig wären, auf den neuen Termin. */
 export function bricksetTermineVorziehen(bis: Date) {
   return db.run(`UPDATE auftraege SET faellig_ab = $1 WHERE art = 'brickset' AND status = 'offen' AND faellig_ab > NOW()`, [bis]);
 }

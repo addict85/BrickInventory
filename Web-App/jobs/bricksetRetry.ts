@@ -6,12 +6,8 @@ import { pausiereArt } from '../src/auftraege/dienst';
 import { bricksetFaelligAb } from '../src/auftraege/bricksetAuftrag';
 import { AuftragVerschieben } from './auftragsWorker';
 
-/**
- * Ein Set der Brickset-Wiedervorlage (Auftrag 'brickset'). Ist das
- * Tageskontingent aufgebraucht, wartet die ganze Art bis zur eingestellten
- * Uhrzeit; der Versuch zählt dann nicht. Zwischen zwei Sets eine Sekunde Abstand.
- * Ausführlich: docs/begruendungen/jobs/bricksetRetry.ts.md#abschnitt
- */
+/** Ist das Tageskontingent aufgebraucht, wartet die ganze Art bis zur
+ * eingestellten Uhrzeit; der Versuch zählt dann nicht. */
 async function bricksetNachlauf(n: Record<string, unknown>): Promise<void> {
   const sn = String(n.set_number);
   try {

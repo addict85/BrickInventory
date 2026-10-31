@@ -1,29 +1,17 @@
-/**
- * Verzeichnis der offenen Server-Sent-Events-Ströme.
- * Ausführlich: docs/begruendungen/src/infra/sseRegistry.ts.md#offen
- */
+// Ausführlich: docs/begruendungen/src/infra/sseRegistry.ts.md#offen
 
-/** Offene Antworten. Set, weil dieselbe Antwort nur einmal drin sein soll. */
 const _offen = new Set<any>();
 
-/**
- * Eine SSE-Antwort anmelden.
- * @returns Funktion zum Abmelden — im Aufräumpfad der Route aufrufen.
- */
+/** @returns Funktion zum Abmelden — im Aufräumpfad der Route aufrufen. */
 export function registerSse(res: any): () => void {
   _offen.add(res);
-  // Doppelte Sicherung: Trennt der Client, ohne dass die Route ihren
-  // Aufräumpfad erreicht, bleibt sonst ein toter Eintrag stehen.
+  // Trennt der Client, ohne dass die Route aufräumt, bliebe ein toter Eintrag.
   res.on?.('close', () => _offen.delete(res));
   return () => { _offen.delete(res); };
 }
 
-/**
- * Alle offenen Ströme beenden. Aus dem Shutdown aufgerufen, BEVOR auf
- * `httpServer.close()` gewartet wird.
- * Ausführlich: docs/begruendungen/src/infra/sseRegistry.ts.md#closeallsse
- * @returns Anzahl beendeter Ströme
- */
+/** VOR `httpServer.close()`: Offene Ströme enden nie von selbst.
+ * Ausführlich: docs/begruendungen/src/infra/sseRegistry.ts.md#closeallsse */
 export function closeAllSse(): number {
   const anzahl = _offen.size;
   for (const res of [..._offen]) {

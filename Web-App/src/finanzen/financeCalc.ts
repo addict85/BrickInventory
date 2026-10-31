@@ -1,7 +1,5 @@
-/**
- * Der Finanzteil — eine Tuer fuer alle Aufrufstellen.
- * Ausführlich: docs/begruendungen/src/finanzen/financeCalc.ts.md#abschnitt
- */
+/** Eine Tür für alle Aufrufstellen, damit die Aufteilung in Schichten sie nicht trifft.
+ * Ausführlich: docs/begruendungen/src/finanzen/financeCalc.ts.md#abschnitt */
 export {
   DEFAULT_PRICE_CONDITION,
   speicherePreis, cacheUsable, preisAusCache,

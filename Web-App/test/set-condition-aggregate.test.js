@@ -437,7 +437,11 @@ test('die Teile-Schätzung landet in Cache und Verlauf', () => {
 
   // Und beim Anlegen muss der ermittelte Preis in die Erfassung
   // created_at gehört seit der Datumsübernahme zur Spaltenliste.
-  assert.match(src, /recordAcquisitionForDay\('fig', uid, \[num\][\s\S]{0,200}effectivePurchasePrice/,
+  // Beide Wege (Neuanlage und Zweiterfassung), ohne Kommentare gelesen.
+  const ohneKommentar = src.replace(/\/\/[^\n]*/g, '');
+  const erfassungen = [...ohneKommentar.matchAll(
+    /recordAcquisitionForDay\('fig', uid, \[num\], \{\s*quantity,\s*price: (?:re\.)?erfassungsPreis/g)];
+  assert.equal(erfassungen.length, 2,
     'Die Erfassung muss den tatsächlich verwendeten Kaufpreis tragen');
 });
 

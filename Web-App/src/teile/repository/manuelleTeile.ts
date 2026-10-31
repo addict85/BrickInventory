@@ -1,17 +1,13 @@
 import * as db from '../../../db/database';
 
-/**
- * Datenzugriff für manuell erfasste Teile. Preis und Zustand stehen in der
- * NEUESTEN Erfassung (Migration 0035), die Stückzahl ist die Summe der
- * Erfassungen (Migration 0038) — die Bestandszeile trägt nur den Schlüssel.
- */
+/** Preis und Zustand stehen in der NEUESTEN Erfassung, die Stückzahl ist die
+ * Summe der Erfassungen — die Bestandszeile trägt nur den Schlüssel. */
 
 export function teilZeileManuell(uid: number, partNumber: string, colorId: number): Promise<{ id: number } | undefined> {
   return db.get("SELECT id FROM parts WHERE user_id=$1 AND part_number=$2 AND color_id=$3 AND source='manual'",
     [uid, partNumber, colorId]);
 }
 
-/** Mit dem Zustand der neuesten Erfassung — an der Bestandszeile gibt es keinen. */
 export function teilZeileMitZustand(uid: number, partNumber: string, colorId: number) {
   return db.get<{ id: number; condition: string | null }>(
     `SELECT p.id,
@@ -48,7 +44,6 @@ export async function setzeTeilzustandNeueste(uid: number, partNumber: string, c
   await db.run(`UPDATE part_acquisitions SET condition=$1 WHERE id = ${NEUESTE}`, [zustand, uid, partNumber, colorId]);
 }
 
-/** Im Haushalt gehören die Kaufpreise mehreren Konten; je Zeile kommt der Eigentümer mit. */
 export function teilErfassungen(uids: number[], partNumber: string, colorId: number) {
   return db.all(
     `SELECT a.id, a.quantity, a.unit_price,

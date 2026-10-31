@@ -1,8 +1,5 @@
-/**
- * Fachdienst Sets: was die Set-Routen an Daten und Fremdabrufen brauchen.
- * Die Routen lesen die Anfrage, rufen hier und schreiben die Antwort; SQL,
- * Rebrickable und Aufträge stehen nur hier und darunter.
- */
+/** SQL, Rebrickable und Aufträge stehen nur hier und darunter, damit die Routen
+ * nur Anfrage und Antwort kennen. */
 import { logAndContinue, meldeUndLiefere, meldeUndWeiter, vorDem, fehlertext, ohneFehlendeDatei } from '../infra/httpError';
 import fs from 'fs';
 import path from 'path';
@@ -30,19 +27,15 @@ import { merkeFigur, merkeSetFiguren } from '../katalog/katalogPflege';
 import { randomUUID } from 'crypto';
 import * as repo from './repository/setDetail';
 
-// ── Katalog ──────────────────────────────────────────────────────────────────
-
 export interface SetStamm {
   name: string | null; year: number | null; theme: string | null; pieces: number | null;
   minifigs?: number | null; image_url: string | null; image_local: string | null;
 }
 
-/** Name und Eckdaten eines Sets aus set_stamm (Migration 0076); ohne Eintrag null. */
+/** Ohne Eintrag null. */
 export async function setInfo(setNumber: string): Promise<SetStamm | null> {
   return (await repo.setStamm(mitVersion(setNumber))) ?? null;
 }
-
-// ── Barcode ──────────────────────────────────────────────────────────────────
 
 export interface BarcodeTreffer {
   success: true; unsicher: boolean; set_number: string; name: string | null;
@@ -50,11 +43,8 @@ export interface BarcodeTreffer {
   image_url: string | null; image_local?: string | null | undefined; source: string;
 }
 
-/**
- * Ergänzt einen Treffer um Bild und Eckdaten: Rebrickable zuerst (dort stehen
- * Figurenzahl und Bild am verlässlichsten), dann der eigene Katalog.
- * Jede Antwort sagt, wie sie zustande kam (src/katalog/barcodeQuelle.ts).
- */
+/** Rebrickable zuerst: Dort stehen Figurenzahl und Bild am verlässlichsten.
+ * Jede Antwort sagt, wie sie zustande kam (src/katalog/barcodeQuelle.ts). */
 async function barcodeErgebnis(setNumber: string, name: string | null, source: string): Promise<BarcodeTreffer> {
   const rbData = await rebrickableJson(`/lego/sets/${encodeURIComponent(setNumber)}/`);
   const mfData = rbData ? await rebrickableJson(`/lego/sets/${encodeURIComponent(setNumber)}/minifigs/?page_size=1`) : null;
@@ -89,11 +79,8 @@ async function imKatalog(...nummern: string[]): Promise<{ set_number: string; na
     .catch(meldeUndLiefere('sets:barcode-bekannt', undefined));
 }
 
-/**
- * Barcode → Set. Reihenfolge: eigener Katalog, EAN über Rebrickable, Brickset
- * und UPCitemdb, dann Bestellnummer über Brickset und Rebrickable. null heisst:
- * nichts gefunden.
- */
+/** Reihenfolge: eigener Katalog, EAN über Rebrickable, Brickset und UPCitemdb,
+ * dann Bestellnummer — die billigste Quelle zuerst. */
 export async function setZumBarcode(rohBarcode: string): Promise<BarcodeTreffer | null> {
   const barcode = rohBarcode.trim();
   const direct = await repo.katalogCacheNachNummer(mitVersion(barcode));
@@ -138,8 +125,6 @@ export async function setZumBarcode(rohBarcode: string): Promise<BarcodeTreffer 
   return null;
 }
 
-// ── Teile- und Figurenliste eines Sets (ohne Konto) ─────────────────────────
-
 export interface ListenTeil {
   part_number: string; color_id: number; total_quantity: number | string; is_spare: unknown;
   bl_part_number?: string | null; part_name?: string | null; rb_image_url?: string | null;
@@ -154,10 +139,8 @@ function katalogDesSets(setNumber: string): Promise<KatalogTeil[]> {
   return repo.katalogTeileDesSets(mitVersion(setNumber));
 }
 
-/**
- * Die Teileliste eines Sets kommt ungeblättert; die Seitenangaben stehen
- * trotzdem da, weil die App sie mit der Teileliste des Bestands teilt.
- */
+/** Ungeblättert; die Seitenangaben stehen da, weil die App sie mit der
+ * Teileliste des Bestands teilt. */
 const eineSeite = (n: number) => ({ total: n, page: 1, page_size: n });
 
 export async function teilelisteDesSets(setNum: string, anreichern: (sn: string) => Promise<unknown>) {
@@ -189,7 +172,7 @@ export async function teilelisteDesSets(setNum: string, anreichern: (sn: string)
   }
 
   // Schlüssel ist die Rebrickable-Nummer samt Farbe: Formvarianten teilen sich
-  // oft eine BrickLink-Nummer und dürfen nicht zu einer Zeile verschmelzen.
+  // oft eine BrickLink-Nummer und dürfen nicht verschmelzen.
   const zeilen = new Map<string, {
     part_number: string; bl_part_number: string; part_name: string; color_id: number; bl_color_id: number | null;
     color_name: string; color_hex: string | null; image_url: string | null; total_quantity: number; is_spare: boolean;
@@ -213,17 +196,13 @@ export async function teilelisteDesSets(setNum: string, anreichern: (sn: string)
   return { parts: [...zeilen.values()], source, ...eineSeite(zeilen.size) };
 }
 
-/**
- * Die Figuren eines Sets: gemeinsamer Katalog, sonst Rebrickable-CSV, sonst
- * API. Was nicht aus dem Katalog kam, schreibt ein Nachlauf hinein.
- */
+/** Was nicht aus dem Katalog kam, schreibt ein Nachlauf hinein. */
 export async function figurenlisteDesSets(setNum: string) {
   const n = mitVersion(setNum), bare = ohneVersion(n);
   const ausgabe = (f: { fig_number: string; fig_name?: string | null; quantity?: number | null; image_url?: string | null }) => ({
     fig_number: f.fig_number, fig_name: f.fig_name || f.fig_number, quantity: f.quantity || 1,
     total_quantity: f.quantity || 1, image_url: proxyImageUrl(f.image_url),
-    // Dieselbe Form wie eine Figur des Bestands; die Liste hängt an keinem
-    // Konto, also ohne Zustände und Besitzer.
+    // Dieselbe Form wie eine Figur des Bestands, ohne Zustände und Besitzer.
     source: 'set', conditions: [] as string[], owners: [] as unknown[] });
 
   const katalog = await figurenAusKatalog(setNum);
@@ -253,14 +232,12 @@ async function figurenMerken(n: string, figs: Array<{ fig_number: string; fig_na
   }
 }
 
-// ── Preis ────────────────────────────────────────────────────────────────────
-
-/** Marktpreis eines Sets im Blickfeld, im Zustand seines Bestands. null: kein Set im Blickfeld. */
+/** Im Zustand des Bestands. null: kein Set im Blickfeld. */
 export async function setPreis(uid: number, blickfeld: number[], sn: string) {
   const set = await repo.setImFeld(sn, blickfeld);
   if (!set) return null;
-  // Die Währung aus der Einstellung, nicht aus der Anfrage: Die App schickte
-  // ihren lokalen Startwert mit, bevor sie die Einstellung kannte.
+  // Die Währung aus der Einstellung: Die App schickte ihren lokalen Startwert
+  // mit, bevor sie die Einstellung kannte.
   const currency  = await getSetting(uid, 'currency', 'EUR');
   const guideType = await getSetting(uid, 'price_guide_type', 'sold');
   const ttlHours  = await getSetting(uid, 'price_cache_ttl', '24');
@@ -276,15 +253,12 @@ export async function setPreis(uid: number, blickfeld: number[], sn: string) {
   }
 }
 
-// ── Export, Anleitungen ─────────────────────────────────────────────────────
-
-/** Sets eines Kontos im Listenformat von Rebrickable („Set Number,Quantity“). */
 export async function rebrickableListe(uid: number) {
   const sets = await repo.setsMitMenge(uid);
   return sets.map(s => ({ 'Set Number': s.set_number, 'Quantity': s.quantity }));
 }
 
-/** Gehört das Set diesem Konto? (Eine Anleitung hängt per Fremdschlüssel am Set.) */
+/** Eine Anleitung hängt per Fremdschlüssel am Set. */
 export async function setGehoertKonto(uid: number, sn: string): Promise<boolean> {
   return !!(await repo.setDesKontos(uid, sn));
 }
@@ -293,11 +267,8 @@ export async function anleitungMerken(uid: number, sn: string, pfad: string, bes
   await repo.fuegeAnleitungEin(uid, sn, pfad, beschreibung, pfad);
 }
 
-/**
- * Löscht eine eigene Anleitung. Die Datei bleibt, solange eine andere Zeile
- * auf sie zeigt; im Zweifel bleibt sie ebenfalls.
- * @returns der lokale Pfad, wenn die Datei jetzt gelöscht werden darf; false, wenn es die Zeile nicht gab
- */
+/** Die Datei bleibt, solange eine andere Zeile auf sie zeigt.
+ * @returns false, wenn es die Zeile nicht gab */
 export async function anleitungLoeschen(uid: number, id: string): Promise<boolean> {
   const instr = await repo.anleitungsPfad(id, uid);
   if (!instr) return false;
@@ -311,11 +282,9 @@ export async function anleitungLoeschen(uid: number, id: string): Promise<boolea
   return true;
 }
 
-// ── CSV-Import ───────────────────────────────────────────────────────────────
-
 export interface ImportZeile { sn: string; qty: number; purchasePrice: number | null; condition: string | null; acquiredAt: string | null }
 
-/** Die Zeilen einer Set-CSV in die Form des Auftrags; Spaltennamen ohne Gross/klein und BOM. */
+/** Spaltennamen ohne Gross/klein und BOM. */
 export function setCsvZeilen(text: string): { rows: ImportZeile[]; uebersprungen: number[] } {
   let gelesen;
   try { gelesen = csvEinlesen(text); }
@@ -344,10 +313,7 @@ export function setCsvZeilen(text: string): { rows: ImportZeile[]; uebersprungen
   return { rows, uebersprungen: gelesen.uebersprungen };
 }
 
-/**
- * Startet den Set-Import als Auftrag für den Job-Prozess (jobs/setCsvImport.ts);
- * ein laufender Import desselben Kontos wird abgebrochen.
- */
+/** Ein laufender Import desselben Kontos wird abgebrochen. */
 export async function setCsvImportStarten(userId: number, text: string) {
   const laufend = await jobGet(userId);
   if (laufend && laufend.status === 'running') await jobUpdate(userId, { status: 'cancelled' });

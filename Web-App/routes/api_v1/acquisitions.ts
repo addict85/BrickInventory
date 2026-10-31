@@ -1,7 +1,4 @@
-/**
- * /api/v1 — Kaufpreis-Erfassungen für Sets, manuelle Teile und manuelle
- * Figuren. Die Regeln stehen in src/bestand/erfassungen.ts.
- */
+/** Kaufpreis-Erfassungen; die Regeln stehen in src/bestand/erfassungen.ts. */
 import express from 'express';
 import { acquisitionTotals } from '../../src/bestand/acquisitions';
 import { fehlerAntwort, pfadParam, meldeUndLiefere } from '../../src/infra/httpError';
@@ -16,19 +13,16 @@ const router = express.Router();
 
 type Schluessel = (req: AuthedRequest) => Array<string | number>;
 
-/** PUT einer Erfassung; `schluessel` liest die Ressource aus dem Pfad. */
 const aendern = (art: ErfassungsArt, idParam: string, schluessel: Schluessel) =>
   async (req: AuthedRequest, res: express.Response) => {
     res.json(await erfassungAendern(art, req.apiUser.user_id, parseInt(pfadParam(req, idParam)), schluessel(req), req.body || {}));
   };
 
-/** DELETE einer Erfassung. */
 const loeschen = (art: ErfassungsArt, idParam: string, schluessel: Schluessel) =>
   async (req: AuthedRequest, res: express.Response) => {
     res.json(await erfassungLoeschen(art, req.apiUser.user_id, parseInt(pfadParam(req, idParam)), schluessel(req)));
   };
 
-// ── SETS ──────────────────────────────────────────────────────────────────────
 router.get('/sets/:setNumber/acquisitions', requireToken, async (req: AuthedRequest, res) => {
   const uid = req.apiUser.user_id;
   // Blickfeld: Im Haushalt gehören die Kaufpreise eines Sets oft mehreren Konten.
@@ -43,7 +37,6 @@ const setSchluessel: Schluessel = req => [pfadParam(req, 'setNumber')];
 router.put('/sets/:setNumber/acquisitions/:acqId', requireToken, aendern('set', 'acqId', setSchluessel));
 router.delete('/sets/:setNumber/acquisitions/:acqId', requireToken, loeschen('set', 'acqId', setSchluessel));
 
-// ── MANUELLE TEILE ────────────────────────────────────────────────────────────
 router.get('/parts/:partNumber/:colorId/acquisitions', requireToken, async (req: AuthedRequest, res) => {
   const rows = await getPartAcquisitions(
     await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts)),
@@ -54,7 +47,6 @@ const teilSchluessel: Schluessel = req => [pfadParam(req, 'partNumber'), V.color
 router.put('/parts/:partNumber/:colorId/acquisitions/:acqId', requireToken, aendern('part', 'acqId', teilSchluessel));
 router.delete('/parts/:partNumber/:colorId/acquisitions/:acqId', requireToken, loeschen('part', 'acqId', teilSchluessel));
 
-// ── MANUELLE MINIFIGUREN ──────────────────────────────────────────────────────
 router.get('/minifigs/:figNumber/acquisitions', requireToken, async (req: AuthedRequest, res) => {
   const rows = await getFigAcquisitions(
     await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts)), pfadParam(req, 'figNumber'));

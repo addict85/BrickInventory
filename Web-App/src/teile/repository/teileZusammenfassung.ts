@@ -4,8 +4,6 @@ import { mengeJoin, mengeAus, teilmengeJoin, teilmengeAus } from '../../../db/be
 import { blJoin, blNummerSql } from '../../../db/blZuordnungSql';
 import { LOCKS } from '../../infra/lockNamespaces';
 
-/** Die vorberechnete Teile-Zusammenfassung (parts_summary) je Konto und ihr Stand. */
-
 /** Stand der Rohdaten eines Kontos und ob Katalogänderungen offen sind (Migration 0079). */
 export async function rohstand(userId: number): Promise<{ v: number; katalogOffen: boolean }> {
   const r = await db.get<{ v: number | null; katalog_offen: boolean }>(
@@ -19,10 +17,8 @@ export async function gebauterStand(userId: number): Promise<number | null> {
   return r ? Number(r.built_version) : null;
 }
 
-/**
- * Die Zeilen eines Kontos ($1), wahlweise nur für die Gruppen (BrickLink-Nummer)
- * in $2 — dieselbe Abfrage für den vollen Aufbau und das Nachziehen.
- */
+/** Dieselbe Abfrage für den vollen Aufbau und das Nachziehen, damit beide
+ * nicht auseinanderlaufen. */
 function zusammenfassungEinfuegen(nurGruppen: boolean): string {
   return `
       INSERT INTO parts_summary (user_id, part_key, color_id, part_number, bl_part_number,
@@ -55,7 +51,6 @@ function zusammenfassungEinfuegen(nurGruppen: boolean): string {
        GROUP BY p.user_id, ${blNummerSql('p.part_number')}, p.color_id`;
 }
 
-/** Sperre je Konto für die laufende Transaktion; false, wenn ein anderer Arbeiter sie hält. */
 export async function sperreKonto(tx: DbSchnittstelle, userId: number): Promise<boolean> {
   return !!(await tx.get<{ ok: boolean }>('SELECT pg_try_advisory_xact_lock($1, $2) AS ok', [LOCKS.TEILE_SUMMARY, userId]))?.ok;
 }
@@ -65,7 +60,6 @@ export async function warteAufKonto(tx: DbSchnittstelle, userId: number): Promis
   await tx.get('SELECT pg_advisory_xact_lock($1, $2)', [LOCKS.TEILE_SUMMARY, userId]);
 }
 
-/** Die Zusammenfassung eines Kontos ganz neu schreiben und den Stand vermerken. */
 export async function baueNeu(tx: DbSchnittstelle, userId: number, stand: number): Promise<void> {
   await tx.run('DELETE FROM parts_summary WHERE user_id = $1', [userId]);
   await tx.run(zusammenfassungEinfuegen(false), [userId]);
@@ -75,13 +69,11 @@ export async function baueNeu(tx: DbSchnittstelle, userId: number, stand: number
       ON CONFLICT (user_id) DO UPDATE SET built_version = $2, built_at = NOW()`, [userId, stand]);
 }
 
-/** Nur die genannten Gruppen eines Kontos neu schreiben. */
 export async function baueGruppenNeu(tx: DbSchnittstelle, userId: number, gruppen: string[]): Promise<void> {
   await tx.run('DELETE FROM parts_summary WHERE user_id = $1 AND part_key = ANY($2)', [userId, gruppen]);
   await tx.run(zusammenfassungEinfuegen(true), [userId, gruppen]);
 }
 
-/** Planer-Statistik nach einem Masseneinfügen (db/tabellePflegen.ts). */
 export function analysiere() {
   return db.exec('ANALYZE parts_summary');
 }
@@ -90,7 +82,7 @@ export async function sperreKatalogNachzug(tx: DbSchnittstelle): Promise<boolean
   return !!(await tx.get<{ ok: boolean }>('SELECT pg_try_advisory_xact_lock($1, 0) AS ok', [LOCKS.TEILE_KATALOG]))?.ok;
 }
 
-/** Die offenen Katalogänderungen abholen; was danach eintrifft, bleibt für den nächsten Lauf. */
+/** Was danach eintrifft, bleibt für den nächsten Lauf. */
 export async function holeOffeneNummern(tx: DbSchnittstelle): Promise<string[]> {
   return [...new Set((await tx.all<{ nummer: string }>('DELETE FROM parts_katalog_offen RETURNING nummer')).map(r => r.nummer))];
 }
@@ -100,7 +92,7 @@ export async function verwirfAlleStaende(tx: DbSchnittstelle): Promise<number> {
   return (await tx.run('DELETE FROM parts_summary_state')).changes ?? 0;
 }
 
-/** Je Konto mit Zusammenfassung die Gruppen, die eine der Nummern enthalten — vorher wie nachher. */
+/** Vorher wie nachher: Eine neue Zuordnung verschiebt ein Teil in eine andere Gruppe. */
 export function betroffeneGruppen(tx: DbSchnittstelle, nummern: string[]) {
   return tx.all<{ user_id: number; part_key: string }>(`
       SELECT DISTINCT p.user_id, ${blNummerSql('p.part_number')} AS part_key

@@ -1,7 +1,5 @@
 import * as db from '../../../db/database';
 
-/** Die Merkliste (wanted) je Konto, Set und Zustand. */
-
 export function merkeSetVor(userId: number, sn: string, c: string, seit: Date | string | null) {
   return db.get(`INSERT INTO wanted (user_id, set_number, condition, created_at)
      VALUES ($1,$2,$3, COALESCE($4::timestamptz, NOW()))

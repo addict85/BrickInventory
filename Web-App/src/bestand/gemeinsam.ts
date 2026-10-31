@@ -3,66 +3,44 @@ import { istErsatzteil } from '../infra/validate';
 import { asIds } from '../haushalt/haushalt';
 import { KEINE_FARBE } from '../infra/validate';
 
-/**
- * Was alle drei Domänen brauchen: Seitengrössen, Zustandsableitung aus
- * Erfassungen, Besitzer-Anreicherung.
- * Ausführlich: docs/begruendungen/src/bestand/gemeinsam.ts.md#abschnitt
- */
+// Ausführlich: docs/begruendungen/src/bestand/gemeinsam.ts.md#abschnitt
 
-/**
- * Obergrenze für page_size — je Anfrage, unabhängig vom Abfrageweg.
- * Ausführlich: docs/begruendungen/src/bestand/gemeinsam.ts.md#max-page-size
- */
+/** Je Anfrage, unabhängig vom Abfrageweg — eine Stelle statt fünf Literale.
+ * Ausführlich: docs/begruendungen/src/bestand/gemeinsam.ts.md#max-page-size */
 export const MAX_PAGE_SIZE = 500;
 
-/**
- * Obergrenze, wenn ein Aufrufer GAR KEIN page_size schickt.
- * Ausführlich: docs/begruendungen/src/bestand/gemeinsam.ts.md#unpaged-limit
- */
+/** Ohne page_size läge sonst der ganze Bestand in einer Antwort im Speicher.
+ * Ausführlich: docs/begruendungen/src/bestand/gemeinsam.ts.md#unpaged-limit */
 export const UNPAGED_LIMIT = 2000;
 
-/**
- * Obergrenze für die Teileliste EINES Sets (Filter set_number).
- * Ausführlich: docs/begruendungen/src/bestand/gemeinsam.ts.md#set-parts-max-page-size
- */
+/** Die Set-Detailansicht der App holt nur Seite 1; die normale Grenze schnitte ab.
+ * Ausführlich: docs/begruendungen/src/bestand/gemeinsam.ts.md#set-parts-max-page-size */
 export const SET_PARTS_MAX_PAGE_SIZE = 5000;
 
-/** page_size auf einen brauchbaren Wert bringen: mindestens 1, höchstens MAX. */
 export function clampPageSize(value: any, fallback: number): number {
   return Math.min(MAX_PAGE_SIZE, Math.max(1, parseInt(String(value)) || fallback));
 }
 
-/**
- * Eine Anzahl, wie sie aus der Datenbank kommt.
- * Ausführlich: docs/begruendungen/src/bestand/gemeinsam.ts.md#zaehlwert
- */
+/** COUNT(*) ist bigint und kommt als Zeichenkette aus dem Treiber. */
 type Zaehlwert = number | string | null | undefined;
 
-/**
- * DIE Zustandsregel — für Sets, manuelle Teile und manuelle Minifiguren.
- * Ausführlich: docs/begruendungen/src/bestand/gemeinsam.ts.md#conditionfromacquisitions
- */
+/** DIE Zustandsregel für Sets, manuelle Teile und Figuren: eine gebrauchte
+ * Erfassung macht den Eintrag gebraucht. */
 export function conditionFromAcquisitions(acqCount: Zaehlwert, usedCount: Zaehlwert) {
-  // COUNT(*) kommt als Text ("2"); parseInt wie in der Schwesterfunktion.
-  // Ausführlich: docs/begruendungen/src/bestand/gemeinsam.ts.md#conditionfromacquisitions-acq
+  // COUNT(*) kommt als Text ("2").
   const acq  = parseInt(String(acqCount ?? ''))  || 0;
   const used = parseInt(String(usedCount ?? '')) || 0;
-  // Als Bedingungsausdruck und nicht als zwei Rueckgaben: Die Regel soll als
-  // EIN Ausdruck lesbar sein, und test/set-condition-aggregate.test.js zaehlt
-  // genau diese Form („die Aggregat-Regel steht nur noch an einer Stelle").
+  // Ein Ausdruck, damit die Regel als EINE Zeile lesbar bleibt.
   if (acq > 0) return used > 0 ? 'U' : 'N';
   return 'N';
 }
 
-/**
- * WELCHE Zustände hat der Eintrag — für die Plaketten auf der Kachel.
- * Ausführlich: docs/begruendungen/src/bestand/gemeinsam.ts.md#conditionsfromacquisitions
- */
+/** Für die Plaketten: Wer neu und gebraucht hat, soll beides sehen.
+ * Ausführlich: docs/begruendungen/src/bestand/gemeinsam.ts.md#conditionsfromacquisitions */
 export function conditionsFromAcquisitions(acqCount: Zaehlwert, usedCount: Zaehlwert): ('N' | 'U')[] {
   const acq  = parseInt(String(acqCount ?? ''))  || 0;
   const used = parseInt(String(usedCount ?? '')) || 0;
-  // Ohne Erfassungen die eine Plakette „Neu" — siehe die Begruendung in der
-  // Schwesterfunktion oben, warum es keinen gespeicherten Wert mehr gibt.
+  // Ohne Erfassungen die eine Plakette „Neu".
   if (acq <= 0) return ['N'];
   const out: ('N' | 'U')[] = [];
   if (acq - used > 0) out.push('N');
@@ -70,15 +48,9 @@ export function conditionsFromAcquisitions(acqCount: Zaehlwert, usedCount: Zaehl
   return out.length ? out : ['N'];
 }
 
-/**
- * Angezeigter Zustand manuell erfasster Teile und Minifiguren.
- * Ausführlich: docs/begruendungen/src/bestand/gemeinsam.ts.md#abschnitt-2
- */
+// Ausführlich: docs/begruendungen/src/bestand/gemeinsam.ts.md#abschnitt-2
 export async function applyManualCondition(userId: unknown, rows: any[], kind: 'part' | 'fig') {
-  // Blickfeld statt einer einzelnen ID: Ein Hauptkonto sieht (und ändert)
-  // auch die Daten seiner Unterkonten, alle anderen nur ihre eigenen. Die
-  // Liste kommt von scopeIds() in src/haushalt/haushalt.ts — hier wird sie nur
-  // normalisiert, damit ältere Aufrufer mit einer nackten ID weiter gehen.
+  // asIds(), damit ältere Aufrufer mit einer nackten ID weiter gehen.
   const uids = asIds(userId as any);
   if (!rows?.length) return rows;
 
@@ -100,45 +72,33 @@ export async function applyManualCondition(userId: unknown, rows: any[], kind: '
     const usedCount = parseInt(a?.used_count) || 0;
     return {
       ...r,
-      // Ohne den gespeicherten Wert der Stammzeile: Migration 0035 hat die
-      // Spalte geloescht und garantiert fuer jede manuelle Position eine
-      // Erfassung.
       condition: conditionFromAcquisitions(acqCount, usedCount),
       conditions: conditionsFromAcquisitions(acqCount, usedCount),
       acq_count: acqCount,
       used_count: usedCount,
-      // Mengengewichtet über die Erfassungen — die Kachel zeigte bisher den
-      // Wert der Stammzeile, also den zuletzt geschriebenen Einzelpreis.
+      // Mengengewichtet über die Erfassungen, nicht der zuletzt geschriebene Einzelpreis.
       avg_purchase_price: a?.avg_purchase_price != null ? parseFloat(a.avg_purchase_price) : null,
     };
   });
 }
 
-/**
- * Besitzer-Plaketten anhaengen — fuer EINZELNE Zeilen (`user_id`) und fuer
- * GRUPPIERTE (`owner_ids`).
- * Ausführlich: docs/begruendungen/src/bestand/gemeinsam.ts.md#withowners
- */
+/** Beide Formen hier, damit die Namensauflösung nur einmal existiert.
+ * Ausführlich: docs/begruendungen/src/bestand/gemeinsam.ts.md#withowners */
 export async function withOwners(uids: number[], rows: any[]) {
   if (uids.length < 2 || !rows?.length) return rows;
   const owners = await repo.benutzerNamen(uids);
   const nameById = new Map<number, any>(owners.map((u: any) => [parseInt(u.id), u.username] as [number, any]));
   const platte = (id: number) => ({ id, username: nameById.get(id) || String(id) });
   return rows.map(r => {
-    // `owner_ids` KANN als Schluessel mit dem Wert null dastehen: array_agg
-    // liefert NULL, wenn der FILTER alles ausschliesst (ein Set, das niemand
-    // mehr in Menge > 0 besitzt). Dann gehoert eine LEERE Plakettenliste
-    // heraus, nicht keine — genau das tat getSets vorher schon.
+    // array_agg liefert NULL, wenn der FILTER alles ausschliesst — dann eine
+    // LEERE Plakettenliste, nicht keine.
     if ('owner_ids' in r) return { ...r, owners: (r.owner_ids || []).map((n: any) => platte(parseInt(n))) };
     if (r.user_id != null) return { ...r, owners: [platte(parseInt(r.user_id))] };
     return r;
   });
 }
 
-/**
- * In welchen Sets steckt dieses Teil / diese Figur?
- * Ausführlich: docs/begruendungen/src/bestand/gemeinsam.ts.md#verwendendesset
- */
+// Ausführlich: docs/begruendungen/src/bestand/gemeinsam.ts.md#verwendendesset
 export interface VerwendendesSet {
   set_number: string;
   set_name: string | null;
@@ -148,7 +108,6 @@ export interface VerwendendesSet {
   owner_user_id: number;
 }
 
-/** Das Teil bzw. die Figur selbst — für die Kopfzeile des Dialogs. */
 export interface BestandteilKopf {
   nummer: string;
   name: string | null;
@@ -159,17 +118,11 @@ export interface BestandteilKopf {
   image_local: string | null;
   image_url: string | null;
   is_spare: boolean;
-  /**
-   * Lagerort — verdichtet über alle Zeilen dieses Teils.
-   * Ausführlich: docs/begruendungen/src/bestand/gemeinsam.ts.md#bestandteilkopf
-   */
+  /** string_agg: Dasselbe Teil kann in mehreren Kisten liegen; ein Wert verschwiege die anderen. */
   storage: string | null;
-  /**
-   * Wem dieses Teil gehört — die Konten, in deren Sets es steckt.
-   * Ausführlich: docs/begruendungen/src/bestand/gemeinsam.ts.md#bestandteilkopf-2
-   */
+  /** Für die Lagerort-Auswahl im Dialog.
+   * Ausführlich: docs/begruendungen/src/bestand/gemeinsam.ts.md#bestandteilkopf-2 */
   owner_ids: number[];
-  /** Summe über ALLE Sets im Blickfeld. */
   total_quantity: number;
 }
 
@@ -194,8 +147,7 @@ export async function verwendendeSets(
     owner_user_id: parseInt(r.owner_user_id, 10),
   }));
 
-  // Der Kopf entsteht aus denselben Zeilen wie die Liste; das Bild von der
-  // ersten Zeile, die eines hat (es ist dasselbe Teil).
+  // Der Kopf aus denselben Zeilen wie die Liste; das Bild von der ersten mit Bild.
   const erste = rows[0] as any;
   const mitBild = (rows as any[]).find(r => r.teil_image_local || r.teil_image_url);
   const item: BestandteilKopf | null = erste ? {
@@ -207,12 +159,9 @@ export async function verwendendeSets(
     category_name:  erste.category_name ?? null,
     image_local:    mitBild?.teil_image_local ?? null,
     image_url:      mitBild?.teil_image_url ?? null,
-    // is_spare kommt als INTEGER aus der Spalte; der Treiber liefert
-    // Aggregate als ZEICHENKETTE, und "0" ist in JavaScript WAHR. Deshalb
-    // ausdrücklich über istErsatzteil() — dieselbe Lesart wie überall sonst.
+    // istErsatzteil(): Aggregate kommen als Zeichenkette, und "0" ist wahr.
     is_spare:       istErsatzteil(erste.is_spare),
     storage:        erste.storage ?? null,
-    // Aus DENSELBEN Zeilen wie die Liste darunter — siehe owner_ids.
     owner_ids:      [...new Set(sets.map(s => s.owner_user_id))].filter(Number.isFinite),
     total_quantity: sets.reduce((n, s) => n + s.quantity, 0),
   } : null;
@@ -220,18 +169,15 @@ export async function verwendendeSets(
   return { item, sets };
 }
 
-/**
- * Die manuell erfasste Stammzeile eines Teils bzw. einer Figur entfernen.
+/** Eine Stelle für Löschroute und Aufräumen der Erfassungen.
  * Ausführlich: docs/begruendungen/src/bestand/gemeinsam.ts.md#loeschemanuellesteil
- * @param dbh Transaktionsgriff, wo einer gebraucht wird
- */
+ * @param dbh Transaktionsgriff, wo einer gebraucht wird */
 export async function loescheManuellesTeil(
   dbh: { run: (sql: string, p?: any[]) => Promise<any> }, ownerId: number, partNumber: string, colorId: number,
 ) {
   return repo.loescheTeilZeile(dbh, ownerId, partNumber, colorId);
 }
 
-/** Wie loescheManuellesTeil, fuer eine manuell erfasste Figur. */
 export async function loescheManuelleFigur(
   dbh: { run: (sql: string, p?: any[]) => Promise<any> }, ownerId: number, figNumber: string,
 ) {

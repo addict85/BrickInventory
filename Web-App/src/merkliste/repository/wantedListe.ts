@@ -1,7 +1,5 @@
 import * as db from '../../../db/database';
 
-/** Was der Import einer BrickLink-Wanted-Liste über die eigenen Kataloge wissen muss. */
-
 export type Art = 'part' | 'fig' | 'set';
 
 /** Zuordnungen zu BrickLink-Nummern; `bl_id IS NULL` heisst „gleich vermerkt“. */
@@ -43,7 +41,6 @@ export function teileBeschreibung(nummern: string[]) {
         LEFT JOIN rb_parts     rp ON rp.part_num    = p.part_number`, [nummern]);
 }
 
-/** Die Farbbilder zu (Nummer, Farbe)-Paaren in einer Abfrage. */
 export function teilFarbbilder(nummern: string[], farbIds: number[]) {
   return db.all<{ part_number: string; color_id: number; bild: string | null }>(`
         SELECT part_number, color_id, COALESCE(image_local, image_url) AS bild

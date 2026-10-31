@@ -1,9 +1,9 @@
 import type { DbSchnittstelle } from '../../../db/database';
 import * as db from '../../../db/database';
 
-/** Zähler der Fremd-API-Aufrufe je Tag, API und Konto (Migration 0061); Konto 0 ist die Summe. */
+/** Konto 0 ist die Summe. */
 
-/** Zählt je Konto und in der Summe in einem Schritt. */
+/** In einem Schritt, damit gleichzeitige Aufrufe die Grenze nicht gemeinsam überspringen. */
 export function zaehleApiAufruf(tx: DbSchnittstelle, tag: string, apiName: string, id: number, grenze: number) {
   return tx.get(`
       INSERT INTO api_aufrufe (tag, api, konto, anzahl) VALUES ($1, $2, $3, 1)

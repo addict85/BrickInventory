@@ -1,11 +1,8 @@
 import * as db from '../../../db/database';
 import type { DbSchnittstelle } from '../../../db/database';
 
-/**
- * Datenzugriff für Geräte-Tokens (api_tokens), Browser-Sitzungen
- * (user_sessions) und die E-Mail-Bestätigung. Tokens stehen nur als SHA-256
- * in der Tabelle; jede Funktion hier nimmt den Hash, nie den Klartext.
- */
+/** Tokens stehen nur als SHA-256 in der Tabelle; jede Funktion nimmt den Hash,
+ * nie den Klartext. */
 
 export type TokenScope = 'app' | 'voll';
 
@@ -28,16 +25,13 @@ export function gueltigerToken(hash: string) {
       AND (t.hard_expires_at IS NULL OR t.hard_expires_at > NOW())`, [hash]);
 }
 
-/** Die erste Nutzung des Nachfolgers beendet die Überlappung mit dem Vorgänger. */
 export async function beendeUeberlappung(vorgaenger: string, hash: string): Promise<void> {
   await db.run('DELETE FROM api_tokens WHERE token = $1 AND ersetzt_durch = $2', [vorgaenger, hash]);
   await db.run('UPDATE api_tokens SET vorgaenger = NULL WHERE token = $1', [hash]);
 }
 
-/**
- * Letzte Nutzung, Adressbereich und Gleitfrist; die WHERE-Klausel lässt
- * höchstens einen Schreibvorgang je Tag durch, auch über mehrere Prozesse.
- */
+/** Die WHERE-Klausel lässt höchstens einen Schreibvorgang je Tag durch, auch
+ * über mehrere Prozesse. */
 export async function beruehreToken(hash: string, leerlaufTage: number, bereich: string | null): Promise<void> {
   await db.run(
     `UPDATE api_tokens
@@ -53,7 +47,7 @@ export async function beruehreToken(hash: string, leerlaufTage: number, bereich:
 
 export type NeuerToken = {
   hash: string; userId: number; label: string; scope: TokenScope; bereich: string | null;
-  /** 'unbegrenzt', 'gleitend' (mit optionaler fester Höchstdauer) oder 'kurz' (sieben feste Tage) */
+  /** 'kurz' = sieben feste Tage */
   art: 'unbegrenzt' | 'gleitend' | 'kurz'; leerlaufTage: number; festeTage: number | null;
 };
 
@@ -83,7 +77,7 @@ export type TauschQuelle = {
   expires_at: Date | null; hard_expires_at: Date | null; created_at: Date; ersetzt_durch: string | null;
 };
 
-/** Gesperrt bis zum Ende der Transaktion: Zwei Tausche desselben Tokens laufen nacheinander. */
+/** Gesperrt: Zwei Tausche desselben Tokens laufen nacheinander. */
 export function tauschQuelleSperren(tx: DbSchnittstelle, hash: string) {
   return tx.get<TauschQuelle>(
     `SELECT user_id, label, scope, sliding, never_expires, expires_at, hard_expires_at, created_at, ersetzt_durch
@@ -124,20 +118,17 @@ export async function loescheToken(hash: string): Promise<void> {
   await db.run('DELETE FROM api_tokens WHERE token = $1', [hash]);
 }
 
-/** @param ausser Hash des Tokens, der bleiben darf, oder null */
 export async function loescheTokensDesKontos(userId: number, ausser: string | null = null): Promise<void> {
   if (ausser) await db.run('DELETE FROM api_tokens WHERE user_id = $1 AND token <> $2', [userId, ausser]);
   else await db.run('DELETE FROM api_tokens WHERE user_id = $1', [userId]);
 }
 
-/** @param ausser Sitzungskennung, die bleiben darf, oder null */
 export async function loescheSitzungenDesKontos(userId: number, ausser: string | null = null): Promise<void> {
   if (ausser === null) await db.run("DELETE FROM user_sessions WHERE sess::jsonb->>'userId' = $1", [String(userId)]);
   else await db.run("DELETE FROM user_sessions WHERE sess::jsonb->>'userId' = $1 AND sid IS DISTINCT FROM $2",
     [String(userId), ausser]);
 }
 
-/** Altzeilen ohne Ablaufdatum bekommen die Gleitfrist ab letzter Nutzung. */
 export async function ziehAltzeilenNach(leerlaufTage: number): Promise<number> {
   return (await db.run(
     `UPDATE api_tokens
@@ -162,7 +153,6 @@ export async function loescheUngenutzte(leerlaufTage: number): Promise<number> {
         AND COALESCE(last_used, created_at) < NOW() - make_interval(days => $1)`, [leerlaufTage])).changes || 0;
 }
 
-/** Nur unbestätigte Konten mit gültiger Frist; der Token liegt als Hash vor. */
 export function kontoZuEmailToken(hash: string) {
   return db.get<{ id: number }>(
     'SELECT id FROM users WHERE verification_token = $1 AND token_expires > NOW() AND NOT email_verified', [hash]);
@@ -173,7 +163,6 @@ export async function bestaetigeEmail(id: number): Promise<void> {
   await db.run('UPDATE users SET email_verified=true, verification_token=NULL, token_expires=NULL WHERE id=$1', [id]);
 }
 
-/** Name ODER E-Mail ohne Gross/klein — so steht es über dem Anmeldefeld. */
 export function kontoZurAnmeldung(name: string) {
   return db.get('SELECT * FROM users WHERE LOWER(username) = LOWER($1) OR LOWER(email) = LOWER($1)', [name]);
 }

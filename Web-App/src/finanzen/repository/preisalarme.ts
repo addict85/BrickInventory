@@ -1,7 +1,5 @@
 import * as db from '../../../db/database';
 
-/** Preisalarme je Konto, Set und Zustand (price_alerts) samt dem Preis, an dem sie gemessen werden. */
-
 export function schreibeAlarm(userId: number, setNumber: string, condition: string, richtung: 'unter' | 'ueber', schwelle: number, waehrung: string) {
   return db.run(`INSERT INTO price_alerts (user_id, set_number, condition, richtung, schwelle, currency_code)
      VALUES ($1,$2,$3,$4,$5,$6)

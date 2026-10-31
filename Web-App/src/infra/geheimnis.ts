@@ -4,11 +4,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { DATA_DIR } from './appPaths';
 
-/**
- * Geheimnisse (Gutschein-PIN, TOTP, API-Schlüssel, SMTP-Passwort) liegen
- * verschlüsselt in der Datenbank. Ein Abzug der Datenbank allein gibt sie
- * dann nicht preis; der Schlüssel liegt im App-Datenverzeichnis oder in DATA_KEY.
- */
+/** Ein Abzug der Datenbank allein gibt die Geheimnisse nicht preis; der
+ * Schlüssel liegt im App-Datenverzeichnis oder in DATA_KEY. */
 const PRAEFIX = 'v1:';
 let geladen: Buffer | null = null;
 
@@ -16,7 +13,7 @@ function schluesselDatei(): string {
   return path.join(DATA_DIR, '.datenschluessel');
 }
 
-/** 32 Byte aus DATA_KEY (base64) oder der Schlüsseldatei; fehlt beides, wird die Datei angelegt. */
+/** Fehlt beides, wird die Datei angelegt. */
 export function datenSchluessel(): Buffer {
   if (geladen) return geladen;
   const env = konfig().datenSchluessel;
@@ -54,10 +51,7 @@ export function verschluessele(klartext: string | null | undefined): string | nu
   return PRAEFIX + Buffer.concat([iv, c.getAuthTag(), daten]).toString('base64');
 }
 
-/**
- * Entschlüsseln; Klartext aus der Zeit davor kommt unverändert zurück. Passt
- * der Schlüssel nicht (Datei verloren), gibt es null statt eines falschen Werts.
- */
+/** Passt der Schlüssel nicht (Datei verloren), null statt eines falschen Werts. */
 export function entschluessele(wert: string | null | undefined): string | null {
   if (wert === null || wert === undefined) return null;
   if (!istVerschluesselt(wert)) return wert;
@@ -72,14 +66,13 @@ export function entschluessele(wert: string | null | undefined): string | null {
   }
 }
 
-/** Kennung verschlüsselter Dateien; ein PDF beginnt nie so. */
+/** Ein PDF beginnt nie so. */
 const DATEI_KOPF = Buffer.from('BIENC1\n', 'ascii');
 
 export function istVerschluesselterPuffer(daten: Buffer): boolean {
   return daten.subarray(0, DATEI_KOPF.length).equals(DATEI_KOPF);
 }
 
-/** Eine Datei mit AES-256-GCM: Kopf, IV, Tag, Inhalt. */
 export function verschluesselePuffer(daten: Buffer): Buffer {
   if (istVerschluesselterPuffer(daten)) return daten;
   const iv = crypto.randomBytes(12);
@@ -88,10 +81,7 @@ export function verschluesselePuffer(daten: Buffer): Buffer {
   return Buffer.concat([DATEI_KOPF, iv, c.getAuthTag(), inhalt]);
 }
 
-/**
- * Entschlüsseln; eine Datei aus der Zeit davor kommt unverändert zurück.
- * Passt der Schlüssel nicht oder wurde die Datei verändert, gibt es null.
- */
+/** Verändert oder falscher Schlüssel: null. */
 export function entschluesselePuffer(daten: Buffer): Buffer | null {
   if (!istVerschluesselterPuffer(daten)) return daten;
   try {
@@ -105,5 +95,4 @@ export function entschluesselePuffer(daten: Buffer): Buffer | null {
   }
 }
 
-/** Nur für Tests: den geladenen Schlüssel vergessen. */
 export function _vergissSchluessel() { geladen = null; }

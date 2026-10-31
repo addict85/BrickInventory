@@ -1,9 +1,5 @@
-/**
- * /api/v1/sets — Liste, Detail, Erfassen, Barcode, Teile- und Figurenlisten,
- * Preise, Lagerorte, Alarme, CSV-Import und Anleitungen. Ein Router für den
- * ganzen Pfad; die Arbeit steht in src/sets/dienst.ts und den Helfern dort.
- * Kaufpreis-Erfassungen liegen in ./acquisitions.ts.
- */
+/** /api/v1/sets — ein Router für den ganzen Pfad, damit die Reihenfolge fester
+ * Pfade vor :setNumber an einer Stelle steht. Die Arbeit liegt in src/sets/. */
 import express from 'express';
 import multer from 'multer';
 import path from 'path';
@@ -42,12 +38,8 @@ import { DATA_DIR } from '../../src/infra/appPaths';
 const router = express.Router();
 
 // ── Feste Pfade VOR den Pfaden mit :setNumber ────────────────────────────────
-// Unter /api/v1/sets hingen zwei Router (dieser und routes/sets.ts). Der
-// Namensabruf /sets/info/:setNumber stand im zweiten; /sets/info/price-history
-// traf deshalb zuerst /sets/:setNumber/price-history hier, mit „info“ als Set.
-// Jetzt steht er hier, vor allen Pfaden mit Parameter.
+// Sonst liest Express „info" oder „exists" als Setnummer.
 
-/** GET /api/v1/sets/info/:setNumber — Name aus dem Katalog, ohne Besitz. */
 router.get('/sets/info/:setNumber', requireToken, async (req: AuthedRequest, res) => {
   const n = mitVersion(pfadParam(req, 'setNumber'));
   // Ohne Katalogzeile zeigt die Oberfläche die Nummer als Namen.
@@ -55,20 +47,14 @@ router.get('/sets/info/:setNumber', requireToken, async (req: AuthedRequest, res
   res.json(row ? { success: true, set_number: n, ...row, name: row.name || n } : { success: true, set_number: n, name: n });
 });
 
-// ── GIBT ES DIESES SET SCHON? ────────────────────────────────────────────────
-/**
- * GET /api/v1/sets/exists/:setNumber
- * Beantwortet genau eine Frage: Steht das Set bereits im Blickfeld des
- * fragenden Kontos (eigenes Konto oder Haushalt)?
- * Ausführlich: docs/begruendungen/routes/api_v1/sets.ts.md#get-sets-exists-setnumber
- */
+/** Nur das Blickfeld des fragenden Kontos (eigenes Konto oder Haushalt).
+ * Ausführlich: docs/begruendungen/routes/api_v1/sets.ts.md#get-sets-exists-setnumber */
 router.get('/sets/exists/:setNumber', requireToken, async (req: AuthedRequest, res) => {
   const sn = String(req.params.setNumber);
   const treffer = await findSetInScope(req.apiUser.user_id, sn);
   res.json({ success: true, exists: !!treffer, ...(treffer || { set_number: normalizeSetNumber(sn) }) });
 });
 
-// ── BARCODE ──────────────────────────────────────────────────────────────────
 router.get('/sets/barcode/:barcode', requireToken, async (req: AuthedRequest, res) => {
   const barcode = String(req.params.barcode).trim();
   const treffer = await setZumBarcode(barcode);
@@ -78,13 +64,8 @@ router.get('/sets/barcode/:barcode', requireToken, async (req: AuthedRequest, re
 
 
 
-/**
- * PUT /api/v1/sets/:setNumber/storage — Lagerort setzen.
- * Trifft alle Zeilen dieses Sets im Schreibbereich. Im Haushalt heisst das:
- * Traegt das Hauptkonto einen Ort ein, gilt er auch fuer das Exemplar des
- * Kindes. Das ist Absicht — wer die Kiste packt, packt sie fuer alle, die
- * darin nachsehen.
- */
+/** Trifft alle Zeilen des Sets im Schreibbereich — Absicht: Wer die Kiste packt,
+ * packt sie für alle, die darin nachsehen. */
 router.put('/sets/:setNumber/storage', requireToken, async (req: AuthedRequest, res) => {
   const ort = normalisiereLagerort(req.body?.storage);
   const n = await setzeLagerort('set', await writableIds(req.apiUser.user_id),
@@ -92,22 +73,17 @@ router.put('/sets/:setNumber/storage', requireToken, async (req: AuthedRequest, 
   res.json({ success: true, storage: ort, changed: n });
 });
 
-/**
- * Preisalarm — GET/PUT/DELETE zu EINEM Set.
- * Ein Alarm gehoert genau EINEM Konto: Wer eine Schwelle setzt, will selbst
- * benachrichtigt werden. Deshalb `req.apiUser.user_id` und nicht
- * scopeIds()/writableIds() — anderswo waere das ein Versehen, hier die Regel.
- * Ausführlich: docs/begruendungen/routes/api_v1/sets.ts.md#get-sets-setnumber-alert
- */
+/** Ein Alarm gehört genau EINEM Konto: Wer eine Schwelle setzt, will selbst
+ * benachrichtigt werden. Deshalb `user_id` statt scopeIds() — hier die Regel.
+ * Ausführlich: docs/begruendungen/routes/api_v1/sets.ts.md#get-sets-setnumber-alert */
 router.get('/sets/:setNumber/alert', requireToken, async (req: AuthedRequest, res) => {
   res.json({ success: true,
     alerts: await alarmeFuer(req.apiUser.user_id, normalizeSetNumber(String(req.params.setNumber))) });
 });
 
 router.put('/sets/:setNumber/alert', requireToken, async (req: AuthedRequest, res) => {
-  // Die Waehrung kommt aus den Einstellungen, NICHT aus der Anfrage: Eine
-  // vom Klienten geschickte Waehrung waere eine zweite Quelle fuer dieselbe
-  // Angabe, und die beiden liefen beim naechsten Wechsel auseinander.
+  // Die Währung aus den Einstellungen, nicht aus der Anfrage: Zwei Quellen
+  // liefen beim nächsten Wechsel auseinander.
   const waehrung = String(await getSetting(req.apiUser.user_id, 'currency', 'EUR'));
   const alarm = await setzeAlarm(req.apiUser.user_id,
     normalizeSetNumber(String(req.params.setNumber)), waehrung, req.body || {});
@@ -120,24 +96,17 @@ router.delete('/sets/:setNumber/alert', requireToken, async (req: AuthedRequest,
   res.json({ success: true, removed: n });
 });
 
-/**
- * GET /api/v1/alerts/pending?since=<ISO> — was seit dann ausgeloest hat.
- * Ausführlich: docs/begruendungen/routes/api_v1/sets.ts.md#get-alerts-pending
- */
+// Ausführlich: docs/begruendungen/routes/api_v1/sets.ts.md#get-alerts-pending
 router.get('/alerts/pending', requireToken, async (req: AuthedRequest, res) => {
   const r = await ausgeloesteSeit(req.apiUser.user_id, req.query.since);
   res.json({ success: true, alerts: r.alerts, now: r.now });
 });
 
-/**
- * /api/v1/alerts — ALLE Alarme des Kontos, fuer die Uebersicht.
- * Ausführlich: docs/begruendungen/routes/api_v1/sets.ts.md#get-alerts
- */
+// Ausführlich: docs/begruendungen/routes/api_v1/sets.ts.md#get-alerts
 router.get('/alerts', requireToken, async (req: AuthedRequest, res) => {
   res.json({ success: true, alerts: await alleAlarme(req.apiUser.user_id) });
 });
 
-// ── POST /api/v1/alerts/import/csv — Preisalarme einlesen ───────────────────
 router.post('/alerts/import/csv', requireToken, csvEmpfang.single('file'),
   async (req: AuthedRequest & { file?: { buffer: Buffer } }, res) => {
     if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
@@ -146,17 +115,11 @@ router.post('/alerts/import/csv', requireToken, csvEmpfang.single('file'),
     res.json(await alarmeAusCsv(uid, waehrung, req.file.buffer.toString('utf-8')));
   });
 
-/**
- * /api/v1/storage/locations — der VORRAT an Lagerorten, je Konto.
- * Ausführlich: docs/begruendungen/routes/api_v1/sets.ts.md#lagerkonten
- */
+/** Der Vorrat an Lagerorten ist je Konto; wer ihn sehen darf, entscheidet das Recht.
+ * Ausführlich: docs/begruendungen/routes/api_v1/sets.ts.md#lagerkonten */
 async function lagerKonten(req: AuthedRequest, schreiben: boolean): Promise<number[]> {
-  // Ohne parseScopeMode(req.query.accounts) — KEIN Ansichtsfilter, und das ist
-  // Absicht: Diese Zeile beantwortet nicht „was soll ich zeigen?", sondern
-  // „darf ich das ueberhaupt?". Stuende die Galerie gerade auf „nur eigene",
-  // bekaeme der Grossvater beim Set des Enkels eine leere Auswahlliste — fuer
-  // eine Einstellung, die mit der Frage nichts zu tun hat.
-  // test/household.test.js kennt diese Ausnahme unter genau diesem Namen.
+  // KEIN Ansichtsfilter: Die Frage ist „darf ich?", nicht „was zeige ich?" —
+  // mit „nur eigene" bekäme der Grossvater beim Set des Enkels eine leere Liste.
   const erlaubt = schreiben
     ? await writableIds(req.apiUser.user_id)
     : await scopeIds(req.apiUser.user_id);  // KEIN Ansichtsfilter, Begruendung darueber
@@ -164,18 +127,14 @@ async function lagerKonten(req: AuthedRequest, schreiben: boolean): Promise<numb
   if (!roh) return [req.apiUser.user_id];
   const gewuenscht = roh.split(',').map(x => parseInt(x.trim(), 10)).filter(Number.isFinite);
   if (!gewuenscht.length) return [req.apiUser.user_id];
-  // Die Schnittmenge, nicht eine Absage: Wer mehrere Besitzer eines Sets
-  // mitschickt und einen davon nicht sehen darf, soll die Liste der uebrigen
-  // bekommen. Eine leere Schnittmenge beantwortet die Frage trotzdem — mit
-  // einer leeren Liste, nicht mit fremden Daten.
+  // Die Schnittmenge statt einer Absage: Wer einen Besitzer nicht sehen darf,
+  // bekommt die Orte der übrigen.
   return gewuenscht.filter(id => erlaubt.includes(id));
 }
 
 router.get('/storage/locations', requireToken, async (req: AuthedRequest, res) => {
-  // Die Liste kann ueber mehrere Konten spannen (der Grossvater sieht beim
-  // Set des Enkels dessen Orte, siehe Migration 0020) — die VORGABE ist
-  // dagegen immer die des Anfragenden. Ein geerbter Stern am Regal eines
-  // anderen Haushaltsmitglieds waere eine Aussage ueber dessen Wohnung.
+  // Die Liste kann über mehrere Konten spannen, die VORGABE ist immer die des
+  // Anfragenden: Ein geerbter Stern wäre eine Aussage über eine fremde Wohnung.
   const [orte, vorgabe] = await Promise.all([
     orteVon(await lagerKonten(req, false)),
     vorgabeVon(req.apiUser.user_id),
@@ -183,18 +142,11 @@ router.get('/storage/locations', requireToken, async (req: AuthedRequest, res) =
   res.json({ success: true, orte, vorgabe });
 });
 
-/**
- * PUT /api/v1/storage/default — der Stern.
- * `{ id: <Zahl> }` setzt die Vorgabe, `{ id: null }` schaltet sie ab; das ist
- * der zweite Druck auf denselben Stern. EIN Endpunkt fuer beides, weil es eine
- * Einstellung mit genau einem Wert ist — ein eigener Loeschweg waere eine
- * zweite Stelle fuer denselben Gedanken.
- */
+/** `{ id: null }` schaltet die Vorgabe ab — ein Endpunkt, weil es eine
+ * Einstellung mit genau einem Wert ist. */
 router.put('/storage/default', requireToken, async (req: AuthedRequest, res) => {
   const roh = req.body?.id;
-  // `null` UND `undefined` heissen abschalten: Ein Client, der das Feld
-  // weglaesst, meint nichts anderes als einer, der null schickt. Eine Zahl,
-  // die keine ist, waere dagegen ein Fehler im Aufruf und keine Absicht.
+  // Fehlt das Feld, meint der Client dasselbe wie null; eine Nicht-Zahl ist ein Fehler.
   const id = (roh === null || roh === undefined) ? null : parseInt(String(roh), 10);
   if (id !== null && !Number.isFinite(id)) return sendeFehler(req, res, 400, 'lagerort_unbekannt');
   res.json({ success: true, vorgabe: await setzeVorgabe(req.apiUser.user_id, id) });
@@ -203,9 +155,7 @@ router.put('/storage/default', requireToken, async (req: AuthedRequest, res) => 
 router.post('/storage/locations', requireToken, async (req: AuthedRequest, res) => {
   const konto = (await lagerKonten(req, true))[0];
   if (konto === undefined) return sendeFehler(req, res, 403, 'kein_schreibrecht');
-  // EIN Konto beim Anlegen, Umbenennen und Loeschen: „Lege denselben Ort in
-  // drei Wohnungen an" ist keine Absicht, die jemand hat — und waere sie es,
-  // gehoerte sie in drei Aufrufe, damit jeder fuer sich scheitern kann.
+  // EIN Konto je Aufruf, damit jeder Ort für sich scheitern kann.
   const { ort, war_neu } = await legeOrtAn(konto, req.body?.name);
   if (!war_neu) return sendeFehler(req, res, 409, 'lagerort_doppelt');
   res.json({ success: true, ort });
@@ -225,31 +175,23 @@ router.delete('/storage/locations/:id', requireToken, async (req: AuthedRequest,
   res.json({ success: true });
 });
 
-/**
- * GET /api/v1/storage — welche Lagerorte es gibt und was darin liegt.
- * Ausführlich: docs/begruendungen/routes/api_v1/sets.ts.md#get-storage
- */
+// Ausführlich: docs/begruendungen/routes/api_v1/sets.ts.md#get-storage
 router.get('/storage', requireToken, async (req: AuthedRequest, res) => {
   const ids = await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts));
   res.json({ success: true, orte: await lagerorte(ids) });
 });
 
-// GET /api/v1/sets/:setNumber/parts-list — Teile eines Sets, ohne Konto
 router.get('/sets/:setNumber/parts-list', requireToken, async (req: AuthedRequest, res) => {
   res.json({ success: true, ...await teilelisteDesSets(String(req.params.setNumber), setTeileAnreichern) });
 });
 
-// GET /api/v1/sets/:setNumber/minifigs-list — Figuren eines Sets, ohne Konto
 router.get('/sets/:setNumber/minifigs-list', requireToken, async (req: AuthedRequest, res) => {
   res.json({ success: true, ...await figurenlisteDesSets(String(req.params.setNumber)) });
 });
 
-// ── SETS ──────────────────────────────────────────────────────────────────────
 router.get('/sets', requireToken, async (req: AuthedRequest, res) => {
-  // Beide Clients blättern seitenweise und lassen den Server suchen,
-  // filtern und sortieren. Ohne page_size bleibt die Liste
-  // unbegrenzt — dieser Weg ist weiterhin offen für Aufrufer, die alles
-  // wollen (Skripte, ältere App-Stände), und deshalb absichtlich nicht …
+  // Ohne page_size bleibt die Liste absichtlich unbegrenzt — für Skripte und
+  // ältere App-Stände.
   // Ausführlich: docs/begruendungen/routes/api_v1/sets.ts.md#get-sets-r
   const r = await getSets(await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts)), req.query);
   const sets = r.sets;
@@ -265,11 +207,8 @@ router.get('/sets/:setNumber/price', requireToken, async (req: AuthedRequest, re
   res.json({ success: true, ...preis });
 });
 
-// ── GET /api/v1/sets/:setNumber/price-history ─────────────────────────────────
 router.get('/sets/:setNumber/price-history', requireToken, async (req: AuthedRequest, res) => {
-  // Dieselbe Umsetzung wie /api/finance/price-history — siehe
-  // src/finanzen/priceHistory.ts.
-  // Ausführlich: docs/begruendungen/routes/api_v1/sets.ts.md#get-sets-setnumber-price-history-uid
+  // Dieselbe Umsetzung wie /api/finance/price-history (src/finanzen/priceHistory.ts).
   const uid = req.apiUser.user_id;
   const sn  = String(req.params.setNumber);
   const currency = await getSetting(uid, 'currency', 'EUR');
@@ -277,21 +216,13 @@ router.get('/sets/:setNumber/price-history', requireToken, async (req: AuthedReq
   res.json({ success: true, set_number: sn, ...data });
 });
 
-// ── GET /api/v1/sets/household-members ───────────────────────────────────────
-/**
- * Konten des Haushalts — für die Kontoauswahl beim Erfassen, den Kontofilter
- * und die Eigentümer-Auswahl je Kaufpreis.
- *
- * MUSS vor /sets/:setNumber stehen: Express probiert der Reihe nach, und der
- * Platzhalter würde "household-members" sonst als Setnummer lesen.
- */
+/** MUSS vor /sets/:setNumber stehen: Express liest „household-members" sonst
+ * als Setnummer. */
 router.get('/sets/household-members', requireToken, async (req: AuthedRequest, res) => {
   res.json({ success: true, members: await householdMembers(req.apiUser.user_id) }); 
 });
 
 router.get('/sets/:setNumber', requireToken, async (req: AuthedRequest, res) => {
-  // Gemeinsamer Handler (auch /api/sets/:setNumber) — inkl. Zustands-
-  // Aggregat über die Erfassungen und aufgelöstem image_local (Parität).
   const set = await getSet(await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts)), pfadParam(req, 'setNumber'));
   if (!set) return sendeFehler(req, res, 404, 'set_nicht_gefunden');
   res.json({ success:true, set });
@@ -300,19 +231,15 @@ router.get('/sets/:setNumber', requireToken, async (req: AuthedRequest, res) => 
 router.post('/sets', requireToken, async (req: AuthedRequest, res) => {
   const { set_number, quantity=1, purchase_price, condition, owner_user_id } = req.body;
   if (!set_number) return sendeFehler(req, res, 400, 'set_number_erforderlich');
-  // Kontoauswahl beim Erfassen — wie in der Webapp: Der Hauptaccount trägt
-  // ein Set für eines seiner Unterkonten ein. Ohne Angabe bleibt es beim
-  // eigenen Konto; resolveWriteTarget prüft die RICHTUNG, nicht bloss die
-  // Mitgliedschaft im Blickfeld.
+  // resolveWriteTarget prüft die RICHTUNG (Haupt- für Unterkonto), nicht bloss
+  // die Mitgliedschaft im Blickfeld.
   const owner = await resolveWriteTarget(req.apiUser.user_id, owner_user_id);
   if (owner === null) return sendeFehler(req, res, 403, 'kein_schreibrecht');
   // Schon im Blickfeld? Dann NICHT die Menge erhöhen — die Oberfläche öffnet
-  // die Detailansicht. Die Regel steht in src/sets/setAdd.ts und gilt für beide
-  // Clients und alle drei Erfassungswege (Nummer, Barcode, Texterkennung).
+  // die Detailansicht (src/sets/setAdd.ts, für alle Erfassungswege).
   const vorhanden = await findSetInScope(req.apiUser.user_id, set_number);
   if (vorhanden) return res.json({ success:true, action:'exists', ...vorhanden });
-  // Gleiche Prüfung wie im Webapp-Weg (src/infra/validate.ts) — sonst hinge die
-  // Regel daran, welchen der beiden Wege jemand nimmt.
+  // Dieselbe Prüfung wie im Webapp-Weg, damit die Regel nicht am Weg hängt.
       const result = await addSet(set_number, V.acquisitionQuantity(quantity), owner, null,
     V.optionalPrice(purchase_price, 'Kaufpreis'), condition, req.body?.storage ?? null);
   res.json({ success:true, ...result });
@@ -323,18 +250,14 @@ router.put('/sets/:setNumber', requireToken, async (req: AuthedRequest, res) => 
       && req.body.purchase_price === undefined && req.body.condition === undefined) {
     return sendeFehler(req, res, 400, 'erfassung_felder');
   }
-  // Die Antwort trägt die Gesamtmenge NACH der Änderung: Bei einer
-  // Verringerung deckelt der Server bei den eigenen Exemplaren (fremde lassen
-  // sich nicht wegnehmen), und dann steht dort eine andere Zahl als die
-  // gesendete. Ohne sie zeigte die Oberfläche weiter ihre eigene Annahme.
+  // Die Antwort trägt die Gesamtmenge NACH der Änderung: Eine bei 0 gedeckelte
+  // Verringerung ergibt eine andere Zahl als die gesendete.
   const r = await updateSet(req.apiUser.user_id, pfadParam(req, 'setNumber'), req.body);
   res.json({ success: true, ...(r || {}) });
 });
 
-/**
- * Set löschen — standardmässig im ganzen SCHREIB-Blickfeld.
- * Ausführlich: docs/begruendungen/routes/api_v1/sets.ts.md#delete-sets-setnumber
- */
+/** Standardmässig im ganzen SCHREIB-Blickfeld.
+ * Ausführlich: docs/begruendungen/routes/api_v1/sets.ts.md#delete-sets-setnumber */
 router.delete('/sets/:setNumber', requireToken, async (req: AuthedRequest, res) => {
   const schreibbar = await writableIds(req.apiUser.user_id);
   const gewaehlt = req.query.accounts === undefined ? schreibbar
@@ -346,12 +269,8 @@ router.delete('/sets/:setNumber', requireToken, async (req: AuthedRequest, res) 
 });
 
 
-// ── POST /api/v1/sets/:sn/move ───────────────────────────────────────────────
-/**
- * Set (oder einzelne Kaufpreise davon) in ein anderes Konto des Haushalts.
- * Gegenstück zu POST /api/sets/:sn/move — dieselbe Umsetzung
- * (src/sets/setMove.ts), damit die App nicht ihre eigenen Regeln bekommt.
- */
+/** Dieselbe Umsetzung wie der Webapp-Weg (src/sets/setMove.ts), damit die App
+ * nicht ihre eigenen Regeln bekommt. */
 router.post('/sets/:sn/move', requireToken, async (req: AuthedRequest, res) => {
   const raw = String(req.params.sn);
   const sn  = mitVersion(raw);
@@ -362,12 +281,8 @@ router.post('/sets/:sn/move', requireToken, async (req: AuthedRequest, res) => {
     return sendeFehler(req, res, 403, 'kein_schreibrecht');
   if (fromId === toId)
     return sendeFehler(req, res, 400, 'quelle_ziel_identisch');
-  // ── Verschoben wird über den KAUFPREIS, nie über das Set ────────────────
-  // acquisition_ids ist Pflicht. Ein Set als Ganzes zu verschieben klingt
-  // bequem, verdeckt aber, was tatsächlich wandert: Drei Erfassungen sind
-  // drei Käufe, und im Haushalt können sie verschiedenen Kindern gehören.
-  // Wer alles verschieben will, wählt alle Zeilen — dann sieht er auch, wie
-  // viele es sind.
+  // acquisition_ids ist Pflicht: Drei Erfassungen sind drei Käufe und können im
+  // Haushalt verschiedenen Kindern gehören; wer alles will, wählt alle Zeilen.
   const acqIds = Array.isArray(req.body?.acquisition_ids)
     ? req.body.acquisition_ids.map((n: any) => parseInt(String(n))).filter(Number.isFinite)
     : [];
@@ -379,8 +294,8 @@ router.post('/sets/:sn/move', requireToken, async (req: AuthedRequest, res) => {
 });
 
 // ── CSV-Import: Fortschritt als Abfrage und als Strom ───────────────────────
-// Die Zustandsrouten antworten nach 3 s mit 503 statt zu warten: Sie hängen
-// an jeder geöffneten Seite und dürfen bei voller Datenbank nicht stauen.
+// 503 nach 3 s statt zu warten: Die Zustandsrouten hängen an jeder geöffneten
+// Seite und dürfen bei voller Datenbank nicht stauen.
 const zustandsWaechter = loginOrTokenGuard({ timeoutMs: 3000 });
 
 router.get('/sets/import/csv/status', zustandsWaechter, async (req, res) => {
@@ -460,20 +375,17 @@ router.post('/sets/import/csv/cancel', requireToken, async (req, res) => {
   res.json({ success: true });
 });
 
-// ── Export im Listenformat von Rebrickable ──────────────────────────────────
 router.get('/sets/export/rebrickable', requireToken, async (req, res) => {
   sendCsv(res, `rebrickable-sets-${new Date().toISOString().substring(0, 10)}.csv`,
     ['Set Number', 'Quantity'], await rebrickableListe(angemeldeteNutzerId(req)));
 });
 
-// ── Anlegen mit Fortschrittsstrom ───────────────────────────────────────────
 router.post('/sets/add-stream', requireToken, async (req: LoggedInRequest, res) => {
   const { set_number, quantity = 1, purchase_price, condition: setCondition, owner_user_id, storage } = req.body;
   if (!set_number) { sendeFehler(req, res, 400, 'set_number_erforderlich'); return; }
   const owner = await resolveWriteTarget(angemeldeteNutzerId(req), owner_user_id);
   if (owner === null) { sendeFehler(req, res, 403, 'kein_schreibrecht'); return; }
-  // Schon im Blickfeld? Dann kein Strom, sondern die Antwort „exists“ — es
-  // gibt nichts zu verfolgen (src/sets/setAdd.ts).
+  // Schon im Blickfeld: kein Strom, sondern „exists" — es gibt nichts zu verfolgen.
   const vorhanden = await findSetInScope(angemeldeteNutzerId(req), set_number);
   if (vorhanden) { res.json({ success: true, action: 'exists', ...vorhanden }); return; }
   res.setHeader('Content-Type', 'text/event-stream'); res.setHeader('Cache-Control', 'no-cache');
@@ -498,9 +410,8 @@ router.post('/sets/:setNumber/parts', requireToken, async (req: LoggedInRequest,
 });
 
 // ── Anleitungen ─────────────────────────────────────────────────────────────
-// Neu laden darf, wer das Set im Haushalt hat, einmal je Set und Tag; der
-// Verwalter immer. Die Anleitungen sind geteilt, und jeder Abruf kostet
-// Kontingent der Quellen.
+// Neu laden einmal je Set und Tag (Verwalter immer): Die Anleitungen sind
+// geteilt, und jeder Abruf kostet Kontingent der Quellen.
 router.post('/sets/:setNumber/instructions', requireToken, async (req, res) => {
   const sn = normalisiereSetNummer(pfadParam(req, 'setNumber'));
   if (!moeglicheSetNummer(sn)) return sendeFehler(req, res, 400, 'setnummer_ungueltig');
@@ -533,11 +444,8 @@ const uploadInstr = multer({
   fileFilter: (_req, file, cb) => { if (ausTabelle(INSTR_EXT_BY_MIME, file.mimetype)) cb(null, true); else cb(dateiFehler('datei_typ_falsch', 415)); },
 });
 
-/**
- * Besitz und Kontingent vor dem Schreiben, sonst liegen bis zu 50 MB auf der
- * Platte, bevor feststeht, dass die Datei nicht bleiben darf. Content-Length
- * schliesst die Formularhülle ein, ist also nie kleiner als die Datei.
- */
+/** Besitz und Kontingent VOR dem Schreiben, sonst lägen bis zu 50 MB auf der
+ * Platte. Content-Length schliesst die Formularhülle ein, ist nie kleiner. */
 async function vorDemUpload(req: express.Request, res: express.Response, next: express.NextFunction) {
   const uid = angemeldeteNutzerId(req);
   if (!await setGehoertKonto(uid, pfadParam(req, 'setNumber'))) return sendeFehler(req, res, 404, 'nicht_gefunden');

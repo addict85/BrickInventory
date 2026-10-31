@@ -1,28 +1,18 @@
-/**
- * Der `?v=`-Stempel an den Assets — abgeleitet aus den DATEIEN, nicht aus
- * einer Zahl, die jemand gesetzt haben muss.
- * Ausführlich: docs/begruendungen/src/infra/assetStempel.ts.md#abschnitt
- */
+/** Aus den DATEIEN abgeleitet, nicht aus einer Zahl, die jemand setzen muss:
+ * Eine vergessene Zahl liess den Browser alte Dateien zeigen.
+ * Ausführlich: docs/begruendungen/src/infra/assetStempel.ts.md#abschnitt */
 import fs from 'fs';
 import path from 'path';
 
-/**
- * Wie lange ein berechneter Satz Stempel gilt.
- * Ausführlich: docs/begruendungen/src/infra/assetStempel.ts.md#stempel-ttl-ms
- */
+/** Ohne Frist ein Dutzend `stat` je Seitenaufruf; zu lang, und ein Deploy ohne
+ * Neustart zeigt minutenlang alte Adressen. */
 export const STEMPEL_TTL_MS = 30_000;
 
-/** Zuletzt berechnete Stempel, Pfad → Stempel. */
 let _satz: Map<string, string> | null = null;
 let _satzZeit = 0;
 
-/**
- * Der Stempel EINER Datei — oder `null`, wenn es sie nicht gibt.
- * `null` und kein Platzhalter: Der Aufrufer laesst den vorhandenen Wert dann
- * stehen. Eine fehlende Datei ist ein anderes Problem (und faellt in
- * test/eigenbruecken auf); sie darf nicht zusaetzlich die Adresse der
- * ANDEREN Assets verwackeln.
- */
+/** `null` statt Platzhalter: Eine fehlende Datei darf nicht die Adressen der
+ * ANDEREN Assets verwackeln. */
 export function dateiStempel(datei: string): string | null {
   try {
     const st = fs.statSync(datei);
@@ -32,19 +22,13 @@ export function dateiStempel(datei: string): string | null {
   }
 }
 
-/**
- * Alle `?v=` in `html` durch den Stempel der jeweiligen Datei ersetzen.
- * Ausführlich: docs/begruendungen/src/infra/assetStempel.ts.md#stempleassets
- * @param html   Der Seitenquelltext.
- * @param wurzel Das Verzeichnis, gegen das die absoluten Pfade aufloesen.
- */
+/** Rein, ohne Zustand — damit sich die Regel ohne Server prüfen lässt.
+ * Ausführlich: docs/begruendungen/src/infra/assetStempel.ts.md#stempleassets */
 export function stempleAssets(html: string, wurzel: string): string {
   return html.replace(
     /((?:href|src)=")(\/[^"?]+)\?v=[^"]*(")/g,
     (ganz, kopf: string, pfad: string, schwanz: string) => {
-      // `path.normalize` gegen `..` im Pfad: Der Quelltext kommt zwar aus dem
-      // eigenen Baum, aber eine Regel, die nur bei gutmuetiger Eingabe haelt,
-      // ist keine.
+      // normalize gegen `..`: Eine Regel, die nur bei gutmütiger Eingabe hält, ist keine.
       const rein = path.normalize(pfad).replace(/^(\.\.(\/|\\|$))+/, '');
       const stempel = dateiStempel(path.join(wurzel, rein));
       return stempel === null ? ganz : `${kopf}${pfad}?v=${stempel}${schwanz}`;
@@ -52,7 +36,6 @@ export function stempleAssets(html: string, wurzel: string): string {
   );
 }
 
-/** Dasselbe, aber mit der Frist aus [STEMPEL_TTL_MS]. */
 export function stempleAssetsGecacht(html: string, wurzel: string): string {
   const jetzt = Date.now();
   if (_satz === null || jetzt - _satzZeit > STEMPEL_TTL_MS) {
@@ -73,9 +56,3 @@ export function stempleAssetsGecacht(html: string, wurzel: string): string {
     },
   );
 }
-
-// Ein `vergisStempel()` stand hier und ist RAUS: Niemand rief es auf
-// (test/dead-code.test.js hat es gemeldet). Gebraucht wird es auch nicht —
-// die Frist oben raeumt den Satz von allein weg, und ein Deploy ohne Neustart
-// ist nach dreissig Sekunden durch. Ein Ausgang „fuer spaeter" altert
-// unbemerkt mit.

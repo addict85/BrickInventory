@@ -1,7 +1,5 @@
 import * as db from '../../../db/database';
 
-/** Marktpreise und Erfassungen für den Wert eines Sets. */
-
 export function cachePreiseFuerSets(werte: (string[] | string | number)[], ttlClause: string) {
   return db.all(`SELECT set_number, condition, avg_price
        FROM price_cache

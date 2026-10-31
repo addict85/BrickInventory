@@ -1,13 +1,9 @@
 import net from 'node:net';
 import express from 'express';
 
-/**
- * Wem der Server X-Forwarded-For und -Proto glaubt (Express „trust proxy").
- * Nur Adressen, die ausdrücklich genannt sind: Jeder vertraute Absender kann
- * seine Client-Adresse frei angeben und damit die Anmeldesperre je Adresse
- * umgehen. Ohne Angabe gilt Loopback, „false" schaltet es ganz ab. Hop-Zahlen,
- * „true" und ganze Netze wie das alte „docker" (172.16.0.0/12) werden abgelehnt.
- */
+/** Nur ausdrücklich genannte Adressen: Jeder vertraute Absender kann seine
+ * Client-Adresse frei angeben und so die Anmeldesperre umgehen. Hop-Zahlen,
+ * „true" und ganze Netze werden abgelehnt. */
 export function proxyVertrauen(wert?: string): false | string[] | ((adresse: string) => boolean) {
   const v = (wert ?? '').trim();
   if (!v) return nurLoopback;
@@ -18,7 +14,6 @@ export function proxyVertrauen(wert?: string): false | string[] | ((adresse: str
   return eintraege;
 }
 
-/** Die Meldung für einen Start mit unbrauchbarem TRUST_PROXY. */
 function proxyFehlertext(falsch: string[]): string {
   return `TRUST_PROXY enthält ${falsch.map(f => `„${f}"`).join(', ')}. Erlaubt sind nur die feste Adresse `
     + 'des eigenen Reverse-Proxys (z. B. 172.28.73.10) oder ein kleines Netz (IPv4 ab /16, IPv6 ab /64), '
@@ -26,7 +21,7 @@ function proxyFehlertext(falsch: string[]): string {
     + 'siehe README.md und docs/SICHERHEIT.md.';
 }
 
-/** Eine IP-Adresse oder ein CIDR-Netz, das höchstens einen kleinen Bereich umfasst. */
+/** Höchstens ein kleiner Bereich. */
 export function proxyEintragGueltig(eintrag: string): boolean {
   const [adresse, praefix, rest] = eintrag.split('/');
   if (rest !== undefined || !adresse) return false;
@@ -45,7 +40,6 @@ function nurLoopback(adresse: string): boolean {
   return a === '::1' || /^127\.\d+\.\d+\.\d+$/.test(a);
 }
 
-/** 172.16.0.0/12 oder fc00::/7 — dort vergibt Docker seine Netze. */
 function imDockerNetz(adresse: string): boolean {
   const a = ohneV4Huelle(adresse);
   const v4 = /^(\d+)\.(\d+)\.\d+\.\d+$/.exec(a);
@@ -54,7 +48,6 @@ function imDockerNetz(adresse: string): boolean {
   return a.includes(':') && erste >= 0xfc00 && erste <= 0xfdff;
 }
 
-/** Das Gateway eines Docker-Netzes (x.y.0.1 in 172.16/12, …:1 in fc00::/7). */
 export function istDockerGateway(adresse: string): boolean {
   const a = ohneV4Huelle(adresse);
   if (!imDockerNetz(a)) return false;
@@ -63,12 +56,8 @@ export function istDockerGateway(adresse: string): boolean {
   return o3 === '0' && o4 === '1';
 }
 
-/**
- * Einmal warnen, wenn ein Proxy aus dem Docker-Netz kommt und TRUST_PROXY ihm
- * nicht glaubt: Dann teilen sich alle Clients eine Adresse (Anmeldesperre,
- * Drosseln). Über das Gateway kommen auch Clients selbst herein, deshalb wird
- * ihm nie zu vertrauen geraten, sondern zu einer festen Proxy-Adresse.
- */
+/** Über das Gateway kommen auch Clients herein; geraten wird deshalb nie zu
+ * ihm, sondern zu einer festen Proxy-Adresse. */
 export function proxyHinweis(trustProxy: string | undefined, warne: (text: string) => void = console.warn) {
   let vertrauen: ReturnType<typeof proxyVertrauen>;
   try { vertrauen = proxyVertrauen(trustProxy); } catch { vertrauen = false; }

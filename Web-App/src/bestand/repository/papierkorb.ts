@@ -1,14 +1,11 @@
 import * as db from '../../../db/database';
 import type { DbSchnittstelle } from '../../../db/database';
 
-/**
- * Datenzugriff für den Papierkorb (Migration 0041). Ein Eintrag hält die
- * gelöschten Zeilen aller Tabellen eines Bestands als JSON; Wiederherstellen
- * schreibt sie Spalte für Spalte zurück.
- */
+/** Ein Eintrag hält die gelöschten Zeilen aller Tabellen eines Bestands als
+ * JSON; Wiederherstellen schreibt sie Spalte für Spalte zurück. */
 export type PapierArt = 'set' | 'teil' | 'figur';
 
-/** Je Art die Tabellen, die zum Bestand gehören — die erste ist die Stammzeile. */
+/** Die erste Tabelle ist die Stammzeile. */
 const TABELLEN: Record<PapierArt, { tabelle: string; wo: string }[]> = {
   set: [
     { tabelle: 'sets',             wo: 'user_id = $1 AND set_number = $2' },
@@ -28,7 +25,6 @@ const TABELLEN: Record<PapierArt, { tabelle: string; wo: string }[]> = {
 
 export const tabellenDerArt = (art: PapierArt): string[] => TABELLEN[art].map(t => t.tabelle);
 
-/** Die Zeilen eines Bestands je Tabelle, wie sie jetzt stehen. */
 export async function bestandsZeilen(tx: DbSchnittstelle, art: PapierArt, werte: unknown[]): Promise<Record<string, unknown[]>> {
   const zeilen: Record<string, unknown[]> = {};
   for (const { tabelle, wo } of TABELLEN[art]) {
@@ -47,7 +43,7 @@ const BEZEICHNUNG: Record<PapierArt, string> = {
   figur: 'SELECT fig_name AS b FROM minifigs_catalog WHERE fig_number = $1',
 };
 
-/** Der Name aus dem Katalog, damit die Liste auch ohne Katalogzeile lesbar bleibt. */
+/** Damit die Liste auch ohne Katalogzeile lesbar bleibt. */
 export async function bezeichnung(tx: DbSchnittstelle, art: PapierArt, nummer: string, farbeId: number | null): Promise<string | null> {
   const r = await tx.get<{ b: string | null }>(BEZEICHNUNG[art], art === 'teil' ? [nummer, farbeId] : [nummer]);
   return r?.b || null;
@@ -74,10 +70,8 @@ export function eintragSperren(tx: DbSchnittstelle, id: number, uids: number[]) 
   return tx.get('SELECT * FROM papierkorb WHERE id = $1 AND user_id = ANY($2) FOR UPDATE', [id, uids]);
 }
 
-/**
- * Gesicherte Zeilen zurückschreiben — nur Spalten, die es noch gibt und die
- * nicht berechnet sind; eine seither gelöschte Spalte fällt so still weg.
- */
+/** Nur Spalten, die es noch gibt und die nicht berechnet sind; eine seither
+ * gelöschte Spalte fällt so still weg. */
 export async function schreibeZurueck(tx: DbSchnittstelle, tabelle: string, zeilen: Record<string, unknown>[]): Promise<void> {
   const erste = zeilen[0];
   if (!erste) return;
