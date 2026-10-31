@@ -10,7 +10,7 @@ import { setsOhneAnleitungsabruf, setBilderOhneDatei, merkeSetBildLokal, lokaleK
 import { downloadSetImage } from '../src/katalog/bilder/setImages';
 import { generateThumb } from '../src/katalog/bilder/thumbs';
 import { anleitungEinreihen } from '../src/auftraege/anleitungsAuftrag';
-import { verschluesseleAltbestand } from '../src/infra/geheimnisAltbestand';
+import { verschluesseleAltbestand } from '../src/konto/geheimnisAltbestand';
 import { verschluesseleGutscheinAltbestand } from '../src/gutscheine/gutscheinDateien';
 import * as catalogSync from './catalogSync';
 import * as purchasePriceBackfill from './purchasePriceBackfill';

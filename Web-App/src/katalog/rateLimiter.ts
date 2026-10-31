@@ -68,7 +68,7 @@ export class RateLimiter {
 // Primary limiter: CSV import, set info, image downloads (foreground)
 import { meldeUndWeiter, meldeUndLiefere } from '../infra/httpError';
 import { checkAndIncrementRateLimit, getRateLimitStatus, REBRICKABLE_DEFAULT_DAILY } from './apiKontingent';
-import * as db from '../../db/database';
+import * as repo from './repository/apiTakt';
 
 // Nach einem Datenbankfehler eine Minute lang ohne gemeinsamen Takt: Jeder
 // Aufruf liefe sonst erst in den Verbindungs-Timeout. Die eigene Drossel
@@ -83,12 +83,7 @@ let taktGestoertBis = 0;
 export async function warteAufTakt(api: string, abstandMs: number): Promise<void> {
   if (Date.now() < taktGestoertBis) return;
   try {
-    const r = await db.get(
-      `INSERT INTO api_takt (api, naechster) VALUES ($1, clock_timestamp() + make_interval(secs => $2 / 1000.0))
-       ON CONFLICT (api) DO UPDATE
-         SET naechster = GREATEST(api_takt.naechster, clock_timestamp()) + make_interval(secs => $2 / 1000.0)
-       RETURNING GREATEST(0, EXTRACT(EPOCH FROM (naechster - clock_timestamp())) * 1000 - $2) AS warte_ms`,
-      [api, abstandMs]);
+    const r = await repo.belegeTakt(api, abstandMs);
     const warte = Math.ceil(Number(r?.warte_ms) || 0);
     if (warte > 0) await new Promise(res => setTimeout(res, warte));
   } catch (e) {
@@ -100,8 +95,7 @@ export async function warteAufTakt(api: string, abstandMs: number): Promise<void
 /** Ein 429 gilt für alle Prozesse: den gemeinsamen Zeitpunkt hinausschieben. */
 function taktAussetzen(api: string, waitMs: number) {
   if (Date.now() < taktGestoertBis) return;
-  db.run(`UPDATE api_takt SET naechster = GREATEST(naechster, clock_timestamp() + make_interval(secs => $2 / 1000.0))
-           WHERE api = $1`, [api, waitMs])
+  repo.schiebeTakt(api, waitMs)
     .catch(e => meldeUndWeiter('drossel:takt-aussetzen', e));
 }
 

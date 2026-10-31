@@ -6,6 +6,7 @@
  * dorthin fehl, wird gezählt und höchstens einmal je Minute gemeldet.
  */
 import { AsyncLocalStorage } from 'async_hooks';
+import * as logs from './repository/appLogs';
 
 /** Kennung der laufenden Anfrage; server.ts setzt sie je Anfrage. */
 export const anfrageKontext = new AsyncLocalStorage<{ rid: string }>();
@@ -42,7 +43,7 @@ const PROZESS: Ausgabe = {
   jetzt: () => Date.now(),
 };
 
-interface Abfrager { query(sql: string, werte?: unknown[]): Promise<unknown> }
+type Abfrager = logs.Abfrager;
 
 const MAX_TEXT = 4000;
 const MELDE_ABSTAND_MS = 60_000;
@@ -122,8 +123,7 @@ export function meldeSchreibfehler(): void {
 export function leereProtokoll(): Promise<void> {
   if (!Z || !Z.pool || !Z.puffer.length) return Promise.resolve();
   const rows = Z.puffer.splice(0);
-  const vals = rows.map((_, i) => `($${i * 2 + 1},$${i * 2 + 2})`).join(',');
-  return Z.pool.query(`INSERT INTO app_logs (level,message) VALUES ${vals}`, rows.flatMap(r => [r.level, r.message]))
+  return logs.schreibeLogZeilen(Z.pool, rows)
     .then(() => undefined, (e: unknown) => schreibfehler(rows.length, e));
 }
 
@@ -133,7 +133,7 @@ export function protokollInDieDatenbank(pool: Abfrager): void {
   Z.pool = pool;
   void leereProtokoll();
   setInterval(() => {
-    pool.query(`DELETE FROM app_logs WHERE logged_at < NOW() - INTERVAL '48 hours'`)
+    logs.loescheAlteLogZeilen(pool)
       .catch((e: unknown) => schreibfehler(0, e));
   }, 6 * 60 * 60 * 1000).unref();
 }

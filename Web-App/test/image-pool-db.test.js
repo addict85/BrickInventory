@@ -238,6 +238,7 @@ test('die Sitzungssperre wird auf derselben Verbindung freigegeben', () => {
   assert.match(fn, /db\.eigeneVerbindung\(\)/,
     'Die Sperre nimmt wieder eine Pool-Verbindung');
   assert.doesNotMatch(fn, /db\.pool\.connect\(\)/, 'Pool-Verbindung ist zurück');
-  assert.match(fn, /client\.query\('SELECT pg_try_advisory_lock/, 'Nehmen nicht auf dem Client');
-  assert.match(fn, /client\.query\('SELECT pg_advisory_unlock/, 'Freigeben nicht auf dem Client');
+  // Nehmen und Freigeben stehen im Repository und bekommen DIESE Verbindung.
+  assert.match(fn, /sperre\.versucheSperre\(client,/, 'Nehmen nicht auf dem Client');
+  assert.match(fn, /sperre\.gibSperreFrei\(client,/, 'Freigeben nicht auf dem Client');
 });

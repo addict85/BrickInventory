@@ -172,7 +172,9 @@ async function starteApp(t, opt = {}) {
   await b.auswerten(`document.getElementById('lu').value = ${JSON.stringify(NAME)};
     document.getElementById('lp').value = ${JSON.stringify(PASS)};
     document.getElementById('btn-login').click(); true`);
-  await bis(`document.getElementById('app')?.style.display === 'block' || getComputedStyle(document.getElementById('app')).display !== 'none'`, 'angemeldet');
+  // 30 s wie beim Chrome-Start: Die Anmeldung rechnet bcrypt mit 12 Runden und
+  // schreibt die Sitzung; auf einem ausgelasteten Läufer dauerte das über 10 s.
+  await bis(`document.getElementById('app')?.style.display === 'block' || getComputedStyle(document.getElementById('app')).display !== 'none'`, 'angemeldet', 300);
   // Am Telefon steht der Name nur im Menü; geprüft wird deshalb das Kontoschild selbst.
   await bis(`(document.getElementById('ubadge')?.textContent || '').includes(${JSON.stringify(NAME)})`, 'Kontoname im Kontoschild');
   // Der Start ist erst entschieden, wenn die App ohne Rebrickable-Schlüssel auf

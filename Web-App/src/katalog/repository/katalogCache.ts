@@ -43,3 +43,12 @@ export async function cacheZahlen(): Promise<{ subsets: number; catalog: number;
   const [subsets, catalog, prices] = await Promise.all([zaehle('subsets_cache'), zaehle('catalog_cache'), zaehle('price_cache')]);
   return { subsets, catalog, prices };
 }
+
+export function blTypenDerSets(setNummern: unknown[]) {
+  return db.all('SELECT set_number, bl_type FROM catalog_cache WHERE set_number = ANY($1::text[])', [setNummern]);
+}
+
+export function merkeBlTyp(n: unknown, name: string, found: unknown, isGear: unknown) {
+  return db.run(`INSERT INTO catalog_cache (set_number, name, bl_type, is_gear) VALUES ($1,$2,$3,$4)
+     ON CONFLICT (set_number) DO UPDATE SET bl_type = $3, fetched_at = NOW()`, [n, name, found, isGear]);
+}

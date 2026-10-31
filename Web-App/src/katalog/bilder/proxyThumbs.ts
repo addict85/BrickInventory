@@ -6,6 +6,7 @@ import { istBekanntFehlend } from './imageMisses';
 import { isDecodable } from './imageGuard';
 import * as db from '../../../db/database';
 import { LOCKS } from '../../infra/lockNamespaces';
+import * as sperre from '../repository/sitzungsSperre';
 
 /**
  * Die Vorschau-Maschinerie des Bild-Proxys.
@@ -87,10 +88,9 @@ export async function mitVorschauSperre(arbeit: () => Promise<any>) {
   }
   const client = _sperrClient;
   try {
-    const r = await client.query('SELECT pg_try_advisory_lock($1) AS ok', [THUMB_LOCK_KEY]);
-    if (!r.rows[0]?.ok) return false;   // ein anderer Prozess rechnet gerade
+    if (!await sperre.versucheSperre(client, THUMB_LOCK_KEY)) return false;   // ein anderer Prozess rechnet gerade
     try { return await arbeit(); }
-    finally { await client.query('SELECT pg_advisory_unlock($1)', [THUMB_LOCK_KEY]).catch(logAndContinue('proxy-vorschau:pg_advisory_unlock')); }
+    finally { await sperre.gibSperreFrei(client, THUMB_LOCK_KEY).catch(logAndContinue('proxy-vorschau:pg_advisory_unlock')); }
   } catch (_) {
     _sperrClient = null;   // Verbindung hin — beim nächsten Mal neu aufbauen
     return false;
