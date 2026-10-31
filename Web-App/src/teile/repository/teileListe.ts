@@ -31,7 +31,7 @@ export interface TeilZeile {
   part_number: string; bl_part_number: string; part_name: string | null; color_id: number;
   color_name: string | null; color_hex: string | null; category_name: string | null;
   image_url: string | null; image_local: string | null; is_spare: boolean;
-  total_quantity: number | string; storage: string | null; in_sets?: string | null;
+  total_quantity: number; storage: string | null; in_sets?: string | null;
 }
 
 export interface Seite { groesse: number; versatz: number; mitSets: boolean; ordnung: TeileOrdnung }

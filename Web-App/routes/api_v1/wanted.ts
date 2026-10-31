@@ -18,11 +18,13 @@ import { addManualFig } from '../../src/figuren/manuelleFiguren';
 import { addSet } from '../../src/sets/setService';
 
 import { jsonOderNull } from '../../src/infra/validate';
-const router = express.Router();
+import { vertragsRouter } from '../../src/infra/vertrag/pruefen';
+import type { Antwort } from '../../src/infra/vertrag';
+const router = vertragsRouter();
 type AuthedRequest = express.Request & { apiUser: { user_id: number } };
 
 // Ausführlich: docs/begruendungen/routes/api_v1/wanted.ts.md#get-wanted
-router.get('/wanted', requireToken, async (req: AuthedRequest, res) => {
+router.get('/wanted', requireToken, async (req: AuthedRequest, res: Antwort<'GET /api/v1/wanted'>) => {
   const ids = await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts));
   // Die Währung des LESERS; price_cache ist je Währung verschlüsselt, deshalb
   // gehört sie in die Abfrage.
@@ -38,7 +40,7 @@ router.get('/wanted', requireToken, async (req: AuthedRequest, res) => {
 /** Alle drei Wege (Katalog, Setnummer, Barcode) landen hier, damit die Regeln
  * nicht vom Weg abhängen.
  * Ausführlich: docs/begruendungen/routes/api_v1/wanted.ts.md#post-wanted */
-router.post('/wanted', requireToken, async (req: AuthedRequest, res) => {
+router.post('/wanted', requireToken, async (req: AuthedRequest, res: Antwort<'POST /api/v1/wanted'>) => {
   const { set_number, condition, owner_user_id } = req.body;
   if (!set_number) return sendeFehler(req, res, 400, 'set_number_erforderlich');
   const owner = await resolveWriteTarget(req.apiUser.user_id, owner_user_id);
@@ -48,7 +50,7 @@ router.post('/wanted', requireToken, async (req: AuthedRequest, res) => {
 });
 
 // Ausführlich: docs/begruendungen/routes/api_v1/wanted.ts.md#put-wanted-setnumber-condition-inhaber
-router.put('/wanted/:setNumber/:condition/inhaber', requireToken, async (req: AuthedRequest, res) => {
+router.put('/wanted/:setNumber/:condition/inhaber', requireToken, async (req: AuthedRequest, res: Antwort<'PUT /api/v1/wanted/:setNumber/:condition/inhaber'>) => {
   const von = await resolveWriteTarget(req.apiUser.user_id, req.body?.owner_user_id);
   const zu  = await resolveWriteTarget(req.apiUser.user_id, req.body?.neuer_inhaber);
   if (von === null || zu === null) return sendeFehler(req, res, 403, 'kein_schreibrecht');
@@ -59,7 +61,7 @@ router.put('/wanted/:setNumber/:condition/inhaber', requireToken, async (req: Au
 
 /** Der Zustand steht im Pfad, weil er zum Schlüssel gehört: Dasselbe Set kann
  * neu UND gebraucht gewünscht sein. */
-router.delete('/wanted/:setNumber/:condition', requireToken, async (req: AuthedRequest, res) => {
+router.delete('/wanted/:setNumber/:condition', requireToken, async (req: AuthedRequest, res: Antwort<'DELETE /api/v1/wanted/:setNumber/:condition'>) => {
   const owner = await resolveWriteTarget(req.apiUser.user_id, req.query.owner_user_id);
   if (owner === null) return sendeFehler(req, res, 403, 'kein_schreibrecht');
   const weg = await loescheMerkposten(owner, pfadParam(req, 'setNumber'), pfadParam(req, 'condition'));
@@ -68,7 +70,7 @@ router.delete('/wanted/:setNumber/:condition', requireToken, async (req: AuthedR
 
 /** BEIDE Zustände, frisch geholt.
  * Ausführlich: docs/begruendungen/routes/api_v1/wanted.ts.md#get-wanted-setnumber-preise */
-router.get('/wanted/:setNumber/preise', requireToken, async (req: AuthedRequest, res) => {
+router.get('/wanted/:setNumber/preise', requireToken, async (req: AuthedRequest, res: Antwort<'GET /api/v1/wanted/:setNumber/preise'>) => {
   const sn = pfadParam(req, 'setNumber');
   const { currency, current } = await preiseBeiderZustaende(req.apiUser.user_id, sn);
   res.json({ success: true, set_number: sn, currency, current });
@@ -76,7 +78,7 @@ router.get('/wanted/:setNumber/preise', requireToken, async (req: AuthedRequest,
 
 /** Die Regel steht in merkliste.ts:uebernimm() — über addSet(), die eine
  * Wahrheit fürs Erfassen. Hier bleibt nur, wer schreiben darf. */
-router.post('/wanted/:setNumber/:condition/uebernehmen', requireToken, async (req: AuthedRequest, res) => {
+router.post('/wanted/:setNumber/:condition/uebernehmen', requireToken, async (req: AuthedRequest, res: Antwort<'POST /api/v1/wanted/:setNumber/:condition/uebernehmen'>) => {
   const owner = await resolveWriteTarget(req.apiUser.user_id, req.body?.owner_user_id);
   if (owner === null) return sendeFehler(req, res, 403, 'kein_schreibrecht');
   const r = await uebernimm(req.apiUser.user_id, owner,
@@ -87,7 +89,7 @@ router.post('/wanted/:setNumber/:condition/uebernehmen', requireToken, async (re
 /** Das Gegenstück zu buildMerklisteCsv().
  * Ausführlich: docs/begruendungen/routes/api_v1/wanted.ts.md#post-wanted-import-csv */
 router.post('/wanted/import/csv', requireToken, csvEmpfang.single('file'),
-  async (req: AuthedRequest & { file?: { buffer: Buffer } }, res) => {
+  async (req: AuthedRequest & { file?: { buffer: Buffer } }, res: Antwort<'POST /api/v1/wanted/import/csv'>) => {
     if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
     const owner = await resolveWriteTarget(req.apiUser.user_id, req.body?.owner_user_id);
     if (owner === null) return sendeFehler(req, res, 403, 'kein_schreibrecht');
@@ -125,7 +127,7 @@ router.post('/wanted/import/csv', requireToken, csvEmpfang.single('file'),
  * die dritte Sicherheitsstufe der Abbildung nur eine Vermutung ist.
  * Ausführlich: docs/begruendungen/routes/api_v1/wanted.ts.md#post-wanted-list-import-xml */
 router.post('/wanted-list/import/xml', requireToken, xmlEmpfang.single('file'),
-  async (req: AuthedRequest & { file?: { buffer: Buffer; originalname?: string } }, res) => {
+  async (req: AuthedRequest & { file?: { buffer: Buffer; originalname?: string } }, res: Antwort<'POST /api/v1/wanted-list/import/xml'>) => {
     if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
     // Vor dem try: Der catch-Zweig muss den Auftrag schliessen können.
     const uid = req.apiUser.user_id;

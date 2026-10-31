@@ -41,6 +41,8 @@ export interface Konfig {
   /** PEM; null: keine eigene CA. */
   caZertifikat: string | null;
   hinterTls: boolean;
+  /** Nur in Tests: Antworten gegen den API-Vertrag prüfen (src/infra/vertrag/pruefen.ts). */
+  vertragPruefen: boolean;
 }
 
 export type Rolle = 'web' | 'jobs' | 'beides';
@@ -65,7 +67,7 @@ export const VARIABLEN = [
   'PG_POOL_MAX', 'PG_POOL_MIN', 'PG_IDLE_MS', 'PG_CONN_MS', 'PG_STMT_MS', 'ADMIN_PASSWORD',
   'APP_BASE_URL', 'APP_ROOT', 'APP_VERSION', 'DATA_KEY', 'ERFASSUNG_ZEITZONE', 'TZ',
   'PRICE_HISTORY_KEEP_DAYS', 'UPLOAD_KONTINGENT_MB', 'MAIL_KONSOLE_MIT_TOKEN', 'IMG_USER_AGENT',
-  'CSV_ZEILE_FRIST_MS', 'AUFTRAG_PARALLEL', 'AUFTRAG_FRIST_SEK', 'CA_ZERTIFIKAT',
+  'CSV_ZEILE_FRIST_MS', 'AUFTRAG_PARALLEL', 'AUFTRAG_FRIST_SEK', 'CA_ZERTIFIKAT', 'VERTRAG_PRUEFEN',
 ] as const;
 
 /** Steht sie noch in einer alten compose.yaml, sagt der Start es. */
@@ -171,6 +173,7 @@ export function ladeKonfig(env: Umgebung = process.env): Konfig {
     auftragFristSek: ganzzahl(env, 'AUFTRAG_FRIST_SEK', 300, 1, 86_400, f),
     caZertifikat: env.CA_ZERTIFIKAT?.trim() || null,
     hinterTls: !!basis && /^https:\/\//i.test(basis),
+    vertragPruefen: env.VERTRAG_PRUEFEN?.trim() === '1',
   };
   if (f.length) throw new KonfigFehler(f);
   return k;

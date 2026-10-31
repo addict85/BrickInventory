@@ -35,12 +35,14 @@ import { loginOrTokenGuard, angemeldeteNutzerId, istVerwalter } from '../../src/
 import { csvImportBus, buildJobStatus, jobGet } from '../../src/auftraege/importAuftrag';
 import * as pgNotify from '../../db/pgNotify';
 import { DATA_DIR } from '../../src/infra/appPaths';
-const router = express.Router();
+import { vertragsRouter } from '../../src/infra/vertrag/pruefen';
+import type { Antwort } from '../../src/infra/vertrag';
+const router = vertragsRouter();
 
 // ── Feste Pfade VOR den Pfaden mit :setNumber ────────────────────────────────
 // Sonst liest Express „info" oder „exists" als Setnummer.
 
-router.get('/sets/info/:setNumber', requireToken, async (req: AuthedRequest, res) => {
+router.get('/sets/info/:setNumber', requireToken, async (req: AuthedRequest, res: Antwort<'GET /api/v1/sets/info/:setNumber'>) => {
   const n = mitVersion(pfadParam(req, 'setNumber'));
   // Ohne Katalogzeile zeigt die Oberfläche die Nummer als Namen.
   const row = await setInfo(n);
@@ -49,13 +51,13 @@ router.get('/sets/info/:setNumber', requireToken, async (req: AuthedRequest, res
 
 /** Nur das Blickfeld des fragenden Kontos (eigenes Konto oder Haushalt).
  * Ausführlich: docs/begruendungen/routes/api_v1/sets.ts.md#get-sets-exists-setnumber */
-router.get('/sets/exists/:setNumber', requireToken, async (req: AuthedRequest, res) => {
+router.get('/sets/exists/:setNumber', requireToken, async (req: AuthedRequest, res: Antwort<'GET /api/v1/sets/exists/:setNumber'>) => {
   const sn = String(req.params.setNumber);
   const treffer = await findSetInScope(req.apiUser.user_id, sn);
   res.json({ success: true, exists: !!treffer, ...(treffer || { set_number: normalizeSetNumber(sn) }) });
 });
 
-router.get('/sets/barcode/:barcode', requireToken, async (req: AuthedRequest, res) => {
+router.get('/sets/barcode/:barcode', requireToken, async (req: AuthedRequest, res: Antwort<'GET /api/v1/sets/barcode/:barcode'>) => {
   const barcode = String(req.params.barcode).trim();
   const treffer = await setZumBarcode(barcode);
   if (treffer) return res.json(treffer);
@@ -66,7 +68,7 @@ router.get('/sets/barcode/:barcode', requireToken, async (req: AuthedRequest, re
 
 /** Trifft alle Zeilen des Sets im Schreibbereich — Absicht: Wer die Kiste packt,
  * packt sie für alle, die darin nachsehen. */
-router.put('/sets/:setNumber/storage', requireToken, async (req: AuthedRequest, res) => {
+router.put('/sets/:setNumber/storage', requireToken, async (req: AuthedRequest, res: Antwort<'PUT /api/v1/sets/:setNumber/storage'>) => {
   const ort = normalisiereLagerort(req.body?.storage);
   const n = await setzeLagerort('set', await writableIds(req.apiUser.user_id),
     [normalizeSetNumber(String(req.params.setNumber))], ort);
@@ -76,12 +78,12 @@ router.put('/sets/:setNumber/storage', requireToken, async (req: AuthedRequest, 
 /** Ein Alarm gehört genau EINEM Konto: Wer eine Schwelle setzt, will selbst
  * benachrichtigt werden. Deshalb `user_id` statt scopeIds() — hier die Regel.
  * Ausführlich: docs/begruendungen/routes/api_v1/sets.ts.md#get-sets-setnumber-alert */
-router.get('/sets/:setNumber/alert', requireToken, async (req: AuthedRequest, res) => {
+router.get('/sets/:setNumber/alert', requireToken, async (req: AuthedRequest, res: Antwort<'GET /api/v1/sets/:setNumber/alert'>) => {
   res.json({ success: true,
     alerts: await alarmeFuer(req.apiUser.user_id, normalizeSetNumber(String(req.params.setNumber))) });
 });
 
-router.put('/sets/:setNumber/alert', requireToken, async (req: AuthedRequest, res) => {
+router.put('/sets/:setNumber/alert', requireToken, async (req: AuthedRequest, res: Antwort<'PUT /api/v1/sets/:setNumber/alert'>) => {
   // Die Währung aus den Einstellungen, nicht aus der Anfrage: Zwei Quellen
   // liefen beim nächsten Wechsel auseinander.
   const waehrung = String(await getSetting(req.apiUser.user_id, 'currency', 'EUR'));
@@ -90,25 +92,25 @@ router.put('/sets/:setNumber/alert', requireToken, async (req: AuthedRequest, re
   res.json({ success: true, alert: alarm });
 });
 
-router.delete('/sets/:setNumber/alert', requireToken, async (req: AuthedRequest, res) => {
+router.delete('/sets/:setNumber/alert', requireToken, async (req: AuthedRequest, res: Antwort<'DELETE /api/v1/sets/:setNumber/alert'>) => {
   const n = await loescheAlarm(req.apiUser.user_id,
     normalizeSetNumber(String(req.params.setNumber)), String(req.query.condition || 'N'));
   res.json({ success: true, removed: n });
 });
 
 // Ausführlich: docs/begruendungen/routes/api_v1/sets.ts.md#get-alerts-pending
-router.get('/alerts/pending', requireToken, async (req: AuthedRequest, res) => {
+router.get('/alerts/pending', requireToken, async (req: AuthedRequest, res: Antwort<'GET /api/v1/alerts/pending'>) => {
   const r = await ausgeloesteSeit(req.apiUser.user_id, req.query.since);
   res.json({ success: true, alerts: r.alerts, now: r.now });
 });
 
 // Ausführlich: docs/begruendungen/routes/api_v1/sets.ts.md#get-alerts
-router.get('/alerts', requireToken, async (req: AuthedRequest, res) => {
+router.get('/alerts', requireToken, async (req: AuthedRequest, res: Antwort<'GET /api/v1/alerts'>) => {
   res.json({ success: true, alerts: await alleAlarme(req.apiUser.user_id) });
 });
 
 router.post('/alerts/import/csv', requireToken, csvEmpfang.single('file'),
-  async (req: AuthedRequest & { file?: { buffer: Buffer } }, res) => {
+  async (req: AuthedRequest & { file?: { buffer: Buffer } }, res: Antwort<'POST /api/v1/alerts/import/csv'>) => {
     if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
     const uid = req.apiUser.user_id;
     const waehrung = String(await getSetting(uid, 'currency', 'EUR'));
@@ -132,7 +134,7 @@ async function lagerKonten(req: AuthedRequest, schreiben: boolean): Promise<numb
   return gewuenscht.filter(id => erlaubt.includes(id));
 }
 
-router.get('/storage/locations', requireToken, async (req: AuthedRequest, res) => {
+router.get('/storage/locations', requireToken, async (req: AuthedRequest, res: Antwort<'GET /api/v1/storage/locations'>) => {
   // Die Liste kann über mehrere Konten spannen, die VORGABE ist immer die des
   // Anfragenden: Ein geerbter Stern wäre eine Aussage über eine fremde Wohnung.
   const [orte, vorgabe] = await Promise.all([
@@ -144,7 +146,7 @@ router.get('/storage/locations', requireToken, async (req: AuthedRequest, res) =
 
 /** `{ id: null }` schaltet die Vorgabe ab — ein Endpunkt, weil es eine
  * Einstellung mit genau einem Wert ist. */
-router.put('/storage/default', requireToken, async (req: AuthedRequest, res) => {
+router.put('/storage/default', requireToken, async (req: AuthedRequest, res: Antwort<'PUT /api/v1/storage/default'>) => {
   const roh = req.body?.id;
   // Fehlt das Feld, meint der Client dasselbe wie null; eine Nicht-Zahl ist ein Fehler.
   const id = (roh === null || roh === undefined) ? null : parseInt(String(roh), 10);
@@ -152,7 +154,7 @@ router.put('/storage/default', requireToken, async (req: AuthedRequest, res) => 
   res.json({ success: true, vorgabe: await setzeVorgabe(req.apiUser.user_id, id) });
 });
 
-router.post('/storage/locations', requireToken, async (req: AuthedRequest, res) => {
+router.post('/storage/locations', requireToken, async (req: AuthedRequest, res: Antwort<'POST /api/v1/storage/locations'>) => {
   const konto = (await lagerKonten(req, true))[0];
   if (konto === undefined) return sendeFehler(req, res, 403, 'kein_schreibrecht');
   // EIN Konto je Aufruf, damit jeder Ort für sich scheitern kann.
@@ -161,14 +163,14 @@ router.post('/storage/locations', requireToken, async (req: AuthedRequest, res) 
   res.json({ success: true, ort });
 });
 
-router.put('/storage/locations/:id', requireToken, async (req: AuthedRequest, res) => {
+router.put('/storage/locations/:id', requireToken, async (req: AuthedRequest, res: Antwort<'PUT /api/v1/storage/locations/:id'>) => {
   const konto = (await lagerKonten(req, true))[0];
   if (konto === undefined) return sendeFehler(req, res, 403, 'kein_schreibrecht');
   res.json({ success: true,
     ort: await benenneOrtUm(konto, parseInt(pfadParam(req, 'id'), 10), req.body?.name) });
 });
 
-router.delete('/storage/locations/:id', requireToken, async (req: AuthedRequest, res) => {
+router.delete('/storage/locations/:id', requireToken, async (req: AuthedRequest, res: Antwort<'DELETE /api/v1/storage/locations/:id'>) => {
   const konto = (await lagerKonten(req, true))[0];
   if (konto === undefined) return sendeFehler(req, res, 403, 'kein_schreibrecht');
   await loescheOrt(konto, parseInt(pfadParam(req, 'id'), 10));
@@ -176,20 +178,20 @@ router.delete('/storage/locations/:id', requireToken, async (req: AuthedRequest,
 });
 
 // Ausführlich: docs/begruendungen/routes/api_v1/sets.ts.md#get-storage
-router.get('/storage', requireToken, async (req: AuthedRequest, res) => {
+router.get('/storage', requireToken, async (req: AuthedRequest, res: Antwort<'GET /api/v1/storage'>) => {
   const ids = await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts));
   res.json({ success: true, orte: await lagerorte(ids) });
 });
 
-router.get('/sets/:setNumber/parts-list', requireToken, async (req: AuthedRequest, res) => {
+router.get('/sets/:setNumber/parts-list', requireToken, async (req: AuthedRequest, res: Antwort<'GET /api/v1/sets/:setNumber/parts-list'>) => {
   res.json({ success: true, ...await teilelisteDesSets(String(req.params.setNumber), setTeileAnreichern) });
 });
 
-router.get('/sets/:setNumber/minifigs-list', requireToken, async (req: AuthedRequest, res) => {
+router.get('/sets/:setNumber/minifigs-list', requireToken, async (req: AuthedRequest, res: Antwort<'GET /api/v1/sets/:setNumber/minifigs-list'>) => {
   res.json({ success: true, ...await figurenlisteDesSets(String(req.params.setNumber)) });
 });
 
-router.get('/sets', requireToken, async (req: AuthedRequest, res) => {
+router.get('/sets', requireToken, async (req: AuthedRequest, res: Antwort<'GET /api/v1/sets'>) => {
   // Ohne page_size bleibt die Liste absichtlich unbegrenzt — für Skripte und
   // ältere App-Stände.
   // Ausführlich: docs/begruendungen/routes/api_v1/sets.ts.md#get-sets-r
@@ -198,7 +200,7 @@ router.get('/sets', requireToken, async (req: AuthedRequest, res) => {
   res.json({ success: true, count: sets.length, total: r.total, sets, ...(r.themes ? { themes: r.themes } : {}) });
 });
 
-router.get('/sets/:setNumber/price', requireToken, async (req: AuthedRequest, res) => {
+router.get('/sets/:setNumber/price', requireToken, async (req: AuthedRequest, res: Antwort<'GET /api/v1/sets/:setNumber/price'>) => {
   const uid = req.apiUser.user_id;
   const sn  = einzelwert(req.params.setNumber);
   // Blickfeld statt eigener ID: Im Haushalt gehört das Set oft einem Unterkonto.
@@ -207,7 +209,7 @@ router.get('/sets/:setNumber/price', requireToken, async (req: AuthedRequest, re
   res.json({ success: true, ...preis });
 });
 
-router.get('/sets/:setNumber/price-history', requireToken, async (req: AuthedRequest, res) => {
+router.get('/sets/:setNumber/price-history', requireToken, async (req: AuthedRequest, res: Antwort<'GET /api/v1/sets/:setNumber/price-history'>) => {
   // Dieselbe Umsetzung wie /api/finance/price-history (src/finanzen/priceHistory.ts).
   const uid = req.apiUser.user_id;
   const sn  = String(req.params.setNumber);
@@ -218,17 +220,17 @@ router.get('/sets/:setNumber/price-history', requireToken, async (req: AuthedReq
 
 /** MUSS vor /sets/:setNumber stehen: Express liest „household-members" sonst
  * als Setnummer. */
-router.get('/sets/household-members', requireToken, async (req: AuthedRequest, res) => {
+router.get('/sets/household-members', requireToken, async (req: AuthedRequest, res: Antwort<'GET /api/v1/sets/household-members'>) => {
   res.json({ success: true, members: await householdMembers(req.apiUser.user_id) }); 
 });
 
-router.get('/sets/:setNumber', requireToken, async (req: AuthedRequest, res) => {
+router.get('/sets/:setNumber', requireToken, async (req: AuthedRequest, res: Antwort<'GET /api/v1/sets/:setNumber'>) => {
   const set = await getSet(await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts)), pfadParam(req, 'setNumber'));
   if (!set) return sendeFehler(req, res, 404, 'set_nicht_gefunden');
   res.json({ success:true, set });
 });
 
-router.post('/sets', requireToken, async (req: AuthedRequest, res) => {
+router.post('/sets', requireToken, async (req: AuthedRequest, res: Antwort<'POST /api/v1/sets'>) => {
   const { set_number, quantity=1, purchase_price, condition, owner_user_id } = req.body;
   if (!set_number) return sendeFehler(req, res, 400, 'set_number_erforderlich');
   // resolveWriteTarget prüft die RICHTUNG (Haupt- für Unterkonto), nicht bloss
@@ -245,7 +247,7 @@ router.post('/sets', requireToken, async (req: AuthedRequest, res) => {
   res.json({ success:true, ...result });
 });
 
-router.put('/sets/:setNumber', requireToken, async (req: AuthedRequest, res) => {
+router.put('/sets/:setNumber', requireToken, async (req: AuthedRequest, res: Antwort<'PUT /api/v1/sets/:setNumber'>) => {
   if (req.body.quantity === undefined && req.body.quantity_delta === undefined
       && req.body.purchase_price === undefined && req.body.condition === undefined) {
     return sendeFehler(req, res, 400, 'erfassung_felder');
@@ -258,7 +260,7 @@ router.put('/sets/:setNumber', requireToken, async (req: AuthedRequest, res) => 
 
 /** Standardmässig im ganzen SCHREIB-Blickfeld.
  * Ausführlich: docs/begruendungen/routes/api_v1/sets.ts.md#delete-sets-setnumber */
-router.delete('/sets/:setNumber', requireToken, async (req: AuthedRequest, res) => {
+router.delete('/sets/:setNumber', requireToken, async (req: AuthedRequest, res: Antwort<'DELETE /api/v1/sets/:setNumber'>) => {
   const schreibbar = await writableIds(req.apiUser.user_id);
   const gewaehlt = req.query.accounts === undefined ? schreibbar
     : await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts));
@@ -271,7 +273,7 @@ router.delete('/sets/:setNumber', requireToken, async (req: AuthedRequest, res) 
 
 /** Dieselbe Umsetzung wie der Webapp-Weg (src/sets/setMove.ts), damit die App
  * nicht ihre eigenen Regeln bekommt. */
-router.post('/sets/:sn/move', requireToken, async (req: AuthedRequest, res) => {
+router.post('/sets/:sn/move', requireToken, async (req: AuthedRequest, res: Antwort<'POST /api/v1/sets/:sn/move'>) => {
   const raw = String(req.params.sn);
   const sn  = mitVersion(raw);
   const uid = req.apiUser.user_id;
@@ -298,7 +300,7 @@ router.post('/sets/:sn/move', requireToken, async (req: AuthedRequest, res) => {
 // Seite und dürfen bei voller Datenbank nicht stauen.
 const zustandsWaechter = loginOrTokenGuard({ timeoutMs: 3000 });
 
-router.get('/sets/import/csv/status', zustandsWaechter, async (req, res) => {
+router.get('/sets/import/csv/status', zustandsWaechter, async (req, res: Antwort<'GET /api/v1/sets/import/csv/status'>) => {
   res.json(buildJobStatus(await jobGet(angemeldeteNutzerId(req)), req));
 });
 
@@ -361,7 +363,7 @@ router.get('/sets/import/csv/stream', zustandsWaechter, async (req, res) => {
   req.on('close', cleanup);
 });
 
-router.post('/sets/import/csv', requireToken, csvEmpfang.single('file'), async (req, res) => {
+router.post('/sets/import/csv', requireToken, csvEmpfang.single('file'), async (req, res: Antwort<'POST /api/v1/sets/import/csv'>) => {
   if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
   const { total, uebersprungen } = await setCsvImportStarten(angemeldeteNutzerId(req), req.file.buffer.toString('utf-8'));
   // Übersprungene Zeilen gehören in die sofortige Antwort; der Import läuft weiter.
@@ -370,7 +372,7 @@ router.post('/sets/import/csv', requireToken, csvEmpfang.single('file'), async (
     skipped_hint: uebersprungenHinweis(uebersprungen) || undefined });
 });
 
-router.post('/sets/import/csv/cancel', requireToken, async (req, res) => {
+router.post('/sets/import/csv/cancel', requireToken, async (req, res: Antwort<'POST /api/v1/sets/import/csv/cancel'>) => {
   await setCsvImportAbbrechen(angemeldeteNutzerId(req));
   res.json({ success: true });
 });
@@ -405,14 +407,14 @@ router.post('/sets/add-stream', requireToken, async (req: LoggedInRequest, res) 
   res.end();
 });
 
-router.post('/sets/:setNumber/parts', requireToken, async (req: LoggedInRequest, res) => {
+router.post('/sets/:setNumber/parts', requireToken, async (req: LoggedInRequest, res: Antwort<'POST /api/v1/sets/:setNumber/parts'>) => {
   res.json({ success: true, count: await importPartsForSet(pfadParam(req, 'setNumber'), angemeldeteNutzerId(req)) }); 
 });
 
 // ── Anleitungen ─────────────────────────────────────────────────────────────
 // Neu laden einmal je Set und Tag (Verwalter immer): Die Anleitungen sind
 // geteilt, und jeder Abruf kostet Kontingent der Quellen.
-router.post('/sets/:setNumber/instructions', requireToken, async (req, res) => {
+router.post('/sets/:setNumber/instructions', requireToken, async (req, res: Antwort<'POST /api/v1/sets/:setNumber/instructions'>) => {
   const sn = normalisiereSetNummer(pfadParam(req, 'setNumber'));
   if (!moeglicheSetNummer(sn)) return sendeFehler(req, res, 400, 'setnummer_ungueltig');
   if (!istVerwalter(req)) {
@@ -457,7 +459,7 @@ async function vorDemUpload(req: express.Request, res: express.Response, next: e
   next();
 }
 
-router.post('/sets/:setNumber/instructions/upload', requireToken, vorDemUpload, uploadInstr.single('file'), async (req, res) => {
+router.post('/sets/:setNumber/instructions/upload', requireToken, vorDemUpload, uploadInstr.single('file'), async (req, res: Antwort<'POST /api/v1/sets/:setNumber/instructions/upload'>) => {
   if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
   const verwerfen = () => fs.rmSync(req.file!.path, { force: true });
   if (!inhaltPasstZuTyp(req.file.path, req.file.mimetype)) { verwerfen(); return sendeFehler(req, res, 400, 'datei_inhalt_falsch'); }
@@ -474,7 +476,7 @@ router.post('/sets/:setNumber/instructions/upload', requireToken, vorDemUpload, 
   res.json({ success: true, instruction: { url: relPath, description: desc, local_path: relPath } });
 });
 
-router.delete('/sets/:setNumber/instructions/:instrId', requireToken, async (req, res) => {
+router.delete('/sets/:setNumber/instructions/:instrId', requireToken, async (req, res: Antwort<'DELETE /api/v1/sets/:setNumber/instructions/:instrId'>) => {
   if (!await anleitungLoeschen(angemeldeteNutzerId(req), pfadParam(req, 'instrId')))
     return sendeFehler(req, res, 404, 'nicht_gefunden');
   res.json({ success: true });

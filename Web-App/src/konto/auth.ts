@@ -19,7 +19,7 @@ export type { TokenScope };
  * Sicherheitsprüfung still als „nein" durchgeht. */
 export interface TokenBenutzer {
   user_id: number;
-  username?: string;
+  username: string;
   is_admin?: number;
   /** Die GLEITENDE Frist: „so lange ungenutzt" (siehe _touchLastUsed). */
   expires_at?: string | Date | null;
@@ -28,7 +28,7 @@ export interface TokenBenutzer {
   last_used?: string | Date | null;
   sliding?: boolean;
   never_expires?: boolean;
-  scope?: TokenScope;
+  scope: TokenScope;
   rotiert_am?: string | Date | null;
   vorgaenger?: string | null;
   [k: string]: unknown;

@@ -36,8 +36,8 @@ import org.junit.Test
  *      den Klassenordner → rot „URI is not hierarchical“; mit der Liste grün
  *   E  „TeileAnsichten“ aus Beispielfueller.ABBILDUNGSDATEIEN gestrichen → rot
  *      „jede Datei mit Abbildungen steht in der Liste“ und „Nur 48 Abbildungen“
- *   F  in Profil.alsAnsicht `emailVerified == 1` → `== 0` → rot „Profil, Haushalt
- *      und CSV-Stand …“; elternkonten aus `parents` → rot „ohne parents gilt linked_to“
+ *   F  in Profil.alsAnsicht `emailBestaetigt = emailVerified` → `= !emailVerified`
+ *      → rot „Profil, Haushalt und CSV-Stand …“ (31.10.2026 nachgemessen); elternkonten aus `parents` → rot „ohne parents gilt linked_to“
  */
 class UiModellAbbildungTest {
 
@@ -71,8 +71,8 @@ class UiModellAbbildungTest {
 
     @Test
     fun `Profil, Haushalt und CSV-Stand sind für die Oberfläche aufbereitet`() {
-        assertTrue(Profil(id = 1, username = "m", emailVerified = 1).alsAnsicht().emailBestaetigt)
-        assertFalse("0 heisst unbestätigt", Profil(id = 1, username = "m", emailVerified = 0).alsAnsicht().emailBestaetigt)
+        assertTrue(Profil(id = 1, username = "m", emailVerified = true).alsAnsicht().emailBestaetigt)
+        assertFalse("false heisst unbestätigt", Profil(id = 1, username = "m", emailVerified = false).alsAnsicht().emailBestaetigt)
         val altesFeld = HouseholdStatusResponse(linkedTo = KontoName(7, "haupt")).alsAnsicht()
         assertEquals("ohne parents gilt linked_to", listOf(KontoAnsicht(7, "haupt")), altesFeld.elternkonten)
         val stand = CsvImportStatus(status = "running", current = "75192-1").alsAnsicht()

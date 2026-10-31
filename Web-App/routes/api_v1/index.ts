@@ -1,7 +1,6 @@
 /** Die Mount-Reihenfolge ist unkritisch: Die Module haben keine überlappenden
  * Pfad-Muster. Die Anmeldung hängt als eigener Router unter /api/v1/auth.
  * Ausführlich: docs/begruendungen/routes/api_v1/index.ts.md#abschnitt */
-import express from 'express';
 import setsRouter from './sets';
 import pdfRouter from './pdf';
 import acquisitionsRouter from './acquisitions';
@@ -15,8 +14,9 @@ import catalogRouter from './catalog';
 import wantedRouter from './wanted';
 import vouchersRouter from './vouchers';
 import papierkorbRouter from './papierkorb';
+import { vertragsRouter } from '../../src/infra/vertrag/pruefen';
 
-const router = express.Router();
+const router = vertragsRouter();
 
 router.use(pdfRouter);          // /sets/partslist-pdf/* (literale Pfade)
 router.use(setsRouter);         // /sets, /sets/barcode, /sets/:setNumber/*

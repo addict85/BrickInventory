@@ -77,7 +77,7 @@ async function teileErsatzquelle(set_number: string) {
             category_name:  null,
             image_url:      it.part?.part_img_url || null,
             image_local:    null,
-            is_spare:       0,
+            is_spare:       false,
             total_quantity: it.quantity,
             quantity:       it.quantity,
             in_sets:        set_number,

@@ -1,6 +1,5 @@
 /** /api/v1/settings — ein Router für den ganzen Pfad, weil die Reihenfolge vor
  * und nach router.use(requireLogin) hier an einer Stelle entschieden wird. */
-import express from 'express';
 import multer from 'multer';
 import { fehlerAntwort, logAndContinue } from '../../src/infra/httpError';
 import { requireApiAdmin as requireAdmin, requireToken, bearerToken } from './middleware';
@@ -33,13 +32,15 @@ import { tlsStand } from '../../src/infra/tlsWurzel';
 import { konfig } from '../../src/infra/konfig';
 import { invalidateTheme } from '../../src/konto/indexHtml';
 import { jsonOderNull } from '../../src/infra/validate';
-const router = express.Router();
+import { vertragsRouter } from '../../src/infra/vertrag/pruefen';
+import type { Antwort } from '../../src/infra/vertrag';
+const router = vertragsRouter();
 
 const requireLogin = requireLoginOrToken;
 
 // Vor router.use(requireLogin): Anmelde- und Startbildschirm brauchen das
 // Design, und es verrät nichts über Konten.
-router.get('/settings/theme', async (req, res) => {
+router.get('/settings/theme', async (req, res: Antwort<'GET /api/v1/settings/theme'>) => {
   const uid = await resolveUserId(req);
   res.set('Cache-Control', 'no-cache');
   res.set('Vary', 'Cookie, Authorization');
@@ -49,7 +50,7 @@ router.get('/settings/theme', async (req, res) => {
 // Vor router.use(requireLogin), weil requireLogin nur die Sitzung kennt und
 // die App ihre Zugänge mit Token verwaltet.
 // Ausführlich: docs/begruendungen/routes/api_v1/settings.ts.md#abschnitt
-router.get('/settings/tokens', requireLoginOrToken, async (req: LoggedInRequest, res) => {
+router.get('/settings/tokens', requireLoginOrToken, async (req: LoggedInRequest, res: Antwort<'GET /api/v1/settings/tokens'>) => {
   const eigener = bearerToken(req);
   const eigenerHash = eigener ? hashToken(eigener) : null;
   // LEAST über beide Fristen: Den Nutzer interessiert der Tag, an dem dieses
@@ -73,7 +74,7 @@ router.get('/settings/tokens', requireLoginOrToken, async (req: LoggedInRequest,
 
 /** Die Zeile ist sofort weg, der Token-Cache gilt aber noch kurz nach.
  * Ausführlich: docs/begruendungen/routes/api_v1/settings.ts.md#delete-tokens-tokenid */
-router.delete('/settings/tokens/:tokenId', requireLoginOrToken, async (req: LoggedInRequest, res) => {
+router.delete('/settings/tokens/:tokenId', requireLoginOrToken, async (req: LoggedInRequest, res: Antwort<'DELETE /api/v1/settings/tokens/:tokenId'>) => {
   // escapeLike: ohne das löscht ein "%" als tokenId ALLE Tokens des Nutzers.
   const prefix = escapeLike(String(req.params.tokenId || '')).slice(0, 64);
   if (!prefix) return sendeFehler(req, res, 400, 'token_id_fehlt');
@@ -82,7 +83,7 @@ router.delete('/settings/tokens/:tokenId', requireLoginOrToken, async (req: Logg
   res.json({ success: true, deleted: geloescht });
 });
 
-router.post('/settings/sessions/andere-beenden', requireLogin, async (req: LoggedInRequest, res) => {
+router.post('/settings/sessions/andere-beenden', requireLogin, async (req: LoggedInRequest, res: Antwort<'POST /api/v1/settings/sessions/andere-beenden'>) => {
   res.json({ success: true, deleted: await andereSitzungenBeenden(angemeldeteNutzerId(req), req.sessionID) });
 });
 
@@ -97,24 +98,23 @@ const APP_VORGABEN: Record<string, string> = {
   default_price_condition: 'N', user_default_condition: '',
 };
 
-router.get('/settings', requireToken, async (req: AuthedRequest, res) => {
+router.get('/settings', requireToken, async (req: AuthedRequest, res: Antwort<'GET /api/v1/settings'>) => {
   const uid = req.apiUser.user_id;
   // readSettings(), weil price_cache_ttl und default_price_condition global
   // sind; eine eigene Abfrage las sie nicht.
   const alle = await readSettings(uid, false);
-  const settings: Record<string, string> = {};
-  for (const feld of APP_FELDER) {
-    settings[feld] = alle[feld] ?? APP_VORGABEN[feld] ?? '';
-  }
-  // Die Regel steht in src/konto/settings.ts, damit sie nicht neben dem
-  // Webapp-Weg ein zweites Mal existiert.
-  settings['effective_condition'] = await nutzerStandardZustand(uid);
-  // Das wirksame Design des Kontos, nicht die Vorgabe des Verwalters.
-  settings['app_theme'] = (await designFuer(uid)).theme;
-  res.json({ success:true, settings });
+  const gespeichert = Object.fromEntries(APP_FELDER.map(feld => [feld, alle[feld] ?? APP_VORGABEN[feld] ?? '']));
+  res.json({ success:true, settings: {
+    ...gespeichert as Record<(typeof APP_FELDER)[number], string>,
+    // Die Regel steht in src/konto/settings.ts, damit sie nicht neben dem
+    // Webapp-Weg ein zweites Mal existiert.
+    effective_condition: await nutzerStandardZustand(uid),
+    // Das wirksame Design des Kontos, nicht die Vorgabe des Verwalters.
+    app_theme: (await designFuer(uid)).theme,
+  } });
 });
 
-router.put('/settings', requireToken, async (req: AuthedRequest, res) => {
+router.put('/settings', requireToken, async (req: AuthedRequest, res: Antwort<'PUT /api/v1/settings'>) => {
   const uid = req.apiUser.user_id;
   const allowed = ['currency','price_cache_ttl'];
   let updated = 0;
@@ -129,16 +129,16 @@ router.put('/settings', requireToken, async (req: AuthedRequest, res) => {
 });
 
 // Der GLOBALE Default; den effektiven liefert GET /settings (effective_condition).
-router.get('/settings/default-condition', requireToken, async (_req: AuthedRequest, res) => {
+router.get('/settings/default-condition', requireToken, async (_req: AuthedRequest, res: Antwort<'GET /api/v1/settings/default-condition'>) => {
   res.json({ success: true, condition: await globalDefaultCondition() });
 });
 
 // Ausführlich: docs/begruendungen/routes/api_v1/settings.ts.md#get-settings-user-default-condition
-router.get('/settings/user/default-condition', requireToken, async (req: AuthedRequest, res) => {
+router.get('/settings/user/default-condition', requireToken, async (req: AuthedRequest, res: Antwort<'GET /api/v1/settings/user/default-condition'>) => {
   res.json({ success: true, condition: await nutzerStandardZustand(req.apiUser.user_id) });
 });
 
-router.post('/settings/user/default-condition', requireToken, async (req: AuthedRequest, res) => {
+router.post('/settings/user/default-condition', requireToken, async (req: AuthedRequest, res: Antwort<'POST /api/v1/settings/user/default-condition'>) => {
   const condition = String(req.body?.condition ?? '');
   if (!['N','U',''].includes(condition)) return sendeFehler(req, res, 400, 'zustand_n_oder_u');
   if (condition === '') {
@@ -153,11 +153,11 @@ router.post('/settings/user/default-condition', requireToken, async (req: Authed
 // ── Haushalt: Konten verknüpfen ──────────────────────────────────────────────
 // Dieselbe Umsetzung wie die Webapp (src/haushalt/haushalt.ts), damit die App
 // nicht ihre eigenen Regeln bekommt.
-router.get('/settings/household', requireToken, async (req: AuthedRequest, res) => {
+router.get('/settings/household', requireToken, async (req: AuthedRequest, res: Antwort<'GET /api/v1/settings/household'>) => {
   res.json({ success: true, ...(await householdStatus(req.apiUser.user_id)) });
 });
 
-router.post('/settings/household/invite', requireToken, async (req: AuthedRequest, res) => {
+router.post('/settings/household/invite', requireToken, async (req: AuthedRequest, res: Antwort<'POST /api/v1/settings/household/invite'>) => {
   const r = await createInvite(req.apiUser.user_id);
   if ((r as any).fehler) return sendeFehler(req, res, 409, (r as any).fehler, (r as any).vars);
   res.json({ success: true, ...r });
@@ -166,7 +166,7 @@ router.post('/settings/household/invite', requireToken, async (req: AuthedReques
 // Mit Passwort: Das Hauptkonto liest und schreibt danach den Bestand dieses
 // Kontos, auch über einen Passwortwechsel hinweg. Ein erbeutetes Token allein
 // soll das nicht einrichten können.
-router.post('/settings/household/redeem', requireToken, async (req: AuthedRequest, res) => {
+router.post('/settings/household/redeem', requireToken, async (req: AuthedRequest, res: Antwort<'POST /api/v1/settings/household/redeem'>) => {
   const uid = req.apiUser.user_id;
   if (!await bestaetigePasswort(req, res, uid, req.body?.password)) return;
   const r = await redeemInvite(uid, String(req.body?.code || ''));
@@ -181,12 +181,12 @@ router.post('/settings/household/redeem', requireToken, async (req: AuthedReques
   res.json({ success: true, ...r });
 });
 
-router.post('/settings/household/unlink', requireToken, async (req: AuthedRequest, res) => {
+router.post('/settings/household/unlink', requireToken, async (req: AuthedRequest, res: Antwort<'POST /api/v1/settings/household/unlink'>) => {
   res.json({ success: true,
     ...(await unlink(req.apiUser.user_id, req.body?.sub_user_id, req.body?.main_user_id)) });
 });
 
-router.post('/settings/household/former/dismiss', requireToken, async (req: AuthedRequest, res) => {
+router.post('/settings/household/former/dismiss', requireToken, async (req: AuthedRequest, res: Antwort<'POST /api/v1/settings/household/former/dismiss'>) => {
   const sub = parseInt(String(req.body?.sub_user_id));
   if (!Number.isFinite(sub)) return sendeFehler(req, res, 400, 'konto_id_ungueltig');
   res.json({ success: true, ...(await verwerfeGetrennt(req.apiUser.user_id, sub)) });
@@ -195,14 +195,14 @@ router.post('/settings/household/former/dismiss', requireToken, async (req: Auth
 router.use('/settings', requireLogin);
 
 /** Zum Abgleich von Hand; derselbe Wert steht als `fp` im QR-Code der App. */
-router.get('/settings/tls', async (_req, res) => {
+router.get('/settings/tls', async (_req, res: Antwort<'GET /api/v1/settings/tls'>) => {
   const stand = await tlsStand();
   res.json({ success: true, https: konfig().hinterTls,
     ...(stand ? { fp: stand.fp, fp_hex: stand.fp_hex, subject: stand.subject,
                   gueltig_bis: stand.gueltig_bis, download: '/ca.crt' } : { fp: null }) });
 });
 
-router.post('/settings', async (req: LoggedInRequest, res) => {
+router.post('/settings', async (req: LoggedInRequest, res: Antwort<'POST /api/v1/settings'>) => {
   const uid = angemeldeteNutzerId(req);
   const globalKeys = ['bricklink_consumer_key','bricklink_consumer_secret','bricklink_token',
     'bricklink_token_secret','brickset_api_key','rebrickable_api_key','price_job_interval_minutes',
@@ -249,11 +249,11 @@ router.post('/settings', async (req: LoggedInRequest, res) => {
 });
 
 // Über readSettings(), damit die Maskierung nicht an der Verpackung vorbeigeht.
-router.get('/settings/raw', async (req: LoggedInRequest, res) => {
+router.get('/settings/raw', async (req: LoggedInRequest, res: Antwort<'GET /api/v1/settings/raw'>) => {
   res.json({ success: true, settings: await readSettings(angemeldeteNutzerId(req), istVerwalter(req)) });
 });
 
-router.get('/settings/export', async (req, res) => {
+router.get('/settings/export', async (req, res: Antwort<'GET /api/v1/settings/export'>) => {
   // Nur Verwalter: Der Import nimmt globale Werte nur von ihnen an, und
   // SMTP-Daten gehen ein Unterkonto nichts an.
   const global = istVerwalter(req) ? await globaleWerteOhneGeheimnisse() : {};
@@ -291,7 +291,7 @@ router.get('/settings/export/data', async (req: LoggedInRequest, res) => {
 });
 
 const importUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 1024 * 1024 } });
-router.post('/settings/import', importUpload.single('file'), async (req: LoggedInRequest, res) => {
+router.post('/settings/import', importUpload.single('file'), async (req: LoggedInRequest, res: Antwort<'POST /api/v1/settings/import'>) => {
   if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
   const gelesen = jsonOderNull(req.file.buffer.toString('utf-8'));
   if (!gelesen) return sendeFehler(req, res, 400, 'json_ungueltig');
@@ -338,7 +338,7 @@ router.post('/settings/import', importUpload.single('file'), async (req: LoggedI
   res.json({ success: true, imported, note, smtp_uebergangen: istVerwalter(req) ? smtpUebergangen : [] });
 });
 
-router.post('/settings/smtp-test', async (req, res) => {
+router.post('/settings/smtp-test', async (req, res: Antwort<'POST /api/v1/settings/smtp-test'>) => {
   if (!istVerwalter(req)) return sendeFehler(req, res, 403, 'nur_admins');
   const verify = await testSmtp();
   if (!verify.success) return sendeFehler(req, res, 400, (verify as any).code);
@@ -362,7 +362,7 @@ router.post('/settings/smtp-test', async (req, res) => {
 
 // Offen, solange der Verwalter sie nicht abgeschlossen hat UND noch etwas
 // fehlt — eine eingerichtete Installation sieht den Assistenten nie.
-router.get('/settings/einrichtung', async (req, res) => {
+router.get('/settings/einrichtung', async (req, res: Antwort<'GET /api/v1/settings/einrichtung'>) => {
   if (!istVerwalter(req)) return sendeFehler(req, res, 403, 'nur_admins');
   const wert = async (k: string) => !!(await getGlobalSetting(k));
   const passwort = await mussPasswortAendern(angemeldeteNutzerId(req));
@@ -377,27 +377,27 @@ router.get('/settings/einrichtung', async (req, res) => {
              passwort_aendern: passwort, quellen });
 });
 
-router.post('/settings/einrichtung/fertig', async (req, res) => {
+router.post('/settings/einrichtung/fertig', async (req, res: Antwort<'POST /api/v1/settings/einrichtung/fertig'>) => {
   if (!istVerwalter(req)) return sendeFehler(req, res, 403, 'nur_admins');
   await setGlobalSetting('einrichtung_erledigt', '1');
   res.json({ success: true });
 });
 
 // Prüft den GESPEICHERTEN Zugang mit einem kleinen Abruf.
-router.post('/settings/quelle-testen', async (req, res) => {
+router.post('/settings/quelle-testen', async (req, res: Antwort<'POST /api/v1/settings/quelle-testen'>) => {
   if (!istVerwalter(req)) return sendeFehler(req, res, 403, 'nur_admins');
   await quellePruefen(String(req.body?.quelle ?? ''));
   res.json({ success: true });
 });
 
 // Leer heisst „Vorgabe des Verwalters".
-router.post('/settings/user/theme', async (req: LoggedInRequest, res) => {
+router.post('/settings/user/theme', async (req: LoggedInRequest, res: Antwort<'POST /api/v1/settings/user/theme'>) => {
   const uid = angemeldeteNutzerId(req);
   await setzeEigenesDesign(uid, req.body?.theme);
   res.json({ success: true, ...await designFuer(uid) });
 });
 
-router.post('/settings/admin/theme', requireAdmin, async (req, res) => {
+router.post('/settings/admin/theme', requireAdmin, async (req, res: Antwort<'POST /api/v1/settings/admin/theme'>) => {
   const theme = String(req.body?.theme || 'classic');
   if (!DESIGNS.includes(theme)) {
     return sendeFehler(req, res, 400, 'design_ungueltig');

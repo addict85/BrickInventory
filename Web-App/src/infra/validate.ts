@@ -3,6 +3,7 @@
 /** Das, was Rebrickable und BrickLink tatsächlich vergeben. */
 export const ITEM_NUMBER_RE = /^[A-Za-z0-9][A-Za-z0-9._/-]{0,63}$/;
 
+import { z } from 'zod';
 import { fehlerWerfen } from './fehlerTexte';
 
 /** null, wenn es keines ist (die Route antwortet dann 400). */
@@ -144,3 +145,32 @@ export function ausTabelle<T>(
   const k = einzelwert(schluessel);
   return Object.prototype.hasOwnProperty.call(tabelle, k) ? tabelle[k] : vorgabe;
 }
+
+/** Dieselben Prüfungen als Eingabeschema für den API-Vertrag (src/infra/vertrag/):
+ * Es prüft die Funktion oben, das JSON-Schema daneben beschreibt sie nur. So
+ * gibt es die Regel einmal, und der Vertrag kann ihr nicht davonlaufen. */
+function alsSchema(pruefe: (v: unknown) => unknown, json: Record<string, unknown>, pflicht = false) {
+  const geprueft = z.unknown().superRefine((v, ctx) => {
+    try { pruefe(v); } catch (e) { ctx.addIssue({ code: 'custom', message: e instanceof Error ? e.message : String(e) }); }
+  }).meta(json);
+  return pflicht ? geprueft : geprueft.optional();
+}
+
+export const eingabe = {
+  artikelnummer: (feld: string) =>
+    alsSchema(v => requireItemNumber(v, feld), { type: 'string', pattern: ITEM_NUMBER_RE.source }, true),
+  text: (max = 200) => alsSchema(v => optionalText(v, max), { type: ['string', 'null'], maxLength: max }),
+  bildUrl: () => alsSchema(optionalImageUrl, { type: ['string', 'null'], format: 'uri', pattern: '^https:' }),
+  /** Ohne `pflicht` darf die Menge fehlen oder null sein; dann bleibt sie, wie sie ist. */
+  menge: (min = 0, max = 100_000, pflicht = true) => alsSchema(v => (!pflicht && v == null) || bestandsMenge(v, min, max),
+    { type: ['integer', 'string'], minimum: min, maximum: max }, pflicht),
+  stueckzahl: () => alsSchema(v => acquisitionQuantity(v), { type: ['integer', 'string'], minimum: 1, maximum: 10_000 }),
+  farbe: () => alsSchema(colorId, { type: ['integer', 'string'], description: `fehlt sie, gilt ${KEINE_FARBE} (keine Farbe)` }),
+  farbcode: () => alsSchema(optionalHex, { type: ['string', 'null'], pattern: '^#?[0-9A-Fa-f]{6}$' }),
+  preis: (feld: string) =>
+    alsSchema(v => optionalPrice(v, feld), { type: ['number', 'string', 'null'], minimum: 0, maximum: 1_000_000 }),
+  zustand: () => alsSchema(optionalCondition, { enum: ['N', 'U', null] }),
+  /** Ohne `pflicht` gilt ein fehlender Schalter als nein. */
+  schalter: (feld: string, pflicht = true) => alsSchema(v => (!pflicht && v === undefined) || strictBool(v, feld),
+    { type: ['boolean', 'integer', 'string'], enum: [true, false, 1, 0, 'true', 'false', '1', '0'] }, pflicht),
+};

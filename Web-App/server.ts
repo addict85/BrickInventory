@@ -39,6 +39,7 @@ import * as pgNotify from './db/pgNotify';
 import { registerImgProxy } from './routes/imgProxy';
 import { anmeldungAmEingang } from './routes/api_v1/middleware';
 import { idempotenz } from './src/idempotenz/http/middleware';
+import { vertragPruefen } from './src/infra/vertrag/pruefen';
 import datenDateien = require('./routes/datenDateien');
 import apiV1Router = require('./routes/api_v1/index');
 import authRouter = require('./routes/auth');
@@ -300,6 +301,7 @@ app.use(express.static(PUBLIC_DIR, {
 // Direkt hier statt in einem Router: Beide werden gefragt, während Schema und
 // Migrationen noch laufen und der /api/v1-Router noch nicht steht.
 
+app.use('/api/v1', vertragPruefen);
 app.get('/api/v1/startup-status', async (_req, res) => {
   res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
   res.set('Pragma', 'no-cache');

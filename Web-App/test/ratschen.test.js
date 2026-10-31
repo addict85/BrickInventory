@@ -253,8 +253,9 @@ test('kein Verweis auf „Nachtrag N" im Code', () => {
 });
 
 test('der Kommentaranteil im Server sinkt, nie steigt', () => {
-  // Gemessen 13,8 % in server.ts, routes/, src/, utils/ und jobs/; Schranke 13,8.
-  const SCHRANKE = 13.8;
+  // Gemessen 13,8 % in server.ts, routes/, src/, utils/ und jobs/; 13,2 % mit dem
+  // API-Vertrag (src/infra/vertrag/). Schranke 13,2.
+  const SCHRANKE = 13.2;
   let zeilen = 0, kommentar = 0;
   for (const f of quellen().filter(f => /[\\/](routes|src|utils|jobs)[\\/]|[\\/]server\.ts$/.test(f))) {
     for (const z of fs.readFileSync(f, 'utf8').split('\n')) {
