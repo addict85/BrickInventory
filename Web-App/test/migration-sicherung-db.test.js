@@ -1,5 +1,7 @@
 /**
  * Vor offenen Migrationen: Nutzerdaten sichern, ohne Zeitgrenze migrieren.
+ * @einzeln: legt eine Probe-Migration in dist/db/migrations, die jede parallel
+ * startende Datei beim Migrieren sähe.
  *
  * Eine Probe-Migration in dist/db/migrations bricht ab, wenn
  * statement_timeout nicht 0 ist; der Pool setzt 30 s für jede Verbindung.
