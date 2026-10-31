@@ -272,6 +272,10 @@ test('der Gegenproben-Job misst jede Patch-Gegenprobe gegen eine echte Testklass
   const job = yml.split(/\n  gegenproben:\n/)[1]?.split(/\n  [\w-]+:\n/)[0] ?? '';
   assert.match(job, /python3 tools\/gegenproben\.py gegenproben/, 'der Job ruft das Werkzeug nicht');
   assert.doesNotMatch(job, /continue-on-error/, 'eine grüne Gegenprobe muss den Lauf rot machen');
+  const modulVon = {
+    BestandMigrationTest: ['core-data', path.join(WURZEL, 'Android-App', 'core-data', 'src', 'test', 'java', 'ch', 'brickinventoryapp', 'BestandMigrationTest.kt')],
+    AblaufTest: ['app', path.join(WURZEL, 'Android-App', 'app', 'src', 'test', 'java', 'ch', 'brickinventoryapp', 'AblaufTest.kt')],
+  };
   const ordner = path.join(WURZEL, 'Android-App', 'gegenproben');
   const klassen = new Set();
   for (const n of fs.readdirSync(ordner).filter(d => d.endsWith('.patch'))) {
@@ -279,9 +283,10 @@ test('der Gegenproben-Job misst jede Patch-Gegenprobe gegen eine echte Testklass
     const feld = (f) => (kopf.match(new RegExp(`^${f}: (.+)$`, 'm')) || [])[1];
     assert.ok(feld('Gegenprobe') && feld('Rot'), `${n}: Kopf ohne Gegenprobe oder Rot`);
     const klasse = feld('Test')?.split('.').pop();
-    const datei = path.join(WURZEL, 'Android-App', feld('Modul') ?? '-', 'src/test/java/ch/brickinventoryapp', `${klasse}.kt`);
-    assert.ok(fs.existsSync(datei), `${n}: ${klasse} liegt nicht in ${feld('Modul')}`);
+    const [modul, datei] = modulVon[klasse] ?? [];
+    assert.ok(datei && fs.existsSync(datei), `${n}: ${klasse} ist keine bekannte Testklasse`);
+    assert.equal(feld('Modul'), modul, `${n}: ${klasse} liegt nicht in ${feld('Modul')}`);
     klassen.add(klasse);
   }
-  for (const k of ['BestandMigrationTest', 'AblaufTest']) assert.ok(klassen.has(k), `keine Gegenprobe für ${k}`);
+  assert.deepEqual([...klassen].sort(), Object.keys(modulVon).sort(), 'jede Klasse braucht eine Gegenprobe');
 });

@@ -59,6 +59,8 @@ const AUSGELASSEN = new Map([
   ['POST /api/v1/admin/catalog-images',             'reiht Bilder für den Download im Netz ein'],
   ['POST /api/v1/vouchers/{id}/guthaben',           'fragt das Guthaben bei LEGO im Netz ab'],
   ['POST /api/v1/sets/partslist-pdf',               'liefert eine Datei, kein JSON-Modell'],
+  ['POST /api/v1/auth/passkey/anmelden/optionen',   'braucht APP_BASE_URL mit Domain; die Optionen bleiben JSON (passkeys-db)'],
+  ['POST /api/v1/auth/passkey/anmelden',            'braucht eine WebAuthn-Signatur; antwortet wie /auth/login (passkeys-db)'],
 ]);
 
 /** Ein PDF mit den übergebenen Zeilen. */

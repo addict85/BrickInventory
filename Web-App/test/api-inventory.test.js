@@ -157,8 +157,8 @@ const C = {
   'DELETE /api/v1/auth/passkeys/:id': 'nur-web',
   'POST /api/v1/auth/passkey/registrieren/optionen': 'nur-web',
   'POST /api/v1/auth/passkey/registrieren': 'nur-web',
-  'POST /api/v1/auth/passkey/anmelden/optionen': 'nur-web',
-  'POST /api/v1/auth/passkey/anmelden': 'nur-web',
+  'POST /api/v1/auth/passkey/anmelden/optionen': 'nur-v1',
+  'POST /api/v1/auth/passkey/anmelden': 'nur-v1',
   // Fingerabdruck der CA zum Abgleich von Hand; die App bekommt ihn im QR-Code.
   'GET /api/v1/settings/tls': 'nur-web',
   // Angemeldete Geraete: seit der Token-Verwaltung von BEIDEN Apps gerufen.
