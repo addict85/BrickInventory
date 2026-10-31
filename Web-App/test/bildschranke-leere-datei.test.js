@@ -6,7 +6,7 @@
  *     [thumb] Vorschau fehlgeschlagen für /images/sets/265-2.jpg:
  *             Input file contains unsupported image format
  *
- * Die Schranke davor (utils/imageGuard.ts, isDecodable) liest den Dateikopf
+ * Die Schranke davor (src/katalog/bilder/imageGuard.ts, isDecodable) liest den Dateikopf
  * und entscheidet, ob die Datei an den Verkleinerer darf. Sie hatte einen
  * Rückfall:
  *
@@ -47,7 +47,7 @@ const path = require('node:path');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { isDecodable } = _req('utils/imageGuard.js');
+const { isDecodable } = _req('src/katalog/bilder/imageGuard.js');
 
 /** Eine Datei mit genau diesem Inhalt, in einem eigenen Verzeichnis. */
 function datei(name, inhalt) {

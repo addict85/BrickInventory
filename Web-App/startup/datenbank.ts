@@ -1,6 +1,6 @@
 import * as db from '../db/database';
 import { logAndContinue } from '../src/infra/httpError';
-import { initImageMisses } from '../utils/imageMisses';
+import { initImageMisses } from '../src/katalog/bilder/imageMisses';
 import { initImageQueue } from '../jobs/imageQueue';
 
 /**

@@ -3,7 +3,7 @@ import type { Request, Response, NextFunction } from 'express';
 
 /**
  * Welches Konto die laufende Arbeit ausgelöst hat — für Zähler tief unten
- * (utils/apiKontingent.ts), die sonst keinen Request sehen. Gelesen wird erst
+ * (src/katalog/apiKontingent.ts), die sonst keinen Request sehen. Gelesen wird erst
  * beim Zählen, deshalb reicht es, den Request zu merken: Die Anmeldung setzt
  * apiUser bzw. session später, auf demselben Objekt.
  */

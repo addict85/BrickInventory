@@ -2,7 +2,7 @@
  * Die Merkliste — was man haben MÖCHTE, getrennt von dem, was man hat.
  * Ausführlich: docs/begruendungen/src/merkliste/merkliste.ts.md#abschnitt
  */
-import { nacharbeit } from '../../utils/nacharbeit';
+import { nacharbeit } from '../auftraege/nacharbeit';
 import * as db from '../../db/database';
 import { addSet, sanitizeSetNumber } from '../sets/setService';
 import { findSetInScope } from '../sets/setAdd';
@@ -11,7 +11,7 @@ import * as V from '../infra/validate';
 import { nutzerStandardZustand } from '../konto/settings';
 import { meldeUndWeiter } from '../infra/httpError';
 import { fuerSet } from '../finanzen/preisvergleich';
-import { resolveIfExists } from '../../utils/images';
+import { resolveIfExists } from '../katalog/bilder/images';
 import { toCsv } from '../infra/csvExport';
 
 /** Ein Eintrag, wie ihn beide Oberflächen sehen. */
@@ -249,9 +249,9 @@ export async function merkpostenVon(
   // Ausführlich: docs/begruendungen/src/merkliste/merkliste.ts.md#merkpostenvon-2
 
   return ((rows ?? []) as Zeile[]).map(({ alarm_richtung, alarm_schwelle, alarm_ausgeloest, ...r }) => {
-    // Synchron und gecacht (utils/images.ts) — kein Dateisystemzugriff je
+    // Synchron und gecacht (src/katalog/bilder/images.ts) — kein Dateisystemzugriff je
     // Zeile und Aufruf. Dieselbe Namensregel wie beim Ablegen
-    // (utils/setImages.ts: /images/sets/<setnummer>.jpg).
+    // (src/katalog/bilder/setImages.ts: /images/sets/<setnummer>.jpg).
     //
     // ?? null: resolveIfExists() ist als „string | null | undefined"
     // typisiert; ein fehlendes Bild steht in der Antwort als NULL und nicht

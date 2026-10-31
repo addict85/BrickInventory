@@ -40,7 +40,7 @@ let gleichzeitig = 0, maxGleichzeitig = 0;
 const echtesRequire = Module.prototype.require;
 Module.prototype.require = function (name) {
   const m = echtesRequire.apply(this, arguments);
-  // Seit Nachtrag 125 liegt downloadSetImage in utils/setImages.ts statt im
+  // Seit Nachtrag 125 liegt downloadSetImage in src/katalog/bilder/setImages.ts statt im
   // Router — der Abfang muss dorthin zeigen, sonst greift er ins Leere und
   // der Test misst still den echten Download.
   if (typeof name === 'string' && /setImages(\.js)?$/.test(name) && m && m.downloadSetImage) {
@@ -183,7 +183,7 @@ test('der User-Agent nennt Ross und Reiter', () => {
   // aller Möglichkeiten: Sie sagt nicht, wer wir sind, und ein „Browser", der
   // tausende Bilder ohne die üblichen Begleitanfragen holt, fällt einer
   // Heuristik gerade dadurch auf.
-  const src = fs.readFileSync(path.join(ROOT, 'utils/setImages.ts'), 'utf8');
+  const src = fs.readFileSync(path.join(ROOT, 'src/katalog/bilder/setImages.ts'), 'utf8');
   const i = src.indexOf('function bildUserAgent()');
   assert.ok(i > 0, 'Keine eigene Funktion für den User-Agent');
   const fn = src.slice(i, src.indexOf('\n}', i));
@@ -201,8 +201,8 @@ test('der User-Agent nennt Ross und Reiter', () => {
   // Geprüft wird deshalb am ÜBERSETZTEN Stand, nicht an der Quelle: Genau
   // zwischen beiden lag der Fehler.
   // Die Version kommt seit dem Versionsumbau aus dist/version.json (scripts/version.js).
-  const dist = path.join(ROOT, 'dist', 'utils/setImages.js');
-  assert.ok(fs.existsSync(dist), 'dist/utils/setImages.js fehlt — erst bauen');
+  const dist = path.join(ROOT, 'dist', 'src/katalog/bilder/setImages.js');
+  assert.ok(fs.existsSync(dist), 'dist/src/katalog/bilder/setImages.js fehlt — erst bauen');
   const ua = require(dist).bildUserAgent();
   const echteVersion = JSON.parse(fs.readFileSync(path.join(ROOT, 'dist', 'version.json'), 'utf8')).version;
   assert.ok(ua.includes(echteVersion),

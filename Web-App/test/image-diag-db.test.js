@@ -96,7 +96,7 @@ test('die Bild-Diagnose beschreibt jede Lage im Klartext',
       `die Diagnose muss „nichts anzeigbar" benennen, bekam: ${d.hinweise.join(' | ')}`);
 
     // C) Nach der Erzeugung ist alles beisammen — und die Grössen stimmen.
-    await _req('utils/thumbs.js').generateThumb(`/images/sets/${MIT}.jpg`);
+    await _req('src/katalog/bilder/thumbs.js').generateThumb(`/images/sets/${MIT}.jpg`);
     d = await frag(MIT);
     assert.ok(d.hinweise.some(h => /Alles vorhanden/.test(h)),
       `nach der Erzeugung darf nichts mehr bemängelt werden, bekam: ${d.hinweise.join(' | ')}`);
@@ -124,7 +124,7 @@ test('der Set-Bild-Download meldet jeden Fehlschlag', () => {
   // Statuscode, Netzwerkfehler, Zwergantwort und der umschliessende catch
   // endeten alle in einem stummen `return null`. Genau diese Stille hat die
   // Bild-Fehlersuche über fünf Nachträge gestreckt.
-  const src = fs.readFileSync(path.join(ROOT, 'utils/setImages.ts'), 'utf8');
+  const src = fs.readFileSync(path.join(ROOT, 'src/katalog/bilder/setImages.ts'), 'utf8');
   const start = src.indexOf('async function downloadSetImage');
   const fn = src.slice(start, src.indexOf('\n}\n', start))
     .split('\n').filter(l => !l.trim().startsWith('//')).join('\n');

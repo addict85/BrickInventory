@@ -1,13 +1,13 @@
 /**
  * /api/v1/catalog — Rebrickable-Katalog (Browsen/Suchen/Filtern aller Sets).
- * Die Abfragen stehen in utils/dienste/katalog.ts.
+ * Die Abfragen stehen in src/katalog/dienst.ts.
  */
 import express from 'express';
 import { handleRouteError } from '../../src/infra/httpError';
 import { requireToken } from './middleware';
-import { resolveMany } from '../../utils/bricklinkLink';
+import { resolveMany } from '../../src/katalog/bricklinkLink';
 import { sendeFehler } from '../../src/infra/fehlerTexte';
-import { katalogMeta, jahrVerteilung, katalogSeite, katalogSet } from '../../utils/dienste/katalog';
+import { katalogMeta, jahrVerteilung, katalogSeite, katalogSet } from '../../src/katalog/dienst';
 
 const router = express.Router();
 

@@ -1,17 +1,17 @@
 /**
  * Was nach dem Erfassen eines Sets nachgezogen wird. Es läuft als Auftrag
- * (utils/auftraege.ts) im Job-Prozess: Ein Neustart verliert nichts, und
+ * (src/auftraege/auftraege.ts) im Job-Prozess: Ein Neustart verliert nichts, und
  * scheitert der Import von Teilen oder Figuren, wiederholt der Worker ihn.
  * Die Anreicherungen danach sind Beiwerk mit eigenen Kontingenten; sie melden
  * ihren Fehler und lassen den Auftrag nicht scheitern.
  */
-import { importiereTeile, fetchMissingBlIds } from '../utils/partsImport';
-import { importiereFiguren } from '../utils/minifigsImport';
-import { downloadSetInstructions } from '../utils/instructions';
+import { importiereTeile, fetchMissingBlIds } from '../src/katalog/partsImport';
+import { importiereFiguren } from '../src/katalog/minifigsImport';
+import { downloadSetInstructions } from '../src/katalog/instructions';
 import { logAndContinue } from '../src/infra/httpError';
 import * as db from '../db/database';
 import { getSetInfo as bricksetSetInfo } from '../clients/brickset';
-import { anleitungEinreihen } from '../utils/anleitungsAuftrag';
+import { anleitungEinreihen } from '../src/auftraege/anleitungsAuftrag';
 import { refreshPriceForSet } from './priceJob';
 import { enrichSetParts, enrichSetMinifigs, downloadSetImages } from './partsCatalogEnrich';
 

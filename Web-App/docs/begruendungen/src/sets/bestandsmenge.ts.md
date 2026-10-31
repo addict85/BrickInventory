@@ -164,9 +164,9 @@ auch keine Erfassung. Ihre Stueckzahl ist eine KATALOGZAHL, und der eigene
 Bestand ergibt sich beim Lesen aus Katalogmenge x Set-Menge — genau Marcos
 Formel „alle set_acquisitions-Eintraege x ihre Quantity pro Set pro User".
 
-Beide Zweige waren Abschriften, GEMESSEN: utils/partsImport.ts schrieb
+Beide Zweige waren Abschriften, GEMESSEN: src/katalog/partsImport.ts schrieb
 denselben Wert in DERSELBEN Schleife nach parts.quantity und nach
-set_parts_catalog.quantity, utils/minifigsImport.ts wortgleich fuer die
+set_parts_catalog.quantity, src/katalog/minifigsImport.ts wortgleich fuer die
 Figuren. Und mengeNeuRechnen() hier war fuer die manuellen Positionen der
 einzige Schreiber — es rechnete die Summe der Erfassungen.
 

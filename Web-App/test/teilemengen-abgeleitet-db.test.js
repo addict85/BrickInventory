@@ -17,9 +17,9 @@
  *   source='set'     wie viele im SET stecken → set_parts_catalog.quantity
  *                                               bzw. set_minifigs_catalog
  *
- * Beide waren Abschriften. GEMESSEN: utils/partsImport.ts schrieb denselben
+ * Beide waren Abschriften. GEMESSEN: src/katalog/partsImport.ts schrieb denselben
  * Wert in DERSELBEN Schleife nach `parts.quantity` UND nach
- * `set_parts_catalog.quantity`; utils/minifigsImport.ts wortgleich. Für die
+ * `set_parts_catalog.quantity`; src/katalog/minifigsImport.ts wortgleich. Für die
  * manuellen Positionen war mengeNeuRechnen() in src/sets/bestandsmenge.ts der
  * einzige Schreiber — und der rechnete nichts anderes als die Summe der
  * Erfassungen.
@@ -184,7 +184,7 @@ test('niemand schreibt die Stückzahl eines Teils oder einer Figur mehr', () => 
       if (/\.(ts|js)$/.test(e.name)) dateien.push(p);
     }
   };
-  for (const teil of ['routes', 'src', 'utils', 'jobs', 'db', 'clients', 'scripts']) {
+  for (const teil of ['routes', 'src', 'jobs', 'db', 'clients', 'scripts']) {
     const v = path.join(ROOT, teil);
     if (fs.existsSync(v)) lauf(v);
   }
@@ -236,7 +236,7 @@ test('niemand schreibt die Stückzahl eines Teils oder einer Figur mehr', () => 
   // Die Muster finden jetzt nichts — das ist der Punkt, sagt aber allein noch
   // nicht, dass sie ueberhaupt etwas finden KOENNTEN. Also an Zeilen
   // nachgewiesen, die in genau dieser Form im Baum standen (die ersten drei
-  // woertlich aus src/sets/bestandsmenge.ts und utils/partsImport.ts, Fassung vor
+  // woertlich aus src/sets/bestandsmenge.ts und src/katalog/partsImport.ts, Fassung vor
   // 0038).
   const proben = [
     ['UPDATE parts SET quantity = $1 WHERE user_id=$2', 'setzt parts'],

@@ -5,27 +5,27 @@
  */
 import * as db from '../../db/database';
 import { logAndContinue, meldeUndLiefere, meldeUndWeiter, vorDem, fehlertext } from '../infra/httpError';
-import { stelleAuftragEin } from '../../utils/auftraege';
-import { resolveImageLocal, proxyImageUrl } from '../../utils/images';
+import { stelleAuftragEin } from '../auftraege/auftraege';
+import { resolveImageLocal, proxyImageUrl } from '../katalog/bilder/images';
 import { getSetting } from '../konto/settings';
 import { normalizeSetNumber } from './setAdd';
 import { istErsatzteil, ersatzteilSql } from '../infra/validate';
-import { istVermutung } from '../../utils/barcodeQuelle';
-import { setnummerKandidaten } from '../../utils/produkttitel';
+import { istVermutung } from '../katalog/barcodeQuelle';
+import { setnummerKandidaten } from '../katalog/produkttitel';
 import { fetchPrice, resolveSetCondition } from '../finanzen/financeCalc';
-import { neuestesInventar } from '../../utils/rbInventar';
+import { neuestesInventar } from '../katalog/rbInventar';
 import { mitVersion, ohneVersion } from './setNummer';
-import { figurenAusKatalog } from '../../utils/minifigsImport';
+import { figurenAusKatalog } from '../katalog/minifigsImport';
 import { mengeSkalar } from './bestandsmenge';
-import { blJoin, blNummerSql } from '../../utils/blZuordnung';
+import { blJoin, blNummerSql } from '../katalog/blZuordnung';
 import { csvEinlesen, entschaerfungRueckgaengig, parseCsvDate, uebersprungenHinweis } from '../infra/csvExport';
-import { jobGet, jobSet, jobUpdate, emitJobStatus } from '../../utils/importAuftrag';
+import { jobGet, jobSet, jobUpdate, emitJobStatus } from '../auftraege/importAuftrag';
 import { getSetByBarcode, getSetByEan } from '../../clients/brickset';
 import { getAllSetParts, getMinifigInfo, getSetMinifigs, rebrickableJson } from '../../clients/rebrickable';
 import type { RbSetTeil } from '../../clients/rebrickable';
 import { produktTitel } from '../../clients/upcitemdb';
 import { fehlerWerfen } from '../infra/fehlerTexte';
-import { merkeFigur, merkeSetFiguren } from '../../utils/katalogPflege';
+import { merkeFigur, merkeSetFiguren } from '../katalog/katalogPflege';
 import { randomUUID } from 'crypto';
 
 // ── Katalog ──────────────────────────────────────────────────────────────────
@@ -53,7 +53,7 @@ export interface BarcodeTreffer {
 /**
  * Ergänzt einen Treffer um Bild und Eckdaten: Rebrickable zuerst (dort stehen
  * Figurenzahl und Bild am verlässlichsten), dann der eigene Katalog.
- * Jede Antwort sagt, wie sie zustande kam (utils/barcodeQuelle.ts).
+ * Jede Antwort sagt, wie sie zustande kam (src/katalog/barcodeQuelle.ts).
  */
 async function barcodeErgebnis(setNumber: string, name: string | null, source: string): Promise<BarcodeTreffer> {
   const rbData = await rebrickableJson(`/lego/sets/${encodeURIComponent(setNumber)}/`);
@@ -170,7 +170,7 @@ function katalogDesSets(setNumber: string): Promise<KatalogTeil[]> {
  * Die Teile eines Sets ohne Ersatzteile: aus der geladenen Rebrickable-CSV,
  * sonst über die API. Fehlt der Katalog, wird er erst ergänzt, damit Name und
  * Bild stimmen; die Bilder holt danach ein Auftrag.
- * @param anreichern füllt den Katalog des Sets (jobs/partsCatalogEnrich, über utils/nacharbeit)
+ * @param anreichern füllt den Katalog des Sets (jobs/partsCatalogEnrich, über src/auftraege/nacharbeit)
  */
 /**
  * Die Teileliste eines Sets kommt ungeblättert; die Seitenangaben stehen

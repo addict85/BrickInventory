@@ -163,7 +163,7 @@ ausschliesslich, was lokal nichts ergab — bei seiner Datei wären das die
 Posten, die `loeseLokalAuf` offen lässt, nicht alle 224.
 
 Teile allein: Für Figuren und Sets führt Rebrickable keine BrickLink-IDs in
-external_ids (die Notiz steht in utils/bricklinkLink.ts: „Rebrickable hat
+external_ids (die Notiz steht in src/katalog/bricklinkLink.ts: „Rebrickable hat
 external_ids nur bei Parts"). Eine Abfrage dafür wäre ein Abruf, der nichts
 finden KANN.
 ```
@@ -184,7 +184,7 @@ ungleich länger:
 
   rebrickable  Die offenen Nummern bei Rebrickable nachfragen. Jeder Abruf
                geht durch die Hintergrunddrossel: EINE Anfrage je 1,5
-               Sekunden (utils/rateLimiter.ts). Fünfzig offene Posten sind
+               Sekunden (src/katalog/rateLimiter.ts). Fünfzig offene Posten sind
                also über eine Minute, in der ohne Balken nichts passiert.
   schreiben    Die Posten in den Bestand legen. Je Posten ein paar
                Abfragen, dazu beim ersten Mal die Katalogpflege.
@@ -475,7 +475,7 @@ Meldungen einsammeln, ohne eine Leitung dafür zu brauchen.
 „Soll ich aufhören?" — alle zehn Posten gefragt.
 
 Der Fortschritt steht seit dem 20.10. auch im Auftragsdatensatz, den
-beide Oberflächen als Balken zeigen (utils/importAuftrag.ts), und dieser
+beide Oberflächen als Balken zeigen (src/auftraege/importAuftrag.ts), und dieser
 Balken trägt ein Kreuz. Ein Import, der das Kreuz nicht beachtet, hätte
 einen Abbrechen-Knopf, der lügt.
 

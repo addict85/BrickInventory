@@ -15,7 +15,7 @@
  * Einstellungs-Import und /api/v1.
  *
  * Geprüft wird VERHALTEN: Der Preis-Job ist ein geplanter Auftrag
- * (utils/zeitplan.ts); ein Anstoss zieht seinen Termin auf jetzt vor.
+ * (src/auftraege/zeitplan.ts); ein Anstoss zieht seinen Termin auf jetzt vor.
  * Erwartung:
  *   • Währung EUR → CHF        : der Termin ist jetzt fällig
  *   • dieselbe Währung nochmal : der Termin bleibt in der Zukunft (das Formular
@@ -53,7 +53,7 @@ test('eine echte Währungsänderung stösst den Preis-Job an, ein No-op-Speicher
   }
 
   // Beobachtet wird der Termin des geplanten Auftrags 'preise'.
-  const Z = _req('utils/zeitplan.js');
+  const Z = _req('src/auftraege/zeitplan.js');
   await db.run(`DELETE FROM auftraege WHERE art = 'preise'`);
   await Z.planeNaechsten('preise');
   const spaeter = () => db.run(`UPDATE auftraege SET faellig_ab = NOW() + INTERVAL '1 hour' WHERE art = 'preise' AND status = 'offen'`);

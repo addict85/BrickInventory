@@ -181,7 +181,7 @@ spart den Umweg ueber die Fehlerbehandlung und macht die Konsole wieder
 lesbar.
 
 Was NICHT verlorengeht: Der Server merkt sich die Fehlanzeige weiterhin
-(utils/imageMisses, sieben Tage), zaehlt sie in imgProxyFailures und zeigt
+(src/katalog/bilder/imageMisses, sieben Tage), zaehlt sie in imgProxyFailures und zeigt
 sie in der Bild-Diagnose. Die Information wandert also nur aus der
 Browser-Konsole dorthin, wo man etwas mit ihr anfangen kann.
 
@@ -196,7 +196,7 @@ Bildschirm — bis zum Server, dort in den Merker und wieder zurück.
 
 Eine Stunde ist bewusst kurz gewählt: Wird ein Bild nachgereicht, soll es
 nicht einen Tag lang unsichtbar bleiben. Der SERVER merkt sich die
-Fehlanzeige länger (utils/imageMisses, sieben Tage) — dort kostet ein
+Fehlanzeige länger (src/katalog/bilder/imageMisses, sieben Tage) — dort kostet ein
 erneuter Versuch ja auch mehr.
 ```
 
@@ -400,7 +400,7 @@ Die kanonische ist /api/v1/img-proxy; alles, was der Server heute baut, und
 beide Oberflächen benutzen sie. Die alte bleibt bedient, weil ihre Adresse
 in Datenbankzeilen steht und installierte App-Fassungen sie selbst
 zusammenbauen — die Begründung samt Auslauf-Charakter steht bei den
-Konstanten in utils/images.ts.
+Konstanten in src/katalog/bilder/images.ts.
 ```
 
 <a id="startimgcachecleanup"></a>

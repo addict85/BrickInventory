@@ -59,7 +59,7 @@ Modulspeicher kann das nicht leisten; der Server läuft im Cluster
 (WORKERS = max(2, Kerne)), und jeder Arbeiter hätte seine eigene Instanz
 mit eigener Zählung. Genau dieser Fehler ist in diesem Baum zweimal
 behoben worden (src/konto/loginLimiter.ts: „aus 5 Fehlversuchen werden sonst
-N×5"; utils/rateLimiter.ts zum Rebrickable-Tageskontingent).
+N×5"; src/katalog/rateLimiter.ts zum Rebrickable-Tageskontingent).
 
 Die Grenze steht deshalb in src/gutscheine/gutscheinGuthabenSchranke.ts und wird in
 einer Transaktion über eine eigene Tabelle durchgesetzt (Migration 0039) —

@@ -615,7 +615,7 @@ export async function importiereWantedListe(
     fortschritt?: (stand: WantedFortschritt) => void;
     /**
      * Der Fortschritt steht seit dem 20.10. auch im Auftragsdatensatz, den
-     * beide Oberflächen als Balken zeigen (utils/importAuftrag.ts), und dieser
+     * beide Oberflächen als Balken zeigen (src/auftraege/importAuftrag.ts), und dieser
      * Balken trägt ein Kreuz. Ein Import, der das Kreuz nicht beachtet, hätte
      * einen Abbrechen-Knopf, der lügt.
      * Ausführlich: docs/begruendungen/src/merkliste/wantedListe.ts.md#importierewantedliste-3

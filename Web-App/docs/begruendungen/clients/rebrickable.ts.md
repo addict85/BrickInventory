@@ -132,7 +132,7 @@ Feld abgetastet, und genau das verlangt `unknown` auch.
 
 Zwei Gestalten, weil Rebrickable sie beide liefert: Bei Teilen ist
 external_ids.BrickLink ein Feld von Nummern (so liest es
-utils/partsImport.ts), bei Farben steckt es eine Ebene tiefer in `ext_ids`
-(so liest es utils/blZuordnung.ts). Beide Schreibweisen stehen im Baum
+src/katalog/partsImport.ts), bei Farben steckt es eine Ebene tiefer in `ext_ids`
+(so liest es src/katalog/blZuordnung.ts). Beide Schreibweisen stehen im Baum
 belegt, also fragt diese Pruefung beide.
 ```

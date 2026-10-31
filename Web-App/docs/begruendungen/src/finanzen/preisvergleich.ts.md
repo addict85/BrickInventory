@@ -19,7 +19,7 @@ ohne diese Datei vier Stellen gemacht — Webapp und App, je Set-Detail und
 Vergleich.
 
 Es ist derselbe Weg, den der BrickLink-Knopf schon geht: Der Server loest
-die Adresse auf (utils/bricklinkLink.ts), die Oberflaechen zeigen sie nur.
+die Adresse auf (src/katalog/bricklinkLink.ts), die Oberflaechen zeigen sie nur.
 Wer den Anbieter wechseln will, aendert eine Zeile statt vier.
 
 ── Warum toppreise.ch ──────────────────────────────────────────────────────

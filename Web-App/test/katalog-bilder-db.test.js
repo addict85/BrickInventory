@@ -6,7 +6,7 @@
  * keine Bildarbeit an — das macht der Bild-Job über den Proxy.
  *
  * Gegenproben (am 29.10.2026 gemessen):
- *   A  in utils/dienste/katalog.ts lokalesBild() ohne die Bereinigung der
+ *   A  in src/katalog/dienst.ts lokalesBild() ohne die Bereinigung der
  *      Setnummer (`KB/1-1` statt `KB_1-1`) → rot: „die Liste findet die Datei“
  *   B  resolveIfExists() ohne Vorschau (gibt den Originalpfad zurück) → rot:
  *      „die Vorschau hat Vorrang“
@@ -50,7 +50,7 @@ test('Katalog-Bilder gelten für jedes Konto', { concurrency: 1 }, async (t) => 
   fs.writeFileSync(path.join(ordner, 'KB_1-1.jpg'), 'JPG');
   fs.writeFileSync(path.join(ordner, 'KB_1-1_thumb.jpg'), 'JPG');
 
-  const nacharbeit = _req('utils/nacharbeit.js');
+  const nacharbeit = _req('src/auftraege/nacharbeit.js');
   const vorgemerkt = [];
   nacharbeit.verdrahteNacharbeit({ ...nacharbeit.nacharbeit(), bildVormerken: (url, sn) => vorgemerkt.push(sn) });
 
@@ -61,7 +61,7 @@ test('Katalog-Bilder gelten für jedes Konto', { concurrency: 1 }, async (t) => 
     await db.pool.end().catch(() => {});
   });
 
-  const { katalogSeite, katalogSet } = _req('utils/dienste/katalog.js');
+  const { katalogSeite, katalogSet } = _req('src/katalog/dienst.js');
 
   await t.test('die Liste findet die Datei, auch ohne Besitz — und die Vorschau hat Vorrang', async () => {
     const seite = await katalogSeite(uid, { q: 'KB', themeId: null }, 'num_asc', 1, 60);

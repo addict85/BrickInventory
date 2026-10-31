@@ -536,9 +536,9 @@ test('neue Sets holen den richtigen Zustand, nicht den Standard', () => {
 test('die Preis-Probe läuft ohne Serverfehler', () => {
   // Frühere Fassung fragte set_acquisitions.added_at ab — die Spalte heisst
   // created_at. Jede Probe endete in "Interner Serverfehler".
-  // Die Probe steht im Dienst utils/dienste/verwaltung.ts, ihre Abfragen in utils/verwaltung.ts.
-  const admin = fs.readFileSync(path.join(ROOT, 'utils/dienste/verwaltung.ts'), 'utf8');
-  const dienst = fs.readFileSync(path.join(ROOT, 'utils/verwaltung.ts'), 'utf8');
+  // Die Probe steht im Dienst src/verwaltung/dienst.ts, ihre Abfragen in src/verwaltung/verwaltung.ts.
+  const admin = fs.readFileSync(path.join(ROOT, 'src/verwaltung/dienst.ts'), 'utf8');
+  const dienst = fs.readFileSync(path.join(ROOT, 'src/verwaltung/verwaltung.ts'), 'utf8');
   const code = (admin + '\n' + dienst).replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
   assert.doesNotMatch(code, /added_at/, 'set_acquisitions kennt keine Spalte added_at');
   assert.match(admin, /verwaltung\.probeErfassungen\(uid, setNumber\)/,
@@ -751,8 +751,8 @@ test('CDN-Anfragen erzwingen IPv4', () => {
   assert.match(agentBlock, /family: 4,/,
     'Der Bild-Proxy muss IPv4 für CDN-Anfragen erzwingen');
 
-  // Der lokale Set-Bild-Download liegt seit Nachtrag 125 in utils/setImages.ts.
-  const setsFile = fs.readFileSync(path.join(ROOT, 'utils/setImages.ts'), 'utf8');
+  // Der lokale Set-Bild-Download liegt seit Nachtrag 125 in src/katalog/bilder/setImages.ts.
+  const setsFile = fs.readFileSync(path.join(ROOT, 'src/katalog/bilder/setImages.ts'), 'utf8');
   const dlFn = setsFile.slice(setsFile.indexOf('async function downloadSetImage'),
                              setsFile.indexOf('async function downloadSetImage') + 700);
   assert.match(dlFn, /https\.get\(u, \{ timeout:10000, family: 4,/,
@@ -773,7 +773,7 @@ test('IPv4 wird an ALLEN ausgehenden HTTPS-Aufrufen erzwungen, nicht nur beim Bi
   // unabhängig davon, wie viele es gerade sind.
   const dateien = ['routes/imgProxy.ts', 'clients/rebrickable.ts', 'jobs/partsCatalogEnrich.ts',
     'jobs/backfillBlPartNumbers.ts', 'jobs/rebrickableCsvSync.ts', 'clients/brickset.ts',
-    'clients/bricklink.ts', 'utils/dienste/verwaltung.ts', 'src/sets/dienst.ts'];
+    'clients/bricklink.ts', 'src/verwaltung/dienst.ts', 'src/sets/dienst.ts'];
 
   const ohne = [];
   let gefunden = 0;
@@ -808,7 +808,7 @@ test('der Hintergrund-Job für Teile und Minifiguren erzeugt jetzt Vorschaubilde
   const partsLoop = src.slice(src.indexOf('for (const p of manualParts) {'),
                               src.indexOf('for (const f of figsToFetch) {'));
   // UMFORMULIERT in Nachtrag 132: Geprüft wurde der WORTLAUT der Zeile
-  //     const { generateThumb } = require('./utils/thumbs');
+  //     const { generateThumb } = require('./src/katalog/bilder/thumbs');
   // Beim Umbau der späten require() auf echte import-Anweisungen wurde daraus
   // ein Import am Dateikopf — die Prüfung wurde rot, ohne dass sich ihre
   // Aussage geändert hätte. Es zählt, DASS die Schleife verkleinert, und dass
@@ -962,7 +962,7 @@ test('beide Login-Wege prüfen gleich', () => {
     const p = path.join(dir, e.name);
     return e.isDirectory() ? dateien(p) : (e.name.endsWith('.ts') ? [p] : []);
   });
-  const alle = [...dateien(path.join(ROOT, 'routes')), ...dateien(path.join(ROOT, 'src')), ...dateien(path.join(ROOT, 'utils'))];
+  const alle = [...dateien(path.join(ROOT, 'routes')), ...dateien(path.join(ROOT, 'src'))];
   assert.ok(alle.length >= 30, `nur ${alle.length} Dateien durchsucht — Pfade veraltet?`);
 
   const kopien = alle

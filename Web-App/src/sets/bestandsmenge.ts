@@ -71,7 +71,7 @@ import { colorId } from '../infra/validate';
  * Was ein Leser bzw. Schreiber hier können muss, und nicht mehr. `any` wäre
  * kürzer; der Typ schreibt hin, was gebraucht wird, statt den Typprüfer für
  * den ganzen Ausdruck abzuschalten. Dieselbe Entscheidung wie in
- * utils/katalogPflege.ts.
+ * src/katalog/katalogPflege.ts.
  */
 type Schreiber = { get: (sql: string, params?: unknown[]) => Promise<any> };
 

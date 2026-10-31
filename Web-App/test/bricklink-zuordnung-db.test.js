@@ -22,7 +22,7 @@
  *   minifigs.bl_fig_number                 JE KONTO      Abschrift
  *
  * Dass die drei Abschriften genau das waren, stand im Baum selbst:
- * utils/partsImport.ts trug eine Funktion syncBlPartNumbers(), deren ganze
+ * src/katalog/partsImport.ts trug eine Funktion syncBlPartNumbers(), deren ganze
  * Aufgabe das Kopieren von rb_bl_mapping in die beiden anderen war.
  *
  * ── Was dieser Test prüft ───────────────────────────────────────────────────
@@ -228,7 +228,7 @@ test('niemand schreibt eine BrickLink-Nummer mehr an eine Bestandszeile', () => 
       if (/\.(ts|js)$/.test(e.name)) dateien.push(p);
     }
   };
-  for (const teil of ['routes', 'src', 'utils', 'jobs', 'db', 'clients', 'scripts']) {
+  for (const teil of ['routes', 'src', 'jobs', 'db', 'clients', 'scripts']) {
     const v = path.join(ROOT, teil);
     if (fs.existsSync(v)) lauf(v);
   }
@@ -270,7 +270,7 @@ test('niemand schreibt eine BrickLink-Nummer mehr an eine Bestandszeile', () => 
   // Die Muster finden jetzt nichts — das ist der Punkt, sagt aber allein noch
   // nicht, dass sie etwas finden KOENNTEN. Also an erfundenen Zeilen
   // nachgewiesen, in genau der Form, die vorher im Baum stand (die ersten drei
-  // stehen so in utils/partsImport.ts und routes/minifigs.ts, Fassung vor 0037).
+  // stehen so in src/katalog/partsImport.ts und routes/minifigs.ts, Fassung vor 0037).
   const proben = [
     'UPDATE parts SET bl_part_number = m.bl_part_num FROM x',
     "UPDATE minifigs SET bl_fig_number=$1 WHERE id=$2",

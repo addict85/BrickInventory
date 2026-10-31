@@ -29,8 +29,8 @@ const { testServer } = require('./helpers/server');
 const { haeltSet } = require('./helpers/bestand');
 
 // Kein Abruf bei den Quellen: Das Neuladen findet hier nichts.
-const anlPfad = require.resolve(path.join(require('./helpers/sources').DIST, 'utils/instructions.js'));
-const echt = _req('utils/instructions.js');
+const anlPfad = require.resolve(path.join(require('./helpers/sources').DIST, 'src/katalog/instructions.js'));
+const echt = _req('src/katalog/instructions.js');
 require.cache[anlPfad].exports = Object.assign({}, echt, { downloadSetInstructions: async () => [] });
 
 const db = _req('db/database.js');

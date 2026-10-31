@@ -76,7 +76,7 @@ Marcos Serverprotokoll, seitenweise:
     [download] Adresse nicht in der Liste erlaubter Hosts:
                https://bdpinstructions.s3.amazonaws.com/11010.pdf
 
-Diese Adresse baut der Baum SELBST: utils/instructions.ts, Rueckfall 2 fuer
+Diese Adresse baut der Baum SELBST: src/katalog/instructions.ts, Rueckfall 2 fuer
 die BrickLink Designer Programme. Sie zu bauen und dann abzulehnen ist
 keine Schranke, sondern eine Unstimmigkeit zwischen zwei Stellen — der
 Rueckfall konnte nie etwas holen, und zwar seit er existiert.

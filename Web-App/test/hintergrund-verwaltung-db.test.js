@@ -1,6 +1,6 @@
 /**
  * Die Hintergrundarbeiten in der Verwaltung (routes/api_v1/admin.ts,
- * utils/dienste/hintergrund.ts) über die echte Route: Auftragsliste, Abbrechen,
+ * src/auftraege/hintergrund.ts) über die echte Route: Auftragsliste, Abbrechen,
  * Wiederholen, Leeren, Jetzt — und die alten Adressen (brickset-queue,
  * job-status, job-schedule, trigger-price-job) liefern ihre Felder weiter.
  *
@@ -35,8 +35,8 @@ test('Hintergrundarbeiten in der Verwaltung', { concurrency: 1 }, async (t) => {
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username, password_hash, is_admin, is_active) VALUES ($1,'x',1,1) RETURNING id`, [NAME])).id;
   await db.run('DELETE FROM auftraege');
-  const Z = _req('utils/zeitplan.js');
-  const A = _req('utils/auftraege.js');
+  const Z = _req('src/auftraege/zeitplan.js');
+  const A = _req('src/auftraege/auftraege.js');
   t.after(async () => {
     await db.run('DELETE FROM auftraege');
     await db.run('DELETE FROM users WHERE id = $1', [uid]);
@@ -118,7 +118,7 @@ test('Hintergrundarbeiten in der Verwaltung', { concurrency: 1 }, async (t) => {
   });
 
   await t.test('die Brickset-Liste behält ihre Felder', async () => {
-    await _req('utils/bricksetAuftrag.js').bricksetVormerken('33333-1', 'Quota exceeded');
+    await _req('src/auftraege/bricksetAuftrag.js').bricksetVormerken('33333-1', 'Quota exceeded');
     const r = await rufe('GET', '/admin/brickset-queue');
     const e = r.body.entries.find(x => x.set_number === '33333-1');
     assert.ok(e, JSON.stringify(r.body));

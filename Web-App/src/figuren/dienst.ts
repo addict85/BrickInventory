@@ -5,9 +5,9 @@
 import * as db from '../../db/database';
 import { logAndContinue, meldeUndLiefere } from '../infra/httpError';
 import { ersatzteilSql } from '../infra/validate';
-import { inventarNachKandidaten } from '../../utils/rbInventar';
-import { blJoin, blNummerSql } from '../../utils/blZuordnung';
-import { nacharbeit } from '../../utils/nacharbeit';
+import { inventarNachKandidaten } from '../katalog/rbInventar';
+import { blJoin, blNummerSql } from '../katalog/blZuordnung';
+import { nacharbeit } from '../auftraege/nacharbeit';
 
 interface FigurTeil {
   part_number: string; bl_part_number: string; part_name: string | null; color_id: number;

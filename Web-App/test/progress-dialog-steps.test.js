@@ -39,7 +39,7 @@ const { ROOT, ohneKommentare } = require('./helpers/sources');
 
 /** Alle Server-Quellen, die Fortschritt melden könnten. */
 function serverQuellen() {
-  const dirs = ['src', 'utils', 'routes', 'jobs', 'clients'];
+  const dirs = ['src', 'routes', 'jobs', 'clients'];
   const out = [];
   const lauf = (d) => {
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {

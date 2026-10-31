@@ -13,7 +13,7 @@
  *       ohne Index   Seq Scan,    572 Buffer, 5,19  ms
  *       mit  Index   Index Scan,    4 Buffer, 0,041 ms   (3 MB)
  *
- *   sets nach set_number OHNE user_id (utils/verwaltung.ts, Bilddiagnose):
+ *   sets nach set_number OHNE user_id (src/verwaltung/verwaltung.ts, Bilddiagnose):
  *       Der vorhandene Index beginnt mit user_id, das diese Abfrage nicht
  *       nennt — sie las bisher die Sets aller Konten.
  *
@@ -105,7 +105,7 @@ test('Anfragepfad: die drei Indizes gibt es und der Planer kann sie nehmen', asy
     const c0 = await db.pool.connect();
     try { await _req('db/migrate.js').runMigrations(c0); } finally { c0.release(); }
 
-    // Zeichengleich die Abfrage aus utils/blZuordnung.ts (blAbrufNummer).
+    // Zeichengleich die Abfrage aus src/katalog/blZuordnung.ts (blAbrufNummer).
     //
     // Geprueft wird „ueber einen INDEX" und nicht „ueber genau diesen
     // Index": Auf einer leeren Tabelle waehlt der Planer den kleineren von

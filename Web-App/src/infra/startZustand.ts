@@ -1,4 +1,4 @@
-import { liesZustand, setzeZustand } from '../../utils/laufzustand';
+import { liesZustand, setzeZustand } from '../auftraege/laufzustand';
 import { logAndContinue, meldeUndWeiter } from './httpError';
 
 /**

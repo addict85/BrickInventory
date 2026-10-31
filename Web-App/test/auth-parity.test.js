@@ -124,7 +124,7 @@ test('der Brute-Force-Zähler wird nur an einer Stelle bedient', () => {
     const p = path.join(dir, e.name);
     return e.isDirectory() ? sammle(p) : (e.name.endsWith('.ts') ? [p] : []);
   });
-  const alle = [...sammle(path.join(ROOT, 'routes')), ...sammle(path.join(ROOT, 'src')), ...sammle(path.join(ROOT, 'utils')),
+  const alle = [...sammle(path.join(ROOT, 'routes')), ...sammle(path.join(ROOT, 'src')),
                 path.join(ROOT, 'server.ts')];
   assert.ok(alle.length >= 30, `Nur ${alle.length} Dateien durchsucht — Pfade veraltet?`);
 

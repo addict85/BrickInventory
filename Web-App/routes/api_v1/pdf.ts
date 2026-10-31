@@ -1,6 +1,6 @@
 /**
  * /api/v1/sets/partslist-pdf — asynchrone PDF-Erzeugung. Die Route stellt
- * einen Auftrag ein (utils/auftraege.ts); Bilder holt und zeichnet der
+ * einen Auftrag ein (src/auftraege/auftraege.ts); Bilder holt und zeichnet der
  * Job-Prozess (jobs/pdfErzeugung.ts) in einem eigenen Faden.
  * Ausführlich: docs/begruendungen/routes/api_v1/pdf.ts.md#abschnitt
  */
@@ -10,8 +10,8 @@ import { requireToken } from './middleware';
 import { registerSse } from '../../src/infra/sseRegistry';
 import _pdfFs from 'fs/promises';
 import _fsSync from 'fs';
-import { liesAuftrag, loescheAuftrag, pdfSchluessel, gueltigeAuftragsKennung, pdfDateiPfad, pdfAuftragStarten } from '../../utils/pdfAuftraege';
-import { AUFTRAG_STAND_KANAL } from '../../utils/auftraege';
+import { liesAuftrag, loescheAuftrag, pdfSchluessel, gueltigeAuftragsKennung, pdfDateiPfad, pdfAuftragStarten } from '../../src/auftraege/pdfAuftraege';
+import { AUFTRAG_STAND_KANAL } from '../../src/auftraege/auftraege';
 import { listen, unlisten } from '../../db/pgNotify';
 import { sendeFehler, fehlerText, antwortSprache } from '../../src/infra/fehlerTexte';
 const router = express.Router();

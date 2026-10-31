@@ -1,5 +1,5 @@
 /**
- * Die Auftragstabelle (Migration 0066, utils/auftraege.ts, jobs/auftragsWorker.ts):
+ * Die Auftragstabelle (Migration 0066, src/auftraege/auftraege.ts, jobs/auftragsWorker.ts):
  * Ein Auftrag überlebt das Ende seines Prozesses, ein Fehler wird wiederholt
  * und endet nach dem letzten Versuch als 'fehler', und zwei Worker führen
  * nie denselben Auftrag aus.
@@ -46,7 +46,7 @@ test('Auftragstabelle', { concurrency: 1 }, async (t) => {
   }
   const mc = await db.pool.connect();
   try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }
-  const A = _req('utils/auftraege.js');
+  const A = _req('src/auftraege/auftraege.js');
   const { erzeugeWorker } = _req('jobs/auftragsWorker.js');
   // Nur Zeilen dieses Tests: eine eigene Art, die kein anderer Worker kennt.
   const ART = `test-${process.pid}`;
@@ -179,7 +179,7 @@ test('Auftragstabelle', { concurrency: 1 }, async (t) => {
     });
 
     await t.test('nach einem geplanten Lauf steht der nächste an', async () => {
-      const Z = _req('utils/zeitplan.js');
+      const Z = _req('src/auftraege/zeitplan.js');
       await db.run(`DELETE FROM auftraege WHERE art = 'aufraeumen'`);
       await Z.planeAlle();
       await Z.planeAlle();
@@ -201,8 +201,8 @@ test('Auftragstabelle', { concurrency: 1 }, async (t) => {
       const NAME = `auftrag-pdf-${process.pid}`;
       await db.run('DELETE FROM users WHERE username=$1', [NAME]);
       const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
-      const pdfA = _req('utils/pdfAuftraege.js');
-      const jobId = _req('utils/pdfAuftraege.js').neueJobId();
+      const pdfA = _req('src/auftraege/pdfAuftraege.js');
+      const jobId = _req('src/auftraege/pdfAuftraege.js').neueJobId();
       const w = _req('jobs/auftraegeStarten.js').starteAuftragsWorker({ arten: ['pdf'], taktMs: 50 });
       try {
         await A.stelleAuftragEin('pdf', { job_id: jobId, user_id: uid, sets: [],

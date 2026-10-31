@@ -133,7 +133,7 @@ test('die Schreibweise wird nirgends noch einmal ausgerechnet', () => {
     const rel = path.relative(ROOT, f);
     // ── Warum drei Muster ──────────────────────────────────────────────
     // Der erste Entwurf suchte NUR nach `.includes('-') ?`. Damit ging
-    // utils/bricklinkLink.ts durch: Dort stand dieselbe Regel als
+    // src/katalog/bricklinkLink.ts durch: Dort stand dieselbe Regel als
     // `/-\d+$/.test(n) ? n : `${n}-1``, also eine dritte Fassung — und die
     // Prueflung blieb gruen, obwohl die Regel weiter zweimal dastand.
     // Eine Suche, die nur EINE Schreibweise kennt, findet nur, was schon

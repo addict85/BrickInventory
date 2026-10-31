@@ -53,7 +53,7 @@ test('eine Kachelwand kostet keine einzige Abfrage', { concurrency: 1 }, async (
     t.skip('Test-DB nicht erreichbar'); return;
   }
 
-  const IM = _req('utils/imageMisses.js');
+  const IM = _req('src/katalog/bilder/imageMisses.js');
   const IQ = _req('jobs/imageQueue.js');
   await IM.initImageMisses();
   await IQ.initImageQueue();

@@ -1,24 +1,24 @@
 import * as db from '../../db/database';
-import { resolveImageLocal } from '../../utils/images';
+import { resolveImageLocal } from '../katalog/bilder/images';
 import { asIds } from '../haushalt/haushalt';
 import type { BlickfeldEingabe } from '../haushalt/haushalt';
 import { istErsatzteil, ersatzteilSql, colorId } from '../infra/validate';
 import { ensureFresh } from './partsSummary';
-// Direkt aus utils/partsImport, nicht ueber routes/parts: Die Route hat die
+// Direkt aus src/katalog/partsImport, nicht ueber routes/parts: Die Route hat die
 // Funktion selbst nur importiert und weiterexportiert (Object.assign am
 // Dateiende). Der Umweg sah wie Fachlogik in einer Route aus und war doch
 // nur ein Durchreichen — er zog aber eine echte Abhaengigkeit von dieser
 // Datei auf die aeusserste Schicht.
-import { fetchMissingBlIds } from '../../utils/partsImport';
+import { fetchMissingBlIds } from '../katalog/partsImport';
 import type { RbSetTeil } from '../../clients/rebrickable';
 import { getAllSetParts, getRbKey, httpsGetRobust } from '../../clients/rebrickable';
 import { clampPageSize, applyManualCondition, withOwners, MAX_PAGE_SIZE, UNPAGED_LIMIT, SET_PARTS_MAX_PAGE_SIZE } from '../bestand/gemeinsam';
 import { meldeUndWeiter, logAndContinue, meldeUndLiefere } from '../infra/httpError';
 import { farbkarte as blFarbkarte } from '../finanzen/financeCalc';
 import { getGlobalSetting } from '../konto/settings';
-import { neuestesInventar } from '../../utils/rbInventar';
+import { neuestesInventar } from '../katalog/rbInventar';
 import { mitVersion, ohneVersion } from '../sets/setNummer';
-import { merkeBlFarbnummer, blFarbnummerAus, blJoin, blNummerSql } from '../../utils/blZuordnung';
+import { merkeBlFarbnummer, blFarbnummerAus, blJoin, blNummerSql } from '../katalog/blZuordnung';
 import { mengeJoin, mengeAus, teilmengeJoin, teilmengeAus } from '../sets/bestandsmenge';
 
 /**

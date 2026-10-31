@@ -85,7 +85,7 @@ test('Teile-Rückfallebene für fremde Sets', async (t) => {
 // ── Regeln ──────────────────────────────────────────────────────────────────
 
 test('Bilddownloads sind nach oben begrenzt', () => {
-  const src = quelle('utils/setImages.ts');
+  const src = quelle('src/katalog/bilder/setImages.ts');
   const fn  = src.slice(src.indexOf('async function downloadSetImage'));
   const ende = fn.indexOf('\n}\n');
   const körper = fn.slice(0, ende);

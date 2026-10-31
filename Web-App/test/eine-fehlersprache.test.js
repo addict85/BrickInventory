@@ -75,7 +75,6 @@ test('keine Route verschickt einen festen Fehlersatz', () => {
   const dateien = [
     ...tsDateien(path.join(ROOT, 'routes')).map(([r, p]) => [r, p]),
     ...tsDateien(path.join(ROOT, 'src')).map(([r, p]) => [r, p]),
-    ...tsDateien(path.join(ROOT, 'utils')).map(([r, p]) => ['' + r, p]),
     ...tsDateien(path.join(ROOT, 'jobs')).map(([r, p]) => [r, p]),
   ];
   assert.ok(dateien.length >= 30,

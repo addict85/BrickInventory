@@ -264,11 +264,11 @@ test('die Verkleinerung lässt keine Anfrage warten', () => {
     'Ohne Obergrenze laufen beliebig viele Verkleinerungen gleichzeitig');
   assert.match(server, /function queueThumb/, 'Warteschlange fehlt');
   // Im Ausliefer-Pfad darf nicht auf die Verkleinerung gewartet werden.
-  // Dieser Pfad IST seit Nachtrag 135 utils/imgCacheServe.ts — vorher ein
+  // Dieser Pfad IST seit Nachtrag 135 src/katalog/bilder/imgCacheServe.ts — vorher ein
   // grosszügig geschnittenes Stück des Route-Rumpfs, was nach dem Umzug ins
   // Leere zeigte.
   const proxy = fs.readFileSync(
-    path.join(ROOT, 'utils/imgCacheServe.ts'), 'utf8');
+    path.join(ROOT, 'src/katalog/bilder/imgCacheServe.ts'), 'utf8');
   assert.doesNotMatch(proxy, /await makeProxyThumb/,
     'Eine wartende Anfrage reiht 150 ms je Bild aneinander');
   assert.match(proxy, /queueThumb\(cacheFile, thumbFile\)/,

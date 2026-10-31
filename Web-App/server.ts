@@ -21,7 +21,7 @@ import { verdrahte } from './jobs/verdrahtung';
 import { drossleBeruehren } from './src/konto/sitzungsBeruehrung';
 import { SITZUNG_LEERLAUF_SEK, sitzungsHoechstdauer } from './src/konto/sitzungsFrist';
 import { antwortAufDateiFehler, liefereDatei, sendeDatei } from './src/infra/dateiAusliefern';
-import { cdnFuerFehlendesBild } from './utils/bildNachschlagen';
+import { cdnFuerFehlendesBild } from './src/katalog/bilder/bildNachschlagen';
 import { aktuellerStartZustand } from './src/infra/startZustand';
 import { merkeAnfrage } from './src/infra/anfrageKonto';
 import { proxyVertrauen, proxyHinweis } from './src/infra/proxyVertrauen';
@@ -29,9 +29,9 @@ import { nurEigeneHerkunft } from './src/infra/herkunft';
 import { API_VERSION, API_MIN_APP, appFassungPruefen } from './src/infra/apiVersion';
 import { resolveUserId, istVerwalter, verifiziereEmailToken } from './src/konto/auth';
 import { PUBLIC_DIR } from './src/infra/appPaths';
-import { IMG_PROXY_PFAD } from './utils/images';
+import { IMG_PROXY_PFAD } from './src/katalog/bilder/images';
 import { safeDataPath } from './src/infra/datenPfad';
-import { generateThumb } from './utils/thumbs';
+import { generateThumb } from './src/katalog/bilder/thumbs';
 import { closeAllSse } from './src/infra/sseRegistry';
 import { renderIndexHtml } from './src/konto/indexHtml';
 import * as pgNotify from './db/pgNotify';
@@ -152,7 +152,7 @@ app.use((req, res, next) => {
 // paar Anfragen den Heap füllen. Die PDF-Routen setzen ihr eigenes
 // (routes/api_v1/pdf.ts).
 app.use(express.json({ limit: '256kb' }));
-// Das Konto der Anfrage für Zähler tief unten (utils/apiKontingent.ts).
+// Das Konto der Anfrage für Zähler tief unten (src/katalog/apiKontingent.ts).
 app.use(merkeAnfrage);
 app.use(express.urlencoded({ extended: true, limit: '256kb' }));
 

@@ -236,14 +236,14 @@ test('auch die direkt angemeldeten Routen stehen unter /api/v1', () => {
       if (e.name.endsWith('.ts')) dateien.push(p);
     }
   };
-  for (const ordner of ['routes', 'src', 'utils', 'jobs'])
+  for (const ordner of ['routes', 'src', 'jobs'])
     lauf(path.join(ROOT, ordner));
   assert.ok(dateien.length >= 30, `Nur ${dateien.length} Serverdateien gefunden`);
 
   // ── Auch Anmeldungen ueber eine KONSTANTE ────────────────────────────────
   //
   // `app.get('/api/…')` war einmal die einzige Form. Seit der Bild-Proxy seine
-  // Adresse aus utils/images.ts bezieht (`app.get(IMG_PROXY_PFAD, …)`), findet
+  // Adresse aus src/katalog/bilder/images.ts bezieht (`app.get(IMG_PROXY_PFAD, …)`), findet
   // ein Muster, das nur Zeichenketten kennt, sie nicht mehr — und die Zahl
   // faellt von drei auf zwei, ohne dass eine Route verschwunden waere. Genau
   // dieselbe Blindheit, gegen die dieser Test geschrieben wurde, eine Ebene

@@ -1,10 +1,10 @@
 import * as db from '../db/database';
 import { getSetInfo } from '../clients/brickset';
-import { downloadSetInstructions, anzahlAnleitungen } from '../utils/instructions';
+import { downloadSetInstructions, anzahlAnleitungen } from '../src/katalog/instructions';
 import { getLimitForApi, getRateLimitStatus } from '../src/finanzen/financeCalc';
 import { logAndContinue, meldeUndWeiter } from '../src/infra/httpError';
-import { pausiereArt } from '../utils/auftraege';
-import { bricksetFaelligAb } from '../utils/bricksetAuftrag';
+import { pausiereArt } from '../src/auftraege/auftraege';
+import { bricksetFaelligAb } from '../src/auftraege/bricksetAuftrag';
 import { AuftragVerschieben } from './auftragsWorker';
 
 /**

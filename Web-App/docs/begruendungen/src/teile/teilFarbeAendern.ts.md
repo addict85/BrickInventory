@@ -89,7 +89,7 @@ Das Bild der ZIELFARBE nachtragen — nach der Transaktion, nie darin.
    einem eingespielten Set, ist es dasselbe Bild — lokal, ohne Abruf, und
    oft sogar schon als Datei (`image_local`). Zeilen mit Datei zuerst.
    Diese Reihenfolge steht seit dem 20.10. in katalogTeil()
-   (utils/katalogPflege.ts) und nicht mehr hier: addManualPartIntern()
+   (src/katalog/katalogPflege.ts) und nicht mehr hier: addManualPartIntern()
    braucht dieselbe, und zwei Fassungen derselben Staffelung laufen
    auseinander.
 2. `lookupPart()`. Derselbe Weg wie beim Erfassen von Hand (routes/parts.ts)

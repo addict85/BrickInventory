@@ -12,13 +12,13 @@ import { kaufpreisAusEingabe, manuellerKaufpreis } from '../finanzen/preisRegel'
 import { zustandFuerPreis } from '../konto/settings';
 import { resolvePartCondition, marktpreisMitHerkunft, getCurrentPartMarketPrice } from '../finanzen/marketPrice';
 import { lookupPart } from '../../clients/rebrickable';
-import { farbliste, KEINE_FARBE } from '../../utils/farben';
+import { farbliste, KEINE_FARBE } from '../katalog/farben';
 import { setzeLagerort, ortFuerNeuerfassung } from '../bestand/lagerort';
-import { merkeTeil, merkeTeilFarbe, katalogTeil } from '../../utils/katalogPflege';
+import { merkeTeil, merkeTeilFarbe, katalogTeil } from '../katalog/katalogPflege';
 import { bestandsMenge } from '../infra/validate';
 import * as V0 from '../infra/validate';
 
-/** Farbauswahl beim Erfassen; Quelle und Notliste stehen in utils/farben.ts. */
+/** Farbauswahl beim Erfassen; Quelle und Notliste stehen in src/katalog/farben.ts. */
 const getPartColorList = farbliste;
 
 /**

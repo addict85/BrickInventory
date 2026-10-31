@@ -185,7 +185,7 @@ wurde nie ermittelt, also blieb die Zeile im Detailfenster leer.
 
 ```text
 cond mitgeben — siehe die Begründung bei den Teilen (Nachtrag 146).
-Die BL-Nummer-Abfrage steht in utils/blZuordnung.ts — sie wird auch vom
+Die BL-Nummer-Abfrage steht in src/katalog/blZuordnung.ts — sie wird auch vom
 Kaufpreis-Nachtrag gebraucht (jobs/purchasePriceBackfill.ts).
 
 Sie steht in einer eigenen Zeile und nicht im Aufruf: So ist sichtbar,

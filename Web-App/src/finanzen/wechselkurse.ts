@@ -1,10 +1,10 @@
 /**
  * Die Kurstabelle (Migration 0077) füllen: beim ersten Mal die ganze Reihe
  * der EZB, danach je Tag die neuen Kurse. Der Abruf läuft als Auftrag
- * (utils/auftraege.ts), damit ein Fehlschlag wiederholt wird und sichtbar bleibt.
+ * (src/auftraege/auftraege.ts), damit ein Fehlschlag wiederholt wird und sichtbar bleibt.
  */
 import * as db from '../../db/database';
-import { stelleAuftragEin } from '../../utils/auftraege';
+import { stelleAuftragEin } from '../auftraege/auftraege';
 import { EZB_HISTORIE, EZB_TAGESKURSE, ezbAbruf, ersteZipDatei, historieLesen, tageskurseLesen,
          type Abruf, type Kurs } from '../../clients/ezb';
 

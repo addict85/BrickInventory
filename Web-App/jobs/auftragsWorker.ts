@@ -2,8 +2,8 @@ import { randomUUID } from 'crypto';
 import {
   AUFTRAG_KANAL, belegeAuftrag, erledigt, fehlgeschlagen, gibZurueck, lebenszeichen, setzeFortschritt,
   verschoben, imNamenDesAuftrags, type AuftragsArt, type AuftragsZeile, type Fortschritt,
-} from '../utils/auftraege';
-import { planeNaechsten, hatZeitplan } from '../utils/zeitplan';
+} from '../src/auftraege/auftraege';
+import { planeNaechsten, hatZeitplan } from '../src/auftraege/zeitplan';
 import { listen, unlisten } from '../db/pgNotify';
 import { fehlertext, logAndContinue } from '../src/infra/httpError';
 import { konfig } from '../src/infra/konfig';

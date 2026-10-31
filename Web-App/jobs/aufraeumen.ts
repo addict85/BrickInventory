@@ -1,16 +1,16 @@
 /**
- * Die geplanten Aufräumläufe (utils/zeitplan.ts). Jeder Schritt meldet seinen
+ * Die geplanten Aufräumläufe (src/auftraege/zeitplan.ts). Jeder Schritt meldet seinen
  * Fehler und lässt die übrigen laufen; scheitert einer, wiederholt der Worker
  * den ganzen Lauf — alle Schritte vertragen das.
  */
 import { purgeExpiredTokens } from '../src/konto/auth';
 import { raeumeAnmeldezaehlerAuf } from '../src/konto/loginLimiter';
 import { raeumePapierkorbAuf } from '../src/bestand/papierkorb';
-import { cleanOldPdfJobs } from '../utils/pdfAuftraege';
-import { raeumeErledigteAuf } from '../utils/auftraege';
+import { cleanOldPdfJobs } from '../src/auftraege/pdfAuftraege';
+import { raeumeErledigteAuf } from '../src/auftraege/auftraege';
 import { purgeAltePreise } from '../src/finanzen/priceHistory';
-import { raeumeBildCacheAuf } from '../utils/imgCacheServe';
-import { loescheVerfallene } from '../utils/bildbedarf';
+import { raeumeBildCacheAuf } from '../src/katalog/bilder/imgCacheServe';
+import { loescheVerfallene } from '../src/katalog/bilder/bildbedarf';
 import { fehlertext } from '../src/infra/httpError';
 
 type Schritt = [name: string, lauf: () => Promise<unknown>];

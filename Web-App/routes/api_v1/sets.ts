@@ -29,14 +29,14 @@ import { einzelwert, ausTabelle } from '../../src/infra/validate';
 import * as V from '../../src/infra/validate';
 import { mitVersion, normalisiereSetNummer, moeglicheSetNummer } from '../../src/sets/setNummer';
 import { sendeFehler, dateiFehler } from '../../src/infra/fehlerTexte';
-import { setTeileAnreichern } from '../../utils/nacharbeit';
+import { setTeileAnreichern } from '../../src/auftraege/nacharbeit';
 import { setInfo, setZumBarcode, teilelisteDesSets, figurenlisteDesSets, setPreis, rebrickableListe,
          setGehoertKonto, anleitungMerken, anleitungLoeschen, setCsvImportStarten, setCsvImportAbbrechen } from '../../src/sets/dienst';
-import { downloadSetInstructions, anleitungenZuSet, loescheAnleitungen, anleitungNeuLadenErlaubt } from '../../utils/instructions';
-import { importPartsForSet } from '../../utils/partsImport';
+import { downloadSetInstructions, anleitungenZuSet, loescheAnleitungen, anleitungNeuLadenErlaubt } from '../../src/katalog/instructions';
+import { importPartsForSet } from '../../src/katalog/partsImport';
 import { registerSse } from '../../src/infra/sseRegistry';
 import { loginOrTokenGuard, angemeldeteNutzerId, istVerwalter } from '../../src/konto/auth';
-import { csvImportBus, buildJobStatus, jobGet } from '../../utils/importAuftrag';
+import { csvImportBus, buildJobStatus, jobGet } from '../../src/auftraege/importAuftrag';
 import * as pgNotify from '../../db/pgNotify';
 import { APP_ROOT, DATA_DIR } from '../../src/infra/appPaths';
 const router = express.Router();

@@ -84,7 +84,7 @@ function innereDateien() {
   };
   // startup/ ist ausgelagerter Serverstart (nur server.ts benutzt es) und
   // zählt zur äusseren Schicht; seine eigene Regel steht weiter unten.
-  ['src', 'utils', 'jobs', 'clients', 'db'].forEach(lauf);
+  ['src', 'jobs', 'clients', 'db'].forEach(lauf);
   return gefunden;
 }
 
@@ -175,12 +175,12 @@ test('kein Zustand auf global', () => {
   assert.deepEqual(treffer, []);
 });
 
-test('utils/ und clients/ importieren nichts aus jobs/', () => {
-  // Was utils/ an Hintergrundarbeit anstösst, läuft über utils/nacharbeit.ts;
+test('src/ und clients/ importieren nichts aus jobs/', () => {
+  // Was utils/ an Hintergrundarbeit anstösst, läuft über src/auftraege/nacharbeit.ts;
   // die Ausführung setzt jobs/verdrahtung.ts ein.
   // Gegenprobe (28.10.2026): require('../jobs/imageQueue') in merkliste.ts → rot.
   const treffer = [];
-  for (const d of innereDateien().filter(f => /^(src|utils|clients)\//.test(f)))
+  for (const d of innereDateien().filter(f => /^(src|clients)\//.test(f)))
     for (const ziel of importe(d).filter(z => /jobs\//.test(z)))
       treffer.push(`${d} -> ${ziel}`);
   assert.deepEqual(treffer, []);
@@ -226,7 +226,7 @@ test('keine Route führt SQL aus oder importiert die Datenbank', () => {
 });
 
 test('keine Route importiert aus jobs/ oder clients/', () => {
-  // Jobs steuert eine Route über utils/nacharbeit.ts und die Auftragstabelle,
+  // Jobs steuert eine Route über src/auftraege/nacharbeit.ts und die Auftragstabelle,
   // fremde Dienste erreicht sie über einen Dienst in utils/.
   // Gegenprobe (29.10.2026): `import { triggerNow } from '../../jobs/priceJob'`
   // in admin.ts und `import { getSetByEan } from '../../clients/brickset'` in

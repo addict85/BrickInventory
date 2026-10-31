@@ -1,5 +1,5 @@
 import * as db from '../../db/database';
-import { nacharbeit } from '../../utils/nacharbeit';
+import { nacharbeit } from '../auftraege/nacharbeit';
 import { getSetValue } from './setValue';
 import { nutzerStandardZustand as userDefaultCondition } from '../konto/settings';
 import { getGlobalSetting } from '../konto/settings';

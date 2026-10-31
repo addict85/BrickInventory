@@ -35,8 +35,8 @@ test('erneuter Set-Import behält Lagerort und Kennung', { concurrency: 1 }, asy
   const mc = await db.pool.connect();
   try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }
 
-  const { importiereFiguren } = _req('utils/minifigsImport.js');
-  const { importiereTeile } = _req('utils/partsImport.js');
+  const { importiereFiguren } = _req('src/katalog/minifigsImport.js');
+  const { importiereTeile } = _req('src/katalog/partsImport.js');
   const NAME = `nachimport-${process.pid}`;
   const SN = `8${process.pid % 10000}-1`;
   const INV = 900000000 + (process.pid % 100000);

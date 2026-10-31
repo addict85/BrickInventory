@@ -6,25 +6,25 @@
 import express from 'express';
 import fs from 'fs';
 import path from 'path';
-import * as verwaltung from '../../utils/verwaltung';
+import * as verwaltung from '../../src/verwaltung/verwaltung';
 import { handleRouteError, meldeUndLiefere, pfadParam } from '../../src/infra/httpError';
 import { requireApiAdmin } from './middleware';
-import { getLimitForApi } from '../../utils/apiKontingent';
-import { proxyCachePathFor } from '../../utils/images';
+import { getLimitForApi } from '../../src/katalog/apiKontingent';
+import { proxyCachePathFor } from '../../src/katalog/bilder/images';
 import { ERLAUBTE_BILD_HOSTS, hostErlaubt } from '../../src/infra/fremdeAdressen';
-import { vergissFehlend } from '../../utils/imageMisses';
+import { vergissFehlend } from '../../src/katalog/bilder/imageMisses';
 import { SET_IMAGES_DIR } from '../../src/infra/appPaths';
 import { getGlobalSetting, setGlobalSetting } from '../../src/konto/settings';
 import { sendeFehler } from '../../src/infra/fehlerTexte';
-import { letzteEintraege } from '../../utils/verwaltungsprotokoll';
+import { letzteEintraege } from '../../src/verwaltung/verwaltungsprotokoll';
 import { cacheStatistik, cachesLeeren, bricksetLimitGesetzt, anleitungenNeuEinreihen, preisJobStand, preisJobJetzt,
          fehlendeBilderNachladen, bricksetWiederholen, bricksetEntfernen, jobZeitplanSetzen, jobUebersicht,
-         bildProbe, preisProbe, katalogBilderEinreihen, katalogAbgleichJetzt, bricksetListe } from '../../utils/dienste/verwaltung';
-import { auftragsUebersicht, auftragAbbrechen, auftragWiederholen, auftragsArtJetzt, auftragsArtLeeren } from '../../utils/dienste/hintergrund';
+         bildProbe, preisProbe, katalogBilderEinreihen, katalogAbgleichJetzt, bricksetListe } from '../../src/verwaltung/dienst';
+import { auftragsUebersicht, auftragAbbrechen, auftragWiederholen, auftragsArtJetzt, auftragsArtLeeren } from '../../src/auftraege/hintergrund';
 const router = express.Router();
 
 
-// ── Hintergrundarbeiten: die Auftragstabelle (utils/dienste/hintergrund.ts) ──
+// ── Hintergrundarbeiten: die Auftragstabelle (src/auftraege/hintergrund.ts) ──
 router.get('/admin/auftraege', requireApiAdmin, async (req: AuthedRequest, res) => {
   try {
     res.json(await auftragsUebersicht({ status: typeof req.query.status === 'string' ? req.query.status : undefined,

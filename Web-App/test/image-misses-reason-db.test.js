@@ -34,7 +34,7 @@ let versuche = 0;
 const echtesRequire = Module.prototype.require;
 Module.prototype.require = function (name) {
   const m = echtesRequire.apply(this, arguments);
-  // Seit Nachtrag 125 liegt downloadSetImage in utils/setImages.ts statt im
+  // Seit Nachtrag 125 liegt downloadSetImage in src/katalog/bilder/setImages.ts statt im
   // Router — der Abfang muss dorthin zeigen, sonst greift er ins Leere und
   // der Test misst still den echten Download.
   if (typeof name === 'string' && /setImages(\.js)?$/.test(name) && m && m.downloadSetImage) {
@@ -53,7 +53,7 @@ const { leereWarteschlange } = require('./helpers/bildwarteschlange');
 const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
 const IQ = _req('jobs/imageQueue.js');
-const IM = _req('utils/imageMisses.js');
+const IM = _req('src/katalog/bilder/imageMisses.js');
 
 const einreihen = async (sn) => {
   await db.run(`DELETE FROM image_wanted WHERE set_number = $1`, [sn]);

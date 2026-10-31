@@ -22,7 +22,7 @@ const _req = require('./helpers/sources').buildAndRequire();
 const ROOT = path.join(__dirname, '..');
 const NOTIFY = fs.readFileSync(path.join(ROOT, 'db/pgNotify.ts'), 'utf8');
 test('kein Planer fragt mehr nach Auslösern', () => {
-  // Anstösse und Zeitpläne sind Aufträge (utils/zeitplan.ts); die alten
+  // Anstösse und Zeitpläne sind Aufträge (src/auftraege/zeitplan.ts); die alten
   // Auslöser-Einträge mit eigenem Kanal sind weg.
   const { alleQuellen } = require('./helpers/sources');
   const treffer = alleQuellen().filter(rel =>

@@ -15,7 +15,7 @@ import { deleteSetRows, withSetAggregate } from '../sets/abfragen';
 import { loescheManuellesTeil, loescheManuelleFigur } from './gemeinsam';
 import { fehlerWerfen } from '../infra/fehlerTexte';
 import type { FehlerCode } from '../infra/fehlerTexte';
-import { blAbrufNummer } from '../../utils/blZuordnung';
+import { blAbrufNummer } from '../katalog/blZuordnung';
 import { mengeDesSets, mengeDerPosition } from '../sets/bestandsmenge';
 import { bestandsMenge } from '../infra/validate';
 

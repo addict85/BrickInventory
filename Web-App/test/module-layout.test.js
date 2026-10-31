@@ -137,7 +137,7 @@ test('clients/ enthält keine Routen und wird trotzdem gebaut', () => {
 test('keine Zyklen über echte import-Anweisungen', () => {
   // ── Warum das eine eigene Prüfung verdient (Nachtrag 127) ─────────────────
   //
-  // Beim Auslagern der Anleitungs-Kette nach utils/instructions.ts habe ich
+  // Beim Auslagern der Anleitungs-Kette nach src/katalog/instructions.ts habe ich
   // selbst einen Kreis erzeugt: instructions braucht den Brickset-Client, und
   // der Client holte am Ende seiner Wiederholungsschlange Anleitungen nach.
   //

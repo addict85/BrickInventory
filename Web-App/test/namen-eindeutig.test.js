@@ -40,7 +40,7 @@ const ROOT = path.join(__dirname, '..');
 
 /** Name -> warum er mehrfach vorkommen darf. */
 const ERLAUBT = new Map([
-  ['get',   'db/database (eine Zeile holen) und utils/jobMonitor (einen Job-Stand holen) — ' +
+  ['get',   'db/database (eine Zeile holen) und src/auftraege/jobMonitor (einen Job-Stand holen) — ' +
             'dieselbe Sache, verschiedene Speicher.'],
   ['all',   'wie get.'],
   ['run',   'db/database und drei Jobs: „ausfuehren". In den Jobs ist es der Einstieg, ' +
@@ -50,7 +50,7 @@ const ERLAUBT = new Map([
                    'verschiedene Dienste. Der Dateiname sagt, welcher gemeint ist.'],
   ['httpsGet',     'clients/bricklink und clients/brickset — jeder mit der Signatur seines ' +
                    'Dienstes (BrickLink braucht einen Authorization-Kopf, Brickset nicht).'],
-  ['schreibePuffer', 'jobs/imageQueue und utils/imageMisses — jeder schreibt SEINEN Puffer.'],
+  ['schreibePuffer', 'jobs/imageQueue und src/katalog/bilder/imageMisses — jeder schreibt SEINEN Puffer.'],
 ]);
 
 test('ein Funktionsname bedeutet eine Sache', () => {

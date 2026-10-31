@@ -7,7 +7,7 @@ import * as db from '../../db/database';
 import { resolveSetCondition, resolveBlColorId, resolveBlPartNumber } from './financeCalc';
 import { asIds } from '../haushalt/haushalt';
 import { buildChart } from './chartData';
-import { blNummerVon } from '../../utils/blZuordnung';
+import { blNummerVon } from '../katalog/blZuordnung';
 import { entwicklungProzent } from './setValue';
 import { konfig } from '../infra/konfig';
 

@@ -1,11 +1,11 @@
 import * as db from '../../db/database';
-import { resolveImageLocal } from '../../utils/images';
+import { resolveImageLocal } from '../katalog/bilder/images';
 import { asIds } from '../haushalt/haushalt';
 import { clampPageSize, applyManualCondition, withOwners, conditionFromAcquisitions, conditionsFromAcquisitions } from '../bestand/gemeinsam';
 import { mitVersion } from '../sets/setNummer';
 import { mengeJoin, mengeAus, teilmengeJoin, teilmengeAus } from '../sets/bestandsmenge';
 import { marktpreiseAusCacheFuerFiguren } from '../finanzen/marketPrice';
-import { blJoin, blNummerSql } from '../../utils/blZuordnung';
+import { blJoin, blNummerSql } from '../katalog/blZuordnung';
 
 /**
  * Leseabfragen für Minifiguren.

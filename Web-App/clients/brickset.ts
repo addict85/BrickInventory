@@ -8,11 +8,11 @@
 
 import https from 'https';
 import { getGlobalSetting } from '../src/konto/settings';
-import { checkAndIncrementRateLimit } from '../utils/apiKontingent';
+import { checkAndIncrementRateLimit } from '../src/katalog/apiKontingent';
 import { fehlertext, meldeUndLiefere } from '../src/infra/httpError';
 import { alsAbrufFehler } from './abrufFehler';
 import { mitVersion } from '../src/sets/setNummer';
-import { bricksetVormerken, bricksetAusWiedervorlage, BRICKSET_HOECHSTENS } from '../utils/bricksetAuftrag';
+import { bricksetVormerken, bricksetAusWiedervorlage, BRICKSET_HOECHSTENS } from '../src/auftraege/bricksetAuftrag';
 
 const BASE = 'https://brickset.com/api/v3.asmx';
 
@@ -112,7 +112,7 @@ function checkStatus(status: number, body: string, label: string) {
 
 
 /**
- * Zur Wiedervorlage vormerken (utils/bricksetAuftrag.ts); false, wenn das Set
+ * Zur Wiedervorlage vormerken (src/auftraege/bricksetAuftrag.ts); false, wenn das Set
  * schon zu oft vorgemerkt war — dann gilt die Ausweichquelle.
  * @param {string} setNumber
  * @param {string|null} errorMsg

@@ -51,7 +51,7 @@ function serverDateien() {
       else if (e.name.endsWith('.ts')) out.push(p);
     }
   };
-  for (const d of ['routes', 'src', 'utils', 'jobs', 'clients']) {
+  for (const d of ['routes', 'src', 'jobs', 'clients']) {
     const abs = path.join(ROOT, d);
     if (fs.existsSync(abs)) lauf(abs);
   }

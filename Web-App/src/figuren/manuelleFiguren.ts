@@ -13,8 +13,8 @@ import { zustandFuerPreis } from '../konto/settings';
 import { figMarktpreisMitHerkunft, getCurrentFigMarketPrice } from '../finanzen/marketPrice';
 import { kaufpreisAusEingabe, manuellerKaufpreis } from '../finanzen/preisRegel';
 import { setzeLagerort, ortFuerNeuerfassung } from '../bestand/lagerort';
-import { merkeFigur, katalogFigur } from '../../utils/katalogPflege';
-import { merkeBlNummer, blJoin, blNummerSql } from '../../utils/blZuordnung';
+import { merkeFigur, katalogFigur } from '../katalog/katalogPflege';
+import { merkeBlNummer, blJoin, blNummerSql } from '../katalog/blZuordnung';
 import { bestandsMenge } from '../infra/validate';
 import * as V from '../infra/validate';
 
@@ -90,7 +90,7 @@ async function addManualFigIntern(uid: number, body: any) {
     // 20.10.: „Wird jedes Teil bei Rebrickable abgefragt auch wenn es lokal
     // bereits vorhanden ist?"). Hier stand nur getMinifigInfo() — ein Abruf je
     // Figur, obwohl `minifigs_catalog` Name und Bild fuehrt. Die Begruendung
-    // samt Messung steht bei katalogTeil() in utils/katalogPflege.ts.
+    // samt Messung steht bei katalogTeil() in src/katalog/katalogPflege.ts.
     const lokal = await katalogFigur(num, uid);
     if (lokal) {
       fig_name  = fig_name  || lokal.name;

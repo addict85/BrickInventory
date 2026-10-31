@@ -4,17 +4,17 @@ import * as db from '../db/database';
 import { MINIFIG_IMAGES_DIR } from '../src/infra/appPaths';
 import { getMinifigInfo } from '../clients/rebrickable';
 import { logAndContinue, meldeUndWeiter } from '../src/infra/httpError';
-import { pdfDateiPfad } from '../utils/pdfAuftraege';
+import { pdfDateiPfad } from '../src/auftraege/pdfAuftraege';
 import { downloadImage, downloadSetImages } from './partsCatalogEnrich';
 import { zeichnePdfImFaden, type PdfSet, type PdfTeil } from './pdfZeichnen';
 import { KEINE_FARBE } from '../src/infra/validate';
-import { merkeFigurBildAdresse, setzeFigurBildLokal, setzeTeilBildLokal } from '../utils/katalogPflege';
+import { merkeFigurBildAdresse, setzeFigurBildLokal, setzeTeilBildLokal } from '../src/katalog/katalogPflege';
 import { normalisiereSetNummer, moeglicheSetNummer } from '../src/sets/setNummer';
 
 /**
  * Ein PDF-Auftrag aus der Auftragstabelle: fehlende Bilder holen, dann im
  * eigenen Faden zeichnen. Den Status für die Oberfläche liest
- * utils/pdfAuftraege.ts aus demselben Auftrag.
+ * src/auftraege/pdfAuftraege.ts aus demselben Auftrag.
  */
 export interface PdfNutzlast { job_id: string; user_id: number; sets: PdfSet[]; parts: PdfTeil[] }
 

@@ -1,14 +1,14 @@
-import { resolveOne } from '../../utils/bricklinkLink';
+import { resolveOne } from '../katalog/bricklinkLink';
 import { inKontowaehrung, kontowaehrungJoin } from '../bestand/acquisitions';
 import { meldeUndWeiter, meldeUndLiefere } from '../infra/httpError';
 import { fuerSet } from '../finanzen/preisvergleich';
 import * as db from '../../db/database';
 import type { DbSchnittstelle } from '../../db/database';
-import { resolveImageLocal } from '../../utils/images';
+import { resolveImageLocal } from '../katalog/bilder/images';
 import { asIds } from '../haushalt/haushalt';
 import { clampPageSize, conditionFromAcquisitions, conditionsFromAcquisitions, withOwners } from '../bestand/gemeinsam';
 import { ausTabelle } from '../infra/validate';
-import { anleitungenZuSet, anleitungenZusammenlegen } from '../../utils/instructions';
+import { anleitungenZuSet, anleitungenZusammenlegen } from '../katalog/instructions';
 import { mengeJoin, mengeAus } from './bestandsmenge';
 import { legeInPapierkorb } from '../bestand/papierkorb';
 

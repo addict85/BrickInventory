@@ -365,7 +365,7 @@ genau der Unterschied zwischen „braucht man" und „hat man".
 
 Weil hier `SUM(p.quantity)` stand — die Menge aus EINEM Bausatz. Der
 Teile-Import legt je (user_id, set_number) genau einen Satz Zeilen ab
-(utils/partsImport.ts: DELETE, dann INSERT mit `part.quantity`); wie oft
+(src/katalog/partsImport.ts: DELETE, dann INSERT mit `part.quantity`); wie oft
 jemand das Set besitzt, steht ausschliesslich in `sets.quantity`. Diese
 Zahl kam im Abgleich nirgends vor. Wer ein Set zweimal hatte, sah den
 Inhalt von einem.

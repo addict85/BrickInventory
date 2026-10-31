@@ -31,7 +31,7 @@ Genau dieser Fehler ist in diesem Baum zweimal gefunden und behoben worden:
 
   * src/konto/loginLimiter.ts — „bei N Cluster-Workern werden aus 5
     Fehlversuchen sonst N×5".
-  * utils/rateLimiter.ts — das Rebrickable-Tageskontingent lag in
+  * src/katalog/rateLimiter.ts — das Rebrickable-Tageskontingent lag in
     `this.count` eines Prozesses; auf einem Vierkerner waren 100'000
     Aufrufe möglich, wo 25'000 eingestellt waren.
 

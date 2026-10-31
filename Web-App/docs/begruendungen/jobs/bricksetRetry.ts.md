@@ -14,8 +14,8 @@ Die Brickset-Wiederholungsschlange.
 
 Sie ist keine API-Anfrage, sondern Ablaufsteuerung: Sie liest eine Tabelle,
 ruft den Client, und holt anschliessend Bauanleitungen nach. Genau dieses
-letzte Stück machte den Client von utils/instructions.ts abhängig — und
-utils/instructions.ts braucht den Client. Ein Kreis.
+letzte Stück machte den Client von src/katalog/instructions.ts abhängig — und
+src/katalog/instructions.ts braucht den Client. Ein Kreis.
 
 Beim Umzug der Anleitungs-Kette habe ich ihn selbst erzeugt und ihn erst
 bemerkt, als die Prüfung auf Zyklen anschlug: `import` löst so etwas nicht

@@ -1,7 +1,7 @@
 /**
  * UPCitemdb: Produkttitel zu einer EAN (frei, 100 Abfragen am Tag). Der
  * Titel ist Händlertext; welche Zahl darin die Setnummer ist, entscheidet
- * utils/produkttitel.ts.
+ * src/katalog/produkttitel.ts.
  */
 import { httpsGetRobust } from './rebrickable';
 import { meldeUndLiefere } from '../src/infra/httpError';

@@ -100,7 +100,7 @@ COPY scripts/ ./scripts/
 RUN npm ci
 
 # ── TypeScript → JavaScript ────────────────────────────────────────────────────
-# server.ts, db/, utils/, routes/ und jobs/ werden von esbuild pro Datei
+# server.ts, db/, src/, routes/ und jobs/ werden von esbuild pro Datei
 # (kein Bundle) nach .js transpiliert. Nur public/ bleibt JavaScript.
 # Kein tsc-Build nötig: Typprüfung läuft separat via `npm run typecheck`;
 # esbuild strippt hier nur die Typen (schnell, deterministisch).
@@ -108,7 +108,6 @@ COPY server.ts ./
 COPY db/     ./db/
 COPY jobs/   ./jobs/
 COPY src/    ./src/
-COPY utils/  ./utils/
 COPY routes/ ./routes/
 # clients/ seit Nachtrag 126 (rebrickable, brickset — API-Clients ohne Routen).
 # Fehlt das COPY hier, entsteht kein dist/clients/ und der Server findet beim
@@ -185,7 +184,7 @@ RUN addgroup -S brickinv && adduser -S brickinv -G brickinv
 # eine Stage weiter oben schon installiert sind.
 COPY --from=builder /app/node_modules ./node_modules
 # Der komplette transpilierte Baum in einem Rutsch: dist/server.js, dist/db/,
-# dist/routes/ (inkl. api_v1/), dist/utils/ und dist/jobs/. Ein einziges COPY
+# dist/routes/ (inkl. api_v1/), dist/src/ und dist/jobs/. Ein einziges COPY
 # statt fünf — und keine Chance mehr, ein Verzeichnis zu vergessen.
 COPY --from=builder /app/dist ./dist/
 # package.json aus dem Build-Stage übernehmen; die Version steht in dist/version.json

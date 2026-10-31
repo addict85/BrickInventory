@@ -8,12 +8,12 @@
 import * as db from '../../../db/database';
 import { hatPreis } from '../preisRegel';
 import { asIds } from '../../haushalt/haushalt';
-import { checkAndIncrementRateLimit, kontingentFrei, getLimitForApi, getRateLimitStatus } from '../../../utils/apiKontingent';
+import { checkAndIncrementRateLimit, kontingentFrei, getLimitForApi, getRateLimitStatus } from '../../katalog/apiKontingent';
 import { bricklinkRequest, getPriceGuide } from '../../../clients/bricklink';
 import { fehlertext, logAndContinue, meldeUndLiefere } from '../../infra/httpError';
 import { mitVersion, katalogEintrag, ohneBricklinkPreis } from '../../sets/setNummer';
 import { effectiveCondition } from './zustand';
-import { blAbrufNummer, blAbrufNummern } from '../../../utils/blZuordnung';
+import { blAbrufNummer, blAbrufNummern } from '../../katalog/blZuordnung';
 import { KEINE_FARBE } from '../../infra/validate';
 
 
@@ -313,7 +313,7 @@ async function ladeBlNummernVor(teilnummern: string[]): Promise<void> {
   if (!offen.length) return;
   // EINE Abfrage, nicht zwei: Der Rückfall über `parts.bl_part_number` ist mit
   // Migration 0037 weg (siehe die Begründung bei _blTeil). Die Abfrage selbst
-  // steht in utils/blZuordnung.ts.
+  // steht in src/katalog/blZuordnung.ts.
   for (const [rb, bl] of await blAbrufNummern('part', offen)) _blTeil.merken(rb, bl);
 }
 

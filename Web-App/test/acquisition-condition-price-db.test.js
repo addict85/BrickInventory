@@ -113,8 +113,7 @@ const { ohneKommentare } = require('./helpers/sources');
       else if (e.name.endsWith('.ts')) dateien.push(p);
     }
   })(path.join(ROOT, 'routes'));
-  for (const d of ['src', 'utils']) {
-    if (!fs.existsSync(path.join(ROOT, d))) continue;
+  for (const d of ['src']) {
     (function sammle(dir) {
       for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
         const p = path.join(dir, e.name);

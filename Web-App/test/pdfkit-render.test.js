@@ -18,7 +18,7 @@
  * erstem Export aufgefallen.
  *
  * Geprüft wird deshalb der ganze Methodensatz, den die Anwendung wirklich
- * ruft — ermittelt aus routes/api_v1/pdf.ts und utils/instructions.ts:
+ * ruft — ermittelt aus routes/api_v1/pdf.ts und src/katalog/instructions.ts:
  *   addPage, circle, currentLineHeight, end, font, fontSize, image,
  *   moveDown, moveTo, on, text
  */
@@ -68,7 +68,7 @@ test('Bilder werden eingebettet — JPEG und PNG', async () => {
   // ── Warum gerade das ─────────────────────────────────────────────────────
   // jpeg-exif war pdfkits JPEG-Leser. Wenn ein Versionssprung das Einbetten
   // bricht, dann hier — und Bauanleitungen bestehen ausschliesslich aus
-  // Bildseiten (utils/instructions.ts, buildImagePDF_fromBuffers).
+  // Bildseiten (src/katalog/instructions.ts, buildImagePDF_fromBuffers).
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pdfkit-'));
   const jpg = path.join(dir, 'p.jpg');
   const png = path.join(dir, 'p.png');

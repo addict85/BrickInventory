@@ -47,7 +47,7 @@ Die Schreibweise, unter der Kataloge und Zwischenspeicher ein Set führen.
 Geprüft wird auf einen VERSIONSANHANG (`-` und Ziffern), nicht auf
 irgendeinen Bindestrich. Die 24 zusammengeführten Fundstellen schrieben
 `includes('-')`, drei weitere (src/sets/setAdd, src/sets/setService,
-routes/api_v1/catalog) und utils/bricklinkLink schrieben `/-\d+$/`. Die
+routes/api_v1/catalog) und src/katalog/bricklinkLink schrieben `/-\d+$/`. Die
 beiden stimmen auf jeder echten Nummer überein und gehen erst bei einem
 Bindestrich OHNE Ziffernanhang auseinander:
 

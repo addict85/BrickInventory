@@ -268,7 +268,7 @@ Der Strom oben versorgt den Tab, der die Datei geschickt hat. Der
 Auftragsdatensatz hier versorgt ALLE ANDEREN: die Android-App zeigt
 ihren Balken auf jedem Reiter, die Webapp ihren im Kopf, und auch eine
 zweite Browser-Sitzung desselben Kontos sieht ihn — der Datensatz
-hängt am Konto, nicht an dieser Anfrage (utils/importAuftrag.ts).
+hängt am Konto, nicht an dieser Anfrage (src/auftraege/importAuftrag.ts).
 
 NUR beim echten Schreiben: Eine Vorschau ändert nichts, und ein
 Balken „Import läuft" für eine Vorschau wäre eine Lüge in drei

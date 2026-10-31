@@ -2,12 +2,12 @@
 
 import { kontingentFrei, speicherePreis, cacheUsable, preisAusCache, parallelLimit } from '../src/finanzen/financeCalc';
 import { meldeUndWeiter, fehlertext, meldeUndLiefere, logAndContinue } from '../src/infra/httpError';
-import { liesZustand, setzeZustand } from '../utils/laufzustand';
+import { liesZustand, setzeZustand } from '../src/auftraege/laufzustand';
 import { AuftragVerschieben, type AuftragsKontext } from './auftragsWorker';
 import { getSetting, getGlobalSetting } from '../src/konto/settings';
 import { katalogEintrag, ohneBricklinkPreis } from '../src/sets/setNummer';
 import * as db from '../db/database';
-import * as monitor from '../utils/jobMonitor';
+import * as monitor from '../src/auftraege/jobMonitor';
 import { getPriceGuide } from '../clients/bricklink';
 import { LOCKS } from '../src/infra/lockNamespaces';
 import { pruefeSet } from '../src/finanzen/preisalarm';
@@ -102,7 +102,7 @@ async function fetchAndCachePrice(setNumber: string, condition: string, guideTyp
 }
 
 /**
- * Ein Lauf als Auftrag 'preise' (geplant, utils/zeitplan.ts). Hält ein
+ * Ein Lauf als Auftrag 'preise' (geplant, src/auftraege/zeitplan.ts). Hält ein
  * anderer Prozess die Sperre, wird er eine Minute später neu versucht.
  */
 async function runPriceRefresh(k?: AuftragsKontext) {

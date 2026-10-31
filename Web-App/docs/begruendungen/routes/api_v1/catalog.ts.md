@@ -88,7 +88,7 @@ daneben wie die lineare Schätzung.
 image_local mitgeben, wenn die Datei bereits existiert — unabhängig
 davon, WELCHER Nutzer sie einmal heruntergeladen hat.
 
-downloadSetImage() (utils/setImages.ts) legt Set-Bilder unter
+downloadSetImage() (src/katalog/bilder/setImages.ts) legt Set-Bilder unter
 public/images/sets/<setnummer>.jpg ab, benannt nach der Setnummer
 allein — die Datei ist von Anfang an nutzerunabhängig, nur die Spalte
 `image_local` lebt zufällig auf der Pro-Nutzer-Zeile in `sets`. Der
@@ -97,7 +97,7 @@ ANDERER Nutzer (oder er selbst bei einem früheren Set) kann dieselbe
 Bilddatei schon heruntergeladen haben. In dem Fall die lokale Datei
 servieren statt eine weitere CDN-Anfrage über den Proxy zu machen.
 
-resolveIfExists() (utils/images.ts) statt eigener fs-Zugriffe: synchron
+resolveIfExists() (src/katalog/bilder/images.ts) statt eigener fs-Zugriffe: synchron
 UND gecacht. Die vorige Fassung fragte bis zu 200 Sets pro Seite
 gleichzeitig per fs.promises.access() ab — das läuft über den kleinen
 libuv-Thread-Pool (standardmässig 4 Threads) und flutete ihn, was

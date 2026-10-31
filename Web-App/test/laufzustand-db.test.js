@@ -65,7 +65,7 @@ test('Laufzustand getrennt von der Konfiguration', { concurrency: 1 }, async (t)
     }
   });
 
-  const jm = _req('utils/jobMonitor.js');
+  const jm = _req('src/auftraege/jobMonitor.js');
 
   await t.test('der Jobmonitor schreibt in laufzustand', async () => {
     await jm.update('probe', { status: 'running', progress: 3 });

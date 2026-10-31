@@ -20,7 +20,7 @@ ROUTER importieren müssen — die falsche Richtung; utils/ ist die Schicht, auf
 der Routen aufsetzen, nicht umgekehrt.
 
 Deshalb ging diesem Umzug ein zweiter voraus: die reine Katalogarbeit nach
-utils/partsImport.ts und utils/minifigsImport.ts, und routes/bricklink.ts
+src/katalog/partsImport.ts und src/katalog/minifigsImport.ts, und routes/bricklink.ts
 (null Routen, nie montiert) nach clients/. Erst danach war dieser Schnitt
 ohne Kreis möglich.
 
@@ -72,7 +72,7 @@ jobs/priceJob.ts (conditionsNeededFor) fragte an derselben Stelle schon
 immer zuerst die Erfassungen. Jetzt beide ueber resolveSetCondition().
 
 Lazy require: src/finanzen/financeCalc auf Modulebene ergaebe einen Zyklus —
-dasselbe Muster wie in utils/rateLimiter.ts.
+dasselbe Muster wie in src/katalog/rateLimiter.ts.
 ```
 
 <a id="pricefornewacquisition-blickfeld"></a>

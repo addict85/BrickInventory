@@ -1,16 +1,16 @@
 /**
  * Anleitungen je Set laden — der Auftrag 'anleitung' (eingereiht über
- * utils/anleitungsAuftrag.ts). Brickset und brickinstructions.com wollen
+ * src/auftraege/anleitungsAuftrag.ts). Brickset und brickinstructions.com wollen
  * Abstand: Nach einem echten Abruf pausiert die ganze Art 15 Sekunden, nach
  * einer Cloudflare-Sperre 5, 10, 15, 20 Minuten und dann bis zum nächsten Tag.
  * Ausführlich: docs/begruendungen/jobs/instructionQueue.ts.md#db
  */
 import * as db from '../db/database';
-import { downloadSetInstructions, letzterAbrufWarExtern, anzahlAnleitungen, scrapeInstructionsFromFallback } from '../utils/instructions';
+import { downloadSetInstructions, letzterAbrufWarExtern, anzahlAnleitungen, scrapeInstructionsFromFallback } from '../src/katalog/instructions';
 import { fehlertext } from '../src/infra/httpError';
 import { alsAbrufFehler } from '../clients/abrufFehler';
-import { beendePause, liesPause, pausiereArt, zaehleArt } from '../utils/auftraege';
-import * as monitor from '../utils/jobMonitor';
+import { beendePause, liesPause, pausiereArt, zaehleArt } from '../src/auftraege/auftraege';
+import * as monitor from '../src/auftraege/jobMonitor';
 import { LOCKS } from '../src/infra/lockNamespaces';
 import { AuftragVerschieben } from './auftragsWorker';
 

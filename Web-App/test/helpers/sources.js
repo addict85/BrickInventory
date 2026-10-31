@@ -37,7 +37,7 @@ const imgProxy = () => fs.readFileSync(path.join(ROOT, 'routes/imgProxy.ts'), 'u
 // ── Was `serverAll()` umfasst (Nachtrag 129) ────────────────────────────────
 // Der Bild-Proxy besteht seit dem Aufteilen von registerImgProxy() aus zwei
 // Dateien: routes/imgProxy.ts (Route, Cache, CDN-Abruf) und
-// utils/proxyThumbs.ts (Vorschau-Warteschlange, Sperre, Verkleinern). Prüfungen
+// src/katalog/bilder/proxyThumbs.ts (Vorschau-Warteschlange, Sperre, Verkleinern). Prüfungen
 // der Art „kommt X irgendwo im Server vor" müssen beide sehen — sonst werden
 // sie durch einen blossen Umzug rot, ohne dass sich etwas geändert hat.
 const serverAll = () => serverOnly() + '\n' + imgProxy() + '\n' + proxyThumbQuelle()
@@ -136,7 +136,7 @@ function distIsFresh() {
   const distAt = newestMtime(dist, /\.js$/);
   if (!distAt) return false;
   let srcAt = fs.statSync(path.join(ROOT, 'server.ts')).mtimeMs;
-  for (const d of ['db', 'src', 'utils', 'routes', 'jobs', 'clients', 'startup']) {
+  for (const d of ['db', 'src', 'routes', 'jobs', 'clients', 'startup']) {
     srcAt = Math.max(srcAt, newestMtime(path.join(ROOT, d), /\.ts$/));
   }
   // Migrationen sind .sql und werden mitkopiert: Eine neue zählt wie eine
@@ -237,7 +237,7 @@ module.exports.ohneKommentare = ohneKommentare;
  * ── Warum das ein Helfer ist (Nachtrag 129) ─────────────────────────────────
  *
  * Die Vorschau-Maschinerie des Proxys (Warteschlange, prozessübergreifende
- * Sperre, Verkleinern) ist aus routes/imgProxy.ts nach utils/proxyThumbs.ts
+ * Sperre, Verkleinern) ist aus routes/imgProxy.ts nach src/katalog/bilder/proxyThumbs.ts
  * gewandert. Ein Dutzend Prüfungen las bis dahin `routes/imgProxy.ts` und
  * meinte in Wahrheit „irgendwo im Vorschau-Weg des Proxys".
  *
@@ -251,9 +251,9 @@ function proxyThumbQuelle() {
   const ROOT = path.join(__dirname, '..', '..');
   return [
     path.join(ROOT, 'routes/imgProxy.ts'),
-    path.join(ROOT, 'utils/proxyThumbs.ts'),
+    path.join(ROOT, 'src/katalog/bilder/proxyThumbs.ts'),
     // Cache-Auslieferung, seit Nachtrag 135 eigene Datei.
-    path.join(ROOT, 'utils/imgCacheServe.ts'),
+    path.join(ROOT, 'src/katalog/bilder/imgCacheServe.ts'),
   ].map(p => fs.readFileSync(p, 'utf8')).join('\n');
 }
 module.exports.proxyThumbQuelle = proxyThumbQuelle;
@@ -289,7 +289,7 @@ module.exports.adminQuelle = adminQuelle;
  * ── Warum ein Helfer (Nachtrag 131) ─────────────────────────────────────────
  *
  * addSet, updateSet, buildSetsCsv und ihr Umfeld liegen in src/sets/setService.ts,
- * die Katalogarbeit in utils/partsImport.ts und utils/minifigsImport.ts. Ein
+ * die Katalogarbeit in src/katalog/partsImport.ts und src/katalog/minifigsImport.ts. Ein
  * Dutzend Prüfungen las bis dahin `routes/sets.ts` und meinte „irgendwo im Weg,
  * auf dem ein Set entsteht oder sich ändert".
  *
@@ -304,8 +304,8 @@ function setKernQuelle() {
     ['routes/api_v1/sets.ts'],
     ['src/sets/dienst.ts'],
     ['src/sets/setService.ts'],
-    ['utils/partsImport.ts'],
-    ['utils/minifigsImport.ts'],
+    ['src/katalog/partsImport.ts'],
+    ['src/katalog/minifigsImport.ts'],
   ].map(p => fs.readFileSync(path.join(ROOT, ...p), 'utf8')).join('\n');
 }
 module.exports.setKernQuelle = setKernQuelle;

@@ -147,7 +147,7 @@ test('niemand schreibt die Stückzahl eines Sets mehr', () => {
       if (/\.(ts|js)$/.test(e.name)) dateien.push(p);
     }
   };
-  for (const teil of ['routes', 'src', 'utils', 'jobs', 'db', 'clients', 'scripts']) {
+  for (const teil of ['routes', 'src', 'jobs', 'db', 'clients', 'scripts']) {
     const v = path.join(ROOT, teil);
     if (fs.existsSync(v)) lauf(v);
   }

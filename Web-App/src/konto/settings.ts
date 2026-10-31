@@ -1,6 +1,6 @@
 /** Einstellungen lesen und schreiben — die eine Stelle für Konto- und globale Werte. */
 
-import { nacharbeit } from '../../utils/nacharbeit';
+import { nacharbeit } from '../auftraege/nacharbeit';
 import * as db from '../../db/database';
 import { verschluessele, entschluessele, istVerschluesselt } from '../infra/geheimnis';
 import { fehlerWerfen } from '../infra/fehlerTexte';

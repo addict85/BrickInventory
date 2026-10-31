@@ -63,7 +63,7 @@ hört darauf und schiebt ihn an die verbundenen Clients (Webapp + Android),
 ganz ohne Polling; der /status-Endpunkt bleibt als Rückfall.
 
 Der Datensatz, seine Form nach aussen und der Bus stehen seit dem 20.10. in
-utils/importAuftrag.ts — DIESELBE Stelle benutzt jetzt auch der
+src/auftraege/importAuftrag.ts — DIESELBE Stelle benutzt jetzt auch der
 Wanted-Listen-Import, damit er in denselben Balken läuft (Marcos Wunsch:
 „analog den Set-Importen"). Hier bleibt die HTTP-Oberfläche.
 ```

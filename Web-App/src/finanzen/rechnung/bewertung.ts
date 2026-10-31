@@ -10,7 +10,7 @@ import { meldeUndLiefere } from '../../infra/httpError';
 import * as db from '../../../db/database';
 import { asIds } from '../../haushalt/haushalt';
 import { getSetting, getGlobalSetting } from '../../konto/settings';
-import { resolveImageLocal, proxyImageUrl } from '../../../utils/images';
+import { resolveImageLocal, proxyImageUrl } from '../../katalog/bilder/images';
 import { valueSet, valueAcquisitionRows, weightedPurchase, pnlPct as calcPnlPct, pnlProzent } from '../setValue';
 import { mitVersion } from '../../sets/setNummer';
 import { effectiveCondition } from './zustand';
@@ -24,7 +24,7 @@ import {
 import { ladeSetErfassungen, kaufpreisSpalten, zaehle } from './abfragen';
 import { schaetzeFigurenpreis } from '../marketPrice';
 import { withOwners } from '../../bestand/gemeinsam';
-import { blJoin, blNummerSql } from '../../../utils/blZuordnung';
+import { blJoin, blNummerSql } from '../../katalog/blZuordnung';
 import { teilmengeJoin, teilmengeAus } from '../../sets/bestandsmenge';
 import { KEINE_FARBE } from '../../infra/validate';
 import { aufRappen, inZehntel4 } from '../../infra/geld';

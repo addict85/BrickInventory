@@ -48,7 +48,7 @@ test('Anleitungen als Auftrag', { concurrency: 1 }, async (t) => {
     t.skip('Test-DB nicht erreichbar'); return;
   }
   const Q = _req('jobs/instructionQueue.js');
-  const A = _req('utils/auftraege.js');
+  const A = _req('src/auftraege/auftraege.js');
   const { AuftragVerschieben } = _req('jobs/auftragsWorker.js');
   const pause = () => A.liesPause('anleitung');
   const inSek = async () => { const p = await pause(); return p ? Math.round((new Date(p.bis) - Date.now()) / 1000) : null; };
@@ -107,7 +107,7 @@ test('Anleitungen als Auftrag', { concurrency: 1 }, async (t) => {
 
   await t.test('ein Set steht nur einmal offen', async () => {
     await db.run(`DELETE FROM auftraege WHERE art = 'anleitung'`);
-    const E = _req('utils/anleitungsAuftrag.js');
+    const E = _req('src/auftraege/anleitungsAuftrag.js');
     await E.anleitungEinreihen('10005');
     await E.anleitungEinreihen('10005-1');
     assert.equal(await E.offeneAnleitungen(), 1, 'dasselbe Set (mit und ohne Version) zweimal eingereiht');

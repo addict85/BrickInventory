@@ -2,7 +2,7 @@ import * as db from '../../db/database';
 import type { DbSchnittstelle } from '../../db/database';
 import { lookupPart } from '../../clients/rebrickable';
 import { meldeUndWeiter, meldeUndLiefere } from '../infra/httpError';
-import { merkeTeilFarbe, katalogTeil } from '../../utils/katalogPflege';
+import { merkeTeilFarbe, katalogTeil } from '../katalog/katalogPflege';
 import { erfassungsTagSql } from '../bestand/acquisitions';
 import { colorId } from '../infra/validate';
 

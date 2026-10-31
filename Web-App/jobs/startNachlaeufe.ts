@@ -7,9 +7,9 @@
 import fs from 'fs';
 import path from 'path';
 import * as db from '../db/database';
-import { downloadSetImage } from '../utils/setImages';
-import { generateThumb } from '../utils/thumbs';
-import { anleitungEinreihen } from '../utils/anleitungsAuftrag';
+import { downloadSetImage } from '../src/katalog/bilder/setImages';
+import { generateThumb } from '../src/katalog/bilder/thumbs';
+import { anleitungEinreihen } from '../src/auftraege/anleitungsAuftrag';
 import { verschluesseleAltbestand } from '../src/infra/geheimnisAltbestand';
 import { verschluesseleGutscheinAltbestand } from '../src/gutscheine/gutscheinDateien';
 import * as catalogSync from './catalogSync';

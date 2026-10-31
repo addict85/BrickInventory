@@ -528,7 +528,7 @@ test('es gibt einen Diagnose-Endpunkt für Preise', () => {
   assert.match(admin, /router\.get\('\/admin\/price-probe', requireApiAdmin/, 'Endpunkt fehlt');
   assert.match(admin, /req\.query\.live === '1'/, 'Ein Live-Abruf gegen BrickLink muss möglich sein');
   // Die Antwort baut der Dienst der Verwaltung.
-  const dienst = fs.readFileSync(path.join(ROOT, 'utils/dienste/verwaltung.ts'), 'utf8');
+  const dienst = fs.readFileSync(path.join(ROOT, 'src/verwaltung/dienst.ts'), 'utf8');
   assert.match(dienst, /chosen_for_price/, 'Der gewählte Zustand gehört in die Antwort');
   assert.match(dienst, /price_cache: cacheRows/, 'Die Cache-Zeilen gehören dazu');
 });

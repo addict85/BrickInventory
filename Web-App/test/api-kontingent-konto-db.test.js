@@ -22,7 +22,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
-const k = _req('utils/apiKontingent.js');
+const k = _req('src/katalog/apiKontingent.js');
 const { imNamenVon } = _req('src/infra/anfrageKonto.js');
 
 test('Tageskontingent je Konto', { concurrency: 1 }, async (t) => {
@@ -76,7 +76,7 @@ test('Tageskontingent je Konto', { concurrency: 1 }, async (t) => {
     await db.run("INSERT INTO users (username,password_hash,is_admin,is_active,email_verified) VALUES ('kontingent_kind','x',0,1,1)");
     const uid = (await db.get("SELECT id FROM users WHERE username = 'kontingent_kind'")).id;
     const { erzeugeWorker } = _req('jobs/auftragsWorker.js');
-    const { stelleAuftragEin } = _req('utils/auftraege.js');
+    const { stelleAuftragEin } = _req('src/auftraege/auftraege.js');
     const ergebnisse = [];
     const w = erzeugeWorker({ wechselkurse: { ausfuehren: async () => {
       for (let i = 0; i < 3; i++) ergebnisse.push((await k.checkAndIncrementRateLimit('brickset')).allowed);

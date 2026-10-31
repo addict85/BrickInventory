@@ -181,7 +181,7 @@ const DOPPELT_ERLAUBT = new Map([]);
 
 /** @type {string[]} */
 const alleQuellen = [];
-for (const teil of ['db', 'routes', 'src', 'utils', 'jobs', 'clients', 'scripts']) {
+for (const teil of ['db', 'routes', 'src', 'jobs', 'clients', 'scripts']) {
   const verz = path.join(ROOT, teil);
   if (fs.existsSync(verz)) sammleAlle(verz, alleQuellen);
 }

@@ -10,7 +10,7 @@
  *
  * ── Warum der Umzug mehr ist als eine geänderte Zeichenkette ────────────────
  *
- * Diese Adresse wird GESPEICHERT, nicht nur gerufen: utils/images.ts baut sie
+ * Diese Adresse wird GESPEICHERT, nicht nur gerufen: src/katalog/bilder/images.ts baut sie
  * in `image_url`, und die Werte stehen so in den Tabellen. Ein Umzug, der nur
  * die bauende Stelle anfasst, hinterlässt zwei Formen in derselben Spalte —
  * genau die Bauart, gegen die dieser Baum sonst prüft. Deshalb gehört
@@ -40,11 +40,11 @@ const ohneKommentare = (src) =>
 const lies = (...p) => fs.readFileSync(path.join(...p), 'utf8');
 
 test('die Adresse steht an einer Stelle, und es ist die neue', () => {
-  const images = lies(ROOT, 'utils/images.ts');
+  const images = lies(ROOT, 'src/katalog/bilder/images.ts');
   assert.match(images, new RegExp(`IMG_PROXY_PFAD = '${NEU}'`),
-    `utils/images.ts führt ${NEU} nicht als IMG_PROXY_PFAD`);
+    `src/katalog/bilder/images.ts führt ${NEU} nicht als IMG_PROXY_PFAD`);
   assert.match(images, new RegExp(`IMG_PROXY_PFAD_ALT = '${ALT}'`),
-    `utils/images.ts führt ${ALT} nicht als Auslauf-Adresse`);
+    `src/katalog/bilder/images.ts führt ${ALT} nicht als Auslauf-Adresse`);
 });
 
 test('der Server bedient beide Adressen', () => {
@@ -69,7 +69,7 @@ test('gebaut wird nur noch die neue Adresse', () => {
         dateien.push([path.relative(ROOT, p), ohneKommentare(fs.readFileSync(p, 'utf8'))]);
     }
   };
-  for (const ordner of ['routes', 'src', 'utils', 'jobs']) lauf(path.join(ROOT, ordner), '.ts');
+  for (const ordner of ['routes', 'src', 'jobs']) lauf(path.join(ROOT, ordner), '.ts');
   lauf(path.join(ROOT, 'public', 'js'), '.js');
   dateien.push(['server.ts', ohneKommentare(lies(ROOT, 'server.ts'))]);
   assert.ok(dateien.length >= 30, `Nur ${dateien.length} Quelldateien gefunden`);

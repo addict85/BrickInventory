@@ -207,7 +207,7 @@ aus, steht lieber eine Beschreibung ohne Bestand da (unsichtbar, weil
 niemand das Teil hat) als ein Bestand ohne Beschreibung (eine Zeile ohne
 Namen in der Teileliste).
 
-Die beiden Upserts stehen in utils/katalogPflege.ts — derselbe Schreiber
+Die beiden Upserts stehen in src/katalog/katalogPflege.ts — derselbe Schreiber
 wie beim CSV-Import, beim Set-Import und beim Verschieben eines Sets.
 ```
 

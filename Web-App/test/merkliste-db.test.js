@@ -326,7 +326,7 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async (t) => {
     const ORDNER = path.join(__dirname, '..', 'data', 'images', 'sets');
 
     // ZWEI Setnummern, und das ist kein Zufall: resolveIfExists() merkt sich
-    // ein „gibt es nicht" zehn Minuten lang (utils/images.ts). Dieselbe Nummer
+    // ein „gibt es nicht" zehn Minuten lang (src/katalog/bilder/images.ts). Dieselbe Nummer
     // erst ohne und dann mit Datei zu prüfen, prüfte den Cache statt die Regel.
     const ohneDatei = `wlimg${process.pid}a-1`;
     const mitDatei  = `wlimg${process.pid}b-1`;

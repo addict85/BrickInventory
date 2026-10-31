@@ -57,7 +57,7 @@ Diese Route hatte ihren eigenen Abrufweg, der am Tageskontingent
 vorbeilief: Ein einziger Scan konnte bis zu acht Aufrufe auslösen (die
 EAN-Suche, je Treffer ein Detailabruf, dazu zwei in enrichResult) — alle
 ungezählt. Das Kontingent wurde erst clusterweit gemacht (siehe
-utils/rateLimiter.ts); dies war die letzte Tür daneben. Ist es erschöpft,
+src/katalog/rateLimiter.ts); dies war die letzte Tür daneben. Ist es erschöpft,
 liefert rbGet null, und die Route nimmt denselben Weg wie bei einem
 fehlgeschlagenen Abruf.
 ```
@@ -73,7 +73,7 @@ Der Titel ist Fliesstext eines Händlers. Hier stand `match(/(\d{4,6})/)`
 „LEGO City 2023 Feuerwehrstation 60320" gewann das JAHR, und die
 Antwort ging als gültige Setnummer an die App.
 
-Jetzt liefert utils/produkttitel.ts geordnete Kandidaten (Teilezahlen
+Jetzt liefert src/katalog/produkttitel.ts geordnete Kandidaten (Teilezahlen
 und Jahre aussortiert), und der KATALOG entscheidet, welcher davon
 wirklich ein Set ist. Nur eine lokale Abfrage je Kandidat — sie kostet
 nichts am Tageskontingent.

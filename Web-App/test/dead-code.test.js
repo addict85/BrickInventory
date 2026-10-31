@@ -39,7 +39,7 @@ function dateien(unterordner, endung) {
 }
 
 test('keine Funktion ohne einen einzigen Aufrufer', () => {
-  const quellen = ['routes', 'src', 'utils', 'jobs', 'db'].flatMap(d => dateien(d, '.ts'))
+  const quellen = ['routes', 'src', 'jobs', 'db'].flatMap(d => dateien(d, '.ts'))
     .concat([path.join(ROOT, 'server.ts')]);
   const korpus = quellen.concat(dateien('test', '.js'))
     .map(f => ohneKommentare(fs.readFileSync(f, 'utf8')))
@@ -79,7 +79,7 @@ test('keine Funktion ohne einen einzigen Aufrufer', () => {
  *   src/sets/abfragen.ts: updateSetQuantity         ueberholte Zweitfassung
  *   src/infra/sseRegistry.ts: openSseCount                „fuer Diagnose und Tests",
  *                                                     kein Test benutzte sie
- *   utils/thumbs.ts: generateThumbsBackground         seit dem ersten Commit
+ *   src/katalog/bilder/thumbs.ts: generateThumbsBackground         seit dem ersten Commit
  *                                                     nie aufgerufen
  *   src/infra/lockNamespaces.ts: TXLOCK_NAMENSRAUM_…      eine Anmerkung in Form
  *                                                     eines Wertes
@@ -103,7 +103,7 @@ test('keine Funktion ohne einen einzigen Aufrufer', () => {
  * Verlust ohne Gewinn.
  */
 test('kein exportierter Wert ohne einen einzigen Aufrufer', () => {
-  const quellen = ['routes', 'src', 'utils', 'jobs', 'db', 'clients', 'startup']
+  const quellen = ['routes', 'src', 'jobs', 'db', 'clients', 'startup']
     .flatMap(d => dateien(d, '.ts')).concat([path.join(ROOT, 'server.ts')]);
   const mitTests = quellen.concat(dateien('test', '.js'));
   assert.ok(quellen.length > 20, `nur ${quellen.length} Quelldateien — die Pruefung liefe ins Leere`);

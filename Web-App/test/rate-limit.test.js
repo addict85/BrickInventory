@@ -25,7 +25,7 @@ const ROOT = path.join(__dirname, '..');
 // Nach dist/ bauen statt in-place — siehe helpers/sources.js.
 const _req = require('./helpers/sources').buildAndRequire();
 const { ohneKommentare } = require('./helpers/sources');
-const { REBRICKABLE_DEFAULT_DAILY } = _req('utils/rateLimiter.js');
+const { REBRICKABLE_DEFAULT_DAILY } = _req('src/katalog/rateLimiter.js');
 
 const EXPECTED = 25000;
 
@@ -36,8 +36,8 @@ test('Standard-Tageslimit ist 25000 — an EINER Stelle', () => {
   // beide über checkAndIncrementRateLimit laufen, wäre es eine stille Kürzung
   // auf ein Sechstel gewesen. Zwei Konstanten mit derselben Bedeutung driften
   // auseinander; hier wird festgehalten, dass es nur noch eine gibt.
-  // Seit die Zähler in utils/apiKontingent.ts stehen, steht dort auch die Konstante.
-  const fc = fs.readFileSync(path.join(ROOT, 'utils/apiKontingent.ts'), 'utf8');
+  // Seit die Zähler in src/katalog/apiKontingent.ts stehen, steht dort auch die Konstante.
+  const fc = fs.readFileSync(path.join(ROOT, 'src/katalog/apiKontingent.ts'), 'utf8');
   assert.match(fc, /rebrickable: REBRICKABLE_DEFAULT_DAILY/,
     'Der Rückfallwert muss die gemeinsame Konstante sein, nicht eine eigene Zahl danebenstehen');
   assert.doesNotMatch(fc, /rebrickable: \d+/, 'Keine zweite Zahl für dasselbe Limit');
@@ -61,7 +61,7 @@ test('das Tageskontingent zählt für die Installation, nicht je Worker', () => 
   // Gegen echte Datenbank nachgestellt: Limit 3, drei Aufrufe erlaubt, der
   // vierte abgelehnt — und ein zweiter Modulzustand (= zweiter Worker) fängt
   // NICHT wieder bei null an.
-  const rl = fs.readFileSync(path.join(ROOT, 'utils/rateLimiter.ts'), 'utf8');
+  const rl = fs.readFileSync(path.join(ROOT, 'src/katalog/rateLimiter.ts'), 'utf8');
   assert.match(rl, /async function consumeRebrickableDaily/,
     'Der Verbrauch muss über den gemeinsamen Zähler laufen');
   assert.match(rl, /checkAndIncrementRateLimit\('rebrickable'\)/,
@@ -70,7 +70,7 @@ test('das Tageskontingent zählt für die Installation, nicht je Worker', () => 
     'Keine prozesslokale Instanz mehr für ein Tagesbudget');
 
   // Alle Aufrufstellen gehen über den gemeinsamen Weg.
-  for (const datei of ['clients/rebrickable.ts', 'utils/partsImport.ts', 'src/sets/dienst.ts',
+  for (const datei of ['clients/rebrickable.ts', 'src/katalog/partsImport.ts', 'src/sets/dienst.ts',
                        'jobs/partsCatalogEnrich.ts', 'jobs/backfillBlPartNumbers.ts',
                        'jobs/rebrickableCsvSync.ts']) {
     const src = fs.readFileSync(path.join(ROOT, datei), 'utf8');
@@ -105,7 +105,7 @@ test('ein geändertes Limit gilt sofort in ALLEN Workern', () => {
   // Kommentare raus, bevor die Spanne gemessen wird: Der Erklärblock in
   // getLimitForApi ist länger als jedes vernünftige Zeichenfenster, und ein
   // Test, der an einem wachsenden Kommentar scheitert, prüft die falsche Sache.
-  const fc = fs.readFileSync(path.join(ROOT, 'utils/apiKontingent.ts'), 'utf8')
+  const fc = fs.readFileSync(path.join(ROOT, 'src/katalog/apiKontingent.ts'), 'utf8')
     .replace(/\/\/[^\n]*/g, '');
   const fn = fc.slice(fc.indexOf('async function getLimitForApi'),
                       fc.indexOf('const grenzeJeKonto'));
@@ -174,7 +174,7 @@ test('die Aufrufstellen warten auf das Ergebnis', () => {
     const p = path.join(dir, e.name);
     return e.isDirectory() ? dateien(p) : (e.name.endsWith('.ts') ? [p] : []);
   });
-  const alle = [...dateien(path.join(ROOT, 'routes')), ...dateien(path.join(ROOT, 'src')), ...dateien(path.join(ROOT, 'utils')),
+  const alle = [...dateien(path.join(ROOT, 'routes')), ...dateien(path.join(ROOT, 'src')),
                 path.join(ROOT, 'server.ts')];
 
   const ohneAwait = [];
@@ -242,7 +242,7 @@ test('Jobs mit externem Kontingent haben eine prozessübergreifende Sperre', () 
   assert.match(fn, /finally\s*\{[\s\S]{0,300}releaseLock\(\)/,
     'Ohne Freigabe im finally sperrt ein Absturz den Job bis zum Neustart');
 
-  // Der manuelle Anstoss zieht nur den geplanten Auftrag vor (utils/zeitplan.ts);
+  // Der manuelle Anstoss zieht nur den geplanten Auftrag vor (src/auftraege/zeitplan.ts);
   // läuft er schon, meldet ziehePlanVor false statt eines zweiten Laufs.
 
   // Und die Aufrufer müssen das Ergebnis abwarten.

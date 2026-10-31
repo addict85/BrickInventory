@@ -5,7 +5,7 @@ import { setzeGeschaetztenPreis } from '../src/bestand/acquisitions';
 // zwei Zahlen zu kommen.
 import { getCurrentFigMarketPrice, getCurrentPartMarketPrice } from '../src/finanzen/marketPrice';
 import { lookupPart } from '../clients/rebrickable';
-import { blAbrufNummer } from '../utils/blZuordnung';
+import { blAbrufNummer } from '../src/katalog/blZuordnung';
 import { fehlertext, meldeUndWeiter, meldeUndLiefere } from '../src/infra/httpError';
 import { sleep } from '../clients/rebrickable';
 import * as db from '../db/database';
@@ -112,7 +112,7 @@ async function backfillFigurenErfassungen() {
     try {
       // Die BrickLink-Nummer kommt aus der Zuordnung (Migration 0037) und
       // nicht mehr aus der Bestandszeile — sie haengt an der Figur, nicht am
-      // Konto, das sie besitzt. Die Abfrage steht in utils/blZuordnung.ts,
+      // Konto, das sie besitzt. Die Abfrage steht in src/katalog/blZuordnung.ts,
       // weil sie auch routes/api_v1/acquisitions.ts braucht; zwei Fassungen
       // hat test/sql-kerne.test.js gemeldet.
       const price = await getCurrentFigMarketPrice(

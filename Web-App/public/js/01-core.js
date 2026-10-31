@@ -330,7 +330,7 @@ export function knopfBesetzt(btn, laeuft) {
  * noch. GEBAUT wird nur die neue.
  *
  * Die Begruendung in ganzer Laenge steht serverseitig bei den gleichnamigen
- * Konstanten in utils/images.ts.
+ * Konstanten in src/katalog/bilder/images.ts.
  */
 const IMG_PROXY = '/api/v1/img-proxy';
 const IMG_PROXY_ALT = '/api/img-proxy';
@@ -494,7 +494,7 @@ export function escHtmlAttr(v) {
  *
  * Vorher konstruierte diese Funktion aus JEDEM lokalen Pfad selbst eine
  * "_thumb.jpg"-Variante, unabhängig davon, ob diese Datei existiert.
- * `utils/images.ts` (Server, resolveImageLocal()) prüft das aber bereits: Es
+ * `src/katalog/bilder/images.ts` (Server, resolveImageLocal()) prüft das aber bereits: Es
  * liefert für `image_local` je nachdem den Thumb- ODER den Original-Pfad,
  * mit eigenem Existenz-Cache. Lieferte der Server den Original-Pfad, weil
  * die Vorschau (noch) fehlt, baute diese Funktion TROTZDEM ihre eigene

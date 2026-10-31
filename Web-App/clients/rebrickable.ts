@@ -5,16 +5,16 @@
 // Folgen: Wer sie importierte, importierte scheinbar einen Router, und die
 // Kreise, die daraus entstanden, wurden mit späten `require()` umgangen.
 //
-import { rebrickableLimiter, consumeRebrickableDaily, rebrickableDailyStatus, parseThrottleWait } from '../utils/rateLimiter';
+import { rebrickableLimiter, consumeRebrickableDaily, rebrickableDailyStatus, parseThrottleWait } from '../src/katalog/rateLimiter';
 import { istErsatzteil, KEINE_FARBE } from '../src/infra/validate';
 
 import https from 'https';
 import path from 'path';
 import fs from 'fs';
 import * as db from '../db/database';
-import { rebrickableBackgroundLimiter } from '../utils/rateLimiter';
+import { rebrickableBackgroundLimiter } from '../src/katalog/rateLimiter';
 import { fehlertext, meldeUndLiefere } from '../src/infra/httpError';
-import { neuestesInventar } from '../utils/rbInventar';
+import { neuestesInventar } from '../src/katalog/rbInventar';
 import { mitVersion } from '../src/sets/setNummer';
 import { getGlobalSetting } from '../src/konto/settings';
 import { ERLAUBTE_DOWNLOAD_HOSTS, hostErlaubt, naechsteUmleitung,
@@ -462,7 +462,7 @@ async function getMinifigParts(figNumber: string) {
 /**
  * ── Warum lookupPart hier steht und nicht mehr in routes/parts.ts ───────────
  * Es ist eine reine Rebrickable-Abfrage: getRbKey(), httpsGetRobust() und die
- * Hintergrunddrossel — alles aus dieser Datei bzw. utils/rateLimiter, nichts
+ * Hintergrunddrossel — alles aus dieser Datei bzw. src/katalog/rateLimiter, nichts
  * aus der Route. Es lag dort, weil die HTTP-Route dort steht, die es ausloest;
  * gebraucht wurde es aber auch von jobs/purchasePriceBackfill.ts, und der
  * musste dafuer aus einer ROUTE importieren.

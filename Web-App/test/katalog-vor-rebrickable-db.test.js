@@ -20,7 +20,7 @@
  *
  * lookupPart() macht im Betrieb ZWEI Abrufe (das Teil, dann das Farbbild),
  * jeder durch die Hintergrunddrossel mit 1,5 Sekunden Abstand
- * (utils/rateLimiter.ts). Bei einer Wanted-Liste mit 224 Posten sind das elf
+ * (src/katalog/rateLimiter.ts). Bei einer Wanted-Liste mit 224 Posten sind das elf
  * Minuten Warten und 448 Abrufe aus dem Tageskontingent — fuer Daten, die
  * dalagen. Nach der Aenderung: 0 Abrufe, 49 ms.
  *

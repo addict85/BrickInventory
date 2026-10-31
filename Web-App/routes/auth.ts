@@ -1,6 +1,6 @@
 
 import { konfig } from '../src/infra/konfig';
-import { protokolliere } from '../utils/verwaltungsprotokoll';
+import { protokolliere } from '../src/verwaltung/verwaltungsprotokoll';
 import express from 'express';
 const router  = express.Router();
 import bcrypt from 'bcryptjs';

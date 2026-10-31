@@ -11,7 +11,7 @@ import { csvAbgleich } from './rebrickableCsvSync';
 import { runPriceRefresh } from './priceJob';
 import { bildNachlauf } from './bildNachlauf';
 import { aufraeumen, aufraeumenTaeglich } from './aufraeumen';
-import type { AuftragsArt } from '../utils/auftraege';
+import type { AuftragsArt } from '../src/auftraege/auftraege';
 import { kursauftrag } from '../src/finanzen/wechselkurse';
 
 /**

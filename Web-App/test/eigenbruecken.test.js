@@ -77,7 +77,7 @@ function existiertQuelle(rel) {
 }
 
 /** Ordner, die es im Web-Baum wirklich gibt — alles andere ist kein Pfad von hier. */
-const ORDNER = ['routes', 'src', 'utils', 'jobs', 'clients', 'db', 'startup', 'public', 'scripts', 'types'];
+const ORDNER = ['routes', 'src', 'jobs', 'clients', 'db', 'startup', 'public', 'scripts', 'types'];
 
 test('kein Test liest eine Quelldatei, die es nicht gibt', () => {
   const dateien = fs.readdirSync(__dirname).filter(f => f.endsWith('.test.js')).sort();

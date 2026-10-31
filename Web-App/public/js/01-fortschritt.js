@@ -144,7 +144,7 @@ function gibToggle() {
  * und daraus wurde 322-mal „undefined – aktualisiert".
  *
  * Die Platzhalter sind weg (beendeAuftrag bekommt jetzt echte Zeilen, siehe
- * utils/importAuftrag.ts), aber die Schranke bleibt: Eine Zeile, die nichts
+ * src/auftraege/importAuftrag.ts), aber die Schranke bleibt: Eine Zeile, die nichts
  * benennt, sagt dem Betrachter nichts und kostet ihn das Vertrauen in die
  * uebrigen. Die ZAEHLUNG darueber ist davon unberuehrt — sie kommt aus
  * `s.ok`/`s.warn`/`s.err` und nicht von hier.

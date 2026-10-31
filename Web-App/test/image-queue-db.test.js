@@ -44,7 +44,7 @@ let geladen = 0, verkleinert = 0;
 const echtesRequire = Module.prototype.require;
 Module.prototype.require = function (name) {
   const m = echtesRequire.apply(this, arguments);
-  // Seit Nachtrag 125 liegt downloadSetImage in utils/setImages.ts statt im
+  // Seit Nachtrag 125 liegt downloadSetImage in src/katalog/bilder/setImages.ts statt im
   // Router — der Abfang muss dorthin zeigen, sonst greift er ins Leere und
   // der Test misst still den echten Download.
   if (typeof name === 'string' && /setImages(\.js)?$/.test(name) && m && m.downloadSetImage) {
@@ -220,7 +220,7 @@ test('die Kachel „Bild-Download (CDN)" zeigt die Katalog-Warteschlange',
     // hoffen.
     await db.run(`DELETE FROM laufzustand WHERE schluessel='imgqueue_last_run'`);
     await db.run(`DELETE FROM laufzustand WHERE schluessel='imgredl_status'`);
-    await _req('utils/jobMonitor.js').imgDlReset().catch(() => {});
+    await _req('src/auftraege/jobMonitor.js').imgDlReset().catch(() => {});
     _req('jobs/imageQueue.js').letzterLauf.zeit = null;
     const ohneLauf = await kachel();
     assert.equal(ohneLauf.status, 'idle',
@@ -261,7 +261,7 @@ test('die Kachel „Bild-Download (CDN)" zeigt die Katalog-Warteschlange',
     // Fehlerklasse wie der Fehler, um den es hier geht.)
     await db.run(`DELETE FROM laufzustand WHERE schluessel='imgqueue_last_run'`);
     _req('jobs/imageQueue.js').letzterLauf.zeit = null;
-    await _req('utils/jobMonitor.js').imgDlReset().catch(() => {});
+    await _req('src/auftraege/jobMonitor.js').imgDlReset().catch(() => {});
     assert.notEqual((await kachel()).status, 'running',
       'Vorbedingung verletzt: Ohne Nachlauf darf hier kein Betrieb stehen');
 
@@ -355,7 +355,7 @@ test('die Bild-Tabellen kommen aus einer MIGRATION, nicht aus initSchema', () =>
 
   // Und NICHT mehr anderswo — zwei Stellen, die dasselbe anlegen, laufen
   // irgendwann auseinander.
-  for (const datei of ['db/database.ts', 'utils/imageMisses.ts', 'jobs/imageQueue.ts']) {
+  for (const datei of ['db/database.ts', 'src/katalog/bilder/imageMisses.ts', 'jobs/imageQueue.ts']) {
     const src = fs.readFileSync(path.join(ROOT, datei), 'utf8')
       .split('\n').filter(l => !l.trim().startsWith('//') && !l.trim().startsWith('--')).join('\n');
     assert.doesNotMatch(src, /CREATE TABLE IF NOT EXISTS image_(wanted|misses)/,
@@ -389,7 +389,7 @@ test('der Puffer wird in JEDEM Arbeitsprozess weggeschrieben', () => {
   //
   // initImageQueue() läuft in JEDEM Prozess (aufgerufen aus db/database.ts) —
   // dort gehört der Takt hin.
-  const q = fs.readFileSync(path.join(ROOT, 'utils/bildbedarf.ts'), 'utf8');
+  const q = fs.readFileSync(path.join(ROOT, 'src/katalog/bilder/bildbedarf.ts'), 'utf8');
   const init = q.slice(q.indexOf('export async function initImageQueue'),
                        q.indexOf('export async function loescheVerfallene'));
   assert.match(init, /setInterval\([\s\S]{0,80}schreibePuffer/,

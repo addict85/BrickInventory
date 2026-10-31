@@ -5,16 +5,16 @@
  * All data is user-independent and shared across all users.
  */
 import { downloadFile } from '../clients/rebrickable';
-import { generateThumb } from '../utils/thumbs';
-import { neuestesInventar } from '../utils/rbInventar';
+import { generateThumb } from '../src/katalog/bilder/thumbs';
+import { neuestesInventar } from '../src/katalog/rbInventar';
 import { mitVersion } from '../src/sets/setNummer';
-import { merkeTeil, merkeTeilFarbe, merkeSetTeil, setzeTeilBildLokal, merkeFiguren, merkeSetFiguren } from '../utils/katalogPflege';
+import { merkeTeil, merkeTeilFarbe, merkeSetTeil, setzeTeilBildLokal, merkeFiguren, merkeSetFiguren } from '../src/katalog/katalogPflege';
 import { logAndContinue, meldeUndLiefere } from '../src/infra/httpError';
 import * as db from '../db/database';
 import path from 'path';
 import fs from 'fs';
 import { PART_IMAGES_DIR as IMG_DIR } from '../src/infra/appPaths';
-import { rebrickableBackgroundLimiter as rebrickableLimiter } from '../utils/rateLimiter';
+import { rebrickableBackgroundLimiter as rebrickableLimiter } from '../src/katalog/rateLimiter';
 import { KEINE_FARBE } from '../src/infra/validate';
 // Pfade zentral auflösen — __dirname zeigt seit dem dist/-Build nicht mehr
 // auf die Wurzel. Siehe src/infra/appPaths.ts.

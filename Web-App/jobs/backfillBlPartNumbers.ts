@@ -5,12 +5,12 @@
  * Uses GET /api/v3/lego/parts/?part_nums=a,b,c (batch of 500) instead of single calls.
  */
 
-import { merkeBlNummer } from '../utils/blZuordnung';
+import { merkeBlNummer } from '../src/katalog/blZuordnung';
 import { getRbKey } from '../clients/rebrickable';
 import { nummernListe } from '../src/infra/fremdeAdressen';
 import * as db from '../db/database';
 import https from 'https';
-import { rebrickableBackgroundLimiter as rebrickableLimiter, consumeRebrickableDaily, parseThrottleWait } from '../utils/rateLimiter';
+import { rebrickableBackgroundLimiter as rebrickableLimiter, consumeRebrickableDaily, parseThrottleWait } from '../src/katalog/rateLimiter';
 
 /** Ergebnis der handgebauten HTTPS-Aufrufe in dieser Datei. Ohne Typparameter
  *  leitet TypeScript bei `new Promise` `unknown` ab. */

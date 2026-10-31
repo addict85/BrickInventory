@@ -138,7 +138,7 @@ test('keine Build-Artefakte neben den TypeScript-Quellen', () => {
     return out;
   };
   const offenders = [];
-  for (const dir of ['db', 'jobs', 'routes', 'src', 'utils']) {
+  for (const dir of ['db', 'jobs', 'routes', 'src']) {
     offenders.push(...walk(dir).filter(f => f.endsWith('.js')));
   }
   if (fs.existsSync(path.join(ROOT, 'server.js'))) offenders.push('server.js');

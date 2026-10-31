@@ -1,14 +1,14 @@
 /**
  * Fehlende Bilder im Hintergrund laden — der geplante Auftrag 'bild_nachlauf'
- * (stündlich, der erste 30 s nach dem Start; utils/zeitplan.ts).
+ * (stündlich, der erste 30 s nach dem Start; src/auftraege/zeitplan.ts).
  */
 import * as db from '../db/database';
 import { logAndContinue, meldeUndLiefere } from '../src/infra/httpError';
-import { generateThumb } from '../utils/thumbs';
-import { setzeTeilBildLokal, setzeFigurBildLokal } from '../utils/katalogPflege';
+import { generateThumb } from '../src/katalog/bilder/thumbs';
+import { setzeTeilBildLokal, setzeFigurBildLokal } from '../src/katalog/katalogPflege';
 import { KEINE_FARBE } from '../src/infra/validate';
 import * as enrich from './partsCatalogEnrich';
-import * as monitor from '../utils/jobMonitor';
+import * as monitor from '../src/auftraege/jobMonitor';
 import { AuftragUnterbrochen, type AuftragsKontext } from './auftragsWorker';
 
 async function bildNachlauf(k: AuftragsKontext): Promise<void> {
@@ -66,7 +66,7 @@ async function bildNachlauf(k: AuftragsKontext): Promise<void> {
   for (const p of manualParts) {
     const local = await enrich.downloadImage(p.image_url, p.part_number, p.color_id ?? KEINE_FARBE, 'part').catch(meldeUndLiefere('bild-nachlauf:downloadImage', null));
     if (local) {
-      // In den Katalog (utils/katalogPflege.ts) — einmal fuer alle
+      // In den Katalog (src/katalog/katalogPflege.ts) — einmal fuer alle
       // Konten. Mit Protokoll, falls es scheitert: Das Bild liegt dann
       // auf der Platte, der Katalog zeigt aber nicht darauf. In der
       // Oberflaeche fehlt es weiterhin, und der naechste Start laedt es
