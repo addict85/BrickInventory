@@ -1,5 +1,6 @@
 package ch.brickinventoryapp
 
+import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.util.IMG_PROXY
 import ch.brickinventoryapp.util.resolveFullUrl
 import ch.brickinventoryapp.util.resolveFullUrlViaProxy
@@ -29,7 +30,7 @@ private const val SERVER = "http://nas:3000/"
 class ThumbFallbackTest {
 
     private fun read(rel: String): String {
-        val f = java.io.File("src/main/java/ch/brickinventoryapp/$rel")
+        val f = java.io.File(Quellen.wurzel, "$rel")
         assert(f.exists()) { "Datei nicht gefunden: $rel" }
         return f.readText()
     }
@@ -181,7 +182,7 @@ class FullResolutionBypassesProxyTest {
  */
 class PartsMinifigsFullResBypassProxyTest {
     private fun read(rel: String): String {
-        val f = java.io.File("src/main/java/ch/brickinventoryapp/$rel")
+        val f = java.io.File(Quellen.wurzel, "$rel")
         assert(f.exists()) { "Datei nicht gefunden: $rel" }
         return f.readText()
     }
@@ -250,7 +251,7 @@ class PartsMinifigsFullResBypassProxyTest {
  */
 class SetDetailUsesFullResolutionTest {
     private fun read(rel: String): String {
-        val f = java.io.File("src/main/java/ch/brickinventoryapp/$rel")
+        val f = java.io.File(Quellen.wurzel, "$rel")
         assert(f.exists()) { "Datei nicht gefunden: $rel" }
         return f.readText()
     }

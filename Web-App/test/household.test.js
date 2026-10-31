@@ -122,9 +122,9 @@ test('die Oberfläche bietet Einladen und Einlösen jedem Konto an', () => {
   const js = read('public/js/05-settings.js');
   assert.match(js, /inviteEl\.style\.display = ''/);
   assert.match(js, /redeemEl\.style\.display = ''/);
-  const kt = read('../Android-App/app/src/main/java/ch/brickinventoryapp/ui/screens/SettingsScreen.kt')
-           + read('../Android-App/app/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenUnterseiten.kt')
-           + read('../Android-App/app/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenHaushalt.kt');
+  const kt = read('../Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/SettingsScreen.kt')
+           + read('../Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenUnterseiten.kt')
+           + read('../Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenHaushalt.kt');
   assert.doesNotMatch(kt, /!st\.isSub\b/,
     'Die App blendet das Einlösen für Unterkonten aus — dann bleibt es bei einem Elternkonto');
 });

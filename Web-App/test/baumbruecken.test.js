@@ -186,11 +186,11 @@ test('beide Baeume pruefen einander', () => {
   // (SetnummerKorpusTest, CatalogYearMathTest, OcrSetNumberTest). Faellt das
   // weg, ist die Paritaet wieder einseitig — und einseitig war sie bei jedem
   // der vier Befunde.
-  const kt = path.join(WEBAPP, '..', 'Android-App', 'app', 'src', 'test',
-    'java', 'ch', 'brickinventoryapp');
-  assert.ok(fs.existsSync(kt), `Der Android-Testordner fehlt: ${kt}`);
-  const rueckwaerts = fs.readdirSync(kt).filter(f =>
-    f.endsWith('.kt') && fs.readFileSync(path.join(kt, f), 'utf8').includes('Web-App'));
+  // Die Tests liegen seit der Aufteilung der App in den Modulen neben ihrem Code.
+  const ordner = require('./helpers/android').quellwurzeln('test');
+  assert.ok(ordner.length >= 2, `Nur ${ordner.length} Android-Testordner gefunden`);
+  const rueckwaerts = ordner.flatMap(kt => fs.readdirSync(kt).filter(f =>
+    f.endsWith('.kt') && fs.readFileSync(path.join(kt, f), 'utf8').includes('Web-App')));
   assert.ok(rueckwaerts.length >= 3,
     `Nur ${rueckwaerts.length} Android-Tests lesen noch den Web-Baum (erwartet: mindestens 3). ` +
     'Die Paritaet darf nicht einseitig werden.');

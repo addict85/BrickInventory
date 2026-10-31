@@ -37,7 +37,7 @@ const path = require('node:path');
 const { routerEinhaengungen } = require('./helpers/sources');
 
 const ROOT = path.join(__dirname, '..');
-const ANDROID = path.join(ROOT, '..', 'Android-App', 'app', 'src', 'main');
+const { quellwurzeln } = require('./helpers/android');
 
 function ohneKommentare(src) {
   return src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
@@ -83,7 +83,7 @@ function clientQuellen() {
   };
   sammle(path.join(ROOT, 'public'), ['.js', '.html']);
   sammle(path.join(ROOT, 'views'), ['.js', '.html', '.ejs']);
-  sammle(ANDROID, ['.kt']);
+  for (const w of quellwurzeln()) sammle(w, ['.kt']);
   return dateien;
 }
 

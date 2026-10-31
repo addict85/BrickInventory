@@ -9,10 +9,8 @@ const path = require('node:path');
 const BAUM = path.join(__dirname, '..', '..');
 const css = fs.readFileSync(path.join(BAUM, 'Web-App', 'public', 'themes', 'noppe.css'), 'utf8');
 const glanz = fs.readFileSync(path.join(BAUM, 'Web-App', 'public', 'themes', 'hochglanz.css'), 'utf8');
-const decor = fs.readFileSync(path.join(BAUM, 'Android-App', 'app', 'src', 'main', 'java',
-  'ch', 'brickinventoryapp', 'ui', 'theme', 'BrickDecor.kt'), 'utf8');
-const theme = fs.readFileSync(path.join(BAUM, 'Android-App', 'app', 'src', 'main', 'java',
-  'ch', 'brickinventoryapp', 'ui', 'theme', 'Theme.kt'), 'utf8');
+const decor = fs.readFileSync(path.join(__dirname, '..', '..', 'Android-App', 'core-ui', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'theme', 'BrickDecor.kt'), 'utf8');
+const theme = fs.readFileSync(path.join(__dirname, '..', '..', 'Android-App', 'core-ui', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'theme', 'Theme.kt'), 'utf8');
 const quelle = JSON.parse(fs.readFileSync(path.join(BAUM, 'shared', 'design-tokens.json'), 'utf8'));
 
 /**
@@ -133,9 +131,9 @@ test('beide Oberflaechen fuehren dieselbe Schrift', () => {
   // Segment im Pfad nimmt baumbruecken.test.js die Sicht darauf, welche
   // Dateien diese Pruefung ueberhaupt anfasst — sie hat das gemeldet.
   const fehlt = [
-    path.join(BAUM, 'Android-App', 'app', 'src', 'main', 'res', 'font', 'nunito_regular.ttf'),
-    path.join(BAUM, 'Android-App', 'app', 'src', 'main', 'res', 'font', 'nunito_bold.ttf'),
-    path.join(BAUM, 'Android-App', 'app', 'src', 'main', 'res', 'font', 'nunito_black.ttf'),
+    path.join(__dirname, '..', '..', 'Android-App', 'core-ressourcen', 'src', 'main', 'res', 'font', 'nunito_regular.ttf'),
+    path.join(__dirname, '..', '..', 'Android-App', 'core-ressourcen', 'src', 'main', 'res', 'font', 'nunito_bold.ttf'),
+    path.join(__dirname, '..', '..', 'Android-App', 'core-ressourcen', 'src', 'main', 'res', 'font', 'nunito_black.ttf'),
   ].filter(f => !fs.existsSync(f)).map(f => path.basename(f));
   assert.deepEqual(fehlt, [],
     `Diese Schnitte fehlen unter res/font/: ${fehlt.join(', ')} — dann zeigt die ` +

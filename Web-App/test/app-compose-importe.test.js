@@ -31,27 +31,13 @@ const assert = require('node:assert/strict');
 const fs     = require('node:fs');
 const path   = require('node:path');
 
-const WURZEL = path.join(__dirname, '..', '..', 'Android-App', 'app', 'src');
+const { androidDateien } = require('./helpers/android');
 
 /** Name → das Paket, aus dem er kommen MUSS. */
 const HERKUNFT = {
   rememberSaveable:             'androidx.compose.runtime.saveable',
   collectAsStateWithLifecycle:  'androidx.lifecycle.compose',
 };
-
-function kotlinDateien(wurzel) {
-  const raus = [];
-  const stapel = [wurzel];
-  while (stapel.length) {
-    const d = stapel.pop();
-    for (const e of fs.readdirSync(d, { withFileTypes: true })) {
-      const p = path.join(d, e.name);
-      if (e.isDirectory()) stapel.push(p);
-      else if (e.name.endsWith('.kt')) raus.push(p);
-    }
-  }
-  return raus;
-}
 
 /** Kommentare und Zeichenketten raus — ein Name im Fliesstext ist kein Aufruf. */
 function ohneBeiwerk(quelle) {
@@ -63,7 +49,8 @@ function ohneBeiwerk(quelle) {
 
 test('Compose-Namen aus fremden Paketen haben ihren Import', () => {
   const fehlend = [];
-  for (const datei of kotlinDateien(WURZEL)) {
+  // Haupt- und Testquellen aller Module.
+  for (const datei of [...androidDateien(undefined, 'main'), ...androidDateien(undefined, 'test')]) {
     const roh = fs.readFileSync(datei, 'utf8');
     const code = ohneBeiwerk(roh);
     for (const [name, paket] of Object.entries(HERKUNFT)) {

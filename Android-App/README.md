@@ -131,11 +131,40 @@ Token-Verwaltung erfolgt über das Web-Interface unter Einstellungen → Mobile 
 - Bildcaching erfolgt via Coil (automatisch)
 
 
+## Module
+
+Abhängigkeiten nur in diese Richtung: `app → feature-* → core-*`; kein Bereich
+kennt einen anderen (`ModulgrenzenTest` prüft es an den Build-Dateien).
+
+| Modul | Inhalt |
+| --- | --- |
+| `core-model` | Server- und UI-Modelle, reine Regeln — reines Kotlin, ohne Android |
+| `core-ressourcen` | Texte (de/en), Schriften, Bilder; `ch.brickinventoryapp.ressourcen.R` |
+| `core-data` | Retrofit, OkHttp, Repositories, Room samt Schema (`core-data/schemas`), Ausgang, Worker, Dienste |
+| `core-ui` | Theme und gemeinsame Composables (Karten, Zeilen, Filter, Kamera-Bausteine) |
+| `core-zustand` | Sitzung, Blickfeld, Bestandssignal, Texte, Basis der Bereichs-ViewModels, AppViewModel |
+| `core-testing` | Testhilfen (Testserver, Testdienste, `Quellen`), nur als `testImplementation` |
+| `feature-anmeldung` | Anmelden, Server einrichten, QR |
+| `feature-katalog` | Katalog und Katalog-Detail |
+| `feature-sammlung` | Galerie, Set-Detail, Merkliste, Käufe, Vergleich, Scanner |
+| `feature-teile` | Teile, Minifiguren, eigene Einträge, Teilelisten |
+| `feature-finanzen` | Finanzen, Gutscheine, PDF-Betrachter |
+| `feature-konto` | Einstellungen |
+| `feature-verwaltung` | Monitoring für Verwalter |
+| `app` | Navigation, Hilt-Einstieg, Activity, Widget |
+
+Die Pakete sind über die Module hinweg dieselben geblieben
+(`ch.brickinventoryapp.ui.screens` gibt es in mehreren Modulen); was ein Modul
+dem anderen zeigt, ist öffentlich, der Rest `internal`.
+
 ## Tests
 
 ```bash
-./gradlew testDebugUnitTest
+./gradlew testDebugUnitTest :core-model:test
 ```
+
+Die Tests liegen neben dem Code ihres Moduls; was mehrere Bereiche zusammen
+prüft (Bildschirmfotos, Abläufe, Struktur), liegt in `app/src/test`.
 
 - **CatalogYearMathTest** — Mathematik des Jahres-Scrubbers (Position ↔ Jahr,
   Klemmen, Monotonie, Roundtrip, degenerierte Layouts). Die Logik ist dafür aus
@@ -250,8 +279,9 @@ meistens nicht zu kompliziert, sondern nur mit etwas verwoben, das es nicht
 braucht. `fehlerTextId()` und der Ordner-Parameter von `ResponseCache` sind
 beides Beispiele dafür.
 
-Gemeinsame Helfer für die zweite Art stehen in `test/…/Quellen.kt` —
+Gemeinsame Helfer für die zweite Art stehen in `core-testing/…/Quellen.kt` —
 insbesondere `fenster()` (misst ZEILEN, nicht Zeichen) und `ohneKommentare()`.
+`Quellen.wurzel` legt die Quellen aller Module zu einem Baum zusammen.
 
 ## Release signieren
 

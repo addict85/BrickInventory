@@ -10,7 +10,7 @@ import org.junit.Test
 class ResourceAndCacheTest {
 
     private fun read(rel: String): String {
-        val f = java.io.File("src/main/java/ch/brickinventoryapp/$rel")
+        val f = java.io.File(Quellen.wurzel, "$rel")
         assert(f.exists()) { "Datei nicht gefunden: $rel" }
         return f.readText()
     }

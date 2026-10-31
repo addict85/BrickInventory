@@ -38,7 +38,6 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
 const ROOT = path.join(__dirname, '..');
-const APP = path.join(ROOT, '..', 'Android-App', 'app', 'src', 'main', 'java', 'ch', 'brickinventoryapp');
 const _req = require('./helpers/sources').buildAndRequire();
 const { routerEinhaengungen } = require('./helpers/sources');
 const db = _req('db/database.js');
@@ -46,6 +45,7 @@ const express = require(path.join(ROOT, 'node_modules', 'express'));
 const bcrypt  = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const PDFDocument = require('pdfkit');
 const { kotlinModelle, schreibRouten, pruefe } = require(path.join(ROOT, 'scripts', 'kotlin-vertrag.js'));
+const { quellwurzeln } = require('./helpers/android');
 
 const NAME = `kschreib_${process.pid}`, PASS = 'VertragsPasswort1!';
 const SET = '99075-1', SET2 = '99076-1', TEIL = '3001ks', FARBE = 5, FARBE2 = 1, FIGUR = 'ks0001';
@@ -157,8 +157,8 @@ test('die Schreibantworten passen zu den Kotlin-Modellen', { concurrency: 1, tim
   t.after(() => new Promise(r => srv.close(r)));
   const basis = `http://127.0.0.1:${srv.address().port}`;
 
-  const modelle = kotlinModelle(APP);
-  const routen = schreibRouten(path.join(APP, 'data', 'api'));
+  const modelle = kotlinModelle(quellwurzeln());
+  const routen = schreibRouten(path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'data', 'api'));
   const typJe = new Map(routen.map(r => [`${r.methode} ${r.pfad}`, r.typ]));
 
   /** Werte für die Platzhalter im Pfad; Schritte tragen neue nach. */

@@ -33,7 +33,6 @@ const fs     = require('node:fs');
 const path   = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
-const APP  = path.join(ROOT, '..', 'Android-App/app/src/main/java/ch/brickinventoryapp');
 
 const { ohneKommentare } = require('./helpers/sources');
 
@@ -42,7 +41,7 @@ const lies = (p) => fs.readFileSync(p, 'utf8');
 test('Finanzen-Filter: dieselben vier Arten in Webapp und App', () => {
   const html = lies(path.join(ROOT, 'public/index.html'));
   const web  = ohneKommentare(lies(path.join(ROOT, 'public/js/04-finance.js')));
-  const kt   = ohneKommentare(lies(path.join(APP, 'ui/screens/FinanceSections.kt')));
+  const kt   = ohneKommentare(lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-finanzen', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'FinanceSections.kt')));
 
   // ── 1. Dieselben Schluessel ──────────────────────────────────────────────
   const appArten = [...kt.matchAll(/KategorieChip\("(\w+)"/g)].map(m => m[1]);
@@ -61,7 +60,7 @@ test('Finanzen-Filter: dieselben vier Arten in Webapp und App', () => {
   }
 
   // ── 2. Dieselbe Regel „leer heisst alle" ─────────────────────────────────
-  const zustand = ohneKommentare(lies(path.join(APP, 'ui/ZustandFinanzen.kt')));
+  const zustand = ohneKommentare(lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-finanzen', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'ZustandFinanzen.kt')));
   assert.ok(/fun zeigt\(kategorie: String\): Boolean = kategorien\.isEmpty\(\) \|\| kategorie in kategorien/
     .test(zustand), 'Die Regel der App steht nicht mehr, wo dieser Test sie erwartet');
   assert.ok(/function finZeigt\(art\)\{ return finKategorien\.size === 0 \|\| finKategorien\.has\(art\); \}/

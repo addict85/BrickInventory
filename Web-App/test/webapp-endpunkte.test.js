@@ -275,8 +275,7 @@ const NUR_WEB = new Map([
 ]);
 
 test('was nur die Webapp kann, hat einen Grund', () => {
-  const SERVICE = path.join(ROOT, '..', 'Android-App', 'app', 'src', 'main',
-    'java', 'ch', 'brickinventoryapp', 'data', 'api');
+  const SERVICE = path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'data', 'api');
   assert.ok(fs.existsSync(SERVICE), `App-Schnittstelle nicht gefunden unter ${SERVICE}`);
   const { apiQuelltext } = require('../scripts/kotlin-vertrag.js');
 

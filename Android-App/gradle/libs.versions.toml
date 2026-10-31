@@ -237,6 +237,9 @@ coil-compose                        = { group = "io.coil-kt.coil3",           na
 # aus dem Netz — der Weg ueber http(s) steckt in einem eigenen Artefakt.
 # Ohne das zeigt die App stumm keine Bilder mehr.
 coil-network-okhttp                 = { group = "io.coil-kt.coil3",           name = "coil-network-okhttp",               version.ref = "coil" }
+# ImageLoader steht in der öffentlichen Schnittstelle der Datenschicht (NetzModule);
+# bisher nur über coil-compose geholt, jetzt beim Namen, weil core-data kein Compose hat.
+coil-core                           = { group = "io.coil-kt.coil3",           name = "coil-core",                         version.ref = "coil" }
 kotlinx-coroutines-android          = { group = "org.jetbrains.kotlinx",      name = "kotlinx-coroutines-android",        version.ref = "coroutines" }
 androidx-ui-tooling                 = { group = "androidx.compose.ui",        name = "ui-tooling" }
 camerax-core                        = { group = "androidx.camera",            name = "camera-core",                       version.ref = "camerax" }
@@ -257,8 +260,23 @@ androidx-ui-test-manifest           = { group = "androidx.compose.ui",        na
 glance-appwidget                    = { group = "androidx.glance",            name = "glance-appwidget",                  version.ref = "glance" }
 glance-material3                    = { group = "androidx.glance",            name = "glance-material3",                  version.ref = "glance" }
 
+# Was fast jedes Modul braucht, an einer Stelle — die Module nennen nur noch die Gruppe.
+[bundles]
+compose = [
+    "androidx-ui", "androidx-ui-graphics", "androidx-ui-tooling-preview", "androidx-material3",
+    "androidx-material-icons-extended", "androidx-lifecycle-runtime-compose",
+    "androidx-lifecycle-viewmodel-compose", "androidx-activity-compose", "hilt-navigation-compose",
+    "coil-compose",
+]
+unit-tests = ["junit", "json", "kotlinx-coroutines-test", "okhttp-mockwebserver"]
+camera = ["camerax-core", "camerax-camera2", "camerax-lifecycle", "camerax-view", "accompanist-permissions"]
+
 [plugins]
 android-application     = { id = "com.android.application",                    version.ref = "agp" }
+android-library         = { id = "com.android.library",                        version.ref = "agp" }
+# Lint für das reine Kotlin-Modul core-model, damit checkDependencies der App es mitprüft.
+android-lint            = { id = "com.android.lint",                           version.ref = "agp" }
+kotlin-jvm              = { id = "org.jetbrains.kotlin.jvm",                   version.ref = "kotlin" }
 kotlin-compose          = { id = "org.jetbrains.kotlin.plugin.compose",        version.ref = "kotlin" }
 hilt                    = { id = "com.google.dagger.hilt.android",             version.ref = "hilt" }
 kotlin-serialization    = { id = "org.jetbrains.kotlin.plugin.serialization",  version.ref = "kotlin" }

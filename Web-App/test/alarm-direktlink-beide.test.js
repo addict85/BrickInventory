@@ -36,9 +36,9 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { ROOT, ohneKommentare } = require('./helpers/sources');
+const { androidDatei } = require('./helpers/android');
 
-const APP = path.join(ROOT, '../Android-App/app/src/main/java/ch/brickinventoryapp');
-const app = (rel) => ohneKommentare(fs.readFileSync(path.join(APP, rel), 'utf8'));
+const app = (rel) => ohneKommentare(fs.readFileSync(androidDatei(rel), 'utf8'));
 const web = (rel) => ohneKommentare(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
 
 test('1. die Benachrichtigung trägt ein Ziel', () => {

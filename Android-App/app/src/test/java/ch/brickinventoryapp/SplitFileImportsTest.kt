@@ -24,7 +24,7 @@ import org.junit.Test
 class SplitFileImportsTest {
 
     private fun read(rel: String): String {
-        val f = java.io.File("src/main/java/ch/brickinventoryapp/$rel")
+        val f = java.io.File(Quellen.wurzel, "$rel")
         assert(f.exists()) { "Datei nicht gefunden: $rel" }
         return f.readText()
     }
@@ -66,7 +66,7 @@ class SplitFileImportsTest {
             "Outlined" to "androidx.compose.material.icons.outlined.",
             "Rounded" to "androidx.compose.material.icons.rounded.",
         )
-        val wurzel = java.io.File("src/main/java/ch/brickinventoryapp")
+        val wurzel = Quellen.wurzel
         val fehler = mutableListOf<String>()
         // Untergrenze (Nachtrag 118): ein leerer Dateilauf lässt jede
         // Sammelprüfung darunter stillschweigend bestehen.
@@ -126,7 +126,7 @@ class SplitFileImportsTest {
             "androidx.compose.material3.ExposedDropdownMenu" to
                 "Mitglied von ExposedDropdownMenuBoxScope — im Rumpf der Box ohnehin da",
         )
-        val wurzel = java.io.File("src/main/java/ch/brickinventoryapp")
+        val wurzel = Quellen.wurzel
         val dateien = wurzel.walkTopDown().filter { it.extension == "kt" }.toList()
         check(dateien.size >= 20) {
             "Zu wenige Kotlin-Dateien unter ${'$'}{wurzel.path} — Pfad veraltet? Ohne " +
@@ -188,7 +188,7 @@ class SplitFileImportsTest {
     @Test
     fun `kein deutsches Anfuehrungszeichen beendet eine Zeichenkette`() {
         val muster = Regex("""\u201e[^"\n]*(?<!\\)"[A-Za-z.]""")
-        val dateien = (Quellen.alle() + java.io.File("src/test/java")
+        val dateien = (Quellen.alle() + Quellen.tests
             .walkTopDown().filter { it.isFile && it.extension == "kt" }).toList()
         check(dateien.size >= 100) {
             "Nur ${'$'}{dateien.size} Kotlin-Dateien gelesen — Pfad veraltet? Ohne Treffer " +
@@ -252,7 +252,7 @@ class SplitFileImportsTest {
         //
         // Die Antwort ist `internal`: sichtbar im Modul, weiterhin nicht Teil
         // einer öffentlichen Schnittstelle.
-        val wurzel = java.io.File("src/main/java/ch/brickinventoryapp")
+        val wurzel = Quellen.wurzel
         // Untergrenze (Nachtrag 118): ein leerer Dateilauf lässt jede
         // Sammelprüfung darunter stillschweigend bestehen.
         check(wurzel.walkTopDown().count { it.extension == "kt" } >= 20) {
@@ -322,7 +322,7 @@ class SplitFileImportsTest {
             "FlowRow" to "ExperimentalLayoutApi",
             "FlowColumn" to "ExperimentalLayoutApi",
         )
-        val wurzel = java.io.File("src/main/java/ch/brickinventoryapp")
+        val wurzel = Quellen.wurzel
         val fehler = mutableListOf<String>()
 
         // Untergrenze (Nachtrag 118): Ein Dateilauf, der nichts findet, lässt
@@ -398,7 +398,7 @@ class SplitFileImportsTest {
         //
         // Die bisherigen Prüfungen fragten, ob ein BENUTZTER Name gedeckt ist.
         // Diese fragt umgekehrt: Zeigt jeder Import auf etwas, das es gibt?
-        val wurzel = java.io.File("src/main/java/ch/brickinventoryapp")
+        val wurzel = Quellen.wurzel
         // Untergrenze (Nachtrag 118): ein leerer Dateilauf lässt jede
         // Sammelprüfung darunter stillschweigend bestehen.
         check(wurzel.walkTopDown().count { it.extension == "kt" } >= 20) {

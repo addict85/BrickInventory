@@ -172,19 +172,22 @@ jobs:
         # set -o pipefail: Ohne das bestimmt tee den Rueckgabewert, und ein
         # roter Testlauf ginge als Erfolg durch. Dieselbe Falle wie im
         # Web-Workflow.
+        #
+        # testDebugUnitTest läuft in jedem Android-Modul; core-model ist reines
+        # Kotlin und hat stattdessen `test`.
         run: |
           set -o pipefail
-          ./gradlew --no-daemon testDebugUnitTest recordRoborazziDebug 2>&1 | tee "$RUNNER_TEMP/test.log"
+          ./gradlew --no-daemon testDebugUnitTest :core-model:test recordRoborazziDebug 2>&1 | tee "$RUNNER_TEMP/test.log"
 
-      # Room schreibt das Schema beim Übersetzen nach app/schemas und lässt eine
+      # Room schreibt das Schema beim Übersetzen nach core-data/schemas und lässt eine
       # Datei stehen, solange ihr Aufbau gleich bleibt. Steht danach etwas
       # anderes da als eingecheckt, fehlt eine Fassung samt Migration.
       - name: Room-Schema eingecheckt?
         run: |
-          geaendert=$(git status --porcelain -- app/schemas)
+          geaendert=$(git status --porcelain -- core-data/schemas)
           if [ -n "$geaendert" ]; then
             echo "::error title=Room-Schema::Das Schema der Datenbank weicht vom eingecheckten ab — Fassung erhöhen, Migration schreiben, Datei einchecken:%0A$geaendert"
-            git diff -- app/schemas > "$RUNNER_TEMP/schema.diff"
+            git diff -- core-data/schemas > "$RUNNER_TEMP/schema.diff"
             head -80 "$RUNNER_TEMP/schema.diff"
             exit 1
           fi
@@ -311,11 +314,15 @@ jobs:
       # R8 läuft nur im Release-Build (isMinifyEnabled = true). Der Lint-Bericht
       # ist deshalb gerade hier interessant; abbrechen soll er nicht, das
       # entspricht abortOnError = false im Buildskript.
+      #
+      # Nur :app: — mit checkDependencies prüft sein Lauf alle Module mit, und
+      # ein Bericht bleibt einer. Je Modul einzeln hielte Lint jeden Text in
+      # core-ressourcen für unbenutzt, weil erst die Bereiche ihn lesen.
       - name: Lint
         id: lint
         run: |
           set -o pipefail
-          ./gradlew --no-daemon lintRelease 2>&1 | tee "$RUNNER_TEMP/lint.log"
+          ./gradlew --no-daemon :app:lintRelease 2>&1 | tee "$RUNNER_TEMP/lint.log"
         continue-on-error: true
 
       # ── Wie viele Warnungen wirft der Übersetzer? ──────────────────────────
@@ -431,7 +438,7 @@ jobs:
         run: |
           python3 tools/apk-pruefen.py \
             app/build/outputs/apk/release/BrickInventory.apk \
-            app/src/main/java
+            */src/main/java
 
       # ── 16-KB-Speicherseiten am ERGEBNIS messen ─────────────────────────────
       #
@@ -530,7 +537,7 @@ jobs:
         with:
           name: testberichte
           path: |
-            Android-App/app/build/reports/tests/
+            Android-App/*/build/reports/tests/
             Android-App/app/build/reports/lint-results-release.html
           # Scheitert der Lauf VOR den Tests, gibt es keine Berichte. Das ist
           # dann kein zusätzlicher Fehler, sondern nur eine Folge — ohne diese
@@ -766,7 +773,7 @@ jobs:
         run: |
           chmod +x gradlew
           ./gradlew --no-daemon --continue --write-verification-metadata sha256,pgp --export-keys \
-            testDebugUnitTest recordRoborazziDebug assembleRelease bundleRelease lintRelease \
+            testDebugUnitTest :core-model:test recordRoborazziDebug assembleRelease bundleRelease :app:lintRelease \
             || echo "::warning::Gradle meldete einen Fehler (Lint oder Test); die Prüfsummen sind trotzdem geschrieben."
           test -s gradle/verification-metadata.xml
           test -s gradle/verification-keyring.keys

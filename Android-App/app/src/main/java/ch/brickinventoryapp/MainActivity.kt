@@ -38,7 +38,7 @@ import coil3.ImageLoader
 import androidx.compose.foundation.Image
 import androidx.compose.ui.res.painterResource
 import androidx.compose.runtime.CompositionLocalProvider
-import ch.brickinventoryapp.R
+import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.components.LocalAppFassung
 import ch.brickinventoryapp.util.AppFassung
 import ch.brickinventoryapp.ui.viewmodel.CatalogViewModel

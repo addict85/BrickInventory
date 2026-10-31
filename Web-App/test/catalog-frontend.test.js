@@ -309,7 +309,7 @@ test('Katalog-Frontend: Seitenblöcke, Jahresfilter, eigener Scrollbalken', asyn
       else if (e.name.endsWith('.kt')) kotlin.push(abs);
     }
   };
-  gehen(path.join(__dirname, '..', '..', 'Android-App', 'app', 'src', 'main'));
+  for (const w of require('./helpers/android').quellwurzeln()) gehen(w);
   check('die App-Quellen sind auffindbar', kotlin.length >= 40, kotlin.length);
   if (kotlin.length >= 40) {
     const kQuelle = kotlin.map(f => fs.readFileSync(f, 'utf8')).join('\n');

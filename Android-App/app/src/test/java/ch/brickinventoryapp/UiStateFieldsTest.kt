@@ -27,7 +27,7 @@ import org.junit.Test
  */
 class UiStateFieldsTest {
 
-    private val wurzel = java.io.File("src/main/java/ch/brickinventoryapp")
+    private val wurzel = Quellen.wurzel
 
     // Kommentare über Quellen.ohneKommentare(): Das frühere Muster hier lief
     // über die GANZE Datei und ist in dieser Reihe schon zweimal in Kotlins
@@ -398,6 +398,51 @@ class UiStateFieldsTest {
                 fehler.sorted().joinToString("\n  ") +
                 "\nEntweder fehlt die Anzeige, die sie auswerten sollte — dann ist " +
                 "es ein Fehler, den niemand sieht — oder das Feld gehoert geloescht."
+        }
+    }
+
+    // Aus ZustandsflussBreiteTest: Ein Sammler, der seinen Zustand nirgends
+    // verwendet, rekomponiert ausschliesslich umsonst.
+    @Test
+    fun `wer einen Fluss sammelt, benutzt ihn auch`() {
+        // Ein Sammler, der kein Feld liest, rekomponiert ausschliesslich
+        // umsonst. Das ist der allgemeine Fall des Befunds oben — und der
+        // einzige, der sich ohne Kenntnis der Aenderungshaeufigkeit hart
+        // pruefen laesst.
+        val fluesse = Quellen.zustandsFluesse()          // galleryState → GalleryUiState
+        assert(fluesse.isNotEmpty()) { "Keine Zustandsfluesse gefunden — Muster veraltet?" }
+
+        val blind = mutableListOf<String>()
+        var geprueft = 0
+        for (datei in Quellen.alle()) {
+            val s = Quellen.ohneKommentare(datei.readText())
+            Regex("""\bval\s+(\w+)\s+by\s+vm\.(\w+)\.collectAsStateWithLifecycle""")
+                .findAll(s).forEach { m ->
+                    val name = m.groupValues[1]
+                    if (m.groupValues[2] !in fluesse) return@forEach
+                    geprueft++
+                    // ── Warum „benutzt" und nicht „liest ein Feld" ──────────
+                    // Der erste Entwurf verlangte einen Feldzugriff `name.feld`
+                    // und meldete damit SettingsScreen: Der Bildschirm sammelt
+                    // `household` und reicht es als GANZES weiter
+                    // (`state = household`), ohne selbst ein Feld zu lesen. Das
+                    // ist voellig richtig so — und ein Test, der korrekten Code
+                    // anmeckert, wird abgeschaltet statt befolgt (siehe den
+                    // gleichlautenden Hinweis in Quellen.kt).
+                    //
+                    // Geprueft wird deshalb das Schwaechere, aber Zutreffende:
+                    // Der gesammelte Zustand muss ueberhaupt irgendwo benutzt
+                    // werden. Das faengt weiterhin den einzigen Fall, der immer
+                    // falsch ist — sammeln und gar nicht verwenden.
+                    val benutzt = Regex("""\b$name\b""").findAll(s).count() > 1
+                    if (!benutzt) blind += "${datei.name}: $name (${m.groupValues[2]})"
+                }
+        }
+        assert(geprueft >= 10) { "Nur $geprueft Sammelstellen gefunden — Muster veraltet?" }
+        assert(blind.isEmpty()) {
+            "Diese Stellen sammeln einen Zustandsfluss, benutzen ihn aber nirgends — " +
+                "sie rekomponieren bei jeder Aenderung, ohne etwas davon zu zeigen:\n  " +
+                blind.joinToString("\n  ")
         }
     }
 }

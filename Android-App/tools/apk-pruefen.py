@@ -37,7 +37,7 @@ Code weg war. Er hatte recht — die Ursache lag eine Stufe davor.
    die Erklaerung fuer den ungeklaerten Start-Absturz, der im Manifest
    beschrieben steht.
 
-Aufruf: apk-pruefen.py <app.apk> <quellverzeichnis>
+Aufruf: apk-pruefen.py <app.apk> <quellverzeichnis> [<quellverzeichnis> …]
 """
 import re
 import struct
@@ -123,7 +123,8 @@ def fehler(text: str) -> None:
 
 
 def main() -> int:
-    apk, quelle = Path(sys.argv[1]), Path(sys.argv[2])
+    # Ein Quellordner je Modul: Seit der Aufteilung stehen die Texte-Nutzer in allen.
+    apk, quellen = Path(sys.argv[1]), [Path(p) for p in sys.argv[2:]]
     z = zipfile.ZipFile(apk)
     schlimm = []
 
@@ -184,7 +185,7 @@ def main() -> int:
     # ── 2. Benutzte Strings muessen im APK stehen ───────────────────────────
     arsc = z.read('resources.arsc')
     benutzt = {}
-    for kt in quelle.rglob('*.kt'):
+    for kt in (k for q in quellen for k in q.rglob('*.kt')):
         for treffer in re.finditer(r'R\.string\.([a-z0-9_]+)', kt.read_text(encoding='utf-8')):
             benutzt.setdefault(treffer.group(1), kt.name)
 

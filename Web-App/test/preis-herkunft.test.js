@@ -20,7 +20,6 @@ const path = require('node:path');
  */
 
 const WURZEL = path.join(__dirname, '..');
-const APP = path.join(WURZEL, '..', 'Android-App', 'app', 'src', 'main', 'java', 'ch', 'brickinventoryapp');
 
 function ohneKommentare(text) {
   return text.replace(/\/\*[\s\S]*?\*\//g, '')
@@ -106,7 +105,7 @@ test('beide Oberflaechen zeigen den Hinweis, aus je EINER Stelle', () => {
     'Der Hinweis fehlt bei einer der beiden Erfassungen (Teile / Figuren)');
 
   const app = ohneKommentare(fs.readFileSync(
-    path.join(APP, 'ui', 'viewmodel', 'TeileViewModel.kt'), 'utf8'));
+    path.join(__dirname, '..', '..', 'Android-App', 'feature-teile', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'viewmodel', 'TeileViewModel.kt'), 'utf8'));
   assert.strictEqual((app.match(/fun erfassungsMeldung\(/g) || []).length, 1,
     'Der Hinweis der App ist nicht an genau einer Stelle gebaut');
   // `= erfassungsMeldung(` misst die AUFRUFE. Ein blosses
@@ -131,8 +130,8 @@ test('die Texte gibt es in beiden Sprachen und beiden Oberflaechen', () => {
   // Gewinn an Kuerze war einer, den niemand sieht; der Verlust ist eine
   // Bruecke in den Android-Baum, die still ins Leere zeigen koennte.
   const STRINGS = [
-    path.join(WURZEL, '..', 'Android-App', 'app', 'src', 'main', 'res', 'values', 'strings.xml'),
-    path.join(WURZEL, '..', 'Android-App', 'app', 'src', 'main', 'res', 'values-de', 'strings.xml'),
+    path.join(__dirname, '..', '..', 'Android-App', 'core-ressourcen', 'src', 'main', 'res', 'values', 'strings.xml'),
+    path.join(__dirname, '..', '..', 'Android-App', 'core-ressourcen', 'src', 'main', 'res', 'values-de', 'strings.xml'),
   ];
   for (const datei of STRINGS) {
     const xml = fs.readFileSync(datei, 'utf8');

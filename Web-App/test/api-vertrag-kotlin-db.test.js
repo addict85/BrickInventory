@@ -40,11 +40,11 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
 const ROOT = path.join(__dirname, '..');
-const APP = path.join(ROOT, '..', 'Android-App', 'app', 'src', 'main', 'java', 'ch', 'brickinventoryapp');
 const _req = require('./helpers/sources').buildAndRequire();
 const { routerEinhaengungen } = require('./helpers/sources');
 const { haeltSet, haeltTeil, haeltFigur } = require('./helpers/bestand');
 const { kotlinModelle, apiRouten, pruefe, FEHLEN_ERLAUBT } = require(path.join(ROOT, 'scripts', 'kotlin-vertrag.js'));
+const { quellwurzeln } = require('./helpers/android');
 const db = _req('db/database.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 
@@ -195,8 +195,8 @@ test('die Antworten passen zu den Kotlin-Modellen', { concurrency: 1, timeout: 1
   t.after(() => new Promise(r => srv.close(r)));
   const basis = `http://127.0.0.1:${srv.address().port}`;
 
-  const modelle = kotlinModelle(APP);
-  const routen = apiRouten(path.join(APP, 'data', 'api'));
+  const modelle = kotlinModelle(quellwurzeln());
+  const routen = apiRouten(path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'data', 'api'));
   const werte = { setNumber: SET, partNumber: TEIL, colorId: String(FARBE), figNumber: FIGUR };
 
   const abweichungen = [], leer = [], status = [];

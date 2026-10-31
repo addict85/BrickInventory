@@ -4,6 +4,7 @@
     <!-- Schweizer Rechtschreibung (ss statt ß, die App rechnet in CHF); Lint prüft
          gegen die bundesdeutsche und hielte „Vergrössern“ für einen Tippfehler. -->
     <issue id="Typos">
-        <ignore path="src/main/res/values-de/strings.xml" />
+        <!-- Als Muster: Mit checkDependencies liegt die Datei in core-ressourcen. -->
+        <ignore regexp="values-de/strings\.xml" />
     </issue>
 </lint>

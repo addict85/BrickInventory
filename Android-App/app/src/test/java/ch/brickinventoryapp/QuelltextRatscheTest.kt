@@ -23,16 +23,21 @@ import java.io.File
  * 54 seit die Bildadressen, das Katalogmodell, erfassungsWerte und die Teilefilter
  * ausgeführt werden (ThumbFallback-, NoDirectCdnAccess-, CatalogUsesLocalImages-,
  * AddPathOwner-, ListenfilterImZustandTest).
+ * 53 seit der Aufteilung in Module: Gezählt wird über die Tests aller Module;
+ * ModulgrenzenTest kam als Strukturprüfung dazu, ZustandsflussBreiteTest prüft
+ * die übersetzten Klassen, BarcodeDoubleAddGuardTest ging in Verhaltens- und
+ * Verdrahtungstests auf.
  */
 class QuelltextRatscheTest {
 
     private val liest = Regex("""Quellen\.|"src/main/|File\("src/main|\.\./\.\./\.github|res/values""")
-    private val fuehrtAus = Regex("""^import ch\.brickinventoryapp\.(?!R$)\w+\.""", RegexOption.MULTILINE)
+    private val fuehrtAus = Regex("""^import ch\.brickinventoryapp\.(?!R$|ressourcen\.R$)\w+\.""", RegexOption.MULTILINE)
 
     @Test
     fun `reine Quelltext-Tests werden weniger, nie mehr`() {
-        val SCHRANKE = 54
-        val alle = File("src/test/java/ch/brickinventoryapp").listFiles { f -> f.name.endsWith("Test.kt") }.orEmpty()
+        val SCHRANKE = 53
+        // Die Tests aller Module; seit der Aufteilung liegen sie neben ihrem Code.
+        val alle = Quellen.tests.walkTopDown().filter { it.isFile && it.name.endsWith("Test.kt") }.toList()
         assert(alle.size >= 100) { "Nur ${alle.size} Testdateien gefunden — greift die Suche noch?" }
         val nur = alle.filter { it.name != "QuelltextRatscheTest.kt" }.filter {
             val s = it.readText()

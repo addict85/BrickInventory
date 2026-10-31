@@ -15,9 +15,6 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 const read = f => fs.readFileSync(path.join(ROOT, f), 'utf8');
-const KOTLIN_SCREENS = path.join(ROOT, '..', 'Android-App', 'app', 'src', 'main',
-                                 'java', 'ch', 'brickinventoryapp', 'ui', 'screens');
-
 // ── Punkt 1 ────────────────────────────────────────────────────────────────
 test('die Session-ID wird beim Anmelden erneuert', () => {
   const auth = read('src/konto/http/anmeldung.ts');
@@ -168,9 +165,9 @@ test('kein Token reitet mehr in der Adresszeile', () => {
     // Android-Baum statisch auf und kann ein variables Segment nicht sehen.
     // Der erste Entwurf dieser Stelle hatte genau das — und wurde von jener
     // Pruefung prompt als „nicht aufloesbar" gemeldet.
-    ...[path.join(KOTLIN_SCREENS, 'SetDetailSections.kt'),
-        path.join(KOTLIN_SCREENS, 'SetDetailScreen.kt'),
-        path.join(KOTLIN_SCREENS, 'PdfViewerScreen.kt')]
+    ...[path.join(__dirname, '..', '..', 'Android-App', 'feature-sammlung', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'SetDetailSections.kt'),
+        path.join(__dirname, '..', '..', 'Android-App', 'feature-sammlung', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'SetDetailScreen.kt'),
+        path.join(__dirname, '..', '..', 'Android-App', 'feature-finanzen', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'PdfViewerScreen.kt')]
       .map(voll => {
         assert.ok(fs.existsSync(voll),
           `${path.basename(voll)} steht nicht mehr dort — Pfad im Test veraltet`);

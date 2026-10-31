@@ -49,16 +49,18 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { ROOT, ohneKommentare } = require('./helpers/sources');
 
-// Als EIN Pfad und nicht als acht Segmente: test/baumbruecken.test.js zählt die
-// Brücken zwischen den beiden Bäumen und will sie lesen können.
-const APP_UI = path.join(ROOT, '../Android-App/app/src/main/java/ch/brickinventoryapp/ui');
+const { quellwurzeln } = require('./helpers/android');
 
-/** Alle Kotlin-Dateien der Oberfläche. `theme` ist die Skala, kein Bildschirm. */
-function quellen(verzeichnis = APP_UI, raus = []) {
+/** Alle Kotlin-Dateien der Oberfläche, aus allen Modulen. `theme` ist die Skala, kein Bildschirm. */
+function quellen(verzeichnis = null, raus = []) {
+  if (verzeichnis === null) {
+    for (const w of quellwurzeln()) if (fs.existsSync(path.join(w, 'ui'))) quellen(path.join(w, 'ui'), raus);
+    return raus;
+  }
   for (const e of fs.readdirSync(verzeichnis, { withFileTypes: true })) {
     const p = path.join(verzeichnis, e.name);
     if (e.isDirectory()) { if (e.name !== 'theme') quellen(p, raus); }
-    else if (e.name.endsWith('.kt')) raus.push([path.relative(APP_UI, p), fs.readFileSync(p, 'utf8')]);
+    else if (e.name.endsWith('.kt')) raus.push([p.slice(p.lastIndexOf(path.sep + 'ui' + path.sep) + 4), fs.readFileSync(p, 'utf8')]);
   }
   return raus;
 }

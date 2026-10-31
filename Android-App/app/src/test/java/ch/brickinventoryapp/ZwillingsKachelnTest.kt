@@ -46,7 +46,7 @@ import org.junit.Test
 class ZwillingsKachelnTest {
 
     private fun read(rel: String) =
-        java.io.File("src/main/java/ch/brickinventoryapp/$rel").readText()
+        java.io.File(Quellen.wurzel, "$rel").readText()
     private fun code(s: String) = s.lines()
         .joinToString("\n") { if (it.trim().startsWith("//") || it.trim().startsWith("*")) "" else it }
 

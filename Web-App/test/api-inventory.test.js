@@ -438,8 +438,6 @@ test('keine verwaisten Klassifikations-Einträge', () => {
  * ruft, waere weiterhin unbemerkt falsch.
  */
 function androidAdressen() {
-  const wurzel = path.join(ROOT, '..', 'Android-App', 'app', 'src', 'main', 'java');
-  assert.ok(fs.existsSync(wurzel), `Android-Quellbaum nicht gefunden unter ${wurzel}`);
   const gefunden = new Set();
   const lauf = (d) => {
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
@@ -458,7 +456,8 @@ function androidAdressen() {
           gefunden.add(`${v} ${vergleichbar(m[1])}`);
     }
   };
-  lauf(wurzel);
+  // Alle Module der App: Dienst-Interfaces in core-data, Adressen auch in den Bereichen.
+  for (const w of require('./helpers/android').quellwurzeln()) lauf(w);
   return gefunden;
 }
 

@@ -22,8 +22,7 @@ const path = require('path');
 const WURZEL = path.join(__dirname, '..', '..');
 const QUELLE = path.join(WURZEL, 'shared', 'design-tokens.json');
 const ZIEL_CSS = path.join(WURZEL, 'Web-App', 'public', 'tokens.css');
-const ZIEL_KT = path.join(WURZEL, 'Android-App', 'app', 'src', 'main', 'java',
-  'ch', 'brickinventoryapp', 'ui', 'theme', 'DesignTokens.kt');
+const ZIEL_KT = path.join(__dirname, '..', '..', 'Android-App', 'core-ui', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'theme', 'DesignTokens.kt');
 const ZIEL_DUNKEL_KT = path.join(path.dirname(ZIEL_KT), 'DunkelTokens.kt');
 
 const HINWEIS = 'ERZEUGT aus shared/design-tokens.json — NICHT von Hand aendern.';
