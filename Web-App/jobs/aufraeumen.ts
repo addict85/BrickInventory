@@ -3,8 +3,8 @@
  * Fehler und lässt die übrigen laufen; scheitert einer, wiederholt der Worker
  * den ganzen Lauf — alle Schritte vertragen das.
  */
-import { purgeExpiredTokens } from '../utils/auth';
-import { raeumeAnmeldezaehlerAuf } from '../utils/loginLimiter';
+import { purgeExpiredTokens } from '../src/konto/auth';
+import { raeumeAnmeldezaehlerAuf } from '../src/konto/loginLimiter';
 import { raeumePapierkorbAuf } from '../utils/papierkorb';
 import { cleanOldPdfJobs } from '../utils/pdfAuftraege';
 import { raeumeErledigteAuf } from '../utils/auftraege';

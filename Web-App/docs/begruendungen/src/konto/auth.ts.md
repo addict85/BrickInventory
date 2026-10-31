@@ -1,6 +1,6 @@
-# Begründungen zu `utils/auth.ts`
+# Begründungen zu `src/konto/auth.ts`
 
-Die ausführlichen Kommentare aus `utils/auth.ts`, wörtlich. Im Code steht je
+Die ausführlichen Kommentare aus `src/konto/auth.ts`, wörtlich. Im Code steht je
 Stelle der erste Absatz und ein Verweis hierher. Neue Geschichte gehört in die
 Commit-Nachricht (siehe CLAUDE.md).
 
@@ -272,7 +272,7 @@ unterscheidet die beiden Aufrufer, und es ist der einzige Unterschied.
 @param req      Für den Brute-Force-Zähler (IP) gebraucht.
 @param username Benutzername ODER E-Mail-Adresse.
 @param password Klartext-Passwort aus dem Request.
-@param code     Einmal- oder Wiederherstellungscode (utils/zweiterFaktor.ts).
+@param code     Einmal- oder Wiederherstellungscode (src/konto/zweiterFaktor.ts).
 ```
 
 <a id="abschnitt-2"></a>

@@ -9,7 +9,7 @@ import * as db from '../db/database';
 import { recordAcquisitionForDay } from './acquisitions';
 import { withInventoryLock, bestandsSchluessel } from '../db/txLock';
 import { kaufpreisAusEingabe, manuellerKaufpreis } from './preisRegel';
-import { zustandFuerPreis } from './settings';
+import { zustandFuerPreis } from '../src/konto/settings';
 import { resolvePartCondition, marktpreisMitHerkunft, getCurrentPartMarketPrice } from './marketPrice';
 import { lookupPart } from '../clients/rebrickable';
 import { farbliste, KEINE_FARBE } from './farben';

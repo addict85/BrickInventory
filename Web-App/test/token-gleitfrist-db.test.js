@@ -43,7 +43,7 @@ const { buildAndRequire, einhaengung } = require('./helpers/sources');
 const _req = buildAndRequire();
 const AUTH = einhaengung('auth');
 const db   = _req('db/database.js');
-const auth = _req('utils/auth.js');
+const auth = _req('src/konto/auth.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const session = require(path.join(ROOT, 'node_modules', 'express-session'));
 const pgSession = require(path.join(ROOT, 'node_modules', 'connect-pg-simple'))(session);
@@ -123,7 +123,7 @@ test('das Ablaufdatum des App-Tokens gleitet mit der Benutzung',
     // lange nicht benutzt worden. Dann EINE Anfrage mit dem Token — mehr tut
     // die App auch nicht.
     //
-    // Der Cache in utils/auth.ts wird vorher geleert: Er merkt sich pro Token,
+    // Der Cache in src/konto/auth.ts wird vorher geleert: Er merkt sich pro Token,
     // wann zuletzt geschrieben wurde (gedrosselt auf fuenf Minuten). Ohne das
     // Leeren haette die Anmeldung von eben den Eintrag schon gefuellt und die
     // Drossel wuerde den Schreibvorgang ueberspringen — der Test pruefte dann

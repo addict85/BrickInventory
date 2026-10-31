@@ -38,7 +38,7 @@ test('Setnummer aus der Anfrage bleibt ein Pfadsegment', { concurrency: 1 }, asy
     t.skip('Test-DB nicht erreichbar'); return;
   }
   { const c = await db.pool.connect(); try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); } }
-  const S = _req('utils/settings.js');
+  const S = _req('src/konto/settings.js');
   const vorher = await S.getGlobalSetting('rebrickable_api_key');
   await S.setGlobalSetting('rebrickable_api_key', 'testschluessel-pfade');
   const echt = https.get;

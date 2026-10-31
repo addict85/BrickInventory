@@ -2,6 +2,7 @@ import { konfig } from './konfig';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
+import { DATA_DIR } from './appPaths';
 
 /**
  * Geheimnisse (Gutschein-PIN, TOTP, API-Schlüssel, SMTP-Passwort) liegen
@@ -12,7 +13,6 @@ const PRAEFIX = 'v1:';
 let geladen: Buffer | null = null;
 
 function schluesselDatei(): string {
-  const { DATA_DIR } = require('./appPaths') as { DATA_DIR: string };
   return path.join(DATA_DIR, '.datenschluessel');
 }
 

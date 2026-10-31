@@ -147,7 +147,7 @@ zweiten Zeile gab es aber nur die erste, also kam deren Preis heraus.
 Nachtrag 146 hat dasselbe für das BEARBEITEN behoben. Das ERFASSEN
 hatte ich dabei übersehen; es sind zwei getrennte Wege.
 Beim Erfassen gibt es keine Zustandseingabe — dieselbe Staffelung wie
-beim Bearbeiten, nur ohne den ersten Schritt (utils/settings.ts).
+beim Bearbeiten, nur ohne den ersten Schritt (src/konto/settings.ts).
 ```
 
 <a id="abschnitt-3"></a>

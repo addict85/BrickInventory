@@ -48,7 +48,7 @@ test('Geheimnisse verschlüsselt', { concurrency: 1 }, async (t) => {
     await db.run('DELETE FROM users WHERE id = $1', [uid]);
     await db.pool.end().catch(() => {});
   });
-  const settings = _req('utils/settings.js');
+  const settings = _req('src/konto/settings.js');
 
   await t.test('globale Schlüssel', async () => {
     await settings.setGlobalSetting('brickset_api_key', 'klar-brickset-4242');
@@ -74,7 +74,7 @@ test('Geheimnisse verschlüsselt', { concurrency: 1 }, async (t) => {
   });
 
   await t.test('TOTP-Geheimnis', async () => {
-    const zf = _req('utils/zweiterFaktor.js');
+    const zf = _req('src/konto/zweiterFaktor.js');
     const geheimnis = await zf.beginneEinrichtung(uid);
     const roh = (await db.get('SELECT geheimnis FROM zweiter_faktor WHERE user_id = $1', [uid])).geheimnis;
     assert.ok(roh.startsWith('v1:') && !roh.includes(geheimnis), roh);

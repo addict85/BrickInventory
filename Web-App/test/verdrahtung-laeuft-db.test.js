@@ -127,7 +127,7 @@ test('die fünf Verdrahtungen über ihre echten Adressen', { concurrency: 1 }, a
   });
 
   await t.test('3. ein zu kurzes Passwort wird abgelehnt', async () => {
-    // passwortZuKurz() liegt in utils/auth.ts und gilt für Registrierung,
+    // passwortZuKurz() liegt in src/konto/auth.ts und gilt für Registrierung,
     // Anlegen durch den Admin und das Ändern. Zugesichert war bisher, dass
     // die Routen die Funktion NENNEN.
     await db.run(`INSERT INTO global_settings (key,value) VALUES ('registration_enabled','1')

@@ -89,7 +89,7 @@ Genau das steht auch als Platzhalter im Eingabefeld beider Oberflächen
   leer / ungültig      → unit_price = null,  purchase_price = Marktpreis
 
 Welcher Marktpreis, entscheidet der Zustand, und dessen Staffelung
-(Eingabe → Bestand → Benutzer-Standard) steht in utils/settings.ts. Ohne
+(Eingabe → Bestand → Benutzer-Standard) steht in src/konto/settings.ts. Ohne
 ihn bekäme ein als „gebraucht" geführtes Teil den Neupreis.
 
 @param roh          `body.unit_price` — Zahl, Text, leer, null oder fehlend.

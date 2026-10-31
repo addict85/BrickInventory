@@ -4,14 +4,14 @@
  */
 import { meldeUndLiefere } from '../src/infra/httpError';
 import * as db from '../db/database';
-import { asIds } from './household';
-import type { BlickfeldEingabe } from './household';
+import { asIds } from '../src/haushalt/haushalt';
+import type { BlickfeldEingabe } from '../src/haushalt/haushalt';
 import { fehlerWerfen } from '../src/infra/fehlerTexte';
 // Statisch und nicht als dynamischer Import: Einen Kreis gibt es nicht
 // (settings.ts kennt nur db und httpError), und `await import('./settings')`
 // verlangt unter moduleResolution node16 die Dateiendung — eine Schreibweise,
 // die im Baum sonst nirgends steht.
-import { setUserSetting } from './settings';
+import { setUserSetting } from '../src/konto/settings';
 
 /**
  * Wie lang ein Lagerortname höchstens sein darf.

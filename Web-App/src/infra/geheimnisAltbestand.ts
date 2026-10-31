@@ -1,6 +1,6 @@
 import * as db from '../../db/database';
 import { verschluessele, istVerschluesselt } from './geheimnis';
-import { verschluesseleGlobaleAltwerte } from '../../utils/settings';
+import { verschluesseleGlobaleAltwerte } from '../konto/settings';
 
 /**
  * Geheimnisse, die noch im Klartext liegen (aus der Zeit vor der Verschlüsselung),

@@ -292,7 +292,7 @@ async function legeAdminAn() {
     const plainPassword = useEnvPassword
       ? envPasswort
       : crypto.randomBytes(15).toString('base64url'); // 20 Zeichen, URL-sicher
-    // 12 wie BCRYPT_ROUNDS in utils/auth.ts: Mit weniger Runden antwortete ein
+    // 12 wie BCRYPT_ROUNDS in src/konto/auth.ts: Mit weniger Runden antwortete ein
     // Fehlversuch gegen „admin“ messbar schneller und verriet das Konto.
     const hash = bcrypt.hashSync(plainPassword, 12);
     await pool.query(

@@ -23,7 +23,7 @@ Stand eines beliebigen Workers, nicht die Summe — und nach einem Neustart
 stand sie wieder auf 0, während der Tag weiterlief.
 
 Dasselbe war beim Login-Zähler schon einmal behoben worden
-(utils/loginLimiter.ts: „bei N Cluster-Workern werden aus 5 Fehlversuchen
+(src/konto/loginLimiter.ts: „bei N Cluster-Workern werden aus 5 Fehlversuchen
 sonst N×5"), und für BrickLink und Brickset ist es von Anfang an richtig
 gelöst: checkAndIncrementRateLimit() zählt in einer Transaktion mit
 SELECT … FOR UPDATE, also einmal für die ganze Installation. Rebrickable war

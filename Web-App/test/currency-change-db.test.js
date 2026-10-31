@@ -10,7 +10,7 @@
  *
  * Seit Nachtrag 28 stösst eine ECHTE Währungsänderung den Preis-Job an, der
  * den Cache im Hintergrund für die neue Währung füllt. Die Regel liegt in
- * setUserSetting() (utils/settings.ts) — der EINEN Schreibstelle für
+ * setUserSetting() (src/konto/settings.ts) — der EINEN Schreibstelle für
  * Benutzereinstellungen — und gilt damit für alle drei Wege: Webapp-Formular,
  * Einstellungs-Import und /api/v1.
  *

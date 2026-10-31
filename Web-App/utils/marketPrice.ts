@@ -1,11 +1,11 @@
 import * as db from '../db/database';
 import { nacharbeit } from './nacharbeit';
 import { getSetValue } from './setValue';
-import { nutzerStandardZustand as userDefaultCondition } from './settings';
-import { getGlobalSetting } from './settings';
+import { nutzerStandardZustand as userDefaultCondition } from '../src/konto/settings';
+import { getGlobalSetting } from '../src/konto/settings';
 import { DEFAULT_PRICE_CONDITION, fetchPartPrice, fetchMinifigPrice, ladeBlNummernVor,
          resolveBlPartNumber, resolveBlColorId } from './finance/preise';
-import { getSetting } from './settings';
+import { getSetting } from '../src/konto/settings';
 import { meldeUndWeiter, fehlertext, logAndContinue, meldeUndLiefere } from '../src/infra/httpError';
 import { getMinifigParts } from '../clients/rebrickable';
 import { KEINE_FARBE } from '../src/infra/validate';

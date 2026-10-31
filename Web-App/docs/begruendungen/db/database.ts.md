@@ -473,7 +473,7 @@ rb_part_categories selbst braucht keinen Extra-Index: die Auflösung läuft übe
 den PRIMARY KEY (id), und die Tabelle ist mit ~65 Zeilen ohnehin winzig.
 Gemeinsame Zähler für Brute-Force- und Missbrauchsschutz. Vorher lagen sie
 im Prozessspeicher, womit bei N Cluster-Workern effektiv N×5 Versuche
-möglich waren (utils/loginLimiter.ts).
+möglich waren (src/konto/loginLimiter.ts).
 ```
 
 <a id="indizesundzusammenfassung-3"></a>

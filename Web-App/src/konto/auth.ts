@@ -1,27 +1,27 @@
 /**
  * Zentrale Auth-Helfer: Session ODER Bearer-Token (Android-App).
- * Ausführlich: docs/begruendungen/utils/auth.ts.md#abschnitt
+ * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#abschnitt
  */
 
-import { konfig } from '../src/infra/konfig';
-import * as db from '../db/database';
+import { konfig } from '../infra/konfig';
+import * as db from '../../db/database';
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import type { Request, Response, NextFunction } from 'express';
 import { checkLoginAllowed, gibAnmeldeplatzFrei, recordLoginFailure, recordLoginSuccess } from './loginLimiter';
-import { sendeFehler } from '../src/infra/fehlerTexte';
-import { meldeUndLiefere } from '../src/infra/httpError';
+import { sendeFehler } from '../infra/fehlerTexte';
+import { meldeUndLiefere } from '../infra/httpError';
 import * as zf from './zweiterFaktor';
 import * as passkeys from './passkeys';
-import { ausTabelle } from '../src/infra/validate';
-import type { FehlerCode } from '../src/infra/fehlerTexte';
+import { ausTabelle } from '../infra/validate';
+import type { FehlerCode } from '../infra/fehlerTexte';
 
 /**
  * Warum diese Typen hier stehen
  * Diese Datei hatte 20 implizite `any` — mehr als jede andere sicherheitsnahe
  * Stelle im Baum. Das ist die schlechteste Stelle dafuer: Wer hier einen
  * Feldnamen vertippt (`user.is_activ`), bekommt `undefined`, und `undefined` …
- * Ausführlich: docs/begruendungen/utils/auth.ts.md#tokenbenutzer
+ * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#tokenbenutzer
  */
 
 /** Eine Zeile aus api_tokens JOIN users, wie validateToken sie liefert. */
@@ -76,7 +76,7 @@ function hashToken(token: string): string {
 
 /**
  * E-Mail-Verifikation: einen Token einlösen.
- * Ausführlich: docs/begruendungen/utils/auth.ts.md#verifiziereemailtoken
+ * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#verifiziereemailtoken
  * @param {string|undefined|null} token Der ROHE Token aus der URL, ungehasht.
  * @returns {Promise<{ok: boolean, grund?: string, userId?: number}>}
  */
@@ -284,7 +284,7 @@ function leereTokenCache(): void {
 
 /**
  * Ist diese Datenbank-Flagge gesetzt?
- * Ausführlich: docs/begruendungen/utils/auth.ts.md#flaggegesetzt
+ * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#flaggegesetzt
  */
 function flaggeGesetzt(wert: unknown): boolean {
   return wert === true || wert == 1;
@@ -300,7 +300,7 @@ function flaggeGesetzt(wert: unknown): boolean {
 
 /**
  * Session-ID erneuern und danach die Anmeldedaten hineinschreiben.
- * Ausführlich: docs/begruendungen/utils/auth.ts.md#establishsession
+ * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#establishsession
  * @param {any} req
  * @param {{userId:number, username:string, isAdmin:boolean}} data
  */
@@ -329,13 +329,13 @@ const BCRYPT_ROUNDS = 12;
 
 /**
  * Wie kurz ein Passwort hoechstens sein darf.
- * Ausführlich: docs/begruendungen/utils/auth.ts.md#passwort-min-zeichen
+ * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#passwort-min-zeichen
  */
 const PASSWORT_MIN_ZEICHEN = 8;
 
 /**
  * Ist dieses Passwort zu kurz?
- * Ausführlich: docs/begruendungen/utils/auth.ts.md#passwortzukurz
+ * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#passwortzukurz
  * @param passwort  der Rohwert aus dem Anfragerumpf
  */
 function passwortZuKurz(passwort: unknown): boolean {
@@ -354,7 +354,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /**
  * Darf das als ANMELDENAME durchgehen?
- * Ausführlich: docs/begruendungen/utils/auth.ts.md#isvalidloginidentifier
+ * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#isvalidloginidentifier
  */
 function isValidLoginIdentifier(value: unknown): boolean {
   const v = String(value || '');
@@ -415,11 +415,11 @@ export type AnmeldeErgebnis =
 
 /**
  * Anmeldedaten prüfen — die einzige Stelle im Baum, an der das passiert.
- * Ausführlich: docs/begruendungen/utils/auth.ts.md#pruefeanmeldedaten
+ * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#pruefeanmeldedaten
  * @param req      Für den Brute-Force-Zähler (IP) gebraucht.
  * @param username Benutzername ODER E-Mail-Adresse.
  * @param password Klartext-Passwort aus dem Request.
- * @param code     Einmal- oder Wiederherstellungscode (utils/zweiterFaktor.ts).
+ * @param code     Einmal- oder Wiederherstellungscode (src/konto/zweiterFaktor.ts).
  */
 async function pruefeAnmeldedaten(req: Request, username: unknown, password: unknown, code?: unknown,
                                   passkeyAntwort?: unknown): Promise<AnmeldeErgebnis> {
@@ -485,12 +485,12 @@ function escapeLike(s: unknown): string { return String(s ?? '').replace(/([%_\\
 
 /**
  * Warum es hier KEINE Liste mehr gibt: ?token= zaehlt nirgends.
- * Ausführlich: docs/begruendungen/utils/auth.ts.md#abschnitt-2
+ * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#abschnitt-2
  */
 
 /**
  * Ermittelt die userId aus Session oder Bearer-Token.
- * Ausführlich: docs/begruendungen/utils/auth.ts.md#resolveuserid
+ * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#resolveuserid
  * @param req Express-Request
  * @returns {Promise<number|null>} null wenn nicht authentifiziert
  */
@@ -509,14 +509,14 @@ async function resolveUserId(req: Request): Promise<number | null> {
   // Handler hinter requireLoginOrToken zwar WER fragt, aber nicht, ob es ein
   // Verwalter ist — `req.session.isAdmin` ist bei einer Token-Anfrage immer
   // undefined. Das faellt nicht als Fehler auf, sondern liefert stillschweigend …
-  // Ausführlich: docs/begruendungen/utils/auth.ts.md#resolveuserid-2
+  // Ausführlich: docs/begruendungen/src/konto/auth.ts.md#resolveuserid-2
   if (user) req.apiUser = { ...user, is_admin: user.is_admin ? 1 : 0 };
   return user ? user.user_id : null;
 }
 
 /**
  * Express-Middleware: Session ODER Bearer-Token, setzt req.tokenUserId.
- * Ausführlich: docs/begruendungen/utils/auth.ts.md#loginortokenguard
+ * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#loginortokenguard
  * @param opts.timeoutMs Antwortet nach dieser Zeit mit 503, statt zu warten.
  */
 function loginOrTokenGuard(opts: { timeoutMs?: number } = {}) {
@@ -540,7 +540,7 @@ const requireLoginOrToken = loginOrTokenGuard();
 
 /**
  * Wer fragt hier? — Sitzung ODER Bearer-Token, EINE Antwort.
- * Ausführlich: docs/begruendungen/utils/auth.ts.md#nutzerid
+ * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#nutzerid
  * @returns Die Nutzerkennung als Zahl, oder null wenn niemand angemeldet ist.
  */
 function nutzerId(req: Request): number | null {
@@ -552,11 +552,11 @@ function nutzerId(req: Request): number | null {
 
 /**
  * Ist dieser Anfragende ein Verwalter? — Sitzung ODER Bearer-Token.
- * Ausführlich: docs/begruendungen/utils/auth.ts.md#abschnitt-3
+ * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#abschnitt-3
  */
 /**
  * Wie [nutzerId], aber fuer Handler, die HINTER einem Waechter stehen.
- * Ausführlich: docs/begruendungen/utils/auth.ts.md#angemeldetenutzerid
+ * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#angemeldetenutzerid
  */
 function angemeldeteNutzerId(req: Request): number {
   const id = nutzerId(req);
@@ -568,7 +568,7 @@ function angemeldeteNutzerId(req: Request): number {
 
 /**
  * Wie heisst der Anfragende? — Sitzung ODER Bearer-Token.
- * Ausführlich: docs/begruendungen/utils/auth.ts.md#nutzername
+ * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#nutzername
  */
 function nutzerName(req: Request): string | null {
   return req.session?.username ?? (req as any).apiUser?.username ?? null;
@@ -586,13 +586,13 @@ function istVerwalter(req: Request): boolean {
 
 /**
  * Der Wert, mit dem „unbegrenzt" in der Tageszahl steht.
- * Ausführlich: docs/begruendungen/utils/auth.ts.md#unbegrenzt
+ * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#unbegrenzt
  */
 const UNBEGRENZT = 0;
 
 /**
  * Die WAEHLBAREN festen Laufzeiten eines QR-Zugangs, in Tagen.
- * Ausführlich: docs/begruendungen/utils/auth.ts.md#token-laufzeiten
+ * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#token-laufzeiten
  */
 const TOKEN_LAUFZEITEN: Record<string, number> = {
   '1m':  30,
@@ -608,7 +608,7 @@ const TOKEN_LAUFZEITEN: Record<string, number> = {
 
 /**
  * Eine Laufzeit-Angabe aus einer Anfrage in Tage uebersetzen.
- * Ausführlich: docs/begruendungen/utils/auth.ts.md#laufzeittage
+ * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#laufzeittage
  * @returns Tage, oder null fuer „keine feste Frist" (nichts gewaehlt, oder
  */
 function laufzeitTage(wahl: unknown): number | null {
@@ -727,13 +727,13 @@ async function deleteToken(token: string): Promise<void> {
 
 /**
  * Alle Tokens eines Nutzers verwerfen.
- * Ausführlich: docs/begruendungen/utils/auth.ts.md#abschnitt-5
+ * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#abschnitt-5
  * @param {number} userId
  * @returns {Promise<void>}
  */
 /**
  * Alle offenen BROWSER-SITZUNGEN eines Kontos beenden.
- * Ausführlich: docs/begruendungen/utils/auth.ts.md#revokeallsessions
+ * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#revokeallsessions
  */
 async function revokeAllSessions(userId: number): Promise<void> {
   await db.run("DELETE FROM user_sessions WHERE sess::jsonb->>'userId' = $1", [String(userId)]);
@@ -767,13 +767,13 @@ async function revokeAllTokens(userId: number): Promise<void> {
 /**
  * Tage ohne Nutzung, nach denen ein Gerätezugang verfällt (mindestens 1).
  * Ohne Ablauf gibt es nur die ausdrückliche Wahl „unbegrenzt“ je Gerät.
- * Ausführlich: docs/begruendungen/utils/auth.ts.md#token-idle-days
+ * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#token-idle-days
  */
 const TOKEN_IDLE_DAYS = konfig().tokenLeerlaufTage;
 
 /**
  * Tokens aufräumen: abgelaufene, und solche, die zu lange ungenutzt sind.
- * Ausführlich: docs/begruendungen/utils/auth.ts.md#purgeexpiredtokens
+ * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#purgeexpiredtokens
  * @returns {Promise<number>} Anzahl gelöschter Zeilen
  */
 async function purgeExpiredTokens() {
@@ -783,7 +783,7 @@ async function purgeExpiredTokens() {
   // Auf einer gewachsenen Datenbank stehen App- und QR-Token noch ohne
   // Ablaufdatum. Ihre Frist lief bisher ueber COALESCE(last_used, created_at)
   // — genau diese Rechnung wird hier einmal in die Spalte geschrieben. Damit …
-  // Ausführlich: docs/begruendungen/utils/auth.ts.md#purgeexpiredtokens-2
+  // Ausführlich: docs/begruendungen/src/konto/auth.ts.md#purgeexpiredtokens-2
   {
     const nachgezogen = await db.run(
       `UPDATE api_tokens
@@ -811,7 +811,7 @@ async function purgeExpiredTokens() {
   // `AND NOT never_expires` in beiden Abfragen: Eine Zeile ohne Datum ist
   // entweder eine ALTZEILE (die soll nachgezogen und irgendwann geraeumt
   // werden) oder eine ausdrueckliche Wahl „unbegrenzt" (die soll genau das …
-  // Ausführlich: docs/begruendungen/utils/auth.ts.md#purgeexpiredtokens-3
+  // Ausführlich: docs/begruendungen/src/konto/auth.ts.md#purgeexpiredtokens-3
   {
     const ungenutzt = await db.run(
       `DELETE FROM api_tokens

@@ -5,7 +5,7 @@
  */
 import path from 'path';
 
-const { DATA_DIR } = require('./appPaths') as typeof import('./appPaths');
+import { DATA_DIR } from './appPaths';
 
 /** @returns den Pfad, wenn er im Ordner bleibt — sonst null */
 export function safeDataPath(subDir: string, segments: string[]): string | null {

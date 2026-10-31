@@ -5,7 +5,7 @@
 import path from 'path';
 import { APP_ROOT, PUBLIC_DIR } from '../src/infra/appPaths';
 import fs from 'fs';
-import { resolveUserId } from '../utils/auth';
+import { resolveUserId } from '../src/konto/auth';
 import { streamFileToResponse, vorDem, ohneFehlendeDatei } from '../src/infra/httpError';
 import { queueThumb } from '../utils/proxyThumbs';
 import { liefereAusCache } from '../utils/imgCacheServe';
@@ -39,7 +39,7 @@ let _tmpSeq = 0;
  * Verbindungs-Pool für CDN-Abrufe.
  * Ausführlich: docs/begruendungen/routes/imgProxy.ts.md#cdnagent
  */
-const _cdnAgent = new (require('https').Agent)({
+const _cdnAgent = new https.Agent({
   keepAlive: true,
   maxSockets: 32,
   maxFreeSockets: 16,

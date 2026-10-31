@@ -275,10 +275,10 @@ Der Preis wird UNTEN geholt — erst muss der Zustand feststehen
 Zustand der neuen Erfassung folgt dem Teil selbst (bzw. dem
 User-Default), nicht hartkodiert 'N' — sonst bekäme ein als
 "Gebraucht" geführtes Teil bei jeder Mengen-Erhöhung eine
-"Neu"-Erfassung. Der Standard-Zustand kommt aus utils/settings.ts;
+"Neu"-Erfassung. Der Standard-Zustand kommt aus src/konto/settings.ts;
 lazy require wegen des Zyklus parts↔sets.
 Beim Erfassen gibt es keine Zustandseingabe — dieselbe Staffelung wie
-beim Bearbeiten, nur ohne den ersten Schritt (utils/settings.ts).
+beim Bearbeiten, nur ohne den ersten Schritt (src/konto/settings.ts).
 ```
 
 <a id="updatemanualpart-3"></a>

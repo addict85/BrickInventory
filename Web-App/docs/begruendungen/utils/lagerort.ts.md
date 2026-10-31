@@ -81,7 +81,7 @@ Die drei Tabellen mit einem Lagerort — Whitelist, damit nie ein
 Lagerort setzen — für die Zeilen EINES Kontos.
 
 `besitzerIds` kommt von writableIds()/resolveWriteTarget(): Wer schreiben
-darf, entscheidet utils/household.ts, nicht diese Funktion. Sie bekommt die
+darf, entscheidet src/haushalt/haushalt.ts, nicht diese Funktion. Sie bekommt die
 fertige Menge und fragt nicht nach.
 
 @returns wie viele Zeilen betroffen waren (0 = es gibt nichts zu setzen)
@@ -163,7 +163,7 @@ Der Vorrat EINES oder MEHRERER Konten.
 ── Warum die Aufrufer die IDs mitbringen ──────────────────────────────────
 
 Dieselbe Trennung wie bei [setzeLagerort]: Wer wessen Liste sehen darf,
-entscheidet utils/household.ts, nicht diese Datei. Hier steht nur, wie man
+entscheidet src/haushalt/haushalt.ts, nicht diese Datei. Hier steht nur, wie man
 sie liest.
 
 Sortiert wird ohne Rücksicht auf Gross-/Kleinschreibung — sonst stünde

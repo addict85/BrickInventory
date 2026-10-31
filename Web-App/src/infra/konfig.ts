@@ -4,6 +4,7 @@
  * Startfehler mit Namen und Grund, statt still auf eine Vorgabe zu fallen.
  * Die Liste mit Erklärung steht in .env.example.
  */
+import { proxyVertrauen } from './proxyVertrauen';
 
 type Umgebung = Record<string, string | undefined>;
 
@@ -50,7 +51,7 @@ export interface Konfig {
 export type Rolle = 'web' | 'jobs' | 'beides';
 const ROLLEN: readonly Rolle[] = ['web', 'jobs', 'beides'];
 
-/** Vorgaben, die auch andere Module nennen (utils/sitzungsFrist.ts). */
+/** Vorgaben, die auch andere Module nennen (src/konto/sitzungsFrist.ts). */
 // Höchstdauer eine Woche, wie der Browser-Token.
 export const VORGABE = { sitzungLeerlaufMin: 240, sitzungHoechstStd: 168 } as const;
 
@@ -258,7 +259,7 @@ export function startVerbote(env: NodeJS.ProcessEnv = process.env): string[] {
     gruende.push('[datenbank] Die Datenbank benutzt das Beispielpasswort „brickinventory_secret" aus compose.yaml — '
       + 'Start verweigert. Ein eigenes setzen: in psql `ALTER USER brickinventory PASSWORD \'…\';` und denselben '
       + 'Wert als DB_PASSWORD in .env (siehe UPGRADE.md).');
-  try { (require('./proxyVertrauen') as typeof import('./proxyVertrauen')).proxyVertrauen(env.TRUST_PROXY); }
+  try { proxyVertrauen(env.TRUST_PROXY); }
   catch (e) { gruende.push(`[proxy] ${(e as Error).message} Start verweigert.`); }
   return gruende;
 }

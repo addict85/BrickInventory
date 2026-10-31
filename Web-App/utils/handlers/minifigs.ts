@@ -1,6 +1,6 @@
 import * as db from '../../db/database';
 import { resolveImageLocal } from '../images';
-import { asIds } from '../household';
+import { asIds } from '../../src/haushalt/haushalt';
 import { clampPageSize, applyManualCondition, withOwners, conditionFromAcquisitions, conditionsFromAcquisitions } from './shared';
 import { mitVersion } from '../setNummer';
 import { mengeJoin, mengeAus, teilmengeJoin, teilmengeAus } from '../bestandsmenge';
@@ -27,7 +27,7 @@ function figurenSuche(nummer: string, name: string, pi: number) {
 async function getMinifigs(userId: number | number[], { search, source, set_number, page = 1, page_size = null }: any = {}) {
   // Blickfeld statt einer einzelnen ID: Ein Hauptkonto sieht (und ändert)
   // auch die Daten seiner Unterkonten, alle anderen nur ihre eigenen. Die
-  // Liste kommt von scopeIds() in utils/household.ts — hier wird sie nur
+  // Liste kommt von scopeIds() in src/haushalt/haushalt.ts — hier wird sie nur
   // normalisiert, damit ältere Aufrufer mit einer nackten ID weiter gehen.
   const uids = asIds(userId as any);
   const params: any[] = [uids]; let pi = 2;
@@ -225,7 +225,7 @@ async function getManualMinifigs(userId: number | number[], viewerId: number,
                                  { page = 1, page_size = null, search = null }: any = {}) {
   // Blickfeld statt einer einzelnen ID: Ein Hauptkonto sieht (und ändert)
   // auch die Daten seiner Unterkonten, alle anderen nur ihre eigenen. Die
-  // Liste kommt von scopeIds() in utils/household.ts — hier wird sie nur
+  // Liste kommt von scopeIds() in src/haushalt/haushalt.ts — hier wird sie nur
   // normalisiert, damit ältere Aufrufer mit einer nackten ID weiter gehen.
   const uids = asIds(userId as any);
   const params: any[] = [uids];

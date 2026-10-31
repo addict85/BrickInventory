@@ -6,7 +6,7 @@ import express from 'express';
 import { acquisitionTotals } from '../../utils/acquisitions';
 import { handleRouteError, fehlertext, pfadParam } from '../../src/infra/httpError';
 import { requireToken } from './middleware';
-import { scopeIds, parseScopeMode } from '../../utils/household';
+import { scopeIds, parseScopeMode } from '../../src/haushalt/haushalt';
 import { getPartAcquisitions } from '../../utils/manuelleTeile';
 import { getFigAcquisitions } from '../../utils/manuelleFiguren';
 import { erfassungAendern, erfassungLoeschen, setErfassungen } from '../../utils/dienste/erfassungen';

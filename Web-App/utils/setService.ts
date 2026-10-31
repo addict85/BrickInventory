@@ -1,12 +1,12 @@
 import * as db from '../db/database';
 import type { DbSchnittstelle } from '../db/database';
 import { meldeUndWeiter, fehlertext, logAndContinue, meldeUndLiefere } from '../src/infra/httpError';
-import { scopeIds, writableIds } from './household';
+import { scopeIds, writableIds } from '../src/haushalt/haushalt';
 import { recordAcquisitionForDay, erfassungsTagSql } from './acquisitions';
 import { withInventoryLock } from '../db/txLock';
 import { downloadSetImage } from './setImages';
 import { getCurrentMarketPrice } from './marketPrice';
-import { zustandFuerPreis, getSetting } from './settings';
+import { zustandFuerPreis, getSetting } from '../src/konto/settings';
 import { deleteSetRows } from '../utils/handlers/sets';
 import { legeInPapierkorb } from './papierkorb';
 import { toCsv } from '../src/infra/csvExport';

@@ -292,7 +292,7 @@ Kontos. Die Vorschau soll aber zeigen, was ANGELEGT wird, nicht was in der
 Datei steht.
 
 Aufgeloest wird der Zustand erst beim Schreiben (zustandFuerPreis in
-utils/settings.ts). In der Vorschau ist er noch nicht gefallen — deshalb
+src/konto/settings.ts). In der Vorschau ist er noch nicht gefallen — deshalb
 reist der Standard EINMAL je Bericht mit, nicht je Posten: Er ist je Konto
 derselbe, und 224-mal dieselbe Zeichenkette waere eine Abschrift.
 

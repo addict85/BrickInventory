@@ -4,12 +4,12 @@
  */
 import express from 'express';
 import { handleRouteError, pfadParam } from '../src/infra/httpError';
-import { requireLoginOrToken, angemeldeteNutzerId, assertLoginAllowed, establishSession, flaggeGesetzt, perSitzung } from '../utils/auth';
-import { bestaetigePasswort } from '../utils/passwortBestaetigung';
-import { ipThrottle } from '../utils/loginLimiter';
+import { requireLoginOrToken, angemeldeteNutzerId, assertLoginAllowed, establishSession, flaggeGesetzt, perSitzung } from '../src/konto/auth';
+import { bestaetigePasswort } from '../src/konto/passwortBestaetigung';
+import { ipThrottle } from '../src/konto/loginLimiter';
 import { sendeFehler } from '../src/infra/fehlerTexte';
-import * as P from '../utils/passkeys';
-import * as K from '../utils/konten';
+import * as P from '../src/konto/passkeys';
+import * as K from '../src/konto/konten';
 
 const router = express.Router();
 

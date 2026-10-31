@@ -1,12 +1,12 @@
 /**
  * Haushalt — verknüpfte Konten.
- * Ausführlich: docs/begruendungen/utils/household.ts.md#abschnitt
+ * Ausführlich: docs/begruendungen/src/haushalt/haushalt.ts.md#abschnitt
  */
-import { logAndContinue, meldeUndLiefere } from '../src/infra/httpError';
-import * as db from '../db/database';
-import { HAUSHALT_WAEHRUNG_SPERRE, getSetting } from './settings';
-import { fehlerWerfen } from '../src/infra/fehlerTexte';
-import * as pgNotify from '../db/pgNotify';
+import { logAndContinue, meldeUndLiefere } from '../infra/httpError';
+import * as db from '../../db/database';
+import { HAUSHALT_WAEHRUNG_SPERRE, getSetting } from '../konto/settings';
+import { fehlerWerfen } from '../infra/fehlerTexte';
+import * as pgNotify from '../../db/pgNotify';
 import crypto from 'crypto';
 
 /** Wie lange ein Einladungscode gilt. Lang genug für „später am Abend“,
@@ -134,7 +134,7 @@ export async function createInvite(uid: number) {
   // Absagen kommen als CODE zurueck, nicht als Satz: Dieser
   // Helfer weiss nicht, welche Sprache der Anfragende sieht — die Route weiss
   // es, weil sie den Request hat.
-  // Ausführlich: docs/begruendungen/utils/household.ts.md#createinvite-id
+  // Ausführlich: docs/begruendungen/src/haushalt/haushalt.ts.md#createinvite-id
   const id = parseInt(String(uid));
   // Jedes Konto darf einladen, auch eines, das selbst Unterkonto ist
   // (Marcos Festlegung): Ein Zwischenkonto ist Vater UND Kind.
@@ -153,7 +153,7 @@ export async function createInvite(uid: number) {
 
 /**
  * Einladungscode einlösen — das einlösende Konto wird Unterkonto.
- * Ausführlich: docs/begruendungen/utils/household.ts.md#redeeminvite
+ * Ausführlich: docs/begruendungen/src/haushalt/haushalt.ts.md#redeeminvite
  */
 export async function redeemInvite(uid: number, code: string) {
   const subId = parseInt(String(uid));
@@ -297,7 +297,7 @@ export async function householdStatus(uid: number) {
 /**
  * Die IDs, mit denen gearbeitet wird — für Abfragen der Form
  * `user_id = ANY($1)`.
- * Ausführlich: docs/begruendungen/utils/household.ts.md#abschnitt-2
+ * Ausführlich: docs/begruendungen/src/haushalt/haushalt.ts.md#abschnitt-2
  */
 /**
  * 'all' | 'own' | 'subs' — oder die ID EINES Kontos des Haushalts.
@@ -346,7 +346,7 @@ export async function scopeIds(uid: number, mode: ScopeMode = 'all'): Promise<nu
 
 /**
  * Das BLICKFELD — wessen Daten gerechnet werden.
- * Ausführlich: docs/begruendungen/utils/household.ts.md#blickfeldeingabe
+ * Ausführlich: docs/begruendungen/src/haushalt/haushalt.ts.md#blickfeldeingabe
  */
 export type BlickfeldEingabe = number | number[];
 
@@ -360,7 +360,7 @@ export function asIds(v: BlickfeldEingabe): Blickfeld {
 
 /**
  * Zielkonto für eine Erfassung bestimmen.
- * Ausführlich: docs/begruendungen/utils/household.ts.md#resolvewritetarget
+ * Ausführlich: docs/begruendungen/src/haushalt/haushalt.ts.md#resolvewritetarget
  * @returns die Ziel-ID, oder null wenn nicht erlaubt (Aufrufer antwortet 403)
  */
 export async function resolveWriteTarget(
@@ -382,7 +382,7 @@ const ACQ_TABLES = {
 
 /**
  * Absender eines Eigentümerwechsels aus der ERFASSUNGSZEILE ermitteln.
- * Ausführlich: docs/begruendungen/utils/household.ts.md#acquisitionmovesource
+ * Ausführlich: docs/begruendungen/src/haushalt/haushalt.ts.md#acquisitionmovesource
  * @throws mit e.status 404 (Zeile existiert nicht) oder 403 (keine Richtung)
  */
 export async function acquisitionMoveSource(

@@ -172,7 +172,7 @@ test('die Schreibantworten passen zu den Kotlin-Modellen', { concurrency: 1, tim
     { m: 'POST', p: '/api/v1/auth/qr-login', davor: async () => {
         const nonce = 'vertrag' + process.pid + Date.now();
         await db.run(`INSERT INTO qr_login_tokens (token, user_id, expires_at) VALUES ($1, $2, NOW() + INTERVAL '5 minutes')`,
-          [_req('utils/auth.js').hashToken(nonce), uid]);
+          [_req('src/konto/auth.js').hashToken(nonce), uid]);
         w.qr = 'bim:' + nonce;
       }, body: () => ({ token: w.qr }) },
     { m: 'POST', p: '/api/v1/auth/register', davor: async () => {
@@ -183,7 +183,7 @@ test('die Schreibantworten passen zu den Kotlin-Modellen', { concurrency: 1, tim
     { m: 'POST', p: '/api/v1/auth/zweiter-faktor/einrichten', body: { password: PASS },
       danach: (j) => { w.geheimnis = j.geheimnis; } },
     { m: 'POST', p: '/api/v1/auth/zweiter-faktor/bestaetigen', body: () => {
-        const zf = _req('utils/zweiterFaktor.js');
+        const zf = _req('src/konto/zweiterFaktor.js');
         return { code: zf.hotp(zf.ausBase32(w.geheimnis), zf.zeitschritt()) };
       }, danach: (j) => { w.codes = j.codes; } },
     { m: 'POST', p: '/api/v1/auth/zweiter-faktor/codes', body: () => ({ code: w.codes[0] }),
@@ -200,7 +200,7 @@ test('die Schreibantworten passen zu den Kotlin-Modellen', { concurrency: 1, tim
     { m: 'POST', p: '/api/v1/settings/user/theme', body: { theme: '' },
       danach: (j) => { assert.deepEqual([j.theme, j.eigenes], ['classic', null]); } },
     { m: 'DELETE', p: '/api/v1/settings/tokens/{tokenId}', davor: async () => {
-        await _req('utils/auth.js').createToken(uid, 'Zum Entwerten');
+        await _req('src/konto/auth.js').createToken(uid, 'Zum Entwerten');
         w.tokenId = (await erst(`SELECT substring(token, 1, 16) AS t FROM api_tokens WHERE user_id = $1 AND label = 'Zum Entwerten'`, [uid])).t;
       } },
 

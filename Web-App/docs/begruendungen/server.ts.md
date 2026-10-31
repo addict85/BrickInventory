@@ -228,7 +228,7 @@ Bis hierher stand hier KEIN `ttl`. Dann gilt die Voreinstellung von
 connect-pg-simple — ein Tag —, und die war nie eine Entscheidung,
 sondern das, was übrig bleibt, weil das Cookie unten kein `maxAge`
 trägt. Die Zahl und ihre Begründung stehen jetzt in
-utils/sitzungsFrist.ts.
+src/konto/sitzungsFrist.ts.
 
 Durchgesetzt wird die Frist an der Zeile in `user_sessions`: Ihr
 `expire` rückt bei Betrieb nach (gedrosselt, siehe unten), und eine
@@ -244,7 +244,7 @@ der Leerlauf-Frist.
 
 Die Android-App zahlt das nicht: Sie kommt mit Bearer-Token und ohne
 Cookie, dann fasst express-session den Speicher gar nicht erst an
-(nachgemessen in utils/sitzungsBeruehrung.ts: 0 Abfragen bei 20
+(nachgemessen in src/konto/sitzungsBeruehrung.ts: 0 Abfragen bei 20
 Anfragen ohne Cookie). Ihre eigene Frist ist TOKEN_IDLE_DAYS.
 ```
 
@@ -270,7 +270,7 @@ Haushalt an zwei Stellen nicht mehr:
 Deshalb entscheidet jetzt scopeIds() — dieselbe Stelle, die überall sonst
 beantwortet, wessen Daten jemand sehen darf. Die Benutzer-ID im Pfad ist
 damit das, was sie ohnehin schon war: eine Ablagestruktur, keine
-Zugriffsregel. Die Regel steht in utils/household.ts.
+Zugriffsregel. Die Regel steht in src/haushalt/haushalt.ts.
 
 Die Asymmetrie bleibt gewahrt: Ein Unterkonto hat nur sich selbst im
 Blickfeld (resolveHousehold: memberIds = [self, …eigene Subs]), kommt also
@@ -424,7 +424,7 @@ deshalb jetzt unter /assets/ statt unter /images/.
 
 Ohne diese Zeile liefert express.static die index.html fuer `/` SELBST
 aus und kommt damit dem SPA-Catch-all zuvor. Die Startseite ging also am
-Renderer (utils/indexHtml.ts) vorbei — an genau der Adresse, die jeder
+Renderer (src/konto/indexHtml.ts) vorbei — an genau der Adresse, die jeder
 Lesezeichen- und Erstbesuch benutzt.
 
 GEMESSEN am 17.10. am laufenden Server:
@@ -437,7 +437,7 @@ Zwei Dinge fielen damit auf der Startseite aus:
   • das serverseitig gesetzte `data-theme`. Dafuer gibt es den Renderer
     ueberhaupt: Ohne den Wert startet ein frischer Browser im
     Standarddesign und springt nach dem Abgleich sichtbar um. Der Kopf
-    von utils/indexHtml.ts beschreibt genau diesen Sprung als das
+    von src/konto/indexHtml.ts beschreibt genau diesen Sprung als das
     Problem, das geloest sei — auf `/` war er nie geloest.
   • der Dateistempel (src/infra/assetStempel.ts). Deshalb blieb meine
     Cache-Reparatur bei Marco wirkungslos: Sie kam an seiner Adresse gar
@@ -566,7 +566,7 @@ nie wieder gelesen — also auch nie geschlossen.
 ## Abschnitt
 
 ```text
-Das Blickfeld eines Kontos wird gemerkt (utils/household.ts) — hier kommt
+Das Blickfeld eines Kontos wird gemerkt (src/haushalt/haushalt.ts) — hier kommt
 die Nachricht an, dass es sich geaendert hat.
 
 Ohne dieses Signal saehe ein anderer Cluster-Worker die neue Verknuepfung

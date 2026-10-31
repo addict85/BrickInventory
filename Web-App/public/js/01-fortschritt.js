@@ -204,7 +204,7 @@ export function gibStart() {
   // angehängte `?token=` war der Sitzungstoken selbst; er hätte im
   // Reverse-Proxy-Protokoll und im Browserverlauf gestanden. Den „Bearer-Fall"
   // ohne Cookie gibt es hier nicht: `webToken` entsteht erst nach der
-  // Anmeldung, die das Cookie setzt. Siehe utils/auth.ts.
+  // Anmeldung, die das Cookie setzt. Siehe src/konto/auth.ts.
   const url = '/api/v1/sets/import/csv/stream';
 
   if (typeof EventSource !== 'undefined') {

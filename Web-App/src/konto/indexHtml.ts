@@ -1,15 +1,15 @@
 /**
  * Auslieferung der index.html mit bereits gesetztem data-theme.
- * Ausführlich: docs/begruendungen/utils/indexHtml.ts.md#abschnitt
+ * Ausführlich: docs/begruendungen/src/konto/indexHtml.ts.md#abschnitt
  */
-import { konfig } from '../src/infra/konfig';
-import { meldeUndLiefere } from '../src/infra/httpError';
+import { konfig } from '../infra/konfig';
+import { meldeUndLiefere } from '../infra/httpError';
 import fs from 'fs';
-import {  PUBLIC_DIR } from '../src/infra/appPaths';
+import {  PUBLIC_DIR } from '../infra/appPaths';
 import path from 'path';
-import * as db from '../db/database';
+import * as db from '../../db/database';
 import { getGlobalSetting, DESIGNS, designFuer } from './settings';
-import { stempleAssetsGecacht } from '../src/infra/assetStempel';
+import { stempleAssetsGecacht } from '../infra/assetStempel';
 
 const INDEX_PATH = path.join(PUBLIC_DIR, 'index.html');
 
@@ -56,7 +56,7 @@ const LANGS = ['de', 'en'];
 
 /**
  * Sprache des angemeldeten Nutzers. Ohne Session (Login-Seite) 'de'.
- * Ausführlich: docs/begruendungen/utils/indexHtml.ts.md#currentlang
+ * Ausführlich: docs/begruendungen/src/konto/indexHtml.ts.md#currentlang
  * @param {number|undefined} userId
  * @returns {Promise<string>}
  */
@@ -71,7 +71,7 @@ async function currentLang(userId?: number): Promise<string> {
 /**
  * Liefert die index.html mit gesetztem data-theme auf dem <html>-Element und
  * der passenden Sprachdatei im <head>.
- * Ausführlich: docs/begruendungen/utils/indexHtml.ts.md#renderindexhtml
+ * Ausführlich: docs/begruendungen/src/konto/indexHtml.ts.md#renderindexhtml
  * @param {number} [userId] Angemeldeter Nutzer, für die Sprachauswahl
  */
 export async function renderIndexHtml(userId?: number): Promise<string> {

@@ -1,6 +1,6 @@
 import fs from 'fs';
 import * as pgNotify from '../db/pgNotify';
-import { HAUSHALT_KANAL, leereHaushaltCache } from '../utils/household';
+import { HAUSHALT_KANAL, leereHaushaltCache } from '../src/haushalt/haushalt';
 import { meldeStartZustand } from '../src/infra/startZustand';
 import { setzeZustand } from '../utils/laufzustand';
 import { logAndContinue, meldeUndWeiter } from '../src/infra/httpError';

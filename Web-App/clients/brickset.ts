@@ -7,7 +7,7 @@
 //
 
 import https from 'https';
-import { getGlobalSetting } from '../utils/settings';
+import { getGlobalSetting } from '../src/konto/settings';
 import { checkAndIncrementRateLimit } from '../utils/apiKontingent';
 import { fehlertext, meldeUndLiefere } from '../src/infra/httpError';
 import { alsAbrufFehler } from './abrufFehler';

@@ -11,9 +11,9 @@ import fs from 'fs';
 import crypto from 'crypto';
 import { handleRouteError, fehlertext, pfadParam, meldeUndLiefere, logAndContinue } from '../../src/infra/httpError';
 import { requireToken } from './middleware';
-import { getSetting } from '../../utils/settings';
+import { getSetting } from '../../src/konto/settings';
 import { findSetInScope, normalizeSetNumber } from '../../utils/setAdd';
-import { scopeIds, parseScopeMode, writableIds, householdMembers, resolveWriteTarget } from '../../utils/household';
+import { scopeIds, parseScopeMode, writableIds, householdMembers, resolveWriteTarget } from '../../src/haushalt/haushalt';
 import { moveSetBetweenAccounts } from '../../utils/setMove';
 import { normalisiereLagerort, setzeLagerort, lagerorte,
          orteVon, legeOrtAn, benenneOrtUm, loescheOrt,
@@ -35,7 +35,7 @@ import { setInfo, setZumBarcode, teilelisteDesSets, figurenlisteDesSets, setPrei
 import { downloadSetInstructions, anleitungenZuSet, loescheAnleitungen, anleitungNeuLadenErlaubt } from '../../utils/instructions';
 import { importPartsForSet } from '../../utils/partsImport';
 import { registerSse } from '../../src/infra/sseRegistry';
-import { loginOrTokenGuard, angemeldeteNutzerId, istVerwalter } from '../../utils/auth';
+import { loginOrTokenGuard, angemeldeteNutzerId, istVerwalter } from '../../src/konto/auth';
 import { csvImportBus, buildJobStatus, jobGet } from '../../utils/importAuftrag';
 import * as pgNotify from '../../db/pgNotify';
 import { APP_ROOT, DATA_DIR } from '../../src/infra/appPaths';

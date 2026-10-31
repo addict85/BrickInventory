@@ -10,7 +10,7 @@ import crypto from 'crypto';
 import { hatPreis } from '../utils/preisRegel';
 import https from 'https';
 import * as db from '../db/database';
-import { getGlobalSetting } from '../utils/settings';
+import { getGlobalSetting } from '../src/konto/settings';
 import { alsAbrufFehler } from './abrufFehler';
 import { mitVersion, katalogEintrag, ohneBricklinkPreis, ohneVersion } from '../utils/setNummer';
 import { checkAndIncrementRateLimit } from '../utils/apiKontingent';

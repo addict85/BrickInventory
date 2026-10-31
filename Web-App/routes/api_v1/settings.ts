@@ -8,11 +8,11 @@
 import express from 'express';
 import { handleRouteError, logAndContinue } from '../../src/infra/httpError';
 import { requireToken } from './middleware';
-import { householdStatus, createInvite, redeemInvite, unlink, verwerfeGetrennt } from '../../utils/household';
-import { setUserSetting, deleteUserSetting, nutzerStandardZustand, globalDefaultCondition } from '../../utils/settings';
-import { profil } from '../../utils/konten';
-import { readSettings, getSetting, designFuer } from '../../utils/settings';
-import { bestaetigePasswort } from '../../utils/passwortBestaetigung';
+import { householdStatus, createInvite, redeemInvite, unlink, verwerfeGetrennt } from '../../src/haushalt/haushalt';
+import { setUserSetting, deleteUserSetting, nutzerStandardZustand, globalDefaultCondition } from '../../src/konto/settings';
+import { profil } from '../../src/konto/konten';
+import { readSettings, getSetting, designFuer } from '../../src/konto/settings';
+import { bestaetigePasswort } from '../../src/konto/passwortBestaetigung';
 import { sendHaushaltVerknuepftMail } from '../../src/infra/mailer';
 import { sendeFehler } from '../../src/infra/fehlerTexte';
 const router = express.Router();
@@ -46,7 +46,7 @@ router.get('/settings', requireToken, async (req: AuthedRequest, res) => {
     settings[feld] = alle[feld] ?? APP_VORGABEN[feld] ?? '';
   }
   // Effektiver Zustand: eigener Wert → globaler Standard → 'N'. Die Regel
-  // steht in utils/settings.ts, damit sie nicht neben dem Webapp-Weg ein
+  // steht in src/konto/settings.ts, damit sie nicht neben dem Webapp-Weg ein
   // zweites Mal existiert (Etappe 6).
   settings['effective_condition'] = await nutzerStandardZustand(uid);
   // Das wirksame Design des Kontos, wie /settings/theme: Mit der Vorgabe des
@@ -62,7 +62,7 @@ router.put('/settings', requireToken, async (req: AuthedRequest, res) => {
   for (const key of allowed) {
     if (req.body[key]!==undefined) {
       // Zentrale Stelle — stösst bei einer ECHTEN Währungsänderung den
-      // Preis-Job an (Begründung in utils/settings.ts). Parität zur Webapp.
+      // Preis-Job an (Begründung in src/konto/settings.ts). Parität zur Webapp.
       await setUserSetting(uid, key, String(req.body[key]));
       updated++;
     }
@@ -113,7 +113,7 @@ router.post('/settings/user/default-condition', requireToken, async (req: Authed
 
 // ── Haushalt: Konten verknüpfen ──────────────────────────────────────────────
 // Gegenstücke zu /api/settings/household*. Dieselbe Umsetzung
-// (utils/household.ts), damit die App nicht ihre eigenen Regeln bekommt.
+// (src/haushalt/haushalt.ts), damit die App nicht ihre eigenen Regeln bekommt.
 router.get('/settings/household', requireToken, async (req: AuthedRequest, res) => {
   try {
     res.json({ success: true, ...(await householdStatus(req.apiUser.user_id)) });

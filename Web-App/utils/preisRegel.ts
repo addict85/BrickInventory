@@ -3,6 +3,8 @@
  * Ausführlich: docs/begruendungen/utils/preisRegel.ts.md#preisdatensatz
  */
 
+import { zustandFuerPreis } from '../src/konto/settings';
+
 /** Der Datensatz, wie er aus BrickLink oder aus price_cache kommt. */
 export type PreisDatensatz = { avg_price?: unknown; qty_avg_price?: unknown } | null | undefined;
 
@@ -35,10 +37,6 @@ export async function kaufpreisAusEingabe(
 ): Promise<{ unitPrice: number | null; purchasePrice: number | null }> {
   const zahl = (roh === null || roh === '' || roh === undefined) ? null : parseFloat(String(roh));
   if (zahl !== null && !isNaN(zahl)) return { unitPrice: zahl, purchasePrice: zahl };
-  // Lazy require: utils/settings zieht seinerseits Routen-nahe Module nach,
-  // und preisRegel.ts wird auch von clients/bricklink.ts geladen. Ein
-  // Import oben schlösse den Kreis.
-  const { zustandFuerPreis } = require('./settings') as typeof import('./settings');
   const zustand = await zustandFuerPreis(zustandRoh, zustandJetzt, nutzerId);
   return { unitPrice: null, purchasePrice: await marktpreis(zustand) };
 }
@@ -59,7 +57,7 @@ export async function manuellerKaufpreis(
   kaufpreis: number;
   /** Für die ERFASSUNG — null, wenn kein Preis bekannt ist. */
   erfassungsPreis: number | null;
-  /** Eingabe → (kein Bestand) → Benutzer-Standard, siehe utils/settings.ts. */
+  /** Eingabe → (kein Bestand) → Benutzer-Standard, siehe src/konto/settings.ts. */
   zustand: string;
   /**
    * Aus welchem Zustand der übernommene Marktpreis stammt — null, wenn er
@@ -76,7 +74,6 @@ export async function manuellerKaufpreis(
   const unitPrice = (getippt !== null && !isNaN(getippt)) ? getippt : null;
 
   // Lazy require: siehe kaufpreisAusEingabe oben.
-  const { zustandFuerPreis } = require('./settings') as typeof import('./settings');
   const zustand = await zustandFuerPreis(eingabe.condition ?? null, null, nutzerId);
 
   // Ein selbst eingetippter Preis fragt gar nicht erst nach dem Markt — und

@@ -8,7 +8,7 @@ import { addSet, sanitizeSetNumber } from './setService';
 import { findSetInScope } from './setAdd';
 import { loescheAlarm } from './preisalarm';
 import * as V from '../src/infra/validate';
-import { nutzerStandardZustand } from './settings';
+import { nutzerStandardZustand } from '../src/konto/settings';
 import { meldeUndWeiter } from '../src/infra/httpError';
 import { fuerSet } from './preisvergleich';
 import { resolveIfExists } from './images';

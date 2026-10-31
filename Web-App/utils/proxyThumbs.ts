@@ -110,6 +110,7 @@ async function makeProxyThumb(srcFile: string, thumbFile: string) {
         return false;
       }
       // Jimp 1.x — geänderte API, siehe ausführlichen Hinweis in utils/thumbs.ts.
+      // Erst hier geladen: Jimp ist schwer und nur der Rückfall ohne sharp.
       const { Jimp } = require('jimp');
       const img  = await Jimp.read(srcFile);
       const bg   = new Jimp({ width: img.bitmap.width, height: img.bitmap.height, color: 0xffffffff });

@@ -4,23 +4,23 @@ import { protokolliere } from '../utils/verwaltungsprotokoll';
 import express from 'express';
 const router  = express.Router();
 import bcrypt from 'bcryptjs';
-import * as K from '../utils/konten';
-import { meldeHaushaltsaenderung } from '../utils/household';
+import * as K from '../src/konto/konten';
+import { meldeHaushaltsaenderung } from '../src/haushalt/haushalt';
 import { handleRouteError, logAndContinue, meldeUndWeiter, fehlerCode, fehlertext, pfadParam } from '../src/infra/httpError';
-import { hashToken, pruefeAnmeldedaten, createToken, pruefeToken, assertLoginAllowed, establishSession, revokeAllTokens, revokeAllSessions, beendeAndereZugaenge, deleteToken, BCRYPT_ROUNDS, USERNAME_RE, EMAIL_RE, requireLoginOrToken, nutzerId, angemeldeteNutzerId, passwortZuKurz, flaggeGesetzt, leereTokenCache, laufzeitTage, rotiereToken, rotationFaellig, UNBEGRENZT, UEBERLAPPUNG_MS } from '../utils/auth';
-import type { TokenScope } from '../utils/auth';
+import { hashToken, pruefeAnmeldedaten, createToken, pruefeToken, assertLoginAllowed, establishSession, revokeAllTokens, revokeAllSessions, beendeAndereZugaenge, deleteToken, BCRYPT_ROUNDS, USERNAME_RE, EMAIL_RE, requireLoginOrToken, nutzerId, angemeldeteNutzerId, passwortZuKurz, flaggeGesetzt, leereTokenCache, laufzeitTage, rotiereToken, rotationFaellig, UNBEGRENZT, UEBERLAPPUNG_MS } from '../src/konto/auth';
+import type { TokenScope } from '../src/konto/auth';
 import { tlsStand } from '../src/infra/tlsWurzel';
-import { ipThrottle, bestaetigungGesperrt, bestaetigungFehlgeschlagen, bestaetigungGelungen } from '../utils/loginLimiter';
-import { bestaetigePasswort } from '../utils/passwortBestaetigung';
+import { ipThrottle, bestaetigungGesperrt, bestaetigungFehlgeschlagen, bestaetigungGelungen } from '../src/konto/loginLimiter';
+import { bestaetigePasswort } from '../src/konto/passwortBestaetigung';
 import crypto from 'crypto';
 import { strictBool } from '../src/infra/validate';
 import { sendEmailGeaendertMail, sendPasswordResetMail, sendVerificationMail } from '../src/infra/mailer';
 import type { Request, Response } from 'express';
-import { getGlobalSetting, getSetting, setUserSetting } from '../utils/settings';
+import { getGlobalSetting, getSetting, setUserSetting } from '../src/konto/settings';
 import { requireApiAdmin } from './api_v1/middleware';
 import { sendeFehler, fehlerText, antwortSprache } from '../src/infra/fehlerTexte';
 import { basisUrl, hinweisOhneBasisUrl } from '../src/infra/basisUrl';
-import * as zf from '../utils/zweiterFaktor';
+import * as zf from '../src/konto/zweiterFaktor';
 import { loescheKontoDateien } from '../utils/gutscheinDateien';
 
 // „Angemeldet" gibt es nur noch in EINER Fassung
@@ -65,7 +65,7 @@ router.post('/login', async (req, res) => {
   const { username, password, label, never_expires, code: zweiterCode, ohne_token, scope, passkey } = req.body;
   try {
     // Form des Namens, Brute-Force-Sperre, Passwortvergleich, die
-    // Konto-Vorbedingungen und der zweite Faktor stehen in utils/auth.ts.
+    // Konto-Vorbedingungen und der zweite Faktor stehen in src/konto/auth.ts.
     const pruefung = await pruefeAnmeldedaten(req, username, password, zweiterCode, passkey);
     if (!pruefung.ok) {
       const { status, code, vars, unverified, zweiterFaktor, passkey: mitPasskey } = pruefung.absage;
@@ -120,7 +120,7 @@ router.post('/login', async (req, res) => {
     // schlicht `dauerhaft` — also das, was der Client VERLANGT hatte. Seit der
     // App-Token eine gleitende Frist traegt, ist das nur noch dann ein Token
     // ohne Ablauf, wenn die Frist ganz abgeschaltet ist. Die Regel dafuer
-    // steht in utils/auth.ts, nicht hier.
+    // steht in src/konto/auth.ts, nicht hier.
     // `token_info` beschreibt den Token (Scope, Ablauf); `never_expires` bleibt
     // für ältere Clients und ist bei einer Passwortanmeldung immer false.
     res.json({ success: true, ...(token ? { token } : {}), ...(token ? { token_info: await tokenAngaben(token) } : {}),
@@ -363,7 +363,7 @@ router.put('/users/:id/admin', requireAdmin, async (req, res) => {
     if (warAdmin !== soll) await protokolliere(angemeldeteNutzerId(req), targetId, soll ? 'verwalter_ernannt' : 'verwalter_entzogen');
 
     // Warum die Sitzungen enden muessen
-    // istVerwalter() (utils/auth.ts) fragt ZUERST `req.session.isAdmin`. Das
+    // istVerwalter() (src/konto/auth.ts) fragt ZUERST `req.session.isAdmin`. Das
     // steht seit dem Anmelden fest und wird nie nachgefuehrt. Ein Entzug wirkte
     // damit auf den BROWSER gar nicht: Wer sein Fenster offen liess, blieb …
     // Ausführlich: docs/begruendungen/routes/auth.ts.md#put-users-id-admin
@@ -430,7 +430,7 @@ router.delete('/users/:id', requireAdmin, async (req, res) => {
     leereTokenCache();
     // Dasselbe fuer das Blickfeld: account_links haengt per ON DELETE CASCADE
     // an users, die Zeilen sind also mit dem Konto verschwunden — OHNE dass
-    // utils/household.ts davon erfaehrt, denn hier laeuft kein unlink().
+    // src/haushalt/haushalt.ts davon erfaehrt, denn hier laeuft kein unlink().
     // Ohne diesen Aufruf zeigte ein Hauptkonto sein geloeschtes Unterkonto
     // noch bis zu fuenf Minuten im Blickfeld.
     meldeHaushaltsaenderung();
@@ -526,7 +526,7 @@ const QR_TTL_MS = 5 * 60 * 1000;
 // der zentrale Kommentar dort das Gegenteil behauptet. Siehe die ausführliche
 // Begründung in routes/sets.ts an derselben Stelle.
 
-// ── Zweiter Faktor (utils/zweiterFaktor.ts) ─────────────────────────────────
+// ── Zweiter Faktor (src/konto/zweiterFaktor.ts) ─────────────────────────────────
 //
 // Einrichten und Abschalten verlangen das Passwort: Wer nur eine offene
 // Sitzung erbeutet, soll das Konto weder aussperren noch den Schutz abbauen.
@@ -704,7 +704,7 @@ router.post('/register', ipThrottle('register', 5, 60 * 60 * 1000), async (req, 
     return sendeFehler(req, res, 400, 'registrierung_felder');
   if (passwortZuKurz(password))
     return sendeFehler(req, res, 400, 'passwort_zu_kurz');
-  // Dieselben Muster wie überall sonst (utils/auth.ts) — hier standen zwei
+  // Dieselben Muster wie überall sonst (src/konto/auth.ts) — hier standen zwei
   // wortgleiche Kopien, und die E-Mail-Regex gab es damit dreimal im Projekt.
   //
   // Beim REGISTRIEREN gilt weiterhin nur das Benutzernamen-Muster: Sonst

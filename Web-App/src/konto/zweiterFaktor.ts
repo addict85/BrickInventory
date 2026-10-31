@@ -3,9 +3,9 @@
  * die Form, die jede Authenticator-App versteht. Ohne Fremdpaket, mit
  * node:crypto. Freiwillig je Konto; Tabellen in Migration 0042.
  */
-import { verschluessele, entschluessele } from '../src/infra/geheimnis';
+import { verschluessele, entschluessele } from '../infra/geheimnis';
 import crypto from 'crypto';
-const db = require('../db/database') as typeof import('../db/database');
+import * as db from '../../db/database';
 
 const SCHRITT_S = 30;
 /** Ein Schritt vor und zurück: Uhren von Telefon und Server gehen nie gleich. */
@@ -80,7 +80,7 @@ function neueWiederherstellungscodes(): string[] {
   });
 }
 
-async function codesErsetzen(tx: import('../db/database').DbSchnittstelle, uid: number): Promise<string[]> {
+async function codesErsetzen(tx: import('../../db/database').DbSchnittstelle, uid: number): Promise<string[]> {
   const codes = neueWiederherstellungscodes();
   await tx.run('DELETE FROM zweiter_faktor_codes WHERE user_id = $1', [uid]);
   for (const c of codes)

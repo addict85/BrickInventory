@@ -54,7 +54,7 @@ const { buildAndRequire, einhaengung, ohneKommentare } = require('./helpers/sour
 const _req = buildAndRequire();
 const AUTH = einhaengung('auth');
 const db = _req('db/database.js');
-const auth = _req('utils/auth.js');
+const auth = _req('src/konto/auth.js');
 const express   = require(path.join(ROOT, 'node_modules', 'express'));
 const session   = require(path.join(ROOT, 'node_modules', 'express-session'));
 const pgSession = require(path.join(ROOT, 'node_modules', 'connect-pg-simple'))(session);
@@ -247,7 +247,7 @@ test('QR-Zugang: die Oberflaeche waehlt beim ERZEUGEN, nicht beim Einloesen', ()
   // gebraucht, BEVOR die Seite den Server nach etwas fragt. Also wird die
   // Deckung hier gemessen statt behauptet. Eine Wahl, die der Server nicht
   // kennt, waere im Markup sichtbar und in der Wirkung nichts.
-  const serverListe = ohneKommentare(fs.readFileSync(path.join(ROOT, 'utils/auth.ts'), 'utf8'))
+  const serverListe = ohneKommentare(fs.readFileSync(path.join(ROOT, 'src/konto/auth.ts'), 'utf8'))
     .split('const TOKEN_LAUFZEITEN')[1].split('};')[0]
     .match(/'(\w+)':/g).map(x => x.replace(/'|:/g, ''));
   const markupListe = [...html.matchAll(/<option value="(\w+)" data-i18n="qr\.validity_/g)]

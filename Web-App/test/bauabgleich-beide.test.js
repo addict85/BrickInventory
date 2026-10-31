@@ -113,7 +113,7 @@ test('beide fragen ihr Blickfeld an DIESER Stelle', () => {
   //
   // Jetzt hat die Teileliste ihre eigene Wahl, in beiden Oberflächen dieselbe:
   // ohne Haken `accounts=own`, mit Haken der ganze Haushalt. Die Namen sind
-  // weiterhin die des Servers (utils/household.ts, parseScopeMode) — es ist
+  // weiterhin die des Servers (src/haushalt/haushalt.ts, parseScopeMode) — es ist
   // dieselbe Sache, nur an der richtigen Stelle bedient.
   const js = web('public/js/08-init.js');
   assert.match(js, /pl-bestand-subs/, 'Der Webapp fehlt die Wahl „Unterkonten mit einbeziehen"');

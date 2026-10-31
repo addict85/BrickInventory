@@ -143,7 +143,7 @@ test('das Eingabefeld zeigt denselben Standard an', () => {
 // ── Punkt 3: Zähler in der Datenbank ───────────────────────────────────────
 
 test('die Login-Zähler liegen nicht mehr im Prozessspeicher', () => {
-  const src = fs.readFileSync(path.join(ROOT, 'utils/loginLimiter.ts'), 'utf8');
+  const src = fs.readFileSync(path.join(ROOT, 'src/konto/loginLimiter.ts'), 'utf8');
   assert.match(src, /rate_limit_attempts/,
     'Bei N Cluster-Workern werden aus 5 Fehlversuchen sonst N×5');
   assert.match(src, /ON CONFLICT \(key\) DO UPDATE/,
@@ -153,7 +153,7 @@ test('die Login-Zähler liegen nicht mehr im Prozessspeicher', () => {
 });
 
 test('bei DB-Ausfall greift die Rückfallebene', () => {
-  const src = fs.readFileSync(path.join(ROOT, 'utils/loginLimiter.ts'), 'utf8');
+  const src = fs.readFileSync(path.join(ROOT, 'src/konto/loginLimiter.ts'), 'utf8');
   for (const fn of ['_read', '_bump', '_clear']) {
     const body = src.slice(src.indexOf(`async function ${fn}(`), src.indexOf(`async function ${fn}(`) + 900);
     assert.match(body, /catch \(_\)/,
@@ -167,7 +167,7 @@ test('die Aufrufstellen warten auf das Ergebnis', () => {
   // await liefert ein Promise, das immer truthy ist und JEDEN Login sperrt.
   //
   // Hier standen zwei Dateinamen. Das ging gut, solange die Anmeldung an genau
-  // diesen zwei Stellen stand; als sie in utils/auth.ts zusammengezogen wurde,
+  // diesen zwei Stellen stand; als sie in src/konto/auth.ts zusammengezogen wurde,
   // prüfte der Test Dateien, in denen es nichts mehr zu prüfen gab, und
   // meldete das Zusammenlegen als Fehler. Gesucht wird deshalb im Baum.
   const dateien = (dir) => fs.readdirSync(dir, { withFileTypes: true }).flatMap(e => {

@@ -1,13 +1,13 @@
 import bcrypt from 'bcryptjs';
 import type { Request, Response } from 'express';
-import * as db from '../db/database';
+import * as db from '../../db/database';
 import { bestaetigungGesperrt, bestaetigungFehlgeschlagen, bestaetigungGelungen } from './loginLimiter';
-import { sendeFehler } from '../src/infra/fehlerTexte';
+import { sendeFehler } from '../infra/fehlerTexte';
 import * as zf from './zweiterFaktor';
 
 /**
  * Das aktuelle Passwort eines angemeldeten Kontos prüfen, mit Bremse je Konto
- * (utils/loginLimiter.ts). Antwortet selbst, wenn es nicht stimmt. Wer nur eine
+ * (src/konto/loginLimiter.ts). Antwortet selbst, wenn es nicht stimmt. Wer nur eine
  * offene Sitzung oder ein App-Token erbeutet hat, kommt damit nicht weiter.
  */
 export async function bestaetigePasswort(req: Request, res: Response, uid: number, passwort: unknown,

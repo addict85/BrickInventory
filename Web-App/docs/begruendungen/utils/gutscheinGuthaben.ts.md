@@ -58,7 +58,7 @@ gemeint: ein Aufruf je 30 Sekunden „über alle Benutzer". Ein Limiter im
 Modulspeicher kann das nicht leisten; der Server läuft im Cluster
 (WORKERS = max(2, Kerne)), und jeder Arbeiter hätte seine eigene Instanz
 mit eigener Zählung. Genau dieser Fehler ist in diesem Baum zweimal
-behoben worden (utils/loginLimiter.ts: „aus 5 Fehlversuchen werden sonst
+behoben worden (src/konto/loginLimiter.ts: „aus 5 Fehlversuchen werden sonst
 N×5"; utils/rateLimiter.ts zum Rebrickable-Tageskontingent).
 
 Die Grenze steht deshalb in utils/gutscheinGuthabenSchranke.ts und wird in

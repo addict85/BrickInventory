@@ -1,3 +1,4 @@
+import fs from 'fs';
 import { konfig } from './konfig';
 import { sendeFehler } from './fehlerTexte';
 import { FEHLER, fehlerText, antwortSprache, dateiFehler } from './fehlerTexte';
@@ -22,7 +23,7 @@ function handleRouteError(res: any, e: any, status?: number, req?: any) {
   else console.warn(`[route-warnung] ${anfrage}${code}: ${fehlertext(e)}`);
   if (res.headersSent) return;
   // Trägt der Fehler einen Code, gilt der
-  // Helfer wie utils/household.ts und utils/setMove.ts werfen mit
+  // Helfer wie src/haushalt/haushalt.ts und utils/setMove.ts werfen mit
   // fehlerWerfen() und geben damit den GRUND mit, nicht den Satz. Erst hier —
   // wo der Request bekannt ist — wird daraus ein Satz in der Sprache des …
   // Ausführlich: docs/begruendungen/src/infra/httpError.ts.md#handlerouteerror-2
@@ -134,7 +135,6 @@ export { handleRouteError, logAndContinue, meldeUndWeiter, meldeUndLiefere, ohne
  * @param req nur für die Sprache der Meldung; ohne ihn Deutsch.
  */
 function streamFileToResponse(res: any, filePath: string, onEnd?: () => void, req?: any) {
-  const fs = require('fs');
   const stream = fs.createReadStream(filePath);
   stream.on('error', (e: NodeJS.ErrnoException) => {
     console.error(`[stream] ${filePath}: ${e?.code || e?.message}`);

@@ -2,8 +2,9 @@
  * BrickLink-Wanted-Listen lesen und auf Rebrickable-Nummern abbilden.
  * Ausführlich: docs/begruendungen/utils/wantedListe.ts.md#abschnitt
  */
+import { blTeilZuRb, blFilterWirkungslos } from '../clients/rebrickable';
 import * as db from '../db/database';
-import { nutzerStandardZustand } from './settings';
+import { nutzerStandardZustand } from '../src/konto/settings';
 
 /** Die drei Arten, die diese Anwendung führt. */
 export type WantedArt = 'part' | 'fig' | 'set';
@@ -239,7 +240,6 @@ export async function loeseUeberRebrickableAuf(
   auf: Aufloesung[], grenze = 250,
   fortschritt?: (stand: WantedFortschritt) => void,
 ): Promise<{ auf: Aufloesung[]; gefragt: number; gefunden: number; filterWirkungslos: boolean }> {
-  const { blTeilZuRb, blFilterWirkungslos } = require('../clients/rebrickable');
   let gefragt = 0, gefunden = 0;
 
   const ergebnis = [...auf];

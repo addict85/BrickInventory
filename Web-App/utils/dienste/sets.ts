@@ -7,7 +7,7 @@ import * as db from '../../db/database';
 import { logAndContinue, meldeUndLiefere, meldeUndWeiter, vorDem, fehlertext } from '../../src/infra/httpError';
 import { stelleAuftragEin } from '../auftraege';
 import { resolveImageLocal, proxyImageUrl } from '../images';
-import { getSetting } from '../settings';
+import { getSetting } from '../../src/konto/settings';
 import { normalizeSetNumber } from '../setAdd';
 import { istErsatzteil, ersatzteilSql } from '../../src/infra/validate';
 import { istVermutung } from '../barcodeQuelle';

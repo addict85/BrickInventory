@@ -8,6 +8,7 @@ import { lookupPart } from '../clients/rebrickable';
 import { blAbrufNummer } from '../utils/blZuordnung';
 import { fehlertext, meldeUndWeiter, meldeUndLiefere } from '../src/infra/httpError';
 import { sleep } from '../clients/rebrickable';
+import * as db from '../db/database';
 'use strict';
 
 // One-time (idempotent) background migration: fills purchase_price for
@@ -19,7 +20,6 @@ import { sleep } from '../clients/rebrickable';
 // and never floods the BrickLink API (each lookup already goes through the
 // existing rate limiter / cache, this job just paces itself on top of that).
 
-const db = require('../db/database');
 
 function log(msg: string) {
   console.log(`  [purchase-price-backfill] ${msg}`);

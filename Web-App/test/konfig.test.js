@@ -20,7 +20,7 @@
  *      „ungültige Werte: alle auf einmal, mit Namen“ (PORT=0 ging durch)
  *   F  den Import von startup/konfigPruefen aus server.ts entfernt → rot:
  *      „der Server startet mit falschem Wert nicht“ (Stacktrace aus
- *      utils/sitzungsFrist statt der Meldung)
+ *      src/konto/sitzungsFrist statt der Meldung)
  *   G  (30.10.) in ladeKonfig `veraltet` immer leer → rot: „ungültige Werte:
  *      alle auf einmal, mit Namen“ (WEB_WORKERS wurde nicht mehr genannt)
  */

@@ -4,6 +4,8 @@
  * wird und in der Verwaltung zu sehen ist.
  * Ausführlich: docs/begruendungen/jobs/startNachlaeufe.ts.md#abschnitt
  */
+import fs from 'fs';
+import path from 'path';
 import * as db from '../db/database';
 import { downloadSetImage } from '../utils/setImages';
 import { generateThumb } from '../utils/thumbs';
@@ -85,8 +87,6 @@ async function setBilderNachladen(): Promise<void> {
 /** Fehlende Vorschaubilder erzeugen. */
 async function vorschaubilderNachtragen(): Promise<void> {
   try {
-    const fs   = require('fs');
-    const path = require('path');
     const sets  = await db.all("SELECT image_local FROM set_catalog WHERE image_local IS NOT NULL");
     // Aus part_color_catalog statt aus parts (Migration 0034): dasselbe
     // Bild stand dort einmal je Konto, die Schleife lief es mehrfach ab.

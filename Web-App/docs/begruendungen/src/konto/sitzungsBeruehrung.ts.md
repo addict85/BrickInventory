@@ -1,6 +1,6 @@
-# Begründungen zu `utils/sitzungsBeruehrung.ts`
+# Begründungen zu `src/konto/sitzungsBeruehrung.ts`
 
-Die ausführlichen Kommentare aus `utils/sitzungsBeruehrung.ts`, wörtlich. Im Code steht je
+Die ausführlichen Kommentare aus `src/konto/sitzungsBeruehrung.ts`, wörtlich. Im Code steht je
 Stelle der erste Absatz und ein Verweis hierher. Neue Geschichte gehört in die
 Commit-Nachricht (siehe CLAUDE.md).
 
@@ -42,7 +42,7 @@ Sekunde genau nachgeführt wird oder alle fünf Minuten, ändert daran nichts:
 Im schlimmsten Fall läuft eine Sitzung fünf Minuten früher ab als nötig —
 bei einem Tag Laufzeit.
 
-Dieselbe Entscheidung steht schon in utils/auth.ts für die Tokens:
+Dieselbe Entscheidung steht schon in src/konto/auth.ts für die Tokens:
 LAST_USED_THROTTLE, „last_used max. alle 5 Min schreiben". Gleiches Problem,
 gleiche Antwort, gleiche Frist.
 
@@ -61,7 +61,7 @@ Frist zwischen zwei geschriebenen Ablaufzeiten derselben Sitzung.
 
 ── Warum das nicht einfach „fünf Minuten" sein darf ─────────────────────────
 
-Seit die Sitzung eine LEERLAUF-Frist hat (utils/sitzungsFrist.ts, Marcos
+Seit die Sitzung eine LEERLAUF-Frist hat (src/konto/sitzungsFrist.ts, Marcos
 Vorgabe „nach ein paar Stunden Inaktivität ausloggen"), hängen die beiden
 Zahlen zusammen, und zwar scharf: Gedrosselt wird das NACHFÜHREN des
 Ablaufs. Ist die Drosselung länger als die Frist selbst, wird der Ablauf

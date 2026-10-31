@@ -1,6 +1,6 @@
-# Begründungen zu `utils/settings.ts`
+# Begründungen zu `src/konto/settings.ts`
 
-Die ausführlichen Kommentare aus `utils/settings.ts`, wörtlich. Im Code steht je
+Die ausführlichen Kommentare aus `src/konto/settings.ts`, wörtlich. Im Code steht je
 Stelle der erste Absatz und ein Verweis hierher. Neue Geschichte gehört in die
 Commit-Nachricht (siehe CLAUDE.md).
 
@@ -29,7 +29,7 @@ und triggerNow() hält die Sperre 55 selbst — mehrfaches Anstossen ist
 dadurch harmlos, egal in welchem Worker das hier läuft.
 
 setImmediate + spätes require: Die Antwort auf das Speichern wartet nicht
-auf den Preislauf, und utils/settings ↔ jobs/priceJob bilden keinen
+auf den Preislauf, und src/konto/settings ↔ jobs/priceJob bilden keinen
 Import-Kreis.
 
 @param {number|string} userId

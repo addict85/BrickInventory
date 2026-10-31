@@ -5,7 +5,7 @@
 import { logAndContinue, meldeUndLiefere } from '../src/infra/httpError';
 import * as db from '../db/database';
 import { bricklinkRequest } from '../clients/bricklink';
-import { getGlobalSetting } from './settings';
+import { getGlobalSetting } from '../src/konto/settings';
 import { mitVersion, ohneVersion } from './setNummer';
 
 export type BlType = 'SET' | 'GEAR' | 'BOOK' | 'MINIFIG' | 'NONE';

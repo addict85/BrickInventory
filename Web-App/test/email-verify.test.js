@@ -15,7 +15,7 @@
  * Signatur ausbuchstabiert ist.
  *
  * ── Gegenprobe (durchgeführt) ───────────────────────────────────────────────
- * Die SQL-Zeile aus utils/auth.ts wurde versuchsweise zurück in die Route in
+ * Die SQL-Zeile aus src/konto/auth.ts wurde versuchsweise zurück in die Route in
  * server.ts kopiert. Ergebnis: „die Verifikationsabfrage steht genau einmal
  * im Baum" wird rot und nennt beide Fundstellen. Zurückgebaut, Regel wieder
  * grün. Ohne diesen Schritt wäre die Regel nur eine Behauptung.
@@ -50,23 +50,23 @@ test('E-Mail-Verifikation steht nur an einer Stelle', async (t) => {
     // pruefeParameter statt eines Musters über den ganzen Kopf: Eine
     // Typannotation zu ergänzen ist eine Verbesserung und darf keinen Test
     // umwerfen (siehe Nachträge 148 und 150).
-    pruefeParameter(lies('utils/auth.ts'), 'verifiziereEmailToken', ['token'],
+    pruefeParameter(lies('src/konto/auth.ts'), 'verifiziereEmailToken', ['token'],
       'die gemeinsame Verifikationslogik');
   });
 
   await t.test('die Verifikationsabfrage steht genau einmal im Baum', () => {
-    const kandidaten = ['utils/auth.ts', 'server.ts', 'routes/auth.ts'];
+    const kandidaten = ['src/konto/auth.ts', 'server.ts', 'routes/auth.ts'];
     const treffer = kandidaten.filter((rel) => ABFRAGE.test(lies(rel)));
-    assert.deepEqual(treffer, ['utils/auth.ts'],
+    assert.deepEqual(treffer, ['src/konto/auth.ts'],
       'Die Abfrage nach verification_token gehört ausschliesslich in ' +
       'utils/auth.verifiziereEmailToken(). Gefunden in: ' + treffer.join(', ') +
       ' — damit ist die Doppelung aus Nachtrag 154 zurück.');
   });
 
   await t.test('das Einlösen (email_verified=1) steht genau einmal im Baum', () => {
-    const kandidaten = ['utils/auth.ts', 'server.ts', 'routes/auth.ts'];
+    const kandidaten = ['src/konto/auth.ts', 'server.ts', 'routes/auth.ts'];
     const treffer = kandidaten.filter((rel) => EINLOESEN.test(lies(rel)));
-    assert.deepEqual(treffer, ['utils/auth.ts'],
+    assert.deepEqual(treffer, ['src/konto/auth.ts'],
       'Auch das Setzen von email_verified gehört nur an eine Stelle. ' +
       'Gefunden in: ' + treffer.join(', '));
   });

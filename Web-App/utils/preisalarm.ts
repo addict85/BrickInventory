@@ -4,7 +4,7 @@
  */
 import { meldeUndLiefere, meldeUndWeiter } from '../src/infra/httpError';
 import * as db from '../db/database';
-import { scopeIds } from './household';
+import { scopeIds } from '../src/haushalt/haushalt';
 import { fehlerWerfen } from '../src/infra/fehlerTexte';
 import * as httpError from '../src/infra/httpError';
 import * as mailer from '../src/infra/mailer';

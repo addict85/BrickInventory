@@ -2,6 +2,7 @@
 // Small helper to build CSV text from rows of plain values, with correct
 // quoting/escaping for fields containing commas, quotes or newlines.
 // Used by the various "Export als CSV" endpoints so the exported files can
+import { parse } from 'csv-parse/sync';
 // be re-imported with the matching CSV importer (Sets / Teile / Minifiguren).
 
 /**
@@ -138,7 +139,6 @@ function parseCsvDate(raw: unknown) {
 const GEFAEHRLICHE_SPALTEN = new Set(['__proto__', 'constructor', 'prototype']);
 
 function csvEinlesen(csvText: string): { records: any[]; delimiter: string; uebersprungen: number[] } {
-  const { parse } = require('csv-parse/sync');
   const text = String(csvText || '').replace(/^\uFEFF/, '');
   const firstLine = text.split('\n')[0] || '';
   const delimiter = firstLine.split(';').length > firstLine.split(',').length ? ';' : ',';

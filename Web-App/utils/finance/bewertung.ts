@@ -8,8 +8,8 @@
 
 import { meldeUndLiefere } from '../../src/infra/httpError';
 import * as db from '../../db/database';
-import { asIds } from '../household';
-import { getSetting, getGlobalSetting } from '../settings';
+import { asIds } from '../../src/haushalt/haushalt';
+import { getSetting, getGlobalSetting } from '../../src/konto/settings';
 import { resolveImageLocal, proxyImageUrl } from '../images';
 import { valueSet, valueAcquisitionRows, weightedPurchase, pnlPct as calcPnlPct, pnlProzent } from '../setValue';
 import { mitVersion } from '../setNummer';
@@ -37,7 +37,7 @@ import { aufRappen, inZehntel4 } from '../../src/infra/geld';
  */
 async function loadManualAcquisitions(uid: Blickfeld, kind: 'part' | 'fig', waehrung: string) {
   // Blickfeld: Ein Hauptkonto bewertet den ganzen Haushalt. Die Währung ist
-  // beim Verknüpfen erzwungen gleich (utils/household.ts) — sonst summierte
+  // beim Verknüpfen erzwungen gleich (src/haushalt/haushalt.ts) — sonst summierte
   // diese Rechnung zwei Währungen, ohne dass man es der Zahl ansähe.
   const uids = asIds(uid as any);
   const rows = await db.all(

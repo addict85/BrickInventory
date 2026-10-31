@@ -5,7 +5,7 @@
 import { kaufpreisIn } from './finance/abfragen';
 import * as db from '../db/database';
 import { resolveSetCondition, resolveBlColorId, resolveBlPartNumber } from './financeCalc';
-import { asIds } from './household';
+import { asIds } from '../src/haushalt/haushalt';
 import { buildChart } from './chartData';
 import { blNummerVon } from './blZuordnung';
 import { entwicklungProzent } from './setValue';

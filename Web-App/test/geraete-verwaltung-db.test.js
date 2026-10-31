@@ -116,7 +116,7 @@ test('Zugänge auflisten und aussperren — über Sitzung UND über Token',
     // Und die Laufzeiten stehen richtig drin — daran hängt die Anzeige.
     //
     // Beide Zeilen tragen jetzt ein Datum: Auch der App-Token hat seit der
-    // Gleitfrist ein echtes Ablaufdatum (utils/auth.ts), es rueckt bei jeder
+    // Gleitfrist ein echtes Ablaufdatum (src/konto/auth.ts), es rueckt bei jeder
     // Benutzung nur nach. Fuer die Anzeige heisst das: Webapp und App zeigen
     // in der Spalte „Laeuft ab" ein Datum statt „nie" — und das ist genau die
     // Auskunft, die vorher fehlte. „nie" war ein Versprechen, das der
@@ -153,7 +153,7 @@ test('Zugänge auflisten und aussperren — über Sitzung UND über Token',
 
     // Und zwar WIRKLICH: Der Token des Tablets gilt nicht mehr. Das ist der
     // Punkt der ganzen Übung — die Zeile zu löschen ist nur die halbe Miete,
-    // wenn der Cache in utils/auth.ts sie noch bedient.
+    // wenn der Cache in src/konto/auth.ts sie noch bedient.
     const tabletVersucht = await ruf(AUTH + '/me',
       { headers: { authorization: `Bearer ${tablet.body.token}` } });
     assert.equal(tabletVersucht.status, 401,

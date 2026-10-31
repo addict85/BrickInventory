@@ -29,7 +29,7 @@ korrekt ein.
 
 Genau dieser Fehler ist in diesem Baum zweimal gefunden und behoben worden:
 
-  * utils/loginLimiter.ts — „bei N Cluster-Workern werden aus 5
+  * src/konto/loginLimiter.ts — „bei N Cluster-Workern werden aus 5
     Fehlversuchen sonst N×5".
   * utils/rateLimiter.ts — das Rebrickable-Tageskontingent lag in
     `this.count` eines Prozesses; auf einem Vierkerner waren 100'000
@@ -45,7 +45,7 @@ belegen; alle anderen sehen ihn belegt.
 Der erste Entwurf legte die zwei Zeitpunkte in der zentralen
 Schlüssel-Wert-Tabelle der globalen Einstellungen ab, wie die `api_calls_*`.
 scripts/check-global-settings.js hat das zurückgewiesen, und beim Nachsehen
-zu Recht: Dort gilt, dass diese Tabelle über utils/settings.ts angefasst
+zu Recht: Dort gilt, dass diese Tabelle über src/konto/settings.ts angefasst
 wird, und genau das geht hier nicht — getGlobalSetting() hat seine eigene
 Verbindung und gäbe die Sperre auf, um die es geht. Die eigene Tabelle
 (Migration 0039) ist dafür der richtige Ort und spart zugleich zwei

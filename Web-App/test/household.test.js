@@ -24,7 +24,7 @@ test('ein Konto verknüpft sich nicht mit sich selbst', () => {
 test('der Einladungscode steht nur als Hash in der Datenbank', () => {
   // Wie bei API-Tokens und QR-Anmeldecodes: Wer die Datenbank liest, soll
   // keine Einladung einlösen können.
-  const h = read('utils/household.ts');
+  const h = read('src/haushalt/haushalt.ts');
   assert.match(h, /createHash\('sha256'\)/);
   assert.match(h, /VALUES \(\$1,\$2,\$3\)[\s\S]{0,120}hash\(code\)/,
     'Gespeichert wird der Hash, nicht der Code');
@@ -36,7 +36,7 @@ test('der Einladungscode steht nur als Hash in der Datenbank', () => {
 });
 
 test('der Code wird atomar entwertet und bei Ablehnung wieder freigegeben', () => {
-  const h = read('utils/household.ts');
+  const h = read('src/haushalt/haushalt.ts');
   // Atomar: Nur die erste Anfrage bekommt eine Zeile zurück.
   assert.match(h, /UPDATE account_link_invites SET used_at = NOW\(\)[\s\S]{0,200}WHERE token_hash = \$1 AND used_at IS NULL AND expires_at > NOW\(\)[\s\S]{0,60}RETURNING main_user_id/);
   // Und wieder frei, wenn eine Regel greift — sonst wäre der Code nach einem
@@ -77,7 +77,7 @@ test('Schreibrechte kommen nie aus dem Gedächtnis', () => {
   // ohneKommentare() zuerst: Die BEGRÜNDUNG dieser Regel steht als Kommentar
   // in genau den beiden Funktionen und nennt dabei resolveHousehold() — ein
   // Test, der den rohen Text liest, schlägt an seiner eigenen Erklärung an.
-  const h = require('./helpers/sources').ohneKommentare(read('utils/household.ts'));
+  const h = require('./helpers/sources').ohneKommentare(read('src/haushalt/haushalt.ts'));
   for (const fn of ['canWriteFor', 'writableIds']) {
     const i = h.indexOf(`export async function ${fn}`);
     assert.ok(i > 0, `${fn} fehlt`);
@@ -95,7 +95,7 @@ test('Schreibrechte kommen nie aus dem Gedächtnis', () => {
 test('beide Seiten dürfen die Verknüpfung lösen', () => {
   // Ein Unterkonto, das nicht mehr mitmachen will, wäre sonst auf das
   // Wohlwollen des Hauptkontos angewiesen.
-  const h = read('utils/household.ts');
+  const h = read('src/haushalt/haushalt.ts');
   assert.match(h, /DELETE FROM account_links WHERE main_user_id = \$1 AND sub_user_id = \$2/);
   assert.match(h, /DELETE FROM account_links WHERE sub_user_id = \$1/);
 });
@@ -112,7 +112,7 @@ test('Webapp und App bekommen dieselben Endpunkte', () => {
   // Und die Zweitfassung darf nicht zurückkehren.
   assert.doesNotMatch(read('routes/settings.ts'), /householdStatus|createInvite|redeemInvite/,
     'routes/settings.ts hat wieder eigene Haushalts-Routen — dann existiert die Logik doppelt');
-  // Keine eigene Regel in der Route — sie stehen in utils/household.ts.
+  // Keine eigene Regel in der Route — sie stehen in src/haushalt/haushalt.ts.
   for (const f of ['routes/settings.ts', 'routes/api_v1/settings.ts']) {
     assert.doesNotMatch(read(f), /account_links/,
       `${f}: Routen dürfen nicht selbst gegen account_links abfragen`);
@@ -142,7 +142,7 @@ test('der Kontofilter wird am Server in IDs übersetzt, nicht in der Oberfläche
   // Konto-IDs übersetzt — dadurch kennt ihn jede Zahl derselben Antwort
   // automatisch. Eine Kachelwand liesse sich clientseitig aussieben, die
   // Gesamtzahl darunter und die Bewertung im Finanzreiter nicht.
-  const h = read('utils/household.ts');
+  const h = read('src/haushalt/haushalt.ts');
   assert.match(h, /export async function scopeIds\(uid: number, mode: ScopeMode = 'all'\)/);
   assert.match(h, /if \(mode === 'own'\)  return \[id\];/);
   assert.match(h, /if \(mode === 'subs'\) return h\.memberIds\.filter\(m => m !== id\);/);
@@ -304,10 +304,10 @@ test('Schreiben in ein fremdes Konto verlangt die richtige Richtung', () => {
   // canWriteFor() prüft Hauptkonto → eigenes Unterkonto. „Steht im Blickfeld"
   // genügt NICHT: Ein Unterkonto darf nicht ins Nachbarkonto schreiben.
   //
-  // Die Auflösung liegt in utils/household.ts, nicht in den Routen: Drei
+  // Die Auflösung liegt in src/haushalt/haushalt.ts, nicht in den Routen: Drei
   // Kopien einer Rechteprüfung sind die Sorte Doppelung, bei der irgendwann
   // eine grosszügiger ist als die anderen.
-  const h = read('utils/household.ts');
+  const h = read('src/haushalt/haushalt.ts');
   assert.match(h, /export async function resolveWriteTarget/);
   assert.match(h, /return \(await canWriteFor\(actorId, target\)\) \? target : null;/);
   // Ohne Angabe bleibt es beim eigenen Konto — alles verhält sich wie bisher.
@@ -595,7 +595,7 @@ test('der Absender eines Eigentümerwechsels kommt aus der ZEILE, nicht aus dem 
   // gefunden" — die Android-App machte es richtig (acq.ownerUserId), die
   // Webapp nicht. Die Erfassungs-ID ist eindeutig; wem sie gehört, weiss die
   // Datenbank besser als jeder Dialog.
-  const h = read('utils/household.ts');
+  const h = read('src/haushalt/haushalt.ts');
   assert.match(h, /export async function acquisitionMoveSource/,
     'Die Auflösung gehört an die eine Stelle, die „wessen Daten?" beantwortet');
   assert.match(h, /canWriteFor\(actorId, owner\)/,

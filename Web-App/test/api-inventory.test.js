@@ -104,7 +104,7 @@ const C = {
 
   // Nur /api/v1 — von beiden Clients (oder nur Android) genutzt
   // Etappe 6: zusammengelegt — nur noch die v1-Adresse, beide Clients rufen
-  // sie auf. Die Zustands-Auflösung selbst steht in utils/settings.ts.
+  // sie auf. Die Zustands-Auflösung selbst steht in src/konto/settings.ts.
   'GET /api/v1/stats': 'nur-v1',
   'GET /api/v1/settings/default-condition': 'nur-v1',
   'GET /api/v1/settings/user/default-condition': 'nur-v1',
@@ -224,7 +224,7 @@ const C = {
   'POST /api/v1/sets/:sn/move': 'paritaet',
   // Haushalt: Konten verknüpfen. Beide Wege, damit die App dieselben Regeln
   // bekommt — die Grenzen (kein Kreis, gleiche Währung im ganzen
-  // einziehenden Teilbaum) stehen in utils/household.ts, nicht in den
+  // einziehenden Teilbaum) stehen in src/haushalt/haushalt.ts, nicht in den
   // Routen. „Nur eine Stufe“ stand hier bis Nachtrag 173.
   'GET /api/v1/settings/household': 'nur-v1',
   'POST /api/v1/settings/household/invite': 'nur-v1',
@@ -326,7 +326,7 @@ const C = {
   'GET /api/v1/settings/einrichtung': 'nur-v1',
   'POST /api/v1/settings/einrichtung/fertig': 'nur-v1',
   'POST /api/v1/settings/quelle-testen': 'nur-v1',
-  // Zweiter Faktor (utils/zweiterFaktor.ts): nur unter v1, kein Alt-Pfad.
+  // Zweiter Faktor (src/konto/zweiterFaktor.ts): nur unter v1, kein Alt-Pfad.
   'GET /api/v1/auth/zweiter-faktor': 'nur-v1',
   'POST /api/v1/auth/zweiter-faktor/einrichten': 'nur-v1',
   'POST /api/v1/auth/zweiter-faktor/bestaetigen': 'nur-v1',

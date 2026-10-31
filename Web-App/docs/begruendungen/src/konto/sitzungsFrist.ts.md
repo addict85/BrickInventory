@@ -1,6 +1,6 @@
-# Begründungen zu `utils/sitzungsFrist.ts`
+# Begründungen zu `src/konto/sitzungsFrist.ts`
 
-Die ausführlichen Kommentare aus `utils/sitzungsFrist.ts`, wörtlich. Im Code steht je
+Die ausführlichen Kommentare aus `src/konto/sitzungsFrist.ts`, wörtlich. Im Code steht je
 Stelle der erste Absatz und ein Verweis hierher. Neue Geschichte gehört in die
 Commit-Nachricht (siehe CLAUDE.md).
 

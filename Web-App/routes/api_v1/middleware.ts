@@ -8,7 +8,7 @@
  */
 import { meldeUndLiefere } from '../../src/infra/httpError';
 import type { Request, Response, NextFunction } from 'express';
-import { validateToken, resolveUserId } from '../../utils/auth';
+import { validateToken, resolveUserId } from '../../src/konto/auth';
 import { sendeFehler } from '../../src/infra/fehlerTexte';
 
 /** Extrahiert den Bearer-Token aus dem Authorization-Header (oder null). */

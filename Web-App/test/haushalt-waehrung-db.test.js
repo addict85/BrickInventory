@@ -41,7 +41,7 @@ test('Haushaltswährung', { concurrency: 1 }, async (t) => {
     await db.run('DELETE FROM users WHERE id = ANY($1)', [ids]);
     await db.pool.end().catch(() => {});
   });
-  const { setUserSetting } = _req('utils/settings.js');
+  const { setUserSetting } = _req('src/konto/settings.js');
   const waehrungen = async () => (await db.all(
     `SELECT u.id, s.value FROM unnest($1::int[]) WITH ORDINALITY AS u(id, n)
        JOIN user_settings s ON s.user_id = u.id AND s.key = 'currency' ORDER BY u.n`, [ids])).map(r => r.value);

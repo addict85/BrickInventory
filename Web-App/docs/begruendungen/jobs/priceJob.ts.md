@@ -38,7 +38,7 @@ blockiert ein abgestürzter Lauf alle folgenden bis zum Neustart.
 
 ```text
 getSetting()/getGlobalSetting() standen hier als wortgleiche Kopien von
-utils/settings.ts — inklusive der eigenen SELECT-Anweisung auf
+src/konto/settings.ts — inklusive der eigenen SELECT-Anweisung auf
 global_settings. Beide sind ersatzlos gestrichen: Wer den Tabellenzugriff
 aendert (Zwischenspeicher, Umbenennung einer Spalte), soll das an EINER
 Stelle tun und nicht danach suchen muessen.

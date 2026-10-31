@@ -18,8 +18,8 @@ import { startVerbote, cookieSicher } from './src/infra/konfig';
 import { bereiteDatenbankVor } from './startup/datenbank';
 import { starteJobs, stoppeJobs } from './startup/jobsProzess';
 import { verdrahte } from './jobs/verdrahtung';
-import { drossleBeruehren } from './utils/sitzungsBeruehrung';
-import { SITZUNG_LEERLAUF_SEK, sitzungsHoechstdauer } from './utils/sitzungsFrist';
+import { drossleBeruehren } from './src/konto/sitzungsBeruehrung';
+import { SITZUNG_LEERLAUF_SEK, sitzungsHoechstdauer } from './src/konto/sitzungsFrist';
 import { antwortAufDateiFehler, liefereDatei, sendeDatei } from './src/infra/dateiAusliefern';
 import { cdnFuerFehlendesBild } from './utils/bildNachschlagen';
 import { aktuellerStartZustand } from './src/infra/startZustand';
@@ -27,13 +27,13 @@ import { merkeAnfrage } from './src/infra/anfrageKonto';
 import { proxyVertrauen, proxyHinweis } from './src/infra/proxyVertrauen';
 import { nurEigeneHerkunft } from './src/infra/herkunft';
 import { API_VERSION, API_MIN_APP, appFassungPruefen } from './src/infra/apiVersion';
-import { resolveUserId, istVerwalter, verifiziereEmailToken } from './utils/auth';
+import { resolveUserId, istVerwalter, verifiziereEmailToken } from './src/konto/auth';
 import { PUBLIC_DIR } from './src/infra/appPaths';
 import { IMG_PROXY_PFAD } from './utils/images';
 import { safeDataPath } from './src/infra/datenPfad';
 import { generateThumb } from './utils/thumbs';
 import { closeAllSse } from './src/infra/sseRegistry';
-import { renderIndexHtml } from './utils/indexHtml';
+import { renderIndexHtml } from './src/konto/indexHtml';
 import * as pgNotify from './db/pgNotify';
 import { registerImgProxy } from './routes/imgProxy';
 import { anmeldungAmEingang } from './routes/api_v1/middleware';
@@ -220,7 +220,7 @@ const sitzungsSpeicher = new PgSession({
 });
 
 // Die Ablaufzeit der Sitzung wird gedrosselt geschrieben — die Messung und die
-// Begruendung stehen in utils/sitzungsBeruehrung.ts.
+// Begruendung stehen in src/konto/sitzungsBeruehrung.ts.
 drossleBeruehren(sitzungsSpeicher);
 
 app.use(session({
@@ -308,7 +308,7 @@ app.get('/images/*pfad', async (req: WildcardRequest, res: Response) => {
 
 app.use(express.static(PUBLIC_DIR, {
   // `index: false`: Sonst lieferte express.static die index.html für `/`
-  // selbst aus, am Renderer (utils/indexHtml.ts) vorbei.
+  // selbst aus, am Renderer (src/konto/indexHtml.ts) vorbei.
   // Ausführlich: docs/begruendungen/server.ts.md#lookupcdnformissingimage-2
   index: false,
   // Assets (Bilder, SVG, CSS/JS mit ?v=-Cache-Busting) dürfen lange gecacht werden.
@@ -397,7 +397,7 @@ app.use('/api', (_req, res) => res.status(404).json({ success: false, error: 'En
 app.get('/{*splat}', async (req, res) => {
   res.set('Cache-Control', 'no-cache');
   try {
-    // data-theme und die Sprachdatei setzt der Renderer (utils/indexHtml.ts);
+    // data-theme und die Sprachdatei setzt der Renderer (src/konto/indexHtml.ts);
     // ohne Sitzung gilt die Vorgabe.
     res.type('html').send(await renderIndexHtml(req.session?.userId));
   } catch {

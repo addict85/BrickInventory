@@ -25,7 +25,7 @@
  *
  * ── Die Kopplung, die dieser Test festhält ──────────────────────────────────
  *
- * Gedrosselt wird das NACHFÜHREN des Ablaufs (utils/sitzungsBeruehrung.ts).
+ * Gedrosselt wird das NACHFÜHREN des Ablaufs (src/konto/sitzungsBeruehrung.ts).
  * Ist die Drosselung länger als die Leerlauf-Frist, wird der Ablauf nie
  * rechtzeitig nachgeführt — dann fliegt der ARBEITENDE Benutzer heraus, nicht
  * der untätige. Bei vier Stunden Frist und fünf Minuten Drosselung fällt das
@@ -108,8 +108,8 @@ process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 const { buildAndRequire, ohneKommentare } = require('./helpers/sources');
 const _req = buildAndRequire();
 const db = _req('db/database.js');
-const { drossleBeruehren, BERUEHREN_MS } = _req('utils/sitzungsBeruehrung.js');
-const { SITZUNG_LEERLAUF_MS, SITZUNG_LEERLAUF_SEK, LEERLAUF_VORGABE_MIN } = _req('utils/sitzungsFrist.js');
+const { drossleBeruehren, BERUEHREN_MS } = _req('src/konto/sitzungsBeruehrung.js');
+const { SITZUNG_LEERLAUF_MS, SITZUNG_LEERLAUF_SEK, LEERLAUF_VORGABE_MIN } = _req('src/konto/sitzungsFrist.js');
 const express   = require(path.join(ROOT, 'node_modules', 'express'));
 const session   = require(path.join(ROOT, 'node_modules', 'express-session'));
 const pgSession = require(path.join(ROOT, 'node_modules', 'connect-pg-simple'))(session);

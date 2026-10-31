@@ -41,7 +41,7 @@ const ROOT = path.join(__dirname, '..');
 const read = f => fs.readFileSync(path.join(ROOT, f), 'utf8');
 const { buildAndRequire, ohneKommentare } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { PASSWORT_MIN_ZEICHEN, passwortZuKurz } = _req('utils/auth.js');
+const { PASSWORT_MIN_ZEICHEN, passwortZuKurz } = _req('src/konto/auth.js');
 
 // Ausgeschrieben statt ueber eine Schleifenvariable zusammengesetzt — siehe
 // test/baumbruecken.test.js, das diese Bruecken statisch aufloest.

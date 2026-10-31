@@ -2,8 +2,10 @@
  * Fachdienst Verwaltung: was die Überwachungsseite an Zahlen, Proben und
  * Hebeln braucht. Fremde Dienste und Jobs erreicht sie nur von hier aus.
  */
+import crypto from 'crypto';
 import fs from 'fs';
 import https from 'https';
+import path from 'path';
 import * as verwaltung from '../verwaltung';
 import * as db from '../../db/database';
 import { naechsteUhrzeit, taeglicheUhrzeit } from '../zeitplan';
@@ -15,7 +17,7 @@ import { katalogEintrag, ohneBricklinkPreis } from '../setNummer';
 import { loescheAnleitungen } from '../instructions';
 import { imgProxyFailures } from '../imgProxyStats';
 import { vergissFehlend } from '../imageMisses';
-import { getGlobalSetting, getSetting, setGlobalSetting } from '../settings';
+import { getGlobalSetting, getSetting, setGlobalSetting } from '../../src/konto/settings';
 import { liesZustand } from '../laufzustand';
 import * as monitor from '../jobMonitor';
 import { DAILY_JOBS, ziehePlanVor, zeitplanGeaendert } from '../zeitplan';
@@ -318,11 +320,10 @@ export async function jobUebersicht() {
   // PDF jobs: count from filesystem
   let pdfRunning = 0, pdfDone = 0;
   try {
-    const _fs2 = require('fs'), _path2 = require('path');
-    const pdfFiles = _fs2.readdirSync(PDF_JOB_DIR).filter((f: string) => f.endsWith('.json'));
+    const pdfFiles = fs.readdirSync(PDF_JOB_DIR).filter((f: string) => f.endsWith('.json'));
     for (const f of pdfFiles) {
       try {
-        const j = JSON.parse(_fs2.readFileSync(_path2.join(PDF_JOB_DIR, f), 'utf8'));
+        const j = JSON.parse(fs.readFileSync(path.join(PDF_JOB_DIR, f), 'utf8'));
         if (j.status === 'running') pdfRunning++;
         else if (j.status === 'done') pdfDone++;
       } catch (e) { meldeUndWeiter('admin:pdf-auftrag-lesen', e); }
@@ -399,7 +400,7 @@ export async function bildProbe(url: string) {
   for (const v of variants) results.push(await probe(v));
 
   // Liegt das Bild bereits im Plattencache?
-  const crypto = require('crypto'), fsp = fs.promises, pathm = require('path');
+  const fsp = fs.promises, pathm = path;
   const key = crypto.createHash('sha1').update(url).digest('hex');
   const dir = pathm.join(DATA_DIR, 'img_proxy_cache');
   const cached = await fsp.stat(pathm.join(dir, key)).then((st: any) => ({ bytes: st.size })).catch(ohneFehlendeDatei('verwaltung:stat', null));

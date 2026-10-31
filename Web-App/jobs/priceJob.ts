@@ -4,7 +4,7 @@ import { kontingentFrei, speicherePreis, cacheUsable, preisAusCache, parallelLim
 import { meldeUndWeiter, fehlertext, meldeUndLiefere, logAndContinue } from '../src/infra/httpError';
 import { liesZustand, setzeZustand } from '../utils/laufzustand';
 import { AuftragVerschieben, type AuftragsKontext } from './auftragsWorker';
-import { getSetting, getGlobalSetting } from '../utils/settings';
+import { getSetting, getGlobalSetting } from '../src/konto/settings';
 import { katalogEintrag, ohneBricklinkPreis } from '../utils/setNummer';
 import * as db from '../db/database';
 import * as monitor from '../utils/jobMonitor';

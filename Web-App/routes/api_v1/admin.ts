@@ -14,7 +14,7 @@ import { proxyCachePathFor } from '../../utils/images';
 import { ERLAUBTE_BILD_HOSTS, hostErlaubt } from '../../src/infra/fremdeAdressen';
 import { vergissFehlend } from '../../utils/imageMisses';
 import { SET_IMAGES_DIR } from '../../src/infra/appPaths';
-import { getGlobalSetting, setGlobalSetting } from '../../utils/settings';
+import { getGlobalSetting, setGlobalSetting } from '../../src/konto/settings';
 import { sendeFehler } from '../../src/infra/fehlerTexte';
 import { letzteEintraege } from '../../utils/verwaltungsprotokoll';
 import { cacheStatistik, cachesLeeren, bricksetLimitGesetzt, anleitungenNeuEinreihen, preisJobStand, preisJobJetzt,

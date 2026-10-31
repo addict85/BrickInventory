@@ -20,7 +20,7 @@ const KOTLIN_SCREENS = path.join(ROOT, '..', 'Android-App', 'app', 'src', 'main'
 
 // ── Punkt 1 ────────────────────────────────────────────────────────────────
 test('die Session-ID wird beim Anmelden erneuert', () => {
-  const auth = read('utils/auth.ts');
+  const auth = read('src/konto/auth.ts');
   assert.match(auth, /function establishSession/, 'Der gemeinsame Helfer fehlt');
   assert.match(auth, /req\.session\.regenerate\(/,
     'Ohne regenerate() behält der Browser die ID von vor dem Login (Session Fixation)');
@@ -51,7 +51,7 @@ test('Rate-Limits zählen worker-übergreifend', () => {
   // CREATE-Anweisung ist inzwischen entfernt). Geprüft wird jetzt, was die
   // Implementierung tatsächlich zusichert: Zähler in der Datenbank, atomares
   // Hochzählen in einem Statement, Rückfall auf den Prozessspeicher.
-  const lim = read('utils/loginLimiter.ts');
+  const lim = read('src/konto/loginLimiter.ts');
   assert.match(lim, /rate_limit_attempts/, 'Der Zähler muss in der Datenbank liegen');
   assert.match(lim, /ON CONFLICT \(key\) DO UPDATE/,
     'Hochzählen und Fensterwechsel gehören in EIN Statement');
@@ -123,7 +123,7 @@ test('Preis-Vorhandensein hängt an avg_price', () => {
 
 test('kein Token reitet mehr in der Adresszeile', () => {
   // ── Woher dieser Test kommt ─────────────────────────────────────────────
-  // utils/auth.ts fuehrte eine Liste TOKEN_QUERY_ALLOWED: drei Pfade, auf
+  // src/konto/auth.ts fuehrte eine Liste TOKEN_QUERY_ALLOWED: drei Pfade, auf
   // denen `?token=` als Ausweis zaehlte. Begruendung war, dass <img src>,
   // EventSource und window.open() keine Kopfzeilen setzen koennen. Das stimmt
   // — nur hatte im ganzen Baum KEINER der drei Eintraege noch einen Nutzer:
@@ -138,7 +138,7 @@ test('kein Token reitet mehr in der Adresszeile', () => {
   // beiden zu pruefen reichte nicht — die Ausnahmeliste hier war jahrelang
   // gruen, WEIL nur ihr Vorhandensein geprueft wurde und nie ihr Nutzen.
   const { ohneKommentare, setKernQuelle, coreQuelle } = require('./helpers/sources');
-  const auth = ohneKommentare(read('utils/auth.ts'));
+  const auth = ohneKommentare(read('src/konto/auth.ts'));
 
   assert.doesNotMatch(auth, /TOKEN_QUERY_ALLOWED/,
     'Die Ausnahmeliste ist zurueck — damit auch der Sitzungstoken in der Adresszeile');
@@ -192,7 +192,7 @@ test('kein Token reitet mehr in der Adresszeile', () => {
   // umgehen koennte.
   const sets = setKernQuelle();
   assert.doesNotMatch(sets, /function requireLoginOrToken/,
-    'Keine zweite Fassung — sie umgeht die eine Regel in utils/auth.ts');
+    'Keine zweite Fassung — sie umgeht die eine Regel in src/konto/auth.ts');
   assert.match(sets, /loginOrTokenGuard\(\{ timeoutMs: 3000 \}\)/,
     'Das 3s-Zeitlimit muss bleiben: Während eines Imports ist 503 besser als eine hängende Verbindung');
 

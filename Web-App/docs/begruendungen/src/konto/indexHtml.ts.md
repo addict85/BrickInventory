@@ -1,6 +1,6 @@
-# Begründungen zu `utils/indexHtml.ts`
+# Begründungen zu `src/konto/indexHtml.ts`
 
-Die ausführlichen Kommentare aus `utils/indexHtml.ts`, wörtlich. Im Code steht je
+Die ausführlichen Kommentare aus `src/konto/indexHtml.ts`, wörtlich. Im Code steht je
 Stelle der erste Absatz und ein Verweis hierher. Neue Geschichte gehört in die
 Commit-Nachricht (siehe CLAUDE.md).
 

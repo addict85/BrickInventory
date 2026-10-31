@@ -508,7 +508,7 @@ export function initScopeSelects(members) {
   // dieselbe Frage genauer beantworten. Bei zwei Kindern war die Auswahl
   // damit fünf Zeilen lang, von denen eine nichts hinzufügte.
   //
-  // Der Server versteht `accounts=subs` weiterhin (utils/household.ts) — eine
+  // Der Server versteht `accounts=subs` weiterhin (src/haushalt/haushalt.ts) — eine
   // ältere App-Fassung auf einem Gerät schickt es sonst ins Leere.
   const subs = members.filter(m => !m.is_self);
   const opts = [

@@ -7,7 +7,7 @@
 
 import * as db from '../../db/database';
 import { hatPreis } from '../preisRegel';
-import { asIds } from '../household';
+import { asIds } from '../../src/haushalt/haushalt';
 import { checkAndIncrementRateLimit, kontingentFrei, getLimitForApi, getRateLimitStatus } from '../apiKontingent';
 import { bricklinkRequest, getPriceGuide } from '../../clients/bricklink';
 import { fehlertext, logAndContinue, meldeUndLiefere } from '../../src/infra/httpError';
@@ -28,7 +28,7 @@ import { KEINE_FARBE } from '../../src/infra/validate';
  * EINSTELLUNGEN gelten — die beiden fallen auseinander, sobald der Kontofilter
  * auf „Unterkonten" steht (siehe computeSetsValuation).
  */
-export type { Blickfeld } from '../household';
+export type { Blickfeld } from '../../src/haushalt/haushalt';
 
 /** Eine Preis-Cache-Zeile, soweit hier gelesen. */
 type PreisZeile = { avg_price?: number | string | null; fetched_at?: string | Date | null } | null | undefined;
@@ -221,7 +221,7 @@ async function parallelLimit<T>(tasks: (() => Promise<T>)[], limit: number) {
 const NACHSCHLAG_TTL_MS = 10 * 60 * 1000;
 // Deckel gegen unbegrenztes Wachstum: Beim Überschreiten wird geleert statt
 // einzeln aufgeräumt — dieselbe Entscheidung wie bei _tokenCache in
-// utils/auth.ts, aus demselben Grund (eine Handvoll Nutzer, kleine Tabellen).
+// src/konto/auth.ts, aus demselben Grund (eine Handvoll Nutzer, kleine Tabellen).
 const NACHSCHLAG_MAX = 5000;
 
 /** Gemerkte Fassung von `hole`; ein `null` (nichts gefunden) wird nicht gemerkt. */

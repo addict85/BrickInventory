@@ -5,7 +5,7 @@ import * as db from '../db/database';
 import { PART_IMAGES_DIR } from '../src/infra/appPaths';
 import { getAllSetParts, type RbSetTeil } from '../clients/rebrickable';
 import { fehlertext, logAndContinue, meldeUndWeiter } from '../src/infra/httpError';
-import { getGlobalSetting } from '../utils/settings';
+import { getGlobalSetting } from '../src/konto/settings';
 import { mitVersion } from './setNummer';
 import { nummernListe } from '../src/infra/fremdeAdressen';
 import { merkeBlNummer, merkeBlNummern, merkeBlNummerUnveraendert } from './blZuordnung';

@@ -160,7 +160,7 @@ test('die Antworten passen zu den Kotlin-Modellen', { concurrency: 1, timeout: 1
   await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1, $2)', [oben, uid]);
   await db.run('INSERT INTO household_former_links (main_user_id, sub_user_id, via_user_id) VALUES ($1, $2, $3)',
     [uid, getrennt, sub]);
-  await _req('utils/auth.js').createToken(uid, 'Vertragsprobe');
+  await _req('src/konto/auth.js').createToken(uid, 'Vertragsprobe');
   await haeltSet(db, uid, SET, 2, { preis: 49.9 });
   await haeltTeil(db, uid, TEIL, { setNumber: SET, colorId: FARBE, menge: 4 });
   await haeltTeil(db, uid, TEIL, { colorId: FARBE, menge: 3 });

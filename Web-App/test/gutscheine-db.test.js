@@ -339,7 +339,7 @@ test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async (t) => {
       // ist genau hier belegt: kein zweiter Router, kein zweiter Pfad — nur
       // ein anderer Ausweis an derselben Tuer.
       // Die Tabelle haelt den SHA-256-Hex des Tokens, nicht den Klartext —
-      // der Klartext existiert nur beim Klienten (siehe utils/auth.ts). Ein
+      // der Klartext existiert nur beim Klienten (siehe src/konto/auth.ts). Ein
       // Test, der den Klartext einfuegt, prueft nichts.
       const alsHash = t => crypto.createHash('sha256').update(t).digest('hex');
       await db.run(

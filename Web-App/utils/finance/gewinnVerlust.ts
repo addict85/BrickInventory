@@ -4,8 +4,8 @@
  */
 
 import * as db from '../../db/database';
-import { asIds } from '../household';
-import { getSetting, getGlobalSetting } from '../settings';
+import { asIds } from '../../src/haushalt/haushalt';
+import { getSetting, getGlobalSetting } from '../../src/konto/settings';
 import { valueSet, valueAcquisitionRows, weightedPurchase, entwicklungProzent, kachelWerte } from '../setValue';
 import { effectiveCondition } from './zustand';
 import { computeMinifigsValuation, computePartsValuation } from './bewertung';

@@ -1,7 +1,7 @@
 import * as db from '../../db/database';
 import { inKontowaehrung, kontowaehrungJoin } from '../acquisitions';
 import { istErsatzteil } from '../../src/infra/validate';
-import { asIds } from '../household';
+import { asIds } from '../../src/haushalt/haushalt';
 import { teilmengeJoin, teilmengeAus } from '../bestandsmenge';
 import { KEINE_FARBE } from '../../src/infra/validate';
 
@@ -79,7 +79,7 @@ function conditionsFromAcquisitions(acqCount: Zaehlwert, usedCount: Zaehlwert): 
 async function applyManualCondition(userId: unknown, rows: any[], kind: 'part' | 'fig') {
   // Blickfeld statt einer einzelnen ID: Ein Hauptkonto sieht (und ändert)
   // auch die Daten seiner Unterkonten, alle anderen nur ihre eigenen. Die
-  // Liste kommt von scopeIds() in utils/household.ts — hier wird sie nur
+  // Liste kommt von scopeIds() in src/haushalt/haushalt.ts — hier wird sie nur
   // normalisiert, damit ältere Aufrufer mit einer nackten ID weiter gehen.
   const uids = asIds(userId as any);
   if (!rows?.length) return rows;

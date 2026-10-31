@@ -3,13 +3,13 @@ import { fehlertext, logAndContinue } from '../src/infra/httpError';
 // dieses Workers bleibt davon unberuehrt.
 import { istErsatzteil } from '../src/infra/validate';
 import { pflegeTabelle } from '../db/tabellePflegen';
-'use strict';
-const fs       = require('fs');
-// Pfade zentral auflösen — __dirname zeigt seit dem dist/-Build nicht mehr
-// auf die Wurzel. Siehe src/infra/appPaths.ts.
-const {  DATA_DIR } = require('../src/infra/appPaths');
-const path     = require('path');
-const { Pool } = require('pg');
+import fs from 'fs';
+import path from 'path';
+import readline from 'readline';
+import { Pool } from 'pg';
+import { DATA_DIR } from '../src/infra/appPaths';
+import { datenbankVerbindung } from '../src/infra/konfig';
+import { LOCKS } from '../src/infra/lockNamespaces';
 
 /**
  * Nachricht an den Elternprozess.
@@ -21,7 +21,7 @@ function send(msg: any) {
   else console.error('[csv-worker] kein IPC-Kanal — Meldung verworfen:', JSON.stringify(msg).slice(0, 200));
 }
 
-const pool = new Pool((require('../src/infra/konfig') as typeof import('../src/infra/konfig')).datenbankVerbindung());
+const pool = new Pool(datenbankVerbindung());
 
 /**
  * Eine Spalte einer CSV-Zeile, die fehlen darf.
@@ -61,7 +61,7 @@ async function streamInsert(tmpFile: string, chunkSize: number,
                             filename: string) {
   const fileSize = fs.statSync(tmpFile).size;
   const input    = fs.createReadStream(tmpFile, { encoding: 'utf8', highWaterMark: 64 * 1024 });
-  const rl       = require('readline').createInterface({ input, crlfDelay: Infinity });
+  const rl       = readline.createInterface({ input, crlfDelay: Infinity });
 
   let headers: string[] | null = null, chunk: any[] = [], total = 0, bytesRead = 0, lastPct = -1;
 
@@ -116,7 +116,6 @@ function mkInsert(table: string, cols: string[], onConflict: string) {
  * Sperrschlüssel für den Katalog-Import.
  * Ausführlich: docs/begruendungen/jobs/csvImportWorker.ts.md#abschnitt
  */
-const { LOCKS } = require('../src/infra/lockNamespaces');
 const CSV_IMPORT_LOCK = LOCKS.CSV_IMPORT;
 
 /** Tabellenname → stabile 32-Bit-Zahl für den zweiten Sperrschlüssel. */

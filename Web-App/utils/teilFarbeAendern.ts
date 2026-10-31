@@ -57,7 +57,7 @@ async function bildNachtragen(partNumber: string, farbe: number): Promise<BildQu
 /**
  * @param uid        Besitzer der Zeile — NICHT der Betrachter. Wer in wessen
  *                   Bestand schreiben darf, entscheidet resolveWriteTarget()
- *                   in der Route (utils/household.ts).
+ *                   in der Route (src/haushalt/haushalt.ts).
  * @param neueFarbe  Rebrickable-Farbnummer; KEINE_FARBE (9999) heisst „ohne Angabe".
  */
 export async function aendereTeilFarbe(

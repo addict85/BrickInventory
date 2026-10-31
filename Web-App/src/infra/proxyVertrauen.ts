@@ -1,4 +1,5 @@
 import net from 'node:net';
+import express from 'express';
 
 /**
  * Wem der Server X-Forwarded-For und -Proto glaubt (Express „trust proxy").
@@ -73,7 +74,7 @@ export function proxyHinweis(trustProxy: string | undefined, warne: (text: strin
   let vertrauen: ReturnType<typeof proxyVertrauen>;
   try { vertrauen = proxyVertrauen(trustProxy); } catch { vertrauen = false; }
   // Dieselbe Auswertung wie im Server, damit Hinweis und Wirkung übereinstimmen.
-  const pruefer = require('express')();
+  const pruefer = express();
   pruefer.set('trust proxy', vertrauen);
   const vertraut = pruefer.get('trust proxy fn') as (adresse: string, hop: number) => boolean;
   let gewarnt = vertrauen === false;

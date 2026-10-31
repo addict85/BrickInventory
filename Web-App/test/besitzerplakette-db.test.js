@@ -82,7 +82,7 @@ test('jede Liste mit Plakette im Client traegt sie auch in der Antwort', async (
   await haeltFigur(db, kind, 'sw0001', { setNumber: '75192-1', menge: 1 });
   await haeltFigur(db, kind, 'sw0002', { menge: 2 });
 
-  const { scopeIds } = _req('utils/household.js');
+  const { scopeIds } = _req('src/haushalt/haushalt.js');
   const uids = await scopeIds(haupt, 'all');
   const S = _req('utils/handlers/sets.js');
   const P = _req('utils/handlers/parts.js');
@@ -140,7 +140,7 @@ test('im Einzelkonto steht keine Plakette', async (t) => {
   await haeltSet(db, allein, '21318-1', 1);
   await haeltFigur(db, allein, 'sw0003', { setNumber: '21318-1', menge: 1 });
 
-  const { scopeIds } = _req('utils/household.js');
+  const { scopeIds } = _req('src/haushalt/haushalt.js');
   const uids = await scopeIds(allein, 'all');
   const S = _req('utils/handlers/sets.js');
   const M = _req('utils/handlers/minifigs.js');

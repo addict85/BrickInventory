@@ -134,8 +134,8 @@ test('fuenf Listen nennen dieselben Designs', () => {
 
   const boot = liste(fs.readFileSync(path.join(PUB, 'js', '00-theme-boot.js'), 'utf8'),
     /var ALLOWED = \[([^\]]*)\]/, 'js/00-theme-boot.js');
-  const server = liste(fs.readFileSync(path.join(__dirname, '..', 'utils/settings.ts'), 'utf8'),
-    /const DESIGNS: readonly string\[\] = \[([^\]]*)\]/, 'utils/settings.ts');
+  const server = liste(fs.readFileSync(path.join(__dirname, '..', 'src/konto/settings.ts'), 'utf8'),
+    /const DESIGNS: readonly string\[\] = \[([^\]]*)\]/, 'src/konto/settings.ts');
   const app = liste(fs.readFileSync(path.join(__dirname, '..', '..', 'Android-App', 'app', 'src',
     'main', 'java', 'ch', 'brickinventoryapp', 'data', 'PreferencesManager.kt'), 'utf8'),
     /ERLAUBTE_DESIGNS = setOf\(([^)]*)\)/, 'PreferencesManager.kt');
@@ -158,7 +158,7 @@ test('jedes Theme unter public/themes/ deckt die Screens vor dem Login ab', () =
 });
 
 test('der Server setzt data-theme selbst — kein Sprung beim ersten Aufruf', () => {
-  const render = fs.readFileSync(path.join(ROOT, 'utils/indexHtml.ts'), 'utf8');
+  const render = fs.readFileSync(path.join(ROOT, 'src/konto/indexHtml.ts'), 'utf8');
   assert.match(render, /data-theme="\$\{theme\}"/,
     'renderIndexHtml() muss das Attribut in das <html>-Tag schreiben');
   assert.match(render, /invalidateTheme/,
@@ -178,7 +178,7 @@ test('der Server setzt data-theme selbst — kein Sprung beim ersten Aufruf', ()
   const catchAll = server.slice(at, at + 700);
   // Argument zugelassen: renderIndexHtml() bekommt seit der Aufteilung der
   // Übersetzungen die userId mit, um die passende Sprachdatei einzuhängen
-  // (siehe utils/indexHtml.ts). Geprüft wird weiterhin, DASS der Catch-all das
+  // (siehe src/konto/indexHtml.ts). Geprüft wird weiterhin, DASS der Catch-all das
   // gerenderte HTML ausliefert — nicht, mit welchen Argumenten.
   assert.match(catchAll, /renderIndexHtml\([^)]*\)/,
     'Der SPA-Catch-all muss das gerenderte HTML ausliefern');

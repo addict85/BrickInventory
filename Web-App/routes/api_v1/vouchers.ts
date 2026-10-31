@@ -8,7 +8,7 @@ import path from 'path';
 import multer from 'multer';
 import { handleRouteError, ohneFehlendeDatei } from '../../src/infra/httpError';
 import { sendeFehler, fehlerText, antwortSprache, dateiFehler, type FehlerCode } from '../../src/infra/fehlerTexte';
-import { getGlobalSetting } from '../../utils/settings';
+import { getGlobalSetting } from '../../src/konto/settings';
 import { verdecke, landErlaubt, LAND_STANDARD } from '../../utils/gutscheinGuthaben';
 import { frageGuthabenAb, ABSTAND_SEK } from '../../utils/gutscheinGuthabenSchranke';
 import { VOUCHER_DIR, gutscheinDatei, schreibeGutscheinPdf, liesGutscheinPdf } from '../../utils/gutscheinDateien';

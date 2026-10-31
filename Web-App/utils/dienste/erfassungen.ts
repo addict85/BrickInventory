@@ -5,7 +5,7 @@
  */
 import * as db from '../../db/database';
 import type { DbSchnittstelle } from '../../db/database';
-import { writableIds, acquisitionMoveSource, resolveWriteTarget } from '../household';
+import { writableIds, acquisitionMoveSource, resolveWriteTarget } from '../../src/haushalt/haushalt';
 import { findSameDayAcquisition, erfassungsTagSql } from '../acquisitions';
 import { meldeUndLiefere } from '../../src/infra/httpError';
 import { withInventoryLock, bestandsSchluessel } from '../../db/txLock';

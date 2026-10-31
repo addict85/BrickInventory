@@ -1,9 +1,9 @@
 /** Einstellungen lesen und schreiben — die eine Stelle für Konto- und globale Werte. */
 
-import { nacharbeit } from './nacharbeit';
-import * as db from '../db/database';
-import { verschluessele, entschluessele, istVerschluesselt } from '../src/infra/geheimnis';
-import { fehlerWerfen } from '../src/infra/fehlerTexte';
+import { nacharbeit } from '../../utils/nacharbeit';
+import * as db from '../../db/database';
+import { verschluessele, entschluessele, istVerschluesselt } from '../infra/geheimnis';
+import { fehlerWerfen } from '../infra/fehlerTexte';
 
 /** Konto-Einstellung mit Rückfall auf die globale, dann auf `fallback`. */
 async function getSetting(userId: number, key: string, fallback?: any) {
@@ -40,7 +40,7 @@ const NUTZER_REGELN: Record<string, (v: string) => boolean> = {
 
 /**
  * Konto-Einstellung schreiben — die eine Stelle für Formular, Import und /api/v1.
- * Ausführlich: docs/begruendungen/utils/settings.ts.md#setusersetting
+ * Ausführlich: docs/begruendungen/src/konto/settings.ts.md#setusersetting
  */
 async function setUserSetting(userId: number, key: string, value: any) {
   const v = String(value).trim();
@@ -91,7 +91,7 @@ async function setzeHaushaltswaehrung(userId: number, waehrung: string) {
 
 /**
  * Der wirksame Erfassungs-Zustand eines Nutzers: eigener Wert → globaler Standard → 'N'.
- * Ausführlich: docs/begruendungen/utils/settings.ts.md#nutzerstandardzustand
+ * Ausführlich: docs/begruendungen/src/konto/settings.ts.md#nutzerstandardzustand
  */
 async function nutzerStandardZustand(userId: number): Promise<'N' | 'U'> {
   const u = await db.get(
@@ -106,7 +106,7 @@ async function nutzerStandardZustand(userId: number): Promise<'N' | 'U'> {
 
 /**
  * Welcher Zustand gilt für einen Marktpreis: Eingabe → Bestand → Standard.
- * Ausführlich: docs/begruendungen/utils/settings.ts.md#zustandfuerpreis
+ * Ausführlich: docs/begruendungen/src/konto/settings.ts.md#zustandfuerpreis
  * @param eingabe Was im Rumpf steht; alles ausser 'N'/'U' zählt als nichts.
  * @param bisher  Der bisherige Zustand des Bestands, falls vorhanden.
  * @param userId  Für den Standard, wenn beides fehlt.
@@ -131,7 +131,7 @@ async function globalDefaultCondition(): Promise<'N' | 'U'> {
 
 /**
  * Globale Einstellung schreiben — die EINE Stelle dafuer.
- * Ausführlich: docs/begruendungen/utils/settings.ts.md#setglobalsetting
+ * Ausführlich: docs/begruendungen/src/konto/settings.ts.md#setglobalsetting
  */
 async function setGlobalSetting(key: string, value: unknown) {
   await db.run(
@@ -172,11 +172,11 @@ export { WAEHRUNGEN, HAUSHALT_WAEHRUNG_SPERRE, getSetting, getGlobalSetting, set
 // Einstellungen LESEN — eine Fassung fuer beide Oberflaechen
 //  Warum das hierher gehoert (Marcos Vorgabe: „die beiden Apps sollen gleich
 //    funktionieren")
-// Ausführlich: docs/begruendungen/utils/settings.ts.md#abschnitt
+// Ausführlich: docs/begruendungen/src/konto/settings.ts.md#abschnitt
 
 /**
  * Schlüssel aus global_settings, deren WERT ein Geheimnis ist.
- * Ausführlich: docs/begruendungen/utils/settings.ts.md#secret-keys
+ * Ausführlich: docs/begruendungen/src/konto/settings.ts.md#secret-keys
  */
 const SECRET_KEYS = new Set([
   'bricklink_consumer_key', 'bricklink_consumer_secret',

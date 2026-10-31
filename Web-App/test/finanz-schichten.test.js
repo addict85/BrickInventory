@@ -119,7 +119,7 @@ test('Blickfeld ist an einer Stelle erklaert', () => {
       }
     }
   })(wurzel);
-  assert.deepEqual(treffer, ['utils/household.ts'],
+  assert.deepEqual(treffer, ['src/haushalt/haushalt.ts'],
     'Der Typ Blickfeld wird an mehr als einer Stelle erklaert. Er gehoert dort ' +
     'hin, wo asIds() steht — sonst driften die Fassungen auseinander, und eine ' +
     'Signatur sagt nicht mehr, ob sie vor oder nach der Normalisierung steht.');

@@ -7,7 +7,7 @@
  */
 import { meldeUndLiefere } from '../src/infra/httpError';
 import * as db from '../db/database';
-import { scopeIds } from './household';
+import { scopeIds } from '../src/haushalt/haushalt';
 import { normalisiereSetNummer } from './setNummer';
 
 /**

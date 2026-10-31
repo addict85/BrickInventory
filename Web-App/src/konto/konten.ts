@@ -1,4 +1,4 @@
-import * as db from '../db/database';
+import * as db from '../../db/database';
 
 /**
  * Datenzugriff für Konten, Profil, Registrierung, Rücksetzen und QR-Anmeldung.

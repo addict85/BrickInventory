@@ -53,7 +53,7 @@ Protokoll ist der falsche Ort, um das im Einzelfall zu entscheiden.
 ```text
 ── Trägt der Fehler einen Code, gilt der (Nachtrag 130) ──────────────────
 
-Helfer wie utils/household.ts und utils/setMove.ts werfen mit
+Helfer wie src/haushalt/haushalt.ts und utils/setMove.ts werfen mit
 fehlerWerfen() und geben damit den GRUND mit, nicht den Satz. Erst hier —
 wo der Request bekannt ist — wird daraus ein Satz in der Sprache des
 Anfragenden.

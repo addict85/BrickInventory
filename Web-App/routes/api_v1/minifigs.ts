@@ -2,10 +2,10 @@
 import express from 'express';
 import { handleRouteError, pfadParam } from '../../src/infra/httpError';
 import { requireToken } from './middleware';
-import { scopeIds, parseScopeMode, resolveWriteTarget, writableIds } from '../../utils/household';
+import { scopeIds, parseScopeMode, resolveWriteTarget, writableIds } from '../../src/haushalt/haushalt';
 import { getManualMinifigs, getMinifigStats, getMinifigs } from '../../utils/handlers/minifigs';
 import { addManualFig, updateManualFig, importiereFigurenCsv } from '../../utils/manuelleFiguren';
-import { getSetting } from '../../utils/settings';
+import { getSetting } from '../../src/konto/settings';
 import { getMinifigPriceHistory } from '../../utils/priceHistory';
 import { einzelwert } from '../../src/infra/validate';
 import { verwendendeSets } from '../../utils/handlers/shared';

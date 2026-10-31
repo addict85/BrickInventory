@@ -187,7 +187,7 @@ test('der Marktpreis als Kaufpreis richtet sich nach dem gewählten Zustand', ()
   //
   // Diese Prüfung suchte bis zuletzt die Zeichenfolge
   // `const effectiveCondition = condition ||` — also die FORMULIERUNG einer
-  // bestimmten Fassung. Sie brach, als die Staffelung nach utils/settings.ts
+  // bestimmten Fassung. Sie brach, als die Staffelung nach src/konto/settings.ts
   // wanderte und `addSet()` den Zustand einmal oben für beide Zweige bestimmt.
   // Die Regel war dabei nicht verletzt, im Gegenteil: Sie wird jetzt früher
   // erfüllt als vorher.
@@ -207,7 +207,7 @@ test('der Marktpreis als Kaufpreis richtet sich nach dem gewählten Zustand', ()
   // Huelle, die den Lagerort setzt (Marcos Befund vom selben Tag), und reicht
   // durch. Der Rumpf mit Zustand und Preisabruf steht in addSetIntern. Das ist
   // dieselbe Bewegung, die diese Regel schon einmal erwischt hat, als die
-  // Staffelung nach utils/settings.ts wanderte — und wieder gilt: Die Regel
+  // Staffelung nach src/konto/settings.ts wanderte — und wieder gilt: Die Regel
   // ist nicht verletzt, nur ihr Ausschnitt war veraltet.
   const fnStart = src.indexOf('async function addSetIntern(');
   assert.ok(fnStart > 0, 'addSetIntern() ist nicht mehr zu finden');
@@ -906,7 +906,7 @@ test('der Kaufpreis auf der Kachel ist mengengewichtet, nicht das Maximum', () =
 // Anmelden mit E-Mail (hardened-100)
 // ═══════════════════════════════════════════════════════════════════════════
 const { isValidLoginIdentifier, USERNAME_RE, EMAIL_RE } =
-  require('./helpers/sources').buildAndRequire()('utils/auth.js');
+  require('./helpers/sources').buildAndRequire()('src/konto/auth.js');
 
 test('der Anmeldename darf eine E-Mail-Adresse sein', () => {
   // Über dem Feld steht „Benutzername oder E-Mail", und die Abfrage sucht in
@@ -948,12 +948,12 @@ test('beide Login-Wege prüfen gleich', () => {
   // die Anmeldung per E-Mail nur auf einem der beiden Wege.
   //
   // Hier standen die beiden Login-Dateien beim Namen. Inzwischen liegt die
-  // Prüfung in pruefeAnmeldedaten() (utils/auth.ts), die BEIDE aufrufen — der
+  // Prüfung in pruefeAnmeldedaten() (src/konto/auth.ts), die BEIDE aufrufen — der
   // Test verlangte sie danach an Stellen, an denen sie zu Recht nicht mehr
   // steht. Geprüft wird jetzt die Regel selbst: Der gemeinsame Prüfer nimmt
   // beide Formen an, und im Baum steht keine zweite Kopie des Musters, die
   // gegen einen Anmeldenamen läuft.
-  const zentral = fs.readFileSync(path.join(ROOT, 'utils/auth.ts'), 'utf8');
+  const zentral = fs.readFileSync(path.join(ROOT, 'src/konto/auth.ts'), 'utf8');
   const rumpf = zentral.slice(zentral.indexOf('async function pruefeAnmeldedaten'));
   assert.match(rumpf.slice(0, rumpf.indexOf('\n}\n')), /isValidLoginIdentifier\(username\)/,
     'pruefeAnmeldedaten() prüft die Form des Anmeldenamens nicht');

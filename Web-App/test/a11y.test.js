@@ -84,7 +84,7 @@ test('modale Overlays sind als Dialog ausgezeichnet', () => {
 
 test('die Sprache steht am <html>-Element', () => {
   // Ohne lang= rät der Screenreader die Aussprache — bei gemischt deutsch-
-  // englischen Oberflächen hörbar falsch. utils/indexHtml.ts setzt den Wert
+  // englischen Oberflächen hörbar falsch. src/konto/indexHtml.ts setzt den Wert
   // serverseitig passend zur ausgelieferten Sprachdatei.
   assert.match(HTML, /<html[^>]*\slang="[a-z]{2}"/, 'lang= fehlt am <html>');
 });

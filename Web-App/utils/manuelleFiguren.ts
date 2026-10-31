@@ -9,7 +9,7 @@ import { csvGemeinsameFelder, csvZeilenAusAnfrage } from '../src/infra/csvExport
 import { recordAcquisitionForDay } from './acquisitions';
 import { withInventoryLock, bestandsSchluessel } from '../db/txLock';
 import {  getMinifigInfo } from '../clients/rebrickable';
-import { zustandFuerPreis } from './settings';
+import { zustandFuerPreis } from '../src/konto/settings';
 import { figMarktpreisMitHerkunft, getCurrentFigMarketPrice } from './marketPrice';
 import { kaufpreisAusEingabe, manuellerKaufpreis } from './preisRegel';
 import { setzeLagerort, ortFuerNeuerfassung } from './lagerort';

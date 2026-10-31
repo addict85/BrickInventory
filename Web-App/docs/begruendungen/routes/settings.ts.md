@@ -72,7 +72,7 @@ nicht dieselbe Aussage.
 DELETE /api/v1/settings/tokens/:tokenId — einen Zugang entwerten.
 
 ── Zur Wirkungsverzögerung, ehrlich gesagt ─────────────────────────────────
-Die Zeile ist sofort weg. Der In-Memory-Cache in utils/auth.ts ist aber
+Die Zeile ist sofort weg. Der In-Memory-Cache in src/konto/auth.ts ist aber
 nach dem KLARTEXT-Token indiziert, und den hat der Server nicht — gezielt
 entfernen lässt er sich also nicht. Deshalb wird er hier ganz geleert, wie
 beim Passwortwechsel (revokeAllTokens). Das wirkt sofort, allerdings nur im

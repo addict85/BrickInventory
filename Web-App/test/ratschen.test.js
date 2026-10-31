@@ -237,7 +237,7 @@ test('kein Verweis auf „Nachtrag N" im Code', () => {
   // Die Geschichte einer Stelle steht im Commit (CLAUDE.md); eine Nummer im
   // Kommentar verweist auf eine Liste, die es im Baum nicht gibt.
   // GEMESSEN am 28.10.2026: 0 (vorher 138). Gegenprobe: ein „(Nachtrag 1)" in
-  // utils/auth.ts → rot.
+  // src/konto/auth.ts → rot.
   const treffer = serverUndOberflaeche().flatMap(f =>
     (fs.readFileSync(f, 'utf8').match(/Nachtr(?:ag|äge|aege) \d+/g) || []).map(m => `${path.relative(WEB, f)}: ${m}`));
   assert.deepEqual(treffer, []);

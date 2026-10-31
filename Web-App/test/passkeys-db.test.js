@@ -31,7 +31,7 @@ process.env.APP_BASE_URL = 'https://lego.test';
 
 const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
-const zf = _req('utils/zweiterFaktor.js');
+const zf = _req('src/konto/zweiterFaktor.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const session = require(path.join(ROOT, 'node_modules', 'express-session'));
 const pgSession = require(path.join(ROOT, 'node_modules', 'connect-pg-simple'))(session);

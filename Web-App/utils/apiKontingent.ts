@@ -1,7 +1,7 @@
 import * as db from '../db/database';
 import type { DbSchnittstelle } from '../db/database';
 import { aktuellesKonto } from '../src/infra/anfrageKonto';
-import { getGlobalSetting } from './settings';
+import { getGlobalSetting } from '../src/konto/settings';
 
 /** Tageskontingente der externen Dienste — eine Stelle für alle Zähler. */
 export type ApiName = 'bricklink' | 'rebrickable' | 'brickset';

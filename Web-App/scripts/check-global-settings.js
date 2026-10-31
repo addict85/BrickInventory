@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * `global_settings` wird über utils/settings.ts angefasst, nicht direkt.
+ * `global_settings` wird über src/konto/settings.ts angefasst, nicht direkt.
  *
  * ── Der Befund ──────────────────────────────────────────────────────────────
  * NACHGEMESSEN: Die Tabelle wurde aus 22 Dateien direkt gelesen — in VIER
@@ -33,7 +33,7 @@ const ROOT = path.join(__dirname, '..');
 const ERLAUBT = new Map([
   ['db/database.ts', 'legt die Tabelle an und migriert sie'],
   ['jobs/csvImportWorker.ts', 'eigener Prozess mit eigenem Pool — kann utils/ nicht laden'],
-  ['utils/settings.ts', 'DIE zentrale Stelle'],
+  ['src/konto/settings.ts', 'DIE zentrale Stelle'],
 ]);
 
 /**
@@ -81,7 +81,7 @@ const fehler = [];
 for (const [datei, n] of gefunden) {
   const erlaubt = OFFEN.get(datei);
   if (erlaubt === undefined) {
-    fehler.push(`NEU: ${datei} (${n}x). global_settings gehört über utils/settings.ts — ` +
+    fehler.push(`NEU: ${datei} (${n}x). global_settings gehört über src/konto/settings.ts — ` +
       `getGlobalSetting() / setGlobalSetting(). Nur so ist updated_at einheitlich ` +
       `und ein späterer Umbau der Tabelle EINE Änderung statt zwanzig.`);
   } else if (n > erlaubt) {

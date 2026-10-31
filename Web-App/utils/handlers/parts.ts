@@ -1,7 +1,7 @@
 import * as db from '../../db/database';
 import { resolveImageLocal } from '../images';
-import { asIds } from '../household';
-import type { BlickfeldEingabe } from '../household';
+import { asIds } from '../../src/haushalt/haushalt';
+import type { BlickfeldEingabe } from '../../src/haushalt/haushalt';
 import { istErsatzteil, ersatzteilSql, colorId } from '../../src/infra/validate';
 import { ensureFresh } from '../partsSummary';
 // Direkt aus utils/partsImport, nicht ueber routes/parts: Die Route hat die
@@ -15,7 +15,7 @@ import { getAllSetParts, getRbKey, httpsGetRobust } from '../../clients/rebricka
 import { clampPageSize, applyManualCondition, withOwners, MAX_PAGE_SIZE, UNPAGED_LIMIT, SET_PARTS_MAX_PAGE_SIZE } from './shared';
 import { meldeUndWeiter, logAndContinue, meldeUndLiefere } from '../../src/infra/httpError';
 import { farbkarte as blFarbkarte } from '../financeCalc';
-import { getGlobalSetting } from '../../utils/settings';
+import { getGlobalSetting } from '../../src/konto/settings';
 import { neuestesInventar } from '../rbInventar';
 import { mitVersion, ohneVersion } from '../setNummer';
 import { merkeBlFarbnummer, blFarbnummerAus, blJoin, blNummerSql } from '../blZuordnung';
@@ -28,7 +28,7 @@ import { mengeJoin, mengeAus, teilmengeJoin, teilmengeAus } from '../bestandsmen
  */
 
 /** Ein Blickfeld: eine Konto-ID oder die Liste aus scopeIds(); asIds() macht eine Liste daraus. */
-import type { BlickfeldEingabe as Blickfeld } from '../household';
+import type { BlickfeldEingabe as Blickfeld } from '../../src/haushalt/haushalt';
 import * as httpError from '../../src/infra/httpError';
 import { marktpreiseAusCacheFuerTeile } from '../marketPrice';
 
@@ -38,7 +38,7 @@ import { marktpreiseAusCacheFuerTeile } from '../marketPrice';
 async function getPartsColors(userId: Blickfeld) {
   // Blickfeld statt einer einzelnen ID: Ein Hauptkonto sieht (und ändert)
   // auch die Daten seiner Unterkonten, alle anderen nur ihre eigenen. Die
-  // Liste kommt von scopeIds() in utils/household.ts — hier wird sie nur
+  // Liste kommt von scopeIds() in src/haushalt/haushalt.ts — hier wird sie nur
   // normalisiert, damit ältere Aufrufer mit einer nackten ID weiter gehen.
   const uids = asIds(userId);
   // Aus der Zusammenfassung: dieselbe Gruppierung, aber über 66'000 statt
@@ -330,7 +330,7 @@ async function tryPartsSummary(userId: Blickfeld, o: any) {
 async function getParts(userId: Blickfeld, query: any = {}) {
   // Blickfeld statt einer einzelnen ID: Ein Hauptkonto sieht (und ändert)
   // auch die Daten seiner Unterkonten, alle anderen nur ihre eigenen. Die
-  // Liste kommt von scopeIds() in utils/household.ts — hier wird sie nur
+  // Liste kommt von scopeIds() in src/haushalt/haushalt.ts — hier wird sie nur
   // normalisiert, damit ältere Aufrufer mit einer nackten ID weiter gehen.
   const uids = asIds(userId);
   const { color, category, search, spare, set_number,
@@ -560,7 +560,7 @@ async function getPartsCategories(userId: Blickfeld) {
 async function getPartsStats(userId: Blickfeld) {
   // Blickfeld statt einer einzelnen ID: Ein Hauptkonto sieht (und ändert)
   // auch die Daten seiner Unterkonten, alle anderen nur ihre eigenen. Die
-  // Liste kommt von scopeIds() in utils/household.ts — hier wird sie nur
+  // Liste kommt von scopeIds() in src/haushalt/haushalt.ts — hier wird sie nur
   // normalisiert, damit ältere Aufrufer mit einer nackten ID weiter gehen.
   const uids = asIds(userId);
   // Kennzahlen der Set-Teile aus der Zusammenfassung — strict, weil Webapp und
@@ -643,7 +643,7 @@ async function getManualParts(userId: Blickfeld, viewerId: number,
                               { page = 1, page_size = null, search = null, storage = null }: any = {}) {
   // Blickfeld statt einer einzelnen ID: Ein Hauptkonto sieht (und ändert)
   // auch die Daten seiner Unterkonten, alle anderen nur ihre eigenen. Die
-  // Liste kommt von scopeIds() in utils/household.ts — hier wird sie nur
+  // Liste kommt von scopeIds() in src/haushalt/haushalt.ts — hier wird sie nur
   // normalisiert, damit ältere Aufrufer mit einer nackten ID weiter gehen.
   const uids = asIds(userId);
   const params: any[] = [uids];

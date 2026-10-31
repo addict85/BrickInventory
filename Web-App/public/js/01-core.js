@@ -34,7 +34,7 @@ import { gibCheckOnLoad, gibZuruecksetzen } from './01-fortschritt.js';
 /** HTML-Escape für Textinhalte und doppelt-gequotete Attributwerte. */
 /**
  * Wie kurz ein Passwort hoechstens sein darf — dieselbe Zahl wie im Server
- * (PASSWORT_MIN_ZEICHEN in utils/auth.ts) und in der App.
+ * (PASSWORT_MIN_ZEICHEN in src/konto/auth.ts) und in der App.
  *
  * Sie steht hier ZUSAETZLICH und nicht statt dessen: Der Server ist die
  * Instanz, die es durchsetzt, der Browser der, der es dem Nutzer sagt, bevor

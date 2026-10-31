@@ -79,7 +79,7 @@ test('eine Adresse, zwei Ausweise — durchgespielt', { concurrency: 1 }, async 
   };
   const ablauf = async (token) => db.get(
     'SELECT expires_at FROM api_tokens WHERE token = $1',
-    [_req('utils/auth.js').hashToken(token)]);
+    [_req('src/konto/auth.js').hashToken(token)]);
 
   try {
     // ── 1. Der Browser: kein never_expires ──────────────────────────────────
@@ -115,7 +115,7 @@ test('eine Adresse, zwei Ausweise — durchgespielt', { concurrency: 1 }, async 
     const appToken = app1.body.token;
     const appZeile = await db.get(
       'SELECT expires_at, sliding FROM api_tokens WHERE token = $1',
-      [_req('utils/auth.js').hashToken(appToken)]);
+      [_req('src/konto/auth.js').hashToken(appToken)]);
     assert.ok(appZeile.expires_at,
       'Der Token der App braucht ein echtes Ablaufdatum — sonst haengt die Frist an einem Hintergrundjob');
     assert.equal(appZeile.sliding, true,

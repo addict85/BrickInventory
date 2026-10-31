@@ -72,7 +72,7 @@ test('Lagerort gegen echte Datenbank', async (t) => {
   }
   await seed();
   const L = _req('utils/lagerort.js');
-  const household = _req('utils/household.js');
+  const household = _req('src/haushalt/haushalt.js');
   const schreibbar = await household.writableIds(U.ich);
 
   await t.test('ein Teil liegt an EINEM Ort, nicht je Set an einem', async () => {

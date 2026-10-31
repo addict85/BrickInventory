@@ -234,7 +234,7 @@ Filter analog den Sets einbauen inkl. Inhaber".
 Der INHABER steht nicht in diesem Typ: Er ist das Blickfeld und kommt als
 `userIds` herein, genau wie in jeder anderen Liste dieses Baums. Die Route
 uebersetzt `accounts=` mit scopeIds() dorthin — eine zweite Stelle, die
-Konten auswaehlt, waere die Doppelung, vor der utils/household.ts warnt.
+Konten auswaehlt, waere die Doppelung, vor der src/haushalt/haushalt.ts warnt.
 ```
 
 <a id="merkpostenvon"></a>

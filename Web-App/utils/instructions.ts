@@ -1,5 +1,6 @@
 import path from 'path';
 import fs from 'fs';
+import PDFDocument from 'pdfkit';
 import * as db from '../db/database';
 import { INSTRUCTIONS_DIR } from '../src/infra/appPaths';
 import { downloadFile, scrapeInstructions, sleep, httpsGetRobust } from '../clients/rebrickable';
@@ -274,7 +275,6 @@ async function collectAndBuildPDF(baseUrl: string, hdrs: Record<string, string>,
 
 async function buildImagePDF_fromBuffers(imgBuffers: Buffer[], destPath: string) {
   if (fs.existsSync(destPath)) return true;
-  let PDFDocument; try { PDFDocument = require('pdfkit'); } catch (e) { throw new Error('pdfkit not installed'); }
   return new Promise(resolve => {
     try {
       const doc = new PDFDocument({ autoFirstPage:false, margin:0 });

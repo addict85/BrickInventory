@@ -1,19 +1,19 @@
 /**
  * Brute-Force-Schutz für Login-Endpunkte und missbrauchsanfällige Routen.
- * Ausführlich: docs/begruendungen/utils/loginLimiter.ts.md#abschnitt
+ * Ausführlich: docs/begruendungen/src/konto/loginLimiter.ts.md#abschnitt
  */
-import * as db from '../db/database';
+import * as db from '../../db/database';
 import type { Request, Response, NextFunction } from 'express';
-import { einzelwert } from '../src/infra/validate';
-import { sendeFehler } from '../src/infra/fehlerTexte';
-import type { FehlerCode } from '../src/infra/fehlerTexte';
+import { einzelwert } from '../infra/validate';
+import { sendeFehler } from '../infra/fehlerTexte';
+import type { FehlerCode } from '../infra/fehlerTexte';
 
 /**
  * Warum hier Typen stehen
  * Diese Datei entscheidet, ob ein Anmeldeversuch durchgelassen wird. Sie hatte
  * 20 implizite `any`. Ein vertippter Feldname (`st.cnt` statt `st.count`) ergibt
  * dort `undefined`, und `undefined >= MAX_ATTEMPTS` ist `false` — die Sperre …
- * Ausführlich: docs/begruendungen/utils/loginLimiter.ts.md#zaehlerstand
+ * Ausführlich: docs/begruendungen/src/konto/loginLimiter.ts.md#zaehlerstand
  */
 
 /** Ergebnis eines Zaehlerstands: wie viele Versuche, und wie lange noch gesperrt. */
@@ -52,7 +52,7 @@ const _attempts = new Map();
 
 // req.ip statt X-Forwarded-For: Express wertet den Kopf nur aus, wenn er von
 // einem vertrauten Proxy kommt (src/infra/proxyVertrauen.ts).
-// Ausführlich: docs/begruendungen/utils/loginLimiter.ts.md#ipof
+// Ausführlich: docs/begruendungen/src/konto/loginLimiter.ts.md#ipof
 function _ipOf(req: Request): string {
   return req.ip || req.socket?.remoteAddress || '?';
 }

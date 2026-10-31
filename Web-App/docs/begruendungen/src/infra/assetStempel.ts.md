@@ -60,7 +60,7 @@ Wie lange ein berechneter Satz Stempel gilt.
 
 Ohne Frist wuerde jeder Seitenaufruf ein Dutzend `stat` ausloesen; mit einer
 zu langen zeigt ein Deploy ohne Neustart minutenlang alte Adressen.
-Dreissig Sekunden sind dieselbe Zahl, die in utils/indexHtml.ts schon fuer
+Dreissig Sekunden sind dieselbe Zahl, die in src/konto/indexHtml.ts schon fuer
 das Design gilt — eine zweite, andere Frist waere nur eine zweite Zahl zum
 Merken.
 ```

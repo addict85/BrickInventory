@@ -2,7 +2,7 @@
 import express from 'express';
 import { handleRouteError } from '../../src/infra/httpError';
 import { requireToken } from './middleware';
-import { scopeIds, parseScopeMode } from '../../utils/household';
+import { scopeIds, parseScopeMode } from '../../src/haushalt/haushalt';
 import { getStats } from '../../utils/handlers/stats';
 const router = express.Router();
 

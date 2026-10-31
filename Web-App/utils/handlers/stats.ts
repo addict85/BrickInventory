@@ -1,7 +1,7 @@
 import { meldeUndLiefere } from '../../src/infra/httpError';
 import * as db from '../../db/database';
-import { asIds } from '../household';
-import { getGlobalSetting } from '../settings';
+import { asIds } from '../../src/haushalt/haushalt';
+import { getGlobalSetting } from '../../src/konto/settings';
 import { mengeJoin, mengeAus, teilmengeJoin, teilmengeAus } from '../bestandsmenge';
 
 /**
@@ -13,7 +13,7 @@ import { mengeJoin, mengeAus, teilmengeJoin, teilmengeAus } from '../bestandsmen
 async function getStats(userId: number | number[]) {
   // Blickfeld statt einer einzelnen ID: Ein Hauptkonto sieht (und ändert)
   // auch die Daten seiner Unterkonten, alle anderen nur ihre eigenen. Die
-  // Liste kommt von scopeIds() in utils/household.ts — hier wird sie nur
+  // Liste kommt von scopeIds() in src/haushalt/haushalt.ts — hier wird sie nur
   // normalisiert, damit ältere Aufrufer mit einer nackten ID weiter gehen.
   const uids = asIds(userId as any);
   const [setsRow, instrRow, partsRow, minifigsRow, cur] = await Promise.all([

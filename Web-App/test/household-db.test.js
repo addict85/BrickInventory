@@ -143,7 +143,7 @@ test('Haushalt gegen echte Datenbank', async (t) => {
   await seed();
   await startApi();
 
-  const household = _req('utils/household.js');
+  const household = _req('src/haushalt/haushalt.js');
   const handlers  = require('./helpers/sources').handlerModul(_req);
 
   await t.test('Verknüpfen braucht beide Seiten und dieselbe Währung', async () => {

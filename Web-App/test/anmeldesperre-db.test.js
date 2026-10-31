@@ -39,7 +39,7 @@ const _req = require('./helpers/sources').buildAndRequire();
 const AUTH = require('./helpers/sources').einhaengung('auth');
 const db = _req('db/database.js');
 const { proxyVertrauen } = _req('src/infra/proxyVertrauen.js');
-const { MAX_ATTEMPTS, wartezeitSekunden } = _req('utils/loginLimiter.js');
+const { MAX_ATTEMPTS, wartezeitSekunden } = _req('src/konto/loginLimiter.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const bcrypt  = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 

@@ -1,21 +1,21 @@
 /**
  * Die Ablaufzeit einer Sitzung muss nicht bei JEDER Anfrage neu geschrieben
  * werden.
- * Ausführlich: docs/begruendungen/utils/sitzungsBeruehrung.ts.md#abschnitt
+ * Ausführlich: docs/begruendungen/src/konto/sitzungsBeruehrung.ts.md#abschnitt
  */
 
 import { SITZUNG_LEERLAUF_MS } from './sitzungsFrist';
 
 /**
  * Frist zwischen zwei geschriebenen Ablaufzeiten derselben Sitzung.
- * Ausführlich: docs/begruendungen/utils/sitzungsBeruehrung.ts.md#beruehren-ms
+ * Ausführlich: docs/begruendungen/src/konto/sitzungsBeruehrung.ts.md#beruehren-ms
  */
 export const BERUEHREN_MS = Math.min(5 * 60 * 1000, Math.floor(SITZUNG_LEERLAUF_MS / 4));
 
 /**
  * Deckel gegen unbegrenztes Wachstum. Beim Überlaufen wird geleert statt
  * einzeln aufgeräumt — dieselbe Entscheidung wie bei _tokenCache in
- * utils/auth.ts. Ein verworfener Eintrag kostet genau ein zusätzliches UPDATE.
+ * src/konto/auth.ts. Ein verworfener Eintrag kostet genau ein zusätzliches UPDATE.
  */
 const MAX_SITZUNGEN = 1000;
 
@@ -26,7 +26,7 @@ interface Speicher {
 
 /**
  * Die touch()-Methode eines Sitzungsspeichers drosseln — an Ort und Stelle.
- * Ausführlich: docs/begruendungen/utils/sitzungsBeruehrung.ts.md#drossleberuehren
+ * Ausführlich: docs/begruendungen/src/konto/sitzungsBeruehrung.ts.md#drossleberuehren
  */
 export function drossleBeruehren<T extends Speicher>(speicher: T, frist = BERUEHREN_MS): T {
   const echt = speicher.touch?.bind(speicher);

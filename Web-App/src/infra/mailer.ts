@@ -7,11 +7,12 @@
 
 // Zentraler Settings-Helfer — lokale Kopie entfernt.
 //
-// Jetzt direkt aus utils/settings statt ueber routes/settings: Der Umweg war
+// Jetzt direkt aus src/konto/settings statt ueber routes/settings: Der Umweg war
 // ein Durchreichen (routes/settings exportiert den Helfer nur weiter) und
 // genau die Kante, die test/schichten.test.js meldete.
+import nodemailer from 'nodemailer';
 import { konfig } from './konfig';
-import { getGlobalSetting } from '../../utils/settings';
+import { getGlobalSetting } from '../konto/settings';
 import { ausTabelle } from './validate';
 import { fehlertext } from './httpError';
 import { basisUrl, hinweisOhneBasisUrl } from './basisUrl';
@@ -22,7 +23,6 @@ const getSetting = (key: string) => getGlobalSetting(key, '');
  * Ausführlich: docs/begruendungen/src/infra/mailer.ts.md#gettransporter
  */
 async function getTransporter() {
-  const nodemailer = require('nodemailer');
   const host   = await getSetting('smtp_host');
   const port   = parseInt(await getSetting('smtp_port') || '587');
   const user   = await getSetting('smtp_user');
@@ -203,7 +203,7 @@ async function getMailTheme() {
     // der Datenbank liefert auch GEERBTE Mitglieder — bei 'constructor' oder
     // '__proto__' kaeme etwas Wahres zurueck, und der ||-Rueckfall griffe nie.
     // Die Schreibroute (routes/settings.ts) prueft heute gegen eine
-    // Positivliste, es ist also nicht erreichbar; aber utils/indexHtml.ts
+    // Positivliste, es ist also nicht erreichbar; aber src/konto/indexHtml.ts
     // prueft an der LESESTELLE, und das ist der Stand, auf den diese hier
     // gehoert. Eine Absicherung drei Dateien entfernt ist keine dieser Stelle.
     return ausTabelle(MAIL_THEMES, gespeichert, MAIL_THEMES.classic);

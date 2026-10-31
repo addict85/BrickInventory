@@ -135,7 +135,7 @@ test('ein Passwortwechsel beendet Sitzungen UND Token — gegen echten Store',
     });
 
     await t.test('Bearer-Token des Kontos verfallen mit', async () => {
-      const { hashToken, validateToken } = _req('utils/auth.js');
+      const { hashToken, validateToken } = _req('src/konto/auth.js');
       const crypto = require('node:crypto');
       const tok = crypto.randomBytes(16).toString('hex');
       await db.run(

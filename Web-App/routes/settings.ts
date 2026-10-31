@@ -1,5 +1,5 @@
 
-import { bestaetigePasswort } from '../utils/passwortBestaetigung';
+import { bestaetigePasswort } from '../src/konto/passwortBestaetigung';
 import express from 'express';
 const router  = express.Router();
 import multer from 'multer';
@@ -7,21 +7,22 @@ import { handleRouteError } from '../src/infra/httpError';
 import { requireApiAdmin as requireAdmin } from './api_v1/middleware';
 const requireLogin = requireLoginOrToken;
 
-import { setUserSetting, setGlobalSetting, getGlobalSetting, SECRET_KEYS, isMaskedValue, readSettings, nutzerEinstellungen, globaleWerteOhneGeheimnisse } from '../utils/settings';
-import { DESIGNS, designFuer, setzeEigenesDesign } from '../utils/settings';
+import { setUserSetting, setGlobalSetting, getGlobalSetting, SECRET_KEYS, isMaskedValue, readSettings, nutzerEinstellungen, globaleWerteOhneGeheimnisse } from '../src/konto/settings';
+import { DESIGNS, designFuer, setzeEigenesDesign } from '../src/konto/settings';
 import { buildSetsCsv } from '../utils/setService';
 import { buildPartsCsv, buildFigsCsv } from '../utils/bestandExport';
 import { buildMerklisteCsv } from '../utils/merkliste';
 import { buildPreisalarmeCsv } from '../utils/preisalarm';
 import { DAILY_JOBS } from '../utils/zeitplan';
 import { quellePruefen, bricksetLimitGesetzt, zeitplanNeuPlanen } from '../utils/dienste/verwaltung';
-import { zugaengeDesKontos, zugaengeLoeschen, andereSitzungenBeenden, mussPasswortAendern, profil } from '../utils/konten';
-import { resolveUserId, escapeLike, requireLoginOrToken, nutzerId, angemeldeteNutzerId, istVerwalter, nutzerName, hashToken, leereTokenCache } from '../utils/auth';
+import { zugaengeDesKontos, zugaengeLoeschen, andereSitzungenBeenden, mussPasswortAendern, profil } from '../src/konto/konten';
+import { resolveUserId, escapeLike, requireLoginOrToken, nutzerId, angemeldeteNutzerId, istVerwalter, nutzerName, hashToken, leereTokenCache } from '../src/konto/auth';
 import { bearerToken } from './api_v1/middleware';
 import { sendMail, testSmtp } from '../src/infra/mailer';
 import { sendeFehler } from '../src/infra/fehlerTexte';
 import { tlsStand } from '../src/infra/tlsWurzel';
 import { konfig } from '../src/infra/konfig';
+import { invalidateTheme } from '../src/konto/indexHtml';
 
 // ── Öffentlich: aktuelles App-Design — vor router.use(requireLogin), denn
 // Anmelde- und Startbildschirm brauchen es; es verrät nichts über Konten.
@@ -158,7 +159,7 @@ router.post('/', async (req: LoggedInRequest, res) => {
     for (const key of userKeys) {
       if (req.body[key] !== undefined) {
         // Zentrale Stelle — stösst bei einer ECHTEN Währungsänderung den
-        // Preis-Job an (Begründung in utils/settings.ts).
+        // Preis-Job an (Begründung in src/konto/settings.ts).
         await setUserSetting(uid, key, req.body[key]);
       }
     }
@@ -193,8 +194,7 @@ router.get('/export', async (req, res) => {
 // als CSV in einem ZIP; dieselben CSV-Bauer wie die Einzelexporte.
 router.get('/export/data', async (req: LoggedInRequest, res) => {
   try {
-    // archiver 8 ist ein ES-Modul mit Klassen; aus CommonJS kommt per
-    // require() ein Objekt, ZipArchive bietet append/pipe/finalize/on('error').
+    // archiver 8 ist ein ES-Modul; aus CommonJS geht nur require(), kein Import.
     const { ZipArchive } = require('archiver');
     const uid = angemeldeteNutzerId(req);
 
@@ -262,7 +262,7 @@ router.post('/import', importUpload.single('file'), async (req: LoggedInRequest,
       for (const key of userKeys) {
         if (config.user_settings[key] !== undefined) {
           // Zentrale Stelle — eine importierte Währungsänderung stösst den
-          // Preis-Job genauso an wie das Formular (utils/settings.ts).
+          // Preis-Job genauso an wie das Formular (src/konto/settings.ts).
           await setUserSetting(uid, key, config.user_settings[key]);
           imported++;
         }
@@ -367,7 +367,7 @@ router.post('/admin/theme', requireAdmin, async (req, res) => {
   setGlobalSetting('app_theme', theme);
   // Der Wert steckt im serverseitig gerenderten <html data-theme> — Cache
   // verwerfen, sonst liefert der Server bis zum Neustart das alte Design aus.
-  require('../utils/indexHtml').invalidateTheme();
+  invalidateTheme();
   res.json({ success: true, theme });
 });
 

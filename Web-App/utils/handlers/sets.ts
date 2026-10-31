@@ -5,7 +5,7 @@ import { fuerSet } from '../preisvergleich';
 import * as db from '../../db/database';
 import type { DbSchnittstelle } from '../../db/database';
 import { resolveImageLocal } from '../images';
-import { asIds } from '../household';
+import { asIds } from '../../src/haushalt/haushalt';
 import { clampPageSize, conditionFromAcquisitions, conditionsFromAcquisitions, withOwners } from './shared';
 import { ausTabelle } from '../../src/infra/validate';
 import { anleitungenZuSet, anleitungenZusammenlegen } from '../instructions';
@@ -39,12 +39,12 @@ const SET_SORTS = {
 
 /**
  * Ein Blickfeld: entweder eine einzelne Konto-ID oder die Liste aus
- * scopeIds() (utils/household.ts). asIds() normalisiert beides auf eine Liste.
+ * scopeIds() (src/haushalt/haushalt.ts). asIds() normalisiert beides auf eine Liste.
  *
  * Der Typ macht die Casts `asIds(userId)` ueberfluessig — die standen
  * nur da, weil der Parameter gar keinen Typ hatte.
  */
-import type { BlickfeldEingabe as Blickfeld } from '../household';
+import type { BlickfeldEingabe as Blickfeld } from '../../src/haushalt/haushalt';
 
 /**
  * @param {number} userId
@@ -62,7 +62,7 @@ import type { BlickfeldEingabe as Blickfeld } from '../household';
 async function getSets(userId: Blickfeld, query: any = {}) {
   // Blickfeld statt einer einzelnen ID: Ein Hauptkonto sieht (und ändert)
   // auch die Daten seiner Unterkonten, alle anderen nur ihre eigenen. Die
-  // Liste kommt von scopeIds() in utils/household.ts — hier wird sie nur
+  // Liste kommt von scopeIds() in src/haushalt/haushalt.ts — hier wird sie nur
   // normalisiert, damit ältere Aufrufer mit einer nackten ID weiter gehen.
   const uids = asIds(userId);
   // Explizite Spaltenliste statt SELECT *: id/user_id/updated_at
@@ -307,7 +307,7 @@ async function getSets(userId: Blickfeld, query: any = {}) {
 async function getSetConditionAggregate(userId: Blickfeld, setNumber: string) {
   // Blickfeld statt einer einzelnen ID: Ein Hauptkonto sieht (und ändert)
   // auch die Daten seiner Unterkonten, alle anderen nur ihre eigenen. Die
-  // Liste kommt von scopeIds() in utils/household.ts — hier wird sie nur
+  // Liste kommt von scopeIds() in src/haushalt/haushalt.ts — hier wird sie nur
   // normalisiert, damit ältere Aufrufer mit einer nackten ID weiter gehen.
   const uids = asIds(userId);
   const acq = await db.get(
@@ -348,7 +348,7 @@ async function withSetAggregate<T extends object>(userId: Blickfeld, setNumber: 
 async function getSet(userId: Blickfeld, setNumber: string) {
   // Blickfeld statt einer einzelnen ID: Ein Hauptkonto sieht (und ändert)
   // auch die Daten seiner Unterkonten, alle anderen nur ihre eigenen. Die
-  // Liste kommt von scopeIds() in utils/household.ts — hier wird sie nur
+  // Liste kommt von scopeIds() in src/haushalt/haushalt.ts — hier wird sie nur
   // normalisiert, damit ältere Aufrufer mit einer nackten ID weiter gehen.
   const uids = asIds(userId);
   const [set, shared, uploaded] = await Promise.all([
@@ -434,7 +434,7 @@ async function deleteSetRows(tx: DbSchnittstelle, uids: number[], setNumber: str
 async function deleteSet(userId: Blickfeld, setNumber: string) {
   // Blickfeld statt einer einzelnen ID: Ein Hauptkonto sieht (und ändert)
   // auch die Daten seiner Unterkonten, alle anderen nur ihre eigenen. Die
-  // Liste kommt von scopeIds() in utils/household.ts — hier wird sie nur
+  // Liste kommt von scopeIds() in src/haushalt/haushalt.ts — hier wird sie nur
   // normalisiert, damit ältere Aufrufer mit einer nackten ID weiter gehen.
   const uids = asIds(userId);
   // Atomar: vorher waren das vier sequenzielle DELETEs ohne Transaktion —

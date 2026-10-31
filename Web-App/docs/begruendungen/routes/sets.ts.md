@@ -90,7 +90,7 @@ den realistischen Fall: ein paar Browser-Tabs plus die Android-App.
 
 Hier stand eine EIGENE Fassung von requireLoginOrToken, die ?token=
 bedingungslos akzeptierte. Der Bedarf ist echt — EventSource kann keine
-Kopfzeilen setzen —, die zweite Fassung war es nicht: utils/auth.ts pflegt
+Kopfzeilen setzen —, die zweite Fassung war es nicht: src/konto/auth.ts pflegt
 eine Liste der Pfade, auf denen ein Token in der URL reiten darf, und
 schreibt dazu „alles andere verlangt einen Authorization-Header". Genau das
 stimmte wegen dieser Datei nicht, ohne dass man es dort sieht.

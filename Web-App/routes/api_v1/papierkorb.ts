@@ -6,7 +6,7 @@
 import express from 'express';
 import { handleRouteError } from '../../src/infra/httpError';
 import { sendeFehler } from '../../src/infra/fehlerTexte';
-import { writableIds } from '../../utils/household';
+import { writableIds } from '../../src/haushalt/haushalt';
 import { listePapierkorb, stelleWiederHer, loescheEndgueltig, leerePapierkorb } from '../../utils/papierkorb';
 import { requireToken } from './middleware';
 import { loescheAllesEigene } from '../../utils/loeschen';

@@ -4,7 +4,7 @@
  */
 import {
   PDFDocument as PdfLibDocument, PDFArray, PDFDict, PDFName, PDFRawStream,
-  decodePDFRawStream, PDFPage, PDFObject,
+  decodePDFRawStream, PDFPage, PDFObject, StandardFonts, rgb,
 } from '@cantoo/pdf-lib';
 import { werteAusPdf, pdfText, textOperatoren } from './gutscheinPdf';
 import type { GutscheinWerte } from './gutscheinPdf';
@@ -244,7 +244,6 @@ export interface ExportBefund {
  * Ausführlich: docs/begruendungen/utils/gutscheinPdfSchreiben.ts.md#erzeugeseite
  */
 async function erzeugeSeite(g: ExportGutschein): Promise<Buffer> {
-  const { StandardFonts, rgb } = require('@cantoo/pdf-lib');
   const doc = await PdfLibDocument.create();
   const seite = doc.addPage([595, 842]);
   const fett = await doc.embedFont(StandardFonts.HelveticaBold);
@@ -272,7 +271,6 @@ async function erzeugeSeite(g: ExportGutschein): Promise<Buffer> {
  */
 export async function verbindeGutscheine(gutscheine: ExportGutschein[]):
     Promise<{ daten: Buffer; befunde: ExportBefund[] }> {
-  const { StandardFonts, rgb } = require('@cantoo/pdf-lib');
   const ziel = await PdfLibDocument.create();
   const marke = await ziel.embedFont(StandardFonts.Helvetica);
   const befunde: ExportBefund[] = [];
