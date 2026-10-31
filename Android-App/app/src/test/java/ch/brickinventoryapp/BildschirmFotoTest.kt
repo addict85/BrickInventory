@@ -1,5 +1,6 @@
 package ch.brickinventoryapp
 
+import android.os.Looper
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
@@ -36,6 +37,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.ParameterizedRobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
+import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
@@ -80,9 +82,25 @@ class BildschirmFotoTest(private val design: String, private val dunkel: Boolean
     @After
     fun zu() = welt.close()
 
+    /**
+     * Die Daten kommen vor dem Bildschirm. Ihre Abrufe kehren über den
+     * Hauptlooper zurück; den treibt diese Schleife selbst. Hinge er stattdessen
+     * an compose.waitUntil, läuft er nur so oft, wie die Testuhr Bilder zeichnet
+     * — und solange geladen wird, zeichnet sie Ladeanimationen ohne Ende.
+     */
+    private fun bereitstellen(name: String, bereit: () -> Boolean, zustand: () -> Any?) {
+        val ende = System.nanoTime() + 10_000_000_000L
+        while (!bereit()) {
+            if (System.nanoTime() > ende) throw AssertionError("$name: Daten nach 10 s nicht da: ${zustand()}")
+            shadowOf(Looper.getMainLooper()).idle()
+            Thread.sleep(10)
+        }
+    }
+
     private fun foto(name: String, bereit: () -> Boolean = { true }, zustand: () -> Any? = { null },
                      inhalt: @Composable () -> Unit) {
         RuntimeEnvironment.setQualifiers(GERAETE.getValue(geraet))
+        bereitstellen(name, bereit, zustand)
         compose.setContent {
             BrickInventoryManagerTheme(theme = design, dunkel = dunkel) {
                 Surface(color = MaterialTheme.colorScheme.background) { inhalt() }
@@ -106,14 +124,14 @@ class BildschirmFotoTest(private val design: String, private val dunkel: Boolean
     @Test
     fun galerie() {
         val vm = welt.galerie().also { it.loadSets(); it.loadStats() }
-        foto("galerie", { vm.galleryState.value.sets.isNotEmpty() }) {
+        foto("galerie", { vm.galleryState.value.sets.isNotEmpty() }, { vm.galleryState.value }) {
             GalleryScreen(vm = vm, erfassung = erfassung(), imageLoader = bilder, onScanBarcode = {}, onSetClick = {})
         }
     }
 
     @Test
     fun setDetail() {
-        val vm = welt.setDetail()
+        val vm = welt.setDetail().also { it.ladeAlles() }
         foto("set-detail", { vm.setDetailState.value.setDetail != null }, { vm.setDetailState.value }) {
             SetDetailScreen(setNumber = Beispiele.SET, vm = vm, serverUrl = "", imageLoader = bilder,
                 onBack = {}, onDelete = {})
@@ -123,25 +141,31 @@ class BildschirmFotoTest(private val design: String, private val dunkel: Boolean
     @Test
     fun teile() {
         val vm = welt.teile().also { it.loadParts() }
-        foto("teile", { vm.partsState.value.parts.isNotEmpty() }) { PartsScreen(vm = vm, imageLoader = bilder) }
+        foto("teile", { vm.partsState.value.parts.isNotEmpty() }, { vm.partsState.value }) {
+            PartsScreen(vm = vm, imageLoader = bilder)
+        }
     }
 
     @Test
     fun figuren() {
         val vm = welt.teile().also { it.loadMinifigs() }
-        foto("figuren", { vm.partsState.value.minifigs.isNotEmpty() }) { MinifigsScreen(vm = vm, imageLoader = bilder) }
+        foto("figuren", { vm.partsState.value.minifigs.isNotEmpty() }, { vm.partsState.value }) {
+            MinifigsScreen(vm = vm, imageLoader = bilder)
+        }
     }
 
     @Test
     fun finanzen() {
         val vm = welt.finanzen().also { it.loadValuation(); it.loadPortfolioHistory("week") }
-        foto("finanzen", { vm.financeState.value.valuation != null }) { FinanceScreen(vm = vm, imageLoader = bilder) }
+        foto("finanzen", { vm.financeState.value.valuation != null }, { vm.financeState.value }) {
+            FinanceScreen(vm = vm, imageLoader = bilder)
+        }
     }
 
     @Test
     fun merkliste() {
-        val vm = welt.merkliste()
-        foto("merkliste", { vm.merklisteState.value.merkposten.isNotEmpty() }) {
+        val vm = welt.merkliste().also { it.ladeMerkliste() }
+        foto("merkliste", { vm.merklisteState.value.merkposten.isNotEmpty() }, { vm.merklisteState.value }) {
             MerklisteScreen(vm = vm, imageLoader = bilder, onScan = {}, onOeffnen = { _, _ -> })
         }
     }
