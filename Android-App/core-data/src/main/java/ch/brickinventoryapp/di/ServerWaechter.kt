@@ -51,6 +51,16 @@ interface Rotationsanlass {
 private const val ROTATIONS_PFAD = "/api/v1/auth/token-rotieren"
 
 /**
+ * 401 mit diesen Codes heisst „Bestätigung falsch oder fehlt“, nicht „Token
+ * ungültig“: Der Dialog fragt erneut nach dem Passwort, statt abzumelden.
+ */
+private val BESTAETIGUNG_NOETIG = setOf("aktuelles_passwort_falsch", "aktuelles_passwort_erforderlich",
+    "zweiter_faktor_falsch", "zweiter_faktor_noetig", "passkey_ungueltig")
+
+/** 403 mit diesem Code: Das Konto oder der Token hat keine Verwalterrechte (mehr). */
+const val NUR_ADMINS = "nur_admins"
+
+/**
  * Token, Sprache und Klartextregel für alle Anfragen an den eigenen Server.
  *
  * Ein 401 meldet die abgelaufene Sitzung nur, wenn der Token tatsächlich an einen
@@ -67,6 +77,8 @@ class ServerWaechter(
     /** Weitere Köpfe nur für den eigenen Server (die Anzeigesprache, ServerClient.kt). */
     private val eigeneKoepfe: (original: Request, ziel: Request.Builder) -> Unit = { _, _ -> },
     private val rotation: Rotationsanlass? = null,
+    /** Ein 403 `nur_admins` auf einen Token: Die App zieht ihr Verwalterrecht nach. */
+    private val rechteEntzogen: () -> Unit = {},
 ) : Interceptor {
 
     private val versionGemeldet = AtomicBoolean(false)
@@ -147,7 +159,11 @@ class ServerWaechter(
             ausgehend.header("Authorization")?.removePrefix("Bearer ")?.trim()?.let { rotation!!.faellig(it) }
         }
 
-        if (antwort.code == 401 && tokenMitgeschickt && unserServer) sitzungAbgelaufen()
+        if ((antwort.code == 401 || antwort.code == 403) && tokenMitgeschickt && unserServer) {
+            val code = runCatching { Fehlerrumpf.lies(antwort.peekBody(16_384).string()).code }.getOrNull()
+            if (antwort.code == 401 && code !in BESTAETIGUNG_NOETIG) sitzungAbgelaufen()
+            if (antwort.code == 403 && code == NUR_ADMINS) rechteEntzogen()
+        }
 
         val melden = versionsMeldung
         if (unserServer && melden != null && !versionGemeldet.get()) {

@@ -74,7 +74,7 @@ fun MonitoringScreen(vm: AppViewModel) {
     val monitoringLifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
     LaunchedEffect(Unit) {
         monitoringLifecycleOwner.lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) {
-            while (true) { mon.ladeJobs(); mon.ladeHintergrund(); delay(5000) }
+            while (!mon.state.value.zugriffEntzogen) { mon.ladeJobs(); mon.ladeHintergrund(); delay(5000) }
         }
     }
 

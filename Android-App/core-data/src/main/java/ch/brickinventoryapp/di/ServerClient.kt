@@ -73,6 +73,8 @@ internal fun buildInterceptorClient(
     frage: ch.brickinventoryapp.util.ZertifikatsFrage,
     /** Tauscht den Token, wenn der Server es verlangt; nur für Clients mit Token. */
     rotation: Rotationsanlass? = null,
+    /** Nur der API-Client: Dort kommen die Verwalteraufrufe an. */
+    rechte: ch.brickinventoryapp.data.RechteSignal? = null,
 ): OkHttpClient {
     val versionsMeldung: ((VersionsHinweis) -> Unit)? = meldungen?.let { kanal ->
         { hinweis: VersionsHinweis ->
@@ -96,7 +98,7 @@ internal fun buildInterceptorClient(
                 if (original.header("Accept-Language") == null) ziel.header("Accept-Language",
                     ch.brickinventoryapp.util.LanguageManager.localizedContext(ctx)
                         .getString(ch.brickinventoryapp.ressourcen.R.string.lang_code))
-            }, rotation = rotation))
+            }, rotation = rotation, rechteEntzogen = { rechte?.melde() }))
         .apply {
             val tm = serverVertrauen(prefs, frage)
             val tls = javax.net.ssl.SSLContext.getInstance("TLS").apply { init(null, arrayOf(tm), null) }

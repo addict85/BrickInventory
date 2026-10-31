@@ -262,6 +262,9 @@ fun NavGraphBuilder.toolsGraph(
         }
 
         composable(Screen.Monitoring.route) {
+            // Fällt das Verwalterrecht weg, verlässt die Seite sich selbst, statt weiter 403 zu sammeln.
+            val stand by vm.state.collectAsStateWithLifecycle()
+            LaunchedEffect(stand.isAdmin) { if (!stand.isAdmin) navController.popBackStack() }
             ReiterGeruest(stringResource(R.string.nav_monitoring), vm, navController, bottomNavItems, snackbarHostState) {
                 MonitoringScreen(vm)
             }

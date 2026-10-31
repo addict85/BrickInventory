@@ -38,7 +38,11 @@ data class MonitoringUiState(
     val vorgabeZustand: String = "N",
     /** Das Design, das der Verwalter allen vorgibt — nicht das eigene des Kontos. */
     val vorgabeDesign: String? = null,
+    /** Der Server sagte `nur_admins`: Die Abfrageschleife hört auf, statt alle 5 s erneut abgewiesen zu werden. */
+    val zugriffEntzogen: Boolean = false,
 )
+
+private fun entzogen(r: Result<*>) = r is Result.Error && r.code == ch.brickinventoryapp.di.NUR_ADMINS
 
 /**
  * Der Monitoring-Bildschirm holt seine Daten über dieses ViewModel statt aus den
@@ -92,7 +96,10 @@ class MonitoringViewModel @Inject constructor(
         _hintergrund.update { it.copy(laedt = true) }
         when (val r = repo.verwaltung.getAuftraege()) {
             is Result.Success -> _hintergrund.update { HintergrundUiState(ansicht = r.data.alsAnsicht()) }
-            is Result.Error -> _hintergrund.update { it.copy(laedt = false, fehler = texte.meldung(r)) }
+            is Result.Error -> {
+                _hintergrund.update { it.copy(laedt = false, fehler = texte.meldung(r)) }
+                if (entzogen(r)) _state.update { it.copy(zugriffEntzogen = true) }
+            }
         }
     }
 
@@ -131,7 +138,7 @@ class MonitoringViewModel @Inject constructor(
             if (r is Result.Success)
                 it.copy(jobs = r.data.jobs.mapValues { j -> j.value.alsAnsicht() },
                     jobSchedules = r.data.schedules.mapValues { z -> z.value.alsAnsicht() }, aktualisiert = false)
-            else it.copy(aktualisiert = false)
+            else it.copy(aktualisiert = false, zugriffEntzogen = it.zugriffEntzogen || entzogen(r))
         }
     }
 

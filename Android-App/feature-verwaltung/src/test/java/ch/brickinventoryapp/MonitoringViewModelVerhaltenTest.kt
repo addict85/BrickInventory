@@ -55,6 +55,9 @@ import java.util.concurrent.TimeUnit
  *
  * MockWebServer liefert der Reihe nach, unabhängig vom Pfad; die Tests legen
  * deshalb genau so viele Antworten hin, wie das ViewModel Abrufe macht.
+ *
+ * Gegenprobe (31.10.2026, gemessen): in ladeJobs() `zugriffEntzogen` nicht
+ * gesetzt → rot „ein 403 nur_admins beendet die Abfrage …“.
  */
 class MonitoringViewModelVerhaltenTest {
 
@@ -114,6 +117,19 @@ class MonitoringViewModelVerhaltenTest {
     fun zu() {
         server.shutdown()
         cacheDir.deleteRecursively()
+    }
+
+    @Test
+    fun `ein 403 nur_admins beendet die Abfrage, ein anderer Fehler nicht`() = runTest {
+        server.enqueue(antwort("""{"success":false,"error":"Serverfehler"}""", 500))
+        vm.ladeJobs()
+        assert(!vm.state.value.zugriffEntzogen) { "Ein 500 ist kein Rechteentzug" }
+        server.enqueue(antwort("""{"success":false,"code":"nur_admins","error":"Nur für Admins"}""", 403))
+        vm.ladeJobs()
+        assert(vm.state.value.zugriffEntzogen) { "Nach nur_admins soll die Schleife enden" }
+        server.enqueue(antwort("""{"success":true,"jobs":{}}"""))
+        vm.ladeJobs()
+        assert(vm.state.value.zugriffEntzogen) { "Der Entzug bleibt, bis die Seite verlassen wird" }
     }
 
     // ── Die Warteschlange ────────────────────────────────────────────────────

@@ -51,6 +51,7 @@ class AppViewModel @Inject constructor(
     private val vorwaermer: VorschauVorwaermer,
     private val sseClient: CsvImportSseClient,
     private val sessionExpired: SessionExpiredSignal,
+    private val rechte: ch.brickinventoryapp.data.RechteSignal,
     meldungen: MeldungsKanal,
     private val texte: Texte,
     // Der PdfViewer leitet seinen Download-Client hiervon ab, damit Token,
@@ -201,6 +202,16 @@ class AppViewModel @Inject constructor(
     }
 
     // ── Sitzung ──────────────────────────────────────────────────────────────
+
+    // Ein 403 `nur_admins` (ServerWaechter): Recht nachziehen, Verwaltung
+    // ausblenden; die Meldung nur beim Übergang, nicht je abgewiesener Anfrage.
+    init {
+        viewModelScope.launch {
+            rechte.entzogen.collect {
+                if (sitzung.rechteNachziehen(repo.konto)) _snackbar.value = texte.text(R.string.vm_rechte_entzogen)
+            }
+        }
+    }
 
     /** Nach dem Anmelden: Filter, Konten und Orte; die Bereiche laden ihre Listen selbst. */
     private fun nachAnmeldung() {
