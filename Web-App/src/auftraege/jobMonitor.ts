@@ -1,7 +1,4 @@
-/**
- * Stand der Job-Kacheln in laufzustand: Der Job-Prozess schreibt, der Web-Prozess liest.
- * UI polls GET /api/v1/admin/jobs to display progress.
- */
+/** Der Job-Prozess schreibt nach laufzustand, der Web-Prozess liest. */
 
 import { meldeUndWeiter, logAndContinue, meldeUndLiefere } from '../infra/httpError';
 import { liesZustand, setzeZustand, zaehleZustand, zustaendeMitPraefix } from './repository/laufzustand';
@@ -22,13 +19,8 @@ export async function update(jobKey: string, patch: any) {
   setzeZustand(`job_monitor_${jobKey}`, value).catch(e => console.error('[jobMonitor] update error:', e.message));
 }
 
-// ── Bild-Download-Zähler ──────────────────────────────────────────────────
-// Über ALLE aktiven downloadSetImages-Batches beider Prozesse summierte
-// Zahl der noch zu ladenden Bilder. Eigener Bare-Integer-Eintrag (bewusst NICHT
-// job_monitor_*, damit all() ihn nicht als Job parst); zaehleZustand() rechnet
-// atomar in EINER Anweisung.
-// Früher überschrieb jeder Batch den imgDl-Status (last-write-wins), sodass im
-// Monitoring nur der zuletzt gestartete Wert statt der Summe erschien.
+// Über ALLE Stapel beider Prozesse summiert, atomar in einer Anweisung —
+// nicht job_monitor_*, damit all() ihn nicht als Job liest.
 const IMGDL_PENDING_KEY = 'imgdl_pending_count';
 
 export async function imgDlAdd(delta: number) {
@@ -36,8 +28,7 @@ export async function imgDlAdd(delta: number) {
   if (!d) return;
   await zaehleZustand(IMGDL_PENDING_KEY, d).catch(e => console.error('[jobMonitor] imgDlAdd error:', e.message));
   if (d > 0) {
-    // Nur lastRun-/Label-Marker für die Anzeige — die Zahl kommt aus dem
-    // Zähler oben, nicht aus diesem Feld.
+    // Nur Marker für die Anzeige; die Zahl kommt aus dem Zähler oben.
     await update('imgDl', { status: 'running', sub: null }).catch(logAndContinue('job-monitor:update'));
   }
 }
@@ -48,10 +39,6 @@ export async function imgDlPending() {
 }
 
 export async function imgDlReset() {
-  // Vorher ein reines UPDATE: Fehlt die Zeile, tat es nichts. Das war folgenlos,
-  // weil imgDlPending() eine fehlende Zeile ohnehin als 0 liest — deshalb ist
-  // das Anlegen durch setzeZustand() hier unschaedlich und der Zaehler
-  // steht danach in jedem Fall sichtbar auf 0.
   await setzeZustand(IMGDL_PENDING_KEY, 0).catch(logAndContinue('job-monitor:setzeZustand'));
 }
 
