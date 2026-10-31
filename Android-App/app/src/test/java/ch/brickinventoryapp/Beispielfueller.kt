@@ -1,7 +1,6 @@
 package ch.brickinventoryapp
 
 import org.junit.Assert.assertEquals
-import java.io.File
 import java.lang.reflect.Method
 import java.lang.reflect.ParameterizedType
 import java.lang.reflect.Type
@@ -15,11 +14,19 @@ import java.lang.reflect.WildcardType
 object Beispielfueller {
     private var zaehler = 0
 
-    /** Alle `alsAnsicht(<data.model.X>)` der Dateien in ui/model. */
+    /**
+     * Die Dateien in ui/model mit Abbildungen, beim Namen genannt: Unter Gradle
+     * liegen die Hauptklassen in einem Jar, ein Ordner-Durchgang fand dort nichts.
+     * Dass die Liste vollständig ist, prüft UiModellAbbildungTest am Quelltext.
+     */
+    val ABBILDUNGSDATEIEN = listOf(
+        "EinzelAnsichten", "FinanzAnsichten", "HaushaltAnsichten", "HintergrundAnsichten",
+        "KatalogAnsichten", "PreisAnsichten", "SetAnsichten", "TeileAnsichten", "VerwaltungAnsichten",
+    )
+
+    /** Alle `alsAnsicht(<data.model.X>)` der Dateien in [ABBILDUNGSDATEIEN]. */
     fun abbildungen(): List<Method> {
-        val ordner = File(javaClass.classLoader!!.getResource("ch/brickinventoryapp/ui/model")!!.toURI())
-        return ordner.listFiles().orEmpty().filter { it.name.endsWith("Kt.class") }
-            .map { Class.forName("ch.brickinventoryapp.ui.model." + it.name.removeSuffix(".class")) }
+        return ABBILDUNGSDATEIEN.map { Class.forName("ch.brickinventoryapp.ui.model.${it}Kt") }
             .flatMap { k -> k.methods.filter { it.name == "alsAnsicht" && it.parameterCount == 1 } }
             .filter { it.parameterTypes[0].name.startsWith("ch.brickinventoryapp.data.model.") && !it.parameterTypes[0].isEnum }
             .sortedBy { it.parameterTypes[0].name }

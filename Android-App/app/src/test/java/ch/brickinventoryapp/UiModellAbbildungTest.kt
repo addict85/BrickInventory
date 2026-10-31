@@ -27,6 +27,10 @@ import org.junit.Test
  *   B  in CsvImportArt.alsDaten TEILE → CsvArt.SETS → rot „jede CSV-Art kommt
  *      unverändert an“
  *   C  in PreisalarmAnsicht.unter `== "unter"` → `== "ueber"` → rot
+ *   D  Hauptklassen als Jar statt Ordner (wie unter Gradle): Die alte Suche über
+ *      den Klassenordner → rot „URI is not hierarchical“; mit der Liste grün
+ *   E  „TeileAnsichten“ aus Beispielfueller.ABBILDUNGSDATEIEN gestrichen → rot
+ *      „jede Datei mit Abbildungen steht in der Liste“ und „Nur 48 Abbildungen“
  */
 class UiModellAbbildungTest {
 
@@ -76,6 +80,16 @@ class UiModellAbbildungTest {
         }
         assertTrue("nur $verglichen Felder verglichen", verglichen >= 300)
         assertEquals("Getter ohne Gegenstück im Server-Modell", OHNE_GEGENSTUECK, ohne)
+    }
+
+    @Test
+    fun `jede Datei mit Abbildungen steht in der Liste`() {
+        val ordner = java.io.File(Quellen.wurzel, "ui/model")
+        val mitAbbildung = ordner.listFiles().orEmpty()
+            .filter { f -> f.name.endsWith(".kt") && Regex("""fun \S+\.alsAnsicht\(""").containsMatchIn(f.readText()) }
+            .map { it.name.removeSuffix(".kt") }.sorted()
+        assertTrue("keine Quelldatei unter ${ordner.absolutePath}", mitAbbildung.size >= 5)
+        assertEquals(mitAbbildung, Beispielfueller.ABBILDUNGSDATEIEN.sorted())
     }
 
     private companion object {
