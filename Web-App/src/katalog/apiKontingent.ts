@@ -4,24 +4,17 @@ import { aktuellesKonto } from '../infra/anfrageKonto';
 import { getGlobalSetting } from '../konto/settings';
 import * as repo from './repository/apiKontingent';
 
-/** Tageskontingente der externen Dienste — eine Stelle für alle Zähler. */
 export type ApiName = 'bricklink' | 'rebrickable' | 'brickset';
 
-/** Rebrickable: 1 Aufruf/s, Tagesgrenze aus den Einstellungen, sonst diese. */
 export const REBRICKABLE_DEFAULT_DAILY = 25000;
 const VORGABEN: Record<ApiName, number> = { bricklink: 4000, rebrickable: REBRICKABLE_DEFAULT_DAILY, brickset: 100 };
 
-/**
- * Anteil am Tageskontingent je Konto (ausser Verwaltern). Ohne Grenze je Konto
- * verbrauchte ein einzelnes Unterkonto das Kontingent aller.
- */
+/** Je Konto (ausser Verwaltern): Sonst verbrauchte ein Unterkonto das
+ * Kontingent aller. */
 export const ANTEIL_JE_KONTO = 0.25;
 
-/**
- * Anteil aller Nicht-Verwalter zusammen. Vier Konten zu je einem Viertel
- * leerten sonst das ganze Kontingent; die andere Hälfte bleibt Verwaltern und
- * dem Hintergrund (Katalogabgleich). Gezählt in der Zeile `konto = -1`.
- */
+/** Alle Nicht-Verwalter zusammen; die andere Hälfte bleibt Verwaltern und dem
+ * Hintergrund. Gezählt in der Zeile `konto = -1`. */
 export const ANTEIL_ALLE_KONTEN = 0.5;
 const ALLE_KONTEN = -1;
 
@@ -34,11 +27,8 @@ export async function getLimitForApi(apiName: ApiName): Promise<number> {
 const grenzeJeKonto = (limit: number) => Math.max(1, Math.ceil(limit * ANTEIL_JE_KONTO));
 const grenzeAlleKonten = (limit: number) => Math.max(1, Math.ceil(limit * ANTEIL_ALLE_KONTEN));
 
-/**
- * Einen Aufruf zählen, wenn das Kontingent es zulässt — gesamt und, bei einer
- * Anfrage eines Nicht-Verwalters, für alle Konten zusammen und je Konto. Atomar: Das Upsert erhöht nur unter
- * der Grenze, und scheitert die Grenze des Kontos, fällt auch die Gesamtzählung zurück.
- */
+/** Atomar: Das Upsert erhöht nur unter der Grenze, und scheitert die Grenze des
+ * Kontos, fällt auch die Gesamtzählung zurück. */
 export async function checkAndIncrementRateLimit(apiName: ApiName, _vorgabe?: number) {
   const limit = await getLimitForApi(apiName);
   const tag = heute();
@@ -63,7 +53,6 @@ export async function checkAndIncrementRateLimit(apiName: ApiName, _vorgabe?: nu
   });
 }
 
-/** Stand des Tageskontingents (gesamt). */
 export async function getRateLimitStatus(apiName: ApiName) {
   const tag = heute();
   const [z, limit] = await Promise.all([
@@ -74,11 +63,8 @@ export async function getRateLimitStatus(apiName: ApiName) {
   return { count, limit, remaining: Math.max(0, limit - count), date: tag };
 }
 
-/**
- * Ist noch etwas übrig — gesamt und für das anfragende Konto? Zählt NICHT; die
- * Aufrufer fragen vorher, damit ein erschöpftes Kontingent als solches gemeldet
- * wird statt als Abruffehler.
- */
+/** Zählt NICHT: Die Aufrufer fragen vorher, damit ein erschöpftes Kontingent
+ * als solches gemeldet wird statt als Abruffehler. */
 export async function kontingentFrei(apiName: ApiName) {
   const s = await getRateLimitStatus(apiName);
   const konto = aktuellesKonto();
@@ -89,7 +75,6 @@ export async function kontingentFrei(apiName: ApiName) {
            limit: s.limit };
 }
 
-/** Den heutigen Zähler eines Dienstes zurücksetzen (Verwalter, „jetzt erneut versuchen“). */
 export async function setzeKontingentZurueck(apiName: ApiName): Promise<void> {
   await repo.setzeApiZaehlerZurueck(heute(), apiName);
 }

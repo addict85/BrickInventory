@@ -1,12 +1,7 @@
 'use strict';
-/**
- * Enriches set_parts_catalog from Rebrickable API.
- * Logic:
- * 1. Check if all parts for the set are in set_parts_catalog with image_url
- * 2. If not: call /lego/sets/{set_num}/parts/ API (paginated)
- * 3. Save all parts to set_parts_catalog immediately
- * 4. For each part: if image already local → use it; else return CDN URL and download in background
- */
+/** Füllt set_parts_catalog aus der Rebrickable-API, damit die Teileliste eines
+ * Sets Namen und Bilder hat. Bilder werden im Hintergrund geladen; bis dahin
+ * gilt die CDN-Adresse. */
 import { cdnImageLimiter, rebrickableBackgroundLimiter as rebrickableLimiter, consumeRebrickableDaily, parseThrottleWait as ptw } from './rateLimiter';
 import { meldeUndWeiter, fehlertext, logAndContinue, meldeUndLiefere, ohneFehlendeDatei } from '../infra/httpError';
 import { neuestesInventar } from './rbInventar';
@@ -14,17 +9,12 @@ import { mitVersion } from '../sets/setNummer';
 import { merkeBlNummer } from './blZuordnung';
 import { merkeTeil, merkeTeilFarbe, merkeSetTeil, setzeTeilBildLokal, merkeFiguren, merkeSetFiguren, setzeFigurBildLokal } from './katalogPflege';
 import { getRbKey, downloadFile } from '../../clients/rebrickable';
-// Pfade zentral auflösen — __dirname zeigt seit dem dist/-Build nicht mehr
-// auf die Wurzel. Siehe src/infra/appPaths.ts.
 
-/** Ergebnis der handgebauten HTTPS-Aufrufe in dieser Datei. Ohne Typparameter
- *  leitet TypeScript bei `new Promise` `unknown` ab. */
+/** Ohne Typparameter leitet TypeScript bei `new Promise` `unknown` ab. */
 type JobHttpResult = { status: number; body: string };
 
-// Teile- und Figurenbilder liegen seit der Neuordnung getrennt (siehe
-// src/infra/appPaths.ts). downloadImage() bekommt deshalb die Art mitgegeben —
-// vorher landete beides im selben Ordner "part_images", was den Namen für die
-// Hälfte des Inhalts falsch machte.
+// Teile- und Figurenbilder liegen in getrennten Ordnern; downloadImage()
+// bekommt deshalb die Art mit.
 import { bildEndung, dateiTeil, zielImOrdner, ladeBild } from './bilder/bildDatei';
 import { ERLAUBTE_BILD_HOSTS, pfadSegment, nummernListe } from '../infra/fremdeAdressen';
 import { setzeZustand } from '../auftraege/laufzustand';
@@ -76,14 +66,8 @@ async function apiGet(url: string, rbKey: string) {
   }
 }
 
-/**
- * Bild herunterladen und lokal ablegen.
- * Ausführlich: docs/begruendungen/src/katalog/teileAnreicherung.ts.md#abschnitt
- * @param {string} imgUrl
- * @param {string} partNum Teile- oder Figurennummer
- * @param {number} colorId
- * @param {'part'|'minifig'} kind Bestimmt Zielverzeichnis und Web-Pfad.
- */
+/** @param kind Bestimmt Zielverzeichnis und Web-Pfad.
+ * Ausführlich: docs/begruendungen/src/katalog/teileAnreicherung.ts.md#abschnitt */
 async function downloadImage(
   imgUrl: string | null | undefined,
   partNum: string,
@@ -93,8 +77,8 @@ async function downloadImage(
   if (!imgUrl) return null;
   const IMG_DIR = kind === 'minifig' ? MINIFIG_IMAGES_DIR : PART_IMAGES_DIR;
   const webBase = kind === 'minifig' ? '/images/minifigs/' : '/images/parts/';
-  // Nummer und Adresse kommen bei manuellen Teilen vom Nutzer: Sie dürfen
-  // weder einen Pfad bilden noch die Endung bestimmen (siehe src/katalog/bilder/bildDatei.ts).
+  // Nummer und Adresse kommen bei manuellen Teilen vom Nutzer: Sie dürfen weder
+  // einen Pfad bilden noch die Endung bestimmen.
   const nummer = dateiTeil(partNum), farbe = dateiTeil(colorId);
   if (!nummer || !farbe) return null;
   const file = `${nummer}_${farbe}.${bildEndung(imgUrl)}`;
@@ -111,7 +95,6 @@ async function downloadImage(
 async function enrichSetParts(setNumber: string) {
   const n = mitVersion(setNumber);
 
-  // Step 1: Check if all CSV parts are already in catalog with image_url
   const invId = await neuestesInventar(setNumber).catch(meldeUndLiefere('teile-enrich:neuestesInventar', null));
   if (!invId) return;
 
@@ -122,14 +105,13 @@ async function enrichSetParts(setNumber: string) {
   const catalogMap: Record<string, { image_url: string | null; image_local: string | null; bl_part_number?: string | null }> = {};
   for (const r of catalogRows) catalogMap[`${r.part_number}|${r.color_id}`] = r;
 
-  // Alle Teilenummern, zu denen schon eine Zeile in bl_zuordnung steht
-  // (= schon ueber die API nachgesehen). Die ZEILE zaehlt, nicht ihr Wert:
-  // leer heisst „nachgesehen, keine abweichende Nummer" (Migration 0037).
+  // Die ZEILE in bl_zuordnung zählt, nicht ihr Wert: leer heisst „nachgesehen,
+  // keine abweichende Nummer".
   const lookedUp = await repo.blZuordnungen(csvParts.map(p => p.part_num))
     .catch(meldeUndLiefere('teile-enrich:lookedUp', []));
   const lookedUpSet = new Set(lookedUp.map((r: { rb_id: string }) => r.rb_id));
 
-  // Only re-enrich parts NOT yet in bl_zuordnung (never looked up)
+  // Nur Teile, die noch nie nachgesehen wurden — jeder Abruf kostet Kontingent.
   const missing = csvParts.filter(p => {
     const cat = catalogMap[`${p.part_num}|${p.color_id}`];
     if (!cat) return true;                    // not in catalog at all
@@ -143,12 +125,10 @@ async function enrichSetParts(setNumber: string) {
     return; // All parts have correct BL IDs — skip API call
   }
 
-  // Get API key once — needed for both parts and minifigs
   const rbKey = await getRbKey();
   if (!rbKey) { console.log('[parts-enrich] No API key'); return; }
 
   if (missing.length > 0) {
-    // Step 2: Fetch all parts for this set from API
 
     type ApiTeil = { part_name: string; bl_part_num: string | null; image_url: string | null; color_name: string; color_hex: string; quantity: number };
     const apiParts: Record<string, ApiTeil> = {}; // key: "part_num|color_id"
@@ -171,8 +151,8 @@ async function enrichSetParts(setNumber: string) {
       url = data.next || null;
     }
 
-    // Step 3b: Batch-fetch BL IDs via /lego/parts/?part_nums= (most reliable source)
-    // Use ALL unique part_nums from CSV (not just from apiParts which may be incomplete)
+    // Alle Nummern aus der CSV, nicht nur aus der API-Antwort: Die kann
+    // unvollständig sein.
     const missingBl = [...new Set(csvParts.map((p: { part_num: string }) => p.part_num))];
     if (missingBl.length > 0) {
       
@@ -186,48 +166,38 @@ async function enrichSetParts(setNumber: string) {
           const blId = part.external_ids?.BrickLink?.[0] || null;
           
           if (blId) {
-            // Update all entries for this part_num
             for (const colorId of Object.keys(apiParts)
               .filter(k => k.startsWith(part.part_num + '|'))
               .map(k => k.split('|')[1])) {
               const key = `${part.part_num}|${colorId}`;
               if (apiParts[key]) apiParts[key].bl_part_num = blId;
             }
-            // Also store in bl_zuordnung for future use
             await merkeBlNummer('part', part.part_num, blId).catch(logAndContinue('teile-enrich:merkeBlNummer'));
           }
         }
       }
     }
 
-    // Build blMap from bl_zuordnung for all csvParts (includes what we just fetched)
     const blMapRows = await repo.blZuordnungen(csvParts.map(p => p.part_num))
       .catch(meldeUndLiefere('teile-enrich:blMapRows', []));
     const blMap: Record<string, string | null> = {};
     for (const r of blMapRows) blMap[r.rb_id] = r.bl_id;
 
-    // Step 3: Save all CSV parts to catalog with API data
     for (const p of csvParts) {
       const key  = `${p.part_num}|${p.color_id}`;
       const info: Partial<ApiTeil> = apiParts[key] ?? {};
-      // BL ID: from API response, then from bl_zuordnung (just updated)
       const blPartNum = info.bl_part_num || blMap[p.part_num] || null;
-      // Sie geht in die ZUORDNUNG, nicht in den Set-Teile-Katalog
-      // (Migration 0037): Sie haengt am Teil, nicht an der Kombination aus
-      // Set, Teil und Farbe. Dort stand sie fuer dasselbe Teil so oft, wie
-      // es Sets damit gibt.
+      // In die ZUORDNUNG: Die Nummer hängt am Teil, nicht an Set, Teil und Farbe.
       if (blPartNum) await merkeBlNummer('part', p.part_num, blPartNum).catch(logAndContinue('teile-enrich:merkeBlNummer'));
       // Ohne Rebrickable-Antwort kein Name — die Teilenummer gehört nicht als geprüfter Name in den Katalog.
       const melde = logAndContinue('katalog:setteil');
       await merkeTeil(p.part_num, info.part_name).catch(melde);
       await merkeTeilFarbe(p.part_num, p.color_id ?? KEINE_FARBE, info.color_name, info.color_hex, info.image_url).catch(melde);
       await merkeSetTeil(n, p.part_num, p.color_id ?? KEINE_FARBE, p.quantity||1, false).catch(melde);
-      // Refresh catalogMap
       catalogMap[key] = { image_url: info.image_url||null, image_local: null };
     }
   }
 
-  // Fetch minifigs — always refresh from API if catalog is empty
   const existingFigs = await repo.figurenImSetkatalog(n).catch(meldeUndLiefere('teile-enrich:existingFigs', 0));
 
   if (!existingFigs) {
@@ -236,7 +206,6 @@ async function enrichSetParts(setNumber: string) {
       rbKey
     );
     if (figsData?.results?.length) {
-      // Felder der API: set_num (Figur), set_name, quantity, set_img_url.
       type RbFigur = { set_num: string; set_name?: string; quantity?: number; set_img_url?: string };
       const figs: RbFigur[] = figsData.results;
       await merkeFiguren(figs.map(f => ({ figNumber: f.set_num, figName: f.set_name || null, imageUrl: f.set_img_url || null })))
@@ -244,42 +213,33 @@ async function enrichSetParts(setNumber: string) {
       await merkeSetFiguren(n, figs.map(f => ({ figNumber: f.set_num, quantity: f.quantity })))
         .catch(logAndContinue('teile-enrich:setfiguren merken'));
     }
-    // No minifigs = normal for Technic/City sets without figures
   } else {
-    // Already in catalog — skip
   }
 }
 
-// Download images for a set in background (called after API enrichment)
-// Per-set download lock: prevents concurrent downloadSetImages calls for the same set
+// Je Set eine Sperre: Gleichzeitige Aufrufe für dasselbe Set warten auf den ersten.
 const _downloadLocks = new Map();
 
 async function downloadSetImages(setNumber: string, waitIfBusy = false) {
   const n   = mitVersion(setNumber);
 
-  // If already downloading this set, wait for it to finish then return
   if (_downloadLocks.has(n)) {
     await _downloadLocks.get(n);
     return;
   }
-  // `!` ist hier BEWEISBAR und keine Beschwichtigung: Der Rumpf eines
-  // Promise-Konstruktors laeuft laut Spezifikation SYNCHRON, resolveLock ist
-  // also gesetzt, bevor irgendeine Zeile darunter laeuft. Ein `?.()`
-  // stattdessen waere eine stille Wache vor einem Fall, den es nicht gibt.
+  // `!` ist beweisbar: Der Rumpf eines Promise-Konstruktors läuft synchron,
+  // resolveLock ist also gesetzt.
   let resolveLock!: () => void;
   const lock = new Promise<void>(r => { resolveLock = r; });
   _downloadLocks.set(n, lock);
 
-  // Prozessübergreifende Sperre: Job-Prozess und Web-Prozess (Erfassen mit
-  // Bildern) sollen dieselben Set-Bilder nicht gleichzeitig laden. Advisory-Lock auf einer DEDIZIERTEN
-  // Verbindung, damit acquire/release auf derselben Session laufen (ein über
-  // den Pool geholter Lock würde beim Idle-Timeout unzuverlässig freigegeben).
+  // Prozessübergreifend auf einer EIGENEN Verbindung: Ein Advisory-Lock hängt an
+  // der Session, über den Pool würde er unzuverlässig freigegeben.
   let lockClient: import('pg').PoolClient | null = null, haveXlock = false;
   try { lockClient = await repo.sperrVerbindung(); } catch (_) { lockClient = null; }
   if (lockClient) {
-    // waitIfBusy=true (z. B. PDF-Erzeugung): auf den anderen Worker WARTEN, bis
-    // dessen Download fertig ist — sonst würde das PDF mit unvollständigen
-    // Bildern erzeugt. waitIfBusy=false (Hintergrund-Job/Add-Flow): überspringen.
+    // waitIfBusy (PDF): auf den anderen Prozess warten, sonst fehlten Bilder im
+    // PDF; im Hintergrund überspringen.
     const deadline = Date.now() + 180000; // max. 3 Min auf anderen Worker warten
     while (true) {
       try {
@@ -305,23 +265,19 @@ async function downloadSetImages(setNumber: string, waitIfBusy = false) {
   let _flushed      = 0;  // davon bereits an den Zähler gemeldet (Rest im finally)
   let _lastFlush    = Date.now();
   try {
-    // Fetch both part images AND minifig images that still need downloading
     const needsImg = await repo.bilderOhneDatei(n);
     if (!needsImg.length) return;
 
     console.log(`[img-dl] ${n}: lade ${needsImg.length} Bilder`);
-    // Diesen Batch zum globalen Zähler ADDIEREN (über alle Sets/Worker summiert,
-    // im finally wieder abgezogen) — statt den Monitor-Wert zu überschreiben,
-    // sonst zeigt das Monitoring nur den zuletzt gestarteten Batch statt der Summe.
+    // Zum globalen Zähler ADDIEREN statt ihn zu überschreiben, sonst zeigte die
+    // Überwachung nur den zuletzt gestarteten Stapel.
     _pendingAdded = needsImg.length;
     await monitor.imgDlAdd(_pendingAdded).catch(logAndContinue('teile-enrich:imgDlAdd'));
 
     async function processOne(p: repo.Bildwunsch) {
       const rawUrl = p.image_url || '';
       let cdnUrl = rawUrl;
-      // Beide Schreibweisen: Zeilen aus der Zeit vor dem Umzug tragen noch
-      // /api/img-proxy (siehe src/katalog/bilder/images.ts). Ein Muster, das nur die neue
-      // kennt, liesse den Altbestand als „ungueltige Adresse" liegen.
+      // Beide Schreibweisen: Altzeilen tragen noch /api/img-proxy.
       const m = rawUrl.match(/\/api\/(?:v1\/)?img-proxy\?url=(.+)/);
       if (m) cdnUrl = decodeURIComponent((m[1] ?? ''));
       if (!cdnUrl.startsWith('http')) {
@@ -358,11 +314,8 @@ async function downloadSetImages(setNumber: string, waitIfBusy = false) {
     }
 
     let done = 0;
-    // Fortschritt gebündelt an den globalen Zähler melden: höchstens ~1 DB-Write
-    // pro Sekunde statt einer pro Bild. Das entlastet den Connection-Pool bei
-    // Massen-Importen deutlich; der Live-Countdown bleibt praktisch gleich flüssig.
-    // Der Zähler wird VOR dem await erhöht, damit gleichzeitige Aufrufe nicht
-    // doppelt melden.
+    // Höchstens ein Schreibvorgang je Sekunde statt einer je Bild, das entlastet
+    // den Pool. Der Zähler steigt VOR dem await, damit nichts doppelt meldet.
     const flushProgress = async (force?: boolean) => {
       const delta = done - _flushed;
       if (delta <= 0) return;
@@ -380,8 +333,8 @@ async function downloadSetImages(setNumber: string, waitIfBusy = false) {
     console.log(`[img-dl] ${n}: ${done}/${needsImg.length} Bilder geladen`);
 
   } finally {
-    // Nur den noch nicht gemeldeten Rest verrechnen — deckt Fehler/Abbruch ab,
-    // ohne bei Normalablauf doppelt zu dekrementieren.
+    // Nur den noch nicht gemeldeten Rest verrechnen — deckt Abbruch ab, ohne im
+    // Normalfall doppelt abzuziehen.
     const _rest = _pendingAdded - _flushed;
     if (_rest > 0) await monitor.imgDlAdd(-_rest).catch(logAndContinue('teile-enrich:imgDlAdd'));
     if (lockClient) {
@@ -393,27 +346,23 @@ async function downloadSetImages(setNumber: string, waitIfBusy = false) {
   }
 }
 
-// Enrich all minifigs for a set in one batch
 async function enrichSetMinifigs(setNumber: string) {
   const n   = mitVersion(setNumber);
   const rbKey = await getRbKey();
   if (!rbKey) return;
 
-  // Get all minifigs for this set
   const figs = await repo.figurenDesSets(n).catch(meldeUndLiefere('teile-enrich:figs', []));
   if (!figs.length) return;
 
-  // Get all rb_inventories for these minifigs
   const figNums = figs.map((f: { fig_number: string }) => f.fig_number);
   const invRows = await repo.inventareDerFiguren(figNums).catch(meldeUndLiefere('teile-enrich:invRows', []));
 
-  // Deduplicate by set_num (keep highest version = first due to ORDER BY DESC)
+  // Je set_num die höchste Version (erste wegen ORDER BY DESC).
   const invMap: Record<string, number> = {};
   for (const r of invRows) {
     if (!invMap[r.set_num]) invMap[r.set_num] = r.id;
   }
 
-  // Collect ALL part_nums across all minifigs
   const allPartNums = new Set<string>();
   const figPartsMap: Record<string, { parts: repo.InventarTeil[]; figQty: number }> = {};
 
@@ -429,18 +378,12 @@ async function enrichSetMinifigs(setNumber: string) {
 
   if (!allPartNums.size) return;
 
-  // Die Abfrage auf set_parts_catalog ist WEG
-  // Sie las dort `bl_part_number` — eine Abschrift je Set-Teile-Zeile, also
-  // fuer dasselbe Teil so oft, wie es Sets damit gibt. Migration 0037 hat die
-  // Spalte geloescht; die Abfrage auf bl_zuordnung darunter liest dieselbe …
-  // Ausführlich: docs/begruendungen/src/katalog/teileAnreicherung.ts.md#rbblrows
-
-  // bl_zuordnung: die Nummer, einmal je Teil
+  // bl_zuordnung: die Nummer, einmal je Teil.
   const rbBlRows = await repo.blZuordnungen([...allPartNums]).catch(meldeUndLiefere('teile-enrich:rbBlRows', []));
   const rbBlMap: Record<string, string> = {};
   for (const r of rbBlRows) rbBlMap[r.rb_id] = r.bl_id ?? '';
 
-  // Find part_nums NOT yet in bl_zuordnung (= never looked up via API)
+  // Nur nie nachgesehene Nummern abfragen.
   const needsBl = [...allPartNums].filter((pn) => !(String(pn) in rbBlMap));
 
   let apiBlMap: Record<string, string> = {};
@@ -457,42 +400,32 @@ async function enrichSetMinifigs(setNumber: string) {
         const finalId = blId || p.part_num;
         apiBlMap[p.part_num] = finalId;
         
-        // Persist to bl_zuordnung
         await merkeBlNummer('part', p.part_num, finalId).catch(logAndContinue('teile-enrich:merkeBlNummer'));
       }
     }
   }
 
-  // Merge: apiBlMap > rbBlMap > part_num
+  // Vorrang: API > bl_zuordnung > eigene Nummer.
   const finalBlMap: Record<string, string> = {};
   for (const pn of allPartNums as Iterable<string>) {
     finalBlMap[pn] = apiBlMap[pn] || rbBlMap[pn] || pn;
   }
 
-  // Save parts for each minifig to set_parts_catalog
   for (const [figNum, { parts }] of Object.entries(figPartsMap)) {
     for (const p of parts) {
-      // Ohne bl_part_number: Seit Migration 0037 steht die BrickLink-Nummer
-      // einmal je Teil in bl_zuordnung, nicht je Set-Teile-Zeile. Die
-      // Schleife weiter oben hat sie dort schon gemerkt (merkeBlNummer);
-      // finalBlMap wird nur noch fuer die Antwort an den Aufrufer gebraucht.
+      // Ohne BrickLink-Nummer: Sie steht einmal je Teil in bl_zuordnung.
       await merkeSetTeil(figNum, p.part_num, p.color_id ?? KEINE_FARBE, p.quantity||1, false).catch(logAndContinue('katalog:figurteil'));
     }
   }
   
 }
 
-//  Fehlende Bilder neu laden
-// "Fehlend" = image_local ist in der DB gesetzt, die Datei fehlt aber physisch.
-// Solche Einträge werden über image_url neu geladen (rate-limited) und das
-// Thumbnail neu erzeugt. Schlägt der Download fehl (oder fehlt image_url), wird …
+// „Fehlend" = image_local gesetzt, Datei fehlt. Nicht wiederherstellbare
+// Einträge werden geleert, damit die Oberflächen auf die CDN-Adresse zurückfallen.
 // Ausführlich: docs/begruendungen/src/katalog/teileAnreicherung.ts.md#abschnitt-2
 let _redlRunning = false;
 
-/**
- * Web-Pfad → Dateipfad, für ALLE drei Bildarten.
- * Ausführlich: docs/begruendungen/src/katalog/teileAnreicherung.ts.md#fspathfromlocal
- */
+// Ausführlich: docs/begruendungen/src/katalog/teileAnreicherung.ts.md#fspathfromlocal
 function _fsPathFromLocal(imageLocal: string) {
   if (!imageLocal) return null;
   const bereiche: Array<[string, string]> = [
@@ -503,18 +436,15 @@ function _fsPathFromLocal(imageLocal: string) {
   for (const [prefix, dir] of bereiche) {
     if (!imageLocal.startsWith(prefix)) continue;
     const file = imageLocal.slice(prefix.length);
-    // Pfadtrenner und .. bleiben verboten — der Wert kommt aus der Datenbank,
-    // ist also nicht per se vertrauenswürdig.
+    // Pfadtrenner und .. bleiben verboten: Auch ein Wert aus der Datenbank ist
+    // nicht per se vertrauenswürdig.
     if (!file || file.includes('..') || file.includes('/') || file.includes('\\')) return null;
     return path.join(dir, file);
   }
   return null;
 }
 
-/**
- * Den Fortschritt des Bilder-Nachlaufs ablegen.
- * Ausführlich: docs/begruendungen/src/katalog/teileAnreicherung.ts.md#redlsetstatus
- */
+// Ausführlich: docs/begruendungen/src/katalog/teileAnreicherung.ts.md#redlsetstatus
 async function _redlSetStatus(obj: Record<string, unknown>) {
   await setzeZustand('imgredl_status', JSON.stringify({ ...obj, at: Date.now() }))
     .catch(logAndContinue('teile-enrich:setzeZustand'));
@@ -522,9 +452,7 @@ async function _redlSetStatus(obj: Record<string, unknown>) {
 
 async function redownloadMissingImages() {
   if (_redlRunning) return { alreadyRunning: true };
-  // Sperre auf EIGENER Verbindung — Advisory-Locks hängen an der Session,
-  // über den Pool würden Sperren und Freigeben auf verschiedenen Verbindungen
-  // landen (ausführlich begründet in clients/brickset.ts).
+  // Sperre auf EIGENER Verbindung: Advisory-Locks hängen an der Session.
   let lockClient;
   try { lockClient = await repo.sperrVerbindung(); }
   catch (e) { return { error: fehlertext(e) || 'keine Verbindung' }; }
@@ -545,10 +473,9 @@ async function _redownloadMissingImages() {
   try {
     fs.mkdirSync(PART_IMAGES_DIR, { recursive: true });
     await _redlSetStatus({ running: true, phase: 'scanning', total: 0, done: 0, redownloaded: 0, cleared: 0 });
-    // Alle Einträge mit gesetztem image_local (dedupliziert nach Datei).
     const rows = await repo.lokaleBilderMitAdresse().catch(meldeUndLiefere('teile-enrich:bildpfade lesen', []));
-    // Fehlende Dateien UND fehlende Vorschauen einsammeln: Eine Vorschau
-    // entsteht sonst nur beim Erfassen und hätte keinen zweiten Anlauf.
+    // Auch fehlende Vorschauen: Sie entstehen sonst nur beim Erfassen und hätten
+    // keinen zweiten Anlauf.
     const missing: { image_local: string; image_url: string | null; fp: string }[] = [];
     const ohneVorschau: string[] = [];
     for (const r of rows) {
@@ -561,8 +488,7 @@ async function _redownloadMissingImages() {
       if (!hatThumb) ohneVorschau.push(r.image_local);
     }
 
-    // Fehlende Vorschauen zuerst: Sie brauchen kein Netz, nur Rechenzeit, und
-    // wirken sofort auf jede Kachelwand.
+    // Vorschauen zuerst: Sie brauchen kein Netz und wirken sofort auf jede Kachelwand.
     let thumbsErzeugt = 0;
     if (ohneVorschau.length) {
       await _redlSetStatus({ running: true, phase: 'thumbs', total: ohneVorschau.length, done: 0, redownloaded: 0, cleared: 0 });
@@ -604,10 +530,7 @@ async function _redownloadMissingImages() {
           await generateThumb(m.image_local).catch(logAndContinue('teile-enrich:generateThumb'));
           redownloaded++;
         } else {
-          // Nicht wiederherstellbar -> image_local leeren
-          // Damit fallen beide Oberflaechen auf die CDN-URL zurueck. Die
-          // Liste MUSS zu den Tabellen passen, die die Spalte wirklich haben,
-          // und das tat sie nicht mehr:
+          // Die Liste MUSS zu den Tabellen passen, die die Spalte wirklich haben.
           // Ausführlich: docs/begruendungen/src/katalog/teileAnreicherung.ts.md#redownloadmissingimages
           for (const tbl of repo.KATALOGE_MIT_BILD) {
             await repo.vergissLokalesBild(tbl, m.image_local)
@@ -631,7 +554,5 @@ async function _redownloadMissingImages() {
     return { error: fehlertext(e) };
   }
 }
-
-/** Anzahl laufender Bild-Downloads — für die Monitoring-Ansicht. */
 
 export { enrichSetParts, downloadSetImages, enrichSetMinifigs, downloadImage, redownloadMissingImages };

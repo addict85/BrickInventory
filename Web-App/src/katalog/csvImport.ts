@@ -1,9 +1,5 @@
-/**
- * Die Rebrickable-CSV-Tabellen in den Katalog (rb_colors, rb_parts, …) tauschen:
- * Datei zeilenweise lesen, in eine Schattentabelle schreiben, dann in einer
- * Transaktion gegen den Bestand tauschen. Der Bestand bleibt bis dahin lesbar.
- * Der Job-Prozess (jobs/csvImportWorker.ts) bringt Verbindung und Meldeweg mit.
- */
+/** In eine Schattentabelle schreiben und in einer Transaktion tauschen, damit
+ * der Bestand bis dahin lesbar bleibt. */
 import fs from 'fs';
 import path from 'path';
 import readline from 'readline';
@@ -15,13 +11,9 @@ import * as repo from './repository/csvTausch';
 
 export type Meldung = { type: 'progress'; total: number; pct: number; filename: string };
 
-/** Eine Spalte einer CSV-Zeile, die fehlen darf. */
 const sp = (c: string[], i: number): string => c[i] ?? '';
 
-/**
- * Eine CSV-Zeile in Felder zerlegen.
- * Ausführlich: docs/begruendungen/jobs/csvImportWorker.ts.md#parsecsvline
- */
+// Ausführlich: docs/begruendungen/jobs/csvImportWorker.ts.md#parsecsvline
 export function parseCsvLine(line: string): string[] {
   const result: string[] = [];
   let cur = '', inQuotes = false;
@@ -38,7 +30,7 @@ export function parseCsvLine(line: string): string[] {
   return result;
 }
 
-/** Zeile für Zeile über den asynchronen Iterator — er hält das Lesen zwischen den Blöcken an. */
+/** Über den asynchronen Iterator: Er hält das Lesen zwischen den Blöcken an. */
 async function streamInsert(tmpFile: string, chunkSize: number, mapRow: (spalten: string[]) => unknown[],
                             insertChunk: (chunk: unknown[][]) => Promise<void>, filename: string,
                             melde: (m: Meldung) => void) {
@@ -69,10 +61,7 @@ interface Tausch {
   chunkSize?: number; mapRow: (c: string[]) => unknown[];
 }
 
-/**
- * Einen Katalog-Import durchführen, ohne die Tabelle währenddessen zu leeren.
- * Ausführlich: docs/begruendungen/jobs/csvImportWorker.ts.md#importieremittausch
- */
+// Ausführlich: docs/begruendungen/jobs/csvImportWorker.ts.md#importieremittausch
 async function importiereMitTausch(pool: Pool, melde: (m: Meldung) => void, t: Tausch): Promise<number> {
   const schatten = `${t.tabelle}_import`;
   const client = await pool.connect();
@@ -86,7 +75,6 @@ async function importiereMitTausch(pool: Pool, melde: (m: Meldung) => void, t: T
       if (total === 0) throw new Error(`${t.filename}: 0 Zeilen gelesen — Tausch abgebrochen, bisheriger Bestand bleibt erhalten`);
       await repo.tausche(client, t.tabelle, schatten, t.cols);
       await repo.entferneSchatten(client, schatten).catch(logAndContinue('csv-worker:query'));
-      // Ausführlich: docs/begruendungen/jobs/csvImportWorker.ts.md#importieremittauschintern
       await repo.pflege(client, t.tabelle);
       return total;
     } finally {
@@ -97,13 +85,13 @@ async function importiereMitTausch(pool: Pool, melde: (m: Meldung) => void, t: T
   }
 }
 
-/** Die Aufgaben je Datei; `melde` trägt den Fortschritt zum Elternprozess. */
 export function katalogImporte(pool: Pool, melde: (m: Meldung) => void) {
   const tausch = (t: Tausch) => () => importiereMitTausch(pool, melde, t);
   return {
     colors: tausch({
       tabelle: 'rb_colors', filename: 'colors.csv.gz', tmp: path.join(DATA_DIR, 'colors.csv.tmp'),
-      // bl_color_id steht nicht im CSV, sie kommt aus der API — mitgeschrieben wäre sie nach jedem Tausch leer.
+      // bl_color_id kommt aus der API, nicht aus dem CSV — mitgeschrieben wäre sie
+      // nach jedem Tausch leer.
       cols: ['id', 'name', 'rgb', 'is_trans'],
       onConflict: 'ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name,rgb=EXCLUDED.rgb,is_trans=EXCLUDED.is_trans',
       mapRow: c => [parseInt(sp(c, 0)) || 0, sp(c, 1), sp(c, 2), istJa(sp(c, 3))],
@@ -116,7 +104,6 @@ export function katalogImporte(pool: Pool, melde: (m: Meldung) => void) {
     }),
     parts: tausch({
       tabelle: 'rb_parts', filename: 'parts.csv.gz', tmp: path.join(DATA_DIR, 'parts.csv.tmp'),
-      // parts.csv: part_num,name,part_cat_id,part_url,part_img_url,print_of
       cols: ['part_num', 'name', 'part_cat_id', 'part_img_url'],
       onConflict: 'ON CONFLICT (part_num) DO UPDATE SET name=EXCLUDED.name,part_cat_id=EXCLUDED.part_cat_id,part_img_url=EXCLUDED.part_img_url',
       mapRow: c => [sp(c, 0), sp(c, 1), parseInt(sp(c, 2)) || 0, sp(c, 4)],
@@ -129,21 +116,18 @@ export function katalogImporte(pool: Pool, melde: (m: Meldung) => void) {
     }),
     inventories: tausch({
       tabelle: 'rb_inventories', filename: 'inventories.csv.gz', tmp: path.join(DATA_DIR, 'inventories.csv.tmp'),
-      // inventories.csv: id,version,set_num
       cols: ['id', 'set_num', 'version'],
       onConflict: 'ON CONFLICT (id) DO UPDATE SET set_num=EXCLUDED.set_num,version=EXCLUDED.version',
       mapRow: c => [parseInt(sp(c, 0)) || 0, sp(c, 2), parseInt(sp(c, 1)) || 1],
     }),
     themes: tausch({
       tabelle: 'rb_themes', filename: 'themes.csv.gz', tmp: path.join(DATA_DIR, 'themes.csv.tmp'),
-      // themes.csv: id,name,parent_id (parent_id kann leer sein)
       cols: ['id', 'name', 'parent_id'],
       onConflict: 'ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name,parent_id=EXCLUDED.parent_id',
       mapRow: c => [parseInt(sp(c, 0)) || 0, sp(c, 1), sp(c, 2) ? (parseInt(sp(c, 2)) || null) : null],
     }),
     inventory_minifigs: tausch({
       tabelle: 'rb_inventory_minifigs', filename: 'inventory_minifigs.csv.gz', tmp: path.join(DATA_DIR, 'inventory_minifigs.csv.tmp'),
-      // inventory_minifigs.csv: inventory_id,fig_num,quantity
       cols: ['inventory_id', 'fig_num', 'quantity'],
       onConflict: 'ON CONFLICT DO NOTHING',
       mapRow: c => [parseInt(sp(c, 0)) || 0, sp(c, 1), parseInt(sp(c, 2)) || 1],
@@ -152,7 +136,7 @@ export function katalogImporte(pool: Pool, melde: (m: Meldung) => void) {
       tabelle: 'rb_inventory_parts', filename: 'inventory_parts.csv.gz', tmp: path.join(DATA_DIR, 'inventory_parts.csv.tmp'),
       cols: ['inventory_id', 'part_num', 'color_id', 'quantity', 'is_spare', 'img_url'],
       chunkSize: 50,
-      // Ja/Nein der Datei ('t', 'True', '1' …) liest istJa(), damit es nur eine Lesart gibt.
+      // istJa(): eine Lesart für 't', 'True', '1' …
       mapRow: c => [parseInt(sp(c, 0)) || 0, sp(c, 1), parseInt(sp(c, 2)) || 0, parseInt(sp(c, 3)) || 1,
                     istJa(sp(c, 4)), sp(c, 5)],
     }),

@@ -4,26 +4,16 @@ import { ERLAUBTE_BILD_HOSTS, hostErlaubt } from '../infra/fremdeAdressen';
 import { colorId as farbeLesen } from '../infra/validate';
 import * as stamm from './repository/katalogStamm';
 
-/** Was ein Schreiber können muss: db/database und das tx-Objekt aus db.transaction() passen beide. */
 type Schreiber = stamm.Schreiber;
 
-/**
- * Teile- und Figurenkatalog — schreiben, und seit dem 20.10. auch LESEN.
- * Ausführlich: docs/begruendungen/src/katalog/katalogPflege.ts.md#merketeil
- */
+// Ausführlich: docs/begruendungen/src/katalog/katalogPflege.ts.md#merketeil
 
-/**
- * Wer einen Wert eingetippt hat; `null` heißt: aus einer geprüften Quelle
- * (Rebrickable, BrickLink, eingespieltes Set). Der Katalog gilt für alle
- * Konten, deshalb ist eine Eingabe nur ein Platzhalter, den die geprüfte
- * Quelle ersetzt (Migration 0060).
- */
+/** `null` heisst: aus einer geprüften Quelle. Der Katalog gilt für alle Konten,
+ * eine Eingabe ist deshalb nur ein Platzhalter, den die geprüfte Quelle ersetzt. */
 type Von = number | null;
 
-/**
- * SET-Teil für ein Feld samt Herkunftsspalte. Alle Ausdrücke in ON CONFLICT
- * sehen die alte Zeile, deshalb können Feld und Herkunft getrennt stehen.
- */
+/** Alle Ausdrücke in ON CONFLICT sehen die alte Zeile, deshalb können Feld und
+ * Herkunft getrennt stehen. */
 function mitHerkunft(tabelle: string, feld: string, von: string): string {
   const ersetzt = `${tabelle}.${von} IS NOT NULL AND EXCLUDED.${von} IS NULL AND EXCLUDED.${feld} IS NOT NULL`;
   return `${feld} = CASE WHEN ${ersetzt} THEN EXCLUDED.${feld} ELSE COALESCE(${tabelle}.${feld}, EXCLUDED.${feld}) END,
@@ -31,13 +21,11 @@ function mitHerkunft(tabelle: string, feld: string, von: string): string {
 }
 
 const leer = (v: string | null | undefined): string | null => (v === undefined || v === null || v === '') ? null : v;
-/** Herkunft nur dort, wo auch ein Wert steht. */
 const herkunft = (wert: string | null, von: Von): Von => wert === null ? null : von;
 /** Ein eingetipptes Bild nur von den Hosts, die der Bild-Proxy ohnehin zeigt. */
 const bildEingabe = (url: string | null, von: Von): string | null =>
   url !== null && von !== null && !hostErlaubt(url, ERLAUBTE_BILD_HOSTS) ? null : url;
 
-/** Name und Kategorie je Teilenummer. */
 export async function merkeTeil(
   partNumber: string,
   partName?: string | null,
@@ -46,15 +34,14 @@ export async function merkeTeil(
   von: Von = null,
 ) {
   if (!partNumber) return;
-  // 'Unknown': Die Set-Teile-Antwort von Rebrickable liefert kein
-  // part_cat_id; das ist das Fehlen einer Kategorie und darf einen späteren,
-  // echten Wert nicht blockieren.
+  // 'Unknown' ist das Fehlen einer Kategorie und darf einen späteren, echten Wert
+  // nicht blockieren.
   const name = leer(partName);
   const kategorie = leer(categoryName) === 'Unknown' ? null : leer(categoryName);
   await stamm.schreibeTeilKatalog(dbh, partNumber, name, kategorie, herkunft(name, von), herkunft(kategorie, von), mitHerkunft('part_catalog', 'part_name', 'name_von'), mitHerkunft('part_catalog', 'category_name', 'kategorie_von'));
 }
 
-/** Farbbezeichnung, Farbcode und Bild je Teil UND Farbe — ein roter Stein sieht anders aus als ein blauer. */
+/** Je Teil UND Farbe — ein roter Stein sieht anders aus als ein blauer. */
 export async function merkeTeilFarbe(
   partNumber: string,
   colorId: number | null | undefined,
@@ -66,8 +53,7 @@ export async function merkeTeilFarbe(
   von: Von = null,
 ) {
   if (!partNumber) return;
-  // color_id ist Teil des Primaerschluessels; ohne Angabe gilt KEINE_FARBE,
-  // nie 0 (Schwarz).
+  // Ohne Angabe gilt KEINE_FARBE, nie 0 (Schwarz).
   const farbe = farbeLesen(colorId);
   const name = leer(colorName), code = leer(colorHex);
   const bild = bildEingabe(leer(imageUrl), von);
@@ -75,7 +61,6 @@ export async function merkeTeilFarbe(
   await stamm.schreibeTeilFarbe(dbh, partNumber, farbe, name, code, bild, von === null ? (imageLocal ?? null) : null, herkunft(name, von), herkunft(code, von), herkunft(bild, von), mitHerkunft('part_color_catalog', 'color_name', 'farbname_von'), mitHerkunft('part_color_catalog', 'color_hex', 'farbcode_von'), mitHerkunft('part_color_catalog', 'image_url', 'bild_von'));
 }
 
-/** Name und Bild je Figurennummer. */
 export async function merkeFigur(
   figNumber: string,
   figName?: string | null,
@@ -90,11 +75,8 @@ export async function merkeFigur(
   await stamm.schreibeFigurKatalog(dbh, figNumber, name, bild, von === null ? (imageLocal ?? null) : null, herkunft(name, von), herkunft(bild, von), mitHerkunft('minifigs_catalog', 'fig_name', 'name_von'), mitHerkunft('minifigs_catalog', 'image_url', 'bild_von'));
 }
 
-/**
- * Ein Teil einer Setliste: nur Menge und Ersatzteil-Kennzeichen. Name, Farbe
- * und Bild stehen je Teil in den Katalogen (merkeTeil, merkeTeilFarbe); die
- * View set_parts_catalog fügt beides für die Lesestellen zusammen.
- */
+/** Nur Menge und Ersatzteil-Kennzeichen; Name, Farbe und Bild stehen je Teil
+ * in den Katalogen. */
 export async function merkeSetTeil(
   setNumber: string,
   partNumber: string,
@@ -107,17 +89,14 @@ export async function merkeSetTeil(
   await stamm.schreibeSetTeil(dbh, setNumber, partNumber, farbeLesen(colorId), quantity || 1, isSpare);
 }
 
-/** Eine Zeile aus der Teileliste eines Sets, wie sie Rebrickable liefert. */
 export interface SetTeilZeile {
   partNumber: string; partName: string | null; kategorie: string | null;
   colorId: number; colorName: string | null; colorHex: string | null;
   imageUrl: string | null; imageLocal: string | null;
   quantity: number; isSpare: boolean;
-  /** Die BrickLink-Nummer aus derselben Antwort, wenn sie abweicht. */
   blNummer?: string | null;
 }
 
-/** Je Schlüssel die erste Zeile; die Mehrfachzeilen fasst `mische` zusammen. */
 function jeSchluessel<T>(zeilen: T[], schluessel: (z: T) => string, mische?: (a: T, b: T) => T): T[] {
   const m = new Map<string, T>();
   for (const z of zeilen) {
@@ -127,13 +106,9 @@ function jeSchluessel<T>(zeilen: T[], schluessel: (z: T) => string, mische?: (a:
   return [...m.values()];
 }
 
-/**
- * Teilekatalog, Farbkatalog und Setliste eines Sets in drei Anweisungen statt
- * drei je Teil. Ein ON CONFLICT DO UPDATE darf dieselbe Zeile nicht zweimal
- * treffen, darum wird vorher je Schlüssel zusammengefasst: Kommt ein Teil in
- * einer Farbe als Ersatz- und als Bauteil vor, zählt die Bauteilmenge (die
- * Setliste hat dafür nur eine Zeile); Ersatzteil ist es nur, wenn alle es sind.
- */
+/** Drei Anweisungen statt drei je Teil. ON CONFLICT DO UPDATE darf eine Zeile
+ * nicht zweimal treffen, darum vorher je Schlüssel zusammengefasst: Die
+ * Bauteilmenge zählt; Ersatzteil ist es nur, wenn alle es sind. */
 export async function merkeSetTeile(setNumber: string, zeilen: SetTeilZeile[], dbh: Schreiber = db) {
   if (!setNumber || !zeilen.length) return;
   const teile = jeSchluessel(zeilen, z => z.partNumber);
@@ -150,7 +125,6 @@ export async function merkeSetTeile(setNumber: string, zeilen: SetTeilZeile[], d
   await stamm.schreibeSetTeile(dbh, setNumber, liste.map(z => z.partNumber), liste.map(z => z.colorId), liste.map(z => z.quantity || 1), liste.map(z => z.isSpare));
 }
 
-/** Name und Bild mehrerer Figuren aus einer geprüften Quelle, in einer Anweisung. */
 export async function merkeFiguren(
   figuren: { figNumber: string; figName: string | null; imageUrl: string | null }[], dbh: Schreiber = db,
 ) {
@@ -159,10 +133,8 @@ export async function merkeFiguren(
   await stamm.schreibeFigurenKatalog(dbh, f.map(x => x.figNumber), f.map(x => leer(x.figName)), f.map(x => leer(x.imageUrl)), mitHerkunft('minifigs_catalog', 'fig_name', 'name_von'), mitHerkunft('minifigs_catalog', 'image_url', 'bild_von'));
 }
 
-/**
- * Bild je Teil und Farbe überschreiben, ohne COALESCE: Nach einem echten
- * Download ist der neue Pfad richtig, der alte kann ins Leere zeigen.
- */
+/** Ohne COALESCE: Nach einem echten Download ist der neue Pfad richtig, der
+ * alte kann ins Leere zeigen. */
 export async function setzeTeilBildLokal(
   partNumber: string,
   colorId: number | string,
@@ -173,10 +145,6 @@ export async function setzeTeilBildLokal(
   await stamm.schreibeTeilbildLokal(dbh, partNumber, farbeLesen(colorId), imageLocal);
 }
 
-/**
- * Die Figuren einer Setliste: nur Menge (Migration 0072). Name und Bild
- * gehören in minifigs_catalog (merkeFigur/merkeFiguren).
- */
 export async function merkeSetFiguren(
   setNumber: string, figuren: { figNumber: string; quantity?: number | null | undefined }[], dbh: Schreiber = db,
 ) {
@@ -185,13 +153,13 @@ export async function merkeSetFiguren(
   await stamm.schreibeSetFiguren(dbh, setNumber, f.map(x => x.figNumber), f.map(x => Math.max(1, Number(x.quantity) || 1)));
 }
 
-/** Bildadresse einer Figur nur dort setzen, wo noch keine steht. */
+/** Nur dort, wo noch keine steht. */
 export async function merkeFigurBildAdresse(figNumber: string, imageUrl: string, dbh: Schreiber = db) {
   if (!figNumber || !imageUrl) return;
   await stamm.schreibeFigurBildAdresse(dbh, figNumber, imageUrl);
 }
 
-/** Bild je Figur UEBERSCHREIBEN — dieselbe Begruendung wie setzeTeilBildLokal. */
+/** ÜBERSCHREIBEN — wie setzeTeilBildLokal. */
 export async function setzeFigurBildLokal(
   figNumber: string,
   imageLocal: string,
@@ -201,32 +169,21 @@ export async function setzeFigurBildLokal(
   await stamm.schreibeFigurBildLokal(dbh, figNumber, imageLocal);
 }
 
-/**
- * Was der EIGENE Katalog ueber ein Teil weiss — Name, Kategorie, Bild.
- * Ausführlich: docs/begruendungen/src/katalog/katalogPflege.ts.md#katalogteil
- */
+/** Vor jedem Abruf bei Rebrickable gefragt, damit Bekanntes nichts kostet.
+ * Ausführlich: docs/begruendungen/src/katalog/katalogPflege.ts.md#katalogteil */
 export interface KatalogTeil {
-  /** Name aus `part_catalog`, Rueckfall `rb_parts`. */
   name: string | null;
   kategorie: string | null;
-  /** Das Bild nur als https-URL; ein lokaler Pfad zählt bei `hatBild` mit, nicht hier. */
+  /** Nur als https-URL; ein lokaler Pfad zählt bei `hatBild` mit, nicht hier. */
   bild: string | null;
-  /** Steht ein Bild da — gleich ob als URL oder als Datei? */
   hatBild: boolean;
-  /**
-   * Woher das Bild kommt: von Teil und Farbe, oder (ohne Farbe) das
-   * allgemeine Bild. Die Setlisten führen seit Migration 0062 keine eigenen
-   * Bilder mehr; ihre stehen an der Farbe.
-   */
+  /** Die Setlisten führen keine eigenen Bilder; ihre stehen an der Farbe. */
   bildQuelle: 'farbe' | 'allgemein' | null;
   bildDatei: string | null;
 }
 
-/**
- * `fuer`: das fragende Konto. Was ein ANDERES Konto eingetippt hat, zählt hier
- * nicht als bekannt — sonst fragte niemand mehr nach, und der Platzhalter
- * würde nie durch die geprüfte Quelle ersetzt.
- */
+/** `fuer`: Was ein ANDERES Konto eingetippt hat, zählt nicht als bekannt —
+ * sonst würde der Platzhalter nie durch die geprüfte Quelle ersetzt. */
 export async function katalogTeil(
   partNumber: string, colorId: number | null, fuer: Von = null,
 ): Promise<KatalogTeil | null> {
@@ -234,7 +191,6 @@ export async function katalogTeil(
   const z = await stamm.teilAusKatalog(partNumber, colorId, fuer).catch(meldeUndLiefere('katalog:teil lesen', null));
   if (!z) return null;
 
-  // Ohne Farbe bleibt nur das allgemeine Bild — siehe oben, warum es genau dann zählt.
   const quelle: KatalogTeil['bildQuelle'] =
       (z.farb_datei || z.farb_url) ? 'farbe'
     : (colorId === null && z.bild_allgemein) ? 'allgemein'
@@ -253,7 +209,6 @@ export async function katalogTeil(
   };
 }
 
-/** Was der eigene Katalog über eine Figur weiss — vor jedem Abruf bei Rebrickable (wie katalogTeil()). */
 export async function katalogFigur(
   figNumber: string, fuer: Von = null,
 ): Promise<{ name: string | null; bild: string | null; hatBild: boolean } | null> {

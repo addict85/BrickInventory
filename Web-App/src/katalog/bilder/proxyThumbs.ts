@@ -8,48 +8,26 @@ import * as db from '../../../db/database';
 import { LOCKS } from '../../infra/lockNamespaces';
 import * as sperre from '../repository/sitzungsSperre';
 
-/**
- * Die Vorschau-Maschinerie des Bild-Proxys.
- * Ausführlich: docs/begruendungen/src/katalog/bilder/proxyThumbs.ts.md#proxy-thumb-size
- */
+// Ausführlich: docs/begruendungen/src/katalog/bilder/proxyThumbs.ts.md#proxy-thumb-size
 
-/** Grösse der erzeugten Vorschau in Pixeln (Kantenlänge). */
 export const PROXY_THUMB_SIZE = 200;
 
-// Jimp braucht gemessen rund 150 ms je Bild und belegt dabei den Event-Loop.
-// Eine Kachelwand mit 60 Minifiguren ergäbe neun Sekunden, in denen der Server
-// für ALLE Anfragen steht. Deshalb: höchstens zwei gleichzeitig, und niemals
-// wartet eine Anfrage darauf — die Verkleinerung entsteht im Hintergrund und
-// steht ab dem nächsten Aufruf bereit.
-/**
- * Vorschaubilder sind die teuerste Arbeit im ganzen Server
- * Jimp ist reines JavaScript: Ein JPEG zu entpacken und zu verkleinern kostet
- * auf schwacher Hardware
- * spürbar Zeit. Der Server läuft ausserdem im CLUSTER — die Grenze unten gilt …
- * Ausführlich: docs/begruendungen/src/katalog/bilder/proxyThumbs.ts.md#thumb-max-parallel
- */
+/** Vorschaubilder sind die teuerste Arbeit im Server und belegen den
+ * Event-Loop; nie wartet eine Anfrage darauf, sie entstehen im Hintergrund.
+ * Ausführlich: docs/begruendungen/src/katalog/bilder/proxyThumbs.ts.md#thumb-max-parallel */
 const THUMB_MAX_PARALLEL = 1;
-/**
- * Und eine Obergrenze für die Warteschlange — dieselbe Überlegung wie bei den
- * Katalog-Bildern: Wer schnell durchscrollt, WILL diese
- * Vorschauen nicht, er kommt nur vorbei. Ohne Deckel staute sich der halbe
- * Katalog auf, und der Server rechnete ihn stur ab.
- */
+/** Wer schnell durchscrollt, will diese Vorschauen nicht; ohne Deckel rechnete
+ * der Server den halben Katalog stur ab. */
 const THUMB_MAX_QUEUE = 40;
 let _thumbRunning = 0;
 const _thumbQueue: any[] = [];
 
 export function queueThumb(srcFile: string, thumbFile: string) {
   if (_thumbInFlight.has(thumbFile)) return;
-  // Gescheiterte Verkleinerungen nicht endlos wiederholen
-  // Jimp kann webp nicht entpacken. Scheitert der Versuch, entsteht keine
-  // Datei — und beim nächsten Aufruf desselben Bildes wurde er wiederholt.
-  // Für jedes webp-Bild also bei JEDEM Ansehen ein vergeblicher Anlauf, der …
-  // Ausführlich: docs/begruendungen/src/katalog/bilder/proxyThumbs.ts.md#queuethumb
+  // Gescheiterte Verkleinerungen (webp) nicht bei jedem Ansehen wiederholen.
   if (istBekanntFehlend('thumb:' + thumbFile)) return;
-  // Voll? Dann verwerfen statt aufschieben. Das Bild wird trotzdem
-  // ausgeliefert (in voller Grösse), und wer wirklich stehen bleibt, bekommt
-  // die Vorschau beim nächsten Aufruf.
+  // Voll? Verwerfen statt aufschieben: Das Bild geht in voller Grösse hinaus,
+  // die Vorschau kommt beim nächsten Aufruf.
   if (_thumbQueue.length >= THUMB_MAX_QUEUE) return;
   _thumbInFlight.set(thumbFile, true);
   _thumbQueue.push([srcFile, thumbFile]);
@@ -66,21 +44,16 @@ export function drainThumbQueue() {
   }
 }
 let _thumbInFlight = new Map();
-/**
- * EIN Vorschau-Lauf für den GANZEN Server — nicht je Arbeitsprozess.
- * Ausführlich: docs/begruendungen/src/katalog/bilder/proxyThumbs.ts.md#abschnitt
- */
+/** EIN Vorschau-Lauf für den ganzen Server, nicht je Arbeitsprozess.
+ * Ausführlich: docs/begruendungen/src/katalog/bilder/proxyThumbs.ts.md#abschnitt */
 const THUMB_LOCK_KEY = LOCKS.PROXY_THUMBS;
 
-/** Die Sperr-Verbindung. EINMAL aufgebaut, dann wiederverwendet. */
+/** EINMAL aufgebaut, dann wiederverwendet. */
 let _sperrClient: any = null;
 
 export async function mitVorschauSperre(arbeit: () => Promise<any>) {
-    // NICHT aus dem Pool
-  // Nicht die Bildarbeit scheiterte, sondern eine gewöhnliche Anfrage bekam
-  // keine Verbindung mehr. Dasselbe Muster — nur dass
-  // ich es diesmal selbst hineingebaut habe, bei einer früheren Behebung.
-  // Ausführlich: docs/begruendungen/src/katalog/bilder/proxyThumbs.ts.md#mitvorschausperre
+    // NICHT aus dem Pool: Eine dort gehaltene Sperre nahm gewöhnlichen Anfragen
+    // die Verbindung.
   if (!_sperrClient) {
     try { _sperrClient = await db.eigeneVerbindung(); }
     catch (_) { return false; }
@@ -98,18 +71,15 @@ export async function mitVorschauSperre(arbeit: () => Promise<any>) {
 }
 
 export async function makeProxyThumb(srcFile: string, thumbFile: string) {
-  // Die Entdopplung liegt jetzt in queueThumb(); hier nur noch die Arbeit.
   const p = mitVorschauSperre(async () => {
     try {
-      // Abmessungen zuerst — siehe src/katalog/bilder/imageGuard.ts. Der Proxy holt Dateien
-      // von fremden Servern; die 5-MB-Grenze weiter unten misst die
-      // KOMPRIMIERTE Grösse und fängt eine Dekompressionsbombe nicht ab.
+      // Abmessungen zuerst (imageGuard.ts): Die 5-MB-Grenze misst die KOMPRIMIERTE
+      // Grösse und fängt eine Dekompressionsbombe nicht ab.
       if (!(await isDecodable(srcFile))) {
         // Gar nicht erst versuchen — und das merken, siehe queueThumb().
         merkeFehlend('thumb:' + thumbFile);
         return false;
       }
-      // Jimp 1.x — geänderte API, siehe ausführlichen Hinweis in src/katalog/bilder/thumbs.ts.
       // Erst hier geladen: Jimp ist schwer und nur der Rückfall ohne sharp.
       const { Jimp } = require('jimp');
       const img  = await Jimp.read(srcFile);
@@ -117,14 +87,12 @@ export async function makeProxyThumb(srcFile: string, thumbFile: string) {
       bg.composite(img, 0, 0);
       bg.cover({ w: PROXY_THUMB_SIZE, h: PROXY_THUMB_SIZE });
       // ATOMAR schreiben: erst daneben, dann umbenennen.
-      // Ausführlich: docs/begruendungen/src/katalog/bilder/proxyThumbs.ts.md#makeproxythumb-tmpthumb
   const tmpThumb = `${thumbFile}.${process.pid}.${Date.now()}.tmp.jpg`;
       await bg.write(tmpThumb as `${string}.${string}`, { quality: 80 });
       await fs.promises.rename(tmpThumb, thumbFile);
       return true;
     } catch (e: any) {
-      // Wie in src/katalog/bilder/thumbs.ts: kein stilles false mehr — ein
-      // dauerhaft scheiternder Erzeuger blieb sonst unsichtbar.
+      // Kein stilles false: Ein dauerhaft scheiternder Erzeuger bliebe unsichtbar.
       console.error(`[img-proxy] Vorschau fehlgeschlagen für ${srcFile}: ${e?.message || e}`);
       merkeFehlend('thumb:' + thumbFile);
       imgProxyFailures.other++;

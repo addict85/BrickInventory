@@ -1,7 +1,5 @@
 import * as db from '../../../db/database';
 
-/** Bilder, die es an der Quelle nicht gab (image_misses), mit Grund und Zeitpunkt. */
-
 export function frischeFehlschlaege(alterMs: string) {
   return db.all(`SELECT cache_key, checked_at, reason FROM image_misses
       WHERE checked_at > NOW() - ($1 || ' milliseconds')::interval`, [alterMs]);

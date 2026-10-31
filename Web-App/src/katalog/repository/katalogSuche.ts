@@ -2,8 +2,6 @@ import * as db from '../../../db/database';
 import { mengeJoin, mengeAus } from '../../../db/bestandsmenge';
 import { ausTabelle } from '../../infra/validate';
 
-/** Browsen im Rebrickable-Katalog (rb_sets, rb_themes) samt Besitz des fragenden Kontos. */
-
 export type Thema = { id: number; name: string; parent_id: number | null };
 
 export function themen() {
@@ -24,13 +22,11 @@ export function setsJeJahr() {
     'SELECT year::int AS year, COUNT(*)::int AS n FROM rb_sets WHERE year > 0 GROUP BY year ORDER BY year');
 }
 
-/** Der Filter, wie ihn der Dienst aufgelöst hat: Themen samt Unterthemen als Liste. */
 export interface KatalogWahl { q: string; themenIds: number[] | null; vonJahr?: number | null; bisJahr?: number | null }
 
-/** WHERE-Teil mit fortlaufenden Platzhaltern ab `params.length + 1`. */
 function katalogWo(f: KatalogWahl, params: unknown[]): string {
   const where: string[] = [];
-  // Setnummer und Name: "75192" trifft auch "75192-1".
+  // "75192" trifft auch "75192-1".
   if (f.q) { params.push(`%${f.q}%`); where.push(`(rb.set_num ILIKE $${params.length} OR rb.name ILIKE $${params.length})`); }
   if (f.themenIds) { params.push(f.themenIds); where.push(`rb.theme_id = ANY($${params.length})`); }
   if (f.vonJahr) { params.push(f.vonJahr); where.push(`rb.year >= $${params.length}`); }
@@ -38,7 +34,6 @@ function katalogWo(f: KatalogWahl, params: unknown[]): string {
   return where.length ? `WHERE ${where.join(' AND ')}` : '';
 }
 
-/** Sets je Jahr; NULL-Jahre stehen bei absteigender Ordnung vorn wie in der Liste. */
 export function setsJeJahrGefiltert(f: KatalogWahl, absteigend: boolean) {
   const params: unknown[] = [];
   return db.all<{ year: number | null; n: number }>(`SELECT rb.year, COUNT(*)::int AS n FROM rb_sets rb ${katalogWo(f, params)}
@@ -66,7 +61,6 @@ export async function katalogAnzahl(f: KatalogWahl): Promise<number> {
   return (await db.get<{ n: number }>(`SELECT COUNT(*)::int AS n FROM rb_sets rb ${katalogWo(f, params)}`, params))?.n ?? 0;
 }
 
-/** Eine Seite des Katalogs mit dem Besitz des Kontos; eine unbekannte Ordnung heisst „neueste zuerst“. */
 export function katalogZeilen(userId: number, f: KatalogWahl, ordnung: unknown, limit: number, offset: number) {
   // ausTabelle: ?sort=constructor darf keine geerbte Eigenschaft liefern.
   const sortSql = ausTabelle(ORDNUNGEN, ordnung, ORDNUNGEN.year_desc);

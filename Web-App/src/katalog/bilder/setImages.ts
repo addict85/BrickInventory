@@ -5,21 +5,13 @@ import https from 'https';
 import { SET_IMAGES_DIR } from '../../infra/appPaths';
 import { appVersion } from '../../infra/appVersion';
 
-/**
- * Set-Bilder vom CDN holen und lokal ablegen.
- * Ausführlich: docs/begruendungen/src/katalog/bilder/setImages.ts.md#abschnitt
- */
+// Ausführlich: docs/begruendungen/src/katalog/bilder/setImages.ts.md#abschnitt
 
-/**
- * Obergrenze für das LOKAL gespeicherte Set-Bild.
- * Ausführlich: docs/begruendungen/src/katalog/bilder/setImages.ts.md#set-img-max-bytes
- */
+// Ausführlich: docs/begruendungen/src/katalog/bilder/setImages.ts.md#set-img-max-bytes
 export const SET_IMG_MAX_BYTES = 20 * 1024 * 1024;
 
-/**
- * Der Ausweis, mit dem wir uns beim Bildserver melden.
- * Ausführlich: docs/begruendungen/src/katalog/bilder/setImages.ts.md#bilduseragent
- */
+/** Sauber und eindeutig: Sieht er nach einem Standard-Scraper aus, sperrt Cloudflare.
+ * Ausführlich: docs/begruendungen/src/katalog/bilder/setImages.ts.md#bilduseragent */
 export function bildUserAgent(): string {
   const eigener = konfig().bildUserAgent;
   if (eigener) return eigener;
@@ -46,16 +38,13 @@ export async function downloadSetImage(url: string, setNumber: string, info?: { 
             return tryGet(res.headers.location, rest - 1);
           }
           if (res.statusCode !== 200) {
-            // Statuscode nennen: „404 vom CDN" und „403 wegen
-            // Bot-Erkennung" verlangen völlig verschiedene Massnahmen —
-            // vorher waren beide dasselbe schweigende null.
-            // Ausführlich: docs/begruendungen/src/katalog/bilder/setImages.ts.md#downloadsetimage-nichtvorhanden
+            // Den Statuscode nennen: „404" und „403 Bot-Erkennung" verlangen völlig
+            // verschiedene Massnahmen.
             const nichtVorhanden = res.statusCode === 404 || res.statusCode === 410;
             (nichtVorhanden ? console.warn : console.error)(
               `[set-img] ${setNumber}: HTTP ${res.statusCode} vom Bildserver: ${url}`);
-            // Nur zuweisen, wenn es wirklich einen Code gibt: jobs/imageQueue.ts
-            // unterscheidet „HTTP 404" von „kein Statuscode — voruebergehend?"
-            // (Zeile 573). Ein zugewiesenes undefined machte beide gleich.
+            // Nur mit echtem Code zuweisen: jobs/imageQueue.ts unterscheidet „404" von
+            // „kein Statuscode — vorübergehend".
             if (info && res.statusCode != null) info.status = res.statusCode;
             res.resume(); return resolve(null);
           }
@@ -63,10 +52,7 @@ export async function downloadSetImage(url: string, setNumber: string, info?: { 
           res.on('data', d => {
             gelesen += d.length;
             if (gelesen > SET_IMG_MAX_BYTES) {
-              // Nicht mehr STILL abbrechen: Vorher verschwand ein
-              // übergrosses Bild spurlos — kein Log, keine Spur, und niemand
-              // konnte erklären, warum ausgerechnet dieses Set kein lokales
-              // Bild bekam.
+              // Nicht still: Ein übergrosses Bild verschwände sonst spurlos.
               console.error(`[set-img] ${setNumber}: Bild grösser als ${Math.round(SET_IMG_MAX_BYTES / 1024 / 1024)} MB — nicht lokal gespeichert: ${url}`);
               res.destroy(); return resolve(null);
             }
@@ -74,10 +60,8 @@ export async function downloadSetImage(url: string, setNumber: string, info?: { 
           });
           res.on('end',()=>resolve(Buffer.concat(chunks)));
         }).on('error', (e: any) => {
-          // Netzwerkfehler waren bisher komplett unsichtbar: Zeitüberschreitung,
-          // DNS, abgebrochene Verbindung — alles endete in einem stummen null,
-          // und das Set stand ohne Bild da, ohne dass irgendetwas davon
-          // berichtete.
+          // Netzwerkfehler melden, sonst stünde das Set ohne Bild da und niemand wüsste,
+          // warum.
           console.error(`[set-img] ${setNumber}: Netzwerkfehler (${e?.code || e?.message}): ${url}`);
           resolve(null);
         });
@@ -86,19 +70,15 @@ export async function downloadSetImage(url: string, setNumber: string, info?: { 
     });
     if (!buf) return null;   // Grund wurde oben bereits genannt
     if (buf.length < 100) {
-      // Eine so kleine Antwort ist kein Bild, sondern fast immer eine
-      // Fehlerseite. Ohne Meldung sah es aus wie „Download lief, Bild fehlt
-      // trotzdem".
+      // Zu klein für ein Bild — fast immer eine Fehlerseite.
       console.error(`[set-img] ${setNumber}: Antwort zu klein (${buf.length} Bytes) — kein Bild: ${url}`);
       return null;
     }
     await fs.promises.writeFile(localPath, buf);
     return relPath;
   } catch (e: any) {
-    // Letzte Auffanglinie — früher verschluckte sie JEDEN Fehler
-    // (Schreibfehler, volle Platte, Rechteproblem) ohne eine Spur. Genau diese
-    // Sorte Stille hat die Bild-Fehlersuche dieser Woche über fünf Nachträge
-    // gestreckt.
+    // Letzte Auffanglinie, aber mit Spur: Stille hat die Fehlersuche bei Bildern
+    // zuvor über Tage gestreckt.
     console.error(`[set-img] ${setNumber}: Download fehlgeschlagen: ${e?.message || e}`);
     return null;
   }

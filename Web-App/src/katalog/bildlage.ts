@@ -1,8 +1,3 @@
-/**
- * Katalogbilder und Lücken im Set-Katalog nachtragen: was fehlt, was lokal
- * liegt, und die Läufe, die es holen. Aufgerufen von den Nachläufen des
- * Job-Prozesses und der PDF-Erzeugung.
- */
 import fs from 'fs';
 import path from 'path';
 import * as repo from './repository/bildlage';
@@ -14,7 +9,6 @@ import { APP_ROOT, IMAGES_DIR } from '../infra/appPaths';
 import { fehlertext, logAndContinue, meldeUndLiefere } from '../infra/httpError';
 import { KEINE_FARBE } from '../infra/validate';
 
-/** Was der stündliche Bild-Nachlauf holen soll; jede Liste meldet ihren Fehler für sich. */
 export async function bilderFuerNachlauf() {
   const [sets, teile, figuren] = await Promise.all([
     repo.setsMitFehlendenKatalogbildern().catch(meldeUndLiefere('bild-nachlauf:sets', [])),
@@ -27,7 +21,7 @@ export async function bilderFuerNachlauf() {
   return { sets, teile, figuren };
 }
 
-/** Lücken im Set-Katalog aus Brickset füllen; Vorhandenes bleibt. @returns ob Brickset das Set kennt */
+/** Vorhandenes bleibt. @returns ob Brickset das Set kennt */
 export async function fuelleAusBrickset(setNumber: string): Promise<boolean> {
   const info = await getSetInfo(setNumber);
   if (!info) return false;
@@ -36,14 +30,10 @@ export async function fuelleAusBrickset(setNumber: string): Promise<boolean> {
   return true;
 }
 
-/** Ein Posten, dessen Bild aus dem Katalog kommt (PDF-Teileliste). */
 export type Bildposten = { part_number: string; color_id?: number | null; image_url?: string | null; image_local?: string | null };
 
-/**
- * Bildquellen nur aus dem Katalog, und dort nur aus geprüfter Quelle: Die
- * Dateien im Bildordner gelten für alle Konten, ein Bild vom Client oder ein
- * eingetipptes landete sonst bei allen anderen.
- */
+/** Nur aus geprüfter Quelle: Die Dateien gelten für alle Konten, ein Bild vom
+ * Client landete sonst bei allen anderen. */
 export async function bilderAusKatalog<T extends Bildposten>(posten: T[], istFigur: (p: T) => boolean): Promise<void> {
   for (const p of posten) { p.image_url = null; p.image_local = null; }
   const teile = posten.filter(p => !istFigur(p)), figuren = posten.filter(istFigur);
@@ -64,18 +54,14 @@ export async function bilderAusKatalog<T extends Bildposten>(posten: T[], istFig
   }
 }
 
-/**
- * Sets ohne Anleitung einreihen — nicht, wenn ein Abruf noch wartet oder in
- * den letzten Tagen schon ohne Ergebnis lief (erledigte Aufträge bleiben
- * sieben Tage, gescheiterte dreissig stehen; danach wird es wieder versucht).
- */
+/** Nicht, wenn ein Abruf wartet oder kürzlich ohne Ergebnis lief — danach
+ * wieder, sobald die erledigten Aufträge verfallen. */
 export async function anleitungenNachtragen(): Promise<void> {
   const missing = await repo.setsOhneAnleitungsabruf();
   if (missing.length) console.log(`[instr-queue] Enqueueing ${missing.length} sets missing instructions`);
   for (const set_number of missing) await anleitungEinreihen(set_number);
 }
 
-/** Fehlende Set-Bilder vom CDN holen; der Katalog führt jede Setnummer einmal. */
 export async function setBilderNachladen(): Promise<void> {
   try {
     const missing = await repo.setBilderOhneDatei().catch(meldeUndLiefere('nachlauf:missing', []));
@@ -93,7 +79,7 @@ export async function setBilderNachladen(): Promise<void> {
   } catch (e) { console.error('[set-img-bg]', fehlertext(e)); }
 }
 
-/** Fehlende Vorschaubilder erzeugen; asynchron geprüft, damit der Lauf die Ereignisschleife nicht blockiert. */
+/** Asynchron geprüft, damit der Lauf die Ereignisschleife nicht blockiert. */
 export async function vorschaubilderNachtragen(): Promise<void> {
   try {
     const paths = await repo.lokaleKatalogbilder();

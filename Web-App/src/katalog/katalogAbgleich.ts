@@ -1,8 +1,4 @@
-/**
- * Den gemeinsamen Teile- und Figurenkatalog eines Sets aus den Rebrickable-CSV-
- * Tabellen füllen und die Teilebilder laden; dazu das Farbbild manueller Teile.
- * Alles hier gilt für alle Konten.
- */
+/** Alles hier gilt für alle Konten. */
 import { downloadFile } from '../../clients/rebrickable';
 import { generateThumb } from './bilder/thumbs';
 import { neuestesInventar } from './rbInventar';
@@ -17,29 +13,24 @@ import { PART_IMAGES_DIR as IMG_DIR } from '../infra/appPaths';
 import { rebrickableBackgroundLimiter as rebrickableLimiter } from './rateLimiter';
 import { KEINE_FARBE } from '../infra/validate';
 async function syncSetCatalog(setNumber: string) {
-  // Ohne Versionsanhang in der Eingabe ergab `alt` denselben Wert wie `n` —
-  // die Abfrage unten fragte dann zweimal dasselbe, und die blanke Nummer
-  // wurde nie geprueft. Dieselbe Fehlbildung wie in src/teile/abfragen.ts.
+  // mitVersion(): Sonst ergäbe `alt` denselben Wert wie `n`, und die blanke
+  // Nummer würde nie geprüft.
   const n = mitVersion(setNumber);
 
-  // Check if catalog is already fully populated (has images)
   const stand = await katalogBildstand(n).catch(meldeUndLiefere('katalog-sync:existing', { total: 0, mitBild: 0 }));
   const total = stand.total, withImg = stand.mitBild;
   if (total > 0 && withImg >= total) {
-    // All parts have local images — nothing to do
     return;
   }
-  // Find inventory in CSV cache
   const invId = await neuestesInventar(n).catch(meldeUndLiefere('katalog-sync:neuestesInventar', null));
   if (!invId) {
     return;
   }
 
-  // Load parts from CSV cache
   const parts = await inventarTeileOhneErsatz(invId).catch(meldeUndLiefere('katalog-sync:inventar lesen', []));
 
   if (!parts.length) {
-    // No parts in CSV cache yet — skip silently
+    // Noch keine Teile im CSV-Zwischenspeicher — still überspringen.
     return;
   }
   fs.mkdirSync(IMG_DIR, { recursive: true });
@@ -67,8 +58,7 @@ async function syncSetCatalog(setNumber: string) {
     }
 
     if (total === 0) {
-      // First time: full upsert
-      // Name, Farbe und Bild in die Kataloge, Menge in die Setliste (Migration 0062).
+      // Name, Farbe und Bild in die Kataloge, Menge in die Setliste.
       const melde = logAndContinue('katalogSync:setteil');
       await merkeTeil(p.part_number, p.part_name).catch(melde);
       await merkeTeilFarbe(p.part_number, p.color_id ?? KEINE_FARBE, p.color_name, p.color_hex, p.image_url, imageLocal).catch(melde);
@@ -78,7 +68,6 @@ async function syncSetCatalog(setNumber: string) {
     }
   }
 
-  // Sync minifigs
   const figs = await inventarFiguren(invId).catch(meldeUndLiefere('katalog-sync:figs', []));
 
   await merkeFiguren(figs.map(f => ({ figNumber: f.fig_number, figName: f.fig_name, imageUrl: f.image_url })))
@@ -87,16 +76,12 @@ async function syncSetCatalog(setNumber: string) {
     .catch(logAndContinue('katalog-sync:setfigur merken'));
 }
 
-// Sync all sets that are in rb_inventories but not yet in set_parts_catalog
 async function syncAllMissing() {
   const sets = await setsOhneTeilekatalog().catch(meldeUndLiefere('katalog-sync:sets', []));
   for (const s of sets) await syncSetCatalog(s);
 }
 
-/**
- * Das Bild manueller Teile soll die gewählte Farbe zeigen, nicht das generische
- * (oft falschfarbige) Standardbild von Rebrickable. Überschreibend, im Katalog.
- */
+/** Die gewählte Farbe, nicht das oft falschfarbige Standardbild. */
 async function teilfarbenbilderNachtragen() {
   const rows = await manuelleFarbteile().catch(meldeUndLiefere('kaufpreis-nachtrag:rows', []));
   if (!rows.length) return;

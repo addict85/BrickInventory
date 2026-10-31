@@ -1,7 +1,3 @@
-/**
- * Fachdienst Katalog: Browsen und Suchen im Rebrickable-Katalog (rb_sets),
- * mit Themenbaum, Jahresverteilung und dem Besitz des fragenden Kontos.
- */
 import * as repo from './repository/katalogSuche';
 import { meldeUndLiefere } from '../infra/httpError';
 import { resolveIfExists } from './bilder/images';
@@ -12,10 +8,8 @@ import { neuestesInventar } from './rbInventar';
 import { mitVersion } from '../sets/setNummer';
 import { nacharbeit } from '../auftraege/nacharbeit';
 
-// ── Theme-Baum-Cache ─────────────────────────────────────────────────────────
-// rb_themes ändert sich höchstens einmal täglich (CSV-Sync). Der Baum wird
-// pro Prozess 1h gecacht — Pfadnamen ("Star Wars › UCS") und Nachfahren-
-// Auflösung für den Filter brauchen ihn bei jedem Request.
+// rb_themes ändert sich höchstens täglich; der Baum wird je Prozess eine
+// Stunde gemerkt, weil jeder Filter ihn braucht.
 type ThemeNode = repo.Thema;
 let _themeCache: {
   at: number;
@@ -37,7 +31,7 @@ async function getThemeTree() {
       children.get(r.parent_id)!.push(r.id);
     }
   }
-  // Vollständiger Pfadname je Theme ("Eltern › Kind"), zyklen-sicher.
+  // Zyklen-sicher.
   const pathName = new Map<number, string>();
   const resolvePath = (id: number, seen: Set<number>): string => {
     const fertig = pathName.get(id);
@@ -58,15 +52,13 @@ async function getThemeTree() {
   return _themeCache;
 }
 
-/** Alle Nachfahren-IDs eines Themes (inkl. der ID selbst). */
 function descendantIds(tree: Awaited<ReturnType<typeof getThemeTree>>, rootId: number): number[] {
   const out: number[] = [];
   const stack = [rootId];
   const seen = new Set<number>();
   while (stack.length) {
     const id = stack.pop();
-    // while (stack.length) garantiert eine Zahl; der Typ von Array.pop() sagt
-    // das nicht, also einmal ausdrücklich statt viermal mit `!`.
+    // Der Typ von Array.pop() kennt die Schleifenbedingung nicht.
     if (id === undefined) break;
     if (seen.has(id)) continue;
     seen.add(id);
@@ -76,13 +68,11 @@ function descendantIds(tree: Awaited<ReturnType<typeof getThemeTree>>, rootId: n
   return out;
 }
 
-/** Themen mit Setzahl (samt Unterthemen) und die Jahresspanne. */
 export async function katalogMeta() {
   const tree = await getThemeTree();
   const [counts, years, yearCounts] = await Promise.all([
     repo.setsJeThema(),
     repo.jahresspanne(),
-    // Set-Zahl pro Jahr — für den Jahres-Scrubber.
     repo.setsJeJahr(),
   ]);
   const direct = new Map<number, number>();
@@ -99,36 +89,29 @@ export async function katalogMeta() {
 
 export interface KatalogFilter { q: string; themeId: number | null; yearFrom?: number | null; yearTo?: number | null }
 
-/** Ein Thema meint auch seine Unterthemen. */
 async function waehle(f: KatalogFilter): Promise<repo.KatalogWahl> {
   return { q: f.q, themenIds: f.themeId ? descendantIds(await getThemeTree(), f.themeId) : null,
            vonJahr: f.yearFrom ?? null, bisJahr: f.yearTo ?? null };
 }
 
-/**
- * Sets je Jahr mit den aktuellen Filtern, in der Reihenfolge der Liste —
- * NULL-Jahre stehen bei absteigender Sortierung vorn wie in der Liste.
- */
+/** NULL-Jahre stehen bei absteigender Sortierung vorn, wie in der Liste. */
 export async function jahrVerteilung(f: KatalogFilter, absteigend: boolean) {
   return repo.setsJeJahrGefiltert(await waehle({ q: f.q, themeId: f.themeId }), absteigend);
 }
 
-/** Bereits heruntergeladenes Bild, egal welches Konto es geholt hat (samt Vorschau). */
+/** Egal welches Konto es geholt hat. */
 const lokalesBild = (sn: string) => resolveIfExists(`/images/sets/${String(sn).replace(/[^a-z0-9-]/gi, '_')}.jpg`);
 
-/** Eine Seite des Katalogs, mit Besitz des Kontos. */
 export async function katalogSeite(userId: number, f: KatalogFilter, sortRoh: unknown, page: number, limit: number) {
   const wahl = await waehle(f);
   const [total, sets] = await Promise.all([
     repo.katalogAnzahl(wahl), repo.katalogZeilen(userId, wahl, sortRoh, limit, (page - 1) * limit)]);
   const tree = await getThemeTree();
-  // Fehlt ein Bild, holt es der Bild-Proxy beim Anzeigen; die Liste stösst
-  // keine Bildarbeit an.
+  // Die Liste stösst keine Bildarbeit an; fehlende Bilder holt der Bild-Proxy.
   return { total, page, pages: Math.max(1, Math.ceil(total / limit)),
     sets: sets.map(s => ({ ...s, image_local: lokalesBild(s.set_number), theme_name: tree.pathName.get(s.theme_id) || null })) };
 }
 
-/** Ein Set des Katalogs mit Figurenzahl, BrickLink-Link und Preisvergleich; null, wenn unbekannt. */
 export async function katalogSet(userId: number, roh: string) {
   const n = mitVersion(roh.trim());
   const set = await repo.katalogZeile(userId, n);
@@ -137,12 +120,11 @@ export async function katalogSet(userId: number, roh: string) {
   const m = invId ? await repo.figurenImInventar(invId)
     .catch(meldeUndLiefere('katalog:figuren', undefined)) : undefined;
   const tree = await getThemeTree();
-  // Ob eine Nummer bei BrickLink Set, Gear oder Buch ist, weiss nur der
-  // Server; geprüft wird gegen BrickLink nur hier, auf einer geöffneten Seite.
+  // Geprüft wird gegen BrickLink nur hier, auf einer geöffneten Seite.
   let bricklink = await resolveOne(set.set_number);
   if (!bricklink.resolved) bricklink = await resolveViaApi(set.set_number).catch(meldeUndLiefere('katalog:bricklink', bricklink));
   let image_local = lokalesBild(set.set_number);
-  // Noch nicht da: jetzt dauerhaft ablegen; die Vorschau macht der Bild-Job.
+  // Jetzt dauerhaft ablegen; die Vorschau macht der Bild-Job.
   if (!image_local && set.image_url) {
     image_local = await downloadSetImage(set.image_url, set.set_number).catch(meldeUndLiefere('katalog:downloadSetImage', null));
     if (image_local) nacharbeit().bildVormerken(String(set.image_url || ''), set.set_number);
