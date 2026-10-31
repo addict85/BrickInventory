@@ -24,6 +24,7 @@
             <trusting group="androidx.lifecycle"/>
             <trusting group="androidx.navigation"/>
             <trusting group="androidx.navigationevent"/>
+            <trusting group="androidx.room"/>
             <trusting group="androidx.tracing"/>
             <trusting group="androidx.work"/>
             <trusting group="^androidx[.]camera($|([.].*))" regex="true"/>
