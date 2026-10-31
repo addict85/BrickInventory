@@ -1,8 +1,5 @@
-/**
- * Manuell erfasste Minifiguren: Anlegen, Ändern und Erfassungen. Hier und
- * nicht in routes/minifigs.ts, weil die Sitzungsroute und die v1-Fabrik beide
- * darauf zugreifen — eine Route soll keine andere importieren.
- */
+/** Hier und nicht in einer Route, weil Sitzungsroute und v1-Fabrik beide darauf
+ * zugreifen — eine Route soll keine andere importieren. */
 import * as db from '../../db/database';
 import { logAndContinue, fehlertext } from '../infra/httpError';
 import { csvGemeinsameFelder, csvZeilenAusAnfrage } from '../infra/csvExport';
@@ -18,22 +15,15 @@ import { merkeFigur, katalogFigur } from '../katalog/katalogPflege';
 import { merkeBlNummer } from '../katalog/blZuordnung';
 import * as V from '../infra/validate';
 
-// Fällt keine BrickLink-Minifigur-Nummer vor, wird der Marktpreis stattdessen
-// aus den einzelnen BrickLink-Teilepreisen der Minifigur zusammengesetzt
-// (Rebrickable liefert die Teile-Zusammensetzung + für Teile existiert eine
-// zuverlässige Rebrickable→BrickLink-Zuordnung, anders als bei Minifiguren).
+// Ohne BrickLink-Figurennummer wird der Marktpreis aus den Teilepreisen
+// geschätzt: Für Teile ist die Zuordnung RB→BL verlässlich, für Figuren nicht.
 // Ausführlich: docs/begruendungen/routes/minifigs.ts.md#abschnitt-2
 
-// Shared logic to add/update a single manual minifig. Used by both the
-// session-based web route (POST /api/minifigs) and the token-based API
-// (POST /api/v1/minifigs), so the behaviour is implemented exactly once.
 // Ausführlich: docs/begruendungen/routes/minifigs.ts.md#resolvemanualfigpurchase
 export async function resolveManualFigPurchase(uid: number, { figNumber, blFigNumber = null, unitPrice = null, condition = null }:
   { figNumber: string; blFigNumber?: string | null; unitPrice?: any; condition?: string | null }) {
-  // Dieselbe Regel wie bei den Teilen — siehe src/finanzen/preisRegel.ts. Vorher
-  // fehlte hier das `?? 0`: Eine Figur ohne ermittelbaren Marktpreis bekam
-  // NULL, ein Teil in derselben Lage eine 0, und src/finanzen/financeCalc.ts liest
-  // das als „kein Kaufpreis erfasst" gegen „0 erfasst".
+  // Dieselbe Regel wie bei den Teilen (src/finanzen/preisRegel.ts), damit eine
+  // Figur ohne Marktpreis nicht anders zählt als ein Teil.
   const r = await manuellerKaufpreis(uid, { unitPrice, condition },
     (zustand) => figMarktpreisMitHerkunft(figNumber, uid, blFigNumber || null, zustand));
   return {
@@ -41,23 +31,14 @@ export async function resolveManualFigPurchase(uid: number, { figNumber, blFigNu
     effectivePurchasePrice: r.kaufpreis,
     erfassungsPreis: r.erfassungsPreis,
     effectiveCondition: r.zustand,
-    // Aus welchem Zustand der uebernommene Marktpreis stammt.
     preisAusZustand: r.preisAusZustand,
     geschaetzt: r.geschaetzt,
   };
 }
 
-// body ist `any` wie in routes/parts.ts — so kommt es von Express, und die
-// Validierer in src/infra/validate.ts nehmen es genauso entgegen.
-/**
- * Eine Minifigur von Hand erfassen — mit Lagerort, wenn einer mitkommt.
- *
- * Zwilling zu addManualPart (routes/parts.ts) — siehe die Begruendung dort.
- * Bis zum 24.09. konnte eine Minifigur ueberhaupt keinen Lagerort tragen: Die
- * Spalte gab es nicht (Migration 0024).
- */
+/** Zwilling zu addManualPart — eine Umsetzung für Webapp und App. */
 export async function addManualFig(uid: number, body: Record<string, unknown>) {
-  // Siehe addManualPart: ohne mitgegebenen Ort gilt Marcos Stern.
+  // Ohne mitgegebenen Ort gilt der Vorgabeort des Kontos.
   const ort = await ortFuerNeuerfassung(uid, body?.storage);
   const ergebnis = await addManualFigIntern(uid, body);
   if (ort && ergebnis?.fig_number) {
@@ -67,40 +48,34 @@ export async function addManualFig(uid: number, body: Record<string, unknown>) {
 }
 
 async function addManualFigIntern(uid: number, body: any) {
-  // Gleiche Eingangsvalidierung wie bei manuellen Teilen (src/infra/validate.ts).
+  // Gleiche Eingangsvalidierung wie bei manuellen Teilen: Die Felder werden gerendert.
     const num       = V.requireItemNumber(body?.fig_number, 'fig_number');
   const blNum     = body?.bl_fig_number ? V.requireItemNumber(body.bl_fig_number, 'bl_fig_number') : null;
   const quantity  = V.acquisitionQuantity(body?.quantity, 1);
   const condition = V.optionalCondition(body?.condition);
   const unit_price = V.optionalPrice(body?.unit_price, 'Stückpreis');
-  // Erfassungsdatum — erlaubt mehrere Erfassungen derselben Figur zu
-  // verschiedenen Zeitpunkten, wie bei manuellen Teilen und im CSV-Import.
+  // Erlaubt mehrere Erfassungen derselben Figur zu verschiedenen Zeitpunkten.
   const acquiredAt = (body?.acquired_at || '').trim() || null;
   let fig_name  = V.optionalText(body?.fig_name, 200);
   let image_url = V.optionalImageUrl(body?.image_url);
-  // Wie bei den Teilen: Nur Nachgeschlagenes geht als geprüft in den Katalog.
+  // Nur Nachgeschlagenes geht als geprüft in den Katalog.
   const eingabe = { name: fig_name, bild: image_url };
   let gefunden: Awaited<ReturnType<typeof getMinifigInfo>> | null = null;
 
   if (!fig_name) {
-    // ── Erst der EIGENE Katalog, dann der fremde Dienst ─────────────────────
-    // Dieselbe Luecke wie bei den Teilen, und aus demselben Befund (Marco,
-    // 20.10.: „Wird jedes Teil bei Rebrickable abgefragt auch wenn es lokal
-    // bereits vorhanden ist?"). Hier stand nur getMinifigInfo() — ein Abruf je
-    // Figur, obwohl `minifigs_catalog` Name und Bild fuehrt. Die Begruendung
-    // samt Messung steht bei katalogTeil() in src/katalog/katalogPflege.ts.
+    // Erst der eigene Katalog, dann der fremde Dienst: minifigs_catalog führt
+    // Name und Bild, ein Abruf je Figur wäre unnötig.
     const lokal = await katalogFigur(num, uid);
     if (lokal) {
       fig_name  = fig_name  || lokal.name;
       image_url = image_url || lokal.bild;
     }
-    // `hatBild` statt `image_url`: Eine heruntergeladene Datei (`image_local`)
-    // ist ein Pfad und darf nicht durch V.optionalImageUrl — sie beweist aber,
-    // dass der Abruf nichts mehr zu holen hat.
+    // `hatBild` statt `image_url`: Ein lokaler Pfad fiele bei der URL-Prüfung
+    // durch, beweist aber, dass der Abruf nichts mehr zu holen hat.
     if (!fig_name || !(image_url || lokal?.hatBild)) {
       const info = await getMinifigInfo(num);
       gefunden = info;
-      // `||`, nicht Zuweisung: Was der Katalog schon wusste, bleibt stehen.
+      // `||`: Was der Katalog schon wusste, bleibt stehen.
       if (info) {
         fig_name  = fig_name  || info.fig_name;
         image_url = image_url || info.image_url;
@@ -111,69 +86,45 @@ async function addManualFigIntern(uid: number, body: any) {
   const existing = await manuelleFigur(uid, num);
 
   if (existing) {
-    // Menge addieren UND eine Erfassung anlegen.
-    //
-    // Vorher endete der Pfad hier: Eine erneut erfasste Figur bekam keine neue
-    // Zeile in minifig_acquisitions — kein Kaufpreis, kein abweichendes
-    // Erfassungsdatum. Gleicher Fehler wie zuvor bei den manuellen Teilen.
-    // Die Menge wird NICHT hier fortgeschrieben: Die Erfassung unten ist die
-    // Wahrheit, und mengeNeuRechnen() leitet die Spalte daraus ab
-    // (db/bestandsmenge.ts). Hier stand `quantity = quantity + $1`.
+    // Auch eine erneut erfasste Figur bekommt eine Erfassung (Kaufpreis, Datum);
+    // die Menge ergibt sich daraus beim Lesen.
     const re = await resolveManualFigPurchase(uid, {
       figNumber: num, blFigNumber: blNum, unitPrice: unit_price, condition,
     });
-    // Pro Tag und Zustand EINE Erfassung — wird am selben Tag erneut erfasst,
-    // wächst die bestehende Zeile (src/bestand/acquisitions.ts).
+    // Pro Tag und Zustand EINE Erfassung (src/bestand/acquisitions.ts).
     await recordAcquisitionForDay('fig', uid, [num], {
       quantity,
-      // erfassungsPreis statt der Umrechnung von Hand: In der Stammzeile ist
-      // die 0 ein Anzeigewert, in der Erfassung hiesse sie „fuer null gekauft".
+      // In der Stammzeile ist die 0 ein Anzeigewert, in der Erfassung hiesse sie
+      // „für null gekauft".
       price: re.erfassungsPreis, geschaetzt: re.geschaetzt,
       condition: re.effectiveCondition, createdAt: acquiredAt,
     });
-    // Kein Nachrechnen mehr: Die Stückzahl steht seit Migration 0038
-    // nicht an der Zeile. Hier stand mengeNeuRechnen(), das sie aus den
-    // Erfassungen ableitete und SCHRIEB — jetzt rechnet sie das Lesen
-    // (db/bestandsmenge.ts, teilmengeJoin/teilmengeAus).
 
     return { action: 'updated', fig_number: num };
   }
 
-  // Ohne effectiveUnitPrice/effectivePurchasePrice: Sie waren fuer die
-  // Bestandszeile, und die traegt seit Migration 0035 keinen Preis. Dieselbe
-  // Stelle wie in routes/parts.ts, vom Compiler gemeldet.
   const { erfassungsPreis, effectiveCondition, preisAusZustand, geschaetzt } =
     await resolveManualFigPurchase(uid, { figNumber: num, blFigNumber: blNum, unitPrice: unit_price, condition });
-  // Beschreibung in den Katalog, Bestand in minifigs (Migration 0034). Der
-  // Katalog zuerst: Faellt die Anfrage dazwischen aus, steht lieber eine
-  // Beschreibung ohne Bestand da (unsichtbar, weil niemand die Figur hat) als
-  // ein Bestand ohne Namen in der Figurenliste.
+  // Der Katalog zuerst: Fällt die Anfrage dazwischen aus, ist eine Beschreibung
+  // ohne Bestand unsichtbar, ein Bestand ohne Namen nicht.
   await merkeFigur(num, gefunden?.fig_name, gefunden?.image_url);
   await merkeFigur(num, eingabe.name, eingabe.bild, null, db, uid);
   // Ohne Menge, Preis und Zustand: Sie stehen in der Erfassung darunter.
-  // Ausführlich: docs/begruendungen/routes/minifigs.ts.md#addmanualfigintern
   await repo.legeFigurManuellAn(uid, num);
   if (blNum) await merkeBlNummer('fig', num, blNum).catch(
     logAndContinue(`minifiguren:bl-nummer ${num}`));
-  // Record acquisition — mit dem tatsächlich verwendeten Kaufpreis (Marktpreis
-  // bzw. Teile-Schätzung, falls kein Preis eingegeben wurde), damit die
-  // Erfassungshistorie und die PnL-Berechnung stimmen.
+  // Mit dem tatsächlich verwendeten Kaufpreis (Marktpreis oder Schätzung), damit
+  // Erfassungshistorie und G&V stimmen.
   await recordAcquisitionForDay('fig', uid, [num], {
-    // erfassungsPreis, nicht effectivePurchasePrice — siehe oben bei der
-    // Zweiterfassung. Hier stand früher der Stammzeilen-Wert.
     quantity, price: erfassungsPreis, geschaetzt,
     condition: effectiveCondition, createdAt: acquiredAt,
   });
 
-  // Zwilling zu addManualPart — siehe die Begruendung dort.
   return { action: 'added', fig_number: num, fig_name, price_from_condition: preisAusZustand };
 }
 
-/**
- * Menge (absolut oder als Schritt), BrickLink-Nummer, Preis/Stk und Zustand
- * einer manuellen Figur ändern — Zwilling zu updateManualPart.
- * @returns die Menge danach, wenn sie Teil der Anfrage war
- */
+/** Zwilling zu updateManualPart.
+ * @returns die Menge danach, wenn sie Teil der Anfrage war */
 export async function updateManualFig(uid: number, figNumber: string, body: any): Promise<{ quantity?: number }> {
   const existing = await repo.figurZeileMitZustand(uid, figNumber);
   if (!existing) { const e = Object.assign(new Error('Minifigur nicht gefunden oder nicht manuell hinzugefügt'), { status: 404 }); throw e; }
@@ -188,20 +139,16 @@ export async function updateManualFig(uid: number, figNumber: string, body: any)
   let newBlNum = existing.bl_fig_number;
   if (body.bl_fig_number !== undefined) {
     newBlNum = body.bl_fig_number ? String(body.bl_fig_number).trim() : null;
-    // Eine geleerte Eingabe heisst „keine abweichende Nummer" (gleiche Nummer),
-    // nicht „nie nachgesehen": Die Zeile bleibt stehen, wie bei den Teilen.
+    // Geleert heisst „keine abweichende Nummer", nicht „nie nachgesehen".
     await merkeBlNummer('fig', figNumber, newBlNum || figNumber);
   }
   if (body.unit_price !== undefined) {
-    // Siehe src/finanzen/preisRegel.ts — dieselbe Regel wie bei den Teilen.
-    // purchasePrice wird nicht ausgepackt — siehe updateManualPart in
-    // routes/parts.ts: Er war der Anzeigewert der Bestandszeile.
+    // Dieselbe Regel wie bei den Teilen (src/finanzen/preisRegel.ts).
     const { unitPrice } = await kaufpreisAusEingabe(
       body.unit_price, body.condition, existing.condition, uid,
       (zustand) => getCurrentFigMarketPrice(figNumber, uid, newBlNum, zustand),
     );
-    // In die NEUESTE Erfassung (Migration 0035) — dieselbe Begruendung und
-    // dieselbe Form wie bei den Teilen.
+    // In die NEUESTE Erfassung, wie bei den Teilen.
     await repo.setzeFigurpreisNeueste(uid, figNumber, unitPrice);
   }
   if (body.condition !== undefined && body.condition !== null) {
@@ -211,23 +158,16 @@ export async function updateManualFig(uid: number, figNumber: string, body: any)
   return raus;
 }
 
-/** Wie getPartAcquisitions: `uid` ist das Blickfeld (Liste), das SQL fragt ANY($1). */
+/** `uid` ist das Blickfeld (Liste). */
 export async function getFigAcquisitions(uid: number[], figNumber: string) {
-  // Kein Rueckfall auf die Stammzeile mehr — siehe die Begruendung bei
-  // getPartAcquisitions in routes/parts.ts (Migration 0035).
   return repo.figurErfassungen(uid, figNumber);
 }
 
-/** Die manuelle Bestandszeile einer Figur, falls es sie gibt. */
 export function manuelleFigur(uid: number, figNumber: string): Promise<{ id: number } | undefined> {
   return repo.figurZeileManuell(uid, figNumber);
 }
 
-/**
- * CSV-Import manueller Figuren (Spalten fig_number, bl_fig_number, fig_name,
- * quantity, unit_price, condition, acquired_at). Dieselbe Preisregel wie beim
- * Anlegen von Hand, samt Schätzung aus den Teilen.
- */
+/** Dieselbe Preisregel wie beim Anlegen von Hand, samt Schätzung aus den Teilen. */
 export async function importiereFigurenCsv(uid: number, text: string) {
   const { records, bereinigt, uebersprungen } = csvZeilenAusAnfrage(text);
   let added = 0, updated = 0, errors = 0;
