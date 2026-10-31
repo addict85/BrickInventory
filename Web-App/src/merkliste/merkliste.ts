@@ -252,10 +252,6 @@ export async function merkpostenVon(
     // Synchron und gecacht (src/katalog/bilder/images.ts) — kein Dateisystemzugriff je
     // Zeile und Aufruf. Dieselbe Namensregel wie beim Ablegen
     // (src/katalog/bilder/setImages.ts: /images/sets/<setnummer>.jpg).
-    //
-    // ?? null: resolveIfExists() ist als „string | null | undefined"
-    // typisiert; ein fehlendes Bild steht in der Antwort als NULL und nicht
-    // als fehlendes Feld, sonst muessten beide Oberflaechen zwei Faelle kennen.
     const lokal = resolveIfExists(
       `/images/sets/${String(r.set_number).replace(/[^a-z0-9-]/gi, '_')}.jpg`) ?? null;
     if (!lokal && r.image_url) nacharbeit().bildVormerken(String(r.image_url), String(r.set_number));

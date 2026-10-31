@@ -20,10 +20,6 @@ export async function computePnl(viewerId: number, ids: Blickfeld) {
   // ZWEI Grössen, bewusst getrennt:
   //   viewerId — wessen EINSTELLUNGEN gelten (Währung, Cache-Dauer, Preisart)
   //   ids      — WESSEN DATEN gerechnet werden (Blickfeld, ggf. gefiltert)
-  //
-  // Sie fallen auseinander, sobald der Kontofilter auf „Unterkonten" steht:
-  // Dann enthält ids das fragende Konto gar nicht. Die Einstellungen mit
-  // ids[0] zu holen hiesse dort, die Währung eines Kindes zu benutzen.
   const uids = asIds(ids);
   const [currency, ttlHours] = await Promise.all([
     getSetting(viewerId, 'currency', 'EUR'),

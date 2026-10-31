@@ -18,7 +18,6 @@ let _satzZeit = 0;
 
 /**
  * Der Stempel EINER Datei — oder `null`, wenn es sie nicht gibt.
- *
  * `null` und kein Platzhalter: Der Aufrufer laesst den vorhandenen Wert dann
  * stehen. Eine fehlende Datei ist ein anderes Problem (und faellt in
  * test/eigenbruecken auf); sie darf nicht zusaetzlich die Adresse der

@@ -122,9 +122,6 @@ router.get('/settings', requireToken, async (req: AuthedRequest, res) => {
   // GLOBALEN Werte gar nicht. price_cache_ttl und default_price_condition
   // sind aber global; die App bekam dauerhaft die fest verdrahtete 24 bzw.
   // 'N', egal was der Verwalter eingestellt hatte.
-  //
-  // isAdmin=false: Die App ist nie die Verwaltungsoberfläche, und
-  // sanitizeGlobal() blendet Geheimnisse für Nicht-Admins vollständig aus.
   const alle = await readSettings(uid, false);
   const settings: Record<string, string> = {};
   for (const feld of APP_FELDER) {

@@ -100,10 +100,6 @@ router.put('/parts/:partNumber/:colorId/color', requireToken, async (req: Authed
 router.delete('/parts/:partNumber/:colorId', requireToken, async (req: AuthedRequest, res) => {
   // WESSEN Karte war gemeint? Ohne den Parameter das eigene Konto — also
   // unverändert für jeden Client, der ihn nicht kennt.
-  //
-  // resolveWriteTarget() ist derselbe Helfer, den das ERFASSEN schon nutzt
-  // (owner_user_id): Die Ansicht sagt, wessen Zeile gemeint ist; ob das
-  // erlaubt ist, entscheidet der Server über canWriteFor() — nie der Client.
   const besitzer = await resolveWriteTarget(req.apiUser.user_id, req.query.owner);
   if (besitzer === null) return sendeFehler(req, res, 403, 'kein_zugriff_konto');
   const geloescht = await loescheTeil(besitzer, String(req.params.partNumber), V.colorId(req.params.colorId));
@@ -134,7 +130,6 @@ router.post('/parts/owned', requireToken, async (req: AuthedRequest, res) => {
 
 /**
  * PUT /api/v1/parts/:partNumber/:colorId/storage — Lagerort setzen.
- *
  * Trifft ALLE Zeilen des Teil-Farb-Paares im Schreibbereich: Dasselbe Teil
  * steckt in mehreren Sets und damit in mehreren Zeilen. Wer in der Ansicht
  * „Kiste 3" eintraegt, meint das Teil, nicht eine seiner Zeilen — und haette

@@ -287,7 +287,6 @@ async function arbeiteStapel(): Promise<StapelErgebnis> {
     fertig++; erg.geholt++;
   }
   // ── Zurückgelegte Zeilen sind NICHT bearbeitet ────────────
-  //
   // Nach einer Drosselung wandern die restlichen Notizen zurück in die
   // Warteschlange. `rows.length` meldete sie trotzdem als bearbeitet — bei
   // einem Stapel, der schon an der ERSTEN Zeile abbricht, stand da „2

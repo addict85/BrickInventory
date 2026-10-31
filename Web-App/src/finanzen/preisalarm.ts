@@ -226,7 +226,6 @@ export async function ausgeloesteSeit(userId: number, seit: unknown) {
 
 /**
  * Ist die Schwelle gerissen?
- *
  * Eigene Funktion, obwohl es eine Zeile ist: Sie ist die einzige Stelle, an
  * der „unter" und „ueber" etwas bedeuten, und damit die einzige, an der ein
  * Vorzeichenfehler entsteht. Als Ausdruck mitten in einer Schleife wäre sie

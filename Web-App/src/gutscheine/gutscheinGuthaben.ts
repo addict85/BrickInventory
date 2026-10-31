@@ -68,7 +68,6 @@ export class NichtAngemeldet extends Error {}
 
 /**
  * Der Bot-Schutz hat geantwortet, nicht LEGO.
- *
  * Ein eigener Typ und nicht bloss ein Text, weil daran eine HANDLUNG hängt:
  * Der Aufrufer hört auf und fragt eine Weile gar nicht mehr. Ein Fehler, den
  * man nur lesen kann, hätte dazu geführt, dass die Oberfläche es weiter
@@ -155,7 +154,6 @@ async function hole(abruf: Abruf, url: string, init?: Record<string, unknown>) {
 
 /**
  * Antwortet hier der Bot-Schutz?
- *
  * 403 ist der Fall, den der Prototyp nennt. 429 kommt dazu, weil es dasselbe
  * bedeutet — „nicht jetzt" — und dieselbe Handlung verlangt: aufhören. Ein
  * 429 als gewöhnlichen Fehler zu behandeln hiesse, auf eine Bitte um Ruhe mit

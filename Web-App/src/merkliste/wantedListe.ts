@@ -32,7 +32,6 @@ export interface WantedPosten {
 
 /**
  * Der Inhalt zwischen `<name>` und dem nächsten `</name>` ab `ab`.
- *
  * Zwei Suchen nach festem Text statt `<name>([\s\S]*?)</name>`: Das faule
  * Muster setzt bei einem offenen Tag ohne Ende an JEDER Fundstelle neu an und
  * läuft bis ans Dateiende — quadratisch. Fehlt das Ende nach dem ersten Tag,
@@ -486,7 +485,6 @@ function wendeKorrekturenAn(
     const rbFarbe = k.rbFarbe === undefined ? a.rbFarbe : (k.rbFarbe ?? null);
 
     // ── Die Werte aus der Datei (Marcos Wunsch vom 21.10.) ─────────────────
-    //
     // Eine UNBRAUCHBARE Angabe weist die ganze Korrektur ab, statt sie still
     // zurechtzubiegen: Eine Menge 0 ist ein Vertipper, und ein Posten, der
     // danach mit Menge 1 im Bestand steht, sagt das niemandem. Abgewiesene
@@ -552,7 +550,6 @@ function wendeKorrekturenAn(
 
 /**
  * Farbbezeichnung und Farbwert zu den korrigierten Farben nachholen.
- *
  * Die Auflösung holt sie für die Farben aus der DATEI; eine von Hand
  * eingetragene Farbnummer war dort nicht dabei. Ohne diesen Schritt ginge sie
  * ohne Namen an den Anleger — und das ist genau der Farbpunkt ohne
@@ -725,9 +722,6 @@ export async function importiereWantedListe(
         // leer, und die Teileliste liest den Namen von dort — der Hex-Wert
         // faellt auf den Katalog zurueck, der Name NICHT. Ergebnis war ein
         // Farbpunkt ohne Beschriftung (Marcos Bildschirmfoto).
-        //
-        // `a.rbFarbe` ist hier nie null: Ein Posten ohne abbildbare Farbe ist
-        // oben schon als offen ausgeschieden.
         rueckmeldung = await opt.anleger.teil(uid, {
           part_number: rbId,
           color_id: a.rbFarbe ?? 0,

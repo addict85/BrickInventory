@@ -1,10 +1,6 @@
 /**
  * Papierkorb: Wer ein Set, ein manuelles Teil oder eine manuelle Figur
  * löscht, kann es 30 Tage lang zurückholen.
- *
- * Abgelegt wird ein JSON-Schnappschuss aller Zeilen, die das Löschen
- * entfernt (Migration 0041). Wiederhergestellt wird über die Spalten, die es
- * HEUTE gibt — so übersteht ein Eintrag auch eine spätere Spaltenänderung.
  */
 import type { DbSchnittstelle } from '../../db/database';
 import * as db from '../../db/database';

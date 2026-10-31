@@ -44,7 +44,6 @@ export function resolveImageLocal(localPath: string | null | undefined) {
 
   const exists = fs.existsSync(thumbFs);
   // Verdrängung statt Kahlschlag.
-  //
   // VORHER: _thumbCache.clear() — der komplette Cache flog weg, sobald die
   // Grenze erreicht war. Genau danach prasselt für jede Katalogseite wieder
   // die volle Ladung existsSync-Aufrufe herein, also ausgerechnet im Moment

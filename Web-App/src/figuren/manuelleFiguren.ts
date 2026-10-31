@@ -84,7 +84,6 @@ async function addManualFigIntern(uid: number, body: any) {
 
   if (!fig_name) {
     // ── Erst der EIGENE Katalog, dann der fremde Dienst ─────────────────────
-    //
     // Dieselbe Luecke wie bei den Teilen, und aus demselben Befund (Marco,
     // 20.10.: „Wird jedes Teil bei Rebrickable abgefragt auch wenn es lokal
     // bereits vorhanden ist?"). Hier stand nur getMinifigInfo() — ein Abruf je

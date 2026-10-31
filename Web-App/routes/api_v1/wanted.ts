@@ -257,10 +257,6 @@ router.post('/wanted-list/import/xml', requireToken, xmlEmpfang.single('file'),
         merkeNummer: (art, rbId, blId) => merkeBlNummer(art, rbId, blId),
         // Nur wenn jemand zusieht: Ohne Strom ist der Rückruf gar nicht
         // gesetzt, und der Kern spart sich das Zusammenbauen der Meldungen.
-        //
-        // EIN Rückruf, zwei Empfänger: der Strom für den eigenen Tab, der
-        // Auftragsdatensatz für alle anderen Sitzungen. Zwei getrennte
-        // Rückrufe wären zwei Zählungen, die auseinanderlaufen können.
         fortschritt: (stand) => {
           schreibeZeile({ fortschritt: stand });
           // Der Auftrag wird beim ERSTEN Fortschritt angelegt: Vorher ist die

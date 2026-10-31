@@ -1,9 +1,7 @@
 /**
  * Kaufpreis-Erfassungen schreiben — für Sets, manuelle Teile und Minifiguren.
- *
  *   Pro Tag, Element, Zustand, Preis und Währung gibt es genau EINE Zeile;
  *   gleiche Käufe eines Tages werden zusammengezählt.
- *
  * Ausführlich: docs/begruendungen/src/bestand/acquisitions.ts.md#abschnitt
  */
 import * as db from '../../db/database';

@@ -17,7 +17,6 @@ import { setUserSetting, deleteUserSetting } from '../konto/settings';
 
 /**
  * Wie lang ein Lagerortname höchstens sein darf.
- *
  * Kein technisches Limit (die Spalte ist TEXT), sondern ein fachliches: Was
  * hier steht, muss auf eine Kachel und in eine Auswahlliste passen. Ein
  * abgeschnittener Name in der Liste wäre schlimmer als eine Absage beim
@@ -212,7 +211,6 @@ export async function ortFuerNeuerfassung(
 
 /**
  * Die Vorgabe setzen oder abschalten.
- *
  * `null` löscht sie — das ist der zweite Druck auf denselben Stern. Ein Ort,
  * der dem Konto nicht gehört, wird abgelehnt und nicht stillschweigend
  * ignoriert: Der Stern stünde danach am falschen Eintrag, und niemand käme auf

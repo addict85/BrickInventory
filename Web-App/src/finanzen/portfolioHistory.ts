@@ -23,10 +23,6 @@ export async function getPortfolioHistory(
   // Ein Set, EINE Zeile — auch wenn zwei Konten es besitzen. Mengen addiert,
   // Kaufpreis über alle Erfassungen des Haushalts gewichtet. Ohne die
   // Gruppierung käme dasselbe Set zweimal in die Summe.
-  //
-  // Der Rückfall `COALESCE(s.purchase_price,0) * s.quantity` ist mit Migration
-  // 0032 weggefallen; COALESCE(a.total_price, 0) hält die Summe trotzdem
-  // rechenbar, falls die Erfassungen eines Sets alle ohne Preis sind.
   const sets = await repo.setsMitKaufsumme(uids);
   if (!sets.length) {
     return { success:true, currency, period, points:[], y_axis:[], period_change_pct:null, messpunkte:0 };

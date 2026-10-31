@@ -415,10 +415,6 @@ router.post('/change-password', requireLogin, async (req: LoggedInRequest, res) 
   // NACH der Pruefung des alten Passworts: Wer das aktuelle nicht kennt, soll
   // ueber das neue auch nichts erfahren — die Antwort fuer einen Fremden
   // bleibt dieselbe.
-  //
-  // Auch hier fehlte die Pruefung ganz. Zusammen mit PUT /profile waren das
-  // die zwei Wege eines ANGEMELDETEN Kontos — also genau die, auf denen ein
-  // uebernommenes Konto dauerhaft schwach gemacht werden kann.
   if (passwortZuKurz(newPassword)) return sendeFehler(req, res, 400, 'passwort_zu_kurz');
   // Beendet alle Zugänge, auch den eigenen; die Sitzung wird danach neu aufgebaut.
   await K.aendereEigenesPasswort(uid, newPassword);
@@ -569,7 +565,6 @@ router.post('/qr-token', requireLogin, async (req, res) => {
 });
 
 // POST /api/v1/auth/qr-login — Nonce einlösen
-//
 // ipThrottle wie bei register/forgot/reset: Der Endpunkt schreibt ohne
 // Anmeldung in die Datenbank. Die 32-Byte-Nonce ist nicht zu erraten, aber es
 // gab keinen Grund, ausgerechnet hier auf die Drossel zu verzichten — 30
@@ -617,10 +612,6 @@ router.post('/register', ipThrottle('register', 5, 60 * 60 * 1000), async (req, 
     return sendeFehler(req, res, 400, 'passwort_zu_kurz');
   // Dieselben Muster wie überall sonst (src/konto/auth.ts) — hier standen zwei
   // wortgleiche Kopien, und die E-Mail-Regex gab es damit dreimal im Projekt.
-  //
-  // Beim REGISTRIEREN gilt weiterhin nur das Benutzernamen-Muster: Sonst
-  // könnte jemand die E-Mail-Adresse eines anderen als Benutzernamen eintragen
-  // und dessen Anmeldung an sich ziehen — der Login sucht in beiden Spalten.
   if (!EMAIL_RE.test(email))
     return sendeFehler(req, res, 400, 'email_ungueltig');
   if (!USERNAME_RE.test(username))
@@ -715,7 +706,6 @@ router.post('/reset-password', ipThrottle('reset-password', 10, 60 * 60 * 1000),
 });
 
 // ── GET /api/v1/auth/check-token ist ENTFERNT ───────────────────────────────────
-//
 // Sie sagte, ob ein Reset- oder Verifikations-Token noch gilt. Kein Aufrufer:
 // Die Reset-Seite schickt das neue Passwort direkt und wertet die Antwort aus,
 // statt vorher zu fragen. Nachgemessen ueber alle 169 Dateien beider Apps —

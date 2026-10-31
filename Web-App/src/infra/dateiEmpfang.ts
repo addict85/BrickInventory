@@ -9,7 +9,6 @@ import path from 'path';
 
 /**
  * Wie gross eine hochgeladene CSV-Datei sein darf.
- *
  * 15 MB ist der gewachsene Wert aus den drei Fassungen; er ist gross genug für
  * einen vollständigen Bestandsexport aus BrickLink und klein genug, dass eine
  * versehentlich gewählte Datei den Speicher nicht sprengt — `memoryStorage`

@@ -1,6 +1,5 @@
 /**
  * Gemeinsame Middleware der /api/v1-Module.
- *
  * requireToken: akzeptiert Session-Cookie (Webapp) ODER Bearer-Token (Android).
  * requireApiAdmin: requireToken + is_admin-Prüfung — zentral, damit kein
  * Admin-Endpoint den Check versehentlich weglassen kann (genau das war

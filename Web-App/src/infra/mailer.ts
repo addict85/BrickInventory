@@ -89,7 +89,6 @@ export async function sendMail({ to, subject, html, text }: {
 
 /**
  * Maskiert `&`, `<` und `>` fuer die Ausgabe in HTML.
- *
  * Der Parameter ist `unknown` und nicht `string`: Hier laufen Werte aus der
  * Datenbank und aus Formularen hinein, und `String(s || '')` faengt genau das
  * ab. Ein `string`-Typ waere eine Behauptung ueber die Aufrufer, die dieser
