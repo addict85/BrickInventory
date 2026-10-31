@@ -322,6 +322,15 @@ test('die Schreibantworten passen zu den Kotlin-Modellen', { concurrency: 1, tim
     { m: 'POST', p: '/api/v1/admin/brickset-queue/{setNumber}/retry', davor: async () => { w.setNumber = SET2; } },
     { m: 'DELETE', p: '/api/v1/admin/brickset-queue/{setNumber}' },
 
+    // ── Hintergrundarbeiten (Auftragstabelle) ─────────────────────────────
+    { m: 'POST', p: '/api/v1/admin/auftraege/{id}/abbrechen', davor: async () => {
+        w.id = String(await _req('utils/auftraege.js').stelleAuftragEin('anleitung', { set_number: SET },
+          { schluessel: `vertrag:${process.pid}:${Date.now()}` }));
+      } },
+    { m: 'POST', p: '/api/v1/admin/auftraege/{id}/wiederholen' },
+    { m: 'POST', p: '/api/v1/admin/auftraege/art/{art}/jetzt', davor: async () => { w.art = 'anleitung'; } },
+    { m: 'DELETE', p: '/api/v1/admin/auftraege/art/{art}' },
+
     // ── Zum Schluss: Passwort ändern (verwirft alle Token), abmelden ──────
     { m: 'POST', p: '/api/v1/auth/change-password', body: { current: PASS, newPassword: PASS + 'x' } },
     { m: 'POST', p: '/api/v1/auth/logout' },

@@ -8,6 +8,8 @@ import ch.brickinventoryapp.data.model.JobStatus
 import ch.brickinventoryapp.data.repository.BrickRepository
 import ch.brickinventoryapp.data.repository.Result
 import ch.brickinventoryapp.ui.VerwaltungUiState
+import ch.brickinventoryapp.ui.model.alsAnsicht
+import ch.brickinventoryapp.R
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -51,6 +53,13 @@ data class MonitoringUiState(
  * Keine Texte hier: Die Funktionen sagen, was passiert ist; den Satz wählt die
  * Anzeige, wie in FehlerTexte.kt.
  */
+/** Die Hintergrundarbeiten (Auftragstabelle); [fehler] ist der Satz des Servers, etwa bei 403 oder 409. */
+data class HintergrundUiState(
+    val laedt: Boolean = false,
+    val ansicht: ch.brickinventoryapp.ui.model.HintergrundAnsicht? = null,
+    val fehler: String? = null,
+)
+
 @HiltViewModel
 class MonitoringViewModel @Inject constructor(
     private val repo: BrickRepository,
@@ -73,6 +82,45 @@ class MonitoringViewModel @Inject constructor(
             }
             is Result.Error -> _verwaltungState.update { it.copy(protokollLaden = false, fehler = texte.meldung(r)) }
         }
+    }
+
+    private val _hintergrund = MutableStateFlow(HintergrundUiState())
+    val hintergrund = _hintergrund.asStateFlow()
+
+    suspend fun ladeHintergrund() {
+        _hintergrund.update { it.copy(laedt = true) }
+        when (val r = repo.verwaltung.getAuftraege()) {
+            is Result.Success -> _hintergrund.update { HintergrundUiState(ansicht = r.data.alsAnsicht()) }
+            is Result.Error -> _hintergrund.update { it.copy(laedt = false, fehler = texte.meldung(r)) }
+        }
+    }
+
+    /**
+     * Abbrechen, wiederholen, starten, leeren: Das Ergebnis ist der Satz für die
+     * Meldung — bei 409 der des Servers, denn nur er weiss, warum der Auftrag
+     * inzwischen nicht mehr passt. Danach wird die Liste neu geholt, so oder so.
+     */
+    suspend fun brichAuftragAb(id: String): String =
+        nachAuftrag(repo.verwaltung.brichAuftragAb(id)) { texte.text(R.string.hintergrund_abgebrochen_ok) }
+
+    suspend fun wiederholeAuftrag(id: String): String =
+        nachAuftrag(repo.verwaltung.wiederholeAuftrag(id)) { texte.text(R.string.hintergrund_wiederholt_ok) }
+
+    suspend fun starteAuftragsArt(art: String, name: String): String =
+        nachAuftrag(repo.verwaltung.starteAuftragsArt(art)) {
+            texte.text(if (it.gestartet) R.string.hintergrund_gestartet else R.string.hintergrund_nichts_gestartet, name)
+        }
+
+    suspend fun leereAuftragsArt(art: String): String =
+        nachAuftrag(repo.verwaltung.leereAuftragsArt(art)) { texte.menge(R.plurals.hintergrund_geleert, it.entfernt, it.entfernt) }
+
+    private suspend fun <T> nachAuftrag(r: Result<T>, erfolg: (T) -> String): String {
+        val satz = when (r) {
+            is Result.Success -> erfolg(r.data)
+            is Result.Error -> texte.meldung(r)
+        }
+        ladeHintergrund()
+        return satz
     }
 
     suspend fun ladeJobs() {

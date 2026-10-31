@@ -130,6 +130,30 @@ interface VerwaltungApi {
     @POST("api/v1/admin/redownload-missing-images")
     suspend fun redownloadMissingImages(): Response<GenericAdminResponse>
 
+    /**
+     * Hintergrundarbeiten aus der Auftragstabelle; ohne [status] alles ausser
+     * „erledigt“. Nur mit vollem Scope, sonst 403.
+     */
+    @GET("api/v1/admin/auftraege")
+    suspend fun getAuftraege(
+        @Query("status") status: String? = null,
+        @Query("art") art: String? = null,
+    ): Response<AuftraegeResponse>
+
+    /** Nur bei „offen“ und „läuft“, sonst 409. */
+    @POST("api/v1/admin/auftraege/{id}/abbrechen")
+    suspend fun brichAuftragAb(@Path("id") id: String): Response<AuftragAenderung>
+
+    /** Nur bei „Fehler“ und „abgebrochen“, sonst 409. */
+    @POST("api/v1/admin/auftraege/{id}/wiederholen")
+    suspend fun wiederholeAuftrag(@Path("id") id: String): Response<AuftragAenderung>
+
+    @POST("api/v1/admin/auftraege/art/{art}/jetzt")
+    suspend fun starteAuftragsArt(@Path("art") art: String): Response<AuftragsArtStart>
+
+    @DELETE("api/v1/admin/auftraege/art/{art}")
+    suspend fun leereAuftragsArt(@Path("art") art: String): Response<AuftragsArtLeerung>
+
     @POST("api/v1/admin/trigger-csv-sync")
     suspend fun triggerCsvSync(): Response<GenericAdminResponse>
 

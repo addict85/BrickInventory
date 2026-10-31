@@ -165,26 +165,6 @@ const NUR_WEB = new Map([
    'Protokoll der Verwalteraktionen an fremden Konten. Diese Aktionen ' +
    '(Passwort setzen, Rolle, Löschen) gibt es absichtlich nur in der ' +
    'Webapp (VerwaltungApi.kt nennt den Grund), also auch ihr Protokoll.'],
-  ['/api/v1/admin/auftraege',
-   'Die Hintergrundarbeiten (Auftragstabelle) zeigt die Webapp seit dem ' +
-   'Umbau auf Aufträge; die App bekommt dieselbe Ansicht im nächsten ' +
-   'Android-Stand (Beschreibung im Bericht dieses Umbaus, 30.10.2026).'],
-  ['/api/v1/admin/auftraege/:X/abbrechen',
-   'Die Hintergrundarbeiten (Auftragstabelle) zeigt die Webapp seit dem ' +
-   'Umbau auf Aufträge; die App bekommt dieselbe Ansicht im nächsten ' +
-   'Android-Stand (Beschreibung im Bericht dieses Umbaus, 30.10.2026).'],
-  ['/api/v1/admin/auftraege/:X/wiederholen',
-   'Die Hintergrundarbeiten (Auftragstabelle) zeigt die Webapp seit dem ' +
-   'Umbau auf Aufträge; die App bekommt dieselbe Ansicht im nächsten ' +
-   'Android-Stand (Beschreibung im Bericht dieses Umbaus, 30.10.2026).'],
-  ['/api/v1/admin/auftraege/art/:X/jetzt',
-   'Die Hintergrundarbeiten (Auftragstabelle) zeigt die Webapp seit dem ' +
-   'Umbau auf Aufträge; die App bekommt dieselbe Ansicht im nächsten ' +
-   'Android-Stand (Beschreibung im Bericht dieses Umbaus, 30.10.2026).'],
-  ['/api/v1/admin/auftraege/art/:X',
-   'Die Hintergrundarbeiten (Auftragstabelle) zeigt die Webapp seit dem ' +
-   'Umbau auf Aufträge; die App bekommt dieselbe Ansicht im nächsten ' +
-   'Android-Stand (Beschreibung im Bericht dieses Umbaus, 30.10.2026).'],
   ['/api/v1/admin/job-status',
    'Stand des Preis-Jobs samt BrickLink-Kontingent. Die App zeigt BEIDES ' +
    'schon: den Fortschritt über /admin/jobs (jobMonitor, mit progress/total) ' +

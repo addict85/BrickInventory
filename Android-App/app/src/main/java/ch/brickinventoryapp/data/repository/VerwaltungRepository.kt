@@ -103,6 +103,17 @@ class VerwaltungRepository @Inject constructor(
 
     suspend fun redownloadMissingImages(): Result<GenericAdminResponse> = safeCall { api.redownloadMissingImages() }
 
+    suspend fun getAuftraege(status: String? = null, art: String? = null): Result<AuftraegeResponse> =
+        safeCall { api.getAuftraege(status, art) }
+
+    suspend fun brichAuftragAb(id: String): Result<AuftragAenderung> = safeCall { api.brichAuftragAb(id) }
+
+    suspend fun wiederholeAuftrag(id: String): Result<AuftragAenderung> = safeCall { api.wiederholeAuftrag(id) }
+
+    suspend fun starteAuftragsArt(art: String): Result<AuftragsArtStart> = safeCall { api.starteAuftragsArt(art) }
+
+    suspend fun leereAuftragsArt(art: String): Result<AuftragsArtLeerung> = safeCall { api.leereAuftragsArt(art) }
+
     suspend fun triggerCsvSync(): Result<GenericAdminResponse> = safeCall { api.triggerCsvSync() }
 
     suspend fun reimportInstructions(): Result<GenericAdminResponse> = safeCall { api.reimportInstructions() }

@@ -856,4 +856,47 @@
     <string name="widget_heute">Heute</string>
     <string name="widget_gesamt">Gesamt</string>
     <string name="widget_leer">Öffne die App einmal, um die Zahlen zu laden.</string>
+    <!-- Hintergrundarbeiten (Auftragstabelle), Namen wie monitor.* in der Webapp -->
+    <string name="art_nacharbeit">Nacharbeit nach dem Erfassen</string>
+    <string name="art_bilder">Bilder eines Sets</string>
+    <string name="art_pdf">PDF-Teileliste</string>
+    <string name="art_csv_import">CSV-Import von Sets</string>
+    <string name="art_wechselkurse">Wechselkurse (EZB)</string>
+    <string name="art_anleitung">Anleitung laden</string>
+    <string name="art_brickset">Brickset: erneuter Versuch</string>
+    <string name="art_bildbedarf">Katalogbilder laden</string>
+    <string name="art_bilder_neu_laden">Fehlende Bilder neu laden</string>
+    <string name="art_nachlauf">Nachlauf beim Start</string>
+    <string name="art_csv_sync">Rebrickable-Katalog</string>
+    <string name="art_preise">Preise aktualisieren</string>
+    <string name="art_bild_nachlauf">Bild-Download (CDN)</string>
+    <string name="art_aufraeumen">Aufräumen (stündlich)</string>
+    <string name="art_aufraeumen_taeglich">Aufräumen (täglich)</string>
+    <string name="hintergrund_titel">Hintergrundarbeiten</string>
+    <string name="hintergrund_kein_prozess">Kein Job-Prozess meldet sich — läuft der Dienst „jobs“?</string>
+    <string name="hintergrund_pause">%1$s pausiert bis %2$s: %3$s</string>
+    <string name="hintergrund_leer">Keine offenen oder gescheiterten Aufträge</string>
+    <string name="hintergrund_offen">offen</string>
+    <string name="hintergrund_laeuft">läuft</string>
+    <string name="hintergrund_fehler">Fehler</string>
+    <string name="hintergrund_abgebrochen">abgebrochen</string>
+    <string name="hintergrund_geplant">geplant für %1$s</string>
+    <string name="hintergrund_faellig">fällig ab %1$s</string>
+    <string name="hintergrund_versuch">Versuch %1$d von %2$d</string>
+    <string name="hintergrund_jetzt">Jetzt</string>
+    <string name="hintergrund_leeren">Leeren</string>
+    <string name="hintergrund_abbrechen">Abbrechen</string>
+    <string name="hintergrund_wiederholen">Wiederholen</string>
+    <plurals name="hintergrund_geleert">
+        <item quantity="one">%1$d Auftrag entfernt</item>
+        <item quantity="other">%1$d Aufträge entfernt</item>
+    </plurals>
+    <plurals name="hintergrund_bildbedarf">
+        <item quantity="one">%1$d Bild vorgemerkt</item>
+        <item quantity="other">%1$d Bilder vorgemerkt</item>
+    </plurals>
+    <string name="hintergrund_abgebrochen_ok">Auftrag abgebrochen</string>
+    <string name="hintergrund_wiederholt_ok">Auftrag wird wiederholt</string>
+    <string name="hintergrund_gestartet">%1$s startet</string>
+    <string name="hintergrund_nichts_gestartet">%1$s: nichts zu starten</string>
 </resources>
