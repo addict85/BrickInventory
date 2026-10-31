@@ -3,7 +3,7 @@ import type { DbSchnittstelle } from '../../db/database';
 import { lookupPart } from '../../clients/rebrickable';
 import { meldeUndWeiter, meldeUndLiefere } from '../infra/httpError';
 import { merkeTeilFarbe, katalogTeil } from '../katalog/katalogPflege';
-import { erfassungsTagSql } from '../bestand/acquisitions';
+import { erfassungsTagSql } from '../../db/bestandsmenge';
 import { colorId } from '../infra/validate';
 
 /**

@@ -107,7 +107,7 @@ test('Schreib-Endpunkte ohne Anmeldung tragen eine Drossel', () => {
   //
   // pruefeAnmeldedaten steht in der Liste, seit die Anmeldung dorthin
   // zusammengezogen ist: Die Drossel (checkLoginAllowed) sitzt jetzt IN dieser
-  // Funktion, POST /login ruft nur noch sie auf. Ohne den Eintrag würde
+  // Funktion, POST /login ruft sie über anmelden() auf. Ohne den Eintrag würde
   // ausgerechnet das Zusammenlegen als ungeschützter Endpunkt gemeldet.
   const src = quelle('routes/auth.ts');
   const stellen = [...src.matchAll(/router\.(post|put|delete)\('([^']+)'/g)];
@@ -118,7 +118,7 @@ test('Schreib-Endpunkte ohne Anmeldung tragen eine Drossel', () => {
     const von = stellen[i].index;
     const bis = i + 1 < stellen.length ? stellen[i + 1].index : src.length;
     const rumpf = src.slice(von, bis);
-    const geschuetzt = /requireLogin|requireToken|requireAdmin|ipThrottle|checkLoginAllowed|pruefeAnmeldedaten|req\.session\??\.?\.?userId/.test(rumpf);
+    const geschuetzt = /requireLogin|requireToken|requireAdmin|ipThrottle|checkLoginAllowed|pruefeAnmeldedaten|anmelden\(|req\.session\??\.?\.?userId/.test(rumpf);
     if (!geschuetzt) offen.push(`${stellen[i][1].toUpperCase()} ${stellen[i][2]}`);
   }
   assert.deepEqual(offen, [], `weder Anmeldung noch Drossel: ${offen.join(', ')}`);

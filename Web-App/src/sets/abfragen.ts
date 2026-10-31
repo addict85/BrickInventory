@@ -1,5 +1,5 @@
 import { resolveOne } from '../katalog/bricklinkLink';
-import { inKontowaehrung, kontowaehrungJoin } from '../bestand/acquisitions';
+import { inKontowaehrung, kontowaehrungJoin } from '../../db/bestandsmenge';
 import { meldeUndWeiter, meldeUndLiefere } from '../infra/httpError';
 import { fuerSet } from '../finanzen/preisvergleich';
 import * as db from '../../db/database';

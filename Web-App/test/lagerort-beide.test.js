@@ -294,7 +294,7 @@ test('beide bieten auswählen UND neu eintippen in EINEM Feld', () => {
   // Zeile keine ID), und beides laeuft deshalb in einer Transaktion in
   // setzeLagerort(). Gesucht wird jetzt die Anweisung selbst — die Aussage
   // bleibt, dass ein getippter Ort in den Vorrat kommt.
-  assert.match(web('src/bestand/lagerort.ts'),
+  assert.match(web('src/bestand/repository/lagerort.ts'),
     /INSERT INTO storage_locations \(user_id, name\)\s*\n\s*SELECT id, \$2 FROM users/,
     'Ein frisch getippter Ort landet nicht im Vorrat');
 });
