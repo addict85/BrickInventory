@@ -165,7 +165,8 @@ async function starteApp(t, opt = {}) {
   const bis = async (ausdruck, was, versuche = 100) => {
     for (let i = 0; i < versuche; i++) { if (await b.auswerten(ausdruck).catch(() => false)) return; await warte(100); }
     const zustand = await b.auswerten(`document.body.innerText.slice(0, 300)`).catch(e => e.message);
-    throw new Error(`Zeitüberschreitung: ${was} — ${zustand}`);
+    const s401 = abgewiesen.length ? `\n401 auf: ${abgewiesen.join(', ')}` : '';
+    throw new Error(`Zeitüberschreitung: ${was} — ${zustand}${s401}\nServer:\n${server.log().slice(-3000)}`);
   };
   await b.tab('Page.navigate', { url: `http://127.0.0.1:${port}/` });
   await bis(`typeof document.getElementById('btn-login')?.onclick === 'function'`, 'Anmeldemaske');
