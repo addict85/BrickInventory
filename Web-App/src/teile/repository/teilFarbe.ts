@@ -15,7 +15,7 @@ export function manuelleTeilzeileSperren(tx: DbSchnittstelle, uid: number, partN
 }
 
 /** Erfassungen, die es in der neuen Farbe am selben Tag gleich schon gibt, dort aufstocken. */
-export function stockeGleicheErfassungenAuf(tx: DbSchnittstelle, uid: number, partNumber: string, alt: unknown, neu: unknown) {
+export function stockeGleicheErfassungenAuf(tx: DbSchnittstelle, uid: number, partNumber: string, alt: number, neu: number) {
   return tx.run(`UPDATE part_acquisitions z
           SET quantity = z.quantity + a.quantity
          FROM part_acquisitions a
@@ -26,7 +26,7 @@ export function stockeGleicheErfassungenAuf(tx: DbSchnittstelle, uid: number, pa
           AND z.currency = a.currency AND COALESCE(z.unit_price, -1) = COALESCE(a.unit_price, -1)`, [uid, partNumber, alt, neu]);
 }
 
-export function loescheAufgestockteErfassungen(tx: DbSchnittstelle, uid: number, partNumber: string, alt: unknown, neu: unknown) {
+export function loescheAufgestockteErfassungen(tx: DbSchnittstelle, uid: number, partNumber: string, alt: number, neu: number) {
   return tx.run(`DELETE FROM part_acquisitions a
         WHERE a.user_id = $1 AND a.part_number = $2 AND a.color_id = $3
           AND EXISTS (SELECT 1 FROM part_acquisitions z
@@ -36,7 +36,7 @@ export function loescheAufgestockteErfassungen(tx: DbSchnittstelle, uid: number,
                          AND z.currency = a.currency AND COALESCE(z.unit_price, -1) = COALESCE(a.unit_price, -1))`, [uid, partNumber, alt, neu]);
 }
 
-export function faerbeErfassungenUm(tx: DbSchnittstelle, uid: number, partNumber: string, alt: unknown, neu: unknown) {
+export function faerbeErfassungenUm(tx: DbSchnittstelle, uid: number, partNumber: string, alt: number, neu: number) {
   return tx.run(`UPDATE part_acquisitions SET color_id = $4
         WHERE user_id = $1 AND part_number = $2 AND color_id = $3`, [uid, partNumber, alt, neu]);
 }

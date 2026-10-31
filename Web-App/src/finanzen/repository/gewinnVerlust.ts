@@ -2,7 +2,7 @@ import * as db from '../../../db/database';
 
 /** Abfragen der Gewinn- und Verlustrechnung: Sets im Blickfeld und ihre Marktpreise. */
 
-export function setsMitErfassungen(uids: unknown[]) {
+export function setsMitErfassungen(uids: number[]) {
   return db.all(`SELECT s.set_number, c.name, c.year,
             -- Menge aus den Erfassungen (Gruppierung a unten), kein zweiter JOIN.
             COALESCE(a.total_qty, 0)::int AS quantity,
@@ -24,14 +24,14 @@ export function setsMitErfassungen(uids: unknown[]) {
 }
 
 /** Aus dem Cache, nur innerhalb der Gültigkeit (ttl). */
-export function frischeMarktpreise(setNumbers: unknown, currency: unknown, ttl: unknown) {
+export function frischeMarktpreise(setNumbers: string[], currency: string, ttl: number) {
   return db.all(`SELECT set_number, condition, avg_price, qty_avg_price FROM price_cache
          WHERE set_number = ANY($1) AND condition IN ('U','N') AND currency_code=$2
            AND fetched_at > NOW() - make_interval(hours => $3)`, [setNumbers, currency, ttl]);
 }
 
 /** Der jüngste Preis je Set und Zustand im Verlauf — wo der Cache nichts hat. */
-export function letzteMarktpreiseAusVerlauf(setNumbers: unknown, currency: unknown) {
+export function letzteMarktpreiseAusVerlauf(setNumbers: string[], currency: string) {
   return db.all(`SELECT DISTINCT ON (set_number, condition) set_number, condition, avg_price, qty_avg_price
          FROM price_history
          WHERE set_number = ANY($1) AND currency_code=$2 AND condition IN ('U','N')

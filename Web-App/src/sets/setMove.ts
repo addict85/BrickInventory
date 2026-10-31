@@ -99,8 +99,7 @@ export async function moveManualAcquisition(
   const remaining = Math.max(0, await repo.erfassteMenge(tx, kind, fromId, keyValues) - movingQty);
 
   const dst = await repo.manuelleZeile(tx, kind, toId, keyValues);
-  if (!dst) await repo.legeManuellAn(tx, kind, toId,
-    kind === 'part' ? [src.part_number, src.color_id] : [src.fig_number]);
+  if (!dst) await repo.legeManuellAn(tx, kind, toId, keyValues);
 
   await recordAcquisitionForDay(kind, toId, keyValues, {
     quantity: movingQty, price: acq.unit_price,

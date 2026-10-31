@@ -2,32 +2,32 @@ import * as db from '../../../db/database';
 
 /** Die Merkliste (wanted) je Konto, Set und Zustand. */
 
-export function merkeSetVor(userId: number, sn: string, c: unknown, wert4: unknown) {
+export function merkeSetVor(userId: number, sn: string, c: string, seit: Date | string | null) {
   return db.get(`INSERT INTO wanted (user_id, set_number, condition, created_at)
      VALUES ($1,$2,$3, COALESCE($4::timestamptz, NOW()))
      ON CONFLICT (user_id, set_number, condition) DO UPDATE
         SET condition = wanted.condition
-     RETURNING (xmax = 0) AS war_neu`, [userId, sn, c, wert4]);
+     RETURNING (xmax = 0) AS war_neu`, [userId, sn, c, seit]);
 }
 
-export function streicheVormerkung(userId: number, setNumber: string, c: unknown) {
+export function streicheVormerkung(userId: number, setNumber: string, c: string) {
   return db.run('DELETE FROM wanted WHERE user_id=$1 AND set_number=$2 AND condition=$3', [userId, setNumber, c]);
 }
 
-export function istVorgemerkt(zuId: number, sn: string, c: unknown) {
+export function istVorgemerkt(zuId: number, sn: string, c: string) {
   return db.get('SELECT 1 FROM wanted WHERE user_id=$1 AND set_number=$2 AND condition=$3', [zuId, sn, c]);
 }
 
-export function uebertrageVormerkung(zuId: number, vonId: number, sn: string, c: unknown) {
+export function uebertrageVormerkung(zuId: number, vonId: number, sn: string, c: string) {
   return db.run('UPDATE wanted SET user_id=$1 WHERE user_id=$2 AND set_number=$3 AND condition=$4', [zuId, vonId, sn, c]);
 }
 
 /** Der Preisalarm wandert mit der Vormerkung ins andere Konto. */
-export function uebertrageAlarm(zuId: number, vonId: number, sn: string, c: unknown) {
+export function uebertrageAlarm(zuId: number, vonId: number, sn: string, c: string) {
   return db.run('UPDATE price_alerts SET user_id=$1 WHERE user_id=$2 AND set_number=$3 AND condition=$4', [zuId, vonId, sn, c]);
 }
 
-export function merklisteImBlickfeld(werte: unknown[], pWaehrung: string | number, wo: string | number, ordnung: string | number) {
+export function merklisteImBlickfeld(werte: unknown[], pWaehrung: string, wo: string, ordnung: string) {
   return db.all(`SELECT w.set_number, w.condition, w.created_at, w.user_id,
             COALESCE(rb.name, sc.name) AS name, COALESCE(rb.year, sc.year) AS year, rb.theme_id,
             COALESCE(rb.num_parts, sc.pieces) AS num_parts,

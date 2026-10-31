@@ -9,23 +9,23 @@ export function figurenDesSetkatalogs(setNumber: string) {
       WHERE set_number = $1`, [setNumber]);
 }
 
-export function fuegeSetFigurenEin(tx: DbSchnittstelle, userId: number, setNumber: string, nummern: unknown[]) {
+export function fuegeSetFigurenEin(tx: DbSchnittstelle, userId: number, setNumber: string, nummern: string[]) {
   return tx.run(`INSERT INTO minifigs (user_id, set_number, fig_number, source)
        SELECT $1, $2, f, 'set' FROM unnest($3::text[]) AS f ON CONFLICT DO NOTHING`, [userId, setNumber, nummern]);
 }
 
 /** Was der Katalog nicht mehr führt, fällt weg. */
-export function entferneFremdeSetFiguren(tx: DbSchnittstelle, userId: number, setNumber: string, nummern: unknown[]) {
+export function entferneFremdeSetFiguren(tx: DbSchnittstelle, userId: number, setNumber: string, nummern: string[]) {
   return tx.run(`DELETE FROM minifigs WHERE user_id=$1 AND set_number=$2 AND source='set' AND NOT (fig_number = ANY($3::text[]))`, [userId, setNumber, nummern]);
 }
 
-export function fuegeSetTeileEin(tx: DbSchnittstelle, userId: number, n: unknown, teile: unknown, farben: unknown) {
+export function fuegeSetTeileEin(tx: DbSchnittstelle, userId: number, n: string, teile: string[], farben: number[]) {
   return tx.run(`INSERT INTO parts (user_id, set_number, part_number, color_id)
            SELECT $1, $2, p, f FROM unnest($3::text[], $4::int[]) AS x(p, f) ON CONFLICT DO NOTHING`, [userId, n, teile, farben]);
 }
 
 /** Was der Katalog nicht mehr führt, fällt weg. */
-export function entferneFremdeSetTeile(tx: DbSchnittstelle, userId: number, n: unknown, teile: unknown, farben: unknown) {
+export function entferneFremdeSetTeile(tx: DbSchnittstelle, userId: number, n: string, teile: string[], farben: number[]) {
   return tx.run(`DELETE FROM parts WHERE user_id=$1 AND set_number=$2 AND source='set'
               AND (part_number, color_id) NOT IN (SELECT * FROM unnest($3::text[], $4::int[]))`, [userId, n, teile, farben]);
 }

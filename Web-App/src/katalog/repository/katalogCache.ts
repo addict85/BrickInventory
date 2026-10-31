@@ -44,7 +44,7 @@ export async function cacheZahlen(): Promise<{ subsets: number; catalog: number;
   return { subsets, catalog, prices };
 }
 
-export function blTypenDerSets(setNummern: unknown[]) {
+export function blTypenDerSets(setNummern: string[]) {
   return db.all('SELECT set_number, bl_type FROM catalog_cache WHERE set_number = ANY($1::text[])', [setNummern]);
 }
 

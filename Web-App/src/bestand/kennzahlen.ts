@@ -13,12 +13,12 @@ export async function getStats(userId: number | number[]) {
   // auch die Daten seiner Unterkonten, alle anderen nur ihre eigenen. Die
   // Liste kommt von scopeIds() in src/haushalt/haushalt.ts — hier wird sie nur
   // normalisiert, damit ältere Aufrufer mit einer nackten ID weiter gehen.
-  const uids = asIds(userId as any);
+  const uids = asIds(userId);
   const [setsRow, instrRow, partsRow, minifigsRow, cur] = await Promise.all([
     // COUNT(DISTINCT set_number), nicht COUNT(*).
     // Ausführlich: docs/begruendungen/src/bestand/kennzahlen.ts.md#getstats-2
     repo.setZahlen(uids),
-    repo.anleitungsZahlen(uids, userId),
+    repo.anleitungsZahlen(uids, uids),
     // Der Faktor ist die Set-Menge aus den Erfassungen. `fehlt = 1`, weil er
     // in einer MULTIPLIKATION steht: Ein Teil ohne Set-Zeile (manuell
     // erfasst) zaehlt einfach, nicht null — dieselbe Lesart wie das

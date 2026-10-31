@@ -89,7 +89,7 @@ export type ErfassungImFeld = { id: number; user_id: number; condition: string |
   price_estimated: boolean; currency: string; tag: string };
 
 /** Nur im Schreib-Blickfeld; beim Set zusätzlich an der Setnummer der Anfrage. */
-export function erfassungImSchreibfeld(tx: DbSchnittstelle, art: ErfassungsArt, id: number, wids: number[], schluessel: unknown[]) {
+export function erfassungImSchreibfeld(tx: DbSchnittstelle, art: ErfassungsArt, id: number, wids: number[], schluessel: (string | number)[]) {
   const s = SHAPES[art];
   return tx.get<ErfassungImFeld>(
     `SELECT id, user_id, condition, ${s.price} AS preis, price_estimated, currency, (${erfassungsTagSql()})::text AS tag

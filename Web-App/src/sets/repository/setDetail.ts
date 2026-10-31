@@ -13,7 +13,7 @@ export function setKatalog(setNumber: string) {
   return db.get<SetStamm>('SELECT name, image_local, image_url, year, pieces, theme, minifigs FROM set_catalog WHERE set_number=$1', [setNumber]);
 }
 
-export function merkeKatalogCache(setNumber: string, name: string, year: unknown, theme: unknown, pieces: unknown, imageUrl: unknown) {
+export function merkeKatalogCache(setNumber: string, name: string, year: number | null, theme: string | null, pieces: number | null, imageUrl: string | null) {
   return db.run('INSERT INTO catalog_cache(set_number,name,year,theme,pieces,image_url) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(set_number) DO UPDATE SET name=$2,year=$3,theme=$4,pieces=$5,image_url=$6', [setNumber, name, year, theme, pieces, imageUrl]);
 }
 
@@ -21,7 +21,7 @@ export function katalogCacheEintrag(setNumber: string) {
   return db.get<SetStamm>('SELECT name, image_url, year, pieces, theme FROM catalog_cache WHERE set_number=$1', [setNumber]);
 }
 
-export function ersterKatalogTreffer(nummern: unknown[]) {
+export function ersterKatalogTreffer(nummern: string[]) {
   return db.get('SELECT set_number, name FROM catalog_cache WHERE set_number = ANY($1) LIMIT 1', [nummern]);
 }
 
@@ -57,7 +57,7 @@ export function inventarFigurenDesSets(invId: number) {
         WHERE ip.inventory_id = $1 AND ip.part_num LIKE 'fig-%'`, [invId]);
 }
 
-export function setImFeld(setNumber: string, blickfeld: unknown) {
+export function setImFeld(setNumber: string, blickfeld: number[]) {
   return db.get('SELECT 1 AS da FROM sets WHERE set_number = $1 AND user_id = ANY($2) LIMIT 1', [setNumber, blickfeld]);
 }
 
@@ -69,7 +69,7 @@ export function setDesKontos(uid: number, setNumber: string) {
   return db.get('SELECT 1 AS ok FROM sets WHERE user_id = $1 AND set_number = $2', [uid, setNumber]);
 }
 
-export function fuegeAnleitungEin(uid: number, setNumber: string, pfad: unknown, beschreibung: unknown, lokalerPfad: unknown) {
+export function fuegeAnleitungEin(uid: number, setNumber: string, pfad: string, beschreibung: string | null, lokalerPfad: string) {
   return db.run('INSERT INTO instructions (user_id,set_number,url,description,local_path) VALUES ($1,$2,$3,$4,$5) ON CONFLICT DO NOTHING', [uid, setNumber, pfad, beschreibung, lokalerPfad]);
 }
 
@@ -81,6 +81,6 @@ export function loescheAnleitung(id: string, uid: number) {
   return db.run('DELETE FROM instructions WHERE id = $1 AND user_id = $2', [id, uid]);
 }
 
-export function anleitungsdateiBenutzt(pfad: unknown) {
+export function anleitungsdateiBenutzt(pfad: string) {
   return db.get('SELECT 1 AS ok FROM instructions WHERE local_path = $1 LIMIT 1', [pfad]);
 }

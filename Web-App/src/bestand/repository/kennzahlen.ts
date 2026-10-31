@@ -11,12 +11,12 @@ export function setZahlen(uids: number[]) {
              WHERE s.user_id = ANY($1)`, [uids]);
 }
 
-export function anleitungsZahlen(uids: unknown[], userId: unknown) {
+export function anleitungsZahlen(uids: number[], eigene: number[]) {
   return db.get(`
       SELECT
         (SELECT COUNT(*) FROM shared_instructions si
            JOIN sets s ON s.set_number = si.set_number AND s.user_id = ANY($1)) +
-        (SELECT COUNT(*) FROM instructions WHERE user_id = ANY($2)) AS total_instructions`, [uids, userId]);
+        (SELECT COUNT(*) FROM instructions WHERE user_id = ANY($2)) AS total_instructions`, [uids, eigene]);
 }
 
 export function teileImBestand(uids: number[]) {

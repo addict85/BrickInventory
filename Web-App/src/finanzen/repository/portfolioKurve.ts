@@ -2,7 +2,7 @@ import * as db from '../../../db/database';
 
 /** Abfragen der Portfolio-Kurve: Tageswerte aus Verlauf und Cache je Set und Menge. */
 
-export function tageswerteAusVerlauf(currency: unknown, condition: string, setNumbers: string[], mengen: number[], datumsFilter: string, bExpr: string) {
+export function tageswerteAusVerlauf(currency: string, condition: string, setNumbers: string[], mengen: number[], datumsFilter: string, bExpr: string) {
   return db.all(`WITH mengen AS MATERIALIZED (
        SELECT * FROM unnest($3::text[], $4::int[]) AS m(set_number, qty)
      ),
@@ -61,7 +61,7 @@ export function tageswerteAusVerlauf(currency: unknown, condition: string, setNu
       ORDER BY t.bucket`.replace('@BUCKET@', bExpr), [currency, condition, setNumbers, mengen]);
 }
 
-export function cachePreiseDerSets(currency: unknown, condition: string, setNumbers: string[], placeholders: string) {
+export function cachePreiseDerSets(currency: string, condition: string, setNumbers: string[], placeholders: string) {
   return db.all(`SELECT set_number, qty_avg_price, avg_price,
               to_char(fetched_at,'YYYY-MM-DD') AS day,
               to_char(fetched_at,'YYYY-MM')    AS month
@@ -71,7 +71,7 @@ export function cachePreiseDerSets(currency: unknown, condition: string, setNumb
        ORDER BY fetched_at ASC, (condition = $2) ASC`, [currency, condition, ...setNumbers]);
 }
 
-export function letzteWerteVorBeginn(currency: unknown, condition: string, setNumbers: unknown, mengen: unknown, ersterTag: unknown, datumsFilter: string) {
+export function letzteWerteVorBeginn(currency: string, condition: string, setNumbers: string[], mengen: number[], ersterTag: string, datumsFilter: string) {
   return db.all(`WITH mengen AS MATERIALIZED (
          SELECT * FROM unnest($3::text[], $4::int[]) AS m(set_number, qty)
        ),
@@ -101,7 +101,7 @@ export function letzteWerteVorBeginn(currency: unknown, condition: string, setNu
          FROM letzte l JOIN mengen m ON m.set_number = l.set_number`, [currency, condition, setNumbers, mengen, ersterTag]);
 }
 
-export function setsMitKaufsumme(uids: unknown[]) {
+export function setsMitKaufsumme(uids: number[]) {
   return db.all(`SELECT s.set_number, COALESCE(SUM(a.total_qty), 0)::int AS quantity,
             SUM(COALESCE(a.total_price, 0))
               / NULLIF(SUM(a.total_qty), 0) AS purchase_price

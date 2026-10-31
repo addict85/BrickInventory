@@ -26,10 +26,10 @@ export function hatBrickinstructions(setNumber: string) {
   return db.get("SELECT 1 FROM shared_instructions WHERE set_number = $1 AND url LIKE '%brickinstructions%'", [setNumber]);
 }
 
-export function merkeAnleitung(setNumber: string, url: unknown, beschreibung: unknown, lokalerPfad: unknown) {
+export function merkeAnleitung(setNumber: string, url: string, beschreibung: string | null, lokalerPfad: string | null) {
   return db.run('INSERT INTO shared_instructions (set_number,url,description,local_path) VALUES ($1,$2,$3,$4) ON CONFLICT (set_number,url) DO NOTHING', [setNumber, url, beschreibung, lokalerPfad]);
 }
 
-export function setzeAnleitungsdatei(lokalerPfad: unknown, setNumber: string) {
+export function setzeAnleitungsdatei(lokalerPfad: string, setNumber: string) {
   return db.run('UPDATE shared_instructions SET local_path = $1 WHERE set_number = $2 AND local_path IS NULL', [lokalerPfad, setNumber]);
 }

@@ -6,7 +6,7 @@ import * as db from '../../../db/database';
 /** Datenzugriff auf Sets und Set-Stammdaten. */
 
 /** Das eigene Konto gewinnt, wenn mehrere Konten das Set halten. */
-export function setImBlickfeld(ids: unknown[], setNumber: string, viewerId: number) {
+export function setImBlickfeld(ids: number[], setNumber: string, viewerId: number) {
   return db.get(`SELECT set_number, user_id FROM sets
       WHERE user_id = ANY($1) AND set_number = $2
       -- Das eigene Konto gewinnt, wenn mehrere Konten dasselbe Set haben:
@@ -17,14 +17,14 @@ export function setImBlickfeld(ids: unknown[], setNumber: string, viewerId: numb
 }
 
 /** Der angefragte Zustand gewinnt, wenn er einen Preis hat; der andere nur, wo keiner steht. */
-export function marktpreisAusCache(dbh: DbSchnittstelle, setNumber: string, currency: unknown, zustand: string) {
+export function marktpreisAusCache(dbh: DbSchnittstelle, setNumber: string, currency: string, zustand: string) {
   return dbh.get(`SELECT avg_price FROM price_cache
      WHERE set_number=$1 AND currency_code=$2 AND condition IN ('N','U') AND avg_price > 0
      ORDER BY (condition = $3) DESC LIMIT 1`, [setNumber, currency, zustand]);
 }
 
 /** Rückfall, wenn der Cache leer ist (CSV-Import ohne Kontingent): der jüngste Preis im Verlauf. */
-export function marktpreisAusVerlauf(dbh: DbSchnittstelle, setNumber: string, currency: unknown, zustand: string) {
+export function marktpreisAusVerlauf(dbh: DbSchnittstelle, setNumber: string, currency: string, zustand: string) {
   return dbh.get(`SELECT avg_price FROM price_history
         WHERE set_number=$1 AND currency_code=$2 AND condition IN ('N','U') AND avg_price > 0
         ORDER BY (condition = $3) DESC, recorded_at DESC LIMIT 1`, [setNumber, currency, zustand]);
@@ -47,7 +47,7 @@ export function setZeileDesKontos(userId: number, setNumber: string) {
 }
 
 /** Vorhandene Werte bleiben, wo der neue Abruf nichts liefert. */
-export function merkeSetKatalog(setNumber: string, name: string | null, year: unknown, theme: unknown, pieces: unknown, minifigs: unknown, imageUrl: unknown, localImage: unknown) {
+export function merkeSetKatalog(setNumber: string, name: string | null, year: number | null, theme: string | null, pieces: number | null, minifigs: number | null, imageUrl: string | null, localImage: string | null) {
   return db.run(`INSERT INTO set_catalog (set_number,name,year,theme,pieces,minifigs,image_url,image_local)
                 VALUES ($1, COALESCE($2, 'Set ' || $1), $3,$4,$5,$6,$7,$8)
                 ON CONFLICT (set_number) DO UPDATE SET
@@ -62,12 +62,12 @@ export function legeSetZeileAn(tx: DbSchnittstelle, userId: number, setNumber: s
   return tx.run('INSERT INTO sets (user_id,set_number) VALUES ($1,$2) ON CONFLICT (user_id,set_number) DO NOTHING', [userId, setNumber]);
 }
 
-export function setzeFigurenzahl(minifigs: unknown, setNumber: string) {
+export function setzeFigurenzahl(minifigs: number, setNumber: string) {
   return db.run('UPDATE set_catalog SET minifigs = $1 WHERE set_number = $2', [minifigs, setNumber]);
 }
 
 /** `feld` ist ein fester Spaltenname, keine Eingabe von aussen. */
-export function schreibeInNeuesteSetErfassung(wert: unknown, ownerId: number, setNumber: string, feld: 'purchase_price' | 'condition') {
+export function schreibeInNeuesteSetErfassung(wert: number | string | null, ownerId: number, setNumber: string, feld: 'purchase_price' | 'condition') {
   return db.run(`UPDATE set_acquisitions SET ${feld} = $1
                  WHERE id = (SELECT id FROM set_acquisitions
                               WHERE user_id=$2 AND set_number=$3
@@ -75,13 +75,13 @@ export function schreibeInNeuesteSetErfassung(wert: unknown, ownerId: number, se
 }
 
 /** Die eigene Zeile gewinnt — sonst entschiede die Tabellenreihenfolge. */
-export function setZeileImSchreibfeld(wids: unknown[], setNumber: string, uid: number) {
+export function setZeileImSchreibfeld(wids: number[], setNumber: string, uid: number) {
   return db.get(`SELECT id, user_id FROM sets WHERE user_id = ANY($1) AND set_number=$2
       ORDER BY (user_id = $3) DESC, id ASC LIMIT 1`, [wids, setNumber, uid]);
 }
 
 /** Eine eigene Zeile, wenn das Set bisher nur einem anderen Konto des Blickfelds gehörte. */
-export function uebernimmSetZeile(tx: DbSchnittstelle, uid: number, leseFeld: unknown, setNumber: string) {
+export function uebernimmSetZeile(tx: DbSchnittstelle, uid: number, leseFeld: number[], setNumber: string) {
   return tx.run(`INSERT INTO sets (user_id, set_number)
            SELECT $1, set_number
              FROM sets WHERE user_id = ANY($2) AND set_number = $3
@@ -96,7 +96,7 @@ export function zustandNeuesteSetErfassung(ownerId: number, setNumber: string) {
 }
 
 /** Menge eines Sets aus den Erfassungen: über das Blickfeld (ids = Liste) oder ein Konto. */
-export async function setMenge(dbh: Pick<DbSchnittstelle, 'get'>, konten: 'eines' | 'blickfeld', ids: unknown, setNumber: string): Promise<number> {
+export async function setMenge(dbh: Pick<DbSchnittstelle, 'get'>, konten: 'eines' | 'blickfeld', ids: number | number[], setNumber: string): Promise<number> {
   return (await dbh.get<{ q: number }>(mengeSummeSql(konten), [ids, setNumber]))?.q ?? 0;
 }
 
@@ -318,18 +318,18 @@ export async function setListe(uids: number[], f: SetFilter) {
 }
 
 /** Nur zu Sets, die ein Konto des Blickfelds hält. */
-export function geteilteAnleitungen(setNummern: unknown[], uids: unknown[]) {
+export function geteilteAnleitungen(setNummern: string[], uids: number[]) {
   return db.all(`SELECT si.* FROM shared_instructions si
                 WHERE si.set_number = ANY($1)
                   AND EXISTS (SELECT 1 FROM sets s
                               WHERE s.set_number = si.set_number AND s.user_id = ANY($2))`, [setNummern, uids]);
 }
 
-export function eigeneAnleitungen(uids: unknown[], setNummern: unknown[]) {
+export function eigeneAnleitungen(uids: number[], setNummern: string[]) {
   return db.all('SELECT * FROM instructions WHERE user_id = ANY($1) AND set_number = ANY($2)', [uids, setNummern]);
 }
 
-export function setErfassungsKennzahlen(uids: unknown[], setNumber: string) {
+export function setErfassungsKennzahlen(uids: number[], setNumber: string) {
   return db.get("SELECT COUNT(*) AS acq_count, COUNT(*) FILTER (WHERE condition='U') AS used_count," +
     " MAX(purchase_price) AS max_purchase_price," +
     " SUM(purchase_price * quantity) FILTER (WHERE purchase_price IS NOT NULL)::numeric" +
@@ -338,7 +338,7 @@ export function setErfassungsKennzahlen(uids: unknown[], setNumber: string) {
 }
 
 /** Menge und Lagerort über das Blickfeld; die eigene Zeile gewinnt. */
-export function setDetailZeile(uids: unknown[], setNumber: string, eigenes: unknown) {
+export function setDetailZeile(uids: number[], setNumber: string, eigenes: number | undefined) {
   return db.get(`SELECT s.id, s.user_id, s.set_number, s.added_at, s.updated_at, s.storage_id,
               -- Beide Listen ausgeschrieben, kein s.*: Auf einer Datenbank
               -- ohne Migration 0033 braechte s.* ein zweites name mit, und
@@ -373,11 +373,11 @@ export function setDetailZeile(uids: unknown[], setNumber: string, eigenes: unkn
         LIMIT 1`, [uids, setNumber, eigenes]);
 }
 
-export function eigeneAnleitungenDesSets(uids: unknown[], setNumber: string) {
+export function eigeneAnleitungenDesSets(uids: number[], setNumber: string) {
   return db.all('SELECT * FROM instructions WHERE user_id = ANY($1) AND set_number = $2', [uids, setNumber]);
 }
 
-export function besitzerDesSets(tx: DbSchnittstelle, uids: unknown[], setNumber: string) {
+export function besitzerDesSets(tx: DbSchnittstelle, uids: number[], setNumber: string) {
   return tx.all('SELECT user_id FROM sets WHERE user_id = ANY($1) AND set_number = $2', [uids, setNumber]);
 }
 

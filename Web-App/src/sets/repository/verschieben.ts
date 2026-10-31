@@ -81,13 +81,13 @@ export function manuelleErfassung(tx: DbSchnittstelle, art: Art, id: number, uid
        FROM ${ERF[art]} WHERE id = $1 AND user_id = $2`, [id, uid]);
 }
 
-export function manuelleZeile(tx: DbSchnittstelle, art: Art, uid: number, schluessel: unknown[]) {
+export function manuelleZeile(tx: DbSchnittstelle, art: Art, uid: number, schluessel: (string | number)[]) {
   return tx.get<{ id: number; part_number?: string; color_id?: number; fig_number?: string }>(
     `SELECT * FROM ${TAB[art]} WHERE user_id = $1 AND ${SCHLUESSEL[art]} AND COALESCE(source,'set') = 'manual'`,
     [uid, ...schluessel]);
 }
 
-export async function erfassteMenge(tx: DbSchnittstelle, art: Art, uid: number, schluessel: unknown[]): Promise<number> {
+export async function erfassteMenge(tx: DbSchnittstelle, art: Art, uid: number, schluessel: (string | number)[]): Promise<number> {
   const r = await tx.get<{ summe: number }>(
     `SELECT COALESCE(SUM(quantity), 0)::int AS summe FROM ${ERF[art]} WHERE user_id = $1 AND ${SCHLUESSEL[art]}`,
     [uid, ...schluessel]);
@@ -95,7 +95,7 @@ export async function erfassteMenge(tx: DbSchnittstelle, art: Art, uid: number, 
 }
 
 /** Ohne Menge: Sie entsteht aus der Erfassung, die gleich mitwandert. */
-export async function legeManuellAn(tx: DbSchnittstelle, art: Art, uid: number, schluessel: unknown[]): Promise<void> {
+export async function legeManuellAn(tx: DbSchnittstelle, art: Art, uid: number, schluessel: (string | number)[]): Promise<void> {
   if (art === 'part')
     await tx.run(`INSERT INTO parts (user_id, part_number, color_id, source) VALUES ($1,$2,$3,'manual')`, [uid, ...schluessel]);
   else
@@ -106,7 +106,7 @@ export async function loescheManuelleErfassung(tx: DbSchnittstelle, art: Art, id
   await tx.run(`DELETE FROM ${ERF[art]} WHERE id = $1`, [id]);
 }
 
-export async function entferneManuell(tx: DbSchnittstelle, art: Art, uid: number, schluessel: unknown[], zeile: number): Promise<void> {
+export async function entferneManuell(tx: DbSchnittstelle, art: Art, uid: number, schluessel: (string | number)[], zeile: number): Promise<void> {
   await tx.run(`DELETE FROM ${ERF[art]} WHERE user_id = $1 AND ${SCHLUESSEL[art]}`, [uid, ...schluessel]);
   await tx.run(`DELETE FROM ${TAB[art]} WHERE id = $1`, [zeile]);
 }

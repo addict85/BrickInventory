@@ -134,7 +134,8 @@ test('any wird weniger, nie mehr', () => {
   // 31.10.2026: 270 (typisierte Repositories, Fehlerweg ohne any).
   // 31.10.2026: 256 (HTTP-Seite der Anmeldung, typisierte Repositories).
   // 31.10.2026: 233 (SQL aus allen Diensten und Aufträgen in typisierte Repositories).
-  const SCHRANKE = 233;
+  // 31.10.2026: 232 (Parameter der Repositories typisiert).
+  const SCHRANKE = 232;
   const ist = zaehle([/\bas any\b/g, /:\s*any\b/g]);
   assert.ok(ist <= SCHRANKE,
     `${ist}-mal \`any\`, erlaubt sind ${SCHRANKE}. Jedes davon schaltet den ` +

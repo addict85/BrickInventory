@@ -4,7 +4,7 @@ import * as db from '../../../db/database';
 /** Zähler der Fremd-API-Aufrufe je Tag, API und Konto (Migration 0061); Konto 0 ist die Summe. */
 
 /** Zählt je Konto und in der Summe in einem Schritt. */
-export function zaehleApiAufruf(tx: DbSchnittstelle, tag: unknown, apiName: string, id: number, grenze: number) {
+export function zaehleApiAufruf(tx: DbSchnittstelle, tag: string, apiName: string, id: number, grenze: number) {
   return tx.get(`
       INSERT INTO api_aufrufe (tag, api, konto, anzahl) VALUES ($1, $2, $3, 1)
       ON CONFLICT (tag, api, konto) DO UPDATE SET anzahl = api_aufrufe.anzahl + 1
@@ -12,14 +12,14 @@ export function zaehleApiAufruf(tx: DbSchnittstelle, tag: unknown, apiName: stri
       RETURNING anzahl`, [tag, apiName, id, grenze]);
 }
 
-export function aufrufeHeute(tag: unknown, apiName: string) {
+export function aufrufeHeute(tag: string, apiName: string) {
   return db.get('SELECT anzahl FROM api_aufrufe WHERE tag = $1 AND api = $2 AND konto = 0', [tag, apiName]);
 }
 
-export function aufrufeJeKonto(date: unknown, apiName: string, id: number, ALLE_KONTEN: unknown) {
-  return db.all<{ konto: number; anzahl: number }>('SELECT konto, anzahl FROM api_aufrufe WHERE tag = $1 AND api = $2 AND konto IN ($3, $4)', [date, apiName, id, ALLE_KONTEN]);
+export function aufrufeJeKonto(date: string, apiName: string, id: number, alleKonten: number) {
+  return db.all<{ konto: number; anzahl: number }>('SELECT konto, anzahl FROM api_aufrufe WHERE tag = $1 AND api = $2 AND konto IN ($3, $4)', [date, apiName, id, alleKonten]);
 }
 
-export function setzeApiZaehlerZurueck(tag: unknown, apiName: string) {
+export function setzeApiZaehlerZurueck(tag: string, apiName: string) {
   return db.run('DELETE FROM api_aufrufe WHERE tag = $1 AND api = $2', [tag, apiName]);
 }

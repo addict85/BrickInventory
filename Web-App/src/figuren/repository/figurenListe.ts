@@ -13,7 +13,7 @@ function figurenSuche(nummer: string, name: string, pi: number) {
 }
 
 /** Je Figur und Quelle eine Zeile mit der Gesamtmenge; gezählt werden die Gruppen, sonst zählte eine Figur aus fünf Sets fünfmal. */
-export async function figurenGruppiert(uids: number[], f: { search?: unknown; source?: unknown; setNumber: string | null;
+export async function figurenGruppiert(uids: number[], f: { search?: string | null; source?: string | null; setNumber: string | null;
   seite: { groesse: number; versatz: number } | null }) {
   const { search, source } = f;
   const params: any[] = [uids]; let pi = 2;
@@ -136,7 +136,7 @@ export async function figurenGruppiert(uids: number[], f: { search?: unknown; so
   return { figCount, figs };
 }
 
-export async function manuelleFigurenListe(uids: number[], search: unknown, seite: { groesse: number; versatz: number } | null) {
+export async function manuelleFigurenListe(uids: number[], search: string | null | undefined, seite: { groesse: number; versatz: number } | null) {
   const params: any[] = [uids];
   // Der Suchtext der Filterleiste wirkt auch hier (wie getManualParts);
   // Platzhalter vor LIMIT/OFFSET.

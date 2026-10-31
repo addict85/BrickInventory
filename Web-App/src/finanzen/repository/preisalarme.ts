@@ -2,7 +2,7 @@ import * as db from '../../../db/database';
 
 /** Preisalarme je Konto, Set und Zustand (price_alerts) samt dem Preis, an dem sie gemessen werden. */
 
-export function schreibeAlarm(userId: number, setNumber: string, condition: string, richtung: unknown, schwelle: unknown, waehrung: unknown) {
+export function schreibeAlarm(userId: number, setNumber: string, condition: string, richtung: 'unter' | 'ueber', schwelle: number, waehrung: string) {
   return db.run(`INSERT INTO price_alerts (user_id, set_number, condition, richtung, schwelle, currency_code)
      VALUES ($1,$2,$3,$4,$5,$6)
      ON CONFLICT (user_id, set_number, condition) DO UPDATE
@@ -10,17 +10,17 @@ export function schreibeAlarm(userId: number, setNumber: string, condition: stri
             ausgeloest = FALSE`, [userId, setNumber, condition, richtung, schwelle, waehrung]);
 }
 
-export function entferneAlarm(userId: number, setNumber: string, c: unknown) {
+export function entferneAlarm(userId: number, setNumber: string, c: string) {
   return db.run('DELETE FROM price_alerts WHERE user_id=$1 AND set_number=$2 AND condition=$3', [userId, setNumber, c]);
 }
 
-export function alarmeDesSets(userId: number, setNumber: string, wert3: unknown, BESITZT_SQL: string | number) {
+export function alarmeDesSets(userId: number, setNumber: string, blickfeld: number[], besitztSql: string) {
   return db.all(`SELECT set_number, condition, richtung, schwelle, currency_code,
-            ausgeloest, zuletzt_am, zuletzt_preis, ${BESITZT_SQL}
-       FROM price_alerts a WHERE user_id=$1 AND set_number=$2 ORDER BY condition`, [userId, setNumber, wert3]);
+            ausgeloest, zuletzt_am, zuletzt_preis, ${besitztSql}
+       FROM price_alerts a WHERE user_id=$1 AND set_number=$2 ORDER BY condition`, [userId, setNumber, blickfeld]);
 }
 
-export function alarmeImBlickfeld(userId: number, blickfeld: unknown) {
+export function alarmeImBlickfeld(userId: number, blickfeld: number[]) {
   return db.all(`SELECT DISTINCT ON (a.set_number, a.condition)
             a.set_number, a.condition, a.richtung, a.schwelle, a.currency_code,
             a.ausgeloest, a.zuletzt_am, a.zuletzt_preis,
@@ -40,15 +40,15 @@ export function datenbankJetzt() {
   return db.get('SELECT NOW() AS jetzt');
 }
 
-export function alarmeDesKontos(userId: number, marke: unknown, wert3: unknown, BESITZT_SQL: string | number) {
+export function alarmeDesKontos(userId: number, marke: Date, blickfeld: number[], besitztSql: string) {
   return db.all(`SELECT set_number, condition, richtung, schwelle, currency_code,
-            ausgeloest, zuletzt_am, zuletzt_preis, ${BESITZT_SQL}
+            ausgeloest, zuletzt_am, zuletzt_preis, ${besitztSql}
        FROM price_alerts a
       WHERE user_id = $1 AND ausgeloest = TRUE
         -- Auch die SPALTE auf Millisekunden: Zeilen, die vor dieser Aenderung
         -- geschrieben wurden, tragen noch Mikrosekunden.
         AND zuletzt_am IS NOT NULL AND date_trunc('milliseconds', zuletzt_am) > $2
-      ORDER BY zuletzt_am`, [userId, marke, wert3]);
+      ORDER BY zuletzt_am`, [userId, marke, blickfeld]);
 }
 
 export function alleAktivenAlarme(setNumber: string) {
@@ -61,7 +61,7 @@ export function alleAktivenAlarme(setNumber: string) {
       WHERE a.set_number = $1`, [setNumber]);
 }
 
-export function cachePreisFuerAlarm(set_number: string, condition: string, currency_code: unknown) {
+export function cachePreisFuerAlarm(set_number: string, condition: string, currency_code: string) {
   return db.get(`SELECT avg_price FROM price_cache
         WHERE set_number=$1 AND condition=$2 AND currency_code=$3`, [set_number, condition, currency_code]);
 }
@@ -71,7 +71,7 @@ export function setzeAlarmZurueck(user_id: number, set_number: string, condition
                        WHERE user_id=$1 AND set_number=$2 AND condition=$3`, [user_id, set_number, condition]);
 }
 
-export function loeseAlarmAus(user_id: number, set_number: string, condition: string, preis: unknown) {
+export function loeseAlarmAus(user_id: number, set_number: string, condition: string, preis: number) {
   return db.run(`UPDATE price_alerts SET ausgeloest = TRUE, zuletzt_am = NOW(), zuletzt_preis = $4
         WHERE user_id=$1 AND set_number=$2 AND condition=$3`, [user_id, set_number, condition, preis]);
 }

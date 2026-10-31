@@ -211,6 +211,6 @@ export function letzterLaufDerArt() {
 }
 
 /** Offene Wiedervorlagen, die später fällig wären, auf den neuen Termin. */
-export function bricksetTermineVorziehen(bis: unknown) {
+export function bricksetTermineVorziehen(bis: Date) {
   return db.run(`UPDATE auftraege SET faellig_ab = $1 WHERE art = 'brickset' AND status = 'offen' AND faellig_ab > NOW()`, [bis]);
 }
