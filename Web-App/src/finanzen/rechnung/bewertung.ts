@@ -22,7 +22,8 @@ import {
   ladeTeilepreiseVor, ladeFigurenpreiseVor,
   type Blickfeld,
 } from './preise';
-import { ladeSetErfassungen, kaufpreisSpalten, zaehle } from './abfragen';
+import { kaufpreisSpalten, zaehle } from './abfragen';
+import { ladeSetErfassungen } from '../repository/erfassungen';
 import { schaetzeFigurenpreis } from '../marketPrice';
 import { withOwners } from '../../bestand/gemeinsam';
 import { blJoin, blNummerSql } from '../../../db/blZuordnungSql';
