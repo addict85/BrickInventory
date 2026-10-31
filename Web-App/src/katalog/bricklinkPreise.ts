@@ -45,7 +45,7 @@ async function getPriceGuideRaw(setNumber: string, condition = 'N', guideType = 
   throw new Error(`${n} nicht auf BrickLink gefunden (Set/Gear/Book) — kein Preis`);
 }
 
-// Ausführlich: docs/begruendungen/clients/bricklink.ts.md#getpriceguide
+// Ausführlich: docs/begruendungen/src/katalog/bricklinkPreise.ts.md#getpriceguide
 export async function getPriceGuide(setNumber: string, condition = 'N', guideType = 'sold', currencyCode = 'EUR') {
   const first = await getPriceGuideRaw(setNumber, condition, guideType, currencyCode);
   if (hatPreis(first) || guideType !== 'sold') {
@@ -59,7 +59,7 @@ export async function getPriceGuide(setNumber: string, condition = 'N', guideTyp
   return { ...first, guide_used: guideType };
 }
 
-// Ausführlich: docs/begruendungen/clients/bricklink.ts.md#clearsubsetscache
+// Ausführlich: docs/begruendungen/src/katalog/bricklinkPreise.ts.md#clearsubsetscache
 export async function clearSubsetsCache(sn: string | null = null) {
   await repo.leereSubsetsCache(sn ? mitVersion(sn) : null);
 }

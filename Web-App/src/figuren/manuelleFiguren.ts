@@ -17,9 +17,9 @@ import * as V from '../infra/validate';
 
 // Ohne BrickLink-Figurennummer wird der Marktpreis aus den Teilepreisen
 // geschätzt: Für Teile ist die Zuordnung RB→BL verlässlich, für Figuren nicht.
-// Ausführlich: docs/begruendungen/routes/minifigs.ts.md#abschnitt-2
+// Ausführlich: docs/begruendungen/src/figuren/manuelleFiguren.ts.md#abschnitt-2
 
-// Ausführlich: docs/begruendungen/routes/minifigs.ts.md#resolvemanualfigpurchase
+// Ausführlich: docs/begruendungen/src/figuren/manuelleFiguren.ts.md#resolvemanualfigpurchase
 export async function resolveManualFigPurchase(uid: number, { figNumber, blFigNumber = null, unitPrice = null, condition = null }:
   { figNumber: string; blFigNumber?: string | null; unitPrice?: any; condition?: string | null }) {
   // Dieselbe Regel wie bei den Teilen (src/finanzen/preisRegel.ts), damit eine

@@ -2,7 +2,7 @@ import * as db from '../../../db/database';
 import { erfassungsTagSql } from '../../../db/bestandsmenge';
 
 // Eine Zeile je Erfassung in einer Abfrage statt einer je Teil.
-// Ausführlich: docs/begruendungen/routes/parts.ts.md#parts-csv-sql
+// Ausführlich: docs/begruendungen/src/teile/manuelleTeile.ts.md#parts-csv-sql
 const PARTS_CSV_SQL = `
   SELECT p.part_number,
          -- Die Menge der ERFASSUNG, ohne Rueckfall auf die Zeile: Migration

@@ -1,7 +1,8 @@
-# Begründungen zu `clients/bricklink.ts`
+# Begründungen zu `src/katalog/bricklinkPreise.ts`
 
-Die ausführlichen Kommentare aus `clients/bricklink.ts`, wörtlich. Im Code steht je
-Stelle der erste Absatz und ein Verweis hierher. Neue Geschichte gehört in die
+Die ausführlichen Kommentare, wörtlich aus `clients/bricklink.ts` übernommen; der Code
+steht heute in `src/katalog/bricklinkPreise.ts`. Im Code steht je Stelle der erste Absatz und
+ein Verweis hierher. Neue Geschichte gehört in die
 Commit-Nachricht (siehe CLAUDE.md).
 
 <a id="hasusableprice"></a>
