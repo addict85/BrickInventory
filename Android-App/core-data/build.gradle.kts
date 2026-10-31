@@ -66,7 +66,8 @@ dependencies {
     api(libs.okhttp.sse)
     api(libs.coil.core)
     implementation(libs.coil.network.okhttp)
-    implementation(libs.androidx.datastore)
+    // PreferencesManager nennt seine Schlüssel als Preferences.Key nach aussen.
+    api(libs.androidx.datastore)
     api(libs.androidx.work)
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.room.runtime)

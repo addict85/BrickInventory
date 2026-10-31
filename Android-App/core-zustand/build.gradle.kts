@@ -54,6 +54,9 @@ dependencies {
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
     api(libs.androidx.lifecycle.runtime.ktx)
+    // Die ViewModels hier sind öffentliche Basis aller Bereiche; wer sie
+    // erweitert oder im Test startet, braucht ViewModel und viewModelScope.
+    api(libs.androidx.lifecycle.viewmodel)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.bundles.compose)
 
