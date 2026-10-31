@@ -1,4 +1,4 @@
-import * as db from '../../db/database';
+import * as stand from './repository/importStand';
 import { meldeUndWeiter, logAndContinue } from '../infra/httpError';
 import { fehlerText, antwortSprache } from '../infra/fehlerTexte';
 
@@ -78,54 +78,14 @@ export async function emitJobStatus(userId: number) {
 export const VERWAIST_MIN = 10;
 
 export async function jobGet(userId: number) {
-  // Lief der Auftrag in einem Prozess, den es nicht mehr gibt (Neustart,
-  // Absturz), schreibt niemand mehr. „running" bliebe sonst stehen und sperrte
-  // jeden weiteren Import. Ein Set braucht höchstens gut vier Minuten.
-  await db.run(
-    `UPDATE import_stand SET status = 'error', current = NULL, error = $2, updated_at = NOW()
-      WHERE user_id = $1 AND status IN ('running', 'pending')
-        AND updated_at < NOW() - make_interval(mins => $3)`,
-    [userId, fehlerText('import_unterbrochen', 'de'), VERWAIST_MIN]);
-  const row = await db.get('SELECT * FROM import_stand WHERE user_id = $1', [userId]);
+  await stand.markiereVerwaist(userId, fehlerText('import_unterbrochen', 'de'), VERWAIST_MIN);
+  const row = await stand.importStand(userId);
   if (!row) return null;
   return { ...row, results: row.results || [] };
 }
 
-/**
- * Spalten, die jobSet()/jobUpdate() schreiben dürfen.
- * Ausführlich: docs/begruendungen/src/auftraege/importAuftrag.ts.md#job-columns
- */
-const JOB_COLUMNS = new Set(['status', 'total', 'done', 'current', 'results', 'error', 'started_at', 'run_id']);
-
-/**
- * @param {Record<string, unknown>} fields
- * @returns {string[]} geprüfte Spaltennamen
- */
-// Der Injektionsschutz dieser Datei: Die Schluessel landen als SPALTENNAMEN
-// im Abfragetext (dort hilft keine Parameterbindung), deshalb die
-// Positivliste. Der Typ sagt, dass beliebige Schluessel hereinkommen
-// duerfen — genau darum wird hier geprueft.
-function assertJobColumns(fields: Record<string, unknown>): string[] {
-  const keys = Object.keys(fields);
-  for (const k of keys) {
-    if (!JOB_COLUMNS.has(k)) throw new Error(`jobSet: unerlaubte Spalte "${k}"`);
-  }
-  return keys;
-}
-
 export async function jobSet(userId: number, fields: Record<string, unknown>) {
-  const keys   = assertJobColumns(fields);
-  const values = keys.map(k => fields[k]);
-  // Build: INSERT ... ON CONFLICT (user_id) DO UPDATE SET k=$n, ...
-  const setClauses = keys.map((k, i) => `${k} = $${i + 2}`).join(', ');
-  const colList    = keys.join(', ');
-  const valPlaces  = keys.map((_, i) => `$${i + 2}`).join(', ');
-  await db.run(
-    `INSERT INTO import_stand (user_id, ${colList}, updated_at)
-     VALUES ($1, ${valPlaces}, NOW())
-     ON CONFLICT (user_id) DO UPDATE SET ${setClauses}, updated_at = NOW()`,
-    [userId, ...values]
-  );
+  await stand.schreibeImportStand(userId, fields);
 }
 
 /**
@@ -134,15 +94,8 @@ export async function jobSet(userId: number, fields: Record<string, unknown>) {
  */
 export async function jobUpdate(userId: number, fields: Record<string, unknown>, lauf?: string): Promise<boolean> {
   if (!fields || !Object.keys(fields).length) return true;
-  const keys   = assertJobColumns(fields);
-  const values = keys.map(k => fields[k]);
-  const setClauses = keys.map((k, i) => `${k} = $${i + 2}`).join(', ');
-  const r = await db.run(
-    `UPDATE import_stand SET ${setClauses}, updated_at = NOW()
-      WHERE user_id = $1${lauf ? ` AND run_id = $${keys.length + 2} AND status = 'running'` : ''}`,
-    lauf ? [userId, ...values, lauf] : [userId, ...values]
-  );
-  return !lauf || (r?.changes ?? 0) > 0;
+  const n = await stand.aendereImportStand(userId, fields, lauf);
+  return !lauf || n > 0;
 }
 
 /**
@@ -152,10 +105,7 @@ export async function jobUpdate(userId: number, fields: Record<string, unknown>,
  */
 export async function setzeImportFort(userId: number, lauf: string):
     Promise<{ results: ImportErgebnis[]; current: string | null } | null> {
-  const z = await db.get(
-    `UPDATE import_stand SET status = 'running', error = NULL, updated_at = NOW()
-      WHERE user_id = $1 AND run_id = $2 AND status IN ('running', 'error')
-      RETURNING results, current`, [userId, lauf]);
+  const z = await stand.setzeLaufFort(userId, lauf);
   return z ? { results: Array.isArray(z.results) ? z.results : [], current: z.current ?? null } : null;
 }
 

@@ -324,7 +324,7 @@ test('die Schreibantworten passen zu den Kotlin-Modellen', { concurrency: 1, tim
 
     // ── Hintergrundarbeiten (Auftragstabelle) ─────────────────────────────
     { m: 'POST', p: '/api/v1/admin/auftraege/{id}/abbrechen', davor: async () => {
-        w.id = String(await _req('src/auftraege/repository/auftraege.js').stelleAuftragEin('anleitung', { set_number: SET },
+        w.id = String(await _req('src/auftraege/dienst.js').stelleAuftragEin('anleitung', { set_number: SET },
           { schluessel: `vertrag:${process.pid}:${Date.now()}` }));
       } },
     { m: 'POST', p: '/api/v1/admin/auftraege/{id}/wiederholen' },
