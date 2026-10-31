@@ -8,7 +8,6 @@ const BASIS = 'https://www.toppreise.ch/produktsuche?q=';
 
 /**
  * Die Suchadresse zu einem beliebigen Suchbegriff.
- *
  * Bewusst eine SUCHE und keine Produktseite: Eine Setnummer ist bei einem
  * Preisvergleicher kein Schluessel — dort heisst dasselbe Set „LEGO Star Wars
  * 75192 Millennium Falcon", und welche Schreibweise der Anbieter fuehrt,
@@ -22,7 +21,6 @@ export function suchUrl(begriff: string): string {
 
 /**
  * Die Adresse zu einem Set.
- *
  * Nummer UND Name, wenn der Name da ist: „75192-1" allein findet bei einem
  * Preisvergleicher oft nichts, „LEGO 75192 Millennium Falcon" dagegen schon.
  * Die Variante („-1") faellt weg — sie ist eine Rebrickable-Eigenheit und

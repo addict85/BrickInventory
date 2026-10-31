@@ -3,7 +3,6 @@
  * Ausführlich: docs/begruendungen/src/finanzen/rechnung/gewinnVerlust.ts.md#abschnitt
  */
 
-import * as db from '../../../db/database';
 import { asIds } from '../../haushalt/haushalt';
 import { getGlobalSetting } from '../../konto/settings';
 import { getSetting } from '../../konto/settings';
@@ -11,43 +10,23 @@ import { valueSet, valueAcquisitionRows, weightedPurchase, entwicklungProzent, k
 import { effectiveCondition } from './zustand';
 import { computeMinifigsValuation, computePartsValuation } from './bewertung';
 import type { Blickfeld } from './preise';
-import { ladeSetErfassungen, zaehle } from './abfragen';
+import { zaehle } from './abfragen';
+import { ladeSetErfassungen } from '../repository/erfassungen';
 import { aufRappen, inZehntel4, summeAus } from '../../infra/geld';
+import * as repo from '../repository/gewinnVerlust';
 
 // ── GET /api/finance/parts-valuation ─────────────────────────────────────────────
 export async function computePnl(viewerId: number, ids: Blickfeld) {
   // ZWEI Grössen, bewusst getrennt:
   //   viewerId — wessen EINSTELLUNGEN gelten (Währung, Cache-Dauer, Preisart)
   //   ids      — WESSEN DATEN gerechnet werden (Blickfeld, ggf. gefiltert)
-  //
-  // Sie fallen auseinander, sobald der Kontofilter auf „Unterkonten" steht:
-  // Dann enthält ids das fragende Konto gar nicht. Die Einstellungen mit
-  // ids[0] zu holen hiesse dort, die Währung eines Kindes zu benutzen.
   const uids = asIds(ids);
   const [currency, ttlHours] = await Promise.all([
     getSetting(viewerId, 'currency', 'EUR'),
     getGlobalSetting('price_cache_ttl', '24'),
   ]);
 
-  const sets = await db.all(
-    `SELECT s.set_number, c.name, c.year,
-            -- Menge aus den Erfassungen (Gruppierung a unten), kein zweiter JOIN.
-            COALESCE(a.total_qty, 0)::int AS quantity,
-            c.image_local, c.image_url, s.added_at,
-            -- effectiveCondition() leitet den Zustand aus diesen Zählern ab.
-            COALESCE(a.acq_count, 0)  AS acq_count,
-            COALESCE(a.used_count, 0) AS used_count
-     -- Name, Jahr und Bilder stehen seit Migration 0033 in set_catalog.
-     FROM sets s
-     LEFT JOIN set_catalog c ON c.set_number = s.set_number
-     LEFT JOIN (
-       SELECT user_id, set_number,
-              SUM(quantity) AS total_qty,
-              COUNT(*)                                AS acq_count,
-              COUNT(*) FILTER (WHERE condition = 'U')  AS used_count
-       FROM set_acquisitions GROUP BY user_id, set_number
-     ) a ON a.user_id = s.user_id AND a.set_number = s.set_number
-     WHERE s.user_id = ANY($1)`, [uids]);
+  const sets = await repo.setsMitErfassungen(uids);
 
   // Statt 2 Queries pro Set: aktuelle Cache-Preise und ältester History-Eintrag
   // für ALLE Sets in je einer Batch-Query (nutzt UNIQUE-Index bzw. idx_price_history_set).
@@ -69,17 +48,8 @@ export async function computePnl(viewerId: number, ids: Blickfeld) {
     // ersten Preis-Fix in routes/ behoben wurden, hier aber stehen blieben:
     // Ausführlich: docs/begruendungen/src/finanzen/rechnung/gewinnVerlust.ts.md#computepnl
     const [cachedRows, firstRows] = await Promise.all([
-      db.all(
-        `SELECT set_number, condition, avg_price, qty_avg_price FROM price_cache
-         WHERE set_number = ANY($1) AND condition IN ('U','N') AND currency_code=$2
-           AND fetched_at > NOW() - make_interval(hours => $3)`,
-        [setNumbers, currency, ttl]),
-      db.all(
-        `SELECT DISTINCT ON (set_number, condition) set_number, condition, avg_price, qty_avg_price
-         FROM price_history
-         WHERE set_number = ANY($1) AND currency_code=$2 AND condition IN ('U','N')
-         ORDER BY set_number, condition, recorded_at ASC`,
-        [setNumbers, currency]),
+      repo.frischeMarktpreise(setNumbers, currency, ttl),
+      repo.letzteMarktpreiseAusVerlauf(setNumbers, currency),
     ]);
 
     /** avg_price zuerst; qty_avg_price nur als Rückfall. */

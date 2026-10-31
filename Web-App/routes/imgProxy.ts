@@ -5,7 +5,7 @@
 import path from 'path';
 import { APP_ROOT, PUBLIC_DIR } from '../src/infra/appPaths';
 import fs from 'fs';
-import { resolveUserId } from '../src/konto/auth';
+import { resolveUserId } from '../src/konto/http/anmeldung';
 import { streamFileToResponse, vorDem, ohneFehlendeDatei } from '../src/infra/httpError';
 import { queueThumb } from '../src/katalog/bilder/proxyThumbs';
 import { liefereAusCache } from '../src/katalog/bilder/imgCacheServe';

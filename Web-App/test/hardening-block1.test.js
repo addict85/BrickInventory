@@ -20,7 +20,7 @@ const KOTLIN_SCREENS = path.join(ROOT, '..', 'Android-App', 'app', 'src', 'main'
 
 // ── Punkt 1 ────────────────────────────────────────────────────────────────
 test('die Session-ID wird beim Anmelden erneuert', () => {
-  const auth = read('src/konto/auth.ts');
+  const auth = read('src/konto/http/anmeldung.ts');
   assert.match(auth, /function establishSession/, 'Der gemeinsame Helfer fehlt');
   assert.match(auth, /req\.session\.regenerate\(/,
     'Ohne regenerate() behält der Browser die ID von vor dem Login (Session Fixation)');
@@ -51,11 +51,11 @@ test('Rate-Limits zählen worker-übergreifend', () => {
   // CREATE-Anweisung ist inzwischen entfernt). Geprüft wird jetzt, was die
   // Implementierung tatsächlich zusichert: Zähler in der Datenbank, atomares
   // Hochzählen in einem Statement, Rückfall auf den Prozessspeicher.
-  const lim = read('src/konto/loginLimiter.ts');
+  const lim = require('./helpers/sources').dienstQuelle('src/konto/loginLimiter.ts');
   assert.match(lim, /rate_limit_attempts/, 'Der Zähler muss in der Datenbank liegen');
   assert.match(lim, /ON CONFLICT \(key\) DO UPDATE/,
     'Hochzählen und Fensterwechsel gehören in EIN Statement');
-  assert.match(lim, /Rückfallebene, falls die DB klemmt/,
+  assert.match(lim, /const _attempts = new Map/,
     'Ein Datenbankfehler darf den Login nicht blockieren');
 
   // Dass die Tabelle angelegt wird, prüft schema-basis-db.test.js am Schema.
@@ -138,7 +138,7 @@ test('kein Token reitet mehr in der Adresszeile', () => {
   // beiden zu pruefen reichte nicht — die Ausnahmeliste hier war jahrelang
   // gruen, WEIL nur ihr Vorhandensein geprueft wurde und nie ihr Nutzen.
   const { ohneKommentare, setKernQuelle, coreQuelle } = require('./helpers/sources');
-  const auth = ohneKommentare(read('src/konto/auth.ts'));
+  const auth = ohneKommentare(read('src/konto/auth.ts') + read('src/konto/http/anmeldung.ts'));
 
   assert.doesNotMatch(auth, /TOKEN_QUERY_ALLOWED/,
     'Die Ausnahmeliste ist zurueck — damit auch der Sitzungstoken in der Adresszeile');

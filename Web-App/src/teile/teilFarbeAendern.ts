@@ -3,8 +3,8 @@ import type { DbSchnittstelle } from '../../db/database';
 import { lookupPart } from '../../clients/rebrickable';
 import { meldeUndWeiter, meldeUndLiefere } from '../infra/httpError';
 import { merkeTeilFarbe, katalogTeil } from '../katalog/katalogPflege';
-import { erfassungsTagSql } from '../bestand/acquisitions';
 import { colorId } from '../infra/validate';
+import * as repo from './repository/teilFarbe';
 
 /**
  * Die Farbe eines manuell erfassten Teils NACHTRÄGLICH ändern.
@@ -72,17 +72,13 @@ export async function aendereTeilFarbe(
 
   // Farbbezeichnung und Farbcode: rb_colors zuerst, weil der Katalog für alle
   // Konten gilt; die Angaben des Aufrufers füllen nur, was dort fehlt.
-  const katalogFarbe = await db.get('SELECT name, rgb FROM rb_colors WHERE id = $1', [neu])
+  const katalogFarbe = await repo.rbFarbe(neu)
     .catch(meldeUndLiefere('teilfarbe:katalogFarbe', null));
 
   // Die Transaktion liefert alles AUSSER dem Bild: Das wird danach geholt,
   // weil der Abruf dauern und scheitern darf, ohne die Änderung mitzunehmen.
   const wechsel = await db.transaction(async (tx: DbSchnittstelle): Promise<Omit<FarbWechsel, 'bild'>> => {
-    const quelle = await tx.get(
-      `SELECT id, storage_id FROM parts
-        WHERE user_id = $1 AND part_number = $2 AND color_id = $3
-          AND source = 'manual'`,
-      [uid, partNumber, alt]);
+    const quelle = await repo.manuelleTeilzeileSperren(tx, uid, partNumber, alt);
     if (!quelle) {
       throw Object.assign(new Error('Teil nicht gefunden oder nicht manuell hinzugefügt'),
         { status: 404 });
@@ -101,42 +97,18 @@ export async function aendereTeilFarbe(
     await merkeTeilFarbe(partNumber, neu, katalogFarbe?.name, katalogFarbe?.rgb, null, null, tx);
     await merkeTeilFarbe(partNumber, neu, angaben.color_name, angaben.color_hex, null, null, tx, uid);
 
-    const ziel = await tx.get(
-      `SELECT id, storage_id FROM parts
-        WHERE user_id = $1 AND part_number = $2 AND color_id = $3
-          AND source = 'manual'`,
-      [uid, partNumber, neu]);
+    const ziel = await repo.manuelleTeilzeileSperren(tx, uid, partNumber, neu);
 
     // ── Erfassungen: erst addieren, was den gleichen Indexschlüssel hätte ──
     //
     // Die Reihenfolge ist zwingend. Zöge das UPDATE unten zuerst um, liefe es
     // in `idx_part_acq_erfassungstag` — und zwar nur manchmal, nämlich wenn beide Farben
     // am gleichen Tag erfasst wurden. Ein Fehler, der von der Uhr abhängt.
-    const vereint = await tx.run(
-      `UPDATE part_acquisitions z
-          SET quantity = z.quantity + a.quantity
-         FROM part_acquisitions a
-        WHERE a.user_id = $1 AND a.part_number = $2 AND a.color_id = $3
-          AND z.user_id = $1 AND z.part_number = $2 AND z.color_id = $4
-          AND ${erfassungsTagSql('z')} = ${erfassungsTagSql('a')}
-          AND z.condition = a.condition AND z.price_estimated = a.price_estimated
-          AND z.currency = a.currency AND COALESCE(z.unit_price, -1) = COALESCE(a.unit_price, -1)`,
-      [uid, partNumber, alt, neu]);
+    const vereint = await repo.stockeGleicheErfassungenAuf(tx, uid, partNumber, alt, neu);
     // Die eben addierten Quellzeilen müssen weg, sonst zöge das UPDATE sie
     // gleich darunter um und die Stückzahl stünde doppelt da.
-    await tx.run(
-      `DELETE FROM part_acquisitions a
-        WHERE a.user_id = $1 AND a.part_number = $2 AND a.color_id = $3
-          AND EXISTS (SELECT 1 FROM part_acquisitions z
-                       WHERE z.user_id = $1 AND z.part_number = $2 AND z.color_id = $4
-                         AND ${erfassungsTagSql('z')} = ${erfassungsTagSql('a')}
-                         AND z.condition = a.condition AND z.price_estimated = a.price_estimated
-                         AND z.currency = a.currency AND COALESCE(z.unit_price, -1) = COALESCE(a.unit_price, -1))`,
-      [uid, partNumber, alt, neu]);
-    const verschoben = await tx.run(
-      `UPDATE part_acquisitions SET color_id = $4
-        WHERE user_id = $1 AND part_number = $2 AND color_id = $3`,
-      [uid, partNumber, alt, neu]);
+    await repo.loescheAufgestockteErfassungen(tx, uid, partNumber, alt, neu);
+    const verschoben = await repo.faerbeErfassungenUm(tx, uid, partNumber, alt, neu);
 
     if (ziel) {
       // Zusammenlegen: Die Zielzeile bleibt, die falsche geht. Einen Lagerort
@@ -145,12 +117,11 @@ export async function aendereTeilFarbe(
       // verschwinden. Hat die Zielzeile einen, gewinnt der: Sie ist die
       // Zeile, die bleibt.
       if (quelle.storage_id && !ziel.storage_id) {
-        await tx.run('UPDATE parts SET storage_id = $1 WHERE id = $2',
-          [quelle.storage_id, ziel.id]);
+        await repo.setzeTeilLagerort(tx, quelle.storage_id, ziel.id);
       }
-      await tx.run('DELETE FROM parts WHERE id = $1', [quelle.id]);
+      await repo.loescheTeilzeile(tx, quelle.id);
     } else {
-      await tx.run('UPDATE parts SET color_id = $1 WHERE id = $2', [neu, quelle.id]);
+      await repo.faerbeTeilzeileUm(tx, neu, quelle.id);
     }
 
     return {

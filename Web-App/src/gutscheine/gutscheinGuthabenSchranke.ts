@@ -6,6 +6,7 @@
 import * as db from '../../db/database';
 import { holeGuthaben, BotSchutz, LAND_STANDARD, verdecke, type Abruf, type Guthaben } from './gutscheinGuthaben';
 import { Fachfehler } from '../infra/fehlerTexte';
+import * as repo from './repository/guthabenSchranke';
 
 /** Der Mindestabstand zwischen zwei Abfragen — Marcos Zahl. */
 export const ABSTAND_SEK = 30;
@@ -33,24 +34,13 @@ export async function belegePlatz(): Promise<{ frei: true } | ({ frei: false } &
     // Die Zeile anlegen, falls die Migration sie nicht schon gesetzt hat (eine
     // Datenbank, die aus einer älteren Sicherung kommt). NULL in beiden
     // Spalten heisst „noch nie" — ein Datum wäre eine Behauptung.
-    await tx.run(
-      `INSERT INTO gutschein_guthaben_schranke (id) VALUES (1)
-       ON CONFLICT (id) DO NOTHING`);
+    await repo.legeSchrankeAn(tx);
 
     // Gerechnet wird in SQL: EINE Zeile, EINE Sperre, EINE Uhr. Eine feste
     // Sperr-Reihenfolge wie bei checkAndIncrementRateLimit („ORDER BY key",
     // gegen Deadlocks zwischen zwei Zeilen) braucht es hier nicht — es gibt
     // nur die eine.
-    const z = await tx.get(
-      `SELECT CEIL(GREATEST(0, EXTRACT(EPOCH FROM (sperre_bis - NOW()))))::int
-                AS sperre_sek,
-              CEIL(GREATEST(0, EXTRACT(EPOCH FROM (
-                letzter_abruf + make_interval(secs => $1) - NOW()))))::int
-                AS abstand_sek
-         FROM gutschein_guthaben_schranke
-        WHERE id = 1
-          FOR UPDATE`,
-      [ABSTAND_SEK]) as { sperre_sek?: unknown; abstand_sek?: unknown } | undefined;
+    const z = await repo.schrankenStand(tx, ABSTAND_SEK) as { sperre_sek?: unknown; abstand_sek?: unknown } | undefined;
 
     // NULL (= noch nie) kommt als NaN zurück und bedeutet „kein Rest".
     const rest = (w: unknown) => { const n = Number(w); return Number.isFinite(n) ? n : 0; };
@@ -63,7 +53,7 @@ export async function belegePlatz(): Promise<{ frei: true } | ({ frei: false } &
     const abstand = rest(z?.abstand_sek);
     if (abstand > 0) return { frei: false as const, grund: 'abstand' as const, wartenSek: abstand };
 
-    await tx.run('UPDATE gutschein_guthaben_schranke SET letzter_abruf = NOW() WHERE id = 1');
+    await repo.merkeAbruf(tx);
     return { frei: true as const };
   });
 }
@@ -74,18 +64,13 @@ export async function belegePlatz(): Promise<{ frei: true } | ({ frei: false } &
  * @returns die Pause in Sekunden, wie sie der Oberfläche gemeldet wird
  */
 export async function sperreWegenBotschutz(): Promise<number> {
-  await db.run(
-    `INSERT INTO gutschein_guthaben_schranke (id, sperre_bis)
-     VALUES (1, NOW() + make_interval(mins => $1))
-     ON CONFLICT (id) DO UPDATE SET sperre_bis = EXCLUDED.sperre_bis`,
-    [BOTSCHUTZ_PAUSE_MIN]);
+  await repo.sperreSchranke(BOTSCHUTZ_PAUSE_MIN);
   return BOTSCHUTZ_PAUSE_MIN * 60;
 }
 
 /** Nur für Tests: die Buchhaltung vergessen. */
 export async function vergesseSchranke(): Promise<void> {
-  await db.run(
-    'UPDATE gutschein_guthaben_schranke SET letzter_abruf = NULL, sperre_bis = NULL WHERE id = 1');
+  await repo.oeffneSchranke();
 }
 
 /**

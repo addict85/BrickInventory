@@ -1,5 +1,5 @@
 import { logAndContinue, meldeUndLiefere } from '../../infra/httpError';
-import * as db from '../../../db/database';
+import * as repo from '../repository/bildFehlschlaege';
 
 /**
  * Bilder, die es beim CDN nicht gibt — EINMAL gemerkt, für alle Prozesse.
@@ -55,11 +55,7 @@ export function istBekanntFehlend(key: string): boolean {
 
 /** Alles aus der Tabelle in den Speicher holen. Einmal beim Start, dann im Takt. */
 async function auffrischen(): Promise<void> {
-  const rows = await db.all(
-    `SELECT cache_key, checked_at, reason FROM image_misses
-      WHERE checked_at > NOW() - ($1 || ' milliseconds')::interval`,
-    [String(ERNEUT_PRUEFEN_MS)]
-  ).catch(meldeUndLiefere('bild-fehlanzeige:rows', null));
+  const rows = await repo.frischeFehlschlaege(String(ERNEUT_PRUEFEN_MS)).catch(meldeUndLiefere('bild-fehlanzeige:rows', null));
   if (!rows) return;
   _vorne.clear(); _gruende.clear();
   for (const r of rows) {
@@ -93,8 +89,8 @@ export function grundFuer(key: string): string {
  */
 export async function vergissFehlend(keys?: string[]): Promise<number> {
   const r = keys?.length
-    ? await db.run(`DELETE FROM image_misses WHERE cache_key = ANY($1::text[])`, [keys])
-    : await db.run(`DELETE FROM image_misses`);
+    ? await repo.vergissFehlschlaege(keys)
+    : await repo.vergissAlleFehlschlaege();
   if (keys?.length) for (const k of keys) { _vorne.delete(k); _gruende.delete(k); _zuSchreiben.delete(k); }
   else { _vorne.clear(); _gruende.clear(); _zuSchreiben.clear(); }
   return r?.changes || 0;
@@ -105,12 +101,7 @@ async function schreibePuffer(): Promise<void> {
   const keys = [..._zuSchreiben.keys()];
   const gruende = keys.map(k => _zuSchreiben.get(k) || '');
   _zuSchreiben.clear();
-  await db.run(
-    `INSERT INTO image_misses (cache_key, checked_at, reason)
-       SELECT * FROM unnest($1::text[], ARRAY(SELECT NOW() FROM unnest($1::text[])), $2::text[])
-       ON CONFLICT (cache_key) DO UPDATE SET checked_at = NOW(), reason = EXCLUDED.reason`,
-    [keys, gruende]
-  ).catch(() => { for (let i = 0; i < keys.length; i++) { const k = keys[i]; if (k) _zuSchreiben.set(k, gruende[i] ?? ''); } });
+  await repo.merkeFehlschlaege(keys, gruende).catch(() => { for (let i = 0; i < keys.length; i++) { const k = keys[i]; if (k) _zuSchreiben.set(k, gruende[i] ?? ''); } });
 }
 
 /** Nur für Tests: den Merker im Arbeitsspeicher leeren. */

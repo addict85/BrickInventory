@@ -2,10 +2,10 @@ import path from 'path';
 import crypto from 'crypto';
 import fsp from 'fs/promises';
 import { PDF_JOB_DIR } from '../infra/appPaths';
-import * as db from '../../db/database';
 import { meldeUndLiefere, meldeUndWeiter, ohneFehlendeDatei } from '../infra/httpError';
-import { stelleAuftragEin } from './repository/auftraege';
+import { stelleAuftragEin } from './dienst';
 import { mitVersion } from '../sets/setNummer';
+import * as repo from './repository/pdfAuftraege';
 
 /**
  * PDF-Aufträge sind Aufträge der Art 'pdf' mit dem Schlüssel `pdf:<Kennung>`;
@@ -39,9 +39,7 @@ export type PdfAuftrag = {
 const STATUS: Record<string, PdfAuftrag['status']> = { offen: 'running', laeuft: 'running', erledigt: 'done' };
 
 export async function liesAuftrag(id: string): Promise<PdfAuftrag | null> {
-  const z = await db.get(
-    `SELECT status, fehler, user_id, fortschritt FROM auftraege
-      WHERE art = 'pdf' AND schluessel = $1 ORDER BY id DESC LIMIT 1`, [pdfSchluessel(id)]);
+  const z = await repo.pdfAuftragZeile(pdfSchluessel(id));
   return z ? { status: STATUS[z.status] ?? 'error', error: z.status === 'erledigt' ? null : z.fehler ?? null,
                user_id: Number(z.user_id), missingImages: z.fortschritt?.fehlendeBilder ?? null,
                etaSeconds: z.fortschritt?.etaSekunden ?? null } : null;
@@ -49,23 +47,17 @@ export async function liesAuftrag(id: string): Promise<PdfAuftrag | null> {
 
 /** Laufende Aufträge eines Kontos; ein hängengebliebener zählt nach `ttlMs` nicht mehr. */
 export async function laufendeAuftraege(uid: number, ttlMs: number): Promise<number> {
-  const z = await db.get(
-    `SELECT COUNT(*)::int AS n FROM auftraege
-      WHERE art = 'pdf' AND user_id = $1 AND status IN ('offen', 'laeuft')
-        AND erstellt > NOW() - make_interval(secs => $2)`, [uid, ttlMs / 1000]);
+  const z = await repo.zaehleLaufendePdf(uid, ttlMs / 1000);
   return z?.n ?? 0;
 }
 
 export async function loescheAuftrag(id: string): Promise<void> {
-  await db.run(`DELETE FROM auftraege WHERE art = 'pdf' AND schluessel = $1 AND status <> 'laeuft'`, [pdfSchluessel(id)]);
+  await repo.loeschePdfAuftrag(pdfSchluessel(id));
 }
 
 /** Beendete Aufträge nach `ttlMs` entfernen; @returns ihre Kennungen, damit die PDF-Dateien mitgehen */
 export async function raeumeAuftraegeAuf(ttlMs: number): Promise<string[]> {
-  const rows = await db.all(
-    `DELETE FROM auftraege WHERE art = 'pdf' AND status IN ('erledigt', 'fehler', 'abgebrochen')
-        AND aktualisiert < NOW() - make_interval(secs => $1)
-     RETURNING substr(schluessel, 5) AS id`, [ttlMs / 1000]);
+  const rows = await repo.loescheAltePdfAuftraege(ttlMs / 1000);
   return rows.map((r: { id: string }) => r.id);
 }
 
@@ -107,11 +99,7 @@ async function fehlendeBilder(sets: Array<{ set_number?: unknown }>, parts: Arra
   }
   if (!nummern.size) return fehlend;
   try {
-    const r = await db.get<{ c: string | number }>(
-      `SELECT (SELECT COUNT(*) FROM (SELECT DISTINCT part_number, color_id FROM set_parts_catalog
-                WHERE set_number = ANY($1) AND image_url IS NOT NULL AND image_local IS NULL) p)
-            + (SELECT COUNT(*) FROM (SELECT DISTINCT fig_number FROM set_minifigs_catalog
-                WHERE set_number = ANY($1) AND image_url IS NOT NULL AND image_local IS NULL) f) AS c`, [[...nummern]]);
+    const r = await repo.fehlendeKatalogbilder([...nummern]);
     const c = Number(r?.c);
     if (Number.isFinite(c)) fehlend = c;
   } catch (e) { meldeUndWeiter('pdf:wartezeit schaetzen', e); }

@@ -1,6 +1,5 @@
 /**
  * Gemeinsame Middleware der /api/v1-Module.
- *
  * requireToken: akzeptiert Session-Cookie (Webapp) ODER Bearer-Token (Android).
  * requireApiAdmin: requireToken + is_admin-Prüfung — zentral, damit kein
  * Admin-Endpoint den Check versehentlich weglassen kann (genau das war
@@ -8,7 +7,8 @@
  */
 import { meldeUndLiefere } from '../../src/infra/httpError';
 import type { Request, Response, NextFunction } from 'express';
-import { validateToken, resolveUserId } from '../../src/konto/auth';
+import { validateToken } from '../../src/konto/auth';
+import { resolveUserId } from '../../src/konto/http/anmeldung';
 import { sendeFehler } from '../../src/infra/fehlerTexte';
 
 /** Extrahiert den Bearer-Token aus dem Authorization-Header (oder null). */

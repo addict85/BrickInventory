@@ -27,7 +27,8 @@ import { merkeAnfrage } from './src/infra/anfrageKonto';
 import { proxyVertrauen, proxyHinweis } from './src/infra/proxyVertrauen';
 import { nurEigeneHerkunft } from './src/infra/herkunft';
 import { API_VERSION, API_MIN_APP, appFassungPruefen } from './src/infra/apiVersion';
-import { resolveUserId, istVerwalter, verifiziereEmailToken } from './src/konto/auth';
+import { verifiziereEmailToken } from './src/konto/auth';
+import { resolveUserId, istVerwalter } from './src/konto/http/anmeldung';
 import { PUBLIC_DIR } from './src/infra/appPaths';
 import { IMG_PROXY_PFAD } from './src/katalog/bilder/images';
 import { safeDataPath } from './src/infra/datenPfad';
@@ -37,6 +38,7 @@ import { renderIndexHtml } from './src/konto/indexHtml';
 import * as pgNotify from './db/pgNotify';
 import { registerImgProxy } from './routes/imgProxy';
 import { anmeldungAmEingang } from './routes/api_v1/middleware';
+import { idempotenz } from './src/idempotenz/http/middleware';
 import datenDateien = require('./routes/datenDateien');
 import apiV1Router = require('./routes/api_v1/index');
 import authRouter = require('./routes/auth');
@@ -353,6 +355,7 @@ app.get('/api/v1/health', async (req, res) => {
 // Der Schutz je Route bleibt als zweite Linie und kostet keinen zweiten Abruf.
 // Ausführlich: docs/begruendungen/server.ts.md#abschnitt-7
 app.use('/api/v1',          anmeldungAmEingang);
+app.use('/api/v1',          idempotenz);
 app.use('/api/v1',          apiV1Router);
 app.use('/api/v1/auth',     authRouter);
 

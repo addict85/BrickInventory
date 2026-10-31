@@ -1,6 +1,5 @@
 import fs from 'fs';
 import path from 'path';
-import * as db from '../db/database';
 import { logAndContinue, meldeUndLiefere } from '../src/infra/httpError';
 import { downloadSetImage } from '../src/katalog/bilder/setImages';
 import { grundFuer, istBekanntFehlend, merkeFehlend } from '../src/katalog/bilder/imageMisses';
@@ -12,6 +11,7 @@ import { liesPause } from '../src/auftraege/dienst';
 import { STAPEL, TAKT_MS, NOTIZ_GILT_MS, merkeGebraucht, schreibePuffer, notiereBildbedarf, loescheVerfallene, initImageQueue,
          anfragenJeMinute } from '../src/katalog/bilder/bildbedarf';
 import { AuftragUnterbrochen, AuftragVerschieben, type AuftragsKontext } from './auftragsWorker';
+import { nimmBildwuensche } from '../src/katalog/bilder/bildbedarf';
 
 /**
  * Bilder, die über den Proxy angefragt wurden, im HINTERGRUND lokal ablegen —
@@ -166,14 +166,7 @@ async function arbeiteStapel(): Promise<StapelErgebnis> {
   const erg = leeresErgebnis();
   const pause = await liesPause('bildbedarf');
   if (pause && new Date(pause.bis).getTime() > Date.now()) return erg;   // CDN hat gedrosselt, siehe unten
-  const rows = await db.all(
-    `DELETE FROM image_wanted
-      WHERE url IN (SELECT url FROM image_wanted
-                     WHERE requested_at > NOW() - ($1 || ' milliseconds')::interval
-                     ORDER BY requested_at ASC LIMIT $2)
-      RETURNING url, set_number`,
-    [String(NOTIZ_GILT_MS), STAPEL]
-  ).catch(meldeUndLiefere('bild-job:rows', []));
+  const rows = await nimmBildwuensche(NOTIZ_GILT_MS, STAPEL).catch(meldeUndLiefere('bild-job:rows', []));
   if (!rows.length) { merkeLauf(erg); return erg; }
 
 
@@ -191,7 +184,7 @@ async function arbeiteStapel(): Promise<StapelErgebnis> {
    */
   let arbeit = 0;
   for (let idx = 0; idx < rows.length; idx++) {
-    const r = rows[idx];
+    const r = rows[idx]!;
     if (!r.set_number) { erg.ohneNummer++; continue; }   // ohne Setnummer kein Ablageort
 
     // Liegt das Bild schon? Dann nur die Vorschau nachholen
@@ -287,7 +280,6 @@ async function arbeiteStapel(): Promise<StapelErgebnis> {
     fertig++; erg.geholt++;
   }
   // ── Zurückgelegte Zeilen sind NICHT bearbeitet ────────────
-  //
   // Nach einer Drosselung wandern die restlichen Notizen zurück in die
   // Warteschlange. `rows.length` meldete sie trotzdem als bearbeitet — bei
   // einem Stapel, der schon an der ERSTEN Zeile abbricht, stand da „2

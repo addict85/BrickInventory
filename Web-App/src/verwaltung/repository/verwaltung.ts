@@ -204,3 +204,13 @@ export function probePreisVerlauf(setNumber: string): Promise<any[]> {
 export function probeWaehrung(uid: number): Promise<{ value: string } | undefined> {
   return db.get("SELECT value FROM user_settings WHERE user_id=$1 AND key='currency'", [uid]);
 }
+
+export function letzterLaufDerArt() {
+  return db.get<{ status: string; faellig_ab: Date; fortschritt: any }>(`SELECT status, faellig_ab, fortschritt FROM auftraege
+      WHERE art = 'preise' AND status IN ('offen', 'laeuft') ORDER BY status = 'laeuft' DESC, faellig_ab LIMIT 1`);
+}
+
+/** Offene Wiedervorlagen, die später fällig wären, auf den neuen Termin. */
+export function bricksetTermineVorziehen(bis: unknown) {
+  return db.run(`UPDATE auftraege SET faellig_ab = $1 WHERE art = 'brickset' AND status = 'offen' AND faellig_ab > NOW()`, [bis]);
+}

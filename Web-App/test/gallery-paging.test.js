@@ -71,15 +71,17 @@ test('die Sortierung ist eine Whitelist, kein interpolierter Parameter', () => {
   assert.match(ohneKommentare, /ausTabelle\(\s*SET_SORTS\s*,\s*sort\s*,\s*SET_SORTS\.added_desc\s*\)/,
     'Unbekannte Werte müssen auf die Vorgabe fallen');
   // Der Suchbegriff gehört als Parameter gebunden, nicht in den String
-  const fn = H_SRC.slice(H_SRC.indexOf('async function getSets'), H_SRC.indexOf('async function getSetConditionAggregate'));
+  const fn = require('./helpers/sources').funktionsRumpf(H_SRC, 'setListe');
   assert.match(fn, /params\.push\(`%\$\{String\(search\)\.toLowerCase\(\)\}%`\)/,
     'Der Suchbegriff muss als Parameter gebunden werden');
 });
 
 test('ohne page_size bleibt alles wie bisher', () => {
-  const fn = H_SRC.slice(H_SRC.indexOf('async function getSets'), H_SRC.indexOf('async function getSetConditionAggregate'));
-  assert.match(fn, /if \(page_size\) \{/, 'LIMIT darf nur bei gesetztem page_size greifen');
-  assert.match(fn, /page_size \? db\.get\(/, 'der Zähler kostet sonst unnötig Zeit');
+  // Die Seite rechnet getSets aus page_size; ohne sie ist f.seite null.
+  const fn = require('./helpers/sources').funktionsRumpf(H_SRC, 'setListe');
+  assert.match(fn, /if \(f\.seite\) \{/, 'LIMIT darf nur bei gesetztem page_size greifen');
+  assert.match(fn, /f\.seite \? db\.get\(/, 'der Zähler kostet sonst unnötig Zeit');
+  assert.match(require('./helpers/sources').funktionsRumpf(H_SRC, 'getSets'), /const size = page_size \?/);
   // Der Test pinnte hier den Wortlaut eines Kommentars („Android-App sendet
   // kein page_size"). Der stimmt nicht mehr: Seit Marcos Vorgabe blättert auch
   // die App seitenweise. Geprüft wird jetzt die AUSSAGE — der Endpunkt reicht
@@ -200,9 +202,9 @@ test('auch die manuellen Listen können seitenweise', () => {
   // abgeschaltet statt befolgt; funktionsRumpf() schneidet deshalb an der
   // schliessenden Klammer (test/helpers/sources.js, dort steht die Lehre).
   const { funktionsRumpf } = require('./helpers/sources');
-  for (const f of ['getManualParts', 'getManualMinifigs']) {
-    const fn = funktionsRumpf(H_SRC, f);
-    assert.match(fn, /page_size/, `${f} kennt kein page_size`);
+  for (const [f, liste] of [['getManualParts', 'getManualParts'], ['getManualMinifigs', 'manuelleFigurenListe']]) {
+    assert.match(funktionsRumpf(H_SRC, f), /page_size/, `${f} kennt kein page_size`);
+    const fn = funktionsRumpf(H_SRC, liste);
     assert.match(fn, /LIMIT \$\$\{params\.length - 1\} OFFSET \$\$\{params\.length\}/,
       `${f}: LIMIT/OFFSET müssen gebunden werden, nicht interpoliert`);
   }

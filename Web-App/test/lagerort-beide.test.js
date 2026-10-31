@@ -116,7 +116,7 @@ test('beide filtern am Server, nicht im Gerät', () => {
   // dieselbe: Gefiltert wird am Server.
   assert.match(web('src/teile/abfragen.ts'), /lo\.name = \$\$\{pi\+\+\}/,
     'Der Server filtert Teile nicht nach Lagerort');
-  assert.match(web('src/sets/abfragen.ts'), /s\.storage = \$\$\{params\.length\}/,
+  assert.match(web('src/sets/repository/sets.ts'), /s\.storage = \$\$\{params\.length\}/,
     'Der Server filtert Sets nicht nach Lagerort');
 
   assert.match(web('public/js/14-scope.js'), /p\.set\('storage', m\)/,
@@ -294,7 +294,7 @@ test('beide bieten auswählen UND neu eintippen in EINEM Feld', () => {
   // Zeile keine ID), und beides laeuft deshalb in einer Transaktion in
   // setzeLagerort(). Gesucht wird jetzt die Anweisung selbst — die Aussage
   // bleibt, dass ein getippter Ort in den Vorrat kommt.
-  assert.match(web('src/bestand/lagerort.ts'),
+  assert.match(web('src/bestand/repository/lagerort.ts'),
     /INSERT INTO storage_locations \(user_id, name\)\s*\n\s*SELECT id, \$2 FROM users/,
     'Ein frisch getippter Ort landet nicht im Vorrat');
 });

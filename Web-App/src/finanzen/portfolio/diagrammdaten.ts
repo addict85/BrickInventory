@@ -93,10 +93,6 @@ const period_change_pct = rawPoints.length >= 2 && firstVal > 0
 // src/finanzen/chartData.ts. Eine Linie, weil hier der GESAMTWERT über die Zeit
 // steht; eine Trennung nach Zustand gehört in die Tabelle darunter, nicht
 // in dieses Diagramm.
-//
-// Der Sinn ist derselbe wie dort: Die Oberfläche bekommt fertige Punkte und
-// muss keine Achse mehr selbst ausrechnen. `points` bleibt daneben erhalten
-// — es trägt x_label und y_frac, die das bestehende SVG benutzt.
 const chart = buildChart([{
   name: 'total',
   rows: rawPoints.map((p: any) => ({

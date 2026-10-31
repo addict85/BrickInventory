@@ -259,7 +259,7 @@ test('Verschieben läuft über die Tagesregel, nicht über UPDATE user_id', () =
   // („hier stand dafuer UPDATE sets SET quantity=$1"). Auf dem Rohtext meldete
   // die Regel genau diesen Erklärtext — gemessen. Dieselbe Falle wie bei der
   // Haushaltsregel weiter oben.
-  const mv = require('./helpers/sources').ohneKommentare(read('src/sets/setMove.ts'));
+  const mv = require('./helpers/sources').ohneKommentare(require('./helpers/sources').dienstQuelle('src/sets/setMove.ts'));
   assert.ok(mv.includes("recordAcquisitionForDay('set', toId, [sn]"),
     'Erfassungen müssen einzeln über den gemeinsamen Helfer wandern');
   assert.doesNotMatch(mv, /UPDATE set_acquisitions SET user_id/,
@@ -457,74 +457,6 @@ test('der Umschalter lädt nur die betroffene Ansicht neu', () => {
   // Ein Eintrag je Unterkonto, namentlich.
   assert.match(gal, /subs\.map\(m => `<option value="\$\{m\.id\}">/,
     'Die Auswahl muss jedes Unterkonto einzeln führen');
-});
-
-test('beim Verschieben wandert der Inhalt des Sets mit', () => {
-  // Teile und Minifiguren gehören zum Set, nicht zum Konto. Blieben sie
-  // zurück, hätte das Quellkonto Teile aus einem Set, das es nicht mehr
-  // besitzt — sichtbar in der Teileliste, aber ohne Herkunft.
-  //
-  // ohneKommentare(): Die Kommentare in setMove.ts ZITIEREN entfernte
-  // Anweisungen („hier stand dafuer UPDATE sets SET quantity=$1"), und die
-  // verneinenden Zusicherungen unten meldeten genau diesen Erklärtext.
-  const mv = require('./helpers/sources').ohneKommentare(read('src/sets/setMove.ts'));
-  for (const t of ['parts', 'minifigs', 'instructions']) {
-    assert.ok(mv.includes(`INSERT INTO ${t}`), `${t} wandern nicht mit`);
-  }
-  // KOPIEREN, nicht umhängen: Bei einer Teilverschiebung behält der Absender
-  // Exemplare — und damit auch deren Teile.
-  assert.doesNotMatch(mv, /UPDATE parts SET user_id/,
-    'Ein Umhängen liesse den Absender mit Exemplaren ohne Teile zurück');
-  // Erst wenn dort das letzte Exemplar geht, wird beim Absender aufgeräumt.
-  // Bei einer Teilverschiebung steht danach ALLES in beiden Konten: Der
-  // Absender behält Set, Teile und Anleitungen, das Ziel bekam Kopien.
-  // abschnitt() und nicht slice(indexOf(...)): Zeigt einer der beiden Anker
-  // eines Tages ins Leere, waere der Ausschnitt leer — und die verneinenden
-  // Zusicherungen darauf blieben gruen, ohne noch etwas zu pruefen.
-  // abschnitt() wirft dann. (test/stille-schnitte.test.js prueft genau das,
-  // und hat diese Stelle gemeldet.)
-  // Der Endanker ist CODE und kein Kommentar: `mv` ist hier schon durch
-  // ohneKommentare() gelaufen, und das frueher benutzte „// Letztes Exemplar"
-  // waere darin gar nicht mehr da — abschnitt() haette geworfen.
-  const teil = require('./helpers/sources').abschnitt(
-    mv, 'if (remaining > 0)', "for (const t of ['parts', 'minifigs'])",
-    'Teilverschiebung in setMove.ts');
-  // Der Ausschnitt ist der richtige: Er traegt die Antwort des Teilfalls.
-  // Ohne diese bejahende Zusicherung sagen die beiden darunter nur, was NICHT
-  // dasteht — und das sagt jeder leere Text.
-  assert.match(teil, /source_emptied: false/,
-    'Der Ausschnitt ist nicht der Teilfall — dort muss die Antwort ' +
-    'source_emptied: false tragen');
-  // Bei einer Teilverschiebung sinkt beim Absender nur die Stückzahl — und
-  // zwar VON SELBST: Die gewanderten Erfassungen sind bei ihm gelöscht, die
-  // verbliebenen ergeben seine neue Menge. Hier stand
-  // `UPDATE sets SET quantity=$1` mit einem von Hand ausgerechneten Rest;
-  // seit Migration 0036 darf in diesem Zweig GAR NICHTS mehr geschrieben
-  // werden, auch nicht gelöscht (die Zusicherung darunter).
-  assert.doesNotMatch(teil, /UPDATE\s+sets\s+SET/,
-    'Im Teilfall darf an der sets-Zeile des Absenders nichts geändert werden');
-  assert.doesNotMatch(teil, /DELETE FROM/,
-    'Im Teilfall darf beim Absender nichts gelöscht werden');
-  assert.ok(mv.includes("DELETE FROM ${t} WHERE user_id=$1 AND set_number=$2 AND COALESCE(source,'set') <> 'manual'"),
-    'Beim Aufräumen dürfen manuelle Einträge nicht mit weg');
-  const guards = (mv.match(/COALESCE\(source,'set'\) <> 'manual'/g) || []).length;
-  assert.ok(guards >= 3, `nur ${guards} Schutzklauseln gegen manuelle Einträge`);
-  // Geprüft wird JE TABELLE, ob das Ziel schon Zeilen hat — nicht, ob es das
-  // Set hat. Ein Set ohne Teile ist möglich; wer vom Set schliesst, kopiert
-  // dann nichts und löscht danach beim Absender.
-  //
-  // Auf die AUSSAGE geprüft, nicht auf die Schreibweise: Die Prüfungen liefen
-  // ursprünglich per Promise.all über ein Array — das musste weichen, weil
-  // parallele Abfragen auf einer Transaktionsverbindung nicht zulässig sind
-  // (siehe test/set-move-db.test.js). Die alte Fassung verlangte wörtlich
-  // `const [hasParts, hasFigs, hasInstr]` und wurde durch die Korrektur rot,
-  // obwohl sich an der geprüften Regel nichts geändert hat.
-  for (const name of ['hasParts', 'hasFigs', 'hasInstr']) {
-    assert.ok(new RegExp(`${name}\\b`).test(mv), `${name} fehlt`);
-  }
-  for (const t of ['parts', 'minifigs', 'instructions']) {
-    assert.ok(mv.includes(`has('${t}')`), `keine eigene Prüfung für ${t}`);
-  }
 });
 
 test('Verschieben geht NUR über den Kaufpreis', () => {

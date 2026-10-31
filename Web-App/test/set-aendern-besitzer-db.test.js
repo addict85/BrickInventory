@@ -180,7 +180,7 @@ test('die letzte Erfassung wird an genau einer Stelle beschrieben', () => {
       /UPDATE set_acquisitions SET[\s\S]{0,260}?ORDER BY created_at DESC, id DESC LIMIT 1/g))
       stellen.push(path.relative(ROOT, f));
   }
-  assert.deepEqual(stellen, ['src/sets/setService.ts'],
+  assert.deepEqual(stellen, ['src/sets/repository/sets.ts'],
     'Die letzte Erfassung wird an mehr als einer Stelle beschrieben — genau so ' +
     'sind Preis und Zustand mit verschiedenen Konten auseinandergelaufen');
 });

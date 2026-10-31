@@ -40,7 +40,6 @@ export function ohneVersion(setNumber: string | number): string {
 }
 
 // ── Der Katalog-Eintrag zu einem Set ────────────────────────────────────────
-//
 // Hier steht der LESER, nicht nur die Schreibweise: Die drei Stellen, die
 // „kennt BrickLink dafuer gar keinen Preis?" fragten, taten es mit
 // verschiedenen Schluesseln. Die Markierung schreibt der Preisführer

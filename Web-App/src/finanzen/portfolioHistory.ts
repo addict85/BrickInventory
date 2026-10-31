@@ -3,6 +3,7 @@ import { getSetting as getSettingStandard } from '../konto/settings';
 import { baueDiagrammdaten } from './portfolio/diagrammdaten';
 import { rekonstruiereKurve } from './portfolio/kurve';
 import { DEFAULT_PRICE_CONDITION } from './financeCalc';
+import * as repo from './repository/portfolioKurve';
 /**
  * `db` und `getSetting` lassen sich hereingeben, damit die Rechnung ohne
  * Datenbank prüfbar bleibt; ohne Angabe gelten Datenbank und Einstellungen.
@@ -22,27 +23,7 @@ export async function getPortfolioHistory(
   // Ein Set, EINE Zeile — auch wenn zwei Konten es besitzen. Mengen addiert,
   // Kaufpreis über alle Erfassungen des Haushalts gewichtet. Ohne die
   // Gruppierung käme dasselbe Set zweimal in die Summe.
-  //
-  // Der Rückfall `COALESCE(s.purchase_price,0) * s.quantity` ist mit Migration
-  // 0032 weggefallen; COALESCE(a.total_price, 0) hält die Summe trotzdem
-  // rechenbar, falls die Erfassungen eines Sets alle ohne Preis sind.
-  const sets = await db.all(
-    // Die Menge aus den Erfassungen (Migration 0036 hat s.quantity geloescht).
-    // Sie steht in `a.total_qty` schon da — die Unterabfrage darunter gruppiert
-    // genau danach. Der Rueckfall `COALESCE(a.total_qty, s.quantity)` ist damit
-    // gegenstandslos: Ohne Erfassungen gibt es auch keine Menge.
-    `SELECT s.set_number, COALESCE(SUM(a.total_qty), 0)::int AS quantity,
-            SUM(COALESCE(a.total_price, 0))
-              / NULLIF(SUM(a.total_qty), 0) AS purchase_price
-     FROM sets s
-     LEFT JOIN (
-       SELECT user_id, set_number,
-              SUM(COALESCE(purchase_price, 0) * quantity) AS total_price,
-              SUM(quantity) AS total_qty
-       FROM set_acquisitions GROUP BY user_id, set_number
-     ) a ON a.user_id = s.user_id AND a.set_number = s.set_number
-     WHERE s.user_id = ANY($1)
-     GROUP BY s.set_number`, [uids]);
+  const sets = await repo.setsMitKaufsumme(uids);
   if (!sets.length) {
     return { success:true, currency, period, points:[], y_axis:[], period_change_pct:null, messpunkte:0 };
   }

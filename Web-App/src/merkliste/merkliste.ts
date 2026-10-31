@@ -3,7 +3,6 @@
  * Ausführlich: docs/begruendungen/src/merkliste/merkliste.ts.md#abschnitt
  */
 import { nacharbeit } from '../auftraege/nacharbeit';
-import * as db from '../../db/database';
 import { addSet, sanitizeSetNumber } from '../sets/setService';
 import { findSetInScope } from '../sets/setAdd';
 import { loescheAlarm } from '../finanzen/preisalarm';
@@ -13,6 +12,7 @@ import { meldeUndWeiter } from '../infra/httpError';
 import { fuerSet } from '../finanzen/preisvergleich';
 import { resolveIfExists } from '../katalog/bilder/images';
 import { toCsv } from '../infra/csvExport';
+import * as repo from './repository/merkliste';
 
 /** Ein Eintrag, wie ihn beide Oberflächen sehen. */
 export interface Merkposten {
@@ -76,13 +76,7 @@ export async function legeMerkpostenAn(
 ): Promise<{ merkposten: Merkposten | null; war_neu: boolean }> {
   const sn = sanitizeSetNumber(setNumber);
   const c  = await zustandOder(condition, userId);
-  const r = await db.get(
-    `INSERT INTO wanted (user_id, set_number, condition, created_at)
-     VALUES ($1,$2,$3, COALESCE($4::timestamptz, NOW()))
-     ON CONFLICT (user_id, set_number, condition) DO UPDATE
-        SET condition = wanted.condition
-     RETURNING (xmax = 0) AS war_neu`,
-    [userId, sn, c, aufgenommenAm ?? null]);
+  const r = await repo.merkeSetVor(userId, sn, c, aufgenommenAm ?? null);
   const liste = await merkpostenVon([userId], sn);
   return { merkposten: liste.find(w => w.condition === c) ?? null, war_neu: !!r?.war_neu };
 }
@@ -90,9 +84,7 @@ export async function legeMerkpostenAn(
 /** Merkposten entfernen. Kein Fehler, wenn es keinen gab — das Ziel ist erreicht. */
 export async function loescheMerkposten(userId: number, setNumber: string, condition: unknown): Promise<number> {
   const c = String(condition ?? 'N').toUpperCase();
-  const r = await db.run(
-    'DELETE FROM wanted WHERE user_id=$1 AND set_number=$2 AND condition=$3',
-    [userId, sanitizeSetNumber(setNumber), c]);
+  const r = await repo.streicheVormerkung(userId, sanitizeSetNumber(setNumber), c);
   return r.changes ?? 0;
 }
 
@@ -108,9 +100,7 @@ export async function verschiebeMerkposten(
   const c  = String(condition ?? 'N').toUpperCase() === 'U' ? 'U' : 'N';
   if (vonId === zuId) return { verschoben: false, zusammengefuehrt: false };
 
-  const schon = await db.get(
-    'SELECT 1 FROM wanted WHERE user_id=$1 AND set_number=$2 AND condition=$3',
-    [zuId, sn, c]);
+  const schon = await repo.istVorgemerkt(zuId, sn, c);
 
   if (schon) {
     const weg = await loescheMerkposten(vonId, sn, c);
@@ -118,16 +108,12 @@ export async function verschiebeMerkposten(
     return { verschoben: weg > 0, zusammengefuehrt: true };
   }
 
-  const r = await db.run(
-    'UPDATE wanted SET user_id=$1 WHERE user_id=$2 AND set_number=$3 AND condition=$4',
-    [zuId, vonId, sn, c]);
+  const r = await repo.uebertrageVormerkung(zuId, vonId, sn, c);
   const verschoben = (r.changes ?? 0) > 0;
   // Den Alarm NUR mitnehmen, wenn der Merkposten wirklich gewandert ist — sonst
   // haengte eine fehlgeschlagene Verschiebung trotzdem den Alarm um.
   if (verschoben) {
-    await db.run(
-      'UPDATE price_alerts SET user_id=$1 WHERE user_id=$2 AND set_number=$3 AND condition=$4',
-      [zuId, vonId, sn, c]).catch((e: unknown) => meldeUndWeiter('merkliste:alarm-umhaengen', e));
+    await repo.uebertrageAlarm(zuId, vonId, sn, c).catch((e: unknown) => meldeUndWeiter('merkliste:alarm-umhaengen', e));
   }
   return { verschoben, zusammengefuehrt: false };
 }
@@ -206,33 +192,7 @@ export async function merkpostenVon(
 
   params.push(waehrung);
   const pWaehrung = `$${params.length}`;
-  const rows = await db.all(
-    `SELECT w.set_number, w.condition, w.created_at, w.user_id,
-            COALESCE(rb.name, sc.name) AS name, COALESCE(rb.year, sc.year) AS year, rb.theme_id,
-            COALESCE(rb.num_parts, sc.pieces) AS num_parts,
-            COALESCE(rb.set_img_url, sc.image_url) AS image_url,
-            pa.richtung AS alarm_richtung, pa.schwelle AS alarm_schwelle,
-            pa.ausgeloest AS alarm_ausgeloest,
-            pc.avg_price AS marktpreis,
-            EXISTS (SELECT 1 FROM sets s
-                     WHERE s.user_id = ANY($1) AND s.set_number = w.set_number) AS owned
-       FROM wanted w
-       LEFT JOIN rb_sets rb ON rb.set_num = w.set_number
-       -- Ohne Rebrickable-Katalog kennt set_catalog (wie in der Sammlung) Name und Bild.
-       LEFT JOIN set_catalog sc ON sc.set_number = w.set_number
-       LEFT JOIN price_alerts pa ON pa.user_id = w.user_id
-                                AND pa.set_number = w.set_number
-                                AND pa.condition = w.condition
-       -- Der Marktpreis im Zustand DIESES Merkpostens. Ohne die
-       -- Zustandsbedingung stuende beim gebrauchten Merkposten der Neupreis —
-       -- dieselbe Verwechslung, die in addSet() schon einmal einen
-       -- Gebrauchtpreis als Neuzugang verbucht hat.
-       LEFT JOIN price_cache pc ON pc.set_number = w.set_number
-                               AND pc.condition = w.condition
-                               AND pc.currency_code = ${pWaehrung}
-      WHERE w.user_id = ANY($1)${wo}
-      ORDER BY ${ordnung}, w.set_number, w.condition`,
-    params);
+  const rows = await repo.merklisteImBlickfeld(params, pWaehrung, wo, ordnung);
 
   // Die Zahlenspalten kommen als Zeichenkette aus dem Treiber — dieselbe
   // Stelle, an der in diesem Baum schon einmal ein Vergleich still falsch
@@ -252,10 +212,6 @@ export async function merkpostenVon(
     // Synchron und gecacht (src/katalog/bilder/images.ts) — kein Dateisystemzugriff je
     // Zeile und Aufruf. Dieselbe Namensregel wie beim Ablegen
     // (src/katalog/bilder/setImages.ts: /images/sets/<setnummer>.jpg).
-    //
-    // ?? null: resolveIfExists() ist als „string | null | undefined"
-    // typisiert; ein fehlendes Bild steht in der Antwort als NULL und nicht
-    // als fehlendes Feld, sonst muessten beide Oberflaechen zwei Faelle kennen.
     const lokal = resolveIfExists(
       `/images/sets/${String(r.set_number).replace(/[^a-z0-9-]/gi, '_')}.jpg`) ?? null;
     if (!lokal && r.image_url) nacharbeit().bildVormerken(String(r.image_url), String(r.set_number));
@@ -330,14 +286,7 @@ export async function uebernimm(
  * Ausführlich: docs/begruendungen/src/merkliste/merkliste.ts.md#buildmerklistecsv
  */
 export async function buildMerklisteCsv(uid: number): Promise<string> {
-  const rows = await db.all(
-    `SELECT w.set_number,
-            w.condition,
-            TO_CHAR(w.created_at AT TIME ZONE 'UTC','YYYY-MM-DD') AS created_at
-       FROM wanted w
-      WHERE w.user_id = $1
-      ORDER BY w.created_at DESC, w.set_number, w.condition`,
-    [uid]);
+  const rows = await repo.merklisteFuerExport(uid);
 
   return toCsv(['set_number', 'condition', 'created_at'], rows);
 }

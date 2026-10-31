@@ -1,8 +1,7 @@
 import { getGlobalSetting } from '../konto/settings';
 import { notify } from '../../db/pgNotify';
 import { type AuftragsArt } from './auftraege';
-import { AUFTRAG_KANAL } from './repository/auftraege';
-import { stelleAuftragEin, setzeFaelligkeit, zieheTerminVor, laeuftArt } from './repository/auftraege';
+import { AUFTRAG_KANAL, stelleAuftragEin, setzeFaelligkeit, zieheTerminVor, laeuftArt } from './dienst';
 
 /**
  * Zeitpläne als geplante Aufträge: Je geplanter Art steht genau ein offener

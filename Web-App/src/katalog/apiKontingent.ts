@@ -2,6 +2,7 @@ import * as db from '../../db/database';
 import type { DbSchnittstelle } from '../../db/database';
 import { aktuellesKonto } from '../infra/anfrageKonto';
 import { getGlobalSetting } from '../konto/settings';
+import * as repo from './repository/apiKontingent';
 
 /** Tageskontingente der externen Dienste — eine Stelle für alle Zähler. */
 export type ApiName = 'bricklink' | 'rebrickable' | 'brickset';
@@ -43,11 +44,7 @@ export async function checkAndIncrementRateLimit(apiName: ApiName, _vorgabe?: nu
   const tag = heute();
   const konto = aktuellesKonto();
   const zaehle = async (tx: DbSchnittstelle, id: number, grenze: number): Promise<number | null> => {
-    const z = await tx.get(`
-      INSERT INTO api_aufrufe (tag, api, konto, anzahl) VALUES ($1, $2, $3, 1)
-      ON CONFLICT (tag, api, konto) DO UPDATE SET anzahl = api_aufrufe.anzahl + 1
-       WHERE api_aufrufe.anzahl < $4
-      RETURNING anzahl`, [tag, apiName, id, grenze]);
+    const z = await repo.zaehleApiAufruf(tx, tag, apiName, id, grenze);
     return z ? Number(z.anzahl) : null;
   };
   if (limit <= 0) return { allowed: false, count: 0, limit, remaining: 0 };
@@ -70,7 +67,7 @@ export async function checkAndIncrementRateLimit(apiName: ApiName, _vorgabe?: nu
 export async function getRateLimitStatus(apiName: ApiName) {
   const tag = heute();
   const [z, limit] = await Promise.all([
-    db.get('SELECT anzahl FROM api_aufrufe WHERE tag = $1 AND api = $2 AND konto = 0', [tag, apiName]),
+    repo.aufrufeHeute(tag, apiName),
     getLimitForApi(apiName),
   ]);
   const count = Number(z?.anzahl || 0);
@@ -86,9 +83,7 @@ export async function kontingentFrei(apiName: ApiName) {
   const s = await getRateLimitStatus(apiName);
   const konto = aktuellesKonto();
   if (!konto || konto.verwalter || s.remaining <= 0) return { allowed: s.remaining > 0, limit: s.limit };
-  const z = await db.all<{ konto: number; anzahl: number }>(
-    'SELECT konto, anzahl FROM api_aufrufe WHERE tag = $1 AND api = $2 AND konto IN ($3, $4)',
-    [s.date, apiName, konto.id, ALLE_KONTEN]);
+  const z = await repo.aufrufeJeKonto(s.date, apiName, konto.id, ALLE_KONTEN);
   const stand = (k: number) => Number(z.find(r => Number(r.konto) === k)?.anzahl || 0);
   return { allowed: stand(konto.id) < grenzeJeKonto(s.limit) && stand(ALLE_KONTEN) < grenzeAlleKonten(s.limit),
            limit: s.limit };
@@ -96,5 +91,5 @@ export async function kontingentFrei(apiName: ApiName) {
 
 /** Den heutigen Zähler eines Dienstes zurücksetzen (Verwalter, „jetzt erneut versuchen“). */
 export async function setzeKontingentZurueck(apiName: ApiName): Promise<void> {
-  await db.run('DELETE FROM api_aufrufe WHERE tag = $1 AND api = $2', [heute(), apiName]);
+  await repo.setzeApiZaehlerZurueck(heute(), apiName);
 }

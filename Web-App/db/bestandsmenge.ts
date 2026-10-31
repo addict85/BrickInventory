@@ -182,3 +182,29 @@ export async function mengeDerPosition(
   return zeile ? (parseInt(String(zeile.menge)) || 0) : null;
 }
 
+/**
+ * Der Tag einer Erfassung, wie ihn der eindeutige Index führt (Migration
+ * 0070): `tag` in der Zeitzone der Installation, für ältere Zeilen der
+ * bisherige UTC-Tag. Jede Abfrage über „denselben Tag“ nimmt diesen Ausdruck,
+ * sonst trifft sie den Index nicht.
+ */
+export function erfassungsTagSql(alias = ''): string {
+  const a = alias ? `${alias}.` : '';
+  return `COALESCE(${a}tag, (${a}created_at AT TIME ZONE 'UTC')::date)`;
+}
+
+/**
+ * SQL-Bedingung: Der Kaufpreis der Zeile ist in der heutigen Währung ihres
+ * Kontos erfasst. Für Durchschnitte in der Anzeigewährung; ein älterer Preis
+ * aus einer anderen Währung wäre dort ein falscher Betrag. Die Währung kommt
+ * aus [kontowaehrungJoin] — einmal je Abfrage statt einer Unterabfrage je Zeile.
+ */
+export function inKontowaehrung(tabelle: string, alias = 'kw'): string {
+  return `${tabelle}.currency = COALESCE(${alias}.value, 'EUR')`;
+}
+
+/** Die Kontowährung als JOIN-Quelle für [inKontowaehrung]. */
+export function kontowaehrungJoin(tabelle: string, alias = 'kw'): string {
+  return `LEFT JOIN user_settings ${alias}
+            ON ${alias}.user_id = ${tabelle}.user_id AND ${alias}.key = 'currency'`;
+}

@@ -6,7 +6,6 @@
 
 /**
  * Hosts, von denen der Server BILDER holen darf.
- *
  * Stand bis hierher in routes/imgProxy.ts. Verschoben, weil sie inzwischen
  * drei Nutzer hat (Bild-Proxy, die Diagnoseroute in routes/api_v1/admin.ts und
  * der Dateidownload in clients/rebrickable.ts) — und eine Liste, die aus einer

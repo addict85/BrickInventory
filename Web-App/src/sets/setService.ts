@@ -2,7 +2,7 @@ import * as db from '../../db/database';
 import type { DbSchnittstelle } from '../../db/database';
 import { meldeUndWeiter, fehlertext, logAndContinue, meldeUndLiefere } from '../infra/httpError';
 import { scopeIds, writableIds } from '../haushalt/haushalt';
-import { recordAcquisitionForDay, erfassungsTagSql } from '../bestand/acquisitions';
+import { recordAcquisitionForDay } from '../bestand/acquisitions';
 import { withInventoryLock } from '../../db/txLock';
 import { downloadSetImage } from '../katalog/bilder/setImages';
 import { getCurrentMarketPrice } from '../finanzen/marketPrice';
@@ -19,9 +19,9 @@ import { stelleAuftragEin } from '../auftraege/dienst';
 import { normalisiereSetNummer, moeglicheSetNummer } from './setNummer';
 import { fehlerWerfen } from '../infra/fehlerTexte';
 import { setzeLagerort, ortFuerNeuerfassung } from '../bestand/lagerort';
-import { mengeSummeSql } from '../../db/bestandsmenge';
 import { bestandsMenge } from '../infra/validate';
 import { resolveSetCondition } from '../finanzen/financeCalc';
+import * as repo from './repository/sets';
 
 /**
  * Sets anlegen, ändern und ausgeben — der Kern hinter den Set-Routen.
@@ -55,17 +55,7 @@ async function priceForNewAcquisition(userId: number, setNumber: string, dbh: Db
   // gespeichert. Hier stand ein globaler Schlüssel, den es nie gibt — also
   // immer EUR, und ein EUR-Betrag landete als CHF-Kaufpreis.
   const currency = String(await getSetting(userId, 'currency', 'EUR'));
-  const cached = await dbh.get(
-    // Fallback zwischen den Zuständen, aber mit der richtigen Priorität:
-    // Der angefragte Zustand gewinnt IMMER, wenn er einen Preis hat. Der
-    // andere kommt nur zum Zug, wenn dort keiner steht (avg_price > 0
-    // filtert leere Einträge vorher raus). Genau umgekehrt war es der
-    // gemeldete Fehler: „hat einen Preis" schlug „passender Zustand".
-    `SELECT avg_price FROM price_cache
-     WHERE set_number=$1 AND currency_code=$2 AND condition IN ('N','U') AND avg_price > 0
-     ORDER BY (condition = $3) DESC LIMIT 1`,
-    [setNumber, currency, cond]
-  ).catch(meldeUndLiefere('set-service:cached', null));
+  const cached = await repo.marktpreisAusCache(dbh, setNumber, currency, cond).catch(meldeUndLiefere('set-service:cached', null));
   let pp = parseFloat(cached?.avg_price || 0) || null;
   if (!pp) pp = await getCurrentMarketPrice(setNumber, userId, cond).catch(meldeUndLiefere('set-service:getCurrentMarketPrice', null));
   if (!pp) {
@@ -74,12 +64,7 @@ async function priceForNewAcquisition(userId: number, setNumber: string, dbh: Db
     // Die Erfassung entstand dann OHNE Kaufpreis — und der Marktpreis
     // erschien später trotzdem, sobald der Preis-Job den Cache füllte. Das
     // erklärt die gemeldete Abweichung.
-    const hist = await dbh.get(
-      `SELECT avg_price FROM price_history
-        WHERE set_number=$1 AND currency_code=$2 AND condition IN ('N','U') AND avg_price > 0
-        ORDER BY (condition = $3) DESC, recorded_at DESC LIMIT 1`,
-      [setNumber, currency, cond]
-    ).catch(meldeUndLiefere('set-service:hist', null));
+    const hist = await repo.marktpreisAusVerlauf(dbh, setNumber, currency, cond).catch(meldeUndLiefere('set-service:hist', null));
     pp = parseFloat(hist?.avg_price || 0) || null;
   }
   return { price: pp, condition: cond, geschaetzt: pp != null, currency };
@@ -110,9 +95,7 @@ export async function recordAcquisition(userId: number, setNumber: string, quant
  */
 async function adjustAcquisitionsToQuantity(userId: number, setNumber: string, newTotalQty: number, dbh: DbSchnittstelle = db,
                                             pricePlan: { price: number | null; condition: string; geschaetzt?: boolean; currency?: string } | null = null) {
-  const rows: { id: number; quantity: number; created_at: Date }[] = await dbh.all(
-    'SELECT id, quantity, created_at FROM set_acquisitions WHERE user_id=$1 AND set_number=$2 ORDER BY created_at DESC, id DESC',
-    [userId, setNumber]).catch(meldeUndLiefere('set-service:rows', []));
+  const rows: { id: number; quantity: number; created_at: Date }[] = await repo.setErfassungenNeuesteZuerst(dbh, userId, setNumber).catch(meldeUndLiefere('set-service:rows', []));
   const current = rows.reduce((sum: number, r: { quantity?: number | null }) => sum + (r.quantity || 0), 0);
   let delta = newTotalQty - current;
   if (delta === 0) return;
@@ -138,8 +121,8 @@ async function adjustAcquisitionsToQuantity(userId: number, setNumber: string, n
   for (const r of rows) {
     if (delta === 0) break;
     const take = Math.min(r.quantity, -delta);
-    if (take >= r.quantity) await dbh.run('DELETE FROM set_acquisitions WHERE id=$1', [r.id]);
-    else await dbh.run('UPDATE set_acquisitions SET quantity = quantity - $1 WHERE id=$2', [take, r.id]);
+    if (take >= r.quantity) await repo.loescheSetErfassungNachId(dbh, r.id);
+    else await repo.kuerzeSetErfassung(dbh, take, r.id);
     delta += take;
   }
   // Hier stand recomputeSetCondition(): Nach einer LIFO-Reduktion kann die
@@ -205,7 +188,7 @@ async function addSetIntern(setNumber: string, quantity: number, userId: number,
   // Ausführlich: docs/begruendungen/src/sets/setService.ts.md#addsetintern-zustand
   const zustand = await zustandFuerPreis(condition, null, userId);
 
-  const existing = await db.get('SELECT id FROM sets WHERE user_id = $1 AND set_number = $2', [userId, normalized]);
+  const existing = await repo.setZeileDesKontos(userId, normalized);
   if (existing) {
     // Kaufpreis dieser Erfassung festhalten (ging früher verloren!) —
     // ohne Angabe aktuellen Marktpreis übernehmen, wie bei Neu-Erfassung.
@@ -265,15 +248,7 @@ async function addSetIntern(setNumber: string, quantity: number, userId: number,
   // Fang: Scheitert das, bricht das Erfassen mit der Meldung von Postgres ab.
   // Ohne Antwort der Quellen bleibt stehen, was der Katalog schon weiss.
   // Ausführlich: docs/begruendungen/src/sets/setService.ts.md#addsetintern-3
-  await db.run(`INSERT INTO set_catalog (set_number,name,year,theme,pieces,minifigs,image_url,image_local)
-                VALUES ($1, COALESCE($2, 'Set ' || $1), $3,$4,$5,$6,$7,$8)
-                ON CONFLICT (set_number) DO UPDATE SET
-                  name = COALESCE($2, set_catalog.name), year = COALESCE($3, set_catalog.year),
-                  theme = COALESCE($4, set_catalog.theme), pieces = COALESCE($5, set_catalog.pieces),
-                  minifigs = COALESCE($6, set_catalog.minifigs),
-                  image_url = COALESCE($7, set_catalog.image_url),
-                  image_local = COALESCE($8, set_catalog.image_local), updated_at = NOW()`,
-    [normalized, name, year, theme||null, pieces, minifigs, imageUrl, localImage]);
+  await repo.merkeSetKatalog(normalized, name, year, theme||null, pieces, minifigs, imageUrl, localImage);
 
   // Zustand: siehe oben, einmal fuer beide Zweige bestimmt.
   const effectiveCondition = zustand;
@@ -292,14 +267,13 @@ async function addSetIntern(setNumber: string, quantity: number, userId: number,
   await withInventoryLock(userId, normalized, async (tx) => {
     // Die Bestandszeile traegt nur noch, WER WIE VIELE haelt.
     // Ausführlich: docs/begruendungen/src/sets/setService.ts.md#addsetintern-4
-    await tx.run('INSERT INTO sets (user_id,set_number) VALUES ($1,$2) ON CONFLICT (user_id,set_number) DO NOTHING',
-      [userId, normalized]);
+    await repo.legeSetZeileAn(tx, userId, normalized);
     await recordAcquisition(userId, normalized, quantity, effectivePurchasePrice, effectiveCondition, tx, preisGeschaetzt, null, erfasstAm);
   });
 
   // In den Katalog, nicht an die Bestandszeile (Migration 0033). Und ohne
   // user_id: Die Teilezahl eines Sets ist in jedem Konto dieselbe.
-  if (minifigs) await db.run('UPDATE set_catalog SET minifigs = $1 WHERE set_number = $2', [minifigs, normalized]);
+  if (minifigs) await repo.setzeFigurenzahl(minifigs, normalized);
 
   if (sendProgress) sendProgress({ step:'done_meta', set:normalized });
   // Anleitung, Teile, Figuren und Bilder holt der Auftrag (jobs/nachErfassung.ts).
@@ -327,11 +301,7 @@ async function addSetIntern(setNumber: string, quantity: number, userId: number,
 async function schreibeInLetzteErfassung(
   feld: 'purchase_price' | 'condition', wert: any, ownerId: number, sn: string,
 ) {
-  await db.run(`UPDATE set_acquisitions SET ${feld} = $1
-                 WHERE id = (SELECT id FROM set_acquisitions
-                              WHERE user_id=$2 AND set_number=$3
-                              ORDER BY created_at DESC, id DESC LIMIT 1)`,
-    [wert, ownerId, sn]);
+  await repo.schreibeInNeuesteSetErfassung(wert, ownerId, sn, feld);
 }
 
 export async function updateSet(uid: number, sn: string, body: any) {
@@ -343,9 +313,7 @@ export async function updateSet(uid: number, sn: string, body: any) {
   const _wids = await writableIds(uid);
   // Die EIGENE Zeile gewinnt, wenn mehrere Konten das Set halten — sonst
   // entschiede die Tabellenreihenfolge, wessen Menge und Preis gilt.
-  const existing = await db.get(
-    `SELECT id, user_id FROM sets WHERE user_id = ANY($1) AND set_number=$2
-      ORDER BY (user_id = $3) DESC, id ASC LIMIT 1`, [_wids, sn, uid]);
+  const existing = await repo.setZeileImSchreibfeld(_wids, sn, uid);
   if (!existing) { const e = Object.assign(new Error('Set nicht gefunden'), { status: 404 }); throw e; }
   // Ab hier zählt der BESITZER der Zeile — sonst legt die Mengenanpassung
   // Erfassungen im falschen Konto an.
@@ -366,8 +334,8 @@ export async function updateSet(uid: number, sn: string, body: any) {
     //  Angezeigt wird der HAUSHALT, geändert wird das EIGENE Konto
     // Ausführlich: docs/begruendungen/src/sets/setService.ts.md#updateset-gewuenschtgesamt
     const eigenesZiel = async (dbh: Pick<typeof db, 'get'>) => {
-      const gesamtVorher = (await dbh.get(mengeSummeSql('blickfeld'), [leseFeld, sn]))?.q ?? 0;
-      const eigenVorher = (await dbh.get(mengeSummeSql('eines'), [uid, sn]))?.q ?? 0;
+      const gesamtVorher = await repo.setMenge(dbh, 'blickfeld', leseFeld, sn);
+      const eigenVorher = await repo.setMenge(dbh, 'eines', uid, sn);
       // Nach unten bei 0 gedeckelt: Die Exemplare eines anderen Kontos sind
       // nicht meine, ich kann sie nicht wegnehmen.
       const aenderung = delta ?? (Number(gewuenschtGesamt) - gesamtVorher);
@@ -386,12 +354,7 @@ export async function updateSet(uid: number, sn: string, body: any) {
       // gehörte — sonst liefe die Mengenanpassung ins Leere.
       // Ausführlich: docs/begruendungen/src/sets/setService.ts.md#updateset
       if (eigenVorher === 0 && eigenZiel > 0)
-        await tx.run(
-          `INSERT INTO sets (user_id, set_number)
-           SELECT $1, set_number
-             FROM sets WHERE user_id = ANY($2) AND set_number = $3
-            ORDER BY id ASC LIMIT 1
-           ON CONFLICT DO NOTHING`, [uid, leseFeld, sn]);
+        await repo.uebernimmSetZeile(tx, uid, leseFeld, sn);
       // Menge 0 ist ein Löschen und geht deshalb durch den Papierkorb wie
       // der Löschknopf — ein Tippfehler im Mengenfeld soll sich
       // zurückholen lassen.
@@ -416,10 +379,7 @@ export async function updateSet(uid: number, sn: string, body: any) {
       // Zustand der LETZTEN Erfassung heranziehen — genau die wird unten
       // aktualisiert. Ohne ihn kam der Preis für den Standardzustand des
       // Nutzers, also meist „Neu", auch bei einem gebrauchten Set.
-      const lastCond = await db.get(
-        `SELECT condition FROM set_acquisitions
-          WHERE user_id=$1 AND set_number=$2
-          ORDER BY created_at DESC, id DESC LIMIT 1`, [ownerId, sn]).catch(meldeUndLiefere('set-service:lastCond', null));
+      const lastCond = await repo.zustandNeuesteSetErfassung(ownerId, sn).catch(meldeUndLiefere('set-service:lastCond', null));
       pp = await getCurrentMarketPrice(sn, ownerId, lastCond?.condition || null);
     }
     const val = (pp !== null && !isNaN(pp)) ? pp : null;
@@ -439,41 +399,11 @@ export async function updateSet(uid: number, sn: string, body: any) {
     }
   }
   // Die Gesamtmenge des Blickfelds NACH der Änderung — siehe Kopfkommentar.
-  const nachher = await db.get(
-    // Aus den Erfassungen (Migration 0036) — siehe die Begruendung bei
-    // setQuantity weiter oben.
-    mengeSummeSql('blickfeld'),
-    [await scopeIds(uid), sn]).catch(meldeUndLiefere('set-service:scopeIds', null));
-  return { quantity: nachher?.q ?? 0, ...(papierkorb ? { papierkorb } : {}) };
+  // Aus den Erfassungen (Migration 0036), wie beim Setzen.
+  const nachher = await repo.setMenge(db, 'blickfeld', await scopeIds(uid), sn).catch(meldeUndLiefere('set-service:scopeIds', null));
+  return { quantity: nachher ?? 0, ...(papierkorb ? { papierkorb } : {}) };
 }
 
-// Shared logic to build the Sets CSV export content. Used by both the
-// standalone CSV download and the combined ZIP export in settings.js.
-// Eine Zeile pro Erfassung, damit Kaufpreis, Zustand und Datum je Kauf erhalten
-// bleiben und beim Re-Import 1:1 wiederhergestellt werden. Sets ohne Erfassungen …
-// Ausführlich: docs/begruendungen/src/sets/setService.ts.md#sets-csv-sql
-const SETS_CSV_SQL = `
-  SELECT s.set_number,
-         -- Hier stand CASE WHEN a.id IS NULL THEN s.quantity ELSE a.quantity.
-         -- (Keine Gegenstriche: Der Kommentar steht in einem Template-Literal.)
-         -- Der Rueckfall auf die Set-Zeile ist weg: Migration 0036 hat die
-         -- Spalte geloescht, und Migration 0032 garantiert fuer jede Set-Zeile
-         -- eine Erfassung. Der LEFT JOIN bleibt, damit ein Export an einer
-         -- unerwarteten Lage nicht ganz ausfaellt.
-         -- COALESCE(..., 0) und nicht NULL: Eine Set-Zeile ohne Erfassung
-         -- bedeutet null Exemplare — dieselbe Lesart wie in
-         -- db/bestandsmenge.ts (mengeAus mit 0). Ein leeres Feld im Export
-         -- hiesse „keine Angabe", und das ist eine andere Aussage.
-         COALESCE(a.quantity, 0) AS quantity,
-         a.purchase_price AS purchase_price,
-         COALESCE(a.condition, 'N') AS condition,
-         CASE WHEN a.id IS NULL THEN ''
-              ELSE TO_CHAR(${erfassungsTagSql('a')}, 'YYYY-MM-DD') END AS acquired_at
-    FROM sets s
-    LEFT JOIN set_acquisitions a
-           ON a.user_id = s.user_id AND a.set_number = s.set_number
-   WHERE s.user_id = $1
-   ORDER BY s.set_number ASC, a.created_at ASC, a.id ASC`;
 
 export async function buildSetsCsv(uid: number) {
   // Der Rückfallweg bewahrt, was das frühere `.catch(() => [])` je Set leistete:
@@ -481,7 +411,7 @@ export async function buildSetsCsv(uid: number) {
   // die Set-Zeile heraus. Ein JOIN würde stattdessen die GANZE Abfrage
   // abbrechen — der Export lieferte gar nichts mehr.
   // Ausführlich: docs/begruendungen/src/sets/setService.ts.md#buildsetscsv-rows
-  const rows = await db.all(SETS_CSV_SQL, [uid]);
+  const rows = await repo.setsFuerCsv(uid);
 
   return toCsv(['set_number', 'quantity', 'purchase_price', 'condition', 'acquired_at'],
     rows.map((r: any) => ({ ...r, purchase_price: r.purchase_price ?? '' })));

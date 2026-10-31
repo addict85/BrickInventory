@@ -1,6 +1,6 @@
-import * as db from '../../../db/database';
 import { logAndContinue, meldeUndLiefere } from '../../infra/httpError';
 import { stelleAuftragEin } from '../../auftraege/dienst';
+import * as repo from '../repository/bildbedarf';
 
 /**
  * Der Bildbedarf (Tabelle image_wanted): welche Set-Bilder gebraucht wurden
@@ -43,10 +43,7 @@ export function merkeGebraucht(url: string, setNumber: string | null): void {
 
 /** Bedarf in einer Anweisung notieren; schon notierte Adressen bleiben, wie sie sind. */
 export async function notiereBildbedarf(urls: string[], sets: string[]): Promise<void> {
-  await db.run(
-    `INSERT INTO image_wanted (url, set_number)
-       SELECT * FROM unnest($1::text[], $2::text[])
-       ON CONFLICT (url) DO NOTHING`, [urls, sets]);
+  await repo.merkeBildwuensche(urls, sets);
 }
 
 /** Den Puffer in einer Anweisung wegschreiben und den Abarbeiter wecken. */
@@ -69,20 +66,24 @@ export async function initImageQueue(): Promise<void> {
  * Ausführlich: docs/begruendungen/jobs/imageQueue.ts.md#loescheverfallene
  */
 export async function loescheVerfallene(): Promise<number> {
-  const r = await db.run(
-    `DELETE FROM image_wanted
-      WHERE requested_at <= NOW() - ($1 || ' milliseconds')::interval`,
-    [String(NOTIZ_GILT_MS)]
-  ).catch(meldeUndLiefere('bild-job:r', null));
+  const r = await repo.loescheAlteBildwuensche(String(NOTIZ_GILT_MS)).catch(meldeUndLiefere('bild-job:r', null));
   return r?.changes || 0;
 }
 
 /** Wie viele Bilder noch gebraucht werden. */
 export async function offenerBildbedarf(): Promise<number> {
-  return (await db.get<{ n: number }>('SELECT COUNT(*)::int AS n FROM image_wanted'))?.n ?? 0;
+  return (await repo.zaehleBildwuensche())?.n ?? 0;
 }
 
 /** Den ganzen Bedarf verwerfen (Verwaltung: Warteschlange leeren). @returns wie viele */
 export async function leereBildbedarf(): Promise<number> {
-  return (await db.run('DELETE FROM image_wanted'))?.changes ?? 0;
+  return (await repo.loescheAlleBildwuensche())?.changes ?? 0;
+}
+
+/**
+ * Die ältesten noch gültigen Wünsche nehmen — herausgenommen in einem
+ * Schritt, damit zwei Läufe nicht dieselben Bilder holen.
+ */
+export function nimmBildwuensche(gueltigMs: number, anzahl: number): Promise<{ url: string; set_number: string | null }[]> {
+  return repo.entnimmBildwuensche(String(gueltigMs), anzahl);
 }

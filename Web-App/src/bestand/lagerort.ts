@@ -4,6 +4,8 @@
  */
 import { meldeUndLiefere } from '../infra/httpError';
 import * as db from '../../db/database';
+import * as orte from './repository/lagerort';
+import type { LagerTabelle } from './repository/lagerort';
 import { asIds } from '../haushalt/haushalt';
 import type { BlickfeldEingabe } from '../haushalt/haushalt';
 import { fehlerWerfen } from '../infra/fehlerTexte';
@@ -15,7 +17,6 @@ import { setUserSetting, deleteUserSetting } from '../konto/settings';
 
 /**
  * Wie lang ein Lagerortname höchstens sein darf.
- *
  * Kein technisches Limit (die Spalte ist TEXT), sondern ein fachliches: Was
  * hier steht, muss auf eine Kachel und in eine Auswahlliste passen. Ein
  * abgeschnittener Name in der Liste wäre schlimmer als eine Absage beim
@@ -23,27 +24,8 @@ import { setUserSetting, deleteUserSetting } from '../konto/settings';
  */
 export const LAGERORT_MAX_ZEICHEN = 60;
 
-/**
- * Die drei Tabellen mit einem Lagerort — Whitelist, damit nie ein
- *  Request-Wert in den Tabellennamen gerät.
- * Ausführlich: docs/begruendungen/src/bestand/lagerort.ts.md#tabellen
- */
-const TABELLEN = { set: 'sets', part: 'parts', fig: 'minifigs' } as const;
-export type LagerArt = keyof typeof TABELLEN;
-
-/** Woran eine Zeile je Art erkannt wird — dieselbe Reihenfolge wie die
- *  Schluessel, die [setzeLagerort] entgegennimmt.
- *
- *  Als Funktion des ERSTEN Platzhalters und nicht als feste Zeichenkette:
- *  [setzeLagerort] braucht dieselbe Bedingung in zwei Abfragen mit
- *  verschieden vielen vorangestellten Werten. Eine Luecke in der Numerierung
- *  zu lassen ginge nicht — Postgres leitet die Zahl der Parameter aus dem
- *  hoechsten $n ab und verlangt dann einen Typ fuer den uebersprungenen. */
-const BEDINGUNG: Record<LagerArt, (ab: number) => string> = {
-  set:  (ab) => `set_number = $${ab}`,
-  part: (ab) => `part_number = $${ab} AND color_id = $${ab + 1}`,
-  fig:  (ab) => `fig_number = $${ab}`,
-};
+/** Die Arten mit Lagerort; die Tabellennamen stehen als Whitelist im Repository. */
+export type LagerArt = LagerTabelle;
 
 /**
  * Eingabe zu dem machen, was in der Spalte steht.
@@ -67,52 +49,14 @@ export function normalisiereLagerort(v: unknown): string | null {
 export async function setzeLagerort(
   art: LagerArt, besitzerIds: number[], schluessel: string[], ort: string | null,
 ): Promise<number> {
-  const tabelle = TABELLEN[art];
-  // $1 = Besitzer, $2 = Ortsname, ab $3 die Schluessel.
-  const bedingung = BEDINGUNG[art](3);
-  // Die Zuordnung ist seit Migration 0031 eine ID
-  // Aufgelöst wird sie in einer Unterabfrage je ZEILE und nicht einmal
-  // vorher. Das hat einen Grund, der im Haushalt sichtbar wird: Derselbe
-  // Name kann in zwei Konten liegen, und jedes hat seine eigene Zeile im …
-  // Ausführlich: docs/begruendungen/src/bestand/lagerort.ts.md#setzelagerort-setzen
-  const setzen =
-    `UPDATE ${tabelle} t
-        SET storage_id = (SELECT l.id FROM storage_locations l
-                           WHERE l.user_id = t.user_id
-                             AND lower(l.name) = lower($2))
-      WHERE t.user_id = ANY($1) AND ${bedingung}`;
-
-  // Kein `as any` auf dem Ergebnis: db.run() ist typisiert ({ changes, lastID }).
-  // Die Schreibweise `(r as any).changes` steht anderswo im Baum noch aus einer
-  // Zeit, in der das nicht galt — sie schaltet den Typpruefer ab, ohne etwas zu
-  // gewinnen (test/ratschen.test.js zaehlt sie mit).
-  if (ort === null) {
-    const r = await db.run(setzen, [besitzerIds, null, ...schluessel]);
-    return r.changes ?? 0;
-  }
-
-  // Anlegen und Zuordnen gehören zusammen
-  // Ein Name, den es im Vorrat noch nicht gibt, kommt hinein — das ist Marcos
-  // „man kann auch gleich neue Auswahlwerte erfassen". Mit dem Namen als
-  // Zuordnung ging das NACH dem UPDATE, mit der ID muss es davor stehen: Ohne …
+  if (ort === null) return orte.ordneOrtZu(db, art, besitzerIds, null, schluessel);
+  // Ein neuer Name kommt in den Vorrat — vor der Zuordnung, die ihn über die ID findet.
   // Ausführlich: docs/begruendungen/src/bestand/lagerort.ts.md#setzelagerort-2
   return await db.transaction(async (tx) => {
-    // Hier gibt es kein $2 (der Ortsname spielt beim Suchen keine Rolle), die
-    // Schluessel beginnen also bei $2.
-    const besitzer: { user_id: number }[] = await tx.all(
-      `SELECT DISTINCT t.user_id
-         FROM ${tabelle} t
-        WHERE t.user_id = ANY($1) AND ${BEDINGUNG[art](2)}`,
-      [besitzerIds, ...schluessel]);
-    const ids = besitzer.map(b => parseInt(String(b.user_id)));
+    const ids = await orte.besitzerMitZeile(tx, art, besitzerIds, schluessel);
     if (!ids.length) return 0;
-
-    await tx.run(
-      `INSERT INTO storage_locations (user_id, name)
-       SELECT id, $2 FROM users WHERE id = ANY($1)
-       ON CONFLICT (user_id, lower(name)) DO NOTHING`, [ids, ort]);
-    const r = await tx.run(setzen, [ids, ort, ...schluessel]);
-    return r.changes ?? 0;
+    await orte.nimmOrtAuf(tx, ids, ort);
+    return orte.ordneOrtZu(tx, art, ids, ort, schluessel);
   });
 }
 
@@ -137,9 +81,7 @@ function nameOderFehler(v: unknown): string {
  * Ausführlich: docs/begruendungen/src/bestand/lagerort.ts.md#ortevon
  */
 export async function orteVon(userIds: number[]): Promise<Lagerort[]> {
-  const rows = await db.all(
-    `SELECT id, user_id, name FROM storage_locations
-      WHERE user_id = ANY($1) ORDER BY lower(name)`, [userIds]);
+  const rows = await orte.orteDerKonten(userIds);
   type Zeile = { id: string | number; user_id: string | number; name: string };
   return (rows as Zeile[] || []).map(r => ({
     id: parseInt(String(r.id)), user_id: parseInt(String(r.user_id)), name: r.name,
@@ -153,15 +95,10 @@ export async function orteVon(userIds: number[]): Promise<Lagerort[]> {
 export async function legeOrtAn(userId: number, name: unknown):
   Promise<{ ort: Lagerort; war_neu: boolean }> {
   const n = nameOderFehler(name);
-  const neu = await db.get(
-    `INSERT INTO storage_locations (user_id, name) VALUES ($1, $2)
-     ON CONFLICT (user_id, lower(name)) DO NOTHING
-     RETURNING id, user_id, name`, [userId, n]);
+  const neu = await orte.fuegeOrtEin(userId, n);
   if (neu) return { ort: { id: parseInt(String(neu.id)), user_id: userId, name: neu.name },
                     war_neu: true };
-  const alt = await db.get(
-    'SELECT id, user_id, name FROM storage_locations WHERE user_id = $1 AND lower(name) = lower($2)',
-    [userId, n]);
+  const alt = await orte.ortNachName(userId, n);
   // Ohne Treffer ist etwas anderes schiefgegangen als ein Duplikat — dann
   // lieber eine Absage als ein stilles „schon da".
   if (!alt) fehlerWerfen('lagerort_unbekannt', 500);
@@ -175,17 +112,13 @@ export async function legeOrtAn(userId: number, name: unknown):
  */
 export async function benenneOrtUm(userId: number, id: number, name: unknown): Promise<Lagerort> {
   const neu = nameOderFehler(name);
-  const alt = await db.get(
-    'SELECT name FROM storage_locations WHERE id = $1 AND user_id = $2', [id, userId]);
+  const alt = await orte.ortName(id, userId);
   if (!alt) fehlerWerfen('lagerort_unbekannt', 404);
   // Ein anderer Eintrag mit demselben Namen (Gross-/Kleinschreibung egal)
   // würde am Index scheitern — die Absage vorher ist die verständlichere.
-  const kollision = await db.get(
-    `SELECT id FROM storage_locations
-      WHERE user_id = $1 AND lower(name) = lower($2) AND id <> $3`, [userId, neu, id]);
+  const kollision = await orte.andererOrtGleichenNamens(userId, neu, id);
   if (kollision) fehlerWerfen('lagerort_doppelt', 409);
-  await db.run('UPDATE storage_locations SET name = $3 WHERE id = $1 AND user_id = $2',
-    [id, userId, neu]);
+  await orte.schreibeOrtNamen(id, userId, neu);
   return { id, user_id: userId, name: neu };
 }
 
@@ -197,8 +130,7 @@ export async function benenneOrtUm(userId: number, id: number, name: unknown): P
  * und zwar ohne Weg zurück.
  */
 export async function loescheOrt(userId: number, id: number): Promise<void> {
-  const ort = await db.get(
-    'SELECT name FROM storage_locations WHERE id = $1 AND user_id = $2', [id, userId]);
+  const ort = await orte.ortName(id, userId);
   if (!ort) fehlerWerfen('lagerort_unbekannt', 404);
   // Alle drei Tabellen: Ein Ort, in dem NUR Figuren liegen, liesse sich sonst
   // loeschen, und ihre Zuordnung zeigte danach auf einen Namen, den der
@@ -208,13 +140,9 @@ export async function loescheOrt(userId: number, id: number): Promise<void> {
   // „estrich" und im Vorrat „Estrich", zaehlte der zeichengenaue Vergleich
   // null — der Ort liess sich loeschen, und das Set behielt einen Namen, den
   // die Auswahlliste nicht mehr kannte (nachgestellt in Migration 0031).
-  const belegt = await db.get(
-    `SELECT (SELECT COUNT(*) FROM sets     WHERE user_id = $1 AND storage_id = $2)
-          + (SELECT COUNT(*) FROM parts    WHERE user_id = $1 AND storage_id = $2)
-          + (SELECT COUNT(*) FROM minifigs WHERE user_id = $1 AND storage_id = $2) AS n`,
-    [userId, id]);
+  const belegt = await orte.ortBelegung(userId, id);
   if (parseInt(String(belegt?.n ?? 0)) > 0) fehlerWerfen('lagerort_in_benutzung', 409);
-  await db.run('DELETE FROM storage_locations WHERE id = $1 AND user_id = $2', [id, userId]);
+  await orte.entferneOrt(id, userId);
 }
 
 /**
@@ -228,29 +156,7 @@ export async function lagerorte(blickfeld: BlickfeldEingabe) {
   // umfassen, und „Keller" des Grossvaters und „Keller" des Enkels sind zwei
   // Zeilen im Vorrat. In der Uebersicht gehoeren sie zusammen, sonst stuende
   // „Keller" zweimal da und niemand koennte den Unterschied sehen.
-  const rows = await db.all(
-    `SELECT ort,
-            SUM(sets)::int    AS sets,
-            SUM(teile)::int   AS teile,
-            SUM(figuren)::int AS figuren
-       FROM (
-         SELECT l.name AS ort, COUNT(*)::int AS sets, 0 AS teile, 0 AS figuren
-           FROM sets s JOIN storage_locations l ON l.id = s.storage_id
-          WHERE s.user_id = ANY($1)
-          GROUP BY l.name
-         UNION ALL
-         SELECT l.name AS ort, 0 AS sets, COUNT(*)::int AS teile, 0 AS figuren
-           FROM parts p JOIN storage_locations l ON l.id = p.storage_id
-          WHERE p.user_id = ANY($1)
-          GROUP BY l.name
-         UNION ALL
-         SELECT l.name AS ort, 0 AS sets, 0 AS teile, COUNT(*)::int AS figuren
-           FROM minifigs m JOIN storage_locations l ON l.id = m.storage_id
-          WHERE m.user_id = ANY($1)
-          GROUP BY l.name
-       ) q
-      GROUP BY ort
-      ORDER BY ort`, [uids]);
+  const rows = await orte.orteMitBestand(uids);
   // Typisiert statt `(r: any)`: db.all() liefert Zeilen ohne Form, und dieser
   // Bauplan sagt, was diese Abfrage liefert. Die Summen stehen als string,
   // weil der Postgres-Treiber SUM() als Zeichenkette zurueckgibt — genau
@@ -279,12 +185,7 @@ export const VORGABE_SCHLUESSEL = 'default_storage_id';
  * Ausführlich: docs/begruendungen/src/bestand/lagerort.ts.md#vorgabevon
  */
 export async function vorgabeVon(userId: number): Promise<Lagerort | null> {
-  const row = await db.get(
-    `SELECT l.id, l.user_id, l.name
-       FROM user_settings e
-       JOIN storage_locations l
-         ON l.id = NULLIF(btrim(e.value), '')::int AND l.user_id = e.user_id
-      WHERE e.user_id = $1 AND e.key = $2`, [userId, VORGABE_SCHLUESSEL])
+  const row = await orte.vorgabeOrt(userId, VORGABE_SCHLUESSEL)
     .catch(meldeUndLiefere('lagerort:row', null));
   if (!row) return null;
   return { id: parseInt(String(row.id)), user_id: parseInt(String(row.user_id)),
@@ -310,7 +211,6 @@ export async function ortFuerNeuerfassung(
 
 /**
  * Die Vorgabe setzen oder abschalten.
- *
  * `null` löscht sie — das ist der zweite Druck auf denselben Stern. Ein Ort,
  * der dem Konto nicht gehört, wird abgelehnt und nicht stillschweigend
  * ignoriert: Der Stern stünde danach am falschen Eintrag, und niemand käme auf
@@ -321,9 +221,7 @@ export async function setzeVorgabe(userId: number, id: number | null): Promise<L
     await deleteUserSetting(userId, VORGABE_SCHLUESSEL);
     return null;
   }
-  const ort = await db.get(
-    'SELECT id, user_id, name FROM storage_locations WHERE id = $1 AND user_id = $2',
-    [id, userId]);
+  const ort = await orte.ortDesKontos(id, userId);
   if (!ort) fehlerWerfen('lagerort_unbekannt', 404);
   // Über die Einstellungen des Kontos, nicht mit eigener Anweisung: user_settings gehört dorthin.
   await setUserSetting(userId, VORGABE_SCHLUESSEL, String(id));

@@ -1,6 +1,5 @@
 import { mitVersion } from '../sets/setNummer';
-import { zaehleArt } from './repository/auftraege';
-import { stelleAuftragEin } from './repository/auftraege';
+import { zaehleArt, stelleAuftragEin } from './dienst';
 
 /**
  * Der Anleitungsabruf je Set ist ein Auftrag der Art 'anleitung'

@@ -3,7 +3,6 @@ import express from 'express';
 
 /**
  * Wem der Server X-Forwarded-For und -Proto glaubt (Express „trust proxy").
- *
  * Nur Adressen, die ausdrücklich genannt sind: Jeder vertraute Absender kann
  * seine Client-Adresse frei angeben und damit die Anmeldesperre je Adresse
  * umgehen. Ohne Angabe gilt Loopback, „false" schaltet es ganz ab. Hop-Zahlen,

@@ -14,6 +14,7 @@ import { merkeSetTeile, type SetTeilZeile } from './katalogPflege';
 import { stelleAuftragEin } from '../auftraege/dienst';
 import * as monitor from '../auftraege/jobMonitor';
 import { rebrickableBackgroundLimiter, consumeRebrickableDaily, parseThrottleWait } from './rateLimiter';
+import * as inhalt from './repository/setInhalt';
 
 /**
  * Teile eines Sets aus dem Katalog übernehmen — reine Katalogarbeit ohne
@@ -64,14 +65,8 @@ export async function importiereTeile(setNumber: string, userId: number): Promis
   for (let versuch = 1; ; versuch++) {
     try {
       await db.transaction(async (tx) => {
-        await tx.run(
-          `INSERT INTO parts (user_id, set_number, part_number, color_id)
-           SELECT $1, $2, p, f FROM unnest($3::text[], $4::int[]) AS x(p, f) ON CONFLICT DO NOTHING`,
-          [userId, n, teile, farben]);
-        await tx.run(
-          `DELETE FROM parts WHERE user_id=$1 AND set_number=$2 AND source='set'
-              AND (part_number, color_id) NOT IN (SELECT * FROM unnest($3::text[], $4::int[]))`,
-          [userId, n, teile, farben]);
+        await inhalt.fuegeSetTeileEin(tx, userId, n, teile, farben);
+        await inhalt.entferneFremdeSetTeile(tx, userId, n, teile, farben);
         await merkeSetTeile(n, zeilen, tx);
         await merkeBlNummern('part', zeilen.map(z => ({ rbId: z.partNumber, blId: z.blNummer ?? '' })), tx);
       });
@@ -122,14 +117,7 @@ export async function fetchMissingBlIds() {
   try {
     const rbKey = await getGlobalSetting('rebrickable_api_key');
     if (!rbKey) return;
-    const missing = await db.all(
-      `SELECT DISTINCT p.part_number FROM parts p
-       LEFT JOIN bl_zuordnung m ON m.art = 'part' AND m.rb_id = p.part_number
-       WHERE m.rb_id IS NULL
-         AND p.part_number IS NOT NULL
-         AND p.source != 'manual'
-       LIMIT 5000`
-    );
+    const missing = await inhalt.teileOhneBlZuordnung();
     if (!missing.length) return;
 
     monitor.update('blIds', { status: 'running', progress: 0, total: missing.length, sub: `0 / ${missing.length}` });

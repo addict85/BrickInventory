@@ -35,7 +35,7 @@ import { setInfo, setZumBarcode, teilelisteDesSets, figurenlisteDesSets, setPrei
 import { downloadSetInstructions, anleitungenZuSet, loescheAnleitungen, anleitungNeuLadenErlaubt } from '../../src/katalog/instructions';
 import { importPartsForSet } from '../../src/katalog/partsImport';
 import { registerSse } from '../../src/infra/sseRegistry';
-import { loginOrTokenGuard, angemeldeteNutzerId, istVerwalter } from '../../src/konto/auth';
+import { loginOrTokenGuard, angemeldeteNutzerId, istVerwalter } from '../../src/konto/http/anmeldung';
 import { csvImportBus, buildJobStatus, jobGet } from '../../src/auftraege/importAuftrag';
 import * as pgNotify from '../../db/pgNotify';
 import { APP_ROOT, DATA_DIR } from '../../src/infra/appPaths';
@@ -80,7 +80,6 @@ router.get('/sets/barcode/:barcode', requireToken, async (req: AuthedRequest, re
 
 /**
  * PUT /api/v1/sets/:setNumber/storage — Lagerort setzen.
- *
  * Trifft alle Zeilen dieses Sets im Schreibbereich. Im Haushalt heisst das:
  * Traegt das Hauptkonto einen Ort ein, gilt er auch fuer das Exemplar des
  * Kindes. Das ist Absicht — wer die Kiste packt, packt sie fuer alle, die
@@ -95,7 +94,6 @@ router.put('/sets/:setNumber/storage', requireToken, async (req: AuthedRequest, 
 
 /**
  * Preisalarm — GET/PUT/DELETE zu EINEM Set.
- *
  * Ein Alarm gehoert genau EINEM Konto: Wer eine Schwelle setzt, will selbst
  * benachrichtigt werden. Deshalb `req.apiUser.user_id` und nicht
  * scopeIds()/writableIds() — anderswo waere das ein Versehen, hier die Regel.
@@ -187,7 +185,6 @@ router.get('/storage/locations', requireToken, async (req: AuthedRequest, res) =
 
 /**
  * PUT /api/v1/storage/default — der Stern.
- *
  * `{ id: <Zahl> }` setzt die Vorgabe, `{ id: null }` schaltet sie ab; das ist
  * der zweite Druck auf denselben Stern. EIN Endpunkt fuer beides, weil es eine
  * Einstellung mit genau einem Wert ist — ein eigener Loeschweg waere eine
@@ -366,7 +363,6 @@ router.post('/sets/:sn/move', requireToken, async (req: AuthedRequest, res) => {
   if (fromId === toId)
     return sendeFehler(req, res, 400, 'quelle_ziel_identisch');
   // ── Verschoben wird über den KAUFPREIS, nie über das Set ────────────────
-  //
   // acquisition_ids ist Pflicht. Ein Set als Ganzes zu verschieben klingt
   // bequem, verdeckt aber, was tatsächlich wandert: Drei Erfassungen sind
   // drei Käufe, und im Haushalt können sie verschiedenen Kindern gehören.

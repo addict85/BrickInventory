@@ -7,7 +7,6 @@ import fs from 'fs';
 import https from 'https';
 import path from 'path';
 import * as verwaltung from './repository/verwaltung';
-import * as db from '../../db/database';
 import { naechsteUhrzeit, taeglicheUhrzeit } from '../auftraege/zeitplan';
 import { DATA_DIR, PDF_JOB_DIR, SET_IMAGES_DIR } from '../infra/appPaths';
 import { fehlertext, meldeUndWeiter, logAndContinue, meldeUndLiefere, ohneFehlendeDatei } from '../infra/httpError';
@@ -33,6 +32,7 @@ import { fehlerWerfen } from '../infra/fehlerTexte';
 import { pruefeBricklinkZugang } from '../../clients/bricklink';
 import { ausRetryWarteschlange, pruefeBricksetZugang } from '../../clients/brickset';
 import { pruefeRebrickableZugang } from '../../clients/rebrickable';
+import * as verwaltungRepo from './repository/verwaltung';
 
 /**
  * Wie lange ein gemeldeter Betrieb ohne neues Lebenszeichen als laufend gilt.
@@ -100,9 +100,7 @@ export async function anleitungenNeuEinreihen() {
  * geplanten Auftrag, das Ergebnis des letzten Laufs aus laufzustand.
  */
 export async function preisJobStand() {
-  const plan = await db.get<{ status: string; faellig_ab: Date; fortschritt: any }>(
-    `SELECT status, faellig_ab, fortschritt FROM auftraege
-      WHERE art = 'preise' AND status IN ('offen', 'laeuft') ORDER BY status = 'laeuft' DESC, faellig_ab LIMIT 1`);
+  const plan = await verwaltungRepo.letzterLaufDerArt();
   let letzter: Record<string, any> = {};
   try { letzter = JSON.parse(await liesZustand('preis_job_stand') ?? '{}'); } catch (e) { meldeUndWeiter('verwaltung:preis-stand', e); }
   const laeuft = plan?.status === 'laeuft';
@@ -165,7 +163,7 @@ export async function zeitplanNeuPlanen() {
   await zeitplanGeaendert('csv_sync');
   await zeitplanGeaendert('preise');
   const bis = naechsteUhrzeit(await taeglicheUhrzeit('brickset_retry'));
-  await db.run(`UPDATE auftraege SET faellig_ab = $1 WHERE art = 'brickset' AND status = 'offen' AND faellig_ab > NOW()`, [bis]);
+  await verwaltungRepo.bricksetTermineVorziehen(bis);
 }
 
 /**

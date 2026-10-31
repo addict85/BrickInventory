@@ -3,10 +3,10 @@
  * Ausführlich: docs/begruendungen/src/katalog/bricklinkLink.ts.md#abschnitt
  */
 import { logAndContinue, meldeUndLiefere } from '../infra/httpError';
-import * as db from '../../db/database';
 import { bricklinkRequest } from '../../clients/bricklink';
 import { getGlobalSetting } from '../konto/settings';
 import { mitVersion, ohneVersion } from '../sets/setNummer';
+import * as cache from './repository/katalogCache';
 
 export type BlType = 'SET' | 'GEAR' | 'BOOK' | 'MINIFIG' | 'NONE';
 
@@ -89,10 +89,7 @@ export async function resolveMany(setNumbers: string[]): Promise<Map<string, BlL
   const keys = [...new Set((setNumbers || []).filter(Boolean).map(withVariant))];
   if (keys.length === 0) return out;
 
-  const rows = await db.all(
-    'SELECT set_number, bl_type FROM catalog_cache WHERE set_number = ANY($1::text[])',
-    [keys]
-  ).catch(meldeUndLiefere('bl-link:rows', []));
+  const rows = await cache.blTypenDerSets(keys).catch(meldeUndLiefere('bl-link:rows', []));
 
   const byNumber = new Map<string, string | null>();
   for (const r of rows) byNumber.set(r.set_number, r.bl_type);
@@ -144,10 +141,6 @@ export async function resolveViaApi(setNumber: string): Promise<BlLink> {
     return toLink(n, null);
   }
 
-  await db.run(
-    `INSERT INTO catalog_cache (set_number, name, bl_type, is_gear) VALUES ($1,$2,$3,$4)
-     ON CONFLICT (set_number) DO UPDATE SET bl_type = $3, fetched_at = NOW()`,
-    [n, `Set ${n}`, found, found === 'NONE' ? 1 : 0]
-  ).catch(logAndContinue('bl-link:probe'));
+  await cache.merkeBlTyp(n, `Set ${n}`, found, found === 'NONE' ? 1 : 0).catch(logAndContinue('bl-link:probe'));
   return toLink(n, found);
 }

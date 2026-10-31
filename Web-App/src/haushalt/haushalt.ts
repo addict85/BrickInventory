@@ -275,9 +275,6 @@ export async function scopeIds(uid: number, mode: ScopeMode = 'all'): Promise<nu
     // wählt, will die Sammlung des Kindes sehen, nicht die des Kindes samt
     // Enkel; für „mit allem darunter" gibt es den Eintrag des Kindes im
     // Filter des Kindes.
-    //
-    // Eine fremde ID fällt auf 'all' zurück statt einen fremden Bestand zu
-    // zeigen; der Filter ist eine Ansichtshilfe, kein Zugriffsweg.
     return h.memberIds.includes(mode) ? [mode] : h.memberIds;
   }
   return h.memberIds;

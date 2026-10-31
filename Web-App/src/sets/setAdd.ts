@@ -6,9 +6,9 @@
  * Ausführlich: docs/begruendungen/src/sets/setAdd.ts.md#abschnitt
  */
 import { meldeUndLiefere } from '../infra/httpError';
-import * as db from '../../db/database';
 import { scopeIds } from '../haushalt/haushalt';
 import { normalisiereSetNummer } from './setNummer';
+import * as repo from './repository/sets';
 
 /**
  * Setnummer normalisieren — dieselbe Regel wie sanitizeSetNumber() in
@@ -36,16 +36,7 @@ export async function findSetInScope(
 ): Promise<VorhandenesSet | null> {
   const sn  = normalizeSetNumber(setNumber);
   const ids = await scopeIds(viewerId);
-  const row = await db.get(
-    `SELECT set_number, user_id FROM sets
-      WHERE user_id = ANY($1) AND set_number = $2
-      -- Das eigene Konto gewinnt, wenn mehrere Konten dasselbe Set haben:
-      -- die Detailansicht soll die eigene Zeile zeigen, nicht die eines
-      -- Geschwisterkontos.
-      ORDER BY (user_id = $3) DESC
-      LIMIT 1`,
-    [ids, sn, viewerId]
-  ).catch(meldeUndLiefere('set-anlegen:row', null));
+  const row = await repo.setImBlickfeld(ids, sn, viewerId).catch(meldeUndLiefere('set-anlegen:row', null));
   if (!row) return null;
   return { set_number: row.set_number, owner_user_id: row.user_id, is_self: row.user_id === viewerId };
 }

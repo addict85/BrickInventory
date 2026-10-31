@@ -13,7 +13,6 @@ const THUMB_SIZE = 200;
 
 /**
  * Das Bild auf THUMB_SIZE bringen und als JPEG schreiben.
- *
  * Erst sharp, bei einem Ladefehler Jimp. „Ladefehler" heisst: Die native
  * Bibliothek fehlt oder passt nicht zur Plattform — NICHT, dass ein einzelnes
  * Bild kaputt ist. Ein defektes Bild soll scheitern und gemerkt werden

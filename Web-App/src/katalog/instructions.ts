@@ -1,13 +1,13 @@
 import path from 'path';
 import fs from 'fs';
 import PDFDocument from 'pdfkit';
-import * as db from '../../db/database';
 import { INSTRUCTIONS_DIR } from '../infra/appPaths';
 import { downloadFile, scrapeInstructions, sleep, httpsGetRobust } from '../../clients/rebrickable';
 import * as brickset from '../../clients/brickset';
 import { meldeUndWeiter, fehlertext, logAndContinue, meldeUndLiefere } from '../infra/httpError';
 import { mitVersion, ohneVersion } from '../sets/setNummer';
 import { pfadSegment } from '../infra/fremdeAdressen';
+import * as repo from './repository/anleitungen';
 
 /**
  * Bauanleitungen beschaffen: Rebrickable → Brickset → BrickLink-Designer →
@@ -37,15 +37,13 @@ export function letzterAbrufWarExtern(): boolean { return _letzterAbrufWarExtern
 
 /** Wie viele Anleitungen sind fuer dieses Set hinterlegt? */
 export async function anzahlAnleitungen(setNumber: string): Promise<number> {
-  const r = await db.get('SELECT COUNT(*) as c FROM shared_instructions WHERE set_number = $1',
-    [mitVersion(setNumber)]).catch(meldeUndLiefere('anleitung:mitVersion', null));
+  const r = await repo.zaehleAnleitungen(mitVersion(setNumber)).catch(meldeUndLiefere('anleitung:mitVersion', null));
   return parseInt(r?.c) || 0;
 }
 
 /** Die hinterlegten Anleitungen zu einem Set. */
 export async function anleitungenZuSet(setNumber: string) {
-  return db.all('SELECT * FROM shared_instructions WHERE set_number = $1',
-    [mitVersion(setNumber)]).catch(meldeUndLiefere('anleitung:mitVersion', []));
+  return repo.anleitungenDesSets(mitVersion(setNumber)).catch(meldeUndLiefere('anleitung:mitVersion', []));
 }
 
 /**
@@ -68,17 +66,13 @@ export function anleitungenZusammenlegen(geteilt: any[], eigene: any[]): any[] {
  * gleichzeitige Anfragen nicht beide durchkommen.
  */
 export async function anleitungNeuLadenErlaubt(setNumber: string): Promise<boolean> {
-  const z = await db.get(
-    `INSERT INTO rate_limit_attempts (key, count, first_at, last_at) VALUES ($1, 1, NOW(), NOW())
-     ON CONFLICT (key) DO UPDATE SET count = 1, first_at = NOW(), last_at = NOW()
-       WHERE rate_limit_attempts.first_at < NOW() - INTERVAL '1 day'
-     RETURNING key`, [`anleitung-neu|${mitVersion(setNumber)}`]);
+  const z = await repo.zaehleQuellenAufruf(`anleitung-neu|${mitVersion(setNumber)}`);
   return !!z;
 }
 
 /** Alle Anleitungen eines Sets entfernen (vor dem Neuholen). */
 export async function loescheAnleitungen(setNumber: string) {
-  return db.run('DELETE FROM shared_instructions WHERE set_number = $1', [mitVersion(setNumber)]);
+  return repo.loescheAnleitungenDesSets(mitVersion(setNumber));
 }
 
 /**
@@ -101,7 +95,7 @@ export async function scrapeInstructionsFromFallback(setNumber: string) {
   const n = mitVersion(setNumber);
   const existing = await anzahlAnleitungen(n);
   if (existing > 0) return existing;
-  const biAlreadyTried = await db.get("SELECT 1 FROM shared_instructions WHERE set_number = $1 AND url LIKE '%brickinstructions%'", [n]);
+  const biAlreadyTried = await repo.hatBrickinstructions(n);
   if (biAlreadyTried) return 0;
   try {
     const fund = await brickinstructionsFund(n);
@@ -114,8 +108,7 @@ export async function scrapeInstructionsFromFallback(setNumber: string) {
       const pdfDest  = path.join(instrDir, pdfName);
       const relPath  = `/data/instructions/${pdfName}`;
       const desc     = `Anleitung ${n} (BrickInstructions)`;
-      await db.run('INSERT INTO shared_instructions (set_number,url,description,local_path) VALUES ($1,$2,$3,$4) ON CONFLICT (set_number,url) DO NOTHING',
-        [n, pageUrl, desc, null]).catch(logAndContinue('anleitung:desc'));
+      await repo.merkeAnleitung(n, pageUrl, desc, null).catch(logAndContinue('anleitung:desc'));
       setImmediate(() => { collectAndBuildPDF(baseUrl, hdrs, fund.erstesBild, pdfDest, relPath, n).catch(logAndContinue('anleitung:collectAndBuildPDF')); });
       console.log(`[brickinstructions] Fallback triggered for ${n}`);
       return 1;
@@ -169,10 +162,7 @@ export async function downloadSetInstructions(setNumber: string,
       const ok = await downloadFile(bdpUrl, pdfDest);
       if (ok) {
         console.log(`[instr] BDP fallback downloaded: ${bdpUrl}`);
-        await db.run(
-          'INSERT INTO shared_instructions (set_number,url,description,local_path) VALUES ($1,$2,$3,$4) ON CONFLICT (set_number,url) DO NOTHING',
-          [n, bdpUrl, `Anleitung ${n} (BDP)`, relPath]
-        ).catch(logAndContinue('anleitung:ok'));
+        await repo.merkeAnleitung(n, bdpUrl, `Anleitung ${n} (BDP)`, relPath).catch(logAndContinue('anleitung:ok'));
         if (!eigenerTakt) await sleep(5000);
         return 1;
       }
@@ -180,7 +170,7 @@ export async function downloadSetInstructions(setNumber: string,
     if (!eigenerTakt) await sleep(5000); // throttle regardless of result
   }
 
-  const biAlreadyTried = await db.get("SELECT 1 FROM shared_instructions WHERE set_number = $1 AND url LIKE '%brickinstructions%'", [n]);
+  const biAlreadyTried = await repo.hatBrickinstructions(n);
   if (!instrList.length && bricksetSucceededEmpty && !biAlreadyTried) {
     try {
       const fund = await brickinstructionsFund(n);
@@ -206,7 +196,7 @@ export async function downloadSetInstructions(setNumber: string,
       const pdfName = `${safeBase}_brickinstructions.pdf`;
       const pdfDest = path.join(instrDir, pdfName);
       const relPath = `/data/instructions/${pdfName}`;
-      try { await db.run('INSERT INTO shared_instructions (set_number,url,description,local_path) VALUES ($1,$2,$3,$4) ON CONFLICT (set_number,url) DO NOTHING', [n, instr.url, instr.description, null]); saved++; } catch (e) { meldeUndWeiter('anleitungen:pdf-eintragen', e); }
+      try { await repo.merkeAnleitung(n, instr.url, instr.description, null); saved++; } catch (e) { meldeUndWeiter('anleitungen:pdf-eintragen', e); }
       setImmediate(() => { collectAndBuildPDF(instr.brickinstructions_base, instr.brickinstructions_hdrs, instr.brickinstructions_first, pdfDest, relPath, n).catch(logAndContinue('anleitung:collectAndBuildPDF')); });
       continue;
     }
@@ -214,7 +204,7 @@ export async function downloadSetInstructions(setNumber: string,
     const dest = path.join(instrDir, safeName);
     const relPath = `/data/instructions/${safeName}`;
     const ok = await downloadFile(instr.url, dest);
-    try { await db.run('INSERT INTO shared_instructions (set_number,url,description,local_path) VALUES ($1,$2,$3,$4) ON CONFLICT (set_number,url) DO NOTHING', [n, instr.url, instr.description||`Anleitung ${n}`, ok?relPath:null]); saved++; } catch (e) { meldeUndWeiter('anleitungen:datei-eintragen', e); }
+    try { await repo.merkeAnleitung(n, instr.url, instr.description||`Anleitung ${n}`, ok?relPath:null); saved++; } catch (e) { meldeUndWeiter('anleitungen:datei-eintragen', e); }
     if (i < instrList.length - 1) await sleep(200);
   }
   
@@ -235,7 +225,7 @@ async function collectAndBuildPDF(baseUrl: string, hdrs: Record<string, string>,
     await sleep(100);
     const ok = await buildImagePDF_fromBuffers(imageBuffers, pdfDest);
     if (ok) {
-      await db.run('UPDATE shared_instructions SET local_path = $1 WHERE set_number = $2 AND local_path IS NULL', [relPath, setNumber]);
+      await repo.setzeAnleitungsdatei(relPath, setNumber);
       console.log(`  ✅ PDF ready for ${setNumber}`);
     }
   } catch (e) { console.log(`  PDF build failed for ${setNumber}: ${fehlertext(e)}`); }

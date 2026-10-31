@@ -22,10 +22,11 @@ import {
   ladeTeilepreiseVor, ladeFigurenpreiseVor,
   type Blickfeld,
 } from './preise';
-import { ladeSetErfassungen, kaufpreisSpalten, zaehle } from './abfragen';
+import { kaufpreisSpalten, zaehle } from './abfragen';
+import { ladeSetErfassungen } from '../repository/erfassungen';
 import { schaetzeFigurenpreis } from '../marketPrice';
 import { withOwners } from '../../bestand/gemeinsam';
-import { blJoin, blNummerSql } from '../../katalog/blZuordnung';
+import { blJoin, blNummerSql } from '../../../db/blZuordnungSql';
 import { teilmengeJoin, teilmengeAus } from '../../../db/bestandsmenge';
 import { KEINE_FARBE } from '../../infra/validate';
 import { aufRappen, inZehntel4 } from '../../infra/geld';

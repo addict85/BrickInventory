@@ -15,10 +15,6 @@ import { sleep } from '../clients/rebrickable';
 // existing sets / minifigs / parts that don't have one yet, using the current
 // BrickLink market price as a stand-in — mirrors the behaviour used when a
 // new item is added without an explicit Kaufpreis.
-//
-// Runs slowly and defensively in the background so it never blocks startup
-// and never floods the BrickLink API (each lookup already goes through the
-// existing rate limiter / cache, this job just paces itself on top of that).
 
 
 function log(msg: string) {

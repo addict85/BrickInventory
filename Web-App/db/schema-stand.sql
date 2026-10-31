@@ -171,6 +171,19 @@ CREATE TABLE household_former_links (
 CREATE INDEX idx_household_former_sub ON household_former_links USING btree (sub_user_id);
 CREATE INDEX idx_household_former_via ON household_former_links USING btree (via_user_id);
 
+CREATE TABLE idempotenz (
+  user_id integer NOT NULL,
+  schluessel text NOT NULL,
+  anfrage text NOT NULL,
+  status integer,
+  antwort text,
+  angelegt timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT idempotenz_pkey PRIMARY KEY (user_id, schluessel),
+  CONSTRAINT idempotenz_schluessel_check CHECK (((length(schluessel) >= 1) AND (length(schluessel) <= 100))),
+  CONSTRAINT idempotenz_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+CREATE INDEX idx_idempotenz_angelegt ON idempotenz USING btree (angelegt);
+
 CREATE TABLE image_misses (
   cache_key text NOT NULL,
   checked_at timestamp with time zone NOT NULL DEFAULT now(),

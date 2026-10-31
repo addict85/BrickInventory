@@ -279,7 +279,7 @@ test('manuelle Teile und Minifiguren nutzen dieselbe Zustandsregel wie Sets', ()
   // Nicht neu ausformulieren, sondern denselben Helfer benutzen wie Sets.
   assert.match(fn, /conditionFromAcquisitions\(acqCount, usedCount\)/,
     'Manuelle Einträge müssen denselben Regel-Helfer benutzen wie Sets');
-  assert.match(fn, /COUNT\(\*\) FILTER \(WHERE condition = 'U'\) AS used_count/,
+  assert.match(src, /COUNT\(\*\) FILTER \(WHERE condition = 'U'\) AS used_count/,
     'Ohne used_count kann die Regel nicht greifen');
 
   // Beide Listen müssen sie anwenden
@@ -289,7 +289,7 @@ test('manuelle Teile und Minifiguren nutzen dieselbe Zustandsregel wie Sets', ()
     'getManualMinifigs wendet die Regel nicht an');
 
   // Eine Abfrage für die ganze Seite, nicht eine je Zeile
-  const queries = (fn.match(/db\.all\(/g) || []).length;
+  const queries = (fn.match(/db\.all\(|repo\.\w+\(/g) || []).length;
   assert.equal(queries, 1, `${queries} Abfragen — eine je Seite genügt`);
 });
 
@@ -585,8 +585,10 @@ test('computePnl liest acq_count/used_count — sonst ist jedes Set neu', () => 
   // Migration 0032 laenger geworden und haben `acq_count` aus dem Fenster
   // geschoben. Genau die Falle, die der Kommentar darueber beschreibt — ein
   // knapp bemessener Ausschnitt meldet einen Fehler, den es nicht gibt.
-  const fn = src.slice(src.indexOf('async function computePnl'),
-                       src.indexOf('async function computePnl') + 4600);
+  // Die Abfrage steht im Repository (setsMitErfassungen); computePnl ruft sie.
+  assert.match(require('./helpers/sources').funktionsRumpf(src, 'computePnl'), /repo\.setsMitErfassungen\(/);
+  const fn = src.slice(src.indexOf('function setsMitErfassungen'),
+                       src.indexOf('function setsMitErfassungen') + 4600);
 
   assert.match(fn, /COUNT\(\*\)\s+AS acq_count,/, 'acq_count fehlt in der Unterabfrage');
   assert.match(fn, /COUNT\(\*\) FILTER \(WHERE condition = 'U'\)\s+AS used_count/,

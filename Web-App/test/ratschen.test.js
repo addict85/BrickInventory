@@ -131,7 +131,8 @@ test('any wird weniger, nie mehr', () => {
   // 29.10.2026: 333. 30.10.2026: 288 (db.get<T>/db.all<T> statt any-Zeilen).
   // 30.10.2026: 281 (Planer und Preis-Job-Zustand entfallen).
   // 31.10.2026: 270 (typisierte Repositories, Fehlerweg ohne any).
-  const SCHRANKE = 270;
+  // 31.10.2026: 256 (HTTP-Seite der Anmeldung, typisierte Repositories).
+  const SCHRANKE = 256;
   const ist = zaehle([/\bas any\b/g, /:\s*any\b/g]);
   assert.ok(ist <= SCHRANKE,
     `${ist}-mal \`any\`, erlaubt sind ${SCHRANKE}. Jedes davon schaltet den ` +
@@ -251,7 +252,8 @@ test('der Kommentaranteil im Server sinkt, nie steigt', () => {
   // 29.10.2026: 32,44 %. 30.10.2026: 30,6 % (Kommentare der umgebauten Dateien gekürzt).
   // 30.10.2026: 30,0 % (Cluster, Planer und Warteschlangen entfallen).
   // 31.10.2026: 29,8 % in server.ts, routes/, src/ und jobs/ (Schichtumbau).
-  const SCHRANKE = 29.8;
+  // 31.10.2026: 28,5 % (SQL in Repositories, Kommentare der umgebauten Dienste gekürzt).
+  const SCHRANKE = 28.5;
   let zeilen = 0, kommentar = 0;
   for (const f of quellen().filter(f => /[\\/](routes|src|utils|jobs)[\\/]|[\\/]server\.ts$/.test(f))) {
     for (const z of fs.readFileSync(f, 'utf8').split('\n')) {

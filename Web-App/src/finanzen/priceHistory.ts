@@ -2,14 +2,13 @@
  * Preisverlauf eines Sets — die EINE Umsetzung für Webapp und Android-API.
  * Ausführlich: docs/begruendungen/src/finanzen/priceHistory.ts.md#abschnitt
  */
-import { kaufpreisIn } from './rechnung/abfragen';
-import * as db from '../../db/database';
 import { resolveSetCondition, resolveBlColorId, resolveBlPartNumber } from './financeCalc';
 import { asIds } from '../haushalt/haushalt';
 import { buildChart } from './chartData';
 import { blNummerVon } from '../katalog/blZuordnung';
 import { entwicklungProzent } from './setValue';
 import { konfig } from '../infra/konfig';
+import * as repo from './repository/preisverlauf';
 
 /**
  * Welche Zustaende gehoeren ins Diagramm?
@@ -21,9 +20,6 @@ export function zustaendeFuerVerlauf(belegt: string[], rueckfall: string[]): str
   return belegt.length ? belegt : rueckfall;
 }
 
-/** Mengengewichteter Schnitt über die Zeilen, in denen `k` einen Preis hat. */
-const mittelUeber = (k: string) =>
-  `SUM(${k} * quantity) FILTER (WHERE ${k} IS NOT NULL)::numeric / NULLIF(SUM(quantity) FILTER (WHERE ${k} IS NOT NULL), 0)`;
 
 /** Ein Punkt im Verlauf. */
 export interface PricePoint {
@@ -43,15 +39,7 @@ export interface PricePoint {
  * Punkte übereinander. Genommen wird der jüngste des Tages.
  */
 async function seriesFor(setNumber: string, currency: string, cond: 'N' | 'U'): Promise<PricePoint[]> {
-  return db.all(
-    `SELECT DISTINCT ON (to_char(recorded_at, 'YYYY-MM-DD'))
-            qty_avg_price, avg_price, min_price, max_price,
-            to_char(recorded_at, 'YYYY-MM-DD') AS recorded_at
-       FROM price_history
-      WHERE set_number = $1 AND currency_code = $2 AND condition = $3
-      ORDER BY to_char(recorded_at, 'YYYY-MM-DD') ASC, recorded_at DESC`,
-    [setNumber, currency, cond]
-  );
+  return repo.tagespreiseDesSets(setNumber, currency, cond);
 }
 
 /**
@@ -69,12 +57,7 @@ export async function getSetPriceHistory(uid: number | number[], setNumber: stri
   ]);
 
   // Aktueller Preis je Zustand — für die zwei Zeilen im Detail-Dialog.
-  const currentRows = await db.all(
-    `SELECT condition, avg_price, min_price, max_price, fetched_at
-       FROM price_cache
-      WHERE set_number=$1 AND currency_code=$2 AND condition IN ('N','U') AND avg_price > 0`,
-    [setNumber, currency]
-  );
+  const currentRows = await repo.cachePreiseDesSets(setNumber, currency);
   const current = {
     N: currentRows.find((r: any) => r.condition === 'N') || null,
     U: currentRows.find((r: any) => r.condition === 'U') || null,
@@ -83,21 +66,7 @@ export async function getSetPriceHistory(uid: number | number[], setNumber: stri
   // Kaufpreis: aus der ERSTEN Erfassung. Der Rückfall auf s.purchase_price ist
   // mit Migration 0032 weggefallen — die Spalte gibt es nicht mehr, und jede
   // Set-Zeile hat mindestens eine Erfassung.
-  const set = await db.get(
-    `SELECT a.purchase_price AS purchase_price,
-            to_char(COALESCE(a.created_at, s.added_at), 'YYYY-MM-DD') AS added_day
-       FROM sets s
-       LEFT JOIN LATERAL (
-         SELECT ${kaufpreisIn('purchase_price', '$3')} AS purchase_price, created_at FROM set_acquisitions
-          WHERE user_id = s.user_id AND set_number = s.set_number
-          ORDER BY created_at ASC, id ASC LIMIT 1
-       ) a ON true
-      WHERE s.user_id = ANY($1) AND s.set_number=$2
-      -- Bei mehreren Besitzern im Haushalt zählt die ÄLTESTE Erfassung —
-      -- derselbe Massstab wie innerhalb eines Kontos.
-      ORDER BY COALESCE(a.created_at, s.added_at) ASC LIMIT 1`,
-    [uids, setNumber, currency]
-  );
+  const set = await repo.ersterKaufDesSets(uids, setNumber, currency);
 
   const hasCost = set?.purchase_price != null;   // 0 zählt als erfasst
   const purchasePrice = parseFloat(set?.purchase_price || 0);
@@ -133,16 +102,7 @@ export async function getSetPriceHistory(uid: number | number[], setNumber: stri
   // existiert — sonst stünde dort ein Marktpreis ohne Bezugsgrösse, und die
   // Prozentangabe daneben wäre gegen nichts gerechnet.
   // Ausführlich: docs/begruendungen/src/finanzen/priceHistory.ts.md#getsetpricehistory-acqbycond
-  const acqByCond = await db.all(
-    `SELECT condition, ${mittelUeber('k')} AS avg_purchase, SUM(quantity) AS qty
-       FROM (SELECT condition, quantity, ${kaufpreisIn('purchase_price', '$3')} AS k
-               FROM set_acquisitions
-              -- Über ALLE Haushalts-Besitzer verdichtet — dieselbe Mengengewichtung,
-              -- die auch die Bewertung im Haushalt anwendet.
-              WHERE user_id = ANY($1) AND set_number = $2) e
-      GROUP BY condition`,
-    [uids, setNumber, currency]
-  );
+  const acqByCond = await repo.kaufschnittDesSets(uids, setNumber, currency);
 
   const byCondition: Record<string, any> = {};
   for (const cond of ['N', 'U'] as const) {
@@ -188,17 +148,6 @@ export async function getSetPriceHistory(uid: number | number[], setNumber: stri
  * Ausführlich: docs/begruendungen/src/finanzen/priceHistory.ts.md#manualseries
  */
 
-/** Tagesweise verdichtete Reihe aus einer der beiden Verlaufstabellen. */
-async function manualSeries(table: string, keySql: string, keyVals: any[], currency: string, cond: 'N' | 'U') {
-  return db.all(
-    `SELECT DISTINCT ON (to_char(recorded_at, 'YYYY-MM-DD'))
-            avg_price, qty_avg_price, to_char(recorded_at, 'YYYY-MM-DD') AS recorded_at
-       FROM ${table}
-      WHERE ${keySql} AND currency_code = $${keyVals.length + 1} AND condition = $${keyVals.length + 2}
-      ORDER BY to_char(recorded_at, 'YYYY-MM-DD') ASC, recorded_at DESC`,
-    [...keyVals, currency, cond]
-  );
-}
 
 /**
  * Marktpreis und Entwicklung je Zustand für ein manuelles Teil / eine Figur —
@@ -213,22 +162,8 @@ export async function conditionRows(
   // nimmt. Solange der Schlüssel genau eine Zeile je Zustand traf, war die
   // Reihenfolge gleichgültig; seit der Minifiguren-Verlauf beide Nummern
   // abfragt (siehe getMinifigPriceHistory), kann es zwei geben.
-  const cacheRows = await db.all(
-    `SELECT condition, avg_price FROM ${cacheTable}
-      WHERE ${keySql} AND currency_code = $${keyVals.length + 1} AND avg_price > 0
-      ORDER BY fetched_at DESC`,
-    [...keyVals, currency]
-  );
-  // Eigener Schlüssel: Erfassungen tragen die Rebrickable-Nummer, der Cache
-  // oben die BrickLink-Nummer.
-  const acqRows = await db.all(
-    `SELECT condition, ${mittelUeber('k')} AS avg_purchase
-       FROM (SELECT condition, quantity, ${kaufpreisIn('unit_price', `$${acqKeyVals.length + 2}`)} AS k
-               FROM ${acqTable}
-              WHERE ${acqKeySql} AND user_id = ANY($${acqKeyVals.length + 1})) e
-      GROUP BY condition`,
-    [...acqKeyVals, uids, currency]
-  );
+  const cacheRows = await repo.cachePreiseNachSchluessel(cacheTable, keySql, keyVals, currency);
+  const acqRows = await repo.kaufschnitteNachSchluessel(acqTable, acqKeySql, acqKeyVals, uids, currency);
 
   const out: Record<string, any> = {};
   for (const cond of ['N', 'U'] as const) {
@@ -258,8 +193,8 @@ async function manualPriceHistory(
   acqKeySql: string = keySql, acqKeyVals: any[] = keyVals
 ) {
   const [historyNew, historyUsed, by_condition] = await Promise.all([
-    manualSeries(historyTable, keySql, keyVals, currency, 'N'),
-    manualSeries(historyTable, keySql, keyVals, currency, 'U'),
+    repo.manualSeries(historyTable, keySql, keyVals, currency, 'N'),
+    repo.manualSeries(historyTable, keySql, keyVals, currency, 'U'),
     conditionRows(cacheTable, acqTable, keySql, keyVals, uid, currency, acqKeySql, acqKeyVals),
   ]);
   // Gezeichnet werden nur Zustände mit Erfassung (wie bei Sets); die
@@ -319,11 +254,7 @@ async function preisNummernFuerFigur(_uid: number | number[], figNumber: string)
 export async function purgeAltePreise(): Promise<number> {
   const tage = konfig().preisverlaufTage;
   if (tage <= 0) return 0;
-  const r = await db.run(
-    `DELETE FROM price_history
-      WHERE recorded_at < NOW() - ($1 || ' days')::interval`,
-    [String(tage)]
-  ).catch(() => ({ changes: 0 }));
+  const r = await repo.loescheAltenVerlauf(String(tage)).catch(() => ({ changes: 0 }));
   return r?.changes || 0;
 }
 
