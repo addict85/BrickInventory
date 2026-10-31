@@ -6,7 +6,7 @@
  */
 import fs from 'fs';
 import path from 'path';
-import { setsOhneAnleitung, setBilderOhneDatei, merkeSetBildLokal, lokaleKatalogbilder } from '../src/katalog/bildlage';
+import { setsOhneAnleitungsabruf, setBilderOhneDatei, merkeSetBildLokal, lokaleKatalogbilder } from '../src/katalog/bildlage';
 import { downloadSetImage } from '../src/katalog/bilder/setImages';
 import { generateThumb } from '../src/katalog/bilder/thumbs';
 import { anleitungEinreihen } from '../src/auftraege/anleitungsAuftrag';
@@ -23,7 +23,7 @@ import { fehlertext, logAndContinue, meldeUndLiefere } from '../src/infra/httpEr
  * sieben Tage, gescheiterte dreissig stehen; danach wird es wieder versucht).
  */
 async function anleitungenNachtragen(): Promise<void> {
-  const missing = await setsOhneAnleitung();
+  const missing = await setsOhneAnleitungsabruf();
   if (missing.length) console.log(`[instr-queue] Enqueueing ${missing.length} sets missing instructions`);
   for (const set_number of missing) await anleitungEinreihen(set_number);
 }

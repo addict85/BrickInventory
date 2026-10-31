@@ -4,5 +4,5 @@
  */
 export {
   setsMitFehlendenKatalogbildern, manuelleTeileOhneBild, figurenOhneBild, setBilderOhneDatei, merkeSetBildLokal,
-  lokaleKatalogbilder, teilbilder, figurenbilder, fuelleSetLuecken, setsOhneAnleitung,
+  lokaleKatalogbilder, teilbilder, figurenbilder, fuelleSetLuecken, setsOhneAnleitungsabruf,
 } from './repository/bildlage';

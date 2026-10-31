@@ -45,7 +45,8 @@ export function ohneVersion(setNumber: string | number): string {
 // „kennt BrickLink dafuer gar keinen Preis?" fragten, taten es mit
 // verschiedenen Schluesseln. Die Markierung schreibt der Preisführer
 // unter der Nummer MIT Anhang (src/katalog/bricklinkPreise.ts).
-import type { KatalogEintrag } from '../katalog/bricklinkPreise';
+/** Was der Katalog zu einer Nummer von BrickLink weiss (catalog_cache). */
+interface KatalogEintrag { is_gear?: number | null; bl_type?: string | null; fetched_at?: string | Date | null; }
 
 
 /**

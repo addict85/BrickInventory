@@ -188,7 +188,8 @@ test('der Preisjob holt alle Zustände, die ein Set tatsächlich führt', () => 
   // anderen aus — bei gemischten Sets fehlte damit dauerhaft eine Hälfte.
   // .ts statt .js: jobs/ ist TypeScript, das .js ist nur noch ein Build-Ergebnis
   // in dist/ und im Repo nicht mehr vorhanden.
-  const job = fs.readFileSync(path.join(ROOT, 'jobs/priceJob.ts'), 'utf8');
+  const job = fs.readFileSync(path.join(ROOT, 'jobs/priceJob.ts'), 'utf8')
+    + fs.readFileSync(path.join(ROOT, 'src/finanzen/repository/preisLauf.ts'), 'utf8');
 
   // EINE Stelle, und sie arbeitet gebündelt: Der Einzelfall (Sofort-Abruf) ist
   // eine Liste mit einem Eintrag. Vorher stand die Regel zweimal da — einmal
@@ -209,7 +210,7 @@ test('der Preisjob holt alle Zustände, die ein Set tatsächlich führt', () => 
                        job.indexOf('async function refreshPriceForSet'));
   assert.match(bg, /for \(const c of conditions\)/,
     'Auch der Hintergrundlauf muss beide Zustände abdecken');
-  assert.match(bg, /GROUP BY set_number, COALESCE\(condition,'N'\)/,
+  assert.match(job, /GROUP BY set_number, COALESCE\(condition,'N'\)/,
     'Die Zustände aller Sets gehören in EINE Abfrage — sonst ein Roundtrip je Set');
 
   // Reine Sets dürfen nicht doppelt abgefragt werden (BrickLink-Tageskontingent)

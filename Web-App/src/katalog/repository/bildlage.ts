@@ -81,7 +81,7 @@ export async function fuelleSetLuecken(setNumber: string,
 }
 
 /** Sets ohne Anleitung, für die kein Abruf wartet oder kürzlich ohne Ergebnis lief. */
-export async function setsOhneAnleitung(): Promise<string[]> {
+export async function setsOhneAnleitungsabruf(): Promise<string[]> {
   const rows = await db.all<{ set_number: string }>(
     `SELECT DISTINCT s.set_number FROM sets s
      WHERE NOT EXISTS (SELECT 1 FROM shared_instructions si WHERE si.set_number = s.set_number)

@@ -226,7 +226,7 @@ test('Jobs mit externem Kontingent haben eine prozessübergreifende Sperre', () 
   // ohne das Ausblenden schlüge die Prüfung darauf am Kommentar an. Dieselbe
   // Falle wie mehrfach zuvor in dieser Suite; sie ist der häufigste Fehler
   // beim Schreiben quelltextlesender Tests.
-  const job = fs.readFileSync(path.join(ROOT, 'jobs/priceJob.ts'), 'utf8')
+  const job = (fs.readFileSync(path.join(ROOT, 'jobs/priceJob.ts'), 'utf8') + fs.readFileSync(path.join(ROOT, 'db/txLock.ts'), 'utf8'))
     .replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
 
   assert.match(job, /pg_try_advisory_lock/,

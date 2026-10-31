@@ -475,7 +475,8 @@ test('Erfassungen ohne Kaufpreis werden nachgetragen', () => {
   // BrickLink-Abruf scheitert bei vielen Sets am Tageskontingent. Die Erfassung
   // entstand dann ohne Kaufpreis — der Marktpreis erschien später trotzdem,
   // sobald der Preis-Job den Cache füllte. Genau diese Abweichung war gemeldet.
-  const job = fs.readFileSync(path.join(ROOT, 'jobs/purchasePriceBackfill.ts'), 'utf8');
+  const job = fs.readFileSync(path.join(ROOT, 'jobs/purchasePriceBackfill.ts'), 'utf8')
+    + fs.readFileSync(path.join(ROOT, 'src/bestand/repository/nachtrag.ts'), 'utf8');
 
   assert.match(job, /async function backfillAcquisitions\(\)/, 'Nachtrag fehlt');
   // Unabhängig von der Set-Zeile: backfillSets() sieht nur Sets mit NULL-Preis
