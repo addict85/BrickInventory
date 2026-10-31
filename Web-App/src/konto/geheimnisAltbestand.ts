@@ -2,11 +2,8 @@ import { verschluessele, istVerschluesselt } from '../infra/geheimnis';
 import { verschluesseleGlobaleAltwerte } from './settings';
 import * as repo from './repository/altgeheimnisse';
 
-/**
- * Geheimnisse, die noch im Klartext liegen (aus der Zeit vor der Verschlüsselung),
- * einmal verschlüsseln. Ohne das läge ein alter PIN-Bestand weiter lesbar in
- * jedem Datenbank-Abzug. Läuft bei jedem Start; Verschlüsseltes bleibt, wie es ist.
- */
+/** Ohne das läge ein alter PIN-Bestand weiter lesbar in jedem Datenbank-Abzug.
+ * Läuft bei jedem Start; Verschlüsseltes bleibt, wie es ist. */
 export async function verschluesseleAltbestand(): Promise<number> {
   let n = await verschluesseleGlobaleAltwerte();
   for (const z of await repo.klartextKandidaten()) {

@@ -1,7 +1,5 @@
-/**
- * Datenzugriff auf user_settings und global_settings: Werte so, wie sie in der
- * Tabelle stehen. Entschlüsseln, Prüfen und Vorgaben macht src/konto/settings.ts.
- */
+/** Werte so, wie sie in der Tabelle stehen; Entschlüsseln, Prüfen und Vorgaben
+ * macht src/konto/settings.ts. */
 import * as db from '../../../db/database';
 import type { DbSchnittstelle } from '../../../db/database';
 
@@ -41,21 +39,19 @@ export async function loescheGlobaleWerte(keys: string[]): Promise<void> {
   await db.run('DELETE FROM global_settings WHERE key = ANY($1)', [keys]);
 }
 
-/** Alle globalen Werte, oder nur die genannten Schlüssel. */
 export async function globaleWerte(keys?: readonly string[]): Promise<Eintrag[]> {
   return keys
     ? db.all<Eintrag>('SELECT key, value FROM global_settings WHERE key = ANY($1)', [[...keys]])
     : db.all<Eintrag>('SELECT key, value FROM global_settings');
 }
 
-/** Nur ersetzen, wenn noch der alte Wert dasteht — sonst hat ein anderer Prozess geschrieben. @returns ob ersetzt */
+/** Nur, wenn noch der alte Wert dasteht — sonst hat ein anderer Prozess geschrieben. */
 export async function ersetzeGlobalenWert(key: string, alt: string, neu: string | null): Promise<boolean> {
   const r = await db.run('UPDATE global_settings SET value = $1, updated_at = NOW() WHERE key = $2 AND value = $3',
     [neu, key, alt]);
   return (r.changes ?? 0) > 0;
 }
 
-/** Alle Konten, die über Verknüpfungen zusammenhängen, in beide Richtungen. */
 export async function verbundeneKonten(tx: DbSchnittstelle, userId: number): Promise<number[]> {
   const rows = await tx.all<{ id: number }>(`
     WITH RECURSIVE verbund(id) AS (
@@ -67,7 +63,6 @@ export async function verbundeneKonten(tx: DbSchnittstelle, userId: number): Pro
   return rows.map(r => r.id);
 }
 
-/** Dieselbe Währung für mehrere Konten in einer Anweisung. */
 export async function setzeWaehrungFuer(tx: DbSchnittstelle, ids: number[], waehrung: string): Promise<void> {
   await tx.run(
     `INSERT INTO user_settings (user_id, key, value, updated_at)

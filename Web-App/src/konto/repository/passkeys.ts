@@ -1,6 +1,6 @@
 import * as db from '../../../db/database';
 
-/** Datenzugriff für Passkeys und ihre Challenges. Challenges liegen nur als Hash vor. */
+/** Challenges liegen nur als Hash vor. */
 
 export async function speichereChallenge(hash: string, zweck: string, uid: number | null, bis: Date): Promise<void> {
   await db.run('DELETE FROM webauthn_challenges WHERE expires_at < NOW()');
@@ -30,14 +30,13 @@ export async function legeAn(uid: number, credentialId: string, publicKey: Buffe
     [uid, credentialId, publicKey, zaehler, transports, name])) ?? null;
 }
 
-/** @param uid beim zweiten Faktor das Konto, dessen Passwort schon stimmte; sonst null */
 export function schluessel(credentialId: string, uid: number | null) {
   return db.get<{ id: number; user_id: number; public_key: Buffer; sign_count: string; transports: string | null }>(
     `SELECT id, user_id, public_key, sign_count, transports FROM passkeys
       WHERE credential_id = $1 AND ($2::int IS NULL OR user_id = $2::int)`, [credentialId, uid]);
 }
 
-/** Nur weiterschreiben, wenn der Zähler noch der gelesene ist: Zwei gleichzeitige Anmeldungen gelingen nicht beide. */
+/** Nur, wenn der Zähler noch der gelesene ist: Zwei gleichzeitige Anmeldungen gelingen nicht beide. */
 export async function zaehlerWeiter(id: number, neu: number, alt: string): Promise<boolean> {
   return !!(await db.run('UPDATE passkeys SET sign_count = $2, last_used = NOW() WHERE id = $1 AND sign_count = $3',
     [id, neu, alt])).changes;
