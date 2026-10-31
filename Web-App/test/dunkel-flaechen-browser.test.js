@@ -103,6 +103,9 @@ test('Dunkelmodus: keine hellen Flächen, lesbarer Text', { concurrency: 1, time
       document.documentElement.setAttribute('data-dunkel', ''); true`);
     const funde = { flaechen: new Set(), texte: new Set() };
     const sammle = async (wo) => {
+      // Steht die Anmeldemaske da, mässe der Rest nur sie; dann die Ursache nennen.
+      if (await b.auswerten(`getComputedStyle(document.getElementById('app')).display === 'none'`))
+        assert.fail(`Sitzung vor „${design}: ${wo}“ verloren; 401 auf: ${app.abgewiesen.join(', ') || 'keine'}`);
       const r = await b.auswerten(MESSUNG);
       for (const x of r.flaechen) funde.flaechen.add(`${wo}: ${x}`);
       for (const x of r.texte) funde.texte.add(`${wo}: ${x}`);
