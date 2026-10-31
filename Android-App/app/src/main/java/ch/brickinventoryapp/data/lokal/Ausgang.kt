@@ -6,12 +6,17 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 
-/** Ein wartender Eintrag; [id] steigt mit jedem Einreihen und ist damit die Reihenfolge. */
+/**
+ * Ein wartender Eintrag; [id] steigt mit jedem Einreihen und ist damit die Reihenfolge.
+ * [schluessel] geht als Idempotency-Key mit: Kam ein Versuch an, nur die Antwort
+ * nicht, wirkt die Wiederholung beim Server kein zweites Mal.
+ */
 data class Ausgangsposten(
     val id: Long,
     val bearbeitung: Bearbeitung,
     val erstellt: Long,
     val versuche: Int,
+    val schluessel: String,
 )
 
 /**
@@ -21,7 +26,7 @@ data class Ausgangsposten(
  */
 interface Ausgang {
     fun anzahl(bereich: String): Flow<Int>
-    suspend fun einreihen(bereich: String, bearbeitung: Bearbeitung, jetzt: Long): Long
+    suspend fun einreihen(bereich: String, bearbeitung: Bearbeitung, jetzt: Long, schluessel: String): Long
     suspend fun alle(bereich: String): List<Ausgangsposten>
     suspend fun erster(bereich: String): Ausgangsposten?
     suspend fun entferne(id: Long)
@@ -37,9 +42,9 @@ class SpeicherAusgang : Ausgang {
     override fun anzahl(bereich: String): Flow<Int> =
         posten.map { l -> l.count { it.first == bereich } }.distinctUntilChanged()
 
-    override suspend fun einreihen(bereich: String, bearbeitung: Bearbeitung, jetzt: Long): Long {
+    override suspend fun einreihen(bereich: String, bearbeitung: Bearbeitung, jetzt: Long, schluessel: String): Long {
         val id = naechsteId.getAndIncrement()
-        posten.update { it + (bereich to Ausgangsposten(id, bearbeitung, jetzt, 0)) }
+        posten.update { it + (bereich to Ausgangsposten(id, bearbeitung, jetzt, 0, schluessel)) }
         return id
     }
 

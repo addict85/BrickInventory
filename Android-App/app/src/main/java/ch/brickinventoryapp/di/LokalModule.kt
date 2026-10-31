@@ -36,6 +36,8 @@ abstract class LokalModule {
         @Provides
         @Singleton
         fun datenbank(@ApplicationContext context: Context): BestandDatenbank =
-            Room.databaseBuilder(context, BestandDatenbank::class.java, BestandDatenbank.NAME).build()
+            Room.databaseBuilder(context, BestandDatenbank::class.java, BestandDatenbank.NAME)
+                .addMigrations(*BestandDatenbank.MIGRATIONEN)
+                .build()
     }
 }

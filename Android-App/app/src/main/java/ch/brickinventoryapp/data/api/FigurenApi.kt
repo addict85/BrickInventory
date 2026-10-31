@@ -40,7 +40,8 @@ interface FigurenApi : FigurenAbfrageApi {
 
     @POST("api/v1/minifigs")
     suspend fun addMinifig(
-        @Body request: AddMinifigRequest
+        @Body request: AddMinifigRequest,
+        @Header("Idempotency-Key") schluessel: String? = null,
     ): Response<AddMinifigResponse>
 
     @PUT("api/v1/minifigs/{figNumber}")
@@ -48,14 +49,16 @@ interface FigurenApi : FigurenAbfrageApi {
         @Path("figNumber") figNumber: String,
         @Body request: UpdateManualItemRequest,
         // Wessen Karte gemeint war — siehe deletePart.
-        @Query("owner") owner: Int? = null
+        @Query("owner") owner: Int? = null,
+        @Header("Idempotency-Key") schluessel: String? = null,
     ): Response<GenericResponse>
 
     @DELETE("api/v1/minifigs/{figNumber}")
     suspend fun deleteMinifig(
         @Path("figNumber") figNumber: String,
         // Wie bei deletePart: null = eigenes Konto.
-        @Query("owner") owner: Int? = null
+        @Query("owner") owner: Int? = null,
+        @Header("Idempotency-Key") schluessel: String? = null,
     ): Response<GenericResponse>
 
     /**

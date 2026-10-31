@@ -33,6 +33,7 @@ import org.robolectric.annotation.Config
  *   A  in BestandDao.beobachte `ORDER BY position` entfernen → „hält die Reihenfolge“
  *   B  in AusgangDao.erster `ORDER BY id` → `ORDER BY id DESC` → „sendet der Reihe nach“
  *   C  in RoomAusgang.lies das Entfernen weglassen → „ein unlesbarer Posten blockiert nicht“
+ *   D  in RoomAusgang.lies `z.schluessel` → `""` → „ein unlesbarer Posten …“ (Schlüssel kommt nicht zurück)
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -74,7 +75,9 @@ class BestandDatenbankTest {
         assertEquals(7, ablage.lies(Faecher.SETS)!!.liste.single().quantity)
         val gesendet = mutableListOf<Int>()
         var netz = false
-        val abgleich = Abgleich(ablage) { b ->
+        val schluessel = mutableSetOf<String>()
+        val abgleich = Abgleich(ablage) { b, k ->
+            schluessel += k
             if (!netz) Sendeergebnis.Spaeter else { gesendet += (b as Bearbeitung.SetMenge).schritt; Sendeergebnis.Angenommen }
         }
         assertEquals(Abgleichsergebnis.SPAETER, abgleich.sende())
@@ -82,14 +85,17 @@ class BestandDatenbankTest {
         netz = true
         assertEquals(Abgleichsergebnis.FERTIG, abgleich.sende())
         assertEquals(listOf(1, 2, 3), gesendet)
+        assertEquals("der erste Posten trug bei beiden Versuchen denselben Schlüssel", 3, schluessel.size)
         assertEquals(0, ausgang.anzahl("a").first())
     }
 
     @Test
     fun `ein unlesbarer Posten blockiert nicht`() = runBlocking {
-        db.ausgang().fuegeEin(AusgangZeile(bereich = "a", bearbeitung = "{\"type\":\"gibt_es_nicht\"}", erstellt = 1))
-        ausgang.einreihen("a", Bearbeitung.SetMenge("1-1", 1), 2)
+        db.ausgang().fuegeEin(AusgangZeile(bereich = "a", bearbeitung = "{\"type\":\"gibt_es_nicht\"}", erstellt = 1,
+            schluessel = "k0"))
+        ausgang.einreihen("a", Bearbeitung.SetMenge("1-1", 1), 2, "k1")
         assertEquals(Bearbeitung.SetMenge("1-1", 1), ausgang.erster("a")!!.bearbeitung)
+        assertEquals("der Schlüssel kommt so zurück, wie er abgelegt wurde", "k1", ausgang.erster("a")!!.schluessel)
         assertEquals(1, ausgang.anzahl("a").first())
     }
 }

@@ -13,7 +13,9 @@ import ch.brickinventoryapp.data.lokal.ServerSender
 import ch.brickinventoryapp.data.lokal.SpeicherAusgang
 import ch.brickinventoryapp.data.lokal.SpeicherBestand
 import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.data.repository.FigurenRepository
 import ch.brickinventoryapp.data.repository.SetsRepository
+import ch.brickinventoryapp.data.repository.TeileRepository
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.yield
@@ -41,22 +43,43 @@ import java.util.Collections
  *      rot „gesendet wird der Schritt“
  *   D  in RepoBasis.abgeglichen den Rückfall auf die Ablage entfernt → rot
  *      „ohne Verbindung kommt die Liste aus der Ablage“
+ *   (E–I gemessen am 31.10.2026)
+ *   E  in RepoBasis.schreibe beim Puffern nach dem direkten Versuch einen neuen
+ *      Schlüssel nehmen (`puffere(bearbeitung)`) → rot „… denselben Schlüssel“
+ *   F  in TeileRepository.deletePart wieder direkt `safeCall` statt `schreibe` →
+ *      rot „offline gelöscht …“ (Result.Error statt gepuffert)
+ *   G  in LokaleAnwendung bei TeilLoeschen `filterNot` → `filter` → rot „… verschwindet sofort“
+ *   H  in TeileRepository.updatePart `quantityDelta = null` → rot „… als Menge und Schritt“
+ *   I  in ServerSender beim Löschen `einordnen` statt `einordnenLoeschen` → rot
+ *      „ein schon gelöschtes Teil …“ (404 verworfen und gemeldet)
  */
 class OfflineBearbeitungTest {
 
     private class Server {
         @Volatile var offline = false
+        /** Die nächste Anfrage kommt an, ihre Antwort geht verloren (Funkloch nach dem Senden). */
+        @Volatile var antwortVerlieren = false
         val anfragen: MutableList<String> = Collections.synchronizedList(mutableListOf())
+        /** Je Anfrage „METHODE pfad“ → Idempotency-Key, null ohne. */
+        val schluessel: MutableList<Pair<String, String?>> = Collections.synchronizedList(mutableListOf())
         val codes: MutableMap<String, Pair<Int, String>> = Collections.synchronizedMap(mutableMapOf())
         val server = MockWebServer().apply {
             dispatcher = object : Dispatcher() {
                 override fun dispatch(request: RecordedRequest): MockResponse {
                     val pfad = request.path.orEmpty().substringBefore('?')
                     anfragen += "${request.method} $pfad ${request.body.readUtf8()}"
+                    schluessel += "${request.method} $pfad" to request.getHeader("Idempotency-Key")
                     codes["${request.method} $pfad"]?.let { (c, r) -> return TestApi.antwort(r, c) }
                     return when {
                         request.method == "GET" && pfad == "/api/v1/sets" -> TestApi.antwort(
                             """{"success":true,"count":1,"total":1,"themes":[],"sets":[{"set_number":"10001-1","name":"Haus","quantity":1}]}""")
+                        request.method == "GET" && pfad == "/api/v1/parts/manual" -> TestApi.antwort(
+                            """{"success":true,"parts":[{"part_number":"3001","color_id":5,"quantity":5,"user_id":7},
+                               {"part_number":"3002","color_id":1,"quantity":1,"user_id":7}]}""")
+                        request.method == "GET" && pfad == "/api/v1/minifigs/manual" -> TestApi.antwort(
+                            """{"success":true,"figs":[{"fig_number":"sw0001","quantity":2,"user_id":7}]}""")
+                        request.method == "GET" && pfad == "/api/v1/wanted" -> TestApi.antwort(
+                            """{"success":true,"merkposten":[{"set_number":"20001-1","condition":"N","user_id":7}]}""")
                         else -> TestApi.antwort("""{"success":true}""")
                     }
                 }
@@ -71,11 +94,20 @@ class OfflineBearbeitungTest {
     /** Ohne Netz: Die Verbindung kommt gar nicht erst zustande, wie im Funkloch. */
     private val api = retrofit2.Retrofit.Builder().baseUrl(s.server.url("/"))
         .client(okhttp3.OkHttpClient.Builder().addInterceptor { kette ->
-            if (s.offline) throw java.net.ConnectException("kein Netz") else kette.proceed(kette.request())
+            if (s.offline) throw java.net.ConnectException("kein Netz")
+            val antwort = kette.proceed(kette.request())
+            if (s.antwortVerlieren) {
+                s.antwortVerlieren = false
+                antwort.close()
+                throw java.net.SocketTimeoutException("Antwort verloren")
+            }
+            antwort
         }.build())
         .addConverterFactory(ch.brickinventoryapp.data.api.ApiJson.asConverterFactory("application/json".toMediaType()))
         .build().create(ch.brickinventoryapp.data.api.BrickApiService::class.java)
     private val repo = SetsRepository(api, ResponseCache { cacheDir }, ablage)
+    private val teile = TeileRepository(api, ResponseCache { cacheDir }, ablage)
+    private val figuren = FigurenRepository(api, ResponseCache { cacheDir }, ablage)
     private val abgleich = Abgleich(ablage, ServerSender(api, api, api))
 
     @After
@@ -150,5 +182,71 @@ class OfflineBearbeitungTest {
         assertEquals("99999-1", v.bearbeitung.ziel)
         assertEquals("Set unbekannt", v.meldung)
         assertEquals(0, ablage.ausgang.alle("konto").size)
+    }
+
+    @Test
+    fun `ein direkter Versuch, dessen Antwort verloren geht, und seine Wiederholung tragen denselben Schlüssel`() = runBlocking {
+        repo.getSets()
+        s.antwortVerlieren = true
+        val r = repo.aendereMengeUm("10001-1", 1)
+        assertTrue("Erwartet: gepuffert nach verlorener Antwort, kam $r", r is Result.Success && r.gepuffert)
+        assertEquals(Abgleichsergebnis.FERTIG, abgleich.sende())
+        val puts = s.schluessel.filter { it.first == "PUT /api/v1/sets/10001-1" }.map { it.second }
+        assertEquals(2, puts.size)
+        assertTrue("ohne Schlüssel: $puts", !puts[0].isNullOrBlank())
+        assertEquals("der Server muss die Wiederholung erkennen können", puts[0], puts[1])
+    }
+
+    @Test
+    fun `offline gelöschte Teile, Figuren und Merkposten verschwinden sofort und gehen später mit Schlüssel raus`() = runBlocking {
+        teile.getManualParts(); figuren.getManualMinifigs(); repo.getMerkliste()
+        s.offline = true
+        for (r in listOf(teile.deletePart("3001", 5, owner = 7), figuren.deleteMinifig("sw0001", owner = 7),
+                         repo.loescheMerkposten("20001-1", "N", 7)))
+            assertTrue("Erwartet: offline gespeichert, kam $r", r is Result.Success && r.gepuffert)
+        assertEquals("das gelöschte Teil verschwindet sofort", listOf("3002"),
+            ablage.lies(Faecher.MANUELLE_TEILE)!!.liste.map { it.partNumber })
+        assertEquals(emptyList<String>(), ablage.lies(Faecher.MANUELLE_FIGUREN)!!.liste.map { it.figNumber })
+        assertEquals(emptyList<String>(), ablage.lies(Faecher.MERKLISTE)!!.liste.map { it.setNumber })
+        val offline = teile.getManualParts()
+        assertTrue(offline is Result.Success && offline.data.parts.map { it.partNumber } == listOf("3002"))
+
+        s.offline = false
+        assertEquals(Abgleichsergebnis.FERTIG, abgleich.sende())
+        val geloescht = s.schluessel.filter { it.first.startsWith("DELETE") }
+        assertEquals(listOf("DELETE /api/v1/parts/3001/5", "DELETE /api/v1/minifigs/sw0001", "DELETE /api/v1/wanted/20001-1/N"),
+            geloescht.map { it.first })
+        assertTrue("jeder mit eigenem Schlüssel: $geloescht", geloescht.mapNotNull { it.second }.toSet().size == 3)
+        assertEquals(0, ablage.ausgang.alle("konto").size)
+    }
+
+    @Test
+    fun `ein schon gelöschtes Teil gilt beim Senden als gelöscht und wird nicht als verworfen gemeldet`() = runBlocking {
+        teile.getManualParts()
+        s.offline = true
+        teile.deletePart("3001", 5)
+        s.codes["DELETE /api/v1/parts/3001/5"] = 404 to """{"success":false,"error":"Teil nicht gefunden"}"""
+        s.offline = false
+        val ereignisse = mutableListOf<Abgleichsereignis>()
+        val sammler = launch { ablage.ereignisse.collect { ereignisse += it } }
+        yield()
+        assertEquals(Abgleichsergebnis.FERTIG, abgleich.sende())
+        yield()
+        sammler.cancel()
+        assertEquals(emptyList<Abgleichsereignis>(), ereignisse.filterIsInstance<Abgleichsereignis.Verworfen>())
+        assertEquals(0, ablage.ausgang.alle("konto").size)
+    }
+
+    @Test
+    fun `eine Mengenänderung an Teil und Figur reist als Menge und Schritt`() = runBlocking {
+        teile.getManualParts(); figuren.getManualMinifigs()
+        assertTrue(teile.updatePart("3001", 5, quantity = 7, unitPrice = null) is Result.Success)
+        assertTrue(figuren.updateMinifig("sw0001", quantity = 1, unitPrice = null) is Result.Success)
+        val teil = s.anfragen.single { it.startsWith("PUT /api/v1/parts/3001/5") }
+        assertTrue(teil, "\"quantity\":7" in teil && "\"quantity_delta\":2" in teil)
+        val figur = s.anfragen.single { it.startsWith("PUT /api/v1/minifigs/sw0001") }
+        assertTrue(figur, "\"quantity\":1" in figur && "\"quantity_delta\":-1" in figur)
+        assertEquals("die lokale Liste zeigt die neue Menge", 7,
+            ablage.lies(Faecher.MANUELLE_TEILE)!!.liste.first { it.partNumber == "3001" }.quantity)
     }
 }

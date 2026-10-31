@@ -53,22 +53,30 @@ class FigurenRepository @Inject constructor(
                            storage: String? = null): Result<AddMinifigResponse> =
         AddMinifigRequest(figNumber, blFigNumber, quantity, unitPrice, condition, ownerUserId, storage).let { anfrage ->
             schreibe(Bearbeitung.FigurErfassen(anfrage),
-                { AddMinifigResponse(success = true, action = "gepuffert", figNumber = figNumber) }) {
-                safeCall { api.addMinifig(anfrage) }
+                { AddMinifigResponse(success = true, action = "gepuffert", figNumber = figNumber) }) { schluessel ->
+                safeCall { api.addMinifig(anfrage, schluessel) }
             }
         }
 
-    /** @param owner Besitzer der Karte; null = eigenes Konto. */
-    suspend fun updateMinifig(figNumber: String, quantity: Int, unitPrice: Double?, blFigNumber: String? = null, condition: String? = null, owner: Int? = null): Result<GenericResponse> =
-        UpdateManualItemRequest(quantity, unitPrice, blFigNumber, condition).let { anfrage ->
-            schreibe(Bearbeitung.FigurAendern(figNumber, anfrage, owner), { GenericResponse(success = true) }) {
-                safeCall { api.updateMinifig(figNumber, anfrage, owner) }
-            }
+    /**
+     * Wie TeileRepository.updatePart: die Menge auch als Schritt.
+     *
+     * @param owner Besitzer der Karte; null = eigenes Konto.
+     */
+    suspend fun updateMinifig(figNumber: String, quantity: Int, unitPrice: Double?, blFigNumber: String? = null, condition: String? = null, owner: Int? = null): Result<GenericResponse> {
+        val bisher = ablage.lies(Faecher.MANUELLE_FIGUREN)?.liste
+            ?.firstOrNull { it.figNumber == figNumber && (owner == null || it.userId == owner) }?.quantity
+        val anfrage = UpdateManualItemRequest(quantity, unitPrice, blFigNumber, condition, quantityDelta = bisher?.let { quantity - it })
+        return schreibe(Bearbeitung.FigurAendern(figNumber, anfrage, owner), { GenericResponse(success = true) }) { schluessel ->
+            safeCall { api.updateMinifig(figNumber, anfrage, owner, schluessel) }
         }
+    }
 
-    /** @param owner Besitzer der Karte; null = eigenes Konto. */
+    /** Auch offline, wie TeileRepository.deletePart. */
     suspend fun deleteMinifig(figNumber: String, owner: Int? = null): Result<GenericResponse> =
-        safeCall { api.deleteMinifig(figNumber, owner) }
+        schreibe(Bearbeitung.FigurLoeschen(figNumber, owner), { GenericResponse(success = true) }) { schluessel ->
+            safeCall { api.deleteMinifig(figNumber, owner, schluessel) }
+        }
 
     suspend fun getMinifigStats(accounts: String? = null): Result<ch.brickinventoryapp.data.model.MinifigStatsResponse> =
         safeCall { api.getMinifigStats(accounts) }

@@ -61,15 +61,18 @@ abstract class RepoBasis<A : Any>(
      * Schreiben mit Ausgang: online direkt; ohne Verbindung — oder wenn schon
      * etwas wartet, damit die Reihenfolge hält — in den Ausgang und lokal
      * angewandt. Dann ist das Ergebnis [Result.Success.gepuffert] mit [ersatz].
+     * Der direkte Versuch und der gepufferte tragen denselben Idempotency-Key:
+     * Kam der erste an und nur die Antwort nicht, wirkt der zweite nicht doppelt.
      */
     protected suspend fun <T> schreibe(
         bearbeitung: Bearbeitung,
         ersatz: () -> T,
-        direkt: suspend () -> Result<T>,
+        direkt: suspend (schluessel: String) -> Result<T>,
     ): Result<T> {
-        if (ablage.wartet() && ablage.puffere(bearbeitung)) return Result.Success(ersatz(), gepuffert = true)
-        val r = direkt()
-        if (r is Result.Error && r.transient && ablage.puffere(bearbeitung))
+        val schluessel = ablage.neuerSchluessel()
+        if (ablage.wartet() && ablage.puffere(bearbeitung, schluessel)) return Result.Success(ersatz(), gepuffert = true)
+        val r = direkt(schluessel)
+        if (r is Result.Error && r.transient && ablage.puffere(bearbeitung, schluessel))
             return Result.Success(ersatz(), gepuffert = true)
         if (r is Result.Success) ablage.wendeAn(bearbeitung)
         return r

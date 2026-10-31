@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.KSerializer
+import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -65,6 +66,7 @@ class Offlineablage(
     private val bereichQuelle: suspend () -> String?,
     private val planer: AusgangPlaner = AusgangPlaner {},
     private val uhr: () -> Long = System::currentTimeMillis,
+    private val schluesselQuelle: () -> String = { UUID.randomUUID().toString() },
 ) {
     @Inject constructor(bestand: LokalerBestand, ausgang: Ausgang, besitzer: CacheBesitzer, planer: AusgangPlaner) :
         this(bestand, ausgang, bereichQuelle = { besitzer.kontoBereich()?.let { ResponseCache.bereichsName(it) } }, planer = planer)
@@ -116,12 +118,18 @@ class Offlineablage(
     }
 
     /**
+     * Ein neuer Idempotency-Key. Er entsteht vor dem ersten Versuch, damit ein
+     * direkter Versuch und seine Wiederholung aus dem Ausgang denselben tragen.
+     */
+    fun neuerSchluessel(): String = schluesselQuelle()
+
+    /**
      * Bearbeitung in den Ausgang legen und lokal anwenden. false, wenn niemand
      * angemeldet ist — dann gibt es keinen Ort, dem sie gehört.
      */
-    suspend fun puffere(bearbeitung: Bearbeitung): Boolean {
+    suspend fun puffere(bearbeitung: Bearbeitung, schluessel: String = neuerSchluessel()): Boolean {
         val b = bereich() ?: return false
-        ausgang.einreihen(b, bearbeitung, uhr())
+        ausgang.einreihen(b, bearbeitung, uhr(), schluessel)
         wendeAn(bearbeitung, b)
         runCatching { planer.plane() }
         return true
