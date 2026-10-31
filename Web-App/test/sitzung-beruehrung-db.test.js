@@ -72,6 +72,7 @@ async function starteServer(frist) {
 
 async function anmelden(base) {
   const r = await fetch(base + '/anmelden');
+  await r.text();   // die Sitzung steht erst nach dem letzten Byte im Speicher
   return (r.headers.get('set-cookie') || '').split(';')[0];
 }
 

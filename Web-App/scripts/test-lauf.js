@@ -26,13 +26,13 @@ const mitDb = (url, name) => { const u = new URL(url); u.pathname = '/' + name; 
 /** @param {string} s */
 const id = (s) => `"${s.replace(/"/g, '""')}"`;
 
-/** @param {string[]} dateien @param {number} n @param {Record<string, string>} env @returns {Promise<number>} */
-function lauf(dateien, n, env) {
+/** @param {string[]} dateien @param {number} n @param {Record<string, string>} env @param {number} frist @returns {Promise<number>} */
+function lauf(dateien, n, env, frist = 60_000) {
   if (!dateien.length) return Promise.resolve(0);
   const vorlader = env.TEST_DB_VORLAGE ? ['--require', path.join(ROOT, 'test', 'helpers', 'eigene-db.js')] : [];
   return new Promise((fertig) => {
     const p = spawn(process.execPath,
-      [...vorlader, '--test', `--test-concurrency=${n}`, '--test-timeout=60000', ...dateien],
+      [...vorlader, '--test', `--test-concurrency=${n}`, `--test-timeout=${frist}`, ...dateien],
       { cwd: ROOT, stdio: 'inherit', env: { ...process.env, ...env } });
     p.on('exit', (code) => fertig(code ?? 1));
   });
@@ -79,7 +79,9 @@ async function main() {
   let code = 0;
   try {
     code = await lauf(uebrige, n, env);
-    code = (await lauf(browser, 1, env)) || code;
+    // Browser-Tests erlauben sich selbst 300 s; die Frist des Runners gilt je
+    // Datei und darf sie nicht vorher abschneiden.
+    code = (await lauf(browser, 1, env, 300_000)) || code;
   } finally {
     if (admin) { await raeumeAuf(admin, vorlage, true).catch(() => {}); await admin.end(); }
   }

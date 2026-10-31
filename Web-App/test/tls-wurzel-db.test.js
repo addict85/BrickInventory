@@ -95,8 +95,9 @@ test('/ca.crt, Einstellungen und QR-Code tragen denselben Fingerabdruck', { conc
   const ruf = (weg, o = {}) => fetch(basis + weg, { method: o.body ? 'POST' : 'GET',
     headers: { 'content-type': 'application/json', ...(o.cookie ? { cookie: o.cookie } : {}) },
     ...(o.body ? { body: JSON.stringify(o.body) } : {}) });
-  const cookie = (await ruf('/api/v1/auth/login', { body: { username: 'tls_nutzer', password: 'richtigesPasswort1', ohne_token: true } }))
-    .headers.get('set-cookie').split(';')[0];
+  const anmeldung = await ruf('/api/v1/auth/login', { body: { username: 'tls_nutzer', password: 'richtigesPasswort1', ohne_token: true } });
+  await anmeldung.text();   // die Sitzung steht erst nach dem letzten Byte im Speicher
+  const cookie = anmeldung.headers.get('set-cookie').split(';')[0];
   const qr = async () => (await ruf('/api/v1/auth/qr-token', { cookie, body: { password: 'richtigesPasswort1' } })).json();
 
   // Noch keine Datei (Caddy hat die CA nicht angelegt): kein fp, 404.

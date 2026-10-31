@@ -141,8 +141,11 @@ async function starteServer(ttlSek, drosselMs) {
   return { srv, base: `http://localhost:${srv.address().port}` };
 }
 
-const anmelden = async base =>
-  (((await fetch(base + '/anmelden')).headers.get('set-cookie')) || '').split(';')[0];
+const anmelden = async base => {
+  const r = await fetch(base + '/anmelden');
+  await r.text();   // die Sitzung steht erst nach dem letzten Byte im Speicher
+  return (r.headers.get('set-cookie') || '').split(';')[0];
+};
 const wer = async (base, keks) =>
   (await (await fetch(base + '/wer', { headers: { cookie: keks } })).json()).uid;
 const schlafe = ms => new Promise(r => setTimeout(r, ms));

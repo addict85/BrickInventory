@@ -121,11 +121,14 @@ test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async (t) => {
 
   const alsNutzer = async (id, admin = false) => {
     const r = await fetch(`${basis}/einloggen/${id}/${admin ? 1 : 0}`);
+    // Erst den Rumpf ganz lesen: express-session hält das letzte Byte zurück,
+    // bis die Sitzung gespeichert ist; fetch() kehrt schon mit den Kopfzeilen zurück.
+    const rumpf = await r.text();
     const keks = (r.headers.get('set-cookie') || '').split(';')[0];
     // Trägt die Sitzung nicht, wären alle folgenden Fälle nur 401 — dann hier die Ursache nennen.
     const probe = await fetch(`${basis}/api/v1/vouchers`, { headers: { cookie: keks } });
     if (!r.ok || !keks || probe.status !== 200)
-      assert.fail(`Anmeldung als ${id} trägt nicht: ${r.status} ${await r.text()}, Keks ${keks ? 'da' : 'fehlt'}, `
+      assert.fail(`Anmeldung als ${id} trägt nicht: ${r.status} ${rumpf}, Keks ${keks ? 'da' : 'fehlt'}, `
         + `Probe ${probe.status} ${await probe.text()}`);
     return keks;
   };
