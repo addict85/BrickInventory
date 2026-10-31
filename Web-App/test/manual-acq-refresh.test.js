@@ -21,7 +21,7 @@ const path   = require('node:path');
 const { pruefeParameter } = require('./helpers/sources');
 
 const ROOT  = path.join(__dirname, '..');
-const read  = f => fs.readFileSync(path.join(ROOT, f), 'utf8');
+const read  = f => require('./helpers/sources').dienstQuelle(f);
 const strip = s => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g, '$1');
 
 test('die Erfassungsliste wird in BEIDE Richtungen nachgeladen', () => {

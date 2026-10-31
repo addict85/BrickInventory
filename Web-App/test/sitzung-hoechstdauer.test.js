@@ -19,7 +19,7 @@ const _req = require('./helpers/sources').buildAndRequire();
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const session = require(path.join(ROOT, 'node_modules', 'express-session'));
 const { sitzungsHoechstdauer } = _req('src/konto/sitzungsFrist.js');
-const { establishSession } = _req('src/konto/auth.js');
+const { establishSession } = _req('src/konto/http/anmeldung.js');
 
 const warte = (ms) => new Promise(r => setTimeout(r, ms));
 

@@ -8,7 +8,7 @@ import express, { Request, Response } from 'express';
 import { liefereDatei } from '../src/infra/dateiAusliefern';
 import { safeDataPath } from '../src/infra/datenPfad';
 
-import { requireLoginOrToken, angemeldeteNutzerId } from '../src/konto/auth';
+import { requireLoginOrToken, angemeldeteNutzerId } from '../src/konto/http/anmeldung';
 import { scopeIds } from '../src/haushalt/haushalt';
 
 type WildcardRequest = Request<{ pfad: string[] }>;

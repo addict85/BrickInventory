@@ -50,7 +50,7 @@ export function kontenListe(): Promise<any[]> {
 }
 
 /** @returns die neue Kennung, oder null, wenn der Name schon vergeben ist */
-export async function legeKontoAn(username: string, hash: string, verwalter: boolean): Promise<number | null> {
+export async function fuegeKontoEin(username: string, hash: string, verwalter: boolean): Promise<number | null> {
   const neu = await db.get('INSERT INTO users (username, password_hash, is_admin) VALUES ($1, $2, $3) RETURNING id',
     [username, hash, verwalter ? 1 : 0]);
   return neu ? neu.id : null;
@@ -109,8 +109,8 @@ export async function nameOderEmailVergeben(username: string, email: string): Pr
  * hängt an ein INSERT ohne ON CONFLICT selbst `ON CONFLICT DO NOTHING` an,
  * dahinter wäre RETURNING ein Syntaxfehler — daher die Kennung per SELECT.
  */
-export async function registriereKonto(k: { username: string; email: string; first_name?: string | null;
-  last_name?: string | null; hash: string; tokenHash: string; bis: Date }): Promise<number | null> {
+export async function registriereKonto(k: { username: string; email: string; first_name?: string | null | undefined;
+  last_name?: string | null | undefined; hash: string; tokenHash: string; bis: Date }): Promise<number | null> {
   await db.run(
     'INSERT INTO users (username, email, first_name, last_name, password_hash, is_admin, is_active, email_verified, verification_token, token_expires) VALUES ($1,$2,$3,$4,$5,0,1,0,$6,$7)',
     [k.username, k.email, k.first_name || null, k.last_name || null, k.hash, k.tokenHash, k.bis]);

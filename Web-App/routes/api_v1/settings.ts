@@ -5,7 +5,6 @@
  */
 import express from 'express';
 import multer from 'multer';
-import { bestaetigePasswort } from '../../src/konto/passwortBestaetigung';
 import { fehlerAntwort, logAndContinue } from '../../src/infra/httpError';
 import { requireApiAdmin as requireAdmin, requireToken, bearerToken } from './middleware';
 import {
@@ -28,7 +27,8 @@ import { buildPreisalarmeCsv } from '../../src/finanzen/preisalarm';
 import { DAILY_JOBS } from '../../src/auftraege/zeitplan';
 import { quellePruefen, bricksetLimitGesetzt, zeitplanNeuPlanen } from '../../src/verwaltung/dienst';
 import { zugaengeDesKontos, zugaengeLoeschen, andereSitzungenBeenden, mussPasswortAendern, profil } from '../../src/konto/konten';
-import { resolveUserId, escapeLike, requireLoginOrToken, nutzerId, angemeldeteNutzerId, istVerwalter, nutzerName, hashToken, leereTokenCache } from '../../src/konto/auth';
+import { escapeLike, hashToken, leereTokenCache } from '../../src/konto/auth';
+import { resolveUserId, requireLoginOrToken, nutzerId, angemeldeteNutzerId, istVerwalter, nutzerName, bestaetigePasswort } from '../../src/konto/http/anmeldung';
 import { householdStatus, createInvite, redeemInvite, unlink, verwerfeGetrennt } from '../../src/haushalt/haushalt';
 import { sendMail, testSmtp, sendHaushaltVerknuepftMail } from '../../src/infra/mailer';
 import { sendeFehler } from '../../src/infra/fehlerTexte';

@@ -55,18 +55,18 @@ test('E-Mail-Verifikation steht nur an einer Stelle', async (t) => {
   });
 
   await t.test('die Verifikationsabfrage steht genau einmal im Baum', () => {
-    const kandidaten = ['src/konto/auth.ts', 'server.ts', 'routes/auth.ts'];
+    const kandidaten = ['src/konto/auth.ts', 'src/konto/repository/zugaenge.ts', 'server.ts', 'routes/auth.ts'];
     const treffer = kandidaten.filter((rel) => ABFRAGE.test(lies(rel)));
-    assert.deepEqual(treffer, ['src/konto/auth.ts'],
+    assert.deepEqual(treffer, ['src/konto/repository/zugaenge.ts'],
       'Die Abfrage nach verification_token gehört ausschliesslich in ' +
       'utils/auth.verifiziereEmailToken(). Gefunden in: ' + treffer.join(', ') +
       ' — damit ist die Doppelung aus Nachtrag 154 zurück.');
   });
 
   await t.test('das Einlösen (email_verified=1) steht genau einmal im Baum', () => {
-    const kandidaten = ['src/konto/auth.ts', 'server.ts', 'routes/auth.ts'];
+    const kandidaten = ['src/konto/auth.ts', 'src/konto/repository/zugaenge.ts', 'server.ts', 'routes/auth.ts'];
     const treffer = kandidaten.filter((rel) => EINLOESEN.test(lies(rel)));
-    assert.deepEqual(treffer, ['src/konto/auth.ts'],
+    assert.deepEqual(treffer, ['src/konto/repository/zugaenge.ts'],
       'Auch das Setzen von email_verified gehört nur an eine Stelle. ' +
       'Gefunden in: ' + treffer.join(', '));
   });

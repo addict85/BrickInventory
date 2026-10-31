@@ -64,9 +64,9 @@ const serverAll = () => serverOnly() + '\n' + imgProxy() + '\n' + proxyThumbQuel
  */
 const finanzQuelle = () => {
   const ordner = path.join(ROOT, 'src/finanzen/rechnung');
-  const teile = [fs.readFileSync(path.join(ROOT, 'src/finanzen/financeCalc.ts'), 'utf8')];
+  const teile = [dienstQuelle('src/finanzen/financeCalc.ts')];
   for (const n of fs.readdirSync(ordner).filter(x => x.endsWith('.ts')).sort()) {
-    teile.push(fs.readFileSync(path.join(ordner, n), 'utf8'));
+    teile.push(dienstQuelle('src/finanzen/rechnung/' + n));
   }
   // Selbstbeweis an der Quelle: Findet der Helfer die Module nicht mehr,
   // pruefen neunzehn Regeln nur noch die Fassade — und waeren still gruen.
@@ -306,7 +306,7 @@ function setKernQuelle() {
     ['src/sets/setService.ts'],
     ['src/katalog/partsImport.ts'],
     ['src/katalog/minifigsImport.ts'],
-  ].map(p => fs.readFileSync(path.join(ROOT, ...p), 'utf8')).join('\n');
+  ].map(p => dienstQuelle(p[0])).join('\n');
 }
 module.exports.setKernQuelle = setKernQuelle;
 
@@ -328,7 +328,7 @@ const HANDLER_MODULE = ['src/bestand/gemeinsam', 'src/teile/abfragen', 'src/sets
 function handlerQuelle() {
   const path = require('path'), fs = require('fs');
   const wurzel = path.join(__dirname, '..', '..');
-  return HANDLER_MODULE.map(m => fs.readFileSync(path.join(wurzel, m + '.ts'), 'utf8')).join('\n');
+  return HANDLER_MODULE.map(m => dienstQuelle(m + '.ts')).join('\n');
 }
 module.exports.handlerQuelle = handlerQuelle;
 
@@ -355,10 +355,10 @@ function startQuelle() {
   const dir = path.join(ROOT, 'startup');
   const teile = ['server.ts', 'jobs/bildNachlauf.ts', 'jobs/startNachlaeufe.ts', 'jobs/aufraeumen.ts',
     'src/katalog/repository/bildlage.ts']
-    .map(f => fs.readFileSync(path.join(ROOT, f), 'utf8'));
+    .map(f => dienstQuelle(f));
   if (fs.existsSync(dir)) {
     for (const f of fs.readdirSync(dir).filter(x => x.endsWith('.ts'))) {
-      teile.push(fs.readFileSync(path.join(dir, f), 'utf8'));
+      teile.push(dienstQuelle('startup/' + f));
     }
   }
   return teile.join('\n');
@@ -378,10 +378,10 @@ function portfolioQuelle() {
   const path = require('path'), fs = require('fs');
   const ROOT = path.join(__dirname, '..', '..');
   const dir = path.join(ROOT, 'src/finanzen/portfolio');
-  const teile = [fs.readFileSync(path.join(ROOT, 'src/finanzen/portfolioHistory.ts'), 'utf8')];
+  const teile = [dienstQuelle('src/finanzen/portfolioHistory.ts')];
   if (fs.existsSync(dir)) {
     for (const f of fs.readdirSync(dir).filter(x => x.endsWith('.ts'))) {
-      teile.push(fs.readFileSync(path.join(dir, f), 'utf8'));
+      teile.push(dienstQuelle('src/finanzen/portfolio/' + f));
     }
   }
   return teile.join('\n');
@@ -786,3 +786,17 @@ function alleQuellen() {
   return raus;
 }
 module.exports.alleQuellen = alleQuellen;
+
+/**
+ * Eine Datei samt der Repositories, die sie importiert: Prüfungen auf das SQL
+ * eines Dienstes meinen seinen Weg zur Datenbank, nicht die Datei.
+ * @param {string} rel Pfad relativ zu ROOT, z. B. 'src/sets/setMove.ts'
+ */
+function dienstQuelle(rel) {
+  const s = fs.readFileSync(path.join(ROOT, rel), 'utf8');
+  const repos = new Set([...ohneKommentare(s).matchAll(/(?:from\s+|import\(\s*|require\(\s*)['"](\.[^'"]*repository[^'"]*)['"]/g)]
+    .map(m => path.posix.normalize(path.posix.join(path.posix.dirname(rel), m[1])).replace(/\.js$/, ''))
+    .map(z => fs.existsSync(path.join(ROOT, z + '.ts')) ? z + '.ts' : z + '/index.ts'));
+  return [s, ...[...repos].map(r => fs.readFileSync(path.join(ROOT, r), 'utf8'))].join('\n');
+}
+module.exports.dienstQuelle = dienstQuelle;

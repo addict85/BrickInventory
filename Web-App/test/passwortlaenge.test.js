@@ -70,13 +70,13 @@ test('die Regel selbst haelt auch das, was kein String ist', () => {
 test('alle fuenf Routen, die ein Passwort setzen, pruefen die Laenge', () => {
   const quelle = ohneKommentare(read('routes/auth.ts'));
 
-  // Gezaehlt wird ueber das HASHEN, nicht ueber die Routennamen: Jede Stelle,
-  // die ein Passwort in die Datenbank schreibt, muss durch bcrypt.hash — eine
-  // neue Route kann diesem Test also nicht entgehen, indem sie anders heisst.
-  const hashes = (quelle.match(/bcrypt\.hash\(/g) || []).length;
+  // Gezaehlt wird ueber das SETZEN: Gehasht wird nur im Kontodienst
+  // (src/konto/konten.ts), jede Route, die ein Passwort setzt, ruft ihn.
+  assert.doesNotMatch(quelle, /bcrypt\.hash\(/, 'Eine Route hasht selbst — das gehört in den Kontodienst');
+  const hashes = (quelle.match(/K\.(setzeFremdesPasswort|aendereEigenesPasswort|setzePasswortZurueck|legeKontoAn|registriere)\(/g) || []).length;
   const pruefungen = (quelle.match(/passwortZuKurz\(/g) || []).length;
   assert.equal(hashes, 5,   // PUT /profile setzt seit dem 27.10. keines mehr
-    `${hashes} Stellen hashen ein Passwort — die Zahl hat sich geaendert, der Test muss mit`);
+    `${hashes} Stellen setzen ein Passwort — die Zahl hat sich geaendert, der Test muss mit`);
   assert.equal(pruefungen, hashes,
     `Nur ${pruefungen} von ${hashes} Stellen pruefen die Laenge. Genau so entstand die ` +
     'Luecke: PUT /profile und POST /change-password prueften nicht, und damit war ' +

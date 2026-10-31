@@ -10,7 +10,7 @@ import {
 } from '@simplewebauthn/server';
 import type { AuthenticationResponseJSON, RegistrationResponseJSON, WebAuthnCredential } from '@simplewebauthn/server';
 import { decodeClientDataJSON } from '@simplewebauthn/server/helpers';
-import * as db from '../../db/database';
+import * as repo from './repository/passkeys';
 import { basisUrl } from '../infra/basisUrl';
 import { fehlertext } from '../infra/httpError';
 
@@ -50,10 +50,8 @@ export function vertrauenspartei(): { rpID: string; origin: string; rpName: stri
 
 const hash = (s: string) => crypto.createHash('sha256').update(s).digest('hex');
 
-async function merkeChallenge(challenge: string, zweck: PasskeyZweck, uid: number | null): Promise<void> {
-  await db.run('DELETE FROM webauthn_challenges WHERE expires_at < NOW()');
-  await db.run('INSERT INTO webauthn_challenges (challenge, user_id, zweck, expires_at) VALUES ($1, $2, $3, $4)',
-    [hash(challenge), uid, zweck, new Date(Date.now() + CHALLENGE_MS)]);
+function merkeChallenge(challenge: string, zweck: PasskeyZweck, uid: number | null): Promise<void> {
+  return repo.speichereChallenge(hash(challenge), zweck, uid, new Date(Date.now() + CHALLENGE_MS));
 }
 
 /**
@@ -64,12 +62,7 @@ async function loeseChallengeEin(clientDataJSON: unknown, zweck: PasskeyZweck, u
   if (typeof clientDataJSON !== 'string') return null;
   let challenge: string;
   try { challenge = decodeClientDataJSON(clientDataJSON).challenge; } catch (e) { return abgewiesen(e); }
-  const z = await db.get(
-    `DELETE FROM webauthn_challenges
-      WHERE challenge = $1 AND zweck = $2 AND expires_at > NOW()
-        AND ($3::int IS NULL OR user_id = $3::int)
-      RETURNING challenge`, [hash(challenge), zweck, uid]);
-  return z ? challenge : null;
+  return await repo.verbraucheChallenge(hash(challenge), zweck, uid) ? challenge : null;
 }
 
 /** Eine feste, nicht sprechende Kennung je Konto für den Authenticator. */
@@ -78,8 +71,7 @@ const nutzerKennung = (uid: number) => new Uint8Array(crypto.createHash('sha256'
 export async function registrierungsOptionen(uid: number, name: string) {
   const rp = vertrauenspartei();
   if (!rp) return null;
-  const vorhanden = await db.all<{ credential_id: string; transports: string | null }>(
-    'SELECT credential_id, transports FROM passkeys WHERE user_id = $1', [uid]);
+  const vorhanden = await repo.kennungenDesKontos(uid);
   const optionen = await generateRegistrationOptions({
     rpName: rp.rpName, rpID: rp.rpID, userName: name, userID: nutzerKennung(uid),
     attestationType: 'none',
@@ -104,11 +96,7 @@ export async function registrierungPruefen(uid: number, roh: unknown, name: stri
   }).catch(abgewiesen);
   if (!v?.verified) return null;
   const c = v.registrationInfo.credential;
-  const z = await db.get<{ id: number; name: string }>(
-    `INSERT INTO passkeys (user_id, credential_id, public_key, sign_count, transports, name)
-     VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (credential_id) DO NOTHING RETURNING id, name`,
-    [uid, c.id, Buffer.from(c.publicKey), c.counter, (c.transports ?? []).join(',') || null, name]);
-  return z ?? null;
+  return repo.legeAn(uid, c.id, Buffer.from(c.publicKey), c.counter, (c.transports ?? []).join(',') || null, name);
 }
 
 export async function anmeldeOptionen(zweck: 'anmelden' | 'zweiter_faktor') {
@@ -135,9 +123,7 @@ export async function anmeldungPruefen(roh: unknown, zweck: 'anmelden' | 'zweite
   if (!rp || !antwort) return null;
   const challenge = await loeseChallengeEin(antwort.response.clientDataJSON, zweck, null);
   if (!challenge) return null;
-  const k = await db.get<{ id: number; user_id: number; public_key: Buffer; sign_count: string; transports: string | null }>(
-    `SELECT id, user_id, public_key, sign_count, transports FROM passkeys
-      WHERE credential_id = $1 AND ($2::int IS NULL OR user_id = $2::int)`, [antwort.id, uid]);
+  const k = await repo.schluessel(antwort.id, uid);
   if (!k) return null;
   const v = await verifyAuthenticationResponse({
     response: antwort, expectedChallenge: challenge, expectedOrigin: rp.origin, expectedRPID: rp.rpID,
@@ -146,24 +132,10 @@ export async function anmeldungPruefen(roh: unknown, zweck: 'anmelden' | 'zweite
     requireUserVerification: zweck === 'anmelden',
   }).catch(abgewiesen);
   if (!v?.verified) return null;
-  // Nur weiterschreiben, wenn der Zähler noch der gelesene ist: Zwei gleichzeitige
-  // Anmeldungen mit demselben Zählerstand gelingen so nicht beide.
-  const ok = await db.run(
-    'UPDATE passkeys SET sign_count = $2, last_used = NOW() WHERE id = $1 AND sign_count = $3',
-    [k.id, v.authenticationInfo.newCounter, k.sign_count]);
-  return ok.changes ? k.user_id : null;
+  return await repo.zaehlerWeiter(k.id, v.authenticationInfo.newCounter, k.sign_count) ? k.user_id : null;
 }
 
-export function passkeysDesKontos(uid: number) {
-  return db.all<{ id: number; name: string | null; created_at: Date; last_used: Date | null; transports: string | null }>(
-    'SELECT id, name, created_at, last_used, transports FROM passkeys WHERE user_id = $1 ORDER BY created_at', [uid]);
-}
-
-export async function hatPasskeys(uid: number): Promise<boolean> {
-  return !!await db.get('SELECT 1 FROM passkeys WHERE user_id = $1 LIMIT 1', [uid]);
-}
-
+export const passkeysDesKontos = repo.desKontos;
+export const hatPasskeys = repo.hatWelche;
 /** @returns ob es den Passkey in diesem Konto gab */
-export async function loeschePasskey(uid: number, id: number): Promise<boolean> {
-  return !!(await db.run('DELETE FROM passkeys WHERE user_id = $1 AND id = $2', [uid, id])).changes;
-}
+export const loeschePasskey = repo.loeschePasskeyZeile;

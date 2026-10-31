@@ -35,7 +35,7 @@ import { setInfo, setZumBarcode, teilelisteDesSets, figurenlisteDesSets, setPrei
 import { downloadSetInstructions, anleitungenZuSet, loescheAnleitungen, anleitungNeuLadenErlaubt } from '../../src/katalog/instructions';
 import { importPartsForSet } from '../../src/katalog/partsImport';
 import { registerSse } from '../../src/infra/sseRegistry';
-import { loginOrTokenGuard, angemeldeteNutzerId, istVerwalter } from '../../src/konto/auth';
+import { loginOrTokenGuard, angemeldeteNutzerId, istVerwalter } from '../../src/konto/http/anmeldung';
 import { csvImportBus, buildJobStatus, jobGet } from '../../src/auftraege/importAuftrag';
 import * as pgNotify from '../../db/pgNotify';
 import { APP_ROOT, DATA_DIR } from '../../src/infra/appPaths';

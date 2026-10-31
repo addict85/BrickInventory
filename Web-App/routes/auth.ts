@@ -3,19 +3,17 @@ import { konfig } from '../src/infra/konfig';
 import { protokolliere } from '../src/verwaltung/dienst';
 import express from 'express';
 const router  = express.Router();
-import bcrypt from 'bcryptjs';
 import * as K from '../src/konto/konten';
 import { meldeHaushaltsaenderung } from '../src/haushalt/haushalt';
 import { fehlerAntwort, logAndContinue, meldeUndWeiter, fehlertext, pfadParam, meldeUndLiefere } from '../src/infra/httpError';
-import { perSitzung, hashToken, pruefeAnmeldedaten, createToken, pruefeToken, assertLoginAllowed, establishSession, revokeAllTokens, revokeAllSessions, beendeAndereZugaenge, deleteToken, BCRYPT_ROUNDS, USERNAME_RE, EMAIL_RE, requireLoginOrToken, nutzerId, angemeldeteNutzerId, passwortZuKurz, flaggeGesetzt, leereTokenCache, laufzeitTage, rotiereToken, rotationFaellig, UNBEGRENZT, UEBERLAPPUNG_MS } from '../src/konto/auth';
+import { hashToken, createToken, pruefeToken, assertLoginAllowed, revokeAllSessions, beendeAndereZugaenge, deleteToken, USERNAME_RE, EMAIL_RE, passwortZuKurz, flaggeGesetzt, leereTokenCache, laufzeitTage, rotiereToken, rotationFaellig, UNBEGRENZT, UEBERLAPPUNG_MS } from '../src/konto/auth';
+import { perSitzung, anmelden, establishSession, requireLoginOrToken, nutzerId, angemeldeteNutzerId, ipThrottle, bestaetigePasswort, bestaetigeCode } from '../src/konto/http/anmeldung';
 import type { TokenScope } from '../src/konto/auth';
 import { tlsStand } from '../src/infra/tlsWurzel';
-import { ipThrottle, bestaetigungGesperrt, bestaetigungFehlgeschlagen, bestaetigungGelungen } from '../src/konto/loginLimiter';
-import { bestaetigePasswort } from '../src/konto/passwortBestaetigung';
 import crypto from 'crypto';
 import { strictBool } from '../src/infra/validate';
 import { sendEmailGeaendertMail, sendPasswordResetMail, sendVerificationMail } from '../src/infra/mailer';
-import type { Request, Response } from 'express';
+import type { Request } from 'express';
 import { setUserSetting } from '../src/konto/settings';
 import { getGlobalSetting } from '../src/konto/settings';
 import { getSetting } from '../src/konto/settings';
@@ -68,7 +66,7 @@ router.post('/login', async (req, res) => {
   const { username, password, label, never_expires, code: zweiterCode, ohne_token, scope, passkey } = req.body;
   // Form des Namens, Brute-Force-Sperre, Passwortvergleich, die
   // Konto-Vorbedingungen und der zweite Faktor stehen in src/konto/auth.ts.
-  const pruefung = await pruefeAnmeldedaten(req, username, password, zweiterCode, passkey);
+  const pruefung = await anmelden(req, username, password, zweiterCode, passkey);
   if (!pruefung.ok) {
     const { status, code, vars, unverified, zweiterFaktor, passkey: mitPasskey } = pruefung.absage;
     // `zweiter_faktor` sagt dem Client: Codefeld zeigen und erneut senden.
@@ -320,8 +318,7 @@ router.post('/users', requireAdmin, async (req, res) => {
   // und protokollieren — eine erbeutete Sitzung soll keinen Verwalter anlegen.
   const verwalter = angemeldeteNutzerId(req);
   if (!await bestaetigePasswort(req, res, verwalter, req.body?.admin_password)) return;
-  const hash = await bcrypt.hash(password, BCRYPT_ROUNDS);
-  const neu = await K.legeKontoAn(username, hash, alsVerwalter).catch(alsDoppelt('benutzername_vergeben'));
+  const neu = await K.legeKontoAn(username, password, alsVerwalter).catch(alsDoppelt('benutzername_vergeben'));
   if (neu === null) return sendeFehler(req, res, 409, 'benutzername_vergeben');
   await protokolliere(verwalter, neu, 'konto_angelegt');
   if (alsVerwalter) await protokolliere(verwalter, neu, 'verwalter_ernannt');
@@ -336,27 +333,17 @@ router.put('/users/:id/admin', requireAdmin, async (req, res) => {
   const soll = strictBool(req.body.is_admin, 'is_admin');
   if (targetId === nutzerId(req) && !soll)
     return sendeFehler(req, res, 400, 'eigene_adminrolle');
-  // Den ALTEN Wert holen — daran haengt unten, ob Sitzungen enden muessen.
-  // Ausführlich: docs/begruendungen/routes/auth.ts.md#put-users-id-admin-vorher
-  const vorher = await K.verwalterVorher(targetId);
-  if (!vorher) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
+  if (!await K.kontoExistiert(targetId)) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
   if (!await bestaetigePasswort(req, res, angemeldeteNutzerId(req), req.body?.admin_password)) return;
-  const warAdmin = flaggeGesetzt(vorher.is_admin);
-  await K.setzeVerwalter(targetId, soll);
-  if (warAdmin !== soll) await protokolliere(angemeldeteNutzerId(req), targetId, soll ? 'verwalter_ernannt' : 'verwalter_entzogen');
+  const r = await K.setzeVerwalterRolle(targetId, soll);
+  if (!r) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
+  if (r.geaendert) await protokolliere(angemeldeteNutzerId(req), targetId, soll ? 'verwalter_ernannt' : 'verwalter_entzogen');
 
   // Warum die Sitzungen enden muessen
   // istVerwalter() (src/konto/auth.ts) fragt ZUERST `req.session.isAdmin`. Das
   // steht seit dem Anmelden fest und wird nie nachgefuehrt. Ein Entzug wirkte
   // damit auf den BROWSER gar nicht: Wer sein Fenster offen liess, blieb …
   // Ausführlich: docs/begruendungen/routes/auth.ts.md#put-users-id-admin
-  if (warAdmin !== soll) {
-    await revokeAllSessions(targetId);
-    // Der Token-Cache haelt is_admin bis zu 60 Sekunden. Geleert, nicht
-    // verworfen: revokeAllTokens() wuerde die App ABMELDEN, und das ist bei
-    // einem Rollenwechsel zu viel — sie soll nur die neue Rolle sehen.
-    leereTokenCache();
-  }
   res.json({ success: true });
 });
 
@@ -377,15 +364,8 @@ router.put('/users/:id/password', requireAdmin, async (req, res) => {
   // Mit dem Passwort eines anderen Kontos lässt sich dieses übernehmen —
   // eine offene Verwaltersitzung allein genügt dafür nicht.
   if (!await bestaetigePasswort(req, res, angemeldeteNutzerId(req), req.body?.admin_password)) return;
-  const hash = await bcrypt.hash(String(password), BCRYPT_ROUNDS);
-  if (!await K.setzePasswortHash(targetId, hash)) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
+  if (!await K.setzeFremdesPasswort(targetId, password)) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
   await protokolliere(angemeldeteNutzerId(req), targetId, 'passwort_gesetzt');
-
-  // Offene Zugänge des Kontos beenden — ein zurückgesetztes Passwort soll
-  // auch bestehende Sitzungen und Token schliessen.
-  // Ausführlich: docs/begruendungen/routes/auth.ts.md#put-users-id-password-2
-  await revokeAllSessions(targetId);
-  await revokeAllTokens(targetId);
 
   res.json({ success: true });
 });
@@ -440,24 +420,8 @@ router.post('/change-password', requireLogin, async (req: LoggedInRequest, res) 
   // die zwei Wege eines ANGEMELDETEN Kontos — also genau die, auf denen ein
   // uebernommenes Konto dauerhaft schwach gemacht werden kann.
   if (passwortZuKurz(newPassword)) return sendeFehler(req, res, 400, 'passwort_zu_kurz');
-  const hash = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
-  // must_change_password mit löschen — sonst fragt der Login nach jedem
-  // Login des Default-Admins weiter danach, auch nach der Änderung.
-  await K.setzeEigenesPasswort(uid, hash);
-  // Alle Bearer-Tokens des Kontos verwerfen — siehe revokeAllTokens().
-  //
-  // Fuer die APP heisst das: Sie verwirft mit diesem Aufruf ihren EIGENEN
-  // Zugang und muss sich danach neu anmelden. Das ist die richtige Antwort
-  // und keine Unachtsamkeit — wer sein Passwort aendert, will alle
-  // bestehenden Zugaenge loswerden, und eine Ausnahme fuer den gerade
-  // benutzten waere genau die Luecke. Die App sagt es dem Nutzer vorher.
-  await revokeAllTokens(uid);
-  // Und die übrigen Browser-Sitzungen
-  // Wer sein Passwort ändert, will in aller Regel einen fremden Zugang
-  // loswerden. Die Tokens waren abgedeckt, die Sitzungen nicht: Ein
-  // übernommenes Fenster blieb angemeldet, obwohl das Passwort neu ist.
-  // Ausführlich: docs/begruendungen/routes/auth.ts.md#post-change-password
-  await revokeAllSessions(uid);
+  // Beendet alle Zugänge, auch den eigenen; die Sitzung wird danach neu aufgebaut.
+  await K.aendereEigenesPasswort(uid, newPassword);
   if (req.session?.userId) {
     const _self = { userId: uid, username: req.session.username, isAdmin: req.session.isAdmin };
     await establishSession(req, _self);
@@ -506,19 +470,6 @@ const QR_TTL_MS = 5 * 60 * 1000;
 //
 // Einrichten und Abschalten verlangen das Passwort: Wer nur eine offene
 // Sitzung erbeutet, soll das Konto weder aussperren noch den Schutz abbauen.
-
-/** Nur der Code des zweiten Faktors — mit derselben Bremse wie das Passwort. */
-async function bestaetigeCode(req: Request, res: Response, uid: number, code: unknown): Promise<boolean> {
-  const gesperrt = await bestaetigungGesperrt(uid);
-  if (gesperrt) { sendeFehler(req, res, 429, gesperrt.code, gesperrt.vars); return false; }
-  if (!await zf.pruefeCode(uid, code)) {
-    await bestaetigungFehlgeschlagen(uid);
-    sendeFehler(req, res, 400, 'zweiter_faktor_falsch');
-    return false;
-  }
-  await bestaetigungGelungen(uid);
-  return true;
-}
 
 router.get('/zweiter-faktor', requireLogin, async (req, res) => {
   res.json({ success: true, ...(await zf.stand(angemeldeteNutzerId(req))) });
@@ -679,11 +630,9 @@ router.post('/register', ipThrottle('register', 5, 60 * 60 * 1000), async (req, 
 
     const token  = crypto.randomBytes(32).toString('hex');
     const expires = new Date(Date.now() + 24 * 60 * 60 * 1000);
-    const hash   = await bcrypt.hash(password, BCRYPT_ROUNDS);
-
     // verification_token wird — wie api_tokens — nur als SHA-256 gespeichert:
     // Bei einem Datenbank-Leak wäre ein ausstehender Bestätigungslink sonst einlösbar.
-    const neuId = await K.registriereKonto({ username, email, first_name, last_name, hash,
+    const neuId = await K.registriere({ username, email, first_name, last_name, passwort: password,
       tokenHash: hashToken(token), bis: expires }).catch(alsDoppelt('benutzername_oder_email_vergeben'));
     // Die gewählte Sprache steuert Oberfläche und E-Mails; ohne Protokoll bliebe
     // unklar, warum ein frisches Konto in der falschen Sprache startet.
@@ -761,13 +710,7 @@ router.post('/reset-password', ipThrottle('reset-password', 10, 60 * 60 * 1000),
   if (passwortZuKurz(password)) return sendeFehler(req, res, 400, 'passwort_zu_kurz');
   const user = await K.kontoNachRuecksetzToken(hashToken(token));
   if (!user) return sendeFehler(req, res, 400, 'token_ungueltig');
-  const hash = await bcrypt.hash(password, BCRYPT_ROUNDS);
-  await K.setzePasswortNachRuecksetzen(user.id, hash);
-  // Ein Reset ist der Moment, in dem man einen fremden Zugang loswerden will.
-  // Ohne das Folgende überlebt er ihn: Bearer-Tokens laufen sieben Tage weiter
-  // und die Session-Zeile in user_sessions bleibt ebenfalls gültig.
-  await revokeAllTokens(user.id);
-  await revokeAllSessions(user.id);
+  await K.setzePasswortZurueck(user.id, password);
   res.json({ success: true, message: 'Passwort erfolgreich geändert.' });
 });
 
