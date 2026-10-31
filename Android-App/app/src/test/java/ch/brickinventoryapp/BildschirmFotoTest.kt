@@ -125,7 +125,7 @@ class BildschirmFotoTest(private val design: String, private val dunkel: Boolean
     @Test
     fun galerie() {
         val vm = welt.galerie().also { it.loadSets(); it.loadStats() }
-        foto("galerie", { vm.galleryState.value.sets.isNotEmpty() }, { vm.galleryState.value }) {
+        foto("galerie", { vm.galleryState.value.let { it.sets.isNotEmpty() && it.stats != null && !it.galleryLoading } }, { vm.galleryState.value }) {
             GalleryScreen(vm = vm, erfassung = erfassung(), imageLoader = bilder, onScanBarcode = {}, onSetClick = {})
         }
     }
@@ -133,7 +133,12 @@ class BildschirmFotoTest(private val design: String, private val dunkel: Boolean
     @Test
     fun setDetail() {
         val vm = welt.setDetail().also { it.ladeAlles() }
-        foto("set-detail", { vm.setDetailState.value.setDetail != null }, { vm.setDetailState.value }) {
+        // Alle Abschnitte, nicht nur das Set: Preis, Verlauf und Käufe kommen
+        // in eigenen Abrufen, und ein Foto mitten im Laden weicht vom Referenzbild ab.
+        val fertig = { vm.setDetailState.value.let { s ->
+            s.setDetail != null && s.setPrice != null && s.priceHistory != null && s.acquisitions.isNotEmpty() &&
+                !s.setDetailLoading && !s.setPriceLoading && !s.priceHistoryLoading && !s.acquisitionsLoading } }
+        foto("set-detail", fertig, { vm.setDetailState.value }) {
             SetDetailScreen(setNumber = Beispiele.SET, vm = vm, serverUrl = "", imageLoader = bilder,
                 onBack = {}, onDelete = {})
         }
@@ -158,7 +163,7 @@ class BildschirmFotoTest(private val design: String, private val dunkel: Boolean
     @Test
     fun finanzen() {
         val vm = welt.finanzen().also { it.loadValuation(); it.loadPortfolioHistory("week") }
-        foto("finanzen", { vm.financeState.value.valuation != null }, { vm.financeState.value }) {
+        foto("finanzen", { vm.financeState.value.let { it.valuation != null && it.historyPoints.isNotEmpty() && !it.valuationLoading && !it.historyLoading } }, { vm.financeState.value }) {
             FinanceScreen(vm = vm, imageLoader = bilder)
         }
     }
