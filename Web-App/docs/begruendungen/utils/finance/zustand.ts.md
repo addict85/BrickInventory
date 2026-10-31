@@ -45,5 +45,5 @@ einem Set stand die Spalte seit jeher auf dem Vorgabewert 'N'.
 
 Damit liest diese Funktion nur noch die zwei Zaehler — und kann gar nicht
 mehr von der Anzeige abweichen, denn conditionFromAcquisitions() in
-utils/handlers/shared.ts rechnet aus denselben zwei Zahlen.
+src/bestand/gemeinsam.ts rechnet aus denselben zwei Zahlen.
 ```

@@ -38,7 +38,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
-const { getOwnedQuantities } = _req('utils/handlers/parts.js');
+const { getOwnedQuantities } = _req('src/teile/abfragen.js');
 const { haeltFigur, haeltSet, haeltTeil } = require('./helpers/bestand');
 
 let UID = 0;

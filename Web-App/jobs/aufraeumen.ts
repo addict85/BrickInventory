@@ -5,7 +5,7 @@
  */
 import { purgeExpiredTokens } from '../src/konto/auth';
 import { raeumeAnmeldezaehlerAuf } from '../src/konto/loginLimiter';
-import { raeumePapierkorbAuf } from '../utils/papierkorb';
+import { raeumePapierkorbAuf } from '../src/bestand/papierkorb';
 import { cleanOldPdfJobs } from '../utils/pdfAuftraege';
 import { raeumeErledigteAuf } from '../utils/auftraege';
 import { purgeAltePreise } from '../utils/priceHistory';

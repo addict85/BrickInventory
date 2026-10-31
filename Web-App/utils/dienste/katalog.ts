@@ -10,8 +10,8 @@ import { fuerSet } from '../preisvergleich';
 import { downloadSetImage } from '../setImages';
 import { ausTabelle } from '../../src/infra/validate';
 import { neuestesInventar } from '../rbInventar';
-import { mitVersion } from '../setNummer';
-import { mengeJoin, mengeAus } from '../bestandsmenge';
+import { mitVersion } from '../../src/sets/setNummer';
+import { mengeJoin, mengeAus } from '../../src/sets/bestandsmenge';
 import { nacharbeit } from '../nacharbeit';
 
 // ── Theme-Baum-Cache ─────────────────────────────────────────────────────────

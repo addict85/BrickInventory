@@ -284,11 +284,11 @@ module.exports.adminQuelle = adminQuelle;
 
 /**
  * Der Set-Kern: die Set-Routen samt dem, was daraus ausgelagert wurde
- * (routes/sets.ts ging in routes/api_v1/sets.ts und utils/dienste/sets.ts auf).
+ * (routes/sets.ts ging in routes/api_v1/sets.ts und src/sets/dienst.ts auf).
  *
  * ── Warum ein Helfer (Nachtrag 131) ─────────────────────────────────────────
  *
- * addSet, updateSet, buildSetsCsv und ihr Umfeld liegen in utils/setService.ts,
+ * addSet, updateSet, buildSetsCsv und ihr Umfeld liegen in src/sets/setService.ts,
  * die Katalogarbeit in utils/partsImport.ts und utils/minifigsImport.ts. Ein
  * Dutzend Prüfungen las bis dahin `routes/sets.ts` und meinte „irgendwo im Weg,
  * auf dem ein Set entsteht oder sich ändert".
@@ -302,8 +302,8 @@ function setKernQuelle() {
   const ROOT = path.join(__dirname, '..', '..');
   return [
     ['routes/api_v1/sets.ts'],
-    ['utils/dienste/sets.ts'],
-    ['utils/setService.ts'],
+    ['src/sets/dienst.ts'],
+    ['src/sets/setService.ts'],
     ['utils/partsImport.ts'],
     ['utils/minifigsImport.ts'],
   ].map(p => fs.readFileSync(path.join(ROOT, ...p), 'utf8')).join('\n');
@@ -315,18 +315,20 @@ module.exports.setKernQuelle = setKernQuelle;
  *
  * ── Warum ein Helfer (Nachtrag 133) ─────────────────────────────────────────
  * utils/handlers.ts fasste Sets, Teile und Minifiguren in 1313 Zeilen zusammen
- * und liegt jetzt als utils/handlers/{shared,parts,sets,minifigs,stats}.ts.
+ * und liegt jetzt je Fachbereich: src/{sets,teile,figuren}/abfragen.ts,
+ * src/bestand/gemeinsam.ts und src/bestand/kennzahlen.ts.
  * Ein Dutzend Prüfungen las die alte Datei und meinte „irgendwo in den
  * Leseabfragen".
  *
  * Dieselbe Begründung wie bei proxyThumbQuelle(), adminQuelle() und
  * setKernQuelle(): den GEGENSTAND nennen, nicht den Ablageort.
  */
+const HANDLER_MODULE = ['src/bestand/gemeinsam', 'src/teile/abfragen', 'src/sets/abfragen',
+  'src/figuren/abfragen', 'src/bestand/kennzahlen'];
 function handlerQuelle() {
   const path = require('path'), fs = require('fs');
-  const dir = path.join(__dirname, '..', '..', 'utils/handlers');
-  return fs.readdirSync(dir).filter(f => f.endsWith('.ts'))
-    .map(f => fs.readFileSync(path.join(dir, f), 'utf8')).join('\n');
+  const wurzel = path.join(__dirname, '..', '..');
+  return HANDLER_MODULE.map(m => fs.readFileSync(path.join(wurzel, m + '.ts'), 'utf8')).join('\n');
 }
 module.exports.handlerQuelle = handlerQuelle;
 
@@ -336,8 +338,7 @@ module.exports.handlerQuelle = handlerQuelle;
  */
 function handlerModul(_req) {
   return Object.assign({},
-    ..._req && ['shared', 'parts', 'sets', 'minifigs', 'stats']
-      .map(d => _req(`utils/handlers/${d}.js`)));
+    ..._req && HANDLER_MODULE.map(m => _req(`${m}.js`)));
 }
 module.exports.handlerModul = handlerModul;
 

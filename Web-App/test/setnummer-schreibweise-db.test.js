@@ -58,7 +58,7 @@ require.cache[blPfad].exports = Object.assign({}, echt, {
 });
 
 test('die Schreibweise einer Set-Nummer ist eine Regel', () => {
-  const { mitVersion, ohneVersion } = _req('utils/setNummer.js');
+  const { mitVersion, ohneVersion } = _req('src/sets/setNummer.js');
   assert.equal(mitVersion('10179'), '10179-1');
   assert.equal(mitVersion('10179-1'), '10179-1');
   assert.equal(mitVersion('75192-2'), '75192-2');
@@ -89,7 +89,7 @@ test('der Katalog antwortet gleich, egal wie die Nummer geschrieben ist', { conc
     const { fetchAndCachePrice } = _req('jobs/priceJob.js');
     const { fetchPrice } = _req('utils/financeCalc.js');
 
-    // Gegenprobe: in utils/setNummer.ts das mitVersion() aus katalogEintrag()
+    // Gegenprobe: in src/sets/setNummer.ts das mitVersion() aus katalogEintrag()
     // entfernt -> die Zeile mit „ohne Versionsanhang" wird rot.
     for (const nummer of [BLANK, MITV]) {
       abrufe = [];
@@ -145,18 +145,18 @@ test('die Schreibweise wird nirgends noch einmal ausgerechnet', () => {
       if (m.test(code)) { eigene.push(rel); break; }
     if (/SELECT is_gear, bl_type(?:, fetched_at)? FROM catalog_cache/.test(code)) vorpruefer.push(rel);
   }
-  // KEINE Ausnahmen mehr. utils/setAdd.ts und utils/setService.ts trugen den
+  // KEINE Ausnahmen mehr. src/sets/setAdd.ts und src/sets/setService.ts trugen den
   // Normalisierer zuletzt noch absichtlich doppelt, mit zwei Begruendungen:
   // ein Import baue einen Kreis, und set-add-exists-db.test.js fuehre beide
   // Ruempfe ISOLIERT aus. Beides galt nicht mehr — der Kreis war zwischen
-  // JENEN BEIDEN Modulen, und utils/setNummer.ts ist ein Blatt; die Isolation
+  // JENEN BEIDEN Modulen, und src/sets/setNummer.ts ist ein Blatt; die Isolation
   // war eine Eigenart des Tests, der den Rumpf per `new Function`
   // heraussschnitt, obwohl beide Funktionen exportiert sind. Er vergleicht
   // sie jetzt als Funktionen, und beide reichen an normalisiereSetNummer()
   // durch.
-  assert.deepEqual(eigene, ['utils/setNummer.ts'],
+  assert.deepEqual(eigene, ['src/sets/setNummer.ts'],
     'Die Schreibweise wird woanders noch einmal ausgerechnet — genau so laufen ' +
     'zwei Stellen auseinander, die dasselbe meinen');
-  assert.deepEqual(vorpruefer, ['utils/setNummer.ts'],
+  assert.deepEqual(vorpruefer, ['src/sets/setNummer.ts'],
     'Der Katalog wird an mehr als einer Stelle gelesen');
 });

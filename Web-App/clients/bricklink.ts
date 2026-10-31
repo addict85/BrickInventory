@@ -2,7 +2,7 @@
 //
 // Wie rebrickable.ts und brickset.ts: KEINE einzige Route, nie
 // als Router montiert — ein reiner API-Client. Aufgefallen ist es erst jetzt,
-// weil utils/setService.ts von hier getItemImageUrl() braucht und ein Modul
+// weil src/sets/setService.ts von hier getItemImageUrl() braucht und ein Modul
 // unter utils/ keinen Router importieren soll.
 //
 
@@ -12,7 +12,7 @@ import https from 'https';
 import * as db from '../db/database';
 import { getGlobalSetting } from '../src/konto/settings';
 import { alsAbrufFehler } from './abrufFehler';
-import { mitVersion, katalogEintrag, ohneBricklinkPreis, ohneVersion } from '../utils/setNummer';
+import { mitVersion, katalogEintrag, ohneBricklinkPreis, ohneVersion } from '../src/sets/setNummer';
 import { checkAndIncrementRateLimit } from '../utils/apiKontingent';
 
 const BASE = 'https://api.bricklink.com/api/store/v1';

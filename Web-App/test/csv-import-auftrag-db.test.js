@@ -31,7 +31,7 @@ const Module = require('node:module');
 const _echtesRequire = Module.prototype.require;
 Module.prototype.require = function (name) {
   const m = _echtesRequire.apply(this, arguments);
-  if (typeof name === 'string' && /utils[/\\]setService(\.js)?$/.test(name))
+  if (typeof name === 'string' && /[/\\]setService(\.js)?$/.test(name))
     return new Proxy(m, { get: (t, k) => k !== 'addSetWithDate' ? t[k] : async (sn) => {
       aufrufe.push(sn);
       await freigabe;
@@ -89,7 +89,7 @@ test('CSV-Import als Auftrag', { concurrency: 1 }, async (t) => {
       assert.deepEqual(aufrufe, ['76001-1'], 'der Import steckt im ersten Set');
 
       const SN = `7${process.pid % 10000}-1`;
-      const r = await _req('utils/setService.js').addSet(SN, 1, b, null, 10, 'N');
+      const r = await _req('src/sets/setService.js').addSet(SN, 1, b, null, 10, 'N');
       assert.equal(r.action, 'added');
       assert.deepEqual(await nacharbeit(b), [{ sn: SN, art: 'neu' }]);
 

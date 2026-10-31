@@ -4,8 +4,8 @@
  */
 import { nacharbeit } from './nacharbeit';
 import * as db from '../db/database';
-import { addSet, sanitizeSetNumber } from './setService';
-import { findSetInScope } from './setAdd';
+import { addSet, sanitizeSetNumber } from '../src/sets/setService';
+import { findSetInScope } from '../src/sets/setAdd';
 import { loescheAlarm } from './preisalarm';
 import * as V from '../src/infra/validate';
 import { nutzerStandardZustand } from '../src/konto/settings';
@@ -304,7 +304,7 @@ export async function uebernimm(
     : await zustandOder(eingabe.condition, besitzerId);
 
   // Schon im Blickfeld? Dann NICHT die Menge erhoehen — dieselbe Regel wie
-  // beim Erfassen (utils/setAdd.ts), damit sie nicht davon abhaengt, ueber
+  // beim Erfassen (src/sets/setAdd.ts), damit sie nicht davon abhaengt, ueber
   // welchen der vier Wege jemand kommt. Der Merkposten ist trotzdem erledigt
   // und verschwindet; sonst bliebe er fuer ein Set stehen, das man hat.
   const vorhanden = await findSetInScope(leserId, sn);

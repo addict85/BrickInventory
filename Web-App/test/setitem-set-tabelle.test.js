@@ -15,7 +15,7 @@
  * ── Warum das nichts gekostet hat ───────────────────────────────────────────
  *
  * Der Server liefert `image_local` und `image_url` JE SET längst mit
- * (utils/handlers/shared.ts, verwendendeSets → VerwendendesSet). Beide
+ * (src/bestand/gemeinsam.ts, verwendendeSets → VerwendendesSet). Beide
  * Oberflächen haben die Felder nur nie benutzt — wieder ein Wert, der über die
  * Leitung kommt und niemanden erreicht.
  *

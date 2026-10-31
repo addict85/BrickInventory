@@ -1,15 +1,15 @@
 /**
  * /api/v1/papierkorb — gelöschte Sets, manuelle Teile und Figuren der
- * letzten 30 Tage (utils/papierkorb.ts). Sichtbar ist, was der Aufrufer
+ * letzten 30 Tage (src/bestand/papierkorb.ts). Sichtbar ist, was der Aufrufer
  * schreiben darf: das eigene Konto und, als Hauptkonto, die Unterkonten.
  */
 import express from 'express';
 import { handleRouteError } from '../../src/infra/httpError';
 import { sendeFehler } from '../../src/infra/fehlerTexte';
 import { writableIds } from '../../src/haushalt/haushalt';
-import { listePapierkorb, stelleWiederHer, loescheEndgueltig, leerePapierkorb } from '../../utils/papierkorb';
+import { listePapierkorb, stelleWiederHer, loescheEndgueltig, leerePapierkorb } from '../../src/bestand/papierkorb';
 import { requireToken } from './middleware';
-import { loescheAllesEigene } from '../../utils/loeschen';
+import { loescheAllesEigene } from '../../src/bestand/loeschen';
 
 const router = express.Router();
 

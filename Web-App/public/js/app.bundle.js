@@ -71,7 +71,7 @@
          KEINE Backticks in diesem Kommentar: Er steht INNERHALB eines
          Template-Literals und wuerde es sonst beenden. Genau daran ist der
          erste Entwurf gescheitert — dieselbe Falle wie in
-         utils/handlers/parts.ts, wo derselbe Hinweis steht. -->
+         src/teile/abfragen.ts, wo derselbe Hinweis steht. -->
     <div class="mk-zeile" tabindex="0" role="button" data-click="oeffneMerkpostenDetail" data-arg="${p}">
       <div class="ca"><span class="delbtn" data-click="merkpostenLoeschenStop" aria-hidden="true" data-arg="${p}"
            title="${u(c("wanted.remove"))}">${Et}</span></div>

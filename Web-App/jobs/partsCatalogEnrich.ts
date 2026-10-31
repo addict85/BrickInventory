@@ -10,7 +10,7 @@
 import { cdnImageLimiter, rebrickableBackgroundLimiter as rebrickableLimiter, consumeRebrickableDaily, parseThrottleWait as ptw } from '../utils/rateLimiter';
 import { meldeUndWeiter, fehlertext, logAndContinue, meldeUndLiefere, ohneFehlendeDatei } from '../src/infra/httpError';
 import { neuestesInventar } from '../utils/rbInventar';
-import { mitVersion } from '../utils/setNummer';
+import { mitVersion } from '../src/sets/setNummer';
 import { merkeBlNummer } from '../utils/blZuordnung';
 import { merkeTeil, merkeTeilFarbe, merkeSetTeil, setzeTeilBildLokal, merkeFiguren, merkeSetFiguren, setzeFigurBildLokal } from '../utils/katalogPflege';
 import { getRbKey, downloadFile } from '../clients/rebrickable';

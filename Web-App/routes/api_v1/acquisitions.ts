@@ -1,16 +1,16 @@
 /**
  * /api/v1 — Kaufpreis-Erfassungen für Sets, manuelle Teile und manuelle
- * Figuren. Die Regeln stehen in utils/dienste/erfassungen.ts.
+ * Figuren. Die Regeln stehen in src/bestand/erfassungen.ts.
  */
 import express from 'express';
-import { acquisitionTotals } from '../../utils/acquisitions';
+import { acquisitionTotals } from '../../src/bestand/acquisitions';
 import { handleRouteError, fehlertext, pfadParam } from '../../src/infra/httpError';
 import { requireToken } from './middleware';
 import { scopeIds, parseScopeMode } from '../../src/haushalt/haushalt';
-import { getPartAcquisitions } from '../../utils/manuelleTeile';
-import { getFigAcquisitions } from '../../utils/manuelleFiguren';
-import { erfassungAendern, erfassungLoeschen, setErfassungen } from '../../utils/dienste/erfassungen';
-import type { ErfassungsArt } from '../../utils/dienste/erfassungen';
+import { getPartAcquisitions } from '../../src/teile/manuelleTeile';
+import { getFigAcquisitions } from '../../src/figuren/manuelleFiguren';
+import { erfassungAendern, erfassungLoeschen, setErfassungen } from '../../src/bestand/erfassungen';
+import type { ErfassungsArt } from '../../src/bestand/erfassungen';
 import * as V from '../../src/infra/validate';
 const router = express.Router();
 

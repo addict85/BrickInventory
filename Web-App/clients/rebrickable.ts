@@ -15,7 +15,7 @@ import * as db from '../db/database';
 import { rebrickableBackgroundLimiter } from '../utils/rateLimiter';
 import { fehlertext, meldeUndLiefere } from '../src/infra/httpError';
 import { neuestesInventar } from '../utils/rbInventar';
-import { mitVersion } from '../utils/setNummer';
+import { mitVersion } from '../src/sets/setNummer';
 import { getGlobalSetting } from '../src/konto/settings';
 import { ERLAUBTE_DOWNLOAD_HOSTS, hostErlaubt, naechsteUmleitung,
          UMLEITUNGS_GRENZE, pfadSegment } from '../src/infra/fremdeAdressen';

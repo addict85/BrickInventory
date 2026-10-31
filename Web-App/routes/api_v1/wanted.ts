@@ -19,9 +19,9 @@ import { importiereWantedListe } from '../../utils/wantedListe';
 import type { Korrektur } from '../../utils/wantedListe';
 import { merkeBlNummer } from '../../utils/blZuordnung';
 import { starteAuftrag, meldeAuftrag, beendeAuftrag, istAbgebrochen } from '../../utils/importAuftrag';
-import { addManualPart } from '../../utils/manuelleTeile';
-import { addManualFig } from '../../utils/manuelleFiguren';
-import { addSet } from '../../utils/setService';
+import { addManualPart } from '../../src/teile/manuelleTeile';
+import { addManualFig } from '../../src/figuren/manuelleFiguren';
+import { addSet } from '../../src/sets/setService';
 
 const router = express.Router();
 type AuthedRequest = express.Request & { apiUser: { user_id: number } };

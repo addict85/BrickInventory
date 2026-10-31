@@ -5,7 +5,7 @@ import { meldeUndWeiter, fehlertext, meldeUndLiefere, logAndContinue } from '../
 import { liesZustand, setzeZustand } from '../utils/laufzustand';
 import { AuftragVerschieben, type AuftragsKontext } from './auftragsWorker';
 import { getSetting, getGlobalSetting } from '../src/konto/settings';
-import { katalogEintrag, ohneBricklinkPreis } from '../utils/setNummer';
+import { katalogEintrag, ohneBricklinkPreis } from '../src/sets/setNummer';
 import * as db from '../db/database';
 import * as monitor from '../utils/jobMonitor';
 import { getPriceGuide } from '../clients/bricklink';

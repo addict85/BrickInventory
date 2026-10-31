@@ -63,7 +63,7 @@ test('ohne Vorgabe kommt undefined statt eines geerbten Werts', () => {
 
 const STELLEN = [
   ['utils/dienste/katalog.ts', 'SORTS',              /SORTS\s*\[/],
-  ['utils/handlers/sets.ts',   'SET_SORTS',          /SET_SORTS\s*\[/],
+  ['src/sets/abfragen.ts',   'SET_SORTS',          /SET_SORTS\s*\[/],
   ['routes/api_v1/sets.ts',    'INSTR_EXT_BY_MIME',  /INSTR_EXT_BY_MIME\s*\[/],
 ];
 

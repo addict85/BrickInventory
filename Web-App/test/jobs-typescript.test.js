@@ -105,6 +105,6 @@ test('priceJob hat keine eigene Fassung der Einstellungs-Helfer', () => {
     assert.equal(defs, 0,
       `${name} ist in priceJob.ts ${defs}× definiert — es gehört nach src/konto/settings.ts`);
   }
-  assert.match(src, /import \{[^}]*getGlobalSetting[^}]*\} from '\.\.\/utils\/settings'/,
+  assert.match(src, /import \{[^}]*getGlobalSetting[^}]*\} from '[^']*\/settings'/,
     'priceJob muss die zentrale Fassung holen');
 });

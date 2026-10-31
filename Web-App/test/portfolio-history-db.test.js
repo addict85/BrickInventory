@@ -164,7 +164,7 @@ test('die Portfolio-Kurve rechnet dasselbe wie die Vergleichsfassung', { concurr
 
   // Die Mengen aus den Erfassungen (Migration 0036 hat sets.quantity
   // geloescht). Der JOIN auf `sets` ist dieselbe Einschraenkung wie in
-  // utils/bestandsmenge.ts: Eine Erfassung ohne Bestandszeile zaehlt nicht.
+  // src/sets/bestandsmenge.ts: Eine Erfassung ohne Bestandszeile zaehlt nicht.
   const setsRows = await db.all(
     `SELECT s.set_number, COALESCE(SUM(a.quantity), 0)::int AS quantity
        FROM sets s

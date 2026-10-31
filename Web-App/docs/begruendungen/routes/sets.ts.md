@@ -256,7 +256,7 @@ erlaubte Ausgänge, jede andere Kombination wird abgelehnt statt geraten.
 Die DATEI erst löschen, wenn keine andere Zeile mehr darauf zeigt.
 
 Beim Verschieben eines Sets wird die Anleitungs-Zeile KOPIERT, der Pfad
-wörtlich übernommen (utils/setMove.ts) — zwei Konten teilen sich dann
+wörtlich übernommen (src/sets/setMove.ts) — zwei Konten teilen sich dann
 eine Datei. Vorher lag das Löschen VOR dem DELETE und fragte niemanden:
 Entfernte das eine Konto seine Anleitung, zeigte die Zeile des anderen
 ins Leere, und im Set-Detail stand ein Eintrag, der beim Klick 404 gibt.

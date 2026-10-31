@@ -33,7 +33,7 @@ in einer anderen Tabelle. Hier umzuziehen gaebe nichts dazu.
 Der Schreibvorgang stand fünfmal im Baum: dreimal wortgleich für Teile
 (jobs/backfillBlPartNumbers, jobs/partsCatalogEnrich zweimal,
 utils/partsImport), zweimal für Farben (jobs/rebrickableCsvSync,
-utils/handlers/parts). Ein Fehlverhalten ist dabei NICHT gemessen worden —
+src/teile/abfragen). Ein Fehlverhalten ist dabei NICHT gemessen worden —
 die Fassungen waren gleich. Der Grund ist ein anderer: Wer die Regel ändert
 (eine Spalte dazu, ein anderes ON CONFLICT), soll das an einer Stelle tun
 und nicht fünf suchen müssen.
@@ -145,7 +145,7 @@ Die Zuordnung IN einer Abfrage
 ═══════════════════════════════════════════════════════════════════════════
 
 Zwei Schnipsel, dieselbe Bauart wie mengeJoin()/mengeAus() in
-utils/bestandsmenge.ts und ersatzteilSql() in src/infra/validate.ts — und aus
+src/sets/bestandsmenge.ts und ersatzteilSql() in src/infra/validate.ts — und aus
 demselben Grund: `COALESCE(p.bl_part_number, p.part_number)` stand an
 ZEHN Stellen in fuenf Dateien (gemessen), teils als Gruppierungsschluessel.
 Zehnmal dieselbe Rechnung heisst zehn Stellen, an denen sie beim naechsten
@@ -153,7 +153,7 @@ Mal leicht anders aussieht; genau so ist `is_spare` hier schon in vier
 Lesarten zerfallen.
 
 Ein JOIN und keine Unterabfrage je Zeile: Die Teile-Zusammenfassung baut
-ueber 171'000 Zeilen auf (die Zahl steht in utils/partsSummary.ts), und die
+ueber 171'000 Zeilen auf (die Zahl steht in src/teile/partsSummary.ts), und die
 Gruppierung laeuft ueber genau diesen Wert.
 ```
 

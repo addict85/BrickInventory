@@ -188,7 +188,7 @@ test('kein Sprachschlüssel für die entfernten Schritte bleibt zurück', () => 
  */
 test('nach dem letzten Ereignis hängt kein Punkt mehr auf „aktiv"', () => {
   // ── Sendereihenfolge, wie addSet() sie erzeugt ───────────────────────────
-  const dienst = ohneKommentare(fs.readFileSync(path.join(ROOT, 'utils/setService.ts'), 'utf8'));
+  const dienst = ohneKommentare(fs.readFileSync(path.join(ROOT, 'src/sets/setService.ts'), 'utf8'));
   const beginn = dienst.indexOf('async function addSet(');
   assert.notEqual(beginn, -1, 'addSet() nicht gefunden — Anker stimmt nicht mehr');
   const folge = [...dienst.slice(beginn).matchAll(/sendProgress\(\{\s*step\s*:\s*'([^']+)'/g)]

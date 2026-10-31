@@ -262,7 +262,7 @@ test('Verschieben läuft über die Tagesregel, nicht über UPDATE user_id', () =
   // („hier stand dafuer UPDATE sets SET quantity=$1"). Auf dem Rohtext meldete
   // die Regel genau diesen Erklärtext — gemessen. Dieselbe Falle wie bei der
   // Haushaltsregel weiter oben.
-  const mv = require('./helpers/sources').ohneKommentare(read('utils/setMove.ts'));
+  const mv = require('./helpers/sources').ohneKommentare(read('src/sets/setMove.ts'));
   assert.ok(mv.includes("recordAcquisitionForDay('set', toId, [sn]"),
     'Erfassungen müssen einzeln über den gemeinsamen Helfer wandern');
   assert.doesNotMatch(mv, /UPDATE set_acquisitions SET user_id/,
@@ -274,7 +274,7 @@ test('Verschieben läuft über die Tagesregel, nicht über UPDATE user_id', () =
   // Fehler. Also genau umgekehrt geprueft.
   assert.doesNotMatch(mv, /UPDATE\s+sets\s+SET[^;`']*\bquantity\s*=/,
     'Die Stückzahl eines Sets wird nicht mehr geschrieben — sie steht in ' +
-    'set_acquisitions und wird beim Lesen gerechnet (utils/bestandsmenge.ts)');
+    'set_acquisitions und wird beim Lesen gerechnet (src/sets/bestandsmenge.ts)');
 
   // Der Wechsel des ganzen Sets liegt seit Nachtrag 74 in der v1-Fabrik.
   const src = read('routes/api_v1/sets.ts');
@@ -367,7 +367,7 @@ test('die Teile-Zusammenfassung trägt auch über mehrere Konten', () => {
 
   // Frisch ist die Sicht nur, wenn sie es für JEDES Konto ist — „zwei von drei
   // sind aktuell" ergäbe eine Summe aus frischen und alten Beständen.
-  const ps = read('utils/partsSummary.ts');
+  const ps = read('src/teile/partsSummary.ts');
   assert.match(ps, /const results = await Promise\.all\(ids\.map\(id => ensureFresh\(id, opts\)\)\);/);
   assert.match(ps, /return results\.every\(Boolean\);/);
 });
@@ -470,7 +470,7 @@ test('beim Verschieben wandert der Inhalt des Sets mit', () => {
   // ohneKommentare(): Die Kommentare in setMove.ts ZITIEREN entfernte
   // Anweisungen („hier stand dafuer UPDATE sets SET quantity=$1"), und die
   // verneinenden Zusicherungen unten meldeten genau diesen Erklärtext.
-  const mv = require('./helpers/sources').ohneKommentare(read('utils/setMove.ts'));
+  const mv = require('./helpers/sources').ohneKommentare(read('src/sets/setMove.ts'));
   for (const t of ['parts', 'minifigs', 'instructions']) {
     assert.ok(mv.includes(`INSERT INTO ${t}`), `${t} wandern nicht mit`);
   }
@@ -569,7 +569,7 @@ test('Verschieben geht NUR über den Kaufpreis', () => {
 test('auch manuelle Teile und Minifiguren wandern über den Kaufpreis', () => {
   // Dieselbe Regel für alle drei Arten. Ein manuell erfasstes Teil hat keinen
   // Inhalt — es wandern nur Menge und Erfassung.
-  const mv = read('utils/setMove.ts');
+  const mv = read('src/sets/setMove.ts');
   assert.match(mv, /export async function moveManualAcquisition/);
   assert.match(mv, /recordAcquisitionForDay\(kind, toId, keyValues/,
     'Auch hier gilt: eine Tageszeile je Konto');
@@ -579,7 +579,7 @@ test('auch manuelle Teile und Minifiguren wandern über den Kaufpreis', () => {
   // EINER Stelle geprüft statt an dreien, weil es nur noch eine gibt.
   // Teile und Figuren gehen über denselben Aufruf; die Art kommt aus der Tabelle.
   // Die Regel steht seit dem Schichtumbau im Dienst; die Route ruft ihn nur.
-  const f = 'utils/dienste/erfassungen.ts';
+  const f = 'src/bestand/erfassungen.ts';
   const src = read(f);
   assert.ok(src.includes('moveManualAcquisition(tx, art, keys, id, from, to)'), `${f}: Wechsel fehlt`);
   assert.match(src, /if \(to === null\) fehlerWerfen\('kein_schreibrecht', 403\)/,
@@ -608,12 +608,12 @@ test('der Absender eines Eigentümerwechsels kommt aus der ZEILE, nicht aus dem 
   // auseinanderlaufen, und mehrfach ist sie es auch. Seit dem Zusammenlegen
   // bedient die Fabrik beide Clients, also gibt es nur noch eine Stelle. Der
   // Test prüft dieselbe Regel, nur nicht mehr an vier Orten.
-  assert.ok(read('utils/dienste/erfassungen.ts').includes('acquisitionMoveSource(uid,'),
+  assert.ok(read('src/bestand/erfassungen.ts').includes('acquisitionMoveSource(uid,'),
     'Eigentümer-Zweig leitet den Absender nicht aus der Zeile ab');
   // … und keiner vertraut mehr einem mitgeschickten from_user_id. Das Muster
   // `from_user_id ?? uid` bleibt NUR in der /move-Route erlaubt
   // (mehrere IDs, ausdrücklich benannter Absender).
-  for (const f of ['utils/dienste/erfassungen.ts', 'routes/api_v1/acquisitions.ts']) {
+  for (const f of ['src/bestand/erfassungen.ts', 'routes/api_v1/acquisitions.ts']) {
     assert.ok(!read(f).includes('from_user_id ?? uid'),
       `${f}: der Eigentümer-Zweig darf den Request-Absender nicht übernehmen`);
   }
@@ -630,7 +630,7 @@ test('die App-Routen kennen den Eigentümerwechsel', () => {
   // las aber nur Menge, Preis und Zustand. Die Anfrage lief als LEERES Update
   // durch und antwortete success:true: Der Wechsel in der App war ein
   // stiller No-op, ohne Fehlermeldung und ohne Bewegung.
-  const v1 = read('utils/dienste/erfassungen.ts');
+  const v1 = read('src/bestand/erfassungen.ts');
   assert.match(v1, /body\.owner_user_id/,
     'Der Erfassungsdienst muss owner_user_id auswerten');
   assert.match(v1, /moveSetBetweenAccounts\(tx, String\(keys\[0\]\), from, to, \[id\]\)/,

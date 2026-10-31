@@ -17,7 +17,7 @@
  *  1. DER SCHLUESSEL WANDERTE MIT. Neun der zwoelf Aufrufer von
  *     httpsGetRobust schicken `Authorization: key <REBRICKABLE_API_KEY>`
  *     (rebrickable.ts 122/217/312/352/384, routes/parts.ts 125/149,
- *     utils/handlers/parts.ts 533, jobs/rebrickableCsvSync.ts 281). Der Kopf
+ *     src/teile/abfragen.ts 533, jobs/rebrickableCsvSync.ts 281). Der Kopf
  *     ging unveraendert an das Umleitungsziel.
  *  2. HTTPS -> HTTP war erlaubt (`protocol === 'https:' ? https : http`) —
  *     derselbe Schluessel im Klartext.

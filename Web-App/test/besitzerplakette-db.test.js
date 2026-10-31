@@ -84,9 +84,9 @@ test('jede Liste mit Plakette im Client traegt sie auch in der Antwort', async (
 
   const { scopeIds } = _req('src/haushalt/haushalt.js');
   const uids = await scopeIds(haupt, 'all');
-  const S = _req('utils/handlers/sets.js');
-  const P = _req('utils/handlers/parts.js');
-  const M = _req('utils/handlers/minifigs.js');
+  const S = _req('src/sets/abfragen.js');
+  const P = _req('src/teile/abfragen.js');
+  const M = _req('src/figuren/abfragen.js');
 
   const listen = [
     ['/v1/sets',            async () => (await S.getSets(uids, { page_size: 60 })).sets],
@@ -142,8 +142,8 @@ test('im Einzelkonto steht keine Plakette', async (t) => {
 
   const { scopeIds } = _req('src/haushalt/haushalt.js');
   const uids = await scopeIds(allein, 'all');
-  const S = _req('utils/handlers/sets.js');
-  const M = _req('utils/handlers/minifigs.js');
+  const S = _req('src/sets/abfragen.js');
+  const M = _req('src/figuren/abfragen.js');
 
   // „gehört mir" an jeder Kachel wäre nur Rauschen — und zusätzliche Felder in
   // jeder Antwort. Dieselbe Entscheidung wie bei den Sets seit jeher.

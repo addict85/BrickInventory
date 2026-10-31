@@ -72,7 +72,7 @@ FROM sets` für den Rückfall. Beides ist weggefallen:
     über die Bewertung nichts.
 
 Nebenbei behebt das eine gemeldete Dopplung: Die Abfrage stand wortgleich
-in utils/setMove.ts (test/sql-kerne.test.js meldet eine Anweisung, die in
+in src/sets/setMove.ts (test/sql-kerne.test.js meldet eine Anweisung, die in
 mehr als einer Datei steht).
 ```
 

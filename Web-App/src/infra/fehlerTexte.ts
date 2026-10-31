@@ -107,7 +107,7 @@ export const FEHLER = {
     en: 'Both accounts must use the same currency (main account: {haupt}, this account: {unter}).' },
   // Die 60 steht hier AUSGESCHRIEBEN, weil fehlerWerfen() keine Platzhalter
   // füllt. Sie ist damit die zweite Stelle neben LAGERORT_MAX_ZEICHEN in
-  // utils/lagerort.ts — test/lagerort.test.js hält beide zusammen, damit aus
+  // src/bestand/lagerort.ts — test/lagerort.test.js hält beide zusammen, damit aus
   // „unvermeidbar“ nicht „auseinandergelaufen“ wird (dasselbe Vorgehen wie
   // bei PASSWORT_MIN_ZEICHEN).
   lagerort_zu_lang:            {

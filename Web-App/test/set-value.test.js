@@ -118,7 +118,7 @@ test('qty_avg_price wird für Set-Preise nirgends mehr gelesen', () => {
 });
 
 test('die Sortierung "hat einen Preis vor passendem Zustand" ist überall weg', () => {
-  for (const f of ['utils/dienste/sets.ts', 'routes/api_v1/sets.ts']) {
+  for (const f of ['src/sets/dienst.ts', 'routes/api_v1/sets.ts']) {
     const src = fs.readFileSync(path.join(ROOT, f), 'utf8');
     assert.doesNotMatch(src, /ORDER BY \(qty_avg_price[^)]*\) DESC, \(condition/,
       `${f}: Diese Sortierung liefert für ein neues Set den Gebraucht-Preis`);
@@ -160,7 +160,7 @@ test('Fallback zwischen den Zuständen bleibt — aber in der richtigen Reihenfo
   // Der angefragte Zustand gewinnt, wenn er einen Preis hat. Der andere kommt
   // nur zum Zug, wenn dort keiner steht. Genau umgekehrt war der gemeldete
   // Fehler: „hat einen Preis" schlug „passender Zustand".
-  for (const f of ['utils/dienste/sets.ts', 'utils/financeCalc.ts']) {
+  for (const f of ['src/sets/dienst.ts', 'utils/financeCalc.ts']) {
     const src = fs.readFileSync(path.join(ROOT, f), 'utf8');
     for (const m of src.matchAll(/SELECT[\s\S]{0,240}?FROM price_cache[\s\S]{0,260}?`/g)) {
       const q = m[0];
@@ -243,7 +243,7 @@ test("ohne Verkauf in sechs Monaten wird auf 'stock' ausgewichen", () => {
   // Artikel, fuer die er gebaut wurde (siehe test/preisregel-db.test.js).
   // Geprueft wird deshalb die Herkunft der Regel, nicht ihr Name.
   assert.match(bl, /hatPreis/, 'Prüfung auf brauchbaren Preis fehlt');
-  assert.match(bl, /from '\.\.\/utils\/preisRegel'/,
+  assert.match(bl, /from '[^']*\/preisRegel'/,
     'Der Rückfall muss an derselben Regel hängen, die auch beim Lesen gilt');
   assert.match(bl, /getPriceGuideRaw\(setNumber, condition, 'stock', currencyCode\)/,
     "Rückfall auf 'stock' fehlt");
@@ -291,7 +291,7 @@ test('KEINE Abfrage stellt mehr "hat einen Preis" vor "passender Zustand"', () =
   // Sie steckte an fünf Stellen; vier waren beim ersten Anlauf behoben, die
   // fünfte (der P&L-Pfad in financeCalc.ts) speist aber genau die Anzeige in
   // Galerie und Detail-Dialog — dort blieb der Gebraucht-Preis stehen.
-  const files = ['utils/dienste/sets.ts', 'routes/api_v1/sets.ts',
+  const files = ['src/sets/dienst.ts', 'routes/api_v1/sets.ts',
                  'utils/financeCalc.ts', 'utils/portfolioHistory.ts'];
   for (const f of files) {
     const src = fs.readFileSync(path.join(ROOT, f), 'utf8')
@@ -516,7 +516,7 @@ test('Bewertung und Anzeige benutzen dieselbe Zustandsregel', () => {
     'Spalte nicht mehr, der Zweig kann also nur noch falsch liegen');
   assert.match(fc, /function effectiveCondition[\s\S]{0,400}?return 'N';/,
     'Ohne Erfassungen muss die Regel „Neu" liefern — dieselbe Vorgabe wie ' +
-    'conditionFromAcquisitions() in utils/handlers/shared.ts');
+    'conditionFromAcquisitions() in src/bestand/gemeinsam.ts');
 
   // Und die Abfrage muss die Zähler überhaupt liefern
   assert.match(fc, /COUNT\(\*\) FILTER \(WHERE condition = 'U'\)\s+AS used_count/,

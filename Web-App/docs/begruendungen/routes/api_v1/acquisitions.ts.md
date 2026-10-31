@@ -73,12 +73,12 @@ in ihre Liste.
 
 ```text
 Die Stueckzahl der Bestandszeile aus den Erfassungen — und zwar ueber
-utils/bestandsmenge.ts, die einzige Stelle, die sie schreibt.
+src/sets/bestandsmenge.ts, die einzige Stelle, die sie schreibt.
 
 Hier stand `cfg.parentQuantitySql`: je Elementart eine eigene Anweisung,
 dreimal dieselbe Rechnung. Daneben gab es SIEBEN weitere Schreibstellen,
 die die Spalte fortschrieben — und sie sind auseinandergelaufen (der Befund
-steht in utils/bestandsmenge.ts).
+steht in src/sets/bestandsmenge.ts).
 ```
 
 <a id="withsetaggregate-ownerreq"></a>
@@ -114,7 +114,7 @@ es allein daran, dass ein bestehender Test den gemeinsamen Prüfer
 verlangte. Genau dafür sind solche Tests da.
 
 Geprüft wird mit demselben Helfer wie beim Anlegen
-(utils/acquisitions.ts), damit Anlegen und Bearbeiten nicht
+(src/bestand/acquisitions.ts), damit Anlegen und Bearbeiten nicht
 auseinanderlaufen können.
 ```
 

@@ -17,13 +17,13 @@
  * Die App las sie nur dank isLenient.
  *
  * Gegenproben (am 27.10. gemessen):
- *   A  in utils/handlers/sets.ts das ::int an used_count entfernt → rot:
+ *   A  in src/sets/abfragen.ts das ::int an used_count entfernt → rot:
  *      „passt zum Kotlin-Modell" nennt $.sets[0].used_count
  *   B  in SetItem (SetModels.kt) ein Pflichtfeld `gibtEsNicht: String`
  *      ergänzt → rot: „fehlt (SetItem, Pflichtfeld)"
  *   C  MIN_GEPRUEFT auf 58 gesetzt → rot: „so viele Routen geprüft"
  * Am 30.10. gemessen:
- *   D  in utils/dienste/sets.ts `...eineSeite(…)` aus der Teileliste
+ *   D  in src/sets/dienst.ts `...eineSeite(…)` aus der Teileliste
  *      entfernt → rot: „passt zum Kotlin-Modell“ nennt
  *      parts-list.total/page/page_size: fehlt (PartsResponse, Standardwert)
  *   E  in FEHLEN_ERLAUBT den Schlüssel für themes verbogen und einen

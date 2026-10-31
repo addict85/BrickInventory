@@ -73,7 +73,7 @@ genau einen Vorgang gleichzeitig bearbeitet (`_running`).
 
 Diese drei Fragen standen ueber den Baum verstreut — die Zaehlung dreimal
 (hier zweimal, jobs/bricksetRetry, jobs/instructionQueue), das Lesen zweimal
-(routes/sets, utils/handlers/sets), das Loeschen zweimal (routes/sets,
+(routes/sets, src/sets/abfragen), das Loeschen zweimal (routes/sets,
 routes/api_v1/admin). Ein Fehlverhalten ist NICHT gemessen worden: Die
 Fassungen waren gleich, und die Nummern kamen ueberall normalisiert an
 (nachgesehen an enqueue() und beiden checkRateLimit-Aufrufern). Der Grund

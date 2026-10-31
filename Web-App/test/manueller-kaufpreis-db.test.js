@@ -82,8 +82,8 @@ test('ohne Marktpreis: Anzeigewert 0, Erfassung NULL — bei Teil UND Figur',
   const uid = u.id;
 
   try {
-    const { addManualPart } = _req('utils/manuelleTeile.js');
-    const { addManualFig }  = _req('utils/manuelleFiguren.js');
+    const { addManualPart } = _req('src/teile/manuelleTeile.js');
+    const { addManualFig }  = _req('src/figuren/manuelleFiguren.js');
 
     // Namen mitgeben, damit kein Rebrickable-Nachschlag nötig ist. KEIN Preis
     // — darum geht es.
@@ -92,8 +92,8 @@ test('ohne Marktpreis: Anzeigewert 0, Erfassung NULL — bei Teil UND Figur',
 
     // Gelesen ueber die Listen, die auch die Oberflaechen benutzen — die
     // Spalten gibt es seit Migration 0035 nicht mehr (siehe den Kopf).
-    const { getManualParts }    = _req('utils/handlers/parts.js');
-    const { getManualMinifigs } = _req('utils/handlers/minifigs.js');
+    const { getManualParts }    = _req('src/teile/abfragen.js');
+    const { getManualMinifigs } = _req('src/figuren/abfragen.js');
     const teileListe = await getManualParts([uid], uid);
     const figListe   = await getManualMinifigs([uid], uid);
     const teil  = (Array.isArray(teileListe) ? teileListe : [])

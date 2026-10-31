@@ -38,7 +38,7 @@ Abhaengigkeiten dieser Datei standen nicht an ihrem Kopf, und ein require()
 ohne Typdeklaration liefert `any`. In der Datei, die Schema, Migrationen und
 das Admin-Startpasswort verantwortet, ist das die falsche Stelle zum Sparen.
 
-NICHT gehoben: ../utils/partsSummary (Ladezyklus, Begruendung an der Stelle
+NICHT gehoben: ../src/teile/partsSummary (Ladezyklus, Begruendung an der Stelle
 selbst) und ../package.json — das ist keine Abhaengigkeit des Moduls,
 sondern ein Lesevorgang mit Rueckfall.
 ```
@@ -523,7 +523,7 @@ Was an seine Stelle tritt:
     Die Teileansicht (exclude_manual=1, ohne Set- und Lagerortfilter)
     liest die vorberechnete Zusammenfassung, und die traegt den
     Gruppenschluessel als fertige Spalte `part_key`
-    (utils/partsSummary.ts). Die Live-Abfrage bleibt fuer die Faelle, in
+    (src/teile/partsSummary.ts). Die Live-Abfrage bleibt fuer die Faelle, in
     denen ein Filter die Menge ohnehin klein macht.
 Der Ersatzindex steht in Migration 0037 und NICHT hier, aus demselben
 Grund wie idx_parts_category (Migration 0034): initSchema() laeuft nur
@@ -536,7 +536,7 @@ parts.bl_part_number, und Postgres entfernt abhaengige Indizes beim
 DROP COLUMN selbst.
 Vorberechnete Teile-Zusammenfassung inkl. Trigger zur Entwertung.
 
-require() ABSICHTLICH hier unten, nicht oben: utils/partsSummary importiert
+require() ABSICHTLICH hier unten, nicht oben: src/teile/partsSummary importiert
 (ueber Umwege) auf db/database zurueck. Ein Top-Level-Import schloesse den
 Ladezyklus, und dann waere eines der beiden Module beim Laden des anderen
 noch halb leer — ein Fehler, der sich erst zur Laufzeit und nur manchmal

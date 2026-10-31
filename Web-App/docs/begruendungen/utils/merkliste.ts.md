@@ -12,7 +12,7 @@ Die Merkliste — was man haben MÖCHTE, getrennt von dem, was man hat.
 
 ── Warum dieser Helfer und nicht Code in der Route ─────────────────────────
 
-Dieselbe Begründung wie bei utils/lagerort.ts: Die Merkliste wird von
+Dieselbe Begründung wie bei src/bestand/lagerort.ts: Die Merkliste wird von
 beiden Oberflächen und über drei Erfassungswege bedient (Katalog-Detail,
 Setnummer, Barcode). Stünden Normalisierung, Zustandsvorgabe und die
 Übernahme in die Galerie in den Routen, gäbe es jede Regel mehrfach — und
@@ -21,7 +21,7 @@ in diesem Baum ist genau das schon mehrfach auseinandergelaufen.
 ── Die Übernahme ruft addSet() und baut nichts Eigenes ─────────────────────
 
 „Direkt in die Galerie übernehmen" heisst: dasselbe tun wie das Erfassen
-einer Setnummer. utils/setService.ts:addSet() ist dafür die eine Wahrheit —
+einer Setnummer. src/sets/setService.ts:addSet() ist dafür die eine Wahrheit —
 es bestimmt den Zustand über zustandFuerPreis(), holt den Marktpreis, legt
 die Erfassungszeile an, hält die Bestandssperre und stösst die
 Anreicherung an. Ein eigenes INSERT INTO sets hier wäre die zweite
@@ -199,7 +199,7 @@ Die Sortierungen der Merkliste.
 
 ── Warum nicht dieselbe Tabelle wie bei den Sets ──────────────────────────
 
-Die Namen sind absichtlich dieselben wie in SET_SORTS (utils/handlers/sets.ts)
+Die Namen sind absichtlich dieselben wie in SET_SORTS (src/sets/abfragen.ts)
 — beide Oberflaechen beschriften sie mit denselben Texten, und wer die
 Galerie kennt, erwartet in der Merkliste dieselbe Auswahl. Die AUSDRUECKE
 koennen es nicht sein: Dort steht `s.added_at`, hier `w.created_at`; dort

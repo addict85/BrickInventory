@@ -6,7 +6,7 @@ import { INSTRUCTIONS_DIR } from '../src/infra/appPaths';
 import { downloadFile, scrapeInstructions, sleep, httpsGetRobust } from '../clients/rebrickable';
 import * as brickset from '../clients/brickset';
 import { meldeUndWeiter, fehlertext, logAndContinue, meldeUndLiefere } from '../src/infra/httpError';
-import { mitVersion, ohneVersion } from './setNummer';
+import { mitVersion, ohneVersion } from '../src/sets/setNummer';
 import { pfadSegment } from '../src/infra/fremdeAdressen';
 
 /**
@@ -50,7 +50,7 @@ function letzterAbrufWarExtern(): boolean { return _letzterAbrufWarExtern; }
 // shared_instructions: zaehlen, lesen, loeschen
 // Diese drei Fragen standen ueber den Baum verstreut — die Zaehlung dreimal
 // (hier zweimal, jobs/bricksetRetry, jobs/instructionQueue), das Lesen zweimal
-// (routes/sets, utils/handlers/sets), das Loeschen zweimal (routes/sets, …
+// (routes/sets, src/sets/abfragen), das Loeschen zweimal (routes/sets, …
 // Ausführlich: docs/begruendungen/utils/instructions.ts.md#anzahlanleitungen
 
 /** Wie viele Anleitungen sind fuer dieses Set hinterlegt? */

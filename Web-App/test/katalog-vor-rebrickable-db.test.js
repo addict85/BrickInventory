@@ -150,8 +150,8 @@ test('der eigene Katalog wird vor Rebrickable gefragt', { concurrency: 1 }, asyn
                   ('fig-000123','Chewbacca','https://cdn.example/chewie.jpg'),
                   ('fig-000456','Luke',NULL)`);
 
-  const { addManualPart } = _req('utils/manuelleTeile.js');
-  const { addManualFig }  = _req('utils/manuelleFiguren.js');
+  const { addManualPart } = _req('src/teile/manuelleTeile.js');
+  const { addManualFig }  = _req('src/figuren/manuelleFiguren.js');
 
   /** Ein Teil anlegen und zaehlen, was dabei nach draussen ging. */
   const legeTeil = async (nr, farbe) => {

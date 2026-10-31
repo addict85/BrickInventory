@@ -941,7 +941,7 @@ export async function ladeLagerortVerwaltung() {
                  `<div data-stil="display:grid;grid-template-columns:minmax(0,1fr) max-content max-content max-content;align-items:center;column-gap:8px">` +
                  orte.map(o => {
     const n = belegung.get(o.name);
-    // Figuren stehen EIGEN da, nicht bei den Teilesorten (utils/lagerort.ts):
+    // Figuren stehen EIGEN da, nicht bei den Teilesorten (src/bestand/lagerort.ts):
     // „18 Teilesorten" hiesse sonst mal 18 Teilesorten und mal 12 plus 6
     // Figuren, und niemand koennte der Zahl ansehen, was gemeint ist.
     const wie = n ? t('storage.belegt', { sets: n.sets, teile: n.teile, figuren: n.figuren ?? 0 })

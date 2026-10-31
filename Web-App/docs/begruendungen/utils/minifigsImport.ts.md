@@ -14,6 +14,6 @@ Stand zweimal da — hier und in routes/api_v1/sets.ts. Nicht wortgleich: Der
 zweite Kandidat war hier `setNumber` (die ROHE Eingabe) statt der blanken
 Nummer. Fuer eine Eingabe MIT Versionsanhang ergab das zweimal denselben
 Wert, und die blanke Schreibweise wurde nie geprueft — dieselbe entartete
-Paarbildung wie schon in utils/handlers/parts.ts und jobs/catalogSync.ts.
+Paarbildung wie schon in src/teile/abfragen.ts und jobs/catalogSync.ts.
 beideSchreibweisen() liefert immer zwei verschiedene.
 ```

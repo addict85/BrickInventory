@@ -9,7 +9,7 @@ import { fehlerWerfen } from '../src/infra/fehlerTexte';
 import * as httpError from '../src/infra/httpError';
 import * as mailer from '../src/infra/mailer';
 import { toCsv, csvZeilenAusAnfrage, uebersprungenHinweis } from '../src/infra/csvExport';
-import { normalizeSetNumber } from './setAdd';
+import { normalizeSetNumber } from '../src/sets/setAdd';
 
 /**
  * Eine Alarmzeile samt Empfänger — das, was pruefeSet() aus der Datenbank

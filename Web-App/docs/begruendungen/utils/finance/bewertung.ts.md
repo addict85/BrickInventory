@@ -91,7 +91,7 @@ Hier stand effectiveCondition(fig) und wurde als Rueckfall
 weitergegeben. Beide Wege lesen seit Migration 0035 nur noch die
 Erfassungen, und fuer jede manuelle Position garantiert die Migration
 eine. Ohne Erfassung gilt „Neu“ — dieselbe Regel wie in
-conditionFromAcquisitions() (utils/handlers/shared.ts).
+conditionFromAcquisitions() (src/bestand/gemeinsam.ts).
 ```
 
 <a id="computeminifigsvaluation"></a>
@@ -156,7 +156,7 @@ Hier stand effectiveCondition(part) und wurde als Rueckfall
 weitergegeben. Beide Wege lesen seit Migration 0035 nur noch die
 Erfassungen, und fuer jede manuelle Position garantiert die Migration
 eine. Ohne Erfassung gilt „Neu“ — dieselbe Regel wie in
-conditionFromAcquisitions() (utils/handlers/shared.ts).
+conditionFromAcquisitions() (src/bestand/gemeinsam.ts).
 ```
 
 <a id="computepartsvaluation"></a>

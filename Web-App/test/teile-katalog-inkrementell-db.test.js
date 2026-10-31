@@ -35,7 +35,7 @@ test('Teile-Zusammenfassung: Katalogänderungen je Teil', { concurrency: 1 }, as
       throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
     t.skip('Test-DB nicht erreichbar'); return;
   }
-  const PS = _req('utils/partsSummary.js');
+  const PS = _req('src/teile/partsSummary.js');
   const p = process.pid;
   const X = `kx${p}`, W = `kw${p}`, Z = `kz${p}`, Y = `ky${p}`, SA = `91${p % 1000}-1`, SB = `92${p % 1000}-1`;
   const konto = async (n) => {

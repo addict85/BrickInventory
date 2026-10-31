@@ -1,7 +1,7 @@
 /**
  * /api/v1/sets — Liste, Detail, Erfassen, Barcode, Teile- und Figurenlisten,
  * Preise, Lagerorte, Alarme, CSV-Import und Anleitungen. Ein Router für den
- * ganzen Pfad; die Arbeit steht in utils/dienste/sets.ts und den Helfern dort.
+ * ganzen Pfad; die Arbeit steht in src/sets/dienst.ts und den Helfern dort.
  * Kaufpreis-Erfassungen liegen in ./acquisitions.ts.
  */
 import express from 'express';
@@ -12,26 +12,26 @@ import crypto from 'crypto';
 import { handleRouteError, fehlertext, pfadParam, meldeUndLiefere, logAndContinue } from '../../src/infra/httpError';
 import { requireToken } from './middleware';
 import { getSetting } from '../../src/konto/settings';
-import { findSetInScope, normalizeSetNumber } from '../../utils/setAdd';
+import { findSetInScope, normalizeSetNumber } from '../../src/sets/setAdd';
 import { scopeIds, parseScopeMode, writableIds, householdMembers, resolveWriteTarget } from '../../src/haushalt/haushalt';
-import { moveSetBetweenAccounts } from '../../utils/setMove';
+import { moveSetBetweenAccounts } from '../../src/sets/setMove';
 import { normalisiereLagerort, setzeLagerort, lagerorte,
          orteVon, legeOrtAn, benenneOrtUm, loescheOrt,
-         vorgabeVon, setzeVorgabe } from '../../utils/lagerort';
+         vorgabeVon, setzeVorgabe } from '../../src/bestand/lagerort';
 import { alarmeFuer, alleAlarme, ausgeloesteSeit, loescheAlarm, setzeAlarm, alarmeAusCsv } from '../../utils/preisalarm';
 import { csvEmpfang, inhaltPasstZuTyp, uploadKontingentBytes, belegterPlatz } from '../../src/infra/dateiEmpfang';
 import { sendCsv, uebersprungenHinweis } from '../../src/infra/csvExport';
 import { withInventoryLock } from '../../db/txLock';
-import { addSet, updateSet } from '../../utils/setService';
-import { deleteSet, getSet, getSets } from '../../utils/handlers/sets';
+import { addSet, updateSet } from '../../src/sets/setService';
+import { deleteSet, getSet, getSets } from '../../src/sets/abfragen';
 import { getSetPriceHistory } from '../../utils/priceHistory';
 import { einzelwert, ausTabelle } from '../../src/infra/validate';
 import * as V from '../../src/infra/validate';
-import { mitVersion, normalisiereSetNummer, moeglicheSetNummer } from '../../utils/setNummer';
+import { mitVersion, normalisiereSetNummer, moeglicheSetNummer } from '../../src/sets/setNummer';
 import { sendeFehler, dateiFehler } from '../../src/infra/fehlerTexte';
 import { setTeileAnreichern } from '../../utils/nacharbeit';
 import { setInfo, setZumBarcode, teilelisteDesSets, figurenlisteDesSets, setPreis, rebrickableListe,
-         setGehoertKonto, anleitungMerken, anleitungLoeschen, setCsvImportStarten, setCsvImportAbbrechen } from '../../utils/dienste/sets';
+         setGehoertKonto, anleitungMerken, anleitungLoeschen, setCsvImportStarten, setCsvImportAbbrechen } from '../../src/sets/dienst';
 import { downloadSetInstructions, anleitungenZuSet, loescheAnleitungen, anleitungNeuLadenErlaubt } from '../../utils/instructions';
 import { importPartsForSet } from '../../utils/partsImport';
 import { registerSse } from '../../src/infra/sseRegistry';
@@ -356,7 +356,7 @@ router.post('/sets', requireToken, async (req: AuthedRequest, res) => {
     const owner = await resolveWriteTarget(req.apiUser.user_id, owner_user_id);
     if (owner === null) return sendeFehler(req, res, 403, 'kein_schreibrecht');
     // Schon im Blickfeld? Dann NICHT die Menge erhöhen — die Oberfläche öffnet
-    // die Detailansicht. Die Regel steht in utils/setAdd.ts und gilt für beide
+    // die Detailansicht. Die Regel steht in src/sets/setAdd.ts und gilt für beide
     // Clients und alle drei Erfassungswege (Nummer, Barcode, Texterkennung).
     const vorhanden = await findSetInScope(req.apiUser.user_id, set_number);
     if (vorhanden) return res.json({ success:true, action:'exists', ...vorhanden });
@@ -404,7 +404,7 @@ router.delete('/sets/:setNumber', requireToken, async (req: AuthedRequest, res) 
 /**
  * Set (oder einzelne Kaufpreise davon) in ein anderes Konto des Haushalts.
  * Gegenstück zu POST /api/sets/:sn/move — dieselbe Umsetzung
- * (utils/setMove.ts), damit die App nicht ihre eigenen Regeln bekommt.
+ * (src/sets/setMove.ts), damit die App nicht ihre eigenen Regeln bekommt.
  */
 router.post('/sets/:sn/move', requireToken, async (req: AuthedRequest, res) => {
   try {
@@ -534,7 +534,7 @@ router.post('/sets/add-stream', requireToken, async (req: LoggedInRequest, res) 
   const owner = await resolveWriteTarget(angemeldeteNutzerId(req), owner_user_id);
   if (owner === null) { sendeFehler(req, res, 403, 'kein_schreibrecht'); return; }
   // Schon im Blickfeld? Dann kein Strom, sondern die Antwort „exists“ — es
-  // gibt nichts zu verfolgen (utils/setAdd.ts).
+  // gibt nichts zu verfolgen (src/sets/setAdd.ts).
   const vorhanden = await findSetInScope(angemeldeteNutzerId(req), set_number);
   if (vorhanden) { res.json({ success: true, action: 'exists', ...vorhanden }); return; }
   res.setHeader('Content-Type', 'text/event-stream'); res.setHeader('Cache-Control', 'no-cache');

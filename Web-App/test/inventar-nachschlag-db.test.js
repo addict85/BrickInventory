@@ -9,7 +9,7 @@
  *
  *   jobs/catalogSync, jobs/partsCatalogEnrich,
  *   clients/rebrickable, routes/api_v1/sets (2x)   '9999-1' ODER '9999'
- *   utils/handlers/parts.ts                        '9999-1' ODER '9999-1'
+ *   src/teile/abfragen.ts                        '9999-1' ODER '9999-1'
  *   routes/api_v1/catalog.ts                       nur '9999-1'
  *
  * Die beiden Abweichler finden eine Zeile, die unter der blanken Nummer

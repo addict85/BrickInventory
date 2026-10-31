@@ -2,7 +2,7 @@
  * Ein neues Exemplar bekommt den Zustand, den das Set WIRKLICH hat.
  *
  * ── Der Fehler, den das verhindert ──────────────────────────────────────────
- * utils/setService.ts → priceForNewAcquisition() las
+ * src/sets/setService.ts → priceForNewAcquisition() las
  *
  *     SELECT condition FROM sets WHERE user_id=$1 AND set_number=$2
  *
@@ -90,7 +90,7 @@ test('ein neues Exemplar folgt den Erfassungen, nicht dem gespeicherten Wert', {
                     VALUES ($1,$2,'EUR',$3,$3,$3,$3,5,NOW())
                     ON CONFLICT (set_number,condition,currency_code) DO UPDATE SET avg_price=$3`, [SET, c, p]);
 
-    const { updateSet } = _req('utils/setService.js');
+    const { updateSet } = _req('src/sets/setService.js');
     await updateSet(uid, SET, { quantity: 2 });
 
     const erf = await db.all(

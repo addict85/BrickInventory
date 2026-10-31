@@ -254,7 +254,7 @@ test('das Grundschema wird dort gesucht, wo es zur Laufzeit liegt', () => {
 test('jedes späte require() zeigt auf eine Datei, die es gibt', () => {
   // ── Ein echter Laufzeitfehler beim Umzug (Nachtrag 131) ──────────────────
   //
-  // Beim Auslagern von addSet nach utils/setService.ts wanderte
+  // Beim Auslagern von addSet nach src/sets/setService.ts wanderte
   //
   //     require('./parts').fetchMissingBlIds()
   //

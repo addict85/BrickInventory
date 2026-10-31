@@ -1,5 +1,5 @@
 import * as db from '../db/database';
-import { mengeSkalar } from './bestandsmenge';
+import { mengeSkalar } from '../src/sets/bestandsmenge';
 
 /**
  * Datenzugriff der Verwaltungsrouten (Überwachung, Bilddiagnose, Caches,

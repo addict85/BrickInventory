@@ -25,7 +25,7 @@
  *
  * ── Was hier läuft ─────────────────────────────────────────────────────────
  *
- * Die drei Arten gehen durch DENSELBEN Dienst (utils/dienste/erfassungen.ts) und
+ * Die drei Arten gehen durch DENSELBEN Dienst (src/bestand/erfassungen.ts) und
  * dieselbe Umsetzung (moveManualAcquisition bzw. moveSetBetweenAccounts).
  * Geprüft werden alle drei über ihre echten Adressen, dazu die beiden
  * Abweisungen, die bisher nur als Muster zugesichert waren:

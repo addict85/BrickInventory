@@ -301,8 +301,8 @@ Das BLICKFELD — wessen Daten gerechnet werden.
 
 Er stand DREIMAL im Baum, unter demselben Namen, mit ZWEI Bedeutungen:
 
-  utils/handlers/parts.ts   type Blickfeld = number | number[]
-  utils/handlers/sets.ts    type Blickfeld = number | number[]
+  src/teile/abfragen.ts   type Blickfeld = number | number[]
+  src/sets/abfragen.ts    type Blickfeld = number | number[]
   utils/finance/…           type Blickfeld = number[]
 
 Beide Fassungen waren richtig — nur beschrieben sie verschiedene Momente:

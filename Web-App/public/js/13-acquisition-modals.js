@@ -151,7 +151,7 @@ export function renderAcqModalBody(sn, acqs, totals) {
   html += `</tbody></table></div>`;
 
   // Summenzeile: Der Server rechnet sie (acquisitionTotals in
-  // utils/acquisitions.ts) und liefert sie als `totals` mit. Vorher stand die
+  // src/bestand/acquisitions.ts) und liefert sie als `totals` mit. Vorher stand die
   // Rechnung hier und noch dreimal woanders — zweimal in dieser Datei, zweimal
   // in der App, und mit verschiedenen Preisfeldern.
   html += acqSummary(totals);
@@ -649,7 +649,7 @@ export async function openSetItemDetail(type, id, colorId) {
   // Shuttle"), ohne Bild und ohne gemeinsame Kante; bei mehreren Sets stand
   // jeder Name woanders.
   //
-  // Die Bilder liefert der Server je Set bereits mit (utils/handlers/shared.ts,
+  // Die Bilder liefert der Server je Set bereits mit (src/bestand/gemeinsam.ts,
   // verwendendeSets → image_local/image_url) — sie wurden hier nur nie
   // benutzt. Die Adresse entsteht genauso wie in 04-finance.js: Vorschau, wenn
   // es eine gibt, sonst das Original; `data-orig` traegt die volle Aufloesung
@@ -768,7 +768,7 @@ async function fuelleFarbwahl(aktuell) {
  *
  * Was dabei in der Datenbank passiert — Umziehen oder Zusammenlegen, und was
  * mit den Erfassungen geschieht — steht an einer Stelle:
- * utils/teilFarbeAendern.ts.
+ * src/teile/teilFarbeAendern.ts.
  *
  * Danach wird der Dialog mit der NEUEN Farbe neu geöffnet. Die Farbe ist Teil
  * der Kennung des Eintrags (Adresse: /parts/:nr/:farbe); ohne das zeigte der
@@ -788,7 +788,7 @@ async function speichereTeilFarbe() {
     `/v1/parts/${encodeURIComponent(nummer)}/${alt}/color${owner ? `?owner=${encodeURIComponent(owner)}` : ''}`,
     { color_id: neu, color_name: wahl?.dataset.name || null, color_hex: wahl?.dataset.hex || null });
   if (!d?.success) { toast(d?.error || tRaw('settings.error'), 'error'); return; }
-  // `bild` sagt, woher das Bild der neuen Farbe kommt (utils/teilFarbeAendern.ts).
+  // `bild` sagt, woher das Bild der neuen Farbe kommt (src/teile/teilFarbeAendern.ts).
   // null heisst: keines gefunden — dann steht nach dem Neuöffnen der
   // Platzhalter da, und genau das war Marcos Befund. Die Meldung sagt es,
   // statt ihn ein zweites Mal vor einem leeren Platz stehen zu lassen.
@@ -1015,7 +1015,7 @@ async function manAcqSave(type, id, colorId, acqId, field, value) {
     else if (field==='owner') {
       // Eigentümerwechsel = Verschieben genau dieser Kaufpreis-Zeile. Ein
       // manuell erfasstes Teil hat keinen Inhalt — es wandern nur Menge und
-      // Erfassung (utils/setMove.ts, moveManualAcquisition). KEIN
+      // Erfassung (src/sets/setMove.ts, moveManualAcquisition). KEIN
       // from_user_id: Den Absender ermittelt der Server aus der Zeile selbst
       // (acquisitionMoveSource) — hier stand der Betrachter, siehe acqSave().
       body.owner_user_id = parseInt(value);

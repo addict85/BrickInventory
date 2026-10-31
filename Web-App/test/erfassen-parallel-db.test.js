@@ -39,7 +39,7 @@ test('Erfassen unter Last', { concurrency: 1 }, async (t) => {
   const c = await db.pool.connect();
   try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); }
 
-  const { recordAcquisitionForDay } = _req('utils/acquisitions.js');
+  const { recordAcquisitionForDay } = _req('src/bestand/acquisitions.js');
   const { withInventoryLock } = _req('db/txLock.js');
 
   await db.run("INSERT INTO users (username,password_hash) VALUES ('last','x')");
@@ -124,7 +124,7 @@ test('alle Erfassen-Wege nutzen dieselbe Prüfung', () => {
   const { ROOT, ohneKommentare } = require('./helpers/sources');
 
   // Sets (Webapp und App teilen sich die Routen) wie manuelle Einträge — eine Regel.
-  for (const rel of ['routes/api_v1/sets.ts', 'utils/manuelleTeile.ts', 'utils/manuelleFiguren.ts']) {
+  for (const rel of ['routes/api_v1/sets.ts', 'src/teile/manuelleTeile.ts', 'src/figuren/manuelleFiguren.ts']) {
     const src = ohneKommentare(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
     assert.match(src, /acquisitionQuantity\(/, `${rel}: Menge ungeprüft`);
     assert.match(src, /optionalPrice\(/,       `${rel}: Preis ungeprüft`);
@@ -190,9 +190,9 @@ test('alle drei Importwege melden übersprungene Zeilen', () => {
   // Der Set-Import liest selbst und antwortet selbst; Teile und Minifiguren
   // gehen über csvZeilenAusAnfrage() und csvImportAntwort() in
   // src/infra/csvExport.ts. Je Weg zählen Route und Dienst zusammen.
-  for (const [rel, dienst] of [['routes/api_v1/sets.ts', 'utils/dienste/sets.ts'],
-                               ['routes/api_v1/parts.ts', 'utils/manuelleTeile.ts'],
-                               ['routes/api_v1/minifigs.ts', 'utils/manuelleFiguren.ts']]) {
+  for (const [rel, dienst] of [['routes/api_v1/sets.ts', 'src/sets/dienst.ts'],
+                               ['routes/api_v1/parts.ts', 'src/teile/manuelleTeile.ts'],
+                               ['routes/api_v1/minifigs.ts', 'src/figuren/manuelleFiguren.ts']]) {
     const src = ohneKommentare(fs.readFileSync(path.join(ROOT, rel), 'utf8')
       + '\n' + fs.readFileSync(path.join(ROOT, dienst), 'utf8'));
     assert.match(src, /csvEinlesen\(|csvZeilenAusAnfrage\(/, `${rel}: liest noch selbst`);

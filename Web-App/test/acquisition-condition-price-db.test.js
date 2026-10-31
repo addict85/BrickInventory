@@ -7,7 +7,7 @@
  * Preis des Sammelzustands.
  *
  * Gegenproben (am 30.10.2026 gemessen):
- *   A  in utils/dienste/erfassungen.ts den Zustand an resolvePrice durch null
+ *   A  in src/bestand/erfassungen.ts den Zustand an resolvePrice durch null
  *      ersetzt → rot bei „set“ (100 statt 60)
  *   B  in ARTEN.part.resolvePrice cond nicht weitergegeben → rot bei „part“
  *      (100 statt 60); „set“ bleibt grün
@@ -31,7 +31,7 @@ test('ein geleerter Kaufpreis wird im Zustand der Zeile nachgefüllt', { concurr
   }
   const mc = await db.pool.connect();
   try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }
-  const { erfassungAendern } = _req('utils/dienste/erfassungen.js');
+  const { erfassungAendern } = _req('src/bestand/erfassungen.js');
   const P = process.pid;
   const NAME = `zustandpreis-${P}`, SN = `${P}9-1`, PN = `zp${P}`, FN = `fig-zp${P}`;
   const weg = async () => {

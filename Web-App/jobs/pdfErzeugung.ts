@@ -9,7 +9,7 @@ import { downloadImage, downloadSetImages } from './partsCatalogEnrich';
 import { zeichnePdfImFaden, type PdfSet, type PdfTeil } from './pdfZeichnen';
 import { KEINE_FARBE } from '../src/infra/validate';
 import { merkeFigurBildAdresse, setzeFigurBildLokal, setzeTeilBildLokal } from '../utils/katalogPflege';
-import { normalisiereSetNummer, moeglicheSetNummer } from '../utils/setNummer';
+import { normalisiereSetNummer, moeglicheSetNummer } from '../src/sets/setNummer';
 
 /**
  * Ein PDF-Auftrag aus der Auftragstabelle: fehlende Bilder holen, dann im

@@ -95,7 +95,7 @@ test('Löschen einer Erfassung bestimmt Preis und Zustand der Elternzeile neu',
     // zugleich. Die Reihenfolge bleibt: ohne Bestandszeile gibt es keine
     // Elternangabe, auch wenn noch Erfassungen herumliegen sollten.
     if (!(await haltZeile(db, uid, SN))) return undefined;
-    const agg = await _req('utils/handlers/sets.js').getSetConditionAggregate([uid], SN);
+    const agg = await _req('src/sets/abfragen.js').getSetConditionAggregate([uid], SN);
     return { purchase_price: agg.avg_purchase_price, condition: agg.condition,
              quantity: await mengeVon(db, uid, SN) };
   };

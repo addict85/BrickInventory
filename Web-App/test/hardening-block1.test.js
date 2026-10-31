@@ -82,8 +82,8 @@ test('Listenansichten fordern Vorschaubilder an', () => {
 test('Teile- und Minifiguren-Preise lesen avg_price', () => {
   // routes/finance.ts ist entfallen: Der Router trug NULL Routen und war
   // trotzdem unter /api/finance eingehaengt (siehe server.ts).
-  for (const f of ['utils/manuelleFiguren.ts', 'utils/manuelleTeile.ts',
-                   'routes/api_v1/sets.ts', 'utils/dienste/sets.ts']) {
+  for (const f of ['src/figuren/manuelleFiguren.ts', 'src/teile/manuelleTeile.ts',
+                   'routes/api_v1/sets.ts', 'src/sets/dienst.ts']) {
     const src = read(f);
     // Lesende Zugriffe: kein qty_avg_price mehr. Schreibende (INSERT/VALUES)
     // und Feldnamen in Antwortobjekten bleiben — der Wert wird weiter gepflegt.

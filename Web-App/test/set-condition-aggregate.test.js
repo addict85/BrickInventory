@@ -62,9 +62,9 @@ test('BEIDE Routenfamilien liefern das Aggregat mit', () => {
   // Genau hier lag der zweite Anlauf: Der Wrapper existierte zuerst nur in der
   // v1-Datei, die Webapp benutzt aber ihren eigenen Handler in routes/sets.ts
   // — und bekam deshalb kein `set` in der Antwort.
-  // Die Erfassungsrouten rufen den Dienst utils/dienste/erfassungen.ts; dort
+  // Die Erfassungsrouten rufen den Dienst src/bestand/erfassungen.ts; dort
   // hängt jede Antwort das Aggregat an.
-  const v1  = fs.readFileSync(path.join(ROOT, 'utils/dienste/erfassungen.ts'), 'utf8');
+  const v1  = fs.readFileSync(path.join(ROOT, 'src/bestand/erfassungen.ts'), 'utf8');
   const web = require('./helpers/sources').setKernQuelle();
   const h   = require('./helpers/sources').handlerQuelle();
 
@@ -271,8 +271,8 @@ test('manuelle Teile und Minifiguren nutzen dieselbe Zustandsregel wie Sets', ()
   // Dieselbe Regel wie getSetConditionAggregate: eine gebrauchte Erfassung
   // genügt. Ohne den dritten Parameter — siehe die Begruendung oben.
   // Der Ausschnitt endet jetzt an der Funktion selbst, nicht an der nächsten:
-  // applyManualCondition steht seit Nachtrag 133 in utils/handlers/shared.ts,
-  // getManualParts in utils/handlers/parts.ts — die Reihenfolge im
+  // applyManualCondition steht seit Nachtrag 133 in src/bestand/gemeinsam.ts,
+  // getManualParts in src/teile/abfragen.ts — die Reihenfolge im
   // zusammengefügten Quelltext ist damit eine andere.
   const anfang = src.indexOf('async function applyManualCondition');
   const fn = src.slice(anfang, src.indexOf('\n}', anfang));
@@ -305,7 +305,7 @@ test('ein manuell erfasstes Teil bekommt Marktpreis und Erfassung', () => {
   // sie muss also ueber beide Dateien gehen. Nur eine zu lesen hiesse, die
   // Haelfte der Aufrufstellen nicht anzusehen.
   const src = fs.readFileSync(path.join(ROOT, 'utils/marketPrice.ts'), 'utf8')
-            + '\n' + fs.readFileSync(path.join(ROOT, 'utils/manuelleTeile.ts'), 'utf8');
+            + '\n' + fs.readFileSync(path.join(ROOT, 'src/teile/manuelleTeile.ts'), 'utf8');
   const fn = src.slice(src.indexOf('async function addManualPart'),
                        src.indexOf('async function updateManualPart'));
 
@@ -429,7 +429,7 @@ test('die Teile-Schätzung landet in Cache und Verlauf', () => {
   // Schaetzung steht seit dem Schichtumbau in utils/marketPrice.ts, der
   // Erfassungsweg (recordAcquisitionForDay) ist in der Route geblieben.
   const src = fs.readFileSync(path.join(ROOT, 'utils/marketPrice.ts'), 'utf8')
-            + '\n' + fs.readFileSync(path.join(ROOT, 'utils/manuelleFiguren.ts'), 'utf8');
+            + '\n' + fs.readFileSync(path.join(ROOT, 'src/figuren/manuelleFiguren.ts'), 'utf8');
   const est = src.slice(src.indexOf('async function estimateFigPriceFromParts'),
                         src.indexOf('async function getCurrentFigMarketPrice'));
 
@@ -456,7 +456,7 @@ test('auch manuelle Minifiguren legen bei jeder Erfassung eine Zeile an', () => 
   // Gleicher früher Ausstieg wie bei den Teilen: `if (existing) { … return }`
   // beendete den Pfad, bevor eine Erfassung entstand. Menge stieg, aber kein
   // Kaufpreis und kein abweichendes Erfassungsdatum.
-  const src = fs.readFileSync(path.join(ROOT, 'utils/manuelleFiguren.ts'), 'utf8');
+  const src = fs.readFileSync(path.join(ROOT, 'src/figuren/manuelleFiguren.ts'), 'utf8');
   const fn = src.slice(src.indexOf('async function addManualFig'),
                        src.indexOf('async function addManualFig') + 6000);
 
@@ -633,7 +633,7 @@ test('Android-API: Marktpreis benutzt den Zustand des Sets, nicht den globalen S
   // Webapp-Route: `fetchPrice(sn, DEFAULT_PRICE_CONDITION, …)` — fest 'U'.
   const src = fs.readFileSync(path.join(ROOT, 'routes/api_v1/sets.ts'), 'utf8');
   // Die Route ruft setPreis() im Dienst; dort wird der Zustand aufgelöst.
-  const dienst = fs.readFileSync(path.join(ROOT, 'utils/dienste/sets.ts'), 'utf8');
+  const dienst = fs.readFileSync(path.join(ROOT, 'src/sets/dienst.ts'), 'utf8');
   const priceRoute = dienst.slice(dienst.indexOf('export async function setPreis'),
                                   dienst.indexOf('export async function rebrickableListe'));
   assert.ok(priceRoute.length > 0, 'setPreis() nicht gefunden');
@@ -684,7 +684,7 @@ test('genau EINE Zustandsauflösung für Einzelsets — resolveSetCondition', ()
 
   // Die Preis-Route der Android-API löst weiterhin selbst auf (sie holt einen
   // Preis, keinen Verlauf) — genau ein Vorkommen.
-  const apiV1 = fs.readFileSync(path.join(ROOT, 'utils/dienste/sets.ts'), 'utf8');
+  const apiV1 = fs.readFileSync(path.join(ROOT, 'src/sets/dienst.ts'), 'utf8');
   const uses = (apiV1.match(/resolveSetCondition\(blickfeld, sn\)/g) || []).length;
   assert.equal(uses, 1, 'Die /price-Route muss ihn benutzen; der Verlauf geht über priceHistory.ts');
 });
@@ -716,7 +716,7 @@ test('parts_summary-Neuaufbau ist über eine Datenbank-Sperre vor Cluster-Worker
   // zweite Workers DELETE die vom ersten gerade committeten neuen Zeilen
   // (sie kamen nach Beginn seines Scans hinzu), sein anschliessender INSERT
   // versucht dieselben Zeilen erneut anzulegen und verletzt den Primärschlüssel.
-  const src = fs.readFileSync(path.join(ROOT, 'utils/partsSummary.ts'), 'utf8');
+  const src = fs.readFileSync(path.join(ROOT, 'src/teile/partsSummary.ts'), 'utf8');
   const fn = src.slice(src.indexOf('export async function rebuild'),
                        src.indexOf('export async function rebuild') + 3000);
 
@@ -773,7 +773,7 @@ test('IPv4 wird an ALLEN ausgehenden HTTPS-Aufrufen erzwungen, nicht nur beim Bi
   // unabhängig davon, wie viele es gerade sind.
   const dateien = ['routes/imgProxy.ts', 'clients/rebrickable.ts', 'jobs/partsCatalogEnrich.ts',
     'jobs/backfillBlPartNumbers.ts', 'jobs/rebrickableCsvSync.ts', 'clients/brickset.ts',
-    'clients/bricklink.ts', 'utils/dienste/verwaltung.ts', 'utils/dienste/sets.ts'];
+    'clients/bricklink.ts', 'utils/dienste/verwaltung.ts', 'src/sets/dienst.ts'];
 
   const ohne = [];
   let gefunden = 0;

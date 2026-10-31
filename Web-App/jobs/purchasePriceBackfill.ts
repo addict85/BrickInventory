@@ -1,5 +1,5 @@
 import { getCurrentMarketPrice } from '../utils/marketPrice';
-import { setzeGeschaetztenPreis } from '../utils/acquisitions';
+import { setzeGeschaetztenPreis } from '../src/bestand/acquisitions';
 // Die Marktpreise stehen seit dem Schichtumbau in utils/marketPrice.ts, bei
 // dem fuer Sets. Vorher musste dieser Job aus zwei ROUTEN importieren, um an
 // zwei Zahlen zu kommen.

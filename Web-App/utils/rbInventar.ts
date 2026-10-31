@@ -3,7 +3,7 @@
  * Ausführlich: docs/begruendungen/utils/rbInventar.ts.md#abschnitt
  */
 import * as db from '../db/database';
-import { mitVersion } from './setNummer';
+import { mitVersion } from '../src/sets/setNummer';
 
 /**
  * Die id des neuesten Inventars zu einem der Kandidaten, sonst null.

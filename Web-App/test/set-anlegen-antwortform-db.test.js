@@ -37,7 +37,7 @@
  *
  * Der Anlege-Zweig holt Stammdaten und Bild von Rebrickable. Ein Test, der
  * davon abhängt, prüft das Netz mit. Gestellt wird GENAU das, was die echte
- * Funktion für ein neues Set zurückgibt (utils/setService.ts, Ende von
+ * Funktion für ein neues Set zurückgibt (src/sets/setService.ts, Ende von
  * addSetIntern) — und Schritt 1 belegt mit der ECHTEN Funktion, dass dort
  * wirklich kein `success` steht. Ohne diesen Schritt könnte die Stellung
  * stillschweigend etwas anderes behaupten als die Wirklichkeit.
@@ -67,7 +67,7 @@ Module.prototype.require = function (name) {
   if (typeof name === 'string' && /jobs[/\\]nachErfassung(\.js)?$/.test(name))
     return new Proxy(m, { get: (t, k) =>
       (k === 'zieheNach' || k === 'zieheNachNeuanlage') ? () => {} : t[k] });
-  if (typeof name === 'string' && /utils[/\\]setService(\.js)?$/.test(name))
+  if (typeof name === 'string' && /[/\\]setService(\.js)?$/.test(name))
     return new Proxy(m, { get: (t, k) => {
       if (k !== 'addSet' || gestellteAddSet === null) return t[k];
       return async (...args) => { stellungGerufen++; return gestellteAddSet(...args); };
@@ -127,7 +127,7 @@ test('ein neu angelegtes Set wird in beiden Routen gleich beantwortet',
     // Stuende `success` schon in addSet()s Ergebnis, pruefte alles Weitere
     // nichts: Die Routen muessten es dann gar nicht erst hinzufuegen. Der
     // „updated"-Zweig laeuft rein auf der Datenbank und braucht kein Netz.
-    const { addSet } = _req('utils/setService.js');
+    const { addSet } = _req('src/sets/setService.js');
     const echt = await addSet(DA, 1, uid, null, null, 'N');
     assert.equal(echt.action, 'updated', 'der Aufbau des Tests stimmt nicht mehr');
     assert.equal('success' in echt, false,

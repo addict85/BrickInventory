@@ -90,7 +90,7 @@ wäre Aufwand für einen Fall, den dieses Projekt nicht hat.
 Einen Fehler WERFEN, der seinen Grund als Code traegt.
 
 Fuer Helfer, die tief in einem Vorgang stecken und keine Antwort schreiben
-(src/haushalt/haushalt.ts, utils/setMove.ts): Sie werfen, die Route faengt, und
+(src/haushalt/haushalt.ts, src/sets/setMove.ts): Sie werfen, die Route faengt, und
 handleRouteError macht daraus die Antwort — in der Sprache des Anfragenden,
 sofern es den Request kennt.
 

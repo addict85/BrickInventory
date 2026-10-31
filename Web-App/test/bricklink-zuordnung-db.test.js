@@ -168,8 +168,8 @@ test('die Lesewege liefern die BrickLink-Nummer aus der Zuordnung',
   await db.run(`INSERT INTO bl_zuordnung (art,rb_id,bl_id) VALUES
                 ('part','3070b','3070'), ('fig','fig-9','sw9999')`);
 
-  const H = _req('utils/handlers/parts.js');
-  const M = _req('utils/handlers/minifigs.js');
+  const H = _req('src/teile/abfragen.js');
+  const M = _req('src/figuren/abfragen.js');
 
   const teile = await H.getManualParts([uid], uid);
   const teil = (Array.isArray(teile) ? teile : teile.parts || []).find(p => p.part_number === '3070b');
@@ -241,7 +241,7 @@ test('niemand schreibt eine BrickLink-Nummer mehr an eine Bestandszeile', () => 
 
   // Die drei Abschriften, und die alte Tabelle. parts_summary.bl_part_number
   // ist ausgenommen: Diese Tabelle ist ein Zwischenspeicher, sie hält den
-  // Gruppenschlüssel als fertige Spalte (utils/partsSummary.ts).
+  // Gruppenschlüssel als fertige Spalte (src/teile/partsSummary.ts).
   const muster = [
     ['setzt parts.bl_part_number',    /UPDATE\s+parts\s+SET\s+[^;`']*\bbl_part_number\s*=/i],
     ['setzt minifigs.bl_fig_number',  /UPDATE\s+minifigs\s+SET\s+[^;`']*\bbl_fig_number\s*=/i],

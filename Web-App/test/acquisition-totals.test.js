@@ -17,7 +17,7 @@
  * EINES der beiden Felder füllen.
  *
  * Der Test hat zwei Teile, und beide werden gebraucht:
- *   • die RECHNUNG selbst (utils/acquisitions.ts) — Randfälle inklusive
+ *   • die RECHNUNG selbst (src/bestand/acquisitions.ts) — Randfälle inklusive
  *   • die REGEL, dass keine Oberfläche sie nochmal anstellt. Ohne den zweiten
  *     Teil wäre der erste in dem Moment wertlos, in dem jemand die Summe
  *     „schnell im Frontend" wieder einbaut.
@@ -35,7 +35,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const { ohneKommentare } = require('./helpers/sources');
 const _req = require('./helpers/sources').buildAndRequire();
 const { testServer } = require('./helpers/server');
-const { acquisitionTotals } = _req('utils/acquisitions.js');
+const { acquisitionTotals } = _req('src/bestand/acquisitions.js');
 
 // ── Teil 1: die Rechnung ────────────────────────────────────────────────────
 
@@ -144,7 +144,7 @@ test('keine Oberfläche rechnet die Summe noch einmal', () => {
   ]) {
     assert.doesNotMatch(js, muster,
       'Die Summenzeile wird im Frontend wieder selbst gerechnet — sie kommt als ' +
-      '`totals` vom Server (utils/acquisitions.ts)');
+      '`totals` vom Server (src/bestand/acquisitions.ts)');
   }
   assert.match(js, /function acqSummary\(totals\)/,
     'Es soll EINEN Zeichner für die Summenzeile geben, nicht zwei Fassungen');

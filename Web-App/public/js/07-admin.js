@@ -1074,7 +1074,7 @@ export async function zeigeOffeneAlarme() {
  * Marco will beides: auswählen UND neue Werte gleich erfassen. Ein `select`
  * kann nur das erste, ein Textfeld nur das zweite. Eine `datalist` klappt auf
  * wie ein Auswahlfeld und nimmt trotzdem Getipptes an — und was getippt wird,
- * landet im Vorrat (setzeLagerort in utils/lagerort.ts).
+ * landet im Vorrat (setzeLagerort in src/bestand/lagerort.ts).
  */
 export async function ladeOrtAuswahl(besitzer) {
   const dl = G('lagerorte');

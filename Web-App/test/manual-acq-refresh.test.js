@@ -43,7 +43,7 @@ test('die Erfassungsliste wird in BEIDE Richtungen nachgeladen', () => {
 test('eine Mengenerhöhung legt auch ohne bestehende Erfassung eine Zeile an', () => {
   // `delta > 0 && acqs.length > 0` liess Altbestände ohne Erfassungszeile
   // stumm liegen: Die Menge stieg, die Liste blieb leer.
-  for (const f of ['utils/manuelleTeile.ts', 'utils/manuelleFiguren.ts']) {
+  for (const f of ['src/teile/manuelleTeile.ts', 'src/figuren/manuelleFiguren.ts']) {
     const src = strip(read(f));
     assert.doesNotMatch(src, /delta > 0 && acqs\.length > 0/,
       `${f}: ohne bestehende Erfassung passiert beim Erhöhen nichts`);
@@ -61,8 +61,8 @@ test('eine Mengenerhöhung legt auch ohne bestehende Erfassung eine Zeile an', (
 test('die LIFO-Reduktion entfernt die neueste Erfassung zuerst', () => {
   // Reihenfolge DESC ist die Voraussetzung dafür, dass beim Reduzieren der
   // HEUTIGE Eintrag zuerst schrumpft bzw. wegfällt.
-  for (const [f, table] of [['utils/manuelleTeile.ts', 'part_acquisitions'],
-                            ['utils/manuelleFiguren.ts', 'minifig_acquisitions']]) {
+  for (const [f, table] of [['src/teile/manuelleTeile.ts', 'part_acquisitions'],
+                            ['src/figuren/manuelleFiguren.ts', 'minifig_acquisitions']]) {
     const src = read(f);
     assert.match(src, new RegExp(`FROM ${table} WHERE[^']*ORDER BY created_at DESC, id DESC`),
       `${f}: ohne DESC würde beim Reduzieren die ÄLTESTE Erfassung zuerst abgebaut`);
@@ -73,7 +73,7 @@ test('die LIFO-Reduktion entfernt die neueste Erfassung zuerst', () => {
 // Pro Tag und Zustand EINE Erfassung (hardened-93)
 // ═══════════════════════════════════════════════════════════════════════════
 test('die Tagesregel steht an genau einer Stelle', () => {
-  const acq = read('utils/acquisitions.ts');
+  const acq = read('src/bestand/acquisitions.ts');
   // ── Schlüssel: Benutzer + Eintrag + Tag + ZUSTAND (seit dem 21.10.) ───────
   //
   // Hier stand das Gegenteil, und zwar als ausdrückliche Zusicherung: „Der
@@ -115,7 +115,7 @@ test('die Tagesregel steht an genau einer Stelle', () => {
     'Der Zustand der Tageszeile darf sich beim Aufstocken nicht mehr ändern');
 
   // Und kein Anlege-Pfad schreibt mehr direkt in eine Erfassungstabelle.
-  for (const f of ['utils/manuelleTeile.ts', 'utils/manuelleFiguren.ts', 'routes/api_v1/sets.ts', 'utils/dienste/sets.ts']) {
+  for (const f of ['src/teile/manuelleTeile.ts', 'src/figuren/manuelleFiguren.ts', 'routes/api_v1/sets.ts', 'src/sets/dienst.ts']) {
     const src = strip(read(f));
     assert.doesNotMatch(src, /INSERT INTO (part|minifig|set)_acquisitions/,
       `${f}: Erfassungen gehören über recordAcquisitionForDay geschrieben`);
@@ -140,24 +140,24 @@ test('der Anlege-Pfad erzeugt keinen Zustand, den der Bearbeiten-Pfad ablehnt', 
   // findSameDayAcquisition('set', … mehr. Geprüft wird die Regel, nicht die
   // Schreibweise: Der gemeinsame Helfer wird gerufen, und jede Elementart ist
   // in der Konfiguration hinterlegt.
-  const fab = read('utils/dienste/erfassungen.ts');
+  const fab = read('src/bestand/erfassungen.ts');
   // Dies ist eine MUSTERregel: Sie faengt eine geloeschte Zeile. Dass der
   // Weg wirklich lebt, laeuft in test/verdrahtung-laeuft-db.test.js —
   // beides zusammen, nicht eines statt des anderen.
   assert.match(fab, /findSameDayAcquisition\(\s*art\s*,/,
-    'utils/dienste/erfassungen.ts: die Kollisionsprüfung muss über den gemeinsamen Helfer laufen');
+    'src/bestand/erfassungen.ts: die Kollisionsprüfung muss über den gemeinsamen Helfer laufen');
   for (const kind of ['set', 'part', 'fig']) {
     assert.match(fab, new RegExp(`\\b${kind}: \\{`),
       `Elementart '${kind}' fehlt in der Konfiguration — dann liefe ihre Tagesprüfung ins Leere`);
   }
-  for (const f of ['routes/api_v1/sets.ts', 'utils/manuelleTeile.ts', 'utils/manuelleFiguren.ts',
-                   'routes/api_v1/acquisitions.ts', 'utils/dienste/erfassungen.ts']) {
+  for (const f of ['routes/api_v1/sets.ts', 'src/teile/manuelleTeile.ts', 'src/figuren/manuelleFiguren.ts',
+                   'routes/api_v1/acquisitions.ts', 'src/bestand/erfassungen.ts']) {
     assert.doesNotMatch(strip(read(f)), /SELECT id FROM \w+_acquisitions WHERE[\s\S]{0,160}created_at[^\n]*::date/,
       `${f}: keine eigene Kopie der Tagesprüfung`);
   }
 
   // Und die Prüfung selbst geht auf den TAG, nicht auf den Zeitstempel.
-  assert.match(read('utils/acquisitions.ts'),
+  assert.match(read('src/bestand/acquisitions.ts'),
     /AND id <> \$\$\{n \+ 2\} AND \$\{erfassungsTagSql\(\)\} = \$\$\{n \+ 3\}::date/,
     'Verglichen wird der Tag (derselbe Ausdruck wie im Index)');
 });
@@ -199,7 +199,7 @@ test('die Regel gilt für alle drei Elementarten gleich', () => {
   // „Pro Tag, Element und Benutzer genau EIN Kaufpreis." Ein Element ist ein
   // Set, ein manuell erfasstes Teil oder eine manuell erfasste Minifigur —
   // dieselbe Regel, nur ein anderer Schlüssel.
-  const acq = read('utils/acquisitions.ts');
+  const acq = read('src/bestand/acquisitions.ts');
   assert.match(acq, /Pro Tag, Element, Zustand, Preis und Währung gibt es genau EINE Zeile/,
     'Die Regel gehört im Wortlaut an den Anfang der Datei');
 
@@ -267,7 +267,7 @@ test('eine Mengenänderung läuft unter der Bestandssperre', () => {
   // Und die Differenz muss aus der GESAMTMENGE des Blickfelds kommen, nicht
   // aus der Zeile eines einzelnen Kontos — sonst zeigte das Detail eine
   // Haushaltszahl an, während das „+" gegen eine andere rechnete.
-  // Die Abfrage steht seit Migration 0036 in utils/bestandsmenge.ts; hier
+  // Die Abfrage steht seit Migration 0036 in src/sets/bestandsmenge.ts; hier
   // stand sie ausgeschrieben. Was sie daraus macht, prueft
   // test/quantity-response-echo.test.js — diese Stelle prueft, dass der
   // Aufruf das BLICKFELD nennt und nicht ein einzelnes Konto.
@@ -284,11 +284,11 @@ test('das Löschen eines manuellen Eintrags räumt die Kaufpreise mit ab', () =>
   // dauerhaft weitergezählt, und zwar unsichtbar: Keine Ansicht zeigt
   // verwaiste Erfassungen, es fällt nur als „die Summe stimmt nicht" auf.
   const stellen = [
-    ['utils/manuelleTeile.ts',    'DELETE FROM part_acquisitions'],
-    ['utils/manuelleFiguren.ts',  'DELETE FROM minifig_acquisitions'],
-    // Die beiden v1-Routen und „alles löschen" gehen über utils/loeschen.ts.
-    ['utils/loeschen.ts',         'DELETE FROM part_acquisitions'],
-    ['utils/loeschen.ts',         'DELETE FROM minifig_acquisitions'],
+    ['src/teile/manuelleTeile.ts',    'DELETE FROM part_acquisitions'],
+    ['src/figuren/manuelleFiguren.ts',  'DELETE FROM minifig_acquisitions'],
+    // Die beiden v1-Routen und „alles löschen" gehen über src/bestand/loeschen.ts.
+    ['src/bestand/loeschen.ts',         'DELETE FROM part_acquisitions'],
+    ['src/bestand/loeschen.ts',         'DELETE FROM minifig_acquisitions'],
   ];
   for (const [datei, stmt] of stellen) {
     const src = strip(read(datei));
@@ -317,13 +317,13 @@ test('kein stiller Fehler mehr auf Bestandstabellen', () => {
   const TABELLEN = ['sets', 'parts', 'minifigs', 'set_acquisitions',
                     'part_acquisitions', 'minifig_acquisitions', 'instructions'];
   const schreibt = new RegExp(`\\b(UPDATE|INSERT INTO|DELETE FROM)\\s+(${TABELLEN.join('|')})\\b`);
-  const dateien = ['routes/api_v1/sets.ts', 'utils/dienste/sets.ts', 'utils/dienste/erfassungen.ts',
-                   'utils/manuelleTeile.ts', 'utils/manuelleFiguren.ts',
+  const dateien = ['routes/api_v1/sets.ts', 'src/sets/dienst.ts', 'src/bestand/erfassungen.ts',
+                   'src/teile/manuelleTeile.ts', 'src/figuren/manuelleFiguren.ts',
                    'routes/api_v1/sets.ts', 'routes/api_v1/parts.ts',
                    'routes/api_v1/minifigs.ts', 'routes/api_v1/acquisitions.ts',
-                   'utils/setMove.ts', 'utils/acquisitions.ts',
+                   'src/sets/setMove.ts', 'src/bestand/acquisitions.ts',
                    // Seit Nachtrag 133 nach Domänen aufgeteilt.
-                   'utils/handlers/sets.ts', 'utils/handlers/parts.ts', 'utils/handlers/minifigs.ts'];
+                   'src/sets/abfragen.ts', 'src/teile/abfragen.ts', 'src/figuren/abfragen.ts'];
   const fundstellen = [];
   for (const datei of dateien) {
     const zeilen = strip(read(datei)).split('\n');

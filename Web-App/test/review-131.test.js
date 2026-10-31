@@ -144,9 +144,9 @@ test('Pfade werden an genau EINER Stelle normalisiert', () => {
 });
 
 test('die Barcode-Suche zählt ihre Rebrickable-Aufrufe', () => {
-  // Die Barcode-Suche (utils/dienste/sets.ts) fragt Rebrickable nur über
+  // Die Barcode-Suche (src/sets/dienst.ts) fragt Rebrickable nur über
   // rebrickableJson() — und das zählt und drosselt.
-  const dienst = quelle('utils/dienste/sets.ts');
+  const dienst = quelle('src/sets/dienst.ts');
   assert.match(dienst, /rebrickableJson\(/, 'die Barcode-Suche fragt Rebrickable nicht über den Client');
   assert.doesNotMatch(dienst, /https\.get\(/, 'eigener Abrufweg am Tageskontingent vorbei');
   const client = quelle('clients/rebrickable.ts');
@@ -192,7 +192,7 @@ test('alle drei CSV-Importwege entschärfen zurück', () => {
   // Importe ihn benutzen, zeigt test/csv-rundlauf-db.test.js.
   // Gegenprobe (29.10.2026): entschaerfungRueckgaengig in setCsvZeilen
   // weggelassen → rot („Sets: …“).
-  const { setCsvZeilen } = _reqCsv('utils/dienste/sets.js');
+  const { setCsvZeilen } = _reqCsv('src/sets/dienst.js');
   const { csvZeilenAusAnfrage } = _reqCsv('src/infra/csvExport.js');
   assert.equal(setCsvZeilen("set_number,quantity\n'-10001-1,1\n").rows[0].sn, '-10001-1',
     'Sets: ein hier erzeugter Export käme mit Hochkomma zurück');

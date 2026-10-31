@@ -40,7 +40,7 @@ const ROOT = path.join(__dirname, '..');
  * Ausgangszustand. Sie hatte acht Eintraege, und beim Aufloesen zeigte sich,
  * dass sie aus DREI verschiedenen Gruenden dort standen:
  *
- *   • Zwei UMWEGE: jobs/rebrickableCsvSync und utils/handlers/parts holten
+ *   • Zwei UMWEGE: jobs/rebrickableCsvSync und src/teile/abfragen holten
  *     fetchMissingBlIds ueber routes/parts — die Route hatte sie selbst nur
  *     importiert und weiterexportiert. Kein Code am falschen Ort, nur ein
  *     Import am falschen Ort. Sie holen sie jetzt direkt aus utils/partsImport.

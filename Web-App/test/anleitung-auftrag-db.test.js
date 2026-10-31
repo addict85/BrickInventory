@@ -25,7 +25,7 @@ const abruf = { extern: false, fehler: null, aufrufe: 0 };
 const echtesRequire = Module.prototype.require;
 Module.prototype.require = function (name) {
   const m = echtesRequire.apply(this, arguments);
-  if (!/utils[/\\]instructions(\.js)?$/.test(name)) return m;
+  if (!/[/\\]instructions(\.js)?$/.test(name)) return m;
   return {
     ...m,
     anzahlAnleitungen: async () => 0,

@@ -3,7 +3,7 @@ import express from 'express';
 import { handleRouteError } from '../../src/infra/httpError';
 import { requireToken } from './middleware';
 import { scopeIds, parseScopeMode } from '../../src/haushalt/haushalt';
-import { getStats } from '../../utils/handlers/stats';
+import { getStats } from '../../src/bestand/kennzahlen';
 const router = express.Router();
 
 router.get('/stats', requireToken, async (req: AuthedRequest, res) => {

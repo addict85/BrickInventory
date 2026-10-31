@@ -7,7 +7,7 @@
 import { downloadFile } from '../clients/rebrickable';
 import { generateThumb } from '../utils/thumbs';
 import { neuestesInventar } from '../utils/rbInventar';
-import { mitVersion } from '../utils/setNummer';
+import { mitVersion } from '../src/sets/setNummer';
 import { merkeTeil, merkeTeilFarbe, merkeSetTeil, setzeTeilBildLokal, merkeFiguren, merkeSetFiguren } from '../utils/katalogPflege';
 import { logAndContinue, meldeUndLiefere } from '../src/infra/httpError';
 import * as db from '../db/database';
@@ -24,7 +24,7 @@ import { KEINE_FARBE } from '../src/infra/validate';
 async function syncSetCatalog(setNumber: string) {
   // Ohne Versionsanhang in der Eingabe ergab `alt` denselben Wert wie `n` —
   // die Abfrage unten fragte dann zweimal dasselbe, und die blanke Nummer
-  // wurde nie geprueft. Dieselbe Fehlbildung wie in utils/handlers/parts.ts.
+  // wurde nie geprueft. Dieselbe Fehlbildung wie in src/teile/abfragen.ts.
   const n = mitVersion(setNumber);
 
   // Check if catalog is already fully populated (has images)

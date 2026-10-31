@@ -12,9 +12,9 @@ import { asIds } from '../../src/haushalt/haushalt';
 import { getSetting, getGlobalSetting } from '../../src/konto/settings';
 import { resolveImageLocal, proxyImageUrl } from '../images';
 import { valueSet, valueAcquisitionRows, weightedPurchase, pnlPct as calcPnlPct, pnlProzent } from '../setValue';
-import { mitVersion } from '../setNummer';
+import { mitVersion } from '../../src/sets/setNummer';
 import { effectiveCondition } from './zustand';
-import { mengeJoin, mengeAus } from '../bestandsmenge';
+import { mengeJoin, mengeAus } from '../../src/sets/bestandsmenge';
 import {
   DEFAULT_PRICE_CONDITION, PRICE_CACHE_COLS, parallelLimit,
   fetchPrice, fetchPartPrice, fetchMinifigPrice, ladeBlNummernVor,
@@ -23,9 +23,9 @@ import {
 } from './preise';
 import { ladeSetErfassungen, kaufpreisSpalten, zaehle } from './abfragen';
 import { schaetzeFigurenpreis } from '../marketPrice';
-import { withOwners } from '../handlers/shared';
+import { withOwners } from '../../src/bestand/gemeinsam';
 import { blJoin, blNummerSql } from '../blZuordnung';
-import { teilmengeJoin, teilmengeAus } from '../bestandsmenge';
+import { teilmengeJoin, teilmengeAus } from '../../src/sets/bestandsmenge';
 import { KEINE_FARBE } from '../../src/infra/validate';
 import { aufRappen, inZehntel4 } from '../../src/infra/geld';
 
@@ -492,7 +492,7 @@ function conditionsOf(acqs: any[]): ('N' | 'U')[] {
  * Einträge zweier Konten bleiben getrennte Zeilen; die Plakette unterscheidet sie.
  */
 async function withOwnerNames(uids: number[], rows: any[]): Promise<any[]> {
-  // Reicht durch: utils/handlers/shared.ts -> withOwners() beantwortet
+  // Reicht durch: src/bestand/gemeinsam.ts -> withOwners() beantwortet
   // dieselbe Frage und kann MEHR — dort wird auch `owner_ids` (die Liste aus
   // array_agg) zu Plaketten, hier stand nur der Einzelfall `user_id`. Zwei
   // Fassungen derselben Sache, von denen eine weniger konnte.

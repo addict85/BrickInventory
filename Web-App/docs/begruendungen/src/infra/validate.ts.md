@@ -90,7 +90,7 @@ Ist dieser Wert ein ERSATZTEIL-Kennzeichen, das „ja" bedeutet?
 NACHGEMESSEN: `is_spare` wurde an SECHS Stellen gedeutet, mit vier
 verschiedenen Vorstellungen davon, was „ja" heisst:
 
-  utils/handlers/parts.ts    true, 1, 't', 'true'
+  src/teile/abfragen.ts    true, 1, 't', 'true'
   routes/api_v1/sets.ts      true, 1, 't', 'true', 'True'   ← eine mehr
   routes/api_v1/sets.ts      r.is_spare ? 't' : 'f'         ← dritte Form
   routes/api_v1/sets.ts      nicht-Ersatzteil: 'f','false','False','0',''
@@ -180,7 +180,7 @@ Gefunden an drei Stellen, zwei davon tragend:
   routes/sets.ts             Der Datei-Filter beim Anleitungs-Upload. Mit
                              Content-Type: constructor kam beliebiger Inhalt
                              an der Zusage "nur PDF, JPG oder PNG" vorbei.
-  utils/handlers/sets.ts     Dasselbe Muster in der Set-Sortierung.
+  src/sets/abfragen.ts     Dasselbe Muster in der Set-Sortierung.
 
 `hasOwnProperty.call` statt `Object.hasOwn`: gleichwertig, aber unabhängig
 von der lib-Einstellung in tsconfig.

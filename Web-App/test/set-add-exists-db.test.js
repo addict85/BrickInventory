@@ -10,7 +10,7 @@
  * gar nicht — dort erhöhte der Server still die Menge und meldete
  * „aktualisiert". Dieselbe Eingabe, zwei Ausgänge.
  *
- * Jetzt entscheidet utils/setAdd.ts, und beide Erfassungs-Routen fragen es.
+ * Jetzt entscheidet src/sets/setAdd.ts, und beide Erfassungs-Routen fragen es.
  * Der Test prüft die WIRKUNG, nicht den Wortlaut: Nach dem Aufruf muss die
  * Menge unverändert sein und keine neue Erfassung entstanden sein — genau das
  * würde ein Rückfall auf das alte Verhalten verletzen, auch wenn die Antwort
@@ -175,8 +175,8 @@ test('vorhandenes Set: Erfassen meldet exists und schreibt nichts',
 
     // 4. AUSNAHME: Der CSV-Import ruft addSet() direkt und fasst weiterhin
     //    zusammen. Die Regel darf nicht dort hineingerutscht sein.
-    // Fundort seit Nachtrag 131: utils/setService.js.
-    const { addSet } = _req('utils/setService.js');
+    // Fundort seit Nachtrag 131: src/sets/setService.js.
+    const { addSet } = _req('src/sets/setService.js');
     const vorImport = await stand(KIND);
     const erg = await addSet(KIND, 1, subId, null, null, 'N');
     assert.equal(erg.action, 'updated',
@@ -204,12 +204,12 @@ test('normalizeSetNumber stimmt mit sanitizeSetNumber überein', () => {
   //
   // Beide sind ausdruecklich EXPORTIERT. Sie werden jetzt einfach beide
   // geholt und verglichen — und weil beide an
-  // utils/setNummer.ts -> normalisiereSetNummer() durchreichen, koennen sie
+  // src/sets/setNummer.ts -> normalisiereSetNummer() durchreichen, koennen sie
   // gar nicht mehr auseinanderlaufen. Die Aussage bleibt dieselbe: Weichen
   // sie ab, prueft die Regel eine ANDERE Nummer als die, die danach
   // geschrieben wird — und das Set landet trotz Pruefung doppelt.
-  const { normalizeSetNumber } = _req('utils/setAdd.js');
-  const { sanitizeSetNumber }  = _req('utils/setService.js');
+  const { normalizeSetNumber } = _req('src/sets/setAdd.js');
+  const { sanitizeSetNumber }  = _req('src/sets/setService.js');
   assert.equal(typeof sanitizeSetNumber, 'function',
     'sanitizeSetNumber ist nicht mehr exportiert — dann prueft dieser Test nichts');
   for (const eingabe of ['75192', '75192-1', ' 75192 ', '75192; irgendwas', '75192 Falcon', 'ab-12', '4002!!']) {
@@ -217,7 +217,7 @@ test('normalizeSetNumber stimmt mit sanitizeSetNumber überein', () => {
       `Abweichung bei "${eingabe}"`);
   }
   // Und beide sagen dasselbe wie die Stelle, an der die Regel steht.
-  const { normalisiereSetNummer } = _req('utils/setNummer.js');
+  const { normalisiereSetNummer } = _req('src/sets/setNummer.js');
   for (const eingabe of ['75192', '75192-1', ' 75192 ', '75192; irgendwas', 'ab-12', '4002!!']) {
     assert.equal(normalizeSetNumber(eingabe), normalisiereSetNummer(eingabe),
       `Abweichung zur zentralen Fassung bei "${eingabe}"`);

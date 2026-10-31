@@ -243,7 +243,7 @@ lautlos.
 Jetzt ist die Reihenfolge umgekehrt und das Verschlucken weg: Geht das
 Angleichen schief, hat sich NICHTS geaendert, und der Fehler wird
 gemeldet. Die Spalte schreibt mengeNeuRechnen() danach aus den
-Erfassungen (utils/bestandsmenge.ts).
+Erfassungen (src/sets/bestandsmenge.ts).
 ```
 
 <a id="updatemanualpart-2"></a>
@@ -267,7 +267,7 @@ heute".
 
 ```text
 Aufstocken der heutigen Zeile ODER eine neue anlegen — beides
-erledigt recordAcquisitionForDay (utils/acquisitions.ts). Vorher
+erledigt recordAcquisitionForDay (src/bestand/acquisitions.ts). Vorher
 stand die Tagesprüfung hier von Hand (`isToday_`) und galt nur an
 dieser einen Stelle; jetzt gilt sie überall gleich.
 Der Preis wird UNTEN geholt — erst muss der Zustand feststehen
@@ -310,7 +310,7 @@ Used by both the standalone CSV download and the combined ZIP export in settings
 Hier stand `for (const p of parts) { await db.all(...) }` — bei 2000 manuell
 erfassten Teilen also 2001 Abfragen fuer einen Export. Die beiden
 ZWILLINGSFUNKTIONEN sind laengst umgestellt: buildFigsCsv (routes/minifigs.ts,
-FIGS_CSV_SQL) und buildSetsCsv (utils/setService.ts, SETS_CSV_SQL). Ihre
+FIGS_CSV_SQL) und buildSetsCsv (src/sets/setService.ts, SETS_CSV_SQL). Ihre
 Kommentare beschreiben genau diesen Umbau; die Teile blieben als einzige
 zurueck. Wieder eine Regel, die an zwei von drei Stellen gilt.
 

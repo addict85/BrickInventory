@@ -15,7 +15,7 @@
  * (`quantity = quantity + $1`) oder setzten (`quantity = $1`).
  *
  * Und sie sind auseinandergelaufen. GEMESSEN am laufenden Server (der Befund
- * steht in utils/setService.ts): Zehn gleichzeitige Erfassungen desselben Sets
+ * steht in src/sets/setService.ts): Zehn gleichzeitige Erfassungen desselben Sets
  * ergaben `sets.quantity = 10`, aber drei Erfassungszeilen mit Summe 7 — drei
  * Exemplare, die es laut der einen Tabelle gab und laut der anderen nicht.
  *
@@ -24,7 +24,7 @@
  *   „Bitte doch Variante 1"
  *
  * Die Spalte fällt. Migration 0036 löscht sie; die Rechnung steht einmal, in
- * utils/bestandsmenge.ts, und wird von den Lesestellen eingesetzt.
+ * src/sets/bestandsmenge.ts, und wird von den Lesestellen eingesetzt.
  *
  * ── Was dieser Test prüft ───────────────────────────────────────────────────
  *
@@ -135,7 +135,7 @@ test('niemand schreibt die Stückzahl eines Sets mehr', () => {
   // deshalb laufen die Lesewege unten gegen eine migrierte Datenbank.
   //
   // Warum die Leseseite hier NICHT per Muster geprüft wird: `s.quantity` steht
-  // in utils/handlers/sets.ts weiter im Sortierschlüssel und ist dort richtig
+  // in src/sets/abfragen.ts weiter im Sortierschlüssel und ist dort richtig
   // — `s` ist eine Unterabfrage, deren Mengenspalte `quantity` heisst. Ein
   // Muster müsste das auseinanderhalten und könnte es nicht; es hätte eine
   // richtige Stelle gemeldet und damit sich selbst entwertet.
@@ -197,7 +197,7 @@ test('niemand schreibt die Stückzahl eines Sets mehr', () => {
   // Die Muster oben finden jetzt nichts — das ist der Punkt, sagt aber allein
   // noch nicht, dass sie ueberhaupt etwas finden KOENNTEN. Also einmal an
   // erfundenen Zeilen nachgewiesen, in genau der Form, die vorher im Baum
-  // stand (die Beispiele stehen so in utils/setService.ts, Fassung vor 0036).
+  // stand (die Beispiele stehen so in src/sets/setService.ts, Fassung vor 0036).
   const proben = [
     ['UPDATE sets SET quantity = $1 WHERE user_id=$2', setzt],
     ['UPDATE sets SET quantity = quantity + $1 WHERE id=$2', fortschreiben],
@@ -253,7 +253,7 @@ test('die Lesewege liefern die Stückzahl aus den Erfassungen',
                        ($3,$2,3, 90,'N', NOW() - INTERVAL '2 days')`,
     [haupt.id, SN, kind.id]);
 
-  const H = _req('utils/handlers/sets.js');
+  const H = _req('src/sets/abfragen.js');
 
   // ── Ein Konto ────────────────────────────────────────────────────────────
   const eins = await H.getSets([haupt.id], { page_size: 60 });
@@ -262,8 +262,8 @@ test('die Lesewege liefern die Stückzahl aus den Erfassungen',
   assert.equal(Number(kachel.quantity), 3,
     `Ein Konto, Erfassungen 2+1: erwartet 3, bekam ${kachel.quantity}`);
   // Der Treiber liefert BIGINT als ZEICHENKETTE. Ohne den ::int-Cast in
-  // utils/bestandsmenge.ts haengt der JSON-Typ daran, welcher Zweig geantwortet
-  // hat — genau dieser Fehler ist in utils/handlers/parts.ts schon aufgeflogen.
+  // src/sets/bestandsmenge.ts haengt der JSON-Typ daran, welcher Zweig geantwortet
+  // hat — genau dieser Fehler ist in src/teile/abfragen.ts schon aufgeflogen.
   assert.equal(typeof kachel.quantity, 'number',
     `quantity muss eine Zahl sein, war ${typeof kachel.quantity} (${kachel.quantity})`);
 
@@ -308,7 +308,7 @@ test('die Lesewege liefern die Stückzahl aus den Erfassungen',
   //
   // Eine Bestandszeile ohne Erfassung sollte es nicht geben (Schritt 1 der
   // Migration traegt fuer jede eine nach), aber sie darf die Liste nicht
-  // LEEREN — deshalb LEFT JOIN in utils/bestandsmenge.ts. Sie bedeutet dann
+  // LEEREN — deshalb LEFT JOIN in src/sets/bestandsmenge.ts. Sie bedeutet dann
   // null Stueck.
   await db.run('DELETE FROM set_acquisitions WHERE user_id=$1 AND set_number=$2',
     [haupt.id, SN]);

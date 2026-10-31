@@ -15,7 +15,7 @@
  * niemand nach — das sind die Daten, die der Nutzer selbst eingegeben hat.
  *
  * ── Der Fund, der die Grenze gezogen hat ────────────────────────────────────
- * `utils/setService.ts` legt beim Aufstocken eine eigene Set-Zeile an, falls
+ * `src/sets/setService.ts` legt beim Aufstocken eine eigene Set-Zeile an, falls
  * das Set bisher nur einem anderen Haushaltskonto gehörte. Der Kommentar dort
  * sagt: „sonst liefe die Mengenanpassung ins Leere." Genau das passierte,
  * wenn das INSERT scheiterte: Das UPDATE zwei Zeilen weiter traf null Zeilen,

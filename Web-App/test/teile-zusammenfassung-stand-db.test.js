@@ -30,7 +30,7 @@ test('Teile-Zusammenfassung: Stand', { concurrency: 1 }, async (t) => {
   }
   const mc = await db.pool.connect();
   try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }
-  const PS = _req('utils/partsSummary.js');
+  const PS = _req('src/teile/partsSummary.js');
   const NAME = `stand-${process.pid}`, SN = `31170-${process.pid % 1000}`, TEIL = `stand${process.pid}`;
   await db.run('DELETE FROM users WHERE username=$1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;

@@ -9,7 +9,7 @@
 // Pfade zentral auflösen — __dirname zeigt seit dem dist/-Build nicht mehr
 // auf die Wurzel. Siehe src/infra/appPaths.ts.
 // Direkt aus utils/partsImport — siehe die Begruendung in
-// utils/handlers/parts.ts: routes/parts reicht die Funktion nur weiter.
+// src/teile/abfragen.ts: routes/parts reicht die Funktion nur weiter.
 import { meldeStartZustand } from '../src/infra/startZustand';
 import { fetchMissingBlIds } from '../utils/partsImport';
 import { getRbKey, httpsGetRobust } from '../clients/rebrickable';

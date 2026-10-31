@@ -13,7 +13,7 @@ Was NACH dem Erfassen eines Sets im Hintergrund nachgezogen wird.
 ── Warum das ein eigenes Modul ist ─────────────────────────────────────────
 
 Der Block stand als anonyme Funktion in einem `setTimeout` mitten in
-addSet() (utils/setService.ts) — sieben Schritte, jeder mit
+addSet() (src/sets/setService.ts) — sieben Schritte, jeder mit
 `.catch(() => {})`, und der ganze Aufruf mit einer Zufallsverzögerung von
 zwei bis fünf Sekunden.
 

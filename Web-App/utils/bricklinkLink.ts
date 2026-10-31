@@ -6,7 +6,7 @@ import { logAndContinue, meldeUndLiefere } from '../src/infra/httpError';
 import * as db from '../db/database';
 import { bricklinkRequest } from '../clients/bricklink';
 import { getGlobalSetting } from '../src/konto/settings';
-import { mitVersion, ohneVersion } from './setNummer';
+import { mitVersion, ohneVersion } from '../src/sets/setNummer';
 
 export type BlType = 'SET' | 'GEAR' | 'BOOK' | 'MINIFIG' | 'NONE';
 
@@ -28,7 +28,7 @@ export interface BlLink {
 }
 
 /** Rebrickable-Schreibweise: immer mit Variantensuffix. */
-// Die Schreibweise kommt aus utils/setNummer.ts
+// Die Schreibweise kommt aus src/sets/setNummer.ts
 // Die beiden Fassungen stimmen auf jeder echten Nummer ueberein und gehen erst
 // bei einem Bindestrich OHNE Ziffernanhang auseinander:
 // Ausführlich: docs/begruendungen/utils/bricklinkLink.ts.md#withvariant

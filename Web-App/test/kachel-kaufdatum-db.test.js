@@ -6,7 +6,7 @@
  *   - Die Kachel (jsdom, echtes Bündel) zeigt dieses Datum, nicht added_at.
  *
  * Gegenproben (am 28.10.2026 gemessen):
- *   A  MAX(…created_at) in utils/handlers/sets.ts zu MIN → rot: „getSets
+ *   A  MAX(…created_at) in src/sets/abfragen.ts zu MIN → rot: „getSets
  *      liefert den letzten Kauf“
  *   B  gridCard() wieder mit s.added_at → rot: „die Kachel zeigt das Kaufdatum“
  *
@@ -35,7 +35,7 @@ test('getSets liefert den letzten Kauf', { concurrency: 1 }, async (t) => {
   t.after(async () => { await db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {}); await db.pool.end().catch(() => {}); });
   await haeltSet(db, uid, '10300-1', 1, { preis: 199, am: '2024-03-02T10:00:00Z' });
   await erfasse(db, uid, '10300-1', 1, { preis: 210, am: '2025-07-14T10:00:00Z' });
-  const { getSets } = _req('utils/handlers/sets.js');
+  const { getSets } = _req('src/sets/abfragen.js');
   const { sets } = await getSets(uid, {});
   const s = sets.find(x => x.set_number === '10300-1');
   assert.ok(s, 'Set fehlt');

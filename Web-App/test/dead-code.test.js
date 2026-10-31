@@ -76,7 +76,7 @@ test('keine Funktion ohne einen einzigen Aufrufer', () => {
  *                                                     eine Admin-Oberflaeche,
  *                                                     die es nicht gibt
  *   jobs/partsCatalogEnrich.ts: activeDownloads       Diagnosezaehler, kein Leser
- *   utils/handlers/sets.ts: updateSetQuantity         ueberholte Zweitfassung
+ *   src/sets/abfragen.ts: updateSetQuantity         ueberholte Zweitfassung
  *   src/infra/sseRegistry.ts: openSseCount                „fuer Diagnose und Tests",
  *                                                     kein Test benutzte sie
  *   utils/thumbs.ts: generateThumbsBackground         seit dem ersten Commit

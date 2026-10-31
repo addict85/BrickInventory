@@ -157,8 +157,8 @@ test('die Listen liefern Preis und Zustand aus der neuesten Erfassung',
                 VALUES ($1,'fig-5',1,5.00,'N', NOW() - INTERVAL '2 days'),
                        ($1,'fig-5',2,7.50,'U', NOW())`, [uid]);
 
-  const H = _req('utils/handlers/parts.js');
-  const M = _req('utils/handlers/minifigs.js');
+  const H = _req('src/teile/abfragen.js');
+  const M = _req('src/figuren/abfragen.js');
 
   const teile = await H.getManualParts([uid], uid);
   const teil = (Array.isArray(teile) ? teile : teile.parts || []).find(p => p.part_number === '3002');

@@ -11,7 +11,7 @@ import { getGlobalSetting } from '../src/konto/settings';
 import { checkAndIncrementRateLimit } from '../utils/apiKontingent';
 import { fehlertext, meldeUndLiefere } from '../src/infra/httpError';
 import { alsAbrufFehler } from './abrufFehler';
-import { mitVersion } from '../utils/setNummer';
+import { mitVersion } from '../src/sets/setNummer';
 import { bricksetVormerken, bricksetAusWiedervorlage, BRICKSET_HOECHSTENS } from '../utils/bricksetAuftrag';
 
 const BASE = 'https://brickset.com/api/v3.asmx';

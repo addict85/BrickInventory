@@ -13,7 +13,7 @@ import { DATA_DIR, PDF_JOB_DIR, SET_IMAGES_DIR } from '../../src/infra/appPaths'
 import { fehlertext, meldeUndWeiter, logAndContinue, meldeUndLiefere, ohneFehlendeDatei } from '../../src/infra/httpError';
 import { fetchPrice } from '../financeCalc';
 import { getRateLimitStatus, setzeKontingentZurueck } from '../apiKontingent';
-import { katalogEintrag, ohneBricklinkPreis } from '../setNummer';
+import { katalogEintrag, ohneBricklinkPreis } from '../../src/sets/setNummer';
 import { loescheAnleitungen } from '../instructions';
 import { imgProxyFailures } from '../imgProxyStats';
 import { vergissFehlend } from '../imageMisses';
@@ -452,7 +452,7 @@ export async function preisProbe(uid: number, setNumber: string, live: boolean) 
   ]);
 
   // Welchen Zustand würde die Bewertung wählen? Dieselbe Regel wie
-  // conditionFromAcquisitions() in utils/handlers/shared.ts: Eine gebrauchte
+  // conditionFromAcquisitions() in src/bestand/gemeinsam.ts: Eine gebrauchte
   // Erfassung genügt, sonst Neu.
   // Ausführlich: docs/begruendungen/routes/api_v1/admin.ts.md#get-admin-price-probe-anyused
   const anyUsed = acqs.some(a => a.condition === 'U');

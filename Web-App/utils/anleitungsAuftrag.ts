@@ -1,4 +1,4 @@
-import { mitVersion } from './setNummer';
+import { mitVersion } from '../src/sets/setNummer';
 import { stelleAuftragEin, zaehleArt } from './auftraege';
 
 /**

@@ -46,7 +46,7 @@ BrickLink (siehe jobs/blTypeBackfill.js).
 ## `withVariant`
 
 ```text
-── Die Schreibweise kommt aus utils/setNummer.ts ───────────────────────────
+── Die Schreibweise kommt aus src/sets/setNummer.ts ───────────────────────────
 
 Hier stand sie eigenstaendig, mit einer DRITTEN Fassung des Tests:
 `/-\d+$/.test(n)` statt `includes('-')`. Sie ist mir beim Zusammenfuehren der

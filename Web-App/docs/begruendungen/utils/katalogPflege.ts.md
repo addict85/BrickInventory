@@ -25,7 +25,7 @@ in `part_catalog`, `part_color_catalog` und `minifigs_catalog`.
 Jeder Weg, der Bestand anlegt, muss die Beschreibung also mitschreiben. Das
 sind SECHS Stellen (gezaehlt): Anlegen von Hand und CSV-Import fuer Teile,
 dieselben beiden fuer Figuren, und zweimal das Verschieben eines Sets in
-utils/setMove.ts. Dazu die beiden Importe aus Rebrickable.
+src/sets/setMove.ts. Dazu die beiden Importe aus Rebrickable.
 
 Derselbe Upsert sechsmal hingeschrieben heisst: sechs Stellen, an denen er
 beim naechsten Mal leicht anders aussieht. Genau so ist in diesem Baum schon
@@ -68,7 +68,7 @@ Abrufe aus dem Tageskontingent — fuer Daten, die dalagen.
 Die Regel dort hiess „kein Name mitgegeben ⇒ fremden Dienst fragen". Richtig
 ist „⇒ erst den eigenen Katalog fragen". Genau diese Staffelung stand
 nebenan schon einmal, fuer das Bild allein (bildNachtragen in
-utils/teilFarbeAendern.ts: set_parts_catalog vor Rebrickable) — sie holt sie
+src/teile/teilFarbeAendern.ts: set_parts_catalog vor Rebrickable) — sie holt sie
 jetzt von hier, damit es bei EINER Fassung bleibt.
 
 ── Was als „Bild vorhanden" gilt, und was nicht ────────────────────────────
@@ -91,7 +91,7 @@ nicht: `color_id = NULL` ist nie wahr.
 ```text
 Woher das Bild stammt, und die Datei dazu.
 
-Beide stehen hier fuer bildNachtragen() in utils/teilFarbeAendern.ts: Es
+Beide stehen hier fuer bildNachtragen() in src/teile/teilFarbeAendern.ts: Es
 unterscheidet, ob das Bild schon an der Farbe steht (dann ist nichts zu
 tun) oder aus einem eingespielten Set kommt (dann traegt es es nach) —
 und dabei SCHREIBT es `image_local` mit, denn eine bereits

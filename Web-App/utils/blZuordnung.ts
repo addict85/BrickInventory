@@ -103,7 +103,7 @@ export async function blAbrufNummern(art: BlArt, rbIds: string[]): Promise<Map<s
 
 // Die Zuordnung IN einer Abfrage
 // Zwei Schnipsel, dieselbe Bauart wie mengeJoin()/mengeAus() in
-// utils/bestandsmenge.ts und ersatzteilSql() in src/infra/validate.ts — und aus
+// src/sets/bestandsmenge.ts und ersatzteilSql() in src/infra/validate.ts — und aus
 // demselben Grund: `COALESCE(p.bl_part_number, p.part_number)` stand an …
 // Ausführlich: docs/begruendungen/utils/blZuordnung.ts.md#abschnitt-4
 

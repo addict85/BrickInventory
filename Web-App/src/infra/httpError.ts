@@ -23,7 +23,7 @@ function handleRouteError(res: any, e: any, status?: number, req?: any) {
   else console.warn(`[route-warnung] ${anfrage}${code}: ${fehlertext(e)}`);
   if (res.headersSent) return;
   // Trägt der Fehler einen Code, gilt der
-  // Helfer wie src/haushalt/haushalt.ts und utils/setMove.ts werfen mit
+  // Helfer wie src/haushalt/haushalt.ts und src/sets/setMove.ts werfen mit
   // fehlerWerfen() und geben damit den GRUND mit, nicht den Satz. Erst hier —
   // wo der Request bekannt ist — wird daraus ein Satz in der Sprache des …
   // Ausführlich: docs/begruendungen/src/infra/httpError.ts.md#handlerouteerror-2

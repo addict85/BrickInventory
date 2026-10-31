@@ -33,7 +33,7 @@ damit etwas Falsches ueber ihren Inhalt.
 
 Das blieb nicht folgenlos: generateThumb() wird an NEUN Stellen gebraucht,
 verteilt auf jobs/catalogSync, jobs/imageQueue, jobs/partsCatalogEnrich,
-jobs/startNachlaeufe, utils/partsImport, utils/setService und server.ts.
+jobs/startNachlaeufe, utils/partsImport, src/sets/setService und server.ts.
 Alle sechs Nicht-Route-Dateien mussten also aus der aeussersten Schicht
 importieren, um an eine Bildfunktion zu kommen. Die Abhaengigkeit zeigte
 nach aussen statt nach innen, und zwar oefter als jede andere im Baum

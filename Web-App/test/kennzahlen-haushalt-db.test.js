@@ -78,8 +78,8 @@ test('Kopfzeile und Galerie zaehlen dieselben Sets', async (t) => {
   await haeltSet(db, kind, '21318-1', 1);
 
   const { scopeIds } = _req('src/haushalt/haushalt.js');
-  const { getStats } = _req('utils/handlers/stats.js');
-  const { getSets } = _req('utils/handlers/sets.js');
+  const { getStats } = _req('src/bestand/kennzahlen.js');
+  const { getSets } = _req('src/sets/abfragen.js');
 
   for (const modus of ['all', 'own']) {
     const uids = await scopeIds(haupt, modus);

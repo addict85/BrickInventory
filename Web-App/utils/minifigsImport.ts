@@ -1,12 +1,12 @@
 import * as db from '../db/database';
 import { getSetMinifigs } from '../clients/rebrickable';
 import { logAndContinue } from '../src/infra/httpError';
-import { mitVersion } from './setNummer';
+import { mitVersion } from '../src/sets/setNummer';
 import { merkeFiguren, merkeSetFiguren } from './katalogPflege';
 
 /**
  * Minifiguren eines Sets aus dem Katalog übernehmen — reine Katalogarbeit
- * ohne Route, damit utils/setService.ts keinen Router importieren muss.
+ * ohne Route, damit src/sets/setService.ts keinen Router importieren muss.
  */
 
 /**

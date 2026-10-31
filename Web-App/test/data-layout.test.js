@@ -32,7 +32,7 @@ const read  = f => fs.readFileSync(path.join(ROOT, f), 'utf8');
 const strip = s => require('./helpers/sources').ohneKommentare(s).replace(/(^|[^:])\/\/[^\n]*/g, '$1');
 
 /** Alle Quelldateien, die Pfade schreiben könnten. */
-const SOURCES = ['server.ts', 'routes/api_v1/parts.ts', 'routes/api_v1/sets.ts', 'utils/dienste/sets.ts', 'utils/thumbs.ts',
+const SOURCES = ['server.ts', 'routes/api_v1/parts.ts', 'routes/api_v1/sets.ts', 'src/sets/dienst.ts', 'utils/thumbs.ts',
                  'routes/api_v1/pdf.ts', 'jobs/partsCatalogEnrich.ts', 'jobs/catalogSync.ts'];
 
 test('keine Quelle schreibt mehr die alten Pfade', () => {

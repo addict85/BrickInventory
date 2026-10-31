@@ -120,7 +120,7 @@ test('keine Build-Artefakte neben den TypeScript-Quellen', () => {
   // ── Woher dieser Test kommt ─────────────────────────────────────────────
   // Ein `node scripts/build-ts.js` OHNE --outdir schreibt die .js in-place —
   // und genau das ist einmal passiert: 61 transpilierte Dateien lagen wieder
-  // neben ihren Quellen, nachweislich VERALTET (utils/setMove.js fehlte, der
+  // neben ihren Quellen, nachweislich VERALTET (src/sets/setMove.js fehlte, der
   // Lauf war also älter als hardened-109). Das ist mehr als Unordnung:
   // server.ts lädt einige Module per require() ohne Endung, und die
   // Node-Auflösung nimmt eine vorhandene .js vor der .ts — `npm run dev`
