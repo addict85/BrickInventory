@@ -121,7 +121,13 @@ test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async (t) => {
 
   const alsNutzer = async (id, admin = false) => {
     const r = await fetch(`${basis}/einloggen/${id}/${admin ? 1 : 0}`);
-    return (r.headers.get('set-cookie') || '').split(';')[0];
+    const keks = (r.headers.get('set-cookie') || '').split(';')[0];
+    // Trägt die Sitzung nicht, wären alle folgenden Fälle nur 401 — dann hier die Ursache nennen.
+    const probe = await fetch(`${basis}/api/v1/vouchers`, { headers: { cookie: keks } });
+    if (!r.ok || !keks || probe.status !== 200)
+      assert.fail(`Anmeldung als ${id} trägt nicht: ${r.status} ${await r.text()}, Keks ${keks ? 'da' : 'fehlt'}, `
+        + `Probe ${probe.status} ${await probe.text()}`);
+    return keks;
   };
   const hole = (pfad, keks, opts = {}) =>
     fetch(basis + pfad, { ...opts, headers: { cookie: keks, ...(opts.headers || {}) } });
