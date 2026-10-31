@@ -369,15 +369,11 @@ const SQL_NOCH_IM_DIENST = new Set([
     'src/finanzen/preisalarm.ts',
     'src/finanzen/rechnung/bewertung.ts',
     'src/finanzen/rechnung/preise.ts',
-    'src/finanzen/setValue.ts',
     'src/katalog/dienst.ts',
-    'src/katalog/instructions.ts',
-    'src/katalog/katalogPflege.ts',
     'src/merkliste/merkliste.ts',
     'src/merkliste/wantedListe.ts',
     'src/teile/abfragen.ts',
     'src/teile/partsSummary.ts',
-    'src/verwaltung/dienst.ts',
 ]);
 
 test('SQL steht nur in Repositories und in db/', () => {

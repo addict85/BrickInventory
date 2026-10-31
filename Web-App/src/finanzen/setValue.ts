@@ -2,8 +2,8 @@
  * Marktwert eines Sets aus den Erfassungen und den zustandsabhängigen Preisen.
  * Ausführlich: docs/begruendungen/src/finanzen/setValue.ts.md#abschnitt
  */
-import * as db from '../../db/database';
 import { inZehntel4, aufRappen, alsText } from '../infra/geld';
+import * as repo from './repository/setWert';
 
 export interface SetValue {
   /** Gewichteter Stückpreis — das, was Kachel und Detailansicht zeigen. */
@@ -40,12 +40,7 @@ export async function loadConditionPrices(
   if (ttlHours) params.push(ttlHours);
 
   // avg_price, NICHT qty_avg_price — siehe Modulkommentar.
-  const rows = await db.all(
-    `SELECT set_number, condition, avg_price
-       FROM price_cache
-      WHERE set_number = ANY($1) AND condition IN ('N','U') AND currency_code = $2${ttlClause}`,
-    params
-  );
+  const rows = await repo.cachePreiseFuerSets(params, ttlClause);
 
   for (const r of rows) {
     const p = num(r.avg_price);
@@ -117,9 +112,7 @@ export async function getSetValue(
   // Nur noch EINE Abfrage. Hier stand daneben ein `SELECT quantity, condition
   // FROM sets` für den Rückfall. Beides ist weggefallen:
   // Ausführlich: docs/begruendungen/src/finanzen/setValue.ts.md#getsetvalue-acqs
-  const acqs = await db.all(
-    'SELECT quantity, condition FROM set_acquisitions WHERE user_id=$1 AND set_number=$2',
-    [userId, setNumber]);
+  const acqs = await repo.setErfassungenZumWert(userId, setNumber);
   const prices = await loadConditionPrices([setNumber], currency);
   return valueSet(setNumber, acqs, prices, 'N', 1);
 }

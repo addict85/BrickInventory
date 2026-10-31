@@ -249,12 +249,8 @@ module.exports.ohneKommentare = ohneKommentare;
 function proxyThumbQuelle() {
   const path = require('path'), fs = require('fs');
   const ROOT = path.join(__dirname, '..', '..');
-  return [
-    path.join(ROOT, 'routes/imgProxy.ts'),
-    path.join(ROOT, 'src/katalog/bilder/proxyThumbs.ts'),
-    // Cache-Auslieferung, seit Nachtrag 135 eigene Datei.
-    path.join(ROOT, 'src/katalog/bilder/imgCacheServe.ts'),
-  ].map(p => fs.readFileSync(p, 'utf8')).join('\n');
+  return ['routes/imgProxy.ts', 'src/katalog/bilder/proxyThumbs.ts', 'src/katalog/bilder/imgCacheServe.ts']
+    .map(dienstQuelle).join('\n');
 }
 module.exports.proxyThumbQuelle = proxyThumbQuelle;
 
