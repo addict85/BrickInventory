@@ -6,7 +6,7 @@
  * preise.ts.
  */
 
-import { meldeUndLiefere } from '../../infra/httpError';
+import { meldeUndLiefere, fehlertext } from '../../infra/httpError';
 import * as repo from '../repository/bewertung';
 import { setPreiseFrisch } from '../repository/preisCache';
 import { asIds } from '../../haushalt/haushalt';
@@ -119,9 +119,9 @@ export async function computeSetsValuation(viewerId: number, ids: Blickfeld) {
     for (const cond of needed) {
       try {
         priceByCond[cond] = await fetchPrice(set.set_number, cond, guideType, currency, ttlHours, pre);
-      } catch (e: any) {
+      } catch (e) {
         priceByCond[cond] = null;
-        errors.push(e.message);
+        errors.push(fehlertext(e));
       }
     }
 
@@ -253,7 +253,7 @@ export async function computeMinifigsValuation(viewerId: number, ids: Blickfeld)
       let pd: any;
       if (fig.bl_fig_number) {
         try { pd = await fetchMinifigPrice(fig.bl_fig_number, cond, currency, ttlHours, figVorrat); }
-        catch (e: any) { pd = { avg_price: 0, qty_avg_price: 0, error: e.message }; }
+        catch (e) { pd = { avg_price: 0, qty_avg_price: 0, error: fehlertext(e) }; }
       } else {
         // Keine BrickLink-Nummer hinterlegt: Marktpreis aus den einzelnen
         // BrickLink-Teilepreisen der Minifigur schätzen (Rebrickable→BrickLink-
@@ -349,8 +349,8 @@ export async function computePartsValuation(viewerId: number, ids: Blickfeld) {
       let pd: any;
       try {
         pd = await fetchPartPrice(part.bl_part_number || part.part_number, part.color_id ?? KEINE_FARBE, cond, currency, ttlHours, teilVorrat);
-      } catch (e: any) {
-        pd = { avg_price: 0, qty_avg_price: 0, error: e.message };
+      } catch (e) {
+        pd = { avg_price: 0, qty_avg_price: 0, error: fehlertext(e) };
       }
       // avg_price zuerst: BrickLinks angezeigter "Avg Price". qty_avg_price ist
       // der mengengewichtete Schnitt und liegt systematisch darunter. Zusätzlich
@@ -418,7 +418,7 @@ export async function computePartsValuation(viewerId: number, ids: Blickfeld) {
 }
 
 /** Zustände eines manuellen Eintrags aus den Erfassungen; ohne Erfassung „Neu“ (wie conditionsFromAcquisitions()). */
-function conditionsOf(acqs: any[]): ('N' | 'U')[] {
+function conditionsOf(acqs: { condition?: string | null }[]): ('N' | 'U')[] {
   if (!acqs?.length) return ['N'];
   const set = new Set(acqs.map(a => (a.condition === 'U' ? 'U' : 'N')));
   return (['N', 'U'] as const).filter(c => set.has(c));

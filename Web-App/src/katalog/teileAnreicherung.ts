@@ -119,7 +119,7 @@ async function enrichSetParts(setNumber: string) {
   if (!csvParts.length) return;
 
   const catalogRows = await repo.setTeileKatalog(n);
-  const catalogMap: any = {};
+  const catalogMap: Record<string, { image_url: string | null; image_local: string | null; bl_part_number?: string | null }> = {};
   for (const r of catalogRows) catalogMap[`${r.part_number}|${r.color_id}`] = r;
 
   // Alle Teilenummern, zu denen schon eine Zeile in bl_zuordnung steht
@@ -150,7 +150,8 @@ async function enrichSetParts(setNumber: string) {
   if (missing.length > 0) {
     // Step 2: Fetch all parts for this set from API
 
-    const apiParts: any = {}; // key: "part_num|color_id"
+    type ApiTeil = { part_name: string; bl_part_num: string | null; image_url: string | null; color_name: string; color_hex: string; quantity: number };
+    const apiParts: Record<string, ApiTeil> = {}; // key: "part_num|color_id"
     let url = `https://rebrickable.com/api/v3/lego/sets/${pfadSegment(n)}/parts/?page_size=500&inc_part_details=1`;
     while (url) {
       const data = await apiGet(url, rbKey);
@@ -202,13 +203,13 @@ async function enrichSetParts(setNumber: string) {
     // Build blMap from bl_zuordnung for all csvParts (includes what we just fetched)
     const blMapRows = await repo.blZuordnungen(csvParts.map(p => p.part_num))
       .catch(meldeUndLiefere('teile-enrich:blMapRows', []));
-    const blMap: any = {};
+    const blMap: Record<string, string | null> = {};
     for (const r of blMapRows) blMap[r.rb_id] = r.bl_id;
 
     // Step 3: Save all CSV parts to catalog with API data
     for (const p of csvParts) {
       const key  = `${p.part_num}|${p.color_id}`;
-      const info = apiParts[key] || {};
+      const info: Partial<ApiTeil> = apiParts[key] ?? {};
       // BL ID: from API response, then from bl_zuordnung (just updated)
       const blPartNum = info.bl_part_num || blMap[p.part_num] || null;
       // Sie geht in die ZUORDNUNG, nicht in den Set-Teile-Katalog
@@ -407,14 +408,14 @@ async function enrichSetMinifigs(setNumber: string) {
   const invRows = await repo.inventareDerFiguren(figNums).catch(meldeUndLiefere('teile-enrich:invRows', []));
 
   // Deduplicate by set_num (keep highest version = first due to ORDER BY DESC)
-  const invMap: any = {};
+  const invMap: Record<string, number> = {};
   for (const r of invRows) {
     if (!invMap[r.set_num]) invMap[r.set_num] = r.id;
   }
 
   // Collect ALL part_nums across all minifigs
   const allPartNums = new Set<string>();
-  const figPartsMap: any = {}; // fig_number -> [{part_num, color_id, quantity}]
+  const figPartsMap: Record<string, { parts: repo.InventarTeil[]; figQty: number }> = {};
 
   for (const fig of figs) {
     const invId = invMap[fig.fig_number];
@@ -469,7 +470,7 @@ async function enrichSetMinifigs(setNumber: string) {
   }
 
   // Save parts for each minifig to set_parts_catalog
-  for (const [figNum, { parts }] of Object.entries(figPartsMap) as [string, { parts: any[] }][]) {
+  for (const [figNum, { parts }] of Object.entries(figPartsMap)) {
     for (const p of parts) {
       // Ohne bl_part_number: Seit Migration 0037 steht die BrickLink-Nummer
       // einmal je Teil in bl_zuordnung, nicht je Set-Teile-Zeile. Die
@@ -548,7 +549,7 @@ async function _redownloadMissingImages() {
     const rows = await repo.lokaleBilderMitAdresse().catch(meldeUndLiefere('teile-enrich:bildpfade lesen', []));
     // Fehlende Dateien UND fehlende Vorschauen einsammeln: Eine Vorschau
     // entsteht sonst nur beim Erfassen und hätte keinen zweiten Anlauf.
-    const missing: any[] = [];
+    const missing: { image_local: string; image_url: string | null; fp: string }[] = [];
     const ohneVorschau: string[] = [];
     for (const r of rows) {
       const fp = _fsPathFromLocal(r.image_local);
@@ -589,6 +590,7 @@ async function _redownloadMissingImages() {
     const worker = async () => {
       while (idx < missing.length) {
         const m = missing[idx++];
+        if (!m) break;
         let ok = false;
         if (m.image_url) {
           await cdnImageLimiter.acquire().catch(logAndContinue('teile-enrich:acquire'));
