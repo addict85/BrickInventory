@@ -268,7 +268,7 @@ test('die Verkleinerung lässt keine Anfrage warten', () => {
   // grosszügig geschnittenes Stück des Route-Rumpfs, was nach dem Umzug ins
   // Leere zeigte.
   const proxy = fs.readFileSync(
-    path.join(ROOT, 'utils', 'imgCacheServe.ts'), 'utf8');
+    path.join(ROOT, 'utils/imgCacheServe.ts'), 'utf8');
   assert.doesNotMatch(proxy, /await makeProxyThumb/,
     'Eine wartende Anfrage reiht 150 ms je Bild aneinander');
   assert.match(proxy, /queueThumb\(cacheFile, thumbFile\)/,

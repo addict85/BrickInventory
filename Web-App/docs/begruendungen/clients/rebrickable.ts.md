@@ -45,7 +45,7 @@ einen fremden Host bekam damit den Schluessel, und eine Umleitung
 von https auf http gab ihn im Klartext preis (die
 Bibliothekswahl eine Zeile hoeher liess beides zu).
 
-Die Regel dafuer steht in utils/fremdeAdressen.ts, gemeinsam mit
+Die Regel dafuer steht in src/infra/fremdeAdressen.ts, gemeinsam mit
 der des Dateidownloads darunter: Obergrenze, kein Downgrade,
 Geheimnisse beim Hostwechsel abwerfen.
 

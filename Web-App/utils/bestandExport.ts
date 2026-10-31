@@ -4,7 +4,7 @@
  * damit keine Route eine andere importiert.
  */
 import * as db from '../db/database';
-import { toCsv } from './csvExport';
+import { toCsv } from '../src/infra/csvExport';
 import { erfassungsTagSql } from './acquisitions';
 
 // Shared logic to build the Teile CSV export content (manuell erfasst only).

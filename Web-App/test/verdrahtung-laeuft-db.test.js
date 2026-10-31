@@ -140,7 +140,7 @@ test('die fünf Verdrahtungen über ihre echten Adressen', { concurrency: 1 }, a
     const b = await r.json().catch(() => ({}));
     assert.equal(r.status, 400, `Erwartet 400, bekam ${r.status}: ${JSON.stringify(b)}`);
     // Die Antwort traegt den uebersetzten SATZ, nicht den Schluessel — die
-    // Fehlersprache liegt zentral (utils/fehlerTexte.ts). Geprueft wird
+    // Fehlersprache liegt zentral (src/infra/fehlerTexte.ts). Geprueft wird
     // deshalb der Satz; er nennt die Zahl, auf die es ankommt.
     assert.match(String(b.error || ''), /mindestens 8 Zeichen/,
       `Abgelehnt wurde mit „${b.error}" — erwartet die Passwortlänge. Ein anderer ` +

@@ -8,12 +8,12 @@ import * as db from '../db/database';
 import { downloadSetImage } from '../utils/setImages';
 import { generateThumb } from '../utils/thumbs';
 import { anleitungEinreihen } from '../utils/anleitungsAuftrag';
-import { verschluesseleAltbestand } from '../utils/geheimnisAltbestand';
+import { verschluesseleAltbestand } from '../src/infra/geheimnisAltbestand';
 import { verschluesseleGutscheinAltbestand } from '../utils/gutscheinDateien';
 import * as catalogSync from './catalogSync';
 import * as purchasePriceBackfill from './purchasePriceBackfill';
-import { APP_ROOT, IMAGES_DIR } from '../utils/appPaths';
-import { fehlertext, logAndContinue, meldeUndLiefere } from '../utils/httpError';
+import { APP_ROOT, IMAGES_DIR } from '../src/infra/appPaths';
+import { fehlertext, logAndContinue, meldeUndLiefere } from '../src/infra/httpError';
 
 /**
  * Sets ohne Anleitung einreihen — nicht, wenn ein Abruf noch wartet oder in
@@ -30,7 +30,7 @@ async function anleitungenNachtragen(): Promise<void> {
   for (const { set_number } of missing) await anleitungEinreihen(set_number);
 }
 
-/** Geheimnisse aus der Zeit vor der Verschlüsselung (utils/geheimnis.ts). */
+/** Geheimnisse aus der Zeit vor der Verschlüsselung (src/infra/geheimnis.ts). */
 async function geheimnisseVerschluesseln(): Promise<void> {
   const n = await verschluesseleAltbestand() + await verschluesseleGutscheinAltbestand();
   if (n) console.log(`[geheimnis] ${n} Geheimnisse nachträglich verschlüsselt`);

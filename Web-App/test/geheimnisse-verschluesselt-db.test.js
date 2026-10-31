@@ -26,7 +26,7 @@ process.env.DATA_KEY = crypto.randomBytes(32).toString('base64');
 const _req = require('./helpers/sources').buildAndRequire();
 const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
-const g = _req('utils/geheimnis.js');
+const g = _req('src/infra/geheimnis.js');
 
 const NAME = `geheim_${process.pid}`;
 
@@ -84,7 +84,7 @@ test('Geheimnisse verschlüsselt', { concurrency: 1 }, async (t) => {
   await t.test('Altbestand wird nachverschlüsselt', async () => {
     const id = (await db.get(`INSERT INTO vouchers (user_id, number, pin, amount, currency)
       VALUES ($1, '5045076374450013131', '9753', 10, 'CHF') RETURNING id`, [uid])).id;
-    await _req('utils/geheimnisAltbestand.js').verschluesseleAltbestand();
+    await _req('src/infra/geheimnisAltbestand.js').verschluesseleAltbestand();
     const roh = (await db.get('SELECT pin FROM vouchers WHERE id = $1', [id])).pin;
     assert.ok(roh.startsWith('v1:'), roh);
     assert.equal(g.entschluessele(roh), '9753');

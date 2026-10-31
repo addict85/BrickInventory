@@ -1,8 +1,8 @@
-import { konfig } from './konfig';
+import { konfig } from '../src/infra/konfig';
 import path from 'path';
 import fs from 'fs';
 import https from 'https';
-import { SET_IMAGES_DIR } from './appPaths';
+import { SET_IMAGES_DIR } from '../src/infra/appPaths';
 
 /**
  * Set-Bilder vom CDN holen und lokal ablegen.
@@ -20,7 +20,7 @@ const SET_IMG_MAX_BYTES = 20 * 1024 * 1024;
  * Ausführlich: docs/begruendungen/utils/setImages.ts.md#bilduseragent
  */
 function bildUserAgent(): string {
-  const { appVersion } = require('../utils/appVersion');
+  const { appVersion } = require('../src/infra/appVersion');
   const eigener = konfig().bildUserAgent;
   if (eigener) return eigener;
   return `BrickInventoryManager/${appVersion()} (self-hosted; +https://github.com/brickinventory)`;

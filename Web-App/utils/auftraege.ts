@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto';
 import * as db from '../db/database';
-import { notify } from './pgNotify';
-import { imNamenVon } from './anfrageKonto';
+import { notify } from '../db/pgNotify';
+import { imNamenVon } from '../src/infra/anfrageKonto';
 
 /**
  * Die Auftragstabelle (Migrationen 0066, 0080): jede Hintergrundarbeit als

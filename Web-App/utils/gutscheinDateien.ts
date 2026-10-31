@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { DATA_DIR } from './appPaths';
-import { verschluesselePuffer, entschluesselePuffer, istVerschluesselterPuffer } from './geheimnis';
+import { DATA_DIR } from '../src/infra/appPaths';
+import { verschluesselePuffer, entschluesselePuffer, istVerschluesselterPuffer } from '../src/infra/geheimnis';
 
 /**
  * Gutschein-PDFs tragen Kartennummer und PIN im Klartext. Sie liegen deshalb

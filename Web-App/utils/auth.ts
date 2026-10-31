@@ -3,18 +3,18 @@
  * Ausführlich: docs/begruendungen/utils/auth.ts.md#abschnitt
  */
 
-import { konfig } from './konfig';
+import { konfig } from '../src/infra/konfig';
 import * as db from '../db/database';
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import type { Request, Response, NextFunction } from 'express';
 import { checkLoginAllowed, gibAnmeldeplatzFrei, recordLoginFailure, recordLoginSuccess } from './loginLimiter';
-import { sendeFehler } from './fehlerTexte';
-import { meldeUndLiefere } from './httpError';
+import { sendeFehler } from '../src/infra/fehlerTexte';
+import { meldeUndLiefere } from '../src/infra/httpError';
 import * as zf from './zweiterFaktor';
 import * as passkeys from './passkeys';
-import { ausTabelle } from './validate';
-import type { FehlerCode } from './fehlerTexte';
+import { ausTabelle } from '../src/infra/validate';
+import type { FehlerCode } from '../src/infra/fehlerTexte';
 
 /**
  * Warum diese Typen hier stehen

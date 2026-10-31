@@ -2,8 +2,8 @@
 
 import { nacharbeit } from './nacharbeit';
 import * as db from '../db/database';
-import { verschluessele, entschluessele, istVerschluesselt } from './geheimnis';
-import { fehlerWerfen } from './fehlerTexte';
+import { verschluessele, entschluessele, istVerschluesselt } from '../src/infra/geheimnis';
+import { fehlerWerfen } from '../src/infra/fehlerTexte';
 
 /** Konto-Einstellung mit Rückfall auf die globale, dann auf `fallback`. */
 async function getSetting(userId: number, key: string, fallback?: any) {
@@ -13,7 +13,7 @@ async function getSetting(userId: number, key: string, fallback?: any) {
   return klar(key, g?.value) || fallback;
 }
 
-/** Geheime Werte liegen verschlüsselt (utils/geheimnis.ts); hier werden sie wieder lesbar. */
+/** Geheime Werte liegen verschlüsselt (src/infra/geheimnis.ts); hier werden sie wieder lesbar. */
 function klar(key: string, wert: string | null | undefined): string | null | undefined {
   return SECRET_KEYS.has(key) ? entschluessele(wert) : wert;
 }

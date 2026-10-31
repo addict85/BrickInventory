@@ -1,20 +1,20 @@
 /** /api/v1/minifigs — CRUD und Teile-Liste (Erfassungen: ./acquisitions.ts). */
 import express from 'express';
-import { handleRouteError, pfadParam } from '../../utils/httpError';
+import { handleRouteError, pfadParam } from '../../src/infra/httpError';
 import { requireToken } from './middleware';
 import { scopeIds, parseScopeMode, resolveWriteTarget, writableIds } from '../../utils/household';
 import { getManualMinifigs, getMinifigStats, getMinifigs } from '../../utils/handlers/minifigs';
 import { addManualFig, updateManualFig, importiereFigurenCsv } from '../../utils/manuelleFiguren';
 import { getSetting } from '../../utils/settings';
 import { getMinifigPriceHistory } from '../../utils/priceHistory';
-import { einzelwert } from '../../utils/validate';
+import { einzelwert } from '../../src/infra/validate';
 import { verwendendeSets } from '../../utils/handlers/shared';
-import { sendeFehler } from '../../utils/fehlerTexte';
+import { sendeFehler } from '../../src/infra/fehlerTexte';
 import { normalisiereLagerort, setzeLagerort } from '../../utils/lagerort';
 import { loescheFigur } from '../../utils/loeschen';
 import { teileDerFigur } from '../../utils/dienste/figuren';
-import { csvEmpfang } from '../../utils/dateiEmpfang';
-import { csvImportAntwort } from '../../utils/csvExport';
+import { csvEmpfang } from '../../src/infra/dateiEmpfang';
+import { csvImportAntwort } from '../../src/infra/csvExport';
 const router = express.Router();
 
 // ── MINIFIGS ─────────────────────────────────────────────────────────────────

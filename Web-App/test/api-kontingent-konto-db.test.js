@@ -23,7 +23,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
 const k = _req('utils/apiKontingent.js');
-const { imNamenVon } = _req('utils/anfrageKonto.js');
+const { imNamenVon } = _req('src/infra/anfrageKonto.js');
 
 test('Tageskontingent je Konto', { concurrency: 1 }, async (t) => {
   try { await db.initSchema(); }

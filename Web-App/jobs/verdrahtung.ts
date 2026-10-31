@@ -6,7 +6,7 @@
  * der Pfad über ../jobs/ lässt require-Haken der Tests ihn erkennen.
  */
 import { verdrahteNacharbeit } from '../utils/nacharbeit';
-import { meldeUndWeiter } from '../utils/httpError';
+import { meldeUndWeiter } from '../src/infra/httpError';
 
 function verdrahte(): void {
   verdrahteNacharbeit({

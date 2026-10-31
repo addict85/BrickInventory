@@ -2,7 +2,7 @@
  * Was bei BrickLink wie heisst — die Zuordnung, an einer Stelle.
  * Ausführlich: docs/begruendungen/utils/blZuordnung.ts.md#abschnitt
  */
-import { meldeUndLiefere } from './httpError';
+import { meldeUndLiefere } from '../src/infra/httpError';
 import * as db from '../db/database';
 
 /**
@@ -103,7 +103,7 @@ export async function blAbrufNummern(art: BlArt, rbIds: string[]): Promise<Map<s
 
 // Die Zuordnung IN einer Abfrage
 // Zwei Schnipsel, dieselbe Bauart wie mengeJoin()/mengeAus() in
-// utils/bestandsmenge.ts und ersatzteilSql() in utils/validate.ts — und aus
+// utils/bestandsmenge.ts und ersatzteilSql() in src/infra/validate.ts — und aus
 // demselben Grund: `COALESCE(p.bl_part_number, p.part_number)` stand an …
 // Ausführlich: docs/begruendungen/utils/blZuordnung.ts.md#abschnitt-4
 

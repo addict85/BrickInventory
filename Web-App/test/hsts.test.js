@@ -112,7 +112,7 @@ test('beide Wege, die Verschluesselung zu erkennen, werden geprueft', () => {
 test('die Kopfzeile laesst sich abstellen', () => {
   // HSTS klebt im Browser. Wer eine Fehlkonfiguration bemerkt, muss sie
   // abstellen koennen, ohne auf den Ablauf zu warten.
-  assert.match(fs.readFileSync(path.join(__dirname, '..', 'utils', 'konfig.ts'), 'utf8'), /'HSTS_MAX_AGE'/,
+  assert.match(fs.readFileSync(path.join(__dirname, '..', 'src/infra/konfig.ts'), 'utf8'), /'HSTS_MAX_AGE'/,
     'Es gibt keinen Weg mehr, HSTS abzustellen');
   assert.match(server, /konfig\(\)\.hstsMaxAge/, 'server.ts liest HSTS_MAX_AGE nicht aus der Konfiguration');
   assert.match(server, /hstsAlter !== 0/,

@@ -5,7 +5,7 @@
  */
 import { recordAcquisitionForDay } from './acquisitions';
 
-import { fehlerWerfen } from './fehlerTexte';
+import { fehlerWerfen } from '../src/infra/fehlerTexte';
 
 export interface MoveResult {
   quantity: number;

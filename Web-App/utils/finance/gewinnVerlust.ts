@@ -11,7 +11,7 @@ import { effectiveCondition } from './zustand';
 import { computeMinifigsValuation, computePartsValuation } from './bewertung';
 import type { Blickfeld } from './preise';
 import { ladeSetErfassungen, zaehle } from './abfragen';
-import { aufRappen, inZehntel4, summeAus } from '../geld';
+import { aufRappen, inZehntel4, summeAus } from '../../src/infra/geld';
 
 // ── GET /api/finance/parts-valuation ─────────────────────────────────────────────
 async function computePnl(viewerId: number, ids: Blickfeld) {

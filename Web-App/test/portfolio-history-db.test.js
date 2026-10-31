@@ -273,7 +273,7 @@ test('der Mailer prüft Zertifikate, sofern es niemand ausdrücklich abschaltet'
   const fs = require('node:fs');
   const path = require('node:path');
   const { ROOT, ohneKommentare } = require('./helpers/sources');
-  const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'utils', 'mailer.ts'), 'utf8'));
+  const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'src/infra/mailer.ts'), 'utf8'));
 
   assert.doesNotMatch(src, /rejectUnauthorized:\s*false/,
     'Zertifikatsprüfung fest abgeschaltet — SMTP-Zugangsdaten und Rücksetz-Links gehen über eine ungeprüfte Verbindung');
@@ -285,7 +285,7 @@ test('der Mailer prüft Zertifikate, sofern es niemand ausdrücklich abschaltet'
   // Import übergeht smtp_* seit dem 29.10. absichtlich, der Export nimmt alle
   // Zeilen aus global_settings). Gegenprobe (29.10.2026): smtp_insecure_tls aus
   // der Liste von POST / entfernt → rot.
-  const settings = ohneKommentare(fs.readFileSync(path.join(ROOT, 'routes', 'settings.ts'), 'utf8'));
+  const settings = ohneKommentare(fs.readFileSync(path.join(ROOT, 'routes/settings.ts'), 'utf8'));
   const speichern = settings.slice(settings.indexOf("router.post('/',"), settings.indexOf("router.post('/import'"));
   assert.ok(speichern.length > 0, 'POST / in routes/settings.ts nicht gefunden');
   assert.match(speichern, /'smtp_insecure_tls'/, 'smtp_insecure_tls lässt sich über POST / nicht speichern');

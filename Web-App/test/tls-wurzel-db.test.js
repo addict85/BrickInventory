@@ -35,8 +35,8 @@ process.env.CA_ZERTIFIKAT = CA;
 
 const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
-const { tlsStandAus } = _req('utils/tlsWurzel.js');
-const { ladeKonfig, cookieSicher } = _req('utils/konfig.js');
+const { tlsStandAus } = _req('src/infra/tlsWurzel.js');
+const { ladeKonfig, cookieSicher } = _req('src/infra/konfig.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const session = require(path.join(ROOT, 'node_modules', 'express-session'));
 const pgSession = require(path.join(ROOT, 'node_modules', 'connect-pg-simple'))(session);

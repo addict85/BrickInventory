@@ -28,7 +28,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
 const { haeltTeil } = require('./helpers/bestand');
-const MIG = (n) => fs.readFileSync(path.join(__dirname, '..', 'db', 'migrations', n), 'utf8');
+const MIG = (n) => fs.readFileSync(path.join(__dirname, '..', 'db/migrations', n), 'utf8');
 const PID = process.pid;
 
 test('Set-Nummern mit Version, ein Set-Stamm, Ersatzteil 0/1', { concurrency: 1 }, async (t) => {

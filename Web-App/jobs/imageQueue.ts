@@ -1,11 +1,11 @@
 import fs from 'fs';
 import path from 'path';
 import * as db from '../db/database';
-import { logAndContinue, meldeUndLiefere } from '../utils/httpError';
+import { logAndContinue, meldeUndLiefere } from '../src/infra/httpError';
 import { downloadSetImage } from '../utils/setImages';
 import { grundFuer, istBekanntFehlend, merkeFehlend } from '../utils/imageMisses';
 import { generateThumb } from '../utils/thumbs';
-import { SET_IMAGES_DIR } from '../utils/appPaths';
+import { SET_IMAGES_DIR } from '../src/infra/appPaths';
 import { setzeZustand } from '../utils/laufzustand';
 import { liesPause, pausiereArt } from '../utils/auftraege';
 import { STAPEL, TAKT_MS, NOTIZ_GILT_MS, merkeGebraucht, schreibePuffer, notiereBildbedarf, loescheVerfallene, initImageQueue,

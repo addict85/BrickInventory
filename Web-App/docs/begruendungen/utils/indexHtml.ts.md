@@ -29,7 +29,7 @@ Zwei Caches, beide bewusst klein gehalten:
     eine ANNAHME, und sie ist gebrochen: scripts/bump-version.js hängt an
     `npm postinstall` und am Docker-Build — wer `git pull` macht und neu
     startet, bekommt ihn nicht. Marcos Browser hielt deshalb ein sechs Tage
-    altes styles.css fest. Seither leitet utils/assetStempel.ts den `?v=`
+    altes styles.css fest. Seither leitet src/infra/assetStempel.ts den `?v=`
     aus den Dateien selbst ab; die Annahme wird nicht mehr gebraucht.
   • Der Theme-Wert wird gecacht und beim Speichern invalidiert
     (invalidateTheme() in routes/settings.ts) — kein DB-Treffer pro Aufruf.

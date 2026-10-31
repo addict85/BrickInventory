@@ -9,7 +9,7 @@ import { asIds } from './household';
 import { buildChart } from './chartData';
 import { blNummerVon } from './blZuordnung';
 import { entwicklungProzent } from './setValue';
-import { konfig } from './konfig';
+import { konfig } from '../src/infra/konfig';
 
 /**
  * Welche Zustaende gehoeren ins Diagramm?

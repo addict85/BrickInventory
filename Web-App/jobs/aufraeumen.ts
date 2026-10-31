@@ -11,7 +11,7 @@ import { raeumeErledigteAuf } from '../utils/auftraege';
 import { purgeAltePreise } from '../utils/priceHistory';
 import { raeumeBildCacheAuf } from '../utils/imgCacheServe';
 import { loescheVerfallene } from '../utils/bildbedarf';
-import { fehlertext } from '../utils/httpError';
+import { fehlertext } from '../src/infra/httpError';
 
 type Schritt = [name: string, lauf: () => Promise<unknown>];
 

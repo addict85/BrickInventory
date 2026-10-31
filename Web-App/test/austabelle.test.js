@@ -16,7 +16,7 @@ const fs     = require('fs');
 const path   = require('path');
 
 const ROOT = path.join(__dirname, '..');
-const { ausTabelle } = require(path.join(ROOT, 'dist', 'utils', 'validate.js'));
+const { ausTabelle } = require(path.join(ROOT, 'dist', 'src/infra/validate.js'));
 
 const TABELLE = { year_desc: 'rb.year DESC', name_asc: 'rb.name ASC' };
 

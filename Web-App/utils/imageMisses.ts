@@ -1,4 +1,4 @@
-import { logAndContinue, meldeUndLiefere } from './httpError';
+import { logAndContinue, meldeUndLiefere } from '../src/infra/httpError';
 import * as db from '../db/database';
 
 /**

@@ -77,7 +77,7 @@ function existiertQuelle(rel) {
 }
 
 /** Ordner, die es im Web-Baum wirklich gibt — alles andere ist kein Pfad von hier. */
-const ORDNER = ['routes', 'utils', 'jobs', 'clients', 'db', 'startup', 'public', 'scripts', 'types'];
+const ORDNER = ['routes', 'src', 'utils', 'jobs', 'clients', 'db', 'startup', 'public', 'scripts', 'types'];
 
 test('kein Test liest eine Quelldatei, die es nicht gibt', () => {
   const dateien = fs.readdirSync(__dirname).filter(f => f.endsWith('.test.js')).sort();
@@ -111,7 +111,7 @@ test('kein Test liest eine Quelldatei, die es nicht gibt', () => {
       if (!existiertQuelle(p)) kaputt.push(`${datei}: ${p}`);
     }
 
-    // ── Form 2: path.join(ROOT, 'utils', 'auth.ts') ────────────────────────
+    // ── Form 2: path.join(ROOT, 'utils/auth.ts') ────────────────────────
     for (const m of src.matchAll(/path\.join\(\s*ROOT\s*,([^)]*)\)/g)) {
       const roh = m[1].split(',').map(s => s.trim()).filter(Boolean);
       const segmente = roh.map(s => /^['"]([^'"]*)['"]$/.exec(s)?.[1]);

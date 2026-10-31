@@ -518,7 +518,7 @@ laufenden Server gesehen: „open / BrickLink-Farbe 85 ist im Katalog
 keiner Rebrickable-Farbe zugeordnet" zwischen lauter englischen
 Spalten).
 
-Dieselbe Teilung wie bei utils/fehlerTexte.ts: EINE Entscheidung, zwei
+Dieselbe Teilung wie bei src/infra/fehlerTexte.ts: EINE Entscheidung, zwei
 Sprachen am Rand.
 ```
 

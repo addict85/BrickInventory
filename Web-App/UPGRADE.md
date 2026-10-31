@@ -209,7 +209,7 @@ der Regel, dass prune erst NACH dem Frontend-Build stehen darf.
 
 `compose.yaml` mountete bisher zusätzlich `./images:/app/public/images/sets`.
 Das war der alte Ablageort für Set-Bilder. Der Code schreibt seit dem Umbau auf
-`utils/appPaths.ts` nach `data/images/` — die Zeile blieb nur stehen und
+`src/infra/appPaths.ts` nach `data/images/` — die Zeile blieb nur stehen und
 erzeugte den Ordner `./images` neben `./data`.
 
 **Vorschaubilder liegen übrigens nicht in einem eigenen Unterordner.** Sie

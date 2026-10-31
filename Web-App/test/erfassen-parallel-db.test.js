@@ -40,7 +40,7 @@ test('Erfassen unter Last', { concurrency: 1 }, async (t) => {
   try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); }
 
   const { recordAcquisitionForDay } = _req('utils/acquisitions.js');
-  const { withInventoryLock } = _req('utils/txLock.js');
+  const { withInventoryLock } = _req('db/txLock.js');
 
   await db.run("INSERT INTO users (username,password_hash) VALUES ('last','x')");
   const uid = (await db.get("SELECT id FROM users WHERE username='last'")).id;
@@ -99,7 +99,7 @@ test('Erfassen unter Last', { concurrency: 1 }, async (t) => {
 });
 
 test('Mengen und Preise werden geprüft', () => {
-  const V = _req('utils/validate.js');
+  const V = _req('src/infra/validate.js');
 
   // Menge: 1 bis 10 000, alles andere wird eingefangen.
   assert.equal(V.acquisitionQuantity(-5), 1, 'negative Menge kam durch');
@@ -157,7 +157,7 @@ test('alle Erfassen-Wege nutzen dieselbe Prüfung', () => {
 });
 
 test('ein kaputter CSV-Eintrag kippt nicht die ganze Datei', () => {
-  const { csvEinlesen, uebersprungenHinweis } = _req('utils/csvExport.js');
+  const { csvEinlesen, uebersprungenHinweis } = _req('src/infra/csvExport.js');
 
   // Genau die Datei, die am laufenden Server den Import komplett abbrach:
   // Zeile 3 hat eine Spalte statt drei.
@@ -189,7 +189,7 @@ test('alle drei Importwege melden übersprungene Zeilen', () => {
   //
   // Der Set-Import liest selbst und antwortet selbst; Teile und Minifiguren
   // gehen über csvZeilenAusAnfrage() und csvImportAntwort() in
-  // utils/csvExport.ts. Je Weg zählen Route und Dienst zusammen.
+  // src/infra/csvExport.ts. Je Weg zählen Route und Dienst zusammen.
   for (const [rel, dienst] of [['routes/api_v1/sets.ts', 'utils/dienste/sets.ts'],
                                ['routes/api_v1/parts.ts', 'utils/manuelleTeile.ts'],
                                ['routes/api_v1/minifigs.ts', 'utils/manuelleFiguren.ts']]) {
@@ -201,7 +201,7 @@ test('alle drei Importwege melden übersprungene Zeilen', () => {
   }
   // Und die gemeinsame Fassung tut wirklich beides — sonst genügte oben der
   // blosse Name.
-  const geteilt = ohneKommentare(fs.readFileSync(path.join(ROOT, 'utils/csvExport.ts'), 'utf8'));
+  const geteilt = ohneKommentare(fs.readFileSync(path.join(ROOT, 'src/infra/csvExport.ts'), 'utf8'));
   assert.match(geteilt, /function csvZeilenAusAnfrage[\s\S]*?csvEinlesen\(/,
     'csvZeilenAusAnfrage() liest die Datei nicht mehr ein');
   assert.match(geteilt, /function csvImportAntwort[\s\S]*?skipped_hint/,
@@ -241,7 +241,7 @@ test('die Teileliste liefert, was sie meldet', () => {
     'Die Grenze für Aufrufe ohne page_size gilt nicht auf beiden Wegen');
 
   // Die Antwort meldet die TATSÄCHLICHE Seitengrösse, nicht die angefragte.
-  const v1 = ohneKommentare(fs.readFileSync(path.join(ROOT, 'routes', 'api_v1', 'parts.ts'), 'utf8'));
+  const v1 = ohneKommentare(fs.readFileSync(path.join(ROOT, 'routes/api_v1/parts.ts'), 'utf8'));
   const antwort = v1.slice(v1.indexOf("router.get('/parts'"), v1.indexOf("router.get('/parts/brick-colors'"));
   // Geprüft wird, WOHER die Zahl kommt, nicht wie die Zeile geschrieben ist.
   //

@@ -3,10 +3,10 @@
  * Die Abfragen stehen in utils/dienste/katalog.ts.
  */
 import express from 'express';
-import { handleRouteError } from '../../utils/httpError';
+import { handleRouteError } from '../../src/infra/httpError';
 import { requireToken } from './middleware';
 import { resolveMany } from '../../utils/bricklinkLink';
-import { sendeFehler } from '../../utils/fehlerTexte';
+import { sendeFehler } from '../../src/infra/fehlerTexte';
 import { katalogMeta, jahrVerteilung, katalogSeite, katalogSet } from '../../utils/dienste/katalog';
 
 const router = express.Router();

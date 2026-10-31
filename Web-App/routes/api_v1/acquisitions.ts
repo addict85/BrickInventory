@@ -4,14 +4,14 @@
  */
 import express from 'express';
 import { acquisitionTotals } from '../../utils/acquisitions';
-import { handleRouteError, fehlertext, pfadParam } from '../../utils/httpError';
+import { handleRouteError, fehlertext, pfadParam } from '../../src/infra/httpError';
 import { requireToken } from './middleware';
 import { scopeIds, parseScopeMode } from '../../utils/household';
 import { getPartAcquisitions } from '../../utils/manuelleTeile';
 import { getFigAcquisitions } from '../../utils/manuelleFiguren';
 import { erfassungAendern, erfassungLoeschen, setErfassungen } from '../../utils/dienste/erfassungen';
 import type { ErfassungsArt } from '../../utils/dienste/erfassungen';
-import * as V from '../../utils/validate';
+import * as V from '../../src/infra/validate';
 const router = express.Router();
 
 type Schluessel = (req: AuthedRequest) => Array<string | number>;

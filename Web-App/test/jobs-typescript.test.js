@@ -45,7 +45,7 @@ test('der Dockerfile baut jobs/ statt es roh zu kopieren', () => {
     'dist/ muss transpiliert aus dem Build-Stage kommen, sonst landen .ts-Dateien im Image');
 
   const runtime = df.slice(df.lastIndexOf('FROM '));
-  for (const dir of ['jobs', 'db', 'routes', 'utils']) {
+  for (const dir of ['jobs', 'db', 'routes', 'src', 'utils']) {
     assert.doesNotMatch(runtime, new RegExp(`^COPY ${dir}/`, 'm'),
       `Der Runtime-Stage darf ${dir}/ nicht roh kopieren — dort lägen sonst .ts-Dateien`);
   }

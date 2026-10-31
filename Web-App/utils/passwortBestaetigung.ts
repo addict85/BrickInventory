@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs';
 import type { Request, Response } from 'express';
 import * as db from '../db/database';
 import { bestaetigungGesperrt, bestaetigungFehlgeschlagen, bestaetigungGelungen } from './loginLimiter';
-import { sendeFehler } from './fehlerTexte';
+import { sendeFehler } from '../src/infra/fehlerTexte';
 import * as zf from './zweiterFaktor';
 
 /**

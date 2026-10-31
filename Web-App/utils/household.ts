@@ -2,11 +2,11 @@
  * Haushalt — verknüpfte Konten.
  * Ausführlich: docs/begruendungen/utils/household.ts.md#abschnitt
  */
-import { logAndContinue, meldeUndLiefere } from './httpError';
+import { logAndContinue, meldeUndLiefere } from '../src/infra/httpError';
 import * as db from '../db/database';
 import { HAUSHALT_WAEHRUNG_SPERRE, getSetting } from './settings';
-import { fehlerWerfen } from './fehlerTexte';
-import * as pgNotify from './pgNotify';
+import { fehlerWerfen } from '../src/infra/fehlerTexte';
+import * as pgNotify from '../db/pgNotify';
 import crypto from 'crypto';
 
 /** Wie lange ein Einladungscode gilt. Lang genug für „später am Abend“,

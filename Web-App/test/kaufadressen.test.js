@@ -92,7 +92,7 @@ test('die Adresse des Preisvergleichs steht genau an EINER Stelle je Seite', () 
   assert.deepEqual(treffer.sort(), [
     path.join('Android-App', 'app', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'ComparisonScreen.kt'),
     path.join('Web-App', 'test', 'kaufadressen.test.js'),
-    path.join('Web-App', 'utils', 'preisvergleich.ts'),
+    path.join('Web-App', 'utils/preisvergleich.ts'),
   ].sort(),
     'Die Adresse des Preisvergleichs steht an einer weiteren Stelle. Entweder '
     + 'kommt sie dort vom Server (Set-Detail: preisvergleich_url), oder der '

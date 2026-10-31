@@ -221,7 +221,7 @@ test('Auftragstabelle', { concurrency: 1 }, async (t) => {
     });
   } finally {
     await leeren();
-    await _req('utils/pgNotify.js').close();
+    await _req('db/pgNotify.js').close();
     await db.pool.end().catch(() => {});
   }
 });

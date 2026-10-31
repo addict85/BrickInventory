@@ -30,8 +30,8 @@ const { testServer } = require('./helpers/server');
 // Versandte Hinweise mitschreiben, bevor routes/auth die Mail-Funktionen bindet.
 const gesendet = [];
 const bestaetigt = [];
-const mailerPfad = require.resolve(path.join(require('./helpers/sources').DIST, 'utils', 'mailer.js'));
-const echt = _req('utils/mailer.js');
+const mailerPfad = require.resolve(path.join(require('./helpers/sources').DIST, 'src/infra/mailer.js'));
+const echt = _req('src/infra/mailer.js');
 require.cache[mailerPfad].exports = Object.assign({}, echt, {
   sendEmailGeaendertMail: async (an, name, neu) => { gesendet.push({ an, name, neu }); return { success: true }; },
   sendVerificationMail: async (an, name, token, basis) => { bestaetigt.push(basis); return { success: true }; },

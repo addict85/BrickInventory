@@ -2,14 +2,14 @@
  * Auslieferung der index.html mit bereits gesetztem data-theme.
  * Ausführlich: docs/begruendungen/utils/indexHtml.ts.md#abschnitt
  */
-import { konfig } from './konfig';
-import { meldeUndLiefere } from './httpError';
+import { konfig } from '../src/infra/konfig';
+import { meldeUndLiefere } from '../src/infra/httpError';
 import fs from 'fs';
-import {  PUBLIC_DIR } from '../utils/appPaths';
+import {  PUBLIC_DIR } from '../src/infra/appPaths';
 import path from 'path';
 import * as db from '../db/database';
 import { getGlobalSetting, DESIGNS, designFuer } from './settings';
-import { stempleAssetsGecacht } from './assetStempel';
+import { stempleAssetsGecacht } from '../src/infra/assetStempel';
 
 const INDEX_PATH = path.join(PUBLIC_DIR, 'index.html');
 

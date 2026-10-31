@@ -124,7 +124,7 @@ test('der Brute-Force-Zähler wird nur an einer Stelle bedient', () => {
     const p = path.join(dir, e.name);
     return e.isDirectory() ? sammle(p) : (e.name.endsWith('.ts') ? [p] : []);
   });
-  const alle = [...sammle(path.join(ROOT, 'routes')), ...sammle(path.join(ROOT, 'utils')),
+  const alle = [...sammle(path.join(ROOT, 'routes')), ...sammle(path.join(ROOT, 'src')), ...sammle(path.join(ROOT, 'utils')),
                 path.join(ROOT, 'server.ts')];
   assert.ok(alle.length >= 30, `Nur ${alle.length} Dateien durchsucht — Pfade veraltet?`);
 
@@ -137,7 +137,7 @@ test('der Brute-Force-Zähler wird nur an einer Stelle bedient', () => {
     ' — die Anmeldung gehört ganz in pruefeAnmeldedaten() (utils/auth.ts).');
 
   // Gegenprobe zur Regel: Die erlaubte Stelle muss ihn auch wirklich bedienen.
-  const zentral = fs.readFileSync(path.join(ROOT, 'utils', 'auth.ts'), 'utf8');
+  const zentral = fs.readFileSync(path.join(ROOT, 'utils/auth.ts'), 'utf8');
   for (const name of ['checkLoginAllowed', 'recordLoginFailure', 'recordLoginSuccess'])
     assert.match(zentral, new RegExp(`\\b${name}\\(req`), `utils/auth.ts ruft ${name} nicht auf`);
 });
@@ -148,11 +148,11 @@ test('Benutzernamen-Regel gilt für Login, Register UND Profil-Update', () => {
   assert.ok(!USERNAME_RE.test('a b'));
   assert.ok(!USERNAME_RE.test('a@b.c'), 'E-Mail-Adresse darf kein Benutzername sein');
 
-  const auth = fs.readFileSync(path.join(ROOT, 'routes', 'auth.ts'), 'utf8');
+  const auth = fs.readFileSync(path.join(ROOT, 'routes/auth.ts'), 'utf8');
   const profile = auth.slice(auth.indexOf("router.put('/profile'"), auth.indexOf("router.get('/users'"));
   assert.match(profile, /USERNAME_RE\.test/, 'PUT /profile validiert den Benutzernamen nicht');
   // Die Abfrage steht seit dem 28.10.2026 in utils/konten.ts.
-  const konten = fs.readFileSync(path.join(ROOT, 'utils', 'konten.ts'), 'utf8');
+  const konten = fs.readFileSync(path.join(ROOT, 'utils/konten.ts'), 'utf8');
   assert.match(profile, /K\.nameVergeben\(username/, 'PUT /profile prüft den Namen nicht auf Eindeutigkeit');
   assert.match(konten.slice(konten.indexOf('function nameVergeben')), /LOWER\(username\) = LOWER\(\$1\)/,
     'PUT /profile muss case-insensitiv auf Eindeutigkeit prüfen — der Login vergleicht mit LOWER()');
@@ -160,7 +160,7 @@ test('Benutzernamen-Regel gilt für Login, Register UND Profil-Update', () => {
 
 test('bcrypt-Kostenfaktor ist überall derselbe', () => {
   assert.ok(BCRYPT_ROUNDS >= 12);
-  const auth = fs.readFileSync(path.join(ROOT, 'routes', 'auth.ts'), 'utf8');
+  const auth = fs.readFileSync(path.join(ROOT, 'routes/auth.ts'), 'utf8');
   const literals = [...auth.matchAll(/bcrypt\.hash\([^,]+,\s*([^)]+)\)/g)].map(m => m[1].trim());
   assert.deepEqual([...new Set(literals)], ['BCRYPT_ROUNDS'],
     `bcrypt.hash wird mit unterschiedlichen Kosten aufgerufen: ${literals.join(', ')}`);
@@ -173,7 +173,7 @@ test('escapeLike entschärft Platzhalter beim Token-Löschen', () => {
 });
 
 test('QR-Login transportiert kein Passwort-Material mehr', () => {
-  const auth = fs.readFileSync(path.join(ROOT, 'routes', 'auth.ts'), 'utf8');
+  const auth = fs.readFileSync(path.join(ROOT, 'routes/auth.ts'), 'utf8');
   // Nur den QR-Abschnitt betrachten: dahinter kommen /register und
   // /reset-password, die legitim mit password_hash arbeiten.
   // Nachtrag 154: Die Route ist jetzt POST (sie legt eine Nonce an).
@@ -183,7 +183,7 @@ test('QR-Login transportiert kein Passwort-Material mehr', () => {
   const qr = auth.slice(from, to);
   assert.doesNotMatch(qr, /password_hash/,
     'Der QR-Code darf den bcrypt-Hash nicht enthalten — er ist offline knackbar');
-  const konten = fs.readFileSync(path.join(ROOT, 'utils', 'konten.ts'), 'utf8');
+  const konten = fs.readFileSync(path.join(ROOT, 'utils/konten.ts'), 'utf8');
   assert.match(qr, /K\.legeQrTokenAn\(/, 'QR-Login muss über eine serverseitige Nonce laufen');
   assert.match(qr, /K\.loeseQrTokenEin\(/, 'Die Nonce muss eingelöst werden');
   const einloesen = konten.slice(konten.indexOf('function loeseQrTokenEin'));
@@ -197,7 +197,7 @@ test('die angezeigte QR-Gültigkeit stimmt mit dem Server überein', () => {
   // herunter — der Token läuft seit der Sicherheitshärtung aber nach 5 Minuten
   // ab. Der Zähler lief also 25 Minuten weiter, obwohl der Code längst
   // ungültig war.
-  const auth = fs.readFileSync(path.join(ROOT, 'routes', 'auth.ts'), 'utf8');
+  const auth = fs.readFileSync(path.join(ROOT, 'routes/auth.ts'), 'utf8');
   const m = /const QR_TTL_MS = (\d+) \* 60 \* 1000;/.exec(auth);
   assert.ok(m, 'QR_TTL_MS nicht gefunden');
   const minutes = parseInt(m[1]);
@@ -226,7 +226,7 @@ test('Admins können das Passwort anderer Nutzer setzen', () => {
   // Der Dialog in den Einstellungen rief PUT /auth/users/:id/password schon
   // immer auf — die Route gab es nicht, das Speichern endete in
   // „API-Endpunkt nicht gefunden".
-  const auth = fs.readFileSync(path.join(ROOT, 'routes', 'auth.ts'), 'utf8');
+  const auth = fs.readFileSync(path.join(ROOT, 'routes/auth.ts'), 'utf8');
   assert.match(auth, /router\.put\('\/users\/:id\/password', requireAdmin/,
     'Route fehlt oder ist nicht auf Administratoren beschränkt');
 
@@ -287,8 +287,8 @@ test('Sicherheitsschritte am Konto scheitern nicht mehr stillschweigend', () => 
   //   • Das Verwerfen von Sessions und Tokens nach einem Passwortwechsel.
   //     Verschluckt hiess: neues Passwort gesetzt, alte Zugänge gelten weiter.
   //   • revokeAllTokens() — dieselbe Regel an der zentralen Stelle.
-  const auth  = fs.readFileSync(path.join(ROOT, 'routes', 'auth.ts'), 'utf8');
-  const utils = fs.readFileSync(path.join(ROOT, 'utils', 'auth.ts'), 'utf8');
+  const auth  = fs.readFileSync(path.join(ROOT, 'routes/auth.ts'), 'utf8');
+  const utils = fs.readFileSync(path.join(ROOT, 'utils/auth.ts'), 'utf8');
 
   // Das Feld heisst seit dem Zusammenlegen der beiden Anmeldungen `token`
   // (vorher `webToken`) und die Zeile steht in derselben Route.
@@ -335,8 +335,8 @@ test('ein Passwortwechsel beendet auch die offenen Sitzungen', () => {
   //
   // Drei Wege ändern ein Passwort — Admin-Reset, Reset per E-Mail-Token und
   // die eigene Änderung. Alle drei müssen Tokens UND Sitzungen schliessen.
-  const auth  = fs.readFileSync(path.join(ROOT, 'routes', 'auth.ts'), 'utf8');
-  const utils = fs.readFileSync(path.join(ROOT, 'utils', 'auth.ts'), 'utf8');
+  const auth  = fs.readFileSync(path.join(ROOT, 'routes/auth.ts'), 'utf8');
+  const utils = fs.readFileSync(path.join(ROOT, 'utils/auth.ts'), 'utf8');
 
   assert.doesNotMatch(auth, /to_regclass\('public\.session'\)/,
     'Die Tabelle heisst user_sessions — der Test darauf war immer NULL');
@@ -376,10 +376,10 @@ test('ungenutzte App-Tokens verfallen, aktive nicht', () => {
   // Das Mass ist „ungenutzt", nicht „alt": Ein Telefon, das täglich
   // synchronisiert, wird nie ausgesperrt, egal wie lange es das Konto schon
   // hat. Nur was ohnehin niemand mehr benutzt, verfällt.
-  const utils = fs.readFileSync(path.join(ROOT, 'utils', 'auth.ts'), 'utf8');
+  const utils = fs.readFileSync(path.join(ROOT, 'utils/auth.ts'), 'utf8');
 
   assert.match(utils, /const TOKEN_IDLE_DAYS/, 'Die Frist gehört an eine benannte Stelle');
-  // TOKEN_IDLE_DAYS liest die zentrale Konfiguration (utils/konfig.ts).
+  // TOKEN_IDLE_DAYS liest die zentrale Konfiguration (src/infra/konfig.ts).
   assert.match(utils, /konfig\(\)\.tokenLeerlaufTage/,
     'Die Frist muss ohne Codeänderung anpassbar sein');
   assert.match(utils, /expires_at IS NULL/,
@@ -388,7 +388,7 @@ test('ungenutzte App-Tokens verfallen, aktive nicht', () => {
     'Ohne COALESCE wären Zeilen ohne last_used für immer ausgenommen — ausgerechnet die ältesten');
   // „Nie“ gibt es seit Migration 0080 nicht mehr: Ohne Ablauf nur je Gerät,
   // über HTTPS und mit Rotation (token-scope-rotation-db).
-  const { ladeKonfig } = require('./helpers/sources').buildAndRequire()('utils/konfig.js');
+  const { ladeKonfig } = require('./helpers/sources').buildAndRequire()('src/infra/konfig.js');
   assert.throws(() => ladeKonfig({ TOKEN_IDLE_DAYS: '0' }), /TOKEN_IDLE_DAYS/,
     'TOKEN_IDLE_DAYS=0 darf die Frist nicht mehr abschalten');
 

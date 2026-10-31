@@ -3,7 +3,7 @@
  * Ausführlich: docs/begruendungen/utils/setValue.ts.md#abschnitt
  */
 import * as db from '../db/database';
-import { inZehntel4, aufRappen, alsText } from './geld';
+import { inZehntel4, aufRappen, alsText } from '../src/infra/geld';
 
 export interface SetValue {
   /** Gewichteter Stückpreis — das, was Kachel und Detailansicht zeigen. */

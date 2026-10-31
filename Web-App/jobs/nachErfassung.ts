@@ -8,7 +8,7 @@
 import { importiereTeile, fetchMissingBlIds } from '../utils/partsImport';
 import { importiereFiguren } from '../utils/minifigsImport';
 import { downloadSetInstructions } from '../utils/instructions';
-import { logAndContinue } from '../utils/httpError';
+import { logAndContinue } from '../src/infra/httpError';
 import * as db from '../db/database';
 import { getSetInfo as bricksetSetInfo } from '../clients/brickset';
 import { anleitungEinreihen } from '../utils/anleitungsAuftrag';

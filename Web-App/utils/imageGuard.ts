@@ -2,7 +2,7 @@
  * Schutzgrenzen für die Bildverarbeitung mit Jimp.
  * Ausführlich: docs/begruendungen/utils/imageGuard.ts.md#abschnitt
  */
-import { logAndContinue } from './httpError';
+import { logAndContinue } from '../src/infra/httpError';
 import fs from 'fs';
 
 /** Obergrenze in Pixeln (Breite × Höhe). 40 MP ≈ 160 MB Bitmap. */

@@ -60,7 +60,7 @@ function dateien() {
       else if (e.name.endsWith('.ts')) out.push(path.relative(ROOT, p).split(path.sep).join('/'));
     }
   };
-  for (const d of ['routes', 'utils', 'jobs', 'db', 'startup']) {
+  for (const d of ['routes', 'src', 'utils', 'jobs', 'db', 'startup']) {
     const abs = path.join(ROOT, d);
     if (fs.existsSync(abs)) lauf(abs);
   }

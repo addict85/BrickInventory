@@ -90,7 +90,7 @@ test('Anleitungen als Auftrag', { concurrency: 1 }, async (t) => {
 
   await t.test('hält ein anderer Prozess die Sperre, wird nichts abgerufen', async () => {
     await zuruecksetzen();
-    const { LOCKS } = _req('utils/lockNamespaces.js');
+    const { LOCKS } = _req('src/infra/lockNamespaces.js');
     const fremd = await db.pool.connect();
     await fremd.query('SELECT pg_advisory_lock($1, 0)', [LOCKS.ANLEITUNGS_QUEUE]);
     const vorher = abruf.aufrufe;

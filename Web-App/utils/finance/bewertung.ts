@@ -6,7 +6,7 @@
  * preise.ts.
  */
 
-import { meldeUndLiefere } from '../httpError';
+import { meldeUndLiefere } from '../../src/infra/httpError';
 import * as db from '../../db/database';
 import { asIds } from '../household';
 import { getSetting, getGlobalSetting } from '../settings';
@@ -26,8 +26,8 @@ import { schaetzeFigurenpreis } from '../marketPrice';
 import { withOwners } from '../handlers/shared';
 import { blJoin, blNummerSql } from '../blZuordnung';
 import { teilmengeJoin, teilmengeAus } from '../bestandsmenge';
-import { KEINE_FARBE } from '../validate';
-import { aufRappen, inZehntel4 } from '../geld';
+import { KEINE_FARBE } from '../../src/infra/validate';
+import { aufRappen, inZehntel4 } from '../../src/infra/geld';
 
 /**
  * Erfassungen manueller Teile bzw. Minifiguren, gruppiert nach Eintrag.

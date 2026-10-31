@@ -89,7 +89,7 @@ test('2. und die App löst es ein', () => {
 });
 
 test('3. die Mail trägt einen Link', () => {
-  const m = web('utils/mailer.ts');
+  const m = web('src/infra/mailer.ts');
   const i = m.indexOf('async function baueAlarmMail(');
   assert.ok(i > 0, 'baueAlarmMail() nicht gefunden');
   const body = m.slice(i, m.indexOf('\n// ──', i) < 0 ? undefined : m.indexOf('\n// ──', i));

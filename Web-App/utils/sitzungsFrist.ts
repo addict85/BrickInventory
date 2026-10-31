@@ -2,7 +2,7 @@
  * Wie lange eine Webapp-Sitzung ohne Betrieb gilt.
  * Ausführlich: docs/begruendungen/utils/sitzungsFrist.ts.md#leerlauf-vorgabe-min
  */
-import { konfig, VORGABE } from './konfig';
+import { konfig, VORGABE } from '../src/infra/konfig';
 
 /** Vorgabe in Minuten, falls nichts gesetzt ist. Meine Zahl, siehe oben. */
 export const LEERLAUF_VORGABE_MIN = VORGABE.sitzungLeerlaufMin;

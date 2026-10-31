@@ -3,7 +3,7 @@ import type { Request, Response, NextFunction } from 'express';
 import { konfig } from './startup/konfigPruefen';
 // Protokoll zuerst: Ab hier ist jede console-Zeile eine JSON-Zeile auf
 // stdout/stderr und geht nach app_logs, sobald der Pool steht.
-import { installiereProtokoll, protokollInDieDatenbank, leereProtokoll, anfrageKontext, anfrageKennung } from './utils/protokoll';
+import { installiereProtokoll, protokollInDieDatenbank, leereProtokoll, anfrageKontext, anfrageKennung } from './src/infra/protokoll';
 installiereProtokoll();
 
 import fs from 'fs';
@@ -13,28 +13,28 @@ import session from 'express-session';
 import compression from 'compression';
 import connectPgSimple from 'connect-pg-simple';
 import * as db from './db/database';
-import { fehlertext, logAndContinue, meldeUndWeiter, handleRouteError } from './utils/httpError';
-import { startVerbote, cookieSicher } from './utils/konfig';
+import { fehlertext, logAndContinue, meldeUndWeiter, handleRouteError } from './src/infra/httpError';
+import { startVerbote, cookieSicher } from './src/infra/konfig';
 import { bereiteDatenbankVor } from './startup/datenbank';
 import { starteJobs, stoppeJobs } from './startup/jobsProzess';
 import { verdrahte } from './jobs/verdrahtung';
 import { drossleBeruehren } from './utils/sitzungsBeruehrung';
 import { SITZUNG_LEERLAUF_SEK, sitzungsHoechstdauer } from './utils/sitzungsFrist';
-import { antwortAufDateiFehler, liefereDatei, sendeDatei } from './utils/dateiAusliefern';
+import { antwortAufDateiFehler, liefereDatei, sendeDatei } from './src/infra/dateiAusliefern';
 import { cdnFuerFehlendesBild } from './utils/bildNachschlagen';
-import { aktuellerStartZustand } from './utils/startZustand';
-import { merkeAnfrage } from './utils/anfrageKonto';
-import { proxyVertrauen, proxyHinweis } from './utils/proxyVertrauen';
-import { nurEigeneHerkunft } from './utils/herkunft';
-import { API_VERSION, API_MIN_APP, appFassungPruefen } from './utils/apiVersion';
+import { aktuellerStartZustand } from './src/infra/startZustand';
+import { merkeAnfrage } from './src/infra/anfrageKonto';
+import { proxyVertrauen, proxyHinweis } from './src/infra/proxyVertrauen';
+import { nurEigeneHerkunft } from './src/infra/herkunft';
+import { API_VERSION, API_MIN_APP, appFassungPruefen } from './src/infra/apiVersion';
 import { resolveUserId, istVerwalter, verifiziereEmailToken } from './utils/auth';
-import { PUBLIC_DIR } from './utils/appPaths';
+import { PUBLIC_DIR } from './src/infra/appPaths';
 import { IMG_PROXY_PFAD } from './utils/images';
-import { safeDataPath } from './utils/datenPfad';
+import { safeDataPath } from './src/infra/datenPfad';
 import { generateThumb } from './utils/thumbs';
-import { closeAllSse } from './utils/sseRegistry';
+import { closeAllSse } from './src/infra/sseRegistry';
 import { renderIndexHtml } from './utils/indexHtml';
-import * as pgNotify from './utils/pgNotify';
+import * as pgNotify from './db/pgNotify';
 import { registerImgProxy } from './routes/imgProxy';
 import { anmeldungAmEingang } from './routes/api_v1/middleware';
 import datenDateien = require('./routes/datenDateien');
@@ -163,7 +163,7 @@ app.use(express.urlencoded({ extended: true, limit: '256kb' }));
 app.use((req, _res, next) => { if (req.body === undefined) req.body = {}; next(); });
 
 // Hinter einem TLS-terminierenden Reverse-Proxy muss Express X-Forwarded-Proto
-// glauben, sonst setzt es das secure-Cookie nie. Wem genau: utils/proxyVertrauen.ts.
+// glauben, sonst setzt es das secure-Cookie nie. Wem genau: src/infra/proxyVertrauen.ts.
 if (konfig().produktion) {
   app.set('trust proxy', proxyVertrauen(konfig().trustProxy));
 }
@@ -194,7 +194,7 @@ app.use('/api', (_req, res, next) => {
 }, appFassungPruefen);
 
 // Jede Anfrage bekommt eine kurze Kennung für alle ihre Logzeilen; die des
-// Proxys nur, wenn sie die Prüfung in utils/protokoll.ts besteht.
+// Proxys nur, wenn sie die Prüfung in src/infra/protokoll.ts besteht.
 app.use((req, res, next) => {
   const rid = anfrageKennung(req.headers['x-request-id']);
   res.setHeader('X-Request-Id', rid);
@@ -379,7 +379,7 @@ app.get('/verify', async (req, res) => {
 app.get('/reset-password', async (_req, res) => {
   res.set('Cache-Control', 'no-cache');
   // Über den Renderer statt sendFile: sonst gingen die Assets ohne Stempel
-  // (utils/assetStempel.ts) und im Standarddesign hinaus.
+  // (src/infra/assetStempel.ts) und im Standarddesign hinaus.
   try {
     res.type('html').send(await renderIndexHtml());
   } catch {

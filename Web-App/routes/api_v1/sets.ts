@@ -9,7 +9,7 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import crypto from 'crypto';
-import { handleRouteError, fehlertext, pfadParam, meldeUndLiefere, logAndContinue } from '../../utils/httpError';
+import { handleRouteError, fehlertext, pfadParam, meldeUndLiefere, logAndContinue } from '../../src/infra/httpError';
 import { requireToken } from './middleware';
 import { getSetting } from '../../utils/settings';
 import { findSetInScope, normalizeSetNumber } from '../../utils/setAdd';
@@ -19,26 +19,26 @@ import { normalisiereLagerort, setzeLagerort, lagerorte,
          orteVon, legeOrtAn, benenneOrtUm, loescheOrt,
          vorgabeVon, setzeVorgabe } from '../../utils/lagerort';
 import { alarmeFuer, alleAlarme, ausgeloesteSeit, loescheAlarm, setzeAlarm, alarmeAusCsv } from '../../utils/preisalarm';
-import { csvEmpfang, inhaltPasstZuTyp, uploadKontingentBytes, belegterPlatz } from '../../utils/dateiEmpfang';
-import { sendCsv, uebersprungenHinweis } from '../../utils/csvExport';
-import { withInventoryLock } from '../../utils/txLock';
+import { csvEmpfang, inhaltPasstZuTyp, uploadKontingentBytes, belegterPlatz } from '../../src/infra/dateiEmpfang';
+import { sendCsv, uebersprungenHinweis } from '../../src/infra/csvExport';
+import { withInventoryLock } from '../../db/txLock';
 import { addSet, updateSet } from '../../utils/setService';
 import { deleteSet, getSet, getSets } from '../../utils/handlers/sets';
 import { getSetPriceHistory } from '../../utils/priceHistory';
-import { einzelwert, ausTabelle } from '../../utils/validate';
-import * as V from '../../utils/validate';
+import { einzelwert, ausTabelle } from '../../src/infra/validate';
+import * as V from '../../src/infra/validate';
 import { mitVersion, normalisiereSetNummer, moeglicheSetNummer } from '../../utils/setNummer';
-import { sendeFehler, dateiFehler } from '../../utils/fehlerTexte';
+import { sendeFehler, dateiFehler } from '../../src/infra/fehlerTexte';
 import { setTeileAnreichern } from '../../utils/nacharbeit';
 import { setInfo, setZumBarcode, teilelisteDesSets, figurenlisteDesSets, setPreis, rebrickableListe,
          setGehoertKonto, anleitungMerken, anleitungLoeschen, setCsvImportStarten, setCsvImportAbbrechen } from '../../utils/dienste/sets';
 import { downloadSetInstructions, anleitungenZuSet, loescheAnleitungen, anleitungNeuLadenErlaubt } from '../../utils/instructions';
 import { importPartsForSet } from '../../utils/partsImport';
-import { registerSse } from '../../utils/sseRegistry';
+import { registerSse } from '../../src/infra/sseRegistry';
 import { loginOrTokenGuard, angemeldeteNutzerId, istVerwalter } from '../../utils/auth';
 import { csvImportBus, buildJobStatus, jobGet } from '../../utils/importAuftrag';
-import * as pgNotify from '../../utils/pgNotify';
-import { APP_ROOT, DATA_DIR } from '../../utils/appPaths';
+import * as pgNotify from '../../db/pgNotify';
+import { APP_ROOT, DATA_DIR } from '../../src/infra/appPaths';
 const router = express.Router();
 
 // ── Feste Pfade VOR den Pfaden mit :setNumber ────────────────────────────────
@@ -360,7 +360,7 @@ router.post('/sets', requireToken, async (req: AuthedRequest, res) => {
     // Clients und alle drei Erfassungswege (Nummer, Barcode, Texterkennung).
     const vorhanden = await findSetInScope(req.apiUser.user_id, set_number);
     if (vorhanden) return res.json({ success:true, action:'exists', ...vorhanden });
-    // Gleiche Prüfung wie im Webapp-Weg (utils/validate.ts) — sonst hinge die
+    // Gleiche Prüfung wie im Webapp-Weg (src/infra/validate.ts) — sonst hinge die
     // Regel daran, welchen der beiden Wege jemand nimmt.
         const result = await addSet(set_number, V.acquisitionQuantity(quantity), owner, null,
       V.optionalPrice(purchase_price, 'Kaufpreis'), condition, req.body?.storage ?? null);

@@ -3,7 +3,7 @@
  * die Form, die jede Authenticator-App versteht. Ohne Fremdpaket, mit
  * node:crypto. Freiwillig je Konto; Tabellen in Migration 0042.
  */
-import { verschluessele, entschluessele } from './geheimnis';
+import { verschluessele, entschluessele } from '../src/infra/geheimnis';
 import crypto from 'crypto';
 const db = require('../db/database') as typeof import('../db/database');
 

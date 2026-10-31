@@ -367,7 +367,7 @@ fest.
 
 Sie hatte keinen Aufrufer, und das stand seit Nachtrag 154 als Kommentar
 genau hier: „Gefahrlos umzustellen, weil die Route KEINEN Aufrufer hat: Der
-Link in der Verifikationsmail zeigt auf /verify (utils/mailer.ts), das
+Link in der Verifikationsmail zeigt auf /verify (src/infra/mailer.ts), das
 Frontend ruft sie nicht auf und die Android-App auch nicht."
 
 Damals wurde ihre Antwortform berichtigt und sie stehengelassen. Das ist

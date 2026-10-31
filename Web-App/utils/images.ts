@@ -5,7 +5,7 @@
 
 import fs from 'fs';
 import crypto from 'crypto';
-import { APP_ROOT, IMAGES_DIR } from '../utils/appPaths';
+import { APP_ROOT, IMAGES_DIR } from '../src/infra/appPaths';
 import path from 'path';
 
 // thumbFs → { exists, checkedAt }. Positive Treffer bleiben dauerhaft gültig

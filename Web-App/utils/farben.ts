@@ -5,8 +5,8 @@
  */
 import * as db from '../db/database';
 import { getBrickColors } from '../clients/rebrickable';
-import { meldeUndLiefere } from './httpError';
-import { KEINE_FARBE } from './validate';
+import { meldeUndLiefere } from '../src/infra/httpError';
+import { KEINE_FARBE } from '../src/infra/validate';
 
 export { KEINE_FARBE };
 

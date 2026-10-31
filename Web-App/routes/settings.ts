@@ -3,7 +3,7 @@ import { bestaetigePasswort } from '../utils/passwortBestaetigung';
 import express from 'express';
 const router  = express.Router();
 import multer from 'multer';
-import { handleRouteError } from '../utils/httpError';
+import { handleRouteError } from '../src/infra/httpError';
 import { requireApiAdmin as requireAdmin } from './api_v1/middleware';
 const requireLogin = requireLoginOrToken;
 
@@ -18,10 +18,10 @@ import { quellePruefen, bricksetLimitGesetzt, zeitplanNeuPlanen } from '../utils
 import { zugaengeDesKontos, zugaengeLoeschen, andereSitzungenBeenden, mussPasswortAendern, profil } from '../utils/konten';
 import { resolveUserId, escapeLike, requireLoginOrToken, nutzerId, angemeldeteNutzerId, istVerwalter, nutzerName, hashToken, leereTokenCache } from '../utils/auth';
 import { bearerToken } from './api_v1/middleware';
-import { sendMail, testSmtp } from '../utils/mailer';
-import { sendeFehler } from '../utils/fehlerTexte';
-import { tlsStand } from '../utils/tlsWurzel';
-import { konfig } from '../utils/konfig';
+import { sendMail, testSmtp } from '../src/infra/mailer';
+import { sendeFehler } from '../src/infra/fehlerTexte';
+import { tlsStand } from '../src/infra/tlsWurzel';
+import { konfig } from '../src/infra/konfig';
 
 // ── Öffentlich: aktuelles App-Design — vor router.use(requireLogin), denn
 // Anmelde- und Startbildschirm brauchen es; es verrät nichts über Konten.

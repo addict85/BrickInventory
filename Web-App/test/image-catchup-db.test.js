@@ -50,7 +50,7 @@ test('der Nachlauf erzeugt fehlende Vorschauen — auch für Set-Bilder',
   }
 
   const { Jimp } = require(path.join(ROOT, 'node_modules', 'jimp'));
-  const { DATA_DIR } = _req('utils/appPaths.js');
+  const { DATA_DIR } = _req('src/infra/appPaths.js');
   const ordner = path.join(DATA_DIR, 'images', 'sets');
   fs.mkdirSync(ordner, { recursive: true });
 

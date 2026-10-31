@@ -7,7 +7,7 @@
 
 import { merkeBlNummer } from '../utils/blZuordnung';
 import { getRbKey } from '../clients/rebrickable';
-import { nummernListe } from '../utils/fremdeAdressen';
+import { nummernListe } from '../src/infra/fremdeAdressen';
 import * as db from '../db/database';
 import https from 'https';
 import { rebrickableBackgroundLimiter as rebrickableLimiter, consumeRebrickableDaily, parseThrottleWait } from '../utils/rateLimiter';

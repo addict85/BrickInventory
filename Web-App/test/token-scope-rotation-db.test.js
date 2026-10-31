@@ -245,7 +245,7 @@ test('Tokens mit Scope, Ablauf und Rotation', { concurrency: 1 }, async (t) => {
   });
 
   await t.test('Migration 0080: Bestand bekommt Scope voll und höchstens 90 Tage', async () => {
-    const sql = fs.readFileSync(path.join(ROOT, 'db', 'migrations', '0080-token-scope-rotation.sql'), 'utf8');
+    const sql = fs.readFileSync(path.join(ROOT, 'db/migrations/0080-token-scope-rotation.sql'), 'utf8');
     const c = await db.pool.connect();
     try {
       await c.query('BEGIN');

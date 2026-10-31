@@ -50,7 +50,7 @@ test('zwei gleichzeitige Importe derselben Tabelle kollidieren nicht',
   }
 
   const { TASKS } = _req('jobs/csvImportWorker.js');
-  const DATA_DIR = _req('utils/appPaths.js').DATA_DIR;
+  const DATA_DIR = _req('src/infra/appPaths.js').DATA_DIR;
 
   await db.run(`CREATE TABLE IF NOT EXISTS rb_colors (
     id INTEGER PRIMARY KEY, name TEXT, rgb TEXT, is_trans TEXT, bl_color_id INTEGER)`);

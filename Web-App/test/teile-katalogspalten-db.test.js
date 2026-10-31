@@ -80,7 +80,7 @@ const dbDa = async (t) => {
   }
 };
 
-const MIG_DIR = path.join(ROOT, 'db', 'migrations');
+const MIG_DIR = path.join(ROOT, 'db/migrations');
 const DATEI   = path.join(MIG_DIR, '0034-teile-und-minifiguren-stammdaten-im-katalog.sql');
 
 test('nach der ganzen Kette tragen parts und minifigs nur noch den Bestand',

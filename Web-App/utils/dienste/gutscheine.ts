@@ -4,7 +4,7 @@
  * beim Schreiben verschlüsselt, damit keine Route mit dem Klartext rechnet.
  */
 import * as db from '../../db/database';
-import { verschluessele, entschluessele } from '../geheimnis';
+import { verschluessele, entschluessele } from '../../src/infra/geheimnis';
 
 export interface GutscheinZeile {
   id: number; number: string; pin: string | null; amount: string | number; currency: string;

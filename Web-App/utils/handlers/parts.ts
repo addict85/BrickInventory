@@ -2,7 +2,7 @@ import * as db from '../../db/database';
 import { resolveImageLocal } from '../images';
 import { asIds } from '../household';
 import type { BlickfeldEingabe } from '../household';
-import { istErsatzteil, ersatzteilSql, colorId } from '../validate';
+import { istErsatzteil, ersatzteilSql, colorId } from '../../src/infra/validate';
 import { ensureFresh } from '../partsSummary';
 // Direkt aus utils/partsImport, nicht ueber routes/parts: Die Route hat die
 // Funktion selbst nur importiert und weiterexportiert (Object.assign am
@@ -13,7 +13,7 @@ import { fetchMissingBlIds } from '../partsImport';
 import type { RbSetTeil } from '../../clients/rebrickable';
 import { getAllSetParts, getRbKey, httpsGetRobust } from '../../clients/rebrickable';
 import { clampPageSize, applyManualCondition, withOwners, MAX_PAGE_SIZE, UNPAGED_LIMIT, SET_PARTS_MAX_PAGE_SIZE } from './shared';
-import { meldeUndWeiter, logAndContinue, meldeUndLiefere } from '../../utils/httpError';
+import { meldeUndWeiter, logAndContinue, meldeUndLiefere } from '../../src/infra/httpError';
 import { farbkarte as blFarbkarte } from '../financeCalc';
 import { getGlobalSetting } from '../../utils/settings';
 import { neuestesInventar } from '../rbInventar';
@@ -29,7 +29,7 @@ import { mengeJoin, mengeAus, teilmengeJoin, teilmengeAus } from '../bestandsmen
 
 /** Ein Blickfeld: eine Konto-ID oder die Liste aus scopeIds(); asIds() macht eine Liste daraus. */
 import type { BlickfeldEingabe as Blickfeld } from '../household';
-import * as httpError from '../httpError';
+import * as httpError from '../../src/infra/httpError';
 import { marktpreiseAusCacheFuerTeile } from '../marketPrice';
 
 /** Farbliste des Teilebestands (ohne manuelle Positionen — die haben eine
@@ -489,7 +489,7 @@ async function getParts(userId: Blickfeld, query: any = {}) {
     image_url:   p.image_url || null,
     // Ein echter Wahrheitswert, nicht '1'/'0': Der Treiber liefert das
     // Aggregat als ZEICHENKETTE, und "0" ist in JavaScript wahr. Die
-    // Schreibweisen liest istErsatzteil() (utils/validate.ts) an EINER Stelle.
+    // Schreibweisen liest istErsatzteil() (src/infra/validate.ts) an EINER Stelle.
     is_spare: istErsatzteil(p.is_spare)
   }));
 

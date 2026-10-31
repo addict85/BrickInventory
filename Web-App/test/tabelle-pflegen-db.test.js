@@ -48,7 +48,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const { buildAndRequire } = require('./helpers/sources');
 const _req = buildAndRequire();
 const db = _req('db/database.js');
-const { pflegeTabelle } = _req('utils/tabellePflegen.js');
+const { pflegeTabelle } = _req('db/tabellePflegen.js');
 
 /** Wann wurde die Tabelle zuletzt aufgeraeumt und vermessen? */
 async function stand(tabelle) {

@@ -1,6 +1,6 @@
 /** /api/v1 — Dashboard-Statistiken und Endpoint-Übersicht. */
 import express from 'express';
-import { handleRouteError } from '../../utils/httpError';
+import { handleRouteError } from '../../src/infra/httpError';
 import { requireToken } from './middleware';
 import { scopeIds, parseScopeMode } from '../../utils/household';
 import { getStats } from '../../utils/handlers/stats';

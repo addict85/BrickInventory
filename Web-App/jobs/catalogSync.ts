@@ -9,17 +9,17 @@ import { generateThumb } from '../utils/thumbs';
 import { neuestesInventar } from '../utils/rbInventar';
 import { mitVersion } from '../utils/setNummer';
 import { merkeTeil, merkeTeilFarbe, merkeSetTeil, setzeTeilBildLokal, merkeFiguren, merkeSetFiguren } from '../utils/katalogPflege';
-import { logAndContinue, meldeUndLiefere } from '../utils/httpError';
+import { logAndContinue, meldeUndLiefere } from '../src/infra/httpError';
 import * as db from '../db/database';
 import path from 'path';
 import fs from 'fs';
-import { PART_IMAGES_DIR as IMG_DIR } from '../utils/appPaths';
+import { PART_IMAGES_DIR as IMG_DIR } from '../src/infra/appPaths';
 import { rebrickableBackgroundLimiter as rebrickableLimiter } from '../utils/rateLimiter';
-import { KEINE_FARBE } from '../utils/validate';
+import { KEINE_FARBE } from '../src/infra/validate';
 // Pfade zentral auflösen — __dirname zeigt seit dem dist/-Build nicht mehr
-// auf die Wurzel. Siehe utils/appPaths.ts.
+// auf die Wurzel. Siehe src/infra/appPaths.ts.
 
-// Teilebilder — Figuren liegen getrennt (siehe utils/appPaths.ts).
+// Teilebilder — Figuren liegen getrennt (siehe src/infra/appPaths.ts).
 
 async function syncSetCatalog(setNumber: string) {
   // Ohne Versionsanhang in der Eingabe ergab `alt` denselben Wert wie `n` —

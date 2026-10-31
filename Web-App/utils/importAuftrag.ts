@@ -1,6 +1,6 @@
 import * as db from '../db/database';
-import { meldeUndWeiter, logAndContinue } from './httpError';
-import { fehlerText, antwortSprache } from './fehlerTexte';
+import { meldeUndWeiter, logAndContinue } from '../src/infra/httpError';
+import { fehlerText, antwortSprache } from '../src/infra/fehlerTexte';
 
 /**
  * Der Auftragsdatensatz eines laufenden Imports — EINE Zeile je Konto.
@@ -13,7 +13,7 @@ import { fehlerText, antwortSprache } from './fehlerTexte';
 // schiebt den Stand an verbundene Clients (Webapp + Android), ganz ohne
 // Polling. Der bestehende /status-Endpoint bleibt als Fallback erhalten.
 import EventEmitter from 'events';
-import * as pgNotify from '../utils/pgNotify';
+import * as pgNotify from '../db/pgNotify';
 const csvImportBus = new EventEmitter();
 csvImportBus.setMaxListeners(0); // beliebig viele gleichzeitige Streams
 

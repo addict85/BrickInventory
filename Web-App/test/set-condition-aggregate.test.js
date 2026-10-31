@@ -64,7 +64,7 @@ test('BEIDE Routenfamilien liefern das Aggregat mit', () => {
   // — und bekam deshalb kein `set` in der Antwort.
   // Die Erfassungsrouten rufen den Dienst utils/dienste/erfassungen.ts; dort
   // hängt jede Antwort das Aggregat an.
-  const v1  = fs.readFileSync(path.join(ROOT, 'utils', 'dienste', 'erfassungen.ts'), 'utf8');
+  const v1  = fs.readFileSync(path.join(ROOT, 'utils/dienste/erfassungen.ts'), 'utf8');
   const web = require('./helpers/sources').setKernQuelle();
   const h   = require('./helpers/sources').handlerQuelle();
 
@@ -242,7 +242,7 @@ test('ein ausdrücklich angefragter Zustand schlägt die Erfassungs-Bewertung', 
   // Fundort seit Nachtrag 125: utils/marketPrice.ts. Die Funktion hatte sieben
   // Aufrufer, von denen keiner sie importieren konnte, solange sie im Router
   // lag. Die AUSSAGE dieser Prüfung ist unverändert.
-  const raw = fs.readFileSync(path.join(ROOT, 'utils', 'marketPrice.ts'), 'utf8');
+  const raw = fs.readFileSync(path.join(ROOT, 'utils/marketPrice.ts'), 'utf8');
   const fn = raw.slice(raw.indexOf('async function getCurrentMarketPrice'));
   assert.match(fn, /if \(!condition\) \{/,
     'Die Erfassungs-Bewertung darf nur ohne ausdrücklichen Zustand greifen');
@@ -304,8 +304,8 @@ test('ein manuell erfasstes Teil bekommt Marktpreis und Erfassung', () => {
   // sind. Die Regel „jeder Aufruf traegt den Zustand" gilt fuer die Aufrufer —
   // sie muss also ueber beide Dateien gehen. Nur eine zu lesen hiesse, die
   // Haelfte der Aufrufstellen nicht anzusehen.
-  const src = fs.readFileSync(path.join(ROOT, 'utils', 'marketPrice.ts'), 'utf8')
-            + '\n' + fs.readFileSync(path.join(ROOT, 'utils', 'manuelleTeile.ts'), 'utf8');
+  const src = fs.readFileSync(path.join(ROOT, 'utils/marketPrice.ts'), 'utf8')
+            + '\n' + fs.readFileSync(path.join(ROOT, 'utils/manuelleTeile.ts'), 'utf8');
   const fn = src.slice(src.indexOf('async function addManualPart'),
                        src.indexOf('async function updateManualPart'));
 
@@ -358,7 +358,7 @@ test('ein manuell erfasstes Teil bekommt Marktpreis und Erfassung', () => {
     'Die Erfassung nimmt nicht den Preis, der ohne Marktpreis NULL ist ' +
     '(utils/preisRegel.ts, erfassungsPreis) — in der Erfassung hiesse eine 0 ' +
     '„für null Franken gekauft"');
-  const regel = fs.readFileSync(path.join(ROOT, 'utils', 'preisRegel.ts'), 'utf8');
+  const regel = fs.readFileSync(path.join(ROOT, 'utils/preisRegel.ts'), 'utf8');
   assert.match(regel, /erfassungsPreis:\s*kaufpreis > 0 \? kaufpreis : null/,
     'utils/preisRegel.ts wandelt die 0 der Stammzeile nicht mehr in NULL für die Erfassung');
   assert.match(fn, /condition: effectiveCondition/, 'Die Erfassung braucht den Zustand');
@@ -370,7 +370,7 @@ test('der Minifiguren-Marktpreis fragt BrickLink auch ohne separate BL-Nummer', 
   // eigene Nummer mit der BrickLink-Nummer überein. Der Abruf wurde
   // übersprungen, die Teile-Schätzung übernahm, und die liefert ohne
   // Teile-Zusammensetzung von Rebrickable nichts: gar kein Preis.
-  const src = fs.readFileSync(path.join(ROOT, 'utils', 'marketPrice.ts'), 'utf8');
+  const src = fs.readFileSync(path.join(ROOT, 'utils/marketPrice.ts'), 'utf8');
   // Der Abruf heisst seit Nachtrag 167 figMarktpreisMitHerkunft: Er liefert
   // neben dem Preis den Zustand, aus dem dieser stammt. getCurrentFigMarketPrice
   // steht als duenne Huelle daneben und gibt nur die Zahl weiter — geprueft
@@ -428,8 +428,8 @@ test('die Teile-Schätzung landet in Cache und Verlauf', () => {
   // Zwei Dateien, ein Korpus — dieselbe Begruendung wie weiter oben: Die
   // Schaetzung steht seit dem Schichtumbau in utils/marketPrice.ts, der
   // Erfassungsweg (recordAcquisitionForDay) ist in der Route geblieben.
-  const src = fs.readFileSync(path.join(ROOT, 'utils', 'marketPrice.ts'), 'utf8')
-            + '\n' + fs.readFileSync(path.join(ROOT, 'utils', 'manuelleFiguren.ts'), 'utf8');
+  const src = fs.readFileSync(path.join(ROOT, 'utils/marketPrice.ts'), 'utf8')
+            + '\n' + fs.readFileSync(path.join(ROOT, 'utils/manuelleFiguren.ts'), 'utf8');
   const est = src.slice(src.indexOf('async function estimateFigPriceFromParts'),
                         src.indexOf('async function getCurrentFigMarketPrice'));
 
@@ -456,7 +456,7 @@ test('auch manuelle Minifiguren legen bei jeder Erfassung eine Zeile an', () => 
   // Gleicher früher Ausstieg wie bei den Teilen: `if (existing) { … return }`
   // beendete den Pfad, bevor eine Erfassung entstand. Menge stieg, aber kein
   // Kaufpreis und kein abweichendes Erfassungsdatum.
-  const src = fs.readFileSync(path.join(ROOT, 'utils', 'manuelleFiguren.ts'), 'utf8');
+  const src = fs.readFileSync(path.join(ROOT, 'utils/manuelleFiguren.ts'), 'utf8');
   const fn = src.slice(src.indexOf('async function addManualFig'),
                        src.indexOf('async function addManualFig') + 6000);
 
@@ -475,7 +475,7 @@ test('Erfassungen ohne Kaufpreis werden nachgetragen', () => {
   // BrickLink-Abruf scheitert bei vielen Sets am Tageskontingent. Die Erfassung
   // entstand dann ohne Kaufpreis — der Marktpreis erschien später trotzdem,
   // sobald der Preis-Job den Cache füllte. Genau diese Abweichung war gemeldet.
-  const job = fs.readFileSync(path.join(ROOT, 'jobs', 'purchasePriceBackfill.ts'), 'utf8');
+  const job = fs.readFileSync(path.join(ROOT, 'jobs/purchasePriceBackfill.ts'), 'utf8');
 
   assert.match(job, /async function backfillAcquisitions\(\)/, 'Nachtrag fehlt');
   // Unabhängig von der Set-Zeile: backfillSets() sieht nur Sets mit NULL-Preis
@@ -515,7 +515,7 @@ test('neue Sets holen den richtigen Zustand, nicht den Standard', () => {
   // nichts im Cache fand und auf den gerade gecachten Neupreis auswich.
   // Gemeldeter Fall: CSV-Zeile "10214-1,1,,U,01.08.2026" (kein Preis, Zustand
   // U) bekam CHF 216.24 (den Neupreis) statt CHF 135.11 (Gebraucht).
-  const job = fs.readFileSync(path.join(ROOT, 'jobs', 'priceJob.ts'), 'utf8');
+  const job = fs.readFileSync(path.join(ROOT, 'jobs/priceJob.ts'), 'utf8');
   const { hatParameter } = require('./helpers/sources');
   assert.ok(hatParameter(job, 'conditionsNeededFor', 'hintCondition', true),
     'Der Hinweis-Parameter fehlt');
@@ -528,7 +528,7 @@ test('neue Sets holen den richtigen Zustand, nicht den Standard', () => {
 
   // Und getCurrentMarketPrice muss ihn beim Anlegen mitgeben — genau an der
   // Stelle, wo die Zeile noch nicht existiert.
-  const preis = fs.readFileSync(path.join(ROOT, 'utils', 'marketPrice.ts'), 'utf8');
+  const preis = fs.readFileSync(path.join(ROOT, 'utils/marketPrice.ts'), 'utf8');
   assert.match(preis, /preisFuerSetHolen\(setNumber, userId, condition\)/,
     'getCurrentMarketPrice muss den angefragten Zustand als Hinweis übergeben');
 });
@@ -537,8 +537,8 @@ test('die Preis-Probe läuft ohne Serverfehler', () => {
   // Frühere Fassung fragte set_acquisitions.added_at ab — die Spalte heisst
   // created_at. Jede Probe endete in "Interner Serverfehler".
   // Die Probe steht im Dienst utils/dienste/verwaltung.ts, ihre Abfragen in utils/verwaltung.ts.
-  const admin = fs.readFileSync(path.join(ROOT, 'utils', 'dienste', 'verwaltung.ts'), 'utf8');
-  const dienst = fs.readFileSync(path.join(ROOT, 'utils', 'verwaltung.ts'), 'utf8');
+  const admin = fs.readFileSync(path.join(ROOT, 'utils/dienste/verwaltung.ts'), 'utf8');
+  const dienst = fs.readFileSync(path.join(ROOT, 'utils/verwaltung.ts'), 'utf8');
   const code = (admin + '\n' + dienst).replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
   assert.doesNotMatch(code, /added_at/, 'set_acquisitions kennt keine Spalte added_at');
   assert.match(admin, /verwaltung\.probeErfassungen\(uid, setNumber\)/,
@@ -609,7 +609,7 @@ test('der Preisverlauf-Graph benutzt den Zustand DES SETS, nicht den globalen St
   // die Webapp ruft dieselbe auf. Die Aussage bleibt: Die Route löst den
   // Zustand NICHT selbst auf, sondern überlässt das dem gemeinsamen Helfer —
   // genau das war das Ziel, vorher hatte jede Route ihre eigene Auflösung.
-  const src = fs.readFileSync(path.join(ROOT, 'routes', 'api_v1', 'sets.ts'), 'utf8');
+  const src = fs.readFileSync(path.join(ROOT, 'routes/api_v1/sets.ts'), 'utf8');
   const i = src.indexOf("router.get('/sets/:setNumber/price-history'");
   assert.ok(i > 0, 'Die Preisverlauf-Route ist nicht mehr auffindbar');
   const fn = src.slice(i, i + 1200);
@@ -621,7 +621,7 @@ test('der Preisverlauf-Graph benutzt den Zustand DES SETS, nicht den globalen St
   assert.doesNotMatch(fn, /FROM price_history/,
     'Die Abfrage gehört in utils/priceHistory.ts, nicht in die Route');
 
-  const helper = fs.readFileSync(path.join(ROOT, 'utils', 'priceHistory.ts'), 'utf8');
+  const helper = fs.readFileSync(path.join(ROOT, 'utils/priceHistory.ts'), 'utf8');
   assert.match(helper, /const condition = await resolveSetCondition\(uids, setNumber\);/,
     'Der Helfer muss den Zustand über resolveSetCondition() auflösen');
 });
@@ -631,9 +631,9 @@ test('Android-API: Marktpreis benutzt den Zustand des Sets, nicht den globalen S
   // für ein als „Neu" geführtes Set mit Kaufpreis 162.42 CHF — „-32.0%
   // Entwicklung", obwohl sich der Preis nie bewegt hatte. Ursache identisch zur
   // Webapp-Route: `fetchPrice(sn, DEFAULT_PRICE_CONDITION, …)` — fest 'U'.
-  const src = fs.readFileSync(path.join(ROOT, 'routes', 'api_v1', 'sets.ts'), 'utf8');
+  const src = fs.readFileSync(path.join(ROOT, 'routes/api_v1/sets.ts'), 'utf8');
   // Die Route ruft setPreis() im Dienst; dort wird der Zustand aufgelöst.
-  const dienst = fs.readFileSync(path.join(ROOT, 'utils', 'dienste', 'sets.ts'), 'utf8');
+  const dienst = fs.readFileSync(path.join(ROOT, 'utils/dienste/sets.ts'), 'utf8');
   const priceRoute = dienst.slice(dienst.indexOf('export async function setPreis'),
                                   dienst.indexOf('export async function rebrickableListe'));
   assert.ok(priceRoute.length > 0, 'setPreis() nicht gefunden');
@@ -672,7 +672,7 @@ test('genau EINE Zustandsauflösung für Einzelsets — resolveSetCondition', ()
   // Abfrage danebenstellen.
   // Die Verlaufsrouten rufen ihn nur noch mittelbar auf — über
   // utils/priceHistory.ts, das sich Webapp und Android teilen.
-  const helper = fs.readFileSync(path.join(ROOT, 'utils', 'priceHistory.ts'), 'utf8');
+  const helper = fs.readFileSync(path.join(ROOT, 'utils/priceHistory.ts'), 'utf8');
   // UMFORMULIERT in Nachtrag 143: Geprüft wurde die Importzeile WÖRTLICH.
   // Seit dem Fix für die BrickLink-Schlüssel holt priceHistory.ts aus derselben
   // Datei zwei weitere Namen — die Zeile lautet jetzt
@@ -684,7 +684,7 @@ test('genau EINE Zustandsauflösung für Einzelsets — resolveSetCondition', ()
 
   // Die Preis-Route der Android-API löst weiterhin selbst auf (sie holt einen
   // Preis, keinen Verlauf) — genau ein Vorkommen.
-  const apiV1 = fs.readFileSync(path.join(ROOT, 'utils', 'dienste', 'sets.ts'), 'utf8');
+  const apiV1 = fs.readFileSync(path.join(ROOT, 'utils/dienste/sets.ts'), 'utf8');
   const uses = (apiV1.match(/resolveSetCondition\(blickfeld, sn\)/g) || []).length;
   assert.equal(uses, 1, 'Die /price-Route muss ihn benutzen; der Verlauf geht über priceHistory.ts');
 });
@@ -716,19 +716,19 @@ test('parts_summary-Neuaufbau ist über eine Datenbank-Sperre vor Cluster-Worker
   // zweite Workers DELETE die vom ersten gerade committeten neuen Zeilen
   // (sie kamen nach Beginn seines Scans hinzu), sein anschliessender INSERT
   // versucht dieselben Zeilen erneut anzulegen und verletzt den Primärschlüssel.
-  const src = fs.readFileSync(path.join(ROOT, 'utils', 'partsSummary.ts'), 'utf8');
+  const src = fs.readFileSync(path.join(ROOT, 'utils/partsSummary.ts'), 'utf8');
   const fn = src.slice(src.indexOf('export async function rebuild'),
                        src.indexOf('export async function rebuild') + 3000);
 
   // Auf die ART der Sperre geprüft, nicht auf die Zahl: Seit Nachtrag 149
-  // stehen alle Namensräume in utils/lockNamespaces.ts, und dass sie sich
+  // stehen alle Namensräume in src/infra/lockNamespaces.ts, und dass sie sich
   // nicht überschneiden, prüft test/lock-namespaces-db.test.js gegen eine
   // echte Datenbank. Hier zählt nur, dass die Sperre eine DATENBANK-Sperre ist
   // — die alte In-Memory-Map schützte nur innerhalb eines Workers.
   assert.match(fn, /pg_try_advisory_xact_lock\(/,
     'Die Sperre muss prozessübergreifend in der Datenbank liegen, nicht nur im Node-Prozess');
   assert.match(fn, /LOCKS\.TEILE_SUMMARY/,
-    'Der Namensraum gehört aus utils/lockNamespaces.ts, nicht eingetippt');
+    'Der Namensraum gehört aus src/infra/lockNamespaces.ts, nicht eingetippt');
   assert.match(fn, /if \(!lock\?\.ok\) \{\s*\/\//,
     'Ohne die Sperre muss der Aufbau abgebrochen werden, statt zu kollidieren');
   // Sperre muss VOR dem DELETE erworben werden, sonst nützt sie nichts.
@@ -752,7 +752,7 @@ test('CDN-Anfragen erzwingen IPv4', () => {
     'Der Bild-Proxy muss IPv4 für CDN-Anfragen erzwingen');
 
   // Der lokale Set-Bild-Download liegt seit Nachtrag 125 in utils/setImages.ts.
-  const setsFile = fs.readFileSync(path.join(ROOT, 'utils', 'setImages.ts'), 'utf8');
+  const setsFile = fs.readFileSync(path.join(ROOT, 'utils/setImages.ts'), 'utf8');
   const dlFn = setsFile.slice(setsFile.indexOf('async function downloadSetImage'),
                              setsFile.indexOf('async function downloadSetImage') + 700);
   assert.match(dlFn, /https\.get\(u, \{ timeout:10000, family: 4,/,
@@ -935,7 +935,7 @@ test('Registrieren und Profil bleiben beim Benutzernamen-Muster', () => {
   assert.equal(USERNAME_RE.test('marco@example.com'), false);
   assert.ok(EMAIL_RE.test('marco@example.com'));
 
-  const src = fs.readFileSync(path.join(ROOT, 'routes', 'auth.ts'), 'utf8');
+  const src = fs.readFileSync(path.join(ROOT, 'routes/auth.ts'), 'utf8');
   const register = src.slice(src.indexOf("router.post('/register'"));
   assert.match(register, /USERNAME_RE\.test\(username\)/,
     'Registrieren muss beim Benutzernamen-Muster bleiben');
@@ -953,7 +953,7 @@ test('beide Login-Wege prüfen gleich', () => {
   // steht. Geprüft wird jetzt die Regel selbst: Der gemeinsame Prüfer nimmt
   // beide Formen an, und im Baum steht keine zweite Kopie des Musters, die
   // gegen einen Anmeldenamen läuft.
-  const zentral = fs.readFileSync(path.join(ROOT, 'utils', 'auth.ts'), 'utf8');
+  const zentral = fs.readFileSync(path.join(ROOT, 'utils/auth.ts'), 'utf8');
   const rumpf = zentral.slice(zentral.indexOf('async function pruefeAnmeldedaten'));
   assert.match(rumpf.slice(0, rumpf.indexOf('\n}\n')), /isValidLoginIdentifier\(username\)/,
     'pruefeAnmeldedaten() prüft die Form des Anmeldenamens nicht');
@@ -962,7 +962,7 @@ test('beide Login-Wege prüfen gleich', () => {
     const p = path.join(dir, e.name);
     return e.isDirectory() ? dateien(p) : (e.name.endsWith('.ts') ? [p] : []);
   });
-  const alle = [...dateien(path.join(ROOT, 'routes')), ...dateien(path.join(ROOT, 'utils'))];
+  const alle = [...dateien(path.join(ROOT, 'routes')), ...dateien(path.join(ROOT, 'src')), ...dateien(path.join(ROOT, 'utils'))];
   assert.ok(alle.length >= 30, `nur ${alle.length} Dateien durchsucht — Pfade veraltet?`);
 
   const kopien = alle

@@ -84,7 +84,7 @@ function innereDateien() {
   };
   // startup/ ist ausgelagerter Serverstart (nur server.ts benutzt es) und
   // zählt zur äusseren Schicht; seine eigene Regel steht weiter unten.
-  ['utils', 'jobs', 'clients', 'db'].forEach(lauf);
+  ['src', 'utils', 'jobs', 'clients', 'db'].forEach(lauf);
   return gefunden;
 }
 
@@ -130,7 +130,7 @@ test('eine v1-Route importiert keine andere Routendatei', () => {
   // Gemeinsames gehört nach utils/ (manuelleTeile, manuelleFiguren). Eine
   // Route, die eine Route importiert, zieht deren Router samt Middleware mit.
   // Gegenprobe (28.10.2026): require('../parts') in wanted.ts → rot.
-  const ordner = path.join(ROOT, 'routes', 'api_v1');
+  const ordner = path.join(ROOT, 'routes/api_v1');
   const dateien = fs.readdirSync(ordner).filter(f => f.endsWith('.ts'));
   assert.ok(dateien.length > 10, `nur ${dateien.length} v1-Dateien gefunden`);
   const treffer = [];
@@ -164,7 +164,7 @@ test('keine Route importiert eine andere Routendatei', () => {
 });
 
 test('kein Zustand auf global', () => {
-  // Was Prozesse teilen, steht in einem Modul (utils/startZustand.ts) und
+  // Was Prozesse teilen, steht in einem Modul (src/infra/startZustand.ts) und
   // ist über den Import zu finden. Gegenprobe (29.10.2026): eine Zeile
   // `global.startupStatus = …` in server.ts → rot.
   const treffer = [];
@@ -180,7 +180,7 @@ test('utils/ und clients/ importieren nichts aus jobs/', () => {
   // die Ausführung setzt jobs/verdrahtung.ts ein.
   // Gegenprobe (28.10.2026): require('../jobs/imageQueue') in merkliste.ts → rot.
   const treffer = [];
-  for (const d of innereDateien().filter(f => /^(utils|clients)\//.test(f)))
+  for (const d of innereDateien().filter(f => /^(src|utils|clients)\//.test(f)))
     for (const ziel of importe(d).filter(z => /jobs\//.test(z)))
       treffer.push(`${d} -> ${ziel}`);
   assert.deepEqual(treffer, []);

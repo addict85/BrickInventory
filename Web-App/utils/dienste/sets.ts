@@ -4,12 +4,12 @@
  * Rebrickable und Aufträge stehen nur hier und darunter.
  */
 import * as db from '../../db/database';
-import { logAndContinue, meldeUndLiefere, meldeUndWeiter, vorDem, fehlertext } from '../httpError';
+import { logAndContinue, meldeUndLiefere, meldeUndWeiter, vorDem, fehlertext } from '../../src/infra/httpError';
 import { stelleAuftragEin } from '../auftraege';
 import { resolveImageLocal, proxyImageUrl } from '../images';
 import { getSetting } from '../settings';
 import { normalizeSetNumber } from '../setAdd';
-import { istErsatzteil, ersatzteilSql } from '../validate';
+import { istErsatzteil, ersatzteilSql } from '../../src/infra/validate';
 import { istVermutung } from '../barcodeQuelle';
 import { setnummerKandidaten } from '../produkttitel';
 import { fetchPrice, resolveSetCondition } from '../financeCalc';
@@ -18,13 +18,13 @@ import { mitVersion, ohneVersion } from '../setNummer';
 import { figurenAusKatalog } from '../minifigsImport';
 import { mengeSkalar } from '../bestandsmenge';
 import { blJoin, blNummerSql } from '../blZuordnung';
-import { csvEinlesen, entschaerfungRueckgaengig, parseCsvDate, uebersprungenHinweis } from '../csvExport';
+import { csvEinlesen, entschaerfungRueckgaengig, parseCsvDate, uebersprungenHinweis } from '../../src/infra/csvExport';
 import { jobGet, jobSet, jobUpdate, emitJobStatus } from '../importAuftrag';
 import { getSetByBarcode, getSetByEan } from '../../clients/brickset';
 import { getAllSetParts, getMinifigInfo, getSetMinifigs, rebrickableJson } from '../../clients/rebrickable';
 import type { RbSetTeil } from '../../clients/rebrickable';
 import { produktTitel } from '../../clients/upcitemdb';
-import { fehlerWerfen } from '../fehlerTexte';
+import { fehlerWerfen } from '../../src/infra/fehlerTexte';
 import { merkeFigur, merkeSetFiguren } from '../katalogPflege';
 import { randomUUID } from 'crypto';
 

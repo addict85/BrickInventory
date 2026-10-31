@@ -2,7 +2,7 @@
  * Das Guthaben einer LEGO-Geschenkkarte abfragen.
  * Ausführlich: docs/begruendungen/utils/gutscheinGuthaben.ts.md#abschnitt
  */
-import { hostErlaubt } from './fremdeAdressen';
+import { hostErlaubt } from '../src/infra/fremdeAdressen';
 
 /**
  * Der Endpunkt und die Seite davor.

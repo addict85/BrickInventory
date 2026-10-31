@@ -21,7 +21,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const _req = require('./helpers/sources').buildAndRequire();
 const bd = _req('utils/bildDatei.js');
 const { downloadImage } = _req('jobs/partsCatalogEnrich.js');
-const { PART_IMAGES_DIR, DATA_DIR } = _req('utils/appPaths.js');
+const { PART_IMAGES_DIR, DATA_DIR } = _req('src/infra/appPaths.js');
 
 const CDN = 'https://cdn.rebrickable.com/media/parts/elements';
 const NUMMER = `bildtest${process.pid}`;

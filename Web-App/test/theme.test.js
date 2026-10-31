@@ -24,7 +24,7 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 const PUB = path.join(ROOT, 'public');
 const html = fs.readFileSync(path.join(PUB, 'index.html'), 'utf8');
-const settings = fs.readFileSync(path.join(ROOT, 'routes', 'settings.ts'), 'utf8');
+const settings = fs.readFileSync(path.join(ROOT, 'routes/settings.ts'), 'utf8');
 const styles = fs.readFileSync(path.join(PUB, 'styles.css'), 'utf8');
 
 test('GET /api/settings/theme ist ohne Login erreichbar', () => {
@@ -134,7 +134,7 @@ test('fuenf Listen nennen dieselben Designs', () => {
 
   const boot = liste(fs.readFileSync(path.join(PUB, 'js', '00-theme-boot.js'), 'utf8'),
     /var ALLOWED = \[([^\]]*)\]/, 'js/00-theme-boot.js');
-  const server = liste(fs.readFileSync(path.join(__dirname, '..', 'utils', 'settings.ts'), 'utf8'),
+  const server = liste(fs.readFileSync(path.join(__dirname, '..', 'utils/settings.ts'), 'utf8'),
     /const DESIGNS: readonly string\[\] = \[([^\]]*)\]/, 'utils/settings.ts');
   const app = liste(fs.readFileSync(path.join(__dirname, '..', '..', 'Android-App', 'app', 'src',
     'main', 'java', 'ch', 'brickinventoryapp', 'data', 'PreferencesManager.kt'), 'utf8'),
@@ -158,7 +158,7 @@ test('jedes Theme unter public/themes/ deckt die Screens vor dem Login ab', () =
 });
 
 test('der Server setzt data-theme selbst — kein Sprung beim ersten Aufruf', () => {
-  const render = fs.readFileSync(path.join(ROOT, 'utils', 'indexHtml.ts'), 'utf8');
+  const render = fs.readFileSync(path.join(ROOT, 'utils/indexHtml.ts'), 'utf8');
   assert.match(render, /data-theme="\$\{theme\}"/,
     'renderIndexHtml() muss das Attribut in das <html>-Tag schreiben');
   assert.match(render, /invalidateTheme/,
@@ -185,7 +185,7 @@ test('der Server setzt data-theme selbst — kein Sprung beim ersten Aufruf', ()
   assert.match(catchAll, /sendFile/,
     'Bei einem Renderfehler muss die Datei unverändert ausgeliefert werden');
 
-  const settings = fs.readFileSync(path.join(ROOT, 'routes', 'settings.ts'), 'utf8');
+  const settings = fs.readFileSync(path.join(ROOT, 'routes/settings.ts'), 'utf8');
   assert.match(settings, /invalidateTheme\(\)/,
     'Das Speichern eines Designs muss den Server-Cache verwerfen');
 });

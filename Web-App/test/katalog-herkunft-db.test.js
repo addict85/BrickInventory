@@ -28,7 +28,7 @@ const db   = _req('db/database.js');
 
 // Rebrickable vorgeben, bevor die Routen die Funktionen herausziehen (wie in
 // test/katalog-vor-rebrickable-db.test.js).
-const rbPfad = require.resolve(path.join(ROOT, 'dist', 'clients', 'rebrickable.js'));
+const rbPfad = require.resolve(path.join(ROOT, 'dist', 'clients/rebrickable.js'));
 const echtRb = require(rbPfad);
 let abrufe = [];
 require.cache[rbPfad].exports = Object.assign({}, echtRb, {

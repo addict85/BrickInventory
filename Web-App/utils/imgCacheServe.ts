@@ -1,8 +1,8 @@
 import fs from 'fs';
 import { queueThumb } from './proxyThumbs';
-import { vorDem, ohneFehlendeDatei } from '../utils/httpError';
+import { vorDem, ohneFehlendeDatei } from '../src/infra/httpError';
 import path from 'path';
-import { APP_ROOT } from './appPaths';
+import { APP_ROOT } from '../src/infra/appPaths';
 
 /**
  * Ein Bild aus dem Platten-Cache ausliefern, falls es dort liegt.
@@ -47,7 +47,7 @@ export async function liefereAusCache(opts: {
       if (req.fresh) { res.status(304).end(); return true; }
       // Kein rohes pipe(): Die Cache-Pflege kann die Datei zwischen Prüfung
       // und Öffnen entfernen, und ein Lesestrom-Fehler ohne Zuhörer beendet
-      // den Prozess (siehe utils/httpError.ts).
+      // den Prozess (siehe src/infra/httpError.ts).
       streamFileToResponse(res, thumbFile, undefined, req); return true;
     } catch (_) { /* noch nicht erzeugt */ }
   }

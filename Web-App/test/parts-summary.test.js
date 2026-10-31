@@ -28,7 +28,7 @@ const DB_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhos
 // ── Statische Prüfungen (immer) ────────────────────────────────────────────
 test('die Entwertung hängt an einem Trigger, nicht an Aufrufen', () => {
   // Die Trigger stehen seit 0052 in einer Migration, nicht mehr im Code.
-  const src = fs.readFileSync(path.join(ROOT, 'db', 'migrations', '0052-teilezusammenfassung-stand.sql'), 'utf8');
+  const src = fs.readFileSync(path.join(ROOT, 'db/migrations/0052-teilezusammenfassung-stand.sql'), 'utf8');
   assert.match(src, /FOR EACH STATEMENT/,
     'Zeilen-Trigger würden bei einem CSV-Import 171 000 Mal feuern');
   for (const tbl of ['parts', 'sets']) {
@@ -57,7 +57,7 @@ test('die Live-Abfrage bleibt als Rückfallebene erhalten', () => {
   const h = require('./helpers/sources').handlerQuelle();
   assert.match(h, /if \(summary\) return summary;/,
     'Ohne Rückfall wäre ein Fehler beim Aufbau ein Totalausfall der Ansicht');
-  const src = fs.readFileSync(path.join(ROOT, 'utils', 'partsSummary.ts'), 'utf8');
+  const src = fs.readFileSync(path.join(ROOT, 'utils/partsSummary.ts'), 'utf8');
   assert.match(src, /return false;/, 'ensureFresh muss Misserfolg melden können');
 });
 
@@ -248,7 +248,7 @@ test('der Neuaufbau blockiert den Request nicht', () => {
   // vollen Aufbau — an 380 Sets gemessen gut drei Sekunden, in denen die
   // Kachelwand leer blieb. Manuell erfasste Teile erschienen sofort, weil sie
   // über eine eigene Abfrage ohne Zusammenfassung laufen.
-  const src = fs.readFileSync(path.join(ROOT, 'utils', 'partsSummary.ts'), 'utf8');
+  const src = fs.readFileSync(path.join(ROOT, 'utils/partsSummary.ts'), 'utf8');
   const fn = src.slice(src.indexOf('export async function ensureFresh'),
                        src.indexOf('export async function rebuildNow'));
   assert.ok(fn.length > 0, 'ensureFresh nicht gefunden');
@@ -269,7 +269,7 @@ test('Kennzahlen benutzen keinen veralteten Stand', () => {
   // Während eines Hintergrund-Neuaufbaus las der eine aus der Zusammenfassung
   // und der andere live — die Paritätsprüfung schlug dadurch reproduzierbar
   // fehl. Mit strict weichen beide gemeinsam auf die Live-Abfrage aus.
-  const ps = fs.readFileSync(path.join(ROOT, 'utils', 'partsSummary.ts'), 'utf8');
+  const ps = fs.readFileSync(path.join(ROOT, 'utils/partsSummary.ts'), 'utf8');
   assert.match(ps, /opts\?: \{ strict\?: boolean \}/, 'strict-Variante fehlt');
   assert.match(ps, /if \(opts\?\.strict\) return false;/,
     'Ein veralteter Stand muss unter strict abgelehnt werden');

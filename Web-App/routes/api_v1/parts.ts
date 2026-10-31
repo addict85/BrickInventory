@@ -1,19 +1,19 @@
 /** /api/v1/parts — CRUD, Farben, Statistiken (Erfassungen: ./acquisitions.ts). */
 import express from 'express';
-import { handleRouteError } from '../../utils/httpError';
+import { handleRouteError } from '../../src/infra/httpError';
 import { requireToken } from './middleware';
 import { scopeIds, parseScopeMode, resolveWriteTarget } from '../../utils/household';
 import { getBlColorMap, getManualParts, getOwnedQuantities, getParts, getPartsColors, getPartsStats, getPartsCategories } from '../../utils/handlers/parts';
-import { csvEmpfang } from '../../utils/dateiEmpfang';
-import { csvImportAntwort } from '../../utils/csvExport';
+import { csvEmpfang } from '../../src/infra/dateiEmpfang';
+import { csvImportAntwort } from '../../src/infra/csvExport';
 import { addManualPart, getPartColorList, updateManualPart, importiereTeileCsv } from '../../utils/manuelleTeile';
 import { getSetting } from '../../utils/settings';
 import { getPartPriceHistory } from '../../utils/priceHistory';
-import { einzelwert } from '../../utils/validate';
-import * as V from '../../utils/validate';
+import { einzelwert } from '../../src/infra/validate';
+import * as V from '../../src/infra/validate';
 import { aendereTeilFarbe } from '../../utils/teilFarbeAendern';
 import { verwendendeSets } from '../../utils/handlers/shared';
-import { sendeFehler } from '../../utils/fehlerTexte';
+import { sendeFehler } from '../../src/infra/fehlerTexte';
 import { normalisiereLagerort, setzeLagerort } from '../../utils/lagerort';
 import { writableIds } from '../../utils/household';
 import { loescheTeil } from '../../utils/loeschen';

@@ -2,7 +2,7 @@
  * BrickLink-Katalog-Links für Set-Nummern.
  * Ausführlich: docs/begruendungen/utils/bricklinkLink.ts.md#abschnitt
  */
-import { logAndContinue, meldeUndLiefere } from './httpError';
+import { logAndContinue, meldeUndLiefere } from '../src/infra/httpError';
 import * as db from '../db/database';
 import { bricklinkRequest } from '../clients/bricklink';
 import { getGlobalSetting } from './settings';

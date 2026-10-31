@@ -7,11 +7,11 @@
  */
 import * as db from '../db/database';
 import { downloadSetInstructions, letzterAbrufWarExtern, anzahlAnleitungen, scrapeInstructionsFromFallback } from '../utils/instructions';
-import { fehlertext } from '../utils/httpError';
+import { fehlertext } from '../src/infra/httpError';
 import { alsAbrufFehler } from '../clients/abrufFehler';
 import { beendePause, liesPause, pausiereArt, zaehleArt } from '../utils/auftraege';
 import * as monitor from '../utils/jobMonitor';
-import { LOCKS } from '../utils/lockNamespaces';
+import { LOCKS } from '../src/infra/lockNamespaces';
 import { AuftragVerschieben } from './auftragsWorker';
 
 /** Abstand nach einem Abruf, der wirklich einen fremden Server fragte. */

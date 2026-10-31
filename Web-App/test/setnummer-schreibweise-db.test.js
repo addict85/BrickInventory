@@ -47,7 +47,7 @@ const db = _req('db/database.js');
 // BrickLink vorgeben, BEVOR die Preiswege getPriceGuide herausziehen. Der
 // echte Client wirft in genau dieser Lage — hier wird nur MITGEZAEHLT, wie
 // oft ueberhaupt gefragt wird.
-const blPfad = require.resolve(path.join(ROOT, 'dist', 'clients', 'bricklink.js'));
+const blPfad = require.resolve(path.join(ROOT, 'dist', 'clients/bricklink.js'));
 const echt = require(blPfad);
 let abrufe = [];
 require.cache[blPfad].exports = Object.assign({}, echt, {

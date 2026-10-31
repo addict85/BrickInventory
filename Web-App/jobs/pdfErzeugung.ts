@@ -1,13 +1,13 @@
 import fsp from 'fs/promises';
 import path from 'path';
 import * as db from '../db/database';
-import { MINIFIG_IMAGES_DIR } from '../utils/appPaths';
+import { MINIFIG_IMAGES_DIR } from '../src/infra/appPaths';
 import { getMinifigInfo } from '../clients/rebrickable';
-import { logAndContinue, meldeUndWeiter } from '../utils/httpError';
+import { logAndContinue, meldeUndWeiter } from '../src/infra/httpError';
 import { pdfDateiPfad } from '../utils/pdfAuftraege';
 import { downloadImage, downloadSetImages } from './partsCatalogEnrich';
 import { zeichnePdfImFaden, type PdfSet, type PdfTeil } from './pdfZeichnen';
-import { KEINE_FARBE } from '../utils/validate';
+import { KEINE_FARBE } from '../src/infra/validate';
 import { merkeFigurBildAdresse, setzeFigurBildLokal, setzeTeilBildLokal } from '../utils/katalogPflege';
 import { normalisiereSetNummer, moeglicheSetNummer } from '../utils/setNummer';
 

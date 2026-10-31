@@ -84,7 +84,7 @@ test('eine hoffnungslose Vorschau wird nur EINMAL versucht', { concurrency: 1 },
   // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung
   // und Nachstellung in helpers/bildwarteschlange.js.
   await leereWarteschlange(db);
-  const { SET_IMAGES_DIR } = _req('utils/appPaths.js');
+  const { SET_IMAGES_DIR } = _req('src/infra/appPaths.js');
   const fsm = require('node:fs');
   fsm.mkdirSync(SET_IMAGES_DIR, { recursive: true });
   const P = `WB${process.pid}`;

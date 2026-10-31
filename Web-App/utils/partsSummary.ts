@@ -2,12 +2,12 @@
  * Vorberechnete Teile-Zusammenfassung.
  * Ausführlich: docs/begruendungen/utils/partsSummary.ts.md#abschnitt
  */
-import { meldeUndLiefere } from './httpError';
+import { meldeUndLiefere } from '../src/infra/httpError';
 import { mengeJoin, mengeAus } from './bestandsmenge';
 import { blJoin, blNummerSql } from './blZuordnung';
 import { teilmengeJoin, teilmengeAus } from './bestandsmenge';
 import * as db from '../db/database';
-import * as lockNamespaces from './lockNamespaces';
+import * as lockNamespaces from '../src/infra/lockNamespaces';
 
 
 /** Stand der Rohdaten dieses Kontos, und ob Katalogänderungen offen sind (Migration 0079). */
@@ -86,7 +86,7 @@ export async function rebuild(userId: number, version?: { v: number }): Promise<
   });
 
   // Neuaufbau = Masseneinfügen: Ohne frische Statistik wählt der Planer den
-  // falschen Index (utils/tabellePflegen.ts). Höchstens alle zehn Minuten,
+  // falschen Index (db/tabellePflegen.ts). Höchstens alle zehn Minuten,
   // weil ANALYZE die Tabelle aller Konten vermisst. VACUUM entfällt, seit die
   // GIN-Indizes keine Warteliste führen (Migration 0054).
   if (gebaut && Date.now() - _letzteAnalyse > 10 * 60_000) {

@@ -24,7 +24,7 @@ const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
 
 test('pfadSegment', () => {
-  const { pfadSegment, nummernListe } = _req('utils/fremdeAdressen.js');
+  const { pfadSegment, nummernListe } = _req('src/infra/fremdeAdressen.js');
   assert.equal(pfadSegment('10294-1'), '10294-1');
   assert.equal(pfadSegment('x/../y?z'), 'x%2F..%2Fy%3Fz');
   for (const p of ['', '.', '..', '...']) assert.throws(() => pfadSegment(p), /Pfadsegment/, `„${p}“ geht durch`);

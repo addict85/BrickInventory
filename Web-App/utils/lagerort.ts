@@ -2,11 +2,11 @@
  * Lagerort — wo liegt das eigentlich?
  * Ausführlich: docs/begruendungen/utils/lagerort.ts.md#abschnitt
  */
-import { meldeUndLiefere } from './httpError';
+import { meldeUndLiefere } from '../src/infra/httpError';
 import * as db from '../db/database';
 import { asIds } from './household';
 import type { BlickfeldEingabe } from './household';
-import { fehlerWerfen } from './fehlerTexte';
+import { fehlerWerfen } from '../src/infra/fehlerTexte';
 // Statisch und nicht als dynamischer Import: Einen Kreis gibt es nicht
 // (settings.ts kennt nur db und httpError), und `await import('./settings')`
 // verlangt unter moduleResolution node16 die Dateiendung — eine Schreibweise,

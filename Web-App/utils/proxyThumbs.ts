@@ -1,11 +1,11 @@
-import { logAndContinue } from './httpError';
+import { logAndContinue } from '../src/infra/httpError';
 import fs from 'fs';
 import { merkeFehlend } from './imageMisses';
 import { imgProxyFailures } from './imgProxyStats';
 import { istBekanntFehlend } from '../utils/imageMisses';
 import { isDecodable } from '../utils/imageGuard';
 import * as db from '../db/database';
-import { LOCKS } from './lockNamespaces';
+import { LOCKS } from '../src/infra/lockNamespaces';
 
 /**
  * Die Vorschau-Maschinerie des Bild-Proxys.

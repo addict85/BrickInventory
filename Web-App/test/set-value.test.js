@@ -127,7 +127,7 @@ test('die Sortierung "hat einen Preis vor passendem Zustand" ist überall weg', 
 
 test('getPriceGuide holt ohne Angabe den Neupreis', () => {
   // Fundort seit Nachtrag 131: clients/bricklink.ts (null Routen, nie montiert).
-  const src = fs.readFileSync(path.join(ROOT, 'clients', 'bricklink.ts'), 'utf8');
+  const src = fs.readFileSync(path.join(ROOT, 'clients/bricklink.ts'), 'utf8');
   const { pruefeParameter, funktionsKopf } = require('./helpers/sources');
   pruefeParameter(src, 'getPriceGuide', ['setNumber', 'condition']);
   // Der Punkt ist die VORGABE, nicht der Rest des Kopfes: Mit 'U' landete der
@@ -188,7 +188,7 @@ test('der Preisjob holt alle Zustände, die ein Set tatsächlich führt', () => 
   // anderen aus — bei gemischten Sets fehlte damit dauerhaft eine Hälfte.
   // .ts statt .js: jobs/ ist TypeScript, das .js ist nur noch ein Build-Ergebnis
   // in dist/ und im Repo nicht mehr vorhanden.
-  const job = fs.readFileSync(path.join(ROOT, 'jobs', 'priceJob.ts'), 'utf8');
+  const job = fs.readFileSync(path.join(ROOT, 'jobs/priceJob.ts'), 'utf8');
 
   // EINE Stelle, und sie arbeitet gebündelt: Der Einzelfall (Sofort-Abruf) ist
   // eine Liste mit einem Eintrag. Vorher stand die Regel zweimal da — einmal
@@ -235,7 +235,7 @@ test('der Preisjob holt alle Zustände, die ein Set tatsächlich führt', () => 
 test("ohne Verkauf in sechs Monaten wird auf 'stock' ausgewichen", () => {
   // BrickLink liefert für selten gehandelte Artikel eine Antwort mit
   // avg_price = 0 — 'sold' allein hiesse dort dauerhaft kein Marktpreis.
-  const bl = fs.readFileSync(path.join(ROOT, 'clients', 'bricklink.ts'), 'utf8');
+  const bl = fs.readFileSync(path.join(ROOT, 'clients/bricklink.ts'), 'utf8');
   // Frueher stand hier `/function hasUsablePrice/` — ein Name. Die Pruefung
   // heisst inzwischen hatPreis() und liegt in utils/preisRegel.ts, weil sie
   // DIESELBE sein muss wie beim Lesen: Solange der Torwaechter hier weiter war
@@ -316,7 +316,7 @@ test('der P&L-Pfad wählt je Set nach dessen eigenem Zustand', () => {
     'Ohne avg_price im SELECT greift die Auswertung ins Leere');
 
   // Das Ausweichen auf den anderen Zustand lebt jetzt an EINER Stelle.
-  const sv = fs.readFileSync(path.join(ROOT, 'utils', 'setValue.ts'), 'utf8');
+  const sv = fs.readFileSync(path.join(ROOT, 'utils/setValue.ts'), 'utf8');
   assert.match(sv, /const want\s*=\s*prices\.get\(`\$\{setNumber\}\|\$\{cond\}`\);\s*\n\s*if \(want\) return want;/,
     'Der andere Zustand darf nur einspringen, wenn der eigene keinen Preis hat');
 });
@@ -358,7 +358,7 @@ test('Finanzen: Kaufpreis statt zweiter Marktpreis-Spalte', () => {
   // gewandert — sie wird jetzt über dieselben Zeilen gerechnet, die auch in
   // der Tabelle stehen. Damit kann Zeilensumme und Kopfzahl nicht mehr
   // auseinanderlaufen.
-  const sv = fs.readFileSync(path.join(ROOT, 'utils', 'setValue.ts'), 'utf8');
+  const sv = fs.readFileSync(path.join(ROOT, 'utils/setValue.ts'), 'utf8');
   assert.match(sv, /withCost\.reduce\(\(s, r\) => s \+ \(r\.purchase_price as number\) \* r\.quantity, 0\) \/ qty/,
     'Der Kaufpreis muss mengengewichtet gemittelt werden: 2x100 + 1x160 ergibt 120, nicht 130');
   assert.match(sv, /r\.purchase_price != null/,
@@ -524,11 +524,11 @@ test('Bewertung und Anzeige benutzen dieselbe Zustandsregel', () => {
 });
 
 test('es gibt einen Diagnose-Endpunkt für Preise', () => {
-  const admin = fs.readFileSync(path.join(ROOT, 'routes', 'api_v1', 'admin.ts'), 'utf8');
+  const admin = fs.readFileSync(path.join(ROOT, 'routes/api_v1/admin.ts'), 'utf8');
   assert.match(admin, /router\.get\('\/admin\/price-probe', requireApiAdmin/, 'Endpunkt fehlt');
   assert.match(admin, /req\.query\.live === '1'/, 'Ein Live-Abruf gegen BrickLink muss möglich sein');
   // Die Antwort baut der Dienst der Verwaltung.
-  const dienst = fs.readFileSync(path.join(ROOT, 'utils', 'dienste', 'verwaltung.ts'), 'utf8');
+  const dienst = fs.readFileSync(path.join(ROOT, 'utils/dienste/verwaltung.ts'), 'utf8');
   assert.match(dienst, /chosen_for_price/, 'Der gewählte Zustand gehört in die Antwort');
   assert.match(dienst, /price_cache: cacheRows/, 'Die Cache-Zeilen gehören dazu');
 });
@@ -539,7 +539,7 @@ test('die Verlaufs-Endpunkte liefern fertige Diagrammdaten', () => {
   // priceChartSVG(), Android hätte dieselbe Rechnung ein zweites Mal
   // gebraucht. Genau dieses Muster ist in diesem Projekt schon mehrfach
   // auseinandergelaufen (Zustandsauflösung, Bild-Allowlist, Verlaufsroute).
-  const cd = fs.readFileSync(path.join(ROOT, 'utils', 'chartData.ts'), 'utf8');
+  const cd = fs.readFileSync(path.join(ROOT, 'utils/chartData.ts'), 'utf8');
   assert.match(cd, /export function buildChart/, 'Der gemeinsame Bauer fehlt');
   assert.match(cd, /byDay\.has\(day\) \? byDay\.get\(day\)! : 0/,
     'Leere Positionen müssen mit 0 aufgefüllt werden');
@@ -547,7 +547,7 @@ test('die Verlaufs-Endpunkte liefern fertige Diagrammdaten', () => {
     'Ohne diesen Index kann ein Renderer die aufgefüllten Nullen nicht überspringen');
 
   // Alle drei Verlaufs-Endpunkte müssen ihn benutzen.
-  const ph = fs.readFileSync(path.join(ROOT, 'utils', 'priceHistory.ts'), 'utf8');
+  const ph = fs.readFileSync(path.join(ROOT, 'utils/priceHistory.ts'), 'utf8');
   // Teile- und Minifiguren-Verlauf sind seit hardened-96 ebenfalls in
   // utils/priceHistory.ts (die Android-Routen brauchen dieselbe Antwort) — sie
   // teilen sich dort EINEN Aufbau, deshalb steht buildChart zweimal in der
@@ -562,7 +562,7 @@ test('die Verlaufs-Endpunkte liefern fertige Diagrammdaten', () => {
   // Die frueher hier geprueste routes/finance.ts gibt es nicht mehr (Router
   // ohne eine einzige Route). Die Regel gilt weiter, nur fuer die Datei, in der
   // die Verlaufs-Routen HEUTE stehen: Ein Adapter baut keine Diagrammdaten.
-  const v1fin = fs.readFileSync(path.join(ROOT, 'routes', 'api_v1', 'finance.ts'), 'utf8');
+  const v1fin = fs.readFileSync(path.join(ROOT, 'routes/api_v1/finance.ts'), 'utf8');
   assert.doesNotMatch(v1fin, /buildChart\(/,
     'Die Routendatei ist ein Adapter — die Diagrammdaten baut der gemeinsame Helfer');
 

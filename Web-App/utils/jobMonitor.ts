@@ -3,7 +3,7 @@
  * UI polls GET /api/v1/admin/jobs to display progress.
  */
 
-import { meldeUndWeiter, logAndContinue, meldeUndLiefere } from './httpError';
+import { meldeUndWeiter, logAndContinue, meldeUndLiefere } from '../src/infra/httpError';
 import { liesZustand, setzeZustand, zaehleZustand, zustaendeMitPraefix } from './laufzustand';
 
 const JOB_DEFAULTS: Record<string, any> = {

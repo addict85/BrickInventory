@@ -67,7 +67,7 @@ class RateLimiter {
 }
 
 // Primary limiter: CSV import, set info, image downloads (foreground)
-import { meldeUndWeiter, meldeUndLiefere } from './httpError';
+import { meldeUndWeiter, meldeUndLiefere } from '../src/infra/httpError';
 import { checkAndIncrementRateLimit, getRateLimitStatus, REBRICKABLE_DEFAULT_DAILY } from './apiKontingent';
 import * as db from '../db/database';
 

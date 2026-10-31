@@ -48,7 +48,7 @@ test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async (t) => 
   }
   const pdf = _req('routes/api_v1/pdf.js');
   const auftraege = _req('utils/pdfAuftraege.js');
-  const { PDF_JOB_DIR } = _req('utils/appPaths.js');
+  const { PDF_JOB_DIR } = _req('src/infra/appPaths.js');
 
   for (const name of ['pdf_a', 'pdf_b']) await db.run('DELETE FROM users WHERE username = $1', [name]);
   await db.run("INSERT INTO users (username,password_hash,email_verified) VALUES ('pdf_a','x',1)");
@@ -191,7 +191,7 @@ test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async (t) => 
       await fs.unlink(path.join(PDF_JOB_DIR, f)).catch(() => {});
     }
     await db.run(`DELETE FROM auftraege WHERE art = 'pdf'`).catch(() => {});
-    await _req('utils/pgNotify.js').close().catch(() => {});
+    await _req('db/pgNotify.js').close().catch(() => {});
     await db.pool.end().catch(() => {});
   }
 });

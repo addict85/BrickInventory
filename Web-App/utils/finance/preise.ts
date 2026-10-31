@@ -10,11 +10,11 @@ import { hatPreis } from '../preisRegel';
 import { asIds } from '../household';
 import { checkAndIncrementRateLimit, kontingentFrei, getLimitForApi, getRateLimitStatus } from '../apiKontingent';
 import { bricklinkRequest, getPriceGuide } from '../../clients/bricklink';
-import { fehlertext, logAndContinue, meldeUndLiefere } from '../httpError';
+import { fehlertext, logAndContinue, meldeUndLiefere } from '../../src/infra/httpError';
 import { mitVersion, katalogEintrag, ohneBricklinkPreis } from '../setNummer';
 import { effectiveCondition } from './zustand';
 import { blAbrufNummer, blAbrufNummern } from '../blZuordnung';
-import { KEINE_FARBE } from '../validate';
+import { KEINE_FARBE } from '../../src/infra/validate';
 
 
 

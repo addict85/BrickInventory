@@ -96,7 +96,7 @@ test('CSV-Import: keine Doppelbuchung', { concurrency: 1 }, async (t) => {
     });
   } finally {
     await worker.stoppe(0);
-    await _req('utils/pgNotify.js').close();
+    await _req('db/pgNotify.js').close();
     await db.run('DELETE FROM users WHERE id=$1', [uid]);
     await db.pool.end().catch(() => {});
   }

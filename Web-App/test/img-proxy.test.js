@@ -121,7 +121,7 @@ test('Fehler werden gezählt und protokolliert', () => {
   // statt einer Closure, die über `global.__imgProxyFailures` hinausgereicht
   // wurde. Geprüft wird, dass es ihn gibt und dass er alle vier Fälle führt —
   // nicht mehr, wie er geschrieben ist.
-  const stats = fs.readFileSync(path.join(ROOT, 'utils', 'imgProxyStats.ts'), 'utf8');
+  const stats = fs.readFileSync(path.join(ROOT, 'utils/imgProxyStats.ts'), 'utf8');
   for (const feld of ['timeout', 'error', 'notFound', 'other', 'lastError']) {
     assert.match(stats, new RegExp(`${feld}:`), `Zähler-Feld fehlt: ${feld}`);
   }
@@ -137,11 +137,11 @@ test('Fehler werden gezählt und protokolliert', () => {
 });
 
 test('die Diagnose-Endpunkte sind vorhanden', () => {
-  const route = fs.readFileSync(path.join(ROOT, 'routes', 'api_v1', 'admin.ts'), 'utf8');
+  const route = fs.readFileSync(path.join(ROOT, 'routes/api_v1/admin.ts'), 'utf8');
   assert.match(route, /router\.get\('\/admin\/img-probe', requireApiAdmin/, 'img-probe fehlt');
   assert.match(route, /router\.get\('\/admin\/price-probe', requireApiAdmin/, 'price-probe fehlt');
   // Die Abrufe selbst stehen im Dienst der Verwaltung (Routen rufen nicht ins Netz).
-  const admin = fs.readFileSync(path.join(ROOT, 'utils', 'dienste', 'verwaltung.ts'), 'utf8');
+  const admin = fs.readFileSync(path.join(ROOT, 'utils/dienste/verwaltung.ts'), 'utf8');
   assert.match(admin, /content_encoding: r\.headers\['content-encoding'\]/,
     'Die Probe muss zeigen, ob das CDN komprimiert liefert');
   assert.match(admin, /proxy_failures: failures/, 'Die Zähler gehören in die Antwort');
@@ -161,7 +161,7 @@ test('die Probe zeigt, WAS ausgeliefert wird', () => {
   // Server meldet 200, CDN meldet 200, nichts im Log — und der Browser zeigt
   // trotzdem nichts. Der einzige Blickwinkel, der fehlte, ist der tatsächliche
   // Inhalt der ersten Bytes.
-  const admin = fs.readFileSync(path.join(ROOT, 'utils', 'dienste', 'verwaltung.ts'), 'utf8');
+  const admin = fs.readFileSync(path.join(ROOT, 'utils/dienste/verwaltung.ts'), 'utf8');
   assert.match(admin, /body_check: head/, 'Die Inhaltsprüfung fehlt in der Antwort');
   assert.match(admin, /first_bytes_hex/, 'Die ersten Bytes gehören als Hex in die Antwort');
   for (const sig of ['JPEG', 'PNG', 'gzip (komprimiert!)', 'HTML/XML statt Bild']) {
@@ -244,16 +244,16 @@ test('Minifiguren-Bilder werden lokal abgelegt wie Set-Bilder', () => {
   // Fortschritt im bestehenden Job, kein zweiter Eintrag im Monitoring
   assert.match(SERVER, /const tick = async \(\) => \{/, 'Fortschrittszähler fehlt');
   assert.match(SERVER, /sub: `\$\{done\} \/ \$\{total\} geladen`/, 'Zwischenstand fehlt');
-  const mon = fs.readFileSync(path.join(ROOT, 'utils', 'jobMonitor.ts'), 'utf8');
+  const mon = fs.readFileSync(path.join(ROOT, 'utils/jobMonitor.ts'), 'utf8');
   const figJobs = (mon.match(/^\s{2}\w+:\s*\{/gm) || []).filter(l => /fig|minifig/i.test(l));
   assert.deepEqual(figJobs, [], 'Es darf kein eigener Job dafür entstehen — imgDl deckt es ab');
 
   // Und die offene Menge im Monitoring muss sie mitzählen. Die Abfrage steht
   // im Dienst der Verwaltungsrouten; die Route ruft sie für die Kachel auf.
-  const route = fs.readFileSync(path.join(ROOT, 'utils', 'dienste', 'verwaltung.ts'), 'utf8');
+  const route = fs.readFileSync(path.join(ROOT, 'utils/dienste/verwaltung.ts'), 'utf8');
   assert.match(route, /verwaltung\.bestandsFigurenbilderOffen\(\)/,
     'Die Job-Übersicht muss die Figurenbilder des Bestands abfragen');
-  const admin = fs.readFileSync(path.join(ROOT, 'utils', 'verwaltung.ts'), 'utf8');
+  const admin = fs.readFileSync(path.join(ROOT, 'utils/verwaltung.ts'), 'utf8');
   assert.match(admin, /COUNT\(\*\) as c FROM minifigs_catalog mc/,
     'Die Minifiguren des Bestands fehlen in der offenen Menge');
   // Dieselbe Menge wie der Hintergrundlauf — sonst zeigt das Monitoring eine
@@ -339,7 +339,7 @@ test('der Cache-Aufräumlauf ist ein geplanter Auftrag', () => {
                         'Registrierung ohne tagesweites Intervall');
   assert.doesNotMatch(reg, /setInterval/, 'Kein eigenes Intervall im Teil, den der Web-Prozess ausführt');
   const plan = require('./helpers/sources').ohneKommentare(
-    fs.readFileSync(path.join(ROOT, 'jobs', 'aufraeumen.ts'), 'utf8'));
+    fs.readFileSync(path.join(ROOT, 'jobs/aufraeumen.ts'), 'utf8'));
   assert.match(plan.slice(plan.indexOf('function aufraeumenTaeglich')), /raeumeBildCacheAuf\]/,
     'Der Bild-Cache gehört zum täglichen Aufräumen');
 });
@@ -367,7 +367,7 @@ test('der Cache-Aufräumlauf ist ein geplanter Auftrag', () => {
  */
 test('ein fehlendes Bild kommt als Platzhalter, und der Server merkt es sich', () => {
   const proxy = fs.readFileSync(
-    path.join(__dirname, '..', 'routes', 'imgProxy.ts'), 'utf8');
+    path.join(__dirname, '..', 'routes/imgProxy.ts'), 'utf8');
 
   assert.match(proxy, /function sendePlatzhalter\(/,
     'Es gibt keinen Platzhalter-Weg mehr — dann steht die Konsole wieder voller 404');

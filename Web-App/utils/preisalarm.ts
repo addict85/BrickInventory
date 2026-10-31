@@ -2,13 +2,13 @@
  * Preisalarm — sag Bescheid, wenn ein Set eine Schwelle reisst.
  * Ausführlich: docs/begruendungen/utils/preisalarm.ts.md#abschnitt
  */
-import { meldeUndLiefere, meldeUndWeiter } from './httpError';
+import { meldeUndLiefere, meldeUndWeiter } from '../src/infra/httpError';
 import * as db from '../db/database';
 import { scopeIds } from './household';
-import { fehlerWerfen } from './fehlerTexte';
-import * as httpError from './httpError';
-import * as mailer from './mailer';
-import { toCsv, csvZeilenAusAnfrage, uebersprungenHinweis } from './csvExport';
+import { fehlerWerfen } from '../src/infra/fehlerTexte';
+import * as httpError from '../src/infra/httpError';
+import * as mailer from '../src/infra/mailer';
+import { toCsv, csvZeilenAusAnfrage, uebersprungenHinweis } from '../src/infra/csvExport';
 import { normalizeSetNumber } from './setAdd';
 
 /**

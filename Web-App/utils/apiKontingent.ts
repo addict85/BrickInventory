@@ -1,6 +1,6 @@
 import * as db from '../db/database';
 import type { DbSchnittstelle } from '../db/database';
-import { aktuellesKonto } from './anfrageKonto';
+import { aktuellesKonto } from '../src/infra/anfrageKonto';
 import { getGlobalSetting } from './settings';
 
 /** Tageskontingente der externen Dienste — eine Stelle für alle Zähler. */

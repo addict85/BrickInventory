@@ -38,7 +38,7 @@ function routen() {
   // Die Einhängepunkte aus server.ts (helpers/sources.js), ohne api_v1.
   for (const r of require('./helpers/sources').routerEinhaengungen()) sammle(`routes/${r.name}`, r.mount);
   // api_v1 wird über index.ts eingebunden — die Dateien direkt lesen.
-  for (const f of fs.readdirSync(path.join(ROOT, 'routes', 'api_v1'))) {
+  for (const f of fs.readdirSync(path.join(ROOT, 'routes/api_v1'))) {
     if (f.endsWith('.ts')) sammle(`routes/api_v1/${f.replace(/\.ts$/, '')}`, '/api/v1');
   }
 

@@ -6,19 +6,19 @@
 // Kreise, die daraus entstanden, wurden mit späten `require()` umgangen.
 //
 import { rebrickableLimiter, consumeRebrickableDaily, rebrickableDailyStatus, parseThrottleWait } from '../utils/rateLimiter';
-import { istErsatzteil, KEINE_FARBE } from '../utils/validate';
+import { istErsatzteil, KEINE_FARBE } from '../src/infra/validate';
 
 import https from 'https';
 import path from 'path';
 import fs from 'fs';
 import * as db from '../db/database';
 import { rebrickableBackgroundLimiter } from '../utils/rateLimiter';
-import { fehlertext, meldeUndLiefere } from '../utils/httpError';
+import { fehlertext, meldeUndLiefere } from '../src/infra/httpError';
 import { neuestesInventar } from '../utils/rbInventar';
 import { mitVersion } from '../utils/setNummer';
 import { getGlobalSetting } from '../utils/settings';
 import { ERLAUBTE_DOWNLOAD_HOSTS, hostErlaubt, naechsteUmleitung,
-         UMLEITUNGS_GRENZE, pfadSegment } from '../utils/fremdeAdressen';
+         UMLEITUNGS_GRENZE, pfadSegment } from '../src/infra/fremdeAdressen';
 
 const BASE = 'https://rebrickable.com/api/v3';
 

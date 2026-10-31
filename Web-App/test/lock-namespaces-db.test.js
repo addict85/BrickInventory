@@ -32,7 +32,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const _req = require('./helpers/sources').buildAndRequire();
 const db     = _req('db/database.js');
-const { LOCKS } = _req('utils/lockNamespaces.js');
+const { LOCKS } = _req('src/infra/lockNamespaces.js');
 
 async function dbReachable() {
   try { await db.get('SELECT 1'); return true; } catch { return false; }
@@ -133,7 +133,7 @@ test('Sperr-Namensräume gegen echte Datenbank', async (t) => {
   await t.test('die Bestandssperre eines Kontos trifft keinen Job', async () => {
     // Konto-ID = Nummer eines Jobs, Schlüssel = Setnummer: Mit der user_id als
     // erstem Wert war das genau die Sperre des Bild-Downloads für dieses Set.
-    const { withInventoryLock } = _req('utils/txLock.js');
+    const { withInventoryLock } = _req('db/txLock.js');
     const SET = '60511-1';
     const zweiter = (await db.get('SELECT hashtext($1) AS h', [SET])).h;
     const frei = {};
@@ -169,7 +169,7 @@ test('Sperr-Namensräume gegen echte Datenbank', async (t) => {
     const treffer = [];
     let geprueft = 0;
     for (const p of dateien) {
-      if (p.endsWith(path.join('utils', 'lockNamespaces.ts'))) continue;   // die Liste selbst
+      if (p.endsWith(path.join('src/infra/lockNamespaces.ts'))) continue;   // die Liste selbst
       for (const zeile of fs.readFileSync(p, 'utf8').split('\n')) {
         if (!/pg_(try_)?advisory(_xact)?(_)?lock|pg_advisory_unlock/.test(zeile)) continue;
         if (/^\s*[*/]/.test(zeile)) continue;                               // Kommentar
@@ -182,7 +182,7 @@ test('Sperr-Namensräume gegen echte Datenbank', async (t) => {
     assert.ok(geprueft >= 10,
       `Nur ${geprueft} Sperr-Aufrufe gefunden — greift das Suchmuster noch?`);
     assert.deepEqual(treffer, [],
-      'Sperr-Namensraum als eingetippte Zahl statt aus utils/lockNamespaces.ts:\n  ' +
+      'Sperr-Namensraum als eingetippte Zahl statt aus src/infra/lockNamespaces.ts:\n  ' +
       treffer.join('\n  '));
   });
 

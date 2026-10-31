@@ -1,10 +1,10 @@
 import * as db from '../db/database';
 import type { DbSchnittstelle } from '../db/database';
 import { lookupPart } from '../clients/rebrickable';
-import { meldeUndWeiter, meldeUndLiefere } from './httpError';
+import { meldeUndWeiter, meldeUndLiefere } from '../src/infra/httpError';
 import { merkeTeilFarbe, katalogTeil } from './katalogPflege';
 import { erfassungsTagSql } from './acquisitions';
-import { colorId } from './validate';
+import { colorId } from '../src/infra/validate';
 
 /**
  * Die Farbe eines manuell erfassten Teils NACHTRÄGLICH ändern.

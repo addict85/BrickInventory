@@ -4,8 +4,8 @@
  * einhängen kann.
  */
 import express, { Request, Response } from 'express';
-import { liefereDatei } from '../utils/dateiAusliefern';
-import { safeDataPath } from '../utils/datenPfad';
+import { liefereDatei } from '../src/infra/dateiAusliefern';
+import { safeDataPath } from '../src/infra/datenPfad';
 
 const { requireLoginOrToken, angemeldeteNutzerId } = require('../utils/auth') as typeof import('../utils/auth');
 

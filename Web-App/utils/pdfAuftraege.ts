@@ -1,9 +1,9 @@
 import path from 'path';
 import crypto from 'crypto';
 import fsp from 'fs/promises';
-import { PDF_JOB_DIR } from './appPaths';
+import { PDF_JOB_DIR } from '../src/infra/appPaths';
 import * as db from '../db/database';
-import { meldeUndLiefere, meldeUndWeiter, ohneFehlendeDatei } from './httpError';
+import { meldeUndLiefere, meldeUndWeiter, ohneFehlendeDatei } from '../src/infra/httpError';
 import { stelleAuftragEin } from './auftraege';
 import { mitVersion } from './setNummer';
 

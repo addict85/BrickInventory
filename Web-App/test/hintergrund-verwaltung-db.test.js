@@ -40,7 +40,7 @@ test('Hintergrundarbeiten in der Verwaltung', { concurrency: 1 }, async (t) => {
   t.after(async () => {
     await db.run('DELETE FROM auftraege');
     await db.run('DELETE FROM users WHERE id = $1', [uid]);
-    await _req('utils/pgNotify.js').close().catch(() => {});
+    await _req('db/pgNotify.js').close().catch(() => {});
     await db.pool.end().catch(() => {});
   });
   const { base } = testServer(_req, {

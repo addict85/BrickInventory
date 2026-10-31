@@ -1,7 +1,7 @@
-import { meldeUndLiefere } from './httpError';
+import { meldeUndLiefere } from '../src/infra/httpError';
 import * as db from '../db/database';
-import { ERLAUBTE_BILD_HOSTS, hostErlaubt } from './fremdeAdressen';
-import { colorId as farbeLesen } from './validate';
+import { ERLAUBTE_BILD_HOSTS, hostErlaubt } from '../src/infra/fremdeAdressen';
+import { colorId as farbeLesen } from '../src/infra/validate';
 
 /** Was ein Schreiber können muss: db/database und das tx-Objekt aus db.transaction() passen beide. */
 type Schreiber = { run: (sql: string, params?: unknown[]) => Promise<unknown> };

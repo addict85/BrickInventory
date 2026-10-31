@@ -636,7 +636,7 @@ export async function api(method, path, body) {
   // ── Accept-Language: die Sprache, die gerade AUF DEM BILDSCHIRM steht ──────
   //
   // Der Server hat seine Fehlermeldungen in beiden Sprachen
-  // (utils/fehlerTexte.ts) und antwortet in der, die hier steht. Vorher waren
+  // (src/infra/fehlerTexte.ts) und antwortet in der, die hier steht. Vorher waren
   // alle 80 Meldungen deutsch — in einer sonst vollständig englischen
   // Oberfläche.
   //
@@ -1132,7 +1132,7 @@ function showApp(){ bindTabs(); plInit(); setTimeout(()=>{ gibCheckOnLoad(); }, 
   // ── Ein Fehler von mir, hier behoben ──────────────────────────────────────
   //
   // Der Knopf in der Mail zeigt seit dem 25.09. auf genau diese Adresse
-  // (utils/mailer.ts, baueAlarmMail) — nur hat sie niemand gelesen. Ich habe
+  // (src/infra/mailer.ts, baueAlarmMail) — nur hat sie niemand gelesen. Ich habe
   // den Link eingebaut, ohne zu pruefen, ob die Webapp ihn versteht; er
   // oeffnete bis hierher bloss die Startseite. Erst diese Zeilen machen ihn
   // wahr.

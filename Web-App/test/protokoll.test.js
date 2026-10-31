@@ -1,5 +1,5 @@
 /**
- * Das Serverprotokoll (utils/protokoll.ts): JSON-Zeilen auf stdout/stderr,
+ * Das Serverprotokoll (src/infra/protokoll.ts): JSON-Zeilen auf stdout/stderr,
  * daneben app_logs im bisherigen Textformat; Schreibfehler werden gezählt und
  * höchstens einmal je Minute gemeldet statt verschluckt.
  *
@@ -17,7 +17,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const _req = require('./helpers/sources').buildAndRequire();
-const P = _req('utils/protokoll.js');
+const P = _req('src/infra/protokoll.js');
 
 /** Eine Ausgabe zum Mitlesen, mit stellbarer Uhr. */
 function mitschrift() {

@@ -148,7 +148,7 @@ test('kein Token reitet mehr in der Adresszeile', () => {
 
   // ── Und die Aufrufer ──────────────────────────────────────────────────────
   //
-  // Nicht nach der blossen Zeichenkette `?token=` gesucht: utils/mailer.ts
+  // Nicht nach der blossen Zeichenkette `?token=` gesucht: src/infra/mailer.ts
   // baut damit die Links `/verify?token=` und `/reset-password?token=` fuer
   // die E-Mail. Das sind EIGENE, kurzlebige Token mit eigenen Handlern in
   // server.ts — kein Sitzungsausweis. Gesucht wird deshalb das Anhaengen

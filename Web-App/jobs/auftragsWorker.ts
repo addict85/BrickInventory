@@ -4,9 +4,9 @@ import {
   verschoben, imNamenDesAuftrags, type AuftragsArt, type AuftragsZeile, type Fortschritt,
 } from '../utils/auftraege';
 import { planeNaechsten, hatZeitplan } from '../utils/zeitplan';
-import { listen, unlisten } from '../utils/pgNotify';
-import { fehlertext, logAndContinue } from '../utils/httpError';
-import { konfig } from '../utils/konfig';
+import { listen, unlisten } from '../db/pgNotify';
+import { fehlertext, logAndContinue } from '../src/infra/httpError';
+import { konfig } from '../src/infra/konfig';
 
 /** Was ein Bearbeiter vom Worker bekommt. */
 export interface AuftragsKontext {

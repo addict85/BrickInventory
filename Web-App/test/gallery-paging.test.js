@@ -84,7 +84,7 @@ test('ohne page_size bleibt alles wie bisher', () => {
   // kein page_size"). Der stimmt nicht mehr: Seit Marcos Vorgabe blättert auch
   // die App seitenweise. Geprüft wird jetzt die AUSSAGE — der Endpunkt reicht
   // alle vier Parameter durch, und ohne page_size bleibt die Liste unbegrenzt.
-  const v1 = fs.readFileSync(path.join(ROOT, 'routes', 'api_v1', 'sets.ts'), 'utf8');
+  const v1 = fs.readFileSync(path.join(ROOT, 'routes/api_v1/sets.ts'), 'utf8');
   const route = v1.slice(v1.indexOf("router.get('/sets', requireToken"), v1.indexOf("router.get('/sets/:setNumber'"));
   // req.query als GANZES: Eine Auswahl daneben liess einst `storage` fallen.
   // (Bis hierher prüfte diese Zeile die alte Auswahl — sie stand nur noch als

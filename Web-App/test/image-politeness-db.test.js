@@ -145,7 +145,7 @@ test('auch reine Vorschau-Arbeit wird gebremst', { concurrency: 1 }, async (t) =
   // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung
   // und Nachstellung in helpers/bildwarteschlange.js.
   await leereWarteschlange(db);
-  const { SET_IMAGES_DIR } = _req('utils/appPaths.js');
+  const { SET_IMAGES_DIR } = _req('src/infra/appPaths.js');
   fs.mkdirSync(SET_IMAGES_DIR, { recursive: true });
   const P = `NT${process.pid}`;
   const dateien = [];
@@ -183,7 +183,7 @@ test('der User-Agent nennt Ross und Reiter', () => {
   // aller Möglichkeiten: Sie sagt nicht, wer wir sind, und ein „Browser", der
   // tausende Bilder ohne die üblichen Begleitanfragen holt, fällt einer
   // Heuristik gerade dadurch auf.
-  const src = fs.readFileSync(path.join(ROOT, 'utils', 'setImages.ts'), 'utf8');
+  const src = fs.readFileSync(path.join(ROOT, 'utils/setImages.ts'), 'utf8');
   const i = src.indexOf('function bildUserAgent()');
   assert.ok(i > 0, 'Keine eigene Funktion für den User-Agent');
   const fn = src.slice(i, src.indexOf('\n}', i));
@@ -201,7 +201,7 @@ test('der User-Agent nennt Ross und Reiter', () => {
   // Geprüft wird deshalb am ÜBERSETZTEN Stand, nicht an der Quelle: Genau
   // zwischen beiden lag der Fehler.
   // Die Version kommt seit dem Versionsumbau aus dist/version.json (scripts/version.js).
-  const dist = path.join(ROOT, 'dist', 'utils', 'setImages.js');
+  const dist = path.join(ROOT, 'dist', 'utils/setImages.js');
   assert.ok(fs.existsSync(dist), 'dist/utils/setImages.js fehlt — erst bauen');
   const ua = require(dist).bildUserAgent();
   const echteVersion = JSON.parse(fs.readFileSync(path.join(ROOT, 'dist', 'version.json'), 'utf8')).version;

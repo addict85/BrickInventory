@@ -1,13 +1,13 @@
 import { resolveOne } from '../bricklinkLink';
 import { inKontowaehrung, kontowaehrungJoin } from '../acquisitions';
-import { meldeUndWeiter, meldeUndLiefere } from '../httpError';
+import { meldeUndWeiter, meldeUndLiefere } from '../../src/infra/httpError';
 import { fuerSet } from '../preisvergleich';
 import * as db from '../../db/database';
 import type { DbSchnittstelle } from '../../db/database';
 import { resolveImageLocal } from '../images';
 import { asIds } from '../household';
 import { clampPageSize, conditionFromAcquisitions, conditionsFromAcquisitions, withOwners } from './shared';
-import { ausTabelle } from '../validate';
+import { ausTabelle } from '../../src/infra/validate';
 import { anleitungenZuSet, anleitungenZusammenlegen } from '../instructions';
 import { mengeJoin, mengeAus } from '../bestandsmenge';
 import { legeInPapierkorb } from '../papierkorb';
@@ -165,7 +165,7 @@ async function getSets(userId: Blickfeld, query: any = {}) {
                  OR LOWER(COALESCE(s.theme,'')) LIKE $${i} OR COALESCE(s.year,0)::text LIKE $${i})`);
   }
   const whereSql = where.length ? where.join(' AND ') : 'TRUE';
-  // ausTabelle: siehe utils/validate — ein direkter Zugriff liefert auch
+  // ausTabelle: siehe src/infra/validate — ein direkter Zugriff liefert auch
   // geerbte Eigenschaften, und die haette `|| SET_SORTS.added_desc` durchgelassen.
   const orderSql = ausTabelle(SET_SORTS, sort, SET_SORTS.added_desc);
 

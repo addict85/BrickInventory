@@ -1,7 +1,7 @@
 'use strict';
 
 import { kontingentFrei, speicherePreis, cacheUsable, preisAusCache, parallelLimit } from '../utils/financeCalc';
-import { meldeUndWeiter, fehlertext, meldeUndLiefere, logAndContinue } from '../utils/httpError';
+import { meldeUndWeiter, fehlertext, meldeUndLiefere, logAndContinue } from '../src/infra/httpError';
 import { liesZustand, setzeZustand } from '../utils/laufzustand';
 import { AuftragVerschieben, type AuftragsKontext } from './auftragsWorker';
 import { getSetting, getGlobalSetting } from '../utils/settings';
@@ -9,7 +9,7 @@ import { katalogEintrag, ohneBricklinkPreis } from '../utils/setNummer';
 import * as db from '../db/database';
 import * as monitor from '../utils/jobMonitor';
 import { getPriceGuide } from '../clients/bricklink';
-import { LOCKS } from '../utils/lockNamespaces';
+import { LOCKS } from '../src/infra/lockNamespaces';
 import { pruefeSet } from '../utils/preisalarm';
 
 /**
@@ -20,7 +20,7 @@ export const PREIS_STAND = 'preis_job_stand';
 /** Die letzten Protokollzeilen dieses Prozesses; am Ende eines Laufs nach PREIS_STAND geschrieben. */
 const _log: string[] = [];
 
-/** Namensraum der prozessübergreifenden Sperre; alle Nummern stehen in utils/lockNamespaces.ts. */
+/** Namensraum der prozessübergreifenden Sperre; alle Nummern stehen in src/infra/lockNamespaces.ts. */
 const PRICE_JOB_LOCK = LOCKS.PREIS_JOB;
 
 /**

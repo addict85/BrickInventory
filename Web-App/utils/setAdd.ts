@@ -5,7 +5,7 @@
  * erhöhte die Menge und meldete „aktualisiert". Dieselbe Eingabe, zwei …
  * Ausführlich: docs/begruendungen/utils/setAdd.ts.md#abschnitt
  */
-import { meldeUndLiefere } from './httpError';
+import { meldeUndLiefere } from '../src/infra/httpError';
 import * as db from '../db/database';
 import { scopeIds } from './household';
 import { normalisiereSetNummer } from './setNummer';

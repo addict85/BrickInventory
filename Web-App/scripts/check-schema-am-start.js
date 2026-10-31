@@ -58,7 +58,7 @@ const ROOT = path.join(__dirname, '..');
 /** Der Anfragepfad — hier wird geprüft. */
 const ANFRAGEPFAD = [
   'routes' + path.sep,
-  path.join('utils', 'handlers') + path.sep,
+  path.join('utils/handlers') + path.sep,
 ];
 
 /** Schema-Anweisungen. Nur in echtem SQL, nicht in Prosa. */
@@ -123,7 +123,7 @@ for (const datei of dateien) {
 // grün, als in einer Gegenprobe „CREATE TABLE" zu „CREATE TABEL" verstümmelt
 // wurde: „CREATE INDEX" traf ja weiterhin. Ein Selbstbeweis, den eine kaputte
 // Hälfte besteht, beweist die andere Hälfte nicht.
-const migVerz = path.join(ROOT, 'db', 'migrations');
+const migVerz = path.join(ROOT, 'db/migrations');
 const bekannt = ohneKommentare(fs.readdirSync(migVerz).filter(f => f.endsWith('.sql'))
   .map(f => fs.readFileSync(path.join(migVerz, f), 'utf8')).join('\n'));
 
@@ -175,7 +175,7 @@ const DOPPELT_ERLAUBT = new Map([]);
 
 /** @type {string[]} */
 const alleQuellen = [];
-for (const teil of ['db', 'routes', 'utils', 'jobs', 'clients', 'scripts']) {
+for (const teil of ['db', 'routes', 'src', 'utils', 'jobs', 'clients', 'scripts']) {
   const verz = path.join(ROOT, teil);
   if (fs.existsSync(verz)) sammleAlle(verz, alleQuellen);
 }

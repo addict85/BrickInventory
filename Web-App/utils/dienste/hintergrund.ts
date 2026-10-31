@@ -8,7 +8,7 @@ import { liesZustand } from '../laufzustand';
 import { AUFTRAGS_ARTEN, brichAb, leereArt, wiederhole, zieheVor, beendePause, type AuftragsArt } from '../auftraege';
 import { hatZeitplan, planeNaechsten, ziehePlanVor } from '../zeitplan';
 import { leereBildbedarf, offenerBildbedarf } from '../bildbedarf';
-import { fehlerWerfen } from '../fehlerTexte';
+import { fehlerWerfen } from '../../src/infra/fehlerTexte';
 
 /** Ohne Lebenszeichen seit so vielen Sekunden gilt der Job-Prozess als ausgefallen. */
 const LEBENSZEICHEN_GILT_SEK = 120;

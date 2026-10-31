@@ -82,7 +82,7 @@ test('jeder Fehlercode aus utils/household.ts steht in der Texttabelle', () => {
     .matchAll(/return \{ fehler: '([a-z_]+)' as const/g)].map(m => m[1]);
   assert.ok(codes.length >= 5, `Nur ${codes.length} Fehlercodes — greift die Suche noch?`);
 
-  const tabelle = lies('utils/fehlerTexte.ts');
+  const tabelle = lies('src/infra/fehlerTexte.ts');
   const fehlend = codes.filter(c => !new RegExp(`\\b${c}\\s*:`).test(tabelle));
   assert.deepEqual(fehlend, [],
     'Diese Fehlercodes stehen in keiner Texttabelle. fehlerText() liest den ' +
@@ -96,7 +96,7 @@ test('fehlerText faellt bei unbekanntem Code nicht um', () => {
   // Die Regeln oben halten den Baum sauber. Diese hier sorgt dafuer, dass ein
   // Durchrutscher trotzdem keine 500 wird: Eine Fehlermeldung ist das
   // Letzte, was selbst noch abstuerzen darf.
-  const quelle = lies('utils/fehlerTexte.ts');
+  const quelle = lies('src/infra/fehlerTexte.ts');
   // Bis zur schliessenden Klammer der Funktion und nicht die ersten N Zeichen:
   // Die erste Fassung nahm 500 Zeichen und wurde rot, sobald die BEGRUENDUNG
   // der Pruefung darueber laenger wurde als der Ausschnitt.

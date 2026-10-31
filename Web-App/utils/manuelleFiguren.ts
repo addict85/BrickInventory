@@ -4,10 +4,10 @@
  * darauf zugreifen — eine Route soll keine andere importieren.
  */
 import * as db from '../db/database';
-import { logAndContinue, meldeUndLiefere, fehlertext } from './httpError';
-import { csvGemeinsameFelder, csvZeilenAusAnfrage } from './csvExport';
+import { logAndContinue, meldeUndLiefere, fehlertext } from '../src/infra/httpError';
+import { csvGemeinsameFelder, csvZeilenAusAnfrage } from '../src/infra/csvExport';
 import { recordAcquisitionForDay } from './acquisitions';
-import { withInventoryLock, bestandsSchluessel } from './txLock';
+import { withInventoryLock, bestandsSchluessel } from '../db/txLock';
 import {  getMinifigInfo } from '../clients/rebrickable';
 import { zustandFuerPreis } from './settings';
 import { figMarktpreisMitHerkunft, getCurrentFigMarketPrice } from './marketPrice';
@@ -15,8 +15,8 @@ import { kaufpreisAusEingabe, manuellerKaufpreis } from './preisRegel';
 import { setzeLagerort, ortFuerNeuerfassung } from './lagerort';
 import { merkeFigur, katalogFigur } from './katalogPflege';
 import { merkeBlNummer, blJoin, blNummerSql } from './blZuordnung';
-import { bestandsMenge } from './validate';
-import * as V from './validate';
+import { bestandsMenge } from '../src/infra/validate';
+import * as V from '../src/infra/validate';
 
 
 // Fällt keine BrickLink-Minifigur-Nummer vor, wird der Marktpreis stattdessen
@@ -49,7 +49,7 @@ async function resolveManualFigPurchase(uid: number, { figNumber, blFigNumber = 
 }
 
 // body ist `any` wie in routes/parts.ts — so kommt es von Express, und die
-// Validierer in utils/validate.ts nehmen es genauso entgegen.
+// Validierer in src/infra/validate.ts nehmen es genauso entgegen.
 /**
  * Eine Minifigur von Hand erfassen — mit Lagerort, wenn einer mitkommt.
  *
@@ -68,7 +68,7 @@ async function addManualFig(uid: number, body: Record<string, unknown>) {
 }
 
 async function addManualFigIntern(uid: number, body: any) {
-  // Gleiche Eingangsvalidierung wie bei manuellen Teilen (utils/validate.ts).
+  // Gleiche Eingangsvalidierung wie bei manuellen Teilen (src/infra/validate.ts).
     const num       = V.requireItemNumber(body?.fig_number, 'fig_number');
   const blNum     = body?.bl_fig_number ? V.requireItemNumber(body.bl_fig_number, 'bl_fig_number') : null;
   const quantity  = V.acquisitionQuantity(body?.quantity, 1);

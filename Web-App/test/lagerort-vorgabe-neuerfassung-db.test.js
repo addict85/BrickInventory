@@ -81,7 +81,7 @@ const db   = _req('db/database.js');
 // Rebrickable vorgeben: Ohne Namen im Rumpf fragt addManualPart/addManualFig
 // den Katalog und danach notfalls Rebrickable. Hier geht es um den Lagerort,
 // nicht um den Namen — der Abruf soll nicht ueber das Netz greifen.
-const rbPfad = require.resolve(path.join(ROOT, 'dist', 'clients', 'rebrickable.js'));
+const rbPfad = require.resolve(path.join(ROOT, 'dist', 'clients/rebrickable.js'));
 // Erst laden, dann ersetzen: Vor dem require gibt es den Eintrag im
 // Zwischenspeicher nicht, und `require.cache[…].exports = …` lief auf
 // `undefined` (als Zuweisungsziel wird die linke Seite zuerst aufgeloest).

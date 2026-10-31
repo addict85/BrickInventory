@@ -1,25 +1,25 @@
 import * as db from '../db/database';
 import type { DbSchnittstelle } from '../db/database';
-import { meldeUndWeiter, fehlertext, logAndContinue, meldeUndLiefere } from './httpError';
+import { meldeUndWeiter, fehlertext, logAndContinue, meldeUndLiefere } from '../src/infra/httpError';
 import { scopeIds, writableIds } from './household';
 import { recordAcquisitionForDay, erfassungsTagSql } from './acquisitions';
-import { withInventoryLock } from './txLock';
+import { withInventoryLock } from '../db/txLock';
 import { downloadSetImage } from './setImages';
 import { getCurrentMarketPrice } from './marketPrice';
 import { zustandFuerPreis, getSetting } from './settings';
 import { deleteSetRows } from '../utils/handlers/sets';
 import { legeInPapierkorb } from './papierkorb';
-import { toCsv } from './csvExport';
+import { toCsv } from '../src/infra/csvExport';
 import { getSetInfo } from '../clients/rebrickable';
 import * as brickset from '../clients/brickset';
 import { getItemImageUrl } from '../clients/bricklink';
 import { generateThumb } from './thumbs';
 import { stelleAuftragEin } from './auftraege';
 import { normalisiereSetNummer, moeglicheSetNummer } from './setNummer';
-import { fehlerWerfen } from './fehlerTexte';
+import { fehlerWerfen } from '../src/infra/fehlerTexte';
 import { setzeLagerort, ortFuerNeuerfassung } from './lagerort';
 import { mengeSummeSql } from './bestandsmenge';
-import { bestandsMenge } from './validate';
+import { bestandsMenge } from '../src/infra/validate';
 import { resolveSetCondition } from './financeCalc';
 
 /**

@@ -1,4 +1,4 @@
-import { meldeUndLiefere } from '../httpError';
+import { meldeUndLiefere } from '../../src/infra/httpError';
 import * as db from '../../db/database';
 import { asIds } from '../household';
 import { getGlobalSetting } from '../settings';

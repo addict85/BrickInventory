@@ -63,7 +63,7 @@ Sperrschlüssel für den Katalog-Import.
 Belegt sind (Liste gepflegt in jobs/instructionQueue.ts): 42 Bild-Download
 je Set, 55 Preislauf, 56 Anleitungs-Warteschlange, 57 fehlende Bilder neu
 laden, 77 Teile-Zusammenfassung, 11223344 Brickset-Retry, 99999999
-Start-Orchestrierung, Benutzer-ID als Namensraum in utils/txLock.ts.
+Start-Orchestrierung, Benutzer-ID als Namensraum in db/txLock.ts.
 58 ist frei.
 
 (Nachtrag 29 vergab hier zunächst irrtümlich die 56, also den Schlüssel der
@@ -140,7 +140,7 @@ bedeutungslos — der Planer rechnet mit den Zahlen von vorher, und bei
 einer eben noch leeren Tabelle schaetzt er eine Zeile. Gemessen greift er
 dann zu einem beliebigen anderen Index und geht alle Zeilen durch; das
 sieht wie ein fehlender Index aus, obwohl der richtige daliegt. Die
-Begruendung samt Zahlen steht in utils/tabellePflegen.ts.
+Begruendung samt Zahlen steht in db/tabellePflegen.ts.
 
 Hier, nach dem COMMIT, und nicht darin: VACUUM ist in einer Transaktion
 nicht erlaubt.

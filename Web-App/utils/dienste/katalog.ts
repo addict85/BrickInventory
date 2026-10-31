@@ -3,12 +3,12 @@
  * mit Themenbaum, Jahresverteilung und dem Besitz des fragenden Kontos.
  */
 import * as db from '../../db/database';
-import { meldeUndLiefere } from '../httpError';
+import { meldeUndLiefere } from '../../src/infra/httpError';
 import { resolveIfExists } from '../images';
 import { resolveOne, resolveViaApi } from '../bricklinkLink';
 import { fuerSet } from '../preisvergleich';
 import { downloadSetImage } from '../setImages';
-import { ausTabelle } from '../validate';
+import { ausTabelle } from '../../src/infra/validate';
 import { neuestesInventar } from '../rbInventar';
 import { mitVersion } from '../setNummer';
 import { mengeJoin, mengeAus } from '../bestandsmenge';

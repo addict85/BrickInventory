@@ -97,7 +97,7 @@ const dbDa = async (t) => {
   }
 };
 
-const MIG_DIR = path.join(ROOT, 'db', 'migrations');
+const MIG_DIR = path.join(ROOT, 'db/migrations');
 const DATEI   = path.join(MIG_DIR, '0038-teilemengen-aus-katalog-und-erfassungen.sql');
 
 /** Frische Datenbank, Schema, alle Migrationen. */
@@ -184,7 +184,7 @@ test('niemand schreibt die Stückzahl eines Teils oder einer Figur mehr', () => 
       if (/\.(ts|js)$/.test(e.name)) dateien.push(p);
     }
   };
-  for (const teil of ['routes', 'utils', 'jobs', 'db', 'clients', 'scripts']) {
+  for (const teil of ['routes', 'src', 'utils', 'jobs', 'db', 'clients', 'scripts']) {
     const v = path.join(ROOT, teil);
     if (fs.existsSync(v)) lauf(v);
   }

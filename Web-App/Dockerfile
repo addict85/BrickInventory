@@ -107,6 +107,7 @@ RUN npm ci
 COPY server.ts ./
 COPY db/     ./db/
 COPY jobs/   ./jobs/
+COPY src/    ./src/
 COPY utils/  ./utils/
 COPY routes/ ./routes/
 # clients/ seit Nachtrag 126 (rebrickable, brickset — API-Clients ohne Routen).

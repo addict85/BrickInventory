@@ -3,10 +3,10 @@
  * (stündlich, der erste 30 s nach dem Start; utils/zeitplan.ts).
  */
 import * as db from '../db/database';
-import { logAndContinue, meldeUndLiefere } from '../utils/httpError';
+import { logAndContinue, meldeUndLiefere } from '../src/infra/httpError';
 import { generateThumb } from '../utils/thumbs';
 import { setzeTeilBildLokal, setzeFigurBildLokal } from '../utils/katalogPflege';
-import { KEINE_FARBE } from '../utils/validate';
+import { KEINE_FARBE } from '../src/infra/validate';
 import * as enrich from './partsCatalogEnrich';
 import * as monitor from '../utils/jobMonitor';
 import { AuftragUnterbrochen, type AuftragsKontext } from './auftragsWorker';

@@ -11,8 +11,8 @@ import {
 import type { AuthenticationResponseJSON, RegistrationResponseJSON, WebAuthnCredential } from '@simplewebauthn/server';
 import { decodeClientDataJSON } from '@simplewebauthn/server/helpers';
 import * as db from '../db/database';
-import { basisUrl } from './basisUrl';
-import { fehlertext } from './httpError';
+import { basisUrl } from '../src/infra/basisUrl';
+import { fehlertext } from '../src/infra/httpError';
 
 /** Eine abgewiesene Antwort ist kein Serverfehler, aber ein Eintrag wert. */
 function abgewiesen(e: unknown): null {

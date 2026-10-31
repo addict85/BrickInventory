@@ -1,4 +1,4 @@
-import { meldeUndLiefere } from '../httpError';
+import { meldeUndLiefere } from '../../src/infra/httpError';
 /**
  * Die Kurve aus dem PREISVERLAUF je Set rekonstruieren.
  * Ausführlich: docs/begruendungen/utils/portfolio/kurve.ts.md#rekonstruierekurve

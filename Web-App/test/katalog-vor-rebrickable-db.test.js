@@ -89,7 +89,7 @@ const db   = _req('db/database.js');
 // `rb.lookupPart = …` liefe ins Leere — deshalb der Eintrag im
 // require-Zwischenspeicher (dasselbe Vorgehen wie in
 // test/preis-schreibweg-db.test.js).
-const rbPfad = require.resolve(path.join(ROOT, 'dist', 'clients', 'rebrickable.js'));
+const rbPfad = require.resolve(path.join(ROOT, 'dist', 'clients/rebrickable.js'));
 const echtRb = require(rbPfad);
 let abrufe = [];
 require.cache[rbPfad].exports = Object.assign({}, echtRb, {

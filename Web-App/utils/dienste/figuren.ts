@@ -3,8 +3,8 @@
  * BrickLink-Nummern und Bildern aus dem gemeinsamen Katalog.
  */
 import * as db from '../../db/database';
-import { logAndContinue, meldeUndLiefere } from '../httpError';
-import { ersatzteilSql } from '../validate';
+import { logAndContinue, meldeUndLiefere } from '../../src/infra/httpError';
+import { ersatzteilSql } from '../../src/infra/validate';
 import { inventarNachKandidaten } from '../rbInventar';
 import { blJoin, blNummerSql } from '../blZuordnung';
 import { nacharbeit } from '../nacharbeit';

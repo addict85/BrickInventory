@@ -12,9 +12,9 @@ import path from 'path';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { Client } from 'pg';
-import { LOCKS } from '../utils/lockNamespaces';
-import { fehlerCode, meldeUndWeiter, logAndContinue } from '../utils/httpError';
-import { konfig, datenbankVerbindung } from '../utils/konfig';
+import { LOCKS } from '../src/infra/lockNamespaces';
+import { fehlerCode, meldeUndWeiter, logAndContinue } from '../src/infra/httpError';
+import { konfig, datenbankVerbindung } from '../src/infra/konfig';
 
 // Warum diese acht jetzt oben stehen
 // Sie standen als require() in den Funktionsruempfen. Node haelt Module im
@@ -25,7 +25,7 @@ import { konfig, datenbankVerbindung } from '../utils/konfig';
 // NUMERIC kommt als Zahl zurück, nicht als Zeichenkette: Geldspalten sind
 // NUMERIC(12,4), also höchstens 10^12 Zehntausendstel — weit unter 2^53, ein
 // double trifft jeden Wert so genau, dass Math.round(n * 10^4) ihn zurückgibt.
-// Gerechnet wird in utils/geld.ts in Zehntausendsteln, nie mit dem double selbst.
+// Gerechnet wird in src/infra/geld.ts in Zehntausendsteln, nie mit dem double selbst.
 // Ausführlich: docs/begruendungen/db/database.ts.md#abschnitt-3
 pgTypes.setTypeParser(pgTypes.builtins.NUMERIC, (v: any) => (v === null ? null : parseFloat(v)));
 

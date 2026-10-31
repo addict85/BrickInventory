@@ -79,7 +79,7 @@ Verknuepfung loest — also alle paar Monate, nicht alle paar Sekunden.
 Der Server laeuft im Cluster. Loest Worker A die Einladung ein, wuesste
 Worker B ohne Signal bis zum Ablauf der Frist nichts davon — der Nutzer
 klickt „einloesen" und sieht sein Unterkonto je nach Worker mal ja, mal
-nein. Genau dafuer gibt es utils/pgNotify.ts schon; hier wird es benutzt
+nein. Genau dafuer gibt es db/pgNotify.ts schon; hier wird es benutzt
 statt die Frist so kurz zu waehlen, dass sie den Gewinn wieder auffrisst.
 
 Die Frist bleibt als NETZ darunter: NOTIFY ist fluechtig (siehe pgNotify),

@@ -1,5 +1,5 @@
 import * as db from '../db/database';
-import { meldeUndLiefere } from './httpError';
+import { meldeUndLiefere } from '../src/infra/httpError';
 
 /**
  * Fehlt eine lokale Bilddatei, wird auf die CDN-Adresse aus dem Katalog

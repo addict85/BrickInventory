@@ -43,7 +43,7 @@ test('Migrationen: Sicherung und Zeitgrenze', { concurrency: 1 }, async (t) => {
   const client = await db.pool.connect();
   await runMigrations(client);
   const vorher = new Set(await sicherungen());
-  const probe = path.join(DIST, 'db', 'migrations', PROBE);
+  const probe = path.join(DIST, 'db/migrations', PROBE);
 
   await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, ZWEIT]]);
   const anlegen = async (n) => (await db.get(

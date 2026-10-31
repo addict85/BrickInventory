@@ -1,5 +1,5 @@
 import * as db from '../db/database';
-import { notify } from './pgNotify';
+import { notify } from '../db/pgNotify';
 import { AUFTRAG_KANAL, beendePause, zieheVor } from './auftraege';
 import { naechsteUhrzeit, taeglicheUhrzeit } from './zeitplan';
 

@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const ORDNER = path.join(__dirname, '..', 'utils', 'finance');
+const ORDNER = path.join(__dirname, '..', 'utils/finance');
 
 /**
  * Die Finanzschicht steht aufeinander — und zwar in EINE Richtung.
@@ -78,7 +78,7 @@ test('keine Schicht greift nach oben', () => {
 test('die Fassade reicht nur durch', () => {
   // utils/financeCalc.ts ist die Tuer fuer 16 Aufrufstellen. Steht dort wieder
   // Logik, waechst sie zurueck auf 1529 Zeilen.
-  const fassade = fs.readFileSync(path.join(__dirname, '..', 'utils', 'financeCalc.ts'), 'utf8');
+  const fassade = fs.readFileSync(path.join(__dirname, '..', 'utils/financeCalc.ts'), 'utf8');
   const ohneKommentar = fassade.replace(/\/\*[\s\S]*?\*\//g, '')
     .split('\n').filter(z => !/^\s*\/\//.test(z)).join('\n').trim();
   const zeilen = ohneKommentar.split('\n').filter(z => z.trim()).length;

@@ -7,15 +7,15 @@ import express from 'express';
 import fs from 'fs';
 import path from 'path';
 import * as verwaltung from '../../utils/verwaltung';
-import { handleRouteError, meldeUndLiefere, pfadParam } from '../../utils/httpError';
+import { handleRouteError, meldeUndLiefere, pfadParam } from '../../src/infra/httpError';
 import { requireApiAdmin } from './middleware';
 import { getLimitForApi } from '../../utils/apiKontingent';
 import { proxyCachePathFor } from '../../utils/images';
-import { ERLAUBTE_BILD_HOSTS, hostErlaubt } from '../../utils/fremdeAdressen';
+import { ERLAUBTE_BILD_HOSTS, hostErlaubt } from '../../src/infra/fremdeAdressen';
 import { vergissFehlend } from '../../utils/imageMisses';
-import { SET_IMAGES_DIR } from '../../utils/appPaths';
+import { SET_IMAGES_DIR } from '../../src/infra/appPaths';
 import { getGlobalSetting, setGlobalSetting } from '../../utils/settings';
-import { sendeFehler } from '../../utils/fehlerTexte';
+import { sendeFehler } from '../../src/infra/fehlerTexte';
 import { letzteEintraege } from '../../utils/verwaltungsprotokoll';
 import { cacheStatistik, cachesLeeren, bricksetLimitGesetzt, anleitungenNeuEinreihen, preisJobStand, preisJobJetzt,
          fehlendeBilderNachladen, bricksetWiederholen, bricksetEntfernen, jobZeitplanSetzen, jobUebersicht,

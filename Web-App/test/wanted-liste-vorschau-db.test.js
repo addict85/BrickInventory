@@ -112,7 +112,7 @@ const db = _req('db/database.js');
 // der Eintrag im require-Zwischenspeicher (dasselbe Vorgehen wie in
 // test/preis-schreibweg-db.test.js). Erst laden, dann ersetzen: Vor dem
 // require gibt es den Eintrag nicht.
-const rbPfad = require.resolve(path.join(__dirname, '..', 'dist', 'clients', 'rebrickable.js'));
+const rbPfad = require.resolve(path.join(__dirname, '..', 'dist', 'clients/rebrickable.js'));
 const echtRb = require(rbPfad);
 require.cache[rbPfad].exports = Object.assign({}, echtRb, {
   // 98765 heisst bei Rebrickable 12345 — eine ABWEICHENDE Nummer, wie sie nur

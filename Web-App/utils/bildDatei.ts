@@ -4,7 +4,11 @@
  * HTML-Datei liefe mit den Rechten der App. Deshalb bestimmt nie die fremde
  * Adresse allein Dateiname, Endung oder Ziel.
  */
+import crypto from 'crypto';
+import fs from 'fs';
+import https from 'https';
 import path from 'path';
+import { hostErlaubt } from '../src/infra/fremdeAdressen';
 
 /** Inhaltstypen, die als Bild gespeichert werden — bewusst ohne SVG. */
 const ENDUNG_ZU_TYP: Record<string, string> = {
@@ -53,16 +57,13 @@ export function ladeBild(
   adresse: string, ziel: string, erlaubteHosts: readonly string[],
   kopfzeilen: Record<string, string> = {}, warnen: (text: string) => void = () => {},
 ): Promise<boolean> {
-  const { hostErlaubt } = require('./fremdeAdressen') as typeof import('./fremdeAdressen');
-  const https = require('https') as typeof import('https');
-  const fs = require('fs') as typeof import('fs');
   if (!adresse.startsWith('https://') || !hostErlaubt(adresse, erlaubteHosts)) {
     warnen(`Bildadresse nicht erlaubt: ${adresse.slice(0, 80)}`);
     return Promise.resolve(false);
   }
   // Eindeutig je Abruf: Zwei gleichzeitige Downloads desselben Bildes (Stundenlauf
   // und PDF) schrieben sonst in dieselbe Zwischendatei.
-  const zwischen = `${ziel}.${process.pid}.${(require('crypto') as typeof import('crypto')).randomBytes(4).toString('hex')}.teil`;
+  const zwischen = `${ziel}.${process.pid}.${crypto.randomBytes(4).toString('hex')}.teil`;
   return new Promise<boolean>(fertig => {
     let erledigt = false;
     const ende = (ok: boolean) => {

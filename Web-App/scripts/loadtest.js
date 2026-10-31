@@ -74,7 +74,7 @@ const db = require(path.join(ROOT, 'dist/db/database.js'));
 /**
  * Lesbarer Text eines gefangenen Fehlers.
  *
- * Bewusst eine eigene, kurze Fassung statt utils/httpError: Dieses Skript
+ * Bewusst eine eigene, kurze Fassung statt src/infra/httpError: Dieses Skript
  * laeuft als eigenstaendiges Werkzeug ueber `node`, ohne den Build — es kann
  * ein TypeScript-Modul gar nicht laden. Die Regel ist dieselbe: Ein geworfener
  * String oder ein Objekt ohne `message` soll nicht als „undefined" enden.
@@ -88,7 +88,7 @@ function fehlertext(e) {
   // den Typ auf `object` verengt und der kein `message` kennt.
   const m = e ? /** @type {any} */ (e).message : undefined;
   if (typeof m === 'string' && m) return m;
-  // `String([])` ist leer — siehe utils/httpError.ts, dort gefunden.
+  // `String([])` ist leer — siehe src/infra/httpError.ts, dort gefunden.
   return e === null || e === undefined ? 'Unbekannter Fehler' : (String(e) || 'Unbekannter Fehler');
 }
 

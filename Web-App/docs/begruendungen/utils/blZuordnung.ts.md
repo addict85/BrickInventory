@@ -145,7 +145,7 @@ Die Zuordnung IN einer Abfrage
 ═══════════════════════════════════════════════════════════════════════════
 
 Zwei Schnipsel, dieselbe Bauart wie mengeJoin()/mengeAus() in
-utils/bestandsmenge.ts und ersatzteilSql() in utils/validate.ts — und aus
+utils/bestandsmenge.ts und ersatzteilSql() in src/infra/validate.ts — und aus
 demselben Grund: `COALESCE(p.bl_part_number, p.part_number)` stand an
 ZEHN Stellen in fuenf Dateien (gemessen), teils als Gruppierungsschluessel.
 Zehnmal dieselbe Rechnung heisst zehn Stellen, an denen sie beim naechsten

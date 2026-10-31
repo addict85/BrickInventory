@@ -7,12 +7,12 @@ import * as db from '../db/database';
 import { addSet, sanitizeSetNumber } from './setService';
 import { findSetInScope } from './setAdd';
 import { loescheAlarm } from './preisalarm';
-import * as V from './validate';
+import * as V from '../src/infra/validate';
 import { nutzerStandardZustand } from './settings';
-import { meldeUndWeiter } from './httpError';
+import { meldeUndWeiter } from '../src/infra/httpError';
 import { fuerSet } from './preisvergleich';
 import { resolveIfExists } from './images';
-import { toCsv } from './csvExport';
+import { toCsv } from '../src/infra/csvExport';
 
 /** Ein Eintrag, wie ihn beide Oberflächen sehen. */
 export interface Merkposten {

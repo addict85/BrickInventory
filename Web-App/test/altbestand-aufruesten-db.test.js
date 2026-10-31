@@ -97,13 +97,13 @@ test('Altbestand aufrüsten', { concurrency: 1, timeout: 300_000 }, async (t) =>
 
   // Der Vergleich: eine frische Installation (Basis plus Migrationen).
   await ref.connect();
-  await ref.query(fs.readFileSync(path.join(ROOT, 'db', 'basis.sql'), 'utf8'));
+  await ref.query(fs.readFileSync(path.join(ROOT, 'db/basis.sql'), 'utf8'));
   await ref.query('SET search_path TO public');
   await _req('db/migrate.js').runMigrations(ref);
 
   await t.test('der Start bringt die Datenbank auf den aktuellen Stand', async () => {
     await db.initSchemaOnce();
-    const dateien = fs.readdirSync(path.join(ROOT, 'db', 'migrations')).filter(f => f.endsWith('.sql')).sort();
+    const dateien = fs.readdirSync(path.join(ROOT, 'db/migrations')).filter(f => f.endsWith('.sql')).sort();
     const angewandt = (await db.all('SELECT name FROM schema_migrations')).map(r => r.name);
     assert.deepEqual(dateien.filter(f => !angewandt.includes(f)), []);
   });

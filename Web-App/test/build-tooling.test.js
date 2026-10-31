@@ -93,7 +93,7 @@ test('devDependencies landen nicht im Laufzeit-Image', () => {
 
 test('compose.yaml mountet nichts mehr nach public/', () => {
   // ── Woher dieser Test kommt ─────────────────────────────────────────────
-  // Nach der Umstellung der Bildablage auf data/images/ (utils/appPaths.ts)
+  // Nach der Umstellung der Bildablage auf data/images/ (src/infra/appPaths.ts)
   // blieb in compose.yaml die Zeile `./images:/app/public/images/sets` stehen.
   // Der Code schrieb dort längst nicht mehr hin — der Ordner ./images blieb
   // trotzdem neben ./data liegen und sah aus, als wäre die Umstellung nur halb
@@ -138,7 +138,7 @@ test('keine Build-Artefakte neben den TypeScript-Quellen', () => {
     return out;
   };
   const offenders = [];
-  for (const dir of ['db', 'jobs', 'routes', 'utils']) {
+  for (const dir of ['db', 'jobs', 'routes', 'src', 'utils']) {
     offenders.push(...walk(dir).filter(f => f.endsWith('.js')));
   }
   if (fs.existsSync(path.join(ROOT, 'server.js'))) offenders.push('server.js');
@@ -713,8 +713,8 @@ test('verwaiste .sql-Dateien verschwinden beim naechsten Bau', async (t) => {
       { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
 
   const sql = (dir) => fs.existsSync(dir) ? fs.readdirSync(dir).filter(f => f.endsWith('.sql')).sort() : [];
-  const quelle = path.join(ROOT, 'db', 'migrations');
-  const gebaut = path.join(ziel, 'db', 'migrations');
+  const quelle = path.join(ROOT, 'db/migrations');
+  const gebaut = path.join(ziel, 'db/migrations');
 
   baue();
   const erwartet = sql(quelle);

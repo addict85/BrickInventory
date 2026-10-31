@@ -44,7 +44,7 @@ const _req = buildAndRequire();
 const {
   naechsteUmleitung, hostErlaubt, UMLEITUNGS_GRENZE,
   ERLAUBTE_BILD_HOSTS, ERLAUBTE_DOWNLOAD_HOSTS,
-} = _req('utils/fremdeAdressen.js');
+} = _req('src/infra/fremdeAdressen.js');
 
 const KOPF = { Authorization: 'key GEHEIM', 'User-Agent': 'test' };
 

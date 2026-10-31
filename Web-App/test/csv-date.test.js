@@ -13,10 +13,10 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-// utils/csvExport ist TypeScript; das ladbare .js liegt seit der Umstellung
+// src/infra/csvExport ist TypeScript; das ladbare .js liegt seit der Umstellung
 // in dist/ und nicht mehr neben der Quelle. buildAndRequire() baut bei Bedarf
 // und löst dorthin auf.
-const { parseCsvDate } = require('./helpers/sources').buildAndRequire()('utils/csvExport.js');
+const { parseCsvDate } = require('./helpers/sources').buildAndRequire()('src/infra/csvExport.js');
 
 test('Tag zuerst, nicht Monat', () => {
   assert.equal(parseCsvDate('05.03.2026'), '2026-03-05', '5. März, nicht 3. Mai');
@@ -89,7 +89,7 @@ test('leere und unbrauchbare Eingaben ergeben null', () => {
 test('jeder CSV-Import normalisiert das Datum', () => {
   const _req = require('./helpers/sources').buildAndRequire();
   const { setCsvZeilen } = _req('utils/dienste/sets.js');
-  const { csvGemeinsameFelder } = _req('utils/csvExport.js');
+  const { csvGemeinsameFelder } = _req('src/infra/csvExport.js');
   const { rows } = setCsvZeilen('set_number;acquired_at\n10001-1;01.02.2026\n');
   assert.equal(rows[0].acquiredAt, '2026-02-01', 'Sets: 01.02.2026 ist der 1. Februar');
   assert.equal(csvGemeinsameFelder({ acquired_at: '01.02.2026' }).erfasstAm, '2026-02-01',

@@ -39,7 +39,7 @@ zwar die einzige.
 Neunzehn SQL-Stellen in elf Dateien lesen die Menge (gemessen). Dieselbe
 Summe neunzehnmal hingeschrieben heisst: neunzehn Stellen, an denen sie beim
 naechsten Mal leicht anders aussieht. Genau so ist in diesem Baum schon
-`is_spare` an sechs Stellen in vier Lesarten zerfallen (utils/validate.ts),
+`is_spare` an sechs Stellen in vier Lesarten zerfallen (src/infra/validate.ts),
 und genau deshalb gibt es dort ersatzteilSql() — dieselbe Bauart wie hier.
 
 ── Zwei Formen, EINE Rechnung ──────────────────────────────────────────────

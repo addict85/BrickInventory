@@ -25,7 +25,7 @@ const ROOT = path.join(__dirname, '..', '..');
 const serverOnly = () => fs.readFileSync(path.join(ROOT, 'server.ts'), 'utf8');
 
 /** Nur routes/imgProxy.ts. Für Prüfungen, die ausschliesslich den Proxy betreffen. */
-const imgProxy = () => fs.readFileSync(path.join(ROOT, 'routes', 'imgProxy.ts'), 'utf8');
+const imgProxy = () => fs.readFileSync(path.join(ROOT, 'routes/imgProxy.ts'), 'utf8');
 
 /**
  * server.ts + routes/imgProxy.ts.
@@ -63,8 +63,8 @@ const serverAll = () => serverOnly() + '\n' + imgProxy() + '\n' + proxyThumbQuel
  * weiter ueber denselben Stoff wie vorher — nur ist er jetzt sortiert.
  */
 const finanzQuelle = () => {
-  const ordner = path.join(ROOT, 'utils', 'finance');
-  const teile = [fs.readFileSync(path.join(ROOT, 'utils', 'financeCalc.ts'), 'utf8')];
+  const ordner = path.join(ROOT, 'utils/finance');
+  const teile = [fs.readFileSync(path.join(ROOT, 'utils/financeCalc.ts'), 'utf8')];
   for (const n of fs.readdirSync(ordner).filter(x => x.endsWith('.ts')).sort()) {
     teile.push(fs.readFileSync(path.join(ordner, n), 'utf8'));
   }
@@ -136,12 +136,12 @@ function distIsFresh() {
   const distAt = newestMtime(dist, /\.js$/);
   if (!distAt) return false;
   let srcAt = fs.statSync(path.join(ROOT, 'server.ts')).mtimeMs;
-  for (const d of ['db', 'utils', 'routes', 'jobs', 'clients', 'startup']) {
+  for (const d of ['db', 'src', 'utils', 'routes', 'jobs', 'clients', 'startup']) {
     srcAt = Math.max(srcAt, newestMtime(path.join(ROOT, d), /\.ts$/));
   }
   // Migrationen sind .sql und werden mitkopiert: Eine neue zählt wie eine
   // geänderte Quelle, eine gelöschte über die Zeit des Verzeichnisses.
-  const mig = path.join(ROOT, 'db', 'migrations');
+  const mig = path.join(ROOT, 'db/migrations');
   srcAt = Math.max(srcAt, newestMtime(mig, /\.sql$/), fs.existsSync(mig) ? fs.statSync(mig).mtimeMs : 0);
   return distAt >= srcAt;
 }
@@ -158,7 +158,7 @@ function buildAndRequire() {
   }
   // Wie server.ts: Die Nacharbeit aus utils/ (Nachzug, Preis, Bilder) läuft
   // über jobs/verdrahtung — ohne sie prüften Tests eine stumme Fassung.
-  require(path.join(ROOT, 'dist', 'jobs', 'verdrahtung.js')).verdrahte();
+  require(path.join(ROOT, 'dist', 'jobs/verdrahtung.js')).verdrahte();
   return rel => require(path.join(ROOT, 'dist', rel));
 }
 
@@ -250,10 +250,10 @@ function proxyThumbQuelle() {
   const path = require('path'), fs = require('fs');
   const ROOT = path.join(__dirname, '..', '..');
   return [
-    path.join(ROOT, 'routes', 'imgProxy.ts'),
-    path.join(ROOT, 'utils', 'proxyThumbs.ts'),
+    path.join(ROOT, 'routes/imgProxy.ts'),
+    path.join(ROOT, 'utils/proxyThumbs.ts'),
     // Cache-Auslieferung, seit Nachtrag 135 eigene Datei.
-    path.join(ROOT, 'utils', 'imgCacheServe.ts'),
+    path.join(ROOT, 'utils/imgCacheServe.ts'),
   ].map(p => fs.readFileSync(p, 'utf8')).join('\n');
 }
 module.exports.proxyThumbQuelle = proxyThumbQuelle;
@@ -301,11 +301,11 @@ function setKernQuelle() {
   const path = require('path'), fs = require('fs');
   const ROOT = path.join(__dirname, '..', '..');
   return [
-    ['routes', 'api_v1', 'sets.ts'],
-    ['utils', 'dienste', 'sets.ts'],
-    ['utils', 'setService.ts'],
-    ['utils', 'partsImport.ts'],
-    ['utils', 'minifigsImport.ts'],
+    ['routes/api_v1/sets.ts'],
+    ['utils/dienste/sets.ts'],
+    ['utils/setService.ts'],
+    ['utils/partsImport.ts'],
+    ['utils/minifigsImport.ts'],
   ].map(p => fs.readFileSync(path.join(ROOT, ...p), 'utf8')).join('\n');
 }
 module.exports.setKernQuelle = setKernQuelle;
@@ -324,7 +324,7 @@ module.exports.setKernQuelle = setKernQuelle;
  */
 function handlerQuelle() {
   const path = require('path'), fs = require('fs');
-  const dir = path.join(__dirname, '..', '..', 'utils', 'handlers');
+  const dir = path.join(__dirname, '..', '..', 'utils/handlers');
   return fs.readdirSync(dir).filter(f => f.endsWith('.ts'))
     .map(f => fs.readFileSync(path.join(dir, f), 'utf8')).join('\n');
 }
@@ -375,8 +375,8 @@ module.exports.startQuelle = startQuelle;
 function portfolioQuelle() {
   const path = require('path'), fs = require('fs');
   const ROOT = path.join(__dirname, '..', '..');
-  const dir = path.join(ROOT, 'utils', 'portfolio');
-  const teile = [fs.readFileSync(path.join(ROOT, 'utils', 'portfolioHistory.ts'), 'utf8')];
+  const dir = path.join(ROOT, 'utils/portfolio');
+  const teile = [fs.readFileSync(path.join(ROOT, 'utils/portfolioHistory.ts'), 'utf8')];
   if (fs.existsSync(dir)) {
     for (const f of fs.readdirSync(dir).filter(x => x.endsWith('.ts'))) {
       teile.push(fs.readFileSync(path.join(dir, f), 'utf8'));
@@ -758,7 +758,7 @@ function v1Routen() {
     for (const m of s.matchAll(/(?:router|app)\.(get|post|put|patch|delete)\(\s*['"`]([^'"`]+)['"`]/g))
       gefunden.push([m[1].toUpperCase(), vorne + m[2]]);
   };
-  for (const f of fs.readdirSync(path.join(ROOT, 'routes', 'api_v1')).filter(f => f.endsWith('.ts')))
+  for (const f of fs.readdirSync(path.join(ROOT, 'routes/api_v1')).filter(f => f.endsWith('.ts')))
     lies(`routes/api_v1/${f}`, '/api/v1');
   for (const f of ['settings', 'auth']) lies(`routes/${f}.ts`, `/api/v1/${f}`);
   lies('server.ts', '');

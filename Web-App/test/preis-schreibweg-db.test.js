@@ -62,7 +62,7 @@ const db = _req('db/database.js');
 // BrickLink vorgeben, BEVOR financeCalc/priceJob getPriceGuide herausziehen.
 // esbuild exportiert ueber Getter, ein `bl.getPriceGuide = …` liefe ins
 // Leere — deshalb wird der Eintrag im require-Zwischenspeicher ersetzt.
-const blPfad = require.resolve(path.join(ROOT, 'dist', 'clients', 'bricklink.js'));
+const blPfad = require.resolve(path.join(ROOT, 'dist', 'clients/bricklink.js'));
 const echt = require(blPfad);
 let abrufe = [];
 require.cache[blPfad].exports = Object.assign({}, echt, {

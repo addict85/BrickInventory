@@ -267,7 +267,7 @@ nicht austauschen lässt, ist eine, die man nur im Betrieb prüfen kann.
 Die Mail. Getrennt, damit pruefeSet() über das WANN entscheidet, nicht über
 das WIE.
 
-Die GESTALTUNG steht seit dem 25.09. in utils/mailer.ts (baueAlarmMail) —
+Die GESTALTUNG steht seit dem 25.09. in src/infra/mailer.ts (baueAlarmMail) —
 dort, wo auch die Bestätigungs- und die Reset-Mail entstehen. Marcos
 Vorgabe: „Kannst du die Mail noch etwas schöner gestalten analog der E-Mail
 Bestätigen Mail?" Sie war die einzige ohne Hülle.

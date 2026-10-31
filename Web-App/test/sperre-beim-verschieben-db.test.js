@@ -29,7 +29,7 @@
  * Sperre existiert.
  *
  * Hier läuft kein Wettlauf. Die Sperre wird von einer EIGENEN Verbindung
- * genommen — mit genau derselben Anweisung, die utils/txLock.ts benutzt — und
+ * genommen — mit genau derselben Anweisung, die db/txLock.ts benutzt — und
  * dann gehalten. Danach wird die echte Route angestossen und in `pg_locks`
  * nachgesehen, ob dort ein WARTER steht. Das ist ein ZUSTAND, keine Dauer:
  *
@@ -126,14 +126,14 @@ let HAUPT = 0, KIND = 0;
 const SN_A = '75192-1', SN_B = '10179-1', SN_C = '21309-1';
 
 /**
- * Die Sperre, wie utils/txLock.ts sie stellt — Halter oder Warter.
+ * Die Sperre, wie db/txLock.ts sie stellt — Halter oder Warter.
  *
  * Dasselbe SQL wie dort, absichtlich wörtlich: Würde hier eine andere
  * Schlüsselbildung stehen, prüfte dieser Test eine Sperre, die es so nicht
  * gibt.
  */
 const SPERR_SQL = 'SELECT pg_advisory_xact_lock($1, hashtext($2))';
-const { LOCKS } = _req('utils/lockNamespaces.js');
+const { LOCKS } = _req('src/infra/lockNamespaces.js');
 const schluessel = (userId, scopeKey) => [LOCKS.INVENTAR, `${userId}|${scopeKey}`];
 
 async function sperrZeilen(userId, scopeKey, erteilt) {

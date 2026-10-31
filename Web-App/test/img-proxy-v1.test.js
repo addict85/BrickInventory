@@ -40,7 +40,7 @@ const ohneKommentare = (src) =>
 const lies = (...p) => fs.readFileSync(path.join(...p), 'utf8');
 
 test('die Adresse steht an einer Stelle, und es ist die neue', () => {
-  const images = lies(ROOT, 'utils', 'images.ts');
+  const images = lies(ROOT, 'utils/images.ts');
   assert.match(images, new RegExp(`IMG_PROXY_PFAD = '${NEU}'`),
     `utils/images.ts führt ${NEU} nicht als IMG_PROXY_PFAD`);
   assert.match(images, new RegExp(`IMG_PROXY_PFAD_ALT = '${ALT}'`),
@@ -48,7 +48,7 @@ test('die Adresse steht an einer Stelle, und es ist die neue', () => {
 });
 
 test('der Server bedient beide Adressen', () => {
-  const proxy = ohneKommentare(lies(ROOT, 'routes', 'imgProxy.ts'));
+  const proxy = ohneKommentare(lies(ROOT, 'routes/imgProxy.ts'));
   for (const name of ['IMG_PROXY_PFAD', 'IMG_PROXY_PFAD_ALT'])
     assert.match(proxy, new RegExp(`app\\.get\\(${name},`),
       `registerImgProxy meldet ${name} nicht an — ` +
@@ -69,7 +69,7 @@ test('gebaut wird nur noch die neue Adresse', () => {
         dateien.push([path.relative(ROOT, p), ohneKommentare(fs.readFileSync(p, 'utf8'))]);
     }
   };
-  for (const ordner of ['routes', 'utils', 'jobs']) lauf(path.join(ROOT, ordner), '.ts');
+  for (const ordner of ['routes', 'src', 'utils', 'jobs']) lauf(path.join(ROOT, ordner), '.ts');
   lauf(path.join(ROOT, 'public', 'js'), '.js');
   dateien.push(['server.ts', ohneKommentare(lies(ROOT, 'server.ts'))]);
   assert.ok(dateien.length >= 30, `Nur ${dateien.length} Quelldateien gefunden`);
@@ -140,7 +140,7 @@ test('die Migration erfasst JEDE Tabelle mit image_url', () => {
   // Ohne Kommentare: Der Erklaertext dieser Migration NENNT das Muster
   // `LIKE '%…%'`, gegen das sie sich entscheidet — und die Pruefung unten
   // fiel prompt darueber. Dieselbe Falle, vor der helpers/sources.js warnt.
-  const mig = ohneKommentare(lies(ROOT, 'db', 'migrations', '0014-img-proxy-nach-v1.sql'));
+  const mig = ohneKommentare(lies(ROOT, 'db/migrations/0014-img-proxy-nach-v1.sql'));
   const fehlend = tabellen.filter(t => !new RegExp(`UPDATE\\s+${t}\\s`).test(mig)).sort();
   assert.deepEqual(fehlend, [],
     'Diese Tabellen tragen image_url, die Migration fasst sie nicht an:\n  ' +
@@ -165,11 +165,11 @@ test('die Migration erfasst JEDE Tabelle mit image_url', () => {
   assert.ok(umgeschrieben.length >= 5,
     `Nur ${umgeschrieben.length} UPDATE-Ziele in 0014 gefunden — Muster veraltet?`);
 
-  const migVerz = path.join(ROOT, 'db', 'migrations');
+  const migVerz = path.join(ROOT, 'db/migrations');
   const spaeter = fs.readdirSync(migVerz).filter(f => f.endsWith('.sql') && f > '0014').sort();
   const nachzuegler = [];
   for (const f of spaeter) {
-    const txt = ohneKommentare(lies(ROOT, 'db', 'migrations', f));
+    const txt = ohneKommentare(lies(ROOT, 'db/migrations', f));
     for (const m of txt.matchAll(/CREATE\s+TABLE(?:\s+IF\s+NOT\s+EXISTS)?\s+(\w+)\s*\(([^;]*?)\)\s*;/gs)) {
       if (/^\s*image_url\s/m.test(m[2])) nachzuegler.push([m[1], f, txt]);
     }

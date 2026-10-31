@@ -182,7 +182,7 @@ test('die Längengrenze steht in beiden Fassungen gleich', () => {
   // dasselbe Vorgehen wie bei PASSWORT_MIN_ZEICHEN.
   const max = /LAGERORT_MAX_ZEICHEN = (\d+)/.exec(web('utils/lagerort.ts'))?.[1];
   assert.ok(max, 'LAGERORT_MAX_ZEICHEN nicht gefunden');
-  assert.ok(web('utils/fehlerTexte.ts').includes(`höchstens ${max} Zeichen`),
+  assert.ok(web('src/infra/fehlerTexte.ts').includes(`höchstens ${max} Zeichen`),
     `Der Fehlertext nennt eine andere Zahl als ${max}`);
   assert.ok(web('public/index.html').includes(`maxlength="${max}"`) ||
             web('public/js/07-admin.js').includes(`maxlength="${max}"`),

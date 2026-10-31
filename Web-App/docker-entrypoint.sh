@@ -17,7 +17,7 @@ set -e
 echo "[entrypoint] Datenverzeichnisse werden vorbereitet …"
 
 # Verzeichnisse der neuen Ordnung. instructions/shared und part_images sind
-# entfallen (siehe utils/appPaths.ts).
+# entfallen (siehe src/infra/appPaths.ts).
 mkdir -p \
   /app/data/instructions \
   /app/data/uploads \
@@ -26,7 +26,7 @@ mkdir -p \
   /app/data/images/minifigs
 
 # public/ gehoert nicht mehr dazu: Bilder liegen jetzt unter data/images/
-# (siehe utils/appPaths.ts). public/ ist damit wieder read-only Build-Inhalt.
+# (siehe src/infra/appPaths.ts). public/ ist damit wieder read-only Build-Inhalt.
 
 # ── Der Eigentuemerwechsel ist ein REPARATURSCHRITT, kein Startschritt ───────
 #

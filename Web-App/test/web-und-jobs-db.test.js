@@ -5,7 +5,7 @@
  * Gegenproben (am 30.10.2026 gemessen):
  *   A  in server.ts `const jobs = k.rolle !== 'web'` durch `true` ersetzt →
  *      rot: „der Web-Prozess arbeitet keine Aufträge ab“
- *   B  in aktuellerStartZustand (utils/startZustand.ts) das Nachlesen aus
+ *   B  in aktuellerStartZustand (src/infra/startZustand.ts) das Nachlesen aus
  *      laufzustand entfernt → rot: „der Web-Prozess sieht den Startzustand des
  *      Job-Prozesses“
  *   C  in server.ts app.use(nurEigeneHerkunft) entfernt → rot: „weist
@@ -138,7 +138,7 @@ test('Web- und Job-Prozess', { concurrency: 1, timeout: 180_000 }, async (t) => 
 
     await t.test('jede API-Antwort nennt die Schnittstellenfassung', async () => {
       const r = await hole(port, '/api/v1/health');
-      const { API_VERSION, API_MIN_APP } = _req('utils/apiVersion.js');
+      const { API_VERSION, API_MIN_APP } = _req('src/infra/apiVersion.js');
       assert.equal(r.headers['x-api-version'], String(API_VERSION));
       assert.equal(r.headers['x-api-min-app'], String(API_MIN_APP));
       assert.equal(r.body.db_pool, undefined, 'Pool-Zahlen ohne Anmeldung');
@@ -146,14 +146,14 @@ test('Web- und Job-Prozess', { concurrency: 1, timeout: 180_000 }, async (t) => 
     });
 
     await t.test('eine zu alte App wird mit 426 abgewiesen', async () => {
-      const { API_MIN_APP } = _req('utils/apiVersion.js');
+      const { API_MIN_APP } = _req('src/infra/apiVersion.js');
       assert.equal((await hole(port, '/api/v1/health', { kopf: { 'X-App-Api': String(API_MIN_APP - 1) } })).status, 426);
       assert.equal((await hole(port, '/api/v1/health', { kopf: { 'X-App-Api': String(API_MIN_APP) } })).status, 200);
     });
 
     await t.test('weist schreibende Anfragen fremder Seiten ab', async () => {
       const r = await hole(port, '/api/v1/auth/logout', { methode: 'POST', kopf: { 'sec-fetch-site': 'cross-site' } });
-      assert.equal(r.status, 403, 'utils/herkunft.ts hängt nicht in server.ts');
+      assert.equal(r.status, 403, 'src/infra/herkunft.ts hängt nicht in server.ts');
     });
 
     await t.test('SIGTERM: der Job-Prozess gibt seinen laufenden Auftrag zurück', async () => {

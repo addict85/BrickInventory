@@ -35,7 +35,7 @@ const { haeltSet } = require('./helpers/bestand');
 
 // BrickLink nachstellen — wie in preis-schreibweg-db: esbuild exportiert über
 // Getter, also den Eintrag im require-Zwischenspeicher ersetzen.
-const blPfad = require.resolve(path.join(ROOT, 'dist', 'clients', 'bricklink.js'));
+const blPfad = require.resolve(path.join(ROOT, 'dist', 'clients/bricklink.js'));
 const echt = require(blPfad);
 let abrufe = [];
 require.cache[blPfad].exports = Object.assign({}, echt, {

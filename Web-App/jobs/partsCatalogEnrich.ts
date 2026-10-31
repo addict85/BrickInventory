@@ -8,35 +8,35 @@
  * 4. For each part: if image already local → use it; else return CDN URL and download in background
  */
 import { cdnImageLimiter, rebrickableBackgroundLimiter as rebrickableLimiter, consumeRebrickableDaily, parseThrottleWait as ptw } from '../utils/rateLimiter';
-import { meldeUndWeiter, fehlertext, logAndContinue, meldeUndLiefere, ohneFehlendeDatei } from '../utils/httpError';
+import { meldeUndWeiter, fehlertext, logAndContinue, meldeUndLiefere, ohneFehlendeDatei } from '../src/infra/httpError';
 import { neuestesInventar } from '../utils/rbInventar';
 import { mitVersion } from '../utils/setNummer';
 import { merkeBlNummer } from '../utils/blZuordnung';
 import { merkeTeil, merkeTeilFarbe, merkeSetTeil, setzeTeilBildLokal, merkeFiguren, merkeSetFiguren, setzeFigurBildLokal } from '../utils/katalogPflege';
 import { getRbKey, downloadFile } from '../clients/rebrickable';
 // Pfade zentral auflösen — __dirname zeigt seit dem dist/-Build nicht mehr
-// auf die Wurzel. Siehe utils/appPaths.ts.
+// auf die Wurzel. Siehe src/infra/appPaths.ts.
 
 /** Ergebnis der handgebauten HTTPS-Aufrufe in dieser Datei. Ohne Typparameter
  *  leitet TypeScript bei `new Promise` `unknown` ab. */
 type JobHttpResult = { status: number; body: string };
 
 // Teile- und Figurenbilder liegen seit der Neuordnung getrennt (siehe
-// utils/appPaths.ts). downloadImage() bekommt deshalb die Art mitgegeben —
+// src/infra/appPaths.ts). downloadImage() bekommt deshalb die Art mitgegeben —
 // vorher landete beides im selben Ordner "part_images", was den Namen für die
 // Hälfte des Inhalts falsch machte.
 import { bildEndung, dateiTeil, zielImOrdner, ladeBild } from '../utils/bildDatei';
-import { ERLAUBTE_BILD_HOSTS, pfadSegment, nummernListe } from '../utils/fremdeAdressen';
+import { ERLAUBTE_BILD_HOSTS, pfadSegment, nummernListe } from '../src/infra/fremdeAdressen';
 import { setzeZustand } from '../utils/laufzustand';
 import * as db from '../db/database';
 import https from 'https';
 import fs from 'fs';
 import path from 'path';
 import * as monitor from '../utils/jobMonitor';
-import { PART_IMAGES_DIR, MINIFIG_IMAGES_DIR, SET_IMAGES_DIR } from '../utils/appPaths';
-import { LOCKS } from '../utils/lockNamespaces';
+import { PART_IMAGES_DIR, MINIFIG_IMAGES_DIR, SET_IMAGES_DIR } from '../src/infra/appPaths';
+import { LOCKS } from '../src/infra/lockNamespaces';
 import { generateThumb } from '../utils/thumbs';
-import { KEINE_FARBE } from '../utils/validate';
+import { KEINE_FARBE } from '../src/infra/validate';
 
 /** Ohne Browser-Kennung und Referer weist das Rebrickable-CDN Bildabrufe ab. */
 const BILD_KOPFZEILEN = {

@@ -1,12 +1,12 @@
 import path from 'path';
 import fs from 'fs';
 import * as db from '../db/database';
-import { INSTRUCTIONS_DIR } from './appPaths';
+import { INSTRUCTIONS_DIR } from '../src/infra/appPaths';
 import { downloadFile, scrapeInstructions, sleep, httpsGetRobust } from '../clients/rebrickable';
 import * as brickset from '../clients/brickset';
-import { meldeUndWeiter, fehlertext, logAndContinue, meldeUndLiefere } from './httpError';
+import { meldeUndWeiter, fehlertext, logAndContinue, meldeUndLiefere } from '../src/infra/httpError';
 import { mitVersion, ohneVersion } from './setNummer';
-import { pfadSegment } from './fremdeAdressen';
+import { pfadSegment } from '../src/infra/fremdeAdressen';
 
 /**
  * Bauanleitungen beschaffen: Rebrickable → Brickset → BrickLink-Designer →

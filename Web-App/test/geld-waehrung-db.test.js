@@ -28,7 +28,7 @@ const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
 
 test('Rappen erst am Ende, Währungen ehrlich', { concurrency: 1 }, async (t) => {
-  const geld = _req('utils/geld.js');
+  const geld = _req('src/infra/geld.js');
   await t.test('120,3333 × 2 ist 240,67, und 1,005 rundet auf 1,01', () => {
     assert.equal(geld.zeilenwert(120.3333, 2), 240.67);
     assert.equal(geld.zeilenwert('120.3333', 2), 240.67);

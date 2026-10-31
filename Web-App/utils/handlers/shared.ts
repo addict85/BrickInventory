@@ -1,9 +1,9 @@
 import * as db from '../../db/database';
 import { inKontowaehrung, kontowaehrungJoin } from '../acquisitions';
-import { istErsatzteil } from '../validate';
+import { istErsatzteil } from '../../src/infra/validate';
 import { asIds } from '../household';
 import { teilmengeJoin, teilmengeAus } from '../bestandsmenge';
-import { KEINE_FARBE } from '../validate';
+import { KEINE_FARBE } from '../../src/infra/validate';
 
 /**
  * Was alle drei Domänen brauchen: Seitengrössen, Zustandsableitung aus

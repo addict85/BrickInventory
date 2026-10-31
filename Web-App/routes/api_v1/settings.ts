@@ -6,15 +6,15 @@
  * neue Einträge.
  */
 import express from 'express';
-import { handleRouteError, logAndContinue } from '../../utils/httpError';
+import { handleRouteError, logAndContinue } from '../../src/infra/httpError';
 import { requireToken } from './middleware';
 import { householdStatus, createInvite, redeemInvite, unlink, verwerfeGetrennt } from '../../utils/household';
 import { setUserSetting, deleteUserSetting, nutzerStandardZustand, globalDefaultCondition } from '../../utils/settings';
 import { profil } from '../../utils/konten';
 import { readSettings, getSetting, designFuer } from '../../utils/settings';
 import { bestaetigePasswort } from '../../utils/passwortBestaetigung';
-import { sendHaushaltVerknuepftMail } from '../../utils/mailer';
-import { sendeFehler } from '../../utils/fehlerTexte';
+import { sendHaushaltVerknuepftMail } from '../../src/infra/mailer';
+import { sendeFehler } from '../../src/infra/fehlerTexte';
 const router = express.Router();
 
 /**

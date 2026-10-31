@@ -27,7 +27,7 @@ const ROOT    = path.resolve(__dirname, '..');
 // Eintrag hier, entsteht kein dist/clients/ — und JEDER Import darauf läuft
 // beim Start ins Leere. Genau daran wäre der Umzug fast gescheitert.
 // 'startup' seit Nachtrag 134 (die Staffel der Hintergrundläufe).
-const SRC_DIRS = ['db', 'utils', 'routes', 'jobs', 'clients', 'startup'];
+const SRC_DIRS = ['db', 'src', 'utils', 'routes', 'jobs', 'clients', 'startup'];
 /**
  * Fassung für den npx-Rückfall.
  *

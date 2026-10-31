@@ -439,7 +439,7 @@ Zwei Dinge fielen damit auf der Startseite aus:
     Standarddesign und springt nach dem Abgleich sichtbar um. Der Kopf
     von utils/indexHtml.ts beschreibt genau diesen Sprung als das
     Problem, das geloest sei — auf `/` war er nie geloest.
-  • der Dateistempel (utils/assetStempel.ts). Deshalb blieb meine
+  • der Dateistempel (src/infra/assetStempel.ts). Deshalb blieb meine
     Cache-Reparatur bei Marco wirkungslos: Sie kam an seiner Adresse gar
     nicht zum Einsatz.
 
@@ -574,7 +574,7 @@ erst nach Ablauf der Frist: Der Nutzer loest eine Einladung ein und findet
 sein Unterkonto je nach Worker mal vor und mal nicht.
 
 Der Handler laeuft auch beim (Wieder-)Verbinden ohne Signal — dann mit
-undefined als Payload (siehe utils/pgNotify.ts). Genau richtig: Was
+undefined als Payload (siehe db/pgNotify.ts). Genau richtig: Was
 waehrend einer Trennung passiert ist, weiss dieser Worker nicht, also
 faengt er ohne gemerkten Stand neu an.
 ```

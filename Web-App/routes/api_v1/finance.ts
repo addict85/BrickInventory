@@ -1,11 +1,11 @@
 /** /api/v1/finance — Bewertungen, PnL, Portfolio-Historie (Logik in ../finance). */
 import express from 'express';
-import { handleRouteError } from '../../utils/httpError';
+import { handleRouteError } from '../../src/infra/httpError';
 import { requireToken } from './middleware';
 import { getPortfolioHistory } from '../../utils/portfolioHistory';
 import { scopeIds, parseScopeMode } from '../../utils/household';
 import { computeMinifigsValuation, computePartsValuation, computePnl, computeSetsValuation } from '../../utils/financeCalc';
-import { einzelwert } from '../../utils/validate';
+import { einzelwert } from '../../src/infra/validate';
 const router = express.Router();
 
 // ── FINANCE ───────────────────────────────────────────────────────────────────

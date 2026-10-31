@@ -65,7 +65,7 @@ export function mengeSummeSql(konten: 'eines' | 'blickfeld'): string {
 }
 
 import * as db from '../db/database';
-import { colorId } from './validate';
+import { colorId } from '../src/infra/validate';
 
 /**
  * Was ein Leser bzw. Schreiber hier können muss, und nicht mehr. `any` wäre

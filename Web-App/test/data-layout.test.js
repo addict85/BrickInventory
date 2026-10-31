@@ -52,7 +52,7 @@ test('Teile- und Figurenbilder landen in getrennten Ordnern', async (t) => {
   process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
   const _req = require('./helpers/sources').buildAndRequire();
   const { downloadImage } = _req('jobs/partsCatalogEnrich.js');
-  const { PART_IMAGES_DIR, MINIFIG_IMAGES_DIR } = _req('utils/appPaths.js');
+  const { PART_IMAGES_DIR, MINIFIG_IMAGES_DIR } = _req('src/infra/appPaths.js');
   const https = require('node:https');
   const { Readable } = require('node:stream');
   const { EventEmitter } = require('node:events');
@@ -120,7 +120,7 @@ test('es gibt keine Abwärtskompatibilität für die alten Pfade mehr', () => {
   assert.doesNotMatch(src, /app\.get\([^)]*instructions\/shared/,
     'Weiterleitung für den alten Anleitungspfad ist wieder da');
 
-  const paths = read('utils/appPaths.ts');
+  const paths = read('src/infra/appPaths.ts');
   assert.doesNotMatch(paths, /LEGACY_PART_IMAGES|LEGACY_SHARED_INSTR/,
     'resolveWebPath darf keine Alt-Präfixe mehr kennen');
 });

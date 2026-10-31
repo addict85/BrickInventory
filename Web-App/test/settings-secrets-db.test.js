@@ -95,7 +95,7 @@ const AUSGENOMMEN = new Map([
 
 function leserouten() {
   const quelle = require('node:fs').readFileSync(
-    require('node:path').join(__dirname, '..', 'routes', 'settings.ts'), 'utf8')
+    require('node:path').join(__dirname, '..', 'routes/settings.ts'), 'utf8')
     .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
   const gefunden = [...quelle.matchAll(/router\.get\(\s*'([^']+)'/g)].map(m => m[1]);
   // Selbstbeweis: Griffe das Muster nicht, wäre die Liste leer und der Test

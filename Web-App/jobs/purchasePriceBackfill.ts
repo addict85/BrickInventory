@@ -6,7 +6,7 @@ import { setzeGeschaetztenPreis } from '../utils/acquisitions';
 import { getCurrentFigMarketPrice, getCurrentPartMarketPrice } from '../utils/marketPrice';
 import { lookupPart } from '../clients/rebrickable';
 import { blAbrufNummer } from '../utils/blZuordnung';
-import { fehlertext, meldeUndWeiter, meldeUndLiefere } from '../utils/httpError';
+import { fehlertext, meldeUndWeiter, meldeUndLiefere } from '../src/infra/httpError';
 import { sleep } from '../clients/rebrickable';
 'use strict';
 

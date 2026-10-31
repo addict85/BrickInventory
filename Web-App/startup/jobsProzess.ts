@@ -1,9 +1,9 @@
 import fs from 'fs';
-import * as pgNotify from '../utils/pgNotify';
+import * as pgNotify from '../db/pgNotify';
 import { HAUSHALT_KANAL, leereHaushaltCache } from '../utils/household';
-import { meldeStartZustand } from '../utils/startZustand';
+import { meldeStartZustand } from '../src/infra/startZustand';
 import { setzeZustand } from '../utils/laufzustand';
-import { logAndContinue, meldeUndWeiter } from '../utils/httpError';
+import { logAndContinue, meldeUndWeiter } from '../src/infra/httpError';
 import { stelleAuftragEin } from '../utils/auftraege';
 import { planeAlle, ziehePlanVor } from '../utils/zeitplan';
 import { bildbedarfAnstossen, offenerBildbedarf } from '../utils/bildbedarf';

@@ -4,7 +4,7 @@
  * ── Warum es diese Datei gibt ───────────────────────────────────────────────
  * Ein einziger Abriss der LISTEN-Verbindung löst beim pg-Client DREI Ereignisse
  * aus: error → error → end (am laufenden Postgres 16 nachgemessen). Die
- * vorherige Fassung von utils/pgNotify.ts rief bei jedem davon
+ * vorherige Fassung von db/pgNotify.ts rief bei jedem davon
  * scheduleReconnect(), und das begann mit removeAllListeners() — nach dem
  * ersten Ereignis war damit auch der 'error'-Zuhörer weg. Ein 'error' ohne
  * Zuhörer ist in Node kein Logeintrag, sondern eine geworfene Ausnahme: Der
@@ -21,7 +21,7 @@
  * einem KINDPROZESS — nur so ist „der Prozess stirbt" überhaupt beobachtbar
  * (im Testprozess selbst würde er den Testlauf mitnehmen).
  *
- * Gegenprobe (durchgeführt): retire() in utils/pgNotify.ts wieder durch die
+ * Gegenprobe (durchgeführt): retire() in db/pgNotify.ts wieder durch die
  * alte Fassung ersetzt (removeAllListeners ohne Ersatz-Zuhörer) → dieser Test
  * wird rot, Exitcode 7 statt 0.
  *
@@ -44,7 +44,7 @@ const db = _req('db/database.js');
 // über den Exitcode, ob er das überlebt hat.
 const CHILD = `
 process.env.DATABASE_URL = ${JSON.stringify(process.env.DATABASE_URL)};
-const notify = require(${JSON.stringify(path.join(ROOT, 'dist/utils/pgNotify.js'))});
+const notify = require(${JSON.stringify(path.join(ROOT, 'dist/db/pgNotify.js'))});
 const db     = require(${JSON.stringify(path.join(ROOT, 'dist/db/database.js'))});
 let empfangen = 0;
 process.on('uncaughtException', e => { console.log('CRASH:' + e.message); process.exit(7); });

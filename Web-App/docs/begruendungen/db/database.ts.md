@@ -556,7 +556,7 @@ GEMESSEN: Hier stand `require('../package.json')`. Aus dist/db/database.js
 loest Node das nach dist/package.json auf — eine Datei, die es nicht gibt.
 appVersion war damit IMMER 'unknown'.
 
-Dieselbe Falle ist in utils/appPaths.ts bereits beschrieben und geloest
+Dieselbe Falle ist in src/infra/appPaths.ts bereits beschrieben und geloest
 („dist/server.js sieht als __dirname das Verzeichnis dist/"): APP_ROOT geht
 nach oben, bis eine package.json auftaucht, und stimmt aus den Quellen wie
 aus dem Bau. Von dort wird sie jetzt gelesen.

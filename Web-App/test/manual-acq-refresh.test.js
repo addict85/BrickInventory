@@ -246,7 +246,7 @@ test('eine Mengenänderung läuft unter der Bestandssperre', () => {
   // adjustAcquisitionsToQuantity(…).catch(() => {}) — zwei lose Statements,
   // ohne Transaktion, ohne Sperre, mit verschlucktem Fehler. Scheiterte der
   // zweite Schritt, blieb die Menge erhöht, während die Erfassungen auf dem
-  // alten Stand standen: genau der Drift, gegen den es utils/txLock.ts gibt,
+  // alten Stand standen: genau der Drift, gegen den es db/txLock.ts gibt,
   // nur ohne jede Logzeile. Alle anderen Schreibwege am Bestand
   // (Kaufpreis-Routen in sets/parts/minifigs, die v1-Fabrik) laufen längst
   // unter dem Advisory-Lock.
@@ -310,7 +310,7 @@ test('kein stiller Fehler mehr auf Bestandstabellen', () => {
   //
   // Für Schreibvorgänge auf den BESTANDSTABELLEN gilt deshalb: entweder den
   // Fehler durchreichen (Pflichtschritt) oder logAndContinue() aus
-  // utils/httpError.ts (bewusst optionaler Schritt). Ein leerer Catch ist
+  // src/infra/httpError.ts (bewusst optionaler Schritt). Ein leerer Catch ist
   // keine der beiden Möglichkeiten. Anderswo — Bild-Caches, Aufräumen,
   // Fremd-APIs — bleibt er erlaubt; dieser Test greift nur die Tabellen ab,
   // aus denen Bestand und Finanzsummen gelesen werden.
@@ -337,5 +337,5 @@ test('kein stiller Fehler mehr auf Bestandstabellen', () => {
   }
   assert.deepEqual(fundstellen, [],
     `Stiller Fehler auf einer Bestandstabelle: ${fundstellen.join(', ')} — ` +
-    'entweder durchreichen oder logAndContinue() aus utils/httpError.ts');
+    'entweder durchreichen oder logAndContinue() aus src/infra/httpError.ts');
 });

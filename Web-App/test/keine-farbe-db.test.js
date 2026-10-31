@@ -24,7 +24,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
-const MIGRATION = path.join(__dirname, '..', 'db', 'migrations', '0071-keine-farbe.sql');
+const MIGRATION = path.join(__dirname, '..', 'db/migrations/0071-keine-farbe.sql');
 
 test('keine Farbe ist 9999, 0 bleibt Schwarz', { concurrency: 1 }, async (t) => {
   try { await db.initSchema(); }
@@ -99,7 +99,7 @@ test('keine Farbe ist 9999, 0 bleibt Schwarz', { concurrency: 1 }, async (t) => 
   });
 
   await t.test('ein Teil ohne Farbe wird nicht schwarz', async () => {
-    const V = _req('utils/validate.js');
+    const V = _req('src/infra/validate.js');
     assert.equal(V.colorId(''), 9999);
     assert.equal(V.colorId(null), 9999);
     assert.equal(V.colorId('-1'), 9999);

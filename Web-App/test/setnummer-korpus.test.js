@@ -111,7 +111,7 @@ test('die Güte-Reihenfolge steht in beiden Apps gleich', () => {
 });
 
 test('das Mengenwort-Muster steht in beiden Apps gleich', () => {
-  const ts = fs.readFileSync(path.join(ROOT, 'utils', 'produkttitel.ts'), 'utf8');
+  const ts = fs.readFileSync(path.join(ROOT, 'utils/produkttitel.ts'), 'utf8');
   const mTs = ts.match(/const MENGENWORT = \/(.+)\/i;/);
   assert.ok(mTs, 'MENGENWORT in produkttitel.ts nicht gefunden');
 

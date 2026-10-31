@@ -106,7 +106,7 @@ test('keine unbegruendete Route auf beiden API-Oberflaechen', () => {
   for (const r of webRouter()) for (const x of routenAus(r.datei, r.mount)) web.add(x);
 
   const v1 = new Set();
-  const v1Dir = path.join(ROOT, 'routes', 'api_v1');
+  const v1Dir = path.join(ROOT, 'routes/api_v1');
   for (const f of fs.readdirSync(v1Dir)) {
     if (!f.endsWith('.ts') || f === 'index.ts' || f === 'middleware.ts') continue;
     for (const x of routenAus(path.join(v1Dir, f), '/api')) v1.add(x);
@@ -236,7 +236,7 @@ test('auch die direkt angemeldeten Routen stehen unter /api/v1', () => {
       if (e.name.endsWith('.ts')) dateien.push(p);
     }
   };
-  for (const ordner of ['routes', 'utils', 'jobs'])
+  for (const ordner of ['routes', 'src', 'utils', 'jobs'])
     lauf(path.join(ROOT, ordner));
   assert.ok(dateien.length >= 30, `Nur ${dateien.length} Serverdateien gefunden`);
 

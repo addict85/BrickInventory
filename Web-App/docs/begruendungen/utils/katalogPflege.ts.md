@@ -29,7 +29,7 @@ utils/setMove.ts. Dazu die beiden Importe aus Rebrickable.
 
 Derselbe Upsert sechsmal hingeschrieben heisst: sechs Stellen, an denen er
 beim naechsten Mal leicht anders aussieht. Genau so ist in diesem Baum schon
-`is_spare` an sechs Stellen in vier Lesarten zerfallen (utils/validate.ts).
+`is_spare` an sechs Stellen in vier Lesarten zerfallen (src/infra/validate.ts).
 
 ── Die Regel: der Katalog gewinnt NICHT gegen sich selbst ──────────────────
 

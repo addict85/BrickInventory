@@ -25,7 +25,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
-const MIGRATION = fs.readFileSync(path.join(__dirname, '..', 'db', 'migrations', '0062-set-teile-schlank.sql'), 'utf8');
+const MIGRATION = fs.readFileSync(path.join(__dirname, '..', 'db/migrations/0062-set-teile-schlank.sql'), 'utf8');
 const SCHEMA = `probe0062_${process.pid}`;
 
 test('Migration 0062: schlanke Setliste', { concurrency: 1 }, async (t) => {

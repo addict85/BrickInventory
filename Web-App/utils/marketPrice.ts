@@ -6,9 +6,9 @@ import { getGlobalSetting } from './settings';
 import { DEFAULT_PRICE_CONDITION, fetchPartPrice, fetchMinifigPrice, ladeBlNummernVor,
          resolveBlPartNumber, resolveBlColorId } from './finance/preise';
 import { getSetting } from './settings';
-import { meldeUndWeiter, fehlertext, logAndContinue, meldeUndLiefere } from './httpError';
+import { meldeUndWeiter, fehlertext, logAndContinue, meldeUndLiefere } from '../src/infra/httpError';
 import { getMinifigParts } from '../clients/rebrickable';
-import { KEINE_FARBE } from './validate';
+import { KEINE_FARBE } from '../src/infra/validate';
 
 /**
  * Der aktuelle Marktpreis eines Sets.

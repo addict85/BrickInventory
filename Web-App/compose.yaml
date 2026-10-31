@@ -92,7 +92,7 @@ services:
     #   - "${APP_BIND:-127.0.0.1}:3000:3000"
     volumes:
       # EIN Volume genügt. Set-, Teile- und Minifiguren-Bilder liegen unter
-      # data/images/ (siehe utils/appPaths.ts) und sind damit von ./data
+      # data/images/ (siehe src/infra/appPaths.ts) und sind damit von ./data
       # miterfasst — inklusive der Vorschaubilder, die als <name>_thumb.jpg
       # NEBEN dem Original liegen, nicht in einem eigenen Unterordner.
       #

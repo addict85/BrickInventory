@@ -1,25 +1,25 @@
 
-import { konfig } from '../utils/konfig';
+import { konfig } from '../src/infra/konfig';
 import { protokolliere } from '../utils/verwaltungsprotokoll';
 import express from 'express';
 const router  = express.Router();
 import bcrypt from 'bcryptjs';
 import * as K from '../utils/konten';
 import { meldeHaushaltsaenderung } from '../utils/household';
-import { handleRouteError, logAndContinue, meldeUndWeiter, fehlerCode, fehlertext, pfadParam } from '../utils/httpError';
+import { handleRouteError, logAndContinue, meldeUndWeiter, fehlerCode, fehlertext, pfadParam } from '../src/infra/httpError';
 import { hashToken, pruefeAnmeldedaten, createToken, pruefeToken, assertLoginAllowed, establishSession, revokeAllTokens, revokeAllSessions, beendeAndereZugaenge, deleteToken, BCRYPT_ROUNDS, USERNAME_RE, EMAIL_RE, requireLoginOrToken, nutzerId, angemeldeteNutzerId, passwortZuKurz, flaggeGesetzt, leereTokenCache, laufzeitTage, rotiereToken, rotationFaellig, UNBEGRENZT, UEBERLAPPUNG_MS } from '../utils/auth';
 import type { TokenScope } from '../utils/auth';
-import { tlsStand } from '../utils/tlsWurzel';
+import { tlsStand } from '../src/infra/tlsWurzel';
 import { ipThrottle, bestaetigungGesperrt, bestaetigungFehlgeschlagen, bestaetigungGelungen } from '../utils/loginLimiter';
 import { bestaetigePasswort } from '../utils/passwortBestaetigung';
 import crypto from 'crypto';
-import { strictBool } from '../utils/validate';
-import { sendEmailGeaendertMail, sendPasswordResetMail, sendVerificationMail } from '../utils/mailer';
+import { strictBool } from '../src/infra/validate';
+import { sendEmailGeaendertMail, sendPasswordResetMail, sendVerificationMail } from '../src/infra/mailer';
 import type { Request, Response } from 'express';
 import { getGlobalSetting, getSetting, setUserSetting } from '../utils/settings';
 import { requireApiAdmin } from './api_v1/middleware';
-import { sendeFehler, fehlerText, antwortSprache } from '../utils/fehlerTexte';
-import { basisUrl, hinweisOhneBasisUrl } from '../utils/basisUrl';
+import { sendeFehler, fehlerText, antwortSprache } from '../src/infra/fehlerTexte';
+import { basisUrl, hinweisOhneBasisUrl } from '../src/infra/basisUrl';
 import * as zf from '../utils/zweiterFaktor';
 import { loescheKontoDateien } from '../utils/gutscheinDateien';
 
@@ -754,7 +754,7 @@ router.post('/register', ipThrottle('register', 5, 60 * 60 * 1000), async (req, 
 // GET /api/v1/auth/verify ist ENTFERNT
 // Sie hatte keinen Aufrufer, und das stand als Kommentar
 // genau hier: „Gefahrlos umzustellen, weil die Route KEINEN Aufrufer hat: Der
-// Link in der Verifikationsmail zeigt auf /verify (utils/mailer.ts), das …
+// Link in der Verifikationsmail zeigt auf /verify (src/infra/mailer.ts), das …
 // Ausführlich: docs/begruendungen/routes/auth.ts.md#post-forgot-password
 
 // ── POST /api/v1/auth/forgot-password ───────────────────────────────────────────

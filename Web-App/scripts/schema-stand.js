@@ -15,7 +15,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const DATEI = path.join(__dirname, '..', 'db', 'schema-stand.sql');
+const DATEI = path.join(__dirname, '..', 'db/schema-stand.sql');
 
 /**
  * Der Text der Schemadatei aus einer verbundenen Datenbank.
@@ -75,7 +75,7 @@ async function schemaText(db) {
   return teile.join('\n').replace(/public\./g, '') + '\n';
 }
 
-const BASIS = path.join(__dirname, '..', 'db', 'basis.sql');
+const BASIS = path.join(__dirname, '..', 'db/basis.sql');
 /** Startdaten, die eine neue Installation braucht; alles andere bleibt leer. */
 const BASIS_DATEN = ['global_settings', 'gutschein_guthaben_schranke', 'schema_migrations'];
 

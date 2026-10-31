@@ -114,7 +114,7 @@ also toter Code.
 
 Er war ausserdem schädlich: Das catch fing nicht nur "Spalte fehlt", sondern
 jeden Fehler ab — und seit die Aufrufer in einer Transaktion laufen
-(utils/txLock.ts) hätte ein zweites Statement nach einem Fehler die bereits
+(db/txLock.ts) hätte ein zweites Statement nach einem Fehler die bereits
 abgebrochene Transaktion weiterbenutzt und den echten Grund verschluckt.
 Pro Tag und Zustand EINE Erfassung (utils/acquisitions.ts).
 
@@ -356,7 +356,7 @@ Vorher standen hier zwei lose Statements: UPDATE sets … und danach
 adjustAcquisitionsToQuantity(…).catch(() => {}). Beides ohne
 Transaktion, ohne Sperre und mit verschlucktem Fehler. Scheiterte der
 zweite Schritt, blieb sets.quantity erhöht, während die Erfassungen auf
-dem alten Stand standen — der Drift, den utils/txLock.ts beschreibt,
+dem alten Stand standen — der Drift, den db/txLock.ts beschreibt,
 nur eben stillschweigend und ohne Logzeile.
 
 Der Marktpreis wird VOR der Sperre geholt (Netzaufruf, siehe

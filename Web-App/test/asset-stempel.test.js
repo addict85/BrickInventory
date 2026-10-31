@@ -50,7 +50,7 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 const { buildAndRequire } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { stempleAssets, dateiStempel } = _req('utils/assetStempel.js');
+const { stempleAssets, dateiStempel } = _req('src/infra/assetStempel.js');
 
 /** Ein Wegwerf-Verzeichnis mit einer Datei darin. */
 function baue(inhalt) {
@@ -138,7 +138,7 @@ test('der Renderer stempelt wirklich', () => {
   // und die Fälle oben blieben dabei grün, weil sie die Funktion direkt
   // aufrufen. Dieselbe Lücke wie bei sitzung-beruehrung und
   // sitzung-leerlauf, dort mit derselben Begründung geschlossen.
-  const idx = fs.readFileSync(path.join(ROOT, 'utils', 'indexHtml.ts'), 'utf8');
+  const idx = fs.readFileSync(path.join(ROOT, 'utils/indexHtml.ts'), 'utf8');
   assert.match(idx, /return stempleAssetsGecacht\(out, PUBLIC_DIR\)/,
     'utils/indexHtml.ts stempelt die Assets nicht mehr — dann gilt wieder die ' +
     'Zahl aus package.json, und die steht still, wenn niemand den Bumper läuft.');

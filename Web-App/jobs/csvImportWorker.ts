@@ -1,13 +1,13 @@
-import { fehlertext, logAndContinue } from '../utils/httpError';
+import { fehlertext, logAndContinue } from '../src/infra/httpError';
 // Nur eine reine Funktion, kein Verbindungspool — der eigene Prozess
 // dieses Workers bleibt davon unberuehrt.
-import { istErsatzteil } from '../utils/validate';
-import { pflegeTabelle } from '../utils/tabellePflegen';
+import { istErsatzteil } from '../src/infra/validate';
+import { pflegeTabelle } from '../db/tabellePflegen';
 'use strict';
 const fs       = require('fs');
 // Pfade zentral auflösen — __dirname zeigt seit dem dist/-Build nicht mehr
-// auf die Wurzel. Siehe utils/appPaths.ts.
-const {  DATA_DIR } = require('../utils/appPaths');
+// auf die Wurzel. Siehe src/infra/appPaths.ts.
+const {  DATA_DIR } = require('../src/infra/appPaths');
 const path     = require('path');
 const { Pool } = require('pg');
 
@@ -21,7 +21,7 @@ function send(msg: any) {
   else console.error('[csv-worker] kein IPC-Kanal — Meldung verworfen:', JSON.stringify(msg).slice(0, 200));
 }
 
-const pool = new Pool((require('../utils/konfig') as typeof import('../utils/konfig')).datenbankVerbindung());
+const pool = new Pool((require('../src/infra/konfig') as typeof import('../src/infra/konfig')).datenbankVerbindung());
 
 /**
  * Eine Spalte einer CSV-Zeile, die fehlen darf.
@@ -116,7 +116,7 @@ function mkInsert(table: string, cols: string[], onConflict: string) {
  * Sperrschlüssel für den Katalog-Import.
  * Ausführlich: docs/begruendungen/jobs/csvImportWorker.ts.md#abschnitt
  */
-const { LOCKS } = require('../utils/lockNamespaces');
+const { LOCKS } = require('../src/infra/lockNamespaces');
 const CSV_IMPORT_LOCK = LOCKS.CSV_IMPORT;
 
 /** Tabellenname → stabile 32-Bit-Zahl für den zweiten Sperrschlüssel. */

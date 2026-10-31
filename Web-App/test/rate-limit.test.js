@@ -37,7 +37,7 @@ test('Standard-Tageslimit ist 25000 — an EINER Stelle', () => {
   // auf ein Sechstel gewesen. Zwei Konstanten mit derselben Bedeutung driften
   // auseinander; hier wird festgehalten, dass es nur noch eine gibt.
   // Seit die Zähler in utils/apiKontingent.ts stehen, steht dort auch die Konstante.
-  const fc = fs.readFileSync(path.join(ROOT, 'utils', 'apiKontingent.ts'), 'utf8');
+  const fc = fs.readFileSync(path.join(ROOT, 'utils/apiKontingent.ts'), 'utf8');
   assert.match(fc, /rebrickable: REBRICKABLE_DEFAULT_DAILY/,
     'Der Rückfallwert muss die gemeinsame Konstante sein, nicht eine eigene Zahl danebenstehen');
   assert.doesNotMatch(fc, /rebrickable: \d+/, 'Keine zweite Zahl für dasselbe Limit');
@@ -61,7 +61,7 @@ test('das Tageskontingent zählt für die Installation, nicht je Worker', () => 
   // Gegen echte Datenbank nachgestellt: Limit 3, drei Aufrufe erlaubt, der
   // vierte abgelehnt — und ein zweiter Modulzustand (= zweiter Worker) fängt
   // NICHT wieder bei null an.
-  const rl = fs.readFileSync(path.join(ROOT, 'utils', 'rateLimiter.ts'), 'utf8');
+  const rl = fs.readFileSync(path.join(ROOT, 'utils/rateLimiter.ts'), 'utf8');
   assert.match(rl, /async function consumeRebrickableDaily/,
     'Der Verbrauch muss über den gemeinsamen Zähler laufen');
   assert.match(rl, /checkAndIncrementRateLimit\('rebrickable'\)/,
@@ -98,14 +98,14 @@ test('ein geändertes Limit gilt sofort in ALLEN Workern', () => {
   // Jetzt liest getLimitForApi() die Grenze bei jedem Aufruf aus
   // global_settings — kein Kopieren, kein Nachziehen, keine Abweichung
   // zwischen Workern.
-  const admin = fs.readFileSync(path.join(ROOT, 'routes', 'api_v1', 'admin.ts'), 'utf8')
+  const admin = fs.readFileSync(path.join(ROOT, 'routes/api_v1/admin.ts'), 'utf8')
     .replace(/\/\/[^\n]*/g, '');
   assert.doesNotMatch(admin, /setMax\(/,
     'setMax() erreicht nur den eigenen Prozess');
   // Kommentare raus, bevor die Spanne gemessen wird: Der Erklärblock in
   // getLimitForApi ist länger als jedes vernünftige Zeichenfenster, und ein
   // Test, der an einem wachsenden Kommentar scheitert, prüft die falsche Sache.
-  const fc = fs.readFileSync(path.join(ROOT, 'utils', 'apiKontingent.ts'), 'utf8')
+  const fc = fs.readFileSync(path.join(ROOT, 'utils/apiKontingent.ts'), 'utf8')
     .replace(/\/\/[^\n]*/g, '');
   const fn = fc.slice(fc.indexOf('async function getLimitForApi'),
                       fc.indexOf('const grenzeJeKonto'));
@@ -117,7 +117,7 @@ test('keine hartkodierten Limitzahlen mehr in Meldungen und Labels', () => {
   // Fundort seit Nachtrag 126: clients/rebrickable.ts. Die Datei enthält keine
   // einzige Route und wurde nie als Router montiert — sie lag nur aus
   // Gewohnheit in routes/. Die Aussage dieser Prüfung ist unverändert.
-  const rb = fs.readFileSync(path.join(ROOT, 'clients', 'rebrickable.ts'), 'utf8');
+  const rb = fs.readFileSync(path.join(ROOT, 'clients/rebrickable.ts'), 'utf8');
   const messages = [...rb.matchAll(/Tageslimit[^`'"]*\((\d+)\/Tag\)/g)].map(m => m[1]);
   assert.deepEqual(messages, [],
     `Fest eingetragene Limits in Fehlermeldungen: ${messages.join(', ')} — stattdessen status.max verwenden`);
@@ -143,7 +143,7 @@ test('das Eingabefeld zeigt denselben Standard an', () => {
 // ── Punkt 3: Zähler in der Datenbank ───────────────────────────────────────
 
 test('die Login-Zähler liegen nicht mehr im Prozessspeicher', () => {
-  const src = fs.readFileSync(path.join(ROOT, 'utils', 'loginLimiter.ts'), 'utf8');
+  const src = fs.readFileSync(path.join(ROOT, 'utils/loginLimiter.ts'), 'utf8');
   assert.match(src, /rate_limit_attempts/,
     'Bei N Cluster-Workern werden aus 5 Fehlversuchen sonst N×5');
   assert.match(src, /ON CONFLICT \(key\) DO UPDATE/,
@@ -153,7 +153,7 @@ test('die Login-Zähler liegen nicht mehr im Prozessspeicher', () => {
 });
 
 test('bei DB-Ausfall greift die Rückfallebene', () => {
-  const src = fs.readFileSync(path.join(ROOT, 'utils', 'loginLimiter.ts'), 'utf8');
+  const src = fs.readFileSync(path.join(ROOT, 'utils/loginLimiter.ts'), 'utf8');
   for (const fn of ['_read', '_bump', '_clear']) {
     const body = src.slice(src.indexOf(`async function ${fn}(`), src.indexOf(`async function ${fn}(`) + 900);
     assert.match(body, /catch \(_\)/,
@@ -174,7 +174,7 @@ test('die Aufrufstellen warten auf das Ergebnis', () => {
     const p = path.join(dir, e.name);
     return e.isDirectory() ? dateien(p) : (e.name.endsWith('.ts') ? [p] : []);
   });
-  const alle = [...dateien(path.join(ROOT, 'routes')), ...dateien(path.join(ROOT, 'utils')),
+  const alle = [...dateien(path.join(ROOT, 'routes')), ...dateien(path.join(ROOT, 'src')), ...dateien(path.join(ROOT, 'utils')),
                 path.join(ROOT, 'server.ts')];
 
   const ohneAwait = [];
@@ -226,7 +226,7 @@ test('Jobs mit externem Kontingent haben eine prozessübergreifende Sperre', () 
   // ohne das Ausblenden schlüge die Prüfung darauf am Kommentar an. Dieselbe
   // Falle wie mehrfach zuvor in dieser Suite; sie ist der häufigste Fehler
   // beim Schreiben quelltextlesender Tests.
-  const job = fs.readFileSync(path.join(ROOT, 'jobs', 'priceJob.ts'), 'utf8')
+  const job = fs.readFileSync(path.join(ROOT, 'jobs/priceJob.ts'), 'utf8')
     .replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
 
   assert.match(job, /pg_try_advisory_lock/,
@@ -251,7 +251,7 @@ test('Jobs mit externem Kontingent haben eine prozessübergreifende Sperre', () 
   // noch unter /api/v1/admin/trigger-price-job, die Webapp ruft dieselbe
   // Adresse auf. Vorher gab es ihn zweimal — genau die Doppelung, bei der eine
   // Seite das `await` verlieren kann, ohne dass es auffällt.
-  const route = fs.readFileSync(path.join(ROOT, 'routes', 'api_v1', 'admin.ts'), 'utf8');
+  const route = fs.readFileSync(path.join(ROOT, 'routes/api_v1/admin.ts'), 'utf8');
   assert.match(route, /await preisJobJetzt\(\)/,
     'routes/api_v1/admin.ts: ohne await meldet die Route ein Promise als „gestartet"');
 
@@ -264,5 +264,5 @@ test('Jobs mit externem Kontingent haben eine prozessübergreifende Sperre', () 
   // grün geblieben. Dass die Namensräume sich wirklich nicht behindern, misst
   // jetzt test/lock-namespaces-db.test.js gegen eine echte Datenbank.
   assert.match(job, /LOCKS\.PREIS_JOB/,
-    'Der Namensraum gehört aus utils/lockNamespaces.ts, nicht eingetippt');
+    'Der Namensraum gehört aus src/infra/lockNamespaces.ts, nicht eingetippt');
 });

@@ -78,7 +78,7 @@ test('Katalogbilder auf Knopfdruck', { concurrency: 1 }, async (t) => {
   // und Nachstellung in helpers/bildwarteschlange.js.
   await leereWarteschlange(db);
 
-  const { SET_IMAGES_DIR } = _req('utils/appPaths.js');
+  const { SET_IMAGES_DIR } = _req('src/infra/appPaths.js');
   fs.mkdirSync(SET_IMAGES_DIR, { recursive: true });
   const P = `KN${process.pid}`;
   const NUTZER = `kn-${process.pid}`;

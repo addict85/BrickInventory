@@ -3,10 +3,10 @@
  * Ausführlich: docs/begruendungen/routes/imgProxy.ts.md#abschnitt
  */
 import path from 'path';
-import { APP_ROOT, PUBLIC_DIR } from '../utils/appPaths';
+import { APP_ROOT, PUBLIC_DIR } from '../src/infra/appPaths';
 import fs from 'fs';
 import { resolveUserId } from '../utils/auth';
-import { streamFileToResponse, vorDem, ohneFehlendeDatei } from '../utils/httpError';
+import { streamFileToResponse, vorDem, ohneFehlendeDatei } from '../src/infra/httpError';
 import { queueThumb } from '../utils/proxyThumbs';
 import { liefereAusCache } from '../utils/imgCacheServe';
 import { imgProxyFailures } from '../utils/imgProxyStats';
@@ -18,7 +18,7 @@ import crypto from 'crypto';
 import https from 'https';
 import zlib from 'zlib';
 import { nacharbeit } from '../utils/nacharbeit';
-import { ERLAUBTE_BILD_HOSTS, hostErlaubt } from '../utils/fremdeAdressen';
+import { ERLAUBTE_BILD_HOSTS, hostErlaubt } from '../src/infra/fremdeAdressen';
 
 /**
  * Obergrenze für den Bild-Zwischenspeicher des Proxys.
@@ -94,7 +94,7 @@ export async function bildDurchreichen(req: Request, res: Response) {
   if (!url || !url.startsWith('https://')) return res.status(400).end();
   // Rebrickable API sometimes returns pre-encoded URLs — decode once to fix double-encoding
   try { const decoded = decodeURIComponent(url); if (decoded.startsWith('https://')) url = decoded; } catch(_) {}
-  // Nur bekannte Bild-CDNs (utils/fremdeAdressen.ts, wie der Dateidownload).
+  // Nur bekannte Bild-CDNs (src/infra/fremdeAdressen.ts, wie der Dateidownload).
   // Eine unlesbare Adresse ist ebenfalls 403: „holt der Server nicht“.
   if (!hostErlaubt(url, ERLAUBTE_BILD_HOSTS)) return res.status(403).end();
   // Disk-Cache: jedes CDN-Bild wird serverseitig nur einmal geholt.

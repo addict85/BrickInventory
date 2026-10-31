@@ -107,7 +107,7 @@ enters a price it is used as both the current value override AND the
 purchase-price baseline for the G&V calculation; if left empty, the
 current BrickLink market price is used for both.
 rawBody ist `any` — so kommt es von Express, und so nehmen es auch die
-Validierer in utils/validate.ts entgegen. Der Gewinn liegt bei ihren
+Validierer in src/infra/validate.ts entgegen. Der Gewinn liegt bei ihren
 RUECKGABEN: V.colorId() gibt number, V.requireItemNumber() gibt string.
 Ein `unknown` hier waere strenger, aber jeder Feldzugriff muesste dann
 einzeln eingeengt werden, bevor der Validierer ihn ueberhaupt sieht.

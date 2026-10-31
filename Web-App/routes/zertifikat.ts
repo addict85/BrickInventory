@@ -5,8 +5,8 @@
  * Einstellungen oder auf dem Server (UPGRADE.md, Abschnitt 14).
  */
 import express from 'express';
-import { tlsStand } from '../utils/tlsWurzel';
-import { handleRouteError } from '../utils/httpError';
+import { tlsStand } from '../src/infra/tlsWurzel';
+import { handleRouteError } from '../src/infra/httpError';
 
 const router = express.Router();
 

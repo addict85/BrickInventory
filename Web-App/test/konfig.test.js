@@ -1,5 +1,5 @@
 /**
- * Die Datenbankverbindung steht an EINER Stelle (utils/konfig.ts). Der
+ * Die Datenbankverbindung steht an EINER Stelle (src/infra/konfig.ts). Der
  * CSV-Worker hatte eigene Standardwerte (brickinv statt brickinventory) und
  * verband sich ausserhalb von Docker mit einer anderen Datenbank.
  *
@@ -11,10 +11,10 @@
  *   C  in standardPasswortInBenutzung den Zweig für connectionString auf
  *      `return false` gesetzt → rot: „das Beispielpasswort wird erkannt"
  *
- * Seit dem 30.10. liest NUR utils/konfig.ts die Umgebung; ein ungültiger Wert
+ * Seit dem 30.10. liest NUR src/infra/konfig.ts die Umgebung; ein ungültiger Wert
  * beendet den Start mit einer Meldung je Variable. Gegenproben (D–F in einem
  * Lauf gemessen):
- *   D  in utils/dateiEmpfang.ts wieder `Number(process.env.UPLOAD_KONTINGENT_MB)`
+ *   D  in src/infra/dateiEmpfang.ts wieder `Number(process.env.UPLOAD_KONTINGENT_MB)`
  *      → rot: „niemand ausser der Konfiguration liest process.env“
  *   E  in ganzzahl() die Grenzprüfung `n < min || n > max` entfernt → rot:
  *      „ungültige Werte: alle auf einmal, mit Namen“ (PORT=0 ging durch)
@@ -31,7 +31,7 @@ const path   = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
-const { datenbankVerbindung, standardPasswortInBenutzung, ladeKonfig, KonfigFehler, VARIABLEN } = _req('utils/konfig.js');
+const { datenbankVerbindung, standardPasswortInBenutzung, ladeKonfig, KonfigFehler, VARIABLEN } = _req('src/infra/konfig.js');
 const { ohneKommentare } = require('./helpers/sources');
 const { spawnSync } = require('node:child_process');
 
@@ -63,7 +63,7 @@ test('niemand sonst liest die Verbindungsvariablen', () => {
       if (e.isDirectory()) { if (!['node_modules', 'dist', 'test', 'public', '.git'].includes(e.name)) durch(p); continue; }
       if (!e.name.endsWith('.ts')) continue;
       const rel = path.relative(ROOT, p);
-      if (rel === path.join('utils', 'konfig.ts')) continue;
+      if (rel === path.join('src/infra/konfig.ts')) continue;
       const s = fs.readFileSync(p, 'utf8');
       for (const m of s.matchAll(/process\.env\.(PGHOST|PGPORT|PGUSER|PGPASSWORD|PGDATABASE|DATABASE_URL)\b/g))
         funde.push(`${rel}: ${m[1]}`);
@@ -81,7 +81,7 @@ test('niemand ausser der Konfiguration liest process.env', () => {
       if (e.isDirectory()) { if (!['node_modules', 'dist', 'test', 'public', 'scripts', '.git'].includes(e.name)) durch(p); continue; }
       if (!e.name.endsWith('.ts')) continue;
       const rel = path.relative(ROOT, p);
-      if (rel === path.join('utils', 'konfig.ts')) continue;
+      if (rel === path.join('src/infra/konfig.ts')) continue;
       const zeilen = ohneKommentare(fs.readFileSync(p, 'utf8')).split('\n');
       zeilen.forEach((z, i) => { if (/process\.env\b/.test(z.replace(/\/\/.*$/, ''))) funde.push(`${rel}:${i + 1}`); });
     }

@@ -69,7 +69,7 @@ const dbDa = async (t) => {
   }
 };
 
-const MIG_DIR = path.join(ROOT, 'db', 'migrations');
+const MIG_DIR = path.join(ROOT, 'db/migrations');
 const DATEI   = path.join(MIG_DIR, '0035-teilepreise-nur-in-erfassungen.sql');
 
 test('nach der ganzen Kette tragen parts und minifigs keinen Preis mehr',

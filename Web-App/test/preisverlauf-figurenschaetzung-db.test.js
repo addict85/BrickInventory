@@ -82,7 +82,7 @@ test('Preisverlauf je Tag und markierte Schätzungen', { concurrency: 1 }, async
   });
 
   await t.test('die Migration räumt doppelte Tagespunkte ab und behält den ersten', async () => {
-    const sql = fs.readFileSync(path.join(ROOT, 'db', 'migrations', '0056-preisverlauf-je-tag.sql'), 'utf8');
+    const sql = fs.readFileSync(path.join(ROOT, 'db/migrations/0056-preisverlauf-je-tag.sql'), 'utf8');
     const c = await db.pool.connect();
     try {
       await c.query('BEGIN');

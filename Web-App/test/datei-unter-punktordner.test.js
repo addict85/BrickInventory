@@ -12,7 +12,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const express = require(path.join(__dirname, '..', 'node_modules', 'express'));
-const { liefereDatei } = require('./helpers/sources').buildAndRequire()('utils/dateiAusliefern.js');
+const { liefereDatei } = require('./helpers/sources').buildAndRequire()('src/infra/dateiAusliefern.js');
 
 const ORDNER = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'punkt-')), '.versteckt', 'daten');
 fs.mkdirSync(ORDNER, { recursive: true });

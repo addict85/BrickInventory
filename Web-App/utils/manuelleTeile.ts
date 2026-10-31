@@ -3,11 +3,11 @@
  * nicht in routes/parts.ts, weil die Sitzungsroute und die v1-Fabrik beide
  * darauf zugreifen — eine Route soll keine andere importieren.
  */
-import { meldeUndLiefere, fehlertext } from './httpError';
-import { csvGemeinsameFelder, csvZeilenAusAnfrage } from './csvExport';
+import { meldeUndLiefere, fehlertext } from '../src/infra/httpError';
+import { csvGemeinsameFelder, csvZeilenAusAnfrage } from '../src/infra/csvExport';
 import * as db from '../db/database';
 import { recordAcquisitionForDay } from './acquisitions';
-import { withInventoryLock, bestandsSchluessel } from './txLock';
+import { withInventoryLock, bestandsSchluessel } from '../db/txLock';
 import { kaufpreisAusEingabe, manuellerKaufpreis } from './preisRegel';
 import { zustandFuerPreis } from './settings';
 import { resolvePartCondition, marktpreisMitHerkunft, getCurrentPartMarketPrice } from './marketPrice';
@@ -15,8 +15,8 @@ import { lookupPart } from '../clients/rebrickable';
 import { farbliste, KEINE_FARBE } from './farben';
 import { setzeLagerort, ortFuerNeuerfassung } from './lagerort';
 import { merkeTeil, merkeTeilFarbe, katalogTeil } from './katalogPflege';
-import { bestandsMenge } from './validate';
-import * as V0 from './validate';
+import { bestandsMenge } from '../src/infra/validate';
+import * as V0 from '../src/infra/validate';
 
 /** Farbauswahl beim Erfassen; Quelle und Notliste stehen in utils/farben.ts. */
 const getPartColorList = farbliste;
@@ -69,7 +69,7 @@ async function addManualPart(uid: number, rawBody: Record<string, unknown>) {
 }
 
 async function addManualPartIntern(uid: number, rawBody: any) {
-  // Eingangsvalidierung (utils/validate.ts): vorher wurden part_number,
+  // Eingangsvalidierung (src/infra/validate.ts): vorher wurden part_number,
   // part_name, color_name, category_name und image_url völlig ungeprüft
   // gespeichert und später per innerHTML gerendert — das war die Server-Hälfte
   // der Stored-XSS-Kette. image_url ist jetzt zwingend https.

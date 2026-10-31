@@ -31,7 +31,7 @@ const _req = require('./helpers/sources').buildAndRequire();
 // seine Abhängigkeit, und nur ein Treffer im selben require-Cache-Eintrag
 // ersetzt sie wirksam.
 const { DIST } = require('./helpers/sources');
-const mwPath = require.resolve(path.join(DIST, 'routes', 'api_v1', 'middleware.js'));
+const mwPath = require.resolve(path.join(DIST, 'routes/api_v1', 'middleware.js'));
 require.cache[mwPath] = {
   id: mwPath, filename: mwPath, loaded: true,
   exports: { requireToken: (req, _res, next) => { req.apiUser = { user_id: 1 }; next(); } },

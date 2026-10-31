@@ -4,9 +4,9 @@
  */
 import * as db from '../db/database';
 import type { Request, Response, NextFunction } from 'express';
-import { einzelwert } from './validate';
-import { sendeFehler } from './fehlerTexte';
-import type { FehlerCode } from './fehlerTexte';
+import { einzelwert } from '../src/infra/validate';
+import { sendeFehler } from '../src/infra/fehlerTexte';
+import type { FehlerCode } from '../src/infra/fehlerTexte';
 
 /**
  * Warum hier Typen stehen
@@ -51,7 +51,7 @@ const WINDOW_MIN   = WINDOW_MS / 60000;
 const _attempts = new Map();
 
 // req.ip statt X-Forwarded-For: Express wertet den Kopf nur aus, wenn er von
-// einem vertrauten Proxy kommt (utils/proxyVertrauen.ts).
+// einem vertrauten Proxy kommt (src/infra/proxyVertrauen.ts).
 // Ausführlich: docs/begruendungen/utils/loginLimiter.ts.md#ipof
 function _ipOf(req: Request): string {
   return req.ip || req.socket?.remoteAddress || '?';

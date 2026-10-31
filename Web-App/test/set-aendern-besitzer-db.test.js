@@ -140,7 +140,7 @@ test('die Menge geht bewusst auf das eigene Konto', () => {
   // ich diese erhoehe, soll es fuer meinen Account einen neuen Kaufpreis-
   // Eintrag erstellen." Der Mengen-Zweig weicht deshalb ABSICHTLICH vom
   // Besitzer ab. Das steht hier, damit es niemand „mit vereinheitlicht".
-  const src = fs.readFileSync(path.join(ROOT, 'utils', 'setService.ts'), 'utf8');
+  const src = fs.readFileSync(path.join(ROOT, 'utils/setService.ts'), 'utf8');
   const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/[^\n]*$/gm, '');
   assert.match(code, /adjustAcquisitionsToQuantity\(uid, sn/,
     'Die Mengenanpassung laeuft nicht mehr auf das eigene Konto — dann erhoeht ' +

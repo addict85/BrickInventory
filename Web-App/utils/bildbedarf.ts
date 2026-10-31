@@ -1,5 +1,5 @@
 import * as db from '../db/database';
-import { logAndContinue, meldeUndLiefere } from './httpError';
+import { logAndContinue, meldeUndLiefere } from '../src/infra/httpError';
 import { stelleAuftragEin } from './auftraege';
 
 /**

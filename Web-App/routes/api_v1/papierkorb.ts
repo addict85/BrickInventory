@@ -4,8 +4,8 @@
  * schreiben darf: das eigene Konto und, als Hauptkonto, die Unterkonten.
  */
 import express from 'express';
-import { handleRouteError } from '../../utils/httpError';
-import { sendeFehler } from '../../utils/fehlerTexte';
+import { handleRouteError } from '../../src/infra/httpError';
+import { sendeFehler } from '../../src/infra/fehlerTexte';
 import { writableIds } from '../../utils/household';
 import { listePapierkorb, stelleWiederHer, loescheEndgueltig, leerePapierkorb } from '../../utils/papierkorb';
 import { requireToken } from './middleware';

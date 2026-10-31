@@ -58,9 +58,9 @@ function inventory() {
   for (const r of routerEinhaengungen())
     for (const [m, p] of scan(r.datei))
       eps.add(`${m} ${r.mount}${p === '/' ? '' : p}`);
-  for (const f of fs.readdirSync(path.join(ROOT, 'routes', 'api_v1')))
+  for (const f of fs.readdirSync(path.join(ROOT, 'routes/api_v1')))
     if (f.endsWith('.ts') && !['index.ts', 'middleware.ts'].includes(f))
-      for (const [m, p] of scan(path.join(ROOT, 'routes', 'api_v1', f)))
+      for (const [m, p] of scan(path.join(ROOT, 'routes/api_v1', f)))
         eps.add(`${m} /api/v1${p}`);
   return eps;
 }

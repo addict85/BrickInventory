@@ -118,7 +118,7 @@ test('stille Faenge werden weniger, nie mehr', () => {
     `${ist} stille Faenge, erlaubt sind ${SCHRANKE}. Ein neuer \`catch {}\` ` +
     'verschluckt einen Fehler und laeuft weiter — im Betrieb sieht man dann ' +
     'ein Verhalten ohne Ursache. Entweder den Fehler behandeln, oder ihn ' +
-    'wenigstens melden (meldeUndWeiter aus utils/fehlerTexte).');
+    'wenigstens melden (meldeUndWeiter aus src/infra/fehlerTexte).');
   if (ist < SCHRANKE) {
     console.log(`  ℹ stille Faenge: ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
   }
@@ -250,7 +250,7 @@ test('der Kommentaranteil im Server sinkt, nie steigt', () => {
   // 30.10.2026: 30,0 % (Cluster, Planer und Warteschlangen entfallen).
   const SCHRANKE = 30.1;
   let zeilen = 0, kommentar = 0;
-  for (const f of quellen().filter(f => /[\\/](routes|utils|jobs)[\\/]|[\\/]server\.ts$/.test(f))) {
+  for (const f of quellen().filter(f => /[\\/](routes|src|utils|jobs)[\\/]|[\\/]server\.ts$/.test(f))) {
     for (const z of fs.readFileSync(f, 'utf8').split('\n')) {
       const t = z.trim();
       if (!t) continue;

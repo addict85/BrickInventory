@@ -5,15 +5,15 @@
  * Ausführlich: docs/begruendungen/routes/api_v1/pdf.ts.md#abschnitt
  */
 import express from 'express';
-import { streamFileToResponse, meldeUndWeiter, meldeUndLiefere, ohneFehlendeDatei, pfadParam } from '../../utils/httpError';
+import { streamFileToResponse, meldeUndWeiter, meldeUndLiefere, ohneFehlendeDatei, pfadParam } from '../../src/infra/httpError';
 import { requireToken } from './middleware';
-import { registerSse } from '../../utils/sseRegistry';
+import { registerSse } from '../../src/infra/sseRegistry';
 import _pdfFs from 'fs/promises';
 import _fsSync from 'fs';
 import { liesAuftrag, loescheAuftrag, pdfSchluessel, gueltigeAuftragsKennung, pdfDateiPfad, pdfAuftragStarten } from '../../utils/pdfAuftraege';
 import { AUFTRAG_STAND_KANAL } from '../../utils/auftraege';
-import { listen, unlisten } from '../../utils/pgNotify';
-import { sendeFehler, fehlerText, antwortSprache } from '../../utils/fehlerTexte';
+import { listen, unlisten } from '../../db/pgNotify';
+import { sendeFehler, fehlerText, antwortSprache } from '../../src/infra/fehlerTexte';
 const router = express.Router();
 
 // Eigenes Body-Limit: Der Export schickt die ganze Teileliste als JSON; die
@@ -90,7 +90,7 @@ router.get('/sets/partslist-pdf/stream/:jobId', requireToken, async (req: Authed
   res.flushHeaders?.();
 
   // Anmelden, damit das Herunterfahren diesen Strom beenden kann
-  // (utils/sseRegistry.ts) — sonst wartet httpServer.close() auf ihn.
+  // (src/infra/sseRegistry.ts) — sonst wartet httpServer.close() auf ihn.
   const unregisterSse = registerSse(res);
 
   let closed = false;
@@ -156,7 +156,7 @@ router.get('/sets/partslist-pdf/download/:jobId', requireToken, async (req: Auth
   res.setHeader('Content-Disposition', 'attachment; filename="teileliste.pdf"');
   // streamFileToResponse statt rohem pipe(): Zwischen existsSync oben und dem
   // Öffnen hier kann cleanOldPdfJobs (10-Minuten-TTL) die Datei entfernen —
-  // ein Lesestrom-Fehler ohne Zuhörer beendet den Prozess (utils/httpError.ts).
+  // ein Lesestrom-Fehler ohne Zuhörer beendet den Prozess (src/infra/httpError.ts).
   // Aufgeräumt wird nur bei VOLLSTÄNDIGER Auslieferung.
   streamFileToResponse(res, pdfPath, () => {
     _pdfFs.unlink(pdfPath).catch(ohneFehlendeDatei('pdf:datei loeschen'));

@@ -27,7 +27,7 @@ const _req = require('./helpers/sources').buildAndRequire();
 const AUTH = require('./helpers/sources').einhaengung('auth');
 const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
-const { DATA_DIR } = _req('utils/appPaths.js');
+const { DATA_DIR } = _req('src/infra/appPaths.js');
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
 
 const NR = '5045076374450077711', PIN = '8642';

@@ -7,20 +7,20 @@
  * Ausführlich: docs/begruendungen/jobs/rebrickableCsvSync.ts.md#abschnitt
  */
 // Pfade zentral auflösen — __dirname zeigt seit dem dist/-Build nicht mehr
-// auf die Wurzel. Siehe utils/appPaths.ts.
+// auf die Wurzel. Siehe src/infra/appPaths.ts.
 // Direkt aus utils/partsImport — siehe die Begruendung in
 // utils/handlers/parts.ts: routes/parts reicht die Funktion nur weiter.
-import { meldeStartZustand } from '../utils/startZustand';
+import { meldeStartZustand } from '../src/infra/startZustand';
 import { fetchMissingBlIds } from '../utils/partsImport';
 import { getRbKey, httpsGetRobust } from '../clients/rebrickable';
-import { fehlertext, logAndContinue, meldeUndLiefere, ohneFehlendeDatei } from '../utils/httpError';
+import { fehlertext, logAndContinue, meldeUndLiefere, ohneFehlendeDatei } from '../src/infra/httpError';
 import { merkeBlFarbnummer, blFarbnummerAus } from '../utils/blZuordnung';
 import { liesZustand, setzeZustand, loescheZustand } from '../utils/laufzustand';
 import fs from 'fs';
 import path from 'path';
 import * as monitor from '../utils/jobMonitor';
 import zlib2 from 'zlib';
-import { DATA_DIR } from '../utils/appPaths';
+import { DATA_DIR } from '../src/infra/appPaths';
 import { fork as _fork } from 'child_process';
 import { get } from 'https';
 

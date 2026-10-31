@@ -79,7 +79,7 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { leereWarteschlange } = require('./helpers/bildwarteschlange');
 const db = _req('db/database.js');
 const IQ = _req('jobs/imageQueue.js');
-const { SET_IMAGES_DIR } = _req('utils/appPaths.js');
+const { SET_IMAGES_DIR } = _req('src/infra/appPaths.js');
 
 /** Stapelgrösse und Deckel aus dem Modul — der Test wiederholt keine Zahl. */
 const { STAPEL, DURCHGANG_MAX_NOTIZEN: DECKEL } = IQ;
@@ -362,7 +362,7 @@ test('ein ANDERER Prozess sieht, dass der Job gelaufen ist', { concurrency: 1 },
   // Wert, den der Elternprozess WIRKLICH benutzt. Es gibt also nichts zu setzen.
   execFileSync(process.execPath, ['-e', `
     const db = require(${JSON.stringify(path.join(ROOT, 'dist', 'db', 'database.js'))});
-    const IQ = require(${JSON.stringify(path.join(ROOT, 'dist', 'jobs', 'imageQueue.js'))});
+    const IQ = require(${JSON.stringify(path.join(ROOT, 'dist', 'jobs/imageQueue.js'))});
     (async () => {
       await db.initSchemaOnce();
       await IQ._taktDurchgang();

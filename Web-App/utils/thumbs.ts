@@ -3,10 +3,10 @@
  * Ausführlich: docs/begruendungen/utils/thumbs.ts.md#abschnitt
  */
 
-import { meldeUndWeiter } from './httpError';
+import { meldeUndWeiter } from '../src/infra/httpError';
 import path from 'path';
 import fs from 'fs';
-import { resolveWebPath } from './appPaths';
+import { resolveWebPath } from '../src/infra/appPaths';
 import { isDecodable } from './imageGuard';
 
 const THUMB_SIZE = 200;
@@ -56,7 +56,7 @@ async function generateThumb(localPath: string) {
   if (!localPath) return null;
 
   // localPath ist z. B. /images/sets/75192-1.jpg oder /images/parts/3001_4.png.
-  // Die Auflösung liegt zentral in utils/appPaths.ts — /images/… zeigt seit der
+  // Die Auflösung liegt zentral in src/infra/appPaths.ts — /images/… zeigt seit der
   // Umstellung nach data/images/ (Volume) statt nach public/ (Image-Inhalt).
   const fsPath = resolveWebPath(localPath);
   if (!fsPath) return null;
