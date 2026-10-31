@@ -761,6 +761,35 @@ jobs:
             echo "> bleibt ueber alle Builds derselbe und braucht kein GitHub-Konto."
           } >> "$GITHUB_STEP_SUMMARY"
 
+  # ── Gegenproben ────────────────────────────────────────────────────────────
+  #
+  # Jeder Patch unter Android-App/gegenproben/ macht etwas kaputt; die Test-
+  # klasse aus seinem Kopf muss danach ROT sein (tools/gegenproben.py). Für
+  # Robolectric-Tests ist das nur hier messbar. Bleibt eine grün oder läuft der
+  # Test gar nicht, ist der Job rot: Ein Test, der nie rot war, ist unbewiesen.
+  gegenproben:
+    if: ${{ !inputs.pruefsummen && !inputs.bildschirmfotos }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: Android-App
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6
+        with:
+          distribution: temurin
+          java-version: '17'
+      - run: python3 tools/gradle-wrapper-pruefen.py gradle/wrapper/gradle-wrapper.properties
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6
+      - name: Gegenproben messen
+        run: |
+          chmod +x gradlew
+          python3 tools/gegenproben.py gegenproben
+
   # ── Prüfsummen der Abhängigkeiten ──────────────────────────────────────────
   #
   # gradle/verification-metadata.xml hält für jede Abhängigkeit die SHA-256

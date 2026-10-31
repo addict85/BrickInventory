@@ -1,0 +1,18 @@
+Gegenprobe: AddSetDialog übergibt die Anzahl fest als 1
+Modul: app
+Test: ch.brickinventoryapp.AblaufTest
+Rot: ein Set erfassen nimmt Nummer und Anzahl
+
+diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/GalleryScreen.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/GalleryScreen.kt
+index 8d9e441..c8d8f0c 100644
+--- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/GalleryScreen.kt
++++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/GalleryScreen.kt
+@@ -615,7 +615,7 @@ fun AddSetDialog(
+ 
+     fun submit() {
+         if (setNumber.isNotBlank()) {
+-            onAdd(setNumber, quantity.toIntOrNull() ?: 1,
++            onAdd(setNumber, 1,
+                   purchasePrice.replace(',', '.').toDoubleOrNull(), condition,
+                   // Ohne Haushalt gar nichts mitschicken — der Server bleibt
+                   // dann beim eigenen Konto.

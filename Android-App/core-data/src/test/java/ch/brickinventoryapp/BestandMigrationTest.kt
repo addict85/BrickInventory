@@ -33,12 +33,10 @@ import java.io.File
  * Schema gebaut — wie MigrationTestHelper, ohne room-testing als weitere
  * Abhängigkeit. Läuft nur in der CI (Room braucht Android).
  *
- * Gegenproben: in der CI zu messen, sobald der Lauf grün ist —
- *   A  MIGRATION_1_2 aus BestandDatenbank.MIGRATIONEN nehmen → rot „jede frühere
- *      Fassung …“ (Room findet keinen Weg von 1 nach 2)
- *   B  in MIGRATION_1_2 die UPDATE-Schleife weglassen → rot „… jeder Posten hat
- *      einen eigenen Schlüssel“
- *   C  in 2.json die Spalte `schluessel` streichen → rot „das eingecheckte Schema …“
+ * Gegenproben misst der CI-Job `gegenproben` (Android-App/gegenproben/, er
+ * verlangt Rot): bestand-migration-entfernt, -spalte-falsch, -ohne-schluessel.
+ * Eine Änderung an 2.json taugt nicht als Gegenprobe: Room schreibt das Schema
+ * beim Übersetzen neu.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
