@@ -19,7 +19,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.core.net.toUri
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.viewmodel.MerklisteViewModel
 import ch.brickinventoryapp.ui.components.ZoomableImageDialog
@@ -219,10 +218,7 @@ fun MerkpostenDetailScreen(
                             for ((beschriftung, url) in adressen) {
                                 OutlinedButton(
                                     onClick = {
-                                        try {
-                                            ctx.startActivity(android.content.Intent(
-                                                android.content.Intent.ACTION_VIEW, url.toUri()))
-                                        } catch (_: Exception) {
+                                        if (!ch.brickinventoryapp.util.oeffneExtern(ctx, url)) {
                                             android.widget.Toast.makeText(
                                                 ctx, keineAppText,
                                                 android.widget.Toast.LENGTH_SHORT).show()
