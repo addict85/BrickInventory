@@ -182,10 +182,8 @@ app.use((req, _res, next) => {
 });
 
 app.use(nurEigeneHerkunft);
-// no-store als Vorgabe: Antworten tragen Konten, Gutscheine und Tokens und
-// gehören in keinen Browser- oder Proxy-Zwischenspeicher. Bewusst gecacht
-// werden nur öffentliche Katalogbilder (img-proxy) und das Design; sie setzen
-// ihren Kopf selbst und überschreiben diesen.
+// no-store als Vorgabe: Antworten tragen Konten, Gutscheine und Tokens. Was bewusst
+// gecacht wird (img-proxy, Design), setzt seinen Kopf selbst und überschreibt ihn.
 app.use('/api', (_req, res, next) => {
   res.setHeader('Cache-Control', 'no-store');
   res.setHeader('X-Api-Version', String(API_VERSION));

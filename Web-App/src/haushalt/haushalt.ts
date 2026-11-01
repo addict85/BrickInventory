@@ -95,8 +95,7 @@ export async function createInvite(uid: number) {
   // Jedes Konto darf einladen, auch ein Unterkonto: Ein Zwischenkonto ist Vater
   // UND Kind.
   await repo.raeumeEinladungenAuf().catch(logAndContinue('haushalt:id'));
-  // Jede offene Einladung ist ein gültiger Zugang zum Haushalt; beliebig viele
-  // brauchte niemand, und die Tabelle wüchse mit jedem Klick.
+  // Jede offene Einladung ist ein Zugang zum Haushalt; beliebig viele braucht niemand.
   if (await repo.offeneEinladungen(id) >= OFFENE_EINLADUNGEN_MAX)
     return { fehler: 'einladungen_zu_viele' as const, vars: { n: OFFENE_EINLADUNGEN_MAX } };
 

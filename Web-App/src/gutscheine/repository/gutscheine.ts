@@ -92,9 +92,8 @@ export async function guthabenMerken(uid: number, id: number, betrag: number, wa
   return z && lesbar(uid, z);
 }
 
-/** Klartext von vor Migration 0087 und v1 ohne Kontext: Der Start schlüsselt
- * beides vor der ersten Anfrage um. `AND number = $…` lässt eine inzwischen
- * geänderte Zeile stehen, ein falscher Schlüssel die Zeile, wie sie ist. */
+/** Klartext (vor 0087) und v1 auf v2, vor der ersten Anfrage. `AND number = $…` lässt
+ * eine inzwischen geänderte Zeile stehen, ein falscher Schlüssel die Zeile, wie sie ist. */
 export async function nummernNachverschluesseln(): Promise<number> {
   let n = 0;
   for (const z of await db.all<{ id: number; user_id: number; number: string; pin: string | null; nummer_suche: string | null }>(
@@ -110,8 +109,7 @@ export async function nummernNachverschluesseln(): Promise<number> {
   return n;
 }
 
-/** Die Kopien vor einer Migration (db/migrate.ts) hielten sonst Klartext oder
- * v1, bis drei weitere sie verdrängen. Der Schemaname ist durch das Muster geprüft. */
+/** Kopien vor einer Migration (db/migrate.ts); der Schemaname ist durch das Muster geprüft. */
 export async function kopienVerschluesseln(): Promise<number> {
   let n = 0;
   for (const { schema } of await db.all<{ schema: string }>(

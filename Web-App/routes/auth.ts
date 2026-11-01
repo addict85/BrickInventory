@@ -525,9 +525,8 @@ router.post('/register', ipThrottle('register', 5, 60 * 60 * 1000), async (req, 
   if (!USERNAME_RE.test(username))
     return sendeFehler(req, res, 400, 'benutzername_ungueltig');
 
-  // Vergebene Adresse oder vergebener Name: dieselbe Antwort wie bei Erfolg,
-  // sonst liesse sich abfragen, wer ein Konto hat. Die Rückmeldung geht per Mail
-  // an die Adresse; das kostet je Versuch ein Postfach und die Drossel oben.
+  // Vergebene Adresse oder vergebener Name: dieselbe Antwort wie bei Erfolg, sonst liesse
+  // sich abfragen, wer ein Konto hat. Die Rückmeldung geht per Mail an die Adresse.
   const inhaber = await K.kontoMitEmail(email);
   const nameVergeben = !inhaber && await K.nameVergeben(username, 0);
   const basis = getBaseUrl(req);

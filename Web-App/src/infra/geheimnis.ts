@@ -65,9 +65,8 @@ export function datenSchluessel(): Buffer {
   finally { fs.rmSync(tmp, { force: true }); }
 }
 
-/** Wofür und für welche Zeile ein Geheimtext gilt. Geht als AAD in AES-GCM ein:
- * Ein Geheimtext, in eine andere Spalte, ein anderes Konto oder eine andere
- * Zeile kopiert, lässt sich dort nicht mehr entschlüsseln. */
+/** Wofür und für welche Zeile ein Geheimtext gilt (AAD in AES-GCM): In eine andere
+ * Spalte, ein anderes Konto oder eine andere Zeile kopiert, ist er unlesbar. */
 export type Kontext = string & { readonly __kontext: true };
 export function kontext(zweck: string, ...bezug: (string | number)[]): Kontext {
   return JSON.stringify([zweck, ...bezug.map(String)]) as Kontext;
@@ -110,8 +109,7 @@ export function verschluessele(klartext: string | null | undefined, k: Kontext):
   return V2 + versiegle(v2Schluessel(), Buffer.from(String(klartext), 'utf8'), k).toString('base64');
 }
 
-/** Nur das aktuelle Format: Klartext und v1 liest allein das Umschlüsseln beim
- * Start (altwertLesen); hier wären sie ein eingeschleuster Wert. */
+/** Nur v2: Klartext und v1 liest allein das Umschlüsseln beim Start (altwertLesen). */
 export function entschluessele(wert: string | null | undefined, k: Kontext): string | null {
   if (wert === null || wert === undefined) return null;
   if (wert === '') return '';
@@ -131,8 +129,7 @@ export function altwertLesen(wert: string | null | undefined, k: Kontext): strin
   return klar === null ? null : klar.toString('utf8');
 }
 
-/** Der neue Wert, wenn `wert` umzuschlüsseln ist; undefined, wenn nichts zu tun
- * ist oder er sich nicht lesen lässt (falscher Schlüssel: Zeile bleibt). */
+/** Der neue Wert; undefined, wenn nichts zu tun ist oder er unlesbar ist (Zeile bleibt). */
 export function umschluesseln(wert: string | null | undefined, k: Kontext): string | null | undefined {
   if (!wert || istVerschluesselt(wert)) return undefined;
   const klar = altwertLesen(wert, k);
