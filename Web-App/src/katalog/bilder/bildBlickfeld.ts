@@ -50,4 +50,3 @@ export async function setBildSichtbar(uid: number, setNumber: string): Promise<b
   return imBlickfeld(uid, dateiStamm(setNumber), 'bilder');
 }
 
-export function vergissBlickfelder(): void { _cache.clear(); }
