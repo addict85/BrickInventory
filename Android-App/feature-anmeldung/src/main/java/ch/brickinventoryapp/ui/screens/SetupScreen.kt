@@ -44,7 +44,9 @@ import com.google.mlkit.vision.common.InputImage
 import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.util.NetworkPolicy
+import ch.brickinventoryapp.util.bestaetigtFingerabdruck
 import ch.brickinventoryapp.util.fingerabdruckLesbar
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.text.font.FontFamily
@@ -60,8 +62,8 @@ import ch.brickinventoryapp.ui.theme.Abstaende
 fun SetupScreen(
     currentUrl: String,
     onSave: (url: String) -> Unit,
-    /** Zweiter Wert: Der Dialog hat einen abweichenden Pin mit bisher/neu gezeigt. */
-    onQrScanned: ((QrLoginPayload, Boolean) -> Unit)? = null,
+    /** Zweiter Wert: bei abweichendem Pin der abgeschriebene neue Fingerabdruck, sonst null. */
+    onQrScanned: ((QrLoginPayload, String?) -> Unit)? = null,
     entwicklung: Boolean = NetworkPolicy.entwicklung,
     /** Der gemerkte Pin für Adresse und Fingerabdruck des Codes, wenn er abweicht. */
     bisherigerPin: (url: String, fingerabdruck: String?) -> String? = { _, _ -> null },
@@ -102,6 +104,9 @@ fun SetupScreen(
         val qrGesperrt = NetworkPolicy.adressfehler(vorschlag.url, entwicklung) != null
         // Ein Code mit anderem Schlüssel als dem bestätigten: wie „Zertifikat geändert“, mit beiden Werten.
         val bisher = remember(vorschlag) { bisherigerPin(vorschlag.url, vorschlag.fingerabdruck) }
+        // Wie ZertifikatDialog: Ein Code kann von jedem stammen, also den neuen Wert abschreiben lassen.
+        var eingabe by remember(vorschlag) { mutableStateOf("") }
+        var falsch by remember(vorschlag) { mutableStateOf(false) }
         AlertDialog(
             onDismissRequest = { qrVorschlag = null },
             title = { Text(stringResource(if (bisher != null) R.string.zert_titel_geaendert else R.string.setup_qr_titel)) },
@@ -119,16 +124,31 @@ fun SetupScreen(
                         Text(stringResource(R.string.zert_jetzt), style = MaterialTheme.typography.labelMedium)
                         Text(fingerabdruckLesbar(fp), fontFamily = FontFamily.Monospace,
                             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                        OutlinedTextField(
+                            value = eingabe,
+                            onValueChange = { eingabe = it; falsch = false },
+                            label = { Text(stringResource(R.string.zert_geaendert_eingabe)) },
+                            isError = falsch,
+                            supportingText = if (falsch) { { Text(stringResource(R.string.zert_eingabe_falsch)) } } else null,
+                            textStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters, autoCorrectEnabled = false),
+                            modifier = Modifier.fillMaxWidth(),
+                        )
                     } else if (fp != null) Text(stringResource(R.string.setup_qr_pin),
                         style = MaterialTheme.typography.bodySmall)
                     if (qrGesperrt) Text(stringResource(R.string.setup_qr_klartext_abgelehnt), color = MaterialTheme.colorScheme.error)
                 }
             },
             confirmButton = {
-                TextButton(enabled = !qrGesperrt, onClick = {
-                    qrVorschlag = null
-                    url = vorschlag.url
-                    onQrScanned?.invoke(vorschlag, bisher != null)
+                TextButton(enabled = !qrGesperrt && (bisher == null || eingabe.isNotBlank()), onClick = {
+                    val fp = vorschlag.fingerabdruck
+                    if (bisher != null && (fp == null || !bestaetigtFingerabdruck(eingabe, fp))) {
+                        falsch = true
+                    } else {
+                        qrVorschlag = null
+                        url = vorschlag.url
+                        onQrScanned?.invoke(vorschlag, eingabe.takeIf { bisher != null })
+                    }
                 }) {
                     Text(stringResource(if (bisher != null) R.string.setup_qr_pin_uebernehmen else R.string.setup_qr_uebernehmen),
                         color = if (bisher != null) MaterialTheme.colorScheme.error else androidx.compose.ui.graphics.Color.Unspecified)

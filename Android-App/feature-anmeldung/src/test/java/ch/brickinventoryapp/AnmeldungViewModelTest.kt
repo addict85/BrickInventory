@@ -48,6 +48,10 @@ import org.junit.Test
  *      Pin … vor“
  *   P  die Prüfung bisherigerPin() vor dem Start entfernt → rot „ein QR-Code
  *      mit anderem Schluessel ersetzt den Pin nie still“
+ *   R  (01.11.2026) die Prüfung bestaetigtFingerabdruck() in loginWithQrToken()
+ *      durch `pinWechselEingabe == null` ersetzt (jede Eingabe genügt) → rot
+ *      „ein QR-Code mit anderem Schluessel ersetzt den Pin nie still“ (falsch
+ *      abgeschriebener Wert angenommen)
  *   Q  das finally mit vergissVorgehaltenen() entfernt → rot „ein gescheiterter
  *      QR-Code hinterlaesst keinen Pin“ (Zeitüberschreitung, nichts vergessen)
  *   J  (30.10.2026) LoginRequest wieder mit festem neverExpires = true → rot
@@ -214,7 +218,16 @@ class AnmeldungViewModelTest {
         assertTrue(pfade.anfragenAn("qr-login").isEmpty())
         assertEquals(fpAlt, ablage.pins["brick.example.org:443"])
 
-        vm.loginWithQrToken("https://brick.example.org/", "bim:x", fingerabdruck = fp, pinWechselBestaetigt = true)
+        // Ein Tipp mit falsch abgeschriebenem Wert genügt ebenso wenig.
+        vm.loginWithQrToken("https://brick.example.org/", "bim:x", fingerabdruck = fp,
+            pinWechselEingabe = "09:09:09:09:09:09:09:09")
+        assertEquals("t${R.string.setup_qr_pin_wechsel_abgelehnt}", vm.anmeldeState.value.loginError)
+        Thread.sleep(100)
+        assertTrue("Falsch abgeschrieben: nichts", pfade.anfragenAn("qr-login").isEmpty())
+
+        // Die letzten 16 Hex-Zeichen des neuen Fingerabdrucks, wie aus der Webapp abgeschrieben.
+        vm.loginWithQrToken("https://brick.example.org/", "bim:x", fingerabdruck = fp,
+            pinWechselEingabe = "07:07:07:07:07:07:07:07")
         TestApi.warteBis("angemeldet") { t.sitzung.state.value.isLoggedIn }
         assertEquals("Nach Bestätigung und Anmeldung gilt der neue", fp, ablage.pins["brick.example.org:443"])
     }

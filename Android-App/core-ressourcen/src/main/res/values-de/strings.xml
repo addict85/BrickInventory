@@ -864,7 +864,7 @@
     <string name="zert_geaendert_qr">Oder einen neuen QR-Code aus der Webapp scannen.</string>
     <string name="zert_unbekannt_eingabe">Die letzten 16 Zeichen des Fingerabdrucks, abgeschrieben aus der Webapp (Einstellungen → Server-Zertifikat) oder aus den Zertifikatdetails des Browsers (SHA-256 des öffentlichen Schlüssels)</string>
     <string name="zert_eingabe_falsch">Das passt nicht zum gezeigten Fingerabdruck.</string>
-    <string name="setup_qr_pin_geaendert">Dieser Code nennt ein anderes Zertifikat als das für diesen Server bestätigte. Nur fortfahren, wenn du den Server selbst umgestellt hast.</string>
+    <string name="setup_qr_pin_geaendert">Dieser Code nennt ein anderes Zertifikat als das für diesen Server bestätigte. Nur fortfahren, wenn du den Server selbst umgestellt hast – dann zeigt die Webapp unter Einstellungen → Server-Zertifikat den neuen Fingerabdruck; schreibe seine letzten 16 Zeichen unten ab.</string>
     <string name="setup_qr_pin_uebernehmen">Neues Zertifikat annehmen und anmelden</string>
     <string name="setup_qr_pin_wechsel_abgelehnt">Der QR-Code nennt ein anderes Zertifikat als das bestätigte. Es wurde nichts geändert.</string>
     <string name="common_load_failed">Konnte nicht geladen werden</string>
