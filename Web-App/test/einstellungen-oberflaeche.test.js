@@ -130,6 +130,9 @@ test('SMTP: Hinweis auf die alte Ausnahme, Fingerabdruck und PEM gehen mit', asy
     const body = JSON.parse(post.body);
     assert.deepEqual([body.smtp_tls_fingerprint, body.smtp_tls_ca, body.smtp_insecure_tls],
       ['AB:CD', '-----BEGIN CERTIFICATE-----', undefined]);
+    // Der Hinweis verschwindet erst nach der Antwort aufs Speichern; unter Last
+    // dauert das länger als ein fester Takt.
+    await warte(() => d.getElementById('smtp-tls-altlast').style.display === 'none');
     assert.equal(d.getElementById('smtp-tls-altlast').style.display, 'none');
   } finally { w.close(); }
 });
