@@ -39,6 +39,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const { androidDateien } = require('./helpers/android');
 const path = require('node:path');
 
 const WURZEL = path.join(__dirname, '..', '..');
@@ -272,21 +273,18 @@ test('der Gegenproben-Job misst jede Patch-Gegenprobe gegen eine echte Testklass
   const job = yml.split(/\n  gegenproben:\n/)[1]?.split(/\n  [\w-]+:\n/)[0] ?? '';
   assert.match(job, /python3 tools\/gegenproben\.py gegenproben/, 'der Job ruft das Werkzeug nicht');
   assert.doesNotMatch(job, /continue-on-error/, 'eine grüne Gegenprobe muss den Lauf rot machen');
-  const modulVon = {
-    BestandMigrationTest: ['core-data', path.join(WURZEL, 'Android-App', 'core-data', 'src', 'test', 'java', 'ch', 'brickinventoryapp', 'BestandMigrationTest.kt')],
-    AblaufTest: ['app', path.join(WURZEL, 'Android-App', 'app', 'src', 'test', 'java', 'ch', 'brickinventoryapp', 'AblaufTest.kt')],
-  };
+  // Diese Klassen müssen mindestens eine Gegenprobe haben; weitere sind willkommen.
+  const PFLICHT = ['AblaufTest', 'BestandMigrationTest'];
   const ordner = path.join(WURZEL, 'Android-App', 'gegenproben');
   const klassen = new Set();
   for (const n of fs.readdirSync(ordner).filter(d => d.endsWith('.patch'))) {
     const kopf = fs.readFileSync(path.join(ordner, n), 'utf8').split(/\ndiff --git /)[0];
     const feld = (f) => (kopf.match(new RegExp(`^${f}: (.+)$`, 'm')) || [])[1];
     assert.ok(feld('Gegenprobe') && feld('Rot'), `${n}: Kopf ohne Gegenprobe oder Rot`);
-    const klasse = feld('Test')?.split('.').pop();
-    const [modul, datei] = modulVon[klasse] ?? [];
-    assert.ok(datei && fs.existsSync(datei), `${n}: ${klasse} ist keine bekannte Testklasse`);
-    assert.equal(feld('Modul'), modul, `${n}: ${klasse} liegt nicht in ${feld('Modul')}`);
-    klassen.add(klasse);
+    const voll = feld('Test') ?? '';
+    const endung = ['', feld('Modul'), 'src', 'test', 'java', ...voll.split('.')].join(path.sep) + '.kt';
+    assert.equal(androidDateien(f => f.endsWith(endung), 'test').length, 1, `${n}: ${voll} liegt nicht in ${feld('Modul')}`);
+    klassen.add(voll.split('.').pop());
   }
-  assert.deepEqual([...klassen].sort(), Object.keys(modulVon).sort(), 'jede Klasse braucht eine Gegenprobe');
+  for (const k of PFLICHT) assert.ok(klassen.has(k), `${k} braucht eine Gegenprobe`);
 });
