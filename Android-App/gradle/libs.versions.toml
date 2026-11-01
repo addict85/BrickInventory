@@ -154,7 +154,7 @@ appcompat                   = "1.8.0"
 profileinstaller            = "1.4.1"
 # Passkey-Anmeldung (feature-anmeldung). play-services-auth reicht den Aufruf auf
 # Geräten vor Android 14 an die Play-Dienste weiter; ohne ihn gäbe es dort keine Passkeys.
-credentials                 = "1.5.0"
+credentials                 = "1.6.0"
 # ── Auch hier war der Deckel compileSdk ────────────────────────────────
 #
 # Hier stand 3.3.0, zuerst wegen Kotlin (3.6.3 verlangt kotlin-stdlib
