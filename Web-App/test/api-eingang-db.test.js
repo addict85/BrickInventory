@@ -41,7 +41,9 @@ const ERWARTET_OFFEN = new Map([
   ['POST /api/v1/auth/passkey/anmelden/optionen', 'Die Anmeldung mit Passkey beginnt vor jedem Konto'],
   ['GET /api/v1/settings/theme',         'Das Design des Login-Bildschirms, vor jeder Anmeldung'],
   ['GET /api/v1/startup-status',         'Der Ladebildschirm vor der Anmeldung'],
-  ['GET /api/v1/health',                 'Gesundheitsprüfung von compose.yaml'],
+  ['GET /api/v1/health',                 'Status für Überwachung, Details nur für Verwalter'],
+  ['GET /api/v1/health/live',            'Lebenszeichen des Prozesses'],
+  ['GET /api/v1/health/ready',           'Gesundheitsprüfung von compose.yaml (Datenbank)'],
 ]);
 
 const freierPort = () => new Promise(r => { const s = net.createServer().listen(0, () => { const p = s.address().port; s.close(() => r(p)); }); });

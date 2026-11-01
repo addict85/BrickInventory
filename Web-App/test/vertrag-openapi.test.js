@@ -36,7 +36,7 @@ const EXPRESS = [
   ...routenVon(_req('routes/api_v1/index.js'), '/api/v1'),
   ...routenVon(_req('routes/auth.js'), '/api/v1/auth'),
   // Direkt in server.ts: Sie antworten, bevor die Router stehen.
-  'GET /api/v1/startup-status', 'GET /api/v1/health',
+  'GET /api/v1/startup-status', 'GET /api/v1/health', 'GET /api/v1/health/live', 'GET /api/v1/health/ready',
 ];
 
 test('jede Route hat einen Vertrag', () => {

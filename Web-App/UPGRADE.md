@@ -541,3 +541,13 @@ openssl x509 -in smtp.pem -noout -fingerprint -sha256
 
 (für Port 587 zusätzlich `-starttls smtp`). Das Speichern verlangt wie jede
 Änderung am Mailserver das Verwalterpasswort.
+
+## 17. Gesundheitsprüfung: `live` und `ready`
+
+- `GET /api/v1/health/live` antwortet `{"status":"ok"}`, solange der Prozess
+  läuft — ohne Datenbank.
+- `GET /api/v1/health/ready` fragt die Datenbank (`SELECT 1`) und antwortet
+  sonst **503** `{"status":"unavailable"}`. Der Healthcheck in `compose.yaml`
+  zeigt jetzt hierher; eine eigene Überwachung sollte das auch tun.
+- `GET /api/v1/health` liefert ohne Anmeldung nur noch `status`; Startzustand,
+  Pool und Laufzeit sieht nur ein Verwalter.

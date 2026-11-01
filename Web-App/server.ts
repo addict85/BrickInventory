@@ -22,7 +22,7 @@ import { drossleBeruehren } from './src/konto/sitzungsBeruehrung';
 import { SITZUNG_LEERLAUF_SEK, sitzungsHoechstdauer } from './src/konto/sitzungsFrist';
 import { antwortAufDateiFehler, liefereDatei, sendeDatei } from './src/infra/dateiAusliefern';
 import { cdnFuerFehlendesBild } from './src/katalog/bilder/bildNachschlagen';
-import { aktuellerStartZustand } from './src/infra/startZustand';
+import { aktuellerStartZustand, oeffentlicherStartZustand } from './src/infra/startZustand';
 import { merkeAnfrage } from './src/infra/anfrageKonto';
 import { proxyVertrauen, proxyHinweis } from './src/infra/proxyVertrauen';
 import { nurEigeneHerkunft } from './src/infra/herkunft';
@@ -309,19 +309,22 @@ app.get('/api/v1/startup-status', async (_req, res) => {
   res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
   res.set('Pragma', 'no-cache');
   res.set('Expires', '0');
-  res.json(await aktuellerStartZustand());
+  res.json(oeffentlicherStartZustand(await aktuellerStartZustand()));
 });
 
-// Ohne Anmeldung (compose.yaml). Pool und Laufzeit verraten Last und
-// Neustarts — die nur für den Verwalter.
+// Ohne Anmeldung (compose.yaml): anonym nur der Status; live = Prozess, ready = Datenbank.
+app.get('/api/v1/health/live', (_req, res) => { res.json({ status: 'ok' }); });
+app.get('/api/v1/health/ready', async (_req, res) => {
+  const bereit = await db.get('SELECT 1 AS ok').then(() => true, (e: unknown) => { meldeUndWeiter('health:ready', e); return false; });
+  res.status(bereit ? 200 : 503).json({ status: bereit ? 'ok' : 'unavailable' });
+});
 app.get('/api/v1/health', async (req, res) => {
   // Klemmt die Datenbank, bleibt der Bericht erreichbar — nur ohne Details.
   const verwalter = !!(await resolveUserId(req).catch(logAndContinue('health:anmeldung'))) && istVerwalter(req);
   const start = await aktuellerStartZustand();
   res.json({
     status: start.ready ? 'ok' : 'starting',
-    startup: start,
-    ...(verwalter ? { db_pool: db.getPoolStats(), uptime_seconds: Math.floor(process.uptime()) } : {}),
+    ...(verwalter ? { startup: start, db_pool: db.getPoolStats(), uptime_seconds: Math.floor(process.uptime()) } : {}),
   });
 });
 
