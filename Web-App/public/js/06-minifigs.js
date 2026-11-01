@@ -203,7 +203,7 @@ export function renderFigs(list, target) {
     // wird, muss vorher stimmen.
     el.innerHTML = `<div class="tw"><table class="dt">
       <thead><tr>
-        <th>${t('col.image')}</th><th>${t('col.number')}</th><th>Name</th><th>${t('detail.qty')}</th><th>${t('detail.added')}</th>
+        <th>${t('col.image')}</th><th>${t('col.number')}</th><th>${t('col.name')}</th><th>${t('detail.qty')}</th><th>${t('detail.created')}</th>
       </tr></thead>
       <tbody>${list.map(f => {
         const imgSrc = imgUrl(thumbUrl(f.image_local || f.image_url) || f.image_local || f.image_url || '', true);

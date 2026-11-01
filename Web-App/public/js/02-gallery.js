@@ -920,7 +920,7 @@ export function renderGallery(){
     c.innerHTML=`<div class="sgrid">${list.map(gridCard).join('')}</div>`;
     observeLazyImages(c);
   } else {
-    c.innerHTML=`<div class="tw"><table class="dt"><thead><tr><th>${t('col.image_th')}</th><th>Nr.</th><th>${t('col.name')}</th><th>${t('detail.year')}</th><th>${t('detail.theme')}</th><th>${t('detail.pieces')}</th><th>${t('detail.minifigs')}</th><th>${t('detail.qty')}</th><th>${t('detail.added')}</th><th>${t('detail.instructions')}</th><th><span class="vh">${t('detail.reimport_parts')}</span></th><th><span class="vh">${t('detail.delete')}</span></th></tr></thead><tbody>${list.map(tableRow).join('')}</tbody></table></div>`;
+    c.innerHTML=`<div class="tw"><table class="dt"><thead><tr><th>${t('col.image_th')}</th><th>${t('col.nr')}</th><th>${t('col.name')}</th><th>${t('detail.year')}</th><th>${t('detail.theme')}</th><th>${t('detail.pieces')}</th><th>${t('detail.minifigs')}</th><th>${t('detail.qty')}</th><th>${t('detail.created')}</th><th>${t('detail.instructions')}</th><th><span class="vh">${t('detail.reimport_parts')}</span></th><th><span class="vh">${t('detail.delete')}</span></th></tr></thead><tbody>${list.map(tableRow).join('')}</tbody></table></div>`;
     observeLazyImages(c);   // fehlte für die Listenansicht komplett
   }
 }
