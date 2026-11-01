@@ -156,23 +156,38 @@ fun SetDetailScreen(
             androidx.activity.result.contract.ActivityResultContracts.OpenDocument()
         ) { uri -> if (uri != null) vm.ladeAnleitungHoch(setNumber, uri) }
 
-        LazyColumn(
-            modifier = Modifier.fillMaxSize().padding(padding),
-            contentPadding = PaddingValues(bottom = Abstaende.sehrGross),
-            verticalArrangement = Arrangement.spacedBy(0.dp)
-        ) {
-
+        val kopf: androidx.compose.foundation.lazy.LazyListScope.() -> Unit = {
             setDetailHeroImage(set, imageUrl, imageLoader, detailRetryState, detailScope) { showImageZoom = true }
             setDetailStatChips(set)
             setDetailValueTiles(set, price, isBrick, ::fmtPrice)
+        }
+        val angaben: androidx.compose.foundation.lazy.LazyListScope.() -> Unit = {
             setDetailDetailsSection(set, setNumber, vm, acquisitions, currency, ::fmtDate, onNavigateToAcqMgmt)
             setDetailAlarmSection(setNumber, detailState.preisalarme, currency, vm::setzePreisalarm)
+        }
+        val preise: androidx.compose.foundation.lazy.LazyListScope.() -> Unit = {
             setDetailPriceSection(set, detailState, price, history, pnlPct, currency, isBrick, ::fmtPrice)
+        }
+        val anleitungen: androidx.compose.foundation.lazy.LazyListScope.() -> Unit = {
             setDetailInstructionsSection(
                 set, detailState, serverUrl, onOpenPdf,
                 onAnleitungWaehlen = { anleitungAuswahl.launch(ch.brickinventoryapp.ui.viewmodel.ANLEITUNG_TYPEN) },
                 onAnleitungLoeschen = { vm.loescheAnleitung(setNumber, it) },
             )
+        }
+        // Ab „expanded“ zwei Spalten — Bild und Preise links, Angaben, Alarm und
+        // Anleitungen rechts: Einspaltig lagen Bezeichnung und Wert einer Zeile auf dem
+        // Tablet eine Armlänge auseinander.
+        BoxWithConstraints(Modifier.fillMaxSize().padding(padding)) {
+            val rand = PaddingValues(bottom = Abstaende.sehrGross)
+            if (zweiSpaltig(maxWidth.value)) {
+                Row(Modifier.fillMaxSize()) {
+                    LazyColumn(Modifier.weight(1f).fillMaxHeight(), contentPadding = rand) { kopf(); preise() }
+                    LazyColumn(Modifier.weight(1f).fillMaxHeight(), contentPadding = rand) { angaben(); anleitungen() }
+                }
+            } else {
+                LazyColumn(Modifier.fillMaxSize(), contentPadding = rand) { kopf(); angaben(); preise(); anleitungen() }
+            }
         }
 
         if (showSetDeleteConfirm) {

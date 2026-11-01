@@ -29,6 +29,7 @@ import ch.brickinventoryapp.ui.viewmodel.EinstellungenViewModel
 import ch.brickinventoryapp.ui.*
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.Helligkeit
+import ch.brickinventoryapp.ui.theme.mittigBis
 import ch.brickinventoryapp.ui.components.WahlChips
 import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -83,6 +84,7 @@ fun SettingsScreen(
         Modifier
             .fillMaxSize()
             .verticalScroll(scrollState)
+            .mittigBis(ch.brickinventoryapp.ui.theme.Lesebreite.formular)
             .padding(horizontal = Abstaende.gross, vertical = Abstaende.gross),
         // gross statt der blanken 10 dp von vorher: Die Karten sind jetzt
         // wenige und gross, und zwischen ihnen soll Luft sein.

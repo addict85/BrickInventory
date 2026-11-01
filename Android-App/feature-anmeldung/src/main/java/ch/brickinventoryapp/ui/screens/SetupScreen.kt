@@ -47,6 +47,7 @@ import ch.brickinventoryapp.util.NetworkPolicy
 import ch.brickinventoryapp.util.fingerabdruckLesbar
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import ch.brickinventoryapp.ui.theme.mittigBis
 import androidx.compose.ui.text.font.FontFamily
 import ch.brickinventoryapp.ui.QrLoginPayload
 import ch.brickinventoryapp.ui.parseQrPayload
@@ -140,8 +141,12 @@ fun SetupScreen(
         )
     }
 
+    // Rollbar wie die Anmeldung (bei 200 % Schrift reichte die Höhe nicht), mittig
+    // solange es passt, und auf dem Tablet nicht breiter als ein Formular.
+    BoxWithConstraints(Modifier.fillMaxSize()) {
     Column(
-        modifier = Modifier.fillMaxSize().padding(Abstaende.riesig),
+        modifier = Modifier.verticalScroll(rememberScrollState()).heightIn(min = maxHeight)
+            .mittigBis(ch.brickinventoryapp.ui.theme.Lesebreite.formular).padding(Abstaende.riesig),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
@@ -252,6 +257,7 @@ fun SetupScreen(
                 modifier = Modifier.align(Alignment.CenterHorizontally)
             )
         }
+    }
     }
 }
 

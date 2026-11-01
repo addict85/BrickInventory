@@ -36,6 +36,7 @@ import ch.brickinventoryapp.ui.viewmodel.MerklisteViewModel
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.Formen
 import ch.brickinventoryapp.ui.theme.LocalIsBrickTheme
+import ch.brickinventoryapp.ui.theme.mittigBis
 import ch.brickinventoryapp.util.NumericInput
 import ch.brickinventoryapp.util.resolveThumbUrl
 import androidx.compose.material.icons.filled.NotificationsActive
@@ -159,6 +160,9 @@ fun MerklisteScreen(
                     keineTreffer = { KeinTrefferHinweis(stringResource(R.string.wanted_no_results)) },
                 ) {
                     LazyColumn(
+                        // Auf dem Tablet mittig statt über die ganze Breite: Name links,
+                        // Preis rechts lagen dort eine Armlänge auseinander.
+                        modifier = Modifier.mittigBis(ch.brickinventoryapp.ui.theme.Lesebreite.liste),
                         verticalArrangement = Arrangement.spacedBy(Abstaende.klein),
                         // Platz fuer die Knoepfe: Ohne ihn verdeckt der grosse die
                         // letzte Zeile — dieselbe Vorsorge wie in der Galerie.

@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import ch.brickinventoryapp.ui.theme.mittigBis
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -58,7 +59,8 @@ fun SucheMitFilter(
     aktiveFilter: Int,
     onFilter: () -> Unit,
 ) {
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+    // Auf dem Tablet nicht über die ganze Breite: Ein Suchfeld von 1900 px ist keines mehr.
+    Row(Modifier.mittigBis(ch.brickinventoryapp.ui.theme.Lesebreite.liste), verticalAlignment = Alignment.CenterVertically) {
         Suchfeld(wert = wert, onWert = onWert, platzhalter = platzhalter, modifier = Modifier.weight(1f))
         FilterKnopf(aktiveFilter, onFilter, Modifier.padding(end = 14.dp))
     }
