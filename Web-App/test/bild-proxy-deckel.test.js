@@ -89,6 +89,11 @@ test('das vierte fremde Bild wird gedrosselt, Treffer und andere Konten nicht', 
   assert.equal((await hole('https://cdn.rebrickable.com/media/parts/d1.png')).status, 200, 'Cache-Treffer gedrosselt');
   konto += 1;
   assert.equal((await hole('https://cdn.rebrickable.com/media/parts/d4.png')).status, 200, 'anderes Konto gedrosselt');
+  // Der Cache schreibt nach der Antwort weiter; landet die Datei erst im
+  // nächsten Test, zählt sie dort gegen den Deckel (im Volllauf so gesehen).
+  const bilder = () => fs.readdirSync(cacheDir).filter(f => /^[0-9a-f]{40}$/.test(f)).length;
+  for (const ende = Date.now() + 5000; bilder() < 6 && Date.now() < ende;) await warte();
+  assert.equal(bilder(), 6);
 });
 
 test('der Deckel löscht das am längsten unbenutzte Bild', async () => {
