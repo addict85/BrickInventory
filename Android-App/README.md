@@ -106,10 +106,16 @@ braucht kein GitHub-Konto und verfällt nicht nach 90 Tagen. Bei
 Pull-Request-Läufen wird er **nicht** ersetzt — sonst zeigte der stabile Link
 auf einen ungeprüften Zweig.
 
-Signiert wird die APK nur, wenn die vier Repository-Secrets `KEYSTORE_BASE64`,
-`KEYSTORE_PASSWORT`, `KEY_ALIAS` und `KEY_PASSWORT` hinterlegt sind. Fehlen
-sie, läuft der Bau durch und sagt per Warnung deutlich, dass das Ergebnis
-unsigniert und damit nicht installierbar ist — siehe *Release signieren*.
+Signiert wird in einem eigenen Job `signieren`, der nur das unsignierte APK aus
+dem Bau-Job bekommt und keinen Projektcode ausführt (kein Checkout, kein
+Gradle; `zipalign`/`apksigner` aus dem SDK des Runners). Auf `main` läuft er in
+der Environment `release`; dort gehören die vier Secrets `KEYSTORE_BASE64`,
+`KEYSTORE_PASSWORT`, `KEY_ALIAS` und `KEY_PASSWORT` hin (GitHub → Settings →
+Environments → `release`: Deployment-Branch nur `main`, auf Wunsch Pflichtprüfer).
+Repository-Secrets gleichen Namens werden übergangsweise weiter gelesen. Fehlen
+sie auf `main`, wird der Lauf rot und nichts veröffentlicht. Danach prüft der
+Job `apk-pruefen` das signierte APK (R8, 16-KB-Ausrichtung), erst dann
+veröffentlicht `release` — siehe *Release signieren*.
 
 ## Erster Start
 1. In der Webapp unter Einstellungen den QR-Code für die Android App erzeugen
@@ -387,8 +393,12 @@ werden:
 [Convert]::ToBase64String([IO.File]::ReadAllBytes("brick.jks")) | Set-Clipboard
 ```
 
-Unter **Settings → Secrets and variables → Actions → New repository secret**
-vier Secrets anlegen:
+Unter **Settings → Environments → New environment** die Environment `release`
+anlegen: *Deployment branches and tags* auf *Selected branches* mit `main`
+stellen, auf Wunsch *Required reviewers* setzen (dann wartet jeder
+Veröffentlichungslauf auf ein Ja). Dort unter *Environment secrets* vier
+Secrets anlegen und die gleichnamigen Repository-Secrets danach löschen — bis
+dahin liest der Job sie übergangsweise weiter:
 
 | Secret              | Inhalt                        |
 |---------------------|-------------------------------|
@@ -397,11 +407,11 @@ vier Secrets anlegen:
 | `KEY_ALIAS`         | `brickinventory`              |
 | `KEY_PASSWORT`      | Passwort des Schlüssels       |
 
-Der Ablauf schreibt den Schlüsselspeicher nach `$RUNNER_TEMP` — ausserhalb des
-Arbeitsverzeichnisses, damit er nicht in ein Artefakt geraten kann — und setzt
-die Umgebungsvariablen daraus. Fehlt eines der Secrets, läuft der Bau durch und
-setzt eine Warnung ins Protokoll, statt still etwas Uninstallierbares
-hochzuladen.
+Der Job `signieren` schreibt den Schlüsselspeicher nach `$RUNNER_TEMP`, signiert
+das unsignierte APK aus dem Bau-Job mit `apksigner` aus dem SDK des Runners und
+gibt nur das Ergebnis weiter; Gradle und Werkzeuge aus dem Repository sieht der
+Schlüssel nie. Fehlt auf `main` eines der Secrets, wird der Lauf rot, statt
+etwas Uninstallierbares zu veröffentlichen.
 
 ### Prüfen, ob es geklappt hat
 
