@@ -394,6 +394,7 @@ const C = {
   'POST /api/v1/auth/users': 'nur-web',
   'DELETE /api/v1/auth/users/:id': 'nur-web',
   'PUT /api/v1/auth/users/:id/admin': 'nur-web',
+  'PUT /api/v1/auth/users/:id/aktiv': 'nur-web',
   'GET /api/v1/admin/protokoll': 'nur-web',
   'GET /api/v1/sets/export/rebrickable': 'nur-web',
   // Nachtrag 159: Beide waren „nur-web", weil die App sie nicht kannte — und
