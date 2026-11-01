@@ -1841,6 +1841,77 @@
         }
       }
     },
+    "/api/v1/auth/users/{id}/aktiv": {
+      "put": {
+        "tags": [
+          "konto"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Erfolg",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KontoAktiv"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Fehler",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "is_active": {
+                    "type": [
+                      "boolean",
+                      "integer",
+                      "string"
+                    ],
+                    "enum": [
+                      true,
+                      false,
+                      1,
+                      0,
+                      "true",
+                      "false",
+                      "1",
+                      "0"
+                    ]
+                  }
+                },
+                "required": [
+                  "is_active"
+                ],
+                "additionalProperties": {}
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/auth/users/{id}/password": {
       "put": {
         "tags": [
@@ -10854,6 +10925,23 @@
         ],
         "additionalProperties": {}
       },
+      "KontoAktiv": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "const": true
+          },
+          "is_active": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success",
+          "is_active"
+        ],
+        "additionalProperties": {}
+      },
       "KontoInListe": {
         "type": "object",
         "properties": {
@@ -10866,6 +10954,9 @@
             "type": "string"
           },
           "is_admin": {
+            "type": "boolean"
+          },
+          "is_active": {
             "type": "boolean"
           },
           "created_at": {
@@ -10882,6 +10973,7 @@
           "id",
           "username",
           "is_admin",
+          "is_active",
           "created_at",
           "zweiter_faktor"
         ],

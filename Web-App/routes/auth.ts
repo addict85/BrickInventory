@@ -292,6 +292,19 @@ router.put('/users/:id/admin', requireAdmin, async (req, res: Antwort<'PUT /api/
   res.json({ success: true });
 });
 
+router.put('/users/:id/aktiv', requireAdmin, async (req, res: Antwort<'PUT /api/v1/auth/users/:id/aktiv'>) => {
+  const targetId = parseInt(pfadParam(req, 'id'));
+  const soll = strictBool(req.body.is_active, 'is_active');
+  if (!Number.isInteger(targetId)) return sendeFehler(req, res, 400, 'id_ungueltig');
+  if (targetId === nutzerId(req)) return sendeFehler(req, res, 400, 'eigenes_konto_deaktivieren');
+  if (!await K.kontoExistiert(targetId)) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
+  if (!await bestaetigePasswort(req, res, angemeldeteNutzerId(req), req.body?.admin_password)) return;
+  const r = await K.setzeAktiv(targetId, soll);
+  if (!r) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
+  if (r.geaendert) await protokolliere(angemeldeteNutzerId(req), targetId, soll ? 'konto_reaktiviert' : 'konto_deaktiviert');
+  res.json({ success: true, is_active: soll });
+});
+
 /** Ohne aktuelles Passwort des Ziels, aber mit dem des Verwalters.
  * Ausführlich: docs/begruendungen/routes/auth.ts.md#put-users-id-password */
 router.put('/users/:id/password', requireAdmin, async (req, res: Antwort<'PUT /api/v1/auth/users/:id/password'>) => {

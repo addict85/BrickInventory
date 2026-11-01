@@ -78,6 +78,8 @@ export const FEHLER = {
   eigene_adminrolle:           { de: 'Eigene Admin-Rolle kann nicht entfernt werden',
                                  en: 'You cannot remove your own administrator role' },
   benutzer_nicht_gefunden:     { de: 'Benutzer nicht gefunden', en: 'User not found' },
+  eigenes_konto_deaktivieren:  { de: 'Das eigene Konto lässt sich nicht deaktivieren.',
+                                 en: 'You cannot deactivate your own account.' },
   benutzer_nicht_gefunden_oder_eigenes: { de: 'Benutzer nicht gefunden oder eigener Account',
                                  en: 'User not found, or it is your own account' },
 

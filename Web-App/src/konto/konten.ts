@@ -50,6 +50,16 @@ export async function registriere(d: { username: string; email: string; first_na
     last_name: d.last_name, hash: await hashe(d.passwort), tokenHash: d.tokenHash, bis: d.bis });
 }
 
+/** Erst sperren, dann Zugänge löschen: Die Token-Abfrage prüft is_active, so
+ * gilt in der Lücke dazwischen kein Token. Sitzungen fallen mit ihrer Zeile,
+ * jede Anfrage liest sie neu — eine Prüfung je Anfrage braucht es nicht. */
+export async function setzeAktiv(uid: number, soll: boolean): Promise<{ geaendert: boolean } | null> {
+  const r = await repo.setzeAktiv(uid, soll);
+  if (!r) return null;
+  if (!soll) await zugaengeBeenden(uid);
+  return { geaendert: r.vorher !== soll };
+}
+
 /** Ändert sich die Rolle, enden die Browser-Sitzungen: Sie tragen die Rolle
  * seit der Anmeldung. Der Token-Cache wird nur geleert — die App soll die neue
  * Rolle sehen, nicht abgemeldet werden. */

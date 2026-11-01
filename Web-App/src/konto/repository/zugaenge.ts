@@ -13,14 +13,15 @@ export type TokenZeile = {
   username: string; konto_is_admin: boolean; is_admin?: number;
 };
 
-/** Beide Fristen in der Abfrage: Ein abgelaufener Token wird nie geliefert. */
+/** Fristen und Kontozustand in der Abfrage: Ein abgelaufener Token oder einer
+ * eines deaktivierten Kontos wird nie geliefert. */
 export function gueltigerToken(hash: string) {
   return db.get<TokenZeile>(`
     SELECT t.user_id, t.expires_at, t.hard_expires_at, t.last_used, t.sliding, t.never_expires,
            t.scope, t.rotiert_am, t.vorgaenger, t.label, t.ip_bereich,
            u.username, u.is_admin AS konto_is_admin
     FROM api_tokens t JOIN users u ON u.id = t.user_id
-    WHERE t.token = $1
+    WHERE t.token = $1 AND u.is_active
       AND (t.expires_at      IS NULL OR t.expires_at      > NOW())
       AND (t.hard_expires_at IS NULL OR t.hard_expires_at > NOW())`, [hash]);
 }
