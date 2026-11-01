@@ -12,7 +12,7 @@ import type { TokenScope } from '../src/konto/auth';
 import { tlsStand } from '../src/infra/tlsWurzel';
 import crypto from 'crypto';
 import { strictBool } from '../src/infra/validate';
-import { sendEmailGeaendertMail, sendPasswordResetMail, sendVerificationMail, sendRegistrierungsVersuchMail } from '../src/infra/mailer';
+import { sendEmailGeaendertMail, sendPasswordResetMail, sendVerificationMail, sendRegistrierungsVersuchMail, sendBenutzernameVergebenMail } from '../src/infra/mailer';
 import type { Request, Response } from 'express';
 import { setUserSetting } from '../src/konto/settings';
 import { registrierungOffen } from '../src/konto/settings';
@@ -523,10 +523,11 @@ router.post('/register', ipThrottle('register', 5, 60 * 60 * 1000), async (req, 
   if (!USERNAME_RE.test(username))
     return sendeFehler(req, res, 400, 'benutzername_ungueltig');
 
-  if (await K.nameVergeben(username, 0)) return sendeFehler(req, res, 409, 'benutzername_vergeben');
-  // Eine vergebene Adresse bekommt dieselbe Antwort wie eine neue, sonst liesse
-  // sich abfragen, wer ein Konto hat; ihr Inhaber bekommt einen Hinweis.
+  // Vergebene Adresse oder vergebener Name: dieselbe Antwort wie bei Erfolg,
+  // sonst liesse sich abfragen, wer ein Konto hat. Die Rückmeldung geht per Mail
+  // an die Adresse; das kostet je Versuch ein Postfach und die Drossel oben.
   const inhaber = await K.kontoMitEmail(email);
+  const nameVergeben = !inhaber && await K.nameVergeben(username, 0);
   const basis = getBaseUrl(req);
   let result: { success: boolean; mode: string };
   if (inhaber) {
@@ -534,6 +535,9 @@ router.post('/register', ipThrottle('register', 5, 60 * 60 * 1000), async (req, 
     const sprache = String(await getSetting(inhaber.id, 'language', 'de').catch(() => 'de'));
     result = basis ? await sendRegistrierungsVersuchMail(inhaber.email, inhaber.username, sprache)
       : { success: false, mode: 'ohne_basis' };
+  } else if (nameVergeben) {
+    await K.rechneWieRegistrierung(password);
+    result = basis ? await sendBenutzernameVergebenMail(email, username, lang, basis) : { success: false, mode: 'ohne_basis' };
   } else {
     const token  = crypto.randomBytes(32).toString('hex');
     const expires = new Date(Date.now() + 24 * 60 * 60 * 1000);

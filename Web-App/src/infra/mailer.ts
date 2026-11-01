@@ -398,6 +398,39 @@ export async function sendRegistrierungsVersuchMail(to: string, username: string
     html: emailTemplate(L.title, L.subject, `${L.html}${infoBox(L.note, theme)}`, theme) });
 }
 
+/** Die Registrierung antwortet bei vergebenem Namen wie bei Erfolg; nur die
+ * angegebene Adresse erfährt, dass es ihn schon gibt. */
+export async function sendBenutzernameVergebenMail(to: string, username: string, lang = 'de', basis = '') {
+  const theme = await getMailTheme();
+  const L = lang === 'en' ? {
+    subject: 'BrickInventory Manager — Username already taken',
+    title: 'Username taken',
+    text: `Hello,
+
+someone tried to register the account “${username}” with this email address. That username already exists; no account was created.
+
+If this was you, register again with a different username: ${basis}
+
+BrickInventory Manager`,
+    html: `<p style="margin:0 0 16px">someone tried to register the account <strong>${esc(username)}</strong> with this email address. That username already exists; no account was created.</p>`,
+    note: 'If this was you, register again with a different username.',
+  } : {
+    subject: 'BrickInventory Manager — Benutzername schon vergeben',
+    title: 'Benutzername vergeben',
+    text: `Hallo,
+
+mit dieser E-Mail-Adresse wollte jemand das Konto „${username}“ anlegen. Diesen Benutzernamen gibt es schon; angelegt wurde nichts.
+
+Warst du das, registriere dich mit einem anderen Benutzernamen: ${basis}
+
+BrickInventory Manager`,
+    html: `<p style="margin:0 0 16px">mit dieser E-Mail-Adresse wollte jemand das Konto <strong>${esc(username)}</strong> anlegen. Diesen Benutzernamen gibt es schon; angelegt wurde nichts.</p>`,
+    note: 'Warst du das, registriere dich mit einem anderen Benutzernamen.',
+  };
+  return sendMail({ to, subject: L.subject, text: L.text,
+    html: emailTemplate(L.title, L.subject, `${L.html}${infoBox(L.note, theme)}`, theme) });
+}
+
 /** Das Hauptkonto liest danach den Bestand mit; wer nur eine Sitzung erbeutet
  * hat, soll das nicht unbemerkt einrichten können. */
 export async function sendHaushaltVerknuepftMail(to: string, username: string, hauptkonto: string, lang = 'de') {

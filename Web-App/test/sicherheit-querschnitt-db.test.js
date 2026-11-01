@@ -11,6 +11,9 @@
  *      vergebene Adresse antwortet wie eine neue"
  *   C  handleRouteError() gibt auch in Produktion e.message aus → rot: „ein
  *      Serverfehler in Produktion nennt keine Interna"
+ *   D  /register antwortet bei vergebenem Benutzernamen wieder 409
+ *      benutzername_vergeben → rot: „ein vergebener Name antwortet wie ein
+ *      neuer" (gemessen 01.11.2026)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -108,7 +111,27 @@ test('Sicherheit im Querschnitt', { concurrency: 1, timeout: 180_000 }, async (t
       assert.ok(meldungen.some(m => m.includes(MAIL)), 'Der Inhaber bekommt keinen Hinweis');
       const neu = await registriere(NEU, `anders_${MAIL}`);
       assert.deepEqual(vergeben.body, neu.body);
-      assert.deepEqual(await registriere(NAME, `drittens_${MAIL}`).then(r => [r.status, r.body.code]), [409, 'benutzername_vergeben']);
+    } finally { console.log = echt; }
+  });
+
+  await t.test('ein vergebener Name antwortet wie ein neuer, die Adresse erfährt es per Mail', async () => {
+    const { base } = testServer(_req, { routen: { '/api/v1/auth': 'routes/auth.js' }, t });
+    await db.run("DELETE FROM rate_limit_attempts WHERE key LIKE 'register|%'");
+    const meldungen = [], echt = console.log;
+    console.log = (...a) => { meldungen.push(a.join(' ')); };
+    const registriere = (username, email) => fetch(`${base}/api/v1/auth/register`, { method: 'POST',
+      headers: { 'content-type': 'application/json' }, body: JSON.stringify({ username, email, password: 'Neues-Passwort-1' }) })
+      .then(async r => ({ status: r.status, body: await r.json() }));
+    try {
+      const andere = `name_${MAIL}`;
+      const vergeben = await registriere(NAME, andere);
+      assert.equal(vergeben.status, 200, JSON.stringify(vergeben.body));
+      assert.equal(await db.get('SELECT id FROM users WHERE email = $1', [andere]), undefined, 'Konto angelegt');
+      assert.ok(meldungen.some(m => m.includes(andere)) && meldungen.some(m => /Benutzername schon vergeben/.test(m)), meldungen.join(' | '));
+      const NEU2 = `${NEU}_2`;
+      const neu = await registriere(NEU2, `neu2_${MAIL}`);
+      await db.run('DELETE FROM users WHERE username = $1', [NEU2]);
+      assert.deepEqual(vergeben.body, neu.body);
     } finally { console.log = echt; }
   });
 });
