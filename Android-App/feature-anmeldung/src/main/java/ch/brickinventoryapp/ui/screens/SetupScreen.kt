@@ -46,37 +46,32 @@ import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.util.NetworkPolicy
 import ch.brickinventoryapp.ui.QrLoginPayload
 import ch.brickinventoryapp.ui.parseQrPayload
-import androidx.compose.foundation.selection.toggleable
-import androidx.compose.ui.semantics.Role
 import ch.brickinventoryapp.ui.theme.Abstaende
 
+/**
+ * Server einrichten: per QR-Code oder von Hand, nur mit https. Steht noch eine
+ * http-Adresse aus einer älteren Fassung da, erklärt eine Karte oben den Weg.
+ */
 @Composable
 fun SetupScreen(
     currentUrl: String,
-    onSave: (url: String, klartextBestaetigt: Boolean) -> Unit,
-    onQrScanned: ((QrLoginPayload, klartextBestaetigt: Boolean) -> Unit)? = null,
-    klartextErlaubt: Boolean = false,
-    onKlartextErlaubt: (Boolean) -> Unit = {},
+    onSave: (url: String) -> Unit,
+    onQrScanned: ((QrLoginPayload) -> Unit)? = null,
+    entwicklung: Boolean = NetworkPolicy.entwicklung,
 ) {
     var url          by rememberSaveable { mutableStateOf(currentUrl) }
     var showScanner  by rememberSaveable { mutableStateOf(false) }
     var scanError    by remember { mutableStateOf<String?>(null) }
     // Ein QR-Code kann von jedem stammen: Die Adresse wird erst nach einem Ja übernommen.
     var qrVorschlag  by remember { mutableStateOf<QrLoginPayload?>(null) }
-    // Klartext zu einem öffentlich aussehenden Host nur nach ausdrücklicher
-    // Bestätigung (NetworkPolicy.isCleartextAllowed).
-    val klartextHost = NetworkPolicy.klartextHost(url)
-    var klartextOk   by rememberSaveable(klartextHost) { mutableStateOf(false) }
     val invalidQrMsg = stringResource(R.string.setup_invalid_qr)
     val keyboard     = LocalSoftwareKeyboardController.current
-
-    // http nur mit dem Expertenschalter: Ohne ihn ginge der Token im WLAN lesbar hinaus.
-    val klartextGesperrt = url.trim().lowercase().startsWith("http://") && !klartextErlaubt
+    val altbestand   = NetworkPolicy.klartextAltbestand(currentUrl, entwicklung)
+    val fehler       = if (url.isBlank()) null else NetworkPolicy.adressfehler(url, entwicklung)
 
     fun save() {
-        val cleaned = url.trim().trimEnd('/')
-        if (cleaned.isBlank() || klartextGesperrt || (klartextHost != null && !klartextOk)) return
-        keyboard?.hide(); onSave(cleaned, klartextHost != null && klartextOk)
+        if (url.isBlank() || fehler != null) return
+        keyboard?.hide(); onSave(NetworkPolicy.normalisiere(url))
     }
 
     if (showScanner) {
@@ -97,25 +92,25 @@ fun SetupScreen(
     }
 
     qrVorschlag?.let { vorschlag ->
-        val klartext = NetworkPolicy.klartextNachAussen(vorschlag.url)
-        val qrGesperrt = !NetworkPolicy.istHttps(vorschlag.url) && !klartextErlaubt
+        val qrGesperrt = NetworkPolicy.adressfehler(vorschlag.url, entwicklung) != null
         AlertDialog(
             onDismissRequest = { qrVorschlag = null },
             title = { Text(stringResource(R.string.setup_qr_titel)) },
             text = {
+                // Die Bestätigung schickt die Anmeldung an diesen Server: kein Tippen durch eine Überlagerung.
+                ch.brickinventoryapp.ui.components.Ueberdeckungsschutz()
                 Column(verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                     Text(stringResource(R.string.setup_qr_text, vorschlag.url))
                     if (vorschlag.fingerabdruck != null) Text(stringResource(R.string.setup_qr_pin),
                         style = MaterialTheme.typography.bodySmall)
-                    if (qrGesperrt) Text(stringResource(R.string.setup_klartext_gesperrt), color = MaterialTheme.colorScheme.error)
-                    else if (klartext) Text(stringResource(R.string.setup_qr_klartext), color = MaterialTheme.colorScheme.error)
+                    if (qrGesperrt) Text(stringResource(R.string.setup_qr_klartext_abgelehnt), color = MaterialTheme.colorScheme.error)
                 }
             },
             confirmButton = {
                 TextButton(enabled = !qrGesperrt, onClick = {
                     qrVorschlag = null
                     url = vorschlag.url
-                    onQrScanned?.invoke(vorschlag, NetworkPolicy.klartextHost(vorschlag.url) != null)
+                    onQrScanned?.invoke(vorschlag)
                 }) { Text(stringResource(R.string.setup_qr_uebernehmen)) }
             },
             dismissButton = {
@@ -143,6 +138,21 @@ fun SetupScreen(
         Text(stringResource(R.string.app_name), fontWeight = FontWeight.ExtraBold, style = MaterialTheme.typography.headlineSmall)
         Text(stringResource(R.string.setup_subtitle), style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
+
+        if (altbestand) {
+            Spacer(Modifier.height(Abstaende.gross))
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+            ) {
+                Column(Modifier.padding(Abstaende.gross), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
+                    Text(stringResource(R.string.setup_altbestand_titel), fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onErrorContainer)
+                    Text(stringResource(R.string.setup_altbestand_text, currentUrl),
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onErrorContainer)
+                }
+            }
+        }
 
         Spacer(Modifier.height(Abstaende.riesig))
 
@@ -191,35 +201,20 @@ fun SetupScreen(
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Done),
                     keyboardActions = KeyboardActions(onDone = { save() }),
                     supportingText = {
-                        when {
-                            klartextGesperrt ->
-                                Text(stringResource(R.string.setup_klartext_gesperrt), color = MaterialTheme.colorScheme.error)
-                            NetworkPolicy.klartextNachAussen(url) ->
-                                Text(stringResource(R.string.setup_url_klartext), color = MaterialTheme.colorScheme.error)
-                            else -> Text(stringResource(R.string.setup_url_supporting))
+                        when (fehler) {
+                            NetworkPolicy.Adressfehler.KLARTEXT ->
+                                Text(stringResource(R.string.setup_klartext_abgelehnt), color = MaterialTheme.colorScheme.error)
+                            NetworkPolicy.Adressfehler.UNLESBAR ->
+                                Text(stringResource(R.string.setup_url_unlesbar), color = MaterialTheme.colorScheme.error)
+                            null -> Text(stringResource(R.string.setup_url_supporting))
                         }
                     },
-                    isError = klartextGesperrt || NetworkPolicy.klartextNachAussen(url),
+                    isError = fehler != null,
                 )
-                if (klartextHost != null) {
-                    Row(
-                        Modifier.fillMaxWidth().toggleable(value = klartextOk, role = Role.Checkbox,
-                            onValueChange = { klartextOk = it }),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Checkbox(checked = klartextOk, onCheckedChange = null)
-                        Spacer(Modifier.width(Abstaende.klein))
-                        Text(stringResource(R.string.setup_url_klartext_bestaetigen, klartextHost),
-                            style = MaterialTheme.typography.bodySmall)
-                    }
-                }
-                // Vor der Anmeldung gibt es die Einstellungen noch nicht; ohne den
-                // Schalter hier käme ein Server im Heimnetz ohne https nie bis zum Anmelden.
-                KlartextSchalter(klartextErlaubt, onKlartextErlaubt)
                 Spacer(Modifier.height(Abstaende.gross))
                 Button(
                     onClick = ::save, modifier = Modifier.fillMaxWidth(),
-                    enabled = url.isNotBlank() && !klartextGesperrt && (klartextHost == null || klartextOk),
+                    enabled = url.isNotBlank() && fehler == null,
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                 ) { Text(stringResource(R.string.setup_continue), fontWeight = FontWeight.Bold) }
             }

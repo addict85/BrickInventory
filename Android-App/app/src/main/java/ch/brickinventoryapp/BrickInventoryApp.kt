@@ -35,7 +35,7 @@ class BrickInventoryApp : Application(), Configuration.Provider {
                 if (preferencesManager.alarmMeldungenAn.first()) {
                     ch.brickinventoryapp.alarm.PreisalarmWorker
                         .einplanen(this@BrickInventoryApp, true)
-                        ?.let { android.util.Log.w("Preisalarm", "Abruf nicht eingeplant", it) }
+                        ?.let { ch.brickinventoryapp.util.Protokoll.warnung("Preisalarm", "Abruf nicht eingeplant", it) }
                 }
             }
         }

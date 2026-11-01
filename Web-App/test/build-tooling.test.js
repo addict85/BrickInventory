@@ -81,11 +81,12 @@ test('compose.yaml mountet nichts mehr nach public/', () => {
     `Mount nach public/: ${intoPublic.join(', ')} — Bilder gehören unter /app/data`);
 });
 
-test('das Datenverzeichnis ist als einziges Volume der App gemountet', () => {
+test('das Datenverzeichnis ist das einzige Datenvolume der App, der Schlüssel liegt daneben', () => {
   const compose = read('compose.yaml');
-  // app und jobs hängen dasselbe ./data ein; ein zweites Ziel gäbe es nicht.
+  // app und jobs hängen dasselbe ./data ein; daneben nur der Datenschlüssel,
+  // der gerade nicht in data/ liegen soll (UPGRADE.md, Abschnitt 21).
   const appMounts = [...new Set([...compose.matchAll(/^\s*-\s*\.\/[^\s:#]+:(\/app[^\s:#]*)/gm)].map(m => m[1]))];
-  assert.deepEqual(appMounts, ['/app/data'],
+  assert.deepEqual(appMounts, ['/app/data', '/app/schluessel'],
     'Alles Persistente liegt unter data/ — ein zweites Volume erzeugt nur einen verwaisten Ordner');
 });
 
@@ -608,9 +609,9 @@ test('verwaiste .sql-Dateien verschwinden beim naechsten Bau', async (t) => {
   // den es nur waehrend des Laufs gibt, bricht `eigenbruecken.test.js`. Dieser
   // Waechter hat recht: Ein Test, der eine verschwundene Quelle liest, prueft
   // irgendwann nichts mehr und schweigt dabei.
-  const fremdTxt = path.join(gebaut, 'nicht-mitkopiert.txt');
+  const fremdTxt = path.join(gebaut, 'nicht-mitkopiert.md');
   fs.writeFileSync(fremd, '-- zweiter Versuch\nSELECT 1;\n');
-  fs.writeFileSync(fremdTxt, 'keine .sql — darf liegen bleiben\n');
+  fs.writeFileSync(fremdTxt, 'keine mitkopierte Endung — darf liegen bleiben\n');
 
   const protokoll = baue();
   assert.match(protokoll, /verwaiste Datei\(en\) entfernt:.*9999-verwaist-aus-anderem-zweig\.sql/,
@@ -619,7 +620,7 @@ test('verwaiste .sql-Dateien verschwinden beim naechsten Bau', async (t) => {
     'spaeter sucht, warum eine Datei weg ist, findet keine Spur.\n' + protokoll);
   assert.ok(!fs.existsSync(fremd), 'Die verwaiste .sql liegt noch da.');
   assert.ok(fs.existsSync(fremdTxt),
-    'Auch die .txt ist verschwunden. Dann raeumt etwas PAUSCHAL auf, und der Fall ' +
+    'Auch die .md ist verschwunden. Dann raeumt etwas PAUSCHAL auf, und der Fall ' +
     'oben prueft nicht das gezielte Entfernen quellenloser Abbilder.');
 });
 

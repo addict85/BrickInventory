@@ -153,8 +153,7 @@ internal fun HouseholdCard(
                             kopierBereich.launch {
                                 clipboard.setClipEntry(
                                     androidx.compose.ui.platform.ClipEntry(
-                                        android.content.ClipData.newPlainText(
-                                            einladungEtikett, c)))
+                                        ch.brickinventoryapp.util.geheimerClip(einladungEtikett, c)))
                             }
                         }) { Icon(Icons.Default.ContentCopy, stringResource(R.string.household_invite_copy)) }
                     }

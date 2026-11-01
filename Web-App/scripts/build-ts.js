@@ -133,7 +133,7 @@ execFileSync(cmd, [
 // Pfade, und der davon abhängige (inzwischen entfernte) Dateiumzug ordnete jede
 // Datei als "verwaist" ein — die Bilder blieben liegen, ohne dass irgendetwas
 // fehlschlug.
-const ASSET_EXT = ['.sql'];
+const ASSET_EXT = ['.sql', '.txt'];
 /** @param {string} dir @param {string} out */
 function copyAssets(dir, out) {
   if (!fs.existsSync(dir)) return 0;

@@ -18,7 +18,6 @@ import ch.brickinventoryapp.ui.GutscheinUiState
 import ch.brickinventoryapp.ui.screens.FinanceScreen
 import ch.brickinventoryapp.ui.screens.GalleryScreen
 import ch.brickinventoryapp.ui.screens.GutscheineCard
-import ch.brickinventoryapp.ui.screens.KlartextSchalter
 import ch.brickinventoryapp.ui.screens.LoginScreen
 import ch.brickinventoryapp.ui.screens.MerklisteScreen
 import ch.brickinventoryapp.ui.screens.MinifigsScreen
@@ -47,7 +46,7 @@ import org.robolectric.annotation.GraphicsMode
  * sonst nimmt sie auf; eingecheckt werden sie per Workflow (bildschirmfotos=true).
  *
  * Die Einstellungen selbst holen AppViewModel und UpdateViewModel über Hilt;
- * hier stehen deshalb ihre Bausteine (Klartext-Schalter, Gutscheine).
+ * hier steht deshalb ihr Baustein mit Inhalt (Gutscheine).
  *
  * Gegenprobe: Ein Foto, das nichts vergleicht, kann nicht rot werden. Sie ist
  * erst mit eingecheckten Referenzen möglich (eine Farbe in Theme.kt ändern →
@@ -198,7 +197,13 @@ class BildschirmFotoTest(private val design: String, private val dunkel: Boolean
 
     @Test
     fun einrichten() {
-        foto("einrichten") { SetupScreen(currentUrl = "http://nas:3000", onSave = { _, _ -> }) }
+        foto("einrichten") { SetupScreen(currentUrl = "https://brick.fritz.box", onSave = {}, entwicklung = false) }
+    }
+
+    /** Eine gespeicherte http-Adresse aus einer älteren Fassung: oben die Anleitung zu https. */
+    @Test
+    fun einrichtenAltbestand() {
+        foto("einrichten-altbestand") { SetupScreen(currentUrl = "http://nas:3000", onSave = {}, entwicklung = false) }
     }
 
     @Test
@@ -208,7 +213,6 @@ class BildschirmFotoTest(private val design: String, private val dunkel: Boolean
             Gutschein(id = 2, number = "6061 9876 5432", amount = 20.0, currency = "CHF").alsAnsicht()))
         foto("einstellungen") {
             androidx.compose.foundation.layout.Column {
-                KlartextSchalter(an = false, onAendern = {})
                 GutscheineCard(
                     zustand = gutscheine, onFeld = { _, _, _, _ -> }, onPinSchalten = {}, onBearbeiten = {},
                     onAbbrechen = {}, onSpeichern = {}, onLoeschen = {}, onPdfOeffnen = {}, onKopieren = { _, _ -> },

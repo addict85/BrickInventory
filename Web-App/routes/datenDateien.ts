@@ -25,6 +25,8 @@ router.get('/data/uploads/*pfad', requireLoginOrToken, async (req: WildcardReque
     const erlaubt = await scopeIds(userId).catch(() => [userId]);
     if (!erlaubt.includes(besitzer)) return res.status(403).send('Kein Zugriff');
   }
+  // Rechnungen und Gutscheine: nie in einen Zwischenspeicher.
+  res.setHeader('Cache-Control', 'private, no-store');
   liefereDatei(res, filePath);
 });
 

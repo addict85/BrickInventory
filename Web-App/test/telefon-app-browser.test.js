@@ -114,7 +114,12 @@ test('Telefon', { concurrency: 1, timeout: 240_000 }, async (t) => {
   });
   if (app.grund) { t.skip(app.grund); return; }
   const { b, bis } = app;
-  const reiter = async (name) => { await b.auswerten(`document.querySelector('.ntab[data-tab="${name}"]').click(); true`); await warte(400); };
+  // Gemessen wird der Endzustand: Ein Dialog, der gerade aufgeht (etwa die
+  // Einrichtung nach der Anmeldung), steht im ersten Bild auf scale(.985).
+  const ruhe = () => b.auswerten(`Promise.all(document.getAnimations()
+    .filter(a => a.effect?.getComputedTiming().iterations !== Infinity)
+    .map(a => a.finished.catch(() => {}))).then(() => true)`);
+  const reiter = async (name) => { await b.auswerten(`document.querySelector('.ntab[data-tab="${name}"]').click(); true`); await warte(400); await ruhe(); };
 
   await t.test('Skelett beim Laden der Teile', async () => {
     await b.auswerten(`document.querySelector('.ntab[data-tab="parts"]').click(); true`);
@@ -136,6 +141,7 @@ test('Telefon', { concurrency: 1, timeout: 240_000 }, async (t) => {
         ? await b.auswerten(`[...document.querySelectorAll('.einst-nav a')].map(a => a.dataset.arg)`) : [null];
       for (const seite of seiten) {
         if (seite) { await b.auswerten(`document.querySelector('.einst-nav a[data-arg="${seite}"]').click(); true`); await warte(100); }
+        await ruhe();
         const m = await b.auswerten(KLEINES);
         klein.push(...m.klein.map(k => `${r}: ${k}`));
         schrift.push(...m.schrift.map(k => `${r}: ${k}`));

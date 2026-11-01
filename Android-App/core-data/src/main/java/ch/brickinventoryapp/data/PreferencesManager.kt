@@ -7,7 +7,6 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
-import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import ch.brickinventoryapp.util.TokenVerschluesselung
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -52,8 +51,6 @@ class PreferencesManager @Inject constructor(
         const val NUTZER_CA = "nutzer_ca"
         /** Gesetzt, sobald die Vorgabe „Nutzer-CAs aus“ einmal angewandt wurde. */
         const val NUTZER_CA_AUS_ANGEWANDT = "nutzer_ca_aus_angewandt"
-        const val KLARTEXT_EXPERTE = "klartext_experte"
-        const val KLARTEXT_EXPERTE_UEBERNOMMEN = "klartext_experte_uebernommen"
         const val PIN_PRAEFIX = "pin:"
         const val SYSTEMFARBEN = "systemfarben"
 
@@ -68,9 +65,6 @@ class PreferencesManager @Inject constructor(
         val VORWAERMEN_ROAMING = booleanPreferencesKey("vorwaermen_roaming")
 
         val SERVER_URL   = stringPreferencesKey("server_url")
-        /** Hosts, zu denen der Nutzer Klartext ausdrücklich erlaubt hat (NetworkPolicy). */
-        val KLARTEXT_HOSTS = stringSetPreferencesKey("klartext_hosts")
-        val KLARTEXT_ALT_UEBERNOMMEN = booleanPreferencesKey("klartext_alt_uebernommen")
         /**
          * Der alte Klartext-Schlüssel: Auf Geräten mit älterer Fassung liegt das Token
          * dort. Er wird nur noch einmal zur Übernahme gelesen und dann entfernt;
@@ -82,8 +76,6 @@ class PreferencesManager @Inject constructor(
         val AUTH_TOKEN_ENC = stringPreferencesKey("auth_token_enc")
         /** Der Server, der den Token ausgab (NetworkPolicy.herkunft); nur dorthin geht er. */
         val TOKEN_HERKUNFT = stringPreferencesKey("token_herkunft")
-        /** „Server|Netz“, in denen eine Klartext-Anmeldung eingerichtet oder bestätigt wurde. */
-        val KLARTEXT_NETZE = stringSetPreferencesKey("klartext_netze")
         val USERNAME     = stringPreferencesKey("username")
         val CURRENCY     = stringPreferencesKey("currency")
         // "system" (folgt der OS-Sprache), "en" oder "de"
@@ -169,8 +161,9 @@ class PreferencesManager @Inject constructor(
     /** Leer = Altbestand ohne Bindung; dann gilt der eingetragene Server. */
     val tokenHerkunftState: StateFlow<String?> = _tokenHerkunftState.asStateFlow()
 
-    // Vier Spiegel: Adresse, Token, Herkunft, Klartext-Hosts. Erst wenn jeder
-    // einmal von der Platte kam, ist der Kaltstart vorbei.
+    // Drei Spiegel (Adresse, Token, Herkunft) und die einmaligen Aufräumarbeiten:
+    // Erst wenn alle vier durch sind, ist der Kaltstart vorbei und der erste
+    // Verbindungsaufbau darf los.
     private val startGelesen = java.util.concurrent.CountDownLatch(4)
 
     /**
@@ -220,36 +213,6 @@ class PreferencesManager @Inject constructor(
         return if (server.isBlank() || token.isBlank()) null else "$server\n$token"
     }
 
-    /** Synchron lesbar für den Interceptor, wie serverUrlState; null = noch nicht gelesen. */
-    private val _klartextHosts = MutableStateFlow<Set<String>?>(null)
-    val klartextHostsState: StateFlow<Set<String>?> = _klartextHosts.asStateFlow()
-
-    /** Für den Kaltstart: erst die einmalige Übernahme, dann die Platte. */
-    suspend fun klartextHostsJetzt(): Set<String> = _klartextHosts.value ?: run {
-        uebernimmAltenKlartextHost()
-        context.dataStore.data.first()[KLARTEXT_HOSTS] ?: emptySet()
-    }
-
-    override suspend fun bestaetigeKlartext(host: String) {
-        val h = host.lowercase()
-        _klartextHosts.value = (_klartextHosts.value ?: emptySet()) + h
-        context.dataStore.edit { it[KLARTEXT_HOSTS] = (it[KLARTEXT_HOSTS] ?: emptySet()) + h }
-    }
-
-    /**
-     * Einmalig beim ersten Start mit der Bestätigungsregel: Die schon
-     * eingerichtete Adresse gilt als bestätigt — sie wurde mit der Warnung
-     * gewählt, und ein Update soll die App nicht vom eigenen Server trennen.
-     */
-    private suspend fun uebernimmAltenKlartextHost() {
-        context.dataStore.edit { prefs ->
-            if (prefs[KLARTEXT_ALT_UEBERNOMMEN] == true) return@edit
-            prefs[KLARTEXT_ALT_UEBERNOMMEN] = true
-            val host = ch.brickinventoryapp.util.NetworkPolicy.klartextHost(prefs[SERVER_URL] ?: "") ?: return@edit
-            prefs[KLARTEXT_HOSTS] = (prefs[KLARTEXT_HOSTS] ?: emptySet()) + host
-        }
-    }
-
     // Synchron lesbarer Spiegel des Designs (SharedPreferences): setContent() läuft
     // vor dem ersten DataStore-Wert, und das erste Bild entstünde sonst im
     // Standard-Design. Der DataStore bleibt führend. Vor
@@ -265,18 +228,15 @@ class PreferencesManager @Inject constructor(
         spiegle(authToken, _authTokenState)
         spiegle(context.dataStore.data.map { it[TOKEN_HERKUNFT] }, _tokenHerkunftState)
         prefsScope.launch {
-            uebernimmAltenKlartextHost()
-            uebernimmAltenCaStand()
-            uebernimmKlartextStand()
-            spiegle(context.dataStore.data.map { it[KLARTEXT_HOSTS] ?: emptySet() }, _klartextHosts)
+            try {
+                uebernimmAltenCaStand()
+                // Aufräumen ist Nebensache: Scheitert es, startet die App trotzdem.
+                runCatching { context.dataStore.edit { KlartextReste.entferne(it) } }
+                designSpiegel.edit { KlartextReste.SPIEGEL.forEach { remove(it) } }
+            } finally {
+                startGelesen.countDown()
+            }
         }
-    }
-
-    override suspend fun bekannteNetze(): Set<String> =
-        context.dataStore.data.first()[KLARTEXT_NETZE] ?: emptySet()
-
-    override suspend fun merkeNetz(eintrag: String) {
-        context.dataStore.edit { it[KLARTEXT_NETZE] = (it[KLARTEXT_NETZE] ?: emptySet()) + eintrag }
     }
 
     override suspend fun saveServerUrl(url: String) {
@@ -430,22 +390,6 @@ class PreferencesManager @Inject constructor(
     private fun uebernimmAltenCaStand() {
         if (designSpiegel.getBoolean(NUTZER_CA_AUS_ANGEWANDT, false)) return
         designSpiegel.edit { putBoolean(NUTZER_CA, false); putBoolean(NUTZER_CA_AUS_ANGEWANDT, true) }
-    }
-
-    /**
-     * Expertenschalter: Klartext (http) zum eigenen Server. Synchron, weil der
-     * Wächter ihn je Anfrage liest. Vorgabe aus; wer schon über http eingerichtet
-     * ist, behält ihn (NetworkPolicy.klartextVorgabe), sonst sperrte das Update ihn aus.
-     */
-    fun klartextErlaubt(): Boolean = designSpiegel.getBoolean(KLARTEXT_EXPERTE, false)
-    fun setzeKlartextErlaubt(an: Boolean) {
-        designSpiegel.edit { putBoolean(KLARTEXT_EXPERTE, an) }
-    }
-
-    private suspend fun uebernimmKlartextStand() {
-        if (designSpiegel.getBoolean(KLARTEXT_EXPERTE_UEBERNOMMEN, false)) return
-        val an = ch.brickinventoryapp.util.NetworkPolicy.klartextVorgabe(context.dataStore.data.first()[SERVER_URL] ?: "")
-        designSpiegel.edit { putBoolean(KLARTEXT_EXPERTE, an); putBoolean(KLARTEXT_EXPERTE_UEBERNOMMEN, true) }
     }
 
     // Pins je Host und Port (util/ServerVertrauen.kt). apply genügt: Der Speicher

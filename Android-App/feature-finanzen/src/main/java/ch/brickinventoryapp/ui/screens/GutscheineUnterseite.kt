@@ -8,6 +8,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.*
+import kotlinx.coroutines.launch
 
 /**
  * Gutscheine — der erste Eintrag der Liste, weil sie im Laden gebraucht werden:
@@ -30,7 +31,9 @@ fun GutscheineUnterseite(
     // ist an die Komposition gebunden. Die Rueckmeldung laeuft ueber den
     // Snackbar des ViewModels, damit sie dort steht, wo alle anderen Meldungen
     // stehen.
-    val zwischenablage = androidx.compose.ui.platform.LocalClipboardManager.current
+    val zwischenablage = androidx.compose.ui.platform.LocalClipboard.current
+    val kopierBereich = androidx.compose.runtime.rememberCoroutineScope()
+    val etikett = stringResource(R.string.vouchers_title)
     // Beim Oeffnen DIESER Seite laden und nicht mehr beim Oeffnen der
     // Einstellungen: Wer die Sprache umstellt, braucht keine Gutscheinliste.
     LaunchedEffect(Unit) { gvm.ladeGutscheine() }
@@ -45,7 +48,11 @@ fun GutscheineUnterseite(
             onLoeschen = { gvm.loescheGutschein(it) },
             onPdfOeffnen = { gvm.oeffneGutscheinPdf(it) },
             onKopieren = { wert, istNummer ->
-                zwischenablage.setText(androidx.compose.ui.text.AnnotatedString(wert))
+                // Nummer und PIN zusammen sind Geld: als Geheimnis markiert.
+                kopierBereich.launch {
+                    zwischenablage.setClipEntry(androidx.compose.ui.platform.ClipEntry(
+                        ch.brickinventoryapp.util.geheimerClip(etikett, wert)))
+                }
                 gvm.meldeGutscheinKopiert(istNummer)
             },
             onGuthaben = { gvm.frageGuthabenAb(it) },

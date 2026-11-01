@@ -184,6 +184,7 @@ const NUR_WEB = new Map([
   ['/api/v1/auth/users/:X',        'Nutzer löschen — siehe /auth/users.'],
   ['/api/v1/auth/users/:X/admin',  'Verwalterrecht umschalten — siehe /auth/users.'],
   ['/api/v1/auth/users/:X/password', 'Fremdes Passwort zurücksetzen — siehe /auth/users.'],
+  ['/api/v1/auth/users/:X/aktiv',  'Fremdes Konto deaktivieren — siehe /auth/users.'],
   ['/api/v1/wanted-list/import/xml',
    'BrickLink-Wanted-Liste einlesen. NOCH NICHT in der App, und der Grund ' +
    'steht hier, damit ihn der Naechste nicht neu herleitet: Dieser Import ist ' +

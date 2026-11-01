@@ -429,7 +429,10 @@ Derselbe Wert steht in der Web-App unter Einstellungen → Sicherheit
   Firefox hat einen eigenen Speicher (Einstellungen → Zertifikate → Importieren).
 - **Android:** Einstellungen → Sicherheit → Verschlüsselung & Anmeldedaten →
   Zertifikat installieren → CA-Zertifikat. Für die BrickInventory-App nicht
-  nötig, nur für den Browser.
+  nötig, nur für den Browser: Die App pinnt den Fingerabdruck aus dem QR-Code
+  (`fp`) und braucht keine systemweite Installation. Eine im System
+  installierte Wurzel gilt für jede Adresse — wer nur die App nutzt, lässt sie
+  besser weg.
 - **iOS/iPadOS:** Datei in Safari laden → Einstellungen → Profil installieren;
   danach Allgemein → Info → Zertifikatsvertrauenseinstellungen → einschalten.
 
@@ -516,3 +519,155 @@ wechselt der Name, gelten die bisherigen Passkeys nicht mehr.
 Die alten Tabellen sind nach Migration 0083 entfernt. Eine Rückkehr geht nur
 über die Sicherung, die der Server vor offenen Migrationen anlegt
 (Abschnitt 5).
+
+## 16. Mailserver: Zertifikat immer geprüft
+
+Die Einstellung „Zertifikat des Mailservers nicht prüfen“ (`smtp_insecure_tls`)
+entfällt; die Verbindung zum Mailserver wird immer geprüft. Wer sie gesetzt
+hatte, sieht beim Start eine Warnung im Log und unter Einstellungen → E-Mail
+einen Hinweis. Ohne Eintrag schlägt der Versand an einen Server mit selbst
+signiertem Zertifikat mit einer Meldung fehl, die sagt, was fehlt.
+
+- **Zertifikat (PEM)**: das selbst signierte Zertifikat des Mailservers oder
+  seine eigene CA. Es ersetzt für SMTP die Liste der öffentlichen CAs.
+- **SHA-256-Fingerabdruck** (optional): nagelt genau ein Zertifikat fest; bei
+  Abweichung bricht der Versand ab. Mit Fingerabdruck entfällt der Abgleich
+  des Hostnamens, etwa wenn der Server über seine IP erreicht wird. Nach einem
+  Zertifikatswechsel ist er neu einzutragen.
+
+Abrufen lassen sich beide mit
+
+```
+openssl s_client -connect mail.example:465 </dev/null 2>/dev/null | openssl x509 > smtp.pem
+openssl x509 -in smtp.pem -noout -fingerprint -sha256
+```
+
+(für Port 587 zusätzlich `-starttls smtp`). Das Speichern verlangt wie jede
+Änderung am Mailserver das Verwalterpasswort.
+
+## 17. Gesundheitsprüfung: `live` und `ready`
+
+- `GET /api/v1/health/live` antwortet `{"status":"ok"}`, solange der Prozess
+  läuft — ohne Datenbank.
+- `GET /api/v1/health/ready` fragt die Datenbank (`SELECT 1`) und antwortet
+  sonst **503** `{"status":"unavailable"}`. Der Healthcheck in `compose.yaml`
+  zeigt jetzt hierher; eine eigene Überwachung sollte das auch tun.
+- `GET /api/v1/health` liefert ohne Anmeldung nur noch `status`; Startzustand,
+  Pool und Laufzeit sieht nur ein Verwalter.
+
+## 18. Sitzungscookie mit `__Host-`-Präfix
+
+- **Nach dem Update sind alle Browser einmal abgemeldet.** Das Sitzungscookie
+  heisst nicht mehr `connect.sid`, sondern mit HTTPS `__Host-bim.sid` (nur
+  über HTTPS, gilt für die ganze Adresse, keine Subdomain kann es setzen oder
+  überschreiben) und ohne HTTPS (`COOKIE_SECURE=0`) `bim.sid`. Ein altes
+  `connect.sid` wird nicht mehr gelesen; einfach neu anmelden. Die
+  Android-App meldet sich mit Token an und ist nicht betroffen. Wer in einem
+  eigenen Proxy oder Monitoring den Namen `connect.sid` verwendet, stellt ihn um.
+- Abmelden löscht das Cookie jetzt auch im Browser, statt nur die Sitzung
+  in der Datenbank zu beenden.
+
+## 19. Gutscheinnummern verschlüsselt
+
+- **Gutscheinnummern** liegen jetzt wie die PINs verschlüsselt in der
+  Datenbank (Migration 0087). Der erste Start schlüsselt den Bestand um, bevor
+  er Anfragen annimmt; danach nimmt die Datenbank keine Nummer im Klartext
+  mehr an. Doppelte erkennt ein HMAC (`nummer_suche`), dessen Schlüssel aus
+  dem Datenschlüssel abgeleitet ist. Ohne `data/.datenschluessel` bzw.
+  `DATA_KEY` sind nach einer Wiederherstellung damit auch die Nummern
+  verloren — den Schlüssel getrennt sichern (Abschnitt 13, `backup.sh`).
+- Die Kopien `vor_migration_*`, die der Start vor Migrationen anlegt,
+  enthielten Nummer und PIN im Klartext. Der Start verschlüsselt sie dort
+  ebenfalls; mit dem Datenschlüssel bleiben sie lesbar. Sicherungen von vor
+  dem Update (`backups/db_*.sql.gz`) enthalten die Nummern weiter im
+  Klartext: nach einem geglückten Update löschen oder wie den Schlüssel
+  verwahren.
+
+## 20. Mailserver nur noch verschlüsselt (STARTTLS)
+
+Ohne „SSL/TLS" (Port 465) verlangt der Versand jetzt STARTTLS ab TLS 1.2.
+Bietet der Mailserver auf Port 25/587 kein STARTTLS an, bricht der Versand
+ab, bevor Benutzername und Passwort gesendet werden; Einstellungen → E-Mail →
+„Test" sagt das. Abhilfe: Port 465 mit „SSL/TLS" wählen oder STARTTLS am
+Mailserver einschalten. Ein Mailserver ohne jede Verschlüsselung wird nicht
+mehr unterstützt — Passwort und Rücksetzlinks gingen sonst lesbar durchs Netz.
+
+## 21. Datenschlüssel ausserhalb von `data/`
+
+Der Schlüssel für die verschlüsselten Werte in der Datenbank (API-Schlüssel,
+SMTP-Passwort, Gutscheine, zweiter Faktor) lag in `data/.datenschluessel` —
+also in jeder Sicherung von `data/` und auf demselben Datenträger wie die
+Bilder. `compose.yaml` hängt jetzt `./schluessel` nach `/app/schluessel` ein
+und setzt `DATA_KEY_FILE=/app/schluessel/datenschluessel`; eine neue
+Installation legt den Schlüssel dort beim ersten Start an.
+
+**Eine bestehende Installation läuft ohne Zutun weiter**: Der Start nimmt
+`data/.datenschluessel` und warnt bei jedem Start. Umzug:
+
+```
+docker compose down
+mkdir -p schluessel
+mv data/.datenschluessel schluessel/datenschluessel
+docker compose up -d
+```
+
+Stehen beide Dateien mit verschiedenem Inhalt da, startet der Server nicht und
+nennt beide Pfade — dann die Datei behalten, die vorher in `data/` lag.
+`DATA_KEY` geht weiterhin allen Dateien vor. Wer lieber ein Docker-Secret
+nimmt, setzt `DATA_KEY_FILE` auf dessen Pfad (z. B. `/run/secrets/datenschluessel`).
+
+`scripts/backup.sh` nimmt den Schlüssel nie ins Archiv; mit
+`BACKUP_SCHLUESSEL_ZIEL=/anderer/ort` legt es ihn getrennt dort ab.
+`restore.sh` sucht ihn unter `schluessel/` (und noch unter `data/`).
+
+## 22. Geheimnisse an ihren Ort gebunden (Format v2)
+
+Verschlüsselte Werte tragen jetzt das Präfix `v2:` (Gutschein-PDFs: Kopf
+`BIENC2`). Neu ist der Kontext: Spalte, Konto und Zeile gehen als zusätzlich
+authentifizierte Daten in AES-GCM ein. Ein Geheimtext, den jemand mit
+Schreibzugriff auf die Datenbank in ein anderes Konto oder eine andere Zeile
+kopiert, lässt sich dort nicht mehr lesen.
+
+- **Der erste Start schlüsselt den Bestand um**, bevor er Anfragen annimmt
+  (Migration 0088, dann `startup/datenbank.ts`): API-Schlüssel und
+  SMTP-Passwort, TOTP-Geheimnisse, Gutscheinnummern und -PINs (auch in den
+  Kopien `vor_migration_*`), gespeicherte Antworten der Idempotency-Keys und
+  die Gutschein-PDFs unter `data/vouchers/`. Das Protokoll meldet die Zahl.
+- Danach liest der Server nur noch `v2`. Klartext oder `v1`, der später in
+  die Tabelle geschrieben wird, gilt als nicht lesbar (Warnung im Protokoll);
+  ein Neustart schlüsselt ihn wieder um.
+- Eine Sicherung von vor dem Update lässt sich weiter einspielen: Der nächste
+  Start schlüsselt sie um. Ohne den Datenschlüssel bleibt sie unlesbar wie
+  bisher.
+
+## 23. Der App-Container sieht den Schlüssel der CA nicht mehr
+
+`compose.yaml` hängte Caddys Ordner `pki/authorities/local` samt `root.key` in
+die App ein. Jetzt kopiert Caddys Start allein `root.crt` in das Volume
+`ca-wurzel` (alle 5 s, nur bei Änderung); die App hängt nur dieses ein und
+liest `CA_ZERTIFIKAT=/caddy-ca/root.crt`. Ein Datei-Mount von `root.crt` wäre
+kürzer, scheitert aber beim ersten Start: Fehlt die Datei noch, legt Docker an
+ihrer Stelle ein Verzeichnis an.
+
+Nichts zu tun ausser die neue `compose.yaml` zu übernehmen und
+`docker compose up -d` — die CA in `./caddy/data/` bleibt dieselbe, Geräte und
+QR-Codes gelten weiter. Wer `compose.yaml` angepasst hat: Die Zeile
+`./caddy/data/caddy/pki/authorities/local:/caddy-ca:ro` bei `app` ersetzen,
+`command:` und das Volume bei `caddy` und `volumes: ca-wurzel:` übernehmen.
+
+## 24. Passwortregel und Registrierung
+
+- **Passwörter**: mindestens 8 Zeichen, höchstens 72 Byte (bcrypt las bisher
+  nur die ersten 72 und schnitt den Rest still ab; Umlaute zählen doppelt),
+  und nicht auf der mitgelieferten Liste häufiger und aus Datenlecks bekannter
+  Passwörter (`src/infra/haeufige-passwoerter.txt`, keine Netzabfrage) und
+  nicht gleich dem Benutzernamen. Gilt für Registrierung, Ändern,
+  Zurücksetzen, Konto anlegen und Passwort setzen durch den Verwalter.
+  Bestehende Passwörter bleiben gültig; die Regel greift beim nächsten Setzen.
+- **`ADMIN_PASSWORD`** wird beim ersten Start nur übernommen, wenn es die
+  Regel erfüllt; sonst legt der Server ein zufälliges Startpasswort an
+  (Protokoll), das beim ersten Login zu ändern ist.
+- **Registrierung**: Ein schon vergebener Benutzername ergibt dieselbe
+  Antwort wie eine erfolgreiche Registrierung; die angegebene Adresse bekommt
+  eine Mail „Benutzername schon vergeben". So lässt sich ohne Postfach nicht
+  mehr abfragen, welche Konten es gibt.

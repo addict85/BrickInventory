@@ -2,37 +2,23 @@ package ch.brickinventoryapp.di
 
 import ch.brickinventoryapp.core.data.BuildConfig
 import ch.brickinventoryapp.data.PreferencesManager
-import ch.brickinventoryapp.util.BeweisSpeicher
+import ch.brickinventoryapp.util.NetworkPolicy
 import ch.brickinventoryapp.util.VersionsHinweis
 import okhttp3.OkHttpClient
-import okhttp3.logging.HttpLoggingInterceptor
 import java.util.concurrent.TimeUnit
-
-/** Gemeinsam für API- und Bild-Client: ein Beweis je Server, Netz und Token. */
-private val beweise = BeweisSpeicher()
 
 /**
  * Die Zugangslage des Geräts. Die Werte kommen aus dem Speicherspiegel des
  * PreferencesManagers; nur beim Kaltstart wird auf die Platte gewartet, ohne
  * runBlocking (PreferencesManager.warteAufStart).
  */
-private class GeraeteZugang(
-    private val prefs: PreferencesManager,
-    private val ctx: android.content.Context,
-) : Zugangslage {
-    private fun bereit() {
-        if (prefs.serverUrlState.value == null || prefs.authTokenState.value == null ||
-            prefs.klartextHostsState.value == null) prefs.warteAufStart()
-    }
+private class GeraeteZugang(private val prefs: PreferencesManager) : Zugangslage {
+    // Immer warten, nicht nur ohne Spiegelwert: Erst danach ist auch der alte
+    // Stand der Nutzer-CAs zurückgesetzt. Nach dem Kaltstart kehrt es sofort zurück.
+    private fun bereit() = prefs.warteAufStart()
     override fun serverUrl(): String { bereit(); return prefs.serverUrlState.value.orEmpty() }
     override fun token(): String { bereit(); return prefs.authTokenState.value.orEmpty() }
     override fun tokenHerkunft(): String? { bereit(); return prefs.tokenHerkunftState.value }
-    override fun klartextHosts(): Set<String> { bereit(); return prefs.klartextHostsState.value.orEmpty() }
-    override fun klartextErlaubt(): Boolean { bereit(); return prefs.klartextErlaubt() }
-    override fun netz(): String = runCatching {
-        (ctx.getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as? android.net.ConnectivityManager)
-            ?.activeNetwork?.toString()
-    }.getOrNull() ?: "?"
 }
 
 private fun vertrauen(ks: java.security.KeyStore?): javax.net.ssl.X509ExtendedTrustManager {
@@ -43,23 +29,27 @@ private fun vertrauen(ks: java.security.KeyStore?): javax.net.ssl.X509ExtendedTr
 
 /**
  * System-CAs nach network_security_config (ohne Nutzer-CAs), dazu der
- * AndroidCAStore samt Nutzer-CAs für die ausdrückliche Einstellung; darüber das
- * Pinning des eigenen Servers (util/ServerVertrauen.kt).
+ * AndroidCAStore samt Nutzer-CAs für die ausdrückliche Einstellung — nur für den
+ * eigenen Server; darüber dessen Pinning (util/ServerVertrauen.kt).
  */
 private var gemeinsamesVertrauen: ch.brickinventoryapp.util.PinVertrauen? = null
 
 @Synchronized
-private fun serverVertrauen(prefs: PreferencesManager, frage: ch.brickinventoryapp.util.ZertifikatsFrage): ch.brickinventoryapp.util.PinVertrauen =
-    gemeinsamesVertrauen ?: ch.brickinventoryapp.util.PinVertrauen(
+private fun serverVertrauen(prefs: PreferencesManager, frage: ch.brickinventoryapp.util.ZertifikatsFrage): ch.brickinventoryapp.util.PinVertrauen {
+    gemeinsamesVertrauen?.let { return it }
+    val system = vertrauen(null)
+    return ch.brickinventoryapp.util.PinVertrauen(
         kette = ch.brickinventoryapp.util.WahlVertrauen(
-            system = vertrauen(null),
+            system = system,
             mitNutzer = lazy { vertrauen(java.security.KeyStore.getInstance("AndroidCAStore").apply { load(null) }) },
             nutzerErlaubt = { prefs.nutzerCaErlaubt() },
         ),
         pins = prefs,
         eigenerServer = { ch.brickinventoryapp.util.pinSchluessel(prefs.serverUrlState.value.orEmpty()) },
         frage = frage,
+        fremdeHosts = system,
     ).also { gemeinsamesVertrauen = it }
+}
 
 /** API-, Bild- und SSE-Client: derselbe Wächter (ServerWaechter.kt), eigene Zeitgrenzen. */
 internal fun buildInterceptorClient(
@@ -88,10 +78,13 @@ internal fun buildInterceptorClient(
             // Auch der Bild-Client: Sonst fehlten Bildanfragen im Logcat, und ihr
             // Fehlen sähe aus wie ein Befund statt wie eine Lücke der Beobachtung.
             if (BuildConfig.DEBUG) {
-                addInterceptor(HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BASIC })
+                addInterceptor(ch.brickinventoryapp.util.netzMitschnitt())
             }
         }
-        .addInterceptor(ServerWaechter(GeraeteZugang(prefs, ctx), isApiClient, beweise,
+        // Eine Umleitung von https auf http liefe am Wächter vorbei, der nur die
+        // erste Anfrage sieht.
+        .followSslRedirects(false)
+        .addInterceptor(ServerWaechter(GeraeteZugang(prefs), isApiClient, NetworkPolicy.entwicklung,
             sitzungAbgelaufen = { sessionExpired.notifyExpired() }, versionsMeldung = versionsMeldung,
             // Die Sprache aus den Ressourcen: Der Server antwortet in der, die die Oberfläche zeigt.
             eigeneKoepfe = { original, ziel ->

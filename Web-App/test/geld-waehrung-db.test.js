@@ -143,8 +143,10 @@ test('Rappen erst am Ende, Währungen ehrlich', { concurrency: 1 }, async (t) =>
     await db.run('INSERT INTO sets (user_id, set_number) VALUES ($1,$2)', [ohne, SN]);
     await db.run('INSERT INTO set_acquisitions (user_id, set_number, quantity) VALUES ($1,$2,1)', [ohne, SN]);
     assert.equal((await db.get('SELECT currency FROM set_acquisitions WHERE user_id=$1', [ohne])).currency, 'GBP');
-    await db.run(`INSERT INTO vouchers (user_id, number, amount) VALUES ($1,'1234567',10), ($2,'7654321',10)`, [ohne, uid]);
-    const g = await db.all('SELECT user_id, currency FROM vouchers WHERE user_id = ANY($1) ORDER BY number', [[uid, ohne]]);
+    const { gutscheinAnlegen } = _req('src/gutscheine/dienst.js');
+    await gutscheinAnlegen(ohne, { number: '1234567', pin: null, amount: 10, currency: null });
+    await gutscheinAnlegen(uid, { number: '7654321', pin: null, amount: 10, currency: null });
+    const g = await db.all('SELECT user_id, currency FROM vouchers WHERE user_id = ANY($1) ORDER BY id', [[uid, ohne]]);
     assert.deepEqual(g.map(z => z.currency), ['GBP', 'CHF']);
   });
 });

@@ -81,6 +81,8 @@ enum class Fehlerart {
     VERBINDUNG_BEENDET,
     /** Sitzung abgelaufen (HTTP 401). */
     SITZUNG_ABGELAUFEN,
+    /** Die Server-Adresse ist http; die App sendet nur über https (util/KlartextAbgelehnt). */
+    KLARTEXT,
     /** Sonstiges, ohne nähere Einordnung. */
     UNBEKANNT,
 }

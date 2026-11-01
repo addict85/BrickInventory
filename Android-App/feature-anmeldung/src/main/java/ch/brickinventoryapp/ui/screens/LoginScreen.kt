@@ -53,9 +53,6 @@ fun LoginScreen(
     onRegistrieren: (String, String, String, String, String) -> Unit,
     onPasswortVergessen: (String) -> Unit,
     onChangeServer: () -> Unit,
-    netzFrage: Boolean = false,
-    onNetzBestaetigt: (String, String, String?) -> Unit = { _, _, _ -> },
-    onNetzAbgelehnt: () -> Unit = {},
     vollerZugriff: Boolean = false,
     onVollerZugriff: (Boolean) -> Unit = {},
     /** null: kein Passkey-Knopf (etwa in Vorschau und Test). */
@@ -68,24 +65,6 @@ fun LoginScreen(
     var showPw   by rememberSaveable { mutableStateOf(false) }
     var code     by rememberSaveable { mutableStateOf("") }
     val focusMgr = LocalFocusManager.current
-
-    // Das Passwort geht erst nach einem ausdrücklichen Ja hinaus (AnmeldungViewModel.login).
-    if (netzFrage) {
-        AlertDialog(
-            onDismissRequest = onNetzAbgelehnt,
-            icon = { Icon(Icons.Default.Warning, null) },
-            title = { Text(stringResource(R.string.login_netz_titel)) },
-            text = { Text(stringResource(R.string.login_netz_text, serverUrl)) },
-            confirmButton = {
-                TextButton(onClick = { onNetzBestaetigt(username, password, code.takeIf { codeNoetig }) }) {
-                    Text(stringResource(R.string.login_netz_trotzdem))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = onNetzAbgelehnt) { Text(stringResource(R.string.common_cancel)) }
-            },
-        )
-    }
 
     // Rollbar: Auf einem kleinen Telefon, mit offener Tastatur oder grosser Schrift
     // läge der Anmeldeknopf sonst unerreichbar unter dem Rand.

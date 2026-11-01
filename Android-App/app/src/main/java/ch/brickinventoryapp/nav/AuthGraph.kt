@@ -68,23 +68,21 @@ fun NavGraphBuilder.authGraph(
             // Momentaufnahme vom Aufbau des Graphen (der NavHost-Builder läuft nur einmal).
             val anmeldungVm: AnmeldungViewModel = aktivitaetsViewModel()
             val state by anmeldungVm.state.collectAsStateWithLifecycle()
-            val klartextErlaubt by vm.klartextErlaubt.collectAsStateWithLifecycle()
             SetupScreen(
                 currentUrl = state.serverUrl,
-                klartextErlaubt = klartextErlaubt,
-                onKlartextErlaubt = { vm.setKlartextErlaubt(it) },
                 // Ein anderer Server meldet über den vollen Weg der App ab, bevor die
                 // neue Adresse gilt (AnmeldungViewModel.saveServerUrl).
-                onSave = { url, klartextBestaetigt ->
-                    anmeldungVm.saveServerUrl(url, klartextBestaetigt, abmelden = { vm.logout().join() })
-                    navController.navigate(Screen.Login.route) {
-                        popUpTo(Screen.Setup.route) { inclusive = true }
+                onSave = { url ->
+                    if (anmeldungVm.saveServerUrl(url, abmelden = { vm.logout().join() })) {
+                        navController.navigate(Screen.Login.route) {
+                            popUpTo(Screen.Setup.route) { inclusive = true }
+                        }
                     }
                 },
                 // Erst nach der Bestätigung im Einrichtungsbildschirm; die Anmeldung
                 // springt nach Erfolg in die Galerie.
-                onQrScanned = { qr, klartextBestaetigt ->
-                    anmeldungVm.loginWithQrToken(qr.url, qr.token, klartextBestaetigt,
+                onQrScanned = { qr ->
+                    anmeldungVm.loginWithQrToken(qr.url, qr.token,
                         abmelden = { vm.logout().join() }, fingerabdruck = qr.fingerabdruck)
                     navController.navigate(Screen.Login.route) {
                         popUpTo(Screen.Setup.route) { inclusive = true }
@@ -122,9 +120,6 @@ fun NavGraphBuilder.authGraph(
                 kontoMeldung = anmeldung.meldung,
                 kontoFehler = anmeldung.fehler,
                 onLogin = { user, pw, code -> anmeldungVm.login(user, pw, code) },
-                netzFrage = anmeldung.netzFrage,
-                onNetzBestaetigt = { user, pw, code -> anmeldungVm.login(user, pw, code, netzBestaetigt = true) },
-                onNetzAbgelehnt = { anmeldungVm.netzFrageVerwerfen() },
                 vollerZugriff = anmeldung.vollerZugriff,
                 onVollerZugriff = { anmeldungVm.setzeVollerZugriff(it) },
                 // Die Abfrage hängt an der Activity (Auswahldialog des Systems); das ViewModel lebt länger.

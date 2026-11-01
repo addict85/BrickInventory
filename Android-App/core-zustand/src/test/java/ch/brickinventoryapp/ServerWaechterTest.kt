@@ -2,8 +2,7 @@ package ch.brickinventoryapp
 
 import ch.brickinventoryapp.di.ServerWaechter
 import ch.brickinventoryapp.di.Zugangslage
-import ch.brickinventoryapp.util.BeweisSpeicher
-import ch.brickinventoryapp.util.ServerBeweis
+import ch.brickinventoryapp.util.KlartextAbgelehnt
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.mockwebserver.Dispatcher
@@ -17,18 +16,17 @@ import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Before
 import org.junit.Test
-import java.io.IOException
 import java.util.Collections
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * Der Wächter aller Anfragen an den eigenen Server, ausgeführt gegen einen
- * Testserver im Klartext (localhost) — also mit Serverbeweis.
+ * Testserver über http auf localhost. Das darf nur der Debug-Build; die Tests der
+ * Regeln für Token und Köpfe laufen darum mit `entwicklung = true`, die Tests des
+ * Klartext-Verbots mit beiden Werten.
  *
  * Gegenproben (am 29.10.2026 gemessen, kotlinc gegen di/ServerWaechter.kt):
- *   A  in pruefeServer() wieder `if (code != 200 && grund == "token_ungueltig")
- *      sitzungAbgelaufen()` → rot „ein abgewiesener Serverbeweis meldet nicht ab …“
  *   B  `tokenGehoertHierher` immer true → rot „der Token geht nur an den Server,
  *      der ihn ausgab“ und „ein selbst gesetzter Kopf …“
  *   C  `unserServer` ohne isSameOrigin (nur serverUrl.isNotBlank()) → rot
@@ -40,8 +38,11 @@ import java.util.concurrent.atomic.AtomicInteger
  *      wird auf den Server samt Pfad umgeschrieben“
  *   G  eigeneKoepfe() nicht aufgerufen → rot „der eigene Server bekommt Sprache
  *      und Fassung“
- *   I  (30.10.2026) lage.klartextErlaubt() nicht an isCleartextAllowed()
- *      weitergereicht → rot „ohne Expertenschalter erreicht keine Klartext-Anfrage …“
+ *   I  (01.11.2026) die Prüfung verbindungErlaubt() im Wächter entfernt → rot
+ *      „im Release-Build erreicht keine http-Anfrage den Server …“ und „auch der
+ *      Debug-Build schickt http nur …“
+ *   K  (01.11.2026) im Wächter `entwicklung` fest auf true → rot „im
+ *      Release-Build erreicht keine http-Anfrage den Server …“
  *   H  (30.10.2026) /settings/theme vom Token ausgenommen (`mitToken` falsch für
  *      Pfade auf "/settings/theme") → rot „das Design des Kontos wird mit Token geholt“
  *   J  (31.10.2026) im Wächter die Meldung über versionsHinweis() entfernt → rot „ein
@@ -54,8 +55,6 @@ class ServerWaechterTest {
 
     private val server = MockWebServer()
     private val anfragen = Collections.synchronizedList(mutableListOf<Pair<String, String?>>())
-    /** Wie der Server auf den Beweis antwortet: "echt", "falsch" oder "abgewiesen". */
-    @Volatile private var beweisArt = "echt"
     private val codes = Collections.synchronizedMap(mutableMapOf<String, Int>())
     private val abgelaufen = AtomicInteger()
     private val entzogen = AtomicInteger()
@@ -66,14 +65,10 @@ class ServerWaechterTest {
         var url: String,
         var tokens: ArrayDeque<String> = ArrayDeque(listOf(TOKEN)),
         var herkunft: String? = null,
-        var klartext: Boolean = true,
     ) : Zugangslage {
         override fun serverUrl() = url
         override fun token(): String = if (tokens.size > 1) tokens.removeFirst() else tokens.first()
         override fun tokenHerkunft() = herkunft
-        override fun klartextHosts() = emptySet<String>()
-        override fun klartextErlaubt() = klartext
-        override fun netz() = "heim"
     }
 
     @Before
@@ -82,14 +77,6 @@ class ServerWaechterTest {
             override fun dispatch(request: RecordedRequest): MockResponse {
                 val pfad = request.path.orEmpty()
                 anfragen += pfad to request.getHeader("Authorization")
-                if (pfad.endsWith("/auth/serverbeweis")) {
-                    val nonce = Regex("\"nonce\":\"([0-9a-f]+)\"").find(request.body.readUtf8())!!.groupValues[1]
-                    return when (beweisArt) {
-                        "echt" -> MockResponse().setBody("""{"success":true,"beweis":"${ServerBeweis.erwartet(TOKEN, nonce)}"}""")
-                        "falsch" -> MockResponse().setBody("""{"success":true,"beweis":"${"0".repeat(64)}"}""")
-                        else -> MockResponse().setResponseCode(401).setBody("""{"success":false,"code":"token_ungueltig"}""")
-                    }
-                }
                 return MockResponse().setResponseCode(codes[pfad.substringBefore('?')] ?: 200)
                     .setBody(ruempfe[pfad.substringBefore('?')] ?: """{"success":true}""")
             }
@@ -102,8 +89,8 @@ class ServerWaechterTest {
 
     private fun basis() = server.url("/").toString().trimEnd('/')
 
-    private fun client(lage: Zugangslage, api: Boolean = true) = OkHttpClient.Builder()
-        .addInterceptor(ServerWaechter(lage, api, BeweisSpeicher(), sitzungAbgelaufen = { abgelaufen.incrementAndGet() },
+    private fun client(lage: Zugangslage, api: Boolean = true, entwicklung: Boolean = true) = OkHttpClient.Builder()
+        .addInterceptor(ServerWaechter(lage, api, entwicklung, sitzungAbgelaufen = { abgelaufen.incrementAndGet() },
             eigeneKoepfe = { _, ziel -> ziel.header("Accept-Language", "de") }, rechteEntzogen = { entzogen.incrementAndGet() }))
         .readTimeout(2, TimeUnit.SECONDS).build()
 
@@ -113,26 +100,7 @@ class ServerWaechterTest {
     private fun anfragenAn(teil: String) = synchronized(anfragen) { anfragen.filter { teil in it.first } }
 
     @Test
-    fun `ein abgewiesener Serverbeweis meldet nicht ab und sendet den Token nicht`() {
-        beweisArt = "abgewiesen"
-        try {
-            hole(client(Lage(basis())), "http://localhost:3000/api/v1/sets")
-            fail("Ohne Beweis darf die Anfrage nicht hinausgehen")
-        } catch (_: IOException) { }
-        assertEquals("Ein fremder Server darf keine Abmeldung erzwingen", 0, abgelaufen.get())
-        assertTrue("Der Token ging trotzdem hinaus", anfragenAn("/api/v1/sets").isEmpty())
-    }
-
-    @Test
-    fun `ein falscher Beweis meldet ebenfalls nicht ab`() {
-        beweisArt = "falsch"
-        runCatching { hole(client(Lage(basis())), "http://localhost:3000/api/v1/sets") }
-        assertEquals(0, abgelaufen.get())
-        assertTrue(anfragenAn("/api/v1/sets").isEmpty())
-    }
-
-    @Test
-    fun `nach gueltigem Beweis meldet ein 401 die abgelaufene Sitzung`() {
+    fun `ein 401 auf den Token meldet die abgelaufene Sitzung`() {
         codes["/api/v1/sets"] = 401
         val c = client(Lage(basis()))
         assertEquals(401, hole(c, "http://localhost:3000/api/v1/sets"))
@@ -180,7 +148,6 @@ class ServerWaechterTest {
 
     @Test
     fun `der eigene Server bekommt Sprache und Fassung`() {
-        // Ohne Token, damit kein Serverbeweis vorausgeht.
         hole(client(Lage(basis(), tokens = ArrayDeque(listOf(""))), api = false), basis() + "/api/v1/stats")
         val r = server.takeRequest()
         assertEquals("de", r.getHeader("Accept-Language"))
@@ -198,7 +165,7 @@ class ServerWaechterTest {
         }
         val hinweise = Collections.synchronizedList(mutableListOf<ch.brickinventoryapp.util.VersionsHinweis>())
         val c = OkHttpClient.Builder()
-            .addInterceptor(ServerWaechter(Lage(basis(), tokens = ArrayDeque(listOf(""))), true, BeweisSpeicher(),
+            .addInterceptor(ServerWaechter(Lage(basis(), tokens = ArrayDeque(listOf(""))), true, true,
                 sitzungAbgelaufen = { abgelaufen.incrementAndGet() }, versionsMeldung = { hinweise += it }))
             .readTimeout(2, TimeUnit.SECONDS).build()
         assertEquals(426, hole(c, basis() + "/api/v1/auth/profile"))
@@ -237,23 +204,30 @@ class ServerWaechterTest {
         assertEquals(0, abgelaufen.get())
     }
 
+    /** Die Regel des Release-Builds: kein http, auch nicht zum Gerät selbst. */
     @Test
-    fun `Klartext zu einer oeffentlichen Adresse bricht vor dem Netz ab`() {
-        try {
-            hole(client(Lage("http://8.8.8.8:3000")), "http://localhost:3000/api/v1/sets")
-            fail("Klartext ins Internet muss abbrechen")
-        } catch (e: IOException) {
-            assertTrue(e.message.orEmpty().contains("8.8.8.8"))
+    fun `im Release-Build erreicht keine http-Anfrage den Server, auch nicht localhost`() {
+        val c = client(Lage(basis()), entwicklung = false)
+        for (url in listOf("http://localhost:3000/api/v1/sets", basis() + "/images/sets/1.jpg")) {
+            try {
+                hole(c, url)
+                fail("$url darf nicht hinausgehen")
+            } catch (e: KlartextAbgelehnt) {
+                assertEquals(server.url("/").host, e.host)
+            }
         }
+        assertEquals("Weder Token noch Anfrage gingen hinaus", 0, server.requestCount)
+        assertEquals(0, abgelaufen.get())
     }
 
+    /** Der Debug-Build darf http nur zu den drei Hosts seiner Network-Security-Config. */
     @Test
-    fun `ohne Expertenschalter erreicht keine Klartext-Anfrage den Server`() {
-        try {
-            hole(client(Lage(basis(), klartext = false)), "http://localhost:3000/api/v1/sets")
-            fail("Ohne Expertenschalter darf nichts im Klartext hinaus")
-        } catch (e: IOException) {
-            assertTrue(e.message.orEmpty(), e.message.orEmpty().contains("Expertenschalter"))
+    fun `auch der Debug-Build schickt http nur zum Geraet und zum Emulator-Host`() {
+        for (adresse in listOf("http://nas:3000", "http://192.168.1.50:3000", "http://brick.example.org")) {
+            try {
+                hole(client(Lage(adresse)), "http://localhost:3000/api/v1/sets")
+                fail("$adresse darf nicht im Klartext erreicht werden")
+            } catch (_: KlartextAbgelehnt) { }
         }
         assertEquals(0, server.requestCount)
     }

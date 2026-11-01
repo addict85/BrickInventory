@@ -43,11 +43,12 @@ test('Browser ohne Token', { concurrency: 1 }, async (t) => {
     `INSERT INTO users (username, password_hash, is_active, email_verified) VALUES ($1, $2, true, true) RETURNING id`,
     [NAME, await bcrypt.hash(PASS, 4)])).id;
 
+  const KEKS = _req('src/infra/sitzungsKeks.js').sitzungsKeksName();
   const app = express();
   app.use(express.json());
   app.use(session({
     store: new pgSession({ pool: db.pool, tableName: 'user_sessions' }),
-    secret: process.env.SESSION_SECRET, resave: false, saveUninitialized: false,
+    secret: process.env.SESSION_SECRET, resave: false, saveUninitialized: false, name: KEKS,
   }));
   app.use('/api/v1/auth', _req('routes/auth.js'));
   app.use('/api/v1', _req('routes/api_v1/settings.js'));
@@ -77,7 +78,7 @@ test('Browser ohne Token', { concurrency: 1 }, async (t) => {
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.equal(r.body.token, undefined, 'Der Browser bekommt einen Token, den ein Skript lesen könnte');
     assert.equal(await tokens(), 0);
-    assert.ok(r.cookie.startsWith('connect.sid='), 'Ohne Token muss die Sitzung tragen');
+    assert.ok(r.cookie.startsWith(`${KEKS}=`), 'Ohne Token muss die Sitzung tragen');
     eigene = r.cookie;
   });
 

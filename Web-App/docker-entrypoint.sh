@@ -69,6 +69,13 @@ chown -h brickinv:brickinv \
   /app/data/images/parts \
   /app/data/images/minifigs 2>/dev/null || true
 
+# Der Datenschlüssel liegt ausserhalb von /app/data (compose.yaml). Docker legt
+# den Ordner beim ersten Start root gehörend an; der Server legt die Datei an
+# und muss sie lesen.
+for f in /app/schluessel /app/schluessel/datenschluessel; do
+  [ -e "$f" ] && chown -h brickinv:brickinv "$f" 2>/dev/null || true
+done
+
 # ── Die Marke: warum auch die SUCHE nicht bei jedem Start laufen soll ────────
 #
 # Marcos Rueckfrage: „Kann dieser Schritt mit den Dateien nicht erfolgen
@@ -134,23 +141,6 @@ case "${BRICKINV_CHOWN:-auto}" in
     fi
     ;;
 esac
-
-# ── Wurzelzertifikat der internen CA (Caddy) ────────────────────────────────
-# Caddy legt seine Dateien nur für root lesbar ab; der Server läuft als
-# brickinv. Kopiert wird nur das öffentliche Zertifikat, nie ein Schlüssel.
-# Beim ersten Start legt Caddy die CA womöglich erst nach uns an — dann holt
-# eine Schleife im Hintergrund die Kopie bis zu zwei Minuten lang nach.
-CA_QUELLE=/caddy-ca/root.crt
-kopiereCa() {
-  [ -f "$CA_QUELLE" ] || return 1
-  mkdir -p "$(dirname "$CA_ZERTIFIKAT")" \
-    && cp "$CA_QUELLE" "$CA_ZERTIFIKAT.neu" && chmod 644 "$CA_ZERTIFIKAT.neu" \
-    && mv "$CA_ZERTIFIKAT.neu" "$CA_ZERTIFIKAT"
-}
-if [ -n "$CA_ZERTIFIKAT" ] && [ -d /caddy-ca ] && ! kopiereCa; then
-  echo "[entrypoint] Wurzelzertifikat der CA noch nicht da — wird nachgeholt, sobald Caddy es anlegt."
-  ( i=0; while [ "$i" -lt 120 ]; do kopiereCa && exit 0; sleep 1; i=$((i+1)); done ) &
-fi
 
 echo "[entrypoint] Server wird gestartet (Rolle ${ROLLE:-beides})."
 

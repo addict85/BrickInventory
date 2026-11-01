@@ -193,7 +193,7 @@
         </div>
         <div class="fg"><label for="reg-user" data-i18n="register.username">Benutzername *</label><input type="text" id="reg-user" autocomplete="username" /></div>
         <div class="fg"><label for="reg-email" data-i18n="register.email_label">E-Mail *</label><input type="email" id="reg-email" autocomplete="email" /></div>
-        <div class="fg"><label for="reg-pass" data-i18n="register.password">Passwort * (min. 8 Zeichen)</label><input type="password" id="reg-pass" autocomplete="new-password" /></div>
+        <div class="fg"><label for="reg-pass" data-i18n="register.password">Passwort * (min. 8 Zeichen, kein häufiges)</label><input type="password" id="reg-pass" autocomplete="new-password" /></div>
         <div class="fg"><label for="reg-pass2" data-i18n="register.password_repeat">Passwort wiederholen *</label><input type="password" id="reg-pass2" autocomplete="new-password" /></div>
         <div class="fg"><label for="reg-lang" data-i18n="register.language">Sprache</label>
           <select id="reg-lang">
@@ -228,7 +228,7 @@
       <div class="lerr" id="reset-err"></div>
       <div class="erfolg-box" id="reset-success" data-stil="display:none"></div>
       <form class="sform" id="reset-form" data-submit="btn-reset">
-        <div class="fg"><label for="reset-pass" data-i18n="reset.new_password_label">Neues Passwort (min. 8 Zeichen)</label><input type="password" id="reset-pass" autocomplete="new-password" /></div>
+        <div class="fg"><label for="reset-pass" data-i18n="reset.new_password_label">Neues Passwort (min. 8 Zeichen, kein häufiges)</label><input type="password" id="reset-pass" autocomplete="new-password" /></div>
         <div class="fg"><label for="reset-pass2" data-i18n="reset.repeat">Passwort wiederholen</label><input type="password" id="reset-pass2" autocomplete="new-password" /></div>
         <button type="button" class="btn bp knopf-breit" id="btn-reset" data-i18n="reset.button">Passwort ändern</button>
       </form>
@@ -963,7 +963,9 @@
             <div class="fg"><label for="smtp-pass" data-i18n="settings.smtp.pass">Passwort</label><div class="geheim-feld"><input type="password" id="smtp-pass" autocomplete="off" spellcheck="false" /><button type="button" class="btn bs geheim-knopf" data-click="geheimUmschalten" data-arg="smtp-pass" aria-pressed="false" aria-controls="smtp-pass" aria-label="Anzeigen" data-i18n="settings.secret_show" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-auge"/></svg></button></div></div>
             <div class="fg"><label for="smtp-from" data-i18n="settings.smtp.from">Absender (Von)</label><input type="text" id="smtp-from" placeholder="BrickInventory Manager &lt;noreply@example.com&gt;" /></div>
             <div class="fg"><label class="zeile mittig luecke-8 zeiger"><input class="w-auto" type="checkbox" id="smtp-secure" aria-label="SMTP-Verschlüsselung" data-i18n="settings.smtp.secure_label" data-i18n-attr="aria-label" /> TLS/SSL (Port 465)</label></div>
-            <div class="fg"><label class="zeile mittig luecke-8 zeiger"><input class="w-auto" type="checkbox" id="smtp-insecure" aria-label="Zertifikat des Mailservers nicht prüfen" data-i18n="settings.smtp.insecure_tls" data-i18n-attr="aria-label" /> <span data-i18n="settings.smtp.insecure_tls">Zertifikat des Mailservers nicht prüfen (nur für selbst signierte Zertifikate)</span></label></div>
+            <p class="hinweis-warnung" id="smtp-tls-altlast" role="status" data-stil="display:none" data-i18n="settings.smtp.tls_altlast">Die Ausnahme „Zertifikat nicht prüfen“ gibt es nicht mehr. Für ein selbst signiertes Zertifikat bitte hier das Zertifikat (PEM) oder seinen SHA-256-Fingerabdruck eintragen, sonst schlägt der Versand fehl.</p>
+            <div class="fg"><label for="smtp-tls-fp" data-i18n="settings.smtp.tls_fp">SHA-256-Fingerabdruck des Serverzertifikats (optional)</label><input type="text" id="smtp-tls-fp" autocomplete="off" spellcheck="false" placeholder="AB:CD:…" /></div>
+            <div class="fg"><label for="smtp-tls-ca" data-i18n="settings.smtp.tls_ca">Eigenes Zertifikat oder eigene CA als PEM (für selbst signierte Zertifikate)</label><textarea id="smtp-tls-ca" rows="3" spellcheck="false" placeholder="-----BEGIN CERTIFICATE-----"></textarea></div>
             <button class="btn bp btn-speichern" id="btn-sav-smtp" data-i18n="settings.save" data-ico="speichern">Speichern</button>
             <div class="zeile luecke-8 unten umbruch abstand-o-05">
               <div class="fg max-240 ohne-rand"><label for="smtp-test-email" data-i18n="settings.smtp.test_to">Test-E-Mail senden an</label><input type="email" id="smtp-test-email" placeholder="deine@email.com" /></div>

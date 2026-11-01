@@ -276,6 +276,8 @@ test('Sicherung und Wiederherstellung', async (t) => {
  *      liegt im Archiv"
  *   B  das Kopieren nach BACKUP_SCHLUESSEL_ZIEL entfernt → rot: „… fehlt am
  *      getrennten Ort"
+ *   C  (01.11.2026) SCHLUESSEL wieder fest auf data/.datenschluessel → rot:
+ *      „schluessel/datenschluessel …" (meldet „keine Schlüsseldatei")
  */
 test('backup.sh: der Datenschlüssel kommt nicht ins Archiv', (t) => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sicherung-schluessel-'));
@@ -309,4 +311,29 @@ test('backup.sh: der Datenschlüssel kommt nicht ins Archiv', (t) => {
     'der Schlüssel fehlt am getrennten Ort');
   assert.equal(fs.statSync(kopie).mode & 0o077, 0, 'der Schlüssel ist für andere lesbar');
   assert.doesNotMatch(mit.stderr, /NICHT in der Sicherung/);
+});
+
+test('backup.sh: schluessel/datenschluessel geht nur an den getrennten Ort', (t) => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sicherung-schluessel-neu-'));
+  t.after(() => fs.rmSync(tmp, { recursive: true, force: true }));
+  const bin = path.join(tmp, 'bin');
+  fs.mkdirSync(bin);
+  fs.writeFileSync(path.join(bin, 'docker'),
+    "#!/bin/sh\nprintf -- '-- Dump\\n-- PostgreSQL database dump complete\\n'\n", { mode: 0o755 });
+  const arbeit = path.join(tmp, 'installation');
+  fs.mkdirSync(path.join(arbeit, 'data', 'uploads'), { recursive: true });
+  fs.mkdirSync(path.join(arbeit, 'schluessel'));
+  fs.writeFileSync(path.join(arbeit, 'data', 'uploads', 'rechnung.pdf'), '%PDF-1.4');
+  const schluessel = 'n'.repeat(44);
+  fs.writeFileSync(path.join(arbeit, 'schluessel', 'datenschluessel'), schluessel, { mode: 0o600 });
+  const tresor = path.join(tmp, 'tresor');
+  const r = spawnSync('sh', [path.join(ROOT, 'scripts', 'backup.sh'), path.join(tmp, 'ziel')], { cwd: arbeit, encoding: 'utf8',
+    env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, BACKUP_SCHLUESSEL_ZIEL: tresor } });
+  assert.equal(r.status, 0, r.stderr);
+  const archiv = fs.readdirSync(path.join(tmp, 'ziel')).find(n => n.startsWith('data_'));
+  const inhalt = execFileSync('tar', ['tzf', path.join(tmp, 'ziel', archiv)], { encoding: 'utf8' });
+  assert.match(inhalt, /data\/uploads\/rechnung\.pdf/);
+  assert.doesNotMatch(inhalt, /schluessel/);
+  assert.equal(fs.readFileSync(path.join(tresor, 'datenschluessel'), 'utf8'), schluessel, 'schluessel/datenschluessel fehlt am getrennten Ort');
+  assert.doesNotMatch(r.stderr, /Datenordner|keine Schlüsseldatei/);
 });

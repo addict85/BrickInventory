@@ -3,6 +3,10 @@ import multer from 'multer';
 import fs from 'fs';
 import path from 'path';
 
+/** Für jedes Formular mit Datei: Ohne Grenzen nähme multer beliebig viele
+ * Felder zu je 1 MB und beliebig viele Dateien in den Speicher. */
+export const FORMULAR_GRENZEN = { files: 1, fields: 20, fieldSize: 64 * 1024, parts: 21, headerPairs: 200 };
+
 /** Gross genug für einen BrickLink-Bestandsexport, klein genug für
  * `memoryStorage`, das die Datei ganz im Speicher hält. */
 export const CSV_MAX_BYTES = 15 * 1024 * 1024;
@@ -11,7 +15,7 @@ export const CSV_MAX_BYTES = 15 * 1024 * 1024;
  * Ausführlich: docs/begruendungen/src/infra/dateiEmpfang.ts.md#csvempfang */
 export const csvEmpfang = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: CSV_MAX_BYTES },
+  limits: { ...FORMULAR_GRENZEN, fileSize: CSV_MAX_BYTES },
 });
 
 /** Rund 20 000 Posten; jeder kostet beim Zuordnen Abfragen, die CSV-Grenze wäre
@@ -20,7 +24,7 @@ export const XML_MAX_BYTES = 4 * 1024 * 1024;
 
 export const xmlEmpfang = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: XML_MAX_BYTES },
+  limits: { ...FORMULAR_GRENZEN, fileSize: XML_MAX_BYTES },
 });
 
 const KENNUNG: Record<string, Buffer> = {

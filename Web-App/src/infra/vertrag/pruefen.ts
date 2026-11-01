@@ -2,6 +2,8 @@ import express from 'express';
 import type { Request, Response, NextFunction } from 'express';
 import { konfig } from '../konfig';
 import { routeZu } from './index';
+import { GROESSTE_ID, idWert } from '../validate';
+import { sendeFehler } from '../fehlerTexte';
 
 /** Nur in Tests (VERTRAG_PRUEFEN=1, gesetzt von test/helpers/sources.js):
  * Jede 2xx-Antwort einer Route mit Vertrag läuft durch ihr Schema, und eine
@@ -36,8 +38,15 @@ export function vertragPruefen(req: Request, res: Response, next: NextFunction):
 
 /** Ein Router, der seine Antworten in Tests gegen den Vertrag prüft — auch
  * dort, wo ein Test ihn ohne routes/api_v1/index.ts einhängt. */
-export function vertragsRouter(): express.Router {
+export function vertragsRouter(o: { grosseIds?: boolean } = {}): express.Router {
   const router = express.Router();
   router.use(vertragPruefen);
+  // Jede Pfad-ID an einer Stelle: Eine zu grosse lief sonst bis in PostgreSQL
+  // und kam als 500 zurück. Aufträge zählen bigint (grosseIds).
+  const hoechstens = o.grosseIds ? Number.MAX_SAFE_INTEGER : GROESSTE_ID;
+  for (const name of ['id', 'acqId', 'instrId']) {
+    router.param(name, (req, res, next, wert) =>
+      idWert(wert, hoechstens) === null ? sendeFehler(req, res, 400, 'id_ungueltig') : next());
+  }
   return router;
 }

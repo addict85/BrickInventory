@@ -36,10 +36,10 @@ import org.junit.Test
  *      Server meldet zuerst ab“
  *   F  gleicheHerkunft() durch `!=` der rohen Texte ersetzt → rot „derselbe
  *      Server mit Schrägstrich meldet nicht ab“
- *   G  in login() die Rückfrage übersprungen (Bedingung `false`) → rot „ein
- *      Klartext-Login in einem fremden Netz fragt erst nach“
- *   H  richteEin() merkt das Netz nicht → rot „im Netz der Einrichtung fragt
- *      die Anmeldung nicht nach“
+ *   G  (01.11.2026) in saveServerUrl() die Prüfung adressfehler() entfernt → rot
+ *      „eine http-Adresse wird nicht gespeichert“
+ *   H  (01.11.2026) in loginWithQrToken() die Prüfung entfernt → rot „ein
+ *      QR-Code mit http-Adresse …“ (Adresse gespeichert, qr-login gerufen)
  *   I  (30.10.2026) merkePin() in loginWithQrToken() nach qrLogin() → rot „ein
  *      QR-Code mit Fingerabdruck pinnt vor der ersten Anfrage“
  *   J  (30.10.2026) LoginRequest wieder mit festem neverExpires = true → rot
@@ -59,19 +59,12 @@ class AnmeldungViewModelTest {
     /** Schreibt mit, was in welcher Reihenfolge abgelegt wird. */
     private class Ablage(var url: String = "https://server") : Anmeldeablage {
         val protokoll = java.util.Collections.synchronizedList(mutableListOf<String>())
-        val netze = mutableSetOf<String>()
         override suspend fun serverUrlJetzt() = url
         override suspend fun saveServerUrl(url: String) { this.url = url; protokoll += "url:$url" }
         override suspend fun saveAuthToken(token: String) { protokoll += "token:$token" }
         override suspend fun saveUsername(name: String) { protokoll += "name:$name" }
-        override suspend fun bestaetigeKlartext(host: String) { protokoll += "klartext:$host" }
-        override suspend fun bekannteNetze() = netze.toSet()
-        override suspend fun merkeNetz(eintrag: String) { netze += eintrag; protokoll += "netz:$eintrag" }
         override fun merkePin(schluessel: String, fingerabdruck: String) { protokoll += "pin:$schluessel=$fingerabdruck" }
     }
-
-    /** Das Netz, in dem das Gerät gerade hängt. */
-    private var netz: String? = "heim"
 
     private lateinit var pfade: PfadServer
     private lateinit var t: TestDienste
@@ -87,7 +80,7 @@ class AnmeldungViewModelTest {
             ch.brickinventoryapp.data.repository.TeileRepository(t.api, t.cache))
         val dienste = ch.brickinventoryapp.ui.viewmodel.AppDienste(t.sitzung, blickfeld, t.meldungen,
             NummernTexte, t.bestand, t.scrollMemory)
-        return t.merke(AnmeldungViewModel(dienste, KontoRepository(t.api, t.cache), ablage) { netz })
+        return t.merke(AnmeldungViewModel(dienste, KontoRepository(t.api, t.cache), ablage))
     }
 
     @Before
@@ -198,11 +191,26 @@ class AnmeldungViewModelTest {
     }
 
     @Test
-    fun `ein bestaetigter Klartext-Server wird vor der Adresse gemerkt`() {
+    fun `eine http-Adresse wird nicht gespeichert, eine ohne Schema als https`() {
+        t.sitzung.aendere { it.copy(isLoggedIn = true) }
         val vm = vm()
-        vm.saveServerUrl("http://brick.example.org", klartextBestaetigt = true)
-        TestApi.warteBis("abgelegt") { ablage.protokoll.size == 3 }
-        assertEquals(listOf("klartext:brick.example.org", "url:http://brick.example.org"), ablage.protokoll.take(2))
+        assertFalse(vm.saveServerUrl("http://nas:3000", abmelden = { ablage.protokoll += "abmelden" }))
+        assertTrue(vm.saveServerUrl("brick.example.org", abmelden = { ablage.protokoll += "abmelden" }))
+        TestApi.warteBis("abgelegt") { ablage.protokoll.any { it.startsWith("url:") } }
+        assertEquals("Die abgelehnte Adresse meldet nicht ab und landet nirgends",
+            listOf("abmelden", "url:https://brick.example.org"), ablage.protokoll.toList())
+    }
+
+    @Test
+    fun `ein QR-Code mit http-Adresse wird nicht uebernommen und sagt warum`() {
+        pfade.antworten["/api/v1/auth/qr-login"] = """{"success":true,"token":"abc","user":{"id":1,"username":"marco"}}"""
+        val vm = vm()
+        vm.loginWithQrToken("http://nas:3000", "bim:x")
+        assertEquals("t${R.string.setup_qr_klartext_abgelehnt}", vm.anmeldeState.value.loginError)
+        Thread.sleep(100)
+        assertTrue("Nichts gespeichert: ${ablage.protokoll}", ablage.protokoll.isEmpty())
+        assertTrue("Der Code ging nicht hinaus", pfade.anfragenAn("qr-login").isEmpty())
+        assertFalse(t.sitzung.state.value.isLoggedIn)
     }
 
     @Test
@@ -233,46 +241,6 @@ class AnmeldungViewModelTest {
         val p = ablage.protokoll.toList()
         assertTrue("Abmelden vor der Adresse: $p", p.indexOf("abmelden") in 0 until p.indexOf("url:https://neu.example"))
         assertTrue("Die Adresse vor dem neuen Token: $p", p.indexOf("url:https://neu.example") < p.indexOf("token:neu"))
-    }
-
-    @Test
-    fun `ein Klartext-Login in einem fremden Netz fragt erst nach`() {
-        pfade.antworten["/api/v1/auth/login"] = """{"success":true,"token":"abc","user":{"id":1,"username":"marco"}}"""
-        ablage.url = "http://nas:3000"
-        netz = "hotel"
-        val vm = vm()
-        vm.login("marco", "geheim")
-        TestApi.warteBis("Rückfrage") { vm.anmeldeState.value.netzFrage }
-        Thread.sleep(100)
-        assertTrue("Ohne Ja geht das Passwort nicht hinaus", pfade.anfragenAn("/auth/login").isEmpty())
-
-        vm.login("marco", "geheim", netzBestaetigt = true)
-        TestApi.warteBis("angemeldet") { t.sitzung.state.value.isLoggedIn }
-        assertFalse(vm.anmeldeState.value.netzFrage)
-        assertTrue(ablage.netze.contains("http://nas:3000|hotel"))
-    }
-
-    @Test
-    fun `im Netz der Einrichtung fragt die Anmeldung nicht nach`() {
-        pfade.antworten["/api/v1/auth/login"] = """{"success":true,"token":"abc","user":{"id":1,"username":"marco"}}"""
-        val vm = vm()
-        vm.saveServerUrl("http://nas:3000")
-        TestApi.warteBis("eingerichtet") { ablage.netze.isNotEmpty() }
-        vm.login("marco", "geheim")
-        TestApi.warteBis("angemeldet") { t.sitzung.state.value.isLoggedIn }
-        assertFalse(vm.anmeldeState.value.netzFrage)
-    }
-
-    @Test
-    fun `verneint geht nichts hinaus und die Frage verschwindet`() {
-        ablage.url = "http://nas:3000"
-        netz = null
-        val vm = vm()
-        vm.login("marco", "geheim")
-        TestApi.warteBis("Rückfrage") { vm.anmeldeState.value.netzFrage }
-        vm.netzFrageVerwerfen()
-        assertFalse(vm.anmeldeState.value.netzFrage)
-        assertTrue(pfade.anfragenAn("/auth/login").isEmpty())
     }
 
     /** Schreibt mit, welche Optionen ankamen, und antwortet mit [ergebnis]. */

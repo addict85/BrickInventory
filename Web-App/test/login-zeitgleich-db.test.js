@@ -28,6 +28,10 @@
  * schneller, sondern hundertmal — 4 ms gegen 400 ms. Eine engere Schranke
  * würde nur flattern, ohne mehr zu finden.
  *
+ * Gegenprobe (01.11.2026 gemessen, Median aus drei Paaren): in
+ * pruefeAnmeldedaten() ohne Treffer kein Vergleich gegen DUMMY_HASH → rot
+ * (bekannt 344,7 ms, unbekannt 11,5 ms).
+ *
  * Voraussetzung: Test-DB (Inhalt wird angefasst!) via TEST_DATABASE_URL.
  * Ohne DB: skip. Ausführen: REQUIRE_DB=1 npm test
  */
@@ -44,7 +48,8 @@ const { pruefeAnmeldedaten, BCRYPT_ROUNDS } = _req('src/konto/auth.js');
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 
 /** Minimaler Request: pruefeAnmeldedaten braucht davon nur die IP (Zähler). */
-const anfrage = () => ({ ip: '203.0.113.7', headers: {}, socket: {} });
+const anfrage = (i = 7) => ({ ip: `203.0.113.${i}`, headers: {}, socket: {} });
+const median = (xs) => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)];
 
 async function dauer(fn) {
   const t0 = process.hrtime.bigint();
@@ -67,27 +72,41 @@ test('unbekannter Anmeldename kostet dieselbe Zeit wie ein falsches Passwort',
   // Die Kosten müssen denen echter Passwörter entsprechen — mit weniger Runden
   // wäre der BEKANNTE Fall der schnellere und der Vergleich stünde auf dem
   // Kopf. Deshalb BCRYPT_ROUNDS, derselbe Wert, mit dem der Dummy-Hash entsteht.
-  const name = 'zeit_bekannt';
-  await db.run('DELETE FROM users WHERE username = $1', [name]);
-  await db.run(
-    'INSERT INTO users (username,password_hash,is_admin,is_active,email_verified) VALUES ($1,$2,false,true,true)',
-    [name, await bcrypt.hash('richtigesPasswort1', BCRYPT_ROUNDS)]);
+  // Drei Paare, abwechselnd gemessen, je mit eigenem Namen und eigener IP:
+  // Eine Einzelmessung schwankte unter Last (Volllauf parallel) um mehr als
+  // das Doppelte; der Median dreier Paare nicht, der Fehlerfall (4 ms gegen
+  // 400 ms) bleibt trotzdem eindeutig.
+  const namen = [0, 1, 2].map(i => `zeit_bekannt_${i}`);
+  const hash = await bcrypt.hash('richtigesPasswort1', BCRYPT_ROUNDS);
+  await db.run('DELETE FROM users WHERE username = ANY($1)', [namen]);
+  for (const name of namen)
+    await db.run(
+      'INSERT INTO users (username,password_hash,is_admin,is_active,email_verified) VALUES ($1,$2,false,true,true)',
+      [name, hash]);
 
   try {
     // Je ein Versuch pro Name: Der Brute-Force-Zähler läuft über IP UND Name,
     // ein zweiter Versuch mit demselben Namen käme irgendwann als 429 zurück
     // und würde die Messung ersetzen statt sie zu wiederholen.
-    const bekannt   = await dauer(() => pruefeAnmeldedaten(anfrage(), name, 'falschesPasswort1'));
-    const unbekannt = await dauer(() => pruefeAnmeldedaten(anfrage(), 'zeit_gibtsnicht', 'falschesPasswort1'));
-
-    // Vorbedingung: Beide müssen wirklich abgelehnt worden sein — und zwar mit
-    // 401, nicht mit 429 (Sperre) oder 400 (Formfehler). Sonst misst der Test
-    // etwas anderes als gedacht und wäre trotzdem grün.
-    for (const [was, r] of [['bekannt', bekannt], ['unbekannt', unbekannt]]) {
-      assert.equal(r.wert.ok, false, `${was}: hätte abgelehnt werden müssen`);
-      assert.equal(r.wert.absage.status, 401,
-        `${was}: erwartet 401, bekommen ${r.wert.absage.status} (${r.wert.absage.error})`);
+    const messungen = { bekannt: [], unbekannt: [] };
+    for (let i = 0; i < namen.length; i++) {
+      const paar = [
+        ['bekannt', () => pruefeAnmeldedaten(anfrage(10 + i), namen[i], 'falschesPasswort1')],
+        ['unbekannt', () => pruefeAnmeldedaten(anfrage(20 + i), `zeit_gibtsnicht_${i}`, 'falschesPasswort1')],
+      ];
+      if (i % 2) paar.reverse();
+      for (const [was, fn] of paar) {
+        const r = await dauer(fn);
+        // Vorbedingung: wirklich abgelehnt, mit 401 — nicht 429 (Sperre) oder
+        // 400 (Formfehler). Sonst misst der Test etwas anderes als gedacht.
+        assert.equal(r.wert.ok, false, `${was}: hätte abgelehnt werden müssen`);
+        assert.equal(r.wert.absage.status, 401,
+          `${was}: erwartet 401, bekommen ${r.wert.absage.status} (${r.wert.absage.error})`);
+        messungen[was].push(r.ms);
+      }
     }
+    const bekannt = { ms: median(messungen.bekannt) };
+    const unbekannt = { ms: median(messungen.unbekannt) };
     // Und die Messung selbst muss überhaupt etwas gekostet haben — ohne das
     // wäre „0 ms ≥ 0 ms" grün, ganz ohne Passwortprüfung.
     assert.ok(bekannt.ms > 20,
@@ -99,7 +118,7 @@ test('unbekannter Anmeldename kostet dieselbe Zeit wie ein falsches Passwort',
       `welche Konten es gibt. Der Vergleich muss auch ohne Treffer gegen den ` +
       `Dummy-Hash laufen (siehe pruefeAnmeldedaten in src/konto/auth.ts).`);
   } finally {
-    await db.run('DELETE FROM users WHERE username = $1', [name]).catch(() => {});
+    await db.run('DELETE FROM users WHERE username = ANY($1)', [namen]).catch(() => {});
     // Ohne das bleibt der Pool offen und der Testprozess endet nie — der Lauf
     // wirkt dann wie ein Hänger, obwohl der Test längst durch ist.
     await db.pool.end().catch(() => {});

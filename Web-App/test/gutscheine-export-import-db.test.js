@@ -46,6 +46,7 @@ const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
 const { testServer } = require('./helpers/server');
 const PL = require('@cantoo/pdf-lib');
+const suche = (uid, nr) => _req('src/gutscheine/repository/gutscheine.js').nummerSuche(uid, nr);
 
 test.after(async () => { await db.pool.end().catch(() => {}); });
 
@@ -80,22 +81,17 @@ async function aufbau() {
 
   const dir = path.join(DATEN_DIR, 'vouchers', String(HAUPT));
   await fs.promises.mkdir(dir, { recursive: true });
+  const { gutscheinAnlegen } = _req('src/gutscheine/dienst.js');
   for (const k of KARTEN) {
-    const z = await db.get(
-      `INSERT INTO vouchers (user_id,number,pin,amount,currency)
-       VALUES ($1,$2,$3,$4,'CHF') RETURNING id`, [HAUPT, k.nr, k.pin, k.app]);
-    await fs.promises.writeFile(path.join(dir, `${z.id}.pdf`),
+    const z = await gutscheinAnlegen(HAUPT, { number: k.nr, pin: k.pin, amount: k.app, currency: 'CHF' });
+    await _req('src/gutscheine/gutscheinDateien.js').schreibeGutscheinPdf(path.join(dir, `${z.id}.pdf`),
       await baueGutschein(k.gedruckt, k.nr, k.pin));
     await db.run('UPDATE vouchers SET pdf_path=$1 WHERE id=$2', [`${HAUPT}/${z.id}.pdf`, z.id]);
   }
   // Ein Gutschein OHNE Original — von Hand erfasst.
-  await db.run(
-    `INSERT INTO vouchers (user_id,number,pin,amount,currency)
-     VALUES ($1,'5045076374450033388',NULL,42.50,'CHF')`, [HAUPT]);
+  await gutscheinAnlegen(HAUPT, { number: '5045076374450033388', pin: null, amount: 42.5, currency: 'CHF' });
   // Und einer in einem FREMDEN Konto, der im eigenen Export nichts zu suchen hat.
-  await db.run(
-    `INSERT INTO vouchers (user_id,number,pin,amount,currency)
-     VALUES ($1,'9999999999999999999','0000',99,'CHF')`, [FREMD]);
+  await gutscheinAnlegen(FREMD, { number: '9999999999999999999', pin: '0000', amount: 99, currency: 'CHF' });
 }
 
 test('Gutscheine: Export und Import über die echten Adressen', { concurrency: 1 }, async (t) => {
@@ -182,16 +178,17 @@ test('Gutscheine: Export und Import über die echten Adressen', { concurrency: 1
 
     for (const k of KARTEN) {
       const z = await db.get(
-        'SELECT amount, pin, currency FROM vouchers WHERE user_id=$1 AND number=$2',
-        [HAUPT, k.nr]);
+        'SELECT id, amount, pin, currency FROM vouchers WHERE user_id=$1 AND nummer_suche=$2',
+        [HAUPT, suche(HAUPT, k.nr)]);
       assert.ok(z, `${k.nr} kam nicht zurück`);
       assert.equal(Number(z.amount), k.app, `${k.nr}: ${z.amount} statt ${k.app}`);
-      assert.equal(_req('src/infra/geheimnis.js').entschluessele(z.pin), k.pin, `${k.nr}: PIN ${z.pin} statt ${k.pin}`);
+      assert.equal(_req('src/infra/geheimnis.js').entschluessele(z.pin, _req('src/gutscheine/repository/gutscheine.js').pinKontext(HAUPT, z.id)),
+        k.pin, `${k.nr}: PIN ${z.pin} statt ${k.pin}`);
     }
     // Und der von Hand erfasste, der nie ein PDF hatte.
     const ohne = await db.get(
-      `SELECT amount, pin FROM vouchers WHERE user_id=$1 AND number='5045076374450033388'`,
-      [HAUPT]);
+      'SELECT amount, pin FROM vouchers WHERE user_id=$1 AND nummer_suche=$2',
+      [HAUPT, suche(HAUPT, '5045076374450033388')]);
     assert.ok(ohne, 'Der von Hand erfasste Gutschein kam nicht zurück');
     assert.equal(Number(ohne.amount), 42.5);
     assert.equal(ohne.pin, null, 'Aus „keine PIN" wurde etwas anderes');
@@ -209,7 +206,7 @@ test('Gutscheine: Export und Import über die echten Adressen', { concurrency: 1
     assert.equal(b.added, 0, `${b.added} neu angelegt — die Karten gab es schon`);
     assert.equal(b.updated, 3, `${b.updated} aufgefrischt statt 3`);
     assert.equal(Number((await db.get(
-      'SELECT amount FROM vouchers WHERE user_id=$1 AND number=$2', [HAUPT, KARTEN[0].nr]
+      'SELECT amount FROM vouchers WHERE user_id=$1 AND nummer_suche=$2', [HAUPT, suche(HAUPT, KARTEN[0].nr)]
     )).amount), KARTEN[0].app, 'Der Betrag wurde nicht aufgefrischt');
     assert.equal((await db.get(
       'SELECT COUNT(*)::int c FROM vouchers WHERE user_id=$1', [HAUPT])).c, 3,

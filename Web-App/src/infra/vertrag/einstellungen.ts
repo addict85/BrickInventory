@@ -35,7 +35,8 @@ export const SettingsResponse = z.looseObject({
 export const StartupStatus = z.looseObject({
   ready: z.boolean(),
   step: z.string().nullable().optional(),
-  progress: z.number().int(),
+  // Erledigte Schritte mit Anteil des laufenden (2.37 = Schritt 3 zu 37 %).
+  progress: z.number().nonnegative(),
   total: z.number().int(),
   sub: z.string().nullable().optional(),
 });
@@ -57,11 +58,13 @@ export const Sicherung = z.looseObject({
 export const SicherungEingespielt = z.looseObject({
   success: z.literal(true), imported: ganz, note: z.string(), smtp_uebergangen: z.array(z.string()).optional(),
 });
-/** Ohne Anmeldung erreichbar (compose.yaml); Pool und Laufzeit nur für den Verwalter. */
+/** Ohne Anmeldung erreichbar (compose.yaml); alles ausser dem Status nur für den Verwalter. */
 export const Gesundheit = z.looseObject({
-  status: z.enum(['ok', 'starting']), startup: StartupStatus,
+  status: z.enum(['ok', 'starting']), startup: StartupStatus.optional(),
   db_pool: z.record(z.string(), z.unknown()).optional(), uptime_seconds: ganz.optional(),
 });
+/** `ready` antwortet 503 mit status "unavailable", wenn die Datenbank nicht antwortet. */
+export const Lebenszeichen = z.strictObject({ status: z.literal('ok') });
 
 /** Ergebnis des Versands; bei Erfolg ohne Fehlertext. */
 export const SmtpProbe = z.looseObject({ success: z.boolean() });
@@ -86,6 +89,8 @@ export const routen = {
   'GET /api/v1/settings/export': { antwort: Sicherung },
   'POST /api/v1/settings/import': { antwort: SicherungEingespielt },
   'GET /api/v1/health': { antwort: Gesundheit },
+  'GET /api/v1/health/live': { antwort: Lebenszeichen },
+  'GET /api/v1/health/ready': { antwort: Lebenszeichen },
   'GET /api/v1/settings/export/data': { art: 'zip' },
   'POST /api/v1/settings/smtp-test': { antwort: SmtpProbe },
   'POST /api/v1/settings/quelle-testen': { antwort: Erfolg },

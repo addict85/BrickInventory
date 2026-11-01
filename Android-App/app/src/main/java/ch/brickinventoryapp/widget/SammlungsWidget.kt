@@ -94,7 +94,11 @@ class WidgetArbeiter(context: Context, params: WorkerParameters) : CoroutineWork
         suspend fun aktualisiere(ctx: Context) {
             val zugang = EntryPointAccessors.fromApplication(ctx, Zugang::class.java)
             // Abgemeldet gibt es nichts zu zeigen; der alte Stand bliebe sonst fremd sichtbar.
-            if (zugang.prefs().tokenJetzt().isBlank()) return
+            if (zugang.prefs().tokenJetzt().isBlank()) {
+                WidgetAblage.leeren(ctx)
+                SammlungsWidget().updateAll(ctx)
+                return
+            }
             val pnl = (zugang.finanzen().getPnl() as? ch.brickinventoryapp.data.repository.Result.Success)?.data
             val verlauf = (zugang.finanzen().getPortfolioHistory("week") as? ch.brickinventoryapp.data.repository.Result.Success)?.data
             widgetZahlen(pnl, verlauf, System.currentTimeMillis())?.let { WidgetAblage.schreibe(ctx, it) }
@@ -115,7 +119,11 @@ class WidgetArbeiter(context: Context, params: WorkerParameters) : CoroutineWork
 /** Sammlungswert, G&V heute und gesamt; ein Tipp öffnet die App. */
 class SammlungsWidget : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val zahlen = WidgetAblage.lies(context)
+        val angemeldet = runCatching {
+            EntryPointAccessors.fromApplication(context, WidgetArbeiter.Zugang::class.java)
+                .prefs().tokenJetzt().isNotBlank()
+        }.getOrDefault(false)
+        val zahlen = widgetAnzeige(WidgetAblage.lies(context), angemeldet)
         // Die Texte in der Sprache der App, nicht des Systems (LanguageManager).
         val ctx = LanguageManager.localizedContext(context)
         val titel = ctx.getString(R.string.widget_titel)

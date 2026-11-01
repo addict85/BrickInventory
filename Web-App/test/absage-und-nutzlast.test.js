@@ -40,13 +40,13 @@ test('Absagen aus src/haushalt/haushalt.ts heissen fehler, nicht code', () => {
   // `code` ist in dieser Datei ein NUTZLAST-Name: der Einladungscode selbst.
   // Eine Absage darf ihn deshalb nicht belegen.
   const absagen = [...quelle.matchAll(/return \{ (\w+): '([a-z_]+)' as const/g)];
-  // Selbstbeweis: GEMESSEN sind es sechs Absagen. Findet die Suche keine, waere
+  // Selbstbeweis: GEMESSEN sind es sieben Absagen. Findet die Suche keine, waere
   // die Zusicherung darunter still gruen.
   //
   // Es waren acht, bis Nachtrag 173 die drei Absagen „nur eine Stufe" durch
-  // die eine Kreispruefung ersetzt hat.
-  assert.equal(absagen.length, 6,
-    `${absagen.length} Absagen gefunden statt sechs — greift die Suche noch?`);
+  // die eine Kreispruefung ersetzt hat; sieben seit der Grenze offener Einladungen.
+  assert.equal(absagen.length, 7,
+    `${absagen.length} Absagen gefunden statt sieben — greift die Suche noch?`);
   const falsch = absagen.filter(m => m[1] !== 'fehler').map(m => `${m[1]}: '${m[2]}'`);
   assert.deepEqual(falsch, [],
     'Diese Absagen benutzen einen anderen Schluessel als `fehler`. Heisst er ' +

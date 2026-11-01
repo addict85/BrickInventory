@@ -62,6 +62,17 @@ export function passwortZuKurzText(){
   return tRaw('settings.password.too_short', { n: PASSWORT_MIN_ZEICHEN });
 }
 
+/** bcrypt liest 72 Byte; dieselbe Grenze wie PASSWORT_MAX_BYTE im Server. */
+export const PASSWORT_MAX_BYTE = 72;
+
+/** Was der Browser vor dem Absenden prüfen kann, als Meldung, sonst null. Die
+ * Liste häufiger Passwörter kennt nur der Server; seine Meldung kommt zurück. */
+export function passwortRegelText(p){
+  if (passwortZuKurz(p)) return passwortZuKurzText();
+  if (new TextEncoder().encode(String(p)).length > PASSWORT_MAX_BYTE) return tRaw('settings.password.too_long', { n: PASSWORT_MAX_BYTE });
+  return null;
+}
+
 // esc() steht seit dem 20.10. in js/00-escapen.js — DOM-frei, damit auch der
 // BrickLink-Export es benutzen kann, ohne diese Datei zu laden. Die Begründung
 // steht dort. Weitergereicht wird es hier, damit jeder bestehende
@@ -861,7 +872,7 @@ G('btn-register')?.addEventListener('click', async () => {
   // Pruefungen wie im Web-Formular, und in derselben Reihenfolge"; wahr war
   // daran bis hierher weder das eine noch das andere, weil die Webapp die
   // Laenge gar nicht prueft.
-  if(passwortZuKurz(p)){ err.textContent=passwortZuKurzText(); err.style.display='block'; return; }
+  if(passwortRegelText(p)){ err.textContent=passwortRegelText(p); err.style.display='block'; return; }
   if(p!==p2){ err.textContent=tRaw('settings.password.mismatch'); err.style.display='block'; return; }
   const btn=G('btn-register'); const frei=knopfBesetzt(btn);
   const d=await api('POST','/v1/auth/register',{
@@ -899,7 +910,7 @@ G('btn-reset')?.addEventListener('click', async () => {
   const err=G('reset-err');
   err.style.display='none';
   if(!p||p!==p2){ err.textContent=tRaw('settings.password.mismatch'); err.style.display='block'; return; }
-  if(passwortZuKurz(p)){ err.textContent=passwortZuKurzText(); err.style.display='block'; return; }
+  if(passwortRegelText(p)){ err.textContent=passwortRegelText(p); err.style.display='block'; return; }
   if(!_resetToken){ err.textContent=tRaw('reset.invalid_token'); err.style.display='block'; return; }
   const btn=G('btn-reset'); btn.disabled=true; btn.textContent=tRaw('reset.saving');
   const d=await api('POST','/v1/auth/reset-password',{token:_resetToken,password:p});

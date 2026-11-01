@@ -154,16 +154,8 @@ Zertifikat geht, sobald die eigene Zertifizierungsstelle auf dem Telefon
 installiert ist (*Einstellungen → Sicherheit → Verschlüsselung und
 Anmeldedaten → Zertifikat installieren*); die App vertraut solchen
 Zertifikaten nur für den eigenen Server, nicht für ihre Updates. Ohne HTTPS
-erlaubt die App Klartext nur zu Adressen im Heimnetz und zu Hosts, die man in
-der Einrichtung ausdrücklich bestätigt hat. Vor dem ersten Zugang in jedem
-Netz muss sich der Server dann ausweisen (er beweist, dass er den Token
-kennt, ohne ihn zu senden) — so geht der Token im fremden WLAN nicht an
-einen anderen Rechner, der sich `nas` nennt.
-
-Klartext im Heimnetz ist eine bewusste Entscheidung mit einer Grenze: Der
-Serverbeweis schützt vor einem falschen Server, nicht vor Mithören. Wer im
-selben WLAN den Verkehr mitliest, sieht Token und Daten. Wer das nicht
-hinnehmen will, richtet HTTPS ein.
+verbindet sich die App nicht: Klartext (`http://`) lehnt sie ab, auch im
+Heimnetz.
 
 > **Screenshots der App fehlen hier noch.** Sie lassen sich nur auf einem Gerät
 > oder Emulator aufnehmen; in der Umgebung, in der dieses README entstanden

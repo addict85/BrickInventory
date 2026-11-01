@@ -1,0 +1,31 @@
+Gegenprobe: Der Startzustand liest progress wieder als ganze Zahl
+Modul: core-data
+Test: ch.brickinventoryapp.ServerStartTest
+Rot: ein Fortschritt mit Anteil wird gelesen
+
+diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/data/model/AuthModels.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/data/model/AuthModels.kt
+index 7547940..e0f8a0d 100644
+--- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/data/model/AuthModels.kt
++++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/data/model/AuthModels.kt
+@@ -105,7 +105,7 @@ data class UserSettings(
+ data class StartupStatus(
+     val ready: Boolean = false,
+     val step: String? = null,
+-    val progress: Double = 0.0,
++    val progress: Int = 0,
+     val total: Int = 0,
+     val sub: String? = null,
+ )
+diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/ui/model/EinzelAnsichten.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/ui/model/EinzelAnsichten.kt
+index 5ca2021..424673b 100644
+--- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/ui/model/EinzelAnsichten.kt
++++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/ui/model/EinzelAnsichten.kt
+@@ -40,7 +40,7 @@ data class StartzustandAnsicht(
+ }
+ 
+ fun StartupStatus.alsAnsicht() = StartzustandAnsicht(bereit = ready, schritt = step, unterschritt = sub,
+-    fortschritt = progress, gesamt = total)
++    fortschritt = progress.toDouble(), gesamt = total)
+ 
+ /** Ein Punkt der Wertentwicklung; [yFrac] ist die Höhe 0..1, wie sie der Server schon gerechnet hat. */
+ data class DiagrammPunkt(val xLabel: String, val value: Double, val yFrac: Double)

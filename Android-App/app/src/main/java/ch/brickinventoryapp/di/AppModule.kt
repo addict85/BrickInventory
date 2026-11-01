@@ -3,7 +3,7 @@ package ch.brickinventoryapp.di
 import android.content.Context
 import androidx.glance.appwidget.updateAll
 import ch.brickinventoryapp.BuildConfig
-import ch.brickinventoryapp.MainActivity
+import ch.brickinventoryapp.MeldungsEinstieg
 import ch.brickinventoryapp.util.AppFassung
 import ch.brickinventoryapp.data.Startziel
 import ch.brickinventoryapp.ui.Abmeldehaken
@@ -23,9 +23,12 @@ import dagger.hilt.components.SingletonComponent
 @InstallIn(SingletonComponent::class)
 object AppModule {
 
-    /** Die Klasse selbst, nicht ihr Name: Für R8 ist nur ein Klassenverweis ein Aufruf. */
+    /**
+     * Der nicht exportierte Einstieg, nicht MainActivity: Nur er nimmt ein Ziel an.
+     * Die Klasse selbst, nicht ihr Name: Für R8 ist nur ein Klassenverweis ein Aufruf.
+     */
     @Provides
-    fun provideStartziel(): Startziel = Startziel(MainActivity::class.java)
+    fun provideStartziel(): Startziel = Startziel(MeldungsEinstieg::class.java)
 
     @Provides
     fun provideAppFassung(): AppFassung = AppFassung(BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE)

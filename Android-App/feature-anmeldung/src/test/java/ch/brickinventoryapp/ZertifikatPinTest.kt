@@ -3,8 +3,10 @@ package ch.brickinventoryapp
 import ch.brickinventoryapp.ui.parseQrPayload
 import ch.brickinventoryapp.util.PinAblage
 import ch.brickinventoryapp.util.PinVertrauen
+import ch.brickinventoryapp.util.WahlVertrauen
 import ch.brickinventoryapp.util.ZertifikatUngeklaert
 import ch.brickinventoryapp.util.ZertifikatsFrage
+import ch.brickinventoryapp.util.fingerabdruckLesbar
 import ch.brickinventoryapp.util.passtZumPin
 import ch.brickinventoryapp.util.pinSchluessel
 import ch.brickinventoryapp.util.spkiFingerabdruck
@@ -47,10 +49,18 @@ import javax.net.ssl.X509ExtendedTrustManager
  *      „fremde Hosts prüft nur die Kette“
  *   E  parseQrPayload() übernimmt ein unlesbares fp → rot „ein QR-Code mit
  *      unlesbarem Fingerabdruck gilt nicht“
+ *   F  (01.11.2026) in pruefe() wieder `chain[0]` statt `chain.last()` → rot
+ *      „ohne Pin geht beim ersten Kontakt nichts hinaus …“ (Blatt statt
+ *      Zwischenstelle) und „ein erneuertes Blatt unter der bestätigten Wurzel …“
+ *      (nach der Erneuerung GEAENDERT)
+ *   G  (01.11.2026) fingerabdruckLesbar() wieder in Vierergruppen → rot „der
+ *      Fingerabdruck steht da wie in der Webapp“
+ *   H  (01.11.2026) in pruefe() fremde Hosts wieder mit `kette` statt
+ *      `fremdeHosts` → rot „Nutzer-CAs gelten nur fuer den eigenen Server …“
  */
 class ZertifikatPinTest {
 
-    private val server = MockWebServer()
+    private var server = MockWebServer()
     private val frage = ZertifikatsFrage()
     private val pins = object : PinAblage {
         val map = mutableMapOf<String, String>()
@@ -83,8 +93,8 @@ class ZertifikatPinTest {
 
     private fun eigener() = "${server.url("/").host}:${server.port}"
 
-    private fun hole(kette: X509ExtendedTrustManager, eigen: String = eigener()): Boolean {
-        val tm = PinVertrauen(kette, pins, eigenerServer = { eigen }, frage = frage)
+    private fun hole(kette: X509ExtendedTrustManager, eigen: String = eigener(), fremd: X509ExtendedTrustManager = kette): Boolean {
+        val tm = PinVertrauen(kette, pins, eigenerServer = { eigen }, frage = frage, fremdeHosts = fremd)
         val ctx = SSLContext.getInstance("TLS").apply { init(null, arrayOf(tm), null) }
         val c = OkHttpClient.Builder().sslSocketFactory(ctx.socketFactory, tm)
             .connectTimeout(2, TimeUnit.SECONDS).readTimeout(2, TimeUnit.SECONDS).build()
@@ -100,7 +110,7 @@ class ZertifikatPinTest {
         assertEquals("Keine Anfrage darf den Server erreichen", 0, server.requestCount)
         val f = frage.offen.value!!
         assertEquals(ZertifikatUngeklaert.Art.ERSTKONTAKT, f.art)
-        assertEquals(spkiFingerabdruck(zert(LEAF)), f.fingerabdruck)
+        assertEquals("Angeboten wird das oberste Zertifikat der Kette", spkiFingerabdruck(zert(INTER)), f.fingerabdruck)
         assertEquals(eigener(), f.schluessel)
 
         frage.bestaetige(pins)
@@ -152,6 +162,38 @@ class ZertifikatPinTest {
         assertFalse(passtZumPin(arrayOf(zert(FREMD), zert(WURZEL)), spkiFingerabdruck(zert(WURZEL))))
     }
 
+    /**
+     * Caddy erneuert sein Blatt alle paar Stunden mit neuem Schlüssel. Wer von Hand
+     * einrichtet und beim ersten Kontakt bestätigt, darf danach keine Warnung
+     * „Zertifikat geändert“ sehen, solange die Wurzel dieselbe ist.
+     */
+    @Test
+    fun `ein erneuertes Blatt unter der bestaetigten Wurzel gilt ohne neue Frage`() {
+        starte(ERNEUERT_BLATT1_KEY, listOf(ERNEUERT_BLATT1, ERNEUERT_WURZEL))
+        assertFalse(hole(system(FREMD)))
+        val f = frage.offen.value!!
+        assertEquals(ZertifikatUngeklaert.Art.UNBEKANNTE_CA, f.art)
+        assertEquals(spkiFingerabdruck(zert(ERNEUERT_WURZEL)), f.fingerabdruck)
+        frage.bestaetige(pins)
+        assertTrue(hole(system(FREMD)))
+
+        // Derselbe Server nach der Erneuerung; ein neuer Testserver braucht einen
+        // neuen Port, der bestätigte Pin zieht mit.
+        val pin = pins.pin(eigener())!!
+        server.shutdown()
+        server = MockWebServer()
+        starte(ERNEUERT_BLATT2_KEY, listOf(ERNEUERT_BLATT2, ERNEUERT_WURZEL))
+        pins.merkePin(eigener(), pin)
+        assertTrue("Das neue Blatt unter derselben Wurzel gilt", hole(system(FREMD)))
+        assertNull("Keine Warnung nach einer gewöhnlichen Erneuerung", frage.offen.value)
+    }
+
+    /** Den Vergleichswert hat openssl gerechnet, unabhängig von der App. */
+    @Test
+    fun `der Fingerabdruck steht da wie in der Webapp`() {
+        assertEquals(ERNEUERT_WURZEL_HEX, fingerabdruckLesbar(spkiFingerabdruck(zert(ERNEUERT_WURZEL))))
+    }
+
     @Test
     fun `ein fremdes Blatt mit angehaengter echter Zwischenstelle passt nicht`() {
         val pin = spkiFingerabdruck(zert(INTER))
@@ -167,6 +209,20 @@ class ZertifikatPinTest {
         assertNull(frage.offen.value)
         assertFalse(hole(system(FREMD), eigen = "brick.example.org:443"))
         assertNull("Für fremde Hosts gibt es nichts zu bestätigen", frage.offen.value)
+    }
+
+    /** Nutzer-CA ist hier ROOT, das System kennt nur FREMD. */
+    @Test
+    fun `Nutzer-CAs gelten nur fuer den eigenen Server, nie fuer fremde Hosts`() {
+        starte()
+        val mitNutzerCa = WahlVertrauen(system = system(FREMD), mitNutzer = lazy { system(ROOT) }, nutzerErlaubt = { true })
+        assertFalse("Ein fremder Host nimmt eine Nutzer-CA an",
+            hole(mitNutzerCa, eigen = "brick.example.org:443", fremd = system(FREMD)))
+        assertEquals(0, server.requestCount)
+        assertNull(frage.offen.value)
+
+        assertFalse("Auch mit Nutzer-CA geht ohne Pin nichts hinaus", hole(mitNutzerCa, fremd = system(FREMD)))
+        assertEquals("Für den eigenen Server zählt die Nutzer-CA", ZertifikatUngeklaert.Art.ERSTKONTAKT, frage.offen.value?.art)
     }
 
     @Test
@@ -206,6 +262,13 @@ class ZertifikatPinTest {
         const val WURZEL_BLATT = "MIIBwjCCAWigAwIBAgIUJ5bQK16akXTtVJGiddkeeCeimhAwCgYIKoZIzj0EAwIwFzEVMBMGA1UEAwwMQ2FkZHkgV3VyemVsMCAXDTI2MTAzMDIyMjg0NFoYDzIxMjYxMDA2MjIyODQ0WjAUMRIwEAYDVQQDDAlsb2NhbGhvc3QwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAAQkCXdFDKqjNGrBKlNNRxL4eL+CDWRzYEeNTxLPedxdqAmZELd0QILkTpIU3gnrMSNC92sr9JqJMj6bI6rbtqwHo4GSMIGPMAwGA1UdEwEB/wQCMAAwDgYDVR0PAQH/BAQDAgeAMBMGA1UdJQQMMAoGCCsGAQUFBwMBMBoGA1UdEQQTMBGCCWxvY2FsaG9zdIcEfwAAATAdBgNVHQ4EFgQUAZczQX6xjqiWuzi8ceAiL8aMRSgwHwYDVR0jBBgwFoAULpDKa+iFWhIS/Vl4s94pdZYH43QwCgYIKoZIzj0EAwIDSAAwRQIhAIDDuQsj3wEuClpl1bZMDbJQ1fnXG3pDWbfkcK9Nbkj1AiAoe+I71U9V5jog/wz5Y5bOc2YbEAw1q+grLMsqMP1jUA=="
         const val WURZEL_BLATT_KEY = "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgqZs7tPJIE6CpMc2pY0PdwG3yxUHoNpKYXMHNMTymB+KhRANCAAQkCXdFDKqjNGrBKlNNRxL4eL+CDWRzYEeNTxLPedxdqAmZELd0QILkTpIU3gnrMSNC92sr9JqJMj6bI6rbtqwH"
         const val LEAF_KEY = "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQg84oF2kTvPuV0IbWxEBoJyR56Fy+0F8JahbFGp5BLWNyhRANCAATEaYV9xPRftQsawpbymL4UCwtRskTDNCleoXpgaoaieBK8U5llrApgmi8XPWotB0UVRnMEWk1GDds8FMDq7sa6"
+        /** Eine Wurzel mit zwei Blättern verschiedener Schlüssel: die Erneuerung bei Caddy. */
+        const val ERNEUERT_WURZEL = "MIIBpzCCAU2gAwIBAgIUJTOasEJOl0Pf7j0Qu01Sy8psgtYwCgYIKoZIzj0EAwIwIDEeMBwGA1UEAwwVQ2FkZHkgV3VyemVsIEVybmV1ZXJ0MCAXDTI2MTEwMTA3MjY1MVoYDzIxMjYxMDA4MDcyNjUxWjAgMR4wHAYDVQQDDBVDYWRkeSBXdXJ6ZWwgRXJuZXVlcnQwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAATiMyAJAa2zn6z/XzWP4N3gXVIwrNsjX3N7XNaRTwZl+kMBDrdiCWGvXlzeW4SlhxzXNuRKMVZspa9oLozWu4Ylo2MwYTAdBgNVHQ4EFgQUqmjAp54LnvWA/rxJuUqmA46NfbUwHwYDVR0jBBgwFoAUqmjAp54LnvWA/rxJuUqmA46NfbUwDwYDVR0TAQH/BAUwAwEB/zAOBgNVHQ8BAf8EBAMCAQYwCgYIKoZIzj0EAwIDSAAwRQIhAKkqowjQxkTgYQT0X1D1/pH9AqbLfH4GRWLX/6l6x65yAiAvBcvxLwaniZ8UBE66GQyRR7OQqpBWiCvnVItju+uT7A=="
+        const val ERNEUERT_WURZEL_HEX = "8E:04:B3:9F:BF:A3:2D:A2:18:32:DB:2F:50:22:4C:2D:DE:96:AF:3A:0E:CA:01:05:95:E8:5F:1E:00:69:84:AB"
+        const val ERNEUERT_BLATT1 = "MIIBxzCCAW6gAwIBAgIUNED1j2vQniFdnw4NBBoyn5y9NsswCgYIKoZIzj0EAwIwIDEeMBwGA1UEAwwVQ2FkZHkgV3VyemVsIEVybmV1ZXJ0MCAXDTI2MTEwMTA3MjY1MVoYDzIxMjYxMDA4MDcyNjUxWjAUMRIwEAYDVQQDDAlsb2NhbGhvc3QwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAARo3O3gBYVKoZ258LnBNzokFNZYa9re0sQVASwdqdtSNmwkXYr3Oin1u7J8CHuUKU5Wnj239xhxTcysx1s75gkAo4GPMIGMMAkGA1UdEwQCMAAwDgYDVR0PAQH/BAQDAgeAMBMGA1UdJQQMMAoGCCsGAQUFBwMBMBoGA1UdEQQTMBGCCWxvY2FsaG9zdIcEfwAAATAdBgNVHQ4EFgQUvoABbHxaUxwgnYAuitc4oBTOhSYwHwYDVR0jBBgwFoAUqmjAp54LnvWA/rxJuUqmA46NfbUwCgYIKoZIzj0EAwIDRwAwRAIgJd7x9uBMAYsvqpKWq3OPtjOWKNHFEDca2A6bL+jKAigCIGwQ/YZBhOwuQgG9IZYsbsN/WOVzMgL0kInoq8EnJdFr"
+        const val ERNEUERT_BLATT1_KEY = "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQghRyFpO/jlqgF52U0y5wFGuYiEhYlqjn1ua2/I+YlOlKhRANCAARo3O3gBYVKoZ258LnBNzokFNZYa9re0sQVASwdqdtSNmwkXYr3Oin1u7J8CHuUKU5Wnj239xhxTcysx1s75gkA"
+        const val ERNEUERT_BLATT2 = "MIIByTCCAW6gAwIBAgIUNED1j2vQniFdnw4NBBoyn5y9NswwCgYIKoZIzj0EAwIwIDEeMBwGA1UEAwwVQ2FkZHkgV3VyemVsIEVybmV1ZXJ0MCAXDTI2MTEwMTA3MjY1MVoYDzIxMjYxMDA4MDcyNjUxWjAUMRIwEAYDVQQDDAlsb2NhbGhvc3QwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAARW/sryEYeErhUzXKqmM/ZH8rtumVlk4/NOugkM98U5wWirXfFozbsceyOHTb6cZdwtsOb+R3MjM1T8yhe8ZBHYo4GPMIGMMAkGA1UdEwQCMAAwDgYDVR0PAQH/BAQDAgeAMBMGA1UdJQQMMAoGCCsGAQUFBwMBMBoGA1UdEQQTMBGCCWxvY2FsaG9zdIcEfwAAATAdBgNVHQ4EFgQUrufLzJG5jvOE0ZNVIgUuFsKOjt8wHwYDVR0jBBgwFoAUqmjAp54LnvWA/rxJuUqmA46NfbUwCgYIKoZIzj0EAwIDSQAwRgIhALePJ9a9k9vdjKBxDuPGn9kIP5juXHCBuHjy49hb5EH1AiEA/qkkQkBKdBYF7ECQnwAnobnpIyIcGyfQ/MN1UO/z2dE="
+        const val ERNEUERT_BLATT2_KEY = "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgSfcmm6eyJEzmbUxAk9UHevRKVQMhEqMn242fIEhY7aWhRANCAARW/sryEYeErhUzXKqmM/ZH8rtumVlk4/NOugkM98U5wWirXfFozbsceyOHTb6cZdwtsOb+R3MjM1T8yhe8ZBHY"
         const val FREMD = "MIIBmDCCAT6gAwIBAgIUBpLM0+8DZR9WqDw7DqtrEKH9KDswCgYIKoZIzj0EAwIwFDESMBAGA1UEAwwJbG9jYWxob3N0MCAXDTI2MTAzMDE1NDI1OFoYDzIxMjYxMDA2MTU0MjU4WjAUMRIwEAYDVQQDDAlsb2NhbGhvc3QwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAATSAfTFPtfDF3dy0bcjX8dCElM9oKs2NYwoZEyfWsb5EIpbYtqP7F6JCLbrsb7GVytdEqsatNJDifymfYNnIJPjo2wwajAdBgNVHQ4EFgQU5NOS8aVLD/bPQjWQ5foWE5AcTIQwHwYDVR0jBBgwFoAU5NOS8aVLD/bPQjWQ5foWE5AcTIQwGgYDVR0RBBMwEYIJbG9jYWxob3N0hwR/AAABMAwGA1UdEwEB/wQCMAAwCgYIKoZIzj0EAwIDSAAwRQIgD2hCTe+02K17PzDfV7EgrTEgIV1C99ShlLSwHZsc1IICIQCknNnfSKSNOc+Kilyyna8ag4H9A8XH9kfcAia1XVWbDg=="
     }
 }

@@ -20,6 +20,8 @@ import org.junit.Test
  *      „ein einzelner Gutschein und der Export brauchen Sichtschutz“
  *   B  Sichtschutz() aus GutscheineUnterseite entfernt → rot „Gutscheinseite und
  *      Gutschein-PDF fordern den Sichtschutz an“
+ *   C  (01.11.2026) Sichtschutz() aus dem Zweig `zfZustand.geheimnis != null` in
+ *      EinstellungenKonto entfernt → rot „Schlüssel und Codes des zweiten Faktors …“
  */
 class GutscheinSichtschutzTest {
 
@@ -42,5 +44,15 @@ class GutscheinSichtschutzTest {
         val graph = Quellen.ohneKommentare(Quellen.lies("nav/ToolsGraph.kt"))
         assertTrue("Das Gutschein-PDF setzt keinen Sichtschutz",
             Regex("""zeigtGutscheine\(pdfUrl\)\)\s*ch\.brickinventoryapp\.ui\.components\.Sichtschutz\(\)""").containsMatchIn(graph))
+    }
+
+    /** Dieselbe Regel für den TOTP-Schlüssel und die Wiederherstellungscodes. */
+    @Test
+    fun `Schluessel und Codes des zweiten Faktors fordern den Sichtschutz an`() {
+        val konto = Quellen.ohneKommentare(Quellen.lies("ui/screens/EinstellungenKonto.kt"))
+        for (zweig in listOf("zfZustand.codes.isNotEmpty() ->", "zfZustand.geheimnis != null ->")) {
+            assertTrue("Ohne Sichtschutz: $zweig", Regex(Regex.escape(zweig) +
+                """\s*\{\s*ch\.brickinventoryapp\.ui\.components\.Sichtschutz\(\)""").containsMatchIn(konto))
+        }
     }
 }

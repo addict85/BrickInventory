@@ -98,14 +98,14 @@ data class UserSettings(
  *
  * @param ready    Server ist durch; ab hier ist alles wie immer.
  * @param step     Was gerade läuft, vom Server übersetzt.
- * @param progress Erledigte Schritte, `total` insgesamt; 0/0 = unbekannt.
+ * @param progress Erledigte Schritte samt Anteil des laufenden, `total` insgesamt; 0/0 = unbekannt.
  * @param sub      Feinfortschritt innerhalb eines Schritts, z. B. „40%“.
  */
 @Serializable
 data class StartupStatus(
     val ready: Boolean = false,
     val step: String? = null,
-    val progress: Int = 0,
+    val progress: Double = 0.0,
     val total: Int = 0,
     val sub: String? = null,
 )

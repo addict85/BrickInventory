@@ -14,7 +14,8 @@ import compression from 'compression';
 import connectPgSimple from 'connect-pg-simple';
 import * as db from './db/database';
 import { fehlertext, logAndContinue, meldeUndWeiter, fehlerAntwort } from './src/infra/httpError';
-import { startVerbote, cookieSicher } from './src/infra/konfig';
+import { startVerbote } from './src/infra/konfig';
+import { sitzungsKeksName, sitzungsKeksOptionen } from './src/infra/sitzungsKeks';
 import { bereiteDatenbankVor } from './startup/datenbank';
 import { starteJobs, stoppeJobs } from './startup/jobsProzess';
 import { verdrahte } from './jobs/verdrahtung';
@@ -22,7 +23,7 @@ import { drossleBeruehren } from './src/konto/sitzungsBeruehrung';
 import { SITZUNG_LEERLAUF_SEK, sitzungsHoechstdauer } from './src/konto/sitzungsFrist';
 import { antwortAufDateiFehler, liefereDatei, sendeDatei } from './src/infra/dateiAusliefern';
 import { cdnFuerFehlendesBild } from './src/katalog/bilder/bildNachschlagen';
-import { aktuellerStartZustand } from './src/infra/startZustand';
+import { aktuellerStartZustand, oeffentlicherStartZustand } from './src/infra/startZustand';
 import { merkeAnfrage } from './src/infra/anfrageKonto';
 import { proxyVertrauen, proxyHinweis } from './src/infra/proxyVertrauen';
 import { nurEigeneHerkunft } from './src/infra/herkunft';
@@ -35,11 +36,14 @@ import { safeDataPath } from './src/infra/datenPfad';
 import { generateThumb } from './src/katalog/bilder/thumbs';
 import { closeAllSse } from './src/infra/sseRegistry';
 import { renderIndexHtml } from './src/konto/indexHtml';
+import { meldeSmtpAltlast } from './src/infra/mailer';
 import * as pgNotify from './db/pgNotify';
 import { registerImgProxy } from './routes/imgProxy';
 import { anmeldungAmEingang } from './routes/api_v1/middleware';
 import { idempotenz } from './src/idempotenz/http/middleware';
 import { vertragPruefen } from './src/infra/vertrag/pruefen';
+import { zuGrosseId } from './src/infra/validate';
+import { sendeFehler } from './src/infra/fehlerTexte';
 import datenDateien = require('./routes/datenDateien');
 import apiV1Router = require('./routes/api_v1/index');
 import authRouter = require('./routes/auth');
@@ -105,7 +109,10 @@ app.use((req, res, next) => {
   res.setHeader('X-Frame-Options', 'SAMEORIGIN');
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('Referrer-Policy', 'same-origin');
-  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=(), usb=()');
+  // Kein fremdes Fenster hält einen Griff auf die App, keine fremde Seite bettet ihre Antworten ein.
+  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+  res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
 
   // HSTS nur über eine verschlüsselte Verbindung; danach geht auch die erste
   // getippte Anfrage nicht mehr samt Cookie im Klartext hinaus.
@@ -149,6 +156,8 @@ app.use(express.urlencoded({ extended: true, limit: '256kb' }));
 /** Express 5 lässt `req.body` ohne Parser `undefined`; die Routen verlassen
  * sich auf ein Objekt. */
 app.use((req, _res, next) => { if (req.body === undefined) req.body = {}; next(); });
+// IDs in Rumpf und Abfrage an einer Stelle, wie die Pfad-IDs in vertragsRouter().
+app.use((req, res, next) => zuGrosseId(req.body) || zuGrosseId(req.query) ? sendeFehler(req, res, 400, 'id_ungueltig') : next());
 
 // Hinter einem TLS-terminierenden Proxy muss Express X-Forwarded-Proto
 // glauben, sonst setzt es das secure-Cookie nie (src/infra/proxyVertrauen.ts).
@@ -173,7 +182,10 @@ app.use((req, _res, next) => {
 });
 
 app.use(nurEigeneHerkunft);
+// no-store als Vorgabe: Antworten tragen Konten, Gutscheine und Tokens. Was bewusst
+// gecacht wird (img-proxy, Design), setzt seinen Kopf selbst und überschreibt ihn.
 app.use('/api', (_req, res, next) => {
+  res.setHeader('Cache-Control', 'no-store');
   res.setHeader('X-Api-Version', String(API_VERSION));
   res.setHeader('X-Api-Min-App', String(API_MIN_APP));
   next();
@@ -214,14 +226,8 @@ app.use(session({
   secret: sitzungsGeheimnis(),
   resave: false,
   saveUninitialized: false,
-  cookie: {
-    // Ohne maxAge ein Sitzungscookie: endet mit dem Browser. httpOnly hält
-    // Skripte fern, sameSite schützt vor CSRF.
-    httpOnly: true,
-    sameSite: 'lax',
-    // In Produktion nur über HTTPS; COOKIE_SECURE=0 für den Betrieb ohne TLS.
-    secure: cookieSicher(konfig()),
-  }
+  name: sitzungsKeksName(),
+  cookie: sitzungsKeksOptionen(),
 }));
 app.use(sitzungsHoechstdauer());
 
@@ -308,19 +314,22 @@ app.get('/api/v1/startup-status', async (_req, res) => {
   res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
   res.set('Pragma', 'no-cache');
   res.set('Expires', '0');
-  res.json(await aktuellerStartZustand());
+  res.json(oeffentlicherStartZustand(await aktuellerStartZustand()));
 });
 
-// Ohne Anmeldung (compose.yaml). Pool und Laufzeit verraten Last und
-// Neustarts — die nur für den Verwalter.
+// Ohne Anmeldung (compose.yaml): anonym nur der Status; live = Prozess, ready = Datenbank.
+app.get('/api/v1/health/live', (_req, res) => { res.json({ status: 'ok' }); });
+app.get('/api/v1/health/ready', async (_req, res) => {
+  const bereit = await db.datenbankAntwortet();
+  res.status(bereit ? 200 : 503).json({ status: bereit ? 'ok' : 'unavailable' });
+});
 app.get('/api/v1/health', async (req, res) => {
   // Klemmt die Datenbank, bleibt der Bericht erreichbar — nur ohne Details.
   const verwalter = !!(await resolveUserId(req).catch(logAndContinue('health:anmeldung'))) && istVerwalter(req);
   const start = await aktuellerStartZustand();
   res.json({
     status: start.ready ? 'ok' : 'starting',
-    startup: start,
-    ...(verwalter ? { db_pool: db.getPoolStats(), uptime_seconds: Math.floor(process.uptime()) } : {}),
+    ...(verwalter ? { startup: start, db_pool: db.getPoolStats(), uptime_seconds: Math.floor(process.uptime()) } : {}),
   });
 });
 
@@ -335,6 +344,7 @@ app.use('/api/v1/auth',     authRouter);
 
 // Der Link kommt aus einer E-Mail: Die Antwort ist eine Seite, kein JSON.
 app.get('/verify', async (req, res) => {
+  res.set('Cache-Control', 'no-store');
   try {
     const e = await verifiziereEmailToken(req.query.token);
     res.redirect(e.ok ? '/?verified=1' : '/?verified=invalid');
@@ -348,7 +358,8 @@ app.get('/verify', async (req, res) => {
 
 // Ausdrücklich, damit location.pathname === '/reset-password' stimmt.
 app.get('/reset-password', async (_req, res) => {
-  res.set('Cache-Control', 'no-cache');
+  // Die Adresse trägt das Rücksetz-Token.
+  res.set('Cache-Control', 'no-store');
   // Über den Renderer statt sendFile: sonst gingen die Assets ohne Stempel
   // und im Standarddesign hinaus.
   try {
@@ -439,6 +450,7 @@ async function starte(): Promise<void> {
     process.exit(1);
   }
   protokollInDieDatenbank(db.pool);
+  if (web) await meldeSmtpAltlast().catch(logAndContinue('start:smtp-altlast'));
 
   // Erst nach dem Schema Anfragen annehmen: Der Sitzungsspeicher braucht user_sessions.
   const httpServer = web ? baueApp().listen(k.port, () => {

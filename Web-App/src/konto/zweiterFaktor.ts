@@ -1,6 +1,6 @@
 /** RFC 6238 (TOTP, SHA-1, 6 Stellen, 30 s): die Form, die jede
  * Authenticator-App versteht. Ohne Fremdpaket, mit node:crypto. */
-import { verschluessele, entschluessele } from '../infra/geheimnis';
+import { verschluessele, entschluessele, kontext } from '../infra/geheimnis';
 import crypto from 'crypto';
 import * as db from '../../db/database';
 import type { DbSchnittstelle } from '../../db/database';
@@ -12,6 +12,8 @@ const FENSTER = 1;
 const STELLEN = 6;
 const CODES_ANZAHL = 10;
 const BASE32 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+
+export const faktorKontext = (uid: number) => kontext('zweiter_faktor.geheimnis', uid);
 
 export function base32(buf: Buffer): string {
   let bits = 0, wert = 0, aus = '';
@@ -95,14 +97,14 @@ export async function stand(uid: number): Promise<{ aktiv: boolean; codes_uebrig
 /** Noch nicht aktiv. @returns null, wenn der Faktor schon aktiv ist */
 export async function beginneEinrichtung(uid: number): Promise<string | null> {
   const geheimnis = base32(crypto.randomBytes(20));
-  return await repo.legeGeheimnisAn(uid, verschluessele(geheimnis)) ? geheimnis : null;
+  return await repo.legeGeheimnisAn(uid, verschluessele(geheimnis, faktorKontext(uid))) ? geheimnis : null;
 }
 
 export async function bestaetigeEinrichtung(uid: number, code: string): Promise<string[] | null> {
   return db.transaction(async (tx) => {
     const z = await repo.unbestaetigtesGeheimnisSperren(tx, uid);
     if (!z) return null;
-    const schritt = passenderSchritt(entschluessele(z.geheimnis) ?? '', String(code ?? '').trim());
+    const schritt = passenderSchritt(entschluessele(z.geheimnis, faktorKontext(uid)) ?? '', String(code ?? '').trim());
     if (schritt === null) return null;
     await repo.aktiviere(tx, uid, schritt);
     return codesErsetzen(tx, uid);
@@ -115,7 +117,7 @@ export async function pruefeCode(uid: number, code: unknown): Promise<'totp' | '
   if (!eingabe) return null;
   if (/^\d{6}$/.test(eingabe)) {
     const z = await repo.aktivesGeheimnis(uid);
-    const schritt = z ? passenderSchritt(entschluessele(z.geheimnis) ?? '', eingabe) : null;
+    const schritt = z ? passenderSchritt(entschluessele(z.geheimnis, faktorKontext(uid)) ?? '', eingabe) : null;
     if (schritt === null) return null;
     return await repo.verbraucheSchritt(uid, schritt) ? 'totp' : null;
   }

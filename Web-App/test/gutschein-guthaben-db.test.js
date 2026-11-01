@@ -103,15 +103,10 @@ async function aufbau() {
   HAUPT = (await db.get(`SELECT id FROM users WHERE username='haupt'`)).id;
   FREMD = (await db.get(`SELECT id FROM users WHERE username='fremd'`)).id;
 
-  MIT_PIN = (await db.get(
-    `INSERT INTO vouchers (user_id,number,pin,amount,currency)
-     VALUES ($1,$2,$3,100,'CHF') RETURNING id`, [HAUPT, NUMMER, PIN])).id;
-  OHNE_PIN = (await db.get(
-    `INSERT INTO vouchers (user_id,number,pin,amount,currency)
-     VALUES ($1,'5045076374450022277',NULL,50,'CHF') RETURNING id`, [HAUPT])).id;
-  FREMDER = (await db.get(
-    `INSERT INTO vouchers (user_id,number,pin,amount,currency)
-     VALUES ($1,'9999999999999999999','0000',99,'CHF') RETURNING id`, [FREMD])).id;
+  const { gutscheinAnlegen } = _req('src/gutscheine/dienst.js');
+  MIT_PIN = (await gutscheinAnlegen(HAUPT, { number: NUMMER, pin: PIN, amount: 100, currency: 'CHF' })).id;
+  OHNE_PIN = (await gutscheinAnlegen(HAUPT, { number: '5045076374450022277', pin: null, amount: 50, currency: 'CHF' })).id;
+  FREMDER = (await gutscheinAnlegen(FREMD, { number: '9999999999999999999', pin: '0000', amount: 99, currency: 'CHF' })).id;
 }
 
 /** Die Schranke zurücksetzen — sonst steht jeder Fall im Schatten des vorigen. */
@@ -350,8 +345,9 @@ test('Guthaben: die Route und die Schranke', { concurrency: 1 }, async (t) => {
     // meldete einen Leck, den es nicht gab — der Text enthielt eine Ziffernfolge,
     // die gar nicht mehr die PIN dieser Karte war. Die Zusicherung muss gegen
     // DEN Wert prüfen, den die Route an verdecke() gibt.
-    const pinJetzt = _req('src/infra/geheimnis.js').entschluessele(
-      (await db.get('SELECT pin FROM vouchers WHERE id=$1', [MIT_PIN])).pin);
+    const pinZeile = await db.get('SELECT user_id, pin FROM vouchers WHERE id=$1', [MIT_PIN]);
+    const pinJetzt = _req('src/infra/geheimnis.js').entschluessele(pinZeile.pin,
+      _req('src/gutscheine/repository/gutscheine.js').pinKontext(pinZeile.user_id, MIT_PIN));
     naechsteAntwort = antwort({ status: 500, text: `kaputt für ${NUMMER} mit ${pinJetzt}` });
     const r = await abfrage(srv.base, MIT_PIN);
     const d = await r.json();

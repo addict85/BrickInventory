@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { DATA_DIR } from '../infra/appPaths';
-import { verschluesselePuffer, entschluesselePuffer, istVerschluesselterPuffer } from '../infra/geheimnis';
+import { verschluesselePuffer, entschluesselePuffer, istVerschluesselterPuffer, altenPufferLesen, kontext } from '../infra/geheimnis';
 import { ohneFehlendeDatei } from '../infra/httpError';
 
 /** Die PDFs tragen Kartennummer und PIN im Klartext; verschlüsselt gibt eine
@@ -16,17 +16,23 @@ export function gutscheinDatei(userId: number, pdfPfad: string): string | null {
   return ziel.startsWith(basis + path.sep) ? ziel : null;
 }
 
+/** Der Ort unter vouchers/ (Konto/Gutschein.pdf) im Kontext: Eine Datei, in
+ * einen anderen Gutschein oder ein anderes Konto kopiert, bleibt unlesbar. */
+function dateiKontext(datei: string) {
+  return kontext('gutschein-pdf', path.relative(VOUCHER_DIR, datei).split(path.sep).join('/'));
+}
+
 /** Erst die fertige Datei bekommt ihren Namen. */
 export async function schreibeGutscheinPdf(datei: string, pdf: Buffer): Promise<void> {
   await fs.promises.mkdir(path.dirname(datei), { recursive: true, mode: 0o700 });
   const teil = `${datei}.${process.pid}.teil`;
-  await fs.promises.writeFile(teil, verschluesselePuffer(pdf), { mode: 0o600 });
+  await fs.promises.writeFile(teil, verschluesselePuffer(pdf, dateiKontext(datei)), { mode: 0o600 });
   await fs.promises.rename(teil, datei);
 }
 
-/** null, wenn der Schlüssel nicht passt. */
+/** null, wenn Schlüssel oder Ort nicht passen oder die Datei unverschlüsselt ist. */
 export async function liesGutscheinPdf(datei: string): Promise<Buffer | null> {
-  return entschluesselePuffer(await fs.promises.readFile(datei));
+  return entschluesselePuffer(await fs.promises.readFile(datei), dateiKontext(datei));
 }
 
 /** Fehlt die Datei, wird die Seite neu erzeugt, ohne den Export abzubrechen. */
@@ -35,7 +41,7 @@ export async function liesGutscheinPdfOderNichts(datei: string | null): Promise<
   return liesGutscheinPdf(datei).catch(ohneFehlendeDatei('gutschein:pdf lesen', null));
 }
 
-/** Bei jedem Start; Verschlüsseltes bleibt. */
+/** Unverschlüsselte und BIENC1-Dateien auf BIENC2, bei jedem Start; BIENC2 bleibt. */
 export async function verschluesseleGutscheinAltbestand(): Promise<number> {
   if (!fs.existsSync(VOUCHER_DIR)) return 0;
   let n = 0;
@@ -46,7 +52,9 @@ export async function verschluesseleGutscheinAltbestand(): Promise<number> {
       const datei = path.join(ordner, name);
       const roh = await fs.promises.readFile(datei);
       if (istVerschluesselterPuffer(roh)) continue;
-      await schreibeGutscheinPdf(datei, roh);
+      const klar = altenPufferLesen(roh, dateiKontext(datei));
+      if (!klar) continue;
+      await schreibeGutscheinPdf(datei, klar);
       n++;
     }
   }

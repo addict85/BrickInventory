@@ -15,6 +15,7 @@ import { Client } from 'pg';
 import { LOCKS } from '../src/infra/lockNamespaces';
 import { fehlerCode, meldeUndWeiter, logAndContinue } from '../src/infra/httpError';
 import { konfig, datenbankVerbindung } from '../src/infra/konfig';
+import { passwortMangel } from '../src/infra/passwortRegel';
 
 // Warum diese acht jetzt oben stehen
 // Sie standen als require() in den Funktionsruempfen. Node haelt Module im
@@ -128,6 +129,11 @@ function getPoolStats() {
     waiting: pool.waitingCount,
     active:  pool.totalCount - pool.idleCount,
   };
+}
+
+/** Für /api/v1/health/ready: eine Abfrage ohne Tabelle, die nur die Verbindung prüft. */
+async function datenbankAntwortet(): Promise<boolean> {
+  return pool.query('SELECT 1').then(() => true, (e: unknown) => { meldeUndWeiter('health:ready', e); return false; });
 }
 
 
@@ -288,7 +294,11 @@ async function legeAdminAn() {
     // war, prueft niemand sein Argument. Ein Fehler war es nicht — der Zweig
     // ist durch dieselbe Bedingung geschuetzt —, beweisbar war es aber auch nicht.
     const envPasswort = konfig().adminPasswort;
-    const useEnvPassword = envPasswort !== '';
+    // Dieselbe Regel wie jeder andere Weg; ein schwaches ADMIN_PASSWORD wird
+    // durch ein zufälliges ersetzt, das beim ersten Login zu ändern ist.
+    const mangel = envPasswort !== '' ? passwortMangel(envPasswort, 'admin') : null;
+    if (mangel) console.warn(`⚠️  [start] ADMIN_PASSWORD wird nicht verwendet (${mangel}); ein zufälliges Startpasswort steht unten.`);
+    const useEnvPassword = envPasswort !== '' && !mangel;
     const plainPassword = useEnvPassword
       ? envPasswort
       : crypto.randomBytes(15).toString('base64url'); // 20 Zeichen, URL-sicher
@@ -400,4 +410,4 @@ async function eigeneVerbindung() {
   return c;
 }
 
-export { pool, all, get, run, exec, transaction, initSchema, initSchemaOnce, getPoolStats, eigeneVerbindung };
+export { pool, all, get, run, exec, transaction, initSchema, initSchemaOnce, getPoolStats, datenbankAntwortet, eigeneVerbindung };

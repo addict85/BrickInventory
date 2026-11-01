@@ -1,6 +1,7 @@
 /** /api/v1/settings — ein Router für den ganzen Pfad, weil die Reihenfolge vor
  * und nach router.use(requireLogin) hier an einer Stelle entschieden wird. */
 import multer from 'multer';
+import { FORMULAR_GRENZEN } from '../../src/infra/dateiEmpfang';
 import { fehlerAntwort, logAndContinue } from '../../src/infra/httpError';
 import { requireApiAdmin as requireAdmin, requireToken, bearerToken } from './middleware';
 import {
@@ -10,7 +11,7 @@ import {
 } from '../../src/konto/settings';
 import { nutzerEinstellungen } from '../../src/konto/settings';
 import { deleteUserSetting } from '../../src/konto/settings';
-import { setGlobalSetting } from '../../src/konto/settings';
+import { setGlobalSetting, globalerWertGueltig, deleteGlobalSetting } from '../../src/konto/settings';
 import { globalDefaultCondition } from '../../src/konto/settings';
 import { nutzerStandardZustand } from '../../src/konto/settings';
 import { setUserSetting } from '../../src/konto/settings';
@@ -21,7 +22,7 @@ import { buildPartsCsv, buildFigsCsv } from '../../src/bestand/bestandExport';
 import { buildMerklisteCsv } from '../../src/merkliste/merkliste';
 import { buildPreisalarmeCsv } from '../../src/finanzen/preisalarm';
 import { DAILY_JOBS } from '../../src/auftraege/zeitplan';
-import { quellePruefen, bricksetLimitGesetzt, zeitplanNeuPlanen } from '../../src/verwaltung/dienst';
+import { quellePruefen, bricksetLimitGesetzt, zeitplanNeuPlanen, protokolliere } from '../../src/verwaltung/dienst';
 import { zugaengeDesKontos, zugaengeLoeschen, andereSitzungenBeenden, mussPasswortAendern, profil } from '../../src/konto/konten';
 import { escapeLike, hashToken, leereTokenCache } from '../../src/konto/auth';
 import { resolveUserId, requireLoginOrToken, nutzerId, angemeldeteNutzerId, istVerwalter, nutzerName, bestaetigePasswort } from '../../src/konto/http/anmeldung';
@@ -207,13 +208,16 @@ router.post('/settings', async (req: LoggedInRequest, res: Antwort<'POST /api/v1
   const globalKeys = ['bricklink_consumer_key','bricklink_consumer_secret','bricklink_token',
     'bricklink_token_secret','brickset_api_key','rebrickable_api_key','price_job_interval_minutes',
     'price_cache_ttl','api_limit_rebrickable','api_limit_bricklink','api_limit_brickset',
-    'registration_enabled','smtp_host','smtp_port','smtp_user','smtp_pass','smtp_from','smtp_secure','smtp_insecure_tls',
+    'registration_enabled','smtp_host','smtp_port','smtp_user','smtp_pass','smtp_from','smtp_secure',
+    'smtp_tls_fingerprint','smtp_tls_ca',
     'default_price_condition',
     // Global, also nur vom Verwalter gesetzt; kein Geheimnis, lesen dürfen es alle.
     'gutschein_land'];
   const userKeys = ['currency', 'language', 'user_default_condition'];
 
   if (istVerwalter(req)) {
+    if (globalKeys.some(k => req.body[k] !== undefined && !globalerWertGueltig(k, req.body[k])))
+      return sendeFehler(req, res, 400, 'wert_ungueltig');
     // Mailserver nur mit Passwort umstellen: Wer eine Verwaltersitzung erbeutet,
     // läse sonst alle künftigen Rücksetz-Mails mit. Nur bei echter Änderung.
     const smtpGeaendert: string[] = [];
@@ -228,14 +232,19 @@ router.post('/settings', async (req: LoggedInRequest, res: Antwort<'POST /api/v1
       ? parseInt(await getGlobalSetting('api_limit_brickset') || '100')
       : null;
 
+    const geaendert: string[] = [];
     for (const key of globalKeys) {
       if (req.body[key] !== undefined) {
         // Eine unverändert zurückgeschickte Maske ist kein neuer Wert, sonst
         // überschriebe jedes Speichern die echten Schlüssel mit Punkten.
         if (SECRET_KEYS.has(key) && isMaskedValue(req.body[key])) continue;
+        if (String(req.body[key]) !== String(await getGlobalSetting(key) ?? '')) geaendert.push(key);
         await setGlobalSetting(key, req.body[key]);
       }
     }
+    if (geaendert.length) await protokolliere(uid, uid, 'einstellungen_geaendert', geaendert.join(', '));
+    // Wer das Mailformular gespeichert hat, hat den Hinweis auf die alte Ausnahme gesehen.
+    if (globalKeys.some(k => k.startsWith('smtp_') && req.body[k] !== undefined)) await deleteGlobalSetting('smtp_insecure_tls');
 
     if (oldBricksetLimit !== null) await bricksetLimitGesetzt(oldBricksetLimit, parseInt(req.body.api_limit_brickset));
   }
@@ -290,7 +299,7 @@ router.get('/settings/export/data', async (req: LoggedInRequest, res) => {
   await archive.finalize();
 });
 
-const importUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 1024 * 1024 } });
+const importUpload = multer({ storage: multer.memoryStorage(), limits: { ...FORMULAR_GRENZEN, fileSize: 1024 * 1024 } });
 router.post('/settings/import', importUpload.single('file'), async (req: LoggedInRequest, res: Antwort<'POST /api/v1/settings/import'>) => {
   if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
   const gelesen = jsonOderNull(req.file.buffer.toString('utf-8'));
@@ -301,7 +310,7 @@ router.post('/settings/import', importUpload.single('file'), async (req: LoggedI
     'bricklink_token_secret','brickset_api_key','rebrickable_api_key','price_job_interval_minutes',
     'price_cache_ttl','api_limit_rebrickable','api_limit_bricklink','api_limit_brickset',
     // smtp_* fehlen mit Absicht: Eine Importdatei kommt von irgendwoher, und mit
-    // smtp_host + smtp_insecure_tls gingen Rücksetz-Mails an einen fremden Server.
+    // smtp_host + smtp_tls_ca gingen Rücksetz-Mails an einen fremden Server.
     'registration_enabled', 'default_price_condition', 'gutschein_land',
     ...DAILY_JOBS.map(j => `job_time_${j.name}`)];
   const userKeys = ['currency', 'user_default_condition'];
@@ -310,14 +319,19 @@ router.post('/settings/import', importUpload.single('file'), async (req: LoggedI
   const smtpUebergangen = config.global && typeof config.global === 'object'
     ? Object.keys(config.global).filter(k => k.startsWith('smtp_')) : [];
   if (config.global && istVerwalter(req)) {
+    if (globalKeys.some(k => config.global[k] !== undefined && !globalerWertGueltig(k, config.global[k])))
+      return sendeFehler(req, res, 400, 'wert_ungueltig');
+    const geaendert: string[] = [];
     for (const key of globalKeys) {
       if (config.global[key] !== undefined) {
         // Maskierte Werte aus älteren Exporten dürfen echte Schlüssel nicht überschreiben.
         if (SECRET_KEYS.has(key) && isMaskedValue(config.global[key])) continue;
+        if (String(config.global[key]) !== String(await getGlobalSetting(key) ?? '')) geaendert.push(key);
         await setGlobalSetting(key, config.global[key]);
         imported++;
       }
     }
+    if (geaendert.length) await protokolliere(uid, uid, 'einstellungen_geaendert', `Import: ${geaendert.join(', ')}`);
   }
   if (config.user_settings) {
     for (const key of userKeys) {
@@ -341,7 +355,7 @@ router.post('/settings/import', importUpload.single('file'), async (req: LoggedI
 router.post('/settings/smtp-test', async (req, res: Antwort<'POST /api/v1/settings/smtp-test'>) => {
   if (!istVerwalter(req)) return sendeFehler(req, res, 403, 'nur_admins');
   const verify = await testSmtp();
-  if (!verify.success) return sendeFehler(req, res, 400, (verify as any).code);
+  if (!verify.success) return sendeFehler(req, res, 400, verify.code, 'vars' in verify ? verify.vars : undefined);
 
   let to = (req.body.to || '').trim();
   if (!to) {

@@ -12,6 +12,7 @@ import crypto from 'crypto';
 /** Lang genug für „später am Abend", kurz genug, dass ein liegen gebliebener
  * Code nicht dauerhaft öffnet. */
 export const INVITE_TTL_MS = 24 * 60 * 60 * 1000;
+export const OFFENE_EINLADUNGEN_MAX = 5;
 
 export interface Household {
   /** Eigene zuerst, dann die direkten Unterkonten. */
@@ -94,6 +95,9 @@ export async function createInvite(uid: number) {
   // Jedes Konto darf einladen, auch ein Unterkonto: Ein Zwischenkonto ist Vater
   // UND Kind.
   await repo.raeumeEinladungenAuf().catch(logAndContinue('haushalt:id'));
+  // Jede offene Einladung ist ein Zugang zum Haushalt; beliebig viele braucht niemand.
+  if (await repo.offeneEinladungen(id) >= OFFENE_EINLADUNGEN_MAX)
+    return { fehler: 'einladungen_zu_viele' as const, vars: { n: OFFENE_EINLADUNGEN_MAX } };
 
   const code = crypto.randomBytes(24).toString('base64url');
   await repo.legeEinladungAn(hash(code), id, new Date(Date.now() + INVITE_TTL_MS));

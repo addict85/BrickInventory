@@ -155,6 +155,9 @@ suspend fun <T> sicherAufrufen(call: suspend () -> Response<T>): Result<T> {
         Result.Error("", transient = true, art = Fehlerart.NETZ)
     } catch (e: java.net.SocketTimeoutException) {
         Result.Error("", transient = true, art = Fehlerart.ZEIT)
+    } catch (e: ch.brickinventoryapp.util.KlartextAbgelehnt) {
+        // Nicht vorübergehend: Ein zweiter Versuch ginge genauso an http.
+        Result.Error("", art = Fehlerart.KLARTEXT)
     } catch (e: java.io.IOException) {
         // Jede übrige IOException ist ein Transportproblem und wiederholbar, gleich
         // welchen Untertyp OkHttp wählt. Fehler beim Auswerten der Antwort sind

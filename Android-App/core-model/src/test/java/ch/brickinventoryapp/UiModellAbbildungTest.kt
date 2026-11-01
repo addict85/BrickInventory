@@ -43,11 +43,11 @@ class UiModellAbbildungTest {
 
     @Test
     fun `der Startzustand rechnet den Anteil, ohne Gesamtzahl gibt es keinen`() {
-        val halb = StartupStatus(ready = false, step = "Katalog", progress = 5, total = 10).alsAnsicht()
+        val halb = StartupStatus(ready = false, step = "Katalog", progress = 5.0, total = 10).alsAnsicht()
         assertEquals(0.5f, halb.anteil!!, 0.0001f)
         assertEquals("Katalog", halb.schritt)
-        assertNull("ohne Gesamtzahl gibt es keinen Anteil", StartupStatus(progress = 3, total = 0).alsAnsicht().anteil)
-        assertEquals("nie über 100 %", 1f, StartupStatus(progress = 12, total = 10).alsAnsicht().anteil!!, 0f)
+        assertNull("ohne Gesamtzahl gibt es keinen Anteil", StartupStatus(progress = 3.0, total = 0).alsAnsicht().anteil)
+        assertEquals("nie über 100 %", 1f, StartupStatus(progress = 12.0, total = 10).alsAnsicht().anteil!!, 0f)
     }
 
     @Test

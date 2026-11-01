@@ -3,7 +3,6 @@ package ch.brickinventoryapp.ui.screens
 import ch.brickinventoryapp.ui.theme.Formen
 import android.content.Intent
 import android.net.Uri
-import android.util.Log
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -50,7 +49,6 @@ fun ComparisonScreen() {
 
     fun openInBrowser(query: String) {
         val url = "https://www.toppreise.ch/produktsuche?q=$query"
-        Log.d("ComparisonScreen", "Opening in browser: $url")
         context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
     }
 

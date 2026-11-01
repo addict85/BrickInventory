@@ -33,10 +33,10 @@ data class StartzustandAnsicht(
     val bereit: Boolean,
     val schritt: String?,
     val unterschritt: String?,
-    val fortschritt: Int,
+    val fortschritt: Double,
     val gesamt: Int,
 ) {
-    val anteil: Float? get() = if (gesamt > 0) (fortschritt.toFloat() / gesamt).coerceIn(0f, 1f) else null
+    val anteil: Float? get() = if (gesamt > 0) (fortschritt / gesamt).toFloat().coerceIn(0f, 1f) else null
 }
 
 fun StartupStatus.alsAnsicht() = StartzustandAnsicht(bereit = ready, schritt = step, unterschritt = sub,

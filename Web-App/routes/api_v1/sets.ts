@@ -15,7 +15,7 @@ import { normalisiereLagerort, setzeLagerort, lagerorte,
          orteVon, legeOrtAn, benenneOrtUm, loescheOrt,
          vorgabeVon, setzeVorgabe } from '../../src/bestand/lagerort';
 import { alarmeFuer, alleAlarme, ausgeloesteSeit, loescheAlarm, setzeAlarm, alarmeAusCsv } from '../../src/finanzen/preisalarm';
-import { csvEmpfang, inhaltPasstZuTyp, uploadKontingentBytes, belegterPlatz } from '../../src/infra/dateiEmpfang';
+import { csvEmpfang, inhaltPasstZuTyp, uploadKontingentBytes, belegterPlatz, FORMULAR_GRENZEN } from '../../src/infra/dateiEmpfang';
 import { sendCsv, uebersprungenHinweis } from '../../src/infra/csvExport';
 import { withInventoryLock } from '../../db/txLock';
 import { addSet, updateSet } from '../../src/sets/setService';
@@ -317,7 +317,7 @@ router.get('/sets/import/csv/stream', zustandsWaechter, async (req, res) => {
   }
   _sseCounts.set(uid, offen + 1);
   res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache, no-transform');
+  res.setHeader('Cache-Control', 'no-store, no-transform');
   res.setHeader('Connection', 'keep-alive');
   res.setHeader('X-Accel-Buffering', 'no');
   res.flushHeaders?.();
@@ -390,7 +390,7 @@ router.post('/sets/add-stream', requireToken, async (req: LoggedInRequest, res) 
   // Schon im Blickfeld: kein Strom, sondern „exists" — es gibt nichts zu verfolgen.
   const vorhanden = await findSetInScope(angemeldeteNutzerId(req), set_number);
   if (vorhanden) { res.json({ success: true, action: 'exists', ...vorhanden }); return; }
-  res.setHeader('Content-Type', 'text/event-stream'); res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Content-Type', 'text/event-stream'); res.setHeader('Cache-Control', 'no-store');
   res.setHeader('Connection', 'keep-alive'); res.flushHeaders();
   const unregisterAddSse = registerSse(res);
   let cancelled = false; req.on('close', () => { cancelled = true; });
@@ -442,7 +442,7 @@ const uploadInstr = multer({
       cb(null, `${safe}_${crypto.randomBytes(12).toString('hex')}${ext}`);
     },
   }),
-  limits: { fileSize: 50 * 1024 * 1024 },
+  limits: { ...FORMULAR_GRENZEN, fileSize: 50 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => { if (ausTabelle(INSTR_EXT_BY_MIME, file.mimetype)) cb(null, true); else cb(dateiFehler('datei_typ_falsch', 415)); },
 });
 

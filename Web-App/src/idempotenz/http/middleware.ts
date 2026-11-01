@@ -9,6 +9,19 @@ import * as dienst from '../dienst';
 
 const SCHREIBEND = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
+/** Antworten mit Zugängen oder Codes landen nie in der Tabelle, auch nicht
+ * verschlüsselt. Ihre Wiederholung bekommt 409 statt eines zweiten Laufs: der
+ * prägte einen weiteren gültigen Zugang oder entwertete die eben gezeigten Codes. */
+const GEHEIME_ANTWORTEN: readonly RegExp[] = [
+  /^\/auth\/(login|qr-login|qr-token|token-create|token-rotieren|passkey\/anmelden)$/,
+  /^\/auth\/zweiter-faktor\/(einrichten|bestaetigen|codes)$/,
+  /^\/settings\/household\/invite$/,
+];
+
+export function antwortIstGeheim(pfad: string): boolean {
+  return GEHEIME_ANTWORTEN.some(re => re.test(pfad));
+}
+
 export async function idempotenz(req: Request, res: Response, next: NextFunction) {
   const schluessel = req.get('Idempotency-Key');
   if (schluessel === undefined || !SCHREIBEND.has(req.method)) return next();
@@ -19,16 +32,18 @@ export async function idempotenz(req: Request, res: Response, next: NextFunction
   const ausgang = await dienst.beginne(uid, schluessel, dienst.fingerabdruck(req.method, req.originalUrl, req.body));
   if (ausgang.art === 'anders') return sendeFehler(req, res, 422, 'idempotenz_schluessel_anders');
   if (ausgang.art === 'laeuft') { res.set('Retry-After', '1'); return sendeFehler(req, res, 409, 'idempotenz_laeuft'); }
+  if (ausgang.art === 'nicht_wiederholbar') return sendeFehler(req, res, 409, 'idempotenz_nicht_wiederholbar');
   if (ausgang.art === 'wiederholung') {
     res.set('Idempotent-Replay', 'true');
     return res.status(ausgang.status).type('application/json').send(ausgang.antwort);
   }
 
+  const geheim = antwortIstGeheim(req.path);
   let gemerkt = false;
   const json = res.json.bind(res);
   res.json = (rumpf: unknown) => {
     gemerkt = true;
-    dienst.beende(uid, schluessel, res.statusCode, JSON.stringify(rumpf))
+    dienst.beende(uid, schluessel, res.statusCode, geheim ? null : JSON.stringify(rumpf))
       .catch((e: unknown) => meldeUndWeiter('idempotenz:merken', e))
       .finally(() => json(rumpf));
     return res;

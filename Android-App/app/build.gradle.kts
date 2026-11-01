@@ -54,9 +54,8 @@ ksp {
 android {
     // JVM-Unit-Tests: android.util.Log & Co. sind im Test-Jar nur Attrappen und
     // WERFEN standardmässig ("Method w in android.util.Log not mocked").
-    // NetworkPolicy.isCleartextAllowed() protokolliert eine Warnung — der Test
-    // scheiterte deshalb an der Protokollzeile, nicht an der geprüften Regel.
-    // returnDefaultValues lässt solche Aufrufe still ins Leere laufen.
+    // returnDefaultValues lässt solche Aufrufe still ins Leere laufen, damit ein
+    // Test nicht an einer Protokollzeile scheitert statt an der geprüften Regel.
     testOptions {
         unitTests.isReturnDefaultValues = true
         // Robolectric liest Ressourcen, Schriften und Manifest der App.

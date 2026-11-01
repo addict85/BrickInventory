@@ -3,6 +3,7 @@ import express from 'express';
 import fs from 'fs';
 import path from 'path';
 import multer from 'multer';
+import { FORMULAR_GRENZEN } from '../../src/infra/dateiEmpfang';
 import { fehlerAntwort, ohneFehlendeDatei } from '../../src/infra/httpError';
 import { sendeFehler, fehlerText, antwortSprache, dateiFehler, type FehlerCode, alsDoppelt } from '../../src/infra/fehlerTexte';
 import { getGlobalSetting } from '../../src/konto/settings';
@@ -27,7 +28,7 @@ type AuthedRequest = express.Request & { apiUser: { user_id: number } };
 const upload = multer({
   storage: multer.memoryStorage(),
   // 2 MB lassen Platz für ein Sammel-PDF; mehr hielte nur pdf-lib länger im Speicher.
-  limits: { fileSize: 2 * 1024 * 1024, files: 1 },
+  limits: { ...FORMULAR_GRENZEN, fileSize: 2 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     // Wörtlicher Vergleich: Bei einem erlaubten Typ gibt es keinen geerbten
     // Tabellenwert, an dem man vorbeilaufen könnte.

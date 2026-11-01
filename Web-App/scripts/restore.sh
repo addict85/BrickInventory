@@ -73,8 +73,8 @@ fi
 # Der Datenschlüssel liegt nicht im Archiv (siehe backup.sh). Fehlt er, legt
 # der Server beim Neustart einen neuen an, und die verschlüsselten Werte des
 # Dumps lassen sich nicht mehr lesen.
-if [ ! -f data/.datenschluessel ]; then
-  echo "[restore] ACHTUNG: data/.datenschluessel fehlt. Vor dem Neustart die getrennt gesicherte" >&2
+if [ ! -f schluessel/datenschluessel ] && [ ! -f data/.datenschluessel ]; then
+  echo "[restore] ACHTUNG: schluessel/datenschluessel fehlt. Vor dem Neustart die getrennt gesicherte" >&2
   echo "[restore]   Datei dorthin legen (oder DATA_KEY setzen); sonst sind API-Schlüssel," >&2
   echo "[restore]   SMTP-Passwort, Gutschein-PINs und der zweite Faktor nicht mehr lesbar." >&2
   printf '[restore] Trotzdem neu starten? [ja/N] '

@@ -52,8 +52,9 @@ class BrickRepositoryErrorMappingTest {
     private lateinit var cacheDir: File
 
     /** Kurze Fristen: Der Zeitüberschreitungs-Fall soll den Lauf nicht bremsen. */
-    private fun baueRepo(leseFristMs: Long = 1_000): KontoRepository {
+    private fun baueRepo(leseFristMs: Long = 1_000, waechter: okhttp3.Interceptor? = null): KontoRepository {
         val client = OkHttpClient.Builder()
+            .apply { waechter?.let { addInterceptor(it) } }
             .readTimeout(leseFristMs, TimeUnit.MILLISECONDS)
             .connectTimeout(leseFristMs, TimeUnit.MILLISECONDS)
             .build()
@@ -147,6 +148,26 @@ class BrickRepositoryErrorMappingTest {
         val e = fehler(repo.getMe())
         assert(e.transient) { "Abriss muss als vorübergehend gelten, war: $e" }
         assert(e.message.isBlank()) { "Kein Satz aus der Datenschicht, war: '${e.message}'" }
+    }
+
+    /**
+     * Eine gespeicherte http-Adresse: Der Wächter des Release-Builds lehnt ab, und
+     * daraus wird ein eigener Satz mit Anleitung statt „keine Verbindung“.
+     * Gegenprobe (01.11.2026, gemessen): den Zweig für KlartextAbgelehnt in
+     * sicherAufrufen() entfernt → rot (Art NETZ, transient).
+     */
+    @Test
+    fun `eine abgelehnte http-Anfrage ist kein Netzfehler und nicht voruebergehend`() = runTest {
+        val lage = object : ch.brickinventoryapp.di.Zugangslage {
+            override fun serverUrl() = server.url("/").toString()
+            override fun token() = "geheim"
+            override fun tokenHerkunft(): String? = null
+        }
+        val waechter = ch.brickinventoryapp.di.ServerWaechter(lage, false, entwicklung = false, sitzungAbgelaufen = {})
+        val e = fehler(baueRepo(waechter = waechter).getMe())
+        assert(e.art == Fehlerart.KLARTEXT) { "Art war ${e.art}" }
+        assert(!e.transient) { "Ein zweiter Versuch ginge genauso an http" }
+        assert(server.requestCount == 0) { "Die Anfrage ging trotzdem hinaus" }
     }
 
     @Test

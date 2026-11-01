@@ -69,10 +69,14 @@ fun spkiFingerabdruck(zertifikat: X509Certificate): String =
 fun istFingerabdruck(text: String?): Boolean =
     text != null && runCatching { Base64.getDecoder().decode(text.trim()).size == 32 }.getOrDefault(false)
 
-/** Für die Anzeige: Hex in Vierergruppen liest sich laut vor und lässt sich vergleichen. */
+/**
+ * Für die Anzeige: Hex in Paaren mit Doppelpunkt, genau wie die Webapp ihn unter
+ * „Server-Zertifikat“ zeigt (`fp_hex`). Gleiche Schreibweise heisst: Zeichen für
+ * Zeichen vergleichbar, ohne umzurechnen.
+ */
 fun fingerabdruckLesbar(fp: String): String =
     runCatching { Base64.getDecoder().decode(fp) }.getOrNull()
-        ?.joinToString("") { "%02X".format(it) }?.chunked(4)?.joinToString(" ") ?: fp
+        ?.joinToString(":") { "%02X".format(it) } ?: fp
 
 /** Unter diesem Schlüssel gilt ein Pin: Host und Port, ohne Schema und Pfad. */
 fun pinSchluessel(serverUrl: String): String? {
@@ -140,30 +144,40 @@ class ZertifikatsFrage @Inject constructor() {
  * und die Kette muss bis dahin lückenlos signiert sein — dann gilt sie auch ohne
  * bekannte CA. Ohne Pin wird nie still vertraut. Andere Hosts (Bild-CDN)
  * prüft nur die Kette.
+ *
+ * Zur Bestätigung angeboten wird das oberste Zertifikat der Kette, nicht das
+ * Blatt: Bei Caddy mit `sign_with_root` ist das die Wurzel, also derselbe Wert
+ * wie im QR-Code und in der Webapp, und er übersteht die Erneuerung des Blatts.
  */
 // Das Pinning braucht ihn: Er prüft die Kette per PKIX bis zum Pin bzw. über
 // WahlVertrauen und lehnt ab, was der Nutzer nicht bestätigt hat.
 @Suppress("CustomX509TrustManager")
 class PinVertrauen(
+    /** Für den eigenen Server: [WahlVertrauen], also auf Wunsch mit Nutzer-CAs. */
     private val kette: X509ExtendedTrustManager,
     private val pins: PinAblage,
     /** [pinSchluessel] des eingerichteten Servers, oder null. */
     private val eigenerServer: () -> String?,
     private val frage: ZertifikatsFrage,
+    /**
+     * Für alle anderen Hosts: nur System-CAs. Der Schalter für Nutzer-CAs gilt dem
+     * eigenen Server; ein Bild-CDN soll eine Firmen- oder Schad-CA nie annehmen.
+     */
+    private val fremdeHosts: X509ExtendedTrustManager,
 ) : X509ExtendedTrustManager() {
 
     private fun schluessel(sitzung: SSLSession?): String? =
         sitzung?.peerHost?.let { "${it.lowercase()}:${sitzung.peerPort}" }
 
-    private fun pruefe(chain: Array<X509Certificate>, schluessel: String?, kettenPruefung: () -> Unit) {
-        if (schluessel == null || chain.isEmpty() || schluessel != eigenerServer()) return kettenPruefung()
-        val fp = spkiFingerabdruck(chain[0])
+    private fun pruefe(chain: Array<X509Certificate>, schluessel: String?, mit: (X509ExtendedTrustManager) -> Unit) {
+        if (schluessel == null || chain.isEmpty() || schluessel != eigenerServer()) return mit(fremdeHosts)
+        val fp = spkiFingerabdruck(chain.last())
         val pin = pins.pin(schluessel)
         if (pin != null) {
             if (passtZumPin(chain, pin)) return
             throw gemeldet(ZertifikatUngeklaert(schluessel, fp, ZertifikatUngeklaert.Art.GEAENDERT, erwartet = pin))
         }
-        val kettenOk = runCatching { kettenPruefung() }.isSuccess
+        val kettenOk = runCatching { mit(kette) }.isSuccess
         throw gemeldet(ZertifikatUngeklaert(schluessel, fp,
             if (kettenOk) ZertifikatUngeklaert.Art.ERSTKONTAKT else ZertifikatUngeklaert.Art.UNBEKANNTE_CA))
     }
@@ -172,15 +186,15 @@ class PinVertrauen(
 
     override fun checkServerTrusted(chain: Array<X509Certificate>, authType: String, socket: Socket?) =
         pruefe(chain, schluessel((socket as? SSLSocket)?.handshakeSession)) {
-            kette.checkServerTrusted(chain, authType, socket)
+            it.checkServerTrusted(chain, authType, socket)
         }
 
     override fun checkServerTrusted(chain: Array<X509Certificate>, authType: String, engine: SSLEngine?) =
-        pruefe(chain, schluessel(engine?.handshakeSession)) { kette.checkServerTrusted(chain, authType, engine) }
+        pruefe(chain, schluessel(engine?.handshakeSession)) { it.checkServerTrusted(chain, authType, engine) }
 
-    // Ohne Socket kein Host: nur die Kette, kein Pin. Android ruft die Fassung mit Socket.
+    // Ohne Socket kein Host: nur System-CAs, kein Pin. Android ruft die Fassung mit Socket.
     override fun checkServerTrusted(chain: Array<X509Certificate>, authType: String) =
-        kette.checkServerTrusted(chain, authType)
+        fremdeHosts.checkServerTrusted(chain, authType)
 
     override fun checkClientTrusted(chain: Array<X509Certificate>, authType: String, socket: Socket?) =
         kette.checkClientTrusted(chain, authType, socket)
