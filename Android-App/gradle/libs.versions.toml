@@ -7,11 +7,11 @@ mlkitBarcode                = "18.3.1"   # unbundled (Play-Dienste) — siehe 16
 mlkitTextRec                = "16.0.1"   # bundled — liegt IM APK, kein Play-Nachladen
 accompanistPermissions      = "0.37.3"
 
-# Gehoben auf 9.4.1, GEMESSEN im Lauf 37536799223 gegen
+# Die hoechste Fassung meldet der CI-Schritt „Fassungen“ gegen
 # dl.google.com/dl/android/maven2/com/android/application/group-index.xml —
 # aus der Entwicklungsumgebung ist dieses Verzeichnis nicht abrufbar, vom
 # Runner sehr wohl (tools/fassungen-pruefen.py).
-agp                         = "9.4.1"
+agp                         = "9.5.0"
 # ── Die Nummern der beiden muessen NICHT uebereinstimmen ────────────────
 #
 # Hier stand: „KSP 2.3.7 und hoeher erwartet Kotlin 2.3.20", gelesen aus der
@@ -36,7 +36,7 @@ agp                         = "9.4.1"
 # GEMESSEN am 06.10. an zwei unabhaengigen Quellen: das aus dem echten
 # Inhalt erzeugte Verzeichnis auf Maven Central endet bei 2.3.12, und das
 # Gradle-Plugin-Portal nennt <latest> und <release> ebenfalls 2.3.12.
-# 2.3.12 ist damit die hoechste und die passende.
+# Die hoechste Fassung meldet seither der CI-Schritt „Fassungen“.
 #
 # ── Das Risiko, das sich hier nicht pruefen laesst ──────────────────────
 #
@@ -67,7 +67,7 @@ agp                         = "9.4.1"
 # bei 2.3.12 — KSP 2 ist nicht an die Uebersetzernummer gebunden, siehe
 # den Block darueber.
 kotlin                      = "2.4.21"
-ksp                         = "2.3.12"
+ksp                         = "2.3.13"
 coreKtx                     = "1.19.1"
 # Startbild auf allen Fassungen ab minSdk 26. 1.2.0 ist laut den Release Notes
 # (developer.android.com, gelesen am 28.10.2026) die neueste stabile, vom
@@ -134,14 +134,14 @@ retrofit                    = "3.0.0"
 # Beim ersten Versuch mit 5.5.0 hatte ich nur die Endpunkte gemessen und
 # bin auf die naechstniedrigere HAUPTfassung zurueckgegangen — 5.4.0 waere
 # schon damals gegangen. Deshalb steht die ganze Reihe hier.
-okhttp                      = "5.5.0"
+okhttp                      = "5.5.1"
 # GEMESSEN aus den Gradle-Metadaten der Artefakte selbst:
 #   serialization-json 1.10.0 → kotlin-stdlib 2.3.0
 #   serialization-json 1.11.0 → kotlin-stdlib 2.3.20
 #
 # 1.10.0 stand hier, solange unser Uebersetzer Kotlin 2.3.0 war. Mit 2.4.20
-# ist 1.11.0 erreichbar und damit die hoechste.
-kotlinxSerializationJson    = "1.11.0"
+# ist 1.11.0 erreichbar; 1.12.0 meldet der CI-Schritt „Fassungen“ als hoechste.
+kotlinxSerializationJson    = "1.12.0"
 retrofitKotlinxSerialization = "1.0.0"
 graphicsPath                = "1.1.0"   # 16-KB-Versuch, siehe app/build.gradle.kts
 # 1.1.7 stand hier, weil libdatastore_shared_counter.so in 1.2.0 wieder
