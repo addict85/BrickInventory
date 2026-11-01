@@ -53,8 +53,6 @@ const ERLAUBT = new Map([
   ['token_expires', 'API-Token-Verwaltung'], ['token_last_used', 'API-Token-Verwaltung'],
   ['instruction', 'Einzelanleitung; die Liste kommt über instructions'],
   ['missingImages', 'PDF-Job: die Oberfläche zeigt etaSeconds, nicht die Zahl'],
-  // Bis der Server-Auftrag POST /auth/serverbeweis entfernt; die App fragt ihn nicht mehr.
-  ['beweis', 'Serverbeweis vor Klartext-Anmeldung, seit dem Klartext-Verbot der App unbenutzt'],
 ]);
 
 /** Technische Umschläge, die in fast jeder Antwort stehen. */

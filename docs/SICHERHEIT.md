@@ -148,9 +148,9 @@ den Commits, nicht hier.
   vertraut ihr für jede Adresse. Wer `caddy/data/` (Schlüssel) erbeutet, kann
   diesen Geräten jede Seite vortäuschen. Die App vertraut nur dem gepinnten
   Schlüssel. Caddy kennt keine Namensbeschränkung für seine CA.
-- **Klartext als Ausnahme**: Wer Port 3000 wieder veröffentlicht, schickt
-  Passwort, Sitzung und Token unverschlüsselt; der Serverbeweis der App
-  erkennt einen falschen Server, nicht einen Mithörer.
+- **Klartext**: Wer Port 3000 wieder veröffentlicht, schickt im Browser
+  Passwort und Sitzung unverschlüsselt. Die Android-App verbindet sich nur
+  über HTTPS; eine `http://`-Adresse lehnt sie ab.
 - **Tokens im Überlappungsfenster**: Nach einem Tausch gilt der alte Token
   bis zu 5 min (bis zur ersten Nutzung des neuen). Geht die Antwort verloren
   und vergehen 5 min, muss die App neu gekoppelt werden.

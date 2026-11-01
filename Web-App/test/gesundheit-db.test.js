@@ -9,6 +9,8 @@
  *      meldet ready 503"
  *   C  startup-status ohne oeffentlicherStartZustand() → rot: „der
  *      Startzustand nennt nur seine Felder" (pfad und fehler gingen hinaus)
+ *   D  progress im Vertrag wieder z.number().int() → rot: dieselbe Prüfung
+ *      (vertrag_verletzt; der Server meldet Schritte mit Anteil, z. B. 2.37)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL, deren Benutzer Eigentümer ist.
  */
@@ -42,7 +44,7 @@ test('Gesundheitsprüfung und Startzustand', { concurrency: 1, timeout: 180_000 
     VALUES ($1, 'x', true, true, true) RETURNING id`, [NAME])).id;
   const token = await _req('src/konto/auth.js').createToken(uid, 'Gesundheit', false, null, { scope: 'voll' });
   const { setzeZustand, loescheZustand } = _req('src/auftraege/laufzustand.js');
-  await setzeZustand('startup_status', JSON.stringify({ ready: false, step: 'Teile laden...', progress: 3, total: 8,
+  await setzeZustand('startup_status', JSON.stringify({ ready: false, step: 'Teile laden...', progress: 2.37, total: 8,
     sub: '40%', pfad: '/app/data/geheim.csv', fehler: 'Error: ECONNREFUSED at /app/dist/jobs/x.js:12' }));
   t.after(async () => {
     await loescheZustand('startup_status');
@@ -77,7 +79,7 @@ test('Gesundheitsprüfung und Startzustand', { concurrency: 1, timeout: 180_000 
 
   await t.test('der Startzustand nennt nur seine Felder', async () => {
     const r = await hole('/api/v1/startup-status');
-    assert.deepEqual(r.body, { ready: false, step: 'Teile laden...', progress: 3, total: 8, sub: '40%' });
+    assert.deepEqual(r.body, { ready: false, step: 'Teile laden...', progress: 2.37, total: 8, sub: '40%' });
   });
 
   await t.test('live und ready antworten mit der Datenbank', async () => {

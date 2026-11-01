@@ -35,7 +35,8 @@ export const SettingsResponse = z.looseObject({
 export const StartupStatus = z.looseObject({
   ready: z.boolean(),
   step: z.string().nullable().optional(),
-  progress: z.number().int(),
+  // Erledigte Schritte mit Anteil des laufenden (2.37 = Schritt 3 zu 37 %).
+  progress: z.number().nonnegative(),
   total: z.number().int(),
   sub: z.string().nullable().optional(),
 });
