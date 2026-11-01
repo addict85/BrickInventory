@@ -6,6 +6,33 @@ export const ITEM_NUMBER_RE = /^[A-Za-z0-9][A-Za-z0-9._/-]{0,63}$/;
 import { z } from 'zod';
 import { fehlerWerfen } from './fehlerTexte';
 
+/** Die Spalten sind integer (int4): Ein grösserer Wert endete als 500 in PostgreSQL. */
+export const GROESSTE_ID = 2 ** 31 - 1;
+
+/** Eine ID aus Pfad, Rumpf oder Abfrage: Ziffern bis `hoechstens`, sonst null. */
+export function idWert(wert: unknown, hoechstens = GROESSTE_ID): number | null {
+  const roh = typeof wert === 'number' || typeof wert === 'string' ? String(wert).trim() : '';
+  if (!/^\d{1,16}$/.test(roh)) return null;
+  const n = Number(roh);
+  return Number.isSafeInteger(n) && n <= hoechstens ? n : null;
+}
+
+const ID_FELD = /^(id|ids)$|_ids?$|[a-z]Ids?$/;
+
+/** Der erste Feldname, der nach ID heisst und eine zu grosse oder krumme Zahl
+ * trägt. Andere Werte (Setnummern, leere Angaben) prüft die Route selbst. */
+export function zuGrosseId(wert: unknown, tiefe = 0): string | null {
+  if (tiefe > 6 || wert === null || typeof wert !== 'object') return null;
+  for (const [k, v] of Object.entries(wert)) {
+    const liste = Array.isArray(v) ? v : [v];
+    if (ID_FELD.test(k) && liste.some(x => (typeof x === 'number' || (typeof x === 'string' && /^-?\d+$/.test(x.trim())))
+      && !(Number.isSafeInteger(Number(x)) && Math.abs(Number(x)) <= GROESSTE_ID))) return k;
+    const tiefer = zuGrosseId(v, tiefe + 1);
+    if (tiefer) return tiefer;
+  }
+  return null;
+}
+
 /** null, wenn es keines ist (die Route antwortet dann 400). */
 export function jsonOderNull(text: string): { wert: unknown } | null {
   try { return { wert: JSON.parse(text) }; } catch { return null; }

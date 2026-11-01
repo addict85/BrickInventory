@@ -21,7 +21,7 @@ import { auftragsUebersicht, auftragAbbrechen, auftragWiederholen, auftragsArtJe
 import { urlOderNull } from '../../src/infra/validate';
 import { vertragsRouter } from '../../src/infra/vertrag/pruefen';
 import type { Antwort } from '../../src/infra/vertrag';
-const router = vertragsRouter();
+const router = vertragsRouter({ grosseIds: true });
 
 
 router.get('/admin/auftraege', requireApiAdmin, async (req: AuthedRequest, res: Antwort<'GET /api/v1/admin/auftraege'>) => {

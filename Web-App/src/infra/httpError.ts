@@ -37,6 +37,8 @@ function alsUploadFehler<T>(e: T): T | Error {
   const m = e as { name?: unknown; code?: unknown; type?: unknown } | null;
   // Fehler des Body-Parsers: Sein Text nennt Parser und Zeichenposition.
   if (m?.type === 'entity.parse.failed') return dateiFehler('anfrage_json_ungueltig', 400);
+  // Zweite Linie hinter idWert(): Ein Wert ausserhalb des Spaltentyps ist eine falsche Eingabe.
+  if (m?.code === '22003') return dateiFehler('wert_ungueltig', 400);
   if (m?.type === 'entity.too.large') return dateiFehler('anfrage_zu_gross', 413);
   if (typeof m?.type === 'string' && /^(charset|encoding)\.unsupported$|^request\.aborted$|^entity\.verify\.failed$/.test(m.type))
     return dateiFehler('anfrage_unlesbar', 400);

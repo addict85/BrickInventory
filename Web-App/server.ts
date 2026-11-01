@@ -42,6 +42,8 @@ import { registerImgProxy } from './routes/imgProxy';
 import { anmeldungAmEingang } from './routes/api_v1/middleware';
 import { idempotenz } from './src/idempotenz/http/middleware';
 import { vertragPruefen } from './src/infra/vertrag/pruefen';
+import { zuGrosseId } from './src/infra/validate';
+import { sendeFehler } from './src/infra/fehlerTexte';
 import datenDateien = require('./routes/datenDateien');
 import apiV1Router = require('./routes/api_v1/index');
 import authRouter = require('./routes/auth');
@@ -154,6 +156,8 @@ app.use(express.urlencoded({ extended: true, limit: '256kb' }));
 /** Express 5 lässt `req.body` ohne Parser `undefined`; die Routen verlassen
  * sich auf ein Objekt. */
 app.use((req, _res, next) => { if (req.body === undefined) req.body = {}; next(); });
+// IDs in Rumpf und Abfrage an einer Stelle, wie die Pfad-IDs in vertragsRouter().
+app.use((req, res, next) => zuGrosseId(req.body) || zuGrosseId(req.query) ? sendeFehler(req, res, 400, 'id_ungueltig') : next());
 
 // Hinter einem TLS-terminierenden Proxy muss Express X-Forwarded-Proto
 // glauben, sonst setzt es das secure-Cookie nie (src/infra/proxyVertrauen.ts).
