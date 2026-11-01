@@ -145,10 +145,12 @@ class GalerieViewModelTest {
         vm.loadSets()
         TestApi.warteBis("Liste geladen") { vm.galleryState.value.sets.size == 2 }
         val vorher = abrufe().size
+        // Gezählt ab hier: Die erste Ladung holt die Kennzahlen schon selbst.
+        val zahlenVorher = pfade.anfragenAn("GET /api/v1/stats").size
 
         t.bestand.melde(Aenderung.SetZusammenfassung(SetAggregate(setNumber = "75192-1", usedCount = 1)))
-        TestApi.warteBis("Kennzahlen neu") { pfade.anfragenAn("GET /api/v1/stats").isNotEmpty() }
-        assertEquals(1, vm.galleryState.value.sets.first { it.setNumber == "75192-1" }.usedCount)
+        TestApi.warteBis("Kennzahlen neu") { pfade.anfragenAn("GET /api/v1/stats").size > zahlenVorher }
+        TestApi.warteBis("Kachel geändert") { vm.galleryState.value.sets.first { it.setNumber == "75192-1" }.usedCount == 1 }
         assertEquals("Die Liste darf nicht neu geholt werden", vorher, abrufe().size)
     }
 
