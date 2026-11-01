@@ -107,8 +107,8 @@ export function loeseQrTokenEin(hash: string): Promise<{ user_id: number; token_
      RETURNING user_id, token_days`, [hash]);
 }
 
-export async function nameOderEmailVergeben(username: string, email: string): Promise<boolean> {
-  return !!await db.get('SELECT id FROM users WHERE LOWER(username) = LOWER($1) OR LOWER(email) = LOWER($2)', [username, email]);
+export function kontoMitEmail(email: string): Promise<KontoKurz & { email: string } | undefined> {
+  return db.get('SELECT id, username, is_admin, email FROM users WHERE LOWER(email) = LOWER($1)', [email]);
 }
 
 /** Ohne RETURNING: Die Kompatschicht hängt an ein INSERT ohne ON CONFLICT

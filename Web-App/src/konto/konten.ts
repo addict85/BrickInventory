@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs';
 import * as repo from './repository/konten';
 import { BCRYPT_ROUNDS, leereTokenCache, revokeAllSessions, revokeAllTokens } from './auth';
 
-export { aendereProfil, aktivesKontoNachEmail, andereSitzungenBeenden, emailVergeben, kontoExistiert, kontoKurz, kontoNachRuecksetzToken, kontoVoll, legeQrTokenAn, loescheKonto, loeseQrTokenEin, mussPasswortAendern, nameOderEmailVergeben, nameVergeben, raeumeQrTokensAuf, setzeRuecksetzToken, tokenNachKennung, tokenStand, zugaengeDesKontos, zugaengeLoeschen } from './repository/konten';
+export { aendereProfil, aktivesKontoNachEmail, andereSitzungenBeenden, emailVergeben, kontoExistiert, kontoKurz, kontoMitEmail, kontoNachRuecksetzToken, kontoVoll, legeQrTokenAn, loescheKonto, loeseQrTokenEin, mussPasswortAendern, nameVergeben, raeumeQrTokensAuf, setzeRuecksetzToken, tokenNachKennung, tokenStand, zugaengeDesKontos, zugaengeLoeschen } from './repository/konten';
 
 export async function kontenListe() {
   return repo.alleKonten();
@@ -40,6 +40,11 @@ export async function setzePasswortZurueck(uid: number, passwort: unknown): Prom
   await zugaengeBeenden(uid);
 }
 
+/** Dieselbe Rechenzeit wie registriere(): Die Antwortzeit verriete sonst eine vergebene Adresse. */
+export async function rechneWieRegistrierung(passwort: unknown): Promise<void> {
+  await hashe(passwort);
+}
+
 export async function legeKontoAn(username: string, passwort: unknown, verwalter: boolean): Promise<number | null> {
   return repo.fuegeKontoEin(username, await hashe(passwort), verwalter);
 }
@@ -50,9 +55,8 @@ export async function registriere(d: { username: string; email: string; first_na
     last_name: d.last_name, hash: await hashe(d.passwort), tokenHash: d.tokenHash, bis: d.bis });
 }
 
-/** Erst sperren, dann Zugänge löschen: Die Token-Abfrage prüft is_active, so
- * gilt in der Lücke dazwischen kein Token. Sitzungen fallen mit ihrer Zeile,
- * jede Anfrage liest sie neu — eine Prüfung je Anfrage braucht es nicht. */
+/** Erst sperren, dann Zugänge löschen (die Token-Abfrage prüft is_active). Sitzungen fallen
+ * mit ihrer Zeile; jede Anfrage liest sie neu, eine Prüfung je Anfrage braucht es nicht. */
 export async function setzeAktiv(uid: number, soll: boolean): Promise<{ geaendert: boolean } | null> {
   const r = await repo.setzeAktiv(uid, soll);
   if (!r) return null;

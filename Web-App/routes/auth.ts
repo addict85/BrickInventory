@@ -11,7 +11,7 @@ import type { TokenScope } from '../src/konto/auth';
 import { tlsStand } from '../src/infra/tlsWurzel';
 import crypto from 'crypto';
 import { strictBool } from '../src/infra/validate';
-import { sendEmailGeaendertMail, sendPasswordResetMail, sendVerificationMail } from '../src/infra/mailer';
+import { sendEmailGeaendertMail, sendPasswordResetMail, sendVerificationMail, sendRegistrierungsVersuchMail } from '../src/infra/mailer';
 import type { Request, Response } from 'express';
 import { setUserSetting } from '../src/konto/settings';
 import { registrierungOffen } from '../src/konto/settings';
@@ -520,8 +520,18 @@ router.post('/register', ipThrottle('register', 5, 60 * 60 * 1000), async (req, 
   if (!USERNAME_RE.test(username))
     return sendeFehler(req, res, 400, 'benutzername_ungueltig');
 
-  if (await K.nameOderEmailVergeben(username, email)) return sendeFehler(req, res, 409, 'benutzername_oder_email_vergeben');
-
+  if (await K.nameVergeben(username, 0)) return sendeFehler(req, res, 409, 'benutzername_vergeben');
+  // Eine vergebene Adresse bekommt dieselbe Antwort wie eine neue, sonst liesse
+  // sich abfragen, wer ein Konto hat; ihr Inhaber bekommt einen Hinweis.
+  const inhaber = await K.kontoMitEmail(email);
+  const basis = getBaseUrl(req);
+  let result: { success: boolean; mode: string };
+  if (inhaber) {
+    await K.rechneWieRegistrierung(password);
+    const sprache = String(await getSetting(inhaber.id, 'language', 'de').catch(() => 'de'));
+    result = basis ? await sendRegistrierungsVersuchMail(inhaber.email, inhaber.username, sprache)
+      : { success: false, mode: 'ohne_basis' };
+  } else {
     const token  = crypto.randomBytes(32).toString('hex');
     const expires = new Date(Date.now() + 24 * 60 * 60 * 1000);
     // Nur als SHA-256: Bei einem Datenbank-Leak wäre ein ausstehender
@@ -531,11 +541,9 @@ router.post('/register', ipThrottle('register', 5, 60 * 60 * 1000), async (req, 
     // Ohne Protokoll bliebe unklar, warum ein frisches Konto in der falschen
     // Sprache startet.
     if (neuId) await setUserSetting(neuId, 'language', lang).catch(logAndContinue(`registrierung:sprache ${neuId}`));
-
-    const basis = getBaseUrl(req);
-    const result = basis
-      ? await sendVerificationMail(email, first_name || username, token, basis, lang)
-      : { success: false, mode: 'ohne_basis' as const };
+    result = basis ? await sendVerificationMail(email, first_name || username, token, basis, lang)
+      : { success: false, mode: 'ohne_basis' };
+  }
 
     res.json({
       success: true,

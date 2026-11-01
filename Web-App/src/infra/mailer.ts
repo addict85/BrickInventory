@@ -371,6 +371,28 @@ export async function sendEmailGeaendertMail(to: string, username: string, neueA
     html: emailTemplate(L.title, L.subject, `${L.html}${infoBox(L.note, theme)}`, theme) });
 }
 
+/** Die Registrierung antwortet auf eine vergebene Adresse wie auf eine neue; das hier erfährt ihr Inhaber. */
+export async function sendRegistrierungsVersuchMail(to: string, username: string, lang = 'de') {
+  const theme = await getMailTheme();
+  const L = lang === 'en' ? {
+    subject: 'BrickInventory Manager — Registration with your email address',
+    title: 'Registration attempt',
+    text: `Hello ${username},\n\nsomeone tried to register a new account with your email address. You already have an account; nothing was changed.\n\nIf you forgot your password, use “Forgot password” on the sign-in page.\n\nBrickInventory Manager`,
+    html: `<p style="margin:0 0 8px">Hello <strong>${esc(username)}</strong>,</p>
+       <p style="margin:0 0 16px">someone tried to register a new account with your email address. You already have an account; nothing was changed.</p>`,
+    note: 'If you forgot your password, use “Forgot password” on the sign-in page.',
+  } : {
+    subject: 'BrickInventory Manager — Registrierung mit deiner E-Mail-Adresse',
+    title: 'Registrierungsversuch',
+    text: `Hallo ${username},\n\njemand hat versucht, mit deiner E-Mail-Adresse ein neues Konto anzulegen. Du hast schon eines; geändert wurde nichts.\n\nHast du dein Passwort vergessen, nutze „Passwort vergessen“ auf der Anmeldeseite.\n\nBrickInventory Manager`,
+    html: `<p style="margin:0 0 8px">Hallo <strong>${esc(username)}</strong>,</p>
+       <p style="margin:0 0 16px">jemand hat versucht, mit deiner E-Mail-Adresse ein neues Konto anzulegen. Du hast schon eines; geändert wurde nichts.</p>`,
+    note: 'Hast du dein Passwort vergessen, nutze „Passwort vergessen“ auf der Anmeldeseite.',
+  };
+  return sendMail({ to, subject: L.subject, text: L.text,
+    html: emailTemplate(L.title, L.subject, `${L.html}${infoBox(L.note, theme)}`, theme) });
+}
+
 /** Das Hauptkonto liest danach den Bestand mit; wer nur eine Sitzung erbeutet
  * hat, soll das nicht unbemerkt einrichten können. */
 export async function sendHaushaltVerknuepftMail(to: string, username: string, hauptkonto: string, lang = 'de') {
